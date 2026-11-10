@@ -56,7 +56,7 @@ func TestBuildCatalogAloneRunsTheSecondBuild(t *testing.T) {
 	fixture := writeInProcessFixture(t)
 	dir := t.TempDir()
 	child := buildIntentReportingChild(t, dir)
-	// The claim needs the catalog to name the bytes that are started (§4.42), so
+	// The claim needs the catalog to name the bytes that are started (§4.46), so
 	// the fixture's placeholder builder digest is replaced before the plan is
 	// derived from it.
 	declareBuilderInCatalog(t, &fixture, child)

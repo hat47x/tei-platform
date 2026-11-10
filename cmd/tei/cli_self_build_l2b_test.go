@@ -147,7 +147,7 @@ func TestAssessL2BOnAnEmptyAttemptReportsEveryCondition(t *testing.T) {
 		t.Fatal("an empty attempt claimed L2-b")
 	}
 	// Six independent conditions: the five of §4.23 and the builder binding of
-	// §4.42. The three facts about the plan receipt answer one question with
+	// §4.46. The three facts about the plan receipt answer one question with
 	// mutually exclusive answers, so an attempt with no receipt reports one entry
 	// for it, not three.
 	if len(claim.Unmet) != 6 {

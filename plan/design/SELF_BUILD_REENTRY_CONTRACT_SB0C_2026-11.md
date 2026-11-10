@@ -1912,7 +1912,146 @@ L2-bの五条件は、childの能力に依存する。本節は、**参照実装
 - 覆われていないpackageを自動で計画へ足すこと。**計画は呼び手が書くもの**である
 - `vendor/`の扱い。**今は対象から外している**
 
-### 4.42 宣言したbuilderと、起動したファイルを結ぶ（2026-11-10）
+### 4.42 照合した木をビルドする（案Bの第一歩、2026-11-09）
+
+§4.39の案Aには**TOCTOU**が残る——計画と作業ツリーを照合してから`go build`するまでの間に、ファイルは変わり得る。本節は、**案Bの第一歩**を実装したことを記録する。
+
+#### 何をするか
+
+`-isolate`を付けると、**計画が名指すsourceだけを新しい木へ写し、その木をビルドする。**
+
+| 段 | 内容 |
+| --- | --- |
+| 1 | 各sourceを`DirSourceResolver`で読み、**locatorの形を保って**新しい木へ書く |
+| 2 | 写した木を**同じresolverで読み直し**、計画のdigestと一致することを確かめる。**違えばビルドしない** |
+| 3 | `go.mod`・`go.sum`を作業ツリーから取り、**そのdigestを記録**する |
+| 4 | その木で`go list -deps`と`go build`を行う（§4.41の被覆検査もこの木に対して行う） |
+
+**「確かめたもの」と「ビルドしたもの」が同じ木になる。** 作業ツリーの後からの変更は、ビルドに届かない。
+
+#### 素直でない点：module contextは計画のsourceではない
+
+`go build`には`go.mod`が要る。**これはsourceではない**ので計画は名指さない。そこで**作業ツリーから取り、`moduleFiles`としてdigestを記録**する。**境界に明記**した——「module contextは主張に含まれない」。
+
+**これは穴を塞ぎ切っていない。** `go.mod`を後から変えれば、依存の解決は変わり得る。塞ぐにはmodule contextも計画の一部にする（`Dependencies`の拡張）必要があり、それは未着手である。
+
+#### 実測
+
+| 試験 | 結果 |
+| --- | --- |
+| `TestStageSourcesCopiesExactlyThePlannedBytes`（写した木が計画と同じdigestで、module contextが記録される） | **PASS** |
+| `TestStageSourcesRefusesACopyThatDoesNotMatchThePlan`（写した木が計画と違えば**拒否**） | **PASS** |
+| `TestRunWithIsolateBuildsFromTheStagedTree`（`-isolate`で実際にビルドし、木のdigestと境界が記録され、被覆検査も通る） | **PASS** |
+| `go test ./tools/reference-go-build-from-plan -count=1` | **PASS**（20.6秒） |
+
+#### 既定にしない理由
+
+**`-isolate`は既定にしていない。** 理由は二つ:
+
+1. **module contextが計画の外にある**ので、隔離しても主張は完全には閉じない。既定にすると「閉じた」と読まれやすい
+2. 依存のある対象では、**module解決の合成規則**（§4.39の案Bの本体）がまだ無い
+
+**既定にできるのは、module contextを計画の一部にした後である。**
+
+#### この節が言っていないこと
+
+- **TOCTOUを完全には閉じていない。** `go.mod`・`go.sum`は作業ツリーから取る
+- 複数sourceが同じdirectoryを共有する場合の合成規則（今はlocatorごとに独立して写す）
+- `vendor/`・置換（`replace`）の扱い
+- 既定化。**上の二つの理由で見送っている**
+
+### 4.43 module contextも計画のsourceにする（2026-11-09）
+
+§4.42の`-isolate`は、**`go.mod`・`go.sum`を作業ツリーから取る**ので、隔離してもTOCTOUが残った。本節は、**module contextも計画のsourceにする**ことで、その例外を消す。
+
+#### 規則
+
+**`kind: "go-module"`のsourceとして`go.mod`・`go.sum`を宣言できる。** 宣言すれば、隔離ビルドはそれらを**他のsourceと同じように写し、同じようにdigestを照合する**。
+
+| 計画がmodule contextを名指すか | 隔離ビルドの`moduleFiles` | 何が言えるか |
+| --- | --- | --- |
+| **名指す** | **空** | **木は計画のsourceだけでできている**（作業ツリーからの持ち込みが無い） |
+| 名指さない | `go.mod:<digest>`など | 木は計画＋作業ツリーのmodule contextでできている（境界に明記） |
+
+**「例外は無い」と言えるのは、名指した場合だけである。** 名指さない場合は従来どおりで、記録がそのことを示す。
+
+#### 実測
+
+| 試験 | 結果 |
+| --- | --- |
+| `TestIsolatedTreeTakesNoModuleFileFromTheWorkingTreeWhenThePlanNamesThem`（`go.mod`・`go.sum`を`go-module` sourceとして宣言 → `moduleFiles`が**空**、写したmembersは**3件**＝package＋2ファイル） | **PASS** |
+| `go test ./tools/reference-go-build-from-plan -count=1`（全試験） | **PASS**（79.4秒） |
+
+#### 途中で直した欠陥
+
+**単一ファイルのsourceを写す処理が、そのパスをディレクトリとして作っていた。** ディレクトリのsourceしか写していなかったので表面化していなかったが、`go.mod`をsourceにした瞬間に`is a directory`で落ちた。**ファイルとディレクトリを分けて書く**ように直した。
+
+#### この節が言っていないこと
+
+- **`go-module` sourceの検証**（`go.mod`という名前に限るか、任意のmoduleファイルを許すか）。今は**kindの意味だけ**を決め、名前は呼び手に任せている
+- `go.sum`が無いmodule（依存の無いmodule）での扱い
+- `-isolate`の既定化。**module contextを名指す計画が一般的になってから**
+- `replace`・`vendor/`の扱い
+
+### 4.44 隔離ビルドでもL2-bが立つことを回帰試験で確かめる（2026-11-09）
+
+§4.42・§4.43で隔離ビルドを作ったが、**その経路で五条件が立つかは確かめていなかった。** 本節は、回帰試験を隔離ビルドへ切り替え、**隔離した木からビルドしても`l2b.claimed=true`が立つ**ことを固定した。
+
+#### 変えたこと
+
+| 対象 | 変更 |
+| --- | --- |
+| 宣言 | `go-module`のsourceとして`go.mod`・`go.sum`を追加（§4.43の規則） |
+| child args | `-isolate`を追加 |
+| 試験 | 主張に加えて、**childが計画を読むbuilderであること**（`childSchema`）を確かめる |
+
+#### 実測
+
+| 項目 | 値 |
+| --- | --- |
+| `TestSelfBuildEstablishesL2BFromARealGoBuild` | **PASS**（14.5〜71.3秒。環境の負荷で変動） |
+| `l2b.claimed` | **true** |
+| `planCrossCheck` / `planArtifactBinding` / `artifactReproducibility` / `definitionBinding` | すべて成立 |
+
+#### この試験が示していないこと
+
+**隔離が実際に行われたことを、entryは見ていない。** entryはchildのstdoutをdigestとして記録するが、`isolatedTree`の中身は解析しない。**隔離そのものの観測は、ツール自身の試験（写した木が計画と一致する・`moduleFiles`が空・実buildが通る）が担う。**
+
+**したがって本節が言えるのは「隔離ビルドの経路でも鎖が成立する」までで、「この試行が隔離された」ではない。** 両者を一つの试验で言うには、entryがchildの隔離記録を読む必要がある（未着手）。
+
+### 4.45 entryが、builderの隔離記録を読む（2026-11-09）
+
+§4.44は「隔離ビルドの経路でも鎖が成立する」までしか言えなかった。**entryがchildの`isolatedTree`を解析していなかった**からである。本節は、それを読んで記録するようにしたことを残す。
+
+#### 何をするか
+
+| 段 | 内容 |
+| --- | --- |
+| 1 | childの`isolatedTree`（`root`・`members`・`moduleFiles`・`boundary`）を解析する |
+| 2 | **`moduleFiles`が空なら`isolated`**、あれば`isolated-with-external-context`（理由に何を持ち込んだかを並べる） |
+| 3 | 報告の`childIsolation`として出す。**五条件には加えない** |
+
+#### 五条件に加えない理由
+
+**条件を増やすことは契約の変更**であり、§4.23の述語を変える。**記録を足すだけなら、述語はそのままで、読む人が「この試行は隔離されていた」を確認できる。**
+
+**加えるべきかは、`-isolate`を既定にする判断と同じ場所で決める**（§4.43）。今は記録だけを置く。
+
+#### 実測
+
+| 試験 | 結果 |
+| --- | --- |
+| `TestReadChildIsolation`（未申告は記録なし／`moduleFiles`空で`isolated`／あれば`isolated-with-external-context`と理由） | **PASS** |
+| `TestSelfBuildEstablishesL2BFromARealGoBuild`（`childIsolation.state=isolated`・`moduleFiles`空・`memberCount=4`を確認） | **PASS**（12.8秒） |
+
+**`memberCount=4`の内訳**：package・計画が持つ宣言・`go.mod`・`go.sum`。**宣言は§4.40で定義sourceではなくなったが、計画のsourceとしては残っている**（ビルドは読まないが、写す対象ではある）。
+
+#### この節が言っていないこと
+
+- **entryが隔離木を見たこと**。見えるのはchildの申告だけである（§4.37の「信じている」に属する）
+- 五条件への追加。**契約変更であり、別途決める**
+- `-isolate`の既定化
+### 4.46 宣言したbuilderと、起動したファイルを結ぶ（2026-11-10）
 
 §4.33は「builderの解決はdigestで照合しないため、catalogが別のバイトを名指ししていても試行は通ってしまう」と書き、§4.37の実測は「`-child`がプロキシなら背後の差し替えは止まらない」ことを示した。本節は、この二つが**同じ一つの欠落**であると整理し、塞いだ範囲と残る範囲を分ける。
 

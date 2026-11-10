@@ -91,7 +91,7 @@ func assessL2B(report selfBuildOuterEvidence) selfBuildL2BClaim {
 		unmet("the artifact was not reproduced from the plan (%s)", state)
 	}
 
-	// §4.42: the plan declares a builder by digest. The claim "this plan produced
+	// §4.46: the plan declares a builder by digest. The claim "this plan produced
 	// this artifact" is only as strong as the link between that declaration and
 	// the file the entry started. Reproduction compares the started file with
 	// itself across two runs; this compares it with the plan. Without it, a

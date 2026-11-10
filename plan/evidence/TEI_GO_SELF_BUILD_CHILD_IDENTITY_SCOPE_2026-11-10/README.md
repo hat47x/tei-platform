@@ -16,7 +16,7 @@ plan/evidence/TEI_GO_SELF_BUILD_CHILD_IDENTITY_SCOPE_2026-11-10/run.sh direct
 | `proxy` | `-child`のプロキシが**自分のバイトを変えずに**起動先を切り替える | **`l2b.claimed=true`**（差し替えは見えない） |
 | `direct` | `-child`のファイル自体が初回に書き換わる | **`l2b.claimed=false`**、`mismatched`、`mismatchReason`が実行者違いを名指しする |
 
-> **`proxy` の期待は、`raw/` を取ったコミットでの値です。** その後、宣言したbuilderと起動したファイルを結ぶ検査が入りました（[記録](../TEI_GO_SELF_BUILD_BUILDER_BINDING_2026-11-10.md)、SB-C0 §4.42）。このスクリプトはcatalogに`builder`を宣言してプロキシを起動するので、**現行では `l2b.claimed=false`**（`builderBinding=mismatched`、再現は`reproduced`のまま）になるはずです。**現行のコードでは未実行**で、`raw/` と `run.sh` の出力欄は更新していません。
+> **`proxy` の期待は、`raw/` を取ったコミットでの値です。** その後、宣言したbuilderと起動したファイルを結ぶ検査が入りました（[記録](../TEI_GO_SELF_BUILD_BUILDER_BINDING_2026-11-10.md)、SB-C0 §4.46）。このスクリプトはcatalogに`builder`を宣言してプロキシを起動するので、**現行では `l2b.claimed=false`**（`builderBinding=mismatched`、再現は`reproduced`のまま）になるはずです。**現行のコードでは未実行**で、`raw/` と `run.sh` の出力欄は更新していません。
 
 エミュレータは要りません。どちらもエントリの記帳に関する観測で、childのアーキテクチャに依存しないためです。
 

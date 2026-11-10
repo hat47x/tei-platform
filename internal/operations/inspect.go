@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"strings"
 
+	"tei/internal/database/release"
 	"tei/internal/ir"
+	"tei/internal/releaseplan"
 	"tei/internal/sourceindex"
 	"tei/internal/workspace"
 )
@@ -128,6 +130,11 @@ var InspectionSubjectKinds = []string{
 	"semantic", "semantic-type", "semantic-data", "semantic-attribute", "semantic-relation",
 	"semantic-candidate-key", "semantic-functional-dependency", "semantic-capability", "semantic-validation",
 	"application", "application-pattern", "query",
+	// The delivery layer. Without these a designer could validate a migration or
+	// a release plan and then have no way to read it back (#4128). A release
+	// subject is its owner (the database or the plan), and the projection lists
+	// every declared version of that owner.
+	"migration", "database-release", "solution-release",
 }
 
 func supportedInspectionKind(kind string) bool {
@@ -137,6 +144,20 @@ func supportedInspectionKind(kind string) bool {
 		}
 	}
 	return false
+}
+
+// releaseSet is the Canonical object for a database-release subject. Its
+// top-level id is the database, matching the requested id, so the projection
+// check in ValidateInspectionProjection still holds.
+type releaseSet struct {
+	ID       string               `json:"id"`
+	Releases []release.Definition `json:"releases"`
+}
+
+// solutionReleaseSet is the Canonical object for a solution-release subject.
+type solutionReleaseSet struct {
+	ID       string                   `json:"id"`
+	Releases []releaseplan.Definition `json:"releases"`
 }
 
 // inspectCanonical works only with normalized IR objects; every candidate is
@@ -237,6 +258,37 @@ func inspectCanonical(world ir.World, subject sourceindex.Subject) (json.RawMess
 					matches = append(matches, item)
 				}
 			}
+		}
+	case "migration":
+		for _, item := range world.Migrations {
+			if item.ID == subject.ID {
+				matches = append(matches, item)
+			}
+		}
+	case "database-release":
+		// A database holds several versions, so the subject is the owner and the
+		// projection is the set of its releases. Returning one release per
+		// declaration would be ambiguous, and inventing a compound id such as
+		// "sales_core@4.2.0" would break the rule that the Canonical object's own
+		// top-level id equals the requested id.
+		var versions []release.Definition
+		for _, item := range world.DatabaseReleases {
+			if string(item.Database) == subject.ID {
+				versions = append(versions, item)
+			}
+		}
+		if len(versions) > 0 {
+			matches = append(matches, releaseSet{ID: subject.ID, Releases: versions})
+		}
+	case "solution-release":
+		var versions []releaseplan.Definition
+		for _, item := range world.SolutionReleases {
+			if string(item.ID) == subject.ID {
+				versions = append(versions, item)
+			}
+		}
+		if len(versions) > 0 {
+			matches = append(matches, solutionReleaseSet{ID: subject.ID, Releases: versions})
 		}
 	case "query":
 		for _, item := range world.Queries {

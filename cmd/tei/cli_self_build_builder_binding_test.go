@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-// §4.42: these tests pin what "builder identity" means in an attempt.
+// §4.46: these tests pin what "builder identity" means in an attempt.
 //
 // The plan declares a builder by digest; the entry digests the file it starts.
 // The claim holds only when the two agree. The cases below run real child

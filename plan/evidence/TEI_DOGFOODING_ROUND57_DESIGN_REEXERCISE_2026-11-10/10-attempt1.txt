@@ -1,0 +1,1 @@
+releases/databases/sales-core/5.0.0.tei:3:5	error	PARSE_ERROR	expected schema-fingerprint, includes, provides, or data-readiness
