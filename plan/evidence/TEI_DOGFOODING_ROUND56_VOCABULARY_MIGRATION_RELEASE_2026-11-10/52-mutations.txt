@@ -1,0 +1,8 @@
+M1 remove the list from the phase diagnostic
+   -> FAIL: solution release phase: message does not name "expand"
+M2 add the empty strategy to RolloutStrategies
+   -> FAIL: the empty rollout strategy must not appear in RolloutStrategies
+M3 drop verify from releaseplan.Phases
+   -> FAIL: Phases has 6 entries but 7 are declared
+restored -> database/... (10 pkgs), releaseplan, releasegraph, validation,
+            workspace, operations, cmd/tei (409.5s) all ok; vet and gofmt clean

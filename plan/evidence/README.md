@@ -47,6 +47,7 @@
 - [フック実行の配線と失敗の区別の確認](XTEA_LOWCODE_HOOK_RUNNER_OUTCOME_2026-11.md)（参照実装の試験記録。Runnerからの配線、NotSatisfiedと実行失敗の区別、参照規則。実PluginとCLI・Studioの配線は未実装）
 - [フック宣言の印刷面への反映の確認](XTEA_LOWCODE_HOOK_PRINT_SURFACE_2026-11.md)（参照実装の試験記録。画面と同じフック宣言が印刷面にも出る。実印刷・用紙面の版照合は未確認）
 - [フックの位相順序と途中停止の確認](XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md)（参照実装の試験記録。位相の実行順、不成立での停止位置、`warn`の続行、未対応位相の拒否。CLI・Studioへの配線は未実装）
+- [Studioから`after-*`フックへ到達する配線の確認](XTEA_LOWCODE_HOOK_AFTER_CHANGE_STUDIO_2026-11.md)（試験記録。`ExecuteCommandWithReferenceStore`が変更を適用し、変更後のフックを実行する。`PhaseReport.Merge`を`internal/hook`に置いて両ホストで共有。UIからの呼出しは未着手）
 - [`after-*`拒否時の効果の補償の確認](XTEA_LOWCODE_HOOK_AFTER_CHANGE_REVERT_2026-11.md)（試験記録。拒否する規則を差し込むと適用した効果がStoreから取り消され`effectReverted`が出る。既定経路での到達は規則Pluginの供給待ち）
 - [CLIから`after-*`フックへ到達する配線の確認](XTEA_LOWCODE_HOOK_AFTER_CHANGE_CLI_2026-11.md)（試験記録。`view -execute -reference-store`がメモリ上のStoreへ適用し、変更後のフックを実行する。Studio配線と補償は未着手）
 - [`after-*`へ到達する実行経路の確認](XTEA_LOWCODE_HOOK_AFTER_CHANGE_2026-11.md)（試験記録。`RunBeforeChange`→変更の適用→`RunAfterChange`＋`AppliedChangeReach`で`after-*`を実行できる。ホスト配線は未着手）
@@ -399,3 +400,4 @@
 - [語彙診断の第2弾と未検証だった疑問の解消](TEI_DOGFOODING_ROUND54_VOCABULARY_BATCH2_2026-11-10/README.md)（#4094。ownership/type kind/cardinality/application-release accessの4件を追加修正し残り13件。capability/data/interactionは既に語彙を列挙しており、私の一般化が過度だったと確認）
 - [view -formatの形式別制限の広告](CLI_VIEW_FORMAT_ADVERTISEMENT_2026-11-11.md)（iewのcatalogueが-formatの和集合だけを広告し、-application単独や-packageではhtml/printが拒否されることを伝えていなかった件。optionalに形式ごとの受理集合を書く。browse -patternでは実際にHTML/printを描画することを試験で固定）
 - [語彙診断の第3弾、plugin系統5件](TEI_DOGFOODING_ROUND55_VOCABULARY_PLUGIN_2026-11-10/README.md)（#4094。runtime/sandbox/capability kind/external scope/external kindの5件を追加修正し残り8件。sandboxは空も受理するため一覧に載せず省略可能と明記。5件ともCLIから到達可、変異3種で確認）
+- [語彙診断の第4弾、migrationとrelease planの6件](TEI_DOGFOODING_ROUND56_VOCABULARY_MIGRATION_RELEASE_2026-11-10/README.md)（#4094。migration recovery/step kind、data readiness、solution step kind/phase、rollout strategyの6件を修正。#4094は17→2件（残りは構造検証で対象外）。step kindは構文エラーが先で到達不能と実測）
