@@ -1,0 +1,69 @@
+{
+  "note": "After the MCP server was killed mid-run, the harness still advertised its tool and the call itself failed with 'Error: fetch failed'. The failure surfaced as an ordinary tool error, not as a removed tool.",
+  "overlay": {
+    "url": "http://127.0.0.1:8797/mcp/late",
+    "serverName": "latemock",
+    "failOnStartupError": false
+  },
+  "killThenCallTrace": [
+    "{\"type\":\"tool_result\",\"callId\":\"toolu_kill_1\",\"status\":\"completed\",\"result\":\"killed:45404\\r\\n\"}",
+    "{\"type\":\"tool_call\",\"callId\":\"toolu_call_3\",\"tool\":\"mcp__latemock__header_echo\",\"input\":{\"text\":\"CALL_AFTER_KILL_CANARY\"}}",
+    "{\"type\":\"tool_result\",\"callId\":\"toolu_call_3\",\"status\":\"error\",\"result\":\"Error: fetch failed\"}"
+  ],
+  "toolCallErrorText": "Error: fetch failed",
+  "callFailed": true,
+  "toolStillAdvertisedAtCallTime": true,
+  "serverAliveAfterKill": false,
+  "modelRequests": [
+    {
+      "file": "001-request.json",
+      "bytes": 116195,
+      "sha256": "01e0dac55d71347b10c598b558d2a4d95ad2af4a328f6a9337de7a2d3ef21909",
+      "toolCount": 28,
+      "hasTargetTool": true,
+      "hasKillResult": false,
+      "hasCallResult": false,
+      "mcpTools": [
+        "mcp__latemock__header_echo"
+      ]
+    },
+    {
+      "file": "002-request.json",
+      "bytes": 65497,
+      "sha256": "72585500e111c8acc7d3d000ac09a7271dc3031179d123fb718ce2494da117a1",
+      "toolCount": 0,
+      "hasTargetTool": false,
+      "hasKillResult": false,
+      "hasCallResult": false,
+      "mcpTools": []
+    },
+    {
+      "file": "003-request.json",
+      "bytes": 63073,
+      "sha256": "2a58155d9510581666b6de8cb73b9cb787f33c21638ef426055d20448b603107",
+      "toolCount": 28,
+      "hasTargetTool": true,
+      "hasKillResult": true,
+      "hasCallResult": false,
+      "mcpTools": [
+        "mcp__latemock__header_echo"
+      ]
+    },
+    {
+      "file": "004-request.json",
+      "bytes": 60921,
+      "sha256": "2b2556c1d8690735db295ac7c65b5e01248930362bb8d5abfec65d75795d0b97",
+      "toolCount": 28,
+      "hasTargetTool": true,
+      "hasKillResult": true,
+      "hasCallResult": true,
+      "mcpTools": [
+        "mcp__latemock__header_echo"
+      ]
+    }
+  ],
+  "contrast": {
+    "advertised": "DSH_MCP_KILL_MIDRUN_2026-11-10 (tool list does not shrink)",
+    "atCallTime": "this record (the call fails with 'fetch failed')"
+  }
+}
