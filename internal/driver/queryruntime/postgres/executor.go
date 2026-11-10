@@ -28,7 +28,13 @@ type Executor struct {
 	Database core.CanonicalID
 }
 
-var _ driver.BrowseQueryExecutor = Executor{}
+var _ driver.DatabaseProviderBoundBrowseQueryExecutor = Executor{}
+
+// DatabaseProviderは、このExecutorが実行できるDatabase providerを返す。
+// Environment上のDatabase instance providerと実行前に照合するために使う。
+func (e Executor) DatabaseProvider() environment.DatabaseProvider {
+	return environment.ProviderPostgres
+}
 
 // ExecuteBrowseQueryは、PostgreSQL固有のparameter bindingを行った後、native SQLを実DBへ渡す。
 //
