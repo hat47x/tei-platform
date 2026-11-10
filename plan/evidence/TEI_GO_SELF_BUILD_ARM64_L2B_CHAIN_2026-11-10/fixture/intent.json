@@ -1,0 +1,13 @@
+{
+  "formatVersion": 1,
+  "subject": {"kind": "plugin", "id": "tei.plugin.l2b_e2e", "version": "1.0.0", "definitionSource": "definition"},
+  "sources": [
+    {"kind": "plugin-definition", "id": "definition", "ref": "plugin.tei"},
+    {"kind": "go-package", "id": "implementation", "ref": "implementation.go.txt"}
+  ],
+  "builder": {"contract": "tei.plugin-build", "compatibleMajor": 1},
+  "recipe": {"kind": "go-package", "entrypoint": "."},
+  "outputKind": "plugin-package",
+  "target": "host/linux/amd64",
+  "profile": "release"
+}

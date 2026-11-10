@@ -1,0 +1,18 @@
+=== build tools for arm64 ===
+=== author the catalog ===
+catalogDigest=sha256:65278fa8181079144caeb56b6deea72d1c78180be803f7ab881a6f7f4f7a4eaf
+=== resolve, to give the child a plan file ===
+=== tei self-build ===
+tei exit=0
+=== result ===
+arch             : arm64
+ok               : True
+qualified        : False
+l2b.claimed      : True
+l2b.unmet        : None
+reproducibility  : reproduced
+intentFingerprint: 0909a60dab0993e2c1a5c7dc7fe1b62439382edfbe99187e3f93bc5e74fe28ea
+sourceClosure    : 034ca748b20dbf95af24786bc814607c55c975e2ef99c8c199ce616da1f0c390
+catalogDigest    : sha256:65278fa8181079144caeb56b6deea72d1c78180be803f7ab881a6f7f4f7a4eaf
+planFingerprint  : f4fa9db6231118bdeb5313f2374a7492cac2522780b14131017a7bc2b1b6a9e2
+artifactDigest   : sha256:634ff2ad666eba06da5eebbf44505f20e24da8db921fa89d704938164a6feeff
