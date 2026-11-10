@@ -390,6 +390,7 @@ WP10 統合と引継ぎ
 | `after-*`へ到達する実行経路（フック層） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_AFTER_CHANGE_2026-11.md) |
 | `after-*`へ到達するCLI配線（`-reference-store`） | 実装（参照） | 付録C.5、`cmd/tei`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_AFTER_CHANGE_CLI_2026-11.md) |
 | `after-*`拒否時の効果の取り消し | 実装（参照・既定経路は未到達） | 付録C.5、`cmd/tei`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_AFTER_CHANGE_REVERT_2026-11.md) |
+| プロセスを跨ぐ結末の検査 | 確認済み | 付録C.5、`internal/command`・`cmd/tei`、[確認記録](../evidence/XTEA_LOWCODE_OUTCOME_CROSS_PROCESS_2026-11.md) |
 | `uses`呼出しの効果の補償 | 不要と確認 | 付録C.5、`internal/hook`・`internal/command`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_USES_COMPENSATION_2026-11.md) |
 | Studio経路での`after-*`拒否時の取り消し | 実装（参照・既定経路は未到達） | 付録C.5、`internal/studiohost`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_AFTER_CHANGE_STUDIO_REVERT_2026-11.md) |
 | `after-*`へ到達するStudio配線 | 実装（参照・UI未呼出し） | 付録C.5、`internal/studiohost`・`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_AFTER_CHANGE_STUDIO_2026-11.md) |
