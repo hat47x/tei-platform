@@ -600,6 +600,10 @@ entry側（`cmd/tei`）は**変更不要**だった。childが申告するよう
 
 **これは「childがそう申告した」までである。** 申告どおりに使ったことの証明ではない（builderの他の申告と同じ限界）。
 
+**この検査を足した時点で、実buildを走らせる`reference-go-build-with-supply`は`stateDir`を申告していなかった**ため、実buildの再現は`unperformed`になっていた。このchildは`-state`の中に`GOCACHE`・`GOMODCACHE`・`GOPATH`・`HOME`を置いて実際に分離しており、申告が無いだけであった。**申告を足して、実buildで`reproduced`が戻った**（[記録](../evidence/TEI_GO_SELF_BUILD_GO_BUILDER_STATE_2026-11-10.md)）。
+
+**これはP-2（計画を解釈しないchildに`planFingerprint`欄を足す）とは違う。** stateの申告は「この実行が何をしたか」の事実であり、計画の解釈ではない。P-2を採らない判断は変わらない。
+
 #### この節が言っていないこと
 
 - R-1を採らない、とは言っていない。**前提が未決**だと言っている。
