@@ -147,14 +147,18 @@ func TestRQC1RemovingAPackageKeepsTheMeaning(t *testing.T) {
 	headerDetail := rqHeaderDetailPattern()
 	withBoth := rqPackageWorld([]application.Package{
 		{
-			ID:      "order_entry.search_package",
-			Version: "1",
-			Members: []application.PackageMember{{Kind: application.PatternBrowse, Pattern: "order_entry.order_list"}},
+			ID:          "order_entry.search_package",
+			Version:     "1",
+			Members:     []application.PackageMember{{Kind: application.PatternBrowse, Pattern: "order_entry.order_list"}},
+			Conformance: "search-v1",
+			Projection:  "list",
 		},
 		{
-			ID:      "order_entry.header_detail_package",
-			Version: "1",
-			Members: []application.PackageMember{{Kind: application.PatternHeaderDetail, Pattern: "order_entry.order_lines"}},
+			ID:          "order_entry.header_detail_package",
+			Version:     "1",
+			Members:     []application.PackageMember{{Kind: application.PatternHeaderDetail, Pattern: "order_entry.order_lines"}},
+			Conformance: "header-detail-v1",
+			Projection:  "header-detail",
 		},
 	}, []application.Pattern{list, headerDetail}, nil)
 
@@ -162,9 +166,11 @@ func TestRQC1RemovingAPackageKeepsTheMeaning(t *testing.T) {
 	// same, and only one projection remains.
 	withoutOne := rqPackageWorld([]application.Package{
 		{
-			ID:      "order_entry.search_package",
-			Version: "1",
-			Members: []application.PackageMember{{Kind: application.PatternBrowse, Pattern: "order_entry.order_list"}},
+			ID:          "order_entry.search_package",
+			Version:     "1",
+			Members:     []application.PackageMember{{Kind: application.PatternBrowse, Pattern: "order_entry.order_list"}},
+			Conformance: "search-v1",
+			Projection:  "list",
 		},
 	}, []application.Pattern{list}, nil)
 
@@ -183,14 +189,18 @@ func TestRQC1RemovingAPackageKeepsTheMeaning(t *testing.T) {
 	// is not silent.
 	stale := rqPackageWorld([]application.Package{
 		{
-			ID:      "order_entry.search_package",
-			Version: "1",
-			Members: []application.PackageMember{{Kind: application.PatternBrowse, Pattern: "order_entry.order_list"}},
+			ID:          "order_entry.search_package",
+			Version:     "1",
+			Members:     []application.PackageMember{{Kind: application.PatternBrowse, Pattern: "order_entry.order_list"}},
+			Conformance: "search-v1",
+			Projection:  "list",
 		},
 		{
-			ID:      "order_entry.header_detail_package",
-			Version: "1",
-			Members: []application.PackageMember{{Kind: application.PatternHeaderDetail, Pattern: "order_entry.order_lines"}},
+			ID:          "order_entry.header_detail_package",
+			Version:     "1",
+			Members:     []application.PackageMember{{Kind: application.PatternHeaderDetail, Pattern: "order_entry.order_lines"}},
+			Conformance: "header-detail-v1",
+			Projection:  "header-detail",
 		},
 	}, []application.Pattern{list}, nil)
 	var reported bool
@@ -214,9 +224,11 @@ func TestRQC1AddingAPackageAddsNoCoreKind(t *testing.T) {
 	list := rqListPattern()
 	withoutPackage := rqPackageWorld(nil, []application.Pattern{list}, nil)
 	withPackage := rqPackageWorld([]application.Package{{
-		ID:      "order_entry.search_package",
-		Version: "1",
-		Members: []application.PackageMember{{Kind: application.PatternBrowse, Pattern: "order_entry.order_list"}},
+		ID:          "order_entry.search_package",
+		Version:     "1",
+		Members:     []application.PackageMember{{Kind: application.PatternBrowse, Pattern: "order_entry.order_list"}},
+		Conformance: "search-v1",
+		Projection:  "list",
 	}}, []application.Pattern{list}, nil)
 
 	before, after := withoutPackage.Semantics[0], withPackage.Semantics[0]
@@ -254,14 +266,18 @@ func TestRQC1AddingAPackageAddsNoCoreKind(t *testing.T) {
 func TestRQC1PatternCollisionIsReported(t *testing.T) {
 	world := rqPackageWorld([]application.Package{
 		{
-			ID:      "order_entry.search_package",
-			Version: "1",
-			Members: []application.PackageMember{{Kind: application.PatternBrowse, Pattern: "order_entry.order_list"}},
+			ID:          "order_entry.search_package",
+			Version:     "1",
+			Members:     []application.PackageMember{{Kind: application.PatternBrowse, Pattern: "order_entry.order_list"}},
+			Conformance: "search-v1",
+			Projection:  "list",
 		},
 		{
-			ID:      "order_entry.other_package",
-			Version: "1",
-			Members: []application.PackageMember{{Kind: application.PatternBrowse, Pattern: "order_entry.order_list"}},
+			ID:          "order_entry.other_package",
+			Version:     "1",
+			Members:     []application.PackageMember{{Kind: application.PatternBrowse, Pattern: "order_entry.order_list"}},
+			Conformance: "other-v1",
+			Projection:  "other",
 		},
 	}, []application.Pattern{rqListPattern()}, nil)
 	var reported bool
