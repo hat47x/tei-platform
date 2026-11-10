@@ -2014,3 +2014,47 @@ Attempt 4 のメッセージだけが日本語だった。同じ `PARSE_ERROR` �
 [#4174](https://github.com/hat47x/tei-platform/issues/4174) として5案を提示して起票した。**A（利用者に出る診断のみ英語、対象は4層の137件）が最小**と書いた。
 
 **555件の変換は行っていない。** 方針判断であり、オーナーの言語選択に関わるため。
+
+## 65. 第63ラウンド（2026-11-11）: 契約ヘッダの版を名指しする
+
+第62ラウンドで「次の対象は `unexpected token "{"`」と記録したので、その1点を直した。生出力は[第63ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND63_CONTRACT_VERSION_2026-11-11/README.md)にある。
+
+### 修正前
+
+```text
+contract sales_core.probe {           -> unexpected token "{"   ← 何が要るか言わない
+contract sales_core.probe ^1 {        -> unexpected token "^"
+contract sales_core.probe version 1 { -> invalid version "version"
+contract sales_core.probe v1 {        -> ok
+```
+
+### 修正後
+
+```text
+no version / caret version ->
+  expected a version after the contract id "sales_core.probe":
+  write it as "contract sales_core.probe v4 { ... }"
+  (the id and the version are separate tokens)
+```
+
+`ParseContract` のヘッダで、版の**前**に次のトークンを見る（`p.peek()` が `TokenIdent` でないとき）。`^` の場合も同じ案内になる。
+
+対照は変わらない（`contract {`・本体の未知語・`read sales.order`）。
+
+### 実装中に作った自分のバグ
+
+**最初の版は `p.expect(TokenIdent)` を呼んだ後で `p.peek()` していた。** `expect` は失敗時にトークンを消費するので、peek が次を見てしまい条件が成立しない。**ビルドは通り、既存の試験も通った。**
+
+CLI で測ると**修正前と同じメッセージが返り**、そこで気づいた。現在の版は `expect` の前に peek する。変異 M2 がこの順序バグを再現し、試験が捕捉する。
+
+**「テストが通った」だけでは見つからず、実物を走らせて初めて分かった**誤りである。
+
+### 試験と変異
+
+4試験（版欠落の案内・不正な版と欠落の区別・対照の不変・範囲が `{` を指す）と変異3種。M1（判定を削る）・M2（順序バグの再現）・M3（不正を欠落と報告）がいずれも落ちる。
+
+`./internal/syntax`・`./internal/workspace`・`./cmd/tei`（302.8s）が ok。
+
+### #4169 の進捗
+
+A 案で直したのは2件（第61ラウンドのパターン配置、本ラウンドの版欠落）。第62ラウンドで弱いと判定した `unexpected token "^"` も本ラウンドで一緒に直った。
