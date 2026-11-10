@@ -1724,3 +1724,37 @@ has invalid access mode "read-write-nothing"; valid values are read, write, read
 ### 残り8件
 
 #4094 は 17→13→8 件。残りは `migration`（2件）・`releaseplan`/`deployment`（4件）と、語彙ではなく構造を検証する `INVALID_PLUGIN_ARTIFACT` 等。
+
+## 58. 第56ラウンド（2026-11-10）: 語彙診断の第4弾、migration と release plan の6件
+
+#4094 の残り8件のうち、`migration` と `releaseplan`/`release` の6件を処理した。生出力は[第56ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND56_VOCABULARY_MIGRATION_RELEASE_2026-11-10/README.md)にある。
+
+### 修正した6件
+
+| コード | 語彙 | 値 |
+| --- | --- | --- |
+| `INVALID_MIGRATION_RECOVERY` | recovery strategy | forward-fix, explicit-rollback, not-reversible |
+| `INVALID_MIGRATION_STEP_KIND` | migration step kind | schema, data, verify |
+| `INVALID_DATABASE_RELEASE_DATA_READINESS` | data readiness | ready, preparing, not-ready, unknown |
+| `INVALID_SOLUTION_RELEASE_STEP_KIND` | solution step kind | database-release, application-release, application-retire, database-gate |
+| `INVALID_SOLUTION_RELEASE_PHASE` | phase | expand, populate, transition, rollout, contract, verify, other |
+| `INVALID_ROLLOUT_STRATEGY` | rollout strategy | direct, canary, blue-green, gradual（**または省略**） |
+
+`migration.RecoveryStrategies`・`StepKinds`・`release.DataReadinesses`・`releaseplan.Phases`・`RolloutStrategies`・`StepKinds` を単一情報源として追加。`RolloutStrategy` は空も受理するため、sandbox と同じく一覧に載せず `(or omit the strategy)` とした。
+
+### 到達しない診断が1件あった
+
+`INVALID_MIGRATION_STEP_KIND` は CLI から到達しない。migration の step は `schema`／`data`／`verify` のブロックとして書くため、未知の語は**構文エラーが先に出る**。
+
+```text
+migration probe_step3 { ... gibberish sql postgres { ... } }
+  -> PARSE_ERROR expected database, parent, recovery, schema, data, or verify
+```
+
+著者が不正な step kind を書く経路が無い。診断文は正しいが CLI では観測できない（第54ラウンドの `INVALID_SEMANTIC_TYPE_KIND` と同じ性質）。**6件のうち5件は CLI で確認できた。**
+
+変異3種（phase の一覧削除／`RolloutStrategies` への空の追加／`Phases` から `verify` の脱落）がすべて落ちることを確認した。`cmd/tei`（409.5s）を含む全対象が ok。
+
+### #4094 の状況
+
+起票時の17件は 17→13→8→2 件。残り2件は語彙ではなく構造の検証（`INVALID_PLUGIN_ARTIFACT` 等）で本 Issue の対象外。**語彙系は本ラウンドで完了した。**

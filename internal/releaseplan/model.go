@@ -18,8 +18,18 @@ const (
 	PhaseOther      Phase = "other"
 )
 
+// Phases lists every accepted phase in report order.
+var Phases = []Phase{
+	PhaseExpand, PhasePopulate, PhaseTransition, PhaseRollout, PhaseContract, PhaseVerify, PhaseOther,
+}
+
 func (p Phase) Valid() bool {
-	return p == PhaseExpand || p == PhasePopulate || p == PhaseTransition || p == PhaseRollout || p == PhaseContract || p == PhaseVerify || p == PhaseOther
+	for _, valid := range Phases {
+		if p == valid {
+			return true
+		}
+	}
+	return false
 }
 
 type RolloutStrategy string
@@ -31,8 +41,21 @@ const (
 	RolloutGradual   RolloutStrategy = "gradual"
 )
 
+// RolloutStrategies lists every accepted rollout strategy in report order. The
+// empty strategy is also accepted (it means "not declared"), but it is not a
+// value an author should be told to write, so it stays out of the list.
+var RolloutStrategies = []RolloutStrategy{RolloutDirect, RolloutCanary, RolloutBlueGreen, RolloutGradual}
+
 func (r RolloutStrategy) Valid() bool {
-	return r == "" || r == RolloutDirect || r == RolloutCanary || r == RolloutBlueGreen || r == RolloutGradual
+	if r == "" {
+		return true
+	}
+	for _, valid := range RolloutStrategies {
+		if r == valid {
+			return true
+		}
+	}
+	return false
 }
 
 type StepKind string
@@ -44,8 +67,18 @@ const (
 	StepDatabaseGate       StepKind = "database-gate"
 )
 
+// StepKinds lists every accepted solution release step kind in report order.
+var StepKinds = []StepKind{
+	StepDatabaseRelease, StepApplicationRelease, StepApplicationRetire, StepDatabaseGate,
+}
+
 func (k StepKind) Valid() bool {
-	return k == StepDatabaseRelease || k == StepApplicationRelease || k == StepApplicationRetire || k == StepDatabaseGate
+	for _, valid := range StepKinds {
+		if k == valid {
+			return true
+		}
+	}
+	return false
 }
 
 type Step struct {
