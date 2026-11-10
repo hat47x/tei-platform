@@ -24,12 +24,11 @@ var unmentionedSchemaVersionsAllowed = map[string]string{
 	"tei.knowledge.data-design.business-identity-candidate/v2":     "internal/knowledge: candidate record",
 	"tei.knowledge.data-design.functional-dependency-candidate/v2": "internal/knowledge: candidate record",
 	"tei.modelref.impact-review/v0":                                "internal/modelref: impact review response",
-	"tei.operations.model-location/v0":                             "internal/operations: model location response",
-	"tei.operations.xead-observation/v0":                           "internal/operations: xead observation response",
-	"tei.plugin-definition-json/v2":                                "internal/plugin: plugin definition file",
-	"tei.plugin-package-input-binding/v1":                          "internal/plugin: package admission input",
-	"tei.plugin-package-output-observation/v1":                     "internal/plugin: package admission output",
-	"tei.xeadsource.cross-view/v4":                                 "internal/xeadsource: cross-view source",
+
+	"tei.plugin-definition-json/v2":            "internal/plugin: plugin definition file",
+	"tei.plugin-package-input-binding/v1":      "internal/plugin: package admission input",
+	"tei.plugin-package-output-observation/v1": "internal/plugin: package admission output",
+	"tei.xeadsource.cross-view/v4":             "internal/xeadsource: cross-view source",
 }
 
 // TestSchemaVersionLiteralsHaveATest keeps the set of unnamed schema identifiers
