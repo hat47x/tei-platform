@@ -34,6 +34,11 @@ func TestCrossViewHeaderDetailPotentialOperationsStayUnaccepted(t *testing.T) {
 		return p, crossViewAccountingForTest(t, p)
 	}
 
+	// The projection names the derivation policy revision a reader branches on,
+	// so pin the wire value here (#4032).
+	if CrossViewDerivationPolicyRevision != "tei.xeadsource.cross-view/v4" {
+		t.Fatalf("policy revision = %q", CrossViewDerivationPolicyRevision)
+	}
 	projection, got := project(source)
 	if got.TaskCount != 1 ||
 		got.TaskActionCount != 1 ||
