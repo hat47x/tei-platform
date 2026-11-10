@@ -46,6 +46,12 @@ type l2bGoBuildResult struct {
 	ChildRun *struct {
 		ChildSchema string `json:"childSchema"`
 	} `json:"childRun"`
+	ChildIsolation *struct {
+		State       string   `json:"state"`
+		MemberCount int      `json:"memberCount"`
+		ModuleFiles []string `json:"moduleFiles"`
+		Reason      string   `json:"reason"`
+	} `json:"childIsolation"`
 	Error *struct {
 		Code    string `json:"code"`
 		Message string `json:"message"`
@@ -251,6 +257,23 @@ func TestSelfBuildEstablishesL2BFromARealGoBuild(t *testing.T) {
 	// working tree was built" and "the plan was built".
 	if report.ChildRun == nil || report.ChildRun.ChildSchema != "tei.reference.go-build-from-plan/v0" {
 		t.Fatalf("the child report is not the plan-reading builder: %+v", report.ChildRun)
+	}
+
+	// The plan named the module context, so the staged tree is made only of planned
+	// sources and the entry's record says exactly that.
+	if report.ChildIsolation == nil {
+		t.Fatal("the entry did not record what the builder said about its tree")
+	}
+	if report.ChildIsolation.State != childIsolationIsolated {
+		t.Fatalf("childIsolation.state = %q (%s), want %q", report.ChildIsolation.State, report.ChildIsolation.Reason, childIsolationIsolated)
+	}
+	if len(report.ChildIsolation.ModuleFiles) != 0 {
+		t.Fatalf("the isolated tree took module files from the working tree: %v", report.ChildIsolation.ModuleFiles)
+	}
+	// Every planned source is staged: the package, the plugin declaration the plan
+	// still carries, go.mod and go.sum.
+	if report.ChildIsolation.MemberCount != 4 {
+		t.Fatalf("memberCount = %d, want 4 (the package, the declaration, go.mod and go.sum)", report.ChildIsolation.MemberCount)
 	}
 }
 
