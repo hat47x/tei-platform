@@ -1,0 +1,1 @@
+{"schemaVersion":"tei.cli.trace/v0","ok":false,"error":{"code":"WORKSPACE_LOAD_FAILED","message":"/tmp/design52/applications/order-entry/patterns/revoke.tei:1:28: unexpected token \"{\""}}

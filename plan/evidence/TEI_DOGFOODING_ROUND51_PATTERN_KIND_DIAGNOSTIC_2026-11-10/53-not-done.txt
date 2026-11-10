@@ -1,0 +1,8 @@
+Still not discoverable from the CLI: the set of `std` types. An author who writes
+std.date-time gets "invalid canonical id", which points at the id syntax rather
+than at the available vocabulary, and nothing in the CLI lists the std types.
+I resolved it by reading internal/stdlib/semantic.go, which a CLI-only workflow
+cannot do.
+
+The same question applies to other vocabularies (capability/data/interaction
+keywords). This change covers pattern kinds only.
