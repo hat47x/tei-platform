@@ -131,7 +131,6 @@ func TestMapWorkspaceUsesActualOrgSourceWithoutInventingTestOnlyPattern(t *testi
 	}
 }
 
-
 // A unique declaration makes a typed navigation link "resolved" even when
 // no managed Source was indexed. The resolution value MUST NOT be interpreted
 // as Source-current, meaning-accepted, or edit-authorized.
@@ -180,7 +179,7 @@ func TestMapWorldDoesNotInventRelationFromForgedSourceReference(t *testing.T) {
 		}},
 	}
 	world := ir.World{Semantics: []semantic.Namespace{{
-		ID: "sales",
+		ID:   "sales",
 		Data: []semantic.Data{{ID: "sales.order"}},
 	}}}
 	mapped := MapWorld(world, CatalogWorld(world, idx, "", "world", "index"))
@@ -334,7 +333,7 @@ func TestMapWorldSourceOnlyRevisionMustNotBeConfusedWithSemanticTopology(t *test
 	changed := mapFor("semantic/sales.tei", []byte("revision-b"))
 	backToA := mapFor("semantic/sales.tei", []byte("revision-a"))
 	for name, other := range map[string]ModelMap{
-		"source-move": moved,
+		"source-move":        moved,
 		"source-byte-change": changed,
 	} {
 		if !reflect.DeepEqual(a.Links, other.Links) {

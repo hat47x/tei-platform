@@ -140,7 +140,9 @@ func TestCatalogStillAnswersForAnUnsoundWorkspace(t *testing.T) {
 // agreement on fingerprints does not prove an atomic multi-operation snapshot.
 func TestUnsoundWorkspaceCatalogInspectAndTraceKeepValidationDistinct(t *testing.T) {
 	root := writeValidationWorkspace(t, "namespace scn\n\ndata X {\n    attribute a type scn.nothere\n}\n")
-	subject := sourceindex.Subject{Kind: "semantic-data", ID: "scn.X"}
+	// The catalogue reports canonical Subject IDs, and the loader canonicalises
+	// them to lower case, so `data X` is addressable as `scn.x`.
+	subject := sourceindex.Subject{Kind: "semantic-data", ID: "scn.x"}
 
 	catalog, err := operations.CatalogWorkspace(root, "")
 	if err != nil {

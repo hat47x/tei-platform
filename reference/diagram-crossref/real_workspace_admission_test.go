@@ -364,7 +364,6 @@ func TestSourceIndexStructuralValidityDoesNotAuthenticateSemanticBinding(t *test
 	// independently. No invented Schema, Writer, or Registry is introduced.
 }
 
-
 // M0 must project one real Parent -> Relation -> Target topology without
 // inventing an accepted Business Flow or treating a Source trace as meaning.
 // MapWorkspace uses a single Loader/Source Index internally. The subsequent
