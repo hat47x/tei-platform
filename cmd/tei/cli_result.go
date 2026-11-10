@@ -363,6 +363,19 @@ func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environ
 	return resultInvalidArgument(out, command, "unsupported command "+command)
 }
 
+// requireKnowledgeSubject reports a missing -subject-kind or -subject-id as an
+// input error. Before this the missing flag reached the build and came back as
+// KNOWLEDGE_BUILD_FAILED, the same code a genuine construction failure uses, so
+// a caller could not tell a forgotten flag from an unreadable Workspace
+// (#3733).
+func requireKnowledgeSubject(out io.Writer, command, subjectKind, subjectID string) (int, error, bool) {
+	if strings.TrimSpace(subjectKind) == "" || strings.TrimSpace(subjectID) == "" {
+		code, err := resultInvalidArgument(out, command, command+" requires -subject-kind and -subject-id")
+		return code, err, true
+	}
+	return 0, nil, false
+}
+
 // knowledgeContextJSON wraps knowledge-context in the command envelope. The
 // pre-envelope output had two shapes: the whole Context, or (with -disclose) a
 // DisclosureProjection. `mode` distinguishes them: context | disclosure.
@@ -374,6 +387,9 @@ func knowledgeContextJSON(out io.Writer, workspacePath, subjectKind, subjectID, 
 	}
 	if extraArgs != 0 {
 		return resultInvalidArgument(out, "knowledge-context", "knowledge-context does not accept positional arguments")
+	}
+	if code, err, missing := requireKnowledgeSubject(out, "knowledge-context", subjectKind, subjectID); missing {
+		return code, err
 	}
 	if disclosure == "" && expectedDisclosureFingerprint != "" {
 		return resultInvalidArgument(out, "knowledge-context", "-expected-disclosure-fingerprint requires -disclose")
@@ -407,6 +423,9 @@ func knowledgeQualifyJSON(out io.Writer, workspacePath, subjectKind, subjectID, 
 	if extraArgs != 0 {
 		return resultInvalidArgument(out, "knowledge-qualify", "knowledge-qualify does not accept positional arguments")
 	}
+	if code, err, missing := requireKnowledgeSubject(out, "knowledge-qualify", subjectKind, subjectID); missing {
+		return code, err
+	}
 	qualification, err := buildKnowledgeQualificationFromFile(workspacePath, subjectKind, subjectID, requirementsPath)
 	if err != nil {
 		return emitResult(out, knowledgeFailure("knowledge-qualify", err), 2)
@@ -424,6 +443,9 @@ func knowledgeReviewPlanJSON(out io.Writer, workspacePath, subjectKind, subjectI
 	}
 	if extraArgs != 0 {
 		return resultInvalidArgument(out, "knowledge-review-plan", "knowledge-review-plan does not accept positional arguments")
+	}
+	if code, err, missing := requireKnowledgeSubject(out, "knowledge-review-plan", subjectKind, subjectID); missing {
+		return code, err
 	}
 	plan, err := buildBuilderReviewPlan(workspacePath, subjectKind, subjectID)
 	if err != nil {
@@ -445,6 +467,9 @@ func knowledgeReviewHandoffJSON(out io.Writer, workspacePath, subjectKind, subje
 	if extraArgs != 0 {
 		return resultInvalidArgument(out, "knowledge-review-handoff", "knowledge-review-handoff does not accept positional arguments")
 	}
+	if code, err, missing := requireKnowledgeSubject(out, "knowledge-review-handoff", subjectKind, subjectID); missing {
+		return code, err
+	}
 	handoff, err := buildBuilderReviewHandoffFromFile(workspacePath, subjectKind, subjectID, requirementsPath)
 	if err != nil {
 		return emitResult(out, knowledgeFailure("knowledge-review-handoff", err), 2)
@@ -464,6 +489,9 @@ func knowledgeReviewDiscloseJSON(out io.Writer, workspacePath, subjectKind, subj
 	}
 	if extraArgs != 0 {
 		return resultInvalidArgument(out, "knowledge-review-disclose", "knowledge-review-disclose does not accept positional arguments")
+	}
+	if code, err, missing := requireKnowledgeSubject(out, "knowledge-review-disclose", subjectKind, subjectID); missing {
+		return code, err
 	}
 	disclosure, handoff, err := buildBuilderReviewDisclosureFromFile(workspacePath, subjectKind, subjectID, reviewHandoffPath)
 	if err != nil {
