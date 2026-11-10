@@ -14,8 +14,17 @@ const (
 	RecoveryNotReversible    RecoveryStrategy = "not-reversible"
 )
 
+// RecoveryStrategies lists every accepted strategy in report order, so a
+// diagnostic can quote the same set Valid accepts (#4094).
+var RecoveryStrategies = []RecoveryStrategy{RecoveryForwardFix, RecoveryExplicitRollback, RecoveryNotReversible}
+
 func (r RecoveryStrategy) Valid() bool {
-	return r == RecoveryForwardFix || r == RecoveryExplicitRollback || r == RecoveryNotReversible
+	for _, valid := range RecoveryStrategies {
+		if r == valid {
+			return true
+		}
+	}
+	return false
 }
 
 type StepKind string
@@ -26,7 +35,17 @@ const (
 	StepVerify StepKind = "verify"
 )
 
-func (k StepKind) Valid() bool { return k == StepSchema || k == StepData || k == StepVerify }
+// StepKinds lists every accepted step kind in report order (#4094).
+var StepKinds = []StepKind{StepSchema, StepData, StepVerify}
+
+func (k StepKind) Valid() bool {
+	for _, valid := range StepKinds {
+		if k == valid {
+			return true
+		}
+	}
+	return false
+}
 
 type Definition struct {
 	ID                       string           `json:"id"`

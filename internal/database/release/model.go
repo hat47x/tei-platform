@@ -16,8 +16,16 @@ const (
 	DataUnknown   DataReadiness = "unknown"
 )
 
+// DataReadinesses lists every accepted readiness in report order (#4094).
+var DataReadinesses = []DataReadiness{DataReady, DataPreparing, DataNotReady, DataUnknown}
+
 func (r DataReadiness) Valid() bool {
-	return r == DataReady || r == DataPreparing || r == DataNotReady || r == DataUnknown
+	for _, valid := range DataReadinesses {
+		if r == valid {
+			return true
+		}
+	}
+	return false
 }
 
 type ProvidedContract struct {

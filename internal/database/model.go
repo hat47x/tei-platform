@@ -29,7 +29,19 @@ const (
 	OwnershipExternalObserved Ownership = "external-observed"
 )
 
-func (o Ownership) Valid() bool { return o == OwnershipManagedHere || o == OwnershipExternalObserved }
+// Ownerships lists every accepted ownership in report order. A diagnostic
+// that rejects a value quotes this slice, so the set Valid accepts and the set
+// the message names cannot drift (#4094).
+var Ownerships = []Ownership{OwnershipManagedHere, OwnershipExternalObserved}
+
+func (o Ownership) Valid() bool {
+	for _, valid := range Ownerships {
+		if o == valid {
+			return true
+		}
+	}
+	return false
+}
 
 type Database struct {
 	ID           core.CanonicalID   `json:"id"`

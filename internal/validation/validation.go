@@ -7,6 +7,7 @@ import (
 	"tei/internal/application"
 	"tei/internal/core"
 	"tei/internal/database"
+	"tei/internal/database/migration"
 	"tei/internal/database/persistence"
 	"tei/internal/database/release"
 	"tei/internal/deployment"
@@ -400,7 +401,7 @@ func Validate(w ir.World) []Diagnostic {
 		}
 		dbs[d.ID] = d
 		if !d.Ownership.Valid() {
-			out = append(out, errFor(subject.Subject{Kind: "database", ID: string(d.ID)}, "INVALID_DATABASE_OWNERSHIP", "database %s has invalid ownership %q", d.ID, d.Ownership))
+			out = append(out, errFor(subject.Subject{Kind: "database", ID: string(d.ID)}, "INVALID_DATABASE_OWNERSHIP", "database %s has invalid ownership %q; valid values are %s", d.ID, d.Ownership, validValues(database.Ownerships)))
 		}
 		semanticUseSet := map[core.CanonicalID]struct{}{}
 		for _, ns := range d.SemanticUses {
@@ -562,11 +563,11 @@ func Validate(w ir.World) []Diagnostic {
 		}
 		migrationIDs[m.Database][m.ID] = struct{}{}
 		if !m.Recovery.Valid() {
-			out = append(out, errd("INVALID_MIGRATION_RECOVERY", "migration %s has invalid recovery strategy %q", m.ID, m.Recovery))
+			out = append(out, errd("INVALID_MIGRATION_RECOVERY", "migration %s has invalid recovery strategy %q; valid values are %s", m.ID, m.Recovery, validValues(migration.RecoveryStrategies)))
 		}
 		for i, step := range m.Steps {
 			if !step.Kind.Valid() {
-				out = append(out, errd("INVALID_MIGRATION_STEP_KIND", "migration %s step %d has invalid kind %q", m.ID, i+1, step.Kind))
+				out = append(out, errd("INVALID_MIGRATION_STEP_KIND", "migration %s step %d has invalid kind %q; valid values are %s", m.ID, i+1, step.Kind, validValues(migration.StepKinds)))
 			}
 			if step.SQL != nil {
 				if !step.SQL.Provider.Known() || step.SQL.Provider == environment.ProviderGeneric {
@@ -609,7 +610,7 @@ func Validate(w ir.World) []Diagnostic {
 			}
 			seenAlias[req.Alias] = struct{}{}
 			if !req.Access.Valid() {
-				out = append(out, errd("INVALID_APPLICATION_RELEASE_DATABASE_ACCESS", "application release %s@%s datasource %s has invalid access mode %q", r.Application, r.Version, req.Alias, req.Access))
+				out = append(out, errd("INVALID_APPLICATION_RELEASE_DATABASE_ACCESS", "application release %s@%s datasource %s has invalid access mode %q; valid values are %s", r.Application, r.Version, req.Alias, req.Access, validValues(database.Accesses)))
 			}
 			if _, ok := dbs[req.TargetDatabase]; !ok {
 				out = append(out, warnd("APPLICATION_RELEASE_DATABASE_NOT_CURRENT", "application release %s@%s targets database %s which has no current definition", r.Application, r.Version, req.TargetDatabase))
@@ -655,7 +656,7 @@ func Validate(w ir.World) []Diagnostic {
 		}
 		releaseVersions[r.Database][r.Version] = struct{}{}
 		if !r.DataReadiness.Valid() {
-			out = append(out, errd("INVALID_DATABASE_RELEASE_DATA_READINESS", "database %s release %s has invalid data readiness %q", r.Database, r.Version, r.DataReadiness))
+			out = append(out, errd("INVALID_DATABASE_RELEASE_DATA_READINESS", "database %s release %s has invalid data readiness %q; valid values are %s", r.Database, r.Version, r.DataReadiness, validValues(release.DataReadinesses)))
 		}
 		seenMigrations := map[string]struct{}{}
 		for _, mid := range r.Migrations {
@@ -709,13 +710,13 @@ func Validate(w ir.World) []Diagnostic {
 			}
 			stepIDs[st.ID] = struct{}{}
 			if !st.Kind.Valid() {
-				out = append(out, errd("INVALID_SOLUTION_RELEASE_STEP_KIND", "solution release %s@%s step %s has invalid kind %q", r.ID, r.Version, st.ID, st.Kind))
+				out = append(out, errd("INVALID_SOLUTION_RELEASE_STEP_KIND", "solution release %s@%s step %s has invalid kind %q; valid values are %s", r.ID, r.Version, st.ID, st.Kind, validValues(releaseplan.StepKinds)))
 			}
 			if !st.Phase.Valid() {
-				out = append(out, errd("INVALID_SOLUTION_RELEASE_PHASE", "solution release %s@%s step %s has invalid phase %q", r.ID, r.Version, st.ID, st.Phase))
+				out = append(out, errd("INVALID_SOLUTION_RELEASE_PHASE", "solution release %s@%s step %s has invalid phase %q; valid values are %s", r.ID, r.Version, st.ID, st.Phase, validValues(releaseplan.Phases)))
 			}
 			if !st.RolloutStrategy.Valid() {
-				out = append(out, errd("INVALID_ROLLOUT_STRATEGY", "solution release %s@%s step %s has invalid rollout strategy %q", r.ID, r.Version, st.ID, st.RolloutStrategy))
+				out = append(out, errd("INVALID_ROLLOUT_STRATEGY", "solution release %s@%s step %s has invalid rollout strategy %q; valid values are %s", r.ID, r.Version, st.ID, st.RolloutStrategy, validValues(releaseplan.RolloutStrategies)))
 			}
 			if len(st.TrafficSteps) > 0 || st.RolloutStrategy != "" {
 				if st.Kind != releaseplan.StepApplicationRelease {

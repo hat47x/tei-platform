@@ -18,8 +18,16 @@ const (
 	PhaseOther      Phase = "other"
 )
 
+// Phases lists every accepted phase in the order the plan reads (#4094).
+var Phases = []Phase{PhaseExpand, PhasePopulate, PhaseTransition, PhaseRollout, PhaseContract, PhaseVerify, PhaseOther}
+
 func (p Phase) Valid() bool {
-	return p == PhaseExpand || p == PhasePopulate || p == PhaseTransition || p == PhaseRollout || p == PhaseContract || p == PhaseVerify || p == PhaseOther
+	for _, valid := range Phases {
+		if p == valid {
+			return true
+		}
+	}
+	return false
 }
 
 type RolloutStrategy string
@@ -31,8 +39,21 @@ const (
 	RolloutGradual   RolloutStrategy = "gradual"
 )
 
+// RolloutStrategies lists every accepted strategy in report order. An empty
+// value means "not declared" and is accepted, but it is not a strategy a
+// diagnostic should offer: the message quotes this slice only (#4094).
+var RolloutStrategies = []RolloutStrategy{RolloutDirect, RolloutCanary, RolloutBlueGreen, RolloutGradual}
+
 func (r RolloutStrategy) Valid() bool {
-	return r == "" || r == RolloutDirect || r == RolloutCanary || r == RolloutBlueGreen || r == RolloutGradual
+	if r == "" {
+		return true
+	}
+	for _, valid := range RolloutStrategies {
+		if r == valid {
+			return true
+		}
+	}
+	return false
 }
 
 type StepKind string
@@ -44,8 +65,16 @@ const (
 	StepDatabaseGate       StepKind = "database-gate"
 )
 
+// StepKinds lists every accepted step kind in report order (#4094).
+var StepKinds = []StepKind{StepDatabaseRelease, StepApplicationRelease, StepApplicationRetire, StepDatabaseGate}
+
 func (k StepKind) Valid() bool {
-	return k == StepDatabaseRelease || k == StepApplicationRelease || k == StepApplicationRetire || k == StepDatabaseGate
+	for _, valid := range StepKinds {
+		if k == valid {
+			return true
+		}
+	}
+	return false
 }
 
 type Step struct {
