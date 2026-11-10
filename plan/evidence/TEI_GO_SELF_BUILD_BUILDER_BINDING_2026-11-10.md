@@ -52,7 +52,9 @@
 - 既存の正例（`TestSelfBuildEstablishesL2BEndToEnd`、`TestSelfBuildEstablishesL2BFromARealGoBuild`）は、catalogが実際に起動するbuilderのbyteを宣言しているので、変更なしで通る
 - `TestBuildCatalogAloneRunsTheSecondBuild`は、catalogのbuilder digestが仮の値のままClaimを期待していた。**この試験自体が塞いだ欠落に依存していた**ので、catalogが起動するファイルを宣言するように直した
 
-**NOT RUN**：`linux`・`darwin`・`arm64`、CI。[再導出の一式](TEI_GO_SELF_BUILD_CHILD_IDENTITY_SCOPE_2026-11-10/README.md)の`run.sh proxy`（シェルのプロキシ）は未実行です。現行では`l2b.claimed=false`になるはずで、その旨を同READMEに注記しました。`raw/`の取り直しは残っています。
+**Linux（WSL2、linux/amd64）**：[再導出の一式](TEI_GO_SELF_BUILD_CHILD_IDENTITY_SCOPE_2026-11-10/README.md)の`run.sh proxy`・`run.sh direct`を実行し、どちらも`l2b.claimed=false`でした（`raw/*-with-builder-binding.txt`）。`proxy`は宣言との不一致だけで止まり、再現は`reproduced`のままです。同じ環境で`cmd/tei`の試験バイナリを動かし、`BuilderBinding`5件・`AssessL2B`・`Reproducibility`・`TestSelfBuildEstablishesL2BEndToEnd`などがPASSしました。**ただしGoは、WSLにネイティブ版が無いため、Windows版Go（`GOOS=linux`）のラッパーで代用しています。**`TestSelfBuildEstablishesL2BFromARealGoBuild`はこのラッパー越しだとbuilderの出力先を解決できず失敗しました（ラッパーの限界で、コードの欠陥とは確認していない）。windowsでは同試験がPASSしています。
+
+**NOT RUN**：`darwin`・`arm64`、CI、ネイティブLinux版Goでの実行。
 
 ## 限界
 

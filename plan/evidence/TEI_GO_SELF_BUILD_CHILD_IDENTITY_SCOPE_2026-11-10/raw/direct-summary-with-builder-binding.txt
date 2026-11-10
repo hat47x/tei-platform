@@ -1,0 +1,22 @@
+=== build the tools ===
+builder-a 7ced6a60d96890a4…
+builder-b b07a1fa634d47dd6…
+child-run digest before: 3da98932cd8cf97a…
+
+=== author the catalog ===
+catalogDigest=sha256:fcf8f38723007190c231c7b79b4930c6ed0c5e898c8bcdaaad6f6fd33762d347
+=== resolve a plan for the child ===
+=== tei self-build (mode: direct) ===
+tei exit=1
+child-run digest after : f940dc8d84f759f0…
+
+=== report ===
+mode                : direct
+l2b.claimed         : False
+l2b.unmet           : ['the artifact was not reproduced from the plan (mismatched)', 'the file this entry started was not shown to be the builder the plan declares (mismatched)']
+reproducibility     : mismatched
+mismatchReason      : the two runs used different builder executables
+firstChildDigest    : sha256:3da98932cd8cf97acdad14bf5c1dba381e821684bf5f6cb11e6d8d1329b44dd0
+secondChildDigest   : sha256:f940dc8d84f759f0c6e3b16be9f5f3c0300078b2294cea3a10bf63d5f8195d07
+firstArtifactDigest : sha256:ff9fe882e5dc4877312b5c0e69fe3d6343cddf3e56f9529e51d801ec20c93f95
+secondArtifactDigest: sha256:ff9fe882e5dc4877312b5c0e69fe3d6343cddf3e56f9529e51d801ec20c93f95
