@@ -416,3 +416,4 @@
 - [model overviewが自分の対象範囲を明示する](TEI_DOGFOODING_ROUND59_OVERVIEW_SCOPE_2026-11-10/README.md)（#4128のE案を実装。sectionScopeでrootsAre/coveredKinds/notCoveredKindsを導出し、sectionTotalが全部に見える誤読を閉じた。恒真な重複なし試験は変異で壊せないため削除）
 - [設計演習の第2回。縦の一連をCLIで設計しapplication-releaseの欠落を検出](TEI_DOGFOODING_ROUND60_DESIGN_VERTICAL_2026-11-10/README.md)（8往復のうち7往復はCLI診断のみで解決。inspectは7成果物のうち6つを返し、application-releaseだけ未対応だったため追加し16種に。既存の種非依存な試験が変異を捕捉。構文の配置を引くコマンドが無いという穴を記録）
 - [構文の配置を教える。パターン種をapplication本体に書いたとき](TEI_DOGFOODING_ROUND61_SYNTAX_PLACEMENT_2026-11-11/README.md)（#4169。パターン5種すべてがでたらめな語と同じ汎用エラーだったことを実測し、application.PatternKindsを使って配置を名指しするようにした。変異3種で確認。一般的な構文探索の穴は残り、4案を示して起票）
+- [契約クエリをCLIで設計し診断の言語混在を検出](TEI_DOGFOODING_ROUND62_LANGUAGE_MIX_2026-11-11/README.md)（#4174。#4169のA案の材料として契約クエリを4往復で設計。PARSE_ERRORクラスに英語と日本語が併存することを実測し、非テスト555件/66ファイルを数えた。1回の実行での同時観測はしておらず、CLIに出るものの対応付けも未完。変換は方針判断のため未実施）
