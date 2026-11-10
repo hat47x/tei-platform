@@ -1,0 +1,17 @@
+=== RUN   TestAMatchingIDIsServed
+--- PASS: TestAMatchingIDIsServed (0.00s)
+=== RUN   TestAnIDTheBindingDidNotSelectIsRefused
+--- PASS: TestAnIDTheBindingDidNotSelectIsRefused (0.00s)
+=== RUN   TestNoBindingServesNothing
+--- PASS: TestNoBindingServesNothing (0.00s)
+=== RUN   TestAnUnregisteredBoundExecutorIsRefused
+--- PASS: TestAnUnregisteredBoundExecutorIsRefused (0.00s)
+=== RUN   TestARunSeparatesServedFromRefused
+--- PASS: TestARunSeparatesServedFromRefused (0.00s)
+=== RUN   TestReportStatesAuthorityAndItsLimits
+--- PASS: TestReportStatesAuthorityAndItsLimits (0.00s)
+=== RUN   TestTheAdapterRunsWhenTheGuardServes
+--- PASS: TestTheAdapterRunsWhenTheGuardServes (0.00s)
+=== RUN   TestTheGuardStopsTheAdapterTheBindingDidNotSelect
+--- PASS: TestTheGuardStopsTheAdapterTheBindingDidNotSelect (0.00s)
+ok  	tei/tools/reference-binding-guarded-executor	0.010s

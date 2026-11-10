@@ -249,3 +249,6 @@
 /plan/evidence/DSH_MCP_ARG_SIZE_2026-11-10/** -text
 # Binding guarded executor output is hashed as raw bytes by its README.
 /plan/evidence/BINDING_GUARDED_EXECUTOR_REFERENCE_2026-11-09/** -text
+
+# Guard with real adapter output is hashed as raw bytes by its README.
+/plan/evidence/GUARD_WITH_REAL_ADAPTER_2026-11-09/** -text
