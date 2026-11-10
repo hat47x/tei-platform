@@ -275,3 +275,6 @@
 
 # Multi-server MCP observations are hashed as raw bytes.
 /plan/evidence/DSH_MCP_TWO_SERVERS_2026-11-10/** -text
+
+# MCP failure-isolation observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_FAILURE_ISOLATION_2026-11-10/** -text

@@ -1,0 +1,107 @@
+{
+  "note": "Two mcp-client entries, one healthy and one pointed at a closed port. With failOnStartupError false the harness ran normally and only the healthy server's tool appeared. With it true the harness still ran, but warned that one entry did not activate and printed the connection error for that server.",
+  "softRun": {
+    "failOnStartupError": false,
+    "exitCode": 0,
+    "toolCount": 28,
+    "mcpTools": [
+      "mcp__serverok__header_echo"
+    ],
+    "modelRequest": "model-001-request.json",
+    "warningSeen": false
+  },
+  "hardRun": {
+    "failOnStartupError": true,
+    "exitCode": 0,
+    "toolCount": 28,
+    "mcpTools": [
+      "mcp__serverok__header_echo"
+    ],
+    "modelRequest": "model-003-request.json",
+    "warningSeen": true,
+    "entryErrorSeen": true,
+    "entryErrorLines": [
+      "dsh.cmd : dsh: warning: 1 entry did not activate",
+      "+ CategoryInfo          : NotSpecified: (dsh: warning: 1 entry did not activate:String) [], RemoteException",
+      "mcp-client-dead (@deepseek-ai/dsh-mcp-client): Error: mcp-client(serverdead): initial connection or tool synchronizatio"
+    ]
+  },
+  "healthyServerRequests": [
+    {
+      "file": "mcp-001-request.bin",
+      "method": "server/discover",
+      "bytes": 280
+    },
+    {
+      "file": "mcp-002-request.bin",
+      "method": "initialize",
+      "bytes": 163
+    },
+    {
+      "file": "mcp-003-request.bin",
+      "method": "notifications/initialized",
+      "bytes": 54
+    },
+    {
+      "file": "mcp-004-request.bin",
+      "method": "tools/list",
+      "bytes": 46
+    },
+    {
+      "file": "mcp-005-request.bin",
+      "method": "server/discover",
+      "bytes": 280
+    },
+    {
+      "file": "mcp-006-request.bin",
+      "method": "initialize",
+      "bytes": 163
+    },
+    {
+      "file": "mcp-007-request.bin",
+      "method": "notifications/initialized",
+      "bytes": 54
+    },
+    {
+      "file": "mcp-008-request.bin",
+      "method": "tools/list",
+      "bytes": 46
+    }
+  ],
+  "healthyServerRequestCount": 8,
+  "deadServerRequestCount": 0,
+  "modelRequests": [
+    {
+      "file": "model-001-request.json",
+      "bytes": 69589,
+      "sha256": "643d31f7712840fa27dd31e8d447d3d61be3ce4a05ee43c7550c44c444a2a2da",
+      "toolCount": 28,
+      "mcpTools": [
+        "mcp__serverok__header_echo"
+      ]
+    },
+    {
+      "file": "model-002-request.json",
+      "bytes": 41817,
+      "sha256": "212baed8788efb3d627363797978327730308eb71c544b423f93345dfb4c0f7a",
+      "toolCount": 0,
+      "mcpTools": []
+    },
+    {
+      "file": "model-003-request.json",
+      "bytes": 69559,
+      "sha256": "b0ff404f8d80d23cbaa27f2b9625c5b5bd90187337df38e2a6861eab99345f2e",
+      "toolCount": 28,
+      "mcpTools": [
+        "mcp__serverok__header_echo"
+      ]
+    },
+    {
+      "file": "model-004-request.json",
+      "bytes": 41802,
+      "sha256": "7d94aa30dbdac35b4418d6477ca22145b2596498b61aaf6580040033d269bb79",
+      "toolCount": 0,
+      "mcpTools": []
+    }
+  ]
+}
