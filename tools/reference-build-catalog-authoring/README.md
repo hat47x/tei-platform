@@ -67,6 +67,10 @@ go run ./tools/reference-build-catalog-authoring \
 
 **この形式は製品の形式ではありません。** 互換性の約束も`formatVersion`もありません。製品が読むのは、このツールが出力するcatalogだけです。
 
+> **宣言を配るなら、配る前に`formatVersion`を足す。** 版を付けないのは、**配るのが catalog だけだから**である（catalog は既に `formatVersion` を持ち、未知の版を拒否する）。宣言はこのツールと同じ場所で変わるので、版を名指す相手がいない。
+>
+> **後から足すことはできない。** 宣言は未知のキーを拒否する形で解析されるので、`formatVersion` を足した宣言は**拒否される**（実測）。つまり配布後に版を導入すると、その時点の利用者全員にとって破壊的変更になる。判断の時期は「必要になった時点」ではなく「**配布を決めた時点**」である。根拠は[SB-C0 §4.35](../../plan/design/SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md)と[実測の記録](../../plan/evidence/TEI_GO_SELF_BUILD_DECLARATION_VERSIONING_2026-11-10.md)。
+
 ## 拒否するもの
 
 | 入力 | 理由 |
