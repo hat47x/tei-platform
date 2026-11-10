@@ -1,0 +1,68 @@
+name: TEI OKF K1 upstream-reference witness (test only)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'testdata/okf-k1-v02/**'
+      - 'testdata/okf-k1-v02.expected.json'
+      - 'tools/reference-okf-k1/**'
+      - '.github/workflows/tei-okf-k1-reference-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'testdata/okf-k1-v02/**'
+      - 'testdata/okf-k1-v02.expected.json'
+      - 'tools/reference-okf-k1/**'
+      - '.github/workflows/tei-okf-k1-reference-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: okf-k1-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  k1-upstream-reference:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: TEI test fixture and script at checked-out commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          path: tei
+          persist-credentials: false
+      - name: Pinned upstream OKF Python reference document reader
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: GoogleCloudPlatform/open-knowledge-format
+          ref: ad30107c31c06aec8a7d5636e0d1058118604e6f
+          path: upstream-okf
+          persist-credentials: false
+      - name: Create isolated test-only Python environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 --version
+          python3 -m venv "$RUNNER_TEMP/okf-k1-venv"
+          "$RUNNER_TEMP/okf-k1-venv/bin/python" -m pip install --disable-pip-version-check --no-cache-dir 'PyYAML==6.0.3'
+      - name: Confirm exact upstream revision and run reference probe
+        shell: bash
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          set -euo pipefail
+          test "$(git -C upstream-okf rev-parse HEAD)" = 'ad30107c31c06aec8a7d5636e0d1058118604e6f'
+          "$RUNNER_TEMP/okf-k1-venv/bin/python" -B \
+            tei/tools/reference-okf-k1/official_reference_probe.py \
+            --bundle tei/testdata/okf-k1-v02 \
+            --expected tei/testdata/okf-k1-v02.expected.json \
+            --upstream upstream-okf
+          test -z "$(git -C tei status --porcelain=v1 --untracked-files=all)"
+          test -z "$(git -C upstream-okf status --porcelain=v1 --untracked-files=all)"
+
+
+# A private SHO checkout cannot be performed with this public repository's
+# contents:read token. The real SHO G1b Reader check belongs to the SHO repo CI.
