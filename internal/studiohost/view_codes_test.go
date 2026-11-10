@@ -82,3 +82,32 @@ func TestSourceIndexFailureCodeIsProduced(t *testing.T) {
 		t.Fatalf("stage=%q", failure.Stage)
 	}
 }
+
+// A command run reports failure through Failure.Code. One code is declared but
+// has no input: COMMAND_FAILED is written when runHooks returns an error, and
+// runHooks returns an error only together with a report (so it is not nil) and
+// returns (nil, nil) for a pattern that declares no hook. This test states the
+// arrangement so the code is not read as a reachable answer (#4032).
+func TestCommandFailedHasNoKnownTrigger(t *testing.T) {
+	host, err := NewReadOnly([]string{hookWorkspace(t)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The command pattern declares no hook, which is the only case where the
+	// hook runner reports nothing. The run is not refused.
+	run := host.ExecuteCommand(
+		"workspace-1",
+		"order_entry",
+		"order_entry.submit",
+		"sales.submit",
+		map[string]string{"order": "open", "sales.order.status": "open"},
+	)
+	if run.Failure != nil {
+		t.Fatalf("a pattern without hooks was reported as a failure: %+v", run.Failure)
+	}
+	if run.OK {
+		// The command itself may or may not be accepted; what matters here is
+		// that no hook failure was reported.
+		t.Log("the command ran without a hook report")
+	}
+}
