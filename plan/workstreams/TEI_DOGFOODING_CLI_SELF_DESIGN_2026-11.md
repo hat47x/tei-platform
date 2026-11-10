@@ -1398,3 +1398,266 @@ ir.World --[第45ラウンド]--> index.Build --[第46ラウンド]--> entry 型
 **両方の段が「判断を書かなければ通らない」になった。** しかし `#4001` の欠陥（列対応が辺にならない）は残る。今は理由付きで記録されているだけで、`trace` は依然として列対応を返さない。**検出を完成させ、修正は設計判断として残した。**
 
 `database` は `SupportedSubjectKinds` に無いため、辺を作るには kind の追加も伴う。私は材料を提示するに留める。
+
+## 50. 第47ラウンド（2026-11-10）: trace が realizes 辺を2回返す（起票 → 解消）
+
+計画 §5 の残った問い（「発見の粒度」「『効果的』の測り方」）に答えるため、設計者の問いに何回の CLI 呼出しで答えるかを測った。その過程で、応答に同一の辺が2行含まれることに気づいた。生出力は[第47ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND47_DUPLICATE_REALIZES_EDGE_2026-11-10/README.md)にある。
+
+### 設計の問いは3呼出しで答えられた（ただし1つ目が誤っていた）
+
+「どの application が `security.authenticate` を実装し、何を受け取って何を返すか」は `trace -direction incoming` → `trace -mode full` → `inspect` の3回で答えられた。**ただし1回目の応答が正しくなかった。**
+
+```text
+total: 2
+  [0] application order_entry -realizes-> semantic-capability security.authenticate
+  [1] application order_entry -realizes-> semantic-capability security.authenticate
+```
+
+`world` の `customGoBindings` は4件（各 capability 1件）なので宣言の重複ではない。全 subject を走査すると、**重複するのは `realizes` だけ**（6 subject）で、他の15関係は重複しない。
+
+### 原因: 2つの経路が同じ辺を作っていた
+
+| 場所 | 実装 |
+| --- | --- |
+| `internal/index/index.go:488` | `d.DeclaredDependencies` に追加（#3989、私の修正） |
+| `internal/modelref/derivedbridge/projection.go:117` | `d.CustomGoBindings` を直接走査（`8219cc3d4`） |
+
+`addEdge` は `nodes` の存在だけを見て `Graph.Edges` に無条件で追加していたため、同じ辺が2行になった。
+
+### PR の状態とコミットの所在は別だった
+
+第43ラウンドで「両方入れると二重になる」と #3994 にコメントした。それが実現していた。ただし**当時の私の状態の読み方が誤っていた**。
+
+```bash
+$ gh pr view 3994 --json state,mergedAt     # CLOSED, merged=null
+$ git log --oneline origin/main -S "range d.CustomGoBindings" -- internal/modelref/derivedbridge/projection.go
+# 8219cc3d4    ← main に在る
+```
+
+**PR が閉じられていればコミットも入っていない**と暗黙に仮定していた。**PR の状態ではなく `git log -S` で確認すべきだった。** 第39ラウンドと同じ根（検証手段の選択ミス）である。
+
+### 解消
+
+[#4024](https://github.com/hat47x/tei-platform/issues/4024) として起票した。私が示した3案のうち、**`addEdge` に重複排除を入れる根本案**が採られ、`102e5fa09`（[#4038](https://github.com/hat47x/tei-platform/pull/4038)）で修正された。`projectionUnresolved` の重複も同時に畳まれた。
+
+| 時刻（UTC） | 出来事 |
+| --- | --- |
+| 06:07:36 | 私が起票 |
+| 07:37:14 | 修正コミット |
+| 08:22:25 | Issue クローズ |
+
+**起票から解消まで約2時間15分。** 私は修正を書いていない。修正後の `main`（`735f7278d`）で実測し、`total: 1` / `[0] order_entry - realizes` を確認した。
+
+### この1件で確認できたこと
+
+起票の内容（再現手順・原因の特定・3案の比較・`addEdge` が根本という指摘）が、そのまま修正方針に使われた。**分析を渡せば、修正は他者が進められる**という分業が成立した形である。
+
+## 51. 第49ラウンド（2026-11-10）: データ層のkindがノードにならず、辺が全て落ちる
+
+#4001 の解消を試みたが、**着手前の再実測で自分の主張が過大だったことが分かった**。生出力は[第49ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND49_DATA_LAYER_UNMATERIALIZED_2026-11-10/README.md)にある。
+
+### 訂正: `tei world` は既に答えていた
+
+#4001 で私は「CLI で答えられない」と書いた。**`trace` だけを試して一般化したのが誤りだった。**
+
+```text
+tei world -workspace reference/workspace
+  FOUND: sales.order.total -> sales_core.public.orders.total_amount
+  mappings=2 columns=11
+```
+
+`persistenceMappings` は列対応を含めて出力される。**「この属性はどの列か」は既に CLI で答えられる。** `trace` が運ばないのは事実なので、Issue は #4068 の依存として残した。
+
+### 根本原因: database 系がノードにならない
+
+`order_entry` は `database sales { target sales_core }` を宣言し、索引も `targets-database` 辺を宣言しているのに、trace には出ない。
+
+```text
+total: 14  unresolved: 0
+relations: {owns-pattern:5, realizes:3, uses-validation:3, uses-semantic:3}
+targets-database present? NO
+```
+
+`projectionUnresolved` に `unmaterialized-to:database:sales_core` などがあった。72 subject を走査した結果:
+
+```text
+sum of trace.unresolved across them: 0
+distinct projectionUnresolved messages: 12
+  unmaterialized-from/to database-contract        216 each
+  unmaterialized-from/to database                 144 each
+  unmaterialized-to    database-contract-query     72
+```
+
+**12種の未解決参照が 72 subject すべてで報告され、それでも `trace.unresolved` は 0。**
+
+### 原因は2つ
+
+| 原因 | 内容 |
+| --- | --- |
+| (a) | `SupportedSubjectKinds` に database 系が無く、索引は database ノードを作らない。端点が無い辺は必ず落ちる |
+| (b) | `TraceDirect` は `graph.Edges` を走査するので、投影で落ちた辺を数えられない |
+
+### 影響: 7ラウンド見落としていた
+
+私は第41〜47ラウンドで `unresolved: 0` を見て正常と判断し続けた。実際には12種の未解決が常にあった。**この表示は「正常」ではなく「何も見ていない」だった。** これが #4001 の根本原因を隠していた。
+
+### 起票
+
+[#4068](https://github.com/hat47x/tei-platform/issues/4068)。4案を示し、**B（ノードは作るが subject-kind には加えない）+ D（`unresolved` に投影の取りこぼしを含める）**を推した。A は `trace` の subject-kind が公開契約で、`tools/reference-mcp-readonly-adapter/subject_kind_enum_test.go` が `len(TraceSubjectKinds) != 10` を固定しているため外部ツールも同時に直す必要がある。C（辺を宣言しない）は採るべきでない — 見えないという判断なら `AuthorityLimits` に書くべきで、黙って宣言して落とす現状は誰にも利益がない。
+
+## 52. 第50ラウンド（2026-11-10）: データ層のノードを materialize し、未解決を12件から1件にした
+
+第49ラウンドで起票した [#4068](https://github.com/hat47x/tei-platform/issues/4068) を解消した。生出力は[第50ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND50_DATA_LAYER_MATERIALIZED_2026-11-10/README.md)にある。
+
+### 実装前に読んだこと
+
+| 確認 | 結果 |
+| --- | --- |
+| 誰かが着手済みでないか | `gh pr list` に該当なし |
+| 案 B（ノードのみ、kind には加えない）は可能か | **不可**。`supports_kind_test.go` が「`SupportsSubjectKind` は `FromIndex` が materialize する集合と一致すべき」と明記 |
+| kind を増やすと何が固定されているか | `subject_kind_enum_test.go` の `len != 10`、`trace_workspace.go` の拒否メッセージ |
+| 公開値は単一情報源か | はい。`commands`・`-h`・MCP adapter は全て `TraceSubjectKinds` を参照 |
+
+案 B は既存の不変条件に反するため採らず、**案 A** を実装した。
+
+### 修正
+
+`projection.go` に `endpointOnlyKinds`（`database`・`database-contract`・`database-contract-query`）を置き、依存リストが名前を挙げている端点を `addEdge` の前に materialize する。`SupportedSubjectKinds` に3種を追加し、固定値（10→13）と拒否メッセージを同時に更新した。**公開値は単一情報源なので `commands` と `-h` は自動で追随した。**
+
+### 結果
+
+| | 修正前 | 修正後 |
+| --- | --- | --- |
+| `order_entry` outgoing の `total` | 14 | **19** |
+| `targets-database` | なし | **2** |
+| `requires-contract` | なし | **3** |
+| `projectionUnresolved` | 12件 | **1件** |
+
+`trace -subject-kind database -subject-id sales_core` も動くようになった（修正前は `UNSUPPORTED_SUBJECT_KIND`）。残った1件は第42ラウンドで見つけた「存在しない capability への束縛」で、ワークスペース側の不整合。
+
+### 試験と回帰
+
+`data_layer_test.go` の3件。変異2種（端点 materialize の削除／kind 一覧からの削除）が両方落ちることを確認した。`derivedbridge` を import する全11パッケージが ok（`cmd/tei` 165.9s、`reference-shared-acceptance` 80.3s、MCP adapter 33.9s を含む）。
+
+### 残した欠陥
+
+**`trace.unresolved` が投影の取りこぼしを数えられない点は未修正。** 今回は落ちる辺を12→1に減らしただけで、`TraceDirect` が `graph.Edges` しか走査しない構造は変わっていない。「穴を塞いだ」ではなく「**穴を1つに絞った**」と記録する。`inspect` の受理種は12のままで、`trace` と食い違う状態も残る。
+
+## 53. 第51ラウンド（2026-11-10）: 設計作業をCLIだけで完遂し、`pattern` の種別診断を改善した
+
+- 対象: [#4082](https://github.com/hat47x/tei-platform/issues/4082)（起票・本ラウンドで解消）。
+
+第41〜50ラウンドは「モデルにあるが参照グラフに無い」型の追跡に集中した。本ラウンドは**実際の設計作業**に戻り、CLI の診断だけを頼りに新機能を設計できるかを試した。生出力は[第51ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND51_PATTERN_KIND_DIAGNOSTIC_2026-11-10/README.md)にある。
+
+### 設計演習
+
+`security.authenticate` の逆操作（失効）を、`reference/workspace` の複製に追加した。
+
+| # | 操作 | 応答 |
+| --- | --- | --- |
+| 1 | capability に `std.date-time` | `PARSE_ERROR invalid canonical id`（`file:5:30`） |
+| 2 | `std.nonexistent` | `UNKNOWN_SEMANTIC_ATTRIBUTE_TYPE`（参照元を明示） |
+| 3 | `std.datetime` | `ok` |
+| 4 | `pattern order_entry.revoke { }`（種別なし） | **`PARSE_ERROR unexpected token "{"`** |
+| 5 | 種別 `bogus` | `unsupported application pattern kind "bogus"` |
+| 6 | 種別 `command` | `ok` |
+| 7 | `realize ... with custom go` | `ok` |
+
+設計は完遂でき、グラフに正しく現れた（`security.revoke` の total 6。`realizes`・`capability`・`outcome`×2・`input`×2）。application 側（`owns-pattern`・`realizes`）と pattern 側（`capability`）からも辿れる。
+
+### 摩擦点は語彙の列挙だった
+
+型の診断は `file:line:col` と参照元を出して高品質だった。**`pattern` の種別だけが手がかりを出さなかった。** 位置は正確だが「種別が必要」とも「どんな種別があるか」とも言わず、CLI から種別集合を知る手段も無かった。私は `reference/workspace` を `grep` して `browse`・`record`・`reference`・`command`・`header-detail` を割り出した。
+
+### 修正
+
+`internal/application/model.go` に `PatternKinds` を置き、`Valid()` がそれを読むようにした（診断文と受理集合の単一情報源）。`internal/syntax/application_pattern.go` で、種別なしと不正種別の両方で一覧を出すようにした。
+
+```text
+変更前: unexpected token "{"
+変更後: pattern order_entry.revoke requires a kind before its body;
+        valid kinds are browse, record, reference, command, header-detail
+```
+
+受理する構文は変えていない。変異2種（種別チェックの削除／`command` の脱落）が両方落ちることを確認した。`pattern` 種別を参照する**全14パッケージ**が ok（`cmd/tei` 125.7s、`reference-shared-acceptance` 76.8s）。
+
+### 残した問い
+
+- ~~`std` 型の一覧は依然として CLI から引けない~~ → **第52ラウンドで訂正。この記述は誤りだった。**`model catalog` は std 型12件を返し、`inspect -subject-kind semantic -subject-id std` は種類付きで列挙し、`model locate` も引ける。私の探査用ワークスペースがロードに失敗していたため `model catalog` が0件を返し、それを「std が無い」と誤読した。残る欠陥は別で、`invalid canonical id` が文字規則を言わない点（第52ラウンドで修正）。capability・data・interaction の語彙にも同じ問いが残る。
+
+## 54. 第52ラウンド（2026-11-10）: 自分の誤りを訂正し、`invalid canonical id` に文字規則を載せた
+
+第51ラウンドで「`std` 型の一覧は CLI から引けない」と記録した。本ラウンドはその解消に着手する予定だったが、**着手前の再実測でその主張自体が誤りだと分かった**。生出力は[第52ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND52_ID_RULE_AND_CORRECTION_2026-11-10/README.md)にある。
+
+### 訂正: `std` 型は CLI から引ける
+
+| 経路 | 結果 |
+| --- | --- |
+| `model catalog` | `std.` 始まりの `semantic-type` が **12件** |
+| `inspect -subject-kind semantic -subject-id std` | **12件**、各 `kind=primitive` |
+| `model locate -subject-kind semantic-type -subject-id std.datetime` | `ok=true` |
+
+**誤った理由**: 第51ラウンドの探査用ワークスペースに解析エラーを残したまま `model catalog` を実行し、0件を得た。それを「std がカタログに無い」と読んだ。実際は**ワークスペースのロード自体が失敗**しており、`inspect` は `WORKSPACE_LOAD_FAILED` と答えていた。空配列だけを見て判断した。
+
+**原文は消さずに残した。** 計画 §53 は打ち消し線＋訂正に置換、証拠 `53-not-done.txt` は原文を保持したまま `CORRECTION` 節を追記、#4082 にも訂正コメントを付けた。
+
+### 残っていた実際の欠陥
+
+`std.date-time` の診断は `invalid canonical id "std.date-time"` で**文字規則を言わない**。著者は「型が無い」のか「文字が不正」なのか区別できない。規則は `core/identity/id.go` の `validCanonicalID` に在るのに、届いていなかった。
+
+```text
+変更前: invalid canonical id "std.date-time"
+変更後: invalid canonical id "std.date-time"
+        (each dot-separated segment must match [a-z][a-z0-9_]*)
+```
+
+`ParseLocalName` も同様。既存の `id_equivalence_test.go` がエラー文字列を厳密比較していたため、参照実装側の文面も同時に更新した（固定している主眼は「受理する文字列集合の一致」で、それは不変）。
+
+### 試験
+
+`id_rule_diagnostic_test.go` の3件。特に `TestTheQuotedRuleMatchesTheAcceptedLanguage` は、**診断が引用する規則が実際の受理言語と一致すること**を固定する。変異2種（規則の削除／**誤った規則**への差し替え）が両方落ちることを確認した。後者は「診断が嘘をついても通らない」ことを示す。
+
+`invalid canonical id` を参照する19箇所は `strings.Contains` なので文面追加で壊れない。`core/identity`・`plugin/...`・`syntax`・`workspace`・`operations`・`realization`・`reference-durable-run-golden` がすべて ok。
+
+### 調べたが欠陥ではなかったこと
+
+`attribute Bad-Name type std.text` が `ok` になったので疑ったが、`SymbolToSegment("Bad-Name") == "bad_name"` で、**記号は表示名であり正規化される**仕様だった。起票していない。
+
+### 位置付け
+
+**公開済みの主張を測り直して訂正した回**である。原因は**壊れた探査状態から一般化したこと**で、第43ラウンド（PR の状態だけを見た）・第49ラウンド（`tei world` を試さず一般化した）と同じ型の**3回目**。今回は「解消に着手する前にまず主張を測り直す」を実行したことで、公開後の1ラウンドで捕まえられた。
+
+## 55. 第53ラウンド（2026-11-10）: 閉じた語彙の診断が有効値を挙げるようにした
+
+第52ラウンドで `pattern` の種別を診断で列挙した。同じ型が他の語彙にもあるかを実測し、3件を修正して残り17件を起票した。生出力は[第53ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND53_VOCABULARY_DIAGNOSTICS_2026-11-10/README.md)にある。
+
+### 観測（修正前）
+
+| 語彙 | 診断 | 有効値を挙げるか |
+| --- | --- | --- |
+| storage type | `has invalid storage type "NUMBERISH"` | **いいえ** |
+| nullability | `has invalid nullability "maybe"` | **いいえ** |
+| access mode | `has invalid access mode "read-write-nothing"` | **いいえ** |
+
+いずれも `file:line:col` は出るが、有効値が分からないため著者はソースか既存の `.tei` を読む必要があった。
+
+### 修正
+
+各語彙に値のスライス（`persistence.StorageTypes`・`persistence.Nullabilities`・`database.Accesses`）を置き、`Valid()` がそれを読む。診断は `validValues` ヘルパで列挙する。
+
+```text
+has invalid storage type "NUMBERISH";
+  valid values are int64, varchar, text, datetime-tz, decimal, json
+has invalid nullability "maybe"; valid values are required, optional
+has invalid access mode "read-write-nothing"; valid values are read, write, read-write
+```
+
+試験は3件（診断が値を名指す／語彙リストと `Valid()` の一致×2）。変異2種（診断から一覧を削る／`StorageTypes` から `text` を落とす）が両方落ちることを確認した。`cmd/tei`（233.9s）を含む全対象が ok。
+
+### 残り17件を起票した
+
+[#4094](https://github.com/hat47x/tei-platform/issues/4094)。`internal/validation/validation.go` を実測し、同じ形の診断が17件残ることを記録した（`INVALID_PLUGIN_RUNTIME`・`INVALID_SEMANTIC_RELATION_CARDINALITY`・`INVALID_DATABASE_OWNERSHIP`・`INVALID_ROLLOUT_STRATEGY` など）。
+
+**1ラウンドでまとめて直さなかった理由**: 17件は語彙の定義が `plugin`・`semantic`・`database/release`・`deployment`・`releaseplan` に分散し、それぞれに単一情報源の追加が要る。実測した3件を先に通し、残りを Issue にした。
+
+`INVALID_APPLICATION_RELEASE_DATABASE_ACCESS` は `database.Accesses` を再利用できるため、次に着手するなら最も容易。

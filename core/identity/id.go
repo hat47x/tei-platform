@@ -62,7 +62,9 @@ func validLocalName(s string) bool {
 func ParseCanonicalID(s string) (CanonicalID, error) {
 	s = strings.TrimSpace(s)
 	if !validCanonicalID(s) {
-		return "", fmt.Errorf("invalid canonical id %q", s)
+		// Name the rule: an author who writes "std.date-time" cannot tell a
+		// missing type from an illegal character without it.
+		return "", fmt.Errorf("invalid canonical id %q (each dot-separated segment must match [a-z][a-z0-9_]*)", s)
 	}
 	return CanonicalID(s), nil
 }
@@ -78,7 +80,7 @@ func MustCanonicalID(s string) CanonicalID {
 func ParseLocalName(s string) (LocalName, error) {
 	s = strings.TrimSpace(s)
 	if !validLocalName(s) {
-		return "", fmt.Errorf("invalid local name %q", s)
+		return "", fmt.Errorf("invalid local name %q (must match [a-z][a-z0-9_]*)", s)
 	}
 	return LocalName(s), nil
 }

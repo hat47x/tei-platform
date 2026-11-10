@@ -24,6 +24,14 @@ func TestSupportsSubjectKindMatchesWhatFromIndexProjects(t *testing.T) {
 		},
 		ApplicationPatterns: []index.ApplicationPatternIndexEntry{{Application: "order_entry", Pattern: "order_entry.submit"}},
 		Queries:             []index.QueryIndexEntry{{Query: "recent_orders"}},
+		// The data layer has no entry list of its own; it is named only as an
+		// edge endpoint, so the fixture declares edges to make the projection
+		// materialize the nodes (#4068).
+		DeclaredDependencies: []index.DeclaredDependency{
+			{FromKind: "application", From: "order_entry", Relation: "targets-database", ToKind: "database", To: "sales_core"},
+			{FromKind: "application", From: "order_entry", Relation: "requires-contract", ToKind: "database-contract", To: "sales_core.order"},
+			{FromKind: "application", From: "order_entry", Relation: "contract-query", ToKind: "database-contract-query", To: "sales_core.order/find"},
+		},
 	}
 	projected := map[string]bool{}
 	for _, node := range derivedbridge.FromIndex(d, "sales-scope").Graph.Nodes {
@@ -33,6 +41,7 @@ func TestSupportsSubjectKindMatchesWhatFromIndexProjects(t *testing.T) {
 		"semantic", "semantic-type", "semantic-data", "semantic-attribute",
 		"semantic-relation", "semantic-validation", "semantic-capability",
 		"application", "application-pattern", "query",
+		"database", "database-contract", "database-contract-query",
 	} {
 		if !derivedbridge.SupportsSubjectKind(kind) {
 			t.Fatalf("%s is projected but SupportsSubjectKind says no", kind)

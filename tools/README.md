@@ -26,7 +26,6 @@
 | [`repository-node-tests/`](repository-node-tests/) | どのworkflowからも実行されなかったNode.js試験5ファイルをgo testから実行する（#2346） |
 | [`check-public-boundary/`](check-public-boundary/) | 追跡ファイルに、非公開資料の名前・所在のマーカーが入っていないかを検査する（#2342 / #2436） |
 | [`repositoryqualification/`](repositoryqualification/) | リポジトリ検証条件の共通処理 |
-| [`rea-t0-saved-report/`](rea-t0-saved-report/) | 公開合成JSのREA保存JSON／stderr／exitとSource pre/post byteを読取り専用で監査し、外部Graph/Relation候補のみを投影する試験用Consumer（#3394、未正式TEI Source）。 |
 | [`reference-ai-tuning-observation/`](reference-ai-tuning-observation/) | AI性能チューニング用の設計/観測/統計/Provider/開示/受領の**合成入力のみ**を照合する試験用Consumer。実Provider/業務意味/実性能は未証明（#3271/#3262、設計文書 §9〜10）。 |
 | [`reference-cli-trace-benchmark/`](reference-cli-trace-benchmark/) | 合成Workspaceによるtraceの処理段別の時間・メモリ計測と出力不変の確認 |
 | [`reference-mcp-readonly-adapter/`](reference-mcp-readonly-adapter/) | 既存の読み取り操作（model catalog・inspect・trace・validate）をMCPのtoolとして公開する参照Adapter。Workspaceは起動時に固定し、CLIと同じ `internal/operations` を呼ぶ（#3400） |
@@ -41,7 +40,6 @@
 | [`reference-semantic-domain-coverage/`](reference-semantic-domain-coverage/) | 意味の定義と要素の対応を、受理済み定義だけを根拠に検査する参照。複数一致（一本道の破れ）、未記入の要素、What/Whyの欠落を一覧する（#2095） |
 | [`reference-target-profile/`](reference-target-profile/) | 同じ契約・fixture・候補を複数のTarget Profileで実行し、宣言と実行結果、case別出力の意味一致、oneshot/long-running/batch process model、stdout/stderr/exit-codeの観測、filesystem artifactのreplace/in-place/rolling配備、sqlite artifactの保存・rollback、slot/history指定のrollback、historyの検証・保持件数によるprune、署名済みapprovalによる削除承認、そのhash-chain auditとaudit checkpointを記録する参照（#2019） |
 | [`reference-temporal-derivation/`](reference-temporal-derivation/) | 業務有効時点・記録時点・規則版・評価時点・確定保存値を区別し、過去再計算を historical-replay / what-if / current-computation / confirmed-fact-read としてラベルする参照。過去価格や当時の規則版が無ければ未確認とし、確定保存値を書き換えない（#1727） |
-| [`reference-tei-eki-contract/`](reference-tei-eki-contract/) | EKIの実OpenAPI（P0）から切り出した版固定の外部fixtureに対し、TEI Job/Flowの意味（`notBefore`・期限3種・Executor digest・resource Group・非冪等Effect）が黙って落ちないことを確かめる参照。実EKI API定義でもProvider/Worker接続の証拠でもない（#1130 / #2499 / #2514）。 |
 | [`reference-derived-field-projection/`](reference-derived-field-projection/) | 導出項目の意味状態（宣言・未保存Preview・実行時導出・確定保存）を表示先へ渡し、導出値への直接書込をAction／保存境界でも拒否する参照。古い表示値を確定値として返さない（#1707） |
 | [`reference-productivity-benchmark/`](reference-productivity-benchmark/) | 4タスクの計画とrunのcoverageを検証し、3方法×3回の中央値と範囲を集計する参照（#2018） |
 | [`reference-tenant-isolation/`](reference-tenant-isolation/) | SaaS向けに、テナントrootの閉じ込めと越境拒否を提供する基盤pluginの参照（#2020） |

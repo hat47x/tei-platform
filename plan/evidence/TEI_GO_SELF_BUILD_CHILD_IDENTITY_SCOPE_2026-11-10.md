@@ -48,6 +48,28 @@ childDigest, err := digestOfFile(exactChild)
 
 **二つの異なる構築器が走ったのに、Claimが立ちました。** 理由は一つです——同一性の検査が**名指しされたファイル**を見ており、それが両方の試行で同じプロキシだったからです。
 
+## 対照：プロキシを挟まない差し替えは止まる
+
+上の実験だけでは「差し替えは一切止まらない」と読めます。**そうではありません。** `-child` のファイル自体を二回の間で差し替えると、止まります。
+
+`-child` に、**初回に自分自身を別のバイト列へ書き換えてから** `builder-a` を `exec` するスクリプトを渡しました。二回目の build は書き換わった後の内容で走ります。
+
+| 項目 | 結果 |
+| --- | --- |
+| `-child` の digest（実行前 → 実行後） | `5e0ccca1…` → `b0d445dc…` |
+| `firstChildDigest` | `sha256:5e0ccca1…` |
+| `secondChildDigest` | `sha256:b0d445dc…`（**異なる**） |
+| `firstArtifactDigest` / `secondArtifactDigest` | `sha256:5eed4c17…` で**同じ** |
+| `artifactReproducibility.state` | `mismatched` |
+| `mismatchReason` | `the two runs used different builder executables` |
+| `l2b.claimed` | **`false`** |
+| `l2b.unmet` | `the artifact was not reproduced from the plan (mismatched)` |
+| `tei self-build` の終了コード | **1** |
+
+**成果物は一致しているのに、`builder` の同一性だけで止まりました。** 差し替えの検出そのものは働いており、**効かないのは「名指しされたファイルの背後で別の実行物が走る」場合だけ**です。
+
+エントリは build ごとに `-child` を digest し直すため、ファイルが変われば二つの値が食い違います。**§4.37 の行はこの意味では正しく、範囲が `-child` のパスまでだというだけです。**
+
 ## これは何を意味するか
 
 | 言えること | 言えないこと |
@@ -84,7 +106,7 @@ childDigest, err := digestOfFile(exactChild)
 - `tei self-build` が exit 0、`l2b.claimed=true`、`unmet` 空、`reproducibility=reproduced`
 - `firstChildDigest == secondChildDigest`、`firstArtifactDigest == secondArtifactDigest`
 
-**NOT RUN**：`darwin`、プロキシを挟まない構成での差し替え（`-child` を直接書き換える場合は digest が変わるため止まるはずで、それは別途確かめる必要があります）。
+**NOT RUN**：`darwin`。
 
 ## 限界
 

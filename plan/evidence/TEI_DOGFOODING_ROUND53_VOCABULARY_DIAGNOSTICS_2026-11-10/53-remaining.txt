@@ -1,0 +1,16 @@
+Counted in internal/validation/validation.go: 17 diagnostics of the same shape
+(`has invalid X %q`, no value list). Filed as #4094 rather than fixed here:
+
+  INVALID_PLUGIN_RUNTIME / _SANDBOX_POLICY / _EXTERNAL_SCOPE / _EXTERNAL_KIND
+  INVALID_PLUGIN_CAPABILITY_KIND
+  INVALID_SEMANTIC_TYPE_KIND / INVALID_SEMANTIC_RELATION_CARDINALITY
+  INVALID_DATABASE_OWNERSHIP
+  INVALID_MIGRATION_RECOVERY / INVALID_MIGRATION_STEP_KIND
+  INVALID_APPLICATION_RELEASE_DATABASE_ACCESS   (can reuse database.Accesses)
+  INVALID_DATABASE_RELEASE_DATA_READINESS
+  INVALID_SOLUTION_RELEASE_STEP_KIND / _PHASE
+  INVALID_ROLLOUT_STRATEGY
+
+Their vocabularies live in plugin, semantic, database/release, deployment and
+releaseplan, so each needs its own single-source list. That is more than one
+round can carry safely; the measured three went first.

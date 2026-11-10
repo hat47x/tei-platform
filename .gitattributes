@@ -269,3 +269,12 @@
 
 # MCP stdio observations are hashed as raw bytes.
 /plan/evidence/DSH_MCP_STDIO_2026-11-10/** -text
+
+# MCP header observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_HEADERS_2026-11-10/** -text
+
+# Multi-server MCP observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_TWO_SERVERS_2026-11-10/** -text
+
+# MCP failure-isolation observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_FAILURE_ISOLATION_2026-11-10/** -text

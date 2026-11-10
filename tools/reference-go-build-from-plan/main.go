@@ -43,6 +43,10 @@ type report struct {
 
 	SourceRoot string          `json:"sourceRoot"`
 	Sources    []checkedSource `json:"sources"`
+	// DefinitionBytesDigest is the digest of the plugin-definition source this
+	// process checked. The entry compares it with its own plan (§4.36), so a
+	// builder that read something else cannot pass unnoticed.
+	DefinitionBytesDigest string `json:"definitionBytesDigest,omitempty"`
 
 	ArtifactDigest string `json:"artifactDigest,omitempty"`
 	ArtifactPath   string `json:"artifactPath,omitempty"`
@@ -89,6 +93,7 @@ func run(args []string, out io.Writer) error {
 	goExecutable := fs.String("go", "", "exact Go実行ファイル（省略時はPATHのgo）")
 	artifactOut := fs.String("artifact-out", "", "成果物を置くパス（必須）")
 	stateDir := fs.String("state", "", "分離したBuild state（必須）")
+	supplyDir := fs.String("supply", "", "モジュール供給ディレクトリ（依存がある対象では必須）")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -150,6 +155,12 @@ func run(args []string, out io.Writer) error {
 		return err
 	}
 	rep.Sources = checked
+	for _, source := range checked {
+		if source.Kind == "plugin-definition" {
+			rep.DefinitionBytesDigest = source.Actual
+			break
+		}
+	}
 
 	goExe := *goExecutable
 	if strings.TrimSpace(goExe) == "" {
@@ -157,7 +168,12 @@ func run(args []string, out io.Writer) error {
 	}
 	rep.BuildCommand = []string{goExe, "build", "-trimpath", "-buildvcs=false", "-mod=readonly", "-o", *artifactOut, plan.Recipe.Entrypoint}
 
-	buildErr := gobuilder.BuildPackage(root, goExe, plan.Recipe.Entrypoint, *artifactOut, *stateDir)
+	var buildErr error
+	if strings.TrimSpace(*supplyDir) != "" {
+		buildErr = gobuilder.BuildPackageWithSupply(root, goExe, plan.Recipe.Entrypoint, *artifactOut, *stateDir, *supplyDir)
+	} else {
+		buildErr = gobuilder.BuildPackage(root, goExe, plan.Recipe.Entrypoint, *artifactOut, *stateDir)
+	}
 	rep.StateDir = *stateDir
 	if buildErr != nil {
 		rep.BuildError = buildErr.Error()

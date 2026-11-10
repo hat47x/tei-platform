@@ -10,7 +10,17 @@ const (
 	AccessReadWrite Access = "read-write"
 )
 
-func (a Access) Valid() bool { return a == AccessRead || a == AccessWrite || a == AccessReadWrite }
+// Accesses lists every accepted access mode in report order.
+var Accesses = []Access{AccessRead, AccessWrite, AccessReadWrite}
+
+func (a Access) Valid() bool {
+	for _, valid := range Accesses {
+		if a == valid {
+			return true
+		}
+	}
+	return false
+}
 
 type Ownership string
 

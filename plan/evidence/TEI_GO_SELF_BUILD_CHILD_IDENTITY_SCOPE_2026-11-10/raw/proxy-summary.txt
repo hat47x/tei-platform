@@ -1,0 +1,25 @@
+=== build the tools ===
+builder-a e0d7878b9f0c6b01…
+builder-b 27ed2915a18f20a7…
+child-run digest before: 11203bce5149852c…
+
+=== author the catalog ===
+catalogDigest=sha256:189beafe4b248f8e95054f9bc83fefcfeb8a808ae019e1b19a8bdbe67bc3df7f
+=== resolve a plan for the child ===
+=== tei self-build (mode: proxy) ===
+tei exit=0
+child-run digest after : 11203bce5149852c…
+--- which builder ran ---
+wrapper: invocation 1 -> builder-a
+wrapper: invocation 2 -> builder-b
+
+=== report ===
+mode                : proxy
+l2b.claimed         : True
+l2b.unmet           : None
+reproducibility     : reproduced
+mismatchReason      : None
+firstChildDigest    : sha256:11203bce5149852ce468dd1825ab61083ed5c0bfc4d46ae36656707743bf9503
+secondChildDigest   : sha256:11203bce5149852ce468dd1825ab61083ed5c0bfc4d46ae36656707743bf9503
+firstArtifactDigest : sha256:5eed4c17a8c057475f3bf6a4ce627bdc1705e334b33705fc010ff2ecdafffd33
+secondArtifactDigest: sha256:5eed4c17a8c057475f3bf6a4ce627bdc1705e334b33705fc010ff2ecdafffd33
