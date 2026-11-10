@@ -829,6 +829,7 @@ Everything is Dataが十分に成熟するには、**同じプレーンなデー
 TAIのQH-01〜18は公開合成Nodeの有限試験であり、TEI実CLI／外部ネットワーク送出／SHOの保存・配送／Host Grantの実証とは別。TEIのSource/Meaning/Provider・独立検証基準はTEIの既存Ownerに残し、TAIに第二のMeaning/Authorityを設けない。現時点で新しいProduct跨ぎの実行試験は**NOT RUN**。
 TAIのQH-01〜18は公開合成Nodeの有限試験であり、TEI実CLI／外部ネットワーク送出／SHOの保存・配送／Host Grantの実証とは別。TEIのSource/Meaning/Provider・独立OracleはTEIの既存Ownerに残し、TAIに第二のMeaning/Authorityを設けない。現時点で新しいProduct跨ぎの実行試験は**NOT RUN**。
 
+<<<<<<< HEAD
 ## 19. 汎用System Compositionの実選択・配置・利用資格を同一Subjectで照合する（2026-11-06）
 
 > **状態：設計引渡し／採用前の検証条件。** 11/5〜11/6の他レーン（#1016、#2619/#2620/#2622、#1125/#1126、#1130、#1174、#2831、Draft #2885/#2886/#2887、#2889）を接合する。新Core Schema、第二System/Meaning正本、Resolver、TEI専用Host、中央Runner、独立Gateは作らない。#1119のG1/G2/G4と既存H0〜H5、#2586のHJ、#2500のRT、#1180 Scenarioを維持する。
@@ -999,3 +1000,47 @@ Everything is Dataの共通Carrierは、Data・Function・Business・Rule・Test
 4. C-Buildは実Goコンパイル入力/Target/entrypoint/Artifactの別実証（#1130/#1167/#2831）。C-Effectは#1174、C-Publishは#2604。C-Readで不足したEvidenceをそのまま上位Claimの「合格」に使わない。問題を発見しても即座にProduction新Schemaを追加せず、既存API／既存Provider実現の再利用を先に測る。
 
 **Source由来の既存実証との区別**：#2882のWorkspace合成RunPlan、#2889の専用Go負例、#2853/#2854/#2870のPG限定Receipt/ABA、#2681の組織E1は本静的監査の実行結果ではない。各自の固定Head/Attemptでのみ価値を持つ。本§のSource監査は対象5ファイルの実内容確認のみ。実Go Test/CLI subprocess、Provider read、C-Read一改訂、全Self-build、Owner Meaning受理は**NOT RUN**。main統合・Product Gateの状態を変更しない。
+=======
+## 19. SQL/DDLのSource-static証拠とData/Rule/Provider/Owner受理の接合（2026-11-03追補）
+
+本計画のC0〜C5／H0〜H5に、[SQL/DDL静的事実と意味受理の受渡し計画](../design/SQL_DDL_STATIC_FACT_AND_SEMANTIC_ACCEPTANCE_2026-11.md)を参照として加える。**新Core/SQL Analyzer/Provider/Hostを重複実装しない**。SQLの`PRIMARY KEY`、`FOREIGN KEY`、`CHECK`、期間列、`BEGIN`から、業務Key/Relation/状態遷移/現行履歴/実Commitを自動推論しない。
+
+| 既存の接合箇所 | 追加で検査すること | 引渡し先 |
+| --- | --- | --- |
+| Source / Structural Candidate（C0/1） | Dialect/Source spanを持つDDL上の複合PK列順≠TEI Key Member SortKey≠業務Key、FK≠業務Relation、CHECK≠状態遷移。S（静的）とC（候補）を別表示 | #2387・#1126・#988 |
+| Meaning / Rule（C1/2） | status値域・複数Workflow Instance・属人兼務の期間Relation・valid time/recorded timeを、意味受理と保存先（本体列／履歴・イベント／業務関連表／JSON）へ二重化せず接続 | #1126・#1129・#2386 |
+| Provider / Context（C2/3） | NULL/欠損/未取得/非開示/完全0件と、実DB FK/CHECKのvalidation/enforcementを分ける。Function MappingとProvider Actual Read、共同Cohortの証拠を独立観測 | #2506・#2622・#2611・#2586 |
+| Action / Consumer（C4/5） | Transaction Intent・実Commit・ACK喪失・Receipt・独立Read・現在Host Grant、Migration Desired/Actual/Apply・Owner再受理を別資格へ置く | #1129・#1174・#2564・既存Migration Owner |
+
+**最小Gate**：参照文書のSC-01〜14について、まずP0（静的SourceとCoverage）→P1（候補・Owner質問）を設計完了できたら、実Providerが必要なSC-05（COMMIT ACK不明）/SC-06（異時点二Provider Read）/SC-11（制約の実強制）を優先し、#2586の**一つのFunction・同一Attempt**へ接続する。SC-01〜14は**今回実行していない**。以前の別PRの局所PASSやGitHub CIのgreenを、今回のSQL意味受理・実DB・Migration/Owner成功に数えない。
+
+**設計判断待ち**：業務Key/SortKey、業務Relationと時点、多重Workflow、取消とEffect、履歴の正本と保存要件、Scope/開示、既存データ移行は各Ownerへ質問する。必要な判断が不明なら候補を残し、Sourceの名前・構造から推測して処理を進めない。汎用状態表を既定構成にはしない。
+
+## 20. Data ModelをSQLから逆生成しないための、Schema依存・多形式Queryの実測（2026-11-03）
+
+11/3のSQL解釈議論で、**Data Modelの正本をTable / Field / Key / Relationの直接宣言**に据え、SQLを主に**LINQ型のデータ変換**として扱う方針を再照合した。[#951契約連携 PR #2677](https://github.com/hat47x/tei-platform/pull/2677)はGitHub上merged済みだが、そこでのSQL二解釈/Schema依存/階層NULL・欠損/保存後0件に関する設計整理を、単一TEI実行の証拠としては数えない。
+
+[新Draft #2778 のSQL/DDL設計 §8–9](../design/SQL_DDL_STATIC_FACT_AND_SEMANTIC_ACCEPTANCE_2026-11.md)で、**SQL原byteが不変でもSchema依存でQuery結果・Output Shapeが変わる**ことを、Python 3.13.5/SQLite 3.46.1の独立14テストで実行確認。[SM-15固定fixture](https://github.com/hat47x/tei-platform/blob/docs/sql-static-semantic-evidence-handoff-20261103/plan/fixtures/sql-semantics-f0/test_sm15_source_schema_drift.py) は実行ソースとGitHub保存blob `fd6b636f2ee25d05e5522233703b856246ebfbff`一致。
+
+- **Implicit schema dependency**：`orders NATURAL JOIN payments`のSQL byteを変えず、paymentsへ`status`列を追加すると**2行→1行**。明示`JOIN ... ON tenant_id/order_id`はこの差分では2行を維持。`SELECT *`の同一SQLは3→4列へ変化。Source byte/Operator名だけでCache Reuse/Result Shape/Consumer開示の現在性を認めない。
+- **Source/Meaningの責務**：物理PK宣言順とTEI Key Member SortKeyは別。FK/CheckがDDLにあることと、その接続での制約強制、受理済み業務Relation/State Transitionは別。Nullable UNIQUEやDEFAULT省略と明示NULLを混同しない。
+- **Query言語の接合**：TEI Query、SQL Import、Native SQLを用途に応じて選択し、Markdown/DSLの元形式を保持。RDB/JSONB/Document/Graphを使う場合も、NULL/欠損/空配列、Identity、Grain、複数行・順序、非可逆なDerived Dataset、Provider Read/Effect/Consumer Disclosureを契約に残す。新しい第二SQL Parser、Generic Data Store、分散Hostは作らない。
+
+**既存C0〜C5に追加する受渡し票**：C0にSource bytes/Dialect/参照Schema Rev/選択されたSource scope→C1に直接宣言Data ModelのMeaning/Key/RelationとSQL-derived Transformationを別識別→C2にFunction Mapping/Operatorの入力・出力形状と暗黙依存→C3にProvider別Current Schema/実Read/完整性・Read Cohort→C4にRule/Action/Receipt/Host権限→C5にConsumer用途ごとの開示資格・SHO/Studio投影の再資格化。
+
+**未実証／Owner**：14件は隔離SQLiteの結果のみ。TEI SQL Worker→Go DerivedIRのSchema Registry解決・Source span、物理DB Migration/Constraint Apply、複数実Provider、実Consumer、Owner業務意味受理はNOT RUN。#1126（Model Key/Relation）、#2387（SQL DerivedIR）、#988（Operator）、#2506（Function Mapping）、#2622（Provider）、#2600（Build再利用）、#2582（Runtime再評価）へ、既存Gatesを保持して次の一試行を委譲する。
+
+## 21. SQLの暗黙Schema依存を、実Go DerivedIRの現在の資格へ引き継ぐ（2026-11-03）
+
+[SQL/DDL意味契約 §10](../design/SQL_DDL_STATIC_FACT_AND_SEMANTIC_ACCEPTANCE_2026-11.md)／[SM-16 Go test](../../internal/query/derived_sm16_schema_drift_characterization_test.go)を受入対象に追加する。前節のSM-15は実SQLiteの**SQL byte不変／Schema追加／NATURAL JOIN結果2→1**、`SELECT *`のShape変更を観測済み。今回のSM-16は既存Go`query.DeriveFromAnalysis`に**固定した合成analyzer.Result**を、status列の有無が異なる二つの`physical.SchemaSnapshot`と共に与える試験。GoのSource/Field解決が通ったことやIRのJSON一致だけでは、SQLの暗黙Schema依存が完全に列挙されたと証明できない点を分離する。
+
+| 接合 | 具体的に追加する根拠 | 成功扱いしないもの |
+| --- | --- | --- |
+| C0 Source→Analyzer | SQL原byte、Dialect/Worker版、Schemaの列集合/Revision、実Workerへのstdin/ResultとExit/Attempt | Query ID/Protocol一致のみ、Synthetic Workerの返答 |
+| C1 Analyzer→Go IR | `NATURAL JOIN`の**実際に一致する全列**、`SELECT *`展開列/Order、Source occurrence/Scope、`USING`列統合と未解釈診断 | `Coverage.Resolution=full`や合成IR値の一致だけで「依存が完全」 |
+| C2 Function/Operator | 受理済みData ModelのKey/Relation、Function Mapping/Rule Dependency、NULL/Grain/Unit/Compare | SQL DDL/JOINから業務Meaningの新正本を作る |
+| C3 Provider→Current Claim | DB Aliasの実対象、Provider Schema/制約/Read時点、部分集合/0件・実Principal/RLS | Schema-introspectionやReadの成功からHost Grant/Commit/共同Snapshotへ昇格 |
+| C4–5 Consumer/Effect | Shape変更後の二ConsumerのTyped Adapterと公開Field、Rule/Actionへの必要入力と現在資格 | SQL/Providerの静的情報だけでAction Offer、業務確定、外部開示を許可 |
+
+**優先順**：既存[#2387 QX-33 V0/V1](https://github.com/hat47x/tei-platform/pull/2388)で実SQLGlot Producer所在が`unresolved`であれば、同型のsynthetic SQL Workerテストを増やさず、実Producerを固定・起動することを最優先とする。次にSM-15 SQL二Schemaと実Result→Go IRを一試行へ連結し、#2506/#2586へ不足した依存を伝える。SM-16のGo局所テストは**CI exact HEADでのPASSを確認するまでは未確定**、実Worker・Migration/Provider/Owner受理はNOT RUN。新Parser、Host、中央RegistryやGlobal Cacheは作らない。
+>>>>>>> origin/docs/sql-static-semantic-evidence-handoff-20261103
