@@ -1,0 +1,10 @@
+environment development {
+    plugin tei.database.postgres ^1
+
+    database-instance sales_core.dev {
+        definition sales_core
+        provider postgres
+    }
+
+    bind order_entry.sales -> sales_core.dev
+}

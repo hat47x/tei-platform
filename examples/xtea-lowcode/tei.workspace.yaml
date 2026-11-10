@@ -1,7 +1,9 @@
 workspace: xtea_lowcode
 formatVersion: 1
 sources:
+  - plugins
   - semantic
   - applications
   - databases
+  - environments
 
