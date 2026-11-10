@@ -1,0 +1,19 @@
+BEFORE
+  contract sales_core.probe {           -> unexpected token "{"   (says nothing)
+  contract sales_core.probe ^1 {        -> unexpected token "^"
+  contract sales_core.probe version 1 { -> invalid version "version"
+  contract sales_core.probe v1 {        -> ok
+
+AFTER
+  no version / caret version ->
+    expected a version after the contract id "sales_core.probe":
+    write it as "contract sales_core.probe v4 { ... }"
+    (the id and the version are separate tokens)
+
+  keyword "version" -> invalid version "version"      (unchanged)
+  correct v1        -> ok
+
+CONTROLS (unchanged)
+  contract {                        -> unexpected token "{"
+  body keyword frobnicate           -> expected read, write, or query
+  read sales.order                  -> ok
