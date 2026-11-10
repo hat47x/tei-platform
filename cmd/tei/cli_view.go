@@ -128,7 +128,8 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	var allowedCapabilities inputFlag
 	fs.Var(&allowedCapabilities, "allow-capability", "capability allowed by the reference authorizer; repeatable")
 	var inputPairs inputFlag
-	fs.Var(&inputPairs, "input", "command input as name=value; repeatable")
+	fs.Var(&inputPairs, "input", "command or browse-query input as name=value; repeatable")
+	environmentID := fs.String("environment", "", "environment ID that binds the browse pattern's datasource (with -execute and -pattern)")
 	format := fs.String("format", "text", "text or json")
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -140,7 +141,12 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	if fs.NArg() != 0 || *root == "" || *applicationID == "" ||
 		(*patternID != "" && *packageID != "") ||
 		(*commandID != "" && *patternID == "") ||
-		(*execute && *commandID == "") ||
+		// -execute runs a command (-command) or reads a browse pattern (-pattern with
+		// -environment); a bare -execute names neither.
+		(*execute && *commandID == "" && *patternID == "") ||
+		(*execute && *commandID == "" && *environmentID == "") ||
+		(*environmentID != "" && (!*execute || *commandID != "")) ||
+		*environmentID != strings.TrimSpace(*environmentID) ||
 		(*periodStateFile != "" && !*execute) ||
 		(*lifecycleState != "" && (!*execute || *lifecycleCommand == "")) ||
 		(*lifecycleState == "" && *lifecycleCommand != "") ||
@@ -151,7 +157,7 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		// Without this, `view -application X -input order=ORD-1` succeeded and
 		// dropped the value (and never parsed it), so a caller could believe it
 		// had supplied input to a command that was never planned (#3778).
-		(len(inputPairs) > 0 && *commandID == "") ||
+		(len(inputPairs) > 0 && *commandID == "" && !(*execute && *environmentID != "")) ||
 		*root != strings.TrimSpace(*root) || *applicationID != strings.TrimSpace(*applicationID) ||
 		*patternID != strings.TrimSpace(*patternID) || *packageID != strings.TrimSpace(*packageID) ||
 		*commandID != strings.TrimSpace(*commandID) {
@@ -159,6 +165,9 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	}
 	if *execute && *format != "text" && *format != "json" {
 		return fail("INVALID_ARGUMENT", "view -execute supports -format text or json", 2)
+	}
+	if *execute && *commandID == "" && *format != "json" {
+		return fail("INVALID_ARGUMENT", "view -execute on a browse pattern supports -format json only", 2)
 	}
 	if *format != "text" && *format != "json" && *format != "html" && *format != "print" {
 		return fail("INVALID_ARGUMENT", "view -format must be text, json, html, or print", 2)
@@ -188,6 +197,13 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 				report.SourceIndexFingerprint = sourceFP
 			}
 		}
+	}
+	if *execute && *commandID == "" {
+		pairs, err := parseInputPairs(inputPairs)
+		if err != nil {
+			return fail("INVALID_ARGUMENT", err.Error(), 2)
+		}
+		return runViewBrowseRead(loaded.World, core.CanonicalID(*applicationID), core.CanonicalID(*patternID), core.CanonicalID(*environmentID), pairs, report, out, fail)
 	}
 	if *patternID == "" && *packageID == "" && *commandID == "" {
 		if *format != "text" && *format != "json" {

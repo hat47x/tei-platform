@@ -30,6 +30,67 @@ type BrowseQueryEnvironmentExecution struct {
 	Execution   BrowseQueryExecution         `json:"execution"`
 }
 
+// ResolveBrowseQueryInstanceは、browse Patternが宣言するlogical DatasourceをEnvironment上の
+// Database instanceへ解決し、Database定義・provider・Query dialectの整合を確認する。
+// 接続先の選択だけを行い、DBへは接続しない。ExecuteBrowseQueryInEnvironmentと、実接続を
+// 用意する呼出側(CLI等)が同じ解決結果を使えるよう公開する。
+func (r Resolver) ResolveBrowseQueryInstance(
+	environmentID, applicationID, patternID core.CanonicalID,
+) (environment.Environment, environment.DatabaseInstance, PatternResolution, error) {
+	resolved, err := r.ResolvePattern(applicationID, patternID)
+	if err != nil {
+		return environment.Environment{}, environment.DatabaseInstance{}, PatternResolution{}, err
+	}
+	if resolved.Query == nil || resolved.Datasource == nil {
+		return environment.Environment{}, environment.DatabaseInstance{}, PatternResolution{}, fmt.Errorf("browse Pattern %sのQueryまたはDatasourceが解決されていません", patternID)
+	}
+
+	env, err := r.environmentByID(environmentID)
+	if err != nil {
+		return environment.Environment{}, environment.DatabaseInstance{}, PatternResolution{}, err
+	}
+	instanceID, err := applicationDatabaseInstance(env, applicationID, resolved.Datasource.Alias)
+	if err != nil {
+		return environment.Environment{}, environment.DatabaseInstance{}, PatternResolution{}, fmt.Errorf(
+			"browse Pattern %sのDatasource %sをEnvironment %sへ接続できません: %w",
+			patternID,
+			resolved.Datasource.Alias,
+			env.ID,
+			err,
+		)
+	}
+	instance, _ := env.InstanceByID(instanceID)
+	if instance.Definition != resolved.Datasource.TargetDatabase {
+		return environment.Environment{}, environment.DatabaseInstance{}, PatternResolution{}, fmt.Errorf(
+			"Environment %sのDatabase instance %sの定義 %sとDatasource %sのtarget Database %sが一致しません",
+			env.ID,
+			instance.ID,
+			instance.Definition,
+			resolved.Datasource.Alias,
+			resolved.Datasource.TargetDatabase,
+		)
+	}
+	if !instance.Provider.Known() {
+		return environment.Environment{}, environment.DatabaseInstance{}, PatternResolution{}, fmt.Errorf(
+			"Environment %sのDatabase instance %sのprovider %qは実行に使用できません",
+			env.ID,
+			instance.ID,
+			instance.Provider,
+		)
+	}
+	if dialect := resolved.Query.Dialect; dialect != environment.ProviderGeneric && dialect != instance.Provider {
+		return environment.Environment{}, environment.DatabaseInstance{}, PatternResolution{}, fmt.Errorf(
+			"Query %sのdialect %sとEnvironment %sのDatabase instance %sのprovider %sが一致しません",
+			resolved.Query.ID,
+			dialect,
+			env.ID,
+			instance.ID,
+			instance.Provider,
+		)
+	}
+	return env, instance, resolved, nil
+}
+
 // ExecuteBrowseQueryInEnvironmentは、browse PatternのQueryが宣言するlogical Datasourceを
 // Environment上のDatabase instanceへ明示Bindingで接続し、そのinstanceのDatabase定義とproviderが
 // Datasource / Query dialect / runtime Executorと一致することを確認してからExecuteBrowseQueryへ委譲する。
@@ -44,56 +105,9 @@ func (r Resolver) ExecuteBrowseQueryInEnvironment(
 	executor BrowseQueryExecutor,
 	parameters map[string]any,
 ) (BrowseQueryEnvironmentExecution, error) {
-	resolved, err := r.ResolvePattern(applicationID, patternID)
+	env, instance, _, err := r.ResolveBrowseQueryInstance(environmentID, applicationID, patternID)
 	if err != nil {
 		return BrowseQueryEnvironmentExecution{}, err
-	}
-	if resolved.Query == nil || resolved.Datasource == nil {
-		return BrowseQueryEnvironmentExecution{}, fmt.Errorf("browse Pattern %sのQueryまたはDatasourceが解決されていません", patternID)
-	}
-
-	env, err := r.environmentByID(environmentID)
-	if err != nil {
-		return BrowseQueryEnvironmentExecution{}, err
-	}
-	instanceID, err := applicationDatabaseInstance(env, applicationID, resolved.Datasource.Alias)
-	if err != nil {
-		return BrowseQueryEnvironmentExecution{}, fmt.Errorf(
-			"browse Pattern %sのDatasource %sをEnvironment %sへ接続できません: %w",
-			patternID,
-			resolved.Datasource.Alias,
-			env.ID,
-			err,
-		)
-	}
-	instance, _ := env.InstanceByID(instanceID)
-	if instance.Definition != resolved.Datasource.TargetDatabase {
-		return BrowseQueryEnvironmentExecution{}, fmt.Errorf(
-			"Environment %sのDatabase instance %sの定義 %sとDatasource %sのtarget Database %sが一致しません",
-			env.ID,
-			instance.ID,
-			instance.Definition,
-			resolved.Datasource.Alias,
-			resolved.Datasource.TargetDatabase,
-		)
-	}
-	if !instance.Provider.Known() {
-		return BrowseQueryEnvironmentExecution{}, fmt.Errorf(
-			"Environment %sのDatabase instance %sのprovider %qは実行に使用できません",
-			env.ID,
-			instance.ID,
-			instance.Provider,
-		)
-	}
-	if dialect := resolved.Query.Dialect; dialect != environment.ProviderGeneric && dialect != instance.Provider {
-		return BrowseQueryEnvironmentExecution{}, fmt.Errorf(
-			"Query %sのdialect %sとEnvironment %sのDatabase instance %sのprovider %sが一致しません",
-			resolved.Query.ID,
-			dialect,
-			env.ID,
-			instance.ID,
-			instance.Provider,
-		)
 	}
 	if providerBound, ok := executor.(DatabaseProviderBoundBrowseQueryExecutor); ok {
 		runtimeProvider := providerBound.DatabaseProvider()
