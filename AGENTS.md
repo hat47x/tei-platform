@@ -81,6 +81,65 @@
 - ブランチ名、コミット、PRのタイトル・本文には、変更の目的・対象・検証結果を書きます。外部の人物名は、出典の特定に不可欠な場合を除いて記載しません。
 - 公開済み・共有済みの履歴を、表記の整理だけで書き換えません。変更が必要な場合は、参照・進行中の作業・外部の複製・証拠への影響を調べてから判断します。
 
+## 複数モデルのロール割当・委任・エスカレーション・レビュー（PoC）
+
+GitHub Issue/PRを介する異種AIの協調では、**モデル → ロール → 作業**を分離する。Issue/PRはモデル名ではなくロールを要求し、利用可能なモデルから実行時に割り当てる。モデルは複数のロールを担当でき、ロールには複数モデルを候補登録できる。モデル固有の性能・価格・利用制限の変動で、Issueの内容や委任関係を書き換えない。DSH・Codex・Claude Code等のHarnessにも共通のWork Packet契約を適用する。
+
+### ロール → 作業（責務の定義）
+
+| ロール | 作業と成果物 | 次の依頼先（ロール） |
+| --- | --- | --- |
+| `planner` | 親Issueを分解し、子Issueの目的・受入条件・依存関係・変更境界・返却先を定義する | 実装は`implementer`、境界の判断は`architect` |
+| `architect` | 製品横断の設計、契約・制約の整理、設計上の矛盾の判断候補 | `planner`へ分解を戻す、重要な論点は`independent-reviewer`へ |
+| `implementer` | 指定範囲の実装・試験・文書変更を行い、PRと検証結果を提出する | 不具合の難所は`diagnostician`、完了時は`reviewer` |
+| `diagnostician` | 原因調査、再現条件・反例の抽出、失敗の限定的な修正と助言 | 実装再開は`implementer`、契約変更は`architect` |
+| `operator` | UI/CLI操作・実環境の再現・操作証拠の取得 | 実装修正は`implementer`、原因不明は`diagnostician` |
+| `reviewer` | PR差分・試験・受入条件を確認し、blocking指摘またはレビュー完了を記録する | 指摘は`implementer`、重要・対立論点は`independent-reviewer` |
+| `independent-reviewer` | 実装者・一次レビュアーから独立した観点で難所・重要な設計を再検証する | 結論と争点を`reviewer`・`integrator`に返す |
+| `integrator` | 子Issue/PRの依存関係・成果・最新base/head・統合前証拠を照合する | 未解決点は`planner`・`reviewer`へ返す |
+
+ロールは権限・能力の**責務**であり、一列に並んだモデルの性能順位ではない。`independent-reviewer`には、可能なら実装担当と異なるモデル系統・セッションを選び、同じ根拠の反復を独立レビューと呼ばない。
+
+### モデル → ロール（初期候補。固定割当ではない）
+
+| 利用可能なモデル | 担当可能なロールの初期候補 | 割当時の留意点 |
+| --- | --- | --- |
+| GPT Sol | `architect`, `planner`, `reviewer`, `independent-reviewer`, `integrator` | 横断設計・受入条件・統合判断の候補 |
+| GPT Terra | `operator`, `implementer`, `reviewer` | UI/CLI操作、可視部分・限定範囲の確認を優先 |
+| Claude Opus | `architect`, `planner`, `diagnostician`, `independent-reviewer` | 難所・重要判断での独立検証候補 |
+| Claude Sonnet | `implementer`, `diagnostician`, `reviewer`, `integrator` | 複数ファイル実装と一次レビュー |
+| DeepSeek Flash | `implementer`, `diagnostician`, `reviewer` | 標準実装・試験・反復作業を広く担当 |
+| Step 3.5 Flash | `implementer` | 境界・受入条件が明確な小さな作業を優先 |
+| Step 3.7 Flash | `implementer`, `diagnostician`, `reviewer` | 問題切り分けとやや複雑な実装 |
+| Step 5 Preview | `architect`, `planner`, `diagnostician`, `reviewer`, `independent-reviewer` | 高難度調査・専門的な再レビュー |
+
+この表は**利用候補の初期値**であり、認可済みの接続先・その時点の利用可能性・利用枠・実測品質・タスク難度に応じてDispatcherまたは担当セッションが選択する。特定モデルを必須要件にしない。新しいモデルを追加する際も、まず担当可能ロールへ紐づける。ロール割当の変更をIssueやPRの責務変更と混同しない。実行記録には**要求ロール／実モデルID／Harness／Session／選択理由**を残す。
+
+### Issueでの委任（ロール宛て）
+
+- 親Issueは`planner`または`architect`が分解し、子Issueに**親Issue、要求ロール、目的、許容変更範囲、開始base SHA、受入条件、検証、成果物、レビュー返却ロール**を記載する。未受理の業務意味を推測で固定しない。
+- 子Issueの作業先は`route:implementer`／`route:diagnostician`／`route:operator`／`route:planner`／`route:architect`等、**ロール名のラベル**で指定する。状態は`state:ready`／`state:working`／`state:review`／`state:blocked`のうち一つ。ラベルは未作成なら作成してから運用する。
+- 具体的なモデル選択は作業取得時に行う。複数モデルが同じロールを実行可能なら、能力条件を満たす範囲で低コスト・空き枠・稼働状態を優先する。選ばれたモデルに担当資格がない場合は、同一ロールの別候補か別ロールへ再計画する。
+- 作業はIssue単位のブランチ・worktreeで分離する。同時に複数セッションが同じIssueを取得する環境では外部調停者のlease／排他ロックを使う。GitHubラベルの読取→更新だけでは排他取得を保証しない。
+
+### 対応困難時のエスカレーション
+
+- 同じ失敗を独立に2回試して改善しない、受入条件が曖昧、作業境界を超えた、設計・権限の再判断が必要になった場合は無限に再試行せず、**残論点を限定**して要求ロールを切り替える。
+- `implementer`で原因不明の障害なら`diagnostician`、要件・設計の矛盾なら`planner`／`architect`へ委任する。上位モデル名への直接指定はしない。解決結果は元のIssueへ返し、必要に応じて元のロールで作業を続ける。
+- 引継ぎには**失敗条件、再現手順、観測ログ、試した対策、関連commit/PR、未確定事項、求める判断**を残す。作業済み差分は参照可能なcommitにする。異なるロールへ回しても同じ情報で循環させない。
+- A4相当の外部効果は既存の人間確認条件を優先する。作業が停滞しても、独立した兄弟Issueまで止めない。
+
+### PRでのロール宛てレビューと再レビュー
+
+- `implementer`等がPRを作成したら、委任元に定められた`review:reviewer`等の**レビュー要求ロール**へ戻す。本文に対象Issue、head/base SHA、変更要約、実施・未実施の試験、残存リスクを記載する。
+- `reviewer`は実際の差分・証拠を確認し、指摘を`blocking`／`non-blocking`／`question`に分類する。修正は元の実装ロールに返し、新head SHAで再レビューする。
+- 共通契約、権限、意味、データ整合性、広域変更、またはレビュー間の見解相違がある場合は`independent-reviewer`へ**争点を限定**して追加レビューを依頼する。結果は元PRの`reviewer`／`integrator`へ集約する。レビューの無限循環を避ける。
+- 各レビューには**要求ロール、実モデルID、Harness/Session、対象commit、確認内容、結果、未解決指摘**を記録する。同一GitHubアカウントで行うAIレビューは正式な別ユーザーApproveではない。AIレビュー完了・CI成功・意味受理・実環境確認は区別し、既存のA3/A4統合条件を維持する。
+
+### 無人運用の条件
+
+AGENTS.mdは判断規則であり、ラベルだけではモデルへの割当・セッション再開は発生しない。ロール別キューの監視、**ロール→稼働中モデル**の解決、排他取得、停止・再開、利用枠の枯渇時の代替選択は外部Dispatcherまたは検証済みのHarness機構が担う。DSH Agent TeamsのCASはTeam内Task向けであり、独立DSHセッションとGitHub Issueを横断した排他機構の代替ではない。既存の隔離・送出境界（#2515）、外部Work交換（#977）、並列開発要件（#2493）を参照し、秘密・顧客資料をIssue・PRへ転載しない。
+
 ## 困ったとき
 
 - 規則が食い違う、製品の意味・権限に触れる、検証できない、並行変更が重なる場合は、進められる範囲を分けて実行し、残った判断と選んだ既定案をIssue・PR・作業票へ書きます。人の返答を待つ間も、後続の作業を止めません。
