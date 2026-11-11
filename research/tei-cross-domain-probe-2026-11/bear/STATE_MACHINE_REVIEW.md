@@ -1,6 +1,6 @@
 # SM-01 review記録：回復状態機械のread-only投影
 
-要求ロール：`reviewer`。対象：[状態機械のread-only投影](../../plan/research/TEI_CROSS_DOMAIN_PROBE_CSW_VS_BEAR_2026-11.md) §5.6 と `bear/statemachine.go`。
+要求ロール：`reviewer`。対象：[状態機械のread-only投影](../../../plan/research/TEI_CROSS_DOMAIN_PROBE_CSW_VS_BEAR_2026-11.md) §5.6 と `bear/statemachine.go`。
 親Issue：[#4193](https://github.com/hat47x/tei-platform/issues/4193)。review日：2026-11-11。
 
 本記録は、実装者とは別のセッションで、**上流ファイルを直接読んで**投影を再確認した結果です。blocking／non-blocking／question に分類します。**#4193 の結論は変更しません。**
