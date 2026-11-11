@@ -72,16 +72,16 @@ TEIには既に、型付き意味（`semantic.Data`・`Attribute`・`Relation`�
 | 方式 | 単位 | 成立する条件 | 失われやすいもの | 最初の適用範囲 |
 | --- | --- | --- | --- | --- |
 | **一括** | 対象集合全体 | 対象集合を列挙できる（または上限`MaxRows`で有界）、全体がメモリまたは一時領域に収まる | 巨大集合での所要メモリ、長い単一トランザクション | **最初の縦断実装の既定** |
-| **チャンク** | 部分集合（ページ・区切り） | チャンク間で独立に変換でき、集計がチャンクをまたがない、または境界をまたぐ集計を明示的に別操作とする | チャンク境界をまたぐ集計・順序・重複排除、途中失敗時の部分出力 | 集計を含む場合は「境界をまたぐ集計の禁止」を宣言 |
+| **チャンク** | 部分集合（ページ・区切り） | Source集合が重複なく完全被覆され、結合可能な中間状態とGroup Key・NULL・Decimal・丸め規則が保存される場合のみ部分集計をmergeできる | チャンク欠落/重複、同一Keyの別chunk出現、中間丸め、COUNT DISTINCTの不正な合算 | W2で正負例を固定してから適用 |
 | **ストリーミング** | 到着順の連続 | 各レコードが独立に変換でき、窓（event-time/処理時刻）と遅延許容が宣言されている | 全体の完全性、リプレイ可能性、順序保証、後着による再計算 | 窓・水位・遅延許容を宣言できる場合のみ |
-| **差分** | 前回との差 | 前回の基準（Source Revision・スナップショット・水位）が同一で、削除・再出現を区別できる | 削除、キーの再利用、時刻の巻き戻し | 基準Revisionの同一性を検査できる場合のみ |
+| **差分** | 前回の基準Revision→今回の対象Revision | 新しいRunでbase→targetの連続性と変更・削除・遅着の捕捉が検証できる | CDC欠落、watermarkの飛び、削除・Key再利用 | Sourceの差分能力を証明できなければunsupported/unknown |
 | **増分** | 未処理範囲 | 進捗（Checkpoint）が入力の位置と意味の版に束縛され、再開点の不一致を検出できる | 途中でのSource改版、追記と更新の混在、順序の入替 | §9の再開検査が通る場合のみ |
 
 **方式選択の規則（提案）**:
 1. 既定は**一括**。対象集合が有界であることを`MaxRows`または明示の上限で示せない場合は、一括を名乗らない。
-2. チャンクは、**集計の窓がチャンク境界と一致するか、集計を境界の外（全件取得後）へ移す**ことを条件とする。境界をまたぐ`SUM`を、チャンクごとの`SUM`の合計として黙って置き換えない。
+2. チャンク集計は**無条件許可でも無条件禁止でもない**。入力全件の重複ない被覆、Group Keyの同一性、結合可能な中間状態、NULL・Decimal・丸めの保存が検証できる場合のみmergeする。SUMは精度が保存される加算、AVGは(sum,count)、COUNT DISTINCTは集合や正確なDistinct状態等の別条件を要求する。
 3. ストリーミングは、窓と遅延許容を宣言できない限り採用しない。宣言できない場合、到着順の処理は「一括の逐次実行」であり、完全性の主張を伴わない。
-4. 差分・増分は、**前回の基準Revisionを入力として受け取り、今回のSource Revisionと一致しなければ拒否**する。進捗だけを信用しない。
+4. **同一Runの再開**ではcheckpointに束縛したSource snapshot/revision・意味版・範囲digestが一致しなければ拒否する。一方**新規差分Run**ではbaseRevisionとtargetRevisionの不一致は通常の入力であり、base→targetの連続性、変更・削除捕捉、watermark/遅着処理を個別検査する。差分取得の能力が無い場合、全件比較による代替を明示・検証できなければunsupported/unknown。
 
 ## 6. 業務処理の類型：単純変換・定期バッチ・締め・移行・バックフィル・再集計
 
@@ -130,7 +130,7 @@ TEIには既に、型付き意味（`semantic.Data`・`Attribute`・`Relation`�
 
 `internal/failure`は既に`Kind`（`business_rejection`/`technical_failure`/`partial_success`）、`RetryPolicy`（`retryable`/`not_retryable`/`lookup_first`）、`HasEffectUnknown`を持つ。ETL/Batchはこの分類を再利用し、第二の失敗分類を作らない。
 
-### 9.2 Checkpointが保証しないこと
+### 9.2 Checkpointが保証しないこと（同一Run/Attemptの再開）
 
 Checkpointは「どこまで進んだか」の記録であり、**「同じ意味のまま再開できる」ことの証明ではない。** 再開の安全性は次の一致で決まる。
 
@@ -226,7 +226,7 @@ Checkpointは「どこまで進んだか」の記録であり、**「同じ意�
 | Input | 固定入力ファイルのdigest | 同じdigest | 入力が違えば比較しない |
 | Expected | 独立に用意した期待出力（実装出力から生成しない） | 同じ期待出力 | 期待が実装由来なら独立でない（§13の原則） |
 | 実Output | 出力ファイルのdigest | 同じdigest | 入口で結果が変われば意味または環境の差を記録 |
-| 生成Artifact | Manifestのdigest | 同じdigest | 片方だけがManifestを作る状態を成功としない |
+| 生成Artifact | Data output memberのdigestとManifest member集合・世代を別記 | 同じData output digestを要求し、Manifestは構成memberごとに検査 | run.json/attempt時刻を含むManifest全体digestの一致は要求しない。Consumer実読取の資格はさらに別 |
 | 実行版 | 実行した関数を含むBinaryの版 | CLIの`cliBuildIdentity` | 版が違えば同一性を主張しない |
 
 実装の完了条件は「二つの入口が同じ期待出力を再現し、**入力・意味版・出力digest・実行版を別の列で記録できる**」ことである。二入口の一致は、意味の受理でも業務確定でもない。
@@ -243,8 +243,8 @@ Checkpointは「どこまで進んだか」の記録であり、**「同じ意�
 | --- | --- | --- |
 | **N-01** NULL・欠損・不正型・変換不能 | 金額が空欄、数量が`"abc"`、通貨が未宣言のコード、NULLと欠損を混在 | 正常なNULLは失敗ではない。不正型は行番号と理由コードで拒否。変換不能な値を0や空文字へ置換しない。`0`と`NULL`と`未取得`を区別 |
 | **N-02** 重複行・順序変更・部分取得 | 同一`order_id`の行を2件、入力順を入れ替え、後半のページ取得だけ失敗 | 重複は業務キーの重複として検出し、暗黙にlast-winsにしない。行順を意味の順序とみなさない。部分取得は`partial`として返し、全件の集計を主張しない |
-| **N-03** チャンク境界をまたぐ集計 | 100行を25行×4チャンクで処理し、`customer`別の合計をチャンクごとに計算 | チャンクごとの合計の和を全体の合計として出すことを拒否。境界をまたぐ集計は全件取得後または明示のWindowで行う |
-| **N-04** 入力途中切断・途中失敗・再開地点不一致 | 固定長ファイルの最終レコードが途中で切れている。実行が3段目で停止。再開時に前回の位置と入力の入れ替え | 切断は全体拒否。3段目までを`resolved`として記録し、再開は4段目から。位置の不一致は再開拒否（`unknown`へは丸めない） |
+| **N-03** チャンク集計の有資格Merge | 同一customerが複数chunkに出現。正例は全件を重複なく被覆しDecimal中間状態を保持、負例はchunk欠落/重複・中間丸め・AVGの平均値をそのまま平均 | 正例のみ全件集計と同一値/Key/digest。負例は拒否/unknown。SUMとAVGの結合条件を検査し、COUNT DISTINCTを無条件加算しない |
+| **N-04** 入力途中切断・Step途中失敗・完了直後停止・再開点不一致 | 固定長の最終record切断。Step3開始後失敗した場合とStep3完了を永続観測後Step4前に停止した場合を分離 | 切断は全体拒否。前者はStep1/2のみresolved、Step3 failed/unknownとして再実行資格を独立判定。後者はStep3完了の耐久証拠がある場合に限りStep4から再開。位置/Sourceの不一致は拒否 |
 | **N-05** 同じ入力の再処理・重複書込み | 完了したrunKeyで再実行。同じOperation IDで再送。別Operation IDで同じ対象を更新 | 完了済みrunKeyは`refuse`。同一Operation IDの再送は適用0件／Receipt照会で「既に適用済み」と区別。別IDの再適用は重複Effectとして検出（件数だけで判定しない） |
 | **N-06** Source改版後の古いCheckpoint再利用 | Checkpoint取得後に入力ファイルが差し替わり、Source Revisionが変わる | 再開を拒否し、古いCheckpointと新しい入力の組合せを実行しない。進捗だけを信用しない |
 | **N-07** 外部書込みのCommit結果不明 | 外部APIがタイムアウト、応答なし、ACK喪失 | 成功にも失敗にも丸めない。Receipt照会を行い、照会できない場合は`unknown`のまま停止。自動再送しない |
@@ -252,7 +252,7 @@ Checkpointは「どこまで進んだか」の記録であり、**「同じ意�
 | **N-09** 入口の取り違え | CLIと直接Go実行で同じ意味を実行し、片方だけ古いBinaryを使う | 出力digestが一致しても実行版が違えば同一性を主張しない。版が違う場合は差を記録し、意味の一致と環境の一致を分ける |
 | **N-10** 部分成功の全成功への丸め | 全12件中10件が変換・出力され、2件が拒否 | `partial_success`として残し、全体成功の表示にしない。拒否2件の理由と行番号を残し、確定・帳票の段へ進まない |
 | **N-11** 空集合と未取得 | 対象0件（正しい空）と、Reader失敗（未取得）と、Reader未設定 | 三つを別の結果にする。空集合を「0件の成功」に、Reader失敗を「0件」に丸めない（`internal/execution/outputs.go`の`ProjectOutputs`が件数と理由を別に返す先例） |
-| **N-12** 帳票・合計の精度 | 単価`300.005`を小数2桁の通貨へ丸め、合計を集計 | 丸めの時点（行ごとか合計後か）を宣言し、丸めの前後で合計が変わることを記録。丸めを無宣言の既定にしない |
+| **N-12** 通貨・合計の精度と適用時点 | 単価300.005、複数量・複通貨、異なるrate適用日、未登録通貨。rate表の版/Source digestと業務基準期を固定 | quantity×unit_price×rateの演算順、Decimal scale、行別/合計後の丸め、NULL・未登録通貨の拒否を独立Expectedに固定。暗黙0円・無宣言丸めを認めない |
 
 ## 14. 作業単位と実装計画
 
@@ -262,7 +262,7 @@ Checkpointは「どこまで進んだか」の記録であり、**「同じ意�
 
 - **対象API**: `encoding/csv`、`semantic.Data`/`Attribute`の型宣言、参照実装`tools/reference-data-import-check`の照合規則、`internal/query`の`RelationQuery`（DB経路）
 - **入力・出力**: 宣言された型のTSV/CSV→型付きレコード列（値・完全性・順序保証・Source Revision付き）
-- **テスト**: ヘッダー重複・未知列・型不一致・キー欠落・空文字とNULL・引用未閉じ・文字コード違い
+- **テスト**: ヘッダー重複・未知列・型不一致・キー欠落・空文字とNULL・引用未閉じ・文字コード違い。rate表の有効日・業務基準期・Source digest・未登録通貨と独立Expectedを先に固定
 - **依存先**: なし（DB経路は`internal/driver/queryruntime`に依存）
 - **想定変更ファイル**: `tools/reference-etl-batch-slice/`（新規）、`examples/etl-first-slice/`（新規の固定入力）
 - **完了条件**: N-01・N-02・N-11が独立Expectedで通る。値を持たない失敗行記録ができる
@@ -272,7 +272,7 @@ Checkpointは「どこまで進んだか」の記録であり、**「同じ意�
 
 - **対象API**: `standard`Query IRの`Filter`/`Join`/`Aggregate`、`query.DerivedSelect`と`ValidateDerivedSelect`（`ErrDerivedUnsupported`/`ErrDerivedIncomplete`）、`derivationref`、`semantic.Validation`
 - **入力・出力**: 型付きレコード列→変換後の型付きレコード列＋項目ごとの途中結果
-- **テスト**: 三値論理のFilter、多対多Joinの重複増殖、空集合のAggregate、`MaxRows`超過、派生不能な集計の`unsupported`
+- **テスト**: 三値論理のFilter、多対多Joinの重複増殖、空集合のAggregate、`MaxRows`超過、派生不能な集計の`unsupported`。N-03ではSUM/AVGの有資格Merge正常系と欠落/重複/中間丸めの負例を同じ独立Expectedで比較
 - **依存先**: W1
 - **想定変更ファイル**: `tools/reference-etl-batch-slice/contract.go`、`internal/query/standard/`（既存のまま使えるかの確認に限る）
 - **完了条件**: 八つの変換すべてについて「落とす先」「明示が必要な条件」「落とせない場合の返し方」が表で埋まり、N-03・N-08・N-12が通る
@@ -282,7 +282,7 @@ Checkpointは「どこまで進んだか」の記録であり、**「同じ意�
 
 - **対象API**: `internal/artifact.Manifest`（`InputRevision`混在拒否）、`cmd/tei/cli_operations_artifacts.go`の同名衝突拒否、一時ファイル＋原子的rename
 - **入力・出力**: 変換後のレコード列→決定的な出力ファイル＋`manifest.json`
-- **テスト**: 途中失敗で公開領域に部分ファイルが残らない、同名の別内容を拒否、LF/列順/小数桁の決定性
+- **テスト**: 途中失敗で公開領域に部分ファイルが残らない、同名の別内容を拒否、LF/列順/小数桁の決定性。単一Fileのrenameと多member一式の公開資格を別々に判定し、Consumer pin・実byte読取は#2604へ接続
 - **依存先**: W2
 - **想定変更ファイル**: `tools/reference-etl-batch-slice/output.go`、`examples/etl-first-slice/expected/`
 - **完了条件**: 同じ入力と同じ意味版で出力digestが再現し、N-04・N-05（出力側）が通る
@@ -302,7 +302,7 @@ Checkpointは「どこまで進んだか」の記録であり、**「同じ意�
 
 - **対象API**: `cmd/tei/main.go`のdispatch、`cmd/tei/cli_commands.go`の`acceptedCommands`、`cmd/tei/cli_flag_contract.go`の`selectedReadOnlyFlagAllowlist`、`cmd/tei/cli_version.go`の`cliBuildIdentity`
 - **入力・出力**: 固定入力パス・出力先・意味版→`run.json`＋API/CLI JSON
-- **テスト**: 引数不足、未知のフラグ、`-json`の出力契約、`cliBuildIdentity`の`VCSRevision`/`DeclaredRevision`の区別、直接Go実行との出力digest一致
+- **テスト**: 引数不足、未知のフラグ、`-json`の出力契約、`cliBuildIdentity`の`VCSRevision`/`DeclaredRevision`の区別、直接Go実行との**Data output digest**一致。Attempt/時刻を含む`run.json`とManifestの全byte一致は要求しない
 - **依存先**: W1〜W4
 - **想定変更ファイル**: `cmd/tei/cli_etl_batch.go`（新規候補）、`cmd/tei/cli_commands.go`、`cmd/tei/cli_flag_contract.go`
 - **完了条件**: §12.3の五列が一つの票で埋まり、N-09が通る
@@ -312,7 +312,7 @@ Checkpointは「どこまで進んだか」の記録であり、**「同じ意�
 
 - **対象API**: `internal/artifact`の`EvidenceBundle`/`WriteEvidenceBundle`/`StageArtifacts`/`PublishStage`、`internal/scenariotest`の`Parse`/`Generate`と`scenario`のpin付き実行
 - **入力・出力**: 実行記録＋出力digest＋意味版→Evidence票（検証した項目と未検証の項目を分ける）
-- **テスト**: 期待出力が実装出力から生成されていないこと（独立Expectedの検査）、未検証項目を「適合」にしないこと
+- **テスト**: 期待出力が実装出力から生成されていないこと（独立Expectedの検査）、未検証項目を「適合」にしないこと。Data output、実Attempt Evidence、Manifest member構成、Consumer readbackを別列で採否する
 - **依存先**: W5
 - **想定変更ファイル**: `plan/evidence/`（実行記録）、`tools/reference-etl-batch-slice/evidence.go`
 - **完了条件**: §11の表の各行が証拠で埋まり、N-08・N-10が通る
@@ -322,7 +322,7 @@ Checkpointは「どこまで進んだか」の記録であり、**「同じ意�
 
 - **対象API**: `internal/runlog`（`RunKey`/`Decide`/`Owns`/`File`）、`internal/execution.RunPlan`、`internal/failure`、`internal/security/effectcommit`
 - **入力・出力**: Checkpoint（runKey・意味版・Source Revision・入力digest・処理済み範囲・attempt/fence）→再開可否の判定と再開実行
-- **テスト**: N-04・N-05・N-06・N-07。Source Revision不一致の拒否、Commit不明で自動再送しないこと
+- **テスト**: N-04・N-05・N-06・N-07。同一Run再開はSnapshot pin不一致拒否、新規差分Runはbase→target連続性と削除/遅着捕捉を分離。Source Revision不一致の拒否、Commit不明で自動再送しないこと
 - **依存先**: W4・W6
 - **想定変更ファイル**: `tools/reference-etl-batch-slice/resume.go`、`plan/design/`の§9追補
 - **完了条件**: §9.2の五条件すべてに検査があり、Checkpointの存在だけを安全の根拠にしないことが試験で固定される
@@ -340,6 +340,18 @@ Checkpointは「どこまで進んだか」の記録であり、**「同じ意�
 
 **実装順**: W1 → W2 → W3 → W5（W4をW2と並行）→ W6 → W4確定 → W7 → W8。最初の縦断実装（§12）はW1〜W3＋W5で成立し、W6で証拠を付ける。W7・W8は縦断実装の成立後に拡張する。
 
+### 実装前反証レビューの採用候補（W1〜W7横断、NOT RUN）
+
+この段落は[PR #4409の反証レビュー](https://github.com/hat47x/tei-platform/pull/4409#issuecomment-6793680605)を作業条件へ戻す**設計候補**であり、Ownerの正式採用や実装試験の結果ではない。
+
+- **有資格な部分集計**: 演算子ごとにmergeに必要な状態を定める。SUMは同じGroup Key・単位・正確な加算状態、AVGは`(sum,count)`、MIN/MAXはNULL規則、COUNT DISTINCTは正確な重複排除可能状態などが必要。全件被覆と重複排除の独立証拠が無ければ、部分結果が計算できても「全件完了」と主張しない。浮動小数点の非結合性や中間丸めがある場合は全件計算とbyte同値を自動主張しない。
+- **差分と再開の別Claim**: `resume(same run, pinned snapshot, checkpoint)` と `delta(new run, base revision → target revision, CDC completeness)` を別資格とする。前者ではsnapshot同一性、後者では変更・削除の完全性と範囲の連続性を証明する。未知のwatermarkとlate eventは推定で補完しない。
+- **再現性の三層**: (1)固定入力・rate/意味版に対する決定的な`order-summary.tsv`、(2)Attempt時刻・実Binary・fenceを含む`run.json`、(3)実Member集合を結びつけるManifest/Publicationと独立Consumer readback。二入口で(1)の等値を要求するが、(2)(3)の全byte等値は仕様にしない。Manifest単体はmulti-member atomic publicationの証拠ではない。
+- **数値意味の固定**: rate適用日・業務基準期・rate Source digest、`quantity × unit_price × rate`の計算順序、各Decimal scaleと行別/集計後の丸め、NULL/未登録通貨の拒否を独立Expectedへ固定する。実行時刻からrate適用日を推測しない。
+- **Step復旧**: 「Step3が失敗した」のか「Step3完了の耐久証拠を観測した後に停止した」のかを別入力で試す。ログにresolvedと書かれたことだけで外部Effectの不存在・Commitを推定しない。
+
+**受入順**: W1でrate/入力の独立Expected→W2で有資格Mergeの正負例→W3で決定的単一Data memberと多member公開の別資格→W5/W6で二入口のData digestとAttempt evidence比較→W7で再開/新規差分・unknown effectの別資格。第二のPublisher・Manifest正本・ETL Runner・Schedulerを作らない。
+
 ## 15. Owner判断事項（未受理の実行契約・副作用規則）
 
 以下は本文が決めない。決めるまで実装の対象にしない、または既定案を選んで覆す条件を記録する。
@@ -349,7 +361,7 @@ Checkpointは「どこまで進んだか」の記録であり、**「同じ意�
 | O-01 | Batch定義を`run-plan`の拡張にするか、独立の宣言（候補`batch`）にするか | `run-plan`＋`capability`の合成で表し、新キーワードを追加しない | 既存の`RUN_PLAN_*`で表現できない欄が二つ以上の実例で示された場合 | [#1130](https://github.com/hat47x/tei-platform/issues/1130) |
 | O-02 | CLIサブコマンド名と引数形 | `scenario run`の形を踏襲する候補`batch` | 既存の`scenario`と意味が衝突する場合 | W5 |
 | O-03 | Checkpointの保存場所 | 実行ディレクトリ内のJSON Lines（`internal/runlog.File`と同形） | 複数Hostからの同時実行が必要になった場合 | W7 |
-| O-04 | 出力Manifestを`internal/artifact.Manifest`へ統合するか | 同形の独自Manifestから開始し、統合は別Issue | 統合で`Kind`の意味が曖昧になる場合 | [#2482](https://github.com/hat47x/tei-platform/issues/2482) |
+| O-04 | 出力Manifestの表現と既存Artifact契約への接続 | 既存`internal/artifact.Manifest`/`EvidenceBundle`/Stage・Publishを再利用し、第二の同形Manifest正本は作らない | 既存契約で表現できない意味が独立実例で示された場合はunsupportedとして#2482のOwnerに戻す | [#2482](https://github.com/hat47x/tei-platform/issues/2482) |
 | O-05 | チャンク境界と集計の禁止規則をDSLで表すか診断で表すか | 診断（実行前拒否）で表す | 実行時の動的な境界決定が必要になった場合 | W2 |
 | O-06 | Effect級・冪等級を意味宣言へ持たせるか | 別欄として宣言し、CapabilityのEffectと混ぜない | 既存`semantic.EffectRule`で表現できることが示された場合 | [#1129](https://github.com/hat47x/tei-platform/issues/1129) |
 | O-07 | EKI `TaskRequest.parameters`の未配送をどう扱うか | 意味損失として診断し、EKIへ載せない | EKIがパラメータ配送の契約版を公開した場合 | [#4194](https://github.com/hat47x/tei-platform/issues/4194) |
