@@ -69,7 +69,21 @@ Observationは`data-element`候補へ、有向Relationは`cross-reference`候補
 
 - `reviewStatus`：常に`requires-owner-review`。
 - `resolution`：`unresolved`／`ambiguous`／`resolved`。**`resolved`はOwnerの明示mappingと、既存`InspectSubject`が一意に解決できた場合だけ**付く。
-- Set全体の`qualification`：`complete`／`partial`／`unknown`。REAの`coverage.exhausted`が`false`・未申告、`limitations`または`unknowns`が非空、Sourceが`provider-reported`でない、端点が未観測、のいずれかで`partial`以下へ落とす。
+- Set全体の`qualification`：`complete`／`partial`／`unknown`。REAのcoverageが部分（`truncated=true`、`omitted_count>0`、`status=unknown/partial`）・未申告、`limitations`または`unknowns`が非空、Sourceが`provider-reported`でない、端点が未観測、のいずれかで`partial`以下へ落とす。
+
+**coverageの実形状（実測で判明）**：REA 6.8.0の実documentは`{status, truncated, omitted_count, limits}`を書き、`exhausted`は**書かない**。旧実装は`exhausted`だけを読んでいたため、実documentを常に「未申告」として`unknown`に落としていた。現在は`truncated`と`status`の両方を読み、`omitted_count`も保持する。`status=unknown`は「列挙を切っていない」ではなく「その成果物を作っていない」を意味するため、`truncated=false`でもcompleteとはしない。
+
+### 3.6 三要素のどこまで支持できるか
+
+`threeElementCoverage`が**要素ごとに**「このAttemptで候補を作れるか」を答える。
+
+| 要素 | 状態 | 理由 |
+| --- | --- | --- |
+| Data | `supported`（観測nodeまたは有向Relationがある場合） | 外部のnode観測と有向Relationがdata-shapedな事実である |
+| Function | `unsupported` | 外部事実はasset/module/relationであって、宣言された入出力・効果を持つ操作ではない。観測したrelation labelは理由へ「考慮した」と記すだけ |
+| Business | `unsupported` | 業務上の意味はOwnerの判断であり、外部構造で代替できない |
+
+**この表を持つ理由**：Function/Businessの欄を空欄にすると、レビュアーは「外部解析では作れないと判断した」のか「作り忘れた」のか区別できない。状態・理由・「何があれば支持できるか」を並べて書く。
 
 ## 4. 既存read-only APIとのFit/Gap
 
@@ -220,9 +234,13 @@ Observationは`data-element`候補へ、有向Relationは`cross-reference`候補
 - 実バイナリ（`go build -o tei.exe ./cmd/tei`）での実行：最小attempt＋`-output`（exit 0、候補3件、正式な票12,486 bytes）、`-before`比較（全entryが`unchanged`）、実`reference/workspace`への`-workspace`束縛（exit 0、3候補とも`not-present-in-read-artifact-set`で`unresolved`のまま）、`-evidence`不在（`EVIDENCE_READ_FAILED`／exit 2）、`-mapping`単独（`INVALID_ARGUMENT`／exit 2)
 - 実Workspace（`tei.workspace.yaml`＋`semantic/*.tei`）に対する束縛の4分岐を `cmd/tei/cli_three_element_rea_workspace_test.go` で確認：byte一致→`independently-bound`かつ`resolution=unresolved`（tag付きのcoincident宣言は「構造的一致であり受理ではない」と注記）、byte不一致→`source-digest-conflict`かつ未解決集計に`source-digest-conflict-requires-fresh-analysis`、path不在→`not-present-in-read-artifact-set`、workspace外を指すpath→decode時に`provider-reported-invalid-source-path`で束縛しない
 - Owner mappingを渡した場合の`inspectStatus`が`not-attempted`にならないこと（既存`operations.InspectSubject`が実際に呼ばれること）も同テストで確認
+- **実REA 6.8.0の実行**：`rea-agents@6.8.0`を隔離prefix（`npm install --prefix`）へ導入し、合成JavaScriptディレクトリ（`package.json`＋`index.js`）を`analyze-javascript-application --json --full-output`で解析。exit 0、stdout 35,553 bytes（UTF-8）。この実documentをintakeへ通し、`qualification=partial`、候補14件（data 7・cross-reference 7）、`threeElementCoverage`がdata=supported／function=unsupported／business=unsupported、票39,758 bytes
+- **実REAの部分case**：構文エラー入りの`index.js`を解析。REAはexit 0だが`statistics.parse_failures=1`、graph coverage `status=partial`、`unknowns`12件、limitation 6件。intakeは`partial`のまま（`complete`へ昇格しない）
+- 上記の実測で見つけた誤りを2件修正（§3.5のcoverage形状、§3.6の`artifact-root`別名）
 
 **実行していない（NOT RUN）**
 
-- 実REAプロセスを起動したE2E。fixtureは**手書きの合成JSON**であり、REA 6.8.0の実出力を取得した証拠ではない
+- 実REAの**provider実invocation witness**。REAは起動し実出力を取得したが、`selected→invoked`の対応、provider descriptor `version`が実は`"1"`（`6.8.0`ではない）であることの意味、実行物の署名・digestは未確認。REAが報告する`provider.version`はREAパッケージ版ではなく**Provider実装の版**であり、これが6.8.0と一致しないことは記録しておく
 - Owner受理、Shared Acceptance接続、SHO、移行実証、生成コード
+- `cmd/tei`全体の再実行結果（実行中）
 - CIの全項目。`bounded-design-context`の1件はPR #4316でpassを確認したが、他のworkflowは未確認
