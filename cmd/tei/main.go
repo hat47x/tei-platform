@@ -236,6 +236,8 @@ func main() {
 	deploymentPath := fs.String("deployment", "", "observed deployment state JSON")
 	runPath := fs.String("run", "", "durable deployment run JSON")
 	pluginLockPath := fs.String("plugin-lock", "", "resolved TEI plugin lock JSON")
+	pluginInventoryID := fs.String("plugin", "", "plugin-inventory: report this plugin in detail")
+	pluginInventoryDiagnose := fs.Bool("diagnose", false, "plugin-inventory: report only rows that carry a reason code")
 	targetPluginLockPath := fs.String("target-plugin-lock", "", "plugin lock for a new recovery run; defaults to -plugin-lock")
 	runID := fs.String("run-id", "", "durable deployment run ID")
 	attemptPath := fs.String("attempt", "", "deployment executor result JSON")
@@ -458,6 +460,16 @@ func main() {
 	}
 	if command == "workspace-files" {
 		code, err := workspaceFilesJSON(os.Stdout, *workspacePath, *worldPath, fs.NArg())
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		if code != 0 {
+			os.Exit(code)
+		}
+		return
+	}
+	if command == "plugin-inventory" {
+		code, err := pluginInventoryJSON(os.Stdout, *workspacePath, *worldPath, *environmentID, *pluginLockPath, *pluginInventoryID, *pluginInventoryDiagnose, fs.NArg())
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		}
