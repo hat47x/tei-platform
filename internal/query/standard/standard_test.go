@@ -151,6 +151,46 @@ func TestRoundTripSQLite(t *testing.T) {
 			},
 			expected: [][]interface{}{{2}},
 		},
+		{
+			name: "multiple_joins",
+			sql:  "SELECT o.order_id, c.name, p.name AS product FROM orders o JOIN customers c ON o.customer_id = c.id JOIN products p ON o.product_id = p.id WHERE o.amount >= 15",
+			setup: func(t *testing.T, db *sql.DB) {
+				mustExec(t, db, "CREATE TABLE orders (order_id INTEGER, customer_id INTEGER, product_id INTEGER, amount REAL)")
+				mustExec(t, db, "CREATE TABLE customers (id INTEGER, name TEXT)")
+				mustExec(t, db, "CREATE TABLE products (id INTEGER, name TEXT)")
+				mustExec(t, db, "INSERT INTO customers VALUES (1, 'A'), (2, 'B')")
+				mustExec(t, db, "INSERT INTO products VALUES (1, 'X'), (2, 'Y')")
+				mustExec(t, db, "INSERT INTO orders VALUES (1, 1, 1, 10), (2, 1, 2, 20), (3, 2, 1, 5)")
+			},
+			expected: [][]interface{}{{2, "A", "Y"}},
+		},
+		{
+			name: "subquery_in_from",
+			sql:  "SELECT t.customer_id, t.total FROM (SELECT customer_id, SUM(amount) AS total FROM orders GROUP BY customer_id) t WHERE t.total > 15",
+			setup: func(t *testing.T, db *sql.DB) {
+				mustExec(t, db, "CREATE TABLE orders (order_id INTEGER, customer_id INTEGER, amount REAL)")
+				mustExec(t, db, "INSERT INTO orders VALUES (1, 1, 10), (2, 1, 20), (3, 2, 5)")
+			},
+			expected: [][]interface{}{{1, float64(30)}},
+		},
+		{
+			name: "multiple_aggregates",
+			sql:  "SELECT customer_id, COUNT(*) AS cnt, SUM(amount) AS total, AVG(amount) AS avg FROM orders GROUP BY customer_id",
+			setup: func(t *testing.T, db *sql.DB) {
+				mustExec(t, db, "CREATE TABLE orders (order_id INTEGER, customer_id INTEGER, amount REAL)")
+				mustExec(t, db, "INSERT INTO orders VALUES (1, 1, 10), (2, 1, 20), (3, 2, 5)")
+			},
+			expected: [][]interface{}{{1, int64(2), float64(30), float64(15)}, {2, int64(1), float64(5), float64(5)}},
+		},
+		{
+			name: "expression_in_select",
+			sql:  "SELECT order_id, amount * 2 AS doubled, amount + 1 AS incremented FROM orders",
+			setup: func(t *testing.T, db *sql.DB) {
+				mustExec(t, db, "CREATE TABLE orders (order_id INTEGER, amount REAL)")
+				mustExec(t, db, "INSERT INTO orders VALUES (1, 10), (2, 20)")
+			},
+			expected: [][]interface{}{{1, float64(20), float64(11)}, {2, float64(40), float64(21)}},
+		},
 	}
 
 	for _, tc := range cases {
