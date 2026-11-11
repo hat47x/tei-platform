@@ -171,6 +171,7 @@
 | [`SEMANTIC_TRAIT_CLAIMS_AND_CONFORMANCE_2026-11.md`](SEMANTIC_TRAIT_CLAIMS_AND_CONFORMANCE_2026-11.md) | 意味的特性の宣言・観測・適合：閉値域／MECE／属性同一性の横断設計（2026-11） |
 | [`TEI_MD_UNIFIED_AUTHORING_MIGRATION_2026-11.md`](TEI_MD_UNIFIED_AUTHORING_MIGRATION_2026-11.md) | TEI Authoring Source を .tei.md へ統一する段階移行計画 |
 | [`TEI_SHO_OKF_DOMAIN_LINT_DOCUMENT_UNIT_2026-11.md`](TEI_SHO_OKF_DOMAIN_LINT_DOCUMENT_UNIT_2026-11.md) | TEI/SHOのOKF知識バンドルとドメインLint：段階導入の検証計画 |
+| [`REA_EXTERNAL_EVIDENCE_INTAKE_2026-11.md`](REA_EXTERNAL_EVIDENCE_INTAKE_2026-11.md) | 外部逆解析ツール（REA）のEvidenceを外部Evidenceとして受領・検査する契約。受領bytesのdigest・CLI応答包装とEvidence本体の分離・派生入力の別digest・版別JSONL framing照合・状態分類と、意味・実DB観測への非昇格（[#3394](https://github.com/hat47x/tei-platform/issues/3394)、実装済みのT0受領側） |
 
 ## 関連する参照事例と評価
 

@@ -142,8 +142,13 @@ func reaEvidenceJSON(out io.Writer, args reaEvidenceOuterArgs, extraArgs int) (i
 
 	report := cliResultEnvelope{
 		SchemaVersion: resultSchemaVersion(command),
-		Mode:          reaEvidenceMode(args),
-		Result:        reaEvidenceResult{Receipt: receipt, DerivedRequestPath: derivedPath},
+		// ok reports that the command produced its receipt, which it did for
+		// every state it can classify — including a partial or tool-absent
+		// one. The receipt's own state is the finding; ok is not a second,
+		// softer way of saying the delivery was complete.
+		OK:     true,
+		Mode:   reaEvidenceMode(args),
+		Result: reaEvidenceResult{Receipt: receipt, DerivedRequestPath: derivedPath},
 	}
 	code := reaEvidenceExit(receipt.State)
 	if err := receipt.VerifyPins(externalanalysis.Pins{
@@ -151,10 +156,12 @@ func reaEvidenceJSON(out io.Writer, args reaEvidenceOuterArgs, extraArgs int) (i
 		Fingerprint:    args.expectedFingerprint,
 		SourceRevision: args.expectedSourceRev,
 	}); err != nil {
+		report.OK = false
 		report.Error = &cliFailure{Code: "EVIDENCE_PIN_MISMATCH", Message: err.Error()}
 		return emitResult(out, report, 1)
 	}
 	if code != 0 {
+		report.OK = false
 		report.Error = &cliFailure{Code: reaEvidenceFailureCode(receipt.State), Message: receipt.Reason}
 	}
 	return emitResult(out, report, code)

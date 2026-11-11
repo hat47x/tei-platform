@@ -62,6 +62,15 @@ func runReaEvidence(t *testing.T, args reaEvidenceOuterArgs) (int, cliResultEnve
 	if err := json.Unmarshal(out.Bytes(), &report); err != nil {
 		t.Fatalf("stdout is not one envelope: %v (%s)", err, out.String())
 	}
+	// ok reports that the command produced a receipt, not that the delivery
+	// was complete: a partial receipt is still a receipt, and a caller that
+	// reads ok as "complete" would launder the finding.
+	if code == 0 && !report.OK {
+		t.Fatalf("a command that produced a receipt must say ok: %s", out.String())
+	}
+	if code != 0 && report.OK {
+		t.Fatalf("a failing command must not say ok: %s", out.String())
+	}
 	return code, report
 }
 

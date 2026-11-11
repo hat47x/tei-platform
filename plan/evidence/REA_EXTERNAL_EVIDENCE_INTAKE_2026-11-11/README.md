@@ -22,6 +22,13 @@
 - 負例: `source.kind`を版が受諾しない値にした拒否（`invalid_request`/`invalid_input`、`details.issues`に受諾値集合が出る）、外側包装を`source.evidence`に渡した拒否（必須16フィールド`missing_argument`＋`ok`/`data`/`meta`が`unknown_argument`）、UTF-16LE保存fileを`evidence-file`で渡した拒否（`evidence_integrity_mismatch` "JSON input is not valid UTF-8"）。
 - 同じコマンドでも、Windows hostではstdoutがUTF-16LE+BOM/CRLFだった（CIのubuntuではUTF-8/LF）。受領digestは復号前のbytesに対して取る。
 
+## 閉ループの確認（TEI派生請求を実REAへ渡す）
+
+受領したEvidence bytesから `tei rea-evidence -request-out` が組み立てた派生請求を、**実REA 6.7.0**へ渡して `inspect-analysis-view … --format jsonl` を実行した。
+
+- exit 0、出力33,578 bytes、SHA-256 `491e2e44b8ace539aa2c217c6e1aa3dcbb83d24336ff70b20bd02fbc95b69ca7`。
+- 上記は本記録の捕捉fixture（`rea-6.7.0/view.jsonl`）と**byte単位で一致**した。派生が決定的で、実工具が受諾したことの両方が確認できる。
+
 ## この記録が主張しないこと
 
 - 解析結果の正しさ。fixtureは合成で、対象は実アプリではない。
