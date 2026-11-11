@@ -1,0 +1,58 @@
+﻿namespace sui
+
+type DocumentId from std.identifier
+type CardId from std.identifier
+type IslandId from std.identifier
+
+// DocumentV1 is SUI's source of truth. This definition describes the shape
+// that a TEI reference may point at; it does not make TEI the authority.
+data Document {
+    attribute documentId type sui.document_id
+    relation cards to sui.card many
+    relation islands to sui.island many
+}
+
+data Card {
+    attribute cardId type sui.card_id
+    attribute text type std.text
+    attribute x type std.decimal
+    attribute y type std.decimal
+    attribute claimType type std.code
+    attribute holdState type std.code
+}
+
+data Island {
+    attribute islandId type sui.island_id
+}
+
+// Containment is the visual membership: one card drawn inside one island.
+// It is a separate occurrence from affiliation and is never merged into it.
+data Containment {
+    attribute containmentId type std.identifier
+    relation island to sui.island one
+    relation card to sui.card one
+}
+
+// Affiliation is the explicit, reversible, many-to-many membership that is
+// not visual containment. It has its own occurrence identity (aff-*).
+data Affiliation {
+    attribute affiliationId type std.identifier
+    relation card to sui.card one
+    relation island to sui.island one
+}
+
+// A directed edge keeps its own identity so parallel edges stay distinguishable.
+data Edge {
+    attribute edgeId type std.identifier
+    attribute edgeType type std.code
+    relation fromCard to sui.card one
+    relation toCard to sui.card one
+}
+
+// Island parent link. SUI parentIslandId is nullable at the root; the current
+// TEI Relation only offers one|many, so root presence stays unresolved.
+data IslandParent {
+    attribute islandParentId type std.identifier
+    relation parent to sui.island one
+    relation child to sui.island one
+}

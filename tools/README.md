@@ -252,6 +252,7 @@
 | [`reference-subsystem-partition/`](reference-subsystem-partition/) | 候補として与えた固定Data Owner・直接C/U/D・所属許可・must-linkだけを対象に、越境更新重みの厳密最小値を読取り専用で算出する参照。実Sourceの受理済み所有関係・開示資格・Effectは判定しない（#3250）。 |
 | [`reference-sui-action-boundary/`](reference-sui-action-boundary/) | SUIの操作とTEI Actionの接続例 |
 | [`reference-sui-adoption/`](reference-sui-adoption/) | SUI移行の参照データと検査 |
+| [`reference-sui-canonical-probe/`](reference-sui-canonical-probe/) | SUIの意味構造を `.tei` で宣言したときの解決結果と、宣言しない損失を read-only で報告する probe（M2） |
 | [`reference-sui-interaction/`](reference-sui-interaction/) | 画面操作とApplication Actionの接続例 |
 | [`reference-transform-runtime-engine/`](reference-transform-runtime-engine/) | 決定的な変換処理の実行例 |
 | [`reference-transform-runtime-engine-build/`](reference-transform-runtime-engine-build/) | 変換実行基盤の構築確認 |
