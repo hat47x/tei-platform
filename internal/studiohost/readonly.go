@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	"tei/internal/command"
+	"tei/internal/failure"
 	"tei/internal/operations"
 	"tei/internal/sourceindex"
 	"tei/internal/validation"
@@ -19,10 +20,21 @@ type WorkspaceRef struct {
 	Label string `json:"label"`
 }
 
+// Failure is the response shape a Studio host returns instead of a value. The
+// Kind, Retryable and EffectUnknown fields carry the unified failure contract
+// (internal/failure) so a client can tell a business rejection from a
+// technical failure without reading the code list.
 type Failure struct {
 	Code    string `json:"code"`
 	Stage   string `json:"stage,omitempty"`
 	Message string `json:"message"`
+	// Kind is business_rejection, technical_failure or partial_success.
+	Kind string `json:"kind,omitempty"`
+	// Retryable is retryable, not_retryable or lookup_first.
+	Retryable string `json:"retryable,omitempty"`
+	// EffectUnknown reports that a partial effect may have been applied, so a
+	// caller must not resend with a new operation identity.
+	EffectUnknown bool `json:"effectUnknown,omitempty"`
 }
 
 // Each response deliberately separates transport/operation completion from
@@ -285,9 +297,9 @@ func selectedInspectionFailure(err error) *Failure {
 			operations.InspectionUnsupportedKind,
 			operations.InspectionNotFound,
 			operations.InspectionAmbiguous:
-			return &Failure{Code: inspection.Code, Message: "inspector could not resolve the requested subject"}
+			return businessRejection(inspection.Code, "inspector could not resolve the requested subject")
 		default:
-			return &Failure{Code: "OPERATION_FAILED", Message: "inspection service failed"}
+			return technicalFailure("OPERATION_FAILED", "inspection service failed")
 		}
 	}
 	return operationFailure(err)
@@ -298,16 +310,61 @@ func operationFailure(err error) *Failure {
 	if errors.As(err, &validation) {
 		switch validation.Stage {
 		case operations.StageLoad:
-			return &Failure{Code: "WORKSPACE_LOAD_FAILED", Stage: string(validation.Stage), Message: "workspace loading failed"}
+			return technicalFailureAt("WORKSPACE_LOAD_FAILED", string(validation.Stage), "workspace loading failed")
 		case operations.StageSourceIndex:
-			return &Failure{Code: "SOURCE_INDEX_FAILED", Stage: string(validation.Stage), Message: "source-index construction failed"}
+			return technicalFailureAt("SOURCE_INDEX_FAILED", string(validation.Stage), "source-index construction failed")
 		}
-		return &Failure{Code: "OPERATION_FAILED", Message: "workspace operation failed"}
+		return technicalFailure("OPERATION_FAILED", "workspace operation failed")
 	}
 	var inspection *operations.InspectionError
 	if errors.As(err, &inspection) {
-		return &Failure{Code: inspection.Code, Message: inspection.Message}
+		return businessRejection(inspection.Code, inspection.Message)
 	}
 	// Unclassified errors may contain absolute paths or host-private details.
-	return &Failure{Code: "OPERATION_FAILED", Message: "workspace operation failed"}
+	return technicalFailure("OPERATION_FAILED", "workspace operation failed")
+}
+
+// businessRejection marks a Failure the caller refused for a reason the
+// request itself carries. Retrying the same request cannot change the answer.
+func businessRejection(code, message string) *Failure {
+	return &Failure{
+		Code:      code,
+		Message:   message,
+		Kind:      string(failure.BusinessRejection),
+		Retryable: string(failure.NotRetryable),
+	}
+}
+
+// technicalFailure marks a Failure caused by the host or a provider. The same
+// request may succeed later, but the effect state is unknown.
+func technicalFailure(code, message string) *Failure {
+	return &Failure{
+		Code:          code,
+		Message:       message,
+		Kind:          string(failure.TechnicalFailure),
+		Retryable:     string(failure.LookupFirst),
+		EffectUnknown: true,
+	}
+}
+
+func technicalFailureAt(code, stage, message string) *Failure {
+	f := technicalFailure(code, message)
+	f.Stage = stage
+	return f
+}
+
+// commandFailure builds a Failure for an error that came back from a Command
+// or Hook boundary. The code and message keep the values the boundary already
+// reported; Kind, Retryable and EffectUnknown are read from the unified failure
+// contract (internal/failure) when the error carries one. An ExecutionError or
+// hook.Error therefore keeps its classification across the Studio bridge, so a
+// client sees "business rejection, do not retry" instead of a bare code.
+func commandFailure(code, stage, message string, err error) *Failure {
+	f := &Failure{Code: code, Stage: stage, Message: message, EffectUnknown: command.EffectMayBeUnknown(err)}
+	if unified, ok := failure.AsFailure(err); ok {
+		f.Kind = string(unified.Kind())
+		f.Retryable = string(unified.Retryable())
+		f.EffectUnknown = f.EffectUnknown || unified.HasEffectUnknown()
+	}
+	return f
 }

@@ -12,12 +12,13 @@
 | 要素 | 状態 | 根拠 | 次の作業 |
 | --- | --- | --- | --- |
 | SUIの型付きread-only参照 | 統合済み | SUI PR #3428、merge `eafd4d36` | 変更しない |
-| Source状態・文書単位の開示制限・多重Edgeの`parallel` | 提案中 | SUI PR #3429（CI green、未統合） | M1としてレビュー・統合判断 |
-| TEI側のM0〜M6設計 | 提案中 | TEI PR #4298 | 本書と同時にレビュー |
-| TEI側の実Consumer | 未実装 | — | P7（任意） |
+| Source状態・文書単位の開示制限・多重Edgeの`parallel` | 統合済み | SUI PR #3429、merge `5be212ca`、ADR-0116 | 変更しない |
+| TEI側のM0〜M6設計 | 統合済み | TEI PR #4298、merge `d9aecac4` | 本書を入口にする |
+| M2 Canonical定義とprobe | 統合済み | TEI PR #4346、merge `ef0921c1`（`reference/sui-adoption/workspace-m2`、`tools/reference-sui-canonical-probe`） | 実Consumerの入力として使う |
+| P7 TEI側の参照consumer | 提案中 | TEI PR #4390 | レビュー・統合判断 |
 | Owner判断8点 | 未決 | 設計 §7、本書 §7 | 各PRで判断を記録 |
 
-M0は「SUI側のconsumerが動く」ところまでで、TEI側のconsumer・producer契約・Canonical定義は未完了である。M0を理由にM1以降の受入を省略しない。
+M0は「SUI側のconsumerが動く」ところまでで、TEI側のproducer契約は未完了である。M0・M2の統合を理由に、M1のproducer契約・M3以降の受入を省略しない。
 
 ## 2. 不変条件（全Work Packet共通）
 
@@ -123,9 +124,11 @@ python -m ruff check src/sui_sensemaking_api/tei_sui_reference.py \
 
 ### M2 Canonical定義（Reference Workspace）
 
+**状態**: 統合済み（TEI PR #4346、merge `ef0921c1`）。以下の候補は実装前の記録であり、現在の正本は`reference/sui-adoption/workspace-m2/`と`tools/reference-sui-canonical-probe/`にある。差分は「宣言した型の一覧」ではなく、実装が選んだ区別（containment/affiliationを別Dataにする、Edgeにoccurrence IDを持たせる、Tree閲覧状態を宣言しない）である。
+
 **目的**: `sui.document` / `sui.card` / `sui.island` とRelationを`.tei`で宣言し、instanceを昇格させずに型の解決を検証する。
 
-**候補配置**（新規Reference。Product runtimeではない）:
+**候補配置**（新規Reference。Product runtimeではない。統合済みの実装は`reference/sui-adoption/workspace-m2/`）:
 
 ```text
 reference/sui-reference/workspace/
@@ -337,36 +340,35 @@ python -m pytest tests/test_tenant_session_precondition.py -q
 
 ### P7 TEI側の参照consumer（任意・M1と並行可）
 
+**状態**: 提案中（TEI PR #4390）。実装は`tools/reference-sui-reference-consumer/`で、検査項目の一覧は同ディレクトリのREADME（P7-01〜P7-14）にある。
+
 **目的**: SUIの`tai.reference.sui-document-reference/v0`をTEI側で読み、契約違反を早期に検出する。共通APIの新Operationは作らない。
 
-**候補配置**:
+**配置**（PR #4390の実装）:
 
 ```text
 tools/reference-sui-reference-consumer/
   README.md
   main.go
-  consumer.go
-  consumer_test.go
+  main_test.go
   testdata/small-document.json
-  testdata/invalid-*.json
 ```
 
-**入力**: SUIのrouteが返す`reference`オブジェクト、またはそのJSONファイル。
+**入力**: SUIのrouteが返す`reference`オブジェクトを保存したJSONファイル（`-input`）。
 
 **検証**:
 
 - `schema`が`tai.reference.sui-document-reference/v0`
-- `acceptedMeaning=false`、`semanticStatus=reference-only`
-- 必須キーとenum
-- entity refの一意性
-- relationのfrom/toがentity集合に存在する
-- `parallel`の`groupRef`/`index`/`count`が整合する
-- `content.status=withheld-unreviewed`のCardに本文がない
+- `acceptedMeaning=false`、`semanticStatus=reference-only`、`authority=sui-document`
+- refの`{kind,id}`、Card/Relation IDの重複
+- `relationKind`の3種と、from/toの端点一意性
+- `parallel`の`groupRef`/`index`/`count`が整合し、group内のoccurrence数が宣言`count`と一致する
+- `content.status=withheld-unreviewed`のCardが`reviewed`を名乗らない
 - `disclosure.textIncluded=false`のとき、本文らしきキーが無い
 
-**出力**: `ok`、または安定したfailure code（`unsupported-schema`、`invalid-reference`、`accepted-meaning-claimed`など）。ID・本文を失敗メッセージへ含めない。
+**出力**: `ok`、または安定したfailure code（`unsupported-schema`、`invalid-reference`、`accepted-meaning-claimed`、`content-in-reference`）。ID・本文を失敗メッセージへ含めない。
 
-**試験**: 正常1件、schema不正、acceptedMeaning=true、未知のrelation端点、parallel不整合、本文混入の負例。`go test ./tools/reference-sui-reference-consumer/... -count=1`。
+**試験**: 正常1件、schema不正、未知top-level key、acceptedMeaning=true、semanticStatus/authority不正、textIncluded=true、unreviewedContent不正、reviewedとwithheldの矛盾、parallel count不整合、directedのparallel欠落、未知のcontainment card、check-in済みfixture。`go test ./tools/reference-sui-reference-consumer/... -count=1`。
 
 **Owner gate**: TEIの共通APIへOperationを追加するかは#1158/#3419。P7はReference toolに留め、製品APIと名乗らない。
 

@@ -198,7 +198,7 @@ func (h *ReadOnly) executeCommandWithStore(workspaceID, applicationID, patternID
 		// declares no hook (see TestCommandFailedHasNoKnownTrigger). The branch
 		// stays as the boundary for a future runner that can fail without a
 		// report; it is not a claim that the code is reachable.
-		return CommandRunResponse{Failure: &Failure{Code: "COMMAND_FAILED", Stage: "command", Message: hookErr.Error()}}
+		return CommandRunResponse{Failure: commandFailure("COMMAND_FAILED", "command", hookErr.Error(), hookErr)}
 	}
 	referenceStore := command.NewMemoryStore()
 	var executor command.Executor = command.ReferenceExecutor{World: loaded.World}
@@ -250,11 +250,13 @@ func (h *ReadOnly) executeCommandWithStore(workspaceID, applicationID, patternID
 		// The same rule the CLI uses: an ExecutionError already names the
 		// reason. This entrance used to special-case only the lifecycle refusal,
 		// so a missing input, a closed period or a failed commit all arrived as
-		// COMMAND_FAILED (#3807).
+		// COMMAND_FAILED (#3807). The unified failure fields are carried over
+		// from the error, so a business rejection is not reported like a
+		// technical failure.
 		if code, message, ok := command.ReportedFailure(err); ok {
-			return CommandRunResponse{Failure: &Failure{Code: code, Stage: "command", Message: message}}
+			return CommandRunResponse{Failure: commandFailure(code, "command", message, err)}
 		}
-		return CommandRunResponse{Failure: &Failure{Code: "COMMAND_FAILED", Stage: "command", Message: err.Error()}}
+		return CommandRunResponse{Failure: commandFailure("COMMAND_FAILED", "command", err.Error(), err)}
 	}
 	if applyToStore {
 		// The change is applied, so the after-* phases have a point to run at.
@@ -274,7 +276,7 @@ func (h *ReadOnly) executeCommandWithStore(workspaceID, applicationID, patternID
 			}
 		}
 		if afterErr != nil {
-			return CommandRunResponse{Failure: &Failure{Code: "COMMAND_FAILED", Stage: "command", Message: afterErr.Error()}}
+			return CommandRunResponse{Failure: commandFailure("COMMAND_FAILED", "command", afterErr.Error(), afterErr)}
 		}
 		effectReverted = reverted
 	}
