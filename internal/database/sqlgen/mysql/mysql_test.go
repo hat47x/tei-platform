@@ -34,11 +34,11 @@ func TestMySQLIntegration(t *testing.T) {
 
 	// Test SELECT with WHERE, ORDER BY, LIMIT
 	selectSQL, err := dialect.Select(ctx, sqlgen.SelectOptions{
-		Table:    "orders",
-		Columns:  []string{"id", "amount", "status"},
-		Where:    []sqlgen.Condition{{Column: "status", Operator: "=", Value: "active"}},
-		OrderBy:  []sqlgen.OrderClause{{Column: "amount", Desc: true}},
-		Limit:    intPtr(10),
+		Table:   "orders",
+		Columns: []string{"id", "amount", "status"},
+		Where:   []sqlgen.Condition{{Column: "status", Operator: "=", Value: "active"}},
+		OrderBy: []sqlgen.OrderClause{{Column: "amount", Desc: true}},
+		Limit:   intPtr(10),
 	})
 	if err != nil {
 		t.Fatalf("Select error: %v", err)
@@ -97,10 +97,10 @@ func TestMySQLIntegration(t *testing.T) {
 
 	// Test GROUP BY and HAVING
 	groupSQL, err := dialect.Select(ctx, sqlgen.SelectOptions{
-		Table:    "orders",
-		Columns:  []string{"status", "COUNT(*) as cnt"},
-		GroupBy:  []string{"status"},
-		Having:   []sqlgen.Condition{{Column: "COUNT(*)", Operator: ">", Value: 5}},
+		Table:   "orders",
+		Columns: []string{"status", "COUNT(*) as cnt"},
+		GroupBy: []string{"status"},
+		Having:  []sqlgen.Condition{{Column: "COUNT(*)", Operator: ">", Value: 5}},
 	})
 	if err != nil {
 		t.Fatalf("Group By Select error: %v", err)
@@ -129,15 +129,24 @@ func TestMySQLIntegration(t *testing.T) {
 
 	// Test WINDOW
 	windowSQL, err := dialect.Select(ctx, sqlgen.SelectOptions{
-		Table:    "orders",
-		Columns:  []string{"id", "amount", "SUM(amount) OVER w AS sum_amount"},
-		Window:   "w AS (PARTITION BY customer_id ORDER BY created_at)",
+		Table:   "orders",
+		Columns: []string{"id", "amount", "SUM(amount) OVER w AS sum_amount"},
+		GroupBy: []string{"id"},
+		Window:  "w AS (PARTITION BY customer_id ORDER BY created_at)",
+		OrderBy: []sqlgen.OrderClause{{Column: "id"}},
 	})
 	if err != nil {
 		t.Fatalf("Window Select error: %v", err)
 	}
 	if !strings.Contains(windowSQL.Statement, "WINDOW w AS (PARTITION BY customer_id ORDER BY created_at)") {
 		t.Errorf("Window Select statement = %v, want WINDOW clause", windowSQL.Statement)
+	}
+	// MySQL reads WINDOW after GROUP BY / HAVING and before ORDER BY.
+	if strings.Index(windowSQL.Statement, "WINDOW") < strings.Index(windowSQL.Statement, "GROUP BY") {
+		t.Errorf("Window Select statement = %v, want WINDOW after GROUP BY", windowSQL.Statement)
+	}
+	if strings.Index(windowSQL.Statement, "WINDOW") > strings.Index(windowSQL.Statement, "ORDER BY") {
+		t.Errorf("Window Select statement = %v, want WINDOW before ORDER BY", windowSQL.Statement)
 	}
 
 	// Test UNION
