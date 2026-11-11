@@ -16,6 +16,13 @@ func validateWorkspace(out io.Writer, root string) (int, error) {
 	}
 	if result.Direct != nil {
 		printSourceDiagnostic(out, *result.Direct)
+		// The run stopped at this file, so every other file is unexamined. The
+		// JSON form already says so with `incomplete`; without this line the text
+		// form reads as "there is one problem" (#4178).
+		fmt.Fprintf(out, "%s\t%s\t%s\n",
+			"note", "VALIDATION_INCOMPLETE",
+			fmt.Sprintf("the run stopped at the first syntax error in %s; files other than that one were not examined",
+				result.Direct.Source.ArtifactPath))
 		return 1, nil
 	}
 	hasSourceRootError := false

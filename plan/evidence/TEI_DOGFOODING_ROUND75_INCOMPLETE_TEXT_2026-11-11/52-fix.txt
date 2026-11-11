@@ -1,0 +1,9 @@
+validateWorkspace's Direct branch now prints:
+
+  note  VALIDATION_INCOMPLETE  the run stopped at the first syntax error in
+  applications/a/application.tei; files other than that one were not examined
+
+Measured after the fix:
+  two broken files -> error line + the note
+  clean workspace  -> "ok" only (no note)
+  semantic finding -> no note (every file was parsed, so the answer is complete)

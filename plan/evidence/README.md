@@ -467,4 +467,4 @@
 - [閉じ括弧の後ろに書いた「ブロック内専用の項目」が所属を名指しする](TEI_DOGFOODING_ROUND74_BLOCK_PLACEMENT_2026-11-11/README.md)（#4169のA案5件目。bind/resource/column等を閉じ括弧の後ろに書くと、どのブロックに入るかを言う。最初の探査はファイル名が誤りで3回とも読まれず、第72ラウンドで入れた警告がその誤りを教えた）
 
 - [「成果物と違うdigestを申告する」は、ディスクとの比較で止まる](TEI_GO_SELF_BUILD_ARTIFACT_DIGEST_STOPS_2026-11-11.md)（§4.37の条件5で、entryが自分で確かめる側を実測。childが書いた成果物と違う`artifactDigest`を申告すると**exit 1・`ok:false`・`claimed:false`**になった。**直近2周で測った「止まらない」2件と対になり、表の非対称が実測に基づくことを示す。** #2831）
-
+- [構文エラーで止まった実行をテキスト出力も「不完全」と言う](TEI_DOGFOODING_ROUND75_INCOMPLETE_TEXT_2026-11-11/README.md)（#4178。2ファイルを壊すと最初の1件しか出ない仕様は変わらないが、JSONはincompleteを出しテキストは黙っていた非対称を解消。意味の診断は完全な答えなので不完全と表示しない区別を試験で固定）

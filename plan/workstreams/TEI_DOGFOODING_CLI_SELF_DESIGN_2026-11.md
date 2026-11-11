@@ -2464,3 +2464,47 @@ for example environment staging { ... ; bind <application>.<alias> -> <database-
 ### 試験と変異
 
 3試験と変異2種（ブロック判定を削る・未知の語にもヒントを返す）が落ちる。**M1 は最初アンカーが合わず適用できなかった**（壊れた変異に気づくのは4回目）。
+
+## 76. 第75ラウンド（2026-11-11）: 構文エラーで止まった実行を、テキスト出力も「不完全」と言う
+
+設計演習で「複数の構文エラーがあるとき、どこまで報告されるか」を測った。生出力は[第75ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND75_INCOMPLETE_TEXT_2026-11-11/README.md)にある。
+
+### 測定
+
+2ファイルを壊して `validate` を実行すると、**a の1件だけ**が出る。各ファイルを単独で実行すると両方とも壊れている。
+
+| 実行 | 結果 |
+| --- | --- |
+| a だけ | `applications/a/application.tei:3:5 PARSE_ERROR` |
+| b だけ | `applications/b/application.tei:2:5 PARSE_ERROR` |
+| 両方 | **a の1件のみ** |
+
+ローダは最初の構文エラーで止まる（設計）。
+
+### JSON は正直、テキストは黙っていた
+
+JSON は #4178 で既に `incomplete` を出していた。
+
+```json
+"incomplete":{"reason":"load-stopped-at-first-syntax-error",
+  "detail":"... files other than the one named in stoppedAt were not examined",
+  "stoppedAt":"applications/a/application.tei"}
+```
+
+**しかしテキスト出力は1行だけで、不完全であることを言わなかった。** 同じ実行が片方では正直で片方では黙っている。
+
+### 修正
+
+`validateWorkspace` の `Direct` 分岐に1行足した。
+
+```text
+note	VALIDATION_INCOMPLETE	the run stopped at the first syntax error in applications/a/application.tei; files other than that one were not examined
+```
+
+### 試験と変異
+
+3試験（構文で不完全と出る・正常時は出さない・**意味の診断は不完全と表示しない**）と変異2種。
+
+**M2 が重要**である。意味の診断は全ファイルを解析した結果なので、不完全と表示すると**新しい嘘**になる。この区別を試験で固定した。
+
+既存の出力ピン（`TestFormatSourceDiagnosticIncludesPathLineColumn`・`TestValidateWorkspace...`）は無変更で通る。
