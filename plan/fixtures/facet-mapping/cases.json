@@ -1,0 +1,658 @@
+{
+  "schemaVersion": "tei.reference.facet-mapping-input/v0",
+  "cases": [
+    {
+      "id": "XMAP-01",
+      "title": "順序付きCollectionを順序なし集合へ変換する",
+      "structure": {
+        "id": "sales.ordered_lines",
+        "family": "collection",
+        "facets": {
+          "identity": "occurrence",
+          "composition": "sequence",
+          "order": "ordered",
+          "orderOrigin": "source",
+          "multiplicity": "multi",
+          "grain": "line",
+          "presence": ["null", "missing"]
+        }
+      },
+      "representation": {
+        "id": "rep.set",
+        "kind": "set-listing",
+        "contextId": "order_entry.recent_orders",
+        "epoch": "e1",
+        "facets": {
+          "identity": "value",
+          "composition": "set",
+          "order": "unordered",
+          "orderOrigin": "none",
+          "multiplicity": "unique",
+          "grain": "line",
+          "presence": ["null", "missing"]
+        }
+      },
+      "mapping": {
+        "source": {"subject": "sales.order_line", "occurrence": "ordered", "grain": "line", "scope": "selected-order", "revision": "r1", "snapshot": "s1"},
+        "target": {"representation": "rep.set", "slot": "items", "axes": [], "contextId": "order_entry.recent_orders", "epoch": "e1", "revision": "r1"},
+        "identity": {"kind": "1:N", "claimedPreserved": false},
+        "order": {"claimedPreserved": true, "evidence": ["enumerated in source order"]},
+        "multiset": {"fanout": 1, "claimedPreserved": false},
+        "grain": {"sourceGrain": "line", "targetGrain": "line", "steps": 0, "claimedPreserved": true, "evidence": ["same grain"]},
+        "presence": {"claimedPreserved": true, "evidence": ["states carried through"]},
+        "quantity": {},
+        "time": {},
+        "coverage": {"claimed": "complete", "observed": "complete"},
+        "loss": {"declared": ["order", "occurrence-identity"]},
+        "operation": {"mode": "read-only", "inverseEligible": true}
+      }
+    },
+    {
+      "id": "XMAP-02",
+      "title": "多重有向GraphをTreeで表示する",
+      "structure": {
+        "id": "org.delegation_graph",
+        "family": "graph",
+        "relations": ["reports-to"],
+        "facets": {
+          "identity": "occurrence",
+          "composition": "multigraph",
+          "multiplicity": "multi",
+          "grain": "edge",
+          "presence": ["null", "missing"]
+        }
+      },
+      "representation": {
+        "id": "rep.tree",
+        "kind": "tree",
+        "topology": ["node", "edge", "path"],
+        "contextId": "org_chart.view",
+        "epoch": "e2",
+        "facets": {
+          "identity": "path",
+          "composition": "tree",
+          "multiplicity": "single",
+          "grain": "node"
+        }
+      },
+      "mapping": {
+        "source": {"subject": "org.membership", "occurrence": "parallel", "grain": "edge", "scope": "all-open", "revision": "r2", "snapshot": "s2"},
+        "target": {"representation": "rep.tree", "slot": "nodes", "axes": [], "contextId": "org_chart.view", "epoch": "e2", "revision": "r2"},
+        "identity": {"kind": "N:M", "claimedPreserved": false},
+        "order": {},
+        "multiset": {"fanout": 1, "claimedPreserved": false},
+        "grain": {"sourceGrain": "edge", "targetGrain": "node", "steps": 1, "claimedPreserved": false},
+        "presence": {},
+        "quantity": {},
+        "time": {},
+        "coverage": {"claimed": "complete", "observed": "complete"},
+        "loss": {"declared": ["edge-multiplicity", "parent-arity", "hidden-edge"]},
+        "operation": {"mode": "read-only", "inverseEligible": false}
+      }
+    },
+    {
+      "id": "XMAP-03",
+      "title": "集計値を元の複数行へ書き戻そうとする",
+      "structure": {
+        "id": "sales.order_lines",
+        "family": "relation",
+        "facets": {
+          "identity": "subject",
+          "composition": "relation",
+          "multiplicity": "multi",
+          "grain": "line",
+          "presence": ["null", "missing"]
+        }
+      },
+      "representation": {
+        "id": "rep.aggregate_table",
+        "kind": "table",
+        "topology": ["row", "column", "cell"],
+        "contextId": "order_entry.summary",
+        "epoch": "e3",
+        "facets": {
+          "identity": "row-index",
+          "grain": "order",
+          "multiplicity": "single"
+        }
+      },
+      "mapping": {
+        "source": {"subject": "sales.order_line", "occurrence": "row", "grain": "line", "scope": "selected-order", "revision": "r3", "snapshot": "s3"},
+        "target": {"representation": "rep.aggregate_table", "slot": "rows", "axes": [], "contextId": "order_entry.summary", "epoch": "e3", "revision": "r3"},
+        "identity": {"kind": "N:1", "claimedPreserved": false},
+        "order": {},
+        "multiset": {"fanout": 1, "claimedPreserved": false},
+        "grain": {"sourceGrain": "line", "targetGrain": "order", "steps": 1, "claimedPreserved": false},
+        "presence": {},
+        "quantity": {},
+        "time": {},
+        "coverage": {"claimed": "complete", "observed": "complete"},
+        "loss": {"declared": ["grain", "fact-identity", "aggregation-inverse"]},
+        "operation": {"mode": "edit-inverse", "inverseEligible": true}
+      }
+    },
+    {
+      "id": "XMAP-04",
+      "title": "Quantity PointとDeltaを混同する",
+      "structure": {
+        "id": "weather.temperature_point",
+        "family": "quantity",
+        "facets": {
+          "identity": "value",
+          "grain": "point"
+        }
+      },
+      "representation": {
+        "id": "rep.temperature_delta_text",
+        "kind": "text",
+        "contextId": "forecast.delta",
+        "epoch": "e4",
+        "facets": {
+          "identity": "value",
+          "grain": "delta"
+        }
+      },
+      "mapping": {
+        "source": {"subject": "weather.temperature", "grain": "point", "scope": "station", "revision": "r4", "snapshot": "s4"},
+        "target": {"representation": "rep.temperature_delta_text", "slot": "body", "contextId": "forecast.delta", "epoch": "e4", "revision": "r4"},
+        "identity": {"kind": "1:1", "claimedPreserved": true, "evidence": ["same decimal lexeme"]},
+        "order": {},
+        "multiset": {"fanout": 1, "claimedPreserved": false},
+        "grain": {},
+        "presence": {},
+        "quantity": {
+          "sourceUnit": "degC",
+          "targetUnit": "degC",
+          "sourceScale": "point",
+          "targetScale": "delta",
+          "precision": "0.1",
+          "targetPrecision": "0.1",
+          "claimedPreserved": true,
+          "evidence": ["same unit string"]
+        },
+        "time": {},
+        "coverage": {"claimed": "complete", "observed": "complete"},
+        "loss": {"declared": ["quantity-scale"]},
+        "operation": {"mode": "read-only", "inverseEligible": false}
+      }
+    },
+    {
+      "id": "XMAP-05",
+      "title": "通貨・単位・座標参照系を無条件に変換する",
+      "structure": {
+        "id": "finance.amount_jpy",
+        "family": "quantity",
+        "facets": {"identity": "value", "grain": "amount"}
+      },
+      "representation": {
+        "id": "rep.amount_usd",
+        "kind": "table",
+        "contextId": "finance.multi_currency",
+        "epoch": "e5",
+        "facets": {"identity": "value", "grain": "amount"}
+      },
+      "mapping": {
+        "source": {"subject": "finance.invoice.amount", "grain": "amount", "scope": "selected", "revision": "r5", "snapshot": "s5"},
+        "target": {"representation": "rep.amount_usd", "slot": "amount", "contextId": "finance.multi_currency", "epoch": "e5", "revision": "r5"},
+        "identity": {"kind": "1:1", "claimedPreserved": true, "evidence": ["same row"]},
+        "order": {},
+        "multiset": {"fanout": 1, "claimedPreserved": false},
+        "grain": {},
+        "presence": {},
+        "quantity": {
+          "sourceUnit": "JPY",
+          "targetUnit": "USD",
+          "sourceCRS": "",
+          "targetCRS": "",
+          "conversionPolicy": "",
+          "conversionInstant": "",
+          "claimedPreserved": true,
+          "evidence": ["decimal formatted"]
+        },
+        "time": {},
+        "coverage": {"claimed": "complete", "observed": "complete"},
+        "loss": {"declared": ["unit-conversion", "unit-original"]},
+        "operation": {"mode": "read-only", "inverseEligible": false}
+      }
+    },
+    {
+      "id": "XMAP-06",
+      "title": "時系列のDomain Timeと動画のPlayback Timeを混同する",
+      "structure": {
+        "id": "sensor.timeseries",
+        "family": "timeseries",
+        "facets": {
+          "identity": "occurrence",
+          "grain": "sample",
+          "timeAxes": ["domain"],
+          "clock": "station-clock"
+        }
+      },
+      "representation": {
+        "id": "rep.video_overlay",
+        "kind": "video",
+        "topology": ["track", "frame", "timestamp"],
+        "contextId": "review.media",
+        "epoch": "e6",
+        "facets": {
+          "identity": "frame",
+          "grain": "frame",
+          "timeAxes": ["presentation"],
+          "clock": "unknown",
+          "timebase": "variable-frame-rate"
+        }
+      },
+      "mapping": {
+        "source": {"subject": "sensor.reading", "occurrence": "sample", "grain": "sample", "scope": "window", "revision": "r6", "snapshot": "s6"},
+        "target": {"representation": "rep.video_overlay", "slot": "overlay", "axes": ["presentation"], "contextId": "review.media", "epoch": "e6", "revision": "r6"},
+        "identity": {"kind": "1:N", "claimedPreserved": false},
+        "order": {},
+        "multiset": {"fanout": 1, "claimedPreserved": false},
+        "grain": {"sourceGrain": "sample", "targetGrain": "frame", "steps": 1, "claimedPreserved": false},
+        "presence": {},
+        "quantity": {},
+        "time": {
+          "sourceAxes": ["domain"],
+          "targetAxes": ["presentation"],
+          "sourceClock": "station-clock",
+          "targetClock": "unknown",
+          "syncError": "",
+          "claimedPreserved": true,
+          "evidence": ["same elapsed seconds"]
+        },
+        "coverage": {"claimed": "complete", "observed": "partial", "negativeDependency": ["window-end-not-read"]},
+        "loss": {"declared": ["time-axis-role"]},
+        "operation": {"mode": "edit-inverse", "inverseEligible": true}
+      }
+    },
+    {
+      "id": "XMAP-07",
+      "title": "表示上の選択対象を編集可能なデータIdentityと誤認する",
+      "structure": {
+        "id": "sales.order_search_result",
+        "family": "relation",
+        "facets": {
+          "identity": "",
+          "grain": "row",
+          "multiplicity": "multi"
+        }
+      },
+      "representation": {
+        "id": "rep.result_grid",
+        "kind": "grid",
+        "topology": ["row", "column"],
+        "selection": "row-3",
+        "contextId": "search.results",
+        "epoch": "e7",
+        "facets": {"identity": "row-index", "grain": "row"}
+      },
+      "mapping": {
+        "source": {"subject": "sales.order", "occurrence": "row", "grain": "row", "scope": "page-1-of-3", "revision": "r7", "snapshot": "s7"},
+        "target": {"representation": "rep.result_grid", "slot": "rows", "selection": "row-3", "contextId": "search.results", "epoch": "e7", "revision": "r7"},
+        "identity": {"kind": "", "claimedPreserved": false},
+        "order": {},
+        "multiset": {"fanout": 1, "claimedPreserved": false},
+        "grain": {},
+        "presence": {},
+        "quantity": {},
+        "time": {},
+        "coverage": {"claimed": "partial", "observed": "partial", "negativeDependency": ["page-2-unread"]},
+        "loss": {"declared": ["selection-identity"]},
+        "operation": {"mode": "edit-inverse", "inverseEligible": true}
+      }
+    },
+    {
+      "id": "XMAP-08",
+      "title": "NULL・未取得・非開示・falseを二値へ畳み込む",
+      "structure": {
+        "id": "sales.order_flag",
+        "family": "record",
+        "facets": {
+          "identity": "subject",
+          "grain": "row",
+          "presence": ["false", "missing", "null", "unfetched", "withheld"]
+        }
+      },
+      "representation": {
+        "id": "rep.toggle",
+        "kind": "toggle",
+        "topology": ["state"],
+        "contextId": "order_entry.flags",
+        "epoch": "e8",
+        "facets": {
+          "identity": "subject",
+          "grain": "row",
+          "presence": ["false", "true"]
+        }
+      },
+      "mapping": {
+        "source": {"subject": "sales.order", "occurrence": "row", "grain": "row", "scope": "selected", "revision": "r8", "snapshot": "s8"},
+        "target": {"representation": "rep.toggle", "slot": "flag", "contextId": "order_entry.flags", "epoch": "e8", "revision": "r8"},
+        "identity": {"kind": "1:1", "claimedPreserved": true, "evidence": ["same order id"]},
+        "order": {},
+        "multiset": {"fanout": 1, "claimedPreserved": false},
+        "grain": {"sourceGrain": "row", "targetGrain": "row", "steps": 0, "claimedPreserved": true, "evidence": ["same grain"]},
+        "presence": {"claimedPreserved": true, "evidence": ["toggle shows false"]},
+        "quantity": {},
+        "time": {},
+        "coverage": {"claimed": "complete", "observed": "complete"},
+        "loss": {"declared": ["presence-states"]},
+        "operation": {"mode": "read-only", "inverseEligible": false}
+      }
+    },
+    {
+      "id": "XMAP-09",
+      "title": "部分取得の表示を完了と扱う",
+      "structure": {
+        "id": "sales.order_all",
+        "family": "relation",
+        "facets": {
+          "identity": "subject",
+          "grain": "row",
+          "multiplicity": "multi"
+        }
+      },
+      "representation": {
+        "id": "rep.page_table",
+        "kind": "table",
+        "topology": ["row", "column", "cell"],
+        "contextId": "order_entry.list",
+        "epoch": "e9",
+        "facets": {"identity": "subject", "grain": "row"}
+      },
+      "mapping": {
+        "source": {"subject": "sales.order", "occurrence": "row", "grain": "row", "scope": "page-1-of-3", "revision": "r9", "snapshot": "s9"},
+        "target": {"representation": "rep.page_table", "slot": "rows", "contextId": "order_entry.list", "epoch": "e9", "revision": "r9"},
+        "identity": {"kind": "1:1", "claimedPreserved": true, "evidence": ["order id carried"]},
+        "order": {},
+        "multiset": {"fanout": 1, "claimedPreserved": false},
+        "grain": {"sourceGrain": "row", "targetGrain": "row", "steps": 0, "claimedPreserved": true, "evidence": ["same grain"]},
+        "presence": {},
+        "quantity": {},
+        "time": {},
+        "coverage": {"claimed": "complete", "observed": "partial", "negativeDependency": ["page-2-unread", "page-3-unread"]},
+        "loss": {"declared": ["coverage-completeness"]},
+        "operation": {"mode": "read-only", "inverseEligible": false}
+      }
+    },
+    {
+      "id": "XMAP-10",
+      "title": "Source Revision不一致の写像",
+      "structure": {
+        "id": "sales.order_rev2",
+        "family": "record",
+        "facets": {"identity": "subject", "grain": "row", "presence": ["null", "missing"]}
+      },
+      "representation": {
+        "id": "rep.order_detail",
+        "kind": "form",
+        "topology": ["field", "section"],
+        "contextId": "order_entry.detail",
+        "epoch": "e10",
+        "facets": {"identity": "subject", "grain": "row"}
+      },
+      "mapping": {
+        "source": {"subject": "sales.order", "occurrence": "row", "grain": "row", "scope": "selected", "revision": "r9", "snapshot": "s9"},
+        "target": {"representation": "rep.order_detail", "slot": "fields", "contextId": "order_entry.detail", "epoch": "e10", "revision": "r10"},
+        "identity": {"kind": "1:1", "claimedPreserved": true, "evidence": ["same order id"]},
+        "order": {},
+        "multiset": {"fanout": 1, "claimedPreserved": false},
+        "grain": {"sourceGrain": "row", "targetGrain": "row", "steps": 0, "claimedPreserved": true, "evidence": ["same grain"]},
+        "presence": {},
+        "quantity": {},
+        "time": {},
+        "coverage": {"claimed": "complete", "observed": "complete"},
+        "loss": {"declared": ["source-revision"]},
+        "operation": {"mode": "read-only", "inverseEligible": false}
+      }
+    },
+    {
+      "id": "XMAP-11",
+      "title": "合成写像Q∘Pで同じ表現byteから同じ元構造を推論する（受入条件5）",
+      "structure": {
+        "id": "sui.world_a",
+        "family": "graph",
+        "relations": ["contains", "affiliated-with"],
+        "facets": {
+          "identity": "occurrence",
+          "composition": "directed",
+          "multiplicity": "multi",
+          "grain": "card"
+        }
+      },
+      "representation": {
+        "id": "rep.markdown_outline",
+        "kind": "markdown",
+        "topology": ["heading", "paragraph"],
+        "contextId": "sui.publish",
+        "epoch": "e11",
+        "facets": {"identity": "path", "grain": "paragraph"}
+      },
+      "mapping": {
+        "source": {"subject": "sui.card", "occurrence": "path", "grain": "card", "scope": "world-a", "revision": "r11", "snapshot": "s11"},
+        "target": {"representation": "rep.markdown_outline", "slot": "body", "contextId": "sui.publish", "epoch": "e11", "revision": "r11"},
+        "identity": {"kind": "N:M", "claimedPreserved": false},
+        "order": {},
+        "multiset": {"fanout": 1, "claimedPreserved": false},
+        "grain": {"sourceGrain": "card", "targetGrain": "paragraph", "steps": 1, "claimedPreserved": false},
+        "presence": {},
+        "quantity": {},
+        "time": {},
+        "coverage": {"claimed": "complete", "observed": "complete"},
+        "loss": {"declared": ["injectivity", "occurrence-identity"]},
+        "operation": {"mode": "read-only", "inverseEligible": false}
+      },
+      "composite": {
+        "stages": ["data-to-view", "view-to-markdown"],
+        "representationEqual": true,
+        "sourceEqual": false,
+        "inverseFromRepresentation": true
+      }
+    },
+    {
+      "id": "XMAP-12",
+      "title": "複数RelationをJOINしfanoutを宣言せずに表へ投影する（受入条件：複数Relation）",
+      "structure": {
+        "id": "sales.order_with_lines_and_shipments",
+        "family": "relation",
+        "relations": ["lines", "shipments"],
+        "facets": {
+          "identity": "subject",
+          "composition": "relation",
+          "multiplicity": "multi",
+          "grain": "order",
+          "presence": ["null", "missing"]
+        }
+      },
+      "representation": {
+        "id": "rep.joined_table",
+        "kind": "table",
+        "topology": ["row", "column", "cell"],
+        "contextId": "order_entry.ops",
+        "epoch": "e12",
+        "facets": {"identity": "row-index", "grain": "line-shipment"}
+      },
+      "mapping": {
+        "source": {"subject": "sales.order", "occurrence": "row", "grain": "order", "scope": "selected-order", "revision": "r12", "snapshot": "s12"},
+        "target": {"representation": "rep.joined_table", "slot": "rows", "contextId": "order_entry.ops", "epoch": "e12", "revision": "r12"},
+        "identity": {"kind": "1:N", "claimedPreserved": false},
+        "order": {},
+        "multiset": {"fanout": 6, "claimedPreserved": true, "evidence": ["row count stable"]},
+        "grain": {"sourceGrain": "order", "targetGrain": "line-shipment", "steps": 1, "claimedPreserved": false},
+        "presence": {},
+        "quantity": {},
+        "time": {},
+        "coverage": {"claimed": "complete", "observed": "complete"},
+        "loss": {"declared": ["grain", "fact-identity"]},
+        "operation": {"mode": "read-only", "inverseEligible": false}
+      }
+    },
+    {
+      "id": "XMAP-13",
+      "title": "粒度の異なる2つのContextを同じ表現へ重ねる（受入条件：異なる粒度）",
+      "structure": {
+        "id": "finance.invoice_amount_aggregate",
+        "family": "quantity",
+        "facets": {"identity": "value", "grain": "invoice", "presence": ["null", "missing"]}
+      },
+      "representation": {
+        "id": "rep.kpi_card",
+        "kind": "card",
+        "topology": ["value", "label"],
+        "contextId": "finance.dashboard",
+        "epoch": "e13",
+        "facets": {"identity": "value", "grain": "tenant-month"}
+      },
+      "mapping": {
+        "source": {"subject": "finance.invoice.amount", "occurrence": "row", "grain": "invoice", "scope": "tenant-2026-10", "revision": "r13", "snapshot": "s13"},
+        "target": {"representation": "rep.kpi_card", "slot": "value", "contextId": "finance.dashboard", "epoch": "e13", "revision": "r13"},
+        "identity": {"kind": "N:1", "claimedPreserved": false},
+        "order": {},
+        "multiset": {"fanout": 1, "claimedPreserved": false},
+        "grain": {"sourceGrain": "invoice", "targetGrain": "tenant-month", "steps": 2, "claimedPreserved": false},
+        "presence": {},
+        "quantity": {"sourceUnit": "JPY", "targetUnit": "JPY", "sourceScale": "point", "targetScale": "point"},
+        "time": {},
+        "coverage": {"claimed": "complete", "observed": "complete"},
+        "loss": {"declared": ["grain", "fact-identity"]},
+        "operation": {"mode": "read-only", "inverseEligible": false}
+      }
+    },
+    {
+      "id": "XMAP-14",
+      "title": "時間軸不一致のまま同期済みとして再生する（受入条件：時間軸不一致）",
+      "structure": {
+        "id": "sensor.reading_window",
+        "family": "timeseries",
+        "facets": {
+          "identity": "occurrence",
+          "grain": "sample",
+          "timeAxes": ["domain", "observation"],
+          "clock": "station-clock"
+        }
+      },
+      "representation": {
+        "id": "rep.audio_track",
+        "kind": "audio",
+        "topology": ["track", "sample", "timestamp"],
+        "contextId": "review.audio",
+        "epoch": "e14",
+        "facets": {
+          "identity": "sample-index",
+          "grain": "audio-sample",
+          "timeAxes": ["presentation"],
+          "clock": "audio-device"
+        }
+      },
+      "mapping": {
+        "source": {"subject": "sensor.reading", "occurrence": "sample", "grain": "sample", "scope": "window", "revision": "r14", "snapshot": "s14"},
+        "target": {"representation": "rep.audio_track", "slot": "track", "axes": ["presentation"], "contextId": "review.audio", "epoch": "e14", "revision": "r14"},
+        "identity": {"kind": "1:N", "claimedPreserved": false},
+        "order": {},
+        "multiset": {"fanout": 1, "claimedPreserved": false},
+        "grain": {"sourceGrain": "sample", "targetGrain": "audio-sample", "steps": 1, "claimedPreserved": false},
+        "presence": {},
+        "quantity": {},
+        "time": {
+          "sourceAxes": ["domain", "observation"],
+          "targetAxes": ["presentation"],
+          "sourceClock": "station-clock",
+          "targetClock": "audio-device",
+          "syncError": "",
+          "claimedPreserved": true,
+          "evidence": ["same sample count"]
+        },
+        "coverage": {"claimed": "complete", "observed": "partial", "negativeDependency": ["window-tail-unread"]},
+        "loss": {"declared": ["time-axis-role"]},
+        "operation": {"mode": "edit-inverse", "inverseEligible": true}
+      }
+    },
+    {
+      "id": "XMAP-15",
+      "title": "Source改版後に旧Projectionを現行として返す（受入条件：Source変更）",
+      "structure": {
+        "id": "sales.order_current",
+        "family": "record",
+        "facets": {"identity": "subject", "grain": "row", "presence": ["null", "missing"]}
+      },
+      "representation": {
+        "id": "rep.order_summary",
+        "kind": "panel",
+        "topology": ["field", "section"],
+        "contextId": "order_entry.summary",
+        "epoch": "e15",
+        "facets": {"identity": "subject", "grain": "row"}
+      },
+      "mapping": {
+        "source": {"subject": "sales.order", "occurrence": "row", "grain": "row", "scope": "selected", "revision": "r15", "snapshot": "s15"},
+        "target": {"representation": "rep.order_summary", "slot": "fields", "contextId": "order_entry.summary", "epoch": "e14", "revision": "r14"},
+        "identity": {"kind": "1:1", "claimedPreserved": true, "evidence": ["same order id"]},
+        "order": {},
+        "multiset": {"fanout": 1, "claimedPreserved": false},
+        "grain": {"sourceGrain": "row", "targetGrain": "row", "steps": 0, "claimedPreserved": true, "evidence": ["same grain"]},
+        "presence": {},
+        "quantity": {},
+        "time": {},
+        "coverage": {"claimed": "complete", "observed": "complete"},
+        "loss": {"declared": ["source-revision"]},
+        "operation": {"mode": "read-only", "inverseEligible": false}
+      }
+    },
+    {
+      "id": "XMAP-16",
+      "title": "順序・重複・単位・精度を保つ正常系（正常系）",
+      "structure": {
+        "id": "sales.order_lines_ordered",
+        "family": "collection",
+        "facets": {
+          "identity": "occurrence",
+          "composition": "sequence",
+          "order": "ordered",
+          "orderOrigin": "source",
+          "multiplicity": "multi",
+          "grain": "line",
+          "presence": ["null", "missing"]
+        }
+      },
+      "representation": {
+        "id": "rep.line_table",
+        "kind": "table",
+        "topology": ["row", "column", "cell"],
+        "contextId": "order_entry.lines",
+        "epoch": "e16",
+        "facets": {
+          "identity": "occurrence",
+          "composition": "sequence",
+          "order": "ordered",
+          "orderOrigin": "source",
+          "multiplicity": "multi",
+          "grain": "line",
+          "presence": ["null", "missing"]
+        }
+      },
+      "mapping": {
+        "source": {"subject": "sales.order_line", "occurrence": "ordered", "grain": "line", "scope": "selected-order", "revision": "r16", "snapshot": "s16"},
+        "target": {"representation": "rep.line_table", "slot": "rows", "contextId": "order_entry.lines", "epoch": "e16", "revision": "r16"},
+        "identity": {"kind": "1:1", "claimedPreserved": true, "evidence": ["line id carried per row"]},
+        "order": {"claimedPreserved": true, "evidence": ["lineNumber column rendered"]},
+        "multiset": {"fanout": 1, "claimedPreserved": true, "evidence": ["no join on the path"]},
+        "grain": {"sourceGrain": "line", "targetGrain": "line", "steps": 0, "claimedPreserved": true, "evidence": ["same grain"]},
+        "presence": {"claimedPreserved": true, "evidence": ["null and missing rendered distinctly"]},
+        "quantity": {
+          "sourceUnit": "JPY",
+          "targetUnit": "JPY",
+          "sourceScale": "point",
+          "targetScale": "point",
+          "precision": "0.01",
+          "targetPrecision": "0.01",
+          "claimedPreserved": true,
+          "evidence": ["same scale and precision"]
+        },
+        "time": {},
+        "coverage": {"claimed": "complete", "observed": "complete"},
+        "loss": {},
+        "operation": {"mode": "read-only", "inverseEligible": true}
+      }
+    }
+  ]
+}

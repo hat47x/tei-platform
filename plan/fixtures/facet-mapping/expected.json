@@ -1,0 +1,117 @@
+{
+  "schemaVersion": "tei.reference.facet-mapping-expected/v0",
+  "expectations": [
+    {
+      "id": "XMAP-01",
+      "verdict": "lossy",
+      "losses": ["order", "occurrence-identity"],
+      "inverse": "ineligible",
+      "note": "R1 order dropped (ordered->unordered); R2 1:N correspondence drops occurrence identity. A contradicted preservation claim stays a loss, not a rejection: the issue asks for lossy."
+    },
+    {
+      "id": "XMAP-02",
+      "verdict": "lossy",
+      "losses": ["edge-multiplicity", "parent-arity", "hidden-edge", "occurrence-identity", "grain", "fact-identity"],
+      "inverse": "not-claimed",
+      "note": "R3 multigraph rendered as tree; R2 N:M; R4 edge grain rendered as node grain."
+    },
+    {
+      "id": "XMAP-03",
+      "verdict": "rejected",
+      "losses": ["grain", "fact-identity", "aggregation-inverse", "occurrence-identity"],
+      "inverse": "ineligible",
+      "note": "R4 aggregation plus declared inverse: writing one aggregate row back to many source rows is refused."
+    },
+    {
+      "id": "XMAP-04",
+      "verdict": "rejected",
+      "losses": ["quantity-scale"],
+      "inverse": "not-claimed",
+      "note": "R6 point and delta share a unit string but not an arithmetic contract."
+    },
+    {
+      "id": "XMAP-05",
+      "verdict": "unqualified",
+      "losses": ["unit-conversion"],
+      "inverse": "not-claimed",
+      "note": "R6 currency conversion without a policy, an instant, or a rate revision is unqualified, not defaulted."
+    },
+    {
+      "id": "XMAP-06",
+      "verdict": "rejected",
+      "losses": ["time-axis-role", "occurrence-identity", "grain", "fact-identity", "aggregation-inverse", "coverage-completeness"],
+      "inverse": "ineligible",
+      "note": "R7 domain time reported as presentation time; R2 1:N; R4 sample grain to frame grain; R8 partial read claimed complete."
+    },
+    {
+      "id": "XMAP-07",
+      "verdict": "rejected",
+      "losses": ["selection-identity", "coverage-completeness"],
+      "inverse": "ineligible",
+      "note": "R2 an empty identity kind with a presentation selection is refused; R8 page-one of a partial set."
+    },
+    {
+      "id": "XMAP-08",
+      "verdict": "lossy",
+      "losses": ["presence-states"],
+      "inverse": "not-claimed",
+      "note": "R5 five presence states collapse to a boolean toggle."
+    },
+    {
+      "id": "XMAP-09",
+      "verdict": "rejected",
+      "losses": ["coverage-completeness"],
+      "inverse": "not-claimed",
+      "note": "R8 a page of a three-page set is not a complete set."
+    },
+    {
+      "id": "XMAP-10",
+      "verdict": "rejected",
+      "losses": ["source-revision"],
+      "inverse": "not-claimed",
+      "note": "R9 the rendered revision is not the source revision."
+    },
+    {
+      "id": "XMAP-11",
+      "verdict": "rejected",
+      "losses": ["injectivity", "selection-identity", "occurrence-identity", "grain", "fact-identity"],
+      "inverse": "not-claimed",
+      "note": "R10 equal representation bytes from different sources do not restore the source; R2 N:M; R4 card grain to paragraph grain."
+    },
+    {
+      "id": "XMAP-12",
+      "verdict": "rejected",
+      "losses": ["fanout", "relation-arity", "occurrence-identity", "grain", "fact-identity"],
+      "inverse": "not-claimed",
+      "note": "R3 a six-row fanout over two relations, claimed preserved: multiplication is not preservation."
+    },
+    {
+      "id": "XMAP-13",
+      "verdict": "lossy",
+      "losses": ["grain", "fact-identity", "occurrence-identity"],
+      "inverse": "not-claimed",
+      "note": "R4 invoice grain to tenant-month grain; R2 N:1."
+    },
+    {
+      "id": "XMAP-14",
+      "verdict": "rejected",
+      "losses": ["time-axis-role", "occurrence-identity", "grain", "fact-identity", "aggregation-inverse", "coverage-completeness"],
+      "inverse": "ineligible",
+      "note": "R7 two source axes reported as one presentation axis; R8 the window tail is unread."
+    },
+    {
+      "id": "XMAP-15",
+      "verdict": "rejected",
+      "losses": ["source-revision"],
+      "inverse": "not-claimed",
+      "note": "R9 a projection rendered at an older revision is not the current projection."
+    },
+    {
+      "id": "XMAP-16",
+      "verdict": "preserved",
+      "losses": [],
+      "inverse": "eligible",
+      "note": "Every claim that the case makes carries evidence and every observed facet matches; the inverse is declared and no loss blocks it."
+    }
+  ]
+}
