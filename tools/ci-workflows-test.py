@@ -495,13 +495,24 @@ class StaticWorkflowContract(unittest.TestCase):
         result = command('bash', '-c', script, env=base_env, check=False)
         self.assertNotEqual(result.returncode, 0)
 
+    # The Go guard (tools/repository-architecture-check) already lets a workflow
+    # pin a literal go-version when it says why. This half of the contract did
+    # not, so the SAME workflow passed in Go and failed here: the documented
+    # exception was still red (#4318).
+    ALLOW_LITERAL_GO_VERSION = '# allow-literal-go-version:'
+
     def test_setup_go_follows_go_mod(self):
         """Go版の直接指定はgo.modの要求版と食い違うため禁止する(#2948)。"""
         drift = []
         for path in sorted((ROOT / '.github/workflows').glob('*.yml')):
             text = path.read_text(encoding='utf-8')
-            if re.search(r'(?m)^\s*go-version:', text):
-                drift.append(path.name)
+            if not re.search(r'(?m)^\s*go-version:', text):
+                continue
+            # Same escape hatch, same token, as the Go guard. A pin that gives
+            # its reason is a declared exception, not drift.
+            if self.ALLOW_LITERAL_GO_VERSION in text:
+                continue
+            drift.append(path.name)
         self.assertEqual([], drift)
 
 
