@@ -119,9 +119,8 @@ func TestHistoricalABSourceRevisionsReachCLIAndMCPConsumers(t *testing.T) {
 			t.Fatalf("%s: MCP text is not complete validation JSON: %v", version, err)
 		}
 		if !reflect.DeepEqual(cliDoc, mcpDoc) {
-			t.Fatalf("%s: actual CLI and MCP consumer documents differ:
-CLI=%v
-MCP=%v", version, cliDoc, mcpDoc)
+			t.Fatalf("%s: actual CLI and MCP consumer documents differ:\nCLI=%v\nMCP=%v",
+				version, cliDoc, mcpDoc)
 		}
 		if cliDoc["schemaVersion"] != "tei.cli.validate/v0" || cliDoc["ok"] != true {
 			t.Fatalf("%s: bounded valid Source was not validated: %v", version, cliDoc)
