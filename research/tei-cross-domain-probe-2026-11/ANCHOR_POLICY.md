@@ -70,7 +70,7 @@ anchorの試験は `strings.Contains(source, literal)` で存在を確認しま�
 | --- | --- |
 | 実施日 | 2026-11-11 |
 | 実施host | Windows 11、Intel Core i7-8750H、Go 1.27.0 windows/amd64 |
-| 上流（VSクマ）のcommit | `2f7e2990bb22da57deafb2aedfecb9a654094048` |
+| 上流（VSクマ）のcommit | `2a7e2990bb22da57deafb2aedfecb9a654094048` |
 | 上流（CSW）のcommit | `73efa57ef66ae4d53db3ff9bb63c927f624f44a8` |
 | 照合したanchor数 | VSクマ 31 + 遷移理由 11 + CSW 6 = **48件** |
 | 照合結果 | 48件すべて**解決**（skip 0件） |
@@ -81,6 +81,14 @@ anchorの試験は `strings.Contains(source, literal)` で存在を確認しま�
 照合した時点のprobe試験は **36件 PASS**（bear 26・csw 10）です。
 
 **注意**：この表は1回の照合記録です。上流が進んだ場合、または別の host で実行した場合の結果を代弁しません。§2.3 のとおり、skip した実行は照合の証拠になりません。
+
+### 4.1 証跡自体にも誤りがあった（2026-11-11 追記）
+
+上記の表は、**VSクマのcommitを `2f7e2990bb22da57deafb2aedfecb9a654094048` と記録していましたが、このcommitは実在しません。** 正しい値は `2a7e2990bb22da57deafb2aedfecb9a654094048` です（`git rev-parse HEAD` で確認）。
+
+誤りは**anchor試験の結果には影響しません**（anchorは`literal`の存在だけを確認し、commit SHAは見ません）。しかし証跡の価値は「どの版に対して照合したか」に依るため、誤ったSHAは証跡を再現不能にします。発見の経緯は、本ファイルの著者が後続の判断作業で上流のcommitを調べ直したことによるもので、機械的な検査ではありません。
+
+**教訓**：commit SHA も転記対象です。`git rev-parse HEAD` で確認した値を書き、書き終わった後に存在確認（`git cat-file -t <sha>`）を行うべきです。本ファイルでは4箇所（本表・`README.md`・`PLACEMENT_POLICY.md`・`bear/STATE_MACHINE_REVIEW.md`）を修正しました。
 
 ## 5. 未実施（NOT RUN）
 

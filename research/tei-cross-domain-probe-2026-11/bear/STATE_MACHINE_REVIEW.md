@@ -9,7 +9,7 @@
 
 | 対象 | 版 |
 | --- | --- |
-| VSクマ（上流） | `2f7e2990bb22da57deafb2aedfecb9a654094048`（`controllers/bear/traversal_recovery.gd`、523行） |
+| VSクマ（上流） | `2a7e2990bb22da57deafb2aedfecb9a654094048`（`controllers/bear/traversal_recovery.gd`、523行） |
 | probe（被review） | `research/cross-domain-probe-20261111` の `f579245d5` 時点 |
 
 ## 2. 受入条件の確認

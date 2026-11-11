@@ -206,14 +206,16 @@ VSクマ側の期待結果は、上流に書かれた事実から独立に用意
 2. **状態機械の表現をどう扱うか**（TEI中核）。VSクマのscheduler・episode・回復状態は、現行DSLでは列挙に留まります。状態・遷移・時系列を意味モデルへ入れるかは[#4193](https://github.com/hat47x/tei-platform/issues/4193)の範囲です。本稿はどちらとも決めません。
 3. **開いた集合を列挙型として書いてよいか**（TEI中核）。VSクマのdecision sourceは、transportが新しい`backend_id`を宣言できるため閉じた集合ではありません。列挙型に写すと、正当な新しいproducerを未知として拒否するか、未知を常に許して列挙の意味を薄めるかの二択になります。本稿は「記録済みの値を列挙し、未記録をwarning」という暫定対処を選びました。`unknown`をどう扱うかの規約は[#2533](https://github.com/hat47x/tei-platform/issues/2533)の判断材料として残します。
 4. **転記の照合をどこまで要求するか**（TEI中核）。probeの誤り2件は、TEI宣言とprobe定数の自己一致では検出できませんでした。上流原文への照合は、兄弟チェックアウトがある環境でしか実行できず、CI必須検査にも接続していません。外部Repositoryの転記を伴う研究物に、どの照合を求めるかは未決です。
-5. **CSWの型付き受け渡しを任意の道具として維持するか**（CSW）。推奨は、Skill本文を変えず、著者が使うときだけ記録する任意の形式として残すことです。必須化すると「全候補へのラベルは要らない」という現行方針と衝突します。判断はCSW [#593](https://github.com/hat47x/cultural-substrate-weaving/issues/593)に返します。
-6. **VSクマで契約の写しを受け入れるか**（VSクマ）。受け入れる条件は、列挙の一致試験に加えて、境界値・wire・fixtureの同期を確認する手順を決めることです。現状は二重管理のコストが利益を上回る可能性があり、推奨は「保留」。判断はVSクマ [#95](https://github.com/hat47x/vs-bear-simulator/issues/95)と[#17](https://github.com/hat47x/vs-bear-simulator/issues/17)に返します。
+5. ~~**CSWの型付き受け渡しを任意の道具として維持するか**（CSW）~~ **決定：残す（任意の道具として）**（2026-11-11、Owner代行）。推奨どおり、Skill本文を変えず、著者が使うときだけ記録する任意の形式として残します。必須化すると「全候補へのラベルは要らない」という現行方針と衝突します。対価は`skills/writing-flow/references/handoff-card.md`への補足1節だけです。判断の記録はCSW [#593](https://github.com/hat47x/cultural-substrate-weaving/issues/593)。
+6. ~~**VSクマで契約の写しを受け入れるか**（VSクマ）~~ **決定：保留**（2026-11-11、Owner代行）。受け入れる条件は、列挙の一致試験に加えて、境界値・wire・fixtureの同期を確認する手順を決めることです。現状は二重管理のコスト（GDScript・TEI・probeの3箇所）が利益を上回る可能性があり、推奨どおり保留とします。§5.6の状態機械も、現行DSLでは列挙に留まるため、受け入れの追加の根拠になりません。判断の記録はVSクマ [#95](https://github.com/hat47x/vs-bear-simulator/issues/95)と[#17](https://github.com/hat47x/vs-bear-simulator/issues/17)。
 7. **2対象の共通部分を標準ライブラリへ抽出するか**（TEI）。2例だけでは根拠が不足します。抽出しない判断を推奨し、3例目が出た時点で再検討します。
 8. **probeを`research/`に残すか`tools/`へ移すか**（TEI）。現状は`research/`が適切です。製品の受入経路やCI必須検査には接続せず、上流の版を固定した研究物として扱います。
 
 ## 8. 実施済み・未実施（NOT RUN）
 
-実施したことは、対象版と関連Issueの調査、2つのTEI Workspaceの作成、read-only probeの実装、**38件のGo試験**と5件のbenchmark、`tei validate`による確認、上流ファイルへの**48件の転記照合**（[ANCHOR_POLICY.md](../../research/tei-cross-domain-probe-2026-11/ANCHOR_POLICY.md)）、状態機械のreview（[STATE_MACHINE_REVIEW.md](../../research/tei-cross-domain-probe-2026-11/bear/STATE_MACHINE_REVIEW.md)）、本稿の整理です。
+実施したことは、対象版と関連Issueの調査、2つのTEI Workspaceの作成、read-only probeの実装、**38件のGo試験**と5件のbenchmark、`tei validate`による確認、上流ファイルへの**48件の転記照合**（[ANCHOR_POLICY.md](../../research/tei-cross-domain-probe-2026-11/ANCHOR_POLICY.md)）、状態機械のreview（[STATE_MACHINE_REVIEW.md](../../research/tei-cross-domain-probe-2026-11/bear/STATE_MACHINE_REVIEW.md)）、UI非同期・通信Sessionの投影（`domain2/`、13件）、§7のCSW-01/BEAR-01のオーナ判断（[OWNER_DECISIONS.md](../../research/tei-cross-domain-probe-2026-11/OWNER_DECISIONS.md)）、本稿の整理です。
+
+§7の判断事項のうち、**CSW-01（残す）とBEAR-01（保留）は2026-11-11に決定しました。** 残る1・2・3・4・7・8はTEI中核の判断事項で、本稿は決定しません。なお、証跡に記録していたVSクマのcommit SHAが誤っていた（実在しない値を記載）ことを2026-11-11に発見し、4箇所を修正しました（[ANCHOR_POLICY.md](../../research/tei-cross-domain-probe-2026-11/ANCHOR_POLICY.md) §4.1）。anchor試験の結果自体には影響しません。
 
 未実施は次のとおりです。CSWの実際の執筆セッション、生成モデルへの固定入力の投入、作者による採用判断。VSクマのGodot起動、既存runnerの再実行、実画面・実機での確認。TEIからGDScriptやSQLへの生成、probeのCI必須検査への接続、上流変更への自動追随。anchor試験のCIでの常時実行（兄弟チェックアウトがある環境のみ）。別ハードウェアでの性能測定、独立レビューアによる再検証、本節の判断事項の決定。
 
@@ -230,8 +232,8 @@ VSクマ側の期待結果は、上流に書かれた事実から独立に用意
 | SM-02 | [#4193](https://github.com/hat47x/tei-platform/issues/4193) | `implementer` | UI非同期と通信Sessionのread-only解釈（#4193 §6のS1） | **実施済み**（domain2/、独立Expected 13件） |
 | OPEN-01 | [#2533](https://github.com/hat47x/tei-platform/issues/2533) | `architect` | 開いた集合を列挙型として書くときの規約 | **設計案あり**（[OPEN_SET_POLICY.md](../../research/tei-cross-domain-probe-2026-11/OPEN_SET_POLICY.md)） |
 | TRACE-01 | [#4134](https://github.com/hat47x/tei-platform/issues/4134) | `implementer` | 外部Repository転記の照合下限と証跡の記録 | **実施済み**（CI接続は未実施） |
-| CSW-01 | CSW [#593](https://github.com/hat47x/cultural-substrate-weaving/issues/593) | Owner判断 | 型付き受け渡しを任意の道具として残す場合の仕様 | 判断待ち |
-| BEAR-01 | VSクマ [#95](https://github.com/hat47x/vs-bear-simulator/issues/95) | Owner判断 | 契約の写しを受け入れる場合の条件と同期手順 | 判断待ち（推奨は保留） |
+| CSW-01 | CSW [#593](https://github.com/hat47x/cultural-substrate-weaving/issues/593) | Owner判断 | 型付き受け渡しを任意の道具として残す場合の仕様 | **決定：残す**（2026-11-11。補足1節をCSWリポジトリへ追加） |
+| BEAR-01 | VSクマ [#95](https://github.com/hat47x/vs-bear-simulator/issues/95) | Owner判断 | 契約の写しを受け入れる場合の条件と同期手順 | **決定：保留**（2026-11-11） |
 | PLACE-01 | [#4193](https://github.com/hat47x/tei-platform/issues/4193) | `integrator` | `research/`から`tools/`への昇格基準 | **設計案あり**（[PLACEMENT_POLICY.md](../../research/tei-cross-domain-probe-2026-11/PLACEMENT_POLICY.md)） |
 
 共通の開始base SHA：`b987b38e741f8cfda74159e405979cf369521b88`（2026-11-11時点の`origin/main`）。
@@ -373,9 +375,11 @@ VSクマ側の期待結果は、上流に書かれた事実から独立に用意
 
 ### CSW-01
 
-**親Issue**：CSW [#593](https://github.com/hat47x/cultural-substrate-weaving/issues/593)。**要求ロール**：Owner判断（`planner`が整理）。**状態**：判断待ち。
+**親Issue**：CSW [#593](https://github.com/hat47x/cultural-substrate-weaving/issues/593)。**要求ロール**：Owner判断（`planner`が整理）。**状態**：**決定：残す**（2026-11-11、Owner代行）。
 
-**目的**：§4.2の型付き受け渡しを、任意の道具として残すかどうかを著者が判断できる形にする。**判断は著者に戻します。本票は採用を提案しません。**
+**目的**：§4.2の型付き受け渡しを、任意の道具として残すかどうかを著者が判断できる形にする。
+
+**決定の理由**：型付き境界は「何を・いつ・どの入力から・誰の判断か」を保持でき、帰属4値は`SKILL.md`の4区分と1対1で対応することをanchor試験で確認済みです。対価は補足1節だけで、製品側のコード・CI・Schemaは0行のままです。必須条件（記録は任意・仮説/問い/比較を値にしない・Skill本文の手順は変えない）を満たせるため、残します。
 
 **採用した場合に追加されるもの（これだけ）**：
 - `skills/writing-flow/references/`に、任意の受け渡しカードの雛形として、型の名前と4つの帰与値の対応を1節追加する。既存の[受け渡しカード](https://github.com/hat47x/cultural-substrate-weaving/blob/73efa57ef66ae4d53db3ff9bb63c927f624f44a8/skills/writing-flow/references/handoff-card.md)の雛形を**置き換えず**、補足として置く。
@@ -396,9 +400,13 @@ VSクマ側の期待結果は、上流に書かれた事実から独立に用意
 
 ### BEAR-01
 
-**親Issue**：VSクマ [#95](https://github.com/hat47x/vs-bear-simulator/issues/95)と[#17](https://github.com/hat47x/vs-bear-simulator/issues/17)。**要求ロール**：Owner判断。**状態**：判断待ち。**推奨は「保留」**。
+**親Issue**：VSクマ [#95](https://github.com/hat47x/vs-bear-simulator/issues/95)と[#17](https://github.com/hat47x/vs-bear-simulator/issues/17)。**要求ロール**：Owner判断。**状態**：**決定：保留**（2026-11-11、Owner代行）。
 
 **目的**：契約の写し（TEI 104行）を受け入れるかどうかを、条件付きで判断できる形にする。
+
+**決定の理由**：§5.5のとおり、TEIが保持できるのは形状のみで、範囲・有限性・時間窓はDSLの外にあります。一方、受け入れるとGDScript・TEI・probeの3箇所で同一の列挙・境界値・wire形式を管理することになり、上流が変わったときにprobeは自動追随しません。§5.6で状態機械も列挙に留まることが確認できたため、受け入れの追加の根拠は出ていません。同期手順（境界値・wire・fixture）が決まり、実施された証拠ができるまで保留とします。
+
+**保留の間に必要なこと**：上記の「受け入れる場合に必要な手順」3点のうち、少なくとも1点（同期手順の決定）が具体的に決まり、実施された証拠があること。これがないまま保留を続ける場合は、保留の理由を再確認してください。
 
 **受け入れる場合に必要な手順（これが対価）**：
 1. 列挙の一致試験に加えて、**境界値・wire形式・fixtureの同期**を確認する手順を決める。

@@ -54,7 +54,7 @@ go test ./research/tei-cross-domain-probe-2026-11/... -count=1 -run 'Anchor|Tran
 | --- | --- | --- |
 | TEI | `b8cbd432a` | このprobeの分岐元。`origin/main` の複数版で再実行しても試験と宣言数は不変 |
 | CSW | `73efa57ef66a` | 3 Skillと`plan/`の研究文書を参照。実行時コードは持たない |
-| VSクマ | `5dae4c873e39` | 転記の分岐元。転記照合は現行 `2f7e2990bb22da57deafb2aedfecb9a654094048` で48件すべて解決 |
+| VSクマ | `5dae4c873e39` | 転記の分岐元。転記照合は現行 `2a7e2990bb22da57deafb2aedfecb9a654094048` で48件すべて解決 |
 
 上流は進むため、照合は**実行した時点の上流commit**を [`ANCHOR_POLICY.md`](ANCHOR_POLICY.md) の証跡表へ記録します。この表の commit は照合した版であり、「現在の上流の説明」ではありません。
 

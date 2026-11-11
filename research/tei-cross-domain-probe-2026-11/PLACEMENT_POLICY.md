@@ -39,7 +39,7 @@
 
 | 条件 | 該当 | 根拠 |
 | --- | --- | --- |
-| R1 外部リポジトリ依存 | **該当** | VSクマ `2f7e2990bb22da57deafb2aedfecb9a654094048`・CSW `73efa57ef66ae4d53db3ff9bb63c927f624f44a8` を転記元とし、上流が進めば追随が必要 |
+| R1 外部リポジトリ依存 | **該当** | VSクマ `2a7e2990bb22da57deafb2aedfecb9a654094048`・CSW `73efa57ef66ae4d53db3ff9bb63c927f624f44a8` を転記元とし、上流が進めば追随が必要 |
 | R2 届かない環境でskip | **該当** | `TestUpstreamAnchorsResolveInTheCitedFiles` 等は兄弟チェックアウトが無いと skip（[ANCHOR_POLICY.md](../../research/tei-cross-domain-probe-2026-11/ANCHOR_POLICY.md) §2.3） |
 | R3 判断材料であって権威でない | **該当** | 研究文書 §7 の判断事項は未決。製品Gateへ接続していない |
 | R4 比較設計が研究中 | **該当** | UI非同期・通信Session の投影（SM-02・#4311）が未着手 |
