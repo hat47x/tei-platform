@@ -81,3 +81,63 @@ func (r Resolver) ExecuteBrowseQuery(
 	result.Mapped = mapped
 	return BrowseQueryExecution{Resolution: resolved, Result: result}, nil
 }
+
+// RelationQueryResultは、Executorが観測したraw resultと、Canonical Relation Queryの明示mappingを
+// 適用した結果を分けて保持する。
+type RelationQueryResult struct {
+	Raw     queryresult.RawResult
+	Mapped  queryresult.MappedResult
+	Payload any
+}
+
+// RelationQueryExecutorは、解決済みのRelation Queryを実行環境へ接続する。
+type RelationQueryExecutor interface {
+	ExecuteRelationQuery(
+		context.Context,
+		query.ResolvedRelationQuery,
+		application.DatabaseRequirement,
+		map[string]any,
+	) (RelationQueryResult, error)
+}
+
+// RelationQueryExecutionは、解決したRelation QueryとExecutorが返した結果をまとめる。
+type RelationQueryExecution struct {
+	Resolution query.ResolvedRelationQuery
+	Result     RelationQueryResult
+}
+
+// ExecuteRelationQueryは、Relation QueryをCanonical IDから解決し、
+// SQLを生成してExecutorで実行する。
+func (r Resolver) ExecuteRelationQuery(
+	ctx context.Context,
+	applicationID, queryID core.CanonicalID,
+	executor RelationQueryExecutor,
+	parameters map[string]any,
+) (RelationQueryExecution, error) {
+	resolved, err := r.ResolveRelationQuery(applicationID, queryID)
+	if err != nil {
+		return RelationQueryExecution{}, err
+	}
+	app, err := r.applicationByID(resolved.Query.Application)
+	if err != nil {
+		return RelationQueryExecution{}, fmt.Errorf("Relation Query %sのApplication %sを解決できません: %w", queryID, resolved.Query.Application, err)
+	}
+	datasource, err := readableDatasource(app, core.LocalName(resolved.Query.Datasource))
+	if err != nil {
+		return RelationQueryExecution{}, fmt.Errorf("Relation Query %sのDatasource %sを解決できません: %w", queryID, resolved.Query.Datasource, err)
+	}
+	if executor == nil {
+		return RelationQueryExecution{}, fmt.Errorf("Relation Query %sを実行するExecutorが指定されていません", queryID)
+	}
+
+	queryResult, err := executor.ExecuteRelationQuery(ctx, resolved, datasource, parameters)
+	if err != nil {
+		return RelationQueryExecution{}, fmt.Errorf("Relation Query %sをDatasource %sで実行できませんでした: %w", queryID, datasource.Alias, err)
+	}
+	mapped, err := queryresult.MapRelationQuery(resolved, queryResult.Raw)
+	if err != nil {
+		return RelationQueryExecution{}, fmt.Errorf("Relation Query %sのresultをSemantic attributeへ対応付けられません: %w", queryID, err)
+	}
+	queryResult.Mapped = mapped
+	return RelationQueryExecution{Resolution: resolved, Result: queryResult}, nil
+}

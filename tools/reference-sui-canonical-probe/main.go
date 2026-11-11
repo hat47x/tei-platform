@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	reportSchemaVersion = "sui-canonical-m2-probe/v1"
+	reportSchemaVersion = "sui-canonical-m2-probe/v2"
 	// TEI authority is definition-only: this probe reads the World and never
 	// writes it, and instance data stays outside the Canonical World.
 	teiAuthority = "definition-only"
@@ -36,6 +36,10 @@ var undeclared = []string{
 	"review.attribution (who/when)",
 	"relation.rationale",
 	"narrative.summary.critique",
+	// The reference envelope never carries card text, island titles, or the
+	// document title, so they are not declared as attributes. Whether text
+	// may ever be declared is M4 / SUI #3369, not this definition.
+	"card.text / island.title / document.title (content)",
 }
 
 type relationSummary struct {
@@ -60,8 +64,14 @@ type report struct {
 	// resolve as their own Data with their own occurrence identity.
 	ContainmentAndAffiliationSeparate bool `json:"containmentAndAffiliationSeparate"`
 	// ParallelEdgesDistinguishable is true when an edge carries its own
-	// identity attribute instead of being keyed by its endpoints.
+	// identity and its endpoints are kind+id attributes, so parallel edges are
+	// not folded by their endpoint pair and island->island stays expressible.
 	ParallelEdgesDistinguishable bool `json:"parallelEdgesDistinguishable"`
+	// ReviewAndRevisionDeclared is true when the states the reference actually
+	// carries (document revision / disclosure, card text review, island title
+	// review) are declared. Card text itself is deliberately not declared: the
+	// reference envelope never carries it.
+	ReviewAndRevisionDeclared bool `json:"reviewAndRevisionDeclared"`
 	// Undeclared lists what the definition does not represent. It is never
 	// empty for this Stage 0 probe: the losses are part of the report.
 	Undeclared []string `json:"undeclared"`
@@ -129,10 +139,17 @@ func probe(world ir.World) (report, error) {
 		string(data["sui.containment"].ID) != string(data["sui.affiliation"].ID)
 
 	edge := data["sui.edge"]
+	// 並行Edgeは端点の組で畳まない。endpointは card|island の多相なので、
+	// 型付きrelationではなく kind+id 属性で宣言する（island->island も
+	// 表現できるようにするため）。この制約を定義から隠さない。
 	parallel := hasAttribute(edge, "edge_id") &&
 		hasAttribute(edge, "edge_type") &&
-		countRelations(edge, "from_card") == 1 &&
-		countRelations(edge, "to_card") == 1
+		hasAttribute(edge, "from_kind") &&
+		hasAttribute(edge, "from_id") &&
+		hasAttribute(edge, "to_kind") &&
+		hasAttribute(edge, "to_id") &&
+		countRelations(edge, "from_card") == 0 &&
+		countRelations(edge, "to_card") == 0
 
 	summaries := make([]dataSummary, 0, len(data))
 	ids := make([]string, 0, len(data))
@@ -161,6 +178,11 @@ func probe(world ir.World) (report, error) {
 		summaries = append(summaries, summary)
 	}
 
+	reviewAndRevision := hasAttribute(data["sui.document"], "revision_state") &&
+		hasAttribute(data["sui.document"], "disclosure_state") &&
+		hasAttribute(data["sui.card"], "text_review_state") &&
+		hasAttribute(data["sui.island"], "title_review_state")
+
 	return report{
 		SchemaVersion:                     reportSchemaVersion,
 		TEIAuthority:                      teiAuthority,
@@ -169,6 +191,7 @@ func probe(world ir.World) (report, error) {
 		Data:                              summaries,
 		ContainmentAndAffiliationSeparate: separate,
 		ParallelEdgesDistinguishable:      parallel,
+		ReviewAndRevisionDeclared:         reviewAndRevision,
 		Undeclared:                        append([]string{}, undeclared...),
 		ParentPresenceSemantics:           "unresolved",
 	}, nil

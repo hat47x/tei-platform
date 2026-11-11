@@ -25,23 +25,22 @@ type WorkspaceSet struct {
 	Findings []Finding `json:"findings"`
 }
 
-// RenderWorkspace renders the table definitions and the function definition of
-// one application from its workspace. The input revision is the workspace's
-// model revision, so every artifact in the set is bound to the same meaning.
-func RenderWorkspace(root, applicationID string) (WorkspaceSet, error) {
+// renderWorkspace renders the artifacts for one application and returns the
+// loaded workspace and source index so callers can record provenance.
+func renderWorkspace(root, applicationID string) (WorkspaceSet, workspace.Result, sourceindex.Index, error) {
 	loaded, err := workspace.Load(root)
 	if err != nil {
-		return WorkspaceSet{}, fmt.Errorf("load workspace: %w", err)
+		return WorkspaceSet{}, workspace.Result{}, sourceindex.Index{}, fmt.Errorf("load workspace: %w", err)
 	}
 	index, err := workspace.BuildSourceIndex(root, loaded)
 	if err != nil {
-		return WorkspaceSet{}, fmt.Errorf("build source index: %w", err)
+		return WorkspaceSet{}, workspace.Result{}, sourceindex.Index{}, fmt.Errorf("build source index: %w", err)
 	}
 	revision := sourceindex.ModelRevision(index)
 
 	target, ok := findApplication(loaded.World.Applications, applicationID)
 	if !ok {
-		return WorkspaceSet{}, fmt.Errorf("application %q is not declared in this workspace", applicationID)
+		return WorkspaceSet{}, workspace.Result{}, sourceindex.Index{}, fmt.Errorf("application %q is not declared in this workspace", applicationID)
 	}
 
 	data := make(map[core.CanonicalID]semantic.Data)
@@ -96,7 +95,7 @@ func RenderWorkspace(root, applicationID string) (WorkspaceSet, error) {
 			return "", false
 		})
 		if err != nil {
-			return WorkspaceSet{}, fmt.Errorf("render table definition %s: %w", mapping.ID, err)
+			return WorkspaceSet{}, workspace.Result{}, sourceindex.Index{}, fmt.Errorf("render table definition %s: %w", mapping.ID, err)
 		}
 		artifacts = append(artifacts, table)
 	}
@@ -111,19 +110,19 @@ func RenderWorkspace(root, applicationID string) (WorkspaceSet, error) {
 		RunPlans:      runPlans,
 	})
 	if err != nil {
-		return WorkspaceSet{}, fmt.Errorf("render function definition %s: %w", target.ID, err)
+		return WorkspaceSet{}, workspace.Result{}, sourceindex.Index{}, fmt.Errorf("render function definition %s: %w", target.ID, err)
 	}
 	artifacts = append(artifacts, function)
 
 	surfaceArtifact, err := RenderOperationSurface(loaded.World, applicationID, revision)
 	if err != nil {
-		return WorkspaceSet{}, fmt.Errorf("render operation surface: %w", err)
+		return WorkspaceSet{}, workspace.Result{}, sourceindex.Index{}, fmt.Errorf("render operation surface: %w", err)
 	}
 	artifacts = append(artifacts, surfaceArtifact)
 
 	manifest, err := NewManifest(revision, artifacts)
 	if err != nil {
-		return WorkspaceSet{}, fmt.Errorf("build manifest: %w", err)
+		return WorkspaceSet{}, workspace.Result{}, sourceindex.Index{}, fmt.Errorf("build manifest: %w", err)
 	}
 	set := WorkspaceSet{InputRevision: revision, Artifacts: artifacts, Manifest: manifest}
 	set.Findings = append(CheckSet(set), checkSurfaceTargets(loaded.World, target, artifacts)...)
@@ -131,7 +130,21 @@ func RenderWorkspace(root, applicationID string) (WorkspaceSet, error) {
 	if set.Findings == nil {
 		set.Findings = []Finding{}
 	}
-	return set, nil
+	return set, loaded, index, nil
+}
+
+// RenderWorkspace renders the table definitions and the function definition of
+// one application from its workspace. The input revision is the workspace's
+// model revision, so every artifact in the set is bound to the same meaning.
+func RenderWorkspace(root, applicationID string) (WorkspaceSet, error) {
+	set, _, _, err := renderWorkspace(root, applicationID)
+	return set, err
+}
+
+// RenderWorkspaceWithIndex renders the artifacts and returns the loaded workspace
+// and source index so callers can record provenance.
+func RenderWorkspaceWithIndex(root, applicationID string) (WorkspaceSet, workspace.Result, sourceindex.Index, error) {
+	return renderWorkspace(root, applicationID)
 }
 
 func findApplication(applications []application.Application, id string) (application.Application, bool) {
