@@ -23,12 +23,33 @@ type output struct {
 	Amount   string `json:"amount,omitempty"`
 	Currency string `json:"currency,omitempty"`
 	Code     string `json:"code,omitempty"`
+	// Kind, Retryable and EffectUnknown are the unified failure contract
+	// (internal/failure) on the wire. They are present on every failure so a
+	// caller branches on the same three names the Go runtime and the Java
+	// target use, instead of keeping a per-target list of code strings.
+	Kind          string `json:"kind,omitempty"`
+	Retryable     string `json:"retryable,omitempty"`
+	EffectUnknown bool   `json:"effectUnknown,omitempty"`
+}
+
+// businessRejection reports a failure the request itself carries: nothing ran,
+// so resending it unchanged answers the same way and there is no effect to look
+// up.
+func businessRejection(code string) output {
+	return output{State: "error", Code: code, Kind: "business_rejection", Retryable: "not_retryable"}
+}
+
+// technicalFailure reports a failure of the target itself. Whether it applied
+// anything is not decidable from here, so the caller must look the result up
+// under the same identity before resending rather than send again blindly.
+func technicalFailure(code string) output {
+	return output{State: "error", Code: code, Kind: "technical_failure", Retryable: "lookup_first", EffectUnknown: true}
 }
 
 func main() {
 	var in input
 	if err := json.NewDecoder(os.Stdin).Decode(&in); err != nil {
-		emit(output{State: "error", Code: "INPUT_INVALID"})
+		emit(technicalFailure("INPUT_INVALID"))
 		return
 	}
 	if in.Quantity == nil || in.UnitPrice == nil {
@@ -36,26 +57,26 @@ func main() {
 		return
 	}
 	if in.Currency != "{{.Currency}}" {
-		emit(output{State: "error", Code: "CURRENCY_MISMATCH"})
+		emit(businessRejection("CURRENCY_MISMATCH"))
 		return
 	}
 	if in.Unit != in.PerUnit {
-		emit(output{State: "error", Code: "UNIT_MISMATCH"})
+		emit(businessRejection("UNIT_MISMATCH"))
 		return
 	}
 	quantity, ok := new(big.Rat).SetString(*in.Quantity)
 	if !ok {
-		emit(output{State: "error", Code: "DECIMAL_INVALID"})
+		emit(technicalFailure("DECIMAL_INVALID"))
 		return
 	}
 	price, ok := new(big.Rat).SetString(*in.UnitPrice)
 	if !ok {
-		emit(output{State: "error", Code: "DECIMAL_INVALID"})
+		emit(technicalFailure("DECIMAL_INVALID"))
 		return
 	}
 	amount, err := roundHalfUp(new(big.Rat).Mul(quantity, price), {{.Scale}})
 	if err != nil {
-		emit(output{State: "error", Code: err.Error()})
+		emit(businessRejection(err.Error()))
 		return
 	}
 	emit(output{State: "present", Amount: amount, Currency: "{{.Currency}}"})
