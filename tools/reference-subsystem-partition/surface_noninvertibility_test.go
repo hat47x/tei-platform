@@ -14,7 +14,7 @@ import (
 )
 
 // This is a characterization of a lossy read-only projection. The two valid
-// candidate Worlds differ in declared Capability effect intent but produce
+// typed synthetic Worlds differ in declared Capability effect intent but produce
 // identical derived OperationSurfaces. No inverse can recover *all* Capability
 // declarations (still less Accepted Function direct C/U/D or actual writes).
 func TestOperationSurfaceCannotRecoverUnselectedCapabilityIntent(t *testing.T) {
