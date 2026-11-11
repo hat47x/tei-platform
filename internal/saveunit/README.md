@@ -143,4 +143,4 @@ go test ./internal/saveunit -count=1 -v
 
 ## Owner受理が必要な事項
 
-[plan/issues/SAVEUNIT_OWNER_ACCEPTANCE_ITEMS_2026-11.md](../plan/issues/SAVEUNIT_OWNER_ACCEPTANCE_ITEMS_2026-11.md) を参照。
+[plan/issues/SAVEUNIT_OWNER_ACCEPTANCE_ITEMS_2026-11.md](../../plan/issues/SAVEUNIT_OWNER_ACCEPTANCE_ITEMS_2026-11.md) を参照。
