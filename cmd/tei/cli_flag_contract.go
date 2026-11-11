@@ -64,12 +64,7 @@ var selectedReadOnlyFlagAllowlist = map[string][]string{
 	"plugin-lock":         {"workspace", "world", "environment"},
 	"plugin-resolve":      {"workspace", "world", "environment", "plugin-lock", "diagnostic-candidates"},
 	"plugin-runtime-plan": {"workspace", "world", "environment", "plugin-lock"},
-	// `three-element` is deliberately absent. Its subcommands parse their own
-	// FlagSets, and `runThreeElementCommand` returns from main() before the
-	// shared FlagSet is built, so no shared allowlist governs its flags. An
-	// entry here advertised a flag set that nothing enforced and that `tei
-	// commands` did not list (#2332 checked the two tables against each other
-	// and failed on exactly that).
+	"three-element":       {"model", "before", "after"},
 }
 
 // repeatableFlags lists the flags that collect several values by design. They
@@ -256,4 +251,5 @@ var emptyStringGuardedFlags = map[string]map[string]bool{
 	"plugin-runtime-plan": {
 		"workspace": true, "environment": true, "plugin-lock": true,
 	},
+	"three-element": {"model": true, "before": true, "after": true},
 }
