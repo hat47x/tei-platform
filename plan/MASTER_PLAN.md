@@ -1213,7 +1213,7 @@ X-TEA Modeler由来の**Data/Function/Businessの3図とCRUD cross-reference**�
 <!-- org-cutover-tr-plan-20261109 -->
 [組織意味設計のCutover追補](design/ORGANIZATION_RELATION_GOVERNANCE_MODEL_2026-10.md)に、**所属更新≠Case handlingUnitの担当変更≠実行Grant切替≠相手方Handoff**を実効責務の四象限（旧側/新側がyes/no）として定義。単独責任を全組織へ強制せず、Ownerが共同責任・合議・移行中保留を選択可能にする。二重有効（単独責任時）／両者無効／現在性未照合／A→B→A旧Receipt復活を分離し、ORG-TR-01〜08を追加した。旧Draft #3243のORG-CF/MAPを第二Scenario化せず、#1180/#2514の既存独立Expectedへ差分接続する。
 
-**他レーンの現在基線**：mainの #3540 は通常CLI/Studioの静的Inspector参照選択、#3635 はStudio参照Hookの executed/notEvaluated/skipped/refused を区別。どちらも組織実DB/現在Grantの資格ではない。#3496のREA T0実解析・Artifact独立監査はSource候補の限定証拠で、Owner意味受理/TEI Intakeは未成立。#3662のSubsystem固定Owner数理候補は現業務責任や物理Service分割でない。
+**他レーンの現在基線**：mainの #3540 は通常CLI/Studioの静的Inspector参照選択、#3635 はStudio参照Hookの executed/notEvaluated/skipped/refused を区別。どちらも組織実DB/現在Grantの資格ではない。旧#3496（closed/unmerged）のREA 6.7.0 T0実解析・Artifact監査はSource候補の限定証拠。T0-05は[Draft #4257](https://github.com/hat47x/tei-platform/pull/4257)で6.7.0の単独JSON／6.8.0の7行＋jsonl/v1終端を同じ公開合成JSの別2 Jobで実証（[Actions #42942865412](https://github.com/hat47x/tei-platform/actions/runs/42942865412)）。旧監査・候補投影コードはmainに無く、Owner意味受理/TEI Product Intakeは未成立。#3662のSubsystem固定Owner数理候補は現業務責任や物理Service分割でない。
 
 **優先は据え置き**：全TEIのHJ-09一Function実Read（#2586）を先行し、組織C1→D1 read-onlyとRQ-036 Model Map／三視点の同一Source照合は次段、実Case切替・旧Grant/SoD・二件Handoffは#1174/#2499/#1125/#1444のP1。実行主体と認可Sourceの比較可能なrevisionが証明されない場合は保留し、HookのnotEvaluated/partialを許可やEffectに昇格しない。新Org Status Enum/Authority Engine/Workflow Host/Proof Store/Hard Gateを設けない。本追補はdocs-onlyでORG-TRの実Go/PG/Studio/外部Host/Owner受理は未実行。
 ## 2026-11-07 標準データ構造と標準表現型の対応（設計・検証候補）
@@ -1352,7 +1352,7 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 ### 外部Observationから組織Relationへの候補写像を段階受入する（2026-11-09）
 
 <!-- org-external-observation-t1a-plan-20261109 -->
-[組織設計の外部Admission追補](design/ORGANIZATION_RELATION_GOVERNANCE_MODEL_2026-10.md)で、[REA T1-A前段 #3496](https://github.com/hat47x/tei-platform/pull/3496)の**実REA 6.7.0・固定HEAD 4/4 Job・独立監査＋候補試験42/42 PASS**、valid **13/14**・partial **11/12**の二時点Source byte付きCandidateと各1 unbound Rootを、組織意味の**正式採用前の観測**として接続した。元データは公開JS合成Sourceであり、組織HR/実Caseの外部Producerが動いた証拠ではない。Source前後一致はA→B→AやProvider Actual Inputの原子的Snapshotを証明しない。TEICanonicalSubject=null／acceptedMeaning=false／sourceClosure=not-qualifiedを維持。
+[組織設計の外部Admission追補](design/ORGANIZATION_RELATION_GOVERNANCE_MODEL_2026-10.md)で、[REA T1-A前段 #3496](https://github.com/hat47x/tei-platform/pull/3496)の**実REA 6.7.0・固定HEAD 4/4 Job・独立監査＋候補試験42/42 PASS**、valid **13/14**・partial **11/12**の二時点Source byte付きCandidateと各1 unbound Rootを、組織意味の**正式採用前の観測**として接続した。元データは公開JS合成Sourceであり、組織HR/実Caseの外部Producerが動いた証拠ではない。Source前後一致はA→B→AやProvider Actual Inputの原子的Snapshotを証明しない。旧#3496はclosed/unmergedで試験用Projectorはmain未搭載。Model Map #3866のmain統合と足しても外部Observation→正式Model Map/製品CLI実受領は未成立。TEICanonicalSubject=null／acceptedMeaning=false／sourceClosure=not-qualifiedを維持。
 
 **次の欠落辺は1 Observation＋1 Edgeのみ**：既存共通Application API（ADR-0048/#1158）へProvider版・Evidence ID・Node/Edge個別ID・方向/多重性・Source path+raw digest+span・coverage/unknown・Scope/Workspaceを損失なく渡す限定read-only実Consumer。#3394が外部Producer/Consumer照合を所有し、#2386がPerson/Membership/Occupancy/CaseへのOwner意味写像、#3492/#3518/#1124がAccepted/候補を混同しない三視点Model Map、#2516が公開Slice/診断も含む開示、#2514/#1180が独立負例を所有する。ORG-EXT-01〜06で同名別ID、多重Edge、unbound端点、partial 0件、同byte別Workspace、A→B→Aを対照。既存InspectSubjectへ外部JSONを偽Canonicalとして流さず、独立Graph Store/Resolver/Parser/Hostを作らない。
 
