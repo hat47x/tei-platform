@@ -1,4 +1,4 @@
-# 受入条件と検証根拠
+﻿# 受入条件と検証根拠
 
 要求が受け入れシナリオや検証根拠にどう結び付くかを整理する文書を置きます。要求そのものは[`requirements/`](../../requirements/README.md)、段階判定の記録と実行手順は[`gate/`](../gate/README.md)、現在の実装状況は[`docs/status.md`](../../docs/status.md)を参照してください。
 
@@ -125,7 +125,8 @@
 - [行範囲の宣言を通す修正の確認](XTEA_LOWCODE_HOOK_ROW_SCOPE_DECLARABLE_2026-11.md)（参照実装の試験記録。`row`が宣言できず死んだコードだった矛盾の修正。実行経路の配線は未実装）
 - [フック範囲の貫通試験の確認](XTEA_LOWCODE_HOOK_SCOPE_THROUGH_2026-11.md)（参照実装の試験記録。宣言→検証→実行を1本で通し、修正を戻すと落ちることを確認）
 - [パッケージ契約（適合試験・投影）の検査の確認](XTEA_LOWCODE_PACKAGE_CONFORMANCE_2026-11.md)（参照実装の試験記録。適合試験名と投影を検査。適合試験の実行は未実装）
-- [期間の close-requires の実行時検査の確認](XTEA_LOWCODE_CLOSE_REQUIRES_2026-11.md)（参照実装の試験記録。閉めに必要な能力を実行時に要求。`correction`は未実装）
+- [期間の close-requires の実行時検査の確認](XTEA_LOWCODE_CLOSE_REQUIRES_2026-11.md)（参照実装の試験記録。閉めに必要な能力を実行時に要求）
+- [期間の correction の実行時検査の確認](XTEA_LOWCODE_PERIOD_CORRECTION_2026-11.md)（参照実装の試験記録。閉じた期間の訂正を宣言した能力に限る。訂正能力を走らせる経路は未実装）
 - [採番の永続CounterStoreの確認](XTEA_LOWCODE_NUMBERING_SQLITE_STORE_2026-11.md)（参照実装の試験記録。PostgreSQLは未実装）
 - [採番の2プロセス同時実行の確認](XTEA_LOWCODE_NUMBERING_PROCESS_RACE_2026-11.md)（参照実装の試験記録。PostgreSQLと多プロセス構成は未実装）
 - [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
@@ -433,3 +434,5 @@
 - [契約ヘッダの版を名指しする](TEI_DOGFOODING_ROUND63_CONTRACT_VERSION_2026-11-11/README.md)（#4169のA案2件目。`unexpected token \"{\"`を「版が要る」に変え、`^`も同じ案内にした。実装中にpeekの順序バグを作り、ビルドと既存試験は通ったがCLIで測って気づいた。変異M2がそのバグを再現する）
 - [未束縛のdatasourceに書くべきbindを名指しさせる](TEI_DOGFOODING_ROUND64_UNBOUND_DATASOURCE_2026-11-11/README.md)（#4169のA案3件目。第60ラウンドで起票を保留した摩擦を、environmentファイルで手順を確定してから解消。案内はWorldから導出し、実在しないインスタンスを例示しない（fail-closed）。変異3種で確認）
 - [コマンドパターンを設計しinteractionの形を名指しさせる](TEI_DOGFOODING_ROUND65_INTERACTION_FORM_2026-11-11/README.md)（#4169のA案4件目。commandパターンをCLIだけで設計し、interactionを行形式で書くと形が分からない点を直した。案内文を2度書き直した（違反トークンの埋め込み→契約が拒否する例→種に合った案内）。cmd/teiは単独564.8sでok、同時実行では600秒上限に達した）
+
+

@@ -276,6 +276,12 @@ func (i Invoker) checkPeriod(ctx context.Context, plan applicationview.CommandPl
 	if !closed {
 		return nil
 	}
+	// A closed period that declares `correction via <capability>` allows a change
+	// only through that capability. The declaration was validated but never read
+	// here, so any capability could change a closed period (D-9).
+	if err := CorrectionCheck(plan, plan.Capability); err != nil {
+		return err
+	}
 	for _, rejected := range plan.Period.ClosedRejects {
 		if rejected == plan.Effect.Kind {
 			return &ExecutionError{Code: "COMMAND_PERIOD_CLOSED", Message: fmt.Sprintf("period %s is closed for %s", plan.Period.ID, plan.Effect.Kind)}

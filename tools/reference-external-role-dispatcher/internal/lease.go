@@ -35,12 +35,21 @@ func NewLeaseStore(path string) (*LeaseStore, error) {
 	if err := ensureDir(path); err != nil {
 		return nil, err
 	}
-	db, err := sql.Open("sqlite", path)
+	// Two goroutines claiming at once contend for the write lock. Without a busy
+	// timeout the loser gets SQLITE_BUSY immediately and reports it as an
+	// unexpected error, so the exclusivity this store exists to provide looks
+	// like a broken database. The DSN carries the timeout; the PRAGMA keeps the
+	// connection honest if a future driver ignores the parameter.
+	dsn := path + "?_pragma=busy_timeout(5000)"
+	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("open lease db: %w", err)
 	}
 	if _, err := db.Exec(`PRAGMA journal_mode=WAL;`); err != nil {
 		return nil, fmt.Errorf("set wal: %w", err)
+	}
+	if _, err := db.Exec(`PRAGMA busy_timeout=5000;`); err != nil {
+		return nil, fmt.Errorf("set busy timeout: %w", err)
 	}
 	if _, err := db.Exec(leaseSchema); err != nil {
 		return nil, fmt.Errorf("create schema: %w", err)
