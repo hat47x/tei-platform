@@ -57,7 +57,11 @@ type fullChainReport struct {
 // writeFullChainDeclaration writes a declaration naming every module-local
 // package the build of entry reads, plus the module context. The digests are
 // computed by the resolver, exactly as the entry will compute them.
-func writeFullChainDeclaration(t *testing.T, repoRoot, entry, dir string) string {
+//
+// It also returns the member count the isolated tree must have, so the caller
+// asserts against the SAME package list this declaration was built from
+// instead of a stale literal.
+func writeFullChainDeclaration(t *testing.T, repoRoot, entry, dir string) (string, int) {
 	t.Helper()
 	goExe, err := exec.LookPath("go")
 	if err != nil {
@@ -123,7 +127,8 @@ func writeFullChainDeclaration(t *testing.T, repoRoot, entry, dir string) string
 	if err := os.WriteFile(path, append(encoded, '\n'), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	return path
+	// One member per declared source: every go-package plus go.mod and go.sum.
+	return path, len(sources)
 }
 
 func itoa(i int) string {
@@ -166,7 +171,7 @@ func TestSelfBuildFullChainOnTheRealSubject(t *testing.T) {
 	}
 	t.Cleanup(func() { removeReadOnlyTree(dir) })
 	workspace := outerWorkspace(t, dir)
-	intentPath := writeFullChainDeclaration(t, repoRoot, "./cmd/tei", dir)
+	intentPath, wantMembers := writeFullChainDeclaration(t, repoRoot, "./cmd/tei", dir)
 
 	// The catalog, authored from a capability declaration.
 	builderBytes, err := os.ReadFile(builder)
@@ -300,8 +305,14 @@ func TestSelfBuildFullChainOnTheRealSubject(t *testing.T) {
 	if len(report.ChildIsolation.ModuleFiles) != 0 {
 		t.Fatalf("the tree took module files from the working tree: %v", report.ChildIsolation.ModuleFiles)
 	}
-	if report.ChildIsolation.MemberCount != 75 {
-		t.Fatalf("memberCount = %d, want 75 (73 packages plus go.mod and go.sum)", report.ChildIsolation.MemberCount)
+	// The member count is DERIVED from the same package list this declaration
+	// was written from, plus go.mod and go.sum. It used to be the literal 75,
+	// which was true when the build closure had 73 module-local packages; adding
+	// one package anywhere in the closure made the test fail even though the
+	// chain worked. A literal here is a maintenance trap, not a claim (#3394).
+	if report.ChildIsolation.MemberCount != wantMembers {
+		t.Fatalf("memberCount = %d, want %d (the declared %d packages plus go.mod and go.sum)",
+			report.ChildIsolation.MemberCount, wantMembers, wantMembers-2)
 	}
 	if report.ChildRun == nil || report.ChildRun.ChildArtifactDigest == "" {
 		t.Fatal("the child reported no artifact")

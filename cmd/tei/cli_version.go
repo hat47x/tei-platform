@@ -7,6 +7,8 @@ import (
 	"runtime"
 	"runtime/debug"
 	"strings"
+
+	"tei/internal/artifact"
 )
 
 // cliBuildIdentity describes the executable that produced a result. It is
@@ -90,6 +92,22 @@ func buildIdentity(info *debug.BuildInfo, ok bool) cliBuildIdentity {
 		identity.Source = buildIdentityFromLDFlags
 	}
 	return identity
+}
+
+// ReadBuildIdentity returns the build identity of this CLI binary.
+func ReadBuildIdentity() artifact.CLIBuildIdentity {
+	id := buildIdentity(debug.ReadBuildInfo())
+	return artifact.CLIBuildIdentity{
+		SchemaVersion:    id.SchemaVersion,
+		GoVersion:        id.GoVersion,
+		GOOS:             id.GOOS,
+		GOARCH:           id.GOARCH,
+		VCSRevision:      id.VCSRevision,
+		VCSModified:      id.VCSModified,
+		BuildSettings:    id.BuildSettings,
+		DeclaredRevision: id.DeclaredRevision,
+		Source:           id.Source,
+	}
 }
 
 func runVersionCommand(args []string, out io.Writer) (int, error) {

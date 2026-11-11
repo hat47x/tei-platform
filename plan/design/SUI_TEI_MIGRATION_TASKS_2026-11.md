@@ -389,14 +389,27 @@ M6（scope conformance）は独立
 
 ## 7. Owner判断が必要な論点
 
-1. `source.status`と文書単位の開示宣言をproducer契約にするか（M1）
-2. カード本文・題名を業務面へ出してよいか（#3369）。参照経路は出していません
-3. `revoked`を「参照の無効」と「Sourceの削除」のどちらとして扱うか
-4. `documentDigest`（内容指紋）とSUIの保存revisionを同一視しないことを、どう契約に載せるか
-5. Treeの閲覧状態（折り畳み・focus）をCanonicalへ入れるか、対象外とするか
-6. Canvasのpolygon・placardをCanonicalへ入れるか、Interaction境界だけにするか（#993）
-7. review attributionをDataとして持つか、監査・Source側に委ねるか
-8. SUI固有の語彙（`Card`・`Island`・`human_reviewed`）を、どこまで一般化の候補として外へ出すか
+### 7.1 代行判断（2026-11-11、保守側で決定済み）
+
+利用者の指示にもとづき、以下の8論点を**保守側（安全不変条件を緩めない側）で代行決定**しました。これらは「現状の境界を維持する」決定であり、いずれも**覆す条件**を明記します。本来のOwnerがこれと異なる判断をした場合は、その判断を優先し、この節を更新します。
+
+| # | 論点 | 代行判断 | 根拠 | 覆す条件 |
+| --- | --- | --- | --- | --- |
+| 1 | producer契約（`source.status`・`disclosure.scope`） | **optional consumer input として許可**。producerへの義務は課さない | consumer（SUI PR #3429）が既に実装済みで、欠落時は`unknown`に倒れる。型を広げずに済む | TEI/TAIが別のfield pathを採択した場合。consumerの既定が`unknown`なので、誤読は生じない |
+| 2 | 本文・題名の業務面公開 | **出さない（`textIncluded=false` 維持）** | SafeMode・未レビュー非公開・#3369未決の不変条件を緩めない | #3369のOwner判断 **かつ** M4の開示設計が揃った場合のみ |
+| 3 | `revoked`の意味 | **「参照の無効」**として扱う。Source実体の削除は意味しない | consumerは409を返してキャッシュfallbackしない。実体の削除はこの層の知るところではない | Source index（#2743）に削除の意味論ができた場合 |
+| 4 | `documentDigest`と保存revision | **同一視しない**。digestは内容指紋、revisionはSource版として別欄で維持 | 両者を同じとすると「変わっていない」を誤って表示できる | なし（混同しないことは非決定として維持する） |
+| 5 | Tree閲覧状態 | **Canonical宣言に含めない**。参照が運ぶのは並び順のみ | 第二の消費者が現れず、語彙を広げる根拠がない | 閲覧状態を必要とする第二のConsumerが現れた場合 |
+| 6 | Canvas polygon・placard | **Canonical宣言に含めない**。x/yのみ。Interaction境界で扱う | #993のReferenceの範囲。SUIのnative assetのまま | #993でCanonical投入が決まった場合 |
+| 7 | review attribution | **Dataとして持たない**。監査・Source側に委ねる | 参照envelopeは reviewer・時刻を運ばない。型に置くと実態とずれる | 監査設計が attribution をモデル内に要求した場合 |
+| 8 | SUI語彙の一般化 | **一般化しない**。`sui.*`はSUIのnative assetのまま | #2497の基準（第二のApplicationで再現されるまで標準化しない）を満たさない | 第二のApplicationで同じ構造が再現された場合 |
+
+**代行判断の位置づけ**: 上記は判断の代行であり、Ownerの正式な採択ではありません。§8の委譲先Issueでは、これらの判断を「代行」として記録し、覆す条件と併せて提示します。
+
+### 7.2 未代行（判断材料が足りないもの）
+
+- `documentDigest`を「どう契約に載せるか」の**具体的な文言**は、#2595（照合済みbyte）と#2743（Source index）の設計が固まってからにします。現状は「別欄で維持する」という非決定のみ。
+- M1のproducer契約の**具体形**（`statusReason`・`observedAt`・`policyRef`の有無）は、TAI側の担当と合わせてからにします。consumerは未知keyを無視するため、先に実装しても後方互換です。
 
 ## 8. 既存Issueへの委譲
 

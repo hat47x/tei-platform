@@ -1,0 +1,97 @@
+{
+  "schema": "csw.handoff/v0",
+  "study_inputs": [
+    {
+      "input_id": "c1a",
+      "source_revision": "73efa57ef66ae4d53db3ff9bb63c927f624f44a8",
+      "content_sha256": "sha256:7d9fea10fcdfb420b12879c39b294314e1b7f0d2a26f3bcb3aacc21952934474",
+      "ordinal": 1
+    },
+    {
+      "input_id": "c2a",
+      "source_revision": "73efa57ef66ae4d53db3ff9bb63c927f624f44a8",
+      "content_sha256": "sha256:2b1d740e89f0bc4c7065bbc81a12ba9b319e148ad9702791a496374446de2922",
+      "ordinal": 2
+    }
+  ],
+  "runs": [
+    {
+      "run_id": "run-a",
+      "model_ref": "synthetic-proposal-model",
+      "harness_ref": "synthetic-harness",
+      "independent_context": true,
+      "started_at": "2026-11-11T04:00:00Z"
+    },
+    {
+      "run_id": "run-b",
+      "model_ref": "synthetic-second-model",
+      "harness_ref": "synthetic-harness",
+      "independent_context": false,
+      "started_at": "2026-11-11T04:10:00Z"
+    }
+  ],
+  "fragments": [
+    {
+      "fragment_id": "f-1",
+      "study_input_id": "c1a",
+      "run_id": "run-a",
+      "ordinal": 1,
+      "attribution": "generated_proposal",
+      "body_sha256": "sha256:ff23fd6ec113d29129b905fb1b481806b4dbe9b5cb3e06e69ae1f44968ba5210",
+      "body_ref": "work/synthetic/f-1.md"
+    },
+    {
+      "fragment_id": "f-2",
+      "study_input_id": "c1a",
+      "run_id": "run-a",
+      "ordinal": 2,
+      "attribution": "generated_proposal",
+      "body_sha256": "sha256:f07d2ca91457462f2b3ba5b11718d4c6e203360ad0944f9304231a3ef030c1b1",
+      "body_ref": "work/synthetic/f-2.md"
+    },
+    {
+      "fragment_id": "f-3",
+      "study_input_id": "c2a",
+      "run_id": "run-b",
+      "ordinal": 1,
+      "attribution": "source_material",
+      "body_sha256": "sha256:115d63c6ec4102507b7721aa7d85d7aede43b946879d0c77b8751b2d69a5d4c7",
+      "body_ref": "work/synthetic/f-3.md"
+    },
+    {
+      "fragment_id": "f-4",
+      "study_input_id": "c1a",
+      "run_id": "run-a",
+      "ordinal": 3,
+      "attribution": "author_stated",
+      "body_sha256": "sha256:b7f2876e011ae039ea3017f083ff7368a4c651e0782ada804f74351c1eabf520",
+      "body_ref": "work/synthetic/f-4.md"
+    },
+    {
+      "fragment_id": "f-5",
+      "study_input_id": "c1a",
+      "run_id": "run-a",
+      "ordinal": 4,
+      "attribution": "contact_reading",
+      "body_sha256": "sha256:6fb2529982167469651f67d21e69f6c264462366b174d3127b1e2b299f004a32",
+      "body_ref": "work/synthetic/f-5.md"
+    }
+  ],
+  "decisions": [
+    {
+      "decision_id": "d-1",
+      "fragment_id": "f-1",
+      "decision": "adopt",
+      "author_ref": "author:synthetic",
+      "decided_at": "2026-11-11T05:00:00Z",
+      "rationale_sha256": "sha256:1a8d3f141953937ef8f78acc10f1acde91cd092634118d731c7092c55eb2b801"
+    },
+    {
+      "decision_id": "d-2",
+      "fragment_id": "f-2",
+      "decision": "hold",
+      "author_ref": "author:synthetic",
+      "decided_at": "2026-11-11T05:05:00Z"
+    }
+  ]
+}

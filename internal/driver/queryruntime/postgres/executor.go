@@ -8,6 +8,8 @@ import (
 	"tei/internal/application"
 	"tei/internal/core"
 	postgresprovider "tei/internal/database/providers/postgres"
+	"tei/internal/database/persistence"
+	postgressqlgen "tei/internal/database/sqlgen/postgres"
 	"tei/internal/driver"
 	"tei/internal/driver/queryresult"
 	"tei/internal/environment"
@@ -32,6 +34,7 @@ type Queryer interface {
 type Executor struct {
 	DB       Queryer
 	Database core.CanonicalID
+	Mappings []persistence.Mapping
 }
 
 var _ driver.BrowseQueryExecutor = Executor{}
@@ -114,4 +117,132 @@ func stabilizeRawValue(value any) any {
 		return value
 	}
 	return append([]byte(nil), bytes...)
+}
+
+var _ driver.RelationQueryExecutor = Executor{}
+
+// ExecuteRelationQueryは、PostgreSQLでRelation Queryを実行する。
+//
+// 解決済みのRelation QueryをSQLに変換し、PostgreSQLで実行してraw resultを返す。
+// Semantic mappingはDriverが別途適用する。
+func (e Executor) ExecuteRelationQuery(
+	ctx context.Context,
+	resolved query.ResolvedRelationQuery,
+	datasource application.DatabaseRequirement,
+	parameters map[string]any,
+) (driver.RelationQueryResult, error) {
+	if e.DB == nil {
+		return driver.RelationQueryResult{}, fmt.Errorf("PostgreSQL Relation Query ExecutorにDatabase接続が指定されていません")
+	}
+	if e.Database == "" {
+		return driver.RelationQueryResult{}, fmt.Errorf("PostgreSQL Relation Query Executorが表すDatabase identityが指定されていません")
+	}
+	if datasource.TargetDatabase != e.Database {
+		return driver.RelationQueryResult{}, fmt.Errorf(
+			"Datasource %sのtarget Database %sとPostgreSQL ExecutorのDatabase %sが一致しません",
+			datasource.Alias,
+			datasource.TargetDatabase,
+			e.Database,
+		)
+	}
+
+	builder := driver.RelationQuerySQL{
+		Dialect:    postgressqlgen.NewDialect(),
+		Resolved:   resolved,
+		Parameters: parameters,
+		Mappings:   e.Mappings,
+	}
+	sql, err := builder.BuildSelect()
+	if err != nil {
+		return driver.RelationQueryResult{}, fmt.Errorf("Relation Query %sのSQL生成に失敗しました: %w", resolved.Query.ID, err)
+	}
+	resolved.SQL = sql.Statement
+
+	switch resolved.Query.FetchMode {
+	case query.RelationFetchModeEager, "":
+		return e.executeResolvedRelationQuery(ctx, sql.Statement, sql.Args...)
+	case query.RelationFetchModeBatch:
+		if resolved.Query.BatchSize <= 0 {
+			return driver.RelationQueryResult{}, fmt.Errorf("Relation Query %sのbatch sizeが未指定です", resolved.Query.ID)
+		}
+		return e.executeBatchedRelationQuery(ctx, resolved, sql.Statement, sql.Args...)
+	case query.RelationFetchModeLazy:
+		return driver.RelationQueryResult{}, fmt.Errorf("Relation Query %sのlazy fetchingは未実装です", resolved.Query.ID)
+	default:
+		return driver.RelationQueryResult{}, fmt.Errorf("Relation Query %sのfetch mode %sは未対応です", resolved.Query.ID, resolved.Query.FetchMode)
+	}
+}
+
+func (e Executor) executeBatchedRelationQuery(ctx context.Context, resolved query.ResolvedRelationQuery, sql string, args ...any) (driver.RelationQueryResult, error) {
+	batchSize := resolved.Query.BatchSize
+	offset := 0
+	var allRows [][]any
+	allColumns := []string{}
+
+	for {
+		batchSQL := fmt.Sprintf("%s LIMIT %d OFFSET %d", sql, batchSize, offset)
+		batchResult, err := e.executeResolvedRelationQuery(ctx, batchSQL, args...)
+		if err != nil {
+			return driver.RelationQueryResult{}, err
+		}
+		if len(batchResult.Raw.Rows) == 0 {
+			break
+		}
+		if allColumns == nil {
+			allColumns = batchResult.Raw.Columns
+		}
+		allRows = append(allRows, batchResult.Raw.Rows...)
+		offset += batchSize
+		if len(batchResult.Raw.Rows) < batchSize {
+			break
+		}
+	}
+
+	return driver.RelationQueryResult{
+		Raw: queryresult.RawResult{
+			Columns: allColumns,
+			Rows:    allRows,
+		},
+		Payload: Result{ParameterNames: nil},
+	}, nil
+}
+
+func (e Executor) executeResolvedRelationQuery(ctx context.Context, sql string, args ...any) (driver.RelationQueryResult, error) {
+	rows, err := e.DB.QueryContext(ctx, sql, args...)
+	if err != nil {
+		return driver.RelationQueryResult{}, err
+	}
+	defer rows.Close()
+
+	columns, err := rows.Columns()
+	if err != nil {
+		return driver.RelationQueryResult{}, err
+	}
+
+	rawRows := make([][]any, 0)
+	for rows.Next() {
+		values := make([]any, len(columns))
+		destinations := make([]any, len(columns))
+		for i := range values {
+			destinations[i] = &values[i]
+		}
+		if err := rows.Scan(destinations...); err != nil {
+			return driver.RelationQueryResult{}, err
+		}
+		for i, value := range values {
+			values[i] = stabilizeRawValue(value)
+		}
+		rawRows = append(rawRows, values)
+	}
+	if err := rows.Err(); err != nil {
+		return driver.RelationQueryResult{}, err
+	}
+
+	return driver.RelationQueryResult{
+		Raw: queryresult.RawResult{
+			Columns: append([]string(nil), columns...),
+			Rows:    rawRows,
+		},
+		Payload: Result{ParameterNames: nil},
+	}, nil
 }

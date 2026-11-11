@@ -76,6 +76,53 @@ shadow validatorはSUI正本のcontract validatorより新しいdomain constrain
 
 一方、JSON consumerとしてunknown fieldをfail closedすることは**consumer compatibility / transport guard**として別に扱う。これはSUI domain constraintが増えたことを意味しない。source contractが変わった場合は、SUI側を正本としてfixture / shadow probeを再確認する。
 
+## M2 Canonical definition probe
+
+`workspace-m2/` は、SUI の文書構造を `.tei` で宣言した場合の M2 の作業領域です。Stage 0 の `workspace/`（IslandHierarchy のみ）とは別に置き、既存 probe を置き換えません。
+
+M2 が宣言するもの:
+
+- `sui.document` — `documentId`、`revisionState`、`disclosureState`
+- `sui.card` — `cardId`、`x`、`y`、`claimType`、`holdState`、`textReviewState`
+- `sui.island` — `islandId`、`titleReviewState`
+- `sui.containment`（視覚的な包含。occurrence ID を持つ）
+- `sui.affiliation`（明示的・可逆・多対多の所属。occurrence ID を持つ）
+- `sui.edge` — `edgeId`、`edgeType`、`fromKind`/`fromId`、`toKind`/`toId`
+- `sui.island_parent`（親子 link）
+
+**本文・題名はAttributeにしません。** 参照envelope（`tai.reference.sui-document-reference/v0`）はカード本文・島題名・文書題名を運ばないため、型にも置きません。運ぶのはその**状態**（review・disclosure・revision）だけで、それを宣言します。本文を型に置くかは M4（開示投影）と SUI #3369 の判断であり、この定義の対象外です。
+
+**Edge の端点は kind+id 属性**にします。TEIの`relation`は静的な対象型を一つ要求するため、型付きrelation（`fromCard`/`toCard`）では island→island の Edge が表現できません。多相端点を属性で表し、この制約を定義から隠さずに記録します。
+
+M2 が**宣言しない**もの（損失として報告する）:
+
+- Tree の閲覧状態（折り畳み・focus・選択）
+- Canvas の transform・z-order・zoom・gesture
+- Island の geometry（polygon・rect・placard）
+- review attribution（誰が・いつ）
+- relation rationale
+- narrative・summary・critique
+- 本文・題名（card.text / island.title / document.title）。参照envelopeが運ばないため
+
+確認:
+
+```bash
+go run ./cmd/tei validate -workspace reference/sui-adoption/workspace-m2
+go run ./tools/reference-sui-canonical-probe -workspace reference/sui-adoption/workspace-m2
+go test ./tools/reference-sui-canonical-probe/... -count=1
+```
+
+probe の報告は次を含みます。
+
+- `containmentAndAffiliationSeparate`: 二つの membership が別 Data として解決し、それぞれが occurrence ID を持つこと
+- `parallelEdgesDistinguishable`: Edge が自身の ID と kind+id 端点を持ち、型付きrelationを使っていないこと（island→island が表現できる）
+- `reviewAndRevisionDeclared`: 参照が実際に運ぶ状態（document の revision/disclosure、card の textReview、island の titleReview）が宣言されていること
+- `undeclared`: 宣言しない損失の一覧（空にならない。本文・題名もここに含まれる）
+- `parentPresenceSemantics`: `unresolved`。現行 Relation の cardinality は `one|many` のみで、root の parent 不在（0..1）は lossless と証明していない
+- `canonicalizedInstanceData: false`, `instanceCount: 0`: instance を Canonical object へ昇格していないこと
+
+この probe は read-only の定義解決だけを行い、Product runtime・Canonical source・Owner の意味受理を主張しません。
+
 ## Constraint coverage inventory
 
 Stage 0 reportの`constraintCoverage`は、SUI正本のconstraintをTEI native機能として誤認しないためのEvidenceです。

@@ -1,0 +1,34 @@
+# G3-20261111 比較試験のDSH overlay（全4 Session + G0 probeで同一）
+# 共通条件: Provider openrouter / model ~deepseek/deepseek-flash-latest /
+#          maxParallelToolCalls 1 / session-log-deepseek 無効 / credentials解決有効
+# Credentialは環境変数名の参照のみ（実キーはDSH credentials serviceが解決）。秘情報を含まない。
+- id: credentials
+  name: "@deepseek-ai/dsh-credentials-local"
+  disabled: false
+- id: agent-default-model
+  name: "@deepseek-ai/dsh-agent-default-model"
+  config:
+    provider: openrouter
+    model: ~deepseek/deepseek-flash-latest
+- id: session-log-deepseek
+  name: "@deepseek-ai/dsh-session-log-deepseek"
+  config:
+    enabled: false
+- id: agent-loop
+  name: "@deepseek-ai/dsh-agent-loop"
+  config:
+    maxParallelToolCalls: 1
+- id: llm-pi-ai
+  name: "@deepseek-ai/dsh-llm-pi-ai"
+  config:
+    providers:
+      openrouter:
+        apiKeyEnv: OPENROUTER_API_KEY
+        models:
+          - id: ~deepseek/deepseek-flash-latest
+            name: "DeepSeek: DeepSeek Flash Latest"
+            contextWindow: 1048576
+            maxTokens: 16384
+            input:
+              - text
+              - image

@@ -13,6 +13,7 @@ import (
 
 	"tei/internal/command"
 	"tei/internal/core"
+	"tei/internal/failure"
 	"tei/internal/ir"
 )
 
@@ -39,6 +40,42 @@ type Failure struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
 }
+
+// FailureCode returns the machine-readable failure code.
+func (f Failure) FailureCode() string { return f.Code }
+
+// FailureMessage returns the human-readable failure message.
+func (f Failure) FailureMessage() string { return f.Message }
+
+// FailureCause returns nil because the adapter Failure does not wrap an
+// underlying error.
+func (f Failure) FailureCause() error { return nil }
+
+// Kind classifies the business meaning of the failure.
+func (f Failure) Kind() failure.Kind {
+	switch f.Code {
+	case "UNAUTHENTICATED", "FORBIDDEN", "STALE_REVISION":
+		return failure.BusinessRejection
+	default:
+		return failure.TechnicalFailure
+	}
+}
+
+// Retryable reports whether the caller may safely retry the same operation
+// identity after this failure.
+func (f Failure) Retryable() failure.RetryPolicy {
+	switch f.Code {
+	case "UNAUTHENTICATED", "FORBIDDEN", "STALE_REVISION":
+		return failure.NotRetryable
+	default:
+		return failure.NotRetryable
+	}
+}
+
+// HasEffectUnknown reports whether the failure may have left partial effects
+// applied. Adapter transport failures are clean refusals with no side effects,
+// so this is always false.
+func (f Failure) HasEffectUnknown() bool { return false }
 
 // Result is the typed operation result shared by the adapters.
 type Result struct {
