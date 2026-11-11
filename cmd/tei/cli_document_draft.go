@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -68,6 +69,43 @@ func documentDraftFailureCode(err error) (string, int) {
 	return "DOCUMENT_DRAFT_FAILED", 1
 }
 
+// parseDraftSections turns the repeatable -section flag into section specs. The
+// grammar is `<kind>:<id>` with an optional `@<relation-id>`. A value that does
+// not match is an argument failure, not a section the caller did not ask for.
+func parseDraftSections(values []string) ([]documentdraft.SectionSpec, error) {
+	if len(values) == 0 {
+		return nil, nil
+	}
+	sections := make([]documentdraft.SectionSpec, 0, len(values))
+	for _, value := range values {
+		kind := ""
+		id := value
+		relationID := ""
+		hasRelation := false
+		if at := strings.IndexByte(value, '@'); at >= 0 {
+			id = value[:at]
+			relationID = value[at+1:]
+			hasRelation = true
+		}
+		if colon := strings.IndexByte(id, ':'); colon >= 0 {
+			kind = id[:colon]
+			id = id[colon+1:]
+		}
+		// A trailing '@' with nothing after it is a malformed value, not "no
+		// relation": the caller wrote a separator, so the relation is missing.
+		if strings.TrimSpace(kind) == "" || strings.TrimSpace(id) == "" ||
+			(hasRelation && strings.TrimSpace(relationID) == "") ||
+			relationID != strings.TrimSpace(relationID) {
+			return nil, fmt.Errorf("model document-draft: -section %q must be <kind>:<id>[@<relation-id>]", value)
+		}
+		sections = append(sections, documentdraft.SectionSpec{
+			Subject:    sourceindex.Subject{Kind: kind, ID: id},
+			RelationID: relationID,
+		})
+	}
+	return sections, nil
+}
+
 func runModelDocumentDraftCommand(args []string, out io.Writer) (int, error) {
 	fs := flag.NewFlagSet("model document-draft", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
@@ -81,6 +119,8 @@ func runModelDocumentDraftCommand(args []string, out io.Writer) (int, error) {
 	application := fs.String("application", "", "exact application ID; required by "+documentdraft.DocumentKindCRUDTable)
 	frozen := fs.Bool("frozen", false,
 		"pin the draft to the model revision it is read at (a fixed delivery)")
+	var sections pathList
+	fs.Var(&sections, "section", "element a specification chapter is about: <kind>:<id>[@<relation-id>]; repeatable, in chapter order")
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			printHelp(out, fs, "model document-draft")
@@ -99,6 +139,10 @@ func runModelDocumentDraftCommand(args []string, out io.Writer) (int, error) {
 		return failDocumentDraft(out, "INVALID_ARGUMENT",
 			"model document-draft requires an exact -workspace and -document-kind, without positional arguments", 2)
 	}
+	parsedSections, err := parseDraftSections(sections)
+	if err != nil {
+		return failDocumentDraft(out, "INVALID_ARGUMENT", err.Error(), 2)
+	}
 	draft, err := documentdraft.Build(documentdraft.Request{
 		Root:         *root,
 		Subject:      sourceindex.Subject{Kind: *kind, ID: *id},
@@ -106,6 +150,7 @@ func runModelDocumentDraftCommand(args []string, out io.Writer) (int, error) {
 		DocumentKind: *documentKind,
 		Title:        *title,
 		Application:  *application,
+		Sections:     parsedSections,
 		Frozen:       *frozen,
 	})
 	if err != nil {

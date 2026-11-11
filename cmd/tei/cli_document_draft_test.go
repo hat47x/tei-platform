@@ -631,6 +631,213 @@ func TestModelDocumentDraftFrozenDeliveryIsNotAKind(t *testing.T) {
 	}
 }
 
+// TestModelDocumentDraftSpecificationBundlesTheSections proves the specification
+// stage at the CLI boundary: repeatable -section flags become chapters, and an
+// undeclared subject is skipped with a reason instead of producing a chapter.
+func TestModelDocumentDraftSpecificationBundlesTheSections(t *testing.T) {
+	root := documentDraftCRUDWorkspace(t)
+	var out bytes.Buffer
+	code, err := runModelCommand([]string{
+		"document-draft", "-workspace", root,
+		"-document-kind", documentdraft.DocumentKindSpecification,
+		"-section", "semantic-data:sales.order",
+		"-section", "semantic-data:sales.nothing",
+	}, &out)
+	if err != nil || code != 0 {
+		t.Fatalf("exit=%d err=%v body=%s", code, err, out.String())
+	}
+	var envelope draftEnvelope
+	if err := json.Unmarshal(out.Bytes(), &envelope); err != nil {
+		t.Fatalf("not JSON: %v: %s", err, out.String())
+	}
+	draft := envelope.Result
+	if draft == nil || draft.DocumentKind != documentdraft.DocumentKindSpecification {
+		t.Fatalf("envelope=%+v", envelope)
+	}
+	if draft.Scope == nil || len(draft.Scope.SkippedSubjects) != 1 {
+		t.Fatalf("scope=%+v", draft.Scope)
+	}
+	if draft.Scope.SkippedSubjects[0].Subject.ID != "sales.nothing" {
+		t.Fatalf("skipped=%+v", draft.Scope.SkippedSubjects[0])
+	}
+	chapters := 0
+	for _, occurrence := range draft.Occurrences {
+		if occurrence.Kind == "explanation" {
+			chapters++
+		}
+	}
+	if chapters != 1 {
+		t.Fatalf("chapter count=%d want 1: %+v", chapters, draft.Occurrences)
+	}
+}
+
+// TestModelDocumentDraftSpecificationSectionGrammar pins the -section grammar: a
+// malformed value is an argument failure, not a section the caller did not ask
+// for.
+func TestModelDocumentDraftSpecificationSectionGrammar(t *testing.T) {
+	root := documentDraftCRUDWorkspace(t)
+	for _, section := range []string{"", "no-colon", ":sales.order", "semantic-data:", "semantic-data:sales.order@"} {
+		var out bytes.Buffer
+		code, err := runModelCommand([]string{
+			"document-draft", "-workspace", root,
+			"-document-kind", documentdraft.DocumentKindSpecification,
+			"-section", section,
+		}, &out)
+		if err != nil {
+			t.Fatalf("err=%v", err)
+		}
+		if code != 2 {
+			t.Fatalf("section %q exit=%d want 2 body=%s", section, code, out.String())
+		}
+	}
+}
+
+// TestModelDocumentDraftSpecificationRejectsMixedInputs keeps the three input
+// shapes apart at the CLI boundary too.
+func TestModelDocumentDraftSpecificationRejectsMixedInputs(t *testing.T) {
+	root := documentDraftCRUDWorkspace(t)
+	cases := []struct {
+		name string
+		args []string
+	}{
+		{
+			name: "no sections",
+			args: []string{"document-draft", "-workspace", root, "-document-kind", documentdraft.DocumentKindSpecification},
+		},
+		{
+			name: "element selector",
+			args: []string{"document-draft", "-workspace", root, "-document-kind", documentdraft.DocumentKindSpecification,
+				"-subject-kind", "semantic-data", "-subject-id", "sales.order", "-section", "semantic-data:sales.order"},
+		},
+		{
+			name: "application",
+			args: []string{"document-draft", "-workspace", root, "-document-kind", documentdraft.DocumentKindSpecification,
+				"-application", "order_entry", "-section", "semantic-data:sales.order"},
+		},
+		{
+			name: "top-level relation",
+			args: []string{"document-draft", "-workspace", root, "-document-kind", documentdraft.DocumentKindSpecification,
+				"-relation-id", "sales.order.customer", "-section", "semantic-data:sales.order"},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var out bytes.Buffer
+			code, err := runModelCommand(tc.args, &out)
+			if err != nil {
+				t.Fatalf("err=%v", err)
+			}
+			if code != 2 {
+				t.Fatalf("exit=%d want 2 body=%s", code, out.String())
+			}
+			var envelope draftEnvelope
+			if err := json.Unmarshal(out.Bytes(), &envelope); err != nil {
+				t.Fatalf("not JSON: %v: %s", err, out.String())
+			}
+			if envelope.OK || envelope.Error == nil || envelope.Error.Code != "INVALID_ARGUMENT" {
+				t.Fatalf("envelope=%+v", envelope)
+			}
+		})
+	}
+}
+
+// TestModelDocumentDraftSpecificationReconcileReportsTheMovedChapters runs the
+// specification through the CLI reconcile: an unchanged model reports current,
+// and a changed one reports the chapters that moved.
+func TestModelDocumentDraftSpecificationReconcileReportsTheMovedChapters(t *testing.T) {
+	root := documentDraftCRUDWorkspace(t)
+	var draftOut bytes.Buffer
+	if code, err := runModelCommand([]string{
+		"document-draft", "-workspace", root,
+		"-document-kind", documentdraft.DocumentKindSpecification,
+		"-section", "semantic-data:sales.order",
+		"-section", "semantic-data:customer.customer",
+	}, &draftOut); err != nil || code != 0 {
+		t.Fatalf("draft exit=%d err=%v body=%s", code, err, draftOut.String())
+	}
+	var envelope draftEnvelope
+	if err := json.Unmarshal(draftOut.Bytes(), &envelope); err != nil {
+		t.Fatalf("not JSON: %v", err)
+	}
+	draftPath := filepath.Join(t.TempDir(), "spec.json")
+	stored, err := json.Marshal(envelope.Result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(draftPath, stored, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var currentOut bytes.Buffer
+	if code, err := runModelCommand([]string{
+		"document-reconcile", "-workspace", root, "-draft", draftPath,
+	}, &currentOut); err != nil || code != 0 {
+		t.Fatalf("reconcile exit=%d err=%v body=%s", code, err, currentOut.String())
+	}
+	var current reconcileEnvelope
+	if err := json.Unmarshal(currentOut.Bytes(), &current); err != nil {
+		t.Fatalf("not JSON: %v: %s", err, currentOut.String())
+	}
+	if !current.OK || current.Result.ModelReference.Status != documentdraft.ModelReferenceCurrent {
+		t.Fatalf("envelope=%+v", current)
+	}
+
+	// A change to one element moves its chapter's content.
+	orderPath := filepath.Join(root, "semantic", "sales", "order.tei")
+	body, err := os.ReadFile(orderPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(orderPath, []byte(strings.Replace(
+		string(body), "    attribute customerId type std.text",
+		"    attribute customerId type std.text\n    attribute placedAt type std.datetime", 1)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if string(body) == string(mustRead(t, orderPath)) {
+		t.Fatal("fixture did not change; the test proves nothing")
+	}
+	var changedOut bytes.Buffer
+	if code, err := runModelCommand([]string{
+		"document-reconcile", "-workspace", root, "-draft", draftPath,
+	}, &changedOut); err != nil || code != 0 {
+		t.Fatalf("reconcile exit=%d err=%v body=%s", code, err, changedOut.String())
+	}
+	var changed reconcileEnvelope
+	if err := json.Unmarshal(changedOut.Bytes(), &changed); err != nil {
+		t.Fatalf("not JSON: %v: %s", err, changedOut.String())
+	}
+	if changed.Result.ModelReference.Status != documentdraft.ModelReferenceStale {
+		t.Fatalf("model reference=%+v", changed.Result.ModelReference)
+	}
+	contentChanged := 0
+	for _, occurrence := range changed.Result.Occurrences {
+		if occurrence.Status == "content-changed" {
+			contentChanged++
+		}
+	}
+	if contentChanged == 0 {
+		t.Fatalf("no chapter reported a content change: %+v", changed.Result.Occurrences)
+	}
+	// The stored draft is untouched by the reconciliation.
+	again, err := os.ReadFile(draftPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(again) != string(stored) {
+		t.Fatal("reconcile rewrote the stored draft")
+	}
+}
+
+// mustRead reads one file or fails the test. It exists so a fixture change can
+// be proven rather than assumed.
+func mustRead(t *testing.T, path string) []byte {
+	t.Helper()
+	body, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return body
+}
+
 // TestModelDocumentDraftElementKindStillRequiresTheSubject pins that the CRUD
 // input relaxation did not weaken the element path.
 func TestModelDocumentDraftElementKindStillRequiresTheSubject(t *testing.T) {

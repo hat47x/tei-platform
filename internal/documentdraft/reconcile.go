@@ -97,6 +97,11 @@ func Reconcile(draft Draft, root string) (ReconcileReport, error) {
 	if draft.DocumentKind == DocumentKindCRUDTable {
 		return reconcileCRUDTable(draft, root)
 	}
+	// A specification is re-derived from the section list the draft recorded, so
+	// the same chapters are compared rather than a rebuilt set of them.
+	if draft.DocumentKind == DocumentKindSpecification {
+		return reconcileSpecification(draft, root)
+	}
 	read, err := readWorkspace(root, draft.Subjects[0].Subject)
 	if err != nil {
 		// A subject that no longer exists is a reconciliation answer, not a
@@ -212,14 +217,85 @@ func reconcileCRUDTable(draft Draft, root string) (ReconcileReport, error) {
 		}
 		return ReconcileReport{}, err
 	}
+	return compareProjections(draft, current), nil
+}
 
+// reconcileSpecification compares a stored specification with the projection the
+// current Workspace produces from the same section list. The section list is
+// rebuilt from the draft's own subjects, so a chapter the model stopped declaring
+// is reported as removed rather than silently dropped from the comparison.
+func reconcileSpecification(draft Draft, root string) (ReconcileReport, error) {
+	sections, err := sectionsFromDraft(draft)
+	if err != nil {
+		return ReconcileReport{}, err
+	}
+	current, err := buildSpecificationDraft(Request{
+		Root:         root,
+		DocumentKind: DocumentKindSpecification,
+		Sections:     sections,
+		Title:        draft.Title,
+	})
+	if err != nil {
+		var draftErr *DraftError
+		if errors.As(err, &draftErr) &&
+			(draftErr.Code == CodeSubjectNotFound || draftErr.Code == CodeApplicationNotFound) {
+			return ReconcileReport{
+				SchemaVersion: "tei.document-draft.reconcile/v0",
+				Effect:        EffectReadOnlyProjection,
+				DraftID:       draft.DraftID,
+				ModelReference: ModelReferenceReconciliation{
+					Status: ModelReferenceStale,
+					Diffs:  []string{"subject-missing"},
+				},
+				Occurrences:         allOccurrencesMissing(draft),
+				NeedsReconfirmation: occurrenceIDs(draft),
+				AuthorityLimits:     ReconcileAuthorityLimits(),
+			}, nil
+		}
+		return ReconcileReport{}, err
+	}
+	return compareProjections(draft, current), nil
+}
+
+// sectionsFromDraft rebuilds the section list a stored specification was built
+// from. The chapter order is the draft's own subject order, so the comparison
+// re-reads the same chapters the document holds.
+func sectionsFromDraft(draft Draft) ([]SectionSpec, error) {
+	if len(draft.Subjects) == 0 {
+		return nil, draftError(CodeInvalidDraft, "a specification draft declares no subject")
+	}
+	var sections []SectionSpec
+	seen := map[sourceindex.Subject]bool{}
+	for _, subject := range draft.Subjects {
+		if seen[subject.Subject] {
+			continue
+		}
+		seen[subject.Subject] = true
+		section := SectionSpec{Subject: subject.Subject}
+		// A relation the chapter carried is re-requested, so a relation the model
+		// stopped declaring is reported rather than quietly dropped.
+		for _, relation := range draft.Relations {
+			if relation.From == subject.Subject {
+				section.RelationID = relation.Relation.ID
+				break
+			}
+		}
+		sections = append(sections, section)
+	}
+	return sections, nil
+}
+
+// compareProjections compares two drafts occurrence by occurrence and reports
+// which ones need reconfirmation. It is the shared body of the CRUD and
+// specification reconciliation paths, so the two cannot drift apart.
+func compareProjections(recorded, current Draft) ReconcileReport {
 	report := ReconcileReport{
 		SchemaVersion: "tei.document-draft.reconcile/v0",
 		Effect:        EffectReadOnlyProjection,
-		DraftID:       draft.DraftID,
+		DraftID:       recorded.DraftID,
 		ModelReference: ModelReferenceReconciliation{
 			Observed: current.Model,
-			Diffs:    modelReferenceDiffs(draft.Model, current.Model),
+			Diffs:    modelReferenceDiffs(recorded.Model, current.Model),
 		},
 		AuthorityLimits: ReconcileAuthorityLimits(),
 	}
@@ -228,10 +304,10 @@ func reconcileCRUDTable(draft Draft, root string) (ReconcileReport, error) {
 	} else {
 		report.ModelReference.Status = ModelReferenceStale
 	}
-	// A frozen CRUD delivery reports expiry the same way an element draft does:
-	// the pin no longer matches, and nothing is refreshed.
-	if draft.Frozen && draft.FrozenRevision != "" &&
-		draft.FrozenRevision != current.Model.ModelRevision {
+	// A frozen draft reports expiry the same way an element draft does: the pin
+	// no longer matches, and nothing is refreshed.
+	if recorded.Frozen && recorded.FrozenRevision != "" &&
+		recorded.FrozenRevision != current.Model.ModelRevision {
 		report.ModelReference.Status = ModelReferenceStale
 		if !containsString(report.ModelReference.Diffs, "frozenRevision") {
 			report.ModelReference.Diffs = append(report.ModelReference.Diffs, "frozenRevision")
@@ -245,7 +321,7 @@ func reconcileCRUDTable(draft Draft, root string) (ReconcileReport, error) {
 		currentByID[occurrence.OccurrenceID] = occurrence
 	}
 	recordedIDs := map[string]bool{}
-	for _, occurrence := range draft.Occurrences {
+	for _, occurrence := range recorded.Occurrences {
 		recordedIDs[occurrence.OccurrenceID] = true
 		regenerated, ok := currentByID[occurrence.OccurrenceID]
 		if !ok {
@@ -297,7 +373,7 @@ func reconcileCRUDTable(draft Draft, root string) (ReconcileReport, error) {
 	if report.NeedsReconfirmation == nil {
 		report.NeedsReconfirmation = []string{}
 	}
-	return report, nil
+	return report
 }
 
 func modelReferenceDiffs(recorded, observed ModelRef) []string {

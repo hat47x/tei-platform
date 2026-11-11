@@ -14,8 +14,9 @@
 | `internal/documentdraft`（Build・Occurrence追跡・Reconcile） | TEI PR #4317、Go試験PASS |
 | `tei model document-draft`・`model document-reconcile` | 同上、契約試験PASS |
 | `documentKind: element-explanation`（一要素＋一関係） | 同上 |
-| `documentKind: crud-table`（一ApplicationのCRUD行列） | 本計画の段階2、Go試験＋CLI試験PASS |
-| `-frozen`（固定納品版のpin） | 本計画の段階5、Go試験＋CLI試験PASS |
+| `documentKind: crud-table`（一ApplicationのCRUD行列） | 段階2、Go試験＋CLI試験PASS |
+| `documentKind: specification`（複数要素の章立て） | 段階4、Go試験＋CLI試験PASS |
+| `-frozen`（固定納品版のpin） | 段階5、Go試験＋CLI試験PASS |
 | SHO側の消費・編集・保存・再開 | SHO PR #36、17試験PASS・merge後スイート127 PASS/0 FAIL |
 | SHO側のローカル相互ランナー・入出力契約試験・部品境界文書 | SHO PR #36、相互ランナー実PASS |
 | 相互実証（合成Workspace・同一端末） | PR本文の記録 |
@@ -23,7 +24,6 @@
 | 未実装 | この文書の段階 |
 | --- | --- |
 | 三要素分析図（Data/Function/Business） | 段階3（`internal/threeelement` は [PR #4283](https://github.com/hat47x/tei-platform/pull/4283) OPEN） |
-| 仕様書（複数要素の束ね） | 段階4 |
 | TEI Studio実組込み | 横断C-2 |
 | 相互CI証跡（同一Attempt） | 横断C-1 |
 | 文書→モデルの逆方向経路 | 横断C-3（経路は作らない） |
@@ -58,17 +58,17 @@
 - **Done means**：S3-a〜dがGo試験でPASS。**図面編集は作らない**。
 - **非目標**：Canvas・レイアウト・Renderer・可逆図上編集。
 
-## 3. 段階4：`specification`
+## 3. 段階4：`specification`（2026-11-11 実装済み）
 
 - **目的**：複数要素・複数関係を一つの文書に束ね、章構成を持つ仕様書Draftを作る。
-- **依存**：段階1。`subjects[]`は既に複数件を持てるので、追加は**束ね規則と章立て**のみ。
-- **最小実装**：`Request`に要素・関係のリスト（順序付き）を受け取り、章＝1要素、節＝1関係、付録＝引用、とする決定的な並びにする。`meaningInputRange`（対象とした版の範囲）をDraftに明記する。
-- **独立Expected**：
+- **依存**：段階1。`subjects[]`・`relations[]`・Occurrenceは既に複数件を持てるので、追加は**束ね規則と章立て**のみ。
+- **形**：`-section <kind>:<id>[@<relation-id>]`（repeatable・章順）。章＝1要素、節＝1関係、各章に引用。
+- **独立Expected（実装済み）**：
   - S4-a 同一入力から決定的な同一Draft（順序・digest安定）。
-  - S4-b 要素が1件でも未宣言なら**その章を作らず**、`skippedSubjects`に理由を残す（全体を失敗にしない）。
-  - S4-c 関係の対象が別要素なら、その要素も`subjects`に加わる（引用の切れを作らない）。
-  - S4-d 部分的な章の欠落は`needsReconfirmation`に出る（黙って省略しない）。
-- **Done means**：S4-a〜dがGo試験でPASS。
+  - S4-b 未宣言の要素は**章を作らず**、`scope.skippedSubjects` に理由を残す（全体を失敗にしない）。未宣言の関係は章を残し関係節のみスキップ。
+  - S4-c 入力形状の混在（application・要素指定・トップレベルrelation）は拒否。
+  - S4-d 一章の改版はその章のみ`content-changed`、他章は`generation-conditions-changed`（内容は同一）。要素削除は`occurrence-removed`。
+- **Done means**：S4-a〜dがGo試験とCLI試験でPASS。
 - **非目標**：目次の自動生成・表現の潤飾・Owner意味の統合判断。
 
 ## 4. 段階5：`frozen-delivery`（2026-11-11 実装済み）
@@ -146,11 +146,11 @@
 
 ## 7. 最初の3手（次実装者が最初にやること）
 
-1. **段階4（`specification`）** — 複数要素の束ねと章構成。段階1・2・5の部品（Occurrence・subjectRefs・pin）をそのまま使える。`skippedSubjects`で「宣言されていない章は作らない」を試験で固定する。
-2. **C-1（相互CI）** — SHO repositoryに[ローカル相互ランナー](https://github.com/hat47x/sho-composer/blob/feat/tei-document-draft-core-20261111/scripts/tei-sho-draft-roundtrip-p0.cjs)と[入出力契約試験](https://github.com/hat47x/sho-composer/blob/feat/tei-document-draft-core-20261111/test/sho-doc-cli-contract.test.cjs)が揃った。TEI側の1ジョブでpinしたSHAのround tripを回し、ローカル実証をCI証跡に昇格する。
-3. **C-4（再投影方針）のOwner判断起案** — 実装より先に判断。段階4の受入条件がこれに依存する。
+1. **C-1（相互CI）** — SHO repositoryに[ローカル相互ランナー](https://github.com/hat47x/sho-composer/blob/feat/tei-document-draft-core-20261111/scripts/tei-sho-draft-roundtrip-p0.cjs)と[入出力契約試験](https://github.com/hat47x/sho-composer/blob/feat/tei-document-draft-core-20261111/test/sho-doc-cli-contract.test.cjs)が揃った。TEI側1ジョブでpinしたSHAのround tripを回し、ローカル実証をCI証跡に昇格する。
+2. **C-4（再投影方針）のOwner判断起案** — 実装より先に判断。仕様書（段階4）の受入条件がこれに依存する。
+3. **C-2（TEI Studio実組込み）** — C-1のCI証跡が出てから。部品境界（[起動契約](https://github.com/hat47x/sho-composer/blob/feat/tei-document-draft-core-20261111/docs/sho-doc-component-boundary-2026-11.md)）が安定してからA/B測定する。
 
-段階3は[PR #4283](https://github.com/hat47x/tei-platform/pull/4283)の統合後に入力契約を決める（統合前に着手しない）。C-2（Studio組込み）はC-1のCI証跡が出てから。C-3は全段階で常に維持。C-5はParser（[#3346](https://github.com/hat47x/tei-platform/issues/3346)）の完了待ちで、**着手しない**。
+段階3（`three-element-diagram`）は[PR #4283](https://github.com/hat47x/tei-platform/pull/4283)の統合後に入力契約を決める（統合前に着手しない）。C-3は全段階で常に維持。C-5はParser（[#3346](https://github.com/hat47x/tei-platform/issues/3346)）の完了待ちで、**着手しない**。
 
 ## 8. Owner判断が必要な事項（一覧）
 

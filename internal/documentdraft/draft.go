@@ -234,6 +234,10 @@ type Request struct {
 	// required by crud-table and refused when present for a kind that does not
 	// use it, so a wrong flag cannot silently select a different document.
 	Application string
+	// Sections names the elements a specification document covers, in chapter
+	// order. It is required by specification and refused when present for a kind
+	// that does not use it.
+	Sections []SectionSpec
 	// Frozen pins the draft to the model revision it is read at. It is an
 	// explicit input, never inferred: a caller that wants a delivery artifact
 	// asks for it, and a caller that does not gets a draft that tracks the model.
@@ -303,17 +307,26 @@ func Build(req Request) (Draft, error) {
 			"%q is not a document kind; pass -frozen with %s or %s",
 			DocumentKindFrozenDelivery, DocumentKindElementExplanation, DocumentKindCRUDTable)
 	}
-	// A CRUD table is about an application, not one element: the two inputs are
-	// mutually exclusive so a caller cannot ask for both and get whichever the
-	// implementation happened to read first.
+	// A CRUD table is about an application and a specification is about an
+	// ordered list of elements, so the two inputs are mutually exclusive with
+	// each other and with the element selector: a caller cannot ask for two
+	// shapes and get whichever the implementation happened to read first.
 	if kind == DocumentKindCRUDTable {
 		if err := requireCRUDInputs(req); err != nil {
+			return Draft{}, err
+		}
+	} else if kind == DocumentKindSpecification {
+		if err := requireSpecificationInputs(req); err != nil {
 			return Draft{}, err
 		}
 	} else {
 		if strings.TrimSpace(req.Application) != "" {
 			return Draft{}, draftError(CodeInvalidArgument,
 				"-application is only meaningful for document kind %s", DocumentKindCRUDTable)
+		}
+		if len(req.Sections) > 0 {
+			return Draft{}, draftError(CodeInvalidArgument,
+				"sections are only meaningful for document kind %s", DocumentKindSpecification)
 		}
 		if err := validateSubject(req.Subject); err != nil {
 			return Draft{}, err
@@ -326,6 +339,13 @@ func Build(req Request) (Draft, error) {
 
 	if kind == DocumentKindCRUDTable {
 		draft, err := buildCRUDDraft(req)
+		if err != nil {
+			return Draft{}, err
+		}
+		return applyFrozenPin(draft, req.Frozen), nil
+	}
+	if kind == DocumentKindSpecification {
+		draft, err := buildSpecificationDraft(req)
 		if err != nil {
 			return Draft{}, err
 		}
@@ -357,6 +377,101 @@ func Build(req Request) (Draft, error) {
 	draft.Title = buildTitle(req.Title, req.Subject)
 	draft.DraftID = draftID(draft)
 	return applyFrozenPin(draft, req.Frozen), nil
+}
+
+// requireSpecificationInputs refuses a specification request that names an
+// application or one element instead of a section list, and refuses an empty
+// list. An explicitly empty list is a different claim from "no list", so it is
+// rejected rather than read as an element draft.
+func requireSpecificationInputs(req Request) error {
+	if len(req.Sections) == 0 {
+		return draftError(CodeInvalidArgument,
+			"document kind %s requires at least one section", DocumentKindSpecification)
+	}
+	if strings.TrimSpace(req.Application) != "" {
+		return draftError(CodeInvalidArgument,
+			"-application is only meaningful for document kind %s", DocumentKindCRUDTable)
+	}
+	if strings.TrimSpace(req.Subject.Kind) != "" || strings.TrimSpace(req.Subject.ID) != "" {
+		return draftError(CodeInvalidArgument,
+			"document kind %s is about a section list; -subject-kind and -subject-id do not apply", DocumentKindSpecification)
+	}
+	if strings.TrimSpace(req.RelationID) != "" {
+		return draftError(CodeInvalidArgument,
+			"document kind %s takes -relation-id inside a section, not as a top-level flag", DocumentKindSpecification)
+	}
+	for _, section := range req.Sections {
+		if section.Subject.Kind == "" || section.Subject.ID == "" ||
+			section.Subject.Kind != strings.TrimSpace(section.Subject.Kind) ||
+			section.Subject.ID != strings.TrimSpace(section.Subject.ID) {
+			return draftError(CodeInvalidArgument,
+				"every section needs a nonempty exact subject kind and id")
+		}
+		relationID := strings.TrimSpace(section.RelationID)
+		if relationID != "" && relationID != strings.TrimSpace(relationID) {
+			return draftError(CodeInvalidArgument,
+				"a section relation id must be an exact identity")
+		}
+	}
+	return nil
+}
+
+// buildSpecificationDraft reads one Workspace and projects the requested
+// sections into a chapter-structured document.
+func buildSpecificationDraft(req Request) (Draft, error) {
+	read, err := readWorkspaceForSpecification(req.Root, req.Sections)
+	if err != nil {
+		return Draft{}, err
+	}
+	inspection, err := read.inspect(req.Sections[0].Subject)
+	if err != nil {
+		return Draft{}, err
+	}
+	draft := Draft{
+		SchemaVersion: SchemaVersion,
+		Effect:        EffectReadOnlyProjection,
+		DocumentKind:  DocumentKindSpecification,
+		Model: ModelRef{
+			Workspace:              inspection.Workspace,
+			WorldFingerprint:       inspection.WorldFingerprint,
+			SourceIndexFingerprint: inspection.SourceIndexFingerprint,
+			ModelRevision:          read.modelRevision,
+		},
+		Scope:           &DraftScope{},
+		AuthorityLimits: DraftAuthorityLimits(),
+	}
+	if err := draft.projectSpecification(read, req.Sections); err != nil {
+		return Draft{}, err
+	}
+	draft.Title = buildSpecificationTitle(req.Title, req.Sections)
+	draft.DraftID = draftID(draft)
+	return draft, nil
+}
+
+// readWorkspaceForSpecification loads one Workspace and resolves the first
+// section, so a request whose first subject is missing is reported before any
+// chapter is written.
+func readWorkspaceForSpecification(root string, sections []SectionSpec) (workspaceRead, error) {
+	loaded, err := workspace.Load(root)
+	if err != nil {
+		return workspaceRead{}, &operations.ValidationFailure{Stage: operations.StageLoad, Err: err}
+	}
+	idx, err := workspace.BuildSourceIndex(root, loaded)
+	if err != nil {
+		return workspaceRead{}, &operations.ValidationFailure{Stage: operations.StageSourceIndex, Err: err}
+	}
+	read := workspaceRead{loaded: loaded, index: idx, modelRevision: sourceindex.ModelRevision(idx)}
+	if _, err := read.inspect(sections[0].Subject); err != nil {
+		return workspaceRead{}, err
+	}
+	return read, nil
+}
+
+func buildSpecificationTitle(requested string, sections []SectionSpec) string {
+	if strings.TrimSpace(requested) != "" {
+		return requested
+	}
+	return "仕様書（" + itoa(len(sections)) + "章）"
 }
 
 // applyFrozenPin records the pin on a draft the caller asked to freeze. The pin
@@ -404,6 +519,12 @@ func requireCRUDInputs(req Request) error {
 	if strings.TrimSpace(req.Application) == "" || req.Application != strings.TrimSpace(req.Application) {
 		return draftError(CodeInvalidArgument,
 			"document kind %s requires an exact -application ID", DocumentKindCRUDTable)
+	}
+	// A section list belongs to the specification kind. Refusing it here keeps a
+	// caller from asking for two shapes at once.
+	if len(req.Sections) > 0 {
+		return draftError(CodeInvalidArgument,
+			"sections are only meaningful for document kind %s", DocumentKindSpecification)
 	}
 	if strings.TrimSpace(req.Subject.Kind) != "" || strings.TrimSpace(req.Subject.ID) != "" {
 		return draftError(CodeInvalidArgument,
@@ -796,18 +917,20 @@ func contentDigest(content OccurrenceContent) string {
 	return "sha256:" + hex.EncodeToString(sum[:])
 }
 
-// draftID identifies this draft read. It binds the schema, the subject, the
-// relation and the model reference; it is not a document identity and not an
-// acceptance record.
+// draftID identifies this draft read. It binds the schema, what the draft covers
+// (one element, one application, or a section list) and the model reference; it
+// is not a document identity and not an acceptance record.
 func draftID(draft Draft) string {
 	payload := struct {
-		SchemaVersion    string `json:"schemaVersion"`
-		DocumentKind     string `json:"documentKind"`
-		SubjectKind      string `json:"subjectKind"`
-		SubjectID        string `json:"subjectId"`
-		RelationID       string `json:"relationId,omitempty"`
-		WorldFingerprint string `json:"worldFingerprint"`
-		ModelRevision    string `json:"modelRevision"`
+		SchemaVersion    string   `json:"schemaVersion"`
+		DocumentKind     string   `json:"documentKind"`
+		SubjectKind      string   `json:"subjectKind"`
+		SubjectID        string   `json:"subjectId"`
+		RelationID       string   `json:"relationId,omitempty"`
+		Application      string   `json:"application,omitempty"`
+		SectionSubjects  []string `json:"sectionSubjects,omitempty"`
+		WorldFingerprint string   `json:"worldFingerprint"`
+		ModelRevision    string   `json:"modelRevision"`
 	}{
 		SchemaVersion:    draft.SchemaVersion,
 		DocumentKind:     draft.DocumentKind,
@@ -818,6 +941,22 @@ func draftID(draft Draft) string {
 	}
 	if len(draft.Relations) > 0 {
 		payload.RelationID = draft.Relations[0].Relation.ID
+	}
+	if draft.Scope != nil {
+		payload.Application = draft.Scope.Application
+	}
+	if draft.DocumentKind == DocumentKindSpecification {
+		// The section list is part of the identity: the same Workspace read with
+		// a different chapter list is a different document, not the same one.
+		seen := map[string]bool{}
+		for _, subject := range draft.Subjects {
+			key := subject.Subject.Kind + ":" + subject.Subject.ID
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			payload.SectionSubjects = append(payload.SectionSubjects, key)
+		}
 	}
 	encoded, err := json.Marshal(payload)
 	if err != nil {
