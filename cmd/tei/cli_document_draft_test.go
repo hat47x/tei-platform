@@ -494,8 +494,15 @@ func TestModelDocumentDraftCRUDTableRefusesUnknownAndMixedInputs(t *testing.T) {
 		},
 		{
 			name: "unsupported document kind",
-			args: []string{"document-draft", "-workspace", root, "-document-kind", "three-element-diagram", "-subject-kind", "semantic-data", "-subject-id", "sales.order"},
+			args: []string{"document-draft", "-workspace", root, "-document-kind", "not-a-document-kind", "-subject-kind", "semantic-data", "-subject-id", "sales.order"},
 			code: documentdraft.CodeUnsupportedDocKind, exit: 1,
+		},
+		{
+			// The diagram kind is implemented, so requesting it without a model is
+			// an argument failure rather than an unsupported kind.
+			name: "diagram kind without a model",
+			args: []string{"document-draft", "-workspace", root, "-document-kind", documentdraft.DocumentKindThreeElementDiagram, "-subject-kind", "semantic-data", "-subject-id", "sales.order"},
+			code: documentdraft.CodeInvalidArgument, exit: 2,
 		},
 	}
 	for _, tc := range cases {
@@ -836,6 +843,186 @@ func mustRead(t *testing.T, path string) []byte {
 		t.Fatal(err)
 	}
 	return body
+}
+
+// TestModelDocumentDraftThreeElementDiagramProjectsTheModel proves the diagram
+// kind at the CLI boundary: a three-element analysis model becomes one diagram
+// occurrence, and an unresolved edge survives it.
+func TestModelDocumentDraftThreeElementDiagramProjectsTheModel(t *testing.T) {
+	modelPath := writeThreeElementModelFixture(t)
+	var out bytes.Buffer
+	code, err := runModelCommand([]string{
+		"document-draft", "-document-kind", documentdraft.DocumentKindThreeElementDiagram,
+		"-model", modelPath,
+	}, &out)
+	if err != nil || code != 0 {
+		t.Fatalf("exit=%d err=%v body=%s", code, err, out.String())
+	}
+	var envelope draftEnvelope
+	if err := json.Unmarshal(out.Bytes(), &envelope); err != nil {
+		t.Fatalf("not JSON: %v: %s", err, out.String())
+	}
+	draft := envelope.Result
+	if draft == nil || draft.DocumentKind != documentdraft.DocumentKindThreeElementDiagram {
+		t.Fatalf("envelope=%+v", envelope)
+	}
+	// The diagram reads no Workspace: none is recorded.
+	if draft.Model.Workspace != nil || draft.Model.WorldFingerprint != "" {
+		t.Fatalf("model=%+v carries a Workspace read", draft.Model)
+	}
+	if len(draft.Occurrences) != 1 || draft.Occurrences[0].Kind != "diagram" {
+		t.Fatalf("occurrences=%+v", draft.Occurrences)
+	}
+	diagram := draft.Occurrences[0].Content.Diagram
+	if diagram == nil {
+		t.Fatal("the diagram occurrence carries no diagram content")
+	}
+	if len(diagram.Nodes) != 3 {
+		t.Fatalf("nodes=%+v", diagram.Nodes)
+	}
+	if len(diagram.Edges) != 2 {
+		t.Fatalf("edges=%+v", diagram.Edges)
+	}
+	if len(diagram.UnresolvedEdges) != 1 {
+		t.Fatalf("unresolvedEdges=%v", diagram.UnresolvedEdges)
+	}
+	foundLimit := false
+	for _, limit := range draft.AuthorityLimits {
+		if limit == "diagram-element-mapping-is-model-declared-not-tei-decided" {
+			foundLimit = true
+		}
+	}
+	if !foundLimit {
+		t.Fatalf("authorityLimits=%v", draft.AuthorityLimits)
+	}
+}
+
+// TestModelDocumentDraftThreeElementDiagramReconcileReportsAMovedModel runs the
+// diagram through the CLI reconcile: an unchanged model reports current, a
+// changed one reports the diagram as moved.
+func TestModelDocumentDraftThreeElementDiagramReconcileReportsAMovedModel(t *testing.T) {
+	modelPath := writeThreeElementModelFixture(t)
+	var draftOut bytes.Buffer
+	if code, err := runModelCommand([]string{
+		"document-draft", "-document-kind", documentdraft.DocumentKindThreeElementDiagram,
+		"-model", modelPath,
+	}, &draftOut); err != nil || code != 0 {
+		t.Fatalf("draft exit=%d err=%v body=%s", code, err, draftOut.String())
+	}
+	var envelope draftEnvelope
+	if err := json.Unmarshal(draftOut.Bytes(), &envelope); err != nil {
+		t.Fatalf("not JSON: %v", err)
+	}
+	draftPath := filepath.Join(t.TempDir(), "diagram.json")
+	stored, err := json.Marshal(envelope.Result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(draftPath, stored, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var currentOut bytes.Buffer
+	if code, err := runModelCommand([]string{
+		"document-reconcile", "-draft", draftPath,
+	}, &currentOut); err != nil || code != 0 {
+		t.Fatalf("reconcile exit=%d err=%v body=%s", code, err, currentOut.String())
+	}
+	var current reconcileEnvelope
+	if err := json.Unmarshal(currentOut.Bytes(), &current); err != nil {
+		t.Fatalf("not JSON: %v: %s", err, currentOut.String())
+	}
+	if !current.OK || current.Result.ModelReference.Status != documentdraft.ModelReferenceCurrent {
+		t.Fatalf("envelope=%+v", current)
+	}
+
+	// One attribute is added to the model: the diagram moves.
+	raw, err := os.ReadFile(modelPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var model map[string]any
+	if err := json.Unmarshal(raw, &model); err != nil {
+		t.Fatal(err)
+	}
+	data := model["dataElements"].([]any)
+	first := data[0].(map[string]any)
+	attributes := first["attributes"].([]any)
+	first["attributes"] = append(attributes, map[string]any{
+		"id": "sales.order.placed_at", "name": "Placed at", "type": "std.datetime",
+	})
+	model["dataElements"] = data
+	changed, err := json.Marshal(model)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(modelPath, changed, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var movedOut bytes.Buffer
+	if code, err := runModelCommand([]string{
+		"document-reconcile", "-draft", draftPath,
+	}, &movedOut); err != nil || code != 0 {
+		t.Fatalf("reconcile exit=%d err=%v body=%s", code, err, movedOut.String())
+	}
+	var moved reconcileEnvelope
+	if err := json.Unmarshal(movedOut.Bytes(), &moved); err != nil {
+		t.Fatalf("not JSON: %v: %s", err, movedOut.String())
+	}
+	if moved.Result.ModelReference.Status != documentdraft.ModelReferenceStale {
+		t.Fatalf("model reference=%+v", moved.Result.ModelReference)
+	}
+	if len(moved.Result.NeedsReconfirmation) != 1 {
+		t.Fatalf("needsReconfirmation=%v", moved.Result.NeedsReconfirmation)
+	}
+	// The stored draft is untouched by the reconciliation.
+	again, err := os.ReadFile(draftPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(again) != string(stored) {
+		t.Fatal("reconcile rewrote the stored draft")
+	}
+}
+
+// writeThreeElementModelFixture writes one synthetic three-element analysis model
+// and returns its path. It is a separate artifact from a TEI Workspace, which is
+// exactly the boundary this kind keeps.
+func writeThreeElementModelFixture(t *testing.T) string {
+	t.Helper()
+	model := map[string]any{
+		"schemaVersion": "tei.three-element/v0",
+		"effect":        "read-only",
+		"modelId":       "cli-diagram-test",
+		"name":          "CLI diagram test",
+		"dataElements": []map[string]any{
+			{"id": "sales.order", "name": "Order", "attributes": []map[string]any{
+				{"id": "sales.order.order_id", "name": "Order ID", "type": "std.identifier", "key": true},
+			}},
+			{"id": "customer.customer", "name": "Customer"},
+		},
+		"functionElements": []map[string]any{
+			{"id": "sales.order.submit", "name": "Submit order", "operations": []map[string]any{
+				{"dataId": "sales.order", "operations": "C"},
+			}},
+		},
+		"crossReferences": []map[string]any{
+			{"id": "xref-fn-data", "kind": "function-to-data",
+				"fromId": "sales.order.submit", "fromKind": "function",
+				"toId": "sales.order", "toKind": "data", "directed": true},
+			{"id": "xref-data-missing", "kind": "data-to-data",
+				"fromId": "sales.order", "fromKind": "data",
+				"toId": "sales.nothing", "toKind": "data", "directed": true},
+		},
+	}
+	encoded, err := json.Marshal(model)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "model.json")
+	if err := os.WriteFile(path, encoded, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return path
 }
 
 // TestModelDocumentDraftElementKindStillRequiresTheSubject pins that the CRUD

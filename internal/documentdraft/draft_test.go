@@ -178,8 +178,16 @@ func TestBuildRejectsUnknownAndUnsupportedInputs(t *testing.T) {
 		},
 		{
 			name:    "unsupported document kind",
-			request: Request{Root: fixture.root, Subject: orderSubject(), DocumentKind: "three-element-diagram"},
+			request: Request{Root: fixture.root, Subject: orderSubject(), DocumentKind: "not-a-document-kind"},
 			code:    CodeUnsupportedDocKind,
+		},
+		{
+			// The diagram kind is implemented, so a request for it without a model
+			// is an argument failure rather than an unsupported kind: the kind
+			// exists and the caller left its one required input out.
+			name:    "diagram kind without a model path",
+			request: Request{Root: fixture.root, Subject: orderSubject(), DocumentKind: DocumentKindThreeElementDiagram},
+			code:    CodeInvalidArgument,
 		},
 		{
 			name:    "relation of another element",

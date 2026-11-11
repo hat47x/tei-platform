@@ -33,6 +33,7 @@ func SupportedDocumentKinds() []string {
 		DocumentKindElementExplanation,
 		DocumentKindCRUDTable,
 		DocumentKindSpecification,
+		DocumentKindThreeElementDiagram,
 		DocumentKindFrozenDelivery,
 	}
 }

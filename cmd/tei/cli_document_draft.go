@@ -119,6 +119,8 @@ func runModelDocumentDraftCommand(args []string, out io.Writer) (int, error) {
 	application := fs.String("application", "", "exact application ID; required by "+documentdraft.DocumentKindCRUDTable)
 	frozen := fs.Bool("frozen", false,
 		"pin the draft to the model revision it is read at (a fixed delivery)")
+	modelPath := fs.String("model", "",
+		"path to a three-element analysis model JSON; required by "+documentdraft.DocumentKindThreeElementDiagram)
 	var sections pathList
 	fs.Var(&sections, "section", "element a specification chapter is about: <kind>:<id>[@<relation-id>]; repeatable, in chapter order")
 	if err := fs.Parse(args); err != nil {
@@ -134,8 +136,13 @@ func runModelDocumentDraftCommand(args []string, out io.Writer) (int, error) {
 	if err := invalidEmptyStringArgument(fs, "model document-draft"); err != nil {
 		return failDocumentDraft(out, "INVALID_ARGUMENT", err.Error(), 2)
 	}
-	if fs.NArg() != 0 || strings.TrimSpace(*root) == "" || *root != strings.TrimSpace(*root) ||
-		strings.TrimSpace(*documentKind) == "" || *documentKind != strings.TrimSpace(*documentKind) {
+	// A diagram reads a three-element analysis model rather than a Workspace, so
+	// it has no workspace path to require. Every other kind reads one, and an
+	// empty workspace is a usage failure for those.
+	if fs.NArg() != 0 ||
+		(strings.TrimSpace(*documentKind) == "" || *documentKind != strings.TrimSpace(*documentKind)) ||
+		(*documentKind != documentdraft.DocumentKindThreeElementDiagram &&
+			(strings.TrimSpace(*root) == "" || *root != strings.TrimSpace(*root))) {
 		return failDocumentDraft(out, "INVALID_ARGUMENT",
 			"model document-draft requires an exact -workspace and -document-kind, without positional arguments", 2)
 	}
@@ -151,6 +158,7 @@ func runModelDocumentDraftCommand(args []string, out io.Writer) (int, error) {
 		Title:        *title,
 		Application:  *application,
 		Sections:     parsedSections,
+		ModelPath:    *modelPath,
 		Frozen:       *frozen,
 	})
 	if err != nil {
@@ -235,14 +243,9 @@ func runModelDocumentReconcileCommand(args []string, out io.Writer) (int, error)
 			Error:         &cliInspectionFailure{Code: "INVALID_ARGUMENT", Message: err.Error()},
 		}, 2)
 	}
-	if fs.NArg() != 0 || strings.TrimSpace(*root) == "" || *root != strings.TrimSpace(*root) ||
-		strings.TrimSpace(*draftPath) == "" {
-		return writeDocumentReconcileResponse(out, documentReconcileCLIResponse{
-			SchemaVersion: documentReconcileSchemaVersion,
-			Error: &cliInspectionFailure{Code: "INVALID_ARGUMENT",
-				Message: "model document-reconcile requires an exact -workspace and a -draft path, without positional arguments"},
-		}, 2)
-	}
+	// The workspace is required for every kind except a diagram, which reads a
+	// three-element analysis model recorded in the draft instead. The draft is
+	// read first so its own kind decides whether a workspace is needed.
 	raw, err := os.ReadFile(*draftPath)
 	if err != nil {
 		return writeDocumentReconcileResponse(out, documentReconcileCLIResponse{
@@ -254,7 +257,23 @@ func runModelDocumentReconcileCommand(args []string, out io.Writer) (int, error)
 	// editors and shells add one, and a decoder that refuses it would report a
 	// broken draft for an encoding detail. The BOM is dropped here and recorded
 	// nowhere else: it carries no meaning.
-	document := bytes.TrimPrefix(raw, []byte{0xEF, 0xBB, 0xBF})
+	raw = bytes.TrimPrefix(raw, []byte{0xEF, 0xBB, 0xBF})
+	// The workspace is required for every kind except a diagram, which reads a
+	// three-element analysis model recorded in the draft instead. The draft is
+	// read first so its own kind decides whether a workspace is needed.
+	diagramDraft := false
+	if decoded, decodeErr := decodeDraftDocument(raw); decodeErr == nil {
+		diagramDraft = decoded.DocumentKind == documentdraft.DocumentKindThreeElementDiagram
+	}
+	if fs.NArg() != 0 || strings.TrimSpace(*draftPath) == "" ||
+		(!diagramDraft && (strings.TrimSpace(*root) == "" || *root != strings.TrimSpace(*root))) {
+		return writeDocumentReconcileResponse(out, documentReconcileCLIResponse{
+			SchemaVersion: documentReconcileSchemaVersion,
+			Error: &cliInspectionFailure{Code: "INVALID_ARGUMENT",
+				Message: "model document-reconcile requires an exact -workspace and a -draft path, without positional arguments"},
+		}, 2)
+	}
+	document := raw
 	draft, err := decodeDraftDocument(document)
 	if err != nil {
 		return writeDocumentReconcileResponse(out, documentReconcileCLIResponse{

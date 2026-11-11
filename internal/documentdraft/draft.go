@@ -166,11 +166,12 @@ type CitationContent struct {
 }
 
 // OccurrenceContent is the generated payload of one occurrence. Exactly one of
-// Text, Relation, Table or Citation is set for a given Kind.
+// Text, Relation, Table, Diagram or Citation is set for a given Kind.
 type OccurrenceContent struct {
 	Text     string           `json:"text,omitempty"`
 	Relation *RelationRef     `json:"relation,omitempty"`
 	Table    *TableContent    `json:"table,omitempty"`
+	Diagram  *DiagramContent  `json:"diagram,omitempty"`
 	Citation *CitationContent `json:"citation,omitempty"`
 }
 
@@ -238,6 +239,11 @@ type Request struct {
 	// order. It is required by specification and refused when present for a kind
 	// that does not use it.
 	Sections []SectionSpec
+	// ModelPath names a three-element analysis model. It is required by
+	// three-element-diagram and refused for every other kind: the diagram reads a
+	// separate analysis artifact, never a TEI Workspace, and mixing the two would
+	// present one model as the other.
+	ModelPath string
 	// Frozen pins the draft to the model revision it is read at. It is an
 	// explicit input, never inferred: a caller that wants a delivery artifact
 	// asks for it, and a caller that does not gets a draft that tracks the model.
@@ -296,8 +302,12 @@ func Build(req Request) (Draft, error) {
 			"document kind %q is not supported by this integration; supported: %s",
 			kind, strings.Join(SupportedDocumentKinds(), ", "))
 	}
-	if strings.TrimSpace(req.Root) == "" || req.Root != strings.TrimSpace(req.Root) {
-		return Draft{}, draftError(CodeInvalidArgument, "workspace path must be nonempty and exact")
+	// A diagram reads a separately supplied analysis model, not a Workspace, so
+	// it has no workspace path to validate. Every other kind reads one.
+	if kind != DocumentKindThreeElementDiagram {
+		if strings.TrimSpace(req.Root) == "" || req.Root != strings.TrimSpace(req.Root) {
+			return Draft{}, draftError(CodeInvalidArgument, "workspace path must be nonempty and exact")
+		}
 	}
 	// `frozen-delivery` is a pin on an existing kind, not a kind of its own.
 	// Naming it as a kind is refused rather than silently treated as a pin on
@@ -307,16 +317,21 @@ func Build(req Request) (Draft, error) {
 			"%q is not a document kind; pass -frozen with %s or %s",
 			DocumentKindFrozenDelivery, DocumentKindElementExplanation, DocumentKindCRUDTable)
 	}
-	// A CRUD table is about an application and a specification is about an
-	// ordered list of elements, so the two inputs are mutually exclusive with
-	// each other and with the element selector: a caller cannot ask for two
-	// shapes and get whichever the implementation happened to read first.
+	// A CRUD table is about an application, a specification is about an ordered
+	// list of elements and a diagram is about a separately supplied analysis
+	// model, so the three inputs are mutually exclusive with each other and with
+	// the element selector: a caller cannot ask for two shapes and get whichever
+	// the implementation happened to read first.
 	if kind == DocumentKindCRUDTable {
 		if err := requireCRUDInputs(req); err != nil {
 			return Draft{}, err
 		}
 	} else if kind == DocumentKindSpecification {
 		if err := requireSpecificationInputs(req); err != nil {
+			return Draft{}, err
+		}
+	} else if kind == DocumentKindThreeElementDiagram {
+		if err := requireDiagramInputs(req); err != nil {
 			return Draft{}, err
 		}
 	} else {
@@ -327,6 +342,10 @@ func Build(req Request) (Draft, error) {
 		if len(req.Sections) > 0 {
 			return Draft{}, draftError(CodeInvalidArgument,
 				"sections are only meaningful for document kind %s", DocumentKindSpecification)
+		}
+		if strings.TrimSpace(req.ModelPath) != "" {
+			return Draft{}, draftError(CodeInvalidArgument,
+				"a model path is only meaningful for document kind %s", DocumentKindThreeElementDiagram)
 		}
 		if err := validateSubject(req.Subject); err != nil {
 			return Draft{}, err
@@ -346,6 +365,13 @@ func Build(req Request) (Draft, error) {
 	}
 	if kind == DocumentKindSpecification {
 		draft, err := buildSpecificationDraft(req)
+		if err != nil {
+			return Draft{}, err
+		}
+		return applyFrozenPin(draft, req.Frozen), nil
+	}
+	if kind == DocumentKindThreeElementDiagram {
+		draft, err := buildDiagramDraft(req)
 		if err != nil {
 			return Draft{}, err
 		}

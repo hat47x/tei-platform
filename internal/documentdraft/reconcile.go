@@ -85,8 +85,12 @@ func Reconcile(draft Draft, root string) (ReconcileReport, error) {
 	if err := validateDraft(draft); err != nil {
 		return ReconcileReport{}, err
 	}
-	if strings.TrimSpace(root) == "" || root != strings.TrimSpace(root) {
-		return ReconcileReport{}, draftError(CodeInvalidArgument, "workspace path must be nonempty and exact")
+	// A diagram reads a separately supplied analysis model, not a Workspace, so
+	// it has no workspace path to validate.
+	if draft.DocumentKind != DocumentKindThreeElementDiagram {
+		if strings.TrimSpace(root) == "" || root != strings.TrimSpace(root) {
+			return ReconcileReport{}, draftError(CodeInvalidArgument, "workspace path must be nonempty and exact")
+		}
 	}
 	if len(draft.Subjects) == 0 {
 		return ReconcileReport{}, draftError(CodeInvalidDraft, "draft declares no subject")
@@ -101,6 +105,11 @@ func Reconcile(draft Draft, root string) (ReconcileReport, error) {
 	// the same chapters are compared rather than a rebuilt set of them.
 	if draft.DocumentKind == DocumentKindSpecification {
 		return reconcileSpecification(draft, root)
+	}
+	// A diagram is re-derived from the model path the draft recorded, so the
+	// same nodes and edges are compared rather than a rebuilt set of them.
+	if draft.DocumentKind == DocumentKindThreeElementDiagram {
+		return reconcileDiagram(draft)
 	}
 	read, err := readWorkspace(root, draft.Subjects[0].Subject)
 	if err != nil {
@@ -290,6 +299,59 @@ func sectionsFromDraft(draft Draft) ([]SectionSpec, error) {
 		sections = append(sections, section)
 	}
 	return sections, nil
+}
+
+// reconcileDiagram compares a stored diagram draft with the projection the model
+// file at the recorded path produces now. The comparison is read-only: the model
+// file is read, never written, and the draft is never refreshed.
+func reconcileDiagram(draft Draft) (ReconcileReport, error) {
+	if len(draft.Occurrences) == 0 || draft.Occurrences[0].Content.Diagram == nil {
+		return ReconcileReport{}, draftError(CodeInvalidDraft,
+			"a three-element-diagram draft must record its diagram occurrence")
+	}
+	recorded := draft.Occurrences[0].Content.Diagram
+	// The model path is the one the draft's own citation records. A draft that
+	// does not name a path cannot be re-read, so it is refused rather than
+	// compared against nothing.
+	modelPath := ""
+	for _, subject := range draft.Subjects {
+		for _, source := range subject.Sources {
+			if source.Role == "analysis-model" {
+				modelPath = source.ArtifactPath
+			}
+		}
+	}
+	if modelPath == "" {
+		return ReconcileReport{}, draftError(CodeInvalidDraft,
+			"a three-element-diagram draft must record the model path it was read from")
+	}
+	// Re-reading the model first proves the path still names a readable model:
+	// an unreadable one is a refusal, not an empty diagram.
+	if _, err := loadThreeElementModelFile(modelPath); err != nil {
+		return ReconcileReport{}, err
+	}
+	current, err := buildDiagramDraft(Request{
+		DocumentKind: DocumentKindThreeElementDiagram,
+		ModelPath:    modelPath,
+		Title:        draft.Title,
+	})
+	if err != nil {
+		return ReconcileReport{}, err
+	}
+	report := compareProjections(draft, current)
+
+	// A model change is reported at two levels: the model reference moved, and
+	// the nodes or edges that changed are named. An unresolved edge that became
+	// resolved is a change too, in the direction that matters to a reader.
+	if recorded.ModelFingerprint != current.Occurrences[0].Content.Diagram.ModelFingerprint {
+		if report.ModelReference.Status == ModelReferenceCurrent {
+			report.ModelReference.Status = ModelReferenceStale
+		}
+		if !containsString(report.ModelReference.Diffs, "modelFingerprint") {
+			report.ModelReference.Diffs = append(report.ModelReference.Diffs, "modelFingerprint")
+		}
+	}
+	return report, nil
 }
 
 // compareProjections compares two drafts occurrence by occurrence and reports

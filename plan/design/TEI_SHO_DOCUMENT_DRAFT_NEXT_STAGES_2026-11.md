@@ -16,16 +16,16 @@
 | `documentKind: element-explanation`（一要素＋一関係） | 同上 |
 | `documentKind: crud-table`（一ApplicationのCRUD行列） | 段階2、Go試験＋CLI試験PASS |
 | `documentKind: specification`（複数要素の章立て） | 段階4、Go試験＋CLI試験PASS |
+| `documentKind: three-element-diagram`（三要素分析図） | 段階3、Go試験＋CLI試験PASS |
 | `-frozen`（固定納品版のpin） | 段階5、Go試験＋CLI試験PASS |
-| SHO側の消費・編集・保存・再開 | SHO PR #36、17試験PASS・merge後スイート127 PASS/0 FAIL |
+| SHO側の消費・編集・保存・再開 | SHO PR #36（**MERGED**）、merge後スイート130 PASS/0 FAIL |
 | SHO側のローカル相互ランナー・入出力契約試験・部品境界文書 | SHO PR #36、相互ランナー実PASS |
-| **相互CI（同一Attempt）** | SHO repository の [sho-tei-draft-roundtrip.yml](https://github.com/hat47x/sho-composer/blob/feat/tei-document-draft-core-20261111/.github/workflows/sho-tei-draft-roundtrip.yml) が **success**（run 42995269509・artifact に receipt） |
+| **相互CI（同一Attempt）** | SHO repository の [sho-tei-draft-roundtrip.yml](https://github.com/hat47x/sho-composer/blob/main/.github/workflows/sho-tei-draft-roundtrip.yml) が **success**（run 42995269509・artifact に receipt） |
 | **Studio 側の部品境界（子プロセス relay）** | `cmd/tei-studio/sho_document.go`。stub 8試験＋実CLI結合1試験PASS |
 | 相互実証（合成Workspace・同一端末） | PR本文の記録 |
 
 | 未実装 | この文書の段階 |
 | --- | --- |
-| 三要素分析図（Data/Function/Business） | 段階3（`internal/threeelement` は [PR #4283](https://github.com/hat47x/tei-platform/pull/4283) OPEN） |
 | 子プロセス vs Wails資産のA/B測定 | 横断C-2（数値目標を先に決めない） |
 | 文書→モデルの逆方向経路 | 横断C-3（経路は作らない） |
 | `*.tei.md` のTEI側取込み | 横断C-5（Parser未束綝でブロック） |
@@ -46,18 +46,20 @@
 - **Done means**：S2-a〜eがGo試験とCLI試験でPASS。
 - **非目標**：CRUD網羅性の保証・図面レイアウト・Owner意味受理・実行権限。
 
-## 2. 段階3：`three-element-diagram`
+## 2. 段階3：`three-element-diagram`（2026-11-11 実装済み）
 
 - **目的**：Data/Function/Businessの**構造記述**（node/edge identity・方向・多重度・出典）をDraft化する。レイアウト・色・形状は持たない（[THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md](THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)と同じ扱い）。
-- **依存**：段階2。[#1124](https://github.com/hat47x/tei-platform/issues/1124)・[#3263](https://github.com/hat47x/tei-platform/issues/3263)の受入条件。**`internal/threeelement` は main に無い**（[PR #4283](https://github.com/hat47x/tei-platform/pull/4283) OPEN）ため、三要素分析モデルを入力にする場合は同PRの統合後にする。統合前は main の `operations.ModelMap`（型付きナビゲーション投影）で代替できるかを別途検討する。
-- **最小実装**：`diagram`種別のOccurrenceに`nodes[]`（identity・kind・出典）と`edges[]`（from/to identity・relation・多重度・resolution）を入れる。SHO側は`diagram`を**構造記述として保存するだけ**（描画・編集は別資格）。
-- **独立Expected**：
+- **依存**：段階2。[#1124](https://github.com/hat47x/tei-platform/issues/1124)・[#3263](https://github.com/hat47x/tei-platform/issues/3263)の受入条件。`internal/threeelement` は main に存在し、`-model <path>` で読む。
+- **形**：`-document-kind three-element-diagram -model <path>`。**Workspaceは読まない**（`-workspace` も不要）。nodes＝Data/Function/Business要素、edges＝宣言されたCrossReference、cruds＝宣言されたCRUD定義、diagnostics＝モデルが持つ所見。SHO側は`diagram`を**構造記述として保存するだけ**（画像は一切生成しない）。
+- **独立Expected（実装済み）**：
   - S3-a 平行edge（同じfrom/to・別relation identity）を縮約しない。
-  - S3-b 未解決targetは`unresolved`のまま（推測で接続しない）。
+  - S3-b 未解決targetは`unresolved`のまま（推測で接続しない）。`unresolvedEdges` に名前を残し、端点はnodeにならない。
   - S3-c 同名の別要素（Data "Order" と Function "Order"）を`kind:id`で区別する。
-  - S3-d モデル改変で影響するedgeのみ`content-changed`（`AnalyzeImpact`の結果と一致）。
-- **Done means**：S3-a〜dがGo試験でPASS。**図面編集は作らない**。
-- **非目標**：Canvas・レイアウト・Renderer・可逆図上編集。
+  - S3-d モデル改変で`stale`＋`modelFingerprint` diff＋`content-changed`。不改変なら`current`。
+  - S3-e 入力形状の混在（application・sections・要素指定・relation）は拒否。他kindが `-model` を拒否する。
+  - S3-f **Workspaceを読まない**。`model.workspace` は記録されず、`modelRevision` は分析モデルのfingerprint。
+- **Done means**：S3-a〜fがGo試験とCLI試験でPASS。**図面編集は作らない**。
+- **非目標**：Canvas・レイアウト・Renderer・可逆図上編集。**要素対応（何がData/Function/Businessか）の決定**——それはモデルファイルの宣言でありTEIの判断ではない（Owner判断）。図の画像生成も行わない（画像は同一構造の第二表現で、検証できるのは構造そのもの）。
 
 ## 3. 段階4：`specification`（2026-11-11 実装済み）
 
@@ -151,9 +153,9 @@
 
 1. **C-2 のA/B測定** — 子プロセス起動／Wails資産／外部プロセスの起動時間・失敗分類・配布を実測する。数値目標を先に決めず、測定してから形態を選ぶ。
 2. **C-4（再投影方針）のOwner判断起案** — 実装より先に判断。受入条件がこれに依存する。
-3. **段階3（`three-element-diagram`）** — [PR #4283](https://github.com/hat47x/tei-platform/pull/4283) の統合後に入力契約（`model.inputKind`）を決める。統合前に着手しない。
+3. **`*.tei.md` のTEI側取込み** — Parser（[#3346](https://github.com/hat47x/tei-platform/issues/3346)）の完了待ち。完了後はSHO保存物をTEI側で読む経路を、Parser境界に沿って設計する。
 
-C-3は全段階で常に維持。C-5はParser（[#3346](https://github.com/hat47x/tei-platform/issues/3346)）の完了待ちで、**着手しない**。
+C-3は全段階で常に維持。**全5段階が実装済み**になったので、段階の追加ではなく「どの段階を製品経路に載せるか」の判断が次になる。
 
 ## 8. Owner判断が必要な事項（一覧）
 
