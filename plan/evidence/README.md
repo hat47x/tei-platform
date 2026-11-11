@@ -130,6 +130,7 @@
 - [期間の close-requires の実行時検査の確認](XTEA_LOWCODE_CLOSE_REQUIRES_2026-11.md)（参照実装の試験記録。閉めに必要な能力を実行時に要求）
 - [期間の correction の実行時検査の確認](XTEA_LOWCODE_PERIOD_CORRECTION_2026-11.md)（参照実装の試験記録。閉じた期間の訂正を宣言した能力に限る。訂正能力を走らせる経路は未実装）
 - [利用者設定の変更監査の確認](XTEA_LOWCODE_USER_SETTINGS_AUDIT_2026-11.md)（参照実装の試験記録。誰がいつ何を変えたかの記録。権限・永続化は未実装）
+- [期間が名指す能力の効果の検査の確認](XTEA_LOWCODE_PERIOD_CAPABILITY_EFFECT_2026-11.md)（参照実装の試験記録。期間のDataと能力の効果の不一致を報告。効果の種類と役割の対応は未実装）
 - [採番の永続CounterStoreの確認](XTEA_LOWCODE_NUMBERING_SQLITE_STORE_2026-11.md)（参照実装の試験記録。PostgreSQLは未実装）
 - [採番の2プロセス同時実行の確認](XTEA_LOWCODE_NUMBERING_PROCESS_RACE_2026-11.md)（参照実装の試験記録。PostgreSQLと多プロセス構成は未実装）
 - [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
