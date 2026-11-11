@@ -1,4 +1,4 @@
-﻿# 検証・参照用ツール
+# 検証・参照用ツール
 
 `tools/`には、構成検査、受入根拠の取得、参照実装、再現可能な実験に使う道具を置きます。製品の再利用可能な実装は`internal/`、入力と期待結果は`reference/`、利用例は`examples/`にあります。
 
@@ -50,6 +50,7 @@
 | [`reference-tei-eki-contract/`](reference-tei-eki-contract/) | TEI Job/Flow設計からEKIのOpenAPI形状へ写すときの意味の欠落を、固定snapshotとの比較で検出する試験専用の参照（実Provider連携ではない） |
 | [`reference-external-role-dispatcher/`](reference-external-role-dispatcher/) | GitHub Issue/PRを介する異種AI協調で、ロール別の作業取得・モデル選択・排他lease・失敗時のエスカレーション・レビュー依頼を一つのCLIで確認する参照（DSH adapterはdry-run既定、ghはdry-runで変更を回避）（#4218） |
 | [`reference-cache-full-vs-incremental-verification/`](reference-cache-full-vs-incremental-verification/) | キャッシュ・増分処理がフル処理と同じ結果を出すかを比較する参照。食い違う入力・依存・キャッシュ項目・artifactを診断として特定し、キャッシュ再利用による偽陽性を検出する（#4219） |
+| [`reference-cache-invalidation/`](reference-cache-invalidation/) | World・Model・Artifact・Evidenceの版と依存閉包からArtifact再利用・Build省略・Evidence再利用を個別に判定するread-only参照。未知依存、途中失敗、A→B→Aでの証拠誤再利用を拒否（#2595 #2600 #3267）。実キャッシュストアや実Buildとは未接続 |
 | [`reference-build-catalog-authoring/`](reference-build-catalog-authoring/) | builder catalogを能力宣言から組み立てる参照。artifactのdigestは実ファイルから計算し、宣言にdigestを書くことと`-root`の外を指すことを拒否する。製品のファイル形式を変えずにcatalogを用意する手段（#2831 SB-C0 §4.32） |
 | [`reference-offline-storage/`](reference-offline-storage/) | 個人向けに、root内へ閉じたローカル保存を提供する基盤pluginの参照（#2020） |
 | [`reference-export-package/`](reference-export-package/) | SIer向けに、manifestとdigest付きの配布zipを作る基盤pluginの参照（#2020） |
@@ -198,6 +199,7 @@
 | --- | --- |
 | [`reference-data-first-persistence/`](reference-data-first-persistence/) | Dataに手書きの宣言を重ね、実PostgreSQLで実行前の確認・書込み・別接続の再読込を一巡する確認（生成・認可・製品E2は対象外） |
 | [`reference-external-query-evidence/`](reference-external-query-evidence/) | 外部問合せの実行根拠を確認 |
+| [`reference-cache-full-vs-incremental-verification/`](reference-cache-full-vs-incremental-verification/) | フルビルドと増分ビルドの所要時間を同一条件で測り、検証フレームワークの入力を比べる（#4277） |
 | [`reference-external-role-dispatcher/`](reference-external-role-dispatcher/) | ロール別の作業取得・モデル選択・排他 lease・エスカレーション・PR レビューを一つの CLI で確認（#4218。DSH adapter は dry-run 既定で、実際の自動起動は行わない） |
 | [`reference-month-end-close-correction/`](reference-month-end-close-correction/) | 技術検証用サンプル`month-end-close-correction`の工程1〜6。版つきの営業日カレンダーから締め日・ジョブの予定・支払期日を確定して改訂の影響を記録し、CP932の固定長ファイルを宣言した仕様で取り込んで模擬のメッセージと一つの事象に照合し、対象月を業務キーとする締めジョブをDBの時計による貸与とDB側のフェンシングトークン検査で実行する。締めの後に順不同で届く事象を版と方針で受け付け、有効時点と記録時点の二つの軸の単価で赤黒の伝票を計上し、請求書単位・税率別の税額をPostgreSQL、Go、SQLiteで比べて締め時点の帳票をバイト単位で再出力する(PostgreSQLの一つのインスタンス。合成のファイル、模擬のメッセージ、合成の事象。SQLiteはPythonの標準モジュールでのメモリ上の計算) |
 | [`reference-order-entry-persistence/`](reference-order-entry-persistence/) | `order_entry`の注文を、Persistence Mappingから導いたDDLの使い捨てPostgreSQLへ書き込み、別プロセスが読み戻す確認（#1127）。実行前に物理schemaとSource revisionを別々に確かめ、書込み直前の許可確認を経て更新する。Source・Host許可は合成で、通常のWeb経路・生成CRUD・人的受理・製品E2は対象外 |
