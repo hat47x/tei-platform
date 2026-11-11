@@ -221,3 +221,39 @@ This branch's suite is now **14 + 17 + 6 = 37 synthetic tests**.
 Earlier counts above describe prior versions. Only the exact-head native
 Node CI completed successfully for this 37-case version can establish
 native Node test passage; successful V8-shim assertions alone cannot.
+
+
+### T18-local real CLI to independent Node Consumer (2026-11-11)
+
+`real-cli-catalog.test.mjs` is a **cross-language boundary pressure test**.
+On an exact GitHub HEAD, a real Go `tei` binary reads two ephemeral,
+public fixture Workspaces (sound and unknown-type/unsound). Independent
+Node calls actual `model catalog -workspace` and `validate -json`, checks
+separate exit codes and response envelopes, identifies one non-Prelude
+unambiguous `semantic-data` Catalog Subject, then attaches the **actual
+Catalog validation summary** through the existing
+`bindQualifiedCatalogValidation`. It compares original fixture source
+bytes before and after the two readers.
+
+`projectPublicTeaSlice` still receives *synthetic* Role states:
+`data:accepted`, `function:unknown`, `business:unknown`. Those are not
+actual TEI Role or Owner statements; only the Catalog canonical Subject
+comes from the real CLI. A temporary test-owned `workspaceObservation`
+and hash of the catalog-reported fingerprints are **equality witnesses**,
+not real physical-root, current Grant or atomic read-attempt authority.
+The fixture is fully public; no production Catalog diagnostics are
+suitable for low-privilege publication absent a separate #2516
+Disclosure decision.
+
+The [focused exact-HEAD Go+Node CI](../../.github/workflows/tei-tea-real-cli-node-ci.yml)
+also reuses the existing Go
+`TestUnsoundWorkspaceCatalogInspectAndTraceKeepValidationDistinct`, so
+it does not create another Go validator. Run the local Node test only
+after building `./cmd/tei` from a clean exact HEAD, with
+`TEI_CLI_BINARY` pointing to that actual executable and
+`TEI_EXPECTED_HEAD` containing the checkout's 40-character Git SHA.
+
+This is **not** an actual Studio Graph/List/Command or DOM/ARIA test,
+independent Source/Policy/Role qualification, complete Reader closure,
+actual user acceptance, real database Effect or self-build evidence.
+No complete CLI→Workbench→Policy handoff is claimed.
