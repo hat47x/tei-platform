@@ -1,0 +1,27 @@
+CI reported TestBlockOnlyEntryAfterClosingBraceNamesTheBlock as FAIL - a test I
+wrote in round 74. On current main:
+
+  blockOnlyEntryHint occurrences in internal/syntax/parser.go : 2
+    line 2536: doc comment
+    line 2538: func blockOnlyEntryHint(text string) string
+  calls to blockOnlyEntryHint(t.Text)                       : 0
+
+The helper survived; its call site did not. An unrelated edit to expectEOF
+reverted the branch, and nothing failed at merge time because the test and the
+call lived in the same commit.
+
+  git merge-base --is-ancestor edd661709 origin/main  -> YES
+
+So the merge landed, and the code was later reverted in place. Only the test I
+added is still there, and it is what CI reported.
+
+The other three rounds were checked the same way:
+
+  round 72 CheckWorkspaceUnreadSources   -> still called   (ok)
+  round 73 ReadableWithoutSection        -> still populated (ok)
+  round 74 blockOnlyEntryHint            -> NOT CALLED     (lost)
+  round 75 VALIDATION_INCOMPLETE         -> still emitted  (ok)
+
+Restored the call site. The test fails without it
+(message does not say the entry belongs inside a block), which is the proof the
+restore is the missing piece and not decoration.
