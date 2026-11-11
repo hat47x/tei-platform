@@ -64,14 +64,19 @@ func ParseSQLToStandard(src string, dialect string) (*StandardQuery, []Diagnosti
 			pos = p.tokens[len(p.tokens)-1].pos
 		}
 		p.diags = append(p.diags, Diagnostic{Code: "PARSE_ERROR", Message: err.Error(), Span: SourceSpan{Start: pos, End: pos}, Severity: SeverityError})
+		q = &StandardQuery{
+			Dialect: dialect,
+			Nodes:   []Node{&Opaque{NodeID: "node:opaque", SQL: src, Reason: "parse error"}},
+			Root:    "node:opaque",
+		}
 	}
-	if q == nil {
-		q = &StandardQuery{Dialect: dialect}
-	}
-	if len(p.diags) > 0 {
+	if q != nil && len(p.diags) > 0 {
 		q.Diagnostics = append(q.Diagnostics, p.diags...)
 	}
-	return q, q.Diagnostics
+	if q != nil {
+		return q, q.Diagnostics
+	}
+	return &StandardQuery{Dialect: dialect}, nil
 }
 
 func (p *parser) tokenize() {
