@@ -131,13 +131,22 @@ func TestMySQLIntegration(t *testing.T) {
 	windowSQL, err := dialect.Select(ctx, sqlgen.SelectOptions{
 		Table:   "orders",
 		Columns: []string{"id", "amount", "SUM(amount) OVER w AS sum_amount"},
+		GroupBy: []string{"id"},
 		Window:  "w AS (PARTITION BY customer_id ORDER BY created_at)",
+		OrderBy: []sqlgen.OrderClause{{Column: "id"}},
 	})
 	if err != nil {
 		t.Fatalf("Window Select error: %v", err)
 	}
 	if !strings.Contains(windowSQL.Statement, "WINDOW w AS (PARTITION BY customer_id ORDER BY created_at)") {
 		t.Errorf("Window Select statement = %v, want WINDOW clause", windowSQL.Statement)
+	}
+	// MySQL reads WINDOW after GROUP BY / HAVING and before ORDER BY.
+	if strings.Index(windowSQL.Statement, "WINDOW") < strings.Index(windowSQL.Statement, "GROUP BY") {
+		t.Errorf("Window Select statement = %v, want WINDOW after GROUP BY", windowSQL.Statement)
+	}
+	if strings.Index(windowSQL.Statement, "WINDOW") > strings.Index(windowSQL.Statement, "ORDER BY") {
+		t.Errorf("Window Select statement = %v, want WINDOW before ORDER BY", windowSQL.Statement)
 	}
 
 	// Test UNION
