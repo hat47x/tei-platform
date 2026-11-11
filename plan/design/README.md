@@ -14,6 +14,7 @@
 `docs/`とは役割を分けます。`docs/`では実装済みの構成と利用方法を説明し、ここでは採用前の案や変更に必要な機能設計を扱います。実装状況が変わった場合は、この設計文書を現行構成の説明に流用せず、`docs/architecture.md`を更新します。
 
 - [Driver Scenario Markdown Authoring](DRIVER_SCENARIO_MARKDOWN_AUTHORING_2026-11.md)（#1180の設計候補。JSON ScenarioをSSOTとし、Markdownは同じJSONの人間向け作者面。translateは実装済みだが、採用や製品受入ではない）
+- [通常の組織Dataと保護対象の特定情報の区別](ORGANIZATION_DATA_PROTECTION_BOUNDARY_2026-11.md)（WU-14の受入票。三区分（通常・保護対象・例外）で、一律の制御を課さないことを受入条件にする）
 - [重要Issueの実装仕様：確定結果・再送・操作契約の発見](CRITICAL_HEADLESS_ISSUE_IMPLEMENTATION_SPEC_2026-11.md)（#1174/#2564/#3419の設計候補。実装・受入完了ではない）
 
 ## 体裁
