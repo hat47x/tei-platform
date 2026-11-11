@@ -112,7 +112,6 @@ func copyPeriodReadbackFixture(t *testing.T, source string) string {
     column sales.order.order_id -> order_id storage int64 required
     column sales.order.customer_id -> customer_id storage int64 required
     column sales.order.status -> status storage varchar required
-    column sales.order.order_date -> order_date storage date required
 
     primary-key sales.order.order_id
 }
