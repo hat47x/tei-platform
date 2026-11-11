@@ -45,9 +45,9 @@
 | Sourceと用途 | 実SQL／入力 | 静的に確認できること | 実行前の不足 |
 | --- | --- | --- | --- |
 | `reference/workspace`＋`recent_orders_product_seed.sql` | `public.orders` 5列、`ordered_at >= :from`、日時降順 | 合成3行に対する`3/2/0`件の独立期待値。R0-Referenceの入力候補 | **Query宣言に`input from`が存在しない**。型・日時精度・Timezone・Runtime Binderが未確定。実PG適用／実Rowsetは未検証 |
-| `examples/xtea-lowcode`（[Draft #4076](https://github.com/hat47x/tei-platform/pull/4076)） | `sales.order`から2列、`:status`・`:status_operator`・`:page_size`・`:page_offset`、状態順＋ページング | 宣言された4つの入力とPatternの`eq/ne`・`page-size 20`を別契約として照合 | この例が必要とする`"sales"."order"`の実DB/Readerは、**`public.orders`用Seedとは異なる**。Draftのopt-in実PGテストは未実行 |
+| `examples/xtea-lowcode`（現main） | `sales.order`から2列、SQLは`:status`による等価絞込のみ。Patternには`eq/ne`・`page-size 20`が宣言されている | SQLの`:status`入力宣言と、Referenceとは異なる物理Source/結果射影を照合 | Patternの`ne`・ページングと現mainのSQL実現は未一致。**Draft #4076で**`:status_operator`・`:page_size`・`:page_offset`と実行経路を追加中。実PGは別途検証 |
 
-Source-staticテストは、`reference/workspace`の`:from`未宣言を**明示的な未解決状態**として固定している。宣言が正しく追加されたときはテストの独立Expectedを審査して更新する。ここでSQL Dialectの完全解析、`order`という識別子の実DB引用規則、Plugin選択、Role/Grant、実Resultを証明したとは扱わない。
+Source-staticテストは**現mainのXTEA SQL（`:status`のみ）**を基準にし、未統合Draft #4076の4入力を既存機能として要求しない。Draft統合後は新しいSourceと実Resultを改めて検収する。`reference/workspace`の`:from`未宣言は**別の明示的な未解決状態**として固定する。宣言が正しく追加されたときはテストの独立Expectedを審査して更新する。ここでSQL Dialectの完全解析、`order`という識別子の実DB引用規則、Plugin選択、Role/Grant、実Resultを証明したとは扱わない。
 
 **実Readの優先順**：先行する1 Workspaceと実Queryを明示選択→専用の隔離・破棄可能DBに正しいSchema/Seedを適用→独立Readerで入力行を観測→そのWorkspaceでQuery宣言・Parameter Binderを確認→実SQL/Rows→Function Data Context→CLI受領。0件・ページ終端を業務不存在や全母集団の完全性へ無断昇格しない。正式Plugin Providerの選択とHost/Buildの検証は別の[#1251](https://github.com/hat47x/tei-platform/issues/1251)に保持する。
 
