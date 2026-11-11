@@ -62,6 +62,7 @@
 | [H6-E0 Host棚卸し](./DSH_H6E0_HOST_INVENTORY_2026-11-07/README.md) | 実行環境 | read-onlyはConstrainedLanguage、親のenvは子へ継承されない、loopbackへ到達可 | 別Host、他Tool経路、実Egress |
 | [H6-E1 read境界](./DSH_H6E1_READ_BOUNDARY_2026-11-07/README.md) | 読取り | `read-only`でもraw配下・`.env`・cwd外を読める | AppContainer・別User・mount名前空間での拒否 |
 | [H6-E1 OSのACL](./DSH_H6E1_OS_ACL_2026-11-09/README.md) | 読取りの強制点 | `icacls`で拒否したファイルは`read-only`でも`danger-full-access`でも`PermissionDenied`。同Userへ権限を足すと同じProbeが成功する（正負対） | 別User・AppContainer・mount名前空間、Network egress、存在の推測 |
+| [コンテナとuidによる読取り隔離](./DSH_G0_CONTAINER_ISOLATION_2026-11-11/README.md) | 読取りの強制点（Linux・別uid） | WSL2上のDockerで4 Slotを別uid・mode 700に置き、DSHの実Toolから自Slotの公開Workspaceと`tei`は使え、他3 SlotとReviewer資料は存在を確かめた上で全件`Permission denied`。H3の2 Slotだけ固定Skillを読める。Tool呼出しと結果は10対10、13,190 bytesのCatalogは直接実行とbyte一致。Mockを相手にした事前検査 | 実Providerへの送出、H2/H3の比較Session、内部networkからホストgatewayへの到達、コンテナ脱出への耐性 |
 | [workspace-write非対称](./DSH_WORKSPACE_WRITE_ASYMMETRY_2026-11-07/README.md) | 書込み | root外への書込みは拒否、同じroot外の読取りは通る | 読取り拒否の実OS構成 |
 | [子Process到達範囲](./DSH_CHILD_PROCESS_REACH_2026-11-08/README.md) | Process | 子`cmd.exe`は親の読取り範囲を引き継ぎ、書込みはmodeに従う | 別OS資格での子起動、連鎖起動 |
 | [H6-E3 暗黙Context](./DSH_H6E3_IMPLICIT_CONTEXT_2026-11-07/README.md) | 暗黙入力 | AGENTS.md・CLAUDE.md・Skill `description`がTool未読で載る | 解決範囲、Tool poison |
