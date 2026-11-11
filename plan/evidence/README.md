@@ -460,3 +460,4 @@
 - [節の無い種でも読めることをmodel overviewが言う](TEI_DOGFOODING_ROUND73_SCOPE_READABILITY_2026-11-11/README.md)（#4128。persistenceマッピングとsolution releaseを4往復で設計し全成果物をinspectで読み返した。外部所有DBはreleaseできず契約gateにする、というモデル規則を診断から学んだ。notCoveredKindsの種がinspectで読めるかをreadableWithoutSectionで分け、CLIと同じリストを読む）
 
 
+- [「state分離」は、childの申告と文字列が一致するかである](TEI_GO_SELF_BUILD_STATE_SEPARATION_SCOPE_2026-11-11.md)（§4.37が条件5で「stateの分離」を確かめるとしている点を実測。childが二回とも**同じstate**を使い、渡された値をそのまま申告する構成で、`firstStateDir`と`secondStateDir`は違うまま**`l2b.claimed=true`**になった。**検査は文字列比較であり、実際に別のstateを使ったことではない。** #2831）
