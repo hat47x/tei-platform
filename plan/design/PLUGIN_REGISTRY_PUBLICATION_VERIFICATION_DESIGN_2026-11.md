@@ -361,13 +361,13 @@ GoとNodeの実装が**同一のReference Fixtureを独立に読んだ場合の�
 
 ### 13.1 mainで確認できる範囲と、未成立の境界
 
-次の表は確認時main \`2202baa96e5e845c996da62c8f8df27e00d45c43\` の**Source/PR/CIに紐づく局所事実**であり、E0〜E3の全体資格ではない。本文§12の当時の「局所の試験条件」は履歴として保ち、今回成立した範囲を追補する。
+次の表は確認時main `2202baa96e5e845c996da62c8f8df27e00d45c43` の**Source/PR/CIに紐づく局所事実**であり、E0〜E3の全体資格ではない。本文§12の当時の「局所の試験条件」は履歴として保ち、今回成立した範囲を追補する。
 
 | 境界 | 現在の証拠 | 成立しない主張 |
 | --- | --- | --- |
-| E0-S：署名対象/Artifact byteの結合 | [merged #3244](https://github.com/hat47x/tei-platform/pull/3244)：Go/Node独立Reference、固定テスト鍵のEd25519・SHA-256。PR head \`5859fc62...\` の専用Workflow success（Repository Healthは同runでfailure） | 実Issuer/Publisherの現在Trust、Registry登録、実Conformance |
-| E0-W：共通Raw Wire解釈 | [merged #3809](https://github.com/hat47x/tei-platform/pull/3809)：mainの\`tools/reference-plugin-registry/wire.go\`/\`wire.mjs\`と共有\`wire-cases.json\`（正常3／拒否11、Raw bytes digest）。この追補ではmerge後の専用CI実行結果を取得していない | 製品用Canonical JSON・正式Attestation Profile・第三者Issuerによる実署名 |
-| E1前段：実CLI→一式Reader | [merged #3256](https://github.com/hat47x/tei-platform/pull/3256)：実\`tei artifacts -out\`と別ProcessのReader、正規Manifest、Member実byte照合、専用CI success | GitHub Release/OCI等の公開先での原子的世代確定、独立外部Consumerのreadback |
+| E0-S：署名対象/Artifact byteの結合 | [merged #3244](https://github.com/hat47x/tei-platform/pull/3244)：Go/Node独立Reference、固定テスト鍵のEd25519・SHA-256。PR head `5859fc62...` の専用Workflow success（Repository Healthは同runでfailure） | 実Issuer/Publisherの現在Trust、Registry登録、実Conformance |
+| E0-W：共通Raw Wire解釈 | [merged #3809](https://github.com/hat47x/tei-platform/pull/3809)：mainの`tools/reference-plugin-registry/wire.go`/`wire.mjs`と共有`wire-cases.json`（正常3／拒否11、Raw bytes digest）。この追補ではmerge後の専用CI実行結果を取得していない | 製品用Canonical JSON・正式Attestation Profile・第三者Issuerによる実署名 |
+| E1前段：実CLI→一式Reader | [merged #3256](https://github.com/hat47x/tei-platform/pull/3256)：実`tei artifacts -out`と別ProcessのReader、正規Manifest、Member実byte照合、専用CI success | GitHub Release/OCI等の公開先での原子的世代確定、独立外部Consumerのreadback |
 | E1の反証：読み始めと終わりの二点照合 | [merged #4240](https://github.com/hat47x/tei-platform/pull/4240)：R1→R2→R1のABAと、列挙後に物理member pathがsymlinkへ切り替わる合成負例。OSがsymlinkを許可しない場合は当該ケースSKIP | 継続したGeneration pin、実Openした物理ObjectのOrigin/Scope、実Publisherの並走安全性 |
 | Build provenance | [#2831](https://github.com/hat47x/tei-platform/issues/2831)／[merged #4299](https://github.com/hat47x/tei-platform/pull/4299)：childのstate使用やbuilder同一性について、自己申告と実使用を区別する必要性を実証 | 同じArtifact Digestを得たことだけでSource/Toolchain/Builderの実消費閉包を証明 |
 | 公開保証・ID・BOM | [merged #3265](https://github.com/hat47x/tei-platform/pull/3265)のOpen/unpromised vs Stable、[merged #2815](https://github.com/hat47x/tei-platform/pull/2815)のHashId限定PoC、[#3267](https://github.com/hat47x/tei-platform/issues/3267)の組合せBOM設計 | OpenをStableへ昇格、短縮HashIdを完全Digestへ置換、個別Plugin PASSからBOM結合PASSを生成。旧BOM [#3297](https://github.com/hat47x/tei-platform/pull/3297) はclosed/unmergedでRQ-036は現mainでModel Map |
@@ -378,7 +378,7 @@ GoとNodeの実装が**同一のReference Fixtureを独立に読んだ場合の�
 
 既存§9の公開フローを、少なくとも**Publisher側の公開Readback**と**独立Consumerの実取得**という別のAttemptに分ける。
 
-\`\`\`text
+```text
 Signed Release declaration (immutable subject)
       │
       ▼
@@ -401,16 +401,16 @@ content observed / acquisition failed / origin unverified / current trust unreso
       │
       ▼
 Host-specific Load / Grant / Effect evidence (separate owner)
-\`\`\`
+```
 
 - **Byte identity**：読めたbyteのDigest一致を主張できる。正しいDigestの別Mirrorは**内容一致**としてよいが、元Publisher/配布Sourceの正当性は別。
 - **Publication identity**：Manifest/Release Descriptorと全必須MemberのRole/Digest・Version Bindingを特定。途中失敗時に全Member Publishedとしない。
 - **Origin・Scope**：pathを先に検査しても実Openした物理Objectは置換され得る。Source/StoreのRoot、権限、実Handle/Object version、Disclosureはbyte同一性と別。
 - **Generation continuity**：開始時/終了時のManifest一致はR1→R2→R1（ABA）を排除しない。R1の旧memberを保持しているか、読取の最中に任意のgenerationが混ざっていないかは追加証拠が必要。
 - **Current trust / actual use**：実取得成功や署名照合は、Publisher鍵・委任の現在性やHost Grant、正しく選択されたProviderの実Invokeを保証しない。
-- **Build/source provenance**：生成物の内容一致から、\`cmd/tei\`を本当に同じBuilder/State/Toolchainで作ったと推論しない。実行側Source/Process/Inputの独立観測があって初めて該当Claimを扱う。
+- **Build/source provenance**：生成物の内容一致から、`cmd/tei`を本当に同じBuilder/State/Toolchainで作ったと推論しない。実行側Source/Process/Inputの独立観測があって初めて該当Claimを扱う。
 
-本設計で\`attempt\`/\`member\`/\`locator\`/\`objectVersion\`/\`trustState\`などを列挙しても、これを**新Core enum、第二Manifest、万能Store API、独自Registry Evidence DBの即時導入**とはしない。既存#1105のContent Store、#2604のArtifactSet、#1104のTrust、#951のResolverの証拠参照を束ねるだけとする。
+本設計で`attempt`/`member`/`locator`/`objectVersion`/`trustState`などを列挙しても、これを**新Core enum、第二Manifest、万能Store API、独自Registry Evidence DBの即時導入**とはしない。既存#1105のContent Store、#2604のArtifactSet、#1104のTrust、#951のResolverの証拠参照を束ねるだけとする。
 
 ### 13.3 次の最小接続・反証計画（#2604の既存試験を再実装しない）
 
@@ -418,11 +418,11 @@ Host-specific Load / Grant / Effect evidence (separate owner)
 | --- | --- | --- | --- |
 | RG-E1-09 | 2必須Artifactの実ReadbackとPublication Attemptの対応 | Publish時に**全必須memberの実byte**が確認されない限りPublication Commit不可。単なるUpload ACKは不足 | #2589 → #1105/#2604 |
 | RG-E1-10 | Publication Pに対しConsumer Cが**別Attempt**で取得 | Cの実byte・Release/Member Digestを再照合。Pの成功ログだけをCの受領証拠にしない | #2589/#2390 |
-| RG-E1-11 | Manifest R1→R2→R1（ABA）をCのReader中に注入 | 前後R1一致だけで\`continuous-generation\`は証明しない。必要ならStorage側の世代不変・版固定の実証へ | #2604 AP-06/09、#4240 |
-| RG-E1-12 | 事前に検査したMember Pathが実Open前に同byteの外部symlinkへ変化 | 内容Digest一致は認めてもOrigin/Root/Disclosureは\`unverified\`。実Handle/Object version資格が無ければScope保証不可 | #2604 AP-09、#4240 |
+| RG-E1-11 | Manifest R1→R2→R1（ABA）をCのReader中に注入 | 前後R1一致だけで`continuous-generation`は証明しない。必要ならStorage側の世代不変・版固定の実証へ | #2604 AP-06/09、#4240 |
+| RG-E1-12 | 事前に検査したMember Pathが実Open前に同byteの外部symlinkへ変化 | 内容Digest一致は認めてもOrigin/Root/Disclosureは`unverified`。実Handle/Object version資格が無ければScope保証不可 | #2604 AP-09、#4240 |
 | RG-E1-13 | GitHub ReleasesからLocal/NAS/S3等へ同Digestを複製 | 別Locatorでもbyte identityは不変。ただしStore Origin/可用性/秘密Metaの送出許可は独立、GitHub登録を強制しない | #1105／[#4307](https://github.com/hat47x/tei-platform/issues/4307)／#2516 |
 | RG-E1-14 | Valid digestのArtifactに新しいStable保証Statementだけを加える | 不変Releaseを書き換えない。Publisher保証・Verifier Conformance・Consumer Grantを別Issuer/Scopeで検査 | #3265/#1104/#951 |
-| RG-E1-15 | Build成果物が同digestでも子BuilderがState/実入力を自己申告 | Build provenanceは\`not independently verified\`。actual Builder/State/Input閉包をConsumerのPublisher信頼へ自動昇格しない | #2831/#4299 |
+| RG-E1-15 | Build成果物が同digestでも子BuilderがState/実入力を自己申告 | Build provenanceは`not independently verified`。actual Builder/State/Input閉包をConsumerのPublisher信頼へ自動昇格しない | #2831/#4299 |
 | RG-E1-16 | 個別Plugin署名2件＋合成BOM候補のみ | 検証済みBOMやRuntime利用可能を検索結果で自動主張しない。BOM Ownerは#3267、現行Requirement番号は再照合する | #3267/#951 |
 
 **実装順（並行可能な最小単位）**：既存E0-S/Wのmain上の固定版・CI対象を記録 → E1-Aとして#1105/#2604の**実Readback結果を引き渡すAdapter/参照**を設計、別P/C Attemptの実byte・Digest照合を最初に実証 → R1/R2混合とABA/TOCTOUをStorageごとに圧力検証 → E2のPublisher権限・Version CASを接続 → E3の実外部Host採用を独立検証。E1にBOM 2×2やTEI全体G4を硬い先行依存として置かない。
