@@ -1,0 +1,31 @@
+{
+  "projection": "org-unit-tree",
+  "losses": [
+    {
+      "name": "hidden-second-parent",
+      "description": "Graph→Tree変換時に隠れた第二親（matrix_parent等）は保持され、書戻しで消えない",
+      "expectation": "both-parents-retained"
+    },
+    {
+      "name": "display-preference-absent",
+      "description": "表示Preferenceがなければ選択不能/要確認として両関係を保持する",
+      "expectation": "both-relations-kept"
+    },
+    {
+      "name": "aggregate-grain",
+      "description": "集計grainを明示し二経路の同一Factを二重計上しない",
+      "expectation": "single-fact-per-grain"
+    },
+    {
+      "name": "partial-and-unresolved",
+      "description": "部分取得・非開示・未解決セルを「空」としない",
+      "expectation": "preserve-partial-and-unresolved"
+    },
+    {
+      "name": "irreversible-change",
+      "description": "非可逆変更はread-onlyとする",
+      "expectation": "read-only"
+    }
+  ],
+  "note": "本ファイルは手書きの独立Expectedであり、実装出力から生成していない。"
+}
