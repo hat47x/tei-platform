@@ -17,6 +17,16 @@ SUI側で「TEI Referenceのartifactを、型付きのread-only参照として�
 
 本書はこの知見を、*.tei.md＋Pluginという移行先の構成へ翻訳し、今後必要なタスクを**後続の実装者がそのまま作業票にできる具体性**まで分解します。判断の採用は各IssueとADRの仕事で、本書は分解と論点の整理までを行います。
 
+### 1.1 登場するリポジトリと役割
+
+| リポジトリ | 役割 | 根拠 |
+| --- | --- | --- |
+| `hat47x/sui-sensemaking`（SUI） | **consumer**。artifactを読み、型付き参照として返す。DocumentV1の正本を持ち、最後までSUIが正本 | SUI PR #3429、ADR-0116 |
+| `hat47x/tai-pleroma`（TAI） | **producer**。artifactを生成し、`tenants/<tenantId>/<docId>/documentv1-projection.json` とbindingを置く | `integrations/pilot-sui-document/`（`artifact.schema.json`、`assembler/install_artifact.py`） |
+| `hat47x/tei-platform`（TEI） | **移行先**。*.tei.mdのCanonical定義、Plugin、投影、Source index、共通API | 本書 |
+
+移行の順序は「SUIがconsumerとして読む（M0）→ producerが宣言を足す（M1）→ TEI側に定義と投影を置く（M2〜M4）→ Source権威とconformance（M5・M6）」です。TAIはTEIの代わりにartifactを出すだけなので、TAIの変更が無くてもM0は成立します。
+
 ## 2. 実装知見（2026-11-11時点）
 
 ### 2.1 動いたもの
@@ -153,7 +163,9 @@ SUI固有の語彙（`Card`、`Island`、`human_reviewed`）が共通部品の�
 ### 5.2 M1 producer契約（`source.status`と文書単位の開示宣言）
 
 - 目的: consumerが推定している失効と開示を、producerが宣言する契約にする（F-5・F-6）
-- 変更境界: TEI側のartifact生成側のみ。consumer（SUI）は変更しない（後方互換を保つ）
+- 変更境界: **producerはTEIではなくTAI Pleroma**（`hat47x/tai-pleroma`）。artifactはTAIが生成し、`tenants/<tenantId>/<docId>/documentv1-projection.json` へ置いてSUIが読む。したがって契約の変更はTAI側で行い、consumer（SUI）は変更しない（後方互換を保つ）
+  - TAI側の触るファイル: `integrations/pilot-sui-document/artifact.schema.json`（artifactのJSON Schema）、`evaluations/artifacts/documentv1-projection.json`（fixture）、`integrations/pilot-sui-document/assembler/validate_artifact.py` と `test_artifact_schema.py`（検証）、`assembler/install_artifact.py`（配置とbinding）
+  - 触らないファイル: SUIの`tei_sui_reference.py`（consumerは省略可能を汲む）、TEIのCore・Plugin契約
 - 依存: M0。#2743（Source鮮度）、#3479（Import原文の失効）
 - 契約案（**案。採択前**）。artifactへの追加はすべて省略可能とする:
 
@@ -165,16 +177,18 @@ SUI固有の語彙（`Card`、`Island`、`human_reviewed`）が共通部品の�
 ```
 
   - `source.status`: `active` / `revoked` / `expired`。**省略と未知の文字列は`unknown`**。`unknown`を`active`に読み替えない
+  - `source.status`: `active` / `revoked` / `expired`。**省略と未知の文字列は`unknown`**。`unknown`を`active`に読み替えない
   - `disclosure.scope`: `internal` / `restricted`。省略は制限なし。`restricted`は文書全体を非返却（種別・ID・件数も出さない）
+  - TAIの現行schemaは`source`に`teiCommit`と`contracts`を要求し、`disclosure`は存在しない。追加は**optional**とし、既存artifactはそのままvalidにする
 - 受入:
   1. 省略時にconsumerが`unknown`として損失へ出すこと（SUI PR #3429の`source-status: unresolved`）
   2. `revoked` / `expired`でconsumerが409を返し、IDも件数も出さないこと
   3. `restricted`でconsumerが403を返し、種別・ID・件数を出さないこと
   4. 未知の文字列値（`"Active"`、`"gone"`）が`unknown`に倒れること
-  5. producer側で、宣言の有無がconsumerの挙動を変えることを試験で示すこと
+  5. TAI側で、schema検証（`validate_artifact.py` / `test_artifact_schema.py`）が追加項目の有無どちらも通ること
 - 負例: `status`に数値を入れる、`disclosure`を文字列（`"restricted"`）で渡す（扱いを決めてから実装する。案: 文字列も許す）、`active`を既定値としてproducerが埋める
-- 未実施: producer側の実装。契約の採否はOwner判断（§7-1）
-- 委譲先: `architect`（契約の形）→ `implementer`
+- 未実施: TAI側の実装。契約の採否はOwner判断（§7-1）
+- 委譲先: `architect`（契約の形）→ `implementer`（TAI側）
 - 撤退条件: 採択されない場合、consumerは`unknown`のまま動かし、失効の判定はconsumer側の限定した読みに留める
 
 ### 5.3 M2 SUIドメインのCanonical定義（Reference Workspace）
@@ -307,6 +321,7 @@ M6（scope conformance）は独立
 | タスク | ブロッカー | 解除の条件 |
 | --- | --- | --- |
 | M1・M4 | SUI #3369（本文公開の判断） | Owner判断。判断が無い間は本文を出さない経路のまま |
+| M1 | TAI側のschema変更（`artifact.schema.json`） | TAIの担当判断。省略可能なので未決でもM0は動く |
 | M3 | TEI #2488（generator familyの設計判断） | #2488のOwner判断 |
 | M5 | #2743 / #3479 の現在の設計 | Source index側の責務の明確化 |
 | M6 | ISSUE-000080（Capability Contract） | 解消後。それまでL0とL3のみ |
@@ -339,6 +354,7 @@ M6（scope conformance）は独立
 | record/string投影 | [#2488](https://github.com/hat47x/tei-platform/issues/2488) | §5.4 |
 | 開示投影 | [#2516](https://github.com/hat47x/tei-platform/issues/2516) | §5.5 |
 | Source鮮度・失効 | [#2743](https://github.com/hat47x/tei-platform/issues/2743) / [#3479](https://github.com/hat47x/tei-platform/pull/3479) | §5.2・§5.6 |
+| artifactの生成・配置 | TAI `hat47x/tai-pleroma`（`integrations/pilot-sui-document/`） | §5.2（producer契約の実装先） |
 | 共通Application API | [#1158](https://github.com/hat47x/tei-platform/issues/1158) / [#3419](https://github.com/hat47x/tei-platform/issues/3419) | §5.4・§5.5の出口 |
 | 実Read・coverage | [#2586](https://github.com/hat47x/tei-platform/issues/2586) / [#2506](https://github.com/hat47x/tei-platform/issues/2506) | §5.6 |
 | canvas / Interaction | [#993](https://github.com/hat47x/tei-platform/issues/993) | §3.1 |
