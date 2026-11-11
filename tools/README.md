@@ -250,6 +250,7 @@
 | [`reference-model-search/`](reference-model-search/) | 意味の名称を横断して検索し、置換を変更案として出す読取り専用の参照（#1804） |
 | [`reference-semantic-mapping-check/`](reference-semantic-mapping-check/) | 意味の定義と物理項目の対応について、定義へ遡る道が一つか、未記入の要素、複数の定義に一致する要素、定義の追加で変わる要素の範囲を検査する参照。合成データのみで、実在のデータ辞書とは未接続（#2095） |
 | [`reference-facet-mapping-check/`](reference-facet-mapping-check/) | 標準データ構造と標準表現型の間の写像を、12列の写像契約と両側のFacetで突き合わせ、保持・損失・不適合・不明を判定する参照。読み取りの成功を編集逆写像の成功から分け、証拠のない保存主張は`unknown`へ落とす。合成fixtureのみで、実Provider・実Renderer・業務意味の受理は示さない（#4351 / #4350 S1） |
+| [`reference-facet-structure-check/`](reference-facet-structure-check/) | 標準データ構造の族ごとに、直交Facetの記述で載るか・現行Sourceに場所が無い意味は何か・どの採用先（基礎型／合成型／意味Facet／標準Plugin／表現型）へ返すかをread-onlyで判定する参照。Core型の採用は判定せず`core-type`を拒否してADRへ戻す。多重度・単位は推定しない。合成descriptorのみで、実Provider・Owner意味受理は示さない（#4352 / #4350 S2） |
 | [`reference-semantic-extension-catalog/`](reference-semantic-extension-catalog/) | 意味拡張の登録・解決・検証 |
 | [`reference-subsystem-cud/`](reference-subsystem-cud/) | 部分システムの登録・参照・更新・削除の境界確認 |
 | [`reference-tei-eki-contract/`](reference-tei-eki-contract/) | TEIのJob・Flow設計がEKIのP0 OpenAPIで失う意味（`notBefore`・期限・effect_mode・資源制約など）を、実contractへの射影で検出する隔離した試験用の参照。実Provider・認可・実行層ではなく、外部contractの受理を示さない |
