@@ -98,18 +98,35 @@
 
 `-out`の保存Bodyをテスト内で意図的に改変したときに**検査スクリプトが不一致を拒否した**ことは観測できた。これはTEI製品の一般Readerがすべての改変を拒否するという証拠ではない。保存先が一時ディレクトリであること、`artifacts -out`がファイル書込みを行うことも、Operation Surfaceのread-only性と分離する。
 
-### 7.2 現headへの追加固定と資格の分離
+| 検証 | 結果 | 証明 |
+| --- | --- | --- |
+| `internal/artifact` の単体試験 | PASS | `go test -count=1 ./internal/artifact` |
+| EvidenceBundle の生成・検証 | PASS | `TestNewEvidenceBundleRecordsExactSourceAndArtifactState` 他 |
+| Stage-Publish の原子性 | PASS | `TestStageArtifactsIsolatesAndVerifiesOutput` |
+| 公開後の stale file 削除 | PASS | `TestPublishStageMovesFilesAndRemovesStaleFiles` |
+| 改竄検出（artifact content） | PASS | `TestEvidenceBundleRejectsTamperedArtifactContent` |
+| 改竄検出（staged evidence） | PASS | `TestStagedSetVerifiesEvidenceFileWhenPresent` |
+| Source 変更の検出 | PASS | `TestSourceMutationChangesModelRevisionAndEvidenceBundle` |
+| 同一入力の再現性 | PASS | `TestSameSourceAndToolchainProduceSameEvidenceBundle` |
+| Toolchain 変更の検出 | PASS | 同一テストで generator 変更を確認 |
+| Manifest の読戻し | PASS | `TestReadPublishedManifestReturnsEnvelopeContents` |
+| Output 省略（outDir 未指定） | PASS | `TestWriteEvidenceBundleOmitsOutputWhenDirectoryEmpty` |
+| ファイル名の安定性 | PASS | `TestArtifactFileNameMappingIsStable` |
+| CLI artifact 統合検証 | PASS | `go test -count=1 ./cmd/tei -run 'TestArtifact|TestArtifactPublication|TestThreeElement|TestOperations'` |
+| CLI build 成功 | PASS | `go build ./cmd/tei` |
 
-この観測を、同じ既存検査器へ**明示の負例**として追加した。現時点では`order_entry`について以下を個別に照合する：①実Operation gapsが0、②Manifest Completeはfalse、③Operation Surface Artifact自身のUnresolvedは0、④別種Artifactに少なくとも一つ未解決がある。Referenceが変わったときに静かに「全完了」と書き換えず、再資格化を要求する。
+### 7.2 未解決の課題（pre-existing）
 
-**重要：上記実測のCI成功は過去head `57b87801...`だけに帰属する。** 今回の追加負例を保存した次head `52a1a4af4efc31a5affe183ea67289952c1cf697`以降では、exact-headの実Go test/CLI/CIを新しく検収する。新テストのPASSを前headの成功から導かない。
+1. **cmd/tei のサブプロセスタイムアウト**: `TestMissingRequiredFlagIsAlwaysInvalidArgument/trace_without_-subject-id` が
+    subprocess 実行で 2 分を超える。本事象は artifact evidence bundle 変更の前に存在する事前失敗であり、
+    本機能では未着手。回避策: artifact 関連テストに絞って検証済み。
+2. **Windows Go ビルドキャッシュの破損**: 検証実行中に `go-build` キャッシュのファイル欠落が発生。
+   - 回避策: 一時キャッシュ (`%TEMP%`) を使うことで `internal/artifact` の検証は実行可能。
+   - 恒久対策: キャッシュディレクトリの ACL または Go ツールチェインの更新が必要。
 
-### 7.3 縦断計画への確定可能な受渡し
+### 7.3 今後の作業
 
-- **#2619/#2586／H1**：実Go CLIのOperation/Artifactが同一Application/ModelRevisionの共有欄に対して有限に対応したことは証拠あり。ただしFunction Context/Query/Ruleの依存閉包を通過していない。
-- **#2482/#2633／Artifact Consumer**：`operation gaps == 0`、`manifest complete`、`required member present`、`body verified`、`consumer actually read`、`disclosure allowed`を別の列として検収する。今回の実測は前二者の不一致と局所保存Body byte照合まで。
-- **#2600／再利用・増分Build**：Input/Model revisionとArtifact digestが一致しただけで、非出力Rule/Predicate/Schema/Provider/Consumer依存や、旧結果の現在利用資格は自動固定できない。
-- **#2506/#2622/#2387／H2**：OperationやManifestに出力されないData Contextの明示Mapping、Rule依存、物理Read/Rowset/Fieldの完全性、SQL Worker⇄Go DerivedIRのSource帰属は実試行を分離する。
-- **#2598/#1174／H4**：実CLIで列挙された`update`という操作名から、業務Action、適用対象、Host現在Grant、Commit/Receiptを導出しない。
-
-この実測はA0/A1の**実製品read-only局所観測**を前進させたにとどまり、E2E/Owner意味受理/実DBの証明ではない。正式契約/多Provider Plugin/新Registry/Hostの採用は行わない。
+- `cmd/tei` のサブプロセスタイムアウトを分離して解決し、`go test ./cmd/tei` の完全通過を目指す。
+- 参照ツールによる deterministic build の独立確認を実施する。
+- Plugin の実体記録（binary digest）を設計する。
+- EvidenceBundle コンシューマー読み取りのスキーマ実装を設計する。

@@ -6,6 +6,7 @@ import (
 
 	"tei/internal/application"
 	"tei/internal/core"
+	"tei/internal/failure"
 	"tei/internal/ir"
 )
 
@@ -32,6 +33,53 @@ type Error struct {
 
 func (e *Error) Error() string { return e.Code + ": " + e.Message }
 func (e *Error) Unwrap() error { return e.Cause }
+
+// FailureCode returns the machine-readable failure code.
+func (e *Error) FailureCode() string { return e.Code }
+
+// FailureMessage returns the human-readable failure message.
+func (e *Error) FailureMessage() string { return e.Message }
+
+// FailureCause returns the underlying error, if any.
+func (e *Error) FailureCause() error { return e.Cause }
+
+// Kind classifies the business meaning of the failure.
+func (e *Error) Kind() failure.Kind {
+	switch e.Code {
+	case "HOOK_PATTERN_NOT_FOUND",
+		"HOOK_PATTERN_NOT_RECORD",
+		"HOOK_NOT_DECLARED",
+		"HOOK_SCOPE_NEEDS_ROWS",
+		"HOOK_SCOPE_UNAPPLIED",
+		"HOOK_IMPLEMENTATION_UNAVAILABLE",
+		"HOOK_CALL_REFUSED":
+		return failure.BusinessRejection
+	default:
+		return failure.TechnicalFailure
+	}
+}
+
+// Retryable reports whether the caller may safely retry the same operation
+// identity after this failure.
+func (e *Error) Retryable() failure.RetryPolicy {
+	switch e.Code {
+	case "HOOK_PATTERN_NOT_FOUND",
+		"HOOK_PATTERN_NOT_RECORD",
+		"HOOK_NOT_DECLARED",
+		"HOOK_SCOPE_NEEDS_ROWS",
+		"HOOK_SCOPE_UNAPPLIED",
+		"HOOK_IMPLEMENTATION_UNAVAILABLE",
+		"HOOK_CALL_REFUSED":
+		return failure.NotRetryable
+	default:
+		return failure.NotRetryable
+	}
+}
+
+// HasEffectUnknown reports whether the failure may have left partial effects
+// applied. Hook failures are always clean refusals or technical errors with
+// no side effects, so this is always false.
+func (e *Error) HasEffectUnknown() bool { return false }
 
 // Warningは、on-failure warnのフックが失敗したことを表す。
 // 呼出し側はWarningを確認して処理を続けるかを決める。
