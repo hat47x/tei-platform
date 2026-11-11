@@ -13,13 +13,7 @@ import (
 // failure code. It builds once per call so the test sees the real process.
 func runCLIForClassification(t *testing.T, args ...string) (int, bool, string) {
 	t.Helper()
-	binary := filepath.Join(t.TempDir(), "tei")
-	if os.PathSeparator == '\\' {
-		binary += ".exe"
-	}
-	if out, err := exec.Command("go", "build", "-o", binary, ".").CombinedOutput(); err != nil {
-		t.Fatalf("build CLI: %v\n%s", err, out)
-	}
+	binary := sharedCLIBinary(t)
 	var stdout, stderr bytes.Buffer
 	cmd := exec.Command(binary, args...)
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr

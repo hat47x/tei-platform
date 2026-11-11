@@ -79,8 +79,23 @@
 ## 4. まだ根拠が無いこと
 
 - **別Identity（AppContainer・別User・別Session・mount名前空間）での読取り拒否**。同一Userに対するOSのACLによる拒否は[H6-E1 OSのACL](./DSH_H6E1_OS_ACL_2026-11-09/README.md)で確認したが、Harnessや子Processが**別の資格**で動く場合に同じ拒否が効くかは未確認。Network境界の実拒否も同様。
-- **実Providerの保存・保持・二次利用**。
-- **MCPの1MB超の引数**と**内容の検査**（大きさは[MCPの引数の大きさ](./DSH_MCP_ARG_SIZE_2026-11-10/README.md)で1MBまで確認済みだが上限の有無は未確認）、**stdio transport・認証・複数サーバー**の相互作用、**Telemetryでfeedbackを与えた場合の送出内容**、**web・tui面のfeedback経路**、**`maxDepth`を`4`以上にした場合**、**`maxActiveSubagents`を時間を分けて起動した場合**、**`maxDepth`と`maxActiveSubagents`の同時作用**、**Turn 1が複数ある場合のfork連鎖の増加量**、**実行中Turnのfork継承**。既定の同時数が8体であることは[同時起動の上限](./DSH_SUBAGENT_CONCURRENT_LIMIT_2026-11-09/README.md)で確認したが、上限値を変えた場合と、順に起動した場合は未確認。Turn境界をまたぐfork連鎖が親の完了Turnを深さ3まで運ぶことは[Turn境界をまたぐfork連鎖](./DSH_SUBAGENT_FORK_TURN_CHAIN_2026-11-09/README.md)で確認したが、履歴が長い場合に各段がどこまで増えるかは未確認。継承しない`subagent`の連鎖が既定で深さ1に止まることは[Subagentの連鎖](./DSH_SUBAGENT_CHAIN_2026-11-09/README.md)で、`maxDepth 3`で深さ3まで伸びることは[深さ上限を上げた連鎖](./DSH_SUBAGENT_DEPTH_RAISED_2026-11-09/README.md)で確認したが、**既定との正確なbyte比較は発火方針が違い未実施**。`subagent`は[Subagent経路](./DSH_SUBAGENT_EGRESS_2026-11-09/README.md)、`subagent_fork`は[Subagent fork](./DSH_SUBAGENT_FORK_2026-11-09/README.md)で確認した。**Telemetryについては以前の記述を訂正した**：`session-telemetry-otel`は`dsh-base`が既定で登録しており、この版が読むのは`DSH_TELEMETRY_OTLP_URL`（標準の`OTEL_EXPORTER_OTLP_ENDPOINT`ではない）。宛先をローカルへ向けても**`FEEDBACK_ONLY`のgateにより送出は0件**で、headlessにはfeedbackの面が無い（[Telemetry経路](./DSH_OTEL_PATH_2026-11-09/README.md)）。
+- **実Providerの保存・保持・二次利用**。（この台帳の全記録はローカルMock宛てで、Provider側の保存は一度も観測していない。）
+
+### 4.1 MCP経路で残るもの
+
+- **4.1MBを超える引数**と**MCPサーバー側の受信上限**、**`maxInstructionBytes`との関係**。大きさは[MCPの引数の大きさ](./DSH_MCP_ARG_SIZE_2026-11-10/README.md)で1MB、[MCPの引数4.1MB](./DSH_MCP_ARG_SIZE_4M_2026-11-10/README.md)で4.1MBまで切り詰めなしを確認したが、上限の有無は未確認。引数の内容は[MCPの引数の内容](./DSH_MCP_SECRET_SHAPE_2026-11-10/README.md)で**検査されない**ことを確認済み。
+- **`maxAttempts`を超えて諦めた後**の挙動、**時間をおいた再試行**。落ちたサーバーが次回起動で繋がることは[落ちていたサーバーの復帰](./DSH_MCP_LATE_START_2026-11-10/README.md)、同じ実行内で復帰することは[実行中の再接続](./DSH_MCP_MIDRUN_RECONNECT_2026-11-10/README.md)、一覧が縮まず呼ぶと`fetch failed`になることは[サーバーを落とした場合](./DSH_MCP_KILL_MIDRUN_2026-11-10/README.md)・[落ちた後に呼んだ場合](./DSH_MCP_CALL_AFTER_KILL_2026-11-10/README.md)で確認済み。
+- **再接続時の`headers`再送**と**`reconnect: { enabled: false }`**。`headers`が毎回・信頼確立前にも送られることは[MCPの`headers`](./DSH_MCP_HEADERS_2026-11-10/README.md)で確認済み。
+- **stdioの子Processが落ちた場合**のエラー形（[MCPのstdio経路](./DSH_MCP_STDIO_2026-11-10/README.md)は接続と環境の継承のみ確認）。
+
+### 4.2 確認済みへ移したもの
+
+記録が揃ったため、この節から外した項目。**stdio transport**（[MCPのstdio経路](./DSH_MCP_STDIO_2026-11-10/README.md)）、**認証ヘッダ**（[MCPの`headers`](./DSH_MCP_HEADERS_2026-11-10/README.md)）、**複数サーバー**（[MCPの複数サーバー](./DSH_MCP_TWO_SERVERS_2026-11-10/README.md)）、**`maxActiveSubagents`を変えた場合**（[同時起動の上限は設定値に従う](./DSH_SUBAGENT_ACTIVE_CAP_2026-11-10/README.md)）、**時間を分けた起動**（[時間を分けた起動](./DSH_SUBAGENT_SEQUENTIAL_2026-11-10/README.md)）、**`maxDepth`と`maxActiveSubagents`の同時作用**（[2つの上限の同時作用](./DSH_SUBAGENT_TREE_CAP_2026-11-10/README.md)）、**MCPの引数の内容**（[MCPの引数の内容](./DSH_MCP_SECRET_SHAPE_2026-11-10/README.md)）、**feedback面の不在**（[feedback面の不在](./DSH_FEEDBACK_SURFACE_2026-11-10/README.md)）。
+
+### 4.3 その他の残り
+
+- **Telemetryでfeedbackを与えた場合の送出内容**と**web・tui面のfeedback経路**。headlessにはfeedback面が無く`/feedback`はコマンドにならないことを[feedback面の不在](./DSH_FEEDBACK_SURFACE_2026-11-10/README.md)で確認したが、**feedbackを実際に発生させた場合の送信内容**は未観測。
+- **`maxDepth`を`4`以上にした場合**、**Turn 1が複数ある場合のfork連鎖の増加量**、**実行中Turnのfork継承**、**履歴が長い場合の各段の増加量**。
 - **停滞の検知手段を用意した場合の実効性**。3面に警告が出ないことと、非停滞との差が`delivery-accepted`の不在だけであることは[停滞の可視性](./DSH_SESSION_LOG_STALL_VISIBILITY_2026-11-09/README.md)・[停滞の検知](./DSH_SESSION_LOG_STALL_DETECTION_2026-11-09/README.md)で確認したが、Telemetry・UI・別flagを含む**他の面**、**243 event・375KBを超えるbacklog**（この範囲では分割されなかったが上限の有無は未確認）、**他版で同じevent名・意味になるか**（この版の観測であって契約ではない）は未確認。単一eventが上限を超えると拡張が消え`delivery-accepted`が増えないことは[上限を超える単一event](./DSH_SESSION_LOG_OVERSIZE_EVENT_2026-11-09/README.md)で確認した。
 - **Skillの増分価値**。四Sessionは未採点で、Task path不一致とSession再利用を含む。
 - **独立Expectedによる採点**（RunbookのReviewer-only）。

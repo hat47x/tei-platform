@@ -30,6 +30,18 @@ type WorkspaceValidationReport struct {
 	DeclarationCounts      *DeclarationCounts                     `json:"declarationCounts,omitempty"`
 	SourceRootFindings     []workspace.WorkspaceSourceRootFinding `json:"sourceRootFindings,omitempty"`
 	Workspace              *workspace.WorkspaceIdentity           `json:"workspace,omitempty"`
+	// Incomplete says the run stopped before examining everything, and where.
+	// Its absence means the run reached the end, not that every file was
+	// clean: a caller must not read "ok": false with one diagnostic as
+	// "there is one problem" (#4178).
+	Incomplete *WorkspaceValidationIncomplete `json:"incomplete,omitempty"`
+}
+
+// WorkspaceValidationIncomplete names the truncation of a validation run.
+type WorkspaceValidationIncomplete struct {
+	Reason    string `json:"reason"`
+	Detail    string `json:"detail"`
+	StoppedAt string `json:"stoppedAt,omitempty"`
 }
 
 // WorkspaceValidationItem is one diagnostic with its source locations. A
@@ -75,6 +87,15 @@ func WorkspaceValidationReportFrom(result WorkspaceValidation) WorkspaceValidati
 				Range:        result.Direct.Source.Range,
 			}},
 		})
+		// The load stopped at this file, so everything else is unexamined. Say
+		// so, or a single diagnostic reads as the whole answer (#4178).
+		report.Incomplete = &WorkspaceValidationIncomplete{
+			Reason: "load-stopped-at-first-syntax-error",
+			Detail: "the run stopped at the first syntax error; files other than the one named in stoppedAt were not examined",
+		}
+		if len(report.Diagnostics) > 0 && len(report.Diagnostics[0].Sources) > 0 {
+			report.Incomplete.StoppedAt = report.Diagnostics[0].Sources[0].ArtifactPath
+		}
 		return report
 	}
 	report.WorldFingerprint = result.WorldFingerprint

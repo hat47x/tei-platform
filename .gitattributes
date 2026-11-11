@@ -310,3 +310,6 @@
 
 # Plugin foundation survey output is hashed as raw bytes by its README.
 /plan/evidence/PLUGIN_FOUNDATION_SURVEY_2026-11-11/** -text
+
+# Plugin resolve diagnostics output is hashed as raw bytes by its README.
+/plan/evidence/PLUGIN_RESOLVE_DIAGNOSTICS_2026-11-11/** -text
