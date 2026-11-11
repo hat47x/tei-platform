@@ -103,3 +103,28 @@ func TestThreeElementDiffCommand(t *testing.T) {
 		t.Fatalf("expected OK response, got %+v", resp.Result)
 	}
 }
+
+func TestThreeElementCrossReferenceCommand(t *testing.T) {
+	root := t.TempDir()
+	modelPath := filepath.Join(root, "model.json")
+	if err := os.WriteFile(modelPath, []byte(fixtureBytes), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var out strings.Builder
+	code, err := runThreeElementCommand([]string{"cross-reference", "-model", modelPath}, &out)
+	if err != nil {
+		t.Fatalf("command error: %v", err)
+	}
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d: %s", code, out.String())
+	}
+
+	var resp threeElementResponse
+	if err := json.Unmarshal([]byte(out.String()), &resp); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+	if !resp.OK {
+		t.Fatalf("expected OK response, got %+v", resp.Result)
+	}
+}

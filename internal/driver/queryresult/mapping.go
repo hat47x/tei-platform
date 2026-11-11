@@ -114,3 +114,18 @@ func MapColumns(subject string, mappings []query.ResultColumnMapping, raw RawRes
 
 	return MappedResult{Columns: mappedColumns, Rows: mappedRows}, nil
 }
+
+// MapRelationQueryは、Relation Queryのraw resultへ明示result mappingを適用する。
+func MapRelationQuery(resolved query.ResolvedRelationQuery, raw RawResult) (MappedResult, error) {
+	if len(resolved.Query.ResultColumns) == 0 {
+		return MappedResult{}, fmt.Errorf("Relation Query %sにresult mappingが定義されていません", resolved.Query.ID)
+	}
+	mappings := make([]query.ResultColumnMapping, len(resolved.Query.ResultColumns))
+	for i, col := range resolved.Query.ResultColumns {
+		mappings[i] = query.ResultColumnMapping{
+			Column:    col.Column,
+			Attribute: col.Attribute,
+		}
+	}
+	return MapColumns("Relation Query "+string(resolved.Query.ID), mappings, raw)
+}

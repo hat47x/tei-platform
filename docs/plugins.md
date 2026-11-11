@@ -53,6 +53,20 @@ TEIでは、プラグインを業務上の意味を表す最小単位とはせ�
 
 実装をまとめても、プラグイン間の論理的な境界は残ります。診断結果、検証根拠、変更の影響、権限については、最適化後も元のプラグインや機能まで追跡できる必要があります。
 
+## SQL Dialect Plugin
+
+`internal/database/sqlgen` は、データベースごとのSQL方言を共通契約へ移植する参照実装です。
+
+### 利用方法
+
+- `DialectRegistry` から `postgres` / `sqlite` / `mysql` を取得できます。
+- 各 adapter は `PlaceholderStyle` / `PhysicalType` / `Select` / `Insert` / `Update` / `Delete` を提供し、アプリケーションは具象SQLに依存せずに実行計画を組み立てられます。
+
+### 拡張方法
+
+1. `internal/database/sqlgen/<dialect>/<dialect>.go` を実装し、`Dialect` インタフェースを満たします。
+2. `DialectRegistry.Register(name, dialect)` で追加します。既存APIの変更は不要です。
+
 ## ビルドとセルフビルド
 
 プラグインの記述情報をTEIで定義できることと、プラグインの実装そのものをTEIで再構築できることは別です。

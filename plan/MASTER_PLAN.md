@@ -1389,20 +1389,6 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 
 **既存Owner・実施順**：探索/実投影はSUI #3368/#3157、用途別構成・開示はTEI #2516、TEI組織意味は#2386、Model Mapは#1124、実Tool/Consumerと不確実性は#1163/#2516。#2586 order_entry.recent_orders のFunction→実Provider→Consumer R0は依然P0最優先。組織C1実Provider/Scopeと現Grant/Effect/Handoffは後続#2506/#1656/#1174/#1444へ。本計画は新Affinity Runtime、共通Session Store、第二Meaning正本、別Gateを設けない。実SUI/CSW→TEI/SHO/SEI E2E、ORG-AG新試験、Ownerの正式採用、実Org DB/Hostは**NOT RUN**。
 
-## 高度組織モデリングの段階計画と実装作業単位（2026-11-11・設計・未受理）
-
-[高度組織モデリングの段階計画](design/ORGANIZATION_STAGED_MODELING_PLAN_2026-11.md) と [組織意味設計 §86](design/ORGANIZATION_RELATION_GOVERNANCE_MODEL_2026-10.md) に、部門・組織単位・法人・企業集団・人・雇用・所属・役職・職位・役割・責任の区別、兼務・出向・複数法人・プロジェクト組織・マトリクスの多重関係、過去/現在/将来の所属と遡及訂正、責任・代理・承認と権限の接続、三視点とProjection、小規模から大規模多法人までの段階対応を、**5段階の基本設計と14個の作業単位（WU-01〜14）**として具体化した。基準は `origin/main` `69f2ebc67262355b1fae5ef0ed6a13d819793fed`。
-
-**所有と順序**：意味の正本は[#2386](https://github.com/hat47x/tei-platform/issues/2386)、Corpus/独立Conformanceは[#2510](https://github.com/hat47x/tei-platform/issues/2510)、一般メタ（Entity・Relation・Key）は#1126、Projection（構造保存・逆写像・損失）は#2497。実Readは#2586/#2506、現在Grant/Effectは#1174/#2499、三視点/Modelerは#1124/#1125が所有し、本計画は**重複する第二正本を作らない**。
-
-**段階と作業単位**：S1 基本組織と所属（WU-01〜03）→ S2 兼務・複数階層・役職（WU-04〜05）→ S3 時点・履歴・遡及訂正（WU-06〜08）→ S4 責任・代理・承認との接続（WU-09〜11）→ S5 三視点モデル・表示表現・編集（WU-12〜13）。WU-14（保護対象の区別）は横断で並列可。各単位に対象ファイル・既存API・入力・出力・受入テスト・依存・完了条件・停止条件を明記し、製品コード（`internal/`・`cmd/`）は変更しない。
-
-**標準実装の優先**：既存の Data・Relation・Validation・Function・Query・Plugin を再利用する。巨大な固定組織Schema、独立した認可基盤、専用Workflow Engine、組織専用Core Kind、`Person/Account/Tenant/Principal` の単一超型は作らない。通常の組織Dataは特別な機密扱いせず、保護対象の特定情報だけ項目・Provider・運用境界で個別に管理する。
-
-**独立Expected**：単純な所属・兼務・複数上位組織・異動・遡及訂正・関係の循環・部分取得・代理権限の誤推定の8件（ORG-EXP-01〜08）。既存の ORG-TM/ORG-FO/ORG-QD と `reference/org-headless-workspace` のGo characterization を再利用元とし、新規は関係の循環と代理権限の誤推定のみ。期待値は実装出力から生成しない。
-
-**Owner判断に残すもの**：新しい公開契約、業務意味の正式受理、認可境界の変更。未採用案（Validation新kind、組織専用Renderer/Graph Core、Workflow/BPMNランタイム、temporal Engine、独立認可基盤）は提案として分離する。本追補はdocs-onlyであり、新CI・実Provider/GUI/Host・Owner意味受理は**NOT RUN**。
-
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤

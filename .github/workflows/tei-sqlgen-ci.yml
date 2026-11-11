@@ -1,0 +1,58 @@
+name: TEI SQL Dialect Plugin CI
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - 'internal/database/sqlgen/**'
+      - 'internal/plugin/database/**'
+      - '.github/workflows/tei-sqlgen-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'internal/database/sqlgen/**'
+      - 'internal/plugin/database/**'
+      - '.github/workflows/tei-sqlgen-ci.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-sqlgen-ci-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  sqlgen-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
+      - name: Run sqlgen tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test ./internal/database/sqlgen/... -count=1
+
+      - name: Run plugin tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test ./internal/plugin/database -count=1

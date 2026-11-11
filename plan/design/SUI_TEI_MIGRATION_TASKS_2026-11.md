@@ -3,39 +3,19 @@
 - 状態: 評価待ち（未採用）。実装・Reference変更・受入の根拠にしない
 - 日付: 2026-11-11（§5を具体化: 2026-11-11）
 - 対象: SUI SensemakingのDocument/Card/Island/Tree/Canvas/Relation/Revision/Reviewと、TEIの*.tei.md（Canonical定義）＋Pluginによる設計〜実装への移行
-- 正本との関係: [SUI_MIGRATION_EXTENSION_AND_SPLIT_DESIGN_2026-10.md](SUI_MIGRATION_EXTENSION_AND_SPLIT_DESIGN_2026-10.md)（SUI側の分割とscope isolation）と[SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md](SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md)（Stage 0のshadow conformance）を置き換えない。本書は「2026-11-11にSUI側でread-only参照が実装された知見」と、そこから展開した移行タスクの分解だけを扱う。作業票の試験IDは[SUI_TEI_MIGRATION_IMPLEMENTATION_PACKET_2026-11.md](SUI_TEI_MIGRATION_IMPLEMENTATION_PACKET_2026-11.md)が持つ（§1.0）
-- 根拠: SUI PR #3429（統合済み `5be212ca`。`GET /docs/{doc_id}/tei/sui-reference`）、SUI ADR-0116、SUI `02_Architecture/api.md` §2.18、SUI #3401
+- 正本との関係: [SUI_MIGRATION_EXTENSION_AND_SPLIT_DESIGN_2026-10.md](SUI_MIGRATION_EXTENSION_AND_SPLIT_DESIGN_2026-10.md)（SUI側の分割とscope isolation）と[SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md](SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md)（Stage 0のshadow conformance）を置き換えない。本書は「2026-11-11にSUI側でread-only参照が実装された知見」と、そこから展開した移行タスクの分解だけを扱う
+- 根拠: SUI PR #3429（`GET /docs/{doc_id}/tei/sui-reference`）、SUI ADR-0116、SUI `02_Architecture/api.md` §2.18、SUI #3401
 - 主張しないこと: TEIのCore・Plugin契約・`CapabilityKind`の変更を求めない。SUIがTEIへ移管されることを保証しない。第二の消費者が出るまでの標準化を主張しない
 
 ## 1. 本文書の役割
 
-SUI側で「TEI Referenceのartifactを、型付きのread-only参照として読む」経路が実装されました（2026-11-11）。これは移行のStage 0に当たる実装であり、次の三つを初めて実コードで確定させます。
+SUI側で「TEI Referenceのartifactを、型付きのread-only参照として読む」経路が実装されました（2026-11-11）。これは移行のStage 0に当たる実装であり、次の三つを初めて実コードで确定させます。
 
 1. SUIの主要な構造が、TEI側の型へ落としたとき、どこまでが失われずに運べるか
 2. 「運べない」が、部分取得・未レビュー・非公開・失効・版とどう区別して現れるか
 3. 既存のSUI経路（DocumentV1）と比べて、参照経路にどの実利と代償があるか
 
 本書はこの知見を、*.tei.md＋Pluginという移行先の構成へ翻訳し、今後必要なタスクを**後続の実装者がそのまま作業票にできる具体性**まで分解します。判断の採用は各IssueとADRの仕事で、本書は分解と論点の整理までを行います。
-
-### 1.0 姉妹文書との役割分担（2026-11-11 追記）
-
-同じ日に、本書のM1〜M6をPR単位の作業票へ落とした[SUI_TEI_MIGRATION_IMPLEMENTATION_PACKET_2026-11.md](SUI_TEI_MIGRATION_IMPLEMENTATION_PACKET_2026-11.md)が別のPR（#4313）として統合されました。**内容の正本を二重に持たない**よう、役割を次で分けます。
-
-| 文書 | 扱うもの | 扱わないもの |
-| --- | --- | --- |
-| 本書 | なぜ移行するか、何が実証されたか（§2）、SUI構造との対応（§3）、載り先（§4）、タスクの依存とブロッカー（§5.8）、§5.9の読み継ぎ、Owner判断（§7） | 1タスクの試験ID・完了条件の詳細 |
-| 実装パケット | 各Work Packetの変更範囲・型・試験ID・受入コマンド・Definition of Done・Owner gate登録 | 対応表・損失inventory・タスク間の依存 |
-
-実装者が着手するときは、**どのタスクをするか**を本書 §5.8で決め、**そのタスクの試験と完了条件**を実装パケットで引きます。両者が食い違う場合は、理由の記述を本書、試験の具体を実装パケット側で直し、PR本文に食い違いを書きます（どちらかを黙って優先しない）。
-
-**実装パケットの入力を、統合済みのSUI consumerで実際に確かめました（2026-11-11、SUI main `5be212ca`）。** パケットは開示を `document.disclosure.scope` に置く案ですが、統合済みのconsumerは次の両方を受けます。
-
-- `document.disclosure.scope = restricted` → `SuiReferenceDisclosureRestricted`（routeは403）
-- `source.status = revoked`（`statusReason`・`documentRevision`・`observedAt`を同梱）→ `SuiReferenceSourceUnavailable`（routeは409）
-- `source.status = future-value` → `unknown` に倒れ、`source-status: unresolved` が損失に入る
-- `document.disclosure.scope = unknown` → 参照は返るが `textIncluded=false`、本文は `not-carried`
-
-したがって、パケットのfield pathは**consumerを変更せずに**実装できます。ただしこれは「consumerがその形を読める」ことの確認であり、producer契約として採択された意味ではありません（§7-1のOwner判断待ちのまま）。
 
 ### 1.1 登場するリポジトリと役割
 
@@ -254,87 +234,36 @@ go run ./cmd/tei validate -workspace reference/workspace   # Canonical定義の�
 
 ### 5.3 M2 SUIドメインのCanonical定義（Reference Workspace）
 
-- 状態: **限定実装済み**（TEI PR #4346、main `ef0921c`）。定義の**採択**はOwner判断待ち（§7-5・§7-6・§7-7）
-- 目的: `sui.*`を`.tei`で宣言する。instanceは昇格しない（Stage 0の規則を維持）
-- 変更範囲: Reference Workspaceの隔離領域のみ（`reference/sui-adoption/workspace-m2/`、`tools/reference-sui-canonical-probe/`）。Product runtime・Canonical source・`reference/workspace`・Stage 0の`workspace/`は変更しない
+- 目的: `sui.*`を`.tei.md`で宣言する。instanceは昇格しない（Stage 0の規則を維持）
+- 変更範囲: Reference Workspaceの定義ファイル。Product runtime・Canonical source・fixtureのinstanceは変更しない
 - 依存: M0の対応表（§3.1）。#2497（構造保存写像）
-- 実装した定義（**案。採択前**）:
+- 定義案（**案**）:
 
 ```text
 namespace sui
 
-type DocumentId from std.identifier
-type CardId from std.identifier
-type IslandId from std.identifier
+data sui.document { id DocumentID }
+data sui.card     { id CardID text Text? x Number y Number
+                    claimType ClaimType? holdState HoldState? }
+data sui.island   { id IslandID }
 
-data Document {
-    attribute documentId type sui.document_id
-    relation cards to sui.card many
-    relation islands to sui.island many
-}
-
-data Card {
-    attribute cardId type sui.card_id
-    attribute text type std.text
-    attribute x type std.decimal
-    attribute y type std.decimal
-    attribute claimType type std.code
-    attribute holdState type std.code
-}
-
-data Island {
-    attribute islandId type sui.island_id
-}
-
-data Containment {
-    attribute containmentId type std.identifier
-    relation island to sui.island one
-    relation card to sui.card one
-}
-
-data Affiliation {
-    attribute affiliationId type std.identifier
-    relation card to sui.card one
-    relation island to sui.island one
-}
-
-data Edge {
-    attribute edgeId type std.identifier
-    attribute edgeType type std.code
-    relation fromCard to sui.card one
-    relation toCard to sui.card one
-}
-
-data IslandParent {
-    attribute islandParentId type std.identifier
-    relation parent to sui.island one
-    relation child to sui.island one
-}
+relation sui.containment { one sui.island many sui.card }
+relation sui.affiliation { many sui.card many sui.island }
+relation sui.islandParent { zero-or-one sui.island zero-or-one sui.island }
 ```
 
-  - `containment`と`affiliation`は**別のData**（F-3）。各自のoccurrence ID属性を持ち、`belongsTo`へ畳まない。当初案の「relation単位」から**Data単位**へ直した。TEIの`relation`は対象Dataの属性としてしか現れないため、所属自体にIDを持たせるには、所属をDataにする方が損失が少ない
+  - `containment`と`affiliation`は**別のrelation**（F-3）。一つのrelationに畳かない
   - Cardは`text`で合一しない（F-2）。同一名称は別occurrence
-  - **`parentPresenceSemantics`は`unresolved`のまま**。現行`Relation.Cardinality`は`one|many`のみで、rootのparent不在（0..1）は lossless と証明できない
-  - **宣言しない**: Tree閲覧状態、canvas transform / z-order / zoom / gesture、island geometry、review attribution、Relation rationale、narrative/summary/critique。probeの`undeclared`は空にならない
-- 受入（**すべて実行済み**）:
-  1. `go run ./cmd/tei validate -workspace reference/sui-adoption/workspace-m2` が通る
-  2. `containmentAndAffiliationSeparate: true`（別Dataとして解決し、各自occurrence IDを持つ）
-  3. `parallelEdgesDistinguishable: true`（Edgeが自分のIDを持つ）
-  4. `undeclared` が空でなく tree/canvas/review を含む
-  5. `instanceCount: 0` / `canonicalizedInstanceData: false`（instanceを昇格しない）
-  6. 定義が無いworkspaceでは fail closed
-- 負例（実測）: 同じData名の二重宣言は`DUPLICATE_SEMANTIC_ELEMENT`、未定義typeは`UNKNOWN_SEMANTIC_ATTRIBUTE_TYPE`。containmentとaffiliationを一つの`belongsTo`へ統合する案、`text`をcardの自然キーにする案、fixtureのinstanceをCanonicalへ写す案は採らない
-- 確認コマンド:
-
-```bash
-go run ./cmd/tei validate -workspace reference/sui-adoption/workspace-m2
-go run ./tools/reference-sui-canonical-probe -workspace reference/sui-adoption/workspace-m2
-go test ./tools/reference-sui-canonical-probe/... -count=1
-```
-
-- 未実施: 定義の採否（Owner）、instanceのCanonical object化、Product runtime接続、実DB/実Providerでの検証
+  - **宣言しない**: Tree閲覧状態、canvas transform / z-order / zoom / gesture、island geometry、review attribution、Relation rationale。宣言しないことを「未宣言」として観測できるようにする
+- 受入:
+  1. `go run ./cmd/tei validate -workspace <workspace>` が通ること
+  2. `sui.containment`と`sui.affiliation`が別のrelationとして一意に解決できること
+  3. fixtureのinstanceがCanonical objectへ昇格していないこと（read-only probeの規則）
+  4. Tree階層・canvas geometryが「未宣言」として報告されること
+- 負例: containmentとaffiliationを一つのrelationにする案、`text`をcardの自然キーにする案、fixtureのinstanceをCanonicalへ写す案
+- 未実施: 定義の採否。instanceのCanonical object化は扱わない
 - 委譲先: `architect`（語彙の線引き）→ `implementer`
-- 撤退条件: 第二の消費者が現れなければ、`sui.*`はSUIのnative assetのままにし、共通部品へ昇格させない（#2497の基準）。probeはReference toolのままとし、製品APIと名乗らない
+- 撤退条件: 第二の消費者が現れなければ、`sui.*`はSUIのnative assetのままにし、共通部品へ昇格させない（#2497の基準）
 
 ### 5.4 M3 record/string投影（#2488の欠落の充足）
 
@@ -409,18 +338,15 @@ attribute sui.card.text {
 
 ### 5.7 M6 scope isolationのconformanceを言語非依存で書き出す
 
-- 状態: **一部前進**。欠落4経路はSUI sideで固定済みであることを確認し、参照routeのtenant境界を追加した（SUI PR #3434、main `610f1d0`）。14経路の言語非依存の行列はまだ書いていない
 - 目的: SUIの越境試験を、Python実装から切り離した契約としてTEI側へ置く。実装の書き換えを急がない
 - 変更範囲: 試験と言語非依存の記述。SUI_MIGRATION_EXTENSION_AND_SPLIT_DESIGN_2026-10.md §8.4 Stage 1
 - 依存: 既存設計。ISSUE-000080（Capability Contract）の結果
 - 受入:
-  1. 14経路の行列が「該当機能があれば必須」の形で機械可読に書けること（**未実施**）
-  2. 欠落4経路（list / export-audit / 監査読み取り / import権限非継承。同書 付録A）を埋める試験がSUI側で通ること（**確認済み**。`test_docs_tenant_isolation_surfaces.py` 6件、`test_admin_audit_trail.py` 7件）
-  3. Python実装がその試験を通ること（**確認済み**）
-  4. 追加: TEI参照route（`GET /docs/{doc_id}/tei/sui-reference`）で、同一docIdを持つ別tenantのartifactを返さないこと（**確認済み**、SUI PR #3434の4件）
-- 補足: 同書 付録Aの「未確認」は**2026-10-09時点の所見**で、現在は4経路とも固定済みである。設計文書の当該記述は履歴として残し、現在地はこの節を優先する
+  1. 14経路の行列が「該当機能があれば必須」の形で機械可読に書けること
+  2. 欠落4経路（list / export-audit / 監査読み取り / import権限非継承。同書 付録A）を埋める試験がSUI側で通ること
+  3. Python実装がその試験を通ること
 - 負例: 試験を通すために契約を緩める、実装を通すだけで契約を変える
-- 未実施: ISSUE-000080の解消。14経路の言語非依存の行列。第二のApplicationでの再現。応答時間・大きさの差による観測
+- 未実施: ISSUE-000080の解消。第二のApplicationでの再現
 - 委譲先: `planner`（行列の言葉）→ `implementer`
 - 撤退条件: ISSUE-000080が解けない間は、L0（宣言）とL3（試験）だけを進め、L1・L2のPlugin化は後に回す
 
@@ -433,14 +359,14 @@ M0（参照consumer、完了）
 M6（scope conformance）は独立
 ```
 
-| タスク | 状態 | ブロッカー | 解除の条件 |
-| --- | --- | --- | --- |
-| M1・M4 | 未着手 | SUI #3369（本文公開の判断） | Owner判断。判断が無い間は本文を出さない経路のまま |
-| M1 | 未着手 | TAI側のschema変更（`artifact.schema.json`） | TAIの担当判断。省略可能なので未決でもM0は動く |
-| M2 | **限定実装済み**（#4346） | #2497（語彙の線引き） | 第二の消費者が出るまで標準化しない |
-| M3 | 未着手 | TEI #2488（generator familyの設計判断） | #2488のOwner判断 |
-| M5 | 未着手 | #2743 / #3479 の現在の設計 | Source index側の責務の明確化 |
-| M6 | **一部前進**（#3434） | ISSUE-000080（Capability Contract） | 解消後。14経路の行列は独立して書ける |
+| タスク | ブロッカー | 解除の条件 |
+| --- | --- | --- |
+| M1・M4 | SUI #3369（本文公開の判断） | Owner判断。判断が無い間は本文を出さない経路のまま |
+| M1 | TAI側のschema変更（`artifact.schema.json`） | TAIの担当判断。省略可能なので未決でもM0は動く |
+| M3 | TEI #2488（generator familyの設計判断） | #2488のOwner判断 |
+| M5 | #2743 / #3479 の現在の設計 | Source index側の責務の明確化 |
+| M6 | ISSUE-000080（Capability Contract） | 解消後。それまでL0とL3のみ |
+| M2 | #2497（語彙の線引き） | 第二の消費者が出るまで標準化しない |
 
 ### 5.9 M6の先（移行の完了まで）
 
@@ -451,7 +377,7 @@ M6（scope conformance）は独立
 3. authorityを移す単位を一つ選び、rollback手順を先に書く
 4. 移行後も、SUIの安全不変条件（SafeMode既定ON、proposal-only、`human_reviewed`は人間だけ、`SUI_LLM_PROVIDER=none`で主要価値が成立）が同じ強さで残ることを試験で確認する
 
-「TEIへ移した」は、名称の一致ではなく「同じ契約を満たす試験が通った」ことでのみ主張します。移行の完了条件を本書で決めることはしません。
+「TEIへ移した」は、 equate の証拠ではなく「同じ契約を満たす試験が通った」ことでのみ主張します。移行の完了条件を本書で決めることはしません。
 
 ## 6. リスクと、成立しない場合の撤退
 
