@@ -150,13 +150,16 @@ func (s *LeaseStore) Heartbeat(ctx context.Context, issueNumber int64, ttl time.
 // SweepExpired moves expired claims to 'expired' state so they can be reclaimed.
 func (s *LeaseStore) SweepExpired(ctx context.Context) ([]Claim, error) {
 	now := time.Now().Format(time.RFC3339)
-	_, err := s.db.ExecContext(ctx, `UPDATE claims SET state='expired', updated_at=datetime('now') WHERE state IN ('working','review','blocked') AND lease_expires < ?`, now)
+	// One statement. The previous pair expired rows with an UPDATE and then found
+	// them again with `updated_at = datetime('now')`. datetime('now') has second
+	// granularity, so a sweep that crossed a second boundary between the two
+	// statements expired the rows and then re-queried for a timestamp that had
+	// already moved on: zero rows, although the work succeeded. RETURNING makes the
+	// answer the set this statement expired instead of a second query that can
+	// miss it (a repeat run reproduced it 1 time in 40).
+	rows, err := s.db.QueryContext(ctx, `UPDATE claims SET state='expired', updated_at=datetime('now') WHERE state IN ('working','review','blocked') AND lease_expires < ? RETURNING issue_number, role, model_id, harness, session_id, lease_expires, heartbeat_at, state, base_sha, head_sha, pr_number`, now)
 	if err != nil {
 		return nil, fmt.Errorf("sweep expired: %w", err)
-	}
-	rows, err := s.db.QueryContext(ctx, `SELECT issue_number, role, model_id, harness, session_id, lease_expires, heartbeat_at, state, base_sha, head_sha, pr_number FROM claims WHERE state='expired' AND updated_at = datetime('now')`)
-	if err != nil {
-		return nil, fmt.Errorf("query expired: %w", err)
 	}
 	defer rows.Close()
 	var expired []Claim
@@ -166,6 +169,9 @@ func (s *LeaseStore) SweepExpired(ctx context.Context) ([]Claim, error) {
 			return nil, err
 		}
 		expired = append(expired, *c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("sweep expired: %w", err)
 	}
 	return expired, nil
 }
