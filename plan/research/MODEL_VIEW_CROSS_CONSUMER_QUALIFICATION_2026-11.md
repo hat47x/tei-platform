@@ -89,7 +89,7 @@ MV-01の次の一手として、既存`internal/operations/model_catalog_validat
 
 ## 5. 2026-11-11：Source-root-onlyエラーを跨ぐValidation資格の整合（小さい実装修正候補）
 
-**更新した事実**：[#3808](https://github.com/hat47x/tei-platform/pull/3808)の検証NG WorkspaceによるCatalog／Validate／Inspect／Source Trace回帰と[#3543](https://github.com/hat47x/tei-platform/pull/3543)の実Workbench A/J限定結線は**main統合済み**。[#4239](https://github.com/hat47x/tei-platform/pull/4239)の歴史Source A/B→実CLI/MCP受領、[#4279](https://github.com/hat47x/tei-platform/pull/4279)のOperationSurface代表Bindingの非完全性負例もmain統合済み。ただし成功した各試験は同一Provider/Attempt/Owner業務意味のEnd-to-end証拠ではない。[旧Draft #3518](https://github.com/hat47x/tei-platform/pull/3518)は**未統合でclosed**。その設計や実験を現mainの正式Model Map機能とは扱わない。
+**更新した事実**：[#3808](https://github.com/hat47x/tei-platform/pull/3808)の検証NG WorkspaceによるCatalog／Validate／Inspect／Source Trace回帰と[#3543](https://github.com/hat47x/tei-platform/pull/3543)の実Workbench A/J限定結線は**main統合済み**。[#4239](https://github.com/hat47x/tei-platform/pull/4239)の歴史Source A/B→実CLI/MCP受領、[#4279](https://github.com/hat47x/tei-platform/pull/4279)のOperationSurface代表Bindingの非完全性負例もmain統合済み。ただし成功した各試験は同一Provider/Attempt/Owner業務意味のEnd-to-end証拠ではない。[旧Draft #3518](https://github.com/hat47x/tei-platform/pull/3518)はそれ自体**未統合でclosed**だが、後継[#3866](https://github.com/hat47x/tei-platform/pull/3866)の型付きModel Map M0は[統合PR #4079](https://github.com/hat47x/tei-platform/pull/4079)でmainへ移植済み（`internal/operations/model_map.go`）。M0の`Coverage=partial-projection`は維持され、業務三視点・実Effect・現在権限の完成を意味しない。
 
 ### MV-10：同じ実Workspaceで、manifestの存在しないRootだけがerror
 
@@ -103,6 +103,14 @@ MV-01の次の一手として、既存`internal/operations/model_catalog_validat
 | `semantic`正常＋存在する未知`future` Root | `false`が必要（warningのみ） | `ok=true`、warning件数≥1 | `ok=true` |
 
 本変更の実Goテストは`internal/operations/validate_test.go`へ、既存`writeWorkspaceFixture`を使って上記の**二つの実ファイル系Workspace**を作る。Loader→Source Index→Catalog/Validate→共通Reportの既存経路を使用し、入力全件やHostによる外部実行の保証はしない。異なるOperationの実行は別々のLoadであり、結果のFingerprint一致から**原子的な同一Attempt**を推論しない。
+
+### MV-11：Native Model Map内のCatalog Validationは「未実行」と「不合格」を区別する
+
+現行mainの`MapWorkspace`は`CatalogWorld`を直接呼んで`ModelMap.Catalog`に格納するが、`CatalogWorkspace`とは異なり`catalogValidation(loaded)`を設定していなかった。そのため**健全な実Workspaceでも埋込Catalogの`validation.ok=false`がGoの初期値で残る**。これはModel Mapを「Validation NG」と表示した場合に実害となる、具体的なProducer差である。
+
+最小修正は、`MapWorkspace`が持つ**同一Load結果**で`catalogValidation(loaded)`を計算して埋込Catalogへセットすること。新しいValidation正本/Readerは作らない。実ファイル系Workspaceの「健全／未定義TypeRef」「missing source root／未知root warning」を既存`CatalogWorkspace`・`ValidateWorkspace`・`WorkspaceValidationReportFrom`と対照する回帰試験を提出する。Graphの`resolved`が業務Relation受理でないこと、`partial-projection`であることは変えない。
+
+**停止線**：この修正によって、低水準の`CatalogWorld`自体へ「未検証」の第三状態は追加しない。Read-only Mapの内部で検証済み結果を作るだけで、現在のSource・Relation全件閉包、Map Renderer、Studio受領・編集Grant、Owner Meaningは依然 **NOT PROVEN**。
 
 **独立の残課題**：`CatalogWorld(world, idx, ...)`を直接呼ぶ際の`Validation.OK`初期値は、`CatalogWorkspace`の検証済み結果と別物。今回の修正はこの低水準関数に検証資格を付与しない。また将来の三視点図やCRUD表で「Rootが未取得」と「対象が存在しない」を混同してはいけない。
 
