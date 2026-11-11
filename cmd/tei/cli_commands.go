@@ -208,6 +208,19 @@ func helpText(fs *flag.FlagSet, command string) string {
 			writeFlagHelp(&out, selfBuildHelpFlags(), command, nil)
 			return out.String()
 		}
+		if strings.HasPrefix(command, "three-element") {
+			// three-element's subcommands parse their own FlagSets and are
+			// dispatched before the shared FlagSet exists, so they cannot carry
+			// an allowlist entry. Each listing is derived from the same
+			// FlagSet that parses its arguments, not restated by hand (#2332).
+			if command == "three-element rea-intake" {
+				var args reaIntakeArgs
+				writeFlagHelp(&out, reaIntakeFlagSet(&args), command, nil)
+				return out.String()
+			}
+			fmt.Fprintf(&out, "  -model string\n    \tpath to three-element model JSON\n")
+			return out.String()
+		}
 		fmt.Fprintf(&out, "run `tei commands` for the advertised commands\n")
 		return out.String()
 	}
