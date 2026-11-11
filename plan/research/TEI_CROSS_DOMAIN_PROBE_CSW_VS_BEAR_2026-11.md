@@ -206,7 +206,7 @@ VSクマ側の期待結果は、上流に書かれた事実から独立に用意
 2. **状態機械の表現をどう扱うか**（TEI中核）。VSクマのscheduler・episode・回復状態は、現行DSLでは列挙に留まります。状態・遷移・時系列を意味モデルへ入れるかは[#4193](https://github.com/hat47x/tei-platform/issues/4193)の範囲です。本稿はどちらとも決めません。
 3. **開いた集合を列挙型として書いてよいか**（TEI中核）。VSクマのdecision sourceは、transportが新しい`backend_id`を宣言できるため閉じた集合ではありません。列挙型に写すと、正当な新しいproducerを未知として拒否するか、未知を常に許して列挙の意味を薄めるかの二択になります。本稿は「記録済みの値を列挙し、未記録をwarning」という暫定対処を選びました。`unknown`をどう扱うかの規約は[#2533](https://github.com/hat47x/tei-platform/issues/2533)の判断材料として残します。
 4. **転記の照合をどこまで要求するか**（TEI中核）。probeの誤り2件は、TEI宣言とprobe定数の自己一致では検出できませんでした。上流原文への照合は、兄弟チェックアウトがある環境でしか実行できず、CI必須検査にも接続していません。外部Repositoryの転記を伴う研究物に、どの照合を求めるかは未決です。
-5. ~~**CSWの型付き受け渡しを任意の道具として維持するか**（CSW）~~ **決定：残す（任意の道具として）**（2026-11-11、Owner代行）。推奨どおり、Skill本文を変えず、著者が使うときだけ記録する任意の形式として残します。必須化すると「全候補へのラベルは要らない」という現行方針と衝突します。対価は`skills/writing-flow/references/handoff-card.md`への補足1節だけです。判断の記録はCSW [#593](https://github.com/hat47x/cultural-substrate-weaving/issues/593)。
+5. ~~**CSWの型付き受け渡しを任意の道具として維持するか**（CSW）~~ **決定：残す（任意の道具として）**（2026-11-11、Owner代行）。推奨どおり、Skill本文を変えず、著者が使うときだけ記録する任意の形式として残します。必須化すると「全候補へのラベルは要らない」という現行方針と衝突します。対価は`skills/writing-flow/references/handoff-card.md`への補足1節だけです（文案は[OWNER_DECISIONS.md](../../research/tei-cross-domain-probe-2026-11/OWNER_DECISIONS.md) 付録A。同ファイルはCSWで未追跡のため、commitは著者の判断に委ねる）。判断の記録はCSW [#593](https://github.com/hat47x/cultural-substrate-weaving/issues/593)。
 6. ~~**VSクマで契約の写しを受け入れるか**（VSクマ）~~ **決定：保留**（2026-11-11、Owner代行）。受け入れる条件は、列挙の一致試験に加えて、境界値・wire・fixtureの同期を確認する手順を決めることです。現状は二重管理のコスト（GDScript・TEI・probeの3箇所）が利益を上回る可能性があり、推奨どおり保留とします。§5.6の状態機械も、現行DSLでは列挙に留まるため、受け入れの追加の根拠になりません。判断の記録はVSクマ [#95](https://github.com/hat47x/vs-bear-simulator/issues/95)と[#17](https://github.com/hat47x/vs-bear-simulator/issues/17)。
 7. **2対象の共通部分を標準ライブラリへ抽出するか**（TEI）。2例だけでは根拠が不足します。抽出しない判断を推奨し、3例目が出た時点で再検討します。
 8. **probeを`research/`に残すか`tools/`へ移すか**（TEI）。現状は`research/`が適切です。製品の受入経路やCI必須検査には接続せず、上流の版を固定した研究物として扱います。
@@ -382,8 +382,10 @@ VSクマ側の期待結果は、上流に書かれた事実から独立に用意
 **決定の理由**：型付き境界は「何を・いつ・どの入力から・誰の判断か」を保持でき、帰属4値は`SKILL.md`の4区分と1対1で対応することをanchor試験で確認済みです。対価は補足1節だけで、製品側のコード・CI・Schemaは0行のままです。必須条件（記録は任意・仮説/問い/比較を値にしない・Skill本文の手順は変えない）を満たせるため、残します。
 
 **採用した場合に追加されるもの（これだけ）**：
-- `skills/writing-flow/references/`に、任意の受け渡しカードの雛形として、型の名前と4つの帰与値の対応を1節追加する。既存の[受け渡しカード](https://github.com/hat47x/cultural-substrate-weaving/blob/73efa57ef66ae4d53db3ff9bb63c927f624f44a8/skills/writing-flow/references/handoff-card.md)の雛形を**置き換えず**、補足として置く。
+- `skills/writing-flow/references/`に、任意の受け渡しカードの雛形として、型の名前と4つの帰与値の対応を1節追加する。既存の受け渡しカードの雛形を**置き換えず**、補足として置く。
 - 帰属4値（`source_material`・`generated_proposal`・`contact_reading`・`author_stated`）と、`SKILL.md`の4区分の対応を1行ずつ書く。
+
+**実装上の注意（2026-11-11 追記）**：`skills/writing-flow/references/handoff-card.md` は、CSWのgitでは**未追跡**です。`skills/writing-flow/references/` ディレクトリ全体が追跡されておらず、GitHubの`73efa57ef66ae4d53db3ff9bb63c927f624f44a8`および現在の`main`にも存在しません。したがって、この節の「1節追加」は、ファイルが公開されたタイミングで行うことになります。文案は[OWNER_DECISIONS.md](../../research/tei-cross-domain-probe-2026-11/OWNER_DECISIONS.md) 付録Aに置きました。未追跡のファイルをcommitすると、著者がまだ公開していない内容を公開することになるため、commitは著者の判断に委ねます。
 
 **採用しない場合に起きないこと**：型の追加、Schema、CI、テスト、配布基盤。CSWの製品側は0行のままです。
 
