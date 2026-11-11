@@ -764,3 +764,30 @@ Readに失敗した場合はValidationが`false`なのではなく**未観測**�
 **新たな6件の合成T18負例**: (a) Read成功＋Validation NGでも三視点read-only Occurrenceを保持、(b)warning>0でも`validation.ok=true`をそのまま表示、(c)Read失敗/未観測・Validation欠落から`false`を発明しない、(d)同じ表示IDでも別Workspace/Snapshot/Scopeは拒否、(e)件数・booleanの型不正や負数を拒否、(f)秘密Source metadataやGetterを評価せず拒否。現行の合成Reference計**37件（Public Slice14 / Trait17 / Catalog6）**をGitHubから取得した正確な3ソース・3テストでV8互換ハーネスにより**37/37 PASS**。これは**正規Node test runnerの完了結果ではなく、実Go Workspace・実Catalog JSON・現在Policyを受領したテストでもない**。更新後exact-headの専用Node CIとRepository Healthは別途確認する。
 
 特に**グローバルなValidationのError/Warning総数**は非公開Sourceに由来し得るため、公開可能かの判定は#2516が先に行う。未開示の生Countsを「TEAが実際に秘密を除去する」目的で流し込まない。合成RuntimeはAssessment・個別Subjectの健全性・Editable・Owner Meaningを創作しない。今後T21〜T23へ接続するには、**実Catalog Producerの読取版・Workspace・Scope・現在Disclosure→同一Workbench Consumer**の別資格を必要とする。
+
+
+## 23. T18実CLI→独立Node Consumerへの最初の縦断（2026-11-11）
+
+**統合後の基線**: 三視点の合成Reference[PR #2972](https://github.com/hat47x/tei-platform/pull/2972)と本設計の先行追補[PR #3257](https://github.com/hat47x/tei-platform/pull/3257)、実CLI→同一Workbench Initial/List A/Jの[PR #3543](https://github.com/hat47x/tei-platform/pull/3543)、Load-time Workspaceと実Source Traceの[PR #3321](https://github.com/hat47x/tei-platform/pull/3321)は**2026-11-10までにmain統合済み**。個別合格から三視点の実Policy／GUI資格を導出しない。新たなProduct SSOT/Host/Role Resolverを作らず、上記合成Referenceの不足していた**実CLI JSON→独立Node Consumer**の最小一歩だけを試す。
+
+### 23.1 実行する最小契約と別資格
+
+新`reference/tei-three-element-method/real-cli-catalog.test.mjs`はNode 22の独立プロセスから、**同じGit HEADで実ビルドした`tei` CLI**を実行する。公開の一時Fixture（正常／未知型参照でValidation NG）を作り、実`model catalog -workspace`成功と`validate -workspace -json`の別実行を観測する。CLI schemaVersion、read-only effect、World／SourceIndex Fingerprint、Workspace Manifest観測、Catalogの型付きSubject、`validation.ok/errorCount/warningCount`、個々のCLI exit codeを照合する。元FixtureのSource Byte SHAを実行前後で比較し、書き戻していないことも確認する。
+
+その**実Catalog JSONから**、CatalogのRead成功とValidation Summaryを`bindQualifiedCatalogValidation`に渡す。三視点`projectPublicTeaSlice`のSubjectは実Catalogに現れた一意なData Subjectを選ぶが、**`data:accepted, function/business:unknown`のRole状態は試験者が合成的に与える**。これは実TEI Role／Owner Accepted Meaningではなく、Function/Businessの実モデル要素を発見できたことも意味しない。`workspaceObservation`はテスト内の識別文字列、`snapshot`はCatalog観測のModelRevision/World/SourceIndexをハッシュ化した比較用Witnessであり、独立Root/Attempt/Grantや現在Sourceの真正性証明ではない。
+
+| 資格 | 今回直接調べる | 別Ownerがまだ調べる |
+| --- | --- | --- |
+| Source/CLI Read | 実Go CLIの2一時Workspace、`Catalog`成功、`validate`の正常／失敗、元Source Byte不変 | Required/ActuallyReadの完全閉包、atomic multi-command snapshot、外部Source |
+| Source Identity | 一意・non-Preludeの`semantic-data`をCatalogから確認、同CLI出力のWorld／SourceIndex／Manifest観測一致 | Index Range/Byteと実Canonicalの意味上の結合、独立Root・ABA/TOCTOU、Role Owner |
+| 三視点 | Catalogの実`validation` Summaryを既存のread-only Node Binderに渡す。Data表示1、未知Function/Business表示0 | 実Role解析の三視点Graph、Workbench/DOM/ARIA/Tool JSON、現在Disclosure、選択後失効 |
+| Acceptance/Effect | **行わない** | Source Preview/Shared Acceptance #267、実Provider/Target、Self-build、Owner意味受理 |
+
+### 23.2 負例、打切り条件、優先順
+
+- **Read成功 ≠ Validation成功**：未知型参照でCatalog envelopeの`ok=true`、`result.validation.ok=false`と、`validate`側のexit 1を同時に観測。正常Fixtureでは双方true。対照の実Catalog観測をNode Binderへ流しても、失敗を受理済み意味／Edit可能と表示しない。
+- **異世代／異Load Context拒否**：同じ表示コードへ別`snapshot`または別`workspaceObservation`を添付する試みを既存Binderが拒否する。ただしWitnessを同一文字列へ偽装した場合の検出は本実験の資格外。
+- **読取Consumerと公開Policyを混同しない**：全Fixtureが公開・単一試験目的と既知なのでNodeへraw Summaryを流せる。任意のProduction Catalogを開示資格なしで低権限Consumerへ渡してよい、とは絶対に推定しない。特に総Error/Warning数は非公開Sourceの有無を漏らす可能性がある。
+- **証拠更新の規則**：本節の新Test/CI作成だけではPASSと言わない。実Go CLI＋Nodeの**exact-head Native CI**と全Repository Healthは別に記録し、差分をmainへ統合する前に現在のSource/CI/Owner差を再資格化する。
+
+#1124の直接P0（同一Workbench Graph/Command、旧DOM・現行Source/Grant/Disclosure）を先送りしない。本Referenceは#3728のValidation計算、#3492のSource Index/意味の区別、#3321のWorkspace同Token、#3543の実Workbench A/Jを再実装せず、**Source値を別言語のConsumerへ渡した限定実証**として責務を足す。T22/T23、実Business/Function Role、実三視点Studioは継続して**NOT PROVEN**。
