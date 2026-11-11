@@ -64,6 +64,7 @@ var selectedReadOnlyFlagAllowlist = map[string][]string{
 	"plugin-lock":         {"workspace", "world", "environment"},
 	"plugin-resolve":      {"workspace", "world", "environment", "plugin-lock", "diagnostic-candidates"},
 	"plugin-runtime-plan": {"workspace", "world", "environment", "plugin-lock"},
+	"three-element":       {"model"},
 }
 
 // repeatableFlags lists the flags that collect several values by design. They
@@ -250,4 +251,5 @@ var emptyStringGuardedFlags = map[string]map[string]bool{
 	"plugin-runtime-plan": {
 		"workspace": true, "environment": true, "plugin-lock": true,
 	},
+	"three-element": {"model": true},
 }

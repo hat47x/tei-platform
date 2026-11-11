@@ -250,7 +250,7 @@ X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設�
 
 | 残り | 理由 | 何が分かれば決まるか |
 | --- | --- | --- |
-| 月内締めの閉めの実行内容 | 状態遷移（`open`→`closing`→`closed`）・記録（`periods -advance`）・`close-requires`と`correction`の実行時検査・訂正能力の閉塞拒否からの免除・`closed-rejects`との矛盾の宣言段階での報告は実装したが、対象データの集計・繰越・帳票、訂正能力を走らせる経路は未実装 | 閉めを Command にするか、運用操作として分けるか |
+| 月内締めの閉めの実行内容 | 状態遷移（`open`→`closing`→`closed`）・記録（`periods -advance`）・`close-requires`と`correction`の実行時検査・訂正能力の閉塞拒否からの免除・`closed-rejects`との矛盾の宣言段階での報告・再開時の訂正能力の要求は実装したが、対象データの集計・繰越・帳票、訂正能力を走らせる経路は未実装 | 閉めを Command にするか、運用操作として分けるか |
 | 採番の例での規則行データ | 例のDataに`numbering-rule`の役割を足したが、行は試験で与えている | 例へ行データを置くかどうかの判断 |
 | 為替の粒度を宣言必須にするか | `ResolveTable`が宣言と行を照合し、空の表は拒否する。宣言は任意のままなので、宣言の無い表は行だけに頼る | 宣言を必須にするか、任意のままにするか |
 | 番号のPostgreSQL実装 | SQLiteの永続格納と2プロセス同時実行の不変条件（同一番号を出さない・カウンタが発行数に一致する）は確認したが、PostgreSQLは未実装 | PostgreSQLを先にするか、多プロセス構成を広げるか |
@@ -270,6 +270,7 @@ X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設�
 - [評価時点の決定性](EVALUATION_CONTEXT_DETERMINISM_2026-10.md)
 - [移行計画](../workstreams/XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)（WP8）
 - [受容要件](../../requirements/XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md)（RQ-C3）
+
 
 
 

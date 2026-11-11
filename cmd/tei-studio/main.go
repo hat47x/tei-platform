@@ -73,6 +73,17 @@ func (b *StudioBridge) ExecuteCommandWithPolicy(workspaceID, applicationID, patt
 	return b.host.ExecuteCommandWithPolicy(workspaceID, applicationID, patternID, capabilityID, inputs, periods, allowed)
 }
 
+// ExecuteCommandWithReferenceStore applies the declared effect to an in-memory
+// reference store, so the after-change phases have a point to run at.
+//
+// The reference execution still writes nothing durable: the store lives for the
+// length of this call and the response keeps saying so. Asking for it is
+// opt-in, and the Workbench sends `applyToReferenceStore` only when the
+// operator ticks the box.
+func (b *StudioBridge) ExecuteCommandWithReferenceStore(workspaceID, applicationID, patternID, capabilityID string, inputs, periods map[string]string, allowed []string) studiohost.CommandRunResponse {
+	return b.host.ExecuteCommandWithReferenceStore(workspaceID, applicationID, patternID, capabilityID, inputs, periods, allowed)
+}
+
 func main() {
 	var paths workspaces
 	var port int

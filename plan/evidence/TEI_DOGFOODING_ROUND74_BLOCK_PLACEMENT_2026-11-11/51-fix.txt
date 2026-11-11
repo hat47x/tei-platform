@@ -1,0 +1,12 @@
+expectEOF now checks, in order:
+  1. a top-level declaration keyword   (existing misplacedDeclaration message)
+  2. a block-only entry                (new)
+  3. anything else                     (generic message)
+
+Block-only entries: bind, resource, grant, lease-policy, deployment-executor,
+observation-provider, evidence-provider, feature (environment); column,
+primary-key, index (persist).
+
+  "bind" cannot appear after the closing brace of its block; it belongs inside
+  one, for example environment staging { ... ; bind <application>.<alias> ->
+  <database-instance> }

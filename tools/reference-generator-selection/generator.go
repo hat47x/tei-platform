@@ -53,6 +53,7 @@ var generatorTemplates = map[string]generatorTemplate{
 	"javascript-template":              {file: "templates/template.js.tmpl", id: "line-amount-javascript-template", origin: "template", strategy: "javascript-template", language: LanguageJavaScript, source: "main.js"},
 	"long-running-template":            {file: "templates/template-long-running.go.tmpl", id: "line-amount-long-running-template", origin: "template", strategy: "long-running-template", language: LanguageGo, source: "main.go"},
 	"java-template":                    {file: "templates/Main.java.tmpl", id: "line-amount-java-template", origin: "template", strategy: "java-template", language: LanguageJava, source: "Main.java"},
+	"java-library-template":            {file: "templates/LineAmounts.java.tmpl", id: "line-amount-java-library-template", origin: "template", strategy: "java-library-template", language: LanguageJava, source: "LineAmounts.java"},
 	"python-long-running-template":     {file: "templates/template-long-running.py.tmpl", id: "line-amount-python-long-running-template", origin: "template", strategy: "python-long-running-template", language: LanguagePython, source: "main.py"},
 	"javascript-long-running-template": {file: "templates/template-long-running.js.tmpl", id: "line-amount-javascript-long-running-template", origin: "template", strategy: "javascript-long-running-template", language: LanguageJavaScript, source: "main.js"},
 	"wasm-template":                    {file: "templates/template.go.tmpl", id: "line-amount-wasm-template", origin: "template", strategy: "wasm-template", language: LanguageWasm, source: "main.go"},
@@ -85,6 +86,8 @@ type templateData struct {
 	ScalePow        int
 	ProjectionKind  string
 	Fields          []templateField
+	PackageName     string
+	ClassName       string
 }
 
 // renderCandidate renders one source and its provenance without touching the
@@ -171,6 +174,13 @@ func renderCandidateBytes(contractRaw []byte, strategy, version string, world *i
 		ContractDigest: digest(contractRaw), GeneratorID: tmpl.id, Strategy: tmpl.strategy,
 		Currency: "JPY", Precision: contract.Rounding.Precision, Scale: contract.Rounding.Scale,
 		IntegerDigits: integerDigits, ScalePow: scalePow,
+	}
+	if tmpl.language == LanguageJava {
+		data.PackageName = "tei.generated.lineamount"
+		data.ClassName = "LineAmount"
+		if tmpl.strategy == "java-library-template" {
+			data.ClassName = "LineAmounts"
+		}
 	}
 	if contract.Projection != nil {
 		data.ProjectionKind = contract.Projection.Kind

@@ -2528,9 +2528,32 @@ func (p *Parser) expectEOF() error {
 		if misplaced := p.misplacedDeclaration(t, "after the end of this declaration"); misplaced != nil {
 			return misplaced
 		}
+		// An entry that only exists inside a block is a different mistake: the
+		// block is right, its closing brace is early. `bind` written after the
+		// environment's `}` gave only `unexpected trailing token "bind"` in round
+		// 64, which does not say where it belongs (#4169).
+		if blockOnly := blockOnlyEntryHint(t.Text); blockOnly != "" {
+			return p.errAt(t, fmt.Sprintf(
+				"%q cannot appear after the closing brace of its block; it belongs inside one, for example %s",
+				t.Text, blockOnly))
+		}
 		return p.errAt(t, fmt.Sprintf("unexpected trailing token %q", t.Text))
 	}
 	return nil
+}
+
+// blockOnlyEntryHint names the block an entry belongs to when that entry only
+// exists inside a block. It returns "" for anything else.
+func blockOnlyEntryHint(text string) string {
+	switch text {
+	case "bind":
+		return "environment staging { ... ; bind <application>.<alias> -> <database-instance> }"
+	case "resource", "grant", "lease-policy", "deployment-executor", "observation-provider", "evidence-provider", "feature":
+		return "environment staging { ... ; " + text + " ... }"
+	case "column", "primary-key", "index":
+		return "persist <database>.<id> { ... ; " + text + " ... }"
+	}
+	return ""
 }
 func (p *Parser) errAt(t Token, msg string) error {
 	return &ParseError{Pos: t.Start, End: t.End, Msg: msg}

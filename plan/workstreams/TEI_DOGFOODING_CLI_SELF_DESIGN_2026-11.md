@@ -2423,3 +2423,44 @@ reference/workspace:
 ### 試験と変異
 
 2試験（not-covered の全種がどちらかの側に会計される・宣言済みの層が readable に入る）と変異2種（空にする／被覆済みの種を混ぜる）が落ちる。
+
+## 75. 第74ラウンド（2026-11-11）: 閉じ括弧の後ろに書いた「ブロック内専用の項目」が所属を名指しする
+
+第64ラウンドで `bind` を environment ブロックの外に書いて `unexpected trailing token "bind"` になった。生出力は[第74ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND74_BLOCK_PLACEMENT_2026-11-11/README.md)にある。
+
+### 自分の探査が壊れていた（警告が教えた）
+
+最初の3つの探査はすべて同じ警告を返した。
+
+```text
+warning WORKSPACE_SOURCE_ROOT managed file "... is a TEI source that no loader reads..."
+```
+
+**ファイル名を `staging-stray.tei` にしていたため、ローダが読んでいなかった。** ローダは `environments/<id>/environment.tei` という正確な名前を要求する。**第72ラウンドで自分が入れた警告が、その探査の誤りを教えてくれた。**
+
+正しい名前で置き直すと、狙った診断が出た。ブロック内の綴り間違いは**語彙を列挙する良い診断**で、閉じ括弧の後ろの `bind` は `unexpected trailing token "bind"`（置き場所を言わない）だった。
+
+### 修正
+
+`expectEOF` で、既存の `misplacedDeclaration`（トップレベル宣言）の次に**ブロック内専用の項目**を見る。
+
+```go
+if blockOnly := blockOnlyEntryHint(t.Text); blockOnly != "" {
+	return p.errAt(t, fmt.Sprintf(
+		"%q cannot appear after the closing brace of its block; it belongs inside one, for example %s",
+		t.Text, blockOnly))
+}
+```
+
+対象: `bind`・`resource`・`grant`・`lease-policy`・`deployment-executor`・`observation-provider`・`evidence-provider`・`feature`（environment）、`column`・`primary-key`・`index`（persist）。
+
+```text
+"bind" cannot appear after the closing brace of its block; it belongs inside one,
+for example environment staging { ... ; bind <application>.<alias> -> <database-instance> }
+```
+
+**未知の語（`frobnicate`）は汎用メッセージのまま**、トップレベル宣言（`migration`）は既存の「自前のファイルに書く」メッセージのまま。**優先順位を試験で固定した。**
+
+### 試験と変異
+
+3試験と変異2種（ブロック判定を削る・未知の語にもヒントを返す）が落ちる。**M1 は最初アンカーが合わず適用できなかった**（壊れた変異に気づくのは4回目）。
