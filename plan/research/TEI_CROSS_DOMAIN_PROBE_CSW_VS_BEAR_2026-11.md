@@ -6,7 +6,9 @@ Status: **研究・比較・小規模試作のみ（2026-11-11）**。製品本�
 
 **2026-11-11 追記（再検証）**：TEI `main`が`b987b38e7`へ進んだ後、このprobeを`origin/main`のcleanな隔離worktreeへコピーして再実行しました。21→24件のGo試験が通り、`tei validate`の宣言数はCSW 37・VSクマ 68で変化なしでした。`b8cbd432a`以降の`main`の変更（期間が名指す能力の効果Dataの照合、tools索引）は、probeが使う意味DSL・Workspace読込み・型列挙の範囲に触れません。ただし**この再検証はprobeの適用確認であり、上流（CSW・VSクマ）の最新版での再確認ではありません**。VSクマの上流照合は、兄弟チェックアウトが届く環境でのみ`TestUpstreamAnchorsResolveInTheCitedFiles`が実行します（§8）。
 
-再現用の一式は[業務外領域probe](../../research/tei-cross-domain-probe-2026-11/README.md)にあります。関連IssueはTEI [#4193](https://github.com/hat47x/tei-platform/issues/4193)・[#2510](https://github.com/hat47x/tei-platform/issues/2510)・[#2533](https://github.com/hat47x/tei-platform/issues/2533)・[#3475](https://github.com/hat47x/tei-platform/issues/3475)・[#4134](https://github.com/hat47x/tei-platform/issues/4134)、CSW [#593](https://github.com/hat47x/cultural-substrate-weaving/issues/593)・[#543](https://github.com/hat47x/cultural-substrate-weaving/issues/543)、VSクマ [#402](https://github.com/hat47x/vs-bear-simulator/issues/402)・[#316](https://github.com/hat47x/vs-bear-simulator/issues/316)です。本稿はこれらのIssueの結論を変更しません。
+再現用の一式は[業務外領域probe](../../research/tei-cross-domain-probe-2026-11/README.md)にあります。関連IssueはTEI [#4193](https://github.com/hat47x/tei-platform/issues/4193)・[#2510](https://github.com/hat47x/tei-platform/issues/2510)・[#2533](https://github.com/hat47x/tei-platform/issues/2533)・[#3475](https://github.com/hat47x/tei-platform/issues/3475)・[#4134](https://github.com/hat47x/tei-platform/issues/4134)、CSW [#593](https://github.com/hat47x/cultural-substrate-weaving/issues/593)・[#543](https://github.com/hat47x/cultural-substrate-weaving/issues/543)、VSクマ [#95](https://github.com/hat47x/vs-bear-simulator/issues/95)・[#17](https://github.com/hat47x/vs-bear-simulator/issues/17)です。本稿はこれらのIssueの結論を変更しません。
+
+**Issue番号の修正**：VSクマの関連Issueを`#402`・`#316`と記載していましたが、型付き認知の境界と採否の担当は[#95](https://github.com/hat47x/vs-bear-simulator/issues/95)（temporal state・evidence accumulation・action commitment・body feedback）と[#17](https://github.com/hat47x/vs-bear-simulator/issues/17)（M5 Bio-inspired cognition decision gate）です。`#402`はstory/cognitionの永続知識と一時状態の分離、`#316`はモデル駆動の反実仮想試験で、契約の写しの受入判断を返す先ではありません。判断の返し先を実態に合わせて修正しました。
 
 ## 1. 何を確かめ、何を確かめないか
 
@@ -183,7 +185,7 @@ VSクマ側の期待結果は、上流に書かれた事実から独立に用意
 3. **開いた集合を列挙型として書いてよいか**（TEI中核）。VSクマのdecision sourceは、transportが新しい`backend_id`を宣言できるため閉じた集合ではありません。列挙型に写すと、正当な新しいproducerを未知として拒否するか、未知を常に許して列挙の意味を薄めるかの二択になります。本稿は「記録済みの値を列挙し、未記録をwarning」という暫定対処を選びました。`unknown`をどう扱うかの規約は[#2533](https://github.com/hat47x/tei-platform/issues/2533)の判断材料として残します。
 4. **転記の照合をどこまで要求するか**（TEI中核）。probeの誤り2件は、TEI宣言とprobe定数の自己一致では検出できませんでした。上流原文への照合は、兄弟チェックアウトがある環境でしか実行できず、CI必須検査にも接続していません。外部Repositoryの転記を伴う研究物に、どの照合を求めるかは未決です。
 5. **CSWの型付き受け渡しを任意の道具として維持するか**（CSW）。推奨は、Skill本文を変えず、著者が使うときだけ記録する任意の形式として残すことです。必須化すると「全候補へのラベルは要らない」という現行方針と衝突します。判断はCSW [#593](https://github.com/hat47x/cultural-substrate-weaving/issues/593)に返します。
-6. **VSクマで契約の写しを受け入れるか**（VSクマ）。受け入れる条件は、列挙の一致試験に加えて、境界値・wire・fixtureの同期を確認する手順を決めることです。現状は二重管理のコストが利益を上回る可能性があり、推奨は「保留」。判断はVSクマ [#402](https://github.com/hat47x/vs-bear-simulator/issues/402)に返します。
+6. **VSクマで契約の写しを受け入れるか**（VSクマ）。受け入れる条件は、列挙の一致試験に加えて、境界値・wire・fixtureの同期を確認する手順を決めることです。現状は二重管理のコストが利益を上回る可能性があり、推奨は「保留」。判断はVSクマ [#95](https://github.com/hat47x/vs-bear-simulator/issues/95)と[#17](https://github.com/hat47x/vs-bear-simulator/issues/17)に返します。
 7. **2対象の共通部分を標準ライブラリへ抽出するか**（TEI）。2例だけでは根拠が不足します。抽出しない判断を推奨し、3例目が出た時点で再検討します。
 8. **probeを`research/`に残すか`tools/`へ移すか**（TEI）。現状は`research/`が適切です。製品の受入経路やCI必須検査には接続せず、上流の版を固定した研究物として扱います。
 
