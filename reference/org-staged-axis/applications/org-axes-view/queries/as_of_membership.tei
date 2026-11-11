@@ -1,0 +1,21 @@
+query org_axes_view.as_of_membership {
+    input valid_from std.datetime
+    input known_from std.datetime
+    input allocation_min std.decimal
+    datasource org_read
+    sql postgres {
+        SELECT
+            m.membership_id,
+            m.org_unit_id,
+            m.allocation
+        FROM organization.membership m
+        WHERE m.valid_from <= :valid_from
+          AND m.known_from >= :known_from
+          AND m.allocation >= :allocation_min
+    }
+    result {
+        column membership_id -> organization.membership.membership_id
+        column org_unit_id -> organization.membership.org_unit_id
+        column allocation -> organization.membership.allocation
+    }
+}
