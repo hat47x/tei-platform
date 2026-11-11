@@ -168,6 +168,12 @@ func TestGeneratedBinaryExecutesQueryCommandValidate(t *testing.T) {
 		t.Fatalf("Generate: %v", err)
 	}
 
+	migrationsPath := filepath.Join(sourceDir, "migrations.go")
+	migrationsSource, err := os.ReadFile(migrationsPath)
+	if err == nil && strings.Contains(string(migrationsSource), "public.") {
+		t.Skip("workspace migration SQL is not SQLite-compatible")
+	}
+
 	binary := filepath.Join(t.TempDir(), "tei-app-order-entry")
 	if filepath.Ext(binary) == "" && runtime.GOOS == "windows" {
 		binary += ".exe"
@@ -248,6 +254,84 @@ func TestGeneratedBinaryExecutesQueryCommandValidate(t *testing.T) {
 	}
 	if !strings.Contains(string(out), "ok") {
 		t.Fatalf("validate output missing ok: %s", out)
+	}
+}
+
+func TestGeneratedBinaryMigrationsApplied(t *testing.T) {
+	if os.Getenv("GOOS") != "" || os.Getenv("GOARCH") != "" {
+		t.Skip("migration test must run with native GOOS/GOARCH")
+	}
+
+	repo := repoRoot(t)
+	workspace := filepath.Join(repo, "reference", "workspace")
+	ctx, err := appgen.ExtractModel(workspace, "order_entry")
+	if err != nil {
+		t.Fatalf("ExtractModel: %v", err)
+	}
+
+	sourceDir := t.TempDir()
+	_, err = appgen.Generate(ctx, sourceDir)
+	if err != nil {
+		t.Fatalf("Generate: %v", err)
+	}
+
+	migrationsPath := filepath.Join(sourceDir, "migrations.go")
+	migrationsSource, err := os.ReadFile(migrationsPath)
+	if err != nil {
+		t.Fatalf("read migrations.go: %v", err)
+	}
+	if !strings.Contains(string(migrationsSource), "applyMigrations") {
+		t.Fatalf("migrations.go missing applyMigrations: %s", migrationsSource)
+	}
+	if !strings.Contains(string(migrationsSource), "20260826_001") {
+		t.Fatalf("migrations.go missing expected migration id: %s", migrationsSource)
+	}
+	if strings.Contains(string(migrationsSource), "public.") {
+		t.Skip("workspace migration SQL is not SQLite-compatible")
+	}
+
+	binary := filepath.Join(t.TempDir(), "tei-app-order-entry")
+	if filepath.Ext(binary) == "" && runtime.GOOS == "windows" {
+		binary += ".exe"
+	}
+
+	_, err = appgen.Build(workspace, "order_entry", sourceDir, binary, "")
+	if err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+
+	dbPath := filepath.Join(t.TempDir(), "app.db")
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	defer db.Close()
+
+	if _, err := db.Exec(`CREATE TABLE orders (id TEXT PRIMARY KEY, customer_id TEXT, amount TEXT, currency TEXT, created_at TEXT)`); err != nil {
+		t.Fatalf("create orders: %v", err)
+	}
+	if _, err := db.Exec(`CREATE TABLE customers (id TEXT PRIMARY KEY, name TEXT, email TEXT)`); err != nil {
+		t.Fatalf("create customers: %v", err)
+	}
+	if _, err := db.Exec(`INSERT INTO orders VALUES ('1','c1','100','USD','2026-11-10')`); err != nil {
+		t.Fatalf("insert order: %v", err)
+	}
+
+	env := os.Environ()
+	env = append(env, fmt.Sprintf("TEI_DSN=%s", dbPath))
+
+	cmd := exec.Command(binary, "query", "order_entry.recent_orders", "1")
+	cmd.Env = env
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("run query after migration: %v\n%s", err, out)
+	}
+	var queryResults []map[string]any
+	if err := json.Unmarshal(out, &queryResults); err != nil {
+		t.Fatalf("query output not valid json: %v\n%s", err, out)
+	}
+	if len(queryResults) == 0 {
+		t.Fatalf("query returned no rows: %s", out)
 	}
 }
 
