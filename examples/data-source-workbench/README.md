@@ -38,6 +38,19 @@
 | PQ-04 `:from = 2026-11-07T10:10:01Z` | 完全なFixture上の結果は0件 | 実Readerの返却0件、全Data Sourceでの不存在 |
 | PQ-05 Source/Mapping | Query `order_entry.recent_orders`→`datasource sales`→Application `sales_core`宣言、5列のSemantic属性への宣言 | Function Contextへの明示Binding、Runtime Instance/実Grant、Result Mapping成功 |
 
+### 同じQuery IDでもWorkspaceごとに実入力は別
+
+[同名Query分離テスト](query_route_separation_test.go)では、異なる二つのSourceを独立に読み、**`order_entry.recent_orders`というIDの一致だけではSQL/入力/Rowset期待値を共有できない**ことを確認する。
+
+| Sourceと用途 | 実SQL／入力 | 静的に確認できること | 実行前の不足 |
+| --- | --- | --- | --- |
+| `reference/workspace`＋`recent_orders_product_seed.sql` | `public.orders` 5列、`ordered_at >= :from`、日時降順 | 合成3行に対する`3/2/0`件の独立期待値。R0-Referenceの入力候補 | **Query宣言に`input from`が存在しない**。型・日時精度・Timezone・Runtime Binderが未確定。実PG適用／実Rowsetは未検証 |
+| `examples/xtea-lowcode`（[Draft #4076](https://github.com/hat47x/tei-platform/pull/4076)） | `sales.order`から2列、`:status`・`:status_operator`・`:page_size`・`:page_offset`、状態順＋ページング | 宣言された4つの入力とPatternの`eq/ne`・`page-size 20`を別契約として照合 | この例が必要とする`"sales"."order"`の実DB/Readerは、**`public.orders`用Seedとは異なる**。Draftのopt-in実PGテストは未実行 |
+
+Source-staticテストは、`reference/workspace`の`:from`未宣言を**明示的な未解決状態**として固定している。宣言が正しく追加されたときはテストの独立Expectedを審査して更新する。ここでSQL Dialectの完全解析、`order`という識別子の実DB引用規則、Plugin選択、Role/Grant、実Resultを証明したとは扱わない。
+
+**実Readの優先順**：先行する1 Workspaceと実Queryを明示選択→専用の隔離・破棄可能DBに正しいSchema/Seedを適用→独立Readerで入力行を観測→そのWorkspaceでQuery宣言・Parameter Binderを確認→実SQL/Rows→Function Data Context→CLI受領。0件・ページ終端を業務不存在や全母集団の完全性へ無断昇格しない。正式Plugin Providerの選択とHost/Buildの検証は別の[#1251](https://github.com/hat47x/tei-platform/issues/1251)に保持する。
+
 `product_query_fixture_test.go`は**実Query原文／宣言／Applicationと新合成Seedの静的整合**および固定3入力からの期待行順だけを検査する。PostgreSQLに接続せず、Native SQLを実行せず、`sql postgres file`や`datasource sales`が実時点の正しいProviderを選んだことも検証しない。正常0件と部分0件、Grant拒否、`:from`の型・変換・実Bind、同時刻の安定ページング、実Rowset→Function Data Context、CLI/Studio完全受領は[#2586](https://github.com/hat47x/tei-platform/issues/2586)／[#3270](https://github.com/hat47x/tei-platform/issues/3270)の次の独立試験とする。
 
 ## 利用条件と次の作業
