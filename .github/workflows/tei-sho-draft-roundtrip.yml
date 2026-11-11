@@ -61,7 +61,7 @@ jobs:
           ref: ${{ env.EXPECTED_TEI_HEAD }}
 
       - name: Setup Go and pinned Node
-        uses: actions/setup-go@4d34df0eae01e22eb3f1e359b0c3c5b76a8b0247 # v6.0.0
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version: '1.27.x'
           cache: true
