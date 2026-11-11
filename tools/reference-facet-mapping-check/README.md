@@ -58,6 +58,26 @@ go run ./tools/reference-facet-mapping-check/cmd/tei-facet-mapping-check \
 | XMAP-14 | 時間軸不一致（2軸→1軸） | `rejected`（time-axis-role, …） |
 | XMAP-15 | Source改版後の旧Projection | `rejected`（source-revision） |
 | XMAP-16 | 順序・重複・単位・精度・grain・presenceを保つ正常系 | `preserved`（inverse eligible） |
+| XMAP-17 | 近似変換（float64）を保存として扱う | `rejected`（precision） |
+| XMAP-18 | 同じ表現型を別Contextへ置き旧Scope/Grantを再利用 | `rejected`（context-identity） |
+
+## 逆写像の適格性（判定とは別列）
+
+`inverse`は`eligible`／`ineligible`／`not-claimed`の3値で、**判定（verdict）から独立**に返します。
+
+| 状況 | `inverse` |
+| --- | --- |
+| 逆写像を宣言していない | `not-claimed`（`preserved`でも逆写像の成功ではない） |
+| `preserved`かつ非可逆損失なしで宣言 | `eligible` |
+| `lossy`で非可逆損失（順序・occurrence identity・grain・fact identity・presence・coverage・Revision・単射性・時間軸role・数量scale・fanout等）あり | `ineligible` |
+| `rejected`／`unqualified`／`unknown`で宣言 | `ineligible` |
+
+近似変換（`quantity.approximation`が`none`以外）は`precision`損失として扱い、保存の主張があれば`rejected`（`APPROXIMATION_CLAIMED_PRESERVED`）です。**近似を無条件の成功にしません。**
+
+## Context束縛
+
+表現インスタンスの`contextId`・`epoch`が写像の対象側と一致しない場合は`rejected`（`CONTEXT_BINDING_MISMATCH`）とし、`context-identity`を損失に立てます。同じ表現型を別Context・別Tenantへ移しても、旧Scope・旧Grant・旧epochを再利用しません。
+
 
 ## 既知Mutant
 

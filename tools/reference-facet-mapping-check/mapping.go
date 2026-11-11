@@ -64,27 +64,30 @@ const (
 	LossFanout             = "fanout"
 	LossRelationArity      = "relation-arity"
 	LossInjectivity        = "injectivity"
+	LossContextIdentity    = "context-identity"
 )
 
 // Diagnostic codes name why a verdict was reached. Severity decides which
 // verdict wins; a diagnostic never replaces the loss list.
 const (
-	DiagClaimContradicted   = "CLAIM_CONTRADICTED"
-	DiagLossUndeclared      = "LOSS_UNDECLARED"
-	DiagEvidenceMissing     = "EVIDENCE_MISSING"
-	DiagNoClaim             = "NO_PRESERVATION_CLAIM"
-	DiagUnitUndeclared      = "UNIT_CONVERSION_UNDECLARED"
-	DiagCRSUndeclared       = "CRS_UNDECLARED"
-	DiagScaleConflated      = "QUANTITY_SCALE_CONFLATED"
-	DiagAxisConflated       = "TIME_AXIS_CONFLATED"
-	DiagSyncUnknown         = "SYNC_UNKNOWN"
-	DiagSelectionIdentity   = "SELECTION_NOT_IDENTITY"
-	DiagGrainWriteback      = "GRAIN_WRITEBACK"
-	DiagCoverageOverclaim   = "COVERAGE_OVERCLAIMED"
-	DiagRevisionStale       = "SOURCE_REVISION_STALE"
-	DiagInverseUnqualified  = "INVERSE_UNQUALIFIED"
-	DiagInjectivityUnproven = "INJECTIVITY_UNPROVEN"
-	DiagFanoutUndeclared    = "FANOUT_UNDECLARED"
+	DiagClaimContradicted    = "CLAIM_CONTRADICTED"
+	DiagLossUndeclared       = "LOSS_UNDECLARED"
+	DiagEvidenceMissing      = "EVIDENCE_MISSING"
+	DiagNoClaim              = "NO_PRESERVATION_CLAIM"
+	DiagUnitUndeclared       = "UNIT_CONVERSION_UNDECLARED"
+	DiagCRSUndeclared        = "CRS_UNDECLARED"
+	DiagScaleConflated       = "QUANTITY_SCALE_CONFLATED"
+	DiagAxisConflated        = "TIME_AXIS_CONFLATED"
+	DiagSyncUnknown          = "SYNC_UNKNOWN"
+	DiagSelectionIdentity    = "SELECTION_NOT_IDENTITY"
+	DiagGrainWriteback       = "GRAIN_WRITEBACK"
+	DiagCoverageOverclaim    = "COVERAGE_OVERCLAIMED"
+	DiagRevisionStale        = "SOURCE_REVISION_STALE"
+	DiagInverseUnqualified   = "INVERSE_UNQUALIFIED"
+	DiagInjectivityUnproven  = "INJECTIVITY_UNPROVEN"
+	DiagFanoutUndeclared     = "FANOUT_UNDECLARED"
+	DiagApproximationClaimed = "APPROXIMATION_CLAIMED_PRESERVED"
+	DiagContextMismatch      = "CONTEXT_BINDING_MISMATCH"
 )
 
 // Diagnostic severities. The verdict is chosen by the severest diagnostic.
@@ -197,6 +200,7 @@ type QuantityColumn struct {
 	SourceCRS         string   `json:"sourceCrs,omitempty"`
 	TargetCRS         string   `json:"targetCrs,omitempty"`
 	CRSTransform      string   `json:"crsTransform,omitempty"`
+	Approximation     string   `json:"approximation,omitempty"`
 	ClaimedPreserved  bool     `json:"claimedPreserved"`
 	Evidence          []string `json:"evidence,omitempty"`
 }

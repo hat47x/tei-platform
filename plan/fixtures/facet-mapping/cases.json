@@ -585,7 +585,7 @@
       },
       "mapping": {
         "source": {"subject": "sales.order", "occurrence": "row", "grain": "row", "scope": "selected", "revision": "r15", "snapshot": "s15"},
-        "target": {"representation": "rep.order_summary", "slot": "fields", "contextId": "order_entry.summary", "epoch": "e14", "revision": "r14"},
+        "target": {"representation": "rep.order_summary", "slot": "fields", "contextId": "order_entry.summary", "epoch": "e15", "revision": "r14"},
         "identity": {"kind": "1:1", "claimedPreserved": true, "evidence": ["same order id"]},
         "order": {},
         "multiset": {"fanout": 1, "claimedPreserved": false},
@@ -652,6 +652,78 @@
         "coverage": {"claimed": "complete", "observed": "complete"},
         "loss": {},
         "operation": {"mode": "read-only", "inverseEligible": true}
+      }
+    },
+    {
+      "id": "XMAP-17",
+      "title": "近似変換を無条件に成功として扱う（追加負例）",
+      "structure": {
+        "id": "finance.invoice_amount_approx",
+        "family": "quantity",
+        "facets": {"identity": "value", "grain": "row", "precision": "exact-decimal"}
+      },
+      "representation": {
+        "id": "rep.approx_total",
+        "kind": "chart",
+        "topology": ["axis", "series", "point"],
+        "contextId": "finance.dashboard",
+        "epoch": "e17",
+        "facets": {"identity": "value", "grain": "row", "precision": "float-approx"}
+      },
+      "mapping": {
+        "source": {"subject": "finance.invoice.amount", "occurrence": "row", "grain": "row", "scope": "tenant-2026-10", "revision": "r17", "snapshot": "s17"},
+        "target": {"representation": "rep.approx_total", "slot": "series", "contextId": "finance.dashboard", "epoch": "e17", "revision": "r17"},
+        "identity": {"kind": "1:1", "claimedPreserved": true, "evidence": ["invoice id carried"]},
+        "order": {},
+        "multiset": {"fanout": 1, "claimedPreserved": false},
+        "grain": {"sourceGrain": "row", "targetGrain": "row", "steps": 0, "claimedPreserved": true, "evidence": ["same grain"]},
+        "presence": {},
+        "quantity": {
+          "sourceUnit": "JPY",
+          "targetUnit": "JPY",
+          "sourceScale": "point",
+          "targetScale": "point",
+          "precision": "exact-decimal",
+          "targetPrecision": "float-approx",
+          "approximation": "float64",
+          "claimedPreserved": true,
+          "evidence": ["rendered value compares equal"]
+        },
+        "time": {},
+        "coverage": {"claimed": "complete", "observed": "complete"},
+        "loss": {},
+        "operation": {"mode": "read-only", "inverseEligible": true}
+      }
+    },
+    {
+      "id": "XMAP-18",
+      "title": "同じ表現型を別Contextへ置き、旧Grantと旧Scopeを再利用する（追加負例）",
+      "structure": {
+        "id": "sales.order_selected",
+        "family": "record",
+        "facets": {"identity": "subject", "grain": "row", "presence": ["null", "missing"]}
+      },
+      "representation": {
+        "id": "rep.reused_table",
+        "kind": "table",
+        "topology": ["row", "column", "cell"],
+        "contextId": "ops.queue",
+        "epoch": "e18",
+        "facets": {"identity": "subject", "grain": "row"}
+      },
+      "mapping": {
+        "source": {"subject": "sales.order", "occurrence": "row", "grain": "row", "scope": "tenant-a", "revision": "r18", "snapshot": "s18"},
+        "target": {"representation": "rep.reused_table", "slot": "rows", "contextId": "order_entry.list", "epoch": "e12", "revision": "r18"},
+        "identity": {"kind": "1:1", "claimedPreserved": true, "evidence": ["order id carried"]},
+        "order": {},
+        "multiset": {"fanout": 1, "claimedPreserved": false},
+        "grain": {"sourceGrain": "row", "targetGrain": "row", "steps": 0, "claimedPreserved": true, "evidence": ["same grain"]},
+        "presence": {},
+        "quantity": {},
+        "time": {},
+        "coverage": {"claimed": "complete", "observed": "complete"},
+        "loss": {},
+        "operation": {"mode": "edit-inverse", "inverseEligible": true, "authority": "grant-from-tenant-a"}
       }
     }
   ]

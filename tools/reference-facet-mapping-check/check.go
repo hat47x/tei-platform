@@ -132,7 +132,7 @@ func checkCase(c Case, opts Options) Result {
 	checkComposite(e, c)
 
 	verdict := decideVerdict(e)
-	inverse := decideInverse(e, c)
+	inverse := decideInverse(e, c, verdict)
 
 	losses := sortedCopy(e.losses)
 	checkLossDeclaration(e, c, losses)
@@ -202,9 +202,14 @@ func decideVerdict(e *evaluation) string {
 // decideInverse reports the edit-inverse qualification separately from the
 // read-only verdict. A successful projection never implies a usable inverse, so
 // the answer here is the inverse column itself, not a mapping verdict.
-func decideInverse(e *evaluation, c Case) string {
+func decideInverse(e *evaluation, c Case, verdict string) string {
 	if !c.Mapping.Operation.InverseEligible {
 		return InverseNotClaimed
+	}
+	if verdict != VerdictPreserved && verdict != VerdictLossy {
+		e.info(DiagInverseUnqualified,
+			"inverse is declared eligible while the mapping verdict is "+verdict)
+		return InverseIneligible
 	}
 	for _, loss := range e.losses {
 		if nonInvertibleLosses[loss] {
@@ -212,11 +217,6 @@ func decideInverse(e *evaluation, c Case) string {
 				"inverse is declared eligible while "+loss+" is lost")
 			return InverseIneligible
 		}
-	}
-	if e.reject || e.unqual || e.unkn {
-		e.info(DiagInverseUnqualified,
-			"inverse is declared eligible while the mapping is rejected, unqualified, or unknown")
-		return InverseIneligible
 	}
 	return InverseEligible
 }
@@ -369,6 +369,17 @@ func equalStateSet(a, b []string) bool {
 func checkQuantity(e *evaluation, c Case, opts Options) {
 	q := c.Mapping.Quantity
 
+	// An approximate conversion never reports preservation on its own. The
+	// planner asked for this explicitly: a rounding or an approximation is
+	// reported as a loss, and claiming preservation through it is refused.
+	if q.Approximation != "" && q.Approximation != "none" {
+		e.lose(LossPrecision)
+		if q.ClaimedPreserved {
+			e.rejectWith(DiagApproximationClaimed, fmt.Sprintf(
+				"approximation %q is reported as a preserved conversion", q.Approximation))
+		}
+	}
+
 	scaleConflict := q.SourceScale != "" && q.TargetScale != "" && q.SourceScale != q.TargetScale
 	if scaleConflict {
 		if opts.IgnoreQuantityScale {
@@ -458,12 +469,28 @@ func checkCoverage(e *evaluation, c Case) {
 func checkRevision(e *evaluation, c Case) {
 	src := c.Mapping.Source.Revision
 	dst := c.Mapping.Target.Revision
-	if src == "" || dst == "" || src == dst {
-		return
+	if src != "" && dst != "" && src != dst {
+		e.lose(LossSourceRevision)
+		e.rejectWith(DiagRevisionStale, fmt.Sprintf(
+			"source revision %q does not match the rendered revision %q", src, dst))
 	}
-	e.lose(LossSourceRevision)
-	e.rejectWith(DiagRevisionStale, fmt.Sprintf(
-		"source revision %q does not match the rendered revision %q", src, dst))
+	// A representation instance belongs to exactly one Function Data Context.
+	// Moving the same type into another Context keeps neither the Scope nor the
+	// Grant that the old Context held.
+	repCtx := c.Representation.ContextID
+	tgtCtx := c.Mapping.Target.ContextID
+	if repCtx != "" && tgtCtx != "" && repCtx != tgtCtx {
+		e.lose(LossContextIdentity)
+		e.rejectWith(DiagContextMismatch, fmt.Sprintf(
+			"representation is owned by context %q but the mapping targets %q", repCtx, tgtCtx))
+	}
+	repEpoch := c.Representation.Epoch
+	tgtEpoch := c.Mapping.Target.Epoch
+	if repEpoch != "" && tgtEpoch != "" && repEpoch != tgtEpoch {
+		e.lose(LossContextIdentity)
+		e.rejectWith(DiagContextMismatch, fmt.Sprintf(
+			"representation epoch %q does not match the mapping epoch %q", repEpoch, tgtEpoch))
+	}
 }
 
 func checkComposite(e *evaluation, c Case) {

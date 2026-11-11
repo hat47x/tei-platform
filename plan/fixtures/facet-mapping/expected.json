@@ -112,6 +112,20 @@
       "losses": [],
       "inverse": "eligible",
       "note": "Every claim that the case makes carries evidence and every observed facet matches; the inverse is declared and no loss blocks it."
+    },
+    {
+      "id": "XMAP-17",
+      "verdict": "rejected",
+      "losses": ["precision"],
+      "inverse": "ineligible",
+      "note": "R6 an approximate float rendering claimed as a preserved conversion. The planner's rule is that an approximation is never an unqualified success."
+    },
+    {
+      "id": "XMAP-18",
+      "verdict": "rejected",
+      "losses": ["context-identity"],
+      "inverse": "ineligible",
+      "note": "R2/R8 the representation belongs to one context and the mapping targets another; the old scope and grant are not reused."
     }
   ]
 }
