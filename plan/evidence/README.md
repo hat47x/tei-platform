@@ -1,15 +1,17 @@
-﻿# 受入条件と検証根拠
+# 受入条件と検証根拠
 
 要求が受け入れシナリオや検証根拠にどう結び付くかを整理する文書を置きます。要求そのものは[`requirements/`](../../requirements/README.md)、段階判定の記録と実行手順は[`gate/`](../gate/README.md)、現在の実装状況は[`docs/status.md`](../../docs/status.md)を参照してください。
 
 - [製品品質の検証計画](PRODUCT_QUALITY_EVIDENCE_PLAN_2026-09.md)
-- [依存関係によるキャッシュ失効の試験用参照](DEPENDENCY_BASED_CACHE_INVALIDATION_2026-11.md)（World・Model・Artifact・Evidenceの版と依存閉包を区別し、Artifact再利用・Build省略・Evidence再利用を独立判定。未知依存・途中失敗・A→B→Aの誤再利用を拒否。28件の合成テストPASS。実キャッシュストア・実Buildとの接続は未検証）
 - [未マージブランチの棚卸し](BRANCH_TRIAGE_2026-11-10.md)（`main` `ae2771bba` 時点でリモートブランチ 92本、未マージ 54本。内容が main にあり PR が MERGED の6本を削除し、PRが無く未マージの19本を主題と実装で分類。主題の不在は内容の不在ではなく、判定と操作の間に1本が統合されることも確認）
 - [X-TEAの型指定とTypeOptionsの読取り](XTEA_TYPE_MAPPING_STATIC_READING_2026-11-10.md)（型の同一性が`型名_長さ`で小数桁を含まず、Editorは`Decimal`属性を読まず`SQLExpression`の括弧から推測するため取込み製の`DECIMAL`の小数桁が空になる。基本型の導出が取込みと4語・実行時は9語で別規則。`TypeOptions`の`VIRTUAL`判定が3通り併存で、`getOptionList`は`replace`の戻り値を捨てている。静的読取りのみでJava実行はNOT RUN）
 - [型の値ファセット（単位・尺度・値域・軸）が無いことの実測](TEI_TYPE_FACET_UNIT_AXIS_GAP_2026-11-10.md)（型は基底型と列挙値しか持てず、`std.money`は通貨も小数桁も持たない。mmと%を別の型として宣言しても`validate`は`ok`で、`unit "mm"`は`PARSE_ERROR`になることを実測。#3827の第1段の完了条件との対応を記録。型へのファセット追加は未判断）
 - [永続化の列対応の参照グラフ辺](CLI_COLUMN_MAPPING_EDGES_2026-11-10.md)（column A -> Bの列対応を索引が捨て投影も参照せず、属性のincomingが0件に見えた件。semantic-data --maps-column--> semantic-attributeの辺にし、列名はAliasで運ぶ。incomingを持つ属性が3件から12件へ。残る8件は列対応が未宣言）
 - [読めないqualification-requirementsの符号](CLI_QUALIFY_REQUIREMENTS_ERROR_2026-11-10.md)（存在しないパスや形の違うJSONを渡すと`KNOWLEDGE_BUILD_FAILED`になり、引数の誤りとモデルの問題を区別できなかったため`INVALID_ARGUMENT`へ分離。読めるrequirements＋読めないWorkspaceは構築失敗のまま。requirementsのスキーマ広告は未実施）
 - [製品要求と実証状況の照合](PRODUCT_REQUIREMENT_GAP_AUDIT.md)
+- [読まれないTEIソースを警告する（2026-11-11・第72ラウンド）](TEI_DOGFOODING_ROUND72_UNREAD_SOURCE_2026-11-11/README.md)（配置の誤りで読まれない.teiをalidateが警告するようにし、3ワークスペースで誤検出ゼロを確認）
+- [訂正機能と期間制約の衝突の解消と確認（2026-11）](XTEA_LOWCODE_PERIOD_CORRECTION_EXEMPT_2026-11.md)（checkPeriodの訂正免除を対象に、period_correction_exempt_test.goで確認）
+- [依存に基づくキャッシュ無効化](DEPENDENCY_BASED_CACHE_INVALIDATION_2026-11.md)（フル処理と増分処理の一致を、依存・キャッシュ項目・artifactの診断として確認する設計。キャッシュ再利用による偽陽性の検出までを対象にし、実測はNOT RUN）
 - [Plugin-firstのCLI/Studio共通InspectorへのD1 Fit/Gap](PLUGIN_FIRST_D1_AUTHORING_ROUTE_FIT_GAP_2026-11.md)（現行Go経路の静的監査と具体的な検証計画。実Provider二Consumerは未実証）
 - [E1合成証拠の8件原本保全と再検証](TEI_E1_SYNTHETIC_ARCHIVE_README_20261013.md)（試験用証拠。製品Gateは未資格）
 - [E2a-1実PostgreSQL先行証拠の原本保全](TEI_E2A1_REAL_POSTGRES_ARCHIVE_20261013.md)（手書きSQL／同一プロセス別pool。製品G2は未資格）
@@ -132,7 +134,6 @@
 - [期間の correction の実行時検査の確認](XTEA_LOWCODE_PERIOD_CORRECTION_2026-11.md)（参照実装の試験記録。閉じた期間の訂正を宣言した能力に限る。訂正能力を走らせる経路は未実装）
 - [利用者設定の変更監査の確認](XTEA_LOWCODE_USER_SETTINGS_AUDIT_2026-11.md)（参照実装の試験記録。誰がいつ何を変えたかの記録。権限・永続化は未実装）
 - [期間が名指す能力の効果の検査の確認](XTEA_LOWCODE_PERIOD_CAPABILITY_EFFECT_2026-11.md)（参照実装の試験記録。期間のDataと能力の効果の不一致を報告。効果の種類と役割の対応は未実装）
-- [訂正能力と閉塞拒否の矛盾の解消の確認](XTEA_LOWCODE_PERIOD_CORRECTION_EXEMPT_2026-11.md)（参照実装の試験記録。訂正能力だけを閉塞拒否から免除。宣言段階での矛盾報告は未実装）
 - [採番の永続CounterStoreの確認](XTEA_LOWCODE_NUMBERING_SQLITE_STORE_2026-11.md)（参照実装の試験記録。PostgreSQLは未実装）
 - [採番の2プロセス同時実行の確認](XTEA_LOWCODE_NUMBERING_PROCESS_RACE_2026-11.md)（参照実装の試験記録。PostgreSQLと多プロセス構成は未実装）
 - [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
@@ -451,4 +452,3 @@
 - [mainの壊れた文字列リテラルを直す](TEI_DOGFOODING_ROUND69_MAIN_BROKEN_LITERAL_2026-11-11/README.md)（第68ラウンドのgo vetが、自分の変更とは無関係なmainの破損を検出。source_ab_consumer_parity_test.goに本物の改行が入った文字列リテラルがあり、パッケージがビルドできなかった。エスケープに直し、gofmt空・vet clean・パッケージの試験ok）
 - [環境を設計しdatabase・environmentをCLIで読めるようにする](TEI_DOGFOODING_ROUND68_ENVIRONMENT_LAYER_2026-11-11/README.md)（#4128のC案を拡張。staging環境を1往復で設計し、未読だったdatabase/environmentをinspectに追加して18種に。model overviewが既にnotCoveredKindsで宣言していた欠落と実害が一致。database-instanceは環境スコープのため追加せず）
 - [永続化マッピングを設計しpersistence-mappingをCLIで読めるようにする](TEI_DOGFOODING_ROUND71_PERSISTENCE_LAYER_2026-11-11/README.md)（#4128のC案を拡張。6往復でマッピングを設計し、未読だったpersistence-mappingをinspectに追加して19種に。Attempt1はokを返したが何も起きておらず、配置の誤りが成功として返る例を記録。未起票）
-- [読まれないTEIソースを警告する](TEI_DOGFOODING_ROUND72_UNREAD_SOURCE_2026-11-11/README.md)（第71ラウンドの「okを返したが何も起きていない」に方針を決めて対応。配置の誤りで読まれない.teiをvalidateがwarningで名指しする。13ワークスペースで誤検出0。warningに留めエラーにしないのは将来のローダ用に置く正当な用途があるため）
