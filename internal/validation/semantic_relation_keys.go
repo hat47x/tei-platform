@@ -62,7 +62,7 @@ func ValidateSemanticRelationKeys(w ir.World) []Diagnostic {
 							out = append(out, errFor(
 								relationSubject,
 								"DUPLICATE_SEMANTIC_RELATION_KEY_TARGET_ATTRIBUTE",
-								"Relation %sではtarget attribute %sへsource attribute %sと%sの両方が対応付けられており、一意に辿れません",
+								"Relation %s maps both source attribute %s and %s to target attribute %s, so it cannot be followed uniquely",
 								relation.ID,
 								key.TargetAttribute,
 								priorSource,
