@@ -38,10 +38,11 @@ function simulate(html, data, useApplication = false) {
     elements.set("use-application", { checked: useApplication });
   elements.set("proposal-json", output);
   elements.set("notice", notice);
-  let submit;
+  let submit, input;
   elements.set("studio-edit", { addEventListener(name, fn) {
-    assert.equal(name, "submit");
-    submit = fn;
+    if (name === "submit") submit = fn;
+    else if (name === "input") input = fn;
+    else assert.fail("unexpected form event: " + name);
   } });
   const document = { getElementById: id => elements.get(id) || null };
   runInNewContext(match[1], { document, JSON });
@@ -49,14 +50,17 @@ function simulate(html, data, useApplication = false) {
   let prevented = false;
   submit({ preventDefault() { prevented = true; } });
   assert.equal(prevented, true);
-  return { output: output.value, notice: notice.textContent };
+  const generated = { output: output.value, notice: notice.textContent };
+  assert.equal(typeof input, "function");
+  input();
+  return { ...generated, afterInput: output.value, afterInputNotice: notice.textContent };
 }
 test("ER form emits a typed, revision-bound proposal accepted by the existing bridge", () => {
   const html = renderStudioEditHTML(world(), rev, "data:sales.order_line");
   assert.match(html, /<form id="studio-edit"/);
   assert.match(html, /ブラウザ内の検査は便宜的/);
   assert.doesNotMatch(html, /<iframe|src="https?:|action="https?:/);
-  const { output, notice } = simulate(html, {
+  const { output, notice, afterInput, afterInputNotice } = simulate(html, {
     subject: "data:sales.order_line", view: "er",
     symbol: "order", "target-data": "sales.order", cardinality: "one"
   });
@@ -65,6 +69,8 @@ test("ER form emits a typed, revision-bound proposal accepted by the existing br
   assert.equal(edit.relationID, "sales.order_line.order");
   assert.equal(edit.origin, "studio");
   assert.match(notice, /未審査/);
+  assert.equal(afterInput, "");
+  assert.match(afterInputNotice, /再生成/);
   const candidate = candidateFromEdit(world(), rev, edit);
   assert.equal(candidate.delta[0].addRelation.id, edit.relationID);
   assert.throws(() => candidateFromEdit(world(), nextRev, edit),
