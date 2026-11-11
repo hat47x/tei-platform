@@ -1199,6 +1199,54 @@ func Validate(w ir.World) []Diagnostic {
 		}
 	}
 
+	// An application's database block is a requirement for a datasource alias,
+	// and a `bind` in an environment is what makes it available. The query
+	// check above already reports an unbound query datasource; the application
+	// block itself had no such report, so an application whose `database` block
+	// was never bound validated as `ok` (#4462).
+	//
+	// This is a warning for the same reason the query check is: an application
+	// can be authored before the environment that deploys it exists, and a
+	// warning keeps that order possible while still saying the requirement is
+	// unbound.
+	//
+	// It only fires when the workspace declares at least one environment: a
+	// workspace with no environments cannot bind anything yet, and warning there
+	// would be noise in the five example workspaces that are deliberately
+	// partial. The query check above does not draw that line; this one does, and
+	// the difference is stated here so the two are not read as inconsistent.
+	warnsAboutBindings := len(w.Environments) > 0
+	for _, a := range w.Applications {
+		if !warnsAboutBindings {
+			break
+		}
+		for _, req := range a.Databases {
+			bound := false
+			var environments []string
+			for _, e := range envs {
+				for _, b := range e.Bindings {
+					if b.Application != a.ID || b.Alias != req.Alias {
+						continue
+					}
+					if _, ok := e.InstanceByID(b.Instance); !ok {
+						continue
+					}
+					bound = true
+					environments = append(environments, string(e.ID))
+				}
+			}
+			if bound {
+				continue
+			}
+			hint := unboundDatasourceHint(w, a, req.Alias)
+			if len(environments) == 0 {
+				out = append(out, Diagnostic{Code: "UNBOUND_DATABASE_REQUIREMENT", Severity: Warning, Message: fmt.Sprintf(
+					"application %s database %s is not bound in any environment; %s",
+					a.ID, req.Alias, hint)})
+			}
+		}
+	}
+
 	seenBindings := map[string]struct{}{}
 	for _, b := range w.Bindings {
 		key := fmt.Sprintf("%s/%s", b.Application, b.Capability)

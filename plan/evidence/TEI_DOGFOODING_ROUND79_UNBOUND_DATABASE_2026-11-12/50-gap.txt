@@ -1,0 +1,14 @@
+Design: add application "reporting" reading sales.order, bind it.
+
+  attempt 1  application reporting { uses semantic sales }                  -> ok
+  attempt 2  + database sales { target sales_core access read requires ... } -> ok
+             + bind reporting.sales -> sales_core.dev (in environment)       -> ok
+  readback   inspect application/reporting -> databases: [{"alias":"sales", ...}]
+             inspect environment/development -> bindings=4
+
+Then, with reporting.sales bound:
+  contract ^99        -> DATABASE_CONTRACT_VERSION_UNSATISFIED
+  unknown contract    -> UNKNOWN_DATABASE_CONTRACT
+
+Then, with the bind REMOVED:
+  validate            -> ok     <-- the gap
