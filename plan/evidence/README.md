@@ -127,6 +127,7 @@
 - [パッケージ契約（適合試験・投影）の検査の確認](XTEA_LOWCODE_PACKAGE_CONFORMANCE_2026-11.md)（参照実装の試験記録。適合試験名と投影を検査。適合試験の実行は未実装）
 - [期間の close-requires の実行時検査の確認](XTEA_LOWCODE_CLOSE_REQUIRES_2026-11.md)（参照実装の試験記録。閉めに必要な能力を実行時に要求）
 - [期間の correction の実行時検査の確認](XTEA_LOWCODE_PERIOD_CORRECTION_2026-11.md)（参照実装の試験記録。閉じた期間の訂正を宣言した能力に限る。訂正能力を走らせる経路は未実装）
+- [利用者設定の変更監査の確認](XTEA_LOWCODE_USER_SETTINGS_AUDIT_2026-11.md)（参照実装の試験記録。誰がいつ何を変えたかの記録。権限・永続化は未実装）
 - [採番の永続CounterStoreの確認](XTEA_LOWCODE_NUMBERING_SQLITE_STORE_2026-11.md)（参照実装の試験記録。PostgreSQLは未実装）
 - [採番の2プロセス同時実行の確認](XTEA_LOWCODE_NUMBERING_PROCESS_RACE_2026-11.md)（参照実装の試験記録。PostgreSQLと多プロセス構成は未実装）
 - [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
@@ -438,3 +439,4 @@
 - [コマンドパターンを設計しinteractionの形を名指しさせる](TEI_DOGFOODING_ROUND65_INTERACTION_FORM_2026-11-11/README.md)（#4169のA案4件目。commandパターンをCLIだけで設計し、interactionを行形式で書くと形が分からない点を直した。案内文を2度書き直した（違反トークンの埋め込み→契約が拒否する例→種に合った案内）。cmd/teiは単独564.8sでok、同時実行では600秒上限に達した）
 - [main が赤かった: TestParallelClaim は毎回失敗していた](DISPATCHER_LEASE_BUSY_2026-11-11/README.md)（#4218で入ったExternal Role Dispatcherのleaseが、2つのclaimが同時に書き込みロックへ昇格してSQLITE_BUSYになる。clean mainの別worktreeで5回とも再現し、flakyではないことを確認。NewLeaseStoreにSetMaxOpenConns(1)とPRAGMA busy_timeout=5000を足して直列化と待機を行う。2つを外すと同じ失敗が再現することを実測）
 - [cmd/teiの10分上限をビルド1回化で解消](TEI_DOGFOODING_ROUND66_CLI_TEST_TIME_2026-11-11/README.md)（第65ラウンドで記録したFAILの原因を測定。runCLIForClassificationがケースごとにgo buildしていた。sync.Onceで1回にし、当該テスト62.6s→5.3s、パッケージ564.8s→232.9s。テストコードのみのため変異試験は行わず、全603テストokとvet cleanで確認）
+

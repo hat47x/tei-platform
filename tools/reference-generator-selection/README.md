@@ -12,7 +12,9 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-select \
 
 registryを使うと、登録済みで有効な版だけを選抜できます。
 
-`manifest.Source`は候補directory内の相対pathに限定します。絶対path、`..`、候補外へ解決するsymlinkは、実行前に拒否します。Python/JavaScriptのscript候補は、各caseの実行前後でsource bytesのdigestを再確認し、変化した場合は`source changed during execution`で候補を拒否します。caseごとの`execution.sourceDigest`に、そのcaseの直前に読んだsourceのdigestを残します。これは一つのAttempt内で同じsource bytesが実行されたことの技術的な記録であり、生成AIが見た入力全体の完全性や、OS・networkの隔離を証明しません。
+`manifest.Source`は候補directory内の相対pathに限定します。絶対path、`..`、候補外へ解決するsymlinkは、実行前に拒否します。宣言したsourceは一度だけ読み、manifestのdigestと照合します。照合したbytesだけをbuildとinterpreterへ渡し、候補directoryの宣言sourceは読み直しません（#2595）。Go・WASM・WASIは、照合したbytesを書き出した選抜専用の一時directoryからbuildします。Python/JavaScriptのscript候補は、照合したbytesを書き出した実行用snapshotから起動します。各caseの実行前後でsnapshotのdigest・fileの同一性・size・更新時刻を確認し、変化した場合は`source changed during execution`で候補を拒否します。bytesを書き換えて元に戻す操作（D1→D2→D1）は、更新時刻の変化で検出します。caseごとの`execution.sourceDigest`に、そのcaseの直前に読んだsnapshotのdigestを残します。
+
+これは検出であり、隔離ではありません。同じOS権限を持つprocessが更新時刻まで戻した場合は検出できません。interpreterが実際に読んだbytesのOS上の観測、scriptが`import`/`require`する依存、環境変数、複数fileのGo候補で宣言source以外のfile、Javaのbuild入力は対象外です。snapshotには宣言sourceの1 fileだけを置くため、候補directoryの別fileを相対importするscriptは実行に失敗します。生成AIが見た入力全体の完全性や、OS・networkの隔離を証明しません。
 
 caseごとの `execution.measurement` に、実行呼出し直前から終了待ち・入出力の完了までの経過時間 `elapsedNanos`、OSのprocess stateから取得した `userCpuNanos` と `systemCpuNanos` を記録します。単位はいずれもnanosecondです。build・処理系検出・終了後のJSON検証はこの経過時間に含めません。`goos`、`goarch`、`harnessGoVersion` は参照実行器の環境を示します。候補のsource/binary digestと処理系・buildの証拠は既存の項目に残します。
 
