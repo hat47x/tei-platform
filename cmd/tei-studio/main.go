@@ -45,6 +45,24 @@ func (b *StudioBridge) ObserveXead(workspaceID, relativePath string) studiohost.
 	return b.host.ObserveXead(workspaceID, relativePath)
 }
 
+// OpenShoDocument relays a draft the TEI projection produced into the real SHO
+// document CLI and returns the document state it reports. The Studio does not
+// edit, save or interpret the document: it shows what the consumer's own tool
+// said. Save is deliberately absent from this surface.
+func (b *StudioBridge) OpenShoDocument(draftPath, documentPath string) StudioShoDocumentResponse {
+	return studioShoDocumentFromEnvironment().Run(StudioShoDocumentRequest{
+		Operation: "open", DraftPath: draftPath, DocumentPath: documentPath,
+	})
+}
+
+// ResumeShoDocument reads a saved document's state back through the real SHO
+// document CLI.
+func (b *StudioBridge) ResumeShoDocument(documentPath string) StudioShoDocumentResponse {
+	return studioShoDocumentFromEnvironment().Run(StudioShoDocumentRequest{
+		Operation: "resume", DocumentPath: documentPath,
+	})
+}
+
 func main() {
 	var paths workspaces
 	var port int

@@ -20,12 +20,13 @@
 | SHO側の消費・編集・保存・再開 | SHO PR #36、17試験PASS・merge後スイート127 PASS/0 FAIL |
 | SHO側のローカル相互ランナー・入出力契約試験・部品境界文書 | SHO PR #36、相互ランナー実PASS |
 | **相互CI（同一Attempt）** | SHO repository の [sho-tei-draft-roundtrip.yml](https://github.com/hat47x/sho-composer/blob/feat/tei-document-draft-core-20261111/.github/workflows/sho-tei-draft-roundtrip.yml) が **success**（run 42995269509・artifact に receipt） |
+| **Studio 側の部品境界（子プロセス relay）** | `cmd/tei-studio/sho_document.go`。stub 8試験＋実CLI結合1試験PASS |
 | 相互実証（合成Workspace・同一端末） | PR本文の記録 |
 
 | 未実装 | この文書の段階 |
 | --- | --- |
 | 三要素分析図（Data/Function/Business） | 段階3（`internal/threeelement` は [PR #4283](https://github.com/hat47x/tei-platform/pull/4283) OPEN） |
-| TEI Studio実組込み | 横断C-2 |
+| 子プロセス vs Wails資産のA/B測定 | 横断C-2（数値目標を先に決めない） |
 | 文書→モデルの逆方向経路 | 横断C-3（経路は作らない） |
 | `*.tei.md` のTEI側取込み | 横断C-5（Parser未束綝でブロック） |
 | 再投影のマージ方針 | 横断C-4（Owner判断ゲート） |
@@ -102,8 +103,9 @@
 - **依存**：A/B測定（子プロセス起動／Wails資産への静的組込み／外部プロセス）。**測定なしに形態を決めない**。
 - **最小実装**：`cmd/tei-studio` に**限定read-onlyの試作面**を1つ追加し、`bin/sho-doc.cjs` を子プロセスとして起動してopen/resumeだけを行う（保存は明示操作）。起動・標準入出力・失敗分類・Port認可を観測する。
 - **独立Expected**：C2-a Studio起動でdraft open→resumeが通り、生成領域が`intact`。C2-b SHO不在・版不一致・起動失敗を区別し、Studioが沈まない。C2-c Studioは意味を解釈しない（表示はDraftの文字列をそのまま）。C2-d 保存はStudio側から行わない（SHOの明示操作のみ）。
+- **実装状況（2026-11-11）**：`cmd/tei-studio/sho_document.go` に子プロセス起動のrelayを実装。`SHO_DOC_COMMAND`（絶対Path・**設定であり探索ではない**）を指して`open`/`resume`を呼ぶ。receiptは**解釈せずそのまま`result`として返す**。失敗codeは `sho-not-configured`・`sho-invalid-argument`・`sho-spawn-failed`・`sho-timeout`・`sho-nonzero-exit`・`sho-receipt-unreadable` の6種。**`save`は公開しない**。C2-a〜dは試験でPASS（stub 8件＋実CLI結合1件・通常CIはskip）。
 - **Done means**：C2-a〜dが記録され、組込み形態の選択根拠（起動時間・失敗分類・配布）が文書化される。
-- **非目標**：Studio製品化・共通Host・SHO全Pluginの自動ロード。
+- **非目標**：Studio製品化・共通Host・SHO全Pluginの自動ロード。**子プロセス vs Wails資産のA/B測定は未実施**（数値目標を先に決めない）。
 
 ### C-3 逆方向（文書→モデル）の経路は作らない
 
@@ -147,8 +149,8 @@
 
 ## 7. 最初の3手（次実装者が最初にやること）
 
-1. **C-2（TEI Studio実組込み）** — 相互CIの証跡が出て、部品境界（[起動契約](https://github.com/hat47x/sho-composer/blob/feat/tei-document-draft-core-20261111/docs/sho-doc-component-boundary-2026-11.md)）が安定した。子プロセス／Wails資産のA/B測定をする。
-2. **C-4（再投影方針）のOwner判断起案** — 実装より先に判断。
+1. **C-2 のA/B測定** — 子プロセス起動／Wails資産／外部プロセスの起動時間・失敗分類・配布を実測する。数値目標を先に決めず、測定してから形態を選ぶ。
+2. **C-4（再投影方針）のOwner判断起案** — 実装より先に判断。受入条件がこれに依存する。
 3. **段階3（`three-element-diagram`）** — [PR #4283](https://github.com/hat47x/tei-platform/pull/4283) の統合後に入力契約（`model.inputKind`）を決める。統合前に着手しない。
 
 C-3は全段階で常に維持。C-5はParser（[#3346](https://github.com/hat47x/tei-platform/issues/3346)）の完了待ちで、**着手しない**。
