@@ -29,13 +29,21 @@
 - exit 0、出力33,578 bytes、SHA-256 `491e2e44b8ace539aa2c217c6e1aa3dcbb83d24336ff70b20bd02fbc95b69ca7`。
 - 上記は本記録の捕捉fixture（`rea-6.7.0/view.jsonl`）と**byte単位で一致**した。派生が決定的で、実工具が受諾したことの両方が確認できる。
 
+## 再現可能な検証体制
+
+`plan/fixtures/rea-external-evidence/verify_real_rea_intake.py` が同じ検証を再実行する（[README](../../fixtures/rea-external-evidence/README.md)）。
+
+- **fixtureモード**（工具なし環境）: 捕捉bytesで受領・検査・派生・投影を検証。6.7.0/6.8.0の2チェックPASS、live partsはNOT RUN。
+- **realモード**（工具あり環境）: 6.7.0/6.8.0それぞれでfresh bytesの解析・view投影・負例2種（受理しない`source.kind`・応答包装をEvidence本体として渡す）を実走し、受領・検査・投影を検証。各3チェックPASS。捕捉bytesのdigestを実行記録に残す。
+- CI: `.github/workflows/rea-external-evidence-intake.yml`（Go契約lane＋実工具lane、実行記録をartifact）。**CI上での実行は未取得**。
+
 ## この記録が主張しないこと
 
 - 解析結果の正しさ。fixtureは合成で、対象は実アプリではない。
 - 6.7.0/6.8.0以外の版のふるまい。
 - TEIモデル・SHO文書・旧新比較・Owner Meaning受理への接続（すべてNOT RUN）。
-- 実CIでの再現（workflowは追加していない）。
+- 実CIでの再現。workflowは追加したが、CI上での実行記録は未取得。
 
 ## 未実行
 
-- `cmd/tei`全試験、Repository Health全項目、CI workflow、実アプリ対象での受領、T1-A/T1-B/T2。
+- CI上での実行、実アプリ対象での受領、T1-B（`*.tei.md`正式Reader）・T2（SHO Writer・旧新比較）・Owner Meaning受理・実DB観測。`cmd/tei`全試験とRepository Health全項目は別途実行済み（full suite PASS）。
