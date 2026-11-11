@@ -58,6 +58,7 @@ var acceptedCommands = []string{
 	"self-build",
 	"solution-release-graph",
 	"source-index",
+	"three-element",
 	"trace",
 	"validate",
 	"version",
