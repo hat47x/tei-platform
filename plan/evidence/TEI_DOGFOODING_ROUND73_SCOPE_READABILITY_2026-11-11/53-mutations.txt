@@ -1,0 +1,5 @@
+M1 never populate readableWithoutSection
+   -> FAIL "database" is accepted by inspect but was not listed as readable
+M2 list a covered kind (application) as readable
+   -> FAIL "application" is readable but is not in notCoveredKinds
+restored -> operations ok; vet and gofmt clean

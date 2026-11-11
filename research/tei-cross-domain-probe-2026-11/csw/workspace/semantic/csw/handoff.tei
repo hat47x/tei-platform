@@ -1,0 +1,104 @@
+namespace csw
+
+type HandoffId from std.identifier
+type Sha256 from std.text
+
+// The label a human gives a fragment. TEI stores the declared label; it does
+// not derive one from the fragment body. The four values are the four
+// distinctions skills/cultural-substrate-weaving/SKILL.md asks the author to
+// keep: what the material already said, what a cultural system produced, what
+// the contact between the two newly produced, and what the author decided.
+// "仮説", "問い" and "比較結果" are deliberately not values: turning them into
+// labels would fix exploratory material into a settled category.
+type Attribution from std.code values {
+    "source_material"
+    "generated_proposal"
+    "contact_reading"
+    "author_stated"
+}
+
+type DecisionKind from std.code values { "adopt" "reject" "hold" "unresolved" }
+
+// A material that was actually handed to a run. contentSha256 identifies the
+// exact bytes of the fixed input, not a summary of their meaning.
+data StudyInput {
+    attribute inputId type csw.handoff_id required immutable
+    attribute sourceRevision type std.text required
+    attribute contentSha256 type csw.sha256 required
+    attribute ordinal type std.integer required
+}
+
+// One independent run. modelRef and harnessRef are self-declared identifiers,
+// and independentContext is the author's declaration about the run, not a
+// property TEI can observe.
+data StudyRun {
+    attribute runId type csw.handoff_id required immutable
+    attribute modelRef type std.text required
+    attribute harnessRef type std.text
+    attribute independentContext type std.boolean required
+    attribute startedAt type std.datetime required
+    relation fragments to csw.candidate_fragment many
+}
+
+// A fragment the author chose to hand off. The body itself stays outside the
+// typed boundary; only its identity, hash, reference and declared attribution
+// are modeled.
+data CandidateFragment {
+    attribute fragmentId type csw.handoff_id required immutable
+    attribute studyInputId type csw.handoff_id required immutable
+    attribute runId type csw.handoff_id required immutable
+    attribute ordinal type std.integer required
+    attribute attribution type csw.attribution required
+    attribute bodySha256 type csw.sha256 required
+    attribute bodyRef type std.text required
+    relation study to csw.study_input one
+        key csw.candidate_fragment.study_input_id -> csw.study_input.input_id
+    relation run to csw.study_run one
+        key csw.candidate_fragment.run_id -> csw.study_run.run_id
+}
+
+// An author decision. The author reference and the decision time are required
+// so that a decision cannot be recorded as if a process had made it.
+data AuthorDecision {
+    attribute decisionId type csw.handoff_id required immutable
+    attribute fragmentId type csw.handoff_id required immutable
+    attribute decision type csw.decision_kind required
+    attribute authorRef type std.text required
+    attribute decidedAt type std.datetime required
+    attribute rationaleSha256 type csw.sha256
+    relation fragment to csw.candidate_fragment one
+        key csw.author_decision.fragment_id -> csw.candidate_fragment.fragment_id
+}
+
+capability csw.handoff.record_input {
+    input study_input csw.study_input
+    output csw.study_input
+    effect create csw.study_input
+}
+
+capability csw.handoff.record_run {
+    input study_run csw.study_run
+    output csw.study_run
+    effect create csw.study_run
+}
+
+capability csw.handoff.record_fragment {
+    input candidate_fragment csw.candidate_fragment
+    output csw.candidate_fragment
+    effect create csw.candidate_fragment
+}
+
+capability csw.handoff.record_decision {
+    input author_decision csw.author_decision
+    output csw.author_decision
+    effect create csw.author_decision
+}
+
+validation csw.candidate_fragment.ordinal_positive positive {
+    attribute csw.candidate_fragment.ordinal
+}
+
+validation csw.study_run.fragments.ordinal_unique relation-unique {
+    relation csw.study_run.fragments
+    attribute csw.candidate_fragment.ordinal
+}

@@ -1,0 +1,20 @@
+ModelSectionScope gained:
+
+  readableWithoutSection []string
+
+computed by reading the SAME list the CLI advertises (operations.InspectionSubjectKinds),
+so the two answers cannot drift:
+
+  for _, kind := range notCovered {
+      if supportedInspectionKind(kind) { readable = append(readable, kind) }
+  }
+
+Measured on the reference workspace:
+
+  readableWithoutSection: database, persistence-mapping, migration,
+    application-release, database-release, solution-release, environment   (7 of 14)
+  no CLI reader: plugin, bundle, migration-provider, custom-go-binding,
+    header-detail-contract-query-binding, contract-query-executor-binding,
+    contract-query-sql-realization                                          (7 of 14)
+
+The help text now says a missing section never means a missing declaration.

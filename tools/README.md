@@ -30,7 +30,9 @@
 | [`reference-cli-trace-benchmark/`](reference-cli-trace-benchmark/) | 合成Workspaceによるtraceの処理段別の時間・メモリ計測と出力不変の確認 |
 | [`reference-mcp-readonly-adapter/`](reference-mcp-readonly-adapter/) | 既存の読み取り操作（model catalog・inspect・trace・validate）をMCPのtoolとして公開する参照Adapter。Workspaceは起動時に固定し、CLIと同じ `internal/operations` を呼ぶ（#3400） |
 | [`reference-change-packet/`](reference-change-packet/) | 変更範囲・危険度・検証・停止条件をJSONで宣言し、範囲確認と検証実行・証拠記録を行う参照（#2017） |
+| [`reference-cache-full-vs-incremental-verification/`](reference-cache-full-vs-incremental-verification/) | キャッシュ・増分処理の結果が全体処理と一致するかをread-onlyで照合し、差分の入力・依存・キャッシュ項目・成果物を示す参照 |
 | [`reference-okf-k1/`](reference-okf-k1/) | OKF v0.2のK1合成Bundle(`testdata/okf-k1-v02/`)を、固定した上流Reference Readerと実SHO G1b CLIで読むtest-onlyの限定Witness。製品Reader・F0全適合・Owner受理ではない（[#4143](https://github.com/hat47x/tei-platform/issues/4143)） |
+| [`reference-tei-md-p1b-check/`](reference-tei-md-p1b-check/) | `*.tei.md` ドメイン図表サンプルのP1-B read-only受入条件（B-1〜B-5）を機械確認する参照。宣言Source Root外にあること、Markdown保全、図表Subjectと意味Sourceの対応、Raw Draft境界、合成draft宣言を見る。実Source消費・Meaning受理・Build資格・Host Grantは証明しない（[設計§2.2](../plan/design/TEI_MD_DOMAIN_DIAGRAM_TO_BUILD_IMPLEMENTATION_GUIDE_2026-11.md)） |
 | [`reference-generator-selection/`](reference-generator-selection/) | 受理済み契約に対する生成器候補を固定fixtureで比較し、source/binary digest、実行言語・runtime、Go/Java/WASM/WASIのsource path非依存な反復build一致、case実行のexit/stderr digestと結果をreceiptへ残す参照。Go・Python・JavaScript・Java・WASM・WASI、long-running候補、registryの版・置換・失効も確認する（#2016 / #2077） |
 | [`reference-generator-attestation/`](reference-generator-attestation/) | 選抜receiptから候補のcanonical statementを作り、ssh-keygenの署名で改変を検出する参照。署名者のAuthority・trust rootは検証しない（#2016） |
 | [`reference-generator-artifact-store/`](reference-generator-artifact-store/) | 選抜receiptのGo/Java/WASM/WASI候補source/binaryとPython/JavaScript候補sourceをsource digestでcontent-addressedに保存・取得し、再計算digestで改変を拒否し、receipt/listで言語を返す参照。明示keep setによるlist/prune、成功pruneのhash-chain audit log、ssh-keygenで署名できるaudit checkpointと、署名・store一致を併せて検証するcheckpoint再検証も持つ（#2016） |
@@ -252,6 +254,7 @@
 | [`reference-subsystem-partition/`](reference-subsystem-partition/) | 候補として与えた固定Data Owner・直接C/U/D・所属許可・must-linkだけを対象に、越境更新重みの厳密最小値を読取り専用で算出する参照。実Sourceの受理済み所有関係・開示資格・Effectは判定しない（#3250）。 |
 | [`reference-sui-action-boundary/`](reference-sui-action-boundary/) | SUIの操作とTEI Actionの接続例 |
 | [`reference-sui-adoption/`](reference-sui-adoption/) | SUI移行の参照データと検査 |
+| [`reference-sui-canonical-probe/`](reference-sui-canonical-probe/) | SUIの意味構造を `.tei` で宣言したときの解決結果と、宣言しない損失を read-only で報告する probe（M2） |
 | [`reference-sui-interaction/`](reference-sui-interaction/) | 画面操作とApplication Actionの接続例 |
 | [`reference-trait-fulfillment/`](reference-trait-fulfillment/) | 原子的Traitの実装義務（`manual-required`／`provided`／`advisory`）の履行を、既存のContract・Provider選択・Inspectorの実呼出し観測から判定する読取り専用の参照。未充足と未確認を読込みの完全性で分ける（#3279） |
 | [`reference-transform-runtime-engine/`](reference-transform-runtime-engine/) | 決定的な変換処理の実行例 |
@@ -313,6 +316,7 @@ R7Bの一回限りの準備・公開・後処理を行うスクリプトは、�
 | [`reference-self-build-two-stage/`](reference-self-build-two-stage/) | stage1で作った実行ファイルをstage2のinvokerとして実起動し、invoker一致・同一レシピ・artifact一致を別々に判定する。Seed Trust・受入・権限は扱わない（#2831 SB-C1） |
 | [`reference-harness-wire-summary/`](reference-harness-wire-summary/) | 外部AIハーネスがMock Providerへ送ったHTTP要求bodyを、モデル入力と拡張field（`dsh_session_log`）を別欄で要約する参照。bodyのbyte数・SHA-256・最上位キー・event種別・水位・合成markerの出現位置を出し、既存の出力を上書きしない。送出の許可・実OS隔離・Provider側の保存は判定しない（#2515 P0-b / #2509） |
 | [`reference-harness-answer-presence/`](reference-harness-answer-presence/) | 外部Harnessの回答が、同じ実行物のCLI応答に現れた事実（属性ID・型・記号、関係、Source path・digest、World指紋、診断コード）を含むかを機械的に確かめる参照。正答の採点はせず、Reviewer-onlyの独立Expectedを置き換えない（#2509 / TAI #168） |
+| [`dsh-session-evidence/`](dsh-session-evidence/) | 外部AIハーネス（DSH）のH2 Tool-only／H3 Product Skill比較試験で、参加者Rootの構築・検証済みslot同期・1 Sessionの完全な起動証拠（CLI・引数・cwd・exit・stdout/stderr・Session ID・usage）・永続Session Logの全zstd frame展開とTool call↔result相関・TEI argv分類・Skill Tool記録・trial-group JSON組み立てを行う。合成fixtureの独立回帰テスト付き。正答・Skill効果・OS/Network強制は評価しない（#2509 / TAI #168） |
 | [`reference-hash-id/`](reference-hash-id/) | （追記） |
 
 

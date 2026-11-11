@@ -30,6 +30,7 @@ const capabilityInput = document.querySelector("#command-capability");
 const commandInputs = document.querySelector("#command-inputs");
 const commandPeriods = document.querySelector("#command-periods");
 const commandAllowed = document.querySelector("#command-allowed");
+const commandReferenceStore = document.querySelector("#command-reference-store");
 const planCommandButton = document.querySelector("#plan-command");
 const executeCommandButton = document.querySelector("#execute-command");
 const commandState = document.querySelector("#command-state");
@@ -237,7 +238,14 @@ observeButton.addEventListener("click", async () => {
 });
 viewApplicationButton.addEventListener("click", () => runView("application", (id) => api.viewApplication(id, applicationInput.value.trim())));
 planCommandButton.addEventListener("click", () => runCommand("plan", (id) => api.planCommand(id, applicationInput.value.trim(), patternInput.value.trim(), capabilityInput.value.trim(), parseInputs(commandInputs.value))));
-executeCommandButton.addEventListener("click", () => runCommand("execute", (id) => api.executeCommandWithPolicy(id, applicationInput.value.trim(), patternInput.value.trim(), capabilityInput.value.trim(), parseInputs(commandInputs.value), parseInputs(commandPeriods.value), commandAllowed.value.split(",").map((item) => item.trim()).filter(Boolean))));
+executeCommandButton.addEventListener("click", () => runCommand("execute", (id) => {
+  const args = [id, applicationInput.value.trim(), patternInput.value.trim(), capabilityInput.value.trim(), parseInputs(commandInputs.value), parseInputs(commandPeriods.value), commandAllowed.value.split(",").map((item) => item.trim()).filter(Boolean)];
+  // Applying the effect to the in-memory store is what lets the after-change
+  // phases run; without it those phases are reported as skipped. The store is
+  // dropped at the end of the call and the response says it is not persisted.
+  if (commandReferenceStore.checked) return api.executeCommandWithReferenceStore(...args);
+  return api.executeCommandWithPolicy(...args);
+}));
 viewPatternButton.addEventListener("click", () => runView("pattern", (id) => api.viewPattern(id, applicationInput.value.trim(), patternInput.value.trim())));
 viewPackageButton.addEventListener("click", () => runView("package", (id) => api.viewPackage(id, applicationInput.value.trim(), packageInput.value.trim())));
 for (const action of actions) {

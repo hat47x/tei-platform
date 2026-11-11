@@ -13,6 +13,8 @@
 
 `docs/`とは役割を分けます。`docs/`では実装済みの構成と利用方法を説明し、ここでは採用前の案や変更に必要な機能設計を扱います。実装状況が変わった場合は、この設計文書を現行構成の説明に流用せず、`docs/architecture.md`を更新します。
 
+- [重要Issueの実装仕様：確定結果・再送・操作契約の発見](CRITICAL_HEADLESS_ISSUE_IMPLEMENTATION_SPEC_2026-11.md)（#1174/#2564/#3419の設計候補。実装・受入完了ではない）
+
 ## 体裁
 
 新しい文書は[`docs/README.md`](../../docs/README.md)の「設計文書の基本体裁」に沿って作ります。冒頭で文書の役割、正本との関係、対象範囲、現在の結論、根拠、何を主張しないかを明らかにします。形式上の項目を埋めること自体を目的にはしません。
@@ -22,6 +24,8 @@
 ここで示すのは**文書の性格**です。Issueの進行状況、判定段階の結果、実際に得られた検証根拠など、変化する状況は対応するIssue、`docs/status.md`、判定段階の監査記録などを正本とします。設計文書の状態欄には重複して記載しません。
 
 ## 一覧
+
+設計文書の一覧です。文書の状態は各設計文書の冒頭に記し、その文書自身を状態の正本とします。
 
 | 文書 | 対象 |
 | --- | --- |
@@ -33,6 +37,7 @@
 | [`COMMAND_BOUNDARY_SAFETY_2026-11.md`](COMMAND_BOUNDARY_SAFETY_2026-11.md) | Command境界の未設定認可・期間状態の拒否、宣言外効果をunknownとして記録する判断と、参照実行の明示的認可（[#2996](https://github.com/hat47x/tei-platform/issues/2996)、[#2997](https://github.com/hat47x/tei-platform/issues/2997)、参照実装） |
 | [`EVERYTHING_DATA_MARKDOWN_SOURCE_FIDELITY_2026-11.md`](EVERYTHING_DATA_MARKDOWN_SOURCE_FIDELITY_2026-11.md) | Markdownの元シンタックスシュガーと書式・Source occurrenceを保存で保持する契約、局所Patch・競合・往復受入 |
 | [`PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md`](PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md) | CLI／Studioの限定read-only OperationからApplication Runtimeまで同一Plugin契約を再利用する実装検証計画（#1251・#951） |
+| [`REA_THREE_ELEMENT_CANDIDATE_INTAKE_2026-11.md`](REA_THREE_ELEMENT_CANDIDATE_INTAKE_2026-11.md) | REA同一Attemptの外部Observation/有向RelationからData/Function/Business構造候補を作り、意味受理前にレビューする読み取り専用の取り込み（[#3394](https://github.com/hat47x/tei-platform/issues/3394)、実装は候補抽出まで） |
 | [`ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md`](ISSUE_TO_DESIGN_DOGFOOD_MVP_2026-11.md) | Issue→Design Context→Scenario/独立Expected→実CLIを通してMVPのCLI/CUI・Skill・Coverageを検収する計画（[#3273](https://github.com/hat47x/tei-platform/issues/3273)） |
 | [`TEI_PRODUCT_SKILL_HARNESS_BINDING_2026-11.md`](TEI_PRODUCT_SKILL_HARNESS_BINDING_2026-11.md) | TEI read-only Product Skillを既存CLIへ正確に結び、外部Harness/Consumerの受理・許可・開示・実実行と分ける設計候補（[#2605](https://github.com/hat47x/tei-platform/issues/2605)、未採用） |
 | [`TEI_MEANING_TO_CAPABILITY_SKILL_WITNESS_2026-11.md`](TEI_MEANING_TO_CAPABILITY_SKILL_WITNESS_2026-11.md) | Everything is Dataの意味Role→標準Operation→限定CLI発見→Product Skill/Harness→実Host/SHO受渡しの資格差とSource-static・合成検証（#2619/#2605/#2614、未採用） |
@@ -158,12 +163,15 @@
 | [`FUNCTION_DATA_CONTEXT_PATTERN_PRESSURE_2026-11.md`](FUNCTION_DATA_CONTEXT_PATTERN_PRESSURE_2026-11.md) | Function Data Contextと機能パターンの横断設計・圧力試験（2026-11） |
 | [`JAVA_LIBRARY_PORTABLE_CONSUMER_AND_STORE_GATES_2026-10.md`](JAVA_LIBRARY_PORTABLE_CONSUMER_AND_STORE_GATES_2026-10.md) | Java Libraryの外部Consumer・Artifact Store受入計画（2026-10-30） |
 | [`ORGANIZATION_RELATION_GOVERNANCE_MODEL_2026-10.md`](ORGANIZATION_RELATION_GOVERNANCE_MODEL_2026-10.md) | 組織関係・時点・統制の標準意味モデル：横断設計と最小検証計画 |
+| [`ORGANIZATION_STAGED_MODELING_PLAN_2026-11.md`](ORGANIZATION_STAGED_MODELING_PLAN_2026-11.md) | 高度組織モデリングの段階計画：5段階の基本設計（Identity・Relation・Cardinality・Time・Validation・Query・表示形式）と作業単位WU-01〜14（[#2386](https://github.com/hat47x/tei-platform/issues/2386)、設計・未受理） |
 | [`DSL_NEUTRAL_UNICODE_AUTHORING_AND_SAFE_AI_2026-11.md`](DSL_NEUTRAL_UNICODE_AUTHORING_AND_SAFE_AI_2026-11.md) | TEI DSL：グローバル共通構文・Unicode表層名・Studio表示・AI入力安全性の統合計画（2026-11-03） |
 | [`ETL_ELT_MFT_CROSSBOUNDARY_CONTRACT_PRESSURE_2026-11.md`](ETL_ELT_MFT_CROSSBOUNDARY_CONTRACT_PRESSURE_2026-11.md) | ETL/ELT・MFT/ファイルリレー横断契約の圧力試験（設計候補・2026-11-04） |
 | [`PLUGIN_REALIZATION_AND_OPTIMIZATION_REQUIREMENTS_2026-11.md`](PLUGIN_REALIZATION_AND_OPTIMIZATION_REQUIREMENTS_2026-11.md) | Plugin機能の実現・安全な最適化に必要な契約（2026-11-06、設計/要件候補） |
 | [`SCRIPT_INVOCATION_FAILURE_AND_RECOVERY_DESIGN_2026-11.md`](SCRIPT_INVOCATION_FAILURE_AND_RECOVERY_DESIGN_2026-11.md) | Script起動の失敗状態・再実行・回復設計（2026-11） |
 | [`SEMANTIC_TRAIT_CLAIMS_AND_CONFORMANCE_2026-11.md`](SEMANTIC_TRAIT_CLAIMS_AND_CONFORMANCE_2026-11.md) | 意味的特性の宣言・観測・適合：閉値域／MECE／属性同一性の横断設計（2026-11） |
 | [`TEI_MD_UNIFIED_AUTHORING_MIGRATION_2026-11.md`](TEI_MD_UNIFIED_AUTHORING_MIGRATION_2026-11.md) | TEI Authoring Source を .tei.md へ統一する段階移行計画 |
+| [`TEI_MD_DOMAIN_DIAGRAM_TO_BUILD_LOWERING_2026-11.md`](TEI_MD_DOMAIN_DIAGRAM_TO_BUILD_LOWERING_2026-11.md) | *.tei.md ドメイン知識の図表表現からコード生成・ビルドへ到る縦断設計（設計候補、2026-11-11） |
+| [`TEI_MD_DOMAIN_DIAGRAM_TO_BUILD_IMPLEMENTATION_GUIDE_2026-11.md`](TEI_MD_DOMAIN_DIAGRAM_TO_BUILD_IMPLEMENTATION_GUIDE_2026-11.md) | *.tei.md ドメイン図表→Build 実装導線（P0-A成立後、P1-B〜P3-Dの受入・依存Owner・再利用Fixture） |
 | [`TEI_SHO_OKF_DOMAIN_LINT_DOCUMENT_UNIT_2026-11.md`](TEI_SHO_OKF_DOMAIN_LINT_DOCUMENT_UNIT_2026-11.md) | TEI/SHOのOKF知識バンドルとドメインLint：段階導入の検証計画 |
 
 ## 関連する参照事例と評価
@@ -345,3 +353,4 @@ S1 realistic intent / candidate frontier
 設計文書はIssueやADRの代わりにはなりません。作業の進行状況はIssue、採用した設計判断はADRを正本とします。ここには、それらの記録だけでは一つにまとまらない、機能単位の設計本文を置きます。小さな機能については新たな文書を作らず、Issue本文に記します。
 
 `docs/`とは役割を分けます。`docs/`では実装済みの構成と利用方法を説明し、ここでは採用前の案や変更に必要な機能設計を扱います。実装状況が変わった場合は、この設計文書を現行構成の説明に流用せず、`docs/architecture.md`を更新します。
+- [設計書から実行結果までをつなぐ製品設計](PRODUCT_COMPLETION_DESIGN.md)
