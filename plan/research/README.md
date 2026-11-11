@@ -24,3 +24,4 @@
 - [X-TEA（XEAD）のローコード機構に関する知識目録（2026年11月）](XTEA_LOWCODE_KNOWLEDGE_INVENTORY_2026-11.md)
 - [空集合と業務完了の意味（2026年11月）](EMPTY_SET_COMPLETION_SEMANTICS_2026-11.md)：全称条件の空集合（vacuous truth）とLeanでの扱いを、業務類型・EmptyPolicyとの関係で整理する調査ノート。採用判断ではありません。
 - [TEI × SEI：ローカルCPU認知による実装再利用・標準部品化候補の研究](LOCAL_CPU_COMPONENT_REUSE.md)：研究仮説。未実装で、製品への採用は決まっていません。
+- [TEIの汎用モデリング能力を業務外領域で確かめる限定実証（CSW・VSクマ）](TEI_CROSS_DOMAIN_PROBE_CSW_VS_BEAR_2026-11.md)：CSWとVSクマを独立対象にした研究・比較・read-only probe。製品アーキテクチャを変更せず、採用判断も行っていません。

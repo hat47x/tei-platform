@@ -1,0 +1,59 @@
+namespace bear
+
+type EpisodeId from std.integer
+type RequestId from std.integer
+type ObservationVersion from std.code values { "typed-observation@1.1.0" }
+type CognitionMode from std.code values { "tracking" "remembering" "searching" "unaware" }
+type ObstacleMode from std.code values { "clear" "avoid_front" "clearance_check" "unknown" }
+type RecoveryState from std.code values { "IDLE" "WALL_FOLLOW" "ENTER_TRAVERSABLE" "CLEARING" "unknown" }
+
+// The observation boundary that the runtime already encodes. This declaration
+// records names, units and enumerated modes; the numeric ranges, finiteness
+// and 100/250 ms windows stay in the GDScript contract.
+data TypedObservation {
+    attribute schemaVersion type bear.observation_version required
+    attribute episodeId type bear.episode_id required immutable
+    attribute requestId type bear.request_id required immutable
+    attribute observedAtS type std.decimal required
+    attribute targetVisible type std.boolean required
+    attribute bearingRad type std.decimal
+    attribute bearingRateRadS type std.decimal
+    attribute distanceM type std.decimal
+    attribute speedMps type std.decimal
+    attribute slip type std.decimal
+    attribute support type std.decimal
+    attribute obstacleFront type std.decimal
+    attribute touch type std.decimal
+    attribute grip type std.decimal
+    attribute previousSpeedMps type std.decimal
+    attribute driveShortfallMps type std.decimal
+    attribute cognitionMode type bear.cognition_mode required
+    attribute memoryAgeS type std.decimal
+    attribute uncertaintyM type std.decimal
+    attribute predictionConfidence type std.decimal
+    attribute reacquisitions type std.integer
+    attribute obstacleNegotiationMode type bear.obstacle_mode required
+    relation motion to bear.body_motion_sample one
+}
+
+// body-motion-feedback@1.0.0 sample. The runtime treats a missing sample as an
+// empty dictionary; the DSL cannot state "absent" for a relation, so presence
+// is checked by the read-only probe.
+data BodyMotionSample {
+    attribute motionValid type std.boolean required
+    attribute motionEligible type std.boolean required
+    attribute sampleAgeS type std.decimal required
+    attribute bodyTargetSpeedMps type std.decimal
+    attribute attemptedSpeedMps type std.decimal
+    attribute forwardProgressMps type std.decimal
+    attribute appliedYawRateRadS type std.decimal
+    attribute recoveryState type bear.recovery_state required
+    attribute recoveryEpisode type std.integer
+    attribute recoverySide type std.integer
+}
+
+capability bear.cognition.record_observation {
+    input observation bear.typed_observation
+    output bear.typed_observation
+    effect create bear.typed_observation
+}

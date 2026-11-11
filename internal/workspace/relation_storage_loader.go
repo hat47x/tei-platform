@@ -33,19 +33,19 @@ func loadRelationStorageAuthorings(root string, r *Result) error {
 		for i := range r.World.Persistence {
 			if r.World.Persistence[i].ID == authoring.Mapping {
 				if mappingIndex >= 0 {
-					return fmt.Errorf("%s: Persistence Mapping %sがWorld内に複数存在するためRelation Storageを一意に合流できません", path, authoring.Mapping)
+					return fmt.Errorf("%s: Persistence Mapping %s appears more than once in the World, so Relation Storage cannot be merged uniquely", path, authoring.Mapping)
 				}
 				mappingIndex = i
 			}
 		}
 		if mappingIndex < 0 {
-			return fmt.Errorf("%s: Relation Storageの合流先Persistence Mapping %sが見つかりません", path, authoring.Mapping)
+			return fmt.Errorf("%s: Persistence Mapping %s, where Relation Storage is merged, is not found", path, authoring.Mapping)
 		}
 
 		identity := string(authoring.Mapping) + "/" + string(authoring.Storage.Relation)
 		sourceKey := "persistence-relation-storage:" + identity
 		if previous, exists := r.Sources[sourceKey]; exists {
-			return fmt.Errorf("%s: Relation Storage %sは既に%sで定義されています", path, identity, previous.File)
+			return fmt.Errorf("%s: Relation Storage %s is already defined in %s", path, identity, previous.File)
 		}
 
 		r.World.Persistence[mappingIndex].RelationStorage = append(

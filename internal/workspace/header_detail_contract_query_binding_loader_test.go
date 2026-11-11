@@ -84,7 +84,7 @@ func TestLoadHeaderDetailContractQueryBindingsRejectsDuplicateIdentity(t *testin
 
 	result := Result{Sources: map[string]SourceLocation{}, sourceSnapshotRoot: root, sourceSnapshot: map[string][]byte{}}
 	err := loadHeaderDetailContractQueryBindings(root, &result)
-	if err == nil || !strings.Contains(err.Error(), "既に") || !strings.Contains(err.Error(), "order_entry/order_entry.order_lines") {
-		t.Fatalf("同一Application Patternへの複数realization sourceを拒否していません: %v", err)
+	if err == nil || !strings.Contains(err.Error(), "already defined") || !strings.Contains(err.Error(), "order_entry/order_entry.order_lines") {
+		t.Fatalf("multiple realization sources for the same Application Pattern were not rejected: %v", err)
 	}
 }

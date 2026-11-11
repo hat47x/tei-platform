@@ -4167,3 +4167,13 @@ SUI [#3368](https://github.com/hat47x/sui-sensemaking/issues/3368)によれば�
 **最小実証順**：(1) 公開合成Card数件、保留・反証・孤立各一件を同じFixtureで作り、SUIの**実際に許可されたread-only投影**から最小理解パック候補を構成し、実Consumerが受領したもの／欠落したものを確認。(2) TEI既存read-only Operationに対して、Source-backed Mapping Candidateの適合・不足を一往復で判別。L0不足ならSource unknownのまま候補保持。(3) 正式Meaning採否はOwner、実ProviderのOrg C1 Row Scopeは#2586 HJ-09初回Product R0より後の独立実証、Current Grant/Effect/Handoffはさらに後段。初回に正式Relation保存やSUI/CSWの完全Session共有を要求しない。
 
 **Owner**：SUI #3368/#3157/#3275が探索・SafeMode・公開投影、CSWは仮説生成、TEI #2516が用途別Consumer Disclosure、#2386が組織Meaning Mapping、#1124/#3518がModel Map、#1131/#1180/#2514/#1163が既存Fixture/Expected/Attempt、#1174/#2499/#1125/#1444が実Effect/Handoffを担当。ORG-HS-01〜08/ORG-EXT-01〜06との既存交差を再利用し、第二Scenario正本は作らない。**ORG-AGの実試験、外部Tool/実Consumer受信、Owner受理、新TEI Application API、実Org Provider/HostはNOT RUN**。
+
+## 86. 高度組織モデリングの段階計画への接続（2026-11-11・設計・未受理）
+
+本設計の§2（最小形と拡張）、§19（直交概念）、§39〜48（独立Expected）、§58（PolicyとGrantの分離）、§81〜85（承認・代理・表現）は、[高度組織モデリングの段階計画](ORGANIZATION_STAGED_MODELING_PLAN_2026-11.md) において**5段階（基本組織と所属／兼務・複数階層・役職／時点・履歴・遡及訂正／責任・代理・承認との接続／三視点モデル・表示表現・編集）の作業単位 WU-01〜WU-14** として具体化した。意味の正本は本設計と[#2386](https://github.com/hat47x/tei-platform/issues/2386)に置き、段階計画は**実装着手の順序と停止条件**を定義する資料である。
+
+- **成熟した設計判断**（本設計で既に確定しているもの）: 標準Data/Relation/Cardinalityで組織関係を書く、Membership/Occupancy を独立occurrenceとする、単一parent列と全軸への権限継承を強制しない、組織関係からGrant/Effectを生成しない、通常の組織Dataを特別保護しない（[#2510](https://github.com/hat47x/tei-platform/issues/2510) Owner方針）。
+- **提案として分離するもの**（採用判断はADR/Issue）: Validation の新kind（関係循環・期間重複・時点条件）、組織専用のRenderer/Graph Core、Workflow/BPMNランタイム、temporal Engine、独立した認可基盤。これらは段階計画の§8 撤回線に従い、第二正本を作らない。
+- **独立Expectedの継承**: §4 の ORG-EXP-01〜08 は、既存の `reference/org-semantic-views`（ORG-TM/ORG-FO/ORG-QD 等）と `reference/org-headless-workspace` のGo characterization を再利用元とし、**新規は関係の循環（ORG-EXP-06）と代理権限の誤推定（ORG-EXP-08）**のみ。期待値は実装出力から生成しない。
+- **実装順**: WU-01（基本所属の受入票）→ WU-02（型付き複数軸）→ WU-03（三視点Fit/Gap）→ WU-04/05（法人・役職の分離）→ WU-06〜08（時点・as-of・辞令）→ WU-09〜11（承認候補・代理・Workflow境界）→ WU-12/13（Projection損失・編集境界）。WU-14（保護対象の区別）は並列可。
+- **本設計との非重複**: 段階計画は新しい公開契約・業務意味の正式受理・認可境界の変更を行わない。#1126（Entity・Relation・Key）、#2497（Projection）、#2510（Corpus）、#2586/#2506（実Read）、#1174/#2499（現在Grant）、#1124/#1125（三視点）が所有する範囲は各Ownerへ委譲する。

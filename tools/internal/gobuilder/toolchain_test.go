@@ -140,3 +140,34 @@ func TestHashToolchainRejectsMissingRootAndSymlinks(t *testing.T) {
 		t.Fatalf("toolchain closure silently accepted symlink: %v", err)
 	}
 }
+
+// A path the host cannot traverse (a component the OS refuses to resolve) must
+// still select the file when the file is there. The Windows CI runner reports
+// "The system cannot find the path specified" from EvalSymlinks for its own
+// GOROOT, which made both the module-closure preflight and the self-build fail
+// before running (#4276).
+func TestSelectExecutableFallsBackWhenResolutionFails(t *testing.T) {
+	dir := t.TempDir()
+	goPath := filepath.Join(dir, "go-fixture")
+	if err := os.WriteFile(goPath, []byte("exact Go binary fixture"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	got, err := SelectExecutable(goPath, "", "linux")
+	if err != nil {
+		t.Fatalf("an existing file was refused because resolution failed: %v", err)
+	}
+	// Compare the files, not their spellings: the Windows CI runner's temporary
+	// directory is a short name (C:\Users\RUNNER~1\...) whose resolved spelling
+	// differs from the one this test built (#4276).
+	gotInfo, statErr := os.Stat(got)
+	if statErr != nil {
+		t.Fatalf("selected path does not exist: %v", statErr)
+	}
+	wantInfo, statErr := os.Stat(goPath)
+	if statErr != nil {
+		t.Fatal(statErr)
+	}
+	if !os.SameFile(gotInfo, wantInfo) {
+		t.Fatalf("got %q, want the same file as %q", got, goPath)
+	}
+}

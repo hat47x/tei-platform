@@ -31,7 +31,7 @@ func ValidateReferenceContractQueryInvocations(w ir.World) []Diagnostic {
 				out = append(out, errFor(
 					patternSubject,
 					"CONTRACT_QUERY_INVOCATION_REQUIRES_REFERENCE_PATTERN",
-					"Pattern %sは%sですが、Database Contract Query呼び出しはreference Patternでのみ利用できます",
+					"Pattern %s is %s, and a Database Contract Query call is available only on a reference pattern",
 					pattern.ID,
 					pattern.Kind,
 				))
@@ -43,7 +43,7 @@ func ValidateReferenceContractQueryInvocations(w ir.World) []Diagnostic {
 				out = append(out, errFor(
 					patternSubject,
 					"REFERENCE_CONTRACT_QUERY_CONTRACT_REQUIRED",
-					"reference Pattern %sのContract Query呼び出しにはContractが必要です",
+					"a Contract Query call of reference Pattern %s needs Contract",
 					pattern.ID,
 				))
 			} else if _, err := core.ParseCanonicalID(string(invocation.Contract)); err != nil {
@@ -51,7 +51,7 @@ func ValidateReferenceContractQueryInvocations(w ir.World) []Diagnostic {
 				out = append(out, errFor(
 					patternSubject,
 					"INVALID_REFERENCE_CONTRACT_QUERY_CONTRACT",
-					"reference Pattern %sのContract %qは有効なCanonical IDではありません",
+					"Contract %q of reference Pattern %s is not a valid Canonical ID",
 					pattern.ID,
 					invocation.Contract,
 				))
@@ -63,7 +63,7 @@ func ValidateReferenceContractQueryInvocations(w ir.World) []Diagnostic {
 				out = append(out, errFor(
 					patternSubject,
 					"REFERENCE_CONTRACT_QUERY_NAME_REQUIRED",
-					"reference Pattern %sのContract Query呼び出しにはQuery名が必要です",
+					"a Contract Query call of reference Pattern %s needs a Query name",
 					pattern.ID,
 				))
 			} else if _, err := core.ParseLocalName(string(invocation.Query)); err != nil {
@@ -71,7 +71,7 @@ func ValidateReferenceContractQueryInvocations(w ir.World) []Diagnostic {
 				out = append(out, errFor(
 					patternSubject,
 					"INVALID_REFERENCE_CONTRACT_QUERY_NAME",
-					"reference Pattern %sのContract Query名 %qは有効なLocalNameではありません",
+					"the Contract Query name %q of reference Pattern %s is not a valid LocalName",
 					pattern.ID,
 					invocation.Query,
 				))
@@ -81,7 +81,7 @@ func ValidateReferenceContractQueryInvocations(w ir.World) []Diagnostic {
 				out = append(out, errFor(
 					patternSubject,
 					"REFERENCE_CONTRACT_QUERY_DATASOURCE_REQUIRED",
-					"reference Pattern %sでContract Queryを呼び出すにはDatasourceが必要です",
+					"reference Pattern %s needs a Datasource to call a Contract Query",
 					pattern.ID,
 				))
 			} else if datasource, ok := app.DatabaseByAlias(pattern.Datasource); ok && contractValid {
@@ -91,7 +91,7 @@ func ValidateReferenceContractQueryInvocations(w ir.World) []Diagnostic {
 					out = append(out, errFor(
 						patternSubject,
 						"REFERENCE_CONTRACT_QUERY_CONTRACT_NOT_REQUIRED",
-						"reference Pattern %sはDatasource %sからContract %sを呼び出そうとしていますが、このContractはApplicationのrequiresにありません",
+						"reference Pattern %s tries to call Contract %s from Datasource %s, but the Application does not require that Contract",
 						pattern.ID,
 						pattern.Datasource,
 						invocation.Contract,
@@ -111,11 +111,10 @@ func ValidateReferenceContractQueryInvocations(w ir.World) []Diagnostic {
 					out = append(out, errFor(
 						patternSubject,
 						"AMBIGUOUS_REFERENCE_CONTRACT_QUERY_REQUIREMENT",
-						"reference Pattern %sが利用するContract %sのrequiresがDatasource %sに%d件あり、一意に解決できません",
+						"the requires of Contract %s, used by reference Pattern %s, has more than one candidate on Datasource %s and cannot be resolved uniquely",
 						pattern.ID,
 						invocation.Contract,
 						pattern.Datasource,
-						len(requirements),
 					))
 				}
 			}
@@ -127,7 +126,7 @@ func ValidateReferenceContractQueryInvocations(w ir.World) []Diagnostic {
 					out = append(out, errFor(
 						patternSubject,
 						"REFERENCE_CONTRACT_QUERY_TARGET_ATTRIBUTE_REQUIRED",
-						"reference Pattern %sのContract Query input bindingにはtarget attributeが必要です",
+						"a Contract Query input binding of reference Pattern %s needs a target attribute",
 						pattern.ID,
 					))
 				} else {
@@ -135,7 +134,7 @@ func ValidateReferenceContractQueryInvocations(w ir.World) []Diagnostic {
 						out = append(out, errFor(
 							patternSubject,
 							"DUPLICATE_REFERENCE_CONTRACT_QUERY_TARGET_ATTRIBUTE",
-							"reference Pattern %sではtarget attribute %sが複数のContract Query input bindingに使われています",
+							"reference Pattern %s uses target attribute %s in more than one Contract Query input binding",
 							pattern.ID,
 							binding.TargetAttribute,
 						))
@@ -148,7 +147,7 @@ func ValidateReferenceContractQueryInvocations(w ir.World) []Diagnostic {
 					out = append(out, errFor(
 						patternSubject,
 						"REFERENCE_CONTRACT_QUERY_INPUT_REQUIRED",
-						"reference Pattern %sのContract Query input bindingにはinput名が必要です",
+						"a Contract Query input binding of reference Pattern %s needs an input name",
 						pattern.ID,
 					))
 					continue
@@ -157,7 +156,7 @@ func ValidateReferenceContractQueryInvocations(w ir.World) []Diagnostic {
 					out = append(out, errFor(
 						patternSubject,
 						"INVALID_REFERENCE_CONTRACT_QUERY_INPUT",
-						"reference Pattern %sのContract Query input名 %qは有効なLocalNameではありません",
+						"the Contract Query input name %q of reference Pattern %s is not a valid LocalName",
 						pattern.ID,
 						binding.Input,
 					))
@@ -166,7 +165,7 @@ func ValidateReferenceContractQueryInvocations(w ir.World) []Diagnostic {
 					out = append(out, errFor(
 						patternSubject,
 						"DUPLICATE_REFERENCE_CONTRACT_QUERY_INPUT",
-						"reference Pattern %sではContract Query input %sが複数のbindingで使われています",
+						"reference Pattern %s uses Contract Query input %s in more than one binding",
 						pattern.ID,
 						binding.Input,
 					))
@@ -213,7 +212,7 @@ func validateReferenceContractQueryTarget(
 		return []Diagnostic{errFor(
 			patternSubject,
 			"UNKNOWN_REFERENCE_CONTRACT_QUERY_DATABASE",
-			"reference Pattern %sのDatasource %sが参照するDatabase %sが見つかりません",
+			"reference Pattern %s refers through Datasource %s to Database %s, which is not found",
 			pattern.ID,
 			pattern.Datasource,
 			datasource.TargetDatabase,
@@ -223,7 +222,7 @@ func validateReferenceContractQueryTarget(
 		return []Diagnostic{errFor(
 			patternSubject,
 			"AMBIGUOUS_REFERENCE_CONTRACT_QUERY_DATABASE",
-			"reference Pattern %sのDatasource %sが参照するDatabase %sが%d件あり、一意に解決できません",
+			"reference Pattern %s refers through Datasource %s to Database %s, which has %d candidates and cannot be resolved uniquely",
 			pattern.ID,
 			pattern.Datasource,
 			datasource.TargetDatabase,
@@ -242,7 +241,7 @@ func validateReferenceContractQueryTarget(
 		return []Diagnostic{errFor(
 			patternSubject,
 			"UNKNOWN_REFERENCE_CONTRACT_QUERY_CONTRACT",
-			"reference Pattern %sが利用するContract %sはDatabase %sにありません",
+			"reference Pattern %s uses Contract %s, which Database %s does not have",
 			pattern.ID,
 			invocation.Contract,
 			db.ID,
@@ -252,11 +251,10 @@ func validateReferenceContractQueryTarget(
 		return []Diagnostic{errFor(
 			patternSubject,
 			"AMBIGUOUS_REFERENCE_CONTRACT_QUERY_CONTRACT",
-			"reference Pattern %sが利用するContract %sはDatabase %sに%d件あり、一意に解決できません",
+			"reference Pattern %s uses Contract %s, which has more than one candidate in Database %s and cannot be resolved uniquely",
 			pattern.ID,
 			invocation.Contract,
 			db.ID,
-			len(contracts),
 		)}
 	}
 
@@ -265,7 +263,7 @@ func validateReferenceContractQueryTarget(
 		return []Diagnostic{errFor(
 			patternSubject,
 			"REFERENCE_CONTRACT_QUERY_MAJOR_VERSION_MISMATCH",
-			"reference Pattern %sはContract %sのmajor version %dとの互換性を要求していますが、Database %sではv%d.%dです",
+			"reference Pattern %s requires compatibility with Contract %s major version %d, but Database %s has v%d.%d",
 			pattern.ID,
 			invocation.Contract,
 			requirement.CompatibleMajor,
@@ -285,7 +283,7 @@ func validateReferenceContractQueryTarget(
 		out = append(out, errFor(
 			patternSubject,
 			"UNKNOWN_REFERENCE_CONTRACT_QUERY",
-			"reference Pattern %sが利用するQuery %sはContract %sにありません",
+			"reference Pattern %s uses Query %s, which Contract %s does not have",
 			pattern.ID,
 			invocation.Query,
 			contract.ID,
@@ -294,11 +292,10 @@ func validateReferenceContractQueryTarget(
 		out = append(out, errFor(
 			patternSubject,
 			"AMBIGUOUS_REFERENCE_CONTRACT_QUERY",
-			"reference Pattern %sが利用するQuery %sはContract %sに%d件あり、一意に解決できません",
+			"reference Pattern %s uses Query %s, which has more than one candidate in Contract %s and cannot be resolved uniquely",
 			pattern.ID,
 			invocation.Query,
 			contract.ID,
-			queryCount,
 		))
 	}
 

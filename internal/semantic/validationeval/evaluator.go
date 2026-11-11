@@ -33,17 +33,17 @@ type Source interface {
 // ruleの解決に必要な入力がない、値を評価できない、未対応kindである等の場合だけerrorを返す。
 func Evaluate(rule semantic.Validation, source Source) (Result, error) {
 	if source == nil {
-		return "", fmt.Errorf("semantic validation %sを評価するSourceが指定されていません", rule.ID)
+		return "", fmt.Errorf("no Source is specified to evaluate semantic validation %s", rule.ID)
 	}
 
 	switch rule.Kind {
 	case semantic.ValidationPositive:
 		value, err := source.Number(rule.Attribute)
 		if err != nil {
-			return "", fmt.Errorf("semantic validation %sのattribute %sを評価できません: %w", rule.ID, rule.Attribute, err)
+			return "", fmt.Errorf("semantic validation %s cannot evaluate attribute %s: %w", rule.ID, rule.Attribute, err)
 		}
 		if value == nil {
-			return "", fmt.Errorf("semantic validation %sのattribute %sに評価可能な数値がありません", rule.ID, rule.Attribute)
+			return "", fmt.Errorf("semantic validation %s has no evaluable number for attribute %s", rule.ID, rule.Attribute)
 		}
 		if value.Sign() > 0 {
 			return ResultSatisfied, nil
@@ -53,7 +53,7 @@ func Evaluate(rule semantic.Validation, source Source) (Result, error) {
 	case semantic.ValidationRelationUnique:
 		keys, err := source.RelationKeys(rule.Relation, rule.Attribute)
 		if err != nil {
-			return "", fmt.Errorf("semantic validation %sのrelation %s / attribute %sを評価できません: %w", rule.ID, rule.Relation, rule.Attribute, err)
+			return "", fmt.Errorf("semantic validation %s cannot evaluate relation %s / attribute %s: %w", rule.ID, rule.Relation, rule.Attribute, err)
 		}
 		seen := make(map[string]struct{}, len(keys))
 		for _, key := range keys {
@@ -65,6 +65,6 @@ func Evaluate(rule semantic.Validation, source Source) (Result, error) {
 		return ResultSatisfied, nil
 
 	default:
-		return "", fmt.Errorf("semantic validation %sのkind %qはEvaluatorで扱えません", rule.ID, rule.Kind)
+		return "", fmt.Errorf("kind %q of semantic validation %s has no corresponding Evaluator", rule.ID, rule.Kind)
 	}
 }
