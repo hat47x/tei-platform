@@ -458,4 +458,7 @@
 - [永続化マッピングを設計しpersistence-mappingをCLIで読めるようにする](TEI_DOGFOODING_ROUND71_PERSISTENCE_LAYER_2026-11-11/README.md)（#4128のC案を拡張。6往復でマッピングを設計し、未読だったpersistence-mappingをinspectに追加して19種に。Attempt1はokを返したが何も起きておらず、配置の誤りが成功として返る例を記録。未起票）
 - [読まれないTEIソースを警告する](TEI_DOGFOODING_ROUND72_UNREAD_SOURCE_2026-11-11/README.md)（第71ラウンドの「okを返したが何も起きていない」に方針を決めて対応。配置の誤りで読まれない.teiをvalidateがwarningで名指しする。13ワークスペースで誤検出0。warningに留めエラーにしないのは将来のローダ用に置く正当な用途があるため）
 - [節の無い種でも読めることをmodel overviewが言う](TEI_DOGFOODING_ROUND73_SCOPE_READABILITY_2026-11-11/README.md)（#4128。persistenceマッピングとsolution releaseを4往復で設計し全成果物をinspectで読み返した。外部所有DBはreleaseできず契約gateにする、というモデル規則を診断から学んだ。notCoveredKindsの種がinspectで読めるかをreadableWithoutSectionで分け、CLIと同じリストを読む）
+
+
+- [「state分離」は、childの申告と文字列が一致するかである](TEI_GO_SELF_BUILD_STATE_SEPARATION_SCOPE_2026-11-11.md)（§4.37が条件5で「stateの分離」を確かめるとしている点を実測。childが二回とも**同じstate**を使い、渡された値をそのまま申告する構成で、`firstStateDir`と`secondStateDir`は違うまま**`l2b.claimed=true`**になった。**検査は文字列比較であり、実際に別のstateを使ったことではない。** #2831）
 - [閉じ括弧の後ろに書いた「ブロック内専用の項目」が所属を名指しする](TEI_DOGFOODING_ROUND74_BLOCK_PLACEMENT_2026-11-11/README.md)（#4169のA案5件目。bind/resource/column等を閉じ括弧の後ろに書くと、どのブロックに入るかを言う。最初の探査はファイル名が誤りで3回とも読まれず、第72ラウンドで入れた警告がその誤りを教えた）

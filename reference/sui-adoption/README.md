@@ -76,6 +76,45 @@ shadow validatorはSUI正本のcontract validatorより新しいdomain constrain
 
 一方、JSON consumerとしてunknown fieldをfail closedすることは**consumer compatibility / transport guard**として別に扱う。これはSUI domain constraintが増えたことを意味しない。source contractが変わった場合は、SUI側を正本としてfixture / shadow probeを再確認する。
 
+## M2 Canonical definition probe
+
+`workspace-m2/` は、SUI の文書構造を `.tei` で宣言した場合の M2 の作業領域です。Stage 0 の `workspace/`（IslandHierarchy のみ）とは別に置き、既存 probe を置き換えません。
+
+M2 が宣言するもの:
+
+- `sui.document` / `sui.card` / `sui.island`
+- `sui.containment`（視覚的な包含。occurrence ID を持つ）
+- `sui.affiliation`（明示的・可逆・多対多の所属。occurrence ID を持つ）
+- `sui.edge`（向きと occurrence ID を持つ。並行 Edge を端点の組で畳まない）
+- `sui.island_parent`（親子 link）
+
+M2 が**宣言しない**もの（損失として報告する）:
+
+- Tree の閲覧状態（折り畳み・focus・選択）
+- Canvas の transform・z-order・zoom・gesture
+- Island の geometry（polygon・rect・placard）
+- review attribution（誰が・いつ）
+- relation rationale
+- narrative・summary・critique
+
+確認:
+
+```bash
+go run ./cmd/tei validate -workspace reference/sui-adoption/workspace-m2
+go run ./tools/reference-sui-canonical-probe -workspace reference/sui-adoption/workspace-m2
+go test ./tools/reference-sui-canonical-probe/... -count=1
+```
+
+probe の報告は次を含みます。
+
+- `containmentAndAffiliationSeparate`: 二つの membership が別 Data として解決し、それぞれが occurrence ID を持つこと
+- `parallelEdgesDistinguishable`: Edge が自身の ID を持つこと
+- `undeclared`: 宣言しない損失の一覧（空にならない）
+- `parentPresenceSemantics`: `unresolved`。現行 Relation の cardinality は `one|many` のみで、root の parent 不在（0..1）は lossless と証明していない
+- `canonicalizedInstanceData: false`, `instanceCount: 0`: instance を Canonical object へ昇格していないこと
+
+この probe は read-only の定義解決だけを行い、Product runtime・Canonical source・Owner の意味受理を主張しません。
+
 ## Constraint coverage inventory
 
 Stage 0 reportの`constraintCoverage`は、SUI正本のconstraintをTEI native機能として誤認しないためのEvidenceです。
