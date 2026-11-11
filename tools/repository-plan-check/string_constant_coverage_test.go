@@ -11,26 +11,14 @@ import "testing"
 // new exported string constant fails the check until it has a test or an entry.
 // An entry is a to-do with a reason, not a licence to leave a word untested.
 var unmentionedStringConstants = []string{
-	"internal/businesscalendar/calendar.go/WeekStartsSunday",
-	"internal/composition/proposal.go/ReasonStructurallyEligible",
-	"internal/driver/observation.go/ObservationEvidenceManagedHere",
-	"internal/numbering/numbering.go/OverflowStop",
-	"internal/plugin/build.go/BuildOutputBuilderArtifact",
-	"internal/plugin/transform/model.go/OpConstructObject",
-	"internal/plugin/transform/value.go/ValueBool",
-	"internal/plugin/transform/value.go/ValueNumber",
-	"internal/query/relational.go/RelDistinct",
-	"internal/query/relational.go/RelOpaque",
-	"internal/releasegraph/model.go/NodeApplicationRelease",
-	"internal/releasegraph/model.go/NodeDatabaseReadiness",
-	"internal/releasegraph/model.go/NodeDatabaseState",
-	"internal/security/effectcommit/evidence.go/ErrorClassContext",
-	"internal/security/effectcommit/evidence.go/ErrorClassMissingProvider",
-	"internal/security/provisionaleffectgrant/grant.go/MarkProvisional",
-	"internal/sourceacceptance/hoststore/store.go/StateCurrent",
-	"internal/sourceacceptance/hoststore/store.go/StateRevoked",
-	"internal/sourceacceptance/hoststore/store.go/StateSuperseded",
-	"internal/xeadsource/crossview.go/CrossViewNatureSource",
+	// internal/query の語彙（relation.go の4つと standard/model.go の1つ）は、
+	// 並行変更で追加された語がまだどの試験にも現れていない。語を足した変更の
+	// 担当が試験を付けるまでの to-do としてここへ置く。
+	"internal/query/relation.go/RelationFetchModeEager",
+	"internal/query/relation.go/RelationQueryModeGraph",
+	"internal/query/relation.go/RelationQueryModePath",
+	"internal/query/relation.go/RelationQueryModeTree",
+	"internal/query/standard/model.go/SeverityUnsupported",
 }
 
 func TestExportedStringConstantsHaveATestOrAnEntry(t *testing.T) {

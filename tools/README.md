@@ -249,6 +249,7 @@
 | [`reference-type-reorg-impact/`](reference-type-reorg-impact/) | 意味の型の統合案が及ぼす影響を一覧する読取り専用の参照（#1806） |
 | [`reference-model-search/`](reference-model-search/) | 意味の名称を横断して検索し、置換を変更案として出す読取り専用の参照（#1804） |
 | [`reference-semantic-mapping-check/`](reference-semantic-mapping-check/) | 意味の定義と物理項目の対応について、定義へ遡る道が一つか、未記入の要素、複数の定義に一致する要素、定義の追加で変わる要素の範囲を検査する参照。合成データのみで、実在のデータ辞書とは未接続（#2095） |
+| [`reference-facet-mapping-check/`](reference-facet-mapping-check/) | 標準データ構造と標準表現型の間の写像を、12列の写像契約と両側のFacetで突き合わせ、保持・損失・不適合・不明を判定する参照。読み取りの成功を編集逆写像の成功から分け、証拠のない保存主張は`unknown`へ落とす。合成fixtureのみで、実Provider・実Renderer・業務意味の受理は示さない（#4351 / #4350 S1） |
 | [`reference-semantic-extension-catalog/`](reference-semantic-extension-catalog/) | 意味拡張の登録・解決・検証 |
 | [`reference-subsystem-cud/`](reference-subsystem-cud/) | 部分システムの登録・参照・更新・削除の境界確認 |
 | [`reference-tei-eki-contract/`](reference-tei-eki-contract/) | TEIのJob・Flow設計がEKIのP0 OpenAPIで失う意味（`notBefore`・期限・effect_mode・資源制約など）を、実contractへの射影で検出する隔離した試験用の参照。実Provider・認可・実行層ではなく、外部contractの受理を示さない |
@@ -257,6 +258,7 @@
 | [`reference-sui-adoption/`](reference-sui-adoption/) | SUI移行の参照データと検査 |
 | [`reference-sui-canonical-probe/`](reference-sui-canonical-probe/) | SUIの意味構造を `.tei` で宣言したときの解決結果と、宣言しない損失を read-only で報告する probe（M2） |
 | [`reference-sui-reference-consumer/`](reference-sui-reference-consumer/) | SUIが返す`tai.reference.sui-document-reference/v0`のenvelopeを検査するread-only consumer。acceptedMeaningの一留、未レビュー本文の保留、同名Card・並行Edge・containment/affiliationのoccurrenceを保つことを確認する（P7、Product APIではない） |
+| [`reference-scope-isolation-matrix/`](reference-scope-isolation-matrix/) | SUI の scope isolation 14経路（ADR-0059 gate 5）を言語非依存の機械可読行列として検査する。経路の網羅・coverage状態・根拠の有無を確かめ、SUI checkout を渡したときは試験名の実在まで照合する（認可の正本ではない） |
 | [`reference-sui-interaction/`](reference-sui-interaction/) | 画面操作とApplication Actionの接続例 |
 | [`reference-transform-runtime-engine/`](reference-transform-runtime-engine/) | 決定的な変換処理の実行例 |
 | [`reference-transform-runtime-engine-build/`](reference-transform-runtime-engine-build/) | 変換実行基盤の構築確認 |
