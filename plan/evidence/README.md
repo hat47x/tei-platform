@@ -458,3 +458,14 @@
 - [閉じ括弧の後ろに書いた「ブロック内専用の項目」が所属を名指しする](TEI_DOGFOODING_ROUND74_BLOCK_PLACEMENT_2026-11-11/README.md)（#4169のA案5件目。bind/resource/column等を閉じ括弧の後ろに書くと、どのブロックに入るかを言う。最初の探査はファイル名が誤りで3回とも読まれず、第72ラウンドで入れた警告がその誤りを教えた）
 - [構文エラーで止まった実行をテキスト出力も「不完全」と言う](TEI_DOGFOODING_ROUND75_INCOMPLETE_TEXT_2026-11-11/README.md)（#4178。2ファイルを壊すと最初の1件しか出ない仕様は変わらないが、JSONはincompleteを出しテキストは黙っていた非対称を解消。意味の診断は完全な答えなので不完全と表示しない区別を試験で固定）
 - [mainの赤い3テストを緑にする](TEI_DOGFOODING_ROUND76_MAIN_GREEN_2026-11-11/README.md)（20の未テスト診断コードは到達可能性を確かめる試験を追加、死んだリンクは文書が履歴に無いことを認めて名前をコード表記で残す、13のスキーマ識別子は実際にコマンドを走らせて応答から読む。plan-checkの3テストが緑。あわせてmainの台帳から消えていた第72〜75ラウンドの節と索引を復元）
+
+- [DSH外部Harness H2/H3 比較試験（2026-11-11、TEI #2509 / TAI #168 / SK-02）](DSH_H2_H3_COMPARISON_2026-11-11/)
+- [MCPサーバーを5つ繋ぐとハンドシェイク20件・Tool 32個になり、増え方は線形のまま（2026-11-11、#2515 H6-E2）](DSH_MCP_FIVE_SERVERS_2026-11-11/)
+- [Studio の binding 欠落で、ビューと Command 操作が到達できていなかった件（2026-11-11）](STUDIO_BRIDGE_MISSING_METHODS_2026-11.md)
+- [「成果物と違うdigestを申告する」は、ディスクとの比較で止まる（追認）](TEI_GO_SELF_BUILD_ARTIFACT_DIGEST_STOPS_2026-11-11.md)
+- [セルフビルド実現の計画～設計の完了記録](TEI_GO_SELF_BUILD_REALIZATION_COMPLETE_2026-11-11.md)
+- [「state分離」は、childの申告と文字列が一致するかである](TEI_GO_SELF_BUILD_STATE_SEPARATION_SCOPE_2026-11-11.md)
+- [Studio の UI から `after-*` 経路へ到達する配線の確認（2026-11-11）](XTEA_LOWCODE_HOOK_AFTER_CHANGE_STUDIO_UI_2026-11.md)
+- [閉塞拒否と訂正能力の矛盾の宣言段階での報告の確認（2026-11）](XTEA_LOWCODE_PERIOD_CLOSURE_CONFLICT_2026-11.md)
+- [再開（closed→open）に訂正能力を要求する確認（2026-11）](XTEA_LOWCODE_PERIOD_REOPEN_CORRECTION_2026-11.md)
+- [期間の要件を `tei view` へ投影する確認（2026-11）](XTEA_LOWCODE_PERIOD_REQUIREMENT_VIEW_2026-11.md)

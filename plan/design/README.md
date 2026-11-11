@@ -355,3 +355,8 @@ S1 realistic intent / candidate frontier
 
 `docs/`とは役割を分けます。`docs/`では実装済みの構成と利用方法を説明し、ここでは採用前の案や変更に必要な機能設計を扱います。実装状況が変わった場合は、この設計文書を現行構成の説明に流用せず、`docs/architecture.md`を更新します。
 - [設計書から実行結果までをつなぐ製品設計](PRODUCT_COMPLETION_DESIGN.md)
+
+- [成果物の入力契約（設計記録）](ARTIFACT_INPUT_CONTRACT_2026-11.md)
+- [SQLite introspection の制限と未対応事項](SQLITE_INTROSPECTION_LIMITATIONS_2026-11.md)
+- [共通の例外・失敗モデル（2026-11）](UNIFIED_FAILURE_MODEL_2026-11.md)
+- [2waySQL-like記述との整合性](WAY_SQL_ALIGNMENT_2026-11.md)
