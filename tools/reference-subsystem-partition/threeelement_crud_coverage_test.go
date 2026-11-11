@@ -86,3 +86,48 @@ func TestThreeElementConflictingDeclarationsAreNotSafeToCollapse(t *testing.T) {
 	// Neither one-row projection may be converted directly to partition.Write.
 	// This test has no accepted Function Directness or Primary Data Owner.
 }
+
+
+// The two read-only projections also differ when a Function declares the
+// same Data pair twice. FunctionOperation has no logical occurrence ID, so
+// neither repeated rows nor the first cross-reference is an accepted count of
+// independent writes.
+func TestThreeElementRepeatedFunctionOperationsDoNotDefineDistinctWrites(t *testing.T) {
+	model := threeelement.NewThreeElementModel("candidate", "Candidate")
+	model.DataElements = []threeelement.DataElement{{ID: "order", Name: "Order"}}
+	model.FunctionElements = []threeelement.FunctionElement{{
+		ID: "submit", Name: "Submit",
+		Operations: []threeelement.FunctionOperation{
+			{DataID: "order", Operations: "R"},
+			{DataID: "order", Operations: "U"},
+		},
+	}}
+	if diagnostics := model.Validate(); len(diagnostics) != 0 {
+		t.Fatalf("positive control: current validation allows repeated pair declarations: %+v", diagnostics)
+	}
+	rows := threeelement.GenerateCRUDTable(model)
+	if len(rows) != 2 {
+		t.Fatalf("current CRUD table emits one row per FunctionOperation even for the same pair: %+v", rows)
+	}
+	seenRead, seenUpdate := false, false
+	for _, row := range rows {
+		seenRead = seenRead || row.Read
+		seenUpdate = seenUpdate || row.Update
+	}
+	if !seenRead || !seenUpdate {
+		t.Fatalf("positive control: both source intents must remain in the table: %+v", rows)
+	}
+	refs := threeelement.GenerateFunctionDataCrossReference(model)
+	if len(refs) != 1 || refs[0].Operations != "R" {
+		t.Fatalf("current cross-reference keeps only first operation for this pair: %+v", refs)
+	}
+
+	model.FunctionElements[0].Operations[0], model.FunctionElements[0].Operations[1] =
+		model.FunctionElements[0].Operations[1], model.FunctionElements[0].Operations[0]
+	reordered := threeelement.GenerateFunctionDataCrossReference(model)
+	if len(reordered) != 1 || reordered[0].Operations != "U" {
+		t.Fatalf("same declarations in reversed order change cross-reference intent: %+v", reordered)
+	}
+	// Explicitly NOT an inference that there are two independent direct-write
+	// occurrences or that any Data Primary Owner has been accepted.
+}
