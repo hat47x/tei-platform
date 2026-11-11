@@ -125,11 +125,11 @@ jobs:
         run: |
           set -euo pipefail
           python3 - "$RECEIPT" "$SHO_PIN" "$EXPECTED_TEI_HEAD" <<'PY'
-import json, pathlib, sys
-# The receipt carries Japanese strings, so read it as UTF-8 rather than the
-# platform default: a Windows runner would otherwise fail on the encoding alone.
-# utf-8-sig also tolerates a leading BOM, which a shell redirect may add.
-receipt = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8-sig'))
+          import json, pathlib, sys
+          # The receipt carries Japanese strings, so read it as UTF-8 rather than the
+          # platform default: a Windows runner would otherwise fail on the encoding alone.
+          # utf-8-sig also tolerates a leading BOM, which a shell redirect may add.
+          receipt = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8-sig'))
           sho_pin, tei_head = sys.argv[2], sys.argv[3]
           assert receipt['kind'] == 'sho-tei-draft-roundtrip-receipt', receipt['kind']
           # The pair is the one this job pinned, not whatever the runner found.
@@ -137,24 +137,24 @@ receipt = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8-sig'))
           assert receipt['teiHead'] == tei_head, (receipt['teiHead'], tei_head)
           checks = receipt['checks']
           for name, value in checks.items():
-              assert value is True, f'check {name} is not true'
+          assert value is True, f'check {name} is not true'
           required = {
-              'teiElementDraftProduced', 'teiCRUDDraftProduced',
-              'shoOpenCreatedDocument', 'shoSaveWithAuthorNote',
-              'shoResumeAllOccurrencesIntact', 'saveClaimedNoModelIngestion',
-              'reconcileCurrentBeforeChange', 'reconcileStaleAfterChange',
-              'matrixReportedContentChange', 'authorNoteSurvivedModelChange',
-              'storedDraftNotRewritten', 'semanticSourceUnchanged',
+          'teiElementDraftProduced', 'teiCRUDDraftProduced',
+          'shoOpenCreatedDocument', 'shoSaveWithAuthorNote',
+          'shoResumeAllOccurrencesIntact', 'saveClaimedNoModelIngestion',
+          'reconcileCurrentBeforeChange', 'reconcileStaleAfterChange',
+          'matrixReportedContentChange', 'authorNoteSurvivedModelChange',
+          'storedDraftNotRewritten', 'semanticSourceUnchanged',
           }
           missing = required - set(checks)
           assert not missing, f'receipt is missing checks: {sorted(missing)}'
           # The claim ceilings must stay false. A green job is not acceptance.
           for name, value in receipt['claims'].items():
-              assert value is False, f'claim {name} became true'
+          assert value is False, f'claim {name} became true'
           for not_run in ['Owner による意味受理', 'TEI Studio からの実組込み']:
-              assert not_run in receipt['notRun'], f'notRun is missing {not_run}'
+          assert not_run in receipt['notRun'], f'notRun is missing {not_run}'
           print('round-trip receipt verified at the pinned pair; '
-                'no model ingestion, no meaning acceptance, no product E2E')
+          'no model ingestion, no meaning acceptance, no product E2E')
           PY
 
       - name: Upload the receipt even on failure
