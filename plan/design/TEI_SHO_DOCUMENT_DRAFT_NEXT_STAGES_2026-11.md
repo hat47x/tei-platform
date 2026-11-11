@@ -128,9 +128,10 @@
 
 - **現状**：TEI mainのLoaderは未束綝のMarkdown Sourceを`TEI_MD_PARSER_UNBOUND`で拒否する（[#3346](https://github.com/hat47x/tei-platform/issues/3346)・[#2621](https://github.com/hat47x/tei-platform/issues/2621)）。SHOで`*.tei.md`を保存できてもTEI Accepted Sourceではない。
 - **最小実装（Parser完成後）**：`tei model document-import -draft <file> -workspace <root>` を**read-only候補化**として追加する。取込みは（1）SHO保存byteのdigest照合、（2）Parser/Role/Source Indexでの解釈、（3）Owner受理、の3段階を別表示にする。
-- **独立Expected**：C5-a Parser未束綝のまま実行すると`parser-unbound`（取込み済みと表示しない）。C5-b SHO保存byteとTEIが見たbyteのdigest不一致は`source-byte-mismatch`。C5-c 受理前のCandidateは`external-candidate`のまま（Canonicalにしない）。
-- **Done means**：Parser束綝後にC5-a〜cがPASS。**それまで取込み経路は実装しない**。
-- **非目標**：新Markdown Grammarの決定（既存Ownerの比較に委ねる）。
+- **着手可能範囲（2026-11-12・設計のみ）**: [TEI_MD_READ_SIDE_DESIGN_2026-11.md](TEI_MD_READ_SIDE_DESIGN_2026-11.md) に、読み取り側が答えるべき4つ（R-01 Draft identity・R-02 occurrence状態・R-03 著者領域・R-04 モデル改版）・Parser完了後も変えない境界4件・Parserへ期待する入出力契約を整理した。**実装は含まない**。
+- **独立Expected**：C5-a Parser未束綝のまま実行すると`parser-unbound`（取込み済みと表示しない）。C5-b SHO保存byteとTEIが見たbyteのdigest不一致は`source-byte-mismatch`。C5-c 受理前のCandidateは`external-candidate`のまま（Canonicalにしない）。R-01〜04は未実行。
+- **Done means**：Parser束綝後にC5-a〜cとR-01〜04がPASS。**それまで取込み経路は実装しない**。
+- **非目標**：新Markdown Grammarの決定（既存Ownerの比較に委ねる）。`*.tei.md` を Workspace の Source root に置くかは未決。
 
 ## 6. 全体の「完了」定義と停止線
 
@@ -162,12 +163,14 @@ C-3は全段階で常に維持。**全5段階と C-1・C-2・C-4 が実装・決
 
 | # | 事項 | 影響する段階 | 現状の既定案 |
 | --- | --- | --- | --- |
-| 1 | Draft引用（`recorded-not-resolved`）とSHO引用Registerの関係 | 全段階 | 別モードとして併存。統合するかはOwner判断 |
-| 2 | Occurrence IDの永続性（現状はsnapshot-local） | 段階4・5 | 永続化しない。必要ならADR |
+| 1 | Draft引用（`recorded-not-resolved`）とSHO引用Registerの関係 | 全段階 | **代行決定済み: `recorded-not-resolved` のまま**。解決はConsumerの明示操作。Registerとは別モードとして併存 |
+| 2 | Occurrence IDの永続性（現状はsnapshot-local） | 段階4・5 | **代行決定済み: snapshot-local のまま**。永続化が必要ならADRを先に通す |
 | 3 | 固定納品版のpinの意味と再納品条件 | 段階5 | pin後は失効報告のみ、自動更新しない |
-| 4 | SHO文書編集部品の配置（SHO standalone／TEI Studio組込み） | C-2 | CLI部品境界。**組込み形態は代行決定済み: 子プロセス起動を維持**（実測 130–190 ms/呼出） |
+| 4 | SHO文書編集部品の配置（SHO standalone／TEI Studio組込み） | C-2 | **代行決定済み: 子プロセス起動を維持**（実測 130–190 ms/呼出） |
 | 5 | 文書→モデルの変更提案レーンの要否 | C-3 | 経路を作らない（既存の変更計画・Owner受理のみ） |
 | 6 | CRUD・三要素の意味的解釈（業務意味） | 段階2・3 | [THREE_ELEMENT_OWNER_ACCEPTANCE_ITEMS_2026-11.md](../issues/THREE_ELEMENT_OWNER_ACCEPTANCE_ITEMS_2026-11.md)の未決事項のまま |
 | 7 | 再投影と著者編集の突合せ規則 | 全段階 | **代行決定済み: 自動マージは作らない。occurrence 単位の許可リストのみ** |
 
-代行決定したのは 4 と 7。どちらも「判断を待たずに着手可能な範囲を進め、未決のままであることを明記する」方針に従い、**決定内容・根拠・撤回条件**を設計文書に書いた。1・2・3・5・6 は従来どおり未決で、既定案を記載している。
+代行決定したのは 1・2・4・7。1と2は「作らない」決定（contract が変わるため）。3・5・6 は従来どおり未決で、既定案を記載している。決定の詳細は
+[DOCUMENT_DRAFT_CITATION_AND_OCCURRENCE_ID_2026-11.md](DOCUMENT_DRAFT_CITATION_AND_OCCURRENCE_ID_2026-11.md) と
+[TEI_STUDIO_SHO_EMBEDDING_FORM_2026-11.md](TEI_STUDIO_SHO_EMBEDDING_FORM_2026-11.md)。
