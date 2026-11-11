@@ -2549,6 +2549,14 @@ func (p *Parser) expectEOF() error {
 		if misplaced := p.misplacedDeclaration(t, "after the end of this declaration"); misplaced != nil {
 			return misplaced
 		}
+		// An entry that only exists inside a block is not a stray declaration:
+		// the block is right and its brace is early. Saying "unexpected trailing
+		// token" does not tell the caller which block to put it back into, so the
+		// block-only entries are named with the form they take (#4169).
+		if hint := blockOnlyEntryHint(t.Text); hint != "" {
+			return p.errAt(t, fmt.Sprintf(
+				"%q belongs inside one block, not after it: %s", t.Text, hint))
+		}
 		return p.errAt(t, fmt.Sprintf("unexpected trailing token %q", t.Text))
 	}
 	return nil
