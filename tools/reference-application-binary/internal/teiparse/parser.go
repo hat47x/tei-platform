@@ -26,11 +26,11 @@ type Namespace struct {
 
 // DataModel represents a TEI data definition.
 type DataModel struct {
-	Namespace string
-	Name      string
-	Types     []TypeDef
+	Namespace  string
+	Name       string
+	Types      []TypeDef
 	Attributes []Attribute
-	Relations []Relation
+	Relations  []Relation
 }
 
 // TypeDef represents a type alias.
@@ -47,17 +47,17 @@ type Attribute struct {
 
 // Relation represents a relationship.
 type Relation struct {
-	Name      string
-	Target    string
+	Name        string
+	Target      string
 	Cardinality string
-	Keys      []string
+	Keys        []string
 }
 
 // Capability represents a capability definition.
 type Capability struct {
-	ID      string
-	Input   string
-	Output  string
+	ID     string
+	Input  string
+	Output string
 }
 
 // Application represents a TEI application.
@@ -77,10 +77,10 @@ type DatabaseRequirement struct {
 
 // Pattern represents an application pattern.
 type Pattern struct {
-	ID        string
-	Kind      string
-	Data      string
-	Query     string
+	ID         string
+	Kind       string
+	Data       string
+	Query      string
 	Capability string
 }
 
@@ -93,9 +93,9 @@ type Query struct {
 
 // Database represents a TEI database definition.
 type Database struct {
-	Name       string
-	Kind       string
-	Ownership  string
+	Name         string
+	Kind         string
+	Ownership    string
 	UsesSemantic []string
 }
 
@@ -123,7 +123,7 @@ func ParseWorld(workspaceRoot string) (*World, error) {
 		return nil, fmt.Errorf("parse applications: %w", err)
 	}
 
-	queryDir :=filepath.Join(workspaceRoot, "queries")
+	queryDir := filepath.Join(workspaceRoot, "queries")
 	if err := parseQueryDir(queryDir, world); err != nil {
 		return nil, fmt.Errorf("parse queries: %w", err)
 	}

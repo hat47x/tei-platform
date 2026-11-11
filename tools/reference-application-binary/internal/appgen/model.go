@@ -28,9 +28,9 @@ type GenerationContext struct {
 	Queries             []Query
 	Commands            []Command
 	Validations         []Validation
-	CommandTypes       []CommandType
-	Databases          []*teiparse.Database
-	Migrations         []*teiparse.Migration
+	CommandTypes        []CommandType
+	Databases           []*teiparse.Database
+	Migrations          []*teiparse.Migration
 }
 
 // CommandType represents an input/output struct for a command.
@@ -393,7 +393,7 @@ func toolchainEvidence() string {
 
 func renderTemplate(name, text string, data any) (string, error) {
 	tmpl, err := template.New(name).Funcs(template.FuncMap{
-		"add":           func(a, b int) int { return a + b },
+		"add": func(a, b int) int { return a + b },
 		"toGoIdentifier": func(s string) string {
 			s = strings.NewReplacer(".", "_", "-", "_", "{", "", "}", "", " ", "").Replace(s)
 			return strings.ToUpper(s)

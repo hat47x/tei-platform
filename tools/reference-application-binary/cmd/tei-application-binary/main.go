@@ -68,17 +68,17 @@ func run() error {
 	}
 
 	receipt := map[string]any{
-		"schemaVersion":      "tei.application-binary.receipt/v0",
-		"applicationId":      *application,
-		"sourceRevision":     ctx.SourceRevision,
-		"modelRevision":      ctx.ModelRevision,
-		"toolchain":          ctx.Toolchain,
-		"generator":          ctx.GeneratorID + "/" + ctx.GeneratorVersion,
-		"artifactDigest":     artifactDigest,
-		"generatedAt":        generatedAt,
-		"sourceDir":          sourceDir,
-		"binaryPath":         binaryPath,
-		"generatedFiles":     files,
+		"schemaVersion":  "tei.application-binary.receipt/v0",
+		"applicationId":  *application,
+		"sourceRevision": ctx.SourceRevision,
+		"modelRevision":  ctx.ModelRevision,
+		"toolchain":      ctx.Toolchain,
+		"generator":      ctx.GeneratorID + "/" + ctx.GeneratorVersion,
+		"artifactDigest": artifactDigest,
+		"generatedAt":    generatedAt,
+		"sourceDir":      sourceDir,
+		"binaryPath":     binaryPath,
+		"generatedFiles": files,
 	}
 	b, _ := json.MarshalIndent(receipt, "", "  ")
 	fmt.Println(string(b))

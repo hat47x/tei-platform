@@ -1,7 +1,8 @@
 # P0-A 判定記録：旧 .tei 縦断の独立Expected再現
 
-- **判定対象**: `tools/reference-application-binary`（PR [#4293](https://github.com/hat47x/tei-platform/pull/4293)）による Parse → Model → Generate → Build の縦断
-- **設計正本**: [TEI_MD_DOMAIN_DIAGRAM_TO_BUILD_LOWERING_2026-11.md](../design/TEI_MD_DOMAIN_DIAGRAM_TO_BUILD_LOWERING_2026-11.md) P0-A
+- **判定対象**: `tools/reference-application-binary` による Parse → Model → Generate → Build の縦断
+- **設計正本**: [PR #4306](https://github.com/hat47x/tei-platform/pull/4306) の `plan/design/TEI_MD_DOMAIN_DIAGRAM_TO_BUILD_LOWERING_2026-11.md` P0-A（設計文書は別PRで追加されるため、この記録から相対リンクしない）
+- **実装PR**: [#4310](https://github.com/hat47x/tei-platform/pull/4310)
 - **実行日**: 2026-11-11
 - **実行HEAD**: `feat/issue-4218-step-code-adapter`（#4293 の内容を含む）
 - **判定**: **P0-A 成立（旧 .tei 限定）**。ただし Execute 段階の実Provider適合は **unverified**（K-07）。
