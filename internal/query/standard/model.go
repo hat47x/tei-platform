@@ -26,39 +26,46 @@ type Diagnostic struct {
 type Expr interface{}
 
 type Column struct {
-	Qualifier string `json:"qualifier,omitempty"`
-	Name      string `json:"name"`
+	Qualifier string     `json:"qualifier,omitempty"`
+	Name      string     `json:"name"`
+	Span      SourceSpan `json:"span,omitempty"`
 }
 
 type Literal struct {
-	Kind  string `json:"kind"` // number | string | null | bool | star
-	Value string `json:"value"`
+	Kind  string     `json:"kind"` // number | string | null | bool | star
+	Value string     `json:"value"`
+	Span  SourceSpan `json:"span,omitempty"`
 }
 
 type Parameter struct {
-	Name string `json:"name"`
+	Name string     `json:"name"`
+	Span SourceSpan `json:"span,omitempty"`
 }
 
 type BinaryOp struct {
-	Op    string `json:"op"`
-	Left  Expr   `json:"left"`
-	Right Expr   `json:"right"`
+	Op    string     `json:"op"`
+	Left  Expr       `json:"left"`
+	Right Expr       `json:"right"`
+	Span  SourceSpan `json:"span,omitempty"`
 }
 
 type UnaryOp struct {
-	Op      string `json:"op"`
-	Operand Expr   `json:"operand"`
+	Op      string     `json:"op"`
+	Operand Expr       `json:"operand"`
+	Span    SourceSpan `json:"span,omitempty"`
 }
 
 type FunctionCall struct {
-	Name     string `json:"name"`
-	Distinct bool   `json:"distinct,omitempty"`
-	Args     []Expr `json:"args,omitempty"`
+	Name     string     `json:"name"`
+	Distinct bool       `json:"distinct,omitempty"`
+	Args     []Expr     `json:"args,omitempty"`
+	Span     SourceSpan `json:"span,omitempty"`
 }
 
 type IsNull struct {
-	Negated bool `json:"negated,omitempty"`
-	Expr    Expr `json:"expr"`
+	Negated bool       `json:"negated,omitempty"`
+	Expr    Expr       `json:"expr"`
+	Span    SourceSpan `json:"span,omitempty"`
 }
 
 type InList struct {
@@ -66,38 +73,45 @@ type InList struct {
 	Expr     Expr           `json:"expr"`
 	List     []Expr         `json:"list,omitempty"`
 	Subquery *StandardQuery `json:"subquery,omitempty"`
+	Span     SourceSpan     `json:"span,omitempty"`
 }
 
 type Between struct {
-	Expr Expr `json:"expr"`
-	Low  Expr `json:"low"`
-	High Expr `json:"high"`
+	Expr Expr       `json:"expr"`
+	Low  Expr       `json:"low"`
+	High Expr       `json:"high"`
+	Span SourceSpan `json:"span,omitempty"`
 }
 
 type Exists struct {
 	Negated bool           `json:"negated,omitempty"`
 	Query   *StandardQuery `json:"query"`
+	Span    SourceSpan     `json:"span,omitempty"`
 }
 
 type Cast struct {
-	Expr Expr   `json:"expr"`
-	Type string `json:"type"`
+	Expr Expr       `json:"expr"`
+	Type string     `json:"type"`
+	Span SourceSpan `json:"span,omitempty"`
 }
 
 type Case struct {
-	Value Expr   `json:"value,omitempty"`
-	Whens []When `json:"whens"`
-	Else  Expr   `json:"else,omitempty"`
+	Value Expr       `json:"value,omitempty"`
+	Whens []When     `json:"whens"`
+	Else  Expr       `json:"else,omitempty"`
+	Span  SourceSpan `json:"span,omitempty"`
 }
 
 type When struct {
-	Cond Expr `json:"cond"`
-	Then Expr `json:"then"`
+	Cond Expr       `json:"cond"`
+	Then Expr       `json:"then"`
+	Span SourceSpan `json:"span,omitempty"`
 }
 
 type SubqueryExpr struct {
 	Query   *StandardQuery `json:"query"`
 	Lateral bool           `json:"lateral,omitempty"`
+	Span    SourceSpan     `json:"span,omitempty"`
 }
 
 // Node is a relational algebra operator.

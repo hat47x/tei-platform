@@ -224,6 +224,42 @@ func TestRoundTripSQLite(t *testing.T) {
 			},
 			expected: [][]interface{}{{1, float64(20), float64(11)}, {2, float64(40), float64(21)}},
 		},
+		{
+			name: "null_handling_in_aggregates",
+			sql:  "SELECT customer_id, COUNT(*) AS cnt, SUM(amount) AS total, AVG(amount) AS avg FROM orders GROUP BY customer_id",
+			setup: func(t *testing.T, db *sql.DB) {
+				mustExec(t, db, "CREATE TABLE orders (order_id INTEGER, customer_id INTEGER, amount REAL)")
+				mustExec(t, db, "INSERT INTO orders VALUES (1, 1, 10), (2, 1, NULL), (3, 2, 5)")
+			},
+			expected: [][]interface{}{{1, int64(2), float64(10), float64(5)}, {2, int64(1), float64(5), float64(5)}},
+		},
+		{
+			name: "distinct_multiple_columns",
+			sql:  "SELECT DISTINCT customer_id, status FROM orders",
+			setup: func(t *testing.T, db *sql.DB) {
+				mustExec(t, db, "CREATE TABLE orders (order_id INTEGER, customer_id INTEGER, status TEXT)")
+				mustExec(t, db, "INSERT INTO orders VALUES (1, 1, 'OPEN'), (2, 1, 'OPEN'), (3, 1, 'CLOSED'), (4, 2, 'OPEN')")
+			},
+			expected: [][]interface{}{{1, "OPEN"}, {1, "CLOSED"}, {2, "OPEN"}},
+		},
+		{
+			name: "coalesce_expression",
+			sql:  "SELECT order_id, COALESCE(amount, 0) AS amount FROM orders",
+			setup: func(t *testing.T, db *sql.DB) {
+				mustExec(t, db, "CREATE TABLE orders (order_id INTEGER, amount REAL)")
+				mustExec(t, db, "INSERT INTO orders VALUES (1, 10), (2, NULL)")
+			},
+			expected: [][]interface{}{{1, float64(10)}, {2, float64(0)}},
+		},
+		{
+			name: "order_by_null_handling",
+			sql:  "SELECT order_id, amount FROM orders ORDER BY amount ASC",
+			setup: func(t *testing.T, db *sql.DB) {
+				mustExec(t, db, "CREATE TABLE orders (order_id INTEGER, amount REAL)")
+				mustExec(t, db, "INSERT INTO orders VALUES (1, NULL), (2, 10), (3, 20)")
+			},
+			expected: [][]interface{}{{2, float64(10)}, {3, float64(20)}, {1, nil}},
+		},
 	}
 
 	for _, tc := range cases {

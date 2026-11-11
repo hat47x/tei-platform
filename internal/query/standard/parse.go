@@ -288,6 +288,10 @@ func (p *parser) span(start int) SourceSpan {
 	end := p.peek().pos
 	return SourceSpan{Start: start, End: end}
 }
+func (p *parser) exprSpan(start int) SourceSpan {
+	end := p.peek().pos
+	return SourceSpan{Start: start, End: end}
+}
 func (p *parser) nextNodeID() string {
 	id := fmt.Sprintf("node:%d", p.nextID)
 	p.nextID++
