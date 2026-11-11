@@ -74,7 +74,7 @@ var selectedReadOnlyFlagAllowlist = map[string][]string{
 		"analysis-output", "view", "request", "request-out",
 		"provider-version", "expected-evidence-id",
 		"expected-evidence-fingerprint", "expected-source-revision",
-		"tool-path",
+		"tool-path", "observation-id", "relation-id",
 	},
 }
 

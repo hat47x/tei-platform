@@ -178,6 +178,8 @@ func main() {
 	reaExpectedSourceRevision := fs.String("expected-source-revision", "", "rea-evidence: analyzed-source revision the receipt must match")
 	reaRequestOut := fs.String("request-out", "", "rea-evidence: write the derived view request here")
 	reaToolPath := fs.String("tool-path", "", "rea-evidence: explicit external tool path; otherwise PATH is probed")
+	reaObservationID := fs.String("observation-id", "", "rea-evidence: external observation identity to project (with -relation-id)")
+	reaRelationID := fs.String("relation-id", "", "rea-evidence: external relation identity to project (with -observation-id)")
 	jsonValidation := fs.Bool("json", false, "machine-readable JSON for validate -workspace")
 	pluginDiagnostic := fs.Bool("diagnostic-candidates", false, "show unvalidated plugin candidates; never authorizes execution")
 	subjectKind := fs.String("subject-kind", "", "Source Index subject kind")
@@ -479,6 +481,8 @@ func main() {
 			expectedSourceRev:   *reaExpectedSourceRevision,
 			requestOut:          *reaRequestOut,
 			toolPath:            *reaToolPath,
+			observationID:       *reaObservationID,
+			relationID:          *reaRelationID,
 		}, fs.NArg())
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)

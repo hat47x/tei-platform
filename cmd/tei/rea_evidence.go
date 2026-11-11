@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"tei/internal/externalanalysis"
+	"tei/internal/operations"
 )
 
 // reaEvidenceOuterArgs holds the flags of `rea-evidence`. They are read in one
@@ -25,13 +26,17 @@ type reaEvidenceOuterArgs struct {
 	expectedSourceRev   string
 	requestOut          string
 	toolPath            string
+	observationID       string
+	relationID          string
 }
 
 // reaEvidenceResult is the command's result body: the receipt, plus the path the
-// derived request was written to when the caller asked for one.
+// derived request was written to when the caller asked for one, plus the
+// candidate projection when one was selected.
 type reaEvidenceResult struct {
-	Receipt            externalanalysis.Receipt `json:"receipt"`
-	DerivedRequestPath string                   `json:"derivedRequestPath,omitempty"`
+	Receipt            externalanalysis.Receipt          `json:"receipt"`
+	DerivedRequestPath string                            `json:"derivedRequestPath,omitempty"`
+	Candidates         *operations.ExternalCandidateView `json:"candidates,omitempty"`
 }
 
 // reaEvidenceExit maps a receipt state to a process exit code.
@@ -92,6 +97,12 @@ func reaEvidenceJSON(out io.Writer, args reaEvidenceOuterArgs, extraArgs int) (i
 	if args.requestOut != "" && strings.TrimSpace(args.providerVersion) == "" {
 		return resultInvalidArgument(out, command, "-request-out requires -provider-version: the source.kind a request may use belongs to a version, and an undeclared version is not guessed")
 	}
+	if (args.observationID == "") != (args.relationID == "") {
+		return resultInvalidArgument(out, command, "-observation-id and -relation-id must be supplied together: a candidate projection selects one observation and one directed edge")
+	}
+	if (args.observationID != "" || args.relationID != "") && strings.TrimSpace(args.providerVersion) == "" {
+		return resultInvalidArgument(out, command, "-observation-id and -relation-id require -provider-version: the framing and the accepted source kinds belong to a version, and an undeclared version is not guessed")
+	}
 
 	raw, err := os.ReadFile(args.evidencePath)
 	if err != nil {
@@ -151,6 +162,33 @@ func reaEvidenceJSON(out io.Writer, args reaEvidenceOuterArgs, extraArgs int) (i
 		Result: reaEvidenceResult{Receipt: receipt, DerivedRequestPath: derivedPath},
 	}
 	code := reaEvidenceExit(receipt.State)
+
+	// The candidate projection is the deepest thing this command can produce,
+	// so it runs last and its failure replaces the receipt-only verdict.
+	if args.observationID != "" && args.relationID != "" {
+		view, err := operations.ExternalCandidates(operations.ExternalCandidateRequest{
+			EvidencePath:  args.evidencePath,
+			ToolVersion:   args.providerVersion,
+			ObservationID: args.observationID,
+			RelationID:    args.relationID,
+			Tool:          receipt.Tool,
+		}, time.Now())
+		if err != nil {
+			var candidate *operations.ExternalCandidateError
+			code := 2
+			if errors.As(err, &candidate) {
+				switch candidate.Code {
+				case operations.ExternalCandidateIncomplete, operations.ExternalCandidateFailed, operations.ExternalCandidateNotFound:
+					code = 1
+				}
+			}
+			report.OK = false
+			report.Error = &cliFailure{Code: "EVIDENCE_CANDIDATES_FAILED", Message: err.Error()}
+			return emitResult(out, report, code)
+		}
+		report.Result = reaEvidenceResult{Receipt: receipt, DerivedRequestPath: derivedPath, Candidates: &view}
+	}
+
 	if err := receipt.VerifyPins(externalanalysis.Pins{
 		EvidenceID:     args.expectedEvidenceID,
 		Fingerprint:    args.expectedFingerprint,
@@ -179,8 +217,12 @@ func reaEvidenceViewRequest() externalanalysis.ViewRequest {
 }
 
 // reaEvidenceMode names the shape the response has, the way the other read-only
-// commands do: which optional inputs were supplied.
+// commands do: which optional inputs were supplied. The candidate projection is
+// the deepest output, so it names the mode on its own.
 func reaEvidenceMode(args reaEvidenceOuterArgs) string {
+	if args.observationID != "" || args.relationID != "" {
+		return "candidate"
+	}
 	mode := "evidence"
 	if args.requestPath != "" || args.requestOut != "" {
 		mode = "request"

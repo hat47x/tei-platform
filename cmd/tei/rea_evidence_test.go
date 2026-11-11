@@ -468,6 +468,103 @@ func mustRead(t *testing.T, path string) string {
 	return string(raw)
 }
 
+// TestReaEvidenceProjectsTheSelectedCandidates: the CLI entry is the read-only
+// consumer the T1-A exit asks for — it receives one observation and one directed
+// relation from the same attempt, losslessly, and says what it does not grant.
+func TestReaEvidenceProjectsTheSelectedCandidates(t *testing.T) {
+	evidence := filepath.Join("..", "..", "internal", "externalanalysis", "testdata", "rea-6.8.0", "analysis.json")
+
+	code, report := runReaEvidence(t, reaEvidenceOuterArgs{
+		evidencePath:    evidence,
+		providerVersion: "6.8.0",
+		observationID:   "jsrg_node_237478f2a27c9614a522cbfc7ab60fa96943a458d164945d25af634f1240b652",
+		relationID:      "jsrg_relation_0f6757a241c56fd84ecaec91f538d8297d222eb5625e4cdbcb2de7603f330718",
+	})
+	if code != 0 {
+		t.Fatalf("code=%d error=%+v", code, report.Error)
+	}
+	if report.Mode != "candidate" {
+		t.Fatalf("mode=%s", report.Mode)
+	}
+	raw, err := json.Marshal(report.Result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result reaEvidenceResult
+	if err := json.Unmarshal(raw, &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Candidates == nil {
+		t.Fatal("the candidate projection is missing")
+	}
+	view := result.Candidates
+	if view.Attempt.EvidenceID != "ev_a88c70bcd066b2f04fdf97cb349369f0779b9c68cc4ac6c0e5f38f3539477a93" {
+		t.Fatalf("attempt evidence id=%s", view.Attempt.EvidenceID)
+	}
+	if view.Attempt.ReceivedDigest == "" {
+		t.Fatal("the attempt must name the digest of the bytes that were read")
+	}
+	if view.Observation == nil || view.Relation == nil {
+		t.Fatal("both candidates must be projected")
+	}
+	if view.Relation.Derived {
+		t.Fatal("the producer states its own relation identity; a derived handle must not replace it")
+	}
+	if view.Coverage == nil || len(view.Unknowns) == 0 {
+		t.Fatalf("coverage=%+v unknowns=%d: the producer's unknowns must survive the projection", view.Coverage, len(view.Unknowns))
+	}
+	for _, want := range []string{
+		"external-candidate-is-not-accepted-meaning",
+		"external-identity-is-not-a-tei-semantic-subject",
+	} {
+		if !containsLimit(view.AuthorityLimits, want) {
+			t.Fatalf("authorityLimits=%v want %s", view.AuthorityLimits, want)
+		}
+	}
+
+	// A selection the Evidence does not carry is exit 1 with a named failure,
+	// not a silent empty projection.
+	code, report = runReaEvidence(t, reaEvidenceOuterArgs{
+		evidencePath:    evidence,
+		providerVersion: "6.8.0",
+		observationID:   "jsrg_node_absent",
+		relationID:      "jsrg_relation_absent",
+	})
+	if code != 1 || report.Error == nil {
+		t.Fatalf("code=%d error=%+v", code, report.Error)
+	}
+	if !strings.Contains(report.Error.Message, "jsrg_node_absent") {
+		t.Fatalf("message=%s: the failure must name what was not found", report.Error.Message)
+	}
+
+	// The projection needs a declared version, and it needs both selections.
+	code, report = runReaEvidence(t, reaEvidenceOuterArgs{
+		evidencePath:  evidence,
+		observationID: "jsrg_node_absent",
+		relationID:    "jsrg_relation_absent",
+	})
+	if code != 2 || report.Error == nil || report.Error.Code != "INVALID_ARGUMENT" {
+		t.Fatalf("code=%d error=%+v", code, report.Error)
+	}
+	code, report = runReaEvidence(t, reaEvidenceOuterArgs{
+		evidencePath:    evidence,
+		providerVersion: "6.8.0",
+		observationID:   "jsrg_node_absent",
+	})
+	if code != 2 || report.Error == nil || report.Error.Code != "INVALID_ARGUMENT" {
+		t.Fatalf("code=%d error=%+v", code, report.Error)
+	}
+}
+
+func containsLimit(limits []string, want string) bool {
+	for _, limit := range limits {
+		if limit == want {
+			return true
+		}
+	}
+	return false
+}
+
 func mustJSONText(t *testing.T, value any) string {
 	t.Helper()
 	raw, err := json.Marshal(value)

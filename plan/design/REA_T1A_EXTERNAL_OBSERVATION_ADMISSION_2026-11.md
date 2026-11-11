@@ -18,9 +18,10 @@ Issue #3394の「次の唯一のProduct Exit」は、**同一REA実Attemptの外
 - `Receive` — 受領bytesのdigest・包装とEvidence本体の分離・状態分類。
 - `WithView` — 版別JSONL framing照合（終端有無・counts・親リンク・coverage・重複identity）。
 - `ReadCandidates` — Evidence本体のsemantic graphから、**Observations（7件）・Relations（2件）・Unknowns（1件）・Coverage（family別）・Limitations** を読む。`node_id`/`relation_id`/`unknown_id`・artifact sha256・line/column span・evidence context（state/confidence/authority/extractor/limitations）・resolutionを保持する。Producerがrelation_idを言う版ではそれを読み、言わない場合だけTEI導出のhandleを使い`derived`を付ける。
-- 試験: `candidate_test.go` が実捕捉（REA 6.8.0）に対して上記を1フィールドずつ固定する。
+- 試験: `candidate_test.go`・`external_candidates_test.go` が実捕捉（REA 6.8.0）に対して上記を1フィールドずつ固定する。
+- `operations.ExternalCandidates` — 上記を共通read-only操作として投影する型付き操作（§5のD1決定にもとづく）。`tei rea-evidence -observation-id … -relation-id …` がそのCLI Adapter。
 
-したがってT1-Aの**入力側**は出ている。残る問いは「どの既存操作がこれを落とさず運べるか」である。
+したがってT1-Aの**入力側・投影側**は出ている。§5の代行決定で「どの操作が運べるか」に答えた。
 
 ## 3. Product Exitの受入票（同一Attemptの定義）
 
@@ -79,7 +80,35 @@ A1〜A6のうち一つでも満たさなければ「連携成功」と呼ばな�
 
 G1〜G4がいずれも「既存操作で表現不能」とOwnerが判断した場合、**このIssueではT1-AをNOT RUNのまま維持**する。実装者が勝手にSchemaを作ってはならない。
 
-## 5. 後続実装者の作業手順
+## 5. オーナー判断（2026-11-11 代行決定）
+
+Issue起票者から「オーナー判断は代行して構わない」の授権を受けたため、以下を決定する。判断の正本はこの節と、`internal/operations/external_candidates.go` の実装である。
+### D1 — G1〜G4は「既存操作では表現不能」。最小差分は**新規の型付きread-only操作1つ**
+
+既存のcatalog/inspect/trace/validate/model-mapはすべてWorld起点で、（a）外部ID名前空間の欄がなく、（b）coverage/unknownsを「定数文字列」としてしか持たず、（c）Producer/Attemptの欄がなく、（d）外部Evidenceを入れる入力経路がない。**既存操作にoptional欄を足す案は採らない**——外部IDをTEI subjectと同じ結果型に混ぜると、呼出し元が外部IDをsubjectと誤読できる（T1A-07の事故経路になる）。
+
+代わりに `internal/operations` に**型付きread-only操作を1つだけ**追加する:
+
+- `operations.ExternalCandidates(request, at) (ExternalCandidateView, error)` — schemaVersion `tei.operations.external-candidates/v0`・`effect: read-only`・`authorityLimits`（固定リスト）という、既存操作と同じ形。
+- 入力は**型付きrequest**（EvidencePath・宣言したToolVersion・選択するObservationID/RelationID・entryが観測したTool）。**生bytesは渡さない**。操作はファイルを1回読んで、読んだbytesのdigestをAttemptに載せる。
+- 内部では `internal/externalanalysis` の `Receive`/`ReadCandidates` を再利用する。**Evidence形式の読み手は一つだけ**（第二Parserを作らない）。
+- 結果は外部ID・Source位置（digest＋kind:path＋line/column span）・evidence context（state/confidence/authority/extractor）・coverage（family別）・unknowns（object配列）・limitations・Producer/Attempt・**未選択件数**を運ぶ。
+- 失敗は型付きerrorで、`INVALID_REQUEST`（引数）・`READ_FAILED`・`UNUSABLE`（mismatch/missing）・`INCOMPLETE`（partial）・`FAILED`（工具の失敗）・`NOT_FOUND`（選択IDがEvidenceに無い）を区別する。
+
+### D2 — 入口はAdapter。CLI入口は既存の `tei rea-evidence` を延長する
+
+`tei rea-evidence -observation-id … -relation-id … -provider-version …` がCandidate投影のmodeになる（`mode=candidate`）。HTTP/MCP/Studio入口は**このPRでは作らない**（未実装の入口を成功としない）。MCP read-only Adapterへの追加は別Issueとする。
+
+### D3 — 工具の存在観測はentryの責務
+
+`ExternalCandidates` は工具をprobeしない。presenceはprocess境界で観測するentry（CLI）がrequestで渡し、操作はそれを**記録するだけ**（権限ではない）。工具不在の Attempt は「この環境では新規取得できない」ことを示す。
+
+### D4 — 覆す条件
+
+- 既存操作に外部ID欄を足す方が望ましいとOwnerが判断した場合、この操作は撤回する（畳む先は既存操作）。
+- MCP/HTTP入口を作る段階で、同じ結果型を運べるAdapterが必要になった場合、**結果型は再利用する**（第二の型を作らない）。
+
+## 6. 後続実装者の作業手順
 
 ### Step 1 — 不足辺を返す（実装しない）
 
@@ -125,14 +154,14 @@ ADR-0048の試験表（T01〜T13）の様式に合わせ、**直接呼出し**�
 - 結果をIssue #3394へ追記する。PASS/FAILだけでなく、A1〜A6のどの条件を満たしたかまで書く。
 - `docs/status.md` の受領行を更新する（T1-Aが受領可能になった事実を、未実施の項目と区別して書く）。
 
-## 6. やらないこと（停止線）
+## 7. やらないこと（停止線）
 
 - REA Parser・中央Registry・専用Host・第二の意味正本を作らない。
 - 外部Node/Relation IDをTEI subjectと同一視しない（T1A-07）。
 - `operations.InspectSubject` に外部JSONを渡して意味受理と偽装しない。`deployment/observation` を実Runtime観測として偽装しない。`deployment/evidence.Router` のEvidence Gate `pass`として偽装しない。
 - SHO Writer・三視点CRUD・実DB/旧新対照・Owner Meaning受理は別資格。本作業票はT1-Aの受領まで。
 
-## 7. 次の不足辺（T1-A着手後に顕在化するもの）
+## 8. 次の不足辺（T1-A着手後に顕在化するもの）
 
 - 第二Source（異種二Source以上）の同一Function候補への帰属。観測時点・Schema alias・Business IDの衝突（RE-18）。
 - Source closure（依存の完全な受領）。REAが「全件取得」を認めない条件（§Issue本文のMCP契約）。

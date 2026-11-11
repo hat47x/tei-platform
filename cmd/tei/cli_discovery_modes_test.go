@@ -122,6 +122,15 @@ func TestDiscoveryAdvertisesEveryModeAResponseCanCarry(t *testing.T) {
 	if err := os.WriteFile(reaViewPath, []byte(syntheticView), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	// The candidate projection reads the real captured Evidence, whose node
+	// and relation identities the test names. The synthetic evidence written
+	// above carries no semantic graph, so the projection would refuse it.
+	reaRealEvidencePath := filepath.Join("..", "..", "internal", "externalanalysis", "testdata", "rea-6.8.0", "analysis.json")
+	if _, err := os.Stat(reaRealEvidencePath); err != nil {
+		t.Fatalf("read the captured fixture: %v", err)
+	}
+	candidateNodeID := "jsrg_node_237478f2a27c9614a522cbfc7ab60fa96943a458d164945d25af634f1240b652"
+	candidateRelationID := "jsrg_relation_0f6757a241c56fd84ecaec91f538d8297d222eb5625e4cdbcb2de7603f330718"
 
 	lineContext := discoveryRun(t, binary, "knowledge-context", "-workspace", reference,
 		"-subject-kind", "semantic-data", "-subject-id", "sales.order_line")
@@ -169,6 +178,7 @@ func TestDiscoveryAdvertisesEveryModeAResponseCanCarry(t *testing.T) {
 		{args: []string{"rea-evidence", "-analysis-output", reaEvidencePath, "-request-out", filepath.Join(dir, "rea-request.json"), "-provider-version", "6.8.0"}, want: "request"},
 		{args: []string{"rea-evidence", "-analysis-output", reaEvidencePath, "-view", reaViewPath, "-provider-version", "6.8.0"}, want: "view"},
 		{args: []string{"rea-evidence", "-analysis-output", reaEvidencePath, "-view", reaViewPath, "-request-out", filepath.Join(dir, "rea-request-view.json"), "-provider-version", "6.8.0"}, want: "request-view"},
+		{args: []string{"rea-evidence", "-analysis-output", reaRealEvidencePath, "-observation-id", candidateNodeID, "-relation-id", candidateRelationID, "-provider-version", "6.8.0"}, want: "candidate"},
 	}
 
 	advertised := map[string][]string{}
@@ -217,8 +227,9 @@ func TestDiscoveryModesAreAClosedAdvertisedSet(t *testing.T) {
 		"unvalidated-candidates": true, "": true,
 		// rea-evidence names which optional inputs the response carries; the
 		// shape really does change with them (a receipt alone, plus a request
-		// check, plus a view inspection).
+		// check, plus a view inspection, plus a candidate projection).
 		"evidence": true, "request": true, "view": true, "request-view": true,
+		"candidate": true,
 	}
 	for _, record := range commandCatalog().Commands {
 		for _, mode := range record.Modes {
