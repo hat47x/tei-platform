@@ -1,4 +1,4 @@
-﻿# 機能設計文書
+# 機能設計文書
 
 ここには、複数のIssueにまたがる機能について、意味モデル、記述方法、検証、実行時の境界をまとめた設計文書を置きます。採用前の案も、対象となるIssueと文書の状態を冒頭に明記して管理します。
 
@@ -71,6 +71,7 @@
 | [`SUI_TEI_MIGRATION_IMPLEMENTATION_PACKET_2026-11.md`](SUI_TEI_MIGRATION_IMPLEMENTATION_PACKET_2026-11.md) | SUI→TEI移行のM1〜M6を、変更範囲・型・試験・受入・Owner判断・完了条件までPR単位に具体化した実装前の提案（[#3401](https://github.com/hat47x/sui-sensemaking/issues/3401)、[#2497](https://github.com/hat47x/tei-platform/issues/2497)、未採用） |
 | [`CROSS_VIEW_CHANGE_QUALIFICATION_REFERENCE_DRAFT.md`](CROSS_VIEW_CHANGE_QUALIFICATION_REFERENCE_DRAFT.md) | Issue #1143で検討中の、複数の視点にまたがる変更の適格性確認案。参照用の契約としては未採用 |
 | [`STUDIO_CONSUMER_FRESHNESS_BOUNDARY_2026-10.md`](STUDIO_CONSUMER_FRESHNESS_BOUNDARY_2026-10.md) | #1124の非Host Studio Consumerが非同期応答・Graph描画選択・Source/Accepted/readinessの鮮度を別々に検査する未採用の設計補足 |
+| [`PLUGIN_MANAGEMENT_CONTRACT_2026-11.md`](PLUGIN_MANAGEMENT_CONTRACT_2026-11.md) | プラグイン管理の状態分離・理由コード対応・role契約対応表・データlevel導出を1箇所にまとめる管理契約（[#2044](https://github.com/hat47x/tei-platform/issues/2044)、S1は[#4376](https://github.com/hat47x/tei-platform/issues/4376)で実装、S2〜S5は追記） |
 | [`BUSINESS_EFFECT_LIFECYCLE_DESIGN_2026-10.md`](BUSINESS_EFFECT_LIFECYCLE_DESIGN_2026-10.md) | 副作用を伴う実行の段階、確定後の外部効果、冪等の識別子、確定状態、補償、一括処理の再開をまとめる、評価待ちの設計（[GitHub #1129](https://github.com/hat47x/tei-platform/issues/1129)、[#1130](https://github.com/hat47x/tei-platform/issues/1130)） |
 | [`BUSINESS_ACTION_COMPLETION_EVIDENCE_DESIGN_2026-11.md`](BUSINESS_ACTION_COMPLETION_EVIDENCE_DESIGN_2026-11.md) | Business Actionの完了述語、必要対象集合の完全性、Function利用箇所・実確定Effect・外部証拠の接合を区別する未採用の設計（[#1125](https://github.com/hat47x/tei-platform/issues/1125)、[#1119](https://github.com/hat47x/tei-platform/issues/1119)） |
 | [`EXECUTION_CORRELATION_DESIGN_2026-10.md`](EXECUTION_CORRELATION_DESIGN_2026-10.md) | 一つの業務操作を実行先から提供元まで追跡し、意味の版・ビルド・ロックへ戻るための識別子と記録の規則。担当Issueは無く、評価待ち |
