@@ -1,0 +1,12 @@
+Round 71 recorded the silent failure but did NOT file it, because the fix was
+undecided: warn, or read a wider set of locations?
+
+This round chose WARN.
+
+The loaders' read range is a design decision (a persistence mapping belongs in
+databases/<db>/persistence/). Widening it would allow the same mapping in two
+places and reintroduce ambiguity. "This file was not read" is a fact, so
+reporting it is the safe side.
+
+A file may legitimately be kept for a future loader, so the report is a WARNING,
+not an error.
