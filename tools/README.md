@@ -48,6 +48,7 @@
 | [`reference-ai-write-window/`](reference-ai-write-window/) | Pluginが宣言した書込み窓にAIの編集が収まっているかを検査し、窓の外の変更を受理前に拒否する参照。未解決と確認済み違反、Target別の可用性、全体生成の境界を分ける（#2092） |
 | [`reference-authentication/`](reference-authentication/) | credentialを発行せず、principalとtenantの認証境界を検証する基盤pluginの参照（#2020） |
 | [`reference-tei-eki-contract/`](reference-tei-eki-contract/) | TEI Job/Flow設計からEKIのOpenAPI形状へ写すときの意味の欠落を、固定snapshotとの比較で検出する試験専用の参照（実Provider連携ではない） |
+| [`reference-cache-invalidation/`](reference-cache-invalidation/) | World/Model/Artifact/Evidenceのrevisionを追跡し、決定論的な依存閉包を計算して、キャッシュされたartifact・build・evidenceをそれぞれ再利用できるかを判定する**読み取り専用の参照**。未知の依存は安全側に倒す。製品のcache・分散store・認可・受理済みAPIではない（#2595・#2600・#3267） |
 | [`reference-external-role-dispatcher/`](reference-external-role-dispatcher/) | GitHub Issue/PRを介する異種AI協調で、ロール別の作業取得・モデル選択・排他lease・失敗時のエスカレーション・レビュー依頼を一つのCLIで確認する参照（DSH adapterはdry-run既定、ghはdry-runで変更を回避）（#4218） |
 | [`reference-cache-full-vs-incremental-verification/`](reference-cache-full-vs-incremental-verification/) | キャッシュ・増分処理がフル処理と同じ結果を出すかを比較する参照。食い違う入力・依存・キャッシュ項目・artifactを診断として特定し、キャッシュ再利用による偽陽性を検出する（#4219） |
 | [`reference-cache-invalidation/`](reference-cache-invalidation/) | World・Model・Artifact・Evidenceの版と依存閉包からArtifact再利用・Build省略・Evidence再利用を個別に判定するread-only参照。未知依存、途中失敗、A→B→Aでの証拠誤再利用を拒否（#2595 #2600 #3267）。実キャッシュストアや実Buildとは未接続 |
@@ -252,6 +253,7 @@
 | [`reference-subsystem-partition/`](reference-subsystem-partition/) | 候補として与えた固定Data Owner・直接C/U/D・所属許可・must-linkだけを対象に、越境更新重みの厳密最小値を読取り専用で算出する参照。実Sourceの受理済み所有関係・開示資格・Effectは判定しない（#3250）。 |
 | [`reference-sui-action-boundary/`](reference-sui-action-boundary/) | SUIの操作とTEI Actionの接続例 |
 | [`reference-sui-adoption/`](reference-sui-adoption/) | SUI移行の参照データと検査 |
+| [`reference-sui-canonical-probe/`](reference-sui-canonical-probe/) | SUIの意味構造を `.tei` で宣言したときの解決結果と、宣言しない損失を read-only で報告する probe（M2） |
 | [`reference-sui-interaction/`](reference-sui-interaction/) | 画面操作とApplication Actionの接続例 |
 | [`reference-transform-runtime-engine/`](reference-transform-runtime-engine/) | 決定的な変換処理の実行例 |
 | [`reference-transform-runtime-engine-build/`](reference-transform-runtime-engine-build/) | 変換実行基盤の構築確認 |

@@ -2,6 +2,8 @@
 
 本記録は、SB-C0（[SB-C0の入口と再入場の契約](../design/SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md)）が**どこまで到達したか**を、根拠の在り処つきで一度に示すものです。**新しい主張はしません。** 既に記録した観測を、現在の`main`で検証し直したうえで並べます。
 
+**2026-11-11の更新**：§4.35〜§4.54で状態が変わったため、**本記録を現在の`main`に合わせて更新**しました。変わったのは「鎖」の行（隔離ビルド・全鎖の実対象・CIでの実行）と「終了条件」（45/2 → **47/1**）です。
+
 ## 到達した状態
 
 **能力宣言 → catalog → 計画 → 成果物 → L2-bのClaim**が、製品の契約を一つも変えずに、二つのホストで通ります。
@@ -15,6 +17,11 @@
 | **L2-b（Claim）** | 五条件の同時成立を述語として、`l2b.claimed`で述べる | [`TEI_GO_SELF_BUILD_L2B_CLAIM_2026-11-09.md`](TEI_GO_SELF_BUILD_L2B_CLAIM_2026-11-09.md) |
 | **L3** | stage1のバイナリがstage2を動かす | [`TEI_SELF_BUILD_CMD_TEI_L3_2026-11-08.md`](TEI_SELF_BUILD_CMD_TEI_L3_2026-11-08.md) |
 | **鎖** | 宣言を書くところからClaimまでが一本で通り、CIで毎回回る | [`TEI_GO_SELF_BUILD_CHAIN_GATE_2026-11-10.md`](TEI_GO_SELF_BUILD_CHAIN_GATE_2026-11-10.md) |
+| **鎖（実対象）** | **`./cmd/tei`（73 package）**で五条件が成立し、ビルドは**計画のsourceだけを写した木**で行われる | [`TEI_GO_SELF_BUILD_FULL_CHAIN_REAL_SUBJECT_2026-11-11.md`](TEI_GO_SELF_BUILD_FULL_CHAIN_REAL_SUBJECT_2026-11-11.md)・§4.50 |
+| **隔離** | 計画がmodule contextを名指すとき、**隔離ビルドが既定**。`buildSource`と`childIsolation`がどちらの木かを示す | §4.42・§4.43・§4.47・[`TEI_GO_SELF_BUILD_ISOLATE_DEFAULT_2026-11-10.md`](TEI_GO_SELF_BUILD_ISOLATE_DEFAULT_2026-11-10.md) |
+| **計画⇄ビルドの一致** | ビルドが読むものが計画に載り、計画が名指すものをビルドが読む（**双方向**） | §4.41・§4.46・[`TEI_GO_SELF_BUILD_DEPENDENCY_COVERAGE_2026-11-10.md`](TEI_GO_SELF_BUILD_DEPENDENCY_COVERAGE_2026-11-10.md) |
+| **CIでの全鎖** | `tei-self-build-qualification.yml`で全鎖が走り、**ランナーで105秒** | §4.53・[`TEI_GO_SELF_BUILD_FULL_CHAIN_CI_2026-11-11.md`](TEI_GO_SELF_BUILD_FULL_CHAIN_CI_2026-11-11.md) |
+| **物性値** | 27.68 MiB・起動7.9 ms・RSS 12.2 MiB（`tei version`の最小操作） | §4.54・[`TEI_GO_SELF_BUILD_ARTIFACT_PROPERTIES_2026-11-11.md`](TEI_GO_SELF_BUILD_ARTIFACT_PROPERTIES_2026-11-11.md) |
 | **二つのホスト** | `linux/amd64`と`windows/amd64`で同じ計画・同じartifact・同じcatalog | [`TEI_GO_SELF_BUILD_CROSS_OS_DIGESTS_2026-11-09.md`](TEI_GO_SELF_BUILD_CROSS_OS_DIGESTS_2026-11-09.md)・[`TEI_GO_SELF_BUILD_CHAIN_WINDOWS_2026-11-10.md`](TEI_GO_SELF_BUILD_CHAIN_WINDOWS_2026-11-10.md) |
 
 ## 製品の契約を変えずに済んだ理由
@@ -39,7 +46,7 @@
 
 ## この環境で確認し直したこと
 
-`main`の`d264173ad`で実行しました（WSL2 Ubuntu 22.04 / `go1.27.3`）。
+初版は`main`の`d264173ad`で実行しました（WSL2 Ubuntu 22.04 / `go1.27.3`）。**2026-11-11の更新は、その後の§4.41〜§4.54の記録を反映したもので、下の表は初版の実行結果です**（同じ試験は今も`main`のCIで回っています）。
 
 | 検証 | 結果 |
 | --- | --- |
@@ -56,19 +63,18 @@
 | 供給のTrust・Seed Trust | **未主張** |
 | catalogが正しいこと | **未主張**（K-3、SC0-26） |
 | 誰が能力を宣言してよいか（権限） | **未決**。catalogは「buildできると名乗るデータ」であり、名乗りの妥当性は範囲外 |
-| 能力宣言の版付け | **未決。** 第二のconsumerが現れた時点で決める |
-| G4（適格性） | **`UNQUALIFIED`のまま。** 設計ではなく適格性の判定であり、本記録の範囲外 |
+| 能力宣言の版付け | **§4.35で閉じた**（配るのはcatalogなので、宣言には付けない） |
+| G4（適格性） | **`UNQUALIFIED`のまま。** 材料は§4.52で整理し、物性値も§4.54で測ったが、**判定ではない**。残る空白は「交換・停止手順」と「独立Consumerでの適合」 |
 
 ## 終了条件の状態
 
-設計文書§7の終了条件は、**45項目がチェック済み、未チェックは2項目**です。
+設計文書§7の終了条件は、**47項目がチェック済み、未チェックは1項目**です。
 
 | 未チェック項目 | なぜ未チェックか |
 | --- | --- |
-| `darwin`・`arm64`・別のGo版の観測 | このホストでは実行できない |
-| 能力宣言の版付け | 第二のconsumerが現れた時点で決める（今は互換の約束をしない） |
+| `darwin`での観測 | このホストでは実行できない（macOSが無い。クロスコンパイルは通るが走らせられない） |
 
-**どちらも「やっていない」ではなく「今はできない／今は決めない」であり、理由と再開条件を記録しています。**
+**能力宣言の版付けは§4.35で閉じた**（宣言に版を付けない。配るのはcatalogで、catalogは既に`formatVersion`を持つ）。**「やっていない」ではなく「今はできない」であり、理由と再開条件を記録しています。**
 
 ## 参照
 

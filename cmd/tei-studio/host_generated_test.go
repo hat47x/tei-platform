@@ -18,10 +18,20 @@ func TestGeneratedGoServicesRunThroughRealHost(t *testing.T) {
 	}
 	bridge := &StudioBridge{host: h}
 	bridgeType := reflect.TypeOf(bridge)
-	if bridgeType.NumMethod() != 5 {
+	// The service surface is twelve operations: the five the generated services
+	// back, and the seven projections assets/client.mjs addresses. The seven were
+	// missing from the service (#4295), so this guard names all twelve instead of
+	// letting a count of five stand in for the UI's expectations.
+	want := []string{
+		"CatalogWorkspace", "ExecuteCommand", "ExecuteCommandWithPeriods",
+		"ExecuteCommandWithPolicy", "InspectSubject", "ListWorkspaces",
+		"ObserveXead", "PlanCommand", "ValidateWorkspace",
+		"ViewApplication", "ViewPackage", "ViewPattern",
+	}
+	if bridgeType.NumMethod() != len(want) {
 		t.Fatalf("unexpected Wails exports: %d", bridgeType.NumMethod())
 	}
-	for i, method := range []string{"CatalogWorkspace", "InspectSubject", "ListWorkspaces", "ObserveXead", "ValidateWorkspace"} {
+	for i, method := range want {
 		if bridgeType.Method(i).Name != method {
 			t.Fatalf("unexpected Wails service method %d: %s", i, bridgeType.Method(i).Name)
 		}
