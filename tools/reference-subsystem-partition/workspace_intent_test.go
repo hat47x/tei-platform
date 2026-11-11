@@ -67,9 +67,9 @@ func TestReferenceWorkspaceIntentStopsBeforeDirectCUD(t *testing.T) {
 		t.Fatalf("this fixed reference does not declare a C/U/D effect: %+v", capability.Effect)
 	}
 
-	index, err := workspace.BuildSourceIndex(root, loaded)
+	index, err := workspace.BuildSourceIndexFromLoad(root, loaded)
 	if err != nil {
-		t.Fatalf("build Source Index for same loaded World: %v", err)
+		t.Fatalf("build Load-byte-bound Source Index: %v", err)
 	}
 	subjects := []sourceindex.Subject{
 		{Kind: "application-pattern", ID: "order_entry.submit_order"},
