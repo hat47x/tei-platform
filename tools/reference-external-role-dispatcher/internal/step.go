@@ -6,18 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"strings"
 	"time"
 )
-
-// StepCodeConfig holds Step Code CLI specific configuration.
-type StepCodeConfig struct {
-	CLI          string `json:"cli"`
-	DefaultDryRun bool  `json:"defaultDryRun"`
-	TaskTimeout  string `json:"taskTimeout"`
-	Profile      string `json:"profile,omitempty"`
-	Plan         string `json:"plan,omitempty"`
-	WorkDir      string `json:"workDir,omitempty"`
-}
 
 // StepCodeAdapter provides a thin wrapper around Step Code CLI.
 type StepCodeAdapter struct {
@@ -77,19 +68,6 @@ func MarshalStepExecuteResult(r *StepExecuteResult) ([]byte, error) {
 	return json.Marshal(r)
 }
 
-type stepExecuteResult struct {
-	RunResult
-	CLI         string `json:"cli"`
-	CLIVersion  string `json:"cliVersion,omitempty"`
-	WorkDir     string `json:"workDir,omitempty"`
-	Profile     string `json:"profile,omitempty"`
-	Plan        string `json:"plan,omitempty"`
-	ProcessID   int    `json:"processId,omitempty"`
-	ExecutionID string `json:"executionId,omitempty"`
-	StartTime   string `json:"startTime,omitempty"`
-	EndTime     string `json:"endTime,omitempty"`
-}
-
 // StepExecuteResult contains Step Code specific execution metadata.
 type StepExecuteResult struct {
 	RunResult
@@ -104,8 +82,8 @@ type StepExecuteResult struct {
 	EndTime     string `json:"endTime,omitempty"`
 }
 
-func (a *StepCodeAdapter) executeStep(ctx context.Context, task string, modelID string) (*stepExecuteResult, error) {
-	result := &stepExecuteResult{
+func (a *StepCodeAdapter) executeStep(ctx context.Context, task string, modelID string) (*StepExecuteResult, error) {
+	result := &StepExecuteResult{
 		RunResult: RunResult{
 			Harness:   "step-code",
 			ModelID:   modelID,

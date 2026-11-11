@@ -48,6 +48,7 @@ type RunResult struct {
 	Stdout       string `json:"stdout,omitempty"`
 	Stderr       string `json:"stderr,omitempty"`
 	ErrorMessage string `json:"errorMessage,omitempty"`
+	ProcessID    int    `json:"processId,omitempty"`
 }
 
 // Execute runs a task via DSH headless if available; otherwise returns a dry-run result.
