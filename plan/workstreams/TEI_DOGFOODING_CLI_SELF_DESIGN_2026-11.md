@@ -2302,3 +2302,40 @@ environment  nope       -> SUBJECT_NOT_FOUND
 ### 変異
 
 `environment` の dispatch を外す／`database` の dispatch を外す、の2種が落ちる。**第58ラウンドで足した種非依存の検査が、試験を書き換えずに両方を捕まえた。**
+
+## 72. 第71ラウンド（2026-11-11）: 永続化マッピングを設計し、persistence-mapping を CLI で読めるようにする
+
+まだ触っていない層として persistence を選び、CLI の診断だけでマッピングを設計した。生出力は[第71ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND71_PERSISTENCE_LAYER_2026-11-11/README.md)にある。
+
+### 経過（6往復）
+
+| Attempt | 応答 | 学んだこと |
+| --- | --- | --- |
+| 1 | `ok`（**しかし何も起きていない**） | ファイルが読まれていない |
+| 2 | `expected "persist"` | `databases/<db>/persistence/` 配下に置く。キーワードは `persist` |
+| 3 | `expected "storage"` | `database` の後に `semantic`、列に `storage` と nullability |
+| 4 | `PERSISTENCE_UNDECLARED_SEMANTIC_DEPENDENCY` ＋ `UNKNOWN_PERSISTENCE_ATTRIBUTE` ×2 | database の `uses semantic` と、実在する属性 |
+| 5 | `DATABASE_CONTRACT_UNDECLARED_SEMANTIC_DEPENDENCY` ＋ `PERSISTENCE_MAPPING_NON_RELATIONAL_DATABASE` | `kind relational` |
+| 6 | `ok` | 完成 |
+
+### Attempt 1 の「静かな失敗」
+
+**Attempt 1 は `ok` を返したが、マッピングは World に入っていなかった。** ローダは `databases/<db>/persistence/*.tei` しか読まず、`validate` は「読まなかったファイル」について何も言わない。**配置の誤りが成功として返る。**
+
+**`validate` が通ることは「意図が反映された」ことを意味しない。** 読み返しを必ず行う理由が、ここで実証された。
+
+（**起票していない。** 再現は確定したが、修正が「警告を出す」のか「もっと広い場所を読む」のかを決めていない。第52ラウンドの誤りを避けるため、記録のみ。）
+
+### 読み返しで見つけた欠落と修正
+
+`persistence-mapping` は `model catalog` に出ず、`inspect` / `trace` が `UNSUPPORTED_SUBJECT_KIND`、`model overview` は `notCoveredKinds` に載せていた。
+
+`inspect` に追加し、受理種 18→**19**。
+
+```text
+persistence-mapping master_data.intake -> ok  table public.intakes  cols 1  not-indexed
+persistence-mapping sales_core.order   -> ok  table public.orders   cols 6
+persistence-mapping nope.thing         -> SUBJECT_NOT_FOUND
+```
+
+変異1種（dispatch を外す）が落ちる。**種非依存の検査が試験を書き換えずに捕まえた。**
