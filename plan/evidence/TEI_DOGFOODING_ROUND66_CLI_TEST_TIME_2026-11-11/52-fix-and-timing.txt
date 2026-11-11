@@ -1,0 +1,17 @@
+Fix: build once per test binary with sync.Once, share the path.
+
+Same test:
+  before  62.6s  (wall 93.7s)
+  after    5.3s
+
+Package:
+  before  564.8s alone ok, 600.1s FAIL when run concurrently (go test limit)
+  after   232.9s ok (full run)
+
+Stated honestly: `-short` measured 306.3s AFTER 232.9s because -short ran first
+with a cold cache and the full run second with a warm one. The two numbers were
+not measured under the same conditions, so their ordering is NOT claimed to mean
+that -short is slower.
+
+Remaining top entries are the self-build tests (17.6s, 12.2s), which -short
+skips by design.
