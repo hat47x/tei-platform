@@ -111,6 +111,15 @@ func (d *Dialect) IsCheckViolation(err error) bool {
 // Select builds a SELECT statement.
 func (d *Dialect) Select(ctx context.Context, opts sqlgen.SelectOptions) (sqlgen.SQL, error) {
 	var sb strings.Builder
+
+	// A CTE is a WITH clause in front of the statement, so it has to be written
+	// before the SELECT keyword rather than anywhere inside the body.
+	if strings.TrimSpace(opts.CTE) != "" {
+		sb.WriteString("WITH ")
+		sb.WriteString(opts.CTE)
+		sb.WriteString(" ")
+	}
+
 	sb.WriteString("SELECT ")
 
 	if len(opts.Columns) == 0 {
@@ -151,6 +160,14 @@ func (d *Dialect) Select(ctx context.Context, opts sqlgen.SelectOptions) (sqlgen
 		sb.WriteString(buildConditions(opts.Having, ""))
 	}
 
+	// A named window definition belongs to the whole query rather than to one
+	// select item, so it follows GROUP BY / HAVING and precedes ORDER BY. Putting
+	// it right after the select list is a syntax error in PostgreSQL.
+	if strings.TrimSpace(opts.Window) != "" {
+		sb.WriteString(" WINDOW ")
+		sb.WriteString(opts.Window)
+	}
+
 	if len(opts.OrderBy) > 0 {
 		sb.WriteString(" ORDER BY ")
 		for i, o := range opts.OrderBy {
@@ -185,8 +202,26 @@ func (d *Dialect) Select(ctx context.Context, opts sqlgen.SelectOptions) (sqlgen
 		sb.WriteString(" FOR SHARE")
 	}
 
+	// A set operation combines this query with the next one, so it closes the
+	// statement: everything a caller appends afterwards belongs to the other
+	// side of the operation, not to this one.
+	if opts.SetOperation != "" {
+		sb.WriteString(" ")
+		sb.WriteString(setOperationSuffix(opts.SetOperation, opts.All))
+	}
+
 	args := buildArgs(opts.Parameters, opts.Where, opts.Having)
 	return sqlgen.SQL{Statement: sb.String(), Args: args}, nil
+}
+
+// setOperationSuffix renders the set operation keyword, adding ALL when the
+// caller keeps duplicates.
+func setOperationSuffix(operation sqlgen.SetOperation, all bool) string {
+	suffix := string(operation)
+	if all {
+		suffix += " ALL"
+	}
+	return suffix
 }
 
 // Insert builds an INSERT statement.
