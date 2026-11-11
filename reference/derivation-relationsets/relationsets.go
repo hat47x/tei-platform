@@ -154,11 +154,25 @@ func AsScalar(ref SetRef) (derivationref.Input, error) {
 	}
 }
 
-// Sum reduces a Many/Aggregate set to one value. An incomplete or unfetched
-// set is rejected rather than summed as if it were the whole collection, and a
+// Sum reduces a Many set to one value. An incomplete or unfetched set is
+// rejected rather than summed as if it were the whole collection, and a
 // duplicate business identity is treated as a join fan-out, not a genuine
 // second row.
+//
+// An Aggregate set (already reduced rows) is rejected here: whether reduced
+// rows may be reduced again depends on the law that produced them (a mean, a
+// ratio or a point-in-time balance is not summable), which a SetRef does not
+// carry. Such input must go through Reaggregate with a declared claim (#2593).
 func Sum(ref SetRef, policy AggregatePolicy) (derivationref.Input, error) {
+	if ref.Shape == Aggregate {
+		return derivationref.Input{}, fmt.Errorf("%w: an already reduced result needs a declared reaggregation law", ErrShape)
+	}
+	return sumIdentified(ref, policy)
+}
+
+// sumIdentified adds the amounts of one complete, identified Many/Aggregate
+// set. It checks the set, not the meaning of adding its rows; callers own that.
+func sumIdentified(ref SetRef, policy AggregatePolicy) (derivationref.Input, error) {
 	if err := Bind(ref); err != nil {
 		return derivationref.Input{}, err
 	}
