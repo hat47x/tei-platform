@@ -50,6 +50,12 @@ type ApplicationPeriodRef struct {
 	// period is the whole month, so a reader sees "no closing" as an absence
 	// rather than a default day.
 	ClosingDay int `json:"closingDay,omitempty"`
+	// CloseRequires names the capability a close must run, and Correction the one
+	// a reopen must run. Both were carried in the Command plan but not in the
+	// application view, so a reader of `tei view` could not see which capability a
+	// period requires — the Command boundary knew and the projection did not.
+	CloseRequires core.CanonicalID `json:"closeRequires,omitempty"`
+	Correction    core.CanonicalID `json:"correction,omitempty"`
 }
 
 // BuildApplicationは、ApplicationのPattern・Packageと、使用する意味の版を解決する。
@@ -98,12 +104,14 @@ func BuildApplication(world ir.World, applicationID core.CanonicalID) (Applicati
 	for _, namespace := range namespaces {
 		for _, period := range namespace.Periods {
 			view.Periods = append(view.Periods, ApplicationPeriodRef{
-				ID:           period.ID,
-				Data:         period.Data,
-				BusinessDate: period.BusinessDate,
-				States:       period.States,
-				Calendar:     period.Calendar,
-				ClosingDay:   period.ClosingDay,
+				ID:            period.ID,
+				Data:          period.Data,
+				BusinessDate:  period.BusinessDate,
+				States:        period.States,
+				Calendar:      period.Calendar,
+				ClosingDay:    period.ClosingDay,
+				CloseRequires: period.CloseRequires,
+				Correction:    period.Correction,
 			})
 		}
 	}

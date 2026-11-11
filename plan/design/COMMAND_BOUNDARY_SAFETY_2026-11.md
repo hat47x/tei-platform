@@ -279,3 +279,7 @@ CLIの `referenceCommandRun` とStudioの `CommandRunValue` に `authorizationMo
 - 宣言した効果を Executor が返さない場合（`Effect` が nil）の扱い。現在は拒否せず `ReportedEffectMissing` として記録する。拒否すると `effectcommit` アダプタのCommit成功がすべてunknownになり、実Providerの正常経路が壊れるため。
 - Executor に取引参加を契約として要求し、参加しない Executor を構成時に拒否するか（Issueの選択肢c）。
 - 実Providerで、宣言外の効果が実際に適用されたかを独立観測で確かめる経路。`ResourceRead` は宣言効果の現在値を見るもので、宣言外の書込みの検出ではない。
+
+## 13. 確定結果と再送の実装仕様（2026-11-11）
+
+[#1174/#2564の実装仕様](CRITICAL_HEADLESS_ISSUE_IMPLEMENTATION_SPEC_2026-11.md) §2〜3に、既存submit分類をCommandから保持する戻り値、OperationIDと要求の保存、Lookupを先に行う回復経路、ABAの版CAS対照を具体化した。これは次の実装の設計候補であり、この文書に記録した実装済みの安全条件を変更したものではない。実行済み試験と新規受入Caseを分けて扱う。

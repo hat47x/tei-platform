@@ -13,6 +13,7 @@ import (
 	"math"
 	"strings"
 
+	"tei/internal/failure"
 	"tei/internal/security/legacyauthorization"
 )
 
@@ -34,6 +35,33 @@ func (e *CommitUncertainError) Error() string {
 	return fmt.Sprintf("保存先の確定結果を確認できません: %v", e.Cause)
 }
 func (e *CommitUncertainError) Unwrap() error { return e.Cause }
+
+// FailureCode returns the machine-readable failure code.
+func (e *CommitUncertainError) FailureCode() string { return "COMMIT_UNCERTAIN" }
+
+// FailureMessage returns the human-readable failure message.
+func (e *CommitUncertainError) FailureMessage() string { return e.Error() }
+
+// FailureCause returns the underlying error, if any.
+func (e *CommitUncertainError) FailureCause() error { return e.Cause }
+
+// Kind classifies the business meaning of the failure. An uncertain commit is
+// a technical failure of the storage boundary, never a business rejection.
+func (e *CommitUncertainError) Kind() failure.Kind { return failure.TechnicalFailure }
+
+// Retryable reports whether the caller may safely retry the same operation
+// identity after this failure. A blind retry with a new OperationID would
+// duplicate the effect, so the caller must look up the receipt first.
+func (e *CommitUncertainError) Retryable() failure.RetryPolicy { return failure.LookupFirst }
+
+// HasEffectUnknown reports whether the failure may have left partial effects
+// applied. This is the one failure where the answer is always unknown.
+func (e *CommitUncertainError) HasEffectUnknown() bool { return true }
+
+// CommitUncertainError satisfies the unified failure contract, so a caller that
+// only knows failure.Failure still sees the effect-unknown warning and the
+// lookup-first retry policy.
+var _ failure.Failure = (*CommitUncertainError)(nil)
 
 type Scope struct {
 	Application string

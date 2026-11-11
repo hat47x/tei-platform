@@ -1,0 +1,4 @@
+﻿workspace: sui_canonical_m2_probe
+formatVersion: 1
+sources:
+  - semantic

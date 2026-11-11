@@ -132,6 +132,16 @@ func main() {
 		}
 		return
 	}
+	if command == "three-element" {
+		code, err := runThreeElementCommand(os.Args[2:], os.Stdout)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		if code != 0 {
+			os.Exit(code)
+		}
+		return
+	}
 	if command == "commands" {
 		if len(os.Args) == 3 && (os.Args[2] == "-h" || os.Args[2] == "-help") {
 			io.WriteString(os.Stdout, "usage: tei commands\n\tdiscovery of the selected read-only commands; no arguments\n")
@@ -200,11 +210,13 @@ func main() {
 	applicationID := fs.String("application", "", "application canonical ID")
 	artifactOutDir := fs.String("out", "", "artifacts: directory to write the derived files")
 	artifactCheck := fs.Bool("check", false, "artifacts: fail when the set is inconsistent")
+	verificationOutputPath := fs.String("verification-output", "", "artifacts: write the verification envelope (workspace and source-index fingerprints) to this path")
 	periodStates := fs.String("period-states", "", "periods: period=state pairs, comma separated")
 	periodStatePath := fs.String("period-state-file", "", "periods: JSON object of period to state")
 	periodAdvance := fs.String("advance", "", "periods: move this period one step toward closed and record it")
-	periodCloseCapability := fs.String("close-capability", "", "periods: the close capability that already ran, satisfying close-requires")
+	periodCloseCapability := fs.String("close-capability", "", "periods: the capability that already ran, satisfying close-requires when closing and correction when reopening")
 	dbCheckDSNFlag := fs.String("dsn", "", "dbcheck: PostgreSQL DSN (defaults to TEI_TEST_POSTGRES_DSN)")
+	dbIntrospectSemanticFlag := fs.Bool("semantic", false, "db-introspect: convert schema to TEI semantic namespace")
 	grantsOut := fs.String("grants-out", "", "grants: write the grants document here instead of stdout")
 	grantCapability := fs.String("grant-capability", "", "issue-grant: the capability the grant is issued to")
 	grantKind := fs.String("grant-kind", "filesystem", "issue-grant: permission kind")
@@ -251,6 +263,21 @@ func main() {
 	parseErr := fs.Parse(os.Args[2:])
 	if errors.Is(parseErr, flag.ErrHelp) {
 		printHelp(os.Stdout, fs, command)
+		return
+	}
+
+	// db-introspect needs neither a workspace nor a world: it reads a live
+	// database and reports its physical schema, so it runs before those
+	// requirements apply.
+	if command == "db-introspect" {
+		if *providerName == "" || *dbCheckDSNFlag == "" {
+			fmt.Fprintln(os.Stderr, "-provider and -dsn are required for db-introspect")
+			os.Exit(2)
+		}
+		if err := runDBIntrospect(context.Background(), *providerName, *dbCheckDSNFlag, os.Stdout, *dbIntrospectSemanticFlag); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 		return
 	}
 
@@ -666,7 +693,7 @@ func main() {
 		}
 		return
 	case "artifacts":
-		if err := runArtifactsCommand(*workspacePath, *applicationID, *artifactOutDir, *artifactCheck); err != nil {
+		if err := runArtifactsCommand(*workspacePath, *applicationID, *artifactOutDir, *artifactCheck, *verificationOutputPath); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
@@ -1229,6 +1256,11 @@ func main() {
 	case "index":
 		validateOrExit(w)
 		writeJSON(index.Build(w))
+	case "relation-query":
+		if err := runRelationQueryCommand(os.Args[2:], os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	default:
 		flag.Usage()
 		os.Exit(2)

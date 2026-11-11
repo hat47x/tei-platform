@@ -55,7 +55,7 @@ func loadContractQuerySQLRealizations(root string, r *Result) error {
 		identity := realizationDef.Identity()
 		sourceKey := "contract-query-sql-realization:" + identity
 		if previous, exists := r.Sources[sourceKey]; exists {
-			return fmt.Errorf("%s: Contract Query SQL realization %sは既に%sで定義されています", path, identity, previous.File)
+			return fmt.Errorf("%s: Contract Query SQL realization %s is already defined in %s", path, identity, previous.File)
 		}
 		r.World.ContractQuerySQLRealizations = append(r.World.ContractQuerySQLRealizations, realizationDef)
 		r.Sources[sourceKey] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}

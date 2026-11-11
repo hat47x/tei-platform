@@ -1,0 +1,39 @@
+namespace bear
+
+type Intent from std.code values { "maintain" "observe" "reduce" "disengage" }
+
+// The producer names BearTypedDecision.source records today. Controller
+// provider IDs such as local-typed-hybrid@0.6.0 are a different field and are
+// deliberately not listed here. An async transport may declare an additional
+// backend_id, so this enumeration is a recorded set, not a closed universe.
+type DecisionSource from std.code values {
+    "none"
+    "typed_wire"
+    "jev-shaped-rules"
+    "failure-aware-rules@0.1.0"
+    "async-wire"
+}
+
+// The six wire fields plus identity and validity. Bounds (±0.18 rad, ±0.25,
+// 0..1, valid_until >= timestamp) stay in BearTypedDecision; the DSL records
+// the shape and the enumerated intent only.
+data TypedDecision {
+    attribute episodeId type bear.episode_id required immutable
+    attribute requestId type bear.request_id required immutable
+    attribute issuedAtS type std.decimal required
+    attribute expiresAtS type std.decimal required
+    attribute intent type bear.intent required
+    attribute headingBiasRad type std.decimal required
+    attribute persistenceBias type std.decimal required
+    attribute braceBias type std.decimal required
+    attribute uncertainty type std.decimal required
+    attribute confidence type std.decimal required
+    attribute source type bear.decision_source required
+    relation observation to bear.typed_observation one
+}
+
+capability bear.cognition.record_decision {
+    input decision bear.typed_decision
+    output bear.typed_decision
+    effect create bear.typed_decision
+}

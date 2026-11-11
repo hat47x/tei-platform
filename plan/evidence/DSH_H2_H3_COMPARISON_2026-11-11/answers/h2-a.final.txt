@@ -1,0 +1,52 @@
+調査は完了しました。以下、実際に実行したCLI呼び出しと結果に基づいて報告します。
+
+# semantic-data:sales.order 調査報告
+
+## 使用したCLI
+- 実行ファイル：`bin\tei.exe`
+- `tei version` → `tei tei.cli.version/v0 windows/amd64 go=go1.27.0 revision=50ebf8014340fd1906f6b35cfa30173e0ee2fc6c`
+- 調査中に成功したコマンドはすべて `commands` の出力で `effect: read-only` と定義されています。`index` 以外は読み取り専用のコマンドだけを呼びました。書き込みやDB/Provider向けの業務操作、外部送信は行っていません。
+
+## (1) 要素が表すもの
+- **事実**：`model catalog` では `{"kind":"semantic-data","id":"sales.order"}`、`symbol":"Order"`、親は `semantic` の `sales`、`sourceStatus":"indexed"` と返りました。
+- **事実**：`inspect` の結果、属性は6つ（customerId / externalId / orderId / orderedAt / status / total）でした。関係は `customer → customer.customer`（one、キーは `customer_id`）と `lines → sales.order_line`（many）の2つです。
+- **事実**：注文を提出する能力 `sales.order.submit` があり、input も output も `sales.order` です。
+- **事実**：`knowledge-context` では `semanticElement.kind = "data"`、`namespace = "sales"` と報告されました。incomingにはアプリケーションパターン `order_entry.order_record` と `order_entry.recent_orders`、それにDB契約 `sales_core.order` の reads がありました。
+- **判断**：注文1件（ヘッダ）を表すセマンティックデータです。明細は `sales.order.lines` の関係で別要素として扱われています。ただし、要素の説明文（ドキュメント）はどこにも存在しませんでした。以下は構造からの判断で、出典文書で裏付けたものではありません。
+
+## (2) 定義元のファイルと出典の手掛かり
+- **定義元**：`source-index`（および `inspect` / `knowledge-context` の sources）が、`semantic/sales/order.tei`（`format":"tei"`、`fingerprint":"sha256:f2063418…abade1e33"`、行7・列6〜11、`role":"definition"`）を返しました。ファイルを直接読んでも、7行目の `data Order {` と一致しました。
+- **隣接し読み込んだファイル**：
+  - `semantic/sales/validation.tei`：注文明細の `line_number_unique` は、`sales.order.lines` の関係と連動しています。
+  - `databases/sales-core/contracts/order.tei`：`contract sales_core.order v4.2 { read sales.order; write sales.order.status; query find_by_id }`
+  - `databases/sales-core/persistence/order.tei`：`persist sales_core.order`（テーブル `public.orders`）
+- **出典について**：semantic配下のファイルを検索した結果、コメントや出典・注記に当たる記述はありませんでした。`catalog` の authorityLimits には `external-xead-xeaf-sources-are-not-canonical-tei-models` とあり、この要素の元になった外部出典（XEAD/XEAF か否か）は**未確認**です。また、`semantic` の `std` 名前空間は `sourceStatus:"not-indexed"` で、`std.money` の定義そのものも**未確認**です。
+
+## (3) 注文の合計額の属性
+- **識別子**：`sales.order.total`（ソースの属性名は `total`）。`inspect` の結果は `{"symbol":"total","type":"std.money"}` です。
+- **型**：`std.money`（`std` 名前空間のプリミティブ。XML表現そのものは未取得）。
+- **定義位置**：`semantic/sales/order.tei` の12行目（offset 326〜331）。これは `inspect -subject-kind semantic-attribute -subject-id sales.order.total` でも確認できました。
+- **保存先の対応**：`persistence/order.tei` と `knowledge-context` では、`total` は列 `total_amount`（`decimal`、required）に対応しています。
+- **未確認**：通貨・丸め規則・`std.money` の構造（金額と通貨の組かどうか）、`total` の値が明細から計算されるものかは、どれも確認できていません。
+
+## (4) Workspace の検証結果
+- `tei validate -workspace <ws>`（テキスト形式）の出力は、**warning 3件と `ok`**（exit 0）でした。JSON 版も `"ok": true` と一致しています。
+  1. `APPLICATION_RELEASE_CONTRACT_NOT_CURRENT`：order_entry@3.7.0 が要求する契約 `sales_core.order_legacy` に、現行の定義がありません。
+  2. `DATABASE_RELEASE_CONTRACT_NOT_CURRENT`：sales_core release 4.0.0 が提供する `sales_core.order_legacy` に、現行の定義がありません。
+  3. 同上：sales_core release 4.1.0 の `sales_core.order_legacy` についても同じです。
+- これらは `sales.order` 自体のエラーではなく、履歴契約 `order_legacy` についての警告です。順序はテキスト版とJSON版で異なっていました。
+
+## 残る診断と不明点
+- `trace -scope full` の結果は `total:4`、`unresolved:0` でした。ただし `projectionUnresolved` には、DB契約やDBへの `unmaterialized-from` / `unmaterialized-to` が17件相当（重複を含む）残っています。trace の authorityLimits には `source-evidence-not-bound` なども付いており、後続の確認が要ります。
+- `knowledge-context` では `dataDesign.resolutionStatus` は `resolved`、`evidenceCoverageStatus` は `complete` ですが、次は**未解決**です：
+  - 業務上の出現識別子、候補キー、関数従属性、複合ドメイン制約
+  - 期間・履歴の意味
+  - 関係の業務的な意味と時間的な意味
+  - 業務識別子の候補と関数従属性の候補は「候補」としてだけ出ており、承認済みではありません。authorityLimits でも「候補は承認ではない」と明記されています。
+- `validate` では特定の要素だけを選んで検証できませんでした。`knowledge-qualify` は必須引数の指定を誤り、`ok:false, INVALID_ARGUMENT` で失敗しました。
+- 関係の意味、通貨、`sales.order` の出典、`std` 型の定義、`order_legacy` の所在は、いずれも**未確認**です。
+
+## 参照した版の区別
+- **モデル（派生ビュー）**：`model catalog` の `modelRevision = sha256:f414e2b0…3fd2`、`worldFingerprint = sha256:c92de09f…d65a`、`sourceIndexFingerprint = sha256:1827f4b4…3531`。`knowledge-context` の `dataDesign.projectionRevision = tei.knowledge.data-design/v7`（fingerprint `sha256:6c419c22…c33e`）。`trace` は実行ごとに snapshotFingerprint が異なりました（`fe15b202…` と `a6975be7…`）。
+- **Source（定義ファイル）**：`semantic/sales/order.tei` は `sha256:f2063418…1e33`、`semantic/sales/validation.tei` は `396c37c4…`、`databases/sales-core/persistence/order.tei` は `638e77f5…`、`semantic/customer/customer.tei` は `d0897ed9…`。ソースファイル自体には版番号の記載はなく、内容から特定できる版はすべて未確認です。
+- **契約・リリースの版**：契約 `sales_core.order` は v4.2（ファイル内の宣言）、DBアプリケーションのリリースは sales_core 4.0.0 / 4.1.0 / 4.2.0 と order_entry 3.7.0 / 3.8.0（`index` のDB・アプリのリリース一覧から）。`modelRevision`・Sourceの指紋・契約の版は互いに別系統の版情報であり、同じ版を指しません。

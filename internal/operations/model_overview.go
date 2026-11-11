@@ -68,6 +68,13 @@ type ModelSectionScope struct {
 	// NotCoveredKinds are kinds this workspace declares that the catalog does
 	// not list. They have no section and no attention count.
 	NotCoveredKinds []string `json:"notCoveredKinds"`
+	// ReadableWithoutSection are the kinds in NotCoveredKinds that `inspect`
+	// can still resolve by name. The distinction matters: a designer who has
+	// just declared a persistence mapping sees its kind in NotCoveredKinds and
+	// cannot tell whether the declaration landed or the kind is simply never
+	// sectioned. With this list they can read the artefact back immediately
+	// (#4128).
+	ReadableWithoutSection []string `json:"readableWithoutSection"`
 }
 
 // declaredLayerKinds names the World collections that hold author-written
@@ -113,10 +120,19 @@ func sectionScope(catalog ModelCatalog, world ir.World) ModelSectionScope {
 		}
 		notCovered = append(notCovered, layer.kind)
 	}
+	// A not-covered kind is readable when its own operation accepts it. Reading
+	// the same list the CLI advertises keeps the two answers together.
+	readable := []string{}
+	for _, kind := range notCovered {
+		if supportedInspectionKind(kind) {
+			readable = append(readable, kind)
+		}
+	}
 	return ModelSectionScope{
-		RootsAre:        "catalog-root-entries",
-		CoveredKinds:    coveredKinds,
-		NotCoveredKinds: notCovered,
+		RootsAre:               "catalog-root-entries",
+		CoveredKinds:           coveredKinds,
+		NotCoveredKinds:        notCovered,
+		ReadableWithoutSection: readable,
 	}
 }
 
