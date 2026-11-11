@@ -130,7 +130,7 @@ TEIには既に、型付き意味（`semantic.Data`・`Attribute`・`Relation`�
 
 `internal/failure`は既に`Kind`（`business_rejection`/`technical_failure`/`partial_success`）、`RetryPolicy`（`retryable`/`not_retryable`/`lookup_first`）、`HasEffectUnknown`を持つ。ETL/Batchはこの分類を再利用し、第二の失敗分類を作らない。
 
-### 9.2 Checkpointが保証しないこと（同一Run/Attemptの再開）
+### 9.2 Checkpointが保証しないこと（同一Runの再開・Attemptの切替を含む）
 
 Checkpointは「どこまで進んだか」の記録であり、**「同じ意味のまま再開できる」ことの証明ではない。** 再開の安全性は次の一致で決まる。
 
@@ -141,10 +141,10 @@ Checkpointは「どこまで進んだか」の記録であり、**「同じ意�
   ∧ 入力の Source Revision 一致
   ∧ 入力digest（または処理済み範囲のdigest）一致
   ∧ 出力世代が未公開、または公開済みなら冪等
-  ∧ attempt/fenceEpoch が現在の所有と一致
+  ∧ 旧Attempt/fenceEpochの来歴が識別可能で、再開主体の現在所有と旧主体の競合拒否が確認できる
 ```
 
-一つでも不一致なら再開せず、`CHECKPOINT_*`の理由付きで拒否する。特に**Source改版後の古いCheckpoint再利用**は拒否する（§13 N-06）。`internal/runlog.Decide`は未完了かつ`resume checkpoint`なら`resume`を返すが、それは進捗の記録に基づく判定であり、Source Revisionの一致を検査しない。ETL側でその検査を足す。
+一つでも不一致なら再開せず、`CHECKPOINT_*`の理由付きで拒否する。特に**Source改版後の古いCheckpoint再利用**は拒否する（§13 N-06）。再起動後は新しいAttempt/fenceEpochになり得るため、**旧Checkpointのepochと現在epochの数値一致を要求するのではない**。旧Attemptの記録、新しい実行主体の現在所有、旧主体の競合書込み拒否を別々に検査する。`internal/runlog.Decide`は未完了かつ`resume checkpoint`なら`resume`を返すが、それは進捗に基づく判定であり、Source Revisionの一致・外部Providerの古いWriterの実効的な停止を証明しない。共有Host/Providerでのfencingが未実証なら`unsupported/unknown`で止める。
 
 ### 9.3 途中失敗と部分出力
 
