@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strings"
 	"time"
 )
 
@@ -195,8 +194,9 @@ func buildAsyncCommand(cfg Config, claim *Claim, task string) *exec.Cmd {
 		}
 		if dshCfg.TaskTimeout != "" {
 			if ttl, err := time.ParseDuration(dshCfg.TaskTimeout); err == nil {
-				cmd := exec.CommandContext(context.Background(), dshCfg.CLI, args...)
-				cmd.Timeout = ttl
+				timeoutCtx, cancel := context.WithTimeout(context.Background(), ttl)
+				defer cancel()
+				cmd := exec.CommandContext(timeoutCtx, dshCfg.CLI, args...)
 				return cmd
 			}
 		}
@@ -222,12 +222,4 @@ func (d *Dispatcher) RequestPRReview(ctx context.Context, claim *Claim, title, b
 // SweepExpiredLeases expires old claims so they can be reclaimed.
 func (d *Dispatcher) SweepExpiredLeases(ctx context.Context) ([]Claim, error) {
 	return d.store.SweepExpired(ctx)
-}
-
-// MonitorWorkers checks running worker processes and updates lease state.
-// Note: This is a placeholder for process monitoring; actual implementation depends on OS support.
-func (d *Dispatcher) MonitorWorkers(ctx context.Context) error {
-	// In a real implementation, this would check process existence by PID/SessionID
-	// and update lease state accordingly.
-	return nil
 }
