@@ -14,12 +14,12 @@ func BenchmarkPostgresSelect(b *testing.B) {
 	dialect := postgres.NewDialect()
 	ctx := context.Background()
 	opts := sqlgen.SelectOptions{
-		Table:    "orders",
-		Columns:  []string{"id", "amount", "status"},
-		Where:    []sqlgen.Condition{{Column: "status", Operator: "=", Value: "active"}},
-		OrderBy:  []sqlgen.OrderClause{{Column: "amount", Desc: true}},
-		Limit:    intPtr(100),
-		Offset:   intPtr(0),
+		Table:   "orders",
+		Columns: []string{"id", "amount", "status"},
+		Where:   []sqlgen.Condition{{Column: "status", Operator: "=", Value: "active"}},
+		OrderBy: []sqlgen.OrderClause{{Column: "amount", Desc: true}},
+		Limit:   intPtr(100),
+		Offset:  intPtr(0),
 	}
 
 	b.ResetTimer()
@@ -36,12 +36,12 @@ func BenchmarkSQLiteSelect(b *testing.B) {
 	dialect := sqlite.NewDialect()
 	ctx := context.Background()
 	opts := sqlgen.SelectOptions{
-		Table:    "orders",
-		Columns:  []string{"id", "amount", "status"},
-		Where:    []sqlgen.Condition{{Column: "status", Operator: "=", Value: "active"}},
-		OrderBy:  []sqlgen.OrderClause{{Column: "amount", Desc: true}},
-		Limit:    intPtr(100),
-		Offset:   intPtr(0),
+		Table:   "orders",
+		Columns: []string{"id", "amount", "status"},
+		Where:   []sqlgen.Condition{{Column: "status", Operator: "=", Value: "active"}},
+		OrderBy: []sqlgen.OrderClause{{Column: "amount", Desc: true}},
+		Limit:   intPtr(100),
+		Offset:  intPtr(0),
 	}
 
 	b.ResetTimer()

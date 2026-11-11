@@ -117,10 +117,10 @@ func TestSQLiteSelect(t *testing.T) {
 
 	t.Run("select with group by and having", func(t *testing.T) {
 		opts := sqlgen.SelectOptions{
-			Table:    "orders",
-			Columns:  []string{"customer_id", "COUNT(*) as cnt"},
-			GroupBy:  []string{"customer_id"},
-			Having:   []sqlgen.Condition{{Column: "COUNT(*)", Operator: ">", Value: 5}},
+			Table:   "orders",
+			Columns: []string{"customer_id", "COUNT(*) as cnt"},
+			GroupBy: []string{"customer_id"},
+			Having:  []sqlgen.Condition{{Column: "COUNT(*)", Operator: ">", Value: 5}},
 		}
 		sql, err := dialect.Select(ctx, opts)
 		if err != nil {
@@ -131,6 +131,95 @@ func TestSQLiteSelect(t *testing.T) {
 		}
 		if !strings.Contains(sql.Statement, "HAVING COUNT(*) > ?") {
 			t.Errorf("Select statement = %v, want HAVING", sql.Statement)
+		}
+	})
+
+	t.Run("select with CTE", func(t *testing.T) {
+		opts := sqlgen.SelectOptions{
+			Table:   "orders",
+			Columns: []string{"id", "amount"},
+			CTE:     "recent AS (SELECT * FROM orders WHERE amount > 0)",
+		}
+		sql, err := dialect.Select(ctx, opts)
+		if err != nil {
+			t.Fatalf("Select error = %v", err)
+		}
+		if !strings.HasPrefix(sql.Statement, "WITH recent AS (SELECT * FROM orders WHERE amount > 0)") {
+			t.Errorf("Select statement = %v, want WITH prefix", sql.Statement)
+		}
+		if !strings.Contains(sql.Statement, "SELECT id, amount FROM orders") {
+			t.Errorf("Select statement = %v, want the select body after the CTE", sql.Statement)
+		}
+	})
+
+	t.Run("select with named window", func(t *testing.T) {
+		opts := sqlgen.SelectOptions{
+			Table:   "orders",
+			Columns: []string{"id", "SUM(amount) OVER w AS running"},
+			GroupBy: []string{"id"},
+			Window:  "w AS (PARTITION BY customer_id ORDER BY created_at)",
+			OrderBy: []sqlgen.OrderClause{{Column: "id"}},
+		}
+		sql, err := dialect.Select(ctx, opts)
+		if err != nil {
+			t.Fatalf("Select error = %v", err)
+		}
+		if !strings.Contains(sql.Statement, "WINDOW w AS (PARTITION BY customer_id ORDER BY created_at)") {
+			t.Errorf("Select statement = %v, want WINDOW clause", sql.Statement)
+		}
+		// SQLite reads WINDOW after GROUP BY / HAVING and before ORDER BY.
+		if strings.Index(sql.Statement, "WINDOW") < strings.Index(sql.Statement, "GROUP BY") {
+			t.Errorf("Select statement = %v, want WINDOW after GROUP BY", sql.Statement)
+		}
+		if strings.Index(sql.Statement, "WINDOW") > strings.Index(sql.Statement, "ORDER BY") {
+			t.Errorf("Select statement = %v, want WINDOW before ORDER BY", sql.Statement)
+		}
+	})
+
+	t.Run("select with set operation", func(t *testing.T) {
+		opts := sqlgen.SelectOptions{
+			Table:        "orders",
+			Columns:      []string{"id", "amount"},
+			SetOperation: sqlgen.SetUnion,
+		}
+		sql, err := dialect.Select(ctx, opts)
+		if err != nil {
+			t.Fatalf("Select error = %v", err)
+		}
+		if !strings.HasSuffix(sql.Statement, "UNION") {
+			t.Errorf("Select statement = %v, want UNION suffix", sql.Statement)
+		}
+	})
+
+	t.Run("select with set operation keeping duplicates", func(t *testing.T) {
+		opts := sqlgen.SelectOptions{
+			Table:        "orders",
+			Columns:      []string{"id", "amount"},
+			SetOperation: sqlgen.SetExcept,
+			All:          true,
+		}
+		sql, err := dialect.Select(ctx, opts)
+		if err != nil {
+			t.Fatalf("Select error = %v", err)
+		}
+		if !strings.HasSuffix(sql.Statement, "EXCEPT ALL") {
+			t.Errorf("Select statement = %v, want EXCEPT ALL suffix", sql.Statement)
+		}
+	})
+
+	t.Run("select does not emit locking clauses", func(t *testing.T) {
+		opts := sqlgen.SelectOptions{
+			Table:     "orders",
+			Columns:   []string{"id"},
+			ForUpdate: true,
+			ForShare:  true,
+		}
+		sql, err := dialect.Select(ctx, opts)
+		if err != nil {
+			t.Fatalf("Select error = %v", err)
+		}
+		if strings.Contains(sql.Statement, "FOR UPDATE") || strings.Contains(sql.Statement, "FOR SHARE") {
+			t.Errorf("Select statement = %v, want no locking clause on SQLite", sql.Statement)
 		}
 	})
 }
