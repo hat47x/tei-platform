@@ -1,0 +1,12 @@
+main = 3499e40a1 (2026-11-12)
+
+  echo "[exit $?] test ./cmd/tei -run TestDiscoveryAdvertisesEveryModeAResponseCanCarry"
+  --- FAIL: TestDiscoveryAdvertisesEveryModeAResponseCanCarry
+  stderr: unknown command "rea-evidence"
+
+  echo "[exit $?] test ./cmd/tei -run TestDiscoveryWriteFlagsMatchObservedFileEffects"
+  --- FAIL: TestDiscoveryWriteFlagsMatchObservedFileEffects
+      --- FAIL: .../-request-out
+  stderr: unknown command "rea-evidence"
+
+  plan-check (all three previously red tests)  ->  ok  (green since round 76/77)
