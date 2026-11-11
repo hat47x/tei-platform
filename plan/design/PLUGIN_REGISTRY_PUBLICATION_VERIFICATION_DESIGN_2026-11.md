@@ -430,3 +430,30 @@ Host-specific Load / Grant / Effect evidence (separate owner)
 **未決の選択肢**：#2604が検討する(A)世代別immutable members＋generation pointer、(B)既存Storageのversioned object/conditional readのいずれかを、最初の外部Store/Hostで比較する。実Provider/FSが原子的切替・旧世代保持・安全なobject handleを保証するまでは、どちらも採用済み標準ではない。Providerを横断して「同一Digestだから全取得元がTrusted」「manifest二点一致だから連続世代」とは表明しない。
 
 **検証状態**：この§13はmainのPR・Source・専用CI・既存Issueで報告された反証の静的照合をRegistryの受入設計へ接続したもの。RG-E1-09〜16のRegistry専用実装、実GitHub Release Publication Pと別Consumer Cの完結したE2E、Version CAS、Issuer/Owner currentness、実Host/Business Effectは**NOT RUN／UNQUALIFIED**。#4240の合成ABA/symlink反例を本番FSやGitHub上で再現したとは主張しない。
+
+
+### 13.4 ETL/Batch・保管先横断のE1証拠を用途別に扱う（2026-11-11追補）
+
+並行する[ETL/Batch設計Draft #4409](https://github.com/hat47x/tei-platform/pull/4409)は、型付きFunction／Data Operations／Operatorの合成で、固定TSV→変換→Artifact/Evidence→独立Consumerを段階実証する計画である。**同PRは未統合の設計候補**であり、実ETL Job／Scheduler／外部書込みが成立した証拠ではない。Registry E1と共通化してよいのは実Byte・必要Member・Content Digest・取得Attemptの**観測契約**だけとする。業務日付、Record粒度、NULL/欠損、Checkpoint、再実行・Effect/ACKの意味をRegistryのRelease/Version Commitへ畳み込まない。
+
+[Git連動Evidence保管 #4307](https://github.com/hat47x/tei-platform/issues/4307)の方針も併せて、次の4軸を別々に保持する。
+
+| 軸 | 証拠・正本 | 混同してはいけないもの |
+| --- | --- | --- |
+| **Content** | 実取得したMember bytesと完全Digest | 同Digest＝同じRun／同じPublisher／同じ取得元 |
+| **Publication Generation** | Release/Manifestの必須Member集合、版固定と公開Attempt | Manifestの前後二点一致＝その間ずっと同世代 |
+| **Run/Consumption** | Job/Build/Consumerの独立Attempt、実入力・結果・Receipt | Artifact取得PASS＝業務処理完了／Checkpoint再開の安全性 |
+| **Disclosure / Trust** | 主体ごとの開示Policy、現在の委任・用途、Evidence保管先への権限 | ローカル/NAS/S3の存在＝GitHubや公開RegistryへMetadataまで送信してよい |
+
+Registry登録・名前検索・第三者評価は**公開許可を持つPlugin Releaseや、その公開が許可されたEvidenceに限定**する。#4307の`local-only`／`git-linked-private`のEvidenceは、Digest/Locator・存在有無のMetadataであっても利用者の許諾なしにRegistryへ公開しない。公開探索結果の「取得不能」は、`not found`／`not disclosed`／`not authorized`／`temporarily unavailable`／`unverified`を区別してよいが、これらを無権限の検索者へ詳細に返して秘密の存在を漏らす設計にしない。利用者向けの診断と公開検索応答は異なるDisclosure Projectionとする。
+
+同じArtifactのContent Digestを、GitHub Releaseと別ローカルCASで再確認できても、Repo ownership・Signer authority・実行Grantは独立。Local CAS [#1105](https://github.com/hat47x/tei-platform/issues/1105)が返すPut/Get Receiptや`#2604`の一式Readerは再利用するが、複数Memberの**公開確定と現在受取可能性**、秘密Metadataの開示はそれぞれ外側の責務に残す。
+
+| Case | 最小反証 | 期待する区分／Owner |
+| --- | --- | --- |
+| RG-E1-17 | 同内容のTSV生成物をRun A/Bが出力。Content SHA-256は同じでCheckpoint/入力Snapshotが違う | Content一致は成立、Run provenance／差分再開の同一性は未成立（#4409/#1130） |
+| RG-E1-18 | Plugin Artifact/署名ReceiptがNASにだけ保管され、Registry公開権限は与えられていない | 公開索引へLocator・Digest・存在情報を自動登録せず、私的Consumerのみ本人のPolicyで検査（#4307/#2516） |
+| RG-E1-19 | 既存P/C取得が同DigestでもPは許可された公開Release、Cは権限不明の別Store | Byte一致は可能、Origin/Disclosure/Current TrustのClaimを保留（#1105/#4307/#1104） |
+| RG-E1-20 | Artifact一式ReadbackがPASSだがETL JobのEffect／下流受領ACKが不明 | Registry公開のByte Claimだけを維持し、業務受理・再実行安全性・完了Receiptへ昇格しない（#1130/#2542/#1174） |
+
+**状態**：公開証拠・公開の可否・用途別現在性の設計接続のみ。RG-E1-17〜20、実ETL Job、NAS/S3別Provider、private-to-public開示負例、Registry P/C E2Eの新規実行は**NOT RUN**。製品用共有Artifact Store／新Core型／Registry独自Effect Engineは追加しない。
