@@ -10,6 +10,9 @@
 coverage.out
 /tei.exe
 
+# ローカルのGoビルドキャッシュ（Windowsの既定キャッシュが壊れた環境での退避先）
+.gocache/
+
 # Editor / OS
 .DS_Store
 .idea/

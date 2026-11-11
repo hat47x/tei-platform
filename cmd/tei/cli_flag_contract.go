@@ -64,6 +64,11 @@ var selectedReadOnlyFlagAllowlist = map[string][]string{
 	"plugin-lock":         {"workspace", "world", "environment"},
 	"plugin-resolve":      {"workspace", "world", "environment", "plugin-lock", "diagnostic-candidates"},
 	"plugin-runtime-plan": {"workspace", "world", "environment", "plugin-lock"},
+	// three-element is deliberately absent: it parses its own FlagSet (and its
+	// diff subcommand a second one) before the shared set is built, so
+	// validateSelectedReadOnlyFlags is never called for it. Listing it here
+	// breaks the rule this table states — an entry and a catalog record are one
+	// set — because `tei commands` does not advertise it.
 }
 
 // repeatableFlags lists the flags that collect several values by design. They
