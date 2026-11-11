@@ -389,7 +389,7 @@ DDL Plan→Applyでは、実DB Instance／Provider、Scope、Actual Schema Revis
 | 対照 | 固定すべきSource/SQLと受理前の不足 | 次の独立Expected |
 | --- | --- | --- |
 | R0-REF | `reference/workspace`の`public.orders` 5列、`ordered_at >= :from`、日時降順。`recent_orders_product_seed.sql`の3行に対応。**現Query宣言に`input from`がないためRuntime Binderの型は未確定** | 同じ隔離DBで3件・境界2件・0件とTimestamp/Decimalの変換を実SQL/Parameterで検証。Source-static PQ-01〜05を実行済みに昇格しない |
-| R0-XTEA | `examples/xtea-lowcode`の`sales.order` 2列、`status/status_operator/page_size/page_offset`、`eq/ne`・状態/注文ID順・ページサイズ20。Draft #4076がEnvironmentの実行前束縛を追加 | **専用の別Schema/Seed**で>=20件の一致行・2ページ目・空集合を独立Readerで観測し、`view -execute`が実PG Rowset→Entity Grain/Parameter/Consumerへ渡すことを確認。`public.orders`の3/2/0件期待値を流用しない |
+| R0-XTEA | **現main**の`examples/xtea-lowcode`は`sales.order` 2列・SQL `status = :status`だけ。Patternは`eq/ne`と`page-size 20`を宣言するが、SQL側の`ne`/ページングは未実現。**Draft #4076**が`status_operator/page_size/page_offset`入力、実SQL、Environment束縛を追加する候補 | 専用の別Schema/Seedで20件以上の一致行・2ページ目・空集合を独立Readerで観測し、**Draft採用・実DB後に**`view -execute`が実PG Rowset→Entity Grain/Parameter/Consumerへ渡すことを確認。`public.orders`の3/2/0件期待値を流用しない |
 
 **実行時の最小の同一試行記録**：Workspace IdentityとManifest/Source Revision（未取得ならunknown）→選択Query ID＋Native SQL digest/Parameter型・実Bind値→Environment/Database instance→選択Providerと実Executor（宣言/申告/呼出の識別子を上書きしない）→Reader sessionのread-only確認とScope/Role→実Raw Rowset（列Presence/NULL/行数/順序）→Mapping→Function Data Context→CLI/Studio Consumerの受領を、各別列として保持。DSN/Secret/非公開SQL全文を一般のConsumerやReceiptへ転記しない。
 
