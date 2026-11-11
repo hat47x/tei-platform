@@ -327,6 +327,17 @@ M6（scope conformance）は独立
 | M6 | ISSUE-000080（Capability Contract） | 解消後。それまでL0とL3のみ |
 | M2 | #2497（語彙の線引き） | 第二の消費者が出るまで標準化しない |
 
+### 5.9 M6の先（移行の完了まで）
+
+本書のM0〜M6は「参照・契約・定義・投影・Source権威・conformance」までです。その先（対象ごとのauthority移管）は[SUI_MIGRATION_EXTENSION_AND_SPLIT_DESIGN_2026-10.md](SUI_MIGRATION_EXTENSION_AND_SPLIT_DESIGN_2026-10.md) §8.4 Stage 4が正本で、source owner・equivalence evidence・rollbackを明示して単位ごとに進めます。読み継ぐべき順序は次です。
+
+1. M6で越境の契約が言語非依存になっていること（Python実装が通る）
+2. Stage 4の単位（A〜G）ごとに、equivalence evidence（同じ契約を満たす試験）を集める
+3. authorityを移す単位を一つ選び、rollback手順を先に書く
+4. 移行後も、SUIの安全不変条件（SafeMode既定ON、proposal-only、`human_reviewed`は人間だけ、`SUI_LLM_PROVIDER=none`で主要価値が成立）が同じ強さで残ることを試験で確認する
+
+「TEIへ移した」は、 equate の証拠ではなく「同じ契約を満たす試験が通った」ことでのみ主張します。移行の完了条件を本書で決めることはしません。
+
 ## 6. リスクと、成立しない場合の撤退
 
 - **payloadと遅延が解消しない場合**: 参照経路は「識別・関係・状態」の用途に限定し、本文を要する用途はDocumentV1のままにします（ADR-0116と同じ立場）。M3が成立しなければ、二度書きはconsumerのままに残します。
