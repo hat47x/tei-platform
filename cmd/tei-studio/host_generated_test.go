@@ -24,10 +24,9 @@ func TestGeneratedGoServicesRunThroughRealHost(t *testing.T) {
 	// letting a count of five stand in for the UI's expectations.
 	want := []string{
 		"CatalogWorkspace", "ExecuteCommand", "ExecuteCommandWithPeriods",
-		"ExecuteCommandWithPolicy", "InspectSubject", "ListWorkspaces",
-		"ObserveXead", "PlanCommand", "ValidateWorkspace",
-		"ExecuteCommandWithReferenceStore", "ViewApplication", "ViewPackage",
-		"ViewPattern",
+		"ExecuteCommandWithPolicy", "ExecuteCommandWithReferenceStore",
+		"InspectSubject", "ListWorkspaces", "ObserveXead", "PlanCommand",
+		"ValidateWorkspace", "ViewApplication", "ViewPackage", "ViewPattern",
 	}
 	if bridgeType.NumMethod() != len(want) {
 		t.Fatalf("unexpected Wails exports: %d", bridgeType.NumMethod())
