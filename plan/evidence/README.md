@@ -137,6 +137,7 @@
 - [訂正能力と閉塞拒否の矛盾の解消の確認](XTEA_LOWCODE_PERIOD_CORRECTION_EXEMPT_2026-11.md)（参照実装の試験記録。訂正能力だけを閉塞拒否から免除）
 - [閉塞拒否と訂正能力の矛盾の宣言段階での報告の確認](XTEA_LOWCODE_PERIOD_CLOSURE_CONFLICT_2026-11.md)（参照実装の試験記録。矛盾する2宣言を検証で報告。修正案の提示は未実装）
 - [再開（closed→open）に訂正能力を要求する確認](XTEA_LOWCODE_PERIOD_REOPEN_CORRECTION_2026-11.md)（参照実装の試験記録。運用の入口でも再開に訂正能力を要求。申告と実行の照合は未実装）
+- [期間の要件を view へ投影する確認](XTEA_LOWCODE_PERIOD_REQUIREMENT_VIEW_2026-11.md)（参照実装の試験記録。`close-requires`・`correction`をApplication投影とStudio表へ追加。例での宣言は未実装）
 - [採番の永続CounterStoreの確認](XTEA_LOWCODE_NUMBERING_SQLITE_STORE_2026-11.md)（参照実装の試験記録。PostgreSQLは未実装）
 - [採番の2プロセス同時実行の確認](XTEA_LOWCODE_NUMBERING_PROCESS_RACE_2026-11.md)（参照実装の試験記録。PostgreSQLと多プロセス構成は未実装）
 - [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
