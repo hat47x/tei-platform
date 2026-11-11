@@ -76,6 +76,9 @@ func runModelDocumentDraftCommand(args []string, out io.Writer) (int, error) {
 	id := fs.String("subject-id", "", "exact subject ID")
 	relationID := fs.String("relation-id", "", "optional exact semantic-relation ID declared by the subject")
 	title := fs.String("title", "", "optional document title")
+	documentKind := fs.String("document-kind", documentdraft.DocumentKindElementExplanation,
+		"document kind: "+strings.Join(documentdraft.SupportedDocumentKinds(), "|"))
+	application := fs.String("application", "", "exact application ID; required by "+documentdraft.DocumentKindCRUDTable)
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			printHelp(out, fs, "model document-draft")
@@ -90,17 +93,17 @@ func runModelDocumentDraftCommand(args []string, out io.Writer) (int, error) {
 		return failDocumentDraft(out, "INVALID_ARGUMENT", err.Error(), 2)
 	}
 	if fs.NArg() != 0 || strings.TrimSpace(*root) == "" || *root != strings.TrimSpace(*root) ||
-		strings.TrimSpace(*kind) == "" || *kind != strings.TrimSpace(*kind) ||
-		strings.TrimSpace(*id) == "" || *id != strings.TrimSpace(*id) {
+		strings.TrimSpace(*documentKind) == "" || *documentKind != strings.TrimSpace(*documentKind) {
 		return failDocumentDraft(out, "INVALID_ARGUMENT",
-			"model document-draft requires an exact -workspace, -subject-kind and -subject-id, without positional arguments", 2)
+			"model document-draft requires an exact -workspace and -document-kind, without positional arguments", 2)
 	}
 	draft, err := documentdraft.Build(documentdraft.Request{
 		Root:         *root,
 		Subject:      sourceindex.Subject{Kind: *kind, ID: *id},
 		RelationID:   *relationID,
-		DocumentKind: documentdraft.DocumentKindElementExplanation,
+		DocumentKind: *documentKind,
 		Title:        *title,
+		Application:  *application,
 	})
 	if err != nil {
 		code, exit := documentDraftFailureCode(err)

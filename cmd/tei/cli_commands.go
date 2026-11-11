@@ -188,14 +188,17 @@ func helpText(fs *flag.FlagSet, command string) string {
 			return out.String()
 		}
 		if command == "model document-draft" {
-			// model document-draft parses its own FlagSet; these five flags are
-			// its whole grammar.
+			// model document-draft parses its own FlagSet; these flags are its
+			// whole grammar.
 			fmt.Fprintf(&out, "  -workspace string\n    \tTEI workspace directory\n")
+			fmt.Fprintf(&out, "  -document-kind string\n    \tdocument kind: %s\n", strings.Join(documentdraft.SupportedDocumentKinds(), "|"))
 			fmt.Fprintf(&out, "  -subject-kind string\n    \texact subject kind: %s\n", strings.Join(documentdraft.SupportedElementKinds(), "|"))
 			fmt.Fprintf(&out, "  -subject-id string\n    \texact subject ID\n")
 			fmt.Fprintf(&out, "  -relation-id string\n    \toptional exact semantic-relation ID declared by the subject\n")
+			fmt.Fprintf(&out, "  -application string\n    \texact application ID; required by %s\n", documentdraft.DocumentKindCRUDTable)
 			fmt.Fprintf(&out, "  -title string\n    \toptional document title\n")
-			fmt.Fprintf(&out, "\nthe result is a derived read-only projection. Saving the document it\nproduces is not TEI model ingestion and not Accepted Meaning.\n")
+			fmt.Fprintf(&out, "\n%s takes -subject-kind and -subject-id. %s takes -application instead and\nrefuses both element selectors. The result is a derived read-only projection:\nsaving the document it produces is not TEI model ingestion and not Accepted\nMeaning.\n",
+				documentdraft.DocumentKindElementExplanation, documentdraft.DocumentKindCRUDTable)
 			return out.String()
 		}
 		if command == "model document-reconcile" {

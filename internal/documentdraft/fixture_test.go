@@ -120,6 +120,12 @@ func occurrenceByID(draft Draft, id string) (Occurrence, bool) {
 	return Occurrence{}, false
 }
 
+// readSubject resolves one subject from the fixture's own Workspace, so a test
+// that asserts a row's subject exists does not reimplement the loader.
+func (f fixture) readSubject(subject sourceindex.Subject) (Draft, error) {
+	return Build(Request{Root: f.root, Subject: subject})
+}
+
 func kindsOf(draft Draft) []string {
 	out := make([]string, 0, len(draft.Occurrences))
 	for _, occurrence := range draft.Occurrences {

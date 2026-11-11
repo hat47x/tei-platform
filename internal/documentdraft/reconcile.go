@@ -52,6 +52,13 @@ const (
 	OccurrenceConditionsChanged = "generation-conditions-changed"
 	OccurrenceUnknownRule       = "unknown-rule"
 	OccurrenceUnsupportedKind   = "unsupported-subject-kind"
+	// OccurrenceRemoved means the stored draft has an occurrence the current
+	// projection no longer produces, because the model stopped deriving it.
+	OccurrenceRemoved = "occurrence-removed"
+	// OccurrenceAdded means the current projection produces an occurrence the
+	// stored draft never had. It is reported so a reader learns a new fact
+	// appeared, without treating it as a change to existing content.
+	OccurrenceAdded = "occurrence-added"
 )
 
 // ModelReferenceStatus values.
@@ -83,6 +90,12 @@ func Reconcile(draft Draft, root string) (ReconcileReport, error) {
 	}
 	if len(draft.Subjects) == 0 {
 		return ReconcileReport{}, draftError(CodeInvalidDraft, "draft declares no subject")
+	}
+	// A document about an application (a CRUD matrix) is re-derived and then
+	// compared occurrence by occurrence, because its rows come from the operation
+	// surface rather than from one canonical declaration.
+	if draft.DocumentKind == DocumentKindCRUDTable {
+		return reconcileCRUDTable(draft, root)
 	}
 	read, err := readWorkspace(root, draft.Subjects[0].Subject)
 	if err != nil {
@@ -143,6 +156,120 @@ func Reconcile(draft Draft, root string) (ReconcileReport, error) {
 		if status != OccurrenceUnchanged {
 			report.NeedsReconfirmation = append(report.NeedsReconfirmation, occurrence.OccurrenceID)
 		}
+	}
+	if report.NeedsReconfirmation == nil {
+		report.NeedsReconfirmation = []string{}
+	}
+	return report, nil
+}
+
+// reconcileCRUDTable compares a stored CRUD draft with the projection the
+// current Workspace produces. The comparison is read-only and never writes the
+// draft, the document or a Source.
+func reconcileCRUDTable(draft Draft, root string) (ReconcileReport, error) {
+	application := ""
+	if draft.Scope != nil {
+		application = draft.Scope.Application
+	}
+	if application == "" {
+		return ReconcileReport{}, draftError(CodeInvalidDraft,
+			"a crud-table draft must record the application it was derived for")
+	}
+	current, err := buildCRUDDraft(Request{
+		Root:         root,
+		DocumentKind: DocumentKindCRUDTable,
+		Application:  application,
+		Title:        draft.Title,
+	})
+	if err != nil {
+		var draftErr *DraftError
+		if errors.As(err, &draftErr) &&
+			(draftErr.Code == CodeApplicationNotFound || draftErr.Code == CodeSubjectNotFound) {
+			return ReconcileReport{
+				SchemaVersion: "tei.document-draft.reconcile/v0",
+				Effect:        EffectReadOnlyProjection,
+				DraftID:       draft.DraftID,
+				ModelReference: ModelReferenceReconciliation{
+					Status: ModelReferenceStale,
+					Diffs:  []string{"application-missing"},
+				},
+				Occurrences:         allOccurrencesMissing(draft),
+				NeedsReconfirmation: occurrenceIDs(draft),
+				AuthorityLimits:     ReconcileAuthorityLimits(),
+			}, nil
+		}
+		return ReconcileReport{}, err
+	}
+
+	report := ReconcileReport{
+		SchemaVersion: "tei.document-draft.reconcile/v0",
+		Effect:        EffectReadOnlyProjection,
+		DraftID:       draft.DraftID,
+		ModelReference: ModelReferenceReconciliation{
+			Observed: current.Model,
+			Diffs:    modelReferenceDiffs(draft.Model, current.Model),
+		},
+		AuthorityLimits: ReconcileAuthorityLimits(),
+	}
+	if len(report.ModelReference.Diffs) == 0 {
+		report.ModelReference.Status = ModelReferenceCurrent
+	} else {
+		report.ModelReference.Status = ModelReferenceStale
+	}
+
+	currentByID := map[string]Occurrence{}
+	for _, occurrence := range current.Occurrences {
+		currentByID[occurrence.OccurrenceID] = occurrence
+	}
+	recordedIDs := map[string]bool{}
+	for _, occurrence := range draft.Occurrences {
+		recordedIDs[occurrence.OccurrenceID] = true
+		regenerated, ok := currentByID[occurrence.OccurrenceID]
+		if !ok {
+			report.Occurrences = append(report.Occurrences, OccurrenceReconciliation{
+				OccurrenceID:          occurrence.OccurrenceID,
+				Status:                OccurrenceRemoved,
+				Detail:                "the current projection no longer produces this occurrence",
+				RecordedContentDigest: occurrence.ContentDigest,
+			})
+			report.NeedsReconfirmation = append(report.NeedsReconfirmation, occurrence.OccurrenceID)
+			continue
+		}
+		status := OccurrenceUnchanged
+		detail := ""
+		switch {
+		case regenerated.ContentDigest != occurrence.ContentDigest:
+			status = OccurrenceContentChanged
+			detail = "the regenerated occurrence differs from the stored one"
+		case !sameDigests(occurrence.GenerationConditions.InputDigests,
+			regenerated.GenerationConditions.InputDigests):
+			status = OccurrenceConditionsChanged
+			detail = "content is identical but the model reference it was read from moved"
+		}
+		report.Occurrences = append(report.Occurrences, OccurrenceReconciliation{
+			OccurrenceID:          occurrence.OccurrenceID,
+			Status:                status,
+			Detail:                detail,
+			RecordedContentDigest: occurrence.ContentDigest,
+			CurrentContentDigest:  regenerated.ContentDigest,
+		})
+		if status != OccurrenceUnchanged {
+			report.NeedsReconfirmation = append(report.NeedsReconfirmation, occurrence.OccurrenceID)
+		}
+	}
+	// An occurrence the stored draft never had is reported too: a new fact
+	// appeared, and a reader must see it rather than trust the stored list.
+	for _, occurrence := range current.Occurrences {
+		if recordedIDs[occurrence.OccurrenceID] {
+			continue
+		}
+		report.Occurrences = append(report.Occurrences, OccurrenceReconciliation{
+			OccurrenceID:         occurrence.OccurrenceID,
+			Status:               OccurrenceAdded,
+			Detail:               "the current projection produces this occurrence and the stored draft did not",
+			CurrentContentDigest: occurrence.ContentDigest,
+		})
+		report.NeedsReconfirmation = append(report.NeedsReconfirmation, occurrence.OccurrenceID)
 	}
 	if report.NeedsReconfirmation == nil {
 		report.NeedsReconfirmation = []string{}

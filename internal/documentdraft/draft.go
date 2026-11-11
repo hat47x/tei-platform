@@ -145,10 +145,14 @@ type GenerationConditions struct {
 }
 
 // TableContent is a generated table: a header row and body rows of strings.
+// RowSubjects, when present, carries the subjects each row was derived from, so
+// a reader can return to the model element behind one row instead of only to the
+// table as a whole.
 type TableContent struct {
-	Caption string     `json:"caption,omitempty"`
-	Header  []string   `json:"header"`
-	Rows    [][]string `json:"rows"`
+	Caption     string                  `json:"caption,omitempty"`
+	Header      []string                `json:"header"`
+	Rows        [][]string              `json:"rows"`
+	RowSubjects [][]sourceindex.Subject `json:"rowSubjects,omitempty"`
 }
 
 // CitationContent is one citation occurrence. It records the Source identity and
@@ -189,10 +193,32 @@ type Draft struct {
 	DocumentKind    string        `json:"documentKind"`
 	Title           string        `json:"title"`
 	Model           ModelRef      `json:"model"`
+	Scope           *DraftScope   `json:"scope,omitempty"`
 	Subjects        []SubjectRef  `json:"subjects"`
 	Relations       []RelationRef `json:"relations,omitempty"`
 	Occurrences     []Occurrence  `json:"occurrences"`
 	AuthorityLimits []string      `json:"authorityLimits"`
+}
+
+// DraftScope names what the draft covers when the document is not about one
+// element. It is present only for kinds whose subject is a set (an application's
+// CRUD matrix, a specification chapter list). The fields are facts about the
+// projection, not acceptance.
+type DraftScope struct {
+	// Application is the application ID the rows were derived for.
+	Application string `json:"application,omitempty"`
+	// CRUDRule names the derivation whose output the table reproduces, so a
+	// reader can tell which rule produced the rows.
+	CRUDRule string `json:"crudRule,omitempty"`
+	// SkippedSubjects lists subjects the projection deliberately did not
+	// include, with the reason. An omission is reported, never silent.
+	SkippedSubjects []SkippedSubject `json:"skippedSubjects,omitempty"`
+}
+
+// SkippedSubject is one subject a projection left out and why.
+type SkippedSubject struct {
+	Subject sourceindex.Subject `json:"subject"`
+	Reason  string              `json:"reason"`
 }
 
 // Request is the input of Build.
@@ -202,6 +228,10 @@ type Request struct {
 	RelationID   string
 	DocumentKind string
 	Title        string
+	// Application names the application whose CRUD matrix is projected. It is
+	// required by crud-table and refused when present for a kind that does not
+	// use it, so a wrong flag cannot silently select a different document.
+	Application string
 }
 
 // DraftError is a typed draft failure. Code is stable so a CLI and a library
@@ -234,6 +264,8 @@ const (
 	CodeRelationNotFound     = "RELATION_NOT_FOUND"
 	CodeRelationNotOfSubject = "RELATION_NOT_OF_SUBJECT"
 	CodeInvalidDraft         = "INVALID_DRAFT"
+	CodeApplicationNotFound  = "APPLICATION_NOT_FOUND"
+	CodeApplicationAmbiguous = "APPLICATION_AMBIGUOUS"
 )
 
 // SupportedElementKinds lists the element kinds the first integration projects.
@@ -242,29 +274,45 @@ func SupportedElementKinds() []string {
 	return []string{"semantic-data", "semantic-type", "semantic-capability"}
 }
 
-// Build reads one Workspace and projects one element and, when requested, one
-// declared relation of that element into a draft. It performs no write.
+// Build reads one Workspace and projects one element, or one application's CRUD
+// matrix, into a draft. It performs no write.
 func Build(req Request) (Draft, error) {
 	kind := strings.TrimSpace(req.DocumentKind)
 	if kind == "" {
 		kind = DocumentKindElementExplanation
 	}
-	if kind != DocumentKindElementExplanation {
+	if !supportedDocumentKind(kind) {
 		return Draft{}, draftError(CodeUnsupportedDocKind,
 			"document kind %q is not supported by this integration; supported: %s",
-			kind, DocumentKindElementExplanation)
+			kind, strings.Join(SupportedDocumentKinds(), ", "))
 	}
 	if strings.TrimSpace(req.Root) == "" || req.Root != strings.TrimSpace(req.Root) {
 		return Draft{}, draftError(CodeInvalidArgument, "workspace path must be nonempty and exact")
 	}
-	if err := validateSubject(req.Subject); err != nil {
-		return Draft{}, err
+	// A CRUD table is about an application, not one element: the two inputs are
+	// mutually exclusive so a caller cannot ask for both and get whichever the
+	// implementation happened to read first.
+	if kind == DocumentKindCRUDTable {
+		if err := requireCRUDInputs(req); err != nil {
+			return Draft{}, err
+		}
+	} else {
+		if strings.TrimSpace(req.Application) != "" {
+			return Draft{}, draftError(CodeInvalidArgument,
+				"-application is only meaningful for document kind %s", DocumentKindCRUDTable)
+		}
+		if err := validateSubject(req.Subject); err != nil {
+			return Draft{}, err
+		}
 	}
 	relationID := strings.TrimSpace(req.RelationID)
 	if relationID != "" && relationID != strings.TrimSpace(relationID) {
 		return Draft{}, draftError(CodeInvalidArgument, "relation id must be an exact identity")
 	}
 
+	if kind == DocumentKindCRUDTable {
+		return buildCRUDDraft(req)
+	}
 	read, err := readWorkspace(req.Root, req.Subject)
 	if err != nil {
 		return Draft{}, err
@@ -291,6 +339,76 @@ func Build(req Request) (Draft, error) {
 	draft.Title = buildTitle(req.Title, req.Subject)
 	draft.DraftID = draftID(draft)
 	return draft, nil
+}
+
+// supportedDocumentKind reports whether this version implements the kind. A kind
+// reserved for a later stage stays unsupported until that stage is implemented,
+// so a caller never receives a partial document that looks complete.
+func supportedDocumentKind(kind string) bool {
+	for _, supported := range SupportedDocumentKinds() {
+		if kind == supported {
+			return true
+		}
+	}
+	return false
+}
+
+// requireCRUDInputs refuses a CRUD request that names an element instead of an
+// application, and refuses an empty application ID. An explicit empty string is
+// a different claim from "no application", so it is rejected rather than read as
+// absent.
+func requireCRUDInputs(req Request) error {
+	if strings.TrimSpace(req.Application) == "" || req.Application != strings.TrimSpace(req.Application) {
+		return draftError(CodeInvalidArgument,
+			"document kind %s requires an exact -application ID", DocumentKindCRUDTable)
+	}
+	if strings.TrimSpace(req.Subject.Kind) != "" || strings.TrimSpace(req.Subject.ID) != "" {
+		return draftError(CodeInvalidArgument,
+			"document kind %s is about an application; -subject-kind and -subject-id do not apply", DocumentKindCRUDTable)
+	}
+	if strings.TrimSpace(req.RelationID) != "" {
+		return draftError(CodeInvalidArgument,
+			"document kind %s does not take -relation-id", DocumentKindCRUDTable)
+	}
+	return nil
+}
+
+// buildCRUDDraft reads one Workspace and projects the CRUD matrix of one
+// application.
+func buildCRUDDraft(req Request) (Draft, error) {
+	read, err := readWorkspaceForApplication(req.Root, req.Application)
+	if err != nil {
+		return Draft{}, err
+	}
+	app, err := read.applicationRef(req.Application)
+	if err != nil {
+		return Draft{}, err
+	}
+	draft := Draft{
+		SchemaVersion: SchemaVersion,
+		Effect:        EffectReadOnlyProjection,
+		DocumentKind:  DocumentKindCRUDTable,
+		Model: ModelRef{
+			Workspace:              app.inspection.Workspace,
+			WorldFingerprint:       app.inspection.WorldFingerprint,
+			SourceIndexFingerprint: app.inspection.SourceIndexFingerprint,
+			ModelRevision:          read.modelRevision,
+		},
+		AuthorityLimits: DraftAuthorityLimits(),
+	}
+	if err := draft.projectCRUDTable(read, req.Application); err != nil {
+		return Draft{}, err
+	}
+	draft.Title = buildCRUDTitle(req.Title, req.Application)
+	draft.DraftID = draftID(draft)
+	return draft, nil
+}
+
+func buildCRUDTitle(requested, application string) string {
+	if strings.TrimSpace(requested) != "" {
+		return requested
+	}
+	return application + " — CRUD表"
 }
 
 func validateSubject(subject sourceindex.Subject) error {
@@ -335,6 +453,9 @@ func (r workspaceRead) inspect(subject sourceindex.Subject) (operations.SubjectI
 	return inspection, nil
 }
 
+// readWorkspace loads one Workspace and builds its Source Index. The caller then
+// projects one or more subjects from that same load, so the model reference and
+// the occurrences can never come from two different snapshots.
 func readWorkspace(root string, subject sourceindex.Subject) (workspaceRead, error) {
 	loaded, err := workspace.Load(root)
 	if err != nil {
@@ -348,6 +469,26 @@ func readWorkspace(root string, subject sourceindex.Subject) (workspaceRead, err
 	// Resolve the requested subject before anything else, so a missing element
 	// is reported as SUBJECT_NOT_FOUND rather than a projection failure.
 	if _, err := read.inspect(subject); err != nil {
+		return workspaceRead{}, err
+	}
+	return read, nil
+}
+
+// readWorkspaceForApplication is readWorkspace for a document whose subject is
+// an application rather than one element. It resolves the application from the
+// same load so an unknown application is reported as APPLICATION_NOT_FOUND
+// before any projection runs.
+func readWorkspaceForApplication(root, application string) (workspaceRead, error) {
+	loaded, err := workspace.Load(root)
+	if err != nil {
+		return workspaceRead{}, &operations.ValidationFailure{Stage: operations.StageLoad, Err: err}
+	}
+	idx, err := workspace.BuildSourceIndex(root, loaded)
+	if err != nil {
+		return workspaceRead{}, &operations.ValidationFailure{Stage: operations.StageSourceIndex, Err: err}
+	}
+	read := workspaceRead{loaded: loaded, index: idx, modelRevision: sourceindex.ModelRevision(idx)}
+	if _, err := read.applicationRef(application); err != nil {
 		return workspaceRead{}, err
 	}
 	return read, nil

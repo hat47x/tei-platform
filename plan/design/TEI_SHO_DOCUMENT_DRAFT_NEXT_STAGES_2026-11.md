@@ -13,12 +13,14 @@
 | --- | --- |
 | `internal/documentdraft`（Build・Occurrence追跡・Reconcile） | TEI PR #4317、Go試験PASS |
 | `tei model document-draft`・`model document-reconcile` | 同上、契約試験PASS |
+| `documentKind: element-explanation`（一要素＋一関係） | 同上 |
+| `documentKind: crud-table`（一ApplicationのCRUD行列） | 本計画の段階2、Go試験＋CLI試験PASS |
 | SHO側の消費・編集・保存・再開 | SHO PR #36、17試験PASS・merge後スイート105 PASS/0 FAIL |
 | 相互実証（合成Workspace・同一端末） | PR本文の記録 |
 
 | 未実装 | この文書の段階 |
 | --- | --- |
-| CRUD表・三要素分析図 | 段階2・3 |
+| 三要素分析図（Data/Function/Business） | 段階3（`internal/threeelement` は [PR #4283](https://github.com/hat47x/tei-platform/pull/4283) OPEN） |
 | 仕様書（複数要素の束ね） | 段階4 |
 | 固定納品版（Revision pin） | 段階5 |
 | TEI Studio実組込み | 横断C-2 |
@@ -27,26 +29,25 @@
 | `*.tei.md` のTEI側取込み | 横断C-5（Parser未束綝でブロック） |
 | 再投影のマージ方針 | 横断C-4（Owner判断ゲート） |
 
-## 1. 段階2：`crud-table`
+## 1. 段階2：`crud-table`（2026-11-11 実装済み）
 
-- **目的**：`internal/threeelement` のモデルJSONを第2入力として、Function→DataのCRUD表をDraft化する。[#3263](https://github.com/hat47x/tei-platform/issues/3263)の受入条件（Source identity・多重辺・loss・read-only逆編集拒否）を再利用する。
-- **依存**：段階1。`internal/threeelement`（main統合済み）。**CRUDの意味的解釈は[THREE_ELEMENT_OWNER_ACCEPTANCE_ITEMS_2026-11.md](../issues/THREE_ELEMENT_OWNER_ACCEPTANCE_ITEMS_2026-11.md)のOwner未決事項のまま**（本段階は投影のみ）。
-- **触るファイル**：`internal/documentdraft/`（第2入力と`crud-table`投影）、`cmd/tei/cli_document_draft.go`（`-three-element-model`）、`internal/threeelement/`（原則変更しない）。
-- **契約の差分（最小）**：`Request`に入力種別（workspace／three-element model file）を追加。`ModelRef`は**入力種別で中身が変わる**ことを`model.inputKind`で明示する（Workspace readとmodel file readを同じ形に潰さない）。`documentKind: "crud-table"`。
-- **最小実装**：`threeelement.GenerateCRUDTable` の各行をOccurrence化（1セル＝1Occurrence、`subjectRefs`に関数とデータのIdentity、`generationConditions.rule="crud-cell-v0"`）。表全体のOccurrenceは作らない（セル単位で追跡するため）。
-- **独立Expected**：
-  - S2-a 明示CRUD（`Source: declared`）と派生CRUD（`derived`）を`generationConditions`で区別する。
-  - S2-b 未宣言のCRUDは作らない（網羅性を主張しない）。
-  - S2-c 同一function-data対で矛盾するCRUDは`contradictory`として報告し、採用しない。
-  - S2-d モデルJSONを改変（1行変更）→ reconcileで該当セルが`content-changed`、他は`unchanged`。
-  - S2-e 未実装の`documentKind`（`three-element-diagram`等）は`UNSUPPORTED_DOCUMENT_KIND`（段階1の既存挙動を維持）。
-- **Done means**：S2-a〜eがGo試験でPASSし、CLIで実CRUD表Draftが得られる。
-- **非目標**：CRUD網羅性の保証・図面レイアウト・Owner意味受理。
+- **目的**：一ApplicationがマップしたDataに対して導出できる標準CRUD操作をDraft化する。
+- **依存**：段階1。**`internal/threeelement` は main に存在しない**（[PR #4283](https://github.com/hat47x/tei-platform/pull/4283) が OPEN のまま）。三要素分析モデルへの依存は持たず、main に既にある `internal/operations` の operation surface（`tei.operation-surface/standard-crud/v1`）を利用する。**CRUDの意味的解釈は[THREE_ELEMENT_OWNER_ACCEPTANCE_ITEMS_2026-11.md](../issues/THREE_ELEMENT_OWNER_ACCEPTANCE_ITEMS_2026-11.md)のOwner未決事項のまま**（本段階は投影のみ）。
+- **触るファイル**：`internal/documentdraft/crud.go`（新規）・`draft.go`（入力排他と`scope`）・`reconcile.go`（CRUD経路）・`cmd/tei/cli_document_draft.go`（`-document-kind`・`-application`）・CLI JSON契約文書。
+- **実装**：表の各行は導出された標準操作。1行＝1 CRUD操作で、`rowSubjects`に対象データとApplicationのIdentityを持つ。未導出・矛盾は行列に混ぜず別Occurrenceにする。
+- **独立Expected（実装済み）**：
+  - S2-a 導出規則（`scope.crudRule`）と各行の`basis`を記録する。
+  - S2-b 未宣言のCRUDは作らない（`updateIntent`が無ければretire gapは出さない）。
+  - S2-c 未知のApplicationは`APPLICATION_NOT_FOUND`。**空の表を「このApplicationは何もしない」と読ませない**。
+  - S2-d モデル改変（表名変更・書き込み権限撤回・update intent追加）で該当Occurrenceが`content-changed`・`occurrence-removed`・`occurrence-added`。
+  - S2-e 未実装の`documentKind`は`UNSUPPORTED_DOCUMENT_KIND`。`element-explanation`は`-application`を拒否し、`crud-table`は要素指定と`-relation-id`を拒否する。
+- **Done means**：S2-a〜eがGo試験とCLI試験でPASS。
+- **非目標**：CRUD網羅性の保証・図面レイアウト・Owner意味受理・実行権限。
 
 ## 2. 段階3：`three-element-diagram`
 
 - **目的**：Data/Function/Businessの**構造記述**（node/edge identity・方向・多重度・出典）をDraft化する。レイアウト・色・形状は持たない（[THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md](THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)と同じ扱い）。
-- **依存**：段階2（第2入力）。[#1124](https://github.com/hat47x/tei-platform/issues/1124)・[#3263](https://github.com/hat47x/tei-platform/issues/3263)の受入条件。
+- **依存**：段階2。[#1124](https://github.com/hat47x/tei-platform/issues/1124)・[#3263](https://github.com/hat47x/tei-platform/issues/3263)の受入条件。**`internal/threeelement` は main に無い**（[PR #4283](https://github.com/hat47x/tei-platform/pull/4283) OPEN）ため、三要素分析モデルを入力にする場合は同PRの統合後にする。統合前は main の `operations.ModelMap`（型付きナビゲーション投影）で代替できるかを別途検討する。
 - **最小実装**：`diagram`種別のOccurrenceに`nodes[]`（identity・kind・出典）と`edges[]`（from/to identity・relation・多重度・resolution）を入れる。SHO側は`diagram`を**構造記述として保存するだけ**（描画・編集は別資格）。
 - **独立Expected**：
   - S3-a 平行edge（同じfrom/to・別relation identity）を縮約しない。
@@ -143,7 +144,7 @@
 
 ## 7. 最初の3手（次実装者が最初にやること）
 
-1. **段階2（`crud-table`）** — 第2入力の型（`model.inputKind`）を先に決める。ここが後続3段階の入力契約の土台になる。目安：`internal/documentdraft`への入力種別追加＋セルOccurrence化＋5テスト。
+1. **段階3（`three-element-diagram`）** — 入力を決める。[PR #4283](https://github.com/hat47x/tei-platform/pull/4283) が未統合なので、`operations.ModelMap` で代替する案と統合後に三要素分析モデルを入力にする案を、**入力契約の差分（`model.inputKind`）を決めてから**実装する。目安：`diagram` Occurrenceのnodes/edges＋4試験。
 2. **C-1（相互CI）** — 段階2の実証と同時に組める。SHO pin SHAを固定した1ジョブでround tripを回し、ローカル実証をCI証跡に昇格する。
 3. **C-4（再投影方針）のOwner判断起案** — 実装より先に判断。段階4・5の受入条件がこれに依存する。
 

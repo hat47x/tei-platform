@@ -89,14 +89,14 @@ func TestAdvertisedFlagNamesAreTheAcceptedSet(t *testing.T) {
 	}
 }
 
-// The three commands that parse their own arguments are named here, so a change
-// to either side fails instead of drifting silently.
+// The commands that parse their own arguments are named here, so a change to
+// either side fails instead of drifting silently.
 func TestSelfParsedFlagNames(t *testing.T) {
 	want := map[string]struct{ required, optional []string }{
 		"model catalog":            {[]string{"workspace"}, []string{"namespace"}},
 		"model locate":             {[]string{"workspace", "subject-kind", "subject-id"}, []string{"limit"}},
 		"model overview":           {[]string{"workspace"}, []string{"limit"}},
-		"model document-draft":     {[]string{"workspace", "subject-kind", "subject-id"}, []string{"relation-id", "title"}},
+		"model document-draft":     {[]string{"workspace", "subject-kind", "subject-id"}, []string{"relation-id", "title", "document-kind", "application"}},
 		"model document-reconcile": {[]string{"workspace", "draft"}, nil},
 	}
 	for name, expect := range want {

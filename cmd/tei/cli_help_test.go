@@ -52,7 +52,7 @@ func TestHelpIsASuccessOnStandardOutput(t *testing.T) {
 			run: func(out *bytes.Buffer) (int, error) {
 				return runModelCommand([]string{"document-draft", "-h"}, out)
 			},
-			want: "-relation-id",
+			want: "-document-kind",
 		},
 		{
 			name: "model document-reconcile",

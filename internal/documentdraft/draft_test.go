@@ -178,7 +178,7 @@ func TestBuildRejectsUnknownAndUnsupportedInputs(t *testing.T) {
 		},
 		{
 			name:    "unsupported document kind",
-			request: Request{Root: fixture.root, Subject: orderSubject(), DocumentKind: "crud-table"},
+			request: Request{Root: fixture.root, Subject: orderSubject(), DocumentKind: "three-element-diagram"},
 			code:    CodeUnsupportedDocKind,
 		},
 		{

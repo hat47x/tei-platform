@@ -362,6 +362,179 @@ func TestModelDocumentReconcileAcceptsTheEnvelopeItPrints(t *testing.T) {
 	}
 }
 
+// documentDraftCRUDWorkspace is a synthetic Workspace with an application, a
+// mapped data element and a capability effect, written under a temporary
+// directory so the CRUD projection runs through the real loader.
+func documentDraftCRUDWorkspace(t *testing.T) string {
+	t.Helper()
+	root := t.TempDir()
+	write := func(relative, body string) {
+		path := filepath.Join(root, filepath.FromSlash(relative))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("tei.workspace.yaml", "workspace: crud_cli_test\nformatVersion: 1\nsources:\n  - semantic\n  - applications\n  - databases\n")
+	write("semantic/sales/crud.tei", `namespace sales
+
+capability sales.order.create {
+    input order sales.order
+    output sales.order
+    effect create sales.order
+}
+`)
+	// The mapped data must be declared: the operation surface skips a mapping
+	// whose semantic data the Workspace does not declare, and the CLI fixture
+	// must show a real matrix rather than an empty one.
+	write("semantic/sales/order.tei", `namespace sales
+
+data Order {
+    attribute orderId type std.text
+    attribute customerId type std.text
+}
+`)
+	write("applications/order-entry/application.tei", `application order_entry {
+    uses semantic sales
+
+    database sales {
+        target sales_core
+        access read-write
+    }
+}
+`)
+	write("databases/sales-core/database.tei", "database sales_core {\n    kind relational\n    ownership managed-here\n    uses semantic sales\n}\n")
+	write("databases/sales-core/persistence/order.tei", `persist sales_core.order {
+    database sales_core
+    semantic sales.order
+    table public.orders
+    column sales.order.order_id -> order_id storage varchar required
+    column sales.order.customer_id -> customer_id storage varchar required
+
+    primary-key sales.order.order_id
+}
+`)
+	return root
+}
+
+// TestModelDocumentDraftCRUDTableProjectsTheMatrix is the first-pass proof for
+// the crud-table stage at the CLI boundary.
+func TestModelDocumentDraftCRUDTableProjectsTheMatrix(t *testing.T) {
+	root := documentDraftCRUDWorkspace(t)
+	var out bytes.Buffer
+	code, err := runModelCommand([]string{
+		"document-draft", "-workspace", root,
+		"-document-kind", documentdraft.DocumentKindCRUDTable,
+		"-application", "order_entry",
+	}, &out)
+	if err != nil || code != 0 {
+		t.Fatalf("exit=%d err=%v body=%s", code, err, out.String())
+	}
+	var envelope draftEnvelope
+	if err := json.Unmarshal(out.Bytes(), &envelope); err != nil {
+		t.Fatalf("not JSON: %v: %s", err, out.String())
+	}
+	draft := envelope.Result
+	if draft == nil || draft.DocumentKind != documentdraft.DocumentKindCRUDTable {
+		t.Fatalf("envelope=%+v", envelope)
+	}
+	if draft.Scope == nil || draft.Scope.Application != "order_entry" {
+		t.Fatalf("scope=%+v", draft.Scope)
+	}
+	table, ok := occurrenceByIDForTest(draft, "occ-table-1")
+	if !ok || table.Content.Table == nil || len(table.Content.Table.Rows) == 0 {
+		t.Fatalf("matrix missing: %+v", draft.Occurrences)
+	}
+	if draft.Model.ModelRevision == "" || draft.Model.WorldFingerprint == "" {
+		t.Fatalf("model reference=%+v", draft.Model)
+	}
+}
+
+// occurrenceByIDForTest finds one occurrence in a draft returned by the CLI.
+func occurrenceByIDForTest(draft *documentdraft.Draft, id string) (documentdraft.Occurrence, bool) {
+	for _, occurrence := range draft.Occurrences {
+		if occurrence.OccurrenceID == id {
+			return occurrence, true
+		}
+	}
+	return documentdraft.Occurrence{}, false
+}
+
+// TestModelDocumentDraftCRUDTableRefusesUnknownAndMixedInputs keeps the two
+// input shapes apart at the CLI boundary too.
+func TestModelDocumentDraftCRUDTableRefusesUnknownAndMixedInputs(t *testing.T) {
+	root := documentDraftCRUDWorkspace(t)
+	cases := []struct {
+		name string
+		args []string
+		code string
+		exit int
+	}{
+		{
+			name: "unknown application",
+			args: []string{"document-draft", "-workspace", root, "-document-kind", documentdraft.DocumentKindCRUDTable, "-application", "no_such_app"},
+			code: documentdraft.CodeApplicationNotFound, exit: 1,
+		},
+		{
+			name: "missing application",
+			args: []string{"document-draft", "-workspace", root, "-document-kind", documentdraft.DocumentKindCRUDTable},
+			code: "INVALID_ARGUMENT", exit: 2,
+		},
+		{
+			name: "element selector with application",
+			args: []string{"document-draft", "-workspace", root, "-document-kind", documentdraft.DocumentKindCRUDTable, "-application", "order_entry", "-subject-kind", "semantic-data", "-subject-id", "sales.order"},
+			code: "INVALID_ARGUMENT", exit: 2,
+		},
+		{
+			name: "element kind with an application flag",
+			args: []string{"document-draft", "-workspace", root, "-subject-kind", "semantic-data", "-subject-id", "sales.order", "-application", "order_entry"},
+			code: "INVALID_ARGUMENT", exit: 2,
+		},
+		{
+			name: "unsupported document kind",
+			args: []string{"document-draft", "-workspace", root, "-document-kind", "three-element-diagram", "-subject-kind", "semantic-data", "-subject-id", "sales.order"},
+			code: documentdraft.CodeUnsupportedDocKind, exit: 1,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var out bytes.Buffer
+			code, err := runModelCommand(tc.args, &out)
+			if err != nil {
+				t.Fatalf("err=%v", err)
+			}
+			if code != tc.exit {
+				t.Fatalf("exit=%d want %d body=%s", code, tc.exit, out.String())
+			}
+			var envelope draftEnvelope
+			if err := json.Unmarshal(out.Bytes(), &envelope); err != nil {
+				t.Fatalf("not JSON: %v: %s", err, out.String())
+			}
+			if envelope.OK || envelope.Error == nil || envelope.Error.Code != tc.code {
+				t.Fatalf("envelope=%+v", envelope)
+			}
+		})
+	}
+}
+
+// TestModelDocumentDraftElementKindStillRequiresTheSubject pins that the CRUD
+// input relaxation did not weaken the element path.
+func TestModelDocumentDraftElementKindStillRequiresTheSubject(t *testing.T) {
+	root := documentDraftCRUDWorkspace(t)
+	for _, args := range [][]string{
+		{"document-draft", "-workspace", root},
+		{"document-draft", "-workspace", root, "-subject-id", "sales.order"},
+	} {
+		var out bytes.Buffer
+		code, err := runModelCommand(args, &out)
+		if err != nil || code != 2 {
+			t.Fatalf("argv=%v exit=%d err=%v body=%s", args, code, err, out.String())
+		}
+	}
+}
+
 // TestModelDocumentReconcileReportsAnUnreadableDraft keeps a missing or broken
 // file distinct from a draft that does not match the contract.
 func TestModelDocumentReconcileReportsAnUnreadableDraft(t *testing.T) {

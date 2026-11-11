@@ -125,7 +125,7 @@ var selfParsedFlagNames = map[string]struct {
 	"model catalog":            {[]string{"workspace"}, []string{"namespace"}},
 	"model locate":             {[]string{"workspace", "subject-kind", "subject-id"}, []string{"limit"}},
 	"model overview":           {[]string{"workspace"}, []string{"limit"}},
-	"model document-draft":     {[]string{"workspace", "subject-kind", "subject-id"}, []string{"relation-id", "title"}},
+	"model document-draft":     {[]string{"workspace", "subject-kind", "subject-id"}, []string{"relation-id", "title", "document-kind", "application"}},
 	"model document-reconcile": {[]string{"workspace", "draft"}, nil},
 }
 

@@ -2,7 +2,7 @@
 
 ## この文書の役割と状態
 
-- **状態**：`実装済みの最小統合の基線`（2026-11-11）。`internal/documentdraft`・`tei model document-draft`・`tei model document-reconcile` と、SHO側の `src/document-draft.cjs`・`bin/sho-doc.cjs` を対象とする。
+- **状態**：`実装済みの最小統合の基線`（2026-11-11）。`internal/documentdraft`・`tei model document-draft`・`tei model document-reconcile` と、SHO側の `src/document-draft.cjs`・`bin/sho-doc.cjs` を対象とする。実装済みの `documentKind` は `element-explanation` と `crud-table` の2つ。後続段階は[TEI_SHO_DOCUMENT_DRAFT_NEXT_STAGES_2026-11.md](TEI_SHO_DOCUMENT_DRAFT_NEXT_STAGES_2026-11.md)が正本。
 - **正本との関係**：意味の正本はTEIのWorkspace SourceとOwner受理（[#267](https://github.com/hat47x/tei-platform/issues/267)）にあり、この文書は**派生Projectionの契約**を置くだけである。採用した設計判断は[plan/adr/](../adr/README.md)、作業の進行状況はIssueが正本。SHO側の対応は[SHO #19](https://github.com/hat47x/sho-composer/issues/19)・[SHO #4](https://github.com/hat47x/sho-composer/issues/4)・[SHO #6](https://github.com/hat47x/sho-composer/issues/6)で管理し、契約本文をSHO repositoryへ複製しない（URL参照）。
 - **対象範囲**：受理済みモデルから**一つの要素と一つの関係**を読み取り、SourceとRevisionを保持した説明文書のDraftをSHOへ渡し、SHOで編集・保存・再開し、TEI側でモデル改版との差分と再確認が必要な部分を提示するまでの一経路。
 - **この文書が主張しないこと**：SHO保存成功がTEIモデルへの取込み成功やAccepted Meaningの更新成功であることは示さない。図面の製品編集、Studioへの組込み実証、`*.tei.md`の正式Parser、Owner意味受理、旧Runtimeとの同値はすべて別資格である。
@@ -24,6 +24,8 @@ SHOはTEIの意味正本も専用Hostも持たない。TEI StudioはSHOの文書
 ## 2. Draft契約（`tei.document-draft/v0`）
 
 TEIが生成し、SHOが消費する。SHOは语义を解釈せず、identity・revision・生成条件・anchorを**そのまま保持**する。CLIはこのDraftを `tei.cli.model-document-draft/v0` の封筒に入れて返すので、Consumerは封筒を開いて `result` を採る（SHO側は両方の形を受付ける）。
+
+`documentKind` は文書の種類を選ぶ。実装済みは `element-explanation`（一要素＋一関係）と `crud-table`（一ApplicationのCRUD行列）。**未実装の種類は `UNSUPPORTED_DOCUMENT_KIND` で拒否する**——後続段階を途中まで実装して完成文書のように見せないため。CLIの入力は種類ごとに排他で、`crud-table` は `-application` を取り、`element-explanation` は `-application` を拒否する。
 
 ```jsonc
 {
@@ -69,6 +71,8 @@ TEIが生成し、SHOが消費する。SHOは语义を解釈せず、identity・
 
 `occurrences[].kind` は `explanation`・`relation`・`table`・`citation`・`diagram`。生成物（説明・図面・表・引用）はすべてOccurrenceであり、**元モデルのIdentity・Revision・生成条件・文書内Occurrence**を失わずに保持する。図面は`diagram`種別で**構造記述**のみを持ち、レイアウトは持たない（[THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md](THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)と同じ扱い）。
 
+`crud-table` では表の各行が `rowSubjects`（対象データ＋Application）を持ち、行単位で元Identityへ戻れる。表の根拠は `scope.crudRule` が命名する（`internal/operations` の operation surface）。未導出・矛盾は行列に混ぜず別Occurrenceにする。
+
 ## 3. 経路（初回実証）
 
 1. **Draft生成（TEI, read-only）**
@@ -108,6 +112,7 @@ TEIが生成し、SHOが消費する。SHOは语义を解釈せず、identity・
 | RD-04 | 生成条件（generator/rule/input digest）を変えて再生成 | 同一Occurrence IDでも生成結果差異を報告。無変化に潰さない | `TestReconcileReportsAnUnknownRuleInsteadOfGuessing`・`TestReconcileDetectsAGenerationDifferenceWithTheSameRuleName`（TEI） |
 | RD-05 | 著者が生成Occurrence内の文を編集し、reconcile後も保存 | 著者文を自動上書きしない。`authorEditedGeneratedBlock`を保持し再確認を要求 | `an edit inside a generated block is reported, not repaired`（SHO）＋`reprojection-never-overwrites-author-text`（TEI） |
 | RD-06 | Draft JSONを手編集・改変 | schemaVersion/effect/必須identityの欠落を拒否。部分的なDraftを推測で補完しない | `TestReconcileRefusesADraftThatIsNotThisContract`（TEI）・`a draft that is not this contract is refused`（SHO） |
+| RD-07 | CRUD表でApplicationを削除・書き込み権限を撤回・update intentを追加 | Occurrence単位で `subject-missing`・`content-changed`・`occurrence-removed`・`occurrence-added` を区別。空表を「このApplicationは何もしない」と読ませない | `TestCRUDTableReconcileReportsARemovedApplication`・`TestCRUDTableReconcileNamesChangedRowsAfterAModelChange`・`TestCRUDTableReconcileReportsARemovedGapTable`・`TestCRUDTableReconcileReportsAnOccurrenceTheModelStartedDeriving`（TEI） |
 
 ## 6. 段階的拡張（単一モデル→単一文書の実証後）
 
