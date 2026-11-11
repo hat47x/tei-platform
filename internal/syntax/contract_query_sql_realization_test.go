@@ -71,7 +71,7 @@ func TestParseContractQuerySQLRealizationRejectsDuplicateInputMapping(t *testing
 }`
 
 	_, err := NewParser(src).ParseContractQuerySQLRealizationAuthoring()
-	if err == nil || !strings.Contains(err.Error(), "input idのparameter mappingが重複") {
+	if err == nil || !strings.Contains(err.Error(), "input id has a duplicate parameter mapping") {
 		t.Fatalf("同じContract inputへの複数parameter mappingを受け入れています: %v", err)
 	}
 }
@@ -88,7 +88,7 @@ func TestParseContractQuerySQLRealizationRejectsDuplicatePhysicalParameter(t *te
 }`
 
 	_, err := NewParser(src).ParseContractQuerySQLRealizationAuthoring()
-	if err == nil || !strings.Contains(err.Error(), "physical parameter \"customer_id\"が重複") {
+	if err == nil || !strings.Contains(err.Error(), "physical parameter \"customer_id\" is duplicated") {
 		t.Fatalf("複数Contract inputを同じ物理parameterへ対応付けています: %v", err)
 	}
 }

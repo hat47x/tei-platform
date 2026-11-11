@@ -61,6 +61,22 @@ X-TEA（XEAD）の Driver が持つ**標準業務ライブラリ**（日付・�
 
 `getSystemVariant*`・`setVariant`・`getUserValueOf`で、システム変数と利用者別の値を読み書きします（`D:Session.java L2112`、`D:XFScriptable.java L56–60`）。
 
+### 2.8 期間の閉め
+
+`Session`は期間表を持ち、画面ごとにその状態を書き換えていました（`D:Session.java L1440–1980`）。締めの状態（進行中・完了）は画面が行う手順の途中であり、宣言として存在しませんでした。
+
+**観測した規則**: 閉めは**手順の副作用**として進みます。何段で進むか、途中の状態を経るか、閉めに必要な処理（集計・繰越）が何かは、画面の実装から読み取るしかありません。`close-requires`（閉めに必要な能力）や`correction`（閉じた後の訂正に使う能力）という宣言はありません。
+
+TEIでは、閉めを**宣言**に移します。
+
+| 宣言 | 意味 |
+| --- | --- |
+| `states open closing closed` | 期間が取る状態と、その全て |
+| `closes on day N` | 月を前半・後半に分ける締め日（宣言しなければ月全体） |
+| `closed-rejects update` | 閉じた期間で拒否する操作 |
+| `close-requires <capability>` | 閉めの遷移で実行していなければならない能力 |
+| `correction via <capability>` | 閉じた期間の変更を通す唯一の能力 |
+
 ## 3. 属性の役割語彙
 
 標準業務のDataは、列名ではなく**属性の役割**で結合します（§5の三段の「結合」）。役割は`role <name>`として属性に宣言し、検証は既知の役割だけを受理します。標準業務で使う役割は次の17個です。
@@ -194,11 +210,11 @@ X-TEAの`setVariant`・`setUserValueOf`は、スクリプトから任意の値�
 | 税 | L1＋L4 | 税率Data、適用期間、端数処理の宣言、計算能力 | 税率の正本（法制度） |
 | 通貨 | L1＋L4 | 率Data、率の種類、適用日、換算能力 | 市場データの取得 |
 | 採番 | L4（契約）＋L1（宣言） | 一意性・連続性・欠番・桁あふれの契約、形式の設定 | 番号の実体（表） |
-| 利用者設定 | L1 | 宣言された設定項目 | 任意のキー |
+| 利用者設定 | L1 | 宣言された設定項目、変更の監査（実行者・変更前） | 任意のキー、権限判断 |
 
 ## 5. 実装の順序と現在地
 
-1〜6は参照実装まで進みました（6は読み取りと更新、監査と権限は未実装）。どの段階も「宣言 → 実行時の値の結合 → 照会」の三段で作り、各段階の試験記録を`plan/evidence/`へ残しています。
+1〜6は参照実装まで進みました（6は読み取り・更新・変更監査まで、権限は未実装）。どの段階も「宣言 → 実行時の値の結合 → 照会」の三段で作り、各段階の試験記録を`plan/evidence/`へ残しています。
 
 | 段階 | 実装 | 結合（Data宣言の属性役割） | 確認記録 |
 | --- | --- | --- | --- |
@@ -207,7 +223,7 @@ X-TEAの`setVariant`・`setUserValueOf`は、スクリプトから任意の値�
 | 3. 税 | `internal/taxrate` | `tax-applies-from`・`tax-applies-until`・`tax-category`・`tax-value`・`tax-rounding` | [税率の適用期間と端数処理](../evidence/XTEA_LOWCODE_TAX_RATE_2026-11.md)、[Data結合](../evidence/XTEA_LOWCODE_TAX_RATE_BINDING_2026-11.md) |
 | 4. 通貨 | `internal/currencyrate`（年次フォールバックは`currency-rate-fallback`の宣言で選ぶ） | `currency-rate-currency`・`-fiscal-year`・`-month-sequence`・`-middle`・`-buying`・`-selling`・`-fallback` | [通貨換算の率の種類と方向](../evidence/XTEA_LOWCODE_CURRENCY_RATE_2026-11.md)、[Data結合](../evidence/XTEA_LOWCODE_CURRENCY_BINDING_2026-11.md) |
 | 5. 採番 | `internal/numbering`（`ReserveInTransaction`で取引に参加） | `numbering-counter`・`numbering-digits`・`numbering-prefix`・`numbering-check`・`numbering-overflow` | [採番の契約](../evidence/XTEA_LOWCODE_NUMBERING_2026-11.md)、[Data結合](../evidence/XTEA_LOWCODE_NUMBERING_BINDING_2026-11.md) |
-| 6. 利用者設定 | `internal/usersetting`（`Resolve`・`Bind`・`Settings.Value`・`Table.Change`・`Table.Apply`） | `setting-key`・`setting-value`・`setting-user` | [読み取りの確認](../evidence/XTEA_LOWCODE_USER_SETTINGS_2026-11.md)、[書込みの確認](../evidence/XTEA_LOWCODE_USER_SETTINGS_WRITE_2026-11.md) |
+| 6. 利用者設定 | `internal/usersetting`（`Resolve`・`Bind`・`Settings.Value`・`Table.Change`・`Table.Apply`・`Table.ApplyAudited`・`AuditedStore`） | `setting-key`・`setting-value`・`setting-user` | [読み取りの確認](../evidence/XTEA_LOWCODE_USER_SETTINGS_2026-11.md)、[書込みの確認](../evidence/XTEA_LOWCODE_USER_SETTINGS_WRITE_2026-11.md)、[変更監査](../evidence/XTEA_LOWCODE_USER_SETTINGS_AUDIT_2026-11.md) |
 
 三段の分け方には理由があります。
 
@@ -234,11 +250,11 @@ X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設�
 
 | 残り | 理由 | 何が分かれば決まるか |
 | --- | --- | --- |
-| 月内締めの閉めの実行内容 | 状態遷移（`open`→`closing`→`closed`）・記録（`periods -advance`）・`close-requires`の実行時検査は実装したが、対象データの集計・繰越・帳票は未実装 | 閉めを Command にするか、運用操作として分けるか |
+| 月内締めの閉めの実行内容 | 状態遷移（`open`→`closing`→`closed`）・記録（`periods -advance`）・`close-requires`と`correction`の実行時検査・訂正能力の閉塞拒否からの免除・`closed-rejects`との矛盾の宣言段階での報告は実装したが、対象データの集計・繰越・帳票、訂正能力を走らせる経路は未実装 | 閉めを Command にするか、運用操作として分けるか |
 | 採番の例での規則行データ | 例のDataに`numbering-rule`の役割を足したが、行は試験で与えている | 例へ行データを置くかどうかの判断 |
 | 為替の粒度を宣言必須にするか | `ResolveTable`が宣言と行を照合し、空の表は拒否する。宣言は任意のままなので、宣言の無い表は行だけに頼る | 宣言を必須にするか、任意のままにするか |
 | 番号のPostgreSQL実装 | SQLiteの永続格納と2プロセス同時実行の不変条件（同一番号を出さない・カウンタが発行数に一致する）は確認したが、PostgreSQLは未実装 | PostgreSQLを先にするか、多プロセス構成を広げるか |
-| 利用者設定の監査と権限 | 更新の検査と記録（`Table.Change`・`Table.Apply`）は実装したが、変更履歴と「誰が変えられるか」は未実装 | 設定更新をCommandにするか、運用操作として分けるか |
+| 利用者設定の権限 | 変更履歴（`Table.ApplyAudited`・`AuditedStore.Entries`）は実装したが、「誰が変えられるか」と永続化・改ざん検出は未実装 | 設定更新をCommandにするか、運用操作として分けるか |
 
 実装が進んだことで、以前ここに挙げていた項目のうち次の3つは解消しました。
 
@@ -254,6 +270,15 @@ X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設�
 - [評価時点の決定性](EVALUATION_CONTEXT_DETERMINISM_2026-10.md)
 - [移行計画](../workstreams/XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)（WP8）
 - [受容要件](../../requirements/XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md)（RQ-C3）
+
+
+
+
+
+
+
+
+
 
 
 

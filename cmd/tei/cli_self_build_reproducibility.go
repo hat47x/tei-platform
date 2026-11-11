@@ -21,7 +21,7 @@ import (
 // digest collisions. That scope is stated in the boundary instead of being left
 // for a reader to assume.
 
-const reproducibilityBoundary = "two runs of the same child executable from the same plan, in separate state directories, produced the same artifact bytes; this shows the builder was deterministic for that plan, with that binary, on the host that ran it, in these two attempts, and together with the on-disk digest match it supports the claim that the artifact is that plan's output. The same plan was also observed to yield the same artifact bytes on linux/amd64 and windows/amd64 (SB-C0 §4.25). It is not a proof for any other host, another builder version or another plan, and it is not L2-b, acceptance, or runtime authority"
+const reproducibilityBoundary = "two runs of the same child executable from the same plan, in separate state directories, produced the same artifact bytes; this shows the builder was deterministic for that plan, with that binary, on the host that ran it, in these two attempts, and together with the on-disk digest match it supports the claim that the artifact is that plan's output. The same plan was also observed to yield the same artifact bytes on linux/amd64 and windows/amd64 (SB-C0 §4.25). linux/arm64 under emulation was observed too (SB-C0 §4.37, plan/evidence/TEI_GO_SELF_BUILD_ARM64_L2B_CHAIN_2026-11-10.md); there the two runs agreed with each other but the artifact bytes differed from amd64, because the builder binary differed, so cross-architecture equality of artifact bytes is not claimed. It is not a proof for any other host, another builder version or another plan, and it is not L2-b, acceptance, or runtime authority"
 
 const (
 	reproducibilityReproduced  = "reproduced"

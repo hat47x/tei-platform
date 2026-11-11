@@ -1,0 +1,17 @@
+Attempt 1 is the most important result of this round.
+
+It returned `ok`. The mapping was not in the World:
+
+  persistenceMappings: 2   (only the pre-existing sales_core.order / order_line)
+
+The loader reads only `databases/<db>/persistence/*.tei`. A `persist` file placed
+anywhere else is not loaded, and validate says nothing about a file it did not
+read.
+
+A wrong placement therefore reports SUCCESS. `validate` passing does not mean the
+intent landed. That is why every design round ends by reading the artefact back
+through `world` or `inspect`.
+
+NOT FILED: the reproduction is certain, but I have not decided whether the fix is
+"warn about an unloaded persist file" or "read a wider set of locations". Filing
+from an unresolved fix is the mistake round 52 taught me to avoid.

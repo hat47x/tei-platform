@@ -1,0 +1,62 @@
+name: TEI Cache Full vs Incremental Verification
+
+# 公開リポジトリの標準ランナーだけで実行し、Secretsや書込み権限を使わない。
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-cache-verification-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  cache-verification:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+    steps:
+      - name: 対象版を取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Goを用意
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
+      - name: Cache verification testsを実行
+        shell: bash
+        run: |
+          set -euo pipefail
+          go version
+          go test ./tools/reference-cache-full-vs-incremental-verification/... -v -count=1
+
+      - name: 検証結果を保存
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/artifacts"
+          go test ./tools/reference-cache-full-vs-incremental-verification/... -v -count=1 > "$GITHUB_WORKSPACE/artifacts/verification.log" 2>&1 || true
+          cp "$GITHUB_WORKSPACE/artifacts/verification.log" "$GITHUB_WORKSPACE/artifacts/verification-results.txt"
+
+      - name: 検証結果をアップロード
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: cache-verification-results
+          path: artifacts/

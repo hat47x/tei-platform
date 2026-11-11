@@ -4128,3 +4128,42 @@ SEI/SUI/TEI/CSWをまたぐ業務Activity（例：SUIで未整理の案件C1を�
 **責務**：組織Meaning #2386、用途相対Construction Context／Disclosure #2516、Source・SelectionとModeler #1124/#2506/#2582、実Read #2586/#1656、現在Grant/Effect #1174/#2499、Handoff #1125/#1444、Harness Tool/送出とIsolation #2509/#2515/#2017。ハーネス種別はDSH/Codex/Claude Code等を共通Adapterの利用者として扱い、DSH先行試験が他Harnessの権限資格を証明するわけではない。
 
 **今回の資格**：上記は既存の§58/ORG-VTR・製品横断設計の接合による**採用前の受入設計**。新しい実Harness共有Session、TEI/SUI/CSW連携、実Host/Provider、Org-HS試験、外部送出隔離、Owner Meaningの採用はNOT RUN／未証明。局所Go/Node/CIの既往PASSを昇格しない。
+
+<!-- org-affinity-admission-reopen-20261111 -->
+## 2026-11-11 横断深化：探索的Affinity／Islandを組織Meaningへ短絡しない（採用前）
+
+### 探索構造と業務Relationは別の意味空間に置く
+
+SUIのCard／Island、CSWのKJ法的グループ・関連づけ、AIの類似候補は、新しい問い、反証、仮説を生むための**探索構造**である。TEIのPerson／OrgUnit／Membership／Occupancy／Case handlingUnit／承認Ruleの**受理済み業務Relation**と同一ではない。「営業」のIslandにカードが複数あってもOrgUnitへの所属や組織階層、現在Grantは生じない。探索を制限せず、**組織意味の採否だけを別途判断する**。
+
+**既存正本を尊重する細い経路**：SUI/CSWの自由な探索→許可済み理解パック（観測・候補・出典資格・反証・残差・未決）→目的と対象を明示したTEI Mapping Candidate→Source／Endpoint／Relation occurrence／Role／粒度／valid・known／多重性／Authorityの検証→Ownerの明示的採否→受理済み部分だけを既存Data/Relation/Rule/Model Mapへ反映。**不採用**も正常な出口とする。SHOへの文書化は選択肢であり必須ではない。SUI/CSW独自の正本・探索体験をTEIへ移植する義務はない。
+
+Cardと業務Relationの対応は一般に非単射・非可逆。一つのカードに複数解釈、複数カードに一つの業務Relation、または対応なしがあり得る。TEIのRelation編集でSUIの元Card/Islandを自動再配置・削除しない。候補図はAccepted組織図/CRUDと区別して表示し、秘密のCard/Relationの存在自体を漏らさない。
+
+### 出典の資格・送達・意味受理を分ける
+
+| 境界 | 確認する事実 | その事実だけでは証明できないこと |
+| --- | --- | --- |
+| SUI/CSW探索 | Card/Island/仮説のIdentity、Document/Projectionの版、異論・残差・未決 | OrgUnit/Membership/Case担当の正式Meaning |
+| Source取得 | 実Toolが取得したSource、位置、revision、Coverage、SafeModeと用途別Scope | 投影に存在しない原文の取得・完全性 |
+| 受渡し | Generated／Allowed-to-send／Dispatched／Received／Retained／Summarizedの各観測 | 送信予定やTransport ACKから相手の保存、理解、採用を推定 |
+| TEI受理 | 明示MappingのSource-backed判断・受理範囲、Ownerの採否 | 業務意味受理から現行Host GrantやEffect |
+| 後続変化 | 新カード・再グループ化・新しい反例、元Source/業務Ruleの改版 | 過去Acceptedを自動取消・書換え、古いGrant/Receiptの復活 |
+
+SUI [#3368](https://github.com/hat47x/sui-sensemaking/issues/3368)によれば、既存context-projection.v1から許可済みCard/Island/Relation/Countは取得できても、Card.meta.sourceや原Document revisionは現在のProjectedCardに無い。これは**L0の投影**であり、L1元Document/L2外部Sourceの取得を証明しない。SUI [#3157](https://github.com/hat47x/sui-sensemaking/issues/3157)の学習順位付け・人間レビュー・孤立残差/矛盾保持は候補の価値評価であって、TEI正式受理や自動島統合の資格ではない。既存#2516 Construction Context、#3394 External Observation、#2386のMeaning受理を再利用し、新Affinity Engine／共通Graph Store／中央Acceptance Registryは作らない。
+
+### 組織Case C1へつなぐ独立反例（ORG-AG-01〜07、未実行）
+
+| ID | 同一合成Fixtureで変える条件 | 不合格となる推論 |
+| --- | --- | --- |
+| AG-01 | SUI「営業」Islandに異なるSource/IDのCard、TEIにも同名OrgUnit | Islandへの所属・Label一致からOrgUnit identity/業務Membershipを自動生成 |
+| AG-02 | CSWがC1→D2関連を提案するがOwner保留。TEIのC1はR1/D1 | 仮説を正式担当R2/D2／承認者／Grant／Handoffへ昇格 |
+| AG-03 | 類似上位から落ちた矛盾Card、別Sourceの異論、孤立Cardがある | top-kや要約から全材料の合意／反証なし／引継ぎ完了と判定 |
+| AG-04 | SUI実ReadがL0投影のみでSource原byte/span/revisionなし | 未取得原本をTEI Accepted Sourceと偽記載、Provider Source Closureを達成扱い |
+| AG-05 | 候補を生成したがTEI Consumerは未受領。別試行で受領したが要約で反例落ち | Generated/Dispatched/Received/Retained/Meaning-preservedを一括成功扱い |
+| AG-06 | 二世界の公開Sliceは同一で秘密Island/Countのみ異なる。外部Audienceへ移送 | Hidden ID/Count/Gap/ログ漏えい、以前のRecipient Grantの無条件継承 |
+| AG-07 | OwnerがR1を受理した後SUIで反証・再配置、TEIにR2候補が生じた | SUIの変化でAccepted R1を黙示改訂、旧Receipt/Grantを復活させる |
+
+**最小実証順**：(1) 公開合成Card数件、保留・反証・孤立各一件を同じFixtureで作り、SUIの**実際に許可されたread-only投影**から最小理解パック候補を構成し、実Consumerが受領したもの／欠落したものを確認。(2) TEI既存read-only Operationに対して、Source-backed Mapping Candidateの適合・不足を一往復で判別。L0不足ならSource unknownのまま候補保持。(3) 正式Meaning採否はOwner、実ProviderのOrg C1 Row Scopeは#2586 HJ-09初回Product R0より後の独立実証、Current Grant/Effect/Handoffはさらに後段。初回に正式Relation保存やSUI/CSWの完全Session共有を要求しない。
+
+**Owner**：SUI #3368/#3157/#3275が探索・SafeMode・公開投影、CSWは仮説生成、TEI #2516が用途別Consumer Disclosure、#2386が組織Meaning Mapping、#1124/#3518がModel Map、#1131/#1180/#2514/#1163が既存Fixture/Expected/Attempt、#1174/#2499/#1125/#1444が実Effect/Handoffを担当。ORG-HS-01〜08/ORG-EXT-01〜06との既存交差を再利用し、第二Scenario正本は作らない。**ORG-AGの実試験、外部Tool/実Consumer受信、Owner受理、新TEI Application API、実Org Provider/HostはNOT RUN**。

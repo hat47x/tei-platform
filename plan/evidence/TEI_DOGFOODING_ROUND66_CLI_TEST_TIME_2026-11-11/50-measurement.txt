@@ -1,0 +1,12 @@
+cmd/tei before the change (go test -json, -count=1):
+
+  353 tests, sum of Elapsed 676.2s  (582 including subtests, 535.8s)
+
+  202.72s  TestSelfBuildFullChainOnTheRealSubject
+   61.48s  TestMissingRequiredFlagIsAlwaysInvalidArgument
+   47.50s  TestSelfBuildEstablishesL2BFromARealGoBuild
+   13.05s  TestUnusableSubjectValueStaysInvalidSubject
+   12.53s  TestDiscoveryArgumentValuesMatchImplementation
+
+The second entry was the anomaly: 12 subtests summing 74.5s, with the parent
+spending 37.3s outside them.

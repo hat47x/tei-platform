@@ -1,0 +1,9 @@
+One statement:
+
+  UPDATE claims SET state='expired', updated_at=datetime('now')
+  WHERE state IN ('working','review','blocked') AND lease_expires < ?
+  RETURNING issue_number, role, model_id, harness, session_id, lease_expires,
+            heartbeat_at, state, base_sha, head_sha, pr_number
+
+The answer is the set this statement expired, so no second lookup exists to miss
+it. rows.Err() is now checked, since the statement is a single one.

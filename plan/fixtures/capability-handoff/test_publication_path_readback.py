@@ -135,6 +135,70 @@ class PublicationPathReadbackTests(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, "bytes are required"):
             verify_pinned_ledger_publication_paths(MEMBERS, self.root, None)
 
+    def test_manifest_aba_returns_only_byte_witness_not_continuous_generation(self):
+        # Characterization: read R1, briefly expose R2, restore R1 before
+        # the final manifest read. The two-point test cannot observe ABA.
+        # This is NOT a successful claim of continuous R1 generation pinning.
+        manifest = self.root / "manifest.json"
+        pinned = manifest.read_bytes()
+        first_member = self.root / "function-ledger.md"
+        original_read = Path.read_bytes
+        saw_r2 = []
+
+        def intercept_read(path):
+            data = original_read(path)
+            if path == first_member and not saw_r2:
+                manifest.write_bytes(b'{"generation":"R2"}\n')
+                saw_r2.append(original_read(manifest))
+                manifest.write_bytes(pinned)
+            return data
+
+        with mock.patch.object(Path, "read_bytes", autospec=True,
+                               side_effect=intercept_read):
+            evidence = verify_pinned_ledger_publication_paths(MEMBERS, self.root, pinned)
+        self.assertEqual(saw_r2, [b'{"generation":"R2"}\n'])
+        self.assertEqual(manifest.read_bytes(), pinned)
+        self.assertEqual(evidence["file_count"], 5)
+        self.assertEqual(evidence["member_binding"], "ledger-fixture-path-to-bytes-only")
+        self.assertNotIn("continuous_generation_pin", evidence)
+        self.assertNotIn("atomic_publication", evidence)
+
+    def test_symlink_swap_after_directory_enumeration_is_not_identity_proof(self):
+        # This bounded Reader checks a directory entry before it opens the
+        # member. A subsequent physical path replacement can escape the dir
+        # while still returning expected bytes. This characterizes a TOCTOU
+        # gap; it does not invoke the real Publisher or access private data.
+        pinned = (self.root / "manifest.json").read_bytes()
+        first_member = self.root / "function-ledger.md"
+        changed_member = self.root / "table-public-orders.md"
+        original_read = Path.read_bytes
+        performed = []
+
+        with tempfile.TemporaryDirectory(prefix="tei-test-external-member-") as external:
+            external_body = Path(external) / "public-test-member.md"
+            external_body.write_bytes(MEMBERS[1]["content"].encode("utf-8"))
+
+            def intercept_read(path):
+                data = original_read(path)
+                if path == first_member and not performed:
+                    changed_member.unlink()
+                    try:
+                        changed_member.symlink_to(external_body)
+                    except (OSError, NotImplementedError) as exc:
+                        self.skipTest(f"symlink creation unavailable: {exc}")
+                    performed.append(True)
+                return data
+
+            with mock.patch.object(Path, "read_bytes", autospec=True,
+                                   side_effect=intercept_read):
+                evidence = verify_pinned_ledger_publication_paths(
+                    MEMBERS, self.root, pinned)
+            self.assertEqual(performed, [True])
+            self.assertTrue(changed_member.is_symlink())
+            self.assertEqual(evidence["file_count"], 5)
+            self.assertNotIn("path_object_identity_verified", evidence)
+            self.assertNotIn("scope_stability_verified", evidence)
+
     def test_modified_member_byte_rejected(self):
         (self.root / PATHS[0]).write_bytes(b"tampered")
         with self.assertRaisesRegex(AssertionError, "path-to-byte mismatch"):

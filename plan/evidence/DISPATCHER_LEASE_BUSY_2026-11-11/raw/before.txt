@@ -1,0 +1,7 @@
+removed the single connection and the busy timeout
+--- FAIL: TestParallelClaim (0.05s)
+    lease_test.go:133: unexpected error from worker 0: clear terminal claims: database is locked (5) (SQLITE_BUSY)
+FAIL
+FAIL	tei/tools/reference-external-role-dispatcher/internal	0.059s
+FAIL
+restored lease.go

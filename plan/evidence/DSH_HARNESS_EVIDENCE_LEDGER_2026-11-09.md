@@ -2,7 +2,7 @@
 
 - 対象Issue: [#2509](https://github.com/hat47x/tei-platform/issues/2509)（DSH外部Harness実証）、[#2515](https://github.com/hat47x/tei-platform/issues/2515)（実効隔離・全送出経路Conformance）。機密境界の正本は[TAI #232](https://github.com/hat47x/tai-pleroma/issues/232)、比較計画は[TAI #168](https://github.com/hat47x/tai-pleroma/issues/168)。
 - 状態: **既存の実行記録を並べた索引**。新しい実測は行っていない。個々の合否・Owner受理は各記録とIssueの担当。
-- この文書の役割: 51件の実行記録が**それぞれ何を確定させ、何を確定させていないか**を1枚で見えるようにし、同じ測り方の重複を避ける。記録本文の複製はせず、各記録へ参照で結ぶ。
+- この文書の役割: 54件の実行記録が**それぞれ何を確定させ、何を確定させていないか**を1枚で見えるようにし、同じ測り方の重複を避ける。記録本文の複製はせず、各記録へ参照で結ぶ。
 
 ## 1. なぜ台帳が要るか
 
@@ -31,6 +31,7 @@
 | [Subagent fork](./DSH_SUBAGENT_FORK_2026-11-09/README.md) | 文脈の継承 | Turn 1で`pwsh`から親canaryを出して完走させ、Turn 2で同じSessionを再開してforkした。子は`afterSeq -1`の別Sessionだが**メッセージ数5**で親の完了Turnを引き継ぎ、**親canaryが子の本文にも永続Logにも現れる**（`subagent`の子はメッセージ数1） | 実行中Turnの継承、forkの連鎖、Telemetry・MCP |
 | [Subagentの連鎖](./DSH_SUBAGENT_CHAIN_2026-11-09/README.md) | 連鎖の上限 | Sessionごとに1回`subagent`を強制して連鎖させると、Sessionは**3つ（親1・子2）で止まり孫は0**。子は`subagent depth 2 exceeds maxDepth 1`を**`isError: true`のTool結果**として受け取り、**その文言が子の次のモデル入力にも載る**。拒否後も子は要求を消費（各3要求） | `subagentMaxDepth`を上げた場合、forkの連鎖、Telemetry・MCP |
 | [深さ上限を上げた連鎖](./DSH_SUBAGENT_DEPTH_RAISED_2026-11-09/README.md) | 上限の可変性 | `--dump-config-schema`で上限の在処を特定（`subagent`の`maxDepth`、既定`1`、`volatile`、同schemaに`maxActiveSubagents`既定`8`）。`--patch`で`3`にすると**Sessionは4つ（深さ0〜3）になり、深さ4で`subagent depth 4 exceeds maxDepth 3`**（`isError: true`）。12要求・合計765,677 bytes | 既定との正確なbyte比較（Mockの発火方針が違う）、`4`以上、`maxActiveSubagents`との相互作用、forkの連鎖、Telemetry・MCP |
+| [`maxDepth 4`の連鎖](./DSH_SUBAGENT_DEPTH4_2026-11-11/README.md) | 上限の可変性（4） | `maxDepth: 4`にして**1セッション1回だけ`subagent`を起動**させると、**深さ0〜4の5セッション**ができ（`maxDepth 3`では3だったので**1段伸びた**）、**深さ4の子の次の起動が`exceeds maxDepth 4`で拒否**された。拒否の本文に**設定値がそのまま現れる**。**深さは根のstdoutだけでは分からず、子Sessionの要求を突き合わせて初めて見える** | `maxDepth 5`以上、1メッセージで複数起動した場合、`subagent_fork`の連鎖、履歴が長い場合の増加量 |
 | [forkの連鎖](./DSH_SUBAGENT_FORK_CHAIN_2026-11-09/README.md) | 継承と深さ | `maxDepth 3`で`subagent_fork`を連鎖させると**4 Session（深さ0〜3）で止まり、深さ4は`isError: true`で拒否**。forkした子の初回要求は**どれもメッセージ数1**で、**同一Turnの途中では完了Turnを継承しない**。送出量はspawn連鎖とほぼ同じ（765,350 vs 765,677 bytes、差0.04%） | 完了Turnを挟んだforkの連鎖、`4`以上、`maxActiveSubagents`との相互作用、Telemetry・MCP |
 | [Turn境界をまたぐfork連鎖](./DSH_SUBAGENT_FORK_TURN_CHAIN_2026-11-09/README.md) | 継承の条件 | Turn 1で`pwsh`からcanaryを出して完走させ、Turn 2で同じSessionを再開してforkを連鎖させると、**forkした子の初回要求はどれもメッセージ数5で親canaryを含み、深さ3まで届いた**。14要求・786,786 bytes（同一Turn内は12要求・765,350）。深さ4は`isError: true`で拒否 | Turn 1が複数ある場合の増加量、`4`以上、`maxActiveSubagents`との相互作用、Telemetry・MCP |
 | [同時起動の上限](./DSH_SUBAGENT_CONCURRENT_LIMIT_2026-11-09/README.md) | 同時数 | 1メッセージで12体の`subagent`を並列要求すると**8体が起動し4体が拒否**された。拒否は`isError: true`のTool結果で本文は`active child limit: 8`。**子が即応答する対照でも8/4で変わらない**ため、上限は**起動時に見る同時数**で、子の完了を待って順に通す形ではない。親1＋子8で13要求・1,074,677 bytes | 時間を分けた起動、`maxActiveSubagents`の変更、`maxDepth`との同時作用、Telemetry・MCP |
@@ -44,6 +45,8 @@
 | [MCPのstdio経路](./DSH_MCP_STDIO_2026-11-10/README.md) | 別transport | `transport: stdio`＋`command: python`で自作サーバーを起動すると、**`initialize`→`notifications/initialized`→`tools/list`の3行**が届き（**streamable-httpと違い`server/discover`が無い**）、**モデルのToolは24→28**（`mcp__stdiomock__stdio_echo`）。**子Processは環境変数49件を引き継ぎ**（合成canaryと`DEEPSEEK_BASE_URL`を含む）、**作業ディレクトリも親と同じ**。ただし**`DEEPSEEK_API_KEY`は渡っていない** | `env`設定で明示的に渡した場合、`cwd`設定、認証・再接続、`tools/call`のstdio経路、他の資格情報の可視性 |
 | [MCPの`headers`](./DSH_MCP_HEADERS_2026-11-10/README.md) | 送り方 | streamable-httpで`headers`に合成canaryを入れると、**4件すべてのMCP要求（`server/discover`・`initialize`・`notifications/initialized`・`tools/list`）に同じ11個のヘッダ**が載り、**canaryは`Authorization`として毎回送られた**。**相手を確かめる前の最初の要求にも載る**。設定外のヘッダは**HTTPクライアントの標準のみ**（Cookie・環境の資格情報は付かない）。`user-agent`は`node`。**canaryはモデル要求には現れない** | `reconnect`時の再送、TLS、複数サーバー、`headers`の値がログへ残るか |
 | [MCPの複数サーバー](./DSH_MCP_TWO_SERVERS_2026-11-10/README.md) | 並置 | `id`を分けた2エントリで2サーバーを挿すと、**両方が独立に4件ずつハンドシェイク**し（合計8件・到着は交互）、**モデルのToolは24→29**（`mcp__servera__tool_a`と`mcp__serverb__tool_b`＋`mcp-resources`系3つ）。**`serverName`が名前空間になるので衝突しない**。**1つだけ許可しても、エントリを増やせば増える** | `serverName`を同じにした場合、片方が落ちた場合、stdioとの混在、片方だけの`headers` |
+| [3サーバーのMCP](./DSH_MCP_THREE_SERVERS_2026-11-11/README.md) | 比例性 | `id`と`serverName`を分けた**3エントリ**を挿すと、**3サーバーがそれぞれ4件ずつハンドシェイク**し（合計12件・取りこぼしなし）、**Toolは24→30**。2サーバー（29）との対比で、**ハンドシェイクもToolもサーバー数に比例**して増える | 4つ以上、`serverName`の重複、同じサーバーの二重挿入、stdioとの混在 |
+| [5サーバーのMCP](./DSH_MCP_FIVE_SERVERS_2026-11-11/README.md) | 比例の持続 | `id`と`serverName`を分けた**5エントリ**を挿すと、**5サーバーがそれぞれ4件ずつハンドシェイク**し（合計20件・取りこぼしなし）、**Toolは32個**。**0・2・3・5の4点で `Tool数 = 27 + サーバー数` と `ハンドシェイク = 4×N` が成り立つ** | 上限（頭打ち）、`serverName`の重複、同じサーバーの二重挿入、多数接続時の起動時間・メモリ |
 | [MCPの障害分離](./DSH_MCP_FAILURE_ISOLATION_2026-11-10/README.md) | 部分障害 | 元気なサーバー1つと閉じたポートを指すサーバー1つを同時に挿すと、**`failOnStartupError`がfalseでもtrueでもHarnessは起動して完了**し（exit 0）、**モデルが見たのは元気な側のToolだけ**（28個・`mcp__serverok__header_echo`）、**落ちた側への要求は0件**。trueでは**stderrに`1 entry did not activate`と当該エントリのエラー**が出るが実行は続く。**「有効化されたエントリ」は終了コードでは分からない** | `reconnect`、起動後の切断、全サーバー障害、既定値、警告がJSONイベントにも出るか |
 | [落ちていたサーバーの復帰](./DSH_MCP_LATE_START_2026-11-10/README.md) | 状態の非持続 | MCPサーバーを止めたままTurn 1を実行し、起動してから同じSessionでTurn 2を実行すると、**Turn 1はTool 27個でMCP Toolなし**、**Turn 2は28個で`mcp__latemock__header_echo`あり**（ハンドシェイク2回分=8件を受信）。**「1回繋がらなかった」は状態として残らず、次の起動で普通に繋がる**。よって**前回の観測を今回の構成の根拠にできない** | 1プロセス内での再接続、起動後の切断、`failOnStartupError: true`との組み合わせ |
 | [実行中の再接続](./DSH_MCP_MIDRUN_RECONNECT_2026-11-10/README.md) | 再接続の実効 | MCPサーバーを止めたまま実行を開始し、**1手目の`pwsh`でサーバーを起動**させると、**同じプロセスの中でToolが27→28**（`mcp__latemock__header_echo`）に増えた。ハンドシェイクは1回分（4件）。**`reconnect`は実際に効く**（既定は`initialDelayMs 500`・`maxDelayMs 30000`・`maxAttempts 10`）。**実行中にも送出先が増え得る**ので、開始時の点検だけでは足りない | 実行中にサーバーが落ちる向き、`enabled: false`、`maxAttempts`超過後、再接続時の`headers`再送 |
@@ -79,8 +82,23 @@
 ## 4. まだ根拠が無いこと
 
 - **別Identity（AppContainer・別User・別Session・mount名前空間）での読取り拒否**。同一Userに対するOSのACLによる拒否は[H6-E1 OSのACL](./DSH_H6E1_OS_ACL_2026-11-09/README.md)で確認したが、Harnessや子Processが**別の資格**で動く場合に同じ拒否が効くかは未確認。Network境界の実拒否も同様。
-- **実Providerの保存・保持・二次利用**。
-- **MCPの1MB超の引数**と**内容の検査**（大きさは[MCPの引数の大きさ](./DSH_MCP_ARG_SIZE_2026-11-10/README.md)で1MBまで確認済みだが上限の有無は未確認）、**stdio transport・認証・複数サーバー**の相互作用、**Telemetryでfeedbackを与えた場合の送出内容**、**web・tui面のfeedback経路**、**`maxDepth`を`4`以上にした場合**、**`maxActiveSubagents`を時間を分けて起動した場合**、**`maxDepth`と`maxActiveSubagents`の同時作用**、**Turn 1が複数ある場合のfork連鎖の増加量**、**実行中Turnのfork継承**。既定の同時数が8体であることは[同時起動の上限](./DSH_SUBAGENT_CONCURRENT_LIMIT_2026-11-09/README.md)で確認したが、上限値を変えた場合と、順に起動した場合は未確認。Turn境界をまたぐfork連鎖が親の完了Turnを深さ3まで運ぶことは[Turn境界をまたぐfork連鎖](./DSH_SUBAGENT_FORK_TURN_CHAIN_2026-11-09/README.md)で確認したが、履歴が長い場合に各段がどこまで増えるかは未確認。継承しない`subagent`の連鎖が既定で深さ1に止まることは[Subagentの連鎖](./DSH_SUBAGENT_CHAIN_2026-11-09/README.md)で、`maxDepth 3`で深さ3まで伸びることは[深さ上限を上げた連鎖](./DSH_SUBAGENT_DEPTH_RAISED_2026-11-09/README.md)で確認したが、**既定との正確なbyte比較は発火方針が違い未実施**。`subagent`は[Subagent経路](./DSH_SUBAGENT_EGRESS_2026-11-09/README.md)、`subagent_fork`は[Subagent fork](./DSH_SUBAGENT_FORK_2026-11-09/README.md)で確認した。**Telemetryについては以前の記述を訂正した**：`session-telemetry-otel`は`dsh-base`が既定で登録しており、この版が読むのは`DSH_TELEMETRY_OTLP_URL`（標準の`OTEL_EXPORTER_OTLP_ENDPOINT`ではない）。宛先をローカルへ向けても**`FEEDBACK_ONLY`のgateにより送出は0件**で、headlessにはfeedbackの面が無い（[Telemetry経路](./DSH_OTEL_PATH_2026-11-09/README.md)）。
+- **実Providerの保存・保持・二次利用**。（この台帳の全記録はローカルMock宛てで、Provider側の保存は一度も観測していない。）
+
+### 4.1 MCP経路で残るもの
+
+- **4.1MBを超える引数**と**MCPサーバー側の受信上限**、**`maxInstructionBytes`との関係**。大きさは[MCPの引数の大きさ](./DSH_MCP_ARG_SIZE_2026-11-10/README.md)で1MB、[MCPの引数4.1MB](./DSH_MCP_ARG_SIZE_4M_2026-11-10/README.md)で4.1MBまで切り詰めなしを確認したが、上限の有無は未確認。引数の内容は[MCPの引数の内容](./DSH_MCP_SECRET_SHAPE_2026-11-10/README.md)で**検査されない**ことを確認済み。
+- **`maxAttempts`を超えて諦めた後**の挙動、**時間をおいた再試行**。落ちたサーバーが次回起動で繋がることは[落ちていたサーバーの復帰](./DSH_MCP_LATE_START_2026-11-10/README.md)、同じ実行内で復帰することは[実行中の再接続](./DSH_MCP_MIDRUN_RECONNECT_2026-11-10/README.md)、一覧が縮まず呼ぶと`fetch failed`になることは[サーバーを落とした場合](./DSH_MCP_KILL_MIDRUN_2026-11-10/README.md)・[落ちた後に呼んだ場合](./DSH_MCP_CALL_AFTER_KILL_2026-11-10/README.md)で確認済み。
+- **再接続時の`headers`再送**と**`reconnect: { enabled: false }`**。`headers`が毎回・信頼確立前にも送られることは[MCPの`headers`](./DSH_MCP_HEADERS_2026-11-10/README.md)で確認済み。
+- **stdioの子Processが落ちた場合**のエラー形（[MCPのstdio経路](./DSH_MCP_STDIO_2026-11-10/README.md)は接続と環境の継承のみ確認）。
+
+### 4.2 確認済みへ移したもの
+
+記録が揃ったため、この節から外した項目。**stdio transport**（[MCPのstdio経路](./DSH_MCP_STDIO_2026-11-10/README.md)）、**認証ヘッダ**（[MCPの`headers`](./DSH_MCP_HEADERS_2026-11-10/README.md)）、**複数サーバー**（[MCPの複数サーバー](./DSH_MCP_TWO_SERVERS_2026-11-10/README.md)）、**`maxActiveSubagents`を変えた場合**（[同時起動の上限は設定値に従う](./DSH_SUBAGENT_ACTIVE_CAP_2026-11-10/README.md)）、**時間を分けた起動**（[時間を分けた起動](./DSH_SUBAGENT_SEQUENTIAL_2026-11-10/README.md)）、**`maxDepth`と`maxActiveSubagents`の同時作用**（[2つの上限の同時作用](./DSH_SUBAGENT_TREE_CAP_2026-11-10/README.md)）、**MCPの引数の内容**（[MCPの引数の内容](./DSH_MCP_SECRET_SHAPE_2026-11-10/README.md)）、**feedback面の不在**（[feedback面の不在](./DSH_FEEDBACK_SURFACE_2026-11-10/README.md)）。
+
+### 4.3 その他の残り
+
+- **Telemetryでfeedbackを与えた場合の送出内容**と**web・tui面のfeedback経路**。headlessにはfeedback面が無く`/feedback`はコマンドにならないことを[feedback面の不在](./DSH_FEEDBACK_SURFACE_2026-11-10/README.md)で確認したが、**feedbackを実際に発生させた場合の送信内容**は未観測。
+- **`maxDepth`を`5`以上にした場合**（`4`は[`maxDepth 4`の連鎖](./DSH_SUBAGENT_DEPTH4_2026-11-11/README.md)で確認済み）、**Turn 1が複数ある場合のfork連鎖の増加量**、**実行中Turnのfork継承**、**履歴が長い場合の各段の増加量**。
 - **停滞の検知手段を用意した場合の実効性**。3面に警告が出ないことと、非停滞との差が`delivery-accepted`の不在だけであることは[停滞の可視性](./DSH_SESSION_LOG_STALL_VISIBILITY_2026-11-09/README.md)・[停滞の検知](./DSH_SESSION_LOG_STALL_DETECTION_2026-11-09/README.md)で確認したが、Telemetry・UI・別flagを含む**他の面**、**243 event・375KBを超えるbacklog**（この範囲では分割されなかったが上限の有無は未確認）、**他版で同じevent名・意味になるか**（この版の観測であって契約ではない）は未確認。単一eventが上限を超えると拡張が消え`delivery-accepted`が増えないことは[上限を超える単一event](./DSH_SESSION_LOG_OVERSIZE_EVENT_2026-11-09/README.md)で確認した。
 - **Skillの増分価値**。四Sessionは未採点で、Task path不一致とSession再利用を含む。
 - **独立Expectedによる採点**（RunbookのReviewer-only）。

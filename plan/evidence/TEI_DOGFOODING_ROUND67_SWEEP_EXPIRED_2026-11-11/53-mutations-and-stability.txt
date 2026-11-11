@@ -1,0 +1,10 @@
+Mutation: restore the two-statement form.
+  go test -count=10 -run TestSweepExpiredReportsOnlyWhatItExpired
+  -> FAIL: second sweep = [{... State:expired ...}], want none:
+           a sweep must report only newly expired claims
+
+Stability, the shape that failed 3/3 before the fix:
+  -count=5, eight repeats -> 0/8 failures
+
+busy_timeout and SetMaxOpenConns(1) were ALREADY set in lease.go (lines 43-67).
+TestParallelClaim passed 50 repeats alone. The lock race was not the cause.

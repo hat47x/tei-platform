@@ -10,11 +10,22 @@ import (
 // compiled local reference Inspector. It does not silently fall back to the
 // old direct Operation if Host composition cannot select/bind its Provider.
 func inspectWorkspaceJSONSelected(out io.Writer, root, world, kind, id string, positional int) (int, error) {
+	return inspectWorkspaceJSONFromHost(out, inspectoradapter.NewLocalInspectorHost, root, world, kind, id, positional)
+}
+
+// inspectWorkspaceJSONFromHost runs the CLI transport against whichever
+// Inspector the composing Host selected. The Host, not a command-line
+// argument, decides the Provider; a selection that cannot be composed or
+// bound stops here with a classified failure.
+func inspectWorkspaceJSONFromHost(
+	out io.Writer, compose func() (*inspectoradapter.LocalInspectorHost, error),
+	root, world, kind, id string, positional int,
+) (int, error) {
 	// Keep the CLI transport's syntactic rejection ahead of Host setup.
 	if root == "" || world != "" || kind == "" || id == "" || positional != 0 {
 		return inspectWorkspaceJSONWithService(out, root, world, kind, id, positional, nil)
 	}
-	host, err := inspectoradapter.NewLocalInspectorHost()
+	host, err := compose()
 	if err != nil {
 		return selectedInspectorUnavailable(out)
 	}

@@ -1,0 +1,12 @@
+M1 remove the call (pre-fix behaviour)
+   -> FAIL the unread source was not reported: []
+M2 drop the .tei gate
+   -> FAIL a non-TEI file was reported: ...notes.txt...
+M3 ignore ReadByLoader
+   -> FAIL a file the loader read was reported as unread: ...persistence/thing.tei...
+
+M1 first APPEARED to pass: `git checkout -- internal/workspace/loader.go` reverted
+the mutation and my fix together. Caught it, re-applied the fix, rebuilt the
+mutation. This is the third round where a broken mutation had to be fixed
+(61, 67, 72).
+restored -> workspace ok, cmd/tei ok (514.7s); vet and gofmt clean
