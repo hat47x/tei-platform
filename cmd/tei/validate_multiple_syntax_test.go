@@ -40,8 +40,10 @@ func TestValidateReportsSyntaxErrorsInIndependentFiles(t *testing.T) {
 		t.Fatalf("validate: code=%d err=%v output=%s", code, err, &out)
 	}
 	var report struct {
-		OK                     bool   `json:"ok"`
-		InspectionIncomplete   bool   `json:"inspectionIncomplete"`
+		OK         bool `json:"ok"`
+		Incomplete *struct {
+			Reason string `json:"reason"`
+		} `json:"incomplete"`
 		WorldFingerprint       string `json:"worldFingerprint"`
 		SourceIndexFingerprint string `json:"sourceIndexFingerprint"`
 		Diagnostics            []struct {
@@ -56,7 +58,7 @@ func TestValidateReportsSyntaxErrorsInIndependentFiles(t *testing.T) {
 	if err := json.Unmarshal(out.Bytes(), &report); err != nil {
 		t.Fatal(err)
 	}
-	if report.OK || !report.InspectionIncomplete || report.WorldFingerprint != "" || report.SourceIndexFingerprint != "" {
+	if report.OK || report.Incomplete == nil || report.Incomplete.Reason != "syntax-coverage-unverified" || report.WorldFingerprint != "" || report.SourceIndexFingerprint != "" {
 		t.Fatalf("partial World must not be qualified: %s", &out)
 	}
 	want := map[string]bool{"semantic/a.tei": true, "semantic/b.tei": true, "semantic/c.tei": true, "plugins/broken/plugin.tei": true}

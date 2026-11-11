@@ -20,10 +20,8 @@ import (
 // `declarationCounts`, `workspace`. Adding them here does not change what the
 // CLI already wrote.
 type WorkspaceValidationReport struct {
-	SchemaVersion string `json:"schemaVersion"`
-	OK            bool   `json:"ok"`
-	// Parsing may skip dependent sources; semantic validation is not run.
-	InspectionIncomplete   bool                                   `json:"inspectionIncomplete,omitempty"`
+	SchemaVersion          string                                 `json:"schemaVersion"`
+	OK                     bool                                   `json:"ok"`
 	Diagnostics            []WorkspaceValidationItem              `json:"diagnostics"`
 	WorldFingerprint       string                                 `json:"worldFingerprint,omitempty"`
 	SourceIndexFingerprint string                                 `json:"sourceIndexFingerprint,omitempty"`
@@ -79,7 +77,6 @@ func WorkspaceValidationReportFrom(result WorkspaceValidation) WorkspaceValidati
 		Diagnostics:   []WorkspaceValidationItem{},
 	}
 	if result.Direct != nil {
-		report.InspectionIncomplete = result.InspectionIncomplete
 		directs := append([]workspace.SourceDiagnostic{*result.Direct}, result.AdditionalDirect...)
 		for _, direct := range directs {
 			report.Diagnostics = append(report.Diagnostics, WorkspaceValidationItem{

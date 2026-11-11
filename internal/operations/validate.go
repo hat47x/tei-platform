@@ -99,7 +99,7 @@ func ValidateWorkspace(root string) (WorkspaceValidation, error) {
 			return result, nil
 		}
 		if direct, ok := workspace.SourceDiagnosticFromError(root, err); ok {
-			return WorkspaceValidation{Direct: &direct, InspectionIncomplete: true}, nil
+			return WorkspaceValidation{Direct: &direct}, nil
 		}
 		return WorkspaceValidation{}, &ValidationFailure{Stage: StageLoad, Err: err}
 	}

@@ -34,7 +34,7 @@ func TestValidateWorkspaceCollectsSyntaxWithoutPartialWorld(t *testing.T) {
 		t.Fatalf("expected three source findings: %+v", got)
 	}
 	report := WorkspaceValidationReportFrom(got)
-	if report.OK || !report.InspectionIncomplete || len(report.Diagnostics) != 3 || report.WorldFingerprint != "" || report.SourceIndexFingerprint != "" || report.DeclarationCounts != nil || len(report.Proposals) != 0 {
+	if report.OK || len(report.Diagnostics) != 3 || report.WorldFingerprint != "" || report.SourceIndexFingerprint != "" || report.DeclarationCounts != nil || len(report.Proposals) != 0 {
 		t.Fatalf("unexpected partial-world report: %+v", report)
 	}
 	if report.Incomplete == nil || report.Incomplete.Reason != "syntax-coverage-unverified" || report.Incomplete.StoppedAt != "" {
