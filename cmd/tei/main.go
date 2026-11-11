@@ -179,6 +179,7 @@ func main() {
 	okfMaxFileBytes := fs.Int64("max-file-bytes", 0, "okf-bundle: per-file byte limit; 0 uses the reader default")
 	okfMaxBundleBytes := fs.Int64("max-bundle-bytes", 0, "okf-bundle: total byte limit; 0 uses the reader default")
 	okfMaxConcepts := fs.Int64("max-concepts", 0, "okf-bundle: concept count limit; 0 uses the reader default")
+	okfProject := fs.Bool("project", false, "okf-bundle: also emit read-only TEI structure candidates and their loss manifest; never an acceptance")
 	traceScope := fs.String("scope", "", "scope for typed modelref trace projection")
 	// The CLI flag default, `tei commands` and the MCP adapter read these two
 	// values from modelref instead of each keeping a copy (#3605).
@@ -464,7 +465,7 @@ func main() {
 	}
 	if command == "okf-bundle" {
 		code, err := okfBundleJSON(os.Stdout, *okfRoot, *okfConcept, *okfExpectedRevision,
-			*workspacePath, *worldPath, *okfMaxFileBytes, *okfMaxBundleBytes, *okfMaxConcepts, fs.NArg())
+			*workspacePath, *worldPath, *okfMaxFileBytes, *okfMaxBundleBytes, *okfMaxConcepts, *okfProject, fs.NArg())
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		}

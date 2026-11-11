@@ -30,7 +30,7 @@ func decodeOKFEnvelope(t *testing.T, out bytes.Buffer) (map[string]any, int) {
 // unresolved references and format diagnostics available as machine-readable data.
 func TestOKFBundleCLIReadsTheFixture(t *testing.T) {
 	var out bytes.Buffer
-	code, err := okfBundleJSON(&out, okfFixturePath, "", "", "", "", 0, 0, 0, 0)
+	code, err := okfBundleJSON(&out, okfFixturePath, "", "", "", "", 0, 0, 0, false, 0)
 	if err != nil || code != 0 {
 		t.Fatalf("code=%d err=%v body=%s", code, err, out.String())
 	}
@@ -95,7 +95,7 @@ func TestOKFBundleCLIReadsTheFixture(t *testing.T) {
 // TestOKFBundleCLIConceptMode covers the single-concept projection.
 func TestOKFBundleCLIConceptMode(t *testing.T) {
 	var out bytes.Buffer
-	code, err := okfBundleJSON(&out, okfFixturePath, "data/order", "", "", "", 0, 0, 0, 0)
+	code, err := okfBundleJSON(&out, okfFixturePath, "data/order", "", "", "", 0, 0, 0, false, 0)
 	if err != nil || code != 0 {
 		t.Fatalf("code=%d err=%v body=%s", code, err, out.String())
 	}
@@ -129,7 +129,7 @@ func TestOKFBundleCLIConceptMode(t *testing.T) {
 // success result.
 func TestOKFBundleCLIUnknownConceptIsAnArgumentError(t *testing.T) {
 	var out bytes.Buffer
-	code, err := okfBundleJSON(&out, okfFixturePath, "no/such/concept", "", "", "", 0, 0, 0, 0)
+	code, err := okfBundleJSON(&out, okfFixturePath, "no/such/concept", "", "", "", 0, 0, 0, false, 0)
 	if err != nil || code != 2 {
 		t.Fatalf("code=%d err=%v", code, err)
 	}
@@ -146,7 +146,7 @@ func TestOKFBundleCLIUnknownConceptIsAnArgumentError(t *testing.T) {
 // TestOKFBundleCLIRequiresRoot covers the required flag.
 func TestOKFBundleCLIRequiresRoot(t *testing.T) {
 	var out bytes.Buffer
-	code, err := okfBundleJSON(&out, "", "", "", "", "", 0, 0, 0, 0)
+	code, err := okfBundleJSON(&out, "", "", "", "", "", 0, 0, 0, false, 0)
 	if err != nil || code != 2 {
 		t.Fatalf("code=%d err=%v", code, err)
 	}
@@ -160,7 +160,7 @@ func TestOKFBundleCLIRequiresRoot(t *testing.T) {
 // TestOKFBundleCLIMissingRootIsAnArgumentError covers a root that does not exist.
 func TestOKFBundleCLIMissingRootIsAnArgumentError(t *testing.T) {
 	var out bytes.Buffer
-	code, err := okfBundleJSON(&out, filepath.Join(t.TempDir(), "absent"), "", "", "", "", 0, 0, 0, 0)
+	code, err := okfBundleJSON(&out, filepath.Join(t.TempDir(), "absent"), "", "", "", "", 0, 0, 0, false, 0)
 	if err != nil || code != 2 {
 		t.Fatalf("code=%d err=%v", code, err)
 	}
@@ -173,7 +173,7 @@ func TestOKFBundleCLIMissingRootIsAnArgumentError(t *testing.T) {
 // TestOKFBundleCLIRejectsWorld covers the mutual exclusion with -world.
 func TestOKFBundleCLIRejectsWorld(t *testing.T) {
 	var out bytes.Buffer
-	code, err := okfBundleJSON(&out, okfFixturePath, "", "", "", "other.json", 0, 0, 0, 0)
+	code, err := okfBundleJSON(&out, okfFixturePath, "", "", "", "other.json", 0, 0, 0, false, 0)
 	if err != nil || code != 2 {
 		t.Fatalf("code=%d err=%v", code, err)
 	}
@@ -186,19 +186,19 @@ func TestOKFBundleCLIRejectsWorld(t *testing.T) {
 // succeeds and a mismatched one fails without claiming the bundle was read.
 func TestOKFBundleCLIExpectedRevision(t *testing.T) {
 	var baseline bytes.Buffer
-	if code, err := okfBundleJSON(&baseline, okfFixturePath, "", "", "", "", 0, 0, 0, 0); err != nil || code != 0 {
+	if code, err := okfBundleJSON(&baseline, okfFixturePath, "", "", "", "", 0, 0, 0, false, 0); err != nil || code != 0 {
 		t.Fatalf("baseline read failed: code=%d err=%v", code, err)
 	}
 	envelope, _ := decodeOKFEnvelope(t, baseline)
 	revision := envelope["result"].(map[string]any)["bundleRevision"].(map[string]any)["value"].(string)
 
 	var matching bytes.Buffer
-	if code, err := okfBundleJSON(&matching, okfFixturePath, "", revision, "", "", 0, 0, 0, 0); err != nil || code != 0 {
+	if code, err := okfBundleJSON(&matching, okfFixturePath, "", revision, "", "", 0, 0, 0, false, 0); err != nil || code != 0 {
 		t.Fatalf("matching revision read failed: code=%d err=%v", code, err)
 	}
 
 	var mismatched bytes.Buffer
-	code, err := okfBundleJSON(&mismatched, okfFixturePath, "", "sha256:0000", "", "", 0, 0, 0, 0)
+	code, err := okfBundleJSON(&mismatched, okfFixturePath, "", "sha256:0000", "", "", 0, 0, 0, false, 0)
 	if err != nil || code != 2 {
 		t.Fatalf("code=%d err=%v", code, err)
 	}
@@ -234,7 +234,7 @@ func TestOKFBundleCLIWorkspaceIdentityIsOptional(t *testing.T) {
 	// A bundle root outside the workspace is refused rather than silently
 	// mislabelled.
 	var outside bytes.Buffer
-	code, err := okfBundleJSON(&outside, okfFixturePath, "", "", workspaceRoot, "", 0, 0, 0, 0)
+	code, err := okfBundleJSON(&outside, okfFixturePath, "", "", workspaceRoot, "", 0, 0, 0, false, 0)
 	if err != nil || code != 2 {
 		t.Fatalf("code=%d err=%v body=%s", code, err, outside.String())
 	}
@@ -248,7 +248,7 @@ func TestOKFBundleCLIWorkspaceIdentityIsOptional(t *testing.T) {
 // turns an otherwise conformant bundle into a reported non-conformant read.
 func TestOKFBundleCLILimitsAreOptional(t *testing.T) {
 	var out bytes.Buffer
-	code, err := okfBundleJSON(&out, okfFixturePath, "", "", "", "", 64, 0, 0, 0)
+	code, err := okfBundleJSON(&out, okfFixturePath, "", "", "", "", 64, 0, 0, false, 0)
 	if err != nil || code != 0 {
 		t.Fatalf("code=%d err=%v", code, err)
 	}
@@ -315,7 +315,7 @@ func TestOKFBundleIsReadOnlyByConstruction(t *testing.T) {
 		t.Fatal(err)
 	}
 	var out bytes.Buffer
-	if code, err := okfBundleJSON(&out, okfFixturePath, "", "", "", "", 0, 0, 0, 0); err != nil || code != 0 {
+	if code, err := okfBundleJSON(&out, okfFixturePath, "", "", "", "", 0, 0, 0, false, 0); err != nil || code != 0 {
 		t.Fatalf("code=%d err=%v", code, err)
 	}
 	after, err := os.ReadDir(okfFixturePath)

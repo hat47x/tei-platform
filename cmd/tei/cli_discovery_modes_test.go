@@ -215,7 +215,7 @@ func TestDiscoveryModesAreAClosedAdvertisedSet(t *testing.T) {
 		resultModeDisclosure: true, resultModeQualification: true, resultModePlan: true,
 		resultModeHandoff: true, resultModeReview: true,
 		resultModeBundle: true, resultModeConcept: true,
-		"environment": true,
+		"environment":            true,
 		"unvalidated-candidates": true, "": true,
 		// rea-evidence names which optional inputs the response carries; the
 		// shape really does change with them (a receipt alone, plus a request

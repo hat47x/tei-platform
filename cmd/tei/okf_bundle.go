@@ -29,6 +29,9 @@ type okfBundleValue struct {
 	Diagnostics  []okf.Diagnostic  `json:"diagnostics"`
 	NotEvaluated okf.NotEvaluated  `json:"notEvaluated"`
 	Options      okf.Options       `json:"options"`
+	// Projection is present only when -project was passed. It carries candidate
+	// TEI structures and the loss manifest; it never carries an acceptance.
+	Projection *okf.Projection `json:"projection,omitempty"`
 }
 
 // newOKFBundleValue projects the reader's result. Every slice is non-nil so an
@@ -69,6 +72,7 @@ func okfBundleJSON(
 	out io.Writer,
 	rootPath, conceptID, expectedRevision, workspacePath, worldPath string,
 	maxFileBytes, maxBundleBytes, maxConcepts int64,
+	project bool,
 	extraArgs int,
 ) (int, error) {
 	const command = "okf-bundle"
@@ -112,6 +116,14 @@ func okfBundleJSON(
 		}
 		value.Concept = selected
 		value.Concepts = nil
+	}
+
+	if project {
+		// The projection derives candidates from the bundle that was just read, so it
+		// cannot observe any byte the read did not. It is a proposal only: nothing here
+		// is an accepted TEI meaning, an owner decision, or a host grant.
+		projection := okf.Project(bundle)
+		value.Projection = &projection
 	}
 
 	// The workspace identity is attached only when the caller named a workspace and

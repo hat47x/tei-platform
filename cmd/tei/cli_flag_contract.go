@@ -40,7 +40,7 @@ var selectedReadOnlyFlagAllowlist = map[string][]string{
 		"direction", "mode", "offset", "limit", "expected-fingerprint",
 	},
 	"workspace-files": {"workspace"},
-	"okf-bundle":      {"root", "concept", "workspace", "expected-bundle-revision", "max-file-bytes", "max-bundle-bytes", "max-concepts"},
+	"okf-bundle":      {"root", "concept", "workspace", "expected-bundle-revision", "max-file-bytes", "max-bundle-bytes", "max-concepts", "project"},
 	"source-index":    {"workspace", "subject-kind", "subject-id"},
 	"knowledge-context": {
 		"workspace", "subject-kind", "subject-id", "disclose",
