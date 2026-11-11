@@ -64,6 +64,12 @@ func TestThreeElementConflictingDeclarationsAreNotSafeToCollapse(t *testing.T) {
 	if diagnostics := model.Validate(); len(diagnostics) != 0 {
 		t.Fatalf("characterization changed: Validate now reports this conflict: %+v", diagnostics)
 	}
+	// The full report exposes the conflicting CRUDDefinition separately, but
+	// OK is based only on Diagnostic errors, not on that conflict list.
+	report := threeelement.ValidateModel(model)
+	if !report.OK || report.ErrorCount != 0 || len(report.ContradictoryCRUDs) != 1 {
+		t.Fatalf("full report must expose contradiction without an error status: %+v", report)
+	}
 
 	a := threeelement.GenerateCRUDTable(model)
 	if len(a) != 1 || !a[0].Delete || a[0].Update {
