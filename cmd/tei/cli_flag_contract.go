@@ -70,6 +70,12 @@ var selectedReadOnlyFlagAllowlist = map[string][]string{
 	// entry here advertised a flag set that nothing enforced and that `tei
 	// commands` did not list (#2332 checked the two tables against each other
 	// and failed on exactly that).
+	"rea-evidence": {
+		"analysis-output", "view", "request", "request-out",
+		"provider-version", "expected-evidence-id",
+		"expected-evidence-fingerprint", "expected-source-revision",
+		"tool-path",
+	},
 }
 
 // repeatableFlags lists the flags that collect several values by design. They
@@ -97,6 +103,7 @@ var repeatableFlags = map[string]map[string]bool{
 	"model catalog":                          {},
 	"model locate":                           {},
 	"model overview":                         {},
+	"rea-evidence":                           {},
 }
 
 // validateRepeatableArguments refuses a flag that was supplied more than once
@@ -255,5 +262,15 @@ var emptyStringGuardedFlags = map[string]map[string]bool{
 	},
 	"plugin-runtime-plan": {
 		"workspace": true, "environment": true, "plugin-lock": true,
+	},
+	// A path is not guarded: "" there already means "not given", and the
+	// command reports its own required-argument error. The version and the
+	// pins are guarded, because an empty one would silently skip the check it
+	// exists to perform.
+	"rea-evidence": {
+		"provider-version":              true,
+		"expected-evidence-id":          true,
+		"expected-evidence-fingerprint": true,
+		"expected-source-revision":      true,
 	},
 }

@@ -1,4 +1,4 @@
-﻿# CLI読取りコマンドのJSON出力契約（schemaVersionと失敗時の形式）の現状調査と追加案
+# CLI読取りコマンドのJSON出力契約（schemaVersionと失敗時の形式）の現状調査と追加案
 
 - **状態**: 調査と案（提案中、未採用）。一覧は2026-10-31時点のorigin/main `cd47b6fa4` のコードと、WSL go1.26.9でbuildした`tei`による実行結果の記録である。
 - **担当課題**: [#2354](https://github.com/hat47x/tei-platform/issues/2354)。
@@ -50,6 +50,7 @@
 | `plugin-lock` | `tei.cli.plugin-lock/v0` | `result`に`plugin.Lock`（lock形式自体は`formatVersion: 2`を持つ） | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`、`PLUGIN_LOCK_FAILED`） | いいえ（投影型。#2354第一陣） |
 | `plugin-resolve` | `tei.cli.plugin-resolve/v0` | `result`に`plugin.ResolvedSet` | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`、`UNKNOWN_ENVIRONMENT`、`INVALID_PLUGIN_LOCK`、`PLUGIN_RESOLVE_FAILED`） | いいえ（投影型。#2354第一陣） |
 | `plugin-runtime-plan` | `tei.cli.plugin-runtime-plan/v0` | `result`に`pluginruntime.EnvironmentPlan` | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`、`UNKNOWN_ENVIRONMENT`、`INVALID_PLUGIN_LOCK`、`PLUGIN_RUNTIME_PLAN_FAILED`。構築失敗は終了コード1） | いいえ（投影型。#2354第一陣） |
+| `rea-evidence` | `tei.cli.rea-evidence/v0` | `result`に外部解析Evidenceの受領記録（`receipt`: Evidence ID・対象・Provider・Source位置・Revision・受領bytesのdigest・取得時刻・coverage・limitations・unknowns・状態）。`mode`は付加した入力で`evidence`／`request`／`view`／`request-view`。`-request-out`は派生入力のファイルを書く（上書きしない） | JSON（終了コード2: `INVALID_ARGUMENT`・`EVIDENCE_READ_FAILED`・`EVIDENCE_MISMATCH`・`EVIDENCE_MISSING`・`EVIDENCE_REQUEST_WRITE_FAILED`。終了コード1: `EVIDENCE_PARTIAL`・`EVIDENCE_FAILED`・`EVIDENCE_PIN_MISMATCH`。状態`complete`と`tool-absent`は終了コード0） | いいえ（投影型。受領したbytesの測定とProducer自身のrecordの転記のみで、解析結果を解釈しない） |
 
 観測の補足:
 

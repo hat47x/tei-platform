@@ -77,7 +77,8 @@ func isResultEnvelopeCommand(command string) bool {
 		"plugin-lock", "plugin-resolve", "plugin-runtime-plan",
 		"knowledge-context", "knowledge-qualify",
 		"knowledge-review-plan", "knowledge-review-handoff",
-		"knowledge-review-disclose", "knowledge-data-design-candidate-review":
+		"knowledge-review-disclose", "knowledge-data-design-candidate-review",
+		"rea-evidence":
 		return true
 	}
 	return false
