@@ -2485,6 +2485,7 @@ var topLevelDeclarations = []topLevelDeclaration{
 	{"data", "a semantic data declaration"},
 	{"capability", "a semantic capability"},
 	{"validation", "a semantic validation"},
+	{"rule", "a rule authoring declaration"},
 	{"calendar", "a semantic calendar"},
 	{"period", "a semantic period"},
 	{"effect-rule", "a semantic effect rule"},
