@@ -1,0 +1,29 @@
+namespace bear
+
+type ScenarioId from std.identifier
+
+// A subset of the bot-scenario-1 assertions. final_position and stop_reasons
+// are arrays in the existing fixture format; the DSL has no list attribute, so
+// this probe keeps only the scalar expectations and checks array shape in the
+// read-only probe.
+data ScenarioExpectation {
+    attribute scenarioId type bear.scenario_id required immutable
+    attribute seed type std.integer required
+    attribute totalTicks type std.integer required
+    attribute minSteps type std.integer required
+    attribute finalPositionTolerance type std.decimal
+    attribute trajectorySha256 type std.text
+}
+
+capability bear.scenario.expect {
+    input expectation bear.scenario_expectation
+    output bear.scenario_expectation
+}
+
+validation bear.scenario_expectation.total_ticks_positive positive {
+    attribute bear.scenario_expectation.total_ticks
+}
+
+validation bear.scenario_expectation.min_steps_positive positive {
+    attribute bear.scenario_expectation.min_steps
+}
