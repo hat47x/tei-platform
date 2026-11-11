@@ -50,3 +50,34 @@ func TestOpaqueNodeRoundTrip(t *testing.T) {
 	// Opaque nodes do not currently emit generation diagnostics in the flat path.
 	_ = diags
 }
+
+// Severity is the closed vocabulary a diagnostic carries. A reader decides
+// whether a finding blocks lowering from it, so an unsupported construct has to
+// be distinguishable from an error rather than collapse into one value.
+func TestSeverityVocabulary(t *testing.T) {
+	severities := []Severity{SeverityError, SeverityWarning, SeverityUnsupported}
+	want := []string{"error", "warning", "unsupported"}
+	if len(severities) != len(want) {
+		t.Fatalf("a severity was dropped: %d values, want %d", len(severities), len(want))
+	}
+	seen := map[string]bool{}
+	for i, severity := range severities {
+		if string(severity) != want[i] {
+			t.Fatalf("severities[%d]=%q want %q", i, severity, want[i])
+		}
+		if seen[string(severity)] {
+			t.Fatalf("severity %q is declared twice", severity)
+		}
+		seen[string(severity)] = true
+	}
+
+	// A diagnostic built with SeverityUnsupported keeps that value through the
+	// JSON round trip, which is where a consumer reads it.
+	d := Diagnostic{Code: "UNSUPPORTED_CONSTRUCT", Message: "unsupported", Severity: SeverityUnsupported}
+	if d.Severity != SeverityUnsupported {
+		t.Fatalf("diagnostic severity = %q, want %q", d.Severity, SeverityUnsupported)
+	}
+	if d.Severity == SeverityError || d.Severity == SeverityWarning {
+		t.Fatalf("unsupported must not read as an error or a warning: %q", d.Severity)
+	}
+}
