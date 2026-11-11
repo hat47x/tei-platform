@@ -138,6 +138,11 @@ Observationは`data-element`候補へ、有向Relationは`cross-reference`候補
 | Source digest不一致 | `source-digest-conflict`。受理にも失敗にも変換しない |
 | Owner mapping無し | 何も`resolved`にしない |
 | read-only port | 書込み手段を持たない（型に無い） |
+| 解析byte＝現在byte | `independently-bound`かつ`resolution=unresolved`。coincident宣言は「構造的一致であり受理ではない」と注記（`cmd/tei/cli_three_element_rea_workspace_test.go`） |
+| 解析pathがWorkspace外 | decode時に`provider-reported-invalid-source-path`。束縛しない |
+| Owner mappingあり | `inspectStatus`が`not-attempted`にならない（既存`operations.InspectSubject`が呼ばれる） |
+
+**束縛で観測できる範囲の注意**：Source Indexが記録する`Range`は**宣言全体ではなく識別子トークンの範囲**である。実Workspaceでの`source-index`出力では`semantic-data:probe.order`が`3:6-3:11`（`Order`の5文字）だった。したがってREAが宣言全体を覆う広いspanを報告した場合、coincident宣言には一致しない。これは誤検出を避ける保守的な挙動であり、候補の`unresolved`は変わらないが、「一致しないのは不具合」と読み違えないこと。
 
 ## 7. 作業の進捗と残り（後続実装者向け）
 
