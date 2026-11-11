@@ -13,7 +13,8 @@ tools/reference-cache-full-vs-incremental-verification/
 ├── verification.go              # Core types and contracts
 ├── comparison.go                # Artifact, dependency, input, cache, evidence, and receipt comparison
 ├── diagnostics.go               # Diagnostic report generation and output
-├── semantic.go                  # Semantic normalization rules (timestamp/UUID/path)
+├── semantic.go                  # Semantic normalization rules (timestamp/UUID/path/build metadata)
+├── semantic_test.go             # Behaviour each normalization rule guarantees
 ├── adapter.go                   # CLI adapter and RunReporter
 ├── scenarios/                   # Test scenarios
 │   ├── types.go
@@ -39,7 +40,7 @@ tools/reference-cache-full-vs-incremental-verification/
 
 - **Byte-exact**: Compares raw bytes. Appropriate for artifacts whose content is fully determined by byte-identical inputs and deterministic generation (e.g., compiled binaries, checksum lists).
 - **Structural**: Compares normalized JSON structures. Appropriate for artifacts whose serialization order, whitespace, or key casing is not semantically meaningful.
-- **Semantic**: Compares after applying domain-specific normalization rules (e.g., timestamp stripping, UUID anonymization, path prefix normalization). Appropriate when the same meaning can be expressed by different bytes.
+- **Semantic**: Compares after applying domain-specific normalization rules (e.g., timestamp stripping, UUID anonymization, path prefix normalization, build metadata normalization). Appropriate when the same meaning can be expressed by different bytes.
 
 ## Test Scenarios
 
@@ -101,16 +102,18 @@ When verification fails, the framework produces a diagnostic report that identif
 - The severity of the difference
 - A human-readable summary
 
-<<<<<<< HEAD
 ## Semantic Normalization
 
 The semantic comparison mode uses domain-specific normalization rules to strip non-semantic differences from artifacts. The current rules include:
 
 - Timestamp stripping (ISO 8601 formats)
 - UUID anonymization
-- Path prefix normalization
+- Path prefix normalization (the whole directory portion, keeping the file name)
+- Build metadata normalization (`vcsRevision`, `declaredRevision`, `goVersion`)
 
-See `semantic.go` for implementation details and the specific regular expressions used.
+The build metadata rule exists because an evidence bundle records the build identity that produced the set (`internal/artifact.CLIBuildIdentity`). Two builds of the same meaning legitimately carry different commit hashes and Go toolchain versions, so normalizing only the member value — and leaving the surrounding JSON intact — keeps the comparison about meaning rather than about which binary ran.
+
+See `semantic.go` for implementation details, the specific regular expressions used, and `semantic_test.go` for the behaviour each rule guarantees.
 
 ## Failure Mode Mapping
 
@@ -122,8 +125,6 @@ Counterexample scenarios can be mapped to the unified TEI failure contract (`int
 
 See `counterexamples/failure_mode_map.go` for the complete mapping table.
 
-=======
->>>>>>> origin/main
 ## Limitations
 
 This is a read-only reference implementation. It does not:
