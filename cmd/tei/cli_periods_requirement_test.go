@@ -40,9 +40,20 @@ func TestPeriodsCommandReadsRequirementsFromTheWorkspace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The example declares no close-requires, so it is absent rather than given a
-	// default capability.
-	if _, ok := requirements["sales.month"]; ok {
-		t.Fatalf("the example declares no requirement but one was reported: %+v", requirements)
+	// The example now declares both requirements, so the lookup sees them. This
+	// test asserted the opposite before the example declared them; the assertion
+	// moved with the declaration rather than the declaration being held back to
+	// keep an old expectation true.
+	month, ok := requirements["sales.month"]
+	if !ok {
+		t.Fatalf("the example declares a requirement but the lookup lost it: %+v", requirements)
+	}
+	if month.Capability != "sales.close_period" || month.Correction != "sales.correct_order" {
+		t.Fatalf("requirement=%+v", month)
+	}
+	// A period the example does not declare stays absent: the lookup reports what
+	// the workspace says, not a default for every period.
+	if _, ok := requirements["sales.week"]; ok {
+		t.Fatalf("a period the example does not declare was reported: %+v", requirements)
 	}
 }
