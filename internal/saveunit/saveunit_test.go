@@ -444,3 +444,98 @@ func (t *testStore) CommitPending(pending map[core.CanonicalID]map[string]map[st
 		}
 	}
 }
+
+// beginRefusingUnitOfWork is a unit of work whose Begin always fails, so the
+// transaction-begin refusal is reachable.
+func beginRefusingUnitOfWork() UnitOfWorkTx {
+	return UnitOfWorkTx{Start: func(context.Context) (Transaction, error) {
+		return nil, errors.New("begin refused")
+	}}
+}
+
+// failingTx refuses the commit, so the commit refusal is reachable.
+type failingTx struct{}
+
+func (failingTx) Commit(context.Context) error   { return errors.New("commit refused") }
+func (failingTx) Rollback(context.Context) error { return nil }
+
+// commitRefusingUnitOfWork hands out a transaction that cannot commit.
+func commitRefusingUnitOfWork() UnitOfWorkTx {
+	return UnitOfWorkTx{Start: func(context.Context) (Transaction, error) { return failingTx{}, nil }}
+}
+
+// Each refusal the boundary can produce is named by a test. A code that stops
+// being emitted, or one that is renamed, fails here.
+func TestSaveRefusalsNameTheirCodes(t *testing.T) {
+	world := orderLineWorld()
+	unit := &SaveUnit{
+		Application: "order_entry",
+		Pattern:     "order_entry.order_record",
+		World:       world,
+		Changes: []EntityChange{{
+			Data: "sales.order", Kind: ChangeKindCreate, Key: "order=ORD-1",
+			Fields: PatchSet{"sales.order.customer": {Value: strp("C1")}},
+		}},
+	}
+	memAdapter := &MemoryStoreAdapter{Store: newTestStore()}
+
+	cases := []struct {
+		name  string
+		saver *Saver
+		unit  *SaveUnit
+		want  string
+	}{
+		{
+			name:  "no store",
+			saver: NewSaver(WithUnitOfWork(InMemoryUnitOfWork(memAdapter))),
+			unit:  unit,
+			want:  "SAVE_STORE_UNAVAILABLE",
+		},
+		{
+			name:  "empty unit",
+			saver: NewSaver(WithStore(memAdapter), WithUnitOfWork(InMemoryUnitOfWork(memAdapter))),
+			unit:  &SaveUnit{World: world},
+			want:  "SAVE_UNIT_EMPTY",
+		},
+		{
+			name:  "begin refused",
+			saver: NewSaver(WithStore(memAdapter), WithUnitOfWork(beginRefusingUnitOfWork())),
+			unit:  unit,
+			want:  "SAVE_TRANSACTION_BEGIN_FAILED",
+		},
+		{
+			name:  "commit refused",
+			saver: NewSaver(WithStore(memAdapter), WithUnitOfWork(commitRefusingUnitOfWork())),
+			unit:  unit,
+			want:  "SAVE_TRANSACTION_COMMIT_FAILED",
+		},
+		{
+			name:  "unknown change kind",
+			saver: NewSaver(WithStore(memAdapter), WithUnitOfWork(InMemoryUnitOfWork(memAdapter))),
+			unit: &SaveUnit{
+				Application: "order_entry",
+				Pattern:     "order_entry.order_record",
+				World:       world,
+				Changes: []EntityChange{{
+					Data: "sales.order", Kind: ChangeKind("frobnicate"), Key: "order=ORD-1",
+				}},
+			},
+			want: "SAVE_UNKNOWN_KIND",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			_, err := c.saver.Save(context.Background(), c.unit)
+			if err == nil {
+				t.Fatal("expected a refusal")
+			}
+			var saveErr *SaveError
+			if !errors.As(err, &saveErr) {
+				t.Fatalf("refusal is not a SaveError: %v", err)
+			}
+			if saveErr.Code != c.want {
+				t.Fatalf("code = %q, want %q", saveErr.Code, c.want)
+			}
+		})
+	}
+}

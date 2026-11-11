@@ -81,3 +81,19 @@ func TestSeverityVocabulary(t *testing.T) {
 		t.Fatalf("unsupported must not read as an error or a warning: %q", d.Severity)
 	}
 }
+
+// The two empty-input refusals are reachable, so they are named here: a code
+// that stops being emitted, or one that is renamed, fails this case (#4032).
+func TestEmptyInputRefusalsNameTheirCodes(t *testing.T) {
+	if _, diags := ParseSQLToStandard("   \n\t ", ""); len(diags) == 0 {
+		t.Fatal("blank SQL produced no refusal")
+	} else if diags[0].Code != "EMPTY_SQL" {
+		t.Fatalf("blank SQL code = %q, want EMPTY_SQL", diags[0].Code)
+	}
+
+	if _, diags := StandardToSQL(nil); len(diags) == 0 {
+		t.Fatal("nil query produced no refusal")
+	} else if diags[0].Code != "EMPTY_QUERY" {
+		t.Fatalf("nil query code = %q, want EMPTY_QUERY", diags[0].Code)
+	}
+}
