@@ -11,6 +11,7 @@ type AffiliationId from std.identifier
 type RoleId from std.identifier
 type RoleAssignmentId from std.identifier
 type ResponsibilityId from std.identifier
+type DirectiveId from std.identifier
 
 data Person {
     attribute personId type organization.person_id
@@ -110,4 +111,18 @@ data Responsibility {
 
 data Role {
     attribute roleId type organization.role_id
+}
+
+data Directive {
+    attribute directiveId type organization.directive_id
+    attribute subjectPersonId type organization.person_id
+    attribute objectOrgUnitId type organization.org_unit_id
+    attribute effectiveFrom type std.datetime
+    attribute effectiveTo type std.datetime
+    attribute sourceRevision type std.identifier
+
+    relation subject to organization.person one
+        key organization.directive.subject_person_id -> organization.person.person_id
+    relation object to organization.org_unit one
+        key organization.directive.object_org_unit_id -> organization.org_unit.org_unit_id
 }
