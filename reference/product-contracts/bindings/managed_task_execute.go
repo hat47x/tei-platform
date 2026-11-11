@@ -2,7 +2,6 @@ package bindings
 
 import (
 	"context"
-	"fmt"
 
 	"tei/internal/core"
 	"tei/internal/semantic/capabilityinvoke"
