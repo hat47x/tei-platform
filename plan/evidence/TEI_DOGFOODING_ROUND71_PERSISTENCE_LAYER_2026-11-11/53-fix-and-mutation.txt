@@ -1,0 +1,13 @@
+Added persistence-mapping to InspectionSubjectKinds with a dispatch.
+Accepted kinds 18 -> 19; MCP adapter pin follows.
+
+  persistence-mapping master_data.intake -> ok  table public.intakes  cols 1
+                                            sourceStatus=not-indexed
+  persistence-mapping sales_core.order   -> ok  table public.orders   cols 6
+  persistence-mapping nope.thing         -> SUBJECT_NOT_FOUND
+
+Mutation M1 (drop the dispatch)
+  -> FAIL persistence-mapping:sales_core.order did not resolve:
+          inspect does not support subject kind "persistence-mapping"
+
+The kind-agnostic advertised-vs-declared check caught it without a test rewrite.

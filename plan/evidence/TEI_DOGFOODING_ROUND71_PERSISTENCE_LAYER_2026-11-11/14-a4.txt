@@ -1,0 +1,3 @@
+error	PERSISTENCE_UNDECLARED_SEMANTIC_DEPENDENCY	persistence mapping master_data.intake refers to repair_intake.intake but database master_data does not declare uses semantic repair_intake
+error	UNKNOWN_PERSISTENCE_ATTRIBUTE	persistence mapping master_data.intake refers to unknown semantic attribute repair_intake.intake.intake_id
+error	UNKNOWN_PERSISTENCE_ATTRIBUTE	persistence mapping master_data.intake refers to unknown semantic attribute repair_intake.intake.received_at

@@ -1,0 +1,13 @@
+Task: declare that repair_intake.intake lives in master_data's public.intakes
+table, map attributes to columns, and read it back.
+
+Attempt 1  `persistence <id> {...}` in databases/master-data/   -> ok   (NOTHING HAPPENED)
+Attempt 2  same file moved to databases/master-data/persistence/ -> expected "persist"
+Attempt 3  `persist` + database/table/column                    -> expected "storage"
+Attempt 4  + semantic, storage, nullability                     ->
+             PERSISTENCE_UNDECLARED_SEMANTIC_DEPENDENCY
+             UNKNOWN_PERSISTENCE_ATTRIBUTE (x2)
+Attempt 5  + uses semantic, existing attributes only             ->
+             DATABASE_CONTRACT_UNDECLARED_SEMANTIC_DEPENDENCY
+             PERSISTENCE_MAPPING_NON_RELATIONAL_DATABASE
+Attempt 6  + kind relational, both uses                          -> ok

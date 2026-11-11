@@ -27,6 +27,15 @@ type DeclarationCounts struct {
 	Plugins             int `json:"plugins"`
 	Bundles             int `json:"bundles"`
 	PersistenceMappings int `json:"persistenceMappings"`
+	// The delivery layer: a migration, a release plan and its steps. A
+	// designer who adds one and reads `declarationCounts` saw no change, so
+	// the counts implied semantic and application declarations are the whole
+	// model (#4128). These are counts of the normalized World, with the same
+	// limits as the fields above.
+	Migrations          int `json:"migrations"`
+	ApplicationReleases int `json:"applicationReleases"`
+	DatabaseReleases    int `json:"databaseReleases"`
+	SolutionReleases    int `json:"solutionReleases"`
 	Total               int `json:"total"`
 }
 
@@ -78,10 +87,15 @@ func CountDeclarations(world ir.World) DeclarationCounts {
 	counts.Plugins = len(world.Plugins)
 	counts.Bundles = len(world.Bundles)
 	counts.PersistenceMappings = len(world.Persistence)
+	counts.Migrations = len(world.Migrations)
+	counts.ApplicationReleases = len(world.ApplicationReleases)
+	counts.DatabaseReleases = len(world.DatabaseReleases)
+	counts.SolutionReleases = len(world.SolutionReleases)
 	counts.Total = counts.Namespaces + counts.Types + counts.Data + counts.Attributes +
 		counts.Capabilities + counts.Validations + counts.Periods + counts.EffectRules +
 		counts.RunPlans + counts.Applications + counts.Patterns + counts.Databases +
 		counts.Environments + counts.Queries + counts.Plugins + counts.Bundles +
-		counts.PersistenceMappings
+		counts.PersistenceMappings + counts.Migrations + counts.ApplicationReleases +
+		counts.DatabaseReleases + counts.SolutionReleases
 	return counts
 }
