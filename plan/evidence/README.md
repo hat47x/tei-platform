@@ -453,4 +453,8 @@
 - [mainの壊れた文字列リテラルを直す](TEI_DOGFOODING_ROUND69_MAIN_BROKEN_LITERAL_2026-11-11/README.md)（第68ラウンドのgo vetが、自分の変更とは無関係なmainの破損を検出。source_ab_consumer_parity_test.goに本物の改行が入った文字列リテラルがあり、パッケージがビルドできなかった。エスケープに直し、gofmt空・vet clean・パッケージの試験ok）
 - [環境を設計しdatabase・environmentをCLIで読めるようにする](TEI_DOGFOODING_ROUND68_ENVIRONMENT_LAYER_2026-11-11/README.md)（#4128のC案を拡張。staging環境を1往復で設計し、未読だったdatabase/environmentをinspectに追加して18種に。model overviewが既にnotCoveredKindsで宣言していた欠落と実害が一致。database-instanceは環境スコープのため追加せず）
 - [永続化マッピングを設計しpersistence-mappingをCLIで読めるようにする](TEI_DOGFOODING_ROUND71_PERSISTENCE_LAYER_2026-11-11/README.md)（#4128のC案を拡張。6往復でマッピングを設計し、未読だったpersistence-mappingをinspectに追加して19種に。Attempt1はokを返したが何も起きておらず、配置の誤りが成功として返る例を記録。未起票）
-
+- [読まれないTEIソースを警告する](TEI_DOGFOODING_ROUND72_UNREAD_SOURCE_2026-11-11/README.md)（第71ラウンドの「okを返したが何も起きていない」に方針を決めて対応。配置の誤りで読まれない.teiをvalidateがwarningで名指しする。13ワークスペースで誤検出0。warningに留めエラーにしないのは将来のローダ用に置く正当な用途があるため）
+- [節の無い種でも読めることをmodel overviewが言う](TEI_DOGFOODING_ROUND73_SCOPE_READABILITY_2026-11-11/README.md)（#4128。persistenceマッピングとsolution releaseを4往復で設計し全成果物をinspectで読み返した。外部所有DBはreleaseできず契約gateにする、というモデル規則を診断から学んだ。notCoveredKindsの種がinspectで読めるかをreadableWithoutSectionで分け、CLIと同じリストを読む）
+- [閉じ括弧の後ろに書いた「ブロック内専用の項目」が所属を名指しする](TEI_DOGFOODING_ROUND74_BLOCK_PLACEMENT_2026-11-11/README.md)（#4169のA案5件目。bind/resource/column等を閉じ括弧の後ろに書くと、どのブロックに入るかを言う。最初の探査はファイル名が誤りで3回とも読まれず、第72ラウンドで入れた警告がその誤りを教えた）
+- [構文エラーで止まった実行をテキスト出力も「不完全」と言う](TEI_DOGFOODING_ROUND75_INCOMPLETE_TEXT_2026-11-11/README.md)（#4178。2ファイルを壊すと最初の1件しか出ない仕様は変わらないが、JSONはincompleteを出しテキストは黙っていた非対称を解消。意味の診断は完全な答えなので不完全と表示しない区別を試験で固定）
+- [mainの赤い3テストを緑にする](TEI_DOGFOODING_ROUND76_MAIN_GREEN_2026-11-11/README.md)（20の未テスト診断コードは到達可能性を確かめる試験を追加、死んだリンクは文書が履歴に無いことを認めて名前をコード表記で残す、13のスキーマ識別子は実際にコマンドを走らせて応答から読む。plan-checkの3テストが緑。あわせてmainの台帳から消えていた第72〜75ラウンドの節と索引を復元）

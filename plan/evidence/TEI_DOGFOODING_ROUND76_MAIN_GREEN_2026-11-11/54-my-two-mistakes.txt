@@ -1,0 +1,6 @@
+1. I wrote `ID:` on ThreeElementModel; the field is `ModelID`. Caught by a build
+   error.
+2. I guessed `-model`/`-against` for the diff subcommand; it is `-before`/`-after`.
+   The test returned the wrong schemaVersion, which is how I noticed.
+
+Both were guesses corrected by running the code.

@@ -1,0 +1,16 @@
+plan/design/REA_THREE_ELEMENT_CANDIDATE_INTAKE_2026-11.md linked to
+REA_EXTERNAL_EVIDENCE_T0_T1_ADMISSION_2026-11.md.
+
+  git log --all --diff-filter=A -- <that path>   -> empty
+
+The document was never committed. plan/design/README.md indexed it as #3394's
+plan, but the body was not written.
+
+Fix: the link became plain code, and the sentence now says the document is absent
+and that the acceptance conditions live in this note and in #3394.
+
+  T0/T1-A受入票 `REA_EXTERNAL_EVIDENCE_T0_T1_ADMISSION_2026-11.md`
+  （**未作成**：この名前の文書は履歴に無い。受入条件は本稿と #3394 が持つ）
+
+The name is kept so whoever writes it later knows where it belongs. I did not
+weaken the checker; I corrected the claim.
