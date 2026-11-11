@@ -2339,3 +2339,319 @@ persistence-mapping nope.thing         -> SUBJECT_NOT_FOUND
 ```
 
 変異1種（dispatch を外す）が落ちる。**種非依存の検査が試験を書き換えずに捕まえた。**
+
+## 73. 第72ラウンド（2026-11-11）: 読まれない TEI ソースを警告する
+
+第71ラウンドで記録した「`ok` を返したが何も起きていない」現象に、**方針を決めてから**手を入れた。生出力は[第72ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND72_UNREAD_SOURCE_2026-11-11/README.md)にある。
+
+### 方針の決定
+
+前ラウンドで迷ったのは「警告を出す」か「もっと広い場所を読む」か。**「警告を出す」を選んだ。**
+
+ローダの読み取り範囲は設計判断（`databases/<db>/persistence/` に置くという規約）であり、**規約を広げると同じマッピングが2箇所に置ける曖昧さ**を生む。一方「読まれていない」ことは事実なので、警告として出すのは安全側である。将来のローダ用にファイルを置く正当な用途があるため **warning に留め、エラーにはしない**。
+
+### 実装
+
+`CheckWorkspaceUnreadSources` を足し、**`markManagedFilesReadByLoader` の後**で呼ぶ。
+
+**順序が本質**である: `ReadByLoader` はマーキング後にしか分からないので、他の managed-file finding と同時には出せない。
+
+条件は `ReadByLoader == false` かつ `Extension == ".tei"` かつ**名前の検証で既に説明されていない**（二重報告を避ける）。
+
+### 実測
+
+```text
+誤った場所の persistence マッピング:
+  warning WORKSPACE_SOURCE_ROOT managed file "...stray.tei" is a TEI source that
+  no loader reads, so its declarations never reach the model; check its location
+  (for example a persistence mapping belongs in databases/<database>/persistence/)
+
+正しい場所へ移動: 0 件
+
+reference/workspace: 0 件
+リポジトリ内13ワークスペース: 新規警告 0 件（誤検出なし）
+```
+
+### 試験と変異
+
+4試験（報告する・読まれたものは報告しない・二重報告しない・非TEIは対象外）と変異3種。
+
+**M1 は最初「通ってしまった」。** 変異を戻すのに `git checkout -- loader.go` を使ったところ、**私の修正そのものも revert された**。気づいて再適用し、変異を作り直した。**壊れた変異に気づくのは3回目**（第61・67・72ラウンド）。
+
+`./internal/workspace` と `./cmd/tei`（514.7s）が ok。
+
+### 前ラウンドとの関係
+
+**「起票しない」判断が正しかった。** 第71ラウンドで方針未決定のまま起票していれば、Issue に未決の問いが残り、実装時に方針が変われば Issue が嘘になる。1ラウンド寝かせて方針を決め、起票せずに直接直した。
+
+## 74. 第73ラウンド（2026-11-11）: 節の無い種でも読めることを `model overview` が言う
+
+目的文の「再びドッグフーディングに戻る」を実行した回。`customer.customer` の永続化マッピングと solution release を CLI だけで設計し、全成果物を `inspect` で読み返した。生出力は[第73ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND73_SCOPE_READABILITY_2026-11-11/README.md)にある。
+
+### 設計（4往復）
+
+| Attempt | 応答 | 学んだこと |
+| --- | --- | --- |
+| 1 | `ok` | マッピングは受理（読み返しで `cols=2`） |
+| 2 | `SOLUTION_RELEASE_NOT_EXECUTABLE ... database release not found: master_data@2.1.0` | 先に database release が要る |
+| 3 | `DATABASE_RELEASE_NOT_MANAGED_HERE ... ownership external-observed` | **`master_data` は外部所有なのでこの作業場所からは release できない** |
+| 4 | `ok`（`kind database-gate` ＋ `contract master_data.customer ^2`） | 他チームが release する契約を gate する形が正しい |
+
+**Attempt 3 と 4 が対**である。診断が「外部所有だからできない」と名指しし、正しい代替（他者が release する契約を gate する）は**構文ではなくモデルの規則**だった。
+
+### 見つけた欠落
+
+全成果物は `inspect` で読めた。しかし `model overview` は依然として `database`・`persistence-mapping`・`environment`・`solution-release` を `notCoveredKinds` に並べていた。**応答だけを見た設計者は、自分が足したマッピングが届いたのか、その種が単に節にならないだけなのかを区別できない。**
+
+第59ラウンドで covered 側について直した曖昧さが、not-covered 側に残っていた。
+
+### 修正
+
+`ModelSectionScope` に `readableWithoutSection` を足した。**CLI が広告するのと同じリスト**（`operations.InspectionSubjectKinds`）を読むので、両者の答えがずれない。
+
+```text
+reference/workspace:
+  readableWithoutSection: database, persistence-mapping, migration,
+    application-release, database-release, solution-release, environment  (14中7)
+  CLI から読めない種: plugin, bundle, migration-provider, custom-go-binding,
+    header-detail-contract-query-binding, contract-query-executor-binding,
+    contract-query-sql-realization                                      (14中7)
+```
+
+`-h` にも「節が無いことは宣言が無いことを意味しない」と書いた。
+
+### 試験と変異
+
+2試験（not-covered の全種がどちらかの側に会計される・宣言済みの層が readable に入る）と変異2種（空にする／被覆済みの種を混ぜる）が落ちる。
+
+## 75. 第74ラウンド（2026-11-11）: 閉じ括弧の後ろに書いた「ブロック内専用の項目」が所属を名指しする
+
+第64ラウンドで `bind` を environment ブロックの外に書いて `unexpected trailing token "bind"` になった。生出力は[第74ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND74_BLOCK_PLACEMENT_2026-11-11/README.md)にある。
+
+### 自分の探査が壊れていた（警告が教えた）
+
+最初の3つの探査はすべて同じ警告を返した。
+
+```text
+warning WORKSPACE_SOURCE_ROOT managed file "... is a TEI source that no loader reads..."
+```
+
+**ファイル名を `staging-stray.tei` にしていたため、ローダが読んでいなかった。** ローダは `environments/<id>/environment.tei` という正確な名前を要求する。**第72ラウンドで自分が入れた警告が、その探査の誤りを教えてくれた。**
+
+正しい名前で置き直すと、狙った診断が出た。ブロック内の綴り間違いは**語彙を列挙する良い診断**で、閉じ括弧の後ろの `bind` は `unexpected trailing token "bind"`（置き場所を言わない）だった。
+
+### 修正
+
+`expectEOF` で、既存の `misplacedDeclaration`（トップレベル宣言）の次に**ブロック内専用の項目**を見る。
+
+```go
+if blockOnly := blockOnlyEntryHint(t.Text); blockOnly != "" {
+	return p.errAt(t, fmt.Sprintf(
+		"%q cannot appear after the closing brace of its block; it belongs inside one, for example %s",
+		t.Text, blockOnly))
+}
+```
+
+対象: `bind`・`resource`・`grant`・`lease-policy`・`deployment-executor`・`observation-provider`・`evidence-provider`・`feature`（environment）、`column`・`primary-key`・`index`（persist）。
+
+```text
+"bind" cannot appear after the closing brace of its block; it belongs inside one,
+for example environment staging { ... ; bind <application>.<alias> -> <database-instance> }
+```
+
+**未知の語（`frobnicate`）は汎用メッセージのまま**、トップレベル宣言（`migration`）は既存の「自前のファイルに書く」メッセージのまま。**優先順位を試験で固定した。**
+
+### 試験と変異
+
+3試験と変異2種（ブロック判定を削る・未知の語にもヒントを返す）が落ちる。**M1 は最初アンカーが合わず適用できなかった**（壊れた変異に気づくのは4回目）。
+
+## 76. 第75ラウンド（2026-11-11）: 構文エラーで止まった実行を、テキスト出力も「不完全」と言う
+
+設計演習で「複数の構文エラーがあるとき、どこまで報告されるか」を測った。生出力は[第75ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND75_INCOMPLETE_TEXT_2026-11-11/README.md)にある。
+
+### 測定
+
+2ファイルを壊して `validate` を実行すると、**a の1件だけ**が出る。各ファイルを単独で実行すると両方とも壊れている。
+
+| 実行 | 結果 |
+| --- | --- |
+| a だけ | `applications/a/application.tei:3:5 PARSE_ERROR` |
+| b だけ | `applications/b/application.tei:2:5 PARSE_ERROR` |
+| 両方 | **a の1件のみ** |
+
+ローダは最初の構文エラーで止まる（設計）。
+
+### JSON は正直、テキストは黙っていた
+
+JSON は #4178 で既に `incomplete` を出していた。
+
+```json
+"incomplete":{"reason":"load-stopped-at-first-syntax-error",
+  "detail":"... files other than the one named in stoppedAt were not examined",
+  "stoppedAt":"applications/a/application.tei"}
+```
+
+**しかしテキスト出力は1行だけで、不完全であることを言わなかった。** 同じ実行が片方では正直で片方では黙っている。
+
+### 修正
+
+`validateWorkspace` の `Direct` 分岐に1行足した。
+
+```text
+note	VALIDATION_INCOMPLETE	the run stopped at the first syntax error in applications/a/application.tei; files other than that one were not examined
+```
+
+### 試験と変異
+
+3試験（構文で不完全と出る・正常時は出さない・**意味の診断は不完全と表示しない**）と変異2種。
+
+**M2 が重要**である。意味の診断は全ファイルを解析した結果なので、不完全と表示すると**新しい嘘**になる。この区別を試験で固定した。
+
+既存の出力ピン（`TestFormatSourceDiagnosticIncludesPathLineColumn`・`TestValidateWorkspace...`）は無変更で通る。
+
+## 77. 第76ラウンド（2026-11-11）: main の赤い3テストを緑にする
+
+第75ラウンドで「ローカルの plan-check は3件赤だが main でも同じ」と記録した。**その3件を実際に緑にした。** 生出力は[第76ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND76_MAIN_GREEN_2026-11-11/README.md)にある。
+
+| テスト | 件数 | 対応 |
+| --- | --- | --- |
+| `TestEveryDiagnosticCodeIsMentionedByATest` | 20コード | 到達可能性を確かめる4試験＋健全性の対照 |
+| `TestMarkdownRelativeLinksResolve` | 1リンク | **文書が存在しないことを認める**（リンクを外し名前をコード表記で残す） |
+| `TestSchemaVersionLiteralsHaveATest` | 13識別子 | 実際にコマンドを走らせて `schemaVersion` を読む |
+
+### 到達可能性を確かめる
+
+`internal/threeelement/model.go` の20コードは、どのテストも**名前を書いていなかった**。文字列を書くだけでは到達可能性を確かめないので、**各コードを実際に発生させる最小モデル**を組んだ。加えて**健全なモデルがそれらを出さないこと**を固定し、誤検出していないことも示した。
+
+### 死んだリンク
+
+```text
+plan/design/REA_THREE_ELEMENT_CANDIDATE_INTAKE_2026-11.md
+  -> REA_EXTERNAL_EVIDENCE_T0_T1_ADMISSION_2026-11.md
+```
+
+`git log --all --diff-filter=A` が空で、**この文書は一度もコミットされていない**。`plan/design/README.md` が #3394 の計画として索引に載せ、本体は書かれていなかった。リンクを外し、名前をコード表記で残して「未作成」と明記した。**テストを緩めるのではなく、主張を正した。**
+
+### 自分の誤り2つ
+
+`ThreeElementModel` のフィールドを `ID` と書いた（正しくは `ModelID`）。`diff` のフラグを `-model`/`-against` と推測した（正しくは `-before`/`-after`）。**どちらも推測で書いて、実行して直した。**
+
+### main の台帳が5ラウンド分巻き戻っていた
+
+このラウンドで **main の計画台帳から第72〜75ラウンドの節と索引行、証拠ディレクトリが消えている**ことに気づいた（製品コードは main に残っており、台帳だけが72節で止まっていた）。`git merge-base --is-ancestor 40a44effe origin/main` は真なので履歴は書き換わっていない。**統合の過程で台帳だけが古い版に戻った**と見られる。本ラウンドで第73〜76節を生存ブランチから復元した。
+
+### 結果
+
+`./tools/repository-plan-check` の**3テストすべてが緑**。製品コードは変えていない（テストを足し、文書の主張を正し、台帳を復元した）。
+
+## 78. 第77ラウンド（2026-11-11）: 実行器はあるのに振り分けが無い `rea-intake` を配線する
+
+第76ラウンドで「未接続」と記録した `rea-intake` の原因を特定して直した。生出力は[第77ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND77_REA_INTAKE_ROUTE_2026-11-11/README.md)にある。
+
+### 原因
+
+`runThreeElementReaIntake` は `cli_three_element_rea.go` に**実装済み**で、テストは12箇所から呼んでいた。**しかし `runThreeElementCommand` の `switch` に `rea-intake` の case が無かった。**
+
+```text
+{"error":{"code":"INVALID_ARGUMENT","message":"unknown three-element subcommand \"rea-intake\""}}
+```
+
+FAIL はサブテスト込み14件。
+
+### なぜ見落とされたか
+
+**テストが実行器を直接呼んでいた**からである。`runThreeElementReaIntake` を直接叩けば振り分けを通らないので、case が無くても気づかない。**今回 FAIL したのは、テストが `runThreeElementCommand` 経由で呼ぶよう書かれていたから**である。**テストの入口が正しく、実装が遅れていた。**
+
+### 修正と実測
+
+```go
+case "rea-intake":
+	return runThreeElementReaIntake(args[1:], out)
+```
+
+usage 行にも足した。**14件 → 0件**。
+
+### 変異
+
+| # | 変えた箇所 | 結果 |
+| --- | --- | --- |
+| M1 | case を削る | FAIL **14件**（修正前と一致） |
+| M2 | `validate` へ振る | FAIL `flag provided but not defined: -evidence` |
+
+**M2 が示すのは、case を足すだけでは足りない**こと。**正しい実行器へ振る**必要がある。
+
+### 直していないもの
+
+同じく FAIL していた2件は **`rea-evidence` という未実装コマンド**を参照している（`runReaEvidence` は存在しない）。`rea-intake` と違い**振り分けを足すだけでは直せない**ので範囲外とした。
+
+`gofmt -l .` は main で6ファイル以上を指摘するが、1ファイルだけ直すのは恣意的なので**記録だけした**（`repository-health` は gofmt を実行していない）。
+
+### 第74ラウンドの修正が、**呼び出し側だけ失われていた**
+
+CI が `TestBlockOnlyEntryAfterClosingBraceNamesTheBlock`（第74ラウンドで私が書いた試験）を FAIL と報告した。現在の main を測ると:
+
+```text
+internal/syntax/parser.go の blockOnlyEntryHint : 2箇所
+  line 2536: コメント
+  line 2538: func blockOnlyEntryHint(text string) string
+blockOnlyEntryHint(t.Text) の呼び出し            : 0箇所
+```
+
+**関数は残り、呼び出しが消えていた。** `expectEOF` への別の編集が分岐を巻き戻した。**試験と呼び出しが同じコミットにあったため、統合時に何も落ちなかった。**
+
+```text
+git merge-base --is-ancestor edd661709 origin/main   -> YES
+```
+
+統合は成立しており、**その後の編集でその場で巻き戻された**。残ったのは私が足した試験だけで、CI がそれを報告した。
+
+同じ方法で4ラウンド分を点検した。
+
+| ラウンド | 修正 | 状態 |
+| --- | --- | --- |
+| 72 | `CheckWorkspaceUnreadSources` | **呼ばれている** |
+| 73 | `ReadableWithoutSection` | **設定されている** |
+| 74 | `blockOnlyEntryHint` | **呼ばれていない（消失）** |
+| 75 | `VALIDATION_INCOMPLETE` | **出ている** |
+
+呼び出しを復元した。**試験は呼び出しを外すと落ちる**（`message does not say the entry belongs inside a block`）ので、復元が本質であることを示せている。
+
+**教訓: 「関数が在る」は「機能が動く」ではない。** 定義だけを数える点検は、今回の消失を見逃す。
+
+## 79. 第78ラウンド（2026-11-12）: 未統合機能の孤児テストが `repository-health` を常時赤にする
+
+第77ラウンドで「`rea-evidence` は実装自体が無い」と記録した。**その実装の所在を確定させ、赤の正体を明文化した。** 生出力は[第78ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND78_REA_EVIDENCE_ORPHAN_2026-11-12/README.md)にある。起票は [#4455](https://github.com/hat47x/tei-platform/issues/4455)。
+
+### 実装は「無い」のではなく「未統合」
+
+```text
+$ git log --all --diff-filter=A -- cmd/tei/rea_evidence.go
+716fb3612 feat(rea): receive one external analysis Evidence and inspect its delivery
+
+$ git merge-base --is-ancestor 716fb3612 origin/main   -> NO
+$ git branch -r --contains 716fb3612
+  origin/feat/rea-external-evidence-intake-20261111-r2
+$ git rev-list --count 716fb3612..origin/main           -> 157
+```
+
+**実装はブランチに在り、157コミット分 main から遅れている。** 依存の `internal/externalanalysis`（1,202行）も main に無い。
+
+### なぜこうなったか
+
+`7b0ab6b63` が `rea-evidence` を前提とする**2試験を追加**したが、実装ファイルを**含んでいなかった**（`--name-only` で0件）。**テストだけが先に main に入り、実装は入らなかった。**
+
+### なぜ私が直さないか
+
+| 案 | 内容 | 採否 |
+| --- | --- | --- |
+| A | 未統合ブランチを取り込む | **所有者の判断**（157コミット分。機能の意味を私が決めてしまう） |
+| B | テストを実装が入るまで外す | **所有者の判断**（契約を一時的に外す） |
+| C | スタブで `unknown command` を返す | **採らない**（動かないコマンドを動くように見せる） |
+
+**C はドッグフーディングの目的に反する。**
+
+### 位置付け
+
+**「赤が常態化する」危険を名指しした回**である。第76ラウンドで私はこの2件を「main でも同じ」として切り捨てた。**切り捨てが続くと赤が常態化する。** その正体を確定させ、判断を所有者に返した。
+
+なお **plan-check は第76〜77ラウンドの修正で緑になった**（今回は赤ではなかった）。

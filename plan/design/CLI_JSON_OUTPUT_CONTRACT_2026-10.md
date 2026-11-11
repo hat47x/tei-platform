@@ -52,6 +52,7 @@
 | `plugin-lock` | `tei.cli.plugin-lock/v0` | `result`に`plugin.Lock`（lock形式自体は`formatVersion: 2`を持つ） | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`、`PLUGIN_LOCK_FAILED`） | いいえ（投影型。#2354第一陣） |
 | `plugin-resolve` | `tei.cli.plugin-resolve/v0` | `result`に`plugin.ResolvedSet` | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`、`UNKNOWN_ENVIRONMENT`、`INVALID_PLUGIN_LOCK`、`PLUGIN_RESOLVE_FAILED`） | いいえ（投影型。#2354第一陣） |
 | `plugin-runtime-plan` | `tei.cli.plugin-runtime-plan/v0` | `result`に`pluginruntime.EnvironmentPlan` | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`、`UNKNOWN_ENVIRONMENT`、`INVALID_PLUGIN_LOCK`、`PLUGIN_RUNTIME_PLAN_FAILED`。構築失敗は終了コード1） | いいえ（投影型。#2354第一陣） |
+| `plugin-inventory` | `tei.cli.plugin-inventory/v0` | `result`に`management.Report`（`-plugin`で`mode=detail`、`-diagnose`で`mode=diagnose`） | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`、`UNKNOWN_ENVIRONMENT`、`INVALID_PLUGIN_LOCK`、`PLUGIN_RESOLVE_FAILED`） | いいえ（投影型。診断は許可を与えない） |
 
 観測の補足:
 

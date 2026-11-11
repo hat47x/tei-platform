@@ -1,7 +1,7 @@
 # 共通の例外・失敗モデル（2026-11）
 
 - **状態：参照実装（A2）／一部適用済み。** 意味の受理・権限の正本・本番配備は扱わない。
-- **対象コード**: `internal/failure/`、`internal/command/invoke.go`、`internal/hook/run.go`、`internal/security/effectcommit/commit.go`、`internal/saveunit/failure.go`、`internal/database/sqlgen/failure.go`・`sqlgen/postgres/failure.go`・`sqlgen/sqlite/failure.go`、`internal/studiohost/readonly.go`、`internal/studiohost/command.go`、`cmd/tei/cli_view.go`、`cmd/tei/cli_inspect.go`、`tools/reference-generator-selection/generator.go`・`templates/TeiFailure.java.tmpl`・`templates/Main.java.tmpl`・`templates/Main-long-running.java.tmpl`・`templates/template.go.tmpl`
+- **対象コード**: `internal/failure/`、`internal/command/invoke.go`、`internal/hook/run.go`、`internal/security/effectcommit/commit.go`、`internal/database/sqlgen/failure.go`、`internal/studiohost/readonly.go`、`internal/studiohost/command.go`、`cmd/tei/cli_view.go`、`cmd/tei/cli_inspect.go`、`tools/reference-generator-selection/generator.go`・`templates/TeiFailure.java.tmpl`・`templates/Main.java.tmpl`・`templates/Main-long-running.java.tmpl`・`templates/LineAmounts.java.tmpl`・`templates/template.go.tmpl`
 - **関連**: [#3807](https://github.com/hat47x/tei-platform/issues/3807)（境界ごとに違っていた失敗コード）、[#2996](https://github.com/hat47x/tei-platform/issues/2996)、[#2997](https://github.com/hat47x/tei-platform/issues/2997)、[#1174](https://github.com/hat47x/tei-platform/issues/1174)、[#2853](https://github.com/hat47x/tei-platform/pull/2853)、[#2854](https://github.com/hat47x/tei-platform/pull/2854)
 - **設計の正本**: 故障分類と回復の方針は[Script起動の失敗状態・再実行・回復設計](SCRIPT_INVOCATION_FAILURE_AND_RECOVERY_DESIGN_2026-11.md) §3（F01〜F14）、Command境界の扱いは[Command境界の実行前検査](COMMAND_BOUNDARY_SAFETY_2026-11.md)を正本とする。本書は**Goの型として実装した共通契約**だけを扱い、方針を複製しない。
 
@@ -15,10 +15,9 @@
 | CLI `inspect` 等 | `cliInspectionFailure`（`Code`のみ） |
 | Studio bridge | `studiohost.Failure`（`Code`/`Stage`/`Message`） |
 | HTTP/IPC Adapter | `interfaceadapter.Failure`（`Code`/`Message`） |
-| Save境界 | `saveunit.SaveError`（`EffectUnknown`のみ） |
 | Hook境界 | `hook.Error`（`Code`のみ） |
 
-呼出し側は「これは業務の拒否か、こちらの故障か」「もう一度送ってよいか」「副作用が残ったかもしれないか」を、**文字列コードの一覧を各自で持つ**ことで判断していた。一覧は入口ごとにずれ、#3807では21コードのうち15が`COMMAND_FAILED`へ潰れていた。さらに`ExecutionError`は`EffectUnknown`を持っていたが、`hook.Error`も`saveunit.SaveError`も同等の印を持たず、畳む側が落としていた。
+呼出し側は「これは業務の拒否か、こちらの故障か」「もう一度送ってよいか」「副作用が残ったかもしれないか」を、**文字列コードの一覧を各自で持つ**ことで判断していた。一覧は入口ごとにずれ、#3807では21コードのうち15が`COMMAND_FAILED`へ潰れていた。さらに`ExecutionError`は`EffectUnknown`を持っていたが、`hook.Error`は同等の印を持たず、畳む側が落としていた。
 
 業務拒否を技術障害として報告すると、呼出し側は「いつか治る」と判断して再送し、**重複した副作用**を作る。逆に、技術障害を業務拒否として報告すると、効果が残っているのに「要求が通らなかっただけ」と処理して**不正な成功状態**を残す。どちらも型で防ぎたかった。
 
@@ -51,7 +50,6 @@
 | `command.ExecutionError` | `FailureCode/Message/Cause`、`Kind()`、`Retryable()`、`HasEffectUnknown()` |
 | `hook.Error` | 同上 |
 | `effectcommit.CommitUncertainError` | 同上 |
-| `saveunit.SaveError`、`saveunit.HookFailure`、`saveunit.ReferenceFailure` | 同上 |
 | `interfaceadapter.Failure` | 同上 |
 | `database/sqlgen.DatabaseFailure` | 同上。加えて`Unwrap()`で原因を標準ライブラリに曝す |
 
@@ -126,66 +124,51 @@ if err := transaction.Commit(ctx); err != nil {
 | `internal/command/execution_failure_test.go` | `ExecutionError`の契約適合、業務拒否（期間クローズ・業務拒否・資源競合）、技術障害（commit失敗・実行失敗）、包んでも残ること |
 | `internal/hook/hook_failure_test.go` | `hook.Error`の適合、スコープ拒否＝業務拒否、実装障害＝技術障害 |
 | `internal/security/effectcommit/commit_failure_test.go` | `CommitUncertainError`が`lookup_first`＋効果不明を保つこと、包んでも失われないこと |
-| `internal/saveunit/failure_test.go` | `SaveError`の分類（空unit・cycle＝業務拒否、store拒否を包んでも業務拒否のまま、transient＝再送可、commit失敗＝照会先行）、参照storeの拒否、hookの拒否、二重createの拒止 |
 | `internal/studiohost/command_failure_classification_test.go` | 入力不正・認可拒否が`business_rejection`/`not_retryable`で出ること、commit失敗が`technical_failure`/`lookup_first`/効果不明で出ること、読込失敗の既定 |
+| `cmd/tei-studio/bridge_failure_axes_test.go` | Wailsブリッジが三軸を落とさないこと（Go構造体とJSONの両方） |
+| `tools/reference-generator-selection`（Java） | 生成したJavaが4軸を持ち、業務拒否と技術障害が違う値を出すこと。`javac`でコンパイルし実行して確認 |
 | `reference/interface-adapter` | トランスポート拒否（`UNAUTHENTICATED`・`FORBIDDEN`・`STALE_REVISION`）＝業務拒否 |
-| `internal/database/sqlgen`・`sqlgen/postgres`・`sqlgen/sqlite` | SQLSTATE・result codeからの分類、未知コードの安全側退避、効果不明なら盲再送不可となる導出、`errors.Is`で原因に到達できること |
 | `cmd/tei/cli_view_failure_test.go` | `commandFailure`の既存の契約（未知のerrorは変換しない） |
-| `tools/reference-generator-selection`（Go・Java） | 生成したJavaが4軸を持ち、業務拒否と技術障害が違う値を出すこと。`javac`でコンパイルし実行して確認 |
 
 ```
-ok  tei/internal/failure                3.704s
-ok  tei/internal/command                7.603s
-ok  tei/internal/hook                   4.284s
-ok  tei/internal/security/effectcommit  3.128s
-ok  tei/internal/studiohost            16.991s
-ok  tei/internal/saveunit               2.256s
-ok  tei/reference/interface-adapter     6.517s
-ok  tei/internal/database/sqlgen        5.299s
-ok  tei/internal/database/sqlgen/postgres 2.319s
-ok  tei/internal/database/sqlgen/sqlite   4.016s
-ok  tei/internal/plugin/database        2.031s
+ok  tei/internal/failure                1.981s
+ok  tei/internal/command                3.441s
+ok  tei/internal/hook                   1.996s
+ok  tei/internal/security/effectcommit  3.505s
+ok  tei/internal/studiohost             9.854s
+ok  tei/reference/interface-adapter     5.856s
+ok  tei/cmd/tei-studio                  6.980s
+ok  tei/tools/reference-generator-selection (TestJava* / TestGoAnd*)  139.931s
 ```
 
 ## 5. 適用済みの範囲と、残っている範囲
 
 ### 適用済み
 
-Go実行基盤の主要な境界——Command・Hook・EffectCommit・Save・Database（sqlgen）・Studio bridge・CLI・参照Adapter。
+Go実行基盤の主要な境界——Command・Hook・EffectCommit・Studio bridge・CLI・参照Adapter。加えてJava生成ターゲット（`Main`・`Main-long-running`）と、Effect補償（`execution.Compensate`）。
 
-Database層は**コードで分類**する。`sqlgen.ToDatabaseFailure`は、errorが機械可読なコードを持つとき（`sqlgen.CodeCarrier`）はそのコード表から決め、持たないときだけメッセージの文字列一致に退く：
+#### `partial_success` を返す境界
 
-| Provider | コードの出所 | 例 |
-| --- | --- | --- |
-| postgres | `pgconn.PgError.Code`（SQLSTATE） | `23505`→`UNIQUE_VIOLATION`、`40001`→`SERIALIZATION_FAILURE` |
-| sqlite | `modernc.org/sqlite`の`Error.Code()`（result code、拡張bitをマスク） | `19`→`CONSTRAINT_VIOLATION`、`5`→`DATABASE_BUSY` |
+`execution.Compensate` は、失敗した効果に対する補償を宣言順に全て試行します。1件が適用され別の1件が適用できなかった場合、従来は error も nil も返さない（補償の失敗は record の `Succeeded=false` として残るだけだった）ため、呼出し側は「全部やり直す」か「全部諦める」かの二択になっていました。どちらも事故です（前者は成立した補償の重複、後は成立した補償の喪失）。
 
-メッセージ一致は方言・版・ロケールに依存する（"duplicate key"／"UNIQUE constraint failed"／日本語サーバの文言）ため、fallbackに退けた。未知のコードは桁から推測せず、`technical_failure`＋`lookup_first`に倒す。
+`failure.PartialError` を追加し、この状態を独立した分類にしました。`Retryable()` は常に `lookup_first`、`HasEffectUnknown()` は常に true です——何が適用されたかは error からは分からないので、呼出し側はまず record を読む必要があります。
 
-`DatabaseFailure.Retryable()`は**導出**する（`effect`が立っていれば常に`lookup_first`）。保存された基本判定と効果不明の組合わせを各caseで覚えておく必要がなく、後からコードを増しても不変式が崩れない。従実装は`deadlock`に`retryable`＋効果不明という組み合わせを持っており、この契約の規則2（効果不明のない技術障害だけが`retryable`）に違反していた。
+判定は error の数ではなく **record の `Succeeded` を数える**ことで行います。`RunEffect` は invocation が失敗した補償を「error なし・`Succeeded=false` の record」として返すため、error を数えるちょうど「適用できなかった補償」が見えなくなります。
+
+補償が1件しかない場合は分割できないので、従来どおり error はそのまま（失敗は record、journal 失敗は素の cause）です。
 
 ### 未適用
 
 | 範囲 | 状態 |
 | --- | --- |
-| Data Provider / Operator 層 | `sqlgen.ToDatabaseFailure`はコード分類へ移行済み。Provider本体（`internal/database/providers/*`、`internal/driver`）の error path からの呼出し接線は未整備 |
-| Java等の生成ターゲット | Javaは`TeiFailure`共有契約と`Main`/`Main-long-running`テンプレートへ適用済み（生成・コンパイル・実行で検証）。`LineAmounts.java.tmpl`（java-library-template）は未移行 |
-| `partial_success` | 型は定義済み。現状どの境界もこの分類を返さない。複数Effectの一部確定（[Script設計のF09](SCRIPT_INVOCATION_FAILURE_AND_RECOVERY_DESIGN_2026-11.md)）で初めて使う |
-| Web Host（Wails） | `studiohost`は通るが、Wails固有の橋は未確認 |
+| Data Provider / Operator 層 | 未着手。`internal/database/sqlgen`が`main`に無いため、このPRの範囲外。SQLSTATE/result codeでの分類は別ブランチ（`feat/sql-to-standard-query-conversion-20261111`）に実装済みで、sql-dialect作業が`main`へ入ってから持っていく |
+| `LineAmounts.java.tmpl`（java-library-template） | `main`にテンプレートが無いため範囲外。業務/技術の区別はあるが再試行・効果不明の軸が無い |
+| Web Host（Wails）の実ブラウザー確認 | ブリッジが三軸を落とさないことはGo試験で確認済み。実WebView2での表示は未確認 |
+| 他の部分成功 | RunPlan の「後の Step が失敗しても前の Step の効果は残る」ケース（[Script設計のF09](SCRIPT_INVOCATION_FAILURE_AND_RECOVERY_DESIGN_2026-11.md)）は未実装。RunPlan には製品の呼出し元がなく、API の形は設計判断 |
 
 ### 生成ターゲットへの展開方針
 
 `Kind`・`RetryPolicy`・`HasEffectUnknown`は**文字列の閉集合**としてJSONに出るので、言語を選ばない。Java側は検査例外の階層を作らず、生成コードが`FailureCode`/`Kind`/`Retryable`/`EffectUnknown`をフィールドに持ち、言語固有の例外は1つのAdapterでこの4つへ変換する。Goの`failure.Failure`インターフェースは「変換後の照合票」として使い、各言語が同じ照合票を実装する形にする。
-
-#### Java（`tools/reference-generator-selection`）
-
-`templates/TeiFailure.java.tmpl`が共有契約。`TeiFailure`は1つの基底型に4軸を持ち、`Kind`と`RetryPolicy`は**wire値と同じ文字列**を返すenumとする（`BUSINESS_REJECTION("business_rejection")`）。Goが`string(failure.Kind)`で出している値と一字も違わないため、受ける側は片方の名前集合だけで分岐できる。
-
-生成器はJava戦略の出力にこの契約を**末尾へ**付ける。先頭に置くと候補の`import`が型宣言の下に来てjavacに落ちるためである（"class, interface, or enum expected"）。契約はpackage-privateにして、1ファイルにpublicクラスを1つだけ持つJavaの制約と両立させる。
-
-`Main.java.tmpl`・`Main-long-running.java.tmpl`は`printError`（業務拒否）と`printTechnicalError`（技術障害）に分け、4軸を出す。Goテンプレート（`template.go.tmpl`）も同じ4軸を出すようにし、**同じ契約を両言語が出す**形にした。`TestGoAndJavaCandidatesProduceSameFixtureOutputs`は既知字段のみを比較するため新字段では壊れないが、それに頼らず同じ値にする。
-
-未移行：`templates/LineAmounts.java.tmpl`（java-library-template）は独自の`BusinessRejectionException`/`TechnicalException`を持つ。業務/技術の区別はあるが再試行・効果不明の軸がなく、この戦略は`javac`でコンパイルされる経路にも載っていない。
 
 ## 6. 混同を防ぐための不退転条件
 
@@ -200,4 +183,7 @@ Database層は**コードで分類**する。`sqlgen.ToDatabaseFailure`は、err
 - `ExecutionError`・`hook.Error`等の**フィールドと既存メソッドは不変**。`errors.As`による既存の参照はそのまま動く。
 - JSON応答には`kind`・`retryable`・`effectUnknown`が**追加**される。いずれも`omitempty`なので、契約を持たないerrorでは従来と同じJSONになる。
 - `cli_view.go`の`commandFailure`は戻り値を変えていない（#3807の既存試験がそのまま通る）。
-- `saveunit`は `ReferenceFailure`・`ReferenceRecordExists`/`ReferenceRecordMissing` を試験ファイルから製品ファイル（`internal/saveunit/failure.go`）へ移した。試験ファイルが製品コードを参照していたため、packageがビルドできない状態だった。
+- `studiohost.Failure`は`MarshalJSON`を持つ。未分類のままだと三軸を補うため、**同じJSONを出すがフィールドが増える**。明示値を優先するので、境界がerrorから写した分類は上書きされない。
+- `cmd/tei`は`three-element`のallowlist不在理由をコメントで記録した（コードの挙動は変わらない）。
+- 生成Javaは`{"state":"error","code":...}`に4軸が増える。Goテンプレートも同じ4軸を出す。
+- `execution.Compensate` は「補償の1件が適用され別の1件が適用できなかった」ときに error を返すようになる（従来は nil）。補償が1件だけの場合は従来どおり nil のままで、`TestCompensateRecordsItsOwnFailure` がその契約を保ちます。

@@ -56,6 +56,26 @@ class PublicationPathReadbackTests(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, "path set mismatch"):
             verify_ledger_publication_paths(MEMBERS, self.root)
 
+    def test_evidence_metadata_is_not_a_member(self):
+        """`evidence.json` is publication metadata, not an artifact member.
+
+        The Writer publishes an evidence bundle next to the manifest, and the
+        readback binds members to bytes. Treating the bundle as an unexpected
+        member failed the real-CLI witness with
+        `unexpected=['evidence.json']`, which is a metadata/member confusion
+        rather than a publication defect.
+        """
+        (self.root / "evidence.json").write_bytes(b'{"schemaVersion":"x"}\n')
+        r = verify_ledger_publication_paths(MEMBERS, self.root)
+        self.assertEqual(r["file_count"], 5)
+        self.assertNotIn("evidence.json", r["member_body_sha256_by_path"])
+
+    def test_any_other_unexpected_file_is_still_rejected(self):
+        (self.root / "evidence.json").write_bytes(b"{}\n")
+        (self.root / "notes.txt").write_bytes(b"unexpected")
+        with self.assertRaisesRegex(AssertionError, "path set mismatch"):
+            verify_ledger_publication_paths(MEMBERS, self.root)
+
     def test_unexpected_subdir_rejected(self):
         (self.root / "hidden").mkdir()
         with self.assertRaisesRegex(AssertionError, "directory or symlink"):

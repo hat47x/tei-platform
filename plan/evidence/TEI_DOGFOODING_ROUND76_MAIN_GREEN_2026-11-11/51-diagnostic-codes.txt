@@ -1,0 +1,23 @@
+internal/threeelement/model.go emits 20 diagnostic codes that no test named.
+The check looks for the literal in a test, so a test that merely quotes a code
+does not prove it is reachable.
+
+Added internal/threeelement/validate_codes_test.go. Each test builds the smallest
+model that emits the code:
+
+  empty identities      EMPTY_DATA_ID, EMPTY_DATA_NAME, EMPTY_ATTRIBUTE_ID,
+                        EMPTY_FUNCTION_ID, EMPTY_FUNCTION_NAME,
+                        EMPTY_BUSINESS_ID, EMPTY_BUSINESS_NAME,
+                        EMPTY_ACTIVITY_ID, EMPTY_CROSS_REF_ID
+  dangling references   EMPTY_RELATION_TARGET, UNKNOWN_OPERATION_TARGET,
+                        UNKNOWN_OPERATION_LETTER, UNKNOWN_INVOKE_TARGET,
+                        UNKNOWN_ACTIVITY_FUNCTION, UNKNOWN_CROSS_REF_FROM,
+                        UNKNOWN_CROSS_REF_TO
+  targets               UNKNOWN_RELATION_TARGET, COMPOSITE_KEY_MISSING_ATTRIBUTE
+  CRUD                  UNKNOWN_CRUD_FUNCTION, UNKNOWN_CRUD_DATA,
+                        EMPTY_CRUD_DEFINITION
+  control               a healthy model emits none of them
+
+Measured: 20 -> 0.
+Mutation M1 (drop EMPTY_ATTRIBUTE_ID from the expectations) -> 1 again, which
+shows the tests really cover reachability rather than quoting.

@@ -111,13 +111,19 @@ func runArtifactsCommand(workspacePath, applicationID, outDir string, check bool
 		return err
 	}
 
-	// Re-read the published evidence to record exact on-disk digests.
-	evidenceOnDisk, err := artifact.WriteEvidenceBundle(outDir, bundle)
-	if err != nil {
+	// Re-read the published evidence so the on-disk digests are exact. The
+	// bundle itself is written to `evidence.json` inside the output directory;
+	// it is NOT also printed on stdout.
+	//
+	// stdout is one JSON object, and with -out that object is the manifest. Two
+	// independent read-only verifiers depend on exactly that shape
+	// (plan/fixtures/crosslane-cli/verify_operations_artifacts.py and
+	// plan/fixtures/capability-handoff/verify_real_cli_revision.py), and a
+	// consumer that parses one object cannot read a stream of two.
+	if _, err := artifact.WriteEvidenceBundle(outDir, bundle); err != nil {
 		return err
 	}
 
-	writeJSON(evidenceOnDisk)
 	writeJSON(set.Manifest)
 	return writeVerification()
 }

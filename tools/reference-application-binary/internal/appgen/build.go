@@ -28,14 +28,37 @@ func Build(workspaceRoot, appID, sourceDir, outputPath, platform string) (*Build
 	}
 
 	buildStart := time.Now()
+
+	goCache := filepath.Join(sourceDir, ".gocache")
+	goTmp := filepath.Join(sourceDir, ".gotmp")
+	goModCache := filepath.Join(sourceDir, ".gomodcache")
+	for _, dir := range []string{goCache, goTmp, goModCache} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return nil, fmt.Errorf("mkdir %s: %w", dir, err)
+		}
+	}
+
+	// The generated module needs a writable module cache of its own. The
+	// inherited GOMODCACHE can be unwritable (a shared Windows cache), and the
+	// checksum database then fails the tidy step even though this tool's own
+	// build succeeded. GOFLAGS=-mod=mod lets tidy update the generated go.mod,
+	// and GONOSUMDB/GOSUMDB keep the generated module from reaching the network.
+	buildEnv := append(minimalEnv(),
+		"GOCACHE="+goCache,
+		"GOTMPDIR="+goTmp,
+		"GOMODCACHE="+goModCache,
+		"GOFLAGS=-mod=mod",
+		"GONOSUMDB=*",
+		"GOSUMDB=off")
+
 	tidy := exec.Command("go", "mod", "tidy")
 	tidy.Dir = sourceDir
-	tidy.Env = minimalEnv()
+	tidy.Env = buildEnv
 	if out, err := tidy.CombinedOutput(); err != nil {
 		return nil, fmt.Errorf("go mod tidy failed: %v\n%s", err, out)
 	}
 
-	env := minimalEnv()
+	env := buildEnv
 	if platform != "" {
 		parts := strings.Split(platform, "/")
 		if len(parts) == 2 {
@@ -71,9 +94,15 @@ func Build(workspaceRoot, appID, sourceDir, outputPath, platform string) (*Build
 	}, nil
 }
 
+// generatedModuleSQLiteVersion is the modernc.org/sqlite version the generated
+// module requires. It must match this tool's own go.mod, otherwise `go mod
+// tidy` in the generated tree resolves a second, different version and the
+// module cache lookup can fail where the tool's own build succeeded.
+const generatedModuleSQLiteVersion = "v1.62.0"
+
 func writeGoMod(moduleDir, appID string) error {
 	path := filepath.Join(moduleDir, "go.mod")
-	body := "module app/" + appID + "\n\ngo 1.26.10\n\nrequire (\n\tmodernc.org/sqlite v1.34.5\n)\n"
+	body := "module app/" + appID + "\n\ngo 1.26.10\n\nrequire (\n\tmodernc.org/sqlite " + generatedModuleSQLiteVersion + "\n)\n"
 	return os.WriteFile(path, []byte(body), 0o644)
 }
 

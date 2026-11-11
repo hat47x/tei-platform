@@ -1,0 +1,81 @@
+{
+  "note": "Two mcp-client entries naming the same serverName but pointing at different URLs: only the first activated, the second was refused with 'serverName \"dupserver\" is already in use by another'. Only the first server handshook, and the model saw a single tool.",
+  "overlay": {
+    "entries": [
+      {
+        "id": "mcp-client-dup-a",
+        "serverName": "dupserver",
+        "url": "http://127.0.0.1:8799/mcp/1"
+      },
+      {
+        "id": "mcp-client-dup-b",
+        "serverName": "dupserver",
+        "url": "http://127.0.0.1:8799/mcp/2"
+      }
+    ]
+  },
+  "sameServerName": true,
+  "distinctUrls": 2,
+  "refusalText": "serverName \"dupserver\" is already in use by another mcp-client instance",
+  "serversThatHandshook": 1,
+  "pathsTouched": [
+    "/mcp/1"
+  ],
+  "requests": [
+    {
+      "file": "mcp-001-meta.json",
+      "path": "/mcp/1",
+      "method": "server/discover",
+      "bytes": 280,
+      "sha256": "2d6e560663b30185c0680e157110159805f2f628045dd515a6a0557bcd66916f"
+    },
+    {
+      "file": "mcp-002-meta.json",
+      "path": "/mcp/1",
+      "method": "initialize",
+      "bytes": 163,
+      "sha256": "40902c765afca2b3658a4c98787806ed8b1a716cf4a4874b273eadce48a9ffb8"
+    },
+    {
+      "file": "mcp-003-meta.json",
+      "path": "/mcp/1",
+      "method": "notifications/initialized",
+      "bytes": 54,
+      "sha256": "59951ca0b212b103876fa23a9e58bcbbc8fbcc0120e3f5ee7214461e2bd1cd5e"
+    },
+    {
+      "file": "mcp-004-meta.json",
+      "path": "/mcp/1",
+      "method": "tools/list",
+      "bytes": 46,
+      "sha256": "75f0c7627a35c7e96a0a88482622a0d1ec7e81c0eb5414a88ba7aab9450cf73b"
+    }
+  ],
+  "modelRequests": [
+    {
+      "file": "model-001-request.json",
+      "bytes": 73855,
+      "sha256": "63fdc2f0e4fc1aba5300df8743e454752b5cd96ffe231e519c24d81681649b42",
+      "toolCount": 28,
+      "mcpTools": [
+        "mcp__dupserver__echo"
+      ]
+    },
+    {
+      "file": "model-002-request.json",
+      "bytes": 44268,
+      "sha256": "b0d278de2edcd1ff7ea26828c6aace50d5965588591817ff0b88a6e523bf19bf",
+      "toolCount": 0,
+      "mcpTools": []
+    }
+  ],
+  "toolCountAfter": 28,
+  "mcpToolsInModel": [
+    "mcp__dupserver__echo"
+  ],
+  "collisionRejected": true,
+  "contrast": {
+    "distinctNamesRecord": "DSH_MCP_FIVE_SERVERS_2026-11-11 (distinct names all connect)",
+    "thisRecord": "same name: second entry refused, no collision reaching the model"
+  }
+}

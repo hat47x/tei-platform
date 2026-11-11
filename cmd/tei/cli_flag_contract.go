@@ -64,10 +64,11 @@ var selectedReadOnlyFlagAllowlist = map[string][]string{
 	"plugin-lock":         {"workspace", "world", "environment"},
 	"plugin-resolve":      {"workspace", "world", "environment", "plugin-lock", "diagnostic-candidates"},
 	"plugin-runtime-plan": {"workspace", "world", "environment", "plugin-lock"},
+	"plugin-inventory":    {"workspace", "world", "environment", "plugin-lock", "plugin", "diagnose"},
 	// three-element is deliberately absent: it parses its own FlagSet (and its
 	// diff subcommand a second one) before the shared set is built, so
 	// validateSelectedReadOnlyFlags is never called for it. Listing it here
-	// broke the rule this table states — an entry and a catalog record are one
+	// breaks the rule this table states — an entry and a catalog record are one
 	// set — because `tei commands` does not advertise it.
 }
 
@@ -88,6 +89,7 @@ var repeatableFlags = map[string]map[string]bool{
 	"plugin-lock":                            {},
 	"plugin-resolve":                         {},
 	"plugin-runtime-plan":                    {},
+	"plugin-inventory":                       {},
 	"knowledge-qualify":                      {},
 	"knowledge-review-plan":                  {},
 	"knowledge-review-handoff":               {},
@@ -254,7 +256,10 @@ var emptyStringGuardedFlags = map[string]map[string]bool{
 		"workspace": true, "environment": true, "plugin-lock": true,
 	},
 	"plugin-runtime-plan": {
-		"workspace": true, "world": true, "environment": true, "plugin-lock": true,
+		"workspace": true, "environment": true, "plugin-lock": true,
+	},
+	"plugin-inventory": {
+		"workspace": true, "environment": true, "plugin-lock": true, "plugin": true,
 	},
 	// three-element reads its own FlagSet, so this guard never runs for it. It
 	// reports its own required-argument error instead.

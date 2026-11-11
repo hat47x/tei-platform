@@ -1,0 +1,11 @@
+internal/reacandidate/schema_version_test.go names:
+  candidate-set, candidate-review, candidate-carrier-audit,
+  adoption-preview, candidate-binding, candidate-set-comparison
+
+cmd/tei/cli_three_element_schema_test.go names:
+  validate, crud, cross-reference (by RUNNING the command and reading its
+  schemaVersion), diff (same), intake, plus the nested tei.three-element.crud
+  and tei.three-element.cross-reference
+
+Measured: 13 -> 0.
+Mutation M2 (expect v9 instead of v0) -> FAIL candidate-set schema version.

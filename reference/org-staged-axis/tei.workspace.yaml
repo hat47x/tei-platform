@@ -1,0 +1,6 @@
+workspace: organization_staged_axis
+formatVersion: 1
+sources:
+  - semantic
+  - applications
+  - databases

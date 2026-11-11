@@ -75,17 +75,28 @@ type SQL struct {
 }
 
 // SelectOptions describes a common SELECT operation.
+//
+// Identifiers (Table, Columns, join tables and aliases, GroupBy, OrderBy and
+// Condition columns) are written into the statement as given: the caller supplies
+// identifiers the model already validated. This contract is not a sanitisation
+// boundary, which is the same reason Condition.Expression accepts a raw SQL
+// fragment. A path that builds SQL from unknown input uses a native SQL
+// realization instead.
+//
+// Parameters is reserved for named-parameter binding, which no adapter
+// implements yet: adapters generate no placeholder for it and bind no value for
+// it. Use structured Condition values until that changes.
 type SelectOptions struct {
-	Table      string
-	Columns    []string
-	Joins      []JoinClause
-	Where      []Condition
-	GroupBy    []string
-	Having     []Condition
-	OrderBy    []OrderClause
-	Limit      *int
-	Offset     *int
-	Parameters map[string]any
+	Table        string
+	Columns      []string
+	Joins        []JoinClause
+	Where        []Condition
+	GroupBy      []string
+	Having       []Condition
+	OrderBy      []OrderClause
+	Limit        *int
+	Offset       *int
+	Parameters   map[string]any
 	ForUpdate    bool
 	ForShare     bool
 	CTE          string

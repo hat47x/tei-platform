@@ -10,11 +10,13 @@ import (
 
 // World is a simplified representation of the TEI canonical world.
 type World struct {
-	Namespaces  []Namespace
-	DataModels  []DataModel
+	Namespaces   []Namespace
+	DataModels   []DataModel
 	Capabilities []Capability
 	Applications []Application
-	Queries     []Query
+	Queries      []Query
+	Databases    []*Database
+	Migrations   []*Migration
 }
 
 // Namespace represents a TEI namespace declaration.
@@ -24,11 +26,11 @@ type Namespace struct {
 
 // DataModel represents a TEI data definition.
 type DataModel struct {
-	Namespace string
-	Name      string
-	Types     []TypeDef
+	Namespace  string
+	Name       string
+	Types      []TypeDef
 	Attributes []Attribute
-	Relations []Relation
+	Relations  []Relation
 }
 
 // TypeDef represents a type alias.
@@ -45,17 +47,17 @@ type Attribute struct {
 
 // Relation represents a relationship.
 type Relation struct {
-	Name      string
-	Target    string
+	Name        string
+	Target      string
 	Cardinality string
-	Keys      []string
+	Keys        []string
 }
 
 // Capability represents a capability definition.
 type Capability struct {
-	ID      string
-	Input   string
-	Output  string
+	ID     string
+	Input  string
+	Output string
 }
 
 // Application represents a TEI application.
@@ -75,10 +77,10 @@ type DatabaseRequirement struct {
 
 // Pattern represents an application pattern.
 type Pattern struct {
-	ID        string
-	Kind      string
-	Data      string
-	Query     string
+	ID         string
+	Kind       string
+	Data       string
+	Query      string
 	Capability string
 }
 
@@ -87,6 +89,24 @@ type Query struct {
 	ID    string
 	SQL   string
 	AppID string
+}
+
+// Database represents a TEI database definition.
+type Database struct {
+	Name         string
+	Kind         string
+	Ownership    string
+	UsesSemantic []string
+}
+
+// Migration represents a database migration.
+type Migration struct {
+	ID        string
+	Database  string
+	Recovery  string
+	SchemaSQL string
+	DataSQL   string
+	VerifySQL string
 }
 
 // ParseWorld parses a TEI workspace directory into a World.
@@ -103,12 +123,162 @@ func ParseWorld(workspaceRoot string) (*World, error) {
 		return nil, fmt.Errorf("parse applications: %w", err)
 	}
 
-	queryDir :=filepath.Join(workspaceRoot, "queries")
+	queryDir := filepath.Join(workspaceRoot, "queries")
 	if err := parseQueryDir(queryDir, world); err != nil {
 		return nil, fmt.Errorf("parse queries: %w", err)
 	}
 
+	dbDir := filepath.Join(workspaceRoot, "databases")
+	if err := parseDatabaseDir(dbDir, world); err != nil {
+		return nil, fmt.Errorf("parse databases: %w", err)
+	}
+
 	return world, nil
+}
+
+func parseDatabaseDir(dir string, world *World) error {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	for _, entry := range entries {
+		path := filepath.Join(dir, entry.Name())
+		if entry.IsDir() {
+			if err := parseDatabaseDir(path, world); err != nil {
+				return err
+			}
+			continue
+		}
+		if !strings.HasSuffix(entry.Name(), ".tei") {
+			continue
+		}
+		f, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		if strings.HasSuffix(entry.Name(), "migration.tei") {
+			if err := parseMigrationFile(f, world); err != nil {
+				f.Close()
+				return fmt.Errorf("%s: %w", path, err)
+			}
+		} else {
+			if err := parseDatabaseFile(f, world); err != nil {
+				f.Close()
+				return fmt.Errorf("%s: %w", path, err)
+			}
+		}
+		f.Close()
+	}
+	return nil
+}
+
+func parseDatabaseFile(f *os.File, world *World) error {
+	scanner := bufio.NewScanner(f)
+	var db *Database
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "//") {
+			continue
+		}
+		if strings.HasPrefix(line, "database ") {
+			name := strings.TrimSpace(strings.TrimPrefix(line, "database "))
+			name = strings.TrimRight(name, " {")
+			db = &Database{Name: name}
+			continue
+		}
+		if db == nil {
+			continue
+		}
+		if strings.HasPrefix(line, "kind ") {
+			db.Kind = strings.TrimSpace(strings.TrimPrefix(line, "kind "))
+		} else if strings.HasPrefix(line, "ownership ") {
+			db.Ownership = strings.TrimSpace(strings.TrimPrefix(line, "ownership "))
+		} else if strings.HasPrefix(line, "uses semantic ") {
+			db.UsesSemantic = append(db.UsesSemantic, strings.TrimSpace(strings.TrimPrefix(line, "uses semantic ")))
+		}
+	}
+	if db != nil {
+		world.Databases = append(world.Databases, db)
+	}
+	return scanner.Err()
+}
+
+func parseMigrationFile(f *os.File, world *World) error {
+	scanner := bufio.NewScanner(f)
+	var mig *Migration
+	var inSchema, inData, inVerify bool
+	var currentSQL strings.Builder
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "//") {
+			continue
+		}
+		if strings.HasPrefix(line, "migration ") {
+			id := strings.TrimSpace(strings.TrimPrefix(line, "migration "))
+			id = strings.TrimRight(id, " {")
+			mig = &Migration{ID: id}
+			world.Migrations = append(world.Migrations, mig)
+			continue
+		}
+		if mig == nil {
+			continue
+		}
+		if strings.HasPrefix(line, "database ") {
+			mig.Database = strings.TrimSpace(strings.TrimPrefix(line, "database "))
+			continue
+		}
+		if strings.HasPrefix(line, "recovery ") {
+			mig.Recovery = strings.TrimSpace(strings.TrimPrefix(line, "recovery "))
+			continue
+		}
+		if strings.HasPrefix(line, "schema sql ") {
+			inSchema = true
+			inData = false
+			inVerify = false
+			currentSQL.Reset()
+			continue
+		}
+		if strings.HasPrefix(line, "data sql ") {
+			inSchema = false
+			inData = true
+			inVerify = false
+			currentSQL.Reset()
+			continue
+		}
+		if strings.HasPrefix(line, "verify sql ") {
+			inSchema = false
+			inData = false
+			inVerify = true
+			currentSQL.Reset()
+			continue
+		}
+		if strings.HasPrefix(line, "}") {
+			sql := strings.TrimSpace(currentSQL.String())
+			if inSchema {
+				mig.SchemaSQL = sql
+			} else if inData {
+				mig.DataSQL = sql
+			} else if inVerify {
+				mig.VerifySQL = sql
+			}
+			inSchema = false
+			inData = false
+			inVerify = false
+			currentSQL.Reset()
+			continue
+		}
+		if inSchema || inData || inVerify {
+			if currentSQL.Len() > 0 {
+				currentSQL.WriteString("\n")
+			}
+			currentSQL.WriteString(line)
+			continue
+		}
+	}
+	return scanner.Err()
 }
 
 func parseSemanticDir(dir string, world *World) error {

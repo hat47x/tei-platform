@@ -1,0 +1,293 @@
+{
+  "schemaVersion": "tei.reference.facet-structure-input/v0",
+  "cases": [
+    {
+      "id": "DSF-01",
+      "title": "基本値・値域refinementは単位と尺度を表現できない",
+      "families": ["basic"],
+      "structure": {
+        "id": "basic.value-refinement",
+        "family": "basic",
+        "baseType": "std.decimal",
+        "facets": {"identity": "value", "composition": "atomic"},
+        "unsupported": ["unit-facet-absent", "scale-facet-absent"]
+      },
+      "judgment": {
+        "destination": "basic-type",
+        "relations": ["refines"],
+        "evidence": ["type Millimetre from std.decimal and type Percent from std.decimal validate as the same underlying type"]
+      }
+    },
+    {
+      "id": "DSF-02",
+      "title": "Recordは名前付き積、Tupleは位置積で、位置は現行Sourceに書けない",
+      "families": ["record", "tuple"],
+      "structure": {
+        "id": "record.named-product",
+        "family": "record",
+        "facets": {"identity": "subject", "composition": "product"},
+        "unsupported": ["positional-composition-absent"]
+      },
+      "judgment": {
+        "destination": "composite-type",
+        "relations": ["composed-of"],
+        "evidence": ["record attributes carry names; a tuple needs positions that the current type form has no place for"]
+      }
+    },
+    {
+      "id": "DSF-03",
+      "title": "順序付きCollectionはFacet記述で足り、Core enumを要さない",
+      "families": ["collection"],
+      "structure": {
+        "id": "collection.ordered-sequence",
+        "family": "collection",
+        "facets": {
+          "identity": "occurrence",
+          "composition": "sequence",
+          "order": "ordered",
+          "orderOrigin": "source",
+          "multiplicity": "multi",
+          "grain": "line",
+          "presence": ["null", "missing"]
+        }
+      },
+      "judgment": {
+        "destination": "semantic-facet",
+        "relations": ["has-facet"],
+        "evidence": [
+          "order, multiplicity and completeness are declared separately and the check reads them as separate",
+          "many does not imply ordered, unique or complete"
+        ]
+      }
+    },
+    {
+      "id": "DSF-04",
+      "title": "Mapのキー等価は宣言されなければ推定できない",
+      "families": ["map", "multimap"],
+      "structure": {
+        "id": "map.key-equivalence",
+        "family": "map",
+        "facets": {
+          "identity": "value",
+          "composition": "map",
+          "order": "unordered",
+          "orderOrigin": "explicit-none",
+          "multiplicity": "unique"
+        },
+        "unsupported": ["key-equality-facet-absent"]
+      },
+      "judgment": {
+        "destination": "semantic-facet",
+        "relations": ["has-facet"],
+        "evidence": ["a typed key 1 and a text key \"1\" are different keys; the descriptor cannot state which equality it uses"]
+      }
+    },
+    {
+      "id": "DSF-05",
+      "title": "Treeは方向・cycle・親arityを足したRelationとして述べられ、別Core型を要さない",
+      "families": ["relation", "graph", "tree"],
+      "structure": {
+        "id": "graph.multi-directed",
+        "family": "graph",
+        "relations": ["contains", "affiliated-with"],
+        "facets": {
+          "identity": "occurrence",
+          "composition": "multigraph",
+          "order": "unordered",
+          "orderOrigin": "explicit-none",
+          "multiplicity": "multi",
+          "arity": "directed-multi",
+          "grain": "edge"
+        }
+      },
+      "judgment": {
+        "destination": "semantic-facet",
+        "relations": ["has-facet", "refines"],
+        "coreCounterexample": "a tree rendering of a multigraph cannot carry the second parent or the parallel edge, so the tree stays a projection and the graph stays a relation",
+        "evidence": [
+          "parallel edges and multiple parents are declared on the relation rather than invented by the projection",
+          "the tree projection is a refinement of the relation, not a sibling Core type"
+        ]
+      }
+    },
+    {
+      "id": "DSF-06",
+      "title": "時系列は4軸を別に持ち、Plugin候補で足りる",
+      "families": ["timeseries"],
+      "structure": {
+        "id": "timeseries.sample-window",
+        "family": "timeseries",
+        "facets": {
+          "identity": "occurrence",
+          "composition": "sequence",
+          "order": "ordered",
+          "orderOrigin": "source",
+          "multiplicity": "multi",
+          "grain": "sample",
+          "timeAxes": ["domain", "observation"],
+          "clock": "station-clock"
+        }
+      },
+      "judgment": {
+        "destination": "standard-plugin",
+        "relations": ["has-facet", "realized-by"],
+        "evidence": [
+          "domain and observation times are declared as separate axes",
+          "presentation and structural position are not invented by this family"
+        ]
+      }
+    },
+    {
+      "id": "DSF-07",
+      "title": "数量と単位は現行Sourceに場所が無い",
+      "families": ["quantity"],
+      "structure": {
+        "id": "quantity.temperature-point",
+        "family": "quantity",
+        "baseType": "std.decimal"
+      },
+      "judgment": {
+        "destination": "standard-plugin",
+        "relations": ["has-facet", "realized-by"],
+        "evidence": [
+          "type Length from std.decimal unit \"mm\" is a PARSE_ERROR in the current form",
+          "a point and a delta share a unit string but not an arithmetic contract"
+        ]
+      }
+    },
+    {
+      "id": "DSF-08",
+      "title": "空間・座標とN次元配列はCRSと次元を別に持つ",
+      "families": ["space", "ndarray"],
+      "structure": {
+        "id": "space.grid-with-crs",
+        "family": "ndarray",
+        "facets": {
+          "identity": "value",
+          "composition": "indexed",
+          "order": "unordered",
+          "orderOrigin": "explicit-none",
+          "multiplicity": "unique"
+        },
+        "unsupported": ["crs-facet-absent"]
+      },
+      "judgment": {
+        "destination": "standard-plugin",
+        "relations": ["has-facet", "realized-by"],
+        "evidence": [
+          "an OGC geometry with an unknown CRS is not a safe distance computation",
+          "named dimensions are not a row and column order"
+        ]
+      }
+    },
+    {
+      "id": "DSF-09",
+      "title": "関数・式は純粋性と効果を宣言しないと計算意味を推定できない",
+      "families": ["function", "expression"],
+      "structure": {
+        "id": "function.pure-expression",
+        "family": "function",
+        "facets": {"identity": "value", "composition": "call"}
+      },
+      "judgment": {
+        "destination": "semantic-facet",
+        "relations": ["has-facet", "projected-as"],
+        "evidence": [
+          "a rendered formula is not the calculation it denotes",
+          "rounding, NULL, unit and instant are inputs of the call, not decoration"
+        ]
+      }
+    },
+    {
+      "id": "DSF-10",
+      "title": "状態・イベントは状態集合と遷移を別に宣言する必要がある",
+      "families": ["state", "event"],
+      "structure": {
+        "id": "state.lifecycle",
+        "family": "state",
+        "facets": {"identity": "subject", "composition": "state"}
+      },
+      "judgment": {
+        "destination": "semantic-facet",
+        "relations": ["has-facet", "converted-to"],
+        "evidence": [
+          "an enumeration is not a state set",
+          "a flat table hides the global transition"
+        ]
+      }
+    },
+    {
+      "id": "MCT-01",
+      "title": "反例なしでCore型を要求する（負例）",
+      "families": ["collection"],
+      "structure": {
+        "id": "collection.ordered-without-facet",
+        "family": "collection",
+        "facets": {
+          "identity": "occurrence",
+          "composition": "sequence",
+          "order": "ordered",
+          "orderOrigin": "source",
+          "multiplicity": "multi"
+        }
+      },
+      "judgment": {
+        "destination": "core-type",
+        "relations": ["is-a"],
+        "evidence": ["the author believes a new type is needed"]
+      }
+    },
+    {
+      "id": "MCT-02",
+      "title": "manyからordered・unique・completeを推定する（負例）",
+      "families": ["collection"],
+      "structure": {
+        "id": "collection.inferred-multiplicity",
+        "family": "collection",
+        "facets": {"identity": "occurrence", "composition": "sequence"}
+      },
+      "judgment": {
+        "destination": "semantic-facet",
+        "relations": ["has-facet"],
+        "evidence": ["sequence is read as ordered, unique and complete"]
+      }
+    },
+    {
+      "id": "MCT-03",
+      "title": "基底型から同じ単位を推定する（負例）",
+      "families": ["quantity"],
+      "structure": {
+        "id": "quantity.base-type-unit",
+        "family": "quantity",
+        "baseType": "std.decimal"
+      },
+      "judgment": {
+        "destination": "standard-plugin",
+        "relations": ["has-facet", "realized-by"],
+        "evidence": ["both are std.decimal, so both are read as the same unit"]
+      }
+    },
+    {
+      "id": "MCT-04",
+      "title": "反例を書いたうえでCore型を要求する（負例）",
+      "families": ["collection"],
+      "structure": {
+        "id": "collection.counterexample-with-core",
+        "family": "collection",
+        "facets": {
+          "identity": "occurrence",
+          "composition": "sequence",
+          "order": "ordered",
+          "orderOrigin": "source",
+          "multiplicity": "multi"
+        }
+      },
+      "judgment": {
+        "destination": "core-type",
+        "relations": ["is-a"],
+        "coreCounterexample": "the ordered collection cannot be carried by the facets, so a new type is requested",
+        "evidence": ["the author recorded a counterexample"]
+      }
+    }
+  ]
+}
