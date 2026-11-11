@@ -1,4 +1,4 @@
-﻿namespace sui
+namespace sui
 
 type DocumentId from std.identifier
 type CardId from std.identifier
@@ -6,23 +6,31 @@ type IslandId from std.identifier
 
 // DocumentV1 is SUI's source of truth. This definition describes the shape
 // that a TEI reference may point at; it does not make TEI the authority.
+//
+// The reference envelope (`tai.reference.sui-document-reference/v0`) never
+// carries card text, island titles, or the document title, so those are not
+// declared here as attributes. What the reference does carry is the *state*
+// around them (review, disclosure, revision), and those are declared.
 data Document {
     attribute documentId type sui.document_id
+    attribute revisionState type std.code
+    attribute disclosureState type std.code
     relation cards to sui.card many
     relation islands to sui.island many
 }
 
 data Card {
     attribute cardId type sui.card_id
-    attribute text type std.text
     attribute x type std.decimal
     attribute y type std.decimal
     attribute claimType type std.code
     attribute holdState type std.code
+    attribute textReviewState type std.code
 }
 
 data Island {
     attribute islandId type sui.island_id
+    attribute titleReviewState type std.code
 }
 
 // Containment is the visual membership: one card drawn inside one island.
@@ -42,11 +50,18 @@ data Affiliation {
 }
 
 // A directed edge keeps its own identity so parallel edges stay distinguishable.
+//
+// Endpoints are declared as kind+id attributes, not as typed relations: SUI's
+// edge endpoints are card|island, and a TEI relation requires one static
+// target type. Modeling them as two typed relations would make island->island
+// edges inexpressible, so the limitation is declared instead of hidden.
 data Edge {
     attribute edgeId type std.identifier
     attribute edgeType type std.code
-    relation fromCard to sui.card one
-    relation toCard to sui.card one
+    attribute fromKind type std.code
+    attribute fromId type std.identifier
+    attribute toKind type std.code
+    attribute toId type std.identifier
 }
 
 // Island parent link. SUI parentIslandId is nullable at the root; the current

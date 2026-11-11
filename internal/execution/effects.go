@@ -7,6 +7,7 @@ import (
 	"tei/internal/core"
 	"tei/internal/driver"
 	"tei/internal/effectlog"
+	"tei/internal/failure"
 	"tei/internal/semantic"
 )
 
@@ -113,7 +114,20 @@ func NeedsCompensation(rule semantic.EffectRule) bool {
 // Compensate runs the compensations that answer a failed effect, in the order the
 // rules were declared. Each attempt is journaled by RunEffect, so a compensation
 // that itself fails leaves a record instead of disappearing. All compensations
-// are attempted even when one fails; the first error is returned after the run.
+// are attempted even when one fails.
+//
+// The error reports what the run left behind, classified by the unified failure
+// contract:
+//   - nil when every compensation was applied, and also when none was: a
+//     compensation that could not be performed is recorded, not raised, so the
+//     caller reads the records rather than an error;
+//   - a plain error when the journal or the observer failed, because the record
+//     is incomplete and there is nothing a caller could look up;
+//   - a failure.PartialError when some compensations were applied and some were
+//     not. Returning nothing here would invite the caller to either resend
+//     everything - duplicating the compensations that succeeded - or discard
+//     everything - losing them. Neither is acceptable, so the state gets its own
+//     kind.
 func Compensate(ctx context.Context, invoker Invoker, observer EffectObserver, journal effectlog.Journal, applicationID core.CanonicalID, rules []semantic.EffectRule, failed semantic.EffectRule, adapters driver.BindingAdapterResolver, input any) ([]effectlog.Record, error) {
 	if !NeedsCompensation(failed) {
 		return nil, nil
@@ -129,5 +143,33 @@ func Compensate(ctx context.Context, invoker Invoker, observer EffectObserver, j
 			firstErr = fmt.Errorf("compensate %s: %w", rule.ID, err)
 		}
 	}
-	return records, firstErr
+	return records, compensationFailure(records, firstErr)
+}
+
+// compensationFailure decides what a compensation run left behind.
+//
+// It reads the records rather than counting errors, because RunEffect reports a
+// compensation whose invocation failed as a record with Succeeded=false and no
+// error at all: counting errors would miss exactly the compensations that did
+// not land, and would report a half-applied run as clean.
+func compensationFailure(records []effectlog.Record, cause error) error {
+	if len(records) < 2 {
+		// One compensation cannot be half-applied. A single failure is a record
+		// the caller reads, and a single journal error is the plain cause.
+		return cause
+	}
+	applied := 0
+	for _, record := range records {
+		if record.Succeeded {
+			applied++
+		}
+	}
+	if applied == 0 || applied == len(records) {
+		return cause
+	}
+	return &failure.PartialError{
+		Code:    "COMPENSATION_PARTIAL",
+		Message: fmt.Sprintf("%d of %d compensations were applied", applied, len(records)),
+		Cause:   cause,
+	}
 }

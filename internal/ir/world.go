@@ -32,6 +32,7 @@ type World struct {
 	SolutionReleases                  []releaseplan.Definition                       `json:"solutionReleases,omitempty"`
 	Environments                      []environment.Environment                      `json:"environments"`
 	Queries                           []query.EmbeddedSQL                            `json:"queries"`
+	RelationQueries                   []query.RelationQuery                          `json:"relationQueries,omitempty"`
 	Bindings                          []realization.CustomGoBinding                  `json:"customGoBindings,omitempty"`
 	HeaderDetailContractQueryBindings []realization.HeaderDetailContractQueryBinding `json:"headerDetailContractQueryBindings,omitempty"`
 	ContractQueryExecutorBindings     []realization.ContractQueryExecutorBinding     `json:"contractQueryExecutorBindings,omitempty"`

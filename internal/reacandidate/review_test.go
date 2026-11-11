@@ -26,6 +26,10 @@ func TestReviewPacketReportsSectionsAndAcceptsNothing(t *testing.T) {
 	if packet.SchemaVersion != candidateReviewSchemaVers || packet.Effect != EffectReadOnly {
 		t.Fatalf("packet envelope = %q %q", packet.SchemaVersion, packet.Effect)
 	}
+	// The literal, not only the constant: a caller branches on this string.
+	if packet.SchemaVersion != "tei.rea.candidate-review/v0" {
+		t.Fatalf("review schemaVersion = %q", packet.SchemaVersion)
+	}
 	if packet.AcceptedMeaning {
 		t.Fatal("packet claims an accepted meaning")
 	}
@@ -203,5 +207,40 @@ func TestSubjectOutcomeAndLinkTypesArePlainData(t *testing.T) {
 	subject := sourceindex.Subject{Kind: "semantic-data", ID: "sales.order"}
 	if subject.Kind != "semantic-data" {
 		t.Fatal("subject identity lost")
+	}
+}
+
+// Each projection in this package publishes its own response identifier. This
+// case names every literal the source writes, so a rename is a deliberate
+// contract change rather than a quiet edit.
+func TestProjectionsNameTheirSchemaVersions(t *testing.T) {
+	set := mustGenerate(t, defaultEvidence())
+	binding, err := BindCandidates(fakeReadOnlyModel{index: boundFakeIndex()}, set, nil)
+	if err != nil {
+		t.Fatalf("bind: %v", err)
+	}
+	preview, err := PreviewAdoption(set, testModel())
+	if err != nil {
+		t.Fatalf("preview: %v", err)
+	}
+	before := mustGenerate(t, defaultEvidence())
+	comparison := CompareCandidateSets(before, set)
+	coverage := EvaluateThreeElementCoverage(set)
+
+	want := []struct {
+		label string
+		got   string
+		value string
+	}{
+		{"candidate-set", set.SchemaVersion, "tei.rea.candidate-set/v0"},
+		{"candidate-binding", binding.SchemaVersion, "tei.rea.candidate-binding/v0"},
+		{"adoption-preview", preview.SchemaVersion, "tei.rea.adoption-preview/v0"},
+		{"candidate-set-comparison", comparison.SchemaVersion, "tei.rea.candidate-set-comparison/v0"},
+		{"three-element-coverage", coverage.SchemaVersion, "tei.rea.three-element-coverage/v0"},
+	}
+	for _, item := range want {
+		if item.got != item.value {
+			t.Errorf("%s schemaVersion = %q, want %q", item.label, item.got, item.value)
+		}
 	}
 }

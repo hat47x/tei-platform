@@ -32,6 +32,7 @@
 | [`reference-change-packet/`](reference-change-packet/) | 変更範囲・危険度・検証・停止条件をJSONで宣言し、範囲確認と検証実行・証拠記録を行う参照（#2017） |
 | [`reference-cache-full-vs-incremental-verification/`](reference-cache-full-vs-incremental-verification/) | キャッシュ・増分処理の結果が全体処理と一致するかをread-onlyで照合し、差分の入力・依存・キャッシュ項目・成果物を示す参照 |
 | [`reference-okf-k1/`](reference-okf-k1/) | OKF v0.2のK1合成Bundle(`testdata/okf-k1-v02/`)を、固定した上流Reference Readerと実SHO G1b CLIで読むtest-onlyの限定Witness。製品Reader・F0全適合・Owner受理ではない（[#4143](https://github.com/hat47x/tei-platform/issues/4143)） |
+| [`reference-tei-md-p1b-check/`](reference-tei-md-p1b-check/) | `*.tei.md` ドメイン図表サンプルのP1-B read-only受入条件（B-1〜B-5）を機械確認する参照。宣言Source Root外にあること、Markdown保全、図表Subjectと意味Sourceの対応、Raw Draft境界、合成draft宣言を見る。実Source消費・Meaning受理・Build資格・Host Grantは証明しない（[設計§2.2](../plan/design/TEI_MD_DOMAIN_DIAGRAM_TO_BUILD_IMPLEMENTATION_GUIDE_2026-11.md)） |
 | [`reference-generator-selection/`](reference-generator-selection/) | 受理済み契約に対する生成器候補を固定fixtureで比較し、source/binary digest、実行言語・runtime、Go/Java/WASM/WASIのsource path非依存な反復build一致、case実行のexit/stderr digestと結果をreceiptへ残す参照。Go・Python・JavaScript・Java・WASM・WASI、long-running候補、registryの版・置換・失効も確認する（#2016 / #2077） |
 | [`reference-generator-attestation/`](reference-generator-attestation/) | 選抜receiptから候補のcanonical statementを作り、ssh-keygenの署名で改変を検出する参照。署名者のAuthority・trust rootは検証しない（#2016） |
 | [`reference-generator-artifact-store/`](reference-generator-artifact-store/) | 選抜receiptのGo/Java/WASM/WASI候補source/binaryとPython/JavaScript候補sourceをsource digestでcontent-addressedに保存・取得し、再計算digestで改変を拒否し、receipt/listで言語を返す参照。明示keep setによるlist/prune、成功pruneのhash-chain audit log、ssh-keygenで署名できるaudit checkpointと、署名・store一致を併せて検証するcheckpoint再検証も持つ（#2016） |
@@ -49,11 +50,11 @@
 | [`reference-ai-write-window/`](reference-ai-write-window/) | Pluginが宣言した書込み窓にAIの編集が収まっているかを検査し、窓の外の変更を受理前に拒否する参照。未解決と確認済み違反、Target別の可用性、全体生成の境界を分ける（#2092） |
 | [`reference-authentication/`](reference-authentication/) | credentialを発行せず、principalとtenantの認証境界を検証する基盤pluginの参照（#2020） |
 | [`reference-tei-eki-contract/`](reference-tei-eki-contract/) | TEI Job/Flow設計からEKIのOpenAPI形状へ写すときの意味の欠落を、固定snapshotとの比較で検出する試験専用の参照（実Provider連携ではない） |
-| [`reference-cache-invalidation/`](reference-cache-invalidation/) | World/Model/Artifact/Evidenceのrevisionを追跡し、決定論的な依存閉包を計算して、キャッシュされたartifact・build・evidenceをそれぞれ再利用できるかを判定する**読み取り専用の参照**。未知の依存は安全側に倒す。製品のcache・分散store・認可・受理済みAPIではない（#2595・#2600・#3267） |
 | [`reference-external-role-dispatcher/`](reference-external-role-dispatcher/) | GitHub Issue/PRを介する異種AI協調で、ロール別の作業取得・モデル選択・排他lease・失敗時のエスカレーション・レビュー依頼を一つのCLIで確認する参照（DSH adapterはdry-run既定、ghはdry-runで変更を回避）（#4218） |
 | [`reference-cache-full-vs-incremental-verification/`](reference-cache-full-vs-incremental-verification/) | キャッシュ・増分処理がフル処理と同じ結果を出すかを比較する参照。食い違う入力・依存・キャッシュ項目・artifactを診断として特定し、キャッシュ再利用による偽陽性を検出する（#4219） |
 | [`reference-cache-invalidation/`](reference-cache-invalidation/) | World・Model・Artifact・Evidenceの版と依存閉包からArtifact再利用・Build省略・Evidence再利用を個別に判定するread-only参照。未知依存、途中失敗、A→B→Aでの証拠誤再利用を拒否（#2595 #2600 #3267）。実キャッシュストアや実Buildとは未接続 |
 | [`reference-build-catalog-authoring/`](reference-build-catalog-authoring/) | builder catalogを能力宣言から組み立てる参照。artifactのdigestは実ファイルから計算し、宣言にdigestを書くことと`-root`の外を指すことを拒否する。製品のファイル形式を変えずにcatalogを用意する手段（#2831 SB-C0 §4.32） |
+| [`reference-application-binary/`](reference-application-binary/) | TEIワークスペースから実行可能なGoコードを生成し、外部TEI runtime・動的Pluginなしの単一バイナリとして配布する参照。`databases/`のMigrationを抽出して`migrations.go`を生成し起動時に適用する。P0-A段階別縦断（Parse/Model/Generate/Build）を独立期待値で照合する。実行の実Provider適合・Owner意味受理・Host Grantは未証明（[P0-A判定記録](../plan/gate/P0A_VERTICAL_LOWERING_EVIDENCE_2026-11.md)） |
 | [`reference-offline-storage/`](reference-offline-storage/) | 個人向けに、root内へ閉じたローカル保存を提供する基盤pluginの参照（#2020） |
 | [`reference-export-package/`](reference-export-package/) | SIer向けに、manifestとdigest付きの配布zipを作る基盤pluginの参照（#2020） |
 | [`reference-delivery-profile/`](reference-delivery-profile/) | 提供形態ごとにpluginを選択し、必須能力が揃っているかを検証する参照（#2020） |
@@ -255,6 +256,7 @@
 | [`reference-sui-action-boundary/`](reference-sui-action-boundary/) | SUIの操作とTEI Actionの接続例 |
 | [`reference-sui-adoption/`](reference-sui-adoption/) | SUI移行の参照データと検査 |
 | [`reference-sui-canonical-probe/`](reference-sui-canonical-probe/) | SUIの意味構造を `.tei` で宣言したときの解決結果と、宣言しない損失を read-only で報告する probe（M2） |
+| [`reference-sui-reference-consumer/`](reference-sui-reference-consumer/) | SUIが返す`tai.reference.sui-document-reference/v0`のenvelopeを検査するread-only consumer。acceptedMeaningの一留、未レビュー本文の保留、同名Card・並行Edge・containment/affiliationのoccurrenceを保つことを確認する（P7、Product APIではない） |
 | [`reference-sui-interaction/`](reference-sui-interaction/) | 画面操作とApplication Actionの接続例 |
 | [`reference-transform-runtime-engine/`](reference-transform-runtime-engine/) | 決定的な変換処理の実行例 |
 | [`reference-transform-runtime-engine-build/`](reference-transform-runtime-engine-build/) | 変換実行基盤の構築確認 |
@@ -315,6 +317,7 @@ R7Bの一回限りの準備・公開・後処理を行うスクリプトは、�
 | [`reference-self-build-two-stage/`](reference-self-build-two-stage/) | stage1で作った実行ファイルをstage2のinvokerとして実起動し、invoker一致・同一レシピ・artifact一致を別々に判定する。Seed Trust・受入・権限は扱わない（#2831 SB-C1） |
 | [`reference-harness-wire-summary/`](reference-harness-wire-summary/) | 外部AIハーネスがMock Providerへ送ったHTTP要求bodyを、モデル入力と拡張field（`dsh_session_log`）を別欄で要約する参照。bodyのbyte数・SHA-256・最上位キー・event種別・水位・合成markerの出現位置を出し、既存の出力を上書きしない。送出の許可・実OS隔離・Provider側の保存は判定しない（#2515 P0-b / #2509） |
 | [`reference-harness-answer-presence/`](reference-harness-answer-presence/) | 外部Harnessの回答が、同じ実行物のCLI応答に現れた事実（属性ID・型・記号、関係、Source path・digest、World指紋、診断コード）を含むかを機械的に確かめる参照。正答の採点はせず、Reviewer-onlyの独立Expectedを置き換えない（#2509 / TAI #168） |
+| [`dsh-session-evidence/`](dsh-session-evidence/) | 外部AIハーネス（DSH）のH2 Tool-only／H3 Product Skill比較試験で、参加者Rootの構築・検証済みslot同期・1 Sessionの完全な起動証拠（CLI・引数・cwd・exit・stdout/stderr・Session ID・usage）・永続Session Logの全zstd frame展開とTool call↔result相関・TEI argv分類・Skill Tool記録・trial-group JSON組み立てを行う。合成fixtureの独立回帰テスト付き。正答・Skill効果・OS/Network強制は評価しない（#2509 / TAI #168） |
 | [`reference-hash-id/`](reference-hash-id/) | （追記） |
 
 

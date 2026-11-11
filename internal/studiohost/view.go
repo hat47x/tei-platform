@@ -23,41 +23,41 @@ func (h *ReadOnly) ViewPattern(workspaceID, applicationID, patternID string) Vie
 	}
 	loaded, err := workspace.Load(root)
 	if err != nil {
-		return ViewResponse{Failure: &Failure{Code: "WORKSPACE_LOAD_FAILED", Stage: "view", Message: err.Error()}}
+		return ViewResponse{Failure: classifiedFailure("WORKSPACE_LOAD_FAILED", "view", err.Error())}
 	}
 	applicationIDValue := core.CanonicalID(applicationID)
 	patternIDValue := core.CanonicalID(patternID)
 	kind, err := applicationview.PatternKind(loaded.World, applicationIDValue, patternIDValue)
 	if err != nil {
-		return ViewResponse{Failure: &Failure{Code: "VIEW_FAILED", Stage: "view", Message: err.Error()}}
+		return ViewResponse{Failure: classifiedFailure("VIEW_FAILED", "view", err.Error())}
 	}
 	switch kind {
 	case application.PatternRecord:
 		value, err := applicationview.Build(loaded.World, applicationIDValue, patternIDValue)
 		if err != nil {
-			return ViewResponse{Failure: &Failure{Code: "VIEW_FAILED", Stage: "view", Message: err.Error()}}
+			return ViewResponse{Failure: classifiedFailure("VIEW_FAILED", "view", err.Error())}
 		}
 		return ViewResponse{OK: true, Value: value}
 	case application.PatternHeaderDetail:
 		value, err := applicationview.BuildHeaderDetail(loaded.World, applicationIDValue, patternIDValue)
 		if err != nil {
-			return ViewResponse{Failure: &Failure{Code: "VIEW_FAILED", Stage: "view", Message: err.Error()}}
+			return ViewResponse{Failure: classifiedFailure("VIEW_FAILED", "view", err.Error())}
 		}
 		return ViewResponse{OK: true, Value: value}
 	case application.PatternBrowse:
 		value, err := applicationview.BuildBrowse(loaded.World, applicationIDValue, patternIDValue)
 		if err != nil {
-			return ViewResponse{Failure: &Failure{Code: "VIEW_FAILED", Stage: "view", Message: err.Error()}}
+			return ViewResponse{Failure: classifiedFailure("VIEW_FAILED", "view", err.Error())}
 		}
 		return ViewResponse{OK: true, Value: value}
 	case application.PatternCommand:
 		value, err := applicationview.BuildCommandPattern(loaded.World, applicationIDValue, patternIDValue)
 		if err != nil {
-			return ViewResponse{Failure: &Failure{Code: "VIEW_FAILED", Stage: "view", Message: err.Error()}}
+			return ViewResponse{Failure: classifiedFailure("VIEW_FAILED", "view", err.Error())}
 		}
 		return ViewResponse{OK: true, Value: value}
 	default:
-		return ViewResponse{Failure: &Failure{Code: "VIEW_UNSUPPORTED", Stage: "view", Message: "pattern kind is not supported"}}
+		return ViewResponse{Failure: classifiedFailure("VIEW_UNSUPPORTED", "view", "pattern kind is not supported")}
 	}
 }
 
@@ -69,11 +69,11 @@ func (h *ReadOnly) ViewApplication(workspaceID, applicationID string) ViewRespon
 	}
 	loaded, err := workspace.Load(root)
 	if err != nil {
-		return ViewResponse{Failure: &Failure{Code: "WORKSPACE_LOAD_FAILED", Stage: "view", Message: err.Error()}}
+		return ViewResponse{Failure: classifiedFailure("WORKSPACE_LOAD_FAILED", "view", err.Error())}
 	}
 	value, err := applicationview.BuildApplication(loaded.World, core.CanonicalID(applicationID))
 	if err != nil {
-		return ViewResponse{Failure: &Failure{Code: "VIEW_FAILED", Stage: "view", Message: err.Error()}}
+		return ViewResponse{Failure: classifiedFailure("VIEW_FAILED", "view", err.Error())}
 	}
 	return ViewResponse{OK: true, Value: value}
 }

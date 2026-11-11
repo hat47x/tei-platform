@@ -167,6 +167,9 @@ type Relation struct {
 	// OnDeleteは、参照先の削除に対する振る舞いの宣言である。
 	// restrict・cascade・preserveを持ち、実行時の強制はProviderに置く。
 	OnDelete string `json:"onDelete,omitempty"`
+	// JoinTableは多対多Relationでの中間表を指定する。
+	// 空の場合は直接Relation、値がある場合はJoinTableを経由する。
+	JoinTable string `json:"joinTable,omitempty"`
 }
 
 // ValidationKindは、業務上の不変条件として実Referenceで確認できた

@@ -14,6 +14,11 @@ func TestAuditCarrierFitForMinimalAttempt(t *testing.T) {
 	if audit.SchemaVersion != candidateCarrierSchemaVers || audit.Effect != EffectReadOnly {
 		t.Fatalf("audit envelope = %q %q", audit.SchemaVersion, audit.Effect)
 	}
+	// The literal is what a caller branches on, so pin it and not only the
+	// constant. Otherwise renaming the constant silently renames the contract.
+	if audit.SchemaVersion != "tei.rea.candidate-carrier-audit/v0" {
+		t.Fatalf("carrier schemaVersion = %q", audit.SchemaVersion)
+	}
 	carried := map[string]CarrierFit{}
 	for _, fit := range audit.Carried {
 		carried[fit.Fact] = fit

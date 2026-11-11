@@ -1,0 +1,8 @@
+M1 drop the note (pre-fix behaviour)
+   -> FAIL text output does not say the run is incomplete
+M2 claim truncation for every failure
+   -> FAIL a semantic finding was labelled a truncated run
+
+M2 is the important one: a semantic diagnostic is a complete answer, so labelling
+it incomplete would be a new lie. The distinction is pinned by a test.
+restored -> cmd/tei ok (existing output pins unchanged); vet and gofmt clean

@@ -2464,3 +2464,82 @@ for example environment staging { ... ; bind <application>.<alias> -> <database-
 ### 試験と変異
 
 3試験と変異2種（ブロック判定を削る・未知の語にもヒントを返す）が落ちる。**M1 は最初アンカーが合わず適用できなかった**（壊れた変異に気づくのは4回目）。
+
+## 76. 第75ラウンド（2026-11-11）: 構文エラーで止まった実行を、テキスト出力も「不完全」と言う
+
+設計演習で「複数の構文エラーがあるとき、どこまで報告されるか」を測った。生出力は[第75ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND75_INCOMPLETE_TEXT_2026-11-11/README.md)にある。
+
+### 測定
+
+2ファイルを壊して `validate` を実行すると、**a の1件だけ**が出る。各ファイルを単独で実行すると両方とも壊れている。
+
+| 実行 | 結果 |
+| --- | --- |
+| a だけ | `applications/a/application.tei:3:5 PARSE_ERROR` |
+| b だけ | `applications/b/application.tei:2:5 PARSE_ERROR` |
+| 両方 | **a の1件のみ** |
+
+ローダは最初の構文エラーで止まる（設計）。
+
+### JSON は正直、テキストは黙っていた
+
+JSON は #4178 で既に `incomplete` を出していた。
+
+```json
+"incomplete":{"reason":"load-stopped-at-first-syntax-error",
+  "detail":"... files other than the one named in stoppedAt were not examined",
+  "stoppedAt":"applications/a/application.tei"}
+```
+
+**しかしテキスト出力は1行だけで、不完全であることを言わなかった。** 同じ実行が片方では正直で片方では黙っている。
+
+### 修正
+
+`validateWorkspace` の `Direct` 分岐に1行足した。
+
+```text
+note	VALIDATION_INCOMPLETE	the run stopped at the first syntax error in applications/a/application.tei; files other than that one were not examined
+```
+
+### 試験と変異
+
+3試験（構文で不完全と出る・正常時は出さない・**意味の診断は不完全と表示しない**）と変異2種。
+
+**M2 が重要**である。意味の診断は全ファイルを解析した結果なので、不完全と表示すると**新しい嘘**になる。この区別を試験で固定した。
+
+既存の出力ピン（`TestFormatSourceDiagnosticIncludesPathLineColumn`・`TestValidateWorkspace...`）は無変更で通る。
+
+## 77. 第76ラウンド（2026-11-11）: main の赤い3テストを緑にする
+
+第75ラウンドで「ローカルの plan-check は3件赤だが main でも同じ」と記録した。**その3件を実際に緑にした。** 生出力は[第76ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND76_MAIN_GREEN_2026-11-11/README.md)にある。
+
+| テスト | 件数 | 対応 |
+| --- | --- | --- |
+| `TestEveryDiagnosticCodeIsMentionedByATest` | 20コード | 到達可能性を確かめる4試験＋健全性の対照 |
+| `TestMarkdownRelativeLinksResolve` | 1リンク | **文書が存在しないことを認める**（リンクを外し名前をコード表記で残す） |
+| `TestSchemaVersionLiteralsHaveATest` | 13識別子 | 実際にコマンドを走らせて `schemaVersion` を読む |
+
+### 到達可能性を確かめる
+
+`internal/threeelement/model.go` の20コードは、どのテストも**名前を書いていなかった**。文字列を書くだけでは到達可能性を確かめないので、**各コードを実際に発生させる最小モデル**を組んだ。加えて**健全なモデルがそれらを出さないこと**を固定し、誤検出していないことも示した。
+
+### 死んだリンク
+
+```text
+plan/design/REA_THREE_ELEMENT_CANDIDATE_INTAKE_2026-11.md
+  -> REA_EXTERNAL_EVIDENCE_T0_T1_ADMISSION_2026-11.md
+```
+
+`git log --all --diff-filter=A` が空で、**この文書は一度もコミットされていない**。`plan/design/README.md` が #3394 の計画として索引に載せ、本体は書かれていなかった。リンクを外し、名前をコード表記で残して「未作成」と明記した。**テストを緩めるのではなく、主張を正した。**
+
+### 自分の誤り2つ
+
+`ThreeElementModel` のフィールドを `ID` と書いた（正しくは `ModelID`）。`diff` のフラグを `-model`/`-against` と推測した（正しくは `-before`/`-after`）。**どちらも推測で書いて、実行して直した。**
+
+### main の台帳が5ラウンド分巻き戻っていた
+
+このラウンドで **main の計画台帳から第72〜75ラウンドの節と索引行、証拠ディレクトリが消えている**ことに気づいた（製品コードは main に残っており、台帳だけが72節で止まっていた）。`git merge-base --is-ancestor 40a44effe origin/main` は真なので履歴は書き換わっていない。**統合の過程で台帳だけが古い版に戻った**と見られる。本ラウンドで第73〜76節を生存ブランチから復元した。
+
+### 結果
+
+`./tools/repository-plan-check` の**3テストすべてが緑**。製品コードは変えていない（テストを足し、文書の主張を正し、台帳を復元した）。

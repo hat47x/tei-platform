@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	postgresprovider "tei/internal/database/providers/postgres"
+	sqlgenpostgres "tei/internal/database/sqlgen/postgres"
 	"tei/internal/driver/queryresult"
 	sqlquery "tei/internal/driver/queryruntime/sql"
 )
@@ -45,7 +46,15 @@ func (r Runner) ExecuteSQL(
 	}
 	rows, err := r.DB.QueryContext(ctx, bound.SQL, bound.Args...)
 	if err != nil {
-		return sqlquery.RawExecution{}, fmt.Errorf("PostgreSQL Contract Queryのnative SQLを実行できません: %w", err)
+		// The physical failure is classified before it leaves this boundary, so
+		// the caller above sees the SQLSTATE's business meaning instead of one
+		// undifferentiated "SQL execution failed". A unique violation then reads
+		// as a business rejection the caller must not resend unchanged, and a
+		// serialization failure as a technical failure that needs a lookup
+		// first. FailureOf returns the error unchanged when the driver reported
+		// no PgError, so a cancelled context keeps its own identity.
+		return sqlquery.RawExecution{}, sqlgenpostgres.FailureOf(
+			fmt.Errorf("PostgreSQL Contract Queryのnative SQLを実行できません: %w", err))
 	}
 	defer rows.Close()
 
