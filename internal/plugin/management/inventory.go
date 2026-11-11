@@ -196,6 +196,16 @@ type Report struct {
 	AuthorityLimits []string          `json:"authorityLimits"`
 }
 
+// UnknownEnvironmentError reports an environment id the World does not declare.
+// It is a typed input error so a caller can classify it without matching text.
+type UnknownEnvironmentError struct {
+	ID core.CanonicalID
+}
+
+func (e *UnknownEnvironmentError) Error() string {
+	return fmt.Sprintf("unknown environment %s", e.ID)
+}
+
 // Derive builds the inventory. It reads; it never writes, starts a plugin,
 // grants permission or resolves a second time.
 func Derive(in Input) (Report, error) {
@@ -213,7 +223,7 @@ func Derive(in Input) (Report, error) {
 	}
 	env, ok := findEnvironment(in.World.Environments, in.Environment)
 	if !ok {
-		return Report{}, fmt.Errorf("unknown environment %s", in.Environment)
+		return Report{}, &UnknownEnvironmentError{ID: in.Environment}
 	}
 
 	catalog := plugin.Catalog{Plugins: in.World.Plugins, Bundles: in.World.Bundles}

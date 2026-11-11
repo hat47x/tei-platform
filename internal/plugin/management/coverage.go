@@ -1,7 +1,6 @@
 package management
 
 import (
-	"fmt"
 	"sort"
 
 	"tei/internal/environment"
@@ -168,24 +167,4 @@ func messageCodes(report Report) map[string]bool {
 		add(level.ReasonCodes)
 	}
 	return codes
-}
-
-// detailMessage is used by Detail to explain a row in one sentence without
-// turning a reason code into a permission claim.
-func detailMessage(row Row) string {
-	if len(row.ReasonCodes) == 0 {
-		return fmt.Sprintf("%s@%s は宣言・環境選択・解決のいずれも揃っています。", row.PluginID, row.Version)
-	}
-	return fmt.Sprintf("%s には %s があります。", row.PluginID, joinCodes(row.ReasonCodes))
-}
-
-func joinCodes(codes []string) string {
-	out := ""
-	for i, code := range codes {
-		if i > 0 {
-			out += ", "
-		}
-		out += code
-	}
-	return out
 }
