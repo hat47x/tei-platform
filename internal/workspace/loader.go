@@ -43,6 +43,7 @@ type SourceContribution struct {
 }
 
 type Result struct {
+	syntaxErrors                *SourceErrors
 	Imports                     []ResolvedImport `json:"imports,omitempty"`
 	World                       ir.World
 	PluginImplementations       []implementation.Source
@@ -134,6 +135,12 @@ func (r Result) Identity() WorkspaceIdentity {
 	}
 }
 
+// LoadForValidation collects independent syntax errors in the pinned load.
+// On any syntax error it returns no partial Result.
+func LoadForValidation(root string) (Result, error) {
+	return loadWithStackHooks(root, map[string]bool{}, loadHooks{collectSyntax: true})
+}
+
 func Load(root string) (Result, error) {
 	return loadWithStack(root, map[string]bool{})
 }
@@ -154,8 +161,9 @@ func loadWithStackHook(root string, visiting map[string]bool, afterParse func())
 // cannot leak them. afterPin runs once the Workspace root is pinned and the
 // manifest and managed files are read, before the first domain listing.
 type loadHooks struct {
-	afterPin   func()
-	afterParse func()
+	collectSyntax bool
+	afterPin      func()
+	afterParse    func()
 }
 
 func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) (Result, error) {
@@ -263,6 +271,9 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 		sourceManifestBytes:         &manifestReadBytes{content: manifestRaw},
 		manifestFormatVersion:       manifestFormatVersion,
 	}
+	if hooks.collectSyntax {
+		r.syntaxErrors = &SourceErrors{}
+	}
 	r.sourceManifestBytes = &manifestReadBytes{content: manifestRaw}
 	// TEI standard semantic types are a library prelude, not Micro Kernel kinds.
 	r.World.Semantics = append(r.World.Semantics, stdlib.SemanticNamespace())
@@ -318,11 +329,16 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 			// Other source roots are accepted for forward-compatible workspace layout.
 		}
 	}
-	if err := validatePluginImplementationDefinitions(&r); err != nil {
-		return Result{}, err
+	if r.syntaxErrors == nil || len(r.syntaxErrors.Errors) == 0 {
+		if err := validatePluginImplementationDefinitions(&r); err != nil {
+			return Result{}, err
+		}
 	}
 	if err := loadWorkspaceImports(root, imports, &r, visiting); err != nil {
 		return Result{}, err
+	}
+	if r.syntaxErrors != nil && len(r.syntaxErrors.Errors) > 0 {
+		return Result{}, r.syntaxErrors
 	}
 	// Test seam (a parameter, not a global): runs after every loader parsed its
 	// files and before the managed-only bytes are captured, so a test can change
@@ -546,7 +562,10 @@ func loadPlugins(root string, r *Result) error {
 		}
 		d, err := syntax.NewParser(string(src)).ParsePlugin()
 		if err != nil {
-			return sourceErr(path, err)
+			if err := r.collectSourceError(path, err); err != nil {
+				return err
+			}
+			continue
 		}
 		r.World.Plugins = append(r.World.Plugins, d)
 		r.Sources["plugin:"+string(d.ID)+"@"+d.Version] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}
@@ -569,7 +588,10 @@ func loadBundles(root string, r *Result) error {
 		}
 		b, err := syntax.NewParser(string(src)).ParseBundle()
 		if err != nil {
-			return sourceErr(path, err)
+			if err := r.collectSourceError(path, err); err != nil {
+				return err
+			}
+			continue
 		}
 		r.World.Bundles = append(r.World.Bundles, b)
 		r.Sources["bundle:"+string(b.ID)+"@"+b.Version] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}
@@ -602,7 +624,10 @@ func loadSemantics(root string, r *Result) error {
 		}
 		ns, err := syntax.NewParser(string(src)).ParseSemanticFile()
 		if err != nil {
-			return sourceErr(path, err)
+			if err := r.collectSourceError(path, err); err != nil {
+				return err
+			}
+			continue
 		}
 		if ns.FormatVersion > 2 {
 			return sourceErr(path, fmt.Errorf("unsupported semantic formatVersion %d (supported: 1, 2)", ns.FormatVersion))
@@ -678,7 +703,10 @@ func loadApplications(root string, r *Result) error {
 		}
 		a, err := syntax.NewParser(string(src)).ParseApplication()
 		if err != nil {
-			return sourceErr(path, err)
+			if err := r.collectSourceError(path, err); err != nil {
+				return err
+			}
+			continue
 		}
 		r.Sources["application:"+string(a.ID)] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}
 		unitDir := filepath.Dir(path)
@@ -690,7 +718,10 @@ func loadApplications(root string, r *Result) error {
 			}
 			pattern, err := syntax.NewParser(string(patternSource)).ParseApplicationPattern()
 			if err != nil {
-				return sourceErr(patternPath, err)
+				if err := r.collectSourceError(patternPath, err); err != nil {
+					return err
+				}
+				continue
 			}
 			a.Patterns = append(a.Patterns, pattern)
 			r.Sources["application-pattern:"+string(pattern.ID)] = SourceLocation{File: relPath(root, patternPath), Line: 1, Column: 1}
@@ -703,7 +734,10 @@ func loadApplications(root string, r *Result) error {
 			}
 			pkg, err := syntax.NewParser(string(packageSource)).ParseApplicationPackage()
 			if err != nil {
-				return sourceErr(packagePath, err)
+				if err := r.collectSourceError(packagePath, err); err != nil {
+					return err
+				}
+				continue
 			}
 			a.Packages = append(a.Packages, pkg)
 			r.Sources["application-package:"+string(pkg.ID)] = SourceLocation{File: relPath(root, packagePath), Line: 1, Column: 1}
@@ -717,7 +751,10 @@ func loadApplications(root string, r *Result) error {
 			}
 			authoring, err := syntax.NewParser(string(qsrc)).ParseQueryAuthoring(a.ID)
 			if err != nil {
-				return sourceErr(qpath, err)
+				if err := r.collectSourceError(qpath, err); err != nil {
+					return err
+				}
+				continue
 			}
 			q := authoring.Value
 			if authoring.NativeSQLPath != "" {
@@ -747,7 +784,10 @@ func loadApplications(root string, r *Result) error {
 			}
 			b, err := syntax.NewParser(string(bsrc)).ParseRealization()
 			if err != nil {
-				return sourceErr(bpath, err)
+				if err := r.collectSourceError(bpath, err); err != nil {
+					return err
+				}
+				continue
 			}
 			b.Application = a.ID
 			r.World.Bindings = append(r.World.Bindings, b)
@@ -769,7 +809,10 @@ func loadDatabases(root string, r *Result) error {
 		}
 		d, err := syntax.NewParser(string(src)).ParseDatabase()
 		if err != nil {
-			return sourceErr(path, err)
+			if err := r.collectSourceError(path, err); err != nil {
+				return err
+			}
+			continue
 		}
 		contractFiles, _ := listPinnedFiles(root, r, filepath.Join(filepath.Dir(path), "contracts"), "*.tei")
 		for _, cpath := range contractFiles {
@@ -779,7 +822,10 @@ func loadDatabases(root string, r *Result) error {
 			}
 			c, err := syntax.NewParser(string(csrc)).ParseContract()
 			if err != nil {
-				return sourceErr(cpath, err)
+				if err := r.collectSourceError(cpath, err); err != nil {
+					return err
+				}
+				continue
 			}
 			d.Contracts = append(d.Contracts, c)
 			contractSource := SourceLocation{File: relPath(root, cpath), Line: 1, Column: 1}
@@ -796,7 +842,10 @@ func loadDatabases(root string, r *Result) error {
 			}
 			m, err := syntax.NewParser(string(psrc)).ParsePersistence()
 			if err != nil {
-				return sourceErr(ppath, err)
+				if err := r.collectSourceError(ppath, err); err != nil {
+					return err
+				}
+				continue
 			}
 			r.World.Persistence = append(r.World.Persistence, m)
 			r.Sources["persistence:"+string(m.ID)] = SourceLocation{File: relPath(root, ppath), Line: 1, Column: 1}
@@ -805,7 +854,10 @@ func loadDatabases(root string, r *Result) error {
 		if psrc, err := readSourceForLoad(root, r, providerPath); err == nil {
 			cfg, err := syntax.NewParser(string(psrc)).ParseMigrationProvider()
 			if err != nil {
-				return sourceErr(providerPath, err)
+				if err := r.collectSourceError(providerPath, err); err != nil {
+					return err
+				}
+				continue
 			}
 			r.World.MigrationProviders = append(r.World.MigrationProviders, cfg)
 			r.Sources["migration-provider:"+string(cfg.Database)] = SourceLocation{File: relPath(root, providerPath), Line: 1, Column: 1}
@@ -820,7 +872,10 @@ func loadDatabases(root string, r *Result) error {
 			}
 			m, err := syntax.NewParser(string(msrc)).ParseMigration()
 			if err != nil {
-				return sourceErr(mpath, err)
+				if err := r.collectSourceError(mpath, err); err != nil {
+					return err
+				}
+				continue
 			}
 			r.World.Migrations = append(r.World.Migrations, m)
 			r.Sources["migration:"+string(m.Database)+"/"+m.ID] = SourceLocation{File: relPath(root, mpath), Line: 1, Column: 1}
@@ -843,7 +898,10 @@ func loadReleases(root string, r *Result) error {
 		}
 		rel, err := syntax.NewParser(string(src)).ParseApplicationRelease()
 		if err != nil {
-			return sourceErr(path, err)
+			if err := r.collectSourceError(path, err); err != nil {
+				return err
+			}
+			continue
 		}
 		r.World.ApplicationReleases = append(r.World.ApplicationReleases, rel)
 		r.Sources["application-release:"+string(rel.Application)+"/"+rel.Version] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}
@@ -860,7 +918,10 @@ func loadReleases(root string, r *Result) error {
 		}
 		rel, err := syntax.NewParser(string(src)).ParseDatabaseRelease()
 		if err != nil {
-			return sourceErr(path, err)
+			if err := r.collectSourceError(path, err); err != nil {
+				return err
+			}
+			continue
 		}
 		r.World.DatabaseReleases = append(r.World.DatabaseReleases, rel)
 		r.Sources["database-release:"+string(rel.Database)+"/"+rel.Version] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}
@@ -877,7 +938,10 @@ func loadReleases(root string, r *Result) error {
 		}
 		rel, err := syntax.NewParser(string(src)).ParseSolutionRelease()
 		if err != nil {
-			return sourceErr(path, err)
+			if err := r.collectSourceError(path, err); err != nil {
+				return err
+			}
+			continue
 		}
 		r.World.SolutionReleases = append(r.World.SolutionReleases, rel)
 		r.Sources["solution-release:"+string(rel.ID)+"/"+rel.Version] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}
@@ -897,7 +961,10 @@ func loadEnvironments(root string, r *Result) error {
 		}
 		e, err := syntax.NewParser(string(src)).ParseEnvironment()
 		if err != nil {
-			return sourceErr(path, err)
+			if err := r.collectSourceError(path, err); err != nil {
+				return err
+			}
+			continue
 		}
 		r.World.Environments = append(r.World.Environments, e)
 		r.Sources["environment:"+string(e.ID)] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}

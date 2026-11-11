@@ -30,10 +30,9 @@ type WorkspaceValidationReport struct {
 	DeclarationCounts      *DeclarationCounts                     `json:"declarationCounts,omitempty"`
 	SourceRootFindings     []workspace.WorkspaceSourceRootFinding `json:"sourceRootFindings,omitempty"`
 	Workspace              *workspace.WorkspaceIdentity           `json:"workspace,omitempty"`
-	// Incomplete says the run stopped before examining everything, and where.
-	// Its absence means the run reached the end, not that every file was
-	// clean: a caller must not read "ok": false with one diagnostic as
-	// "there is one problem" (#4178).
+	// Incomplete states why coverage cannot be claimed. StoppedAt is present
+	// for a fail-fast run, not for a collection whose coverage is unverified.
+	// Absence does not prove every file was clean (#4178).
 	Incomplete *WorkspaceValidationIncomplete `json:"incomplete,omitempty"`
 }
 
@@ -78,23 +77,31 @@ func WorkspaceValidationReportFrom(result WorkspaceValidation) WorkspaceValidati
 		Diagnostics:   []WorkspaceValidationItem{},
 	}
 	if result.Direct != nil {
-		report.Diagnostics = append(report.Diagnostics, WorkspaceValidationItem{
-			Diagnostic: validation.Diagnostic{
-				Code: result.Direct.Code, Severity: result.Direct.Severity, Message: result.Direct.Message,
-			},
-			Sources: []WorkspaceValidationSource{{
-				ArtifactPath: result.Direct.Source.ArtifactPath,
-				Range:        result.Direct.Source.Range,
-			}},
-		})
-		// The load stopped at this file, so everything else is unexamined. Say
-		// so, or a single diagnostic reads as the whole answer (#4178).
-		report.Incomplete = &WorkspaceValidationIncomplete{
-			Reason: "load-stopped-at-first-syntax-error",
-			Detail: "the run stopped at the first syntax error; files other than the one named in stoppedAt were not examined",
+		directs := append([]workspace.SourceDiagnostic{*result.Direct}, result.AdditionalDirect...)
+		for _, direct := range directs {
+			report.Diagnostics = append(report.Diagnostics, WorkspaceValidationItem{
+				Diagnostic: validation.Diagnostic{
+					Code: direct.Code, Severity: direct.Severity, Message: direct.Message,
+				},
+				Sources: []WorkspaceValidationSource{{
+					ArtifactPath: direct.Source.ArtifactPath,
+					Range:        direct.Source.Range,
+				}},
+			})
 		}
-		if len(report.Diagnostics) > 0 && len(report.Diagnostics[0].Sources) > 0 {
-			report.Incomplete.StoppedAt = report.Diagnostics[0].Sources[0].ArtifactPath
+		if result.InspectionIncomplete {
+			report.Incomplete = &WorkspaceValidationIncomplete{
+				Reason: "syntax-coverage-unverified",
+				Detail: "independent syntax findings were collected; coverage is unverified and semantic validation was not performed",
+			}
+		} else {
+			// Preserve the prior projection for a caller that supplies one
+			// fail-fast diagnostic without the collection marker.
+			report.Incomplete = &WorkspaceValidationIncomplete{
+				Reason:    "load-stopped-at-first-syntax-error",
+				Detail:    "the run stopped at the first syntax error; files other than the one named in stoppedAt were not examined",
+				StoppedAt: result.Direct.Source.ArtifactPath,
+			}
 		}
 		return report
 	}

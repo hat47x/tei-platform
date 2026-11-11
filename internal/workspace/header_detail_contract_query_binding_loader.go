@@ -27,7 +27,10 @@ func loadHeaderDetailContractQueryBindings(root string, r *Result) error {
 		}
 		binding, err := syntax.NewParser(string(src)).ParseHeaderDetailContractQueryBinding()
 		if err != nil {
-			return sourceErr(path, err)
+			if err := r.collectSourceError(path, err); err != nil {
+				return err
+			}
+			continue
 		}
 
 		sourceKey := "header-detail-contract-query-binding:" + binding.Identity()
