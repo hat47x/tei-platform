@@ -135,13 +135,54 @@ type ExternalUnknown struct {
 	Reason    string `json:"reason,omitempty"`
 }
 
-// CoverageRecord is REA's own coverage statement. exhausted==false means the
-// attempt is partial by REA's own account; a nil record means REA said
-// nothing, which is unknown and never complete.
+// CoverageRecord is REA's own coverage statement.
+//
+// Exhausted and Truncated are both carried because REA 6.8.0 uses `truncated`
+// while earlier and synthetic documents use `exhausted`. A record where both
+// are absent means REA said nothing, which is unknown and never complete.
+// Truncated differs in direction from exhausted: truncated=true means the
+// enumeration WAS cut short.
 type CoverageRecord struct {
-	Status    string   `json:"status,omitempty"`
-	Exhausted *bool    `json:"exhausted,omitempty"`
-	Notes     []string `json:"notes,omitempty"`
+	Status       string   `json:"status,omitempty"`
+	Exhausted    *bool    `json:"exhausted,omitempty"`
+	Truncated    *bool    `json:"truncated,omitempty"`
+	OmittedCount *int     `json:"omittedCount,omitempty"`
+	Limits       []string `json:"limits,omitempty"`
+	Notes        []string `json:"notes,omitempty"`
+}
+
+// Complete reports whether REA itself claimed an uncut enumeration. Status
+// matters as much as the flags: real REA writes status "unknown" for a semantic
+// graph it did not build, and truncated=false there means only "we did not cut
+// a list short", not "we produced this". A record with no status, no flags and
+// nothing else answers "unspecified", which is not completeness.
+func (c *CoverageRecord) Complete() (complete bool, specified bool) {
+	if c == nil {
+		return false, false
+	}
+	switch strings.ToLower(strings.TrimSpace(c.Status)) {
+	case "unknown", "partial", "incomplete", "failed", "error":
+		return false, true
+	}
+	if c.Truncated != nil {
+		return !*c.Truncated, true
+	}
+	if c.Exhausted != nil {
+		return *c.Exhausted, true
+	}
+	switch strings.ToLower(strings.TrimSpace(c.Status)) {
+	case "complete", "exhaustive", "full":
+		return true, true
+	}
+	return false, false
+}
+
+// Omitted reports how many items REA said it left out, when it said so.
+func (c *CoverageRecord) Omitted() (int, bool) {
+	if c == nil || c.OmittedCount == nil {
+		return 0, false
+	}
+	return *c.OmittedCount, true
 }
 
 // EvidenceError reports why an external document was refused. The code is
@@ -263,9 +304,22 @@ type reaUnknown struct {
 }
 
 type reaCoverage struct {
-	Status    string   `json:"status"`
-	Exhausted *bool    `json:"exhausted"`
-	Notes     []string `json:"notes"`
+	Status string `json:"status"`
+	// Real REA 6.8.0 reports coverage as {status, truncated, omitted_count,
+	// limits} for graph coverage, and adds families/omitted_nodes for the
+	// semantic graph. The earlier build of this decoder expected an `exhausted`
+	// boolean, which no real document carries, so every real attempt decoded as
+	// "coverage said nothing" and the qualification collapsed to unknown
+	// regardless of what REA actually reported.
+	//
+	// Truncated is REA's own "the provider cut the enumeration short" flag and
+	// is the honest analog of exhausted: truncated=false means REA says it
+	// enumerated everything it intended to.
+	Truncated    *bool    `json:"truncated"`
+	OmittedCount *int     `json:"omitted_count"`
+	Limits       []string `json:"limits"`
+	Exhausted    *bool    `json:"exhausted"`
+	Notes        []string `json:"notes"`
 }
 
 // DecodeAttemptEvidence decodes and validates one REA attempt document.
@@ -437,9 +491,12 @@ func decodeCoverage(coverage *reaCoverage) *CoverageRecord {
 		return nil
 	}
 	return &CoverageRecord{
-		Status:    coverage.Status,
-		Exhausted: coverage.Exhausted,
-		Notes:     append([]string(nil), coverage.Notes...),
+		Status:       coverage.Status,
+		Exhausted:    coverage.Exhausted,
+		Truncated:    coverage.Truncated,
+		OmittedCount: coverage.OmittedCount,
+		Limits:       append([]string(nil), coverage.Limits...),
+		Notes:        append([]string(nil), coverage.Notes...),
 	}
 }
 
