@@ -155,6 +155,11 @@ func TestCrossViewSeparatesSourceEdgesAndPotentialActionEffects(t *testing.T) {
 		t.Fatalf("derived edges=%d want=1", len(projection.DerivedEdges))
 	}
 	edge := projection.DerivedEdges[0]
+	// Both nature values are wire labels: a reader tells a source-backed edge
+	// from a derived one by this field, so both are named here (#4032).
+	if CrossViewNatureSource != "source-backed" || CrossViewNatureDerived != "derived" {
+		t.Fatalf("nature labels changed: source=%q derived=%q", CrossViewNatureSource, CrossViewNatureDerived)
+	}
 	if edge.Kind != "action-function-table-potential-operation" ||
 		edge.Nature != CrossViewNatureDerived ||
 		edge.Operations != "R" {
