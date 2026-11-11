@@ -11,8 +11,11 @@ import "testing"
 // new exported string constant fails the check until it has a test or an entry.
 // An entry is a to-do with a reason, not a licence to leave a word untested.
 //
-// The list is currently empty: every declared word is named by a test. A new
-// constant still fails here until it gets a test or a listed reason.
+// The list is currently empty: every declared word is named by a test. The five
+// query vocabulary words main parked here (the relation query modes, the fetch
+// modes and SeverityUnsupported) now have TestRelationQueryModesAreCovered,
+// TestRelationFetchModesAreCovered and TestSeverityVocabulary. A new constant
+// still fails here until it gets a test or a listed reason.
 var unmentionedStringConstants = []string{}
 
 func TestExportedStringConstantsHaveATestOrAnEntry(t *testing.T) {

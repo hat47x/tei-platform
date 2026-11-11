@@ -363,3 +363,5 @@ S1 realistic intent / candidate frontier
 - [SQLite introspection の制限と未対応事項](SQLITE_INTROSPECTION_LIMITATIONS_2026-11.md)
 - [共通の例外・失敗モデル（2026-11）](UNIFIED_FAILURE_MODEL_2026-11.md)
 - [2waySQL-like記述との整合性](WAY_SQL_ALIGNMENT_2026-11.md)
+- [DriverシナリオのMarkdown記述（設計候補）](DRIVER_SCENARIO_MARKDOWN_AUTHORING_2026-11.md)
+- [組織データ保護の境界（2026-11）](ORGANIZATION_DATA_PROTECTION_BOUNDARY_2026-11.md)

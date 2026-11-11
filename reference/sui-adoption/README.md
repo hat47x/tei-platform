@@ -123,6 +123,37 @@ probe の報告は次を含みます。
 
 この probe は read-only の定義解決だけを行い、Product runtime・Canonical source・Owner の意味受理を主張しません。
 
+## Scope isolation conformance matrix（M6）
+
+`scope-isolation-matrix.v1.json` は、[ADR-0059](https://github.com/hat47x/sui-sensemaking/blob/main/01_Plans/adr/ADR-0059-saas-tenant-authorization-boundary.md) の implementation gate 5 が挙げる14経路を、**言語非依存の機械可読な行列**として書き出したものです。Go/TypeScript/Python のどれでも読め、特定のテストランナーに依存しません。
+
+確認:
+
+```bash
+go run ./tools/reference-scope-isolation-matrix -matrix reference/sui-adoption/scope-isolation-matrix.v1.json
+# SUI の checkout を渡すと、行列が指す試験名の実在まで照合する
+go run ./tools/reference-scope-isolation-matrix -matrix reference/sui-adoption/scope-isolation-matrix.v1.json -sui-repo <SUI checkout>
+go test ./tools/reference-scope-isolation-matrix/... -count=1
+```
+
+検査するもの:
+
+- 14経路が矩阵に一つも欠けていないこと（欠落を「機能が無い」と黙って畳まない）
+- `covered` は実試験名を1つ以上持つこと。試験ファイルと試験関数名が SUI 側に実在すること（改名で行列が黙って stale にならない）
+- `not-applicable` は理由を持ち、試験参照を持たないこと
+- `uncovered` は理由と担当（owner）を持つこと
+- `source.languageIndependent` が true であること
+
+現在地（2026-11-12 時点）:
+
+| 状態 | 件数 | 内訳 |
+| --- | --- | --- |
+| covered | 11 | get / put / list / export / share / import / mcp / audit / agent ほか |
+| not-applicable | 4 | search / count / webhook / job（SUI に該当機能が無い） |
+| uncovered | 1 | cache（browser 保存の切り替え時破棄を tenant 境界として固定する試験が無い） |
+
+**この矩阵は認可の正本ではなく、実装の越境遮断を主張しません。** 検査するのは行列の形と根拠の実在だけです。合成FixtureやHTTP単体のPASSを、実Provider・実Postgresの越境遮断の証拠として扱いません。`uncovered` の `cache` が 1 件残ることは、行列が「網羅した」と主張しないための表示です。
+
 ## Constraint coverage inventory
 
 Stage 0 reportの`constraintCoverage`は、SUI正本のconstraintをTEI native機能として誤認しないためのEvidenceです。
