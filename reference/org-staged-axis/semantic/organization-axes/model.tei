@@ -113,6 +113,11 @@ data Role {
     attribute roleId type organization.role_id
 }
 
+capability organization.approve_membership_change {
+    input directive organization.directive
+    output organization.membership
+}
+
 data Directive {
     attribute directiveId type organization.directive_id
     attribute subjectPersonId type organization.person_id
