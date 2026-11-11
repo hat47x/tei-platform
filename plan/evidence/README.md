@@ -453,3 +453,4 @@
 - [環境を設計しdatabase・environmentをCLIで読めるようにする](TEI_DOGFOODING_ROUND68_ENVIRONMENT_LAYER_2026-11-11/README.md)（#4128のC案を拡張。staging環境を1往復で設計し、未読だったdatabase/environmentをinspectに追加して18種に。model overviewが既にnotCoveredKindsで宣言していた欠落と実害が一致。database-instanceは環境スコープのため追加せず）
 - [永続化マッピングを設計しpersistence-mappingをCLIで読めるようにする](TEI_DOGFOODING_ROUND71_PERSISTENCE_LAYER_2026-11-11/README.md)（#4128のC案を拡張。6往復でマッピングを設計し、未読だったpersistence-mappingをinspectに追加して19種に。Attempt1はokを返したが何も起きておらず、配置の誤りが成功として返る例を記録。未起票）
 
+- [条件2と条件3の「止まる」側2行も、実測で追認した](TEI_GO_SELF_BUILD_STOP_TABLE_MEASURED_2026-11-11.md)（§4.37の表の残り2行を実測。childが`intentBytesDigest`を偽ると**`the builder read different declaration bytes than the entry held`**で停止し、`planFingerprint`を偽ると**条件3と条件4が同時に崩れる**。**entryが見る側の4行がすべて実測済みになった。** #2831）
