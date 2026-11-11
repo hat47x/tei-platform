@@ -177,6 +177,32 @@ func TestSelfBuildRebuildCheckReportsReproduced(t *testing.T) {
 	}
 }
 
+// The boundary is machine-readable output and the only place a caller learns how far
+// the reproduction result reaches. It said cross-host agreement had been seen on two
+// hosts only, after arm64 had been observed, and it said nothing about arm64's artifacts
+// differing from amd64's. Pin both: the third host is named, and the refusal to claim
+// cross-architecture equality is stated.
+func TestSelfBuildReproducibilityBoundaryStatesTheObservedScope(t *testing.T) {
+	boundary := reproducibilityBoundary
+
+	for _, want := range []string{
+		"linux/amd64 and windows/amd64",
+		"linux/arm64 under emulation",
+		"cross-architecture equality of artifact bytes is not claimed",
+	} {
+		if !strings.Contains(boundary, want) {
+			t.Fatalf("the boundary no longer states %q: %s", want, boundary)
+		}
+	}
+
+	// The old sentence implied that the two hosts were the whole of what had been
+	// seen. arm64 was observed, so that reading no longer holds.
+	if strings.Contains(boundary, "It is not a proof for any other host") &&
+		!strings.Contains(boundary, "linux/arm64 under emulation") {
+		t.Fatalf("the boundary still treats the two hosts as exhaustive: %s", boundary)
+	}
+}
+
 // A child that writes different bytes the second time is not reproducible, and
 // the attempt fails: without reproduction the artifact cannot be attributed to
 // the plan.

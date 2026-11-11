@@ -1,0 +1,8 @@
+runCLIForClassification built the CLI once per call:
+
+  binary := filepath.Join(t.TempDir(), "tei")
+  exec.Command("go", "build", "-o", binary, ".").CombinedOutput()
+
+Twelve cases plus two other tests meant a dozen identical builds. The test needs a
+real process for the exit code and JSON document; it does not need a fresh binary
+per case.

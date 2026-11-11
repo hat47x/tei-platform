@@ -13,6 +13,10 @@ on:
       - go.mod
       - go.sum
       - internal/**
+      - cmd/tei/**
+      - tools/reference-go-build-from-plan/**
+      - tools/reference-build-plan-authoring/**
+      - plan/design/SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md
       - tools/reference-plugin-self-build/**
       - tools/reference-transform-seed-builder/**
       - tools/reference-transform-runtime-engine/**
@@ -28,6 +32,10 @@ on:
       - go.mod
       - go.sum
       - internal/**
+      - cmd/tei/**
+      - tools/reference-go-build-from-plan/**
+      - tools/reference-build-plan-authoring/**
+      - plan/design/SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md
       - tools/reference-plugin-self-build/**
       - tools/reference-transform-seed-builder/**
       - tools/reference-transform-runtime-engine/**
@@ -48,7 +56,9 @@ concurrency:
 jobs:
   reference-self-build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    # The full-chain step below builds the whole tree twice (about 5 minutes on
+    # a runner, more when loaded), on top of the engine and self-build steps.
+    timeout-minutes: 60
     env:
       GOENV: off
       GOWORK: off
@@ -254,6 +264,17 @@ jobs:
             and .output.kind == "string"
             and .output.string == "hello from exact engine"
           ' "$RUNNER_TEMP/tei-transform-runtime-engine-response.json" >/dev/null
+
+      - name: 自己構築の全鎖を実対象で確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The claim this workflow exists to observe: ./cmd/tei is rebuilt from a
+          # plan made only of its sources, and the five conditions hold. The test
+          # is opt-in so a plain `go test ./...` stays affordable; this workflow
+          # is where it is meant to run.
+          TEI_SELF_BUILD_FULL_CHAIN=1 go test -count=1 -timeout 30m \
+            -run TestSelfBuildFullChainOnTheRealSubject ./cmd/tei
 
       - name: 変更範囲のGo試験
         shell: bash
