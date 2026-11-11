@@ -211,12 +211,13 @@ Observationは`data-element`候補へ、有向Relationは`cross-reference`候補
 - `gofmt -l internal/reacandidate cmd/tei`：出力なし
 - `go test ./cmd/tei/ -run TestThreeElement -count=1`：PASS（`rea-intake`の正例・負例・`-h`を含む）
 - `go test ./cmd/tei/ -run 'TestCommandCatalogFlagsMatchAcceptedFlags|TestAcceptedCommandsMatchDispatch|TestAdvertisedFlagNamesAreTheAcceptedSet|TestSelfParsedFlagNames'`：PASS
+- `go test ./cmd/tei/ -count=1 -timeout 3000s`：**PASS（988.7秒）**。パッケージ全体の試験は通る。既定timeoutでは足りないだけで、試験の失敗ではない
 - 実バイナリ（`go build -o tei.exe ./cmd/tei`）での実行：最小attempt＋`-output`（exit 0、候補3件、正式な票12,486 bytes）、`-before`比較（全entryが`unchanged`）、実`reference/workspace`への`-workspace`束縛（exit 0、3候補とも`not-present-in-read-artifact-set`で`unresolved`のまま）、`-evidence`不在（`EVIDENCE_READ_FAILED`／exit 2）、`-mapping`単独（`INVALID_ARGUMENT`／exit 2)
+- 実Workspace（`tei.workspace.yaml`＋`semantic/*.tei`）に対する束縛の4分岐を `cmd/tei/cli_three_element_rea_workspace_test.go` で確認：byte一致→`independently-bound`かつ`resolution=unresolved`（tag付きのcoincident宣言は「構造的一致であり受理ではない」と注記）、byte不一致→`source-digest-conflict`かつ未解決集計に`source-digest-conflict-requires-fresh-analysis`、path不在→`not-present-in-read-artifact-set`、workspace外を指すpath→decode時に`provider-reported-invalid-source-path`で束縛しない
+- Owner mappingを渡した場合の`inspectStatus`が`not-attempted`にならないこと（既存`operations.InspectSubject`が実際に呼ばれること）も同テストで確認
 
 **実行していない（NOT RUN）**
 
 - 実REAプロセスを起動したE2E。fixtureは**手書きの合成JSON**であり、REA 6.8.0の実出力を取得した証拠ではない
-- 実Workspaceのbyteが解析対象と一致する場合の`independently-bound`。手元の`reference/workspace`に`src/*.js`が無いため、`-workspace`経路で観測できたのは`not-present-in-read-artifact-set`だけである
-- `cmd/tei`パッケージ**全体**の試験。個別実行はPASSするが、全体実行はこの環境で600秒・900秒・2,700秒のいずれも`panic: test timed out`で終わった。**timeoutによる中断を試験の失敗とも合格とも解釈しない**。1テストだけを単独実行すると19秒でPASSするため、遅いのはテスト自体ではなくパッケージ全体の直列実行時間である可能性が高いが、**確認していない**
-- Owner受理、SHO、移行実証、生成コード
-- CI。このクローンからは実行していない。PRのexact headで確認する
+- Owner受理、Shared Acceptance接続、SHO、移行実証、生成コード
+- CIの全項目。`bounded-design-context`の1件はPR #4316でpassを確認したが、他のworkflowは未確認
