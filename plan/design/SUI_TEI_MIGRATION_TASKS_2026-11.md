@@ -234,36 +234,37 @@ go run ./cmd/tei validate -workspace reference/workspace   # Canonical定義の�
 
 ### 5.3 M2 SUIドメインのCanonical定義（Reference Workspace）
 
-- 目的: `sui.*`を`.tei.md`で宣言する。instanceは昇格しない（Stage 0の規則を維持）
-- 変更範囲: Reference Workspaceの定義ファイル。Product runtime・Canonical source・fixtureのinstanceは変更しない
+- 状態: **限定実装済み**（`reference/sui-adoption/workspace-m2/`、`tools/reference-sui-canonical-probe/`）。定義の**採択**はOwner判断待ち（§7.1の5・6・8）
+- 目的: `sui.*`を`.tei`で宣言する。instanceは昇格しない（Stage 0の規則を維持）
+- 変更範囲: Reference Workspaceの隔離領域のみ。Product runtime・Canonical source・`reference/workspace`・Stage 0の`workspace/`は変更しない
 - 依存: M0の対応表（§3.1）。#2497（構造保存写像）
-- 定義案（**案**）:
+- 実装した定義（**案。採択前**）: `sui.document`（`documentId`・`revisionState`・`disclosureState`）、`sui.card`（`cardId`・`x`・`y`・`claimType`・`holdState`・`textReviewState`）、`sui.island`（`islandId`・`titleReviewState`）、`sui.containment`、`sui.affiliation`、`sui.edge`、`sui.island_parent`。定義の本文は実装ファイルを正とし、ここへ複製しない
+  - `containment`と`affiliation`は**別のData**（F-3）。各自のoccurrence ID属性を持ち、`belongsTo`へ畳まない。TEIの`relation`は対象Dataの属性としてしか現れないため、所属自体にIDを持たせるには所属をDataにする方が損失が少ない
+  - **Edgeの端点は kind+id 属性**（`fromKind`/`fromId`/`toKind`/`toId`）。TEIの`relation`は静的な対象型を一つ要求するため、型付きrelationでは island→island のEdgeが表現できない。多相端点を属性で表し、この制約を隠さない
+  - **本文・題名はAttributeにしない**。参照envelope（`tai.reference.sui-document-reference/v0`）はカード本文・島題名・文書題名を運ばないため、型にも置かない。運ぶのは**状態**（review・disclosure・revision）だけで、それを宣言する。本文を型に置くかはM4（開示投影）とSUI #3369の判断
+  - **宣言しない**: Tree閲覧状態、canvas transform / z-order / zoom / gesture、island geometry、review attribution、Relation rationale、narrative/summary/critique、本文・題名。probeの`undeclared`は空にならない
+  - **`parentPresenceSemantics`は`unresolved`のまま**。現行`Relation.Cardinality`は`one|many`のみで、rootのparent不在（0..1）は lossless と証明できない
+- 受入（**実行済み**）:
+  1. `go run ./cmd/tei validate -workspace reference/sui-adoption/workspace-m2` が通る
+  2. `containmentAndAffiliationSeparate: true`（別Dataとして解決し、各自occurrence IDを持つ）
+  3. `parallelEdgesDistinguishable: true`（Edgeが自分のIDと kind+id 端点を持ち、型付きrelationを使っていない）
+  4. `reviewAndRevisionDeclared: true`（document の revision/disclosure、card の textReview、island の titleReview）
+  5. `sui.card.text` が宣言されていないこと（参照envelopeは本文を運ばない）
+  6. `undeclared` が空でなく tree/canvas/review・本文を含む
+  7. `instanceCount: 0` / `canonicalizedInstanceData: false`（instanceを昇格しない）
+  8. 定義が無いworkspace・型付きrelationのEdgeでは fail closed
+- 確認コマンド:
 
-```text
-namespace sui
-
-data sui.document { id DocumentID }
-data sui.card     { id CardID text Text? x Number y Number
-                    claimType ClaimType? holdState HoldState? }
-data sui.island   { id IslandID }
-
-relation sui.containment { one sui.island many sui.card }
-relation sui.affiliation { many sui.card many sui.island }
-relation sui.islandParent { zero-or-one sui.island zero-or-one sui.island }
+```bash
+go run ./cmd/tei validate -workspace reference/sui-adoption/workspace-m2
+go run ./tools/reference-sui-canonical-probe -workspace reference/sui-adoption/workspace-m2
+go test ./tools/reference-sui-canonical-probe/... -count=1
 ```
 
-  - `containment`と`affiliation`は**別のrelation**（F-3）。一つのrelationに畳かない
-  - Cardは`text`で合一しない（F-2）。同一名称は別occurrence
-  - **宣言しない**: Tree閲覧状態、canvas transform / z-order / zoom / gesture、island geometry、review attribution、Relation rationale。宣言しないことを「未宣言」として観測できるようにする
-- 受入:
-  1. `go run ./cmd/tei validate -workspace <workspace>` が通ること
-  2. `sui.containment`と`sui.affiliation`が別のrelationとして一意に解決できること
-  3. fixtureのinstanceがCanonical objectへ昇格していないこと（read-only probeの規則）
-  4. Tree階層・canvas geometryが「未宣言」として報告されること
-- 負例: containmentとaffiliationを一つのrelationにする案、`text`をcardの自然キーにする案、fixtureのinstanceをCanonicalへ写す案
-- 未実施: 定義の採否。instanceのCanonical object化は扱わない
+- 負例（実測）: 同じData名の二重宣言は`DUPLICATE_SEMANTIC_ELEMENT`、未定義typeは`UNKNOWN_SEMANTIC_ATTRIBUTE_TYPE`。型付きrelationのEdgeは`parallelEdgesDistinguishable: false`
+- 未実施: 定義の採否（Owner）、instanceのCanonical object化、Product runtime接続、実DB/実Providerでの検証
 - 委譲先: `architect`（語彙の線引き）→ `implementer`
-- 撤退条件: 第二の消費者が現れなければ、`sui.*`はSUIのnative assetのままにし、共通部品へ昇格させない（#2497の基準）
+- 撤退条件: 第二の消費者が現れなければ、`sui.*`はSUIのnative assetのままにし、共通部品へ昇格させない（#2497の基準）。probeはReference toolのままとし、製品APIと名乗らない
 
 ### 5.4 M3 record/string投影（#2488の欠落の充足）
 
@@ -338,15 +339,19 @@ attribute sui.card.text {
 
 ### 5.7 M6 scope isolationのconformanceを言語非依存で書き出す
 
+- 状態: **実装済み（限定）**。14経路の言語非依存の行列を書き出した（`reference/sui-adoption/scope-isolation-matrix.v1.json`、`tools/reference-scope-isolation-matrix`）。認可の正本ではない
 - 目的: SUIの越境試験を、Python実装から切り離した契約としてTEI側へ置く。実装の書き換えを急がない
 - 変更範囲: 試験と言語非依存の記述。SUI_MIGRATION_EXTENSION_AND_SPLIT_DESIGN_2026-10.md §8.4 Stage 1
 - 依存: 既存設計。ISSUE-000080（Capability Contract）の結果
 - 受入:
-  1. 14経路の行列が「該当機能があれば必須」の形で機械可読に書けること
-  2. 欠落4経路（list / export-audit / 監査読み取り / import権限非継承。同書 付録A）を埋める試験がSUI側で通ること
-  3. Python実装がその試験を通ること
-- 負例: 試験を通すために契約を緩める、実装を通すだけで契約を変える
-- 未実施: ISSUE-000080の解消。第二のApplicationでの再現
+  1. 14経路の行列が「該当機能があれば必須」の形で機械可読に書けること（**実行済み**。14経路すべてが行列にあり、11 covered・4 not-applicable・1 uncovered（cache））
+  2. 欠落4経路（list / export-audit / 監査読み取り / import権限非継承。同書 付録A）を埋める試験がSUI側で通ること（**実行済み**。`test_docs_tenant_isolation_surfaces.py`・`test_admin_audit_trail.py`）
+  3. Python実装がその試験を通ること（**実行済み**）
+  4. 行列が指す試験名とファイルがSUI側に実在すること（`-sui-repo` を渡すと21件すべて照合できる）
+- 補足: 同書 付録Aの「未確認」は**2026-10-09時点の所見**で、現在は4経路とも固定済みである。設計文書の当該記述は履歴として残し、現在地はこの節を優先する
+- 補足: `uncovered` を空にしないのは、行列が「網羅した」と主張しないためである。`cache` は browser 保存の切り替え時破棄を tenant 境界として固定する試験が無い
+- 負例: 試験を通すために契約を緩める、実装を通すだけで契約を変える。経路を行列から黙って消す（欠落は「機能が無い」と同義ではない）
+- 未実施: ISSUE-000080の解消（L1・L2のPlugin化）。`cache` の越境試験。第二のApplicationでの再現。応答時間・大きさの差による観測
 - 委譲先: `planner`（行列の言葉）→ `implementer`
 - 撤退条件: ISSUE-000080が解けない間は、L0（宣言）とL3（試験）だけを進め、L1・L2のPlugin化は後に回す
 
@@ -359,14 +364,14 @@ M0（参照consumer、完了）
 M6（scope conformance）は独立
 ```
 
-| タスク | ブロッカー | 解除の条件 |
-| --- | --- | --- |
-| M1・M4 | SUI #3369（本文公開の判断） | Owner判断。判断が無い間は本文を出さない経路のまま |
-| M1 | TAI側のschema変更（`artifact.schema.json`） | TAIの担当判断。省略可能なので未決でもM0は動く |
-| M3 | TEI #2488（generator familyの設計判断） | #2488のOwner判断 |
-| M5 | #2743 / #3479 の現在の設計 | Source index側の責務の明確化 |
-| M6 | ISSUE-000080（Capability Contract） | 解消後。それまでL0とL3のみ |
-| M2 | #2497（語彙の線引き） | 第二の消費者が出るまで標準化しない |
+| タスク | 状態 | ブロッカー | 解除の条件 |
+| --- | --- | --- | --- |
+| M1・M4 | 未着手 | SUI #3369（本文公開の判断） | 代行判断済み（§7.1-2）。本文を出さないまま維持 |
+| M1 | 未着手 | TAI側のschema変更（`artifact.schema.json`） | TAIの担当判断。省略可能なので未決でもM0は動く |
+| M2 | **限定実装済み** | #2497（語彙の線引き） | 第二の消費者が出るまで標準化しない |
+| M3 | 未着手 | TEI #2488（generator familyの設計判断） | #2488のOwner判断 |
+| M5 | 未着手 | #2743 / #3479 の現在の設計 | Source index側の責務の明確化 |
+| M6 | **実装済み（限定）** | ISSUE-000080（Capability Contract） | 解消後。`cache` の1件が uncovered |
 
 ### 5.9 M6の先（移行の完了まで）
 
