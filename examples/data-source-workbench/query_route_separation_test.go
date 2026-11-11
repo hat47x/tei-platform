@@ -47,7 +47,7 @@ func TestRecentOrdersSameIDHasTwoDistinctSourceAndParameterContracts(t *testing.
 		mustNot []string
 	}{
 		{
-			name: "reference",
+			name:   "reference",
 			source: referenceSQL,
 			must: []string{
 				"FROM public.orders AS o", "o.ordered_at >= :from",
@@ -56,7 +56,7 @@ func TestRecentOrdersSameIDHasTwoDistinctSourceAndParameterContracts(t *testing.
 			mustNot: []string{"from sales.order", ":status_operator", ":page_offset"},
 		},
 		{
-			name: "xtea",
+			name:   "xtea",
 			source: xteaSQL,
 			must: []string{
 				"select order_id, customer_id", ":status",
