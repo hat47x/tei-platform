@@ -34,7 +34,7 @@ func (p *Parser) parseReferenceContractQuery() (*application.ContractQueryInvoca
 		switch t.Text {
 		case "contract":
 			if hasContract {
-				return nil, p.errAt(t, "contract-query can define contract once")
+				return nil, p.errAt(t, "contract-queryではcontractを一度だけ定義できます")
 			}
 			hasContract = true
 			_, _ = p.next()
@@ -49,7 +49,7 @@ func (p *Parser) parseReferenceContractQuery() (*application.ContractQueryInvoca
 
 		case "query":
 			if hasQuery {
-				return nil, p.errAt(t, "contract-query can define query once")
+				return nil, p.errAt(t, "contract-queryではqueryを一度だけ定義できます")
 			}
 			hasQuery = true
 			_, _ = p.next()
@@ -89,15 +89,15 @@ func (p *Parser) parseReferenceContractQuery() (*application.ContractQueryInvoca
 			})
 
 		default:
-			return nil, p.errAt(t, "contract-query needs one of contract, query or input")
+			return nil, p.errAt(t, "contract-queryではcontract、query、inputのいずれかを指定してください")
 		}
 	}
 
 	if !hasContract {
-		return nil, p.errAt(open, "contract-query requires contract")
+		return nil, p.errAt(open, "contract-queryにはcontractの指定が必要です")
 	}
 	if !hasQuery {
-		return nil, p.errAt(open, "contract-query requires query")
+		return nil, p.errAt(open, "contract-queryにはqueryの指定が必要です")
 	}
 	return &out, nil
 }

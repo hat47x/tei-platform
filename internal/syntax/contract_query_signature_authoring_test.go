@@ -102,7 +102,7 @@ func TestParseContractQuerySignatureRejectsEmptyBlock(t *testing.T) {
 	if err == nil {
 		t.Fatal("明示した空のQuery blockをlegacy Queryとして受理しています")
 	}
-	if !strings.Contains(err.Error(), "a query signature requires result") {
+	if !strings.Contains(err.Error(), "Query signatureを定義する場合はresultが必要です") {
 		t.Fatalf("空のQuery signatureを拒否した理由を追えません: %v", err)
 	}
 }
@@ -119,7 +119,7 @@ func TestParseContractQuerySignatureRejectsDuplicateResult(t *testing.T) {
 	if err == nil {
 		t.Fatal("一つのQuery signatureへresultを複数定義できています")
 	}
-	if !strings.Contains(err.Error(), "can define result once") {
+	if !strings.Contains(err.Error(), "resultを一度だけ定義できます") {
 		t.Fatalf("result重複を拒否した理由を追えません: %v", err)
 	}
 }
@@ -135,7 +135,7 @@ func TestParseContractQuerySignatureRejectsUnknownCardinality(t *testing.T) {
 	if err == nil {
 		t.Fatal("未定義のQuery result cardinalityを受理しています")
 	}
-	if !strings.Contains(err.Error(), "query result cardinality \"optional\" is not defined") {
+	if !strings.Contains(err.Error(), "Query result cardinality \"optional\"は定義されていません") {
 		t.Fatalf("未定義cardinalityを拒否した理由を追えません: %v", err)
 	}
 }

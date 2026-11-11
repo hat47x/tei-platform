@@ -59,7 +59,7 @@ func (p *Parser) parseContractQuerySignature(name string) (database.QueryContrac
 
 		case "result":
 			if hasResult {
-				return queryContract, p.errAt(t, "a query signature can define result once")
+				return queryContract, p.errAt(t, "Query signatureではresultを一度だけ定義できます")
 			}
 			hasResult = true
 			_, _ = p.next()
@@ -77,17 +77,17 @@ func (p *Parser) parseContractQuerySignature(name string) (database.QueryContrac
 			}
 			cardinality := database.QueryResultCardinality(cardinalityTok.Text)
 			if !cardinality.Valid() {
-				return queryContract, p.errAt(cardinalityTok, fmt.Sprintf("query result cardinality %q is not defined", cardinalityTok.Text))
+				return queryContract, p.errAt(cardinalityTok, fmt.Sprintf("Query result cardinality %qは定義されていません", cardinalityTok.Text))
 			}
 			queryContract.ResultCardinality = cardinality
 
 		default:
-			return queryContract, p.errAt(t, "a query signature needs input or result")
+			return queryContract, p.errAt(t, "Query signatureではinputまたはresultを指定してください")
 		}
 	}
 
 	if !hasResult {
-		return queryContract, p.errAt(open, "a query signature requires result")
+		return queryContract, p.errAt(open, "Query signatureを定義する場合はresultが必要です")
 	}
 	return queryContract, nil
 }

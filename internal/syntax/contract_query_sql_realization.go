@@ -126,7 +126,7 @@ func (p *Parser) ParseContractQuerySQLRealizationAuthoring() (ContractQuerySQLRe
 				return out, p.errAt(inputTok, err.Error())
 			}
 			if seenInputs[input] {
-				return out, p.errAt(inputTok, fmt.Sprintf("input %s has a duplicate parameter mapping", input))
+				return out, p.errAt(inputTok, fmt.Sprintf("input %sのparameter mappingが重複しています", input))
 			}
 			if _, err := p.expect(TokenArrow); err != nil {
 				return out, err
@@ -136,7 +136,7 @@ func (p *Parser) ParseContractQuerySQLRealizationAuthoring() (ContractQuerySQLRe
 				return out, err
 			}
 			if seenParameters[parameterTok.Text] {
-				return out, p.errAt(parameterTok, fmt.Sprintf("physical parameter %q is duplicated", parameterTok.Text))
+				return out, p.errAt(parameterTok, fmt.Sprintf("physical parameter %qが重複しています", parameterTok.Text))
 			}
 			seenInputs[input] = true
 			seenParameters[parameterTok.Text] = true

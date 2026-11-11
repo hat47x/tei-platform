@@ -48,7 +48,7 @@ func TestParseQueryAuthoringRejectsDuplicateResultColumn(t *testing.T) {
 }`
 
 	_, err := syntax.NewParser(src).ParseQueryAuthoring(core.MustCanonicalID("order_entry"))
-	if err == nil || !strings.Contains(err.Error(), `result column "order_id" is duplicated`) {
+	if err == nil || !strings.Contains(err.Error(), `result column "order_id"が重複しています`) {
 		t.Fatalf("重複result columnを拒否していません: %v", err)
 	}
 }
@@ -64,7 +64,7 @@ func TestParseQueryAuthoringRejectsDuplicateResultAttribute(t *testing.T) {
 }`
 
 	_, err := syntax.NewParser(src).ParseQueryAuthoring(core.MustCanonicalID("order_entry"))
-	if err == nil || !strings.Contains(err.Error(), "result attribute sales.order.order_id is duplicated") {
+	if err == nil || !strings.Contains(err.Error(), "result attribute sales.order.order_idが重複しています") {
 		t.Fatalf("重複result attributeを拒否していません: %v", err)
 	}
 }
@@ -78,7 +78,7 @@ func TestParseQueryAuthoringRejectsEmptyResultMapping(t *testing.T) {
 }`
 
 	_, err := syntax.NewParser(src).ParseQueryAuthoring(core.MustCanonicalID("order_entry"))
-	if err == nil || !strings.Contains(err.Error(), "at least one column mapping") {
+	if err == nil || !strings.Contains(err.Error(), "少なくとも一つのcolumn mapping") {
 		t.Fatalf("空のresult mappingを拒否していません: %v", err)
 	}
 }
@@ -96,7 +96,7 @@ func TestParseQueryAuthoringRejectsMultipleResultBlocks(t *testing.T) {
 }`
 
 	_, err := syntax.NewParser(src).ParseQueryAuthoring(core.MustCanonicalID("order_entry"))
-	if err == nil || !strings.Contains(err.Error(), "result can be defined once per query") {
+	if err == nil || !strings.Contains(err.Error(), "resultは一つのQueryで一度だけ定義できます") {
 		t.Fatalf("複数result blockを拒否していません: %v", err)
 	}
 }

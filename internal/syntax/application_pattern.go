@@ -269,7 +269,7 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 			}
 		case "contract-query":
 			if hasContractQuery {
-				return out, p.errAt(t, "contract-query can be defined once per pattern")
+				return out, p.errAt(t, "contract-queryは一つのPatternで一度だけ定義できます")
 			}
 			hasContractQuery = true
 			invocation, err := p.parseReferenceContractQuery()
@@ -279,7 +279,7 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 			out.ContractQuery = invocation
 		case "interaction":
 			if hasInteraction {
-				return out, p.errAt(t, "interaction can be defined once per pattern")
+				return out, p.errAt(t, "interactionは一つのPatternで一度だけ定義できます")
 			}
 			hasInteraction = true
 			_, _ = p.next()

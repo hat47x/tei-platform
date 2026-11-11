@@ -112,7 +112,7 @@ func (p *Parser) ParseQueryAuthoring(owner core.CanonicalID) (QueryAuthoring, er
 			}
 		case "result":
 			if hasResult {
-				return out, p.errAt(t, "result can be defined once per query")
+				return out, p.errAt(t, "resultは一つのQueryで一度だけ定義できます")
 			}
 			hasResult = true
 			_, _ = p.next()
@@ -156,7 +156,7 @@ func (p *Parser) parseQueryResultColumns() ([]query.ResultColumnMapping, error) 
 			return nil, err
 		}
 		if _, exists := seenColumns[columnTok.Text]; exists {
-			return nil, p.errAt(columnTok, fmt.Sprintf("result column %q is duplicated", columnTok.Text))
+			return nil, p.errAt(columnTok, fmt.Sprintf("result column %qが重複しています", columnTok.Text))
 		}
 		if _, err := p.expect(TokenArrow); err != nil {
 			return nil, err
@@ -170,14 +170,14 @@ func (p *Parser) parseQueryResultColumns() ([]query.ResultColumnMapping, error) 
 			return nil, p.errAt(attributeTok, err.Error())
 		}
 		if _, exists := seenAttributes[attribute]; exists {
-			return nil, p.errAt(attributeTok, fmt.Sprintf("result attribute %s is duplicated", attribute))
+			return nil, p.errAt(attributeTok, fmt.Sprintf("result attribute %sが重複しています", attribute))
 		}
 		seenColumns[columnTok.Text] = struct{}{}
 		seenAttributes[attribute] = struct{}{}
 		out = append(out, query.ResultColumnMapping{Column: columnTok.Text, Attribute: attribute})
 	}
 	if len(out) == 0 {
-		return nil, fmt.Errorf("a query result needs at least one column mapping")
+		return nil, fmt.Errorf("query resultには少なくとも一つのcolumn mappingが必要です")
 	}
 	return out, nil
 }
