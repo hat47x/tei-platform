@@ -1,0 +1,41 @@
+{
+  "scenarios": [
+    {
+      "name": "P2_b_法人兼務からB_Tenant_read_write_Grantを推測しない",
+      "person": "person_a",
+      "primaryLegalEntity": "legal_entity_a",
+      "secondaryLegalEntity": "legal_entity_b",
+      "expectation": "read/write Grant は推測しない"
+    },
+    {
+      "name": "成り代わり認証を既定にしない",
+      "actor": "person_a",
+      "target": "person_b",
+      "expectation": "承認権限は付与しない"
+    },
+    {
+      "name": "委任の連鎖は深さ0（再委任不可）が既定",
+      "delegationChain": ["person_a -> person_b", "person_b -> person_c"],
+      "expectation": "person_c への委任は不成立"
+    },
+    {
+      "name": "循環する委任を拒否する",
+      "cycle": ["person_a -> person_b", "person_b -> person_a"],
+      "expectation": "受理しない"
+    },
+    {
+      "name": "自己承認・利益相反を拒否する",
+      "actor": "person_a",
+      "target": "org_unit_a",
+      "expectation": "自己への承認権限は付与しない"
+    },
+    {
+      "name": "失効・対象すり替え・Scope違いを負例にする",
+      "expiredDirective": "directive_001",
+      "substitutedTarget": "org_unit_b",
+      "scopeMismatch": "global",
+      "expectation": "いずれも承認権限を導出しない"
+    }
+  ],
+  "note": "本ファイルは手書きの独立Expectedであり、実装出力から生成していない。"
+}
