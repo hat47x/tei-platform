@@ -7,6 +7,7 @@ import (
 	"tei/internal/database/persistence"
 	"tei/internal/database/sqlgen"
 	"tei/internal/query"
+	"tei/internal/semantic"
 )
 
 // RelationQuerySQL builds dialect-neutral SQL from a resolved relation query.
@@ -84,6 +85,37 @@ func (b *RelationQuerySQL) buildColumns(mappings []persistence.Mapping) ([]strin
 func (b *RelationQuerySQL) buildJoins(mappings []persistence.Mapping) ([]sqlgen.JoinClause, error) {
 	var joins []sqlgen.JoinClause
 	for i, step := range b.Resolved.Steps {
+		if step.JoinTable != "" {
+			joinTable := persistenceTable(core.CanonicalID(step.JoinTable), mappings)
+			if joinTable == "" {
+				return nil, fmt.Errorf("no persistence mapping for join table %s in step %d", step.JoinTable, i)
+			}
+			alias := fmt.Sprintf("rel_%d", i)
+			if step.Step.Alias != "" {
+				alias = step.Step.Alias
+			}
+			joins = append(joins, sqlgen.JoinClause{
+				Kind:  "LEFT",
+				Table: joinTable,
+				Alias: alias,
+				On: []sqlgen.Condition{
+					{Column: fmt.Sprintf("%s.%s", persistenceTable(step.Source.ID, mappings), lookupSourceKey(step.Relation.Keys)), Operator: "=", Value: fmt.Sprintf("%s.%s", alias, lookupTargetKey(step.Relation.Keys))},
+				},
+			})
+			targetTable := persistenceTable(step.Target.ID, mappings)
+			if targetTable == "" {
+				return nil, fmt.Errorf("no persistence mapping for target data %s in step %d", step.Target.ID, i)
+			}
+			joins = append(joins, sqlgen.JoinClause{
+				Kind:  "LEFT",
+				Table: targetTable,
+				Alias: fmt.Sprintf("rel_%d_target", i),
+				On: []sqlgen.Condition{
+					{Column: fmt.Sprintf("%s.%s", alias, lookupTargetKey(step.Relation.Keys)), Operator: "=", Value: fmt.Sprintf("%s.%s", targetTable, lookupSourceKey(step.Relation.Keys))},
+				},
+			})
+			continue
+		}
 		targetTable := persistenceTable(step.Target.ID, mappings)
 		if targetTable == "" {
 			return nil, fmt.Errorf("no persistence mapping for target data %s in step %d", step.Target.ID, i)
@@ -143,9 +175,23 @@ func (b *RelationQuerySQL) buildJoinCondition(step query.ResolvedRelationStep, m
 func (b *RelationQuerySQL) buildWhere() ([]sqlgen.Condition, error) {
 	var where []sqlgen.Condition
 	for _, f := range b.Resolved.Query.Filters {
-		where = append(where, sqlgen.Condition{
-			Expression: f.Expression,
-		})
+		if f.Expression != "" {
+			where = append(where, sqlgen.Condition{
+				Expression: f.Expression,
+			})
+		}
+		if f.Temporal != nil {
+			if f.Temporal.ValidAt != "" {
+				where = append(where, sqlgen.Condition{
+					Expression: fmt.Sprintf("AS OF %s", f.Temporal.ValidAt),
+				})
+			}
+			if f.Temporal.From != "" && f.Temporal.To != "" {
+				where = append(where, sqlgen.Condition{
+					Expression: fmt.Sprintf("BETWEEN %s AND %s", f.Temporal.From, f.Temporal.To),
+				})
+			}
+		}
 	}
 	return where, nil
 }
@@ -206,4 +252,18 @@ func stringsTrimSuffix(s, suffix string) string {
 		return s[:len(s)-len(suffix)]
 	}
 	return s
+}
+
+func lookupSourceKey(keys []semantic.RelationKey) string {
+	if len(keys) > 0 {
+		return string(keys[0].SourceAttribute)
+	}
+	return ""
+}
+
+func lookupTargetKey(keys []semantic.RelationKey) string {
+	if len(keys) > 0 {
+		return string(keys[0].TargetAttribute)
+	}
+	return ""
 }

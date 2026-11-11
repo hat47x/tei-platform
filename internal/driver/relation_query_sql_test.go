@@ -455,3 +455,130 @@ func TestBuildRelationQuerySQLWithJoinTable(t *testing.T) {
 		t.Errorf("expected 2 JOINs for many-to-many, got %d in: %s", joinCount, sql.Statement)
 	}
 }
+
+func TestBuildRelationQuerySQLWithTemporalFilter(t *testing.T) {
+	resolved := query.ResolvedRelationQuery{
+		Query: query.RelationQuery{
+			ID:          "order_entry.temporal",
+			Application: "order_entry",
+			Datasource:  "master",
+			Root:        "sales.order",
+			Relations:   []query.RelationStep{{Relation: "sales.order.customer"}},
+			Filters: []query.Filter{
+				{
+					Expression: "orders.status = 'active'",
+					Temporal: &query.TemporalFilter{
+						ValidAt: "2024-01-01",
+					},
+				},
+			},
+			ResultColumns: []query.ResultColumnMapping{
+				{Column: "order_id", Attribute: "sales.order.order_id"},
+				{Column: "name", Attribute: "customer.customer.name"},
+			},
+		},
+		RootData: semantic.Data{ID: "sales.order"},
+		Steps: []query.ResolvedRelationStep{
+			{
+				Relation: semantic.Relation{ID: "sales.order.customer", Keys: []semantic.RelationKey{{SourceAttribute: "sales.order.customer_id", TargetAttribute: "customer.customer.customer_id"}}},
+				Source:   semantic.Data{ID: "sales.order"},
+				Target:   semantic.Data{ID: "customer.customer"},
+			},
+		},
+	}
+	mappings := []persistence.Mapping{
+		{
+			SemanticData: "sales.order",
+			Table:        "orders",
+			Columns: []persistence.ColumnMapping{
+				{Attribute: "sales.order.order_id", Column: "id"},
+				{Attribute: "sales.order.customer_id", Column: "customer_id"},
+			},
+		},
+		{
+			SemanticData: "customer.customer",
+			Table:        "customers",
+			Columns: []persistence.ColumnMapping{
+				{Attribute: "customer.customer.customer_id", Column: "id"},
+				{Attribute: "customer.customer.name", Column: "name"},
+			},
+		},
+	}
+	builder := RelationQuerySQL{
+		Dialect:  newFakeDialect(),
+		Resolved: resolved,
+		Mappings: mappings,
+	}
+	sql, err := builder.BuildSelect()
+	if err != nil {
+		t.Fatalf("BuildSelect error: %v", err)
+	}
+	if !strings.Contains(sql.Statement, "AS OF 2024-01-01") {
+		t.Errorf("SQL missing temporal AS OF: %s", sql.Statement)
+	}
+	if !strings.Contains(sql.Statement, "orders.status = 'active'") {
+		t.Errorf("SQL missing regular filter: %s", sql.Statement)
+	}
+}
+
+func TestBuildRelationQuerySQLWithBetweenTemporalFilter(t *testing.T) {
+	resolved := query.ResolvedRelationQuery{
+		Query: query.RelationQuery{
+			ID:          "order_entry.temporal_between",
+			Application: "order_entry",
+			Datasource:  "master",
+			Root:        "sales.order",
+			Relations:   []query.RelationStep{{Relation: "sales.order.customer"}},
+			Filters: []query.Filter{
+				{
+					Temporal: &query.TemporalFilter{
+						From: "2024-01-01",
+						To:   "2024-12-31",
+					},
+				},
+			},
+			ResultColumns: []query.ResultColumnMapping{
+				{Column: "order_id", Attribute: "sales.order.order_id"},
+				{Column: "name", Attribute: "customer.customer.name"},
+			},
+		},
+		RootData: semantic.Data{ID: "sales.order"},
+		Steps: []query.ResolvedRelationStep{
+			{
+				Relation: semantic.Relation{ID: "sales.order.customer", Keys: []semantic.RelationKey{{SourceAttribute: "sales.order.customer_id", TargetAttribute: "customer.customer.customer_id"}}},
+				Source:   semantic.Data{ID: "sales.order"},
+				Target:   semantic.Data{ID: "customer.customer"},
+			},
+		},
+	}
+	mappings := []persistence.Mapping{
+		{
+			SemanticData: "sales.order",
+			Table:        "orders",
+			Columns: []persistence.ColumnMapping{
+				{Attribute: "sales.order.order_id", Column: "id"},
+				{Attribute: "sales.order.customer_id", Column: "customer_id"},
+			},
+		},
+		{
+			SemanticData: "customer.customer",
+			Table:        "customers",
+			Columns: []persistence.ColumnMapping{
+				{Attribute: "customer.customer.customer_id", Column: "id"},
+				{Attribute: "customer.customer.name", Column: "name"},
+			},
+		},
+	}
+	builder := RelationQuerySQL{
+		Dialect:  newFakeDialect(),
+		Resolved: resolved,
+		Mappings: mappings,
+	}
+	sql, err := builder.BuildSelect()
+	if err != nil {
+		t.Fatalf("BuildSelect error: %v", err)
+	}
+	if !strings.Contains(sql.Statement, "BETWEEN 2024-01-01 AND 2024-12-31") {
+		t.Errorf("SQL missing temporal BETWEEN: %s", sql.Statement)
+	}
+}

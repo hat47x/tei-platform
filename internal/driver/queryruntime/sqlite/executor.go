@@ -14,6 +14,12 @@ import (
 	"tei/internal/query"
 )
 
+// Resultは、SQLite固有の実行Evidenceとしてnamed parameterの束縛順だけを保持する。
+// ParameterNamesには実行時の値を含めない。raw resultとSemantic mappingはDriver共通境界が所有する。
+type Result struct {
+	ParameterNames []string `json:"parameterNames,omitempty"`
+}
+
 // Executorは、解決済みのRelation QueryをSQLiteで実行する。
 type Executor struct {
 	DB       Queryer
@@ -61,7 +67,54 @@ func (e Executor) ExecuteRelationQuery(
 		return driver.RelationQueryResult{}, fmt.Errorf("Relation Query %sのSQL生成に失敗しました: %w", resolved.Query.ID, err)
 	}
 	resolved.SQL = sql.Statement
-	return e.executeResolvedRelationQuery(ctx, sql.Statement, sql.Args...)
+
+	switch resolved.Query.FetchMode {
+	case query.RelationFetchModeEager, "":
+		return e.executeResolvedRelationQuery(ctx, sql.Statement, sql.Args...)
+	case query.RelationFetchModeBatch:
+		if resolved.Query.BatchSize <= 0 {
+			return driver.RelationQueryResult{}, fmt.Errorf("Relation Query %sのbatch sizeが未指定です", resolved.Query.ID)
+		}
+		return e.executeBatchedRelationQuery(ctx, resolved, sql.Statement, sql.Args...)
+	case query.RelationFetchModeLazy:
+		return driver.RelationQueryResult{}, fmt.Errorf("Relation Query %sのlazy fetchingは未実装です", resolved.Query.ID)
+	default:
+		return driver.RelationQueryResult{}, fmt.Errorf("Relation Query %sのfetch mode %sは未対応です", resolved.Query.ID, resolved.Query.FetchMode)
+	}
+}
+
+func (e Executor) executeBatchedRelationQuery(ctx context.Context, resolved query.ResolvedRelationQuery, sql string, args ...any) (driver.RelationQueryResult, error) {
+	batchSize := resolved.Query.BatchSize
+	offset := 0
+	var allRows [][]any
+	allColumns := []string{}
+
+	for {
+		batchSQL := fmt.Sprintf("%s LIMIT %d OFFSET %d", sql, batchSize, offset)
+		batchResult, err := e.executeResolvedRelationQuery(ctx, batchSQL, args...)
+		if err != nil {
+			return driver.RelationQueryResult{}, err
+		}
+		if len(batchResult.Raw.Rows) == 0 {
+			break
+		}
+		if allColumns == nil {
+			allColumns = batchResult.Raw.Columns
+		}
+		allRows = append(allRows, batchResult.Raw.Rows...)
+		offset += batchSize
+		if len(batchResult.Raw.Rows) < batchSize {
+			break
+		}
+	}
+
+	return driver.RelationQueryResult{
+		Raw: queryresult.RawResult{
+			Columns: allColumns,
+			Rows:    allRows,
+		},
+		Payload: Result{ParameterNames: nil},
+	}, nil
 }
 
 func (e Executor) executeResolvedRelationQuery(ctx context.Context, sql string, args ...any) (driver.RelationQueryResult, error) {
