@@ -32,13 +32,13 @@ type Diagnostic struct {
 
 // SchemaDiffImpact describes the impact of a schema change on the semantic model.
 type SchemaDiffImpact struct {
-	AddedTables    []string `json:"addedTables,omitempty"`
-	DroppedTables  []string `json:"droppedTables,omitempty"`
-	AddedColumns   []string `json:"addedColumns,omitempty"`
-	DroppedColumns []string `json:"droppedColumns,omitempty"`
-	AlteredColumns []string `json:"alteredColumns,omitempty"`
-	AddedRelations []string `json:"addedRelations,omitempty"`
-	DroppedRelations []string `json:"droppedRelations,omitempty"`
+	AddedTables           []string `json:"addedTables,omitempty"`
+	DroppedTables         []string `json:"droppedTables,omitempty"`
+	AddedColumns          []string `json:"addedColumns,omitempty"`
+	DroppedColumns        []string `json:"droppedColumns,omitempty"`
+	AlteredColumns        []string `json:"alteredColumns,omitempty"`
+	AddedRelations        []string `json:"addedRelations,omitempty"`
+	DroppedRelations      []string `json:"droppedRelations,omitempty"`
 	AffectedCandidateKeys []string `json:"affectedCandidateKeys,omitempty"`
 }
 

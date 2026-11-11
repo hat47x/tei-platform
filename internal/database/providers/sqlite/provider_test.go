@@ -248,4 +248,3 @@ func TestSQLiteProviderPermissionDenied(t *testing.T) {
 		t.Fatalf("expected empty snapshot for empty database, got %d tables", len(snap.Tables))
 	}
 }
-

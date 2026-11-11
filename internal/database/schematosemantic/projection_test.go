@@ -245,8 +245,8 @@ func TestProjectNullableAttributes(t *testing.T) {
 		CapturedAt: time.Now().UTC().Format(time.RFC3339),
 		Tables: []physical.Table{
 			{
-				Schema:     "public",
-				Name:       "items",
+				Schema: "public",
+				Name:   "items",
 				Columns: []physical.Column{
 					{Name: "id", PhysicalType: "int", Nullable: false, Ordinal: 1},
 					{Name: "name", PhysicalType: "text", Nullable: false, Ordinal: 2},
@@ -296,8 +296,8 @@ func TestProjectSchemaDiffIntegration(t *testing.T) {
 		CapturedAt: time.Now().UTC().Format(time.RFC3339),
 		Tables: []physical.Table{
 			{
-				Schema:     "public",
-				Name:       "products",
+				Schema: "public",
+				Name:   "products",
 				Columns: []physical.Column{
 					{Name: "id", PhysicalType: "int", Nullable: false, Ordinal: 1},
 					{Name: "name", PhysicalType: "text", Nullable: false, Ordinal: 2},
