@@ -29,6 +29,7 @@
 
 | 文書 | 対象 |
 | --- | --- |
+| [`ETL_BATCH_FUNCTION_COMPOSITION_DESIGN_2026-11.md`](ETL_BATCH_FUNCTION_COMPOSITION_DESIGN_2026-11.md) | ETL・Batch処理を既存Function・Data Operations・Operator・Pluginの合成として表す要件・基本設計・実装計画（[#1130](https://github.com/hat47x/tei-platform/issues/1130)・[#2622](https://github.com/hat47x/tei-platform/issues/2622)・[#4194](https://github.com/hat47x/tei-platform/issues/4194)、実装前設計・Owner未採用） |
 | [`AI_PERFORMANCE_TUNING_OBSERVABILITY_2026-11.md`](AI_PERFORMANCE_TUNING_OBSERVABILITY_2026-11.md) | 生成AIによる性能チューニングの設計ヒント・統計の実測と、Source／Function／Query／Provider／受領の資格を分けた独立Benchmark・改善検証（#3271・#3262・#2586、設計・実証候補） |
 | [`DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md`](DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md) | 汎用データソース・ワークベンチの標準範囲（接続・閲覧・構造定義・Migration）と縦断実証の設計（[#3270](https://github.com/hat47x/tei-platform/issues/3270)、[RQ-035](../../requirements/TEI_PRODUCT_REQUIREMENTS.md)、設計・検証計画） |
 | [`HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md`](HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md) | HTTP応答のServer/Client例外契約と、Graph/Table/Traceの相互検証（[#3274](https://github.com/hat47x/tei-platform/issues/3274)、設計候補） |
