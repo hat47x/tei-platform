@@ -444,16 +444,3 @@ func (t *testStore) CommitPending(pending map[core.CanonicalID]map[string]map[st
 		}
 	}
 }
-
-// ReferenceFailure mirrors the command package failure for tests.
-type ReferenceFailure struct {
-	Code    string
-	Message string
-}
-
-func (e *ReferenceFailure) Error() string { return e.Code + ": " + e.Message }
-
-const (
-	ReferenceRecordExists  = "RECORD_EXISTS"
-	ReferenceRecordMissing = "RECORD_MISSING"
-)

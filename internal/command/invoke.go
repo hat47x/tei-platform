@@ -7,6 +7,7 @@ import (
 
 	"tei/internal/applicationview"
 	"tei/internal/core"
+	"tei/internal/failure"
 	"tei/internal/ir"
 	"tei/internal/semantic"
 )
@@ -116,6 +117,86 @@ func ReportedFailure(err error) (string, string, bool) {
 }
 func (e *ExecutionError) Unwrap() error { return e.Cause }
 
+// FailureCode returns the machine-readable failure code.
+func (e *ExecutionError) FailureCode() string { return e.Code }
+
+// FailureMessage returns the human-readable failure message.
+func (e *ExecutionError) FailureMessage() string { return e.Message }
+
+// FailureCause returns the underlying error, if any.
+func (e *ExecutionError) FailureCause() error { return e.Cause }
+
+// Kind classifies the business meaning of the failure.
+func (e *ExecutionError) Kind() failure.Kind {
+	switch e.Code {
+	case "COMMAND_NOT_DECLARED",
+		"INVALID_COMMAND_INPUT",
+		"COMMAND_EXECUTOR_UNAVAILABLE",
+		"COMMAND_AUTHORIZER_UNAVAILABLE",
+		"COMMAND_UNAUTHORIZED",
+		"COMMAND_PERIOD_CLOSED",
+		"COMMAND_BUSINESS_DENIED",
+		"COMMAND_RESOURCE_CONFLICT":
+		return failure.BusinessRejection
+	case "COMMAND_TRANSACTION_BEGIN_FAILED",
+		"COMMAND_ROLLBACK_FAILED",
+		"COMMAND_COMMIT_FAILED",
+		"COMMAND_PERIOD_STATE_UNAVAILABLE",
+		"COMMAND_PERIOD_SCOPE_UNKNOWN",
+		"COMMAND_PERIOD_STATE_FAILED",
+		"COMMAND_PERIOD_SCOPE_UNAVAILABLE",
+		"COMMAND_EXECUTION_FAILED",
+		"COMMAND_RECORD_FAILED",
+		"UNDECLARED_COMMAND_EFFECT",
+		"UNDECLARED_COMMAND_OUTCOME",
+		"TIMEOUT":
+		return failure.TechnicalFailure
+	default:
+		return failure.TechnicalFailure
+	}
+}
+
+// Retryable reports whether the caller may safely retry the same operation
+// identity after this failure.
+func (e *ExecutionError) Retryable() failure.RetryPolicy {
+	base := failure.NotRetryable
+	switch e.Code {
+	case "COMMAND_NOT_DECLARED",
+		"INVALID_COMMAND_INPUT",
+		"COMMAND_AUTHORIZER_UNAVAILABLE",
+		"COMMAND_UNAUTHORIZED",
+		"COMMAND_PERIOD_CLOSED",
+		"COMMAND_PERIOD_STATE_UNAVAILABLE",
+		"COMMAND_PERIOD_SCOPE_UNKNOWN",
+		"COMMAND_PERIOD_STATE_FAILED",
+		"COMMAND_PERIOD_SCOPE_UNAVAILABLE",
+		"UNDECLARED_COMMAND_EFFECT",
+		"UNDECLARED_COMMAND_OUTCOME",
+		"COMMAND_BUSINESS_DENIED",
+		"COMMAND_RESOURCE_CONFLICT":
+		base = failure.NotRetryable
+	case "COMMAND_EXECUTOR_UNAVAILABLE",
+		"COMMAND_TRANSACTION_BEGIN_FAILED",
+		"COMMAND_ROLLBACK_FAILED",
+		"COMMAND_COMMIT_FAILED",
+		"COMMAND_EXECUTION_FAILED",
+		"COMMAND_RECORD_FAILED",
+		"PROVIDER_PARTIAL",
+		"TIMEOUT":
+		base = failure.Retryable
+	default:
+		base = failure.NotRetryable
+	}
+	if base == failure.Retryable && e.EffectUnknown {
+		return failure.LookupFirst
+	}
+	return base
+}
+
+// HasEffectUnknown reports whether the failure may have left partial effects
+// applied.
+func (e *ExecutionError) HasEffectUnknown() bool { return e.EffectUnknown }
+
 // NewUnknownExecutionErrorは、適用有無が確定しない実行失敗を作る。
 // L4（Plugin・Provider）が部分適用の可能性を報告するために使う。
 func NewUnknownExecutionError(code, message string, cause error) *ExecutionError {
@@ -138,6 +219,20 @@ func EffectMayBeUnknown(err error) bool {
 // UnitOfWorkがあっても巻き戻し済みとは断定できない。
 func effectContractViolation(code, message string) *ExecutionError {
 	return &ExecutionError{Code: code, Message: message, EffectUnknown: true}
+}
+
+// wrapTimeout wraps an ExecutionError with a TIMEOUT code if the underlying
+// cause is a context deadline exceeded. It preserves the EffectUnknown flag.
+func wrapTimeout(err error) error {
+	var executionError *ExecutionError
+	if errors.As(err, &executionError) {
+		if errors.Is(executionError.Cause, context.DeadlineExceeded) {
+			executionError.Code = "TIMEOUT"
+			executionError.Message = "operation timed out: " + executionError.Message
+			return executionError
+		}
+	}
+	return err
 }
 
 // Invokerは、宣言とExecutorの間に立ち、入力の検証・実行・結末の照合・取引を行う。
@@ -204,7 +299,7 @@ func (i Invoker) Invoke(ctx context.Context, request Request) (Result, error) {
 	if i.UnitOfWork == nil {
 		result, err := i.execute(ctx, request, plan)
 		if err != nil {
-			return result, err
+			return result, wrapTimeout(err)
 		}
 		result.Persistence = i.observePersistence(ctx, request, declaredEffect(plan))
 		result.AuthorizationMode = mode
@@ -212,28 +307,28 @@ func (i Invoker) Invoke(ctx context.Context, request Request) (Result, error) {
 	}
 	transaction, err := i.UnitOfWork.Begin(ctx)
 	if err != nil {
-		return Result{}, &ExecutionError{Code: "COMMAND_TRANSACTION_BEGIN_FAILED", Message: err.Error(), Cause: err}
+		return Result{}, wrapTimeout(&ExecutionError{Code: "COMMAND_TRANSACTION_BEGIN_FAILED", Message: err.Error(), Cause: err})
 	}
 	result, err := i.execute(ctx, request, plan)
 	if err != nil {
 		if rollbackErr := transaction.Rollback(ctx); rollbackErr != nil {
-			return Result{}, &ExecutionError{
+			return Result{}, wrapTimeout(&ExecutionError{
 				Code:          "COMMAND_ROLLBACK_FAILED",
 				Message:       fmt.Sprintf("%s (rollback also failed: %s)", err.Error(), rollbackErr.Error()),
 				Cause:         err,
 				EffectUnknown: true,
-			}
+			})
 		}
-		return Result{}, err
+		return Result{}, wrapTimeout(err)
 	}
 	if err := transaction.Commit(ctx); err != nil {
 		_ = transaction.Rollback(ctx)
-		return Result{}, &ExecutionError{
+		return Result{}, wrapTimeout(&ExecutionError{
 			Code:          "COMMAND_COMMIT_FAILED",
 			Message:       err.Error(),
 			Cause:         err,
 			EffectUnknown: true,
-		}
+		})
 	}
 	result.Persistence = i.observePersistence(ctx, request, declaredEffect(plan))
 	result.AuthorizationMode = mode

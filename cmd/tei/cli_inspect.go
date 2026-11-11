@@ -10,8 +10,11 @@ import (
 )
 
 type cliInspectionFailure struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
+	Code          string `json:"code"`
+	Message       string `json:"message"`
+	Kind          string `json:"kind,omitempty"`
+	Retryable     string `json:"retryable,omitempty"`
+	EffectUnknown bool   `json:"effectUnknown,omitempty"`
 }
 type cliInspectionReport struct {
 	SchemaVersion string                        `json:"schemaVersion"`
