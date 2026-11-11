@@ -469,5 +469,6 @@
 - [閉塞拒否と訂正能力の矛盾の宣言段階での報告の確認（2026-11）](XTEA_LOWCODE_PERIOD_CLOSURE_CONFLICT_2026-11.md)
 - [再開（closed→open）に訂正能力を要求する確認（2026-11）](XTEA_LOWCODE_PERIOD_REOPEN_CORRECTION_2026-11.md)
 - [期間の要件を `tei view` へ投影する確認（2026-11）](XTEA_LOWCODE_PERIOD_REQUIREMENT_VIEW_2026-11.md)
+- [例のWorkspaceで期間の要件を宣言する確認](XTEA_LOWCODE_EXAMPLE_PERIOD_REQUIREMENT_2026-11.md)（参照実装の試験記録。例で宣言・検証・投影・実行が一致。宣言時に矛盾検査が実例で発火し、`closed-rejects`を狭めた）
 - [実行器はあるのに振り分けが無いrea-intakeを配線する](TEI_DOGFOODING_ROUND77_REA_INTAKE_ROUTE_2026-11-11/README.md)（runThreeElementReaIntakeは実装済みでテスト12箇所が呼んでいたが、dispatcherにcaseが無く14件FAILしていた。テストが実行器を直接呼んでいたため見落とされていた。14→0。rea-evidenceは実装自体が無く範囲外、gofmt違反6ファイルはrecord only）
 - [未統合機能の孤児テストがrepository-healthを常時赤にする](TEI_DOGFOODING_ROUND78_REA_EVIDENCE_ORPHAN_2026-11-12/README.md)（rea-evidenceを要求する2試験がmainに在り、実装は未統合ブランチ（157コミット遅れ）にのみ存在。依存のinternal/externalanalysis 1,202行もmainに無い。スタブは採らない（動くように見せるため）。起票 #4455。plan-checkは第76〜77ラウンドで緑）
