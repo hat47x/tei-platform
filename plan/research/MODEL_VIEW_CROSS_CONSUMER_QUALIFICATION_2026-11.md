@@ -86,3 +86,24 @@ MV-01の次の一手として、既存`internal/operations/model_catalog_validat
 - `catalogValidation`は`SourceRootFindings`のerrorを数える一方、`WorkspaceValidation.HasErrors()`は確認したmainコードでは`Direct`／`Diagnostics`のerrorを確認し、`SourceRootFindings`を走査しない。**Source-root-onlyのerrorがあるWorkspace**について、これらをそのまま合否として比べれば不一致の可能性がある。実CLIの`validate -json`がどの規則を使うか、発火可能なRoot負例とともに[#2823](https://github.com/hat47x/tei-platform/issues/2823)／[#3674](https://github.com/hat47x/tei-platform/issues/3674) Ownerへ返して調べる。現在のProduct CLIが誤判定したという実証結果ではない。
 
 これらは本PRの既存4 operationテストの成否とは**独立の未検証問題**。正式なValidation状態Schemaや新検証器を先に増やさず、同一Rootの`CatalogWorkspace`／`ValidateWorkspace`／CLI JSONを実Source-root-only負例で照合した上で最小対応を判断する。**NOT RUN / NOT PROVEN**。
+
+## 5. 2026-11-11：Source-root-onlyエラーを跨ぐValidation資格の整合（小さい実装修正候補）
+
+**更新した事実**：[#3808](https://github.com/hat47x/tei-platform/pull/3808)の検証NG WorkspaceによるCatalog／Validate／Inspect／Source Trace回帰と[#3543](https://github.com/hat47x/tei-platform/pull/3543)の実Workbench A/J限定結線は**main統合済み**。[#4239](https://github.com/hat47x/tei-platform/pull/4239)の歴史Source A/B→実CLI/MCP受領、[#4279](https://github.com/hat47x/tei-platform/pull/4279)のOperationSurface代表Bindingの非完全性負例もmain統合済み。ただし成功した各試験は同一Provider/Attempt/Owner業務意味のEnd-to-end証拠ではない。[旧Draft #3518](https://github.com/hat47x/tei-platform/pull/3518)は**未統合でclosed**。その設計や実験を現mainの正式Model Map機能とは扱わない。
+
+### MV-10：同じ実Workspaceで、manifestの存在しないRootだけがerror
+
+[#2823](https://github.com/hat47x/tei-platform/issues/2823)にあるRoot処理の実装を2026-11-11のmain `2202baa96e5e845c996da62c8f8df27e00d45c43`で照合した。現行の`WorkspaceValidationReportFrom`（CLI/MCP共通投影）と`catalogValidation`は、`SourceRootFindings`の`error`を不合格に含める。一方`WorkspaceValidation.HasErrors()`は`Direct`と`Diagnostics`だけを見るため、**Source-root-only errorを見落とす静的な規則差**があった。これは新しいValidationの意味判断ではなく、既存の不合格判定への一致問題である。
+
+最小修正候補は、`WorkspaceValidation.HasErrors()`へ`SourceRootFindings`のerrorの検査を追加すること。診断本体の複製や第二Validator／Schemaを作らず、既存APIの利用者がCatalog/CLI報告と異なる不合格判定をしないようにする。
+
+| 実Workspaceの固定対照 | 型付きHasErrors | Catalog Validation | CLI/MCP共通Report |
+| --- | --- | --- | --- |
+| `semantic`正常＋宣言した`nonexistent` Rootが存在しない | `true`が必要 | `ok=false`、error件数≥1 | `ok=false` |
+| `semantic`正常＋存在する未知`future` Root | `false`が必要（warningのみ） | `ok=true`、warning件数≥1 | `ok=true` |
+
+本変更の実Goテストは`internal/operations/validate_test.go`へ、既存`writeWorkspaceFixture`を使って上記の**二つの実ファイル系Workspace**を作る。Loader→Source Index→Catalog/Validate→共通Reportの既存経路を使用し、入力全件やHostによる外部実行の保証はしない。異なるOperationの実行は別々のLoadであり、結果のFingerprint一致から**原子的な同一Attempt**を推論しない。
+
+**独立の残課題**：`CatalogWorld(world, idx, ...)`を直接呼ぶ際の`Validation.OK`初期値は、`CatalogWorkspace`の検証済み結果と別物。今回の修正はこの低水準関数に検証資格を付与しない。また将来の三視点図やCRUD表で「Rootが未取得」と「対象が存在しない」を混同してはいけない。
+
+**実証資格**：この節は提案した最小製品修正とその二つの回帰条件を記録するもの。変更のGo試験、実CLI/MCP、Studio・Model Map・Runtime/Provider、完全なSource Closure、Current Grant/Owner MeaningとCIが**exact HEADで確認されるまでNOT PROVEN**。新Core/Host/Reader/Policyを増設しない。
