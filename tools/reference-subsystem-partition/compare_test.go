@@ -86,3 +86,113 @@ func TestBuildComparisonReportFromFixture(t *testing.T) {
 		}
 	}
 }
+
+func snapshotFromCandidate(label string, c Candidate, coverage map[string]ProvenanceKind) PartitionSnapshot {
+	writes := make([]Write, 0)
+	_ = writes
+	return PartitionSnapshot{
+		Label:       label,
+		Assignments: c.Assignments,
+		Coverage:    coverage,
+	}
+}
+
+func TestComparePartitionsPlacementOnly(t *testing.T) {
+	p, err := fixtureProblem()
+	if err != nil {
+		t.Fatal(err)
+	}
+	candidates, _ := GenerateCandidates(p)
+	if len(candidates) < 2 {
+		t.Fatalf("need at least 2 candidates, got %d", len(candidates))
+	}
+	coverage := map[string]ProvenanceKind{
+		"sales.order":      ProvDeclaredSource,
+		"billing.invoice":  ProvParsedExtracted,
+		"inventory.stock":  ProvDeclaredSource,
+		"crm.customer":     ProvDeclaredSource,
+		"unknown.subject":  ProvUnresolved,
+		"unexamined.thing": ProvNotExamined,
+	}
+	before := snapshotFromCandidate("before", candidates[0], coverage)
+	before.Writes = p.Writes
+	before.ReadEdges = p.ReadEdges
+	after := snapshotFromCandidate("after", candidates[1], coverage)
+	after.Writes = p.Writes
+	after.ReadEdges = p.ReadEdges
+
+	cmp, err := ComparePartitions(before, after)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cmp.SchemaVersion != "tei.subsystem-partition.comparison-partition/v0" {
+		t.Fatalf("unexpected schema version %s", cmp.SchemaVersion)
+	}
+	if cmp.AuthorityLimit != AuthorityLimit {
+		t.Fatalf("missing authority limit")
+	}
+	if !cmp.DiffModelsConsistent {
+		t.Fatalf("same fixture candidates must be diff-models consistent")
+	}
+	if len(cmp.AddedFunctions) != 0 || len(cmp.RemovedFunctions) != 0 {
+		t.Fatalf("same fixture must not add or remove functions: +%v -%v", cmp.AddedFunctions, cmp.RemovedFunctions)
+	}
+	if len(cmp.AddedData) != 0 || len(cmp.RemovedData) != 0 {
+		t.Fatalf("same fixture must not add or remove data: +%v -%v", cmp.AddedData, cmp.RemovedData)
+	}
+	if cmp.MovedFunctionCount != len(cmp.MovedFunctions) {
+		t.Fatalf("moved count mismatch")
+	}
+	if cmp.UnresolvedCount != 1 {
+		t.Fatalf("expected 1 unresolved subject, got %d", cmp.UnresolvedCount)
+	}
+	if cmp.NotExaminedCount != 1 {
+		t.Fatalf("expected 1 not-examined subject, got %d", cmp.NotExaminedCount)
+	}
+	if cmp.AfterCrossWrites == 0 {
+		t.Fatalf("fixture writes must produce cross writes")
+	}
+	if len(cmp.Reclassification.Cross) == 0 || len(cmp.Reclassification.Internal) == 0 {
+		t.Fatalf("reclassification must split internal and cross: %+v", cmp.Reclassification)
+	}
+	for _, note := range cmp.Notes {
+		if note == "function-or-data-set-differs-between-snapshots" {
+			t.Fatalf("unexpected inconsistency note for same-fixture comparison")
+		}
+	}
+}
+
+func TestComparePartitionsDetectsSetChange(t *testing.T) {
+	before := PartitionSnapshot{
+		Label:       "before",
+		Assignments: []Assignment{{Function: "F1", Subsystem: "sales"}},
+		Writes:      []Write{{ID: "w1", Function: "F1", Data: "sales.order", Owner: "sales", Operation: "C", Weight: 1}},
+	}
+	after := PartitionSnapshot{
+		Label:       "after",
+		Assignments: []Assignment{{Function: "F2", Subsystem: "sales"}},
+		Writes:      []Write{{ID: "w2", Function: "F2", Data: "billing.invoice", Owner: "billing", Operation: "C", Weight: 1}},
+	}
+	cmp, err := ComparePartitions(before, after)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cmp.DiffModelsConsistent {
+		t.Fatalf("function set change must be reported as inconsistent")
+	}
+	if len(cmp.AddedFunctions) != 1 || cmp.AddedFunctions[0] != "F2" {
+		t.Fatalf("expected added F2, got %v", cmp.AddedFunctions)
+	}
+	if len(cmp.RemovedFunctions) != 1 || cmp.RemovedFunctions[0] != "F1" {
+		t.Fatalf("expected removed F1, got %v", cmp.RemovedFunctions)
+	}
+	if len(cmp.AddedData) != 1 || cmp.AddedData[0] != "billing.invoice" {
+		t.Fatalf("expected added billing.invoice, got %v", cmp.AddedData)
+	}
+	if len(cmp.RemovedData) != 1 || cmp.RemovedData[0] != "sales.order" {
+		t.Fatalf("expected removed sales.order, got %v", cmp.RemovedData)
+	}
+	if cmp.MovedFunctionCount != 0 {
+		t.Fatalf("no shared function means no movement, got %d", cmp.MovedFunctionCount)
+	}
+}

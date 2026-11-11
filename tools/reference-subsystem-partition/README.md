@@ -38,9 +38,20 @@ Further needed (not implemented by this package): Source closure and actual Acce
 
 ## S6-S7 (added for #4413)
 
-- `ComparisonReport` / `BuildComparisonReport` (`compare.go`): deterministic before/after comparison table of candidates (cross-boundary counts/weights, cohesion, max size).
-- `ProjectionReport` / `BuildProjectionReport` (`project.go`): per-subsystem projection of Function, write/read edges, caller-supplied data identities, and invocation dependencies. Read-only and derived-only; an invocation is a delegation projection, never a direct write.
+- `ComparisonReport` / `BuildComparisonReport` (`compare.go`): deterministic ranked comparison of candidates (cross-boundary counts/weights, cohesion, max size).
+- `PartitionSnapshot` / `ComparePartitions` (`compare.go`): before/after comparison table reporting moved function count, boundary delta, write reclassification by operation (internal vs cross), residual `unresolved` / `not-examined` counts, and Function/Data set differences. Movement is placement-only; set differences are cross-checked against `threeelement.DiffModels` so a placement change is never reported as a Source definition change.
+- `ProjectionInput` / `BuildProjectionReport` (`projection.go`): per-subsystem projection of Function, write/read edges and invocation dependencies.
+- `BuildERProjection` (`projection.go`): per-subsystem ER view that preserves external reference nodes with `ownership: external` and the referencing occurrence ids. Subjects outside a supplied Public Slice are marked `non-disclosed` with a reason code instead of being deleted.
+- `BuildCRUDMatrix` (`projection.go`): whole-world Function×Data C/R/U/D table with a provenance origin column. Undetermined provenance is marked, never rendered as "no operation".
+- `BuildDependencyGraph` (`projection.go`): typed dependency graph separating invocation, function-data-write, data-data-relation and external-boundary edges. Delegation is never drawn as a cross-boundary direct CUD edge.
+- Every projection carries `authorityLimit` and a digest derived from the candidate id and the exact supplied graph, so ER/CRUD/dependency outputs can be shown to share one candidate.
 
 These are preview outputs and do not change accepted ownership, grant authorization, or expose runtime effects.
+
+### Not implemented here
+
+- `ercrossview.Project` is not called: this package projects caller-supplied candidate graphs and never builds an `ir.World`, so no logical baseline is taken from the ER cross-view. Logical and physical separation is still enforced by construction (no Table/PK/UNIQUE/FK is projected).
+- Data–Data relation edges require caller-supplied relations and are reported as absent rather than inferred.
+- Public Slice selection itself, and enforcement of disclosure for private edges, remain in #2516/#1124.
 
 **No main integration or Owner Meaning Acceptance is implied by creating this reference.**
