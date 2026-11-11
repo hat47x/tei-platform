@@ -105,16 +105,23 @@ func Reconcile(draft Draft, root string) (ReconcileReport, error) {
 	read, err := readWorkspace(root, draft.Subjects[0].Subject)
 	if err != nil {
 		// A subject that no longer exists is a reconciliation answer, not a
-		// failure of the comparison.
+		// failure of the comparison. The same holds for a subject that stopped
+		// being unambiguous: the draft is not comparable, and the reader is told
+		// so instead of being handed one of the two declarations.
 		var draftErr *DraftError
-		if errors.As(err, &draftErr) && draftErr.Code == CodeSubjectNotFound {
+		if errors.As(err, &draftErr) &&
+			(draftErr.Code == CodeSubjectNotFound || draftErr.Code == CodeSubjectAmbiguous) {
+			diff := "subject-missing"
+			if draftErr.Code == CodeSubjectAmbiguous {
+				diff = "subject-ambiguous"
+			}
 			return ReconcileReport{
 				SchemaVersion: "tei.document-draft.reconcile/v0",
 				Effect:        EffectReadOnlyProjection,
 				DraftID:       draft.DraftID,
 				ModelReference: ModelReferenceReconciliation{
 					Status: ModelReferenceStale,
-					Diffs:  []string{"subject-missing"},
+					Diffs:  []string{diff},
 				},
 				Occurrences:         allOccurrencesMissing(draft),
 				NeedsReconfirmation: occurrenceIDs(draft),
