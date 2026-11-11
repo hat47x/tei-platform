@@ -227,7 +227,7 @@ VSクマ側の期待結果は、上流に書かれた事実から独立に用意
 | --- | --- | --- | --- | --- |
 | VOC-01 | [#2510](https://github.com/hat47x/tei-platform/issues/2510) | `implementer` | 範囲・列値の検証を`validation`へ追加する設計案とADR草案 | 未着手 |
 | SM-01 | [#4193](https://github.com/hat47x/tei-platform/issues/4193) | `reviewer` | 状態機械のread-only投影の成果を#4193の受入条件へ接続するreview | **実施済み**（blocking 1件を修正） |
-| SM-02 | [#4193](https://github.com/hat47x/tei-platform/issues/4193) | `implementer` | UI非同期と通信Sessionのread-only解釈（#4193 §6のS1） | 未着手 |
+| SM-02 | [#4193](https://github.com/hat47x/tei-platform/issues/4193) | `implementer` | UI非同期と通信Sessionのread-only解釈（#4193 §6のS1） | **実施済み**（domain2/、独立Expected 13件） |
 | OPEN-01 | [#2533](https://github.com/hat47x/tei-platform/issues/2533) | `architect` | 開いた集合を列挙型として書くときの規約 | **設計案あり**（[OPEN_SET_POLICY.md](../../research/tei-cross-domain-probe-2026-11/OPEN_SET_POLICY.md)） |
 | TRACE-01 | [#4134](https://github.com/hat47x/tei-platform/issues/4134) | `implementer` | 外部Repository転記の照合下限と証跡の記録 | **実施済み**（CI接続は未実施） |
 | CSW-01 | CSW [#593](https://github.com/hat47x/cultural-substrate-weaving/issues/593) | Owner判断 | 型付き受け渡しを任意の道具として残す場合の仕様 | 判断待ち |
@@ -297,9 +297,11 @@ VSクマ側の期待結果は、上流に書かれた事実から独立に用意
 
 ### SM-02
 
-**親Issue**：[#4193](https://github.com/hat47x/tei-platform/issues/4193) §6のS1。**要求ロール**：`implementer`。**状態**：未着手。
+**親Issue**：[#4193](https://github.com/hat47x/tei-platform/issues/4193) §6のS1。**要求ロール**：`implementer`。**状態**：**実施済み**（2026-11-11）。
 
 **目的**：#4193の受入条件1が求める「二つの異質なDomain」のうち、残る2領域（UI非同期・通信Session）をread-onlyで解釈する。SM-01で得られた「具体的不足」の3点が、別Domainでも同じ形で現れるかを確認する。
+
+**実施結果**：UI非同期（5状態7遷移）と通信Session（5状態8遷移）のsynthetic read-only投影を`research/tei-cross-domain-probe-2026-11/domain2/`に追加した。上流ファイルを持たないため、汎用的な非同期パターンの共通部分をsynthetic modelとして構築している（`ui_async.go` / `comm_session.go`に明記）。独立Expected 13件（形状・未知状態拒否・重複ID・未束縛source/target・guardの観測語・描画の全reason包含・state/reason空間の独立）を追加した。
 
 **許容変更範囲**：
 - `research/tei-cross-domain-probe-2026-11/`にUI非同期と通信Sessionのread-only投影を追加する。
