@@ -1,0 +1,12 @@
+Task: stand up a staging environment with its own instances and bindings.
+
+Attempt 1 -> DATABASE_PROVIDER_PLUGIN_MISSING
+             environment staging instance sales_core.staging provider postgres
+             has no resolved database-provider plugin
+           + MIGRATION_PROVIDER_PLUGIN_MISSING
+             environment staging database sales_core migration tool atlas
+             has no resolved migration-provider plugin
+Attempt 2 -> ok   (added `bundle tei.reference.providers ^1`)
+
+One round trip. The diagnostic named the instance, the provider and the migration
+tool, so the missing declaration was unambiguous.

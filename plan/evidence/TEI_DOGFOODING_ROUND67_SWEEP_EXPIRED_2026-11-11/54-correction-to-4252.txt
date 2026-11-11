@@ -1,0 +1,10 @@
+#4252 proposed four options and recommended A (busy_timeout) or B (retry).
+
+All four were already satisfied or irrelevant:
+
+  A  busy_timeout            already set (DSN pragma + explicit PRAGMA)
+  B  retry SQLITE_BUSY       wrong cause
+  C  serialize the tests     concurrency was not broken
+  D  WAL mode                already set
+
+The issue is corrected in a comment rather than silently closed.

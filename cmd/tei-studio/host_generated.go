@@ -22,6 +22,13 @@ func newStudioHost(paths []string) (*studiohost.ReadOnly, error) {
 	if err != nil {
 		return nil, err
 	}
+	return newStudioHostWithInspector(paths, inspector)
+}
+
+// newStudioHostWithInspector serves the Inspector the composing Host already
+// selected. The renderer still supplies workspace IDs only; it cannot name a
+// Provider, and every root reaches the Inspector through the allowlist.
+func newStudioHostWithInspector(paths []string, inspector *inspectoradapter.LocalInspectorHost) (*studiohost.ReadOnly, error) {
 	return studiohost.NewReadOnlyWithFactoryAndObserver(paths,
 		func(trustedRoot string) (studiohost.RootServices, error) {
 			selected, err := inspector.Bind(trustedRoot)

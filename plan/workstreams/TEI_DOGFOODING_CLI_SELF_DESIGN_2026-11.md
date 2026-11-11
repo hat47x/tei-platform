@@ -2150,3 +2150,192 @@ v1 と v2 はどちらも **CLI で走らせて初めて気づいた**。案内�
 ### #4169 の進捗
 
 A 案は4件（パターン配置・契約の版・bind・interaction の形）。
+
+## 68. 第66ラウンド（2026-11-11）: `cmd/tei` の 10 分上限を、ビルド 1 回化で解消
+
+第65ラウンドで「`cmd/tei` が単独 564.8s、同時実行で 600.1s の `go test` 上限に達して FAIL」と記録した。機能の失敗ではなく実行時間の問題なので、原因を測って直した。生出力は[第66ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND66_CLI_TEST_TIME_2026-11-11/README.md)にある。
+
+### 測定
+
+`cmd/tei` は 353 テスト・合計 676.2s。上位は自己ビルド系（202.7s・47.5s）と、**`TestMissingRequiredFlagIsAlwaysInvalidArgument` の 61.5s** だった。後者はサブテスト 12 個の和が 74.5s で、**親が 37.3s をサブテスト以外で使っていた**。
+
+原因は `runCLIForClassification` が**ケースごとに `go build` を実行**していたこと。テストの目的は実プロセスの終了コードと JSON を見ることで、バイナリは 1 回作れば足りる。
+
+### 修正
+
+`sync.Once` でテストバイナリごとに 1 回だけビルドし、パスを共有する。
+
+| 対象 | 修正前 | 修正後 |
+| --- | --- | --- |
+| 当該テスト | 62.6s | **5.3s** |
+| `./cmd/tei` 全体 | 564.8s（同時実行で 600.1s FAIL） | **232.9s ok** |
+
+**正直に書く**: `-short` は 306.3s と通常実行（232.9s）より遅く見えるが、`-short` を先に（キャッシュ cold）、通常実行を後に（warm）実行した順序の効果である。**同条件で測っていないので、この大小関係は主張しない。**
+
+### 変異試験をしない理由
+
+**テストコードのみの変更で、製品の振る舞いに影響しない。変異で確かめられる対象がない。** 代わりに `./cmd/tei` 全体（603テスト）が ok であること、`go vet` に指摘がないことを確認した。
+
+### 直さないこと
+
+自己ビルド系（200s+）は設計意図どおりで `-short` がスキップする。CI の実行方法と 600 秒上限も変えていない。**`cmd/tei` には他に 10 箇所の `go build` 呼び出しがあり、それらが 1 テスト 1 ビルドかは未測定**である。
+
+## 69. 第67ラウンド（2026-11-11）: SQLite の sweep が期限切れを返さない断続失敗を、単一文化で解消
+
+第66ラウンドで起票した [#4252](https://github.com/hat47x/tei-platform/issues/4252) を解消した。**起票時の推定が間違っていたことを、実測で訂正した回**である。生出力は[第67ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND67_SWEEP_EXPIRED_2026-11-11/README.md)にある。
+
+### 推定の訂正
+
+起票時、CI のログに `SQLITE_BUSY` があったため「ロック競合」と判断し、4案（busy_timeout／再試行／直列化／WAL）を書いた。
+
+実際に測ると:
+
+| 試行 | 結果 |
+| --- | --- |
+| 素の `go test` 40回 | **0/40 失敗**（再現しない） |
+| `TestParallelClaim` 単独 50回 | ok |
+| **`-count=5`（1プロセスで5回）** | **FAIL** |
+| `-count=10` を3並列 | **3/3 FAIL** |
+
+しかも失敗していたのは `TestParallelClaim` ではなく **`TestSweepExpired`** だった:
+
+```text
+--- FAIL: TestSweepExpired (0.05s)
+    lease_test.go:76: SweepExpired len = 0, want 1
+```
+
+**`busy_timeout` と `SetMaxOpenConns(1)` は既に設定済み**で、ロック競合は原因ではなかった。
+
+### 原因
+
+`SweepExpired` が 2 文に分かれていた。
+
+```sql
+UPDATE claims SET state='expired', updated_at=datetime('now') WHERE ...
+SELECT ... WHERE state='expired' AND updated_at = datetime('now')
+```
+
+**`datetime('now')` は秒単位**である。文の間で秒が変わると SELECT は 0 行を返し（作業は成功しているのに「何も期限切れでない」と答える）、同じ秒に 2 回目を走らせると前回の行を**もう一度**返す。**時刻を「目印」に使って行を探し直す設計そのもの**が誤りだった。
+
+### 修正
+
+単一の `UPDATE ... RETURNING` にした。返す値は「この文が期限切れにした集合」そのものになり、探し直しが無くなる。`rows.Err()` も確認する。
+
+### 試験と変異
+
+| 試験 | 内容 |
+| --- | --- |
+| `TestSweepExpiredReportsOnlyWhatItExpired` | 1回目は1件、**同じ秒での2回目は0件** |
+| `TestSweepExpiredLeavesActiveClaimsAlone` | 有効な claim は sweep されず `working` のまま |
+
+**旧実装（2文）に戻すと 10 回反復で FAIL する。** 安定性は `-count=5` を 8 回で **0/8 失敗**（修正前は 3/3 失敗）。
+
+### #4252 の運用
+
+**4案はいずれも当てはまらなかった。** 黙って閉じず、**Issue を訂正するコメントを書いてから**修正で閉じる。
+
+## 70. 第69ラウンド（2026-11-11）: main の壊れた文字列リテラルを直す
+
+第68ラウンドの `go vet ./...` が、**自分の変更とは無関係な main の破損**を捕まえた。
+
+### 発見
+
+```text
+tools/reference-mcp-readonly-adapter/source_ab_consumer_parity_test.go:122:13:
+  string literal not terminated
+```
+
+ブランチ元（`12762bdd3`）を**素の状態**で checkout しても同じく落ち、当時の最新 main（`be814895e`）でも壊れていた。
+
+```go
+t.Fatalf("%s: actual CLI and MCP consumer documents differ:
+CLI=%v
+MCP=%v", version, cliDoc, mcpDoc)
+```
+
+**Go の文字列リテラルに本物の改行が入っていた。** `\n` ではなく実改行で、リテラルが 122 行目で終端していない。
+
+### 修正
+
+エスケープシーケンスに置き換えた。`gofmt -l .` が空、`go vet` が指摘なし、**`go test ./tools/reference-mcp-readonly-adapter` が ok（67.7s）**。修正前はこのパッケージは**ビルドすらできなかった**。
+
+### 断言しないこと
+
+- **CI がこの状態を検出していたかは確認できなかった。** 最初の問い合わせで誤った workflow 名（`repository-health.yml`）を使い、正しい名前は `tei-repository-health-ci.yml` だと分かったが、再問い合わせの前に切り替えた。
+- **壊れたファイルが main に入った経路（`6ea1523cc`）は特定していない。** レビューと CI のどちらがすり抜けたかは分からない。
+- 変異試験は無い（構文修復で振る舞いが変わらないため）。gofmt・vet・パッケージの試験で確認した。
+
+## 71. 第68ラウンド（2026-11-11）: 環境を設計し、database・environment を CLI で読めるようにする
+
+まだ触っていない層として environment を選び、CLI の診断だけで staging 環境を設計した。生出力は[第68ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND68_ENVIRONMENT_LAYER_2026-11-11/README.md)にある。
+
+### 設計（1往復）
+
+| Attempt | 応答 | 学んだこと |
+| --- | --- | --- |
+| 1 | `DATABASE_PROVIDER_PLUGIN_MISSING environment staging instance sales_core.staging provider postgres has no resolved database-provider plugin` ＋ `MIGRATION_PROVIDER_PLUGIN_MISSING` | 環境は使う provider の plugin を自分で解決する |
+| 2 | `ok`（`bundle tei.reference.providers ^1` を追加） | バンドル宣言で解決 |
+
+**診断が instance 名・provider 名・migration tool 名まで名指ししたので、1往復で通った。**
+
+### 読み返しで見つけた欠落
+
+設計は通ったが、`database` も `environment` も CLI で読めなかった。`model catalog` には出ず、`inspect` と `trace` は `UNSUPPORTED_SUBJECT_KIND`、`world` だけが返した。**`model overview` は既に `notCoveredKinds` で「載っていない」と宣言していた**（第59ラウンドの E 案）。宣言と実害が一致していた。
+
+### 修正
+
+`database` と `environment` を `inspect` に追加。受理種 16→**18**。
+
+```text
+database     sales_core -> ok  sourceStatus=indexed
+environment  staging    -> ok  sourceStatus=indexed
+database     nope_core  -> SUBJECT_NOT_FOUND
+environment  nope       -> SUBJECT_NOT_FOUND
+```
+
+**両方 `indexed`** である（第58ラウンドの配備層は `not-indexed`）。Source Index が既に記録していたため。
+
+### `database-instance` を追加しなかった理由
+
+**World 直下の宣言ではない**（`environment.Environment` の中にあり、ID も環境ごとに閉じている）。単体 kind にすると「どの環境のインスタンスか」が曖昧になる。
+
+### 変異
+
+`environment` の dispatch を外す／`database` の dispatch を外す、の2種が落ちる。**第58ラウンドで足した種非依存の検査が、試験を書き換えずに両方を捕まえた。**
+
+## 72. 第71ラウンド（2026-11-11）: 永続化マッピングを設計し、persistence-mapping を CLI で読めるようにする
+
+まだ触っていない層として persistence を選び、CLI の診断だけでマッピングを設計した。生出力は[第71ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND71_PERSISTENCE_LAYER_2026-11-11/README.md)にある。
+
+### 経過（6往復）
+
+| Attempt | 応答 | 学んだこと |
+| --- | --- | --- |
+| 1 | `ok`（**しかし何も起きていない**） | ファイルが読まれていない |
+| 2 | `expected "persist"` | `databases/<db>/persistence/` 配下に置く。キーワードは `persist` |
+| 3 | `expected "storage"` | `database` の後に `semantic`、列に `storage` と nullability |
+| 4 | `PERSISTENCE_UNDECLARED_SEMANTIC_DEPENDENCY` ＋ `UNKNOWN_PERSISTENCE_ATTRIBUTE` ×2 | database の `uses semantic` と、実在する属性 |
+| 5 | `DATABASE_CONTRACT_UNDECLARED_SEMANTIC_DEPENDENCY` ＋ `PERSISTENCE_MAPPING_NON_RELATIONAL_DATABASE` | `kind relational` |
+| 6 | `ok` | 完成 |
+
+### Attempt 1 の「静かな失敗」
+
+**Attempt 1 は `ok` を返したが、マッピングは World に入っていなかった。** ローダは `databases/<db>/persistence/*.tei` しか読まず、`validate` は「読まなかったファイル」について何も言わない。**配置の誤りが成功として返る。**
+
+**`validate` が通ることは「意図が反映された」ことを意味しない。** 読み返しを必ず行う理由が、ここで実証された。
+
+（**起票していない。** 再現は確定したが、修正が「警告を出す」のか「もっと広い場所を読む」のかを決めていない。第52ラウンドの誤りを避けるため、記録のみ。）
+
+### 読み返しで見つけた欠落と修正
+
+`persistence-mapping` は `model catalog` に出ず、`inspect` / `trace` が `UNSUPPORTED_SUBJECT_KIND`、`model overview` は `notCoveredKinds` に載せていた。
+
+`inspect` に追加し、受理種 18→**19**。
+
+```text
+persistence-mapping master_data.intake -> ok  table public.intakes  cols 1  not-indexed
+persistence-mapping sales_core.order   -> ok  table public.orders   cols 6
+persistence-mapping nope.thing         -> SUBJECT_NOT_FOUND
+```
+
+変異1種（dispatch を外す）が落ちる。**種非依存の検査が試験を書き換えずに捕まえた。**

@@ -21,6 +21,13 @@ func TestDeliveryLayerSubjectsAreInspectable(t *testing.T) {
 	}{
 		{kind: "migration", id: "20260826_001"},
 		{kind: "application-release", id: "order_entry"},
+		// The binding layer: a designer can declare a database and stand up an
+		// environment, and both must be readable (#4128).
+		{kind: "database", id: "sales_core"},
+		{kind: "environment", id: "development"},
+		// The persistence layer: a designer can declare that a semantic data
+		// type lives in a table, and must be able to read the mapping back.
+		{kind: "persistence-mapping", id: "sales_core.order"},
 		{kind: "database-release", id: "sales_core", wantVersions: []string{"4.0.0", "4.1.0", "4.2.0"}},
 		{kind: "solution-release", id: "order_rollout", wantVersions: []string{"2026.8.27"}},
 	}
@@ -69,7 +76,7 @@ func TestDeliveryLayerSubjectsAreInspectable(t *testing.T) {
 // A release subject names its owner, so an owner with no release is not found
 // rather than returning an empty set that reads like a success.
 func TestUnreleasedOwnerIsNotFound(t *testing.T) {
-	for _, kind := range []string{"database-release", "solution-release"} {
+	for _, kind := range []string{"database-release", "solution-release", "database", "environment", "persistence-mapping"} {
 		_, err := InspectSubject("../../reference/workspace",
 			sourceindex.Subject{Kind: kind, ID: "nope_owner"})
 		inspection, ok := err.(*InspectionError)

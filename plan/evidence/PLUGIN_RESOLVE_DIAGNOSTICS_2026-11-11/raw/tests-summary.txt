@@ -1,0 +1,5 @@
+ok  	tei/internal/plugin	4.781s
+ok  	tei/internal/plugin/implementation	0.030s
+ok  	tei/internal/plugin/inputprofile	0.026s
+ok  	tei/internal/plugin/runtime	4.883s
+ok  	tei/internal/plugin/transform	47.610s

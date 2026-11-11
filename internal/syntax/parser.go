@@ -163,6 +163,9 @@ func (p *Parser) ParseApplication() (application.Application, error) {
 					"%s starts an application pattern, which is not declared in the application body; declare it as \"pattern <application>.<id> %s { ... }\" in its own file",
 					strconv.Quote(t.Text), t.Text))
 			}
+			if misplaced := p.misplacedDeclaration(t, "in the application body"); misplaced != nil {
+				return a, misplaced
+			}
 			return a, p.errAt(t, "expected database, uses, or binds")
 		}
 	}
@@ -320,6 +323,9 @@ func (p *Parser) ParseDatabase() (database.Database, error) {
 			}
 			d.SemanticUses = append(d.SemanticUses, ref)
 		default:
+			if misplaced := p.misplacedDeclaration(t, "in the database body"); misplaced != nil {
+				return d, misplaced
+			}
 			return d, p.errAt(t, "expected kind, ownership, or uses")
 		}
 	}
@@ -1911,6 +1917,12 @@ func (p *Parser) ParseSemanticFile() (semantic.Namespace, error) {
 			}
 			ns.RunPlans = append(ns.RunPlans, plan)
 		default:
+			// A top-level keyword from another domain (an application, a
+			// migration) is a placement mistake, not a typo. Name it, then fall
+			// back to the declaration list this namespace actually accepts (#4169).
+			if misplaced := p.misplacedDeclaration(t, "in a semantic namespace"); misplaced != nil {
+				return ns, misplaced
+			}
 			return ns, p.errAt(t, "expected type, data, capability, validation, calendar, period, effect-rule, or run-plan")
 		}
 	}
@@ -2441,12 +2453,81 @@ func (p *Parser) expectText(s string) (Token, error) {
 	}
 	return t, nil
 }
+
+// topLevelDeclaration names the declaration a keyword starts, so a block written
+// in the wrong file is told what it is and where it belongs instead of being
+// reported as an unknown token (#4169). Every keyword here is an entry point the
+// parser itself reads (ParseApplication, ParseMigration, ...), so the table
+// cannot promise a syntax this package does not accept.
+type topLevelDeclaration struct {
+	keyword     string
+	description string
+}
+
+var topLevelDeclarations = []topLevelDeclaration{
+	{"application", "an application"},
+	{"pattern", "an application pattern"},
+	{"application-release", "an application release"},
+	{"environment", "an environment"},
+	{"database", "a database"},
+	{"database-release", "a database release"},
+	{"migration", "a migration"},
+	{"migration-provider", "a migration provider"},
+	{"solution-release", "a solution release"},
+	{"plugin", "a plugin"},
+	{"bundle", "a bundle"},
+	{"persist", "a persistence mapping"},
+	{"realize", "a realization"},
+	{"query", "a query"},
+	{"contract", "a contract"},
+	{"namespace", "a semantic namespace"},
+	{"type", "a semantic type"},
+	{"data", "a semantic data declaration"},
+	{"capability", "a semantic capability"},
+	{"validation", "a semantic validation"},
+	{"calendar", "a semantic calendar"},
+	{"period", "a semantic period"},
+	{"effect-rule", "a semantic effect rule"},
+	{"run-plan", "a semantic run plan"},
+}
+
+// declarationDescription returns a human phrase for the declaration the token
+// starts, or "" when the token is not a top-level keyword.
+func declarationDescription(text string) string {
+	for _, declaration := range topLevelDeclarations {
+		if text == declaration.keyword {
+			return declaration.description
+		}
+	}
+	return ""
+}
+
+// misplacedDeclaration explains that a top-level declaration keyword cannot be
+// used here, and names the declaration. It returns nil when the token is not a
+// top-level keyword, so the caller keeps its own narrower message.
+func (p *Parser) misplacedDeclaration(t Token, scope string) error {
+	description := declarationDescription(t.Text)
+	if description == "" {
+		return nil
+	}
+	return p.errAt(t, fmt.Sprintf(
+		"%q starts %s, which cannot be declared %s; declare it in its own file",
+		t.Text, description, scope))
+}
+
 func (p *Parser) expectEOF() error {
 	t, err := p.next()
 	if err != nil {
 		return err
 	}
 	if t.Kind != TokenEOF {
+		// A stray top-level keyword usually means a declaration went into the
+		// wrong file. Naming it is the difference between "this token is wrong"
+		// and "migrations live in their own file". An unknown token keeps the
+		// old message (#4169).
+		if misplaced := p.misplacedDeclaration(t, "after the end of this declaration"); misplaced != nil {
+			return misplaced
+		}
 		return p.errAt(t, fmt.Sprintf("unexpected trailing token %q", t.Text))
 	}
 	return nil

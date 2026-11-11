@@ -1,0 +1,15 @@
+SweepExpired used two statements:
+
+  UPDATE claims SET state='expired', updated_at=datetime('now') WHERE ...
+  SELECT ... WHERE state='expired' AND updated_at = datetime('now')
+
+datetime('now') has SECOND granularity.
+
+  seconds changed between the statements -> the SELECT looks for the new
+  second, the UPDATE wrote the old one, 0 rows. The work succeeded but the
+  answer says nothing expired.
+  two sweeps in the same second        -> the second one reports the first
+  one's rows again.
+
+Using the timestamp as a clock to find the rows again is the defect; splitting
+one operation into two statements is what lets the clock move.

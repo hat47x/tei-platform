@@ -14,6 +14,7 @@ tools/reference-cache-full-vs-incremental-verification/
 ├── comparison.go                # Artifact, dependency, input, cache, evidence, and receipt comparison
 ├── diagnostics.go               # Diagnostic report generation and output
 ├── semantic.go                  # Semantic normalization rules (timestamp/UUID/path)
+├── adapter.go                   # CLI adapter and RunReporter
 ├── scenarios/                   # Test scenarios
 │   ├── types.go
 │   ├── source_change.go
@@ -100,6 +101,7 @@ When verification fails, the framework produces a diagnostic report that identif
 - The severity of the difference
 - A human-readable summary
 
+<<<<<<< HEAD
 ## Semantic Normalization
 
 The semantic comparison mode uses domain-specific normalization rules to strip non-semantic differences from artifacts. The current rules include:
@@ -120,6 +122,8 @@ Counterexample scenarios can be mapped to the unified TEI failure contract (`int
 
 See `counterexamples/failure_mode_map.go` for the complete mapping table.
 
+=======
+>>>>>>> origin/main
 ## Limitations
 
 This is a read-only reference implementation. It does not:
