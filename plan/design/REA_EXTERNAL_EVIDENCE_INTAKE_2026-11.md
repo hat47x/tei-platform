@@ -133,12 +133,14 @@ tei rea-evidence -analysis-output <saved evidence> [-view <delivery> -provider-v
 **実行した（2026-11-11、Windows host、go1.27.0）**
 
 - `go build` / `go vet` / `go test ./internal/externalanalysis ./internal/jsonl` — 全PASS。
-- `go test ./cmd/tei -run "TestReaEvidence\|TestDiscoveryModesAreAClosedAdvertisedSet\|TestDiscoveryAdvertisesEveryModeAResponseCanCarry\|TestDiscoveryWriteFlagsMatchObservedFileEffects"` — PASS（実プロセスでCLIを起動する契約試験を含む）。
+- `go test ./cmd/tei -run "TestReaEvidence\|TestDiscoveryModesAreAClosedAdvertisedSet\|TestDiscoveryAdvertisesEveryModeAResponseCanCarry\|TestDiscoveryWriteFlagsMatchObservedFileEffects\|TestCommandCatalogFlagsMatchAcceptedFlags\|TestContractDocumentCoversEveryAdvertisedCommand"` — PASS（実プロセスでCLIを起動する契約試験を含む）。rebase後も再実行してPASS。
 - 実REA 6.7.0/6.8.0を別prefixに導入し、合成inert fixtureで解析・view・負例5種を実走。捕捉bytesと派生请求のSHA-256、exit code、Node/OS版を `internal/externalanalysis/testdata/manifest.json` に記録。
+- **閉ループ**: `tei rea-evidence -request-out` が受領Evidence bytesから組み立てた派生请求を実REA 6.7.0へ渡し、`inspect-analysis-view … --format jsonl` がexit 0。出力bytesは捕捉fixtureとbyte単位で一致（派生が決定的で実工具に受諾される）。
+- **実fixtureに対するCLIのend-to-end**: 実捕捉の6.7.0/6.8.0 analysis＋viewを `tei rea-evidence` で受領・検査し、各版のframingで`complete`・exit 0。
 
 **未実行（PR時に「未実施」として明記）**
 
-- `cmd/tei` の全試験（時間と共有環境の制約。対象に関係する契約試験のみ実行）。
+- `cmd/tei` の全試験。実行したrunでは**自己build系の試験が失敗**したが、原因は `mkdir <Temp>: Access is denied` という**環境の拒否**で、clean な `origin/main` のworktreeで同一試験を走らせると同一に失敗する（対照実験済み）。本設計の変更とは無関係。
 - `tools/repository-health-check.sh` の全項目。
 - CI workflow（リアプリ対象の実行録は未取得）。実CIでの再現は別途。
 - 実アプリ（公開JS/Electron等）を対象にした受領。fixtureは合成inert。
