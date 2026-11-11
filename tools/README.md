@@ -253,6 +253,7 @@
 | [`reference-sui-action-boundary/`](reference-sui-action-boundary/) | SUIの操作とTEI Actionの接続例 |
 | [`reference-sui-adoption/`](reference-sui-adoption/) | SUI移行の参照データと検査 |
 | [`reference-sui-interaction/`](reference-sui-interaction/) | 画面操作とApplication Actionの接続例 |
+| [`reference-trait-fulfillment/`](reference-trait-fulfillment/) | 原子的Traitの実装義務（`manual-required`／`provided`／`advisory`）の履行を、既存のContract・Provider選択・Inspectorの実呼出し観測から判定する読取り専用の参照。未充足と未確認を読込みの完全性で分ける（#3279） |
 | [`reference-transform-runtime-engine/`](reference-transform-runtime-engine/) | 決定的な変換処理の実行例 |
 | [`reference-transform-runtime-engine-build/`](reference-transform-runtime-engine-build/) | 変換実行基盤の構築確認 |
 | [`reference-transform-seed-builder/`](reference-transform-seed-builder/) | 変換用の初期データを組み立てる処理 |
