@@ -1,0 +1,11 @@
+Misplaced persistence mapping:
+  warning WORKSPACE_SOURCE_ROOT managed file "databases/master-data/stray.tei" is a
+  TEI source that no loader reads, so its declarations never reach the model;
+  check its location (for example a persistence mapping belongs in
+  databases/<database>/persistence/)
+
+Same file moved to databases/master-data/persistence/: 0 warnings (ok)
+
+Controls:
+  reference/workspace                       0 new warnings
+  13 workspaces in the repo                 0 workspaces with a new warning

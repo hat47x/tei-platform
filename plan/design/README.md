@@ -61,6 +61,7 @@
 | [`PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md`](PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md) | プラグイン間の依存を、受け渡す項目・パラメータ・値の出どころ・対応付けと変換・多重度・版の変化まで含めて整理する方式設計候補（[GitHub #1223](https://github.com/hat47x/tei-platform/issues/1223)、評価待ち） |
 | [`PLUGIN_NAMESPACE_AND_OPTIONAL_COMPOSITION_2026-10.md`](PLUGIN_NAMESPACE_AND_OPTIONAL_COMPOSITION_2026-10.md) | `tei.std` / `tei.experimental` / `tei.contrib` の管理名前空間と、Principal・DB・TransactionをCoreへ強制しない案件選択型Compositionの設計候補（提案中） |
 | [`SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md`](SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md) | SUIの既存実装を生かしながらTEIへ移行するための設計基準 |
+| [`SUI_TEI_MIGRATION_IMPLEMENTATION_PACKET_2026-11.md`](SUI_TEI_MIGRATION_IMPLEMENTATION_PACKET_2026-11.md) | SUI→TEI移行のM1〜M6を、変更範囲・型・試験・受入・Owner判断・完了条件までPR単位に具体化した実装前の提案（[#3401](https://github.com/hat47x/sui-sensemaking/issues/3401)、[#2497](https://github.com/hat47x/tei-platform/issues/2497)、未採用） |
 | [`CROSS_VIEW_CHANGE_QUALIFICATION_REFERENCE_DRAFT.md`](CROSS_VIEW_CHANGE_QUALIFICATION_REFERENCE_DRAFT.md) | Issue #1143で検討中の、複数の視点にまたがる変更の適格性確認案。参照用の契約としては未採用 |
 | [`STUDIO_CONSUMER_FRESHNESS_BOUNDARY_2026-10.md`](STUDIO_CONSUMER_FRESHNESS_BOUNDARY_2026-10.md) | #1124の非Host Studio Consumerが非同期応答・Graph描画選択・Source/Accepted/readinessの鮮度を別々に検査する未採用の設計補足 |
 | [`BUSINESS_EFFECT_LIFECYCLE_DESIGN_2026-10.md`](BUSINESS_EFFECT_LIFECYCLE_DESIGN_2026-10.md) | 副作用を伴う実行の段階、確定後の外部効果、冪等の識別子、確定状態、補償、一括処理の再開をまとめる、評価待ちの設計（[GitHub #1129](https://github.com/hat47x/tei-platform/issues/1129)、[#1130](https://github.com/hat47x/tei-platform/issues/1130)） |
@@ -117,6 +118,7 @@
 | [`SEI_REFERENCE_ADOPTION_STAGE0_DESIGN.md`](SEI_REFERENCE_ADOPTION_STAGE0_DESIGN.md) | SEIの既存実装をTEIの参照として取り込む段階0（Resume・Review Projection）の設計。固定した版のみに対する検証 |
 | [`STANDARD_MESSAGE_AND_LOCALIZATION_PLUGIN_2026-10.md`](STANDARD_MESSAGE_AND_LOCALIZATION_PLUGIN_2026-10.md) | 標準メッセージと多言語拡張をプラグインとして分離する候補契約とGo参照実装 |
 | [`SUI_MIGRATION_EXTENSION_AND_SPLIT_DESIGN_2026-10.md`](SUI_MIGRATION_EXTENSION_AND_SPLIT_DESIGN_2026-10.md) | SUIの移管に向けたTEIの拡張方針とSUIの分割案（評価待ち・未採用） |
+| [`SUI_TEI_MIGRATION_TASKS_2026-11.md`](SUI_TEI_MIGRATION_TASKS_2026-11.md) | read-only参照の実装知見（SUI PR #3429）を*.tei.md＋Pluginの移行タスクへ分解したもの。M0〜M6を「目的・変更境界・依存・契約案・受入・負例・未実施・委譲先・撤退条件」の作業票に整形し、順序とブロッカーを明記する（評価待ち・未採用） |
 | [`TYPE_SPLIT_AND_REPLACE_PROPOSAL_2026-10.md`](TYPE_SPLIT_AND_REPLACE_PROPOSAL_2026-10.md) | 意味の型の分割・置換を変更案として扱う最小経路の設計案（[GitHub #1806](https://github.com/hat47x/tei-platform/issues/1806)、PoC） |
 | [`WEB_APPLICATION_COMPOSITION_DESIGN.md`](WEB_APPLICATION_COMPOSITION_DESIGN.md) | Webアプリケーションの構成キットとして、安全な要求経路と認証方式を組み合わせる設計候補（評価待ち） |
 | [`WEB_READ_WRITE_API_ADAPTER_DESIGN.md`](WEB_READ_WRITE_API_ADAPTER_DESIGN.md) | 標準Webの読込・書込API Adapterの設計候補と合成Reference。OData準拠・実DB書込・本番適合は未確認 |

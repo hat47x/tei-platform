@@ -2,7 +2,7 @@
 
 - 対象Issue: [#2509](https://github.com/hat47x/tei-platform/issues/2509)（DSH外部Harness実証）、[#2515](https://github.com/hat47x/tei-platform/issues/2515)（実効隔離・全送出経路Conformance）。機密境界の正本は[TAI #232](https://github.com/hat47x/tai-pleroma/issues/232)、比較計画は[TAI #168](https://github.com/hat47x/tai-pleroma/issues/168)。
 - 状態: **既存の実行記録を並べた索引**。新しい実測は行っていない。個々の合否・Owner受理は各記録とIssueの担当。
-- この文書の役割: 52件の実行記録が**それぞれ何を確定させ、何を確定させていないか**を1枚で見えるようにし、同じ測り方の重複を避ける。記録本文の複製はせず、各記録へ参照で結ぶ。
+- この文書の役割: 53件の実行記録が**それぞれ何を確定させ、何を確定させていないか**を1枚で見えるようにし、同じ測り方の重複を避ける。記録本文の複製はせず、各記録へ参照で結ぶ。
 
 ## 1. なぜ台帳が要るか
 
@@ -45,6 +45,7 @@
 | [MCPのstdio経路](./DSH_MCP_STDIO_2026-11-10/README.md) | 別transport | `transport: stdio`＋`command: python`で自作サーバーを起動すると、**`initialize`→`notifications/initialized`→`tools/list`の3行**が届き（**streamable-httpと違い`server/discover`が無い**）、**モデルのToolは24→28**（`mcp__stdiomock__stdio_echo`）。**子Processは環境変数49件を引き継ぎ**（合成canaryと`DEEPSEEK_BASE_URL`を含む）、**作業ディレクトリも親と同じ**。ただし**`DEEPSEEK_API_KEY`は渡っていない** | `env`設定で明示的に渡した場合、`cwd`設定、認証・再接続、`tools/call`のstdio経路、他の資格情報の可視性 |
 | [MCPの`headers`](./DSH_MCP_HEADERS_2026-11-10/README.md) | 送り方 | streamable-httpで`headers`に合成canaryを入れると、**4件すべてのMCP要求（`server/discover`・`initialize`・`notifications/initialized`・`tools/list`）に同じ11個のヘッダ**が載り、**canaryは`Authorization`として毎回送られた**。**相手を確かめる前の最初の要求にも載る**。設定外のヘッダは**HTTPクライアントの標準のみ**（Cookie・環境の資格情報は付かない）。`user-agent`は`node`。**canaryはモデル要求には現れない** | `reconnect`時の再送、TLS、複数サーバー、`headers`の値がログへ残るか |
 | [MCPの複数サーバー](./DSH_MCP_TWO_SERVERS_2026-11-10/README.md) | 並置 | `id`を分けた2エントリで2サーバーを挿すと、**両方が独立に4件ずつハンドシェイク**し（合計8件・到着は交互）、**モデルのToolは24→29**（`mcp__servera__tool_a`と`mcp__serverb__tool_b`＋`mcp-resources`系3つ）。**`serverName`が名前空間になるので衝突しない**。**1つだけ許可しても、エントリを増やせば増える** | `serverName`を同じにした場合、片方が落ちた場合、stdioとの混在、片方だけの`headers` |
+| [3サーバーのMCP](./DSH_MCP_THREE_SERVERS_2026-11-11/README.md) | 比例性 | `id`と`serverName`を分けた**3エントリ**を挿すと、**3サーバーがそれぞれ4件ずつハンドシェイク**し（合計12件・取りこぼしなし）、**Toolは24→30**。2サーバー（29）との対比で、**ハンドシェイクもToolもサーバー数に比例**して増える | 4つ以上、`serverName`の重複、同じサーバーの二重挿入、stdioとの混在 |
 | [MCPの障害分離](./DSH_MCP_FAILURE_ISOLATION_2026-11-10/README.md) | 部分障害 | 元気なサーバー1つと閉じたポートを指すサーバー1つを同時に挿すと、**`failOnStartupError`がfalseでもtrueでもHarnessは起動して完了**し（exit 0）、**モデルが見たのは元気な側のToolだけ**（28個・`mcp__serverok__header_echo`）、**落ちた側への要求は0件**。trueでは**stderrに`1 entry did not activate`と当該エントリのエラー**が出るが実行は続く。**「有効化されたエントリ」は終了コードでは分からない** | `reconnect`、起動後の切断、全サーバー障害、既定値、警告がJSONイベントにも出るか |
 | [落ちていたサーバーの復帰](./DSH_MCP_LATE_START_2026-11-10/README.md) | 状態の非持続 | MCPサーバーを止めたままTurn 1を実行し、起動してから同じSessionでTurn 2を実行すると、**Turn 1はTool 27個でMCP Toolなし**、**Turn 2は28個で`mcp__latemock__header_echo`あり**（ハンドシェイク2回分=8件を受信）。**「1回繋がらなかった」は状態として残らず、次の起動で普通に繋がる**。よって**前回の観測を今回の構成の根拠にできない** | 1プロセス内での再接続、起動後の切断、`failOnStartupError: true`との組み合わせ |
 | [実行中の再接続](./DSH_MCP_MIDRUN_RECONNECT_2026-11-10/README.md) | 再接続の実効 | MCPサーバーを止めたまま実行を開始し、**1手目の`pwsh`でサーバーを起動**させると、**同じプロセスの中でToolが27→28**（`mcp__latemock__header_echo`）に増えた。ハンドシェイクは1回分（4件）。**`reconnect`は実際に効く**（既定は`initialDelayMs 500`・`maxDelayMs 30000`・`maxAttempts 10`）。**実行中にも送出先が増え得る**ので、開始時の点検だけでは足りない | 実行中にサーバーが落ちる向き、`enabled: false`、`maxAttempts`超過後、再接続時の`headers`再送 |
