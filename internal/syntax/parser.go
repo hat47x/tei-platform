@@ -2528,6 +2528,20 @@ func (p *Parser) expectEOF() error {
 		if misplaced := p.misplacedDeclaration(t, "after the end of this declaration"); misplaced != nil {
 			return misplaced
 		}
+		// An entry that only exists inside a block is a different mistake: the
+		// block is right, its closing brace is early. `bind` written after the
+		// environment's `}` gave only `unexpected trailing token "bind"` in round
+		// 64, which does not say where it belongs (#4169).
+		//
+		// This branch was lost once already: the helper survived but its call
+		// site was reverted by an unrelated edit to expectEOF, and nothing failed
+		// because the test that pins the message lives in the same commit as the
+		// call. The test now guards the call, not just the helper.
+		if blockOnly := blockOnlyEntryHint(t.Text); blockOnly != "" {
+			return p.errAt(t, fmt.Sprintf(
+				"%q cannot appear after the closing brace of its block; it belongs inside one, for example %s",
+				t.Text, blockOnly))
+		}
 		return p.errAt(t, fmt.Sprintf("unexpected trailing token %q", t.Text))
 	}
 	return nil

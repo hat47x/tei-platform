@@ -2585,3 +2585,35 @@ usage 行にも足した。**14件 → 0件**。
 同じく FAIL していた2件は **`rea-evidence` という未実装コマンド**を参照している（`runReaEvidence` は存在しない）。`rea-intake` と違い**振り分けを足すだけでは直せない**ので範囲外とした。
 
 `gofmt -l .` は main で6ファイル以上を指摘するが、1ファイルだけ直すのは恣意的なので**記録だけした**（`repository-health` は gofmt を実行していない）。
+
+### 第74ラウンドの修正が、**呼び出し側だけ失われていた**
+
+CI が `TestBlockOnlyEntryAfterClosingBraceNamesTheBlock`（第74ラウンドで私が書いた試験）を FAIL と報告した。現在の main を測ると:
+
+```text
+internal/syntax/parser.go の blockOnlyEntryHint : 2箇所
+  line 2536: コメント
+  line 2538: func blockOnlyEntryHint(text string) string
+blockOnlyEntryHint(t.Text) の呼び出し            : 0箇所
+```
+
+**関数は残り、呼び出しが消えていた。** `expectEOF` への別の編集が分岐を巻き戻した。**試験と呼び出しが同じコミットにあったため、統合時に何も落ちなかった。**
+
+```text
+git merge-base --is-ancestor edd661709 origin/main   -> YES
+```
+
+統合は成立しており、**その後の編集でその場で巻き戻された**。残ったのは私が足した試験だけで、CI がそれを報告した。
+
+同じ方法で4ラウンド分を点検した。
+
+| ラウンド | 修正 | 状態 |
+| --- | --- | --- |
+| 72 | `CheckWorkspaceUnreadSources` | **呼ばれている** |
+| 73 | `ReadableWithoutSection` | **設定されている** |
+| 74 | `blockOnlyEntryHint` | **呼ばれていない（消失）** |
+| 75 | `VALIDATION_INCOMPLETE` | **出ている** |
+
+呼び出しを復元した。**試験は呼び出しを外すと落ちる**（`message does not say the entry belongs inside a block`）ので、復元が本質であることを示せている。
+
+**教訓: 「関数が在る」は「機能が動く」ではない。** 定義だけを数える点検は、今回の消失を見逃す。
