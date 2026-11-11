@@ -172,6 +172,13 @@ func runPeriodsCommand(workspacePath, applicationID, statesFlag, stateFile, adva
 			if err := operations.CheckCloseRequirement(requirement, current, next, core.CanonicalID(closeCapability)); err != nil {
 				return err
 			}
+			// Reopening a closed period is a correction after closing, so the
+			// period's declared correction capability must have run. The command
+			// path asks for it already; this path advanced the state without
+			// checking, so the declaration held on one entrance and not the other.
+			if err := operations.CheckReopenRequirement(requirement, current, next, core.CanonicalID(closeCapability)); err != nil {
+				return err
+			}
 		}
 		if err := (periodstate.Writer{Path: stateFile}).Write(context.Background(), map[string]operations.PeriodState{
 			advance: next,
