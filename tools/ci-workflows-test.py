@@ -496,12 +496,20 @@ class StaticWorkflowContract(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
 
     def test_setup_go_follows_go_mod(self):
-        """Go版の直接指定はgo.modの要求版と食い違うため禁止する(#2948)。"""
+        """Go版の直接指定はgo.modの要求版と食い違うため禁止する(#2948)。
+
+        例外は、固定の理由をファイルに書いた場合だけにする。Goの確認は
+        tools/repository-architecture-check の TestWorkflowsFollowGoModVersion が
+        同じ規則で見ており、こちらは「注記なしの直接指定が無いこと」を見る。
+        """
         drift = []
         for path in sorted((ROOT / '.github/workflows').glob('*.yml')):
             text = path.read_text(encoding='utf-8')
-            if re.search(r'(?m)^\s*go-version:', text):
-                drift.append(path.name)
+            if not re.search(r'(?m)^\s*go-version:', text):
+                continue
+            if '# allow-literal-go-version:' in text:
+                continue
+            drift.append(path.name)
         self.assertEqual([], drift)
 
 
