@@ -13,7 +13,9 @@ tools/reference-cache-full-vs-incremental-verification/
 ├── verification.go              # Core types and contracts
 ├── comparison.go                # Artifact, dependency, input, cache, evidence, and receipt comparison
 ├── diagnostics.go               # Diagnostic report generation and output
+├── semantic.go                  # Semantic normalization rules (timestamp/UUID/path)
 ├── scenarios/                   # Test scenarios
+│   ├── types.go
 │   ├── source_change.go
 │   ├── model_change.go
 │   ├── dependency_change.go
@@ -21,6 +23,8 @@ tools/reference-cache-full-vs-incremental-verification/
 │   ├── toolchain_change.go
 │   └── receipt_evidence_consistency.go
 ├── counterexamples/             # Counterexample scenarios for false positives
+│   ├── types.go
+│   ├── failure_mode_map.go
 │   ├── old_artifact_pollution.go
 │   ├── incomplete_dependency.go
 │   ├── cache_contamination.go
@@ -95,6 +99,26 @@ When verification fails, the framework produces a diagnostic report that identif
 - The expected vs actual values
 - The severity of the difference
 - A human-readable summary
+
+## Semantic Normalization
+
+The semantic comparison mode uses domain-specific normalization rules to strip non-semantic differences from artifacts. The current rules include:
+
+- Timestamp stripping (ISO 8601 formats)
+- UUID anonymization
+- Path prefix normalization
+
+See `semantic.go` for implementation details and the specific regular expressions used.
+
+## Failure Mode Mapping
+
+Counterexample scenarios can be mapped to the unified TEI failure contract (`internal/failure`) to guide production integration. The mapping includes:
+
+- Business rejection failures (incomplete dependencies, stale source inspection)
+- Technical failures (cache integrity issues, cross-tenant contamination)
+- Partial success scenarios (intermediate failures with partial effects)
+
+See `counterexamples/failure_mode_map.go` for the complete mapping table.
 
 ## Limitations
 
