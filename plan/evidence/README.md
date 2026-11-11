@@ -50,6 +50,7 @@
 - [`uses`経由で呼んだ能力の効果に補償が要らないことの確認](XTEA_LOWCODE_HOOK_USES_COMPENSATION_2026-11.md)（確認記録。フックの呼出しは参照Executorを通りデータを適用しないため、戻す対象が無い）
 - [Studio経路での`after-*`拒否時の取り消しの確認](XTEA_LOWCODE_HOOK_AFTER_CHANGE_STUDIO_REVERT_2026-11.md)（試験記録。拒否する規則を差し込むと適用した効果がStoreから取り消され`effectReverted`が出る。既定経路での到達は規則Pluginの供給待ち）
 - [Studioから`after-*`フックへ到達する配線の確認](XTEA_LOWCODE_HOOK_AFTER_CHANGE_STUDIO_2026-11.md)（試験記録。`ExecuteCommandWithReferenceStore`が変更を適用し、変更後のフックを実行する。`PhaseReport.Merge`を`internal/hook`に置いて両ホストで共有。UIからの呼出しは未着手）
+- [同じコマンドの効果を2プロセスが適用した場合の整合](XTEA_LOWCODE_OUTCOME_SHARED_EFFECT_2026-11.md)（確認記録。参照Storeは実行ごとに閉じるため、2プロセスとも成功し互いに干渉しない。整合は耐久Storeを持つ実装の論点として残る）
 - [プロセスを跨ぐ結末の検査](XTEA_LOWCODE_OUTCOME_CROSS_PROCESS_2026-11.md)（確認記録。結末が永続格納へ記録され、2つ目のプロセスが観測済みコマンドを再実行できないことを既存試験で確認）
 - [`after-*`拒否時の効果の補償の確認](XTEA_LOWCODE_HOOK_AFTER_CHANGE_REVERT_2026-11.md)（試験記録。拒否する規則を差し込むと適用した効果がStoreから取り消され`effectReverted`が出る。既定経路での到達は規則Pluginの供給待ち）
 - [CLIの`-reference-store`配線の実プロセス確認と引数検査の位置の修正](XTEA_LOWCODE_HOOK_AFTER_CHANGE_CLI_E2E_2026-11.md)（試験記録。ビルドした`tei`を起動して`after-*`到達と`INVALID_ARGUMENT`を確認。`-reference-store`のみの呼出しが成功していた欠陥を修正）
