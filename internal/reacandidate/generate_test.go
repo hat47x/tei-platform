@@ -232,6 +232,73 @@ func TestGenerateSelfRelationIsFlagged(t *testing.T) {
 	}
 }
 
+// REAL REA 6.8.0 reports coverage as {status, truncated, omitted_count, limits}
+// and never writes `exhausted`. A decoder that only understood `exhausted`
+// would silently call every real attempt "unknown". This test pins the real
+// shape so that mistake cannot recur.
+func TestGenerateQualifiesWithRealREA6_8_0CoverageShape(t *testing.T) {
+	fixture := defaultEvidence()
+	fixture.graphExhausted = nil
+	fixture.semExhausted = nil
+	fixture.realCoverage = true
+	fixture.semanticStatus = "unknown"
+	set := mustGenerate(t, fixture)
+	if set.Qualification == "unknown" {
+		t.Fatalf("real coverage shape was not decoded: %+v", set.Attempt.GraphCoverage)
+	}
+	if set.Qualification != "partial" {
+		t.Fatalf("qualification = %q, want partial (semantic coverage says unknown)", set.Qualification)
+	}
+	if set.Attempt.GraphCoverage == nil || set.Attempt.GraphCoverage.Truncated == nil {
+		t.Fatalf("truncated was not carried: %+v", set.Attempt.GraphCoverage)
+	}
+	if complete, specified := set.Attempt.GraphCoverage.Complete(); !specified || !complete {
+		t.Fatalf("truncated=false was not read as an uncut enumeration: %v %v", complete, specified)
+	}
+}
+
+// truncated=true is a provider statement that the enumeration was cut short,
+// which caps the attempt at partial even with no limitations.
+func TestGenerateTruncatedCoverageIsPartial(t *testing.T) {
+	fixture := defaultEvidence()
+	fixture.graphExhausted = nil
+	fixture.semExhausted = nil
+	fixture.realCoverage = true
+	fixture.omittedCount = 3
+	set := mustGenerate(t, fixture)
+	if set.Qualification != "partial" {
+		t.Fatalf("qualification = %q, want partial", set.Qualification)
+	}
+	if omitted, ok := set.Attempt.GraphCoverage.Omitted(); !ok || omitted != 3 {
+		t.Fatalf("omitted_count = %d known=%t", omitted, ok)
+	}
+}
+
+// REA names the analyzed root "artifact-root", which its own limitation text
+// calls a path-independent alias. The value is carried verbatim and marked
+// unresolved, so nobody treats it as a resolvable file.
+func TestGenerateMarksArtifactRootAlias(t *testing.T) {
+	fixture := defaultEvidence()
+	fixture.nodes[0].observations[0].artifact = digestA
+	fixture.nodes[0].observations[0].locKind = "artifact-path"
+	fixture.nodes[0].observations[0].locPath = "artifact-root"
+	fixture.nodes[0].observations[0].locSource = "artifact-root"
+	set := mustGenerate(t, fixture)
+	for _, candidate := range set.Candidates {
+		if candidate.Facts.ExternalIdentity != "node-order" || candidate.Kind != CandidateKindDataElement {
+			continue
+		}
+		if candidate.SourceRevision.ArtifactPath != "artifact-root" {
+			t.Fatalf("alias was rewritten: %q", candidate.SourceRevision.ArtifactPath)
+		}
+		if !hasString(candidate.Unresolved, "source-path-is-an-alias-not-a-file") {
+			t.Fatalf("alias is not marked unresolved: %v", candidate.Unresolved)
+		}
+		return
+	}
+	t.Fatal("the aliased candidate is missing")
+}
+
 // REA's own limitations, unknowns and non-exhausted coverage cap the
 // qualification at partial. Nothing is promoted to complete.
 func TestGeneratePartialAcquisitionIsNeverComplete(t *testing.T) {

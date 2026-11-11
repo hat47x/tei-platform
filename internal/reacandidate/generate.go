@@ -16,7 +16,7 @@ import (
 //   - One data-element candidate per source-backed observation, so every
 //     candidate names the bytes it came from.
 //   - One cross-reference candidate per directed edge, preserving the
-//     observed from→to order, the relation label, and the external edge id.
+//     observed from竊稚o order, the relation label, and the external edge id.
 //     Parallel edges and opposite-direction pairs are never merged.
 //   - An edge endpoint that this attempt did not observe stays unresolved:
 //     no node is fabricated to complete it.
@@ -190,14 +190,7 @@ func newDataCandidate(node ExternalNode, observation ExternalObservation) Struct
 		candidate.Inference.Basis = sortStrings(candidate.Inference.Basis)
 		candidate.Inference.Unresolved = sortStrings(candidate.Inference.Unresolved)
 	}
-	candidate.Unresolved = []string{"canonical-subject-mapping"}
-	if revision.Binding == SourceBindingUnavailable {
-		candidate.Unresolved = append(candidate.Unresolved, "source-location")
-	}
-	if revision.Fingerprint == "" {
-		candidate.Unresolved = append(candidate.Unresolved, "artifact-digest")
-	}
-	candidate.Unresolved = sortStrings(candidate.Unresolved)
+	candidate.Unresolved = unresolvedTail(revision)
 	return candidate
 }
 
@@ -286,15 +279,28 @@ func newRelationCandidate(edge ExternalEdge, observedNodeIDs map[string]bool, pa
 		ReviewStatus: ReviewStatusRequiresOwner,
 		Resolution:   ResolutionUnresolved,
 	}
-	candidate.Unresolved = []string{"canonical-subject-mapping"}
+	candidate.Unresolved = unresolvedTail(revision)
+	return candidate
+}
+
+// unresolvedTail is the same closed set of source-level unresolved items for
+// both candidate kinds, so the two builders cannot drift into different
+// vocabularies for the same fact.
+func unresolvedTail(revision SourceRevision) []string {
+	unresolved := []string{"canonical-subject-mapping"}
 	if revision.Binding == SourceBindingUnavailable {
-		candidate.Unresolved = append(candidate.Unresolved, "source-location")
+		unresolved = append(unresolved, "source-location")
 	}
 	if revision.Fingerprint == "" {
-		candidate.Unresolved = append(candidate.Unresolved, "artifact-digest")
+		unresolved = append(unresolved, "artifact-digest")
 	}
-	candidate.Unresolved = sortStrings(candidate.Unresolved)
-	return candidate
+	if revision.ArtifactPath == artifactRootAlias {
+		// REA names the analyzed root "artifact-root": a path-independent alias,
+		// not a file. The value is carried verbatim so the reviewer sees what
+		// REA reported, and marked so nobody treats it as a resolvable artifact.
+		unresolved = append(unresolved, "source-path-is-an-alias-not-a-file")
+	}
+	return sortStrings(unresolved)
 }
 
 // newSourceRevision copies the provider-reported source of one occurrence.
@@ -390,22 +396,33 @@ func annotateSameSuggestedNames(candidates []StructureCandidate, notes *[]string
 	}
 }
 
-// qualify caps the attempt qualification using REA's own statements. A nil
-// coverage record means REA said nothing, which is unknown and never
-// complete.
+// qualify caps the attempt qualification using REA's own statements. A coverage
+// record that answers neither truncated nor exhausted means REA said nothing,
+// which is unknown and never complete.
+//
+// REA 6.8.0's real documents report {status, truncated, omitted_count, limits}
+// and a semantic coverage of "unknown" with per-family "partial". Those are
+// statements of a cut enumeration, so a real attempt lands on partial 窶・not on
+// "unknown because the decoder looked for a field the provider never writes".
 func qualify(evidence AttemptEvidence, candidates []StructureCandidate) string {
-	if evidence.Normalized.Graph.Coverage == nil {
+	graphCoverage := evidence.Normalized.Graph.Coverage
+	complete, specified := graphCoverage.Complete()
+	if !specified {
 		return "unknown"
 	}
-	exhausted := evidence.Normalized.Graph.Coverage.Exhausted
-	if exhausted == nil || !*exhausted {
+	if !complete {
+		return "partial"
+	}
+	if omitted, ok := graphCoverage.Omitted(); ok && omitted > 0 {
 		return "partial"
 	}
 	if len(evidence.Limitations) > 0 || len(evidence.Normalized.SemanticGraph.Unknowns) > 0 {
 		return "partial"
 	}
-	if semantic := evidence.Normalized.SemanticGraph.Coverage; semantic != nil && semantic.Exhausted != nil && !*semantic.Exhausted {
-		return "partial"
+	if semantic := evidence.Normalized.SemanticGraph.Coverage; semantic != nil {
+		if complete, specified := semantic.Complete(); specified && !complete {
+			return "partial"
+		}
 	}
 	for _, candidate := range candidates {
 		if candidate.SourceRevision.Binding != SourceBindingProviderReported {

@@ -69,7 +69,14 @@ type evidenceFixture struct {
 	limitations     []string
 	graphExhausted  *bool
 	semExhausted    *bool
-	extraTopLevel   map[string]any
+	// realCoverage writes coverage in the shape REAL REA 6.8.0 emits:
+	// {status, truncated, omitted_count, limits}. `exhausted` is the older
+	// synthetic shape, so a test that used only `exhausted` would never catch a
+	// decoder that cannot read a real document.
+	realCoverage   bool
+	omittedCount   int
+	semanticStatus string
+	extraTopLevel  map[string]any
 }
 
 func boolPtr(value bool) *bool { return &value }
@@ -113,7 +120,12 @@ func (f evidenceFixture) build(t *testing.T) []byte {
 		"nodes":  []any{},
 		"edges":  []any{},
 	}
-	if f.graphExhausted != nil {
+	if f.realCoverage {
+		graph["coverage"] = map[string]any{
+			"status": "complete", "truncated": false,
+			"omitted_count": f.omittedCount, "limits": []any{},
+		}
+	} else if f.graphExhausted != nil {
 		graph["coverage"] = map[string]any{"status": "complete", "exhausted": *f.graphExhausted}
 	}
 	for _, node := range f.nodes {
@@ -174,7 +186,16 @@ func (f evidenceFixture) build(t *testing.T) []byte {
 		})
 	}
 	semantic := map[string]any{"unknowns": unknowns}
-	if f.semExhausted != nil {
+	if f.realCoverage {
+		status := f.semanticStatus
+		if status == "" {
+			status = "unknown"
+		}
+		semantic["coverage"] = map[string]any{
+			"status": status, "truncated": false,
+			"omitted_nodes": 0, "omitted_relations": 0, "limits": []any{},
+		}
+	} else if f.semExhausted != nil {
 		semantic["coverage"] = map[string]any{"status": "complete", "exhausted": *f.semExhausted}
 	}
 	normalized["semantic_graph"] = semantic

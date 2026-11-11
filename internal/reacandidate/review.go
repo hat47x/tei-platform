@@ -31,6 +31,7 @@ type ReviewPacket struct {
 	ComparedWithBefore      bool                    `json:"comparedWithBefore"`
 	Comparison              *CandidateSetComparison `json:"comparison,omitempty"`
 	Carrier                 CarrierAudit            `json:"carrier"`
+	ThreeElement            ThreeElementCoverage    `json:"threeElementCoverage"`
 	Unresolved              []string                `json:"unresolved"`
 	Unknowns                []ExternalUnknown       `json:"unknowns,omitempty"`
 	Notes                   []string                `json:"notes,omitempty"`
@@ -52,6 +53,7 @@ func BuildReviewPacket(set CandidateSet, binding *BindingResult, adoption *Adopt
 		Qualification:           set.Qualification,
 		Candidates:              set.Candidates,
 		Carrier:                 AuditCarrierFit(set),
+		ThreeElement:            EvaluateThreeElementCoverage(set),
 		Unknowns:                set.Unknowns,
 		Notes:                   set.Notes,
 		ReviewSequence:          reviewSequence(),
@@ -172,6 +174,13 @@ func (p ReviewPacket) Summary() []string {
 	}
 	if p.AdoptionPreviewed {
 		lines = append(lines, "adoption-preview: in-memory only, not written")
+	}
+	for _, element := range p.ThreeElement.Elements {
+		line := "three-element: " + element.Element + "=" + element.Status
+		if element.Status == ElementUnsupported {
+			line += " (" + element.Reason + ")"
+		}
+		lines = append(lines, line)
 	}
 	for _, fact := range p.Carrier.MissingFacts() {
 		lines = append(lines, "carrier-gap: "+fact)

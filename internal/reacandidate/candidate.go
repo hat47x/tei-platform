@@ -48,6 +48,11 @@ const (
 	SourceBindingUnavailable      = "source-location-unavailable"
 )
 
+// artifactRootAlias is the path REAL REA 6.8.0 reports for the analyzed root.
+// Its own limitation text calls it "a path-independent alias", so it is
+// carried verbatim and separately marked as not being a resolvable file.
+const artifactRootAlias = "artifact-root"
+
 // SourceRevision is the Source Provenance a candidate carries: where REA said
 // the observation came from, and the digest it reported for those bytes.
 //
