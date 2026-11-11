@@ -24,6 +24,7 @@
 | 安全性と権限の境界 | [安全性](security.md) | [全体構成の読み方](architecture-reading-guide.md) |
 | 用語と命名 | [TEIの名称と共通用語](naming.md) | [TEIの考え方](overview.md) |
 | 文書の執筆と確認 | [TEI文書品質ガイド](documentation-quality.md) | [`AGENTS.md`](../AGENTS.md) |
+| 仕様書の章立て・記入ひな形 | [仕様書の共通様式](specification-style.md) | [仕様書テンプレート](spec-templates/README.md) |
 
 ## 文書の役割
 
