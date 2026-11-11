@@ -9,8 +9,8 @@ import (
 	"tei/internal/database/provider"
 	"tei/internal/database/providers/sqlite"
 	"tei/internal/database/schematosemantic"
-	"tei/internal/semantic"
 	"tei/internal/environment"
+	"tei/internal/semantic"
 )
 
 // TestSQLiteEndToEnd verifies the full SQLite introspection + semantic
