@@ -2,7 +2,7 @@
 
 - **状態**: 実装前設計・**Owner未採用**（2026-11-11）。本文は要件の解釈と実装計画の提案であり、製品受入・正式API/DSL・Scheduler・Hostの採用ではない。
 - **役割**: 要求の解釈・基本設計・実装計画。設計判断の正本はADR、作業条件の正本はGitHub Issue、現行実装の説明は[現行構成](../../docs/architecture.md)と[実装状況](../../docs/status.md)にある。本文はそれらを置き換えない。
-- **対象Issue**: [#1130](https://github.com/hat47x/tei-platform/issues/1130)（Batch/帳票/一括処理）、[#2622](https://github.com/hat47x/tei-platform/issues/2622)（Data Operations/Provider）、[#2542](https://github.com/hat47x/tei-platform/issues/2542)（ファイル・メッセージ連携）、[#2545](https://github.com/hat47x/tei-platform/issues/2545)（段階的データ移行の未決・closed）、[#1129](https://github.com/hat47x/tei-platform/issues/1129)（副作用規則）、[#2499](https://github.com/hat47x/tei-platform/issues/2499)（限定Grant）、[#4194](https://github.com/hat47x/tei-platform/issues/4194)（TEI→EKI→Provider縦断）、[#4384](https://github.com/hat47x/tei-platform/issues/4384)（TEI-EKI統合計画）。
+- **対象Issue**: [#1130](https://github.com/hat47x/tei-platform/issues/1130)（Batch/帳票/一括処理）、[#2622](https://github.com/hat47x/tei-platform/issues/2622)（Data Operations/Provider）、[#2542](https://github.com/hat47x/tei-platform/issues/2542)（ファイル・メッセージ連携）、[#2545](https://github.com/hat47x/tei-platform/issues/2545)（段階的データ移行の未決・closed）、[#1129](https://github.com/hat47x/tei-platform/issues/1129)（副作用規則）、[#2499](https://github.com/hat47x/tei-platform/issues/2499)（限定Grant）、[#4194](https://github.com/hat47x/tei-platform/issues/4194)（TEI→EKI→Provider縦断）、[#4384](https://github.com/hat47x/tei-platform/issues/4384)（TEI-EKI統合計画）。子Issueは[#4410](https://github.com/hat47x/tei-platform/issues/4410)・[#4411](https://github.com/hat47x/tei-platform/issues/4411)、残課題は[#4434](https://github.com/hat47x/tei-platform/issues/4434)・[#4435](https://github.com/hat47x/tei-platform/issues/4435)。
 - **基準版**: TEI `origin/main` `7fe5de4d9b8f611d7f945693a6383eaa59cba035`（2026-11-11）、EKI `hat47x/eki-fabric` `e15d3351f333a7cd7229acf001ff83ae5dce8120`。
 - **本文が決めないこと**: 新しいETL専用DSL、第二のデータモデル、第二のWorkflow Engine、TEI専用の常駐Scheduler/共通実行Host、正式なCLI文法、`effect_mode`の拡張。これらは§15のOwner判断事項として残す。
 
@@ -245,7 +245,7 @@ Checkpointは「どこまで進んだか」の記録であり、**「同じ意�
 | **Java** | `tools/reference-generator-selection`の`templates/*.java.tmpl`（`Main.java`・`LineAmounts.java`・`TeiFailure.java`）と`java_test.go`・`java_failure_contract_test.go` | 契約・fixture・同じ独立Expectedで候補を生成・選択・検証する。失敗契約（`TeiFailure`）もTarget側で同一の区分を保つ | build入力の対象が基準版で解消できない場合は`unsupported` |
 | **Python / JavaScript** | 同`templates/*.py.tmpl`・`*.js.tmpl`と`python_test.go`・`javascript_test.go`、`wasi_node.js` | 同一契約の別Target候補として扱う。interpreterのsnapshot digest・file同一性・size・更新時刻を記録し、実行中にsourceが変わったらcaseを拒否する（`source changed during execution`） | snapshot digestが取れない場合は実行として扱わない |
 | **Wasm / WASI** | 同`wasi_test.go`・`wasm_test.go`、`templates/wasi_node.js` | 同一bytesを再現してからbuildする。実行はsandbox/measurementの範囲で行い、OS権限の境界を`reference-generator-selection`側の隔離に委ねる | build入力・OS承認・権限境界が未確認なら実行しない |
-| **.NET / C#** | **基準版にGenerator・テンプレートは確認できない** | 未評価。既存のGenerator契約へ`.NET`候補を追加するかを別Issueで評価する。ETL/Batchの設計はTarget非依存だが、`.NET`実装の存在を前提にしない | 候補が無ければ`unsupported`。黙ってGoへ読み替えない |
+| **.NET / C#** | **基準版にGenerator・テンプレートは確認できない** | 未評価。[#4435](https://github.com/hat47x/tei-platform/issues/4435)が「追加できる／追加できない（制約付き）」を証拠付きで判定する。ETL/Batchの設計はTarget非依存なので、`.NET`実装の不在はblocking条件ではない | 候補が無ければ`unsupported`。黙ってGoへ読み替えない |
 
 **Target追加の規則（提案）**:
 1. 新しいTargetは「Generator候補」として契約・fixture・同一独立Expectedで検証してから実行単位にする。意味側にTarget名を持ち込まない（`#2510`/`#988`/`#1018`の境界）。
@@ -403,10 +403,11 @@ Checkpointは「どこまで進んだか」の記録であり、**「同じ意�
 
 ## 17. 引継ぎ（下位モデル向け）
 
-- **基準コミット**: TEI `origin/main` `7fe5de4d9b8f611d7f945693a6383eaa59cba035`、EKI `e15d3351f333a7cd7229acf001ff83ae5dce8120`。着手時に`git fetch origin`で再確認する。
+- **基準コミット**: TEI `origin/main` `7fe5de4d9b8f611d7f945693a6383eaa59cba035`（設計時点）、EKI `e15d3351f333a7cd7229acf001ff83ae5dce8120`。着手時に`git fetch origin`で再確認する。
+- **関連Issue**: 親[#1130](https://github.com/hat47x/tei-platform/issues/1130)、子[#4410](https://github.com/hat47x/tei-platform/issues/4410)（W1/W2/W3/W5の縦断実装）、[#4411](https://github.com/hat47x/tei-platform/issues/4411)（W4/W6/W7/W8の再開・Evidence・外部境界）、[#4434](https://github.com/hat47x/tei-platform/issues/4434)（設計検証で確認したmain由来の失敗9件）、[#4435](https://github.com/hat47x/tei-platform/issues/4435)（`.NET` Target評価）。
 - **実装順**: W1（取得）→W2（変換）→W3（出力）→W5（CLI二入口）。W4（Job定義）はW2と並行。W6（Evidence）→W4確定→W7（再開）→W8（外部連携）。
 - **最初の縦断実装**: §12。固定TSV→Filter（`status=="accepted"`）→Convert（JPY換算、変換表の版を固定）→Aggregate（`customer`別の`quantity`/`amount`）→決定的TSV＋`run.json`＋`manifest.json`。副作用なし。直接Go実行とCLI実行で同じ出力digestを再現する。
 - **独立Expected**: §13のN-01〜N-12。実装出力から生成せず、`examples/etl-first-slice/expected/`へ固定する。
 - **未決**: §15のO-01〜O-10。決めるまで実装の対象にしない、または既定案を選んで覆す条件をPR本文へ書く。
 - **停止線**: §14の各Wの停止条件と、§1の「第二のDSL/データモデル/Workflow Engineを作らない」規則。
-- **次の作業**: 本設計の起票（Issue更新と子Issue起票）までで止め、大規模実装は開始しない。実装はW1の独立Expectedから始める。
+- **次の作業**: 本設計の起票（Issue更新と子Issue起票）までで止め、大規模実装は開始しない。実装はW1の独立Expectedから始める。`.NET`評価は[#4435](https://github.com/hat47x/tei-platform/issues/4435)、main由来の失敗は[#4434](https://github.com/hat47x/tei-platform/issues/4434)が担当。
