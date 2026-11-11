@@ -315,6 +315,7 @@ R7Bの一回限りの準備・公開・後処理を行うスクリプトは、�
 | [`reference-self-build-two-stage/`](reference-self-build-two-stage/) | stage1で作った実行ファイルをstage2のinvokerとして実起動し、invoker一致・同一レシピ・artifact一致を別々に判定する。Seed Trust・受入・権限は扱わない（#2831 SB-C1） |
 | [`reference-harness-wire-summary/`](reference-harness-wire-summary/) | 外部AIハーネスがMock Providerへ送ったHTTP要求bodyを、モデル入力と拡張field（`dsh_session_log`）を別欄で要約する参照。bodyのbyte数・SHA-256・最上位キー・event種別・水位・合成markerの出現位置を出し、既存の出力を上書きしない。送出の許可・実OS隔離・Provider側の保存は判定しない（#2515 P0-b / #2509） |
 | [`reference-harness-answer-presence/`](reference-harness-answer-presence/) | 外部Harnessの回答が、同じ実行物のCLI応答に現れた事実（属性ID・型・記号、関係、Source path・digest、World指紋、診断コード）を含むかを機械的に確かめる参照。正答の採点はせず、Reviewer-onlyの独立Expectedを置き換えない（#2509 / TAI #168） |
+| [`dsh-session-evidence/`](dsh-session-evidence/) | 外部AIハーネス（DSH）のH2 Tool-only／H3 Product Skill比較試験で、参加者Rootの構築・検証済みslot同期・1 Sessionの完全な起動証拠（CLI・引数・cwd・exit・stdout/stderr・Session ID・usage）・永続Session Logの全zstd frame展開とTool call↔result相関・TEI argv分類・Skill Tool記録・trial-group JSON組み立てを行う。合成fixtureの独立回帰テスト付き。正答・Skill効果・OS/Network強制は評価しない（#2509 / TAI #168） |
 | [`reference-hash-id/`](reference-hash-id/) | （追記） |
 
 

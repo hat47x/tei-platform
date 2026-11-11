@@ -1,0 +1,52 @@
+# 調査報告: semantic-data:sales.order
+
+## 使用したCLI（実際に呼び出した実物）
+- 実行物は **`D:\GIT\hat47x\tei-wt-dsh-g3-20261111-slot\bin\tei.exe`**（12,006,912 bytes）だけです。作業ディレクトリは同ディレクトリで、`go run` は使っていません。
+- `version -json` の結果は、`effect: read-only`、`go1.27.0`、`windows/amd64`、**`vcsRevision: 50ebf8014340fd1906f6b35cfa30173e0ee2fc6c`**（`source: build-info`）です。
+- `commands` で表示されたのは `scope=selected-read-only-commands` の候補一覧です（exit 0）。この一覧には `inspect`、`source-index`、`trace`、`validate` などが含まれていました。
+- 実行した回はすべて exit 0 でした。stderr に出ていた「型作成できません」というメッセージは、Harness が PowerShell の起動時にエンコーディングを設定しようとして失敗したもので、CLI の出力ではありません。
+
+## 実行したコマンドと結果
+1. `tei.exe model catalog -workspace .\reference\workspace` の結果、`semantic-data:sales.order`（symbol `Order`、parent `semantic:sales`、`sourceStatus: indexed`）が1件だけ見つかりました。同名の項目はなく、対象は特定できています。
+2. `tei.exe inspect -workspace .\reference\workspace -subject-kind semantic-data -subject-id sales.order` の結果は `ok:true` です。
+   - 属性は6件です: `customer_id`、`external_id`、`order_id`、`ordered_at`、`status`、`total`。
+   - 関係は2件です: `customer`（`customer.customer` に1対1）と `lines`（`sales.order_line` に1対多）。
+3. `tei.exe source-index -workspace .\reference\workspace -subject-kind semantic-data -subject-id sales.order` の結果、artifact は `semantic/sales/order.tei`（fingerprint `sha256:f2063418…1e33`）の1件でした。定義の位置は offset 124〜129、7行6列〜11列です。
+4. `tei.exe trace -workspace .\reference\workspace -scope reference-observation -subject-kind semantic-data -subject-id sales.order -direction both -mode summary` の結果、`total:4`、`unresolved:0` でした。
+5. `tei.exe trace … -mode full -limit 50` の結果、直接の関係は4本ありました。
+   - `order_entry.order_record` → `data`
+   - `order_entry.recent_orders` → `data`
+   - `sales.order.submit` → `input`
+   - `sales.order.submit` → `output`
+6. `tei.exe validate -workspace .\reference\workspace -json` の結果は exit 0、`ok:true` で、警告が3件ありました（詳細は後述）。
+
+各コマンドの版は同じです。`worldFingerprint` は `sha256:c92de09f…d65a`、`sourceIndexFingerprint` は `sha256:1827f4b4…3531`、catalog の `modelRevision` は `sha256:f414e2b0…3fd2`、trace の外側 `snapshotFingerprint` は `sha256:c8f86c3d…e62e` でした。
+
+## (1) 何を表すか
+`sales` 名前空間のデータ型 `Order` です。注文ID、顧客、注文日時、状態、合計額、外部IDという6つの属性で、注文のヘッダーレコードを表しています。顧客への参照と、注文明細1対多の関係も持っています。`capability sales.order.submit` の入出力にも使われています。
+
+## (2) 定義元のファイルと出典の手掛かり
+- 定義元は **`reference/workspace/semantic/sales/order.tei`** です。このファイルを読んで、7〜17行目の `data Order { … }` を確認しました。範囲と line/column の情報は CLI の出力と一致します。
+- 出典は **未確認** です。定義ファイル内には provenance、source URL などの記述がありません。`source-revision` は `releases/applications/order-entry/*.tei` にしかありません。`provenance` 属性は `plugins/*/plugin.tei` にだけあります。
+- 参考にした `databases/sales-core/persistence/order.tei`（`semantic sales.order`）と `databases/sales-core/contracts/order.tei`（`read sales.order`）は、サブジェクトの定義元ではありません。
+
+## (3) 注文の合計額の属性
+- 識別子は **`sales.order.total`**（symbol は `total`）です。
+- 型は **`std.money`** です。inspect でも定義ファイル12行目の `attribute total type std.money` でも一致しました。
+- `std.money` は `semantic-type` で、`detail: primitive` ですが、**`sourceStatus: not-indexed`** です。`semantic:std` の定義本文は未確認で、桁や通貨などの具体仕様も未確認です。
+
+## (4) 検証結果と残る診断・不明点
+`validate` は exit 0、`ok:true` でしたが、**警告が3件あります**。
+- `DATABASE_RELEASE_CONTRACT_NOT_CURRENT`（sales_core 4.0.0）：historical contract `sales_core.order_legacy` に現在の定義がありません。
+- `DATABASE_RELEASE_CONTRACT_NOT_CURRENT`（sales_core 4.1.0）：同じ内容です。
+- `APPLICATION_RELEASE_CONTRACT_NOT_CURRENT`（order_entry@3.7.0）：参照先の `sales_core.order_legacy` に現在の定義がありません。
+
+残る不明点は次のとおりです。
+- **DB 側への投影は未完了（未materialize）です。** trace の `projectionUnresolved` に、`sales_core.order` や `sales_core.order_line` など17件が残っています。trace の権限注記に「各 Source の証拠を結び付けたものではない」「業務手続きは現在の world にない」とありました。
+- aggregate や意味の正式受理、業務上の妥当性は確認されていません。検証の成功は、業務上の受理を意味しません。
+- `semantic:std` と `std.money` の定義本文は未確認です。
+- `sales-core` は `releases/databases/sales-core/` に 4.0.0、4.1.0、4.2.0 があります。定義ファイルをどのリリース版が参照しているかは未確認です。`releases/` 配下全体を検索した範囲では、`semantic/sales/order.tei` の版を示す記述は見つかりませんでした。
+- `trace -scope` は読み取り時の文脈名で、権限を表す値ではありません。
+
+## 行っていないこと
+ファイルの書き換え・生成、DB や Provider への操作、外部への送信は行っていません。読み取りは `read`／`grep` と read-only CLI の実行だけです。
