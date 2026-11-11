@@ -1,4 +1,4 @@
-﻿namespace sales
+namespace sales
 
 data Order {
     candidate-key OrderIdentity {
@@ -38,7 +38,26 @@ period sales.month {
     calendar sales.fiscal
     states open closing closed
     closes on day 20
-    closed-rejects update
+    // A closed month refuses new rows and deletions. An update is not listed here:
+    // once close-requires and correction are declared, the closed period accepts an
+    // update only through the correction capability, which is narrower than listing
+    // update as refused. Listing both would contradict itself (the correction could
+    // never run), and validation reports that (PERIOD_CORRECTION_REFUSED_BY_CLOSURE).
+    closed-rejects create delete
+    close-requires sales.close_period
+    correction via sales.correct_order
+}
+
+capability close_period {
+    input order sales.order
+    outcome closed sales.order
+    effect update sales.order
+}
+
+capability correct_order {
+    input order sales.order
+    outcome corrected sales.order
+    effect update sales.order
 }
 capability create_order {
     input order_id std.identifier
