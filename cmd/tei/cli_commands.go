@@ -6,6 +6,7 @@ import (
 	"io"
 	"strings"
 
+	"tei/internal/documentdraft"
 	"tei/internal/operations"
 )
 
@@ -184,6 +185,25 @@ func helpText(fs *flag.FlagSet, command string) string {
 			// the sections mirror the model catalog (#4128). Say so here, where a
 			// designer looks before reading the number.
 			fmt.Fprintf(&out, "\nsections mirror the model catalog roots. The response's sectionScope names\nthe kinds the catalog covers and the declared kinds it does not, so a section\ncount is never a count of every declaration.\n")
+			return out.String()
+		}
+		if command == "model document-draft" {
+			// model document-draft parses its own FlagSet; these five flags are
+			// its whole grammar.
+			fmt.Fprintf(&out, "  -workspace string\n    \tTEI workspace directory\n")
+			fmt.Fprintf(&out, "  -subject-kind string\n    \texact subject kind: %s\n", strings.Join(documentdraft.SupportedElementKinds(), "|"))
+			fmt.Fprintf(&out, "  -subject-id string\n    \texact subject ID\n")
+			fmt.Fprintf(&out, "  -relation-id string\n    \toptional exact semantic-relation ID declared by the subject\n")
+			fmt.Fprintf(&out, "  -title string\n    \toptional document title\n")
+			fmt.Fprintf(&out, "\nthe result is a derived read-only projection. Saving the document it\nproduces is not TEI model ingestion and not Accepted Meaning.\n")
+			return out.String()
+		}
+		if command == "model document-reconcile" {
+			// model document-reconcile parses its own FlagSet; two flags are its
+			// grammar.
+			fmt.Fprintf(&out, "  -workspace string\n    \tTEI workspace directory\n")
+			fmt.Fprintf(&out, "  -draft string\n    \tpath to the stored draft JSON\n")
+			fmt.Fprintf(&out, "\nthe comparison is read-only. It names which occurrences need\nreconfirmation and never updates the draft, the document or a Source.\n")
 			return out.String()
 		}
 		if command == "dbcheck" {

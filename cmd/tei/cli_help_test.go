@@ -48,6 +48,20 @@ func TestHelpIsASuccessOnStandardOutput(t *testing.T) {
 			want: "-limit",
 		},
 		{
+			name: "model document-draft",
+			run: func(out *bytes.Buffer) (int, error) {
+				return runModelCommand([]string{"document-draft", "-h"}, out)
+			},
+			want: "-relation-id",
+		},
+		{
+			name: "model document-reconcile",
+			run: func(out *bytes.Buffer) (int, error) {
+				return runModelCommand([]string{"document-reconcile", "-h"}, out)
+			},
+			want: "-draft",
+		},
+		{
 			name: "view",
 			run: func(out *bytes.Buffer) (int, error) {
 				return runViewCommand([]string{"-h"}, out)

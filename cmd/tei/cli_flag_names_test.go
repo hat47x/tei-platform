@@ -68,7 +68,10 @@ func TestAdvertisedFlagNamesAreBareNames(t *testing.T) {
 // commands that use the shared allowlist the two sets have to match; nothing
 // may be advertised that the command would reject.
 func TestAdvertisedFlagNamesAreTheAcceptedSet(t *testing.T) {
-	selfParsed := map[string]bool{"model catalog": true, "model locate": true, "model overview": true}
+	selfParsed := map[string]bool{
+		"model catalog": true, "model locate": true, "model overview": true,
+		"model document-draft": true, "model document-reconcile": true,
+	}
 	for _, record := range commandCatalog().Commands {
 		if selfParsed[record.Name] {
 			continue
@@ -90,9 +93,11 @@ func TestAdvertisedFlagNamesAreTheAcceptedSet(t *testing.T) {
 // to either side fails instead of drifting silently.
 func TestSelfParsedFlagNames(t *testing.T) {
 	want := map[string]struct{ required, optional []string }{
-		"model catalog":  {[]string{"workspace"}, []string{"namespace"}},
-		"model locate":   {[]string{"workspace", "subject-kind", "subject-id"}, []string{"limit"}},
-		"model overview": {[]string{"workspace"}, []string{"limit"}},
+		"model catalog":            {[]string{"workspace"}, []string{"namespace"}},
+		"model locate":             {[]string{"workspace", "subject-kind", "subject-id"}, []string{"limit"}},
+		"model overview":           {[]string{"workspace"}, []string{"limit"}},
+		"model document-draft":     {[]string{"workspace", "subject-kind", "subject-id"}, []string{"relation-id", "title"}},
+		"model document-reconcile": {[]string{"workspace", "draft"}, nil},
 	}
 	for name, expect := range want {
 		record := catalogRecord(t, name)

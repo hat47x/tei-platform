@@ -87,6 +87,8 @@ func commandCatalog() cliCommandCatalog {
 		{Name: "model catalog", Effect: "read-only", Required: []string{"-workspace"}, Optional: []string{"-namespace"}, Output: "json", SchemaVersion: "tei.cli.model/v0", JSONContract: "enveloped"},
 		{Name: "model overview", Effect: "read-only", Required: []string{"-workspace"}, Optional: []string{"-limit"}, Output: "json", SchemaVersion: "tei.cli.model-overview/v0", JSONContract: "enveloped"},
 		{Name: "model locate", Effect: "read-only", Required: []string{"-workspace", "-subject-kind", "-subject-id"}, Optional: []string{"-limit"}, Output: "json", SchemaVersion: "tei.cli.model-locate/v0", JSONContract: "enveloped"},
+		{Name: "model document-draft", Effect: "read-only", Required: []string{"-workspace", "-subject-kind", "-subject-id"}, Optional: []string{"-relation-id", "-title"}, Output: "json", SchemaVersion: "tei.cli.model-document-draft/v0", JSONContract: "enveloped"},
+		{Name: "model document-reconcile", Effect: "read-only", Required: []string{"-workspace", "-draft"}, Output: "json", SchemaVersion: "tei.cli.model-document-reconcile/v0", JSONContract: "enveloped"},
 		{Name: "workspace-files", Effect: "read-only", Required: []string{"-workspace"}, Output: "json", SchemaVersion: "tei.cli.workspace-files/v0", JSONContract: "enveloped"},
 		{Name: "inspect", Effect: "read-only", Required: []string{"-workspace", "-subject-kind", "-subject-id"}, Output: "json", SchemaVersion: "tei.cli.inspect/v0", JSONContract: "enveloped", ArgumentValues: valueSets("inspect"), ArgumentType: valueTypes("inspect")},
 		{Name: "view", Effect: "read-only", Required: []string{"-workspace", "-application"}, Optional: []string{"-format: text|json for -application alone or -package, and text|json|html|print for a browse -pattern (a command -pattern takes text|json)", "at most one of -pattern, -package, -command", "-input and -execute with -command", "-reference-store with -execute", "-period-state with -execute", "-allow-capability with -execute", "-operation-log with -execute", "-lifecycle-state and -lifecycle-command with -execute", "-lifecycle-owner and -lifecycle-generation with -lifecycle-state"}, Output: "text; json when -format json", SchemaVersion: "tei.cli.view/v0", JSONContract: "enveloped", ArgumentValues: valueSets("view"), ArgumentType: valueTypes("view"), ArgumentDefaults: valueDefaults("view"), RepeatableFlags: []string{"-input", "-allow-capability"}, WriteFlags: []string{"-operation-log", "-lifecycle-state"}},
@@ -120,9 +122,11 @@ var selfParsedFlagNames = map[string]struct {
 	required []string
 	optional []string
 }{
-	"model catalog":  {[]string{"workspace"}, []string{"namespace"}},
-	"model locate":   {[]string{"workspace", "subject-kind", "subject-id"}, []string{"limit"}},
-	"model overview": {[]string{"workspace"}, []string{"limit"}},
+	"model catalog":            {[]string{"workspace"}, []string{"namespace"}},
+	"model locate":             {[]string{"workspace", "subject-kind", "subject-id"}, []string{"limit"}},
+	"model overview":           {[]string{"workspace"}, []string{"limit"}},
+	"model document-draft":     {[]string{"workspace", "subject-kind", "subject-id"}, []string{"relation-id", "title"}},
+	"model document-reconcile": {[]string{"workspace", "draft"}, nil},
 }
 
 // flagNamePattern matches the flag names a rule sentence mentions.
