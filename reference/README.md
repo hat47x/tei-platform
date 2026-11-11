@@ -181,17 +181,6 @@ go run ./tools/reference-deployment-attempt
 
 `reference/standard-crud/`は、操作面の導出が返す未解決を、実際の宣言で固定する負例の作業領域です。主キーも候補キーも無いデータ、同時更新の検出方法が無いデータ、更新の意図はあるがライフサイクルの宣言が無いデータ、書込み専用の別名を一つの作業領域に置き、`validate`は通るが操作としては導出できない状態を再現します。位置づけと期待する未解決は[README](standard-crud/README.md)にあります。製品機能ではなく、参照用作業領域(`reference/workspace`)の代替でもありません。
 
-## SUI向けscope conformanceの行列
-
-`reference/sui-scope-conformance/`は、SUIの越境試験（付録A）を言語非依存の行列として写した参照です。各セルは`pass`/`fail`/`unsupported`/`not-run`のいずれかで、空欄をpassと読み替えません。実試験は実行せず、既知の不足を`knownGaps`として残します。
-
-```bash
-go run ./tools/reference-sui-scope-conformance
-go test ./tools/reference-sui-scope-conformance/... -count=1
-```
-
-M3〜M6の実装と未決は[README](sui-scope-conformance/README.md)にあります。
-
 ## 参照資料を追加・更新するとき
 
 成果物を保存するかどうかは、生成できるかどうかでは決めません。設計上の境界を再現する共有の基準として必要かどうかで判断します。
