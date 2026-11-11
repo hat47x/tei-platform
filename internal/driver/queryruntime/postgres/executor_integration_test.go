@@ -166,8 +166,8 @@ func irWorldWithRelationQuery() ir.World {
 		},
 	}
 	relation := semantic.Relation{
-		ID:         "sales.order.customer",
-		Target:     "customer.customer",
+		ID:          "sales.order.customer",
+		Target:      "customer.customer",
 		Cardinality: semantic.CardinalityOne,
 		Keys: []semantic.RelationKey{
 			{SourceAttribute: "sales.order.customer_id", TargetAttribute: "customer.customer.customer_id"},

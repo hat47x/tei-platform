@@ -131,7 +131,6 @@ func TestResolveRelationQueryHandlesEmptyResultSet(t *testing.T) {
 	// Empty result set is a valid outcome - the SQL will execute and return 0 rows
 }
 
-
 func irWorldWithAmbiguousPaths() ir.World {
 	orderData := semantic.Data{
 		ID: "sales.order",
@@ -148,16 +147,16 @@ func irWorldWithAmbiguousPaths() ir.World {
 		},
 	}
 	relation1 := semantic.Relation{
-		ID:         "sales.order.customer",
-		Target:     "customer.customer",
+		ID:          "sales.order.customer",
+		Target:      "customer.customer",
 		Cardinality: semantic.CardinalityOne,
 		Keys: []semantic.RelationKey{
 			{SourceAttribute: "sales.order.customer_id", TargetAttribute: "customer.customer.customer_id"},
 		},
 	}
 	relation2 := semantic.Relation{
-		ID:         "sales.order.customer_alt",
-		Target:     "customer.customer",
+		ID:          "sales.order.customer_alt",
+		Target:      "customer.customer",
 		Cardinality: semantic.CardinalityOne,
 		Keys: []semantic.RelationKey{
 			{SourceAttribute: "sales.order.customer_id", TargetAttribute: "customer.customer.customer_id"},
@@ -217,16 +216,16 @@ func irWorldWithRelationQuery() ir.World {
 		},
 	}
 	relation := semantic.Relation{
-		ID:         "sales.order.customer",
-		Target:     "customer.customer",
+		ID:          "sales.order.customer",
+		Target:      "customer.customer",
 		Cardinality: semantic.CardinalityOne,
 		Keys: []semantic.RelationKey{
 			{SourceAttribute: "sales.order.customer_id", TargetAttribute: "customer.customer.customer_id"},
 		},
 	}
 	altRelation := semantic.Relation{
-		ID:         "customer.customer.alt",
-		Target:     "customer.customer",
+		ID:          "customer.customer.alt",
+		Target:      "customer.customer",
 		Cardinality: semantic.CardinalityOne,
 		Keys: []semantic.RelationKey{
 			{SourceAttribute: "customer.customer.customer_id", TargetAttribute: "customer.customer.customer_id"},
@@ -269,8 +268,8 @@ func irWorldWithSelfReference() ir.World {
 		},
 	}
 	relation := semantic.Relation{
-		ID:         "org.employee.manager",
-		Target:     "org.employee",
+		ID:          "org.employee.manager",
+		Target:      "org.employee",
 		Cardinality: semantic.CardinalityOne,
 		Keys: []semantic.RelationKey{
 			{SourceAttribute: "org.employee.manager_id", TargetAttribute: "org.employee.employee_id"},
@@ -311,8 +310,8 @@ func irWorldWithCycle() ir.World {
 		},
 	}
 	relation := semantic.Relation{
-		ID:         "org.organization.parent",
-		Target:     "org.organization",
+		ID:          "org.organization.parent",
+		Target:      "org.organization",
 		Cardinality: semantic.CardinalityOne,
 		Keys: []semantic.RelationKey{
 			{SourceAttribute: "org.organization.parent_id", TargetAttribute: "org.organization.org_id"},
@@ -358,16 +357,16 @@ func irWorldWithMultiStepCycle() ir.World {
 		},
 	}
 	relationAtoB := semantic.Relation{
-		ID:         "org.department_a.links",
-		Target:     "org.department_b",
+		ID:          "org.department_a.links",
+		Target:      "org.department_b",
 		Cardinality: semantic.CardinalityOne,
 		Keys: []semantic.RelationKey{
 			{SourceAttribute: "org.department_a.id", TargetAttribute: "org.department_b.id"},
 		},
 	}
 	relationBtoA := semantic.Relation{
-		ID:         "org.department_b.links",
-		Target:     "org.department_a",
+		ID:          "org.department_b.links",
+		Target:      "org.department_a",
 		Cardinality: semantic.CardinalityOne,
 		Keys: []semantic.RelationKey{
 			{SourceAttribute: "org.department_b.id", TargetAttribute: "org.department_a.id"},
@@ -419,8 +418,8 @@ func irWorldWithCompositeKey() ir.World {
 		},
 	}
 	relation := semantic.Relation{
-		ID:         "sales.order.lines",
-		Target:     "sales.order_line",
+		ID:          "sales.order.lines",
+		Target:      "sales.order_line",
 		Cardinality: semantic.CardinalityMany,
 		Keys: []semantic.RelationKey{
 			{SourceAttribute: "sales.order.order_id", TargetAttribute: "sales.order_line.order_id"},
@@ -468,10 +467,10 @@ func irWorldWithManyToMany() ir.World {
 		},
 	}
 	relation := semantic.Relation{
-		ID:         "sales.order.products",
-		Target:     "sales.product",
+		ID:          "sales.order.products",
+		Target:      "sales.product",
 		Cardinality: semantic.CardinalityMany,
-		JoinTable:  "sales.order_product",
+		JoinTable:   "sales.order_product",
 		Keys: []semantic.RelationKey{
 			{SourceAttribute: "sales.order.order_id", TargetAttribute: "sales.order_product.order_id"},
 			{SourceAttribute: "sales.product.product_id", TargetAttribute: "sales.order_product.product_id"},
