@@ -87,7 +87,6 @@ func TestThreeElementConflictingDeclarationsAreNotSafeToCollapse(t *testing.T) {
 	// This test has no accepted Function Directness or Primary Data Owner.
 }
 
-
 // The two read-only projections also differ when a Function declares the
 // same Data pair twice. FunctionOperation has no logical occurrence ID, so
 // neither repeated rows nor the first cross-reference is an accepted count of
