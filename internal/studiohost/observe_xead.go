@@ -99,19 +99,19 @@ func (h *ReadOnly) ObserveXead(workspaceID, relativePath string) XeadObservation
 		return XeadObservationResponse{Failure: xeadFailure(code)}
 	}
 	if h.xeadObserver == nil {
-		return XeadObservationResponse{Failure: &Failure{Code: "OPERATION_FAILED", Message: "workspace operation failed"}}
+		return XeadObservationResponse{Failure: classifiedFailure("OPERATION_FAILED", "", "workspace operation failed")}
 	}
 	value, err := h.xeadObserver.Observe(content)
 	if err != nil {
 		var observationErr *XeadObservationError
 		if errors.As(err, &observationErr) && observationErr != nil && (observationErr.Code == XeadParseFailed || observationErr.Code == XeadProjectionFailed) {
-			return XeadObservationResponse{Failure: &Failure{Code: observationErr.Code, Message: "X-TEA source observation failed"}}
+			return XeadObservationResponse{Failure: classifiedFailure(observationErr.Code, "", "X-TEA source observation failed")}
 		}
-		return XeadObservationResponse{Failure: &Failure{Code: "OPERATION_FAILED", Message: "workspace operation failed"}}
+		return XeadObservationResponse{Failure: classifiedFailure("OPERATION_FAILED", "", "workspace operation failed")}
 	}
 	return XeadObservationResponse{OK: true, Value: &value}
 }
 
 func xeadFailure(code string) *Failure {
-	return &Failure{Code: code, Message: "X-TEA source observation failed"}
+	return classifiedFailure(code, "", "X-TEA source observation failed")
 }

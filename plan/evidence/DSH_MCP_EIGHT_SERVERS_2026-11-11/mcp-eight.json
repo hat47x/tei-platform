@@ -1,0 +1,449 @@
+{
+  "note": "Eight mcp-client entries with distinct ids and names connected at once. Each server received its own four-request handshake (32 total) and every tool reached the model, moving the tool count from 27 (no server) to 35. The growth stayed linear at 8.",
+  "overlay": {
+    "entries": [
+      {
+        "id": "mcp-client-1",
+        "serverName": "server1",
+        "url": "http://127.0.0.1:8799/mcp/1"
+      },
+      {
+        "id": "mcp-client-2",
+        "serverName": "server2",
+        "url": "http://127.0.0.1:8799/mcp/2"
+      },
+      {
+        "id": "mcp-client-3",
+        "serverName": "server3",
+        "url": "http://127.0.0.1:8799/mcp/3"
+      },
+      {
+        "id": "mcp-client-4",
+        "serverName": "server4",
+        "url": "http://127.0.0.1:8799/mcp/4"
+      },
+      {
+        "id": "mcp-client-5",
+        "serverName": "server5",
+        "url": "http://127.0.0.1:8799/mcp/5"
+      },
+      {
+        "id": "mcp-client-6",
+        "serverName": "server6",
+        "url": "http://127.0.0.1:8799/mcp/6"
+      },
+      {
+        "id": "mcp-client-7",
+        "serverName": "server7",
+        "url": "http://127.0.0.1:8799/mcp/7"
+      },
+      {
+        "id": "mcp-client-8",
+        "serverName": "server8",
+        "url": "http://127.0.0.1:8799/mcp/8"
+      }
+    ],
+    "serverCount": 8
+  },
+  "serverCount": 8,
+  "mcpRequestCount": 32,
+  "methodsPerServer": {
+    "server1": [
+      "server/discover",
+      "initialize",
+      "notifications/initialized",
+      "tools/list"
+    ],
+    "server2": [
+      "server/discover",
+      "initialize",
+      "notifications/initialized",
+      "tools/list"
+    ],
+    "server3": [
+      "server/discover",
+      "initialize",
+      "notifications/initialized",
+      "tools/list"
+    ],
+    "server4": [
+      "server/discover",
+      "initialize",
+      "notifications/initialized",
+      "tools/list"
+    ],
+    "server5": [
+      "server/discover",
+      "initialize",
+      "notifications/initialized",
+      "tools/list"
+    ],
+    "server6": [
+      "server/discover",
+      "initialize",
+      "notifications/initialized",
+      "tools/list"
+    ],
+    "server7": [
+      "server/discover",
+      "initialize",
+      "notifications/initialized",
+      "tools/list"
+    ],
+    "server8": [
+      "server/discover",
+      "initialize",
+      "notifications/initialized",
+      "tools/list"
+    ]
+  },
+  "handshakesPerServer": {
+    "server1": 1,
+    "server2": 1,
+    "server3": 1,
+    "server4": 1,
+    "server5": 1,
+    "server6": 1,
+    "server7": 1,
+    "server8": 1
+  },
+  "requests": [
+    {
+      "file": "mcp-001-meta.json",
+      "server": "server1",
+      "path": "/mcp/1",
+      "method": "server/discover",
+      "bytes": 280,
+      "sha256": "2d6e560663b30185c0680e157110159805f2f628045dd515a6a0557bcd66916f"
+    },
+    {
+      "file": "mcp-002-meta.json",
+      "server": "server2",
+      "path": "/mcp/2",
+      "method": "server/discover",
+      "bytes": 280,
+      "sha256": "2d6e560663b30185c0680e157110159805f2f628045dd515a6a0557bcd66916f"
+    },
+    {
+      "file": "mcp-003-meta.json",
+      "server": "server3",
+      "path": "/mcp/3",
+      "method": "server/discover",
+      "bytes": 280,
+      "sha256": "2d6e560663b30185c0680e157110159805f2f628045dd515a6a0557bcd66916f"
+    },
+    {
+      "file": "mcp-004-meta.json",
+      "server": "server4",
+      "path": "/mcp/4",
+      "method": "server/discover",
+      "bytes": 280,
+      "sha256": "2d6e560663b30185c0680e157110159805f2f628045dd515a6a0557bcd66916f"
+    },
+    {
+      "file": "mcp-005-meta.json",
+      "server": "server5",
+      "path": "/mcp/5",
+      "method": "server/discover",
+      "bytes": 280,
+      "sha256": "2d6e560663b30185c0680e157110159805f2f628045dd515a6a0557bcd66916f"
+    },
+    {
+      "file": "mcp-006-meta.json",
+      "server": "server6",
+      "path": "/mcp/6",
+      "method": "server/discover",
+      "bytes": 280,
+      "sha256": "2d6e560663b30185c0680e157110159805f2f628045dd515a6a0557bcd66916f"
+    },
+    {
+      "file": "mcp-007-meta.json",
+      "server": "server7",
+      "path": "/mcp/7",
+      "method": "server/discover",
+      "bytes": 280,
+      "sha256": "2d6e560663b30185c0680e157110159805f2f628045dd515a6a0557bcd66916f"
+    },
+    {
+      "file": "mcp-008-meta.json",
+      "server": "server8",
+      "path": "/mcp/8",
+      "method": "server/discover",
+      "bytes": 280,
+      "sha256": "2d6e560663b30185c0680e157110159805f2f628045dd515a6a0557bcd66916f"
+    },
+    {
+      "file": "mcp-009-meta.json",
+      "server": "server1",
+      "path": "/mcp/1",
+      "method": "initialize",
+      "bytes": 163,
+      "sha256": "40902c765afca2b3658a4c98787806ed8b1a716cf4a4874b273eadce48a9ffb8"
+    },
+    {
+      "file": "mcp-010-meta.json",
+      "server": "server2",
+      "path": "/mcp/2",
+      "method": "initialize",
+      "bytes": 163,
+      "sha256": "40902c765afca2b3658a4c98787806ed8b1a716cf4a4874b273eadce48a9ffb8"
+    },
+    {
+      "file": "mcp-011-meta.json",
+      "server": "server3",
+      "path": "/mcp/3",
+      "method": "initialize",
+      "bytes": 163,
+      "sha256": "40902c765afca2b3658a4c98787806ed8b1a716cf4a4874b273eadce48a9ffb8"
+    },
+    {
+      "file": "mcp-012-meta.json",
+      "server": "server4",
+      "path": "/mcp/4",
+      "method": "initialize",
+      "bytes": 163,
+      "sha256": "40902c765afca2b3658a4c98787806ed8b1a716cf4a4874b273eadce48a9ffb8"
+    },
+    {
+      "file": "mcp-013-meta.json",
+      "server": "server5",
+      "path": "/mcp/5",
+      "method": "initialize",
+      "bytes": 163,
+      "sha256": "40902c765afca2b3658a4c98787806ed8b1a716cf4a4874b273eadce48a9ffb8"
+    },
+    {
+      "file": "mcp-014-meta.json",
+      "server": "server6",
+      "path": "/mcp/6",
+      "method": "initialize",
+      "bytes": 163,
+      "sha256": "40902c765afca2b3658a4c98787806ed8b1a716cf4a4874b273eadce48a9ffb8"
+    },
+    {
+      "file": "mcp-015-meta.json",
+      "server": "server7",
+      "path": "/mcp/7",
+      "method": "initialize",
+      "bytes": 163,
+      "sha256": "40902c765afca2b3658a4c98787806ed8b1a716cf4a4874b273eadce48a9ffb8"
+    },
+    {
+      "file": "mcp-016-meta.json",
+      "server": "server8",
+      "path": "/mcp/8",
+      "method": "initialize",
+      "bytes": 163,
+      "sha256": "40902c765afca2b3658a4c98787806ed8b1a716cf4a4874b273eadce48a9ffb8"
+    },
+    {
+      "file": "mcp-017-meta.json",
+      "server": "server1",
+      "path": "/mcp/1",
+      "method": "notifications/initialized",
+      "bytes": 54,
+      "sha256": "59951ca0b212b103876fa23a9e58bcbbc8fbcc0120e3f5ee7214461e2bd1cd5e"
+    },
+    {
+      "file": "mcp-018-meta.json",
+      "server": "server2",
+      "path": "/mcp/2",
+      "method": "notifications/initialized",
+      "bytes": 54,
+      "sha256": "59951ca0b212b103876fa23a9e58bcbbc8fbcc0120e3f5ee7214461e2bd1cd5e"
+    },
+    {
+      "file": "mcp-019-meta.json",
+      "server": "server3",
+      "path": "/mcp/3",
+      "method": "notifications/initialized",
+      "bytes": 54,
+      "sha256": "59951ca0b212b103876fa23a9e58bcbbc8fbcc0120e3f5ee7214461e2bd1cd5e"
+    },
+    {
+      "file": "mcp-020-meta.json",
+      "server": "server4",
+      "path": "/mcp/4",
+      "method": "notifications/initialized",
+      "bytes": 54,
+      "sha256": "59951ca0b212b103876fa23a9e58bcbbc8fbcc0120e3f5ee7214461e2bd1cd5e"
+    },
+    {
+      "file": "mcp-021-meta.json",
+      "server": "server5",
+      "path": "/mcp/5",
+      "method": "notifications/initialized",
+      "bytes": 54,
+      "sha256": "59951ca0b212b103876fa23a9e58bcbbc8fbcc0120e3f5ee7214461e2bd1cd5e"
+    },
+    {
+      "file": "mcp-022-meta.json",
+      "server": "server6",
+      "path": "/mcp/6",
+      "method": "notifications/initialized",
+      "bytes": 54,
+      "sha256": "59951ca0b212b103876fa23a9e58bcbbc8fbcc0120e3f5ee7214461e2bd1cd5e"
+    },
+    {
+      "file": "mcp-023-meta.json",
+      "server": "server7",
+      "path": "/mcp/7",
+      "method": "notifications/initialized",
+      "bytes": 54,
+      "sha256": "59951ca0b212b103876fa23a9e58bcbbc8fbcc0120e3f5ee7214461e2bd1cd5e"
+    },
+    {
+      "file": "mcp-024-meta.json",
+      "server": "server8",
+      "path": "/mcp/8",
+      "method": "notifications/initialized",
+      "bytes": 54,
+      "sha256": "59951ca0b212b103876fa23a9e58bcbbc8fbcc0120e3f5ee7214461e2bd1cd5e"
+    },
+    {
+      "file": "mcp-025-meta.json",
+      "server": "server1",
+      "path": "/mcp/1",
+      "method": "tools/list",
+      "bytes": 46,
+      "sha256": "75f0c7627a35c7e96a0a88482622a0d1ec7e81c0eb5414a88ba7aab9450cf73b"
+    },
+    {
+      "file": "mcp-026-meta.json",
+      "server": "server2",
+      "path": "/mcp/2",
+      "method": "tools/list",
+      "bytes": 46,
+      "sha256": "75f0c7627a35c7e96a0a88482622a0d1ec7e81c0eb5414a88ba7aab9450cf73b"
+    },
+    {
+      "file": "mcp-027-meta.json",
+      "server": "server3",
+      "path": "/mcp/3",
+      "method": "tools/list",
+      "bytes": 46,
+      "sha256": "75f0c7627a35c7e96a0a88482622a0d1ec7e81c0eb5414a88ba7aab9450cf73b"
+    },
+    {
+      "file": "mcp-028-meta.json",
+      "server": "server4",
+      "path": "/mcp/4",
+      "method": "tools/list",
+      "bytes": 46,
+      "sha256": "75f0c7627a35c7e96a0a88482622a0d1ec7e81c0eb5414a88ba7aab9450cf73b"
+    },
+    {
+      "file": "mcp-029-meta.json",
+      "server": "server5",
+      "path": "/mcp/5",
+      "method": "tools/list",
+      "bytes": 46,
+      "sha256": "75f0c7627a35c7e96a0a88482622a0d1ec7e81c0eb5414a88ba7aab9450cf73b"
+    },
+    {
+      "file": "mcp-030-meta.json",
+      "server": "server6",
+      "path": "/mcp/6",
+      "method": "tools/list",
+      "bytes": 46,
+      "sha256": "75f0c7627a35c7e96a0a88482622a0d1ec7e81c0eb5414a88ba7aab9450cf73b"
+    },
+    {
+      "file": "mcp-031-meta.json",
+      "server": "server7",
+      "path": "/mcp/7",
+      "method": "tools/list",
+      "bytes": 46,
+      "sha256": "75f0c7627a35c7e96a0a88482622a0d1ec7e81c0eb5414a88ba7aab9450cf73b"
+    },
+    {
+      "file": "mcp-032-meta.json",
+      "server": "server8",
+      "path": "/mcp/8",
+      "method": "tools/list",
+      "bytes": 46,
+      "sha256": "75f0c7627a35c7e96a0a88482622a0d1ec7e81c0eb5414a88ba7aab9450cf73b"
+    }
+  ],
+  "modelRequests": [
+    {
+      "file": "model-001-request.json",
+      "bytes": 125725,
+      "sha256": "7e19175891808bf8a7832c6f77c83a205b0d3fdd22284ef6765ee0f0cfcd8d9f",
+      "toolCount": 35,
+      "mcpTools": [
+        "mcp__server1__tool_server1",
+        "mcp__server2__tool_server2",
+        "mcp__server3__tool_server3",
+        "mcp__server4__tool_server4",
+        "mcp__server5__tool_server5",
+        "mcp__server6__tool_server6",
+        "mcp__server7__tool_server7",
+        "mcp__server8__tool_server8"
+      ],
+      "resourceTools": [
+        "list_mcp_resource_templates",
+        "list_mcp_resources",
+        "read_mcp_resource"
+      ]
+    },
+    {
+      "file": "model-002-request.json",
+      "bytes": 70316,
+      "sha256": "da33b5ada805ebf8af25f5b0bbd1fbb08ca049e22737f6566523b10420d20652",
+      "toolCount": 0,
+      "mcpTools": [],
+      "resourceTools": []
+    }
+  ],
+  "toolCountAfter": 35,
+  "mcpTools": [
+    "mcp__server1__tool_server1",
+    "mcp__server2__tool_server2",
+    "mcp__server3__tool_server3",
+    "mcp__server4__tool_server4",
+    "mcp__server5__tool_server5",
+    "mcp__server6__tool_server6",
+    "mcp__server7__tool_server7",
+    "mcp__server8__tool_server8"
+  ],
+  "resourceTools": [
+    "list_mcp_resource_templates",
+    "list_mcp_resources",
+    "read_mcp_resource"
+  ],
+  "toolCountFormula": "27 (base without MCP servers) + number of connected servers",
+  "trend": [
+    {
+      "servers": 0,
+      "handshakes": 0,
+      "tools": 27,
+      "source": "no mcp-client entry"
+    },
+    {
+      "servers": 2,
+      "handshakes": 8,
+      "tools": 29,
+      "source": "DSH_MCP_TWO_SERVERS_2026-11-10"
+    },
+    {
+      "servers": 3,
+      "handshakes": 12,
+      "tools": 30,
+      "source": "DSH_MCP_THREE_SERVERS_2026-11-11"
+    },
+    {
+      "servers": 5,
+      "handshakes": 20,
+      "tools": 32,
+      "source": "DSH_MCP_FIVE_SERVERS_2026-11-11"
+    },
+    {
+      "servers": 8,
+      "handshakes": 32,
+      "tools": 35,
+      "source": "this record"
+    }
+  ],
+  "namespacePattern": "mcp__<serverName>__<toolName>"
+}

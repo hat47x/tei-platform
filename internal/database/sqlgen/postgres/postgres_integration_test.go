@@ -39,11 +39,11 @@ func TestPostgresIntegration(t *testing.T) {
 
 	// Test SELECT with WHERE, ORDER BY, LIMIT
 	selectSQL, err := dialect.Select(ctx, sqlgen.SelectOptions{
-		Table:    "orders",
-		Columns:  []string{"id", "amount", "status"},
-		Where:    []sqlgen.Condition{{Column: "status", Operator: "=", Value: "active"}},
-		OrderBy:  []sqlgen.OrderClause{{Column: "amount", Desc: true}},
-		Limit:    intPtrIntegration(10),
+		Table:   "orders",
+		Columns: []string{"id", "amount", "status"},
+		Where:   []sqlgen.Condition{{Column: "status", Operator: "=", Value: "active"}},
+		OrderBy: []sqlgen.OrderClause{{Column: "amount", Desc: true}},
+		Limit:   intPtrIntegration(10),
 	})
 	if err != nil {
 		t.Fatalf("Select error: %v", err)
@@ -103,10 +103,10 @@ func TestPostgresIntegration(t *testing.T) {
 
 	// Test GROUP BY and HAVING
 	groupSQL, err := dialect.Select(ctx, sqlgen.SelectOptions{
-		Table:    "orders",
-		Columns:  []string{"status", "COUNT(*) as cnt"},
-		GroupBy:  []string{"status"},
-		Having:   []sqlgen.Condition{{Column: "COUNT(*)", Operator: ">", Value: 5}},
+		Table:   "orders",
+		Columns: []string{"status", "COUNT(*) as cnt"},
+		GroupBy: []string{"status"},
+		Having:  []sqlgen.Condition{{Column: "COUNT(*)", Operator: ">", Value: 5}},
 	})
 	if err != nil {
 		t.Fatalf("Group By Select error: %v", err)
@@ -121,9 +121,9 @@ func TestPostgresIntegration(t *testing.T) {
 
 	// Test FOR UPDATE
 	forUpdateSQL, err := dialect.Select(ctx, sqlgen.SelectOptions{
-		Table:      "orders",
-		Columns:    []string{"id"},
-		ForUpdate:  true,
+		Table:     "orders",
+		Columns:   []string{"id"},
+		ForUpdate: true,
 	})
 	if err != nil {
 		t.Fatalf("For Update Select error: %v", err)
@@ -134,9 +134,9 @@ func TestPostgresIntegration(t *testing.T) {
 
 	// Test FOR SHARE
 	forShareSQL, err := dialect.Select(ctx, sqlgen.SelectOptions{
-		Table:     "orders",
-		Columns:   []string{"id"},
-		ForShare:  true,
+		Table:    "orders",
+		Columns:  []string{"id"},
+		ForShare: true,
 	})
 	if err != nil {
 		t.Fatalf("For Share Select error: %v", err)

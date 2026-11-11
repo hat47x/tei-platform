@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 
 	"tei/internal/core"
 	"tei/internal/driver"
@@ -31,17 +32,19 @@ type scenarioStepEvidence struct {
 
 func runScenarioCommand(args []string, output io.Writer) error {
 	if len(args) == 0 {
-		return fmt.Errorf("scenario requires verify, generate, run, or check")
+		return fmt.Errorf("scenario requires verify, generate, translate, run, or check")
 	}
 	action := args[0]
 	switch action {
-	case "verify", "generate", "run", "check":
+	case "verify", "generate", "translate", "run", "check":
 	default:
 		return fmt.Errorf("unsupported scenario action %q", action)
 	}
 	flags := flag.NewFlagSet("scenario "+action, flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	scenarioPath := flags.String("scenario", "", "Driver Scenario JSON")
+	scenarioMarkdown := flags.String("scenario-md", "", "Markdown test authoring source")
+	scenarioID := flags.String("scenario-id", "", "Scenario ID for Markdown translation")
 	workspacePath := flags.String("workspace", "", "TEI Workspace root")
 	stepID := flags.String("step", "", "specific Scenario step for run")
 	planPath := flags.String("plan", "", "generated CLI plan for check")
@@ -52,7 +55,14 @@ func runScenarioCommand(args []string, output io.Writer) error {
 	if err := flags.Parse(args[1:]); err != nil {
 		return err
 	}
-	if flags.NArg() != 0 || *scenarioPath == "" || *workspacePath == "" {
+	if flags.NArg() != 0 {
+		return fmt.Errorf("scenario accepts only named flags, no positional arguments")
+	}
+	if action == "translate" {
+		if strings.TrimSpace(*scenarioMarkdown) == "" || strings.TrimSpace(*scenarioID) == "" || strings.TrimSpace(*workspacePath) == "" {
+			return fmt.Errorf("scenario translate requires -scenario-md, -scenario-id and -workspace")
+		}
+	} else if *scenarioPath == "" || *workspacePath == "" {
 		return fmt.Errorf("scenario requires -scenario and -workspace, with no positional arguments")
 	}
 	if *stepID != "" && action != "run" {
@@ -67,6 +77,17 @@ func runScenarioCommand(args []string, output io.Writer) error {
 	pinsSupplied := *expectedScenarioSHA != "" || *expectedWorldSHA != "" || *expectedLockSHA != "" || *expectedFixtureSHA != ""
 	if action == "run" && pinsSupplied && (*stepID == "" || *expectedScenarioSHA == "" || *expectedWorldSHA == "" || *expectedLockSHA == "") {
 		return fmt.Errorf("generated Scenario run requires complete Scenario, World, Plugin Lock pins and one Step")
+	}
+	if action == "translate" {
+		markdownSource, err := os.ReadFile(strings.TrimSpace(*scenarioMarkdown))
+		if err != nil {
+			return err
+		}
+		translated, err := scenariotest.ParseMarkdownScenarioTables(string(markdownSource), strings.TrimSpace(*scenarioID))
+		if err != nil {
+			return err
+		}
+		return json.NewEncoder(output).Encode(translated)
 	}
 	source, err := os.ReadFile(*scenarioPath)
 	if err != nil {

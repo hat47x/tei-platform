@@ -54,6 +54,7 @@
 | [`reference-cache-full-vs-incremental-verification/`](reference-cache-full-vs-incremental-verification/) | キャッシュ・増分処理がフル処理と同じ結果を出すかを比較する参照。食い違う入力・依存・キャッシュ項目・artifactを診断として特定し、キャッシュ再利用による偽陽性を検出する（#4219） |
 | [`reference-cache-invalidation/`](reference-cache-invalidation/) | World・Model・Artifact・Evidenceの版と依存閉包からArtifact再利用・Build省略・Evidence再利用を個別に判定するread-only参照。未知依存、途中失敗、A→B→Aでの証拠誤再利用を拒否（#2595 #2600 #3267）。実キャッシュストアや実Buildとは未接続 |
 | [`reference-build-catalog-authoring/`](reference-build-catalog-authoring/) | builder catalogを能力宣言から組み立てる参照。artifactのdigestは実ファイルから計算し、宣言にdigestを書くことと`-root`の外を指すことを拒否する。製品のファイル形式を変えずにcatalogを用意する手段（#2831 SB-C0 §4.32） |
+| [`reference-application-binary/`](reference-application-binary/) | TEIワークスペースから実行可能なGoコードを生成し、外部TEI runtime・動的Pluginなしの単一バイナリとして配布する参照。`databases/`のMigrationを抽出して`migrations.go`を生成し起動時に適用する。P0-A段階別縦断（Parse/Model/Generate/Build）を独立期待値で照合する。実行の実Provider適合・Owner意味受理・Host Grantは未証明（[P0-A判定記録](../plan/gate/P0A_VERTICAL_LOWERING_EVIDENCE_2026-11.md)） |
 | [`reference-offline-storage/`](reference-offline-storage/) | 個人向けに、root内へ閉じたローカル保存を提供する基盤pluginの参照（#2020） |
 | [`reference-export-package/`](reference-export-package/) | SIer向けに、manifestとdigest付きの配布zipを作る基盤pluginの参照（#2020） |
 | [`reference-delivery-profile/`](reference-delivery-profile/) | 提供形態ごとにpluginを選択し、必須能力が揃っているかを検証する参照（#2020） |
@@ -255,6 +256,7 @@
 | [`reference-sui-action-boundary/`](reference-sui-action-boundary/) | SUIの操作とTEI Actionの接続例 |
 | [`reference-sui-adoption/`](reference-sui-adoption/) | SUI移行の参照データと検査 |
 | [`reference-sui-canonical-probe/`](reference-sui-canonical-probe/) | SUIの意味構造を `.tei` で宣言したときの解決結果と、宣言しない損失を read-only で報告する probe（M2） |
+| [`reference-sui-reference-consumer/`](reference-sui-reference-consumer/) | SUIが返す`tai.reference.sui-document-reference/v0`のenvelopeを検査するread-only consumer。acceptedMeaningの一留、未レビュー本文の保留、同名Card・並行Edge・containment/affiliationのoccurrenceを保つことを確認する（P7、Product APIではない） |
 | [`reference-sui-interaction/`](reference-sui-interaction/) | 画面操作とApplication Actionの接続例 |
 | [`reference-transform-runtime-engine/`](reference-transform-runtime-engine/) | 決定的な変換処理の実行例 |
 | [`reference-transform-runtime-engine-build/`](reference-transform-runtime-engine-build/) | 変換実行基盤の構築確認 |

@@ -75,7 +75,7 @@ func (h *ReadOnly) loadWorkspace(workspaceID string) (workspace.Result, *Failure
 	}
 	loaded, err := workspace.Load(root)
 	if err != nil {
-		return workspace.Result{}, &Failure{Code: "WORKSPACE_LOAD_FAILED", Stage: "command", Message: err.Error()}
+		return workspace.Result{}, classifiedFailure("WORKSPACE_LOAD_FAILED", "command", err.Error())
 	}
 	return loaded, nil
 }
@@ -88,7 +88,7 @@ func (h *ReadOnly) PlanCommand(workspaceID, applicationID, patternID, capability
 	}
 	plan, err := applicationview.BuildCommandPlan(loaded.World, core.CanonicalID(applicationID), core.CanonicalID(patternID), core.CanonicalID(capabilityID), inputs)
 	if err != nil {
-		return CommandPlanResponse{Failure: &Failure{Code: "VIEW_FAILED", Stage: "command", Message: err.Error()}}
+		return CommandPlanResponse{Failure: classifiedFailure("VIEW_FAILED", "command", err.Error())}
 	}
 	return CommandPlanResponse{OK: true, Value: &plan}
 }
@@ -116,10 +116,10 @@ func (h *ReadOnly) ExecuteCommandWithPolicy(workspaceID, applicationID, patternI
 // COMMAND_LIFECYCLE_REFUSED instead of executing again.
 func (h *ReadOnly) ExecuteCommandWithLifecycle(workspaceID, applicationID, patternID, capabilityID string, inputs, periods map[string]string, allowed []string, commandID, owner string, generation int) CommandRunResponse {
 	if h.CommandLifecycle == nil {
-		return CommandRunResponse{Failure: &Failure{Code: "COMMAND_LIFECYCLE_UNAVAILABLE", Stage: "command", Message: "no command lifecycle is composed for this host"}}
+		return CommandRunResponse{Failure: classifiedFailure("COMMAND_LIFECYCLE_UNAVAILABLE", "command", "no command lifecycle is composed for this host")}
 	}
 	if commandID == "" || owner == "" || generation < 1 {
-		return CommandRunResponse{Failure: &Failure{Code: "INVALID_LIFECYCLE_ATTEMPT", Stage: "command", Message: "command id, owner, and a positive generation are required"}}
+		return CommandRunResponse{Failure: classifiedFailure("INVALID_LIFECYCLE_ATTEMPT", "command", "command id, owner, and a positive generation are required")}
 	}
 	return h.executeCommand(workspaceID, applicationID, patternID, capabilityID, inputs, periods, allowed,
 		&command.DispatchOptions{CommandID: commandID, Owner: owner, Generation: generation})
@@ -176,7 +176,7 @@ func (h *ReadOnly) executeCommandWithStore(workspaceID, applicationID, patternID
 	}
 	plan, err := applicationview.BuildCommandPlan(loaded.World, core.CanonicalID(applicationID), core.CanonicalID(patternID), core.CanonicalID(capabilityID), inputs)
 	if err != nil {
-		return CommandRunResponse{Failure: &Failure{Code: "VIEW_FAILED", Stage: "command", Message: err.Error()}}
+		return CommandRunResponse{Failure: classifiedFailure("VIEW_FAILED", "command", err.Error())}
 	}
 	// A declared hook runs before the command when this reference execution can
 	// reach it: a before-change phase whose declared reads the caller supplied.
@@ -219,7 +219,7 @@ func (h *ReadOnly) executeCommandWithStore(workspaceID, applicationID, patternID
 			case operations.PeriodOpen, operations.PeriodClosing, operations.PeriodClosed:
 				states[id] = state
 			default:
-				return CommandRunResponse{Failure: &Failure{Code: "INVALID_PERIOD_STATE", Stage: "command", Message: "period state must be open, closing, or closed"}}
+				return CommandRunResponse{Failure: classifiedFailure("INVALID_PERIOD_STATE", "command", "period state must be open, closing, or closed")}
 			}
 		}
 		invoker.Periods = command.NewMapPeriodState(states)

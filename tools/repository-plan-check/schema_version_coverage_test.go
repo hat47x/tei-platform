@@ -16,7 +16,13 @@ var schemaVersionPattern = regexp.MustCompile(`"(tei\.[a-z0-9._-]+/v[0-9]+)"`)
 // unmentionedSchemaVersionsAllowed lists the identifiers that no test names yet.
 // Each entry names the package that owns the response shape, so the list stays a
 // to-do rather than a place to park new identifiers (#4032).
-var unmentionedSchemaVersionsAllowed = map[string]string{}
+var unmentionedSchemaVersionsAllowed = map[string]string{
+	// cmd/tei does not compile on main: cli_three_element_test.go declares
+	// TestThreeElementCrossReferenceCommand twice and cli_discovery_modes_test.go
+	// refers to fixtures that are not there. Until that is fixed no test in the
+	// package can run, so the identifier cannot be named by one.
+	"tei.cli.relation-query/v0": "cmd/tei (the package does not compile on main; remove this entry when it does)",
+}
 
 // TestSchemaVersionLiteralsHaveATest keeps the set of unnamed schema identifiers
 // visible: a new identifier fails here until it gets a test or a listed reason,

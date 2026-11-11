@@ -53,6 +53,10 @@ func run() error {
 			return fmt.Errorf("ping database: %w", err)
 		}
 
+		if err := applyMigrations(context.Background(), db); err != nil {
+			return fmt.Errorf("apply migrations: %w", err)
+		}
+
 		switch strings.ToLower(os.Args[1]) {
 		case "query":
 			return dispatchQuery(cfg, db)
