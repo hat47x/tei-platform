@@ -148,7 +148,7 @@ class PublicationPathReadbackTests(unittest.TestCase):
         def intercept_read(path):
             data = original_read(path)
             if path == first_member and not saw_r2:
-                manifest.write_bytes(b'{"generation":"R2"}\\n')
+                manifest.write_bytes(b'{"generation":"R2"}\n')
                 saw_r2.append(original_read(manifest))
                 manifest.write_bytes(pinned)
             return data
@@ -156,7 +156,7 @@ class PublicationPathReadbackTests(unittest.TestCase):
         with mock.patch.object(Path, "read_bytes", autospec=True,
                                side_effect=intercept_read):
             evidence = verify_pinned_ledger_publication_paths(MEMBERS, self.root, pinned)
-        self.assertEqual(saw_r2, [b'{"generation":"R2"}\\n'])
+        self.assertEqual(saw_r2, [b'{"generation":"R2"}\n'])
         self.assertEqual(manifest.read_bytes(), pinned)
         self.assertEqual(evidence["file_count"], 5)
         self.assertEqual(evidence["member_binding"], "ledger-fixture-path-to-bytes-only")
