@@ -130,6 +130,7 @@
 - [期間の close-requires の実行時検査の確認](XTEA_LOWCODE_CLOSE_REQUIRES_2026-11.md)（参照実装の試験記録。閉めに必要な能力を実行時に要求）
 - [期間の correction の実行時検査の確認](XTEA_LOWCODE_PERIOD_CORRECTION_2026-11.md)（参照実装の試験記録。閉じた期間の訂正を宣言した能力に限る。訂正能力を走らせる経路は未実装）
 - [利用者設定の変更監査の確認](XTEA_LOWCODE_USER_SETTINGS_AUDIT_2026-11.md)（参照実装の試験記録。誰がいつ何を変えたかの記録。権限・永続化は未実装）
+- [期間が名指す能力の効果の検査の確認](XTEA_LOWCODE_PERIOD_CAPABILITY_EFFECT_2026-11.md)（参照実装の試験記録。期間のDataと能力の効果の不一致を報告。効果の種類と役割の対応は未実装）
 - [採番の永続CounterStoreの確認](XTEA_LOWCODE_NUMBERING_SQLITE_STORE_2026-11.md)（参照実装の試験記録。PostgreSQLは未実装）
 - [採番の2プロセス同時実行の確認](XTEA_LOWCODE_NUMBERING_PROCESS_RACE_2026-11.md)（参照実装の試験記録。PostgreSQLと多プロセス構成は未実装）
 - [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
@@ -444,3 +445,4 @@
 - [cmd/teiの10分上限をビルド1回化で解消](TEI_DOGFOODING_ROUND66_CLI_TEST_TIME_2026-11-11/README.md)（第65ラウンドで記録したFAILの原因を測定。runCLIForClassificationがケースごとにgo buildしていた。sync.Onceで1回にし、当該テスト62.6s→5.3s、パッケージ564.8s→232.9s。テストコードのみのため変異試験は行わず、全603テストokとvet cleanで確認）
 - [SQLiteのsweepが期限切れを返さない断続失敗を単一文化で解消](TEI_DOGFOODING_ROUND67_SWEEP_EXPIRED_2026-11-11/README.md)（#4252。起票時の「ロック競合」推定は誤りで、原因はdatetime('now')の秒単位照合だった。-count=5で3/3再現、UPDATE...RETURNINGの単一文化で0/8。4案はいずれも当てはまらず、Issueを訂正）
 - [mainの壊れた文字列リテラルを直す](TEI_DOGFOODING_ROUND69_MAIN_BROKEN_LITERAL_2026-11-11/README.md)（第68ラウンドのgo vetが、自分の変更とは無関係なmainの破損を検出。source_ab_consumer_parity_test.goに本物の改行が入った文字列リテラルがあり、パッケージがビルドできなかった。エスケープに直し、gofmt空・vet clean・パッケージの試験ok）
+
