@@ -78,6 +78,7 @@ var helperDispatchedCommands = []string{
 	"plugin-resolve",
 	"plugin-runtime-plan",
 	"plugin-inventory",
+	"plugin-plan",
 }
 
 func init() {

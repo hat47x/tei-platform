@@ -79,7 +79,7 @@ const (
 func isResultEnvelopeCommand(command string) bool {
 	switch command {
 	case "workspace-files", "source-index", "requirements",
-		"plugin-lock", "plugin-resolve", "plugin-runtime-plan", "plugin-inventory",
+		"plugin-lock", "plugin-resolve", "plugin-runtime-plan", "plugin-inventory", "plugin-plan",
 		"knowledge-context", "knowledge-qualify",
 		"knowledge-review-plan", "knowledge-review-handoff",
 		"knowledge-review-disclose", "knowledge-data-design-candidate-review":
