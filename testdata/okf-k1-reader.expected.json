@@ -1,0 +1,274 @@
+{
+  "fixture": "okf-k1-v02",
+  "reader": "tei okf-bundle (internal/okf)",
+  "okf": {
+    "version": "0.2",
+    "repository": "GoogleCloudPlatform/open-knowledge-format",
+    "spec_commit": "ad30107c31c06aec8a7d5636e0d1058118604e6f",
+    "spec_blob_git_sha": "c06e3eede0c910d0ecf12524c34204156f8795ac",
+    "spec_sha256_utf8": "26aa5da029278939f914e578107242d9607d4f2dc5fe153272b82f9ed1030101",
+    "reference_document_git_blob": "b770a92f33adf9942e2932529308d066430b02a6",
+    "reference_document_path": "src/reference_agent/bundle/document.py"
+  },
+  "purpose": "Declarative expected values for the TEI F0 reader. Values are derived from the OKF v0.2 specification text and the pinned fixture bytes, not copied from the reader's output. Cases that need a broken or bundle-root-absolute shape are declared here and constructed only in a temporary copy: a committed .md in this repository must keep its links resolvable (see testdata/okf-k1-v02.expected.json).",
+  "oracle_qualification": "PROVISIONAL: written in the same work attempt as K1-A/K1-B. A separate independent review (#2514) and a mutant-kill proof are still required before this file is an accepted oracle.",
+  "expected_runtime_status": "PARTIAL: the baseline and the diagnostic cases are executed by internal/okf; the mutating cases run on a temporary copy. No independent oracle has reproduced these values.",
+  "baseline": {
+    "okf_version_declared_in_root_index": "0.2",
+    "readerOkfVersion": "0.2",
+    "format": {
+      "conformant": true,
+      "concepts": 3,
+      "indexes": 1,
+      "logs": 0,
+      "formatErrorCount": 0
+    },
+    "conceptIds": ["business/submit", "data/order", "functions/submit"],
+    "digests": {
+      "index.md": "sha256:53ed2efbe2b5ac8fb3eb628c5ac6a3ddb152badd7f2d9e7bec7b55b9efeccd59",
+      "data/order.md": "sha256:e199969f714240a573128432b30704cb7960505d00e991994d1fae28e47fe2c5",
+      "functions/submit.md": "sha256:6087a406c0cb5aa9aea116668401e3af5afd5c22797871a2ecf8888de8042c6e",
+      "business/submit.md": "sha256:111b2b32860ff46d23af4eaa3eee5e8b89a4f3cb13d50b79af494dfe38a8001e"
+    },
+    "concepts": {
+      "data/order": {
+        "type": "Data Entity",
+        "typeClass": "string",
+        "status": "draft",
+        "statusAbsent": false,
+        "stale": "absent",
+        "verifiedCount": 0,
+        "trustTierLabel": "unverified",
+        "sourcesCount": 1,
+        "sourceKind": "scope-descriptor",
+        "sourceResolution": "scope-descriptor-not-fetched",
+        "unknownKeys": [],
+        "formatConformant": true
+      },
+      "functions/submit": {
+        "type": "Function",
+        "typeClass": "string",
+        "status": "draft",
+        "verifiedCount": 1,
+        "trustTierLabel": "machine-confirmed",
+        "verifiedBy": "process:k1-synthetic-check",
+        "sourcesCount": 0,
+        "unknownKeys": [],
+        "formatConformant": true
+      },
+      "business/submit": {
+        "type": "Unclassified Draft Item",
+        "typeClass": "string",
+        "status": "draft",
+        "verifiedCount": 0,
+        "trustTierLabel": "unverified",
+        "sourcesCount": 0,
+        "unknownKeys": ["x-tei-experiment"],
+        "formatConformant": true
+      }
+    },
+    "unresolvedReferenceCount": 0,
+    "requiredObservations": [
+      "SCOPE_DESCRIPTOR_NOT_FETCHED on data/order",
+      "SOURCE_ID_WITHOUT_FOOTNOTE on data/order",
+      "STATUS_ABSENT on the root index is not a concept and is not reported there",
+      "LINKS_NOT_ENUMERATED on functions/submit and business/submit",
+      "HISTORY_NOT_ASSESSED on every concept"
+    ]
+  },
+  "cases": [
+    {
+      "id": "OKF-E01",
+      "name": "normal bundle",
+      "mutation": "none",
+      "expect": {"formatConformant": true, "concepts": 3},
+      "mustNotInfer": ["TEI meaning acceptance", "source actually read"]
+    },
+    {
+      "id": "OKF-E02",
+      "name": "unknown type",
+      "mutation": "business/submit.md: type -> Future Experimental Role",
+      "expect": {"formatConformant": true, "typeClass": "string", "type": "Future Experimental Role"},
+      "mustNotInfer": ["the unknown type is a TEI role"]
+    },
+    {
+      "id": "OKF-E03",
+      "name": "extra frontmatter keys",
+      "mutation": "data/order.md: add x-unknown and team",
+      "expect": {"formatConformant": true, "unknownKeys": ["x-unknown", "team"]},
+      "mustNotInfer": ["the extra keys are a TEI contract"]
+    },
+    {
+      "id": "OKF-E04",
+      "name": "missing index",
+      "mutation": "delete index.md",
+      "expect": {"formatConformant": true, "indexes": 0, "observations": ["INDEX_MISSING"]},
+      "mustNotInfer": ["required source closure", "the whole bundle was read"]
+    },
+    {
+      "id": "OKF-E05",
+      "name": "broken link",
+      "mutation": "functions/submit.md: append [unresolved](../missing/concept.md) and [root](/business/missing.md)",
+      "expect": {"formatConformant": true, "unresolvedReferenceCount": 2, "observations": ["LINK_UNRESOLVED"]},
+      "mustNotInfer": ["source quality", "relation completeness"]
+    },
+    {
+      "id": "OKF-E06",
+      "name": "unparseable YAML",
+      "mutation": "business/submit.md: type -> [unclosed",
+      "expect": {"formatConformant": false, "concepts": 3, "observations": ["YAML_INVALID"]},
+      "mustNotInfer": ["the raw bytes may be discarded"]
+    },
+    {
+      "id": "OKF-E07",
+      "name": "empty type",
+      "mutation": "data/order.md: type -> \"\" (and, as separate sub-cases, \"   \" and ~)",
+      "expect": {"formatConformant": false, "observations": ["TYPE_EMPTY"]},
+      "mustNotInfer": ["a typeless concept is acceptable"]
+    },
+    {
+      "id": "OKF-E08",
+      "name": "v0.1 shape",
+      "mutation": "data/order.md: replace with type + timestamp + body # Citations list",
+      "expect": {
+        "formatConformant": true,
+        "observations": ["LEGACY_TIMESTAMP_PRESENT", "LEGACY_CITATIONS_SECTION_PRESENT"],
+        "sourcesCount": 0,
+        "generated": null
+      },
+      "mustNotInfer": ["sources may be synthesized from the citations list", "timestamp is generated.at"]
+    },
+    {
+      "id": "OKF-E09",
+      "name": "source revision",
+      "mutation": "data/order.md: change one body sentence",
+      "expect": {"formatConformant": true, "bundleRevisionChanges": true, "otherConceptDigestsUnchanged": true},
+      "mustNotInfer": ["the concept's acceptance or review is renewed by the revision"]
+    },
+    {
+      "id": "OKF-E10",
+      "name": "A to B to A",
+      "mutation": "data/order.md: B then back to the original bytes, read as two independent copies",
+      "expect": {"formatConformant": true, "revertedBundleRevisionEqualsBaseline": true, "observations": ["HISTORY_NOT_ASSESSED"]},
+      "mustNotInfer": ["a previous acceptance, receipt, or review is restored by reverting bytes"]
+    },
+    {
+      "id": "OKF-E11",
+      "name": "non-string type",
+      "mutation": "data/order.md: type -> [a, b] (also {a: b}, true, 7)",
+      "expect": {"formatConformant": false, "typeClass": "not-string", "observations": ["TYPE_NOT_STRING"]},
+      "mustNotInfer": ["the upstream reference's acceptance of a truthy list is specification conformance"],
+      "specimenDifference": "The pinned upstream reference accepts any truthy value; SPEC section 4.1 requires a short string. This reader follows the specification."
+    },
+    {
+      "id": "OKF-E12",
+      "name": "duplicate mapping key",
+      "mutation": "data/order.md: title twice",
+      "expect": {"formatConformant": false, "title": "Second", "observations": ["YAML_DUPLICATE_KEY"]},
+      "mustNotInfer": ["the first value wins"]
+    },
+    {
+      "id": "OKF-E13",
+      "name": "missing frontmatter",
+      "mutation": "business/submit.md: body only",
+      "expect": {"formatConformant": false, "observations": ["FRONTMATTER_MISSING"]},
+      "mustNotInfer": ["the body-only file may be silently skipped"]
+    },
+    {
+      "id": "OKF-E14",
+      "name": "unterminated frontmatter",
+      "mutation": "data/order.md: opening --- with no closing ---",
+      "expect": {"formatConformant": false, "observations": ["FRONTMATTER_UNTERMINATED"]},
+      "mustNotInfer": []
+    },
+    {
+      "id": "OKF-E15",
+      "name": "index frontmatter outside the root",
+      "mutation": "add data/index.md with okf_version frontmatter",
+      "expect": {"formatConformant": false, "observations": ["INDEX_FRONTMATTER_NOT_ROOT"]},
+      "mustNotInfer": ["frontmatter is permitted in any index"]
+    },
+    {
+      "id": "OKF-E16",
+      "name": "escaping link",
+      "mutation": "functions/submit.md: append [outside](../../../etc/passwd)",
+      "expect": {"formatConformant": true, "observations": ["PATH_ESCAPES_BUNDLE"], "targetRecordedVerbatim": true},
+      "mustNotInfer": ["the reader followed the target"]
+    },
+    {
+      "id": "OKF-E17",
+      "name": "ambiguous relative path",
+      "mutation": "a concept under concepts/ whose sources resource 'shared.md' exists both at concepts/shared.md and shared.md",
+      "expect": {"formatConformant": true, "resolution": "ambiguous", "resolvedCount": 2, "observations": ["PATH_AMBIGUOUS_BASE"]},
+      "mustNotInfer": ["the document-relative candidate is authoritative by proximity"]
+    },
+    {
+      "id": "OKF-E18",
+      "name": "stale_after without an offset",
+      "mutation": "data/order.md: stale_after -> 2026-09-23 (also 2026-09-23T00:00:00)",
+      "expect": {"formatConformant": true, "stale": "unknown", "observations": ["STALE_AFTER_WITHOUT_OFFSET"]},
+      "mustNotInfer": ["the concept is fresh", "the concept is stale"]
+    },
+    {
+      "id": "OKF-E19",
+      "name": "verified shapes",
+      "mutation": "data/order.md: verified as bare mapping, {}, {at only}, scalar, []",
+      "expect": {
+        "bareMappingEvents": 1,
+        "humanTier": "human-reviewed",
+        "processTier": "machine-confirmed",
+        "emptyMappingObservations": ["VERIFIED_ENTRY_WITHOUT_BY"],
+        "scalarObservations": ["VERIFIED_ENTRY_NOT_MAPPING"],
+        "emptyListObservations": ["VERIFIED_EMPTY_MAPPING"]
+      },
+      "mustNotInfer": ["a human: label is an authenticated identity", "machine-confirmed is an acceptance"]
+    },
+    {
+      "id": "OKF-E20",
+      "name": "attested computation declarations",
+      "mutation": "add a concept with runtime, parameters, executor.resource, attester.resource, and a # Computation fence",
+      "expect": {
+        "formatConformant": true,
+        "declarationRecorded": true,
+        "executorOpened": false,
+        "attesterOpened": false,
+        "computationOpened": false,
+        "observations": ["ATTESTED_COMPUTATION_DECLARED_ONLY", "EXECUTOR_NOT_OPENED", "ATTESTER_NOT_OPENED"]
+      },
+      "mustNotInfer": ["anything ran", "a receipt exists", "an attester returned a verdict"]
+    },
+    {
+      "id": "OKF-E21",
+      "name": "limits",
+      "mutation": "operation option, not a document change: maxFileBytes below a file size",
+      "expect": {"formatConformant": false, "observations": ["FILE_TOO_LARGE"], "bytesTruncated": false},
+      "mustNotInfer": ["a truncated digest describes the author's bytes"]
+    },
+    {
+      "id": "OKF-E22",
+      "name": "traversal by symlink",
+      "mutation": "operation setup: a symlink inside the bundle pointing outside",
+      "expect": {"outsideFileRead": false, "observations": ["READ_FAILED"]},
+      "skipOn": "platforms where symlink creation is not permitted",
+      "mustNotInfer": ["the link target is safe because it is on disk"]
+    }
+  ],
+  "mustNotInfer": [
+    "TEI Domain/Role/Trait adoption",
+    "TEI meaning acceptance or owner decision",
+    "host grant, capability, or runtime qualification",
+    "external resource actually read or fetched",
+    "attested computation executed",
+    "document write, repair, or normalization",
+    "concept or review history",
+    "SUI tree/island recoverability",
+    "source identity across moves or a second location",
+    "independent oracle qualification from this file alone"
+  ],
+  "readerCaveats": [
+    "Body links are found with a structural Markdown scanner, not a full CommonMark parser; a link form the scanner does not recognize is reported as not enumerated rather than guessed.",
+    "The reader lists .md documents only; a path-valued field may name a non-Markdown file and resolves by presence on disk, whose content is never read.",
+    "`os.Root` prevents traversal escapes for the files the reader opens; it is not an OS sandbox and does not prove network or process isolation (#2515).",
+    "The reader does not implement OKF index.md synthesis, tag aggregation, or the Attested Computation runtime."
+  ]
+}

@@ -40,6 +40,7 @@ var selectedReadOnlyFlagAllowlist = map[string][]string{
 		"direction", "mode", "offset", "limit", "expected-fingerprint",
 	},
 	"workspace-files": {"workspace"},
+	"okf-bundle":      {"root", "concept", "workspace", "expected-bundle-revision", "max-file-bytes", "max-bundle-bytes", "max-concepts", "project"},
 	"source-index":    {"workspace", "subject-kind", "subject-id"},
 	"knowledge-context": {
 		"workspace", "subject-kind", "subject-id", "disclose",
@@ -67,8 +68,8 @@ var selectedReadOnlyFlagAllowlist = map[string][]string{
 	// three-element is deliberately absent: it parses its own FlagSet (and its
 	// diff subcommand a second one) before the shared set is built, so
 	// validateSelectedReadOnlyFlags is never called for it. Listing it here
-	// breaks the rule this table states — an entry and a catalog record are one
-	// set — because `tei commands` does not advertise it.
+	// breaks the rule this table states 窶・an entry and a catalog record are one
+	// set 窶・because `tei commands` does not advertise it.
 }
 
 // repeatableFlags lists the flags that collect several values by design. They
@@ -82,6 +83,7 @@ var repeatableFlags = map[string]map[string]bool{
 	"knowledge-context":                      {},
 	"inspect":                                {},
 	"trace":                                  {},
+	"okf-bundle":                             {},
 	"source-index":                           {},
 	"workspace-files":                        {},
 	"requirements":                           {},
@@ -209,6 +211,10 @@ var emptyStringGuardedFlags = map[string]map[string]bool{
 	"trace": {
 		"workspace": true, "scope": true, "subject-kind": true, "subject-id": true,
 		"direction": true, "mode": true, "expected-fingerprint": true,
+	},
+	"okf-bundle": {
+		"root": true, "concept": true, "workspace": true,
+		"expected-bundle-revision": true,
 	},
 	"source-index": {
 		"workspace": true, "subject-kind": true, "subject-id": true,

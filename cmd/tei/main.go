@@ -173,6 +173,13 @@ func main() {
 	pluginDiagnostic := fs.Bool("diagnostic-candidates", false, "show unvalidated plugin candidates; never authorizes execution")
 	subjectKind := fs.String("subject-kind", "", "Source Index subject kind")
 	subjectID := fs.String("subject-id", "", "Source Index subject ID")
+	okfRoot := fs.String("root", "", "okf-bundle: OKF bundle directory to read (read-only, no network, no execution)")
+	okfConcept := fs.String("concept", "", "okf-bundle: exact concept ID for the single-concept projection")
+	okfExpectedRevision := fs.String("expected-bundle-revision", "", "okf-bundle: expected bundle revision; the command fails on mismatch")
+	okfMaxFileBytes := fs.Int64("max-file-bytes", 0, "okf-bundle: per-file byte limit; 0 uses the reader default")
+	okfMaxBundleBytes := fs.Int64("max-bundle-bytes", 0, "okf-bundle: total byte limit; 0 uses the reader default")
+	okfMaxConcepts := fs.Int64("max-concepts", 0, "okf-bundle: concept count limit; 0 uses the reader default")
+	okfProject := fs.Bool("project", false, "okf-bundle: also emit read-only TEI structure candidates and their loss manifest; never an acceptance")
 	traceScope := fs.String("scope", "", "scope for typed modelref trace projection")
 	// The CLI flag default, `tei commands` and the MCP adapter read these two
 	// values from modelref instead of each keeping a copy (#3605).
@@ -448,6 +455,17 @@ func main() {
 	}
 	if command == "inspect" {
 		code, err := inspectWorkspaceJSONSelected(os.Stdout, *workspacePath, *worldPath, *subjectKind, *subjectID, fs.NArg())
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		if code != 0 {
+			os.Exit(code)
+		}
+		return
+	}
+	if command == "okf-bundle" {
+		code, err := okfBundleJSON(os.Stdout, *okfRoot, *okfConcept, *okfExpectedRevision,
+			*workspacePath, *worldPath, *okfMaxFileBytes, *okfMaxBundleBytes, *okfMaxConcepts, *okfProject, fs.NArg())
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		}

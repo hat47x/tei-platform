@@ -134,6 +134,7 @@
 # OKF K1 synthetic bytes are compared exactly across OS; no checkout EOL conversion.
 /testdata/okf-k1-v02/** -text
 /testdata/okf-k1-v02.expected.json -text
+/testdata/okf-k1-reader.expected.json -text
 
 # Answer fact-presence reports are hashed as raw bytes.
 /plan/evidence/DSH_ANSWER_FACT_PRESENCE_2026-11-08/** -text

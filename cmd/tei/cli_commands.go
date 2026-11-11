@@ -48,6 +48,7 @@ var acceptedCommands = []string{
 	"migration-fingerprint",
 	"model",
 	"normalize-postgres-plan",
+	"okf-bundle",
 	"observed-index",
 	"operations",
 	"periods",
@@ -112,8 +113,8 @@ func writeFlagHelp(out *strings.Builder, fs *flag.FlagSet, command string, wante
 }
 
 // selfBuildHelpFlags holds both grammars the command accepts. It is built from
-// the §4 FlagSet so the two cannot drift, and adds the primitive-only flags that
-// the §4 form does not register.
+// the ﾂｧ4 FlagSet so the two cannot drift, and adds the primitive-only flags that
+// the ﾂｧ4 form does not register.
 func selfBuildHelpFlags() *flag.FlagSet {
 	var scratch selfBuildOuterArgs
 	outer := newSelfBuildOuterFlagSet(&scratch)
@@ -209,12 +210,12 @@ func helpText(fs *flag.FlagSet, command string) string {
 		if command == "self-build" {
 			// self-build is dispatched but deliberately absent from the
 			// read-only discovery catalog, so "run `tei commands`" would point
-			// at a list that does not contain it (#3414 §4.5).
+			// at a list that does not contain it (#3414 ﾂｧ4.5).
 			//
-			// Two forms share this name: the §4 workspace form and the primitive
-			// -child/-artifact form (§4.6). The text is derived from one FlagSet
+			// Two forms share this name: the ﾂｧ4 workspace form and the primitive
+			// -child/-artifact form (ﾂｧ4.6). The text is derived from one FlagSet
 			// holding both grammars, so a flag added to either form appears here
-			// without a second edit — restating them by hand is what left the
+			// without a second edit 窶・restating them by hand is what left the
 			// catalog flags missing from -h.
 			writeFlagHelp(&out, selfBuildHelpFlags(), command, nil)
 			return out.String()
