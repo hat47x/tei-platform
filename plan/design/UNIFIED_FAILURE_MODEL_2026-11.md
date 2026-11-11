@@ -1,7 +1,7 @@
 # 共通の例外・失敗モデル（2026-11）
 
 - **状態：参照実装（A2）／一部適用済み。** 意味の受理・権限の正本・本番配備は扱わない。
-- **対象コード**: `internal/failure/`、`internal/command/invoke.go`、`internal/hook/run.go`、`internal/security/effectcommit/commit.go`、`internal/saveunit/failure.go`、`internal/database/sqlgen/failure.go`・`sqlgen/postgres/failure.go`・`sqlgen/sqlite/failure.go`、`internal/studiohost/readonly.go`、`internal/studiohost/command.go`、`cmd/tei/cli_view.go`、`cmd/tei/cli_inspect.go`
+- **対象コード**: `internal/failure/`、`internal/command/invoke.go`、`internal/hook/run.go`、`internal/security/effectcommit/commit.go`、`internal/saveunit/failure.go`、`internal/database/sqlgen/failure.go`・`sqlgen/postgres/failure.go`・`sqlgen/sqlite/failure.go`、`internal/studiohost/readonly.go`、`internal/studiohost/command.go`、`cmd/tei/cli_view.go`、`cmd/tei/cli_inspect.go`、`tools/reference-generator-selection/generator.go`・`templates/TeiFailure.java.tmpl`・`templates/Main.java.tmpl`・`templates/Main-long-running.java.tmpl`・`templates/template.go.tmpl`
 - **関連**: [#3807](https://github.com/hat47x/tei-platform/issues/3807)（境界ごとに違っていた失敗コード）、[#2996](https://github.com/hat47x/tei-platform/issues/2996)、[#2997](https://github.com/hat47x/tei-platform/issues/2997)、[#1174](https://github.com/hat47x/tei-platform/issues/1174)、[#2853](https://github.com/hat47x/tei-platform/pull/2853)、[#2854](https://github.com/hat47x/tei-platform/pull/2854)
 - **設計の正本**: 故障分類と回復の方針は[Script起動の失敗状態・再実行・回復設計](SCRIPT_INVOCATION_FAILURE_AND_RECOVERY_DESIGN_2026-11.md) §3（F01〜F14）、Command境界の扱いは[Command境界の実行前検査](COMMAND_BOUNDARY_SAFETY_2026-11.md)を正本とする。本書は**Goの型として実装した共通契約**だけを扱い、方針を複製しない。
 
@@ -131,6 +131,7 @@ if err := transaction.Commit(ctx); err != nil {
 | `reference/interface-adapter` | トランスポート拒否（`UNAUTHENTICATED`・`FORBIDDEN`・`STALE_REVISION`）＝業務拒否 |
 | `internal/database/sqlgen`・`sqlgen/postgres`・`sqlgen/sqlite` | SQLSTATE・result codeからの分類、未知コードの安全側退避、効果不明なら盲再送不可となる導出、`errors.Is`で原因に到達できること |
 | `cmd/tei/cli_view_failure_test.go` | `commandFailure`の既存の契約（未知のerrorは変換しない） |
+| `tools/reference-generator-selection`（Go・Java） | 生成したJavaが4軸を持ち、業務拒否と技術障害が違う値を出すこと。`javac`でコンパイルし実行して確認 |
 
 ```
 ok  tei/internal/failure                3.704s
@@ -168,13 +169,23 @@ Database層は**コードで分類**する。`sqlgen.ToDatabaseFailure`は、err
 | 範囲 | 状態 |
 | --- | --- |
 | Data Provider / Operator 層 | `sqlgen.ToDatabaseFailure`はコード分類へ移行済み。Provider本体（`internal/database/providers/*`、`internal/driver`）の error path からの呼出し接線は未整備 |
-| Java等の生成ターゲット | 未着手。言語固有の例外はAdapterで吸収する方針は本書のとおりだが、実装はない |
+| Java等の生成ターゲット | Javaは`TeiFailure`共有契約と`Main`/`Main-long-running`テンプレートへ適用済み（生成・コンパイル・実行で検証）。`LineAmounts.java.tmpl`（java-library-template）は未移行 |
 | `partial_success` | 型は定義済み。現状どの境界もこの分類を返さない。複数Effectの一部確定（[Script設計のF09](SCRIPT_INVOCATION_FAILURE_AND_RECOVERY_DESIGN_2026-11.md)）で初めて使う |
 | Web Host（Wails） | `studiohost`は通るが、Wails固有の橋は未確認 |
 
 ### 生成ターゲットへの展開方針
 
 `Kind`・`RetryPolicy`・`HasEffectUnknown`は**文字列の閉集合**としてJSONに出るので、言語を選ばない。Java側は検査例外の階層を作らず、生成コードが`FailureCode`/`Kind`/`Retryable`/`EffectUnknown`をフィールドに持ち、言語固有の例外は1つのAdapterでこの4つへ変換する。Goの`failure.Failure`インターフェースは「変換後の照合票」として使い、各言語が同じ照合票を実装する形にする。
+
+#### Java（`tools/reference-generator-selection`）
+
+`templates/TeiFailure.java.tmpl`が共有契約。`TeiFailure`は1つの基底型に4軸を持ち、`Kind`と`RetryPolicy`は**wire値と同じ文字列**を返すenumとする（`BUSINESS_REJECTION("business_rejection")`）。Goが`string(failure.Kind)`で出している値と一字も違わないため、受ける側は片方の名前集合だけで分岐できる。
+
+生成器はJava戦略の出力にこの契約を**末尾へ**付ける。先頭に置くと候補の`import`が型宣言の下に来てjavacに落ちるためである（"class, interface, or enum expected"）。契約はpackage-privateにして、1ファイルにpublicクラスを1つだけ持つJavaの制約と両立させる。
+
+`Main.java.tmpl`・`Main-long-running.java.tmpl`は`printError`（業務拒否）と`printTechnicalError`（技術障害）に分け、4軸を出す。Goテンプレート（`template.go.tmpl`）も同じ4軸を出すようにし、**同じ契約を両言語が出す**形にした。`TestGoAndJavaCandidatesProduceSameFixtureOutputs`は既知字段のみを比較するため新字段では壊れないが、それに頼らず同じ値にする。
+
+未移行：`templates/LineAmounts.java.tmpl`（java-library-template）は独自の`BusinessRejectionException`/`TechnicalException`を持つ。業務/技術の区別はあるが再試行・効果不明の軸がなく、この戦略は`javac`でコンパイルされる経路にも載っていない。
 
 ## 6. 混同を防ぐための不退転条件
 

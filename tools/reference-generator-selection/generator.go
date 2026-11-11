@@ -199,6 +199,12 @@ func renderCandidateBytes(contractRaw []byte, strategy, version string, world *i
 			return renderedCandidate{}, fmt.Errorf("generated source is not valid Go: %w", err)
 		}
 	}
+	if tmpl.language == LanguageJava {
+		formatted, err = withJavaFailureContract(data, formatted)
+		if err != nil {
+			return renderedCandidate{}, err
+		}
+	}
 	manifest := CandidateManifest{
 		Schema: CandidateSchema, ID: tmpl.strategy, Version: version, Origin: tmpl.origin,
 		Language: tmpl.language, Source: tmpl.source, SourceDigest: digest(formatted),
@@ -213,6 +219,45 @@ func renderCandidateBytes(contractRaw []byte, strategy, version string, world *i
 type renderedCandidate struct {
 	Source   []byte
 	Manifest CandidateManifest
+}
+
+// javaFailureContractFile is the shared TEI failure contract every Java target
+// emits. It is the Java half of internal/failure: the same three axes and the
+// same closed string sets, so a caller reading either side of the boundary
+// branches on one set of names.
+const javaFailureContractFile = "templates/TeiFailure.java.tmpl"
+
+// withJavaFailureContract renders the shared contract and appends it to the
+// candidate source, so every generated Java file declares TeiFailure beside the
+// code that throws it.
+//
+// It is appended rather than prepended because a Java compilation unit allows
+// import declarations only before the first type declaration. Prepending the
+// contract would push the candidate's imports below a class declaration, which
+// javac rejects with "class, interface, or enum expected" at the first import.
+//
+// The contract is package-private rather than public: a Java file may hold
+// several top-level classes but only one public one, and the public name is the
+// target's own entry point. A caller in the same package still catches
+// TeiFailure directly, which is the only access a generated target needs.
+func withJavaFailureContract(data templateData, candidate []byte) ([]byte, error) {
+	raw, err := templateFiles.ReadFile(javaFailureContractFile)
+	if err != nil {
+		return nil, err
+	}
+	parsed, err := template.New("java-failure-contract").Parse(string(raw))
+	if err != nil {
+		return nil, err
+	}
+	var contract strings.Builder
+	if err := parsed.Execute(&contract, data); err != nil {
+		return nil, err
+	}
+	out := make([]byte, 0, len(candidate)+contract.Len()+1)
+	out = append(out, candidate...)
+	out = append(out, '\n')
+	out = append(out, contract.String()...)
+	return out, nil
 }
 
 // Generate renders one candidate source at version 1 from the contract and a
