@@ -414,6 +414,18 @@ reload / Conformance
 
 人が記述する安定識別子は必須とせず、編集環境専用の受理機構も導入しません。
 
+
+### 2026-11-11 開発環境・言語ワークベンチ横断研究の実証線（設計候補）
+
+Eclipse Xtext/Sirius/GLSP、JetBrains IntelliJ/MPS、VS Code/LSP、Vim/Emacs系および代表的ローコード製品の比較を、**既存 [#3788](https://github.com/hat47x/tei-platform/issues/3788) の未保存診断・参照・安全な改名**の検証に集約する。外部IDEは、[#3419](https://github.com/hat47x/tei-platform/issues/3419) / [ADR-0048](adr/0048-shared-application-api-and-transport-adapters.md) の共通Operationと、[#988](https://github.com/hat47x/tei-platform/issues/988)のLanguage Plugin/Source解決を使う**薄いAdapter候補**とする。Studioは[#1824](https://github.com/hat47x/tei-platform/issues/1824)のWails第一候補を維持し、LSP/GLSP/MPSを新しいSemantic正本・常駐Host・標準Editor Frameworkとして採用しない。
+
+**順序と最小証拠**：①実際にReaderが読める一Source/一Ruleについて、CLIのSource位置・診断と未保存Bufferの型付き部分解析の成立範囲を確認（不成立なら#988へ戻す）→②実LSP/Editor Client一件で同じ対象の診断・定義参照を比較（LSP自体は採用判断前、`tei lsp`は構想）→③同名異ID・UTF-8/UTF-16位置・CRLF・旧応答・部分参照集合・外部変更を負例として改名Previewを比較→④可逆な場合だけ[#1124](https://github.com/hat47x/tei-platform/issues/1124)/[#2497](https://github.com/hat47x/tei-platform/issues/2497)/[#2500](https://github.com/hat47x/tei-platform/issues/2500)の既存Source編集・投影へ引渡し、Source再読込とConformanceを照合する。GUIやLSPの表示成功はAcceptance/Provider Effect/実受領ではない。
+
+**通常コーディングとの関係**：Model-first/Code-first/Hybridを並存させ、手書きのGo/Java/.NET等は明示的な型/Effect/Source契約で接続する。生成コードの改変をモデルへ自動逆変換しない。外部IDEでの開発手数と、ドメイン専門家のStudio/CLI利用時の手数は[#2018](https://github.com/hat47x/tei-platform/issues/2018)/[#1168](https://github.com/hat47x/tei-platform/issues/1168)で同一の業務変更・独立Expectedから比較する。
+
+**優先順位の停止線**：この研究をP0実Function→Query→Provider Read [#2586](https://github.com/hat47x/tei-platform/issues/2586)、CLI/Studio実選択PluginのProduct S2 [#1251](https://github.com/hat47x/tei-platform/issues/1251)、[#1119](https://github.com/hat47x/tei-platform/issues/1119)のGateの前提に追加しない。第二Parser/Resolver/Registry/Host/Policy/Scenarioを作らず、正式`*.tei.md` Reader未導入・未取得Sourceを「読めた」としない。現時点は**研究統合・設計/受入案**であり、LSP/実Editor/Studio逆編集/実DB/Owner意味受理の新規実証は **NOT RUN**。
+
+
 ### 2026-11-07 Plugin-first D1：実CLI／Studioの最初の不足辺を固定する（実装・受理前）
 
 [main統合済みPR #3277](https://github.com/hat47x/tei-platform/pull/3277)の[Plugin-first移行計画](design/PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md) D0〜D6と、[#1016の構成→実使用Witness](https://github.com/hat47x/tei-platform/issues/1016#issuecomment-6704666016)、[#1251の実Go D1引継ぎ](https://github.com/hat47x/tei-platform/issues/1251#issuecomment-6704672969)を、**作業領域Gの一つの実装切り口**として接続する。main統合[#3300](https://github.com/hat47x/tei-platform/pull/3300)のD1 Fit/Gap（AS-01〜12）と[#3367](https://github.com/hat47x/tei-platform/pull/3367)の追加条件（AS-13〜20）を検収正本とし、[Desktop Draft #3352](https://github.com/hat47x/tei-platform/pull/3352)および[mainのPlugin-first設計§16](design/PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md)（旧Draft #3369は閉鎖・未統合）と重複する仕様を増やさない。既存#1119のG0〜G4／B/C判定を変更しない。
