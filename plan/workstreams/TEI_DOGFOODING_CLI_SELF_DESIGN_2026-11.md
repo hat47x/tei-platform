@@ -2617,3 +2617,41 @@ git merge-base --is-ancestor edd661709 origin/main   -> YES
 呼び出しを復元した。**試験は呼び出しを外すと落ちる**（`message does not say the entry belongs inside a block`）ので、復元が本質であることを示せている。
 
 **教訓: 「関数が在る」は「機能が動く」ではない。** 定義だけを数える点検は、今回の消失を見逃す。
+
+## 79. 第78ラウンド（2026-11-12）: 未統合機能の孤児テストが `repository-health` を常時赤にする
+
+第77ラウンドで「`rea-evidence` は実装自体が無い」と記録した。**その実装の所在を確定させ、赤の正体を明文化した。** 生出力は[第78ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND78_REA_EVIDENCE_ORPHAN_2026-11-12/README.md)にある。起票は [#4455](https://github.com/hat47x/tei-platform/issues/4455)。
+
+### 実装は「無い」のではなく「未統合」
+
+```text
+$ git log --all --diff-filter=A -- cmd/tei/rea_evidence.go
+716fb3612 feat(rea): receive one external analysis Evidence and inspect its delivery
+
+$ git merge-base --is-ancestor 716fb3612 origin/main   -> NO
+$ git branch -r --contains 716fb3612
+  origin/feat/rea-external-evidence-intake-20261111-r2
+$ git rev-list --count 716fb3612..origin/main           -> 157
+```
+
+**実装はブランチに在り、157コミット分 main から遅れている。** 依存の `internal/externalanalysis`（1,202行）も main に無い。
+
+### なぜこうなったか
+
+`7b0ab6b63` が `rea-evidence` を前提とする**2試験を追加**したが、実装ファイルを**含んでいなかった**（`--name-only` で0件）。**テストだけが先に main に入り、実装は入らなかった。**
+
+### なぜ私が直さないか
+
+| 案 | 内容 | 採否 |
+| --- | --- | --- |
+| A | 未統合ブランチを取り込む | **所有者の判断**（157コミット分。機能の意味を私が決めてしまう） |
+| B | テストを実装が入るまで外す | **所有者の判断**（契約を一時的に外す） |
+| C | スタブで `unknown command` を返す | **採らない**（動かないコマンドを動くように見せる） |
+
+**C はドッグフーディングの目的に反する。**
+
+### 位置付け
+
+**「赤が常態化する」危険を名指しした回**である。第76ラウンドで私はこの2件を「main でも同じ」として切り捨てた。**切り捨てが続くと赤が常態化する。** その正体を確定させ、判断を所有者に返した。
+
+なお **plan-check は第76〜77ラウンドの修正で緑になった**（今回は赤ではなかった）。

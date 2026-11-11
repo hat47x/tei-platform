@@ -1,0 +1,89 @@
+{
+  "schemaVersion": "tei.reference.representation-binding-expected/v0",
+  "expectations": [
+    {
+      "id": "RSP-01",
+      "verdict": "rejected",
+      "unqualified": [],
+      "note": "R2/R7 a table row index is a presentation selection; declaring it the data identity is refused."
+    },
+    {
+      "id": "RSP-02",
+      "verdict": "rejected",
+      "unqualified": [],
+      "note": "R2 a tree node is not the identity of the relation, and hidden edges forbid a unique target."
+    },
+    {
+      "id": "RSP-03",
+      "verdict": "rejected",
+      "unqualified": [],
+      "note": "R3 the rendered point is a tenant-month aggregate of invoice rows, so the inverse claim is refused."
+    },
+    {
+      "id": "RSP-04",
+      "verdict": "unqualified",
+      "unqualified": ["crs"],
+      "note": "R4 a spatial representation without a declared CRS is unqualified; two floats are not a geographic placement."
+    },
+    {
+      "id": "RSP-05",
+      "verdict": "rejected",
+      "unqualified": [],
+      "note": "R5 equal rendered formula bytes are declared to establish equal computation, which is refused."
+    },
+    {
+      "id": "RSP-06",
+      "verdict": "rejected",
+      "unqualified": [],
+      "note": "R6 domain time reported as playback time; the sync error bound is also absent. The contradiction is the stronger reading, so the verdict is rejected rather than unqualified."
+    },
+    {
+      "id": "RSP-07",
+      "verdict": "bound",
+      "unqualified": [],
+      "note": "The table carries a line occurrence with its own identity, the grain matches the source grain, and every required column is declared."
+    },
+    {
+      "id": "RSP-08",
+      "verdict": "rejected",
+      "unqualified": [],
+      "note": "R1 a meaning-bearing instance outside any Function Data Context is refused. A palette preview may be independent, but this one shows a field of a selected order."
+    },
+    {
+      "id": "RSP-09",
+      "verdict": "rejected",
+      "unqualified": [],
+      "note": "R9 the matrix layout is declared to be the data meaning; the layout stays a layout."
+    },
+    {
+      "id": "RSP-10",
+      "verdict": "rejected",
+      "unqualified": [],
+      "note": "R8 two different contexts share the same scope; the scope is not reused across contexts."
+    },
+    {
+      "id": "RSP-11",
+      "verdict": "bound",
+      "unqualified": [],
+      "note": "A Gantt bar is a task interval on the domain axis, the clock and the error bound are declared, and the grain matches."
+    },
+    {
+      "id": "RSP-12",
+      "verdict": "bound",
+      "unqualified": [],
+      "note": "The page axis is declared generated, so it is not reported as a source axis; the structural role matches the source. A generated axis is informational, not a failure."
+    },
+    {
+      "id": "RSP-13",
+      "verdict": "rejected",
+      "unqualified": [],
+      "note": "R4/R7 a composite panel showing an order total over line rows cannot qualify an inverse to the lines."
+    },
+    {
+      "id": "RSP-14",
+      "verdict": "unqualified",
+      "unqualified": ["clock"],
+      "note": "R6 the clock is unknown, so the synchronization claim is unqualified. An error bound of zero does not substitute for a clock."
+    }
+  ]
+}

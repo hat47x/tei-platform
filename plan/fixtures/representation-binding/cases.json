@@ -1,0 +1,286 @@
+{
+  "schemaVersion": "tei.reference.representation-binding-input/v0",
+  "cases": [
+    {
+      "id": "RSP-01",
+      "title": "表の行indexを業務Identityとして扱う",
+      "representation": {
+        "id": "rep.line_table",
+        "kind": "table",
+        "topology": ["row", "column", "cell"]
+      },
+      "binding": {
+        "contextId": "order_entry.lines",
+        "epoch": "e1",
+        "scope": "selected-order",
+        "grain": "line",
+        "selection": "row-3",
+        "selectionIsIdentity": true,
+        "operation": "read-only",
+        "evidence": ["the third row is the third line"]
+      }
+    },
+    {
+      "id": "RSP-02",
+      "title": "Treeの表示nodeを一意な更新対象とみなす",
+      "representation": {
+        "id": "rep.org_tree",
+        "kind": "tree",
+        "topology": ["node", "edge", "path"]
+      },
+      "binding": {
+        "contextId": "org_chart.view",
+        "epoch": "e2",
+        "scope": "all-open",
+        "grain": "node",
+        "nodeIsUniqueTarget": true,
+        "declaredLosses": ["hidden-edge", "parent-arity"],
+        "operation": "inverse-candidate",
+        "evidence": ["the node shape is the same"]
+      }
+    },
+    {
+      "id": "RSP-03",
+      "title": "Chartの集計1点を元Entityの代表とみなす",
+      "representation": {
+        "id": "rep.revenue_chart",
+        "kind": "chart",
+        "topology": ["axis", "series", "point"]
+      },
+      "binding": {
+        "contextId": "finance.dashboard",
+        "epoch": "e3",
+        "scope": "tenant-2026-10",
+        "sourceGrain": "invoice",
+        "grain": "tenant-month",
+        "axes": [{"name": "bucket", "role": "structural"}],
+        "declaredLosses": ["grain", "fact-identity", "aggregation-inverse"],
+        "operation": "inverse-candidate",
+        "evidence": ["the bar points at an invoice"]
+      }
+    },
+    {
+      "id": "RSP-04",
+      "title": "Mapが座標参照系を宣言しない",
+      "representation": {
+        "id": "rep.site_map",
+        "kind": "map",
+        "topology": ["layer", "feature", "coordinate"]
+      },
+      "binding": {
+        "contextId": "field.survey",
+        "epoch": "e4",
+        "scope": "survey-area",
+        "grain": "point",
+        "operation": "read-only",
+        "evidence": ["two floats place the feature"]
+      }
+    },
+    {
+      "id": "RSP-05",
+      "title": "数式の表示一致を計算意味の一致と推定する",
+      "representation": {
+        "id": "rep.formula",
+        "kind": "formula",
+        "topology": ["expression", "subexpression"]
+      },
+      "binding": {
+        "contextId": "pricing.display",
+        "epoch": "e5",
+        "scope": "selected",
+        "grain": "row",
+        "displayEqualityImpliesMeaning": true,
+        "operation": "read-only",
+        "evidence": ["the rendered formula matches the source table"]
+      }
+    },
+    {
+      "id": "RSP-06",
+      "title": "Domain TimeをPlayback Timeとして扱う",
+      "representation": {
+        "id": "rep.audio_track",
+        "kind": "audio",
+        "topology": ["track", "sample", "timestamp"]
+      },
+      "binding": {
+        "contextId": "review.audio",
+        "epoch": "e6",
+        "scope": "window",
+        "grain": "audio-sample",
+        "axes": [{"name": "playback", "role": "presentation"}],
+        "sourceAxes": ["domain"],
+        "clock": "audio-device",
+        "syncClaimed": true,
+        "operation": "inverse-candidate",
+        "evidence": ["the same elapsed seconds"]
+      }
+    },
+    {
+      "id": "RSP-07",
+      "title": "表の行をlineとして束縛する正常系",
+      "representation": {
+        "id": "rep.line_table_ok",
+        "kind": "table",
+        "topology": ["row", "column", "cell"]
+      },
+      "binding": {
+        "contextId": "order_entry.lines",
+        "epoch": "e7",
+        "scope": "selected-order",
+        "sourceGrain": "line",
+        "grain": "line",
+        "axes": [{"name": "lineNumber", "role": "structural"}],
+        "selection": "row-occurrence",
+        "operation": "read-only",
+        "evidence": ["line id carried per row", "null and missing rendered distinctly"]
+      }
+    },
+    {
+      "id": "RSP-08",
+      "title": "意味を伴う表現インスタンスがFunction Data Contextの外に置かれる",
+      "representation": {
+        "id": "rep.palette_preview",
+        "kind": "form",
+        "topology": ["field", "section"]
+      },
+      "binding": {
+        "scope": "unknown",
+        "grain": "row",
+        "operation": "read-only",
+        "evidence": ["the preview shows a field"]
+      }
+    },
+    {
+      "id": "RSP-09",
+      "title": "表現型の内部トポロジーをデータの意味として採用する",
+      "representation": {
+        "id": "rep.matrix_meaning",
+        "kind": "matrix",
+        "topology": ["row", "column", "cell"],
+        "topologyIsDataMeaning": true
+      },
+      "binding": {
+        "contextId": "analysis.grid",
+        "epoch": "e9",
+        "scope": "sample",
+        "grain": "cell",
+        "operation": "read-only",
+        "evidence": ["the grid is the data"]
+      }
+    },
+    {
+      "id": "RSP-10",
+      "title": "同じ表現型を別Contextへ置き、旧Scopeを再利用する",
+      "representation": {
+        "id": "rep.reused_table",
+        "kind": "table",
+        "topology": ["row", "column", "cell"]
+      },
+      "binding": {
+        "contextId": "ops.queue",
+        "epoch": "e10",
+        "scope": "tenant-a",
+        "grain": "row",
+        "operation": "read-only",
+        "evidence": ["the same columns"]
+      },
+      "otherBindings": [
+        {
+          "contextId": "order_entry.list",
+          "epoch": "e10",
+          "scope": "tenant-a",
+          "grain": "row",
+          "operation": "read-only"
+        }
+      ]
+    },
+    {
+      "id": "RSP-11",
+      "title": "Ganttの時間軸roleと同期誤差を宣言する正常系",
+      "representation": {
+        "id": "rep.schedule_gantt",
+        "kind": "gantt",
+        "topology": ["row", "bar", "timestamp"]
+      },
+      "binding": {
+        "contextId": "plan.schedule",
+        "epoch": "e11",
+        "scope": "project-a",
+        "sourceGrain": "task",
+        "grain": "task",
+        "axes": [{"name": "domain", "role": "domain"}],
+        "sourceAxes": ["domain"],
+        "clock": "project-clock",
+        "syncClaimed": true,
+        "syncError": "0ms",
+        "operation": "read-only",
+        "evidence": ["each bar is a task interval on the domain axis"]
+      }
+    },
+    {
+      "id": "RSP-12",
+      "title": "自動生成した時間軸を元の時間軸として扱う",
+      "representation": {
+        "id": "rep.reflow_pages",
+        "kind": "markdown",
+        "topology": ["heading", "paragraph", "page"]
+      },
+      "binding": {
+        "contextId": "doc.render",
+        "epoch": "e12",
+        "scope": "section-2",
+        "grain": "paragraph",
+        "axes": [{"name": "page", "role": "structural", "generated": true}],
+        "sourceAxes": ["structural"],
+        "operation": "read-only",
+        "evidence": ["the page number follows the paragraph"]
+      }
+    },
+    {
+      "id": "RSP-13",
+      "title": "集約された表現に逆写像を宣言する",
+      "representation": {
+        "id": "rep.aggregate_panel",
+        "kind": "composite",
+        "topology": ["panel", "table", "chart"]
+      },
+      "binding": {
+        "contextId": "order_entry.summary",
+        "epoch": "e13",
+        "scope": "selected-order",
+        "sourceGrain": "line",
+        "grain": "order",
+        "axes": [],
+        "operation": "inverse-candidate",
+        "declaredLosses": ["grain", "fact-identity", "aggregation-inverse"],
+        "evidence": ["the summary shows the order total"]
+      }
+    },
+    {
+      "id": "RSP-14",
+      "title": "時計が不明のまま同期済みと宣言する",
+      "representation": {
+        "id": "rep.overlay_video",
+        "kind": "video",
+        "topology": ["track", "frame", "timestamp"]
+      },
+      "binding": {
+        "contextId": "review.media",
+        "epoch": "e14",
+        "scope": "window",
+        "sourceGrain": "sample",
+        "grain": "frame",
+        "axes": [
+          {"name": "domain", "role": "domain"},
+          {"name": "playback", "role": "presentation"}
+        ],
+        "sourceAxes": ["domain"],
+        "clock": "unknown",
+        "syncClaimed": true,
+        "syncError": "0ms",
+        "operation": "read-only",
+        "evidence": ["the frame numbers line up with the sample indices"]
+      }
+    }
+  ]
+}
