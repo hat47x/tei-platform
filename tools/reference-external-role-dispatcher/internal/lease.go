@@ -39,6 +39,14 @@ func NewLeaseStore(path string) (*LeaseStore, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open lease db: %w", err)
 	}
+	// The store is documented as single-writer, so it holds one connection: two
+	// goroutines that each begin a transaction on their own connection otherwise
+	// collide at once and one fails with SQLITE_BUSY instead of serializing.
+	// busy_timeout still covers another process that holds the lock briefly.
+	db.SetMaxOpenConns(1)
+	if _, err := db.Exec(`PRAGMA busy_timeout=5000;`); err != nil {
+		return nil, fmt.Errorf("set busy timeout: %w", err)
+	}
 	if _, err := db.Exec(`PRAGMA journal_mode=WAL;`); err != nil {
 		return nil, fmt.Errorf("set wal: %w", err)
 	}
