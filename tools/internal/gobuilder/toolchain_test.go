@@ -156,11 +156,18 @@ func TestSelectExecutableFallsBackWhenResolutionFails(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an existing file was refused because resolution failed: %v", err)
 	}
-	absolute, absErr := filepath.Abs(goPath)
-	if absErr != nil {
-		t.Fatal(absErr)
+	// Compare the files, not their spellings: the Windows CI runner's temporary
+	// directory is a short name (C:\Users\RUNNER~1\...) whose resolved spelling
+	// differs from the one this test built (#4276).
+	gotInfo, statErr := os.Stat(got)
+	if statErr != nil {
+		t.Fatalf("selected path does not exist: %v", statErr)
 	}
-	if got != absolute && got != goPath {
-		t.Fatalf("got %q, want the absolute path %q", got, absolute)
+	wantInfo, statErr := os.Stat(goPath)
+	if statErr != nil {
+		t.Fatal(statErr)
+	}
+	if !os.SameFile(gotInfo, wantInfo) {
+		t.Fatalf("got %q, want the same file as %q", got, goPath)
 	}
 }
