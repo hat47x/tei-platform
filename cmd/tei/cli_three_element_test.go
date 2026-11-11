@@ -6,7 +6,24 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"tei/internal/threeelement"
 )
+
+var fixtureBytes = func() []byte {
+	model := threeelement.NewThreeElementModel("test-model", "Test Model")
+	model.DataElements = []threeelement.DataElement{
+		{
+			ID:   "test.data",
+			Name: "Test Data",
+			Attributes: []threeelement.DataAttribute{
+				{ID: "id", Name: "ID", Type: "identifier", Key: true},
+			},
+		},
+	}
+	raw, _ := json.Marshal(model)
+	return raw
+}()
 
 func TestThreeElementValidateCommand(t *testing.T) {
 	root := t.TempDir()
