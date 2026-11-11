@@ -322,3 +322,9 @@
 
 # Five-server MCP observations are hashed as raw bytes.
 /plan/evidence/DSH_MCP_FIVE_SERVERS_2026-11-11/** -text
+
+# Real captured external-analysis output is fingerprinted byte-wise by the
+# intake tests; checkout must not rewrite its encoding or line endings. The same
+# commands wrote UTF-16LE with a BOM on Windows and UTF-8 on Linux, so the
+# captured bytes are part of what the contract is checked against (#3394).
+/internal/externalanalysis/testdata/** -text

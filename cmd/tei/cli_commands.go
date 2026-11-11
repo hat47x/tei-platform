@@ -51,6 +51,7 @@ var acceptedCommands = []string{
 	"operations",
 	"periods",
 	"plan-migration",
+	"rea-evidence",
 	"release-graph",
 	"scenario",
 	"schema-diff",

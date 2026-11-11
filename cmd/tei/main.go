@@ -169,6 +169,15 @@ func main() {
 	}
 	worldPath := fs.String("world", "", "normalized M0 IR JSON")
 	workspacePath := fs.String("workspace", "", "TEI workspace directory")
+	reaEvidencePath := fs.String("analysis-output", "", "rea-evidence: saved external analysis output (raw bytes as received)")
+	reaViewPath := fs.String("view", "", "rea-evidence: saved view delivery to inspect")
+	reaRequestPath := fs.String("request", "", "rea-evidence: derived view request to validate")
+	reaProviderVersion := fs.String("provider-version", "", "rea-evidence: external tool version that produced the bytes")
+	reaExpectedEvidenceID := fs.String("expected-evidence-id", "", "rea-evidence: Evidence ID the receipt must match")
+	reaExpectedFingerprint := fs.String("expected-evidence-fingerprint", "", "rea-evidence: received-bytes digest the receipt must match")
+	reaExpectedSourceRevision := fs.String("expected-source-revision", "", "rea-evidence: analyzed-source revision the receipt must match")
+	reaRequestOut := fs.String("request-out", "", "rea-evidence: write the derived view request here")
+	reaToolPath := fs.String("tool-path", "", "rea-evidence: explicit external tool path; otherwise PATH is probed")
 	jsonValidation := fs.Bool("json", false, "machine-readable JSON for validate -workspace")
 	pluginDiagnostic := fs.Bool("diagnostic-candidates", false, "show unvalidated plugin candidates; never authorizes execution")
 	subjectKind := fs.String("subject-kind", "", "Source Index subject kind")
@@ -451,6 +460,26 @@ func main() {
 	}
 	if command == "source-index" {
 		code, err := sourceIndexJSON(os.Stdout, *workspacePath, *worldPath, *subjectKind, *subjectID, fs.NArg())
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		if code != 0 {
+			os.Exit(code)
+		}
+		return
+	}
+	if command == "rea-evidence" {
+		code, err := reaEvidenceJSON(os.Stdout, reaEvidenceOuterArgs{
+			evidencePath:        *reaEvidencePath,
+			viewPath:            *reaViewPath,
+			requestPath:         *reaRequestPath,
+			providerVersion:     *reaProviderVersion,
+			expectedEvidenceID:  *reaExpectedEvidenceID,
+			expectedFingerprint: *reaExpectedFingerprint,
+			expectedSourceRev:   *reaExpectedSourceRevision,
+			requestOut:          *reaRequestOut,
+			toolPath:            *reaToolPath,
+		}, fs.NArg())
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		}

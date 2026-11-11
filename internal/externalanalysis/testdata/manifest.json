@@ -1,0 +1,151 @@
+{
+  "what": "Real captured output of the REA CLI, saved as the intake contract's fixtures.",
+  "capturedAt": "2026-11-11 (Asia/Tokyo)",
+  "host": {
+    "os": "windows",
+    "platform": "Windows-11-10.0.26100-SP0",
+    "node": "v24.19.0",
+    "npm": "rea-agents installed with --ignore-scripts --save-exact into an isolated prefix"
+  },
+  "target": {
+    "what": "an inert synthetic JavaScript package; index.js throws immediately if executed, so no analysis target code ever runs",
+    "packageSha256": "aefe7cbbc20c72cd185d60c46ebd229789a1e991a1444ed342b3555877975a53",
+    "indexSha256": "e8dc069bd1398a5b3d90db155e379df84a707b163d593a533970e5d67dadaaea"
+  },
+  "runs": [
+    {
+      "kind": "analyze",
+      "tool": "rea",
+      "version": "6.7.0",
+      "command": "rea analyze-javascript-application <synthetic-fixture-dir> --json --full-output",
+      "exit": 0,
+      "stdout": "rea-6.7.0/analysis.json",
+      "stderr": "progress log only; no view output",
+      "bytes": 72498,
+      "sha256": "3a88503c353ecca1edad5715921ede7398f0eca86457316871dde85cd73bdd5e",
+      "evidence_id": "ev_c9d5026bb51c7e100892eb076ebb4b812ea0f4a7874dcf4c835d33098ba9fb85"
+    },
+    {
+      "kind": "view",
+      "tool": "rea",
+      "version": "6.7.0",
+      "command": "rea inspect-analysis-view <derived-request.json> --format jsonl",
+      "exit": 0,
+      "stdout": "rea-6.7.0/view.jsonl",
+      "stderr": "empty",
+      "bytes": 33578,
+      "sha256": "491e2e44b8ace539aa2c217c6e1aa3dcbb83d24336ff70b20bd02fbc95b69ca7",
+      "lines": 1,
+      "parent_evidence_id": "ev_c9d5026bb51c7e100892eb076ebb4b812ea0f4a7874dcf4c835d33098ba9fb85"
+    },
+    {
+      "kind": "analyze",
+      "tool": "rea",
+      "version": "6.8.0",
+      "command": "rea analyze-javascript-application <synthetic-fixture-dir> --json --full-output",
+      "exit": 0,
+      "stdout": "rea-6.8.0/analysis.json",
+      "stderr": "progress log only; no view output",
+      "bytes": 78000,
+      "sha256": "7ea3780d8dc23d00c380145af62d63bf194e39decbaefab3d82c5a3b4134bba9",
+      "evidence_id": "ev_a88c70bcd066b2f04fdf97cb349369f0779b9c68cc4ac6c0e5f38f3539477a93"
+    },
+    {
+      "kind": "view",
+      "tool": "rea",
+      "version": "6.8.0",
+      "command": "rea inspect-analysis-view <derived-request.json> --format jsonl",
+      "exit": 0,
+      "stdout": "rea-6.8.0/view.jsonl",
+      "stderr": "empty",
+      "bytes": 33812,
+      "sha256": "dd936b0c47a340e863b721996b1e65e7dcfa2d6079391fb3f1a8b046ef4980b2",
+      "lines": 8,
+      "parent_evidence_id": "ev_a88c70bcd066b2f04fdf97cb349369f0779b9c68cc4ac6c0e5f38f3539477a93"
+    },
+    {
+      "kind": "refusal",
+      "tool": "rea",
+      "version": "6.7.0",
+      "command": "inspect-analysis-view with source.kind the version does not accept",
+      "exit": 1,
+      "stdout": "rea-6.7.0/error-source-kind.out",
+      "stderr": "empty",
+      "bytes": 403,
+      "sha256": "afedade596dceec90dd40e31c0277d114335e736eb66578f0d00ee07040af6a0",
+      "reported_code": "invalid_request",
+      "reported_category": "invalid_input"
+    },
+    {
+      "kind": "refusal",
+      "tool": "rea",
+      "version": "6.7.0",
+      "command": "inspect-analysis-view with the CLI response envelope as source.evidence",
+      "exit": 1,
+      "stdout": "rea-6.7.0/error-envelope-as-evidence.out",
+      "stderr": "empty",
+      "bytes": 2129,
+      "sha256": "bc7c29125025f85a9d259d007d74d78249ad8baa2ebdfda2e35cbd581fe27457",
+      "reported_code": "invalid_request",
+      "reported_category": "invalid_input"
+    },
+    {
+      "kind": "refusal",
+      "tool": "rea",
+      "version": "6.8.0",
+      "command": "inspect-analysis-view with source.kind the version does not accept",
+      "exit": 1,
+      "stdout": "rea-6.8.0/error-source-kind.out",
+      "stderr": "empty",
+      "bytes": 682,
+      "sha256": "ca927f3afe015dbdc4b4f0731881c70738b8a184c6810b5acf3edcbb20668084",
+      "reported_code": "invalid_request",
+      "reported_category": "invalid_input"
+    },
+    {
+      "kind": "refusal",
+      "tool": "rea",
+      "version": "6.8.0",
+      "command": "inspect-analysis-view with the CLI response envelope as source.evidence",
+      "exit": 1,
+      "stdout": "rea-6.8.0/error-envelope-as-evidence.out",
+      "stderr": "empty",
+      "bytes": 2392,
+      "sha256": "61e22fa70578e549eca45f3de0f7bc81e7776533e581a5d6320d699c55a06a0d",
+      "reported_code": "invalid_request",
+      "reported_category": "invalid_input"
+    },
+    {
+      "kind": "refusal",
+      "tool": "rea",
+      "version": "6.8.0",
+      "command": "inspect-analysis-view with source.kind=evidence-file naming the UTF-16LE saved Evidence",
+      "exit": 1,
+      "stdout": "rea-6.8.0/error-evidence-file-utf16.out",
+      "stderr": "empty",
+      "bytes": 504,
+      "sha256": "f505384fa9a3fc71a90a94fca8fb67a7efff5369fa1f7b09f82ccf893ef6380f",
+      "reported_code": "evidence_integrity_mismatch",
+      "reported_category": "execution_failure",
+      "note": "the saved bytes were UTF-16LE with a BOM on this host; the tool's file reader expects UTF-8 JSON"
+    }
+  ],
+  "derivedInput": {
+    "what": "the view request the intake derives from the saved Evidence: source.kind=inline with the Evidence record embedded",
+    "requestSha256": {
+      "6.7.0": "808b097a377cc9793756874d580ac11a58119dd346b4ca41b75f9a824341ecde",
+      "6.8.0": "ae129721f27ad245991f19fe1107d24840ae89654a1a42c429f26da72325fa80"
+    },
+    "note": "the derived request digest is deliberately different from the Evidence digest: the request is a new document that embeds the Evidence bytes"
+  },
+  "encoding": {
+    "observed": "the same commands wrote UTF-16LE with a BOM and CRLF on this Windows host; the repository CI observed UTF-8 with LF on ubuntu for the same commands",
+    "consequence": "the receipt fingerprints the bytes as received and names the encoding it decoded; the two are not interchangeable"
+  },
+  "notClaimed": [
+    "these fixtures do not qualify the analysis result as correct",
+    "they do not admit anything to the Canonical World, Accepted Meaning, or a database observation",
+    "they do not prove the tool's behavior for any version other than 6.7.0 and 6.8.0",
+    "they do not prove the behavior of a real application target; the target is synthetic and inert"
+  ]
+}
