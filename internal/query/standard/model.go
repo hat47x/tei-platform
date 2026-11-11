@@ -104,22 +104,25 @@ type SubqueryExpr struct {
 type Node interface{}
 
 type Scan struct {
-	ID         string `json:"id"`
-	Source     string `json:"source"`
-	SourceKind string `json:"sourceKind,omitempty"`
-	Alias      string `json:"alias,omitempty"`
-	SubqueryID string `json:"subqueryId,omitempty"`
+	ID         string     `json:"id"`
+	Source     string     `json:"source"`
+	SourceKind string     `json:"sourceKind,omitempty"`
+	Alias      string     `json:"alias,omitempty"`
+	SubqueryID string     `json:"subqueryId,omitempty"`
+	Span       SourceSpan `json:"span,omitempty"`
 }
 
 type Filter struct {
-	NodeID    string `json:"nodeId"`
-	Condition Expr   `json:"condition"`
-	Having    bool   `json:"having,omitempty"`
+	NodeID    string     `json:"nodeId"`
+	Condition Expr       `json:"condition"`
+	Having    bool       `json:"having,omitempty"`
+	Span      SourceSpan `json:"span,omitempty"`
 }
 
 type Project struct {
 	NodeID string        `json:"nodeId"`
 	Items  []ProjectItem `json:"items"`
+	Span   SourceSpan    `json:"span,omitempty"`
 }
 
 type ProjectItem struct {
@@ -128,23 +131,26 @@ type ProjectItem struct {
 }
 
 type Join struct {
-	NodeID    string   `json:"nodeId"`
-	Kind      string   `json:"kind"`
-	Left      string   `json:"left"`
-	Right     string   `json:"right"`
-	Condition Expr     `json:"condition,omitempty"`
-	Using     []string `json:"using,omitempty"`
+	NodeID    string     `json:"nodeId"`
+	Kind      string     `json:"kind"`
+	Left      string     `json:"left"`
+	Right     string     `json:"right"`
+	Condition Expr       `json:"condition,omitempty"`
+	Using     []string   `json:"using,omitempty"`
+	Span      SourceSpan `json:"span,omitempty"`
 }
 
 type Aggregate struct {
 	NodeID   string        `json:"nodeId"`
 	Grouping []Expr        `json:"grouping,omitempty"`
 	Items    []ProjectItem `json:"items"`
+	Span     SourceSpan    `json:"span,omitempty"`
 }
 
 type Sort struct {
-	NodeID string    `json:"nodeId"`
-	Keys   []SortKey `json:"keys"`
+	NodeID string     `json:"nodeId"`
+	Keys   []SortKey  `json:"keys"`
+	Span   SourceSpan `json:"span,omitempty"`
 }
 
 type SortKey struct {
@@ -154,48 +160,56 @@ type SortKey struct {
 }
 
 type Limit struct {
-	NodeID string `json:"nodeId"`
-	Limit  string `json:"limit"`
-	Offset string `json:"offset,omitempty"`
+	NodeID string     `json:"nodeId"`
+	Limit  string     `json:"limit"`
+	Offset string     `json:"offset,omitempty"`
+	Span   SourceSpan `json:"span,omitempty"`
 }
 
 type Distinct struct {
-	NodeID string `json:"nodeId"`
+	NodeID string     `json:"nodeId"`
+	Span   SourceSpan `json:"span,omitempty"`
 }
 
 type Union struct {
-	NodeID string `json:"nodeId"`
-	All    bool   `json:"all"`
-	Left   string `json:"left"`
-	Right  string `json:"right"`
+	NodeID string     `json:"nodeId"`
+	All    bool       `json:"all"`
+	Left   string     `json:"left"`
+	Right  string     `json:"right"`
+	Span   SourceSpan `json:"span,omitempty"`
 }
 
 type Values struct {
-	NodeID string   `json:"nodeId"`
-	Rows   [][]Expr `json:"rows"`
+	NodeID string     `json:"nodeId"`
+	Rows   [][]Expr   `json:"rows"`
+	Span   SourceSpan `json:"span,omitempty"`
 }
 
 type Subquery struct {
 	ID    string         `json:"id"`
 	Query *StandardQuery `json:"query"`
 	Alias string         `json:"alias,omitempty"`
+	Span  SourceSpan     `json:"span,omitempty"`
 }
 
 type SubqueryScan struct {
-	NodeID     string `json:"nodeId"`
-	SubqueryID string `json:"subqueryId"`
-	Alias      string `json:"alias,omitempty"`
+	NodeID     string     `json:"nodeId"`
+	SubqueryID string     `json:"subqueryId"`
+	Alias      string     `json:"alias,omitempty"`
+	Span       SourceSpan `json:"span,omitempty"`
 }
 
 type Opaque struct {
-	NodeID string `json:"nodeId"`
-	SQL    string `json:"sql"`
-	Reason string `json:"reason"`
+	NodeID string     `json:"nodeId"`
+	SQL    string     `json:"sql"`
+	Reason string     `json:"reason"`
+	Span   SourceSpan `json:"span,omitempty"`
 }
 
 type CTE struct {
 	ID    string         `json:"id"`
 	Query *StandardQuery `json:"query"`
+	Span  SourceSpan     `json:"span,omitempty"`
 }
 
 // StandardQuery is a dialect-neutral, serializable query representation.

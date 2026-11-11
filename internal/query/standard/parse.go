@@ -279,6 +279,10 @@ func (p *parser) error(msg string) error { return fmt.Errorf("%s at %d", msg, p.
 func (p *parser) addDiag(code, msg string) {
 	p.diags = append(p.diags, Diagnostic{Code: code, Message: msg})
 }
+func (p *parser) span(start int) SourceSpan {
+	end := p.peek().pos
+	return SourceSpan{Start: start, End: end}
+}
 func (p *parser) nextNodeID() string {
 	id := fmt.Sprintf("node:%d", p.nextID)
 	p.nextID++
@@ -372,35 +376,38 @@ func (p *parser) parseQuery() (*StandardQuery, error) {
 		return nil, err
 	}
 	for p.matchKeyword("union") {
+		start := p.peek().pos
 		all := p.matchKeyword("all")
 		rightB := &queryBuilder{}
 		_, rerr := p.parseQueryBody(rightB)
 		if rerr != nil {
 			return nil, rerr
 		}
-		union := &Union{NodeID: p.nextNodeID(), All: all, Left: nodeID(root), Right: nodeID(rightB.nodes[len(rightB.nodes)-1])}
+		union := &Union{NodeID: p.nextNodeID(), All: all, Left: nodeID(root), Right: nodeID(rightB.nodes[len(rightB.nodes)-1]), Span: p.span(start)}
 		b.nodes = append(b.nodes, rightB.nodes...)
 		b.nodes = append(b.nodes, union)
 		root = union
 	}
 	if p.matchKeyword("intersect") {
+		start := p.peek().pos
 		rightB := &queryBuilder{}
 		_, rerr := p.parseQueryBody(rightB)
 		if rerr != nil {
 			return nil, rerr
 		}
-		union := &Union{NodeID: p.nextNodeID(), All: false, Left: nodeID(root), Right: nodeID(rightB.nodes[len(rightB.nodes)-1])}
+		union := &Union{NodeID: p.nextNodeID(), All: false, Left: nodeID(root), Right: nodeID(rightB.nodes[len(rightB.nodes)-1]), Span: p.span(start)}
 		b.nodes = append(b.nodes, rightB.nodes...)
 		b.nodes = append(b.nodes, union)
 		root = union
 	}
 	if p.matchKeyword("except") {
+		start := p.peek().pos
 		rightB := &queryBuilder{}
 		_, rerr := p.parseQueryBody(rightB)
 		if rerr != nil {
 			return nil, rerr
 		}
-		union := &Union{NodeID: p.nextNodeID(), All: false, Left: nodeID(root), Right: nodeID(rightB.nodes[len(rightB.nodes)-1])}
+		union := &Union{NodeID: p.nextNodeID(), All: false, Left: nodeID(root), Right: nodeID(rightB.nodes[len(rightB.nodes)-1]), Span: p.span(start)}
 		b.nodes = append(b.nodes, rightB.nodes...)
 		b.nodes = append(b.nodes, union)
 		root = union
@@ -417,6 +424,7 @@ func (p *parser) parseCTE() (*CTE, error) {
 	if err != nil {
 		return nil, err
 	}
+	start := nameTok.pos
 	if !p.matchKeyword("as") {
 		return nil, p.error("expected AS after CTE name")
 	}
@@ -432,13 +440,14 @@ func (p *parser) parseCTE() (*CTE, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &CTE{ID: strings.ToLower(nameTok.text), Query: sub}, nil
+	return &CTE{ID: strings.ToLower(nameTok.text), Query: sub, Span: p.span(start)}, nil
 }
 
 func (p *parser) parseQueryBody(b *queryBuilder) (Node, error) {
 	if !p.matchKeyword("select") {
 		return nil, p.error("expected SELECT")
 	}
+	start := p.peek().pos
 	distinct := p.matchKeyword("distinct")
 	items, aliases, err := p.parseSelectList()
 	if err != nil {
@@ -449,9 +458,9 @@ func (p *parser) parseQueryBody(b *queryBuilder) (Node, error) {
 		return nil, err
 	}
 	if distinct {
-		b.add(&Distinct{NodeID: p.nextNodeID()})
+		b.add(&Distinct{NodeID: p.nextNodeID(), Span: p.span(start)})
 	}
-	proj := &Project{NodeID: p.nextNodeID(), Items: make([]ProjectItem, len(items))}
+	proj := &Project{NodeID: p.nextNodeID(), Items: make([]ProjectItem, len(items)), Span: p.span(start)}
 	for i, expr := range items {
 		proj.Items[i] = ProjectItem{Expr: expr, Alias: aliases[i]}
 	}
@@ -468,7 +477,7 @@ func (p *parser) parseQueryBody(b *queryBuilder) (Node, error) {
 		return nil, err
 	}
 	if groupNode != nil {
-		b.add(&Aggregate{NodeID: p.nextNodeID(), Grouping: groupNode})
+		b.add(&Aggregate{NodeID: p.nextNodeID(), Grouping: groupNode, Span: p.span(start)})
 	}
 	havingNode, err := p.parseHaving()
 	if err != nil {
@@ -498,6 +507,7 @@ func (p *parser) parseFrom(b *queryBuilder) (*Scan, error) {
 	if !p.matchKeyword("from") {
 		return nil, p.error("expected FROM")
 	}
+	start := p.peek().pos
 	left, leftAlias, err := p.parseTablePrimary(b)
 	if err != nil {
 		return nil, err
@@ -505,6 +515,7 @@ func (p *parser) parseFrom(b *queryBuilder) (*Scan, error) {
 	if leftAlias != "" {
 		left.Alias = leftAlias
 	}
+	left.Span = p.span(start)
 	b.add(left)
 	for {
 		join, jerr := p.parseJoinClause(b)
@@ -521,6 +532,7 @@ func (p *parser) parseFrom(b *queryBuilder) (*Scan, error) {
 
 func (p *parser) parseTablePrimary(b *queryBuilder) (*Scan, string, error) {
 	tok := p.peek()
+	start := tok.pos
 	if tok.kind == tokLParen {
 		p.next()
 		sub, err := p.parseQuery()
@@ -544,7 +556,7 @@ func (p *parser) parseTablePrimary(b *queryBuilder) (*Scan, string, error) {
 		}
 		id := p.nextSubqueryID()
 		b.add(&Subquery{ID: id, Query: sub, Alias: alias})
-		return &Scan{ID: p.nextNodeID(), SourceKind: "subquery", SubqueryID: id, Alias: alias}, alias, nil
+		return &Scan{ID: p.nextNodeID(), SourceKind: "subquery", SubqueryID: id, Alias: alias, Span: p.span(start)}, alias, nil
 	}
 	if tok.kind == tokIdent {
 		p.next()
@@ -553,7 +565,7 @@ func (p *parser) parseTablePrimary(b *queryBuilder) (*Scan, string, error) {
 		alias := ""
 		if p.match(tokDot) {
 			if p.match(tokStar) {
-				return &Scan{Source: name + ".*", SourceKind: "table"}, "", nil
+				return &Scan{Source: name + ".*", SourceKind: "table", Span: p.span(start)}, "", nil
 			}
 			col, err := p.expect(tokIdent)
 			if err != nil {
@@ -576,12 +588,13 @@ func (p *parser) parseTablePrimary(b *queryBuilder) (*Scan, string, error) {
 		if qualifier != "" {
 			src = qualifier + "." + name
 		}
-		return &Scan{ID: p.nextNodeID(), Source: src, SourceKind: "table"}, alias, nil
+		return &Scan{ID: p.nextNodeID(), Source: src, SourceKind: "table", Span: p.span(start)}, alias, nil
 	}
 	return nil, "", p.error("expected table or subquery")
 }
 
 func (p *parser) parseJoinClause(b *queryBuilder) (*Join, error) {
+	start := p.peek().pos
 	kind := "inner"
 	if p.matchKeyword("left") {
 		kind = "left"
@@ -614,6 +627,7 @@ func (p *parser) parseJoinClause(b *queryBuilder) (*Join, error) {
 		Kind:   kind,
 		Left:   leftID,
 		Right:  right.ID,
+		Span:   p.span(start),
 	}
 	if p.matchKeyword("on") {
 		cond, err := p.parseExpr()
@@ -1179,11 +1193,12 @@ func (p *parser) parseWhere(b *queryBuilder) (Node, error) {
 	if !p.matchKeyword("where") {
 		return nil, nil
 	}
+	start := p.peek().pos
 	cond, err := p.parseExpr()
 	if err != nil {
 		return nil, err
 	}
-	return &Filter{NodeID: p.nextNodeID(), Condition: cond}, nil
+	return &Filter{NodeID: p.nextNodeID(), Condition: cond, Span: p.span(start)}, nil
 }
 
 func (p *parser) parseGroupBy() ([]Expr, error) {
@@ -1211,11 +1226,12 @@ func (p *parser) parseHaving() (Node, error) {
 	if !p.matchKeyword("having") {
 		return nil, nil
 	}
+	start := p.peek().pos
 	cond, err := p.parseExpr()
 	if err != nil {
 		return nil, err
 	}
-	return &Filter{NodeID: p.nextNodeID(), Condition: cond, Having: true}, nil
+	return &Filter{NodeID: p.nextNodeID(), Condition: cond, Having: true, Span: p.span(start)}, nil
 }
 
 func (p *parser) parseOrderBy() (Node, error) {
@@ -1225,6 +1241,7 @@ func (p *parser) parseOrderBy() (Node, error) {
 	if !p.matchKeyword("by") {
 		return nil, nil
 	}
+	start := p.peek().pos
 	var keys []SortKey
 	for {
 		expr, err := p.parseAdditive()
@@ -1254,13 +1271,14 @@ func (p *parser) parseOrderBy() (Node, error) {
 			break
 		}
 	}
-	return &Sort{NodeID: p.nextNodeID(), Keys: keys}, nil
+	return &Sort{NodeID: p.nextNodeID(), Keys: keys, Span: p.span(start)}, nil
 }
 
 func (p *parser) parseLimit() (Node, error) {
 	if !p.matchKeyword("limit") {
 		return nil, nil
 	}
+	start := p.peek().pos
 	limitTok := p.peek()
 	limitVal := ""
 	if limitTok.kind == tokNumber {
@@ -1281,5 +1299,5 @@ func (p *parser) parseLimit() (Node, error) {
 			offsetVal = "?"
 		}
 	}
-	return &Limit{NodeID: p.nextNodeID(), Limit: limitVal, Offset: offsetVal}, nil
+	return &Limit{NodeID: p.nextNodeID(), Limit: limitVal, Offset: offsetVal, Span: p.span(start)}, nil
 }
