@@ -61,11 +61,42 @@ TEIでは、プラグインを業務上の意味を表す最小単位とはせ�
 
 - `DialectRegistry` から `postgres` / `sqlite` / `mysql` を取得できます。
 - 各 adapter は `PlaceholderStyle` / `PhysicalType` / `Select` / `Insert` / `Update` / `Delete` を提供し、アプリケーションは具象SQLに依存せずに実行計画を組み立てられます。
+- `SelectOptions` は CTE（`WITH`）、名前付きウィンドウ（`WINDOW`）、集合操作（`UNION` / `INTERSECT` / `EXCEPT` と `ALL`）を運びます。集合操作は文の末尾にキーワードを出すだけなので、もう一方の select は呼出し側が続けます。
+- 識別子（表名・列名・別名）は、モデルが検証済みのものをそのまま渡します。この契約はSQL本文の検証境界ではありません。未知の入力から組み立てる経路は native SQL realization を使います。
+- `Parameters` は名前付きパラメータ束縛のための予約で、現行の adapter は対応するプレースホルダを生成せず値を束縛しません。構造化した `Condition` を使ってください。
 
 ### 拡張方法
 
 1. `internal/database/sqlgen/<dialect>/<dialect>.go` を実装し、`Dialect` インタフェースを満たします。
 2. `DialectRegistry.Register(name, dialect)` で追加します。既存APIの変更は不要です。
+3. 単体試験で生成SQLを、実行試験で実際のサーバーが受け入れることを確かめます。文字列一致だけでは、句の位置が構文誤りでも通ります。
+
+### 実データベースでの確認
+
+生成SQLが実際のサーバーに受け入れられることは、実行試験で確かめます。DSN未設定のときは SKIP し、CI では使い捨てのサーバーを立てて DSN を設定します。
+
+| 対象 | 実行試験 | DSN | CI |
+| --- | --- | --- | --- |
+| SQLite | `TestSQLiteExtendedFeaturesExecute`（in-memory） | 不要 | `tei-sqlgen-ci.yml`（DSN不要） |
+| PostgreSQL | `TestPostgresExecution`、`TestPostgresConstraintFailureClassification` | `TEI_SQLGEN_PG_DSN` と `TEI_SQLGEN_PG_CONFIRM_ISOLATED` | `tei-postgres-unrun-suites-ci.yml`（`postgres:16` のservice container） |
+| MySQL | adapterの単体試験のみ | 未対応 | なし |
+
+手元の PostgreSQL で確かめるときは、使い捨てのデータベースを作り、隔離の確認を明示します。試験は `public.tei_sqlgen_probe` と `public.tei_sqlgen_unique` を作成して削除するため、**稼働中のデータベースへ向けないでください**。
+
+```bash
+# 何も無いデータベースを用意する（compose.yml の postgres を使う場合）
+docker compose up -d postgres
+docker compose exec postgres psql -U tei -d postgres -c "CREATE DATABASE tei_sqlgen_e2e"
+
+TEI_SQLGEN_PG_DSN='postgres://tei:tei@localhost:5432/tei_sqlgen_e2e?sslmode=disable' \
+TEI_SQLGEN_PG_CONFIRM_ISOLATED=tei_sqlgen_e2e \
+  go test ./internal/database/sqlgen/postgres -run TestPostgresExecution -v
+
+docker compose down -v
+```
+
+- `compose.yml` は `postgres:16` を 5432 番で立ち上げるだけの定義です。認証情報は開発用の固定値で、本番用ではありません。
+- MySQL は driver 依存を増やさない方針のため、実行試験を持ちません。追加する場合は `go.mod` に driver が入ることを、契約の変更として先に承認します。
 
 ## ビルドとセルフビルド
 
