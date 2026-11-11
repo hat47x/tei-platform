@@ -1378,6 +1378,16 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 
 **資格**：ORG-HSは設計／受入候補のみ。共有Harnessの実製品間連携、実Grant、Row Scope Enforcement、Egress、Owner受理、HS-01〜08試験はNOT RUN。既存M0、合成Org Policy、DSHのTool Read、別Operation実PostgreSQL成功をこの縦断のPASSとして集計しない。
 
+
+### SUI/CSWの探索的理解をTEI組織Meaning候補へ受け渡す（2026-11-11、受入設計のみ）
+
+<!-- org-affinity-admission-plan-20261111 -->
+[組織Meaning設計のORG-AG-01〜07](design/ORGANIZATION_RELATION_GOVERNANCE_MODEL_2026-10.md)で、SUI Card/Island・CSWのKJ法的グループ／仮説と、TEI Person/OrgUnit/Membership/Case担当・承認Ruleの**正式Relationを非同一**とした。許可済みの理解パックは、元CardのSource/Review資格、反証・保留・孤立残差、Candidateと未解決、Purpose/Audienceを保って利用目的別に構成する。組織MeaningへのMappingは任意・非可逆で、Owner受理された部分だけがTEI正本を変更する。TEIの逆編集からSUIの元Islandを黙って書き換えず、SUI/CSWをTEIへ全面移行させない。
+
+**単一の最小試行**：公開合成Card数件をSUIの実許可read-only Projectionから取得→実Consumerへの送達・受領・要約での反証残存を別々に観測→TEI既存read-only OperationにSource-backed Mapping Candidateを照合。SUI現context-projection.v1のSource資格はL0まで（#3368）。元Sourceを取得したかのようにL1/L2へ昇格しない。類似順位候補の成功（SUI #3157）やReviewは組織受理を意味しない。反例はAG-01同名島とOrgUnit／02 C1→D2未受理案／03孤立反証落ち／04L0根拠不足／05生成と実受信の差／06Private公開差／07新材料による再検討を、既存#1131/#1180/#2514で評価する。
+
+**既存Owner・実施順**：探索/実投影はSUI #3368/#3157、用途別構成・開示はTEI #2516、TEI組織意味は#2386、Model Mapは#1124、実Tool/Consumerと不確実性は#1163/#2516。#2586 order_entry.recent_orders のFunction→実Provider→Consumer R0は依然P0最優先。組織C1実Provider/Scopeと現Grant/Effect/Handoffは後続#2506/#1656/#1174/#1444へ。本計画は新Affinity Runtime、共通Session Store、第二Meaning正本、別Gateを設けない。実SUI/CSW→TEI/SHO/SEI E2E、ORG-AG新試験、Ownerの正式採用、実Org DB/Hostは**NOT RUN**。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
