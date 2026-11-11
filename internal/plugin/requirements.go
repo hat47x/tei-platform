@@ -26,7 +26,7 @@ func ValidateUniqueRequirements(requires []Requirement) error {
 		seen[req.Plugin] = struct{}{}
 	}
 	if hasDuplicate {
-		return fmt.Errorf("plugin requirement %s appears more than once", firstDuplicate)
+		return diagnose(DiagnosticDuplicateRequirement, firstDuplicate, "plugin requirement %s appears more than once", firstDuplicate)
 	}
 	return nil
 }
@@ -47,10 +47,10 @@ func ValidateRequirementValues(requires []Requirement) error {
 	sort.Strings(invalidIDs)
 	sort.Strings(invalidMajors)
 	if len(invalidIDs) != 0 {
-		return fmt.Errorf("%s", invalidIDs[0])
+		return diagnose(DiagnosticInvalidRequirement, "", "%s", invalidIDs[0])
 	}
 	if len(invalidMajors) != 0 {
-		return fmt.Errorf("%s", invalidMajors[0])
+		return diagnose(DiagnosticInvalidRequirement, "", "%s", invalidMajors[0])
 	}
 	return nil
 }
