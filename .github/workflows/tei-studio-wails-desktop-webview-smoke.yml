@@ -111,8 +111,11 @@ jobs:
       # PR HEAD may still declare an older go.mod than main. Keep the exact
       # candidate source checkout, but test it with the security-qualified Go
       # toolchain rather than silently selecting the old patch version.
-      # allow-literal-go-version: PR HEAD の go.mod が main より古い版を宣言し得る
-      # ため、候補Source是其のままに security  qualified な Go toolchain で試験する。
+      #
+      # allow-literal-go-version: this job deliberately tests the candidate with
+      # the security-qualified toolchain, not the candidate's own go.mod. A PR
+      # that lowers the patch version would otherwise be smoke-tested on the
+      # older toolchain the pin exists to exclude.
       - name: Pin Go 1.26.11
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
