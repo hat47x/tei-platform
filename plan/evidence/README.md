@@ -51,6 +51,7 @@
 - [`uses`経由で呼んだ能力の効果に補償が要らないことの確認](XTEA_LOWCODE_HOOK_USES_COMPENSATION_2026-11.md)（確認記録。フックの呼出しは参照Executorを通りデータを適用しないため、戻す対象が無い）
 - [Studio経路での`after-*`拒否時の取り消しの確認](XTEA_LOWCODE_HOOK_AFTER_CHANGE_STUDIO_REVERT_2026-11.md)（試験記録。拒否する規則を差し込むと適用した効果がStoreから取り消され`effectReverted`が出る。既定経路での到達は規則Pluginの供給待ち）
 - [Studioから`after-*`フックへ到達する配線の確認](XTEA_LOWCODE_HOOK_AFTER_CHANGE_STUDIO_2026-11.md)（試験記録。`ExecuteCommandWithReferenceStore`が変更を適用し、変更後のフックを実行する。`PhaseReport.Merge`を`internal/hook`に置いて両ホストで共有。UIからの呼出しは未着手）
+- [StudioのUIから`after-*`経路へ到達する配線の確認](XTEA_LOWCODE_HOOK_AFTER_CHANGE_STUDIO_UI_2026-11.md)（試験記録。`ExecuteCommandWithReferenceStore`を橋とportへ足し、チェックボックスで任意指定にする。画面操作と生成タグ付き試験は未実施）
 - [Studioのbinding欠落でビューとCommand操作が到達できていなかった件](STUDIO_BRIDGE_MISSING_METHODS_2026-11.md)（修正記録。`StudioBridge`が5メソッドしか公開せず、`client.mjs`が呼ぶ7つが未登録だった。名前の突き合わせ試験を追加）
 - [複合キーの表現](XTEA_LOWCODE_COMPOSITE_KEY_EXPRESSION_2026-11.md)（確認記録。複合キーは属性ごとに1パラメータで表し、適用キーは既定で全パラメータの複合。1つのData型パラメータへの複数属性の結び付けは検証が拒否する）
 - [同じコマンドの効果を2プロセスが適用した場合の整合](XTEA_LOWCODE_OUTCOME_SHARED_EFFECT_2026-11.md)（確認記録。参照Storeは実行ごとに閉じるため、2プロセスとも成功し互いに干渉しない。整合は耐久Storeを持つ実装の論点として残る）

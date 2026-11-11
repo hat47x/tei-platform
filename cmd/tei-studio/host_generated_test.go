@@ -26,7 +26,8 @@ func TestGeneratedGoServicesRunThroughRealHost(t *testing.T) {
 		"CatalogWorkspace", "ExecuteCommand", "ExecuteCommandWithPeriods",
 		"ExecuteCommandWithPolicy", "InspectSubject", "ListWorkspaces",
 		"ObserveXead", "PlanCommand", "ValidateWorkspace",
-		"ViewApplication", "ViewPackage", "ViewPattern",
+		"ExecuteCommandWithReferenceStore", "ViewApplication", "ViewPackage",
+		"ViewPattern",
 	}
 	if bridgeType.NumMethod() != len(want) {
 		t.Fatalf("unexpected Wails exports: %d", bridgeType.NumMethod())
