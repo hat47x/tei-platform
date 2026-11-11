@@ -30,6 +30,8 @@ CSW（Cultural Substrate Weaving）とVSクマ（VS Bear Simulator）を独立�
 | `bear/contract_test.go` | 実行時定数との列挙一致、上流ファイルへの転記照合、境界値、期限、wire往復、シナリオ検査 |
 | `bear/statemachine.go` | 回復状態機械のread-only遷移表。到達不能・デッドエンド・未知端点・優先度衝突・global遷移のスコープ違反を診断する |
 | `bear/statemachine_test.go` | 上流ファイルへの転記照合、正例の構造証拠、4件のmutation試験 |
+| `csw/anchor_test.go` | CSWの帰属4値を`SKILL.md`の4区分の一文へ逐語で結ぶ転記照合 |
+| [`ANCHOR_POLICY.md`](ANCHOR_POLICY.md) | 外部Repository転記の照合下限と、実際に照合した証跡（実施日・上流commit・件数・skip数） |
 
 ## 実行
 
@@ -40,15 +42,21 @@ go run ./cmd/tei validate -workspace research/tei-cross-domain-probe-2026-11/csw
 go run ./cmd/tei validate -workspace research/tei-cross-domain-probe-2026-11/bear/workspace -json
 ```
 
-上流ファイルへの転記照合（`TestUpstreamAnchorsResolveInTheCitedFiles`）は、兄弟のVSクマチェックアウトが届く環境でのみ実行します。既定では`<repository>/../vs-bear-simulator`を探し、`VS_BEAR_REPO`で上書きできます。届かない環境ではskipします。skipは「転記が現行版と一致すること」の証拠ではありません。
+上流ファイルへの転記照合は、兄弟チェックアウトが届く環境でのみ実行します。既定では `<repository>/../vs-bear-simulator` と `<repository>/../cultural-substrate-weaving` を探し、`VS_BEAR_REPO` / `CSW_REPO` で上書きできます。届かない環境では skip します。**skip は「転記が現行版と一致すること」の証拠ではありません。** 照合の下限と実施済みの証跡は [`ANCHOR_POLICY.md`](ANCHOR_POLICY.md) にあります。
+
+```bash
+go test ./research/tei-cross-domain-probe-2026-11/... -count=1 -run 'Anchor|Transcription' -v
+```
 
 ## 対象版
 
 | 対象 | 確認した版 | 備考 |
 | --- | --- | --- |
-| TEI | `b8cbd432a` | このprobeの分岐元。`origin/main` `b987b38e7`での再実行でも試験と宣言数は不変 |
+| TEI | `b8cbd432a` | このprobeの分岐元。`origin/main` の複数版で再実行しても試験と宣言数は不変 |
 | CSW | `73efa57ef66a` | 3 Skillと`plan/`の研究文書を参照。実行時コードは持たない |
-| VSクマ | `5dae4c873e39` | `cognition/bear/*.gd`と`tests/fixtures/bot_scenario_smoke.json`を参照。`origin/main`の`a7d0cbae9`で対象pathに差分がないことを確認 |
+| VSクマ | `5dae4c873e39` | 転記の分岐元。転記照合は現行 `2f7e2990bb22da57deafb2aedfecb9a654094048` で48件すべて解決 |
+
+上流は進むため、照合は**実行した時点の上流commit**を [`ANCHOR_POLICY.md`](ANCHOR_POLICY.md) の証跡表へ記録します。この表の commit は照合した版であり、「現在の上流の説明」ではありません。
 
 ## 期待値の由来
 
