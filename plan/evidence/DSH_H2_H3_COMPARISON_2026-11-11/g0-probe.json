@@ -1,0 +1,135 @@
+﻿{
+    "schema":  "tei.tools.dsh-g0-probe/v1",
+    "sessionId":  "session-73a53b36-2026-4a19-96f4-5aab649e553d",
+    "cwd":  "D:\\GIT\\hat47x\\tei-wt-dsh-g3-20261111-slot",
+    "presets":  [
+                    {
+                        "seq":  0,
+                        "preset":  "workspace-write"
+                    },
+                    {
+                        "seq":  3,
+                        "preset":  "read-only"
+                    }
+                ],
+    "sandboxModes":  [
+                         {
+                             "seq":  1,
+                             "mode":  "workspace-write"
+                         },
+                         {
+                             "seq":  4,
+                             "mode":  "read-only"
+                         }
+                     ],
+    "approvalPolicies":  [
+                             {
+                                 "seq":  2,
+                                 "policy":  "ask"
+                             },
+                             {
+                                 "seq":  5,
+                                 "policy":  "never"
+                             }
+                         ],
+    "counts":  {
+                   "events":  56,
+                   "unparseableLines":  0,
+                   "toolCalls":  10,
+                   "toolResults":  10,
+                   "teiInvocations":  0,
+                   "skillInvocations":  0,
+                   "steps":  5
+               },
+    "pairing":  {
+                    "unpairedCallIds":  [
+
+                                        ],
+                    "orphanResultCallIds":  [
+
+                                            ],
+                    "duplicateResultCallIds":  [
+
+                                               ],
+                    "callResultCountMatch":  true
+                },
+    "final":  {
+                  "turnEndReason":  {
+                                        "kind":  "completed"
+                                    },
+                  "finalAnswerBytes":  2913,
+                  "finalAnswerSha256":  "76557fd73f7f50234bcf64e7cad68981a98465a0408a4220c162ff527f385cb2"
+              },
+    "probes":  [
+                   {
+                       "callId":  "call_04afe85d137545f0be9ca39a2ee53ecc",
+                       "tool":  "read",
+                       "resultReceived":  true,
+                       "resultBytes":  1051,
+                       "resultIsError":  false
+                   },
+                   {
+                       "callId":  "call_1ab56b7a5c5a4331b6314e657b4372d5",
+                       "tool":  "read",
+                       "resultReceived":  true,
+                       "resultBytes":  344,
+                       "resultIsError":  false
+                   },
+                   {
+                       "callId":  "call_67c6b86db2944adaaacb695fca1925d2",
+                       "tool":  "read",
+                       "resultReceived":  true,
+                       "resultBytes":  106,
+                       "resultIsError":  true
+                   },
+                   {
+                       "callId":  "call_ec021edb4c784e93a5c445cba5f243b7",
+                       "tool":  "read",
+                       "resultReceived":  true,
+                       "resultBytes":  114,
+                       "resultIsError":  true
+                   },
+                   {
+                       "callId":  "call_c9fd2961239042168ee122f57fc2ca17",
+                       "tool":  "read",
+                       "resultReceived":  true,
+                       "resultBytes":  115,
+                       "resultIsError":  true
+                   },
+                   {
+                       "callId":  "call_0c502ae2dc8848f591774b2ea81dc457",
+                       "tool":  "read",
+                       "resultReceived":  true,
+                       "resultBytes":  116,
+                       "resultIsError":  true
+                   },
+                   {
+                       "callId":  "call_bb7ae48d784f4dc0a601d186d2b079a9",
+                       "tool":  "read",
+                       "resultReceived":  true,
+                       "resultBytes":  202,
+                       "resultIsError":  true
+                   },
+                   {
+                       "callId":  "call_00938013c87646fdaf8c60c1586ccf9e",
+                       "tool":  "read",
+                       "resultReceived":  true,
+                       "resultBytes":  151,
+                       "resultIsError":  true
+                   },
+                   {
+                       "callId":  "call_6a319a685b0a494e99a3552a08bc9ad7",
+                       "tool":  "read",
+                       "resultReceived":  true,
+                       "resultBytes":  133,
+                       "resultIsError":  true
+                   },
+                   {
+                       "callId":  "call_2c62225afb37444aaa401b542efb5fb9",
+                       "tool":  "write",
+                       "resultReceived":  true,
+                       "resultBytes":  242,
+                       "resultIsError":  true
+                   }
+               ]
+}
