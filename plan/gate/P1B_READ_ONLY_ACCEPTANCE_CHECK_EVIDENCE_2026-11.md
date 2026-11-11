@@ -1,4 +1,4 @@
-# P1-B read-only 受入の機械検証記録
+﻿# P1-B read-only 受入の機械検証記録
 
 - **対象**: `*.tei.md` ドメイン図表サンプルの P1-B read-only 受入（B-1〜B-5）
 - **設計正本**: [TEI_MD_DOMAIN_DIAGRAM_TO_BUILD_IMPLEMENTATION_GUIDE_2026-11.md](../design/TEI_MD_DOMAIN_DIAGRAM_TO_BUILD_IMPLEMENTATION_GUIDE_2026-11.md) §2.2
@@ -81,3 +81,31 @@ P1-B の PASS は **P0-A の PASS を継承しない**。P0-A は旧 `.tei` の 
 - `TestToolsReadmeMentionsEveryEntry`: 新しい `tools/reference-tei-md-p1b-check/` を `tools/README.md` に登録していなかった → 登録
 
 したがって `repository-health` の残る FAIL は main 由来であり、本 PR の変更範囲に閉じない。
+
+## 8. 追加切り分け：BOM による CI 失敗と main 由来の失敗
+
+### 8.1 自分の変更が原因だったもの（修正済み）
+
+TestMarkdownTitleAppearsOnce が本ブランチで FAIL していた。原因は**BOM**である。
+
+- origin/main の plan/design/README.md は **UTF-8 BOM 付き**（先頭3バイト EF BB BF）
+- 同ファイルは末尾近く（336行目）に # 機能設計文書 を**2回**持つ
+- 検査は「title 行が同じfile内で繰り返されていないか」を見る。BOM がある間は1行目は \ufeff# 機能設計文書 となり336行目と**不一致**なので main では PASS
+- 私がファイルを書き換えた際に BOM が失われ、1行目が336行目と一致したため **本ブランチだけで FAIL** した
+
+対応: BOM を維持して書き戻した。git diff origin/main...HEAD -- plan/design/README.md は**表の2行追加のみ**で、1行目に差分は出なくなった。
+
+この種の失敗は「main で通っているから本ブランチも通る」という誤判断を生む。ファイルを書き換えたら、BOM・改行・末尾改行が保たれているか git diff で確認すべきである。
+
+### 8.2 main 由来の残る失敗（本PRの変更範囲外）
+
+| 失敗 | main での状態 | 根拠 |
+| --- | --- | --- |
+| TestWorkflowsFollowGoModVersion（	ei-studio-wails-desktop-webview-smoke.yml の literal go-version: '1.26.11'） | **FAIL** | origin/main の当該 workflow に literal が存在 |
+| python3 tools/ci-workflows-test.py（E1 の 	est_setup_go_follows_go_mod、	est_runner_smoke_contract 等5件） | **FAIL** | origin/main の pristine checkout で同一の AssertionError を再現 |
+
+E1 の失敗は epository-health の PR候補HEADそのもののE1を検証 ステップであり、**main の workflow 契約自体が壊れている**ことによる。本PRは .github/workflows/ を一切変更していない。
+
+### 8.3 結論
+
+本PRが**自分で導入した** CI 失敗は 8.1 の BOM 1件のみで、修正済みである。残る FAIL は 8.2 のとおり main 由来であり、origin/main 上で再現済みである。したがって本PRの変更範囲は CI を新たに劣化させていない。
