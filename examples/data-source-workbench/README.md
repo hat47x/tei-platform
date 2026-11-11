@@ -45,11 +45,11 @@
 | Sourceと用途 | 実SQL／入力 | 静的に確認できること | 実行前の不足 |
 | --- | --- | --- | --- |
 | `reference/workspace`＋`recent_orders_product_seed.sql` | `public.orders` 5列、`ordered_at >= :from`、日時降順 | 合成3行に対する`3/2/0`件の独立期待値。R0-Referenceの入力候補 | **Query宣言に`input from`が存在しない**。型・日時精度・Timezone・Runtime Binderが未確定。実PG適用／実Rowsetは未検証 |
-| `examples/xtea-lowcode`（現Source） | `sales."order"`から2列、`:status`による等価検索のみ。Patternは`eq/ne`・`page-size 20`を宣言 | 予約語`ORDER`のテーブル識別子を引用し、Source-staticテストで未引用への退行を拒否。Referenceとは別のSQL・Mapping | `ne`演算子・ページングの実SQLは未実装。旧Draft #4076は閉鎖されmain未統合。実PG・Environment→Instance→Data Context接続は未成立 |
+| `examples/xtea-lowcode`（現main） | `sales.order`から2列、SQLは`:status`による等価絞込のみ。Patternには`eq/ne`・`page-size 20`が宣言されている | SQLの`:status`入力宣言と、Referenceとは異なる物理Source/結果射影を照合 | Patternの`ne`・ページングと現mainのSQL実現は未一致。**Draft #4076で**`:status_operator`・`:page_size`・`:page_offset`と実行経路を追加中。実PGは別途検証 |
 
-Source-staticテストは**XTEA SQL（`:status`のみ、引用済み識別子）**を基準にし、閉鎖・未統合の旧Draft #4076の4入力を実装済みとして要求しない。別PRで機能を導入する際はSourceと実Resultを改めて検収する。`reference/workspace`の`:from`未宣言は**別の明示的な未解決状態**として固定する。宣言が正しく追加されたときはテストの独立Expectedを審査して更新する。ここでSQL Dialectの完全解析、`order`という識別子の実DB引用規則、Plugin選択、Role/Grant、実Resultを証明したとは扱わない。
+Source-staticテストは**現mainのXTEA SQL（`:status`のみ）**を基準にし、未統合Draft #4076の4入力を既存機能として要求しない。Draft統合後は新しいSourceと実Resultを改めて検収する。`reference/workspace`の`:from`未宣言は**別の明示的な未解決状態**として固定する。宣言が正しく追加されたときはテストの独立Expectedを審査して更新する。ここでSQL Dialectの完全解析、`order`という識別子の実DB引用規則、Plugin選択、Role/Grant、実Resultを証明したとは扱わない。
 
-**PostgreSQL予約語に関する局所修正（2026-11-11）**：`ORDER`は予約語のため、XTEAの実Queryを`FROM sales."order"`へ修正し、[Source-static回帰](query_route_separation_test.go)も未引用の`FROM sales.order`へ戻したら拒否するよう変更した。PostgreSQL公式[SQL Key Words](https://www.postgresql.org/docs/17/sql-keywords-appendix.html)に基づく構文修正であり、**実PostgreSQLのParse/Query/Rowset取得を検証した記録ではない**。以前の[Draft #4076](https://github.com/hat47x/tei-platform/pull/4076)の独立Readerが`"sales"."order"`を使用していた事実は参照できるが、旧Draftはclosed/unmergedで現mainのExecutor/Function Contextではない。R0は依然未合格。
+**PostgreSQLの識別子構文上の未解決**：現mainとDraft #4076のXTEA SQLはともに`FROM sales.order`と書くが、PostgreSQLでは`ORDER`が予約語であり、テーブル名として使うには`FROM sales."order"`または`FROM "sales"."order"`のような引用が必要。現Draftの独立Readerは`"sales"."order"`を使用しているのに、製品Query本文は未引用である。RuntimeのSQLが本当に通るかは実PostgreSQL実行で確認するまで**unknown／R0未合格**。このSource-static回帰は修正後の引用識別子も許すため、誤った未引用構文を恒久的な正解にはしない。参照：PostgreSQL公式[SQL Key Words](https://www.postgresql.org/docs/16/sql-keywords-appendix.html)。
 
 **実Readの優先順**：先行する1 Workspaceと実Queryを明示選択→専用の隔離・破棄可能DBに正しいSchema/Seedを適用→独立Readerで入力行を観測→そのWorkspaceでQuery宣言・Parameter Binderを確認→実SQL/Rows→Function Data Context→CLI受領。0件・ページ終端を業務不存在や全母集団の完全性へ無断昇格しない。正式Plugin Providerの選択とHost/Buildの検証は別の[#1251](https://github.com/hat47x/tei-platform/issues/1251)に保持する。
 

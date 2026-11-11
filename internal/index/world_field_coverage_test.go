@@ -46,6 +46,9 @@ var worldFieldCoverage = map[string]struct {
 	"ContractQuerySQLRealizations": {
 		whyUnread: "indexed nowhere; #3983 records this as a known gap",
 	},
+	"RelationQueries": {
+		whyUnread: "indexed in relation query resolver; graph coverage tracked separately",
+	},
 }
 
 // TestEveryWorldFieldIsAccountedFor fails when ir.World gains a field that this

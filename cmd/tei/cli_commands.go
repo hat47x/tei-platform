@@ -21,6 +21,7 @@ var acceptedCommands = []string{
 	"consumer-impact",
 	"database-compatibility",
 	"database-reconcile",
+	"db-introspect",
 	"dbcheck",
 	"deployment-abort",
 	"deployment-pause",
@@ -66,6 +67,7 @@ var acceptedCommands = []string{
 	"workbench-model",
 	"workspace-files",
 	"world",
+	"relation-query",
 }
 
 // helperDispatchedCommands are handled by helper functions whose command
@@ -212,6 +214,15 @@ func helpText(fs *flag.FlagSet, command string) string {
 			fmt.Fprintf(&out, "  -workspace string\n    \tTEI workspace directory\n")
 			fmt.Fprintf(&out, "  -draft string\n    \tpath to the stored draft JSON\n")
 			fmt.Fprintf(&out, "\nthe comparison is read-only. It names which occurrences need\nreconfirmation and never updates the draft, the document or a Source.\n")
+			return out.String()
+		}
+		if command == "db-introspect" {
+			// db-introspect is dispatched but deliberately absent from the
+			// read-only discovery catalog, so it cannot carry an allowlist
+			// entry; the flags it reads are stated here (#3943).
+			fmt.Fprintf(&out, "  -provider string\n    \tdatabase provider: postgres|sqlite\n")
+			fmt.Fprintf(&out, "  -dsn string\n    \tdatabase connection string\n")
+			fmt.Fprintf(&out, "  -semantic\n    \tconvert the physical schema to a TEI semantic namespace\n")
 			return out.String()
 		}
 		if command == "dbcheck" {
