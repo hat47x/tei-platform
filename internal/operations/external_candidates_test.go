@@ -1,12 +1,14 @@
 package operations_test
 
 import (
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf16"
 
 	"tei/internal/externalanalysis"
 	"tei/internal/operations"
@@ -258,6 +260,173 @@ func TestExternalCandidateSelectionIsNotTheWholeGraph(t *testing.T) {
 	}
 }
 
+// TestExternalCandidatesUsesTheDerivedHandleOnlyWhenTheProducerStatesNone
+// covers T1A-03: a producer that names an edge only by its endpoints gets a
+// TEI-derived handle, and the handle says it was derived.
+func TestExternalCandidatesUsesTheDerivedHandleOnlyWhenTheProducerStatesNone(t *testing.T) {
+	derived := derivedEvidenceFixture(t, `,"relation_id":"jsrg_relation_0f6757a241c56fd84ecaec91f538d8297d222eb5625e4cdbcb2de7603f330718"`, "")
+	view, err := operations.ExternalCandidates(operations.ExternalCandidateRequest{
+		EvidencePath:  derived,
+		ToolVersion:   "6.8.0",
+		ObservationID: candidateNodeID,
+		RelationID:    "sha256:",
+		Tool:          externalanalysis.Tool{Name: "rea", Present: true},
+	}, candidateReadAt)
+	// The caller cannot know the derived handle in advance, so the request
+	// names the observation and the projection reports the missing selection.
+	if err == nil {
+		t.Fatal("a request that names a handle the Evidence does not state must be refused")
+	}
+	var candidate *operations.ExternalCandidateError
+	if !errors.As(err, &candidate) || candidate.Code != operations.ExternalCandidateNotFound {
+		t.Fatalf("code=%v want %s", candidate, operations.ExternalCandidateNotFound)
+	}
+
+	// Reading the candidates first gives the handle, and a second projection
+	// with it succeeds and marks the handle as derived.
+	derivedReceipt := externalanalysis.Receive(mustReadFile(t, derived), externalanalysis.Tool{Name: "rea", Present: true}, candidateReadAt)
+	candidates, err := externalanalysis.ReadCandidates(derivedReceipt.EvidenceBody())
+	if err != nil {
+		t.Fatalf("read candidates: %v", err)
+	}
+	handle := candidates.Relations[0].RelationID
+	if !candidates.Relations[0].Derived {
+		t.Fatal("without the producer's identity the handle must be derived")
+	}
+	view, err = operations.ExternalCandidates(operations.ExternalCandidateRequest{
+		EvidencePath:  derived,
+		ToolVersion:   "6.8.0",
+		ObservationID: candidateNodeID,
+		RelationID:    handle,
+		Tool:          externalanalysis.Tool{Name: "rea", Present: true},
+	}, candidateReadAt)
+	if err != nil {
+		t.Fatalf("project with the derived handle: %v", err)
+	}
+	if view.Relation == nil || view.Relation.RelationID != handle || !view.Relation.Derived {
+		t.Fatalf("relation=%+v: the derived handle must be carried and marked", view.Relation)
+	}
+}
+
+// TestExternalCandidatesReportsAnUnavailableLocation covers T1A-06: a location
+// the producer could not observe is reported as unavailable, never as an empty
+// place name.
+func TestExternalCandidatesReportsAnUnavailableLocation(t *testing.T) {
+	const available = `"location":{"available":true,"value":{"start":{"line":2,"column":6},"end":{"line":2,"column":50},"kind":"source-range","source":"index.js"}}`
+	text := strings.Replace(candidateText(t), available, `"location":{"available":false}`, 1)
+	if text == candidateText(t) {
+		t.Fatal("the fixture does not carry the node location the test expects")
+	}
+	dir := t.TempDir()
+	path := filepath.Join(dir, "unavailable.json")
+	if err := os.WriteFile(path, []byte(text), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	view, err := operations.ExternalCandidates(operations.ExternalCandidateRequest{
+		EvidencePath:  path,
+		ToolVersion:   "6.8.0",
+		ObservationID: candidateNodeID,
+		RelationID:    candidateRelationID,
+		Tool:          externalanalysis.Tool{Name: "rea", Present: true},
+	}, candidateReadAt)
+	if err != nil {
+		t.Fatalf("project: %v", err)
+	}
+	if view.Observation == nil {
+		t.Fatal("the observation must still be projected")
+	}
+	if view.Observation.Location != "" || view.Observation.Span != nil {
+		t.Fatalf("observation=%+v: an unavailable location has no place name and no span", view.Observation)
+	}
+	if len(view.Observation.Unavailable) == 0 {
+		t.Fatal("the observation must name what it could not observe")
+	}
+}
+
+// TestExternalCandidatesNeverEquatesAnExternalIdentityWithASubject covers
+// T1A-07: the projection carries the producer's identity verbatim and has no
+// place to put a TEI subject, so a same-named subject cannot be confused with
+// the external candidate.
+func TestExternalCandidatesNeverEquatesAnExternalIdentityWithASubject(t *testing.T) {
+	view, err := operations.ExternalCandidates(operations.ExternalCandidateRequest{
+		EvidencePath:  candidateFixture(t),
+		ToolVersion:   "6.8.0",
+		ObservationID: candidateNodeID,
+		RelationID:    candidateRelationID,
+		Tool:          externalanalysis.Tool{Name: "rea", Present: true},
+	}, candidateReadAt)
+	if err != nil {
+		t.Fatalf("project: %v", err)
+	}
+	if view.Observation.NodeID != candidateNodeID {
+		t.Fatalf("node id=%s: the external identity must be carried verbatim", view.Observation.NodeID)
+	}
+	body, err := json.Marshal(view)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var document map[string]any
+	if err := json.Unmarshal(body, &document); err != nil {
+		t.Fatal(err)
+	}
+	// The projection has no subject-shaped field, so no caller can read the
+	// external identity as a TEI subject even when one shares its string.
+	if _, exists := document["subject"]; exists {
+		t.Fatal("the projection must not carry a TEI subject field")
+	}
+	if !strings.Contains(string(body), `"nodeId":"`+candidateNodeID+`"`) {
+		t.Fatal("the external identity must appear under the external field")
+	}
+}
+
+// TestExternalCandidatesTreatsARevisedSourceAsADifferentObservation covers
+// T1A-08: the same Evidence ID over different bytes is a different attempt, and
+// the projection says so through the digest it read rather than by reusing the
+// earlier one.
+func TestExternalCandidatesTreatsARevisedSourceAsADifferentObservation(t *testing.T) {
+	text := candidateText(t)
+	revised := strings.Replace(text,
+		"000d9d6f7f73531725d781c5742c685611c36a74d6f2c29b73c36d5c61c53b54",
+		strings.Repeat("f", 64), 1)
+	if revised == text {
+		t.Fatal("the fixture does not carry the subject digest the test expects")
+	}
+	dir := t.TempDir()
+	revisedPath := filepath.Join(dir, "revised.json")
+	if err := os.WriteFile(revisedPath, []byte(revised), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	first, err := operations.ExternalCandidates(operations.ExternalCandidateRequest{
+		EvidencePath:  candidateFixture(t),
+		ToolVersion:   "6.8.0",
+		ObservationID: candidateNodeID,
+		RelationID:    candidateRelationID,
+		Tool:          externalanalysis.Tool{Name: "rea", Present: true},
+	}, candidateReadAt)
+	if err != nil {
+		t.Fatalf("project: %v", err)
+	}
+	second, err := operations.ExternalCandidates(operations.ExternalCandidateRequest{
+		EvidencePath:  revisedPath,
+		ToolVersion:   "6.8.0",
+		ObservationID: candidateNodeID,
+		RelationID:    candidateRelationID,
+		Tool:          externalanalysis.Tool{Name: "rea", Present: true},
+	}, candidateReadAt)
+	if err != nil {
+		t.Fatalf("project the revised bytes: %v", err)
+	}
+	if first.Attempt.EvidenceID != second.Attempt.EvidenceID {
+		t.Fatal("the revised bytes keep the same Evidence ID")
+	}
+	if first.Attempt.ReceivedDigest == second.Attempt.ReceivedDigest {
+		t.Fatal("a revised source must not read back as the same bytes")
+	}
+	if first.Attempt.SourceRevision == "" || first.Attempt.SourceRevision == second.Attempt.SourceRevision {
+		t.Fatalf("sourceRevision first=%s second=%s: the revised target must be a different revision", first.Attempt.SourceRevision, second.Attempt.SourceRevision)
+	}
+}
+
 func containsString(values []string, want string) bool {
 	for _, value := range values {
 		if value == want {
@@ -265,4 +434,48 @@ func containsString(values []string, want string) bool {
 		}
 	}
 	return false
+}
+
+func mustReadFile(t *testing.T, path string) []byte {
+	t.Helper()
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return raw
+}
+
+// candidateText reads the captured fixture and decodes it to text. The fixture
+// is UTF-16LE with a BOM on the host that captured it, so a literal replace over
+// the raw bytes would find nothing; the derived copies are written as UTF-8,
+// which the intake reads as-is.
+func candidateText(t *testing.T) string {
+	t.Helper()
+	raw := mustReadFile(t, candidateFixture(t))
+	if len(raw) < 2 || raw[0] != 0xFF || raw[1] != 0xFE {
+		return string(raw)
+	}
+	units := make([]uint16, 0, (len(raw)-2)/2)
+	for i := 2; i+1 < len(raw); i += 2 {
+		units = append(units, uint16(raw[i])|uint16(raw[i+1])<<8)
+	}
+	return string(utf16.Decode(units))
+}
+
+// derivedEvidenceFixture writes a derived copy of the captured Evidence with
+// one literal replaced, and returns its path. The bytes are the producer's;
+// the replacement is the test's own negative.
+func derivedEvidenceFixture(t *testing.T, from, to string) string {
+	t.Helper()
+	text := candidateText(t)
+	derived := strings.Replace(text, from, to, 1)
+	if derived == text {
+		t.Fatalf("the fixture does not carry %q", from)
+	}
+	dir := t.TempDir()
+	path := filepath.Join(dir, "derived.json")
+	if err := os.WriteFile(path, []byte(derived), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return path
 }

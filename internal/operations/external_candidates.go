@@ -63,13 +63,19 @@ type ExternalCandidateView struct {
 }
 
 // ExternalAttempt identifies the external attempt the candidates came from: the
-// producer's Evidence identity, the digest of the bytes that were read, and
-// when they were read. Two attempts that name the same Evidence ID with
-// different digests are different observations.
+// producer's Evidence identity, the digest of the bytes that were read, the
+// revision of the target they describe, and when they were read. Two attempts
+// that name the same Evidence ID with different digests are different
+// observations.
 type ExternalAttempt struct {
-	EvidenceID     string                     `json:"evidenceId"`
-	Operation      string                     `json:"operation,omitempty"`
-	Provider       externalanalysis.Provider  `json:"provider"`
+	EvidenceID string                    `json:"evidenceId"`
+	Operation  string                    `json:"operation,omitempty"`
+	Provider   externalanalysis.Provider `json:"provider"`
+	// SourceRevision is the digest of the exact target bytes the Evidence
+	// describes, as the producer declared it. It is the revision a later
+	// receipt of the same Evidence ID is compared against: a moved target is a
+	// different observation even when the Evidence ID is unchanged.
+	SourceRevision string                     `json:"sourceRevision,omitempty"`
 	ReceivedDigest string                     `json:"receivedDigest"`
 	ReadAt         string                     `json:"readAt"`
 	Tool           externalanalysis.Tool      `json:"tool"`
@@ -119,6 +125,16 @@ func ExternalCandidateAuthorityLimits() []string {
 		"partial-selection-is-not-the-whole-graph",
 		"local-read-is-not-disclosure-permission",
 	}
+}
+
+// sourceRevisionOf reports the target revision the receipt declared, or "" when
+// the producer stated none. An absent declaration is not an empty revision: the
+// caller sees the field missing rather than a value that matches everything.
+func sourceRevisionOf(receipt externalanalysis.Receipt) string {
+	if receipt.Source == nil {
+		return ""
+	}
+	return receipt.Source.Revision
 }
 
 // ExternalCandidates reads one saved external analysis output and projects the
@@ -177,6 +193,7 @@ func ExternalCandidates(request ExternalCandidateRequest, at time.Time) (Externa
 			EvidenceID:     receipt.Evidence.ID,
 			Operation:      receipt.Evidence.Operation,
 			Provider:       receipt.Evidence.Provider,
+			SourceRevision: sourceRevisionOf(receipt),
 			ReceivedDigest: receipt.Raw.Fingerprint,
 			ReadAt:         receipt.AcquiredAt,
 			Tool:           receipt.Tool,
