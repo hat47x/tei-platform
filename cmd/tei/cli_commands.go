@@ -6,6 +6,7 @@ import (
 	"io"
 	"strings"
 
+	"tei/internal/documentdraft"
 	"tei/internal/operations"
 )
 
@@ -188,6 +189,32 @@ func helpText(fs *flag.FlagSet, command string) string {
 			// the sections mirror the model catalog (#4128). Say so here, where a
 			// designer looks before reading the number.
 			fmt.Fprintf(&out, "\nsections mirror the model catalog roots. The response's sectionScope names\nthe kinds the catalog covers, the declared kinds it does not, and which of those\n`inspect` can still read by name, so a section count is never a count of every\ndeclaration and a missing section never means a missing declaration.\n")
+			return out.String()
+		}
+		if command == "model document-draft" {
+			// model document-draft parses its own FlagSet; these flags are its
+			// whole grammar.
+			fmt.Fprintf(&out, "  -workspace string\n    \tTEI workspace directory\n")
+			fmt.Fprintf(&out, "  -document-kind string\n    \tdocument kind: %s\n", strings.Join(documentdraft.SupportedDocumentKinds(), "|"))
+			fmt.Fprintf(&out, "  -subject-kind string\n    \texact subject kind: %s\n", strings.Join(documentdraft.SupportedElementKinds(), "|"))
+			fmt.Fprintf(&out, "  -subject-id string\n    \texact subject ID\n")
+			fmt.Fprintf(&out, "  -relation-id string\n    \toptional exact semantic-relation ID declared by the subject\n")
+			fmt.Fprintf(&out, "  -application string\n    \texact application ID; required by %s\n", documentdraft.DocumentKindCRUDTable)
+			fmt.Fprintf(&out, "  -frozen\n    \tpin the draft to the model revision it is read at (a fixed delivery)\n")
+			fmt.Fprintf(&out, "  -section string\n    \telement a %s chapter is about: <kind>:<id>[@<relation-id>]; repeatable, in chapter order\n", documentdraft.DocumentKindSpecification)
+			fmt.Fprintf(&out, "  -model string\n    \tpath to a three-element analysis model JSON; required by %s\n", documentdraft.DocumentKindThreeElementDiagram)
+			fmt.Fprintf(&out, "  -title string\n    \toptional document title\n")
+			fmt.Fprintf(&out, "\n%s takes -subject-kind and -subject-id. %s takes -application instead and\nrefuses both element selectors. %s takes -section (repeatable, in chapter order) and\nrefuses both. %s takes -model (a three-element analysis model JSON) and reads no\nWorkspace. -frozen pins any of them. The result is a derived read-only\nprojection: saving the document it produces is not TEI model ingestion and not\nAccepted Meaning.\n",
+				documentdraft.DocumentKindElementExplanation, documentdraft.DocumentKindCRUDTable,
+				documentdraft.DocumentKindSpecification, documentdraft.DocumentKindThreeElementDiagram)
+			return out.String()
+		}
+		if command == "model document-reconcile" {
+			// model document-reconcile parses its own FlagSet; two flags are its
+			// grammar.
+			fmt.Fprintf(&out, "  -workspace string\n    \tTEI workspace directory\n")
+			fmt.Fprintf(&out, "  -draft string\n    \tpath to the stored draft JSON\n")
+			fmt.Fprintf(&out, "\nthe comparison is read-only. It names which occurrences need\nreconfirmation and never updates the draft, the document or a Source.\n")
 			return out.String()
 		}
 		if command == "db-introspect" {

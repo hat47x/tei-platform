@@ -5,7 +5,7 @@ Issue [#1824](https://github.com/hat47x/tei-platform/issues/1824)、担当#2。�
 ## 現在の構成
 
 - `internal/studiohost`: Wailsに依存しない薄いHost allowlist。Workspace rootは起動時の`-workspace`でのみ指定し、Rendererの入力では選ばせない。Canonical product operationsを呼び出し、Studio限定のsource observerには許可済みWorkspaceから上限付きで読み取ったバイト列だけを渡します。
-- `cmd/tei-studio/main.go`: `StudioBridge`の12メソッドをWails serviceへ手登録する、PoC Aの通常ビルド入口。内訳は読取り専用の5操作（`ListWorkspaces`・`CatalogWorkspace`・`ValidateWorkspace`・`InspectSubject`・`ObserveXead`）と、`assets/client.mjs`が名指す7つの投影・Command操作（`ViewPattern`・`ViewApplication`・`ViewPackage`・`PlanCommand`・`ExecuteCommand`・`ExecuteCommandWithPeriods`・`ExecuteCommandWithPolicy`）です。**7つは長く未登録で、Workbenchのビュー・Command操作がbindingで失敗していた**（[#4295](https://github.com/hat47x/tei-platform/issues/4295)）。`bridge_parity_test.go`が`client.mjs`の名前と`main.go`のメソッドを突き合わせます。
+- `cmd/tei-studio/main.go`: `StudioBridge`の12メソッドをWails serviceへ手登録する、PoC Aの通常ビルド入口。内訳は読取り専用の5操作（`ListWorkspaces`・`CatalogWorkspace`・`ValidateWorkspace`・`InspectSubject`・`ObserveXead`）と、`assets/client.mjs`が名指す7つの投影・Command操作（`ViewPattern`・`ViewApplication`・`ViewPackage`・`PlanCommand`・`ExecuteCommand`・`ExecuteCommandWithPeriods`・`ExecuteCommandWithPolicy`）です。**7つは長く未登録で、Workbenchのビュー・Command操作がbindingで失敗していた**（[#4295](https://github.com/hat47x/tei-platform/issues/4295)）。`bridge_parity_test.go`が`client.mjs`の名前と`main.go`のメソッドを突き合わせます。SHO 文書編集部品の子プロセス起動（`OpenShoDocument`・`ResumeShoDocument`）もここにあり、**save は含まない**。実装は `cmd/tei-studio/sho_document.go`。
 - `cmd/tei-studio/window_{desktop,server}.go`: 同じGo serviceをWeb（`-tags server`）とDesktopで使用。Webは`127.0.0.1`固定です。環境変数`WAILS_SERVER_HOST`が明示された場合、値が`127.0.0.1`以外なら起動を拒否します。
 - `cmd/tei-studio/xead_observer.go`: `internal/xeadsource`を使うStudio専用の読取り・投影adapter。nested moduleの外へこのadapter依存を広げず、`internal/operations`から分離します。
 - `cmd/tei-studio/assets`: Go側へ埋め込むbootstrapとWorkbench画面。Desktopは`/workbench/`を初期表示し、Serverの既定ページは従来どおりbootstrapです。Workbenchは既存の読取り専用5操作と7つの投影・Command操作を使うStudioの開発・作成Host画面であり、生成Desktop Application Targetや正式な業務アプリではありません。
@@ -60,6 +60,17 @@ StudioのGo検査は`cmd/tei-studio`内で`go test -mod=readonly -count=1 -tags 
 
 Wails JavaScript service名（初期bootstrap）：`main.StudioBridge`。公開メソッドは5つです。`ObserveXead`は許可済みWorkspace内の単一`.xead`ファイルを読み、境界付きprojectionを返します。ファイル内容や内部例外はfailure messageへ含めません。
 
+### SHO 文書編集部品の子プロセス起動（#3394連携）
+
+`StudioBridge` は **SHO の文書編集部品をEditorとして持たず**、`bin/sho-doc.cjs` を**子プロセス**として起動して open/resume の結果をそのまま返す。公開するのは `OpenShoDocument(draftPath, documentPath)` と `ResumeShoDocument(documentPath)` の2つで、**`save` は出さない**——保存は著者がSHOで行う明示動作で、Studioで文書を見る副作用ではない。
+
+- 命令の場所は **`SHO_DOC_COMMAND`（絶対Path）という設定**であり、探索ではない。未設定は `sho-not-configured`、相対Pathは `sho-invalid-argument`。
+- 子のreceiptは**解釈せずそのまま `result` として返す**。解釈が必要なreceiptはStudioが意味を持つことになるので、持ちません。
+- 失敗codeは6種で安定: `sho-not-configured` / `sho-invalid-argument` / `sho-spawn-failed` / `sho-timeout` / `sho-nonzero-exit` / `sho-receipt-unreadable`。**失敗時は文書状態を返さない**（空文書を「空のDraft」と読ませない）。
+- `Studio は意味を解釈しない`・`Studio はモデルを書かない`・`sho 命令の可用性は製品資格ではない`を authorityLimits に常置する。
+- **A/B測定（子プロセス／Wails資産／外部プロセス）は未実施**。数値目標を先に決めず、測定してから形態を選ぶ。起動時間・失敗分類・配布の実測値はまだない。
+- 実SHO CLIを叩く結合試験は `STUDIO_SHO_ROOT` を設定したときだけ走る（通常CIはskip）。stub による契約試験は常時走る。
+
 | method | 引数 | 応答 `value` |
 |---|---|---|
 | `ListWorkspaces()` | なし | `[{id,label}]`（`workspace-1`, ...） |
@@ -68,6 +79,7 @@ Wails JavaScript service名（初期bootstrap）：`main.StudioBridge`。公開�
 | `InspectSubject(workspaceID, kind, subjectID)` | 登録済みID、exact canonical subject | 既存`operations.SubjectInspection` |
 | `ObserveXead(workspaceID, relativePath)` | 登録済みID、Workspace相対`.xead` path | 読取り・深さ・要素数の上限を適用したStudio専用観察DTO。正規化・保存・書込みは行わない |
 
+SHO 文書編集部品（上記）は**別のenvelope**を使う: `{schemaVersion:"tei.studio.sho-document/v0", effect:"read-only-relay", ok, result?, failure?, authorityLimits}`。`result` は子プロセスのreceiptそのもの。
 戻りは`{ok:true,value:T}`または`{ok:false,failure:{code,stage?,message}}`。`WORKSPACE_NOT_ALLOWED`、`WORKSPACE_ROOT_CHANGED`、`WORKSPACE_LOAD_FAILED`（stage=load）、`SOURCE_INDEX_FAILED`（stage=source-index）、`INVALID_SUBJECT`、`UNSUPPORTED_SUBJECT_KIND`、`SUBJECT_NOT_FOUND`、`SUBJECT_AMBIGUOUS`、`OPERATION_FAILED`を区別します。`ObserveXead`は`XEAD_SOURCE_READ_FAILED`、`XEAD_SOURCE_TOO_LARGE`、`XEAD_UNSUPPORTED_FORMAT`、`XEAD_PARSE_FAILED`、`XEAD_PROJECTION_FAILED`を返します。JS側は`HOST_TRANSPORT_FAILURE`・`INVALID_HOST_RESPONSE`を加えます。このenvelopeはPoC Hostからの表示用で、CLI形式や新しい標準Contractを定義しません。
 
 ## 非目標・未検証

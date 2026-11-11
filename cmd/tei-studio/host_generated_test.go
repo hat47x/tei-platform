@@ -18,15 +18,18 @@ func TestGeneratedGoServicesRunThroughRealHost(t *testing.T) {
 	}
 	bridge := &StudioBridge{host: h}
 	bridgeType := reflect.TypeOf(bridge)
-	// The service surface is twelve operations: the five the generated services
-	// back, and the seven projections assets/client.mjs addresses. The seven were
-	// missing from the service (#4295), so this guard names all twelve instead of
-	// letting a count of five stand in for the UI's expectations.
+	// The service surface is the five the generated services back, the seven
+	// projections assets/client.mjs addresses, and the two Go-facing SHO relay
+	// methods. The seven were missing from the service (#4295), so this guard
+	// names all of them instead of letting a count of five stand in for the UI's
+	// expectations. The two SHO methods are Go-facing: no bootstrap calls them
+	// yet, and this guard is what keeps the surface from growing silently.
 	want := []string{
 		"CatalogWorkspace", "ExecuteCommand", "ExecuteCommandWithPeriods",
 		"ExecuteCommandWithPolicy", "ExecuteCommandWithReferenceStore",
-		"InspectSubject", "ListWorkspaces", "ObserveXead", "PlanCommand",
-		"ValidateWorkspace", "ViewApplication", "ViewPackage", "ViewPattern",
+		"InspectSubject", "ListWorkspaces", "ObserveXead", "OpenShoDocument",
+		"PlanCommand", "ResumeShoDocument", "ValidateWorkspace",
+		"ViewApplication", "ViewPackage", "ViewPattern",
 	}
 	if bridgeType.NumMethod() != len(want) {
 		t.Fatalf("unexpected Wails exports: %d", bridgeType.NumMethod())

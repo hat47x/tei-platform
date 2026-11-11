@@ -33,8 +33,14 @@ func runModelCommand(args []string, out io.Writer) (int, error) {
 	if len(args) > 0 && args[0] == "overview" {
 		return runModelOverviewCommand(args[1:], out)
 	}
+	if len(args) > 0 && args[0] == "document-draft" {
+		return runModelDocumentDraftCommand(args[1:], out)
+	}
+	if len(args) > 0 && args[0] == "document-reconcile" {
+		return runModelDocumentReconcileCommand(args[1:], out)
+	}
 	if len(args) == 0 || args[0] != "catalog" {
-		return fail("INVALID_ARGUMENT", "model requires the subcommand catalog, locate or overview", 2)
+		return fail("INVALID_ARGUMENT", "model requires the subcommand catalog, locate, overview, document-draft or document-reconcile", 2)
 	}
 	fs := flag.NewFlagSet("model catalog", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)

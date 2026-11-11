@@ -1,4 +1,4 @@
-﻿# 機能設計文書
+# 機能設計文書
 
 ここには、複数のIssueにまたがる機能について、意味モデル、記述方法、検証、実行時の境界をまとめた設計文書を置きます。採用前の案も、対象となるIssueと文書の状態を冒頭に明記して管理します。
 
@@ -176,6 +176,8 @@
 | [`TEI_MD_DOMAIN_DIAGRAM_TO_BUILD_LOWERING_2026-11.md`](TEI_MD_DOMAIN_DIAGRAM_TO_BUILD_LOWERING_2026-11.md) | *.tei.md ドメイン知識の図表表現からコード生成・ビルドへ到る縦断設計（設計候補、2026-11-11） |
 | [`TEI_MD_DOMAIN_DIAGRAM_TO_BUILD_IMPLEMENTATION_GUIDE_2026-11.md`](TEI_MD_DOMAIN_DIAGRAM_TO_BUILD_IMPLEMENTATION_GUIDE_2026-11.md) | *.tei.md ドメイン図表→Build 実装導線（P0-A成立後、P1-B〜P3-Dの受入・依存Owner・再利用Fixture） |
 | [`TEI_SHO_OKF_DOMAIN_LINT_DOCUMENT_UNIT_2026-11.md`](TEI_SHO_OKF_DOMAIN_LINT_DOCUMENT_UNIT_2026-11.md) | TEI/SHOのOKF知識バンドルとドメインLint：段階導入の検証計画 |
+| [`TEI_SHO_DOCUMENT_DRAFT_INTEGRATION_2026-11.md`](TEI_SHO_DOCUMENT_DRAFT_INTEGRATION_2026-11.md) | TEI受理済みモデルの一要素と一関係を、SourceとRevisionを保持した説明文書DraftとしてSHOへ渡し、編集・保存・再開・モデル改版時の再確認までを行う最小統合機構（[SHO #19](https://github.com/hat47x/sho-composer/issues/19)・[SHO #4](https://github.com/hat47x/sho-composer/issues/4)・[SHO #6](https://github.com/hat47x/sho-composer/issues/6)、[#3394](https://github.com/hat47x/tei-platform/issues/3394)のSHO文書段、実装済みの最小基線） |
+| [`TEI_SHO_DOCUMENT_DRAFT_NEXT_STAGES_2026-11.md`](TEI_SHO_DOCUMENT_DRAFT_NEXT_STAGES_2026-11.md) | 上の契約を段階2〜5（CRUD表・三要素分析図・仕様書・固定納品版）へ伸ばす実行計画と、相互CI・Studio実組込み・逆方向禁止・`*.tei.md`取込みの横断課題、Owner判断事項の一覧（実装前設計） |
 
 ## 関連する参照事例と評価
 

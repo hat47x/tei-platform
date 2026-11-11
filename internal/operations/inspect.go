@@ -97,31 +97,9 @@ func InspectSubject(root string, subject sourceindex.Subject) (SubjectInspection
 	if err != nil {
 		return SubjectInspection{}, &ValidationFailure{Stage: StageSourceIndex, Err: err}
 	}
-	sources, err := TraceSubjectSourcesFromIndex(idx, subject)
-	if err != nil {
-		return SubjectInspection{}, err
-	}
-	worldFP, sourceFP, err := workspaceProjectionFingerprints(loaded.World, idx)
-	if err != nil {
-		return SubjectInspection{}, err
-	}
-	status := "not-indexed"
-	if len(sources.References) > 0 {
-		status = "indexed"
-	}
-	identity := loaded.Identity()
-	return SubjectInspection{
-		SchemaVersion:          "tei.operations.inspect/v0",
-		Effect:                 "read-only",
-		Subject:                subject,
-		Canonical:              canonical,
-		WorldFingerprint:       worldFP,
-		SourceIndexFingerprint: sourceFP,
-		SourceStatus:           status,
-		Workspace:              &identity,
-		Sources:                sources,
-		AuthorityLimits:        InspectionAuthorityLimits(),
-	}, nil
+	// The tail is shared with the one-load read in
+	// workspace_subject_read.go, so the two cannot drift apart.
+	return inspectionFromResolved(loaded, idx, subject, canonical)
 }
 
 // InspectionSubjectKinds is the closed set of subject kinds this read-only
