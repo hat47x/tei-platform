@@ -19,7 +19,7 @@ func TestBlockOnlyEntryAfterClosingBraceNamesTheBlock(t *testing.T) {
 	if !ok {
 		t.Fatal("error has no message")
 	}
-	if !strings.Contains(message, "belongs inside one") {
+	if !strings.Contains(message, "belongs inside one block") {
 		t.Errorf("message does not say the entry belongs inside a block: %s", message)
 	}
 	if !strings.Contains(message, "bind <application>.<alias> -> <database-instance>") {
