@@ -376,6 +376,25 @@ DDL Plan→Applyでは、実DB Instance／Provider、Scope、Actual Schema Revis
 | `Runtime Read` | 一Functionに必要なP0の順路は**Function Required→実選択Query SQL+args→Instance/Provider→Rowset/Grain/NULL/Scope/Completeness→Data Context** | 0件/partial/Error/Disclosure／CLI・Studio実受領と独立Expectedを、同一Attemptで後続実試験。#2586/#2514 |
 | `Schema Apply` | FK/UNIQUE/Index/read-only Workbench投影は現mainの製品Goコードに存在（本章新実装ではない） | DDL適用前のHistory Unknown/partial、Target/Grant再検査、実Apply/別Reader再観測は#2892/#2887。DBA運用は標準外 |
 
-**最小P0順序**：既存Required/Query/Mappingの実Source入場→隔離PostgreSQLへ新Seedを明示的に投入し**独立Readerで3行・Schema確認**→実TEI Providerに`:from`を安全にBindし1/2/0行のResultと範囲を対照→Function Data Context→CLI/Studioで同Scope/版のResult/Disclosureを確認する。偽0件を防ぐため、Query Errorや部分受領を空Listとして代用せず、`not-run/partial/permission-denied`など実契約に沿う別結果を記録する。次の異質Sourceは既存JSONL FixtureのReaderであり、DBとJSONLが同一Snapshotである保証はしない。
+**最小P0順序**：既存Required/Query/Mappingの実Source入場→隔離PostgreSQLへ新Seedを明示的に投入し**独立Readerで3行・Schema確認**→実TEI Providerに`:from`を安全にBindし3/2/0行のResultと範囲を対照→Function Data Context→CLI/Studioで同Scope/版のResult/Disclosureを確認する。偽0件を防ぐため、Query Errorや部分受領を空Listとして代用せず、`not-run/partial/permission-denied`など実契約に沿う別結果を記録する。次の異質Sourceは既存JSONL FixtureのReaderであり、DBとJSONLが同一Snapshotである保証はしない。
 
 **資格の上限**：本章はSource-static Fixtureと回帰テストを追加するにとどまる。データを投入した実PostgreSQL、SQL実行、Runtime/Plugin/Grant、Function Data Context、CLI/Studio同一実Provider、Read Receipt、Schema Apply、REA/SHO/KON/SEI本番結合、Owner Meaningは**NOT RUN**。新しいHost/Resolver/Query Engine/Plugin必須Core、製品GateやWB-55以降の独立ケースは設けず、既存WB-01〜54・#2586 HJ/QX・#2514を再利用する。
+
+## 23. Query ID一致と物理Sourceの違いを実Function Readの入口で区別する（2026-11-11）
+
+他レーンで[PR #3862](https://github.com/hat47x/tei-platform/pull/3862)のSource-static Product Seedと[PR #3866](https://github.com/hat47x/tei-platform/pull/3866)の型付きModel Map M0がmainへ統合された。一方、[Draft #4076](https://github.com/hat47x/tei-platform/pull/4076)は`examples/xtea-lowcode`のbrowse Patternに対し、Environment`development`→Database instance`sales_core.dev`→Query/Runtime Executor→`functioncontext.Context`→通常CLI`view -execute`の実接続を実装中である。合成Executor・局所Go/CLI結果と、実PostgreSQLでの結果は別資格。opt-in実PGのテストがDSN未設定でskipされたRunから実DB成功を推論しない。
+
+**同名別Workspaceの確定した相違**：[独立Source-static回帰](../../examples/data-source-workbench/query_route_separation_test.go)は次の2本を比較する。どちらもQuery IDは`order_entry.recent_orders`だが、物理Source・入力・期待行の集合は共有しない。
+
+| 対照 | 固定すべきSource/SQLと受理前の不足 | 次の独立Expected |
+| --- | --- | --- |
+| R0-REF | `reference/workspace`の`public.orders` 5列、`ordered_at >= :from`、日時降順。`recent_orders_product_seed.sql`の3行に対応。**現Query宣言に`input from`がないためRuntime Binderの型は未確定** | 同じ隔離DBで3件・境界2件・0件とTimestamp/Decimalの変換を実SQL/Parameterで検証。Source-static PQ-01〜05を実行済みに昇格しない |
+| R0-XTEA | `examples/xtea-lowcode`の`sales.order` 2列、`status/status_operator/page_size/page_offset`、`eq/ne`・状態/注文ID順・ページサイズ20。Draft #4076がEnvironmentの実行前束縛を追加 | **専用の別Schema/Seed**で>=20件の一致行・2ページ目・空集合を独立Readerで観測し、`view -execute`が実PG Rowset→Entity Grain/Parameter/Consumerへ渡すことを確認。`public.orders`の3/2/0件期待値を流用しない |
+
+**実行時の最小の同一試行記録**：Workspace IdentityとManifest/Source Revision（未取得ならunknown）→選択Query ID＋Native SQL digest/Parameter型・実Bind値→Environment/Database instance→選択Providerと実Executor（宣言/申告/呼出の識別子を上書きしない）→Reader sessionのread-only確認とScope/Role→実Raw Rowset（列Presence/NULL/行数/順序）→Mapping→Function Data Context→CLI/Studio Consumerの受領を、各別列として保持。DSN/Secret/非公開SQL全文を一般のConsumerやReceiptへ転記しない。
+
+**Coverage/Grainの停止線**：Draft #4076の`functioncontext.FromBrowseExecution`は宣言`page-size`に満たない先頭ページを`CoverageComplete`、0件を`EmptyJustified`として投影し得る。ただしその判定のbasisは`declared-page-contract`であり、DB側のRLS/Scope、未取得分、照合対象Universeの完全性を**独立に証明したものではない**。したがってそのContextを受け取るAI/Studio/外部Harnessは、`complete`や`emptyJustified`をGlobalな不存在、Role未取得解消、書込み許可に変換しない。Business Identity/Relation pathが宣言上未束縛なら`query-row`/空RelationPathを維持し、Entity/Function結合完成を推論しない。Source Revisionが`unknown`ならfreshと宣言しない。
+
+**次の順序と既存Owner**：P0(1) **どちらか一方のWorkspaceを明示選択**して専用隔離PGに一致するSchema/Seedを構築・別Readerで観測 → P0(2) 該当Queryの未束縛Input/Executorを修正し、実CLI/Query/Contextの1件の正例＋0件・別Provider・別Instance・型不一致の拒否を同一Attemptで証明 → P0(3) その後に別Workspaceへ拡大。実Function Readは#2586、Workbench/Schemaは#3270、独立Expectedは#2514/#1180、正式Plugin/Build/BOMは#1251/#951/#1016/#3267が所有する。#4202のInspector Entry照合、#3866のM0 Graph、#3843のHook実Call、DSH/SHO/KON/SUI/SEI、全TEI Self-buildを、この最初のread-only DB Queryの新しいHard Dependencyにしない。
+
+**採用・検証上限**：本節はSource/Go経路の静的確認と次の検証計画。`query_route_separation_test.go`はSQLを実行せず、DB/Provider/Functionの実成功、Current Grant、独立Consumer完全受領、Meaning Acceptanceを証明しない。正式実DB Runや#4076の最終CIを取得したときだけ、実行資格を更新する。Raw Evidenceの大容量本体はGit必須とせず、GitにはSource/Artifact参照・digest・独立Expected・状態・Receiptの小さい索引を保持する選択肢を維持する。外部NAS/S3への保管方式は別の保存契約として検討し、未取得/失効/権限変更を成功扱いしない。
