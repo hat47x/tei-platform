@@ -77,14 +77,14 @@ func TestRecentOrdersSameIDHasTwoDistinctSourceAndParameterContracts(t *testing.
 			}
 		})
 	}
-	// Keep the logical XTEA relation distinct from public.orders without
-	// making its current *unquoted* PostgreSQL reserved identifier a permanent
-	// expected syntax. "order" must be quoted in executable PostgreSQL SQL.
+	// ORDER is a reserved PostgreSQL keyword. The physical Query must quote
+	// it; restoring the old unquoted sales.order spelling must fail before
+	// a skipped opt-in DB test is mistaken for a working product Query.
 	xteaLower := strings.ToLower(xteaSQL)
-	if !strings.Contains(xteaLower, "from sales.order") &&
-		!strings.Contains(xteaLower, `from sales."order"`) &&
-		!strings.Contains(xteaLower, `from "sales"."order"`) {
-		t.Fatal("xtea SQL no longer targets the independently selected sales.order relation")
+	if strings.Contains(xteaLower, "from sales.order") ||
+		(!strings.Contains(xteaLower, `from sales."order"`) &&
+			!strings.Contains(xteaLower, `from "sales"."order"`)) {
+		t.Fatal("xtea SQL must name the distinct sales.order relation with a quoted PostgreSQL identifier")
 	}
 	if !strings.Contains(productSeed, "CREATE TABLE public.orders (") ||
 		strings.Contains(productSeed, "CREATE TABLE sales.order") ||
