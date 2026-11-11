@@ -39,6 +39,6 @@ Result: all PASS (package ok).
 - `fixture-expected.json` is hand-written. Implementation output is not used to regenerate the expected file.
 - Public Slice / disclosure-safe projection is not implemented here; see #2516/#1124.
 
-## Follow-up
+## S6-S7
 
-- S6-S7 preview added. Full integration and acceptance criteria remain in #4413.
+Added comparison report and per-subsystem projection report (read-only previews). Not a binding acceptance or ownership grant.

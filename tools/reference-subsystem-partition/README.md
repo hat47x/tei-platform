@@ -39,7 +39,7 @@ Further needed (not implemented by this package): Source closure and actual Acce
 ## S6-S7 (added for #4413)
 
 - `ComparisonReport` / `BuildComparisonReport` (`compare.go`): deterministic before/after comparison table of candidates (cross-boundary counts/weights, cohesion, max size).
-- `ProjectionReport` / `BuildProjectionReport` (`project.go`): per-subsystem projection of Function, write/read edges, and invocation dependencies. Read-only and derived-only.
+- `ProjectionReport` / `BuildProjectionReport` (`project.go`): per-subsystem projection of Function, write/read edges, caller-supplied data identities, and invocation dependencies. Read-only and derived-only; an invocation is a delegation projection, never a direct write.
 
 These are preview outputs and do not change accepted ownership, grant authorization, or expose runtime effects.
 
