@@ -1,0 +1,147 @@
+{
+  "note": "With maxDepth 4 the subagent chain reached depth 4 (five sessions, depths 0-4) and the deepest child's next spawn was refused with 'exceeds maxDepth 4'. The limit is the configured value, and the refusal names it.",
+  "overlay": {
+    "plugin": "@deepseek-ai/dsh-subagent",
+    "config": {
+      "maxDepth": 4
+    }
+  },
+  "sessionsObserved": 5,
+  "edgesObserved": 12,
+  "maxDepthReached": 4,
+  "depthBySession": {
+    "session-0ddce688-ad15-4050-808f-014ddfdb3ed8": 0,
+    "b5a36daf-9ce6-4cf3-a427-15a644a69e5b": 1,
+    "50169df9-43eb-4e06-8fc8-ad8a79ada790": 2,
+    "d0853fe8-0954-4deb-bc07-177305ef2b58": 3,
+    "8fd60ba4-4a07-4ce2-911e-02be8489a9cc": 4
+  },
+  "rootSessions": [
+    "session-0ddce688-ad15-4050-808f-014ddfdb3ed8"
+  ],
+  "depthRefusalText": "exceeds maxDepth 4",
+  "depthRefusalSession": "8fd60ba4-4a07-4ce2-911e-02be8489a9cc",
+  "toolResults": {
+    "started": 1,
+    "depthRefused": 1
+  },
+  "requests": [
+    {
+      "file": "002-request.json",
+      "bytes": 113889,
+      "sha256": "6f69524b36f13723c3d92966afa6db474cc6a3b0e8ea21084759d46d5610ff03",
+      "sessionId": "session-0ddce688-ad15-4050-808f-014ddfdb3ed8",
+      "toolCount": 24,
+      "mcpTools": []
+    },
+    {
+      "file": "003-request.json",
+      "bytes": 60201,
+      "sha256": "4104c5df4f7ec4596bfca271a8df8a6c40623228b8fd01395fa87f74a585431a",
+      "sessionId": "session-0ddce688-ad15-4050-808f-014ddfdb3ed8",
+      "toolCount": 24,
+      "mcpTools": []
+    },
+    {
+      "file": "004-request.json",
+      "bytes": 115649,
+      "sha256": "b12e08451b03458bccfd5b62d8372b7b21b6f43412e210873525f9e390700a67",
+      "sessionId": "b5a36daf-9ce6-4cf3-a427-15a644a69e5b",
+      "toolCount": 24,
+      "mcpTools": []
+    },
+    {
+      "file": "005-request.json",
+      "bytes": 60767,
+      "sha256": "75eb9ed70674d9f0a290845b633c8d429c59e1d91ea888019bea475566ea4ecb",
+      "sessionId": "b5a36daf-9ce6-4cf3-a427-15a644a69e5b",
+      "toolCount": 24,
+      "mcpTools": []
+    },
+    {
+      "file": "006-request.json",
+      "bytes": 115593,
+      "sha256": "091402e16a4d6ab1a3852fa5da45291ab2ea6e449ffd167ed70b2da7e3e8e191",
+      "sessionId": "50169df9-43eb-4e06-8fc8-ad8a79ada790",
+      "toolCount": 24,
+      "mcpTools": []
+    },
+    {
+      "file": "007-request.json",
+      "bytes": 60743,
+      "sha256": "ab78d9672cd0e6300fa67fe5e175a326c6835132abba2f3d5b457cd4657101c3",
+      "sessionId": "50169df9-43eb-4e06-8fc8-ad8a79ada790",
+      "toolCount": 24,
+      "mcpTools": []
+    },
+    {
+      "file": "008-request.json",
+      "bytes": 115593,
+      "sha256": "1d8369504c533352938e43cc7e78af894b3c2e403d158e65899a57573ce5598d",
+      "sessionId": "d0853fe8-0954-4deb-bc07-177305ef2b58",
+      "toolCount": 24,
+      "mcpTools": []
+    },
+    {
+      "file": "009-request.json",
+      "bytes": 60743,
+      "sha256": "705d3c73bcdc22e156be1bae23dd61261f5f5ff9fd8ba936be00f9031412c7b9",
+      "sessionId": "d0853fe8-0954-4deb-bc07-177305ef2b58",
+      "toolCount": 24,
+      "mcpTools": []
+    },
+    {
+      "file": "010-request.json",
+      "bytes": 116572,
+      "sha256": "460c7765fabb590214c915aacfb8e87d2c11a4dea6da519f4c80ec43e3aaf6bf",
+      "sessionId": "8fd60ba4-4a07-4ce2-911e-02be8489a9cc",
+      "toolCount": 24,
+      "mcpTools": []
+    },
+    {
+      "file": "011-request.json",
+      "bytes": 60821,
+      "sha256": "63288e29249e44d1515668d0ee56f786cc43049788855a746c47ebfa5caa2152",
+      "sessionId": "8fd60ba4-4a07-4ce2-911e-02be8489a9cc",
+      "toolCount": 24,
+      "mcpTools": []
+    },
+    {
+      "file": "012-request.json",
+      "bytes": 61148,
+      "sha256": "85121a2f859367b437297a16248aa9fec9bfda2d3719a5b7d8464bfd7393190c",
+      "sessionId": "d0853fe8-0954-4deb-bc07-177305ef2b58",
+      "toolCount": 24,
+      "mcpTools": []
+    },
+    {
+      "file": "013-request.json",
+      "bytes": 61148,
+      "sha256": "2fdde2e0e80e9bfad659b1fdc8cc249b6ff9655ce3c688f8d706af51b2de1be8",
+      "sessionId": "50169df9-43eb-4e06-8fc8-ad8a79ada790",
+      "toolCount": 24,
+      "mcpTools": []
+    },
+    {
+      "file": "014-request.json",
+      "bytes": 61172,
+      "sha256": "4316b6bbaddeb4b583419d8fc0e628b0fe9a20d5ae7b275b8c622f4f723393d6",
+      "sessionId": "b5a36daf-9ce6-4cf3-a427-15a644a69e5b",
+      "toolCount": 24,
+      "mcpTools": []
+    },
+    {
+      "file": "015-request.json",
+      "bytes": 60180,
+      "sha256": "4b28edd378428a8e3640fab78f4e7000e24e51bd1565485a129f513d2651c069",
+      "sessionId": "session-0ddce688-ad15-4050-808f-014ddfdb3ed8",
+      "toolCount": 24,
+      "mcpTools": []
+    }
+  ],
+  "comparison": {
+    "earliermaxDepth3Record": "DSH_SUBAGENT_DEPTH_RAISED_2026-11-09",
+    "earlierReached": 3,
+    "thisReached": 4
+  }
+}
