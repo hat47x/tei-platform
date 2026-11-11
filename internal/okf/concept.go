@@ -26,7 +26,7 @@ var statusValues = map[string]bool{
 // buildConcept turns one parsed document into a Concept plus every path-valued
 // reference it declares. The references are returned separately so the bundle can
 // list the unresolved ones once.
-func buildConcept(doc rawDoc, existed map[string]bool) (Concept, []resolvedPath) {
+func buildConcept(doc rawDoc, existed map[string]bool) (Concept, []ResolvedRef) {
 	parsed := doc.document
 	concept := Concept{
 		ConceptID:             conceptIDFor(doc.path),
@@ -44,7 +44,7 @@ func buildConcept(doc rawDoc, existed map[string]bool) (Concept, []resolvedPath)
 	// A document with no frontmatter block has already been reported as
 	// FRONTMATTER_MISSING; the type checks below then add their own finding, which
 	// is the same order the upstream reference takes (parse, then validate).
-	var refs []resolvedPath
+	var refs []ResolvedRef
 	concept.Type, concept.TypeClass = readType(doc, &concept.Diagnostics)
 
 	if title, ok := fieldText(parsed.field("title")); ok {
@@ -73,12 +73,12 @@ func buildConcept(doc rawDoc, existed map[string]bool) (Concept, []resolvedPath)
 	concept.Generated = readGenerated(doc, &concept.Diagnostics)
 	concept.Verified, concept.TrustTierLabel = readVerified(doc, &concept.Diagnostics)
 
-	var more []resolvedPath
+	var more []ResolvedRef
 	concept.Runtime, concept.Parameters, concept.Computation, concept.Executor, concept.Attester, more =
 		readComputationFamily(doc, existed, &concept.Diagnostics)
 	refs = append(refs, more...)
 
-	var sourceRefs []resolvedPath
+	var sourceRefs []ResolvedRef
 	concept.Sources, sourceRefs = readSources(doc, existed, &concept.Diagnostics)
 	refs = append(refs, sourceRefs...)
 
@@ -448,14 +448,14 @@ func trustTierLabel(events []Verification) string {
 // readComputationFamily reads the Attested Computation contract keys. Every value
 // is recorded as a declaration; nothing here is opened or followed.
 func readComputationFamily(doc rawDoc, existed map[string]bool, diags *[]Diagnostic) (
-	string, []Parameter, *PathRef, *ExecutorDecl, *PathRef, []resolvedPath,
+	string, []Parameter, *PathRef, *ExecutorDecl, *PathRef, []ResolvedRef,
 ) {
 	var runtime string
 	var parameters []Parameter
 	var computation *PathRef
 	var executor *ExecutorDecl
 	var attester *PathRef
-	var refs []resolvedPath
+	var refs []ResolvedRef
 
 	if field := doc.document.field("runtime"); field != nil {
 		if text, ok := fieldText(field); ok {
@@ -564,9 +564,9 @@ func readComputationFamily(doc rawDoc, existed map[string]bool, diags *[]Diagnos
 // readSources reads the `sources` family and resolves each entry's resource. A
 // missing `resource` is reported; a scope descriptor is recorded as unfetchable
 // rather than as an error, because OKF v0.2 ・ゑｽｧ5.1 allows it explicitly.
-func readSources(doc rawDoc, existed map[string]bool, diags *[]Diagnostic) ([]Source, []resolvedPath) {
+func readSources(doc rawDoc, existed map[string]bool, diags *[]Diagnostic) ([]Source, []ResolvedRef) {
 	sources := []Source{}
-	var refs []resolvedPath
+	var refs []ResolvedRef
 	field := doc.document.field("sources")
 	if field == nil {
 		return sources, refs
@@ -742,7 +742,7 @@ func readerAbstentions(path string, concept Concept) []Diagnostic {
 // unresolvedDiagnostic turns a failed path resolution into an observation. The
 // severity is Warning, never Error: OKF v0.2 ・ゑｽｧ6.1 says a broken link "is not
 // malformed".
-func unresolvedDiagnostic(path, conceptID, kind, target string, ref resolvedPath) Diagnostic {
+func unresolvedDiagnostic(path, conceptID, kind, target string, ref ResolvedRef) Diagnostic {
 	code := CodeLinkUnresolved
 	message := "the " + kind + " reference " + quoteKey(target) + " matches no file in the bundle; OKF v0.2 ・ゑｽｧ6.1 tolerates this"
 	switch {

@@ -11,7 +11,7 @@ type bodyLink struct {
 	// Target is the destination exactly as written, without any title.
 	Target string `json:"target"`
 	// Line is the 1-based line inside the document.
-	Line int
+	Line int `json:"line"`
 }
 
 // bodyFootnote is one Markdown footnote reference and its matching definition.
@@ -59,7 +59,7 @@ const (
 
 // scanBody extracts links, footnotes, headings and fence languages from the body.
 // Text inside fenced code blocks is skipped, matching the conventions in OKF
-// v0.2 §4.2 (structured Markdown, fenced code blocks) and the repository's own
+// v0.2 section 4.2 (structured Markdown, fenced code blocks) and the repository's own
 // Markdown checks.
 func scanBody(body string, firstLine int) bodyScan {
 	var scan bodyScan

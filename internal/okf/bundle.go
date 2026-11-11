@@ -93,7 +93,7 @@ type Bundle struct {
 	// UnresolvedReferences lists path-valued fields and links that matched no
 	// file. OKF v0.2 §6.1 requires tolerating these; listing them is how a
 	// consumer tells knowledge-still-unwritten from a broken bundle.
-	UnresolvedReferences []resolvedPath `json:"unresolvedReferences"`
+	UnresolvedReferences []ResolvedRef `json:"unresolvedReferences"`
 
 	Format Format `json:"format"`
 	// Diagnostics aggregates bundle-level findings plus every file's findings, so
@@ -246,7 +246,7 @@ func Read(root string, opts Options) (*Bundle, error) {
 			bundle.Diagnostics = append(bundle.Diagnostics, index.Diagnostics...)
 			for _, entry := range index.Entries {
 				if entry.Resolution == ResolutionUnresolved || entry.Resolution == ResolutionAmbiguous || entry.Resolution == ResolutionInvalid {
-					bundle.UnresolvedReferences = append(bundle.UnresolvedReferences, resolvedPath{
+					bundle.UnresolvedReferences = append(bundle.UnresolvedReferences, ResolvedRef{
 						Raw: entry.Target, Kind: "index-entry", Line: entry.Line,
 						Resolution: entry.Resolution, Resolved: entry.Resolved,
 					})
@@ -516,7 +516,7 @@ func sortDiagnostics(diags []Diagnostic) {
 	})
 }
 
-func sortUnresolved(refs []resolvedPath) {
+func sortUnresolved(refs []ResolvedRef) {
 	sort.SliceStable(refs, func(i, j int) bool {
 		if refs[i].Kind != refs[j].Kind {
 			return refs[i].Kind < refs[j].Kind

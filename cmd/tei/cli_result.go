@@ -62,6 +62,8 @@ const (
 	resultModePlan          = "plan"
 	resultModeHandoff       = "handoff"
 	resultModeReview        = "review"
+	resultModeBundle        = "bundle"
+	resultModeConcept       = "concept"
 )
 
 // isResultEnvelopeCommand reports whether the command wraps its output in the
@@ -74,6 +76,7 @@ const (
 func isResultEnvelopeCommand(command string) bool {
 	switch command {
 	case "workspace-files", "source-index", "requirements",
+		"okf-bundle",
 		"plugin-lock", "plugin-resolve", "plugin-runtime-plan",
 		"knowledge-context", "knowledge-qualify",
 		"knowledge-review-plan", "knowledge-review-handoff",

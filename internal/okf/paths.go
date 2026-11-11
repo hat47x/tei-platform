@@ -36,10 +36,10 @@ const (
 	ResolutionInvalid Resolution = "invalid"
 )
 
-// resolvedPath is one path-valued field or link and what the reader learned about
+// ResolvedRef is one path-valued field or link and what the reader learned about
 // it. Resolved holds the bundle-relative path(s) that exist; a URL or scope
 // descriptor leaves it empty and sets Resolution accordingly.
-type resolvedPath struct {
+type ResolvedRef struct {
 	// Raw is the value exactly as written.
 	Raw string `json:"raw"`
 	// Kind names the field the value came from (a frontmatter key such as
@@ -81,8 +81,8 @@ func looksLikeScopeDescriptor(raw string) bool {
 // resolveTarget interprets one path-valued value from one containing document.
 // existed reports whether a bundle-relative path is present in the bundle; the
 // caller supplies it so this function stays pure and performs no I/O.
-func resolveTarget(containingPath, raw, kind string, line int, existed func(bundleRelative string) bool) resolvedPath {
-	out := resolvedPath{Raw: raw, Kind: kind, Line: line}
+func resolveTarget(containingPath, raw, kind string, line int, existed func(bundleRelative string) bool) ResolvedRef {
+	out := ResolvedRef{Raw: raw, Kind: kind, Line: line}
 	trimmed := strings.TrimSpace(raw)
 	if trimmed == "" {
 		out.Resolution = ResolutionInvalid
