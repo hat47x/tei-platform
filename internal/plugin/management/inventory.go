@@ -190,6 +190,7 @@ type Report struct {
 	Resolver        ResolverOutcome   `json:"resolver"`
 	Rows            []Row             `json:"rows"`
 	Levels          []Level           `json:"levels,omitempty"`
+	Roles           []RoleStatus      `json:"roles"`
 	Totals          Counts            `json:"totals"`
 	NotModelled     []string          `json:"notModelled"`
 	Messages        map[string]string `json:"messages"`
@@ -235,6 +236,7 @@ func Derive(in Input) (Report, error) {
 		NotModelled:     append([]string(nil), allNotModelled...),
 		Messages:        messages(),
 		AuthorityLimits: authorityLimits(),
+		Roles:           roleStatuses(),
 	}
 	switch state {
 	case ScanPartial:
