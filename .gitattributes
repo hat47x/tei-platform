@@ -316,3 +316,9 @@
 
 # Subagent depth-4 observations are hashed as raw bytes.
 /plan/evidence/DSH_SUBAGENT_DEPTH4_2026-11-11/** -text
+
+# Three-server MCP observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_THREE_SERVERS_2026-11-11/** -text
+
+# Five-server MCP observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_FIVE_SERVERS_2026-11-11/** -text

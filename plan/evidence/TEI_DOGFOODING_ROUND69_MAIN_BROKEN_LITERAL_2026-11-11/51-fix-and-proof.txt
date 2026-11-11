@@ -1,0 +1,13 @@
+Replaced with escape sequences on one line pair:
+
+  t.Fatalf("%s: actual CLI and MCP consumer documents differ:\nCLI=%v\nMCP=%v",
+      version, cliDoc, mcpDoc)
+
+  check                                  before            after
+  gofmt -l . (1.26.11)                   syntax error      empty (clean)
+  go vet ./tools/reference-mcp-readonly-adapter
+                                         not terminated    clean
+  go test ./tools/reference-mcp-readonly-adapter
+                                         did not compile   ok (67.7s)
+
+The package could not even build before this fix.

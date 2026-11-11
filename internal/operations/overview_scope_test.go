@@ -92,3 +92,53 @@ func contains(values []string, want string) bool {
 	}
 	return false
 }
+
+// Every not-covered kind must be either readable by name or absent from
+// inspect's accepted kinds; nothing may be listed in both answers or in neither.
+func TestReadableWithoutSectionMatchesInspect(t *testing.T) {
+	out := referenceOverview(t)
+	notCovered := map[string]bool{}
+	for _, kind := range out.SectionScope.NotCoveredKinds {
+		notCovered[kind] = true
+	}
+	readable := map[string]bool{}
+	for _, kind := range out.SectionScope.ReadableWithoutSection {
+		if !notCovered[kind] {
+			t.Errorf("%q is readable but is not in notCoveredKinds", kind)
+		}
+		if readable[kind] {
+			t.Errorf("%q appears twice in readableWithoutSection", kind)
+		}
+		readable[kind] = true
+	}
+	// The split must account for every not-covered kind: one of the two lists.
+	for _, kind := range out.SectionScope.NotCoveredKinds {
+		if readable[kind] {
+			continue
+		}
+		if supportedInspectionKind(kind) {
+			t.Errorf("%q is accepted by inspect but was not listed as readable", kind)
+		}
+	}
+}
+
+// A designer reading model overview must be able to tell that a declared kind
+// with no section is still readable (#4128).
+func TestReadableWithoutSectionIsNotEmptyForDeclaredLayers(t *testing.T) {
+	out := referenceOverview(t)
+	if len(out.SectionScope.ReadableWithoutSection) == 0 {
+		t.Fatalf("no readable-without-section kinds although the reference declares several: %v",
+			out.SectionScope.NotCoveredKinds)
+	}
+	for _, kind := range []string{"database", "environment", "persistence-mapping"} {
+		found := false
+		for _, read := range out.SectionScope.ReadableWithoutSection {
+			if read == kind {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("%q should be reported as readable without a section", kind)
+		}
+	}
+}

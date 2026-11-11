@@ -1,0 +1,8 @@
+After attempt 6 validated, persistence-mapping was still unreadable:
+
+  model catalog    absent
+  model overview   in notCoveredKinds
+  inspect / trace  UNSUPPORTED_SUBJECT_KIND
+  world            present
+
+model overview had already declared it as not covered (round 59's E option).
