@@ -61,6 +61,7 @@
 | [`PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md`](PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md) | プラグイン間の依存を、受け渡す項目・パラメータ・値の出どころ・対応付けと変換・多重度・版の変化まで含めて整理する方式設計候補（[GitHub #1223](https://github.com/hat47x/tei-platform/issues/1223)、評価待ち） |
 | [`PLUGIN_NAMESPACE_AND_OPTIONAL_COMPOSITION_2026-10.md`](PLUGIN_NAMESPACE_AND_OPTIONAL_COMPOSITION_2026-10.md) | `tei.std` / `tei.experimental` / `tei.contrib` の管理名前空間と、Principal・DB・TransactionをCoreへ強制しない案件選択型Compositionの設計候補（提案中） |
 | [`SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md`](SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md) | SUIの既存実装を生かしながらTEIへ移行するための設計基準 |
+| [`SUI_TEI_MIGRATION_IMPLEMENTATION_PACKET_2026-11.md`](SUI_TEI_MIGRATION_IMPLEMENTATION_PACKET_2026-11.md) | SUI→TEI移行のM1〜M6を、変更範囲・型・試験・受入・Owner判断・完了条件までPR単位に具体化した実装前の提案（[#3401](https://github.com/hat47x/sui-sensemaking/issues/3401)、[#2497](https://github.com/hat47x/tei-platform/issues/2497)、未採用） |
 | [`CROSS_VIEW_CHANGE_QUALIFICATION_REFERENCE_DRAFT.md`](CROSS_VIEW_CHANGE_QUALIFICATION_REFERENCE_DRAFT.md) | Issue #1143で検討中の、複数の視点にまたがる変更の適格性確認案。参照用の契約としては未採用 |
 | [`STUDIO_CONSUMER_FRESHNESS_BOUNDARY_2026-10.md`](STUDIO_CONSUMER_FRESHNESS_BOUNDARY_2026-10.md) | #1124の非Host Studio Consumerが非同期応答・Graph描画選択・Source/Accepted/readinessの鮮度を別々に検査する未採用の設計補足 |
 | [`BUSINESS_EFFECT_LIFECYCLE_DESIGN_2026-10.md`](BUSINESS_EFFECT_LIFECYCLE_DESIGN_2026-10.md) | 副作用を伴う実行の段階、確定後の外部効果、冪等の識別子、確定状態、補償、一括処理の再開をまとめる、評価待ちの設計（[GitHub #1129](https://github.com/hat47x/tei-platform/issues/1129)、[#1130](https://github.com/hat47x/tei-platform/issues/1130)） |
