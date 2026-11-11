@@ -1,0 +1,428 @@
+{
+  "schemaVersion": "tei.reference.facet-projection-matrix-input/v0",
+  "structures": [
+    {
+      "id": "sales.order_lines_ordered",
+      "label": "順序付き明細Collection",
+      "family": "collection",
+      "facets": {
+        "identity": "occurrence",
+        "composition": "sequence",
+        "order": "ordered",
+        "orderOrigin": "source",
+        "multiplicity": "multi",
+        "grain": "line",
+        "presence": ["null", "missing"],
+        "unit": "JPY",
+        "scale": "point"
+      }
+    },
+    {
+      "id": "org.delegation_graph",
+      "label": "多重有向Graph",
+      "family": "graph",
+      "facets": {
+        "identity": "occurrence",
+        "composition": "multigraph",
+        "order": "unordered",
+        "orderOrigin": "explicit-none",
+        "multiplicity": "multi",
+        "grain": "edge"
+      }
+    },
+    {
+      "id": "sensor.timeseries",
+      "label": "観測時系列",
+      "family": "timeseries",
+      "facets": {
+        "identity": "occurrence",
+        "composition": "sequence",
+        "order": "ordered",
+        "orderOrigin": "source",
+        "multiplicity": "multi",
+        "grain": "sample",
+        "timeAxes": ["domain", "observation"],
+        "clock": "station-clock"
+      }
+    },
+    {
+      "id": "finance.invoice_amount",
+      "label": "通貨付き金額",
+      "family": "quantity",
+      "facets": {
+        "identity": "value",
+        "grain": "invoice",
+        "unit": "JPY",
+        "scale": "point"
+      }
+    }
+  ],
+  "representations": [
+    {
+      "id": "rep.line_table",
+      "label": "表",
+      "kind": "table",
+      "topology": ["row", "column", "cell"],
+      "facets": {
+        "identity": "occurrence",
+        "composition": "sequence",
+        "order": "ordered",
+        "orderOrigin": "source",
+        "multiplicity": "multi",
+        "grain": "line",
+        "presence": ["null", "missing"]
+      }
+    },
+    {
+      "id": "rep.org_tree",
+      "label": "Tree",
+      "kind": "tree",
+      "topology": ["node", "edge", "path"],
+      "facets": {
+        "identity": "path",
+        "composition": "tree",
+        "order": "unordered",
+        "orderOrigin": "explicit-none",
+        "multiplicity": "single",
+        "grain": "node"
+      }
+    },
+    {
+      "id": "rep.line_chart",
+      "label": "Chart",
+      "kind": "chart",
+      "topology": ["axis", "series", "point"],
+      "facets": {
+        "identity": "point",
+        "composition": "sequence",
+        "order": "ordered",
+        "orderOrigin": "source",
+        "multiplicity": "multi",
+        "grain": "line"
+      }
+    },
+    {
+      "id": "rep.schedule_gantt",
+      "label": "Gantt",
+      "kind": "gantt",
+      "topology": ["row", "bar", "timestamp"],
+      "facets": {
+        "identity": "occurrence",
+        "composition": "sequence",
+        "order": "ordered",
+        "orderOrigin": "source",
+        "multiplicity": "multi",
+        "grain": "sample"
+      }
+    },
+    {
+      "id": "rep.media_audio",
+      "label": "音声",
+      "kind": "audio",
+      "topology": ["track", "sample", "timestamp"],
+      "facets": {
+        "identity": "sample-index",
+        "composition": "sequence",
+        "order": "ordered",
+        "orderOrigin": "generated",
+        "multiplicity": "multi",
+        "grain": "audio-sample"
+      }
+    },
+    {
+      "id": "rep.flag_toggle",
+      "label": "二値フォーム",
+      "kind": "form",
+      "topology": ["field", "state"],
+      "facets": {
+        "identity": "subject",
+        "composition": "record",
+        "order": "unordered",
+        "orderOrigin": "explicit-none",
+        "multiplicity": "single",
+        "grain": "line",
+        "presence": ["false", "true"]
+      }
+    },
+    {
+      "id": "rep.delta_form",
+      "label": "差分フォーム",
+      "kind": "form",
+      "topology": ["field"],
+      "facets": {
+        "identity": "value",
+        "composition": "record",
+        "order": "unordered",
+        "orderOrigin": "explicit-none",
+        "multiplicity": "single",
+        "grain": "invoice"
+      }
+    },
+    {
+      "id": "rep.order_panel",
+      "label": "集計パネル",
+      "kind": "panel",
+      "topology": ["field", "section"],
+      "facets": {
+        "identity": "subject",
+        "composition": "record",
+        "order": "unordered",
+        "orderOrigin": "explicit-none",
+        "multiplicity": "single",
+        "grain": "order"
+      }
+    }
+  ],
+  "cells": [
+    {
+      "structure": 0,
+      "representation": 0,
+      "contextId": "order_entry.lines",
+      "epoch": "e1",
+      "mapping": {
+        "source": {"subject": "sales.order_line", "occurrence": "ordered", "grain": "line", "scope": "selected-order", "revision": "r1", "snapshot": "s1"},
+        "target": {"representation": "rep.line_table", "slot": "rows", "contextId": "order_entry.lines", "epoch": "e1", "revision": "r1"},
+        "identity": {"kind": "1:1", "claimedPreserved": true, "evidence": ["line id carried per row"]},
+        "order": {"claimedPreserved": true, "evidence": ["lineNumber column rendered"]},
+        "multiset": {"fanout": 1, "claimedPreserved": true, "evidence": ["no join on the path"]},
+        "grain": {"sourceGrain": "line", "targetGrain": "line", "steps": 0, "claimedPreserved": true, "evidence": ["same grain"]},
+        "presence": {"claimedPreserved": true, "evidence": ["null and missing rendered distinctly"]},
+        "quantity": {"sourceUnit": "JPY", "targetUnit": "JPY", "sourceScale": "point", "targetScale": "point", "claimedPreserved": true, "evidence": ["same unit and scale"]},
+        "time": {},
+        "coverage": {"claimed": "complete", "observed": "complete"},
+        "loss": {},
+        "operation": {"mode": "read-only", "inverseEligible": true}
+      }
+    },
+    {
+      "structure": 0,
+      "representation": 1,
+      "contextId": "order_entry.tree",
+      "epoch": "e2",
+      "mapping": {
+        "source": {"subject": "sales.order_line", "occurrence": "ordered", "grain": "line", "scope": "selected-order", "revision": "r2", "snapshot": "s2"},
+        "target": {"representation": "rep.org_tree", "slot": "nodes", "contextId": "order_entry.tree", "epoch": "e2", "revision": "r2"},
+        "identity": {"kind": "N:M", "claimedPreserved": false},
+        "order": {},
+        "multiset": {"fanout": 1, "claimedPreserved": false},
+        "grain": {"sourceGrain": "line", "targetGrain": "node", "steps": 1, "claimedPreserved": false},
+        "presence": {},
+        "quantity": {},
+        "time": {},
+        "coverage": {"claimed": "complete", "observed": "complete"},
+        "loss": {"declared": ["order", "occurrence-identity", "grain", "fact-identity"]},
+        "operation": {"mode": "read-only", "inverseEligible": false}
+      }
+    },
+    {
+      "structure": 0,
+      "representation": 2,
+      "contextId": "order_entry.chart",
+      "epoch": "e3",
+      "mapping": {
+        "source": {"subject": "sales.order_line", "occurrence": "ordered", "grain": "line", "scope": "selected-order", "revision": "r3", "snapshot": "s3"},
+        "target": {"representation": "rep.line_chart", "slot": "series", "contextId": "order_entry.chart", "epoch": "e3", "revision": "r3"},
+        "identity": {"kind": "1:N", "claimedPreserved": false},
+        "order": {},
+        "multiset": {"fanout": 1, "claimedPreserved": false},
+        "grain": {"sourceGrain": "line", "targetGrain": "line", "steps": 0, "claimedPreserved": false},
+        "presence": {},
+        "quantity": {},
+        "time": {},
+        "coverage": {"claimed": "complete", "observed": "complete"},
+        "loss": {"declared": ["occurrence-identity"]},
+        "operation": {"mode": "read-only", "inverseEligible": false}
+      }
+    },
+    {
+      "structure": 0,
+      "representation": 5,
+      "contextId": "order_entry.flags",
+      "epoch": "e4",
+      "mapping": {
+        "source": {"subject": "sales.order_line", "occurrence": "ordered", "grain": "line", "scope": "selected-order", "revision": "r4", "snapshot": "s4"},
+        "target": {"representation": "rep.flag_toggle", "slot": "flag", "contextId": "order_entry.flags", "epoch": "e4", "revision": "r4"},
+        "identity": {"kind": "1:1", "claimedPreserved": true, "evidence": ["line id carried"]},
+        "order": {},
+        "multiset": {"fanout": 1, "claimedPreserved": false},
+        "grain": {"sourceGrain": "line", "targetGrain": "line", "steps": 0, "claimedPreserved": true, "evidence": ["same grain"]},
+        "presence": {"claimedPreserved": true, "evidence": ["toggle shows false"]},
+        "quantity": {},
+        "time": {},
+        "coverage": {"claimed": "complete", "observed": "complete"},
+        "loss": {"declared": ["presence-states"]},
+        "operation": {"mode": "read-only", "inverseEligible": false}
+      }
+    },
+    {
+      "structure": 1,
+      "representation": 1,
+      "contextId": "org_chart.view",
+      "epoch": "e5",
+      "mapping": {
+        "source": {"subject": "org.membership", "occurrence": "parallel", "grain": "edge", "scope": "all-open", "revision": "r5", "snapshot": "s5"},
+        "target": {"representation": "rep.org_tree", "slot": "nodes", "contextId": "org_chart.view", "epoch": "e5", "revision": "r5"},
+        "identity": {"kind": "N:M", "claimedPreserved": false},
+        "order": {},
+        "multiset": {"fanout": 1, "claimedPreserved": false},
+        "grain": {"sourceGrain": "edge", "targetGrain": "node", "steps": 1, "claimedPreserved": false},
+        "presence": {},
+        "quantity": {},
+        "time": {},
+        "coverage": {"claimed": "complete", "observed": "complete"},
+        "loss": {"declared": ["edge-multiplicity", "parent-arity", "hidden-edge"]},
+        "operation": {"mode": "read-only", "inverseEligible": false}
+      }
+    },
+    {
+      "structure": 2,
+      "representation": 3,
+      "contextId": "plan.schedule",
+      "epoch": "e6",
+      "mapping": {
+        "source": {"subject": "sensor.reading", "occurrence": "sample", "grain": "sample", "scope": "window", "revision": "r6", "snapshot": "s6"},
+        "target": {"representation": "rep.schedule_gantt", "slot": "bars", "axes": ["domain"], "contextId": "plan.schedule", "epoch": "e6", "revision": "r6"},
+        "identity": {"kind": "1:1", "claimedPreserved": true, "evidence": ["sample id carried"]},
+        "order": {"claimedPreserved": true, "evidence": ["ordered by domain time"]},
+        "multiset": {"fanout": 1, "claimedPreserved": true, "evidence": ["no fanout"]},
+        "grain": {"sourceGrain": "sample", "targetGrain": "sample", "steps": 0, "claimedPreserved": true, "evidence": ["same grain"]},
+        "presence": {},
+        "quantity": {},
+        "time": {
+          "sourceAxes": ["domain", "observation"],
+          "targetAxes": ["domain"],
+          "sourceClock": "station-clock",
+          "targetClock": "project-clock",
+          "syncError": "unknown",
+          "claimedPreserved": false
+        },
+        "coverage": {"claimed": "partial", "observed": "partial", "negativeDependency": ["window-tail-unread"]},
+        "loss": {"declared": ["time-axis-role", "coverage-completeness"]},
+        "operation": {"mode": "read-only", "inverseEligible": false}
+      }
+    },
+    {
+      "structure": 2,
+      "representation": 4,
+      "contextId": "review.audio",
+      "epoch": "e7",
+      "mapping": {
+        "source": {"subject": "sensor.reading", "occurrence": "sample", "grain": "sample", "scope": "window", "revision": "r7", "snapshot": "s7"},
+        "target": {"representation": "rep.media_audio", "slot": "track", "axes": ["presentation"], "contextId": "review.audio", "epoch": "e7", "revision": "r7"},
+        "identity": {"kind": "1:N", "claimedPreserved": false},
+        "order": {},
+        "multiset": {"fanout": 1, "claimedPreserved": false},
+        "grain": {"sourceGrain": "sample", "targetGrain": "audio-sample", "steps": 1, "claimedPreserved": false},
+        "presence": {},
+        "quantity": {},
+        "time": {
+          "sourceAxes": ["domain", "observation"],
+          "targetAxes": ["presentation"],
+          "sourceClock": "station-clock",
+          "targetClock": "audio-device",
+          "syncError": "",
+          "claimedPreserved": true,
+          "evidence": ["same sample count"]
+        },
+        "coverage": {"claimed": "complete", "observed": "partial", "negativeDependency": ["window-tail-unread"]},
+        "loss": {"declared": ["time-axis-role"]},
+        "operation": {"mode": "read-only", "inverseEligible": false}
+      }
+    },
+    {
+      "structure": 3,
+      "representation": 0,
+      "contextId": "finance.multi_currency",
+      "epoch": "e8",
+      "mapping": {
+        "source": {"subject": "finance.invoice.amount", "grain": "invoice", "scope": "tenant", "revision": "r8", "snapshot": "s8"},
+        "target": {"representation": "rep.line_table", "slot": "amount", "contextId": "finance.multi_currency", "epoch": "e8", "revision": "r8"},
+        "identity": {"kind": "1:1", "claimedPreserved": true, "evidence": ["invoice id carried"]},
+        "order": {},
+        "multiset": {"fanout": 1, "claimedPreserved": false},
+        "grain": {},
+        "presence": {},
+        "quantity": {
+          "sourceUnit": "JPY",
+          "targetUnit": "USD",
+          "sourceScale": "point",
+          "targetScale": "point",
+          "conversionPolicy": "",
+          "conversionInstant": "",
+          "claimedPreserved": false
+        },
+        "time": {},
+        "coverage": {"claimed": "complete", "observed": "complete"},
+        "loss": {"declared": ["unit-conversion"]},
+        "operation": {"mode": "read-only", "inverseEligible": false}
+      }
+    },
+    {
+      "structure": 3,
+      "representation": 2,
+      "contextId": "finance.dashboard",
+      "epoch": "e9",
+      "mapping": {
+        "source": {"subject": "finance.invoice.amount", "grain": "invoice", "scope": "tenant-2026-10", "revision": "r9", "snapshot": "s9"},
+        "target": {"representation": "rep.line_chart", "slot": "series", "contextId": "finance.dashboard", "epoch": "e9", "revision": "r9"},
+        "identity": {"kind": "N:1", "claimedPreserved": false},
+        "order": {},
+        "multiset": {"fanout": 1, "claimedPreserved": false},
+        "grain": {"sourceGrain": "invoice", "targetGrain": "tenant-month", "steps": 2, "claimedPreserved": false},
+        "presence": {},
+        "quantity": {"sourceUnit": "JPY", "targetUnit": "JPY", "sourceScale": "point", "targetScale": "point"},
+        "time": {},
+        "coverage": {"claimed": "complete", "observed": "complete"},
+        "loss": {"declared": ["grain", "fact-identity"]},
+        "operation": {"mode": "read-only", "inverseEligible": false}
+      }
+    },
+    {
+      "structure": 3,
+      "representation": 6,
+      "contextId": "finance.delta",
+      "epoch": "e10",
+      "mapping": {
+        "source": {"subject": "finance.invoice.amount", "grain": "invoice", "scope": "tenant", "revision": "r10", "snapshot": "s10"},
+        "target": {"representation": "rep.delta_form", "slot": "value", "contextId": "finance.delta", "epoch": "e10", "revision": "r10"},
+        "identity": {"kind": "1:1", "claimedPreserved": true, "evidence": ["invoice id carried"]},
+        "order": {},
+        "multiset": {"fanout": 1, "claimedPreserved": false},
+        "grain": {},
+        "presence": {},
+        "quantity": {
+          "sourceUnit": "JPY",
+          "targetUnit": "JPY",
+          "sourceScale": "point",
+          "targetScale": "delta",
+          "claimedPreserved": true,
+          "evidence": ["same unit string"]
+        },
+        "time": {},
+        "coverage": {"claimed": "complete", "observed": "complete"},
+        "loss": {"declared": ["quantity-scale"]},
+        "operation": {"mode": "read-only", "inverseEligible": false}
+      }
+    },
+    {
+      "structure": 0,
+      "representation": 7,
+      "contextId": "order_entry.summary",
+      "epoch": "e11",
+      "mapping": {
+        "source": {"subject": "sales.order_line", "occurrence": "ordered", "grain": "line", "scope": "selected-order", "revision": "r11", "snapshot": "s11"},
+        "target": {"representation": "rep.order_panel", "slot": "fields", "contextId": "order_entry.summary", "epoch": "e11", "revision": "r11"},
+        "identity": {"kind": "N:1", "claimedPreserved": false},
+        "order": {},
+        "multiset": {"fanout": 1, "claimedPreserved": false},
+        "grain": {"sourceGrain": "line", "targetGrain": "order", "steps": 1, "claimedPreserved": false},
+        "presence": {},
+        "quantity": {},
+        "time": {},
+        "coverage": {"claimed": "complete", "observed": "complete"},
+        "loss": {"declared": ["grain", "fact-identity", "aggregation-inverse"]},
+        "operation": {"mode": "edit-inverse", "inverseEligible": true}
+      }
+    }
+  ]
+}

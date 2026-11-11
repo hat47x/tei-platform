@@ -252,6 +252,7 @@
 | [`reference-facet-mapping-check/`](reference-facet-mapping-check/) | 標準データ構造と標準表現型の間の写像を、12列の写像契約と両側のFacetで突き合わせ、保持・損失・不適合・不明を判定する参照。読み取りの成功を編集逆写像の成功から分け、証拠のない保存主張は`unknown`へ落とす。合成fixtureのみで、実Provider・実Renderer・業務意味の受理は示さない（#4351 / #4350 S1） |
 | [`reference-facet-structure-check/`](reference-facet-structure-check/) | 標準データ構造の族ごとに、直交Facetの記述で載るか・現行Sourceに場所が無い意味は何か・どの採用先（基礎型／合成型／意味Facet／標準Plugin／表現型）へ返すかをread-onlyで判定する参照。Core型の採用は判定せず`core-type`を拒否してADRへ戻す。多重度・単位は推定しない。合成descriptorのみで、実Provider・Owner意味受理は示さない（#4352 / #4350 S2） |
 | [`reference-representation-binding-check/`](reference-representation-binding-check/) | 意味を伴う表現インスタンスが1つのFunction Data Contextに所有され、Scope・grain・軸role・Selection・操作資格へ束縛されているかをread-onlyで検査する参照。Context外の配置、layoutを意味とする主張、SelectionをIdentityとする主張、Domain TimeとPlayback Timeの同一視、集約点の逆写像を拒否する。合成descriptorのみで、実Renderer・実Media再生・業務意味の受理は示さない（#4353 / #4350 S3） |
+| [`reference-facet-projection-matrix/`](reference-facet-projection-matrix/) | 標準データ構造と標準表現型の組ごとに、#4351の12列写像契約をそのまま呼び出して判定し、構造×表現型のMatrixとして返す参照。判定を1つの「投影可能」に畳まず、未カバーの組は仮定で埋めずに列挙する。合成descriptorのみで、実Renderer・実Consumer・業務意味の受理は示さない（#4350 横断） |
 | [`reference-semantic-extension-catalog/`](reference-semantic-extension-catalog/) | 意味拡張の登録・解決・検証 |
 | [`reference-subsystem-cud/`](reference-subsystem-cud/) | 部分システムの登録・参照・更新・削除の境界確認 |
 | [`reference-tei-eki-contract/`](reference-tei-eki-contract/) | TEIのJob・Flow設計がEKIのP0 OpenAPIで失う意味（`notBefore`・期限・effect_mode・資源制約など）を、実contractへの射影で検出する隔離した試験用の参照。実Provider・認可・実行層ではなく、外部contractの受理を示さない |
