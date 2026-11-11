@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,7 +18,10 @@ import (
 // rejection. A non-nil handler error therefore does not mean no effect.
 // The real xtea-lowcode workspace is used rather than a second DSL fixture.
 func TestPeriodsAdvanceRejectionAfterStateWriteMustReadBack(t *testing.T) {
-	root := filepath.Join("..", "..", "examples", "xtea-lowcode")
+	// The existing xtea-lowcode example declares the period, but has no
+	// persisted Order mapping from which the standard CRUD update operation
+	// could be derived. Add only that mapping to a private copy for this test.
+	root := copyPeriodReadbackFixture(t, filepath.Join("..", "..", "examples", "xtea-lowcode"))
 	const appID = "order_entry"
 	const periodID = "sales.month"
 
@@ -70,4 +75,54 @@ func TestPeriodsAdvanceRejectionAfterStateWriteMustReadBack(t *testing.T) {
 	if got := readState(); got != operations.PeriodClosed {
 		t.Fatalf("rejected retry must not rewrite final state: got %s", got)
 	}
+}
+
+func copyPeriodReadbackFixture(t *testing.T, source string) string {
+	t.Helper()
+	target := t.TempDir()
+	err := filepath.WalkDir(source, func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		relative, err := filepath.Rel(source, path)
+		if err != nil {
+			return err
+		}
+		destination := filepath.Join(target, relative)
+		if entry.IsDir() {
+			return os.MkdirAll(destination, 0o755)
+		}
+		if !entry.Type().IsRegular() {
+			return fmt.Errorf("unexpected nonregular fixture input %s", path)
+		}
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(destination, raw, 0o644)
+	})
+	if err != nil {
+		t.Fatalf("copy original example workspace: %v", err)
+	}
+	mapping := `persist sales_core.order {
+    database sales_core
+    semantic sales.order
+    table public.orders
+
+    column sales.order.order_id -> order_id storage int64 required
+    column sales.order.customer_id -> customer_id storage int64 required
+    column sales.order.status -> status storage varchar required
+    column sales.order.order_date -> order_date storage date required
+
+    primary-key sales.order.order_id
+}
+`
+	dir := filepath.Join(target, "databases", "sales-core", "persistence")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("make isolated persistence source: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "order.tei"), []byte(mapping), 0o644); err != nil {
+		t.Fatalf("add minimal test-only mapping: %v", err)
+	}
+	return target
 }
