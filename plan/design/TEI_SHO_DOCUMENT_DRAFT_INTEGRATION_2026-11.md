@@ -16,6 +16,7 @@
 | 文書Projection | TEI（`internal/documentdraft`） | 一要素＋一関係から説明・関係・表・引用の各Occurrenceを生成し、生成条件を付与 | 著者文の生成・上書き、Occurrence IDの永続保証 |
 | 保存 | SHO（`src/document-draft.cjs`＋共通コア） | 著者原文の保存、base digestによる競合検出、readback検証、生成領域と著者領域の分離保持 | モデル側への書戻し、引用の自動再解決 |
 | 引用 | SHO（記録）／TEI（源泉） | 引用OccurrenceはSource identity・Revision・rangeを**記録として保持**するだけ | 取得・検証・relink。未確認は未確認のまま保存する |
+| 引用Register（SHO既存） | SHO（`src/g2-references.cjs`） | 意図したSource・名目解決先・取得byte・宣言/観測fingerprint・Review現在性を別欄で持つ。取得は明示かつbounded | このDraft契約の代替にはならない。Draft引用は `recorded-not-resolved` の記録モード |
 | 意味受理・モデル変更 | TEI Owner（既存経路） | 変更計画・検証・受理は[#267](https://github.com/hat47x/tei-platform/issues/267)と既存Shared Acceptance経路 | SHO文書からの逆書込み、REA/再解析からの暗黙昇格 |
 
 SHOはTEIの意味正本も専用Hostも持たない。TEI StudioはSHOの文書編集コンポーネントを**同じ契約の部品**として利用し、製品別の二重実装を作らない。組込み形態（子プロセス／静的組込み／Wails資産）は未測定で、この設計は**JSON契約とCLI境界**を最小統合機構として固定する。
@@ -122,8 +123,9 @@ TEIが生成し、SHOが消費する。SHOは语义を解釈せず、identity・
 
 ## 7. 未解決事項
 
-- SHO文書の引用Occurrenceに対する**解決・検証**（取得・raw byte照合）は未実装。未確認は未確認として保存するのみ。
+- SHO文書の引用Occurrenceに対する**解決・検証**（取得・raw byte照合）は未実装。未確認は未確認として保存するのみ。SHO mainには引用Register（`src/g2-references.cjs`）があるが、これは**別のモード**（意図したSource・名目解決先・取得byte・宣言/観測fingerprint・Review現在性を別欄で持つ）であり、Draft引用の `recorded-not-resolved` を置き換えない。二本の引用経路の関係はOwnerの判断を要する。
 - TEI Studioからの**実組込み**（子プロセス起動・Wails資産・同一Attempt）は未実証。
 - Draft IDの永続性（A→B→A、Workspace差し替え）は`modelRevision`と`worldFingerprint`の範囲でしか保証しない。
 - `document-reconcile`は**読取り専用**であり、変更計画・検証・Owner受理の代替ではない。
 - 保存済み文書に対する**再投影のマージ方針**（著者編集と新Draftの突合せ）は未実装。現状は新Draftを別文書として提示する。
+- SHO側の保存の中核（`src/g2-document.cjs`）は[SHO PR #30](https://github.com/hat47x/sho-composer/pull/30)でmainに統合されたものを再利用する。本契約はそれを前提としない（ Consumerは自分の編集核を持てる）が、現状の参照実装は它に依存する。
