@@ -36,4 +36,11 @@ The new candidate-generation tests use a fixed fixture in `testdata/fixture.json
 
 Further needed (not implemented by this package): Source closure and actual Accepted owner/Function I/O producer (SP-42), Current Grant and public noninterference (SP-31/43), Boundary Repair/Effector/Tx/Recovery (SP-44), and trusted full repository-health-check on the exact merged revision. Local/CI test PASS is not evidence for those obligations.
 
+## S6-S7 (added for #4413)
+
+- `ComparisonReport` / `BuildComparisonReport` (`compare.go`): deterministic before/after comparison table of candidates (cross-boundary counts/weights, cohesion, max size).
+- `ProjectionReport` / `BuildProjectionReport` (`project.go`): per-subsystem projection of Function, write/read edges, and invocation dependencies. Read-only and derived-only.
+
+These are preview outputs and do not change accepted ownership, grant authorization, or expose runtime effects.
+
 **No main integration or Owner Meaning Acceptance is implied by creating this reference.**

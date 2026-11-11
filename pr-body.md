@@ -1,6 +1,6 @@
 ## Summary
 
-Implements the S1-S5 read-only candidate-generation prototype for logical subsystem partition (#3250 child). Adds a fixed fixture and hand-written independent expected JSON to validate deterministic multi-candidate generation with multi-objective breakdown.
+Implements the S1-S5 read-only candidate-generation prototype plus S6-S7 comparison and projection previews for logical subsystem partition (#3250 child). Adds a fixed fixture and hand-written independent expected JSON to validate deterministic multi-candidate generation with multi-objective breakdown.
 
 ## Base
 
@@ -13,6 +13,8 @@ Implements the S1-S5 read-only candidate-generation prototype for logical subsys
 - `tools/reference-subsystem-partition/constraints.go`
 - `tools/reference-subsystem-partition/generate.go` + `generate_test.go`
 - `tools/reference-subsystem-partition/evaluate.go`
+- `tools/reference-subsystem-partition/compare.go` + `compare_test.go`
+- `tools/reference-subsystem-partition/project.go`
 - `tools/reference-subsystem-partition/provenance.go`
 - `tools/reference-subsystem-partition/README.md` (extended)
 - `tools/reference-subsystem-partition/testdata/fixture.json`
@@ -39,5 +41,4 @@ Result: all PASS (package ok).
 
 ## Follow-up
 
-- S6-S7 (compare/projection) is tracked in #4413.
-- S8 (Proposal/Validation/Shared Acceptance integration) is owned by #267/#1124.
+- S6-S7 preview added. Full integration and acceptance criteria remain in #4413.
