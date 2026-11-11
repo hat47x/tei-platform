@@ -25,6 +25,8 @@
 
 ## 一覧
 
+設計文書の一覧です。文書の状態は各設計文書の冒頭に記し、その文書自身を状態の正本とします。
+
 | 文書 | 対象 |
 | --- | --- |
 | [`AI_PERFORMANCE_TUNING_OBSERVABILITY_2026-11.md`](AI_PERFORMANCE_TUNING_OBSERVABILITY_2026-11.md) | 生成AIによる性能チューニングの設計ヒント・統計の実測と、Source／Function／Query／Provider／受領の資格を分けた独立Benchmark・改善検証（#3271・#3262・#2586、設計・実証候補） |
@@ -161,6 +163,7 @@
 | [`FUNCTION_DATA_CONTEXT_PATTERN_PRESSURE_2026-11.md`](FUNCTION_DATA_CONTEXT_PATTERN_PRESSURE_2026-11.md) | Function Data Contextと機能パターンの横断設計・圧力試験（2026-11） |
 | [`JAVA_LIBRARY_PORTABLE_CONSUMER_AND_STORE_GATES_2026-10.md`](JAVA_LIBRARY_PORTABLE_CONSUMER_AND_STORE_GATES_2026-10.md) | Java Libraryの外部Consumer・Artifact Store受入計画（2026-10-30） |
 | [`ORGANIZATION_RELATION_GOVERNANCE_MODEL_2026-10.md`](ORGANIZATION_RELATION_GOVERNANCE_MODEL_2026-10.md) | 組織関係・時点・統制の標準意味モデル：横断設計と最小検証計画 |
+| [`ORGANIZATION_STAGED_MODELING_PLAN_2026-11.md`](ORGANIZATION_STAGED_MODELING_PLAN_2026-11.md) | 高度組織モデリングの段階計画：5段階の基本設計（Identity・Relation・Cardinality・Time・Validation・Query・表示形式）と作業単位WU-01〜14（[#2386](https://github.com/hat47x/tei-platform/issues/2386)、設計・未受理） |
 | [`DSL_NEUTRAL_UNICODE_AUTHORING_AND_SAFE_AI_2026-11.md`](DSL_NEUTRAL_UNICODE_AUTHORING_AND_SAFE_AI_2026-11.md) | TEI DSL：グローバル共通構文・Unicode表層名・Studio表示・AI入力安全性の統合計画（2026-11-03） |
 | [`ETL_ELT_MFT_CROSSBOUNDARY_CONTRACT_PRESSURE_2026-11.md`](ETL_ELT_MFT_CROSSBOUNDARY_CONTRACT_PRESSURE_2026-11.md) | ETL/ELT・MFT/ファイルリレー横断契約の圧力試験（設計候補・2026-11-04） |
 | [`PLUGIN_REALIZATION_AND_OPTIMIZATION_REQUIREMENTS_2026-11.md`](PLUGIN_REALIZATION_AND_OPTIMIZATION_REQUIREMENTS_2026-11.md) | Plugin機能の実現・安全な最適化に必要な契約（2026-11-06、設計/要件候補） |
