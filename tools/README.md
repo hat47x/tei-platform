@@ -257,6 +257,8 @@
 | [`reference-sui-adoption/`](reference-sui-adoption/) | SUI移行の参照データと検査 |
 | [`reference-sui-canonical-probe/`](reference-sui-canonical-probe/) | SUIの意味構造を `.tei` で宣言したときの解決結果と、宣言しない損失を read-only で報告する probe（M2） |
 | [`reference-sui-reference-consumer/`](reference-sui-reference-consumer/) | SUIが返す`tai.reference.sui-document-reference/v0`のenvelopeを検査するread-only consumer。acceptedMeaningの一留、未レビュー本文の保留、同名Card・並行Edge・containment/affiliationのoccurrenceを保つことを確認する（P7、Product APIではない） |
+| [`reference-sui-record-projection/`](reference-sui-record-projection/) | SUIの reference envelope から、開示判断つきの record 投影を作る read-only 参照（M3・M4・M5）。本文を運ばず、項目×開示先を present/withheld/unknown/not-applicable で返し、Source状態を宣言のまま使う |
+| [`reference-sui-scope-conformance/`](reference-sui-scope-conformance/) | SUIの越境試験15行を言語非依存の行列として検査する read-only 参照（M6）。空欄をpassと読み替えず、既知の不足がnot-runで示されていることを確かめる。認可Engineではない |
 | [`reference-sui-interaction/`](reference-sui-interaction/) | 画面操作とApplication Actionの接続例 |
 | [`reference-transform-runtime-engine/`](reference-transform-runtime-engine/) | 決定的な変換処理の実行例 |
 | [`reference-transform-runtime-engine-build/`](reference-transform-runtime-engine-build/) | 変換実行基盤の構築確認 |
