@@ -4,6 +4,40 @@ type OrgUnitId from std.identifier
 type MembershipId from std.identifier
 type PositionId from std.identifier
 type OccupancyId from std.identifier
+type PersonId from std.identifier
+type LegalEntityId from std.identifier
+type EmploymentId from std.identifier
+type AffiliationId from std.identifier
+
+data Person {
+    attribute personId type organization.person_id
+}
+
+data LegalEntity {
+    attribute legalEntityId type organization.legal_entity_id
+}
+
+data Employment {
+    attribute employmentId type organization.employment_id
+    attribute personId type organization.person_id
+    attribute legalEntityId type organization.legal_entity_id
+
+    relation person to organization.person one
+        key organization.employment.person_id -> organization.person.person_id
+    relation legalEntity to organization.legal_entity one
+        key organization.employment.legal_entity_id -> organization.legal_entity.legal_entity_id
+}
+
+data Affiliation {
+    attribute affiliationId type organization.affiliation_id
+    attribute personId type organization.person_id
+    attribute legalEntityId type organization.legal_entity_id
+
+    relation person to organization.person one
+        key organization.affiliation.person_id -> organization.person.person_id
+    relation legalEntity to organization.legal_entity one
+        key organization.affiliation.legal_entity_id -> organization.legal_entity.legal_entity_id
+}
 
 data OrgUnit {
     attribute orgUnitId type organization.org_unit_id
