@@ -12,6 +12,7 @@ CSW（Cultural Substrate Weaving）とVSクマ（VS Bear Simulator）を独立�
 
 - CSWの連想・異質性・仮説・問い・比較結果を、確定した意味へ変換しない。本文は型付き境界の外に置き、参照とハッシュだけを持つ。
 - VSクマのGodot物理、描画、ゲームループ、既存の認知実装を置き換えない。GDScriptを生成せず、実行時依存も作らない。
+- 状態機械を製品の意味DSLへ追加しない。遷移表はprobe内のread-only投影であり、`state`・`transition`の製品実装ではない。
 - Workspaceへの書き込み、CSW Skillの変更、ゲームへの組込み、製品アーキテクチャの変更を行わない。
 - 実データ、実セッション、実機性能、マージ判断を扱わない。
 
@@ -27,6 +28,8 @@ CSW（Cultural Substrate Weaving）とVSクマ（VS Bear Simulator）を独立�
 | `bear/fixtures/` | `bot-scenario-1`の合成写しと、判断snapshotの成立例・範囲外例 |
 | `bear/contract.go` | 判断の境界検査、wire形式の独立実装、シナリオ期待の投影 |
 | `bear/contract_test.go` | 実行時定数との列挙一致、上流ファイルへの転記照合、境界値、期限、wire往復、シナリオ検査 |
+| `bear/statemachine.go` | 回復状態機械のread-only遷移表。到達不能・デッドエンド・未知端点・優先度衝突・global遷移のスコープ違反を診断する |
+| `bear/statemachine_test.go` | 上流ファイルへの転記照合、正例の構造証拠、4件のmutation試験 |
 
 ## 実行
 
