@@ -2383,3 +2383,43 @@ reference/workspace: 0 件
 ### 前ラウンドとの関係
 
 **「起票しない」判断が正しかった。** 第71ラウンドで方針未決定のまま起票していれば、Issue に未決の問いが残り、実装時に方針が変われば Issue が嘘になる。1ラウンド寝かせて方針を決め、起票せずに直接直した。
+
+## 74. 第73ラウンド（2026-11-11）: 節の無い種でも読めることを `model overview` が言う
+
+目的文の「再びドッグフーディングに戻る」を実行した回。`customer.customer` の永続化マッピングと solution release を CLI だけで設計し、全成果物を `inspect` で読み返した。生出力は[第73ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND73_SCOPE_READABILITY_2026-11-11/README.md)にある。
+
+### 設計（4往復）
+
+| Attempt | 応答 | 学んだこと |
+| --- | --- | --- |
+| 1 | `ok` | マッピングは受理（読み返しで `cols=2`） |
+| 2 | `SOLUTION_RELEASE_NOT_EXECUTABLE ... database release not found: master_data@2.1.0` | 先に database release が要る |
+| 3 | `DATABASE_RELEASE_NOT_MANAGED_HERE ... ownership external-observed` | **`master_data` は外部所有なのでこの作業場所からは release できない** |
+| 4 | `ok`（`kind database-gate` ＋ `contract master_data.customer ^2`） | 他チームが release する契約を gate する形が正しい |
+
+**Attempt 3 と 4 が対**である。診断が「外部所有だからできない」と名指しし、正しい代替（他者が release する契約を gate する）は**構文ではなくモデルの規則**だった。
+
+### 見つけた欠落
+
+全成果物は `inspect` で読めた。しかし `model overview` は依然として `database`・`persistence-mapping`・`environment`・`solution-release` を `notCoveredKinds` に並べていた。**応答だけを見た設計者は、自分が足したマッピングが届いたのか、その種が単に節にならないだけなのかを区別できない。**
+
+第59ラウンドで covered 側について直した曖昧さが、not-covered 側に残っていた。
+
+### 修正
+
+`ModelSectionScope` に `readableWithoutSection` を足した。**CLI が広告するのと同じリスト**（`operations.InspectionSubjectKinds`）を読むので、両者の答えがずれない。
+
+```text
+reference/workspace:
+  readableWithoutSection: database, persistence-mapping, migration,
+    application-release, database-release, solution-release, environment  (14中7)
+  CLI から読めない種: plugin, bundle, migration-provider, custom-go-binding,
+    header-detail-contract-query-binding, contract-query-executor-binding,
+    contract-query-sql-realization                                      (14中7)
+```
+
+`-h` にも「節が無いことは宣言が無いことを意味しない」と書いた。
+
+### 試験と変異
+
+2試験（not-covered の全種がどちらかの側に会計される・宣言済みの層が readable に入る）と変異2種（空にする／被覆済みの種を混ぜる）が落ちる。
