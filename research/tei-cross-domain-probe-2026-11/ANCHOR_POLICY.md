@@ -90,6 +90,21 @@ anchorの試験は `strings.Contains(source, literal)` で存在を確認しま�
 
 **教訓**：commit SHA も転記対象です。`git rev-parse HEAD` で確認した値を書き、書き終わった後に存在確認（`git cat-file -t <sha>`）を行うべきです。本ファイルでは4箇所（本表・`README.md`・`PLACEMENT_POLICY.md`・`bear/STATE_MACHINE_REVIEW.md`）を修正しました。
 
+### 4.2 上流が進んだ後の再照合（2026-11-11 追記）
+
+上記の証跡の後、VSクマのチェックアウトは `ce18a7b8eea4cc5a20e54b3c0983befd0d0eac02`（`main`）へ進みました（本probeによる操作ではありません）。この版でanchor試験を再実行し、**48件すべて引き続き解決**することを確認しました。
+
+| 項目 | 値 |
+| --- | --- |
+| 再照合日 | 2026-11-11 |
+| 上流（VSクマ）のcommit | `ce18a7b8eea4cc5a20e54b3c0983befd0d0eac02` |
+| 上流（CSW）のcommit | `73efa57ef66ae4d53db3ff9bb63c927f624f44a8` |
+| 照合したanchor数 | 48件 |
+| 照合結果 | 48件すべて**解決**（skip 0件） |
+| 実行コマンド | `go test ./research/tei-cross-domain-probe-2026-11/... -count=1 -run 'Anchor\|Transcription' -v` |
+
+**注意**：これは「転記が現行版でも一致する」という1回の再照合記録です。上流は今後も進みます。一致しなくなった場合は、anchor試験が失敗して知らせます（§2.1）。失敗したときの対応は、上流の変更を読んでprobeを更新することです。
+
 ## 5. 未実施（NOT RUN）
 
 - anchor試験の CI 必須検査への接続（A3 の別判断。研究物を CI の必須経路に入れるかは未決）。
