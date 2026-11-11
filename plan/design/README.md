@@ -44,6 +44,7 @@
 | [`APPLICATION_DRIVER_V1_DESIGN.md`](APPLICATION_DRIVER_V1_DESIGN.md) | 構成パターンの解決から、機能と契約に基づく問い合わせの実行、観測までの境界（ISSUE-000006 / ADR-0019 / ADR-0020 / ADR-0021 / ADR-0023） |
 | [`DATABASE_CONTRACT_QUERY_V1_DESIGN.md`](DATABASE_CONTRACT_QUERY_V1_DESIGN.md) | 契約に基づく問い合わせの形式、SQLによる実現、実行器との対応付け、提供実装の実行基盤という四層（ISSUE-000018〜ISSUE-000021 / ADR-0007 / ADR-0021） |
 | [`DATABASE_DIALECT_PLUGIN_DESIGN_2026-10.md`](DATABASE_DIALECT_PLUGIN_DESIGN_2026-10.md) | PostgreSQLとSQLiteを対象に、関係データベースの共通契約と製品ごとの方言プラグインを分ける検討案（識別子、方言の面、製品の版、現行コードの仕分け、実施順序） |
+| [SQL_DIALECT_LIMITATIONS_2026-11.md](SQL_DIALECT_LIMITATIONS_2026-11.md) | SQL方言の共通契約（internal/database/sqlgen）が運ぶ構成要素（CTE・名前付きウィンドウ・集合操作）、未対応の構成要素、DBごとの差、呼出し側が担う契約（検証済み識別子の受渡し、未配線の名前付きパラメータ） |
 | [`EXPLICIT_FUNCTION_DATA_MAPPING_AND_STANDARD_ROLES_2026-11.md`](EXPLICIT_FUNCTION_DATA_MAPPING_AND_STANDARD_ROLES_2026-11.md) | Functionごとに必要なRelation Path／Field／Scopeを明示し、標準Data構造へ意味Roleを適用するHeadless検証。Read Footprint・Claim Closure・実Provider／開示資格の区別（[#2506](https://github.com/hat47x/tei-platform/issues/2506)、[#2620](https://github.com/hat47x/tei-platform/issues/2620)、評価待ち） |
 | [`DATABASE_QUERY_INPUT_NULLABILITY_2026-10.md`](DATABASE_QUERY_INPUT_NULLABILITY_2026-10.md) | Query入力のmissingと明示NULLを区別し、presence/nullを契約で明示してSQL実行前に拒否する検討案（[#2056](https://github.com/hat47x/tei-platform/issues/2056)、未採用） |
 | [`GENERATOR_REVOCATION_APPROVAL_BOUNDARY_2026-10.md`](GENERATOR_REVOCATION_APPROVAL_BOUNDARY_2026-10.md) | 生成器の失効承認recordをregistry編集と分離し、対象一致・監査・再生成の完了条件を整理する検討案（[#2076](https://github.com/hat47x/tei-platform/issues/2076)、未採用） |
