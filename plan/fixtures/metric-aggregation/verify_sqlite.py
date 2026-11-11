@@ -5,8 +5,13 @@ No TEI code, production Provider, accepted business rule or external data is loa
 Expected values are computed independently of SQL with Python integers/Fraction.
 """
 import json
+import pathlib
 import sqlite3
 from fractions import Fraction
+
+# Hand-fixed values shared with the Go reference test
+# (reference/derivation-relationsets, TestHandFixedExpectedMatchesSharedFixture).
+FIXED = json.loads(pathlib.Path(__file__).with_name("expected.json").read_text(encoding="utf-8"))["cases"]
 
 
 def scalar(db, sql):
@@ -16,6 +21,9 @@ def scalar(db, sql):
 def case(name, actual, expected, unsafe, note):
     assert actual == expected, (name, actual, expected)
     assert unsafe != expected, (name, "negative case did not discriminate")
+    fixed = FIXED[name[:5]]
+    assert str(expected) == fixed["expected"], (name, "differs from expected.json", str(expected))
+    assert str(unsafe) in fixed["unsafe"], (name, "unsafe value is not listed in expected.json", str(unsafe))
     return {"case": name, "status": "PASS", "expected": str(expected),
             "unsafe": str(unsafe), "note": note}
 

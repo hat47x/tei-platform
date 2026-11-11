@@ -233,6 +233,8 @@ func Reaggregate(c Claim) Report {
 		}
 		total, err := sumIdentified(part.Set, c.Policy)
 		switch {
+		case err == nil && name == ComponentCount && !countsAreNaturals(part.Set):
+			add(Unknown, CodeBindingInvalid, GapMissingSemantics, "component %s must hold non-negative whole numbers of base facts", name)
 		case err == nil:
 			totals[name] = total
 		case errors.Is(err, ErrFanOut):
@@ -340,6 +342,19 @@ func hasNull(set SetRef) bool {
 		}
 	}
 	return false
+}
+
+func countsAreNaturals(set SetRef) bool {
+	for _, row := range set.Rows {
+		if row.Amount.State != derivationref.Present {
+			continue
+		}
+		v, ok := new(big.Rat).SetString(row.Amount.Decimal)
+		if !ok || !v.IsInt() || v.Sign() < 0 {
+			return false
+		}
+	}
+	return true
 }
 
 func sameGroups(a, b SetRef) bool {

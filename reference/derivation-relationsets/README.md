@@ -71,13 +71,21 @@
 | MC-04 部門別人数2と2、兼務者あり | `ineligible`（4を全体人数にしない） | `TestMC04GroupCountsAreNotAddedWhenGroupsOverlap` |
 | MC-05 同じ日の口座残高110と190／日別残高300と300 | 300／`ineligible` | `TestMC05StockIsCombinedAtOnePointNotAcrossTime` |
 | Scope・粒度・軸・分割・時間・単位・NULL方針・完全性の欠落 | `unknown`（部分取得は `ineligible`） | `TestMissingDeclarationsStayUnknown`、`TestCompletenessAndNullAreNotGuessed` |
+| MC-06 行なし／NULLのみ／部分取得／未取得 | 四つを別の状態として扱い、宣言なしに0へ寄せない | `TestMC06EmptyNullPartialAndUnfetchedStayDistinct` |
+| 丸めの段階（0.004が1000件） | 渡された値を正確に合成するだけで丸めない（厳密値なら4、丸め済みなら0） | `TestRoundingStageIsNeverChosenHere` |
+| `count` が整数でない、負 | `unknown` | `TestMeanCountMustBeAWholeNumberOfFacts` |
+
+MC-01〜05の期待値は [`plan/fixtures/metric-aggregation/expected.json`](../../plan/fixtures/metric-aggregation/expected.json) に手計算の値として置き、このReference（`TestHandFixedExpectedMatchesSharedFixture`）と同じディレクトリの `verify_sqlite.py` の両方が照合する。どちらの出力もこのファイルの値として使わない。
+
+JSONでの入出力は [`tools/reference-relation-aggregate`](../../tools/reference-relation-aggregate/README.md) の `-mode reaggregate` を使う。
 
 この判定が示すのは、合成入力について宣言が法則に対して十分かどうかだけである。実SQLの生成、実Providerの計算結果、Hostの認可、Ownerによる業務意味の受理は別に確認する。次は扱わない。
 
 - MC-04の正しい人数3の合成。人物の識別集合が必要で、このReferenceは持たない。
 - 中央値・分位点、時間方向のStockの演算（期末残高、平均残高など）。`unknown` を返す。
 - `Partition` と `Time` の宣言が正しいことの検証。呼び出し側が渡す根拠であり、行の値からは推測しない。
-- `count` が非負整数であることの検査、グループごとに単位が異なる入力。
+- 丸めをどの段階に置くかの宣言と検査。入力が丸め済みかどうかは区別できない（D8 #1705）。
+- グループごとに単位が異なる入力。
 
 ## 焦点試験
 

@@ -1,0 +1,10 @@
+{
+  "note": "Hand-fixed from the base facts of #2593. Not produced by SQL, by verify_sqlite.py or by any TEI code. Values are exact integers or reduced fractions.",
+  "cases": {
+    "MC-01": {"facts": "lines L1=100, L2=100; 3 deliveries", "expected": "200", "unsafe": ["600", "100"]},
+    "MC-02": {"facts": "A: 2 facts of 10; B: 8 facts of 20", "expected": "18", "unsafe": ["15"]},
+    "MC-03": {"facts": "A: 1 of 2; B: 8 of 10", "expected": "3/4", "unsafe": ["13/20"]},
+    "MC-04": {"facts": "A={U1,U2}; B={U2,U3}", "expected": "3", "unsafe": ["4"]},
+    "MC-05": {"facts": "day1: A=100, B=200; day2: A=110, B=190", "expected": "300", "unsafe": ["600"]}
+  }
+}
