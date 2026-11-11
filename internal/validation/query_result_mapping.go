@@ -31,7 +31,7 @@ func validateApplicationQueryResultMappings(w ir.World) []Diagnostic {
 			out = append(out, errFor(
 				querySubject,
 				"UNKNOWN_QUERY_RESULT_ATTRIBUTE",
-				"Query %s のresult column %qは、存在しないSemantic attribute %sを参照しています",
+				"Query %s result column %q refers to Semantic attribute %s, which does not exist",
 				q.ID,
 				mapping.Column,
 				mapping.Attribute,

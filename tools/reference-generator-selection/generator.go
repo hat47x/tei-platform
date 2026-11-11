@@ -53,6 +53,7 @@ var generatorTemplates = map[string]generatorTemplate{
 	"javascript-template":              {file: "templates/template.js.tmpl", id: "line-amount-javascript-template", origin: "template", strategy: "javascript-template", language: LanguageJavaScript, source: "main.js"},
 	"long-running-template":            {file: "templates/template-long-running.go.tmpl", id: "line-amount-long-running-template", origin: "template", strategy: "long-running-template", language: LanguageGo, source: "main.go"},
 	"java-template":                    {file: "templates/Main.java.tmpl", id: "line-amount-java-template", origin: "template", strategy: "java-template", language: LanguageJava, source: "Main.java"},
+	"java-library-template":            {file: "templates/LineAmounts.java.tmpl", id: "line-amount-java-library-template", origin: "template", strategy: "java-library-template", language: LanguageJava, source: "LineAmounts.java"},
 	"python-long-running-template":     {file: "templates/template-long-running.py.tmpl", id: "line-amount-python-long-running-template", origin: "template", strategy: "python-long-running-template", language: LanguagePython, source: "main.py"},
 	"javascript-long-running-template": {file: "templates/template-long-running.js.tmpl", id: "line-amount-javascript-long-running-template", origin: "template", strategy: "javascript-long-running-template", language: LanguageJavaScript, source: "main.js"},
 	"wasm-template":                    {file: "templates/template.go.tmpl", id: "line-amount-wasm-template", origin: "template", strategy: "wasm-template", language: LanguageWasm, source: "main.go"},
@@ -85,6 +86,8 @@ type templateData struct {
 	ScalePow        int
 	ProjectionKind  string
 	Fields          []templateField
+	PackageName     string
+	ClassName       string
 }
 
 // renderCandidate renders one source and its provenance without touching the
@@ -172,6 +175,13 @@ func renderCandidateBytes(contractRaw []byte, strategy, version string, world *i
 		Currency: "JPY", Precision: contract.Rounding.Precision, Scale: contract.Rounding.Scale,
 		IntegerDigits: integerDigits, ScalePow: scalePow,
 	}
+	if tmpl.language == LanguageJava {
+		data.PackageName = "tei.generated.lineamount"
+		data.ClassName = "LineAmount"
+		if tmpl.strategy == "java-library-template" {
+			data.ClassName = "LineAmounts"
+		}
+	}
 	if contract.Projection != nil {
 		data.ProjectionKind = contract.Projection.Kind
 		for _, field := range contract.Projection.Fields {
@@ -189,6 +199,12 @@ func renderCandidateBytes(contractRaw []byte, strategy, version string, world *i
 			return renderedCandidate{}, fmt.Errorf("generated source is not valid Go: %w", err)
 		}
 	}
+	if tmpl.language == LanguageJava {
+		formatted, err = withJavaFailureContract(data, formatted)
+		if err != nil {
+			return renderedCandidate{}, err
+		}
+	}
 	manifest := CandidateManifest{
 		Schema: CandidateSchema, ID: tmpl.strategy, Version: version, Origin: tmpl.origin,
 		Language: tmpl.language, Source: tmpl.source, SourceDigest: digest(formatted),
@@ -203,6 +219,45 @@ func renderCandidateBytes(contractRaw []byte, strategy, version string, world *i
 type renderedCandidate struct {
 	Source   []byte
 	Manifest CandidateManifest
+}
+
+// javaFailureContractFile is the shared TEI failure contract every Java target
+// emits. It is the Java half of internal/failure: the same three axes and the
+// same closed string sets, so a caller reading either side of the boundary
+// branches on one set of names.
+const javaFailureContractFile = "templates/TeiFailure.java.tmpl"
+
+// withJavaFailureContract renders the shared contract and appends it to the
+// candidate source, so every generated Java file declares TeiFailure beside the
+// code that throws it.
+//
+// It is appended rather than prepended because a Java compilation unit allows
+// import declarations only before the first type declaration. Prepending the
+// contract would push the candidate's imports below a class declaration, which
+// javac rejects with "class, interface, or enum expected" at the first import.
+//
+// The contract is package-private rather than public: a Java file may hold
+// several top-level classes but only one public one, and the public name is the
+// target's own entry point. A caller in the same package still catches
+// TeiFailure directly, which is the only access a generated target needs.
+func withJavaFailureContract(data templateData, candidate []byte) ([]byte, error) {
+	raw, err := templateFiles.ReadFile(javaFailureContractFile)
+	if err != nil {
+		return nil, err
+	}
+	parsed, err := template.New("java-failure-contract").Parse(string(raw))
+	if err != nil {
+		return nil, err
+	}
+	var contract strings.Builder
+	if err := parsed.Execute(&contract, data); err != nil {
+		return nil, err
+	}
+	out := make([]byte, 0, len(candidate)+contract.Len()+1)
+	out = append(out, candidate...)
+	out = append(out, '\n')
+	out = append(out, contract.String()...)
+	return out, nil
 }
 
 // Generate renders one candidate source at version 1 from the contract and a

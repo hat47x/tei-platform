@@ -37,7 +37,7 @@ public final class Main {
         try {
             in = parseObject(text);
         } catch (RuntimeException error) {
-            printError("INPUT_INVALID");
+            printTechnicalError("INPUT_INVALID");
             return;
         }
         if (!in.present.contains("quantity") || !in.present.contains("unitPrice")
@@ -59,7 +59,7 @@ public final class Main {
             quantity = new BigDecimal(in.values.get("quantity"));
             price = new BigDecimal(in.values.get("unitPrice"));
         } catch (RuntimeException error) {
-            printError("DECIMAL_INVALID");
+            printTechnicalError("DECIMAL_INVALID");
             return;
         }
         try {
@@ -72,12 +72,28 @@ public final class Main {
             System.out.println("{\"state\":\"present\",\"amount\":\"" + amount.toPlainString()
                     + "\",\"currency\":\"" + CURRENCY + "\"}");
         } catch (ArithmeticException error) {
-            printError("DECIMAL_INVALID");
+            printTechnicalError("DECIMAL_INVALID");
         }
     }
 
     private static void printError(String code) {
-        System.out.println("{\"state\":\"error\",\"code\":\"" + code + "\"}");
+        // The code alone does not say what the caller may do next. A currency or
+        // unit mismatch is a business rejection the caller must not resend
+        // unchanged, and the effect state is known because nothing ran.
+        System.out.println("{\"state\":\"error\",\"code\":\"" + code + "\","
+                + "\"kind\":\"" + TeiFailure.Kind.BUSINESS_REJECTION
+                + "\",\"retryable\":\"" + TeiFailure.RetryPolicy.NOT_RETRYABLE
+                + "\",\"effectUnknown\":false}");
+    }
+
+    private static void printTechnicalError(String code) {
+        // A failure inside the target is technical, and whether it applied
+        // anything is not decidable from here, so the caller must look the
+        // result up before resending rather than send again blindly.
+        System.out.println("{\"state\":\"error\",\"code\":\"" + code + "\","
+                + "\"kind\":\"" + TeiFailure.Kind.TECHNICAL_FAILURE
+                + "\",\"retryable\":\"" + TeiFailure.RetryPolicy.LOOKUP_FIRST
+                + "\",\"effectUnknown\":true}");
     }
 
     private static Input parseObject(String text) {

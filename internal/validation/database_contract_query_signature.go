@@ -42,7 +42,7 @@ func ValidateDatabaseContractQuerySignatures(w ir.World) []Diagnostic {
 						out = append(out, errFor(
 							querySubject,
 							"DATABASE_CONTRACT_QUERY_INPUT_NAME_REQUIRED",
-							"Database Contract Query %s / %s に名前のないinputがあります",
+							"Database Contract Query %s / %s has an input without a name",
 							contract.ID,
 							query.Name,
 						))
@@ -51,7 +51,7 @@ func ValidateDatabaseContractQuerySignatures(w ir.World) []Diagnostic {
 							out = append(out, errFor(
 								querySubject,
 								"INVALID_DATABASE_CONTRACT_QUERY_INPUT_NAME",
-								"Database Contract Query %s / %s のinput名 %q はLocalNameとして不正です",
+								"Database Contract Query %s / %s has input name %q, which is not a valid LocalName",
 								contract.ID,
 								query.Name,
 								input.Name,
@@ -61,7 +61,7 @@ func ValidateDatabaseContractQuerySignatures(w ir.World) []Diagnostic {
 							out = append(out, errFor(
 								querySubject,
 								"DUPLICATE_DATABASE_CONTRACT_QUERY_INPUT",
-								"Database Contract Query %s / %s はinput %sを複数回宣言しています",
+								"Database Contract Query %s / %s declares input %s more than once",
 								contract.ID,
 								query.Name,
 								input.Name,
@@ -75,7 +75,7 @@ func ValidateDatabaseContractQuerySignatures(w ir.World) []Diagnostic {
 						out = append(out, errFor(
 							querySubject,
 							"DATABASE_CONTRACT_QUERY_INPUT_TYPE_REQUIRED",
-							"Database Contract Query %s / %s のinput %sにはSemantic型が必要です",
+							"Database Contract Query %s / %s input %s needs a Semantic type",
 							contract.ID,
 							query.Name,
 							input.Name,
@@ -84,7 +84,7 @@ func ValidateDatabaseContractQuerySignatures(w ir.World) []Diagnostic {
 						out = append(out, errFor(
 							querySubject,
 							"UNKNOWN_DATABASE_CONTRACT_QUERY_INPUT_TYPE",
-							"Database Contract Query %s / %s のinput %sは、存在しないSemantic型 %sを参照しています",
+							"Database Contract Query %s / %s input %s refers to Semantic type %s, which does not exist",
 							contract.ID,
 							query.Name,
 							input.Name,
@@ -97,7 +97,7 @@ func ValidateDatabaseContractQuerySignatures(w ir.World) []Diagnostic {
 					out = append(out, errFor(
 						querySubject,
 						"DATABASE_CONTRACT_QUERY_RESULT_REQUIRED",
-						"Database Contract Query %s / %s はsignatureを持つため、result Semantic Dataが必要です",
+						"Database Contract Query %s / %s has a signature, so it needs a result Semantic Data",
 						contract.ID,
 						query.Name,
 					))
@@ -105,7 +105,7 @@ func ValidateDatabaseContractQuerySignatures(w ir.World) []Diagnostic {
 					out = append(out, errFor(
 						querySubject,
 						"UNKNOWN_DATABASE_CONTRACT_QUERY_RESULT",
-						"Database Contract Query %s / %s は、存在しないresult Semantic Data %sを参照しています",
+						"Database Contract Query %s / %s refers to result Semantic Data %s, which does not exist",
 						contract.ID,
 						query.Name,
 						query.Result,
@@ -116,7 +116,7 @@ func ValidateDatabaseContractQuerySignatures(w ir.World) []Diagnostic {
 					out = append(out, errFor(
 						querySubject,
 						"DATABASE_CONTRACT_QUERY_RESULT_CARDINALITY_REQUIRED",
-						"Database Contract Query %s / %s はsignatureを持つため、result cardinalityが必要です",
+						"Database Contract Query %s / %s has a signature, so it needs a result cardinality",
 						contract.ID,
 						query.Name,
 					))
@@ -124,7 +124,7 @@ func ValidateDatabaseContractQuerySignatures(w ir.World) []Diagnostic {
 					out = append(out, errFor(
 						querySubject,
 						"INVALID_DATABASE_CONTRACT_QUERY_RESULT_CARDINALITY",
-						"Database Contract Query %s / %s のresult cardinality %q は未定義です",
+						"Database Contract Query %s / %s has result cardinality %q, which is undefined",
 						contract.ID,
 						query.Name,
 						query.ResultCardinality,

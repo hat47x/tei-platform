@@ -1,0 +1,10 @@
+Two broken files, one validate run:
+
+  applications/a/application.tei:3:5  error  PARSE_ERROR  expected database, uses, or binds
+
+Only a is reported. Run each alone and both are broken:
+
+  a alone -> applications/a/application.tei:3:5 PARSE_ERROR
+  b alone -> applications/b/application.tei:2:5 PARSE_ERROR
+
+The load stops at the first syntax error by design.

@@ -102,7 +102,7 @@ func TestLoadContractQuerySQLRealizationRejectsDuplicateIdentity(t *testing.T) {
 
 	result := Result{Sources: map[string]SourceLocation{}, sourceSnapshotRoot: root, sourceSnapshot: map[string][]byte{}}
 	err := loadContractQuerySQLRealizations(root, &result)
-	if err == nil || !strings.Contains(err.Error(), "は既に") || !strings.Contains(err.Error(), "master_data/master_data.customer/find_by_id/sql/oracle") {
-		t.Fatalf("同じtarget + providerへの複数SQL realizationを曖昧に共存させています: %v", err)
+	if err == nil || !strings.Contains(err.Error(), "already defined") || !strings.Contains(err.Error(), "master_data/master_data.customer/find_by_id/sql/oracle") {
+		t.Fatalf("multiple SQL realizations were allowed to coexist ambiguously for the same target + provider: %v", err)
 	}
 }

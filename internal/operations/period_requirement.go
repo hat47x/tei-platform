@@ -78,6 +78,33 @@ func CheckCloseRequirement(requirement PeriodRequirement, from, to PeriodState, 
 		ErrRequirementNotRun, requirement.Period, requirement.Capability, ranCapability, from, to)
 }
 
+// CheckReopenRequirement refuses a reopen that did not run the period's declared
+// correction capability.
+//
+// Reopening a closed period is a correction after closing: it takes the period back
+// to open so its data can be changed. The command path already asks for the
+// declared correction capability (COMMAND_PERIOD_CORRECTION_REQUIRED), but the
+// period state can be advanced by the operations path too, and that path checked
+// only the close requirement. A reopen could therefore move a closed period to open
+// without the correction capability ever running — the declaration would hold on
+// one entrance and not the other.
+//
+// Only the closed-to-open step is guarded, and only when the period declares a
+// correction capability: a period that declares none has nothing to require here.
+func CheckReopenRequirement(requirement PeriodRequirement, from, to PeriodState, ranCapability core.CanonicalID) error {
+	if requirement.Correction == "" {
+		return nil
+	}
+	if from != PeriodClosed || to != PeriodOpen {
+		return nil
+	}
+	if ranCapability == requirement.Correction {
+		return nil
+	}
+	return fmt.Errorf("%w: period %s reopens only through correction capability %s, but %s was run",
+		ErrRequirementNotRun, requirement.Period, requirement.Correction, ranCapability)
+}
+
 // ErrRequirementNotRun reports that a declared requirement was not satisfied, so a
 // caller can tell it apart from an invalid transition.
 var ErrRequirementNotRun = fmt.Errorf("declared period requirement was not run")

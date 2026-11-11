@@ -45,6 +45,45 @@ func (b *StudioBridge) ObserveXead(workspaceID, relativePath string) studiohost.
 	return b.host.ObserveXead(workspaceID, relativePath)
 }
 
+// The projections below exist on the host and are called by
+// assets/client.mjs, which names them as main.StudioBridge methods. They were
+// missing from this service, so every Workbench view and command action
+// reached a method that was never registered and failed at the binding
+// (#4295). Each one delegates; the host decides what a projection means.
+
+func (b *StudioBridge) ViewPattern(workspaceID, applicationID, patternID string) studiohost.ViewResponse {
+	return b.host.ViewPattern(workspaceID, applicationID, patternID)
+}
+func (b *StudioBridge) ViewApplication(workspaceID, applicationID string) studiohost.ViewResponse {
+	return b.host.ViewApplication(workspaceID, applicationID)
+}
+func (b *StudioBridge) ViewPackage(workspaceID, applicationID, packageID string) studiohost.PackageResponse {
+	return b.host.ViewPackage(workspaceID, applicationID, packageID)
+}
+func (b *StudioBridge) PlanCommand(workspaceID, applicationID, patternID, capabilityID string, inputs map[string]string) studiohost.CommandPlanResponse {
+	return b.host.PlanCommand(workspaceID, applicationID, patternID, capabilityID, inputs)
+}
+func (b *StudioBridge) ExecuteCommand(workspaceID, applicationID, patternID, capabilityID string, inputs map[string]string) studiohost.CommandRunResponse {
+	return b.host.ExecuteCommand(workspaceID, applicationID, patternID, capabilityID, inputs)
+}
+func (b *StudioBridge) ExecuteCommandWithPeriods(workspaceID, applicationID, patternID, capabilityID string, inputs, periods map[string]string) studiohost.CommandRunResponse {
+	return b.host.ExecuteCommandWithPeriods(workspaceID, applicationID, patternID, capabilityID, inputs, periods)
+}
+func (b *StudioBridge) ExecuteCommandWithPolicy(workspaceID, applicationID, patternID, capabilityID string, inputs, periods map[string]string, allowed []string) studiohost.CommandRunResponse {
+	return b.host.ExecuteCommandWithPolicy(workspaceID, applicationID, patternID, capabilityID, inputs, periods, allowed)
+}
+
+// ExecuteCommandWithReferenceStore applies the declared effect to an in-memory
+// reference store, so the after-change phases have a point to run at.
+//
+// The reference execution still writes nothing durable: the store lives for the
+// length of this call and the response keeps saying so. Asking for it is
+// opt-in, and the Workbench sends `applyToReferenceStore` only when the
+// operator ticks the box.
+func (b *StudioBridge) ExecuteCommandWithReferenceStore(workspaceID, applicationID, patternID, capabilityID string, inputs, periods map[string]string, allowed []string) studiohost.CommandRunResponse {
+	return b.host.ExecuteCommandWithReferenceStore(workspaceID, applicationID, patternID, capabilityID, inputs, periods, allowed)
+}
+
 func main() {
 	var paths workspaces
 	var port int

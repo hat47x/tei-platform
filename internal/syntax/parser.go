@@ -2532,6 +2532,20 @@ func (p *Parser) expectEOF() error {
 	}
 	return nil
 }
+
+// blockOnlyEntryHint names the block an entry belongs to when that entry only
+// exists inside a block. It returns "" for anything else.
+func blockOnlyEntryHint(text string) string {
+	switch text {
+	case "bind":
+		return "environment staging { ... ; bind <application>.<alias> -> <database-instance> }"
+	case "resource", "grant", "lease-policy", "deployment-executor", "observation-provider", "evidence-provider", "feature":
+		return "environment staging { ... ; " + text + " ... }"
+	case "column", "primary-key", "index":
+		return "persist <database>.<id> { ... ; " + text + " ... }"
+	}
+	return ""
+}
 func (p *Parser) errAt(t Token, msg string) error {
 	return &ParseError{Pos: t.Start, End: t.End, Msg: msg}
 }
@@ -2861,4 +2875,13 @@ func (p *Parser) parseSemanticRunPlan(namespace core.CanonicalID) (semantic.RunP
 		}
 	}
 	return plan, nil
+}
+
+// ParseRelationQueryは、Relation Queryブロックを読み取るための簡易wrapperである。
+func (p *Parser) ParseRelationQuery(owner core.CanonicalID) (query.RelationQuery, error) {
+	authoring, err := p.ParseRelationQueryAuthoring(owner)
+	if err != nil {
+		return query.RelationQuery{}, err
+	}
+	return authoring.Value, nil
 }

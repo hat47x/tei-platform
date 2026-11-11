@@ -1,0 +1,16 @@
+After the slice validated, every artefact read back through inspect:
+
+  database              master_data          ok
+  environment           development          ok instances=2
+  persistence-mapping   master_data.customer ok cols=2
+  solution-release      customer_rollout     ok versions=['1.0.0']
+
+But model overview still answered:
+
+  sectionScope.notCoveredKinds: 14 kinds, including database,
+  persistence-mapping, environment and solution-release
+
+From the response alone, a designer who has just added a persistence mapping
+cannot tell whether the declaration landed or the kind is simply never sectioned.
+That is the same ambiguity round 59 fixed for the covered side, left open on the
+not-covered side.

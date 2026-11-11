@@ -417,13 +417,3 @@ func JSONCanonicalize(v any) string {
 	}
 	return dst.String()
 }
-
-// SemanticNormalize strips known non-semantic fields from an artifact for
-// semantic comparison. The current implementation normalizes timestamps and
-// UUIDs; extend as needed for domain-specific rules.
-func SemanticNormalize(content string) string {
-	// Placeholder: in a full implementation this would apply domain-specific
-	// normalization rules (timestamp stripping, UUID anonymization, path
-	// prefix normalization, etc.). For now we return the content unchanged.
-	return content
-}

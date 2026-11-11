@@ -1,0 +1,4 @@
+workspace: vs_bear_boundary_probe
+formatVersion: 1
+sources:
+  - semantic
