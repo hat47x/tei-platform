@@ -151,6 +151,48 @@ SUI固有の語彙（`Card`、`Island`、`human_reviewed`）が共通部品の�
 - `TEI Cache Full vs Incremental Verification` ワークフローの `cache-verification` ジョブは、`actions/upload-artifact` のSHA解決に失敗して全PRで赤くなります（同時刻の無関係ブランチでも同一失敗を確認）。**自分の変更の失敗ではありません**。追跡しないでください。
 - `TEI PR・main 健全性確認` の `repository-health` は、GitHub-hostedランナーが割り当てられず保留になることがあります（既知のinfra Issue）。ローカルで `go test ./tools/repository-plan-check/... -count=1` を実行し、その結果をPR本文に書きます。
 - このリポジトリでは同時に複数のセッションが動くことがあります。作業は専用のworktreeで分離し、`main`を直接変更しません。
+- **worktreeが消えることがあります。** 2026-11-11の作業中、`D:\GIT\hat47x\.wt_sui_tei_tasks` などのworktreeが、並行セッションのcleanupと推定される処理で作業中に削除されました（`internal/`や`go.mod`が無い状態になった）。文書だけの作業なら、**GitHub上のbranchを直接cloneして編集・commit・push**する方が安全です。worktreeに依存する場合は、変更のたびに早めにcommit・pushして復元可能にしてください。
+- **`plan/design/README.md` はUTF-8 BOM付きです。** BOMを落としたまま保存すると `TestMarkdownTitleAppearsOnce` が「title行が繰り返されている」と誤検知します（BOM無しの先頭行とBOM込みの行が別物として数えられるため）。編集後はBOMの有無を確認してください。PowerShellなら次のように確認・復元できます。
+
+```powershell
+$b=[System.IO.File]::ReadAllBytes("plan/design/README.md")
+if ($b[0] -ne 0xEF) { "BOMが無い" } else { "BOMあり" }
+```
+
+**着手前の確認コマンド（共通）**
+
+```bash
+go test ./tools/repository-plan-check/... -count=1   # 索引・リンク・title重複の検査
+go run ./cmd/tei validate -workspace reference/workspace   # Canonical定義の検証（M2以降）
+```
+
+**タスク別の開始条件（最初に確かめること）**
+
+作業を始める前に、次の表の「確かめること」を実行し、結果をIssueかPRへ書きます。確かめられない場合は、その制約を記録して先へ進みます（止まりません）。
+
+| タスク | 最初に確かめること | コマンド・参照 |
+| --- | --- | --- |
+| M1 | TAIの現行schemaが`source.status`と`disclosure`を拒否しないか（`additionalProperties`の扱い）。consumer（SUI）が省略時に`unknown`へ倒れること | `cd tai-pleroma && python integrations/pilot-sui-document/assembler/test_artifact_schema.py`、`cd sui-sensemaking/03_Implement/backend && pytest tests/test_tei_sui_reference.py -k source` |
+| M2 | Reference Workspaceの現在のワークスペースと、`sui.*`が未定義であること（名前衝突が無いこと） | `go run ./cmd/tei validate -workspace reference/workspace`、`rg -n "sui\.(document|card|island)" reference/` |
+| M3 | `#2488`が観測した2つの拒否が、現行mainでも再現すること（直っていれば前提が変わる） | `cd tei-platform && go test ./tools/reference-generator-selection/... -count=1`、`#2488`の本文 |
+| M4 | `#2516`の現在の設計と、SUI側の項目表（`inquiry_bundle_safe_mode.ts`の`*_FIELDS`）が食い違っていないか | `#2516`の本文、`sui-sensemaking/03_Implement/frontend/src/**/inquiry_bundle_safe_mode.ts` |
+| M5 | `#2743`のSource indexの現在の形と、`revoked`/`expired`の語彙が既にあるか | `#2743`の本文、`rg -n "revoked|expired" plan/ docs/` |
+| M6 | SUI側の欠落4経路の試験が今もあるか（既に足されていれば受入を変える） | `cd sui-sensemaking/03_Implement/backend && pytest tests -k "list or export_audit or audit" --collect-only -q` |
+
+**M1の試験fixture（案）**。追加は省略可能なので、次の3つで「宣言なし」「失効」「制限」を分けて確かめます。
+
+| Fixture | 内容 | 期待 |
+| --- | --- | --- |
+| `artifact-baseline.json` | 現行のまま（`source.status`も`disclosure`も無い） | TAIのschema検証が通り、SUIのconsumerが`source-status: unresolved`を損失に出す |
+| `artifact-revoked.json` | `source.status="revoked"` | SUIが409 `sui_reference_source_revoked`、応答にIDが無い |
+| `artifact-restricted.json` | `disclosure.scope="restricted"` | SUIが403 `sui_reference_disclosure_restricted`、種別・ID・件数が無い |
+
+**M2の観測（案）**。定義を足した後、次の4つを報告できること。
+
+1. `sui.containment`と`sui.affiliation`が別のrelationとして解決する（一つのIDに畳まれない）
+2. `sui.card.text`が同一でも、2つのinstanceが2つのoccurrenceとして残る
+3. `sui.document` / `sui.card` / `sui.island` が一意に解決する（重複定義が無い）
+4. Tree閲覧状態・canvas transform・island geometryが「定義に無い」として列挙できる（宣言しないことの観測）
 
 ### 5.1 M0 read-only参照の実装（**完了**: SUI PR #3429）
 
@@ -176,7 +218,6 @@ SUI固有の語彙（`Card`、`Island`、`human_reviewed`）が共通部品の�
 }
 ```
 
-  - `source.status`: `active` / `revoked` / `expired`。**省略と未知の文字列は`unknown`**。`unknown`を`active`に読み替えない
   - `source.status`: `active` / `revoked` / `expired`。**省略と未知の文字列は`unknown`**。`unknown`を`active`に読み替えない
   - `disclosure.scope`: `internal` / `restricted`。省略は制限なし。`restricted`は文書全体を非返却（種別・ID・件数も出さない）
   - TAIの現行schemaは`source`に`teiCommit`と`contracts`を要求し、`disclosure`は存在しない。追加は**optional**とし、既存artifactはそのままvalidにする
