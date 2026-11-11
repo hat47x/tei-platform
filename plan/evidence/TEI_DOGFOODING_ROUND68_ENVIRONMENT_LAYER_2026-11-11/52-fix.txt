@@ -1,0 +1,14 @@
+Added `database` and `environment` to InspectionSubjectKinds with a dispatch each.
+Accepted kinds 16 -> 18; the MCP adapter pin follows.
+
+  database     sales_core -> ok  id=sales_core  sourceStatus=indexed
+  environment  staging    -> ok  id=staging     sourceStatus=indexed
+  database     nope_core  -> SUBJECT_NOT_FOUND
+  environment  nope       -> SUBJECT_NOT_FOUND
+
+Both report sourceStatus=indexed, unlike the round-58 delivery-layer kinds which
+report not-indexed: the Source Index already recorded these.
+
+database-instance was deliberately NOT added. It is not a World-level declaration;
+its identity is scoped to its environment, so a bare kind would be ambiguous. Read
+it through the environment's `instances`.

@@ -1,0 +1,11 @@
+internal/workspace gained CheckWorkspaceUnreadSources, called AFTER
+markManagedFilesReadByLoader:
+
+  markManagedFilesReadByLoader(&r)
+  r.SourceRootFindings = append(r.SourceRootFindings, CheckWorkspaceUnreadSources(r.ManagedFiles)...)
+
+Order matters: ReadByLoader is only known after marking, so this report cannot be
+produced alongside the other managed-file findings.
+
+Reported when: ReadByLoader == false AND Extension == ".tei" AND the name check
+does not already explain it (no duplicate findings).

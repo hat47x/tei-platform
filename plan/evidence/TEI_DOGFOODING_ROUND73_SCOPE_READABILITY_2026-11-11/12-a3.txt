@@ -1,0 +1,1 @@
+error	DATABASE_RELEASE_NOT_MANAGED_HERE	database release 2.1.0 targets database master_data with ownership external-observed

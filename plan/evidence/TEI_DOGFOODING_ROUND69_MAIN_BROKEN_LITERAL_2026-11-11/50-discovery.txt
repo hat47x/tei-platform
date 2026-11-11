@@ -1,0 +1,16 @@
+Found while running `go vet ./...` during round 68:
+
+  tools/reference-mcp-readonly-adapter/source_ab_consumer_parity_test.go:122:13:
+    string literal not terminated
+
+Confirmed on the branch base (12762bdd3) with no local changes, and again on the
+then-latest main (be814895e). The file was broken on main, not by my change.
+
+The block:
+
+  t.Fatalf("%s: actual CLI and MCP consumer documents differ:
+  CLI=%v
+  MCP=%v", version, cliDoc, mcpDoc)
+
+The Go string literal contains REAL newlines instead of \n, so the literal ends at
+line 122 and the following lines are parsed as code.

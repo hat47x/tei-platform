@@ -183,7 +183,7 @@ func helpText(fs *flag.FlagSet, command string) string {
 			// A section count is not a count of everything the workspace declares:
 			// the sections mirror the model catalog (#4128). Say so here, where a
 			// designer looks before reading the number.
-			fmt.Fprintf(&out, "\nsections mirror the model catalog roots. The response's sectionScope names\nthe kinds the catalog covers and the declared kinds it does not, so a section\ncount is never a count of every declaration.\n")
+			fmt.Fprintf(&out, "\nsections mirror the model catalog roots. The response's sectionScope names\nthe kinds the catalog covers, the declared kinds it does not, and which of those\n`inspect` can still read by name, so a section count is never a count of every\ndeclaration and a missing section never means a missing declaration.\n")
 			return out.String()
 		}
 		if command == "dbcheck" {
