@@ -178,6 +178,9 @@
 | [`TEI_SHO_OKF_DOMAIN_LINT_DOCUMENT_UNIT_2026-11.md`](TEI_SHO_OKF_DOMAIN_LINT_DOCUMENT_UNIT_2026-11.md) | TEI/SHOのOKF知識バンドルとドメインLint：段階導入の検証計画 |
 | [`TEI_SHO_DOCUMENT_DRAFT_INTEGRATION_2026-11.md`](TEI_SHO_DOCUMENT_DRAFT_INTEGRATION_2026-11.md) | TEI受理済みモデルの一要素と一関係を、SourceとRevisionを保持した説明文書DraftとしてSHOへ渡し、編集・保存・再開・モデル改版時の再確認までを行う最小統合機構（[SHO #19](https://github.com/hat47x/sho-composer/issues/19)・[SHO #4](https://github.com/hat47x/sho-composer/issues/4)・[SHO #6](https://github.com/hat47x/sho-composer/issues/6)、[#3394](https://github.com/hat47x/tei-platform/issues/3394)のSHO文書段、実装済みの最小基線） |
 | [`TEI_SHO_DOCUMENT_DRAFT_NEXT_STAGES_2026-11.md`](TEI_SHO_DOCUMENT_DRAFT_NEXT_STAGES_2026-11.md) | 上の契約を段階2〜5（CRUD表・三要素分析図・仕様書・固定納品版）へ伸ばす実行計画と、相互CI・Studio実組込み・逆方向禁止・`*.tei.md`取込みの横断課題、Owner判断事項の一覧（実装前設計） |
+| [`TEI_STUDIO_SHO_EMBEDDING_FORM_2026-11.md`](TEI_STUDIO_SHO_EMBEDDING_FORM_2026-11.md) | TEI Studio から SHO 文書編集部品を利用する形態の実測と決定（子プロセス起動を維持）・失敗分類6種・未測定（配布・Linux/macOS）（代行決定済み） |
+| [`DOCUMENT_DRAFT_CITATION_AND_OCCURRENCE_ID_2026-11.md`](DOCUMENT_DRAFT_CITATION_AND_OCCURRENCE_ID_2026-11.md) | Draft 引用の解決（`recorded-not-resolved` のまま）と Occurrence ID の永続性（snapshot-local のまま）の代行決定と根拠・撤回条件 |
+| [`TEI_MD_READ_SIDE_DESIGN_2026-11.md`](TEI_MD_READ_SIDE_DESIGN_2026-11.md) | SHO 保存物（`*.tei.md`）の TEI 側読み取り設計。読み取り側が答えるべき4つ（R-01〜04）・Parser完了後も変えない境界・Parser 入出力契約。実装は Parser（#3346）完了後（設計のみ） |
 
 ## 関連する参照事例と評価
 
@@ -344,7 +347,7 @@ S1 realistic intent / candidate frontier
 - [権限の強制の適用計画](PERMISSION_ADOPTION_PLAN_2026-11.md)（要求＝能力、付与＝環境。実行時に再確認して記録する）
 - [動的な出力パスと宣言スコープ](DYNAMIC_PATH_GRANT_DESIGN_2026-11.md)（環境の付与は静的、実行時のパスは動的。両者の不一致と選択肢）
 
-# 機能設計文書
+## 機能設計文書
 
 ここには、複数のIssueにまたがる機能について、意味モデル、記述方法、検証、実行時の境界をまとめた設計文書を置きます。採用前の案も、対象となるIssueと文書の状態を冒頭に明記して管理します。
 

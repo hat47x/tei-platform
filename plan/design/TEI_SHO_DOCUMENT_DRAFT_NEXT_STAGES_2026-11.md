@@ -26,10 +26,10 @@
 
 | 未実装 | この文書の段階 |
 | --- | --- |
-| 子プロセス vs Wails資産のA/B測定 | 横断C-2（数値目標を先に決めない） |
+| 配布（インストーラ・bundle サイズ）と Linux/macOS 実測 | 横断C-2 |
 | 文書→モデルの逆方向経路 | 横断C-3（経路は作らない） |
 | `*.tei.md` のTEI側取込み | 横断C-5（Parser未束綝でブロック） |
-| 再投影のマージ方針 | 横断C-4（Owner判断ゲート） |
+| 再投影の自動マージ | 横断C-4（**代行決定済み**: 作らない。許可リストのみ） |
 
 ## 1. 段階2：`crud-table`（2026-11-11 実装済み）
 
@@ -106,8 +106,9 @@
 - **最小実装**：`cmd/tei-studio` に**限定read-onlyの試作面**を1つ追加し、`bin/sho-doc.cjs` を子プロセスとして起動してopen/resumeだけを行う（保存は明示操作）。起動・標準入出力・失敗分類・Port認可を観測する。
 - **独立Expected**：C2-a Studio起動でdraft open→resumeが通り、生成領域が`intact`。C2-b SHO不在・版不一致・起動失敗を区別し、Studioが沈まない。C2-c Studioは意味を解釈しない（表示はDraftの文字列をそのまま）。C2-d 保存はStudio側から行わない（SHOの明示操作のみ）。
 - **実装状況（2026-11-11）**：`cmd/tei-studio/sho_document.go` に子プロセス起動のrelayを実装。`SHO_DOC_COMMAND`（絶対Path・**設定であり探索ではない**）を指して`open`/`resume`を呼ぶ。receiptは**解釈せずそのまま`result`として返す**。失敗codeは `sho-not-configured`・`sho-invalid-argument`・`sho-spawn-failed`・`sho-timeout`・`sho-nonzero-exit`・`sho-receipt-unreadable` の6種。**`save`は公開しない**。C2-a〜dは試験でPASS（stub 8件＋実CLI結合1件・通常CIはskip）。
-- **Done means**：C2-a〜dが記録され、組込み形態の選択根拠（起動時間・失敗分類・配布）が文書化される。
-- **非目標**：Studio製品化・共通Host・SHO全Pluginの自動ロード。**子プロセス vs Wails資産のA/B測定は未実施**（数値目標を先に決めない）。
+- **形態の決定（2026-11-12・代行）**: **子プロセス起動を維持**。実測 130–190 ms/呼出（Windows・Node 24.19.0・`scripts/tei-sho-embed-measure.cjs`）。Wails 資産化は `bin/sho-doc.cjs` が CommonJS の `.cjs` で WebView 内で評価される JS ではないため、資産にしても起動は `node` が行い **spawn コストは同じ**（梱包の複雑さだけが増える）。外部プロセスは stdio プロトコルが存在しない。**数値目標は先に置かず、実測を材料に選んだ**。詳しくは [TEI_STUDIO_SHO_EMBEDDING_FORM_2026-11.md](TEI_STUDIO_SHO_EMBEDDING_FORM_2026-11.md)。
+- **Done means**：C2-a〜dが記録され、組込み形態の選択根拠（起動時間・失敗分類・配布）が文書化される。**達成**（配布の実測は未実施）。
+- **非目標**：Studio製品化・共通Host・SHO全Pluginの自動ロード。**配布（インストーラ・bundle サイズ）と Linux/macOS での実測は未実施**。撤回条件は設計文書に記載。
 
 ### C-3 逆方向（文書→モデル）の経路は作らない
 
@@ -127,9 +128,10 @@
 
 - **現状**：TEI mainのLoaderは未束綝のMarkdown Sourceを`TEI_MD_PARSER_UNBOUND`で拒否する（[#3346](https://github.com/hat47x/tei-platform/issues/3346)・[#2621](https://github.com/hat47x/tei-platform/issues/2621)）。SHOで`*.tei.md`を保存できてもTEI Accepted Sourceではない。
 - **最小実装（Parser完成後）**：`tei model document-import -draft <file> -workspace <root>` を**read-only候補化**として追加する。取込みは（1）SHO保存byteのdigest照合、（2）Parser/Role/Source Indexでの解釈、（3）Owner受理、の3段階を別表示にする。
-- **独立Expected**：C5-a Parser未束綝のまま実行すると`parser-unbound`（取込み済みと表示しない）。C5-b SHO保存byteとTEIが見たbyteのdigest不一致は`source-byte-mismatch`。C5-c 受理前のCandidateは`external-candidate`のまま（Canonicalにしない）。
-- **Done means**：Parser束綝後にC5-a〜cがPASS。**それまで取込み経路は実装しない**。
-- **非目標**：新Markdown Grammarの決定（既存Ownerの比較に委ねる）。
+- **着手可能範囲（2026-11-12・設計のみ）**: [TEI_MD_READ_SIDE_DESIGN_2026-11.md](TEI_MD_READ_SIDE_DESIGN_2026-11.md) に、読み取り側が答えるべき4つ（R-01 Draft identity・R-02 occurrence状態・R-03 著者領域・R-04 モデル改版）・Parser完了後も変えない境界4件・Parserへ期待する入出力契約を整理した。**実装は含まない**。
+- **独立Expected**：C5-a Parser未束綝のまま実行すると`parser-unbound`（取込み済みと表示しない）。C5-b SHO保存byteとTEIが見たbyteのdigest不一致は`source-byte-mismatch`。C5-c 受理前のCandidateは`external-candidate`のまま（Canonicalにしない）。R-01〜04は未実行。
+- **Done means**：Parser束綝後にC5-a〜cとR-01〜04がPASS。**それまで取込み経路は実装しない**。
+- **非目標**：新Markdown Grammarの決定（既存Ownerの比較に委ねる）。`*.tei.md` を Workspace の Source root に置くかは未決。
 
 ## 6. 全体の「完了」定義と停止線
 
@@ -151,19 +153,24 @@
 
 ## 7. 最初の3手（次実装者が最初にやること）
 
-1. **C-2 のA/B測定** — 子プロセス起動／Wails資産／外部プロセスの起動時間・失敗分類・配布を実測する。数値目標を先に決めず、測定してから形態を選ぶ。
-2. **C-4（再投影方針）のOwner判断起案** — 実装より先に判断。受入条件がこれに依存する。
-3. **`*.tei.md` のTEI側取込み** — Parser（[#3346](https://github.com/hat47x/tei-platform/issues/3346)）の完了待ち。完了後はSHO保存物をTEI側で読む経路を、Parser境界に沿って設計する。
+1. **配布の実測**（C-2 の残り）— インストーラ・bundle サイズ・Linux/macOS での起動時間を測る。子プロセス維持は決まったので、測って配布方針を決める。
+2. **`*.tei.md` の読み取り側設計**（C-5）— Parser（[#3346](https://github.com/hat47x/tei-platform/issues/3346)）の完了待ち。設計は着手可能。
+3. **再投影の自動マージ**（C-4）— 代行決定で「作らない」と決めた。覆すには ADR と、著者編集を保持したまま再生成できるアルゴリズムの独立Expected付き実証が必要。
 
-C-3は全段階で常に維持。**全5段階が実装済み**になったので、段階の追加ではなく「どの段階を製品経路に載せるか」の判断が次になる。
+C-3は全段階で常に維持。**全5段階と C-1・C-2・C-4 が実装・決定済み**になったので、次は「どの段階を製品経路に載せるか」の判断になる。
 
-## 8. Owner判断が必要な事項（一覧）
+## 8. Owner判断が必要な事項（一覧と代行決定の記録）
 
 | # | 事項 | 影響する段階 | 現状の既定案 |
 | --- | --- | --- | --- |
-| 1 | Draft引用（`recorded-not-resolved`）とSHO引用Registerの関係 | 全段階 | 別モードとして併存。統合するかはOwner判断 |
-| 2 | Occurrence IDの永続性（現状はsnapshot-local） | 段階4・5 | 永続化しない。必要ならADR |
+| 1 | Draft引用（`recorded-not-resolved`）とSHO引用Registerの関係 | 全段階 | **代行決定済み: `recorded-not-resolved` のまま**。解決はConsumerの明示操作。Registerとは別モードとして併存 |
+| 2 | Occurrence IDの永続性（現状はsnapshot-local） | 段階4・5 | **代行決定済み: snapshot-local のまま**。永続化が必要ならADRを先に通す |
 | 3 | 固定納品版のpinの意味と再納品条件 | 段階5 | pin後は失効報告のみ、自動更新しない |
-| 4 | SHO文書編集部品の配置（SHO standalone／TEI Studio組込み） | C-2 | CLI部品境界。組込み形態は測定後に決定 |
+| 4 | SHO文書編集部品の配置（SHO standalone／TEI Studio組込み） | C-2 | **代行決定済み: 子プロセス起動を維持**（実測 130–190 ms/呼出） |
 | 5 | 文書→モデルの変更提案レーンの要否 | C-3 | 経路を作らない（既存の変更計画・Owner受理のみ） |
 | 6 | CRUD・三要素の意味的解釈（業務意味） | 段階2・3 | [THREE_ELEMENT_OWNER_ACCEPTANCE_ITEMS_2026-11.md](../issues/THREE_ELEMENT_OWNER_ACCEPTANCE_ITEMS_2026-11.md)の未決事項のまま |
+| 7 | 再投影と著者編集の突合せ規則 | 全段階 | **代行決定済み: 自動マージは作らない。occurrence 単位の許可リストのみ** |
+
+代行決定したのは 1・2・4・7。1と2は「作らない」決定（contract が変わるため）。3・5・6 は従来どおり未決で、既定案を記載している。決定の詳細は
+[DOCUMENT_DRAFT_CITATION_AND_OCCURRENCE_ID_2026-11.md](DOCUMENT_DRAFT_CITATION_AND_OCCURRENCE_ID_2026-11.md) と
+[TEI_STUDIO_SHO_EMBEDDING_FORM_2026-11.md](TEI_STUDIO_SHO_EMBEDDING_FORM_2026-11.md)。
