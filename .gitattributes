@@ -313,3 +313,6 @@
 
 # Plugin resolve diagnostics output is hashed as raw bytes by its README.
 /plan/evidence/PLUGIN_RESOLVE_DIAGNOSTICS_2026-11-11/** -text
+
+# Subagent depth-4 observations are hashed as raw bytes.
+/plan/evidence/DSH_SUBAGENT_DEPTH4_2026-11-11/** -text
