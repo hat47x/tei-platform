@@ -433,5 +433,4 @@
 - [契約ヘッダの版を名指しする](TEI_DOGFOODING_ROUND63_CONTRACT_VERSION_2026-11-11/README.md)（#4169のA案2件目。`unexpected token \"{\"`を「版が要る」に変え、`^`も同じ案内にした。実装中にpeekの順序バグを作り、ビルドと既存試験は通ったがCLIで測って気づいた。変異M2がそのバグを再現する）
 - [未束縛のdatasourceに書くべきbindを名指しさせる](TEI_DOGFOODING_ROUND64_UNBOUND_DATASOURCE_2026-11-11/README.md)（#4169のA案3件目。第60ラウンドで起票を保留した摩擦を、environmentファイルで手順を確定してから解消。案内はWorldから導出し、実在しないインスタンスを例示しない（fail-closed）。変異3種で確認）
 - [コマンドパターンを設計しinteractionの形を名指しさせる](TEI_DOGFOODING_ROUND65_INTERACTION_FORM_2026-11-11/README.md)（#4169のA案4件目。commandパターンをCLIだけで設計し、interactionを行形式で書くと形が分からない点を直した。案内文を2度書き直した（違反トークンの埋め込み→契約が拒否する例→種に合った案内）。cmd/teiは単独564.8sでok、同時実行では600秒上限に達した）
-
-
+- [main が赤かった: TestParallelClaim は毎回失敗していた](DISPATCHER_LEASE_BUSY_2026-11-11/README.md)（#4218で入ったExternal Role Dispatcherのleaseが、2つのclaimが同時に書き込みロックへ昇格してSQLITE_BUSYになる。clean mainの別worktreeで5回とも再現し、flakyではないことを確認。NewLeaseStoreにSetMaxOpenConns(1)とPRAGMA busy_timeout=5000を足して直列化と待機を行う。2つを外すと同じ失敗が再現することを実測）

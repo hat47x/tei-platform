@@ -39,6 +39,20 @@ func NewLeaseStore(path string) (*LeaseStore, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open lease db: %w", err)
 	}
+	// A claim is a short write transaction, and two sessions may claim the same
+	// issue at once (the whole point of the lease). SQLite refuses a second
+	// writer with SQLITE_BUSY rather than queueing it, so without a busy timeout
+	// the loser sees "database is locked" instead of ErrAlreadyClaimed, and
+	// without a single connection the two writers can deadlock on the upgrade
+	// from a read to a write lock.
+	//
+	// One connection serializes them; the timeout makes the loser wait for the
+	// winner's commit instead of failing. Both are properties of this store,
+	// not of the caller.
+	db.SetMaxOpenConns(1)
+	if _, err := db.Exec(`PRAGMA busy_timeout=5000;`); err != nil {
+		return nil, fmt.Errorf("set busy timeout: %w", err)
+	}
 	if _, err := db.Exec(`PRAGMA journal_mode=WAL;`); err != nil {
 		return nil, fmt.Errorf("set wal: %w", err)
 	}
