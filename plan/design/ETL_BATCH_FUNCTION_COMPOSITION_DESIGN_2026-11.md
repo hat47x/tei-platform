@@ -13,12 +13,12 @@ TEIには既に、型付き意味（`semantic.Data`・`Attribute`・`Relation`�
 結論は次の五つである。
 
 1. **ETL専用の第二DSL・第二データモデル・第二Workflow Engineを作らない。** Batchは「型付きData＋Function（Capability/RunPlan/Validation/EffectRule）＋Data Operations＋Operator/Plugin＋Entry」の合成として表す。新しい抽象は、既存の抽象で表現できないことが実例で示された場合にだけ追加する。
-2. **BatchのFunction定義と、実行入口・実行予定・実行場所・実際の権限・実行結果を分離する。** 一つの宣言が五つの顔を同時に確定したとみなさない（§2）。TEI専用の常駐Schedulerも共通実行Hostも必須にしない。
+2. **BatchのFunction定義と、実行入口・実行予定・実行場所・実際の権限・実行結果を分離する。** 一つの宣言が六つの顔を同時に確定したとみなさない（§2）。TEI専用の常駐Schedulerも共通実行Hostも必須にしない。
 3. **実行方式（一括・チャンク・ストリーミング・差分・増分）は、変換の意味ではなく取得と出力の契約として選ぶ。** 方式の違いでIdentity・粒度・順序・重複・NULL・欠損・部分取得・精度・Source Revisionが変わるなら、それは意味の変更であり、黙って方式だけを替えない（§4・§6）。
 4. **再実行の安全性はCheckpointの有無では決まらない。** 純粋変換・冪等な書込み・非冪等な外部作用・Commit結果不明を別の級に分け、級ごとに許可される再実行だけを許す（§9）。
 5. **最初の縦断実装は副作用のない決定論的Batchに限定する。** 固定した小さな入力ファイルから型付きデータを読み、Filter・Convert・Aggregateを実行し、決定的な出力ファイルを生成する。同じ意味を直接Go実行とCLI実行の二入口から呼び、Input・Expected・実Output・生成Artifact・実行版を一つの票で追跡する（§12）。
 
-## 2. 五つの顔の分離：Batch Function定義・入口・予定・場所・権限・結果
+## 2. 六つの顔の分離：Batch Function定義・入口・予定・場所・権限・結果
 
 | 顔 | 決めること | 決めないこと | 既存の置き場（基準版で確認） |
 | --- | --- | --- | --- |
@@ -219,7 +219,7 @@ Checkpointは「どこまで進んだか」の記録であり、**「同じ意�
 
 ### 12.3 二入口の対応付け
 
-「同じ意味のFunctionを直接Go実行とCLI実行へ対応付ける」とは、次の四点を一つの票で比較できることである。
+「同じ意味のFunctionを直接Go実行とCLI実行へ対応付ける」とは、次の五つの列を一つの票で比較できることである。
 
 | 比較列 | 直接Go実行 | CLI実行 | 一致しない場合に言うこと |
 | --- | --- | --- | --- |
@@ -233,7 +233,29 @@ Checkpointは「どこまで進んだか」の記録であり、**「同じ意�
 
 ### 12.4 CLI入口の候補
 
-新しいCLIサブコマンド名（候補: `batch`）と引数の形は**未採用**である。既存の`scenario run`（`-scenario`・`-workspace`・`-step`とpin必須）と`relation-query`の形を踏襲できるかを、W2で比較してから決める。CLI名の追加は`cmd/tei/cli_commands.go`の`acceptedCommands`と`cmd/tei/cli_flag_contract.go`の許可リストの両方に触れるため、宣言と実装の一致試験を同時に置く。
+新しいCLIサブコマンド名（候補: `batch`）と引数の形は**未採用**である。既存の`scenario run`（`-scenario`・`-workspace`・`-step`とpin必須）と`relation-query`の形を踏襲できるかを、W5で比較してから決める。CLI名の追加は`cmd/tei/cli_commands.go`の`acceptedCommands`と`cmd/tei/cli_flag_contract.go`の許可リストの両方に触れるため、宣言と実装の一致試験を同時に置く。
+
+### 12.5 Target・実行単位の拡張（Go単一バイナリを標準とし、他Targetへは同じ意味を再生成する）
+
+**既定はGoの単一バイナリ**である。ETL/Batchの意味は「型付きData＋Function＋Data Operations＋Operator＋Entry」の合成として定義し、Targetはその**落とし先**でしかない。Targetが変わっても意味ID・入力・期待出力は変えない（[ADR-0043](../adr/0043-target-native-artifacts-without-tei-host.md)）。
+
+| Target | 基準版の実装 | ETL/Batchでの扱い | 落とせない場合 |
+| --- | --- | --- | --- |
+| **Go（既定）** | `tools/reference-application-binary`（`internal/appgen`の`Build`/`Generator`、`templates/*.tmpl`、P0-A縦断試験）、`cmd/tei`単一バイナリ | そのまま実行単位とする。`internal/plugin/build.go`の`BuildPlan`/`BuildArtifactLock`で依存閉包と成果物を束縛 | Build closureが検証できない場合は未実装 |
+| **Java** | `tools/reference-generator-selection`の`templates/*.java.tmpl`（`Main.java`・`LineAmounts.java`・`TeiFailure.java`）と`java_test.go`・`java_failure_contract_test.go` | 契約・fixture・同じ独立Expectedで候補を生成・選択・検証する。失敗契約（`TeiFailure`）もTarget側で同一の区分を保つ | build入力の対象が基準版で解消できない場合は`unsupported` |
+| **Python / JavaScript** | 同`templates/*.py.tmpl`・`*.js.tmpl`と`python_test.go`・`javascript_test.go`、`wasi_node.js` | 同一契約の別Target候補として扱う。interpreterのsnapshot digest・file同一性・size・更新時刻を記録し、実行中にsourceが変わったらcaseを拒否する（`source changed during execution`） | snapshot digestが取れない場合は実行として扱わない |
+| **Wasm / WASI** | 同`wasi_test.go`・`wasm_test.go`、`templates/wasi_node.js` | 同一bytesを再現してからbuildする。実行はsandbox/measurementの範囲で行い、OS権限の境界を`reference-generator-selection`側の隔離に委ねる | build入力・OS承認・権限境界が未確認なら実行しない |
+| **.NET / C#** | **基準版にGenerator・テンプレートは確認できない** | 未評価。既存のGenerator契約へ`.NET`候補を追加するかを別Issueで評価する。ETL/Batchの設計はTarget非依存だが、`.NET`実装の存在を前提にしない | 候補が無ければ`unsupported`。黙ってGoへ読み替えない |
+
+**Target追加の規則（提案）**:
+1. 新しいTargetは「Generator候補」として契約・fixture・同一独立Expectedで検証してから実行単位にする。意味側にTarget名を持ち込まない（`#2510`/`#988`/`#1018`の境界）。
+2. Targetごとの実行は、`execution.measurement`（build・処理・完了の経過時間、`userCpuNanos`/`systemCpuNanos`、`goos`/`goarch`/`harnessGoVersion`）とSource/binary digest・Receiptを別に記録する。測定値は性能比較であり、意味の同一性の証明ではない。
+3. 実行中にSource/binaryが変わったcaseは拒否し、その前に読み取ったsnapshotのdigestを残す。`execution.sourceDigest`とそのcaseの直前のsnapshot digestを別の値として扱う。
+4. 実行中にSource/binaryが変わったcaseは拒否し、その前に読み取ったsnapshotのdigestを残す。`execution.sourceDigest`とそのcaseの直前のsnapshot digestを別の値として扱う。
+5. EKI・外部Hostへの載せ替え（W8）もTargetの一種として扱い、`wire-shape-only`を「Target拡張済み」と表示しない。
+6. `.NET`のようにGeneratorが存在しないTargetは、`unsupported`として記録し、Goで代替した事実を独立Expectedの不一致として残す。
+
+**縦断実装との関係**: 最初の縦断実装は**Go単一バイナリのみ**で成立させる（§12.1〜12.4）。Java/Wasm等への拡張は、同一の`examples/etl-first-slice/expected/`を用いて候補生成・選択・検証できることを別Issueで示してから行う。二Targetの成功を、一つの成功へ畳まない。
 
 ## 13. 独立Expected（負例）
 
@@ -295,7 +317,7 @@ Checkpointは「どこまで進んだか」の記録であり、**「同じ意�
 - **テスト**: 操作なし、keyなし、未知のconcurrency/resume/autonomy、checkpointかつoutputなし、Effect級と冪等級の矛盾
 - **依存先**: W2（意味の形が固まる）
 - **想定変更ファイル**: `internal/validation/`（既存診断の再利用）、`plan/design/`（本文）
-- **完了条件**: 五つの顔（§2）がそれぞれ別の欄で宣言でき、`RUN_PLAN_*`で表現できない欄（Effect級・冪等級）の扱いがOwner判断事項として記録される
+- **完了条件**: 六つの顔（§2）がそれぞれ別の欄で宣言でき、`RUN_PLAN_*`で表現できない欄（Effect級・冪等級）の扱いがOwner判断事項として記録される
 - **停止条件**: 新しいDSLキーワードが必要になった時点で止め、[#1130](https://github.com/hat47x/tei-platform/issues/1130)のOwner判断へ戻す
 
 ### W5 CLI実行と二入口対応
