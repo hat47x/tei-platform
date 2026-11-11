@@ -384,7 +384,7 @@ func Derive(in Input) (Report, error) {
 	}
 	sort.Slice(rows, func(i, j int) bool { return rows[i].PluginID < rows[j].PluginID })
 	for i := range rows {
-		finishRow(&rows[i], state, in.Lock != nil)
+		finishRow(&rows[i], state, in.Lock != nil, planBuilt)
 	}
 	report.Rows = rows
 	report.Levels = deriveLevels(env, in.World.Plugins)
@@ -521,21 +521,34 @@ func recordReasons(row *Row, reasons []ResolverReason) {
 	}
 }
 
-func finishRow(row *Row, state string, lockProvided bool) {
+func finishRow(row *Row, state string, lockProvided bool, planBuilt bool) {
 	row.ReasonCodes = sortedUnique(row.ReasonCodes)
 
 	switch {
 	case !row.Declared:
 		row.ReasonCodes = append(row.ReasonCodes, ReasonPluginNotDeclared)
-	case row.EnvSelected && !row.Resolved && len(row.ReasonCodes) == 0:
+	case row.EnvSelected && !row.Resolved:
+		// Selected and declared but the resolution did not reach this plugin:
+		// some refusal above it stopped the resolution. The specific resolver
+		// code stays beside this one when it names this plugin.
 		row.ReasonCodes = append(row.ReasonCodes, ReasonDeclaredButUnresolvable)
-	case !row.EnvSelected && !row.Resolved && len(row.ReasonCodes) == 0:
+	case !row.EnvSelected && !row.Resolved:
 		row.ReasonCodes = append(row.ReasonCodes, ReasonEnvNotSelected)
 	}
 
-	if !lockProvided {
+	switch {
+	case !lockProvided:
+		// No lock: the runtime boundary and the grant state cannot be read.
 		row.ReasonCodes = append(row.ReasonCodes, ReasonRuntimeUnverified, ReasonGrantUnverified)
-	} else if row.LockPinned != nil && !*row.LockPinned {
+	case !planBuilt:
+		// A lock was supplied but the runtime plan was refused. The refusal is
+		// reported in the resolver outcome; the row says the grant state was
+		// not read rather than claiming a gap.
+		row.ReasonCodes = append(row.ReasonCodes, ReasonPermissionUnknown)
+		if row.LockPinned == nil || !*row.LockPinned {
+			row.ReasonCodes = append(row.ReasonCodes, ReasonRuntimeUnverified)
+		}
+	case row.LockPinned == nil || !*row.LockPinned:
 		row.ReasonCodes = append(row.ReasonCodes, ReasonRuntimeUnverified)
 	}
 	if row.RuntimeKind != "" && !runtimeKindSupported(row.RuntimeKind) {
