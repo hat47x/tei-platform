@@ -43,7 +43,7 @@ func ValidateHeaderDetailContractQueryBindings(w ir.World) []Diagnostic {
 			out = append(out, errFor(
 				bindingSubject,
 				"DUPLICATE_HEADER_DETAIL_CONTRACT_QUERY_BINDING",
-				"header-detail Contract Query binding %sが複数定義されています",
+				"header-detail Contract Query binding %s is defined more than once",
 				identity,
 			))
 			continue
@@ -68,7 +68,7 @@ func ValidateHeaderDetailContractQueryBindings(w ir.World) []Diagnostic {
 			out = append(out, errFor(
 				bindingSubject,
 				"HEADER_DETAIL_CONTRACT_QUERY_SIGNATURE_REQUIRED",
-				"header-detail Contract Query binding %sが利用するQuery %s / %sにはtyped signatureが必要です",
+				"Query %s / %s, used by header-detail Contract Query binding %s, needs a typed signature",
 				identity,
 				binding.Target.Contract,
 				binding.Target.Query,
@@ -97,34 +97,34 @@ func validateHeaderDetailBindingIdentity(
 ) []Diagnostic {
 	var out []Diagnostic
 	if binding.Application == "" {
-		out = append(out, errFor(bindingSubject, "HEADER_DETAIL_BINDING_APPLICATION_REQUIRED", "header-detail Contract Query bindingにはApplicationが必要です"))
+		out = append(out, errFor(bindingSubject, "HEADER_DETAIL_BINDING_APPLICATION_REQUIRED", "a header-detail Contract Query binding needs Application"))
 	} else if _, err := core.ParseCanonicalID(string(binding.Application)); err != nil {
-		out = append(out, errFor(bindingSubject, "INVALID_HEADER_DETAIL_BINDING_APPLICATION", "header-detail Contract Query bindingのApplication %qは有効なCanonical IDではありません", binding.Application))
+		out = append(out, errFor(bindingSubject, "INVALID_HEADER_DETAIL_BINDING_APPLICATION", "header-detail Contract Query binding Application %q is not a valid Canonical ID", binding.Application))
 	}
 	if binding.Pattern == "" {
-		out = append(out, errFor(bindingSubject, "HEADER_DETAIL_BINDING_PATTERN_REQUIRED", "header-detail Contract Query bindingにはPatternが必要です"))
+		out = append(out, errFor(bindingSubject, "HEADER_DETAIL_BINDING_PATTERN_REQUIRED", "a header-detail Contract Query binding needs Pattern"))
 	} else if _, err := core.ParseCanonicalID(string(binding.Pattern)); err != nil {
-		out = append(out, errFor(bindingSubject, "INVALID_HEADER_DETAIL_BINDING_PATTERN", "header-detail Contract Query bindingのPattern %qは有効なCanonical IDではありません", binding.Pattern))
+		out = append(out, errFor(bindingSubject, "INVALID_HEADER_DETAIL_BINDING_PATTERN", "header-detail Contract Query binding Pattern %q is not a valid Canonical ID", binding.Pattern))
 	}
 	if binding.Datasource == "" {
-		out = append(out, errFor(bindingSubject, "HEADER_DETAIL_BINDING_DATASOURCE_REQUIRED", "header-detail Contract Query bindingにはDatasourceが必要です"))
+		out = append(out, errFor(bindingSubject, "HEADER_DETAIL_BINDING_DATASOURCE_REQUIRED", "a header-detail Contract Query binding needs Datasource"))
 	} else if _, err := core.ParseLocalName(string(binding.Datasource)); err != nil {
-		out = append(out, errFor(bindingSubject, "INVALID_HEADER_DETAIL_BINDING_DATASOURCE", "header-detail Contract Query bindingのDatasource %qは有効なLocalNameではありません", binding.Datasource))
+		out = append(out, errFor(bindingSubject, "INVALID_HEADER_DETAIL_BINDING_DATASOURCE", "header-detail Contract Query binding Datasource %q is not a valid LocalName", binding.Datasource))
 	}
 	if binding.Target.Database == "" {
-		out = append(out, errFor(bindingSubject, "HEADER_DETAIL_BINDING_DATABASE_REQUIRED", "header-detail Contract Query bindingにはtarget Databaseが必要です"))
+		out = append(out, errFor(bindingSubject, "HEADER_DETAIL_BINDING_DATABASE_REQUIRED", "a header-detail Contract Query binding needs a target Database"))
 	} else if _, err := core.ParseCanonicalID(string(binding.Target.Database)); err != nil {
-		out = append(out, errFor(bindingSubject, "INVALID_HEADER_DETAIL_BINDING_DATABASE", "header-detail Contract Query bindingのDatabase %qは有効なCanonical IDではありません", binding.Target.Database))
+		out = append(out, errFor(bindingSubject, "INVALID_HEADER_DETAIL_BINDING_DATABASE", "header-detail Contract Query binding Database %q is not a valid Canonical ID", binding.Target.Database))
 	}
 	if binding.Target.Contract == "" {
-		out = append(out, errFor(bindingSubject, "HEADER_DETAIL_BINDING_CONTRACT_REQUIRED", "header-detail Contract Query bindingにはContractが必要です"))
+		out = append(out, errFor(bindingSubject, "HEADER_DETAIL_BINDING_CONTRACT_REQUIRED", "a header-detail Contract Query binding needs Contract"))
 	} else if _, err := core.ParseCanonicalID(string(binding.Target.Contract)); err != nil {
-		out = append(out, errFor(bindingSubject, "INVALID_HEADER_DETAIL_BINDING_CONTRACT", "header-detail Contract Query bindingのContract %qは有効なCanonical IDではありません", binding.Target.Contract))
+		out = append(out, errFor(bindingSubject, "INVALID_HEADER_DETAIL_BINDING_CONTRACT", "header-detail Contract Query binding Contract %q is not a valid Canonical ID", binding.Target.Contract))
 	}
 	if binding.Target.Query == "" {
-		out = append(out, errFor(bindingSubject, "HEADER_DETAIL_BINDING_QUERY_REQUIRED", "header-detail Contract Query bindingにはQuery名が必要です"))
+		out = append(out, errFor(bindingSubject, "HEADER_DETAIL_BINDING_QUERY_REQUIRED", "a header-detail Contract Query binding needs a Query name"))
 	} else if _, err := core.ParseLocalName(string(binding.Target.Query)); err != nil {
-		out = append(out, errFor(bindingSubject, "INVALID_HEADER_DETAIL_BINDING_QUERY", "header-detail Contract Query bindingのQuery名 %qは有効なLocalNameではありません", binding.Target.Query))
+		out = append(out, errFor(bindingSubject, "INVALID_HEADER_DETAIL_BINDING_QUERY", "header-detail Contract Query binding Query name %q is not a valid LocalName", binding.Target.Query))
 	}
 	return out
 }
@@ -167,11 +167,11 @@ func resolveHeaderDetailBinding(
 		}
 	}
 	if len(apps) == 0 {
-		*out = append(*out, errFor(bindingSubject, "UNKNOWN_HEADER_DETAIL_BINDING_APPLICATION", "header-detail Contract Query binding %sが参照するApplication %sが見つかりません", binding.Identity(), binding.Application))
+		*out = append(*out, errFor(bindingSubject, "UNKNOWN_HEADER_DETAIL_BINDING_APPLICATION", "header-detail Contract Query binding %s refers to Application %s, which is not found", binding.Identity(), binding.Application))
 		return resolvedHeaderDetailBinding{}, false
 	}
 	if len(apps) > 1 {
-		*out = append(*out, errFor(bindingSubject, "AMBIGUOUS_HEADER_DETAIL_BINDING_APPLICATION", "header-detail Contract Query binding %sが参照するApplication %sが%d件あり、一意に解決できません", binding.Identity(), binding.Application, len(apps)))
+		*out = append(*out, errFor(bindingSubject, "AMBIGUOUS_HEADER_DETAIL_BINDING_APPLICATION", "header-detail Contract Query binding %s refers to Application %s, which has %d candidates and cannot be resolved uniquely", binding.Identity(), binding.Application, len(apps)))
 		return resolvedHeaderDetailBinding{}, false
 	}
 	app := apps[0]
@@ -183,16 +183,16 @@ func resolveHeaderDetailBinding(
 		}
 	}
 	if len(patterns) == 0 {
-		*out = append(*out, errFor(bindingSubject, "UNKNOWN_HEADER_DETAIL_BINDING_PATTERN", "header-detail Contract Query binding %sが参照するPattern %sはApplication %sにありません", binding.Identity(), binding.Pattern, app.ID))
+		*out = append(*out, errFor(bindingSubject, "UNKNOWN_HEADER_DETAIL_BINDING_PATTERN", "header-detail Contract Query binding %s refers to Pattern %s, which Application %s does not have", binding.Identity(), binding.Pattern, app.ID))
 		return resolvedHeaderDetailBinding{}, false
 	}
 	if len(patterns) > 1 {
-		*out = append(*out, errFor(bindingSubject, "AMBIGUOUS_HEADER_DETAIL_BINDING_PATTERN", "header-detail Contract Query binding %sが参照するPattern %sはApplication %sに%d件あり、一意に解決できません", binding.Identity(), binding.Pattern, app.ID, len(patterns)))
+		*out = append(*out, errFor(bindingSubject, "AMBIGUOUS_HEADER_DETAIL_BINDING_PATTERN", "header-detail Contract Query binding %s refers to Pattern %s in Application %s, which has %d candidates and cannot be resolved uniquely", binding.Identity(), binding.Pattern, app.ID, len(patterns)))
 		return resolvedHeaderDetailBinding{}, false
 	}
 	pattern := patterns[0]
 	if pattern.Kind != application.PatternHeaderDetail {
-		*out = append(*out, errFor(bindingSubject, "HEADER_DETAIL_BINDING_REQUIRES_HEADER_DETAIL_PATTERN", "Pattern %sは%sですが、header-detail Contract Query bindingはheader-detail Patternだけをrealizeできます", pattern.ID, pattern.Kind))
+		*out = append(*out, errFor(bindingSubject, "HEADER_DETAIL_BINDING_REQUIRES_HEADER_DETAIL_PATTERN", "Pattern %s is %s, and a header-detail Contract Query binding can only realize a header-detail pattern", pattern.ID, pattern.Kind))
 		return resolvedHeaderDetailBinding{}, false
 	}
 
@@ -223,30 +223,30 @@ func resolveHeaderDetailBinding(
 		}
 	}
 	if len(datasources) == 0 {
-		*out = append(*out, errFor(bindingSubject, "UNKNOWN_HEADER_DETAIL_BINDING_DATASOURCE", "header-detail Contract Query binding %sが参照するDatasource %sはApplication %sにありません", binding.Identity(), binding.Datasource, app.ID))
+		*out = append(*out, errFor(bindingSubject, "UNKNOWN_HEADER_DETAIL_BINDING_DATASOURCE", "header-detail Contract Query binding %s refers to Datasource %s, which Application %s does not have", binding.Identity(), binding.Datasource, app.ID))
 		return resolvedHeaderDetailBinding{}, false
 	}
 	if len(datasources) > 1 {
-		*out = append(*out, errFor(bindingSubject, "AMBIGUOUS_HEADER_DETAIL_BINDING_DATASOURCE", "header-detail Contract Query binding %sが参照するDatasource %sはApplication %sに%d件あり、一意に解決できません", binding.Identity(), binding.Datasource, app.ID, len(datasources)))
+		*out = append(*out, errFor(bindingSubject, "AMBIGUOUS_HEADER_DETAIL_BINDING_DATASOURCE", "header-detail Contract Query binding %s refers to Datasource %s in Application %s, which has %d candidates and cannot be resolved uniquely", binding.Identity(), binding.Datasource, app.ID, len(datasources)))
 		return resolvedHeaderDetailBinding{}, false
 	}
 	datasource := datasources[0]
 	if datasource.Access != database.AccessRead && datasource.Access != database.AccessReadWrite {
-		*out = append(*out, errFor(bindingSubject, "HEADER_DETAIL_BINDING_DATASOURCE_NOT_READABLE", "header-detail Contract Query binding %sのDatasource %sはaccess %sであり、collection取得に利用できません", binding.Identity(), binding.Datasource, datasource.Access))
+		*out = append(*out, errFor(bindingSubject, "HEADER_DETAIL_BINDING_DATASOURCE_NOT_READABLE", "header-detail Contract Query binding %s Datasource %s has access %s, so it cannot be used to read a collection", binding.Identity(), binding.Datasource, datasource.Access))
 		return resolvedHeaderDetailBinding{}, false
 	}
 	if datasource.TargetDatabase != binding.Target.Database {
-		*out = append(*out, errFor(bindingSubject, "HEADER_DETAIL_BINDING_DATABASE_MISMATCH", "header-detail Contract Query binding %sのDatasource %sはDatabase %sを参照しますが、Contract Query targetは%sです", binding.Identity(), binding.Datasource, datasource.TargetDatabase, binding.Target.Database))
+		*out = append(*out, errFor(bindingSubject, "HEADER_DETAIL_BINDING_DATABASE_MISMATCH", "header-detail Contract Query binding %s Datasource %s refers to Database %s, but the Contract Query target is %s", binding.Identity(), binding.Datasource, datasource.TargetDatabase, binding.Target.Database))
 		return resolvedHeaderDetailBinding{}, false
 	}
 
 	requirements := requiredContractRequirements(datasource, binding.Target.Contract)
 	if len(requirements) == 0 {
-		*out = append(*out, errFor(bindingSubject, "HEADER_DETAIL_BINDING_CONTRACT_NOT_REQUIRED", "header-detail Contract Query binding %sはDatasource %sからContract %sを利用しますが、このContractはApplicationのrequiresにありません", binding.Identity(), binding.Datasource, binding.Target.Contract))
+		*out = append(*out, errFor(bindingSubject, "HEADER_DETAIL_BINDING_CONTRACT_NOT_REQUIRED", "header-detail Contract Query binding %s uses Contract %s from Datasource %s, but the Application does not require that Contract", binding.Identity(), binding.Datasource, binding.Target.Contract))
 		return resolvedHeaderDetailBinding{}, false
 	}
 	if len(requirements) > 1 {
-		*out = append(*out, errFor(bindingSubject, "AMBIGUOUS_HEADER_DETAIL_BINDING_CONTRACT_REQUIREMENT", "header-detail Contract Query binding %sが利用するContract %sのrequiresがDatasource %sに%d件あり、一意に解決できません", binding.Identity(), binding.Target.Contract, binding.Datasource, len(requirements)))
+		*out = append(*out, errFor(bindingSubject, "AMBIGUOUS_HEADER_DETAIL_BINDING_CONTRACT_REQUIREMENT", "header-detail Contract Query binding %s uses Contract %s on Datasource %s, whose requires has %d candidates and cannot be resolved uniquely", binding.Identity(), binding.Target.Contract, binding.Datasource, len(requirements)))
 		return resolvedHeaderDetailBinding{}, false
 	}
 
@@ -257,11 +257,11 @@ func resolveHeaderDetailBinding(
 		}
 	}
 	if len(databases) == 0 {
-		*out = append(*out, errFor(bindingSubject, "UNKNOWN_HEADER_DETAIL_BINDING_DATABASE", "header-detail Contract Query binding %sが参照するDatabase %sが見つかりません", binding.Identity(), binding.Target.Database))
+		*out = append(*out, errFor(bindingSubject, "UNKNOWN_HEADER_DETAIL_BINDING_DATABASE", "header-detail Contract Query binding %s refers to Database %s, which is not found", binding.Identity(), binding.Target.Database))
 		return resolvedHeaderDetailBinding{}, false
 	}
 	if len(databases) > 1 {
-		*out = append(*out, errFor(bindingSubject, "AMBIGUOUS_HEADER_DETAIL_BINDING_DATABASE", "header-detail Contract Query binding %sが参照するDatabase %sが%d件あり、一意に解決できません", binding.Identity(), binding.Target.Database, len(databases)))
+		*out = append(*out, errFor(bindingSubject, "AMBIGUOUS_HEADER_DETAIL_BINDING_DATABASE", "header-detail Contract Query binding %s refers to Database %s, which has %d candidates and cannot be resolved uniquely", binding.Identity(), binding.Target.Database, len(databases)))
 		return resolvedHeaderDetailBinding{}, false
 	}
 
@@ -272,16 +272,16 @@ func resolveHeaderDetailBinding(
 		}
 	}
 	if len(contracts) == 0 {
-		*out = append(*out, errFor(bindingSubject, "UNKNOWN_HEADER_DETAIL_BINDING_CONTRACT", "header-detail Contract Query binding %sが利用するContract %sはDatabase %sにありません", binding.Identity(), binding.Target.Contract, databases[0].ID))
+		*out = append(*out, errFor(bindingSubject, "UNKNOWN_HEADER_DETAIL_BINDING_CONTRACT", "header-detail Contract Query binding %s uses Contract %s, which Database %s does not have", binding.Identity(), binding.Target.Contract, databases[0].ID))
 		return resolvedHeaderDetailBinding{}, false
 	}
 	if len(contracts) > 1 {
-		*out = append(*out, errFor(bindingSubject, "AMBIGUOUS_HEADER_DETAIL_BINDING_CONTRACT", "header-detail Contract Query binding %sが利用するContract %sはDatabase %sに%d件あり、一意に解決できません", binding.Identity(), binding.Target.Contract, databases[0].ID, len(contracts)))
+		*out = append(*out, errFor(bindingSubject, "AMBIGUOUS_HEADER_DETAIL_BINDING_CONTRACT", "header-detail Contract Query binding %s uses Contract %s in Database %s, which has %d candidates and cannot be resolved uniquely", binding.Identity(), binding.Target.Contract, databases[0].ID, len(contracts)))
 		return resolvedHeaderDetailBinding{}, false
 	}
 	contract := contracts[0]
 	if contract.Version.Major != requirements[0].CompatibleMajor {
-		*out = append(*out, errFor(bindingSubject, "HEADER_DETAIL_BINDING_CONTRACT_MAJOR_VERSION_MISMATCH", "header-detail Contract Query binding %sはContract %sのmajor version %dとの互換性を要求していますが、Database %sではv%d.%dです", binding.Identity(), contract.ID, requirements[0].CompatibleMajor, databases[0].ID, contract.Version.Major, contract.Version.Minor))
+		*out = append(*out, errFor(bindingSubject, "HEADER_DETAIL_BINDING_CONTRACT_MAJOR_VERSION_MISMATCH", "header-detail Contract Query binding %s requires compatibility with Contract %s major version %d, but Database %s has v%d.%d", binding.Identity(), contract.ID, requirements[0].CompatibleMajor, databases[0].ID, contract.Version.Major, contract.Version.Minor))
 		return resolvedHeaderDetailBinding{}, false
 	}
 
@@ -292,11 +292,11 @@ func resolveHeaderDetailBinding(
 		}
 	}
 	if len(queries) == 0 {
-		*out = append(*out, errFor(bindingSubject, "UNKNOWN_HEADER_DETAIL_BINDING_QUERY", "header-detail Contract Query binding %sが利用するQuery %sはContract %sにありません", binding.Identity(), binding.Target.Query, contract.ID))
+		*out = append(*out, errFor(bindingSubject, "UNKNOWN_HEADER_DETAIL_BINDING_QUERY", "header-detail Contract Query binding %s uses Query %s, which Contract %s does not have", binding.Identity(), binding.Target.Query, contract.ID))
 		return resolvedHeaderDetailBinding{}, false
 	}
 	if len(queries) > 1 {
-		*out = append(*out, errFor(bindingSubject, "AMBIGUOUS_HEADER_DETAIL_BINDING_QUERY", "header-detail Contract Query binding %sが利用するQuery %sはContract %sに%d件あり、一意に解決できません", binding.Identity(), binding.Target.Query, contract.ID, len(queries)))
+		*out = append(*out, errFor(bindingSubject, "AMBIGUOUS_HEADER_DETAIL_BINDING_QUERY", "header-detail Contract Query binding %s uses Query %s in Contract %s, which has %d candidates and cannot be resolved uniquely", binding.Identity(), binding.Target.Query, contract.ID, len(queries)))
 		return resolvedHeaderDetailBinding{}, false
 	}
 
@@ -319,33 +319,33 @@ func validateHeaderDetailBindingInputsShape(
 		out = append(out, errFor(
 			bindingSubject,
 			"HEADER_DETAIL_BINDING_INPUTS_REQUIRED",
-			"header-detail Contract Query binding %sにはsource instanceからcollection取得条件を渡すinput bindingが少なくとも一つ必要です",
+			"header-detail Contract Query binding %s needs at least one input binding that passes a collection condition from a source instance",
 			binding.Identity(),
 		))
 		return out
 	}
 	for _, inputBinding := range binding.Inputs {
 		if inputBinding.SourceAttribute == "" {
-			out = append(out, errFor(bindingSubject, "HEADER_DETAIL_BINDING_SOURCE_ATTRIBUTE_REQUIRED", "header-detail Contract Query input bindingにはsource attributeが必要です"))
+			out = append(out, errFor(bindingSubject, "HEADER_DETAIL_BINDING_SOURCE_ATTRIBUTE_REQUIRED", "a header-detail Contract Query input binding needs a source attribute"))
 		} else {
 			if _, err := core.ParseCanonicalID(string(inputBinding.SourceAttribute)); err != nil {
-				out = append(out, errFor(bindingSubject, "INVALID_HEADER_DETAIL_BINDING_SOURCE_ATTRIBUTE", "header-detail Contract Query bindingのsource attribute %qは有効なCanonical IDではありません", inputBinding.SourceAttribute))
+				out = append(out, errFor(bindingSubject, "INVALID_HEADER_DETAIL_BINDING_SOURCE_ATTRIBUTE", "header-detail Contract Query binding source attribute %q is not a valid Canonical ID", inputBinding.SourceAttribute))
 			}
 			if _, duplicate := seenAttributes[inputBinding.SourceAttribute]; duplicate {
-				out = append(out, errFor(bindingSubject, "DUPLICATE_HEADER_DETAIL_BINDING_SOURCE_ATTRIBUTE", "header-detail Contract Query binding %sではsource attribute %sが複数のQuery input bindingに使われています", binding.Identity(), inputBinding.SourceAttribute))
+				out = append(out, errFor(bindingSubject, "DUPLICATE_HEADER_DETAIL_BINDING_SOURCE_ATTRIBUTE", "header-detail Contract Query binding %s uses source attribute %s in more than one Query input binding", binding.Identity(), inputBinding.SourceAttribute))
 			} else {
 				seenAttributes[inputBinding.SourceAttribute] = struct{}{}
 			}
 		}
 		if inputBinding.Input == "" {
-			out = append(out, errFor(bindingSubject, "HEADER_DETAIL_BINDING_INPUT_REQUIRED", "header-detail Contract Query input bindingにはQuery input名が必要です"))
+			out = append(out, errFor(bindingSubject, "HEADER_DETAIL_BINDING_INPUT_REQUIRED", "a header-detail Contract Query input binding needs a Query input name"))
 			continue
 		}
 		if _, err := core.ParseLocalName(string(inputBinding.Input)); err != nil {
-			out = append(out, errFor(bindingSubject, "INVALID_HEADER_DETAIL_BINDING_INPUT", "header-detail Contract Query input名 %qは有効なLocalNameではありません", inputBinding.Input))
+			out = append(out, errFor(bindingSubject, "INVALID_HEADER_DETAIL_BINDING_INPUT", "header-detail Contract Query input name %q is not a valid LocalName", inputBinding.Input))
 		}
 		if _, duplicate := seenInputs[inputBinding.Input]; duplicate {
-			out = append(out, errFor(bindingSubject, "DUPLICATE_HEADER_DETAIL_BINDING_INPUT", "header-detail Contract Query binding %sではQuery input %sが複数のbindingで使われています", binding.Identity(), inputBinding.Input))
+			out = append(out, errFor(bindingSubject, "DUPLICATE_HEADER_DETAIL_BINDING_INPUT", "header-detail Contract Query binding %s uses Query input %s in more than one binding", binding.Identity(), inputBinding.Input))
 		} else {
 			seenInputs[inputBinding.Input] = struct{}{}
 		}
@@ -418,7 +418,7 @@ func validateHeaderDetailBindingCrossLayer(
 			out = append(out, errFor(
 				bindingSubject,
 				"HEADER_DETAIL_BINDING_SOURCE_ATTRIBUTE_OUTSIDE_RELATION_SOURCE",
-				"header-detail Contract Query binding %sのsource attribute %sはRelation %sのsource Data %sに属していません",
+				"header-detail Contract Query binding %s source attribute %s does not belong to source Data %s of Relation %s",
 				binding.Identity(),
 				inputBinding.SourceAttribute,
 				resolved.Relation.ID,
@@ -432,7 +432,7 @@ func validateHeaderDetailBindingCrossLayer(
 			out = append(out, errFor(
 				bindingSubject,
 				"HEADER_DETAIL_BINDING_INPUT_NOT_IN_SIGNATURE",
-				"header-detail Contract Query binding %sのinput %sはContract Query %s / %sのsignatureにありません",
+				"header-detail Contract Query binding %s input %s is not in the signature of Contract Query %s / %s",
 				binding.Identity(),
 				inputBinding.Input,
 				binding.Target.Contract,
@@ -444,7 +444,7 @@ func validateHeaderDetailBindingCrossLayer(
 			out = append(out, errFor(
 				bindingSubject,
 				"HEADER_DETAIL_BINDING_INPUT_TYPE_MISMATCH",
-				"header-detail Contract Query binding %sはsource attribute %s（型 %s）をQuery input %s（型 %s）へ渡しますが、Semantic型identityが一致しません",
+				"header-detail Contract Query binding %s passes source attribute %s (type %s) to Query input %s (type %s), but the Semantic type identity does not match",
 				binding.Identity(),
 				inputBinding.SourceAttribute,
 				attribute.Type,
@@ -459,7 +459,7 @@ func validateHeaderDetailBindingCrossLayer(
 			out = append(out, errFor(
 				bindingSubject,
 				"HEADER_DETAIL_BINDING_QUERY_INPUT_NOT_BOUND",
-				"header-detail Contract Query binding %sではContract Query %s / %sのinput %sへ値を渡すbindingがありません",
+				"header-detail Contract Query binding %s has no binding that passes a value to input %s of Contract Query %s / %s",
 				binding.Identity(),
 				binding.Target.Contract,
 				binding.Target.Query,
@@ -472,7 +472,7 @@ func validateHeaderDetailBindingCrossLayer(
 		out = append(out, errFor(
 			bindingSubject,
 			"HEADER_DETAIL_BINDING_RESULT_DATA_MISMATCH",
-			"header-detail Pattern %sのRelation %sは%sをtargetとしますが、Contract Query %s / %sは%sを返します",
+			"header-detail Pattern %s Relation %s targets %s, but Contract Query %s / %s returns %s",
 			binding.Pattern,
 			resolved.Relation.ID,
 			resolved.Relation.Target,
@@ -485,7 +485,7 @@ func validateHeaderDetailBindingCrossLayer(
 		out = append(out, errFor(
 			bindingSubject,
 			"HEADER_DETAIL_BINDING_RESULT_CARDINALITY_NOT_MANY",
-			"header-detail Pattern %sのContract Query %s / %sはcollection取得にmanyを必要としますが、result cardinalityは%sです",
+			"header-detail Pattern %s requires Contract Query %s / %s to return many for the collection read, but the result cardinality is %s",
 			binding.Pattern,
 			binding.Target.Contract,
 			binding.Target.Query,

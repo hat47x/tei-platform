@@ -33,7 +33,7 @@ func loadHeaderDetailContractQueryBindings(root string, r *Result) error {
 		sourceKey := "header-detail-contract-query-binding:" + binding.Identity()
 		if previous, exists := r.Sources[sourceKey]; exists {
 			return fmt.Errorf(
-				"%s: header-detail Contract Query binding %sは既に%sで定義されています",
+				"%s: header-detail Contract Query binding %s is already defined in %s",
 				path,
 				binding.Identity(),
 				previous.File,

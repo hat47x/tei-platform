@@ -98,8 +98,8 @@ func TestUndefinedOutcomeIsExecutionContractError(t *testing.T) {
 	})
 
 	_, err := capabilityinvoke.Invoke(context.Background(), capability, adapter, nil)
-	if err == nil || !strings.Contains(err.Error(), "定義していません") {
-		t.Fatalf("未定義Outcomeを正常なBusiness Resultとして受理しています: %v", err)
+	if err == nil || !strings.Contains(err.Error(), "does not define outcome") {
+		t.Fatalf("an undefined Outcome was accepted as a normal Business Result: %v", err)
 	}
 }
 

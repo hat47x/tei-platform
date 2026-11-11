@@ -51,7 +51,7 @@ func ValidatePersistenceRelationStorageMappings(w ir.World) []Diagnostic {
 			out = append(out, errFor(
 				mappingSubject,
 				"INVALID_PERSISTENCE_RELATION_STORAGE",
-				"Persistence Mapping %sのRelation Storageが不正です: %v",
+				"the Relation Storage of Persistence Mapping %s is invalid: %v",
 				mapping.ID,
 				err,
 			))
@@ -64,7 +64,7 @@ func ValidatePersistenceRelationStorageMappings(w ir.World) []Diagnostic {
 				out = append(out, errFor(
 					mappingSubject,
 					"UNKNOWN_PERSISTENCE_RELATION_STORAGE_RELATION",
-					"Persistence Mapping %sのRelation Storageは存在しないSemantic Relation %sを参照しています",
+					"the Relation Storage of Persistence Mapping %s refers to Semantic Relation %s, which does not exist",
 					mapping.ID,
 					storage.Relation,
 				))
@@ -75,7 +75,7 @@ func ValidatePersistenceRelationStorageMappings(w ir.World) []Diagnostic {
 				out = append(out, errFor(
 					mappingSubject,
 					"PERSISTENCE_RELATION_STORAGE_TARGET_MISMATCH",
-					"Persistence Mapping %sはSemantic Data %sを保存しますが、Relation %sのtargetは%sです",
+					"Persistence Mapping %s stores Semantic Data %s, but the target of Relation %s is %s",
 					mapping.ID,
 					mapping.SemanticData,
 					storage.Relation,
@@ -89,7 +89,7 @@ func ValidatePersistenceRelationStorageMappings(w ir.World) []Diagnostic {
 					out = append(out, errFor(
 						mappingSubject,
 						"UNKNOWN_PERSISTENCE_RELATION_STORAGE_SOURCE_ATTRIBUTE",
-						"Persistence Mapping %sのRelation %sは存在しないsource attribute %sを物理保存へ対応付けています",
+						"Relation %s of Persistence Mapping %s maps source attribute %s, which does not exist, to physical storage",
 						mapping.ID,
 						storage.Relation,
 						component.SourceAttribute,
@@ -100,7 +100,7 @@ func ValidatePersistenceRelationStorageMappings(w ir.World) []Diagnostic {
 					out = append(out, errFor(
 						mappingSubject,
 						"PERSISTENCE_RELATION_STORAGE_SOURCE_ATTRIBUTE_PARENT_MISMATCH",
-						"Relation %sはSemantic Data %sから定義されていますが、物理保存componentのsource attribute %sは%sに属しています",
+						"Relation %s is defined from Semantic Data %s, but the source attribute %s of the storage component belongs to %s",
 						storage.Relation,
 						relationRef.Source,
 						component.SourceAttribute,
