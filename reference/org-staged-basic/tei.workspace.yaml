@@ -1,0 +1,6 @@
+workspace: organization_staged_basic
+formatVersion: 1
+sources:
+  - semantic
+  - applications
+  - databases

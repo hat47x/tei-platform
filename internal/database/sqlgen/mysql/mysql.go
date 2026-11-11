@@ -123,11 +123,6 @@ func (d *Dialect) Select(ctx context.Context, opts sqlgen.SelectOptions) (sqlgen
 	}
 	sb.WriteString(strings.Join(opts.Columns, ", "))
 
-	if strings.TrimSpace(opts.Window) != "" {
-		sb.WriteString(" WINDOW ")
-		sb.WriteString(opts.Window)
-	}
-
 	sb.WriteString(" FROM ")
 	sb.WriteString(opts.Table)
 
@@ -159,6 +154,14 @@ func (d *Dialect) Select(ctx context.Context, opts sqlgen.SelectOptions) (sqlgen
 	if len(opts.Having) > 0 {
 		sb.WriteString(" HAVING ")
 		sb.WriteString(buildConditions(opts.Having, ""))
+	}
+
+	// A named window definition belongs to the whole query rather than to one
+	// select item, so it follows GROUP BY / HAVING and precedes ORDER BY. Putting
+	// it right after the select list is a syntax error in MySQL too.
+	if strings.TrimSpace(opts.Window) != "" {
+		sb.WriteString(" WINDOW ")
+		sb.WriteString(opts.Window)
 	}
 
 	if len(opts.OrderBy) > 0 {

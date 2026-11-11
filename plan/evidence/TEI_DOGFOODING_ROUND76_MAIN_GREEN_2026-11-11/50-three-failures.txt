@@ -1,0 +1,7 @@
+At the start of this round, on main (40a44effe):
+
+  --- FAIL: TestEveryDiagnosticCodeIsMentionedByATest     20 codes
+  --- FAIL: TestMarkdownRelativeLinksResolve              1 link
+  --- FAIL: TestSchemaVersionLiteralsHaveATest            13 identifiers
+
+All three are in tools/repository-plan-check, which repository-health runs.
