@@ -4,7 +4,7 @@
 
 - 設計・受入の正本: [TEI_MD_DOMAIN_DIAGRAM_TO_BUILD_IMPLEMENTATION_GUIDE_2026-11.md §2.2](../../plan/design/TEI_MD_DOMAIN_DIAGRAM_TO_BUILD_IMPLEMENTATION_GUIDE_2026-11.md)
 - 対象サンプル: [reference/candidates/domain-diagram-to-build/order_entry.tei.md](../../reference/candidates/domain-diagram-to-build/order_entry.tei.md)
-- P0-A 判定記録: [P0A_VERTICAL_LOWERING_EVIDENCE_2026-11.md](../../plan/gate/P0A_VERTICAL_LOWERING_EVIDENCE_2026-11.md)
+- P0-A 判定記録: [PR #4310](https://github.com/hat47x/tei-platform/pull/4310) の `plan/gate/P0A_VERTICAL_LOWERING_EVIDENCE_2026-11.md`（P0-A の判定は実装PR側にあり、本PRには置かない）
 
 ## 何を確認し、何を確認しないか
 

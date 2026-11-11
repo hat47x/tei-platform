@@ -2,14 +2,14 @@
 
 - **状態**: 実装導線。設計・受入の正本は [TEI_MD_DOMAIN_DIAGRAM_TO_BUILD_LOWERING_2026-11.md](TEI_MD_DOMAIN_DIAGRAM_TO_BUILD_LOWERING_2026-11.md)。本書は**後続実装者が迷わず最後まで作業するための運用手順**であり、設計の第二正本を作らない。
 - **作成日**: 2026-11-11
-- **前提**: P0-A 成立（[判定記録](../gate/P0A_VERTICAL_LOWERING_EVIDENCE_2026-11.md)）。PR [#4293](https://github.com/hat47x/tei-platform/pull/4293)（実装）・[#4295](https://github.com/hat47x/tei-platform/pull/4295)（設計）。
+- **前提**: P0-A 成立（[判定記録](https://github.com/hat47x/tei-platform/pull/4310)）。PR [#4293](https://github.com/hat47x/tei-platform/pull/4293)（実装）・[#4295](https://github.com/hat47x/tei-platform/pull/4295)（設計）。
 - **対象読者**: P1-B〜P3-D を実装する担当者。
 
 ## 0. 現在地（P0-A で確定した事実）
 
 | 事実 | 証拠 |
 | --- | --- |
-| 旧 `.tei` の Parse→Model→Generate→Build が独立Expectedで縦断成立 | `tools/reference-application-binary/p0a_vertical_test.go`、[P0-A判定記録](../gate/P0A_VERTICAL_LOWERING_EVIDENCE_2026-11.md) |
+| 旧 `.tei` の Parse→Model→Generate→Build が独立Expectedで縦断成立 | `tools/reference-application-binary/p0a_vertical_test.go`、[P0-A判定記録](https://github.com/hat47x/tei-platform/pull/4310) |
 | migration SQL の抽出・生成・起動適用が動作 | #4293 |
 | 生成物は外部runtimeなしの単一バイナリ | #4293（`modernc.org/sqlite` 埋め込み） |
 | workspace migration SQL は PostgreSQL 方言で SQLite 非互換 | K-07。Execute は `unverified` |
