@@ -1605,7 +1605,7 @@ in-processを既定にするには、**entryがcatalogを自分で選ぶ**必要
 | 成果物と違うdigestを申告する | 条件4（ディスクとの比較）で不一致 |
 | 同じバイトを二回出さない | 条件5で不一致 |
 | 二回の間に実行物を差し替える | 条件5の**builder同一性**（**`-child`に名指ししたファイルのbyte**。そのファイルが別の実行物を起動するプロキシだと、背後での差し替えは止まらない——[実測](../evidence/TEI_GO_SELF_BUILD_CHILD_IDENTITY_SCOPE_2026-11-10.md)） |
-| `-state`を無視して同じstateで二回buildする | 条件5の**state分離**（申告が合わない） |
+| `-state`を無視して同じstateで二回buildする | 条件5の**state分離**——ただし**止まるのは、childが実際と違う値を申告した場合だけ**。渡された値をそのまま申告する child が裏で同じstateを使うと**止まらない**（[実測](../evidence/TEI_GO_SELF_BUILD_STATE_SEPARATION_SCOPE_2026-11-11.md)。下の「検査で止められないもの」3と対になる） |
 | **計画と違うdefinitionを読んでbuildする** | childが**成果物を作る前に停止**（§4.36） |
 
 #### 検査で止められないもの（信じている部分）
