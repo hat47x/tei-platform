@@ -1,7 +1,7 @@
 # SUI→TEI移行：read-only参照の実装知見と、*.tei.md＋Pluginへの移行タスク分解
 
 - 状態: 評価待ち（未採用）。実装・Reference変更・受入の根拠にしない
-- 日付: 2026-11-11
+- 日付: 2026-11-11（§5を具体化: 2026-11-11）
 - 対象: SUI SensemakingのDocument/Card/Island/Tree/Canvas/Relation/Revision/Reviewと、TEIの*.tei.md（Canonical定義）＋Pluginによる設計〜実装への移行
 - 正本との関係: [SUI_MIGRATION_EXTENSION_AND_SPLIT_DESIGN_2026-10.md](SUI_MIGRATION_EXTENSION_AND_SPLIT_DESIGN_2026-10.md)（SUI側の分割とscope isolation）と[SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md](SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md)（Stage 0のshadow conformance）を置き換えない。本書は「2026-11-11にSUI側でread-only参照が実装された知見」と、そこから展開した移行タスクの分解だけを扱う
 - 根拠: SUI PR #3429（`GET /docs/{doc_id}/tei/sui-reference`）、SUI ADR-0116、SUI `02_Architecture/api.md` §2.18、SUI #3401
@@ -15,7 +15,7 @@ SUI側で「TEI Referenceのartifactを、型付きのread-only参照として�
 2. 「運べない」が、部分取得・未レビュー・非公開・失効・版とどう区別して現れるか
 3. 既存のSUI経路（DocumentV1）と比べて、参照経路にどの実利と代償があるか
 
-本書はこの知見を、*.tei.md＋Pluginという移行先の構成へ翻訳し、今後必要なタスクを依存関係と受入条件付きで分解します。判断の採用は各IssueとADRの仕事で、本書は分解と論点の整理までを行います。
+本書はこの知見を、*.tei.md＋Pluginという移行先の構成へ翻訳し、今後必要なタスクを**後続の実装者がそのまま作業票にできる具体性**まで分解します。判断の採用は各IssueとADRの仕事で、本書は分解と論点の整理までを行います。
 
 ## 2. 実装知見（2026-11-11時点）
 
@@ -112,71 +112,205 @@ artifactから型へ落とした時点で失われるものは、実装の中で
 
 SUI固有の語彙（`Card`、`Island`、`human_reviewed`）が共通部品の契約へ流入しないことは、[SUI_MIGRATION_EXTENSION_AND_SPLIT_DESIGN_2026-10.md](SUI_MIGRATION_EXTENSION_AND_SPLIT_DESIGN_2026-10.md) §3の防ぎたい失敗として既に扱われています。本書の対応表も同じ線引きに従います。
 
-## 5. タスク分解（M0〜M6）
+## 5. タスク分解（M0〜M6）と作業票
 
-M0は完了です。M1以降は未実施で、依存と受入条件を付けます。各タスクは「変更範囲」「依存」「受入」「未実施・不明」を明示し、合成FixtureのPASSを実ProviderやOwner意味受理の証拠として扱いません。
+### 5.0 後続の実装者向けの約束事
 
-### M0 read-only参照の実装（完了: SUI PR #3429）
+**読む順番**
 
-- 変更範囲: SUIのconsumer（`tei_sui_reference.py`、route、api.md、ADR-0116）。TEI側の変更なし
+1. 本設計 §2（何が実証されたか）→ §3（何が表現できるか）→ §4（どこに載るか）
+2. 担当タスクの作業票（§5.1〜§5.7）
+3. 既存設計の該当章: scopeは[SUI_MIGRATION_EXTENSION_AND_SPLIT_DESIGN_2026-10.md](SUI_MIGRATION_EXTENSION_AND_SPLIT_DESIGN_2026-10.md) §5・§8、Stage 0は[SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md](SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md)
+4. 委譲先Issueの現在の内容（本書は各Issueの代わりになりません）
+
+**作業票の8項目**。各タスクはIssueへ起こすとき、この8項目をそのまま書きます。項目が埋まらない場合は、未決として明示し、推測で埋めません。
+
+| 項目 | 意味 |
+| --- | --- |
+| 目的 | 減らす不確実性（RQ・Issue） |
+| 変更境界 | 触るファイル・触らないファイル。第二の正本を作らない |
+| 依存 | 着手前に成立しているべきタスクと版 |
+| 受入 | 機械で確認できる条件。合成FixtureのPASSは実ProviderやOwner意味受理の資格にしない |
+| 負例 | 落とすべき入力（未知・欠落・曖昧・失効・非公開） |
+| 未実施 | 実行しなかった検証と残る危険 |
+| 委譲先 | レビュー・統合の戻り先（ロール） |
+| 撤退条件 | 効果が確認できないときに戻る先 |
+
+**環境の注意（2026-11-11時点）**
+
+- `TEI Cache Full vs Incremental Verification` ワークフローの `cache-verification` ジョブは、`actions/upload-artifact` のSHA解決に失敗して全PRで赤くなります（同時刻の無関係ブランチでも同一失敗を確認）。**自分の変更の失敗ではありません**。追跡しないでください。
+- `TEI PR・main 健全性確認` の `repository-health` は、GitHub-hostedランナーが割り当てられず保留になることがあります（既知のinfra Issue）。ローカルで `go test ./tools/repository-plan-check/... -count=1` を実行し、その結果をPR本文に書きます。
+- このリポジトリでは同時に複数のセッションが動くことがあります。作業は専用のworktreeで分離し、`main`を直接変更しません。
+
+### 5.1 M0 read-only参照の実装（**完了**: SUI PR #3429）
+
+- 目的: SUI #3401 I0。契約とProviderのread-only照合
+- 変更範囲: SUIのconsumer（`tei_sui_reference.py`、`routes/tei_epistemic.py`、`api.md` §2.18、ADR-0116）。TEI側の変更なし
 - 受入: 参照・変更・再参照・Source失効・開示制限の試験（28件）と関連8ファイル（82件）が通り、CI 7ジョブが成功
 - 未実施: 実ブラウザ、実PostgreSQL、TEI側producer
+- 委譲先: `reviewer`
 
-### M1 producer契約の判断（`source.status`と文書単位の開示宣言）
+### 5.2 M1 producer契約（`source.status`と文書単位の開示宣言）
 
-- 目的: consumerが推定している失効と開示を、producerが宣言する契約にする
-- 変更範囲: TEI側のartifact生成側。未決の間はSUIは`unknown`として動く（後方互換）
+- 目的: consumerが推定している失効と開示を、producerが宣言する契約にする（F-5・F-6）
+- 変更境界: TEI側のartifact生成側のみ。consumer（SUI）は変更しない（後方互換を保つ）
 - 依存: M0。#2743（Source鮮度）、#3479（Import原文の失効）
-- 受入: 「宣言がない場合の既定」と「宣言がある場合の検証」が別に試験される。`unknown`が`active`に読み替わらない負例が在る
-- 未実施: producer側の実装。契約の採否はOwner判断
+- 契約案（**案。採択前**）。artifactへの追加はすべて省略可能とする:
 
-### M2 SUIドメインのCanonical定義（Reference Workspace）
+```json
+{
+  "source": { "teiCommit": "…", "documentRevision": "rev-1", "status": "active" },
+  "disclosure": { "scope": "internal" }
+}
+```
 
-- 目的: `sui.document` / `sui.card` / `sui.island` とrelationを、`.tei.md`で宣言する。instanceは昇格しない
-- 変更範囲: Reference Workspace。Product runtime・Canonical sourceの変更なし
-- 依存: M0の対応表。#2497（構造保存写像）
-- 受入: 定義が一意に解決すること。containmentとaffiliationが別のrelationとして解決すること。Tree階層・canvas geometryが「未宣言」として観測できること
+  - `source.status`: `active` / `revoked` / `expired`。**省略と未知の文字列は`unknown`**。`unknown`を`active`に読み替えない
+  - `disclosure.scope`: `internal` / `restricted`。省略は制限なし。`restricted`は文書全体を非返却（種別・ID・件数も出さない）
+- 受入:
+  1. 省略時にconsumerが`unknown`として損失へ出すこと（SUI PR #3429の`source-status: unresolved`）
+  2. `revoked` / `expired`でconsumerが409を返し、IDも件数も出さないこと
+  3. `restricted`でconsumerが403を返し、種別・ID・件数を出さないこと
+  4. 未知の文字列値（`"Active"`、`"gone"`）が`unknown`に倒れること
+  5. producer側で、宣言の有無がconsumerの挙動を変えることを試験で示すこと
+- 負例: `status`に数値を入れる、`disclosure`を文字列（`"restricted"`）で渡す（扱いを決めてから実装する。案: 文字列も許す）、`active`を既定値としてproducerが埋める
+- 未実施: producer側の実装。契約の採否はOwner判断（§7-1）
+- 委譲先: `architect`（契約の形）→ `implementer`
+- 撤退条件: 採択されない場合、consumerは`unknown`のまま動かし、失効の判定はconsumer側の限定した読みに留める
+
+### 5.3 M2 SUIドメインのCanonical定義（Reference Workspace）
+
+- 目的: `sui.*`を`.tei.md`で宣言する。instanceは昇格しない（Stage 0の規則を維持）
+- 変更範囲: Reference Workspaceの定義ファイル。Product runtime・Canonical source・fixtureのinstanceは変更しない
+- 依存: M0の対応表（§3.1）。#2497（構造保存写像）
+- 定義案（**案**）:
+
+```text
+namespace sui
+
+data sui.document { id DocumentID }
+data sui.card     { id CardID text Text? x Number y Number
+                    claimType ClaimType? holdState HoldState? }
+data sui.island   { id IslandID }
+
+relation sui.containment { one sui.island many sui.card }
+relation sui.affiliation { many sui.card many sui.island }
+relation sui.islandParent { zero-or-one sui.island zero-or-one sui.island }
+```
+
+  - `containment`と`affiliation`は**別のrelation**（F-3）。一つのrelationに畳かない
+  - Cardは`text`で合一しない（F-2）。同一名称は別occurrence
+  - **宣言しない**: Tree閲覧状態、canvas transform / z-order / zoom / gesture、island geometry、review attribution、Relation rationale。宣言しないことを「未宣言」として観測できるようにする
+- 受入:
+  1. `go run ./cmd/tei validate -workspace <workspace>` が通ること
+  2. `sui.containment`と`sui.affiliation`が別のrelationとして一意に解決できること
+  3. fixtureのinstanceがCanonical objectへ昇格していないこと（read-only probeの規則）
+  4. Tree階層・canvas geometryが「未宣言」として報告されること
+- 負例: containmentとaffiliationを一つのrelationにする案、`text`をcardの自然キーにする案、fixtureのinstanceをCanonicalへ写す案
 - 未実施: 定義の採否。instanceのCanonical object化は扱わない
+- 委譲先: `architect`（語彙の線引き）→ `implementer`
+- 撤退条件: 第二の消費者が現れなければ、`sui.*`はSUIのnative assetのままにし、共通部品へ昇格させない（#2497の基準）
 
-### M3 record/string投影（#2488の欠落の充足）
+### 5.4 M3 record/string投影（#2488の欠落の充足）
 
-- 目的: 受理した意味から、DocumentV1相当のpayloadを生成できるようにする。consumerが二度書くコスト（F-10）を避ける
-- 変更範囲: generator contractとfixture。#2488が観測した二つの拒否（数値契約の前提、textだけの契約の拒否）を解消する
+- 目的: 受理した意味からDocumentV1相当のpayloadを生成する。consumerが二度書くコスト（F-10）を避ける
+- 変更範囲: generator contractと適合fixture。#2488が観測した二つの拒否（数値契約の前提、textだけの契約の拒否）を解消する
 - 依存: M2。#2585（値忠実度・Presence・多値型）
-- 受入: 生成物のsource/binary digestとprovenanceが記録される。欠損・未確定の扱いが契約に載る
-- 未実施: generator familyの設計判断は#2488のOwner
+- 契約案（**案**）:
 
-### M4 Disclosure Projection（項目×開示先）
+```json
+{
+  "strategy": "template",
+  "inputs": [{ "attribute": "sui.card.text" }, { "attribute": "sui.card.x" }],
+  "output": { "kind": "record" },
+  "missing": "unknown",
+  "digest": { "record": "source-and-binary" }
+}
+```
+
+  - `missing`: 欠損・未確定を`unknown`として扱うか、項目を落とすか。**空文字や0で埋めない**
+  - `digest`: 生成物のsource/binary digestとprovenanceを残す
+- 受入:
+  1. #2488が観測した2つの拒否が、この契約では起きないこと
+  2. 欠損入力で生成が失敗または`unknown`になり、空文字で埋まらないこと
+  3. 生成物のdigestとprovenanceが記録され、再生成で一致すること
+- 負例: 数値契約（quantity/rounding前提）をそのまま渡す、欠損を空文字で埋める、digestを記録しない
+- 未実施: generator familyの設計判断は#2488のOwner。実DB・実Providerでの生成は未実施
+- 委譲先: #2488のOwner → `implementer`
+- 撤退条件: 成立しなければ、二度書きはconsumer（SUI側）のままに残す。性能の主張はしない
+
+### 5.5 M4 Disclosure Projection（項目×開示先）
 
 - 目的: `redact` / `preserve` / `omit` と、SUI固有のreview軸を条件として分離し、export・共有・AI入力を一つの宣言から導く
 - 変更範囲: Attribute注釈とProjection。#2516がOwner
 - 依存: M2。#3369（本文公開の判断）
-- 受入: 「項目が伏せられた」ことを示す印が、`withheld`（開示しない）と`unknown`（不明・無い）を区別する。網羅性が型または検査で縛られる
-- 未実施: 印の形の決定。#3369はSUI側の判断
+- 宣言案（**案**）:
 
-### M5 Source状態と版の権威をSource index側へ移す
+```text
+attribute sui.card.text {
+    disclosure { ui = preserve, share = redact, review-pack = preserve,
+                 diff = omit, ai-input = derive(reviewState) }
+}
+```
 
-- 目的: `revoked` / `expired` / 鮮度を、consumerの推定ではなくSource indexが権威として扱う
+  - 判定は**項目 × 開示先**の表。文脈は一つではない（付録B.2-3）
+  - review状態（`human_reviewed`）は**条件として外から与える**。SUI語彙を契約へ入れない
+  - `withheld`（開示しない）と`unknown`（不明・無い）を区別する印を持つ（F-7）
+  - `omit`の結果に「伏せられた」ことを示す印を残すかを決める（付録B.2-6）
+- 受入:
+  1. 網羅性が型または検査で縛られること（項目追加時に判断を忘れない）
+  2. 印が`withheld`と`unknown`を区別すること
+  3. #3369の判断なしに、本文が`share`や`ai-input`へ出ないこと
+  4. 同じ宣言からexport・share・AI入力の三経路が導けること
+- 負例: 拒否リスト式の開示（既定で出る）、`omit`を「無い」として扱う、review状態を契約に埋め込む
+- 未実施: 印の形の決定、第二のApplicationでの再現
+- 委譲先: #2516のOwner → `implementer`
+- 撤退条件: 採択されない場合、開示判断は各経路のまま（SUIの第四の形を含む）に留め、一本化は主張しない
+
+### 5.6 M5 Source状態と版の権威をSource index側へ移す
+
+- 目的: `revoked` / `expired` / 鮮度を、consumerの推定ではなくSource indexが権威として扱う（F-4・F-5）
 - 変更範囲: Source index / provenance。#2743・#3479がOwner
 - 依存: M1。#2595（照合済みbyteだけを渡す）
-- 受入: 失効が次のreadで反映されること。古い参照が無効化されたことがconsumerから観測できること
-- 未実施: 実Providerでの観測
+- 受入:
+  1. 失効が次のreadで反映されること（キャッシュで遅らせない）
+  2. 古い参照が無効化されたことがconsumerから観測できること
+  3. `unknown`（未宣言）が`active`として扱われないこと
+  4. 内容変更とsource revision変更が別の状態として観測できること
+- 負例: 失効をキャッシュで遅らせる、`unknown`を`active`に読み替える、digestとrevisionを同一視する
+- 未実施: 実Providerでの観測。replica構成での「次のread」の意味
+- 委譲先: #2743のOwner → `implementer`
+- 撤退条件: Source index側に載せられない場合、consumer側の限定した読みに留め、権威の所在をIssueへ記録する
 
-### M6 scope isolationのconformanceを言語非依存で書き出す
+### 5.7 M6 scope isolationのconformanceを言語非依存で書き出す
 
 - 目的: SUIの越境試験を、Python実装から切り離した契約としてTEI側へ置く。実装の書き換えを急がない
 - 変更範囲: 試験と言語非依存の記述。SUI_MIGRATION_EXTENSION_AND_SPLIT_DESIGN_2026-10.md §8.4 Stage 1
 - 依存: 既存設計。ISSUE-000080（Capability Contract）の結果
-- 受入: 14経路の行列が「該当機能があれば必須」の形で書ける。list・export-audit・監査読み取り・import権限非継承の欠落（同書 付録A）が埋まる
+- 受入:
+  1. 14経路の行列が「該当機能があれば必須」の形で機械可読に書けること
+  2. 欠落4経路（list / export-audit / 監査読み取り / import権限非継承。同書 付録A）を埋める試験がSUI側で通ること
+  3. Python実装がその試験を通ること
+- 負例: 試験を通すために契約を緩める、実装を通すだけで契約を変える
 - 未実施: ISSUE-000080の解消。第二のApplicationでの再現
+- 委譲先: `planner`（行列の言葉）→ `implementer`
+- 撤退条件: ISSUE-000080が解けない間は、L0（宣言）とL3（試験）だけを進め、L1・L2のPlugin化は後に回す
 
-### 横断で見るべき依存
+### 5.8 順序とブロッカー
 
 ```text
-M0（参照consumer） ── M1（producer契約） ── M5（Source権威）
-        └── M2（Canonical定義） ── M3（record投影） ── M4（開示投影）
-                                     └── M6（scope conformance、独立）
+M0（参照consumer、完了）
+  ├── M1（producer契約） ── M5（Source権威）
+  └── M2（Canonical定義） ── M3（record投影） ── M4（開示投影）
+M6（scope conformance）は独立
 ```
+
+| タスク | ブロッカー | 解除の条件 |
+| --- | --- | --- |
+| M1・M4 | SUI #3369（本文公開の判断） | Owner判断。判断が無い間は本文を出さない経路のまま |
+| M3 | TEI #2488（generator familyの設計判断） | #2488のOwner判断 |
+| M5 | #2743 / #3479 の現在の設計 | Source index側の責務の明確化 |
+| M6 | ISSUE-000080（Capability Contract） | 解消後。それまでL0とL3のみ |
+| M2 | #2497（語彙の線引き） | 第二の消費者が出るまで標準化しない |
 
 ## 6. リスクと、成立しない場合の撤退
 
@@ -202,21 +336,22 @@ M0（参照consumer） ── M1（producer契約） ── M5（Source権威）
 | 論点 | 委譲先 | 本書の扱い |
 | --- | --- | --- |
 | 構造保存写像・損失の語彙 | [#2497](https://github.com/hat47x/tei-platform/issues/2497) | §2.2のinventoryを論点として渡す |
-| record/string投影 | [#2488](https://github.com/hat47x/tei-platform/issues/2488) | M3 |
-| 開示投影 | [#2516](https://github.com/hat47x/tei-platform/issues/2516) | M4 |
-| Source鮮度・失効 | [#2743](https://github.com/hat47x/tei-platform/issues/2743) / [#3479](https://github.com/hat47x/tei-platform/pull/3479) | M1・M5 |
-| 共通Application API | [#1158](https://github.com/hat47x/tei-platform/issues/1158) / [#3419](https://github.com/hat47x/tei-platform/issues/3419) | M3・M4の出口 |
-| 実Read・coverage | [#2586](https://github.com/hat47x/tei-platform/issues/2586) / [#2506](https://github.com/hat47x/tei-platform/issues/2506) | M5 |
+| record/string投影 | [#2488](https://github.com/hat47x/tei-platform/issues/2488) | §5.4 |
+| 開示投影 | [#2516](https://github.com/hat47x/tei-platform/issues/2516) | §5.5 |
+| Source鮮度・失効 | [#2743](https://github.com/hat47x/tei-platform/issues/2743) / [#3479](https://github.com/hat47x/tei-platform/pull/3479) | §5.2・§5.6 |
+| 共通Application API | [#1158](https://github.com/hat47x/tei-platform/issues/1158) / [#3419](https://github.com/hat47x/tei-platform/issues/3419) | §5.4・§5.5の出口 |
+| 実Read・coverage | [#2586](https://github.com/hat47x/tei-platform/issues/2586) / [#2506](https://github.com/hat47x/tei-platform/issues/2506) | §5.6 |
 | canvas / Interaction | [#993](https://github.com/hat47x/tei-platform/issues/993) | §3.1 |
 | 外部agent投影 | SUI [#3368](https://github.com/hat47x/sui-sensemaking/issues/3368) | §3.2 |
-| 本文公開の判断 | SUI [#3369](https://github.com/hat47x/sui-sensemaking/issues/3369) | M4 |
+| 本文公開の判断 | SUI [#3369](https://github.com/hat47x/sui-sensemaking/issues/3369) | §5.5 |
 | データ統合の段階 | SUI [#3401](https://github.com/hat47x/sui-sensemaking/issues/3401) | 全体 |
-| SUI側の分割・scope | [SUI_MIGRATION_EXTENSION_AND_SPLIT_DESIGN_2026-10.md](SUI_MIGRATION_EXTENSION_AND_SPLIT_DESIGN_2026-10.md) | M6 |
+| SUI側の分割・scope | [SUI_MIGRATION_EXTENSION_AND_SPLIT_DESIGN_2026-10.md](SUI_MIGRATION_EXTENSION_AND_SPLIT_DESIGN_2026-10.md) | §5.7 |
 
 ## 9. 本文書が主張しないこと
 
 - SUIがTEIへ移管されること、どのPlugin化も実施されることを保証しません
 - 実測値は合成Documentのプロセス内計測で、配備後のlatencyでも実Providerのreadでもありません
 - M1〜M6は未実施です。合成FixtureのPASSやconsumer側の試験を、Ownerの意味受理や実Providerの資格として扱いません
+- 契約案・定義案・宣言案は**案**であり、採択された契約ではありません
 - TEIのCore、Plugin契約、`CapabilityKind`の変更を要求しません
 - SUI一件の実装から、共通部品としての標準化が十分な証拠を持つことは主張しません（F-12）
