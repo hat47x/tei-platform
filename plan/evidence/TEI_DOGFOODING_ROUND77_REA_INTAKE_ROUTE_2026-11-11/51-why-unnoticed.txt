@@ -1,0 +1,5 @@
+The tests called runThreeElementReaIntake directly, which bypasses the
+dispatcher. A missing case is invisible to a test that never goes through it.
+
+The tests that DID go through runThreeElementCommand are the reason this surfaced
+at all - the test's entry point was right and the implementation lagged.

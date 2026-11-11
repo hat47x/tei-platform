@@ -30,7 +30,7 @@ func writeThreeElementResponse(out io.Writer, response threeElementResponse, exi
 
 func runThreeElementCommand(args []string, out io.Writer) (int, error) {
 	if len(args) == 0 {
-		return failThreeElement("INVALID_ARGUMENT", "three-element requires a subcommand: validate|crud|cross-reference|diff", 2, out)
+		return failThreeElement("INVALID_ARGUMENT", "three-element requires a subcommand: validate|crud|cross-reference|diff|rea-intake", 2, out)
 	}
 	sub := args[0]
 	switch sub {
@@ -42,6 +42,12 @@ func runThreeElementCommand(args []string, out io.Writer) (int, error) {
 		return runThreeElementCrossReference(args[1:], out)
 	case "diff":
 		return runThreeElementDiff(args[1:], out)
+	case "rea-intake":
+		// The executor existed but was never routed here, so every rea-intake
+		// invocation answered "unknown subcommand" while the tests expected it
+		// to run. The missing case is why that gap went unnoticed: a test that
+		// calls the executor directly never touches the dispatcher.
+		return runThreeElementReaIntake(args[1:], out)
 	default:
 		return failThreeElement("INVALID_ARGUMENT", fmt.Sprintf("unknown three-element subcommand %q", sub), 2, out)
 	}
