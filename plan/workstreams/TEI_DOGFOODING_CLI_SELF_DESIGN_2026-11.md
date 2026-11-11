@@ -2508,3 +2508,36 @@ note	VALIDATION_INCOMPLETE	the run stopped at the first syntax error in applicat
 **M2 が重要**である。意味の診断は全ファイルを解析した結果なので、不完全と表示すると**新しい嘘**になる。この区別を試験で固定した。
 
 既存の出力ピン（`TestFormatSourceDiagnosticIncludesPathLineColumn`・`TestValidateWorkspace...`）は無変更で通る。
+
+## 77. 第76ラウンド（2026-11-11）: main の赤い3テストを緑にする
+
+第75ラウンドで「ローカルの plan-check は3件赤だが main でも同じ」と記録した。**その3件を実際に緑にした。** 生出力は[第76ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND76_MAIN_GREEN_2026-11-11/README.md)にある。
+
+| テスト | 件数 | 対応 |
+| --- | --- | --- |
+| `TestEveryDiagnosticCodeIsMentionedByATest` | 20コード | 到達可能性を確かめる4試験＋健全性の対照 |
+| `TestMarkdownRelativeLinksResolve` | 1リンク | **文書が存在しないことを認める**（リンクを外し名前をコード表記で残す） |
+| `TestSchemaVersionLiteralsHaveATest` | 13識別子 | 実際にコマンドを走らせて `schemaVersion` を読む |
+
+### 到達可能性を確かめる
+
+`internal/threeelement/model.go` の20コードは、どのテストも**名前を書いていなかった**。文字列を書くだけでは到達可能性を確かめないので、**各コードを実際に発生させる最小モデル**を組んだ。加えて**健全なモデルがそれらを出さないこと**を固定し、誤検出していないことも示した。
+
+### 死んだリンク
+
+```text
+plan/design/REA_THREE_ELEMENT_CANDIDATE_INTAKE_2026-11.md
+  -> REA_EXTERNAL_EVIDENCE_T0_T1_ADMISSION_2026-11.md
+```
+
+`git log --all --diff-filter=A` が空で、**この文書は一度もコミットされていない**。`plan/design/README.md` が #3394 の計画として索引に載せ、本体は書かれていなかった。
+
+リンクを外し、名前をコード表記で残して「未作成」と明記した。**テストを緩めるのではなく、主張を正した。**
+
+### 自分の誤り2つ
+
+`ThreeElementModel` のフィールドを `ID` と書いた（正しくは `ModelID`）。`diff` のフラグを `-model`/`-against` と推測した（正しくは `-before`/`-after`）。**どちらも推測で書いて、実行して直した。**
+
+### 結果
+
+`./tools/repository-plan-check` の**3テストすべてが緑**。製品コードは変えていない（テストを足し、文書の主張を正した）。
