@@ -49,6 +49,7 @@
 | [`reference-authentication/`](reference-authentication/) | credentialを発行せず、principalとtenantの認証境界を検証する基盤pluginの参照（#2020） |
 | [`reference-tei-eki-contract/`](reference-tei-eki-contract/) | TEI Job/Flow設計からEKIのOpenAPI形状へ写すときの意味の欠落を、固定snapshotとの比較で検出する試験専用の参照（実Provider連携ではない） |
 | [`reference-external-role-dispatcher/`](reference-external-role-dispatcher/) | GitHub Issue/PRを介する異種AI協調で、ロール別の作業取得・モデル選択・排他lease・失敗時のエスカレーション・レビュー依頼を一つのCLIで確認する参照（DSH adapterはdry-run既定、ghはdry-runで変更を回避）（#4218） |
+| [`reference-cache-full-vs-incremental-verification/`](reference-cache-full-vs-incremental-verification/) | キャッシュ・増分処理がフル処理と同じ結果を出すかを比較する参照。食い違う入力・依存・キャッシュ項目・artifactを診断として特定し、キャッシュ再利用による偽陽性を検出する（#4219） |
 | [`reference-build-catalog-authoring/`](reference-build-catalog-authoring/) | builder catalogを能力宣言から組み立てる参照。artifactのdigestは実ファイルから計算し、宣言にdigestを書くことと`-root`の外を指すことを拒否する。製品のファイル形式を変えずにcatalogを用意する手段（#2831 SB-C0 §4.32） |
 | [`reference-offline-storage/`](reference-offline-storage/) | 個人向けに、root内へ閉じたローカル保存を提供する基盤pluginの参照（#2020） |
 | [`reference-export-package/`](reference-export-package/) | SIer向けに、manifestとdigest付きの配布zipを作る基盤pluginの参照（#2020） |

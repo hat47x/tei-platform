@@ -2234,49 +2234,33 @@ SELECT ... WHERE state='expired' AND updated_at = datetime('now')
 
 **4案はいずれも当てはまらなかった。** 黙って閉じず、**Issue を訂正するコメントを書いてから**修正で閉じる。
 
-## 70. 第68ラウンド（2026-11-11）: 環境を設計し、database・environment を CLI で読めるようにする
+## 70. 第69ラウンド（2026-11-11）: main の壊れた文字列リテラルを直す
 
-目的文の「再びドッグフーディングに戻る」を実行した回。まだ触っていない層として environment を選んだ。生出力は[第68ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND68_ENVIRONMENT_LAYER_2026-11-11/README.md)にある。
+第68ラウンドの `go vet ./...` が、**自分の変更とは無関係な main の破損**を捕まえた。
 
-### 設計（1往復）
+### 発見
 
-| Attempt | 応答 | 学んだこと |
-| --- | --- | --- |
-| 1 | `DATABASE_PROVIDER_PLUGIN_MISSING environment staging instance sales_core.staging provider postgres has no resolved database-provider plugin` ＋ `MIGRATION_PROVIDER_PLUGIN_MISSING` | 環境は使う provider の plugin を自分で解決する |
-| 2 | `ok`（`bundle tei.reference.providers ^1` を追加） | バンドル宣言で解決 |
+```text
+tools/reference-mcp-readonly-adapter/source_ab_consumer_parity_test.go:122:13:
+  string literal not terminated
+```
 
-**診断が instance 名・provider 名・migration tool 名まで名指ししたので、1往復で通った。**
+ブランチ元（`12762bdd3`）を**素の状態**で checkout しても同じく落ち、当時の最新 main（`be814895e`）でも壊れていた。
 
-### 読み返しで見つけた欠落
+```go
+t.Fatalf("%s: actual CLI and MCP consumer documents differ:
+CLI=%v
+MCP=%v", version, cliDoc, mcpDoc)
+```
 
-設計は通ったが、**`database` も `environment` も CLI で読めなかった**。
-
-| コマンド | database | environment |
-| --- | --- | --- |
-| `model catalog` | 出ない | 出ない |
-| `model overview` | **`notCoveredKinds` に載っている** | 同左 |
-| `inspect` / `trace` | `UNSUPPORTED_SUBJECT_KIND` | 同左 |
-| `world` | 返す | 返す |
-
-**`model overview` は既に「載っていない」と宣言していた**（第59ラウンドの E 案）。宣言と実害が一致していた。
+**Go の文字列リテラルに本物の改行が入っていた。** `\n` ではなく実改行で、リテラルが 122 行目で終端していない。
 
 ### 修正
 
-`database` と `environment` を `inspect` に追加。受理種 16→**18**。
+エスケープシーケンスに置き換えた。`gofmt -l .` が空、`go vet` が指摘なし、**`go test ./tools/reference-mcp-readonly-adapter` が ok（67.7s）**。修正前はこのパッケージは**ビルドすらできなかった**。
 
-```text
-database     sales_core -> ok  sourceStatus=indexed
-environment  staging    -> ok  sourceStatus=indexed
-database     nope_core  -> SUBJECT_NOT_FOUND
-environment  nope       -> SUBJECT_NOT_FOUND
-```
+### 断言しないこと
 
-**両方 `indexed`** である（第58ラウンドの配備層は `not-indexed`）。Source Index が既に記録していたため。
-
-### `database-instance` を追加しなかった理由
-
-**World 直下の宣言ではない**（`environment.Environment` の中にあり、ID も環境ごとに閉じている）。単体 kind にすると「どの環境のインスタンスか」が曖昧になる。`environment` を読めば `instances` が見える形にした。
-
-### 変異
-
-`environment` の dispatch を外す／`database` の dispatch を外す、の2種が落ちる。**第58ラウンドで足した種非依存の検査が、試験を書き換えずに両方を捕まえた。**
+- **CI がこの状態を検出していたかは確認できなかった。** 最初の問い合わせで誤った workflow 名（`repository-health.yml`）を使い、正しい名前は `tei-repository-health-ci.yml` だと分かったが、再問い合わせの前に切り替えた。
+- **壊れたファイルが main に入った経路（`6ea1523cc`）は特定していない。** レビューと CI のどちらがすり抜けたかは分からない。
+- 変異試験は無い（構文修復で振る舞いが変わらないため）。gofmt・vet・パッケージの試験で確認した。
