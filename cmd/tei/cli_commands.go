@@ -20,6 +20,7 @@ var acceptedCommands = []string{
 	"consumer-impact",
 	"database-compatibility",
 	"database-reconcile",
+	"db-introspect",
 	"dbcheck",
 	"deployment-abort",
 	"deployment-pause",
@@ -65,6 +66,7 @@ var acceptedCommands = []string{
 	"workbench-model",
 	"workspace-files",
 	"world",
+	"relation-query",
 }
 
 // helperDispatchedCommands are handled by helper functions whose command
@@ -185,6 +187,15 @@ func helpText(fs *flag.FlagSet, command string) string {
 			// the sections mirror the model catalog (#4128). Say so here, where a
 			// designer looks before reading the number.
 			fmt.Fprintf(&out, "\nsections mirror the model catalog roots. The response's sectionScope names\nthe kinds the catalog covers, the declared kinds it does not, and which of those\n`inspect` can still read by name, so a section count is never a count of every\ndeclaration and a missing section never means a missing declaration.\n")
+			return out.String()
+		}
+		if command == "db-introspect" {
+			// db-introspect is dispatched but deliberately absent from the
+			// read-only discovery catalog, so it cannot carry an allowlist
+			// entry; the flags it reads are stated here (#3943).
+			fmt.Fprintf(&out, "  -provider string\n    \tdatabase provider: postgres|sqlite\n")
+			fmt.Fprintf(&out, "  -dsn string\n    \tdatabase connection string\n")
+			fmt.Fprintf(&out, "  -semantic\n    \tconvert the physical schema to a TEI semantic namespace\n")
 			return out.String()
 		}
 		if command == "dbcheck" {
