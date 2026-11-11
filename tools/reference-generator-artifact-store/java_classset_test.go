@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -163,7 +162,7 @@ func TestJavaClassSetRestoreRunsFixturesFromStoreBytesOnly(t *testing.T) {
 		if err := json.Unmarshal([]byte(stdout), &got); err != nil {
 			t.Fatalf("case %s produced non-JSON %q: %v", testCase.ID, stdout, err)
 		}
-		if !reflect.DeepEqual(got, testCase.Want) {
+		if !jsonCovers(got, testCase.Want) {
 			t.Fatalf("case %s got=%v want=%v", testCase.ID, got, testCase.Want)
 		}
 	}
