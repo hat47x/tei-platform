@@ -483,6 +483,21 @@ Apache Kafkaは、Kafka Topic間ではtransactional producerとconsumer offset�
 
 **残る反証**: ここではSource relocate後に別々の`tei artifacts -out`が**順次**実行された。2点Manifest一致検査はABA/R1→R2→R1・途中のMember上書き・複数FS/OS・R1 pinの継続読取保証を証明しない。実Sourceの物理Root/同一Read Attempt、Recipient ACK、ImportUnit、Business Period`closed`、Effect/Ownerの資格も別。正式なPublication方式の選定は**#2604 Owner**に委ねる。
 
+### 12.8 2026-11-11 Pin前後一致が隠すABAと物理Member参照のTOCTOU
+
+**2026-11-11の受入候補（test-only、実行結果はexact HEAD CI待ち）**：2026-11-10にmain統合済み[PR #3256](https://github.com/hat47x/tei-platform/pull/3256)の`plan/fixtures/capability-handoff/publication_path_readback.py`は、R1の`manifest.json`原バイトを**Member読取前後の二点**で照合し、固定`ledger`の5 Path→Body byteを確認する。これは**同じGenerationが読取中ずっと活動していたこと、同じ物理File objectを読んだことを証明しない**。
+
+| 既存Readerへの追加テスト（合格しても欠陥修正ではない） | 正本・注入／Independent Expected | 解釈の上限 |
+| --- | --- | --- |
+| **ABA-C1** Manifest R1→R2→R1 | 合成Ledger DirectoryでR1 ManifestをPinした後、最初のMember `Path.read_bytes`のタイミングでR2 Manifestへ一時変更し、R1原バイトへ戻す。Readerの前後二点はR1一致となり`ledger-fixture-path-to-bytes-only`を返せる。**Manifestが期間中常時R1だったというClaimには反例** | テストはPython読取を一箇所interceptする**決定的合成インターリーブ**。実Writerとの並行FS競合、Windows/ネットワークFS、ReaderのABA防止実装はNOT RUN |
+| **TOCTOU-C2** Path点検後にMember参照を変更 | 既存ReaderがDirectory Entryを列挙・非symlink判定した後、先に読む`function-ledger.md`を契機に未読の`table-public-orders.md`を削除して**外側の公開合成ファイルへsymlinkで置換**。外側のBodyを期待bytesと同一にすると、Readerは引き続きPath単位byte一致を返し得る。**列挙時の物理Path所属≠実OpenしたObjectの所属** | CIがsymlink作成を許さない環境ではSKIP。実機密データ・実攻撃・実任意Reader/Hostへの到達試験ではなく、テスト用Directoryと合成Contentに限定 |
+
+**共通の教訓**: R1 Manifest二点照合は必要な改訂検出の局所検査だが、読取中の閉包、公開世代の継続安定性、物理Root/Node identity、現在Disclosureには不足する。[merged #3321](https://github.com/hat47x/tei-platform/pull/3321)の「同一Snapshot tokenでも物理Root/Read Attemptの同一性は不明」、[Draft #4213](https://github.com/hat47x/tei-platform/pull/4213)の「検証済みSource byteをそのままConsumerへ渡さなければ宣言PathのABAで別byteが実行され得る」、[merged #3809](https://github.com/hat47x/tei-platform/pull/3809)の「test-onlyの生wire同一性とcurrent Issuer Trustは別」という境界と整合する。ただしTarget Build用のSource拘束策を、そのままArtifact公開/実MFTの規格に昇格しない。
+
+**#2604 Ownerへ戻すP1の最小選択肢**: (A)世代別不変MemberとGeneration Pointerを使い、R1 Pin中はR1を保持・Consumerが必要Setを固定して実Open/byte照合する、(B)既存Storage/FSが提供するversioned Object/conditional readを利用し、個々のMemberの実version・Scope・Digestsを別に拘束する。いずれもProducer側の書込完了／読取側の実Handle・Object version・Path非追従と、GC・rollback条件をOS/Providerごとに実証してから採否を決める。**既存`artifact.ManifestEntry`へ新しい固定Path欄、Core普遍Publisher、第二Manifest/Authorityを無条件追加しない**。test-only Readerを本番で安全と認証した扱いにもしない。
+
+**段階ごとの停止線**: ①今回の合成ABA/Pathスワップ負例の実CI結果、②別Process実Publisherと並走ReaderでのGeneration/Member読み取り（#2604）、③実RecipientのRead/ACK/ImportUnitとBusiness Period D（#2542 EF-01〜04）、④Owner/Effect（#1174/#1130）。各段階の成功は後段の成功と等価でない。Claimを`body-bytes-observed`、`generation-pinned`、`continuous-generation-read`、`business-accepted`など**意味を区別して記述**するが、これらを新しいCore Enum/APIとして先行採用しない。画面でも「証明済みでない」と「不存在」を混同しない。
+
 ### 追加一次資料（製品・仕様の版に依存する事実）
 
 - Apache Iceberg spec, snapshots / optimistic concurrency: https://iceberg.apache.org/spec/

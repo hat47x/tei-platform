@@ -1,0 +1,27 @@
+== the codes the resolver can now report ==
+  18:	DiagnosticDuplicateRequirement = "PLUGIN_RESOLVE_DUPLICATE_REQUIREMENT"
+  20:	DiagnosticInvalidRequirement = "PLUGIN_RESOLVE_INVALID_REQUIREMENT"
+  22:	DiagnosticNoCompatiblePlugin = "PLUGIN_RESOLVE_NO_COMPATIBLE_PLUGIN"
+  24:	DiagnosticDuplicatePluginVersion = "PLUGIN_RESOLVE_DUPLICATE_PLUGIN_VERSION"
+  26:	DiagnosticNoCompatibleBundle = "PLUGIN_RESOLVE_NO_COMPATIBLE_BUNDLE"
+  28:	DiagnosticDuplicateBundleVersion = "PLUGIN_RESOLVE_DUPLICATE_BUNDLE_VERSION"
+  30:	DiagnosticIncompatibleTransitive = "PLUGIN_RESOLVE_INCOMPATIBLE_TRANSITIVE"
+  32:	DiagnosticDependencyCycle = "PLUGIN_RESOLVE_DEPENDENCY_CYCLE"
+  36:	DiagnosticEnvironmentSelection = "PLUGIN_RESOLVE_ENVIRONMENT_SELECTION"
+
+== remaining plain fmt.Errorf in the resolver (should be none in resolve.go) ==
+  resolve.go: 0
+
+== how many existing tests branch on the message text ==
+  internal/plugin/bundle_requirements_test.go:6
+  internal/plugin/capability_id_test.go:2
+  internal/plugin/capability_structure_test.go:1
+  internal/plugin/capability_support_validation_test.go:3
+  internal/plugin/capability_validation_test.go:1
+  internal/plugin/diagnostics_test.go:2
+  internal/plugin/environment_selection_test.go:2
+  internal/plugin/external_validation_test.go:2
+  internal/plugin/lock_scope_value_test.go:2
+  internal/plugin/requirement_values_test.go:4
+  internal/plugin/requirements_test.go:3
+
