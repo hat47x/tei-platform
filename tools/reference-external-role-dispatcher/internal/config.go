@@ -44,8 +44,9 @@ type GitHubConfig struct {
 
 // HarnessConfig holds harness adapter knobs.
 type HarnessConfig struct {
-	DefaultHarness string    `json:"defaultHarness"`
-	DSH            DSHConfig `json:"dsh"`
+	DefaultHarness string         `json:"defaultHarness"`
+	DSH           DSHConfig      `json:"dsh"`
+	StepCode      StepCodeConfig `json:"stepCode"`
 }
 
 // DSHConfig holds DSH-specific adapter knobs.
@@ -54,6 +55,16 @@ type DSHConfig struct {
 	CLI           string `json:"cli"`
 	DefaultDryRun bool   `json:"defaultDryRun"`
 	TaskTimeout   string `json:"taskTimeout"`
+}
+
+// StepCodeConfig holds Step Code-specific adapter knobs.
+type StepCodeConfig struct {
+	CLI          string `json:"cli"`
+	DefaultDryRun bool  `json:"defaultDryRun"`
+	TaskTimeout  string `json:"taskTimeout"`
+	Profile      string `json:"profile,omitempty"`
+	Plan         string `json:"plan,omitempty"`
+	WorkDir      string `json:"workDir,omitempty"`
 }
 
 // LeaseConfig holds local lease store knobs.
