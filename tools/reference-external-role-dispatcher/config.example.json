@@ -1,0 +1,77 @@
+{
+  "schema": "tei.reference.external-role-dispatcher/v0",
+  "models": [
+    {
+      "id": "deepseek-flash",
+      "harness": "dsh",
+      "roles": ["implementer", "reviewer", "diagnostician"],
+      "maxConcurrent": 3,
+      "enabled": true,
+      "priority": 10,
+      "costTier": "low"
+    },
+    {
+      "id": "claude-sonnet",
+      "harness": "dsh",
+      "roles": ["implementer", "reviewer", "diagnostician", "integrator"],
+      "maxConcurrent": 2,
+      "enabled": true,
+      "priority": 20,
+      "costTier": "medium"
+    },
+    {
+      "id": "gpt-sol",
+      "harness": "dsh",
+      "roles": ["architect", "planner", "reviewer", "independent-reviewer", "integrator"],
+      "maxConcurrent": 1,
+      "enabled": true,
+      "priority": 30,
+      "costTier": "high"
+    },
+    {
+      "id": "step-3.7-flash",
+      "harness": "dsh",
+      "roles": ["implementer", "diagnostician", "reviewer"],
+      "maxConcurrent": 5,
+      "enabled": false,
+      "priority": 5,
+      "costTier": "low"
+    }
+  ],
+  "roles": [
+    {"name": "implementer", "modelIds": ["deepseek-flash", "claude-sonnet", "step-3.7-flash"]},
+    {"name": "diagnostician", "modelIds": ["deepseek-flash", "claude-sonnet", "step-3.7-flash"]},
+    {"name": "reviewer", "modelIds": ["deepseek-flash", "claude-sonnet", "gpt-sol"]},
+    {"name": "architect", "modelIds": ["gpt-sol"]},
+    {"name": "planner", "modelIds": ["gpt-sol"]},
+    {"name": "independent-reviewer", "modelIds": ["gpt-sol"]},
+    {"name": "integrator", "modelIds": ["claude-sonnet", "gpt-sol"]}
+  ],
+  "github": {
+    "repo": "hat47x/tei-platform",
+    "allowedRepos": ["hat47x/tei-platform"],
+    "routeLabelPrefix": "route:",
+    "stateLabelPrefix": "state:",
+    "reviewLabelPrefix": "review:",
+    "readyState": "ready",
+    "workingState": "working",
+    "reviewState": "review",
+    "blockedState": "blocked",
+    "escalationCommentPrefix": "[dispatcher] escalated to "
+  },
+  "harness": {
+    "defaultHarness": "dsh",
+    "dsh": {
+      "profile": "headless",
+      "cli": "dsh",
+      "defaultDryRun": true,
+      "taskTimeout": "5m"
+    }
+  },
+  "lease": {
+    "defaultTTL": "10m",
+    "heartbeatInterval": "2m",
+    "sweepInterval": "1m",
+    "dbPath": ".tei/dispatcher/lease.db"
+  }
+}
