@@ -16,6 +16,7 @@ import (
 	"tei/internal/command"
 	"tei/internal/command/lifecyclesqlite"
 	"tei/internal/core"
+	"tei/internal/failure"
 	"tei/internal/hook"
 	"tei/internal/operations"
 	"tei/internal/periodstate"
@@ -112,6 +113,22 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	report := cliViewReport{SchemaVersion: "tei.cli.view/v0"}
 	fail := func(code, message string, exit int) (int, error) {
 		report.Error = &cliInspectionFailure{Code: code, Message: message}
+		return writeViewReport(out, report, exit)
+	}
+	// failWithFailure reports a failure that came back from a boundary error.
+	// The code and message keep the values that boundary already made
+	// machine-readable; Kind, Retryable and EffectUnknown are read from the
+	// unified failure contract so a caller can tell a business rejection from a
+	// technical failure, and knows whether the effect state is unknown, without
+	// learning the code list.
+	failWithFailure := func(err error, code, message string, exit int) (int, error) {
+		f := &cliInspectionFailure{Code: code, Message: message}
+		if unified, ok := failure.AsFailure(err); ok {
+			f.Kind = string(unified.Kind())
+			f.Retryable = string(unified.Retryable())
+			f.EffectUnknown = unified.HasEffectUnknown()
+		}
+		report.Error = f
 		return writeViewReport(out, report, exit)
 	}
 
@@ -337,12 +354,12 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 				// A reference refusal is a business answer, not an execution
 				// fault: name the outcome so a caller can branch on it.
 				if outcome, ok := command.FailureOutcome(err); ok {
-					return fail("COMMAND_REFUSED", outcome+": "+err.Error(), 1)
+					return failWithFailure(err, "COMMAND_REFUSED", outcome+": "+err.Error(), 1)
 				}
 				if code, message, ok := commandFailure(err); ok {
-					return fail(code, message, 1)
+					return failWithFailure(err, code, message, 1)
 				}
-				return fail("COMMAND_FAILED", err.Error(), 1)
+				return failWithFailure(err, "COMMAND_FAILED", err.Error(), 1)
 			}
 			if *referenceStore {
 				// The change is applied, so the after-* phases have a point to run at.
@@ -802,6 +819,19 @@ func writeApplicationText(out io.Writer, view applicationview.ApplicationView) (
 		// period is narrower than a month without the reader inferring a default.
 		if period.ClosingDay != 0 {
 			if _, err := fmt.Fprintf(out, "period %s closes on day %d\n", period.ID, period.ClosingDay); err != nil {
+				return 2, err
+			}
+		}
+		// The capabilities a close and a reopen must run are part of the period's
+		// meaning, so they are printed beside it rather than left to the Command
+		// plan alone.
+		if period.CloseRequires != "" {
+			if _, err := fmt.Fprintf(out, "period %s close-requires %s\n", period.ID, period.CloseRequires); err != nil {
+				return 2, err
+			}
+		}
+		if period.Correction != "" {
+			if _, err := fmt.Fprintf(out, "period %s correction via %s\n", period.ID, period.Correction); err != nil {
 				return 2, err
 			}
 		}

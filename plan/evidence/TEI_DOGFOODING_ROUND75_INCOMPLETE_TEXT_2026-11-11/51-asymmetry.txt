@@ -1,0 +1,9 @@
+The same run, JSON form (already fixed by #4178):
+
+  "incomplete": {"reason": "load-stopped-at-first-syntax-error",
+                 "detail": "the run stopped at the first syntax error; files other
+                            than the one named in stoppedAt were not examined",
+                 "stoppedAt": "applications/a/application.tei"}
+
+The text form printed one line and nothing else. The same run was honest in JSON
+and silent in text, which matters for a CLI-first designer.

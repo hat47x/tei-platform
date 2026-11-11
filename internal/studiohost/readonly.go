@@ -3,12 +3,14 @@
 package studiohost
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"tei/internal/command"
+	"tei/internal/failure"
 	"tei/internal/operations"
 	"tei/internal/sourceindex"
 	"tei/internal/validation"
@@ -19,10 +21,111 @@ type WorkspaceRef struct {
 	Label string `json:"label"`
 }
 
+// Failure is the response shape a Studio host returns instead of a value. The
+// Kind, Retryable and EffectUnknown fields carry the unified failure contract
+// (internal/failure) so a client can tell a business rejection from a
+// technical failure without reading the code list.
+//
+// The classification is filled by MarshalJSON when the producer left it empty,
+// so a site that constructs a Failure directly - and there are many, one per
+// entrance - cannot emit an unclassified failure by forgetting to ask. A value
+// the producer set explicitly wins, because a boundary that knows better than
+// the code table (commandFailure reads the error's own contract) must be able
+// to say so.
 type Failure struct {
 	Code    string `json:"code"`
 	Stage   string `json:"stage,omitempty"`
 	Message string `json:"message"`
+	// Kind is business_rejection, technical_failure or partial_success.
+	Kind string `json:"kind,omitempty"`
+	// Retryable is retryable, not_retryable or lookup_first.
+	Retryable string `json:"retryable,omitempty"`
+	// EffectUnknown reports that a partial effect may have been applied, so a
+	// caller must not resend with a new operation identity.
+	EffectUnknown bool `json:"effectUnknown,omitempty"`
+}
+
+// studioFailureClassification is the decision one Studio code maps to. It is
+// separate from failure.Kind and failure.RetryPolicy only so this file does not
+// have to name the package in every entry; the wire values are the same.
+type studioFailureClassification struct {
+	kind      string
+	retryable string
+	effect    bool
+}
+
+// studioFailureCodes is the closed table this host's codes are classified from.
+//
+// The split is the same one internal/failure makes: a code that refuses the
+// request itself carries no effect and must not be resent unchanged, while a
+// code that reports the host or a provider failing leaves the effect state
+// undecidable from here. An unlisted code is technical, because reporting an
+// unrecognised failure as a permanent business rejection would make a caller
+// give up on something that may succeed later.
+var studioFailureCodes = map[string]studioFailureClassification{
+	// The request itself is refused. Nothing ran, so there is no effect to look
+	// up and resending it unchanged answers the same way.
+	"WORKSPACE_NOT_ALLOWED":     {"business_rejection", "not_retryable", false},
+	"WORKSPACE_ROOT_CHANGED":    {"business_rejection", "not_retryable", false},
+	"VIEW_UNSUPPORTED":          {"business_rejection", "not_retryable", false},
+	"INVALID_LIFECYCLE_ATTEMPT": {"business_rejection", "not_retryable", false},
+	"INVALID_PERIOD_STATE":      {"business_rejection", "not_retryable", false},
+	"COMMAND_LIFECYCLE_REFUSED": {"business_rejection", "not_retryable", false},
+	"INVALID_SUBJECT":           {"business_rejection", "not_retryable", false},
+	"UNSUPPORTED_SUBJECT_KIND":  {"business_rejection", "not_retryable", false},
+	"SUBJECT_NOT_FOUND":         {"business_rejection", "not_retryable", false},
+	"SUBJECT_AMBIGUOUS":         {"business_rejection", "not_retryable", false},
+	"XEAD_UNSUPPORTED_FORMAT":   {"business_rejection", "not_retryable", false},
+	"XEAD_SOURCE_TOO_LARGE":     {"business_rejection", "not_retryable", false},
+
+	// The host or a provider failed. Whether anything was applied is not
+	// decidable from the code alone, so the caller must look the result up
+	// before resending rather than send again blindly.
+	"WORKSPACE_LOAD_FAILED":         {"technical_failure", "lookup_first", true},
+	"SOURCE_INDEX_FAILED":           {"technical_failure", "lookup_first", true},
+	"VIEW_FAILED":                   {"technical_failure", "lookup_first", true},
+	"OPERATION_FAILED":              {"technical_failure", "lookup_first", true},
+	"COMMAND_LIFECYCLE_UNAVAILABLE": {"technical_failure", "lookup_first", true},
+	"COMMAND_FAILED":                {"technical_failure", "lookup_first", true},
+	"XEAD_SOURCE_READ_FAILED":       {"technical_failure", "lookup_first", true},
+	"XEAD_PARSE_FAILED":             {"technical_failure", "lookup_first", true},
+	"XEAD_PROJECTION_FAILED":        {"technical_failure", "lookup_first", true},
+}
+
+// classify fills the three axes from the table when the producer left them
+// empty. It returns the receiver so it reads as one step at the call site.
+func (f *Failure) classify() *Failure {
+	if f == nil || f.Kind != "" {
+		return f
+	}
+	c, ok := studioFailureCodes[f.Code]
+	if !ok {
+		c = studioFailureClassification{"technical_failure", "lookup_first", true}
+	}
+	f.Kind = c.kind
+	f.Retryable = c.retryable
+	f.EffectUnknown = c.effect
+	return f
+}
+
+// classifiedFailure builds a Failure whose axes are already filled, so an
+// in-process reader of the response sees the same classification the wire
+// carries. MarshalJSON covers a Failure built directly anywhere; this covers
+// the ones this package builds itself.
+func classifiedFailure(code, stage, message string) *Failure {
+	return (&Failure{Code: code, Stage: stage, Message: message}).classify()
+}
+
+// MarshalJSON emits the failure with its classification filled in.
+//
+// Doing it here rather than at each construction site is what makes the
+// property hold: a Failure built directly anywhere in this package, or by a
+// host composing it, still answers with all three axes. Without it the code and
+// message would keep arriving and only the classification would go missing,
+// which is exactly the silent drop this replaces.
+func (f *Failure) MarshalJSON() ([]byte, error) {
+	type failureAlias Failure
+	return json.Marshal((*failureAlias)(f.classify()))
 }
 
 // Each response deliberately separates transport/operation completion from
@@ -161,11 +264,11 @@ func (h *ReadOnly) ListWorkspaces() ListResponse {
 func (h *ReadOnly) workspace(id string) (string, *Failure) {
 	root, ok := h.roots[id]
 	if !ok {
-		return "", &Failure{Code: "WORKSPACE_NOT_ALLOWED", Message: "workspace ID is not in this host's allowlist"}
+		return "", classifiedFailure("WORKSPACE_NOT_ALLOWED", "", "workspace ID is not in this host's allowlist")
 	}
 	current, err := os.Stat(root)
 	if err != nil || !os.SameFile(h.rootInfos[id], current) {
-		return "", &Failure{Code: "WORKSPACE_ROOT_CHANGED", Message: "workspace root identity changed after host startup"}
+		return "", classifiedFailure("WORKSPACE_ROOT_CHANGED", "", "workspace root identity changed after host startup")
 	}
 	return root, nil
 }
@@ -285,9 +388,9 @@ func selectedInspectionFailure(err error) *Failure {
 			operations.InspectionUnsupportedKind,
 			operations.InspectionNotFound,
 			operations.InspectionAmbiguous:
-			return &Failure{Code: inspection.Code, Message: "inspector could not resolve the requested subject"}
+			return businessRejection(inspection.Code, "inspector could not resolve the requested subject")
 		default:
-			return &Failure{Code: "OPERATION_FAILED", Message: "inspection service failed"}
+			return technicalFailure("OPERATION_FAILED", "inspection service failed")
 		}
 	}
 	return operationFailure(err)
@@ -298,16 +401,63 @@ func operationFailure(err error) *Failure {
 	if errors.As(err, &validation) {
 		switch validation.Stage {
 		case operations.StageLoad:
-			return &Failure{Code: "WORKSPACE_LOAD_FAILED", Stage: string(validation.Stage), Message: "workspace loading failed"}
+			return technicalFailureAt("WORKSPACE_LOAD_FAILED", string(validation.Stage), "workspace loading failed")
 		case operations.StageSourceIndex:
-			return &Failure{Code: "SOURCE_INDEX_FAILED", Stage: string(validation.Stage), Message: "source-index construction failed"}
+			return technicalFailureAt("SOURCE_INDEX_FAILED", string(validation.Stage), "source-index construction failed")
 		}
-		return &Failure{Code: "OPERATION_FAILED", Message: "workspace operation failed"}
+		return technicalFailure("OPERATION_FAILED", "workspace operation failed")
 	}
 	var inspection *operations.InspectionError
 	if errors.As(err, &inspection) {
-		return &Failure{Code: inspection.Code, Message: inspection.Message}
+		return businessRejection(inspection.Code, inspection.Message)
 	}
 	// Unclassified errors may contain absolute paths or host-private details.
-	return &Failure{Code: "OPERATION_FAILED", Message: "workspace operation failed"}
+	return technicalFailure("OPERATION_FAILED", "workspace operation failed")
+}
+
+// businessRejection marks a Failure the caller refused for a reason the
+// request itself carries. Retrying the same request cannot change the answer.
+func businessRejection(code, message string) *Failure {
+	return &Failure{
+		Code:      code,
+		Message:   message,
+		Kind:      string(failure.BusinessRejection),
+		Retryable: string(failure.NotRetryable),
+	}
+}
+
+// technicalFailure marks a Failure caused by the host or a provider. The same
+// request may succeed later, but the effect state is unknown.
+func technicalFailure(code, message string) *Failure {
+	return &Failure{
+		Code:          code,
+		Message:       message,
+		Kind:          string(failure.TechnicalFailure),
+		Retryable:     string(failure.LookupFirst),
+		EffectUnknown: true,
+	}
+}
+
+func technicalFailureAt(code, stage, message string) *Failure {
+	f := technicalFailure(code, message)
+	f.Stage = stage
+	return f
+}
+
+// commandFailure builds a Failure for an error that came back from a Command
+// or Hook boundary. The code and message keep the values the boundary already
+// reported; Kind, Retryable and EffectUnknown are read from the unified failure
+// contract (internal/failure) when the error carries one. An ExecutionError or
+// hook.Error therefore keeps its classification across the Studio bridge, so a
+// client sees "business rejection, do not retry" instead of a bare code.
+func commandFailure(code, stage, message string, err error) *Failure {
+	f := &Failure{Code: code, Stage: stage, Message: message, EffectUnknown: command.EffectMayBeUnknown(err)}
+	if unified, ok := failure.AsFailure(err); ok {
+		f.Kind = string(unified.Kind())
+		f.Retryable = string(unified.Retryable())
+		f.EffectUnknown = f.EffectUnknown || unified.HasEffectUnknown()
+	}
+	// An error carrying no contract still gets the table's classification rather
+	// than none, so this entrance cannot emit an unclassified failure either.
+	return f.classify()
 }
