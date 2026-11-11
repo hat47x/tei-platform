@@ -667,7 +667,7 @@ HULFT-HUB Ver.3公式マニュアル第20版（2025-12-01）は、蓄積を使�
 
 ### 16.4 2026-11-11 現実Workspaceの期間更新後拒否を試験する
 
-**既存Owner #1130 RPL-02/04への局所実証**：`examples/xtea-lowcode`にすでに存在する実Workspace `order_entry`／Period `sales.month`／`closed-rejects update`を用い、Productionコード`runPeriodsCommand`をGo Unitからそのまま呼び出す。`operations.SurfaceWorkspace`が導出した操作面について`closing`および`closed`で実際に拒否Operationが存在することを先に確認する。**新たなDSL Source/テスト用Host/別State Providerは作らない**。
+**既存Owner #1130 RPL-02/04への局所実証**：`examples/xtea-lowcode`にすでに存在する実Workspace `order_entry`／Period `sales.month`／`closed-rejects update`を用い、Productionコード`runPeriodsCommand`をGo Unitからそのまま呼び出す。元の`examples/xtea-lowcode`にはPeriod宣言がある一方、CRUDの`update`を導出するPersistence mappingがない。このため、**元Workspaceの隔離コピーに`persist sales_core.order`を1件だけ一時追加**して、`operations.SurfaceWorkspace`が`closing`および`closed`で拒否するOperationを実際に導出できることを前提検証する。**元のReferenceソース・Productionコード・テスト用Host・別State Providerは変更・新設しない**。追加mapping自体は試験専用であり、既存Workspaceがそのままで拒否Operationを持つと主張しない。
 
 | 独立Expected | 呼出し前 | 現行実装に対するテスト | 実際の意味 |
 | --- | --- | --- | --- |
@@ -675,7 +675,7 @@ HULFT-HUB Ver.3公式マニュアル第20版（2025-12-01）は、蓄積を使�
 | `closed`への再Advance | 直前のState Fileが`closing` | 同様にerrorでも再Readは`closed` | Errorから次回Retryを自動再実行してはいけない |
 | 3回目のAdvance | State Fileが`closed` | `advancePeriod`が遷移を拒否し、Fileの`closed`は保持 | 先のErrorを「未実行」と解釈して再試行することの不適切さ |
 
-**対象ファイル**：`cmd/tei/cli_periods_postwrite_readback_test.go`。テストが確認するのは **実Workspace→現行Go CLI Handler→一時State Fileの書込みとReadback**。外部CLIプロセスの終了コード、Crash/OS別fsync、2WriterのCAS、実Capability/RunPlan/Receipt、MFT/Import/業務Ownerの受理は別で**未実証**。`-close-capability`については既存UnitがCaller ID一致のみを検証済みであり、本テストが実行済CapabilityのReceiptを提供するわけではない。
+**対象ファイル**：`cmd/tei/cli_periods_postwrite_readback_test.go`。テストが確認するのは **既存Workspaceの隔離・最小Persistence投影→現行Go CLI Handler→一時State Fileの書込みとReadback**。外部CLIプロセスの終了コード、Crash/OS別fsync、2WriterのCAS、実Capability/RunPlan/Receipt、MFT/Import/業務Ownerの受理は別で**未実証**。`-close-capability`については既存UnitがCaller ID一致のみを検証済みであり、本テストが実行済CapabilityのReceiptを提供するわけではない。
 
 **採否と停止線**：試験が成立しても修正実装とは見なさず、#1130 Ownerが出力/持続化/拒否のStageを再設計するか、`Effect Unknown/部分成功`として明示するかを決める。#2542への横断引継ぎは`(Period D, Execution Attempt, Return, State Readback, Artifact Generation, Recipient Import, Effect Receipt)`を独立観測列とするのみ。第二Runner/Scheduler・新Process Transaction・共通Completion Engineを追加しない。
 
