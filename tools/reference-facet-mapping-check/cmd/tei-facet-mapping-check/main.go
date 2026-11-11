@@ -15,8 +15,19 @@ import (
 func main() {
 	inputPath := flag.String("input", "", "cases JSON")
 	expectedPath := flag.String("expected", "", "hand-written independent expected JSON")
+	contractOnly := flag.Bool("contract", false, "print the contract self-description instead of a case report")
 	pretty := flag.Bool("pretty", true, "indent the JSON report")
 	flag.Parse()
+	if *contractOnly {
+		encoder := json.NewEncoder(os.Stdout)
+		if *pretty {
+			encoder.SetIndent("", "  ")
+		}
+		if err := encoder.Encode(facetmappingcheck.ContractDescription()); err != nil {
+			fail(err)
+		}
+		return
+	}
 	if *inputPath == "" {
 		fail(fmt.Errorf("-input is required"))
 	}

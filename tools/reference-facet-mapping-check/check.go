@@ -31,7 +31,8 @@ var nonInvertibleLosses = map[string]bool{
 // Check evaluates every case and returns the report. It reads no external
 // state: every observation comes from the case file.
 func Check(file CaseFile, opts Options) Output {
-	out := Output{SchemaVersion: ReportSchema, Checked: len(file.Cases)}
+	desc := ContractDescription()
+	out := Output{SchemaVersion: ReportSchema, Checked: len(file.Cases), Contract: &desc}
 	for _, c := range file.Cases {
 		out.Results = append(out.Results, checkCase(c, opts))
 	}

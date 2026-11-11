@@ -10,6 +10,12 @@ go run ./tools/reference-facet-mapping-check/cmd/tei-facet-mapping-check \
 
 `-expected`を渡すと、手書きの独立Expectedと突き合わせ、全件一致なら終了コード0、不一致なら1、入力不正なら2を返します。
 
+```text
+go run ./tools/reference-facet-mapping-check/cmd/tei-facet-mapping-check -contract
+```
+
+`-contract`は、判定語彙・12列・損失コード・判定の優先順位・逆写像の規則・非主張を**JSONで**返します。生成AIやConsumerはREADMEの散文ではなく、この1文書から契約を読み取れます。`-contract`はCaseを読まないため、入力なしで動きます。通常のレポートにも`contract`が埋め込まれます。
+
 ## 何を判定するか
 
 判定語彙は5つに固定です。

@@ -326,6 +326,7 @@ type Comparison struct {
 type Output struct {
 	SchemaVersion string      `json:"schemaVersion"`
 	Checked       int         `json:"checked"`
+	Contract      *Contract   `json:"contract,omitempty"`
 	Results       []Result    `json:"results"`
 	Comparison    *Comparison `json:"comparison,omitempty"`
 }
