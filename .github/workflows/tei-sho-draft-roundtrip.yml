@@ -1,0 +1,167 @@
+name: TEI to SHO document draft round trip (synthetic only)
+
+# Cross-repository qualification for the TEI -> SHO document draft integration.
+#
+# This job runs the REAL TEI CLI and the REAL SHO CLI against ONE synthetic
+# Workspace in a single attempt:
+#
+#   tei model document-draft (element / crud-table / specification)
+#     -> SHO bin/sho-doc.cjs open / save / resume
+#     -> tei model document-reconcile
+#
+# The runner lives in the SHO repository and is invoked here at a PINNED commit.
+# The pin is deliberately not "latest": moving it is a reviewed change that must
+# be justified in the PR, exactly like the SUI round-trip pin. A breaking change
+# on the SHO side fails here instead of silently changing the contract.
+#
+# What a green job proves: the pinned pair still completes the attempt, and the
+# receipt keeps its claim ceilings (no model ingestion, no meaning acceptance).
+# What it does NOT prove: Owner meaning acceptance, TEI Studio embedding,
+# *.tei.md ingestion, product E2E, or delivery.
+
+on:
+  push:
+    branches: [feat/sho-document-draft-integration-20261111]
+    paths:
+      - .github/workflows/tei-sho-draft-roundtrip.yml
+      - internal/documentdraft/**
+      - cmd/tei/**
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/tei-sho-draft-roundtrip.yml
+      - internal/documentdraft/**
+      - cmd/tei/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-sho-draft-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # Test-only pin. Update it only with a PR that states why, and re-read the
+  # receipt from the new pair before moving it. Never follow "latest" implicitly.
+  SHO_PIN: 'a21caba50dc44ef66f6e7d3a603702f462fbded9'
+  SHO_REPO: 'hat47x/sho-composer'
+  EXPECTED_TEI_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+  NODE_VERSION: '24.22.1'
+
+jobs:
+  round-trip:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact TEI candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          ref: ${{ env.EXPECTED_TEI_HEAD }}
+
+      - name: Setup Go and pinned Node
+        uses: actions/setup-go@4d34df0eae01e22eb3f1e359b0c3c5b76a8b0247 # v6.0.0
+        with:
+          go-version: '1.27.x'
+          cache: true
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Checkout the pinned SHO commit into a sibling directory
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_TEI_HEAD"
+          sho="${RUNNER_TEMP:?}/sho-pinned"
+          mkdir -p "$sho"
+          # The runner refuses a checkout whose tracked files are dirty, and the
+          # API tarball is exactly the pinned tree, so this cannot drift.
+          curl -fsSL --retry 3 --retry-delay 2 \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${SHO_REPO}/tarball/${SHO_PIN}" \
+            -o "${RUNNER_TEMP}/sho.tar.gz"
+          tar -xzf "${RUNNER_TEMP}/sho.tar.gz" -C "$sho" --strip-components=1
+          test -f "$sho/bin/sho-doc.cjs"
+          test -f "$sho/scripts/tei-sho-draft-roundtrip-p0.cjs"
+          test -f "$sho/package-lock.json"
+          printf '%s\n' "$sho" >> "$GITHUB_ENV"
+
+      - name: Install exactly the pinned SHO dependencies
+        shell: bash
+        working-directory: ${{ env.sho }}
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Run the real cross-repository round trip
+        id: roundtrip
+        shell: bash
+        env:
+          # The runner builds the TEI CLI from this checkout and reads the
+          # workspace it writes itself; no second checkout is involved.
+          GOMODCACHE: ${{ github.workspace }}/.gomodcache
+          GOPATH: ${{ github.workspace }}/.gopath
+          GOCACHE: ${{ github.workspace }}/.gocache
+          GOTMPDIR: ${{ runner.temp }}
+        run: |
+          set -euo pipefail
+          receipt="${RUNNER_TEMP:?}/roundtrip-receipt.json"
+          node "$sho/scripts/tei-sho-draft-roundtrip-p0.cjs" \
+            --tei "${GITHUB_WORKSPACE}" --sho-head "${SHO_PIN}" > "$receipt"
+          cat "$receipt"
+          printf 'receipt=%s\n' "$receipt" >> "$GITHUB_OUTPUT"
+
+      - name: Assert the receipt keeps its claim ceilings
+        shell: bash
+        env:
+          RECEIPT: ${{ steps.roundtrip.outputs.receipt }}
+          SHO_PIN: ${{ env.SHO_PIN }}
+          EXPECTED_TEI_HEAD: ${{ env.EXPECTED_TEI_HEAD }}
+        run: |
+          set -euo pipefail
+          python3 - "$RECEIPT" "$SHO_PIN" "$EXPECTED_TEI_HEAD" <<'PY'
+import json, pathlib, sys
+# The receipt carries Japanese strings, so read it as UTF-8 rather than the
+# platform default: a Windows runner would otherwise fail on the encoding alone.
+# utf-8-sig also tolerates a leading BOM, which a shell redirect may add.
+receipt = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8-sig'))
+          sho_pin, tei_head = sys.argv[2], sys.argv[3]
+          assert receipt['kind'] == 'sho-tei-draft-roundtrip-receipt', receipt['kind']
+          # The pair is the one this job pinned, not whatever the runner found.
+          assert receipt['shoHead'] == sho_pin, (receipt['shoHead'], sho_pin)
+          assert receipt['teiHead'] == tei_head, (receipt['teiHead'], tei_head)
+          checks = receipt['checks']
+          for name, value in checks.items():
+              assert value is True, f'check {name} is not true'
+          required = {
+              'teiElementDraftProduced', 'teiCRUDDraftProduced',
+              'shoOpenCreatedDocument', 'shoSaveWithAuthorNote',
+              'shoResumeAllOccurrencesIntact', 'saveClaimedNoModelIngestion',
+              'reconcileCurrentBeforeChange', 'reconcileStaleAfterChange',
+              'matrixReportedContentChange', 'authorNoteSurvivedModelChange',
+              'storedDraftNotRewritten', 'semanticSourceUnchanged',
+          }
+          missing = required - set(checks)
+          assert not missing, f'receipt is missing checks: {sorted(missing)}'
+          # The claim ceilings must stay false. A green job is not acceptance.
+          for name, value in receipt['claims'].items():
+              assert value is False, f'claim {name} became true'
+          for not_run in ['Owner による意味受理', 'TEI Studio からの実組込み']:
+              assert not_run in receipt['notRun'], f'notRun is missing {not_run}'
+          print('round-trip receipt verified at the pinned pair; '
+                'no model ingestion, no meaning acceptance, no product E2E')
+          PY
+
+      - name: Upload the receipt even on failure
+        if: ${{ always() && steps.roundtrip.outputs.receipt != '' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tei-sho-draft-roundtrip
+          path: ${{ steps.roundtrip.outputs.receipt }}
+          if-no-files-found: warn
+          retention-days: 7
