@@ -17,8 +17,8 @@ import (
 )
 
 type cliRelationQueryResponse struct {
-	SchemaVersion string                        `json:"schemaVersion"`
-	OK            bool                          `json:"ok"`
+	SchemaVersion string                         `json:"schemaVersion"`
+	OK            bool                           `json:"ok"`
 	Query         *driver.RelationQueryExecution `json:"query,omitempty"`
 	Error         *cliRelationQueryFailure       `json:"error,omitempty"`
 }
