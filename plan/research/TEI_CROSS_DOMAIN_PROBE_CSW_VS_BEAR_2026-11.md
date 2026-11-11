@@ -213,7 +213,7 @@ VSクマ側の期待結果は、上流に書かれた事実から独立に用意
 
 ## 8. 実施済み・未実施（NOT RUN）
 
-実施したことは、対象版と関連Issueの調査、2つのTEI Workspaceの作成、read-only probeの実装、24件のGo試験と5件のbenchmark、`tei validate`による確認、上流ファイルへの転記照合、本稿の整理です。
+実施したことは、対象版と関連Issueの調査、2つのTEI Workspaceの作成、read-only probeの実装、**38件のGo試験**と5件のbenchmark、`tei validate`による確認、上流ファイルへの**48件の転記照合**（[ANCHOR_POLICY.md](../../research/tei-cross-domain-probe-2026-11/ANCHOR_POLICY.md)）、状態機械のreview（[STATE_MACHINE_REVIEW.md](../../research/tei-cross-domain-probe-2026-11/bear/STATE_MACHINE_REVIEW.md)）、本稿の整理です。
 
 未実施は次のとおりです。CSWの実際の執筆セッション、生成モデルへの固定入力の投入、作者による採用判断。VSクマのGodot起動、既存runnerの再実行、実画面・実機での確認。TEIからGDScriptやSQLへの生成、probeのCI必須検査への接続、上流変更への自動追随。anchor試験のCIでの常時実行（兄弟チェックアウトがある環境のみ）。別ハードウェアでの性能測定、独立レビューアによる再検証、本節の判断事項の決定。
 
@@ -228,11 +228,11 @@ VSクマ側の期待結果は、上流に書かれた事実から独立に用意
 | VOC-01 | [#2510](https://github.com/hat47x/tei-platform/issues/2510) | `implementer` | 範囲・列値の検証を`validation`へ追加する設計案とADR草案 | 未着手 |
 | SM-01 | [#4193](https://github.com/hat47x/tei-platform/issues/4193) | `reviewer` | 状態機械のread-only投影の成果を#4193の受入条件へ接続するreview | **実施済み**（blocking 1件を修正） |
 | SM-02 | [#4193](https://github.com/hat47x/tei-platform/issues/4193) | `implementer` | UI非同期と通信Sessionのread-only解釈（#4193 §6のS1） | 未着手 |
-| OPEN-01 | [#2533](https://github.com/hat47x/tei-platform/issues/2533) | `architect` | 開いた集合を列挙型として書くときの規約 | 未着手 |
+| OPEN-01 | [#2533](https://github.com/hat47x/tei-platform/issues/2533) | `architect` | 開いた集合を列挙型として書くときの規約 | **設計案あり**（[OPEN_SET_POLICY.md](../../research/tei-cross-domain-probe-2026-11/OPEN_SET_POLICY.md)） |
 | TRACE-01 | [#4134](https://github.com/hat47x/tei-platform/issues/4134) | `implementer` | 外部Repository転記の照合下限と証跡の記録 | **実施済み**（CI接続は未実施） |
 | CSW-01 | CSW [#593](https://github.com/hat47x/cultural-substrate-weaving/issues/593) | Owner判断 | 型付き受け渡しを任意の道具として残す場合の仕様 | 判断待ち |
 | BEAR-01 | VSクマ [#95](https://github.com/hat47x/vs-bear-simulator/issues/95) | Owner判断 | 契約の写しを受け入れる場合の条件と同期手順 | 判断待ち（推奨は保留） |
-| PLACE-01 | [#4193](https://github.com/hat47x/tei-platform/issues/4193) | `integrator` | `research/`から`tools/`への昇格基準 | 未着手 |
+| PLACE-01 | [#4193](https://github.com/hat47x/tei-platform/issues/4193) | `integrator` | `research/`から`tools/`への昇格基準 | **設計案あり**（[PLACEMENT_POLICY.md](../../research/tei-cross-domain-probe-2026-11/PLACEMENT_POLICY.md)） |
 
 共通の開始base SHA：`b987b38e741f8cfda74159e405979cf369521b88`（2026-11-11時点の`origin/main`）。
 共通の非目標：製品の受入Gateへの接続、CI必須検査の追加、CSWの3 Skillの変更、VSクマのGDScript生成、第二の意味正本の作成。
