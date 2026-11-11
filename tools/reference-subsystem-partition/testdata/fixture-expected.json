@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "tei.subsystem-partition.expected/v0",
+  "baseCommit": "5cfc0f2d142c07132f7e9cf7405099386ca80ec1",
+  "authorityLimit": "caller-supplied candidate graph only; not accepted ownership, complete Source, runtime effect, authorization, or migration safety",
+  "candidates": [
+    {"crossWriteCount": 1, "crossWriteWeight": 1, "crossReadCount": 6, "cohesion": 0.909091, "maxSize": 4},
+    {"crossWriteCount": 1, "crossWriteWeight": 1, "crossReadCount": 6, "cohesion": 0.909091, "maxSize": 4},
+    {"crossWriteCount": 2, "crossWriteWeight": 2, "crossReadCount": 6, "cohesion": 0.818182, "maxSize": 4},
+    {"crossWriteCount": 2, "crossWriteWeight": 2, "crossReadCount": 6, "cohesion": 0.818182, "maxSize": 4},
+    {"crossWriteCount": 3, "crossWriteWeight": 3, "crossReadCount": 6, "cohesion": 0.727273, "maxSize": 5}
+  ]
+}

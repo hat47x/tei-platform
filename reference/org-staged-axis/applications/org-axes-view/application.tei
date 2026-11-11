@@ -1,0 +1,8 @@
+application org_axes_view {
+    uses semantic organization
+
+    database org_read {
+        target org_store
+        access read
+    }
+}
