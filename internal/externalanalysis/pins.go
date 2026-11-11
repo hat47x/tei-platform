@@ -15,6 +15,11 @@ type Pins struct {
 // VerifyPins reports the first way a received receipt fails to match the pins
 // recorded when this Evidence was first admitted, and nil when it matches.
 //
+// A caller that recorded no pins is not asking a question, so an empty Pins is
+// not a failure: a receipt that carries no Evidence at all already says so in
+// its state, and answering a pin error there would send the reader looking for
+// a mismatch that was never checked.
+//
 // An unpinned field is not checked: a caller that recorded only the Evidence ID
 // is asking only whether it is the same Evidence. The revision is checked
 // before the digest, because the two failures look alike from the bytes alone
@@ -23,6 +28,9 @@ type Pins struct {
 // that were admitted. Neither is the same observation read twice, and neither
 // is a statement about the analysis result.
 func (r Receipt) VerifyPins(pins Pins) error {
+	if pins.EvidenceID == "" && pins.Fingerprint == "" && pins.SourceRevision == "" {
+		return nil
+	}
 	if r.Evidence == nil {
 		return fmt.Errorf("受領したbytesにEvidenceがありません: pinと照合できません")
 	}

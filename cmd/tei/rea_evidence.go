@@ -190,9 +190,17 @@ func reaEvidenceMode(args reaEvidenceOuterArgs) string {
 // probeExternalTool records whether the external tool is present in this
 // environment. It looks, and nothing more: the command never runs the tool, and
 // a presence check is not an invocation.
+//
+// An explicitly declared path is checked on disk rather than trusted, so a
+// caller that names a tool that is not there gets a receipt that says so
+// instead of one that claims a fresh run was possible.
 func probeExternalTool(explicitPath string) externalanalysis.Tool {
 	tool := externalanalysis.Tool{Name: "rea"}
 	if strings.TrimSpace(explicitPath) != "" {
+		if _, err := os.Stat(explicitPath); err != nil {
+			tool.AbsentReason = fmt.Sprintf("宣言されたtool path %s を読めません: %v", explicitPath, err)
+			return tool
+		}
 		tool.Present = true
 		tool.ResolvedPath = explicitPath
 		return tool

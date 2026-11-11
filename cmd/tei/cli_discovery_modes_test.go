@@ -111,6 +111,18 @@ func TestDiscoveryAdvertisesEveryModeAResponseCanCarry(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// rea-evidence reads saved files rather than a Workspace, so its inputs
+	// are written here: one saved analysis output, and one saved view
+	// delivery in the framing of the declared version.
+	reaEvidencePath := filepath.Join(dir, "rea-analysis.json")
+	if err := os.WriteFile(reaEvidencePath, []byte(syntheticEvidence), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	reaViewPath := filepath.Join(dir, "rea-view.jsonl")
+	if err := os.WriteFile(reaViewPath, []byte(syntheticView), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
 	lineContext := discoveryRun(t, binary, "knowledge-context", "-workspace", reference,
 		"-subject-kind", "semantic-data", "-subject-id", "sales.order_line")
 	var lineShape struct {
@@ -151,6 +163,12 @@ func TestDiscoveryAdvertisesEveryModeAResponseCanCarry(t *testing.T) {
 		{args: []string{"plugin-resolve", "-workspace", reference, "-environment", "development"}, mustAbsent: true},
 		{args: []string{"plugin-resolve", "-workspace", reference, "-environment", "development", "-diagnostic-candidates"}, want: "unvalidated-candidates"},
 		{args: []string{"requirements", "-workspace", reference}, mustAbsent: true},
+		// -tool-path names a file that exists, so the receipt is a whole one
+		// rather than one from an environment without the tool.
+		{args: []string{"rea-evidence", "-analysis-output", reaEvidencePath, "-tool-path", reaEvidencePath}, want: "evidence"},
+		{args: []string{"rea-evidence", "-analysis-output", reaEvidencePath, "-request-out", filepath.Join(dir, "rea-request.json"), "-provider-version", "6.8.0"}, want: "request"},
+		{args: []string{"rea-evidence", "-analysis-output", reaEvidencePath, "-view", reaViewPath, "-provider-version", "6.8.0"}, want: "view"},
+		{args: []string{"rea-evidence", "-analysis-output", reaEvidencePath, "-view", reaViewPath, "-request-out", filepath.Join(dir, "rea-request-view.json"), "-provider-version", "6.8.0"}, want: "request-view"},
 	}
 
 	advertised := map[string][]string{}
@@ -197,6 +215,10 @@ func TestDiscoveryModesAreAClosedAdvertisedSet(t *testing.T) {
 		resultModeDisclosure: true, resultModeQualification: true, resultModePlan: true,
 		resultModeHandoff: true, resultModeReview: true, "environment": true,
 		"unvalidated-candidates": true, "": true,
+		// rea-evidence names which optional inputs the response carries; the
+		// shape really does change with them (a receipt alone, plus a request
+		// check, plus a view inspection).
+		"evidence": true, "request": true, "view": true, "request-view": true,
 	}
 	for _, record := range commandCatalog().Commands {
 		for _, mode := range record.Modes {

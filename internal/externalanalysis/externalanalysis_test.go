@@ -630,11 +630,11 @@ func TestRealRefusalDeliveriesAreFailed(t *testing.T) {
 		version string
 		code    string
 	}{
-		{"rea-6.7.0/error-source-kind.out", "6.7.0", "invalid_request"},
-		{"rea-6.7.0/error-envelope-as-evidence.out", "6.7.0", "invalid_request"},
-		{"rea-6.8.0/error-source-kind.out", "6.8.0", "invalid_request"},
-		{"rea-6.8.0/error-envelope-as-evidence.out", "6.8.0", "invalid_request"},
-		{"rea-6.8.0/error-evidence-file-utf16.out", "6.8.0", "evidence_integrity_mismatch"},
+		{"rea-6.7.0/error-source-kind.jsonl", "6.7.0", "invalid_request"},
+		{"rea-6.7.0/error-envelope-as-evidence.jsonl", "6.7.0", "invalid_request"},
+		{"rea-6.8.0/error-source-kind.jsonl", "6.8.0", "invalid_request"},
+		{"rea-6.8.0/error-envelope-as-evidence.jsonl", "6.8.0", "invalid_request"},
+		{"rea-6.8.0/error-evidence-file-utf16.jsonl", "6.8.0", "evidence_integrity_mismatch"},
 	} {
 		t.Run(testCase.file, func(t *testing.T) {
 			raw := fixture(t, testCase.file)
@@ -668,6 +668,16 @@ func TestDerivingWithoutADeclaredVersionIsRefused(t *testing.T) {
 	}
 	if _, err := externalanalysis.DeriveViewRequest(receipt.EvidenceBody(), viewRequest(), unobserved); err == nil {
 		t.Fatal("deriving against an unobserved version must be refused")
+	}
+}
+
+// TestEmptyPinsAskNoQuestion: a caller that recorded no pins is not asking
+// whether anything matches, so an empty Pins is not a failure — including for a
+// receipt that carries no Evidence at all, whose state already says so.
+func TestEmptyPinsAskNoQuestion(t *testing.T) {
+	missing := externalanalysis.Receive(nil, presentTool("6.8.0"), acquisition)
+	if err := missing.VerifyPins(externalanalysis.Pins{}); err != nil {
+		t.Fatalf("empty pins must not manufacture a mismatch: %v", err)
 	}
 }
 

@@ -46,10 +46,10 @@ func AcceptedSourceKinds(version string) ([]string, bool) {
 // DeriveViewRequest builds the request bytes TEI hands to the tool for one
 // Evidence, and returns them with nothing else.
 //
-// The Evidence is embedded exactly as it was received. Re-serializing it would
-// produce a different byte sequence for the same record — key order is the
-// producer's, not ours — and a request whose digest cannot be traced back to
-// the received bytes cannot be re-read later.
+// The Evidence is embedded verbatim: not re-serialized, and not compacted.
+// Re-serializing it would produce a different byte sequence for the same record
+// — key order is the producer's, not ours — and a request whose bytes cannot be
+// traced back to the received ones cannot be re-read later.
 //
 // The response envelope is refused here as well as at the tool. Handing the
 // tool {ok, data, meta} as the Evidence body was observed to fail with every
@@ -84,20 +84,19 @@ func DeriveViewRequest(body []byte, view ViewRequest, acceptedKinds []string) ([
 	if err != nil {
 		return nil, err
 	}
-	request := struct {
-		Source struct {
-			Kind     string          `json:"kind"`
-			Evidence json.RawMessage `json:"evidence"`
-		} `json:"source"`
-		View json.RawMessage `json:"view"`
-	}{
-		Source: struct {
-			Kind     string          `json:"kind"`
-			Evidence json.RawMessage `json:"evidence"`
-		}{Kind: kind, Evidence: json.RawMessage(text)},
-		View: view.Selector,
-	}
-	return json.Marshal(request)
+	// The request is assembled by hand rather than marshaled, because
+	// json.Marshal compacts a RawMessage: the embedded Evidence would no
+	// longer be the bytes that were received whenever the producer wrote
+	// insignificant whitespace.
+	request := make([]byte, 0, len(text)+len(view.Selector)+64)
+	request = append(request, `{"source":{"kind":"`...)
+	request = append(request, kind...)
+	request = append(request, `","evidence":`...)
+	request = append(request, text...)
+	request = append(request, `},"view":`...)
+	request = append(request, view.Selector...)
+	request = append(request, '}')
+	return request, nil
 }
 
 // derivableSourceKind picks the one kind the intake derives: inline. The
