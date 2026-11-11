@@ -178,9 +178,9 @@ C-1/C-2の`ran/refused/unverified`は**別Operationの参照計数**である。
 
 S2-referenceは通常CLI／通常・生成Studio Hostの静的参照Inspectorが既存`Composition`を通ることを[main #3540](https://github.com/hat47x/tei-platform/pull/3540)で実証し、[main #3735](https://github.com/hat47x/tei-platform/pull/3735)でCanonical top-level `id`の厳密照合と二WorkspaceのSource移動を検証した。しかしこれだけでは、「選択されたProviderのID」も「Hostが登録した呼出しEntry」も同じ参照実装の定数由来であり、**別Pluginへ切り替えて正しい実行Entryへ届くこと**は証明できない。
 
-[Draft #4202](https://github.com/hat47x/tei-platform/pull/4202)は、**既存`composition.Registry.Select`→Host所有`LocalProvider` inventory→実Go関数シンボル→Provider呼出し→Host独立Manifest再観測**を具体化している。第12節のC-1/C-2参照連結とは別の、`authoring-tool` Inspector実際の入口の検証である。
+[旧Draft #4202](https://github.com/hat47x/tei-platform/pull/4202)はclosed/unmergedだが、**既存`composition.Registry.Select`→Host所有`LocalProvider` inventory→実Go関数シンボル→Provider呼出し→Host独立Manifest再観測**の局所実装は、現mainの[`internal/inspectoradapter/local_host.go`](../../internal/inspectoradapter/local_host.go)と[`internal/workspace/manifest_observe.go`](../../internal/workspace/manifest_observe.go)で読取り確認できる。PRのマージ状態ではなく現mainのコードを正本とする。第12節のC-1/C-2参照連結とは別の、`authoring-tool` Inspector実際の入口の検証である。
 
-| 反例 | 現Draftで確認できる／できない境界 | 次に追加する独立資格 |
+| 反例 | 現mainの局所Hostで観測・不検出の境界 | 次に追加する独立資格 |
 | --- | --- | --- |
 | SP-01 A/B選択 | Test inventory内A/Bの別Entryが同値JSONを返しても、B選択時B関数だけ到達を観測 | **正式Profile**が選んだBを通常CLIと実Studioの異なる実Targetへ供給し、実Artifact内Entry Bに到達するかは未証明 |
 | SP-02 B宣言にA関数 | Go関数値と宣言シンボルを照合し、矛盾は呼出し前に拒否 | inventory自体が別元の**独立Build Artifact証拠**で受理される条件。宣言とリンクシンボルがともにAならHost単独では誤登録を判別できない |
@@ -190,6 +190,6 @@ S2-referenceは通常CLI／通常・生成Studio Hostの静的参照Inspectorが
 
 **選択・権限・実行のOwnerは一つの新基盤へ集約しない**：Provider選択値は#951/#1016の既存Profile/Contractが所有。Hostはその値を受けて`Selected→Registered→Observed Entry→Invoked`を区別する。実Artifact/2×2 BOMは#943/#3267、Source Revision/Required Closureは#3262/#3524、現在Host Grant/Disclosureは#1174/#2516。Provider/Executor identityをAdapterが無条件上書きして検査を空振りさせたmain [#3936](https://github.com/hat47x/tei-platform/pull/3936)／[#3945](https://github.com/hat47x/tei-platform/pull/3945)を反証事例として再利用する。局所A/Bテスト内で成功したからといって、プロダクトの任意外部Plugin差替えや現在のPrincipal許可へ昇格しない。
 
-**別のP0（実Read）との関係**：[Draft #4076](https://github.com/hat47x/tei-platform/pull/4076)の`DatabaseProviderBoundBrowseQueryExecutor`は`postgres`などの**DB dialect/provider種別**をEnvironmentのInstanceと照合する任意Interfaceであり、Pluginの実`ProviderID`・実Go Entry/Artifact・物理DSNの独立照合とは別。実PostgreSQLでQuery実行した成功と、正式Composition Profileが選んだPlugin BのProduct呼出し成功を同じ欄へ合算しない。Function Readの最初のP0を正式Inspector Pluginの全資格が整うまで止めない。
+**別のP0（実Read）との関係**：[旧Draft #4076](https://github.com/hat47x/tei-platform/pull/4076)（closed/unmerged）の`DatabaseProviderBoundBrowseQueryExecutor`は`postgres`などの**DB dialect/provider種別**をEnvironmentのInstanceと照合する任意Interfaceであり、Pluginの実`ProviderID`・実Go Entry/Artifact・物理DSNの独立照合とは別。実PostgreSQLでQuery実行した成功と、正式Composition Profileが選んだPlugin BのProduct呼出し成功を同じ欄へ合算しない。Function Readの最初のP0を正式Inspector Pluginの全資格が整うまで止めない。
 
-**採用と状態**：Draft #4202のSP-01〜03は記述済みの局所実装・ローカルテストであり、SP-04/05は検出不能の証拠である。生成Studio/Windows WebView/全Repo CI・正式Profile/別実Binaryの結果は最新HEADのActionsと独立Expected #2514/#1180で判定する。現在の本節は**既存計画への受入条件反映**であって新Gate・第二Registry・専用Sandbox・共通常駐Hostは設けない。
+**採用と状態（2026-11-11 readback）**：SP-01〜03の選択Entry/異Manifest拒否ロジックと局所テストは**現mainのコードに存在**する。SP-04/05は同じコードで依然検出不能。現mainのReference Inventoryは1件であり、**正式Profileから製品バイナリのB Providerを選択・差替えたわけではない**。成功した既存PR HEADのActionsを現在のmainの別SHAへ自動移転しない。実生成Studio/Windows WebViewの該当版、現Principal Grant、実Artifact、同一Load Source/Required Closureは#1251/#951/#1016/#3262で別資格として残す。ここでは新Gate・第二Registry・専用Sandbox・共通常駐Hostは設けない。

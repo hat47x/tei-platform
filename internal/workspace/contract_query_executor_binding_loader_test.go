@@ -77,7 +77,7 @@ func TestLoadContractQueryExecutorBindingsRejectsDuplicateIdentity(t *testing.T)
 
 	result := Result{Sources: map[string]SourceLocation{}, sourceSnapshotRoot: root, sourceSnapshot: map[string][]byte{}}
 	err := loadContractQueryExecutorBindings(root, &result)
-	if err == nil || !strings.Contains(err.Error(), "既に") || !strings.Contains(err.Error(), "development/master_data.dev/master_data/master_data.customer/find_by_id") {
-		t.Fatalf("同一Binding identityへの複数executor宣言を拒否していません: %v", err)
+	if err == nil || !strings.Contains(err.Error(), "already defined") || !strings.Contains(err.Error(), "development/master_data.dev/master_data/master_data.customer/find_by_id") {
+		t.Fatalf("duplicate executor declarations for the same Binding identity were not rejected: %v", err)
 	}
 }
