@@ -616,3 +616,51 @@ HULFT-HUB Ver.3公式マニュアル第20版（2025-12-01）は、蓄積を使�
 - **Recovery policy**: 全宛先の再送、異常宛先のみの送出、蓄積解放後の送出が利用可能かはProvider/運用設定依存。TEI共通型の固定操作を先行させず、選択Route/各実環境の能力とRequest/Receiptを照合する。
 
 **既存受入への配分**: #2542 EF-02（順序と欠落）・EF-03（ACK喪失と重複）、#2827 DM-06/07/08（Spool/再送/受理）、#1130 RPL-02（部分成功）へ宛先ごとのObservation列を追加する提案。新Fanout Engine/Retry Coordinator/第二Recipient Registryは作らない。実HULFT-HUB同報/実Partner試験とOwner受理はNOT RUN。
+
+## 16. 2026-11-11 期間close宣言・Caller報告・実Effect Receiptの3境界
+
+**現行mainのSource照合**（固定main `b8cbd432aae22ccf3fa75b0119e1d90d87ef0d11`）：`internal/operations/period_requirement.go` blob `578ca2498c17b8b1764437a61d36e1c2a67bd53f` の `CheckCloseRequirement` は、`PeriodRequirement.Capability` が空でなければ **callerから与えられた `ranCapability` と宣言IDの一致**を確認する。 `cmd/tei/cli_operations_artifacts.go` blob `91598f7f05919dd60ca42e49cd71ab8f9c3241b5` の `runPeriodsCommand` は、`-close-capability` をこの比較に渡し、許可された場合 `periodstate.Writer.Write` を呼ぶ。`operations.PeriodRequirementsFromWorkspace` は実宣言を読む。**これらは実Capability実行・Receiptの取得・Output/Effectの独立観測をこの経路では行わない**。既存`period_requirement_test.go` blob `ac95893136393e7e5d299bb24b68d272092dfb83` は一致IDの許可、不一致・省略IDの拒否、宣言無しの場合を検証する。以下はこの実装を否定するのではなく、Claimの射程を限定する。
+
+| 受入対象／対応Owner | Required（意図・必要条件） | Supplied（Caller報告） | Observed（独立の実証） | 現資格 |
+| --- | --- | --- | --- | --- |
+| **意味宣言** #2144 / `close-requires` | Dの宣言済Close Capability、期とSource revision | 宣言のLoader読取 | Workspaceから`PeriodRequirements`取得 | **宣言読取とID照合は実装済み** |
+| **閉鎖リクエスト** #1130 RPL-01/02/04 | 現Period D・期待State/Revision・必要Capability | `-advance D -close-capability X`、`X == declared ID` | `CheckCloseRequirement`の一致/不一致、`periodstate.Writer`の単一ファイル置換 | **一致IDはCallerの主張のみ**。実行済Capability/現在Grant/多Writer CAS/Owner受理は未実証 |
+| **Close処理実行** #1130 / #1174 | 同期したScenario/Operation/Attempt・Required Guards/Effect | `X`を実行したというCaller表明 | 同じ対象D/OperationID/Source版への実Runner journal、実Output、独立Effect/Receipt readback | **本CLI経路では未取得**。同名Xが渡っただけで処理完了にしない |
+| **Artifact受理** #2604 / #2542 EF-01 | Dに必要なF（明細）＋T（件数・合計）、期待GenerationとRecipient Set | Manifest/公開通知、送信元/HUB ACK | Pinした実Manifest・F/T全Byte、世代一致、各宛先の実Read/ImportUnit/Receipt | **期間Stateとは独立**。F/Tの片方だけ・旧Member・HUB蓄積ACKは全件受理でない |
+| **業務期間の受理** #2542 EF-04 / #1174 / Owner | 業務期Dのcutoff・遅延/訂正方針・期待受入結果 | `closed`保存値／RunPlan完了報告 | 独立Business Effect・帳票/実DB照合・Owner受入・再Open/更正の別Operation | **未実証**。`closed`≠すべてのData・Recipient・Effectが完了 |
+
+### 16.1 最小反証と期待結果（既存Issueの受入ケースを拡張、未実行）
+
+| 入力変形 | 既存経路で確認済み／静的に期待できる動作 | 残るRequired→Observed不一致 |
+| --- | --- | --- |
+| `close-requires X`、Callerが`X`を省略／別ID `Y` | `CheckCloseRequirement`は拒否（既存Go Unit） | 実Provider/Ownerの全実行ではなく局所Guard |
+| `close-requires X`、CallerがID `X`だけ渡すが実行Receiptを持たない | **ID比較は通る設計**（現Source-static）。これは安全性の積極的合格ではない | **実Xの実行・Output・Effect・Current Authorityは未証明**。将来の資格付与では`unknown/unqualified`とする |
+| 同じID `X`でもR1とR2でSource/Period/Operationが変化 | 名前一致だけでは別Attempt/版の同一性を検査できない | Source/Operation/Period revision/Receiptを一致させ、旧版の受入を拒否する必要 |
+| `closed`になった後にF2遅延到着、F/T内の一方がR2・他方がR1 | State Fileが`closed`でも独立File Reader/Business Scoreを行った証拠はない | `closed`から自動再Accept・自動再Effectに進まず、#2542のImport/訂正方針とOwner判断へ |
+| 同じDを二Callerが同じ旧Stateから更新 | `Writer.Write`のtemp+renameは個別File更新、read/modify/write CASではない（§12.6） | 複数CallerのExpected State/Revision/現在Grantと実Commit時点の整合が未実証 |
+
+**判定式の表現（新Core Boolean/DSLではなく、既存受入表の列）**：
+`DeclaredRequired ⊆ Supplied` は前提の網羅確認であり、**`Supplied` ≠ `Observed`**。`Observed`を付けるには`(D, Source Revision, Operation/Attempt, Effect, Required F/T, Recipient)`の各主語に対応する**実のReader/Receipt**が必要。未申告条件（欠落）、申告したが未観測、観測失敗、対象外を区別する。情報開示不可のScopeで件数や理由を推定して補完しない。必要Collection/Principal/Authorityが選択されない小規模Batchへ共通Hostを強制しない。
+
+### 16.2 優先順・責務分担と実証停止線
+
+1. **P0／#1130**：既存`CheckCloseRequirement`/Period Workspaceの実入口で、`X`名一致のみと実Runner/Effect Witnessを分けた**独立Expected**を記録。要求CapabilityがCallerに渡されなければ拒否される現Unitを再実装せず、先に「一致するが実行証拠なし」を不合格資格として表に足す。Owner受理無しでCLIを変更しない。
+2. **P1／#2604・#2542**：同じDで正規F/T二MemberをR1からR2へ切替え、Published Body/Manifest世代、Recipient/ImportUnit、Business Cutoffを別Attempt/証拠で照合。既存[#3256](https://github.com/hat47x/tei-platform/pull/3256)・[#4240](https://github.com/hat47x/tei-platform/pull/4240)はmain統合済みのReader Characterizationに限り、Atomic Publication・二実Reader・実MFTの証明に使わない。実HULFT/Partner送達はNOT RUN。
+3. **P1／#1174・#2144（意味のA4判断が必要な部分）**：実Tx/Effect Receipt、`D→Correction Operation`、Owner再受理とCAS/Authorityを段階接続。#2144の宣言モデルP1〜P3はmain統合・Issue close済みだが、実業務Ownerの受入完了と同一視しない。
+
+**重複回避**：#1130がRunner/必要Guardの充足、#2604がArtifactSetの実公開／Member、#2542がFile/MFT／ImportUnit、#1174がEffect/Receipt、#2144が期間意味の受入を所有。原則Hostなし／認証は必要環境のPlugin能力／TEI基本構造の合成を維持し、別のPeriod Runtime、ETL Completion Engine、追加Manifest、Scheduler、万能証拠Registryを導入しない。
+
+**実行状態と証拠の限界**：本節はmainの4つのGo Source/既存UnitとIssue/PRの**静的照合・設計追補**。追加の実CLI/Goテスト、実PG・MFT・二Worker競合、同一AttemptのReceipt連結、実業務Owner受理は**NOT RUN**。[#4240の専用CLI #42933670806](https://github.com/hat47x/tei-platform/actions/runs/42933670806)はsuccessだが、同HEADの[Repository Health #42933670781](https://github.com/hat47x/tei-platform/actions/runs/42933670781)はfailure（`TestParallelClaim`/ `TestToolsReadmeMentionsEveryEntry`、本節のコードと別）であり、全体成功へ読み替えない。新しい本PRのCI合否は別途確認する。
+
+### 16.3 非0終了後の期間状態書込み：ErrorとEffect Unknownを分離
+
+**追加のSource-static条件付き反例（実CLI試験はNOT RUN）**：`runPeriodsCommand`は `-advance` の有効性・`close-requires`のID一致を確認後、**`periodstate.Writer.Write`で期間状態を保存してから** `operations.CheckPeriods(surface, states)`を評価し、拒否されるOperationがあればJSONを出力した後、`fmt.Errorf("%d operation(s) are refused by the period state", ...)`でエラーを返す。したがって「対象Periodに拒否対象Operationが存在し、`-advance`で新Stateを保存後にCheckPeriodsが非空となる」条件では、**非0 exit / CLI Errorでも状態Fileの更新が既に成功している経路**がSource上にある。これは実行の失敗と永続状態が変わらなかったことの**同値でなさ**を示す。実対象Workspace/Go CLIでの到達・File/FS耐久性は未実測。
+
+| 観測主語 | 条件付きの現行動作 | 次の受入判断 |
+| --- | --- | --- |
+| CLI return / JSON | `CheckPeriods`のRejectionでエラー終了し得る | **Nonzero exitは「変更なし」ではない**。Errorの理由と完了済Stageを別に記録 |
+| Period State File | `Writer.Write`が先行し`closing`／`closed`を書込み得る | 次のRetry/Correction前に対象Dの**実Readback＋Revision/Owner**を確認。別Attemptで同じ`-advance`を自動適用しない |
+| RunPlan / Artifact / Recipient | CLIはここで実Batch処理、Artifact Publish、ImportUnit/Effectを観測しない | 期間Stateの変更が確認できても、#2604/#2542/#1174の副作用を推定しない。未観測ならUnknown |
+| 競合実行 | `Writer.Write`のRenameは単体Fileの置換であり、双方のExpected State CASではない | 一方が`closing`を保存してエラーを返しても、他方の`closed`／Correctionを無条件に上書きしない |
+
+**最小の次試験（既存#1130で採否）**：実WorkspaceのPeriodに拒否対象Operationがある陽性Fixtureを再利用して`tei periods -advance`を一度だけ実行し、(1)終了コードとRejection JSON、(2)実State Fileの再読取、(3)二回目Retryの状態/Effectを独立に保存する。**同一実行のExit StatusとReadbackをセットで比較する**。新Runnerや複数Phase Transactionを作らず、実Stage列のどこで止めるべきかはOwnerが決める。本節はCodeの実行順の静的照合であり、Go/実CLIの新試験・実MFT/DB/Owner受理はNOT RUN。
