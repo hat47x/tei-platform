@@ -1,0 +1,93 @@
+調査に必要な情報が揃いました。以下に、実際に呼び出したCLIとその結果に基づいて報告します。
+
+## 実行環境と版（どこまでが実際に確認した事実か）
+
+| 項目 | 確認した内容 |
+|---|---|
+| 実行物 | `D:\GIT\hat47x\tei-wt-dsh-g3-20261111-slot\bin\tei.exe`（12,006,912 bytes、LastWriteTime 2026/11/11 14:17:19） |
+| CLI版 | `tei version -json` で `vcsRevision=50ebf8014340fd1906f6b35cfa30173e0ee2fc6c`、`goVersion=go1.27.0`、`goos=windows`、`source=build-info` を確認。すべてのコマンドはこの1つの実行物で呼び出した |
+| リポジトリ内のCLIソース | **未確認**。この作業ツリーには `cmd/tei` がなく、`go run` は使もい。Git HEADとWorking Treeは**未確認**。`bin\tei.exe` がこのcheckoutからビルドされたのかも**未確認** |
+| Workspace | `reference/workspace`（`tei.workspace.yaml` の `workspace: tei_reference`、formatVersion 1） |
+
+各コマンドで得られた照合値は次のとおりで、互いに一致しました。
+- `worldFingerprint` = `sha256:c92de09f…a1d65a`
+- `sourceIndexFingerprint` = `sha256:1827f4b4…ca23531`
+- `modelRevision`（catalogのみ）= `sha256:f414e2b0…33fd2`
+
+trace で得た外側の `snapshotFingerprint` = `sha256:c8f86c3d…155e62e`、内側の `result.trace.snapshotFingerprint` = `sha256:1b5736a1…fceab2` で、両者は別の値です。
+
+## (1) この要素が何を表すか
+
+- `semantic-data:sales.order` は、`semantic:sales` 名前空間に属するデータ型 `Order` です（catalog で `symbol=Order, parent=semantic:sales`、`inspect` で `canonical.id=sales.order`）。
+- 属性は6個です。
+  - `orderId`（型 `sales.order_id`）
+  - `customerId`（型 `customer.customer_id`）
+  - `orderedAt`（型 `std.datetime`）
+  - `status`（型 `sales.order_status`）
+  - `total`（型 `std.money`）
+  - `externalId`（型 `std.text`）
+- 関係は2個です。
+  - `customer`：`customer.customer` への `one`。キーは `sales.order.customer_id → customer.customer.customer_id`
+  - `lines`：`sales.order_line` への `many`
+
+## (2) 定義元のファイルと出典の手掛かり
+
+- `inspect` と `source-index` はどちらも、定義の場所として `semantic/sales/order.tei`（sha256 `f2063418…de1e33`）を返し、`range` は line 7, column 6–11、`role=definition` でした。この範囲は read で確認した `data Order {` の `Order` の名前に一致します。
+- 同じファイルでは `type OrderId`、`OrderLineId`、`OrderStatus` を、`std.identifier`、`std.code` から派生させる宣言になっています（3–5行目）。
+- ファイル内の `capability sales.order.submit` はこの `Order` を入力・出力にします（27–30行目）。
+- データベース側の契約 `databases/sales-core/contracts/order.tei` は `contract sales_core.order v4.2` で、`read sales.order` と `write sales.order.status` を持ちます。
+- Sourceの版として読める手掛かりは次の2つです。
+  - `releases/databases/sales-core/4.2.0.tei`：`provides contract sales_core.order v4.2`、`schema-fingerprint "reference-sales-4.2"`
+  - `releases/applications/order-entry/3.8.0.tei`：`source-revision "reference-app-3.8.0"`、`requires contract sales_core.order ^4`
+
+## (3) 注文の合計額を表す属性
+
+- 識別子：`semantic-attribute:sales.order.total`（`symbol=total`）
+- 型：`std.money`
+- この根拠は catalog、inspect、`semantic/sales/order.tei` 12行目の `attribute total type std.money` の3か所で一致します。
+
+注意：モデル上の型名は `std.money` までで、通貨・精度・スケールは**未確認**です。`std` 名前空間は `sourceStatus=not-indexed` で、`std.money` の定義ファイルはWorkspace内で見つかりませんでした。grep でも `std.money` は `order.tei` の2か所（`total` と `unitPrice`）にしか現れません。
+
+## (4) Workspaceの検証結果と残る診断・不明点
+
+`validate -workspace reference/workspace -json` の結果：**exit 0 / ok=true** でしたが、**Warningが3件**ありました。エラーは0件です。
+
+| コード | 対象 |
+|---|---|
+| `DATABASE_RELEASE_CONTRACT_NOT_CURRENT` | `sales_core` release 4.0.0 の `sales_core.order_legacy` が現行定義を持たない |
+| `DATABASE_RELEASE_CONTRACT_NOT_CURRENT` | 同じ内容で `sales_core` release 4.1.0 |
+| `APPLICATION_RELEASE_CONTRACT_NOT_CURRENT` | `order_entry@3.7.0` が要求する `sales_core.order_legacy` が現行定義を持たない |
+
+`trace`（`-scope reference-observation`、`direction both`、`mode summary`）では、`total=4`、`unresolved=0`、`authority=candidate-read-only`、Sourceの `status=located` でした。ただし `projectionUnresolved` が17件残っているため、次の点は**未確認**です。
+- `master_data.customer`、`sales_core.order`、`sales_core.order_line` の各契約やDBとの参照が未materializeのため、`sales.order` と物理DBスキーマの対応は確認できていません。
+- `database-contract-query:master_data.customer/find_by_id` への参照も未materializeです。
+- traceの版は `source-evidence-not-bound` とされ、catalogは `catalog-is-a-derived-read-only-projection` とされているため、これらの観測は**正本への受理や編集権限の証明ではありません**。
+
+その他の不明点：
+- `bin\tei.exe` のビルド元checkout、Git HEADは**未確認**です。
+- `semantic-data:sales.order` と、`sales_core.order` 契約・`std.money` 定義が正しい意味で対応づけられたかは、**未確認**です。
+- `world` のリリース一覧には `sales_core` 4.0.0〜4.2.0、`order_entry` 3.7.0/3.8.0、solution `order_rollout` 2026.8.27 と `order_rollout-fix` 2026.8.28 が並んでいます。「現在有効な版」がどれかはCLI結果からは**確定できていません**。
+
+## 実際に呼び出したコマンド一覧（すべて `bin\tei.exe`、cwdはリポジトリルート）
+
+| コマンド | exit | 要点 |
+|---|---|---|
+| `version -json` | 0 | revision `50ebf801…` |
+| `commands` | 0 | `selected-read-only-commands` を列挙 |
+| `model catalog -workspace reference/workspace` | 0 | `semantic-data:sales.order` を発見 |
+| `inspect -workspace reference/workspace -subject-kind semantic-data -subject-id sales.order` | 0 | canonical とSource位置 |
+| `source-index -workspace reference/workspace -subject-kind semantic-data -subject-id sales.order` | 0 | `order.tei` の定義範囲 |
+| `trace … -direction both -mode summary` | 0 | `total=4`、`projectionUnresolved` 17件 |
+| `validate -workspace reference/workspace -json` | 0 | ok=true、warning 3件 |
+| `world -workspace reference/workspace` | 0 | Release版の一覧 |
+
+合わせて `semantic/sales/order.tei`、`databases/sales-core/contracts/order.tei`、`releases/…` の各ファイルを read と grep で読み取りました。対象を `sales.order.customer`、`sales.order.total` という**誤ったID**に指定すると検索できませんが、この誤りは今回の報告には影響していません。
+
+## 実施していない操作
+
+- ファイルの書換え・生成は行っていません。
+- DB/Providerへの業務操作、Providerの起動、モデル変更・受理、コード生成も行っていません。
+- 外部送信は行っていません。
+- したがって、状態は「検証を実行して結果を取得した」までで、**「モデル受理済み」「業務Effect確認済み」ではありません**。
+
+補足：一部の `pwsh` 呼び出しの stderr に、ConstrainedLanguageで型を作れないというコンソール設定エラーが出ました。これはコマンド自体には関係なく、`tei` の実行結果と終了コードには影響していません。
