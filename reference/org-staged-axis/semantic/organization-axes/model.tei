@@ -8,6 +8,9 @@ type PersonId from std.identifier
 type LegalEntityId from std.identifier
 type EmploymentId from std.identifier
 type AffiliationId from std.identifier
+type RoleId from std.identifier
+type RoleAssignmentId from std.identifier
+type ResponsibilityId from std.identifier
 
 data Person {
     attribute personId type organization.person_id
@@ -76,4 +79,30 @@ data Occupancy {
 
     relation position to organization.position one
         key organization.occupancy.position_id -> organization.position.position_id
+}
+
+data RoleAssignment {
+    attribute roleAssignmentId type organization.role_assignment_id
+    attribute personId type organization.person_id
+    attribute roleId type organization.role_id
+
+    relation person to organization.person one
+        key organization.role_assignment.person_id -> organization.person.person_id
+    relation role to organization.role one
+        key organization.role_assignment.role_id -> organization.role.role_id
+}
+
+data Responsibility {
+    attribute responsibilityId type organization.responsibility_id
+    attribute subjectPersonId type organization.person_id
+    attribute objectOrgUnitId type organization.org_unit_id
+
+    relation subject to organization.person one
+        key organization.responsibility.subject_person_id -> organization.person.person_id
+    relation object to organization.org_unit one
+        key organization.responsibility.object_org_unit_id -> organization.org_unit.org_unit_id
+}
+
+data Role {
+    attribute roleId type organization.role_id
 }
