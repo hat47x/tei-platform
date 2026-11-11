@@ -53,7 +53,6 @@ func TestValidateWorkspaceFailureIsNotBusinessFinding(t *testing.T) {
 	}
 }
 
-
 // A declared but missing source root has no Canonical Subject, so it is not a
 // semantic diagnostic. The typed operation, Catalog and shared CLI/MCP report
 // must nevertheless agree that the same observed Workspace is invalid.
@@ -146,7 +145,6 @@ func TestValidateUnknownDeclaredSourceRootWarnsWithoutFailing(t *testing.T) {
 		t.Fatalf("map warning-only verdict mismatch: map=%+v catalog=%+v", mapped.Catalog.Validation, catalog.Validation)
 	}
 }
-
 
 // MapWorkspace builds a CatalogWorld directly; its validation verdict must
 // be explicitly supplied from the same Load rather than silently retaining
