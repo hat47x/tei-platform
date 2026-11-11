@@ -1,0 +1,6 @@
+  ./tools/repository-plan-check          ok   (all three tests)
+  ./internal/threeelement                ok
+  ./internal/reacandidate                ok
+  ./cmd/tei (three-element family)       ok
+
+No product code changed: tests were added and one document's claim was corrected.

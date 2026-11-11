@@ -17,7 +17,15 @@
 // language-specific exception hierarchy, which is what lets a Java target keep
 // the same meaning as the Go runtime.
 
-final class TeiFailure extends RuntimeException {
+// It is deliberately neither public nor final:
+//   - not public, because a Java compilation unit holds one public top-level
+//     class and the public name belongs to the target's own entry point;
+//   - not final, because the target's business-rejection and technical-failure
+//     exceptions extend it. Declaring it final compiles until something
+//     inherits from it and then fails with "cannot inherit from final".
+// A caller in the same package catches TeiFailure directly, which is the only
+// access a generated target needs.
+class TeiFailure extends RuntimeException {
 
     /** The business meaning of a failure. Mirrors failure.Kind. */
     enum Kind {
