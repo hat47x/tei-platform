@@ -164,6 +164,7 @@
 | [`TEI_MD_UNIFIED_AUTHORING_MIGRATION_2026-11.md`](TEI_MD_UNIFIED_AUTHORING_MIGRATION_2026-11.md) | TEI Authoring Source を .tei.md へ統一する段階移行計画 |
 | [`TEI_SHO_OKF_DOMAIN_LINT_DOCUMENT_UNIT_2026-11.md`](TEI_SHO_OKF_DOMAIN_LINT_DOCUMENT_UNIT_2026-11.md) | TEI/SHOのOKF知識バンドルとドメインLint：段階導入の検証計画 |
 | [`TEI_SHO_DOCUMENT_DRAFT_INTEGRATION_2026-11.md`](TEI_SHO_DOCUMENT_DRAFT_INTEGRATION_2026-11.md) | TEI受理済みモデルの一要素と一関係を、SourceとRevisionを保持した説明文書DraftとしてSHOへ渡し、編集・保存・再開・モデル改版時の再確認までを行う最小統合機構（[SHO #19](https://github.com/hat47x/sho-composer/issues/19)・[SHO #4](https://github.com/hat47x/sho-composer/issues/4)・[SHO #6](https://github.com/hat47x/sho-composer/issues/6)、[#3394](https://github.com/hat47x/tei-platform/issues/3394)のSHO文書段、実装済みの最小基線） |
+| [`TEI_SHO_DOCUMENT_DRAFT_NEXT_STAGES_2026-11.md`](TEI_SHO_DOCUMENT_DRAFT_NEXT_STAGES_2026-11.md) | 上の契約を段階2〜5（CRUD表・三要素分析図・仕様書・固定納品版）へ伸ばす実行計画と、相互CI・Studio実組込み・逆方向禁止・`*.tei.md`取込みの横断課題、Owner判断事項の一覧（実装前設計） |
 
 ## 関連する参照事例と評価
 
