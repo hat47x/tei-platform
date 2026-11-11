@@ -20,6 +20,7 @@ var exportedStringConstantPattern = regexp.MustCompile(`(?m)^\s*(?:(\w+)\s+\w+\s
 func unmentionedExportedStringConstants(t *testing.T, root string) []string {
 	t.Helper()
 	mentioned := constantNamesMentionedByTests(t, root)
+	declared := 0
 	var out []string
 	err := filepath.WalkDir(filepath.Join(root, "internal"), func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
@@ -48,6 +49,9 @@ func unmentionedExportedStringConstants(t *testing.T, root string) []string {
 			if constant == "" {
 				constant = match[2]
 			}
+			if isExported(constant) {
+				declared++
+			}
 			if !isExported(constant) || mentioned[constant] {
 				continue
 			}
@@ -58,7 +62,10 @@ func unmentionedExportedStringConstants(t *testing.T, root string) []string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(out) == 0 {
+	// The guard counts declarations, not unmentioned ones: an empty result is the
+	// goal (every constant has a test), while an empty scan means the pattern or
+	// the layout changed and the check would pass for the wrong reason.
+	if declared == 0 {
 		t.Fatal("no exported string constant was found; the pattern or the layout changed")
 	}
 	// A file may declare the same constant twice only via separate blocks; keeping

@@ -62,7 +62,7 @@ func TestParseReferencePatternRejectsDuplicateContractQueryBlock(t *testing.T) {
 	if err == nil {
 		t.Fatal("同じPatternにcontract-queryを複数定義できてしまいました")
 	}
-	if !strings.Contains(err.Error(), "contract-queryは一つのPatternで一度だけ定義できます") {
+	if !strings.Contains(err.Error(), "contract-query can be defined once per pattern") {
 		t.Fatalf("重複定義の理由を追えないerrorです: %v", err)
 	}
 }
@@ -89,7 +89,7 @@ func TestParseReferencePatternRejectsIncompleteContractQueryBlock(t *testing.T) 
 			if err == nil {
 				t.Fatalf("contract-queryから%sを省略できてしまいました", name)
 			}
-			if !strings.Contains(err.Error(), "contract-queryには"+name+"の指定が必要です") {
+			if !strings.Contains(err.Error(), "contract-query requires "+name) {
 				t.Fatalf("不足している%sを判別できないerrorです: %v", name, err)
 			}
 		})

@@ -1,0 +1,10 @@
+M1 drop the environment dispatch
+   -> FAIL environment:development did not resolve:
+            inspect does not support subject kind "environment"
+M2 drop the database dispatch
+   -> FAIL database:sales_core did not resolve:
+            inspect does not support subject kind "database"
+
+No test needed rewriting: the kind-agnostic advertised-vs-declared check added in
+round 58 caught both.
+restored -> operations, reference-mcp-readonly-adapter ok; vet and gofmt clean

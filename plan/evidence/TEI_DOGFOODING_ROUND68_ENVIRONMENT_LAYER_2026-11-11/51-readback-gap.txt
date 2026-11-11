@@ -1,0 +1,11 @@
+The design validated, but neither new layer could be read back:
+
+  command          database        environment     database-instance
+  model catalog    absent          absent          -
+  model overview   in notCovered   in notCovered   -
+  inspect          UNSUPPORTED     UNSUPPORTED     UNSUPPORTED
+  trace            UNSUPPORTED     UNSUPPORTED     -
+  world            present         present         present
+
+model overview had ALREADY declared these kinds as not covered (round 59's E
+option). The declaration and the real gap agreed.

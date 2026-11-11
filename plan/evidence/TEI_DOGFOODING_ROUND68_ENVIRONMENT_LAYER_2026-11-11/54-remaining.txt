@@ -1,0 +1,6 @@
+#4128: C is now done for every World-level declaration kind reachable through
+inspect (18 kinds). E is done. A (model catalog), B (model overview sections) and
+D (a dedicated command) remain.
+
+Still outside inspect: plugin, bundle, persistence-mapping, migration-provider and
+similar delivery-layer kinds; all appear in model overview's notCoveredKinds.

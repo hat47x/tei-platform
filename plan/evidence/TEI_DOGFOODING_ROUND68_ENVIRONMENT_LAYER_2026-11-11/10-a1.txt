@@ -1,0 +1,2 @@
+error	DATABASE_PROVIDER_PLUGIN_MISSING	environment staging instance sales_core.staging provider postgres has no resolved database-provider plugin
+error	MIGRATION_PROVIDER_PLUGIN_MISSING	environment staging database sales_core migration tool atlas has no resolved migration-provider plugin

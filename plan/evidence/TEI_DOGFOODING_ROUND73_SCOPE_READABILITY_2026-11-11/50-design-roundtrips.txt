@@ -1,0 +1,15 @@
+Task: map the unmapped customer.customer onto a table, add a solution release,
+then read every artefact back through a CLI command.
+
+Attempt 1  persistence mapping on master_data             -> ok   (read back: cols=2)
+Attempt 2  solution release with database-release step    -> SOLUTION_RELEASE_NOT_EXECUTABLE
+                                                              database release not found: master_data@2.1.0
+Attempt 3  + database-release master_data 2.1.0           -> DATABASE_RELEASE_NOT_MANAGED_HERE
+                                                              targets database master_data with
+                                                              ownership external-observed
+Attempt 4  kind database-gate + contract ^2               -> ok
+
+Attempts 3 and 4 are the interesting pair: master_data is external-observed, so
+it cannot be released from this workspace. The diagnostic said exactly that, and
+the valid alternative (gate on the contract another team releases) is a model
+rule, not a syntax detail.
