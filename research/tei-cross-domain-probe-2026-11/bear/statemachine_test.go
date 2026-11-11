@@ -304,6 +304,62 @@ func TestRecoveryMachineGlobalTransitionIsDeclaredGlobal(t *testing.T) {
 	}
 }
 
+// TestRecoveryMachineGuardNamesTheRealCondition is the regression for review
+// finding F-1 (STATE_MACHINE_REVIEW.md). The IDLE -> WALL_FOLLOW guard is not
+// "time passed": _update_stall_age() only accumulates while the drive speed is
+// meaningful, the lagged progress sample is valid and below stall_progress_mps,
+// and forward blocking is observed. A guard that says only
+// "stall_age_s >= stall_activation_s" lets a reader treat any pause as a stall,
+// and the anchor test cannot catch it because that string does exist upstream.
+func TestRecoveryMachineGuardNamesTheRealCondition(t *testing.T) {
+	machine := DefaultRecoveryMachine()
+	var stallGuard string
+	for _, transition := range machine.Transitions {
+		if transition.Reason == "blocked_drive_stall" {
+			stallGuard = transition.Guard
+		}
+	}
+	if stallGuard == "" {
+		t.Fatal("blocked_drive_stall is not transcribed")
+	}
+	for _, required := range []string{
+		"meaningful_drive_mps",
+		"lagged progress",
+		"stall_progress_mps",
+		"forward blocking",
+	} {
+		if !strings.Contains(stallGuard, required) {
+			t.Fatalf("stall guard %q does not name %q; the stall condition is a conjunction, not elapsed time", stallGuard, required)
+		}
+	}
+	if stallGuard == "stall_age_s >= stall_activation_s" {
+		t.Fatal("stall guard lost the condition that makes a stall a stall")
+	}
+}
+
+// TestRecoveryMachineGuardsAreNotJustThresholds generalises F-1: every guard
+// must name at least one observation or affordance term, not only a timer.
+// A guard made only of one threshold reads as "when the timer trips", which is
+// the failure mode the review found.
+func TestRecoveryMachineGuardsAreNotJustThresholds(t *testing.T) {
+	observationTerms := []string{
+		"provider_speed", "affordance", "progress", "blocking", "observation",
+		"selected", "recovery", "traversable", "boundary",
+	}
+	for _, transition := range DefaultRecoveryMachine().Transitions {
+		named := false
+		for _, term := range observationTerms {
+			if strings.Contains(transition.Guard, term) {
+				named = true
+				break
+			}
+		}
+		if !named {
+			t.Fatalf("guard %q (%s) names no observation or affordance term", transition.Guard, transition.Reason)
+		}
+	}
+}
+
 // TestRecoveryMachineStringRendersEveryReason is a readability check: the
 // rendered table must show every reason, so a reviewer can read the machine
 // without opening the GDScript.

@@ -79,7 +79,12 @@ func DefaultRecoveryMachine() RecoveryMachine {
 			{ID: "t-idle-1", From: StateIDLE, To: StateENTER_TRAVERSABLE, Reason: "direct_traversable",
 				Guard: "provider_speed >= meaningful_drive_mps and a direct affordance exists", Priority: 1},
 			{ID: "t-idle-2", From: StateIDLE, To: StateWALL_FOLLOW, Reason: "blocked_drive_stall",
-				Guard: "stall_age_s >= stall_activation_s", Priority: 2},
+				// The stall is a conjunction inside _update_stall_age(): a
+				// meaningful drive speed, a valid lagged sample below
+				// stall_progress_mps, and forward blocking. "Time passed" alone
+				// is not the guard; writing only stall_age_s >= stall_activation_s
+				// would let a reader treat any pause as a stall.
+				Guard: "provider_speed >= meaningful_drive_mps and a valid lagged progress sample < stall_progress_mps and forward blocking accumulated for stall_activation_s", Priority: 2},
 
 			// WALL_FOLLOW
 			{ID: "t-wall-1", From: StateWALL_FOLLOW, To: StateCLEARING, Reason: "provider_drive_zero",

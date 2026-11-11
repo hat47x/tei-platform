@@ -164,7 +164,9 @@ VSクマ側の期待結果は、上流に書かれた事実から独立に用意
 | 列挙と状態の不一致 | 記録される`recovery_state`は5値（4状態＋`unknown`）ですが、`unknown`は機械の状態ではなく、未認識の状態名に対して`motion_feedback.gd`が書くフォールバックラベルです。**列挙は状態集合ではありません** | §5.1 |
 | 現行DSLでの表現 | `state`・`transition`がないため、遷移規則はGDScriptのまま。probeが表と診断を運びます | §6 進め方 |
 
-**具体的な不足**として、#4193へ返せるのは次の3点です。(1) 優先度を宣言されたpolicyとして書く手段がない（ソース順に依存）。(2) global遷移を表の行として表現する手段がない（個別状態の行だけでは退出が隠れる）。(3) 列挙型で状態を書くと、フォールバックラベルが状態として読まれる。
+**具体的な不足**として、#4193へ返せるのは次の**4点**です。(1) 優先度を宣言されたpolicyとして書く手段がない（ソース順に依存）。(2) global遷移を表の行として表現する手段がない（個別状態の行だけでは退出が隠れる）。(3) 列挙型で状態を書くと、フォールバックラベルが状態として読まれる。(4) 状態だけでは、遷移をまたいで保持される付随変数（ここでは`_latched_side`）を表せない。`_latched_side`は`reset()`と`_finish_episode()`でしか0に戻らず、`blocking_returned`と`traversable_returned`では以前に選んだ側が保持されます。遷移表は状態名だけを運ぶため、この保持は表に出ません。
+
+**review記録**：[SM-01 review記録](../../research/tei-cross-domain-probe-2026-11/bear/STATE_MACHINE_REVIEW.md)が、上流523行を直接読んで投影を再確認しました。3点の独立確認は成立しています。同時に**blocking 1件**（IDLE→WALL_FOLLOWのguardが`_update_stall_age()`の連言条件のうち3条件を落としていた）を検出し、修正しました。この誤りは**anchor試験では検出できません**（落とした条件の文字列も上流に実在するため、存在確認は通ります）。§8の「転記の誤りは自己一致試験では検出できない」が、意味の欠落という形でもう一度現れた例です。
 
 **判断材料としての限界**：この投影は1つのDomain・1つの状態機械です。#4193の受入条件1は「少なくとも二つの異質なDomain」を求めており、本稿の§5.2（型付き認知の入出力境界）と本節を併せても、Domainは「ゲーム」で1つです。UI非同期と通信Session（#4193 §6のS1）が未実施のままです。
 
@@ -224,10 +226,10 @@ VSクマ側の期待結果は、上流に書かれた事実から独立に用意
 | 票 | 親Issue | 要求ロール | 概要 | 状態 |
 | --- | --- | --- | --- | --- |
 | VOC-01 | [#2510](https://github.com/hat47x/tei-platform/issues/2510) | `implementer` | 範囲・列値の検証を`validation`へ追加する設計案とADR草案 | 未着手 |
-| SM-01 | [#4193](https://github.com/hat47x/tei-platform/issues/4193) | `reviewer` | 状態機械のread-only投影の成果を#4193の受入条件へ接続するreview | 成果物あり |
+| SM-01 | [#4193](https://github.com/hat47x/tei-platform/issues/4193) | `reviewer` | 状態機械のread-only投影の成果を#4193の受入条件へ接続するreview | **実施済み**（blocking 1件を修正） |
 | SM-02 | [#4193](https://github.com/hat47x/tei-platform/issues/4193) | `implementer` | UI非同期と通信Sessionのread-only解釈（#4193 §6のS1） | 未着手 |
 | OPEN-01 | [#2533](https://github.com/hat47x/tei-platform/issues/2533) | `architect` | 開いた集合を列挙型として書くときの規約 | 未着手 |
-| TRACE-01 | [#4134](https://github.com/hat47x/tei-platform/issues/4134) | `implementer` | 外部Repository転記の照合下限と証跡の記録 | 一部実施済み |
+| TRACE-01 | [#4134](https://github.com/hat47x/tei-platform/issues/4134) | `implementer` | 外部Repository転記の照合下限と証跡の記録 | **実施済み**（CI接続は未実施） |
 | CSW-01 | CSW [#593](https://github.com/hat47x/cultural-substrate-weaving/issues/593) | Owner判断 | 型付き受け渡しを任意の道具として残す場合の仕様 | 判断待ち |
 | BEAR-01 | VSクマ [#95](https://github.com/hat47x/vs-bear-simulator/issues/95) | Owner判断 | 契約の写しを受け入れる場合の条件と同期手順 | 判断待ち（推奨は保留） |
 | PLACE-01 | [#4193](https://github.com/hat47x/tei-platform/issues/4193) | `integrator` | `research/`から`tools/`への昇格基準 | 未着手 |
@@ -270,9 +272,9 @@ VSクマ側の期待結果は、上流に書かれた事実から独立に用意
 
 ### SM-01
 
-**親Issue**：[#4193](https://github.com/hat47x/tei-platform/issues/4193)。**要求ロール**：`reviewer`。**状態**：成果物あり（`research/tei-cross-domain-probe-2026-11/bear/statemachine.go`）。
+**親Issue**：[#4193](https://github.com/hat47x/tei-platform/issues/4193)。**要求ロール**：`reviewer`。**状態**：**実施済み**（2026-11-11）。review記録は[STATE_MACHINE_REVIEW.md](../../research/tei-cross-domain-probe-2026-11/bear/STATE_MACHINE_REVIEW.md)。
 
-**目的**：§5.6の状態機械のread-only投影を、#4193の受入条件1に対する**材料として妥当か** reviewする。投影の正しさと、投影が#4193へ返せる「具体的不足」の3点が実態に合っているかを確認する。
+**目的**：§5.6の状態機械のread-only投影を、#4193の受入条件1に対する**材料として妥当か** reviewする。投影の正しさと、投影が#4193へ返せる「具体的不足」の4点が実態に合っているかを確認する。
 
 **許容変更範囲**：#4193へのコメント追記、研究文書§5.6の修正。製品コードは変更しない。
 
@@ -288,6 +290,8 @@ VSクマ側の期待結果は、上流に書かれた事実から独立に用意
 **成果物**：#4193へのreviewコメント（blocking／non-blocking／question の分類付き）。
 
 **レビュー返却ロール**：`independent-reviewer`（設計上の争点がある場合）。
+
+**実施結果の要約**：受入条件1は**当初未達**でした。IDLE→WALL_FOLLOWのguardが`_update_stall_age()`の連言条件のうち3条件を落としており、**blocking F-1**として検出しました。修正と回帰試験2件（`TestRecoveryMachineGuardNamesTheRealCondition`、`TestRecoveryMachineGuardsAreNotJustThresholds`）を追加済みです。受入条件2・3は成立。不足は3点から**4点**へ増えました（`_latched_side`の保持を表せない）。
 
 ---
 
