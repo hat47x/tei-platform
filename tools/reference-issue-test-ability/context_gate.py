@@ -51,6 +51,10 @@ APPLICATION_SUBJECT = {"kind": "application", "id": "order_entry"}
 APPLICATION_SOURCE = "applications/order-entry/application.tei"
 FUNCTION_INPUT = {"name": "order", "type": "sales.order"}
 FUNCTION_OUTPUT = "sales.order"
+# Independently fixed Data whose attribute types / Relation targets the Function
+# slice depends on: the declared input/output Data and the required Relation
+# target. One hop only; see source_currency_slice.
+CLOSURE_DATA = ("sales.order", "sales.order_line")
 FUNCTION_VALIDATIONS = (
     "sales.order_line.quantity_positive",
     "sales.order.lines.line_number_unique",
@@ -439,6 +443,99 @@ def bounded_function_slice(docs: dict[str, dict]) -> tuple[dict, list[str]]:
     }, sorted(set(errors))
 
 
+def source_currency_slice(docs: dict[str, dict]) -> tuple[dict, list[str], list[str]]:
+    """Which Source revisions does the bounded Function slice actually rest on?
+
+    worldFingerprint/sourceIndexFingerprint identify only the consumer World
+    and the consumer-managed Source Index. A Subject the Catalog reports as
+    'not-indexed' has its Source outside that Index. The 'prelude' flag marks
+    the built-in set bound to the CLI build; any other not-indexed Subject is
+    resolved from Source this Consumer cannot identify. The existing read-only
+    CLI projects no Import, Provider Source occurrence or Provider Manifest
+    identity, so such a dependency is 'unknown': never current, never absent,
+    never zero. Returns (slice, blockers, unknowns). Only a contradiction
+    between two received replies is a blocker.
+
+    The closure is one fixed hop (Function input/output Data and the required
+    Relation target: their attribute types and Relation targets). It is not a
+    transitive, Workspace-wide or Provider-wide closure.
+    """
+    blockers: list[str] = []
+    unknowns: list[str] = []
+    entries = docs.get("catalog", {}).get("result", {}).get("entries")
+    if not isinstance(entries, list):
+        entries = []
+        unknowns.append("currency-catalog:not-observed")
+    by_id: dict[str, list[dict]] = {}
+    for entry in entries:
+        subject = entry.get("subject") if isinstance(entry, dict) else None
+        if isinstance(subject, dict) and isinstance(subject.get("id"), str):
+            by_id.setdefault(subject["id"], []).append(entry)
+
+    referenced: dict[str, set[str]] = {}
+    for data_id in CLOSURE_DATA:
+        parent = {"kind": "semantic-data", "id": data_id}
+        attributes = {}
+        for entry in entries:
+            if not isinstance(entry, dict) or entry.get("parent") != parent:
+                continue
+            subject = entry.get("subject", {})
+            detail = entry.get("detail")
+            if subject.get("kind") not in ("semantic-attribute", "semantic-relation"):
+                continue
+            if not isinstance(detail, str) or not detail:
+                unknowns.append(f"currency-reference:{subject.get('id')}:target-not-observed")
+                continue
+            if subject.get("kind") == "semantic-attribute":
+                attributes[subject.get("id")] = detail
+            referenced.setdefault(detail, set()).add(
+                "semantic-type" if subject.get("kind") == "semantic-attribute" else "semantic-data")
+        if not attributes:
+            # No attribute seen is a missing observation, not "no dependency".
+            unknowns.append(f"currency-attributes:{data_id}:not-observed")
+        if data_id == TARGET["id"]:
+            canonical = docs.get("inspect", {}).get("result", {}).get("canonical")
+            listed = canonical.get("attributes") if isinstance(canonical, dict) else None
+            if not isinstance(listed, list) or not listed:
+                unknowns.append(f"currency-attributes:{data_id}:canonical-not-observed")
+            else:
+                inspected = {x.get("id"): x.get("type") for x in listed if isinstance(x, dict)}
+                if inspected != attributes:
+                    blockers.append(f"currency-attributes:{data_id}:catalog-inspect-conflict")
+
+    classes: dict[str, list[str]] = {"consumer-indexed": [], "prelude": [],
+                                     "outside-consumer-source-index": [], "not-observed": []}
+    for ref_id in sorted(referenced):
+        found = [e for e in by_id.get(ref_id, [])
+                 if e.get("subject", {}).get("kind") in referenced[ref_id]]
+        if len(found) != 1 or found[0].get("ambiguous") is True:
+            kind = "not-observed"
+        elif found[0].get("sourceStatus") == "indexed":
+            kind = "consumer-indexed"
+        elif found[0].get("sourceStatus") == "not-indexed" and found[0].get("prelude") is True:
+            kind = "prelude"
+        else:
+            kind = "outside-consumer-source-index"
+        classes[kind].append(ref_id)
+    unknowns.extend("currency-dependency:" + x + ":not-observed" for x in classes["not-observed"])
+    unknowns.extend("currency-dependency:" + x + ":provider-source-occurrence-unknown"
+                    for x in classes["outside-consumer-source-index"])
+    unknowns = sorted(set(unknowns))
+    provider = "not-required-by-bounded-closure" if not unknowns and not blockers else "unknown"
+    return {
+        "scope": "fixed-reference:sales.order.submit one-hop Data attribute-type and relation-target closure",
+        "closureData": list(CLOSURE_DATA),
+        "dependencies": classes,
+        "importedProviderSourceOccurrence": provider,
+        "importedProviderManifestIdentity": provider,
+        # Limits that no reply of the existing read-only CLI can lift:
+        "workspaceImportDeclarations": "not-observable-by-existing-cli",
+        "transitiveClosureBeyondOneHop": "not-observed",
+        "atomicMultiSourceSnapshot": "not-observed",
+        "preludeRevision": "bound-to-cli-build-not-to-source-fingerprint",
+    }, sorted(set(blockers)), unknowns
+
+
 def assess(docs: dict[str, dict], failures: list[str] | None = None) -> dict:
     """Fail closed; 'partial' is a measured narrow slice, not full readiness."""
     blockers = list(failures or [])
@@ -529,7 +626,20 @@ def assess(docs: dict[str, dict], failures: list[str] | None = None) -> dict:
     blockers.extend(function_blockers)
     blockers.extend(rule_blockers)
     blockers.extend(focus_blockers)
+    currency_slice, currency_blockers, unknowns = source_currency_slice(docs)
+    blockers.extend(currency_blockers)
     blockers = sorted(set(blockers))
+    # 'unknown' is its own verdict: the required evidence was not observable.
+    # It is neither 'blocked' (a contradicted/missing requirement) nor a
+    # bounded pass, and it publishes no fingerprint a later Consumer could pin.
+    verdict = "blocked" if blockers else "unknown" if unknowns else "partial"
+    currency_slice["consumerManagedSources"] = (
+        "bound-to-observed-source-index-fingerprint" if verdict == "partial" else "not-bound")
+    currency_slice["currentnessClaim"] = {
+        "partial": "consumer-revision-only; re-observe both fingerprints before reuse",
+        "unknown": "unknown; consumer fingerprints do not cover the required Source",
+        "blocked": "none",
+    }[verdict]
     return {
         "schema": "tei.reference.design-context-readiness/v0",
         "issue": "hat47x/tei-platform#3262",
@@ -544,10 +654,13 @@ def assess(docs: dict[str, dict], failures: list[str] | None = None) -> dict:
             "requiredSubject": subject_state,
             "fingerprintConsistency": consistency,
             "validationDiagnosticCount": diagnostic_count,
-            "observedFingerprints": fingerprints if not blockers else {},
+            "observedFingerprints": fingerprints if verdict == "partial" else {},
         },
-        "boundedReference": "partial" if not blockers else "blocked",
-        "testExecutionAdmission": "exploration-only" if not blockers else "blocked",
+        "sourceCurrency": currency_slice,
+        "boundedReference": verdict,
+        "testExecutionAdmission": {"partial": "exploration-only", "unknown": "withheld-unknown",
+                                   "blocked": "blocked"}[verdict],
+        "unknowns": unknowns,
         # Deliberately impossible to auto-upgrade from this local CLI slice:
         "qualifiedTestGeneration": False,
         "productMeaningAccepted": False,
@@ -717,7 +830,9 @@ def required_validation_selftest(docs: dict[str, dict], baseline: dict) -> dict[
     before = len(source["catalog"]["result"]["entries"])
     source["catalog"]["result"]["entries"] = [
         x for x in source["catalog"]["result"]["entries"]
-        if x.get("subject") != {"kind": "semantic-type", "id": "std.money"}
+        # std.binary: not an attribute type of the Function's one-hop closure
+        # (std.money is, since the Source currency slice).
+        if x.get("subject") != {"kind": "semantic-type", "id": "std.binary"}
     ]
     if len(source["catalog"]["result"]["entries"]) >= before:
         raise AssertionError("independent non-required subject not in fixture")
@@ -883,7 +998,7 @@ def function_slice_selftest(docs: dict[str, dict], baseline: dict) -> dict[str, 
     original = control["catalog"]["result"]["entries"]
     control["catalog"]["result"]["entries"] = [
         x for x in original if x.get("subject") !=
-        {"kind": "semantic-type", "id": "std.money"}]
+        {"kind": "semantic-type", "id": "std.binary"}]  # outside the one-hop closure
     if len(control["catalog"]["result"]["entries"]) == len(original):
         raise AssertionError("nonrequired prelude control unavailable")
     observed = assess(control)
@@ -892,6 +1007,114 @@ def function_slice_selftest(docs: dict[str, dict], baseline: dict) -> dict[str, 
             or observed["qualifiedTestGeneration"] is not False):
         raise AssertionError("unrelated subject erroneously blocked bounded Function")
     controls["TT-function-unrequired-prelude-omitted"] = "bounded-partial-only"
+    return controls
+
+
+def source_currency_selftest(docs: dict[str, dict], baseline: dict) -> dict[str, str]:
+    """Unchanged consumer fingerprints must not hide an unidentified Source.
+
+    Every variant keeps worldFingerprint/sourceIndexFingerprint and every
+    reply 'ok'. The independent Expected is the verdict class, fixed here and
+    not derived from assess().
+    """
+    current = baseline["sourceCurrency"]
+    if (baseline["boundedReference"] != "partial" or baseline["unknowns"]
+            or current["importedProviderSourceOccurrence"] != "not-required-by-bounded-closure"
+            or current["dependencies"]["outside-consumer-source-index"]
+            or current["dependencies"]["not-observed"]
+            or current["workspaceImportDeclarations"] != "not-observable-by-existing-cli"):
+        raise AssertionError("public Reference currency baseline was not observed by real CLI")
+    controls: dict[str, str] = {}
+    pinned = {x: docs["catalog"]["result"][x] for x in ("worldFingerprint", "sourceIndexFingerprint")}
+
+    def entries(d):
+        return d["catalog"]["result"]["entries"]
+
+    def entry(d, kind, ident):
+        found = [e for e in entries(d) if e.get("subject") == {"kind": kind, "id": ident}]
+        if len(found) != 1:
+            raise AssertionError(f"control prerequisite unavailable: {kind}:{ident}")
+        return found[0]
+
+    def check(name: str, change, want: str, fragment: str) -> None:
+        mutant = copy.deepcopy(docs)
+        change(mutant)
+        if any(mutant["catalog"]["result"].get(k) != v for k, v in pinned.items()):
+            raise AssertionError(name + ": control must keep consumer fingerprints")
+        observed = assess(mutant)
+        listed = observed["unknowns"] if want == "unknown" else observed["blockers"]
+        if (observed["boundedReference"] != want
+                or observed["testExecutionAdmission"] == "exploration-only"
+                or observed["qualifiedTestGeneration"] is not False
+                or observed["observations"]["observedFingerprints"]
+                or observed["sourceCurrency"]["importedProviderSourceOccurrence"] != "unknown"
+                or observed["sourceCurrency"]["importedProviderManifestIdentity"] != "unknown"
+                or observed["sourceCurrency"]["consumerManagedSources"] != "not-bound"
+                or (want == "unknown" and observed["blockers"])
+                or not any(fragment in x for x in listed)):
+            raise AssertionError(f"{name}: expected {want}/{fragment}, got "
+                                 f"{observed['boundedReference']} {observed['blockers']} {observed['unknowns']}")
+        controls[name] = want
+
+    def imported_type(d):
+        # Same shape as the real CLI reply for an imported Namespace type.
+        entry(d, "semantic-attribute", "sales.order.external_id")["detail"] = "os.process_id"
+        for attribute in d["inspect"]["result"]["canonical"]["attributes"]:
+            if attribute["id"] == "sales.order.external_id":
+                attribute["type"] = "os.process_id"
+        entries(d).append({"subject": {"kind": "semantic-type", "id": "os.process_id"},
+                           "parent": {"kind": "semantic", "id": "os"}, "symbol": "ProcessId",
+                           "detail": "alias", "sourceStatus": "not-indexed"})
+
+    check("TT-currency-imported-type-in-closure", imported_type, "unknown",
+          "os.process_id:provider-source-occurrence-unknown")
+
+    def relation_target_outside(d):
+        entry(d, "semantic-data", "customer.customer")["sourceStatus"] = "not-indexed"
+
+    check("TT-currency-relation-target-outside-index", relation_target_outside, "unknown",
+          "customer.customer:provider-source-occurrence-unknown")
+
+    def prelude_unmarked(d):
+        entry(d, "semantic-type", "std.money").pop("prelude")
+
+    check("TT-currency-not-indexed-without-prelude-mark", prelude_unmarked, "unknown",
+          "std.money:provider-source-occurrence-unknown")
+
+    def dependency_omitted(d):
+        d["catalog"]["result"]["entries"] = [
+            e for e in entries(d) if e.get("subject") != {"kind": "semantic-type", "id": "std.money"}]
+
+    check("TT-currency-dependency-entry-omitted", dependency_omitted, "unknown",
+          "std.money:not-observed")
+
+    def attributes_omitted(d):
+        parent = {"kind": "semantic-data", "id": "sales.order_line"}
+        d["catalog"]["result"]["entries"] = [
+            e for e in entries(d) if not (e.get("parent") == parent
+                                          and e["subject"]["kind"] == "semantic-attribute")]
+
+    # Zero listed attributes is an absent observation, not zero dependencies.
+    check("TT-currency-attributes-not-listed", attributes_omitted, "unknown",
+          "currency-attributes:sales.order_line:not-observed")
+
+    def canonical_attributes_empty(d):
+        d["inspect"]["result"]["canonical"]["attributes"] = []
+
+    check("TT-currency-canonical-attributes-empty", canonical_attributes_empty, "unknown",
+          "currency-attributes:sales.order:canonical-not-observed")
+
+    def reference_target_dropped(d):
+        entry(d, "semantic-attribute", "sales.order_line.unit_price").pop("detail")
+
+    check("TT-currency-attribute-type-not-projected", reference_target_dropped, "unknown",
+          "sales.order_line.unit_price:target-not-observed")
+
+    def replies_disagree(d):
+        entry(d, "semantic-attribute", "sales.order.total")["detail"] = "std.decimal"
+
+    check("TT-currency-catalog-inspect-type-conflict", replies_disagree, "blocked",
+          "currency-attributes:sales.order:catalog-inspect-conflict")
     return controls
 
 
@@ -955,6 +1178,7 @@ def main() -> None:
     report["requiredValidationControls"] = required_validation_selftest(docs, baseline)
     report["focusedStructureControls"] = focused_structure_selftest(docs, baseline)
     report["boundedFunctionControls"] = function_slice_selftest(docs, baseline)
+    report["sourceCurrencyControls"] = source_currency_selftest(docs, baseline)
     report["transportByteControls"] = transport_selftest(args.folder)
     report["localReplyEvidence"] = byte_evidence
     args.out.parent.mkdir(parents=True, exist_ok=True)
@@ -964,7 +1188,8 @@ def main() -> None:
           f"+ {len(report['transportByteControls'])} byte-reply rejection controls "
           f"+ {len(report['requiredValidationControls'])} bounded Rule-slice checks "
           f"+ {len(report['focusedStructureControls'])} Rule/Relation Canonical checks "
-          f"+ {len(report['boundedFunctionControls'])} bounded Function checks; "
+          f"+ {len(report['boundedFunctionControls'])} bounded Function checks "
+          f"+ {len(report['sourceCurrencyControls'])} Source currency checks; "
           "test generation qualification withheld")
 
 
