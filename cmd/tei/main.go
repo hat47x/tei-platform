@@ -203,7 +203,7 @@ func main() {
 	periodStates := fs.String("period-states", "", "periods: period=state pairs, comma separated")
 	periodStatePath := fs.String("period-state-file", "", "periods: JSON object of period to state")
 	periodAdvance := fs.String("advance", "", "periods: move this period one step toward closed and record it")
-	periodCloseCapability := fs.String("close-capability", "", "periods: the close capability that already ran, satisfying close-requires")
+	periodCloseCapability := fs.String("close-capability", "", "periods: the capability that already ran, satisfying close-requires when closing and correction when reopening")
 	dbCheckDSNFlag := fs.String("dsn", "", "dbcheck: PostgreSQL DSN (defaults to TEI_TEST_POSTGRES_DSN)")
 	grantsOut := fs.String("grants-out", "", "grants: write the grants document here instead of stdout")
 	grantCapability := fs.String("grant-capability", "", "issue-grant: the capability the grant is issued to")
