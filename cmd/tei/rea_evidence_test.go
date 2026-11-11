@@ -238,7 +238,7 @@ func TestReaEvidenceRefusesTheEnvelopeAsTheEvidenceBody(t *testing.T) {
 		"source": map[string]any{"kind": "inline", "evidence": envelopeDocument},
 		"view":   map[string]any{"kind": "javascript-facts"},
 	}
-	requestPath := writeSynthetic(t, dir, "request.json", mustJSON(t, request))
+	requestPath := writeSynthetic(t, dir, "request.json", mustJSONText(t, request))
 
 	code, report := runReaEvidence(t, reaEvidenceOuterArgs{
 		evidencePath: evidence, requestPath: requestPath, providerVersion: "6.8.0",
@@ -257,7 +257,7 @@ func TestReaEvidenceRefusesTheEnvelopeAsTheEvidenceBody(t *testing.T) {
 func TestReaEvidenceRefusesASourceKindTheVersionDoesNotAccept(t *testing.T) {
 	dir := t.TempDir()
 	evidence := writeSynthetic(t, dir, "analysis.json", syntheticEvidence)
-	requestPath := writeSynthetic(t, dir, "request.json", mustJSON(t, map[string]any{
+	requestPath := writeSynthetic(t, dir, "request.json", mustJSONText(t, map[string]any{
 		"source": map[string]any{"kind": "evidence-file", "path": evidence},
 		"view":   map[string]any{"kind": "javascript-facts"},
 	}))
@@ -468,7 +468,7 @@ func mustRead(t *testing.T, path string) string {
 	return string(raw)
 }
 
-func mustJSON(t *testing.T, value any) string {
+func mustJSONText(t *testing.T, value any) string {
 	t.Helper()
 	raw, err := json.Marshal(value)
 	if err != nil {

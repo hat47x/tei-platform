@@ -137,10 +137,10 @@ tei rea-evidence -analysis-output <saved evidence> [-view <delivery> -provider-v
 - 実REA 6.7.0/6.8.0を別prefixに導入し、合成inert fixtureで解析・view・負例5種を実走。捕捉bytesと派生请求のSHA-256、exit code、Node/OS版を `internal/externalanalysis/testdata/manifest.json` に記録。
 - **閉ループ**: `tei rea-evidence -request-out` が受領Evidence bytesから組み立てた派生请求を実REA 6.7.0へ渡し、`inspect-analysis-view … --format jsonl` がexit 0。出力bytesは捕捉fixtureとbyte単位で一致（派生が決定的で実工具に受諾される）。
 - **実fixtureに対するCLIのend-to-end**: 実捕捉の6.7.0/6.8.0 analysis＋viewを `tei rea-evidence` で受領・検査し、各版のframingで`complete`・exit 0。
+- **full suite**: `go test ./cmd/tei/ ./internal/externalanalysis/ ./internal/jsonl/` が**全部PASS**（`cmd/tei` は752秒）。最新 `origin/main` をbaseにrebaseした後のheadで実行。一時directoryを書き込み可能な場所へ退避しての実行である（退避しないと自己build系の試験が環境の一時directory拒否で失敗する。clean な `origin/main` でも同一に失敗することを対照実験で確認済みで、本設計の変更とは無関係）。
 
 **未実行（PR時に「未実施」として明記）**
 
-- `cmd/tei` の全試験。実行したrunでは**自己build系の試験が失敗**したが、原因は `mkdir <Temp>: Access is denied` という**環境の拒否**で、clean な `origin/main` のworktreeで同一試験を走らせると同一に失敗する（対照実験済み）。本設計の変更とは無関係。
 - `tools/repository-health-check.sh` の全項目。
 - CI workflow（リアプリ対象の実行録は未取得）。実CIでの再現は別途。
 - 実アプリ（公開JS/Electron等）を対象にした受領。fixtureは合成inert。
@@ -149,3 +149,5 @@ tei rea-evidence -analysis-output <saved evidence> [-view <delivery> -provider-v
 ## 6. 次の一手
 
 Issue #3394の「次の唯一のProduct Exit」は、**同一REA実Attemptの外部Observation 1件＋方向とEdge IDを持つRelation 1件**を、Source byte/位置・外部ID・Relation ID・unknown/partial/unbound・現在Disclosure・selected→invoked→Receiver実受領を落とさず、既存の共通read-only Application API（#1158/#3419/#1251）へ渡せるかFit/Gapすること。型が欠ける場合は不足辺のみ既存Ownerへ返し、新Host/Registry/Reader/Runnerや第二意味正本を先行追加しない。本PRはその前提（受領の成立）までを扱う。
+
+受領側の延伸として、`externalanalysis.ReadCandidates` がEvidence本体のsemantic graphからObservations・Relations・Unknowns・Coverage（family別）・Limitationsを読み出す（実捕捉bytesで機械検証済み）。T1-Aの作業票（受入票A1〜A6・型レベルFit/Gap・不足辺G1〜G4・負例T1A-01〜12・検証の環境分離）は [REA_T1A_EXTERNAL_OBSERVATION_ADMISSION_2026-11.md](REA_T1A_EXTERNAL_OBSERVATION_ADMISSION_2026-11.md) を正本とする。

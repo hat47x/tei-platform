@@ -1,4 +1,4 @@
-﻿# 機能設計文書
+# 機能設計文書
 
 ここには、複数のIssueにまたがる機能について、意味モデル、記述方法、検証、実行時の境界をまとめた設計文書を置きます。採用前の案も、対象となるIssueと文書の状態を冒頭に明記して管理します。
 
@@ -172,6 +172,7 @@
 | [`TEI_MD_UNIFIED_AUTHORING_MIGRATION_2026-11.md`](TEI_MD_UNIFIED_AUTHORING_MIGRATION_2026-11.md) | TEI Authoring Source を .tei.md へ統一する段階移行計画 |
 | [`TEI_SHO_OKF_DOMAIN_LINT_DOCUMENT_UNIT_2026-11.md`](TEI_SHO_OKF_DOMAIN_LINT_DOCUMENT_UNIT_2026-11.md) | TEI/SHOのOKF知識バンドルとドメインLint：段階導入の検証計画 |
 | [`REA_EXTERNAL_EVIDENCE_INTAKE_2026-11.md`](REA_EXTERNAL_EVIDENCE_INTAKE_2026-11.md) | 外部逆解析ツール（REA）のEvidenceを外部Evidenceとして受領・検査する契約。受領bytesのdigest・CLI応答包装とEvidence本体の分離・派生入力の別digest・版別JSONL framing照合・状態分類と、意味・実DB観測への非昇格（[#3394](https://github.com/hat47x/tei-platform/issues/3394)、実装済みのT0受領側） |
+| [`REA_T1A_EXTERNAL_OBSERVATION_ADMISSION_2026-11.md`](REA_T1A_EXTERNAL_OBSERVATION_ADMISSION_2026-11.md) | 同一Attemptの外部Observation 1件＋方向付きRelation 1件を共通read-only Application APIへ落とさず渡すための作業票。受入票A1〜A6・型レベルFit/Gap・不足辺G1〜G4の返却先・負例T1A-01〜12・検証の環境分離（[#3394](https://github.com/hat47x/tei-platform/issues/3394)、提案の具体化・T1-A本体はNOT RUN） |
 
 ## 関連する参照事例と評価
 
