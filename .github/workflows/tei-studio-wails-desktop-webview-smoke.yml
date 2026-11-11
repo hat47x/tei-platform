@@ -111,6 +111,7 @@ jobs:
       # PR HEAD may still declare an older go.mod than main. Keep the exact
       # candidate source checkout, but test it with the security-qualified Go
       # toolchain rather than silently selecting the old patch version.
+      # allow-literal-go-version: candidate HEAD may declare an older go.mod patch than main, so the security-qualified patch is fixed here (#2948)
       - name: Pin Go 1.26.11
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
