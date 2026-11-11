@@ -66,7 +66,9 @@ data Membership {
     attribute orgUnitId type organization.org_unit_id
     attribute allocation type std.decimal
     attribute validFrom type std.datetime
+    attribute validTo type std.datetime
     attribute knownFrom type std.datetime
+    attribute knownTo type std.datetime
 
     relation unit to organization.org_unit one
         key organization.membership.org_unit_id -> organization.org_unit.org_unit_id
@@ -76,6 +78,9 @@ data Occupancy {
     attribute occupancyId type organization.occupancy_id
     attribute positionId type organization.position_id
     attribute validFrom type std.datetime
+    attribute validTo type std.datetime
+    attribute knownFrom type std.datetime
+    attribute knownTo type std.datetime
 
     relation position to organization.position one
         key organization.occupancy.position_id -> organization.position.position_id
