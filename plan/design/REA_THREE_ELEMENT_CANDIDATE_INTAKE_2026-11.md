@@ -1,6 +1,6 @@
 # REA外部逆解析から三要素分析モデルへの構造候補取り込み（設計候補）
 
-- **状態**：候補抽出とレビュー票の実装まで。Owner受理・CLI入口・移行実証は未着手。
+- **状態**：候補抽出・CLI入口・レビュー票の保存・採用前後比較まで。Owner受理・小規模移行実証・SHOは未着手。
 - **Owner**：[TEI #3394](https://github.com/hat47x/tei-platform/issues/3394)。
 - **関連**：共通API [ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)／[#1158](https://github.com/hat47x/tei-platform/issues/1158)／[#3419](https://github.com/hat47x/tei-platform/issues/3419)、Model Map [#3866](https://github.com/hat47x/tei-platform/pull/3866)、三視点 [THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md](THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)、T0/T1-A受入票 [REA_EXTERNAL_EVIDENCE_T0_T1_ADMISSION_2026-11.md](REA_EXTERNAL_EVIDENCE_T0_T1_ADMISSION_2026-11.md)。
 - **実装**：[`internal/reacandidate/`](../../internal/reacandidate/)、土台の三要素モデルは #4283 の [`internal/threeelement/`](../../internal/threeelement/)。
@@ -206,14 +206,17 @@ Observationは`data-element`候補へ、有向Relationは`cross-reference`候補
 **実行した**
 
 - `go build ./...`（このクローン上で成功）
-- `go vet ./internal/reacandidate/`：clean
-- `go test ./internal/reacandidate/ -count=1`：PASS
+- `go vet ./internal/reacandidate/`／`go vet ./cmd/tei/`：clean
+- `go test ./internal/reacandidate/ -count=1`：PASS（51 test）
 - `gofmt -l internal/reacandidate cmd/tei`：出力なし
 - `go test ./cmd/tei/ -run TestThreeElement -count=1`：PASS（`rea-intake`の正例・負例・`-h`を含む）
+- `go test ./cmd/tei/ -run 'TestCommandCatalogFlagsMatchAcceptedFlags|TestAcceptedCommandsMatchDispatch|TestAdvertisedFlagNamesAreTheAcceptedSet|TestSelfParsedFlagNames'`：PASS
+- 実バイナリ（`go build -o tei.exe ./cmd/tei`）での実行：最小attempt＋`-output`（exit 0、候補3件、正式な票12,486 bytes）、`-before`比較（全entryが`unchanged`）、実`reference/workspace`への`-workspace`束縛（exit 0、3候補とも`not-present-in-read-artifact-set`で`unresolved`のまま）、`-evidence`不在（`EVIDENCE_READ_FAILED`／exit 2）、`-mapping`単独（`INVALID_ARGUMENT`／exit 2)
 
 **実行していない（NOT RUN）**
 
 - 実REAプロセスを起動したE2E。fixtureは**手書きの合成JSON**であり、REA 6.8.0の実出力を取得した証拠ではない
-- 実Workspaceへの束縛（`WorkspaceReadOnlyModel`）を`reference/workspace`へ向けた実行。CLIの`-workspace`経路はfake portの単体試験までで、実際のWorkspaceでは未実行
+- 実Workspaceのbyteが解析対象と一致する場合の`independently-bound`。手元の`reference/workspace`に`src/*.js`が無いため、`-workspace`経路で観測できたのは`not-present-in-read-artifact-set`だけである
+- `cmd/tei`パッケージ**全体**の試験。個別実行はPASSするが、全体実行はこの環境で600秒・900秒・2,700秒のいずれも`panic: test timed out`で終わった。**timeoutによる中断を試験の失敗とも合格とも解釈しない**。1テストだけを単独実行すると19秒でPASSするため、遅いのはテスト自体ではなくパッケージ全体の直列実行時間である可能性が高いが、**確認していない**
 - Owner受理、SHO、移行実証、生成コード
-- `cmd/tei`パッケージ全体の試験とCI。このクローンからは実行していない。PRのexact headで確認する
+- CI。このクローンからは実行していない。PRのexact headで確認する
