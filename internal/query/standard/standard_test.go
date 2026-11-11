@@ -152,6 +152,39 @@ func TestRoundTripSQLite(t *testing.T) {
 			expected: [][]interface{}{{2}},
 		},
 		{
+			name: "union_all",
+			sql:  "SELECT customer_id FROM orders WHERE status = 'OPEN' UNION ALL SELECT id FROM customers WHERE active = 1",
+			setup: func(t *testing.T, db *sql.DB) {
+				mustExec(t, db, "CREATE TABLE orders (order_id INTEGER, customer_id INTEGER, status TEXT)")
+				mustExec(t, db, "CREATE TABLE customers (id INTEGER, active INTEGER)")
+				mustExec(t, db, "INSERT INTO customers VALUES (1, 1), (2, 0)")
+				mustExec(t, db, "INSERT INTO orders VALUES (1, 1, 'OPEN'), (2, 2, 'OPEN')")
+			},
+			expected: [][]interface{}{{1}, {2}, {1}},
+		},
+		{
+			name: "intersect",
+			sql:  "SELECT customer_id FROM orders WHERE status = 'OPEN' INTERSECT SELECT id FROM customers WHERE active = 1",
+			setup: func(t *testing.T, db *sql.DB) {
+				mustExec(t, db, "CREATE TABLE orders (order_id INTEGER, customer_id INTEGER, status TEXT)")
+				mustExec(t, db, "CREATE TABLE customers (id INTEGER, active INTEGER)")
+				mustExec(t, db, "INSERT INTO customers VALUES (1, 1), (2, 0)")
+				mustExec(t, db, "INSERT INTO orders VALUES (1, 1, 'OPEN'), (2, 2, 'OPEN')")
+			},
+			expected: [][]interface{}{{1}},
+		},
+		{
+			name: "except",
+			sql:  "SELECT customer_id FROM orders WHERE status = 'OPEN' EXCEPT SELECT id FROM customers WHERE active = 1",
+			setup: func(t *testing.T, db *sql.DB) {
+				mustExec(t, db, "CREATE TABLE orders (order_id INTEGER, customer_id INTEGER, status TEXT)")
+				mustExec(t, db, "CREATE TABLE customers (id INTEGER, active INTEGER)")
+				mustExec(t, db, "INSERT INTO customers VALUES (1, 1), (2, 0)")
+				mustExec(t, db, "INSERT INTO orders VALUES (1, 1, 'OPEN'), (2, 2, 'OPEN')")
+			},
+			expected: [][]interface{}{},
+		},
+		{
 			name: "multiple_joins",
 			sql:  "SELECT o.order_id, c.name, p.name AS product FROM orders o JOIN customers c ON o.customer_id = c.id JOIN products p ON o.product_id = p.id WHERE o.amount >= 15",
 			setup: func(t *testing.T, db *sql.DB) {

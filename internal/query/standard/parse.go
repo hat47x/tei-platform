@@ -315,16 +315,39 @@ func (b *queryBuilder) add(n Node) string {
 		id = v.NodeID
 	case *Filter:
 		id = v.NodeID
+		if b.cur != "" && b.cur != id {
+			v.Input = b.cur
+		}
 	case *Aggregate:
 		id = v.NodeID
+		if b.cur != "" && b.cur != id {
+			v.Input = b.cur
+		}
 	case *Project:
 		id = v.NodeID
+		if b.cur != "" && b.cur != id {
+			v.Input = b.cur
+		}
 	case *Sort:
 		id = v.NodeID
+		if b.cur != "" && b.cur != id {
+			v.Input = b.cur
+		}
 	case *Limit:
 		id = v.NodeID
+		if b.cur != "" && b.cur != id {
+			v.Input = b.cur
+		}
 	case *Distinct:
 		id = v.NodeID
+		if b.cur != "" && b.cur != id {
+			v.Input = b.cur
+		}
+	case *Values:
+		id = v.NodeID
+		if b.cur != "" && b.cur != id {
+			v.Input = b.cur
+		}
 	case *SubqueryScan:
 		id = v.NodeID
 	case *Subquery:
@@ -352,6 +375,10 @@ func nodeID(n Node) string {
 	case *Limit:
 		return v.NodeID
 	case *Distinct:
+		return v.NodeID
+	case *Union:
+		return v.NodeID
+	case *Values:
 		return v.NodeID
 	case *SubqueryScan:
 		return v.NodeID
@@ -388,7 +415,7 @@ func (p *parser) parseQuery() (*StandardQuery, error) {
 		if rerr != nil {
 			return nil, rerr
 		}
-		union := &Union{NodeID: p.nextNodeID(), All: all, Left: nodeID(root), Right: nodeID(rightB.nodes[len(rightB.nodes)-1]), Span: p.span(start)}
+		union := &Union{NodeID: p.nextNodeID(), Kind: "union", All: all, Left: nodeID(root), Right: nodeID(rightB.nodes[len(rightB.nodes)-1]), Span: p.span(start)}
 		b.nodes = append(b.nodes, rightB.nodes...)
 		b.nodes = append(b.nodes, union)
 		root = union
@@ -400,7 +427,7 @@ func (p *parser) parseQuery() (*StandardQuery, error) {
 		if rerr != nil {
 			return nil, rerr
 		}
-		union := &Union{NodeID: p.nextNodeID(), All: false, Left: nodeID(root), Right: nodeID(rightB.nodes[len(rightB.nodes)-1]), Span: p.span(start)}
+		union := &Union{NodeID: p.nextNodeID(), Kind: "intersect", All: false, Left: nodeID(root), Right: nodeID(rightB.nodes[len(rightB.nodes)-1]), Span: p.span(start)}
 		b.nodes = append(b.nodes, rightB.nodes...)
 		b.nodes = append(b.nodes, union)
 		root = union
@@ -412,7 +439,7 @@ func (p *parser) parseQuery() (*StandardQuery, error) {
 		if rerr != nil {
 			return nil, rerr
 		}
-		union := &Union{NodeID: p.nextNodeID(), All: false, Left: nodeID(root), Right: nodeID(rightB.nodes[len(rightB.nodes)-1]), Span: p.span(start)}
+		union := &Union{NodeID: p.nextNodeID(), Kind: "except", All: false, Left: nodeID(root), Right: nodeID(rightB.nodes[len(rightB.nodes)-1]), Span: p.span(start)}
 		b.nodes = append(b.nodes, rightB.nodes...)
 		b.nodes = append(b.nodes, union)
 		root = union

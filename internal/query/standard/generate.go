@@ -190,10 +190,136 @@ func StandardToSQL(q *StandardQuery) (string, []Diagnostic) {
 	mainSQL := sb.String()
 
 	if union != nil {
-		diags = append(diags, Diagnostic{Code: "UNSUPPORTED", Message: "UNION/INTERSECT/EXCEPT generation is not yet implemented"})
+		subqueries := make(map[string]*Subquery)
+		for _, n := range q.Nodes {
+			if s, ok := n.(*Subquery); ok {
+				subqueries[s.ID] = s
+			}
+		}
+		leftNodes := reachableNodes(q.Nodes, union.Left)
+		rightNodes := reachableNodes(q.Nodes, union.Right)
+		leftSQL, d := StandardToSQL(&StandardQuery{Nodes: leftNodes, CTEs: q.CTEs})
+		diags = append(diags, d...)
+		rightSQL, d := StandardToSQL(&StandardQuery{Nodes: rightNodes, CTEs: q.CTEs})
+		diags = append(diags, d...)
+		op := "UNION"
+		switch strings.ToLower(union.Kind) {
+		case "intersect":
+			op = "INTERSECT"
+		case "except":
+			op = "EXCEPT"
+		}
+		if union.All {
+			op += " ALL"
+		}
+		return leftSQL + " " + op + " " + rightSQL, diags
 	}
 
 	return mainSQL, diags
+}
+
+func reachableNodes(nodes []Node, root string) []Node {
+	if root == "" {
+		return nil
+	}
+	byID := make(map[string]Node, len(nodes))
+	for _, n := range nodes {
+		if s, ok := n.(*Scan); ok {
+			byID[s.ID] = n
+		} else if j, ok := n.(*Join); ok {
+			byID[j.NodeID] = n
+		} else if f, ok := n.(*Filter); ok {
+			byID[f.NodeID] = n
+		} else if p, ok := n.(*Project); ok {
+			byID[p.NodeID] = n
+		} else if a, ok := n.(*Aggregate); ok {
+			byID[a.NodeID] = n
+		} else if s, ok := n.(*Sort); ok {
+			byID[s.NodeID] = n
+		} else if l, ok := n.(*Limit); ok {
+			byID[l.NodeID] = n
+		} else if d, ok := n.(*Distinct); ok {
+			byID[d.NodeID] = n
+		} else if u, ok := n.(*Union); ok {
+			byID[u.NodeID] = n
+		} else if v, ok := n.(*Values); ok {
+			byID[v.NodeID] = n
+		} else if s, ok := n.(*Subquery); ok {
+			byID[s.ID] = n
+		} else if s, ok := n.(*SubqueryScan); ok {
+			byID[s.NodeID] = n
+		} else if o, ok := n.(*Opaque); ok {
+			byID[o.NodeID] = n
+		} else if c, ok := n.(*CTE); ok {
+			byID[c.ID] = n
+		}
+	}
+
+	reachable := make(map[string]Node)
+	var walk func(id string)
+	walk = func(id string) {
+		if _, ok := reachable[id]; ok {
+			return
+		}
+		n, ok := byID[id]
+		if !ok {
+			return
+		}
+		reachable[id] = n
+		switch v := n.(type) {
+		case *Scan:
+			// no node refs
+		case *Join:
+			walk(v.Left)
+			walk(v.Right)
+		case *Filter:
+			walk(v.Input)
+		case *Project:
+			walk(v.Input)
+		case *Aggregate:
+			walk(v.Input)
+		case *Sort:
+			walk(v.Input)
+		case *Limit:
+			walk(v.Input)
+		case *Distinct:
+			walk(v.Input)
+		case *Union:
+			walk(v.Left)
+			walk(v.Right)
+		case *Values:
+			walk(v.Input)
+		case *Subquery:
+			if v.Query != nil {
+				for _, cn := range v.Query.Nodes {
+					if sn, ok := cn.(*Scan); ok {
+						walk(sn.ID)
+					} else if jn, ok := cn.(*Join); ok {
+						walk(jn.NodeID)
+					}
+				}
+			}
+		case *SubqueryScan:
+			// subquery handled elsewhere
+		case *CTE:
+			if v.Query != nil {
+				for _, cn := range v.Query.Nodes {
+					if sn, ok := cn.(*Scan); ok {
+						walk(sn.ID)
+					} else if jn, ok := cn.(*Join); ok {
+						walk(jn.NodeID)
+					}
+				}
+			}
+		}
+	}
+	walk(root)
+
+	out := make([]Node, 0, len(reachable))
+	for _, n := range reachable {
+		out = append(out, n)
+	}
+	return out
 }
 
 func writeScan(sb *strings.Builder, s *Scan, subqueries map[string]*Subquery) {

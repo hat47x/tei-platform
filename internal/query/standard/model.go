@@ -116,12 +116,14 @@ type Filter struct {
 	NodeID    string     `json:"nodeId"`
 	Condition Expr       `json:"condition"`
 	Having    bool       `json:"having,omitempty"`
+	Input     string     `json:"input,omitempty"`
 	Span      SourceSpan `json:"span,omitempty"`
 }
 
 type Project struct {
 	NodeID string        `json:"nodeId"`
 	Items  []ProjectItem `json:"items"`
+	Input  string        `json:"input,omitempty"`
 	Span   SourceSpan    `json:"span,omitempty"`
 }
 
@@ -144,12 +146,14 @@ type Aggregate struct {
 	NodeID   string        `json:"nodeId"`
 	Grouping []Expr        `json:"grouping,omitempty"`
 	Items    []ProjectItem `json:"items"`
+	Input    string        `json:"input,omitempty"`
 	Span     SourceSpan    `json:"span,omitempty"`
 }
 
 type Sort struct {
 	NodeID string     `json:"nodeId"`
 	Keys   []SortKey  `json:"keys"`
+	Input  string     `json:"input,omitempty"`
 	Span   SourceSpan `json:"span,omitempty"`
 }
 
@@ -163,16 +167,19 @@ type Limit struct {
 	NodeID string     `json:"nodeId"`
 	Limit  string     `json:"limit"`
 	Offset string     `json:"offset,omitempty"`
+	Input  string     `json:"input,omitempty"`
 	Span   SourceSpan `json:"span,omitempty"`
 }
 
 type Distinct struct {
 	NodeID string     `json:"nodeId"`
+	Input  string     `json:"input,omitempty"`
 	Span   SourceSpan `json:"span,omitempty"`
 }
 
 type Union struct {
 	NodeID string     `json:"nodeId"`
+	Kind   string     `json:"kind,omitempty"` // union | intersect | except
 	All    bool       `json:"all"`
 	Left   string     `json:"left"`
 	Right  string     `json:"right"`
@@ -182,6 +189,7 @@ type Union struct {
 type Values struct {
 	NodeID string     `json:"nodeId"`
 	Rows   [][]Expr   `json:"rows"`
+	Input  string     `json:"input,omitempty"`
 	Span   SourceSpan `json:"span,omitempty"`
 }
 
