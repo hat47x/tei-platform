@@ -137,6 +137,7 @@
 - [訂正能力と閉塞拒否の矛盾の解消の確認](XTEA_LOWCODE_PERIOD_CORRECTION_EXEMPT_2026-11.md)（参照実装の試験記録。訂正能力だけを閉塞拒否から免除）
 - [閉塞拒否と訂正能力の矛盾の宣言段階での報告の確認](XTEA_LOWCODE_PERIOD_CLOSURE_CONFLICT_2026-11.md)（参照実装の試験記録。矛盾する2宣言を検証で報告。修正案の提示は未実装）
 - [再開（closed→open）に訂正能力を要求する確認](XTEA_LOWCODE_PERIOD_REOPEN_CORRECTION_2026-11.md)（参照実装の試験記録。運用の入口でも再開に訂正能力を要求。申告と実行の照合は未実装）
+- [期間の要件を view へ投影する確認](XTEA_LOWCODE_PERIOD_REQUIREMENT_VIEW_2026-11.md)（参照実装の試験記録。`close-requires`・`correction`をApplication投影とStudio表へ追加。例での宣言は未実装）
 - [採番の永続CounterStoreの確認](XTEA_LOWCODE_NUMBERING_SQLITE_STORE_2026-11.md)（参照実装の試験記録。PostgreSQLは未実装）
 - [採番の2プロセス同時実行の確認](XTEA_LOWCODE_NUMBERING_PROCESS_RACE_2026-11.md)（参照実装の試験記録。PostgreSQLと多プロセス構成は未実装）
 - [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
@@ -464,4 +465,5 @@
 
 - [「state分離」は、childの申告と文字列が一致するかである](TEI_GO_SELF_BUILD_STATE_SEPARATION_SCOPE_2026-11-11.md)（§4.37が条件5で「stateの分離」を確かめるとしている点を実測。childが二回とも**同じstate**を使い、渡された値をそのまま申告する構成で、`firstStateDir`と`secondStateDir`は違うまま**`l2b.claimed=true`**になった。**検査は文字列比較であり、実際に別のstateを使ったことではない。** #2831）
 - [閉じ括弧の後ろに書いた「ブロック内専用の項目」が所属を名指しする](TEI_DOGFOODING_ROUND74_BLOCK_PLACEMENT_2026-11-11/README.md)（#4169のA案5件目。bind/resource/column等を閉じ括弧の後ろに書くと、どのブロックに入るかを言う。最初の探査はファイル名が誤りで3回とも読まれず、第72ラウンドで入れた警告がその誤りを教えた）
+
 
