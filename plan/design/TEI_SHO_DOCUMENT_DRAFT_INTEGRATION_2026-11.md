@@ -93,12 +93,11 @@ TEIが生成し、SHOが消費する。SHOは语义を解釈せず、identity・
 6. **逆方向（TEIモデル変更）**
    SHO文書の文章修正はTEIモデル変更の根拠にならない。モデル変更は既存の変更計画・検証・Owner受理の経路（[#267](https://github.com/hat47x/tei-platform/issues/267)）のみを通る。
 
-### 相互実証（2026-11-11、合成Workspace・同一端末）
+### 相互実証（2026-11-11、合成Workspace・CI同一Attempt）
 
-- TEI CLIが合成Workspace（`sales.order`＋`sales.order.customer`）からDraftを生成（`modelRevision`・4 Occurrence・relation resolution `resolved`）。
-- SHO CLIが`open`（3,399 byte・readback検証）→`save --note`（`source-file-replaced`・Occurrence全て`intact`）→`resume`（4 Occurrence・著者領域955 byte）。
-- TEI CLIの`document-reconcile`は変更なしで`current`・再確認0件。属性を1件追加した後は`stale`（`worldFingerprint`・`modelRevision`）・Occurrence単位の再確認リストを返し、DraftファイルとSourceのbyteは不変。
-- これは**合成データによる局部経路の実証**である。TEI Studioからの実組込み、Owner意味受理、旧Runtime比較は含まない。
+- **CI**: SHO repository の [sho-tei-draft-roundtrip.yml](https://github.com/hat47x/sho-composer/blob/feat/tei-document-draft-core-20261111/.github/workflows/sho-tei-draft-roundtrip.yml) が **success**（run 42995269509）。pin した TEI SHA を public clone し、実CLIの draft 生成 → 実CLIの open/save/resume → 実CLIの reconcile を一回のAttemptで実行。receipt は artifact に保存。
+- **ローカル**: 同一runnerを手元で実行し、全check true・全claim false を確認。誤pin・誤headでは assertion が exit 1。
+- いずれも**合成データによる局部経路の実証**である。TEI Studioからの実組込み、Owner意味受理、旧Runtimeとの同値は含まない。
 
 ## 4. `*.tei.md` の扱う場合の分離
 

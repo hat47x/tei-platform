@@ -19,13 +19,13 @@
 | `-frozen`（固定納品版のpin） | 段階5、Go試験＋CLI試験PASS |
 | SHO側の消費・編集・保存・再開 | SHO PR #36、17試験PASS・merge後スイート127 PASS/0 FAIL |
 | SHO側のローカル相互ランナー・入出力契約試験・部品境界文書 | SHO PR #36、相互ランナー実PASS |
+| **相互CI（同一Attempt）** | SHO repository の [sho-tei-draft-roundtrip.yml](https://github.com/hat47x/sho-composer/blob/feat/tei-document-draft-core-20261111/.github/workflows/sho-tei-draft-roundtrip.yml) が **success**（run 42995269509・artifact に receipt） |
 | 相互実証（合成Workspace・同一端末） | PR本文の記録 |
 
 | 未実装 | この文書の段階 |
 | --- | --- |
 | 三要素分析図（Data/Function/Business） | 段階3（`internal/threeelement` は [PR #4283](https://github.com/hat47x/tei-platform/pull/4283) OPEN） |
 | TEI Studio実組込み | 横断C-2 |
-| 相互CI証跡（同一Attempt） | 横断C-1 |
 | 文書→モデルの逆方向経路 | 横断C-3（経路は作らない） |
 | `*.tei.md` のTEI側取込み | 横断C-5（Parser未束綝でブロック） |
 | 再投影のマージ方針 | 横断C-4（Owner判断ゲート） |
@@ -90,9 +90,10 @@
 ### C-1 相互CI証跡（同一Attempt）
 
 - **目的**：「TEI実CLI → SHO実CLI → TEI実reconcile」を**CI上で同一Attempt**として実行し、ローカル実証だけにしない。
-- **最小実装**：TEI側のGitHub Actionsに1ジョブ追加。SHO repositoryを**pinしたSHA**でcheckoutし、合成Workspace（testdata）でround tripを実行、JSON receiptをartifactとして保存する。SHO側の変更は追従しない（pinを明示的に更新するPRを別に出す）。
-- **独立Expected**：C1-a SHO pin SHAを変えるまで同一receipt。C1-b SHO側の破壊的変更（CLI名・フラグ変更）でFAIL。C1-c 合成データのみ（顧客データ・非公開资料なし）。
-- **Done means**：両OS（Ubuntu/Windows）でsuccessし、artifactのreceiptが読める。
+- **配置は SHO repository 側**（[sho-tei-draft-roundtrip.yml](https://github.com/hat47x/sho-composer/blob/feat/tei-document-draft-core-20261111/.github/workflows/sho-tei-draft-roundtrip.yml)）。**逆方向は認可境界で成立しない**: SHO repository は private で、tei-platform の `github.token` は読めず API tarball が 404 になる。tei-platform は public なので、SHO 側から clone する方針に credential が要らない。
+- **pin は TEI 側のSHA**（`TEI_PIN`）。latest へ暗黙に追随しない。動かす場合は理由をPRへ書き、新しいpairのreceiptを読んでから更新する。
+- **独立Expected**：C1-a TEI pin SHAを変えるまで同一receipt。C1-b TEI側の破壊的変更（CLI名・flag・contract変更）でFAIL。C1-c 合成データのみ（顧客データ・非公開资料なし）。C1-d receiptの全claimがfalse（緑は受理ではない）。
+- **Done means**：job が success で、artifact のreceiptが読める。**2026-11-11 時点で達成**（run 42995269509）。
 - **非目標**：製品E2E・Owner受理・外部配布。
 
 ### C-2 TEI Studio実組込み（部品再利用の証明）
@@ -146,11 +147,11 @@
 
 ## 7. 最初の3手（次実装者が最初にやること）
 
-1. **C-1（相互CI）** — SHO repositoryに[ローカル相互ランナー](https://github.com/hat47x/sho-composer/blob/feat/tei-document-draft-core-20261111/scripts/tei-sho-draft-roundtrip-p0.cjs)と[入出力契約試験](https://github.com/hat47x/sho-composer/blob/feat/tei-document-draft-core-20261111/test/sho-doc-cli-contract.test.cjs)が揃った。TEI側1ジョブでpinしたSHAのround tripを回し、ローカル実証をCI証跡に昇格する。
-2. **C-4（再投影方針）のOwner判断起案** — 実装より先に判断。仕様書（段階4）の受入条件がこれに依存する。
-3. **C-2（TEI Studio実組込み）** — C-1のCI証跡が出てから。部品境界（[起動契約](https://github.com/hat47x/sho-composer/blob/feat/tei-document-draft-core-20261111/docs/sho-doc-component-boundary-2026-11.md)）が安定してからA/B測定する。
+1. **C-2（TEI Studio実組込み）** — 相互CIの証跡が出て、部品境界（[起動契約](https://github.com/hat47x/sho-composer/blob/feat/tei-document-draft-core-20261111/docs/sho-doc-component-boundary-2026-11.md)）が安定した。子プロセス／Wails資産のA/B測定をする。
+2. **C-4（再投影方針）のOwner判断起案** — 実装より先に判断。
+3. **段階3（`three-element-diagram`）** — [PR #4283](https://github.com/hat47x/tei-platform/pull/4283) の統合後に入力契約（`model.inputKind`）を決める。統合前に着手しない。
 
-段階3（`three-element-diagram`）は[PR #4283](https://github.com/hat47x/tei-platform/pull/4283)の統合後に入力契約を決める（統合前に着手しない）。C-3は全段階で常に維持。C-5はParser（[#3346](https://github.com/hat47x/tei-platform/issues/3346)）の完了待ちで、**着手しない**。
+C-3は全段階で常に維持。C-5はParser（[#3346](https://github.com/hat47x/tei-platform/issues/3346)）の完了待ちで、**着手しない**。
 
 ## 8. Owner判断が必要な事項（一覧）
 
