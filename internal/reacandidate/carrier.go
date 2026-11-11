@@ -68,20 +68,20 @@ func carrierFacts() []carrierFact {
 			applies:     func(c StructureCandidate) bool { return c.SourceRevision.Span != nil },
 		},
 		{
-			fact:        "external-node-identity",
-			gap:         "operations.SubjectInspection and operations.ModelMapLink identify a Canonical subject by kind+ID; an external node identity has no field",
+			fact: "external-node-identity",
+			gap:  "operations.SubjectInspection and operations.ModelMapLink identify a Canonical subject by kind+ID; an external node identity has no field",
 			applies: func(c StructureCandidate) bool {
 				return c.Kind == CandidateKindDataElement && c.Facts.ExternalIdentity != ""
 			},
 		},
 		{
-			fact:        "external-observation-identity",
-			gap:         "no read-only type carries an external occurrence identity",
-			applies:     func(c StructureCandidate) bool { return c.Facts.ExternalOccurrenceID != "" },
+			fact:    "external-observation-identity",
+			gap:     "no read-only type carries an external occurrence identity",
+			applies: func(c StructureCandidate) bool { return c.Facts.ExternalOccurrenceID != "" },
 		},
 		{
-			fact:        "external-edge-identity",
-			gap:         "ModelMapLink has no edge identity; parallel edges between the same endpoints cannot be told apart",
+			fact: "external-edge-identity",
+			gap:  "ModelMapLink has no edge identity; parallel edges between the same endpoints cannot be told apart",
 			applies: func(c StructureCandidate) bool {
 				return c.Kind == CandidateKindCrossReference && c.Facts.ExternalIdentity != ""
 			},
@@ -101,33 +101,33 @@ func carrierFacts() []carrierFact {
 			},
 		},
 		{
-			fact:        "external-node-kind",
-			gap:         "an external analyzer node kind (module, class, table) has no read-only field and no three-element vocabulary of its own",
+			fact: "external-node-kind",
+			gap:  "an external analyzer node kind (module, class, table) has no read-only field and no three-element vocabulary of its own",
 			applies: func(c StructureCandidate) bool {
 				return c.Kind == CandidateKindDataElement && c.Facts.ObservedKind != ""
 			},
 		},
 		{
-			fact:        "external-endpoint-identities",
-			gap:         "ModelMapLink endpoints are Canonical subjects; an external endpoint identity has no field",
+			fact: "external-endpoint-identities",
+			gap:  "ModelMapLink endpoints are Canonical subjects; an external endpoint identity has no field",
 			applies: func(c StructureCandidate) bool {
 				return c.Kind == CandidateKindCrossReference && c.Facts.Direction != nil
 			},
 		},
 		{
-			fact:        "observed-state",
-			gap:         "no read-only type carries the provider-reported observation state",
-			applies:     func(c StructureCandidate) bool { return c.Facts.ObservedState != "" },
+			fact:    "observed-state",
+			gap:     "no read-only type carries the provider-reported observation state",
+			applies: func(c StructureCandidate) bool { return c.Facts.ObservedState != "" },
 		},
 		{
-			fact:        "observed-authority",
-			gap:         "no read-only type carries the provider-reported observation authority",
-			applies:     func(c StructureCandidate) bool { return c.Facts.ObservedAuthority != "" },
+			fact:    "observed-authority",
+			gap:     "no read-only type carries the provider-reported observation authority",
+			applies: func(c StructureCandidate) bool { return c.Facts.ObservedAuthority != "" },
 		},
 		{
-			fact:        "evidence-coverage",
-			gap:         "ModelMap carries the fixed string partial-projection, not a per-occurrence coverage statement",
-			applies:     func(c StructureCandidate) bool { return c.Facts.EvidenceCoverage != "" },
+			fact:    "evidence-coverage",
+			gap:     "ModelMap carries the fixed string partial-projection, not a per-occurrence coverage statement",
+			applies: func(c StructureCandidate) bool { return c.Facts.EvidenceCoverage != "" },
 		},
 		{
 			fact:        "suggested-display-name",
