@@ -1,0 +1,10 @@
+What I do NOT claim:
+
+- I could not determine whether CI had already flagged this. My first query used
+  the wrong workflow name (repository-health.yml); the real file is
+  tei-repository-health-ci.yml, and I did not re-run the query before finishing.
+- I did not find out how the broken file reached main (commit 6ea1523cc,
+  2026-11-11 09:48). Whether review or CI missed it is not established.
+- No mutation is possible or meaningful here: this is a syntax repair, and the
+  behaviour is unchanged. I verified with gofmt, go vet and the package's tests
+  instead.

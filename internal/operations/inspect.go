@@ -136,6 +136,17 @@ var InspectionSubjectKinds = []string{
 	// subject is its owner (the database or the plan), and the projection lists
 	// every declared version of that owner.
 	"migration", "application-release", "database-release", "solution-release",
+	// The binding layer. Without these a designer can declare a database or
+	// stand up an environment, then read neither back: model overview names
+	// both kinds as NOT covered, and inspect answered UNSUPPORTED_SUBJECT_KIND
+	// for each (#4128). A database instance stays out: it is not a World-level
+	// declaration, so its identity is scoped to its environment.
+	"database", "environment",
+	// The persistence layer: a designer can declare that a semantic data type
+	// lives in a database table, and model overview already names the kind as
+	// not covered. Without this the mapping is only visible through `world`
+	// (#4128).
+	"persistence-mapping",
 }
 
 func supportedInspectionKind(kind string) bool {
@@ -265,6 +276,24 @@ func inspectCanonical(world ir.World, subject sourceindex.Subject) (json.RawMess
 				if string(item.ID) == subject.ID {
 					matches = append(matches, item)
 				}
+			}
+		}
+	case "persistence-mapping":
+		for _, item := range world.Persistence {
+			if string(item.ID) == subject.ID {
+				matches = append(matches, item)
+			}
+		}
+	case "database":
+		for _, item := range world.Databases {
+			if string(item.ID) == subject.ID {
+				matches = append(matches, item)
+			}
+		}
+	case "environment":
+		for _, item := range world.Environments {
+			if string(item.ID) == subject.ID {
+				matches = append(matches, item)
 			}
 		}
 	case "migration":

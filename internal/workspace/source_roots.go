@@ -98,6 +98,31 @@ var fixedUnitFileNames = []string{
 	"environment.tei", "migration.tei",
 }
 
+// CheckWorkspaceUnreadSources reports .tei managed files that no domain loader
+// read. They are inventoried, so neither the source root check nor the parser
+// ever sees them: a file placed one directory too high validates as `ok` while
+// changing nothing (#4128 round 71). Reporting it is a warning, not an error,
+// because a workspace may legitimately keep a file the current loaders do not
+// interpret yet.
+func CheckWorkspaceUnreadSources(managed []ManagedFile) []WorkspaceSourceRootFinding {
+	var findings []WorkspaceSourceRootFinding
+	for _, file := range managed {
+		if file.ReadByLoader || file.Extension != ".tei" {
+			continue
+		}
+		if f := CheckWorkspaceManagedFileNames([]ManagedFile{file}); len(f) > 0 {
+			// The name already explains why this file is not read; do not
+			// report the same file twice.
+			continue
+		}
+		findings = append(findings, WorkspaceSourceRootFinding{
+			Root: file.SourceRoot, File: file.Path, Severity: "warning",
+			Message: fmt.Sprintf("managed file %q is a TEI source that no loader reads, so its declarations never reach the model; check its location (for example a persistence mapping belongs in databases/<database>/persistence/)", file.Path),
+		})
+	}
+	return findings
+}
+
 // CheckWorkspaceManagedFileNames reports managed files that look like a
 // Loader input but whose exact name or extension the Loader does not read.
 // This is a warning, not an error: the files stay in the managed inventory.

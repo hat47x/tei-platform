@@ -1,0 +1,2 @@
+error	DATABASE_CONTRACT_UNDECLARED_SEMANTIC_DEPENDENCY	contract master_data.customer refers to semantic element customer.customer but database master_data does not declare uses semantic customer
+error	PERSISTENCE_MAPPING_NON_RELATIONAL_DATABASE	persistence mapping master_data.intake targets non-relational database master_data

@@ -303,3 +303,27 @@ S2-referenceの通常CLI/Studio経路が成立した後、既存#3181のWorkspac
 
 **適用段階**：新Goテストとこの節をPRへ保存。CI exact-head／go test／実Studio Server・Windowsの結果を確認するまで**PASS・製品適格・外部Provider実証は申告しない**。既存S2-referenceの本体実装は変更しない。
 **2026-11-10 採用状態と次の反例**：[PR #3735](https://github.com/hat47x/tei-platform/pull/3735)（main `e25278d59f5b9b6174d92191dcde4b266394a559`）へ本節のGoテストとCanonical ID Validatorを統合。exact PR HEAD `c70761c71e0d79d869a0f91c7a9c6726d6457541`の[全体Health](https://github.com/hat47x/tei-platform/actions/runs/42578414117)・[通常/生成Studio Host](https://github.com/hat47x/tei-platform/actions/runs/42578414227)・[Windows WebView](https://github.com/hat47x/tei-platform/actions/runs/42578414217)・[Studio編集](https://github.com/hat47x/tei-platform/actions/runs/42578414161)・[実CLI](https://github.com/hat47x/tei-platform/actions/runs/42578414183)がsuccess。したがって**S2-referenceの限定IS-01〜04（Local Host／二Workspace／Canonical表示整合）の実コード・Go回帰と既存Host CIは成立**。ただしProviderが違う実Rootの正しいID/JSON/FPを偽装する負例（Hostが信頼できるRead OriginとBindingを独立照合するもの）は**未実装・未実証**。実ProfileでB選択→実A/実Bの識別、外部Import同一Load raw、実Artifact/member、Current Grant/Disclosure、Functionの実DB Rowset・Consumer受領は別Owner/別Attemptのまま。新しいRoot認可SSOT、二重Load、第二Resolverは作らず、次工程では#1251/#951/#1016と#3262/#2514を接続する。PR exact-head CI成功を統合後mainの新たなCI結果へ流用しない。
+
+## 17. 選択の入力・実行Entryの観測・Workspace出所の照合（2026-11-11、S2-productの最初の一辺）
+
+**根本原因**：第15節のS2-referenceでは、`NewLocalInspectorHost()`が選択の入力を受け取らず、Provider IDはGo定数、Registryへ登録するProviderは1件だった。`Registration.ProviderID`はHostが付けるラベルで、同じ定数から両辺を作るため`Bind`の一致検査は常に成立する。したがって「B選択→A実行」は通常CLI・Studioの入口で表現できず、返却された`Workspace`をHostが選んだrootと照合する箇所もなかった。
+
+**最小修正（新Resolver/Registry/Host/Authorityなし）**：`internal/inspectoradapter/local_host.go`だけで、既存`composition.Registry.Select`・`Bind`・`Selected`をそのまま使う。
+
+- **選択の入力**：`NewLocalInspectorHostSelecting(providerID, inventory)`を追加。HostがコンパイルしたProvider一覧（`LocalProvider`）をすべて`authoring-tool` Scopeで`Apply`し、渡されたIDを`Select`する。一覧にないIDは`ErrSelectionMismatch`で停止する。`Bind`は**Registryが返した選択ID**で一覧を引くため、登録ラベルが別Entryを指す経路がない。通常CLI・Studioは従来どおり参照Provider1件（`ReferenceInventory`）を選ぶ。
+- **実行Entryの観測**：`LocalProvider`は`Entry`（リンク済みシンボル名）と`Inspect`（名前付きGo関数）を持つ。Hostは呼び出す関数値のシンボルを`runtime`から読み、宣言と違えば組み立てを拒否する。Provider IDはこの照合に使わない。
+- **Workspace出所の照合**：Entryが返った後、Hostが自分で`trustedRoot`のmanifest bytesを読み（`workspace.ObserveManifestIdentity`、解析もSource読込もしない）、Providerが返した`Workspace.Manifest`と一致しなければ`ErrWorkspaceOriginUnverified`で拒否する。`Workspace`欠落も拒否する。
+- **観測の受け渡し**：`Invocation`に、選択ID（Registryの答え）・登録ID（一覧のキー）・観測したEntry・Hostのroot/manifest・Providerが申告した`Workspace`を**別欄**で記録し、`Observe`で受け取る。独立Expected（#1180/#2514）はこの記録と照合する。
+- **二Consumer**：CLIは`inspectWorkspaceJSONFromHost`、Studioは`newStudioHostWithInspector`（通常・生成の両variant）で、Hostが選択済みのInspectorを受け取る。公開Envelope・Bridgeメソッド・失敗Codeは変えていない。
+
+| Case | 入口 | 独立Expected |
+| --- | --- | --- |
+| SP-01 | Host／CLI `inspectWorkspaceJSONFromHost`／Studio `StudioBridge.InspectSubject` | 一覧A・BからBを選択。観測EntryはBのシンボル、Aの呼出し0回。Aを選んだ場合と出力byteは同一 |
+| SP-02 | 同上 | ID「B」・宣言Entry「B」・関数値はA。Hostは組み立てを拒否し、どのProviderも呼ばれない。CLIは`INSPECTION_PROVIDER_UNAVAILABLE` |
+| SP-03 | 同上 | Hostはroot alphaを束縛、Providerはroot betaから同じSubject IDの妥当な結果を返す。拒否され、失敗出力にbetaの名前もpathも出ない。Studioでは両rootがallowlist済みでも`workspace-1`への要求を拒否 |
+| SP-04 | Host | 一覧が一貫して「ID B＝Aのコード」と宣言する場合、Hostは判定できず通す。`Invocation.ObservedEntry`はAを示すので、独立Expectedで不合格にできる |
+| SP-05 | Host | manifest bytesが同一でSemantic Sourceだけ違う別rootは**検出しない**（既知の限界を固定） |
+
+**主張しないこと**：正式Composition Profile（#1016）からの選択値の供給は未接続で、通常CLI・Studioに選択を渡すflag・環境変数・設定は追加していない。2件目の実Providerは製品バイナリに入っておらず、A/Bはテスト内の関数である。Entryシンボルはこのprocessの関数値の観測であり、Artifact bytesの証明・署名・Conformance（#943/#3267/#951）ではない。manifest照合はSource bytesの出所（#3524/#3479）、現在Grant、Disclosureを証明しない。`workspace-source-unverified`を公開失敗Codeへ追加する判断は未実施で、CLIは既存の`INSPECTION_FAILED`、Studioは既存の一般失敗として返す。
+
+**検証状態**：実行した範囲と未実行の範囲はPR本文に記録する。
