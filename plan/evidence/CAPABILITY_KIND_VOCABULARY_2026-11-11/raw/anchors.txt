@@ -1,0 +1,23 @@
+== the report list ==
+  var CapabilityKinds = []CapabilityKind{
+  	CapabilityDeploymentExecutor, CapabilityObservationProvider, CapabilityEvidenceProvider,
+  	CapabilityDatabaseProvider, CapabilityContractQueryExecutor, CapabilityMigrationProvider,
+  	CapabilityEditorIntelligence,
+  }
+
+== what Valid() reads ==
+  func (k CapabilityKind) Valid() bool {
+  	for _, valid := range CapabilityKinds {
+  		if k == valid {
+  			return true
+  		}
+  	}
+  	return false
+  }
+
+== the validation diagnostic that names the kind ==
+  52:			return fmt.Errorf("capability %s has invalid kind %q", c.ID, c.Kind)
+
+== existing tests that write an invalid kind by hand ==
+  internal/plugin/capability_structure_test.go:24:			d.Provides[0].Kind = plugin.CapabilityKind("missing")
+  internal/plugin/vocabulary_invariant_test.go:51:	if plugin.CapabilityKind("missing").Valid() {

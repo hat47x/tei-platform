@@ -473,3 +473,4 @@
 - [例のWorkspaceで期間の要件を宣言する確認](XTEA_LOWCODE_EXAMPLE_PERIOD_REQUIREMENT_2026-11.md)（参照実装の試験記録。例で宣言・検証・投影・実行が一致。宣言時に矛盾検査が実例で発火し、`closed-rejects`を狭めた）
 - [実行器はあるのに振り分けが無いrea-intakeを配線する](TEI_DOGFOODING_ROUND77_REA_INTAKE_ROUTE_2026-11-11/README.md)（runThreeElementReaIntakeは実装済みでテスト12箇所が呼んでいたが、dispatcherにcaseが無く14件FAILしていた。テストが実行器を直接呼んでいたため見落とされていた。14→0。rea-evidenceは実装自体が無く範囲外、gofmt違反6ファイルはrecord only）
 - [未統合機能の孤児テストがrepository-healthを常時赤にする](TEI_DOGFOODING_ROUND78_REA_EVIDENCE_ORPHAN_2026-11-12/README.md)（rea-evidenceを要求する2試験がmainに在り、実装は未統合ブランチ（157コミット遅れ）にのみ存在。依存のinternal/externalanalysis 1,202行もmainに無い。スタブは採らない（動くように見せるため）。起票 #4455。plan-checkは第76〜77ラウンドで緑）
+- [能力種別の語彙は、一覧と定数が食い違い得る](CAPABILITY_KIND_VOCABULARY_2026-11-11/README.md)（CapabilityKindは閉じた7値で、#951の対象。語彙はconstブロックとCapabilityKinds一覧の2箇所に書かれ、Valid()は一覧を読むが、両者が同じ集合であることを確かめる仕組みが無かった。一覧に定数が無い要素を足すと試験が失敗することを実測。RuntimeKindも同じ形なのでまとめて固定。定数だけを足す方向は件数が同じままなら通るため、別の確認が必要）#951の判断材料
