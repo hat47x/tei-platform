@@ -3,6 +3,19 @@ package sqlgen
 import (
 	"context"
 	"database/sql"
+	"strings"
+)
+
+// SetOperation describes a set operation for combining queries.
+type SetOperation string
+
+const (
+	// SetUnion represents UNION.
+	SetUnion SetOperation = "UNION"
+	// SetIntersect represents INTERSECT.
+	SetIntersect SetOperation = "INTERSECT"
+	// SetExcept represents EXCEPT.
+	SetExcept SetOperation = "EXCEPT"
 )
 
 // PlaceholderStyle describes how a dialect binds runtime parameters.
@@ -73,8 +86,12 @@ type SelectOptions struct {
 	Limit      *int
 	Offset     *int
 	Parameters map[string]any
-	ForUpdate  bool
-	ForShare   bool
+	ForUpdate    bool
+	ForShare     bool
+	CTE          string
+	Window       string
+	SetOperation SetOperation
+	All          bool
 }
 
 // JoinClause describes a common JOIN.
@@ -148,4 +165,14 @@ type Dialect interface {
 	IsNullViolation(err error) bool
 	// IsCheckViolation reports whether err is a CHECK constraint violation.
 	IsCheckViolation(err error) bool
+}
+
+// IsComparison reports whether op is a comparison operator.
+func IsComparison(op string) bool {
+	switch strings.ToUpper(op) {
+	case "=", "!=", "<", ">", "<=", ">=", "LIKE", "NOT LIKE":
+		return true
+	default:
+		return false
+	}
 }
