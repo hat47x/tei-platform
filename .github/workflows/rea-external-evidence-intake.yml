@@ -1,0 +1,109 @@
+name: REA external evidence intake (real CLI and saved fixtures)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/rea-external-evidence-intake.yml
+      - 'internal/externalanalysis/**'
+      - 'internal/operations/external_candidates*'
+      - 'cmd/tei/rea_evidence*'
+      - 'plan/fixtures/rea-external-evidence/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/rea-external-evidence-intake.yml
+      - 'internal/externalanalysis/**'
+      - 'internal/operations/external_candidates*'
+      - 'cmd/tei/rea_evidence*'
+      - 'plan/fixtures/rea-external-evidence/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rea-intake-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # The Go contract runs everywhere: it uses the bytes captured under
+  # internal/externalanalysis/testdata and never needs the external tool.
+  contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Setup pinned Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version: '1.27'
+      - name: Run the intake contract tests
+        run: |
+          set -euo pipefail
+          go test ./internal/externalanalysis/ ./internal/jsonl/ -count=1
+          go test ./internal/operations/ -run TestExternalCandidate -count=1
+          go test ./cmd/tei/ -run 'TestReaEvidence|TestDiscoveryModes|TestCommandCatalogFlags|TestContractDocument' -count=1
+
+  # The real-tool lane runs the pinned versions against a synthetic inert
+  # fixture. A failure here is a real-tool observation, never a synthesized one.
+  real-tool:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        rea_version: ['6.7.0', '6.8.0']
+    env:
+      REA_VERSION: ${{ matrix.rea_version }}
+      EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Isolate the run record before any fallible step
+        id: reports
+        shell: bash
+        run: |
+          set -euo pipefail
+          directory=$(mktemp -d "${RUNNER_TEMP:?}/rea-intake.XXXXXX")
+          printf 'directory=%s\n' "$directory" >> "$GITHUB_OUTPUT"
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          ref: ${{ env.EXPECTED_HEAD }}
+      - name: Setup pinned Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version: '1.27'
+      - name: Setup pinned Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24.22.1'
+      - name: Build the CLI that receives the Evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          go build -o "${RUNNER_TEMP}/tei" ./cmd/tei
+      - name: Verify the intake against the real tool
+        shell: bash
+        env:
+          REPORT_DIR: ${{ steps.reports.outputs.directory }}
+        run: |
+          set -euo pipefail
+          python3 -B plan/fixtures/rea-external-evidence/verify_real_rea_intake.py \
+            --binary "${RUNNER_TEMP}/tei" --version "$REA_VERSION" \
+            --report "${REPORT_DIR}/intake-${REA_VERSION}.json"
+      - name: Upload the run record even on failure
+        if: ${{ always() && steps.reports.outputs.directory != '' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: rea-intake-${{ matrix.rea_version }}
+          path: ${{ steps.reports.outputs.directory }}
+          if-no-files-found: warn
+          retention-days: 7

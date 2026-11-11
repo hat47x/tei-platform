@@ -145,9 +145,14 @@ ADR-0048の試験表（T01〜T13）の様式に合わせ、**直接呼出し**�
 
 ### Step 4 — 検証（実行できる環境とできない環境を分ける）
 
-- **実REAを呼べる環境**: Step 3の試験を実捕捉bytesで走らせ、使用bytesのSHA-256を記録する。さらに`tei rea-evidence -request-out`で派生请求を実REAへ渡す閉ループを確認する（受領側T0で確立済みの手順）。
-- **実REAを呼べない環境**: `internal/externalanalysis/testdata/` の保存fixture（digestは同梱manifest）のみを使う。fixtureを「実REAの出力」と表示してよいが、「この環境で取得した」とは表示しない。
+- **実REAを呼べる環境**: `plan/fixtures/rea-external-evidence/verify_real_rea_intake.py --binary <tei> --version <v>` を実行する。工具をisolated prefixへinstallし、合成inert fixtureを解析・view投影・負例実走し、fresh bytesで受領・検査・投影を検証する。実行記録（digest・exit・notRun）は`--report`のJSONとCI artifact。
+- **実REAを呼べない環境**: 同scriptに`--fixtures-only`を付ける。`internal/externalanalysis/testdata/` の捕捉bytesで同じ契約を検証し、live partsは`notRun`として記録する。fixtureを「実REAの出力」と表示してよいが、「この環境で取得した」とは表示しない。
+- **CI**: `.github/workflows/rea-external-evidence-intake.yml` が2lane（Go契約は全環境・実工具はpin版matrix）で実行し、実工具laneの実行記録をartifactとして保存する。
 - どちらの環境でも、**実行した検証と未実行の検証**をPR本文に分けて書く。
+
+### Step 4-b — 版の再資格化（T0-06相当）
+
+新しいREA版が現れたら、`observedSourceKinds`/`observedFraming`は**実走で**更新する。手順は [plan/fixtures/rea-external-evidence/README.md](../fixtures/rea-external-evidence/README.md) の「版の再資格化」に6ステップで固定した。未知の版は推測せず拒否される。
 
 ### Step 5 — 記録
 
@@ -160,6 +165,17 @@ ADR-0048の試験表（T01〜T13）の様式に合わせ、**直接呼出し**�
 - 外部Node/Relation IDをTEI subjectと同一視しない（T1A-07）。
 - `operations.InspectSubject` に外部JSONを渡して意味受理と偽装しない。`deployment/observation` を実Runtime観測として偽装しない。`deployment/evidence.Router` のEvidence Gate `pass`として偽装しない。
 - SHO Writer・三視点CRUD・実DB/旧新対照・Owner Meaning受理は別資格。本作業票はT1-Aの受領まで。
+- **MCP/HTTP/Studio入口は作らない**。未実装の入口を成功としない。共通結果型を運ぶAdapterが必要になったら、結果型を再利用して第二の型を作らない。
+
+## 9. 検証体制（実REAがある環境とない環境）
+
+| 層 | 何をする | どこで |
+|---|---|---|
+| Go契約試験 | 受領・検査・候補読み出し・投影・負例を捕捉bytesで固定 | `internal/externalanalysis`・`internal/operations`・`cmd/tei` の試験 |
+| real-CLI verifier | 実REAで解析・view・負例を実走し、fresh bytesで同じ契約を検証。工具が無ければ保存fixtureで検証しlive partsはNOT RUN | `plan/fixtures/rea-external-evidence/verify_real_rea_intake.py` |
+| CI | Go契約lane（全環境）＋実工具lane（pin版matrix、実行記録をartifact） | `.github/workflows/rea-external-evidence-intake.yml` |
+
+工具が環境に無いことによる`tool-absent`は**whole receiptの注記**であり、失敗ではない。保存fixtureのみの環境では「この環境で取得した」とは表示しない。
 
 ## 8. 次の不足辺（T1-A着手後に顕在化するもの）
 
