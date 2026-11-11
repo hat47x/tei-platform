@@ -16,6 +16,11 @@ const (
 	TokenRBrace
 	TokenArrow
 	TokenCaret
+	// TokenColon is the clause separator of the rule authoring syntax
+	// (tei.rule-authoring/v0). It was previously an invalid character, so no
+	// accepted Source changes meaning; a Source that used ':' now stops at the
+	// declaration that does not accept the colon instead of at the lexer.
+	TokenColon
 )
 
 type Position struct {
@@ -69,6 +74,9 @@ func (l *Lexer) Next() (Token, error) {
 	case '^':
 		l.advanceByte()
 		return Token{Kind: TokenCaret, Text: "^", Start: start, End: l.pos()}, nil
+	case ':':
+		l.advanceByte()
+		return Token{Kind: TokenColon, Text: ":", Start: start, End: l.pos()}, nil
 	case '-':
 		if l.off+1 < len(l.src) && l.src[l.off+1] == '>' {
 			l.advanceByte()
