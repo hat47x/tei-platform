@@ -1,0 +1,39 @@
+{
+  "schema": "csw.handoff/v0",
+  "study_inputs": [
+    {
+      "input_id": "c1a",
+      "source_revision": "73efa57ef66ae4d53db3ff9bb63c927f624f44a8",
+      "content_sha256": "sha256:7d9fea10fcdfb420b12879c39b294314e1b7f0d2a26f3bcb3aacc21952934474",
+      "ordinal": 1
+    }
+  ],
+  "runs": [
+    {
+      "run_id": "run-a",
+      "model_ref": "synthetic-proposal-model",
+      "independent_context": true,
+      "started_at": "2026-11-11T04:00:00Z"
+    }
+  ],
+  "fragments": [
+    {
+      "fragment_id": "f-1",
+      "study_input_id": "c1a",
+      "run_id": "run-a",
+      "ordinal": 1,
+      "attribution": "hypothesis",
+      "body_sha256": "sha256:ff23fd6ec113d29129b905fb1b481806b4dbe9b5cb3e06e69ae1f44968ba5210",
+      "body_ref": "work/synthetic/f-1.md"
+    }
+  ],
+  "decisions": [
+    {
+      "decision_id": "d-1",
+      "fragment_id": "f-1",
+      "decision": "adopt",
+      "author_ref": "",
+      "decided_at": "2026-11-11T05:00:00Z"
+    }
+  ]
+}

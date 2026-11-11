@@ -51,6 +51,7 @@
 - [`uses`経由で呼んだ能力の効果に補償が要らないことの確認](XTEA_LOWCODE_HOOK_USES_COMPENSATION_2026-11.md)（確認記録。フックの呼出しは参照Executorを通りデータを適用しないため、戻す対象が無い）
 - [Studio経路での`after-*`拒否時の取り消しの確認](XTEA_LOWCODE_HOOK_AFTER_CHANGE_STUDIO_REVERT_2026-11.md)（試験記録。拒否する規則を差し込むと適用した効果がStoreから取り消され`effectReverted`が出る。既定経路での到達は規則Pluginの供給待ち）
 - [Studioから`after-*`フックへ到達する配線の確認](XTEA_LOWCODE_HOOK_AFTER_CHANGE_STUDIO_2026-11.md)（試験記録。`ExecuteCommandWithReferenceStore`が変更を適用し、変更後のフックを実行する。`PhaseReport.Merge`を`internal/hook`に置いて両ホストで共有。UIからの呼出しは未着手）
+- [StudioのUIから`after-*`経路へ到達する配線の確認](XTEA_LOWCODE_HOOK_AFTER_CHANGE_STUDIO_UI_2026-11.md)（試験記録。`ExecuteCommandWithReferenceStore`を橋とportへ足し、チェックボックスで任意指定にする。画面操作と生成タグ付き試験は未実施）
 - [Studioのbinding欠落でビューとCommand操作が到達できていなかった件](STUDIO_BRIDGE_MISSING_METHODS_2026-11.md)（修正記録。`StudioBridge`が5メソッドしか公開せず、`client.mjs`が呼ぶ7つが未登録だった。名前の突き合わせ試験を追加）
 - [複合キーの表現](XTEA_LOWCODE_COMPOSITE_KEY_EXPRESSION_2026-11.md)（確認記録。複合キーは属性ごとに1パラメータで表し、適用キーは既定で全パラメータの複合。1つのData型パラメータへの複数属性の結び付けは検証が拒否する）
 - [同じコマンドの効果を2プロセスが適用した場合の整合](XTEA_LOWCODE_OUTCOME_SHARED_EFFECT_2026-11.md)（確認記録。参照Storeは実行ごとに閉じるため、2プロセスとも成功し互いに干渉しない。整合は耐久Storeを持つ実装の論点として残る）
@@ -135,6 +136,7 @@
 - [期間が名指す能力の効果の検査の確認](XTEA_LOWCODE_PERIOD_CAPABILITY_EFFECT_2026-11.md)（参照実装の試験記録。期間のDataと能力の効果の不一致を報告。効果の種類と役割の対応は未実装）
 - [訂正能力と閉塞拒否の矛盾の解消の確認](XTEA_LOWCODE_PERIOD_CORRECTION_EXEMPT_2026-11.md)（参照実装の試験記録。訂正能力だけを閉塞拒否から免除）
 - [閉塞拒否と訂正能力の矛盾の宣言段階での報告の確認](XTEA_LOWCODE_PERIOD_CLOSURE_CONFLICT_2026-11.md)（参照実装の試験記録。矛盾する2宣言を検証で報告。修正案の提示は未実装）
+- [再開（closed→open）に訂正能力を要求する確認](XTEA_LOWCODE_PERIOD_REOPEN_CORRECTION_2026-11.md)（参照実装の試験記録。運用の入口でも再開に訂正能力を要求。申告と実行の照合は未実装）
 - [採番の永続CounterStoreの確認](XTEA_LOWCODE_NUMBERING_SQLITE_STORE_2026-11.md)（参照実装の試験記録。PostgreSQLは未実装）
 - [採番の2プロセス同時実行の確認](XTEA_LOWCODE_NUMBERING_PROCESS_RACE_2026-11.md)（参照実装の試験記録。PostgreSQLと多プロセス構成は未実装）
 - [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
@@ -462,4 +464,6 @@
 
 - [「state分離」は、childの申告と文字列が一致するかである](TEI_GO_SELF_BUILD_STATE_SEPARATION_SCOPE_2026-11-11.md)（§4.37が条件5で「stateの分離」を確かめるとしている点を実測。childが二回とも**同じstate**を使い、渡された値をそのまま申告する構成で、`firstStateDir`と`secondStateDir`は違うまま**`l2b.claimed=true`**になった。**検査は文字列比較であり、実際に別のstateを使ったことではない。** #2831）
 - [閉じ括弧の後ろに書いた「ブロック内専用の項目」が所属を名指しする](TEI_DOGFOODING_ROUND74_BLOCK_PLACEMENT_2026-11-11/README.md)（#4169のA案5件目。bind/resource/column等を閉じ括弧の後ろに書くと、どのブロックに入るかを言う。最初の探査はファイル名が誤りで3回とも読まれず、第72ラウンドで入れた警告がその誤りを教えた）
+
+- [「成果物と違うdigestを申告する」は、ディスクとの比較で止まる](TEI_GO_SELF_BUILD_ARTIFACT_DIGEST_STOPS_2026-11-11.md)（§4.37の条件5で、entryが自分で確かめる側を実測。childが書いた成果物と違う`artifactDigest`を申告すると**exit 1・`ok:false`・`claimed:false`**になった。**直近2周で測った「止まらない」2件と対になり、表の非対称が実測に基づくことを示す。** #2831）
 - [構文エラーで止まった実行をテキスト出力も「不完全」と言う](TEI_DOGFOODING_ROUND75_INCOMPLETE_TEXT_2026-11-11/README.md)（#4178。2ファイルを壊すと最初の1件しか出ない仕様は変わらないが、JSONはincompleteを出しテキストは黙っていた非対称を解消。意味の診断は完全な答えなので不完全と表示しない区別を試験で固定）

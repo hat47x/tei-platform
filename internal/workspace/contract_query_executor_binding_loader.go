@@ -31,7 +31,7 @@ func loadContractQueryExecutorBindings(root string, r *Result) error {
 		sourceKey := "contract-query-executor-binding:" + binding.Identity()
 		if previous, exists := r.Sources[sourceKey]; exists {
 			return fmt.Errorf(
-				"%s: Contract Query executor Binding %sは既に%sで定義されています",
+				"%s: Contract Query executor Binding %s is already defined in %s",
 				path,
 				binding.Identity(),
 				previous.File,

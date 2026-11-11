@@ -51,7 +51,7 @@ func ValidateReferenceContractQueryCrossLayer(w ir.World) []Diagnostic {
 				out = append(out, errFor(
 					patternSubject,
 					"REFERENCE_CONTRACT_QUERY_RELATION_KEY_REQUIRED",
-					"reference Pattern %sがRelation %sをContract Queryで辿るには、Relation keyの明示が必要です",
+					"reference Pattern %s needs an explicit Relation key to follow Relation %s with a Contract Query",
 					pattern.ID,
 					relation.ID,
 				))
@@ -65,7 +65,7 @@ func ValidateReferenceContractQueryCrossLayer(w ir.World) []Diagnostic {
 				out = append(out, errFor(
 					patternSubject,
 					"REFERENCE_CONTRACT_QUERY_SIGNATURE_REQUIRED",
-					"reference Pattern %sが利用するContract Query %s / %sにはtyped signatureが必要です",
+					"Contract Query %s / %s, used by reference Pattern %s, needs a typed signature",
 					pattern.ID,
 					invocation.Contract,
 					invocation.Query,
@@ -90,7 +90,7 @@ func ValidateReferenceContractQueryCrossLayer(w ir.World) []Diagnostic {
 					out = append(out, errFor(
 						patternSubject,
 						"REFERENCE_CONTRACT_QUERY_BINDING_TARGET_NOT_RELATION_KEY",
-						"reference Pattern %sはtarget attribute %sをQuery input %sへ渡しますが、このattributeはRelation %sのtarget keyではありません",
+						"reference Pattern %s passes target attribute %s to Query input %s, but that attribute is not a target key of Relation %s",
 						pattern.ID,
 						binding.TargetAttribute,
 						binding.Input,
@@ -104,7 +104,7 @@ func ValidateReferenceContractQueryCrossLayer(w ir.World) []Diagnostic {
 					out = append(out, errFor(
 						patternSubject,
 						"REFERENCE_CONTRACT_QUERY_RELATION_KEY_NOT_BOUND",
-						"reference Pattern %sではRelation %sのtarget key %sをContract Query inputへ渡すbindingがありません",
+						"reference Pattern %s has no binding that passes target key %s of Relation %s to a Contract Query input",
 						pattern.ID,
 						relation.ID,
 						key.TargetAttribute,
@@ -123,7 +123,7 @@ func ValidateReferenceContractQueryCrossLayer(w ir.World) []Diagnostic {
 					out = append(out, errFor(
 						patternSubject,
 						"REFERENCE_CONTRACT_QUERY_INPUT_NOT_IN_SIGNATURE",
-						"reference Pattern %sのbinding先input %sはContract Query %s / %sのsignatureにありません",
+						"input %s, bound by reference Pattern %s, is not in the signature of Contract Query %s / %s",
 						pattern.ID,
 						binding.Input,
 						invocation.Contract,
@@ -137,7 +137,7 @@ func ValidateReferenceContractQueryCrossLayer(w ir.World) []Diagnostic {
 					out = append(out, errFor(
 						patternSubject,
 						"REFERENCE_CONTRACT_QUERY_INPUT_TYPE_MISMATCH",
-						"reference Pattern %sはtarget attribute %s（型 %s）をQuery input %s（型 %s）へ渡しますが、Semantic型identityが一致しません",
+						"reference Pattern %s passes target attribute %s (type %s) to Query input %s (type %s), but the Semantic type identity does not match",
 						pattern.ID,
 						binding.TargetAttribute,
 						attribute.Type,
@@ -152,7 +152,7 @@ func ValidateReferenceContractQueryCrossLayer(w ir.World) []Diagnostic {
 					out = append(out, errFor(
 						patternSubject,
 						"REFERENCE_CONTRACT_QUERY_INPUT_NOT_BOUND",
-						"reference Pattern %sではContract Query %s / %sのinput %sへ値を渡すbindingがありません",
+						"reference Pattern %s has no binding that passes a value to input %s of Contract Query %s / %s",
 						pattern.ID,
 						invocation.Contract,
 						invocation.Query,
@@ -165,7 +165,7 @@ func ValidateReferenceContractQueryCrossLayer(w ir.World) []Diagnostic {
 				out = append(out, errFor(
 					patternSubject,
 					"REFERENCE_CONTRACT_QUERY_RESULT_DATA_MISMATCH",
-					"reference Pattern %sのRelation %sは%sをtargetとしますが、Contract Query %s / %sは%sを返します",
+					"Relation %s of reference Pattern %s targets %s, but Contract Query %s / %s returns %s",
 					pattern.ID,
 					relation.ID,
 					relation.Target,
@@ -179,7 +179,7 @@ func ValidateReferenceContractQueryCrossLayer(w ir.World) []Diagnostic {
 				out = append(out, errFor(
 					patternSubject,
 					"REFERENCE_CONTRACT_QUERY_RESULT_CARDINALITY_MISMATCH",
-					"reference Pattern %sのRelation %sはcardinality %sですが、Contract Query %s / %sのresult cardinalityは%sです",
+					"Relation %s of reference Pattern %s has cardinality %s, but the result cardinality of Contract Query %s / %s is %s",
 					pattern.ID,
 					relation.ID,
 					relation.Cardinality,

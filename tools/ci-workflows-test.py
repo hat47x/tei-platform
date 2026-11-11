@@ -30,6 +30,70 @@ def command(*argv, cwd=None, env=None, check=True):
                           capture_output=True, check=check)
 
 
+# The workflow bodies are bash, and the cases below depend on the environment
+# variables this process passes down. On Windows the `bash` on PATH is the WSL
+# launcher (C:\WINDOWS\system32\bash.exe), which does not forward Windows
+# environment variables: GITHUB_EVENT_NAME arrives empty and every trigger case
+# lands in the workflow's "unsupported trigger" branch. That is a property of
+# the host, not of the workflow (#4355).
+#
+# So resolve a bash that forwards them, preferring the one on PATH (which is
+# /bin/bash in CI), then Git for Windows bash. TEI_CI_TEST_BASH overrides the
+# choice. When nothing forwards them, the bash cases skip with the reason rather
+# than failing as if the repository were broken.
+def _bash_forwards_environment(candidate):
+    probe = 'echo "$TEI_BASH_PROBE"'
+    env = dict(os.environ, TEI_BASH_PROBE='forwarded')
+    try:
+        result = subprocess.run([candidate, '-c', probe], env=env, text=True,
+                                capture_output=True, check=False, timeout=60)
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return result.stdout.strip() == 'forwarded'
+
+
+def resolve_bash():
+    override = os.environ.get('TEI_CI_TEST_BASH')
+    candidates = [override] if override else []
+    candidates.append('bash')
+    if os.name == 'nt':
+        candidates.append(r'C:\Program Files\Git\bin\bash.exe')
+    for candidate in candidates:
+        if candidate and _bash_forwards_environment(candidate):
+            return candidate
+    return None
+
+
+BASH = resolve_bash()
+
+
+def _any_bash():
+    for candidate in [os.environ.get('TEI_CI_TEST_BASH'), 'bash']:
+        if not candidate:
+            continue
+        try:
+            result = subprocess.run([candidate, '-n', '-c', 'true'], text=True,
+                                    capture_output=True, check=False, timeout=60)
+        except (OSError, subprocess.SubprocessError):
+            continue
+        if result.returncode == 0:
+            return candidate
+    return None
+
+
+# Parsing a script does not read the environment, so the syntax checks accept any
+# bash. Running one does read it, which is why only those cases need BASH below.
+SYNTAX_BASH = BASH or _any_bash()
+SKIP_NO_BASH = unittest.skipIf(
+    BASH is None,
+    'no bash forwards the environment variables these workflow steps read; '
+    'set TEI_CI_TEST_BASH to one that does (Git for Windows bash works) [#4355]',
+)
+SKIP_NO_SYNTAX_BASH = unittest.skipIf(
+    SYNTAX_BASH is None, 'no bash is available to parse the workflow bodies [#4355]',
+)
+
+
 def scripts(path):
     """Read only literal YAML run: | blocks with standard 10-space body indent."""
     text = path.read_text(encoding='utf-8')
@@ -120,6 +184,7 @@ def git(directory, *args):
     return command('git', '-C', str(directory), *args).stdout.strip()
 
 
+@SKIP_NO_BASH
 class WorkflowContract(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='tei-ci-regression-')
@@ -157,7 +222,7 @@ class WorkflowContract(unittest.TestCase):
                         GITHUB_SHA=self.head_sha, GITHUB_REF='refs/heads/work/issue-1189-ci')
 
     def check(self, script, success, env=None):
-        result = command('bash', '-c', script, cwd=self.checkout,
+        result = command(BASH, '-c', script, cwd=self.checkout,
                          env=env or self.env, check=False)
         self.assertEqual(result.returncode == 0, success,
                          f'exit={result.returncode}\nstdout={result.stdout}\nstderr={result.stderr}')
@@ -242,6 +307,7 @@ def auto_push_scripts(path=AUTO_HEALTH, replace_url=None):
     return pre[0], post[0]
 
 
+@SKIP_NO_BASH
 class AutoWorkflowPushPath(unittest.TestCase):
     """Run the push branch of the automatic workflow's pre and post steps.
 
@@ -283,7 +349,7 @@ class AutoWorkflowPushPath(unittest.TestCase):
                         PR_HEAD_SHA='', PR_BASE_SHA='')
 
     def check(self, script, success, env=None):
-        result = command('bash', '-c', script, cwd=self.checkout,
+        result = command(BASH, '-c', script, cwd=self.checkout,
                          env=env or self.env, check=False)
         self.assertEqual(result.returncode == 0, success,
                          f'exit={result.returncode}\nstdout={result.stdout}\nstderr={result.stderr}')
@@ -395,7 +461,7 @@ class StaticWorkflowContract(unittest.TestCase):
         self.assertLess(text.index('bash tools/reference-external-coordination/run.sh'),
                         text.index('if: always()'))
         for script in blocks:
-            self.assertEqual(0, command('bash', '-n', '-c', script, check=False).returncode)
+            self.assertEqual(0, command(SYNTAX_BASH, '-n', '-c', script, check=False).returncode)
 
     def test_echo_instead_of_health_fails_contract(self):
         _, blocks = scripts(HEALTH)
@@ -412,7 +478,7 @@ class StaticWorkflowContract(unittest.TestCase):
         self.assertGreaterEqual(len(blocks), 3)
         for script in blocks:
             self.assertEqual(
-                0, command('bash', '-n', '-c', script, check=False).returncode)
+                0, command(SYNTAX_BASH, '-n', '-c', script, check=False).returncode)
 
     def test_public_pr_ci_rejects_unsafe_mutations(self):
         source = AUTO_HEALTH.read_text(encoding='utf-8')
@@ -476,6 +542,7 @@ class StaticWorkflowContract(unittest.TestCase):
                 self.assertNotEqual(source, changed)
                 self.assertNotEqual([], push_path_errors(changed))
 
+    @SKIP_NO_BASH
     def test_runner_smoke_contract(self):
         text, blocks = scripts(SMOKE)
         self.assertEqual(1, len(blocks))
@@ -489,10 +556,10 @@ class StaticWorkflowContract(unittest.TestCase):
                         RUNNER_NAME='fixture-runner', GITHUB_RUN_ID='123', GITHUB_RUN_ATTEMPT='1')
         for osname, expected in [('Linux', True), ('Windows', False)]:
             env = dict(base_env, RUNNER_OS=osname)
-            result = command('bash', '-c', script, env=env, check=False)
+            result = command(BASH, '-c', script, env=env, check=False)
             self.assertEqual(result.returncode == 0, expected)
         del base_env['GITHUB_RUN_ID']
-        result = command('bash', '-c', script, env=base_env, check=False)
+        result = command(BASH, '-c', script, env=base_env, check=False)
         self.assertNotEqual(result.returncode, 0)
 
     def test_setup_go_follows_go_mod(self):

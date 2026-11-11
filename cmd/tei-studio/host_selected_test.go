@@ -24,7 +24,7 @@ func TestNormalStudioBridgeUsesHostSelectedLocalInspector(t *testing.T) {
 	// registered (#4295). The seven projections the client names are now
 	// registered, and TestStudioBridgeRegistersEveryClientMethod keeps the two
 	// sides in step instead of leaving it to this count alone.
-	if reflect.TypeOf(bridge).NumMethod() != 12 {
+	if reflect.TypeOf(bridge).NumMethod() != 13 {
 		t.Fatal("Studio Bridge exported surface changed")
 	}
 	got := bridge.InspectSubject("workspace-1", "semantic-data", "sales.order")
