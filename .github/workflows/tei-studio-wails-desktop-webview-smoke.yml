@@ -135,7 +135,7 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           go version
-          if ((go version) -notmatch 'go1\.26\.10') { throw 'Go 1.26.11 is required' }
+          if ((go version) -notmatch 'go1\.26\.11') { throw 'Go 1.26.11 is required' }
           go mod tidy
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           git diff --exit-code -- go.mod go.sum
