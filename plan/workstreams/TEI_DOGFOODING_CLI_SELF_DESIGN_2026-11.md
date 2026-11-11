@@ -2179,3 +2179,57 @@ A 案は4件（パターン配置・契約の版・bind・interaction の形）�
 ### 直さないこと
 
 自己ビルド系（200s+）は設計意図どおりで `-short` がスキップする。CI の実行方法と 600 秒上限も変えていない。**`cmd/tei` には他に 10 箇所の `go build` 呼び出しがあり、それらが 1 テスト 1 ビルドかは未測定**である。
+
+## 69. 第67ラウンド（2026-11-11）: SQLite の sweep が期限切れを返さない断続失敗を、単一文化で解消
+
+第66ラウンドで起票した [#4252](https://github.com/hat47x/tei-platform/issues/4252) を解消した。**起票時の推定が間違っていたことを、実測で訂正した回**である。生出力は[第67ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND67_SWEEP_EXPIRED_2026-11-11/README.md)にある。
+
+### 推定の訂正
+
+起票時、CI のログに `SQLITE_BUSY` があったため「ロック競合」と判断し、4案（busy_timeout／再試行／直列化／WAL）を書いた。
+
+実際に測ると:
+
+| 試行 | 結果 |
+| --- | --- |
+| 素の `go test` 40回 | **0/40 失敗**（再現しない） |
+| `TestParallelClaim` 単独 50回 | ok |
+| **`-count=5`（1プロセスで5回）** | **FAIL** |
+| `-count=10` を3並列 | **3/3 FAIL** |
+
+しかも失敗していたのは `TestParallelClaim` ではなく **`TestSweepExpired`** だった:
+
+```text
+--- FAIL: TestSweepExpired (0.05s)
+    lease_test.go:76: SweepExpired len = 0, want 1
+```
+
+**`busy_timeout` と `SetMaxOpenConns(1)` は既に設定済み**で、ロック競合は原因ではなかった。
+
+### 原因
+
+`SweepExpired` が 2 文に分かれていた。
+
+```sql
+UPDATE claims SET state='expired', updated_at=datetime('now') WHERE ...
+SELECT ... WHERE state='expired' AND updated_at = datetime('now')
+```
+
+**`datetime('now')` は秒単位**である。文の間で秒が変わると SELECT は 0 行を返し（作業は成功しているのに「何も期限切れでない」と答える）、同じ秒に 2 回目を走らせると前回の行を**もう一度**返す。**時刻を「目印」に使って行を探し直す設計そのもの**が誤りだった。
+
+### 修正
+
+単一の `UPDATE ... RETURNING` にした。返す値は「この文が期限切れにした集合」そのものになり、探し直しが無くなる。`rows.Err()` も確認する。
+
+### 試験と変異
+
+| 試験 | 内容 |
+| --- | --- |
+| `TestSweepExpiredReportsOnlyWhatItExpired` | 1回目は1件、**同じ秒での2回目は0件** |
+| `TestSweepExpiredLeavesActiveClaimsAlone` | 有効な claim は sweep されず `working` のまま |
+
+**旧実装（2文）に戻すと 10 回反復で FAIL する。** 安定性は `-count=5` を 8 回で **0/8 失敗**（修正前は 3/3 失敗）。
+
+### #4252 の運用
+
+**4案はいずれも当てはまらなかった。** 黙って閉じず、**Issue を訂正するコメントを書いてから**修正で閉じる。

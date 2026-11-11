@@ -50,6 +50,7 @@
 - [`uses`経由で呼んだ能力の効果に補償が要らないことの確認](XTEA_LOWCODE_HOOK_USES_COMPENSATION_2026-11.md)（確認記録。フックの呼出しは参照Executorを通りデータを適用しないため、戻す対象が無い）
 - [Studio経路での`after-*`拒否時の取り消しの確認](XTEA_LOWCODE_HOOK_AFTER_CHANGE_STUDIO_REVERT_2026-11.md)（試験記録。拒否する規則を差し込むと適用した効果がStoreから取り消され`effectReverted`が出る。既定経路での到達は規則Pluginの供給待ち）
 - [Studioから`after-*`フックへ到達する配線の確認](XTEA_LOWCODE_HOOK_AFTER_CHANGE_STUDIO_2026-11.md)（試験記録。`ExecuteCommandWithReferenceStore`が変更を適用し、変更後のフックを実行する。`PhaseReport.Merge`を`internal/hook`に置いて両ホストで共有。UIからの呼出しは未着手）
+- [同じコマンドの効果を2プロセスが適用した場合の整合](XTEA_LOWCODE_OUTCOME_SHARED_EFFECT_2026-11.md)（確認記録。参照Storeは実行ごとに閉じるため、2プロセスとも成功し互いに干渉しない。整合は耐久Storeを持つ実装の論点として残る）
 - [プロセスを跨ぐ結末の検査](XTEA_LOWCODE_OUTCOME_CROSS_PROCESS_2026-11.md)（確認記録。結末が永続格納へ記録され、2つ目のプロセスが観測済みコマンドを再実行できないことを既存試験で確認）
 - [`after-*`拒否時の効果の補償の確認](XTEA_LOWCODE_HOOK_AFTER_CHANGE_REVERT_2026-11.md)（試験記録。拒否する規則を差し込むと適用した効果がStoreから取り消され`effectReverted`が出る。既定経路での到達は規則Pluginの供給待ち）
 - [CLIの`-reference-store`配線の実プロセス確認と引数検査の位置の修正](XTEA_LOWCODE_HOOK_AFTER_CHANGE_CLI_E2E_2026-11.md)（試験記録。ビルドした`tei`を起動して`after-*`到達と`INVALID_ARGUMENT`を確認。`-reference-store`のみの呼出しが成功していた欠陥を修正）
@@ -439,4 +440,4 @@
 - [コマンドパターンを設計しinteractionの形を名指しさせる](TEI_DOGFOODING_ROUND65_INTERACTION_FORM_2026-11-11/README.md)（#4169のA案4件目。commandパターンをCLIだけで設計し、interactionを行形式で書くと形が分からない点を直した。案内文を2度書き直した（違反トークンの埋め込み→契約が拒否する例→種に合った案内）。cmd/teiは単独564.8sでok、同時実行では600秒上限に達した）
 - [main が赤かった: TestParallelClaim は毎回失敗していた](DISPATCHER_LEASE_BUSY_2026-11-11/README.md)（#4218で入ったExternal Role Dispatcherのleaseが、2つのclaimが同時に書き込みロックへ昇格してSQLITE_BUSYになる。clean mainの別worktreeで5回とも再現し、flakyではないことを確認。NewLeaseStoreにSetMaxOpenConns(1)とPRAGMA busy_timeout=5000を足して直列化と待機を行う。2つを外すと同じ失敗が再現することを実測）
 - [cmd/teiの10分上限をビルド1回化で解消](TEI_DOGFOODING_ROUND66_CLI_TEST_TIME_2026-11-11/README.md)（第65ラウンドで記録したFAILの原因を測定。runCLIForClassificationがケースごとにgo buildしていた。sync.Onceで1回にし、当該テスト62.6s→5.3s、パッケージ564.8s→232.9s。テストコードのみのため変異試験は行わず、全603テストokとvet cleanで確認）
-
+- [SQLiteのsweepが期限切れを返さない断続失敗を単一文化で解消](TEI_DOGFOODING_ROUND67_SWEEP_EXPIRED_2026-11-11/README.md)（#4252。起票時の「ロック競合」推定は誤りで、原因はdatetime('now')の秒単位照合だった。-count=5で3/3再現、UPDATE...RETURNINGの単一文化で0/8。4案はいずれも当てはまらず、Issueを訂正）
