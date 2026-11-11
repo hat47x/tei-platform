@@ -59,9 +59,7 @@ func TestRecentOrdersSameIDHasTwoDistinctSourceAndParameterContracts(t *testing.
 			name: "xtea",
 			source: xteaSQL,
 			must: []string{
-				"from sales.order", ":status_operator", ":status",
-				"order by status asc, order_id asc",
-				"limit :page_size offset :page_offset",
+				"select order_id, customer_id", "from sales.order", ":status",
 			},
 			mustNot: []string{"FROM public.orders", ":from", "o.total_amount"},
 		},
@@ -82,7 +80,7 @@ func TestRecentOrdersSameIDHasTwoDistinctSourceAndParameterContracts(t *testing.
 	if !strings.Contains(productSeed, "CREATE TABLE public.orders (") ||
 		strings.Contains(productSeed, "CREATE TABLE sales.order") ||
 		!strings.Contains(xteaPattern, "filter sales.order.status { eq ne }") ||
-		!strings.Contains(xteaPattern, "page-size 20 parameter page_size offset page_offset") {
+		!strings.Contains(xteaPattern, "page-size 20") {
 		t.Fatal("product seed and xtea Pattern contracts were silently conflated")
 	}
 
@@ -91,8 +89,9 @@ func TestRecentOrdersSameIDHasTwoDistinctSourceAndParameterContracts(t *testing.
 	//
 	// The reference SQL currently requires :from, but its .tei declaration
 	// has no input clause for it. Record this as an explicit unresolved
-	// qualification. Changing the declaration must update this Expected
-	// rather than silently claiming that the earlier PG fixture was runnable.
+	// qualification. Changing the declaration must update this Expected.
+	// XTEA main currently has only :status. Draft #4076 adds operator and
+	// page controls; this main test must not require an unmerged draft.
 	if missing := undeclaredNativeSQLInputs(referenceSQL, referenceDecl); !reflect.DeepEqual(missing, []string{"from"}) {
 		t.Fatalf("reference recent_orders input gap changed: got %v want [from]; review R0 qualification", missing)
 	}
