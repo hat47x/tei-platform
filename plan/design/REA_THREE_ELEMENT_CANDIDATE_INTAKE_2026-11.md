@@ -2,7 +2,7 @@
 
 - **状態**：候補抽出・CLI入口・レビュー票の保存・採用前後比較まで。Owner受理・小規模移行実証・SHOは未着手。
 - **Owner**：[TEI #3394](https://github.com/hat47x/tei-platform/issues/3394)。
-- **関連**：共通API [ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)／[#1158](https://github.com/hat47x/tei-platform/issues/1158)／[#3419](https://github.com/hat47x/tei-platform/issues/3419)、Model Map [#3866](https://github.com/hat47x/tei-platform/pull/3866)、三視点 [THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md](THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)、T0/T1-A受入票 [REA_EXTERNAL_EVIDENCE_T0_T1_ADMISSION_2026-11.md](REA_EXTERNAL_EVIDENCE_T0_T1_ADMISSION_2026-11.md)。
+- **関連**：共通API [ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)／[#1158](https://github.com/hat47x/tei-platform/issues/1158)／[#3419](https://github.com/hat47x/tei-platform/issues/3419)、Model Map [#3866](https://github.com/hat47x/tei-platform/pull/3866)、三視点 [THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md](THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)、T0/T1-A受入票（`REA_EXTERNAL_EVIDENCE_T0_T1_ADMISSION_2026-11.md` は未作成のため本文のみ参照）。
 - **実装**：[`internal/reacandidate/`](../../internal/reacandidate/)、土台の三要素モデルは #4283 の [`internal/threeelement/`](../../internal/threeelement/)。
 
 この文書は、後続の実装者が残作業を迷わず再開できるように、**現時点で確定した契約**と**未決事項**と**作業順**を分けて書く。設計判断の正本はADRとIssueであり、ここは機能単位の設計本文である。
