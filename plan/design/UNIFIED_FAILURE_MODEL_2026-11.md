@@ -124,36 +124,37 @@ if err := transaction.Commit(ctx); err != nil {
 | `internal/command/execution_failure_test.go` | `ExecutionError`の契約適合、業務拒否（期間クローズ・業務拒否・資源競合）、技術障害（commit失敗・実行失敗）、包んでも残ること |
 | `internal/hook/hook_failure_test.go` | `hook.Error`の適合、スコープ拒否＝業務拒否、実装障害＝技術障害 |
 | `internal/security/effectcommit/commit_failure_test.go` | `CommitUncertainError`が`lookup_first`＋効果不明を保つこと、包んでも失われないこと |
-| `internal/saveunit/failure_test.go` | `SaveError`の分類（空unit・cycle＝業務拒否、store拒否を包んでも業務拒否のまま、transient＝再送可、commit失敗＝照会先行）、参照storeの拒否、hookの拒否、二重createの拒止 |
 | `internal/studiohost/command_failure_classification_test.go` | 入力不正・認可拒否が`business_rejection`/`not_retryable`で出ること、commit失敗が`technical_failure`/`lookup_first`/効果不明で出ること、読込失敗の既定 |
+| `cmd/tei-studio/bridge_failure_axes_test.go` | Wailsブリッジが三軸を落とさないこと（Go構造体とJSONの両方） |
+| `tools/reference-generator-selection`（Java） | 生成したJavaが4軸を持ち、業務拒否と技術障害が違う値を出すこと。`javac`でコンパイルし実行して確認 |
 | `reference/interface-adapter` | トランスポート拒否（`UNAUTHENTICATED`・`FORBIDDEN`・`STALE_REVISION`）＝業務拒否 |
 | `cmd/tei/cli_view_failure_test.go` | `commandFailure`の既存の契約（未知のerrorは変換しない） |
 
 ```
-ok  tei/internal/failure                1.491s
-ok  tei/internal/command                3.001s
-ok  tei/internal/hook                   2.249s
-ok  tei/internal/security/effectcommit  1.943s
-ok  tei/internal/studiohost             4.194s
-ok  tei/internal/saveunit               1.186s
-ok  tei/reference/interface-adapter     3.518s
-ok  tei/internal/database/sqlgen        1.119s
+ok  tei/internal/failure                1.981s
+ok  tei/internal/command                3.441s
+ok  tei/internal/hook                   1.996s
+ok  tei/internal/security/effectcommit  3.505s
+ok  tei/internal/studiohost             9.854s
+ok  tei/reference/interface-adapter     5.856s
+ok  tei/cmd/tei-studio                  6.980s
+ok  tei/tools/reference-generator-selection (TestJava* / TestGoAnd*)  139.931s
 ```
 
 ## 5. 適用済みの範囲と、残っている範囲
 
 ### 適用済み
 
-Go実行基盤の主要な境界——Command・Hook・EffectCommit・Save・Database（sqlgen）・Studio bridge・CLI・参照Adapter。
+Go実行基盤の主要な境界——Command・Hook・EffectCommit・Studio bridge・CLI・参照Adapter。加えてJava生成ターゲット（`Main`・`Main-long-running`）。
 
 ### 未適用
 
 | 範囲 | 状態 |
 | --- | --- |
-| Data Provider / Operator 層 | `internal/database/sqlgen`の`DatabaseFailure`のみ。Providerごとの分類（postgres/sqliteのerror code）は未整備 |
-| Java等の生成ターゲット | 未着手。言語固有の例外はAdapterで吸収する方針は本書のとおりだが、実装はない |
+| Data Provider / Operator 層 | 未着手。`internal/database/sqlgen`が`main`に無いため、このPRの範囲外。SQLSTATE/result codeでの分類は別ブランチ（`feat/sql-to-standard-query-conversion-20261111`）に実装済みで、sql-dialect作業が`main`へ入ってから持っていく |
 | `partial_success` | 型は定義済み。現状どの境界もこの分類を返さない。複数Effectの一部確定（[Script設計のF09](SCRIPT_INVOCATION_FAILURE_AND_RECOVERY_DESIGN_2026-11.md)）で初めて使う |
-| Web Host（Wails） | `studiohost`は通るが、Wails固有の橋は未確認 |
+| `LineAmounts.java.tmpl`（java-library-template） | `main`にテンプレートが無いため範囲外。業務/技術の区別はあるが再試行・効果不明の軸が無い |
+| Web Host（Wails）の実ブラウザー確認 | ブリッジが三軸を落とさないことはGo試験で確認済み。実WebView2での表示は未確認 |
 
 ### 生成ターゲットへの展開方針
 
@@ -172,4 +173,6 @@ Go実行基盤の主要な境界——Command・Hook・EffectCommit・Save・Dat
 - `ExecutionError`・`hook.Error`等の**フィールドと既存メソッドは不変**。`errors.As`による既存の参照はそのまま動く。
 - JSON応答には`kind`・`retryable`・`effectUnknown`が**追加**される。いずれも`omitempty`なので、契約を持たないerrorでは従来と同じJSONになる。
 - `cli_view.go`の`commandFailure`は戻り値を変えていない（#3807の既存試験がそのまま通る）。
-- `saveunit`は `ReferenceFailure`・`ReferenceRecordExists`/`ReferenceRecordMissing` を試験ファイルから製品ファイル（`internal/saveunit/failure.go`）へ移した。試験ファイルが製品コードを参照していたため、packageがビルドできない状態だった。
+- `studiohost.Failure`は`MarshalJSON`を持つ。未分類のままだと三軸を補うため、**同じJSONを出すがフィールドが増える**。明示値を優先するので、境界がerrorから写した分類は上書きされない。
+- `cmd/tei`は`three-element`のallowlist不在理由をコメントで記録した（コードの挙動は変わらない）。
+- 生成Javaは`{"state":"error","code":...}`に4軸が増える。Goテンプレートも同じ4軸を出す。
