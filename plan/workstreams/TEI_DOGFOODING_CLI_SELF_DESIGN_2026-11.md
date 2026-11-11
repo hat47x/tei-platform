@@ -2264,3 +2264,41 @@ MCP=%v", version, cliDoc, mcpDoc)
 - **CI がこの状態を検出していたかは確認できなかった。** 最初の問い合わせで誤った workflow 名（`repository-health.yml`）を使い、正しい名前は `tei-repository-health-ci.yml` だと分かったが、再問い合わせの前に切り替えた。
 - **壊れたファイルが main に入った経路（`6ea1523cc`）は特定していない。** レビューと CI のどちらがすり抜けたかは分からない。
 - 変異試験は無い（構文修復で振る舞いが変わらないため）。gofmt・vet・パッケージの試験で確認した。
+
+## 71. 第68ラウンド（2026-11-11）: 環境を設計し、database・environment を CLI で読めるようにする
+
+まだ触っていない層として environment を選び、CLI の診断だけで staging 環境を設計した。生出力は[第68ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND68_ENVIRONMENT_LAYER_2026-11-11/README.md)にある。
+
+### 設計（1往復）
+
+| Attempt | 応答 | 学んだこと |
+| --- | --- | --- |
+| 1 | `DATABASE_PROVIDER_PLUGIN_MISSING environment staging instance sales_core.staging provider postgres has no resolved database-provider plugin` ＋ `MIGRATION_PROVIDER_PLUGIN_MISSING` | 環境は使う provider の plugin を自分で解決する |
+| 2 | `ok`（`bundle tei.reference.providers ^1` を追加） | バンドル宣言で解決 |
+
+**診断が instance 名・provider 名・migration tool 名まで名指ししたので、1往復で通った。**
+
+### 読み返しで見つけた欠落
+
+設計は通ったが、`database` も `environment` も CLI で読めなかった。`model catalog` には出ず、`inspect` と `trace` は `UNSUPPORTED_SUBJECT_KIND`、`world` だけが返した。**`model overview` は既に `notCoveredKinds` で「載っていない」と宣言していた**（第59ラウンドの E 案）。宣言と実害が一致していた。
+
+### 修正
+
+`database` と `environment` を `inspect` に追加。受理種 16→**18**。
+
+```text
+database     sales_core -> ok  sourceStatus=indexed
+environment  staging    -> ok  sourceStatus=indexed
+database     nope_core  -> SUBJECT_NOT_FOUND
+environment  nope       -> SUBJECT_NOT_FOUND
+```
+
+**両方 `indexed`** である（第58ラウンドの配備層は `not-indexed`）。Source Index が既に記録していたため。
+
+### `database-instance` を追加しなかった理由
+
+**World 直下の宣言ではない**（`environment.Environment` の中にあり、ID も環境ごとに閉じている）。単体 kind にすると「どの環境のインスタンスか」が曖昧になる。
+
+### 変異
+
+`environment` の dispatch を外す／`database` の dispatch を外す、の2種が落ちる。**第58ラウンドで足した種非依存の検査が、試験を書き換えずに両方を捕まえた。**
