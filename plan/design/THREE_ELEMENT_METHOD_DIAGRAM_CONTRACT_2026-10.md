@@ -791,3 +791,12 @@ Readに失敗した場合はValidationが`false`なのではなく**未観測**�
 - **証拠更新の規則**：本節の新Test/CI作成だけではPASSと言わない。実Go CLI＋Nodeの**exact-head Native CI**と全Repository Healthは別に記録し、差分をmainへ統合する前に現在のSource/CI/Owner差を再資格化する。
 
 #1124の直接P0（同一Workbench Graph/Command、旧DOM・現行Source/Grant/Disclosure）を先送りしない。本Referenceは#3728のValidation計算、#3492のSource Index/意味の区別、#3321のWorkspace同Token、#3543の実Workbench A/Jを再実装せず、**Source値を別言語のConsumerへ渡した限定実証**として責務を足す。T22/T23、実Business/Function Role、実三視点Studioは継続して**NOT PROVEN**。
+
+
+### 23.3 実Go＋Nodeにより限定資格が成立（2026-11-11）
+
+[新Draft #4396](https://github.com/hat47x/tei-platform/pull/4396) のexact head `af1f7bb5a60a965a8ea0fe0dc71a95aa9b6a6949`で、専用[GitHub Actions run #42999527960](https://github.com/hat47x/tei-platform/actions/runs/42999527960)の`real-cli-node`ジョブは**completed/success**。実行ログではGo 1.26.11／Node 22.16.0、CLI実ビルド版照合、既存実Go Workspace回帰PASS、Nodeの独立テスト**1/1 PASS（正常／検証NGの2つの一時Workspaceを同じテストで観測）**、一時Source Byte不変、Git Checkout cleanを確認した。ログには`valid:true,unsound:false,catalogRead:true,rolesFromCLI:false,sameAtomicRead:false,currentDisclosureProven:false`を明示した。
+
+**合格範囲**: 公開Fixtureの実Go CLI `model catalog`と`validate -json`の独立応答一致、Canonical Data Subjectの一意・Source-indexed観測、実`ModelCatalog.validation`のNode Binderへの実値の受け渡し、read成功のままValidation NGを維持すること。**不合格ではなく未実証**: Function/Businessの実Role解析、現在のPolicyと非公開Countsの防止、同一Atomic Read Attempt／物理Root、Workbenchの実Graph/Command/DOM/ARIA、Source編集往復、Owner Acceptance／Effect。旧合成37件のPASSを実Workbench受入へ合算しない。
+
+この行の**実測は固定headに属し**、本節追記後の新HEADのRepository Healthと専用CIは別版として再取得する。PRをDraftのまま維持し、受入・main統合はOwnerレビュー／現在資格へ委譲する。
