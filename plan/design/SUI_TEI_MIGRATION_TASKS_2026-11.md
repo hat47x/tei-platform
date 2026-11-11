@@ -5,7 +5,7 @@
 - 対象: SUI SensemakingのDocument/Card/Island/Tree/Canvas/Relation/Revision/Reviewと、TEIの*.tei.md（Canonical定義）＋Pluginによる設計〜実装への移行
 - 正本との関係: [SUI_MIGRATION_EXTENSION_AND_SPLIT_DESIGN_2026-10.md](SUI_MIGRATION_EXTENSION_AND_SPLIT_DESIGN_2026-10.md)（SUI側の分割とscope isolation）と[SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md](SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md)（Stage 0のshadow conformance）を置き換えない。本書は「2026-11-11にSUI側でread-only参照が実装された知見」と、そこから展開した移行タスクの分解だけを扱う。作業票の試験IDは[SUI_TEI_MIGRATION_IMPLEMENTATION_PACKET_2026-11.md](SUI_TEI_MIGRATION_IMPLEMENTATION_PACKET_2026-11.md)が持つ（§1.0）
 - 根拠: SUI PR #3429（統合済み `5be212ca`。`GET /docs/{doc_id}/tei/sui-reference`）、SUI ADR-0116、SUI `02_Architecture/api.md` §2.18、SUI #3401
-- 主張しないこと: TEIのCore・Plugin契約・`CapabilityKind`の変更を求めない。SUIがTEIへ移管されることを保証しない。第二の消費者が出るまでの標準化を主張しない
+- 主張しないこと: TEIのCore・Plugin契約・`CapabilityKind`の変更を求めない。SUIがTEIへ移管されることを保証しない。第二の消費者が出るまでの標準化を主張しない。§7.1の代行判断はOwnerの正式採択ではない
 
 ## 1. 本文書の役割
 
@@ -267,23 +267,27 @@ type DocumentId from std.identifier
 type CardId from std.identifier
 type IslandId from std.identifier
 
+// 参照envelopeは本文・題名を運ばないため、型にも置かない。運ぶのは状態だけ。
 data Document {
     attribute documentId type sui.document_id
+    attribute revisionState type std.code
+    attribute disclosureState type std.code
     relation cards to sui.card many
     relation islands to sui.island many
 }
 
 data Card {
     attribute cardId type sui.card_id
-    attribute text type std.text
     attribute x type std.decimal
     attribute y type std.decimal
     attribute claimType type std.code
     attribute holdState type std.code
+    attribute textReviewState type std.code
 }
 
 data Island {
     attribute islandId type sui.island_id
+    attribute titleReviewState type std.code
 }
 
 data Containment {
@@ -298,11 +302,15 @@ data Affiliation {
     relation island to sui.island one
 }
 
+// Edge端点は kind+id 属性。型付きrelationは静的な対象型を一つ要求するため、
+// island->island の Edge が表現できなくなる。
 data Edge {
     attribute edgeId type std.identifier
     attribute edgeType type std.code
-    relation fromCard to sui.card one
-    relation toCard to sui.card one
+    attribute fromKind type std.code
+    attribute fromId type std.identifier
+    attribute toKind type std.code
+    attribute toId type std.identifier
 }
 
 data IslandParent {
@@ -319,10 +327,12 @@ data IslandParent {
 - 受入（**すべて実行済み**）:
   1. `go run ./cmd/tei validate -workspace reference/sui-adoption/workspace-m2` が通る
   2. `containmentAndAffiliationSeparate: true`（別Dataとして解決し、各自occurrence IDを持つ）
-  3. `parallelEdgesDistinguishable: true`（Edgeが自分のIDを持つ）
-  4. `undeclared` が空でなく tree/canvas/review を含む
-  5. `instanceCount: 0` / `canonicalizedInstanceData: false`（instanceを昇格しない）
-  6. 定義が無いworkspaceでは fail closed
+  3. `parallelEdgesDistinguishable: true`（Edgeが自分のIDと kind+id 端点を持ち、型付きrelationを使っていない）
+  4. `reviewAndRevisionDeclared: true`（document の revision/disclosure、card の textReview、island の titleReview）
+  5. `sui.card.text` が宣言されていないこと（参照envelopeは本文を運ばない）
+  6. `undeclared` が空でなく tree/canvas/review・本文を含む
+  7. `instanceCount: 0` / `canonicalizedInstanceData: false`（instanceを昇格しない）
+  8. 定義が無いworkspace・型付きrelationのEdgeでは fail closed
 - 負例（実測）: 同じData名の二重宣言は`DUPLICATE_SEMANTIC_ELEMENT`、未定義typeは`UNKNOWN_SEMANTIC_ATTRIBUTE_TYPE`。containmentとaffiliationを一つの`belongsTo`へ統合する案、`text`をcardの自然キーにする案、fixtureのinstanceをCanonicalへ写す案は採らない
 - 確認コマンド:
 
@@ -463,14 +473,27 @@ M6（scope conformance）は独立
 
 ## 7. Owner判断が必要な論点
 
-1. `source.status`と文書単位の開示宣言をproducer契約にするか（M1）
-2. カード本文・題名を業務面へ出してよいか（#3369）。参照経路は出していません
-3. `revoked`を「参照の無効」と「Sourceの削除」のどちらとして扱うか
-4. `documentDigest`（内容指紋）とSUIの保存revisionを同一視しないことを、どう契約に載せるか
-5. Treeの閲覧状態（折り畳み・focus）をCanonicalへ入れるか、対象外とするか
-6. Canvasのpolygon・placardをCanonicalへ入れるか、Interaction境界だけにするか（#993）
-7. review attributionをDataとして持つか、監査・Source側に委ねるか
-8. SUI固有の語彙（`Card`・`Island`・`human_reviewed`）を、どこまで一般化の候補として外へ出すか
+### 7.1 代行判断（2026-11-11、保守側で決定済み）
+
+利用者の指示にもとづき、以下の8論点を**保守側（安全不変条件を緩めない側）で代行決定**しました。これらは「現状の境界を維持する」決定であり、いずれも**覆す条件**を明記します。本来のOwnerがこれと異なる判断をした場合は、その判断を優先し、この節を更新します。
+
+| # | 論点 | 代行判断 | 根拠 | 覆す条件 |
+| --- | --- | --- | --- | --- |
+| 1 | producer契約（`source.status`・`disclosure.scope`） | **optional consumer input として許可**。producerへの義務は課さない | consumer（SUI PR #3429）が既に実装済みで、欠落時は`unknown`に倒れる。型を広げずに済む | TEI/TAIが別のfield pathを採択した場合。consumerの既定が`unknown`なので、誤読は生じない |
+| 2 | 本文・題名の業務面公開 | **出さない（`textIncluded=false` 維持）** | SafeMode・未レビュー非公開・#3369未決の不変条件を緩めない | #3369のOwner判断 **かつ** M4の開示設計が揃った場合のみ |
+| 3 | `revoked`の意味 | **「参照の無効」**として扱う。Source実体の削除は意味しない | consumerは409を返してキャッシュfallbackしない。実体の削除はこの層の知るところではない | Source index（#2743）に削除の意味論ができた場合 |
+| 4 | `documentDigest`と保存revision | **同一視しない**。digestは内容指紋、revisionはSource版として別欄で維持 | 両者を同じとすると「変わっていない」を誤って表示できる | なし（混同しないことは非決定として維持する） |
+| 5 | Tree閲覧状態 | **Canonical宣言に含めない**。参照が運ぶのは並び順のみ | 第二の消費者が現れず、語彙を広げる根拠がない | 閲覧状態を必要とする第二のConsumerが現れた場合 |
+| 6 | Canvas polygon・placard | **Canonical宣言に含めない**。x/yのみ。Interaction境界で扱う | #993のReferenceの範囲。SUIのnative assetのまま | #993でCanonical投入が決まった場合 |
+| 7 | review attribution | **Dataとして持たない**。監査・Source側に委ねる | 参照envelopeは reviewer・時刻を運ばない。型に置くと実態とずれる | 監査設計が attribution をモデル内に要求した場合 |
+| 8 | SUI語彙の一般化 | **一般化しない**。`sui.*`はSUIのnative assetのまま | #2497の基準（第二のApplicationで再現されるまで標準化しない）を満たさない | 第二のApplicationで同じ構造が再現された場合 |
+
+**代行判断の位置づけ**: 上記は判断の代行であり、Ownerの正式な採択ではありません。§8の委譲先Issueでは、これらの判断を「代行」として記録し、覆す条件と併せて提示します。
+
+### 7.2 未代行（判断材料が足りないもの）
+
+- `documentDigest`を「どう契約に載せるか」の**具体的な文言**は、#2595（照合済みbyte）と#2743（Source index）の設計が固まってからにします。現状は「別欄で維持する」という非決定のみ。
+- M1のproducer契約の**具体形**（`statusReason`・`observedAt`・`policyRef`の有無）は、TAI側の担当と合わせてからにします。consumerは未知keyを無視するため、先に実装しても後方互換です。
 
 ## 8. 既存Issueへの委譲
 
