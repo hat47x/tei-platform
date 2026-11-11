@@ -242,5 +242,5 @@ Observationは`data-element`候補へ、有向Relationは`cross-reference`候補
 
 - 実REAの**provider実invocation witness**。REAは起動し実出力を取得したが、`selected→invoked`の対応、provider descriptor `version`が実は`"1"`（`6.8.0`ではない）であることの意味、実行物の署名・digestは未確認。REAが報告する`provider.version`はREAパッケージ版ではなく**Provider実装の版**であり、これが6.8.0と一致しないことは記録しておく
 - Owner受理、Shared Acceptance接続、SHO、移行実証、生成コード
-- `cmd/tei`全体の再実行結果（実行中）
+- `cmd/tei`全体：`go test ./cmd/tei/ -count=1 -timeout 3000s` が **PASS（672.3秒）**。coverage修正後も通る
 - CIの全項目。`bounded-design-context`の1件はPR #4316でpassを確認したが、他のworkflowは未確認
