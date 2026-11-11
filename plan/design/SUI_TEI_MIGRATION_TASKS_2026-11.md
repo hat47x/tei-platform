@@ -3,19 +3,39 @@
 - 状態: 評価待ち（未採用）。実装・Reference変更・受入の根拠にしない
 - 日付: 2026-11-11（§5を具体化: 2026-11-11）
 - 対象: SUI SensemakingのDocument/Card/Island/Tree/Canvas/Relation/Revision/Reviewと、TEIの*.tei.md（Canonical定義）＋Pluginによる設計〜実装への移行
-- 正本との関係: [SUI_MIGRATION_EXTENSION_AND_SPLIT_DESIGN_2026-10.md](SUI_MIGRATION_EXTENSION_AND_SPLIT_DESIGN_2026-10.md)（SUI側の分割とscope isolation）と[SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md](SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md)（Stage 0のshadow conformance）を置き換えない。本書は「2026-11-11にSUI側でread-only参照が実装された知見」と、そこから展開した移行タスクの分解だけを扱う
-- 根拠: SUI PR #3429（`GET /docs/{doc_id}/tei/sui-reference`）、SUI ADR-0116、SUI `02_Architecture/api.md` §2.18、SUI #3401
+- 正本との関係: [SUI_MIGRATION_EXTENSION_AND_SPLIT_DESIGN_2026-10.md](SUI_MIGRATION_EXTENSION_AND_SPLIT_DESIGN_2026-10.md)（SUI側の分割とscope isolation）と[SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md](SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md)（Stage 0のshadow conformance）を置き換えない。本書は「2026-11-11にSUI側でread-only参照が実装された知見」と、そこから展開した移行タスクの分解だけを扱う。作業票の試験IDは[SUI_TEI_MIGRATION_IMPLEMENTATION_PACKET_2026-11.md](SUI_TEI_MIGRATION_IMPLEMENTATION_PACKET_2026-11.md)が持つ（§1.0）
+- 根拠: SUI PR #3429（統合済み `5be212ca`。`GET /docs/{doc_id}/tei/sui-reference`）、SUI ADR-0116、SUI `02_Architecture/api.md` §2.18、SUI #3401
 - 主張しないこと: TEIのCore・Plugin契約・`CapabilityKind`の変更を求めない。SUIがTEIへ移管されることを保証しない。第二の消費者が出るまでの標準化を主張しない
 
 ## 1. 本文書の役割
 
-SUI側で「TEI Referenceのartifactを、型付きのread-only参照として読む」経路が実装されました（2026-11-11）。これは移行のStage 0に当たる実装であり、次の三つを初めて実コードで确定させます。
+SUI側で「TEI Referenceのartifactを、型付きのread-only参照として読む」経路が実装されました（2026-11-11）。これは移行のStage 0に当たる実装であり、次の三つを初めて実コードで確定させます。
 
 1. SUIの主要な構造が、TEI側の型へ落としたとき、どこまでが失われずに運べるか
 2. 「運べない」が、部分取得・未レビュー・非公開・失効・版とどう区別して現れるか
 3. 既存のSUI経路（DocumentV1）と比べて、参照経路にどの実利と代償があるか
 
 本書はこの知見を、*.tei.md＋Pluginという移行先の構成へ翻訳し、今後必要なタスクを**後続の実装者がそのまま作業票にできる具体性**まで分解します。判断の採用は各IssueとADRの仕事で、本書は分解と論点の整理までを行います。
+
+### 1.0 姉妹文書との役割分担（2026-11-11 追記）
+
+同じ日に、本書のM1〜M6をPR単位の作業票へ落とした[SUI_TEI_MIGRATION_IMPLEMENTATION_PACKET_2026-11.md](SUI_TEI_MIGRATION_IMPLEMENTATION_PACKET_2026-11.md)が別のPR（#4313）として統合されました。**内容の正本を二重に持たない**よう、役割を次で分けます。
+
+| 文書 | 扱うもの | 扱わないもの |
+| --- | --- | --- |
+| 本書 | なぜ移行するか、何が実証されたか（§2）、SUI構造との対応（§3）、載り先（§4）、タスクの依存とブロッカー（§5.8）、§5.9の読み継ぎ、Owner判断（§7） | 1タスクの試験ID・完了条件の詳細 |
+| 実装パケット | 各Work Packetの変更範囲・型・試験ID・受入コマンド・Definition of Done・Owner gate登録 | 対応表・損失inventory・タスク間の依存 |
+
+実装者が着手するときは、**どのタスクをするか**を本書 §5.8で決め、**そのタスクの試験と完了条件**を実装パケットで引きます。両者が食い違う場合は、理由の記述を本書、試験の具体を実装パケット側で直し、PR本文に食い違いを書きます（どちらかを黙って優先しない）。
+
+**実装パケットの入力を、統合済みのSUI consumerで実際に確かめました（2026-11-11、SUI main `5be212ca`）。** パケットは開示を `document.disclosure.scope` に置く案ですが、統合済みのconsumerは次の両方を受けます。
+
+- `document.disclosure.scope = restricted` → `SuiReferenceDisclosureRestricted`（routeは403）
+- `source.status = revoked`（`statusReason`・`documentRevision`・`observedAt`を同梱）→ `SuiReferenceSourceUnavailable`（routeは409）
+- `source.status = future-value` → `unknown` に倒れ、`source-status: unresolved` が損失に入る
+- `document.disclosure.scope = unknown` → 参照は返るが `textIncluded=false`、本文は `not-carried`
+
+したがって、パケットのfield pathは**consumerを変更せずに**実装できます。ただしこれは「consumerがその形を読める」ことの確認であり、producer契約として採択された意味ではありません（§7-1のOwner判断待ちのまま）。
 
 ### 1.1 登場するリポジトリと役割
 
