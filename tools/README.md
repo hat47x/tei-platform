@@ -127,6 +127,7 @@
 | [`reference-build-authoring-intent/`](reference-build-authoring-intent/) | 人・生成AIが書くビルド宣言から、確定したビルド計画を導出する境界の確認 |
 | [`reference-build-execution-binding/`](reference-build-execution-binding/) | ビルド実行と主体・対象の結び付け |
 | [`reference-go-module-closure-preflight/`](reference-go-module-closure-preflight/) | Go対象の選択Module閉包をオフラインで分類する事前観測。`supported`/`external-unresolved`/`missing-module`/`unknown`を区別し、Build・Artifact・権限は行わない（#2831 SB-0a） |
+| [`reference-external-role-dispatcher/`](reference-external-role-dispatcher/) | `AGENTS.md`の「モデル → ロール → 作業」分離をGitHub Issue/PR上の最小Dispatcherとして動かす。ロール別の作業取得・モデル選択・排他lease・エスカレーション・レビュー依頼を一つのCLIで確認でき、DSH/`gh` adapterは`dry-run`既定（#4218） |
 | [`reference-build-plan-authoring/`](reference-build-plan-authoring/) | あるpackageとmodule内の閉包を名指す`BuildPlan`を書く。`go list -deps`から閉包を取り、**digestはresolverで実ファイルから計算**する（宣言はできない）。§4.46の「ビルドが読むsourceだけを名指す」を満たす計画を、73件でも手で並べずに作れる（#2831 SB-C0 §4.49） |
 | [`reference-go-build-from-plan/`](reference-go-build-from-plan/) | `BuildPlan`を読み、**計画が名指すsourceを同じrootから解釈し直して突き合わせ**、一致したときだけGoのcommandをビルドする。計画fingerprint・宣言byteのdigest・成果物digest・stateを申告し、lockを自分で作って検証する（#2831 SB-C0 §4.39 段1） |
 | [`reference-go-build-with-supply/`](reference-go-build-with-supply/) | 供給だけを使う隔離環境で実Buildし、成果物digestとSource閉包の資格を別々に記録する。両者が食い違うX1を明示する（#2831 SB-B事前確認） |
@@ -196,6 +197,7 @@
 | --- | --- |
 | [`reference-data-first-persistence/`](reference-data-first-persistence/) | Dataに手書きの宣言を重ね、実PostgreSQLで実行前の確認・書込み・別接続の再読込を一巡する確認（生成・認可・製品E2は対象外） |
 | [`reference-external-query-evidence/`](reference-external-query-evidence/) | 外部問合せの実行根拠を確認 |
+| [`reference-external-role-dispatcher/`](reference-external-role-dispatcher/) | ロール別の作業取得・モデル選択・排他 lease・エスカレーション・PR レビューを一つの CLI で確認（#4218。DSH adapter は dry-run 既定で、実際の自動起動は行わない） |
 | [`reference-month-end-close-correction/`](reference-month-end-close-correction/) | 技術検証用サンプル`month-end-close-correction`の工程1〜6。版つきの営業日カレンダーから締め日・ジョブの予定・支払期日を確定して改訂の影響を記録し、CP932の固定長ファイルを宣言した仕様で取り込んで模擬のメッセージと一つの事象に照合し、対象月を業務キーとする締めジョブをDBの時計による貸与とDB側のフェンシングトークン検査で実行する。締めの後に順不同で届く事象を版と方針で受け付け、有効時点と記録時点の二つの軸の単価で赤黒の伝票を計上し、請求書単位・税率別の税額をPostgreSQL、Go、SQLiteで比べて締め時点の帳票をバイト単位で再出力する(PostgreSQLの一つのインスタンス。合成のファイル、模擬のメッセージ、合成の事象。SQLiteはPythonの標準モジュールでのメモリ上の計算) |
 | [`reference-order-entry-persistence/`](reference-order-entry-persistence/) | `order_entry`の注文を、Persistence Mappingから導いたDDLの使い捨てPostgreSQLへ書き込み、別プロセスが読み戻す確認（#1127）。実行前に物理schemaとSource revisionを別々に確かめ、書込み直前の許可確認を経て更新する。Source・Host許可は合成で、通常のWeb経路・生成CRUD・人的受理・製品E2は対象外 |
 | [`reference-order-assist-provider-offline/`](reference-order-assist-provider-offline/) | 技術検証用サンプル`order-assist-provider`の拡張工程7・8と複合シナリオC5。見積の規則の第2世代を、端末(JavaScript)、サーバ(実行体)、一括の見直し(WASI)へ配布する途中で旧版の実行先を判定から外し、オフラインの模擬端末(`reference-offline-storage`に保存)から操作単位で同期して項目単位の競合と旧単価を再検証で止め、旧世代の端末の未知の項目を保つ。値引きの承認を見積の照合値と規程の版に固定し、期間つきの代理、差戻し、規程の移行を扱い、別プロセスの模擬の外部与信の結果不明を照会で確定し、補償の途中で止めた作業者を収束させる(PostgreSQLの一つのインスタンス、同じ機械の上の模擬の端末と外部与信) |
