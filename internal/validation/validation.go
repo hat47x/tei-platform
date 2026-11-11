@@ -106,6 +106,10 @@ func Validate(w ir.World) []Diagnostic {
 	out = append(out, validatePeriodCalendars(w)...)
 	out = append(out, validateSemanticPeriods(w)...)
 	out = append(out, validatePeriodCapabilityEffectsOf(w)...)
+	// #4347: a period that refuses a change kind while closed and names a
+	// correction capability whose effect is that same kind cannot both hold.
+	// The run-time exemption in internal/command keeps such a declaration
+	// working; this check keeps the contradiction visible to its author.
 	out = append(out, validateClosedRejectsAgainstCorrectionOf(w)...)
 	out = append(out, validateSemanticEffectRules(w)...)
 	out = append(out, validateSemanticRunPlans(w)...)
