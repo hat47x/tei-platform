@@ -1,0 +1,4 @@
+workspace: sui_reference_canonical
+formatVersion: 1
+sources:
+  - semantic

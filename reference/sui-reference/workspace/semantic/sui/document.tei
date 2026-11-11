@@ -1,0 +1,15 @@
+namespace sui
+
+type DocumentId from std.identifier
+type CardId from std.identifier
+type IslandId from std.identifier
+type RelationId from std.identifier
+type DisclosureState from std.code
+type ReviewState from std.code
+type RevisionState from std.code
+
+data Document {
+    attribute documentId type sui.document_id
+    attribute revisionState type sui.revision_state
+    attribute disclosureState type sui.disclosure_state
+}

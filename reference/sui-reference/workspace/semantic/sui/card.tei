@@ -1,0 +1,12 @@
+namespace sui
+
+data Card {
+    attribute cardId type sui.card_id
+    attribute claimType type std.code
+    attribute holdState type std.code
+    attribute x type std.decimal
+    attribute y type std.decimal
+    attribute textReviewState type sui.review_state
+    relation containedIn to sui.island one
+    relation affiliatedWith to sui.island many
+}

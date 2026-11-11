@@ -1,0 +1,10 @@
+namespace sui
+
+data Relation {
+    attribute relationId type sui.relation_id
+    attribute relationType type std.text
+    attribute fromKind type std.code
+    attribute fromId type std.identifier
+    attribute toKind type std.code
+    attribute toId type std.identifier
+}
