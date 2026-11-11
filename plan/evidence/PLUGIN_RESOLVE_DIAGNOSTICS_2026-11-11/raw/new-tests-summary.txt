@@ -1,0 +1,73 @@
+=== RUN   TestInvalidLockIsDistinguishedFromAMismatchedLock
+--- PASS: TestInvalidLockIsDistinguishedFromAMismatchedLock (0.00s)
+=== RUN   TestBuildArtifactLockRejectsInvalidPluginID
+--- PASS: TestBuildArtifactLockRejectsInvalidPluginID (0.00s)
+=== RUN   TestBuildLockRejectsDuplicatePluginTarget
+--- PASS: TestBuildLockRejectsDuplicatePluginTarget (0.00s)
+=== RUN   TestBundleStandaloneResolverDuplicateDiagnosticIsOrderIndependent
+--- PASS: TestBundleStandaloneResolverDuplicateDiagnosticIsOrderIndependent (0.00s)
+=== RUN   TestDirectPackageRejectsInvalidCapabilityDeclarations
+=== RUN   TestDirectPackageRejectsInvalidCapabilityDeclarations/valid_permissions
+=== RUN   TestDirectPackageRejectsInvalidCapabilityDeclarations/invalid_capability_kind
+=== RUN   TestDirectPackageRejectsInvalidCapabilityDeclarations/invalid_action
+=== RUN   TestDirectPackageRejectsInvalidCapabilityDeclarations/invalid_observation
+=== RUN   TestDirectPackageRejectsInvalidCapabilityDeclarations/invalid_evidence
+=== RUN   TestDirectPackageRejectsInvalidCapabilityDeclarations/generic_database_provider
+=== RUN   TestDirectPackageRejectsInvalidCapabilityDeclarations/unknown_permission_kind
+=== RUN   TestDirectPackageRejectsInvalidCapabilityDeclarations/invalid_permission_access
+=== RUN   TestDirectPackageRejectsInvalidCapabilityDeclarations/empty_permission_scope
+=== RUN   TestDirectPackageRejectsInvalidCapabilityDeclarations/whitespace_permission_scope
+=== RUN   TestDirectPackageRejectsInvalidCapabilityDeclarations/duplicate_permission_identity
+--- PASS: TestDirectPackageRejectsInvalidCapabilityDeclarations (0.00s)
+=== RUN   TestPermissionDuplicateDiagnosticIgnoresOrder
+--- PASS: TestPermissionDuplicateDiagnosticIgnoresOrder (0.00s)
+=== RUN   TestCapabilitySupportSetsRejectDuplicatesInStandalonePackage
+=== RUN   TestCapabilitySupportSetsRejectDuplicatesInStandalonePackage/actions
+=== RUN   TestCapabilitySupportSetsRejectDuplicatesInStandalonePackage/observations
+=== RUN   TestCapabilitySupportSetsRejectDuplicatesInStandalonePackage/evidence
+=== RUN   TestCapabilitySupportSetsRejectDuplicatesInStandalonePackage/databaseProviders
+=== RUN   TestCapabilitySupportSetsRejectDuplicatesInStandalonePackage/migrationTools
+=== RUN   TestCapabilitySupportSetsRejectDuplicatesInStandalonePackage/features
+--- PASS: TestCapabilitySupportSetsRejectDuplicatesInStandalonePackage (0.00s)
+=== RUN   TestCapabilitySupportDuplicateDiagnosisDoesNotDependOnOrder
+--- PASS: TestCapabilitySupportDuplicateDiagnosisDoesNotDependOnOrder (0.00s)
+=== RUN   TestValidateUniqueCapabilitiesReportsSameDuplicateInAnyOrder
+--- PASS: TestValidateUniqueCapabilitiesReportsSameDuplicateInAnyOrder (0.00s)
+=== RUN   TestStandalonePackageRejectsDuplicateCapability
+--- PASS: TestStandalonePackageRejectsDuplicateCapability (0.00s)
+=== RUN   TestResolveDiagnosticsCarriesACodeAndTheSameMessage
+--- PASS: TestResolveDiagnosticsCarriesACodeAndTheSameMessage (0.00s)
+=== RUN   TestACycleReportsTheCycleCode
+--- PASS: TestACycleReportsTheCycleCode (0.00s)
+=== RUN   TestAnOrdinaryErrorHasNoResolveCode
+--- PASS: TestAnOrdinaryErrorHasNoResolveCode (0.00s)
+=== RUN   TestADuplicateRequirementReportsItsOwnCode
+--- PASS: TestADuplicateRequirementReportsItsOwnCode (0.00s)
+=== RUN   TestAnInvalidRequirementReportsItsOwnCode
+--- PASS: TestAnInvalidRequirementReportsItsOwnCode (0.00s)
+=== RUN   TestEnvironmentSelectorDuplicatesRejectedBeforeResolution
+=== RUN   TestEnvironmentSelectorDuplicatesRejectedBeforeResolution/plugin_same_major
+=== RUN   TestEnvironmentSelectorDuplicatesRejectedBeforeResolution/plugin_different_major
+=== RUN   TestEnvironmentSelectorDuplicatesRejectedBeforeResolution/bundle_same_major
+=== RUN   TestEnvironmentSelectorDuplicatesRejectedBeforeResolution/bundle_different_major
+--- PASS: TestEnvironmentSelectorDuplicatesRejectedBeforeResolution (0.00s)
+=== RUN   TestEnvironmentSelectorDuplicateDiagnosticIndependentOfOrder
+--- PASS: TestEnvironmentSelectorDuplicateDiagnosticIndependentOfOrder (0.00s)
+=== RUN   TestExternalDuplicateDiagnosticIsPermutationInvariant
+--- PASS: TestExternalDuplicateDiagnosticIsPermutationInvariant (0.00s)
+=== RUN   TestBuildTraceFormat3RejectsInvalidBuildPlanFingerprint
+--- PASS: TestBuildTraceFormat3RejectsInvalidBuildPlanFingerprint (0.00s)
+=== RUN   TestPluginRequirementsRejectDuplicateIDs
+=== RUN   TestPluginRequirementsRejectDuplicateIDs/same_major
+=== RUN   TestPluginRequirementsRejectDuplicateIDs/different_major
+=== RUN   TestPluginRequirementsRejectDuplicateIDs/distinct_plugins
+--- PASS: TestPluginRequirementsRejectDuplicateIDs (0.00s)
+=== RUN   TestPluginRequirementsDuplicateDiagnosticDoesNotDependOnDeclarationOrder
+--- PASS: TestPluginRequirementsDuplicateDiagnosticDoesNotDependOnDeclarationOrder (0.00s)
+=== RUN   TestPluginPackageRejectsDuplicateDependenciesWithoutWorldValidation
+--- PASS: TestPluginPackageRejectsDuplicateDependenciesWithoutWorldValidation (0.00s)
+=== RUN   TestPluginResolverRejectsDuplicateDependencies
+--- PASS: TestPluginResolverRejectsDuplicateDependencies (0.00s)
+=== RUN   TestPluginDependencyCycleFails
+--- PASS: TestPluginDependencyCycleFails (0.00s)
+ok  	tei/internal/plugin	0.073s
