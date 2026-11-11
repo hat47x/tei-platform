@@ -166,8 +166,11 @@ type ExecutionEvidence struct {
 	StdoutDigest string              `json:"stdoutDigest"`
 	StderrDigest string              `json:"stderrDigest"`
 	TimedOut     bool                `json:"timedOut,omitempty"`
-	// SourceDigest is the digest of the script source read immediately before
-	// this case ran. It is empty for compiled candidates.
+	// SourceDigest is the digest of the execution snapshot handed to the
+	// interpreter, read immediately before this case ran. The snapshot is
+	// written from the bytes verified against the manifest digest. It is not an
+	// OS-level observation of what the interpreter read. It is empty for
+	// compiled candidates.
 	SourceDigest string `json:"sourceDigest,omitempty"`
 }
 
@@ -820,6 +823,21 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 			return reject("generator provenance does not match the current contract and template")
 		}
 	}
+	// The bytes verified above are the only bytes of the declared source that
+	// reach a build or an interpreter (#2595). The candidate directory is not
+	// read again for it: a build runs from a selector-private staging directory
+	// and a script runs from a selector-private execution snapshot.
+	buildDir := dir
+	if expectedExtension == ".go" {
+		staged, err := stageVerifiedGoSources(dir, manifest.Source, source)
+		if err != nil {
+			return reject("verified source could not be staged for the build: " + err.Error())
+		}
+		defer os.RemoveAll(staged)
+		buildDir = staged
+	}
+	var snapshotPath string
+	var snapshot snapshotState
 	var binaryPath, scriptPath, javaPath, javacPath, javaClassesDir, wasmPath, wasmExecPath, nodePath, wasiRunnerPath string
 	switch language {
 	case LanguageGo:
@@ -842,7 +860,7 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		}
 		buildCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 		defer cancel()
-		reproduced, err := buildCandidateTwice(buildCtx, dir, binaryPath)
+		reproduced, err := buildCandidateTwice(buildCtx, buildDir, binaryPath)
 		if err != nil {
 			receipt.BuildEvidence.Reproducibility = "mismatch"
 			return reject("build is not reproducible: " + err.Error())
@@ -859,6 +877,22 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		scriptPath, receipt.Runtime = ResolveScriptRuntime(language)
 		if !receipt.Runtime.Available {
 			return reject("runtime unavailable: " + language + " interpreter was not found")
+		}
+		snapshotDir, err := os.MkdirTemp("", "tei-script-snapshot-*")
+		if err != nil {
+			return CandidateReceipt{}, err
+		}
+		defer os.RemoveAll(snapshotDir)
+		snapshotPath = filepath.Join(snapshotDir, filepath.Base(sourcePath))
+		if err := os.WriteFile(snapshotPath, source, 0o600); err != nil {
+			return CandidateReceipt{}, err
+		}
+		snapshot, err = readSnapshotState(snapshotPath)
+		if err != nil {
+			return CandidateReceipt{}, err
+		}
+		if snapshot.digest != actualDigest {
+			return reject("execution snapshot does not match the verified source")
 		}
 	case LanguageJava:
 		var version string
@@ -914,7 +948,7 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		wasmPath = filepath.Join(wasmDir, "candidate.wasm")
 		buildCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 		defer cancel()
-		reproduced, err := buildWasmTwice(buildCtx, dir, wasmPath)
+		reproduced, err := buildWasmTwice(buildCtx, buildDir, wasmPath)
 		if err != nil {
 			return reject("wasm build is not reproducible: " + err.Error())
 		}
@@ -953,7 +987,7 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		wasmPath = filepath.Join(wasiDir, "candidate.wasm")
 		buildCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 		defer cancel()
-		reproduced, err := buildWasiTwice(buildCtx, dir, wasmPath)
+		reproduced, err := buildWasiTwice(buildCtx, buildDir, wasmPath)
 		if err != nil {
 			return reject("wasi build is not reproducible: " + err.Error())
 		}
@@ -974,11 +1008,11 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 
 	for _, tc := range fixture.Cases {
 		if language == LanguagePython || language == LanguageJavaScript {
-			current, err := sourceFileDigest(sourcePath)
+			current, err := readSnapshotState(snapshotPath)
 			if err != nil {
 				return reject("source is unreadable during execution: " + err.Error())
 			}
-			if current != actualDigest {
+			if !current.same(snapshot) {
 				receipt.Results = append(receipt.Results, CaseResult{CaseID: tc.ID, Passed: false})
 				return reject("source changed during execution before case " + tc.ID)
 			}
@@ -988,7 +1022,7 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		var err error
 		switch language {
 		case LanguagePython, LanguageJavaScript:
-			got, execution, err = runScriptCandidate(ctx, scriptPath, sourcePath, tc.Input, executionOptions)
+			got, execution, err = runScriptCandidate(ctx, scriptPath, snapshotPath, tc.Input, executionOptions)
 		case LanguageJava:
 			got, execution, err = runProgram(ctx, javaPath, []string{"-cp", javaClassesDir, "Main"}, tc.Input, executionOptions)
 		case LanguageWasm:
@@ -1010,11 +1044,11 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		result.Passed = reflect.DeepEqual(got, tc.Want)
 		receipt.Results = append(receipt.Results, result)
 		if language == LanguagePython || language == LanguageJavaScript {
-			current, err := sourceFileDigest(sourcePath)
+			current, err := readSnapshotState(snapshotPath)
 			if err != nil {
 				return reject("source is unreadable after case " + tc.ID + ": " + err.Error())
 			}
-			if current != actualDigest {
+			if !current.same(snapshot) {
 				return reject("source changed during execution after case " + tc.ID)
 			}
 		}
@@ -1541,12 +1575,64 @@ func candidateSourcePath(dir, declared string) (string, error) {
 	return path, nil
 }
 
-func sourceFileDigest(path string) (string, error) {
-	raw, err := os.ReadFile(path)
+// stageVerifiedGoSources copies the Go build inputs into a selector-private
+// directory and writes the declared source from the bytes that were checked
+// against the manifest digest, so the build cannot read a declared source that
+// differs from the verified one. Both reproducibility builds copy from this
+// directory. Other Go files of a multi-file candidate are read once here; the
+// manifest carries no digest for them and they are not verified.
+func stageVerifiedGoSources(dir, declared string, verified []byte) (string, error) {
+	staged, err := os.MkdirTemp("", "tei-generator-verified-*")
 	if err != nil {
 		return "", err
 	}
-	return digest(raw), nil
+	if err := copyGoSources(dir, staged); err != nil {
+		os.RemoveAll(staged)
+		return "", err
+	}
+	name := filepath.Clean(filepath.FromSlash(declared))
+	if err := os.WriteFile(filepath.Join(staged, name), verified, 0o644); err != nil {
+		os.RemoveAll(staged)
+		return "", err
+	}
+	return staged, nil
+}
+
+// snapshotState is what the selector can observe about the execution snapshot
+// of a script without help from the operating system: its bytes and the
+// identity, size and modification time of the file. A rewrite that restores
+// the bytes (D1 -> D2 -> D1) leaves the digest unchanged but not the
+// modification time, and a replaced file is a different file.
+//
+// This is detection, not isolation. A process with the same OS privileges that
+// also restores the modification time is not detected, and nothing here
+// observes the bytes the interpreter actually read, the modules it imported or
+// its environment. Those belong to OS isolation (#2515), not to this check.
+type snapshotState struct {
+	digest string
+	info   os.FileInfo
+}
+
+func readSnapshotState(path string) (snapshotState, error) {
+	before, err := os.Lstat(path)
+	if err != nil {
+		return snapshotState{}, err
+	}
+	if !before.Mode().IsRegular() {
+		return snapshotState{}, fmt.Errorf("execution snapshot is not a regular file")
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return snapshotState{}, err
+	}
+	return snapshotState{digest: digest(raw), info: before}, nil
+}
+
+func (s snapshotState) same(other snapshotState) bool {
+	return s.digest == other.digest &&
+		os.SameFile(s.info, other.info) &&
+		s.info.Size() == other.info.Size() &&
+		s.info.ModTime().Equal(other.info.ModTime())
 }
 
 func runScriptCandidate(ctx context.Context, interpreter, sourcePath string, input json.RawMessage, options ExecutionOptions) (Result, *ExecutionEvidence, error) {
