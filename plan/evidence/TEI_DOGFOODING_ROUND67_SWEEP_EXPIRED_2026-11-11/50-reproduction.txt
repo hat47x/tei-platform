@@ -1,0 +1,17 @@
+What I assumed when filing #4252: a SQLITE_BUSY lock race (the CI log showed
+`database is locked (5) (SQLITE_BUSY)`).
+
+What actually reproduced:
+
+  plain `go test` x40                       -> 0/40 failures
+  TestParallelClaim alone, 50 repeats       -> ok (14.99s)
+  `go test -count=5` (5 runs in one process) -> FAIL
+  `-count=10`, 3 in parallel                -> 3/3 FAIL
+
+The failing test was NOT TestParallelClaim:
+
+  --- FAIL: TestSweepExpired (0.05s)
+      lease_test.go:76: SweepExpired len = 0, want 1
+
+The reproduction condition is repetition INSIDE one process. CI runs each
+package once, which is why it appears only intermittently there.
