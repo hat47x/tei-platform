@@ -210,6 +210,7 @@ func main() {
 	applicationID := fs.String("application", "", "application canonical ID")
 	artifactOutDir := fs.String("out", "", "artifacts: directory to write the derived files")
 	artifactCheck := fs.Bool("check", false, "artifacts: fail when the set is inconsistent")
+	verificationOutputPath := fs.String("verification-output", "", "artifacts: write the verification envelope (workspace and source-index fingerprints) to this path")
 	periodStates := fs.String("period-states", "", "periods: period=state pairs, comma separated")
 	periodStatePath := fs.String("period-state-file", "", "periods: JSON object of period to state")
 	periodAdvance := fs.String("advance", "", "periods: move this period one step toward closed and record it")
@@ -692,7 +693,7 @@ func main() {
 		}
 		return
 	case "artifacts":
-		if err := runArtifactsCommand(*workspacePath, *applicationID, *artifactOutDir, *artifactCheck); err != nil {
+		if err := runArtifactsCommand(*workspacePath, *applicationID, *artifactOutDir, *artifactCheck, *verificationOutputPath); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}

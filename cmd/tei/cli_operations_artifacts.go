@@ -40,8 +40,11 @@ func runOperationsCommand(workspacePath, applicationID, outPath string) error {
 // from the consistency check are part of the output; an incomplete set is
 // reported as such. With -out, one file per artifact, a manifest file, and an
 // evidence bundle are written to an isolated staging area and published only
-// when the full set is consistent.
-func runArtifactsCommand(workspacePath, applicationID, outDir string, check bool) error {
+// when the full set is consistent. With -verification-output, a JSON envelope
+// carrying the workspace and source-index fingerprints is written there, so the
+// reference cache verification toolchain can compare a full run against an
+// incremental one on the same observations.
+func runArtifactsCommand(workspacePath, applicationID, outDir string, check bool, verificationPath string) error {
 	if workspacePath == "" {
 		return fmt.Errorf("artifacts requires -workspace")
 	}
@@ -56,9 +59,35 @@ func runArtifactsCommand(workspacePath, applicationID, outDir string, check bool
 		writeJSON(set.Findings)
 		return fmt.Errorf("the artifact set is inconsistent: %d findings", len(set.Findings))
 	}
+	// The envelope is written on both success paths. A caller that only wants
+	// the JSON on stdout must observe the same fingerprints as a caller that
+	// published the files, otherwise the two runs are not comparable.
+	writeVerification := func() error {
+		if verificationPath == "" {
+			return nil
+		}
+		worldFP, sourceFP, fpErr := operations.WorkspaceProjectionFingerprints(loaded.World, index)
+		if fpErr != nil {
+			return fmt.Errorf("verification output failed: %w", fpErr)
+		}
+		envelope := map[string]any{
+			"schemaVersion":          "tei.cli.artifacts.verification/v0",
+			"worldFingerprint":       worldFP,
+			"sourceIndexFingerprint": sourceFP,
+			"applicationID":          applicationID,
+			"artifactCount":          len(set.Artifacts),
+			"findingCount":           len(set.Findings),
+			"ok":                     len(set.Findings) == 0,
+		}
+		encoded, err := json.MarshalIndent(envelope, "", "  ")
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(verificationPath, append(encoded, byte(10)), 0o644)
+	}
 	if outDir == "" {
 		writeJSON(set)
-		return nil
+		return writeVerification()
 	}
 
 	cliIdentity := ReadBuildIdentity()
@@ -90,7 +119,7 @@ func runArtifactsCommand(workspacePath, applicationID, outDir string, check bool
 
 	writeJSON(evidenceOnDisk)
 	writeJSON(set.Manifest)
-	return nil
+	return writeVerification()
 }
 
 // writeArtifactFiles writes one file per artifact plus the manifest. Names come
