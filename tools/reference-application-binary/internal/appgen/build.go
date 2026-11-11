@@ -31,20 +31,34 @@ func Build(workspaceRoot, appID, sourceDir, outputPath, platform string) (*Build
 
 	goCache := filepath.Join(sourceDir, ".gocache")
 	goTmp := filepath.Join(sourceDir, ".gotmp")
-	for _, dir := range []string{goCache, goTmp} {
+	goModCache := filepath.Join(sourceDir, ".gomodcache")
+	for _, dir := range []string{goCache, goTmp, goModCache} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return nil, fmt.Errorf("mkdir %s: %w", dir, err)
 		}
 	}
 
+	// The generated module needs a writable module cache of its own. The
+	// inherited GOMODCACHE can be unwritable (a shared Windows cache), and the
+	// checksum database then fails the tidy step even though this tool's own
+	// build succeeded. GOFLAGS=-mod=mod lets tidy update the generated go.mod,
+	// and GONOSUMDB/GOSUMDB keep the generated module from reaching the network.
+	buildEnv := append(minimalEnv(),
+		"GOCACHE="+goCache,
+		"GOTMPDIR="+goTmp,
+		"GOMODCACHE="+goModCache,
+		"GOFLAGS=-mod=mod",
+		"GONOSUMDB=*",
+		"GOSUMDB=off")
+
 	tidy := exec.Command("go", "mod", "tidy")
 	tidy.Dir = sourceDir
-	tidy.Env = append(minimalEnv(), "GOCACHE="+goCache, "GOTMPDIR="+goTmp)
+	tidy.Env = buildEnv
 	if out, err := tidy.CombinedOutput(); err != nil {
 		return nil, fmt.Errorf("go mod tidy failed: %v\n%s", err, out)
 	}
 
-	env := append(minimalEnv(), "GOCACHE="+goCache, "GOTMPDIR="+goTmp)
+	env := buildEnv
 	if platform != "" {
 		parts := strings.Split(platform, "/")
 		if len(parts) == 2 {
