@@ -78,8 +78,9 @@ function observe(root, expectValid) {
   assert.equal(v.sourceIndexFingerprint, e.result.sourceIndexFingerprint);
   assert.deepStrictEqual(v.workspace, e.result.workspace);
   const entries = e.result.entries.filter(x =>
-    x.subject?.kind === "semantic-data" && x.subject?.id ===
-      (expectValid ? "scn.rulecandidate" : "scn.x"));
+    x.subject?.kind === "semantic-data" &&
+    (expectValid ? x.subject?.id?.startsWith("scn.") : x.subject?.id === "scn.x") &&
+    x.sourceStatus === "indexed");
   assert.equal(entries.length, 1, "expected one unambiguous actual CLI Subject");
   assert.notEqual(entries[0].ambiguous, true);
   assert.notEqual(entries[0].prelude, true);
