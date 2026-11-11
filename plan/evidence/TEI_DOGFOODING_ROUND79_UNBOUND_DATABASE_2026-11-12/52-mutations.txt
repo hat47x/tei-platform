@@ -1,0 +1,11 @@
+M1 never warn
+   -> FAIL an unbound application database was not reported
+M2 remove the environment gate
+   -> FAIL warned in a workspace with no environments:
+      application reporting database sales is not bound in any environment
+
+M1 was first a BROKEN mutation: deleting the block left a syntax error
+(expected declaration, found seenQueries). Rebuilt it as `if false && ...`.
+Fifth round where a broken mutation had to be fixed (61, 67, 72, 74, 79).
+
+restored -> internal/validation ok; vet clean; gofmt clean
