@@ -88,6 +88,16 @@ func TestValidateMissingDeclaredSourceRootAgreesAcrossReaders(t *testing.T) {
 	if catalog.Validation.OK || catalog.Validation.ErrorCount != 1 || report.OK {
 		t.Fatalf("verdict mismatch: catalog=%+v report=%+v", catalog.Validation, report)
 	}
+	mapped, err := MapWorkspace(root)
+	if err != nil {
+		t.Fatalf("map of invalid Workspace must remain read-only: %v", err)
+	}
+	if mapped.Catalog.Validation != catalog.Validation ||
+		mapped.Catalog.WorldFingerprint != catalog.WorldFingerprint ||
+		mapped.Catalog.SourceIndexFingerprint != catalog.SourceIndexFingerprint ||
+		mapped.Coverage != "partial-projection" {
+		t.Fatalf("map cannot invent validation or coverage: %+v", mapped)
+	}
 	if catalog.WorldFingerprint == "" ||
 		catalog.WorldFingerprint != report.WorldFingerprint ||
 		catalog.SourceIndexFingerprint != report.SourceIndexFingerprint ||
@@ -126,5 +136,60 @@ func TestValidateUnknownDeclaredSourceRootWarnsWithoutFailing(t *testing.T) {
 	report := WorkspaceValidationReportFrom(validated)
 	if !catalog.Validation.OK || !report.OK || catalog.Validation.WarningCount == 0 {
 		t.Fatalf("warning-only verdict mismatch: catalog=%+v report=%+v", catalog.Validation, report)
+	}
+	mapped, err := MapWorkspace(root)
+	if err != nil {
+		t.Fatalf("map of warning-only Workspace: %v", err)
+	}
+	if mapped.Catalog.Validation != catalog.Validation ||
+		mapped.Coverage != "partial-projection" {
+		t.Fatalf("map warning-only verdict mismatch: map=%+v catalog=%+v", mapped.Catalog.Validation, catalog.Validation)
+	}
+}
+
+
+// MapWorkspace builds a CatalogWorld directly; its validation verdict must
+// be explicitly supplied from the same Load rather than silently retaining
+// CatalogWorld's zero-valued Validation.OK=false for a valid Workspace.
+func TestMapWorkspaceCatalogValidationMatchesActualTypeChecking(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		extra    string
+		wantOK   bool
+		wantErrs int
+	}{
+		{"sound", "", true, 0},
+		{"unknown type", "data X {\n    attribute a type sales.nothere\n}\n", false, 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			writeWorkspaceFixture(t, root, "tei.workspace.yaml",
+				"workspace: map_validation\nformatVersion: 1\nsources:\n  - semantic\n")
+			writeWorkspaceFixture(t, root, "semantic/model.tei",
+				"namespace sales\n\n"+tc.extra)
+			mapped, err := MapWorkspace(root)
+			if err != nil {
+				t.Fatalf("map: %v", err)
+			}
+			catalog, err := CatalogWorkspace(root, "")
+			if err != nil {
+				t.Fatalf("catalog: %v", err)
+			}
+			validated, err := ValidateWorkspace(root)
+			if err != nil {
+				t.Fatalf("validate: %v", err)
+			}
+			report := WorkspaceValidationReportFrom(validated)
+			if mapped.Catalog.Validation != catalog.Validation ||
+				mapped.Catalog.Validation.OK != tc.wantOK ||
+				mapped.Catalog.Validation.ErrorCount != tc.wantErrs ||
+				report.OK != tc.wantOK ||
+				mapped.Coverage != "partial-projection" {
+				t.Fatalf("map/canonical validation disagree: map=%+v catalog=%+v report=%+v",
+					mapped.Catalog.Validation, catalog.Validation, report)
+			}
+			// Repeated read of the same fixture does not prove one atomic
+			// cross-Operation attempt or allow editing a Map link.
+		})
 	}
 }
