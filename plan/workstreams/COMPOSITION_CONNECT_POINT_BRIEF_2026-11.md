@@ -173,3 +173,23 @@ C-1/C-2の`ran/refused/unverified`は**別Operationの参照計数**である。
 | CON-12d 一部だけ成功した場合に partial/unknown を保つ | **partial も unknown も済み** | 両参照に `attemptedCount` と `complete` を足し、1/1 と 1/2 を件数から区別できない問題を直した（[記録](../evidence/PARTIAL_RUN_VERDICT_2026-11-09/README.md)）。さらに、入場後の失敗を `refusedCount` に数えると「実行していない」と読めるため `unknownCount`（`invokedCount` の内数）として分けた（[記録](../evidence/UNKNOWN_VS_REFUSED_2026-11-09/README.md)）。`complete=true` は「全部に答えが返った」意味だけで世界の一致の証明ではない。**失効そのものの検出は未** |
 
 **CON-12a と CON-12b が済んだことは、「製品CLIへ繋ぐべき」の証明ではありません。** Provider はすべて合成で、外部状態を読んでいません。CON-12c は観測・証拠の宣言に比較項が無いため**その2層では問えませんが**、識別子を持つ `generation.Binding` の層では満たされることを確認しました。`ServiceProviderSelection` の層も確認済みです。CON-12d は **partial も unknown も表せるようになりましたが、失効そのものの検出は未**です。
+
+## 13. Inspector実行Entryの独立観測とProvider Origin：正式Plugin S2-productの最初の不足（2026-11-11）
+
+S2-referenceは通常CLI／通常・生成Studio Hostの静的参照Inspectorが既存`Composition`を通ることを[main #3540](https://github.com/hat47x/tei-platform/pull/3540)で実証し、[main #3735](https://github.com/hat47x/tei-platform/pull/3735)でCanonical top-level `id`の厳密照合と二WorkspaceのSource移動を検証した。しかしこれだけでは、「選択されたProviderのID」も「Hostが登録した呼出しEntry」も同じ参照実装の定数由来であり、**別Pluginへ切り替えて正しい実行Entryへ届くこと**は証明できない。
+
+[Draft #4202](https://github.com/hat47x/tei-platform/pull/4202)は、**既存`composition.Registry.Select`→Host所有`LocalProvider` inventory→実Go関数シンボル→Provider呼出し→Host独立Manifest再観測**を具体化している。第12節のC-1/C-2参照連結とは別の、`authoring-tool` Inspector実際の入口の検証である。
+
+| 反例 | 現Draftで確認できる／できない境界 | 次に追加する独立資格 |
+| --- | --- | --- |
+| SP-01 A/B選択 | Test inventory内A/Bの別Entryが同値JSONを返しても、B選択時B関数だけ到達を観測 | **正式Profile**が選んだBを通常CLIと実Studioの異なる実Targetへ供給し、実Artifact内Entry Bに到達するかは未証明 |
+| SP-02 B宣言にA関数 | Go関数値と宣言シンボルを照合し、矛盾は呼出し前に拒否 | inventory自体が別元の**独立Build Artifact証拠**で受理される条件。宣言とリンクシンボルがともにAならHost単独では誤登録を判別できない |
+| SP-03 Root alpha要求／beta応答 | Hostが自分で再読取したManifestとProvider申告Workspace Manifestが異なれば拒否 | Manifestが同byteでSemantic Sourceが違う反例は**検出できない**（SP-05）。同一Load/Source消費originを#3524/#3479で別取得 |
+| SP-04 一貫した偽Entry | Provider BというIDとGo関数Aの対応をinventory自体が一貫して宣言 | Hostの`ObservedEntry`欄は残すが、何が正式Bかは#943/#3267のBuild closure等で独立に確認しない限りunknown |
+| SP-05 別Source／同一Manifest | Manifest内容が同じA/Bなら、Hostの独立Manifest観測は一致し得る | Source Read/Manifestの**読み取り時点**を束縛。Providerが応答した後のHost再読取と、Providerが以前に読んだ実Sourceを同一Snapshotと推論しない |
+
+**選択・権限・実行のOwnerは一つの新基盤へ集約しない**：Provider選択値は#951/#1016の既存Profile/Contractが所有。Hostはその値を受けて`Selected→Registered→Observed Entry→Invoked`を区別する。実Artifact/2×2 BOMは#943/#3267、Source Revision/Required Closureは#3262/#3524、現在Host Grant/Disclosureは#1174/#2516。Provider/Executor identityをAdapterが無条件上書きして検査を空振りさせたmain [#3936](https://github.com/hat47x/tei-platform/pull/3936)／[#3945](https://github.com/hat47x/tei-platform/pull/3945)を反証事例として再利用する。局所A/Bテスト内で成功したからといって、プロダクトの任意外部Plugin差替えや現在のPrincipal許可へ昇格しない。
+
+**別のP0（実Read）との関係**：[Draft #4076](https://github.com/hat47x/tei-platform/pull/4076)の`DatabaseProviderBoundBrowseQueryExecutor`は`postgres`などの**DB dialect/provider種別**をEnvironmentのInstanceと照合する任意Interfaceであり、Pluginの実`ProviderID`・実Go Entry/Artifact・物理DSNの独立照合とは別。実PostgreSQLでQuery実行した成功と、正式Composition Profileが選んだPlugin BのProduct呼出し成功を同じ欄へ合算しない。Function Readの最初のP0を正式Inspector Pluginの全資格が整うまで止めない。
+
+**採用と状態**：Draft #4202のSP-01〜03は記述済みの局所実装・ローカルテストであり、SP-04/05は検出不能の証拠である。生成Studio/Windows WebView/全Repo CI・正式Profile/別実Binaryの結果は最新HEADのActionsと独立Expected #2514/#1180で判定する。現在の本節は**既存計画への受入条件反映**であって新Gate・第二Registry・専用Sandbox・共通常駐Hostは設けない。

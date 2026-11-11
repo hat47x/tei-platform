@@ -1,7 +1,6 @@
 package plugin
 
 import (
-	"fmt"
 	"sort"
 
 	"tei/internal/core"
@@ -21,14 +20,14 @@ func (c Catalog) resolvePlugin(req Requirement) (Definition, error) {
 		}
 	}
 	if len(matches) == 0 {
-		return Definition{}, fmt.Errorf("no plugin %s compatible with major %d", req.Plugin, req.CompatibleMajor)
+		return Definition{}, diagnose(DiagnosticNoCompatiblePlugin, req.Plugin, "no plugin %s compatible with major %d", req.Plugin, req.CompatibleMajor)
 	}
 	sort.Slice(matches, func(i, j int) bool { return CompareVersion(matches[i].Version, matches[j].Version) > 0 })
 	if len(matches) > 1 && matches[0].Version == matches[1].Version {
-		return Definition{}, fmt.Errorf("plugin %s version %s is declared more than once", req.Plugin, matches[0].Version)
+		return Definition{}, diagnose(DiagnosticDuplicatePluginVersion, req.Plugin, "plugin %s version %s is declared more than once", req.Plugin, matches[0].Version)
 	}
 	if err := ValidateRequirements(matches[0].Requires); err != nil {
-		return Definition{}, fmt.Errorf("plugin %s: %w", matches[0].ID, err)
+		return Definition{}, wrapDiagnose(DiagnosticInvalidRequirement, matches[0].ID, err, "plugin %s: %v", matches[0].ID, err)
 	}
 	return NormalizeDefinition(matches[0]), nil
 }
@@ -41,14 +40,14 @@ func (c Catalog) resolveBundle(req environment.ExtensionRequirement) (Bundle, er
 		}
 	}
 	if len(matches) == 0 {
-		return Bundle{}, fmt.Errorf("no bundle %s compatible with major %d", req.ID, req.CompatibleMajor)
+		return Bundle{}, diagnose(DiagnosticNoCompatibleBundle, req.ID, "no bundle %s compatible with major %d", req.ID, req.CompatibleMajor)
 	}
 	sort.Slice(matches, func(i, j int) bool { return CompareVersion(matches[i].Version, matches[j].Version) > 0 })
 	if len(matches) > 1 && matches[0].Version == matches[1].Version {
-		return Bundle{}, fmt.Errorf("bundle %s version %s is declared more than once", req.ID, matches[0].Version)
+		return Bundle{}, diagnose(DiagnosticDuplicateBundleVersion, req.ID, "bundle %s version %s is declared more than once", req.ID, matches[0].Version)
 	}
 	if err := ValidateRequirements(matches[0].Plugins); err != nil {
-		return Bundle{}, fmt.Errorf("bundle %s version %s: %w", matches[0].ID, matches[0].Version, err)
+		return Bundle{}, wrapDiagnose(DiagnosticInvalidRequirement, matches[0].ID, err, "bundle %s version %s: %v", matches[0].ID, matches[0].Version, err)
 	}
 	return matches[0], nil
 }
@@ -66,10 +65,10 @@ func validateEnvironmentSelection(requirements []environment.ExtensionRequiremen
 
 func (c Catalog) ResolveEnvironment(env environment.Environment) (ResolvedSet, error) {
 	if err := validateEnvironmentSelection(env.Plugins); err != nil {
-		return ResolvedSet{}, fmt.Errorf("environment %s plugin selections: %w", env.ID, err)
+		return ResolvedSet{}, wrapDiagnose(DiagnosticEnvironmentSelection, env.ID, err, "environment %s plugin selections: %v", env.ID, err)
 	}
 	if err := validateEnvironmentSelection(env.Bundles); err != nil {
-		return ResolvedSet{}, fmt.Errorf("environment %s bundle selections: %w", env.ID, err)
+		return ResolvedSet{}, wrapDiagnose(DiagnosticEnvironmentSelection, env.ID, err, "environment %s bundle selections: %v", env.ID, err)
 	}
 
 	var queue []Requirement
@@ -93,12 +92,12 @@ func (c Catalog) ResolveEnvironment(env environment.Environment) (ResolvedSet, e
 		}
 		if existing, ok := resolved[req.Plugin]; ok {
 			if !CompatibleMajor(existing.Version, req.CompatibleMajor) {
-				return fmt.Errorf("plugin %s already resolved to %s, incompatible with required major %d", req.Plugin, existing.Version, req.CompatibleMajor)
+				return diagnose(DiagnosticIncompatibleTransitive, req.Plugin, "plugin %s already resolved to %s, incompatible with required major %d", req.Plugin, existing.Version, req.CompatibleMajor)
 			}
 			return nil
 		}
 		if visiting[req.Plugin] {
-			return fmt.Errorf("plugin dependency cycle at %s", req.Plugin)
+			return diagnose(DiagnosticDependencyCycle, req.Plugin, "plugin dependency cycle at %s", req.Plugin)
 		}
 		visiting[req.Plugin] = true
 		p, err := c.resolvePlugin(req)
@@ -107,7 +106,7 @@ func (c Catalog) ResolveEnvironment(env environment.Environment) (ResolvedSet, e
 		}
 		for _, child := range p.Requires {
 			if err := visit(child); err != nil {
-				return fmt.Errorf("plugin %s requires: %w", p.ID, err)
+				return wrapDiagnose(DiagnosticInvalidRequirement, p.ID, err, "plugin %s requires: %v", p.ID, err)
 			}
 		}
 		visiting[req.Plugin] = false

@@ -1,0 +1,184 @@
+name: REA T0-05 JSONL protocol version boundary (synthetic only)
+
+on:
+  push:
+    branches: [test/rea-t005-jsonl-version-boundary-20261111]
+    paths:
+      - .github/workflows/rea-t005-jsonl-version-boundary.yml
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/rea-t005-jsonl-version-boundary.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rea-t005-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  version-differential:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        rea_version: ['6.7.0', '6.8.0']
+    env:
+      REA_VERSION: ${{ matrix.rea_version }}
+      EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Isolate evidence before any fallible step
+        id: reports
+        shell: bash
+        run: |
+          set -euo pipefail
+          directory=$(mktemp -d "${RUNNER_TEMP:?}/rea-t005.XXXXXX")
+          printf 'directory=%s\n' "$directory" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          ref: ${{ env.EXPECTED_HEAD }}
+
+      - name: Setup pinned Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24.22.1'
+
+      - name: Install precisely selected REA package version
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          npm install --prefix "${RUNNER_TEMP}/rea-t005-tool" --no-audit --no-fund --ignore-scripts --save-exact "rea-agents@${REA_VERSION}"
+          echo "${RUNNER_TEMP}/rea-t005-tool/node_modules/.bin" >> "$GITHUB_PATH"
+
+      - name: Build inert public fixture and preserve source hash
+        shell: bash
+        env:
+          REPORT_DIR: ${{ steps.reports.outputs.directory }}
+        run: |
+          set -euo pipefail
+          mkdir -p build/rea-t005
+          printf '%s\n' '{"name":"rea-t005","version":"1.0.0","type":"module","main":"index.js"}' > build/rea-t005/package.json
+          printf '%s\n' 'export const message = "hello";' 'throw new Error("Fixture must never be executed.");' > build/rea-t005/index.js
+          sha256sum build/rea-t005/package.json build/rea-t005/index.js > "$REPORT_DIR/input-sha256-before.txt"
+          node --version > "$REPORT_DIR/node-version.txt"
+          rea --version > "$REPORT_DIR/rea-version.txt"
+          npm --version > "$REPORT_DIR/npm-version.txt"
+
+      - name: Capture actual static analysis exit and raw evidence
+        shell: bash
+        env:
+          REPORT_DIR: ${{ steps.reports.outputs.directory }}
+        run: |
+          set +e
+          rea analyze-javascript-application "${GITHUB_WORKSPACE}/build/rea-t005" --json --full-output > "$REPORT_DIR/analysis.json" 2> "$REPORT_DIR/analysis.stderr"
+          status=$?
+          set -e
+          printf '%s\n' "$status" > "$REPORT_DIR/analysis-exit.txt"
+          sha256sum "$REPORT_DIR/analysis.json" "$REPORT_DIR/analysis.stderr" > "$REPORT_DIR/analysis-sha256.txt"
+          sha256sum build/rea-t005/package.json build/rea-t005/index.js > "$REPORT_DIR/input-sha256-after.txt"
+          cmp "$REPORT_DIR/input-sha256-before.txt" "$REPORT_DIR/input-sha256-after.txt"
+          test "$status" -eq 0
+
+      - name: Derive one analysis-view request from exactly the saved Evidence
+        shell: bash
+        env:
+          REPORT_DIR: ${{ steps.reports.outputs.directory }}
+        run: |
+          set -euo pipefail
+          python3 - "$REPORT_DIR" <<'PY'
+          import hashlib, json, pathlib, sys
+          root = pathlib.Path(sys.argv[1])
+          raw = (root / 'analysis.json').read_bytes()
+          assert len(raw) <= 16 * 1024 * 1024, 'synthetic case exceeds T0 input bound'
+          envelope = json.loads(raw)
+          assert envelope.get('ok') is True
+          evidence = envelope.get('data')
+          assert isinstance(evidence, dict) and isinstance(evidence.get('evidence_id'), str)
+          assert evidence.get('operation') == 'analyze_javascript_application'
+          request = {'source': {'kind': 'inline', 'evidence': evidence},
+                     'view': {'kind': 'javascript-facts', 'property_keys': [], 'offset': 0, 'limit': 32}}
+          request_raw = json.dumps(request, ensure_ascii=False).encode('utf-8')
+          (root / 'request.json').write_bytes(request_raw)
+          assert json.loads(request_raw)['source']['evidence'] == evidence
+          (root / 'request-sha256.txt').write_text(hashlib.sha256(request_raw).hexdigest() + '\n')
+          PY
+
+      - name: Observe actual REA JSONL output without interpreting process success as framing
+        shell: bash
+        env:
+          REPORT_DIR: ${{ steps.reports.outputs.directory }}
+        run: |
+          set +e
+          rea inspect-analysis-view "$REPORT_DIR/request.json" --format jsonl > "$REPORT_DIR/view.jsonl" 2> "$REPORT_DIR/view.stderr"
+          status=$?
+          set -e
+          printf '%s\n' "$status" > "$REPORT_DIR/view-exit.txt"
+          sha256sum "$REPORT_DIR/view.jsonl" "$REPORT_DIR/view.stderr" > "$REPORT_DIR/view-sha256.txt"
+          echo "REA ${REA_VERSION}: view command actual exit $status; validating protocol next"
+
+      - name: Independently check version-specific JSONL framing and interrupted copy
+        shell: bash
+        env:
+          REPORT_DIR: ${{ steps.reports.outputs.directory }}
+        run: |
+          set -euo pipefail
+          python3 - "$REPORT_DIR" "$REA_VERSION" <<'PY'
+          import json, pathlib, sys
+          root, version = pathlib.Path(sys.argv[1]), sys.argv[2]
+          original = json.loads((root / 'analysis.json').read_bytes())['data']
+          actual_exit = int((root / 'view-exit.txt').read_text().strip())
+          assert actual_exit == 0, f'REA {version}: view exit {actual_exit}; see saved stderr'
+          payload = (root / 'view.jsonl').read_bytes()
+          lines = payload.splitlines()
+          records = [json.loads(line) for line in lines]
+          assert records, 'empty view output'
+          if version == '6.7.0':
+              # Frozen tagged source has no writeCliJsonLines/jsonl/v1 protocol.
+              assert len(records) == 1 and isinstance(records[0], dict), records
+              assert records[0].get('operation') == 'inspect_analysis_view', records[0]
+              assert not any(isinstance(r, dict) and r.get('$rea') == 'jsonl/v1' for r in records)
+              framing = 'legacy-single-evidence-document; no terminal metadata'
+          else:
+              # REA 6.8.0 introduced writeCliJsonLines plus jsonl/v1 controls.
+              final = records[-1]
+              assert isinstance(final, dict) and final.get('$rea') == 'jsonl/v1'
+              assert final.get('type') == 'metadata'
+              assert all(isinstance(row, dict) and row.get('$rea') is None for row in records[:-1])
+              counts = final['records']
+              assert counts['path'] == ['normalized_result', 'rows'], counts
+              assert counts['emitted'] == len(records) - 1
+              assert isinstance(counts['source'], int) and counts['source'] >= counts['emitted']
+              assert counts['emitted'] > 0, 'the known static fixture must expose facts'
+              context = final['context']
+              result = context['normalized_result']
+              assert result['parent_evidence_id'] == original['evidence_id']
+              assert result['coverage']['status'] == 'page'
+              assert isinstance(result['limitations'], list)
+              assert isinstance(result['unknowns'], list)
+              # Dropping only the metadata line simulates interrupted delivery.
+              interrupted = records[:-1]
+              (root / 'interrupted-view.jsonl').write_bytes(b''.join(line + b'\n' for line in payload.splitlines()[:-1]))
+              assert not any(isinstance(row, dict) and row.get('$rea') == 'jsonl/v1' and row.get('type') == 'metadata' for row in interrupted)
+              framing = 'jsonl/v1 rows-and-terminal; interrupted copy has no terminator'
+          (root / 'verification.json').write_text(json.dumps({'version': version, 'viewExit': actual_exit,
+               'framing': framing, 'lineCount': len(records), 'analysisAcceptedAsMeaning': False,
+               'originalEvidenceID': original['evidence_id']}, sort_keys=True))
+          print(f'REA {version}: {framing}; no full-source or TEI meaning qualification')
+          PY
+
+      - name: Upload original Evidence and both actual output shapes even on failure
+        if: ${{ always() && steps.reports.outputs.directory != '' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: rea-t005-${{ matrix.rea_version }}
+          path: ${{ steps.reports.outputs.directory }}
+          if-no-files-found: warn
+          retention-days: 7

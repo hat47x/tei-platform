@@ -53,9 +53,11 @@ TEIでは、概ね次を優先します。
 ```bash
 gofmt -l .   # 出力が空であること
 go vet ./...
-go test ./...
+go test -count=1 -timeout 60m ./...
 go run ./cmd/tei validate -workspace reference/workspace
 ```
+
+試験時間は実行環境や負荷によって変わります。`cmd/tei`のローカル実測で935秒かかり、既定の10分で時間切れになったため、上の例では`tools/repository-health-check.sh`と同じ`-timeout 60m`を明示しています。`-count=1`は試験結果のキャッシュを避けます。`panic: test timed out after 10m0s`が出た場合は、時間切れまでの出力も確認し、個別の試験の失敗や停止と区別してください。
 
 上記をまとめて確認する読み取り専用のスクリプトが`tools/repository-health-check.sh`です（`--fast`では`go test`を省略します）。これは任意の広範囲診断であり、`main`への統合条件ではありません。通常は変更範囲に関連する検証を優先します。
 
