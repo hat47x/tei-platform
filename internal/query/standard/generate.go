@@ -190,15 +190,7 @@ func StandardToSQL(q *StandardQuery) (string, []Diagnostic) {
 	mainSQL := sb.String()
 
 	if union != nil {
-		leftSQL, d := StandardToSQL(&StandardQuery{Nodes: q.Nodes, Root: union.Left, CTEs: q.CTEs})
-		diags = append(diags, d...)
-		rightSQL, d := StandardToSQL(&StandardQuery{Nodes: q.Nodes, Root: union.Right, CTEs: q.CTEs})
-		diags = append(diags, d...)
-		op := "UNION"
-		if union.All {
-			op = "UNION ALL"
-		}
-		return leftSQL + " " + op + " " + rightSQL, diags
+		diags = append(diags, Diagnostic{Code: "UNSUPPORTED", Message: "UNION/INTERSECT/EXCEPT generation is not yet implemented"})
 	}
 
 	return mainSQL, diags

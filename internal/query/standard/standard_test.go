@@ -121,6 +121,15 @@ func TestRoundTripSQLite(t *testing.T) {
 			expected: [][]interface{}{{2}, {3}},
 		},
 		{
+			name: "nulls_first_last",
+			sql:  "SELECT order_id FROM orders ORDER BY amount DESC NULLS LAST",
+			setup: func(t *testing.T, db *sql.DB) {
+				mustExec(t, db, "CREATE TABLE orders (order_id INTEGER, amount REAL)")
+				mustExec(t, db, "INSERT INTO orders VALUES (1, 10), (2, NULL), (3, 20)")
+			},
+			expected: [][]interface{}{{3, float64(20)}, {1, float64(10)}, {2, nil}},
+		},
+		{
 			name: "exists",
 			sql:  "SELECT order_id FROM orders WHERE EXISTS (SELECT 1 FROM customers WHERE customers.id = orders.customer_id AND customers.active = 1)",
 			setup: func(t *testing.T, db *sql.DB) {

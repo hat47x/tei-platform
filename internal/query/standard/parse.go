@@ -59,7 +59,11 @@ func ParseSQLToStandard(src string, dialect string) (*StandardQuery, []Diagnosti
 	p.tokenize()
 	q, err := p.parseQuery()
 	if err != nil {
-		p.diags = append(p.diags, Diagnostic{Code: "PARSE_ERROR", Message: err.Error(), Severity: SeverityError})
+		pos := p.peek().pos
+		if pos == 0 && len(p.tokens) > 0 {
+			pos = p.tokens[len(p.tokens)-1].pos
+		}
+		p.diags = append(p.diags, Diagnostic{Code: "PARSE_ERROR", Message: err.Error(), Span: SourceSpan{Start: pos, End: pos}, Severity: SeverityError})
 	}
 	if q == nil {
 		q = &StandardQuery{Dialect: dialect}
