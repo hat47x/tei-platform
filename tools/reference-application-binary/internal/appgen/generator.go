@@ -20,14 +20,15 @@ func Generate(ctx *GenerationContext, outDir string) ([]string, error) {
 	}
 
 	files := map[string]string{
-		"main.go":       "main.go.tmpl",
-		"config.go":     "config.go.tmpl",
-		"models.go":     "models.go.tmpl",
-		"queries.go":    "queries.go.tmpl",
-		"commands.go":   "commands.go.tmpl",
+		"main.go":        "main.go.tmpl",
+		"config.go":      "config.go.tmpl",
+		"models.go":      "models.go.tmpl",
+		"queries.go":     "queries.go.tmpl",
+		"commands.go":    "commands.go.tmpl",
 		"validations.go": "validations.go.tmpl",
-		"errors.go":     "errors.go.tmpl",
-		"provenance.go": "provenance.go.tmpl",
+		"errors.go":      "errors.go.tmpl",
+		"provenance.go":  "provenance.go.tmpl",
+		"migrations.go":  "migrations.go.tmpl",
 	}
 
 	var written []string
@@ -50,7 +51,7 @@ func Generate(ctx *GenerationContext, outDir string) ([]string, error) {
 	manifest := map[string]any{
 		"schemaVersion": ctx.SchemaVersion,
 		"applicationId": ctx.ApplicationID,
-		"files":        written,
+		"files":         written,
 	}
 	manifestPath := filepath.Join(outDir, "manifest.json")
 	manifestBytes, _ := json.MarshalIndent(manifest, "", "  ")
