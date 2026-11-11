@@ -1,6 +1,10 @@
 package query
 
-import "sort"
+import (
+	"sort"
+
+	"tei/internal/core"
+)
 
 // Read-only change impact for one derived claim (#2582 RC-01/02/04).
 //
@@ -57,6 +61,10 @@ type InputSlice struct {
 }
 
 type ChangeImpactRequest struct {
+	// Query must equal DerivedIR.Query. Node IDs are stable only inside one
+	// analysis, so the caller must take the IR and the bindings from the same
+	// query revision; the IR carries no source digest to check that here.
+	Query core.CanonicalID `json:"query"`
 	// Claim is the RelNode ID whose output the claim or display item reads.
 	Claim string `json:"claim"`
 	// Bindings maps a source RelNode ID to the Data Context ID it reads. It
@@ -76,6 +84,9 @@ type ChangeImpact struct {
 	// DependsOn is the declared context closure found so far. It is complete
 	// only when Unresolved is empty.
 	DependsOn []string `json:"dependsOn,omitempty"`
+	// PossiblyDependsOn lists contexts read by predicate or scalar subqueries
+	// that the IR does not link to an operator. A change there is unknown.
+	PossiblyDependsOn []string `json:"possiblyDependsOn,omitempty"`
 	// Unresolved lists why the closure cannot be trusted.
 	Unresolved []string `json:"unresolved,omitempty"`
 	// NonMonotonic lists, per changed context, operators on the path to the
@@ -255,7 +266,9 @@ func AssessChangeImpact(ir DerivedIR, req ChangeImpactRequest) ChangeImpact {
 		w.byScope[nodeScope(n)] = append(w.byScope[nodeScope(n)], n.ID)
 	}
 	// Partial or absent lowering does not say where the unlowered part is,
-	// so no claim of this query can be shown to be unaffected.
+	// so no claim of this query can be shown to be unaffected. No producer
+	// contract ties RelOpaque nodes to the complete set of unlowered parts,
+	// so their presence does not localize a partial lowering either.
 	if ir.Coverage.Parse != CoverageFull || ir.Coverage.Lowering != CoverageFull {
 		w.unresolved["lowering-not-full"] = true
 	}
@@ -270,15 +283,26 @@ func AssessChangeImpact(ir DerivedIR, req ChangeImpactRequest) ChangeImpact {
 		changed[c] = true
 	}
 
-	// A nested scope that no operator links to (for example a correlated or
-	// scalar subquery inside a predicate) can still decide the claim's rows.
+	// A binding is a declaration against this exact IR. An entry that does
+	// not name a table source occurrence of it was made for something else.
+	if req.Query != ir.Query {
+		w.unresolved["query-mismatch"] = true
+	}
+	for id := range req.Bindings {
+		if n, ok := w.nodes[id]; !ok || n.Kind != RelSource || n.SourceKind == "cte" || n.SourceKind == "subquery" {
+			w.unresolved["binding-invalid:"+id] = true
+		}
+	}
+
 	parents := map[string]string{}
+	kinds := map[string]string{}
 	duplicateScope := false
 	for _, s := range ir.Scopes {
 		if _, dup := parents[s.ID]; dup {
 			duplicateScope = true
 		}
 		parents[s.ID] = s.ParentID
+		kinds[s.ID] = s.Kind
 	}
 	if duplicateScope {
 		w.unresolved["scope-hierarchy-ambiguous"] = true
@@ -288,8 +312,43 @@ func AssessChangeImpact(ir DerivedIR, req ChangeImpactRequest) ChangeImpact {
 			w.unresolved["scope-unknown:"+scope] = true
 		}
 	}
+
+	// Scopes that can decide the claim's rows without an operator edge.
+	//
+	// A CTE or FROM-subquery acts only through the source occurrence bound
+	// to it, so one that the closure does not reach is not a dependency. A
+	// subquery scope that no source occurrence binds is a predicate or
+	// scalar subquery: it acts on some operator of its parent scope, and the
+	// IR does not say which. Such a scope under a used scope is a possible
+	// dependency, together with everything it reads through bindings.
+	boundScopes := map[string]bool{}
 	for _, n := range ir.Relational.Nodes {
-		if w.visited[n.ID] || !w.underUsedScope(nodeScope(n), parents) {
+		if n.Kind == RelSource && n.Binding != "" {
+			boundScopes[n.Binding] = true
+		}
+	}
+	possible := map[string]bool{}
+	reaches := func(scope string) bool { return w.scopesInUse[scope] || possible[scope] }
+	for grew := true; grew; {
+		grew = false
+		for _, s := range ir.Scopes {
+			if s.Kind != "root" && s.Kind != "cte" && !boundScopes[s.ID] && !reaches(s.ID) && reaches(s.ParentID) {
+				possible[s.ID] = true
+				grew = true
+			}
+		}
+		for _, n := range ir.Relational.Nodes {
+			if n.Kind == RelSource && n.Binding != "" && possible[nodeScope(n)] && !reaches(n.Binding) {
+				if _, ok := parents[n.Binding]; ok {
+					possible[n.Binding] = true
+					grew = true
+				}
+			}
+		}
+	}
+	possibleContexts := map[string]bool{}
+	for _, n := range ir.Relational.Nodes {
+		if w.visited[n.ID] || !possible[nodeScope(n)] {
 			continue
 		}
 		switch n.Kind {
@@ -297,14 +356,20 @@ func AssessChangeImpact(ir DerivedIR, req ChangeImpactRequest) ChangeImpact {
 			w.unresolved["unlinked-opaque:"+n.ID] = true
 		case RelSource:
 			if n.SourceKind == "cte" || n.SourceKind == "subquery" {
-				w.unresolved["unlinked-binding:"+n.ID] = true
+				if n.Resolution != "logical" || !reaches(n.Binding) {
+					w.unresolved["unlinked-binding-unresolved:"+n.ID] = true
+				}
 			} else if ctx, ok := w.bindings[n.ID]; !ok || ctx == "" {
 				w.unresolved["unlinked-source-unbound:"+n.ID] = true
-			} else if changed[ctx] {
-				w.unresolved["unlinked-nested-dependency:"+ctx] = true
+			} else {
+				possibleContexts[ctx] = true
+				if changed[ctx] {
+					w.unresolved["unlinked-nested-dependency:"+ctx] = true
+				}
 			}
 		}
 	}
+	out.PossiblyDependsOn = sortedKeys(possibleContexts)
 
 	out.DependsOn = sortedKeys(w.depends)
 	out.Unresolved = sortedKeys(w.unresolved)
@@ -345,19 +410,6 @@ func AssessChangeImpact(ir DerivedIR, req ChangeImpactRequest) ChangeImpact {
 		out.DisplayReusable = true
 	}
 	return out
-}
-
-// underUsedScope reports whether scope is a strict descendant of a scope the
-// claim's closure already uses.
-func (w *impactWalk) underUsedScope(scope string, parents map[string]string) bool {
-	seen := map[string]bool{}
-	for cur := parents[scope]; cur != "" && !seen[cur]; cur = parents[cur] {
-		seen[cur] = true
-		if w.scopesInUse[cur] {
-			return true
-		}
-	}
-	return false
 }
 
 func sortedKeys(m map[string]bool) []string {

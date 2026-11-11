@@ -112,17 +112,14 @@ func TestRC01IndependentContextChange(t *testing.T) {
 			rcExpected{ImpactRetain, RefreshNone, []string{"D1", "D2"}, nil, nil}},
 		// CTE reference: scope granularity, hence monotonicity unproven.
 		{"D1 rechecks root via CTE binding", "proj", []string{"D1"},
-			rcExpected{ImpactRecheck, RefreshReadOnlyRefetch, []string{"D1"},
-				[]string{"unlinked-nested-dependency:D1"}, []string{"aggregate:D1", "scope-binding:D1"}}},
-		// The IR does not link predicate subquery references to operators, so
-		// "this sibling CTE is unreferenced" cannot be shown from it.
-		{"D2 leaves root unknown, not retained", "proj", []string{"D2"},
-			rcExpected{ImpactUnknown, RefreshReadOnlyRefetch, []string{"D1"}, []string{"unlinked-nested-dependency:D2"}, nil}},
-		{"unrelated context keeps root", "proj", []string{"D9"},
+			rcExpected{ImpactRecheck, RefreshReadOnlyRefetch, []string{"D1"}, nil, []string{"aggregate:D1", "scope-binding:D1"}}},
+		// A CTE acts only through a source occurrence bound to it. The
+		// sibling CTEs reading D2 are not bound from the root's closure.
+		{"D2 keeps root: unreferenced sibling CTEs are not dependencies", "proj", []string{"D2"},
 			rcExpected{ImpactRetain, RefreshNone, []string{"D1"}, nil, nil}},
 	}
 	for _, c := range cases {
-		got := AssessChangeImpact(ir, ChangeImpactRequest{Claim: c.claim, Bindings: rcBindings(), Changed: c.changed})
+		got := AssessChangeImpact(ir, ChangeImpactRequest{Query: "rc.subject", Claim: c.claim, Bindings: rcBindings(), Changed: c.changed})
 		checkImpact(t, c.name, got, c.want)
 	}
 }
@@ -167,6 +164,19 @@ func TestRC02UnknownDependencyIsNotNoImpact(t *testing.T) {
 			r.Operations = append(r.Operations, analyzer.Operation{ID: "s_d", Kind: "source", ScopeID: "sub:exists", Source: "delivery", Alias: "x"})
 		}, func(b map[string]string) { b["s_d"] = "D2" }, "agg_line", []string{"H"},
 			rcExpected{ImpactRetain, RefreshNone, []string{"D1"}, nil, nil}},
+		// The predicate subquery reads D2 only through a CTE reference.
+		{"unlinked nested subquery reads the changed context through a CTE", func(r *analyzer.Result) {
+			r.Scopes = append(r.Scopes, analyzer.Scope{ID: "sub:exists", ParentID: "cte:line_totals", Kind: "subquery"})
+			r.Operations = append(r.Operations, analyzer.Operation{ID: "ref_js", Kind: "source", ScopeID: "sub:exists", Source: "join_sum", SourceKind: "cte", Binding: "cte:join_sum"})
+		}, nil, "agg_line", []string{"D2"},
+			rcExpected{ImpactUnknown, RefreshReadOnlyRefetch, []string{"D1"}, []string{"unlinked-nested-dependency:D2"}, nil}},
+		// A stale binding (made for another analysis) is not silently ignored.
+		{"binding names no source occurrence of this IR", nil, func(b map[string]string) { b["ghost"] = "D2" },
+			"agg_line", []string{"D2"},
+			rcExpected{ImpactUnknown, RefreshReadOnlyRefetch, []string{"D1"}, []string{"binding-invalid:ghost"}, nil}},
+		{"binding placed on a CTE reference instead of a table source", nil, func(b map[string]string) { b["ref_totals"] = "D1" },
+			"agg_line", []string{"D2"},
+			rcExpected{ImpactUnknown, RefreshReadOnlyRefetch, []string{"D1"}, []string{"binding-invalid:ref_totals"}, nil}},
 		{"claim not in the IR", nil, nil, "nope", []string{"D2"},
 			rcExpected{ImpactUnknown, RefreshReadOnlyRefetch, nil, []string{"claim-not-found"}, nil}},
 		{"unverified join kind is not treated as monotone", func(r *analyzer.Result) { r.Operations[4].JoinKind = "anti" },
@@ -178,9 +188,25 @@ func TestRC02UnknownDependencyIsNotNoImpact(t *testing.T) {
 		if c.bindings != nil {
 			c.bindings(bindings)
 		}
-		got := AssessChangeImpact(rcIR(c.mutate), ChangeImpactRequest{Claim: c.claim, Bindings: bindings, Changed: c.changed})
+		got := AssessChangeImpact(rcIR(c.mutate), ChangeImpactRequest{Query: "rc.subject", Claim: c.claim, Bindings: bindings, Changed: c.changed})
 		checkImpact(t, c.name, got, c.want)
 	}
+}
+
+func TestRC02PossibleDependenciesAndQueryIdentity(t *testing.T) {
+	ir := rcIR(func(r *analyzer.Result) {
+		r.Scopes = append(r.Scopes, analyzer.Scope{ID: "sub:exists", ParentID: "cte:line_totals", Kind: "subquery"})
+		r.Operations = append(r.Operations, analyzer.Operation{ID: "s_d", Kind: "source", ScopeID: "sub:exists", Source: "delivery", Alias: "x"})
+	})
+	bindings := rcBindings()
+	bindings["s_d"] = "D2"
+	got := AssessChangeImpact(ir, ChangeImpactRequest{Query: "rc.subject", Claim: "agg_line", Bindings: bindings})
+	if got.Verdict != ImpactRetain || !reflect.DeepEqual(got.PossiblyDependsOn, []string{"D2"}) || !reflect.DeepEqual(got.DependsOn, []string{"D1"}) {
+		t.Errorf("possible dependency must be reported apart from the declared closure: %+v", got)
+	}
+	// Bindings declared for one query are not accepted for another.
+	got = AssessChangeImpact(rcIR(nil), ChangeImpactRequest{Query: "rc.other", Claim: "agg_line", Bindings: rcBindings(), Changed: []string{"D2"}})
+	checkImpact(t, "query mismatch", got, rcExpected{ImpactUnknown, RefreshReadOnlyRefetch, []string{"D1"}, []string{"query-mismatch"}, nil})
 }
 
 func TestRC04LeftJoinUnmatchedRowIsProvisional(t *testing.T) {
@@ -205,7 +231,7 @@ func TestRC04LeftJoinUnmatchedRowIsProvisional(t *testing.T) {
 		if s.d2 != nil {
 			slices["D2"] = *s.d2
 		}
-		got := AssessChangeImpact(ir, ChangeImpactRequest{Claim: "anti", Bindings: rcBindings(), Slices: slices})
+		got := AssessChangeImpact(ir, ChangeImpactRequest{Query: "rc.subject", Claim: "anti", Bindings: rcBindings(), Slices: slices})
 		if !reflect.DeepEqual(got.Provisional, s.provisional) || got.Inputs["D2"] != s.echoed {
 			t.Errorf("%s: got provisional=%v inputs=%v", s.name, got.Provisional, got.Inputs)
 		}
@@ -215,7 +241,7 @@ func TestRC04LeftJoinUnmatchedRowIsProvisional(t *testing.T) {
 	}
 
 	// The preserved (left) side being partial is not a null-side hazard.
-	got := AssessChangeImpact(ir, ChangeImpactRequest{Claim: "anti", Bindings: rcBindings(),
+	got := AssessChangeImpact(ir, ChangeImpactRequest{Query: "rc.subject", Claim: "anti", Bindings: rcBindings(),
 		Slices: map[string]InputSlice{"H": {State: SlicePartial, ObservedRows: 1}, "D2": complete}})
 	if got.Provisional != nil {
 		t.Errorf("left side partial must not be reported as null-side: %v", got.Provisional)
@@ -223,7 +249,7 @@ func TestRC04LeftJoinUnmatchedRowIsProvisional(t *testing.T) {
 
 	// A matching delivery row arrives later: the shown (H, NULL) row may be
 	// replaced, so the claim is re-read rather than appended to.
-	got = AssessChangeImpact(ir, ChangeImpactRequest{Claim: "anti", Bindings: rcBindings(), Changed: []string{"D2"},
+	got = AssessChangeImpact(ir, ChangeImpactRequest{Query: "rc.subject", Claim: "anti", Bindings: rcBindings(), Changed: []string{"D2"},
 		Slices: map[string]InputSlice{"H": complete, "D2": {State: SlicePartial, ObservedRows: 1}}})
 	checkImpact(t, "late matching row", got, rcExpected{ImpactRecheck, RefreshReadOnlyRefetch, []string{"D2", "H"}, nil,
 		[]string{"filter-unparsed:D2", "outer-join-null-side:D2"}})
@@ -233,7 +259,7 @@ func TestRC04LeftJoinUnmatchedRowIsProvisional(t *testing.T) {
 }
 
 func TestChangeImpactIsHeadlessJSON(t *testing.T) {
-	got := AssessChangeImpact(rcIR(nil), ChangeImpactRequest{Claim: "agg_line", Bindings: rcBindings(), Changed: []string{"D2"}})
+	got := AssessChangeImpact(rcIR(nil), ChangeImpactRequest{Query: "rc.subject", Claim: "agg_line", Bindings: rcBindings(), Changed: []string{"D2"}})
 	b, err := json.Marshal(got)
 	if err != nil {
 		t.Fatal(err)
