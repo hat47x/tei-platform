@@ -21,7 +21,7 @@ func TestOperationSurfaceCannotRecoverUnselectedCapabilityIntent(t *testing.T) {
 	const data = core.CanonicalID("sales.order")
 	declaredUpdate := func(id core.CanonicalID) semantic.Capability {
 		return semantic.Capability{
-			ID: id,
+			ID:     id,
 			Inputs: []semantic.Parameter{{Name: "order", Type: data}},
 			Effect: &semantic.DataEffect{Kind: semantic.DataEffectUpdate, Data: data},
 		}
