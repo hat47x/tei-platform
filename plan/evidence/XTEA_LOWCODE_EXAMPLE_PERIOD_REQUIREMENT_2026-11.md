@@ -1,4 +1,4 @@
-# 例のWorkspaceで期間の要件を宣言する確認（2026-11）
+﻿# 例のWorkspaceで期間の要件を宣言する確認（2026-11）
 
 ## 対象
 
@@ -58,6 +58,18 @@ error PERIOD_CORRECTION_REFUSED_BY_CLOSURE period sales.month refuses update
 - 閉めの実行内容（集計・繰越・帳票）。
 - 実Provider・実DB・旧Runtimeでの観測。
 
+## 統合後に直したこと
+
+このPRの統合後、`TestPeriodsCommandReadsRequirementsFromTheWorkspace`が赤になりました。この試験は**例が要件を宣言していないこと**を前提にしていました。
+
+```
+the example declares no requirement but one was reported:
+map[sales.month:{... Capability:sales.close_period Correction:sales.correct_order}]
+```
+
+宣言を足した以上、期待を古いままにするのではなく**期待を宣言に合わせて動かす**のが正しい対応です。例の宣言を読み、宣言の無い別の期間（`sales.week`）が依然として現れないことを確かめる形に直しました。**古い期待を守るために宣言を戻す**のは本末転倒なので、選びませんでした。
+
 ## 位置付け
 
 参照実装の試験記録であり、製品の受入や本番適格性を示しません。例での宣言と4経路の一致は確認済み、訂正能力を走らせる経路と閉めの実行内容は未実装です。
+
