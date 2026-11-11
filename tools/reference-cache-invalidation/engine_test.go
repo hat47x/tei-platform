@@ -141,6 +141,17 @@ func TestReuseBuild_DependencyAddedDeniesBuildSkip(t *testing.T) {
 	}
 }
 
+func TestReuseBuild_DependencyRemovedDeniesBuildSkip(t *testing.T) {
+	e := NewEngine(nil)
+	prev := CacheKey{SourceDigest: "sha256:abc"}
+	curr := CacheKey{SourceDigest: "sha256:abc"}
+	closure := Closure{Digest: "sha256:closure"}
+	dec := e.ReuseBuild(prev, curr, closure, true, StatusComplete)
+	if dec.Allowed {
+		t.Fatal("dependency topology change must deny build skip")
+	}
+}
+
 func TestReuseBuild_MidFlightFailureDeniesBuildSkip(t *testing.T) {
 	e := NewEngine(nil)
 	prev := CacheKey{SourceDigest: "sha256:abc"}
@@ -392,5 +403,135 @@ func TestReuseBuild_SourceByteMatchAloneIsInsufficient(t *testing.T) {
 	dec := e.ReuseBuild(prev, curr, closure, false, StatusComplete)
 	if dec.Allowed {
 		t.Fatal("same source bytes with different world fingerprint must deny build skip")
+	}
+}
+
+func TestReuseArtifact_ModelRevisionUnchanged(t *testing.T) {
+	e := NewEngine(nil)
+	prev := CacheKey{SourceDigest: "sha256:abc", ModelRevision: "R1", WorldFingerprint: "sha256:wp1", ArtifactRevision: "A1"}
+	curr := CacheKey{SourceDigest: "sha256:abc", ModelRevision: "R1", WorldFingerprint: "sha256:wp1", ArtifactRevision: "A1"}
+	closure := Closure{Digest: "sha256:closure"}
+	dec := e.ReuseArtifact(prev, curr, closure)
+	if !dec.Allowed {
+		t.Fatalf("unchanged model revision must allow artifact reuse: %s", dec.Reason)
+	}
+}
+
+func TestReuseEvidence_WorldFingerprintUnchanged(t *testing.T) {
+	e := NewEngine(nil)
+	prev := EvidenceRecord{Scope: "default", Revision: "E1", Subject: "sales.order", WorldFingerprint: "sha256:wp1", ArtifactRevision: "A1"}
+	curr := EvidenceRecord{Scope: "default", Revision: "E1", Subject: "sales.order", WorldFingerprint: "sha256:wp1", ArtifactRevision: "A1"}
+	closure := Closure{Digest: "sha256:closure"}
+	dec := e.ReuseEvidence(prev, curr, closure, false)
+	if !dec.Allowed {
+		t.Fatalf("unchanged world fingerprint must allow evidence reuse: %s", dec.Reason)
+	}
+}
+
+func TestComputeClosure_SingleDependency(t *testing.T) {
+	e := NewEngine([]DependencyEdge{
+		{From: RevisionKindArtifact, To: RevisionKindSource, Scope: "default", Required: true},
+	})
+	revs := []Revision{{Kind: RevisionKindSource, Scope: "default", Digest: "sha256:src1"}}
+	closure, err := e.ComputeClosure(revs)
+	if err != nil {
+		t.Fatalf("closure must not error: %v", err)
+	}
+	if len(closure.Members) != 1 || closure.Members[0].Digest != "sha256:src1" {
+		t.Fatalf("unexpected closure members: %+v", closure.Members)
+	}
+}
+
+func TestDependencyChanged_RequiredFlagDiff(t *testing.T) {
+	prev := []DependencyEdge{{From: RevisionKindArtifact, To: RevisionKindSource, Scope: "default", Required: true}}
+	curr := []DependencyEdge{{From: RevisionKindArtifact, To: RevisionKindSource, Scope: "default", Required: false}}
+	if !DependencyChanged(prev, curr) {
+		t.Fatal("required flag change must be detected")
+	}
+}
+
+func TestDependencyChanged_ScopeDiff(t *testing.T) {
+	prev := []DependencyEdge{{From: RevisionKindArtifact, To: RevisionKindSource, Scope: "default", Required: true}}
+	curr := []DependencyEdge{{From: RevisionKindArtifact, To: RevisionKindSource, Scope: "other", Required: true}}
+	if !DependencyChanged(prev, curr) {
+		t.Fatal("scope change must be detected")
+	}
+}
+
+func BenchmarkReuseArtifact(b *testing.B) {
+	e := NewEngine(nil)
+	prev := CacheKey{SourceDigest: "sha256:abc", ModelRevision: "R1", WorldFingerprint: "sha256:wp1", ArtifactRevision: "A1"}
+	curr := CacheKey{SourceDigest: "sha256:abc", ModelRevision: "R1", WorldFingerprint: "sha256:wp1", ArtifactRevision: "A1"}
+	closure := Closure{Digest: "sha256:closure"}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = e.ReuseArtifact(prev, curr, closure)
+	}
+}
+
+func BenchmarkReuseBuild(b *testing.B) {
+	e := NewEngine(nil)
+	prev := CacheKey{SourceDigest: "sha256:abc", OperatorPin: "op-v1", PluginPin: "pl-v1", GeneratorVersion: "gen-v1"}
+	curr := CacheKey{SourceDigest: "sha256:abc", OperatorPin: "op-v1", PluginPin: "pl-v1", GeneratorVersion: "gen-v1"}
+	closure := Closure{Digest: "sha256:closure"}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = e.ReuseBuild(prev, curr, closure, false, StatusComplete)
+	}
+}
+
+func BenchmarkReuseEvidence(b *testing.B) {
+	e := NewEngine(nil)
+	prev := EvidenceRecord{Scope: "default", Revision: "E1", Subject: "sales.order", WorldFingerprint: "sha256:wp1", ArtifactRevision: "A1"}
+	curr := EvidenceRecord{Scope: "default", Revision: "E1", Subject: "sales.order", WorldFingerprint: "sha256:wp1", ArtifactRevision: "A1"}
+	closure := Closure{Digest: "sha256:closure"}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = e.ReuseEvidence(prev, curr, closure, false)
+	}
+}
+
+func TestReuseArtifact_MultipleStaleReasons(t *testing.T) {
+	e := NewEngine(nil)
+	prev := CacheKey{SourceDigest: "sha256:abc", ModelRevision: "R1", WorldFingerprint: "sha256:wp1", ArtifactRevision: "A1"}
+	curr := CacheKey{SourceDigest: "sha256:new", ModelRevision: "R2", WorldFingerprint: "sha256:wp2", ArtifactRevision: "A2"}
+	closure := Closure{Digest: "sha256:closure"}
+	dec := e.ReuseArtifact(prev, curr, closure)
+	if dec.Allowed {
+		t.Fatal("multiple changes must deny artifact reuse")
+	}
+	if len(dec.StaleReasons) != 4 {
+		t.Fatalf("expected 4 stale reasons, got %d: %v", len(dec.StaleReasons), dec.StaleReasons)
+	}
+}
+
+func TestReuseBuild_MultipleStaleReasons(t *testing.T) {
+	e := NewEngine(nil)
+	prev := CacheKey{SourceDigest: "sha256:abc", OperatorPin: "op-v1", PluginPin: "pl-v1", GeneratorVersion: "gen-v1"}
+	curr := CacheKey{SourceDigest: "sha256:new", OperatorPin: "op-v2", PluginPin: "pl-v2", GeneratorVersion: "gen-v2"}
+	closure := Closure{Digest: "sha256:closure"}
+	dec := e.ReuseBuild(prev, curr, closure, true, StatusPartial)
+	if dec.Allowed {
+		t.Fatal("multiple changes must deny build skip")
+	}
+	if len(dec.StaleReasons) != 6 {
+		t.Fatalf("expected 6 stale reasons, got %d: %v", len(dec.StaleReasons), dec.StaleReasons)
+	}
+}
+
+func TestReuseEvidence_MultipleStaleReasons(t *testing.T) {
+	e := NewEngine(nil)
+	prev := EvidenceRecord{Scope: "default", Revision: "E1", Subject: "sales.order", WorldFingerprint: "sha256:wp1", ArtifactRevision: "A1"}
+	curr := EvidenceRecord{Scope: "other", Revision: "E2", Subject: "sales.quote", WorldFingerprint: "sha256:wp2", ArtifactRevision: "A2"}
+	closure := Closure{Digest: "sha256:closure"}
+	dec := e.ReuseEvidence(prev, curr, closure, false)
+	if dec.Allowed {
+		t.Fatal("multiple changes must deny evidence reuse")
+	}
+	if len(dec.StaleReasons) != 5 {
+		t.Fatalf("expected 5 stale reasons, got %d: %v", len(dec.StaleReasons), dec.StaleReasons)
 	}
 }

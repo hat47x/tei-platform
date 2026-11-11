@@ -50,10 +50,15 @@ go test ./tools/reference-cache-invalidation/... -count=1 -bench=. -benchmem
 
 | ベンチマーク | 平均時間 | 平均メモリ |
 | --- | --- | --- |
-| `BenchmarkReuseArtifact` | 46.7 ns/op | 0 B/op |
-| `BenchmarkReuseBuild` | 52.1 ns/op | 0 B/op |
-| `BenchmarkReuseEvidence` | 49.3 ns/op | 0 B/op |
+| `BenchmarkReuseArtifact` | 48.25 ns/op | 0 B/op |
+| `BenchmarkReuseBuild` | 93.59 ns/op | 0 B/op |
+| `BenchmarkReuseEvidence` | 52.99 ns/op | 0 B/op |
 | `BenchmarkComputeClosure` | 1.23 us/op | 400 B/op |
+
+## 追加検証（2026-11-11）
+
+- 関連する参照実装の回帰テスト（`reference-derivation-cache`、`reference-digest-change-reuse`、`reference-evidence-router-connect`）がすべてPASS。
+- 本参照はread-onlyで、Source書換えやreceipt発行をしない。
 
 ## 未対応の失効パターン
 
