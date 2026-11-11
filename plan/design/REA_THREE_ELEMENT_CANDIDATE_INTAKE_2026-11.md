@@ -139,39 +139,35 @@ Observationは`data-element`候補へ、有向Relationは`cross-reference`候補
 | Owner mapping無し | 何も`resolved`にしない |
 | read-only port | 書込み手段を持たない（型に無い） |
 
-## 7. 未着手の作業（後続実装者向け）
+## 7. 作業の進捗と残り（後続実装者向け）
 
-以下は**未実装**である。着手順に並べる。
+### 7.1 CLI入口（実装済み）
 
-### 7.1 CLI入口（次の最小作業）
+`tei three-element rea-intake`を追加した。フラグは`-evidence`（必須）、`-workspace`、`-model`、`-mapping`、`-before`、`-output`である。出力は`tei.cli.three-element.rea-intake/v0`の封筒で、`result`がレビュー票そのものである。
 
-`tei three-element rea-intake`を追加する。変更点は次の4ファイルに閉じる。
+**当初案から変えた点（重要）**
 
-1. `cmd/tei/cli_three_element.go`
-   - `runThreeElementCommand`の`switch`へ`case "rea-intake":`を追加し、`runThreeElementReaIntake`を呼ぶ。
-   - 先頭の`failThreeElement`メッセージのsubcommand一覧へ`rea-intake`を足す。
-   - フラグ案：`-evidence`（必須、REAのJSON）、`-workspace`（任意、束縛する場合）、`-model`（任意、採用previewの対象）、`-mapping`（任意、`{candidateId: {kind,id}}`のJSON）、`-before`（任意、前回のCandidateSet JSON）、`-output`（任意、レビュー票の保存先）。
-   - 出力は`threeElementResponse`で包み、`schemaVersion`は`tei.cli.three-element.rea-intake/v0`。
-2. `cmd/tei/cli_flag_contract.go`
-   - `selectedReadOnlyFlagAllowlist["three-element"]`を`{"model"}`から上記フラグの集合へ広げる。
-   - `emptyStringGuardedFlags["three-element"]`へ、閉じた値／完全一致が必要なフラグ（`-evidence`・`-workspace`・`-model`・`-mapping`・`-before`）を追加する。
-3. `cmd/tei/cli_contract.go`相当のカタログ
-   - 現状`three-element`は`commandCatalog()`に登録されていない。CLIとして広告するなら、`cli_commands_test.go`の「dispatched だが advertised でない」検査に合わせてレコードを追加する。**広告しない判断をするなら、その理由をPR本文へ残す**（既存の`self-build`が同種の前例）。
-4. `cmd/tei/cli_three_element_test.go`
-   - 正例：fixtureのattemptでexit 0、`acceptedMeaning=false`。
-   - 負例：`-evidence`欠落で`INVALID_ARGUMENT`／exit 2、decode失敗で`EVIDENCE_*`のcode。
+前回の本案は「`selectedReadOnlyFlagAllowlist["three-element"]`を広げ、カタログへレコードを追加する」としていた。実装時にこの案は**既存の検査と矛盾する**ことが分かったため、採らなかった。
 
-**注意**：`cmd/tei/main.go`の`command == "three-element"`分岐は共有FlagSetより前にあるため、`validateSelectedReadOnlyFlags`は通らない。フラグの整合はサブコマンド側の`FlagSet`と、上記allowlist／カタログの**表を一致させること**で保つ。既存の表一致テスト（`cli_flag_names_test.go`）がどの範囲を見ているかを先に確認する。
+- `three-element`は`main.go`の`command == "three-element"`分岐で**共有FlagSetが組み立てられる前に**処理を終える。したがって`validateSelectedReadOnlyFlags`は通らず、allowlistの項目は「受理されるフラグの集合」ではなく**誰も強制しない宣言**になる。
+- 一方`TestCommandCatalogFlagsMatchAcceptedFlags`は「allowlistにあるが`tei commands`に載っていない」を失敗にする。`three-element`をカタログへ載せると、今度は`TestAcceptedCommandsMatchDispatch`が「`command`の比較か`case`で見えない」として落ちる（`init()`で足す既存の逃げ道はallowlist表とも突き合わせられる）。
+- つまり一案目は、直すべき既存失敗（`three-element accepts a flag list but is not advertised`）を**別の失敗へ置き換えるだけ**だった。
 
-### 7.2 永続化
+採った形：
 
-レビュー票を「後から読める」形で残す。現状は`-output`も無い。
+1. `cli_flag_contract.go`から`three-element`のallowlist項目と空文字guard項目を**削除**した。削除理由をその場にコメントで残す。これで既存の失敗は解消し、`three-element`は`self-build`・`dbcheck`と同じ「dispatch済み・カタログ外」の扱いになる。
+2. `helpText`は`three-element`系の名前を`strings.HasPrefix`で受け、`rea-intake`のときは**引数解析と同じ`reaIntakeFlagSet`から**`-h`の一覧を生成する。手書きの二重管理を作らない。
+3. `reaIntakeArgs`構造体＋`reaIntakeFlagSet`で文法を1箇所に固定し、`-h`と実解析が同じ定義を読む。
 
-- 保存先は既存の`successful`出力先の慣行に合わせる。新しいStoreは作らない。
-- 保存する項目：Source Revision、Candidate Identity、対応根拠、未解決、意味損失、Attempt provenance、`candidateSetFingerprint`、`reviewSequence`。
-- **落とさない**：`acceptedMeaning=false`と`ownerDecision=pending`。保存しただけで受理済みに見える形にしない。
+**未解決として残す**：`three-element`を`tei commands`へ載せるか。載せるなら上記2つのカタログ検査の扱いを同時に決める必要がある（`command`比較をやめて`acceptedCommands`を正にする等）。今回は既存挙動を壊さない側を選び、その判断をここに残す。
 
-### 7.3 Owner受理への接続
+### 7.2 永続化（実装済み）
+
+`-output`がレビュー票をJSONで書き出す。保存する内容は票そのもので、Source Revision、Candidate Identity、対応根拠、未解決、意味損失、Attempt provenance、`candidateSetFingerprint`、`reviewSequence`がすべて入る。
+
+**落とさない**：`acceptedMeaning=false`と`ownerDecision=pending`。保存は受理ではないので、ファイルを読んだだけで受理済みと解釈できる形にしていない。新しいStoreは作らず、`os.WriteFile`で指定パスへ書くだけにした。
+
+### 7.3 Owner受理への接続（未着手）
 
 この層は受理経路を持たない。接続する場合は既存の受理経路（Shared Acceptance）へ渡すだけで、第二の受理正本を作らない。
 
@@ -212,12 +208,12 @@ Observationは`data-element`候補へ、有向Relationは`cross-reference`候補
 - `go build ./...`（このクローン上で成功）
 - `go vet ./internal/reacandidate/`：clean
 - `go test ./internal/reacandidate/ -count=1`：PASS
-- `gofmt -l internal/reacandidate`：出力なし
+- `gofmt -l internal/reacandidate cmd/tei`：出力なし
+- `go test ./cmd/tei/ -run TestThreeElement -count=1`：PASS（`rea-intake`の正例・負例・`-h`を含む）
 
 **実行していない（NOT RUN）**
 
-- `cmd/tei`のCLI入口（未実装）
 - 実REAプロセスを起動したE2E。fixtureは**手書きの合成JSON**であり、REA 6.8.0の実出力を取得した証拠ではない
-- 実Workspaceへの束縛（`WorkspaceReadOnlyModel`は単体試験でfake portのみ。`reference/workspace`に対する実行は未実施）
+- 実Workspaceへの束縛（`WorkspaceReadOnlyModel`）を`reference/workspace`へ向けた実行。CLIの`-workspace`経路はfake portの単体試験までで、実際のWorkspaceでは未実行
 - Owner受理、SHO、移行実証、生成コード
-- CI（このクローンからは未実行。PRのexact headで確認する）
+- `cmd/tei`パッケージ全体の試験とCI。このクローンからは実行していない。PRのexact headで確認する
