@@ -2,7 +2,10 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha1"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -21,6 +24,9 @@ func TestHistoricalABSourceRevisionsReachCLIAndMCPConsumers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if got := historicalSourceGitBlobID(sourceB); got != "22588b6e3b68e0a7dc96a6140acb70116aa6bfbf" {
+		t.Fatalf("historical B fixture changed: Git blob=%s", got)
+	}
 	added := []byte("    attribute rule type std.identifier display \"規則\" role numbering-rule\n")
 	if !bytes.HasPrefix(sourceB, []byte{0xef, 0xbb, 0xbf}) ||
 		bytes.Count(sourceB, added) != 1 ||
@@ -30,6 +36,9 @@ func TestHistoricalABSourceRevisionsReachCLIAndMCPConsumers(t *testing.T) {
 	sourceA := bytes.TrimPrefix(sourceB, []byte{0xef, 0xbb, 0xbf})
 	sourceA = bytes.Replace(sourceA, added, nil, 1)
 	sourceA = bytes.TrimSuffix(sourceA, []byte("\r\n"))
+	if got := historicalSourceGitBlobID(sourceA); got != "292188047e7be360e31fec2abbda53cf3d9f0e2f" {
+		t.Fatalf("historical A reconstruction changed: Git blob=%s", got)
+	}
 
 	binDir := t.TempDir()
 	cliBinary := filepath.Join(binDir, "tei")
@@ -133,4 +142,14 @@ MCP=%v", version, cliDoc, mcpDoc)
 	// This only proves bounded A/B validation delivery to two local processes.
 	// It does not prove a common atomic read attempt, complete Required Rules,
 	// a real H3 client, current Disclosure/Grant, Provider values, or Effect.
+}
+
+// Git's historical blob ID is a byte identity check, not proof of trust or
+// current Workspace authority. This intentionally mirrors the source owner's
+// historical fixture witness without introducing a new Canonical identity.
+func historicalSourceGitBlobID(raw []byte) string {
+	h := sha1.New()
+	fmt.Fprintf(h, "blob %d\x00", len(raw))
+	h.Write(raw)
+	return hex.EncodeToString(h.Sum(nil))
 }
