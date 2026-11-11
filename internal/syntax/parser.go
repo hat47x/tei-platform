@@ -2462,33 +2462,38 @@ func (p *Parser) expectText(s string) (Token, error) {
 type topLevelDeclaration struct {
 	keyword     string
 	description string
+	// directory is the source root the declaration's file lives under, and
+	// fileNames is an example path inside it. Both come from this table so the
+	// message cannot name a place the loader does not scan.
+	directory string
+	fileNames []string
 }
 
 var topLevelDeclarations = []topLevelDeclaration{
-	{"application", "an application"},
-	{"pattern", "an application pattern"},
-	{"application-release", "an application release"},
-	{"environment", "an environment"},
-	{"database", "a database"},
-	{"database-release", "a database release"},
-	{"migration", "a migration"},
-	{"migration-provider", "a migration provider"},
-	{"solution-release", "a solution release"},
-	{"plugin", "a plugin"},
-	{"bundle", "a bundle"},
-	{"persist", "a persistence mapping"},
-	{"realize", "a realization"},
-	{"query", "a query"},
-	{"contract", "a contract"},
-	{"namespace", "a semantic namespace"},
-	{"type", "a semantic type"},
-	{"data", "a semantic data declaration"},
-	{"capability", "a semantic capability"},
-	{"validation", "a semantic validation"},
-	{"calendar", "a semantic calendar"},
-	{"period", "a semantic period"},
-	{"effect-rule", "a semantic effect rule"},
-	{"run-plan", "a semantic run plan"},
+	{"application", "an application", "applications", []string{"<application>/application.tei"}},
+	{"pattern", "an application pattern", "applications/<application>/patterns", []string{"<application>/patterns/<id>.tei"}},
+	{"application-release", "an application release", "applications/<application>/releases", []string{"<application>/releases/<version>.tei"}},
+	{"environment", "an environment", "environments/<environment>", []string{"<environment>/environment.tei"}},
+	{"database", "a database", "databases", []string{"<database>/database.tei"}},
+	{"database-release", "a database release", "databases/<database>/releases", []string{"<database>/releases/<version>.tei"}},
+	{"migration", "a migration", "databases/<database>/migrations", []string{"<database>/migrations/<id>.tei"}},
+	{"migration-provider", "a migration provider", "databases/<database>/migrations", []string{"<database>/migrations/<provider>.tei"}},
+	{"solution-release", "a solution release", "solutions/<solution>/releases", []string{"<solution>/releases/<id>.tei"}},
+	{"plugin", "a plugin", "plugins/<plugin>/<version>", []string{"<plugin>/<version>/plugin.tei"}},
+	{"bundle", "a bundle", "bundles/<bundle>/<version>", []string{"<bundle>/<version>/bundle.tei"}},
+	{"persist", "a persistence mapping", "databases/<database>/persistence", []string{"<database>/persistence/<data>.tei"}},
+	{"realize", "a realization", "applications/<application>/realizations", []string{"<application>/realizations/<capability>.tei"}},
+	{"query", "a query", "applications/<application>/queries", []string{"<application>/queries/<id>.tei"}},
+	{"contract", "a contract", "databases/<database>/contracts", []string{"<database>/contracts/<id>.tei"}},
+	{"namespace", "a semantic namespace", "semantic", []string{"<namespace>/namespace.tei"}},
+	{"type", "a semantic type", "semantic/<namespace>", []string{"<namespace>/<name>.tei"}},
+	{"data", "a semantic data declaration", "semantic/<namespace>", []string{"<namespace>/<name>.tei"}},
+	{"capability", "a semantic capability", "semantic/<namespace>", []string{"<namespace>/<name>.tei"}},
+	{"validation", "a semantic validation", "semantic/<namespace>", []string{"<namespace>/<name>.tei"}},
+	{"calendar", "a semantic calendar", "semantic/<namespace>", []string{"<namespace>/<name>.tei"}},
+	{"period", "a semantic period", "semantic/<namespace>", []string{"<namespace>/<name>.tei"}},
+	{"effect-rule", "a semantic effect rule", "semantic/<namespace>", []string{"<namespace>/<name>.tei"}},
+	{"run-plan", "a semantic run plan", "semantic/<namespace>", []string{"<namespace>/<name>.tei"}},
 }
 
 // declarationDescription returns a human phrase for the declaration the token
@@ -2502,6 +2507,17 @@ func declarationDescription(text string) string {
 	return ""
 }
 
+// declarationEntry returns the table row for the keyword, or the zero value
+// when the token is not a top-level keyword.
+func declarationEntry(text string) topLevelDeclaration {
+	for _, declaration := range topLevelDeclarations {
+		if text == declaration.keyword {
+			return declaration
+		}
+	}
+	return topLevelDeclaration{}
+}
+
 // misplacedDeclaration explains that a top-level declaration keyword cannot be
 // used here, and names the declaration. It returns nil when the token is not a
 // top-level keyword, so the caller keeps its own narrower message.
@@ -2510,9 +2526,14 @@ func (p *Parser) misplacedDeclaration(t Token, scope string) error {
 	if description == "" {
 		return nil
 	}
+	entry := declarationEntry(t.Text)
+	// Name the place as well as the fact. "declare it in its own file" leaves
+	// the caller guessing which file; the directory and the example path come
+	// from the same table that names the declaration, so the answer cannot
+	// drift away from what the loader scans (#4169).
 	return p.errAt(t, fmt.Sprintf(
-		"%q starts %s, which cannot be declared %s; declare it in its own file",
-		t.Text, description, scope))
+		"%q starts %s, which cannot be declared %s; declare it under %s, for example %s",
+		t.Text, description, scope, entry.directory, entry.fileNames[0]))
 }
 
 func (p *Parser) expectEOF() error {
