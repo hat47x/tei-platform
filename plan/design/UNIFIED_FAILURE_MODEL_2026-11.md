@@ -1,7 +1,7 @@
 # 共通の例外・失敗モデル（2026-11）
 
 - **状態：参照実装（A2）／一部適用済み。** 意味の受理・権限の正本・本番配備は扱わない。
-- **対象コード**: `internal/failure/`、`internal/command/invoke.go`、`internal/hook/run.go`、`internal/security/effectcommit/commit.go`、`internal/saveunit/failure.go`、`internal/database/sqlgen/failure.go`、`internal/studiohost/readonly.go`、`internal/studiohost/command.go`、`cmd/tei/cli_view.go`、`cmd/tei/cli_inspect.go`
+- **対象コード**: `internal/failure/`、`internal/command/invoke.go`、`internal/hook/run.go`、`internal/security/effectcommit/commit.go`、`internal/saveunit/failure.go`、`internal/database/sqlgen/failure.go`・`sqlgen/postgres/failure.go`・`sqlgen/sqlite/failure.go`、`internal/studiohost/readonly.go`、`internal/studiohost/command.go`、`cmd/tei/cli_view.go`、`cmd/tei/cli_inspect.go`
 - **関連**: [#3807](https://github.com/hat47x/tei-platform/issues/3807)（境界ごとに違っていた失敗コード）、[#2996](https://github.com/hat47x/tei-platform/issues/2996)、[#2997](https://github.com/hat47x/tei-platform/issues/2997)、[#1174](https://github.com/hat47x/tei-platform/issues/1174)、[#2853](https://github.com/hat47x/tei-platform/pull/2853)、[#2854](https://github.com/hat47x/tei-platform/pull/2854)
 - **設計の正本**: 故障分類と回復の方針は[Script起動の失敗状態・再実行・回復設計](SCRIPT_INVOCATION_FAILURE_AND_RECOVERY_DESIGN_2026-11.md) §3（F01〜F14）、Command境界の扱いは[Command境界の実行前検査](COMMAND_BOUNDARY_SAFETY_2026-11.md)を正本とする。本書は**Goの型として実装した共通契約**だけを扱い、方針を複製しない。
 
@@ -53,6 +53,7 @@
 | `effectcommit.CommitUncertainError` | 同上 |
 | `saveunit.SaveError`、`saveunit.HookFailure`、`saveunit.ReferenceFailure` | 同上 |
 | `interfaceadapter.Failure` | 同上 |
+| `database/sqlgen.DatabaseFailure` | 同上。加えて`Unwrap()`で原因を標準ライブラリに曝す |
 
 フィールド（`Code`・`Message`・`Cause`・`EffectUnknown`）は変更していない。`var _ failure.Failure = ...`で各型の適合をコンパイル時に固定する。
 
@@ -128,17 +129,21 @@ if err := transaction.Commit(ctx); err != nil {
 | `internal/saveunit/failure_test.go` | `SaveError`の分類（空unit・cycle＝業務拒否、store拒否を包んでも業務拒否のまま、transient＝再送可、commit失敗＝照会先行）、参照storeの拒否、hookの拒否、二重createの拒止 |
 | `internal/studiohost/command_failure_classification_test.go` | 入力不正・認可拒否が`business_rejection`/`not_retryable`で出ること、commit失敗が`technical_failure`/`lookup_first`/効果不明で出ること、読込失敗の既定 |
 | `reference/interface-adapter` | トランスポート拒否（`UNAUTHENTICATED`・`FORBIDDEN`・`STALE_REVISION`）＝業務拒否 |
+| `internal/database/sqlgen`・`sqlgen/postgres`・`sqlgen/sqlite` | SQLSTATE・result codeからの分類、未知コードの安全側退避、効果不明なら盲再送不可となる導出、`errors.Is`で原因に到達できること |
 | `cmd/tei/cli_view_failure_test.go` | `commandFailure`の既存の契約（未知のerrorは変換しない） |
 
 ```
-ok  tei/internal/failure                1.491s
-ok  tei/internal/command                3.001s
-ok  tei/internal/hook                   2.249s
-ok  tei/internal/security/effectcommit  1.943s
-ok  tei/internal/studiohost             4.194s
-ok  tei/internal/saveunit               1.186s
-ok  tei/reference/interface-adapter     3.518s
-ok  tei/internal/database/sqlgen        1.119s
+ok  tei/internal/failure                3.704s
+ok  tei/internal/command                7.603s
+ok  tei/internal/hook                   4.284s
+ok  tei/internal/security/effectcommit  3.128s
+ok  tei/internal/studiohost            16.991s
+ok  tei/internal/saveunit               2.256s
+ok  tei/reference/interface-adapter     6.517s
+ok  tei/internal/database/sqlgen        5.299s
+ok  tei/internal/database/sqlgen/postgres 2.319s
+ok  tei/internal/database/sqlgen/sqlite   4.016s
+ok  tei/internal/plugin/database        2.031s
 ```
 
 ## 5. 適用済みの範囲と、残っている範囲
@@ -147,11 +152,22 @@ ok  tei/internal/database/sqlgen        1.119s
 
 Go実行基盤の主要な境界——Command・Hook・EffectCommit・Save・Database（sqlgen）・Studio bridge・CLI・参照Adapter。
 
+Database層は**コードで分類**する。`sqlgen.ToDatabaseFailure`は、errorが機械可読なコードを持つとき（`sqlgen.CodeCarrier`）はそのコード表から決め、持たないときだけメッセージの文字列一致に退く：
+
+| Provider | コードの出所 | 例 |
+| --- | --- | --- |
+| postgres | `pgconn.PgError.Code`（SQLSTATE） | `23505`→`UNIQUE_VIOLATION`、`40001`→`SERIALIZATION_FAILURE` |
+| sqlite | `modernc.org/sqlite`の`Error.Code()`（result code、拡張bitをマスク） | `19`→`CONSTRAINT_VIOLATION`、`5`→`DATABASE_BUSY` |
+
+メッセージ一致は方言・版・ロケールに依存する（"duplicate key"／"UNIQUE constraint failed"／日本語サーバの文言）ため、fallbackに退けた。未知のコードは桁から推測せず、`technical_failure`＋`lookup_first`に倒す。
+
+`DatabaseFailure.Retryable()`は**導出**する（`effect`が立っていれば常に`lookup_first`）。保存された基本判定と効果不明の組合わせを各caseで覚えておく必要がなく、後からコードを増しても不変式が崩れない。従実装は`deadlock`に`retryable`＋効果不明という組み合わせを持っており、この契約の規則2（効果不明のない技術障害だけが`retryable`）に違反していた。
+
 ### 未適用
 
 | 範囲 | 状態 |
 | --- | --- |
-| Data Provider / Operator 層 | `internal/database/sqlgen`の`DatabaseFailure`のみ。Providerごとの分類（postgres/sqliteのerror code）は未整備 |
+| Data Provider / Operator 層 | `sqlgen.ToDatabaseFailure`はコード分類へ移行済み。Provider本体（`internal/database/providers/*`、`internal/driver`）の error path からの呼出し接線は未整備 |
 | Java等の生成ターゲット | 未着手。言語固有の例外はAdapterで吸収する方針は本書のとおりだが、実装はない |
 | `partial_success` | 型は定義済み。現状どの境界もこの分類を返さない。複数Effectの一部確定（[Script設計のF09](SCRIPT_INVOCATION_FAILURE_AND_RECOVERY_DESIGN_2026-11.md)）で初めて使う |
 | Web Host（Wails） | `studiohost`は通るが、Wails固有の橋は未確認 |
