@@ -2,7 +2,7 @@
 
 - 対象Issue: [#2509](https://github.com/hat47x/tei-platform/issues/2509)（DSH外部Harness実証）、[#2515](https://github.com/hat47x/tei-platform/issues/2515)（実効隔離・全送出経路Conformance）。機密境界の正本は[TAI #232](https://github.com/hat47x/tai-pleroma/issues/232)、比較計画は[TAI #168](https://github.com/hat47x/tai-pleroma/issues/168)。
 - 状態: **既存の実行記録を並べた索引**。新しい実測は行っていない。個々の合否・Owner受理は各記録とIssueの担当。
-- この文書の役割: 51件の実行記録が**それぞれ何を確定させ、何を確定させていないか**を1枚で見えるようにし、同じ測り方の重複を避ける。記録本文の複製はせず、各記録へ参照で結ぶ。
+- この文書の役割: 52件の実行記録が**それぞれ何を確定させ、何を確定させていないか**を1枚で見えるようにし、同じ測り方の重複を避ける。記録本文の複製はせず、各記録へ参照で結ぶ。
 
 ## 1. なぜ台帳が要るか
 
@@ -31,6 +31,7 @@
 | [Subagent fork](./DSH_SUBAGENT_FORK_2026-11-09/README.md) | 文脈の継承 | Turn 1で`pwsh`から親canaryを出して完走させ、Turn 2で同じSessionを再開してforkした。子は`afterSeq -1`の別Sessionだが**メッセージ数5**で親の完了Turnを引き継ぎ、**親canaryが子の本文にも永続Logにも現れる**（`subagent`の子はメッセージ数1） | 実行中Turnの継承、forkの連鎖、Telemetry・MCP |
 | [Subagentの連鎖](./DSH_SUBAGENT_CHAIN_2026-11-09/README.md) | 連鎖の上限 | Sessionごとに1回`subagent`を強制して連鎖させると、Sessionは**3つ（親1・子2）で止まり孫は0**。子は`subagent depth 2 exceeds maxDepth 1`を**`isError: true`のTool結果**として受け取り、**その文言が子の次のモデル入力にも載る**。拒否後も子は要求を消費（各3要求） | `subagentMaxDepth`を上げた場合、forkの連鎖、Telemetry・MCP |
 | [深さ上限を上げた連鎖](./DSH_SUBAGENT_DEPTH_RAISED_2026-11-09/README.md) | 上限の可変性 | `--dump-config-schema`で上限の在処を特定（`subagent`の`maxDepth`、既定`1`、`volatile`、同schemaに`maxActiveSubagents`既定`8`）。`--patch`で`3`にすると**Sessionは4つ（深さ0〜3）になり、深さ4で`subagent depth 4 exceeds maxDepth 3`**（`isError: true`）。12要求・合計765,677 bytes | 既定との正確なbyte比較（Mockの発火方針が違う）、`4`以上、`maxActiveSubagents`との相互作用、forkの連鎖、Telemetry・MCP |
+| [`maxDepth 4`の連鎖](./DSH_SUBAGENT_DEPTH4_2026-11-11/README.md) | 上限の可変性（4） | `maxDepth: 4`にして**1セッション1回だけ`subagent`を起動**させると、**深さ0〜4の5セッション**ができ（`maxDepth 3`では3だったので**1段伸びた**）、**深さ4の子の次の起動が`exceeds maxDepth 4`で拒否**された。拒否の本文に**設定値がそのまま現れる**。**深さは根のstdoutだけでは分からず、子Sessionの要求を突き合わせて初めて見える** | `maxDepth 5`以上、1メッセージで複数起動した場合、`subagent_fork`の連鎖、履歴が長い場合の増加量 |
 | [forkの連鎖](./DSH_SUBAGENT_FORK_CHAIN_2026-11-09/README.md) | 継承と深さ | `maxDepth 3`で`subagent_fork`を連鎖させると**4 Session（深さ0〜3）で止まり、深さ4は`isError: true`で拒否**。forkした子の初回要求は**どれもメッセージ数1**で、**同一Turnの途中では完了Turnを継承しない**。送出量はspawn連鎖とほぼ同じ（765,350 vs 765,677 bytes、差0.04%） | 完了Turnを挟んだforkの連鎖、`4`以上、`maxActiveSubagents`との相互作用、Telemetry・MCP |
 | [Turn境界をまたぐfork連鎖](./DSH_SUBAGENT_FORK_TURN_CHAIN_2026-11-09/README.md) | 継承の条件 | Turn 1で`pwsh`からcanaryを出して完走させ、Turn 2で同じSessionを再開してforkを連鎖させると、**forkした子の初回要求はどれもメッセージ数5で親canaryを含み、深さ3まで届いた**。14要求・786,786 bytes（同一Turn内は12要求・765,350）。深さ4は`isError: true`で拒否 | Turn 1が複数ある場合の増加量、`4`以上、`maxActiveSubagents`との相互作用、Telemetry・MCP |
 | [同時起動の上限](./DSH_SUBAGENT_CONCURRENT_LIMIT_2026-11-09/README.md) | 同時数 | 1メッセージで12体の`subagent`を並列要求すると**8体が起動し4体が拒否**された。拒否は`isError: true`のTool結果で本文は`active child limit: 8`。**子が即応答する対照でも8/4で変わらない**ため、上限は**起動時に見る同時数**で、子の完了を待って順に通す形ではない。親1＋子8で13要求・1,074,677 bytes | 時間を分けた起動、`maxActiveSubagents`の変更、`maxDepth`との同時作用、Telemetry・MCP |
@@ -95,7 +96,7 @@
 ### 4.3 その他の残り
 
 - **Telemetryでfeedbackを与えた場合の送出内容**と**web・tui面のfeedback経路**。headlessにはfeedback面が無く`/feedback`はコマンドにならないことを[feedback面の不在](./DSH_FEEDBACK_SURFACE_2026-11-10/README.md)で確認したが、**feedbackを実際に発生させた場合の送信内容**は未観測。
-- **`maxDepth`を`4`以上にした場合**、**Turn 1が複数ある場合のfork連鎖の増加量**、**実行中Turnのfork継承**、**履歴が長い場合の各段の増加量**。
+- **`maxDepth`を`5`以上にした場合**（`4`は[`maxDepth 4`の連鎖](./DSH_SUBAGENT_DEPTH4_2026-11-11/README.md)で確認済み）、**Turn 1が複数ある場合のfork連鎖の増加量**、**実行中Turnのfork継承**、**履歴が長い場合の各段の増加量**。
 - **停滞の検知手段を用意した場合の実効性**。3面に警告が出ないことと、非停滞との差が`delivery-accepted`の不在だけであることは[停滞の可視性](./DSH_SESSION_LOG_STALL_VISIBILITY_2026-11-09/README.md)・[停滞の検知](./DSH_SESSION_LOG_STALL_DETECTION_2026-11-09/README.md)で確認したが、Telemetry・UI・別flagを含む**他の面**、**243 event・375KBを超えるbacklog**（この範囲では分割されなかったが上限の有無は未確認）、**他版で同じevent名・意味になるか**（この版の観測であって契約ではない）は未確認。単一eventが上限を超えると拡張が消え`delivery-accepted`が増えないことは[上限を超える単一event](./DSH_SESSION_LOG_OVERSIZE_EVENT_2026-11-09/README.md)で確認した。
 - **Skillの増分価値**。四Sessionは未採点で、Task path不一致とSession再利用を含む。
 - **独立Expectedによる採点**（RunbookのReviewer-only）。
