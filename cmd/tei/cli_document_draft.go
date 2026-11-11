@@ -79,6 +79,8 @@ func runModelDocumentDraftCommand(args []string, out io.Writer) (int, error) {
 	documentKind := fs.String("document-kind", documentdraft.DocumentKindElementExplanation,
 		"document kind: "+strings.Join(documentdraft.SupportedDocumentKinds(), "|"))
 	application := fs.String("application", "", "exact application ID; required by "+documentdraft.DocumentKindCRUDTable)
+	frozen := fs.Bool("frozen", false,
+		"pin the draft to the model revision it is read at (a fixed delivery)")
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			printHelp(out, fs, "model document-draft")
@@ -104,6 +106,7 @@ func runModelDocumentDraftCommand(args []string, out io.Writer) (int, error) {
 		DocumentKind: *documentKind,
 		Title:        *title,
 		Application:  *application,
+		Frozen:       *frozen,
 	})
 	if err != nil {
 		code, exit := documentDraftFailureCode(err)

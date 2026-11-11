@@ -143,6 +143,18 @@ func Reconcile(draft Draft, root string) (ReconcileReport, error) {
 	} else {
 		report.ModelReference.Status = ModelReferenceStale
 	}
+	// A frozen draft is a delivery artifact. When its pin no longer matches the
+	// current read, the report says the delivery expired rather than offering a
+	// refreshed projection: nothing here updates the draft or the document.
+	if draft.Frozen && draft.FrozenRevision != "" &&
+		draft.FrozenRevision != report.ModelReference.Observed.ModelRevision {
+		report.ModelReference.Status = ModelReferenceStale
+		if !containsString(report.ModelReference.Diffs, "frozenRevision") {
+			report.ModelReference.Diffs = append(report.ModelReference.Diffs, "frozenRevision")
+		}
+		report.AuthorityLimits = append(report.AuthorityLimits,
+			"frozen-delivery-is-not-refreshed-automatically")
+	}
 
 	for _, occurrence := range draft.Occurrences {
 		status, detail, currentDigest := reconcileOccurrence(read, occurrence)
@@ -215,6 +227,17 @@ func reconcileCRUDTable(draft Draft, root string) (ReconcileReport, error) {
 		report.ModelReference.Status = ModelReferenceCurrent
 	} else {
 		report.ModelReference.Status = ModelReferenceStale
+	}
+	// A frozen CRUD delivery reports expiry the same way an element draft does:
+	// the pin no longer matches, and nothing is refreshed.
+	if draft.Frozen && draft.FrozenRevision != "" &&
+		draft.FrozenRevision != current.Model.ModelRevision {
+		report.ModelReference.Status = ModelReferenceStale
+		if !containsString(report.ModelReference.Diffs, "frozenRevision") {
+			report.ModelReference.Diffs = append(report.ModelReference.Diffs, "frozenRevision")
+		}
+		report.AuthorityLimits = append(report.AuthorityLimits,
+			"frozen-delivery-is-not-refreshed-automatically")
 	}
 
 	currentByID := map[string]Occurrence{}
@@ -503,6 +526,13 @@ func validateDraft(draft Draft) error {
 		if len(occurrence.SubjectRefs) == 0 {
 			return draftError(CodeInvalidDraft, "occurrence %q references no subject", occurrence.OccurrenceID)
 		}
+	}
+	// A frozen draft must carry the revision it was frozen at. A hand-edited file
+	// that sets `frozen` without a pin would look like a delivery whose expiry
+	// cannot be decided, so it is refused rather than compared.
+	if draft.Frozen && strings.TrimSpace(draft.FrozenRevision) == "" {
+		return draftError(CodeInvalidDraft,
+			"a frozen draft must record the model revision it was frozen at")
 	}
 	return nil
 }

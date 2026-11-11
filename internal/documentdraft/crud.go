@@ -16,6 +16,15 @@ import (
 // kept in the document layer.
 const DocumentKindCRUDTable = "crud-table"
 
+// DocumentKindFrozenDelivery pins one draft to the model revision it was read
+// at. A frozen draft is a delivery artifact: a later model change is reported as
+// expiry, and the document is never refreshed behind the reader's back.
+//
+// The pin is expressed as an explicit `-frozen` input on an existing kind rather
+// than a kind of its own, because freezing changes how a draft is read later, not
+// what it contains.
+const DocumentKindFrozenDelivery = "frozen-delivery"
+
 // SupportedDocumentKinds lists the document kinds this version implements. A
 // kind not listed here is refused with UNSUPPORTED_DOCUMENT_KIND: a later stage
 // is never half-implemented and silently treated as this one.
@@ -23,6 +32,7 @@ func SupportedDocumentKinds() []string {
 	return []string{
 		DocumentKindElementExplanation,
 		DocumentKindCRUDTable,
+		DocumentKindFrozenDelivery,
 	}
 }
 

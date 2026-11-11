@@ -2,7 +2,7 @@
 
 ## この文書の役割と状態
 
-- **状態**：`実装済みの最小統合の基線`（2026-11-11）。`internal/documentdraft`・`tei model document-draft`・`tei model document-reconcile` と、SHO側の `src/document-draft.cjs`・`bin/sho-doc.cjs` を対象とする。実装済みの `documentKind` は `element-explanation` と `crud-table` の2つ。後続段階は[TEI_SHO_DOCUMENT_DRAFT_NEXT_STAGES_2026-11.md](TEI_SHO_DOCUMENT_DRAFT_NEXT_STAGES_2026-11.md)が正本。
+- **状態**：`実装済みの最小統合の基線`（2026-11-11）。`internal/documentdraft`・`tei model document-draft`・`tei model document-reconcile` と、SHO側の `src/document-draft.cjs`・`bin/sho-doc.cjs` を対象とする。実装済みの `documentKind` は `element-explanation` と `crud-table` の2つ。`-frozen` による固定納品版のpinも実装済み。後続段階は[TEI_SHO_DOCUMENT_DRAFT_NEXT_STAGES_2026-11.md](TEI_SHO_DOCUMENT_DRAFT_NEXT_STAGES_2026-11.md)が正本。
 - **正本との関係**：意味の正本はTEIのWorkspace SourceとOwner受理（[#267](https://github.com/hat47x/tei-platform/issues/267)）にあり、この文書は**派生Projectionの契約**を置くだけである。採用した設計判断は[plan/adr/](../adr/README.md)、作業の進行状況はIssueが正本。SHO側の対応は[SHO #19](https://github.com/hat47x/sho-composer/issues/19)・[SHO #4](https://github.com/hat47x/sho-composer/issues/4)・[SHO #6](https://github.com/hat47x/sho-composer/issues/6)で管理し、契約本文をSHO repositoryへ複製しない（URL参照）。
 - **対象範囲**：受理済みモデルから**一つの要素と一つの関係**を読み取り、SourceとRevisionを保持した説明文書のDraftをSHOへ渡し、SHOで編集・保存・再開し、TEI側でモデル改版との差分と再確認が必要な部分を提示するまでの一経路。
 - **この文書が主張しないこと**：SHO保存成功がTEIモデルへの取込み成功やAccepted Meaningの更新成功であることは示さない。図面の製品編集、Studioへの組込み実証、`*.tei.md`の正式Parser、Owner意味受理、旧Runtimeとの同値はすべて別資格である。
@@ -26,6 +26,8 @@ SHOはTEIの意味正本も専用Hostも持たない。TEI StudioはSHOの文書
 TEIが生成し、SHOが消費する。SHOは语义を解釈せず、identity・revision・生成条件・anchorを**そのまま保持**する。CLIはこのDraftを `tei.cli.model-document-draft/v0` の封筒に入れて返すので、Consumerは封筒を開いて `result` を採る（SHO側は両方の形を受付ける）。
 
 `documentKind` は文書の種類を選ぶ。実装済みは `element-explanation`（一要素＋一関係）と `crud-table`（一ApplicationのCRUD行列）。**未実装の種類は `UNSUPPORTED_DOCUMENT_KIND` で拒否する**——後続段階を途中まで実装して完成文書のように見せないため。CLIの入力は種類ごとに排他で、`crud-table` は `-application` を取り、`element-explanation` は `-application` を拒否する。
+
+`-frozen` は**種類ではなくpin**。Draftを「読出した時点のmodelRevision」に固定し、固定納品版として使う。pin後は `frozen: true` と `frozenRevision` をDraftが持ち、reconcileはpinが現在のrevisionと違えば `stale`（`frozenRevision` diff）として**失効**を報告する。**Draftも文書も書換わない**。`frozen-delivery` を種類として指定した場合は拒否する（pinの付け忘れを種類の誤指定で誤魔化さない）。`frozen: true` で `frozenRevision` が無いDraftは `INVALID_DRAFT`（手編集で期限を不能にできない）。
 
 ```jsonc
 {
@@ -113,6 +115,7 @@ TEIが生成し、SHOが消費する。SHOは语义を解釈せず、identity・
 | RD-05 | 著者が生成Occurrence内の文を編集し、reconcile後も保存 | 著者文を自動上書きしない。`authorEditedGeneratedBlock`を保持し再確認を要求 | `an edit inside a generated block is reported, not repaired`（SHO）＋`reprojection-never-overwrites-author-text`（TEI） |
 | RD-06 | Draft JSONを手編集・改変 | schemaVersion/effect/必須identityの欠落を拒否。部分的なDraftを推測で補完しない | `TestReconcileRefusesADraftThatIsNotThisContract`（TEI）・`a draft that is not this contract is refused`（SHO） |
 | RD-07 | CRUD表でApplicationを削除・書き込み権限を撤回・update intentを追加 | Occurrence単位で `subject-missing`・`content-changed`・`occurrence-removed`・`occurrence-added` を区別。空表を「このApplicationは何もしない」と読ませない | `TestCRUDTableReconcileReportsARemovedApplication`・`TestCRUDTableReconcileNamesChangedRowsAfterAModelChange`・`TestCRUDTableReconcileReportsARemovedGapTable`・`TestCRUDTableReconcileReportsAnOccurrenceTheModelStartedDeriving`（TEI） |
+| RD-08 | 固定納品版（`-frozen`）のpin後・pinなし・種類としての指定・pinの手編集 | pinはmodelRevision。改版で`stale`＋`frozenRevision` diff。`frozen`を種類として指定は拒否。`frozen`でpin無しは`INVALID_DRAFT`。pinは書換わない | `TestFrozenDeliveryPinsTheModelRevision`・`TestFrozenDeliveryReportsExpiryAfterAModelChange`・`TestFrozenDeliveryIsCurrentWhenTheModelDidNotMove`・`TestFrozenDeliveryIsNotADocumentKind`・`TestFrozenDeliveryAppliesToACRUDTable`・`TestFrozenDraftWithoutAPinIsRefused`（TEI） |
 
 ## 6. 段階的拡張（単一モデル→単一文書の実証後）
 

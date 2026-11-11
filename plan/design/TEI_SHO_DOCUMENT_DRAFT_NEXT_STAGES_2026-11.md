@@ -15,14 +15,15 @@
 | `tei model document-draft`・`model document-reconcile` | 同上、契約試験PASS |
 | `documentKind: element-explanation`（一要素＋一関係） | 同上 |
 | `documentKind: crud-table`（一ApplicationのCRUD行列） | 本計画の段階2、Go試験＋CLI試験PASS |
-| SHO側の消費・編集・保存・再開 | SHO PR #36、17試験PASS・merge後スイート105 PASS/0 FAIL |
+| `-frozen`（固定納品版のpin） | 本計画の段階5、Go試験＋CLI試験PASS |
+| SHO側の消費・編集・保存・再開 | SHO PR #36、17試験PASS・merge後スイート127 PASS/0 FAIL |
+| SHO側のローカル相互ランナー・入出力契約試験・部品境界文書 | SHO PR #36、相互ランナー実PASS |
 | 相互実証（合成Workspace・同一端末） | PR本文の記録 |
 
 | 未実装 | この文書の段階 |
 | --- | --- |
 | 三要素分析図（Data/Function/Business） | 段階3（`internal/threeelement` は [PR #4283](https://github.com/hat47x/tei-platform/pull/4283) OPEN） |
 | 仕様書（複数要素の束ね） | 段階4 |
-| 固定納品版（Revision pin） | 段階5 |
 | TEI Studio実組込み | 横断C-2 |
 | 相互CI証跡（同一Attempt） | 横断C-1 |
 | 文書→モデルの逆方向経路 | 横断C-3（経路は作らない） |
@@ -70,17 +71,18 @@
 - **Done means**：S4-a〜dがGo試験でPASS。
 - **非目標**：目次の自動生成・表現の潤飾・Owner意味の統合判断。
 
-## 4. 段階5：`frozen-delivery`
+## 4. 段階5：`frozen-delivery`（2026-11-11 実装済み）
 
 - **目的**：固定納品版。Draftが**特定Revisionにpin**され、以後のモデル改版は「失効」として報告され、自動更新しない。
 - **依存**：段階1。**pinの意味（再確認の要否・再納品の条件）はOwner判断**。
-- **契約の差分（最小）**：`Draft.frozen`（bool）と`Draft.frozenAtModelRevision`。Reconcileは`frozen && 参照が動いた`場合に`modelReference.status="stale"`かつ`detail`に`frozen-delivery-reference-moved`を付与し、`authorityLimits`に`frozen-delivery-is-not-refreshed-automatically`を追加する。
-- **独立Expected**：
-  - S5-a pin後・モデル不改変 → `current`。
-  - S5-b pin後・モデル改変 → `stale`＋Occurrence単位の再確認リスト。**Draftも文書も書換わない**。
-  - S5-c `frozen`を手で外したDraftは`INVALID_DRAFT`（pinの解除は明示操作のみ。手編集で解除できないことを試験で固定するなら、解除は新Draft生成時にのみ可能とする）。
-  - S5-d 別Workspaceの同じ内容（同`worldFingerprint`）でも`modelRevision`が違えば`stale`（Workspace identityの違いを報告）。
-- **Done means**：S5-a〜dがGo試験でPASS。
+- **形**：`-frozen` は**種類ではなくpin**。Draftは `frozen: true` と `frozenRevision`（読出した時点のmodelRevision）を持つ。`frozen-delivery` を種類として指定した場合は拒否する。`frozen` でpin無しは `INVALID_DRAFT`。
+- **独立Expected（実装済み）**：
+  - S5-a pin後・モデル不改変 → `current`・再確認0件。
+  - S5-b pin後・モデル改変 → `stale`＋`frozenRevision` diff＋`frozen-delivery-is-not-refreshed-automatically`。**Draftも文書も書換わない**。
+  - S5-c `frozen-delivery` を種類として指定 → `UNSUPPORTED_DOCUMENT_KIND`。
+  - S5-d `frozen: true` で `frozenRevision` 無し → `INVALID_DRAFT`（手編集で期限を不能にできない）。
+  - S5-e CRUD表にも同じpinが乗る（種類とpinは直交）。
+- **Done means**：S5-a〜eがGo試験とCLI試験でPASS。
 - **非目標**：納品物の署名・配布・受領証。
 
 ## 5. 横断の課題（段階と独立）
@@ -144,11 +146,11 @@
 
 ## 7. 最初の3手（次実装者が最初にやること）
 
-1. **段階3（`three-element-diagram`）** — 入力を決める。[PR #4283](https://github.com/hat47x/tei-platform/pull/4283) が未統合なので、`operations.ModelMap` で代替する案と統合後に三要素分析モデルを入力にする案を、**入力契約の差分（`model.inputKind`）を決めてから**実装する。目安：`diagram` Occurrenceのnodes/edges＋4試験。
-2. **C-1（相互CI）** — 段階2の実証と同時に組める。SHO pin SHAを固定した1ジョブでround tripを回し、ローカル実証をCI証跡に昇格する。
-3. **C-4（再投影方針）のOwner判断起案** — 実装より先に判断。段階4・5の受入条件がこれに依存する。
+1. **段階4（`specification`）** — 複数要素の束ねと章構成。段階1・2・5の部品（Occurrence・subjectRefs・pin）をそのまま使える。`skippedSubjects`で「宣言されていない章は作らない」を試験で固定する。
+2. **C-1（相互CI）** — SHO repositoryに[ローカル相互ランナー](https://github.com/hat47x/sho-composer/blob/feat/tei-document-draft-core-20261111/scripts/tei-sho-draft-roundtrip-p0.cjs)と[入出力契約試験](https://github.com/hat47x/sho-composer/blob/feat/tei-document-draft-core-20261111/test/sho-doc-cli-contract.test.cjs)が揃った。TEI側の1ジョブでpinしたSHAのround tripを回し、ローカル実証をCI証跡に昇格する。
+3. **C-4（再投影方針）のOwner判断起案** — 実装より先に判断。段階4の受入条件がこれに依存する。
 
-C-2（Studio組込み）はC-1のCI証跡が出てからでよい（部品境界が安定してから測定する）。C-3は全段階で常に維持。C-5はParser（[#3346](https://github.com/hat47x/tei-platform/issues/3346)）の完了待ちで、**着手しない**。
+段階3は[PR #4283](https://github.com/hat47x/tei-platform/pull/4283)の統合後に入力契約を決める（統合前に着手しない）。C-2（Studio組込み）はC-1のCI証跡が出てから。C-3は全段階で常に維持。C-5はParser（[#3346](https://github.com/hat47x/tei-platform/issues/3346)）の完了待ちで、**着手しない**。
 
 ## 8. Owner判断が必要な事項（一覧）
 

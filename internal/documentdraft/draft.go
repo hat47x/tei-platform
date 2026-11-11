@@ -194,6 +194,8 @@ type Draft struct {
 	Title           string        `json:"title"`
 	Model           ModelRef      `json:"model"`
 	Scope           *DraftScope   `json:"scope,omitempty"`
+	Frozen          bool          `json:"frozen,omitempty"`
+	FrozenRevision  string        `json:"frozenRevision,omitempty"`
 	Subjects        []SubjectRef  `json:"subjects"`
 	Relations       []RelationRef `json:"relations,omitempty"`
 	Occurrences     []Occurrence  `json:"occurrences"`
@@ -232,6 +234,10 @@ type Request struct {
 	// required by crud-table and refused when present for a kind that does not
 	// use it, so a wrong flag cannot silently select a different document.
 	Application string
+	// Frozen pins the draft to the model revision it is read at. It is an
+	// explicit input, never inferred: a caller that wants a delivery artifact
+	// asks for it, and a caller that does not gets a draft that tracks the model.
+	Frozen bool
 }
 
 // DraftError is a typed draft failure. Code is stable so a CLI and a library
@@ -289,6 +295,14 @@ func Build(req Request) (Draft, error) {
 	if strings.TrimSpace(req.Root) == "" || req.Root != strings.TrimSpace(req.Root) {
 		return Draft{}, draftError(CodeInvalidArgument, "workspace path must be nonempty and exact")
 	}
+	// `frozen-delivery` is a pin on an existing kind, not a kind of its own.
+	// Naming it as a kind is refused rather than silently treated as a pin on
+	// whichever kind the implementation happened to pick.
+	if strings.TrimSpace(kind) == DocumentKindFrozenDelivery {
+		return Draft{}, draftError(CodeUnsupportedDocKind,
+			"%q is not a document kind; pass -frozen with %s or %s",
+			DocumentKindFrozenDelivery, DocumentKindElementExplanation, DocumentKindCRUDTable)
+	}
 	// A CRUD table is about an application, not one element: the two inputs are
 	// mutually exclusive so a caller cannot ask for both and get whichever the
 	// implementation happened to read first.
@@ -311,7 +325,11 @@ func Build(req Request) (Draft, error) {
 	}
 
 	if kind == DocumentKindCRUDTable {
-		return buildCRUDDraft(req)
+		draft, err := buildCRUDDraft(req)
+		if err != nil {
+			return Draft{}, err
+		}
+		return applyFrozenPin(draft, req.Frozen), nil
 	}
 	read, err := readWorkspace(req.Root, req.Subject)
 	if err != nil {
@@ -338,7 +356,32 @@ func Build(req Request) (Draft, error) {
 	}
 	draft.Title = buildTitle(req.Title, req.Subject)
 	draft.DraftID = draftID(draft)
-	return draft, nil
+	return applyFrozenPin(draft, req.Frozen), nil
+}
+
+// applyFrozenPin records the pin on a draft the caller asked to freeze. The pin
+// is the model revision the draft was read at, so a later read can tell whether
+// the model moved without trusting a clock or a stored path.
+func applyFrozenPin(draft Draft, frozen bool) Draft {
+	if !frozen {
+		return draft
+	}
+	draft.Frozen = true
+	draft.FrozenRevision = draft.Model.ModelRevision
+	if !containsString(draft.AuthorityLimits, "frozen-delivery-is-not-refreshed-automatically") {
+		draft.AuthorityLimits = append(draft.AuthorityLimits,
+			"frozen-delivery-is-not-refreshed-automatically")
+	}
+	return draft
+}
+
+func containsString(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
 }
 
 // supportedDocumentKind reports whether this version implements the kind. A kind

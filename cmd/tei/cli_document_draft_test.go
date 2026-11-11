@@ -519,6 +519,118 @@ func TestModelDocumentDraftCRUDTableRefusesUnknownAndMixedInputs(t *testing.T) {
 	}
 }
 
+// TestModelDocumentDraftFrozenDeliveryPinsTheRevision proves the frozen input at
+// the CLI boundary: a pinned draft records the revision, and a later model
+// change makes the delivery expire rather than offering a refreshed projection.
+func TestModelDocumentDraftFrozenDeliveryPinsTheRevision(t *testing.T) {
+	root := documentDraftCRUDWorkspace(t)
+	var out bytes.Buffer
+	code, err := runModelCommand([]string{
+		"document-draft", "-workspace", root,
+		"-document-kind", documentdraft.DocumentKindCRUDTable,
+		"-application", "order_entry", "-frozen",
+	}, &out)
+	if err != nil || code != 0 {
+		t.Fatalf("exit=%d err=%v body=%s", code, err, out.String())
+	}
+	var envelope draftEnvelope
+	if err := json.Unmarshal(out.Bytes(), &envelope); err != nil {
+		t.Fatalf("not JSON: %v: %s", err, out.String())
+	}
+	draft := envelope.Result
+	if !draft.Frozen || draft.FrozenRevision != draft.Model.ModelRevision {
+		t.Fatalf("pin=%+v", draft)
+	}
+	draftPath := filepath.Join(t.TempDir(), "frozen.json")
+	stored, err := json.Marshal(draft)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(draftPath, stored, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var currentOut bytes.Buffer
+	if code, err := runModelCommand([]string{
+		"document-reconcile", "-workspace", root, "-draft", draftPath,
+	}, &currentOut); err != nil || code != 0 {
+		t.Fatalf("reconcile exit=%d err=%v body=%s", code, err, currentOut.String())
+	}
+	var current reconcileEnvelope
+	if err := json.Unmarshal(currentOut.Bytes(), &current); err != nil {
+		t.Fatalf("not JSON: %v: %s", err, currentOut.String())
+	}
+	if current.Result.ModelReference.Status != documentdraft.ModelReferenceCurrent {
+		t.Fatalf("model reference=%+v", current.Result.ModelReference)
+	}
+
+	// A model change expires the delivery: the report names the frozen pin.
+	orderPath := filepath.Join(root, "databases", "sales-core", "persistence", "order.tei")
+	body, err := os.ReadFile(orderPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(orderPath, []byte(strings.Replace(
+		string(body), "table public.orders", "table public.orders_v2", 1)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var expiredOut bytes.Buffer
+	if code, err := runModelCommand([]string{
+		"document-reconcile", "-workspace", root, "-draft", draftPath,
+	}, &expiredOut); err != nil || code != 0 {
+		t.Fatalf("reconcile exit=%d err=%v body=%s", code, err, expiredOut.String())
+	}
+	var expired reconcileEnvelope
+	if err := json.Unmarshal(expiredOut.Bytes(), &expired); err != nil {
+		t.Fatalf("not JSON: %v: %s", err, expiredOut.String())
+	}
+	if expired.Result.ModelReference.Status != documentdraft.ModelReferenceStale {
+		t.Fatalf("model reference=%+v", expired.Result.ModelReference)
+	}
+	frozenDiff := false
+	for _, diff := range expired.Result.ModelReference.Diffs {
+		if diff == "frozenRevision" {
+			frozenDiff = true
+		}
+	}
+	if !frozenDiff {
+		t.Fatalf("diffs=%v do not name the frozen pin", expired.Result.ModelReference.Diffs)
+	}
+	// The stored draft is untouched by the reconciliation.
+	again, err := os.ReadFile(draftPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(again) != string(stored) {
+		t.Fatal("reconcile rewrote the stored draft")
+	}
+}
+
+// TestModelDocumentDraftFrozenDeliveryIsNotAKind pins that the pin is not a kind:
+// naming it as one is refused rather than silently treated as a pin.
+func TestModelDocumentDraftFrozenDeliveryIsNotAKind(t *testing.T) {
+	root := documentDraftCRUDWorkspace(t)
+	var out bytes.Buffer
+	code, err := runModelCommand([]string{
+		"document-draft", "-workspace", root,
+		"-document-kind", documentdraft.DocumentKindFrozenDelivery,
+		"-subject-kind", "semantic-data", "-subject-id", "sales.order",
+	}, &out)
+	if err != nil {
+		t.Fatalf("err=%v", err)
+	}
+	if code != 1 {
+		t.Fatalf("exit=%d want 1 body=%s", code, out.String())
+	}
+	var envelope draftEnvelope
+	if err := json.Unmarshal(out.Bytes(), &envelope); err != nil {
+		t.Fatalf("not JSON: %v: %s", err, out.String())
+	}
+	if envelope.OK || envelope.Error == nil ||
+		envelope.Error.Code != documentdraft.CodeUnsupportedDocKind {
+		t.Fatalf("envelope=%+v", envelope)
+	}
+}
+
 // TestModelDocumentDraftElementKindStillRequiresTheSubject pins that the CRUD
 // input relaxation did not weaken the element path.
 func TestModelDocumentDraftElementKindStillRequiresTheSubject(t *testing.T) {

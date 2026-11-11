@@ -196,6 +196,7 @@ func helpText(fs *flag.FlagSet, command string) string {
 			fmt.Fprintf(&out, "  -subject-id string\n    \texact subject ID\n")
 			fmt.Fprintf(&out, "  -relation-id string\n    \toptional exact semantic-relation ID declared by the subject\n")
 			fmt.Fprintf(&out, "  -application string\n    \texact application ID; required by %s\n", documentdraft.DocumentKindCRUDTable)
+			fmt.Fprintf(&out, "  -frozen\n    \tpin the draft to the model revision it is read at (a fixed delivery)\n")
 			fmt.Fprintf(&out, "  -title string\n    \toptional document title\n")
 			fmt.Fprintf(&out, "\n%s takes -subject-kind and -subject-id. %s takes -application instead and\nrefuses both element selectors. The result is a derived read-only projection:\nsaving the document it produces is not TEI model ingestion and not Accepted\nMeaning.\n",
 				documentdraft.DocumentKindElementExplanation, documentdraft.DocumentKindCRUDTable)
