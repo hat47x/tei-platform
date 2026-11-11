@@ -118,6 +118,7 @@
 | [`SEI_REFERENCE_ADOPTION_STAGE0_DESIGN.md`](SEI_REFERENCE_ADOPTION_STAGE0_DESIGN.md) | SEIの既存実装をTEIの参照として取り込む段階0（Resume・Review Projection）の設計。固定した版のみに対する検証 |
 | [`STANDARD_MESSAGE_AND_LOCALIZATION_PLUGIN_2026-10.md`](STANDARD_MESSAGE_AND_LOCALIZATION_PLUGIN_2026-10.md) | 標準メッセージと多言語拡張をプラグインとして分離する候補契約とGo参照実装 |
 | [`SUI_MIGRATION_EXTENSION_AND_SPLIT_DESIGN_2026-10.md`](SUI_MIGRATION_EXTENSION_AND_SPLIT_DESIGN_2026-10.md) | SUIの移管に向けたTEIの拡張方針とSUIの分割案（評価待ち・未採用） |
+| [`SUI_TEI_MIGRATION_TASKS_2026-11.md`](SUI_TEI_MIGRATION_TASKS_2026-11.md) | read-only参照の実装知見（SUI PR #3429）を*.tei.md＋Pluginの移行タスクへ分解したもの。M0〜M6を「目的・変更境界・依存・契約案・受入・負例・未実施・委譲先・撤退条件」の作業票に整形し、順序とブロッカーを明記する（評価待ち・未採用） |
 | [`TYPE_SPLIT_AND_REPLACE_PROPOSAL_2026-10.md`](TYPE_SPLIT_AND_REPLACE_PROPOSAL_2026-10.md) | 意味の型の分割・置換を変更案として扱う最小経路の設計案（[GitHub #1806](https://github.com/hat47x/tei-platform/issues/1806)、PoC） |
 | [`WEB_APPLICATION_COMPOSITION_DESIGN.md`](WEB_APPLICATION_COMPOSITION_DESIGN.md) | Webアプリケーションの構成キットとして、安全な要求経路と認証方式を組み合わせる設計候補（評価待ち） |
 | [`WEB_READ_WRITE_API_ADAPTER_DESIGN.md`](WEB_READ_WRITE_API_ADAPTER_DESIGN.md) | 標準Webの読込・書込API Adapterの設計候補と合成Reference。OData準拠・実DB書込・本番適合は未確認 |
