@@ -59,7 +59,7 @@ func TestRecentOrdersSameIDHasTwoDistinctSourceAndParameterContracts(t *testing.
 			name: "xtea",
 			source: xteaSQL,
 			must: []string{
-				"select order_id, customer_id", "from sales.order", ":status",
+				"select order_id, customer_id", ":status",
 			},
 			mustNot: []string{"FROM public.orders", ":from", "o.total_amount"},
 		},
@@ -76,6 +76,15 @@ func TestRecentOrdersSameIDHasTwoDistinctSourceAndParameterContracts(t *testing.
 				}
 			}
 		})
+	}
+	// Keep the logical XTEA relation distinct from public.orders without
+	// making its current *unquoted* PostgreSQL reserved identifier a permanent
+	// expected syntax. "order" must be quoted in executable PostgreSQL SQL.
+	xteaLower := strings.ToLower(xteaSQL)
+	if !strings.Contains(xteaLower, "from sales.order") &&
+		!strings.Contains(xteaLower, `from sales."order"`) &&
+		!strings.Contains(xteaLower, `from "sales"."order"`) {
+		t.Fatal("xtea SQL no longer targets the independently selected sales.order relation")
 	}
 	if !strings.Contains(productSeed, "CREATE TABLE public.orders (") ||
 		strings.Contains(productSeed, "CREATE TABLE sales.order") ||
