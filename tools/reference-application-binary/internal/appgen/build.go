@@ -80,9 +80,15 @@ func Build(workspaceRoot, appID, sourceDir, outputPath, platform string) (*Build
 	}, nil
 }
 
+// generatedModuleSQLiteVersion is the modernc.org/sqlite version the generated
+// module requires. It must match this tool's own go.mod, otherwise `go mod
+// tidy` in the generated tree resolves a second, different version and the
+// module cache lookup can fail where the tool's own build succeeded.
+const generatedModuleSQLiteVersion = "v1.62.0"
+
 func writeGoMod(moduleDir, appID string) error {
 	path := filepath.Join(moduleDir, "go.mod")
-	body := "module app/" + appID + "\n\ngo 1.26.10\n\nrequire (\n\tmodernc.org/sqlite v1.34.5\n)\n"
+	body := "module app/" + appID + "\n\ngo 1.26.10\n\nrequire (\n\tmodernc.org/sqlite " + generatedModuleSQLiteVersion + "\n)\n"
 	return os.WriteFile(path, []byte(body), 0o644)
 }
 
