@@ -145,16 +145,26 @@ ok  tei/tools/reference-generator-selection (TestJava* / TestGoAnd*)  139.931s
 
 ### 適用済み
 
-Go実行基盤の主要な境界——Command・Hook・EffectCommit・Studio bridge・CLI・参照Adapter。加えてJava生成ターゲット（`Main`・`Main-long-running`）。
+Go実行基盤の主要な境界——Command・Hook・EffectCommit・Studio bridge・CLI・参照Adapter。加えてJava生成ターゲット（`Main`・`Main-long-running`）と、Effect補償（`execution.Compensate`）。
+
+#### `partial_success` を返す境界
+
+`execution.Compensate` は、失敗した効果に対する補償を宣言順に全て試行します。1件が適用され別の1件が適用できなかった場合、従来は error も nil も返さない（補償の失敗は record の `Succeeded=false` として残るだけだった）ため、呼出し側は「全部やり直す」か「全部諦める」かの二択になっていました。どちらも事故です（前者は成立した補償の重複、後は成立した補償の喪失）。
+
+`failure.PartialError` を追加し、この状態を独立した分類にしました。`Retryable()` は常に `lookup_first`、`HasEffectUnknown()` は常に true です——何が適用されたかは error からは分からないので、呼出し側はまず record を読む必要があります。
+
+判定は error の数ではなく **record の `Succeeded` を数える**ことで行います。`RunEffect` は invocation が失敗した補償を「error なし・`Succeeded=false` の record」として返すため、error を数えるちょうど「適用できなかった補償」が見えなくなります。
+
+補償が1件しかない場合は分割できないので、従来どおり error はそのまま（失敗は record、journal 失敗は素の cause）です。
 
 ### 未適用
 
 | 範囲 | 状態 |
 | --- | --- |
 | Data Provider / Operator 層 | 未着手。`internal/database/sqlgen`が`main`に無いため、このPRの範囲外。SQLSTATE/result codeでの分類は別ブランチ（`feat/sql-to-standard-query-conversion-20261111`）に実装済みで、sql-dialect作業が`main`へ入ってから持っていく |
-| `partial_success` | 型は定義済み。現状どの境界もこの分類を返さない。複数Effectの一部確定（[Script設計のF09](SCRIPT_INVOCATION_FAILURE_AND_RECOVERY_DESIGN_2026-11.md)）で初めて使う |
 | `LineAmounts.java.tmpl`（java-library-template） | `main`にテンプレートが無いため範囲外。業務/技術の区別はあるが再試行・効果不明の軸が無い |
 | Web Host（Wails）の実ブラウザー確認 | ブリッジが三軸を落とさないことはGo試験で確認済み。実WebView2での表示は未確認 |
+| 他の部分成功 | RunPlan の「後の Step が失敗しても前の Step の効果は残る」ケース（[Script設計のF09](SCRIPT_INVOCATION_FAILURE_AND_RECOVERY_DESIGN_2026-11.md)）は未実装。RunPlan には製品の呼出し元がなく、API の形は設計判断 |
 
 ### 生成ターゲットへの展開方針
 
@@ -176,3 +186,4 @@ Go実行基盤の主要な境界——Command・Hook・EffectCommit・Studio bri
 - `studiohost.Failure`は`MarshalJSON`を持つ。未分類のままだと三軸を補うため、**同じJSONを出すがフィールドが増える**。明示値を優先するので、境界がerrorから写した分類は上書きされない。
 - `cmd/tei`は`three-element`のallowlist不在理由をコメントで記録した（コードの挙動は変わらない）。
 - 生成Javaは`{"state":"error","code":...}`に4軸が増える。Goテンプレートも同じ4軸を出す。
+- `execution.Compensate` は「補償の1件が適用され別の1件が適用できなかった」ときに error を返すようになる（従来は nil）。補償が1件だけの場合は従来どおり nil のままで、`TestCompensateRecordsItsOwnFailure` がその契約を保ちます。
