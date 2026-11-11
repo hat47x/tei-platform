@@ -664,3 +664,19 @@ HULFT-HUB Ver.3公式マニュアル第20版（2025-12-01）は、蓄積を使�
 | 競合実行 | `Writer.Write`のRenameは単体Fileの置換であり、双方のExpected State CASではない | 一方が`closing`を保存してエラーを返しても、他方の`closed`／Correctionを無条件に上書きしない |
 
 **最小の次試験（既存#1130で採否）**：実WorkspaceのPeriodに拒否対象Operationがある陽性Fixtureを再利用して`tei periods -advance`を一度だけ実行し、(1)終了コードとRejection JSON、(2)実State Fileの再読取、(3)二回目Retryの状態/Effectを独立に保存する。**同一実行のExit StatusとReadbackをセットで比較する**。新Runnerや複数Phase Transactionを作らず、実Stage列のどこで止めるべきかはOwnerが決める。本節はCodeの実行順の静的照合であり、Go/実CLIの新試験・実MFT/DB/Owner受理はNOT RUN。
+
+### 16.4 2026-11-11 現実Workspaceの期間更新後拒否を試験する
+
+**既存Owner #1130 RPL-02/04への局所実証**：`examples/xtea-lowcode`にすでに存在する実Workspace `order_entry`／Period `sales.month`／`closed-rejects update`を用い、Productionコード`runPeriodsCommand`をGo Unitからそのまま呼び出す。`operations.SurfaceWorkspace`が導出した操作面について`closing`および`closed`で実際に拒否Operationが存在することを先に確認する。**新たなDSL Source/テスト用Host/別State Providerは作らない**。
+
+| 独立Expected | 呼出し前 | 現行実装に対するテスト | 実際の意味 |
+| --- | --- | --- | --- |
+| `closing`への一段更新 | State File `sales.month=open` | `runPeriodsCommand`が拒否Operationを理由にerrorを返す一方、同一AttemptでState Fileを再Readすると`closing` | Handler Error≠State Effect Zero |
+| `closed`への再Advance | 直前のState Fileが`closing` | 同様にerrorでも再Readは`closed` | Errorから次回Retryを自動再実行してはいけない |
+| 3回目のAdvance | State Fileが`closed` | `advancePeriod`が遷移を拒否し、Fileの`closed`は保持 | 先のErrorを「未実行」と解釈して再試行することの不適切さ |
+
+**対象ファイル**：`cmd/tei/cli_periods_postwrite_readback_test.go`。テストが確認するのは **実Workspace→現行Go CLI Handler→一時State Fileの書込みとReadback**。外部CLIプロセスの終了コード、Crash/OS別fsync、2WriterのCAS、実Capability/RunPlan/Receipt、MFT/Import/業務Ownerの受理は別で**未実証**。`-close-capability`については既存UnitがCaller ID一致のみを検証済みであり、本テストが実行済CapabilityのReceiptを提供するわけではない。
+
+**採否と停止線**：試験が成立しても修正実装とは見なさず、#1130 Ownerが出力/持続化/拒否のStageを再設計するか、`Effect Unknown/部分成功`として明示するかを決める。#2542への横断引継ぎは`(Period D, Execution Attempt, Return, State Readback, Artifact Generation, Recipient Import, Effect Receipt)`を独立観測列とするのみ。第二Runner/Scheduler・新Process Transaction・共通Completion Engineを追加しない。
+
+**実行状態**：本節の作成時点では新Go Testのexact-HEAD CIを未確認。静的反例（§16.3）と、追加した実Source使用試験の結果を混同しない。結果が出れば、固定HEAD/CIを明記し、既存#1130へ重複のない追補を行う。
