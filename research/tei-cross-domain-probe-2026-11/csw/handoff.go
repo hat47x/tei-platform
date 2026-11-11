@@ -24,9 +24,15 @@ const (
 	// Attribution values are the same set the TEI Workspace declares as
 	// csw.attribution. The set records a label the author chose; it is not a
 	// classification computed from the body.
-	AttributionAuthorStated      = "author_stated"
-	AttributionGeneratedProposal = "generated_proposal"
+	//
+	// The four values map one-to-one onto the distinctions
+	// skills/cultural-substrate-weaving/SKILL.md asks the author to keep in
+	// "生成過程の由来を保持する". Dropping one of them silently merges two
+	// provenances, which is the failure this set exists to prevent.
 	AttributionSourceMaterial    = "source_material"
+	AttributionGeneratedProposal = "generated_proposal"
+	AttributionContactReading    = "contact_reading"
+	AttributionAuthorStated      = "author_stated"
 
 	DecisionAdopt      = "adopt"
 	DecisionReject     = "reject"
@@ -240,7 +246,8 @@ func Validate(h Handoff) []Diagnostic {
 
 func knownAttribution(value string) bool {
 	switch value {
-	case AttributionAuthorStated, AttributionGeneratedProposal, AttributionSourceMaterial:
+	case AttributionSourceMaterial, AttributionGeneratedProposal,
+		AttributionContactReading, AttributionAuthorStated:
 		return true
 	default:
 		return false

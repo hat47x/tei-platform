@@ -1,7 +1,18 @@
 namespace bear
 
 type Intent from std.code values { "maintain" "observe" "reduce" "disengage" }
-type DecisionSource from std.code values { "typed_wire" "local_typed_hybrid" "async_typed_hybrid" "none" }
+
+// The producer names BearTypedDecision.source records today. Controller
+// provider IDs such as local-typed-hybrid@0.6.0 are a different field and are
+// deliberately not listed here. An async transport may declare an additional
+// backend_id, so this enumeration is a recorded set, not a closed universe.
+type DecisionSource from std.code values {
+    "none"
+    "typed_wire"
+    "jev-shaped-rules"
+    "failure-aware-rules@0.1.0"
+    "async-wire"
+}
 
 // The six wire fields plus identity and validity. Bounds (±0.18 rad, ±0.25,
 // 0..1, valid_until >= timestamp) stay in BearTypedDecision; the DSL records

@@ -4,8 +4,18 @@ type HandoffId from std.identifier
 type Sha256 from std.text
 
 // The label a human gives a fragment. TEI stores the declared label; it does
-// not derive one from the fragment body.
-type Attribution from std.code values { "author_stated" "generated_proposal" "source_material" }
+// not derive one from the fragment body. The four values are the four
+// distinctions skills/cultural-substrate-weaving/SKILL.md asks the author to
+// keep: what the material already said, what a cultural system produced, what
+// the contact between the two newly produced, and what the author decided.
+// "仮説", "問い" and "比較結果" are deliberately not values: turning them into
+// labels would fix exploratory material into a settled category.
+type Attribution from std.code values {
+    "source_material"
+    "generated_proposal"
+    "contact_reading"
+    "author_stated"
+}
 
 type DecisionKind from std.code values { "adopt" "reject" "hold" "unresolved" }
 

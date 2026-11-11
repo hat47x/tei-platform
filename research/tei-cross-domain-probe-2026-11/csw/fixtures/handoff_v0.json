@@ -66,6 +66,15 @@
       "attribution": "author_stated",
       "body_sha256": "sha256:b7f2876e011ae039ea3017f083ff7368a4c651e0782ada804f74351c1eabf520",
       "body_ref": "work/synthetic/f-4.md"
+    },
+    {
+      "fragment_id": "f-5",
+      "study_input_id": "c1a",
+      "run_id": "run-a",
+      "ordinal": 4,
+      "attribution": "contact_reading",
+      "body_sha256": "sha256:6fb2529982167469651f67d21e69f6c264462366b174d3127b1e2b299f004a32",
+      "body_ref": "work/synthetic/f-5.md"
     }
   ],
   "decisions": [

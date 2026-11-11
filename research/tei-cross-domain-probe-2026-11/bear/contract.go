@@ -39,15 +39,29 @@ const (
 	MinWireTTL      = 0.01
 	MaxWireTTL      = 0.50
 
-	SeverityError = "error"
+	SeverityError   = "error"
+	SeverityWarning = "warning"
 )
 
 var (
-	ValidIntents         = []string{"maintain", "observe", "reduce", "disengage"}
-	ValidCognitionModes  = []string{"tracking", "remembering", "searching", "unaware"}
-	ValidObstacleModes   = []string{"clear", "avoid_front", "clearance_check", "unknown"}
-	ValidRecoveryStates  = []string{"IDLE", "WALL_FOLLOW", "ENTER_TRAVERSABLE", "CLEARING", "unknown"}
-	ValidDecisionSources = []string{"typed_wire", "local_typed_hybrid", "async_typed_hybrid", "none"}
+	ValidIntents        = []string{"maintain", "observe", "reduce", "disengage"}
+	ValidCognitionModes = []string{"tracking", "remembering", "searching", "unaware"}
+	ValidObstacleModes  = []string{"clear", "avoid_front", "clearance_check", "unknown"}
+	ValidRecoveryStates = []string{"IDLE", "WALL_FOLLOW", "ENTER_TRAVERSABLE", "CLEARING", "unknown"}
+
+	// ValidDecisionSources lists the BearTypedDecision.source values the
+	// upstream repository records today. Each entry is annotated with the file
+	// that writes it, because the same strings also appear as controller
+	// provider IDs (local-typed-hybrid@…, async-typed-hybrid@…), which are a
+	// different field. An async transport may declare an additional backend_id,
+	// so an unlisted value is reported as a warning rather than an error.
+	ValidDecisionSources = []string{
+		"none",                      // BearTypedDecision default (typed_decision.gd)
+		"typed_wire",                // BearTypedWireCodec.parse (typed_wire_codec.gd)
+		"jev-shaped-rules",          // BearTypedCognitionDecision.to_typed_decision (typed_cognition_decision.gd)
+		"failure-aware-rules@0.1.0", // BearFailureAwareHybrid (failure_aware_hybrid.gd)
+		"async-wire",                // BearAsyncWireBackend default backend_id (async_wire_backend.gd)
+	}
 
 	sha256HexPattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
 )
@@ -83,6 +97,9 @@ func ValidateDecision(decision Decision, nowS float64) []Diagnostic {
 	add := func(code, format string, args ...any) {
 		out = append(out, Diagnostic{Code: code, Severity: SeverityError, RecordID: strconv.Itoa(decision.EpisodeID), Message: fmt.Sprintf(format, args...)})
 	}
+	warn := func(code, format string, args ...any) {
+		out = append(out, Diagnostic{Code: code, Severity: SeverityWarning, RecordID: strconv.Itoa(decision.EpisodeID), Message: fmt.Sprintf(format, args...)})
+	}
 
 	if !contains(ValidIntents, decision.Intent) {
 		add("BEAR_DECISION_INTENT_UNKNOWN", "intent %q is not a declared intent", decision.Intent)
@@ -90,7 +107,9 @@ func ValidateDecision(decision Decision, nowS float64) []Diagnostic {
 	if decision.Source == "" {
 		add("BEAR_DECISION_SOURCE_MISSING", "source is empty")
 	} else if !contains(ValidDecisionSources, decision.Source) {
-		add("BEAR_DECISION_SOURCE_UNKNOWN", "source %q is not a recorded producer", decision.Source)
+		// A transport may declare a new backend_id, so an unlisted producer is a
+		// drift signal for the reader, not proof that the decision is invalid.
+		warn("BEAR_DECISION_SOURCE_UNRECORDED", "source %q is not one of the recorded producers; check whether a new backend was introduced", decision.Source)
 	}
 	for _, item := range []struct {
 		name  string
@@ -144,10 +163,11 @@ func ValidateDecision(decision Decision, nowS float64) []Diagnostic {
 }
 
 // EncodeWire reproduces the six-field ASCII line. A value outside the declared
-// bounds is refused rather than clamped.
+// bounds is refused rather than clamped. An unrecorded producer name does not
+// block encoding, because the runtime encoder does not inspect it either.
 func EncodeWire(decision Decision) (string, error) {
-	if diagnostics := ValidateDecision(decision, math.NaN()); len(diagnostics) != 0 {
-		return "", fmt.Errorf("encode: %s", diagnostics[0].Message)
+	if hasError(ValidateDecision(decision, math.NaN())) {
+		return "", fmt.Errorf("encode: %s", firstMessage(ValidateDecision(decision, math.NaN())))
 	}
 	return fmt.Sprintf("%s|%+04d|%+03d|%+03d|%02d|%02d",
 		decision.Intent,
@@ -209,16 +229,28 @@ func ParseWire(line string, timestampS, ttlS float64) (Decision, error) {
 		Confidence:      float64(confidence) / 100.0,
 		Source:          "typed_wire",
 	}
-	if diagnostics := ValidateDecision(decision, math.NaN()); len(diagnostics) != 0 {
-		return Decision{}, fmt.Errorf("parse: %s", diagnostics[0].Message)
+	if hasError(ValidateDecision(decision, math.NaN())) {
+		return Decision{}, fmt.Errorf("parse: %s", firstMessage(ValidateDecision(decision, math.NaN())))
 	}
 	return decision, nil
 }
 
+// firstMessage returns the first error message, so callers report one reason
+// instead of an index into a slice they cannot see.
+func firstMessage(diagnostics []Diagnostic) string {
+	for _, diagnostic := range diagnostics {
+		if diagnostic.Severity == SeverityError {
+			return diagnostic.Message
+		}
+	}
+	return "unknown"
+}
+
 // Weight reproduces effective_weight(): full weight for 100 ms, linear decay to
-// 250 ms, then discard.
+// 250 ms, then discard. Only error-severity diagnostics invalidate a decision,
+// matching is_valid_at, which does not inspect the producer name.
 func Weight(decision Decision, nowS float64) float64 {
-	if len(ValidateDecision(decision, nowS)) != 0 {
+	if hasError(ValidateDecision(decision, nowS)) {
 		return 0
 	}
 	age := nowS - decision.TimestampS
@@ -229,6 +261,17 @@ func Weight(decision Decision, nowS float64) float64 {
 		return 1
 	}
 	return math.Max(0, math.Min(1, 1-(age-FullWeightAgeS)/(DiscardAgeS-FullWeightAgeS)))
+}
+
+// hasError reports whether any diagnostic is an error. A warning is a drift
+// signal for the reader and does not by itself invalidate a decision.
+func hasError(diagnostics []Diagnostic) bool {
+	for _, diagnostic := range diagnostics {
+		if diagnostic.Severity == SeverityError {
+			return true
+		}
+	}
+	return false
 }
 
 // parseSignedInteger accepts an optional sign, matching the runtime's

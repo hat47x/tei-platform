@@ -106,6 +106,40 @@ func TestDecisionRefusesFutureExpiredAndInvertedValidity(t *testing.T) {
 	}
 }
 
+// A producer name the probe has not recorded is a warning, not an error. The
+// runtime accepts any transport-declared backend_id, and effective_weight does
+// not inspect the producer at all.
+func TestUnrecordedProducerIsAWarningThatKeepsTheDecisionUsable(t *testing.T) {
+	decision := readDecision(t, "decision_valid.jsonl")
+	decision.Source = "transport-declared-backend"
+	diagnostics := ValidateDecision(decision, 10.05)
+	if !hasCode(diagnostics, "BEAR_DECISION_SOURCE_UNRECORDED") {
+		t.Fatalf("diagnostics = %+v; an unrecorded producer was not reported", diagnostics)
+	}
+	for _, diagnostic := range diagnostics {
+		if diagnostic.Code == "BEAR_DECISION_SOURCE_UNRECORDED" && diagnostic.Severity != SeverityWarning {
+			t.Fatalf("unrecorded producer severity = %s want %s", diagnostic.Severity, SeverityWarning)
+		}
+	}
+	if hasError(diagnostics) {
+		t.Fatalf("diagnostics = %+v; an unrecorded producer must not be an error", diagnostics)
+	}
+	if weight := Weight(decision, 10.05); weight != 1 {
+		t.Fatalf("weight with an unrecorded producer = %v want 1", weight)
+	}
+	if _, err := EncodeWire(decision); err != nil {
+		t.Fatalf("encode with an unrecorded producer: %v", err)
+	}
+
+	decision.Source = ""
+	if !hasCode(ValidateDecision(decision, 10.05), "BEAR_DECISION_SOURCE_MISSING") {
+		t.Fatal("an empty source was accepted")
+	}
+	if weight := Weight(decision, 10.05); weight != 0 {
+		t.Fatalf("weight with an empty source = %v want 0", weight)
+	}
+}
+
 func TestEncodeWireMatchesTheDocumentedExample(t *testing.T) {
 	decision := readDecision(t, "decision_valid.jsonl")
 	decision.Intent = "maintain"
@@ -308,6 +342,87 @@ func sortedCopy(values []string) []string {
 	out := append([]string(nil), values...)
 	sort.Strings(out)
 	return out
+}
+
+// upstreamAnchor ties one transcribed literal to the file that writes it. The
+// probe is a hand transcription of an external repository, so the literals must
+// be re-checkable against the source they came from instead of only against
+// themselves.
+type upstreamAnchor struct {
+	file    string
+	literal string
+	why     string
+}
+
+// upstreamAnchors lists every literal this probe transcribed from the VS Bear
+// Simulator. Adding an enumeration, bound or schema name to the probe without a
+// matching anchor is the failure mode this table prevents.
+var upstreamAnchors = []upstreamAnchor{
+	{"cognition/bear/typed_decision.gd", `&"maintain"`, "intent"},
+	{"cognition/bear/typed_decision.gd", `&"observe"`, "intent"},
+	{"cognition/bear/typed_decision.gd", `&"reduce"`, "intent"},
+	{"cognition/bear/typed_decision.gd", `&"disengage"`, "intent"},
+	{"cognition/bear/typed_decision.gd", "0.18", "heading bias bound"},
+	{"cognition/bear/typed_decision.gd", "0.25", "persistence and brace bound"},
+	{"cognition/bear/typed_decision.gd", "MOTOR_REFERENCE_S: float = 0.10", "motor reference time"},
+	{"cognition/bear/typed_decision.gd", "full_age_s: float = 0.10", "full-weight age"},
+	{"cognition/bear/typed_decision.gd", "discard_age_s: float = 0.25", "discard age"},
+	{"cognition/bear/typed_decision.gd", `var source: StringName = &"none"`, "default decision source"},
+	{"cognition/bear/typed_wire_codec.gd", "intent|heading_millirad|persistence_percent|brace_percent|uncertainty_percent|confidence_percent", "wire field order"},
+	{"cognition/bear/typed_wire_codec.gd", "clamp(ttl_s, 0.01, 0.50)", "wire ttl clamp"},
+	{"cognition/bear/typed_wire_codec.gd", `decision.source = &"typed_wire"`, "wire decision source"},
+	{"cognition/bear/local_typed_state_encoder.gd", `const VERSION: String = "typed-observation@1.1.0"`, "observation schema version"},
+	{"cognition/bear/local_typed_state_encoder.gd", `["tracking", "remembering", "searching"]`, "cognition modes"},
+	{"cognition/bear/local_typed_state_encoder.gd", `["clear", "avoid_front", "clearance_check"]`, "obstacle negotiation modes"},
+	{"cognition/bear/motion_feedback.gd", `const VERSION: String = "body-motion-feedback@1.0.0"`, "motion feedback schema version"},
+	{"cognition/bear/motion_feedback.gd", `["IDLE", "WALL_FOLLOW", "ENTER_TRAVERSABLE", "CLEARING"]`, "recovery states"},
+	{"cognition/bear/async_wire_backend.gd", `return &"async-wire"`, "default transport backend id"},
+	{"controllers/bear/experimental/typed_cognition_decision.gd", `result.source = &"jev-shaped-rules"`, "compatibility producer source"},
+	{"controllers/bear/experimental/failure_aware_hybrid.gd", `_latest_decision.source = &"failure-aware-rules@0.1.0"`, "experiment producer source"},
+	{"tests/fixtures/bot_scenario_smoke.json", `"bot-scenario-1"`, "scenario schema"},
+	{"tests/fixtures/bot_scenario_smoke.json", `"total_ticks"`, "scenario assertion"},
+	{"tests/fixtures/bot_scenario_smoke.json", `"min_steps"`, "scenario assertion"},
+	{"tests/fixtures/bot_scenario_smoke.json", `"stop_reasons"`, "scenario assertion"},
+	{"tests/fixtures/bot_scenario_smoke.json", `"final_position"`, "scenario assertion"},
+	{"tests/fixtures/bot_scenario_smoke.json", `"final_position_tolerance"`, "scenario assertion"},
+	{"tests/fixtures/bot_scenario_smoke.json", `"trajectory_sha256"`, "scenario assertion"},
+}
+
+// TestUpstreamAnchorsResolveInTheCitedFiles re-checks the transcription against
+// the upstream repository when a checkout is reachable. When it is not, the test
+// skips: an unreachable checkout is not evidence that the literals still match.
+func TestUpstreamAnchorsResolveInTheCitedFiles(t *testing.T) {
+	root := os.Getenv("VS_BEAR_REPO")
+	if root == "" {
+		// bear -> probe dir -> research -> repository root -> workspace root
+		root = filepath.Join("..", "..", "..", "..", "vs-bear-simulator")
+	}
+	info, err := os.Stat(root)
+	if err != nil || !info.IsDir() {
+		t.Skipf("VS Bear Simulator checkout not reachable at %s; set VS_BEAR_REPO to re-check the transcription", root)
+	}
+	cache := map[string][]string{}
+	for _, anchor := range upstreamAnchors {
+		lines, ok := cache[anchor.file]
+		if !ok {
+			data, readErr := os.ReadFile(filepath.Join(root, filepath.FromSlash(anchor.file)))
+			if readErr != nil {
+				t.Fatalf("read upstream %s: %v", anchor.file, readErr)
+			}
+			lines = strings.Split(string(data), "\n")
+			cache[anchor.file] = lines
+		}
+		found := ""
+		for _, line := range lines {
+			if strings.Contains(line, anchor.literal) {
+				found = line
+				break
+			}
+		}
+		if found == "" {
+			t.Fatalf("%s no longer contains %s (%s); the probe transcription is stale", anchor.file, anchor.literal, anchor.why)
+		}
+	}
 }
 
 func readDecision(t *testing.T, name string) Decision {

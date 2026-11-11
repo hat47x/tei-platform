@@ -33,7 +33,12 @@ func TestWorkspaceDeclaresOnlyTheHandoffBoundary(t *testing.T) {
 		}
 		got := append([]string(nil), typ.Values...)
 		sort.Strings(got)
-		wantValues := []string{AttributionAuthorStated, AttributionGeneratedProposal, AttributionSourceMaterial}
+		wantValues := []string{
+			AttributionSourceMaterial,
+			AttributionGeneratedProposal,
+			AttributionContactReading,
+			AttributionAuthorStated,
+		}
 		sort.Strings(wantValues)
 		if strings.Join(got, ",") != strings.Join(wantValues, ",") {
 			t.Fatalf("csw.attribution values = %v want %v", got, wantValues)
@@ -72,14 +77,70 @@ func TestCandidateFragmentHasNoBodyAttribute(t *testing.T) {
 	t.Fatal("csw.candidate_fragment is not declared")
 }
 
+// TestAttributionCoversEveryCSWProvenanceDistinction keeps the transcription
+// auditable. Each row quotes one distinction from the "生成過程の由来を保持する"
+// section of skills/cultural-substrate-weaving/SKILL.md and names the value that
+// carries it. A distinction with no value means the typed boundary would merge
+// two provenances the skill asks the author to keep apart.
+func TestAttributionCoversEveryCSWProvenanceDistinction(t *testing.T) {
+	distinctions := []struct {
+		quote string
+		value string
+	}{
+		{"原稿や資料にすでにあること。", AttributionSourceMaterial},
+		{"体系から生まれた問い・仮説・構成案。", AttributionGeneratedProposal},
+		{"原稿と体系の接触から新しく生まれた読み。", AttributionContactReading},
+		{"著者が明示した方針や判断と、生成AIが新しく提示した案。", AttributionAuthorStated},
+	}
+	declared := map[string]bool{}
+	for _, value := range []string{
+		AttributionSourceMaterial, AttributionGeneratedProposal,
+		AttributionContactReading, AttributionAuthorStated,
+	} {
+		declared[value] = true
+	}
+	for _, distinction := range distinctions {
+		if !declared[distinction.value] {
+			t.Fatalf("distinction %q has no declared attribution value", distinction.quote)
+		}
+		if !knownAttribution(distinction.value) {
+			t.Fatalf("attribution %q for %q is not accepted by the probe", distinction.value, distinction.quote)
+		}
+	}
+	// The exploratory vocabulary CSW keeps open must stay out of the enum.
+	for _, open := range []string{"仮説", "問い", "比較", "連想", "異質性"} {
+		if declared[open] || knownAttribution(open) {
+			t.Fatalf("%q became a declared attribution value", open)
+		}
+	}
+	if len(declared) != len(distinctions) {
+		t.Fatalf("declared values = %d want %d, one per distinction", len(declared), len(distinctions))
+	}
+}
+
 func TestDecodeFixtureAcceptsOnlyDeclaredFields(t *testing.T) {
 	data := readFixture(t, "handoff_v0.json")
 	handoff, err := DecodeHandoff(data)
 	if err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if len(handoff.StudyInputs) != 2 || len(handoff.Runs) != 2 || len(handoff.Fragments) != 4 || len(handoff.Decisions) != 2 {
+	if len(handoff.StudyInputs) != 2 || len(handoff.Runs) != 2 || len(handoff.Fragments) != 5 || len(handoff.Decisions) != 2 {
 		t.Fatalf("record counts = %d/%d/%d/%d", len(handoff.StudyInputs), len(handoff.Runs), len(handoff.Fragments), len(handoff.Decisions))
+	}
+
+	// Every declared attribution value must be exercised by the fixture, so a
+	// value that only exists in the enum cannot silently stop being produced.
+	seen := map[string]bool{}
+	for _, fragment := range handoff.Fragments {
+		seen[fragment.Attribution] = true
+	}
+	for _, value := range []string{
+		AttributionSourceMaterial, AttributionGeneratedProposal,
+		AttributionContactReading, AttributionAuthorStated,
+	} {
+		if !seen[value] {
+			t.Fatalf("fixture has no fragment with attribution %q", value)
+		}
 	}
 
 	// A body passed as a field is refused instead of quietly dropped.
