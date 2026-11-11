@@ -18,7 +18,13 @@ func TestNormalStudioBridgeUsesHostSelectedLocalInspector(t *testing.T) {
 		t.Fatal(err)
 	}
 	bridge := &StudioBridge{host: host}
-	if reflect.TypeOf(bridge).NumMethod() != 5 {
+	// The exported surface is a tripwire: it is what the Wails service publishes.
+	// It was 5 while assets/client.mjs already addressed 12 names, so every
+	// Workbench view and command action called a method that was never
+	// registered (#4295). The seven projections the client names are now
+	// registered, and TestStudioBridgeRegistersEveryClientMethod keeps the two
+	// sides in step instead of leaving it to this count alone.
+	if reflect.TypeOf(bridge).NumMethod() != 12 {
 		t.Fatal("Studio Bridge exported surface changed")
 	}
 	got := bridge.InspectSubject("workspace-1", "semantic-data", "sales.order")
