@@ -337,6 +337,9 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 		return Result{}, err
 	}
 	markManagedFilesReadByLoader(&r)
+	// Only now is ReadByLoader known, so the unread-source report has to come
+	// after the marking rather than with the other managed-file findings.
+	r.SourceRootFindings = append(r.SourceRootFindings, CheckWorkspaceUnreadSources(r.ManagedFiles)...)
 	Normalize(&r.World)
 	// The loader snapshot stays available, but an OS handle must not escape
 	// the Load lifetime. Imports close their own pinned roots independently.

@@ -3,6 +3,7 @@
 要求が受け入れシナリオや検証根拠にどう結び付くかを整理する文書を置きます。要求そのものは[`requirements/`](../../requirements/README.md)、段階判定の記録と実行手順は[`gate/`](../gate/README.md)、現在の実装状況は[`docs/status.md`](../../docs/status.md)を参照してください。
 
 - [製品品質の検証計画](PRODUCT_QUALITY_EVIDENCE_PLAN_2026-09.md)
+- [依存関係によるキャッシュ失効の試験用参照](DEPENDENCY_BASED_CACHE_INVALIDATION_2026-11.md)（World・Model・Artifact・Evidenceの版と依存閉包を区別し、Artifact再利用・Build省略・Evidence再利用を独立判定。未知依存・途中失敗・A→B→Aの誤再利用を拒否。28件の合成テストPASS。実キャッシュストア・実Buildとの接続は未検証）
 - [未マージブランチの棚卸し](BRANCH_TRIAGE_2026-11-10.md)（`main` `ae2771bba` 時点でリモートブランチ 92本、未マージ 54本。内容が main にあり PR が MERGED の6本を削除し、PRが無く未マージの19本を主題と実装で分類。主題の不在は内容の不在ではなく、判定と操作の間に1本が統合されることも確認）
 - [X-TEAの型指定とTypeOptionsの読取り](XTEA_TYPE_MAPPING_STATIC_READING_2026-11-10.md)（型の同一性が`型名_長さ`で小数桁を含まず、Editorは`Decimal`属性を読まず`SQLExpression`の括弧から推測するため取込み製の`DECIMAL`の小数桁が空になる。基本型の導出が取込みと4語・実行時は9語で別規則。`TypeOptions`の`VIRTUAL`判定が3通り併存で、`getOptionList`は`replace`の戻り値を捨てている。静的読取りのみでJava実行はNOT RUN）
 - [型の値ファセット（単位・尺度・値域・軸）が無いことの実測](TEI_TYPE_FACET_UNIT_AXIS_GAP_2026-11-10.md)（型は基底型と列挙値しか持てず、`std.money`は通貨も小数桁も持たない。mmと%を別の型として宣言しても`validate`は`ok`で、`unit "mm"`は`PARSE_ERROR`になることを実測。#3827の第1段の完了条件との対応を記録。型へのファセット追加は未判断）
@@ -131,6 +132,7 @@
 - [期間の correction の実行時検査の確認](XTEA_LOWCODE_PERIOD_CORRECTION_2026-11.md)（参照実装の試験記録。閉じた期間の訂正を宣言した能力に限る。訂正能力を走らせる経路は未実装）
 - [利用者設定の変更監査の確認](XTEA_LOWCODE_USER_SETTINGS_AUDIT_2026-11.md)（参照実装の試験記録。誰がいつ何を変えたかの記録。権限・永続化は未実装）
 - [期間が名指す能力の効果の検査の確認](XTEA_LOWCODE_PERIOD_CAPABILITY_EFFECT_2026-11.md)（参照実装の試験記録。期間のDataと能力の効果の不一致を報告。効果の種類と役割の対応は未実装）
+- [訂正能力と閉塞拒否の矛盾の解消の確認](XTEA_LOWCODE_PERIOD_CORRECTION_EXEMPT_2026-11.md)（参照実装の試験記録。訂正能力だけを閉塞拒否から免除。宣言段階での矛盾報告は未実装）
 - [採番の永続CounterStoreの確認](XTEA_LOWCODE_NUMBERING_SQLITE_STORE_2026-11.md)（参照実装の試験記録。PostgreSQLは未実装）
 - [採番の2プロセス同時実行の確認](XTEA_LOWCODE_NUMBERING_PROCESS_RACE_2026-11.md)（参照実装の試験記録。PostgreSQLと多プロセス構成は未実装）
 - [採番とCommand取引境界のアダプタの確認](XTEA_LOWCODE_NUMBERING_COMMAND_ADAPTER_2026-11.md)（参照実装の試験記録。実DBの取引と永続CounterStoreは未実装）
@@ -327,6 +329,7 @@
 - [鎖はWindowsでも通り、catalogは両ホストで同じバイトになった](TEI_GO_SELF_BUILD_CHAIN_WINDOWS_2026-11-10.md)（§4.33の鎖（能力宣言→catalog→計画→成果物→`l2b.claimed`）を**WindowsのGoで直接**実行し、`TestSelfBuildEstablishesL2BEndToEnd`が25.13秒でPASS、負例もPASSした。加えて、同じ宣言と**同じバイトのbuilder**から作ったcatalogが`linux/amd64`と`windows/amd64`で**バイト一致**（`catalogDigest=sha256:f7e1c879…`・667バイト・`artifactDigest=sha256:cabf793a…`）。`artifact`が相対パスで、ツールが絶対パスをcatalogへ書かないため。観測は二ホストで`darwin`・`arm64`は未観測。SB-C0 §4.33 / #2831）
 - [既定に関する残りの判断を閉じた](TEI_GO_SELF_BUILD_DEFAULTS_CLOSED_2026-11-10.md)（§7に残っていた四つの既定の問いに、測った材料の範囲で答え、**今の振る舞いを変えずに**閉じた。`-rebuild-check`を全試行で既定にしない（child経路では費用が倍になるだけでClaimが増えない）／R-1据え置き（名指しされていないcatalogを読むのはK-3の取り消し）／`l2b.claimed`は既定で立てない（Claimは呼び手の行為）／D-1を採らない（外在consumerの前提を測れないまま変えない。発見性は`-h`とREADMEで確保済み）。`-strong`も採らないと記録した。それぞれに**覆す条件**を添えた。SB-C0 §4.34 / #2831）
 - [セルフビルドの実現状況の総括](TEI_GO_SELF_BUILD_STATE_OF_REALIZATION_2026-11-10.md)（SB-C0がどこまで到達したかを、根拠の在り処つきで一度に示す。**L1・L2-a・L2-b（解釈／(c)／Claim）・L3が揃い**、能力宣言→catalog→計画→成果物→Claimの鎖が二つのホストで通りCIで毎回回る。**`tei.workspace.yaml`も`.tei`の構文も一行も変えていない**（catalogはK-3で読み、製品の外に書き、ツールが作る）。既定の判断は§4.34で閉じた。`main`の`d264173ad`で再検証し、§7の終了条件は45項目チェック済み・未チェック2項目（`darwin`/`arm64`はこのホストで実行不能、能力宣言の版付けは第二のconsumer待ち）。受理・Runtime Authority・Trust・catalogの正しさ・G4は**未主張**のまま。SB-C0 / #2831）
+- [Dependency-based cache invalidation reference](DEPENDENCY_BASED_CACHE_INVALIDATION_2026-11.md)（`tools/reference-cache-invalidation/`の参照実装。関連Issue #2595・#2600・#3267、ADR-0045・ADR-0041。並行作業で入った記録で、索引に載っていなかったため追加した）
 - [catalogを名指しすれば`-rebuild-check`を書かなくてもClaimが立つ](TEI_GO_SELF_BUILD_INPROCESS_DEFAULT_EVIDENCE_2026-11-09.md)（§4.25が保留した既定経路の強化を、**一つの場合に限って**決めた。`-build-catalog`を渡した試行は`-rebuild-check`を明示しなくても二回目のbuildを行う（`-rebuild-check=false`で断れる）。catalogを渡すことが既に「強い経路を選ぶ」表明であり、費用と便益が同じ側にあるため。child経路と何も渡さない試行は変えない（Claimが立たない経路に費用を足さない）。実測では`-rebuild-check`を書かずに`l2b.claimed=true`・`unmet`空、`=false`では`unperformed`で理由が「the caller turned off the second build」。**既定の導出経路はchildのまま**で、`qualified`も`false`。SB-C0 §4.30 / #2831）
 - [`tei self-build -h`が実際の文法を示すようになった](TEI_GO_SELF_BUILD_HELP_DISCOVERY_2026-11-10.md)（§4で足したflagが`-h`に出ておらず、catalog経路は設計文書を読まないと見つからなかった。原因は`helpText`が`self-build`のflagを**手書き**していて、後から足した分に追随していなかったこと。手書きをやめ、§4形式のFlagSetから`self-build`用の一覧を作って共通の描画関数で出すようにしたので、flagを足せば自動で追随する。出力は11個から**20個**になり、`-rebuild-check`の§4.30の既定も見える。利用者向けの手引きも`reference/plugin-self-build/README.md`へ追加。SB-C0 §4.6 / #2831）
 - [traceの継続トークンが2つの同名欄に分かれている](TEI_DOGFOODING_ROUND11_TRACE_CONTINUATION_2026-11-09/README.md)（#3625・#3420 T06。同名の`snapshotFingerprint`が2つあり、継続に使えるのは外側だけ。`nextOffset`の隣の値を渡すと`STALE_SNAPSHOT`になることを修正前に実測した）
@@ -449,3 +452,4 @@
 - [mainの壊れた文字列リテラルを直す](TEI_DOGFOODING_ROUND69_MAIN_BROKEN_LITERAL_2026-11-11/README.md)（第68ラウンドのgo vetが、自分の変更とは無関係なmainの破損を検出。source_ab_consumer_parity_test.goに本物の改行が入った文字列リテラルがあり、パッケージがビルドできなかった。エスケープに直し、gofmt空・vet clean・パッケージの試験ok）
 - [環境を設計しdatabase・environmentをCLIで読めるようにする](TEI_DOGFOODING_ROUND68_ENVIRONMENT_LAYER_2026-11-11/README.md)（#4128のC案を拡張。staging環境を1往復で設計し、未読だったdatabase/environmentをinspectに追加して18種に。model overviewが既にnotCoveredKindsで宣言していた欠落と実害が一致。database-instanceは環境スコープのため追加せず）
 - [永続化マッピングを設計しpersistence-mappingをCLIで読めるようにする](TEI_DOGFOODING_ROUND71_PERSISTENCE_LAYER_2026-11-11/README.md)（#4128のC案を拡張。6往復でマッピングを設計し、未読だったpersistence-mappingをinspectに追加して19種に。Attempt1はokを返したが何も起きておらず、配置の誤りが成功として返る例を記録。未起票）
+

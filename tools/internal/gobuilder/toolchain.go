@@ -27,7 +27,13 @@ func SelectExecutable(explicit, embeddedGoRoot, goos string) (string, error) {
 	}
 	resolved, err := filepath.EvalSymlinks(absolute)
 	if err != nil {
-		return "", fmt.Errorf("resolve Go executable: %w", err)
+		// What this function must return is the exact file, not a particular
+		// spelling of its path. EvalSymlinks fails when the host cannot traverse
+		// a component even though the file is there (the Windows CI runner
+		// reports "The system cannot find the path specified" for the
+		// hostedtoolcache GOROOT), so fall back to the absolute path and let the
+		// stat below decide whether the file is real (#4276).
+		resolved = absolute
 	}
 	info, err := os.Stat(resolved)
 	if err != nil {

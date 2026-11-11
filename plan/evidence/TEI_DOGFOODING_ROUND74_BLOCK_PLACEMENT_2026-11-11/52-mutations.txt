@@ -1,0 +1,10 @@
+M1 drop the block-only branch
+   -> FAIL message does not say the entry belongs inside a block:
+           unexpected trailing token "bind"
+M2 give a hint for unknown tokens too
+   -> FAIL "frobnicate" must keep its own message
+
+M1 first failed to apply (ValueError: substring not found): my anchor text did
+not match the file. Rebuilt the mutation. Fourth round where a broken mutation
+had to be fixed (61, 67, 72, 74).
+restored -> syntax ok, workspace ok; vet and gofmt clean

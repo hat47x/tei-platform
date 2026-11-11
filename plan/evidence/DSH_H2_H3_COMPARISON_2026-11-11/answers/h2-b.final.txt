@@ -1,0 +1,55 @@
+# semantic-data:sales.order 調査報告
+
+## 使用した CLI と前提
+- `bin\tei.exe`、`version -json` の出力は `effect: read-only`、vcsRevision `50ebf801…`、go1.27.0。
+- PowerShell から直接叩くとメモリ制限言語エラーが混ざるため、CLI はすべて `cmd /c 'bin\tei.exe …'` で実行した。
+- 作業中の書き込み・生成、DB/Provider への操作、外部送信は行っていない。
+
+## (1) 何を表すか
+`model catalog` の結果、`semantic-data:sales.order` は namespace `sales` の `data` 要素で、シンボルは `Order` です。属性は `order_id`・`customer_id`・`ordered_at`・`status`・`total`・`external_id` の6つ。関係は `customer`（`customer.customer` に対し one）と `lines`（`sales.order_line` に対し many）です。`trace` では、`order_entry.order_record`、`order_entry.recent_orders`、`sales.order.submit`（input/output）、`sales_core.order` 契約（reads）から参照されていると確認できました。
+
+## (2) 定義元と出典の手掛かり
+- 定義元は **`semantic/sales/order.tei`（7行目6〜11列）**（`trace`・`source-index` が返す `role: definition`）。
+- アーティファクトの fingerprint は `sha256:f2063418…e33`。
+- **出典（外部由来の原典）は未確認です。** ファイル内に出典を示すコメントや URL はありません。
+- 版の内訳：
+  - モデル版：`modelRevision sha256:f414e2b0…`（workspace 全体のリビジョン）。`semantic/sales` 単体にはバージョン表記なし。
+  - Source 版：Git 管理外（`.git` が無く履歴なし）。**未確認**。
+  - DB 側の版：`sales_core.order` は **v4.2**（`releases/databases/sales-core/4.2.0.tei` が提供を宣言）。
+  - CLI 版：vcsRevision `50ebf801…`。
+
+## (3) 合計額属性
+- 識別子は **`sales.order.total`**、シンボルは `total`、型は **`std.money`**。
+  - 根拠：`inspect -subject-kind=semantic-attribute -subject-id=sales.order.total` が `"type":"std.money"` を返し、`knowledge-context -disclose=data-design` でも同じ対応を確認。
+- 永続化では `public.orders.total_amount`（`decimal`, required）に写像されます（`databases/sales-core/persistence/order.tei` 10行目）。
+
+## (4) 検証結果と残る診断・不明点
+`validate -workspace=reference/workspace` の結果は **`ok`（exit 0）**。警告は3件のみで、いずれも `order_legacy` に関する履歴整合の警告（`sales_core` 4.0.0/4.1.0、`order_entry@3.7.0`）。`sales.order` 自体へのエラー・警告はありません。
+
+不明点（未解決として残るもの）：
+- `std.money` と `std` namespace は **`sourceStatus: not-indexed`**。workspace 内に `namespace std` の定義ファイルがなく、単位（通貨）や精度の定義は**未確認**。
+- `dataDesign` は構造的には `resolved` だが、業務上の意味は未解決：
+  - `businessOccurrenceIdentifier`、`candidateKeys`、`functionalDependencies`、`compositeDomainConstraints`、`temporalHistoryConditions` がすべて `unresolved`。
+  - 2つの関係も `businessMeaning` と `temporalSemantics` が `unresolved`。
+- `total` が明細の合計や税込額を意味するか、業上の定義は**未確認**（ファイル・CLI ともに表明なし）。
+- `trace` には `projectionUnresolved`（`unmaterialized-to/from: database-contract:sales_core.order` など）が残っています。
+- 警告に出る `order_legacy` の現行定義は**未確認**（現行ファイルなし）。
+
+**注意点：** `workspace-files` の一覧に `.tei` 拡張子の `databases/sales-core/README.md` と `migrations/20260826_001/migration.tei` がありますが、`tei.workspace.yaml` の sources に `migrations` が含まれておらず、定義元としては使っていません。
+
+### 実行したコマンド（主要なもの）
+| コマンド | 結果 |
+|---|---|
+| `version -json` | read-only, vcsRevision `50ebf801…` |
+| `commands` | 読み取り専用コマンド一覧 |
+| `validate -workspace=… [-json]` | ok、警告3件 |
+| `model catalog -workspace=…` | `sales.order` / `total`:`std.money` を確認 |
+| `inspect … -subject-kind=semantic-attribute -subject-id=sales.order.total` | `type: std.money` |
+| `trace … -scope=semantic -subject-kind=semantic-data -subject-id=sales.order -mode=full` | 4辺すべて resolved、定義行を特定 |
+| `knowledge-context … -disclose=source,definition,dependencies` | status `complete` |
+| `knowledge-context … -disclose=data-design` | 限界・未解決項目を確認 |
+| `knowledge-review-plan …` | 推奨レビュー手順 |
+| `plugin-lock -workspace=…` | dev/prod 各 1.0.0 |
+| `workspace-files -workspace=…` | ファイル一覧 |
+
+途中の失敗：`-workspace reference\workspace` というスペース区切りだと Go のフラグとして解釈されず `exactly one of -workspace or -world` エラー（exit 2）。`=` 区切りに変更して解決しました。

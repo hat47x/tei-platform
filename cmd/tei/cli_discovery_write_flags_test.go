@@ -119,14 +119,52 @@ func TestDiscoveryWriteFlagsMatchObservedFileEffects(t *testing.T) {
 		}
 	}
 
-	// Only view is qualified for now: another command that writes a named file
-	// must not be silently treated as writing nothing.
+	// rea-evidence writes the derived request, which is the record of what was
+	// handed to the external tool. It is a write the caller opted into, and it
+	// is announced as one for the same reason view's are (#3182).
+	t.Run("-request-out", func(t *testing.T) {
+		evidencePath := filepath.Join(dir, "rea-analysis.json")
+		if err := os.WriteFile(evidencePath, []byte(syntheticEvidence), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		requestPath := filepath.Join(dir, "rea-request.json")
+		if _, err := os.Stat(requestPath); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("%s already exists before the run", requestPath)
+		}
+		command := exec.Command(binary, "rea-evidence", "-analysis-output", evidencePath,
+			"-request-out", requestPath, "-provider-version", "6.8.0")
+		var stdout, stderr bytes.Buffer
+		command.Stdout, command.Stderr = &stdout, &stderr
+		runErr := command.Run()
+		if runErr != nil {
+			var exit *exec.ExitError
+			if !errors.As(runErr, &exit) {
+				t.Fatalf("CLI execution: %v", runErr)
+			}
+			if exit.ExitCode() != 0 {
+				t.Fatalf("exit=%d stdout=%q stderr=%q", exit.ExitCode(), stdout.String(), stderr.String())
+			}
+		}
+		info, err := os.Stat(requestPath)
+		if err != nil {
+			t.Fatalf("-request-out was announced as a write but the run created nothing: %v", err)
+		}
+		if info.Size() == 0 {
+			t.Fatal("-request-out created an empty file")
+		}
+		if !containsString(writeFlags["rea-evidence"], "-request-out") {
+			t.Fatalf("rea-evidence writes %s but discovery does not announce it", requestPath)
+		}
+	})
+
+	// Only view and rea-evidence are qualified here: another command that
+	// writes a named file must not be silently treated as writing nothing.
 	for _, record := range commandCatalog().Commands {
-		if record.Name == "view" {
+		if record.Name == "view" || record.Name == "rea-evidence" {
 			continue
 		}
 		if len(record.WriteFlags) != 0 {
-			t.Fatalf("%s advertises writeFlags %v but only view is qualified here", record.Name, record.WriteFlags)
+			t.Fatalf("%s advertises writeFlags %v but is not qualified here", record.Name, record.WriteFlags)
 		}
 	}
 	for _, record := range commandCatalog().Commands {
@@ -159,8 +197,8 @@ func TestDiscoveryWriteFlagsMatchObservedFileEffects(t *testing.T) {
 			without++
 		}
 	}
-	if withField != 1 || without != len(decoded.Commands)-1 {
-		t.Fatalf("writeFlags appears on %d records, want only view", withField)
+	if withField != 2 || without != len(decoded.Commands)-2 {
+		t.Fatalf("writeFlags appears on %d records, want view and rea-evidence", withField)
 	}
 }
 

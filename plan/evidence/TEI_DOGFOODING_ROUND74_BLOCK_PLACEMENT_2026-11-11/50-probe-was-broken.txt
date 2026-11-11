@@ -1,0 +1,20 @@
+My first three probes all returned the same line:
+
+  warning WORKSPACE_SOURCE_ROOT managed file "... is a TEI source that no loader
+  reads, so its declarations never reach the model"
+
+I had named the file environments/staging-stray.tei. The loader requires
+environments/<id>/environment.tei exactly, so none of my probes were parsed.
+
+The warning I added in round 72 is what told me my own probe was wrong.
+
+With the correct name the two diagnostics appeared:
+
+  'binding' inside the block ->
+    expected plugin, bundle, feature, database-instance, bind, resource, grant,
+    lease-policy, deployment-executor, observation-provider, or evidence-provider
+    (already good: it lists the accepted entries)
+
+  bind after the closing brace ->
+    unexpected trailing token "bind"
+    (this is the one to fix: it does not say where it belongs)

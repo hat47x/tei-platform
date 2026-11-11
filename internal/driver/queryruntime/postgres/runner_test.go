@@ -7,7 +7,12 @@ import (
 	"errors"
 	"io"
 	"reflect"
+	"strings"
 	"testing"
+
+	"github.com/jackc/pgx/v5/pgconn"
+
+	"tei/internal/failure"
 )
 
 type contractRunnerTestState struct {
@@ -137,6 +142,73 @@ func TestContractRunnerKeepsQueryFailureAsExecutionError(t *testing.T) {
 	)
 	if err == nil || !errors.Is(err, state.queryErr) {
 		t.Fatalf("Database実行失敗をExecution Errorとして保持できていません: %v", err)
+	}
+}
+
+// A SQLSTATE is the provider's own classification, so the runner has to carry it
+// out rather than flattening it into one undifferentiated execution failure.
+// Without this, a unique violation and a serialization failure reach the caller
+// looking the same, and the caller cannot tell which one it may resend.
+func TestContractRunnerClassifiesDriverSQLState(t *testing.T) {
+	cases := []struct {
+		name      string
+		state     string
+		wantCode  string
+		wantKind  failure.Kind
+		wantRetry failure.RetryPolicy
+	}{
+		{"unique violation", "23505", "POSTGRES_UNIQUE_VIOLATION", failure.BusinessRejection, failure.NotRetryable},
+		{"serialization failure", "40001", "POSTGRES_SERIALIZATION_FAILURE", failure.TechnicalFailure, failure.LookupFirst},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			driverErr := &pgconn.PgError{Code: tc.state, Message: "driver reported"}
+			state := &contractRunnerTestState{queryErr: driverErr}
+			_, err := (Runner{DB: openContractRunnerTestDB(t, state)}).ExecuteSQL(
+				context.Background(),
+				"select order_line_id from order_line where order_id = :parent_id",
+				map[string]any{"parent_id": int64(1001)},
+			)
+			got, ok := failure.AsFailure(err)
+			if !ok {
+				t.Fatalf("%s: the driver error did not become a failure.Failure: %T (%v)", tc.state, err, err)
+			}
+			if got.FailureCode() != tc.wantCode {
+				t.Errorf("FailureCode() = %q, want %q", got.FailureCode(), tc.wantCode)
+			}
+			if got.Kind() != tc.wantKind {
+				t.Errorf("Kind() = %v, want %v", got.Kind(), tc.wantKind)
+			}
+			if got.Retryable() != tc.wantRetry {
+				t.Errorf("Retryable() = %v, want %v", got.Retryable(), tc.wantRetry)
+			}
+			// The developer-facing cause survives, and so does the boundary's own
+			// context message.
+			if !errors.Is(err, driverErr) {
+				t.Error("the driver error is no longer reachable through the failure")
+			}
+			if !strings.Contains(err.Error(), "PostgreSQL Contract Queryのnative SQLを実行できません") {
+				t.Errorf("the boundary's context message was dropped: %q", err.Error())
+			}
+		})
+	}
+}
+
+// A failure the driver did not classify must keep its own identity: wrapping it
+// as a database failure would invent a classification nobody reported.
+func TestContractRunnerLeavesUnclassifiedQueryFailureAlone(t *testing.T) {
+	plain := errors.New("context canceled")
+	state := &contractRunnerTestState{queryErr: plain}
+	_, err := (Runner{DB: openContractRunnerTestDB(t, state)}).ExecuteSQL(
+		context.Background(),
+		"select order_line_id from order_line where order_id = :parent_id",
+		map[string]any{"parent_id": int64(1001)},
+	)
+	if _, ok := failure.AsFailure(err); ok {
+		t.Fatal("an error with no SQLSTATE was reported as a classified database failure")
+	}
+	if !errors.Is(err, plain) {
+		t.Fatalf("the original error was replaced: %v", err)
 	}
 }
 

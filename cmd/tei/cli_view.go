@@ -822,6 +822,19 @@ func writeApplicationText(out io.Writer, view applicationview.ApplicationView) (
 				return 2, err
 			}
 		}
+		// The capabilities a close and a reopen must run are part of the period's
+		// meaning, so they are printed beside it rather than left to the Command
+		// plan alone.
+		if period.CloseRequires != "" {
+			if _, err := fmt.Fprintf(out, "period %s close-requires %s\n", period.ID, period.CloseRequires); err != nil {
+				return 2, err
+			}
+		}
+		if period.Correction != "" {
+			if _, err := fmt.Fprintf(out, "period %s correction via %s\n", period.ID, period.Correction); err != nil {
+				return 2, err
+			}
+		}
 	}
 	for _, use := range view.SemanticUses {
 		if _, err := fmt.Fprintf(out, "uses %s\n", use); err != nil {

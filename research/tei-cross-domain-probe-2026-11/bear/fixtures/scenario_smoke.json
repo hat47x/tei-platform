@@ -1,0 +1,26 @@
+{
+  "schema": "bot-scenario-1",
+  "seed": 7,
+  "start_height": 2.0,
+  "host": {
+    "kind": "scripted",
+    "steps": [
+      {
+        "ticks": 20,
+        "payload": {"velocity": [1.0, 0.0]}
+      },
+      {
+        "ticks": 15,
+        "payload": {"velocity": [0.0, -1.0]}
+      }
+    ]
+  },
+  "assertions": {
+    "total_ticks": 35,
+    "min_steps": 2,
+    "stop_reasons": ["outcome", "outcome"],
+    "final_position": [0.333333313465118, 0.875564277172089, -0.250000029802322],
+    "final_position_tolerance": 0.001,
+    "trajectory_sha256": "0fdcd61d750c68ccaf5ee9b4b9ae7756642cac9120ff1952528bb3ebed9bc167"
+  }
+}

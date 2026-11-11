@@ -42,7 +42,7 @@ type Adapter interface {
 // 不一致は、業務OutcomeではなくExecution Errorとして呼び出し側へ返す。
 func Invoke(ctx context.Context, capability semantic.Capability, adapter Adapter, input any) (BusinessResult, error) {
 	if adapter == nil {
-		return BusinessResult{}, fmt.Errorf("capability %sを実行するAdapterが指定されていません", capability.ID)
+		return BusinessResult{}, fmt.Errorf("no Adapter is specified to run capability %s", capability.ID)
 	}
 
 	// A request cancelled before dispatch must not reach an effectful Adapter.
@@ -53,7 +53,7 @@ func Invoke(ctx context.Context, capability semantic.Capability, adapter Adapter
 
 	result, err := adapter.Invoke(ctx, capability.ID, input)
 	if err != nil {
-		return BusinessResult{}, fmt.Errorf("capability %sの実行を完了できませんでした: %w", capability.ID, err)
+		return BusinessResult{}, fmt.Errorf("running capability %s did not complete: %w", capability.ID, err)
 	}
 	if err := ValidateBusinessResult(capability, result); err != nil {
 		return BusinessResult{}, err
@@ -66,36 +66,36 @@ func Invoke(ctx context.Context, capability semantic.Capability, adapter Adapter
 // Driverより先に汎用的な業務データ値モデルを固定しない。
 func ValidateBusinessResult(capability semantic.Capability, result BusinessResult) error {
 	if result.Capability != capability.ID {
-		return fmt.Errorf("capability %sの実行結果が別のCapability %sを名乗っています", capability.ID, result.Capability)
+		return fmt.Errorf("the result of running capability %s claims a different Capability %s", capability.ID, result.Capability)
 	}
 
 	if capability.Output != "" {
 		if result.Mode != ResultOutput {
-			return fmt.Errorf("capability %sは単一output契約ですが、result modeは%qです", capability.ID, result.Mode)
+			return fmt.Errorf("capability %s is a single-output contract, but the result mode is %q", capability.ID, result.Mode)
 		}
 		if result.Outcome != "" {
-			return fmt.Errorf("capability %sの単一output結果にoutcome %qを指定できません", capability.ID, result.Outcome)
+			return fmt.Errorf("the single-output result of capability %s cannot name outcome %q", capability.ID, result.Outcome)
 		}
 		return nil
 	}
 
 	if len(capability.Outcomes) == 0 {
-		return fmt.Errorf("capability %sには実行結果契約が定義されていません", capability.ID)
+		return fmt.Errorf("capability %s has no result contract defined", capability.ID)
 	}
 	if result.Mode != ResultOutcome {
-		return fmt.Errorf("capability %sは名前付きoutcome契約ですが、result modeは%qです", capability.ID, result.Mode)
+		return fmt.Errorf("capability %s is a named-outcome contract, but the result mode is %q", capability.ID, result.Mode)
 	}
 	if result.Outcome == "" {
-		return fmt.Errorf("capability %sの名前付きoutcome結果にoutcome名がありません", capability.ID)
+		return fmt.Errorf("the named-outcome result of capability %s has no outcome name", capability.ID)
 	}
 
 	for _, outcome := range capability.Outcomes {
 		if outcome.Name == result.Outcome {
 			if result.Payload == nil {
-				return fmt.Errorf("capability %sのoutcome %qにpayloadがありません", capability.ID, result.Outcome)
+				return fmt.Errorf("capability %s has no payload for outcome %q", capability.ID, result.Outcome)
 			}
 			return nil
 		}
 	}
-	return fmt.Errorf("capability %sはoutcome %qを定義していません", capability.ID, result.Outcome)
+	return fmt.Errorf("capability %s does not define outcome %q", capability.ID, result.Outcome)
 }

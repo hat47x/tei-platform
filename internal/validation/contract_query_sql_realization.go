@@ -29,7 +29,7 @@ func ValidateContractQuerySQLRealizations(w ir.World) []Diagnostic {
 			out = append(out, errFor(
 				realizationSubject,
 				"DUPLICATE_CONTRACT_QUERY_SQL_REALIZATION",
-				"Contract Query SQL realization %sが複数定義されています",
+				"Contract Query SQL realization %s is defined more than once",
 				identity,
 			))
 			continue
@@ -41,7 +41,7 @@ func ValidateContractQuerySQLRealizations(w ir.World) []Diagnostic {
 			out = append(out, errFor(
 				realizationSubject,
 				"AMBIGUOUS_CONTRACT_QUERY_SQL_REALIZATION_DATABASE",
-				"Contract Query SQL realization %sが参照するDatabase %sは複数定義されています",
+				"Contract Query SQL realization %s refers to Database %s, which is defined more than once",
 				identity,
 				realizationDef.Target.Database,
 			))
@@ -51,7 +51,7 @@ func ValidateContractQuerySQLRealizations(w ir.World) []Diagnostic {
 			out = append(out, errFor(
 				realizationSubject,
 				"UNKNOWN_CONTRACT_QUERY_SQL_REALIZATION_DATABASE",
-				"Contract Query SQL realization %sは存在しないDatabase %sを参照しています",
+				"Contract Query SQL realization %s refers to Database %s, which does not exist",
 				identity,
 				realizationDef.Target.Database,
 			))
@@ -63,7 +63,7 @@ func ValidateContractQuerySQLRealizations(w ir.World) []Diagnostic {
 			out = append(out, errFor(
 				realizationSubject,
 				"AMBIGUOUS_CONTRACT_QUERY_SQL_REALIZATION_CONTRACT",
-				"Contract Query SQL realization %sが参照するContract %sはDatabase %sで複数定義されています",
+				"Contract Query SQL realization %s refers to Contract %s, which is defined more than once in Database %s",
 				identity,
 				realizationDef.Target.Contract,
 				db.ID,
@@ -74,7 +74,7 @@ func ValidateContractQuerySQLRealizations(w ir.World) []Diagnostic {
 			out = append(out, errFor(
 				realizationSubject,
 				"UNKNOWN_CONTRACT_QUERY_SQL_REALIZATION_CONTRACT",
-				"Contract Query SQL realization %sはDatabase %sに存在しないContract %sを参照しています",
+				"Contract Query SQL realization %s refers to Contract %s, which does not exist in Database %s",
 				identity,
 				db.ID,
 				realizationDef.Target.Contract,
@@ -87,7 +87,7 @@ func ValidateContractQuerySQLRealizations(w ir.World) []Diagnostic {
 			out = append(out, errFor(
 				realizationSubject,
 				"AMBIGUOUS_CONTRACT_QUERY_SQL_REALIZATION_QUERY",
-				"Contract Query SQL realization %sが参照するQuery %sはContract %sで複数定義されています",
+				"Contract Query SQL realization %s refers to Query %s, which is defined more than once in Contract %s",
 				identity,
 				realizationDef.Target.Query,
 				contract.ID,
@@ -98,7 +98,7 @@ func ValidateContractQuerySQLRealizations(w ir.World) []Diagnostic {
 			out = append(out, errFor(
 				realizationSubject,
 				"UNKNOWN_CONTRACT_QUERY_SQL_REALIZATION_QUERY",
-				"Contract Query SQL realization %sはContract %sに存在しないQuery %sを参照しています",
+				"Contract Query SQL realization %s refers to Query %s, which does not exist in Contract %s",
 				identity,
 				contract.ID,
 				realizationDef.Target.Query,
@@ -110,7 +110,7 @@ func ValidateContractQuerySQLRealizations(w ir.World) []Diagnostic {
 			out = append(out, errFor(
 				realizationSubject,
 				"INVALID_CONTRACT_QUERY_SQL_REALIZATION",
-				"Contract Query SQL realization %sがQuery signatureと整合しません: %v",
+				"Contract Query SQL realization %s does not agree with the Query signature: %v",
 				identity,
 				err,
 			))
@@ -134,7 +134,7 @@ func ValidateContractQuerySQLRealizations(w ir.World) []Diagnostic {
 			out = append(out, errFor(
 				realizationSubject,
 				"CONTRACT_QUERY_SQL_RESULT_ATTRIBUTE_OUTSIDE_RESULT_DATA",
-				"Contract Query SQL realization %sのraw列 %qは、Query result Data %sに属さないSemantic attribute %sへmappingされています",
+				"Contract Query SQL realization %s maps raw column %q to Semantic attribute %s, which is not part of Query result Data %s",
 				identity,
 				mapping.Column,
 				queryContract.Result,
