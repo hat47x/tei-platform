@@ -651,3 +651,16 @@ HULFT-HUB Ver.3公式マニュアル第20版（2025-12-01）は、蓄積を使�
 **重複回避**：#1130がRunner/必要Guardの充足、#2604がArtifactSetの実公開／Member、#2542がFile/MFT／ImportUnit、#1174がEffect/Receipt、#2144が期間意味の受入を所有。原則Hostなし／認証は必要環境のPlugin能力／TEI基本構造の合成を維持し、別のPeriod Runtime、ETL Completion Engine、追加Manifest、Scheduler、万能証拠Registryを導入しない。
 
 **実行状態と証拠の限界**：本節はmainの4つのGo Source/既存UnitとIssue/PRの**静的照合・設計追補**。追加の実CLI/Goテスト、実PG・MFT・二Worker競合、同一AttemptのReceipt連結、実業務Owner受理は**NOT RUN**。[#4240の専用CLI #42933670806](https://github.com/hat47x/tei-platform/actions/runs/42933670806)はsuccessだが、同HEADの[Repository Health #42933670781](https://github.com/hat47x/tei-platform/actions/runs/42933670781)はfailure（`TestParallelClaim`/ `TestToolsReadmeMentionsEveryEntry`、本節のコードと別）であり、全体成功へ読み替えない。新しい本PRのCI合否は別途確認する。
+
+### 16.3 非0終了後の期間状態書込み：ErrorとEffect Unknownを分離
+
+**追加のSource-static条件付き反例（実CLI試験はNOT RUN）**：`runPeriodsCommand`は `-advance` の有効性・`close-requires`のID一致を確認後、**`periodstate.Writer.Write`で期間状態を保存してから** `operations.CheckPeriods(surface, states)`を評価し、拒否されるOperationがあればJSONを出力した後、`fmt.Errorf("%d operation(s) are refused by the period state", ...)`でエラーを返す。したがって「対象Periodに拒否対象Operationが存在し、`-advance`で新Stateを保存後にCheckPeriodsが非空となる」条件では、**非0 exit / CLI Errorでも状態Fileの更新が既に成功している経路**がSource上にある。これは実行の失敗と永続状態が変わらなかったことの**同値でなさ**を示す。実対象Workspace/Go CLIでの到達・File/FS耐久性は未実測。
+
+| 観測主語 | 条件付きの現行動作 | 次の受入判断 |
+| --- | --- | --- |
+| CLI return / JSON | `CheckPeriods`のRejectionでエラー終了し得る | **Nonzero exitは「変更なし」ではない**。Errorの理由と完了済Stageを別に記録 |
+| Period State File | `Writer.Write`が先行し`closing`／`closed`を書込み得る | 次のRetry/Correction前に対象Dの**実Readback＋Revision/Owner**を確認。別Attemptで同じ`-advance`を自動適用しない |
+| RunPlan / Artifact / Recipient | CLIはここで実Batch処理、Artifact Publish、ImportUnit/Effectを観測しない | 期間Stateの変更が確認できても、#2604/#2542/#1174の副作用を推定しない。未観測ならUnknown |
+| 競合実行 | `Writer.Write`のRenameは単体Fileの置換であり、双方のExpected State CASではない | 一方が`closing`を保存してエラーを返しても、他方の`closed`／Correctionを無条件に上書きしない |
+
+**最小の次試験（既存#1130で採否）**：実WorkspaceのPeriodに拒否対象Operationがある陽性Fixtureを再利用して`tei periods -advance`を一度だけ実行し、(1)終了コードとRejection JSON、(2)実State Fileの再読取、(3)二回目Retryの状態/Effectを独立に保存する。**同一実行のExit StatusとReadbackをセットで比較する**。新Runnerや複数Phase Transactionを作らず、実Stage列のどこで止めるべきかはOwnerが決める。本節はCodeの実行順の静的照合であり、Go/実CLIの新試験・実MFT/DB/Owner受理はNOT RUN。
