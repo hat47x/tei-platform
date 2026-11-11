@@ -2233,3 +2233,34 @@ SELECT ... WHERE state='expired' AND updated_at = datetime('now')
 ### #4252 の運用
 
 **4案はいずれも当てはまらなかった。** 黙って閉じず、**Issue を訂正するコメントを書いてから**修正で閉じる。
+
+## 70. 第69ラウンド（2026-11-11）: main の壊れた文字列リテラルを直す
+
+第68ラウンドの `go vet ./...` が、**自分の変更とは無関係な main の破損**を捕まえた。
+
+### 発見
+
+```text
+tools/reference-mcp-readonly-adapter/source_ab_consumer_parity_test.go:122:13:
+  string literal not terminated
+```
+
+ブランチ元（`12762bdd3`）を**素の状態**で checkout しても同じく落ち、当時の最新 main（`be814895e`）でも壊れていた。
+
+```go
+t.Fatalf("%s: actual CLI and MCP consumer documents differ:
+CLI=%v
+MCP=%v", version, cliDoc, mcpDoc)
+```
+
+**Go の文字列リテラルに本物の改行が入っていた。** `\n` ではなく実改行で、リテラルが 122 行目で終端していない。
+
+### 修正
+
+エスケープシーケンスに置き換えた。`gofmt -l .` が空、`go vet` が指摘なし、**`go test ./tools/reference-mcp-readonly-adapter` が ok（67.7s）**。修正前はこのパッケージは**ビルドすらできなかった**。
+
+### 断言しないこと
+
+- **CI がこの状態を検出していたかは確認できなかった。** 最初の問い合わせで誤った workflow 名（`repository-health.yml`）を使い、正しい名前は `tei-repository-health-ci.yml` だと分かったが、再問い合わせの前に切り替えた。
+- **壊れたファイルが main に入った経路（`6ea1523cc`）は特定していない。** レビューと CI のどちらがすり抜けたかは分からない。
+- 変異試験は無い（構文修復で振る舞いが変わらないため）。gofmt・vet・パッケージの試験で確認した。
