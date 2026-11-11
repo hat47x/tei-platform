@@ -240,6 +240,7 @@ func TestDiscoveryModesAreAClosedAdvertisedSet(t *testing.T) {
 		// shape really does change with them (a receipt alone, plus a request
 		// check, plus a view inspection).
 		"evidence": true, "request": true, "view": true, "request-view": true,
+		resultModeInventoryDetail: true, resultModeInventoryDiagnose: true,
 	}
 	for _, record := range commandCatalog().Commands {
 		for _, mode := range record.Modes {
