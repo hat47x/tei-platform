@@ -309,6 +309,59 @@ func TestModelDocumentReconcileRefusesADraftThatIsNotThisContract(t *testing.T) 
 	}
 }
 
+// TestModelDocumentReconcileAcceptsTheEnvelopeItPrints pins the round trip a
+// caller actually performs: the command's own stdout is stored and read back.
+// The envelope's schemaVersion names the CLI contract, not the draft contract,
+// so the reader must open the envelope instead of refusing it.
+func TestModelDocumentReconcileAcceptsTheEnvelopeItPrints(t *testing.T) {
+	root := documentDraftWorkspace(t)
+	var draftOut bytes.Buffer
+	if code, err := runModelCommand([]string{
+		"document-draft", "-workspace", root,
+		"-subject-kind", "semantic-data", "-subject-id", "sales.order",
+	}, &draftOut); err != nil || code != 0 {
+		t.Fatalf("draft exit=%d err=%v body=%s", code, err, draftOut.String())
+	}
+	envelopePath := filepath.Join(t.TempDir(), "stored.json")
+	if err := os.WriteFile(envelopePath, draftOut.Bytes(), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	code, err := runModelCommand([]string{
+		"document-reconcile", "-workspace", root, "-draft", envelopePath,
+	}, &out)
+	if err != nil || code != 0 {
+		t.Fatalf("exit=%d err=%v body=%s", code, err, out.String())
+	}
+	var envelope reconcileEnvelope
+	if err := json.Unmarshal(out.Bytes(), &envelope); err != nil {
+		t.Fatalf("not JSON: %v: %s", err, out.String())
+	}
+	if !envelope.OK || envelope.Result == nil ||
+		envelope.Result.ModelReference.Status != documentdraft.ModelReferenceCurrent {
+		t.Fatalf("envelope=%+v", envelope)
+	}
+	// A bare draft is still accepted: the file may have been trimmed by hand.
+	barePath := filepath.Join(t.TempDir(), "bare.json")
+	var bare draftEnvelope
+	if err := json.Unmarshal(draftOut.Bytes(), &bare); err != nil {
+		t.Fatal(err)
+	}
+	bareBytes, err := json.Marshal(bare.Result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(barePath, bareBytes, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var bareOut bytes.Buffer
+	if code, err := runModelCommand([]string{
+		"document-reconcile", "-workspace", root, "-draft", barePath,
+	}, &bareOut); err != nil || code != 0 {
+		t.Fatalf("bare exit=%d err=%v body=%s", code, err, bareOut.String())
+	}
+}
+
 // TestModelDocumentReconcileReportsAnUnreadableDraft keeps a missing or broken
 // file distinct from a draft that does not match the contract.
 func TestModelDocumentReconcileReportsAnUnreadableDraft(t *testing.T) {

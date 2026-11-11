@@ -130,6 +130,33 @@ func writeDocumentReconcileResponse(out io.Writer, response documentReconcileCLI
 	return exit, nil
 }
 
+// draftDocumentEnvelope is the shape `model document-draft` writes: an envelope
+// whose `result` carries the draft. A stored file is usually exactly this
+// output, so the reader accepts both the envelope and the bare draft.
+type draftDocumentEnvelope struct {
+	SchemaVersion string               `json:"schemaVersion"`
+	Result        *documentdraft.Draft `json:"result"`
+}
+
+// decodeDraftDocument reads one stored draft. When the file is the CLI envelope,
+// the inner `result` is used; when it is the bare draft, it is used as it is.
+// Anything else is a decode failure, not a partially completed draft.
+func decodeDraftDocument(document []byte) (documentdraft.Draft, error) {
+	var envelope draftDocumentEnvelope
+	if err := json.Unmarshal(document, &envelope); err != nil {
+		return documentdraft.Draft{}, err
+	}
+	if envelope.Result != nil &&
+		envelope.Result.SchemaVersion == documentdraft.SchemaVersion {
+		return *envelope.Result, nil
+	}
+	var draft documentdraft.Draft
+	if err := json.Unmarshal(document, &draft); err != nil {
+		return documentdraft.Draft{}, err
+	}
+	return draft, nil
+}
+
 func runModelDocumentReconcileCommand(args []string, out io.Writer) (int, error) {
 	fs := flag.NewFlagSet("model document-reconcile", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
@@ -177,8 +204,8 @@ func runModelDocumentReconcileCommand(args []string, out io.Writer) (int, error)
 	// broken draft for an encoding detail. The BOM is dropped here and recorded
 	// nowhere else: it carries no meaning.
 	document := bytes.TrimPrefix(raw, []byte{0xEF, 0xBB, 0xBF})
-	var draft documentdraft.Draft
-	if err := json.Unmarshal(document, &draft); err != nil {
+	draft, err := decodeDraftDocument(document)
+	if err != nil {
 		return writeDocumentReconcileResponse(out, documentReconcileCLIResponse{
 			SchemaVersion: documentReconcileSchemaVersion,
 			Error:         &cliInspectionFailure{Code: "DRAFT_DECODE_FAILED", Message: err.Error()},
