@@ -100,12 +100,16 @@ func (s *Store) Attempt(commandID string) (command.Attempt, bool) {
 }
 
 // MayReplay reports whether the command may be dispatched without a takeover.
+//
+// It answers true only when the store positively read "no attempt". An attempt
+// in any stage refuses: dispatched is in flight (or was abandoned after its
+// effect may have committed), unknown needs a takeover, observed is final. A
+// failed read also refuses, because "the store could not answer" is not "the
+// command was never dispatched"; reading it as replayable would let a caller
+// re-run a command whose effect may already be committed.
 func (s *Store) MayReplay(commandID string) bool {
-	attempt, ok := s.Attempt(commandID)
-	if !ok {
-		return true
-	}
-	return attempt.Stage != command.StageUnknown && attempt.Stage != command.StageObserved
+	_, err := s.load(context.Background(), commandID)
+	return errors.Is(err, sql.ErrNoRows)
 }
 
 // Dispatch records a new attempt and persists it atomically.
