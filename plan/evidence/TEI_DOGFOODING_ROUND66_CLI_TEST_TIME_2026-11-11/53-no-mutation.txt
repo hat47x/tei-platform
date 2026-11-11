@@ -1,0 +1,10 @@
+This change is test code only; product behaviour is untouched.
+
+There is nothing for a mutation to break, so no mutation was written. Instead:
+  - the whole of ./cmd/tei was run: all 603 tests ok
+  - go vet ./cmd/tei: clean
+  - the build count was measured indirectly (62.6s -> 5.3s, one build's cost)
+
+Not fixed: the self-build tests still take 200s+ by design; CI invocation is
+unchanged; the 10-minute limit itself is unchanged. cmd/tei contains 10 more
+`go build` call sites whose per-test frequency is NOT measured.
