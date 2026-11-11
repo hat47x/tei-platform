@@ -148,6 +148,26 @@ VSクマ側の期待結果は、上流に書かれた事実から独立に用意
 
 実装負荷はTEI 104行とprobe 750行（試験込み）です。既存のGDScript 435行（`typed_decision`・`typed_wire_codec`・`local_typed_state_encoder`・`motion_feedback`の合計）を置き換えないため、総量は増えます。変更容易性は、意図を1つ追加する場合にGDScript・TEI・probeの3箇所を直す必要があり、現状では悪化します。
 
+### 5.6 状態機械のread-only投影（#4193への判断材料）
+
+回復状態機械（`controllers/bear/traversal_recovery.gd`）を、probe内にread-onlyの遷移表として写しました。**TEIの意味DSLには`state`・`transition`がなく、製品へは追加していません。** この投影は[#4193](https://github.com/hat47x/tei-platform/issues/4193)の受入条件1（「少なくとも二つの異質なDomainの独立Expectedと具体的不足で示す」）に対する、2例目のDomainとしての材料です。
+
+写した結果は、状態4（IDLE・WALL_FOLLOW・ENTER_TRAVERSABLE・CLEARING）、遷移11（内1はglobal）です。`research/tei-cross-domain-probe-2026-11/bear/statemachine.go`に実装し、10件の試験（内4件はmutation）で確認しました。
+
+| 観測 | 内容 | #4193の該当 |
+| --- | --- | --- |
+| 到達不能状態なし | 初期状態IDLEから4状態すべてへ到達できる | §5.4 到達可能性 |
+| デッドエンドなし | 全状態に退出あり。ただし`observation_invalid`というglobal遷移があるためです。global行を落とすとCLEARINGがデッドエンドになります | §5.4 |
+| Guard優先は実在し、かつ合計 | 各source状態の分岐は優先度1..nで競合しません。しかし**優先度はif/elifのソース順**であって、宣言されたpolicyではありません | §5.2 遷移決定性 |
+| global遷移の可視性 | `observation_invalid`は個別状態のchainの前に一度だけ書かれ、任意の非初期状態からIDLEへ戻ります。source状態ごとの行だけを並べた平坦な表では、この退出が見えません | §5.1 型・構造 |
+| 自己遷移 | `traversable_retargeted`はENTER_TRAVERSABLE→ENTER_TRAVERSABLE。平坦な表では「遷移が欠けている」ように読めます | §5.1 |
+| 列挙と状態の不一致 | 記録される`recovery_state`は5値（4状態＋`unknown`）ですが、`unknown`は機械の状態ではなく、未認識の状態名に対して`motion_feedback.gd`が書くフォールバックラベルです。**列挙は状態集合ではありません** | §5.1 |
+| 現行DSLでの表現 | `state`・`transition`がないため、遷移規則はGDScriptのまま。probeが表と診断を運びます | §6 進め方 |
+
+**具体的な不足**として、#4193へ返せるのは次の3点です。(1) 優先度を宣言されたpolicyとして書く手段がない（ソース順に依存）。(2) global遷移を表の行として表現する手段がない（個別状態の行だけでは退出が隠れる）。(3) 列挙型で状態を書くと、フォールバックラベルが状態として読まれる。
+
+**判断材料としての限界**：この投影は1つのDomain・1つの状態機械です。#4193の受入条件1は「少なくとも二つの異質なDomain」を求めており、本稿の§5.2（型付き認知の入出力境界）と本節を併せても、Domainは「ゲーム」で1つです。UI非同期と通信Session（#4193 §6のS1）が未実施のままです。
+
 ## 6. 対象別の比較
 
 ### 6.1 CSWの5観点
@@ -197,7 +217,221 @@ VSクマ側の期待結果は、上流に書かれた事実から独立に用意
 
 **性能実測の性質**：本稿のprobe費用は、Windows 11・Intel Core i7-8750H・Go 1.27.0という1台のhostでの3回の実測範囲です。同hostでも実行ごとに数倍振れるため、絶対値を性能目標や比較優位の根拠として使わないでください。TEIの製品コードやVSクマのゲームループの性能は測定していません。
 
-## 9. 参照
+## 9. 後続作業の作業票
+
+§7の判断事項を、後続の実装者が迷わずに最後まで進められる形に分解しました。各票は[AGENTS.md](../../AGENTS.md)の「Issueでの委任」が求める項目を持ちます。**票は着手可能な状態まで具体化したもので、採用の決定ではありません。** 開始base SHAは票の作成時点の`origin/main`です。作業を始めるときは、最新の`main`と対象pathの差分を再確認してください。
+
+| 票 | 親Issue | 要求ロール | 概要 | 状態 |
+| --- | --- | --- | --- | --- |
+| VOC-01 | [#2510](https://github.com/hat47x/tei-platform/issues/2510) | `implementer` | 範囲・列値の検証を`validation`へ追加する設計案とADR草案 | 未着手 |
+| SM-01 | [#4193](https://github.com/hat47x/tei-platform/issues/4193) | `reviewer` | 状態機械のread-only投影の成果を#4193の受入条件へ接続するreview | 成果物あり |
+| SM-02 | [#4193](https://github.com/hat47x/tei-platform/issues/4193) | `implementer` | UI非同期と通信Sessionのread-only解釈（#4193 §6のS1） | 未着手 |
+| OPEN-01 | [#2533](https://github.com/hat47x/tei-platform/issues/2533) | `architect` | 開いた集合を列挙型として書くときの規約 | 未着手 |
+| TRACE-01 | [#4134](https://github.com/hat47x/tei-platform/issues/4134) | `implementer` | 外部Repository転記の照合下限と証跡の記録 | 一部実施済み |
+| CSW-01 | CSW [#593](https://github.com/hat47x/cultural-substrate-weaving/issues/593) | Owner判断 | 型付き受け渡しを任意の道具として残す場合の仕様 | 判断待ち |
+| BEAR-01 | VSクマ [#95](https://github.com/hat47x/vs-bear-simulator/issues/95) | Owner判断 | 契約の写しを受け入れる場合の条件と同期手順 | 判断待ち（推奨は保留） |
+| PLACE-01 | [#4193](https://github.com/hat47x/tei-platform/issues/4193) | `integrator` | `research/`から`tools/`への昇格基準 | 未着手 |
+
+共通の開始base SHA：`b987b38e741f8cfda74159e405979cf369521b88`（2026-11-11時点の`origin/main`）。
+共通の非目標：製品の受入Gateへの接続、CI必須検査の追加、CSWの3 Skillの変更、VSクマのGDScript生成、第二の意味正本の作成。
+
+---
+
+### VOC-01
+
+**親Issue**：[#2510](https://github.com/hat47x/tei-platform/issues/2510)（多分野Pressure Corpusと独立Conformance）。**要求ロール**：`implementer`。**状態**：未着手。
+
+**目的**：範囲・有限性・列値の検査を`validation`で表せるようにするかどうかの**採用判断に必要な設計案**を作る。判断そのものはADRで行う。
+
+**許容変更範囲**：
+- `plan/design/`に設計文書を1件追加する。
+- `internal/validation`の**読み取り専用の照合**（PoC）を、`plan/fixtures/`または`research/`に追加する。製品コードは変更しない。
+- 既存の`positive`・`relation-unique`の意味は変えない。
+
+**非目標**：
+- `validation`の構文を製品へ実装する（ADR採択後の別Issue）。
+- 既存の`reference/workspace`を変更する。
+- 状態機械・時系列・配列を同時に解決する。範囲と列値に限定する。
+
+**受入条件**：
+1. 2領域（CSWの帰属4値・VSクマの判断境界6項目）の**実在する検査**を、設計案の構文で写せることを示す。
+2. 写せないもの（時間窓・状態遷移・欠如・配列）を、設計案の限界として明示する。
+3. 独立Expectedを手書きし、実装から期待値を自動写しない。
+4. 導入しない場合の代替（probeが代替する現状）と、導入した場合に削除できるものを対比する。
+5. 「効果がなければどう撤回するか」を1段落で書く。
+
+**検証**：変更したpackageの`go test`、`go run ./cmd/tei validate -workspace reference/workspace`、追加したfixtureの実行。実行できなかった検証は、その制約を設計文書へ書く。
+
+**成果物**：設計文書1件、read-only照合1件、独立Expected付きfixture。
+
+**レビュー返却ロール**：`reviewer`。重要な設計論点は`independent-reviewer`へ争点を限定して渡す。
+
+---
+
+### SM-01
+
+**親Issue**：[#4193](https://github.com/hat47x/tei-platform/issues/4193)。**要求ロール**：`reviewer`。**状態**：成果物あり（`research/tei-cross-domain-probe-2026-11/bear/statemachine.go`）。
+
+**目的**：§5.6の状態機械のread-only投影を、#4193の受入条件1に対する**材料として妥当か** reviewする。投影の正しさと、投影が#4193へ返せる「具体的不足」の3点が実態に合っているかを確認する。
+
+**許容変更範囲**：#4193へのコメント追記、研究文書§5.6の修正。製品コードは変更しない。
+
+**非目標**：状態機械の製品実装、ADR起案、#4193の結論変更。
+
+**受入条件**：
+1. 遷移表11件が上流`traversal_recovery.gd`と一致すること（anchor試験で確認済み。reviewerは上流を直接読んで再確認する）。
+2. 「優先度はソース順」「global遷移が平坦な表で隠れる」「列挙は状態集合ではない」の3点が、上流のソースから独立に確認できること。
+3. §5.6の限界（Domainが1つしかないこと）が明記されていること。
+
+**検証**：`go test ./research/tei-cross-domain-probe-2026-11/... -count=1`、上流ファイルの直接閲覧。
+
+**成果物**：#4193へのreviewコメント（blocking／non-blocking／question の分類付き）。
+
+**レビュー返却ロール**：`independent-reviewer`（設計上の争点がある場合）。
+
+---
+
+### SM-02
+
+**親Issue**：[#4193](https://github.com/hat47x/tei-platform/issues/4193) §6のS1。**要求ロール**：`implementer`。**状態**：未着手。
+
+**目的**：#4193の受入条件1が求める「二つの異質なDomain」のうち、残る2領域（UI非同期・通信Session）をread-onlyで解釈する。SM-01で得られた「具体的不足」の3点が、別Domainでも同じ形で現れるかを確認する。
+
+**許容変更範囲**：
+- `research/tei-cross-domain-probe-2026-11/`にUI非同期と通信Sessionのread-only投影を追加する。
+- 対象は**公開済み・合成の**資料に限定する。実案件のデータは使わない。
+
+**非目標**：製品DSLへの`state`・`transition`追加、共通Runtime、新しいWorkflow Engine、UI実装。
+
+**受入条件**：
+1. 各Domainで、未知State/Event・重複Transition ID・未束縛のSource/Target・曖昧Guardの反例を**独立Expected**で1件以上示す。
+2. 表の網羅チェックPASSを、イベント時刻の正しさの証明としない（#4193 §5の制限を守る）。
+3. SM-01の3点の不足が再利用できるか、Domain固有の新しい不足が出るかを区別して書く。
+
+**検証**：追加したpackageの`go test`、`gofmt -l`、`go vet`。
+
+**成果物**：投影2件、独立Expected付きfixture、研究文書への追記。
+
+**レビュー返却ロール**：`reviewer`。
+
+---
+
+### OPEN-01
+
+**親Issue**：[#2533](https://github.com/hat47x/tei-platform/issues/2533)。**要求ロール**：`architect`。**状態**：未着手（probeには暫定対処あり）。
+
+**目的**：開いた集合（上流が新しい値を宣言できる）を列挙型として書くときの規約を決める。VSクマのdecision sourceが実例。
+
+**許容変更範囲**：規約の設計文書1件。製品コードは変更しない。
+
+**非目標**：列挙型の廃止、未知値の常時許可、`unknown`の標準値化。
+
+**受入条件**：
+1. 「記録済みの値を列挙する」「未記録の値をwarningとして扱う」「閉じた集合として扱わない」の3択のトレードオフを、2領域の実例で示す。
+2. 未記録の値をerrorにした場合に何が拒否されるか（VSクマでは正当な新backend）を具体的に書く。
+3. warningを実行時に無視できる経路があるか、ないかを確認する。
+
+**検証**：設計文書の整合確認。既存probeのwarning対処を実例として引用する。
+
+**成果物**：規約の設計文書1件。
+
+**レビュー返却ロール**：`independent-reviewer`。
+
+---
+
+### TRACE-01
+
+**親Issue**：[#4134](https://github.com/hat47x/tei-platform/issues/4134)。**要求ロール**：`implementer`。**状態**：一部実施済み（anchor試験は実装済み、CI接続と証跡記録は未実施）。
+
+**目的**：外部Repositoryの転記を伴う研究物に、どこまで照合を求めるかの下限を決め、証跡として記録する。
+
+**許容変更範囲**：
+- anchor試験の一覧（`upstreamAnchors`）への追加。
+- 研究文書への**照合証跡**（実施日・host・上流commit・照合件数・skip件数）の記録。
+
+**非目標**：CI必須検査への接続（A3の別判断）、上流の自動追随、ネットワーク経由の取得。
+
+**受入条件**：
+1. 転記した列挙・境界値・スキーマ名のすべてに、`(file, literal, why)`のanchorがあること。
+2. anchor試験が上流に届かない環境で**skip**し、skipを一致の証拠として扱わないこと。
+3. 照合証跡に、実施日・host・上流commit・照合件数・skip件数を書くこと。
+4. 自己一致試験（TEI宣言とprobe定数の比較）だけでは転記の正しさが確認できないことを、証跡に明記すること。
+
+**検証**：`go test ./research/tei-cross-domain-probe-2026-11/... -count=1 -run TestUpstreamAnchors -v`。兄弟チェックアウトがある環境とない環境の両方で実行し、結果を証跡へ書く。
+
+**成果物**：anchor一覧の更新、照合証跡の記録。
+
+**レビュー返却ロール**：`reviewer`。
+
+---
+
+### CSW-01
+
+**親Issue**：CSW [#593](https://github.com/hat47x/cultural-substrate-weaving/issues/593)。**要求ロール**：Owner判断（`planner`が整理）。**状態**：判断待ち。
+
+**目的**：§4.2の型付き受け渡しを、任意の道具として残すかどうかを著者が判断できる形にする。**判断は著者に戻します。本票は採用を提案しません。**
+
+**採用した場合に追加されるもの（これだけ）**：
+- `skills/writing-flow/references/`に、任意の受け渡しカードの雛形として、型の名前と4つの帰与値の対応を1節追加する。既存の[受け渡しカード](https://github.com/hat47x/cultural-substrate-weaving/blob/73efa57ef66ae4d53db3ff9bb63c927f624f44a8/skills/writing-flow/references/handoff-card.md)の雛形を**置き換えず**、補足として置く。
+- 帰属4値（`source_material`・`generated_proposal`・`contact_reading`・`author_stated`）と、`SKILL.md`の4区分の対応を1行ずつ書く。
+
+**採用しない場合に起きないこと**：型の追加、Schema、CI、テスト、配布基盤。CSWの製品側は0行のままです。
+
+**必須条件（採用の前提）**：
+- 「全候補へのラベルや一覧表は要らない」という現行方針を変えない。記録は**任意**で、著者が使うときだけ行う。
+- 「仮説」「問い」「比較」を値にしない。
+- Skill本文の手順は変えない。
+
+**判断の材料**：§4.5のリスク2件（帰属ラベルが分類表に育つ、ハッシュは本文と照合されない）。
+
+**受入条件**：著者が「残す／残さない」を明示し、その理由を1段落で#593へ書く。
+
+---
+
+### BEAR-01
+
+**親Issue**：VSクマ [#95](https://github.com/hat47x/vs-bear-simulator/issues/95)と[#17](https://github.com/hat47x/vs-bear-simulator/issues/17)。**要求ロール**：Owner判断。**状態**：判断待ち。**推奨は「保留」**。
+
+**目的**：契約の写し（TEI 104行）を受け入れるかどうかを、条件付きで判断できる形にする。
+
+**受け入れる場合に必要な手順（これが対価）**：
+1. 列挙の一致試験に加えて、**境界値・wire形式・fixtureの同期**を確認する手順を決める。
+2. 同期手順を、`docs/BEAR_TYPED_COGNITION_BOUNDARY.md`の検証節に1行追加する（専用runnerは作らない）。
+3. 上流が変わったときにprobeが追随しないことを、受け入れ側の記録に明記する。
+
+**受入条件（adoption の判定基準）**：
+1. 上記3点の手順が決まり、実施された証拠があること。
+2. 二重管理のコスト（GDScript・TEI・probeの3箇所）が、可読性・review理解の利益を上回らないこと。
+3. 判断が`deterministic-baseline`の既定とM5の採否基準を変更しないこと。
+
+**非目標**：GDScript生成、ゲームループへの依存、既定providerの変更。
+
+**判断の材料**：§5.5（意味の保持は形状のみ、実装負荷は増える、変更容易性は悪化）、§5.6（状態機械も現行DSLでは列挙に留まる）。
+
+---
+
+### PLACE-01
+
+**親Issue**：[#4193](https://github.com/hat47x/tei-platform/issues/4193)（横断の記録先）。**要求ロール**：`integrator`。**状態**：未着手。
+
+**目的**：probeを`research/`に残すか`tools/`へ移すかの基準を決める。[AGENTS.md](../../AGENTS.md)の情報の置き場所の区分（`research/`は研究目的と有効な制約があり既存の参照実装で代替できない実装・データ、`tools/`は再現可能な検証・参照ツール）を、このprobeにどう当てはめるかを確認する。
+
+**許容変更範囲**：基準の設計文書1件。移動は行わない。
+
+**非目標**：probeの移動、`tools/README.md`の変更、CI必須化。
+
+**受入条件**：
+1. `research/`にとどまる条件と、`tools/`へ移す条件を、それぞれ2項以上で書く。
+2. 現在のprobeがどちらに当たるかを、基準に照らして判定する（現状の判定は「`research/`が適切」）。
+3. 昇格した場合に、`tools/README.md`と既存の索引へ何を追加するかを書く。
+
+**検証**：設計文書の整合確認。`go test ./research/tei-cross-domain-probe-2026-11/... -count=1`が現状通り通ることを確認する。
+
+**成果物**：基準の設計文書1件。
+
+**レビュー返却ロール**：`reviewer`。
+
+## 10. 参照
 
 - [TEI README](../../README.md)、[TEIの考え方](../../docs/overview.md)、[TEIを動かす](../../docs/getting-started.md)
 - [業務外領域probe](../../research/tei-cross-domain-probe-2026-11/README.md)
