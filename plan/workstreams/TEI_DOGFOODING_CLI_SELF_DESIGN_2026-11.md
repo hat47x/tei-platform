@@ -2543,3 +2543,45 @@ plan/design/REA_THREE_ELEMENT_CANDIDATE_INTAKE_2026-11.md
 ### 結果
 
 `./tools/repository-plan-check` の**3テストすべてが緑**。製品コードは変えていない（テストを足し、文書の主張を正し、台帳を復元した）。
+
+## 78. 第77ラウンド（2026-11-11）: 実行器はあるのに振り分けが無い `rea-intake` を配線する
+
+第76ラウンドで「未接続」と記録した `rea-intake` の原因を特定して直した。生出力は[第77ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND77_REA_INTAKE_ROUTE_2026-11-11/README.md)にある。
+
+### 原因
+
+`runThreeElementReaIntake` は `cli_three_element_rea.go` に**実装済み**で、テストは12箇所から呼んでいた。**しかし `runThreeElementCommand` の `switch` に `rea-intake` の case が無かった。**
+
+```text
+{"error":{"code":"INVALID_ARGUMENT","message":"unknown three-element subcommand \"rea-intake\""}}
+```
+
+FAIL はサブテスト込み14件。
+
+### なぜ見落とされたか
+
+**テストが実行器を直接呼んでいた**からである。`runThreeElementReaIntake` を直接叩けば振り分けを通らないので、case が無くても気づかない。**今回 FAIL したのは、テストが `runThreeElementCommand` 経由で呼ぶよう書かれていたから**である。**テストの入口が正しく、実装が遅れていた。**
+
+### 修正と実測
+
+```go
+case "rea-intake":
+	return runThreeElementReaIntake(args[1:], out)
+```
+
+usage 行にも足した。**14件 → 0件**。
+
+### 変異
+
+| # | 変えた箇所 | 結果 |
+| --- | --- | --- |
+| M1 | case を削る | FAIL **14件**（修正前と一致） |
+| M2 | `validate` へ振る | FAIL `flag provided but not defined: -evidence` |
+
+**M2 が示すのは、case を足すだけでは足りない**こと。**正しい実行器へ振る**必要がある。
+
+### 直していないもの
+
+同じく FAIL していた2件は **`rea-evidence` という未実装コマンド**を参照している（`runReaEvidence` は存在しない）。`rea-intake` と違い**振り分けを足すだけでは直せない**ので範囲外とした。
+
+`gofmt -l .` は main で6ファイル以上を指摘するが、1ファイルだけ直すのは恣意的なので**記録だけした**（`repository-health` は gofmt を実行していない）。

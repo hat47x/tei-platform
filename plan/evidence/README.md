@@ -458,3 +458,4 @@
 - [閉じ括弧の後ろに書いた「ブロック内専用の項目」が所属を名指しする](TEI_DOGFOODING_ROUND74_BLOCK_PLACEMENT_2026-11-11/README.md)（#4169のA案5件目。bind/resource/column等を閉じ括弧の後ろに書くと、どのブロックに入るかを言う。最初の探査はファイル名が誤りで3回とも読まれず、第72ラウンドで入れた警告がその誤りを教えた）
 - [構文エラーで止まった実行をテキスト出力も「不完全」と言う](TEI_DOGFOODING_ROUND75_INCOMPLETE_TEXT_2026-11-11/README.md)（#4178。2ファイルを壊すと最初の1件しか出ない仕様は変わらないが、JSONはincompleteを出しテキストは黙っていた非対称を解消。意味の診断は完全な答えなので不完全と表示しない区別を試験で固定）
 - [mainの赤い3テストを緑にする](TEI_DOGFOODING_ROUND76_MAIN_GREEN_2026-11-11/README.md)（20の未テスト診断コードは到達可能性を確かめる試験を追加、死んだリンクは文書が履歴に無いことを認めて名前をコード表記で残す、13のスキーマ識別子は実際にコマンドを走らせて応答から読む。plan-checkの3テストが緑。あわせてmainの台帳から消えていた第72〜75ラウンドの節と索引を復元）
+- [実行器はあるのに振り分けが無いrea-intakeを配線する](TEI_DOGFOODING_ROUND77_REA_INTAKE_ROUTE_2026-11-11/README.md)（runThreeElementReaIntakeは実装済みでテスト12箇所が呼んでいたが、dispatcherにcaseが無く14件FAILしていた。テストが実行器を直接呼んでいたため見落とされていた。14→0。rea-evidenceは実装自体が無く範囲外、gofmt違反6ファイルはrecord only）

@@ -1,0 +1,13 @@
+Added:
+  case "rea-intake":
+      return runThreeElementReaIntake(args[1:], out)
+and listed rea-intake in the usage string.
+
+  before: 14 rea-intake failures
+  after : 0
+
+Mutations:
+  M1 remove the case          -> 14 again (matches the pre-fix state)
+  M2 route to runThreeElementValidate
+     -> FAIL flag provided but not defined: -evidence
+        (adding a case is not enough; it must route to the right executor)
