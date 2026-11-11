@@ -1,0 +1,8 @@
+runThreeElementCommand had cases for validate, crud, cross-reference and diff.
+runThreeElementReaIntake was implemented in cli_three_element_rea.go and 12 test
+sites called it - but the switch never had a rea-intake case, so every invocation
+answered:
+
+  {"error":{"code":"INVALID_ARGUMENT","message":"unknown three-element subcommand \"rea-intake\"}}
+
+14 test failures (6 tests plus subtests).
