@@ -531,3 +531,401 @@
 - Corpus・独立Conformance: #2510。Projection: #2497。一般メタ: #1126/#2495/#1806。
 - 設計の正本: [組織関係・時点・統制の標準意味モデル](../design/ORGANIZATION_RELATION_GOVERNANCE_MODEL_2026-10.md) と [開発全体計画](../MASTER_PLAN.md)。本計画はその**実装作業単位**を定義する資料であり、意味の正本を書換えない。
 - 既存fixture: `reference/org-headless-workspace/`・`reference/org-semantic-views/`・`reference/derivation-temporal/`。
+
+## 10. 2026-11-12 横断統合：組織責任・実行・三視点・知識Consumerを一案件で接合する（採用前計画）
+
+### 10.1 今回の基線と、実装済みの意味を過大に扱わない規則
+
+- 本節は #2386 の**既存計画を実行可能な受入条件へ精緻化する追補**であり、新しい意味正本・Core Kind・Operation/Policy/Workflow Runtimeを作らない。業務意味の採否はOwnerが行う。
+- 2026-11-12 GitHub読取時点：段階計画 PR #4342、S1〜S4中心のGoテスト/fixture PR #4399、組織責任Cutoverのdocs PR #3741、SUI/CSW Affinity境界のdocs PR #4256はmainへ統合済み。§1.2に列挙された「未統合Draft」は**当時の履歴**であり、着手時には各PRの現在のstateとmainを再確認する。
+- PR #4399の新規テストは有用な**構造・非自動権限化のcharacterization**。例：org_staged_temporal_test.goはWorkspace Load、org_staged_asof_query_test.goはDialect/Inputsの宣言、org_staged_approval_candidate_test.goはDataと非Effectを検査する。実二時点結果差、実Query/Lineage呼出し、動的候補解決、Directiveの一体公開、委任の各シナリオ期待照合まで実行した証拠ではない。差分を#4490で管理する。
+- TEI→SHO文書Draft/再投影の限定実装 PR #4317/#4467 はmain統合済み。ただし組織C1の実Consumer接続ではない。高度な固定対象指示の計画 PR #4479 はDraft。既存実装／設計候補／実Provider・Hostの現在証拠は別資格とする。
+- **共通失敗条件**：宣言・表示・局所PASS・SHO保存・AI応答・GitHub CI成功から、Owner意味受理、実Read適合、現行Grant、実Effect、相手側ACKを推認した時点で不合格。
+
+### 10.2 単一の責任グラフを既存Data/Relation/Ruleから導出する
+
+組織上の関係と業務の責任割当は区別し、案内用RACI等は用途別Projectionとする。固定のRACI列やCaseAssignment Core型は導入しない。
+
+| 事実・候補 | source / occurrence | 依存する解釈 | **導出してはいけないもの** |
+| --- | --- | --- | --- |
+| Person P1がUnit D1へ所属 | Membership A1（独立occurrence、valid/known） | 所属・兼務・出向の用途別Rule | Case C1の担当、Positionの在任、Tenant Grant |
+| P1がPosition Z1に在任 | Occupancy O1 | 職位軸の関係 | Membershipや承認可否の自動確定 |
+| Case C1の取扱部門がD1 | CaseRecord.handlingUnit R1 | 案件責任のBusiness Rule候補 | D1の全員の更新権限、本人P1の担当 |
+| P1がC1の決裁候補 | Rule Rrev/Responsibility occurrenceとread context | 当該時点・業務範囲・対象Caseに限る候補 | 現行Principal・Grant・確定Effect |
+| C1の責任をD1からD2へ移管 | 明示されたCase責任変更 + 旧/新版 | Handoff/受領要否・単独/共同責任の業務Rule | Membership異動や通知だけからのACK |
+| 実際の承認・実行 | Hostの検証済み主体/Grant + Effect Fence + Receipt | current Authority・対象・実装Artifact | 単なるCandidate、旧Receipt、別Tenantでの許可 |
+
+- Relation occurrence、Entity、役割、時点、到達Path、Graph上の表示Edgeを混同しない。D1→D2を経由して同じ部門に二経路で到達しても、人数・案件数・責任件数は**集計grain**（Person/Case/Assignment/Path）ごとに計算する。
+- 取扱部門変更と責任者変更の連動は**明示的なBusiness Ruleが採用された場合だけ**行う。決裁が旧部門で継続するか、現在部門で再評価するかは業務Ownerの選択。暗黙の一律切替を禁止する。
+- 一つのWorkspace内の通常組織Dataは通常のDataとしてQuery/Functionで利用する。保護を要する個別の項目、外部Consumerへの送出、別Tenant/Hostの実Read/Effectはそれぞれ該当Provider/Current Grantの別の条件で評価する。
+
+### 10.3 C1ひとつの横断受入：時間・変更・判断・実行の独立証拠
+
+同じ合成Case C1を、異動R1→R2の前後で繰り返す。ただし同じCase IDやContent Hashは同じRead Snapshot/Execution Attemptの証拠に**ならない**。テストはSourceの公開合成Dataだけを使う。
+
+| 時点 | 組織事実とCase | 必須の別判定 | 未許可の短絡 |
+| --- | --- | --- | --- |
+| t0 / known0 | P1がD1所属、C1取扱D1、旧Rule版 | Query集合・完全集合性、候補・Rule版・Scopeを記録 | Membership=Case責任 |
+| t1 / known1 | P1がD2へ異動、C1はまだD1取扱 | 候補を再評価する条件、旧担当の残余責任、変更なしのC1 | 異動=Case移管 |
+| t2 / known2 | C1取扱をD2へ変更、Handoff未ACK | 旧/新責任4象限、通知とACKの区別、D1→D2切替の適用範囲 | 送信成功=受領=移管完了 |
+| t3 / known3 | C1処理要求。Grantが失効する、または実Commit不明 | 現在主体/Policy epoch/Case revision/Effect Fence、Receipt、独立post-read、重複副作用防止 | 候補=許可、Commit不明=失敗で安全再実行 |
+| t4 / retro-known | C1やA1の遡及訂正が追加される | valid/knownの異なる歴史解釈と過去の確定Receiptを両方残す | 歴史訂正=実際の過去送信の取消 |
+| t5 / ABA | D1→D2→D1に戻る | revision/epoch/attemptを比較し旧候補・旧Receipt・選択を現在の証拠にしない | 値がD1に戻った=旧資格の回復 |
+
+**同一試行の観測票（新Core Schemaではない）**：
+- S：Source URL/位置/occurrence ID・Source/World/Meaning revision、Owner受理の有無。
+- Q：Function/Query・必要Read footprint、実Provider/alias・取得条件・read cohort・Field/Relation trace、partial/unknown、validAt/knownAt。
+- D：Business Rule版・Candidate/Decision・理由・関係Path・Case責任/移管版・必要ACK。
+- E：実Principal/Issuer/Tenant・現在Grant/Policy epoch・対象Operation/Artifact/Resource・Effect Fence・Receipt/post-readの結果。
+- H：Harness Activity Contextと固定Selection（対象のID/Source span/epoch）、用途、受信者、許可済みDisclosure slice、送出/受信/保持/意味保存/ACK。
+- V：Expectedの独立性・Observedの実機構・test/CI exact HEAD・Provider資格・Owner受理・制約。
+
+**Evidence joinのルール**：S/Q/D/E/H/Vが同じCaseを指していても、必要なContext、読取の版・Scope、実行試行、受信先は**それぞれ明示して照合**する。Sourceと有効時点が一致しても、多Providerのread cohortが同一だとは証明されない。欠落はunverified/unknownとして停止し、結果を保証したと言わない。
+
+### 10.4 設計モデルと外部・AI Consumerの接続
+
+| 経路 | 既存Owner | 組織C1での最小受入／禁止する誤昇格 |
+| --- | --- | --- |
+| Data→Function→Business→CRUD | #1124/#1125/#1126/#2497 | C1を処理するFunctionと依存Data、CRUD、責任Ruleを**同じ受理済みRelation occurrence**へ遡及。物理FK・JOIN回数・モデル図の線だけで業務意味を確定しない |
+| Studio組織図・配置表・Tree | #1124/#2497 | 軸/valid/known/粒度/可視範囲を表示。多重親/隠れたEdgeを保持し、表示Preferenceと本務・指揮命令を分離。非可逆Selectionはread-only |
+| GUI/CUIの固定対象→AI | #1158/#1124、Draft #4479 | 対象ID・Relation occurrence・Source span・Revision・固定時のepochを明示。フォーカス移動/多選択解除で対象が変わらない。再読取で古くなれば再選択を求める。固定対象は実行Grantではない |
+| TEI→SHO Composer | TEI #2516/#1124、SHO各Owner、TEI PR #4317/#4467 | C1の説明・図・根拠をDocument Draftへ送るとき、TEI Model Revisionと文書編集Revisionを別保持。再投影しても著者編集を無言で失わない。Draft保存はOrg実Effect/業務受理ではない |
+| SUI/CSW→TEI | SUI探索、CSW知識配置、TEI #2386/#3394 | Card/Island/KJ的AffinityはCandidate。許された理解パック→出典・対象・多重性・反例を検査→Ownerが採用した部分のみRelationへ。意味候補の出現を正式所属やCase移管としない |
+| 外部Harness/SEI/TAI/EKI | #2516/#2509/#2499/#1174ほか | Activity Sessionの継続とHost再認可を別扱い。指示・計画・Agent提案・EKI委任/Job完了は現在Grant/確定Effect/業務結果を保証しない。開示対象/目的/Recipientの変更ごとに再資格化 |
+
+### 10.5 WU-06〜14の増分受入契約（#4490と#4501との責務分担）
+
+| WU | 次の判別力を持つ独立Expected | 担当／停止条件 |
+| --- | --- | --- |
+| 06/07 | same-valid・different-knownの結果反転。WHERE非出力依存、ORDER、EXISTS/NOT EXISTS、0件とpartialの反例。SQL Input名だけでPASSにしない | #4490。実Query/Providerは#2586/#2506/#2622 |
+| 08 | Directive一件が複数Relationを変えるが、部分受信/中断を正式公開Snapshotとしない。複数Providerの原子性は実証範囲で限定 | #4490、実Effectは#1174 |
+| 09/10 | Candidate 0/1/複数/partialと、Host Grant 0/1、失効・自己承認・期限・Scope/別Tenant・再委任循環を対照。各ScenarioのExpectedを**実Evaluator出力と照合**する | #4490。未実装の評価器をテストがあることにしない |
+| 11 | Case責任切替・手順・候補/決定・通知/ACK・Effect Receiptを別列にし、同一AttemptでBusiness/RunPlanの接続可否を検証。新Workflow Engineなし | #2386/#1125/#1444。業務RuleのOwner受理前はcandidate |
+| 12 | C1の時点別Graph/Table/Tree/CRUD/SHOでID/時点/粒度/隠れEdge・部分取得を照合し、非単射Projectionをread-onlyとする | #2497/#1124/#2516。実Consumer未確認はNOT RUN |
+| 13 | C1のRelation edge選択→固定対象→AI変更候補→Preview→Owner Acceptance→Source再投影。Source改版/Grant失効/Selection ABA/再投影競合を**別失効**として検証 | #1124、固定対象Draft #4479、SHO側Owner。AI候補は自動書戻し不可 |
+| 14 | 通常の部門・所属等を一律に機密扱いしない一方、特定保護Fieldを含む外部開示/Export/ログだけを適切な境界で制御。同じ公開Sliceの二世界で件数/診断/Tooltip漏えいなし | #2510/#2516/#2020。新組織ACLを作らない |
+
+WU-11〜14をWU-06〜10の「全部完了待ち」にしない。前段の**必要な意味入力が独立Expectedとして固定**され、同一Source/Scopeを共有できた部分から並列実施する。統合受入のみ必要な証拠のjoinを求める。
+
+### 10.6 実測Gate・実装順・撤回条件
+
+1. **G0（既存）宣言Fit**：2026-11-12のmainにあるPR #4399の構造試験を維持。#4343の手書きExpectedとNode oracleが存在するかは実ファイルと実行で別確認。
+2. **G1（先行）純粋Behavioral**：#4490のBEH-01/02を最初に実行し、expected resultが入力変更で反転することを確認。次にBEH-03〜05/06。G0のみでG1合格と呼ばない。
+3. **G2（製品）実Read**：全TEIの初回 #2586 HJ-09を優先した後、Org C1について実Query→Provider Rowset→Context→一Consumerを同一Attemptで検査。fixtureの局所PASSを使用せず、物理Read/partial/Scopeを記録する。
+4. **G3（横断）三視点/SHO/Harness**：同一Sourceの複数Projection、固定Selectionの遷移、Disclosure、受信／保持と意味保存を個別確認。SHO側の既存保存/再投影機能を再実装しない。
+5. **G4（限定）Business決定→現在Grant→Effect/Handoff**：#2499/#1174/#1125/#1444 Ownerと、Grant失効/Commit不明/ACKなし/D1→D2→D1を実Host・実対象で別々に受入。実行の取消/再実行を推測で自動化しない。
+
+**反証・撤回条件**：基礎S1に専用Schema/新Runtimeが必須になる、同名/同Hash/同Case IDで版/対象が自動結合される、Expectedが実装の出力から作られる、Display/AI/Documentの成功を現在Grantへ昇格する、取得partialを不存在にする、Commit uncertainを再実行可能と扱う場合は該当縦断を失格としOwner Issueへ返す。
+
+**状態**：本追補は設計・独立Expected候補。これを記述しても新ORG-BEHの実行、実Org Provider/Host、実SHO/Harness送受信、Owner意味受理は成立しない。実測はPR head、利用した機構と出力、CIと独立Expectedの版を固定してからのみ記録する。
+
+### 10.7 三要素分析法・REA・DB/SHO・AIハーネスを組織C1に接続する（2026-11-12追補）
+
+**方法論の帰属・適用範囲**：X-TEA Modelerに関係する**三要素分析法**（データモデル・機能モデル・業務モデル）を、業務システム向けOrganization C1の評価方法として用いる。「三視点モデル」は方法論名としない。業務フロー、機能・業務階層、原典に由来するCRUD・逆引きクロスレファレンス・三者の相互牽制は可能な限り忠実に検証する。一方、TEIの汎用Coreを三要素分析法専用に固定しない。業務系では選択可能な標準/Domain Plugin・モデル投影として利用し、通常コード、非業務ドメイン、任意のGraph/Time/Spatial構造を妨げない。TEI独自のSource Provenance、Read/Execution Evidence、SHO/Harnessへの写像は**TEI側の拡張**と明示。原典と同一の機能・操作と主張するには版・出典位置・実Consumer比較を要し、未照合は候補とする。
+
+| 三要素分析法に沿う区分 | C1の最小例 | 保存する境界／横断検証 |
+| --- | --- | --- |
+| Dataモデル | Person P1、OrgUnit D1/D2、Membership A1、Case C1、Responsibility R1/R2 | Entity・Relation occurrence・業務キー/物理PK・valid/known・grainを区別。Case取扱部門変更はMembership変更ではない |
+| Functionモデル | C1照会、候補者解決、Case担当変更、引継ぎ通知、受領記録 | 各FunctionのI/O・対象Data・CRUDを明示。read-only照会・候補生成・更新・実通知のEffectを区別 |
+| Businessモデル | 異動、案件担当引継ぎ、承認、合議、手作業による受領 | Task/Action/業務契機とFunction起動を分離。Functionなしの手作業を消さない。Function成功は業務完了やACKではない |
+| 三要素間の照合（TEI拡張） | C1の業務手順→Function→Data CRUD→Source/Operation | Source/Meaning revision、実Read/Effect、Owner受理を別のEvidenceとしてjoin。図面だけで現在Grantを認定しない |
+
+**名称衝突を解消する**：ここでいう**REA（Resource–Event–Agent）**は業務・会計の分析モデルであり、外部ソース解析ツールの**REA（#3394、#4322）とは別物**である。前者は補助的な分析レンズとして、Resource（業務資源）、Event（経済・業務上の出来事）、Agent（関与主体）を区別し、組織変更が責任・資源管理・取引に及ぼす影響を説明する。REA（Resource–Event–Agent）のAgentと認証Principal、EventとTEIのDirective/Function Invocation/Effect Receiptは同義ではない。既存Data/Function/Businessへの対応は業務意味の検討を経て採用する。REA専用の全業務共通Core Schema、暗黙の組織Grant、二重の業務イベント正本は追加しない。
+
+**外部解析ツールREAから得る証拠は別の入口**：#3394/#4322のSource-backed Observation/Node/Relationは、Source locator/byte・解析ツールの版・Attempt・方向・並行Edge・原ID・coverageを保持する**構造候補**であり、Resource–Event–Agentモデルの要素という意味でも、正式なMembership/Case Responsibility/CRUDという意味でもない。重複Node ID、重複Relation ID、並行Relationの派生識別子衝突を最後の候補で上書きして採用しない（#4542）。候補が曖昧なら未選択・不適格として返し、意味Ownerによる対応付けを待つ。**PR #4542は修正を親PR #4322へ取り込んだ限定統合であり、#4322はmain未統合**。固定HEADでのREA Tool/Go試験成功は正式TEIモデル入場、TEI共通APIでの実Receiver受領、Owner意味受理や外部Host効果を示さない。
+
+**DBクライアント／SQL接続**：同一C1について、(a) モデル由来Query、(b) DBクライアントのNative SQL、(c) Provider実Rowset、(d) 業務意味としての採用を別資格で比較する。Schema/PK/FK/SQL JOIN一致だけでResponsibilityの業務意味を決定しない。SQL dialect、Provider、Scope、actual read cohort、NULL/未取得/非開示/0件、ORDER/EXISTS等の非出力依存を保持する。更新はPreview/Host Grant/Effect Fence/Receiptを経由し、DBクライアントの直接編集を業務Functionの正式実行と自動同一視しない。
+
+**SHO／Studio／ハーネス接続**：Modelerの図面・CRUD、Studioの組織図、SHOの説明文・引用、AIの固定対象Selectionは、Source/Relation occurrence・Revision・用途・開示Scopeを損失なく参照する。SHOの文書保存とTEI Sourceの変更は別トランザクション。Pinned SelectionはFocus移動で解除しない一方、Source/Policy/Recipientの失効時には適用を停止する。SUI/CSWのKJ法的なAffinity/Islandは探索Candidateであり、組織正式関係に自動昇格しない。外部ハーネスの提案・委任は実Host Grantや実Effectを代替しない。
+
+#### 追加の判別ケース（#4501への拡張、既存CXのExpectedを再利用）
+
+| ID | 入力差分 | Expectedと検証経路 |
+| --- | --- | --- |
+| CX-13 | 異動Taskが発生したがCase変更Functionは起動していない | Business Taskは存在、Case C1のDataは不変。TaskEvent≠FunctionLaunchEventを確認 |
+| CX-14 | 引継ぎ通知Functionが成功、受領は手作業のまま | Function/Effect成功とBusiness完了/ACKを分離。手作業はFunctionなしでも表現可能 |
+| CX-15 | Resource–Event–AgentのAgent P1と認証Principalが異なる／EventとDirectiveが異なる。別途、外部解析ツールREAが同名・多重・重複IDのRelationを返す | 業務分析モデルのAgent/EventとHost Principal/Directive/Receiptを同一視しない。解析ツールのObservation/Edgeは別の構造候補とし、衝突IDを黙って採用しない |
+| CX-16 | DBのFK・JOINが正しく、業務責任Ruleは未受理 | DB構造観測はPASS、Responsibility意味採用は未確定。SQL/Provider/Scopeを記録 |
+| CX-17 | 同一C1をStudio/SHO/外部Harnessが別revision・別read cohortで参照 | 個々の描画成功と横断整合を別判定。Source/Meaning/Scope/Recipient一致だけで実Readの同一性を仮定しない |
+| CX-18 | 固定SelectionにAI提案、同時にSHO著者編集とTEI Source改版 | Previewは保持できるが自動Applyを拒否。文書再投影・Source編集・現Grantの失効を別々に説明 |
+
+**既存Issueへの割当**：CX-13/14は#1125/#1444、CX-15は#2386/#2510（Resource–Event–Agentの意味）と#3394/#4322（外部解析ツール候補の受領・識別）、CX-16は#2586/#2387/#2506、CX-17は#1124/#2516、CX-18は#4501/#4479およびSHO側Owner。独立Expectedは#2514/#1180の既存方式を使い、#4490のBEHと重複させない。#2586の初回Product実Readを優先する順序は変えない。
+
+**検証の資格**：本節は設計・試験候補である。X-TEA原本の全要素対応、Resource–Event–Agentの意味受理、外部解析ツールREA候補の正式Product入場、Native SQLと業務意味の同値、実Org Provider、SHO/Harness/Studio実C1 E2E、CX-13〜18の実行、Owner受理は **NOT RUN / NOT ACCEPTED**。
+
+### 10.8 組織の運営能力・数量・変更シナリオ（2026-11-12追補、#2510/#2495/#2593）
+
+**設計目標**：組織図の静的な正しさから、業務を担う能力・資源・責任・代替性の説明へ広げる。ただし**組織を固定の経営管理SchemaやシミュレーションEngineにしない**。人員、FTE、業務量、予算、スキル、設備、場所は一般Data/Quantity/Unit/Relation/Rule/Projectionの組合せとして表現する。Organization Profileは関係の役割、粒度、単位、集計則、時点と責任範囲を補足する。
+
+#### 10.8.1 数量の意味契約（Headcount≠Membership≠FTE≠Capacity）
+
+| 測定量 | 粒度と集計規則 | 拒否する短絡 |
+| --- | --- | --- |
+| Unique headcount | Person identityを指定Scope・valid/knownでdistinct。所属occurrenceが2件でも1人 | Membership行数を人数にする |
+| Membership count | 有効なMembership occurrence件数。複数所属を保持 | 所属件数を従業員人数と呼ぶ |
+| Allocated FTE | Person×Unit×有効期間のAllocation occurrenceを明示したBasisで合算。雇用FTEとの同一性は別Rule | 配賦合計を常に1.0に正規化、二重経路を二重加算 |
+| Available capacity | Skill・稼働時間・予定・業務制約・Calendar/Unitの組合せ。FTEからの換算はOwner Rule | 1 FTE=常に一定の業務処理件数と推測 |
+| Workload / demand | Case/Task/WorkItem occurrence×必要Skill/工数/期限・時点 | Case件数を工数に置き換える |
+| Budget / Cost | Currency・会計期間・法人・CostCenter・配賦Basis・計上ルール | 所属先部門=費用負担部門とする |
+| Skill / Qualification | 出典・適用業務・評価時点・有効期間・証明資格 | 技能=役職、資格=現行Host Grant |
+| Location / Facility | 地点・時間帯・設備容量・安全上の制約 | 地理的所属=指揮命令・権限継承 |
+
+数量は value/unit/basis/grain/validAt/knownAt/source/coverage を検査する。単位変換可能であっても、Basis（例：月間予定工数と実績工数、予算と実支出）が異なれば無条件に合算しない。未取得・NULL・非開示・0を区別する。配賦合計が1を超えるか否かは雇用形態・用途によるため、Coreが一律に拒否せずOwner Ruleに委ねる。
+
+#### 10.8.2 既存Source fixtureを正本とする：P1/P2/P3とD1/D2
+
+**出典を明示**：mainの `reference/org-semantic-views/source-fixture.json`（`org-synthetic-r7`、blob `d66f29505389f2096e9b825ba4f5e2d799d607d4`）および `scenario-fixture.json`。baselineは `validAt=2027-06-15`、`knownAt=2027-07-01`。P1→D1のA1=100 basisPoints、P2→D1のA2=60、P2→D2のA3=40、P3→D2のA4=100。100 basisPoints=1 FTEという**この合成Fixture内の換算基準**を使う。前稿の「P1がD1 0.6/D2 0.4、P2がD1 1.0、全体2人/3所属/2 FTE」は当該fixtureに存在しない仮例だったため**撤回**し、第二Source/独立Fixtureを作らず修正する。
+
+| 指標 | D1 | D2 | 全体（重複排除） |
+| --- | ---: | ---: | ---: |
+| Membership occurrence | 2 | 2 | 4 |
+| Unique Person（各部門内） | 2 | 2 | 3 |
+| Allocated FTE | 1.6 | 1.4 | 3.0 |
+
+**反例**：部門内の実人数2+2=4を組織全体4人とは呼ばない（同一P2の兼務）。D1にProject J1/J2をJOINして4行に増えても配賦FTEは1.6のまま（素朴なJOIN後合算では3.2になる）。Allocation occurrenceとJoin行数を分ける。P2の配賦0.6/0.4は業務責任・実行Grantの自動分割率ではなく、変更してもCase C1の責任は別Source/Ruleなしに変化しない。
+
+**時点変更の非自明性**：validAtを2027-06-15のままknownAtだけ2027-07-03へ進めると、既存fixtureの遡及訂正によりA2は有効対象から外れる。Membership=3、D1=1.0 FTE、D2=1.4 FTE、全体2.4 FTEとなり、全体Unique Personは3のまま。この差は改版した新しい合成データを作らず、既存r7の時点切替だけで得られる。
+
+#### 10.8.3 シナリオは確定Sourceと別資格
+
+シナリオ比較を**read-only Derived View**として最初に提供する。BaselineのWorld/Meaning/Rule/Provider read cohortを固定し、Scenarioは一組の仮定・差分・計算条件を別IDで保持する。計算の出力はObservation/Projectionであり、Ownerによる業務採用・辞令・Case移管・実Commitではない。
+
+- **欠員**：P1が一時的にD1で稼働不可となる仮定では、D1の**利用可能配賦FTE相当**が1.6→0.6となる。ただし実在Membership・在籍・Case責任・基準配賦FTE 1.6は変更しない。稼働可能量をFTEから業務処理能力へ換算するには別途Owner Ruleが必要。
+- **仮配賦変更（正式異動ではない）**：P2のA2を0.6→0.0 FTE、A3を0.4→1.0 FTEとする仮定では、D1=1.0、D2=2.0、全体3.0。A2/A3のMembership occurrenceは維持し、実異動Directive・Case責任移管・正式Allocation更新を生成しない。
+- **技能・業務量**：必要な技能と有効なQualification、予測処理時間とCapacityを別々に比較し、候補が0件・複数・partialの場合は適任者や代替承認者を断定しない。
+- **組織統廃合**：旧部門IDを単純置換しない。Source occurrence、旧/新のRelation・Case責任・Budget Basis・権限Scopeを別々に扱い、D1→D2→D1のABAで旧シナリオを現在の確定版へ再利用しない。
+- **複数Provider**：同じScenario IDであっても、取得Source/Scope/時点が異なる場合は単一の観測済みBaselineと扱わず、Coverageとunknownを表示する。
+
+#### 10.8.4 TEIの既存横断機能へ配分
+
+| 連携領域 | 提供する最小機能 | 既存責務・受入境界 |
+| --- | --- | --- |
+| 標準Data/Quantity/Unit | 人数・FTE・時間・金額・容量・粒度・Basis | #2495/#2593、組織Profile #2510。組織専用Quantity Runtimeを追加しない |
+| Query/DB Client/ETL | valid/known付き集計、非出力依存、Provider/Scope/NULL/partialの保持 | #2586/#2506/#2622。SQL結果は業務意味受理でない |
+| Rule/Business/Workflow | 必要能力・資格・担当責任・合議・代替者候補 | #2386/#1125/#1444。CandidateとHost Grantを分離 |
+| Studio/SHO | 部門配置、FTE集計、欠員シナリオ差分、根拠付き説明 | #1124/#2497/#2516。図面のレイアウトやシナリオ値は第二Sourceにならない |
+| SUI/CSW/AI Harness | 事例探索・組織改編案の提案・固定対象レビュー | #4501/#4479。AI提案から正式Directive/Grant/Effectへ自動昇格しない |
+| EKI/外部Host | 確定済みFunctionの実行・配布・監査 | #1174/#2499。Scenarioを実行許可とみなさない |
+
+#### 10.8.5 追加Expected（既存r7 fixtureの実測値と明示的に照合）
+
+| ID | 独立Expectedと反例 |
+| --- | --- |
+| ORG-CAP-01 | r7 baselineのA1=100、A2=60、A3=40、A4=100 basisPoints。全体Unique Person=3、Membership=4、FTE=3.0。部門別Unique 2+2=4を全体人数にしない |
+| ORG-CAP-02 | 同じAllocation occurrenceにGraphの別経路が増えてもFTE合計は不変。Relation occurrenceが増えた場合だけ対象Ruleに従う |
+| ORG-CAP-03 | D1のP1稼働不可シナリオでD1の利用可能配賦FTE相当=0.6、Baselineの配賦FTE=1.6、確定Membership/Case C1/Receiptは不変（Case/Receipt自体は当該fixtureに未実装） |
+| ORG-CAP-04 | P2のA2を0.6→0.0、A3を0.4→1.0へ**仮配賦変更**するとD1=1.0、D2=2.0、全体=3.0、Membership=4。Scenarioと実Directiveは別 |
+| ORG-CAP-05 | FTEと時間、予算と実支出などBasisが異なる場合、単位変換できても無条件合算しない。NULL/partial/非開示を0としない |
+| ORG-CAP-06 | Skillが一致しても失効資格・自己承認・別Tenant/Grantなしなら実承認不可。候補がpartialなら確定選任不可 |
+| ORG-CAP-07 | r7のvalidAt=2027-06-15を固定しknownAt=2027-07-01→07-03でMembership=4→3、FTE=3.0→2.4。Rule/Provider/Policy/Scope/known変更時の再利用資格も再評価し、A→B→Aを同一版としない |
+| ORG-CAP-08 | Scenarioの図・SHO説明・AI提案が成功しても、実異動・Case移管・Effect/ACKは発生していない |
+
+**実装順**：#2510にある既存r7の人数/FTE Referenceを再利用し、ORG-CAP-01/02の純粋なQuantity/Graph集計→03/04のread-only Scenario差分→05/06のRule/Scope/partial→07/08の実Consumer/鮮度へ進める。独立Expectedを実装から生成せず、synthetic oracleのPASSを製品経路の合格と呼ばない。#4490のORG-BEH、#4501のCXケースとの重複Expectedは新規作成せず共有する。最初の製品実Read #2586をブロックしない。
+
+**停止条件**：シナリオの仮定をAccepted Sourceへ無断で書戻す、FTEを権限やCase責任へ自動変換する、人数・所属件数・FTEの粒度を暗黙に混同する、SQL/Graph/SHO/AIの表示成功を実Provider/Effect成功へ昇格する場合は不合格。
+
+**2026-11-12 実行可能なReferenceの追加と証拠資格**：main統合済み [PR #4532](https://github.com/hat47x/tei-platform/pull/4532)に、既存r7 Source/Scenario fixtureだけを読む `reference/org-semantic-views/verify-capacity-scenarios.mjs` を追加。ORG-CAP-01〜05/07の**合成範囲の一部**（人数・FTE、Join増幅、欠員の利用可能量、仮配賦、partial/NULL相当、knownAt遡及訂正、元Source不変）をNode v22.16.0で**ローカル7 subtests PASS**。実ソースのblob `d66f29505389f2096e9b825ba4f5e2d799d607d4`、実Scenarioのblob `b8fc779cf60e7816c4077616b4288735b49470e2`、実loaderのblob `d85c2dbe88803ad40f8826d764d45a35eb4a167a` と、試験コードのblob `6f07de5c793810f1e87553318710b9094d79c328` を使った。fixture/sourceとObservedのテスト自体が照合できても、独立Ownerによる業務意味受理には昇格させない。
+
+**未検証**：ORG-CAP-06（Skill/資格/現在Grant/Host）・08（Case/Directive/Effect/ACK）、ORG-CAP-05の実貨幣/工数Basisや実開示・実Provider、ORG-CAP-07の実多Provider/Policy/ABA、TEI製品上のシナリオConsumer、GitHub Actionsの合成Node実行はmain統合済み [PR #4532](https://github.com/hat47x/tei-platform/pull/4532)の正確なhead `fa2d8ce98ff77536f51e32095748f63d935a2d07` について [Actions run #43242282586](https://github.com/hat47x/tei-platform/actions/runs/43242282586) の `synthetic-node` が **SUCCESS**。実ログで新規7件を含む**313 tests / 313 pass / 0 fail**、新スクリプトのGit blob `6f07de5c793810f1e87553318710b9094d79c328`、exact-head checkoutとworkspace cleanを確認。ただしPR #4500自体の新節はdocs-onlyであり、このCI成功は**合成Referenceの資格のみ**。実Provider・Host等のOwner意味受理は**NOT RUN / NOT ACCEPTED**。本節の数値は未来日付2027年の合成データに基づくテスト値であり、実在組織の観測値ではない。
+
+### 10.9 データ構造変更と画面マッピングの整合をC1で固定する（2026-11-12追補）
+
+**他チャットの確定方針を組織C1へ適用**：テーブル定義を直接表現するデータモデルは、その**対象版のテーブル定義の写像**である。正本のテーブルFieldを明示削除し、その版を採用した時点で、**同じ版のデータモデル上からField要素そのものが消える**。実DBへの外部変更を完全な観測で確認した場合も、**Actual Schema投影の現行モデルFieldは消える**。ただし外部DB観測を理由にTEIのDesired Sourceまで無断で書き換えない。Desiredに旧Fieldが残れば、差分・ドリフトを示す。独立定義の業務意味/Computed Fieldは必要に応じ残し、失った物理依存を診断する。Function/UIの**表示要素は削除せず未マッピング警告**、画面追加だけでDB列を作らない。GUI/CLI/AIハーネスで同一の操作意味とする。
+
+#### 10.9.1 三つの構造状態と三つの変更入口
+
+1. **Actual Schema**：特定DB接続・Provider・Scope・観測時点で実際に取得できた構造。完全取得・権限・観測Epochを記録。取得失敗/partialで「列がない」を確定しない。
+2. **Desired Schema / Change Intent**：開発者が明示して編集した希望構造。物理DDLの実行結果ではない。Preview/Impactを経てMigration Apply資格のある操作のみ実施する。
+3. **Model / UI Projection**：Dataモデルの物理写像、論理Relation/Rule、Functionモデルの画面項目、Businessモデルの処理/CRUD、Studio/SHO文書の各表示。Actual/Desiredのどちらを示すか明示し、UIは独立した要素IDとMap Targetを持つ。UI要素はDB列の別名ではない。
+
+| 操作入口 | 許可する最初の動作 | 自動実行しない動作 |
+| --- | --- | --- |
+| UI/Functionモデルへ項目を追加 | UI要素だけ生成し、未マッピングを表示。既存Data Field/Derived Field/入力専用項目への明示Bindingを提案できる | 新しいRDB列・業務意味・権限を黙って作る |
+| 開発者がDataモデル/Schema Workbenchで新Fieldを明示 | Desired Field・対応Source差分・制約/依存・Migration PlanとPreviewを作る | 実DB Apply、既存UIへの無断Binding、既存Host Grantの推測 |
+| 実DBの列を削除/変更 | Schema観測でActualの変更を検出し、現行Data物理写像と下流参照のImpactを再計算 | 依存UI要素や業務責任/Caseを連鎖削除、旧物理列へ黙ってリバインド |
+
+**逆方向の扱い**：Modelerによる列削除指定はまずDesired上の提案であり、実DBを削除したことにはしない。Migration成功ログのみでもActual確定とはせず、別Readで対象列の消失を確認する。別名で同型列が現れても、明示されたRename/Mappingの採否がない限り旧Field Identityを再利用しない。過去Model/文書の引用は版付きで残す一方、**現在の有効Mapping**は外す。A→B→Aでも旧Mapping/AI提案は自動復活しない。
+
+#### 10.9.2 組織C1の最小変更トレース
+
+| ステップ | データ側 | Function/UI側 | Business/Effect側 |
+| --- | --- | --- | --- |
+| M0 基準 | org_membership.assigned_unit_idを物理Field F1として観測、モデル写像M1 | U1=「配属先」、U1→M1で有効 | MembershipとCase C1のhandlingUnitは別関係 |
+| M1 UIに「兼務区分」U2を追加 | Actual/Desiredとも不変 | U2をunmappedとして表示し、Binding候補だけ提示 | 業務Rule/DDL/Grant/Effectなし |
+| M2 開発者が兼務Field F2を明示追加 | Desired F2とMigration Planを作り、Apply前はActualにF2なし | U2→Desired F2は設計中と明示、実画面の保存先確定にはしない | 変更内容と受入範囲に応じ通常の開発者Review |
+| M3 F2適用・再観測 | 対象実DBでActual F2を確認し物理Mapping確立 | U2のBindingを明示承認すれば有効、未承認ならunmapped | 必要なら既存Function/Validation試験と実Provider試験 |
+| M4 F1削除が実適用・完全再観測済み | **現行ActualテーブルモデルからF1 Fieldを除去**。Desiredが旧Fieldを保持するなら差分として診断。旧版Source/履歴は保全 | U1は残すが、Actual側Bindingを無効化し「対応項目なし」を警告。CRUD/SHO/AI参照を失効診断 | Case C1責任やMembership別属性を推測で書き換えない |
+| M5 古いSource/AI応答が後着 | F1の旧revisionを参照 | 固定Selectionは意図として残せてもApplyは禁止。Previewで再対応付けを要求 | 古い実行資格・Receiptを流用しない |
+
+**補足**：非RDB/仮想Field/計算Field/APIの画面Bindingには物理列を必須にしない。Source Provider別の能力を説明し、RDBのDDL意味をREST/OData/ログへ強制しない。直接DB操作と業務Function経由の更新は同義ではない。表削除やデータ消失を伴う操作の実適用は既存Migration/Host Grant/Effectと独立Readの範囲内でのみ実証する。
+
+#### 10.9.3 追加の独立受入ケース（既存Driverを再利用）
+
+| ID | 期待と反例 |
+| --- | --- |
+| ORG-MAP-01 | U2の追加でActual/Desiredの列数が変わらず、U2はunmapped。UI要素数が増えたことはDB列作成の証拠ではない |
+| ORG-MAP-02 | 開発者の明示Field追加はDesiredだけ変化。DB Apply前は実Rowset/保存資格が未成立 |
+| ORG-MAP-03 | 実F2追加後の独立Schema ReadでF2を確認。UI Bindingは別の明示選択として保持 |
+| ORG-MAP-04 | F1の実削除・完全再観測後、**Actualテーブル定義モデルの現行Field一覧からF1が除去**される。U1は保持されunmapped診断、DesiredにF1が残るならドリフト、CRUD/SHO/AI参照は要再確認 |
+| ORG-MAP-05 | Migration拒否・部分失敗・別環境のみ成功では、対象ActualにおけるF1削除が**完全に観測**されない限り現行Field要素を勝手に削除しない。Desiredでの削除Intentとは別 |
+| ORG-MAP-06 | 同名/同型F1再作成、Rename、A→B→A、古い固定Selectionのいずれでも暗黙Rebindと旧Grant流用を拒否 |
+| ORG-MAP-07 | 物理org_membership変更だけでCase C1のhandlingUnit/責任・承認者・ACKが自動更新されない |
+| ORG-MAP-08 | Source/Provider/Scope partialで欠落した列を削除と断定しない。Fieldの存在がunknownな場合と、完全観測で存在せずunmapped確定な場合をUI/CLIとも別表示 |
+| ORG-MAP-09 | RDB非依存のComputed/Input-only/API BindingはFieldのないことだけで拒否せず、Provider/Ruleと出典を検証 |
+| ORG-MAP-10 | GUI、CLI、Target画面上のAI編集のいずれも、同じ対象Identity・意図・差分・現在資格・Preview・結果を示し、明示Applyまで物理変更しない。描画Edge IDを意味Relation IDへ昇格しない |
+
+**Owner配分／既存基盤とのFit**：データ項目/論理物理対応は#1126、三要素分析法の相互牽制・投影は#1124、横断変更資格は#1143、Source/Schema Workbenchは#3270、Migrationは#4125/#2892/#2887、Target画面からの変更は#1452、GUI/CUI固定対象は#4479、失われる情報・逆写像は#2497/#2500、ORG C1業務意味・横断Scenarioは#2386/#4501。**第二のMapping正本、汎用Migration Engine、画面定義専用Core、新Workflow/ACLは作らない**。
+
+**段階順**：最初にM0/M1/M4の**read-only静的Source→モデル/画面参照診断**と手書きExpectedを実施し、次にDesired/Actualの分離（M2/M3/M5）を既存実Schema APIと結合する。その後に実DB独立Read/実Target/SHOを#2586のP0実Readや各OwnerのGateに接続する。全Org-MAPケースの局所試験を全製品のE2Eへ昇格しない。**状態**：新Expected・実GUI/CLI・実DDL/Read・Owner意味受理は NOT RUN。
+
+#### 10.9.4 一操作をどの版のモデルに反映するか（UI/CLI共通Decision Table）
+
+「モデルから削除」の意味を、**何を正本とするモデルか・どの版の話か**まで固定する。**テーブル定義モデルのFieldの削除**と、**Function/UI要素を残したままBindingを外す**ことを別の意味変化として扱い、両方の対象Identityを維持する。データモデルの上位の業務概念を、物理Columnの削除に連動して無条件に消してはならない。
+
+| Event / 観測資格 | 現行テーブル定義モデル | Function/UI・CRUD・派生参照 | 許される操作 |
+| --- | --- | --- | --- |
+| UIの新しい入力欄追加（org兼務区分U2） | ActualもDesiredも不変 | U2は未対応、候補Mappingを示す | 明示的な新規Field設計への**提案**のみ |
+| TEIのDesired Column F2を明示追加 | Desired版にはF2を追加、Actualには未出現 | U2を「設計中」と示し、実保存可能とは表示しない | Schema差分/DDL Preview、明示Apply |
+| 実DBでF2の追加を完全に再観測 | Actual版のテーブルモデルにF2が出現 | U2は明示Mapping採用の後に有効 | Actual Reader/Consumerの別検証 |
+| TEIのDesired Field F1を明示削除、実DBはまだ旧版 | **Desired版からF1を除去**、Actual版にはF1が残る | U1は残す。Desired投影で未マッピング、実稼働Actualへの影響は別判定 | Impact/Dependency/旧新Client/移行PlanをPreview |
+| 直接DB操作等でF1削除を完全再観測、TEI Desiredは旧版 | **Actual版からF1を除去**、Desiredとのドリフトを記録 | U1は残すがActual Bindingを無効、CRUD/派生Query等は要再評価 | 原因と影響調査。Desired Sourceの無断書換え不可 |
+| Schema観測がpartial・unavailable・permission denied | ActualではFieldの不存在を**確定しない** | 「存在不明/取得不足」であり削除済みとは表示しない | 再観測。確定不存在を前提とするWrite/移行判定は停止 |
+| 同名Column再作成、Rename候補、A→B→A | 新旧のSource/Field occurrence・revisionを区別 | U1の旧Bindingを黙って復活させない | 明示Rename/Mapping受理後に再評価 |
+
+**操作の最小識別子（テスト票であり新Core Schemaではない）**：Subject/Workspace（Pin Intent）、表示Projection版、TEI Source/Desired版、実DB target/Provider/Actual観測Epoch、Field occurrenceとUI element IDを別列にする。
+
+**影響計算**：SQLのSELECT出力だけでなく **WHERE・ORDER・EXISTS・派生Field・Rule・Report・CRUD** を追跡する。F1が画面に表示されていなくても、変更影響は0とは限らない。Read Cohortが不足すれば「全影響なし」を確定できない。
+
+**AI固定対象の段階導入（#4515）**：現行Workbenchで初めに固定するのはSource-backed **Subject**。現在のrelatedGraph()が生成する親子Edgeの描画ID parent:subjectKey(child) は**Relation occurrence IDを保証しない**。同じ端点の複数意味Relation、異なるWorkspace、同offset別Subjectが区別できない状態では、EdgeをAI編集対象にしない。正式Relation ID・Source版・出典へ解決できるまで**Edge操作は閲覧のみ、更新選択はunsupported**。Node Pinも選択意図であり現在Grantではない。既表示DOM/ARIAの開示失効は#2516側で扱う。
+
+**Undo/競合**：ローカルPin/表示編集意図のUndoと実DDL/データ変更のUndoを同一視しない。DROPをUI Undoだけで復元したと表示しない。操作前後にSource/DB/Policy/Grant/ProjectionのRevisionと実観測を再照合し、後着AI応答・同名再作成・A→B→Aでは旧Bindingと旧Grantを復活させない。
+
+**既存Expectedへの追加assert（新ID・第二正本を作らない）**：
+- ORG-MAP-04/05/08：完全Readで「Field F1不存在」とpartialで「F1未観測」を**異なる結果**として返す。UI U1は残り、前者だけがActual版Field一覧からF1を除去した状態。Desired版の削除はSource Intentの別操作。
+- ORG-MAP-06/10と#4515 PIN-S0-03/04：同名・同offset・描画Edge・A→B→Aの変化で古いPin/Mapping/AI Applyを拒否。未実装ならunsupportedと返し、成功としない。
+- ORG-MAP-07と#4490 ORG-BEH-02：F1がWHERE/Rule等に**非出力参照**されれば、削除・型変更に伴いQuery/集計/派生値の再検証が必要。Case C1責任や実Grantは暗黙に更新しない。
+- ORG-MAP-03/05と#4125：Desired→DDL→実DB Apply→独立再観測は別証拠。DB変更成功は全旧新Client/Business Meaning受理を意味しない。
+
+**最短の引渡し**：W1は#4515 Workbench Subject Pinと#1124/#1143のread-only schema/UI diff・unmapped診断を並行実証。W2は#3270/#1126の既存Actual/Desired Inspectorへ変更資格を接続。W3は#4125の独立Schema再観測と#2586実Query/Consumer、#1452実Target/SHO/AI後着を照合。W1だけで正式Relation Pin、Schema Apply、Current Grantを完了扱いしない。
+
+**状態**：本節は既存受入条件の明確化。ORG-MAP-01〜10、PIN-S0、実DB/DDL、実GUI/CLI/Host/SHO、Ownerの意味受理について新しい実行証拠は **NOT RUN / NOT ACCEPTED**。
+
+### 10.10 参照ナビゲーション・未使用診断・大規模Studio性能（2026-11-12横断統合）
+
+**設計方針**：組織C1を題材に、定義項目から「定義へ移動」「参照先へ移動」「参照元の一覧」「未使用候補」「変更影響」をGUI・CLIで共通化する。既存のSource Index、ModelRef Derived Graph、三要素分析法のモデルのCross Reference、trace/inspectを再利用。第二の参照正本やStudio専用Parserは作らない。**正確性→対象範囲の完全性→操作応答時間**の順に実証する。
+
+#### 10.10.1 参照一覧を信頼できる条件
+
+1. **基礎の誤りを種類ごとに受入**：#4475のFingerprint入力破壊はmain統合PR #4507、同Kind同IDの重複診断と曖昧なIndex entry拒否はmain統合PR #4524で限定修正済み。ただし、全Derived/CLI/SHO Consumerが不適格入力を排除する保証は別。#4472のData索引取り違えはPR #4513（squash merge `7e36f85ad0f23aed0bf8f8ecec47c7b160574a3d`）で3箇所を限定修正しmain統合済み。明示CRUD-only脱落・矛盾をOK表示する問題は未解決。独立正負試験とProduct Consumer結果を確認するまで、CRUD参照数・未使用表示を全体として正しいと断言しない。
+2. **参照の種類を混ぜない**：宣言上の参照、型付きRelation、Function→Data CRUD、Business Task→Function、SQL WHERE/ORDER/EXISTS等の非出力依存、UI Binding、SHO引用、実Provider Readは別種。逆引きは有向Edgeの逆方向検索であって、業務上の逆向き依存関係を意味しない。
+3. **対象の同一性**：Workspace、Kind、Stable Subject ID、Relation occurrence、Source revision、Source位置と必要なvalid/known/Scopeを保持する。Label、図面座標、同じ始点・終点、描画用Edge ID、単独のSource offsetを意味IDとしない。参照の出現位置が複数ならoccurrenceを区別。
+4. **0件とunknownを分離**：指定したSource/Provider/Plugin・Dependency Closureを必要十分に取得し、未解決参照がなく、**指定範囲について全件検査できた場合だけ**「参照数0」「その範囲で未使用候補」と表示。partial、permission denied、unavailable、未解析のDynamic ReferenceやPluginには「不明／未検査」を付す。0件、空配列欄の欠落、対象不存在、非表示、非開示は別状態。
+5. **未使用候補から自動削除しない**：公開API、外部呼出し可能Function、将来の契約、意図的なManual Task、動的参照は静的0件でも確定Unusedとは限らない。削除・Renameは#1143/#1126/#4125の明示変更Previewへ。参照一覧からの移動はread-only、AI Pinは#4515のSubjectから始める。
+
+#### 10.10.2 C1の既存Expectedを使う操作・負例
+
+#2510の公開合成Source、#4501 CX-04〜09、#4472 TE-CR、#4515 PIN-S0、#4490 ORG-BEH-02の**既存Expectedを再利用**。以下は実行の組合せであり新Expected Storeを作らない。
+
+| 操作・負例 | 判別する期待 | 実装Owner |
+| --- | --- | --- |
+| OrgUnit D1とMembership A1を順方向・逆方向で移動 | 双方向から同じReference occurrenceとSource位置を開く。表示上のページ分割で全件数の分母を失わない | #3788/#1177、CX-04 |
+| P1の兼務で二つの意味Relationが同端点 | Relation occurrence/Role/時点を区別し、表示Edgeだけから変更対象を確定しない | #4515/#2497、CX-05/08 |
+| Business Task→Function→CRUD→Data F1 | 明示CRUDも非出力SQL依存も参照に残す。#4472未修正時は未資格と表示 | #4472/#1124、CX-13/16 |
+| F1削除後に画面U1の参照元を列挙 | 現行Actual Fieldの確定不存在とpartial未観測は別。U1を残してunmapped、Desiredとのドリフトも区別 | #1126/#1143、ORG-MAP-04/05/08 |
+| F_unusedと外部公開Functionの静的参照を比較 | 完全探索で0なら前者は未使用候補。後者は実際の外部利用が未観測で、0を削除資格としない | #3788/#3262/#2514 |
+| Workspace/Source改版・ABAと遅延Inspect | 古い検索結果やPinを現在の編集資格に再利用しない | #4515/#2505、ORG-MAP-06/10 |
+
+#### 10.10.3 高速性・Plugin肥大化防止の実測
+
+**既存#1177に性能実測を追加**し、Index・Cache・Plugin Runtimeを複製しない。同じ公開合成C1をSource/Relation/CRUD数で小・中・大に拡張し、trace summary/full/limit=1、逆引き、未使用診断でcold/warm p50/p95、ピークメモリ、Workspace読込み・Source Index・Derived Graph・Query・描画それぞれの時間、変更後の再計算範囲、入力→応答時間を分けて測る。閾値は測定後にOwner判断とし、根拠なく固定しない。
+
+- limit=1で表示が1件でも内部は全件Load/Sortする可能性がある。**全件数の正確さと表示ページの高速さを別に測る**。暗黙の検索打切りで結果を高速化しない。
+- Source/Meaning/Dependency/Plugin版、Query Footprint、Scope等が変わったらIndex再利用資格を再評価。結果件数やSource hashが偶然同じでもA→B→Aの旧資格を復活させない。#2600のBuild Artifact/Evidence cacheとは別。
+- Studio PluginはCapability発見→必要なPanel/Providerだけ起動する方針を検証し、非使用PluginがExplorer/Inspect/Trace/キーボード応答を遅くしないよう測定する。ただし**未起動Pluginの参照を0と誤報しない**。
+- 通常編集でクリック・キーボードから定義へ移動し、参照元一覧から元の位置へ戻る操作を#3788で検証。AIに送る文脈は固定Subjectと必要最小範囲、現在のDisclosure資格に制限。#2516の既表示DOM/ARIA境界を別検証する。
+
+**段階と停止線**：R0=#4472/#4475のProduct参照正確性、R1=#3788/#1177のHeadless前後参照と完全性、R2=#4515のSubject Pinを用いたStudio移動、R3=#1143のRename/Delete Preview、R4=#1824/#2600の大規模/Plugin性能比較。R0/R1を#2586の初回実Provider Readの完了待ちにはしない。どの段階でも、未知の参照を「0件」として削除提案する、旧SourceへAIが書戻す、画面描画成功を実Grant/Effectと呼ぶ場合は停止。
+
+**状態**：本節は既存Issueの受入条件と順序を接続する設計。新しいGo/Node試験、Studio/CLI操作、性能計測、実Provider Read、Owner意味受理は**NOT RUN / NOT ACCEPTED**。
+
+#### 10.10.4 現在の製品資格を消費者別に記録する（実行前チェック、2026-11-13）
+
+| 既存成果・Owner | 実際に確認された範囲 | 組織C1の実行に残るもの |
+| --- | --- | --- |
+| #4507/#4524 merged（#4475） | Fingerprint入力破壊・自己参照の限定修正、およびData/Function/Businessの**同Kind同ID重複をエラーにしIndexから除外**する修正はmain統合済み | Derived/CLI/SHO等の全ConsumerがValidate結果を必ず評価する保証、現在Disclosure/Grantは別。#4514のSource-only drift修正もmain統合済みだが、Source再束縛と現在Disclosure/Grantは別 |
+| #4513/#4534 merged（#4472） | #4513がCRUD表/Function–Data参照/GapのData索引3箇所を修正。#4534は複数CRUD衝突を全件報告し、`okScope`（構造診断の範囲）と`crudConflictStatus=conflicts-require-review`をCLIの別項目へ追加。#4534はmain merge `5f35d5dc6dd0e20e5572f06bbccdf1b4eb601437` | **明示CRUD-only行は依然派生表から脱落**。衝突の全件表示とOwner意味受理/実行適格は別。Review要否を自動Hard Errorにも、自動OKにも昇格しない。Studio/SHO/AI等のConsumerが新診断を正しく受け取る検証は別 |
+| #3906 closed、CLI JSON契約 | trace.unresolvedは**返した行の未解決数**、projectionUnresolvedは**グラフ投影全体で落ちた参照**と明記済み | trace.unresolved=0だけで全Workspace/同Subjectの必要参照が完全と推定しない。両方とScope/Required Closureを照合する |
+| #4532 merged（#2510合成Reference） | org-synthetic-r7、3人/4所属/3.0 FTE、known改版の2.4 FTEを参照。固定HEAD fa2d8ce98ff77536f51e32095748f63d935a2d07 の Node Actions #43242282586は313/313 PASS（うち追加7件）、関連4 WorkflowはSUCCESS。main squash `2e52ca47ef8f75c7bf61f86f5791834c67adcdd1` | **合成Nodeのみ**。正式TEI Query/Provider/Context/Studio/Host、ORG-CAP-06/08、Owner受理は別。マージ後のmain新HEADでの全製品再検証を本証拠から推定しない |
+| #4539 merged（#2586の実Provider Read） | `order_entry.recent_orders`をEnvironment/Database instanceに明示束縛し、実PG16.15のRaw Rows→Function Data Contextへ限定接続。正常、0件、NULL、列欠落、RLS、権限拒否、SQL差分を隔離環境で対照。該当HEADの7 GitHub Workflow成功、実PostgreSQLの実走はPR記載のローカル証拠 | これは**受注Queryの一経路**であり、組織r7のMembership/Case C1 Queryではない。`tools/reference-browse-read`という別CLI入口であり、通常`tei` CLI/Studio/SHO/AIは未結線。環境→実Provider対応はhost-asserted、Resultの`coverage=unestablished`、0行でも不存在/`EmptyJustified`確定なし。main squash `ee1af44cb9d66507188b80195fe4e59013f89b90`で限定参照実装は統合済み。ただし通常CLI/Org C1実Query/Studio/Host完了扱いは禁止 |
+| #4257 merged／#4542は親#4322へ統合（外部解析ツールREA） | REA 6.7は単独JSON、6.8は7 record＋metadata終端という版差を確認。#4542の重複Node/Relation・並行Edge由来の識別子衝突拒否は、親#4322上の限定経路でGo契約・REA 6.7/6.8実Tool CI成功 | **親#4322はmain未統合**。同一Attemptの共通read-only API Receiver、Source/Attempt改版後の再資格化（REA-ID-04）、正式Meaning・CRUD/Unused/Hostは未実証。Accepted Graphへ混入しない |
+
+**read-only参照表示の入場条件**：適格な参照検索を、（A）Accepted Source/Meaningに属するProduct Cross Reference、（B）REA等からの外部Observation/Structural Candidate、（C）Source不足・未解決・partialの三群として扱う。同名や同端点が一致しても群間でReferenceを加算して「利用実績」としない。外部候補はSource locator、Producer version、record/edge ID、方向、多重性、raw digest/受領byte、Coverage、Known/Validの有無を区別し、正式な意味Role/Relation occurrence/業務時点は#2386の意味Ownerが採否を判断する。外部候補しか見つからないData/Function/Businessは「正式参照0・候補あり・Coverage未確認」を区別して提示する。
+
+**最小の次のProduct Exit（重複Expectedなし）**：
+1. #4513のData索引、#4534の複数衝突列挙と構造`ok`/レビュー資格の分離をmain実装基線とする。**残る明示CRUD-only行の脱落**を#4472のTE-CR-02/03/04で再現し、Index/CLI/Studio/SHO/AIの受取側でsilent omissionを止める。矛盾を無条件Hard Errorにせず、各Consumerが`crudConflictStatus`を表示・変更Previewへ渡すまで全体適格としない。#4524の同Kind重複Admissionも別試験で確認する。
+2. #3906の二種の未解決数とSource Index/Scopeを同一CLI応答で判別し、完全0・投影未解決あり・部分取得の3入力で未使用の結論が切り替わることを実証（#3262/#1177）。UI・AIの未使用削除は禁止。
+3. #3394の外部REA T1-Aは、実際の共通read-only APIに1 Observation＋1 Edgeを送出して実Receiverのbyte・識別・方向・partialを照合する。Product Cross Referenceに混入させず候補として保持。外部ProducerのCI成功だけを実TEI Reader成功にしない。
+4. #2586/#4539で成立した一受注Queryの実PG read-only経路を**通常`tei` CLIの既存Source/Environment選択入口**へ結び、選択/実Invoke/statement+params/Rowset/Function Context/CLI受領の同一Attempt証拠を照合する。隔離PGで同じQuery Sourceから違う件数が返る反例を保持し、0件と全件取得・存在しないことを混同しない。実Org C1への移植は別Source/Provider/二時点Queryを接続してから。**GUI完成待ちでCLI Product readを遅らせない**。
+5. #4515 Subject Pinと#3788 Source移動/CRUD/Studioを**同一受理済み合成Source・同一Revision**へ限定接続。#2497のloss/逆写像を保持し、完全性不明時の変更はPreviewで停止。#2586実Read縦断は引き続き独立P0とし、上記以外のOrigin/Recipient/Effectは別資格。
+
+**Owner/証拠の境界**：組織Meaning #2386、三要素CRUD #4472/#4475、外部REA受領 #3394/#3419、参照/未使用 #3262/#1177/#3788、Studio #4515/#1124、独立Expected #2514/#1180。新しい共通Referencer、第三Source Store、REAを直接意味認定するConverterは作らない。#3906は契約説明として既にclosedであり、同じIssueを再起票しない。§10.10.4は現在状態のレビューと次の受入要求であって、新たなGo/Node/REA Product実行を行った証拠ではない。
+
+### 10.11 UI起点のデータ文脈設計と問い相対の変更影響（2026-11-13横断統合）
+
+**補正方針**：§10.9の「画面項目追加だけではDB列を作らない」は、**UIから新Fieldの設計へ進む経路を禁止する意味ではない**。業務向けModelerではUI配置を開発の入口として許容し、既存Data FieldへのBinding、新しいData Fieldの明示設計、Derived/Computed Field、入力専用Transient Fieldを選べるようにする。決定論的に検証可能な型・Source/Provider能力・依存・一意性は既存Rule/Schema/Contextで評価し、意味が曖昧な候補だけAIの提案対象とする。生成AI提案の提示を正式Mapping採用・Schema Applyと同一視しない。
+
+#### 10.11.1 UI部品からSourceへの到達は段階的な明示操作
+
+| UIで選択する設計意図 | まず作成・更新するもの | 更新前に検査するもの | 実行していないこと |
+| --- | --- | --- | --- |
+| **既存項目を利用** | U2→既存Field/Function Data ContextのBinding候補とPreview | Subject/Field occurrence、型、NULL、現在版、Owner、利用Purpose、read/書込能力 | RDB列追加、Case責任変更 |
+| **新しいデータ項目を設計** | U2→Data Context/Logical Field候補→開発者が明示したDesired Field F2と論理/物理Mapping | 業務キー/物理PK、型、制約、変更影響、RDB/非RDB Provider能力、Migration Plan、他Consumer | UI配置直後の暗黙DDL/実DB書込み |
+| **導出値を表示** | U2→Derived/Computed Field＋Source依存・計算Rule | 演算と単位、valid/known、取得完全性、再計算Scope、Read/Disclosure | 物理列の強制作成、業務確定値への自動置換 |
+| **一時入力を受ける** | U2→Function input/Command parameterなどのTransient Data Context | 型、入力Validation、Action引数、保存要否、Current Grant | 永続項目の暗黙作成 |
+
+**新Fieldの明示設計操作**では、「この入力欄を永続保存する」「既存Sourceに対応付ける」「計算値にする」等の意思をStudio/CLI/固定対象AIの同じOperation Intentとして確認する。次いでSource/Desired RevisionへCandidate Patch→Impact Preview→既存の変更受理→必要時のみSchema Migration→対象DBの独立Readへ進む。**通常の開発者によるモデル変更は通常のレビュー・テストでよい**。追加の独立したMeaning承認Engineや常時の重い承認フローは設けない。ビジネスルールの解釈や既存権限変更が必要な場合のみ該当Owner/Hostへ戻す。
+
+**逆編集の追加停止線（#4533）**：Source-backed既存属性へUI/表から直接編集を返す場合は、操作ごとに対象一意、属性の恒等表示、局所的な**値Span**、現在Source版とSpan値の一致、変更後のValidate/再投影の5条件を確認する。属性**名**のSpanを属性**値**のSpanと取り違えない。Graph→Treeの隠れたEdge、集計値、丸め・単位換算後の値、非単射のProjectionをそのまま原Sourceへ書き戻さない。#4533の合成一属性パッチ実測は一般UI→DB更新の製品資格ではない。Source Patch適用にも正式のWriter/Grantが別途必要であり、実DDLはさらに別Effectとする。
+
+#### 10.11.2 変更影響は「問い・Claim・Consumer」相対で評価する
+
+同じUI/Schema変更に対して、影響範囲は全Workspaceの単一staleフラグでは判定しない。#2582のClaim別Required集合、#4518/#4526の限定Closure/Native Source Binding、#2387のSQL依存、#3262の必要設計情報を組み合わせ、次の3結果を区別する。
+
+- **affected**：要求された表示・計算・Actionに影響することが既存Source/Query/Rule/Bindingから確定した。再評価/再取得が必要。
+- **scoped-unaffected**：指定したClaimのRequired集合と実観測Scopeが閉じており、変更と交差しないことが確認できた。別Claimや全画面への一般化は禁止。
+- **unknown**：Requiredが空/不明、Imported Source・Provider・Pluginが未取得、SQLの暗黙列/結合/否定依存が解決できない、受領が途中切断。0件や無影響として再利用しない。ただし**関係のないUnknownで他の完全なClaimまで一律失効させない**。
+
+対象となる非出力依存にはWHERE、ORDER BY、EXISTS/NOT EXISTS、LEFT JOIN、集計、Top-Nだけでなく、**SELECT *、alias.*、NATURAL JOIN**の暗黙的な列集合や結合キーを含む。新Field F2の追加で列集合が変わるSQLや、同名列追加によりNATURAL JOINの結合条件が変わるSQLを「明示Field参照が0だから影響なし」としない。実Rowset/Consumerの必要範囲が未観測ならunknown。Provider差分通知の非対応では既存Queryによる再読取に戻る（#2582）。
+
+#### 10.11.3 組織r7に結び付ける受入の最小対照
+
+| 既存Expectedへの追加観点 | 入力の対照 | 必須の判別結果・Owner |
+| --- | --- | --- |
+| ORG-MAP-01/02/03 | P2兼務一覧へ「配賦メモ」U2を配置し、既存Binding/新Field/Derived/Transientを明示選択 | 配置だけではActual/Desired不変。**新Field選択時のみ**Desired変更候補とMigration Preview。実保存は別資格（#1124/#1127/#3270） |
+| ORG-MAP-04/05/08 | Field F1をDesiredだけ削除、Actualだけ完全観測で削除、partialで未観測 | 対応版のテーブル定義モデルからだけF1除去、UI要素は残して未Mapping/unknownを区別。SHO著者編集を上書きしない（#1126/#4125） |
+| ORG-MAP-06/10、PIN-S0 | 同名別Field/Source改版・同Markdown別Subject・AI後着 | Source/Subject/Workspace/Selection Epochを再束縛できない限りApply拒否。SHOが文書を受領しただけではTEI Sourceが現在と一致する証拠にならない（#4515、SHO #50 QH-08） |
+| ORG-BEH-02、ORG-CAP-07 | A2のknownAt遡及訂正によるFTE変化、別ClaimはD2のA3/A4だけに依存 | 全体FTEは再計算、D2の必要Read/Ruleが変更と交差しない場合だけ局所Claimを保持。全世界の同時点性は推定しない（#2582/#2510） |
+| ORG-MAP-07、CX-16 | F1非表示だがSQL WHERE/NOT EXISTS/SELECT */NATURAL JOINが依存する | 出力列を表示しないことや明示参照0を無影響としない。未知Closureはunknown。Membership変更からC1責任・実Grantを推論しない（#4518/#2387） |
+
+**SHO/AIとの接続の停止線**：同一Markdownであっても元TEIのSource、Subject、Revisionが異なる票を同一の編集対象として扱わない。SHOの既存Draft受領・保存・再開と、TEIの実Source再解決、問い相対のRequired/Consumed/Received、外部Harnessの同一Attempt実受領は別判定（SHO #50 QH-08〜10）。Studio Pin/AI Draft/SHO本文の一致はSource Patch、Host Grant、Provider Effectの証拠ではない。
+
+**着手と帰属**：U0＝#1124/#1127のread-only UI分類・既存Data Context選択、U1＝#1126/#3270のDesired Field明示生成Previewと未Mapping、U2＝#4518/#2582の問い相対affected/scoped-unaffected/unknown、U3＝#4515/#3788のSubject Pin/Source Jump、U4＝#2586/#4539の隔離PG実Read（Reference入口）→通常`tei` CLI/Function Context（未接続）→Org C1固有Query（未実証）、#4125の実Schema/Host独立Readは別資格、U5＝SHO #50/TAIの元Source再束縛とRecipient受領。U0〜U3はP0実Readをブロックせず並行可。**受入は既存ORG-MAP/ORG-CAP/ORG-BEH/CX/PINを再利用し、新しい第二Expected Storeや共通Runtimeを作らない**。
+
+**実証資格**：#4524の同Kind同ID重複、#4513のData索引、#4514のSource-only drift、#4534のCRUD衝突診断はmain統合済み（範囲を限定した修正）。#4532のNode合成7件もCI成功を確認後mainへ統合済み。#4539の実PG read-only経路は正確なPR HEADの7 Workflow成功と隔離PGローカル試行の報告を確認してmainへ統合済み（squash `ee1af44c`）。これらを組織C1・通常`tei` CLI→Studio/SHO/Hostの製品E2Eへ昇格しない。本節の追加経路は設計・受入候補であり、実Go/Node試験・実GUI/DB/SHO/AI連携・Owner意味受理は **NOT RUN / NOT ACCEPTED**。
+
+#### 10.11.4 組織上の担当とサブシステムの更新責任を分離する
+
+**組織の担当変更≠ソフトウェアの境界変更**：OrgUnit（組織単位）、Membership/Occupancy、Case C1のhandlingUnit（案件取扱責任）、Subsystem（論理的なソフトウェア責務）、Function/DataのDirect CUD、実Target/DB配置、Host Principal/Grantは**別の軸**である。業務手順・図・CRUD・データベース配置が連動する場合も、それぞれの対応Ruleと変更Intentを明示する。#3250のSubystem分割案は候補・read-only評価であり、組織改編やGrant変更の実行器ではない。
+
+| 変更事象（同一C1） | 保持するもの／再検証するもの | 行わない推論 |
+| --- | --- | --- |
+| P2がD1/D2を兼務し配賦A2/A3を変える | Membership occurrenceとFTEの版・有効/把握時点。Case C1担当、SubsystemのCRUD/Owner、Host Grantは別々に再評価 | 配賦率をC1移管率・実権限率とみなさない |
+| Case C1のhandlingUnitをD1→D2へ正式に引き継ぐ | Case責任、業務Task/Function、通知/受領ACK、実EffectとReceipt | 技術SubsystemのCUD OwnerやDB配置が自動でD2へ移ったと扱わない |
+| Subsystem IDや表示名だけが変わる | #3250の比較結果をID同一性候補・責務署名・Source位置ごとに保存。表示Labelの変更はモデル上の正式改名と区別 | Source/Function/Dataが同じならOwnerのIdentity/現Grantも同じと断定しない |
+| 同じCRUDペアのOwnerや更新Effectの帰属が変わる | 直接宣言CUD・派生の可能性・実観測Effectを別記し、越境更新と依存Closure・新旧Ownerを再検証 | 比較図で越境更新0なら物理DB移設/正式業務責任移管が済んだと扱わない |
+
+**既存の反証を再利用**：#3250のDraft #4528にあるSP-X23（Subsystem IDの全単射的付替え）とSP-X24（Snapshot Label変更）は、表示・再符号化と責務移管を分ける限定合成ケースであり、**Draft/未受理**。#4501 CX-01〜03（Caseの責任移管）、#4490 ORG-BEH、#1124の三要素CRUD、#2582/#4518の問い相対Dependency Closureを同一World/Revisionに並べ、ID集合や単純なCRUD件数の一致だけで意味継続・業務移管を認定しない。
+
+**Guard・Effect**：異動・委任・承認・Case引継ぎなど業務操作では、必要な条件（Required）、現在満たされた条件（Supplied）、不足条件（Missing）を既存Rule/HostのPreflightで比較する。条件未確認は許可扱いにしない。開始前の現在Grant、対象・Rule/Source/Provider版、Action Intent、Attempt/Operation ID、外部Effect/Receipt、ACKを分離し、レスポンス喪失後の無条件再実行や過去の承認資格流用を禁止する。業務完了・コミット不明時の扱いは#1129/#1174等の既存Ownerに委ね、組織専用Guard/Workflow/Authorization Runtimeは作らない。
+
+**最短受入と停止条件**：①r7の配賦/時点切替とCase C1移管の非連動を既存Expectedで確かめる、②同Subsystem ID/異責務・異ID/同責務候補の反例を既存#3250のRead-only比較と突き合わせる、③変更前後のCUD/Ownerを#4472の正しい索引と独立Expectedで照合し、未知依存ならunknown、④実Handoff/Grant/ACKは別Provider/Host試験に留保。図やSourceの一致、SHO説明、AI提案、CLIのPreview成功だけで実Effectを主張しない。実Org→Subsystem/Host接続の新しい実装・試験は**NOT RUN**。
