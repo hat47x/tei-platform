@@ -244,6 +244,8 @@ Gate / Product claim
 
 PASは単なる網羅率の指標ではありません。要求と実証を結び付ける追跡単位として扱います。
 
+**CI・main健全性の横断運用（2026-11-12、実行計画案）**：製品の実受入と開発時CIの状態を混同せず、現mainのexact HEAD／run attempt／必要scope／環境・ツールチェーンを結ぶ。過去失敗・未実行・意図的停止・runなしを合格と誤認しない。PR→mainの再観測、差分に応じた検証、AI Harnessの実Tool/Consumer証拠、NAS/S3等への大容量Evidence退避と取得可否の扱いは、[main健全性とCI Evidenceの横断運用計画](workstreams/CI_MAIN_HEALTH_AND_EVIDENCE_CROSS_REPO_2026-11.md)にまとめる。既存AGENTS/品質設計・#2018/#2514/#2515/#2600の責務を維持し、新Gate・第二のRegistry・全リポジトリCI自動再有効化は行わない。
+
 ## 作業領域B：意味の定義・記述・知識
 
 ### 目的
