@@ -321,6 +321,16 @@ SQL/NoSQL/ログ等のリバース結果は、**Physical Observation→Structura
 **検討中の横断追補（DBアクセス・Query/2way SQL）**：対象DataSourceの既存Binding解決、DB別Native SQLの選択規約、SQL編集時の診断と分岐検証、異種DBでの意味同値性を、[DBアクセス・Query選択・2way SQLの最小適合計画](https://github.com/hat47x/tei-platform/issues/2622#issuecomment-6772875802)で小さな実証へ分解する。#2611・#2622・#2387・#2667に既存の責務を残し、新しいCore API・正式DSL構文・実DB対応の採用・完了を意味しない。
 **2026-11-09／Product Queryの物理入力乖離を解消（独立Source Fixture段階）**：[Workbench設計§22](design/DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)と[隔離PG Product Fixture](../examples/data-source-workbench/README.md)に、既存`postgres_seed.sql`の`sales_order`4列と、実`order_entry.recent_orders` SQLが要求する`public.orders`5列＋`:from`の**物理Schema不一致**を反映した。従来F-01〜10を壊さず、専用`recent_orders_product_seed.sql`を別Sourceとして追加し、3行／境界一致2行／後方0行の独立Source-static ExpectedをGoで判別する。**これは実PostgreSQL接続・Provider Invoke成功ではない**。最初の未成立実行辺は、固定Function/Queryの実Consumed SQL+args→Alias/物理Instance/Provider→実Rowset/Function Data Context。Ownerは#2586、実ProductのCLI/Studioは#1251、Schema適用は#2892。main #3540の静的Inspector S2-referenceは実CLI/Wails経路まで前進したが、外部Plugin Build/Grant/2×2実BOMを証明せず、異質JSONLは後続比較とする。新Gate/Host/Query正本なし。
 
+
+### XTEA browse実Readのmain欠落を解消する（2026-11-12、#2586×#3270）
+
+[Workbench設計§24](design/DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)で、未merge終了の[#4076](https://github.com/hat47x/tei-platform/pull/4076)が「mainへ既存取込済み」と判断されたことと、現mainの**実際のSource存在**を分離した。実際には旧PRにある`internal/driver/query_execution_environment.go`、`internal/driver/browse_parameters.go`、`internal/functioncontext/functioncontext.go`、`cmd/tei/cli_view_browse_read.go`の経路がmainで見当たらない。旧Branchの隔離PG 30行・eq/ne・2ページ・通常CLIの**旧版限定実測**を、main製品のPASSへ流用しない。さらに旧Branchの`FROM sales.order`は**現mainの修正済み`FROM sales."order"`を退行**させるため、24ファイル一括上書きではなく必要辺を現在の既存型/APIへ小分けに戻す。
+
+**最初のP0実装**：一方のWorkspace（`reference/workspace`の`:from/public.orders` 3/2/0、または`examples/xtea-lowcode`の`status/sales."order"` 30行と2ページ）を指定し、Environment/Instance→明示Query Input→実Executor/Read-only PostgreSQL→Rowset→Function Data Context→通常CLI出力・独立Expectedを同一Attemptで検収する。各WorkspaceのSQL/Fixture/Grain/Roleは別。0行/最終Pageの`declared-page-contract`をグローバルな完全性・不存在へ昇格させない。正式PluginのBuild/Entry/Grant、Studio/Harnessの**固定対象選択と誤解除防止**、NAS/S3等の外部Evidence格納・Source Revision、Schema DDL History/Applyは**別Consumer/資格**として並列に進める。#2586が実Read、#1251/#951が正式Plugin、#1124/#1824/#1158がContext選択、#2600/#1163がEvidence、#2892/#2887がDDL、#2514が独立Expectedを担当。既存WB-01〜54・HJ/QXとRQ-035 PASを再利用し、新Registry/Host/Runtime/Query正本/Gateを導入しない。
+
+**現状**：物理FK/Index read-only投影とProduct Queryの静的Seedはmainに存在。XTEA実Read経路の旧PR成果は**mainで未確認／上記Path不在**。今回の記載だけでは新Go実装・実PG/CLI/Studio・Owner受理は成立しない。
+
+
 ## 作業領域E：設計の実行と検証
 
 ### 目的
