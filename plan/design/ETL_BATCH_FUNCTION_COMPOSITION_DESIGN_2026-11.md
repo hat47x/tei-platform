@@ -681,3 +681,56 @@ Snapshotのp1/p2読取が成功しても、Tailの途中Gapで訂正イベント
 **外部比較（採用決定ではない）**：Apache FlinkはAppend/Upsert/Retractと`UPDATE_BEFORE`/`UPDATE_AFTER`/`DELETE`を区別する（https://nightlies.apache.org/flink/flink-docs-stable/docs/dev/table/functions/ptfs/）。Debezium PostgreSQLは初期Snapshotと継続的なChange Streamを接続する（https://debezium.io/documentation/reference/connectors/postgresql.html）。BeamのWatermark/Allowed Lateness/Triggerは遅着データ処理の比較対象（https://beam.apache.org/documentation/programming-guide/）。TEI固有のCDC/Temporal Engineを採用する根拠にはしない。
 
 **証拠と停止線**：本文は設計・独立算術Expected・外部仕様の静的比較。Go/CLI/実DB・CDC・Snapshot→Tail・Crash/復旧・実Consumer・実Provider Receipt・Owner意味受理は **NOT RUN / NOT ACCEPTED**。新Core型、第二DSL/Verifier/Artifact Store、必須Hostを追加しない。
+
+## 23. 再集計Generationの受領とConsumer使用資格：公開・読取・適用を分ける（2026-11-13、設計候補）
+
+**追加するGap**：§18のRestatement、§21のWitness/Bound/Final、§22のChange Stream・Checkpoint/Publicationの非原子境界に対して、**下流Consumerがどの世代を実際に読取り、採用・適用・業務受理したか**は独立に未確認となり得る。これは [#2604](https://github.com/hat47x/tei-platform/issues/2604) の一式公開、[#2516](https://github.com/hat47x/tei-platform/issues/2516) の用途別Disclosure、[#1174](https://github.com/hat47x/tei-platform/issues/1174) のEffect/Receipt、[Cross-layer Draft #4522](https://github.com/hat47x/tei-platform/pull/4522) のClaim再資格化の **ETL Reader/Consumerへの適用**。別のRelease Store、Consumer State Engine、Publisher、Scheduler、Host、Claim Registryを設けない。
+
+### 23.1 Publicationの成功とConsumer適用の間にある独立境界
+
+| 観測できた段階（説明用） | 確認する対象 | そこから主張してはいけないこと |
+| --- | --- | --- |
+| **Produced / Staged** | Function/Source Cut/Run/Attemptに結び付く出力byte、Member候補とdigest | 一式公開済み、外部到達 |
+| **Verified Member Set** | 必要Memberの列挙・内容/digest・役割/版・欠落/旧残存、独立Expected | Current Releaseが切り替わった、任意Readerの受領 |
+| **Published Generation** | Publisherが有資格に公開し、必要ならActive Refを望む旧世代から条件付き切替した証拠 | 全Consumerが同Generationを読んだ、業務へ適用した |
+| **Consumer Read Qualified** | Readerが選択したGenerationと同版の必要Member/byteを**実際に**読んで検証、Read Scope/ObservedAt/現在Disclosure | Consumerが取込み・Effect Commitまで完了 |
+| **Applied / Imported Effect** | 対象Consumerが実行したImport Unit/Operation ID/実Provider Commitまたは結果不明の照会 | その結果を業務Ownerが意味的に受理した |
+| **Business Accepted** | 業務主体が正しい入力Cut・意味Revision・期間・結果/訂正の適用を判断した記録 | 外部キャッシュ/CDN全域の失効や過去Byteの物理消去 |
+
+表は新しい永続状態列挙ではなく、既存Artifact/Run/Effect/Consumerの**Evidence比較票**。不十分な階層では、その対象のClaimをunknown/partial/not-observedに止める。現在Grantは各読取・適用の有資格性として再評価し、過去のRead/Commit Evidenceを物理削除したと扱わない。
+
+### 23.2 Active世代の切替と、読み始めたConsumerのPinned世代
+
+例としてR1入力からG1、訂正後R3入力からG2を生成する。**PublisherがG2を公開した時点**と、**各ConsumerがG1/G2を読み終えた時点**は異なる。
+
+- **Producerの安全候補（Providerの実保証が前提）**：G2の必要Member全体をStage→byte/digest/独立Expectedで確認→Generation単位の参照を公開→必要な場合だけexpected active=G1からG2への条件付き切替を試みる。条件付き切替、原子的更新、世代別の不変Body、Read Lease/保持期間がTargetで実現できるかは別。単一File rename・Catalog pointer変更・Manifest Completeを複数Memberや複数Providerでのatomicityの証明としない（#2604）。
+- **Consumerの安全候補**：最初に選択したG1/G2を固定し、そのGenerationの必要Memberだけを取得・Digest照合する。途中でActive RefがG1→G2へ動いても、一つの結果にG1 summaryとG2 manifestを混ぜない。Pinned G1がまだ読めればG1相対の**歴史的結果**を取得できるが、「現行最新版」とは言えない。G1のMemberが既に失効・期限切れなら欠落を**明示的に停止**し、現在Refで別Read Attemptを始めるかOwner指定のRecoveryに戻る。
+- **切替失敗・競合**：同じexpected active=G1で異なるG2/G3が並走したら、Last Writer Winsで業務意味の新旧順序を推測しない。CAS相当がないProviderでは採用できない保障をunsupported/unknownに落とし、単一物理Object/対象Hostが提供する範囲だけ条件付き運用する。
+- **ReadとApplyの間**：ReaderがG2の全Memberを見ても、下流DBへのImportがfail/partial/commit-unknownならConsumed/Appliedを一つのPASSにしない。業務締め・訂正の適用には、受理した業務期・Owner・Operation/Receipt/最新Grantとの対応が必要。ACK-lossだけで再送可と推論しない（#1174/#4411）。
+- **Retention/使用資格**：過去G1の証拠保持・GC可能性・Active ConsumerのPin期間は別の判断。G1 Source/ArtifactをGCした後も歴史的Evidence記録は残り得るが、再ReadやReplayを保証しない。Source Change Logの保持期限切れは§22のDeltaに、旧公開物の残存/撤去と低権限Consumerの情報漏洩は#2604/#2516に返す。Current Grantを失ったConsumerには、たとえG1が保存されていても現行Read資格を自動復活させない。
+
+### 23.3 独立Expectedの例（既存N/AP/EFへ一因子で追加、正式Fixtureではない）
+
+| 故障・変化注入 | 判定対象 | 手書きExpected / 禁止する偽成功 |
+| --- | --- | --- |
+| R1→G1でA=5個/800円、R3→G2でA=5個/640円（§18.4、§22.3） | Generationsと業務Cut | それぞれ当該Source/Rule版への出力。双方の数量5でも金額・Source Cut/Generationが異なる |
+| Consumer C1がG1をPinし、summary取得後にActiveをG2へ切替 | 一式Readerの版混在 | C1は保持されたG1 manifest・全Memberを読むか、欠落で停止。G2 memberを混ぜてPASSしない |
+| C2がG2全Memberを読んだがImportはタイムアウト、Commit不明 | Read vs Applied/Receipt | Consumer Readは限定PASS、Effectはunknown。Owner Acceptedは未観測 |
+| G2 Published後もC1がG1を読んでいる | Consumerごとの進捗/鮮度 | C1のG1歴史的ReadとG2最新版のPublishedは同時に真。G1 ReadからC1がG2を消費済みとは言えない |
+| G1の必要MemberがRetentionで消え、C1がG1 Pinのまま取得を続ける | Retention/Release lifetime | Read拒否・停止または明示的新Attempt。G2の同名Memberへ無断フォールバックしない |
+| G2出力byteがG1と偶然同じで、Run/Disclosure/Source Cutだけ改版 | Content reuse vs Usage | 計算Byteの再利用候補と、Generation/Reader/Current Grant・Owner受理の再資格化を分離 |
+| 公開範囲のGrant失効後、古い外部Reader/CDNでG1を取得 | 秘密・撤去の保証 | Producerの「非公開設定」だけで実外部Readが拒否済みと宣言しない。実Target/Disclosure証拠なしならunknown、公開範囲の差を低権限へ漏らさない |
+
+**小さな独立計算**：2世代×2回のMember参照でActiveが変化し得る4通りを列挙すると、参照を毎Member更新する非Pin方式では2通りで世代混合、最初の世代にPinすれば0通りとなる（**不変Memberが保持され、各Readが成功する場合の合成モデル**）。これは実Publisherの原子性、TargetのRead Consistency、実Consumerの資格を試験した結果ではない。
+
+### 23.4 実装へ渡す最小接続と優先順
+
+1. **P0 / #4410 W1〜W5**：純粋TSV→決定的Output BodyとRun/Attempt Evidenceの区別を優先。初回の正常経路にRelease Switch/外部Consumer・部分結果配信を新規導入しない。G1/G2のExpectedは将来の独立受入票として固定候補に留める。
+2. **P1 / #2604 AP-01/06, #2514**：既存Artifact/Manifestとread-only Consumerを使い、G1→G2のActive切替前後で、同一Pinned GenerationのMember集合・byte・missingを比較する。Providerに世代固定/保持保証がなければ未適格として扱い、第二Publisherを実装しない。
+3. **P1 / #4411 W6〜W7, #1174**：同じInputCut/Rule/OutputでRun/Attempt別、Commit Unknown、Consumer Read/Applyの独立Eventと照会資格を対照。再試行可否をData digest/Task ACKから決めない。
+4. **P1 / #2516/#2600/#4522**：公開Scope/Grantだけ変化した場合、旧byteの計算利用可否と新Reader使用資格/外部撤去の独立判定、正しい部分再資格化/不要な全失効を検証。別のClaim CacheやPolicy発行者を作らない。
+5. **P2 / #1124/#4510/#4487**：Studio/TEAへSource Cut→Generation→Reader/Effect/OwnerのEvidence Edgeを問い相対に投影。「現在表示」の意味を、観測した具体的Consumer/世代/時刻に限定。非開示Source/古いView/旧Pinを現在Edit/Run適格性と混同しない。
+
+**外部仕様との比較（採用判断ではない）**：[Apache Iceberg仕様](https://iceberg.apache.org/spec/)はReader Snapshot隔離・Snapshot Reference/Retentionを区別する。[Delta Lake Change Data Feed](https://docs.delta.io/delta-change-data-feed/)はChange Logの保持期限/VACUUMと前提Versionを扱う。[OpenLineage](https://openlineage.io/docs/spec/facets/)はJob/Run/Input/Outputの追跡Facetを分ける。これらは検討対象であり、TEIにIceberg/Delta/Lineage Runtimeや新Schemaを必須採用する理由ではない。
+
+**検証上限**：Issue/PR/設計文書と公開仕様の静的照合、及び上記2世代のローカル合成組合せ計算。実TEI Go/CLI/Publisher/DB/Consumer/Host/CDN/EKI/Studio、現行Grant/Owner Meaning Acceptance、exact-head CIは **NOT RUN / NOT ACCEPTED**。新Runtime/Release Engine/Publisher/Manifest/DB Transaction Coordinatorなし。
