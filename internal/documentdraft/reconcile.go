@@ -351,6 +351,19 @@ func reconcileDiagram(draft Draft) (ReconcileReport, error) {
 			report.ModelReference.Diffs = append(report.ModelReference.Diffs, "modelFingerprint")
 		}
 	}
+	// The structural ModelFingerprint deliberately excludes AuthorityLimits and
+	// other observation fields. A diagram's physical Source may therefore move
+	// while its structural fingerprint remains identical. The generation
+	// conditions already record this read-only byte fingerprint; use it here
+	// rather than treating an unchanged structural revision as a current source.
+	recordedSource := draft.Occurrences[0].GenerationConditions.InputDigests["sourceFingerprint"]
+	currentSource := current.Occurrences[0].GenerationConditions.InputDigests["sourceFingerprint"]
+	if recordedSource == "" || currentSource == "" || recordedSource != currentSource {
+		report.ModelReference.Status = ModelReferenceStale
+		if !containsString(report.ModelReference.Diffs, "sourceFingerprint") {
+			report.ModelReference.Diffs = append(report.ModelReference.Diffs, "sourceFingerprint")
+		}
+	}
 	return report, nil
 }
 
