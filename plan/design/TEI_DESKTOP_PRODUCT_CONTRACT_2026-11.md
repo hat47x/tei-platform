@@ -327,3 +327,74 @@ X-TEA Modeler由来の三要素分析法を「三視点モデル」という別�
 **Slice D（作用とOS）**：条件付きSHO Save、DB一行安全Mutation、実Command/Receipt/unknown、Windows/WSL実OS競合、配布物の実版照合をそれぞれ既存Ownerに接続。
 
 最初の合格ゲートは「一画面で全部できる」ではなく、**同じ独立ExpectedをCLIと実Desktopで通し、Source/Target/Receiptの同一性が追跡できる**こと。GUIだけ成功・CLIだけ成功・合成Providerだけ成功は別の結果とする。新しい中央Host/Registry/Approval Engine/独自Agent Runtimeは作らない。
+
+
+## 11. 第4次横断統合：状態の直交性・競合解決・可観測性（2026-11-12追補）
+
+他チャットのTEI高速ビルド/Evidence、DB移行・SQL、SHO共通基盤、YIC Harness、TEIテスト、Git+NAS/S3保管、三要素分析法に関する議論を、Desktopの検証可能な振る舞いへ還元する。既存のBuild/Provider/Meaning/Writer/Receipt Ownerを変更しない。**本節は設計候補であり、実装・受入済みを意味しない。**
+
+### 11.1 直交する状態を一つの「成功」に畳まない
+
+- Source Observation：fresh/stale/unavailable/partial/not-found/permission-denied、Source fingerprint、取得時点。
+- Structural Candidate：出典・依存・版付きの構造候補。AI生成やパーサ出力は受理済みMeaningではない。
+- Accepted Meaning：Owner/範囲/反例/受理時の資格を持つ。ID・型一致だけで受理を継承しない。
+- Draft/Document Save：編集中、競合、保存確認。保存済みMarkdownでもMeaning未受理は成立する。
+- Operation/Effect：prepared、dispatched、confirmed、rejected、unknown。送信ACKは外部Effectの確定Receiptではない。
+- Artifact/Execution：World fingerprint、Model revision、Artifact revision、Toolchain/Plugin/Generator、Execution Receiptを別々に束縛する。
+
+Desktopは「保存済み」「Meaning受理済み」「Build成功」「実行完了」「証拠の鮮度」を個別に示す。単一の緑色アイコンや `success=true` で代替しない。旧Artifactの成功証拠を新Sourceへ転用しない。
+
+### 11.2 Desktop Eventと現在表示の因果境界
+
+すべての非同期Resultには最低限、Request/Attempt ID、Origin Consumer/Window epoch、対象Qualified ID、Source/Document/Model expected revision、Provider/Host identity、観測時刻、結果の資格（partial/unknown等）を関連付ける。
+
+- Result到着時に発信時の対象・版・Window epochと現在表示の対象・版を比較する。異なる場合は旧Activityの履歴に保存し、現在のEditor/Inspector/Pin/Previewを自動上書きしない。
+- 重複Eventの表示は冪等に処理するが、**業務Commandそのものが冪等**とは推定しない。
+- 長時間Query/AI/BuildのCancelはUIの購読中止、計算停止、外部Effectの取消成功を区別する。取消ACKだけでDB rollbackを主張しない。
+- 進捗表示はStarted/Progress/Result/Receiptを区別し、通信断後は `unknown` を許す。後着Receiptは正しいOperationへ帰属させる。
+- Offline cacheは読めても現在のSource/Grant/Providerの資格は未確認。操作可能性をUIの表示成功から推定しない。
+
+### 11.3 EvidenceをGitへ集中させないDesktop設計
+
+GitはSource/Contract/Plan/小さなManifestの管理に適する。一方、画像、OS実機Trace、動画、巨大Rowset、DB dump、Binary/Build出力などのEvidenceは、ポリシーに応じNAS/S3等の外部Storeへ保存可能とする。
+
+- Evidence ManifestにはContent digest、サイズ、Media type、Source/Model/Artifact/Toolchain identity、Capture時刻、取得手順、Access classification、Store locatorを持つ。
+- Git上のManifestだけで実Evidenceの存在・内容・アクセス可能性を保証しない。取得時にdigest/権限/保存状態を検証し、missing/denied/corrupt/offlineを区別する。
+- Gitのcommit SHA、Evidence digest、World fingerprint、Execution Receiptは異なるidentityであり、相互に置換しない。
+- Evidenceのプレビューは巨大ファイルをUIへ全読込しない。必要な部分・縮小版・メタデータを段階取得する。外部AIへEvidenceを渡す場合はDisclosure Previewを再実施する。
+- NAS/S3の保管先変更はContent identityを変えないが、取得資格とStore locatorは更新対象。実証されない復元可能性を「保存済み」と断定しない。
+
+### 11.4 Performance予算を検証可能な指標へ分解
+
+初回起動、再起動後の復元、入力→描画、Inspector対象変更、DB実Provider Read、SHO大文書編集、Pin大量対象解決、Plugin cold start、Build差分更新、外部Harnessの最初の応答を別指標にする。各指標は環境、fixture、warm/cold、percentile、計測範囲、Providerの実Invoke有無を明示する。
+
+性能のためのCacheはSource/Meaning/Artifact/Grant/Disclosureの資格を代替しない。Cache hitで速くなっても、旧Meaningを現在の受理として表示することを禁止する。具体的な数値SLOは測定後にOwnerが決める。
+
+### 11.5 テストDSL/AI開発ハーネスへの接続
+
+同じ独立ExpectedをCLI/HeadlessとDesktop/GUIから実行できるようにし、Fixtureの実Source byte、Model revision、Provider実選択、Window/OS、Evidence digest、結果を共通形式で記録する。GUIスクリーンショットは画面の一証拠であり、実DB書込みやMeaning受理の証明には使わない。
+
+各Test Caseには「入力」「一因子差」「Expected」「観測可能な証拠」「実行環境」「結果資格」を記載する。テスト未実行はFAILでもPASSでもなく `NOT RUN`。合成Provider PASSは実Provider PASSへ昇格しない。
+
+### 11.6 追加独立Expected（DT-31〜DT-38、すべてNOT RUN）
+
+| ID | 反例とExpected | Owner候補 |
+| --- | --- | --- |
+| DT-31 | Source freshでDocument savedだがMeaning未受理。UIは保存/意味受理/Build/実行の状態を別々に表示 | #1124/#1824、SHO |
+| DT-32 | Window Aの古いInspector結果がWindow BでSource改版後に到着。現在View/Pinは上書き0、旧Activityへ帰属 | #1824/#3421 |
+| DT-33 | Query Cancel ACK後にDB側処理が継続。UIはRollback/Effect取消成功と断定せず、Receipt/独立Readまでunknown | #1174、DB Client |
+| DT-34 | Git ManifestはあるがNAS/S3 Evidence実体がmissing/denied/corrupt。検証済みEvidenceとして表示0 | Evidence Store担当 |
+| DT-35 | Evidence内容同一でNAS→S3へ移設。Content digest不変でもlocator/アクセス資格を更新し、旧リンクに依存しない | Evidence Store担当 |
+| DT-36 | World byte一致、Generator/Plugin版違い。旧Build/Execution Receiptを再利用せず、Artifact identityを区別 | Build/Plugin担当 |
+| DT-37 | Cache hitでInspectorは速いがGrant失効/Source A→B→A。現在の受理・Disclosureを自動継承0 | #1824/#2516、認知基盤 |
+| DT-38 | 同一FixtureをCLIと実Wailsで実行し、画面上の成功表示だけではなく実Provider invoke/Source/Receiptを比較。合成と実機の結果を別票記録 | #3421/#1824、Test担当 |
+
+### 11.7 次の計画への落とし込み
+
+**先行（Ownerの実装を待たずに実施可）**：DT-31/32の直交状態・後着排除、DT-34/35のManifest/Store欠損、DT-36/37の失効反例をHeadless fixtureとして起票・実行する。Desktop専用の新SSOTは作らず、既存テスト計画へ参照を追加する。
+
+**Desktop縦切り**：既存 `inspect`/ `validate` の実IPC→Wails表示にRequest/Window epochとResult資格を渡し、DT-32/38の実OS証拠を採取する。合成UIで代替しない。
+
+**横断統合**：SHO Writerの条件付きSave、DB実Provider Read、Pin/Disclosure、外部Effect Receiptの各Ownerが実契約を提供した段階で、DT-31/33/37をGUIでも検証する。
+
+**受入**：DT-01〜38をすべて単一Gateにせず、Source/Meaning・文書・Read・Effect・配布のCapabilityごとに必要な受入票を定める。未実装CapabilityのNOT RUNを、他Capabilityの合格を妨げる架空の依存条件にしない。
