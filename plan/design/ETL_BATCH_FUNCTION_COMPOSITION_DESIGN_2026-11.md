@@ -472,3 +472,58 @@ R1のFile byteが完全でも、業務対象母集団がProvider/OwnerによりC
 5. **Studio / #1124/#4510**：Dataflow/Temporal Dependency/Publication/Evidenceを型付きGraphの用途相対Projectionとし、未取得/非開示を「図に無いので実際に存在しない」と見せない。Source改版後の旧Preview・旧選択は実編集/Effect資格に昇格させない。
 
 **実証範囲と停止線**：今回の追補はmainの設計・既存Issue/PRの静的照合に基づく設計候補。上表の新規Execution/Go/CLI/実DB・MFT/EKI/Studio/Independent Consumer/Owner採用はNOT RUN。第二のSource/Scenario/Oracle/Temporal Engine/Host/Registry/Authorityを導入しない。
+
+## 19. 最適化の意味保存：宣言Graph・選択Graph・実観測を照合する（2026-11-12、設計候補）
+
+**位置づけ**：§18のInput Closure・Temporal Cutを満たしたうえで、既存Plugin最適化要件 [PRO-03〜06、PRO-09、OPT-04/06/07](PLUGIN_REALIZATION_AND_OPTIMIZATION_REQUIREMENTS_2026-11.md)、[Data Operations #2622](https://github.com/hat47x/tei-platform/issues/2622)、[Measure #2593](https://github.com/hat47x/tei-platform/issues/2593)、[Incremental Reuse #2600](https://github.com/hat47x/tei-platform/issues/2600) の適用条件を**ETL/Batch Consumer**に具体化する。正式Optimizer・新共通Plan Schema・新Verifier・新Runnerではなく、既存のSource/Typed Expression/Relation/Function/RunPlan/Plugin選択/実行Evidenceから導出する**比較投影**の提案である。
+
+### 19.1 入出力の値一致だけでは意味保存ではない
+
+最適化候補を、対象Question/Source Scope/Revision/Temporal Cut/Targetに相対化した**観測可能な契約**の下で比較する。
+
+| 保存すべき観測意味 | 比較するもの | 値だけ一致した場合に見落とすこと |
+| --- | --- | --- |
+| Value / Grain / Multiplicity | 型、NULL/空/未取得、Fact identity、Group、重複と並び順、Unit/Decimal/Rounding | JOIN fanout、順序依存、誤った集約粒度 |
+| Required Input / Coverage | 必要と実消費したSource/Relation/Partition、Snapshot、業務期、Lookup版 | 同じ行数でも対象母集団欠落、旧rateのCache hit |
+| Validation / Failure | どの対象行でいつ検証し、Reject/Unknown/Partial/Diagnosticが発生するか | Filter移動で不正行の診断が消える |
+| Authority / Disclosure | 選択Providerの実Read Scope、現在Grant、Consumerの開示可能範囲 | 正しい値を権限外Consumerへ返す |
+| Effect / Delivery | Operation/Import Unit/Receipt、Commit Unknown、出力Generation・実Reader | 変換結果一致でも再送やPublishで業務Effectが重複 |
+| Provenance / Realization | Semantic Plan/選択したBinding、実Toolchain/Artifact/Provider、実Attempt | 別Provider実行、図外処理、未ロード経路を見落とす |
+
+**適格性の判定**： (a)必要なSource/Rule/Provider Law・現在資格が充足、(b)選択した書換えの前提が満たされ、(c)限定された独立Expectedで正常・失敗・権限の差を反証、(d)実Target上の選択・実消費・結果を別観測すること。独立FixtureのPASSは一般の数学的同値証明でも実Provider全範囲のConformanceでもない。保証範囲外はconditional/unknown/unsupportedとして止める。
+
+### 19.2 三つのGraphを「一つの正本の異なる投影」として比較する
+
+| 投影 | 主な要素 | まだ保証しないこと |
+| --- | --- | --- |
+| **Semantic / Declared Flow** | Accepted SourceからのFunction・Operator・Data/Control Dependency、Required Closure、Effect/Validation/Outputの宣言 | Providerが選ばれた、実処理した |
+| **Selected / Lowered Execution** | 選択したProvider/Plugin Instance・Target/Artifact・書換え前後のRelation、実行入口/予定・Capability/Resource | 実Provider呼出・実Input Read・実Effect |
+| **Observed Attempt / Consumer** | 実Entry/Loaded bytes、実Read範囲・結果・診断・Attempt/Receipt・公開Member・実Reader readback、未観測の区分 | 観測境界外に工程・Effectが無いこと |
+
+**Edge対応票**：declared relation/operation → selected or rewritten equivalent → actual consumed/produced/receipt → evidence/coverage/unresolved reason。最適化で消えたNodeは「条件付きで正しく省略された」のか「実際には未観測・漏れた」のかを区別。選択Graphに存在しないSourceの実消費はUnexpected Edgeとして診断するが、Traceに無いものを自動的に「実行されなかった」と判定しない。Claim相対のRequired・Observed closureが有資格なときに限り限定的な不存在が言える（#2831、#1124、Studio Draft #4510、TEA Draft #4487）。秘密のSource/Edgeは許可されたViewerだけに開示する（#2516）。
+
+### 19.3 既存Pressure Caseで検証する書換え反例
+
+**Pushdown / Outer Join（PRO-03、OPT-04、DO-01）**：顧客A/Bがあり、Aにのみ status=accepted の注文があるとする。元Queryが LEFT JOIN の後に WHERE 注文.status=accepted を評価するなら結果はAだけ。誤った書換えでその条件を JOINのONに**移し、WHEREから取り去る**と、Bが右側NULLの行として結果に残る。ProviderでのSQL文法が正しくても、出力集合の意味は同値ではない。公式SQL説明：[PostgreSQL 18 Table Expressions](https://www.postgresql.org/docs/current/queries-table-expressions.html)。外部結合のNull-extended rows、三値論理、他のWHERE条件まで含めて書換えを資格化する。
+
+**Filter / ValidateのFusion・順序変更（PRO-03/04、W2）**：未受理レコードに不正な数量/通貨がある入力で、業務契約が「全入力をValidateしてからacceptedだけFilter」と指定する場合、Filterを先行すると失敗行の診断が消える。逆に「acceptedだけ検証する」と受理されたMeaningならこの差は起きない。**同じ成功Output byteでもError/Diagnosticが異なる正負例**を一組として比較。Filter/Validationのどちらを正とするかをOptimizerが決めない。
+
+**Aggregation/Join・Measure（DO-01/07、#2593 MC）**：1件の100円Factに2個のTagをJOINして結果をSUMすると200円になり得る。元Factの粒度で100円とするMeaningから、JOIN後SUMへ勝手に変換しない。単にDISTINCTした結果もFact identityやTag/OccurrenceのMeaningを失い得る。Quantity Kind、Group Key、Multiplicty、Fact identityと対象Populationを前提条件とする。
+
+**Cache/Scope・Temporal ABA（PRO-05、OPT-06、#2600 IB-09/10）**：Source byteとRuleが同一でも、Reader Snapshot/Period・Role・ProviderのCurrent GrantやDisclosureは別資格。Tenant Aが読める結果を、同DigestだけでTenant Bに返すCache Hitは拒否。同byteへ戻ったSource A→B→Aでも、過去の受理と現在権限は自動復活しない。計算キャッシュの再利用可能性と実Consumerの現在の使用・開示資格は**別判定**。
+
+**Effectful Fusion/Retry（PRO-06、OPT-07、#2542/#1174）**：二つのTransform Stageを融合しても、Transfer/Import/Business CommitのReceiptを一つのResultへ縮退しない。ACK-lossやCommit Unknown後に「Fusion成功/同Result digest」を再送可能性として扱わない。純粋な変換だけの成功を外部Effectの実行資格と区別する。
+
+**正例の要件**：同一固定Snapshotの純粋なProjection/Filter等で、NULL・欠損・Order・診断・Scope・Output encodingが保存される条件を事前に宣言した場合だけ候補書換えを許容。実際に書換えた二実装の結果・診断・選択Provider/実入力を照合し、適合しなければ通常経路を維持する。新Case IDや独立Expectedの第二正本は増やさず、既存OPT/DO/MC/Nケースの一因子変形として扱う。
+
+### 19.4 Optimizerを新設せず可視化・検証する最小手順
+
+1. **P0 計画票**：既存のW1/W2固定TSVのFlowを「変更前Semantic Graph」として固定し、候補書換え・変更後Selected Graph・適用条件・Reject reasonをread-onlyで記述。No Rewriteを既定とし、現行実装に自動書換えは追加しない。#2622/#951/#3279の型/Provider適格性を使用。
+2. **P0 反証**：上記Outer JoinのA/B、Filter/Validateの不正行、Cacheの別Scopeで、成功行だけでなくReject/Unknown/Disclosureも含む独立Expectedを作成。既存#2514と#2593のFixture Ownerが受理するまで設計候補に留める。
+3. **P1 一つの合法な書換え**：W1〜W5の初回純粋Go/CLI縦断が成立した後、最小のPure操作についてBaseline/選択候補を同一pin・同じTarget/Expectedで比較。selected providerとactual invoked/read rangeを確認し、意味PASSと速度改善PASSを独立記録（#2600/#2018）。
+4. **P1 Studio/Headless**：Semantic → Selected → ObservedのEdge対応・Coverage/Unknown/Source位置をRead-only投影。図に表示された処理と実ObservabilityのClosureが不足する場合、「図中に無いものは存在しない」を主張しない。Source変更やGrant失効後は旧Plan表示と現在実行資格を分離。
+5. **P2 Provider別Target適合**：実DB pushdown、Fusion、Cache、部分集計、差分適用は、それぞれのProvider Contract・Snapshot・Target/Toolchain・実Policyが確認できた範囲だけ増やす。常駐Runtime/第二Graph Storeや共通Cost-based Optimizerを新設しない。
+
+**採用しないもの**：最適化候補の自動生成をもって安全な実行許可とすること、Value digestだけを意味・権限・効果の証明とすること、Trace未発見から業務全域の不存在を主張すること、性能改善により失敗・権限・未受理条件を上書きすること。
+
+**証拠状態**：既存設計とSQL/Changelog文献の比較・反例の静的推論に限る。書換えコード、実DB/Provider、実SQL plan、実Go/CLI/Wails、二Consumer/OS権限、独立Expected実試験、性能測定、Owner意味受理はすべて **NOT RUN / NOT ACCEPTED**。
