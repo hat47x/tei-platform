@@ -922,3 +922,40 @@ S0未実証の段階でS2の実Provider parityをPASSとしない。S1のread-on
 **採用判定**：S0で実Consumerが成立し、S1で安定Selection/Source資格が成立し、S2で少なくとも一Targetの実生成・実行と全Path Obligationが成立した場合に、Graph編集→実Targetの限定縦断を主張できる。Chat/VUI/SHO/B2C全Targetの適合はその後に個別検証する。
 
 **状態**：本節は設計と受入票の追加のみ。S0/S1/S2の実行、Target生成、Owner受理、CI検証は本変更ではNOT RUN。
+
+## 26. S0〜S2実装バックログと統合判定（2026-11-12）
+
+§25のReference Sliceを、**成果物・独立Expected・実行証拠・停止条件**で検収できる最小作業へ分解する。これは既存Issueへ割り当てる設計引渡しであり、新たな製品Gate、第二Scenario SSOT、独立Workflow Engineを作らない。
+
+| 順序/既存Owner | 作業と成果物 | 必須の反証・受入証拠 | 不合格・保留条件 |
+| --- | --- | --- | --- |
+| A / #1251 #1824 | 通常CLIとStudio Bridgeが選択済みInspector Provider Bを実呼出しする配線、同一Subject/Attemptの結果表示 | B選択→B実Invoker→CLI/Studio受領、BをAに差し替えた負例、Provider error/Grant失効 | 既存Direct実行や局所Go呼出しだけ、実Bridge未接続 |
+| B / #1124 #3262 | 実Source Indexからread-only Selection Contextを構成し、GUI/CUIで固定/解除・再解決診断 | 同名多重Edge、別Canvas遷移、Revision衝突、非開示・部分集合、旧対象削除 | 表示名で対象決定、未取得対象の暗黙省略、AIによる無断再結合 |
+| C / #3503 #3278 #1121 | 最小Validation Patch→Effective Graph→Source帰還→一Target生成、次に条件分岐 | 全Path Authority/Effect、未受理Patch非反映、Patch順序競合、layout-only生成不変 | Guard迂回、Owner未受理、静的UNKNOWNをPASS |
+| D / #1180 #2514 #259 | A〜Cの同一Independent Expectedを既存Scenario/Conformanceに収容 | 実行SHA・Workspace・Source・Provider Lock・Artifact・Attempt・Receiptの突合、対象外Targetの明記 | 他PR/別SHAのCIや合成テストを製品実行証拠へ転用 |
+| E / #3503 #3509 #1124 | Chat/VUI/SHO/B2Cの異質Consumerへの限定接続 | partial tool/ASR=実Call 0、SHO同名異内容、B2C非関与Routeに必須JSなし | CLIでの合格を全Targetの合格とする |
+
+### 26.1 実装時の選択肢を閉じないための判断
+
+- Selection Contextのシリアライズ方式、UI保持場所、Harnessへの転送形式は**未採用**。まず同一対象を二Consumerで失わずに扱えることを優先する。公開ABIや新Core型の導入は必要性が立証された場合に限る。
+- Graph Patchの記述は既存標準データ表現を第一候補とし、Mermaid/Graphviz/Markdown/GUIはProjectionまたは糖衣として扱う。Layoutと業務意味の差分は別ハッシュ/失効規則で検証する。
+- 非同期実行・Wait/Resumeを扱う際は、Graph定義版、Attempt、Business Entity、Grant、Effect Receiptを分離する。新しいTEI常駐Hostを前提にしない。
+- Pluginの未選択実装の故障や、B2CでTEIが関与しないRouteは、無関係なConsumerを停止させない。ただし当該Scopeの必須安全義務を省略してよいという意味ではない。
+
+### 26.2 完了報告テンプレート（各作業共通）
+
+| 項目 | 記載内容 |
+| --- | --- |
+| Scope | Workspace/World/Source Revision、Consumer/Target、対象Operation/Subject |
+| Build | commit SHA、Artifact/Generator/Plugin Lock、実行環境 |
+| Evidence | Selected / Loaded / Invoked / Received / Effect のうち実際に観測した段階 |
+| Expected | 既存Scenario ID、独立Expected、正常/異常/NULL/Absent/部分集合 |
+| Result | PASS / FAIL / UNKNOWN / NOT RUN（未実証のTargetを明示） |
+| Authority | Owner意味受理、現在Host Grant、Disclosureをそれぞれ記載 |
+| Follow-up | 再現手順、失効要因、次のOwner、Blocker |
+
+### 26.3 実装の着手条件
+
+Aは既存Direct Baselineを破壊せず、実Provider B呼出しが可能な最小Consumerを選ぶ。Bは実Source Indexのstable identityを利用し、既存Model Map M0のread-only範囲を超えた編集資格を主張しない。CはA/Bの証拠を参照できる場合のみE2Eの限定受入候補とし、そうでなければCompiler/Projection単体検証と明示する。DはA〜Cと並行してExpectedを整備できるが、実行結果を先取りしない。EはA〜Dの結果を外挿せずConsumer固有の契約を再検証する。
+
+**この追補の状態**：バックログ/受入条件の設計のみ。コード変更、CI、実Consumer、Owner受理はNOT RUN。作業順序は依存関係であり、実装完了宣言ではない。
