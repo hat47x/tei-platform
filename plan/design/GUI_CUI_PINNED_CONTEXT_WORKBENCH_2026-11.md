@@ -245,7 +245,7 @@ GUI-X1〜X8は既存#1824 CTX、#1124 M、#1180 Scenario、SHO #4/#31のExpected
 
 ### 11.7 次に着手する実装の順序を狭める
 
-**最小GUI縦切り**：実Source上の一つのRelation EdgeをCLI/headlessでqualified inspect → StudioのData viewでPin → Function/Business/CRUDへ移動 → Inspector/Context Shelfで同じEdgeへ戻る → Source改版/同名異ID/後着を拒否。SHO Editor/外部Harnessの存在はこの受入の前提としない。
+**最小GUI縦切り（2026-11-12修正）**：現Workbenchが実際にInspect可能な一つのQualified **Subject** をHeadless/Studioで照合→Studioで明示Pin→別Subject/Focusへ移動→元Subjectへ戻る→Source改版/同名異ID/後着を拒否。**Relation occurrenceのPinは現Graphのparent表示線で代用せず、正式なSource-backed Relation identityとConsumerが揃った次段**とする。SHO Editor/外部Harnessの存在はこの受入の前提としない。
 
 **第2縦切り**：#4317/#4467とSHO #36/#40の既存実装を再利用し、受理モデル一要素+一関係→SHO Draft→著者編集→保存再開→再投影差分の実UI Consumerを測る。まず既存Headless/Reader/Writerを呼び、別のGraph Parser/文書Merge Engineを追加しない。
 
@@ -328,11 +328,11 @@ Qを現在の**観測済み集合**へスナップショット化する操作と
 
 | スライス | Product入口（現物のOwner） | 最小の独立Expectedと停止線 |
 | --- | --- | --- |
-| **S-A：一つの正しいRelationを保持** | 既存TEI `model locate`/Catalog/InspectとModeler/Studio (#1124/#1824)、#4472 CRUD | 同名異ID・同端点多重Edgeのうち特定の1本をPin→AI入力へFocus→Data/Function/Business/CRUD/Sourceを移動→同一Qualified ID/Source revisionへ戻る。誤解除0、誤再束縛0。CRUDが未修正なら正しいと自称しない |
+| **S-A：まず一つのQualified Subjectを保持** | 既存TEI `model locate`/Catalog/InspectとModeler/Studio (#1124/#1824)、具体実装 #4515 | 一意なSubjectをPin→Focus/別Nodeへ移動→同じWorkspace/Subject/Revisionへ復帰。現Graphの描画用Edgeから意味RelationをPinしない。Relation多重辺/CRUD Cellは#4472とSource-backed Identity確認後の次段。誤解除0・誤再束縛0 |
 | **S-B：問い・時点・集合を変える** | C1合成Fixture (#4490/#4501)、#3262/#2516 Context | validAt固定でknownAt変更、partial/omitted、Tree第二親非表示、Case責任と所属の非一致。Pin意図は維持し、Q結果とMeaning/Current資格は再評価。実二時点Queryが未実装なら`NOT PROVEN` |
 | **S-C：文書・Harnessへ戻す** | merged TEI #4317/#4467、SHO #36/#40、TAI #168/#271 | 同じ選択の出典と必要範囲だけをSHO Draftへ投影→著者編集/再投影差分/独立保存再Read。外部HarnessへはPublic Slice Preview→Current Grant→実Send/Receiveを独立実証。AI OFF/Adapter absentではローカル執筆が継続 |
 
-**実装コードの第一変更対象はS-Aの`1 Relation + 1 Consumer + 旧Reply`のみ**。Graph Rendererや新AI Sessionを先に全面再実装しない。S-B/S-Cの内容がS-Aを阻むHard Gateではない。既存P0（Plugin実Invoke #1251／Function実Read #2586）にPin UIを前提として追加しない。
+**実装コードの第一変更対象はS-Aの`1 Subject + 1 Consumer + 旧Reply`のみ**（[implementer #4515](https://github.com/hat47x/tei-platform/issues/4515)）。Graph Rendererや新AI Sessionを先に全面再実装しない。S-B/S-Cの内容がS-Aを阻むHard Gateではない。既存P0（Plugin実Invoke #1251／Function実Read #2586）にPin UIを前提として追加しない。
 
 **記録する値**：Expected ID、exact HEAD、対象`workspace/kind/qualified id/occurrence/source revision`、Source/Policy/Task epoch、validAt/knownAt、Query grain/coverage/omitted/unknown、UI event before/after、Focus/Selection/Pin intent、Correlation/Result revision、送信したexact Public Slice、実Receiver/Receipt、SHO disk再Read、既存Owner Meaning Acceptanceの有無。公開先には現在許された証拠列だけ出す。
 
@@ -373,7 +373,7 @@ Qを現在の**観測済み集合**へスナップショット化する操作と
 | UIイベント | Productでの実操作 | 合格条件 / 見えてはいけない錯覚 |
 | --- | --- | --- |
 | E0: Focus+一時Selection | 既存Data/Function/Business・Source/CRUDのViewを使う | 表示座標/ラベルは候補の位置にすぎず、Source編集対象を決定しない |
-| E1: 明示Pin | 選択したRelation instanceのQualified ReferenceをTask-localへ保持 | Focus/Esc/IME/別タブで変化0。Pin時のSource/Task epochも保持。Context Shelfを閉じても対象が残る |
+| E1: 明示Pin | 現行Readerが一意に解決できるSubjectのQualified ReferenceをTask-localへ保持。Relation instanceはSource-backed identityが確認できるまで別段階 | Focus/Esc/IME/別タブで変化0。Pin時のSource/Task epochも保持。Context Shelfを閉じても対象が残る |
 | E2: 対象Inspect | 既存TEI `model locate`・Catalog/Inspect等を**実Consumerが**起動し、Source/Workspace/版とOccurrenceを再解決 | ID/Kind/Workspace/Source・モデル版を対照。同FP別Workspace/同offset別Subjectの意図しない再束縛0。未実装Consumerならunsupported |
 | E3: View横断 | Data→Function→Business→CRUD→SHO/Sourceの関連投影・Navigation | Rendererや行位置ではなく同一Qualified関係に戻る。CRUDの矛盾・未取得・Lossがある間はread-only |
 | E4: Ask/Preview | Productが許可した、現在のSource/Reader/Task/Purpose相対Public Sliceを**実際に共有する候補**として表示 | Pin/解決成功だけで実送出できない。開示/Recipient変更、部分取得、秘密Count/Path・Tool argsを検査 |
@@ -398,9 +398,9 @@ UIの安全性を「選択チップが残る」「staleバッジを表示した�
 
 | 実施単位 | 達成物 | 検査・拒否条件 |
 | --- | --- | --- |
-| **G-01 Pin操作** | Studio同一画面で1 Relation instanceをPin→Focus移動→戻る。Tooltip/ARIA/Keyboard/IMEでも選択の意図が一定 | 同名異ID/二多重Edge、Esc、空白クリック、Task切替、Undoの正負。無断解除0/別対象への再束縛0 |
+| **G-01 Pin操作** | Studio同一画面でInspect資格のある1 SubjectをPin→Focus移動→戻る。Tooltip/ARIA/Keyboard/IMEでも意図が一定（実装票 #4515） | 同名異ID/別Workspace同FP/Source改版/後着、Esc、空白クリック、Task切替、Undoの正負。無断解除0/別対象への再束縛0。描画用Edgeを意味RelationとしてPinしない |
 | **G-02 Source実再解決** | G-01のPinを既存Headless APIへ渡し、Workspace/Manifest/Source/Qualified Subject/Revisionを対照 | #4504の同offset別Subject・同FP別Workspace・Source only改版・ABAをProduct入口で拒否。旧テストの局所PASSをGUI実験の結果と混同しない |
-| **G-03 CRUDと投影** | Data/Function/Business/CRUDへ移動しSourceへ戻る。Loss/partial/矛盾/非単射を表示 | #4472 TE-CR-01〜04・#4507 authority保持が未資格なら「完全な逆編集/現在権限」と表示しない |
+| **G-03 CRUDと投影** | 三要素分析法のデータモデル・機能モデル・業務モデル/CRUDを照合し、正式なRelation occurrence IDが取得できて初めてEdge Pinの可否を判定 | #4472 TE-CR-01〜04は未修正ならunverified、#4507のmerged修正はFingerprint入力破壊の限定解消であって現在権限の証明ではない。Graph表示用parent Edgeから自動的に逆編集可能としない |
 | **G-04 Context Preview** | 同じTask/対象をCUIとGUIで同等にread-only指定し、送出する予定の最低限のPublic Sliceを表示 | Qのpartial/unknown/hiddenを0件にしない。Audience/Source/Grant変化後の旧Previewを送らない |
 | **G-05 SHO接合（後段）** | 一要素・一Relation→既存DocumentDraft→SHO編集/保存再Read→更新時の著者編集保全 | 永続Occurrence ID不要。SUI未導入/AI OFFでも保存継続。Source Writerへの自動書戻し0 |
 | **G-06 実Harness接合（後段）** | 外部ToolでTask/Target/Origin Viewを用途限定Handoffし、Receipt/返信先を実観測 | #168のOS/Host隔離資格なしで秘密Sourceを送らない。Session復帰≠Activity復帰≠実Tool受領 |
@@ -419,3 +419,45 @@ G-01〜04に必要な入力は最小の公開合成Fixture。G-05/G-06は既存S
 **進行上の優先**：全TEIの最初のFunction→実Provider→Consumer（#2586）、Plugin実Invoke（#1251）、TAIのG0/G1/G2と独立H2/H3 4試行（#168）を妨げない。G-01〜04は実装可能な部分からread-onlyで進める。#629/#633や各Product実装が未マージの期間は、そのDraftを参照実装・正式ABIとして扱わない。
 
 **現在の状態**：本節は設計・実装担当への既存Owner割付と受入条件の整理のみ。新コード・本節G-01〜06の実GUI/CLI/Harness/OS実験・Owner正式採用・製品受入は**NOT RUN**。
+
+
+## 14. 2026-11-12 実ソースで判明した「描画Edge≠意味Relation」と最初の実装票
+
+> **現行main静的照合の更新**。本設計の§11〜13にあった「一つのRelationを初日からPinする」を、[implementer #4515](https://github.com/hat47x/tei-platform/issues/4515)へ引き渡せる能力別の順序に修正した。**欠陥の改善／Productテスト合格を確認した追補ではない。**
+
+### 14.1 現実に存在する操作経路
+
+| 役割 | mainの現実装・利用価値 | この経路で**まだない**保証 |
+| --- | --- | --- |
+| `reference/tei-studio-workbench/main.ts` | `selected: Subject|null`、`inspect()`、`workspaceEpoch/inspectionEpoch`、`responses.run("inspection")` | 明示Pin/Undo/Task所属、Source/Policy失効通知との結合 |
+| `reference/tei-studio-workbench/presentation.ts` | `readCatalog/inspectEligibility/readInspection`でSubject/WorldFP/SourceIndexFPを比較し、`relatedGraph()`で親子の描画線を合成 | Workspace実Rootの同一性、実Relation occurrence ID、Read Closure/Current Grant |
+| `reference/tei-studio-graph/graph.ts` | Graph Node選択は`onSelect(nodeId)`、Edge IDは表示を識別する内部値として扱える | そのIDのTEI意味Relation一意性。Edgeをクリックして原Sourceを一意に特定する操作 |
+| `reference/tei-studio-workbench/responses.ts` | laneのRequest順序・reset/dispose後の旧応答を表示しない | Host操作のCancel/Effectや、既表示DOM/ARIA/Tooltip/Tool JSONの現在Disclosure失効 |
+| `cmd/tei-studio/assets/client.mjs`・`cmd/tei-studio/main.go`・`internal/studiohost/readonly.go` | `inspectSubject(workspaceID,kind,subjectID)`→`StudioBridge.InspectSubject`→allowlist RootのProduct Reader | RendererからTrusted Rootを指定する権限、新たな一意Relation Resolver、AIの外部送出資格 |
+| `cmd/tei-studio/assets/workbench/main.js` | 上記Source TypeScriptから生成する実ブラウザBundle | 手修正してSourceに逆反映する経路 |
+
+特に`relatedGraph()`は、Catalogの`parent`から表示上の線ID `parent:${subjectKey(child)}`を作る。**同端点に意味的に異なるRelationが複数存在しても、それらをこのIDで一意に識別できるとは限らない**。Graph上で線が見えることと、Relation instanceのPin/編集資格は明確に分離する。RendererのEdge IDを業務意味のStable IDとして使わない。
+
+### 14.2 いま着手するべき実装境界
+
+- **G-01a / Subject Pin**：既存`inspectSubject`でQualified Subjectを照合し、現在の一時`selected`と独立した**Workbench-local Intent**を一件保持。Focus移動/別Node選択/Esc/IMEで意図維持。Pinは新しい共有Session/Aggregate Schemaではない。**Parent #1824、実装票 #4515**。
+- **G-01b / 実Source再解決**：Workspace/Manifest/Source/Subject/Revisionの別軸を検査し、[Draft #4504](https://github.com/hat47x/tei-platform/pull/4504)の同offset別Subject・別Workspace同FP・A→B→A負例をUIから通す。旧Pinを他Workspace/Subjectへ自動付替えしない。
+- **G-01c / Relation Link**：ModelerからSource-backed Relation occurrence identity、重複/多重性、Source range、Loss/coverageを返せる**既存**Operationを確認するまで、描画線に対する正式Pinは`unsupported/unqualified`。必要になった最小Product Adapter変更は#1124/#2497 Ownerへ。CRUD根拠の誤対応は[#4472](https://github.com/hat47x/tei-platform/issues/4472)を先に受入。
+- **G-02 / 外部文書・Harness**：SHOの永続Occurrence IDを新規必須とせず、Document/原文byte span/Revision/Buffer再解決を既存SHO Writer/Readerで扱う。TAIの対象集合形成は[Draft #629](https://github.com/hat47x/tai-pleroma/pull/629)、Product別再解決・Handoff実証は[Draft #633](https://github.com/hat47x/tai-pleroma/pull/633)。この分担をTEI側で重複実装しない。
+
+### 14.3 Productに戻す判定表と停止線
+
+| 実験 | 成立と報告できる最小条件 | 成立とは呼ばないもの |
+| --- | --- | --- |
+| 1 Subject Pin→別Focus→元Inspectorへ | Pinの`workspace/kind/id`が変わらず、実Inspectの対応を確認 | 現Grant、最新Sourceの永久保証、Graph Relation一意性 |
+| 同じ`kind/id`の別Workspace・同FP | 元Workspaceに束縛されたPinの意図と現在再解決が別である | FP一致のみで同一Resource・Authorization |
+| 同offsetのA→B→A/Source only改版 | 古いReader応答を現在Targetに反映せず、履歴と現在資格を区別 | 旧Digestに戻ったことによるMeaning/Grantの自動復権 |
+| Node描画選択と表示Edgeを対照 | Nodeは実Inspectで照合できる範囲でPin、描画Edgeは意味Relation Pinを拒否 | `parent:`という文字列をRelation IDとして正式公開 |
+| Source不変でGrant/Policyだけ変更 | 変更がProduct Consumerで実観測できれば、既表示内容と外部送信資格を**別々に**更新 |`responses.ts`のlane抑制だけで漏洩防止を実証 |
+| AI OFF・SHO未接続 | Pin/Inspectorのread-only操作が継続 | AIやSHOの常駐を必須化 |
+
+**着手順**：まず#4515のSource TS上の局所State・実Consumerで正負対照 → Node/TypeScript `typecheck/test/build` → GitHub上の生成物と実Browser/CLI試験 → exact HEAD/独立Expectedで検収。外部Harnessや実Source Applyを初回のP0要件へ混ぜない。すでに[merged #4507](https://github.com/hat47x/tei-platform/pull/4507)のFingerprint副作用解消があっても、構造FPがCurrent Authority/Disclosureを保証するわけではない。
+
+**受入条件の不変部分**：X-TEA Modelerの三要素分析法（データモデル・機能モデル・業務モデル）の互いの根拠確認を重視し、汎用TEIの追加Graph/SHO/SUI構造は拡張と表示する。実モデル上で「任意の辺をPinできた」と表記するのは実Relation identity/Sourceへの一意解決・独立負例が成立した後に限る。
+
+**状態**：本追補はmain実ソースの静的照合、既存計画の順序補正、implementer Issueの起票まで。実Pin実装/Workbench E2E/Relation resolver/SHO・TAI実Handoff、実Host/Grant、正式Owner採用は**NOT RUN**。
