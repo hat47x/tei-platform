@@ -15,6 +15,7 @@ import (
 type threeElementResponse struct {
 	SchemaVersion string                `json:"schemaVersion"`
 	OK            bool                  `json:"ok"`
+	OKScope       string                `json:"okScope,omitempty"`
 	Result        interface{}           `json:"result,omitempty"`
 	Error         *cliInspectionFailure `json:"error,omitempty"`
 }
@@ -110,6 +111,7 @@ func runThreeElementValidate(args []string, out io.Writer) (int, error) {
 	response := threeElementResponse{
 		SchemaVersion: "tei.cli.three-element.validate/v0",
 		OK:            report.OK,
+		OKScope:       report.OKScope,
 		Result:        report,
 	}
 	return writeThreeElementResponse(out, response, 0)
@@ -129,15 +131,25 @@ func runThreeElementCRUD(args []string, out io.Writer) (int, error) {
 		return failThreeElement("MODEL_LOAD_FAILED", err.Error(), 2, out)
 	}
 	rows := threeelement.GenerateCRUDTable(model)
+	report := threeelement.ValidateModel(model)
 	response := threeElementResponse{
 		SchemaVersion: "tei.cli.three-element.crud/v0",
-		OK:            true,
+		// This boolean reports completion of the read-only projection.
+		// It does not attest CRUD consistency or Owner meaning acceptance.
+		OK:      true,
+		OKScope: "projection-produced-only",
 		Result: struct {
-			SchemaVersion string                   `json:"schemaVersion"`
-			Rows          []threeelement.CRUDTable `json:"rows"`
+			SchemaVersion                string                         `json:"schemaVersion"`
+			Rows                         []threeelement.CRUDTable       `json:"rows"`
+			StructuralOK                 bool                           `json:"structuralOk"`
+			CRUDConflictStatus           string                         `json:"crudConflictStatus"`
+			ContradictoryCRUDDefinitions []threeelement.CRUDDefinition  `json:"contradictoryCrudDefinitions,omitempty"`
 		}{
-			SchemaVersion: "tei.three-element.crud/v0",
-			Rows:          rows,
+			SchemaVersion:                "tei.three-element.crud/v0",
+			Rows:                         rows,
+			StructuralOK:                 report.OK,
+			CRUDConflictStatus:           report.CRUDConflictStatus,
+			ContradictoryCRUDDefinitions: report.ContradictoryCRUDs,
 		},
 	}
 	return writeThreeElementResponse(out, response, 0)
