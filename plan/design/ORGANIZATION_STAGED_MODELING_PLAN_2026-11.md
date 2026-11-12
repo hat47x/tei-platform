@@ -724,7 +724,7 @@ WU-11〜14をWU-06〜10の「全部完了待ち」にしない。前段の**必�
 
 **2026-11-12 実行可能なReferenceの追加と証拠資格**：独立Draft [PR #4532](https://github.com/hat47x/tei-platform/pull/4532)に、既存r7 Source/Scenario fixtureだけを読む `reference/org-semantic-views/verify-capacity-scenarios.mjs` を追加。ORG-CAP-01〜05/07の**合成範囲の一部**（人数・FTE、Join増幅、欠員の利用可能量、仮配賦、partial/NULL相当、knownAt遡及訂正、元Source不変）をNode v22.16.0で**ローカル7 subtests PASS**。実ソースのblob `d66f29505389f2096e9b825ba4f5e2d799d607d4`、実Scenarioのblob `b8fc779cf60e7816c4077616b4288735b49470e2`、実loaderのblob `d85c2dbe88803ad40f8826d764d45a35eb4a167a` と、試験コードのblob `6f07de5c793810f1e87553318710b9094d79c328` を使った。fixture/sourceとObservedのテスト自体が照合できても、独立Ownerによる業務意味受理には昇格させない。
 
-**未検証**：ORG-CAP-06（Skill/資格/現在Grant/Host）・08（Case/Directive/Effect/ACK）、ORG-CAP-05の実貨幣/工数Basisや実開示・実Provider、ORG-CAP-07の実多Provider/Policy/ABA、TEI製品上のシナリオConsumer、GitHub Actionsによる当該HEADのCI結果、Owner意味受理は**NOT RUN / NOT ACCEPTED**。本節の数値は未来日付2027年の合成データに基づくテスト値であり、実在組織の観測値ではない。
+**未検証**：ORG-CAP-06（Skill/資格/現在Grant/Host）・08（Case/Directive/Effect/ACK）、ORG-CAP-05の実貨幣/工数Basisや実開示・実Provider、ORG-CAP-07の実多Provider/Policy/ABA、TEI製品上のシナリオConsumer、GitHub Actionsの合成Node実行はDraft [PR #4532](https://github.com/hat47x/tei-platform/pull/4532)の正確なhead `fa2d8ce98ff77536f51e32095748f63d935a2d07` について [Actions run #43242282586](https://github.com/hat47x/tei-platform/actions/runs/43242282586) の `synthetic-node` が **SUCCESS**。実ログで新規7件を含む**313 tests / 313 pass / 0 fail**、新スクリプトのGit blob `6f07de5c793810f1e87553318710b9094d79c328`、exact-head checkoutとworkspace cleanを確認。ただしPR #4500自体の新節はdocs-onlyであり、このCI成功は**合成Referenceの資格のみ**。実Provider・Host等のOwner意味受理は**NOT RUN / NOT ACCEPTED**。本節の数値は未来日付2027年の合成データに基づくテスト値であり、実在組織の観測値ではない。
 
 ### 10.9 データ構造変更と画面マッピングの整合をC1で固定する（2026-11-12追補）
 
