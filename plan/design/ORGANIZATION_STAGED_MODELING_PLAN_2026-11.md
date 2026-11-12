@@ -816,7 +816,7 @@ WU-11〜14をWU-06〜10の「全部完了待ち」にしない。前段の**必�
 
 #### 10.10.1 参照一覧を信頼できる条件
 
-1. **基礎の誤りを種類ごとに受入**：#4475のFingerprint入力破壊はmain統合PR #4507、同Kind同IDの重複診断と曖昧なIndex entry拒否はmain統合PR #4524で限定修正済み。ただし、全Derived/CLI/SHO Consumerが不適格入力を排除する保証は別。#4472のData索引取り違えはPR #4513（squash merge `7e36f85ad0f23aed0bf8f8ecec47c7b160574a3d`）で3箇所を限定修正しmain統合済み。明示CRUD-only脱落・矛盾をOK表示する問題は未解決。独立正負試験とProduct Consumer結果を確認するまで、CRUD参照数・未使用表示を全体として正しいと断言しない。
+1. **基礎の誤りを種類ごとに受入**：#4475のFingerprint入力破壊はmain統合PR #4507、同Kind同IDの重複診断と曖昧なIndex entry拒否はmain統合PR #4524で限定修正済み。ただし、全Derived/CLI/SHO Consumerが不適格入力を排除する保証は別。#4472のData索引取り違えはPR #4513（squash merge `7e36f85ad0f23aed0bf8f8ecec47c7b160574a3d`）で3箇所を限定修正しmain統合済み。明示CRUD-only組の派生表脱落・UnusedDataの誤判定は#4551で修正しmain統合済み（squash 1a2271d8）。ただしStudio/SHO/AI Consumerの参照完全性、レビュー要の表示・適用停止は別試験が必要であり、Product全体の合格ではない。
 2. **参照の種類を混ぜない**：宣言上の参照、型付きRelation、Function→Data CRUD、Business Task→Function、SQL WHERE/ORDER/EXISTS等の非出力依存、UI Binding、SHO引用、実Provider Readは別種。逆引きは有向Edgeの逆方向検索であって、業務上の逆向き依存関係を意味しない。
 3. **対象の同一性**：Workspace、Kind、Stable Subject ID、Relation occurrence、Source revision、Source位置と必要なvalid/known/Scopeを保持する。Label、図面座標、同じ始点・終点、描画用Edge ID、単独のSource offsetを意味IDとしない。参照の出現位置が複数ならoccurrenceを区別。
 4. **0件とunknownを分離**：指定したSource/Provider/Plugin・Dependency Closureを必要十分に取得し、未解決参照がなく、**指定範囲について全件検査できた場合だけ**「参照数0」「その範囲で未使用候補」と表示。partial、permission denied、unavailable、未解析のDynamic ReferenceやPluginには「不明／未検査」を付す。0件、空配列欄の欠落、対象不存在、非表示、非開示は別状態。
@@ -853,7 +853,7 @@ WU-11〜14をWU-06〜10の「全部完了待ち」にしない。前段の**必�
 | 既存成果・Owner | 実際に確認された範囲 | 組織C1の実行に残るもの |
 | --- | --- | --- |
 | #4507/#4524 merged（#4475） | Fingerprint入力破壊・自己参照の限定修正、およびData/Function/Businessの**同Kind同ID重複をエラーにしIndexから除外**する修正はmain統合済み | Derived/CLI/SHO等の全ConsumerがValidate結果を必ず評価する保証、現在Disclosure/Grantは別。#4514のSource-only drift修正もmain統合済みだが、Source再束縛と現在Disclosure/Grantは別 |
-| #4513/#4534 merged（#4472） | #4513がCRUD表/Function–Data参照/GapのData索引3箇所を修正。#4534は複数CRUD衝突を全件報告し、`okScope`（構造診断の範囲）と`crudConflictStatus=conflicts-require-review`をCLIの別項目へ追加。#4534はmain merge `5f35d5dc6dd0e20e5572f06bbccdf1b4eb601437` | **明示CRUD-only行は依然派生表から脱落**。衝突の全件表示とOwner意味受理/実行適格は別。Review要否を自動Hard Errorにも、自動OKにも昇格しない。Studio/SHO/AI等のConsumerが新診断を正しく受け取る検証は別 |
+| #4513/#4534/#4551 merged（#4472） | #4513でData索引を修正、#4534で複数CRUD衝突と構造ok/CRUDレビュー資格を分離、#4551で**明示CRUD-only組を派生CRUD表・Function/Data参照へ追加し、UnusedDataの誤判定を修正**（main squash 1a2271d8）。それぞれ対象HEADのCI成功を確認 | **Studio/SHO/AIの実Consumerで参照完全性・要レビュー表示・Apply停止を検証していない**。衝突を無条件Hard Errorにも業務意味OKにも昇格しない |
 | #3906 closed、CLI JSON契約 | trace.unresolvedは**返した行の未解決数**、projectionUnresolvedは**グラフ投影全体で落ちた参照**と明記済み | trace.unresolved=0だけで全Workspace/同Subjectの必要参照が完全と推定しない。両方とScope/Required Closureを照合する |
 | #4532 merged（#2510合成Reference） | org-synthetic-r7、3人/4所属/3.0 FTE、known改版の2.4 FTEを参照。固定HEAD fa2d8ce98ff77536f51e32095748f63d935a2d07 の Node Actions #43242282586は313/313 PASS（うち追加7件）、関連4 WorkflowはSUCCESS。main squash `2e52ca47ef8f75c7bf61f86f5791834c67adcdd1` | **合成Nodeのみ**。正式TEI Query/Provider/Context/Studio/Host、ORG-CAP-06/08、Owner受理は別。マージ後のmain新HEADでの全製品再検証を本証拠から推定しない |
 | #4539 merged（#2586の実Provider Read） | `order_entry.recent_orders`をEnvironment/Database instanceに明示束縛し、実PG16.15のRaw Rows→Function Data Contextへ限定接続。正常、0件、NULL、列欠落、RLS、権限拒否、SQL差分を隔離環境で対照。該当HEADの7 GitHub Workflow成功、実PostgreSQLの実走はPR記載のローカル証拠 | これは**受注Queryの一経路**であり、組織r7のMembership/Case C1 Queryではない。`tools/reference-browse-read`という別CLI入口であり、通常`tei` CLI/Studio/SHO/AIは未結線。環境→実Provider対応はhost-asserted、Resultの`coverage=unestablished`、0行でも不存在/`EmptyJustified`確定なし。main squash `ee1af44cb9d66507188b80195fe4e59013f89b90`で限定参照実装は統合済み。ただし通常CLI/Org C1実Query/Studio/Host完了扱いは禁止 |
@@ -862,7 +862,7 @@ WU-11〜14をWU-06〜10の「全部完了待ち」にしない。前段の**必�
 **read-only参照表示の入場条件**：適格な参照検索を、（A）Accepted Source/Meaningに属するProduct Cross Reference、（B）REA等からの外部Observation/Structural Candidate、（C）Source不足・未解決・partialの三群として扱う。同名や同端点が一致しても群間でReferenceを加算して「利用実績」としない。外部候補はSource locator、Producer version、record/edge ID、方向、多重性、raw digest/受領byte、Coverage、Known/Validの有無を区別し、正式な意味Role/Relation occurrence/業務時点は#2386の意味Ownerが採否を判断する。外部候補しか見つからないData/Function/Businessは「正式参照0・候補あり・Coverage未確認」を区別して提示する。
 
 **最小の次のProduct Exit（重複Expectedなし）**：
-1. #4513のData索引、#4534の複数衝突列挙と構造`ok`/レビュー資格の分離をmain実装基線とする。**残る明示CRUD-only行の脱落**を#4472のTE-CR-02/03/04で再現し、Index/CLI/Studio/SHO/AIの受取側でsilent omissionを止める。矛盾を無条件Hard Errorにせず、各Consumerが`crudConflictStatus`を表示・変更Previewへ渡すまで全体適格としない。#4524の同Kind重複Admissionも別試験で確認する。
+1. #4513の索引、#4534の複数衝突と構造ok/レビュー資格、#4551の明示CRUD-only/Unusedをmain実装基線とする。TE-CR-02/03/04では**各CLI/Studio/SHO/AI Consumerの受領**を別検証し、明示行と参照数、unknown、レビュー要の表示/変更Previewを照合する。Go派生試験のみでProduct全体適格としない。#4524の同Kind重複Admissionも別判定。
 2. #3906の二種の未解決数とSource Index/Scopeを同一CLI応答で判別し、完全0・投影未解決あり・部分取得の3入力で未使用の結論が切り替わることを実証（#3262/#1177）。UI・AIの未使用削除は禁止。
 3. #3394の外部REA T1-Aは、実際の共通read-only APIに1 Observation＋1 Edgeを送出して実Receiverのbyte・識別・方向・partialを照合する。Product Cross Referenceに混入させず候補として保持。外部ProducerのCI成功だけを実TEI Reader成功にしない。
 4. #2586/#4539で成立した一受注Queryの実PG read-only経路を**通常`tei` CLIの既存Source/Environment選択入口**へ結び、選択/実Invoke/statement+params/Rowset/Function Context/CLI受領の同一Attempt証拠を照合する。隔離PGで同じQuery Sourceから違う件数が返る反例を保持し、0件と全件取得・存在しないことを混同しない。実Org C1への移植は別Source/Provider/二時点Queryを接続してから。**GUI完成待ちでCLI Product readを遅らせない**。
@@ -911,7 +911,7 @@ WU-11〜14をWU-06〜10の「全部完了待ち」にしない。前段の**必�
 
 **着手と帰属**：U0＝#1124/#1127のread-only UI分類・既存Data Context選択、U1＝#1126/#3270のDesired Field明示生成Previewと未Mapping、U2＝#4518/#2582の問い相対affected/scoped-unaffected/unknown、U3＝#4515/#3788のSubject Pin/Source Jump、U4＝#2586/#4539の隔離PG実Read（Reference入口）→通常`tei` CLI/Function Context（未接続）→Org C1固有Query（未実証）、#4125の実Schema/Host独立Readは別資格、U5＝SHO #50/TAIの元Source再束縛とRecipient受領。U0〜U3はP0実Readをブロックせず並行可。**受入は既存ORG-MAP/ORG-CAP/ORG-BEH/CX/PINを再利用し、新しい第二Expected Storeや共通Runtimeを作らない**。
 
-**実証資格**：#4524の同Kind同ID重複、#4513のData索引、#4514のSource-only drift、#4534のCRUD衝突診断はmain統合済み（範囲を限定した修正）。#4532のNode合成7件もCI成功を確認後mainへ統合済み。#4539の実PG read-only経路は正確なPR HEADの7 Workflow成功と隔離PGローカル試行の報告を確認してmainへ統合済み（squash `ee1af44c`）。これらを組織C1・通常`tei` CLI→Studio/SHO/Hostの製品E2Eへ昇格しない。本節の追加経路は設計・受入候補であり、実Go/Node試験・実GUI/DB/SHO/AI連携・Owner意味受理は **NOT RUN / NOT ACCEPTED**。
+**実証資格**：#4524の同Kind同ID重複、#4513のData索引、#4514のSource-only drift、#4534のCRUD衝突診断、#4551の明示CRUD-only/Unused派生修正はmain統合済み（範囲を限定した修正）。#4532のNode合成7件もCI成功を確認後mainへ統合済み。#4539の実PG read-only経路は正確なPR HEADの7 Workflow成功と隔離PGローカル試行の報告を確認してmainへ統合済み（squash `ee1af44c`）。これらを組織C1・通常`tei` CLI→Studio/SHO/Hostの製品E2Eへ昇格しない。本節の追加経路は設計・受入候補であり、実Go/Node試験・実GUI/DB/SHO/AI連携・Owner意味受理は **NOT RUN / NOT ACCEPTED**。
 
 #### 10.11.4 組織上の担当とサブシステムの更新責任を分離する
 
@@ -929,3 +929,19 @@ WU-11〜14をWU-06〜10の「全部完了待ち」にしない。前段の**必�
 **Guard・Effect**：異動・委任・承認・Case引継ぎなど業務操作では、必要な条件（Required）、現在満たされた条件（Supplied）、不足条件（Missing）を既存Rule/HostのPreflightで比較する。条件未確認は許可扱いにしない。開始前の現在Grant、対象・Rule/Source/Provider版、Action Intent、Attempt/Operation ID、外部Effect/Receipt、ACKを分離し、レスポンス喪失後の無条件再実行や過去の承認資格流用を禁止する。業務完了・コミット不明時の扱いは#1129/#1174等の既存Ownerに委ね、組織専用Guard/Workflow/Authorization Runtimeは作らない。
 
 **最短受入と停止条件**：①r7の配賦/時点切替とCase C1移管の非連動を既存Expectedで確かめる、②同Subsystem ID/異責務・異ID/同責務候補の反例を既存#3250のRead-only比較と突き合わせる、③変更前後のCUD/Ownerを#4472の正しい索引と独立Expectedで照合し、未知依存ならunknown、④実Handoff/Grant/ACKは別Provider/Host試験に留保。図やSourceの一致、SHO説明、AI提案、CLIのPreview成功だけで実Effectを主張しない。実Org→Subsystem/Host接続の新しい実装・試験は**NOT RUN**。
+
+### 10.12 Studio Desktopと組織C1の最短実装境界
+
+**最優先製品目標**：TEI Studio Desktopを実際に構築し、TEI自身の標準Build Graphに基づいて同じStudio成果物を再構築する。組織C1はDesktopのモデル/CRUD/Provider/AI接続を検査する代表ケースであり、C1の全業務処理・権限完了をDesktop起動の前提にしない。Desktop/Wails共通部品は#1824、TEI Build GraphのStage0→Stage1→Stage2は#2831、三要素/組織のConsumerは#4501/#1124が既存Owner。Go単一バイナリの開発ツールを基本とし、外部Hostへ新しいTEI専用Hostを要求しない。
+
+| 段階 | 最小の実動作・独立Expected | 禁止する実証の読み替え |
+| --- | --- | --- |
+| **D0 実Desktop** | 同一HEADのWails/Go Desktopを実OSでビルド・起動。画面→既存Go共通API→応答を観測し、Workspace/Source版を表示 | CLIセルフビルドCI成功・JS描画・Bridge単体テストだけでDesktop起動PASSとしない（#1824） |
+| **D1 一つのData/CRUD表示と実Read** | 合成r7 C1のPerson/OrgUnit/Membershipを#4551の派生CRUDと表示。別例の受注Queryで#4539の実Provider Readを通常tei CLI→Studio Consumerへ接続し、Selected/Loaded/Invoked/Receivedを照合 | 異なる受注Queryと組織C1 Queryを同一実Readと合算しない。Org二時点実Query、coverage、現在Grantは未成立（#2586/#4501） |
+| **D2 TEIによるDesktop再構築** | D0のStudio Source/Plugin/Toolchain/Target/Artifactを既存TEI Typed Build Graphに束縛。trusted stage0→実stage1 TEIプロセス→stage2 Builder実起動→Studio実Artifact・Image・Receipt照合 | Go launcherが2回ビルド、同digest、Plan PreviewのみをTEIセルフビルドと呼ばない。L1/L2/L3を別判定（#2831） |
+| **D3 X-TEA三要素Plugin** | Data/Function/Business図、CRUD、参照/被参照、手作業TaskをStudioの業務向けPluginとして同じ受理Sourceから投影。Plugin無効時も汎用Studio操作は継続 | 汎用TEI Coreを三要素専用に固定しない。X-TEA原典との完全互換や実編集は別試験（#1124/#1125/#1251） |
+| **D4 編集とSHO/AI連携** | Source-backed Subject Pin→参照元/先へ移動→Preview→版再照合。SHO著者編集保全とAI後着・Source ABA負例 | 固定Pin/描画EdgeからGrantや正式Relation IDを推測せず、Write/Effect/ACKを別確認（#4515/#2516/#4501） |
+
+**最短の証拠票**：exact HEAD、Source Revision、Selected/Loaded/Invoked/Received、Process Image、Build Input/Toolchain、Artifact digest、Consumer、Scope、受入状態を**観測したものだけ**記録。D0とD2を一つのself-build PASSに合算しない。CLI実Provider接続とDesktopセルフビルドは並行P0であり相互のHard Gateではない。既存#1180/#2514の独立Expectedと#1119のCritical Pathを再利用し、第二Builder/Parser/Runner/Host/Scenario正本は作らない。
+
+**現況**：組織計画#4500 main統合（squash e5140059）。明示CRUD/Unused修正#4551 main統合（squash 1a2271d8）。外部解析REA #4547/#4548は独立Draftの候補受領であり、正式Meaning/受信/認可とは別。D0〜D4のDesktop実起動、Studio自己再ビルド、組織C1の実DB Query、X-TEA Plugin実受入は**NOT RUN**。
