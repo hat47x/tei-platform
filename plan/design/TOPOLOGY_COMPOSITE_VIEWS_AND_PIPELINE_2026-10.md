@@ -617,3 +617,51 @@ Catalog／Validate／Map／Locate等が同一fixtureを別Loadする場合、Fin
 | STQ-13 | Reference Commandのallowed入力／MemoryStoreを変更 | reference mode・非永続性を保持し本番認可・実DB Effectを主張しない。#2997／#1124 |
 
 **資格と優先**：P0は#4392の既存Validation修正のexact-head照合と#1124の安全なSelection、P1は上記Locate-firstの実Consumer受領、P2はSource逆編集と問別の認知負担を検証する。実Wails／WebView／実DB・Provider、Current Disclosure／Owner Acceptance、原子的な複数Read、Source watcher、STQ-09〜13の新試験はNOT RUN／NOT PROVEN。別Graph正本、Runner、Host必須化、Verifier、Registryを追加しない。
+
+### 16.8 2026-11-12：旧Sourceの無ID要素を扱うStudioの選択・逆編集境界
+
+**Ownerの区別**：[旧X-TEA source-faithful accounting #1031](https://github.com/hat47x/tei-platform/issues/1031)、[構造・原典Fit/Gap Draft #4473](https://github.com/hat47x/tei-platform/pull/4473)、[ReadWorkspaceSubjectの同offset別Subject負例 Draft #4504](https://github.com/hat47x/tei-platform/pull/4504)、[固定対象の状態管理 Draft #4479](https://github.com/hat47x/tei-platform/pull/4479)を再利用。本節はStudioの **source navigate→一時選択→Pinの現在資格→Source編集** の誤昇格防止だけを所有する。
+
+#1031の固定Source accounting v1ではTaskAction 148件のうちID属性なし35件、属性あり空文字113件、非空ID 0件である。これは固定旧Sourceでの観測であり、全製品・全X-TEAのID状況の一般化ではない。**Source token、XPath、文字offset、同名・同Function、画面位置を永続的な業務Semantic IDへ自動昇格しない**。
+
+| Studioでの操作 | 限定的にできること | 自動的に許されないこと |
+| --- | --- | --- |
+| 旧Sourceを読む／navigate | Origin・Source token/Span・親文脈・Observation版を示すread-only照合 | Located＝現在のStable Semantic Subject |
+| 表示Occurrenceを選択 | そのViewとReader Attempt内でのSelection Identityを区別 | 別版・別Workspace・同名Actionへの無断再束縛 |
+| 固定対象Pinを再利用 | 旧意図と未解決を保全し、現Source/Scope/Grantを再資格化 | Pin表示が残る＝送信・編集・意味受理の現在資格 |
+| TEI Sourceへ書き戻す | 正式Readerで解析した一意Source Anchor、現在Revision、可逆Patchと既存Acceptanceがある場合のみ案内 | Legacy XML・非可逆Graph・Raw Draftから自動Patch |
+
+[Authoring #2621](https://github.com/hat47x/tei-platform/issues/2621)の最新方針はTEI向け新規Authoring Sourceを *.tei.md とし旧 *.tei を段階的に移行すること。ただし[Migration Draft #3030](https://github.com/hat47x/tei-platform/pull/3030)の実Reader/Parser/Source Span/受入が成立するまでは、**拡張子やMarkdown保存成功だけではLoaded/Parsed/Accepted/Build入力とは表示しない**。未管理のRaw Draftを失わず保存・再開することと、管理Rootでの正式TEI Loader拒否、TEI意味受理を区別する。SHO Writer／Authoring Parserの二重実装はしない。
+
+### 16.9 旧観測 L／目標受理 D／新観測 T の問い相対なStudio比較
+
+**意味上の正本**：[TEA Draft #4487 §34.11〜34.13](https://github.com/hat47x/tei-platform/pull/4487)の L=Legacy Observed Actual、D=Desired Accepted Meaning、T=Target Observed Actualをそのまま利用。Data／Function／Businessは分析モデルの三観点、L/D/Tは観測・受理文脈の三種であり、27個の新Canonical/総合Equivalentフラグは増設しない。Studioが追加で担うのは、一つの問いQに対する **限定比較・出典への逆参照・提案可能な変更の境界** のみ。
+
+**最小用途**：「旧業務モデルの承認Actionに対応する新Functionが、Targetで実際に履行されたか」。
+
+| 比較欄 | 要求する独立した参照 | 判断の停止線 |
+| --- | --- | --- |
+| L（旧観測） | 固定旧Source・ActionのOccurrence・旧Function参照、旧実行ログがあればその実Attempt | Function-level CRUD UだけならAction固有の実Updateは未観測 |
+| L→D（対応候補／意図的変更） | 旧Occurrenceから目標Qualified SubjectへのMapping、差分、Owner採否 | 多対多・無ID・未受理差分を同一業務意味とみなさない |
+| D（目標意味） | 現在のOwner Accepted Meaning、Rule/Key/Function/Business Step、独立Expected | Raw Draft・定義候補をAcceptedと偽らない |
+| D→T（実現） | 実Consumed Plugin／Provider／Artifact、実Attempt／Effect／独立Readback | Generator PASS／ACK／同Byteから実業務達成を断定しない |
+| T（新観測） | 実Target Scope・Time/Rowset/Failure/Receipt、必要Coverage | LとのSnapshot・RLS・母集団の違いを消さず、partialなら比較不能 |
+
+StudioはQとL/D/Tの元参照を示し、対応候補・受理した意図的差分・未対応・比較不能を理由の許可範囲内で区別してSourceへ戻す。**L→DのMappingが存在し、D→Tが表示上一致しても、旧新の業務的実動作同値性を推移的に結論しない**。また意図的改善によりLとDが異なる場合のL≠Tを一律のFAILにしない。実Target／Owner判断は[#4125](https://github.com/hat47x/tei-platform/issues/4125)／[#1174](https://github.com/hat47x/tei-platform/issues/1174)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)に委譲する。
+
+Source改版・同offset別Subject・Workspace別Manifest、Rule/Method版、Provider/Artifact、Audience/Grantの変化では、過去の観測履歴を無条件で消す必要はない。しかし**現在の選択・開示・編集・実行・比較Claimの再利用は必要依存に相対的**であり、不明依存はunknownのままとする。選択的再検証・反例Ownerは[Draft #4509](https://github.com/hat47x/tei-platform/pull/4509)。新しいEvidence CacheやVerifier、全件一括再Buildを作らない。
+
+### 16.10 最小Studio反証（STQ-14〜19：全て新試験NOT RUN）
+
+| ケース | 差を加える対照 | Studio Consumerの独立Expected・担当 |
+| --- | --- | --- |
+| STQ-14 | 同名・同Function・無IDの旧TaskAction A/Bの間に新Action Xを挿入 | 旧BをA/Xへ自動Pin・Patchしない。旧Source位置だけならread-only・再確認。#1031/#1124/#4479 |
+| STQ-15 | Source同offsetを別Semantic Subjectで再使用 | 旧Semantic IDに再束縛しない。実Product Readerの同位置反例はDraft #4504を再実装しない |
+| STQ-16 | World/Index/ModelRevision同一だがWorkspace Manifestが異なる | 別WorkspaceのPin・Owner判断・編集権限を混同しない。#4504/#1120 |
+| STQ-17 | 旧Action→Function→CRUD Uを新Sourceへ再現、双方のAction実Effectは未観測 | 宣言・導出の一致と実Effectを別Claimにし、Unknownを保持。#1031/#4487/#1174 |
+| STQ-18 | Lと受理済みDで仕様が明示的に異なり、TがDに一致 | L≠Tを一律FAILにせず、受理済み差分と不意の損失を独立比較。#4487/#4125 |
+| STQ-19 | Raw *.tei.md 草稿は保存成功、TEI Parserは未束縛 | 草稿保存のみを成功と表示。Load/Meaning/Buildを未成立として扱う。#2621/#3030 |
+
+**最短接続**：既存Locate-firstで公開旧Sourceの一要素をread-only表示→D候補との対応をSource限定で確認→実Consumed／Targetは既存Ownerの観測を読込→一意な正式TEI Sourceだけを既存Preview／Acceptance／独立Readbackへ渡す。旧XMLのEditor・全TEA比較UI・外部Harness・Plugin/BOM・DB Cutoverは初回のP0要件にしない。#2586実Readと#1251実Plugin Invokeの優先を維持する。
+
+**未実証**：今回の追加は設計候補のみ。実Studio GUI/Wails、正式 *.tei.md Reader、旧XML Editor、L/D/T比較の製品Consumer、外部Source/Provider/DB、Owner意味受理、STQ-14〜19の実試験は全てNOT RUN／NOT PROVEN。新Core、Identity Registry、Host必須化、第二Source/Writerを導入しない。
