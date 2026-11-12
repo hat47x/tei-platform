@@ -1,0 +1,15 @@
+{
+  "schema": "tei.reference.b2c-change-input/v0",
+  "scope": "synthetic-public-pdp",
+  "baseRevision": "R0",
+  "candidateRevision": "R1",
+  "declaredScopeClosed": false,
+  "nodes": [
+    {"id": "pdp.banner", "layer": "content"},
+    {"id": "pdp.offer-rule", "layer": "business"}
+  ],
+  "edges": [{"from": "pdp.banner", "to": "pdp.offer-rule"}],
+  "changed": ["pdp.banner"],
+  "required": ["pdp.banner", "pdp.offer-rule"],
+  "unobserved": ["external-cms-dynamic-link"]
+}
