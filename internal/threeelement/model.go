@@ -171,17 +171,47 @@ func NewThreeElementModel(modelID, name string) ThreeElementModel {
 }
 
 // Index builds lookup maps by stable ID for each element kind.
+// A duplicate ID WITHIN a kind is ambiguous: leave it out of the lookup
+// instead of silently selecting the last definition. Validate reports each
+// collision as an error. Equal IDs across different kinds remain distinct.
 func (m ThreeElementModel) Index() (map[string]DataElement, map[string]FunctionElement, map[string]BusinessElement) {
 	data := map[string]DataElement{}
+	ambiguousData := map[string]bool{}
 	for _, e := range m.DataElements {
+		if ambiguousData[e.ID] {
+			continue
+		}
+		if _, exists := data[e.ID]; exists {
+			delete(data, e.ID)
+			ambiguousData[e.ID] = true
+			continue
+		}
 		data[e.ID] = e
 	}
 	fn := map[string]FunctionElement{}
+	ambiguousFunction := map[string]bool{}
 	for _, e := range m.FunctionElements {
+		if ambiguousFunction[e.ID] {
+			continue
+		}
+		if _, exists := fn[e.ID]; exists {
+			delete(fn, e.ID)
+			ambiguousFunction[e.ID] = true
+			continue
+		}
 		fn[e.ID] = e
 	}
 	bus := map[string]BusinessElement{}
+	ambiguousBusiness := map[string]bool{}
 	for _, e := range m.BusinessElements {
+		if ambiguousBusiness[e.ID] {
+			continue
+		}
+		if _, exists := bus[e.ID]; exists {
+			delete(bus, e.ID)
+			ambiguousBusiness[e.ID] = true
+			continue
+		}
 		bus[e.ID] = e
 	}
 	return data, fn, bus
@@ -190,6 +220,36 @@ func (m ThreeElementModel) Index() (map[string]DataElement, map[string]FunctionE
 // Validate runs structural checks and returns diagnostics.
 func (m ThreeElementModel) Validate() []Diagnostic {
 	var diags []Diagnostic
+	// Detect collisions against the SOURCE arrays before building any lookup.
+	// Index intentionally omits ambiguous identities, and a missing lookup
+	// must not be mistaken for a valid unique subject.
+	appendDuplicateID := func(kind, id string, position int, first map[string]int) {
+		if id == "" {
+			return // EMPTY_*_ID is reported by the existing validation.
+		}
+		if prior, exists := first[id]; exists {
+			diags = append(diags, Diagnostic{
+				Code:       "DUPLICATE_" + strings.ToUpper(kind) + "_ID",
+				Severity:   "error",
+				Message:    fmt.Sprintf("%s id %q is duplicated at positions %d and %d", kind, id, prior, position+1),
+				SubjectIDs: []string{id},
+			})
+		} else {
+			first[id] = position + 1
+		}
+	}
+	dataPositions := map[string]int{}
+	for i, e := range m.DataElements {
+		appendDuplicateID("data", e.ID, i, dataPositions)
+	}
+	functionPositions := map[string]int{}
+	for i, e := range m.FunctionElements {
+		appendDuplicateID("function", e.ID, i, functionPositions)
+	}
+	businessPositions := map[string]int{}
+	for i, e := range m.BusinessElements {
+		appendDuplicateID("business", e.ID, i, businessPositions)
+	}
 	dataByID, fnByID, busByID := m.Index()
 
 	for _, e := range m.DataElements {
