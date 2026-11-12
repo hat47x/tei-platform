@@ -79,3 +79,42 @@ K2の各Gateは将来のTEI標準データ構造とLifecycle図から表現・�
 | E7 | Source digest同値・Provider Manifest版変更 | Build/Invoke再検証、旧Receiptを現在実行の証明にしない |
 
 **状態**：E1〜E7は計画上の独立Expectedであり**NOT RUN**。NAS/S3連携、Selection Context固定、Lifecycle生成、共通Harnessの正式接続をK2実装済みとみなさない。
+
+
+## 2026-11-12 三要素分析法・標準データ表現・横断検証への接続
+
+### モデルの意味と出典の関係
+
+TEIで業務モデルを記述する際は、渡辺幸三氏の**三要素分析法**を基準用語として用い、X-TEA Modelerで示されるData/Function/Businessの図面・相互参照・CRUD表を可能な限り正確に扱う。OKFのConceptやRelationを三要素分析法のモデルへ自動的に同一視しない。対応付けは**出典付き候補→独立した意味照合→Owner受理**の順とし、X-TEAの原方式から拡張・変更した箇所は明記する。
+
+K2のReaderが受領するものはまず**原文と構造候補**であり、Data/Function/Business上の業務的意味ではない。K2-CのRequired閉包は「必要なSource/Role/Relationを受領したか」を確認する段階であって、業務概念の受理ではない。構造のidentity/方向/多重度を失わず、同label別Identity・多重辺・複合キー・NULL/欠損/非開示を別々に表現する。
+
+### 標準データ構造・DSLとOKFの境界
+
+TEI標準データ表現（基本型、コレクション、表、グラフ、階層、時系列等）へOKFを投影する場合、原文の型・Source Location・Revision・粒度・単位・精度・NULL/欠損・未知拡張を失わないことを受入条件とする。Markdown/Graphviz/関数チェーンは糖衣表現として扱えても、編集・保存時に原表現を破壊しない。**Everything is Data**による関数・Ruleの自己記述は将来の表現基盤として利用できるが、OKFの実Provider実行とOwner受理を代替しない。
+
+日常DSLはドメイン専門家の可読性を最優先とし、Go固有のstruct/func/import等を露出しない。TEI Queryのwhere/aggregateやRDB/階層/グラフの横断取得は独立Capabilityとして扱う。OKF Readerの成功からSQL生成、DB方言吸収、SmartDB保存、業務トランザクションを実装済みとみなさない。
+
+### Provider契約と効果境界
+
+Provider契約はCapability/Offer/Binding/Selection/Build/Invoke/Receiptの段階を分ける。DB Provider、OKF Reader、Target Generator、Language Plugin、Operator Contract Providerを同じ「Plugin」の名で効果的に混同しない。**read-only Reader**の合格をWrite/Deploy/DB Commitの権限に転用しない。
+
+業務Functionの例（`order_entry.recent_orders`）とApplication APIの例（`sales.order.submit`）は、K2 Readerとは別の縦切りとして追跡する。後者のEffect/Operation Identity/重複実行防止/実Receiptは、X-TEA由来のSmartDB・XF実行検証で既知の例外後状態残留やDB制約拒否を考慮し、静的な成功経路だけで受理しない。
+
+### 横断の敵対的テスト
+
+| 反例 | 期待する判定 |
+| --- | --- |
+| OKFの同名Conceptを別ScopeのData/Function/Businessモデルへ誤Binding | identityとSourceを照合し拒否。名称一致のみで意味受理しない |
+| 同label二ノード・多重有向辺をグラフ表示へ投影 | node/edge identity、方向、多重度、属性を保持。Lossがあれば診断 |
+| `NULL`、空集合、未取得、permission-deniedを同一値へ畳み込む | 型・状態を区別。Requiredの完備はFAIL/UNKNOWN |
+| 構造候補の変更を伴わないSource Revision更新 | Source Observationを再照合。Meaningの自動再受理はしない |
+| 同一SourceでGenerator/Toolchainだけ更新 | Artifact/Evidence再利用を別判定。旧Receiptを現実行へ流用しない |
+| Read-only OKF ProviderをWrite/Deployとして呼ぶ | Capability/Effect/Current Host Grantで拒否 |
+| SQL Nativeと標準Queryの変換で業務条件が欠落 | 独立Expected・負例比較で検出。自動最適化を意味一致とみなさない |
+
+### CI・検証証拠（限定）
+
+2026-11-12確認：本PRの旧exact HEAD `07d68486c9ef814e23a2fde737762f20e275ffc2` に対して、[TEI PR・main健全性確認 #43147121828](https://github.com/hat47x/tei-platform/actions/runs/43147121828) と [TEI Cache Full vs Incremental Verification #43147121814](https://github.com/hat47x/tei-platform/actions/runs/43147121814) は**completed/success**。この証拠は当該HEAD・当該CIに限定し、後続コミットの成功、K2実Provider、三要素分析法の正式受理、DSLの完成を証明しない。
+
+**次のゲート**：P0の実Call Siteマトリクスを現mainのコード・テスト・固定SHAで埋める。K2-Aに必要な「選択B→実Load B→実Invoke B→独立Expected」を一つの実Attemptで確認できない限り、K2-AをPASSにしない。
