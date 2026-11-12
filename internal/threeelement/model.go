@@ -375,6 +375,18 @@ func (m ThreeElementModel) Validate() []Diagnostic {
 		}
 	}
 
+	// Conflicting explicit CRUD definitions are not merely a supplementary
+	// report: they make the model structurally ambiguous. Emit errors here so
+	// both Validate() and ValidateModel().OK agree on admissibility.
+	for _, crud := range m.ContradictoryCRUDs() {
+		diags = append(diags, Diagnostic{
+			Code:       "CONTRADICTORY_CRUD_DEFINITION",
+			Severity:   "error",
+			Message:    fmt.Sprintf("CRUD %q conflicts with another definition for function %q and data %q", crud.ID, crud.FunctionID, crud.DataID),
+			SubjectIDs: []string{crud.ID, crud.FunctionID, crud.DataID},
+		})
+	}
+
 	sort.Slice(diags, func(i, j int) bool {
 		if diags[i].Severity != diags[j].Severity {
 			return severityRank(diags[i].Severity) < severityRank(diags[j].Severity)
@@ -472,20 +484,24 @@ func (m ThreeElementModel) MissingBusinessFunctionMapping() []string {
 	return out
 }
 
-// ContradictoryCRUDs returns CRUD definitions that conflict within the same function-data pair.
+// ContradictoryCRUDs returns every later CRUD definition whose operation
+// flags conflict with the preceding definition for the same Function/Data pair.
+// Keep source order and the source definition intact; never silently choose a
+// winning definition when constructing validation evidence.
 func (m ThreeElementModel) ContradictoryCRUDs() []CRUDDefinition {
 	type pair struct{ fn, data string }
 	best := map[pair]CRUDDefinition{}
+	var conflicts []CRUDDefinition
 	for _, crud := range m.CRUDDefinitions {
 		key := pair{crud.FunctionID, crud.DataID}
 		if prev, ok := best[key]; ok {
 			if prev.Create != crud.Create || prev.Read != crud.Read || prev.Update != crud.Update || prev.Delete != crud.Delete {
-				return append([]CRUDDefinition{}, crud)
+				conflicts = append(conflicts, crud)
 			}
 		}
 		best[key] = crud
 	}
-	return nil
+	return conflicts
 }
 
 // UnknownDependencies returns function invokes that reference nonexistent functions.
