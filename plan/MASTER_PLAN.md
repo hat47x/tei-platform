@@ -1404,6 +1404,8 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 - **Case C1の接合**：Membership変更≠Case責任移管≠Rule候補≠現行Host Grant≠Effect Receipt≠Handoff ACK。Source/Meaning、実Query/Read Cohort、Business Decision、Authority/Effect、Consumer受信のそれぞれを同一Attemptで明示的に照合。単なるCase ID/World hash一致は同一資格の証拠ではない。
 - **優先順位**：全体の実Provider Read #2586 HJ-09を最優先に保ち、組織C1の合成Behavioral Expectedを並行作成。続いて実Org Rowset/Scope #2506/#2622、三視点/GUI/SHO #1124/#2497/#2516、Host Grant/Effect #1174/#2499、業務Handoff #1125/#1444へ接続。各段階は実測・未実行・Owner未受理を分ける。普通の組織Dataを組織管理モジュールというだけで特別な秘密情報にしない。
 
+**三要素分析法・REAの補強（§10.7）**：X-TEA Modelerの三要素分析法（Data/Function/Business）を方法論名として正確に用い、TEI独自のSource/CRUD/Evidence接合を拡張として明示。Task契機≠Function起動、Function成功≠Business完了、REA Agent≠認証Principal、DB FK/SQL観測≠業務意味受理、Studio/SHO/AI Selection≠Source更新資格をCX-13〜18で判別する。実行計画は#4501、#1125/#1444、#2586/#2387、#1124/#2516の既存Ownerへ配分し、新Core/Runtimeを増やさない。
+
 **採否**：新規Source/Rule/公的契約や業務責任の解釈はOwnerの意味受理が必要。本追補はdocs-onlyであり、実Org Provider/Host・SHO/HarnessとのOrg C1 E2E・Owner意味受理は **NOT RUN**。
 
 ## 先に固定しないもの
