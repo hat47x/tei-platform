@@ -764,3 +764,51 @@ Readに失敗した場合はValidationが`false`なのではなく**未観測**�
 **新たな6件の合成T18負例**: (a) Read成功＋Validation NGでも三視点read-only Occurrenceを保持、(b)warning>0でも`validation.ok=true`をそのまま表示、(c)Read失敗/未観測・Validation欠落から`false`を発明しない、(d)同じ表示IDでも別Workspace/Snapshot/Scopeは拒否、(e)件数・booleanの型不正や負数を拒否、(f)秘密Source metadataやGetterを評価せず拒否。現行の合成Reference計**37件（Public Slice14 / Trait17 / Catalog6）**をGitHubから取得した正確な3ソース・3テストでV8互換ハーネスにより**37/37 PASS**。これは**正規Node test runnerの完了結果ではなく、実Go Workspace・実Catalog JSON・現在Policyを受領したテストでもない**。更新後exact-headの専用Node CIとRepository Healthは別途確認する。
 
 特に**グローバルなValidationのError/Warning総数**は非公開Sourceに由来し得るため、公開可能かの判定は#2516が先に行う。未開示の生Countsを「TEAが実際に秘密を除去する」目的で流し込まない。合成RuntimeはAssessment・個別Subjectの健全性・Editable・Owner Meaningを創作しない。今後T21〜T23へ接続するには、**実Catalog Producerの読取版・Workspace・Scope・現在Disclosure→同一Workbench Consumer**の別資格を必要とする。
+
+## 23. Lifecycle Graph・AI Harness・三視点Modelerの統合資格（2026-11-12）
+
+**状態**：RQ-036/#3503/#1124/#3278/#1180/#2514への設計引渡し。Graph Compiler、Diagram Writer、AI Chat/VUI/Harness実Target、実DB/Effect、Owner受理はNOT RUN。Draft #3507の旧Branchは現時点で参照できないため、本節を独立した既存設計への追補とする。第二Graph正本/Resolver/Workflow Host/Scenario Runnerは作らない。
+
+### 23.1 Authoritative / Proposed / Effective / Observedを分離
+
+| 対象 | 意味・資格 | 確認点 |
+| --- | --- | --- |
+| Authoritative Source / Accepted Meaning | 業務意味・型・Relation・Operation・Owner受理 | Source/Revision/Scope/Meaning |
+| Proposed Graph Patch / AI Candidate | 人/AI/Harnessが提案したNode/Edge/Guard/Binding変更 | stable ID、対象選択、競合、出典。未受理なら実行不可 |
+| Effective Graph / Selected Provider | 受理済みSourceと選択Pluginを合成した構造 | Lock、型、全Path Obligation、未選択Plugin非干渉 |
+| Generated Target / Actual Invocation | Artifact、実Host/Consumer、Effect/Receipt | 選択B→実B呼出し、Target Coverage、Effect/Unknown |
+| Diagram / Session / Observed Trace | 編集・表示・文脈・実行観測の投影 | Read/Disclosure、現在Grant、同一Attempt/Scope |
+
+**固定Selection Context**：UIのハイライト/行番号ではなく、stable qualified Subject ID＋Source span＋Workspace/World/Snapshot/Revision＋Scopeを保持する。選択解除、Canvas切替、Harness切替で対象を暗黙変更しない。旧Revisionの変更は競合として提示し、AIが意味対応を推測して自動再結合しない。
+
+### 23.2 各製品への投影
+
+- **TEI Modeler**：Data/Function/Business、Event/State、Lifecycle/Plugin、CRUD/Relation Cross-referenceを標準Graph/Roleから投影。Edge ID、多重性、向き、NULL/Absent、Source位置を欠くProjectionはread-onlyとする。
+- **SHO Composer**：文章・表・図への引用と挿入でSource/Accepted Meaningの資格を保持。引用先が同名異内容へ変化した場合は保存・再開時に再解決。SHO編集をTEI業務正本へ自動昇格しない。
+- **SUI/CSW**：Card/Island/KJ法的な探索Clusterは候補構造であり、業務Relation/OperationのAuthorityではない。Owner受理前はProposed Graphに留める。
+- **共有AI Harness**：セッション・文脈・Selection Contextは製品間で受け渡せるが、現在Grant/Disclosure/Effect/Source資格はOperationごとに再検証。DSH/Codex/Claude Code等は等価なAdapter候補として扱い、標準Graphを特定実装へ従属させない。
+- **AI Chat/VUI**：Stream delta、partial tool arguments、ASR候補は未確定Event。Tool Intent確定→Host権限→Application Operation→Effect/Observationを区別し、Regenerate/Branch/Interrupt/Resumeで旧Effectを暗黙再実行しない。
+
+### 23.3 独立Expected候補（既存Scenario SSOTへ返す）
+
+| ID | 敵対的入力 | Expected |
+| --- | --- | --- |
+| LGX-17 | UI選択固定後に別Canvasへ移動してHarnessへ送信 | 元Subject/Source/Revisionを保持し、対象の暗黙変更なし |
+| LGX-18 | AIがEdge変更を提案するがOwner未受理 | Proposed表示可、Effective/Artifact/Effectは不変 |
+| LGX-19 | 同名の多重Edgeを図表編集 | Edge IDごとに識別。曖昧ならread-only/拒否 |
+| LGX-20 | Source A→B→A、Sessionは継続 | 旧Meaning/Grant/Artifact/Evidenceを自動復活させない |
+| LGX-21 | Chat partial Tool入力・音声候補でUI更新 | 表示更新可、Application Operation実Callは0 |
+| LGX-22 | CLI→Studio→HarnessでFunction/Source/Attempt照合 | Selected/Loaded/Invoked/Received/Effectを別証拠とし欠落はUNKNOWN |
+| LGX-23 | SHO引用後に同名異内容のSourceへ差替え | 旧Source同一性を主張せず再解決/差分を要求 |
+| LGX-24 | B2C Headlessが標準Rendererを使わない | Operation契約維持、TEI必須Browser Runtime/DOM/hopなし |
+
+上記はテスト実行結果ではない。#1180/#2514がExpected/Scenarioを所有し、既存LG/TLG/MAPとの重複を統合する。Selection Contextは#1124/#3262、Plugin/Graph合成は#3503/#3278、実Provider/Function Readは#1251/#2586へ引渡す。
+
+### 23.4 実装順序と停止条件
+
+1. **P0**：通常CLI/Studioの選択Provider実呼出し、Function→Query→実SQL/Rowset→Data Contextを同一Attemptで観測。合成Go試験と製品実行を区別。
+2. **P1 read-only**：実WorkspaceのM0 Model Map/Source Indexでstable ID・多重Edge・対象固定・Scope/Disclosureを確認。
+3. **P1 Graph Patch**：既存OperationへのValidation追加と条件分岐。Guard/Effect/Authority迂回を拒否し、Source帰還→Target生成を検証。
+4. **P2**：Chat/VUI/Harness/SHO/B2Cを異質Adapter/Projectionとして検証。Session継続とAuthority継続を分離。
+
+**停止**：第二正本/権限Engine/Hostを導入、候補を受理済みMeaningへ自動昇格、同名をIdentity扱い、実Provider未呼出しでE2E PASS、Session継続をGrant継続扱い。いずれも方式再検討の対象。
