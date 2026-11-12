@@ -665,3 +665,43 @@ Source改版・同offset別Subject・Workspace別Manifest、Rule/Method版、Pro
 **最短接続**：既存Locate-firstで公開旧Sourceの一要素をread-only表示→D候補との対応をSource限定で確認→実Consumed／Targetは既存Ownerの観測を読込→一意な正式TEI Sourceだけを既存Preview／Acceptance／独立Readbackへ渡す。旧XMLのEditor・全TEA比較UI・外部Harness・Plugin/BOM・DB Cutoverは初回のP0要件にしない。#2586実Readと#1251実Plugin Invokeの優先を維持する。
 
 **未実証**：今回の追加は設計候補のみ。実Studio GUI/Wails、正式 *.tei.md Reader、旧XML Editor、L/D/T比較の製品Consumer、外部Source/Provider/DB、Owner意味受理、STQ-14〜19の実試験は全てNOT RUN／NOT PROVEN。新Core、Identity Registry、Host必須化、第二Source/Writerを導入しない。
+
+### 16.11 2026-11-12：問いに相対的な表現選択と変更後のClaim表示（Studio Consumer契約）
+
+**対象の境界**：標準構造／表現の適合判定は[#4350](https://github.com/hat47x/tei-platform/issues/4350)・[#2497](https://github.com/hat47x/tei-platform/issues/2497)・[Draft #4464](https://github.com/hat47x/tei-platform/pull/4464)、Derived Claimの変更影響は[#2582](https://github.com/hat47x/tei-platform/issues/2582)・[Draft #4335](https://github.com/hat47x/tei-platform/pull/4335)、再利用・省略検証は[#2600](https://github.com/hat47x/tei-platform/issues/2600)がOwner。本節は **Studioで利用者が実際に見るViewの用途・損失・現在性・編集誘導を整合させること** に限定する。新Projection Matrix、Change-impact Engine、共通Status、Graph SSOT／Cache／Hostを設けない。
+
+[#4464](https://github.com/hat47x/tei-platform/pull/4464)のReferenceは4構造×8表現型の32組中11組を合成fixtureで判定し、残る21組はuncoveredである。判定はpreserved／lossy／unqualified／unknown／rejectedとinverseを区別するが、実Renderer／Product Consumerの保証ではない。行のbestは**検査した表現候補間の局所的な最良判定**であり、問いQや全表現の世界最適、編集・実行許可を意味しない。特にpreservedな投影も直ちに可逆な編集ではない。用途を問わない自動Best View選択は見送る。
+
+**Qを先に固定する利用導線**：一つのQualified SubjectとScopeで「元の関係を調べる／第二の親や書込みが存在しないか／変更を検討する／過去・目標・Target実現を比較する」などの目的を分け、必要なIdentity・Relation direction/multiplicity・grain・order・presence/NULL・unit・time・Coverage・Disclosureを**既存のTask/Source/Facet/Context**から参照する。User Queryを新DSLで正本化しない。表示候補は、(a)必要な観点を保てる、(b)許容Lossを明示したread-only説明に限る、(c)未検証/未カバー、(d)拒否の4つの使い道へ整理し、Producerの5判定をUIで上書きしない。
+
+**図中になければ無い**の境界：本人が問うQに必要な辺／Source／Provider／未観測・省略を覆う閉包があり、Audienceに許可された範囲で「対象全件を表した」と立証できるときだけ、限定された範囲の不存在を扱う。多重Graph→Treeの参考投影は、別の親／edge-multiplicity／hidden-edgeを失うので「このTreeの親が1つ」という表示から「他の親は存在しない」としてはならない。非公開Relationの存在や件数そのものは低権限Viewerに漏らさない。完全性が認定できない場合の既定表示は、利用者が必要に応じて展開する**限定根拠＋対象外/未確認の表示**とし、大量のProof項目を常時画面へ置かない。
+
+### 16.12 変化の伝播：内容の再利用・Source位置・表示内容・操作許可は独立
+
+[Draft #4335](https://github.com/hat47x/tei-platform/pull/4335) のread-only純関数AssessChangeImpactは、Producerが明示した一つのDerivedIRとSource occurrence→Context bindingを入力としてretain／recheck／unknownを返す。**retainは元からあった適格性を保つだけで、新たな完全性や更新権限を与えない**。opaque／未束縛・partial lowering／非単調演算／未完全LEFT JOIN／Predicate副問合せでは依存閉包と否定命題に注意する。現DraftのoperationEligibilityはnot-evaluatedであり、実Provider/DB/Host GrantやStudioの再描画に接続済みと主張しない。
+
+| 変化・問い | 読取／内容の現在性 | Studioの別途再資格化対象 |
+| --- | --- | --- |
+| 無関係D2変更、QはD1だけ、Declared/Consumedの必要閉包が完備 | 限定したQの既存read-only Claimをretain候補にできる | Source Anchor・Selection・現在Disclosure/Grant・実受信は別。無条件Current/Editableへ昇格しない |
+| D2の変更がJOIN/集約/NOT EXISTSを通る、または負例となるWriterが追加 | 関係するClaimはrecheck。非単調処理では以前の表示行が撤回され得る | 再取得前の古い結果を現在の全称/不存在や編集根拠に使わない |
+| 依存閉包がopaque/partial/未受領・Producer/Reader不一致 | unknown。安全な再取得省略や「変化なし」を主張しない | 表示の取得時点・必要Sourceを示せる範囲でread-only、受入や実行は保留 |
+| Source byte／移動だけ変化、World構造や画面値は同じ | 意味構造の履歴は保持し得る | Source Locator・ModelRevision・引用・旧Pin/Undo/逆編集の現在資格は再検査。#4504/#4514に委譲 |
+| Reader/Provider実装・Plugin選択／BOM・Artifact変更、表示bytesは同じ | 旧Artifactや歴史Receiptは保全可能 | 必要実Consumed経路とBuild/Invoke/Effect/Evidenceを再資格化。#1251/#2586/#2831に委譲 |
+| Grant／Audience／Purpose／Policyだけ変化 | Accepted Meaningの履歴や公開可能な無関係Claimまで消す必要はない | 現在開示／旧DOM・ARIA・AI Context・外部送出許可を再評価。#2516、既存Pin #4515 |
+
+**同一画面での原則**：Source位置を再確認すべきこと、表示値がread-onlyとして再利用できること、検証がunknownであること、操作が現在許可されることを、ひとつの緑チェックにまとめない。表示できる根拠の不足を「データなし」と解釈せず、逆に影響を受けない一つのClaimのために無関係な全View/全Buildを無条件失効させない。影響の探索は**方向付きの実依存**に従い、逆方向ナビゲーションから逆向きの意味依存を推論しない（[#1143](https://github.com/hat47x/tei-platform/issues/1143)）。
+
+### 16.13 最小Consumer反証・評価（新規STQ-20〜25、全てNOT RUN）
+
+| ケース | 独立に変える入力 | Studio ConsumerのExpectedとOwner |
+| --- | --- | --- |
+| STQ-20 | 順序付き明細→Tableはpreserved、Source変更直後はAnchor未再読 | 表現の保存判定を表示してもSource逆編集／現在Grantを有資格へ昇格しない。#4464/#1124 |
+| STQ-21 | 多重有向Graph→Treeで同一Childに別Parentと多重Edgeがある | Treeは損失を持つ参考表示。対象Parent以外なしと断定せず、元Relationを無根拠に編集しない。#4464/#2497 |
+| STQ-22 | 4構造×8表現の未カバー21セル中の組を指定 | safe/bestやimpossibleを捏造せず未判定を返し、既存Source/Generic Inspectへの代替を示す。#4350/#4464 |
+| STQ-23 | 独立Context D2だけ改版。D1のみのClaimとD1+D2 JOIN Claimを同じViewに表示 | 前者は閉包が証明できる場合だけretain、後者はrecheck。全View一律PASS／一律失効を避ける。#4335/#2600 |
+| STQ-24 | Queryは同じだがPredicate副問合せ／opaque／partial lowerが変更Contextを読み得る | unknownをretainに丸めず、未確定な非存在・Update資格と区別。#4335/#2582 |
+| STQ-25 | Source移動／A→B→A・Grantのみ変更。Rendered値と構造WorldFPは同じ | Source navigate・Pin再解決・現在開示・編集許可の独立再資格化。歴史Claimを全廃しないが旧権限を復活させない。#4504/#4514/#4515/#2516 |
+
+**実施順**：P0の実Function→Provider→Rowset→Consumer [#2586](https://github.com/hat47x/tei-platform/issues/2586) とPlugin selected→actual invoked [#1251](https://github.com/hat47x/tei-platform/issues/1251) は先行のまま。Studio P1は既存Locate-firstの一Subjectで、Qの限定範囲・NotDerived・Source跳躍・Viewのlossy判定を**別Observer**から示せるか対照する。P2で既存Query/Providerの実依存が得られたClaimだけ選択的再確認し、編集/公開/Target作用のGateは別のまま維持。認知負荷測定は[#2018](https://github.com/hat47x/tei-platform/issues/2018)と[#1124](https://github.com/hat47x/tei-platform/issues/1124)の同一Task・独立Expectedで、誤った不存在・誤った編集・不要な再確認・操作時間を対照する。
+
+**資格**：#4464はReferenceの合成Matrix、#4335はDraftのread-only純関数であり、Studio内の実Context/Current Grant/実Renderer/差分Refreshが出来上がったという意味ではない。本節は設計候補。STQ-20〜25、実Studio/Provider/DB/Owner意味受理、利用者実測はNOT RUN。新Schema・第二判定器・Universal Cache・Host/Registry/Readerを導入しない。
