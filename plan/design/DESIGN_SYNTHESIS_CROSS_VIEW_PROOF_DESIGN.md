@@ -672,3 +672,31 @@ Design Synthesis
 
 新たなData Modeler、Proof Engine、Context Registry、Acceptance Authority等の重複した製品機構を、説明の都合だけで導入しない。
 
+### 16.7 意味の同一性とScope相対の結論を、図表・AI・Runtimeで整合させる
+
+実装の現状を将来仕様の上限にはしない。設計したい価値は、**同じSubjectを扱う人・AI・Targetが「その問いに対してどこまで言えるか」を同じ意味で説明できること**である。
+
+ただし、`scope`が同じ文字列だからといって、以下を等号で結ばない。
+
+1. **Identity/Meaning scope**：どのSubject・Occurrence・Accepted Modelの話か（既存#1120）。
+2. **Required/Query scope**：判断に必要な集合・粒度・時点・依存は何か（既存#3262/#2506）。
+3. **Observed/Coverage scope**：実Providerが読んだ範囲、部分／完全性、単一Attemptは何か（既存#2586/#1163）。
+4. **Disclosure scope**：Consumerへ何を開示できるか。見えない存在・件数の推測も禁止条件に含む（既存#2516）。
+5. **Authority/Effect scope**：現在どのCallerとTargetがどの変更・副作用を許されているか（既存#1174）。
+
+これは五つのCore型を必須化する提案ではなく、**異なる正本と判定責務の対応関係**である。新しいContext Registry/Permission Engine/Proof DBを作らず、既存の対象参照・Query・Evidenceを使い、主張の用途に必要なScopeだけを照合する。
+
+#### 判別の最小例（未実行の計画）
+
+| 対照 | 想定入力 | 必要な結論 |
+| --- | --- | --- |
+| SCQ-01 正常0件 | 現在Scopeで対象を完全取得し、RLSやCursor truncationなし、0件を独立観測 | **その問合せScope内の0件**。別Tenant・過去時点・未列挙世界の不存在は主張しない |
+| SCQ-02 非開示／未読 | 同じ意味Subject、部分取得、または許可されない属性・Tenantがある | 非存在と断定せず、開示できる状態と診断を返す。秘匿した対象の存在／件数を漏らさない |
+| SCQ-03 読めるが書けない | 図・AI ContextへSubjectは表示できるが、現在Edit/Host Grantを持たない | NavigationとReadは可、Edit Intentの適用は不可。図上のSelectionをAuthorityにしない |
+| SCQ-04 合成で適格性が失われる | D→Representation→AI概要へ変換し、途中で粒度・欠測・Subject Refが失われる | 各表示が成功していても、元Dataの業務不存在／一意な逆編集／全体Coverageは主張しない |
+
+評価順は「対象と問いを特定→Requiredな意味とSourceを解決→ScopeごとのObserved/Disclosed/Authorizedを照合→Supported/Unresolved/Contradictionを用途相対に返す」。固定された単一巨大Scopeや、普遍的な「全世界で完全」という表示は採らない。
+
+**今後の仕様最適化の問い**：既存のScope参照、Function Data Context、Read-only Projection、Proof Obligationを繋ぐだけでSCQ-01〜04を正しく説明できるか。できなければ欠ける参照・必要な不変条件だけを追加し、既存Projector/Context/Permissionの第二正本は作らない。結果は#3262/#2497/#2516/#1124と共有する。コード移行・実Provider/GUI試験・Owner意味受理は本節では実施していない。
+
+
