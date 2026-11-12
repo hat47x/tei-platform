@@ -1236,7 +1236,7 @@ OKF等の文書管理、SHO文書、Git/NAS/S3等の外部Evidence保管は出�
 
 ## 25. 2026-11-13 製品縦断への収束：自己記述・生成器・Function起動・セルフビルドを結ぶ
 
-§23のD0〜D4、§24のG1→G3→G2は、**成立を区別するための段階**であり、それぞれに別の製品エンジンを設ける意味ではない。Studio・Function起動・データ様式・AI Harness・Self-Buildの議論を踏まえると、最優先目標は**図表とDSLに記述された意味から実際のFunctionを呼び出せること、さらにTEI自身の実成果物を再構築できること**である。GUIが完成するまで製品CLI/共通APIの実証を止めない。
+§23のD0〜D4、§24のG1→G3→G2は、**成立を区別するための段階**であり、それぞれに別の製品エンジンを設ける意味ではない。Studio・Function起動・データ様式・AI Harness・Self-Buildの議論を踏まえると、最上位の製品目標は**TEI Studio Desktopを構築し、その実成果物をTEI自身の定義・実行経路で再構築できること**である。実Functionの起動は製品機能を先に検証する独立レーンであり、Desktopセルフビルドそのものではない。GUIが完成するまで製品CLI/共通APIの実証を止めない。
 
 本節は既存の[#4495](https://github.com/hat47x/tei-platform/issues/4495)（Function→Entry→実Invoke）、[#4536](https://github.com/hat47x/tei-platform/issues/4536)（Role読取）、[#4544](https://github.com/hat47x/tei-platform/issues/4544)（Generator構成・Conformance）、[#2831](https://github.com/hat47x/tei-platform/issues/2831)（全体Self-Build）を**別Ownerのまま接続**する。新Coordinator、第二Resolver/Registry/Host、新しいG0〜G4 Gateは作らない。
 
@@ -1254,7 +1254,7 @@ OKF等の文書管理、SHO文書、Git/NAS/S3等の外部Evidence保管は出�
 
 | 順序・Owner | 最小検証と成立した場合の上限 |
 | --- | --- |
-| **P0-X #4495（製品最優先）** | pure/read-only Function一件を同じEntryから直接Typed Application APIと実tei CLIで起動。Source/Meaning/Entry/selected Provider/loaded implementation/actual Invoke/Resultを一改訂で追跡。結果一致でもB選択A実行は拒否。Product Function起動の局所資格まで |
+| **P0-X #4495（Function実行レーンの最優先）** | pure/read-only Function一件を同じEntryから直接Typed Application APIと実tei CLIで起動。Source/Meaning/Entry/selected Provider/loaded implementation/actual Invoke/Resultを一改訂で追跡。結果一致でもB選択A実行は拒否。Product Function起動の局所資格まで |
 | **P0-S #4536（並行）** | fx.rateの独立Required Sourceと実Reader/Role解釈を接合。汎用GeneratorやGUIを待たずにGapを特定 |
 | **P0-G #4544（並行）** | 既存line-amount Contractで標準Generator選択・意味的Conformance・既知Mutantを検査。参照Generator合格をP0-Xに足さない |
 | **P1-J #4495×#4544** | 同じAccepted Function/ContractをInputにできる場合のみ、Generator構成→生成したEntry/Provider→製品CLI実Invokeを一Attemptで比較。Contract Fit不成立ならjoinも不成立 |
@@ -1292,3 +1292,56 @@ SJ-01/02はP1-Jで優先、SJ-03/04は#2600/#2595、SJ-05は#2831、SJ-06/07は#
 ### 25.5 今回の状態
 
 #4495/#4536/#4544/#2831と既存設計を静的に照合した設計追補のみ。SJ-01〜07の新Go/CLI/Studio/Builder実行、同じMeaningのRole→Generator→Function→製品Invoke結合、TEI Stage1実プロセスからのStage2再入、Owner意味受理は **NOT RUN / NOT PROVEN**。既存#1119のG0〜G4は変更しない。
+## 26. 2026-11-13 Desktop自己構築を最優先にする実装計画と最小自己記述
+
+### 26.1 製品の目的と、各レーンの優先度を補正する
+
+**製品全体の第一目標は、TEI Studio Desktopの実構築と、TEI自身によるDesktop再構築である。** §25のFunction起動 #4495 は、稼働システムとの接合を確かめるFunctionレーン内の先行実証である。Role自己解釈 #4536、Generator選抜 #4544、DesktopのWails利用 #1824、全体Self-Build #2831を一つの新しい完了Gateにはせず、既存実装を接続しながら並行して進める。X-TEA三要素/Modeler/Data ScriptのDesktop Plugin移管は第二の製品柱だが、最初のSelf-BuildのHard Dependencyにはしない。
+
+2026-11-13のmainでは cmd/tei-studio/go.mod は独立Go module（go 1.26.11、Wails v3.0.0-beta.29、root TEIへのreplace）。cmd/tei-studio/main.go の StudioBridge は既存 studiohost.ReadOnly のList/Catalog/Validate/Inspect等へ委譲する。**BridgeやrootのGoテストの存在を、実Desktopバイナリ、WebView、モデル駆動生成の合格と読み替えない。** 実OS向けTarget、選択済みnested moduleのgo.mod/go.sum、Wails/Node/Go依存と実成果物を別に確認する（#1251/#1824）。
+
+### 26.2 自己記述・生成・実Desktopの必要閉包を分ける
+
+| 閉包 | 必要な情報と確認 | 成立しない主張 |
+| --- | --- | --- |
+| 定義 | 実WorkspaceのSource raw/occurrence、独立Required Root、Meaning/Role/Operator/Generator Contract、Language/Implementation pin | データとして読めた＝受理済みMeaning・全Required完備、ではない |
+| Build | 実Builderが消費したSourceと生成file、nested module・Toolchain、外部Seed、Stage1実image、Stage2実call、Artifact digest | Build成功・go.sumの存在だけで全依存や再入を証明しない |
+| Consumer | Desktop/Wailsの実Process・WebView、共通API/Provider・Result・Current Grant、OS/Target依存 | CLIやReferenceのPASSは実Desktop製品完成ではない |
+
+Build Graph外の未宣言状態が**存在しない**という主張は、事後列挙やchild自己申告で証明できない。#4486の実測に従い、観測境界Wを限定し、必要な資源についてOS側の強制と独立した観測を組み合わせる。Linuxの隔離結果をWindows Desktopの完全保証へ転用しない。強制できない環境では当該完全性をunknown/unperformedとする。現行tei self-build outerは実Childの参照入口であって、qualified=false等の未受入境界を消さない。
+
+### 26.3 Desktop構築の最短4段階
+
+| 段階・Owner | 最小実装・受入 | 成立Claimの上限 |
+| --- | --- | --- |
+| DS0 現行Desktop Seed（#1824） | 実Target OSでWails AppをBuild・起動し、Process/WebViewとCatalog/Inspectの実一往復を確認。Nested moduleを含む | 通常Desktopが動作した。TEIからの生成を意味しない |
+| DS1 生成部品の一件接合（#1824/#4544） | 同じMeaning/Revisionのread-only View/Typed Operation一件を既存Generator/Transformから生成し、実Wails asset/Bridgeへ組み込む。生成物と人が所有するSourceを区別 | 一つのTEI駆動部品が実Desktopへ届く。Desktop全体生成ではない |
+| DS2 TEI Build Intent（#2831/#943） | TEI標準Build定義から既存Builderに実入力を渡し、Studio nested Go依存・Toolchain・Target・生成物digestを束縛 | 範囲付きL2。TEI生成image自身による再入は未証明 |
+| DS3 Stage1自身の再入（#2831） | Stage1で生成したTEIの実Process image/argvがStage2 Build Intentを解決し実Builderを呼び、Stage2 Desktop Artifactに到達 | 実験範囲のL3。外部Launcherによる二度Buildは不可 |
+
+DS0とDS2は早期に並行し、DS1では最小のread-only部品だけを選ぶ。DS3で不足するのがTEIの実入口なら、既存Build AdapterやTyped Operation/CLIに薄く接続する。新しいHost、万能Meta Interpreter、全面DSL移行、新Build Engine/Source Writerは先行開発しない。Studio GUI/WebViewの検収はHeadless結果とは別に実施する。
+
+### 26.4 直近mainの進捗を接合する
+
+**実Read #2586**：[main統合PR #4539](https://github.com/hat47x/tei-platform/pull/4539)は、order_entry.recent_ordersのPostgreSQL 16.15実Read（Environment→SQL→Rowset→Function Data Context）と別プロセス tools/reference-browse-read のJSON受領を実証した。**通常tei CLI、Studio、Harnessの受領は未実行**。R0b通常CLI→R0c同じFunction/RowsetをStudioへ接続し、必要なProvider/Source/Scope/NULL・0件の情報を保持する。R0bはDS0/DS2と並走してよい。RLS/全件・不存在や現在性を推論しない。
+
+**三要素分析法 #1124**：[main統合PR #4534](https://github.com/hat47x/tei-platform/pull/4534)はCRUD矛盾の全件報告と、構造OKとレビュー資格の分離を改善した。Data/Function/Businessの原典意味・CRUD/参照・図面をStudioへ投影する際、この既存Go構造検査を再利用する。構造検査PASSや描画IDからMeaning受理・編集権限を自動生成しない。
+
+**AI/SHO/OKF**：#4515/#4503の固定Pinは操作対象の意図を維持するものであり、現在のRead/Share/Write/Run権限の永久保存ではない。Source/Workspace/Grant改版後も対象を勝手に付け替えず、現行資格とDisclosureを再確認する。許可されたContextだけHarnessへ共有し、SHO等の保存済み文書は出典と再読取で確認する。外部Harness/CloudがなくてもLocal Desktop利用を可能にする。
+
+### 26.5 最初の反証と実測列（既存Scenario/Expectedへの引渡し）
+
+| ID | 変更・故障 | 期待 |
+| --- | --- | --- |
+| DS-N01 | root Go Build成功、Studio nested moduleの依存不足 | Desktop合格とはしない。実Target dependencyを報告 |
+| DS-N02 | CLI Catalog PASS、実Wails ProcessまたはWebView未起動 | DS0未成立。GUI未確認をPASS扱いしない |
+| DS-N03 | 選択したGenerator Bと実Buildに使われた旧実装Aが同じ表示結果 | Input/Selected Pin不一致でFAIL |
+| DS-N04 | Stage1/Stage2 digest一致、実際は外部Launcherが二度Go Build | Stage1実ProcessがStage2を起動しなければDS3不成立 |
+| DS-N05 | state非共有をchild申告/事後一覧だけで評価 | #4486のOS強制境界がなければ隔離のClaimはunknown |
+| DS-N06 | 実PG Reference Read成功、通常tei CLI/Studioには未接続 | Reference、CLI、StudioのClaimを独立に評価 |
+| DS-N07 | CRUD構造OKでもBusiness意味・Function責務が未確認 | Accepted MeaningやSource書戻しを認定しない |
+| DS-N08 | PinしたSubject Aの旧ReplyがSource/Grant変更後に到着 | Pin意図を保持し、旧Replyから現在利用資格を復活させない |
+
+DS-N01〜04をDS0〜3の初回優先反例とする。観測列は Exact HEAD、Target/OS、Manifest・Source closure、実Build input、nested dependency、Stage1/Stage2 Process、Selected/Actual Builder、Artifact digest、Desktop実Consumer、独立ExpectedとClaim ceiling。第二のFixture/Receipt/Proof Registryは作らず#1180/#2514/#943/#2831の正本を参照する。
+
+**状態**：今回の追補はmainのWails Studio module/Bridge/self-build outerとmain統合済み#4539/#4534、既存#4486・#1824・#2831および関連チャットとの静的照合に基づく設計更新のみ。DS0〜3の実Build、Stage2再入、OS境界、通常tei CLI→Studio実PG受領、X-TEA Desktop Plugin E2Eは新たに実行していない（NOT RUN / NOT PROVEN）。#1119 G0〜G4を変更しない。
