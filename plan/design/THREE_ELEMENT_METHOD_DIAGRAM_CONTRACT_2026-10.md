@@ -822,7 +822,7 @@ Readに失敗した場合はValidationが`false`なのではなく**未観測**�
 | 変更 | 必ず再検査する対象 | 原則として失効させない対象 |
 | --- | --- | --- |
 | Diagram Layoutだけ | 表示・操作可能領域、選択位置 | Accepted Meaning、Semantic Graph、生成Artifact |
-| Graph Node/Edge/Guard/Role | Source差分、Owner意味受理、全Path Obligation、Target Plan/Scenario | 無関係な別Scopeの意味・生成物 |
+| Graph Node/Edge/Guard/Role | Source差分、**意味が変わる範囲の既存レビュー**、全Path Obligation、Target Plan/Scenario | 無関係な別Scopeの意味・生成物 |
 | Plugin選択・実装・Lock | Provider/Hook適合、合成Graph、生成物、実Invoker証拠 | 無関係な未選択PluginのConsumer |
 | Harness Session/AI提案 | 対象ID/Scope/Sourceの現在性、開示、提案の採否 | 未受理提案だけではBusiness State/Effect |
 | 実行中のGraph/Entity/Grant改版 | Attempt/Operation identity、再承認、Resume/Migration、Effect unknown | 旧Effectの事実そのもの。新実行への自動再利用は不可 |
@@ -832,7 +832,7 @@ Readに失敗した場合はValidationが`false`なのではなく**未観測**�
 ### 24.2 Graph Patchの実装に必要な二段階の受理
 
 - **構造受理**：Node/Edge stable ID、source revision、type/NULL/Absent、Patch precondition、Provider/Target capability、合成競合、到達可能性、全Path Obligationを検査する。静的UNKNOWNはPASSでなく、対象TargetにRuntime Guardの実証が必要。
-- **意味受理**：承認条件、業務Rule、Function/Relationの役割、操作対象、開示範囲をOwnerが適用Scope付きで判断する。構造受理だけで業務意味が正しいとしない。
+- **意味受理**：承認条件、業務Rule、Function/Relationの役割、操作対象、開示範囲を、**既存の通常開発と同等のレビュー・変更管理**で担当者が必要な範囲を確認する。新しいTEI専用の多段階承認エンジンや、全項目の個別署名を要件にしない。構造受理だけで業務意味が正しいとはみなさず、生成AIの推測は出典のある事実へ自動昇格させない（#267/#2621/#4143）。
 - **実行資格**：さらに実Host Grant、Source/Provider/Artifact Revision、対象Entity版、Effect identity/receiptを照合する。Owner受理済みでも古いGrantや未接続Providerでは実行不可。
 
 Graph編集を「編集可能」と表示する条件は、Projectionがlosslessであること、対象Source/Scopeが特定できること、現在の編集Grantがあること、変更をSourceへ反映できることを**別々に満たす**必要がある。Graphが見えるだけではEditableではない。
@@ -899,7 +899,7 @@ Selected Context
 ~~~
 
 - **構造のみの変更**：layout-onlyはSource業務意味・生成Artifactを変更しない。単なる表示設定も対象・Scopeの可視性検査は必要。
-- **意味を変える変更**：Edge/Guard/Operation/Relationの変更はOwner受理の範囲を明示し、意味未受理ならSource候補として保留する。
+- **意味を変える変更**：Edge/Guard/Operation/Relationの変更は通常開発の変更管理で判断した対象と範囲を示し、未確認のAI候補ならSource候補として保留する。編集者が手作業で確定した変更まで無条件に専用の再承認フローへ流さない。
 - **実行中の変更**：旧Attemptを黙って新Graphへ移さない。継続、明示Migration、拒否を区別し、既存Effect receiptとunknown commitを保持する。
 - **外部参照**：Source move/content change/permission-denied/unavailable/partial/not-foundは別状態。A→B→Aでも旧資格を自動復活させない。
 
@@ -964,7 +964,7 @@ Aは既存Direct Baselineを破壊せず、実Provider B呼出しが可能な最
 
 ## 27. テーブル定義とUI項目の連動：明示的な構造変更と安全な逆写像（2026-11-12）
 
-**利用者が明示した操作原則を具体化する。** 本節はデータモデル・機能モデル・業務モデルという**三要素分析法**のモデル間の整合を扱う。データモデル内の**テーブル／列の定義表示は、権威あるテーブル定義の写像**とし、図面を第二の定義正本にしない。業務キー・Relation・責任の意味は、物理PK/FKやテーブル定義の事実から自動受理しない（#1126/#4120）。ここでいう「テーブル定義」は選択したSource上のDesired/Declared構造であり、実DBで現在観測できたActual Schemaや未適用Migrationと混同しない。
+**利用者が明示した操作原則を具体化する。** 本節は、業務開発で選択した**三要素分析法**（データモデル・機能モデル・業務モデル）による表現に加え、TEIの汎用Source/Mapping/Projectionにも適用する変更連動を扱う。三要素分析法を汎用Coreの必須モデルとはしない。データモデル内の**テーブル／列の定義表示は、権威あるテーブル定義の写像**とし、図面を第二の定義正本にしない。業務キー・Relation・責任の意味は、物理PK/FKやテーブル定義の事実から自動受理しない（#1126/#4120）。ここでいう「テーブル定義」は選択したSource上のDesired/Declared構造であり、実DBで現在観測できたActual Schemaや未適用Migrationと混同しない。
 
 ### 27.1 編集操作別の既定動作
 
@@ -1027,3 +1027,41 @@ CLIでは非対話操作も、承認済み変更の明示的な入力と対象�
 着手順は、(a)現行Sourceからテーブル列とUI Mappingの**read-only**な依存表示、(b)削除時の未マッピング診断・提案差分、(c)GUI/CLIの同一Source編集資格、(d)明示的なDesired Schema変更、(e)実DB Applyの独立検証。正式API・Migration Engine・承認基盤・Graph正本の新設は、この設計だけを理由に行わない。
 
 **状態**：設計と検証候補の追補のみ。GUI/CLI編集、Migration、DB再観測、DMUの実行、Owner意味受理はすべてNOT RUN。
+
+## 28. 方法論プラグインと通常開発の受理：Coreに固定しない協業契約（2026-11-12）
+
+### 28.1 三要素分析法は重要な標準構成、しかし唯一の方法論ではない
+
+TEIは汎用的なプログラム・データ・文書・業務システムの構築基盤であり、**三要素分析法そのものをCoreの必須モデル構造や実行時依存にはしない**（#1124/#2620/#2621、組織モデルの別Draft #4500 §10.7）。Core側で必要なのは、既存の標準データ構造・型/Facet・Source/Revision/qualified reference・Projection/Mapping・Operation・Plugin選択・診断の共通能力である。Data/Function/Business、イベント付き業務フロー、ER/CRUD/職務/アクションツリーの原典に忠実な表現は、**業務向けMethod/Profile/Pluginの組合せ**で検証する。汎用GraphやFunction計算のRoleを揃えただけで原典を再現したとは主張しない。
+
+通常のコーディングはCore上の正規の開発経路として残す。業務開発でデータやFunctionの定義・整合確認を行うことは原則重要だが、**開発者に図面エディターの使用や全三モデルの作成を一律に強制する意味ではない**。ドメイン専門家が画面・業務手順・文章・例を入力し、開発者がKey/Relation/制約/データ移行などの高度なモデリングを支援し、生成AIは既存定義の調査と候補作成を担う。責務の境界は実案件の通常開発の分担に従う。
+
+| 利用形態 | 期待する利用条件 | 必須にしないもの |
+| --- | --- | --- |
+| 汎用コード中心 | Source/型/Plugin/既存Testに接続し、必要に応じ標準UIを使う | 三要素のモデル一式・TEI専用承認 |
+| 業務向け三要素分析法 | 原典の図法・相互参照・CRUD・Source往復をMethodとして追加 | 三要素専用の第二Core/Graph正本 |
+| 業務向け簡易データ連動 | UI追加と既存項目割当を支援し、構造変更の効果を明示 | UI追加からの列作成・DB DDL暗黙実行 |
+| 異質Domain/Target | 対象固有Pluginで必要なRole/Projection/Targetを構成 | Business Stateやテーブル必須化 |
+
+### 28.2 業務意味の確認は通常開発相当、AIによる事実誤認を局所で防ぐ
+
+§23〜27に記した「Owner意味受理」は、**通常の要求確認、設計レビュー、差分確認、Pull Requestレビュー等の作業に相当する**。Graph/Mapping変更一件ごとに独自の多段階ワークフローを新設することではない。業務上の意味を判断する必要がある部分と、単なる構文変更・配置変更・Refactorを区別し、既存の手続きと受入対象に基づいて確認する。
+
+AIが推測したMapping/Relation/Rule/Columnを「発見した事実」として自動反映しないため、必要な場合は、候補の対象・出典となるSource/DocumentとRevision・推論内容・適用範囲・反例・未解決事項を通常の変更差分や既存Authoring資料から辿れるようにする。**OKFはその記述・検査の一候補**（#4143/#2621）であり、すべての変更に新しいEvidence台帳/形式の必須記載を課さない。OKF Readerが形式を解釈できたことは、Meaning/Grant/Effectの受理を意味しない。Sourceに出典のないAI候補は、採否判断まで未解決として扱う（#267）。
+
+これは「実行時権限」の簡略化を意味しない。Source編集の通常レビューと、実DB Schema Apply／業務更新／実Effectにおける**現在のHost/DB権限・実行対象の確認**は別の責務である。
+
+### 28.3 実装に渡す追加反例（既存Expectedの補強）
+
+| Case | 入力・条件 | Expected |
+| --- | --- | --- |
+| DMU-10 | UIに計算式・外部API・一時入力項目を追加 | UI/Functionの表現は可能。永続テーブル列+0、暗黙DDL 0。更新可能性は別Operationと対応先で判定 |
+| DMU-11 | 業務Method Pluginを未選択にした一般コード/データ構造のSource | 汎用inspect/Source navigation/BuildがMethodの不在だけで停止しない。三要素図はunsupportedでもCore実行へ波及しない |
+| DMU-12 | AIが自然言語から新Relation/Columnを推定、原資料には裏付けがない | Candidate/出典不足の診断。既存Source列+0、Accepted Meaning変更0、実DB Apply 0 |
+| DMU-13 | 同じSourceから原典方式に近い業務モデル図と汎用Graph投影を生成 | 図法・CRUD・対象IDの情報欠落/追加を比較表に記載。表示類似だけで原典互換やMeaning同一と断定しない |
+| DMU-14 | 通常のコード修正のみ、またはUIレイアウトのみの変更 | 必要な型・依存・テストは検証するが、無関係な三要素/OKF/業務Ownerの追加承認を要求しない |
+| DMU-15 | Code/Sourceの変更提案がある一方、OKFなど参考資料は stale/partial/unavailable | 参考資料の欠落状態と、対象Sourceの現在性を別表示。旧文書のAI要約でMappingを無断再確定しない |
+
+DMU-01〜09、他DraftのORG-MAP-01〜10（#4500）と期待値・入力を照合し、重複するテストは**#1180/#2514の既存Scenarioへ統合**する。方法論の不在で一般コードが動かない負例は#2620/#951、AI候補の採否は#267、OKF形式Readerは#4143、三要素の原典再現は#1124/#1031がそれぞれOwnerを保持する。
+
+**計画への位置付け**：P0の実Provider・実Read（#1251/#2586）を変更しない。並行P1では最小のSource→Data/UI Mapping→未マッピング警告をGUI/CUIで確認し、方法論Pluginの有無と既存コード経路を対照にする。原典への忠実度評価・OKFを用いた資料管理は独立に段階導入する。今回の追補はdocs-onlyであり、DMU-10〜15の実試験・Owner確認・実DB Apply・実Targetは**NOT RUN**。
