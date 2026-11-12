@@ -814,7 +814,7 @@ WU-11〜14をWU-06〜10の「全部完了待ち」にしない。前段の**必�
 
 #### 10.10.1 参照一覧を信頼できる条件
 
-1. **基礎の誤りを種類ごとに受入**：#4475のFingerprint入力破壊はmain統合PR #4507で限定修正済みだが、同Kind同IDの重複診断は別。#4472のData索引取り違えはDraft PR #4513で3箇所を限定修正する提案がある一方、明示CRUD-only脱落・重複後勝ち・矛盾をOK表示する問題は未解決。各Issueの独立正負試験とProduct Consumer結果を確認するまで、CRUD参照数・未使用表示を全体として正しいと断言しない。
+1. **基礎の誤りを種類ごとに受入**：#4475のFingerprint入力破壊はmain統合PR #4507、同Kind同IDの重複診断と曖昧なIndex entry拒否はmain統合PR #4524で限定修正済み。ただし、全Derived/CLI/SHO Consumerが不適格入力を排除する保証は別。#4472のData索引取り違えはDraft PR #4513で3箇所を限定修正する提案がある一方、明示CRUD-only脱落・矛盾をOK表示する問題は未解決。独立正負試験とProduct Consumer結果を確認するまで、CRUD参照数・未使用表示を全体として正しいと断言しない。
 2. **参照の種類を混ぜない**：宣言上の参照、型付きRelation、Function→Data CRUD、Business Task→Function、SQL WHERE/ORDER/EXISTS等の非出力依存、UI Binding、SHO引用、実Provider Readは別種。逆引きは有向Edgeの逆方向検索であって、業務上の逆向き依存関係を意味しない。
 3. **対象の同一性**：Workspace、Kind、Stable Subject ID、Relation occurrence、Source revision、Source位置と必要なvalid/known/Scopeを保持する。Label、図面座標、同じ始点・終点、描画用Edge ID、単独のSource offsetを意味IDとしない。参照の出現位置が複数ならoccurrenceを区別。
 4. **0件とunknownを分離**：指定したSource/Provider/Plugin・Dependency Closureを必要十分に取得し、未解決参照がなく、**指定範囲について全件検査できた場合だけ**「参照数0」「その範囲で未使用候補」と表示。partial、permission denied、unavailable、未解析のDynamic ReferenceやPluginには「不明／未検査」を付す。0件、空配列欄の欠落、対象不存在、非表示、非開示は別状態。
@@ -850,7 +850,7 @@ WU-11〜14をWU-06〜10の「全部完了待ち」にしない。前段の**必�
 
 | 既存成果・Owner | 実際に確認された範囲 | 組織C1の実行に残るもの |
 | --- | --- | --- |
-| #4507 merged（#4475） | ThreeElement ModelFingerprintの入力破壊・自己参照を限定修正し、文書図のAuthorityLimits保持も追加 | 同Kind同IDと他の曖昧性・現在Disclosure/Grantは未解決。#4514のSource-only drift補正はDraft |
+| #4507/#4524 merged（#4475） | Fingerprint入力破壊・自己参照の限定修正、およびData/Function/Businessの**同Kind同ID重複をエラーにしIndexから除外**する修正はmain統合済み | Derived/CLI/SHO等の全ConsumerがValidate結果を必ず評価する保証、現在Disclosure/Grantは別。#4514 Source-only driftはDraft |
 | #4513 Draft（#4472） | CRUD表/Function-Data参照/GapのData索引3箇所を修正するコードと独立対照テスト | **未マージ**。明示CRUD-only行、矛盾定義、OK誤表示を修正したことにはならない。実Go/CLI/CIの合否は別取得 |
 | #3906 closed、CLI JSON契約 | trace.unresolvedは**返した行の未解決数**、projectionUnresolvedは**グラフ投影全体で落ちた参照**と明記済み | trace.unresolved=0だけで全Workspace/同Subjectの必要参照が完全と推定しない。両方とScope/Required Closureを照合する |
 | #4532 Draft（#2510合成Reference） | org-synthetic-r7、3人/4所属/3.0 FTE、known改版の2.4 FTEを参照。固定HEAD fa2d8ce98ff77536f51e32095748f63d935a2d07 の Node Actions #43242282586は313/313 PASS（うち追加7件） | 合成Node資格のみ。正式TEI Query/Provider/Context/Studio/Host、ORG-CAP-06/08、Owner受理は別 |
@@ -859,9 +859,50 @@ WU-11〜14をWU-06〜10の「全部完了待ち」にしない。前段の**必�
 **read-only参照表示の入場条件**：適格な参照検索を、（A）Accepted Source/Meaningに属するProduct Cross Reference、（B）REA等からの外部Observation/Structural Candidate、（C）Source不足・未解決・partialの三群として扱う。同名や同端点が一致しても群間でReferenceを加算して「利用実績」としない。外部候補はSource locator、Producer version、record/edge ID、方向、多重性、raw digest/受領byte、Coverage、Known/Validの有無を区別し、正式な意味Role/Relation occurrence/業務時点は#2386の意味Ownerが採否を判断する。外部候補しか見つからないData/Function/Businessは「正式参照0・候補あり・Coverage未確認」を区別して提示する。
 
 **最小の次のProduct Exit（重複Expectedなし）**：
-1. #4472の残余と#4475の同Kind重複を独立Expectedと実Consumerで解消。#4513のData索引修正のみでCRUD/未使用の全体適格と呼ばない。
+1. #4472のData索引/明示CRUD-only/矛盾表示の残余を独立Expectedと実Consumerで解消し、#4524で合格した同Kind重複診断が**各Consumerでも尊重されるか**別途確認する。#4513のData索引修正のみでCRUD/未使用の全体適格と呼ばない。
 2. #3906の二種の未解決数とSource Index/Scopeを同一CLI応答で判別し、完全0・投影未解決あり・部分取得の3入力で未使用の結論が切り替わることを実証（#3262/#1177）。UI・AIの未使用削除は禁止。
 3. #3394の外部REA T1-Aは、実際の共通read-only APIに1 Observation＋1 Edgeを送出して実Receiverのbyte・識別・方向・partialを照合する。Product Cross Referenceに混入させず候補として保持。外部ProducerのCI成功だけを実TEI Reader成功にしない。
 4. #4515 Subject Pinと#3788 Source移動/CRUD/Studioを**同一受理済み合成Source・同一Revision**へ限定接続。#2497のloss/逆写像を保持し、完全性不明時の変更はPreviewで停止。#2586実Read縦断は独立P0のまま先行する。
 
 **Owner/証拠の境界**：組織Meaning #2386、三要素CRUD #4472/#4475、外部REA受領 #3394/#3419、参照/未使用 #3262/#1177/#3788、Studio #4515/#1124、独立Expected #2514/#1180。新しい共通Referencer、第三Source Store、REAを直接意味認定するConverterは作らない。#3906は契約説明として既にclosedであり、同じIssueを再起票しない。§10.10.4は現在状態のレビューと次の受入要求であって、新たなGo/Node/REA Product実行を行った証拠ではない。
+
+### 10.11 UI起点のデータ文脈設計と問い相対の変更影響（2026-11-13横断統合）
+
+**補正方針**：§10.9の「画面項目追加だけではDB列を作らない」は、**UIから新Fieldの設計へ進む経路を禁止する意味ではない**。業務向けModelerではUI配置を開発の入口として許容し、既存Data FieldへのBinding、新しいData Fieldの明示設計、Derived/Computed Field、入力専用Transient Fieldを選べるようにする。決定論的に検証可能な型・Source/Provider能力・依存・一意性は既存Rule/Schema/Contextで評価し、意味が曖昧な候補だけAIの提案対象とする。生成AI提案の提示を正式Mapping採用・Schema Applyと同一視しない。
+
+#### 10.11.1 UI部品からSourceへの到達は段階的な明示操作
+
+| UIで選択する設計意図 | まず作成・更新するもの | 更新前に検査するもの | 実行していないこと |
+| --- | --- | --- | --- |
+| **既存項目を利用** | U2→既存Field/Function Data ContextのBinding候補とPreview | Subject/Field occurrence、型、NULL、現在版、Owner、利用Purpose、read/書込能力 | RDB列追加、Case責任変更 |
+| **新しいデータ項目を設計** | U2→Data Context/Logical Field候補→開発者が明示したDesired Field F2と論理/物理Mapping | 業務キー/物理PK、型、制約、変更影響、RDB/非RDB Provider能力、Migration Plan、他Consumer | UI配置直後の暗黙DDL/実DB書込み |
+| **導出値を表示** | U2→Derived/Computed Field＋Source依存・計算Rule | 演算と単位、valid/known、取得完全性、再計算Scope、Read/Disclosure | 物理列の強制作成、業務確定値への自動置換 |
+| **一時入力を受ける** | U2→Function input/Command parameterなどのTransient Data Context | 型、入力Validation、Action引数、保存要否、Current Grant | 永続項目の暗黙作成 |
+
+**新Fieldの明示設計操作**では、「この入力欄を永続保存する」「既存Sourceに対応付ける」「計算値にする」等の意思をStudio/CLI/固定対象AIの同じOperation Intentとして確認する。次いでSource/Desired RevisionへCandidate Patch→Impact Preview→既存の変更受理→必要時のみSchema Migration→対象DBの独立Readへ進む。**通常の開発者によるモデル変更は通常のレビュー・テストでよい**。追加の独立したMeaning承認Engineや常時の重い承認フローは設けない。ビジネスルールの解釈や既存権限変更が必要な場合のみ該当Owner/Hostへ戻す。
+
+#### 10.11.2 変更影響は「問い・Claim・Consumer」相対で評価する
+
+同じUI/Schema変更に対して、影響範囲は全Workspaceの単一staleフラグでは判定しない。#2582のClaim別Required集合、#4518/#4526の限定Closure/Native Source Binding、#2387のSQL依存、#3262の必要設計情報を組み合わせ、次の3結果を区別する。
+
+- **affected**：要求された表示・計算・Actionに影響することが既存Source/Query/Rule/Bindingから確定した。再評価/再取得が必要。
+- **scoped-unaffected**：指定したClaimのRequired集合と実観測Scopeが閉じており、変更と交差しないことが確認できた。別Claimや全画面への一般化は禁止。
+- **unknown**：Requiredが空/不明、Imported Source・Provider・Pluginが未取得、SQLの暗黙列/結合/否定依存が解決できない、受領が途中切断。0件や無影響として再利用しない。ただし**関係のないUnknownで他の完全なClaimまで一律失効させない**。
+
+対象となる非出力依存にはWHERE、ORDER BY、EXISTS/NOT EXISTS、LEFT JOIN、集計、Top-Nだけでなく、**SELECT *、alias.*、NATURAL JOIN**の暗黙的な列集合や結合キーを含む。新Field F2の追加で列集合が変わるSQLや、同名列追加によりNATURAL JOINの結合条件が変わるSQLを「明示Field参照が0だから影響なし」としない。実Rowset/Consumerの必要範囲が未観測ならunknown。Provider差分通知の非対応では既存Queryによる再読取に戻る（#2582）。
+
+#### 10.11.3 組織r7に結び付ける受入の最小対照
+
+| 既存Expectedへの追加観点 | 入力の対照 | 必須の判別結果・Owner |
+| --- | --- | --- |
+| ORG-MAP-01/02/03 | P2兼務一覧へ「配賦メモ」U2を配置し、既存Binding/新Field/Derived/Transientを明示選択 | 配置だけではActual/Desired不変。**新Field選択時のみ**Desired変更候補とMigration Preview。実保存は別資格（#1124/#1127/#3270） |
+| ORG-MAP-04/05/08 | Field F1をDesiredだけ削除、Actualだけ完全観測で削除、partialで未観測 | 対応版のテーブル定義モデルからだけF1除去、UI要素は残して未Mapping/unknownを区別。SHO著者編集を上書きしない（#1126/#4125） |
+| ORG-MAP-06/10、PIN-S0 | 同名別Field/Source改版・同Markdown別Subject・AI後着 | Source/Subject/Workspace/Selection Epochを再束縛できない限りApply拒否。SHOが文書を受領しただけではTEI Sourceが現在と一致する証拠にならない（#4515、SHO #50 QH-08） |
+| ORG-BEH-02、ORG-CAP-07 | A2のknownAt遡及訂正によるFTE変化、別ClaimはD2のA3/A4だけに依存 | 全体FTEは再計算、D2の必要Read/Ruleが変更と交差しない場合だけ局所Claimを保持。全世界の同時点性は推定しない（#2582/#2510） |
+| ORG-MAP-07、CX-16 | F1非表示だがSQL WHERE/NOT EXISTS/SELECT */NATURAL JOINが依存する | 出力列を表示しないことや明示参照0を無影響としない。未知Closureはunknown。Membership変更からC1責任・実Grantを推論しない（#4518/#2387） |
+
+**SHO/AIとの接続の停止線**：同一Markdownであっても元TEIのSource、Subject、Revisionが異なる票を同一の編集対象として扱わない。SHOの既存Draft受領・保存・再開と、TEIの実Source再解決、問い相対のRequired/Consumed/Received、外部Harnessの同一Attempt実受領は別判定（SHO #50 QH-08〜10）。Studio Pin/AI Draft/SHO本文の一致はSource Patch、Host Grant、Provider Effectの証拠ではない。
+
+**着手と帰属**：U0＝#1124/#1127のread-only UI分類・既存Data Context選択、U1＝#1126/#3270のDesired Field明示生成Previewと未Mapping、U2＝#4518/#2582の問い相対affected/scoped-unaffected/unknown、U3＝#4515/#3788のSubject Pin/Source Jump、U4＝#2586の実Query→Consumerと#4125の実Schema/Host独立Read、U5＝SHO #50/TAIの元Source再束縛とRecipient受領。U0〜U3はP0実Readをブロックせず並行可。**受入は既存ORG-MAP/ORG-CAP/ORG-BEH/CX/PINを再利用し、新しい第二Expected Storeや共通Runtimeを作らない**。
+
+**実証資格**：#4524の同Kind同ID重複対策はmain統合済み（入力モデル内の限定保証）。#4513 CRUD索引、#4514 Source-only drift、#4532 Node合成はDraftであり、これらの修正/合成PASSをUI→Desired→実DDL→Provider→Studio/SHO/HostのE2Eへ昇格しない。本節の追加経路は設計・受入候補であり、実Go/Node試験・実GUI/DB/SHO/AI連携・Owner意味受理は **NOT RUN / NOT ACCEPTED**。
