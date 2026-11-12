@@ -382,6 +382,8 @@ DDL Plan→Applyでは、実DB Instance／Provider、Scope、Actual Schema Revis
 
 ## 23. Query ID一致と物理Sourceの違いを実Function Readの入口で区別する（2026-11-11）
 
+> この節の「現main／Draft #4076」の記録は11月11日時点のSource照合である。11月12日のPR終了・mainコードの再検証と次の優先順は§24に記す。
+
 他レーンで[PR #3862](https://github.com/hat47x/tei-platform/pull/3862)のSource-static Product Seedと[PR #3866](https://github.com/hat47x/tei-platform/pull/3866)の型付きModel Map M0がmainへ統合された。一方、[Draft #4076](https://github.com/hat47x/tei-platform/pull/4076)は`examples/xtea-lowcode`のbrowse Patternに対し、Environment`development`→Database instance`sales_core.dev`→Query/Runtime Executor→`functioncontext.Context`→通常CLI`view -execute`の実接続を実装中である。合成Executor・局所Go/CLI結果と、実PostgreSQLでの結果は別資格。opt-in実PGのテストがDSN未設定でskipされたRunから実DB成功を推論しない。
 
 **同名別Workspaceの確定した相違**：[独立Source-static回帰](../../examples/data-source-workbench/query_route_separation_test.go)は次の2本を比較する。どちらもQuery IDは`order_entry.recent_orders`だが、物理Source・入力・期待行の集合は共有しない。
@@ -400,3 +402,49 @@ DDL Plan→Applyでは、実DB Instance／Provider、Scope、Actual Schema Revis
 **次の順序と既存Owner**：P0(1) **どちらか一方のWorkspaceを明示選択**して専用隔離PGに一致するSchema/Seedを構築・別Readerで観測 → P0(2) 該当Queryの未束縛Input/Executorを修正し、実CLI/Query/Contextの1件の正例＋0件・別Provider・別Instance・型不一致の拒否を同一Attemptで証明 → P0(3) その後に別Workspaceへ拡大。実Function Readは#2586、Workbench/Schemaは#3270、独立Expectedは#2514/#1180、正式Plugin/Build/BOMは#1251/#951/#1016/#3267が所有する。#4202のInspector Entry照合、#3866のM0 Graph、#3843のHook実Call、DSH/SHO/KON/SUI/SEI、全TEI Self-buildを、この最初のread-only DB Queryの新しいHard Dependencyにしない。
 
 **採用・検証上限**：本節はSource/Go経路の静的確認と次の検証計画。`query_route_separation_test.go`はSQLを実行せず、DB/Provider/Functionの実成功、Current Grant、独立Consumer完全受領、Meaning Acceptanceを証明しない。正式実DB Runや#4076の最終CIを取得したときだけ、実行資格を更新する。Raw Evidenceの大容量本体はGit必須とせず、GitにはSource/Artifact参照・digest・独立Expected・状態・Receiptの小さい索引を保持する選択肢を維持する。外部NAS/S3への保管方式は別の保存契約として検討し、未取得/失効/権限変更を成功扱いしない。
+
+
+## 24. 実データRead経路のmain入場と選択対象の固定：閉鎖PRの証拠を取り違えない（2026-11-12）
+
+### 24.1 既存PRが閉鎖されたことと現行mainの実装有無を独立に照合する
+
+2026-11-12に`main`のGitHub Contents APIと[旧PR #4076](https://github.com/hat47x/tei-platform/pull/4076)のHEAD `5a8fac512e370171c1e63d436ece27ad8e5a7aa6`を**同じ相対Pathで比較**した。#4076は「既にmainに取り込まれていてno-op」としてclosed/unmergedだが、現mainには以下の旧Branch固有のコードが見当たらない。一方、`internal/driver/query_execution.go`とPostgreSQL Query Executor、既存read-only Inspector、および`recent_orders`用の別Seedはmainに存在する。
+
+| 旧PRの検証済み候補（mainで確認できない） | 現在の不足と復帰後の主担当 |
+| --- | --- |
+| `internal/driver/query_execution_environment.go` | browse QueryのEnvironment→Database instance/Provider拘束と未束縛・曖昧・Provider不一致の**実行前拒否**（#2586/#2611） |
+| `internal/driver/browse_parameters.go`、XTEA Queryの追加input、`development/environment.tei` | Patternの`eq/ne`・`page-size`・offsetとSQL bindを**同一宣言**へ結ぶ。SQL本文から意味を推測しない（#2586/#2622） |
+| `internal/functioncontext/functioncontext.go` | 実行したRaw RowsetからData Identity/Grain/Scope/Row Presence/NULL・ページをもつContextへの**限定変換**（#2586） |
+| `cmd/tei/cli_view_browse_read.go` | 通常`tei view -execute`がその実Providerを呼ぶread-only経路と、秘密を含めないConsumer出力（#2586/#1251） |
+
+[旧PRのコメント](https://github.com/hat47x/tei-platform/pull/4076)には、隔離PostgreSQL 16（30行、OPEN 25件）で`eq/ne`・2ページ・空集合・宣言外`ge`の拒否を、独立期待値とCLI結果で照合した**旧Branch限定の実測**がある。この履歴は保存するが、mainの実Read PASSには数えない。特に**旧Branch SQLは`FROM sales.order`であり、現mainの`FROM sales."order"`という引用済み修正より古い**。旧24ファイルを無条件に丸ごと上書きすれば改善済みSourceや並行mainの変更が退行するため、既存型/APIとCurrent Sourceを比較し、必要な実装辺だけを移植する。旧PRのclosed理由を根拠にmainへの実装確認を省略しない。
+
+ここで確認できた事実は**指定4経路のmain不在と旧Branchの歴史的な実証**。同等機能が別名の現在実装で提供される可能性は、通常CLIを実行する対象の`Query→Instance→Executor→Rowset→Context`同一試行を追跡して確定する。GitHub Contentsの不存在だけからTEI全体の実Read能力0を断定しない。
+
+### 24.2 P0：ひとつのWorkspaceと実Readerを固定した復帰経路
+
+`order_entry.recent_orders`という**同名IDだけでは入力資格なし**。独立した二種類を混ぜず、最初のP0では次の**一方**を選んで独立Expectedを実証し、第二Workspaceを別試行で検証する。
+
+| 対象 | 消費する固定入力 | 最初の合格条件と負例 |
+| --- | --- | --- |
+| **R0-REF** `reference/workspace` | `public.orders` 5列・Timestamp `:from`と隔離用`recent_orders_product_seed.sql` | 3/2/0件と日時降順・Decimal値。Queryに未宣言の`from`／型不一致でExecutor未呼出を確認。XTEAの`status`や30件を使わない |
+| **R0-XTEA** `examples/xtea-lowcode` | `sales."order"`・`status`／`eq/ne`／`page-size`、独立Readerで実観測した30行以上 | Environment→sales_core.devのexact binding、既知25行の2ページ目・行順・空集合と不正`ge`、別Instance/Providerへの無言切替拒否。旧Branchの未引用SQLへ戻さない |
+
+既存[ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)の型付き共通Operation／現在のDriver・Environment解決・Provider Query Executor・既存CLIを優先再利用する。新Host・Registry・SQL Parser・Query Runtime・認可正本・第二Function/Schemaモデルは作らない。Providerの**宣言→選択→実際の呼出→取得結果**、実Instance/実Reader/現在のScope・Grant、SQL原文/params/Source Revisionを別列に記録する。DSN/SecretをCLI/MCP/Studioの返却値・失敗文字列へ入れない。
+
+`FromBrowseExecution`のようなContext投影を復帰させても、`rowCount<page-size`や0件だけで`CoverageComplete`／`EmptyJustified`を全DB・全Relationの保証にしない。Basis=`declared-page-contract`は**そのQueryとそのread範囲の限定説明**である。RLS、別Role、未取得Page、同時更新、NULLと欠損、結果の値を非表示にしたProjectionは別資格。Contextがキーだけを運ぶ場合は**実Data RowのTable表示・内容/金額精度確認は別Consumer試験**であり、Context内部に全Dataを暗黙コピーしない。
+
+### 24.3 実行可能な受入票（既存WB・HJ/QX・PASを再利用）
+
+| 試行 | 独立Expectedと停止線 | Owner |
+| --- | --- | --- |
+| **A・入口** | 実mainで対象Package/APIと通常CLI入口を照合し、欠落または異なるCall経路を**未実装として報告**。旧BranchのGo/PG成功は移植先に流用しない | #2586／#3270 |
+| **B・束縛** | 同じWorkspace/Environment/Query入力が唯一のInstance/Providerへ対応。Alias欠落・二重・別DB定義・型不一致は**Executor呼出0回** | #2586／#2611 |
+| **C・実Read** | 破棄可能なPGを用意して**独立Readerによる入力件数**とQuery/SQL実行の結果、0件、2ページ目、Error、実Read-only sessionを同じAttemptで照合。PostgreSQL無しでskipしたテストは未実施 | #2586／#2514 |
+| **D・Context/開示** | Result Grain、Source/Scope/Read Epoch、Presence/NULL、Paged Partial/Unknown、Provider選択とactual Call、CLI stdout受領・Secret非開示を同時記録。Rowset→Data ContextとContext→表示値は別Claim | #2586／#3262／#2516 |
+| **E・第二Consumer** | 実Studio Bridge／Harnessの同一操作を、**固定した対象棚**から呼ぶ。Workspace/Subject kind+ID/Source版/Scope/Consumerを安定したSelection Contextへ束縛し、クリックやUI再描画で誤解除しない。切替は明示操作・再資格化。SelectionはGrantでもEffectでもない | #1124／#1824／#1158 |
+| **F・保存/変更** | Raw EvidenceはNAS/S3等へ任意保管し、Gitには**固定Source URI・byte digest・取得時点・Scope・状態・独立Expected・受領参照**を持つ小さな索引を残す方式を検討。実参照が失効・非開示ならofflineも含めunknown。DDLのHistory partialとApply直前Target/Grantは別試行で停止判定 | #2600／#3267／#2892／#1163 |
+
+**合流順序**：A→B→C→Dを最初の一機能P0、EはStudio/AI Harnessの独立Consumer、FはEvidence再利用とSchema Applyの別系列。SUI/CSWのKJ法的探索、KON Dataspace、REA候補、SHO文書、SEI意思決定は**任意の後続Consumer**であり、R0実PG読取を待たせるHard Dependencyにしない。必要な図面のSource逆参照/Owner Meaningは#1124/#2497/#3492の既存経路で扱い、Physical FKから業務CRUDを推測しない。
+
+**確認するCIと実行上限**：新規Productコード復帰時にはfocused Go Test、`go vet`、`gofmt`、全Repository Health、Source-static Product Seed照合に加え、**opt-in PostgreSQL実試験の実行と非skip**を別記録する。CLI/Studio完全受領、外部Provider正式Plugin Build/Link/Current Grant、Ownerの意味受理、DDLの実Apply・独立再読取は、対応する実Witnessが揃うまで`NOT RUN`とする。現在の§24は**設計上の実装入場整理だけ**であり、新しいGo機能やDB実証を実施したものではない。
