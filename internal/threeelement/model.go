@@ -111,19 +111,31 @@ type Diagnostic struct {
 	SubjectIDs []string `json:"subjectIds,omitempty"`
 }
 
-// ModelFingerprint returns a stable digest for the model content.
+// ModelFingerprint returns a stable digest for the model content without
+// changing the caller's model. The derived fingerprint must not hash itself.
 func ModelFingerprint(model ThreeElementModel) string {
-	// Exclude diagnostics and transient fields from the fingerprint.
+	// These fields describe observation and authority, not the structural
+	// model content. Clear them only on the local projection being hashed.
+	model.ModelFingerprint = ""
 	model.Diagnostics = nil
 	model.AuthorityLimits = nil
-	for i := range model.DataElements {
-		model.DataElements[i].AuthorityLimits = nil
+	if len(model.DataElements) > 0 {
+		model.DataElements = append([]DataElement(nil), model.DataElements...)
+		for i := range model.DataElements {
+			model.DataElements[i].AuthorityLimits = nil
+		}
 	}
-	for i := range model.FunctionElements {
-		model.FunctionElements[i].AuthorityLimits = nil
+	if len(model.FunctionElements) > 0 {
+		model.FunctionElements = append([]FunctionElement(nil), model.FunctionElements...)
+		for i := range model.FunctionElements {
+			model.FunctionElements[i].AuthorityLimits = nil
+		}
 	}
-	for i := range model.BusinessElements {
-		model.BusinessElements[i].AuthorityLimits = nil
+	if len(model.BusinessElements) > 0 {
+		model.BusinessElements = append([]BusinessElement(nil), model.BusinessElements...)
+		for i := range model.BusinessElements {
+			model.BusinessElements[i].AuthorityLimits = nil
+		}
 	}
 	b, _ := json.Marshal(model)
 	sum := sha256.Sum256(b)
