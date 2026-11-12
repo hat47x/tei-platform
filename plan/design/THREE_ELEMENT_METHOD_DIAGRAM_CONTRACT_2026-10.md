@@ -1091,3 +1091,67 @@ AIが推測したMapping/Relation/Rule/Columnを「発見した事実」とし�
 DMU-01〜09、他DraftのORG-MAP-01〜10（#4500）と期待値・入力を照合し、重複するテストは**#1180/#2514の既存Scenarioへ統合**する。方法論の不在で一般コードが動かない負例は#2620/#951、AI候補の採否は#267、OKF形式Readerは#4143、三要素の原典再現は#1124/#1031がそれぞれOwnerを保持する。
 
 **計画への位置付け**：P0の実Provider・実Read（#1251/#2586）を変更しない。並行P1では最小のSource→Data/UI Mapping→未マッピング警告をGUI/CUIで確認し、方法論Pluginの有無と既存コード経路を対照にする。原典への忠実度評価・OKFを用いた資料管理は独立に段階導入する。今回の追補はdocs-onlyであり、DMU-10〜15の実試験・Owner確認・実DB Apply・実Targetは**NOT RUN**。
+
+
+## 29. 問いに応じた高速参照移動と「未使用」判定の資格（2026-11-12、横断設計）
+
+§23〜28を、X-TEAの項目レベル参照・被参照ジャンプ、TEI Studioの最小マウス操作、AIへの固定対象引渡しへ接続する。**既存Source/Model Indexを利用し、三要素分析法のMethod Plugin、図面Renderer、AI Harness Adapterが独立した意味正本・参照Resolver・常駐Hostを持たない。** 一般コード開発やMethod未選択Workspaceも基本的な参照操作を利用できるようにする。
+
+### 29.1 「参照0件」と「未使用」は異なる命題
+
+| 表示する判断 | 必要な資格 | 誤判定を避ける条件 |
+| --- | --- | --- |
+| 範囲内で参照N件を観測 | Workspace/Source Indexの版、typed relation、対象Scope/Reader Attempt | 観測件数、範囲、未索引・解決不能件数を区別 |
+| 限定Scopeで参照なし | **探索対象の閉包**、欠落Source・未導出・Current Disclosureを評価 | 不完全なら「観測0件・未確認あり」。単なる0件を未使用としない |
+| 変更しても影響しない | Query暗黙列集合、Script/Trigger/Entry、Artifact、Provider、外部Consumerを問いに応じて照合 | 未探索・非開示・依存未知はpartial/unknown |
+| 安全に削除・改名できる | 変更影響、現行Source/Target、逆写像、現在Write Grant、必要な意味確認 | read-onlyの不存在判断をEdit/Apply資格へ昇格しない |
+| 実業務で使われていない | 上記に加え必要なRuntime/DB/実Provider/外部Effectを期間限定で観測 | 静的索引のみでは判定しない |
+
+一件の陽性Witnessで限定的な参照の存在を示せるが、不存在・全件・安全削除には問いごとのRequired Source/Relation/Consumer Closureが必要。非公開参照を表示して漏洩させず、Policyが許す範囲で**判定不能であること**を示す（#2516）。表示上の「0件」が非公開世界の不存在を推測させないようにする。
+
+### 29.2 Locate・References・Pin・実操作の縦断
+
+1. **Locate → References**：qualified Subjectを既存Source Indexで再解決し、inbound/outboundのtyped relationを辿る。Source位置はjump先であってidentityではない。図面描画用Edge IDを正式Relation IDに読み替えない。
+2. **Pin → Explain/Propose**：参照元・先の複数選択を固定し、Revision・Scope・部分集合・未開示・除外条件を保持してAIへ引き渡す。固定対象はGrantではない。PinのOwnerは#4479であり、§25に第二Storeを作らない。
+3. **Preview → Source/Edit/Apply**：同じSubject/Source/Revisionの変更候補と影響範囲を確認。Sourceへ安全に帰還できない図表はread-only。編集採用とDB Apply/Host Effectは別。
+4. **Verify → Observation**：MapとLocateが同一Fingerprintでも、別Load間の一致は原子的Readを証明しない。実Consumer受領、Host Invocation、Effectは各々独立に観測する。
+
+**現在の関連PRと資格**：[#4524](https://github.com/hat47x/tei-platform/pull/4524)は同Kind同IDを一意として誤索引しない修正のDraft。[#4392](https://github.com/hat47x/tei-platform/pull/4392)はMap埋込Validation等の修正Draft。[#4521](https://github.com/hat47x/tei-platform/pull/4521)は実SourceのMap/Locateを限定比較し、旧HEADにはValidation不一致によるCI失敗が記録されている。**これらの新しいhead/CI/merge状態を確認せず採用済みとしない。** 旧X-TEAの空・欠落IDは一時Occurrenceとして読取・移動できても、永続Semantic IDや逆編集先を捏造しない（#1031/#4510）。
+
+### 29.3 Studioの高速性を損なわない拡張境界
+
+- identity、kind、source span、inbound/outbound adjacency、diagnostic/coverageは**既存Producerの読取Projection**として必要最小限で取得。Graph Layout、統計、広範な依存探索は必要時に計算し、全Plugin/全Sourceの同期走査を初期Navigationの必須処理にしない。
+- 参照数・被参照数・未解決数の表示では**Index済み観測値と完全件数を区別**。非公開の生CountsはPolicy Owner #2516の判断を先行させる。
+- 増分Index/Cacheの再利用はWorkspace/World/Source Revision、Generator/選択Plugin、Projection設定、Consumer/Disclosure Scopeを用途別に照合する。無関係なPlugin変更で無関係なIndexを失効させず、関係するA→B→A・Grant変更では現在資格を再確認する。
+- キーボード中心に「参照へ移動」「被参照へ移動」「定義に戻る」「Pin/解除」「影響表示」「AIへ送出Preview」を一連の操作として設計。具体的なキー配列は衝突検証後に決め、IME・画面遷移・空白クリックでPinを解除しない。
+- 重い言語Plugin/Method Plugin/DB Providerは必要な操作だけに参加する。Methodが存在しない場合も基本Locateを無効化しない。性能はcold/warm、初回Locate、連続jump、参照一覧、Pin→Previewについて**実Workspaceの規模・Consumer別**に測定し、実測前に一律のミリ秒基準を採用しない。
+
+### 29.4 既存Scenarioへ戻す独立Expected候補
+
+| Case | 入力と期待する限定結果 | Owner |
+| --- | --- | --- |
+| NAV-01 | 実SourceでSubject→参照→被参照→定義へ戻る。typed RelationとSource位置が一致 | #1124/#1120 |
+| NAV-02 | 同Kind同ID重複。曖昧Subjectを一意に丸めずdiagnosticを表示 | #4475/#4524 |
+| NAV-03 | 別Kind同ID・同label多重Edge。Qualified ID/Edge IDで別対象として追跡 | #1124/#1120 |
+| NAV-04 | 観測参照0だが未索引Source、非開示/未導出依存がある。未使用の断定なし | #2516/#1124 |
+| NAV-05 | Completeな限定Scopeで参照0を報告。Runtime未使用・安全削除へ昇格しない | #1124/#1180 |
+| NAV-06 | 同FPでもMap/Locate Validation不一致。未実施/失敗を区別 | #4392/#4521 |
+| NAV-07 | Legacy SourceでID欠落。Occurrence移動のみ可能で永続Writer先は未確定 | #1031/#4479 |
+| NAV-08 | Pin中にSource A→B→A、別Workspace複製、Grant失効。黙って再結合しない | #3262/#4479/#2516 |
+| NAV-09 | 無関係Method Pluginの故障/遅延。基本LocateとP0 Provider Consumerを無関係に停止しない | #951/#1124/#1251 |
+| NAV-10 | 同一実Workspaceでcold/warm・連続jump・Pin Previewを計測。Scopeと負荷を別記 | #1124/#1824 |
+
+これらは**#1180/#2514に渡す独立Expectedの候補でありNOT RUN**。#4479の固定対象UX、#4510のQuestion-bound STQ、#4487のTEA-Q、#4504のSource再資格と同じFixture/反証は各Ownerを再利用し、第二Scenario正本を作らない。
+
+### 29.5 計画上の優先順位と停止条件
+
+- **P0維持**：#1251の通常CLI/Studio実Provider Invoke、#2586のFunction→Query→実Rowset→Consumer受領。Navigatorを先行Hard Gateにしない。
+- **P1a**：既存Map/Locate/Validationの整合と曖昧IDのfail-closed。#4392/#4524のexact-head CI、merge可否を各Ownerが確認。
+- **P1b**：実Sourceでread-only Locate→references→jump→backをStudio/CUIへ一件接続。Coverage/未索引を示す（#1124/#1824）。
+- **P1c**：固定Pin→AI PreviewでScope/Revision/Disclosureを再検査（#4479/#2516）。
+- **P2**：Graph/CRUD逆編集、変更影響、Artifact/実Effectを§25 S2と#1143/#2497へ接続。
+- **P3**：実Workspaceの性能・認知負担を測ってIndex/Cache/Plugin最適化を優先順位付け。
+
+**撤回条件**：観測0件を無条件に未使用と表示、表示名・位置から編集先を創作、partialをcompleteとして表示、別Loadを原子的Readと呼ぶ、SelectionをGrantとして扱う、Navigation初期表示に全Plugin同期ロードを要求する、実測なしで高速化を主張する。いずれも限定read-onlyへ戻して再検証する。
+
+**状態**：設計・バックログ・Expected候補のみ。新Navigation/Index/Pin UI、NAV-01〜10、性能実測、CI、現在Disclosure、Owner意味受理は**NOT RUN / NOT ACCEPTED**。
