@@ -121,18 +121,19 @@ TEIが生成し、SHOが消費する。SHOは语义を解釈せず、identity・
 | RD-10 | 仕様書で一章の要素を改版・要素を削除 | 改版はその章のみ`content-changed`、他章は`generation-conditions-changed`（内容は同一）。削除は`occurrence-removed` | `TestSpecificationReconcileReportsTheChaptersThatMoved`・`TestSpecificationReconcileReportsARemovedChapter`（TEI） |
 | RD-11 | 三要素分析図で未宣言端点・混在入力・Workspace指定 | 未宣言端点の辺は落とさず`unresolved`。入力形状の混在は拒否。**Workspaceを読まない**（`model.workspace` は記録されない） | `TestThreeElementDiagramKeepsAnUnresolvedEdge`・`TestThreeElementDiagramRefusesMixedInputs`・`TestOtherKindsRefuseAModelPath`・`TestThreeElementDiagramNeverReadsAWorkspace`（TEI） |
 | RD-12 | 三要素分析図でモデル改変・不改変 | 改変は`stale`＋`modelFingerprint` diff＋`content-changed`。不改変は`current`・再確認0件 | `TestThreeElementDiagramReconcileReportsAMovedModel`（TEI） |
+| RD-13 | 三要素分析図の元JSONでAuthorityLimitsのみ改版／JSON整形のみ変更／旧DraftのSource digest欠落 | 構造`modelFingerprint`が一致しても実元Fileの`sourceFingerprint`差・未記録を`stale`として区別。権限のみ変更は`content-changed`、整形のみは`generation-conditions-changed`。不変時は`current`を維持。Source再確認≠現在のHost Grant/Owner受理 | `TestThreeElementDiagramReconcileDetectsAuthorityOnlySourceDrift`・`TestThreeElementDiagramReconcileDetectsByteOnlyAndMissingSourceDigest`（TEI、Draft #4514、CI受入前） |
 
-## 6. 段階的拡張（単一モデル→単一文書の実証後）
+## 6. 実装済みの文書種類と独立した受入範囲（2026-11-12 main基線）
 
-| 段階 | documentKind | 追加で必要になるもの | 状態 |
+| 段階 | documentKind／操作 | 現行の実Producer・根拠範囲 | 状態・資格の上限 |
 | --- | --- | --- | --- |
-| 1 | `element-explanation` | 一要素＋一関係の説明・属性表・引用 | 実装済み（本PR） |
-| 2 | `crud-table` | `internal/threeelement`のモデルJSONを第2入力としたCRUD表Projection（[#3263](https://github.com/hat47x/tei-platform/issues/3263)の受入条件を再利用） | 未実装 |
-| 3 | `three-element-diagram` | Data/Function/Businessの構造記述（node/edge identity・出典）。レイアウトは持たない | 未実装 |
-| 4 | `specification` | 複数Occurrenceの束ねと章構成。意味入力の版範囲の明示 | 未実装 |
-| 5 | `frozen-delivery` | 固定Revisionのpin。以後のモデル改版は失効として報告し、自動更新しない | 未実装 |
+| 1 | `element-explanation` | TEI Workspaceの受理済み一要素・一関係・Source Indexから説明Draftを投影 | 実装済み（[TEI #4317](https://github.com/hat47x/tei-platform/pull/4317) merged）。保存成功≠TEIモデル更新 |
+| 2 | `crud-table` | **受理済みWorkspace** の `operations.DeriveOperationSurface` からApplication CRUD行列を生成。Gap/Conflictは別Occurrence。三要素分析モデルの `threeelement.GenerateCRUDTable` とは**別Producer** | 実装済み（#4317 merged）。表示行列だけでCRUD全件・更新権限を保証しない |
+| 3 | `three-element-diagram` | Workspaceとは**別の三要素分析モデルJSON**からData/Function/Businessのnodes・edges・宣言CRUDを構造Occurrenceへ投影。画像レイアウトは行わない | 実装済み（#4317 merged）。構造FingerprintとSource byte/current資格は別。[TEI #4507](https://github.com/hat47x/tei-platform/pull/4507) merged、Source-only再資格は[Draft #4514](https://github.com/hat47x/tei-platform/pull/4514) |
+| 4 | `specification` | 複数Subjectの章立て・未宣言Subject/Relationのスキップ理由を明記したDraft | 実装済み（#4317 merged）。実Source閉包・完成仕様書のOwner受理ではない |
+| 5 | `-frozen` オプション | 上記の適格なDraftをModelRevisionへPinした歴史的納品Candidate。`frozen-delivery`は独立したdocumentKindではない | 実装済み（#4317 merged）。現在Grant/開示・実Recipient受領・Asset一式固定とは別 |
 
-段階2以降は、それぞれ独立した検証とIssue上の受入条件を要する。1段階のPASSを後段のPASSに流用しない。未実装の`documentKind`は`UNSUPPORTED_DOCUMENT_KIND`で拒否し、実装済みとして扱わない。
+SHOの実Consumerは[SHO #36](https://github.com/hat47x/sho-composer/pull/36)でmain統合済み。TEIの再投影は[TEI #4467](https://github.com/hat47x/tei-platform/pull/4467)により著者文の自動マージを禁止し、5種類の提案で人間の判断を保持する。各用途のGo/SHO結合証拠と正式Owner Meaning／Current Disclosureの資格は別。未知documentKindは`UNSUPPORTED_DOCUMENT_KIND`を返す。
 
 ## 7. 未解決事項
 
@@ -140,5 +141,5 @@ TEIが生成し、SHOが消費する。SHOは语义を解釈せず、identity・
 - TEI Studioからの**実組込み**（子プロセス起動・Wails資産・同一Attempt）は未実証。
 - Draft IDの永続性（A→B→A、Workspace差し替え）は`modelRevision`と`worldFingerprint`の範囲でしか保証しない。
 - `document-reconcile`は**読取り専用**であり、変更計画・検証・Owner受理の代替ではない。
-- 保存済み文書に対する**再投影のマージ方針**（著者編集と新Draftの突合せ）は未実装。現状は新Draftを別文書として提示する。
+- 保存済み文書に対する再投影の**5種類の提案**（keep-author／offer-regeneration／human-decision／report-removed／report-added）は[#4467](https://github.com/hat47x/tei-platform/pull/4467)で実装済み。ただし著者文の自動マージ・TEIモデルへの自動取込み・現在Grantの再受理は行わない。
 - SHO側の保存の中核（`src/g2-document.cjs`）は[SHO PR #30](https://github.com/hat47x/sho-composer/pull/30)でmainに統合されたものを再利用する。本契約はそれを前提としない（ Consumerは自分の編集核を持てる）が、現状の参照実装は它に依存する。
