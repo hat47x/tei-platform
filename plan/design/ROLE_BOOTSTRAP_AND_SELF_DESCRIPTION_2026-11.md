@@ -1190,3 +1190,46 @@ OKF等の文書管理、SHO文書、Git/NAS/S3等の外部Evidence保管は出�
 **性能の検収**：P0の既存Read-only baselineと比べて、余分なSource scan、再Lex、未選択Pluginのload、依存全走査、増分再検証範囲、CLI応答時間・メモリを計測する。最初から数値目標を仮定しない。Source位置/影響追跡に必要な情報を減らして高速化しない。IDE/Studioに新たな解決エンジンを持たせず、既存Go Application ServiceとCLIを共用する。
 
 **完了の停止線**：#4536の実Go接合は局所P0の完了、#4359は表層と意味変換、#1251/#2586は実Provider/Read、#2831は実TEI再入をそれぞれ独立審査する。旧#1119 G0〜G4に新しい全件必須Gateを追加しない。今回のESD/SD-S0の拡張Caseの新規実装・実行、Product Role Descriptor Interpreter、Studio/SHO、Current Grant、実Target/セルフビルド資格は **NOT RUN / NOT PROVEN**。
+## 24. 2026-11-13 横断深化：自己記述と生成AIによる生成器生成を接続する
+
+本節は§23のD0〜D4を置き換えず、標準データに記述した意味から**生成器を選択・合成・必要なら生成AIで拡張する**際の最小契約を補う。実装責務は [#4544](https://github.com/hat47x/tei-platform/issues/4544)（G1/G3）、[#1063](https://github.com/hat47x/tei-platform/issues/1063)（生成時DSL）、[#2016](https://github.com/hat47x/tei-platform/issues/2016)（既存生成器選抜Reference）、[#2595](https://github.com/hat47x/tei-platform/issues/2595)（検査／実消費Source）、[#951](https://github.com/hat47x/tei-platform/issues/951)（Plugin実選択）、[#2514](https://github.com/hat47x/tei-platform/issues/2514)（独立検証）に維持する。§23のRole自己解釈 #4536 と平行に進め、双方の完了を互いのP0のHard Dependencyにしない。
+
+### 24.1 既存実装を先に使い、未接続の意味だけを検証する
+
+2026-11-13時点のmain `tools/reference-generator-selection/README.md`で確認できる範囲は、受理済み`line-amount`契約／固定fixture、複数Generator candidateの比較、Go/Python/JavaScript/Java/WASM/WASI候補のテンプレート生成、外部AI候補のSource/Prompt/Context記録、Registry/失効、宣言Sourceを検査後に一時snapshotへ渡す実装である。これらを再び新規Generator Engineとして設計しない。**宣言Sourceのsnapshot読取は、Buildに含まれる全file・import/require・toolchain・network等の必要閉包や実OS権限を証明しない**。#2595/#1370へ実行帰属を渡す。
+
+生成器生成の製品価値は、生成AIが毎回すべての実装を作り直すことではない。標準／ドメイン／案件別Pluginの既存部品を第一候補とし、**再利用→TEI-native Transform合成→不足部の固有Plugin→通常の独自コード**の順に比較する。これは唯一の適格な方式を固定する優先順位ではなく、費用・柔軟性・Target制約・意味の保持で候補を比較する順序である。ローコード採用と通常のコーディングを排他的にしない。
+
+### 24.2 四つの正しさは別のClaim
+
+| 項目 | 固定するもの | それだけでは証明できないこと |
+| --- | --- | --- |
+| 意味契約 | Accepted Subject/Role/Type/Facet/Operation、NULL/未取得、Precision/Unit、Effect/Scopeと独立根拠 | 実Generatorの適合・Target利用資格 |
+| Generation Intent | Target Profile、既存Operator/Generatorの選択、必要な合成順序、解消できないGap | 選んだ実装がその通り実行されたこと |
+| Generator Candidate | Template／手書き／AI生成の由来、実Source/依存/Implementation exact Pinと契約 | Generated Artifact全入力・挙動の意味同値 |
+| Generated Artifact/Consumer | 実Builderが消費したSource/Toolchain、Build Artifact、実Consumer Read・Invoke/Effect | 入力契約全体の独立正しさ・現在の認可 |
+
+**Generator DefinitionやRole Descriptorを標準Record/Relation/Refで表現できる範囲**を最初に調べる。正式な新Core型・公開Grammarを必要と断定しない。Descriptorが申告する`pure`/`safe`/`required=[]`、AIの説明文、`build ok`は実挙動と必要Source閉包の証拠にならない。明示Pinと既存Provider/Build/Hostの実観測を用いる。
+
+### 24.3 実行順：G1 → G3 → G2
+
+1. **G1：生成規約（最初の縦断）**。一つの受理済み`line-amount`契約とTarget Profileに対して、標準Generatorで足りる場合、TEI-native Transform合成で足りる場合、固有Plugin/通常コードが必要な場合を分類する。分類は候補の提案であり、適合・権限の確定ではない。生成AIは不明なNULL・丸め・履歴・単位を推測して埋めない。
+2. **G3：意味的Conformance（G1の直後）**。既存#2016の固定Fixtureと#2514の独立Expectedを使う。正常入力、0/missing/null/未取得、丸め位相・境界値、集合の重複・順序・粒度、Targetが表現できない契約を区別する。対象契約に存在しない状態を架空に受理させず、`unsupported`／`unknown`と表現可能範囲を報告する。結果一致だけではテストの判別力を示せないため、NULL→0やhalf-even→half-upなど既知Mutantを落とす。
+3. **G2：Generator/Plugin合成（必要性判明後）**。二つのTransform/Operatorの結合について、入力出力型、`A→B`と`B→A`の順序、部分失敗、実選択されたProviderと実Call、Effect/Target制約、同名同版の実装差を対照する。合成可能であることから交換可能・副作用なし・すべてのTargetで同値という結論を導かない。汎用の合成代数や新Selectorを先行開発しない。
+
+### 24.4 独立反証と実装境界
+
+最小ケースは #4544 の GG-01〜10を参照。**第一受入の範囲はGG-01/02/03/06**と、現行Meaning/Target契約が持たない情報のFit/Gapに限定する。GG-04/05/07/08/09/10は既存Ownerの後続試験へ渡し、全件を最初の生成器PoCの合格要件にしない。
+
+特に次の二つの失敗を重視する。
+
+- **同じテストを生成器と生成AIが共通の誤理解から作る**：FixtureやExpectedを候補自身に生成・修正させて合格を評価しない。正負例と独立Expected、既知Mutantの判別力を#1180/#2514から固定する。過剰な大量の生成テストより、異なる誤りを発見できる少数の検査を優先する。
+- **自動生成と手書きコードの境界を壊す**：生成対象file・拡張hook/Plugin・人が保守するSourceを明示してDiffと所有範囲を確認する。候補Sourceの再生成は既存のAccepted Meaningや人が編集したコードを無条件に書き換えない。再生成時の衝突はPreview/停止にし、Source正本と派生Artifactを分離する。
+
+### 24.5 開発体制、成果物と停止線
+
+高度なデータ／業務モデリングは開発者が主導し、必要に応じてドメイン専門家と協業する。基盤担当者は標準PluginとGenerator契約を整備し、生成AIは標準部品の選択・接続、差分提案、検証Caseの増補、狭い固有実装を支援する。**人の意味受理は通常開発相当**とし、毎回別の形式的な承認機構を追加しない。Source文書はOKF/SHO等の出典・変更追跡で支援できるが、文書を読めた事実をMeaning Acceptanceへ昇格させない。
+
+具体的な引渡しは、#4544（G1/G3候補選抜）、#2595（実Build input closure）、#1121（Target-neutral Lowering）、#943/#1370（Artifact/実行同一性）、#2600（増分再資格化）、#2831（TEI全体セルフビルド）。最初の実証はCLI/headlessを先行し、Studio/SHO/Web/EKIなどの完成を必須にしない。TEIの通常Go単一バイナリ配布と、必要に応じた外部Java/.NET/WASM Targetの方針を維持する。
+
+**Evidence：本§24は設計書への追補のみ。** 現行mainの参照生成器READMEと#2016/#2595/#1063等を静的に照合した。GG-01〜10の新規Go/Target/AI候補試験、Descriptor→Generatorの製品縦断、再生成の実Artifact、正式Owner意味受理は **NOT RUN / NOT PROVEN**。既存#1119のG0〜G4を変更しない。
