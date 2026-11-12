@@ -201,3 +201,52 @@ TEIの第一配布形態はGo単一バイナリである。一方、外部Host�
 「Bのみが呼ばれた」は**既存の型付きApplication API経由でテストし、参照ExecutorやStubへの別経路を用意して満たさない**。静的Linkの監査に不適切な動的Module IDを要求してGo単一バイナリを不利にしない。逆にGo Binaryが一つであっても、その中のどのProvider実装に実Dispatchしたかを結果値から推測しない。Hook/Child Functionが追加のProviderを呼ぶ場合、その到達は親の単一pure Q2に暗黙で加算しない。
 
 **担当**：P0の型付きProvider Callは#4495、Build/Plugin選択は#1251/#951、外部Target/Process/WASMの能力差は#2390/#4384、OS egress/実資源は#2504。ここから新ABI・共有Runner・第二Plugin Registryを採用しない。
+
+## 9. 生成AIによる起動コード生成と、実行時に使ったものの照合
+
+他チャットで検討が進んだ**生成AIによるGenerator生成規約**を、Script Launchの次段へ接続する。生成AIがEntry、Trigger、Adapter、Provider呼出し用コードを提案・生成できることは製品価値だが、生成されたコードや設定が**公開されたこと・選択されたこと・実際に呼ばれたこと**を意味しない。生成AIの判断と実行許可も同一ではない。
+
+**位置付け**：#4495のP0は、手で固定した一つのpure Functionについて**実Goバイナリ→同じTyped Operation→実Provider**を成立させる作業であり、Generator開発を先行必須としない。本節はその経路ができた後、同じ独立Expected・Fixture・Call Siteを生成されたEntry/Adapter/Provider実装にも再利用するための設計・受入計画である。Generator DefinitionとImplementation Candidateの役割は#1121/#2595/#2514/#2600、可変Lifecycleの義務は#4198が所有する。新しいGenerator RegistryやScript Launcher、万能のGraph Compilerを設けない。
+
+### 9.1 生成・公開・実行を分離する
+
+| 段階 | この段階で判定すること | まだ保証しないこと |
+| --- | --- | --- |
+| **生成対象の定義** | 受理したFunction/Entry/型/Effect、Targetと明示した生成範囲。人間可読な元DSL/Markdown糖衣は保持 | AIが提案した意味が自動的に正本になること |
+| **Generator候補と独立検証** | Generator自身の版、対応するContract/Target、固定Sourceと独立Expected、既知Mutantを落とせるか | 別Contract/新Target・別Toolchainの正しさ、生成コードの自動公開 |
+| **生成実体とBuild** | 入力として**実消費した**Source/依存byte、Generator・Toolchain/Target、出力Member/ArtifactとDigest、未列挙依存 | 生成できた・Digestが一致しただけでRun資格があること |
+| **Entryの明示公開・現行Composition** | 対象Function/Entry版、選択Provider、公開先Target/Host、必要CapabilityとScope | Generatorが作成したEntryが自動で公開・認可されたこと |
+| **起動と結果** | 現在Grant/対象/版を検証し、実GoコードまたはInterpreter/外部Hostの**実Call**、Result/Failureを観測 | HTTP/CLI成功、Callの自己申告だけで外部Effect/業務完了となること |
+
+**意味保存は単一の数値一致だけで判定しない。** Missing/NULL/Unfetched、金額精度と丸め、条件分岐と短絡評価、Ruleの順序、Read Footprint、業務拒否と技術失敗、Effect宣言・現在のScopeを、Generator候補の適合Claimに応じて検証する。すべてを初回のsimple multiplyに強制するのではなく、**その単純例で判別できない義務を未検証として残す**。
+
+Go静的合成は、Generatorの出力Member/Composition・ビルド実体と、実呼出したProviderを別に確かめる。動的Script/PluginではSourceとInterpreter/loaded artifactを検証する。方式が異なっても意味と独立Expectedは共通にできるが、物理的な実ロードや実OS資源の証拠の形を無理に同一化しない。
+
+### 9.2 既存のGenerator実装から再利用する範囲
+
+[#2595](https://github.com/hat47x/tei-platform/issues/2595)では、実評価Sourceと宣言Sourceの不一致が検討され、[PR #3673](https://github.com/hat47x/tei-platform/pull/3673)はScriptのD1→D2→D1入替えによる旧判定の偽陽性を特性化した。その後[PR #4213](https://github.com/hat47x/tei-platform/pull/4213)がmainへ統合され、`tools/reference-generator-selection/selection.go`の限定Generator候補評価では、照合したSource byteを使った**評価用Snapshot**へ処理が進んだ。これは本節の実装に有用な参照例である。
+
+ただし、**Generator SelectorのReference上で単一候補Sourceを固定したことは、TEI製品Launcherが実Providerを同じSource/Artifactから呼んだ証拠ではない**。相対Import、環境変数、未列挙Goファイル、Builder自体、実RuntimeやOSの書替えを自動的に閉包しない。固定したPathの前後のDigest一致も、競合中に何を実読したかの完全な独立証明ではない。#2595/#2600の正しいスコープを利用し、#4495へReferenceをそのままコピーしない。
+
+### 9.3 既存の独立Expectedに追加する一因子負例（計画・未実行）
+
+| ID | 比較入力・故障 | 期待する拒否・限定的な合格 |
+| --- | --- | --- |
+| **GL-01** | 生成AIがまだ受理されていないFunctionから公開Entryコードを生成 | 候補の生成自体は可。**明示公開されたEntryや現在Host許可がなければ呼出しは拒否**。生成成功でQ0/Q2へ昇格しない |
+| **GL-02** | Generator A/Bは双方600を返すが、BだけMissingを0に変換・Rule順序を変更 | 数値一致は局所合格に留まり、独立の負例で意味保存不合格。Generatorから出したExpected自身で自己判定しない |
+| **GL-03** | ManifestでSource D1を申告し、実Buildは別のmain.go D2を消費する | 実消費byteと宣言byteの帰属が不一致。#2595のGo反例・既存Selectorに接続し、同じ名称や生成成功でPASSしない |
+| **GL-04** | Source/Contractは同一、Generator/Toolchain/選択Plugin版だけが変化 | Artifact再利用、Build省略、Evidence再利用、**現在起動資格**を別に判断。等Digestでも旧受理・現在Grantは自動復活しない |
+| **GL-05** | 生成したLifecycle Graph/Adapterが検証Guardを飛ばし、直接Effect呼出しへ接続 | Graph上の見た目や合成実行だけではOKにせず、#4198の不変Obligation・#1174のEffect境界で拒否。P0 pureを実Effect合格に拡大しない |
+| **GL-06** | DSL/Markdown説明・レイアウトだけ変更し、実入力の意味・生成用依存は不変 | 根拠を明示できれば無関係な実Binary再Buildは不要。逆にSource/Role/Operator/公開Entryが変われば表示上同じでも現在資格を再評価 |
+| **GL-07** | 生成されたCLI Adapterは実Go Provider A、直接APIはBを呼ぶ。両者600 | #4495 EL-04/08を**同じ独立Expectedで再使用**し、どちらかが参照Executorへ逃げても不合格 |
+
+この表は新テストの正式ID採番や第二Scenario定義ではない。既存#1180 Driver Scenario・#2514独立Expected・#2595 Generator Selector反例・#4198 Graphの検証義務へ**参照を戻すための作業票**である。生成AI・Sonnet等のモデルの優劣ではなく、どの候補でも自分で改変できない固定検証基準によって適合を判定する。
+
+### 9.4 既存計画へ渡す実装順と停止線
+
+- **P0のまま**：#4495でEL-01/04/08/12を実Go Binary＋直接API/CLI subprocessでGreenにし、実Selected ProviderとCall Site・Outputを同一Attemptで確認する。
+- **P1並列**：#2595/#2600で実消費SourceとGenerator/Build/Evidenceの再利用資格、#4359/#4536/#2620で元DSLの意味とRole/Operator解釈、#2514でIndependent Expected/Mutantを分担。
+- **P1実起動への接続**：一つの既存Functionから生成したEntry/Adapterを、実ProviderのA/B同値返却負例とMissing/NULL負例へ通す。生成器の全機能・すべてのTargetを先に作らない。
+- **P2**：#4198のLifecycle GraphからHook/Triggerを加え、Guardの迂回・Source改版・再送/Effect unknownの独立負例を検証。実DB、EKI、Web、Java/.NET/WASM、外部Harnessは各Ownerの実証へ任せる。
+
+**停止線**：生成されたコードがEntry公開・Grantを自動発行する、Target/Effectに表現できない部分を黙って省く、Generator自身がExpectedを決めて自己採点する、Sourceの宣言と実Build/Call入力の違いを隠す、新しい中央Host/Registry/認可Engineを必須化する、といった案は採用しない。検証できない条件は`unknown/unsupported/NOT RUN`とし、現在のQ2成功を主張しない。
