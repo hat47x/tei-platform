@@ -1,0 +1,8 @@
+716fb3612  feat(rea): receive one external analysis Evidence and inspect its delivery
+  added cmd/tei/rea_evidence.go (229 lines) and internal/externalanalysis (1202 lines)
+  merge-base --is-ancestor 716fb3612 origin/main  -> NO
+  branch -r --contains 716fb3612                  -> origin/feat/rea-external-evidence-intake-20261111-r2
+  rev-list --count 716fb3612..origin/main         -> 157
+
+7b0ab6b63  docs(evidence): ... (#2515 H6-E2)
+  added the two TESTS that require rea-evidence, and 0 files implementing it.

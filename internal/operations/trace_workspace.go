@@ -18,6 +18,21 @@ import (
 	"tei/internal/workspace"
 )
 
+// UnresolvedScopes names what each unresolved count measures, so the two are
+// never compared as if they answered the same question (#3906).
+type UnresolvedScopes struct {
+	// TraceUnresolvedIsPerSubject states that trace.unresolved counts only the
+	// edges of the subject this response traces.
+	TraceUnresolvedIsPerSubject bool `json:"traceUnresolvedIsPerSubject"`
+	// ProjectionUnresolvedIsWholeGraph states that projectionUnresolved counts
+	// the edges dropped while the whole graph was built, so it is identical for
+	// every subject traced from one Workspace.
+	ProjectionUnresolvedIsWholeGraph bool `json:"projectionUnresolvedIsWholeGraph"`
+	// WhichToTrustForTheSubject names the count that answers "is this subject
+	// reachable", and why the other one does not.
+	WhichToTrustForTheSubject string `json:"whichToTrustForTheSubject"`
+}
+
 // WorkspaceTrace is a read-only projection, not an accepted Canonical graph,
 // a proposal, or authority to edit any located source.
 type WorkspaceTrace struct {
@@ -29,7 +44,14 @@ type WorkspaceTrace struct {
 	Source                 sourcebridge.Navigation   `json:"source"`
 	RelatedSources         []sourcebridge.Navigation `json:"relatedSources,omitempty"`
 	ProjectionUnresolved   []string                  `json:"projectionUnresolved,omitempty"`
-	AuthorityLimits        []string                  `json:"authorityLimits"`
+	// UnresolvedScopes states what each of the two counts above measures. They
+	// answer different questions and a caller who compares them directly reads
+	// a zero as "clean" when the graph is not (#3906): trace.unresolved counts
+	// the edges of the traced subject, projectionUnresolved counts the edges
+	// dropped while the whole graph was built, so the second is the same for
+	// every subject in one Workspace and the first is per subject.
+	UnresolvedScopes UnresolvedScopes `json:"unresolvedScopes"`
+	AuthorityLimits  []string         `json:"authorityLimits"`
 	// Workspace names the Workspace this trace was read from (#3181). The
 	// same Canonical ID may exist in several Workspaces with different meaning,
 	// and worldFingerprint identifies content, not the Workspace.
@@ -182,8 +204,13 @@ func TraceWorkspace(root string, key modelref.Key, options modelref.TraceOptions
 		Trace:                  result,
 		Source:                 resolver.Locate(key),
 		ProjectionUnresolved:   append([]string(nil), projection.Unresolved...),
-		AuthorityLimits:        append([]string(nil), projection.AuthorityLimits...),
-		Workspace:              &identity,
+		UnresolvedScopes: UnresolvedScopes{
+			TraceUnresolvedIsPerSubject:      true,
+			ProjectionUnresolvedIsWholeGraph: true,
+			WhichToTrustForTheSubject:        "result.trace.unresolved",
+		},
+		AuthorityLimits: append([]string(nil), projection.AuthorityLimits...),
+		Workspace:       &identity,
 	}
 	// A page that can be continued must say, next to nextOffset, which value
 	// continues it. The value is this Workspace-level token; modelref's own

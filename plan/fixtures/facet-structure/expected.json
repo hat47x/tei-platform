@@ -1,0 +1,103 @@
+{
+  "schemaVersion": "tei.reference.facet-structure-expected/v0",
+  "expectations": [
+    {
+      "id": "DSF-01",
+      "verdict": "gap",
+      "destination": "basic-type",
+      "gaps": ["unit-facet-absent", "scale-facet-absent"],
+      "note": "A value refinement cannot carry a unit or a scale; the current type form has no place for either. The destination stays a basic type because the gap is recorded, not because a Core type was added."
+    },
+    {
+      "id": "DSF-02",
+      "verdict": "gap",
+      "destination": "composite-type",
+      "gaps": ["positional-composition-absent"],
+      "note": "A record is a named product and a tuple is a positional one; the current type form carries names only, so the positional composition is a gap."
+    },
+    {
+      "id": "DSF-03",
+      "verdict": "fits",
+      "destination": "semantic-facet",
+      "gaps": [],
+      "note": "Order, multiplicity and completeness are declared separately, so the ordered collection is carried by the facets without a Core enumeration."
+    },
+    {
+      "id": "DSF-04",
+      "verdict": "gap",
+      "destination": "semantic-facet",
+      "gaps": ["key-equality-facet-absent"],
+      "note": "Key equality is a declared facet, and the descriptor cannot state it; 1 and \"1\" are not the same key by accident."
+    },
+    {
+      "id": "DSF-05",
+      "verdict": "fits",
+      "destination": "semantic-facet",
+      "gaps": [],
+      "note": "A tree is direction, cycle and parent arity added to a relation. The multigraph stays a relation and the tree stays its projection, so no sibling Core type is needed."
+    },
+    {
+      "id": "DSF-06",
+      "verdict": "fits",
+      "destination": "standard-plugin",
+      "gaps": [],
+      "note": "Domain and observation axes are declared separately and no other axis is invented; the time family is carried by facets plus a plugin candidate."
+    },
+    {
+      "id": "DSF-07",
+      "verdict": "gap",
+      "destination": "standard-plugin",
+      "gaps": ["unit-facet-absent", "scale-facet-absent"],
+      "note": "type Length from std.decimal unit \"mm\" is a parse error today, so the unit and the point/delta scale have no place in the Source form."
+    },
+    {
+      "id": "DSF-08",
+      "verdict": "gap",
+      "destination": "standard-plugin",
+      "gaps": ["crs-facet-absent", "dimension-facet-absent"],
+      "note": "A CRS and the named dimensions are separate from the index layout; a coordinate pair is not a safe distance computation."
+    },
+    {
+      "id": "DSF-09",
+      "verdict": "gap",
+      "destination": "semantic-facet",
+      "gaps": ["effect-facet-absent"],
+      "note": "Purity and effect belong to a call, not to its rendering; the current Source form has no place for them."
+    },
+    {
+      "id": "DSF-10",
+      "verdict": "gap",
+      "destination": "semantic-facet",
+      "gaps": ["state-machine-facet-absent"],
+      "note": "A state set and its transitions are declared separately; an enumeration is not a state set."
+    },
+    {
+      "id": "MCT-01",
+      "verdict": "rejected",
+      "destination": "core-type",
+      "gaps": [],
+      "note": "core-type is not an available destination. The request goes back to the Owner rather than being granted."
+    },
+    {
+      "id": "MCT-02",
+      "verdict": "rejected",
+      "destination": "semantic-facet",
+      "gaps": [],
+      "note": "A sequence is read as ordered, unique and complete. Multiplicity, order and completeness are declared facets and cannot be inferred."
+    },
+    {
+      "id": "MCT-03",
+      "verdict": "gap",
+      "destination": "standard-plugin",
+      "gaps": ["unit-facet-absent", "scale-facet-absent"],
+      "note": "Two types sharing std.decimal are not the same unit. The base type never establishes a unit, so the missing declaration is a gap."
+    },
+    {
+      "id": "MCT-04",
+      "verdict": "rejected",
+      "destination": "core-type",
+      "gaps": [],
+      "note": "A recorded counterexample does not grant the Core type. The request is returned to the Owner; the reference only records that the facets did not carry the case."
+    }
+  ]
+}

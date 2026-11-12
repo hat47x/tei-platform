@@ -1,0 +1,7 @@
+=== RUN   TestEveryDeclaredCapabilityKindIsInTheReportList
+--- PASS: TestEveryDeclaredCapabilityKindIsInTheReportList (0.00s)
+=== RUN   TestAKindOutsideTheVocabularyIsRefused
+--- PASS: TestAKindOutsideTheVocabularyIsRefused (0.00s)
+=== RUN   TestEveryDeclaredRuntimeKindIsInTheReportList
+--- PASS: TestEveryDeclaredRuntimeKindIsInTheReportList (0.00s)
+ok  	tei/internal/plugin	0.009s

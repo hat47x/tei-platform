@@ -1,0 +1,315 @@
+{
+  "schema": "tai.reference.sui-document-reference/v0",
+  "authority": "sui-document",
+  "acceptedMeaning": false,
+  "semanticStatus": "reference-only",
+  "document": {
+    "ref": {
+      "kind": "sui.document",
+      "id": "doc-synthetic-1"
+    },
+    "projectionSchema": "tai.reference.tei-documentv1-projection/v0",
+    "projectionContractId": "sui.documentv1.projection",
+    "projectionContractVersion": "1",
+    "teiCommit": "synthetic",
+    "referenceOf": "SUI DocumentV1",
+    "status": "active"
+  },
+  "revision": {
+    "sourceRevision": "rev-1",
+    "documentDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+    "revisionStatus": "observed",
+    "change": "initial",
+    "previousDigest": null,
+    "previousSourceRevision": null,
+    "previousReferenceInvalidated": false
+  },
+  "cards": [
+    {
+      "ref": {
+        "kind": "sui.card",
+        "id": "card-1"
+      },
+      "claimType": "claim",
+      "holdState": null,
+      "review": {
+        "text": "reviewed"
+      },
+      "content": {
+        "status": "not-carried"
+      },
+      "canvas": {
+        "x": 1,
+        "y": 2,
+        "coordinateSource": "artifact"
+      },
+      "memberships": [
+        {
+          "kind": "containment",
+          "islandRef": {
+            "kind": "sui.island",
+            "id": "island-1"
+          }
+        },
+        {
+          "kind": "affiliation",
+          "islandRef": {
+            "kind": "sui.island",
+            "id": "island-2"
+          }
+        }
+      ]
+    },
+    {
+      "ref": {
+        "kind": "sui.card",
+        "id": "card-2"
+      },
+      "claimType": "hypothesis",
+      "holdState": null,
+      "review": {
+        "text": "reviewed"
+      },
+      "content": {
+        "status": "not-carried"
+      },
+      "canvas": {
+        "x": 30,
+        "y": 40,
+        "coordinateSource": "artifact"
+      },
+      "memberships": [
+        {
+          "kind": "containment",
+          "islandRef": {
+            "kind": "sui.island",
+            "id": "island-1"
+          }
+        },
+        {
+          "kind": "affiliation",
+          "islandRef": {
+            "kind": "sui.island",
+            "id": "island-2"
+          }
+        }
+      ]
+    },
+    {
+      "ref": {
+        "kind": "sui.card",
+        "id": "card-3"
+      },
+      "claimType": "unknown",
+      "holdState": "pending",
+      "review": {
+        "text": "unreviewed"
+      },
+      "content": {
+        "status": "withheld-unreviewed"
+      },
+      "canvas": {
+        "x": 50,
+        "y": 60,
+        "coordinateSource": "artifact"
+      },
+      "memberships": []
+    }
+  ],
+  "islands": [
+    {
+      "ref": {
+        "kind": "sui.island",
+        "id": "island-1"
+      },
+      "review": {
+        "title": "reviewed"
+      },
+      "containmentCardRefs": [
+        {
+          "kind": "sui.card",
+          "id": "card-1"
+        },
+        {
+          "kind": "sui.card",
+          "id": "card-2"
+        }
+      ],
+      "parentIslandRef": null,
+      "affiliationRefCount": 2
+    },
+    {
+      "ref": {
+        "kind": "sui.island",
+        "id": "island-2"
+      },
+      "review": {
+        "title": "unreviewed"
+      },
+      "containmentCardRefs": [],
+      "parentIslandRef": {
+        "kind": "sui.island",
+        "id": "island-1"
+      },
+      "affiliationRefCount": 2
+    }
+  ],
+  "relations": [
+    {
+      "ref": {
+        "kind": "sui.edge",
+        "id": "edge-1"
+      },
+      "relationKind": "directed",
+      "fromRef": {
+        "kind": "sui.card",
+        "id": "card-1"
+      },
+      "toRef": {
+        "kind": "sui.card",
+        "id": "card-2"
+      },
+      "relationType": "related",
+      "parallel": {
+        "groupRef": "card-1|card-2|related",
+        "index": 1,
+        "count": 2
+      }
+    },
+    {
+      "ref": {
+        "kind": "sui.edge",
+        "id": "edge-2"
+      },
+      "relationKind": "directed",
+      "fromRef": {
+        "kind": "sui.card",
+        "id": "card-1"
+      },
+      "toRef": {
+        "kind": "sui.card",
+        "id": "card-2"
+      },
+      "relationType": "related",
+      "parallel": {
+        "groupRef": "card-1|card-2|related",
+        "index": 2,
+        "count": 2
+      }
+    },
+    {
+      "ref": {
+        "kind": "sui.edge",
+        "id": "edge-3"
+      },
+      "relationKind": "directed",
+      "fromRef": {
+        "kind": "sui.card",
+        "id": "card-2"
+      },
+      "toRef": {
+        "kind": "sui.card",
+        "id": "card-1"
+      },
+      "relationType": "related",
+      "parallel": {
+        "groupRef": "card-2|card-1|related",
+        "index": 1,
+        "count": 1
+      }
+    },
+    {
+      "ref": {
+        "kind": "sui.containment",
+        "id": "island-1:card-1"
+      },
+      "relationKind": "containment",
+      "fromRef": {
+        "kind": "sui.island",
+        "id": "island-1"
+      },
+      "toRef": {
+        "kind": "sui.card",
+        "id": "card-1"
+      },
+      "relationType": "contains"
+    },
+    {
+      "ref": {
+        "kind": "sui.containment",
+        "id": "island-1:card-2"
+      },
+      "relationKind": "containment",
+      "fromRef": {
+        "kind": "sui.island",
+        "id": "island-1"
+      },
+      "toRef": {
+        "kind": "sui.card",
+        "id": "card-2"
+      },
+      "relationType": "contains"
+    },
+    {
+      "ref": {
+        "kind": "sui.affiliation",
+        "id": "aff-1"
+      },
+      "relationKind": "affiliation",
+      "fromRef": {
+        "kind": "sui.card",
+        "id": "card-1"
+      },
+      "toRef": {
+        "kind": "sui.island",
+        "id": "island-2"
+      },
+      "relationType": "affiliated-with"
+    },
+    {
+      "ref": {
+        "kind": "sui.affiliation",
+        "id": "aff-2"
+      },
+      "relationKind": "affiliation",
+      "fromRef": {
+        "kind": "sui.card",
+        "id": "card-2"
+      },
+      "toRef": {
+        "kind": "sui.island",
+        "id": "island-2"
+      },
+      "relationType": "affiliated-with"
+    }
+  ],
+  "completeness": {
+    "status": "complete",
+    "reasons": []
+  },
+  "disclosure": {
+    "mode": "references-only",
+    "textIncluded": false,
+    "unreviewedContent": "withheld",
+    "privateEntities": "omitted",
+    "restrictedKinds": [],
+    "hasRestrictedContent": false
+  },
+  "losses": [
+    {
+      "feature": "tree-forest",
+      "status": "unsupported",
+      "detail": "not carried"
+    },
+    {
+      "feature": "canvas-transform",
+      "status": "partial",
+      "detail": "x/y only"
+    },
+    {
+      "feature": "review-attribution",
+      "status": "unsupported",
+      "detail": "flags only"
+    }
+  ]
+}

@@ -1,0 +1,297 @@
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"flag"
+	"fmt"
+	"io"
+	"os"
+	"strings"
+
+	"tei/internal/documentdraft"
+	"tei/internal/operations"
+	"tei/internal/sourceindex"
+)
+
+// documentDraftCLIResponse is the envelope for `model document-draft`. The
+// result is a derived read-only projection: it carries no acceptance, no write
+// authority and no model ingestion claim.
+type documentDraftCLIResponse struct {
+	SchemaVersion string                `json:"schemaVersion"`
+	OK            bool                  `json:"ok"`
+	Result        *documentdraft.Draft  `json:"result,omitempty"`
+	Error         *cliInspectionFailure `json:"error,omitempty"`
+}
+
+const (
+	documentDraftSchemaVersion     = "tei.cli.model-document-draft/v0"
+	documentReconcileSchemaVersion = "tei.cli.model-document-reconcile/v0"
+)
+
+func writeDocumentDraftResponse(out io.Writer, response documentDraftCLIResponse, exit int) (int, error) {
+	encoder := json.NewEncoder(out)
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(response); err != nil {
+		return 2, err
+	}
+	return exit, nil
+}
+
+func failDocumentDraft(out io.Writer, code, message string, exit int) (int, error) {
+	return writeDocumentDraftResponse(out, documentDraftCLIResponse{
+		SchemaVersion: documentDraftSchemaVersion,
+		Error:         &cliInspectionFailure{Code: code, Message: message},
+	}, exit)
+}
+
+// documentDraftFailureCode maps a projection failure onto the stable code the
+// envelope reports. An argument problem stays INVALID_ARGUMENT with exit 2; a
+// subject that is not there is a domain answer with exit 1.
+func documentDraftFailureCode(err error) (string, int) {
+	var draftErr *documentdraft.DraftError
+	if errors.As(err, &draftErr) {
+		if draftErr.Code == documentdraft.CodeInvalidArgument {
+			return draftErr.Code, 2
+		}
+		return draftErr.Code, 1
+	}
+	var failure *operations.ValidationFailure
+	if errors.As(err, &failure) {
+		switch failure.Stage {
+		case operations.StageLoad:
+			return "WORKSPACE_LOAD_FAILED", 2
+		case operations.StageSourceIndex:
+			return "SOURCE_INDEX_FAILED", 2
+		}
+	}
+	return "DOCUMENT_DRAFT_FAILED", 1
+}
+
+// parseDraftSections turns the repeatable -section flag into section specs. The
+// grammar is `<kind>:<id>` with an optional `@<relation-id>`. A value that does
+// not match is an argument failure, not a section the caller did not ask for.
+func parseDraftSections(values []string) ([]documentdraft.SectionSpec, error) {
+	if len(values) == 0 {
+		return nil, nil
+	}
+	sections := make([]documentdraft.SectionSpec, 0, len(values))
+	for _, value := range values {
+		kind := ""
+		id := value
+		relationID := ""
+		hasRelation := false
+		if at := strings.IndexByte(value, '@'); at >= 0 {
+			id = value[:at]
+			relationID = value[at+1:]
+			hasRelation = true
+		}
+		if colon := strings.IndexByte(id, ':'); colon >= 0 {
+			kind = id[:colon]
+			id = id[colon+1:]
+		}
+		// A trailing '@' with nothing after it is a malformed value, not "no
+		// relation": the caller wrote a separator, so the relation is missing.
+		if strings.TrimSpace(kind) == "" || strings.TrimSpace(id) == "" ||
+			(hasRelation && strings.TrimSpace(relationID) == "") ||
+			relationID != strings.TrimSpace(relationID) {
+			return nil, fmt.Errorf("model document-draft: -section %q must be <kind>:<id>[@<relation-id>]", value)
+		}
+		sections = append(sections, documentdraft.SectionSpec{
+			Subject:    sourceindex.Subject{Kind: kind, ID: id},
+			RelationID: relationID,
+		})
+	}
+	return sections, nil
+}
+
+func runModelDocumentDraftCommand(args []string, out io.Writer) (int, error) {
+	fs := flag.NewFlagSet("model document-draft", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	root := fs.String("workspace", "", "TEI workspace directory")
+	kind := fs.String("subject-kind", "", "exact subject kind: "+strings.Join(documentdraft.SupportedElementKinds(), "|"))
+	id := fs.String("subject-id", "", "exact subject ID")
+	relationID := fs.String("relation-id", "", "optional exact semantic-relation ID declared by the subject")
+	title := fs.String("title", "", "optional document title")
+	documentKind := fs.String("document-kind", documentdraft.DocumentKindElementExplanation,
+		"document kind: "+strings.Join(documentdraft.SupportedDocumentKinds(), "|"))
+	application := fs.String("application", "", "exact application ID; required by "+documentdraft.DocumentKindCRUDTable)
+	frozen := fs.Bool("frozen", false,
+		"pin the draft to the model revision it is read at (a fixed delivery)")
+	modelPath := fs.String("model", "",
+		"path to a three-element analysis model JSON; required by "+documentdraft.DocumentKindThreeElementDiagram)
+	var sections pathList
+	fs.Var(&sections, "section", "element a specification chapter is about: <kind>:<id>[@<relation-id>]; repeatable, in chapter order")
+	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			printHelp(out, fs, "model document-draft")
+			return 0, nil
+		}
+		return failDocumentDraft(out, "INVALID_ARGUMENT", err.Error(), 2)
+	}
+	if err := validateRepeatableArguments("model document-draft", args); err != nil {
+		return failDocumentDraft(out, "INVALID_ARGUMENT", err.Error(), 2)
+	}
+	if err := invalidEmptyStringArgument(fs, "model document-draft"); err != nil {
+		return failDocumentDraft(out, "INVALID_ARGUMENT", err.Error(), 2)
+	}
+	// A diagram reads a three-element analysis model rather than a Workspace, so
+	// it has no workspace path to require. Every other kind reads one, and an
+	// empty workspace is a usage failure for those.
+	if fs.NArg() != 0 ||
+		(strings.TrimSpace(*documentKind) == "" || *documentKind != strings.TrimSpace(*documentKind)) ||
+		(*documentKind != documentdraft.DocumentKindThreeElementDiagram &&
+			(strings.TrimSpace(*root) == "" || *root != strings.TrimSpace(*root))) {
+		return failDocumentDraft(out, "INVALID_ARGUMENT",
+			"model document-draft requires an exact -workspace and -document-kind, without positional arguments", 2)
+	}
+	parsedSections, err := parseDraftSections(sections)
+	if err != nil {
+		return failDocumentDraft(out, "INVALID_ARGUMENT", err.Error(), 2)
+	}
+	draft, err := documentdraft.Build(documentdraft.Request{
+		Root:         *root,
+		Subject:      sourceindex.Subject{Kind: *kind, ID: *id},
+		RelationID:   *relationID,
+		DocumentKind: *documentKind,
+		Title:        *title,
+		Application:  *application,
+		Sections:     parsedSections,
+		ModelPath:    *modelPath,
+		Frozen:       *frozen,
+	})
+	if err != nil {
+		code, exit := documentDraftFailureCode(err)
+		return failDocumentDraft(out, code, err.Error(), exit)
+	}
+	return writeDocumentDraftResponse(out, documentDraftCLIResponse{
+		SchemaVersion: documentDraftSchemaVersion,
+		OK:            true,
+		Result:        &draft,
+	}, 0)
+}
+
+// documentReconcileCLIResponse is the envelope for `model document-reconcile`.
+type documentReconcileCLIResponse struct {
+	SchemaVersion string                         `json:"schemaVersion"`
+	OK            bool                           `json:"ok"`
+	Result        *documentdraft.ReconcileReport `json:"result,omitempty"`
+	Error         *cliInspectionFailure          `json:"error,omitempty"`
+}
+
+func writeDocumentReconcileResponse(out io.Writer, response documentReconcileCLIResponse, exit int) (int, error) {
+	encoder := json.NewEncoder(out)
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(response); err != nil {
+		return 2, err
+	}
+	return exit, nil
+}
+
+// draftDocumentEnvelope is the shape `model document-draft` writes: an envelope
+// whose `result` carries the draft. A stored file is usually exactly this
+// output, so the reader accepts both the envelope and the bare draft.
+type draftDocumentEnvelope struct {
+	SchemaVersion string               `json:"schemaVersion"`
+	Result        *documentdraft.Draft `json:"result"`
+}
+
+// decodeDraftDocument reads one stored draft. When the file is the CLI envelope,
+// the inner `result` is used; when it is the bare draft, it is used as it is.
+// Anything else is a decode failure, not a partially completed draft.
+func decodeDraftDocument(document []byte) (documentdraft.Draft, error) {
+	var envelope draftDocumentEnvelope
+	if err := json.Unmarshal(document, &envelope); err != nil {
+		return documentdraft.Draft{}, err
+	}
+	if envelope.Result != nil &&
+		envelope.Result.SchemaVersion == documentdraft.SchemaVersion {
+		return *envelope.Result, nil
+	}
+	var draft documentdraft.Draft
+	if err := json.Unmarshal(document, &draft); err != nil {
+		return documentdraft.Draft{}, err
+	}
+	return draft, nil
+}
+
+func runModelDocumentReconcileCommand(args []string, out io.Writer) (int, error) {
+	fs := flag.NewFlagSet("model document-reconcile", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	root := fs.String("workspace", "", "TEI workspace directory")
+	draftPath := fs.String("draft", "", "path to the stored draft JSON")
+	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			printHelp(out, fs, "model document-reconcile")
+			return 0, nil
+		}
+		return writeDocumentReconcileResponse(out, documentReconcileCLIResponse{
+			SchemaVersion: documentReconcileSchemaVersion,
+			Error:         &cliInspectionFailure{Code: "INVALID_ARGUMENT", Message: err.Error()},
+		}, 2)
+	}
+	if err := validateRepeatableArguments("model document-reconcile", args); err != nil {
+		return writeDocumentReconcileResponse(out, documentReconcileCLIResponse{
+			SchemaVersion: documentReconcileSchemaVersion,
+			Error:         &cliInspectionFailure{Code: "INVALID_ARGUMENT", Message: err.Error()},
+		}, 2)
+	}
+	if err := invalidEmptyStringArgument(fs, "model document-reconcile"); err != nil {
+		return writeDocumentReconcileResponse(out, documentReconcileCLIResponse{
+			SchemaVersion: documentReconcileSchemaVersion,
+			Error:         &cliInspectionFailure{Code: "INVALID_ARGUMENT", Message: err.Error()},
+		}, 2)
+	}
+	// The workspace is required for every kind except a diagram, which reads a
+	// three-element analysis model recorded in the draft instead. The draft is
+	// read first so its own kind decides whether a workspace is needed.
+	raw, err := os.ReadFile(*draftPath)
+	if err != nil {
+		return writeDocumentReconcileResponse(out, documentReconcileCLIResponse{
+			SchemaVersion: documentReconcileSchemaVersion,
+			Error:         &cliInspectionFailure{Code: "DRAFT_READ_FAILED", Message: err.Error()},
+		}, 2)
+	}
+	// A leading UTF-8 BOM is a byte-order mark, not JSON text. Several Windows
+	// editors and shells add one, and a decoder that refuses it would report a
+	// broken draft for an encoding detail. The BOM is dropped here and recorded
+	// nowhere else: it carries no meaning.
+	raw = bytes.TrimPrefix(raw, []byte{0xEF, 0xBB, 0xBF})
+	// The workspace is required for every kind except a diagram, which reads a
+	// three-element analysis model recorded in the draft instead. The draft is
+	// read first so its own kind decides whether a workspace is needed.
+	diagramDraft := false
+	if decoded, decodeErr := decodeDraftDocument(raw); decodeErr == nil {
+		diagramDraft = decoded.DocumentKind == documentdraft.DocumentKindThreeElementDiagram
+	}
+	if fs.NArg() != 0 || strings.TrimSpace(*draftPath) == "" ||
+		(!diagramDraft && (strings.TrimSpace(*root) == "" || *root != strings.TrimSpace(*root))) {
+		return writeDocumentReconcileResponse(out, documentReconcileCLIResponse{
+			SchemaVersion: documentReconcileSchemaVersion,
+			Error: &cliInspectionFailure{Code: "INVALID_ARGUMENT",
+				Message: "model document-reconcile requires an exact -workspace and a -draft path, without positional arguments"},
+		}, 2)
+	}
+	document := raw
+	draft, err := decodeDraftDocument(document)
+	if err != nil {
+		return writeDocumentReconcileResponse(out, documentReconcileCLIResponse{
+			SchemaVersion: documentReconcileSchemaVersion,
+			Error:         &cliInspectionFailure{Code: "DRAFT_DECODE_FAILED", Message: err.Error()},
+		}, 2)
+	}
+	report, err := documentdraft.Reconcile(draft, *root)
+	if err != nil {
+		code, exit := documentDraftFailureCode(err)
+		return writeDocumentReconcileResponse(out, documentReconcileCLIResponse{
+			SchemaVersion: documentReconcileSchemaVersion,
+			Error:         &cliInspectionFailure{Code: code, Message: err.Error()},
+		}, exit)
+	}
+	return writeDocumentReconcileResponse(out, documentReconcileCLIResponse{
+		SchemaVersion: documentReconcileSchemaVersion,
+		OK:            true,
+		Result:        &report,
+	}, 0)
+}

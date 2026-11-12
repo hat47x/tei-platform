@@ -28,7 +28,9 @@ type GenerationContext struct {
 	Queries             []Query
 	Commands            []Command
 	Validations         []Validation
-	CommandTypes       []CommandType
+	CommandTypes        []CommandType
+	Databases           []*teiparse.Database
+	Migrations          []*teiparse.Migration
 }
 
 // CommandType represents an input/output struct for a command.
@@ -135,6 +137,8 @@ func ExtractModel(workspaceRoot, applicationID string) (*GenerationContext, erro
 	ctx.Queries = extractQueries(world, app)
 	ctx.Commands, ctx.CommandTypes = extractCommands(app)
 	ctx.Validations = extractValidations(app)
+	ctx.Databases = world.Databases
+	ctx.Migrations = world.Migrations
 
 	prov := map[string]any{
 		"schemaVersion":       ctx.SchemaVersion,
@@ -390,6 +394,13 @@ func toolchainEvidence() string {
 func renderTemplate(name, text string, data any) (string, error) {
 	tmpl, err := template.New(name).Funcs(template.FuncMap{
 		"add": func(a, b int) int { return a + b },
+		"toGoIdentifier": func(s string) string {
+			s = strings.NewReplacer(".", "_", "-", "_", "{", "", "}", "", " ", "").Replace(s)
+			return strings.ToUpper(s)
+		},
+		"quoteSQL": func(s string) string {
+			return "`" + s + "`"
+		},
 	}).Parse(text)
 	if err != nil {
 		return "", err

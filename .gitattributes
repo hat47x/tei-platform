@@ -323,3 +323,6 @@
 /plan/evidence/DSH_MCP_FIVE_SERVERS_2026-11-11/** -text
 # Eight-server MCP observations are hashed as raw bytes.
 /plan/evidence/DSH_MCP_EIGHT_SERVERS_2026-11-11/** -text
+
+# Capability kind vocabulary output is hashed as raw bytes by its README.
+/plan/evidence/CAPABILITY_KIND_VOCABULARY_2026-11-11/** -text

@@ -191,18 +191,28 @@ func (d *fakeDialect) Select(_ context.Context, opts sqlgen.SelectOptions) (sqlg
 	}
 	return sqlgen.SQL{Statement: sb.String()}, nil
 }
-func (d *fakeDialect) Insert(_ context.Context, _ sqlgen.InsertOptions) (sqlgen.SQL, error) { return sqlgen.SQL{}, nil }
-func (d *fakeDialect) Update(_ context.Context, _ sqlgen.UpdateOptions) (sqlgen.SQL, error) { return sqlgen.SQL{}, nil }
-func (d *fakeDialect) Delete(_ context.Context, _ sqlgen.DeleteOptions) (sqlgen.SQL, error) { return sqlgen.SQL{}, nil }
+func (d *fakeDialect) Insert(_ context.Context, _ sqlgen.InsertOptions) (sqlgen.SQL, error) {
+	return sqlgen.SQL{}, nil
+}
+func (d *fakeDialect) Update(_ context.Context, _ sqlgen.UpdateOptions) (sqlgen.SQL, error) {
+	return sqlgen.SQL{}, nil
+}
+func (d *fakeDialect) Delete(_ context.Context, _ sqlgen.DeleteOptions) (sqlgen.SQL, error) {
+	return sqlgen.SQL{}, nil
+}
 func (d *fakeDialect) PhysicalType(_ sqlgen.StorageType) (string, error) { return "", nil }
-func (d *fakeDialect) CanStore(_ sqlgen.StorageType) bool { return false }
-func (d *fakeDialect) PlaceholderStyle() sqlgen.PlaceholderStyle { return sqlgen.PlaceholderPositionalDollar }
+func (d *fakeDialect) CanStore(_ sqlgen.StorageType) bool                { return false }
+func (d *fakeDialect) PlaceholderStyle() sqlgen.PlaceholderStyle {
+	return sqlgen.PlaceholderPositionalDollar
+}
 func (d *fakeDialect) Name() string { return "fake" }
-func (d *fakeDialect) BeginTransaction(_ context.Context, _ *sql.DB) (*sql.Tx, error) { return nil, nil }
-func (d *fakeDialect) IsUniqueViolation(_ error) bool { return false }
+func (d *fakeDialect) BeginTransaction(_ context.Context, _ *sql.DB) (*sql.Tx, error) {
+	return nil, nil
+}
+func (d *fakeDialect) IsUniqueViolation(_ error) bool     { return false }
 func (d *fakeDialect) IsForeignKeyViolation(_ error) bool { return false }
-func (d *fakeDialect) IsNullViolation(_ error) bool { return false }
-func (d *fakeDialect) IsCheckViolation(_ error) bool { return false }
+func (d *fakeDialect) IsNullViolation(_ error) bool       { return false }
+func (d *fakeDialect) IsCheckViolation(_ error) bool      { return false }
 
 func TestBuildRelationQuerySQLWithNullForeignKeys(t *testing.T) {
 	// NULL foreign keys should still work with LEFT JOIN - the order will be
@@ -394,9 +404,9 @@ func TestBuildRelationQuerySQLWithJoinTable(t *testing.T) {
 			{
 				Step: query.RelationStep{Relation: "sales.order.products"},
 				Relation: semantic.Relation{
-					ID:         "sales.order.products",
-					Target:     "sales.product",
-					JoinTable:  "sales.order_product",
+					ID:          "sales.order.products",
+					Target:      "sales.product",
+					JoinTable:   "sales.order_product",
 					Cardinality: semantic.CardinalityMany,
 					Keys: []semantic.RelationKey{
 						{SourceAttribute: "sales.order.order_id", TargetAttribute: "sales.order_product.order_id"},

@@ -2543,3 +2543,115 @@ plan/design/REA_THREE_ELEMENT_CANDIDATE_INTAKE_2026-11.md
 ### 結果
 
 `./tools/repository-plan-check` の**3テストすべてが緑**。製品コードは変えていない（テストを足し、文書の主張を正し、台帳を復元した）。
+
+## 78. 第77ラウンド（2026-11-11）: 実行器はあるのに振り分けが無い `rea-intake` を配線する
+
+第76ラウンドで「未接続」と記録した `rea-intake` の原因を特定して直した。生出力は[第77ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND77_REA_INTAKE_ROUTE_2026-11-11/README.md)にある。
+
+### 原因
+
+`runThreeElementReaIntake` は `cli_three_element_rea.go` に**実装済み**で、テストは12箇所から呼んでいた。**しかし `runThreeElementCommand` の `switch` に `rea-intake` の case が無かった。**
+
+```text
+{"error":{"code":"INVALID_ARGUMENT","message":"unknown three-element subcommand \"rea-intake\""}}
+```
+
+FAIL はサブテスト込み14件。
+
+### なぜ見落とされたか
+
+**テストが実行器を直接呼んでいた**からである。`runThreeElementReaIntake` を直接叩けば振り分けを通らないので、case が無くても気づかない。**今回 FAIL したのは、テストが `runThreeElementCommand` 経由で呼ぶよう書かれていたから**である。**テストの入口が正しく、実装が遅れていた。**
+
+### 修正と実測
+
+```go
+case "rea-intake":
+	return runThreeElementReaIntake(args[1:], out)
+```
+
+usage 行にも足した。**14件 → 0件**。
+
+### 変異
+
+| # | 変えた箇所 | 結果 |
+| --- | --- | --- |
+| M1 | case を削る | FAIL **14件**（修正前と一致） |
+| M2 | `validate` へ振る | FAIL `flag provided but not defined: -evidence` |
+
+**M2 が示すのは、case を足すだけでは足りない**こと。**正しい実行器へ振る**必要がある。
+
+### 直していないもの
+
+同じく FAIL していた2件は **`rea-evidence` という未実装コマンド**を参照している（`runReaEvidence` は存在しない）。`rea-intake` と違い**振り分けを足すだけでは直せない**ので範囲外とした。
+
+`gofmt -l .` は main で6ファイル以上を指摘するが、1ファイルだけ直すのは恣意的なので**記録だけした**（`repository-health` は gofmt を実行していない）。
+
+### 第74ラウンドの修正が、**呼び出し側だけ失われていた**
+
+CI が `TestBlockOnlyEntryAfterClosingBraceNamesTheBlock`（第74ラウンドで私が書いた試験）を FAIL と報告した。現在の main を測ると:
+
+```text
+internal/syntax/parser.go の blockOnlyEntryHint : 2箇所
+  line 2536: コメント
+  line 2538: func blockOnlyEntryHint(text string) string
+blockOnlyEntryHint(t.Text) の呼び出し            : 0箇所
+```
+
+**関数は残り、呼び出しが消えていた。** `expectEOF` への別の編集が分岐を巻き戻した。**試験と呼び出しが同じコミットにあったため、統合時に何も落ちなかった。**
+
+```text
+git merge-base --is-ancestor edd661709 origin/main   -> YES
+```
+
+統合は成立しており、**その後の編集でその場で巻き戻された**。残ったのは私が足した試験だけで、CI がそれを報告した。
+
+同じ方法で4ラウンド分を点検した。
+
+| ラウンド | 修正 | 状態 |
+| --- | --- | --- |
+| 72 | `CheckWorkspaceUnreadSources` | **呼ばれている** |
+| 73 | `ReadableWithoutSection` | **設定されている** |
+| 74 | `blockOnlyEntryHint` | **呼ばれていない（消失）** |
+| 75 | `VALIDATION_INCOMPLETE` | **出ている** |
+
+呼び出しを復元した。**試験は呼び出しを外すと落ちる**（`message does not say the entry belongs inside a block`）ので、復元が本質であることを示せている。
+
+**教訓: 「関数が在る」は「機能が動く」ではない。** 定義だけを数える点検は、今回の消失を見逃す。
+
+## 79. 第78ラウンド（2026-11-12）: 未統合機能の孤児テストが `repository-health` を常時赤にする
+
+第77ラウンドで「`rea-evidence` は実装自体が無い」と記録した。**その実装の所在を確定させ、赤の正体を明文化した。** 生出力は[第78ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND78_REA_EVIDENCE_ORPHAN_2026-11-12/README.md)にある。起票は [#4455](https://github.com/hat47x/tei-platform/issues/4455)。
+
+### 実装は「無い」のではなく「未統合」
+
+```text
+$ git log --all --diff-filter=A -- cmd/tei/rea_evidence.go
+716fb3612 feat(rea): receive one external analysis Evidence and inspect its delivery
+
+$ git merge-base --is-ancestor 716fb3612 origin/main   -> NO
+$ git branch -r --contains 716fb3612
+  origin/feat/rea-external-evidence-intake-20261111-r2
+$ git rev-list --count 716fb3612..origin/main           -> 157
+```
+
+**実装はブランチに在り、157コミット分 main から遅れている。** 依存の `internal/externalanalysis`（1,202行）も main に無い。
+
+### なぜこうなったか
+
+`7b0ab6b63` が `rea-evidence` を前提とする**2試験を追加**したが、実装ファイルを**含んでいなかった**（`--name-only` で0件）。**テストだけが先に main に入り、実装は入らなかった。**
+
+### なぜ私が直さないか
+
+| 案 | 内容 | 採否 |
+| --- | --- | --- |
+| A | 未統合ブランチを取り込む | **所有者の判断**（157コミット分。機能の意味を私が決めてしまう） |
+| B | テストを実装が入るまで外す | **所有者の判断**（契約を一時的に外す） |
+| C | スタブで `unknown command` を返す | **採らない**（動かないコマンドを動くように見せる） |
+
+**C はドッグフーディングの目的に反する。**
+
+### 位置付け
+
+**「赤が常態化する」危険を名指しした回**である。第76ラウンドで私はこの2件を「main でも同じ」として切り捨てた。**切り捨てが続くと赤が常態化する。** その正体を確定させ、判断を所有者に返した。
+
+なお **plan-check は第76〜77ラウンドの修正で緑になった**（今回は赤ではなかった）。
