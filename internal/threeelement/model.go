@@ -220,35 +220,56 @@ func (m ThreeElementModel) Index() (map[string]DataElement, map[string]FunctionE
 // Validate runs structural checks and returns diagnostics.
 func (m ThreeElementModel) Validate() []Diagnostic {
 	var diags []Diagnostic
-	// Detect collisions against the SOURCE arrays before building any lookup.
-	// Index intentionally omits ambiguous identities, and a missing lookup
-	// must not be mistaken for a valid unique subject.
-	appendDuplicateID := func(kind, id string, position int, first map[string]int) {
-		if id == "" {
-			return // EMPTY_*_ID is reported by the existing validation.
-		}
-		if prior, exists := first[id]; exists {
-			diags = append(diags, Diagnostic{
-				Code:       "DUPLICATE_" + strings.ToUpper(kind) + "_ID",
-				Severity:   "error",
-				Message:    fmt.Sprintf("%s id %q is duplicated at positions %d and %d", kind, id, prior, position+1),
-				SubjectIDs: []string{id},
-			})
-		} else {
-			first[id] = position + 1
-		}
-	}
+	// Detect collisions against the source arrays before looking anything up.
+	// Code values are literal so repository-wide diagnostic coverage verifies
+	// each public diagnostic contract against its independent test.
 	dataPositions := map[string]int{}
 	for i, e := range m.DataElements {
-		appendDuplicateID("data", e.ID, i, dataPositions)
+		if e.ID == "" {
+			continue // EMPTY_DATA_ID is separately diagnosed below.
+		}
+		if first, exists := dataPositions[e.ID]; exists {
+			diags = append(diags, Diagnostic{
+				Code:       "DUPLICATE_DATA_ID",
+				Severity:   "error",
+				Message:    fmt.Sprintf("data id %q is duplicated at positions %d and %d", e.ID, first, i+1),
+				SubjectIDs: []string{e.ID},
+			})
+		} else {
+			dataPositions[e.ID] = i + 1
+		}
 	}
 	functionPositions := map[string]int{}
 	for i, e := range m.FunctionElements {
-		appendDuplicateID("function", e.ID, i, functionPositions)
+		if e.ID == "" {
+			continue // EMPTY_FUNCTION_ID is separately diagnosed below.
+		}
+		if first, exists := functionPositions[e.ID]; exists {
+			diags = append(diags, Diagnostic{
+				Code:       "DUPLICATE_FUNCTION_ID",
+				Severity:   "error",
+				Message:    fmt.Sprintf("function id %q is duplicated at positions %d and %d", e.ID, first, i+1),
+				SubjectIDs: []string{e.ID},
+			})
+		} else {
+			functionPositions[e.ID] = i + 1
+		}
 	}
 	businessPositions := map[string]int{}
 	for i, e := range m.BusinessElements {
-		appendDuplicateID("business", e.ID, i, businessPositions)
+		if e.ID == "" {
+			continue // EMPTY_BUSINESS_ID is separately diagnosed below.
+		}
+		if first, exists := businessPositions[e.ID]; exists {
+			diags = append(diags, Diagnostic{
+				Code:       "DUPLICATE_BUSINESS_ID",
+				Severity:   "error",
+				Message:    fmt.Sprintf("business id %q is duplicated at positions %d and %d", e.ID, first, i+1),
+				SubjectIDs: []string{e.ID},
+			})
+		} else {
+			businessPositions[e.ID] = i + 1
+		}
 	}
 	dataByID, fnByID, busByID := m.Index()
 
