@@ -385,7 +385,6 @@ func TestThreeElementDiagramReconcileRefusesADraftWithoutAModelPath(t *testing.T
 	}
 }
 
-
 // TestThreeElementDiagramPreservesDeclaredElementAuthorityLimits is an
 // independent consumer regression: the generated diagram must still carry
 // limits declared in the source JSON after a structural fingerprint is computed.
