@@ -1080,3 +1080,13 @@ M0/M1で一Relationの照合を成立させたら、[#1031](https://github.com/h
 **認知負荷の実証**：Generic Catalog/Locate/InspectとTEA三視点を、同じ1)Relation出典探索、2)Business Action→Dataの経路説明、3)Source改版後の失効理由特定、という三Taskで比較する。正しいSubject選択率、無根拠Effect推論、Unknownの説明漏れ、Source jump成功、操作数・時間を測定候補とする。比較手順・人数・閾値・実測は未定／NOT RUN。図表やMethodを増やしただけで改善と判定せず、効果が無ければ専用UIを縮小する。
 
 **優先順位**：#2586の実Function→Provider Rowset→Data Context→Consumer、#1251のPlugin selected→invoked→receivedを主線とし、TEAのM0→M1同一Relation／開示境界は並行実証。Studio/Wails・TEA専用Host・新CLI・独立Canonical・Rule/Proof Engine・Universal Cache・新Acceptance Gateを初期の前提にしない。**本§35は現行ソースの静的照合に基づく受入案であり、新しいCLI/Node E2E、実Policy/Studio GUI/Target Effect/Owner受理/利用者比較はNOT RUN／NOT ACCEPTED**。
+
+### 35.4 最初の実Relationを二つのOperationで読むGo試験（2026-11-12、独立Draft #4521）
+
+§35.1で固定したM0 gapを、[Go試験Draft #4521](https://github.com/hat47x/tei-platform/pull/4521)へ実装した。新規ファイル internal/operations/tea_real_relation_map_locate_test.go は公開実Source reference/workspace/semantic/sales/order.tei を対象とし、MapWorkspace と LocateWorkspace のKind/ID・Workspace Identity・World/SourceIndex Fingerprint・ModelRevision・Validation・親・Target・SourceStatus・部分被覆を一つのGo試験で突合する。Relationは semantic-relation:sales.order.lines、Parentは semantic-data:sales.order、Targetは semantic-data:sales.order_line。Map contains/refers-to と Locate relation-target を正確な型・方向・件数で比較する。別々のLoad間の同FP一致は、単一の原子的Source読取でも現Policy/Role資格でもない。
+
+**実装の証拠と限界**：試験は既存Go package/公開Workspaceだけを使った1ファイル追加。baseline main 8c3d1a5582cf3e9a40b52b3a2ebaa041739b4fd2、初期head 134a92dc500385b2c1f403562d3b8750f5998e7d、保存Blob 85a08789a1ae66ea8068097eda14f7ebecd6bbaa。gofmt -l は空で、ローカル git hash-object とGitHub Blobが一致した。実Go test/Repository Healthの合格はこの情報から推定せず、exact-head CIで独立検収する。Node/Studio同一Consumer、現在Disclosure、実Function/DB、Action-specific Effect、Owner受理は試験対象外。
+
+**他チャットのMethod境界との接合**：[三要素Methodの並行Draft #4478](https://github.com/hat47x/tei-platform/pull/4478) §27〜28ではTEAを業務向け任意Profileとし、UI項目追加をData列自動生成とせず、Data列削除ではUI項目を無断削除せずMapping失効を明示する検収候補を固定した。M0のread-only ReaderはSource/Schema/UIのいずれも書き換えない。Methodを使わない一般コード開発や既存BuildをTEA必須Gateで止めず、Source/Role/Relationが適格な範囲だけ三視点へ投影する。DMU試験、UI Writer、Migration/Role判定の重複実装はしない。
+
+**次の判定**：#4521のGo試験・Healthを固定版で検収した後、同じ一Relationの実公開適格Sliceが既存Node Consumerへ届かない理由（Qualified Role/Disclosureと実Source→Node mapping）だけを #4396/#2516/#1124 のOwnerへ引き渡す。新Core/Reader/Policy/Host/Proof Engineを追加しない。
