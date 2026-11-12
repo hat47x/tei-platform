@@ -1042,3 +1042,41 @@ StudioでUI要素を選択しAI/DSH系Harnessへ細かく指示する設計は�
 | **TEA-Q29** | D由来のGenerated Targetと同じRuleから生成したExpectedが一致 | 非独立Expectedによる自己証明を拒否。別Ownerの固定/独立ExpectedでData/Function/Businessの必要Claimを比較 |
 
 **初回の狭い検収出口**：公開・合成の一つのLegacy Source観測（Business Step→Function→Data Relation）、一つのDのQualified Meaning/Rule候補、一つのTのread-only Function/Provider受領を、同一の問いQから別々に辿れるかを比較する。新Target実Effect・DB Cutover・Owner Meaning受理はその後の独立試験とする。#3394の外部REA Product入場、#2586実Function Read、#1124同一Studio Consumer、#4134/2514独立Expectedの進行を相互ブロッカーにしない。**§34.11〜13とTEA-Q22〜Q29は設計案、実試験／実GUI／実DB旧新比較／実Provider Effect／Owner受理はNOT RUN。** TEA専用Reader、第二Canonical、Migration Engine、Host、Truth/Proof Storeを新設しない。
+
+## 35. TEA最初の実Source縦断を既存Consumerで成立させる（2026-11-12、採用前）
+
+**今回の判断**：§34のTEA-Q01〜29は反証候補の棚卸しであり、29件の新テストや独自Verifierを先に実装する作業計画ではない。現行mainの internal/operations/model_map.go の MapWorkspace/MapWorld、model_location.go の LocateWorkspace/LocateInCatalog、cmd/tei/cli_model.go の model locate、reference/tei-three-element-method/public-slice.mjs と catalog-validation.mjs を**別々の資格のまま**段階結合する。「実Sourceで対応する宣言を見付けた」と「そのSourceを現在の公開Viewとして安全に渡せる」「実Functionが読んだ」は同一でない。
+
+### 35.1 最初の一件と、二つの実在する入口
+
+対象を公開 reference/workspace の **semantic-relation:sales.order.lines** 一件に固定する。MapWorkspace(root) の ModelMap と LocateWorkspace(root, Subject{Kind:"semantic-relation",ID:"sales.order.lines"}, limit) の ModelLocationを比較し、実CLIでは次の既存Commandを利用する（出力の成功を今回新たに実行・確認したという意味ではない）。
+
+    tei model locate -workspace <root> -subject-kind semantic-relation -subject-id sales.order.lines
+
+| 証拠／照合箇所 | 現行APIに基づく固定Expectedと停止線 |
+| --- | --- |
+| **対象とSource** | Catalog/Locateの Qualified Kind+ID、Workspace Identity、WorldFingerprint、SourceIndexFingerprint、ModelRevision、SourceStatusを照合。別LoadのFingerprint一致は原子的読取りを証明しない |
+| **親とTarget** | Mapのcontains(parent→relation)とrefers-to(relation→target)、LocateのParent Pathとrelation-targetを、Subject/方向/型付きRelationで対応付ける。同名・同端点・表示IDだけでIDを決めない |
+| **未導出と未解決** | Map.Coverageはpartial-projection。Location.Coverage.NotDerivedは空のOutgoing/Incomingを不存在へ変えない。MapのresolvedはCanonical declaration内の構造解決であり、Source Indexed/Role Accepted/Effect/編集権限ではない |
+| **Sourceだけの改版** | Source移動/改ByteでWorld/Linksが不変でもSourceIndexFingerprint・ModelRevision・Source locatorが変化し得る。現mainのModel Map局所特性試験を再利用し、同じ合成試験を再発明しない |
+
+**二つの異なる応答形式を同一Schemaにしない**：Map.LinkはFrom/To/Relation/Resolution、Location.OutgoingはRole/From/To/Resolvedという別投影である。たとえばMapのrefers-toとLocationのrelation-targetは、方向・Subject・Relation意味を照合する**明示的な対応**が必要。Link解決済みをSource/Business現在性へ昇格しない。
+
+### 35.2 実CLI→Node 三視点の限定入場と現在の不足
+
+[Draft #4396](https://github.com/hat47x/tei-platform/pull/4396)は実Go CLIのCatalog/Validateを別Node Consumerへ束縛する**独立した実装担当**である。成功CatalogとValidation NGをread-onlyとして同時に示せる反面、現在のRole/Policyを実Sourceから確定した証拠、Relation Source Locatorを同じ実Consumerに配送した証拠は持たない。これを新規Product Gate/全面三視点成立と呼ばない。
+
+既存Node projectPublicTeaSlice の入力はscope/workspaceObservation/subjects/relationsを持つ**caller-prequalified public slice**であって、GoのModel Map/Catalog/Locate JSONをそのまま渡せるProduction Adapterではない。個別Role・公開対象範囲・Consumer用開示資格を[#2516](https://github.com/hat47x/tei-platform/issues/2516)/[#2620](https://github.com/hat47x/tei-platform/issues/2620)が証明するまで実Sourceから直結してはいけない。T18の既存Catalog Validation joinと、必要なSource Locator/Subjectの紐付けを別々に計測する。新しい第二Policy/ResolverをTEA側に用意しない。
+
+**次の最小の引継ぎ**（#4396 Ownerへ。既存実装やCIを横取りしない）：
+1. 一件のCatalog/Locate/MapのSubjectとRelationを、同じRoot/Scope/Revisionの**候補**として受け取る。Loader/Index取得とConsumer受領が別試行ならその相関を同一Attemptと偽らない。
+2. 関連するSourceStatusと親／Target、NotDerived/partialをSourceの出典付きで保持。Raw/Private Sourceや未公開件数をNode Fixtureに追加しない。渡せる公開Sliceの作成元が未資格なら、UIへの実結線を保留。
+3. Validation.ok=falseのread-only局所表示、同ID異Scope、同端点異Relation、Source path drift、未導出Writerを、一つずつ独立Expectedへ対照。#2514/#4134に採点独立性を委譲。新しいMockのPASSを実Product Effectとしない。
+
+### 35.3 Businessと利用価値に広げる停止条件
+
+M0/M1で一Relationの照合を成立させたら、[#1031](https://github.com/hat47x/tei-platform/issues/1031)/[#1125](https://github.com/hat47x/tei-platform/issues/1125)のBusiness Manual StepとAction→Function→Data derived pathを、**Function-level CRUD／Action固有のEffectとは別**に接続する（TEA-X01/X10を再利用）。BusinessにFunctionを持たないStepがある場合にData/Function不足を自動断定しない。ここで新TEA固有のSchemaやValidatorを作らず、実ProviderのEffectは#2586/#1174、Subsystemの責務・名称変化は#3250、ETLのInput Cut/Checkpoint/Published/Consumedは#1130、変更・受理は#267が所有する。
+
+**認知負荷の実証**：Generic Catalog/Locate/InspectとTEA三視点を、同じ1)Relation出典探索、2)Business Action→Dataの経路説明、3)Source改版後の失効理由特定、という三Taskで比較する。正しいSubject選択率、無根拠Effect推論、Unknownの説明漏れ、Source jump成功、操作数・時間を測定候補とする。比較手順・人数・閾値・実測は未定／NOT RUN。図表やMethodを増やしただけで改善と判定せず、効果が無ければ専用UIを縮小する。
+
+**優先順位**：#2586の実Function→Provider Rowset→Data Context→Consumer、#1251のPlugin selected→invoked→receivedを主線とし、TEAのM0→M1同一Relation／開示境界は並行実証。Studio/Wails・TEA専用Host・新CLI・独立Canonical・Rule/Proof Engine・Universal Cache・新Acceptance Gateを初期の前提にしない。**本§35は現行ソースの静的照合に基づく受入案であり、新しいCLI/Node E2E、実Policy/Studio GUI/Target Effect/Owner受理/利用者比較はNOT RUN／NOT ACCEPTED**。
