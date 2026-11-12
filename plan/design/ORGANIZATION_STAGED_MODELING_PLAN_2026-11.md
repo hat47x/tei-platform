@@ -670,24 +670,26 @@ WU-11〜14をWU-06〜10の「全部完了待ち」にしない。前段の**必�
 
 数量は value/unit/basis/grain/validAt/knownAt/source/coverage を検査する。単位変換可能であっても、Basis（例：月間予定工数と実績工数、予算と実支出）が異なれば無条件に合算しない。未取得・NULL・非開示・0を区別する。配賦合計が1を超えるか否かは雇用形態・用途によるため、Coreが一律に拒否せずOwner Ruleに委ねる。
 
-#### 10.8.2 最小合成事例：P1/P2とD1/D2
+#### 10.8.2 既存Source fixtureを正本とする：P1/P2/P3とD1/D2
 
-既存#2510の公開合成例に合わせ、valid/knownを固定して、P1がD1に0.6 FTE・D2に0.4 FTE、P2がD1に1.0 FTE所属するとする。
+**出典を明示**：mainの `reference/org-semantic-views/source-fixture.json`（`org-synthetic-r7`、blob `d66f29505389f2096e9b825ba4f5e2d799d607d4`）および `scenario-fixture.json`。baselineは `validAt=2027-06-15`、`knownAt=2027-07-01`。P1→D1のA1=100 basisPoints、P2→D1のA2=60、P2→D2のA3=40、P3→D2のA4=100。100 basisPoints=1 FTEという**この合成Fixture内の換算基準**を使う。前稿の「P1がD1 0.6/D2 0.4、P2がD1 1.0、全体2人/3所属/2 FTE」は当該fixtureに存在しない仮例だったため**撤回**し、第二Source/独立Fixtureを作らず修正する。
 
 | 指標 | D1 | D2 | 全体（重複排除） |
 | --- | ---: | ---: | ---: |
-| Membership occurrence | 2 | 1 | 3 |
-| Unique Person（各部門内） | 2 | 1 | 2 |
-| Allocated FTE | 1.6 | 0.4 | 2.0 |
+| Membership occurrence | 2 | 2 | 4 |
+| Unique Person（各部門内） | 2 | 2 | 3 |
+| Allocated FTE | 1.6 | 1.4 | 3.0 |
 
-**反例**：D1/D2の部門別人数を合計すると3になるが、全体Unique Personは2。D1に至る複数Graph pathがあってもAllocation occurrenceが同一なら二重計上しない。配賦0.6/0.4を異動・業務責任・実行Grantの自動分割率として使わない。配賦量を変更しても、Source/Ruleに別途規定されない限りCase C1の責任は不変。
+**反例**：部門内の実人数2+2=4を組織全体4人とは呼ばない（同一P2の兼務）。D1にProject J1/J2をJOINして4行に増えても配賦FTEは1.6のまま（素朴なJOIN後合算では3.2になる）。Allocation occurrenceとJoin行数を分ける。P2の配賦0.6/0.4は業務責任・実行Grantの自動分割率ではなく、変更してもCase C1の責任は別Source/Ruleなしに変化しない。
+
+**時点変更の非自明性**：validAtを2027-06-15のままknownAtだけ2027-07-03へ進めると、既存fixtureの遡及訂正によりA2は有効対象から外れる。Membership=3、D1=1.0 FTE、D2=1.4 FTE、全体2.4 FTEとなり、全体Unique Personは3のまま。この差は改版した新しい合成データを作らず、既存r7の時点切替だけで得られる。
 
 #### 10.8.3 シナリオは確定Sourceと別資格
 
 シナリオ比較を**read-only Derived View**として最初に提供する。BaselineのWorld/Meaning/Rule/Provider read cohortを固定し、Scenarioは一組の仮定・差分・計算条件を別IDで保持する。計算の出力はObservation/Projectionであり、Ownerによる業務採用・辞令・Case移管・実Commitではない。
 
-- **欠員**：P2が一時的にD1で稼働不可となる仮定では、D1の利用可能配賦FTE相当が1.6→0.6となる。ただし実在のMembership・在籍・Case責任は変更しない。基準配賦FTEは1.6のまま保持する。
-- **異動**：P1のD1配賦0.6をD2へ移す仮定では、D1=1.0、D2=1.0。全体2.0は不変。実際の異動Directive/責任移管を生成しない。
+- **欠員**：P1が一時的にD1で稼働不可となる仮定では、D1の**利用可能配賦FTE相当**が1.6→0.6となる。ただし実在Membership・在籍・Case責任・基準配賦FTE 1.6は変更しない。稼働可能量をFTEから業務処理能力へ換算するには別途Owner Ruleが必要。
+- **仮配賦変更（正式異動ではない）**：P2のA2を0.6→0.0 FTE、A3を0.4→1.0 FTEとする仮定では、D1=1.0、D2=2.0、全体3.0。A2/A3のMembership occurrenceは維持し、実異動Directive・Case責任移管・正式Allocation更新を生成しない。
 - **技能・業務量**：必要な技能と有効なQualification、予測処理時間とCapacityを別々に比較し、候補が0件・複数・partialの場合は適任者や代替承認者を断定しない。
 - **組織統廃合**：旧部門IDを単純置換しない。Source occurrence、旧/新のRelation・Case責任・Budget Basis・権限Scopeを別々に扱い、D1→D2→D1のABAで旧シナリオを現在の確定版へ再利用しない。
 - **複数Provider**：同じScenario IDであっても、取得Source/Scope/時点が異なる場合は単一の観測済みBaselineと扱わず、Coverageとunknownを表示する。
@@ -703,20 +705,20 @@ WU-11〜14をWU-06〜10の「全部完了待ち」にしない。前段の**必�
 | SUI/CSW/AI Harness | 事例探索・組織改編案の提案・固定対象レビュー | #4501/#4479。AI提案から正式Directive/Grant/Effectへ自動昇格しない |
 | EKI/外部Host | 確定済みFunctionの実行・配布・監査 | #1174/#2499。Scenarioを実行許可とみなさない |
 
-#### 10.8.5 追加Expected（既存#2510の人数/FTEを再利用）
+#### 10.8.5 追加Expected（既存r7 fixtureの実測値と明示的に照合）
 
 | ID | 独立Expectedと反例 |
 | --- | --- |
-| ORG-CAP-01 | P1 0.6/0.4 + P2 1.0で全体Unique Person=2、Membership=3、FTE=2.0。部門別Uniqueの単純合算3を全体人数にしない |
+| ORG-CAP-01 | r7 baselineのA1=100、A2=60、A3=40、A4=100 basisPoints。全体Unique Person=3、Membership=4、FTE=3.0。部門別Unique 2+2=4を全体人数にしない |
 | ORG-CAP-02 | 同じAllocation occurrenceにGraphの別経路が増えてもFTE合計は不変。Relation occurrenceが増えた場合だけ対象Ruleに従う |
-| ORG-CAP-03 | D1のP2欠員シナリオでD1の利用可能配賦FTE相当=0.6、Baselineの配賦FTE=1.6、確定Membership/Case C1/Receiptは不変 |
-| ORG-CAP-04 | P1の0.6をD1→D2に仮移動するとD1=1.0、D2=1.0、全体=2.0。Scenarioと実Directiveは別 |
+| ORG-CAP-03 | D1のP1稼働不可シナリオでD1の利用可能配賦FTE相当=0.6、Baselineの配賦FTE=1.6、確定Membership/Case C1/Receiptは不変（Case/Receipt自体は当該fixtureに未実装） |
+| ORG-CAP-04 | P2のA2を0.6→0.0、A3を0.4→1.0へ**仮配賦変更**するとD1=1.0、D2=2.0、全体=3.0、Membership=4。Scenarioと実Directiveは別 |
 | ORG-CAP-05 | FTEと時間、予算と実支出などBasisが異なる場合、単位変換できても無条件合算しない。NULL/partial/非開示を0としない |
 | ORG-CAP-06 | Skillが一致しても失効資格・自己承認・別Tenant/Grantなしなら実承認不可。候補がpartialなら確定選任不可 |
-| ORG-CAP-07 | Sourceは同じでもRule/Provider/Policy/Scope/knownが変わればScenarioの再利用資格を再評価。A→B→Aを同一版としない |
+| ORG-CAP-07 | r7のvalidAt=2027-06-15を固定しknownAt=2027-07-01→07-03でMembership=4→3、FTE=3.0→2.4。Rule/Provider/Policy/Scope/known変更時の再利用資格も再評価し、A→B→Aを同一版としない |
 | ORG-CAP-08 | Scenarioの図・SHO説明・AI提案が成功しても、実異動・Case移管・Effect/ACKは発生していない |
 
-**実装順**：#2510にある人数/FTE独立Expectedを再利用し、ORG-CAP-01/02の純粋なQuantity/Graph集計→03/04のread-only Scenario差分→05/06のRule/Scope/partial→07/08の実Consumer/鮮度へ進める。#4490のORG-BEH、#4501のCXケースとの重複Expectedは新規作成せず共有する。最初の製品実Read #2586をブロックしない。
+**実装順**：#2510にある既存r7の人数/FTE Referenceを再利用し、ORG-CAP-01/02の純粋なQuantity/Graph集計→03/04のread-only Scenario差分→05/06のRule/Scope/partial→07/08の実Consumer/鮮度へ進める。独立Expectedを実装から生成せず、synthetic oracleのPASSを製品経路の合格と呼ばない。#4490のORG-BEH、#4501のCXケースとの重複Expectedは新規作成せず共有する。最初の製品実Read #2586をブロックしない。
 
 **停止条件**：シナリオの仮定をAccepted Sourceへ無断で書戻す、FTEを権限やCase責任へ自動変換する、人数・所属件数・FTEの粒度を暗黙に混同する、SQL/Graph/SHO/AIの表示成功を実Provider/Effect成功へ昇格する場合は不合格。**状態**：本節は設計・合成Expected候補。ORG-CAP-01〜08の実行、実Org Provider、実シナリオConsumer、Owner意味受理は **NOT RUN / NOT ACCEPTED**。
 
