@@ -251,5 +251,99 @@ GUI-X1〜X8は既存#1824 CTX、#1124 M、#1180 Scenario、SHO #4/#31のExpected
 
 **第3縦切り**：SHOの選択OccurrenceとTEIのRelationをTaskの比較/根拠として固定→送出予定Public Slice Preview→実外部Harnessで選択的Handoff→戻った候補をGUI上で明示採用/却下。OS/Host隔離とDisclosure Gate未資格なら外部送信は行わずローカル候補で止める。
 
-**計画反映先**：この節は#1824 Studio GUI、#1124三視点、SHO #19文書UI、SHO #31 Handoff、TAI #271 Activityの横断リンクを担当。MASTER_PLAN作業領域Gの内容は既存PR #4325/#4484のレビュー後に最小リンクのみ追加し、同じ規範を複数文書へ複写しない。
+**計画反映先**：この節は#1824 Studio GUI、#1124三要素分析法の各モデル、SHO #19文書UI、SHO #31 Handoff、TAI #271 Activityの横断リンクを担当。MASTER_PLAN作業領域Gの内容は既存PR #4325/#4484のレビュー後に最小リンクのみ追加し、同じ規範を複数文書へ複写しない。
 
+
+
+## 12. 2026-11-12 横断成熟版：問い・時点・業務意味を固定する操作仕様
+
+> 本節は#4473の三要素分析法のモデル・CRUD/問い相対の検証、#4500/#4501の組織C1と時点、#4472の現実装CRUD欠陥、TEI→SHO実Draft、SUI/CSW/SEI/TAIの活動継続を**GUI/CUI操作に接続**する補足。これらのOwnerのExpectedやMeaning正本を複製しない。独立Expectedの実実行は**NOT RUN**。
+
+### 12.1 方法論の名前と、汎用TEIへの写像の境界
+
+渡辺幸三氏の**三要素分析法**とX-TEA Modelerに示される**データモデル・機能モデル・業務モデル**の相互牽制を基準とする。三つのTEI Role（Data/Function/Business）へ単純分類したことだけで、この方法論を実現したとは主張しない。データモデル図、機能モデルの画面/階層/CRUD、業務モデルの作業/手順、クロスレファレンス、サブシステム境界などは各々原典対応を検討する。[設計統合Draft #4473 §16.14](https://github.com/hat47x/tei-platform/pull/4473)が原典とTEI拡張の差異判定を所有する。
+
+本GUIのSelectionは「三要素分析法のモデルの一要素/関係」を出発点にできるが、SUI Card、SHO Occurrence、時系列Query/Graph、拡張的REA等への連続参照は**TEI独自のUI/Projection拡張**である。原典準拠機能・TEIによる異表現・TEI独自拡張・未照合という差異は設計/検収に残す。旧図形の見かけが同じことを方法論互換と呼ばない。
+
+### 12.2 重要な修正：Pinned Targetは対象IDだけでなく「問い」を束縛する
+
+単なる`{workspace,kind,id}`の固定は不足する。人が選ぶのは**問いに対する対象の意図**。次の区別をTask Contextの参照として保持する（**新しい公開Core Schema/永続ABIではない**）。
+
+| 分類 | 最小の参照値 | 固定しても保証されないこと |
+| --- | --- | --- |
+| 意味対象 | qualified Workspace / kind / subject / relation occurrence / Source location + revision | 原典方法論への完全対応、現行Meaning受理 |
+| 表示対象 | View kind / Projection rule version / Canvas instance / UI occurrence / lossy mapping | 一意な意味対象・編集逆写像 |
+| 問い | purpose / asked relation or CRUD / required closure / expected output grain | Query完全性、対象集合の確定 |
+| 時点 | validAt（業務有効時点）/ knownAt（その情報を把握した時点）/ Source・Rule・Case revision | 各Providerの同一Read Cohort、過去Receiptの変更 |
+| 責務 | Membership・Case Responsibility・Approval Candidate・Handoff ACK・Host Grantを**別Relation/評価** | 所属からの権限付与・暗黙の責任移管 |
+| 利用と開示 | Consumer/Audience/Purpose、現在のDisclosure・Source資格を参照する方法 | 旧Grant再利用、外部送信/実Effect |
+| 作業継続 | Task/Activity・固定意図のrevision・Result correlationと送信済みAttempt | 同一Harness Session、相手側の受信・業務成功 |
+
+一例は、組織C1の「**2026-11-01を有効時点とし、11-12時点で判明している、C1案件の責任移管に影響するFunction/Relationを調べる**」。同じC1 IDを固定しても、有効日・把握日・責任Rule版・Queryのgrainが異なれば、同じ問いの結果とみなさない。日時は独立Synthetic Fixtureの設定例であり、実組織データや現在の状態を示さない。
+
+### 12.3 固定集合の代数：意図・Query結果・適格な公開集合を分離
+
+**UIでの候補式**（実装済みAPIではない）：
+
+```text
+Q = evaluate(query intent, scope, validAt, knownAt, reader revision)
+E = explicitly excluded target identities
+A = explicitly added target identities
+RequestedSet = (Q - E) union A
+ReleasableSet = authorize_and_project(RequestedSet, consumer, purpose, current grant)
+```
+
+ここで**Qを未観測なら空集合にしてはいけない**。Qは`complete | partial | unknown | unavailable`と各要素の根拠・coverageを伴う評価結果であり、`RequestedSet`もQ未完了なら「確定全集合」ではない。Aの要素の存在・最新性・版は別途再資格化する。EとAで同じQualified Identityを要求した場合は、その選択が同じ対象/役割/Scopeを指すことを確認し、**競合をユーザーへ示して明示解決まで外部Apply/Sendを保留**する。数式の演算順を暗黙の業務優先順位としない。
+
+Qを現在の**観測済み集合**へスナップショット化する操作と、条件そのものを固定する操作は異なる。Qの件数上限、`total/omitted`、continuation、unresolved、non-output SQL dependencies、秘密フィールドの除外を保持する。隠れたQの件数やSourceの存在を無権限Audienceに見せない。表やグラフで省略した辺を「関係なし」と扱わない。
+
+**操作の同等性**：GUIは「この要素を固定」「この条件を固定」「今回の評価結果を別集合として固定」を別Actionにする。CUIは同じ既存Qualified Reference/Query intent/Task revisionを明示して行う。CUIの新構文を公開APIとして先に採用せず、#1158/#3419の操作発見・既存CLIとの互換検証を先行する。
+
+### 12.4 Pinの継続と安全な利用を分離する最小状態遷移
+
+二軸状態機械の**候補**。Pin Intentの保持は`unpinned/pinned`、参照と利用資格は`current/stale/ambiguous/partial/unknown/withheld`などで説明する。「一状態のreadyフラグ」で統合しない。
+
+| 発生イベント | Intent | 参照・開示の次状態 | 許容操作 |
+| --- | --- | --- | --- |
+| Pinを明示追加 | pinned | 最初はunqualified、実Reader/Current Grantで確認後current等 | ローカル保持、必要なread-only再解決 |
+| Focus/Tab/IME/Esc/空白クリック | pinned維持 | 現資格を**操作だけで変えない** | 表示/別Viewへのnavigate |
+| Source/Meaning/Case/Rule valid-known改版・移動・ABA | pinned維持 | stale / ambiguous / unknown | 元Bindingと履歴は保持、Resolve/Compare、適用停止 |
+| Query範囲/粒度/Reader cohort変更・partial観測 | pinned維持 | partial/unknown | 不足理由・継続要求、確定全集合としてSend/Applyしない |
+| Grant/Policy/Recipient/Disclosure変更を観測 | pinned維持（開示可能な参照のみ） | withheld/unknown/currentを現在Grantで再判定 | 許されない既表示本文/DOM/ARIA/Tool候補を現在表示から撤去。漏洩不能は実検証が必要 |
+| AI候補/旧Async Reply/Tool途中切断 | pinned維持 | 現行対象は変更なし、旧結果は候補/unknown | Correlation/epoch付きで隔離、Preview、明示候補追加 |
+| Unpinを明示→Undo | 指定履歴から復元 | **unqualifiedへ戻して再判定** | ローカル参照のUndoのみ。旧Grant/Effect/送信履歴をUndoしない |
+| 新しいActivity/別Harnessへ移動 | Taskへ属するPinを勝手に移動しない | 受け取りProductの現在資格で再解決 | 最小Handoffと受領観測。暗黙のTask混合を拒否 |
+
+重要な**連続性**は三つに分割する：Context Continuity（誰が何を問い、どの参照を保持したか）、Resource Continuity（Source/Document/ProviderのIdentityと版・再読取）、Operation Continuity（Request/Attempt/Result/Receipt/Effect）。一つの成功を他の成功へ昇格しない。対象の**権限が未知になったのに旧内容を表示し続ける**ケースは、単に赤いstaleバッジを付けるだけでは安全ではない。
+
+### 12.5 C1組織・CRUDモデルの意味の取り違えを先に潰す
+
+同一Synthetic Case `C1`で、P1の所属D1→D2が起きてもC1のhandlingUnit/Responsibilityが更新されない場合を使う。表示上は同じP1/D1/D2/C1へ到達するGraphでも、「所属」「Position」「Case取扱部門」「責任」「承認候補」「通知」「ACK」「実Grant」はそれぞれ異なる対象をPin可能とする。valid/knownを変更した時点別結果、Treeの隠れた第二親、別のRelation occurrence、二経路で重複する集計grainをread-onlyで確認する。Orgの独立Expectedは[#4490](https://github.com/hat47x/tei-platform/issues/4490)/[#4501](https://github.com/hat47x/tei-platform/issues/4501)に従い、この文書に第二Org Scenarioを作らない。
+
+**先行して潰す具体的な実装リスク**：[TEI #4472](https://github.com/hat47x/tei-platform/issues/4472) は現`internal/threeelement`における`Index()`のData/Business索引誤用、明示のみCRUDDefinitionの脱落、同一Pairの後勝ち矛盾隠蔽、`ok`判定と矛盾の共存を列挙している。修正前のCRUD/横断参照結果を、GUIが表示できたという理由で正しい対象集合としない。GUIのPin/Cell→Sourceを検証する前に、#4472 TE-CR-01〜04の独立Expectedへ接続し、Data ID/Relation occurrence/Function×Data/Declarative vs Derivedの根拠を照合する。**#4472の修正・試験Ownerは変えない**。実証前にまだ欠陥が残る場合はGUI側のCRUDに`unverified/unsupported`を表示し、CellからSourceへの可逆編集を止める。
+
+### 12.6 GUI/CUI/Harnessの最小縦切りと合否を固定する
+
+既存CTX/UX/PIN/GUI-X/CX/TE-CRを新しい試験群として増殖させず、**実際に走る最小の3段**として照合する。
+
+| スライス | Product入口（現物のOwner） | 最小の独立Expectedと停止線 |
+| --- | --- | --- |
+| **S-A：一つの正しいRelationを保持** | 既存TEI `model locate`/Catalog/InspectとModeler/Studio (#1124/#1824)、#4472 CRUD | 同名異ID・同端点多重Edgeのうち特定の1本をPin→AI入力へFocus→Data/Function/Business/CRUD/Sourceを移動→同一Qualified ID/Source revisionへ戻る。誤解除0、誤再束縛0。CRUDが未修正なら正しいと自称しない |
+| **S-B：問い・時点・集合を変える** | C1合成Fixture (#4490/#4501)、#3262/#2516 Context | validAt固定でknownAt変更、partial/omitted、Tree第二親非表示、Case責任と所属の非一致。Pin意図は維持し、Q結果とMeaning/Current資格は再評価。実二時点Queryが未実装なら`NOT PROVEN` |
+| **S-C：文書・Harnessへ戻す** | merged TEI #4317/#4467、SHO #36/#40、TAI #168/#271 | 同じ選択の出典と必要範囲だけをSHO Draftへ投影→著者編集/再投影差分/独立保存再Read。外部HarnessへはPublic Slice Preview→Current Grant→実Send/Receiveを独立実証。AI OFF/Adapter absentではローカル執筆が継続 |
+
+**実装コードの第一変更対象はS-Aの`1 Relation + 1 Consumer + 旧Reply`のみ**。Graph Rendererや新AI Sessionを先に全面再実装しない。S-B/S-Cの内容がS-Aを阻むHard Gateではない。既存P0（Plugin実Invoke #1251／Function実Read #2586）にPin UIを前提として追加しない。
+
+**記録する値**：Expected ID、exact HEAD、対象`workspace/kind/qualified id/occurrence/source revision`、Source/Policy/Task epoch、validAt/knownAt、Query grain/coverage/omitted/unknown、UI event before/after、Focus/Selection/Pin intent、Correlation/Result revision、送信したexact Public Slice、実Receiver/Receipt、SHO disk再Read、既存Owner Meaning Acceptanceの有無。公開先には現在許された証拠列だけ出す。
+
+**可視化とアクセシビリティ**：タッチ・キーボード・支援技術でも明示Pin/UnpinとTask切替へ到達できるか、IME確定前の一時入力でPin/Source Applyが発火しないかを独立に検証する。AI入力欄/SHO Editorの通常の作業面積をContext Shelfが常時奪わない。非信頼Markdown/SQLコメント/Tool Replyの自然言語命令はデータとして扱い、HostのAuthority/Tool Egressへ昇格しない（#4473 §16.13とTAI #232に従う）。
+
+**停止線**：Source/Meaning/Permissionの現在資格を観測していない、実Reader/Providerが呼ばれていない、対象集合がpartial、CRUD解釈に未解決矛盾がある、同名/同Hash/行位置だけで参照が一致する、外部送出の対象や権限が不明、実Writer/Host Effectの独立Observationが欠落する場合は、その範囲を`candidate/unknown/not-proven`と表示し、作業全体を「完了」にしない。これは設計上の制約であって、製品で実測済みの防護機能ではない。
+
+### 12.7 統合判断前の比較・撤回条件
+
+- **既存UIとの比較**：VS Code的な一時Selection+Prompt、固定Context Shelf、GUIに依存しないCUI/Headlessで、同一Taskの再説明回数・誤対象Apply・Undo回数・関係の到達率・IME/入力遅延・支援技術での到達性・無断送出を比較する。値がない段階で「生産性改善済み」と書かない。
+- **設計の優先順位**：対象精度と現在資格が最優先。その次に入力の軽さ、読解性、段階的な深掘り、製品間継続性。必要な情報の追加に比例してUI常時表示を増やさず、Context Shelfの折畳みと選択理由のInspectorで両立する。
+- **撤回する案**：新しい中央Context Registryや専用Harness Hostなしでは実現しない案、既存Modeler/SHO Writerと二重にSource/Meaningを保持する案、全Projectionを自動逆編集可能とする案、無権限の秘密件数/PathをContext Chipで漏らす案、Business Authorityを組織所属から自動導出する案。一般化の根拠を示すまでOwnerへ戻す。
+
+**反映先・依存関係**：本設計#4479は「GUI/CUI操作と実証順」のOwner。原典忠実性と三要素分析法の各モデルは#4473、CRUD実装欠陥は#4472、組織C1の意味とBehaviorは#4500/#4490/#4501、Studio実画面は#1824、文書Writer/再投影はSHO #4/#19、AI Activity/Harness隔離はTAI #168/#271/#232。MASTER_PLANには各Draftの適格レビュー後に**リンクを一つ追加するだけ**とし、計画正本を並行PRで上書きしない。
