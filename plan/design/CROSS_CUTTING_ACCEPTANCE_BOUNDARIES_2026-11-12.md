@@ -54,3 +54,65 @@ TEIのCore最小化、Everything is Data、Everything is Plugin、専門家可�
 - **未知の隠蔽**：unknown/unresolved/partial/not-observedや未探索依存をPASS・ゼロ件・差分なしとして表現した場合は失格。
 
 この文書は既存#1119（実施順）、#2586（初回実Read）、#1180/#2514（独立検証基準）および各Owner Issueへの**判断・反証用参照**である。正式な採否と製品受理は各Ownerの証拠に戻す。
+
+
+## 6. 統合受入の最小Witness Pack（今回の具体化）
+
+独立Expectedは既存#1180/#2514で管理し、この節は実装のための**ケース割当表**のみとする。各ケースは`Expected ID / Source identity+revision / selected / actual / observer / output+completeness / verdict / evidence link`を記録し、fixtureを実装出力から逆生成しない。CLIの文字列表現の同一性ではなく、型付きResultと実際のEffect/Scope/Failureを比較する。
+
+| Witness | 対象の最小差分 | 独立Expected・停止条件 | Owner/実装順 |
+| --- | --- | --- | --- |
+| AW-01 Read identity | `reference/workspace`の`order_entry.recent_orders`だけを固定し、別`examples/xtea-lowcode`の同名Functionと対照 | Query宣言と`:from` Binder・SQL/args・実PG Seed・Rowsが同一Sourceに属すこと。別Workspaceの3/2/0件を流用したらFAIL | #2586 P0 |
+| AW-02 Plugin selection | Bを選択してAを呼び、結果bytesは同じ | 実Load/Invoke Provider identity不一致でFAIL。静的Inspectorの合格は実Product選択の代用不可 | #1251/#951 P0 |
+| AW-03 Presence/coverage | SQL投影の列欠落、格納NULL、未取得、RLS部分集合、取得0件 | Field Presence・値NULL・未観測・0件を区別。Count/Graph/CRUD/SHOへの誤伝播を拒否 | #2586/#2506/#2497 P0/P1 |
+| AW-04 Three-element fidelity | 同label別ID・多重有向Relation・複合Key・異時点をデータ/機能/業務モデルとCRUDへ投影 | X-TEA Modeler由来の構成とTEI拡張を分け、Source ID/Relation多重性/時点/Source locatorを保持。非可逆表示からの無審査書戻し禁止 | #1124/#1126/#2497 P1 |
+| AW-05 Pin & AI edit | Graph EdgeとSHO occurrenceをPin→Focus移動→改版/ABA→旧AI Patch | Pin保持と現在Source/Grant/Owner受理を分離。旧Patch拒否、別対象誤更新なし。作者によるSHO編集を無言で上書きしない | #1824/#1158、Draft #4479、SHO P1 |
+| AW-06 Entry/Trigger | 同じpure FunctionをDirect API/製品CLIから呼び、Entry非公開・未選択・Grant失効を注入 | 同じ意味型付きOutcome、実Provider照合。Trigger保存/発火は実Invoke/権限ではない。未対応Targetはunsupported | #4495/#4497/#4502 P1 |
+| AW-07 Effect uncertainty | protected書込のACK/Receipt loss、timeout、同Operation ID再送 | committed/unknown/not-recordedを区別。実Host/DB独立ReadなしにCommit主張不可、unknownのblind retry不可 | #1174/#3422 P2 |
+| AW-08 Reuse qualification | Plugin Bだけ改版、Source A→B→A、Grant/Recipientだけ変更、無関係C追加 | Artifact/Build/Evidence/現在の開示資格を別々に失効。無関係な変更で不必要に全再Buildしない。未知依存をPASSにしない | #2600/#3267 P1/P2 |
+| AW-09 Organization C1 | Membership異動、Case責任移管、受信ACK、二重Path、Private Fieldを別操作 | 所属≠責任≠Grant≠Handoff。公開Sliceが同じ二世界でCount/Tooltip/ログからPrivate差が漏れない | #2386/#4501/#2516 P1/P2 |
+| AW-10 External Harness | 実Tool stdout/stderr/argv→外部受領とScope/Recipientを照合 | Tool起動/送出/受領/意味採用を別結果にする。外部Harnessの候補ContextをHost trusted contextに昇格させない | #2509/#2515/#2516 P0-H |
+
+### 6.1 実行票の判定語彙
+
+- `PASS`：指定した実機構・Source・Scope・独立Expectedを満たした。
+- `FAIL`：独立Expectedに対する不一致または禁止された副作用を観測した。
+- `NOT RUN`：その経路・Provider・Target・実Consumerをまだ実行していない。
+- `UNSUPPORTED`：契約上の対象外。静かなfallbackをしない。
+- `UNKNOWN`：試行済みだが必要な実Observationが欠落し、真偽を確定できない。
+- `STALE`：対象版・実体・Policy・Grant・用途等の資格が失効し、現在の保証に利用できない。
+
+`PASS`には`Claim scope`（Source-static／synthetic／real Provider／Product consumer／Effect／Owner accepted等）を必須で併記し、**部分的なPASSの和集合を全体E2E PASSにしない**。この語彙は既存Conformance票への記入指針であり新Status Core型ではない。
+
+## 7. 変化を伝播するが、正本を増やさない実装境界
+
+```text
+Authoring Source / external Observation
+  → Actual Parser/Loader + Source Locator
+  → Structural Candidate → Owner Accepted Meaning
+  → Function/Query/Rule/Model Graph
+  → selected Plugin + actual Artifact/Provider
+  → typed Application Operation
+  → Host-authorized Invocation
+  → actual Read / Effect Observation
+  → Consumer Projection / Disclosure
+```
+
+これは**論理的な照合順**であり、全ての処理を必ず通る単一Pipelineや新しい中央Graph Compilerを要求しない。各矢印には既存のOwnerと失効条件があり、GUI/SHO/AI/Harnessは必要な節だけをConsumerとして使用できる。read-onlyはEffect Hostの完成を待たない。書込・保護データでは実Host Grant/Policyがない限り拒否する。
+
+**統合するのは「何を同じと判定したか」のEvidence関係であり、Sourceや意味の正本、操作権限ではない。** 同じ型付きData構造で表現できることと、同じ業務意味としてOwnerが受理することは別である。Graph座標変更は意味変更と区別し、Relation/Key/Rule/Targetの変更は見た目が同じでも依存・保証の再評価を必要とする。
+
+## 8. 追加の敵対的レビューと順序判断
+
+1. **最初の一往復の正しさを優先**：#2586の実Readは、一つのWorkspace・一つのQuery・一つのProvider・一つのConsumerに絞る。Org C1/REA/SHO/KONへの同時拡張はしない。
+2. **実呼出しの不一致を検出する**：#1251のProduct Inspectorでselected Bとactual Aの偽PASSを潰す。Graph Lifecycle全経路の完成を初回S2の前提にしない。
+3. **Sourceと外部出力の真正性を別検査**：同じSource位置でも外部Provider raw byteやArtifactが違う場合、旧Evidenceを再利用しない。実Toolが送った内容と外部Harnessが受け取った内容を独立に確認する。
+4. **三要素分析法の忠実性をモデル単位で確認**：データモデル・機能モデル・業務モデルの構造、CRUDの対応、Source逆参照を先に検証。TEI独自の時点・多重Relation・Graph/SHO投影を原典と混同しない。X-TEA Modelerの原典資料・実出力が未取得の項目は`unverified fidelity`とする。
+5. **変更時にどの保証を失うか測る**：Source byte、Plugin Artifact、Rule/Policy、Consumer用途、受信者のそれぞれを単独で変更し、誤PASS・過剰失効の両方を計測する。速さは正しさの確認後に評価する。
+6. **Productへの昇格には実経路を要求**：静的Goテスト、Reference、Synthetic、別OperationのPG成功、docs-only PRを、実Studio/CLI/Host/Owner意味受理の証拠に転用しない。
+
+### 8.1 実装担当への引渡し単位
+
+各Ownerは新しい全体フレームワークを待たず、担当AWの**一つの正例と一つの最も危険な負例**を既存テストDriverへ追加する。最初に独立Expectedとexact HEAD/Source/実呼出し点を固定し、最小deltaを実装、実出力をReadbackする。失敗時は「最初に欠けた辺」とOwnerを一件に絞って戻す。全体計画の優先順は#1119、独立Expectedは#1180/#2514、実Provider Readは#2586に従う。
+
+この追補のAW-01〜10は**設計上の検収候補**であり、各テストの実装・実行・CI合格を意味しない。
