@@ -13,4 +13,6 @@ The edges point from a changed subject **toward its dependents**. Layers provide
 
 Provenance of real source bytes, exact provider invocation, host authorization, complete requested set, actual browser delivery, production statistics, and actual effect remain owned by #2586, #1158, #951, #1174, #2514, #2600, #3271, #3509 and existing target consumers. This reference must not be wired as an automatic deploy approval or production security gate.
 
+The manually fixed `example-expected.json` is checked against the CLI output by `TestFixedFixtureMatchesIndependentExpected`. The expected output is not regenerated from the inspector.
+
 Cases demonstrate the existing BC-16/27/41 (C0 vs C3), BC-18/19/32 (partial Graph), BC-35 (identity), and BC-36 (bounded H1) concerns, but they do not claim those BCs have passed end-to-end. The JSON representation is **fixture-local**, not an accepted TEI contract, plugin ABI, schema, or new scenario SSOT.
