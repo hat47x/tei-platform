@@ -21,6 +21,7 @@ import (
 type b0NativeSourcePin struct {
 	ConsumerID        string
 	WorkspaceName     string
+	WorkspaceRoot     string
 	Subject           sourceindex.Subject
 	SourcePath        string
 	SourceFingerprint string
@@ -28,9 +29,18 @@ type b0NativeSourcePin struct {
 
 // b0CheckNativePin consumes one actual Load and its strict Source Index.
 // It does not scan the browser, filesystem or any Provider independently.
-func b0CheckNativePin(loaded workspace.Result, idx sourceindex.Index, pin b0NativeSourcePin) (operations.SubjectInspection, error) {
-	if pin.ConsumerID == "" || pin.WorkspaceName == "" || pin.SourcePath == "" || pin.SourceFingerprint == "" {
+func b0CheckNativePin(root string, loaded workspace.Result, pin b0NativeSourcePin) (operations.SubjectInspection, error) {
+	if pin.ConsumerID == "" || pin.WorkspaceName == "" || pin.WorkspaceRoot == "" || pin.SourcePath == "" || pin.SourceFingerprint == "" {
 		return operations.SubjectInspection{}, errors.New("explicit native binding is incomplete")
+	}
+	if filepath.Clean(root) != filepath.Clean(pin.WorkspaceRoot) {
+		return operations.SubjectInspection{}, errors.New("native binding targets another Workspace root")
+	}
+	// The strict index check binds this Load to its original real root.
+	// Descriptive Workspace identity and byte hashes alone are not globally unique.
+	idx, err := workspace.BuildSourceIndexFromLoad(root, loaded)
+	if err != nil {
+		return operations.SubjectInspection{}, err
 	}
 	inspection, err := operations.InspectionFromLoad(loaded, idx, pin.Subject)
 	if err != nil {
@@ -95,11 +105,12 @@ func TestB0OneNativeFieldBoundToActualManagedSource(t *testing.T) {
 	pin := b0NativeSourcePin{
 		ConsumerID:        "native-pdp.order-id",
 		WorkspaceName:     "native_pdp_source_case",
+		WorkspaceRoot:     root,
 		Subject:           sourceindex.Subject{Kind: "semantic-attribute", ID: "sales.order.order_id"},
 		SourcePath:        b0SourcePath,
 		SourceFingerprint: b0SourceDigest([]byte(b0OrderA)),
 	}
-	inspectionA, err := b0CheckNativePin(loadedA, indexA, pin)
+	inspectionA, err := b0CheckNativePin(root, loadedA, pin)
 	if err != nil {
 		t.Fatalf("declared binding did not resolve one real Source: %v", err)
 	}
@@ -113,12 +124,12 @@ func TestB0OneNativeFieldBoundToActualManagedSource(t *testing.T) {
 	// New Source bytes require explicit rebinding; same subject ID is not enough.
 	b0Write(t, root, b0OrderB)
 	loadedB, indexB := read()
-	if _, err := b0CheckNativePin(loadedB, indexB, pin); err == nil {
+	if _, err := b0CheckNativePin(root, loadedB, pin); err == nil {
 		t.Fatal("old byte-pinned native binding survived Source drift")
 	}
 	rebinding := pin
 	rebinding.SourceFingerprint = b0SourceDigest([]byte(b0OrderB))
-	if _, err := b0CheckNativePin(loadedB, indexB, rebinding); err != nil {
+	if _, err := b0CheckNativePin(root, loadedB, rebinding); err != nil {
 		t.Fatalf("explicit rebinding to one real Source failed: %v", err)
 	}
 
@@ -168,18 +179,34 @@ func TestB0NativeBindingRefusesWrongWorkspaceSubjectAndOccurrence(t *testing.T) 
 	base := b0NativeSourcePin{
 		ConsumerID:        "native-pdp.order-id",
 		WorkspaceName:     "native_binding_negative",
+		WorkspaceRoot:     root,
 		Subject:           sourceindex.Subject{Kind: "semantic-attribute", ID: "sales.order.order_id"},
 		SourcePath:        b0SourcePath,
 		SourceFingerprint: b0SourceDigest([]byte(b0OrderA)),
 	}
-	if _, err := b0CheckNativePin(loaded, idx, base); err != nil {
+	if _, err := b0CheckNativePin(root, loaded, base); err != nil {
 		t.Fatalf("positive control failed: %v", err)
+	}
+	// Identical manifest, semantic Source and bytes in another root do not
+	// establish that a declared Native binding targets that other Workspace.
+	otherRoot := t.TempDir()
+	if err := os.WriteFile(filepath.Join(otherRoot, "tei.workspace.yaml"), []byte("workspace: native_binding_negative\\nformatVersion: 1\\nsources:\\n  - semantic\\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	b0Write(t, otherRoot, b0OrderA)
+	other, err := workspace.Load(otherRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := b0CheckNativePin(otherRoot, other, base); err == nil {
+		t.Fatal("byte-identical separate Workspace root silently reused old Native binding")
 	}
 	cases := []struct {
 		name   string
 		mutate func(*b0NativeSourcePin)
 	}{
 		{"wrong-workspace", func(p *b0NativeSourcePin) { p.WorkspaceName = "other_workspace" }},
+		{"wrong-workspace-root", func(p *b0NativeSourcePin) { p.WorkspaceRoot = t.TempDir() }},
 		{"wrong-source-path", func(p *b0NativeSourcePin) { p.SourcePath = "semantic/other/order.tei" }},
 		{"stale-bytes", func(p *b0NativeSourcePin) { p.SourceFingerprint = b0SourceDigest([]byte("other")) }},
 		{"missing-attribute", func(p *b0NativeSourcePin) { p.Subject.ID = "sales.order.missing" }},
@@ -190,7 +217,7 @@ func TestB0NativeBindingRefusesWrongWorkspaceSubjectAndOccurrence(t *testing.T) 
 		t.Run(tc.name, func(t *testing.T) {
 			p := base
 			tc.mutate(&p)
-			_, err := b0CheckNativePin(loaded, idx, p)
+			_, err := b0CheckNativePin(root, loaded, p)
 			if err == nil {
 				t.Fatalf("unqualified native binding passed: %+v", p)
 			}
