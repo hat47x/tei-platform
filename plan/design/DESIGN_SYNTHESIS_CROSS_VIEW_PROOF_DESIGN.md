@@ -632,3 +632,43 @@ Design Synthesis
 
 もし共通化によって専門家が扱う自然な記述順やNative SQLの表現力、GUIの安定した対象選択、Target固有の最適化が失われるなら、抽象化の方を修正する。共通化自体は目的ではない。
 
+### 16.6 価値・要求の発見と、実装から独立した仕様の最適化
+
+この設計の評価では、実装を「すでに成立している技術構造の証拠」として使う一方、将来仕様の上限や説明順の根拠とはしない。完成したコードのAPIに合わせてRequirementを後付けするのではなく、**利用者に必要な価値 → 検証可能な要求 → 最も少ない意味・契約境界 → Provider/Target実現 → 実証** の順で考える。
+
+#### 価値の新発見から仕様へ
+
+三視点のProjectorとCRUD列挙、Design Context Query、AI編集支援、独立Expectedは、個別機能の集合としても説明できる。しかし横断して観察すると、より高位の価値候補を検討できる。
+
+> **価値候補 VQ-01（未採用）**：人とAIが、同じ対象・同じ変更について「何を根拠に、どこまで確認できたか」を共有し、複数の表現やTargetを横断してもその理解を失わない。
+
+この価値が必要とする能力を、別の大規模基盤を作る前に既存契約へ分解して比較する。
+
+| 必要な能力 | 第一候補として再利用する既存の責務 | 反例・選択条件 |
+| --- | --- | --- |
+| 同じ対象を特定 | Qualified Subject / Occurrence / Revision / Source reference | 同名異ID、同Subject別Occurrence、Source move/ABA |
+| 同じ問いを固定 | Scopeに相対的なRequired集合、Proof Obligation / Claim | Required不足を成立と誤判定、問いの範囲外の矛盾で過剰拒否 |
+| 根拠と結論を追う | Accepted Meaning、導出Graph、Diagnostics、Evidence参照 | Patternや類似度の推測をAcceptedに昇格、構造OKから業務整合OK |
+| 消費者ごとに説明する | 図・CRUD表・CLI／Studio／AI Context Projection | 詳細を見せるために常識的な聴衆の理解を妨げる、一方で編集対象の資格が消える |
+| 現実の結果と比較する | Driver Scenario、独立Expected、Provider受領・外部観測 | テスト生成器がExpectedも生成して自己証明、実行結果不明を成功へ変える |
+
+**Requirementとして採用するかは未定**。既存RQ-026/RQ-036等がこの価値を既に十分に含むなら新しいRequirement IDは作らず、受入条件へ反映する。既存要求で表現できない実質差分が独立の例で判明した場合だけ、正式要求Ownerへ採用候補を提案する。
+
+#### アウフヘーベンの比較基準
+
+1. **保存すべきもの**：三視点Methodの明瞭さ、Native SQLと既存資産、DSLの専門家向け認知順、Targetごとの適正化、人間の安定したGUI選択。
+2. **否定すべきもの**：機能ごとの第二の意味正本、図とAIと試験でのID・Source解決の重複、無根拠な万能OK、暗黙に最初/最後を選ぶ解決、検証できない「共通だから正しい」。
+3. **統合して得るもの**：Qualified Subject・問い相対の根拠を共通にし、Methodごとの解釈/ProjectionとTargetごとの実現はPlugin等で可変にする。
+4. **棄却条件**：共通化で結果の解釈（NULL・Coverage・粒度・Actor・Authority・Effect）が失われる、分野の表現力が落ちる、Source provenanceが切れる、機構が増えて利用者に説明できなくなる、独立Expectedで差が判別できない。
+
+最小PoCは、注文確定のBusiness Function＋状態/CRUD矛盾と、測定値の単位・欠測・時間の異分野対照を使用する。同じ共通契約で両方を成立させられるか、どこでMethod固有のContractが必要かを記録する。**既存コードが現時点で失敗することだけを理由に理想仕様を縮小しない**。失敗箇所は実装修正・接続Gap・仕様候補のいずれかに分類し、別々のOwnerへ渡す。
+
+#### 改訂計画への出力
+
+- 既存要求内の記述改善と検証不足は当該Issueへ。
+- 新たな価値・要求候補は、具体例と反証を添え、製品Requirement Ownerへ採否提案。
+- 技術構造の改善は、対案・変換可能性・独立Expected・移行影響まで含める。
+- 利用者向け説明では論理の順序を優先し、必要な章節参照だけを追加する。コードAPIの歴史的形状や複雑な検証内部は、読者が理解するために必要な範囲だけ示す。
+
+新たなData Modeler、Proof Engine、Context Registry、Acceptance Authority等の重複した製品機構を、説明の都合だけで導入しない。
+
