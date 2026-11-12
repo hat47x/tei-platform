@@ -812,3 +812,54 @@ Readに失敗した場合はValidationが`false`なのではなく**未観測**�
 4. **P2**：Chat/VUI/Harness/SHO/B2Cを異質Adapter/Projectionとして検証。Session継続とAuthority継続を分離。
 
 **停止**：第二正本/権限Engine/Hostを導入、候補を受理済みMeaningへ自動昇格、同名をIdentity扱い、実Provider未呼出しでE2E PASS、Session継続をGrant継続扱い。いずれも方式再検討の対象。
+
+## 24. 敵対的レビュー：Graphの可変性を「受理・生成・実行」へ誤昇格させない（2026-11-12）
+
+§23を実装可能にするための**追加設計候補**。新たなGate/Graph Compiler/Workflow Host/永続台帳は導入しない。既存#3503/#3278/#1124/#1180/#2514/#1251の責務を保持する。
+
+### 24.1 5種類の差分と失効範囲
+
+| 変更 | 必ず再検査する対象 | 原則として失効させない対象 |
+| --- | --- | --- |
+| Diagram Layoutだけ | 表示・操作可能領域、選択位置 | Accepted Meaning、Semantic Graph、生成Artifact |
+| Graph Node/Edge/Guard/Role | Source差分、Owner意味受理、全Path Obligation、Target Plan/Scenario | 無関係な別Scopeの意味・生成物 |
+| Plugin選択・実装・Lock | Provider/Hook適合、合成Graph、生成物、実Invoker証拠 | 無関係な未選択PluginのConsumer |
+| Harness Session/AI提案 | 対象ID/Scope/Sourceの現在性、開示、提案の採否 | 未受理提案だけではBusiness State/Effect |
+| 実行中のGraph/Entity/Grant改版 | Attempt/Operation identity、再承認、Resume/Migration、Effect unknown | 旧Effectの事実そのもの。新実行への自動再利用は不可 |
+
+**失効は証拠の用途別**：Source Observation、Structural Candidate、Accepted Meaning、Build Artifact、Execution Receiptを一括破棄・一括再利用しない。A→B→Aでbyteが一致しても、途中の権限・Generator・Plugin・Owner受理の変更をなかったことにしない。Scopeの異なるConsumerへ「同じIDだから同じ資格」を流用しない。
+
+### 24.2 Graph Patchの実装に必要な二段階の受理
+
+- **構造受理**：Node/Edge stable ID、source revision、type/NULL/Absent、Patch precondition、Provider/Target capability、合成競合、到達可能性、全Path Obligationを検査する。静的UNKNOWNはPASSでなく、対象TargetにRuntime Guardの実証が必要。
+- **意味受理**：承認条件、業務Rule、Function/Relationの役割、操作対象、開示範囲をOwnerが適用Scope付きで判断する。構造受理だけで業務意味が正しいとしない。
+- **実行資格**：さらに実Host Grant、Source/Provider/Artifact Revision、対象Entity版、Effect identity/receiptを照合する。Owner受理済みでも古いGrantや未接続Providerでは実行不可。
+
+Graph編集を「編集可能」と表示する条件は、Projectionがlosslessであること、対象Source/Scopeが特定できること、現在の編集Grantがあること、変更をSourceへ反映できることを**別々に満たす**必要がある。Graphが見えるだけではEditableではない。
+
+### 24.3 高度なAI Harnessの安定した対象指定
+
+対象選択をUIの一時ハイライトから独立した**Selection Context（読み取り専用の対象指定値）**として扱う。GUIで選択したNode/Edge/Range/Graph/Document/Relationと、CUIで指定したqualified refは同じ対象表現へ正規化する。
+
+- Selection Contextは複数対象、集合、除外、Source範囲、Snapshot、Revision、Consumer Scopeを表現できる。UIは選択を固定/解除する明示操作を提供する。
+- AIへの送信時は「対象」「依頼」「参照文脈」「変更可能範囲」「禁止事項」「期待する証拠」を別々に渡す。大きな選択集合は対象数/未解決数/非開示数を表示し、暗黙の切り捨てをしない。
+- AI応答は**Proposed Patch/Document Edit/Action Plan**に分類する。どれも自動的なOwner意味受理やHost Grantではない。採用操作はSourceの現在性と差分を再照合する。
+- 複数製品間でSessionを共有しても、ConsumerごとにRead/Disclosure/Write/Effect権限を評価する。DSH・Codex・Claude Code等のハーネスはAdapterを通じて同じ選択契約へ接続する。
+- 選択固定後に対象が削除/移動/改版された場合は、候補の再解決を提示しても自動的に別対象へ編集しない。曖昧・欠落・非開示は区別する。
+
+### 24.4 実行状態の直交性
+
+**Graph Definition**（どの経路があり得るか）、**Interaction State**（何が確定したか）、**Business State**（何が成立したか）、**Execution/Effect State**（何を実際に呼び出したか）を分離する。
+
+ChatのStream delta、Voiceのpartial ASR、HarnessのTool提案、B2CのExperiment exposure、SHOの文章変更は、それだけではBusiness Operation/Effectの確定を意味しない。Resume/Regenerate/Branch/Timeout/Cancelでは、旧Operation/Effectの結果がunknownの場合に「未実行」と捏造しない。実行中のDefinition改版は旧版継続・明示Migration・拒否のいずれかを対象Scopeで決める。
+
+### 24.5 検証の優先順位と判定方法
+
+1. **最小の実証対象**：既存Operation一件、Provider B、CLI/Studio二Consumer、Node/Edge IDが重複表示名に依存しないread-only Model Map。#1251の実Call証拠が先。
+2. **同じIndependent Expected**で、元のOperation、Graph投影、Validation Patch、条件分岐Patchを比較。構造が同じでもProvider違い・Effect欠落なら不合格。
+3. **図面とCUIの二経路**で同じEdge変更を提案し、Source/Revision/Owner受理/Target生成への帰還を比較。Layout-onlyはSemantic digest不変。
+4. **AI Chat/VUI/B2C/SHO**は各々の固有Event/Representation/Source契約を別検証し、CLIのPASSから全媒体へ外挿しない。
+
+**追加の反例観点（既存LGX-17〜24に付帯）**：大量Selectionの一部が未取得、Graph同名多重Edgeの誤編集、Graph Patch順序非可換、Owner未受理の条件変更、実行中Grant失効、同名異内容Source、Plugin版A→B→A、選択Bと実Invoker A、Chat partial ToolがEffectを起こす、B2C非関与Routeへの必須JS混入。これらを#1180/#2514の独立Expectedへ還元し、第二テストSSOTを作らない。
+
+**採否停止線**：第二正本/第二Auth/第二Resolverが必要になる、AI候補をOwner受理と同一化する、静的UNKNOWNをPASSにする、未実行Targetを適合済みと表示する、Sourceへ帰還できないProjectionを編集可能と称する。この場合は設計を増築せず既存契約へ戻す。
