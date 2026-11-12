@@ -29,6 +29,10 @@ type selfBuildInvoked struct {
 	PID              int      `json:"pid,omitempty"`
 	ExitCode         int      `json:"exitCode"`
 	StdoutDigest     string   `json:"stdoutDigest"`
+	// ProcessImage is the image the started process was running when this entry
+	// looked (SB-C0 §4.55). ExecutableDigest describes the named file; this
+	// describes what the OS ran.
+	ProcessImage *selfBuildProcessImage `json:"processImage,omitempty"`
 }
 
 // selfBuildEntryEvidence is one driven attempt. Every field is a separate
@@ -206,6 +210,7 @@ func driveSelfBuild(childPath string, childArgs []string, artifactPath, claimedS
 		return selfBuildEntryEvidence{}, fmt.Errorf("start child: %w", err)
 	}
 	pid := cmd.Process.Pid
+	processImage := observeProcessImage(pid, exactChild)
 	runErr := cmd.Wait()
 
 	exitCode := 0
@@ -224,6 +229,7 @@ func driveSelfBuild(childPath string, childArgs []string, artifactPath, claimedS
 		PID:              pid,
 		ExitCode:         exitCode,
 		StdoutDigest:     digestOfBytes([]byte(stdout)),
+		ProcessImage:     processImage,
 	}
 
 	if exitCode != 0 {
