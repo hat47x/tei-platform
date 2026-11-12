@@ -1392,6 +1392,23 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 
 **既存Owner・実施順**：探索/実投影はSUI #3368/#3157、用途別構成・開示はTEI #2516、TEI組織意味は#2386、Model Mapは#1124、実Tool/Consumerと不確実性は#1163/#2516。#2586 order_entry.recent_orders のFunction→実Provider→Consumer R0は依然P0最優先。組織C1実Provider/Scopeと現Grant/Effect/Handoffは後続#2506/#1656/#1174/#1444へ。本計画は新Affinity Runtime、共通Session Store、第二Meaning正本、別Gateを設けない。実SUI/CSW→TEI/SHO/SEI E2E、ORG-AG新試験、Ownerの正式採用、実Org DB/Hostは**NOT RUN**。
 
+## 2026-11-12 横断の追加検収：投影の完全性・著者改版・固定対象の現在資格
+
+<!-- cross-product-projection-author-pin-20261112 -->
+
+既存のP0実Read（[#2586](https://github.com/hat47x/tei-platform/issues/2586)）とInspector実Provider接続（[#1251](https://github.com/hat47x/tei-platform/issues/1251)）を最優先とする。SUI/SHO/TAI/共有Harnessで成熟した「固定対象」「再投影」「情報欠落」の知見は、**新しい共通Runtimeや第二の正本ではなく、既存Consumerの受入負例**として接続する。Product別のSource/Meaning/Permissionは移譲しない。
+
+| 接続・Owner | 新たに区別する受入条件 | 次の最小負例（設計・NOT RUN） |
+| --- | --- | --- |
+| **三視点・CRUD・SHO・AI Context**：[#1124](https://github.com/hat47x/tei-platform/issues/1124)／[#3262](https://github.com/hat47x/tei-platform/issues/3262)／[#2514](https://github.com/hat47x/tei-platform/issues/2514) | Sourceの`trace.unresolved`と、Consumer投影で失われた関係・多重辺・粒度の`projectionUnresolved`を別に数える。**Source参照0件未解決≠投影が完全**。同名Relation・多重有向辺・NULL/非開示・Source位置を保持する | **PI-01**：Source traceが全解決でも、図/CRUDへの17件相当の投影欠落を注入し、Consumer Completeを拒否。件数は固定合格閾値ではなく、対象Fixtureで独立Expectedと照合 |
+| **TEI→SHOの正式な著者編集**：SHO既存Writer／再投影Owner、TEI [#3262](https://github.com/hat47x/tei-platform/issues/3262) | 限定Draft生成→編集保存→再開→再照合が成立しても、**著者の本文と再生成モデルの差分は自動上書きしない**。Source/Revision/位置、著者修正、候補Patch、競合、保存後Readbackを分離する | **PI-02**：モデル更新と著者追記が同一箇所で競合した場合、既存本文を維持し候補・差分・Owner判断を要求。限定CI成功を全意味保存へ拡張しない |
+| **SUI Canvas／CSW／TAIの固定対象→TEI操作**：[#1158](https://github.com/hat47x/tei-platform/issues/1158)／[#2516](https://github.com/hat47x/tei-platform/issues/2516)／[#1131](https://github.com/hat47x/tei-platform/issues/1131) | Focus、Transient Selection、Pinned Targetを分ける。固定するのはIdentity/Source/Revision/Scope/関係であって、GrantやDB可視範囲ではない。Canvas座標・Island所属・複数所属・Relationを一つのTEI業務Relationへ潰さない | **PI-03**：Canvas移動・後着AI応答・同名Relation・権限変更・DB RLS可視範囲変更の後、Pinは残しても**Apply/Tool送信直前**に対象・現Grant・実DB Scopeを再取得。不一致なら明示再選択／拒否 |
+| **Harness Session／Operation／Effect**：[#1163](https://github.com/hat47x/tei-platform/issues/1163)／[#1174](https://github.com/hat47x/tei-platform/issues/1174) | Session継続、Tool完全受領、Provider実Invoke、Business Effect/Receipt、Owner Meaning受理を別Attempt・別資格で保持。World Fingerprint不変でも実DB行・RLS可視範囲・権限が変わり得る | **PI-04**：同じPinned IDとWorld FPで、Provider Rowset/Grantが変化した場合、旧Contextの再利用と未確認Commit再送を拒否。部分受領を成功とみなさない |
+
+**優先順**：P0は既存`order_entry.recent_orders`の実Function→実Query/Bind→実Provider Rowset→Consumer受領を一Attemptで確定。並行してPI-01の**読取り専用**投影差分を既存Fixtureで独立判別し、PI-02〜04はそのSource/Consumer受領が成立した範囲で進める。選択済みProviderと実Call、Studio/CLIの二Consumer、外部Harnessの送出は既存Ownerの検証を使い回すが、別実行のPASSを寄せ集めない。固定SelectionはHeadless/CUIからも操作可能にする設計候補であり、実GUI/共有Session/OS開示の成立を前提にしない。
+
+**資格**：本節は他製品の限定実装・設計判断をTEIの検収条件へ翻訳した**計画**。PI-01〜04の新試験、実DB/RLS変更後の再資格化、正式SHO再投影、実SUI/CSW/TAI/TEI共有Harness E2E、Owner意味受理は**NOT RUN**。既存の限定CIやDraftの設計を製品横断PASSへ昇格させない。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
