@@ -122,3 +122,65 @@ func TestComparePartitionsChangingSubsystemKeyIsNotDisplayRename(t *testing.T) {
 	// This test does NOT define or accept a new Subsystem name field or
 	// automatically infer lineage, current authority, or rename semantics.
 }
+
+// A smaller CrossWriteCount is not necessarily an engineering improvement:
+// dropping evidence from a partial after-snapshot produces exactly the same
+// arithmetic as a real boundary repair. Likewise, discovering a prior edge
+// can look like deterioration. Source closure is not represented by an empty
+// Coverage map, and DiffModelsConsistent compares only element ID sets.
+func TestComparePartitionsBoundaryDeltaDoesNotProveStructuralImprovement(t *testing.T) {
+	assignment := []Assignment{{Function: "checkout", Subsystem: "sales"}}
+	readAnchor := []ReadEdge{{ID: "read-order", Function: "checkout", Data: "order"}}
+	crossWrite := []Write{{
+		ID: "write-order", Function: "checkout", Data: "order",
+		Owner: "billing", Operation: "U", Source: "source-order", Weight: 1,
+	}}
+	tests := []struct {
+		name         string
+		beforeWrites []Write
+		afterWrites  []Write
+		wantBefore   int
+		wantAfter    int
+	}{
+		{
+			name: "omitted-cross-write-looks-like-boundary-repair",
+			beforeWrites: crossWrite, afterWrites: nil,
+			wantBefore: 1, wantAfter: 0,
+		},
+		{
+			name: "newly-observed-existing-cross-write-looks-like-deterioration",
+			beforeWrites: nil, afterWrites: crossWrite,
+			wantBefore: 0, wantAfter: 1,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			before := PartitionSnapshot{
+				Label: "before", Assignments: assignment,
+				Writes: tc.beforeWrites, ReadEdges: readAnchor,
+			}
+			after := PartitionSnapshot{
+				Label: "after", Assignments: assignment,
+				Writes: tc.afterWrites, ReadEdges: readAnchor,
+			}
+			report, err := ComparePartitions(before, after)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if report.BeforeCrossWrites != tc.wantBefore ||
+				report.AfterCrossWrites != tc.wantAfter ||
+				report.BoundaryDelta != tc.wantAfter-tc.wantBefore {
+				t.Fatalf("positive control: counts must follow supplied edges: %+v", report)
+			}
+			if !report.DiffModelsConsistent ||
+				report.MovedFunctionCount != 0 ||
+				report.NotExaminedCount != 0 ||
+				report.UnresolvedCount != 0 {
+				t.Fatalf("ID sets and absent coverage metadata do not expose the lost observation: %+v", report)
+			}
+			// These reports are compatible with both a real engineering change
+			// and a changed observation window. Only a separate qualified
+			// Source/Reader coverage claim can distinguish those worlds.
+		})
+	}
+}
