@@ -849,3 +849,32 @@ CSW/SUIのKJ法的なCard/Islandの集合をTEI Relationへ投影するときは
 
 **観測上限**：設計・Source/Issue照合と独立負例案であり、新UI/Go/CUI/MCP/LLM/OS/Networkの実試験・実装・変更・正式受理はNOT RUN。Pinの既存§16.11〜12を出荷済みの製品機能として扱わない。
 
+### 16.14 三要素分析法の原典に忠実なModeler表現と、TEI汎用拡張を分ける（2026-11-12）
+
+**原典を先に確認する**。渡辺幸三氏の三要素分析法は業務システムのデータモデル・機能モデル・業務モデルの**相互牽制**に基づく分析・設計方法論。Data/Function/Businessという抽象フィールドの単純な3分割や、TEI独自Method Profileそのものと同義ではない。
+
+本人解説：
+- [2005年：三要素分析法の論理要件・物理制約・実装と三構成](https://atmarkit.itmedia.co.jp/fbiz/cbuild/complete/doa/01/01.html)
+- [2006年：3モデルの相互牽制とほぼ並行するモデリング](https://www.itmedia.co.jp/im/articles/0605/09/news085.html)
+- [2006年：データモデルの例値／サブシステム、機能モデルのUI・階層・CRUDとクロスレファレンス](https://www.itmedia.co.jp/im/articles/0605/09/news085_2.html)
+- [2006年：業務モデルの職務・業務マニュアル／アクションツリー、イベント付き業務フロー](https://www.itmedia.co.jp/im/articles/0605/09/news085_3.html)
+
+**用語**：説明には「三要素分析法」「データモデル」「機能モデル」「業務モデル」「業務フロー」「サブシステム」「クロスレファレンス」を用いる。TEIの汎用`Data`/`Function`/`Business`、Script-first/Role、AI操作・科学/XRへの利用は**TEI独自の写像／拡張**として明記する。原典の「機能モデル」をUIなしFunction一覧へ、業務モデルを純粋な実行Workflowへ、業務フローを単なる汎用DFDへ置換しない。サブジェクトエリアとサブシステムの違いも残す。名称の厳密な互換を名乗る場合はX-TEA Modeler固定版の実形式/描画と実Consumerを照合する。
+
+**情報の忠実性と拡張の順序**：
+1. 元のモデル要素と図法・設計作業をSource-faithfulに観測（#950、既存の固定Xead Modeler調査 `plan/design/AUTHORING_TOOL_FEATURE_TRANSFER_MAP_2026-10.md`）。
+2. Data/Function/Businessのsource relationを辿り、Function-level IOTable CRUDを特定のBusiness Actionの実Effectへ勝手に帰属させない（#1031）。
+3. 業務フロー・Role/Task/Action・人の作業（#1125）、業務モデル／機能モデル／データモデルの再投影・Source操作（#1124）、サブシステムとCRUD（#3250/#1132）、設計成果物（#1803）を**一式**で検収する。
+4. TEI汎用Model、別DomainやTargetを追加する場合は、その拡張・差異・失われる情報を明記。Source上のSortKey/Legacy ID/画面操作文や実RuntimeをTEI Canonical Meaningへ自動昇格させない。
+5. 受理は元からあるShared Acceptance、独立Expectedは#2514、業務実Effectは#1174へ委ねる。X-TEA互換のための第二Canonicalや永久専用Core型を先行追加しない。
+
+**判別案（NOT RUN）**：
+- `XT-F01` 業務モデルのアクションが画面機能と対象データへ結び付いている。画面と業務手順からデータモデルの不備を発見し、戻って改訂可能である。データモデル一方向生成だけで三要素分析法の忠実な実現としない。
+- `XT-F02` データモデルの例値・サブシステム別図・CRUD、機能モデルの画面・階層・CRUD逆引き、業務モデルの職務・アクションツリーを同一題材で確認。記述・図の形の互換未確認と、意味上の正しい再現を別欄で明示する。
+- `XT-F03` TaskActionが持つFunction利用参照が到達可能でも、そのFunction全体のCRUDを当該Action自身の書込実Effectと自動断定しない。手作業Actionを未定義Functionというだけで落とさない。
+- `XT-F04` 業務フローの主題領域（サブジェクトエリア）と、サブシステムによる設計の分割・表の更新責任を区別する。イベント記号、関係の図法、例値の見せ方の差も記録する。
+
+**記述上の差異ラベル（提案）**：原典準拠／TEIによる異表現／TEI独自拡張／意図的差異／原典未確認。このラベルは説明・受入票上の列であり、新Core列挙の要件ではない。
+
+**今回の到達点**：本人寄稿と公開Source/既存固定ソース調査の照合・計画のみ。現X-TEA Modeler実GUI・サンプルモデル、TEI実GUI/3モデルの同時編集、旧XML round-trip、Diagram E2E/CIは未実施。「互換達成」ではない。
+
