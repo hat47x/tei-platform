@@ -248,3 +248,36 @@ func TestReadWorkspaceSubjectDoesNotCollapseSameModelAcrossWorkspaces(t *testing
 	// This test observes identity, not a current authorization, a security
 	// namespace or a qualified cross-Workspace edit operation.
 }
+
+// An identical manifest and identical semantic Source can be present in two
+// distinct Workspace roots. WorkspaceIdentity and ModelRevision describe the
+// loaded bytes, but they do not name a globally unique edit target.
+func TestReadWorkspaceSubjectIdenticalManifestAcrossRootsIsNotGlobalIdentity(t *testing.T) {
+	firstRoot := documentDraftFixture(t)
+	secondRoot := documentDraftFixture(t)
+	if firstRoot == secondRoot {
+		t.Fatal("fixture roots unexpectedly coincide")
+	}
+	subject := sourceindex.Subject{Kind: "semantic-data", ID: "sales.order"}
+	first, err := ReadWorkspaceSubject(firstRoot, subject)
+	if err != nil {
+		t.Fatalf("first Workspace: %v", err)
+	}
+	second, err := ReadWorkspaceSubject(secondRoot, subject)
+	if err != nil {
+		t.Fatalf("second Workspace: %v", err)
+	}
+	if first.Inspection.Workspace == nil || second.Inspection.Workspace == nil {
+		t.Fatal("inspect omitted the Workspace identity")
+	}
+	if *first.Inspection.Workspace != *second.Inspection.Workspace ||
+		first.ModelRevision != second.ModelRevision ||
+		first.Inspection.WorldFingerprint != second.Inspection.WorldFingerprint ||
+		first.Inspection.SourceIndexFingerprint != second.Inspection.SourceIndexFingerprint ||
+		string(first.Inspection.Canonical) != string(second.Inspection.Canonical) {
+		t.Fatal("identical Workspace manifests and semantic Sources should give identical descriptive evidence")
+	}
+	// A Consumer intending to write must independently bind its authorized
+	// Workspace root/scope and currently accepted Source. No identity is
+	// inferred here from a temporary path or content hash alone.
+}
