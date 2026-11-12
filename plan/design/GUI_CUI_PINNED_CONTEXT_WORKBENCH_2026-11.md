@@ -74,6 +74,14 @@ context share --consumer chosen-session   # preview と現在の許可を再確�
 
 CUI操作は既存Application Operationの意味/Client Adapterから導く候補とし、表示のためだけに新しい巨大な統一dispatcherや別認可器を作らない。形式やサブコマンドの正式化は[#1158](https://github.com/hat47x/tei-platform/issues/1158)/[#3419](https://github.com/hat47x/tei-platform/issues/3419)の既存契約検証後とする。
 
+### GUI/CUIとAIの双方向操作
+
+通常の「選択→AIへ説明」だけでなく、**AIによる対象候補の提案→GUI上のプレビュー→人による補正→同じTaskへ反映**を独立した操作として扱う。例えばAIは「このFunctionと参照する2 Relationを同時に調べるべき」と提案できるが、ツール結果には候補のqualified identity、根拠、Source版、集合被覆、Loss、現在Scopeを付け、GUIは**既存Pinned集合との差分**を示す。AIが選択を増減するのは人間のPin/Unpinと等価な明示操作を受けた後であり、既定で変更されない。
+
+提案の可視化はハイライト/一時オーバーレイでよく、正式なRelation追加やCanvas上の物理配置を必要としない。SUIではCard/Island/Tree/Canvasの複数表現を保持し、CSWの新しいまとまり提案は**探索候補**として提示する。TEIのData/Business Relation、SHOの章構成、SEIの根拠評価を暗黙に書き換えない。特に同じ島に配置されたことと、同じ組織・Function・Source identityであることは別。GUIは「提案対象をプレビュー」「候補からPinへ追加」「今回は除外」「変更なしで質問を続ける」を明示し、CUIも同じ操作結果を受け取る。
+
+複数のActivityを同時に扱う場合、Pinned集合の意図した所属TaskとTask revisionを示す。タブの移動で別Activityの対象を黙って共有しない。**現在Focus中のTask**と**外部Harnessが実際に受領したContext版**も別々に示し、古いAI応答が別Taskの現行候補を上書きしない。
+
 ## 6. 対象固定の持続性・再束縛
 
 「選択が消えない」は**見た目でチップが存在すること**よりも、「ユーザーが指定した対象意図が、意図せず別の対象にならないこと」。保持対象は階層ごとに分ける。
@@ -139,7 +147,7 @@ UI Focus/Transient Selection
 | --- | --- | --- | --- |
 | P0 read-only（先行） | #1120/#1158/#3419/#2516・#1824 | 既存Inspect/Source経路でqualified Subject/Relation/Occurrenceの対象票を組み立てる。CLIとStudioに入力できる候補 | Reader/Scope未資格ならunsupported/unknownを保持。新Parser/Resolver/Hostを実装しない |
 | P1 UI pinned interaction | #1824 + #1124 | 同一ConsumerでFocus→Pin→別View→Inspect→明示解除/Undo。Graph/List/Command初期選択の実イベント合流 | 旧DOMクリック/Async/ABAで違うIDへ乗換え0、失効した表示と許可情報の混同0 |
-| P2 SHO document+SUI | SHO #4/#19/#31、SUI #3391 | 文書Occurrence/byte anchorを軽量Editor内でPinし、SHO単独保存、SUIに必要な選択だけをHandoff | SH0 Reader/Writer・Storageの実格付けを確認。TEI Sourceへの自動書戻し0 |
+| P2 SHO document+SUI | SHO #4/#19/#31、SUI #3391 | 文書Occurrence/byte anchorを軽量Editor内でPinし、SHO単独保存、SUIに必要な選択だけをHandoff | SHO Reader/Writer・Storageの実格付けを確認。TEI Sourceへの自動書戻し0 |
 | P3 Task Context/AI adapter | TAI #168/#271、TEI #2516/#2391 | 既存Harnessの一SessionまたはActivity再開へ公開SliceのみPreview→実受領を限定観測 | 機密のOS/Host隔離G0・G1/G2を満たさない環境で外部送信しない |
 | P4 typed proposal/Agent co-work | #1124/#2497、SHO #4、TAI #271 | AI提案→可逆性/Scope/Impact→既存AcceptanceまたはSHO Writerへ戻す | 元Source以外の書戻し禁止。選択した対象への反映とCurrent Grant/Owner受理/実Effectを別受入 |
 
