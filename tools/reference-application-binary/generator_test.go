@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hat47x/tei-platform/tools/reference-application-binary/internal/appgen"
+	"tei/tools/reference-application-binary/internal/appgen"
 	_ "modernc.org/sqlite"
 )
 
