@@ -8,6 +8,8 @@
 
 **読み方**：本節を現在の実装順と完了条件の短い入口とし、§1〜15は根拠・負例・設計の履歴として参照する。DT-01〜38、NAV/ED/PINの個別試験票は既存Ownerに残し、ここへ二重登録しない。#2586の実Function→Provider Read、#1251の実Plugin Invokeを優先する方針も変更しない。
 
+**製品の最優先到達目標**：TEI Studioのデスクトップ版を実際に構築・起動し、その実行成果物を最終的に**TEI自身のBuild定義と実Builderから再構築**できるようにする。Studioの完成とGo CLIの再帰的セルフビルドは関連するが別の検収対象である。作業上は#2586の実Provider Read、#1251のPlugin実Invokeを並行P0として先に進め、セルフビルドの完成をそれらの着手条件にはしない。
+
 ### 0.1 判断・実証・未決を切り分けた状態表
 
 | 主題 | 現時点で利用する判断／根拠 | Desktop製品として未確認のこと | 返却先 |
@@ -18,6 +20,7 @@
 | CRUD・影響表示 | #4524の同ID衝突修正とは別に、#4513のData索引、#4534のCRUD矛盾資格はDraft。#4535はB2Cの明示Native Binding段階計画の限定Merged | CRUD由来Impactの完全性、DB SchemaとUI Bindingの実Source差分、実DDLやOwner Meaning | #4472/#1124、DB/Studio Owner |
 | 実Provider Read | PR #4539（Draft）で、PG16.15の一Functionに限りEnvironment束縛→実SQL/Raw Rows→Function Data Context→別プロセスJSONを実証。NULL/0行/RLS/欠列/拒否の負例あり | 通常`tei` CLI、実Studio/実Harness Consumer、データの完全性・現在Grant・Owner意味受理。DB選択の`host-asserted`も別資格 | #2586/#3421/#1251、Function Data Context Owner |
 | Performance | #1177は`trace full -limit 1`でも内部全走査になり得ることを指摘 | Plugin数・Source規模別の実測、Scoped Queryの費用、実Wails上の入力/移動遅延 | #1177/#2600 |
+| Studioセルフビルド | `cmd/tei-studio/main.go`の実Wails v3/`studiohost` Bridgeと、#2831のGo Build Closure/Stage0→2 Fit/Gapを利用する。#4544のGenerator G1/G3は設計・検証計画 | Studioの実OS Build/Launchと実IPC、TEI Build IntentからのStudio ArtifactSet、stage1生成TEI自身によるstage2 Build、依存閉包・配布物の実照合 | #1824/#3421/#2831/#2595/#1251/#2600 |
 | GUI / SHO / Harness | TEI #4317/#4467、SHO #36/#40でDraftの生成・編集・保存・再開・再投影と限定Studio組込み測定の基礎はmain統合済み。SHO #48/#49でHandoffのSource不一致負例・Claim Ceilingを実証 | 同一Markdownで異なる元TEI Source/Subjectの再束縛、実TEI→SHO統合GUI、現在Grant、実Harness Tool/外部送出。既存Writerの局所Save成功は統合Desktop Save成功ではない | #3421/#1824、SHO #19/#6、TAI Owner |
 
 **状態表示の契約**：`identity-resolved`相当の対象一意性と`authority-qualified`相当の現在権限を一つの「準備完了」にしない。`authority-conflicted`、unknown、unsupportedなどの未知・競合を受けたConsumerは、分からない状態のまま理由と出所を表示し、勝手な成功推定や別の正本/Grantの創設をしない。これらは既存OwnerのQualifierに沿った**表示要件**であり、Desktop独自の新enumや認可APIを宣言するものではない。対象の存在・参照数・診断から非公開情報を推定できないよう#2516の開示契約を適用する。
@@ -76,6 +79,30 @@ E0/N0/B0、R0b、H0は**並走可能**。R0bでは#4539がDraftである以上�
 **最小の証拠票（元Ownerに記録し、この設計書で重複管理しない）**：`Input Source/byte digest | Workspace/Environment/Instance | Chosen→Invoked Provider | Function/Query ID | actual SQL digest+typed params | Field Presence/NULL/Rowset grain | Scope/RLS/coverage | Consumer received body | Grant/Disclosure | Attempt/Receipt | exact code HEAD | PASS/FAIL/NOT RUN`。認証情報・DSN原値・非公開RowのRaw bytesは公開票へ転記しない。作用のないReadでも外部送信・Cache書込み・Network接続は別観測として記録し、画面のread-onlyを「外部に何も送らない」と同義にしない。
 
 **次のレビューポイント**：N0/B0またはR0bの実Consumer一巡が出たらその結果を最優先で反映し、設計上の不足が具体的な負例で示されない限り新しい§やDTを増やさない。#4539/#4534のDraftを製品資格に昇格させるには、既存Ownerによるreview・統合と**exact HEAD**の証拠が必要である。
+
+
+### 0.6 Desktopセルフビルドへの最短経路（今回の横断統合）
+
+**目標と現状を分離する**：TEI StudioのGo + Wailsによる実行形態は現行`cmd/tei-studio/main.go`に存在し、`StudioBridge`は既存`studiohost`へ委譲する。しかし、これが**TEI自身のBuild GraphからDesktop配布成果物を生んだ**こと、実Windowsで起動して同じ実Consumer一巡を通したこと、生成したTEIが次のTEIを構築したことは確認できていない。#2831のL1/L2/L3も限定Fit/Gapの段階であり、Studio製品のセルフビルドPASSではない。
+
+| 段階 | 具体的な成果・比較 | 実装/検収Owner | 現在資格 |
+| --- | --- | --- | --- |
+| **S0 実Desktopの基準線** | 現行`cmd/tei-studio`を既存Go/Wails経路で実Buildし、OS/Architecture/WebView/Go/Wails版、`main.go`と埋込みUI Assets、実バイナリdigest/サイズ/起動・IPC/操作結果を採取する。最初は既存Read-only `Catalog/Inspect`一巡 | #1824/#3421、#1163 | **NOT RUN（本統合票）** |
+| **S1 TEIが選ぶ実Build入力** | TEIの標準Build Intent/Graphと実Resolverから、Studio Target/Profile、必要Package/Plugin、Wails/UI Assets、Go module、Toolchain、Build flags、実使用Sourceの閉包・未解決を記録。**宣言・選択・実消費**は別列 | #2831/#2595/#1251/#951 | NOT RUN |
+| **S2 TEI定義からStudio実成果物** | TEI Build Intent→選択済み実Builder/Go adapter→実`cmd/tei-studio` Binary/AssetSetとRelease BOMへ結線。S0と意味的なOperation/Consumer結果を同一独立Expectedで比較。成果物は最終配布物として構成・署名/更新を別票検収 | #2831/#1824/#2600/#3267 | NOT RUN |
+| **S3 再帰的セルフビルド** | Stage1で構築された**TEI自身の実Process image**がStage2のBuild Planを解釈し、実Builderを呼び、TEI/Studioの成果物を生成したことをImage digest・Process/Attempt・Command・ArtifactSetで確認。Stage0のGo Toolchainは有限Seedとして明示 | #2831（L3）、#1121/#2595 | NOT RUN |
+| **S4 実Desktop製品検収** | Stage2のStudioを対象OSで起動し、同じSource/Context/Provider/Window/IPCのResultと未解決条件を確認。SHO単独版・生成業務Desktopはそれぞれ別Build Profile/Artifactとして検査 | #3421/#1824、SHO/各Target Owner | NOT RUN |
+
+**最短の着手順**：まずS0を行い、同時に#2831のSB-0a（`cmd/tei`で`go list`と選択外部moduleの実在を把握）を進める。S0のGo build成功だけでS1の依存閉包やS3の再帰を証明しない。#2831の既存`gobuilder`・Source Closure/Toolchain hash・ArtifactSet/Bindingを使い、`go.mod`・外部module・`go.sum`・実取得bytesとoffline事前供給の差を確認する。外部Moduleが未解決なら成功扱いせず、別のBuilderをStudioへ増設しない。
+
+**負例の最小セット**：①未選択Pluginを追加しただけでStudio Binaryに`init`/blank import/埋込みAssetが混入、②Source bytesは同じだが選択Generator・Toolchain・Wails Asset版が違う、③`go.sum`だけ一致して選択Module実bytesがない、④Stage1生成TEIを**実呼出しせず**Go launcherを二回実行して再帰成功と誤称、⑤S0/S2で同じUI描画でもIPCが実Consumerへ届かない、⑥Stage2のバイナリは起動するがRead Source/Plugin/Scopeが違う。いずれも実Artifact/Process/IPCと独立Expectedで比較し、仮説だけのPASSを認めない。
+
+**AIによる生成器生成との接続**：#4544のG1（標準部品の合成→不足分だけAI/手書き/Plugin候補）とG3（NULL、丸め、Provider選択の独立Conformance）は、S1/S2の生成器適格性を強化する**並行作業**。G2の汎用合成規則、Role自己解釈#4536、正式DSL`*.tei.md` Readerを、Studio S0や#2586の前提にしない。Generator候補の自己申告と実Builder入力・生成成果物・Ownerの意味受理を区別する。
+
+**X-TEAからの段階的移管**：最初は既存Data/Function/BusinessのModel Map/CRUD/参照移動とDBのread-only Consumerを、選択PluginとしてStudioへ接続する。旧XF/SmartDBのモデル意味・識別子・業務Effect・SQL方言を表示の類似だけで互換扱いしない。実DB更新やX-TEAの業務実行は#1124/#1127/#2586/DB Ownerに分け、Studio本体のS0〜S2をX-TEA全機能移管の完了待ちにしない。
+
+**完了の呼称**：S0のみなら「既存ツールチェーンからのDesktop構築」、S2までなら「TEI定義に基づくStudio構築」、S3と実Process/Artifact証拠が揃って初めて「TEI自身による再帰的ビルド」。Studioの実利用可能性にはS4のOS/IPC検収も必要。ビット列一致は再帰的実行の代替ではなく、異なるGo/Wails/OSに無条件のbyte同一性を要求しない。すべての状態を対象Scopeとexact HEAD付きで元Ownerに記録する。新しいHeadless Runner/Host/Policy/Registry/必須Plugin群は設けない。
+
 
 ---
 
