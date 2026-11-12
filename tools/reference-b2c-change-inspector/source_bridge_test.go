@@ -100,11 +100,32 @@ func TestB0PinnedSourceReadSeparatesBytesFromCurrentness(t *testing.T) {
 		t.Fatalf("Load-time source changed by disk mutation")
 	}
 	_, indexB, inspectionB := b0StrictRead(t, root)
-	if sourceindex.ModelRevision(indexB) == revA {
+	revB := sourceindex.ModelRevision(indexB)
+	if revB == revA {
 		t.Fatal("source-only change failed to invalidate managed source revision")
 	}
 	if b0Artifact(t, inspectionB, b0SourcePath).Fingerprint == expectedBytesFingerprint {
 		t.Fatal("updated source kept the original bytes fingerprint")
+	}
+
+	// Use two actual managed Source revisions for the hypothetical Native
+	// binding. This still cannot prove the native client's required closure.
+	in := input{
+		Schema: inputSchema, Scope: "native-pdp-undiscovered",
+		BaseRevision: revA, CandidateRevision: revB,
+		DeclaredScopeClosed: false,
+		Nodes: []node{{ID: "semantic-data:sales.order", Layer: "business"}},
+		Changed: []string{"semantic-data:sales.order"},
+		Required: []string{"semantic-data:sales.order"},
+		Unobserved: []string{"native-client-dynamic-edge"},
+	}
+	out, err := inspect(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Coverage != "partial-or-unverified" || len(out.Lanes) != 1 || out.Lanes[0] != "C3" ||
+		out.Disposition != "known-interaction-business-or-release-impact" {
+		t.Fatalf("real Source revisions were mistaken for native closure: %+v", out)
 	}
 
 	// A -> B -> A reuses a content fingerprint, not an acceptance or grant.
@@ -143,25 +164,10 @@ func TestB0RealWorkspaceSourceObservationNotClosure(t *testing.T) {
 		len(inspection.Sources.References) == 0 || len(inspection.Sources.Artifacts) == 0 {
 		t.Fatalf("Source observation is missing: %+v", inspection)
 	}
-	// Even a real indexed Query in a Load-bound Source snapshot does NOT prove
-	// the presence of a Native frontend's dynamic imports or its complete
-	// dependent consumer graph. Do not set DeclaredScopeClosed=true here.
-	in := input{
-		Schema: inputSchema, Scope: "native-pdp-undiscovered",
-		BaseRevision: sourceindex.ModelRevision(index),
-		CandidateRevision: sourceindex.ModelRevision(index),
-		DeclaredScopeClosed: false,
-		Nodes: []node{{ID: "query:order_entry.recent_orders", Layer: "content"}},
-		Changed: []string{"query:order_entry.recent_orders"},
-		Required: []string{"query:order_entry.recent_orders"},
-		Unobserved: []string{"native-client-dynamic-edge"},
-	}
-	report, err := inspect(in)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if report.Coverage != "partial-or-unverified" ||
-		report.Disposition != "incomplete-scope-needs-review" {
-		t.Fatalf("a real Source read became a whole-native impact certificate: %+v", report)
+	// The existing inspection states its authority limits explicitly.
+	// A real indexed Query does not confer release, effect, disclosure, or
+	// complete native dependency coverage.
+	if len(inspection.AuthorityLimits) == 0 {
+		t.Fatal("inspection lacks read-only authority limits")
 	}
 }
