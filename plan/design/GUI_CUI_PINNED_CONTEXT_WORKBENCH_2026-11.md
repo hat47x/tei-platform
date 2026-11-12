@@ -283,7 +283,7 @@ GUI-X1〜X8は既存#1824 CTX、#1124 M、#1180 Scenario、SHO #4/#31のExpected
 
 ### 12.3 固定集合の代数：意図・Query結果・適格な公開集合を分離
 
-**UIでの候補式**（実装済みAPIではない）：
+**UIでの候補式**（実装済みAPIではない）。**集合形成とQ/E/A・Predicate/Snapshotの共通設計Ownerは [TAI Draft #629](https://github.com/hat47x/tai-pleroma/pull/629)**。ここではTEI Studio上の操作導線・適格な参照と現在Source/Model/CRUDの再解決だけを所有し、集合代数を独立仕様として再採用しない：
 
 ```text
 Q = evaluate(query intent, scope, validAt, knownAt, reader revision)
@@ -347,3 +347,75 @@ Qを現在の**観測済み集合**へスナップショット化する操作と
 - **撤回する案**：新しい中央Context Registryや専用Harness Hostなしでは実現しない案、既存Modeler/SHO Writerと二重にSource/Meaningを保持する案、全Projectionを自動逆編集可能とする案、無権限の秘密件数/PathをContext Chipで漏らす案、Business Authorityを組織所属から自動導出する案。一般化の根拠を示すまでOwnerへ戻す。
 
 **反映先・依存関係**：本設計#4479は「GUI/CUI操作と実証順」のOwner。原典忠実性と三要素分析法の各モデルは#4473、CRUD実装欠陥は#4472、組織C1の意味とBehaviorは#4500/#4490/#4501、Studio実画面は#1824、文書Writer/再投影はSHO #4/#19、AI Activity/Harness隔離はTAI #168/#271/#232。MASTER_PLANには各Draftの適格レビュー後に**リンクを一つ追加するだけ**とし、計画正本を並行PRで上書きしない。
+
+## 13. 2026-11-12 「選択形成→対象再解決→限定共有」へ実装責務を収束する
+
+> **判定**：§1〜12の一般原則は保持するが、TEI Studioは共通Selection AlgorithmやAI Skill RouterのOwnerではない。GUIの具体的な実装・試験を先へ進めるため、**一つの実操作と観測をつなぐ接合契約**だけを本節で固める。すべての例は採用前・実Product GUI E2E **NOT RUN**。
+
+### 13.1 並行Draftの正本を一つずつ特定する
+
+| 責務 | 現在の設計/実装Owner | Studio側の受取り方、重複を作らない範囲 |
+| --- | --- | --- |
+| 選択集合の形成：自然言語Q、利用者の除外E/追加A、PredicateとSnapshot、View別Occurrence | [TAI Draft #629](https://github.com/hat47x/tai-pleroma/pull/629) | **利用者がGUIから操作できるか**を検証。集合演算・汎用Target ID/Selection ABIをStudioで再定義しない |
+| Productの現在参照再解決、開示Preview、Handoff v1、外部Harness応答の戻り先 | [TAI Draft #633](https://github.com/hat47x/tai-pleroma/pull/633)、[TAI #271](https://github.com/hat47x/tai-pleroma/issues/271) | Studioからのread-only Source/Target資格・相関情報を確認し、Product既存Operationへ渡す。**旧Draft #630は未マージ終了**、引用/復元しない |
+| Source/Workspaceの実同一性と改版観測 | [TEI Draft #4504](https://github.com/hat47x/tei-platform/pull/4504)、#1120/#2620 | SourceとModelのFPだけが一致してもWorkspace ID・実Source/Manifest・Revision・Targetは別。A→B→Aで昔のGrantやPin利用資格を復活させない |
+| 三要素分析法のモデルFingerprint・AuthorityLimitの純粋性 | [TEI Draft #4507](https://github.com/hat47x/tei-platform/pull/4507)（#4475）、CRUD [#4472](https://github.com/hat47x/tei-platform/issues/4472) | FPをCurrent GrantやSource closureとみなさない。現実装のData/CRUD誤対応と権威制限欠落を解消する前に「対象が正しい」と自称しない。**#4507は未マージ、Goテスト未確認** |
+| SHOの文書選択・Raw Span・保存と明示再読取 | SHO #4/#19、[SHO Draft #38](https://github.com/hat47x/sho-composer/pull/38) | **永続Occurrence IDを前提にしない**。#38の案(b)は選択箇所をRaw Span/版で都度解決する判断候補。Editor GUIが独自の永続IDを自動発行してSource正本化しない。strict root/Storage fenceは実Consumer側の資格 |
+| SUI Card/Island/TreeとSHO Draftの選択・往復 | [SUI Draft #3437](https://github.com/hat47x/sui-sensemaking/pull/3437)、SHO #31〜33 | KJ/Outline探索はAI OFFでも利用でき、TEI Function ContextをすべてのSUI Itemへ強制しない。KJの配置をTEIのRelationへ自動昇格しない |
+| Skill/Tool起動と比較 | [TAI main #631](https://github.com/hat47x/tai-pleroma/pull/631)、Draft #633、[#168](https://github.com/hat47x/tai-pleroma/issues/168) | **Tool-onlyを既定**とし、必要時のみProduct Skill→条件付きTAI Skillを選択。Studioが常駐Agent/Skill Routerを持つことを必須化しない |
+
+実装やテストの存在と、Owner受理・main統合・現在利用資格は別。並行Draftが閉じた/再編されたらリンク/状態を改訂し、古い実証表を継ぎ足して合算しない。特に#4504の実Read負例は**UI PinやHost Grantの実証ではない**。
+
+### 13.2 GUIからの最小操作シーケンス
+
+**一度だけ行う事前条件**：公開合成Workspaceの限定Datasetに、同名別Subject・同端点多重Relation・同じSource Rangeに別Subjectが来る改版を含める。既存#4504 fixtureと#4472 TE-CRの独立Expectedを使い、別Fixture/Second Registryを作らない。
+
+| UIイベント | Productでの実操作 | 合格条件 / 見えてはいけない錯覚 |
+| --- | --- | --- |
+| E0: Focus+一時Selection | 既存Data/Function/Business・Source/CRUDのViewを使う | 表示座標/ラベルは候補の位置にすぎず、Source編集対象を決定しない |
+| E1: 明示Pin | 選択したRelation instanceのQualified ReferenceをTask-localへ保持 | Focus/Esc/IME/別タブで変化0。Pin時のSource/Task epochも保持。Context Shelfを閉じても対象が残る |
+| E2: 対象Inspect | 既存TEI `model locate`・Catalog/Inspect等を**実Consumerが**起動し、Source/Workspace/版とOccurrenceを再解決 | ID/Kind/Workspace/Source・モデル版を対照。同FP別Workspace/同offset別Subjectの意図しない再束縛0。未実装Consumerならunsupported |
+| E3: View横断 | Data→Function→Business→CRUD→SHO/Sourceの関連投影・Navigation | Rendererや行位置ではなく同一Qualified関係に戻る。CRUDの矛盾・未取得・Lossがある間はread-only |
+| E4: Ask/Preview | Productが許可した、現在のSource/Reader/Task/Purpose相対Public Sliceを**実際に共有する候補**として表示 | Pin/解決成功だけで実送出できない。開示/Recipient変更、部分取得、秘密Count/Path・Tool argsを検査 |
+| E5: Send/Receive（後段） | Tool-onlyから実Harnessへ必要な範囲だけ渡す。実Tool ReplyとOrigin View/Taskを相関させる | Preview成功と送出/受領成功を別Receipt。Tool-onlyでは不足が測定された時だけSkillを段階追加。TAI #168 H2/H3を新Pin試験でBlockしない |
+| E6: Proposal/Apply（後段） | AI候補を元Modelerへ表示し、必要ならSource Patch Preview→既存Acceptance | 同じPin/Undoで旧Grantや完了Effectを復活させない。Source/Role/Scope/Host資格の更新とDocument Writerの保存は別 |
+
+E1→E4を**実外部Harnessなし**で先行実証する。E5/E6をStudioの初回出荷ブロッカーや、TEI全体のProvider P0-R・Plugin D1の前提にしない。
+
+### 13.3 「選択は残るが内容は出してはいけない」状態を先に設計する
+
+UIの安全性を「選択チップが残る」「staleバッジを表示した」だけで判定しない。たとえばSource R0で許可されていた説明本文を画面で表示中、SourceがR1へ移った場合と、**SourceがR0のままでDisclosure/Grantだけ失効した場合**を別入力で観測する。
+
+1. **Intent継続**：そのTaskのPinは明示解除/Task削除されない限り元の参照意図として残す（公開可能なメタデータの範囲で）。対象を勝手に新IDへ変更しない。
+2. **既表示の現在資格**：Reader/Policyの変更を実Consumerが観測した後、許されない旧本文・Tooltip・関連数・DOM/ARIA・Tool JSON等を**表示/送信できる状態に残さない**。観測できないオフライン環境では即時失効の実証を主張せず、再確認できるまで現在利用資格はunknown。
+3. **後着結果**：E2/E4を開始したSource/Task/Disclosure epochと、結果が戻ったときの利用条件を比較。古い結果を今の対象として表示しない。旧結果の履歴保全はAudienceに許された範囲に限る。
+4. **原文と編集Buffer**：SHO DraftのR0実disk版とR1 dirty bufferを区別。GUIが元のDocument/Occurrence IDを永続型だと仮定せず、原文Raw Spanと保存/Save As/相対参照の新しいSource Identityを再解決。
+5. **実Resource Identity**：Windows/WSL等の異なるパス表現、Symlink/実path変更、二つのWorkspaceに同じSemantic Sourceを置いた場合でも、見かけのパス/FP/Subject ID一致だけで現File/Host Rootの同一性を認定しない。実解決先は各Product/Hostが観測し、UIからTrusted Rootを組み立てない。
+
+この5つは新State Serviceではなく、既存Source/Host/Disclosure/SHO Writerが所有する資格を**画面操作へ戻す規則**。
+
+### 13.4 実装担当への最小作業票とEvidence
+
+| 実施単位 | 達成物 | 検査・拒否条件 |
+| --- | --- | --- |
+| **G-01 Pin操作** | Studio同一画面で1 Relation instanceをPin→Focus移動→戻る。Tooltip/ARIA/Keyboard/IMEでも選択の意図が一定 | 同名異ID/二多重Edge、Esc、空白クリック、Task切替、Undoの正負。無断解除0/別対象への再束縛0 |
+| **G-02 Source実再解決** | G-01のPinを既存Headless APIへ渡し、Workspace/Manifest/Source/Qualified Subject/Revisionを対照 | #4504の同offset別Subject・同FP別Workspace・Source only改版・ABAをProduct入口で拒否。旧テストの局所PASSをGUI実験の結果と混同しない |
+| **G-03 CRUDと投影** | Data/Function/Business/CRUDへ移動しSourceへ戻る。Loss/partial/矛盾/非単射を表示 | #4472 TE-CR-01〜04・#4507 authority保持が未資格なら「完全な逆編集/現在権限」と表示しない |
+| **G-04 Context Preview** | 同じTask/対象をCUIとGUIで同等にread-only指定し、送出する予定の最低限のPublic Sliceを表示 | Qのpartial/unknown/hiddenを0件にしない。Audience/Source/Grant変化後の旧Previewを送らない |
+| **G-05 SHO接合（後段）** | 一要素・一Relation→既存DocumentDraft→SHO編集/保存再Read→更新時の著者編集保全 | 永続Occurrence ID不要。SUI未導入/AI OFFでも保存継続。Source Writerへの自動書戻し0 |
+| **G-06 実Harness接合（後段）** | 外部ToolでTask/Target/Origin Viewを用途限定Handoffし、Receipt/返信先を実観測 | #168のOS/Host隔離資格なしで秘密Sourceを送らない。Session復帰≠Activity復帰≠実Tool受領 |
+
+G-01〜04に必要な入力は最小の公開合成Fixture。G-05/G-06は既存SHO/TAIのOwnerで並列化できるが、GUIの試験だけから実Product/Hostの適格性は推定しない。
+
+**実証票の最小列**（既存#1180/#2514／TAI Handoff/SHO Ledgerへリンクするだけで新SSOTは作らない）：Fixture ID / exact main+PR HEAD / Product+Consumer+View / Task ID+Revision / Pin Intent before+after / Focus event / Qualified Target+Workspace / Source Revision+Manifest / Required Read+Coverage / validAt+knownAt / Disclosure Recipient+Epoch / actual Product Operation / Result correlation / Actual Writer/Tool/Host Receipt / independent Expected+Observed / Limitations。
+
+### 13.5 評価順と不採用条件
+
+1. **UIなしでも成立する同等指定**：GUIから選択できる対象がCUI/Headlessの正式な適格参照で再解決可能か。最初のG-01だけをリッチUIの外観で代用しない。
+2. **原典に沿う利用価値**：データモデル・機能モデル・業務モデルの相互牽制とCRUD/Sourceへの戻りが改善するか。X-TEA Modelerの三要素分析法にない機能はTEI独自拡張と明記する。
+3. **人間の負荷を増やさない**：AI OFF、単一Pin、Context Shelf折畳みから開始。同一Taskの一時選択のみとの比較で、再説明数・誤対象・復旧操作・入力遅延・外部送信過多を測る。実測前の目標時間/改善率を捏造しない。
+4. **Hook/Pluginの重複導入を拒否**：G-01〜G-04のために中央Pin Store、第二Source Index、第二CRUD Engine、AI専用Host/Policy、常駐Agent、共通Skill Routerを新規導入する案は、必要性の独立証拠がない限り採用しない。
+
+**進行上の優先**：全TEIの最初のFunction→実Provider→Consumer（#2586）、Plugin実Invoke（#1251）、TAIのG0/G1/G2と独立H2/H3 4試行（#168）を妨げない。G-01〜04は実装可能な部分からread-onlyで進める。#629/#633や各Product実装が未マージの期間は、そのDraftを参照実装・正式ABIとして扱わない。
+
+**現在の状態**：本節は設計・実装担当への既存Owner割付と受入条件の整理のみ。新コード・本節G-01〜06の実GUI/CLI/Harness/OS実験・Owner正式採用・製品受入は**NOT RUN**。
