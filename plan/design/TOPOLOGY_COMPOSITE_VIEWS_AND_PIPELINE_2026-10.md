@@ -529,3 +529,62 @@ Else absence remains unknown; no universal closed-world assumption.
 ### 15.3 優先順位と他チャットの成果
 
 #1124のM0実CLI→同一Workbench M1四入口／M2 stale UI・Grantを直接P0とし、本PRのNode側をWorkbenchの受入に流用しない。#2831はBuildのDeclared／Selected／ActuallyConsumedとStage1生成物の再入を別に実証。#2542/#2827はTransfer/ImportのReceipt・ACKと外部Effectを独立判定する。#2620のRole自己記述と#2972の公開三視点は独立Producer/Policyの資格を持ち、今回のSourceNavigation Key検証を役割意味・開示保証へ昇格しない。複合図表研究に新Resolver、Host、Policy Engine、Writer、関係の第二正本を導入しない。
+
+## 16. 2026-11-12：Studioの問い相対な判断可能性・操作適格性（設計・受入候補）
+
+**状態**：既存のScript-first Studio、Everything is Data、三視点／複合図表、Intent／Realization／Assessment、Current Disclosureを同一Consumerの利用判断へ接続する設計候補。新Core enum、全機能共通Verifier、Proof Store、第二Source・Graph・Resolver・Host・Runner・Acceptanceは導入しない。Ownerの採否判断・製品実装・E2E完了を主張しない。参照先は[#1124](https://github.com/hat47x/tei-platform/issues/1124)、[#2497](https://github.com/hat47x/tei-platform/issues/2497)、[Model View横断資格](../research/MODEL_VIEW_CROSS_CONSUMER_QUALIFICATION_2026-11.md)、[#2516](https://github.com/hat47x/tei-platform/issues/2516)とし、既存のGate／受入番号を置換しない。
+
+### 16.1 表現できる・判断できる・操作できるは別Claim
+
+- **表現可能性**：Value／Record／Sequence／Relation／Graph／Expression／Typed RefとRoleからGraph／Table／Tree／式／Sourceへ投影できる。Authoritative Sourceから解析したCanonical Worldと表示Occurrenceを別Identityとする。投影できた事実は、Required Source閉包とOwner意味受理を意味しない。
+- **判断可能性**：問い Q ごとの対象、Scope、時点、Relation種、Universe、必要Reader・Source・Provider、partial／unresolved／opaqueを識別する。存在の限定陽性Witnessと、不存在を認定する全件閉包は非対称。全称を否定する一件の適格な反例と、全称成立を認定する適格な全件検証／不変条件も非対称。少数の正常SampleやGraphの線の欠落から不存在・全称を主張しない。
+- **操作適格性**：一意なSource anchor・現在Revision、可逆性と保存条件、現在のDisclosure／Grant、Owner／Shared Acceptance、Target／Effect Authorityを操作単位で独立照合する。Mapのresolved、Catalogのvalidation OK、CI PASS、Artifact digestを編集・実行・業務受理へ昇格させない。
+
+この三分類は新しい製品資格Schema／一括Verifiedフラグではない。**問い・Subject・Consumerを固定しない「図が完全」というグローバル表示は避ける。** 非公開Relationの有無、件数、Source pathや理由を低権限AudienceへGraph・DOM／ARIA・診断・Tool JSON・AI Contextから漏らさない。公開可能な「判断不能／この表示は対象外」と内部の不足理由を分離する。
+
+### 16.2 同一Consumerでの最小Evidence Join（概念上の評価文脈。新APIではない）
+
+| 分けて保持する項目 | 防ぎたい偽の短絡 |
+| --- | --- |
+| Q／Purpose、qualified Subject（kind＋id＋Source-owned scope）、表示Occurrence、caller-supplied scope | 同名異scope、表示位置／名称を正本Identityと取り違える |
+| Workspace／Manifest、Source byte／Anchor、World／Index／Model Revision、Reader Attempt、selection・render epoch | Fingerprint一致／別Loadを原子的Snapshotと見なす。Source-only変更／ABAで旧位置を再利用する |
+| Qに必要なRule／Relation／Source／Provider、Required・Declared・Selected・Actually Consumed、coverage／omitted／opaque | 未読込Writer、未選択Plugin、隠れたBuild工程、部分ETLを「存在しない」とする |
+| Intent／Accepted Meaning、Resolved Realization、Artifact／Effect／Observation、独立Expected | 宣言・選択・実行・観測・意味受理を一つの成功段階へ畳む |
+| Audience／Current Disclosure／Grant／Purposeと操作別Authority | 内部で読めることをSHO／AI／MCPへの現在開示許可に変える |
+
+Catalog／Validate／Map／Locate等が同一fixtureを別Loadする場合、Fingerprintが一致しても同じ物理Root、同一Reader Attempt、同一Principal、現在Grantの証明にはならない。型付きModel Map M0のcoverageは部分投影であり、Event／Effect／Function／Business全体の不存在は未証明。[Draft #4392](https://github.com/hat47x/tei-platform/pull/4392)のSource-root-only errorとMap埋込Validation不一致はProducer側の既存修正候補を再利用し、Studioに第二Validatorを作らない。
+
+### 16.3 操作導線と、表示済み情報・後着応答の独立失効
+
+1. **View／Navigate**：現行の許可された範囲だけread-only表示。Occurrenceからqualified Subjectを解決してSourceへnavigate。未知のRole／Pluginでは汎用inspect／診断を優先し、未解釈ならunknownのままにする。
+2. **Proposal／Preview**：一意かつ可逆なSource変更だけをtyped candidate化し、差分・影響・Source Revision・必要Validationを提示。Derived／集約／多対一／Macro／不明Providerの逆編集は拒否し、Source navigateに戻す。
+3. **Accept／Apply**：既存Owner／Shared Acceptanceと現在Grantを通した場合のみApply。Sourceを再Readしてreprojectし、Source変更済み／Decision ledger失敗のpartial successは別readbackし自動再Acceptしない。実EffectとReceiptも別Ownerが観測する。
+4. **Invalidate**：Source byte／位置、Plugin／Reader Pin、Disclosure／Grant、selection／render epochの変化を独立扱いする。失効を観測した際は、旧応答の後着拒否と**既表示DOM・ARIA・Graph・AI Contextの旧資格撤回を別々にassert**する。別Scopeの許可済み表示は不必要に全停止しない。変化をConsumerが観測できない期間の即時失効は保証しない。
+
+### 16.4 他領域の問いを同じ標準Viewで扱う
+
+| 対象 | 限定的に表示できるもの | 表示から推定してはならないもの／Owner |
+| --- | --- | --- |
+| 三視点・TEA | Source根拠のRelation／CRUD候補、Function／Businessへの関係 | 未読Function・外部Writerなし、Physical FKがOwner意味受理済み。#1124／#4487 |
+| Subsystem分割 | 宣言済direct CUD、must-linkと制約相対の候補評価 | unknown＝越境CUDゼロ、最適Partition＝業務最適／Effect移管。#3250 |
+| Plugin／Trait | Declared／Required／Selected／Resolved／実呼出の差 | 継承＝代替可能、宣言＝実Provider使用、Session間のGrant継承。#3279／#1251 |
+| Self-build | 宣言Graph、実Consumed Input、実Build Attempt、Artifact digest | Artifact一致＝工程完全閉包、Stage収束＝Seed信頼。#2831 |
+| ETL／Batch／MFT | Flow、Transfer Attempt、ACK、Import Unit、Business Receiptの別ID | ACK＝業務受理、partial＝全件完了、mixed-generation＝一式公開。#2542 |
+| AI／Harness | 限定Selection Context、Diff、独立Expected | 選択文字列からSource／Grant推測、自己生成Expectedによる自己採点、自動Apply。#3262／#2514 |
+
+### 16.5 既存Ownerに渡す最小反証（本節ではすべて NOT RUN）
+
+| ケース | 変異・対照 | 独立Expected／既存担当 |
+| --- | --- | --- |
+| STQ-01 | Source-root-only errorとwarning-onlyを別Workspaceで比較 | transport OKとValidation OKを区別し、Catalog／Map／typed Validateで不一致を残さない。#4392 |
+| STQ-02 | 同WorldでSource移動・byte変更・A→B→A、旧Inspect応答後着 | 現在Anchorを再資格化し、後着拒否と既表示失効を別assert。#1124／#2497 |
+| STQ-03 | Public Slice同一、Private Relationのみ異なる二世界 | 公開Graph／件数／診断／Tool／AI ContextがPrivate有無を漏らさない。#2516 |
+| STQ-04 | 宣言外Build工程あり、生成Artifact byteは一致 | 全Graph／実現一致を認定しない。Consumed／ObservedとPlanを照合。#2831 |
+| STQ-05 | ETL二Memberの片方だけ新Generation、転送ACKは成功 | 一式・Import・業務完了を誤昇格しない。#2542／#2604 |
+| STQ-06 | Subsystem direct CUDゼロ、未読Writer／間接Effectあり | 越境更新ゼロのClaimを保留し、疑似最適をOwner受理へ変えない。#3250 |
+| STQ-07 | 非可逆Derived Relationの編集、または同名異Scope選択 | 変更対象を推測せず編集拒否。許可済みSource navigateのみ。#2497／#1124 |
+| STQ-08 | AI Context作成後にGrant／Source Revision／Plugin Pin変更 | 旧Contextの現在資格を撤回しProposal→Applyを停止。#3262／#2516 |
+
+**実証順**：P0は#4392のexact-head CIと#1124の実Workbenchでの旧画面・後着応答拒否を既存担当で継続。P1は実Catalog／Map／Locate／Traceの同一Source対照から、上記の問い相対のread-only表示・限定Evidence JoinをConsumerに接続する。Build・ETL・Subsystemは既存Ownerが実取得したEvidenceだけを再利用。P2は[#2018](https://github.com/hat47x/tei-platform/issues/2018)の同一Task／独立Expectedで、正答・false-qualified・Unknown保持、調査／編集／再試験時間、人手／Tool費用を比較する。Studioの図表完成を業務実Read／実Provider選択・Invoke／Self-buildの新Hard Gateにしない。抽象化で認知・検証負担が増えるなら限定read-onlyへ戻す。
+
+**資格の上限**：この章は設計候補で、STQの成功、実Studio／Wails・Production Disclosure／Grant、実Provider／DB、Owner Meaning、認知負荷削減は未実証。既存PRの異なる局所PASSを一つの製品E2E成功に合算しない。
