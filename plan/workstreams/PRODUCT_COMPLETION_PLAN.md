@@ -64,6 +64,23 @@
 
 実PostgreSQLを用いた限定結果は#4539に報告されているが、**この追補による通常製品CLI・二Consumer・実UI・現在Disclosure/Grant・意味受理の新試験はNOT RUN**。PRの状態と試験の達成範囲は、それぞれのOwnerと実行記録で判断する。
 
+### 問いと操作に応じた判定の具体例（既存Expectedへ接続）
+
+写像の分類（preserved/lossy等）は残し、判定対象の**問い・必要Observer・取得Scope・単位と時間・要求操作**を先に固定する。以下は新しい試験正本やCore判定語彙ではなく、#2497 OQ、#2514、#2586 R0P/R1C、#1143 RN、#2582 SC-IMへ渡す具体的な対照である。
+
+| 既存対照 | 入力・問い | 独立に確認する期待結果 |
+| --- | --- | --- |
+| OQ-02／R1C-01 | #4539のPQ-02で3行を読了し、表が「取得した行は何行か」を問う。次に同じ結果で「全注文は3件か」を問う | 前者は観測した3行と答えられる。後者は`coverage=unestablished`のため確定できない。`rowset.fullyRead=true`を母集団の完全性へ転用しない |
+| OQ-02/03／R1C-03 | 同じQueryでもRLSで可視行が3→2に変わる。また0行やマスクされたNULLを観測する | 可視行数と全体件数、DB保存NULLと秘匿由来NULLを区別。可視2行から全体のCOUNTや存在しないことを確定せず、第二ConsumerのChart・順位・診断にも開示条件を適用 |
+| OQ-01/05／R1C-02 | JOINで同じ注文行が二度現れる、あるいは同じ行集合を順序なしBagへ写す | Rawの行重複・個体識別と結果粒度を保持。`SUM`・`COUNT DISTINCT`・`first`はそれぞれ独立の要件。観測行の数値和が計算できても、金額・通貨・丸め・全件範囲が未確定なら業務の確定集計としない |
+| OQ-01／#2544 | 明示Fixtureで人物P1の所属0.6/0.4 FTE、P2の所属1.0 FTEを集計する | **単位FTE・対象期間・所属の重複処理を明示した場合**、人物2・所属3・FTE合計2.0を区別。現在のTEI SourceでFTE Unitや期間を宣言していなければ、この数値を製品上の受理済み意味として使わない |
+| OQ-05/08／#4538 | Chartの集計点とGraph→TreeのNode属性Slotを編集候補として比較 | Chartの点・Graphの表示Edgeを元行/Relationへ直接書き戻さない。一方、個別Node属性は一意なSource Subject・Attribute・Span・版・操作の根拠が揃えば候補として検証できる。写像全体の`lossy`だけで全属性を永久に不可とせず、根拠の無い自動許可もしない |
+| RN-07／OQ-06／SC-IM | Source A→B→A、別Workspace同ID・同byte、旧Pin/AI提案の後着 | 表示値やContent hashが戻っても、現在のSource/Workspace/対象/開示・編集資格を再確認するまでApplyしない。旧Replyで自動再束縛しない |
+| OQ-04／RN-03 | `NOT EXISTS`/`SELECT *`などの暗黙依存が変化、または無関係なPlugin/列だけ変更 | 問いに必要な否定依存・Schema/Parser/Pluginが未知なら当該Claimを未確認とする。無関係なUnknownまで全Claim失効にしない。#4530の局所結果を全TEIの依存完全性証明へ昇格させない |
+
+**最初に実測する組合せ**はPQ-02の同一Readを表Consumerと集計系の独立Headless Consumerへ渡すOQ-02/05でよい。まず両者が**同一Context/Attemptを実際に受け取った証拠**を残し、未確定のSUM/不存在/書戻しは正しく保留できるか調べる。FTEやGraph→Treeの実Source編集は後続の個別Ownerで検証する。実Consumer・数量/編集Owner受理・現在Grantの新しいPASSはこの表では主張しない。
+
+
 ## 案件の一巡で追加した七つの作業
 
 申請、現場保守、公開、外部連携、設備監視、予約・制御の模擬実行を[製品設計](../design/PRODUCT_COMPLETION_DESIGN.md#案件の一巡から標準構成の不足を補う)で具体化した。以下の作業は既存G項目の読取り・外部作用・出典追跡へ接続し、案件に必要な入出力と寿命を補う。
