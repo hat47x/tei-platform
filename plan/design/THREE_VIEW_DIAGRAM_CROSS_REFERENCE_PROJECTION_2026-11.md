@@ -1090,3 +1090,11 @@ M0/M1で一Relationの照合を成立させたら、[#1031](https://github.com/h
 **他チャットのMethod境界との接合**：[三要素Methodの並行Draft #4478](https://github.com/hat47x/tei-platform/pull/4478) §27〜28ではTEAを業務向け任意Profileとし、UI項目追加をData列自動生成とせず、Data列削除ではUI項目を無断削除せずMapping失効を明示する検収候補を固定した。M0のread-only ReaderはSource/Schema/UIのいずれも書き換えない。Methodを使わない一般コード開発や既存BuildをTEA必須Gateで止めず、Source/Role/Relationが適格な範囲だけ三視点へ投影する。DMU試験、UI Writer、Migration/Role判定の重複実装はしない。
 
 **次の判定**：#4521のGo試験・Healthを固定版で検収した後、同じ一Relationの実公開適格Sliceが既存Node Consumerへ届かない理由（Qualified Role/Disclosureと実Source→Node mapping）だけを #4396/#2516/#1124 のOwnerへ引き渡す。新Core/Reader/Policy/Host/Proof Engineを追加しない。
+
+### 35.5 実Go試験の負例：Validation未実施をInvalidへ縮約しない（2026-11-12）
+
+[実Go Draft #4521](https://github.com/hat47x/tei-platform/pull/4521)の旧head 134a92dc500385b2c1f403562d3b8750f5998e7d に対する[Repository Health Run #43232810923](https://github.com/hat47x/tei-platform/actions/runs/43232810923)は **completed/failure**。実JobログのGo単体試験失敗であり、gofmt/vet/公開Workspace ValidateはPASSした。同じ公開SourceのMapとLocateでWorld/SourceIndex Fingerprintは一致するが、MapWorkspaceの埋込Catalog.Validationは {OK:false, ErrorCount:0, WarningCount:0}、LocateWorkspaceの実Catalog Validationは {OK:true, ErrorCount:0, WarningCount:3}。旧試験でこの二つを同じ「検証済みVerdict」とみなして比較したことが偽失敗の原因となった。
+
+**責務の切分け**：現mainのMapWorkspaceはCatalogWorldを直接生成しており、低水準のCatalogWorldはValidationを実行しない。**未評価のGoゼロ値falseは、実Validatorの不合格証拠ではない**。[既存Draft #4392](https://github.com/hat47x/tei-platform/pull/4392)がMapの同一LoadからcatalogValidation(loaded)を設定する本体修正を所有するので、TEA側で第二Validation Engineを実装しない。#4521新head a849471e05e3146c01d5b544ff6440c542c1baf5 ではMap/LocateのValidation同値assertを除き、Locateの実ValidatorがOK=trueであることと、実Relation/親/Target・Source ID・版・partial/NotDerivedを照合する検査を残した。**修正後headの全Health完了まではM0実試験PASSを主張しない**。
+
+**Method側の設計含意**：TEA三視点でinvalidと表示するには、その対象とRule・Sourceについて検証が実行され、資格付きの不合格結果があることが必要。未実行／未受信／不開示をfalseへ縮約して業務図面へ赤表示しない。既存の状態・ProvenanceをConsumerで説明し、新しいcheckedフラグや独自Truth Storeは設けない。ValidなSourceというだけでRelation全件閉包・Current Disclosure・EditEligible・Effect・Owner Meaningを証明しない。既存#4392と[#4510](https://github.com/hat47x/tei-platform/pull/4510)を実装Ownerとして保持し、#4521は型付きread-only Relation照合のみで受け入れる。
