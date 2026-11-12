@@ -202,9 +202,9 @@ TEIの第一配布形態はGo単一バイナリである。一方、外部Host�
 
 **担当**：P0の型付きProvider Callは#4495、Build/Plugin選択は#1251/#951、外部Target/Process/WASMの能力差は#2390/#4384、OS egress/実資源は#2504。ここから新ABI・共有Runner・第二Plugin Registryを採用しない。
 
-## 9. 生成AIによる起動コード生成と、実行時に使ったものの照合
+## 9. 標準Generatorの再利用・AIによる拡張と、実行時に使ったものの照合
 
-他チャットで検討が進んだ**生成AIによるGenerator生成規約**を、Script Launchの次段へ接続する。生成AIがEntry、Trigger、Adapter、Provider呼出し用コードを提案・生成できることは製品価値だが、生成されたコードや設定が**公開されたこと・選択されたこと・実際に呼ばれたこと**を意味しない。生成AIの判断と実行許可も同一ではない。
+標準的なGeneratorをTEIの再利用可能な部品として優先し、生成AIは**設計情報との接続・設定・案件固有の差分実装**を担う。既存の実装で必要な意味を表現できない場合だけ、新しいGenerator/Pluginの候補を作る。AIがEntry、Trigger、Adapter、Provider呼出し用コードを提案・生成できても、そのコードや設定が**公開されたこと・選択されたこと・実際に呼ばれたこと**を意味しない。生成AIの判断と実行許可も同一ではない。
 
 **位置付け**：#4495のP0は、手で固定した一つのpure Functionについて**実Goバイナリ→同じTyped Operation→実Provider**を成立させる作業であり、Generator開発を先行必須としない。本節はその経路ができた後、同じ独立Expected・Fixture・Call Siteを生成されたEntry/Adapter/Provider実装にも再利用するための設計・受入計画である。Generator DefinitionとImplementation Candidateの役割は#1121/#2595/#2514/#2600、可変Lifecycleの義務は#4198が所有する。新しいGenerator RegistryやScript Launcher、万能のGraph Compilerを設けない。
 
@@ -250,3 +250,37 @@ Go静的合成は、Generatorの出力Member/Composition・ビルド実体と、
 - **P2**：#4198のLifecycle GraphからHook/Triggerを加え、Guardの迂回・Source改版・再送/Effect unknownの独立負例を検証。実DB、EKI、Web、Java/.NET/WASM、外部Harnessは各Ownerの実証へ任せる。
 
 **停止線**：生成されたコードがEntry公開・Grantを自動発行する、Target/Effectに表現できない部分を黙って省く、Generator自身がExpectedを決めて自己採点する、Sourceの宣言と実Build/Call入力の違いを隠す、新しい中央Host/Registry/認可Engineを必須化する、といった案は採用しない。検証できない条件は`unknown/unsupported/NOT RUN`とし、現在のQ2成功を主張しない。
+
+### 9.5 標準Generatorの合成・レビューと、AIの担当範囲
+
+この節は#1016のApplication Composition Profile、#951のContract/Provider選択、#1121のLowering、#4198のLifecycle Graphを**再利用するための比較計画**である。新しいGenerator固有のResolver、汎用上書き優先順位、Coreの固定Plugin型、実行Engineを設けない。
+
+**採用する作業順序**は、①既存の標準Generator/Pluginが必要な意味型・Target・Effectを満たすか照合、②受理されたモデルと標準部品を明示接続、③対応できない案件固有の差分だけをコード化、④独立Expectedで結果を検証、⑤生成結果のレビューとEntry公開を分離、である。通常の手書きコードや既存コードの段階的リファクタリングも同じTyped Function/Contractの利用形態として許容し、必ずGenerator経由へ作り直すことを求めない。
+
+| 構成上の問題 | 先に確かめること | 許容・停止の原則 |
+| --- | --- | --- |
+| **出力所有の重複** | 二つのGeneratorが同じファイル・Symbol・Entry・Artifact memberを書こうとしていないか | 合成の明示契約がなければ競合とし、登録順/実行順での暗黙上書きを禁止 |
+| **順序と依存** | Aの出力をBが読むときの依存・入力版・出力所有者、独立処理の可否 | 明示された有向依存だけに従う。循環・不定順で同じ最終byteが偶然出ても適合とはしない |
+| **部分失敗と再試行** | どの生成出力が有効で、どのBuild member/Entryが未完了か | 一部成功を全体公開済みへ昇格させない。部分成果物の残存・旧版混入は#2600/#943の既存Artifact/Receipt境界で診断 |
+| **意味と出力の一致** | Source意味、必要Field/Role、Target制約、Input/NULL、Effect、Failureが維持されたか | Text byteや構造一致だけでは振舞い同値としない。独立Expected/既知Mutant（#2514）を段階的に適用 |
+| **公開・受領** | 生成物のファイルレビュー、意味受理、Entry公開、現在Host Grantと実Provider Call | それぞれ別の判断。AI生成・テスト合格・レビュー済みだけでは実行権限を得ない |
+
+合成演算を最初から万能の`Add/Replace/Wrap/Parallel`言語に固定しない。最初の比較は、既存標準Generator **1件＋明示した案件差分1件**に絞り、必要な依存・所有・失敗の判別例から既存Composition/Build表現の不足を見つける。構成に対応できない場合は`unsupported`を明示する。異なる実装順やPlugin配置でも、独立したMeaning/Expectedが同じなら、同じ実Provider・実出力を確認できる範囲でだけ同値性を認める。
+
+**人間のレビュー**は、まず生成ファイル単位で差分と責務を確認できることを標準とする。一つのファイルに複数の意味役割が混在して担当判断が分かれる場合に限り、OKF等で**要素の識別子・レビュー対象範囲・判断根拠**を対応付ける。レビュー事実と受理済み意味、対象Version、Entry公開、実Grantを一つの承認フラグに畳まない。AIに見せるレビュー範囲はその時点のDisclosureに従い、別Workspace/別Roleの内容を自動送出しない。
+
+#### 最小の判別試験（新Test SSOTではない）
+
+| 候補 | 一つだけ変える条件 | 独立Expected / 委譲先 |
+| --- | --- | --- |
+| **GC-01** | 標準Generatorで対応できるFunctionに、AI作成の個別Generatorを無条件で差し込む | 既存適合契約を無視した不要な差替えを選択しない。#1016/#951（選択ルールは既存Owner） |
+| **GC-02** | 二つのGeneratorが同一Entry/同一成果物Pathを生成 | 出力所有競合を検出し、後勝ちにしない。#1121/#2600 |
+| **GC-03** | 依存する生成工程A/Bの順序を入れ替え、結果byteだけ同じ | 選択した入力/依存契約が未解決ならBuild資格を与えない。#2600/#2595 |
+| **GC-04** | 生成器Bが失敗した後にAの旧成果物だけが残り、古いEntryが参照 | 部分成功を公開可能な一式と扱わず、必要Artifact memberの欠落/旧版混入を診断。#943/#2502 |
+| **GC-05** | 生成したコードは600を返すが、NULL、条件分岐またはRead Footprintが異なる | Value PASSと意味Conformanceを区別し、独立Expectedと既知Mutantで不適合を判別。#2514/#1180 |
+| **GC-06** | AI生成ファイルのレビューのみ済ませ、意味採用・Entry公開・Host Grantは未実施 | レビュー済みを実行許可へ自動昇格せず、実Provider Callは0。#2502/#4495 |
+| **GC-07** | 案件固有コードを既存の標準Generatorと組み合わせるが、同じFunctionの意味定義を二重に保守 | Canonical意味を一つにし、手書きコードとモデルの不一致を診断。#1121/#2620 |
+
+**後続作業への引渡し**：G1（Generator DefinitionとImplementation Candidateの区別）→G3（独立した意味Conformance）→G2（所有/順序/部分失敗を伴う合成）の順に検証を進める。G5の方式・ABI比較とG7の自己記述Bootstrapは並行研究とし、P0製品起動に必須化しない。G9のLifecycle Guard・G10のAI生成Pluginの信頼境界は、Entryの実行直前の認可・Effect/Read Footprint検査へ接続する。これらは**検討課題の略称**であり、新しいCore機能が採用・実装済みという意味ではない。
+
+**実施状態**：既存Issue/標準契約と別チャットの設計を統合した作業順・受入候補のみ。GC-01〜07の製品Go/CLI/Provider/Host E2E、複数Generatorの実合成・人間レビュー運用実績は **NOT RUN**。初回P0のpure Function実起動は引き続き#4495が担当する。
