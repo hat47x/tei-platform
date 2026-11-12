@@ -973,7 +973,7 @@ Aは既存Direct Baselineを破壊せず、実Provider B呼出しが可能な最
 | UI項目の追加 | UI要素だけを追加。対応する既存項目があればマッピング候補を提示してよい | **テーブル列は自動追加しない**。新列が必要なら対象テーブル・型・NULL/Default・制約を確認し、別の構造変更として明示 |
 | 既存のテーブル列をUIへ割当 | Source裏付けのある一意な項目だけMappingを設定。複数候補は未解決 | 対象の明示選択。編集/更新の場合はFunction/Operationと権限を別途検証 |
 | UI項目の削除 | UI定義／そのMappingのみ削除。データモデルの列は残す | テーブル列削除を意図するなら別の構造変更が必要 |
-| **権威あるテーブル定義から列を削除** | そのテーブルのデータモデル写像から列が消える。対応UI要素は残し、**対応Mappingを無効化・除去し、未マッピング警告を表示** | 関連Query/Function/CRUD/Constraint/Generatorへの影響を列挙し、MigrationのPlan/Applyは別実行 |
+| **権威あるテーブル定義から列を削除** | そのテーブルのデータモデル写像から列が消える。対応UI要素は残し、**有効な項目MappingはUI定義から除去し、未マッピング警告を表示**。旧対応は監査・影響調査用の履歴に限る | 関連Query/Function/CRUD/Constraint/Generatorへの影響を列挙し、MigrationのPlan/Applyは別実行 |
 | テーブル列のrename／split／merge | Source identity・旧新対応・依存の変化を検査。曖昧なら旧Mappingを自動付替えしない | 新しい対応付けの明示受理。単なる同名・近似型の一致から復活させない |
 | 実DBだけの外部Schema変更 | Actualとの差分・鮮度不足として観測。権威あるSource上の列定義やUI Mappingを**黙って消さない** | Source/Desiredへの採用、Migration/逆取込み等は別操作・別資格 |
 | Schema変更のPlan／Apply | 設計差分・DDL候補が出ても、実DBの変更完了を主張しない | Provider能力・対象環境・現行Grant・破壊性・データ損失・実行結果・再観測を照合（#3270） |
@@ -983,7 +983,7 @@ Aは既存Direct Baselineを破壊せず、実Provider B呼出しが可能な最
 ### 27.2 削除後の整合状態と操作可能範囲
 
 - **Source／Model**：列削除を権威あるSourceへ確定した時点で、対応するテーブル列のモデル写像は最新定義から除去する。ただし過去のSource Revisionや実DB Observationの履歴まで消去したことにはしない。
-- **Function／UI**：対応していたUI項目を消さない。Mappingが失効したUI項目として残し、描画可能性と値取得・保存可能性を分ける。列がないのに旧値を表示することや保存先を推測することは禁止する。
+- **Function／UI**：対応していたUI項目を消さない。有効なMappingを外し、未マッピングUI項目として残す。旧Mappingの根拠・出典は履歴や診断に残せるが、実行時のBindingには用いない。描画可能性と値取得・保存可能性を分ける。列がないのに旧値を表示することや保存先を推測することは禁止する。
 - **CRUD／クロスリファレンス**：列単位のCRUD参照、Function Input/Output、Query Lineage、依存Rule、テストFixtureを再評価する。Unresolved/partialを「依存なし」に読み替えず、影響を確認できない場合は変更適格を保留する。
 - **編集／実行**：未マッピングUI項目の表示・編集可能性は分離する。画面上で入力できても、対応先が未確定なら旧列・別列への書込Intentは生成・実行しない。既存コード、外部Host、手書きの処理には独立した影響確認を要する。
 - **選択の固定**：列を参照するPinned Targetは旧Intentの記録として残り得るが、失効後に似た列へ自動再束縛しない。現在のSource/Schema/Scope/Host Grantを再資格化する。
@@ -1006,7 +1006,7 @@ CLIでは非対話操作も、承認済み変更の明示的な入力と対象�
 | --- | --- | --- |
 | DMU-01 | UIへ未マッピング項目を一つ追加 | UI要素+1、テーブル列+0、実DB DDL 0 |
 | DMU-02 | UIから「新しい保存列」を明示要求し、Schema Source確定前に中断 | テーブル定義変更0、実DB Apply 0。候補のみ保持 |
-| DMU-03 | 共有列Cをテーブル定義から削除し、二つのFunction UIがCを使用 | 最新データモデル列C=0、UI要素2件は維持、Mapping失効・警告2件、旧列への書込0 |
+| DMU-03 | 共有列Cをテーブル定義から削除し、二つのFunction UIがCを使用 | 最新データモデル列C=0、UI要素2件は維持、有効Mapping 0・警告2件、旧列への書込0 |
 | DMU-04 | Source上の列削除後、DBへMigration未適用 | DesiredとActualの差を保持。物理列削除成功・実Commitを捏造しない |
 | DMU-05 | 外部DBで列削除、Source/Desiredは変更なし | Schema driftを警告。SourceのModel列・UI Mappingを無音で削除しない |
 | DMU-06 | 列renameに見えるdelete+add、同名／同型・Source A→B→A | 旧Mappingを自動復活させず、Identity/Revisionを再検査 |
