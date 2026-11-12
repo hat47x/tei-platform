@@ -44,13 +44,17 @@
 | Sourceは同じ表示名だがScopeが異なる、または元X-TEA要素に安定IDがない | Source位置・一時View IDからPin/逆編集の資格を合成 | [#1124](https://github.com/hat47x/tei-platform/issues/1124)、[#1120](https://github.com/hat47x/tei-platform/issues/1120) |
 | Graph→Tree／集計表でRelationやOccurrenceを失う | read-onlyの投影成功から元グラフの可逆編集を許す | [#2497](https://github.com/hat47x/tei-platform/issues/2497)、[#4350](https://github.com/hat47x/tei-platform/issues/4350) |
 | 保存Providerの構造的特殊化で原子更新・条件付き書込みが不足 | Pluginの互換名・解決成功をRequired Trait履行と扱う | [#951](https://github.com/hat47x/tei-platform/issues/951)、[#3278](https://github.com/hat47x/tei-platform/issues/3278) |
+| 旧Java Enumに3値が存在するが、別Writer・時点・未観測値を未調査 | 実装上の列挙を業務の閉値域・MECE・全Targetの履行と自動採用する | [#2495](https://github.com/hat47x/tei-platform/issues/2495)、[#3278](https://github.com/hat47x/tei-platform/issues/3278) |
 | Build childがProxy経由で別実行物を呼ぶ、または宣言外のbyteを読む | Artifact digest一致を全actual consumed closure・builder由来の保証と扱う | [#2831](https://github.com/hat47x/tei-platform/issues/2831) |
 | ETLの途中Stage完了・File ACK・Dataset片方のみ新世代 | Business Accepted、完全なDataset公開、冪等Commitの証拠と扱う | [#1130](https://github.com/hat47x/tei-platform/issues/1130)、[#2542](https://github.com/hat47x/tei-platform/issues/2542)、[#2604](https://github.com/hat47x/tei-platform/issues/2604) |
+| 更新凝集に従いSubsystem境界を再分割し、当初の名称が役割と不一致になる | 旧Subsystem名を不変な意味IDや物理DB/配備境界へ固定する | [#3250](https://github.com/hat47x/tei-platform/issues/3250)、[#267](https://github.com/hat47x/tei-platform/issues/267) |
 | FunctionのCRUD欄が空、または代表Bindingが一つ | 全Writer閉包・越境直接CUDがゼロと断定する | [#3250](https://github.com/hat47x/tei-platform/issues/3250)、[#1127](https://github.com/hat47x/tei-platform/issues/1127) |
 | Private Worldを変えPublic Sliceは同一 | 公開のCount・Score・Digest・診断・DOMからPrivateの存在が分かる | [#2516](https://github.com/hat47x/tei-platform/issues/2516) |
 | Source/Plugin/GrantがA→B→Aへ戻る | 昔の受理・Current Grant・実Effectの資格が復活する | [#2555](https://github.com/hat47x/tei-platform/issues/2555)、[#1174](https://github.com/hat47x/tei-platform/issues/1174) |
 | 旧Legacy観測LとOwner受理Desired Dが意図的に異なり、Target観測TはDと一致 | 旧実装とのbyte/挙動一致と意図的な業務改善を同じ互換性PASSにする | [#1124](https://github.com/hat47x/tei-platform/issues/1124)、[#3394](https://github.com/hat47x/tei-platform/issues/3394) |
 | TEI→EKIへのAdmissionは成功、実Worker結果・独立Readerは欠落 | 委譲受理を実Function Outcomeや業務Effectと扱う | [#4384](https://github.com/hat47x/tei-platform/issues/4384)、[#4194](https://github.com/hat47x/tei-platform/issues/4194) |
+
+Subsystem再命名は役割・更新責務が改善された可能性を示す**設計上の発見**であり、自動採用や必ず改名するという規則ではない。Logical IDの継続・分割、Ownerの受理、既存外部参照、物理Migration/配備は別々に審査する。閉値域・強属性も、実装言語の表現から業務意味へ一方向に昇格させない。
 
 三要素分析法（データ・機能・業務）の原典に忠実な表現と、TEIの汎用Graph/Role・AI解析は混同しない。Legacy観測・受理済み意図・Target観測は三要素分析法の三視点とも別の軸とする。
 
