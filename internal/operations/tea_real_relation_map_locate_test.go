@@ -37,9 +37,15 @@ func TestTEARealWorkspaceMapAndLocateAgreeOnQualifiedRelation(t *testing.T) {
 		mapped.Catalog.ModelRevision == "" ||
 		mapped.Catalog.WorldFingerprint != located.WorldFingerprint ||
 		mapped.Catalog.SourceIndexFingerprint != located.SourceIndexFingerprint ||
-		mapped.Catalog.ModelRevision != located.ModelRevision ||
-		mapped.Catalog.Validation != located.Validation {
+		mapped.Catalog.ModelRevision != located.ModelRevision {
 		t.Fatalf("separate Map/Locate reads disagree: map=%+v locate=%+v", mapped.Catalog, located)
+	}
+	// Existing #4392 owns MapWorkspace's Catalog.Validation qualification:
+	// on this baseline it is zero-valued even when Locate validated the
+	// real Workspace. This test must not mistake "not checked" for "failed"
+	// or duplicate the validator fix in a separate TEA lane.
+	if !located.Validation.OK || located.Validation.ErrorCount != 0 {
+		t.Fatalf("valid public Workspace did not validate in Locate: %+v", located.Validation)
 	}
 	if located.Subject.Subject != relation || located.Subject.Ambiguous ||
 		located.Subject.SourceStatus != "indexed" ||
