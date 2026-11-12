@@ -1406,6 +1406,8 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 
 **三要素分析法・REAの補強（§10.7）**：X-TEA Modelerの三要素分析法（Data/Function/Business）を方法論名として正確に用い、TEI独自のSource/CRUD/Evidence接合を拡張として明示。Task契機≠Function起動、Function成功≠Business完了、REA Agent≠認証Principal、DB FK/SQL観測≠業務意味受理、Studio/SHO/AI Selection≠Source更新資格をCX-13〜18で判別する。実行計画は#4501、#1125/#1444、#2586/#2387、#1124/#2516の既存Ownerへ配分し、新Core/Runtimeを増やさない。
 
+**組織の運営能力・数量・Scenario（§10.8）**：#2510の合成P1(D1 0.6 FTE/D2 0.4 FTE)・P2(D1 1.0 FTE)を使い、Unique Person全体2、Membership3、Allocated FTE全体2.0を粒度別に固定。欠員・配賦異動・技能・予算・部門統廃合を**確定Sourceと分離したread-only Scenario**として比較し、Baselineのvalid/known/Rule/Provider read cohortを保持する。ORG-CAP-01〜08は#2510の既存Expectedを優先再利用し、#2495/#2593標準Quantity、#2586実Query、#2386業務Rule、#1124/#2516投影/開示、#1174/#2499実EffectのOwnerへ配分。Scenarioの計算成功を正式異動・Case責任移管・Grant/Effectとしない。
+
 **採否**：新規Source/Rule/公的契約や業務責任の解釈はOwnerの意味受理が必要。本追補はdocs-onlyであり、実Org Provider/Host・SHO/HarnessとのOrg C1 E2E・Owner意味受理は **NOT RUN**。
 
 ## 先に固定しないもの
