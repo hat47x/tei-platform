@@ -593,7 +593,7 @@
 | SUI/CSW→TEI | SUI探索、CSW知識配置、TEI #2386/#3394 | Card/Island/KJ的AffinityはCandidate。許された理解パック→出典・対象・多重性・反例を検査→Ownerが採用した部分のみRelationへ。意味候補の出現を正式所属やCase移管としない |
 | 外部Harness/SEI/TAI/EKI | #2516/#2509/#2499/#1174ほか | Activity Sessionの継続とHost再認可を別扱い。指示・計画・Agent提案・EKI委任/Job完了は現在Grant/確定Effect/業務結果を保証しない。開示対象/目的/Recipientの変更ごとに再資格化 |
 
-### 10.5 WU-06〜14の増分受入契約（#4490との責務分担）
+### 10.5 WU-06〜14の増分受入契約（#4490と#4501との責務分担）
 
 | WU | 次の判別力を持つ独立Expected | 担当／停止条件 |
 | --- | --- | --- |
