@@ -1122,3 +1122,51 @@ Source Fingerprint一致だけでは現在のResult同値を保証しない。�
 **後続**：`*.tei.md`の意味Source読取は#2621（[closed #3346](https://github.com/hat47x/tei-platform/issues/3346)は未読込が明示されるProduct挙動の限定合格、正式Parserではない）、REA/SHO由来EvidenceのCandidate採用は#3394/#267、SEI判断は[Ontology #3475](https://github.com/hat47x/tei-platform/issues/3475)のO0設計比較に留める。セルフビルドの物理L3とBuild Intent解釈/G4は#2831で別審査。現行Critical Path G0〜G4を変更せず、Raw資料の存在やRole文字列からRuntime権限・SEI Decision・DB更新を生成しない。
 
 **追加独立反例（Scenario正本への提案・この節で実行しない）**：ESD-45 同Role Source・異Row値、ESD-46 同Row値・Role除去、ESD-47 Source-only改訂でWorld同一の旧Packet不正流用、ESD-48 Capability/Application全宣言有りでも実Invoke欠落、ESD-49 Rate規則Rows0件のcomplete/partial/非開示区別。新Runner/Registry/文法/Host、第二Evidence SSOTは作らない。
+
+---
+
+<!-- role-self-description-prelude-import-consumer-20261112 -->
+## 23. 2026-11-12：標準型Preludeの自己記述と、Import/実Provider/Consumerの根拠連鎖を段階接合
+
+**本節の位置**：#2620が意味Roleと自己記述の正本、#988が有限Language/Bootstrap、#4350/#4351〜4353が標準Facet/Mapping/表現型の段階実装、#3262が用途相対Required Context、#1251/#951がPlugin選択・実呼出、#2586が実Function Read、#2831が自己Build、#2514が独立Expectedを所有する。本節はその接合と停止条件の最小差分。既存G0〜G4、Core最小/Plugin-first、Go単一バイナリ、業務専門家可読なDSLを変更しない。新Type Registry/Role Resolver/Host/全体Gateを追加しない。
+
+### 23.1 `std.*`の『意味があるのにSourceがない』を初回Bootstrap圧力にする
+
+現main `internal/stdlib/semantic.go` の `SemanticNamespace()`は`std.binary`〜`std.time`の12 primitiveをGoで作るM0 in-process Preludeである。実CLIの観測では`model catalog`に`prelude:true`と`sourceStatus:not-indexed`が併存し、`inspect std.text`にはCanonical型があるがArtifact/Referenceがない（#2620のCLI実測）。これは意図的な現状であって、`sourceStatus:not-indexed`を『型が存在しない』とするのも、『Sourceが揃った』とするのも誤り。型名を`.tei.md`へ機械的に移しただけでは実Loader受理・Primitiveの意味・現Binaryの型実装を証明しない。
+
+**有限Bootstrap候補**：K0=Parser/型識別の最小固定Seed・バイナリ中の標準Preludeを明記、K1=同じ12型を標準データ/選択済みLanguage ReaderでSourceとして記述できる候補、K2=既存Preludeと別途固定ExpectedによりID・型・NULL/欠損/数量精度・Source span/Revision/依存閉包を対照、K3=Sourceを正式に解釈した版のみStandard Library実体へ切替。K0をK1の自己申告だけで消さず、eagerな自己参照を拒否しdeferredな型参照とは区別。名称・型数・見かけのCanonical一致だけでK3に進めない。正式Package/Plugin分離方法は#988/#951の受入事項とし新方式を先決めしない。
+
+**Source由来の二値化を避ける**：`builtin/prelude (compiled-in)`、`indexed/loaded (Source+Reader+Revision)`、`candidate (Raw/未受理)`、`unknown/unavailable`は観測上異なる。Preludeに架空のArtifact path/Source spanを付けない。Build Artifactのdigestはコード込みPreludeを固定する助けにはなるが、可読なDSL Source/Owner Accepted Meaningの代用品にはならない。
+
+### 23.2 Imported ProviderのVersionはConsumer World/Indexとは別の根拠
+
+main統合[#3477](https://github.com/hat47x/tei-platform/pull/3477)は同WorkspaceのWorld不変・Source Index改訂時に旧Context Packetを拒否する有限実試験。main統合[#3479](https://github.com/hat47x/tei-platform/pull/3479)の局所Go反例は、**Import先Providerの原文やManifestが変更されてもConsumer World/Indexが変わらない場合がある**ことを示す。従って用途Requiredの閉包が外部Providerに達する場合、Consumer Manifest/World/Indexだけでcompleteとしない。Provider Manifest Identity、実Source occurrence/元byte、Import binding、実Reader消費と同AttemptのSource/Scopeを別Claimとして要求する。
+
+Provider Source/Manifestがunchangedでも、選択Language/Role Operator/Plugin Build/Host Grantが変われば実解釈・受入資格は失効し得る。一方、Required外のProviderの変更で無関係なFunction全体を過剰失効させない。Fingerprint同値はA→B→Aの履歴や同一原子Snapshotも保証しない。Provider Rawは観測できてもRoleが未解析なら`not-loaded/unsupported`、ScopeやSecretで開示不可なら内部不足理由を許可外Audienceへ漏らさない。独立Required Rの定義をCandidate自身の`required=[]`へ委ねない。
+
+### 23.3 Shared Application APIと実Provider呼出を一つの試験で混ぜない
+
+採用済み[ADR-0048](https://github.com/hat47x/tei-platform/blob/main/plan/adr/0048-shared-application-api-and-transport-adapters.md)の`catalog/inspect/trace/validate`は共通Application Operationが意味判定を所有し、CLI/MCP/Web/Studioは輸送・表現を分離する。main [#3403](https://github.com/hat47x/tei-platform/pull/3403)のMCP参照Adapterとmain [#3540](https://github.com/hat47x/tei-platform/pull/3540)の通常CLI/Studio Inspector呼出はそれぞれ有限実装。だが`ok:true`/同Canonical応答から、Input Schema/validate診断の完全同値、外部Tool Reply終端受領、Current Disclosure、正式Profile選択Provider Bの実Binary・正しいSemantic Sourceの消費を一括合格としない。
+
+最新#1251のComposition監査ではHost側がID→Entry→Manifestを照合する局所接合がある一方、自己整合した偽Entryや同一Manifest・異Semantic Sourceは見逃し得る。これを新Resolver/Registryで隠さず、既存#951選択→実Artifact/Entry→**同じLoadの必要Source**→実Call→Receiver取得のWitnessで検証する。GUI/AI向け固定Selectionは`meaningSubjectId/occurrence/revision/scope/source reference/view/allowed operation`をPinし、画面上の一時的選択解除を対象変更と扱わない（#1124/#3262）。Source/Grant失効時は編集・実Operationを再確認する。
+
+### 23.4 実Functionと自己Buildの優先順位は変えない
+
+初回の製品縦断は#2586の`order_entry.recent_orders`で **Function→Query/SQL→選択済み実Provider→実Rowset→Mapper→Data Context→Consumer** を一Source/Scope/Attempt・手書きExpectedで測る。`sales.order.submit`の13実CLI/42 bounded Context Controlsは別Functionの局所実績であり、この実Read資格へ転記しない。UI/SEI/SHO/KON/Ontology/Twinや表現型全対応を前提とせず、標準型Prelude/Roleの検証はこのP0-Rと並行する独立レーンとする。
+
+main [#3760](https://github.com/hat47x/tei-platform/pull/3760)では明示Build Catalog+digest+source-rootから`tei self-build` entryがin-process Planを導出し、参照Planとのfingerprint一致を記録した。しかし`qualified=false`/G4 UNQUALIFIEDが正である。後続のL2-b試験では実Disk Artifact byteの再ハッシュで虚偽申告は拒否できたが、Proxy背後のBuilder同一性、childが実際に使用したstate、Source trustまで確認できるとは限らない。Self-build ArtifactがRole意味や`std.*`のSource受理を自動承認しない。
+
+### 23.5 追加の独立反例 ESD-50〜57（設計候補、今回NOT RUN）
+
+| Case | 独立Expected・拒否条件 | Owner |
+| --- | --- | --- |
+| ESD-50 | `std.text`は`prelude:true/not-indexed`。存在自体は真、Source全件完備は未成立。ユーザーDataの`indexed`と分離 | #2620/#988 |
+| ESD-51 | 同名`std.decimal`をRaw/未選択Sourceで再定義。名前一致でPreludeを上書きしない・循環Seed受理しない | #988/#2514 |
+| ESD-52 | Standard Source版の型/単位を変えたがGo固定Preludeが同じ。差分を未解釈/不一致として診断し、IR一致だけでMeaning採用しない | #2620/#4351 |
+| ESD-53 | Import Providerの原文A→B、Consumer World/Source Index不変。依存Requiredの現在Source充足はunknown/stale | #3479/#3262 |
+| ESD-54 | Provider Manifestのみ変更、Consumer Revision不変。Provider側Manifest Revを別Pinし、無関係Providerは過剰失効しない | #3479/#2600 |
+| ESD-55 | 選択Provider BのManifestは正しいが実Entry A、または同Manifest異Semantic Source。Result同値でも選択/Source Consumption未証明 | #951/#1251 |
+| ESD-56 | CLI/MCPのCanonical同値、validateの意味診断/Tool受領に差。Operation成功と診断・配送資格を分ける | #3419/#3420/#3262 |
+| ESD-57 | Role正しくParse、Rowset 0件/partial/非開示、またはGUI選択が旧Revision。結果/表示成功を完全Read・操作資格へ昇格させない | #2586/#1124/#2514 |
+
+**最小Exit**：E0 Preludeの実CLI現状と固定12型を再現、K0/K1/K2の失効・衝突を手書きExpectedで評価（新Proto APIは不要）。E1 #3479外部Provider Source/Manifest版の差を用途Requiredへ結び、必要なProviderだけunknownに落とす。E2 #2586一Function実Readと#951正しいProvider Entry/Sourceを**同一Attempt**で照合。E3 ADR-0048共通APIのCLI/MCP受領結果を検証。全ケースが局所PASSしてもOwner Meaning/正式Provider S2-product/全Source原子性/盲検T1-B/外部H2/H3/実DB Commit/G4は別資格。既存#1119 G0〜G4と#1180/#2514 Scenario正本は不変。
