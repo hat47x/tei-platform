@@ -874,13 +874,15 @@ ChatのStream delta、Voiceのpartial ASR、HarnessのTool提案、B2CのExperim
 
 | 区分 | 必須情報 | 禁止する解釈 |
 | --- | --- | --- |
-| Identity | qualified Subject ID、Kind、Relation/Edge ID、複数対象の集合演算 | 表示名・行番号・座標をIDにする |
+| Identity | qualified Subject ID、Kind、**Sourceで裏付けられるRelation occurrence ID**、複数対象の集合演算 | 表示名・行番号・座標・描画専用Edge IDを業務Relation IDにする |
 | Provenance | Workspace、World/Snapshot、Source URI/Span、Revision、fingerprint | 同名Source・同bytesの再出現を無条件に同一資格とする |
 | Scope | Consumer、選択時の可視範囲、未取得/非開示/曖昧の件数 | 見えた対象だけを完全集合と主張する |
 | Intent | read / explain / propose / edit / invoke の要求種別 | 選択操作だけでWrite/Effect Grantが成立したとする |
 | Lifetime | 固定時点、期待Revision、再解決方針、失効理由 | セッション存続で対象が常に現行とみなす |
 
 **権限はSelection Contextへ永続Grantとして埋め込まない**。選択時のScopeは診断用であり、実際のRead/Write/Effect時にHostが現在権限を判定する。固定選択の解除は明示操作とし、旧対象が消失した場合は自動で近傍の別対象へ付け替えない。
+
+**Focus／一時Selection／Pinned Target Set／Activity Context／Harness Sessionは同義ではない**（#4479/#4515）。最初の製品縦切りはWorkbench内のread-only Subject Pinに限り、元のSubject kind/ID/Workspace、現在のInspect結果、現在資格の不明点を保持する。現在のGraph描画が作る`parent:`形式のEdge IDは意味Relationの識別子ではないため、Sourceに裏付けられる正式なRelation occurrence IDが得られるまでRelation Pinをunsupportedとする。Pinned Targetを保持できたことだけで、Source/DB Scope/Disclosure/Grantの現在性や外部Harnessへの安全な送信まで証明したことにはしない。
 
 ### 25.2 Proposed Patchから実行までの状態遷移
 
@@ -959,3 +961,69 @@ S0未実証の段階でS2の実Provider parityをPASSとしない。S1のread-on
 Aは既存Direct Baselineを破壊せず、実Provider B呼出しが可能な最小Consumerを選ぶ。Bは実Source Indexのstable identityを利用し、既存Model Map M0のread-only範囲を超えた編集資格を主張しない。CはA/Bの証拠を参照できる場合のみE2Eの限定受入候補とし、そうでなければCompiler/Projection単体検証と明示する。DはA〜Cと並行してExpectedを整備できるが、実行結果を先取りしない。EはA〜Dの結果を外挿せずConsumer固有の契約を再検証する。
 
 **この追補の状態**：バックログ/受入条件の設計のみ。コード変更、CI、実Consumer、Owner受理はNOT RUN。作業順序は依存関係であり、実装完了宣言ではない。
+
+## 27. テーブル定義とUI項目の連動：明示的な構造変更と安全な逆写像（2026-11-12）
+
+**利用者が明示した操作原則を具体化する。** 本節はデータモデル・機能モデル・業務モデルという**三要素分析法**のモデル間の整合を扱う。データモデル内の**テーブル／列の定義表示は、権威あるテーブル定義の写像**とし、図面を第二の定義正本にしない。業務キー・Relation・責任の意味は、物理PK/FKやテーブル定義の事実から自動受理しない（#1126/#4120）。ここでいう「テーブル定義」は選択したSource上のDesired/Declared構造であり、実DBで現在観測できたActual Schemaや未適用Migrationと混同しない。
+
+### 27.1 編集操作別の既定動作
+
+| 操作 | データモデル・Function/UIでの既定動作 | 別途必要な明示操作・確認 |
+| --- | --- | --- |
+| UI項目の追加 | UI要素だけを追加。対応する既存項目があればマッピング候補を提示してよい | **テーブル列は自動追加しない**。新列が必要なら対象テーブル・型・NULL/Default・制約を確認し、別の構造変更として明示 |
+| 既存のテーブル列をUIへ割当 | Source裏付けのある一意な項目だけMappingを設定。複数候補は未解決 | 対象の明示選択。編集/更新の場合はFunction/Operationと権限を別途検証 |
+| UI項目の削除 | UI定義／そのMappingのみ削除。データモデルの列は残す | テーブル列削除を意図するなら別の構造変更が必要 |
+| **権威あるテーブル定義から列を削除** | そのテーブルのデータモデル写像から列が消える。対応UI要素は残し、**対応Mappingを無効化・除去し、未マッピング警告を表示** | 関連Query/Function/CRUD/Constraint/Generatorへの影響を列挙し、MigrationのPlan/Applyは別実行 |
+| テーブル列のrename／split／merge | Source identity・旧新対応・依存の変化を検査。曖昧なら旧Mappingを自動付替えしない | 新しい対応付けの明示受理。単なる同名・近似型の一致から復活させない |
+| 実DBだけの外部Schema変更 | Actualとの差分・鮮度不足として観測。権威あるSource上の列定義やUI Mappingを**黙って消さない** | Source/Desiredへの採用、Migration/逆取込み等は別操作・別資格 |
+| Schema変更のPlan／Apply | 設計差分・DDL候補が出ても、実DBの変更完了を主張しない | Provider能力・対象環境・現行Grant・破壊性・データ損失・実行結果・再観測を照合（#3270） |
+
+**一操作で複数の変更を提案してもよいが、UI追加、テーブル定義変更、DB適用は別々の効果である。** ワンタッチの作成支援は許す一方、ユーザーが画面項目を配置しただけで列を新規作成したり既存DBを変更したりしない。明示確認済みの複合操作であっても、Source Commitが成功したこととDB Migrationが適用されたことは別のResultとして扱う。
+
+### 27.2 削除後の整合状態と操作可能範囲
+
+- **Source／Model**：列削除を権威あるSourceへ確定した時点で、対応するテーブル列のモデル写像は最新定義から除去する。ただし過去のSource Revisionや実DB Observationの履歴まで消去したことにはしない。
+- **Function／UI**：対応していたUI項目を消さない。Mappingが失効したUI項目として残し、描画可能性と値取得・保存可能性を分ける。列がないのに旧値を表示することや保存先を推測することは禁止する。
+- **CRUD／クロスリファレンス**：列単位のCRUD参照、Function Input/Output、Query Lineage、依存Rule、テストFixtureを再評価する。Unresolved/partialを「依存なし」に読み替えず、影響を確認できない場合は変更適格を保留する。
+- **編集／実行**：未マッピングUI項目の表示・編集可能性は分離する。画面上で入力できても、対応先が未確定なら旧列・別列への書込Intentは生成・実行しない。既存コード、外部Host、手書きの処理には独立した影響確認を要する。
+- **選択の固定**：列を参照するPinned Targetは旧Intentの記録として残り得るが、失効後に似た列へ自動再束縛しない。現在のSource/Schema/Scope/Host Grantを再資格化する。
+
+### 27.3 同じ操作をGUIとCLIで説明・検証する
+
+製品上のコマンド名・JSON Schemaはこの段階で固定しない。既存のModeler/Studio/Data Source Workbench/Source編集契約を使い、次の**意味上の操作**を共通化する。
+
+1. 対象と現在版を明示して編集提案を作る（UI-only / Map-existing / Schema-desired-change / Schema-apply）。
+2. 影響範囲を取得する。Source Index、三要素図、CRUD/Query、UI Mapping、Migration Planから、解決済みと未知を別に返す。
+3. 明示した対象・変更範囲に対してSourceの現行性、構造妥当性、必要な意味受理を確認する。
+4. Sourceへ反映し、UI Mappingを再評価した結果と、実DBへ適用するためのPlanを**別々に表示**する。
+5. DB Applyを指示した場合だけ、外部Provider/Host権限の下で実行し、結果を独立に再観測する。
+
+CLIでは非対話操作も、承認済み変更の明示的な入力と対象版の指定を必要とする。確認UIがないことを自動作成・自動削除の理由にしない。通常コーディングを排除しないため、既存コードとの対応や未追跡依存は診断対象とし、モデル変更だけで既存処理まで更新済みとしない。
+
+### 27.4 独立Expectedへ渡す反例（設計候補・NOT RUN）
+
+| Case | 条件 | 必須結果 |
+| --- | --- | --- |
+| DMU-01 | UIへ未マッピング項目を一つ追加 | UI要素+1、テーブル列+0、実DB DDL 0 |
+| DMU-02 | UIから「新しい保存列」を明示要求し、Schema Source確定前に中断 | テーブル定義変更0、実DB Apply 0。候補のみ保持 |
+| DMU-03 | 共有列Cをテーブル定義から削除し、二つのFunction UIがCを使用 | 最新データモデル列C=0、UI要素2件は維持、Mapping失効・警告2件、旧列への書込0 |
+| DMU-04 | Source上の列削除後、DBへMigration未適用 | DesiredとActualの差を保持。物理列削除成功・実Commitを捏造しない |
+| DMU-05 | 外部DBで列削除、Source/Desiredは変更なし | Schema driftを警告。SourceのModel列・UI Mappingを無音で削除しない |
+| DMU-06 | 列renameに見えるdelete+add、同名／同型・Source A→B→A | 旧Mappingを自動復活させず、Identity/Revisionを再検査 |
+| DMU-07 | partial Catalog／非開示Relationに依存する列変更 | 影響「なし」やSafe Applyと断定しない。未知範囲を明示 |
+| DMU-08 | 描画Edge IDしかないUI／Pinned TargetからRelation列を更新 | 意味Relationへの書込0。Source裏付けのあるIDと編集資格を要求 |
+| DMU-09 | Schema Apply拒否／部分適用／結果不明 | Source Commit・Provider呼出し・DB Observation・Effect Receiptを別状態にし、成功と捏造しない |
+
+これらは**既存#1180/#2514のScenario・独立Expectedへの追加候補**であり、新しいテスト正本ではない。GUI・CLIの振る舞いを同じExpectedで比較する。ただし実DBの適用試験はProvider/権限の独立証拠が必要であり、合成テストのPASSから外挿しない。
+
+### 27.5 Ownerと実装順序
+
+- **#1126 / #1143**：テーブル定義と論理・物理Mapping、rename/delete影響、三モデル間の変更資格。
+- **#1124 / #1824 / #4515**：実Sourceに裏付いたModeler表示、read-only Subject Pin、未マッピングUIの警告。描画EdgeをSemantic Relation IDへ昇格させない。
+- **#3270 / #4120**：Desired/Actual差分、Schema Plan/Apply、外部変更・実DB観測とSource資格。
+- **#2500 / #2497 / #2586**：Function UIの表示と、実データ更新Intent、read-only Rowset受領、写像喪失・部分集合を分離。
+- **#1180 / #2514**：DMU-01〜09を既存Expectedへ結合。**実Provider Read・Plugin CLI/Studio P0をブロックしない**。
+
+着手順は、(a)現行Sourceからテーブル列とUI Mappingの**read-only**な依存表示、(b)削除時の未マッピング診断・提案差分、(c)GUI/CLIの同一Source編集資格、(d)明示的なDesired Schema変更、(e)実DB Applyの独立検証。正式API・Migration Engine・承認基盤・Graph正本の新設は、この設計だけを理由に行わない。
+
+**状態**：設計と検証候補の追補のみ。GUI/CLI編集、Migration、DB再観測、DMUの実行、Owner意味受理はすべてNOT RUN。
