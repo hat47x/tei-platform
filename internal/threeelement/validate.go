@@ -6,10 +6,10 @@ import (
 
 // ValidationReport collects derived diagnostics for a model.
 type ValidationReport struct {
-	SchemaVersion          string              `json:"schemaVersion"`
-	ModelID                string              `json:"modelId"`
-	ModelFingerprint       string              `json:"modelFingerprint"`
-	OK                     bool                `json:"ok"`
+	SchemaVersion    string `json:"schemaVersion"`
+	ModelID          string `json:"modelId"`
+	ModelFingerprint string `json:"modelFingerprint"`
+	OK               bool   `json:"ok"`
 	// OK only concerns the existing structural Diagnostic error count.
 	// It cannot be read as approval of contradictory or incomplete CRUD.
 	OKScope                string              `json:"okScope"`
