@@ -177,7 +177,7 @@ UI Focus/Transient Selection
 
 この四つは**局所実装の統合**であり、各PRのCIを相互に足して「同じHEAD/AttemptのGUI往復PASS」としない。具体的な最新統合コミットは各PRのMerge Commitを参照する。GUI初期実装では既存DocumentDraft/Writer/Readerを**外側から操作するAdapter**を優先し、Editor内に独自のDraft Merge/TEI Meaning Serviceを再実装しない。
 
-[TEI #4484](https://github.com/hat47x/tei-platform/pull/4484) はFunction→実SQL/Provider/RowsetのP0と文書投影の資格を横断主線へ整理した**未マージDraft**。本設計は#4484のData Context資格を先取りしない。実DBから未取得の値を、三視点/SHOで表示できたからといって取得済みと扱わない。
+[TEI #4484](https://github.com/hat47x/tei-platform/pull/4484) はFunction→実SQL/Provider/RowsetのP0と文書投影の資格を横断主線へ整理した**未マージDraft**。本設計は#4484のData Context資格を先取りしない。実DBから未取得の値を、三要素分析法の各モデル/SHOで表示できたからといって取得済みと扱わない。
 
 ### 11.2 実画面の具体的な状態遷移（同一作業例）
 
