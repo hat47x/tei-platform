@@ -50,6 +50,15 @@
 
 E0/N0/B0とR0bは**並走可能**。R0bでは#4539がDraftである以上、同Branchの実証とmainで再利用可能なAPIを区別する。C0はPinの一意性と現在資格に依存するが、Mock Previewは外部Harness実装を必須としない。V0のSource書込みをC0の成立条件にしない。N0の局所参照表示を待たずに#2586/#1251の実Provider P0を進める。各実装の失敗結果は元Issueに返し、§0はOwnerを置換する管理表にならない。
 
+### 0.4 設計へ戻す判断は四つだけ
+
+- **同一対象の解決不能**：必要なSource-backed Definition/Reference Occurrenceまたは値spanが無い。Decoder/Readerの欠落を新しいStudio索引で推測補完しない。
+- **完全性の不明**：未ロードPlugin・動的参照・部分Read・UI/DB依存の欠落。read-only局所表示を許容しても全件Renameや「影響なし」を許可しない。#4518/#4535のB2C Native一フィールドの段階検証と同様、`affected / scoped-unaffected / unknown`を分けるが、その限定的な進捗を一般GUI Mappingの実装済みとみなさない。
+- **現在資格の不明**：Source/Grant/Disclosure/Artifact/Window epochが不一致または未取得。プレビュー済みの情報をそのまま外部送出・適用しない。
+- **性能上の実測失敗**：Startup/入力/NavigationをPlugin数・Index cold/warm別に測り、正確性を保ったまま既存Indexの再利用・Scoped Queryを比較する。原因未測定の全体的な新Cache/Indexerを先に作らない。
+
+**レビューの完了条件**：実Source＋同版Fixture＋独立Expected＋actual Producer/Consumer＋結果資格（PASS/FAIL/NOT RUN/unsupported）の一組が少なくともE0/N0またはB0で確認できること。設計追記やPRを開いた事実だけでこの条件を達成したとみなさない。現時点では本節の統合シナリオの実Wails/実AI/実DB E2Eは**NOT RUN**。
+
 ### 0.5 今回取り込んだ実証の適用範囲と引継ぎ票
 
 | 基盤の実証 | 採用できること | Desktopへ持ち越す未証明事項 |
@@ -63,15 +72,6 @@ E0/N0/B0とR0bは**並走可能**。R0bでは#4539がDraftである以上、同B
 **最小の証拠票（元Ownerに記録し、この設計書で重複管理しない）**：`Input Source/byte digest | Workspace/Environment/Instance | Chosen→Invoked Provider | Function/Query ID | actual SQL digest+typed params | Field Presence/NULL/Rowset grain | Scope/RLS/coverage | Consumer received body | Grant/Disclosure | Attempt/Receipt | exact code HEAD | PASS/FAIL/NOT RUN`。認証情報・DSN原値・非公開RowのRaw bytesは公開票へ転記しない。作用のないReadでも外部送信・Cache書込み・Network接続は別観測として記録し、画面のread-onlyを「外部に何も送らない」と同義にしない。
 
 **次のレビューポイント**：N0/B0またはR0bの実Consumer一巡が出たらその結果を最優先で反映し、設計上の不足が具体的な負例で示されない限り新しい§やDTを増やさない。#4539/#4534のDraftを製品資格に昇格させるには、既存Ownerによるreview・統合と**exact HEAD**の証拠が必要である。
-
-### 0.4 設計へ戻す判断は四つだけ
-
-- **同一対象の解決不能**：必要なSource-backed Definition/Reference Occurrenceまたは値spanが無い。Decoder/Readerの欠落を新しいStudio索引で推測補完しない。
-- **完全性の不明**：未ロードPlugin・動的参照・部分Read・UI/DB依存の欠落。read-only局所表示を許容しても全件Renameや「影響なし」を許可しない。#4518/#4535のB2C Native一フィールドの段階検証と同様、`affected / scoped-unaffected / unknown`を分けるが、その限定的な進捗を一般GUI Mappingの実装済みとみなさない。
-- **現在資格の不明**：Source/Grant/Disclosure/Artifact/Window epochが不一致または未取得。プレビュー済みの情報をそのまま外部送出・適用しない。
-- **性能上の実測失敗**：Startup/入力/NavigationをPlugin数・Index cold/warm別に測り、正確性を保ったまま既存Indexの再利用・Scoped Queryを比較する。原因未測定の全体的な新Cache/Indexerを先に作らない。
-
-**レビューの完了条件**：実Source＋同版Fixture＋独立Expected＋actual Producer/Consumer＋結果資格（PASS/FAIL/NOT RUN/unsupported）の一組が少なくともE0/N0またはB0で確認できること。設計追記やPRを開いた事実だけでこの条件を達成したとみなさない。現時点では本節の統合シナリオの実Wails/実AI/実DB E2Eは**NOT RUN**。
 
 ---
 
