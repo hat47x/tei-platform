@@ -908,7 +908,7 @@ Selected Context
 | Slice | 入力 | 実証する出口 | 主Owner |
 | --- | --- | --- | --- |
 | S0: Inspect | 実Workspace、選択Provider B、CLI/Studioの同一Subject | 選択B=実Invoker B、実Consumer受領、Source/Attempt一致 | #1251 / #1824 |
-| S1: Modeler Selection | 実Source Indexの同名多重Edge、固定Selection Context、AI提案 | 選択ID維持、曖昧拒否、Owner未受理時Effect 0 | #1124 / #3262 |
+| S1: Modeler Selection | **第一段は実WorkbenchのSubject Pin**（kind/ID/Workspace）。第二段でSource裏付けのあるRelation occurrence・同名多重Edge・AI提案を扱う | 第一段はFocus/IME/Canvas移動でもPin維持・旧応答拒否。第二段では描画Edge IDを拒否し、同名多重Relationを混同しない。いずれもOwner未受理ならEffect 0 | #1124 / #1824 / #4515 / #3262 |
 | S2: Graph Patch | 既存OperationへValidation追加と条件分岐、同一Independent Expected | 合成Graph、Source帰還、Target実Artifact、全Path Guard/Effect | #3503 / #3278 / #1121 |
 
 S0未実証の段階でS2の実Provider parityをPASSとしない。S1のread-only表示は編集・実行資格の証拠ではない。S2でTargetを実行しない場合はDesign/Buildまでの限定PASSに留める。
@@ -932,7 +932,7 @@ S0未実証の段階でS2の実Provider parityをPASSとしない。S1のread-on
 | 順序/既存Owner | 作業と成果物 | 必須の反証・受入証拠 | 不合格・保留条件 |
 | --- | --- | --- | --- |
 | A / #1251 #1824 | 通常CLIとStudio Bridgeが選択済みInspector Provider Bを実呼出しする配線、同一Subject/Attemptの結果表示 | B選択→B実Invoker→CLI/Studio受領、BをAに差し替えた負例、Provider error/Grant失効 | 既存Direct実行や局所Go呼出しだけ、実Bridge未接続 |
-| B / #1124 #3262 | 実Source Indexからread-only Selection Contextを構成し、GUI/CUIで固定/解除・再解決診断 | 同名多重Edge、別Canvas遷移、Revision衝突、非開示・部分集合、旧対象削除 | 表示名で対象決定、未取得対象の暗黙省略、AIによる無断再結合 |
+| B / #1124 #1824 #4515 #3262 | **B0 Subject Pin**を現行WorkbenchのInspectに接続。**B1 Relation Pin**はSource裏付けのあるoccurrence IDが利用可能になってから検証 | B0: Focus/IME/Esc/Canvas移動、別Workspace同Fingerprint、後着旧応答。B1: 同名多重Edge・CRUD Relationの曖昧拒否。各段でRevision/Disclosure未知を明示 | 描画専用Edge IDを意味ID化、Pin意図を現行Grantとみなす、B0成功だけでB1/外部HarnessをPASSにする |
 | C / #3503 #3278 #1121 | 最小Validation Patch→Effective Graph→Source帰還→一Target生成、次に条件分岐 | 全Path Authority/Effect、未受理Patch非反映、Patch順序競合、layout-only生成不変 | Guard迂回、Owner未受理、静的UNKNOWNをPASS |
 | D / #1180 #2514 #259 | A〜Cの同一Independent Expectedを既存Scenario/Conformanceに収容 | 実行SHA・Workspace・Source・Provider Lock・Artifact・Attempt・Receiptの突合、対象外Targetの明記 | 他PR/別SHAのCIや合成テストを製品実行証拠へ転用 |
 | E / #3503 #3509 #1124 | Chat/VUI/SHO/B2Cの異質Consumerへの限定接続 | partial tool/ASR=実Call 0、SHO同名異内容、B2C非関与Routeに必須JSなし | CLIでの合格を全Targetの合格とする |
