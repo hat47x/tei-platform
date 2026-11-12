@@ -699,4 +699,33 @@ Design Synthesis
 
 **今後の仕様最適化の問い**：既存のScope参照、Function Data Context、Read-only Projection、Proof Obligationを繋ぐだけでSCQ-01〜04を正しく説明できるか。できなければ欠ける参照・必要な不変条件だけを追加し、既存Projector/Context/Permissionの第二正本は作らない。結果は#3262/#2497/#2516/#1124と共有する。コード移行・実Provider/GUI試験・Owner意味受理は本節では実施していない。
 
+### 16.8 確定Snapshotから実消費までの整合を、問いに相対的に評価する
+
+複数のProof Obligationが局所的にsupportedでも、**同じ業務結果について共同で成立した**とは限らない。設計の正しい構造と、実際の結果の成立を次の順に分ける（製品Schemaの追加ではなく、候補としての設計・検証票）。
+
+1. **意思・対象**：Acceptedな業務Action/Function、Business Outcome、対象集合とIdentity、Scope、版、処理意図。
+2. **一貫した入力**：必要なHeader/Detail/規則/時点/版/ProviderのRead cohortと取得閉包。別々のRead PASSや同じSnapshot Token文字列を、共通の一貫した観測と決めつけない。
+3. **実作用と生成**：対象/Grant/Provider/Artifactを固定し、実際のRequest、保存した実体、外部Effectを識別。Retry/Unknown時に実未実行とみなさない。
+4. **配布・受領**：発行レコード、保存済みArtifact Set、配信受付、受領した実Byteと必要Closureを区別。Manifest内整合と公開途中の混合版/旧版残存を別検査。
+5. **Businessとしての結末**：独立Readや外部のObservationとAcceptedな完了条件を比較し、業務Outcomeとして言える範囲を限定する。
+
+#### 重要な共同反例
+
+| ケース | 各局所検査で一見成立すること | 共同Claimとして成立しないこと |
+| --- | --- | --- |
+| RC-01 別cohortで帳票確定 | Header Query成功、明細Query成功、PDF Renderer成功 | 両Readを一つの業務的に整合したSnapshotとして固定した根拠 |
+| RC-02 発行直前の障害 | PDF実体は保存済み | 発行を正式に記録した／相手が配信を受けた |
+| RC-03 複数媒体 | CLI exit 0、HTTP 200、Web表示成功 | 両経路の同じ業務Effect／独立観測結果 |
+| RC-04 成果物一式の切替 | ManifestのContent digest一致、Generator PASS | Consumerが一式を同じ公開世代として取得し使用した |
+| RC-05 ACK喪失と再送 | Requestは送った、応答は失った | 未実行だった、再送しても二重作用が無い、業務完了した |
+
+ここでいうSnapshotは物理DBの単一Isolation方式ではない。業務Ruleに照らした確定済みイベントや再確認を含め、**用途に必要な集合の整合**を構成できることが重要。複数DB/非同期APIにまたがる原子性は、独立に採用された取引・回復方式でのみ認める。Snapshot/Artifact/Receiptが同じ型や表名である必要もない。
+
+#### 統合判断（アウフヘーベン）
+
+帳票、Build成果物公開、通知、外部Commandは各々固有の状態と回復能力を持つ。すべてを同じ新しい「発行Runtime」へ入れるのではなく、**Intent／Required Inputs／Actual Invocation・Produced Artifact／Observed Result／Owner Accepted Outcome**という照合の論理を共有する。設計・業務意味・実行主体・配布先のOwnerを消さない。Generated evidenceだけの自己証明を避け、受領者側の独立Observationを必要なケースで採る。
+
+追加の共通構造が有益かは、既存#1163 Evidence Packet、#1174 Effect Fence/Receipt、#2604 Artifact Set publication、#1130 Batch/Report、#3815 Snapshot帳票、#2514 Independent ExpectedをつなぐRead-only Referenceで反証してから判断する。新Host、Second Receipt Store、中央Publication Registry、万能Transactionを先行採用しない。
+
+**検収の出力**：対象・問い・Required集合→実Read cohort/Provider→不変なArtifact/Effect→相手に届いた実物→業務完了の判断、の各辺に根拠と未検証を記録する。最小例は注文確定単価1,200円に対する注文Header/Detailの版ずれ、帳票保存後の発行記録失敗、別媒体/再送時のUnknown。これは設計提案であり、今回の新規実CLI/DB/印刷/配信試験はNOT RUN。
 
