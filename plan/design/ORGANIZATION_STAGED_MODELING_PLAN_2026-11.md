@@ -531,3 +531,90 @@
 - Corpus・独立Conformance: #2510。Projection: #2497。一般メタ: #1126/#2495/#1806。
 - 設計の正本: [組織関係・時点・統制の標準意味モデル](../design/ORGANIZATION_RELATION_GOVERNANCE_MODEL_2026-10.md) と [開発全体計画](../MASTER_PLAN.md)。本計画はその**実装作業単位**を定義する資料であり、意味の正本を書換えない。
 - 既存fixture: `reference/org-headless-workspace/`・`reference/org-semantic-views/`・`reference/derivation-temporal/`。
+
+## 10. 2026-11-12 横断統合：組織責任・実行・三視点・知識Consumerを一案件で接合する（採用前計画）
+
+### 10.1 今回の基線と、実装済みの意味を過大に扱わない規則
+
+- 本節は #2386 の**既存計画を実行可能な受入条件へ精緻化する追補**であり、新しい意味正本・Core Kind・Operation/Policy/Workflow Runtimeを作らない。業務意味の採否はOwnerが行う。
+- 2026-11-12 GitHub読取時点：段階計画 PR #4342、S1〜S4中心のGoテスト/fixture PR #4399、組織責任Cutoverのdocs PR #3741、SUI/CSW Affinity境界のdocs PR #4256はmainへ統合済み。§1.2に列挙された「未統合Draft」は**当時の履歴**であり、着手時には各PRの現在のstateとmainを再確認する。
+- PR #4399の新規テストは有用な**構造・非自動権限化のcharacterization**。例：org_staged_temporal_test.goはWorkspace Load、org_staged_asof_query_test.goはDialect/Inputsの宣言、org_staged_approval_candidate_test.goはDataと非Effectを検査する。実二時点結果差、実Query/Lineage呼出し、動的候補解決、Directiveの一体公開、委任の各シナリオ期待照合まで実行した証拠ではない。差分を#4490で管理する。
+- TEI→SHO文書Draft/再投影の限定実装 PR #4317/#4467 はmain統合済み。ただし組織C1の実Consumer接続ではない。高度な固定対象指示の計画 PR #4479 はDraft。既存実装／設計候補／実Provider・Hostの現在証拠は別資格とする。
+- **共通失敗条件**：宣言・表示・局所PASS・SHO保存・AI応答・GitHub CI成功から、Owner意味受理、実Read適合、現行Grant、実Effect、相手側ACKを推認した時点で不合格。
+
+### 10.2 単一の責任グラフを既存Data/Relation/Ruleから導出する
+
+組織上の関係と業務の責任割当は区別し、案内用RACI等は用途別Projectionとする。固定のRACI列やCaseAssignment Core型は導入しない。
+
+| 事実・候補 | source / occurrence | 依存する解釈 | **導出してはいけないもの** |
+| --- | --- | --- | --- |
+| Person P1がUnit D1へ所属 | Membership A1（独立occurrence、valid/known） | 所属・兼務・出向の用途別Rule | Case C1の担当、Positionの在任、Tenant Grant |
+| P1がPosition Z1に在任 | Occupancy O1 | 職位軸の関係 | Membershipや承認可否の自動確定 |
+| Case C1の取扱部門がD1 | CaseRecord.handlingUnit R1 | 案件責任のBusiness Rule候補 | D1の全員の更新権限、本人P1の担当 |
+| P1がC1の決裁候補 | Rule Rrev/Responsibility occurrenceとread context | 当該時点・業務範囲・対象Caseに限る候補 | 現行Principal・Grant・確定Effect |
+| C1の責任をD1からD2へ移管 | 明示されたCase責任変更 + 旧/新版 | Handoff/受領要否・単独/共同責任の業務Rule | Membership異動や通知だけからのACK |
+| 実際の承認・実行 | Hostの検証済み主体/Grant + Effect Fence + Receipt | current Authority・対象・実装Artifact | 単なるCandidate、旧Receipt、別Tenantでの許可 |
+
+- Relation occurrence、Entity、役割、時点、到達Path、Graph上の表示Edgeを混同しない。D1→D2を経由して同じ部門に二経路で到達しても、人数・案件数・責任件数は**集計grain**（Person/Case/Assignment/Path）ごとに計算する。
+- 取扱部門変更と責任者変更の連動は**明示的なBusiness Ruleが採用された場合だけ**行う。決裁が旧部門で継続するか、現在部門で再評価するかは業務Ownerの選択。暗黙の一律切替を禁止する。
+- 一つのWorkspace内の通常組織Dataは通常のDataとしてQuery/Functionで利用する。保護を要する個別の項目、外部Consumerへの送出、別Tenant/Hostの実Read/Effectはそれぞれ該当Provider/Current Grantの別の条件で評価する。
+
+### 10.3 C1ひとつの横断受入：時間・変更・判断・実行の独立証拠
+
+同じ合成Case C1を、異動R1→R2の前後で繰り返す。ただし同じCase IDやContent Hashは同じRead Snapshot/Execution Attemptの証拠に**ならない**。テストはSourceの公開合成Dataだけを使う。
+
+| 時点 | 組織事実とCase | 必須の別判定 | 未許可の短絡 |
+| --- | --- | --- | --- |
+| t0 / known0 | P1がD1所属、C1取扱D1、旧Rule版 | Query集合・完全集合性、候補・Rule版・Scopeを記録 | Membership=Case責任 |
+| t1 / known1 | P1がD2へ異動、C1はまだD1取扱 | 候補を再評価する条件、旧担当の残余責任、変更なしのC1 | 異動=Case移管 |
+| t2 / known2 | C1取扱をD2へ変更、Handoff未ACK | 旧/新責任4象限、通知とACKの区別、D1→D2切替の適用範囲 | 送信成功=受領=移管完了 |
+| t3 / known3 | C1処理要求。Grantが失効する、または実Commit不明 | 現在主体/Policy epoch/Case revision/Effect Fence、Receipt、独立post-read、重複副作用防止 | 候補=許可、Commit不明=失敗で安全再実行 |
+| t4 / retro-known | C1やA1の遡及訂正が追加される | valid/knownの異なる歴史解釈と過去の確定Receiptを両方残す | 歴史訂正=実際の過去送信の取消 |
+| t5 / ABA | D1→D2→D1に戻る | revision/epoch/attemptを比較し旧候補・旧Receipt・選択を現在の証拠にしない | 値がD1に戻った=旧資格の回復 |
+
+**同一試行の観測票（新Core Schemaではない）**：
+- S：Source URL/位置/occurrence ID・Source/World/Meaning revision、Owner受理の有無。
+- Q：Function/Query・必要Read footprint、実Provider/alias・取得条件・read cohort・Field/Relation trace、partial/unknown、validAt/knownAt。
+- D：Business Rule版・Candidate/Decision・理由・関係Path・Case責任/移管版・必要ACK。
+- E：実Principal/Issuer/Tenant・現在Grant/Policy epoch・対象Operation/Artifact/Resource・Effect Fence・Receipt/post-readの結果。
+- H：Harness Activity Contextと固定Selection（対象のID/Source span/epoch）、用途、受信者、許可済みDisclosure slice、送出/受信/保持/意味保存/ACK。
+- V：Expectedの独立性・Observedの実機構・test/CI exact HEAD・Provider資格・Owner受理・制約。
+
+**Evidence joinのルール**：S/Q/D/E/H/Vが同じCaseを指していても、必要なContext、読取の版・Scope、実行試行、受信先は**それぞれ明示して照合**する。Sourceと有効時点が一致しても、多Providerのread cohortが同一だとは証明されない。欠落はunverified/unknownとして停止し、結果を保証したと言わない。
+
+### 10.4 設計モデルと外部・AI Consumerの接続
+
+| 経路 | 既存Owner | 組織C1での最小受入／禁止する誤昇格 |
+| --- | --- | --- |
+| Data→Function→Business→CRUD | #1124/#1125/#1126/#2497 | C1を処理するFunctionと依存Data、CRUD、責任Ruleを**同じ受理済みRelation occurrence**へ遡及。物理FK・JOIN回数・モデル図の線だけで業務意味を確定しない |
+| Studio組織図・配置表・Tree | #1124/#2497 | 軸/valid/known/粒度/可視範囲を表示。多重親/隠れたEdgeを保持し、表示Preferenceと本務・指揮命令を分離。非可逆Selectionはread-only |
+| GUI/CUIの固定対象→AI | #1158/#1124、Draft #4479 | 対象ID・Relation occurrence・Source span・Revision・固定時のepochを明示。フォーカス移動/多選択解除で対象が変わらない。再読取で古くなれば再選択を求める。固定対象は実行Grantではない |
+| TEI→SHO Composer | TEI #2516/#1124、SHO各Owner、TEI PR #4317/#4467 | C1の説明・図・根拠をDocument Draftへ送るとき、TEI Model Revisionと文書編集Revisionを別保持。再投影しても著者編集を無言で失わない。Draft保存はOrg実Effect/業務受理ではない |
+| SUI/CSW→TEI | SUI探索、CSW知識配置、TEI #2386/#3394 | Card/Island/KJ的AffinityはCandidate。許された理解パック→出典・対象・多重性・反例を検査→Ownerが採用した部分のみRelationへ。意味候補の出現を正式所属やCase移管としない |
+| 外部Harness/SEI/TAI/EKI | #2516/#2509/#2499/#1174ほか | Activity Sessionの継続とHost再認可を別扱い。指示・計画・Agent提案・EKI委任/Job完了は現在Grant/確定Effect/業務結果を保証しない。開示対象/目的/Recipientの変更ごとに再資格化 |
+
+### 10.5 WU-06〜14の増分受入契約（#4490との責務分担）
+
+| WU | 次の判別力を持つ独立Expected | 担当／停止条件 |
+| --- | --- | --- |
+| 06/07 | same-valid・different-knownの結果反転。WHERE非出力依存、ORDER、EXISTS/NOT EXISTS、0件とpartialの反例。SQL Input名だけでPASSにしない | #4490。実Query/Providerは#2586/#2506/#2622 |
+| 08 | Directive一件が複数Relationを変えるが、部分受信/中断を正式公開Snapshotとしない。複数Providerの原子性は実証範囲で限定 | #4490、実Effectは#1174 |
+| 09/10 | Candidate 0/1/複数/partialと、Host Grant 0/1、失効・自己承認・期限・Scope/別Tenant・再委任循環を対照。各ScenarioのExpectedを**実Evaluator出力と照合**する | #4490。未実装の評価器をテストがあることにしない |
+| 11 | Case責任切替・手順・候補/決定・通知/ACK・Effect Receiptを別列にし、同一AttemptでBusiness/RunPlanの接続可否を検証。新Workflow Engineなし | #2386/#1125/#1444。業務RuleのOwner受理前はcandidate |
+| 12 | C1の時点別Graph/Table/Tree/CRUD/SHOでID/時点/粒度/隠れEdge・部分取得を照合し、非単射Projectionをread-onlyとする | #2497/#1124/#2516。実Consumer未確認はNOT RUN |
+| 13 | C1のRelation edge選択→固定対象→AI変更候補→Preview→Owner Acceptance→Source再投影。Source改版/Grant失効/Selection ABA/再投影競合を**別失効**として検証 | #1124、固定対象Draft #4479、SHO側Owner。AI候補は自動書戻し不可 |
+| 14 | 通常の部門・所属等を一律に機密扱いしない一方、特定保護Fieldを含む外部開示/Export/ログだけを適切な境界で制御。同じ公開Sliceの二世界で件数/診断/Tooltip漏えいなし | #2510/#2516/#2020。新組織ACLを作らない |
+
+WU-11〜14をWU-06〜10の「全部完了待ち」にしない。前段の**必要な意味入力が独立Expectedとして固定**され、同一Source/Scopeを共有できた部分から並列実施する。統合受入のみ必要な証拠のjoinを求める。
+
+### 10.6 実測Gate・実装順・撤回条件
+
+1. **G0（既存）宣言Fit**：2026-11-12のmainにあるPR #4399の構造試験を維持。#4343の手書きExpectedとNode oracleが存在するかは実ファイルと実行で別確認。
+2. **G1（先行）純粋Behavioral**：#4490のBEH-01/02を最初に実行し、expected resultが入力変更で反転することを確認。次にBEH-03〜05/06。G0のみでG1合格と呼ばない。
+3. **G2（製品）実Read**：全TEIの初回 #2586 HJ-09を優先した後、Org C1について実Query→Provider Rowset→Context→一Consumerを同一Attemptで検査。fixtureの局所PASSを使用せず、物理Read/partial/Scopeを記録する。
+4. **G3（横断）三視点/SHO/Harness**：同一Sourceの複数Projection、固定Selectionの遷移、Disclosure、受信／保持と意味保存を個別確認。SHO側の既存保存/再投影機能を再実装しない。
+5. **G4（限定）Business決定→現在Grant→Effect/Handoff**：#2499/#1174/#1125/#1444 Ownerと、Grant失効/Commit不明/ACKなし/D1→D2→D1を実Host・実対象で別々に受入。実行の取消/再実行を推測で自動化しない。
+
+**反証・撤回条件**：基礎S1に専用Schema/新Runtimeが必須になる、同名/同Hash/同Case IDで版/対象が自動結合される、Expectedが実装の出力から作られる、Display/AI/Documentの成功を現在Grantへ昇格する、取得partialを不存在にする、Commit uncertainを再実行可能と扱う場合は該当縦断を失格としOwner Issueへ返す。
+
+**状態**：本追補は設計・独立Expected候補。これを記述しても新ORG-BEHの実行、実Org Provider/Host、実SHO/Harness送受信、Owner意味受理は成立しない。実測はPR head、利用した機構と出力、CIと独立Expectedの版を固定してからのみ記録する。
