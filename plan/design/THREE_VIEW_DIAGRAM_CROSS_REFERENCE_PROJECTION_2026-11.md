@@ -959,3 +959,45 @@ StudioでUI要素を選択しAI/DSH系Harnessへ細かく指示する設計は�
 | **TEA-Q14** | 同じ公開Source/Relation Sliceを維持したまま非公開Writerだけ変更 | 公開Consumerの図・Counts・診断・順位は変わらない。全体の不存在証明を公開側へ漏らさずunknown。実Disclosure/side channelは#2516 |
 
 **位置づけと優先順**：本節は#4473のPinned Target/媒体横断Contract、#4478のLifecycle Graph、#4403のCRUD検証コード、#4396の実CLI→Node、#4134のTest Generator、#3262のDesign Context Queryの**代替実装ではない**。まず#1124同一Consumerと#2586 Product実Readを進め、TEA-Q09〜14は既存Read/Rule/Expectedを再利用した小さな局所対照から検討する。追加試験のGo/Node/DB/Workbench/SHO/AI実行、現在Policy、正式受理はすべて**NOT RUN**。独立の新Proof Store・汎用Rule Engine・Method専用Hostを作らない。
+
+### 34.8 問い別の証拠再利用・失効：意味の保存と現在資格を別にする（2026-11-12 継続研究）
+
+**追加の差分**：§34.6〜34.7で定めた存在・全称・不存在・実行・業務受理は、**Source改版後に同じ過去Evidenceを現在の主張へ使えるか**がそれぞれ異なる。これは新Incremental Engineの仕様ではなく、[Source改版とConsumer影響](SOURCE_REVISION_CORRESPONDENCE_AND_CONSUMER_IMPACT_2026-11.md)、[Cross-view変更適格性 #1143](https://github.com/hat47x/tei-platform/issues/1143)、[増分再利用 #2600](https://github.com/hat47x/tei-platform/issues/2600)、[Design Context #3262](https://github.com/hat47x/tei-platform/issues/3262)の既存判定を、**TEAの同じQuestion・同じ公開済みScopeに対してどう説明するか**というConsumer上の限定合成である。
+
+まず、問Qに必要な依存の閉包（Expected / Required Source, Rule, Relation, Writer, temporal assumptions）と、その試行の実Producer・実Consumerが参照したもの（Observed / Consumed Source, Provider, Artifact, Output）を**別の由来**で保持する。Requiredが列挙されても実Consumedを証明しない。実Consumedの列挙は意味上のRequiredが漏れていない証拠ではない。「変更と交差しない」と判断するには、対象Questionに必要な依存閉包の根拠、当該Claimの全前提の現行資格、比較対象のWorkspace/Scope/Revision対応、閉包内での非影響を確認する。これらが未取得なら再利用可ではなくunknown。Read-onlyの宣言存在を問う場合は実ProviderのConsumedを要求せず、実行結果を問う場合だけ実Attempt側の証拠を必要とする。
+
+| 変更／観測の種類 | TEA Claimについて保存・再利用し得るもの | 必ず再資格化・失効を検討するもの |
+| --- | --- | --- |
+| **同じScope内へ新しいFunction/Relation occurrenceを追加** | 既存の有資格な存在Witnessは、同じPredicate/Identity/Ruleで今も存続するなら存在Claimを支持し得る。全称反例も当該反例が存続すれば有効候補 | 「存在しない」「全件適合」「全Writer取得」「越境CUD 0」は、集合拡大の影響を再評価。前回のcompleteは今回のcompleteを含意しない |
+| **既存のFunction/Relation occurrenceを削除・分割・置換** | 変更対象に依存しない局所Claimは、独立な依存閉包が証明できるなら再利用候補 | 唯一の存在Witness／全称反例が削除された場合、その証拠を現行結論へ持ち越さない。分割後の同一ID・旧Source Spanを一対一対応と推測しない |
+| **Source Path/空白のみ変化、受理済みMeaningは同じ** | Source非依存の論理的Projectionは再利用候補（対象のMeaning/Rule pinが本当に不変な場合） | Source Index/Trace locator/引用/図からのSource jumpを再照合。Path-sensitive Builder・Artifact・Package lockは別判定。単なるWorld Fingerprint一致では保証不足 |
+| **Method Rule・Semantic Role解釈・Operator実装を更新** | 過去の結論・旧Rule下の証拠は履歴として保存 | 依存する導出・Trait/CRUD分類・独立Expectedの適用範囲を再検査。Notationだけの変更と異なる。Provider/Target更新から業務Meaningの改版を推測しない |
+| **実Provider、Query/SQL、Runtime Input、Rowset Snapshot、外部Ack/Effectが変化** | 旧Attemptに何が起きたかという歴史的Evidenceは保持 | 新Attemptの実行事実、NULL/重複/粒度/完全性、Receipt/独立Readback、業務上の正当性を再判定。旧成功は未来の成功ではない |
+| **Grant/Disclosure/Business Owner・業務有効時点だけ変化** | 読取SourceやMeaningの過去Version自体は消さない | 現在の公開Slice・表示/検索/ARIA/Tool JSON/Export、権限、Owner受理の資格を更新。以前は見えたPrivate Witnessや件数を再送信しない |
+
+**単調性を誤用しない**：論理述語と母集団の意味が固定され、追加のみ行われることが有資格である場合、存在の陽性Witnessと全称の否定Witnessは保持可能な候補になり得る。これは**追加で既存の意味・Relation Directness・Role・Source同一性やPredicateが変わらない**という条件付きである。更新・削除・再分類・Rule変更・Tenant/Scope変更・Late Event・DB snapshot移動を「追加のみ」と誤分類しない。集合が小さくなると不存在が維持され得ても、観測範囲・Rule版・現在Grantが不明なら現在の不存在保証とは呼ばない。**ローカル検証省略の適格性と業務意味の真偽は別**である。
+
+### 34.9 TEA Methodの複数Instance・Provider差替えを、問いと証拠の分離で検証する
+
+既存[TEA Method Profile §15.1](THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)はSemantic Interface/Role/Rule/Projection/Notationの組合せであり、新TEA専用Canonicalではない。既存[Plugin合成設計](AI_NATIVE_PLUGIN_COMPOSITION_DESIGN_2026-10.md)の型/Instance・Provides/Requires・Targetを踏まえ、**Method Profile、具体的Provider、実行Artifact、Scopeに束縛された複数の使用Instanceを同一視しない**。以下は新Manifestや新Plugin APIフィールドではなく、既存Contractと実Consumerで検収すべき条件。
+
+- **Type/Instance**：一つのMethod Profileを別Workspace・別Scoped Source・別Consumerに複数配置できる。InstanceごとにRole/Rule pin・対象ScopeとSource/Consumer版・現在の公開資格を照合し、同名SubjectをグローバルSingletonのMapで誤共有しない。共通ProfileであってもInstance間のRead Attempt・Selected Subject・Grantの同一性を仮定しない。
+- **Notation/Reader/Projectionの交換**：形式・レイアウトの差替えはAccepted Meaningを自動変更しない。新ReaderがSource依存を増やす、Source-only変更でSpanが動く、Providerが別TargetやPermissionを必要とする場合は実Consumed/Build/Disclosure/Effectの対象Claimだけ独立に再資格化する。
+- **Rule/意味拡張の更新**：同じ表示Shapeであっても、DataのKey/FD、FunctionのDirect CRUD、BusinessのOwner/Action境界を解釈するRuleが変わったなら旧Evidenceにそのまま新しい意味を持たせない。AIがPluginを更新しても既存Accepted Meaningが自動昇格しない。提案と正式なMeaning受理は既存[#267](https://github.com/hat47x/tei-platform/issues/267)へ戻す。
+- **資格の独立性**：Method packageのビルド・ロード・実行可能性は、与えられたWorkspaceのSource Closure、実Provider Capability、現在Disclosure、業務Effect/受理を証明しない。MethodのSelf-buildは[#2831](https://github.com/hat47x/tei-platform/issues/2831)の宣言工程／実工程／Artifact資格を利用し、専用Host・別Resolver・第二Build Graphを作らない。
+
+**最小表示の方向**：Studio/CLI/SHO/AIには各問いについて「確認できた結論」「その根拠」「未確認である理由」「変更によって使えなくなった根拠への履歴リンク」を提示できればよい。Profile/Provider/Source/Grant/Receiptの全内部列を常に巨大な図表に露出させない。ただし必要な証拠に逆到達できない過度の簡略化は避ける。非公開の旧WitnessやRaw Locatorを公開Hintに埋め込まない。
+
+### 34.10 追加の負例と導入順（TEA-Q15〜Q21、新試験NOT RUN）
+
+| ID | 最小変異と問 | 必要な反証・停止条件 |
+| --- | --- | --- |
+| **TEA-Q15** | 一件のDirect U Witness取得後、同Scopeへ未解決のWriterを一件追加 | 有資格な存在主張は局所維持候補だが、「唯一のWriter」「越境CUD 0」「全件OK」を再利用しない |
+| **TEA-Q16** | 全称NGの唯一の反例Relationを削除し、同名の別Relationを追加 | 旧反例を現行全称NGへ再利用しない。同名を同一Qualified Occurrenceと推測しない |
+| **TEA-Q17** | 同byte Sourceを別Pathへ移しMeaning/World FPは不変 | 論理内容は局所再利用候補、Source jump/引用とpath-sensitive Buildは旧資格を失う。既存#2626証拠を履歴ReferenceとしTEA E2E成功と呼ばない |
+| **TEA-Q18** | Notation-only変更とMethod Rule/Operator実装変更を別々に注入 | Layout変更はMeaningを動かさず、Rule依存Claim/独立Expectedを別再検査。旧Provider PASSを新Providerへ転用しない |
+| **TEA-Q19** | 同じMethod Profileの二Instanceが別Workspaceで同一表示名・同一World FPを持つ | Source/Scope/Read Attempt/GrantがQualifiedでなければ旧Witnessの交差利用を拒否。独自グローバルTEA Singletonを設けない |
+| **TEA-Q20** | Source/Meaningを変えず現在Grantを撤回し、Private Writerのみを追加 | 生Counts・図の配置・ARIA・Tool Reply/AI Contextに非公開差分を漏らさず、旧Disclosure資格を失効 |
+| **TEA-Q21** | 過去Action実EffectとConsumer Readbackが成功した後、Provider/DB snapshotを更新 | 旧Receiptは履歴のまま保全、新Attemptの成功・業務受理は未観測。現在のRowset/Writer閉包を旧観測で補わない |
+
+**責務・優先順**：P0は既存#1124／#3262の一Function・一Data Relation・一Business参照と、異なる二版／二Instanceのread-only比較。Source差の局所Readは既存#2516/#2626に照合し、#2586の実Provider初回Read・#1251のPlugin実消費を前提待ちで停止させない。P1で#1143/#2600の変更影響・Source再資格化を使用し、追加独立Expectedの採否は#2514/#4134、最終受理は#267、Self-buildは#2831へ引渡す。**本節は設計のみ**であり、TEA-Q15〜Q21の実行、実Studio/SHO、複数Instance実配備、実Provider・現Policy/Owner受理はすべてNOT RUN。新Core/DSL/Policy Engine/Proof Store/Universal Cache/Hostは導入しない。
