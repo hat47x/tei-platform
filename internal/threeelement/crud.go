@@ -8,16 +8,16 @@ import (
 
 // CRUDTable is one row of a generated CRUD table.
 type CRUDTable struct {
-	FunctionID   string `json:"functionId"`
-	FunctionName string `json:"functionName"`
-	DataID       string `json:"dataId"`
-	DataName     string `json:"dataName"`
-	Create       bool   `json:"create"`
-	Read         bool   `json:"read"`
-	Update       bool   `json:"update"`
-	Delete       bool   `json:"delete"`
-	Source       string `json:"source,omitempty"`
-	ConflictingDeclarations bool `json:"conflictingDeclarations,omitempty"`
+	FunctionID              string `json:"functionId"`
+	FunctionName            string `json:"functionName"`
+	DataID                  string `json:"dataId"`
+	DataName                string `json:"dataName"`
+	Create                  bool   `json:"create"`
+	Read                    bool   `json:"read"`
+	Update                  bool   `json:"update"`
+	Delete                  bool   `json:"delete"`
+	Source                  string `json:"source,omitempty"`
+	ConflictingDeclarations bool   `json:"conflictingDeclarations,omitempty"`
 }
 
 // GenerateCRUDTable derives a deterministic, read-only CRUD table.
@@ -37,11 +37,11 @@ func GenerateCRUDTable(model ThreeElementModel) []CRUDTable {
 		for _, op := range fn.Operations {
 			key := pair{fn.ID, op.DataID}
 			row := CRUDTable{
-				FunctionID:   fn.ID,
-				FunctionName: fn.Name,
-				DataID:       op.DataID,
-				DataName:     dataByID[op.DataID].Name,
-				Source:       "derived",
+				FunctionID:              fn.ID,
+				FunctionName:            fn.Name,
+				DataID:                  op.DataID,
+				DataName:                dataByID[op.DataID].Name,
+				Source:                  "derived",
 				ConflictingDeclarations: conflicting[[2]string{fn.ID, op.DataID}],
 			}
 			if crud, ok := explicit[key]; ok {
@@ -79,15 +79,15 @@ func GenerateCRUDTable(model ThreeElementModel) []CRUDTable {
 		seen[key] = true
 		crud := explicit[key]
 		rows = append(rows, CRUDTable{
-			FunctionID:   crud.FunctionID,
-			FunctionName: fnByID[crud.FunctionID].Name,
-			DataID:       crud.DataID,
-			DataName:     dataByID[crud.DataID].Name,
-			Create:       crud.Create,
-			Read:         crud.Read,
-			Update:       crud.Update,
-			Delete:       crud.Delete,
-			Source:       crud.Source,
+			FunctionID:              crud.FunctionID,
+			FunctionName:            fnByID[crud.FunctionID].Name,
+			DataID:                  crud.DataID,
+			DataName:                dataByID[crud.DataID].Name,
+			Create:                  crud.Create,
+			Read:                    crud.Read,
+			Update:                  crud.Update,
+			Delete:                  crud.Delete,
+			Source:                  crud.Source,
 			ConflictingDeclarations: conflicting[[2]string{crud.FunctionID, crud.DataID}],
 		})
 	}
@@ -112,13 +112,13 @@ type BusinessFunctionCrossReference struct {
 
 // FunctionDataCrossReference describes Function→Data mappings.
 type FunctionDataCrossReference struct {
-	FunctionID   string `json:"functionId"`
-	FunctionName string `json:"functionName"`
-	DataID       string `json:"dataId"`
-	DataName     string `json:"dataName"`
-	Operations   string `json:"operations"`
-	Source       string `json:"source,omitempty"`
-	ConflictingDeclarations bool `json:"conflictingDeclarations,omitempty"`
+	FunctionID              string `json:"functionId"`
+	FunctionName            string `json:"functionName"`
+	DataID                  string `json:"dataId"`
+	DataName                string `json:"dataName"`
+	Operations              string `json:"operations"`
+	Source                  string `json:"source,omitempty"`
+	ConflictingDeclarations bool   `json:"conflictingDeclarations,omitempty"`
 }
 
 // GenerateBusinessFunctionCrossReference derives Business→Function mappings.
@@ -171,12 +171,12 @@ func GenerateFunctionDataCrossReference(model ThreeElementModel) []FunctionDataC
 			}
 			seen[key] = true
 			row := FunctionDataCrossReference{
-				FunctionID:   fn.ID,
-				FunctionName: fn.Name,
-				DataID:       op.DataID,
-				DataName:     dataByID[op.DataID].Name,
-				Operations:   strings.ToUpper(op.Operations),
-				Source:       "derived",
+				FunctionID:              fn.ID,
+				FunctionName:            fn.Name,
+				DataID:                  op.DataID,
+				DataName:                dataByID[op.DataID].Name,
+				Operations:              strings.ToUpper(op.Operations),
+				Source:                  "derived",
 				ConflictingDeclarations: conflicting[[2]string{fn.ID, op.DataID}],
 			}
 			if crud, ok := explicit[key]; ok {
@@ -194,12 +194,12 @@ func GenerateFunctionDataCrossReference(model ThreeElementModel) []FunctionDataC
 		seen[key] = true
 		crud := explicit[key]
 		out = append(out, FunctionDataCrossReference{
-			FunctionID:   crud.FunctionID,
-			FunctionName: fnByID[crud.FunctionID].Name,
-			DataID:       crud.DataID,
-			DataName:     dataByID[crud.DataID].Name,
-			Operations:   operationsForCRUD(crud),
-			Source:       crud.Source,
+			FunctionID:              crud.FunctionID,
+			FunctionName:            fnByID[crud.FunctionID].Name,
+			DataID:                  crud.DataID,
+			DataName:                dataByID[crud.DataID].Name,
+			Operations:              operationsForCRUD(crud),
+			Source:                  crud.Source,
 			ConflictingDeclarations: conflicting[[2]string{crud.FunctionID, crud.DataID}],
 		})
 	}
