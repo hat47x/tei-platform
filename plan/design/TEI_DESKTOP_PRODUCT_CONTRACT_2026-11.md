@@ -252,3 +252,78 @@ Desktopの「軽量」はBinaryサイズだけでなく、初回起動、Window�
 **P3**：Windows実配布・更新・復旧、SHO軽量単独BOM、生成Desktop Target独立Artifactを検証。macOS/Linuxの実OS受入は別票で扱う。
 
 この順序は#1251/#2586の実Provider P0を待たせる新しい依存Gateではない。Desktop側で必要なFixture・Adapter試験を並走させ、既存IssueのEvidenceに結果を記録する。今回の設計追補を実装完了と扱わない。
+
+
+## 10. 第3次横断統合：製品間Handoff・Projection忠実性・復旧（2026-11-12追補）
+
+本節はTEI/SHO GUI、DB Client、組織モデリング、共通AI Harness、テストDSL、SHO Writerの直近議論をDesktopの検証可能な操作契約に絞って統合する。#4479（Pinned Context）、#4500/#4501（組織/三視点/SHO/AI横断）、SHO #37/#38（Root認可・条件付き保存）の議論と重複する実装Ownerを作らない。**既存PR/Issueのマージ・実装状況をここで断定しない。**
+
+### 10.1 Handoff Envelope：作業対象を受け渡す最小データ
+
+Desktop内Navigation、Studio→SHO、SHO→AI、DB→SHO、CLI→GUIのすべてに「共通の巨大Session」ではなく、以下の小さなHandoff Envelopeを用いる。これは規範的フィールド候補であり、実際のシリアライズ名・バージョンは既存Typed Application API Ownerが決定する。
+
+| 分類 | 必須となる意味 | 受け手の扱い |
+| --- | --- | --- |
+| Intent | 作業目的、発信元Consumer、発信元Activity/epoch、要求する操作種別 | 意図は表示できるが、操作許可とはみなさない |
+| Targets | qualified Subject/Edge/Occurrence/Document/Rowset ID、static/predicate、include/exclude、元のSelection/Pin revision | 現在の対象へ再解決し、ambiguous/partial/not-foundを明示 |
+| Provenance | Source URL/identity、byte fingerprint、Model/Document revision、実Provider/DB環境、観測時刻、依存関係 | 受信側のSourceと照合し、単に同じlabelだから継承しない |
+| Qualification | complete/partial、NULL/unfetched/undisclosed、粒度、時間条件、read cohort、projection loss | 未保証情報を「完全」「同一時点」「同じ意味」と表示しない |
+| Disclosure | 受信Product/Harness、許可Scope、送出予定bytes/項目、Grant version | 送出時点で再検証し、Envelopeを認可トークンにしない |
+| Continuation | 発信元へのReturn Target、Draft/Attempt/Receipt参照、期待Revision、失効理由 | 復帰先は表示できるが旧Previewを再利用しない |
+
+Envelopeには業務DBの全Rowsetや巨大Source本文を原則埋め込まない。参照だけを渡す場合も受信者が閲覧権限を再検証する。権限のない受信者に参照先の存在・機密ラベル・行数を漏らさない。署名や暗号化は境界要件に応じ既存Host/Transportが担い、新しい認証基盤をDesktop内に作らない。
+
+### 10.2 操作モデル：Preview・Apply・Returnの三段階
+
+1. **Prepare**：発信元は意図と対象を固定する。AI候補の選択と人間確定Pinを区別し、静的集合か条件集合かを記録する。
+2. **Resolve & Preview**：受信側が現時点のSource/Meaning/Grant/Providerを再解決し、対象数・欠落・投影損失・送出bytes・実行作用を示す。失効なら候補再選択へ戻し、自動再束縛しない。
+3. **Apply & Return**：操作種別に応じDraft保存、Document保存、Meaning受理、DB Mutation、外部Harness送出、実Effectをそれぞれ別資格で実施。Returnには成功/拒否/unknownとReceipt参照を返す。元画面の後着応答はepoch/revisionで排除する。
+
+閲覧・Navigation・一時的なローカルDraftは低摩擦にする。一方、外部開示、意味受理、DB更新、実副作用には別途明示的な資格を要求する。すべての画面遷移に確認Dialogを付けない。
+
+### 10.3 三要素分析法とProjection Fidelity
+
+X-TEA Modeler由来の三要素分析法を「三視点モデル」という別概念へ置換しない。Data/Function/Businessの各図面とCRUD等のクロスリファレンスは、原典方式への忠実性を先に検証し、TEI独自拡張を別表記で区別する。
+
+- 図面ProjectionはSemantic identity、Relation方向・多重性・時間条件、NULL/未取得、業務キー/物理PK、FunctionとBusiness Taskの区別を失わない。
+- 図面→表→SHO→AIの往復で投影しきれない属性は `loss/unknown` として表示し、元Sourceを黙って書き換えない。
+- CRUD索引の欠落・重複・矛盾を空表として正常扱いしない。Fingerprint生成が非開示情報を落とす可能性は「正常」と推定せず、権限別Fixtureで確認する。
+- 同名Subject、同端点複数Edge、同一引用の複数Occurrence、履歴時点の異なる組織責任を同じ画面ラベルへ潰さない。
+- 画面で修正されたProjectionはまずChange Candidateであり、Sourceへの保存・Owner Meaning Acceptance・Build資格へ暗黙昇格しない。
+
+### 10.4 組織・責任・通知のDesktop表現
+
+組織変更/案件移管のUIでは、過去時点の担当・現在の所属・作業上の責任・通知先・ACK受領を別属性/イベントとして扱う。通知送信済みと受信/了承済みを混同しない。役職表示から実行権限を推測せず、実操作時点のHost/業務Grantを再確認する。これらは汎用状態表やDesktop独自Workflow Engineを新設する理由としない。
+
+### 10.5 Crash・Offline・再開
+
+- Window再起動後に戻すのは**作業意図とDraft**であり、失効した実行資格ではない。Pinの復元はできても、GrantやSourceが変わった場合は要再資格化。
+- 外部Harnessの応答遅延中にDocument/Sourceが改版されたら、応答は古い版への提案として保持し、現在Sourceへ自動Applyしない。
+- SHOの条件付きSaveで競合した場合、元Draftと比較対象を保持する。保存成功と引用Source解決/Meaning受理を分離する。
+- DB Mutation/外部通知/Host実EffectのACK喪失はunknownとして保持し、独立Receipt/Readで確定するまで自動再試行しない。
+- Offlineでキャッシュ表示できる場合は「観測済みだが現在資格未確認」と表示し、現在のDB/Grant/Sourceを確認済みと誤認させない。
+
+### 10.6 追加の独立Expected（DT-23〜DT-30、全件NOT RUN）
+
+| ID | 一因子差を伴う反例とExpected | 実装Owner候補 |
+| --- | --- | --- |
+| DT-23 | Studio→SHOで同名二Subjectの片方をHandoff。SHOはqualified ID/Source revisionで一意解決し、label一致だけでは採用しない | #1824、SHO |
+| DT-24 | Graph同端点二EdgeをCRUD/SHOに投影。方向/多重性/欠落が消えた場合はloss/unknown、Source自動書換え0 | #1124、#1824、SHO |
+| DT-25 | 人間確定PinとAI候補Pinを並置し、AI候補だけを変更。確定Pinが勝手に変わらず、Predicateの部分結果はcompleteにならない | #4479、Harness |
+| DT-26 | DB Read Cohort未保証の二画面をSHO表へ渡す。「同一時点」主張0、取得時点/部分集合を保持、機密列の暗黙送出0 | DB Client、SHO、#2516 |
+| DT-27 | SHO保存直前にRootの外へsymlink差替え/Source改版。条件付きSave拒否、Draft保持、Meaning受理0 | SHO #37/#38、#1529 |
+| DT-28 | 外部HarnessへのPreview後にGrant失効、またはRecipient変更。古い送出bytes再利用0、送信0、失効理由を表示 | #4479、#2516 |
+| DT-29 | 案件責任を過去A→現在Bへ移管し通知ACKは未着。現在権限と過去履歴を区別し、通知済みを了承済みと表示しない | #4500/#4501、組織Model |
+| DT-30 | Window crashと外部Command ACK喪失、Source改版、旧Harness応答後着。Draft/Pin復元は可能だが旧Apply/自動Retry 0、Receipt不明はunknown | #1174、#1529、#1824 |
+
+### 10.7 依存を増やさない実装・計画順序
+
+**Slice A（Headless先行）**：既存 `model locate`/typed APIでData/Function/Businessのqualified IDとSource/Revisionを取得し、同名・多重Edge・投影欠落の独立ExpectedをCLIで検証。Studio/SHO GUIを待たない。
+
+**Slice B（Read-only Handoff）**：実Provider Read→Rowsetのpartial/NULL/時点表示、Studio→SHO Source/Occurrence引継ぎをread-onlyで実証。SHO Writer/Saveは別試験とし、通常Markdownの単独編集を維持。
+
+**Slice C（PinとAI）**：静的/条件集合Pin、AI候補→人間確定、再起動復元、Disclosure Preview→送出拒否をHeadless→GUIの順で試験。外部Harnessの実受領は独立証拠。
+
+**Slice D（作用とOS）**：条件付きSHO Save、DB一行安全Mutation、実Command/Receipt/unknown、Windows/WSL実OS競合、配布物の実版照合をそれぞれ既存Ownerに接続。
+
+最初の合格ゲートは「一画面で全部できる」ではなく、**同じ独立ExpectedをCLIと実Desktopで通し、Source/Target/Receiptの同一性が追跡できる**こと。GUIだけ成功・CLIだけ成功・合成Providerだけ成功は別の結果とする。新しい中央Host/Registry/Approval Engine/独自Agent Runtimeは作らない。
