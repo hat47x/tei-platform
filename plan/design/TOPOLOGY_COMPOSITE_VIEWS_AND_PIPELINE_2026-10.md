@@ -705,3 +705,35 @@ Source改版・同offset別Subject・Workspace別Manifest、Rule/Method版、Pro
 **実施順**：P0の実Function→Provider→Rowset→Consumer [#2586](https://github.com/hat47x/tei-platform/issues/2586) とPlugin selected→actual invoked [#1251](https://github.com/hat47x/tei-platform/issues/1251) は先行のまま。Studio P1は既存Locate-firstの一Subjectで、Qの限定範囲・NotDerived・Source跳躍・Viewのlossy判定を**別Observer**から示せるか対照する。P2で既存Query/Providerの実依存が得られたClaimだけ選択的再確認し、編集/公開/Target作用のGateは別のまま維持。認知負荷測定は[#2018](https://github.com/hat47x/tei-platform/issues/2018)と[#1124](https://github.com/hat47x/tei-platform/issues/1124)の同一Task・独立Expectedで、誤った不存在・誤った編集・不要な再確認・操作時間を対照する。
 
 **資格**：#4464はReferenceの合成Matrix、#4335はDraftのread-only純関数であり、Studio内の実Context/Current Grant/実Renderer/差分Refreshが出来上がったという意味ではない。本節は設計候補。STQ-20〜25、実Studio/Provider/DB/Owner意味受理、利用者実測はNOT RUN。新Schema・第二判定器・Universal Cache・Host/Registry/Readerを導入しない。
+
+### 16.14 2026-11-12：初回の製品実装を Inspect-first に補正（Locate は並行）
+
+**固定main**：487f1235e39341091a3f9d415afd7803fea20293。§16.6〜16.7 の Locate-first は「Sourceの関係を辿る高度なModeler投影」の候補であり、**最初のSubject Pinを止める前提条件ではない**。現行の実Workbench Sourceは reference/tei-studio-workbench/main.ts／presentation.ts／responses.ts。旧Bootstrap画面の cmd/tei-studio/assets/main.js だけを現製品Workbenchの代表としない。生成済みassets/workbench/main.jsは直接編集せず、TypeScript Source→既存build.mjsを利用する。
+
+現mainのWorkbenchにはCatalogから一意なSubjectを選ぶ inspectEligibility、既存Host InspectSubject、Subject/WorldFP/IndexFPを合わせる readInspection、workspaceEpoch／inspectionEpoch／responseScopeの後着拒否がある。一方、明示Pin/Unpinを保持するWorkbench-local State、外部Source／Grant watcher、正式なRelation IDによるEdge Pinは**ない**。responseScopeは表示順序Guardであり、Host実行の取消や現在権限の判定ではない。
+
+| 並列の作業単位 | 現時点で成立・不成立が確認できる範囲 | 既存Ownerと出口 |
+| --- | --- | --- |
+| **A Subject Pin（最初のStudio製品UI）** | Catalog→Inspectは現行Sourceに存在。Pin操作、Focus/IME/Undo、実DOM/ARIA・Grant失効試験はまだ未実装/未実証 | [#4515](https://github.com/hat47x/tei-platform/issues/4515)／[#1824](https://github.com/hat47x/tei-platform/issues/1824)、既存Inspectを用いた一Subjectの明示Pin |
+| **B 実Model Map/Locate（Go Producer）** | [Draft #4521](https://github.com/hat47x/tei-platform/pull/4521) は公開Sourceの semantic-relation:sales.order.lines に対する親・Target・typed link・partial coverageの比較テストを追加。別LoadでありAtomic Snapshotではない | #4521／#3865/#3866。Go内部の一致をGUI受領へ昇格しない |
+| **C Source RelationをStudioで実表示** | 現BridgeにMap/Locateは公開されていない。WorkbenchのGraph parent:描画EdgeはMeaning Relation IDではない | #1124／#1824。Aの後にQualified Relationのread-only Adapterと実Consumer Payload照合を接続 |
+| **D 逆編集・実Effect** | Sourceの一意な逆写像、現在Revision、Disclosure/Grant、既存Shared Acceptance、独立Readbackが不足 | #2497/#2621/#267/#1174。Cが描画成功しても編集・実行は許可しない |
+
+**CIの非昇格**：[PR #4521のhead 134a92dc](https://github.com/hat47x/tei-platform/pull/4521) では他の多数のCheckが成功したが、[Repository Health run #43232810923](https://github.com/hat47x/tei-platform/actions/runs/43232810923) はcompleted/failure。原因はこの調査では特定できず、テスト欠陥とも環境由来とも推測しない。各Ownerが失敗Step/新headを確認する。Issue #4515の起票はPin実装/実GUI受入を意味しない。各成功を別経路のE2E成功へ合算しない。
+
+### 16.15 一つの実Workbench受入パケット（既存Expectedを再利用）
+
+**同じ公開Workspace、二つの異なるSubject**：semantic-data:sales.order を最初に**明示Pinする主対象**とし、semantic-relation:sales.order.lines は**親/Targetを辿る別の正式Subject**とする。Graphの parent: 描画Edgeから後者の正式Relation同一性を自動導出しない。初回のPinはCatalog/Inspectだけを用い、Model Locate/三要素分析法全図/外部DB/Harnessを必須化しない。
+
+| 操作・故障注入 | 実Consumerで別々に観測するもの | Expectedと既存Owner |
+| --- | --- | --- |
+| Catalog→Inspect→明示Pin→別NodeにFocus移動／IME・Esc・空白クリック | WorkspaceRef、Pin Intentのkind/id、Transient Selection、Inspect要求・受領 | Pin保持、一時選択は変化可、未確認Grantをauthorized表示しない。#4515 PIN-S0-01、STQ-09 |
+| 同端点異RelationとGraphの parent: 描画Edgeを選択 | Canvas用Edge IDとCanonical Relation IDの有無 | Sourceで一意なRelation IDを確認できなければRelation Pinはunsupported。Node Pinは継続。#4515 PIN-S0-04、STQ-07 |
+| R10 Inspect開始後にR11へSource移動、R10の成功が遅れて到着 | 応答epoch、旧Replyの新規表示、既描画DOM/ARIAの現在性/開示撤回 | 後着拒否と旧表示失効を別assert。変更未観測ならunknown、即時撤回の保証なし。#1124、STQ-02/12 |
+| 別Workspace同FP、同offset別Subject、Source A→B→A | Pin Intentの元Workspace/Subject、現在のOriginとSource locator | 別対象への自動再束縛0、旧資格の自動復活0。#4504、STQ-15/16、PIN-S0-02/03 |
+| Source不変でGrant/Disclosure変更、二世界のprivate差 | 公開DOM/ARIA/Tool/件数/エラー、通知受領、無関係Scopeの表示継続 | Private存在を漏らさず、無関係の許可済み対象を全停止させない。実Policy判定は#2516。STQ-03/08/25 |
+| Go Map/Locateで実Relationを読んでUIへ表示候補として渡す | Producerのtyped Relation・SourceStatus・NotDerivedと、Bridge/Browserの実受領を別記録 | Map一致だけで実Workbench受領や全Graph閉包を保証しない。#4521、STQ-10/21 |
+
+**実装者用の最小実行順**：#4515はまず既存Workbench Source TypeScriptへ小さく変更し、公開合成Fixtureに1正例＋1最危険負例を加える。既存Node 24前提のtypecheck/test/buildと実Browser RPC/DOMを同じheadで照合し、skipped/未起動をPASSとしない。Graph/List/Initial/Commandの四入口および旧DOM操作は#1124の既存受入へ返し、独立Expectedは#1180/#2514を参照して別Fixture SSOTを作らない。#4521のGoテスト、#4392 Validation、#4504 Source同一性、#2516 Policyとは実装Path・Ownerを分ける。
+
+**Claimの停止線**：Aだけ成立したら「read-only Subject Pin UI」、Bだけなら「Go Map/Locateの実Source局所一致」、AとBが別PRで成功してもCの**同一Consumer実受領**を証明したことにならない。DはSource Proposal→Preview→Shared Acceptance→独立Readbackと現在Grant/実Effectの別資格。P0の実Function Provider Read #2586／実Plugin Invoke #1251、Self-build Fit/Gap #2831を新Pin UIの前提待ちにしない。新Host、Graph正本、Resolver、Registry、Editor/Policy Engineを追加しない。本節は設計・受入案のみ。実Wails GUI/Go新試験/実Grant/Source Write/Owner受理は今回NOT RUN。
