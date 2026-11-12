@@ -172,10 +172,6 @@ func TestB0NativeBindingRefusesWrongWorkspaceSubjectAndOccurrence(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	idx, err := workspace.BuildSourceIndexFromLoad(root, loaded)
-	if err != nil {
-		t.Fatal(err)
-	}
 	base := b0NativeSourcePin{
 		ConsumerID:        "native-pdp.order-id",
 		WorkspaceName:     "native_binding_negative",
@@ -190,7 +186,7 @@ func TestB0NativeBindingRefusesWrongWorkspaceSubjectAndOccurrence(t *testing.T) 
 	// Identical manifest, semantic Source and bytes in another root do not
 	// establish that a declared Native binding targets that other Workspace.
 	otherRoot := t.TempDir()
-	if err := os.WriteFile(filepath.Join(otherRoot, "tei.workspace.yaml"), []byte("workspace: native_binding_negative\\nformatVersion: 1\\nsources:\\n  - semantic\\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(otherRoot, "tei.workspace.yaml"), []byte("workspace: native_binding_negative\nformatVersion: 1\nsources:\n  - semantic\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	b0Write(t, otherRoot, b0OrderA)
