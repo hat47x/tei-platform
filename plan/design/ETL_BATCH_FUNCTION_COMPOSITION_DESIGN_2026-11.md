@@ -527,3 +527,57 @@ R1のFile byteが完全でも、業務対象母集団がProvider/OwnerによりC
 **採用しないもの**：最適化候補の自動生成をもって安全な実行許可とすること、Value digestだけを意味・権限・効果の証明とすること、Trace未発見から業務全域の不存在を主張すること、性能改善により失敗・権限・未受理条件を上書きすること。
 
 **証拠状態**：既存設計とSQL/Changelog文献の比較・反例の静的推論に限る。書換えコード、実DB/Provider、実SQL plan、実Go/CLI/Wails、二Consumer/OS権限、独立Expected実試験、性能測定、Owner意味受理はすべて **NOT RUN / NOT ACCEPTED**。
+
+## 19. 論理Planから物理配置への意味保存：Rewrite・複数Source整合・Effect境界（2026-11-12、設計候補）
+
+- **状態と位置づけ**：`18のInput Closure/Temporal Cutを前提に、どの物理演算・実行位置・Targetへ落とせるかを判定する**実装前の適格性条件**。この節は新しいOptimizer/Plan IR/Query Engine/証明Engine/Graph正本を採用しない。現行`14のW1〜W8、子[#4410](https://github.com/hat47x/tei-platform/issues/4410)/[#4411](https://github.com/hat47x/tei-platform/issues/4411)を置換しない。
+- **中心原則**：意味上の結果値だけが偶然一致してもRewriteの同等性ではない。対象Fact/粒度・NULL・欠損・Bag/Sequence・Order・Decimal/単位・Scope・Snapshot/Period・出力Generation・失敗/Partial/Unknown・副作用の順序と数を、**そのClaimに必要な範囲**で保全することが条件。すべての法則を全Operatorに自動適用せず、変換ごとの前提と失われる情報を表す。
+- **二段資格**：(1) **semantic legality**＝受理済みMeaning、Role、Law、Fact identity、依存/必要Source、Temporal Cutから導ける局所条件、(2) **target conformance**＝選択したProvider/Plugin/SQL方言・実ロードArtifact/Runtime・Snapshot/現在Grant・実出力に対する独立Expectedの成立。宣言したTrait/SQL変換器だけでは(2)へ昇格しない（[#2593](https://github.com/hat47x/tei-platform/issues/2593)、[#2622](https://github.com/hat47x/tei-platform/issues/2622)、[#3279](https://github.com/hat47x/tei-platform/issues/3279)）。
+
+### 19.1 代表Rewriteの適格性と最小反例（新Scenario正本なし）
+
+| Rewrite候補 | 適格性の最低条件 | 反例・停止条件（既存受入の変形） |
+| --- | --- | --- |
+| FilterをJoinの前へPushdown | 述語の参照先、Join種別、NULLの三値論理、出力粒度/Multiplicity、適用Scopeが同値 | `4/`13・#2622 DO-01：LEFT JOIN後に右側Fieldへ`filterを掛ける操作と、Join前に右側をfilterする操作は一般に同値でない。NULL補完行を増減させるなら拒否 |
+| AggregateをJoin/Chunkの前へ | Fact identity、Join cardinality/fanout、合法Measure軸、Merge state（AVGはsum,count）、全件被覆、精度が保存 | #2593 MC-01〜05・`13 N-03：明細に複数配送行をJoinした後のSUM重複、Stockの日跨ぎSUM、AVGの単純平均を拒否 |
+| Filter/Sort/Page/Limitを並べ替え | Filter前後の対象集合、安定したOrderとtie-break、Paging snapshotが同値。BagをSequenceへ黙って昇格しない | `13 N-02：先頭行rejected、2行目acceptedに`LIMIT 1`してからfilterすると0件、filterしてからLIMIT 1は1件。順位の前提が無ければunsupported |
+| ConvertをSQL/外部Operatorへ移動 | レート適用日・rate Source digest、Decimal scale、丸め順序、NULL、照合・文字コード、例外/Rejectが同値 | `13 N-01/N-12・#2622 DO-07：結果が1円違う、未知通貨を0へ潰す、SQL側が桁落ちする場合は同値でない |
+| Partition/並列処理→Merge | Snapshot/範囲を相互排他的かつ完全に被覆、順序要求を尊重し、結合則を満たす中間状態と決定的な最終出力がある | `13 N-02/N-03・`18 R1 p2欠落。計算済みのpartial resultからPopulation Completeを推論しない。RunPlan同一runKey内並列は既存`8の別制約 |
+| Cache/Incremental再利用 | Query/Meaning/Source revisionと実Consumed closure、Scope、Target法則、期限/失効、再利用する内容と公開世代が照合済み | `13 N-06・#2831/#2600：Source更新、rate改版、Grant失効、Source A→B→A、Reader未ロードで古い計算結果を現在の正本扱いしない |
+| Effectful Stepの移動・融合 | 事前条件、Owner、Current Authority、Operation ID、Commit/Receipt、順序・再試行・部分成功の意味が同一と実Provider側で証明できる | #1174/#1129：値が同じでも外部送信・CUDを繰返す、Grant境界を飛ばす、Commit Unknown後に再送する変形は拒否/unknown |
+
+この表は`18の「Mergeable ≠ Retractable」を具体的な配置・Rewriteの前提へ落とす。SQL Pushdownを全員必須の最適化とせず、条件を満たさない変形だけ`unsupported`にし、意味を保てる既存ローカル方式を明示的に選ぶ。**黙ったfallback**や、実Provider未照合のまま性能だけで選ぶことは禁止する。Cost/Resource/Deadline最適化は合法な候補集合が得られた後に行い、実資源Grant/Placementは[#4194](https://github.com/hat47x/tei-platform/issues/4194)のOwnerへ戻す。
+
+### 19.2 複数SourceのSnapshot Vectorと業務上の整合時点を分離する
+
+`18の`Physical Read Complete`をSource AとBで別々に満たしても、A/Bの行集合に**単一の業務的な整合時点**が存在することは証明されない。例えば注文Aが時刻t2のSnapshotに新しい顧客C2を含み、マスタBがt1のSnapshotでC2作成前なら、両ReaderともEOF/byte digest/件数が正しくても、Joinで得た`C2なし`は「C2が業務上存在しない」の証拠ではない。
+
+- **Vector-pinned data**：`orders@r2 + customers@r1`のように各Sourceの版・Scope・取得時点・実Consumedを明示することはできる。これは「この版の組の下での演算結果」の資格であり、同時点性の証明ではない。新しい`SnapshotVector` Core型や分散Snapshot Engineを先に要求せず、既存Source/Lineageと関係へ投影する。
+- **Coherent business cut**：共通Tx/Snapshot、Providerに認められた有効時点契約、業務Ownerが受理した許容時差/As-of規則など、問いに応じた**実効的な横断整合の根拠**が別途必要。Source個別のAs-of表記やWall-clock読取時刻の近さだけで自動昇格しない。
+- **欠落の意味**：横断整合が未確定ならJoin不一致を`unresolved/not-observed-at-this-cut`とし、実在する顧客の不存在・削除・欠損0件と決めない。受入対象が「二Sourceの観測版Vectorから計算した分析値」に限定されるなら、その狭いClaimを示せる。
+- **時点変更後**：同じ業務Periodでも新Vectorでの再集計は`18.2のRestatement/新Generation。旧結果を改ざんしない。Output値が偶然一致してもSource依存・現Consumer資格の再評価が必要。
+
+### 19.3 図表の完全性：Data/Control/Effect/Observationを別Relationで接続
+
+同じ標準構造のNode/Port/Binding/Relationを使い、次の**用途相対Projection**を重ねる。第二のGraph/Flow/Source正本を作らない。
+
+| Projection | 表示・検査する辺 | 描かれていても保証しないもの |
+| --- | --- | --- |
+| Data dependency | Dataset→Transform→Output、必要Inputと実Consumed、Grain/Scope/Snapshot | 次Stepの起動、全データ取得、外部Sourceの不存在 |
+| Trigger/Control | Entry・Schedule/Event/手動Trigger→Invocation、順序/条件/Blocked | 実Scheduler実行、Current Grant、Commit成功 |
+| Effect/Subsystem | Function→意図したCUD/Effect→Owner/Provider・委譲先、Commit/Receipt境界 | 宣言が実Writer/実Commitだったこと、越境CUDが0であること |
+| Observation/Lineage | Source/Plan/Build/Run/Attempt/Result/Manifest/Reader証拠、ObservedAt/未被覆/開示 | ある図表の表示完了から、見えていない外部処理・業務受理まで証明すること |
+
+[#3250](https://github.com/hat47x/tei-platform/issues/3250)の論理Subsystem更新凝集は**ETLが横断Readを実行できること**と両立する。しかしETL Jobが別SubsystemのTableへ直接C/U/Dを書き込む場合、Dataflowの一本の矢印で境界を隠さず、対象Ownerの型付きAction/Providerへの委譲か、直接越境CUDとその理由・Transaction/Recovery/Authorityの未解決を明示する。論理Subsystemは物理DB/Processの配置と同義ではない。Export→Transfer→Import等へ切り替えても、Effectが消滅したとは主張しない（[#2542](https://github.com/hat47x/tei-platform/issues/2542)、[#1174](https://github.com/hat47x/tei-platform/issues/1174)）。
+
+**図中になければ無い**と判断できるのは、採用したQuestion/Scope/Accepted Revisionに対して**必要Source・Operator・外部境界・実Consumed・実Effect観測の閉包が証明され、非開示・未読込・不透明なProviderが残らない範囲に限る**。そうでなければ外部/unknownの境界Nodeを残す。Studio[#1124](https://github.com/hat47x/tei-platform/issues/1124)/[Draft #4510](https://github.com/hat47x/tei-platform/pull/4510)のread-only ProjectionとShared Acceptanceを使い、図を直接第二Canonicalにしない。
+
+### 19.4 最小の検証・実装順（既存Expected/Issueを再利用、すべてNOT RUN）
+
+1. **P0/#4410 W1/W2と#2593/#2622**：すでにあるN-01/02/03/12・MC-01/02/05・DO-07から、`19.1の合法/不合法Rewriteを**同一の独立Expected**で比較。最初の固定TSVでは`Filter→Convert→Aggregate`を固定したままとし、新Optimizerや実DB PushdownをW1のHard Gateにしない。
+2. **P1/#2622/#3279/#2514**：同じ受理済みMeaningの二実現（直接Go/SQLなど）でSource Vector、選択/実ロードProvider、使用した演算、実Output/NULL/失敗、Target・Lawを別列に取り、実Conformanceと型宣言だけのFitを分離。失われた前提を`unverified/unsupported`に落とす。
+3. **P1/#2831/#2600**：Planの描画上の辺と、実行したCommand/Actual Consumed Input/暗黙のrate表・Query/Cache/出力Memberを突合する。実際に実行されなかったNodeや未宣言Pushdown/外部Sourceを負例化。結果digest一致だけでPlan閉包やセルフビルド資格に昇格しない。
+4. **P1/#3250/#1132/#1174**：横断集計の**Read依存**と、他Subsystemへの**direct/effective CUD**を別々に投影。直接WriterをAdapter呼出しへ変えた場合も、Effect/Owner/Receiptが消えていないことを観測票で確認する。新分散Tx・Grant・Effect Runnerを作らない。
+5. **P2/#2542/#4194/#4502/#4510**：Event/External Worker/Relay/Studioは既存起動・Delivery・Observationの契約へ差し込む。外部Task Success・ACK・Manifest・画面の緑表示のいずれもBusiness Acceptedへ自動昇格させない。
+
+**外部調査との位置づけ**：Apache BeamのWindow/Trigger/Pane/late dataの区別（https://beam.apache.org/documentation/programming-guide/）と、OpenLineageのJob/Run/Input/Output facetの区別（https://openlineage.io/docs/spec/facets/）は、上の責務分離の比較対象である。BeamやOpenLineageのRuntime/SchemaをTEIへ導入する判断ではない。新しいGo/SQL/二Provider・実DB/Stage・Studio・Business Owner受理の試験は**NOT RUN**。
