@@ -40,3 +40,60 @@ func TestGenerateFunctionDataCrossReference(t *testing.T) {
 		t.Fatalf("expected function->data mapping, got %+v", rows)
 	}
 }
+
+
+// TestCRUDDataNamesUseTheDataIndex exercises a cross-kind ID collision.
+// Data and Business IDs belong to different maps; using the Business map to
+// render a Data name silently substitutes an unrelated subject.
+func TestCRUDDataNamesUseTheDataIndex(t *testing.T) {
+	model := NewThreeElementModel("cross-kind", "Cross-kind lookup")
+	model.DataElements = []DataElement{{ID: "order", Name: "Order data"}}
+	model.BusinessElements = []BusinessElement{{ID: "order", Name: "Order business"}}
+	model.FunctionElements = []FunctionElement{{
+		ID: "submit", Name: "Submit",
+		Operations: []FunctionOperation{{DataID: "order", Operations: "R"}},
+	}}
+
+	derived := GenerateCRUDTable(model)
+	if len(derived) != 1 || derived[0].DataID != "order" || derived[0].DataName != "Order data" {
+		t.Fatalf("CRUD table used a non-Data index: %+v", derived)
+	}
+	refs := GenerateFunctionDataCrossReference(model)
+	if len(refs) != 1 || refs[0].DataName != "Order data" || refs[0].Operations != "R" {
+		t.Fatalf("Function/Data reference used a non-Data index: %+v", refs)
+	}
+
+	// An explicit CRUD definition changes operation flags, never the target
+	// Data's identity/name. The Business element has the same plain ID.
+	model.CRUDDefinitions = []CRUDDefinition{{
+		ID: "explicit-submit", FunctionID: "submit", DataID: "order",
+		Create: true, Source: "declared",
+	}}
+	explicit := GenerateCRUDTable(model)
+	if len(explicit) != 1 || !explicit[0].Create || explicit[0].DataName != "Order data" {
+		t.Fatalf("explicit CRUD has an incorrect Data subject: %+v", explicit)
+	}
+	refs = GenerateFunctionDataCrossReference(model)
+	if len(refs) != 1 || refs[0].Operations != "C" || refs[0].DataName != "Order data" {
+		t.Fatalf("explicit Function/Data reference has an incorrect subject: %+v", refs)
+	}
+}
+
+// TestCRUDGapsUseTheDataIndex checks the Data name in an existing gap report.
+// Whether a cross-reference should require CRUD is a separate policy question;
+// this test only pins the lookup identity for a gap that the current rule emits.
+func TestCRUDGapsUseTheDataIndex(t *testing.T) {
+	model := NewThreeElementModel("cross-kind-gap", "Cross-kind gap")
+	model.DataElements = []DataElement{{ID: "order", Name: "Order data"}}
+	model.BusinessElements = []BusinessElement{{ID: "order", Name: "Order business"}}
+	model.FunctionElements = []FunctionElement{{ID: "submit", Name: "Submit"}}
+	model.CrossReferences = []CrossReference{{
+		ID: "submit-order", Kind: "function-to-data",
+		FromID: "submit", FromKind: "function", ToID: "order", ToKind: "data",
+	}}
+	gaps := GenerateCRUDGaps(model)
+	if len(gaps) != 1 || gaps[0].FunctionID != "submit" ||
+		gaps[0].DataID != "order" || gaps[0].DataName != "Order data" {
+		t.Fatalf("CRUD gap used a non-Data index: %+v", gaps)
+	}
+}
