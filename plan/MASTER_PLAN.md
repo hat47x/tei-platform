@@ -1416,6 +1416,8 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 
 **UI起点のデータ文脈設計とClaim別再評価（§10.11）**：業務向けModelerではUI部品から既存Field／新しい永続Field候補／Derived／Transientの4経路を選択し、**新Fieldの明示設計操作**が行われた場合に限ってData Context→Desired Schema→Impact Preview→既存Migration/Grant→実DB独立再観測へ進む。UI配置だけではDDL/実DB変更なし。SQLの`SELECT *`/`alias.*`/`NATURAL JOIN`やWHERE/NOT EXISTS等の暗黙依存も追い、#2582/#4518/#4526のClaim別Required Closureでaffected/scoped-unaffected/unknownを判別。無関係なUnknownで全画面を過剰失効させず、未知の依存を無影響としない。SHO #50 QH-08〜10で同Markdown別Source・TEI実再束縛・実Recipient受領の資格を分離。#4524は三要素同Kind同ID重複対策としてmain統合済みだがConsumer全面Gateではない。#4513/#4514/#4532はDraft。ORG-MAP/ORG-CAP/ORG-BEH/CX/PIN既存Expectedの追加assertのみとし、別Engine/Accepted意味正本を作らない。#2586の実Read P0優先を維持。新しいProduct E2EはNOT RUN。
 
+**REAの名称区別と組織/Subsystem責務（§10.7/§10.11.4）**：Resource–Event–Agent（業務・会計の分析モデル）と、#3394/#4322の外部解析ツールREAを別概念として扱う。解析ツールのObservation/Node/EdgeはSource-backed候補であり正式Membership/CRUD/Agentへ自動昇格しない。重複Node/Relation/並行Edge由来の候補ID衝突は任意の一件を採用せず拒否（#4542は親#4322へ統合、#4322はmain未統合）。同一Attemptの実TEI read-only API受領・Owner意味受理は別。組織の所属/Case取扱責任、論理SubsystemのDirect CUD・Owner、実DB配置、Host Grantを異なる軸として、組織改編・Subsystem表示名/IDの付替えだけで権限/責務移転を推測しない。#3250のSP-X23/24 Draftおよび#4501 CX/ORG-BEHの既存Expectedを引き継ぎ、Required/Supplied/Missing Guardと実Attempt/Effect/ACKを別検証（#1129/#1174）。変更影響は#2582/#4518のClaim別Closure、物理Field変更は§10.9/10.11に従う。外部REA/Product/Hostの新しい実接合はNOT RUN、新Core/第二意味正本を作らない。
+
 **採否**：新規Source/Rule/公的契約や業務責任の解釈はOwnerの意味受理が必要。本追補はdocs-onlyであり、実Org Provider/Host・SHO/HarnessとのOrg C1 E2E・Owner意味受理は **NOT RUN**。
 
 ## 先に固定しないもの
