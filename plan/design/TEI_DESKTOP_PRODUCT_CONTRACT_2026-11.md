@@ -12,12 +12,13 @@
 
 | 主題 | 現時点で利用する判断／根拠 | Desktop製品として未確認のこと | 返却先 |
 | --- | --- | --- | --- |
-| Model Identity | 同Kind同ID重複診断の限定修正 #4524 はmerged。#4521 の実Workspace Map↔Locate比較はDraft | 同一Workspace/Source版での完全な逆参照・実Workbenchとの一巡、Grant/全参照元の閉包 | #1124/#3788/#2514 |
+| Model Identity | 同Kind同ID重複診断の限定修正 #4524 はmerged。REAの同一tuple由来仮IDの曖昧選択拒否 #4542 もmerged。#4521 の実Workspace Map↔Locate比較はDraft | 仮ID・描画IDと正式Relation occurrenceを区別した、実Workbenchでの参照往復、Grant/全参照元の閉包 | #1124/#3788/#2514、REA Owner |
 | Studio Pin | `InspectSubject`とWorkbenchの一時選択・応答世代制御は存在。#4515のPin実装計画がOwner | 明示Pin・再資格化・複数対象・AIへの実送出／受領、描画Edgeの正式Relation identity | #4515/#1824/#4479 |
 | Source Change | #4533で**限定合成実験16件中15件一致**、1件の不存在/曖昧分類が不一致。Source値spanの製品提供や正式Acceptanceは別 | 正規Parser由来の値span、操作粒度の書戻し、失効Grant、実Wails・再投影・Source受理 | #2497/#4533/#3788 |
 | CRUD・影響表示 | #4524の同ID衝突修正とは別に、#4513のData索引、#4534のCRUD矛盾資格はDraft。#4535はB2Cの明示Native Binding段階計画の限定Merged | CRUD由来Impactの完全性、DB SchemaとUI Bindingの実Source差分、実DDLやOwner Meaning | #4472/#1124、DB/Studio Owner |
+| 実Provider Read | PR #4539（Draft）で、PG16.15の一Functionに限りEnvironment束縛→実SQL/Raw Rows→Function Data Context→別プロセスJSONを実証。NULL/0行/RLS/欠列/拒否の負例あり | 通常`tei` CLI、実Studio/実Harness Consumer、データの完全性・現在Grant・Owner意味受理。DB選択の`host-asserted`も別資格 | #2586/#3421/#1251、Function Data Context Owner |
 | Performance | #1177は`trace full -limit 1`でも内部全走査になり得ることを指摘 | Plugin数・Source規模別の実測、Scoped Queryの費用、実Wails上の入力/移動遅延 | #1177/#2600 |
-| GUI / SHO / Harness | 共通Application APIと既存Studio Bridgeを利用。SHO文書Open/ResumeとSaveは分離 | Desktopの実OS連続操作、SHO Save、外部Harnessの実受領、Disclosure、実Effect Receipt | #3421/#1824、SHO/TAI Owner |
+| GUI / SHO / Harness | 共通Application APIと既存Studio Bridgeを利用。SHO文書Open/ResumeとSaveは分離。SHO #49 はHandoffのClaim Ceilingをmain統合 | 別SUI checkout/実TEI元Source再解決、実HarnessのTool/Grant/送出、Studio実OS連続操作、SHO Save、実Effect Receipt | #3421/#1824、SHO/TAI Owner |
 
 **状態表示の契約**：`identity-resolved`相当の対象一意性と`authority-qualified`相当の現在権限を一つの「準備完了」にしない。`authority-conflicted`、unknown、unsupportedなどの未知・競合を受けたConsumerは、分からない状態のまま理由と出所を表示し、勝手な成功推定や別の正本/Grantの創設をしない。これらは既存OwnerのQualifierに沿った**表示要件**であり、Desktop独自の新enumや認可APIを宣言するものではない。対象の存在・参照数・診断から非公開情報を推定できないよう#2516の開示契約を適用する。
 
@@ -34,17 +35,34 @@
 
 最初の一巡の対象は**Find→Navigate→Pin→Compose Previewまでのread-only**に限定する。AI送信、Source Write、DB/Script実起動、SHO保存は、既存Ownerが実資格を実証した場合にだけ段階的に接続する。
 
+**実データの並行縦切り（R0b）**：上記の操作から独立して、#4539の限定Referenceで観測できた`Query→Environment→実PostgreSQL→Raw Rows→Function Data Context`を、まず通常の`tei` CLIに接続し、同じ入力/独立Expected・実SQL digest・明示Instance・Consumerが実際に受領したJSONで比較する。次にStudioのread-only Result表示へ薄く接続する。**R0bはB0のPin実装を待つ必要はない**が、両方を接合する段階ではSource/Environment/Selected Providerと実Invokeを混同しない。部分取得・0件・RLS/列権限は`complete`/不存在を主張せず、Consumerが`unestablished`を保持する。Reference工具の成功から製品CLI接続完了へ自動昇格しない。
+
 ### 0.3 実装担当へ渡す最小単位と受入の停止条件
 
 | 入口 | 最初に実行すること | 終了条件と意図的にしないこと |
 | --- | --- | --- |
 | **E0 + N0** | #3788/#1124が実Workspaceの`catalog/inspect/Map/Locate/source-index`を同Source版で照合し、未保存Buffer、Occurrence、参照Coverageの実在/欠落を記録 | ED-01〜04/10とNAV-01〜03をHeadlessで独立Expectedと照合。ない値span/Relation IDをUIで創作しない |
 | **B0** | #4515がWorkbench Source TypeScriptにSubject Pin Intentと再資格化を接続 | PIN-S0-01〜07、NodeだけPin可。Canvas/描画Edgeから業務Relationを確定しない |
+| **R0b（実ReadのProduct接続）** | #2586がPR #4539の実Source/Environment/Provider/SQL bytes/params/実Rowset/Contextを、既存`tei` CLI Application APIへ薄く接続し、その後#3421がStudio read-only Consumerで受領 | 正常・NULL・RLS・0件・列欠落・別Instance誤選択を同一Expectedで比較。`completeness=unestablished`を維持。普通の`tei` CLI/実Wails/実Harnessは現在NOT RUN |
 | **C0** | #4479/#2516/TAIがPin Subject＋関連/比較/除外の用途限定Projectionと**Mock送信Preview**を試す | Intent/Source/Grant/Recipient/予定byteを比較。ここでは実Harness送信・Result受入・自動Applyを主張しない |
 | **V0** | #2497/#4533が一属性だけ、Parser由来値span＋typed changeの候補を確認 | 不適格操作のSource byte変更0。正式Acceptance/Owner意味受理/GrantのE2Eは別試験 |
 | **P0 + W0** | #1177/#2600で処理段別に計測。#3421/#1824で同Fixtureを実Wails→IPC→Application APIへ | full結果とpartial表示を区別し、actual OS、Headless、合成のEvidenceを別票記録 |
 
-E0/N0/B0は独立に進行可能。C0はPinの一意性と現在資格に依存するが、Mock Previewは外部Harness実装を必須としない。V0のSource書込みをC0の成立条件にしない。N0の局所参照表示を待たずに#2586/#1251の実Provider P0を進める。各実装の失敗結果は元Issueに返し、§0はOwnerを置換する管理表にならない。
+E0/N0/B0とR0bは**並走可能**。R0bでは#4539がDraftである以上、同Branchの実証とmainで再利用可能なAPIを区別する。C0はPinの一意性と現在資格に依存するが、Mock Previewは外部Harness実装を必須としない。V0のSource書込みをC0の成立条件にしない。N0の局所参照表示を待たずに#2586/#1251の実Provider P0を進める。各実装の失敗結果は元Issueに返し、§0はOwnerを置換する管理表にならない。
+
+### 0.5 今回取り込んだ実証の適用範囲と引継ぎ票
+
+| 基盤の実証 | 採用できること | Desktopへ持ち越す未証明事項 |
+| --- | --- | --- |
+| #4539（Draft、使い捨てPG16.15） | 実Readの拒否点、Environment/Instance/実SQL digest、Raw Rows→Function Data Context、0件/NULL/RLSを不明として保持する振る舞い | 通常`tei` CLI、Wails、外部Harness、全件/不存在、Tenant現在Grant、Owner Meaning |
+| #4524（merged） | 同Kind同IDの曖昧Lookupを拒否する基礎 | 実Sourceからの多重Relation識別、項目単位の完全な逆参照、Workbench Pin |
+| #4542（merged） | REAの未命名Relationから導いた同一tuple ID衝突を選択で拒否する基礎 | IDの安定した正式意味受理・多重Edgeを含むGraph操作の実承認 |
+| #4534（Draft） | CRUD構造OKと矛盾のレビュー要否を分離する候補 | 実Consumerが`ok:true`だけで影響分析や更新を許可しないこと、全CRUD導出の完全性 |
+| SHO #49（merged） | Handoff Receiptが証明していないHarness/TEI資格を`not-proven/not-run`に抑える | 実TEI→SUI→SHOの元対象再解決、実Agent接続/Tool Grant/OS egress |
+
+**最小の証拠票（元Ownerに記録し、この設計書で重複管理しない）**：`Input Source/byte digest | Workspace/Environment/Instance | Chosen→Invoked Provider | Function/Query ID | actual SQL digest+typed params | Field Presence/NULL/Rowset grain | Scope/RLS/coverage | Consumer received body | Grant/Disclosure | Attempt/Receipt | exact code HEAD | PASS/FAIL/NOT RUN`。認証情報・DSN原値・非公開RowのRaw bytesは公開票へ転記しない。作用のないReadでも外部送信・Cache書込み・Network接続は別観測として記録し、画面のread-onlyを「外部に何も送らない」と同義にしない。
+
+**次のレビューポイント**：N0/B0またはR0bの実Consumer一巡が出たらその結果を最優先で反映し、設計上の不足が具体的な負例で示されない限り新しい§やDTを増やさない。#4539/#4534のDraftを製品資格に昇格させるには、既存Ownerによるreview・統合と**exact HEAD**の証拠が必要である。
 
 ### 0.4 設計へ戻す判断は四つだけ
 
