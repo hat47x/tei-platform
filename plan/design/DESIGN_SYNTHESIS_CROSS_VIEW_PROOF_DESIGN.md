@@ -931,3 +931,19 @@ CSW/SUIのKJ法的なCard/Islandの集合をTEI Relationへ投影するときは
 
 **資格**：Issue本文・既存計画の静的照合。旧Modelerの五一覧実出力比較とTEI実GUI/E2Eは未実施。
 
+### 16.18 原X-TEAで非空IDを持たないTaskActionの選択・編集を別資格で扱う（2026-11-12）
+
+公開#1031のexact-source accounting v1では、TaskAction 148件のうちID属性欠落35、属性あり空文字113、非空ID 0。TaskFunctionIO 407、distinct Action/Function 369、potential Action/Function/Table 665（actual Effectではない）。これは**原Sourceのread-only参照解決が成立しても、TaskActionごとの安定した編集Identityが確立したわけではない**ことを示す。
+
+| ID | 負例 | 別に証明すべきこと |
+| --- | --- | --- |
+| XT-J01 | Source tokenがあるため148件すべて安全に編集できると宣言 | locator/token・意味Identity・UI固定選択・保存先Spanの区別 |
+| XT-J02 | 同名・同FunctionのAction A/B間にXを挿入したら、選択中Bが別Actionへ変わる | Source版/親文脈/構造位置/内容の照合。不確実なら再確認・read-only |
+| XT-J03 | 旧XMLへTEI UUIDを一括書込して元Modelerへの無変更往復を主張 | 原Sourceの保持とTEI受理後のID付与、lossless round-trip/意図的変換の資格を分ける |
+| XT-J04 | 手作業Action移動後、古い参照を用いたCRUD/五一覧を成功扱い | 業務モデルのアクションツリー、Function参照、Source位置、派生一覧を再検査 |
+| XT-J05 | fixed-sourceのunresolved relation=0を「意味受理・編集先確定・実Effect確認」と宣言 | Source構造の参照解決だけを示すClaimへ限定 |
+
+**Fixture**：同一親Taskの下に、非空IDなし・同名・同FunctionのAction A/Bを置き、Bを固定選択したままA/Bの間へXを挿入。Sourceの版とSpanが変化した際、Bの誤選択・誤書戻しを防ぎ、元形式とTEI形式の情報損失を報告する。Source-faithful #950、read-only cross-view #1031、Modeler #1124、Projection逆写像 #2497、成果物 #1803、独立Expected #2514の既存Ownerで扱う。**Source tokenをそのまま永久の業務Identityに昇格させず、新Core ID型も先行追加しない**。
+
+**資格**：固定版Sourceの既存観測と設計上の負例。X-TEA実GUI・元XML編集往復・TEI Studio E2EはNOT RUN。
+
