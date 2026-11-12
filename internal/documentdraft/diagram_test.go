@@ -400,9 +400,9 @@ func TestThreeElementDiagramPreservesDeclaredElementAuthorityLimits(t *testing.T
 		t.Fatal(err)
 	}
 	want := map[string]string{
-		"data:sales.order":        "data-owner-approval",
+		"data:sales.order":            "data-owner-approval",
 		"function:sales.order.submit": "function-review-required",
-		"business:sales.checkout": "business-scope-limited",
+		"business:sales.checkout":     "business-scope-limited",
 	}
 	setLimit := func(field, id, limit string) {
 		t.Helper()
