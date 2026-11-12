@@ -618,3 +618,35 @@ WU-11〜14をWU-06〜10の「全部完了待ち」にしない。前段の**必�
 **反証・撤回条件**：基礎S1に専用Schema/新Runtimeが必須になる、同名/同Hash/同Case IDで版/対象が自動結合される、Expectedが実装の出力から作られる、Display/AI/Documentの成功を現在Grantへ昇格する、取得partialを不存在にする、Commit uncertainを再実行可能と扱う場合は該当縦断を失格としOwner Issueへ返す。
 
 **状態**：本追補は設計・独立Expected候補。これを記述しても新ORG-BEHの実行、実Org Provider/Host、実SHO/Harness送受信、Owner意味受理は成立しない。実測はPR head、利用した機構と出力、CIと独立Expectedの版を固定してからのみ記録する。
+
+### 10.7 三要素分析法・REA・DB/SHO・AIハーネスを組織C1に接続する（2026-11-12追補）
+
+**方法論の帰属**：渡辺幸三氏のX-TEA Modelerに示される**三要素分析法**のData・Function・Businessモデルを基準にする。「三視点モデル」は方法論名として用いない。TEI独自のGraph/CRUD/Source Provenance/Execution Evidenceを接合する部分は**TEI側の拡張**であり、X-TEA原典に存在すると主張しない。一次のモデル要素・操作の同一性を断定するには原本・版・要素ID・出典位置が必要。未照合の名称は候補と明記する。
+
+| 三要素分析法に沿う区分 | C1の最小例 | 保存する境界／横断検証 |
+| --- | --- | --- |
+| Dataモデル | Person P1、OrgUnit D1/D2、Membership A1、Case C1、Responsibility R1/R2 | Entity・Relation occurrence・業務キー/物理PK・valid/known・grainを区別。Case取扱部門変更はMembership変更ではない |
+| Functionモデル | C1照会、候補者解決、Case担当変更、引継ぎ通知、受領記録 | 各FunctionのI/O・対象Data・CRUDを明示。read-only照会・候補生成・更新・実通知のEffectを区別 |
+| Businessモデル | 異動、案件担当引継ぎ、承認、合議、手作業による受領 | Task/Action/業務契機とFunction起動を分離。Functionなしの手作業を消さない。Function成功は業務完了やACKではない |
+| 三要素間の照合（TEI拡張） | C1の業務手順→Function→Data CRUD→Source/Operation | Source/Meaning revision、実Read/Effect、Owner受理を別のEvidenceとしてjoin。図面だけで現在Grantを認定しない |
+
+**REAとの接続は補助的な分析レンズ**とする。Resource（業務資源）、Event（経済・業務上の出来事）、Agent（関与主体）を区別して、組織変更が責任・資源管理・取引に及ぼす影響を説明する。REAのAgentと認証Principal、REA EventとTEIのDirective/Function Invocation/Effect Receiptは同義ではない。REAの分類・対応はSource-backed Candidate→OwnerのAccepted Meaningを経て、既存Data/Function/Businessへ投影する。REA専用の全業務共通Core Schema、暗黙の組織Grant、二重の業務イベント正本は追加しない。
+
+**DBクライアント／SQL接続**：同一C1について、(a) モデル由来Query、(b) DBクライアントのNative SQL、(c) Provider実Rowset、(d) 業務意味としての採用を別資格で比較する。Schema/PK/FK/SQL JOIN一致だけでResponsibilityの業務意味を決定しない。SQL dialect、Provider、Scope、actual read cohort、NULL/未取得/非開示/0件、ORDER/EXISTS等の非出力依存を保持する。更新はPreview/Host Grant/Effect Fence/Receiptを経由し、DBクライアントの直接編集を業務Functionの正式実行と自動同一視しない。
+
+**SHO／Studio／ハーネス接続**：Modelerの図面・CRUD、Studioの組織図、SHOの説明文・引用、AIの固定対象Selectionは、Source/Relation occurrence・Revision・用途・開示Scopeを損失なく参照する。SHOの文書保存とTEI Sourceの変更は別トランザクション。Pinned SelectionはFocus移動で解除しない一方、Source/Policy/Recipientの失効時には適用を停止する。SUI/CSWのKJ法的なAffinity/Islandは探索Candidateであり、組織正式関係に自動昇格しない。外部ハーネスの提案・委任は実Host Grantや実Effectを代替しない。
+
+#### 追加の判別ケース（#4501への拡張、既存CXのExpectedを再利用）
+
+| ID | 入力差分 | Expectedと検証経路 |
+| --- | --- | --- |
+| CX-13 | 異動Taskが発生したがCase変更Functionは起動していない | Business Taskは存在、Case C1のDataは不変。TaskEvent≠FunctionLaunchEventを確認 |
+| CX-14 | 引継ぎ通知Functionが成功、受領は手作業のまま | Function/Effect成功とBusiness完了/ACKを分離。手作業はFunctionなしでも表現可能 |
+| CX-15 | REA Agent P1と認証Principalが異なる／REA EventとDirectiveが異なる | REA構造候補は保持、Principal/Directive/Receiptへの同一視を拒否 |
+| CX-16 | DBのFK・JOINが正しく、業務責任Ruleは未受理 | DB構造観測はPASS、Responsibility意味採用は未確定。SQL/Provider/Scopeを記録 |
+| CX-17 | 同一C1をStudio/SHO/外部Harnessが別revision・別read cohortで参照 | 個々の描画成功と横断整合を別判定。Source/Meaning/Scope/Recipient一致だけで実Readの同一性を仮定しない |
+| CX-18 | 固定SelectionにAI提案、同時にSHO著者編集とTEI Source改版 | Previewは保持できるが自動Applyを拒否。文書再投影・Source編集・現Grantの失効を別々に説明 |
+
+**既存Issueへの割当**：CX-13/14は#1125/#1444、CX-15は#2386/#2510とREA担当、CX-16は#2586/#2387/#2506、CX-17は#1124/#2516、CX-18は#4501/#4479およびSHO側Owner。独立Expectedは#2514/#1180の既存方式を使い、#4490のBEHと重複させない。#2586の初回Product実Readを優先する順序は変えない。
+
+**検証の資格**：本節は設計・試験候補である。X-TEA原本の全要素対応、REA意味受理、Native SQLと業務意味の同値、実Org Provider、SHO/Harness/Studio実C1 E2E、CX-13〜18の実行、Owner受理は **NOT RUN / NOT ACCEPTED**。
