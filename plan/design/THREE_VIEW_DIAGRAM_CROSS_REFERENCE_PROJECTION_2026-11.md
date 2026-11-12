@@ -925,3 +925,37 @@ StudioでUI要素を選択しAI/DSH系Harnessへ細かく指示する設計は�
 **P0**：#1124の同一Consumer実Source/選択/currentnessと#2586の実Provider Readを最優先に保ち、実Relation一件からData/Function/Businessの根拠付きread-only Queryを試す。#4396の実CLI→別Node限定証拠をSame Attempt/Owner受理と呼ばない。**P1**：#4403の多重CRUD・矛盾を既存Model/Consumerの受入候補としてOwnerへ返す。Validator Error化、Directness、Owner採否はここで決めない。**P2**：ETL・Subsystem・Traitの必要なEvidenceだけを問Qへ結合する。**P3**：一意で可逆なEdit IntentだけProposal→Impact/Validation→既存Shared Acceptance→再投影。Plugin Build/複数Instance/Self-buildは#951/#2831の別資格。
 
 **撤回条件**：既存modelref・Evidence・Cross-view表で問いと根拠を説明でき、追加抽象に効果が無い／第二正本を作る／Private件数を漏らす／derivedをActualへ昇格する／Method更新だけでAccepted Meaningが変わる場合は専用の実装を追加せず既存Projectionへ戻す。**TEA-Q01〜08の新試験、実Policy/Studio GUI/Provider/業務Owner受理はNOT RUN／NOT ACCEPTED**。
+
+### 34.6 量化を伴う問いと、成立・反証に必要な証拠を分離する（2026-11-12 横断深化）
+
+**設計上の差分**：現行§34.2はQuestion/Scope/Evidenceを扱うが、「一件見つければよい問い」と「全件を確認する問い」を同じClosure条件へ押し込むと、正当な局所発見を不必要に拒否したり、部分観測から誤った不存在を断定したりする。ここでは新Proof Engine/正式Schemaを作らず、既存Typed Ref・Evidence・[#3262](https://github.com/hat47x/tei-platform/issues/3262) Design Context Required Closure・[#2514](https://github.com/hat47x/tei-platform/issues/2514)独立Expectedへの**解釈規則**を記録する。
+
+| 問いの論理形と証拠対象 | 成立を支え得る証拠 | 反証を支え得る証拠 | 誤用してはいけない根拠 |
+| --- | --- | --- | --- |
+| **存在**：固定Scope内に宣言済みDirect Updateが一件以上ある | Qualified Relation/Occurrence・出典・現在Meaningが結びついた**一件の陽性Witness**。全件列挙はこの存在主張の必要条件でない | 対象Function・Data・必要Source/Roleの**閉包が確認された範囲での0件**。未読込はunknown | 部分CRUD表の空セル、derived-potentialからのActual Update |
+| **全称**：対象Functionすべてが特定の制約を満たす | 閉じた対象集合を網羅して検査した証拠、または適用範囲を明示した有資格の意味規則・実現保証とその適用証拠 | 同じ母集団・条件に属する**一件の有資格な反例** | 少数の正常サンプル、Validation OKだけで全Sourceの閉包を代用 |
+| **不存在／禁止**：越境Direct CUDがない | 全Writer/Operation/Scopeの定義と対象閉包、およびdirect性の解決 | 対象閉包内の越境**Direct** C/U/Dの有資格一件で禁止主張を反証し得る | 未解決Writerを0件扱い、委譲や潜在EffectをDirectと同一視 |
+| **実行事実**：特定のActionでOrderが実際に更新された | 実Operation/Attempt・対象・時点に束縛したEffect/Receiptと必要な独立Readback | 十分に観測した同一実行範囲での反例。ただし見えなかっただけならunknown | Function-level U宣言、UI操作成功、HTTP ACK、Batch exit 0 |
+| **業務受理**：更新は業務的に正当だった | Accepted Rule/Owner判断と実業務結果を、主体・適用時点を揃えて比較 | 適用条件に反した有資格の業務反例 | 実DB値の変化、生成器のPass、MethodやProviderのロード成功 |
+
+**証拠の非対称性**：一つの陽性Witnessは存在命題を限定的に支持し得るが、全称の成立には十分でない。一件の反例は対応する全称を否定し得るが、反例が未公開・Scope不一致・旧版・別Attemptなら現在の命題の反証にしない。逆に存在の否定は完全閉包を要する。有限データ全件の走査以外にも、有資格な不変条件の演繹的保証は成立方法の候補だが、宣言した規則の正しさと実Providerが実際に履行したことは別の証拠で確認する。特に業務MECEの母集団・排他・網羅をJava Enum単体の存在から導かない。
+
+**限定判定の手順（新Core State enumを増やさない）**：
+1. 現在のUse-siteに適した**公開済みSlice**をOwnerから受ける。Secret/Privateの有無・件数・候補Scoreを低権限側で推測しない。
+2. 問Qの母集団、対象Scope、量化（存在／全称／不存在／一試行の事実）、意味対象、Revision・時点を固定する。SubjectとRelation Occurrenceを混同せず、表示上の同じラベルから同一性を作らない。
+3. 必要なSource・Role・Relation・Writer・Provider／実Observerと、返却・ページ・Consumer完全受領のCoverageを別々に照合する。局所の陽性Witnessを全件Completeと呼ばず、exit 0やtraceのunresolved 0をQueryの完全性へ昇格しない。
+4. 主張の種類に適合したWitness／Counterexample／Rule依存を評価し、**どの主張を支持・否定できるか**と残余Unknown／古い根拠を提示する。Validation/Assessment/Source Acceptance/Current Grant/Observed Effectは既存Ownerからの別資格であり、一つのverified Booleanへ縮約しない。
+5. Claim由来のDataset・Scenario候補は[#4134](https://github.com/hat47x/tei-platform/issues/4134)へ引き渡す。**同じ生成器が候補と期待値を同時生成した成功は独立Oracleではない**。人手固定Golden／Owner受理Rule／独立Expectedを維持する。Method/Source/Rule改版時は先行のWitness・Expected・Receiptを現在の正当性へ無条件に流用しない。
+
+### 34.7 問い相対の反証対照（TEA-Q09〜Q14、全件NOT RUN）
+
+| ID | 同じ入力をどう問うか | 必要な独立Expected・拒否条件 |
+| --- | --- | --- |
+| **TEA-Q09** | 部分ロードしたFunction→Data CRUDに一件だけSource-backed Uがある | 「この固定Scopeに宣言Uが存在」は限定支持可能。ただし「すべてのWriterを取得」「越境Uは0」への昇格を拒否 |
+| **TEA-Q10** | 十Functionのうち一件に同じ適用条件を満たさないUpdate宣言がある | 全Function制約の反例は一件で示せるが、Business Action固有Effectや別Scopeの実違反へ誤伝播しない |
+| **TEA-Q11** | LIMIT/ページ欠落・Loader未取得によりCRUD表・Business図で対象が見えない | 既知の0件、未読込、未受領、権限不明を別に保持し、存在否定・全件完了を拒否。実Consumer完了条件は#3262 |
+| **TEA-Q12** | Function-level UとBusiness Action→Function経路があり、実行ACKのみ存在 | Declared／derived potentialは説明可能だが、当該Actionの実Updateと業務完了を支持しない。Receipt/独立Readbackは#1174/#1180へ |
+| **TEA-Q13** | ETLで各Chunkの部分集計は正しいが、総Member閉包・重複排除・丸めの適合が未観測 | 「観測済みChunk内で成立」と「対象期間の全件で成立」を別判定。Data型/単位/NULL/精度を保存、#1130/#2514 |
+| **TEA-Q14** | 同じ公開Source/Relation Sliceを維持したまま非公開Writerだけ変更 | 公開Consumerの図・Counts・診断・順位は変わらない。全体の不存在証明を公開側へ漏らさずunknown。実Disclosure/side channelは#2516 |
+
+**位置づけと優先順**：本節は#4473のPinned Target/媒体横断Contract、#4478のLifecycle Graph、#4403のCRUD検証コード、#4396の実CLI→Node、#4134のTest Generator、#3262のDesign Context Queryの**代替実装ではない**。まず#1124同一Consumerと#2586 Product実Readを進め、TEA-Q09〜14は既存Read/Rule/Expectedを再利用した小さな局所対照から検討する。追加試験のGo/Node/DB/Workbench/SHO/AI実行、現在Policy、正式受理はすべて**NOT RUN**。独立の新Proof Store・汎用Rule Engine・Method専用Hostを作らない。
