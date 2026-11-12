@@ -44,3 +44,38 @@
 K1上流Reference限定PASS、SHO G1bのK1R実Reader限定PASS、TEI #3479のSource-only drift PRマージ、SHO #29の選択範囲変換PRマージを**別々の成果**として扱う。**K2-A〜E、正式F0独立Oracle、Owner受理、正式Writer、H2/H3は本計画では未検証**。
 
 本計画の更新時には、対象main SHA、Provider/Consumer実Call Site、各AttemptのSource/Manifest/Lock、CI URL、失敗ログ、実際の効果範囲を記録する。CIのqueued/in_progress/cancelledをsuccessとしない。PRをマージする際には旧#3329の計画を二重正本にせず、必要に応じて親計画へ本書をリンクする。
+
+
+## 横断設計の追加ゲート（2026-11-12）
+
+### 証拠の所在とGit連動ストレージ
+
+Gitのcommit/PRには**小さいManifestと検証可能な参照**を置き、巨大な原文・実行ログ・画像・録画はNAS/S3等の外部Evidence Storeに置ける構成とする。Evidence URI、Content SHA、bytes、media type、scope、producer、created_at、retention、access policy、redaction statusを参照契約として扱う。ローカルパスや署名付きURLを永続Identityにしない。**Manifestのコミット成功はBlob実在・取得可能・改竄なしの証明ではない**ため、別途HEAD/GET相当の実取得・digest照合Receiptを要する。未取得、partial、permission-denied、expired、deleted、offlineを区別し、Blob取得不能時にGit側の旧Manifestを「最新Evidence」と誤表示しない。保存先・暗号化・鍵・GCは外部Storeの責務であり、K2専用Storage/Registryを新設しない。
+
+### Source/Meaning/Executionを跨ぐ再利用禁止
+
+- Source Observation（原Byteと取得時点）、Structural Candidate（Parser版と範囲）、Accepted Meaning（Owner・Audience・適用Scope）、Build Artifact（Generator/Toolchain版）、Execution Receipt（Actual Invoke/Effect）を**別Identityと別失効規則**で管理。
+- Fingerprintが同一でもA→B→Aの中間変更は分からない。Content-addressed Blobの再利用可否と、現在の権限・Owner受理・Consumer完備は独立判定。
+- **二Consumerの同一性**はProvider LockとSource/Manifest実消費だけでなく、二つのConsumerのAttempt ID、Raw/Parsed受領範囲、Required差集合、失敗状態の照合で証明する。片側のCI緑を他方へ移さない。
+
+### ハーネスとGUIの安定した選択対象
+
+CLI/Studio/SHOの対象指定は、一時的な画面選択や自然言語の曖昧な参照だけに依存させない。Source ID、revision、qualified path、byte range、semantic target ID、selected scopeを**固定したSelection Context**として渡し、選択解除や画面再描画があっても意図を勝手に変更しない。UTF-16 Editor rangeとUTF-8原文byte rangeの対応はSHO #29の限定成果を利用するが、行番号・文字列一致のみでSource同一性を断定しない。Targetが移動・改訂・曖昧化した場合は再解決・明示確認を要求する。Harnessは共通Session/Tool契約で接続し、特定のDSH/Claude/Codexだけに意味契約を埋め込まない。
+
+### 自己記述DSL・Plugin Lifecycleへの接続
+
+K2の各Gateは将来のTEI標準データ構造とLifecycle図から表現・生成できるようにし、Rule/Relation/Capability/Required/Negative Caseをデータとして保存する。ただし**DSL自己記述が実Provider実装やOwner承認の証明になるわけではない**。Lifecycle Pluginが追加するHookはpre/post条件・Effect class・再試行・失敗時の補償を宣言し、必須検証のスキップや前回Grantの再利用を許さない。実Providerが未実装なら図面上の経路を`not-implemented`として表示する。
+
+### 追加受入シナリオ
+
+| Case | 入力・操作 | 独立Expected |
+| --- | --- | --- |
+| E1 | Git ManifestはあるがS3/NAS Blobが消失 | `unavailable`、K2 Receipt不成立、旧Blobを自動代替しない |
+| E2 | Evidence URIは同じだがBlob byteが異なる | SHA不一致で拒否、Owner Meaning不変でも再受理へ進めない |
+| E3 | GUI選択後にSource revision更新・対象移動 | 旧Selection Contextで誤編集/誤Invokeせず再解決 |
+| E4 | 同label・別IdentityのGraph node/Relation | Source/target/edge IDを保持し、曖昧Bindingを拒否 |
+| E5 | Lifecycle PluginがRequired/Grant Gateを省略 | 実行を拒否し、診断に省略箇所を示す |
+| E6 | TEI側はRaw全受領、SHO側は一部Reference未解析 | 二Consumer完備はFAIL/UNKNOWN、各Consumer局所Receiptは保持 |
+| E7 | Source digest同値・Provider Manifest版変更 | Build/Invoke再検証、旧Receiptを現在実行の証明にしない |
+
+**状態**：E1〜E7は計画上の独立Expectedであり**NOT RUN**。NAS/S3連携、Selection Context固定、Lifecycle生成、共通Harnessの正式接続をK2実装済みとみなさない。
