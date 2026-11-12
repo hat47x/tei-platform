@@ -58,6 +58,7 @@
 | [`BUSINESS_LIFECYCLE_V1_DESIGN.md`](BUSINESS_LIFECYCLE_V1_DESIGN.md) | 業務の状態遷移を意味の正本として定義し、実行・観測する設計（ISSUE-000038 / ADR-0024 / ADR-0025） |
 | [`DESIGN_SYNTHESIS_CROSS_VIEW_PROOF_DESIGN.md`](DESIGN_SYNTHESIS_CROSS_VIEW_PROOF_DESIGN.md) | RQ-026の複数視点の照合を、対象を限定した証明上の条件として設計案の候補を絞り込む処理へ接続する、評価待ちの設計 |
 | [`ARTIFACT_SET_SCOPE_AND_CONSUMER_READ_EVIDENCE_2026-11.md`](ARTIFACT_SET_SCOPE_AND_CONSUMER_READ_EVIDENCE_2026-11.md) | #2482・#2604の導出Artifactについて、Application/Consumerの必要集合とManifest内部整合、公開一式の実読取を区別する検証計画（提案中・未採用） |
+| [`CROSS_LAYER_CONTRACT_PRESERVATION_AND_CLAIM_QUALIFICATION_2026-11.md`](CROSS_LAYER_CONTRACT_PRESERVATION_AND_CLAIM_QUALIFICATION_2026-11.md) | 意味・Contract・Trait・Mapping・Build・実Consumerを越えるClaimの非昇格、Scope相対の再資格化、複数領域への受入引渡し（横断設計候補・未採用） |
 | [`TOPOLOGY_COMPOSITE_VIEWS_AND_PIPELINE_2026-10.md`](TOPOLOGY_COMPOSITE_VIEWS_AND_PIPELINE_2026-10.md) | トポロジーの基本構造・複合図表と関連表・Complect解消・開発パイプラインの完全性を、既存契約へ照合する未採用の設計・段階的実証計画 |
 | [`PROJECT_PLUGIN_COMPOSITION_DESIGN.md`](PROJECT_PLUGIN_COMPOSITION_DESIGN.md) | 案件ごとのプラグイン、画面部品一式、仕様テンプレート、構成プロファイルの境界（[GitHub #1016](https://github.com/hat47x/tei-platform/issues/1016)、評価待ち） |
 | [`MULTILINGUAL_SEMANTIC_RESOURCE_DESIGN_2026-10.md`](MULTILINGUAL_SEMANTIC_RESOURCE_DESIGN_2026-10.md) | 意味モデルと表示資源を分離する多言語対応、言語資源の所有、代替、配布、翻訳の確認（[GitHub #1396](https://github.com/hat47x/tei-platform/issues/1396)、評価待ち） |
