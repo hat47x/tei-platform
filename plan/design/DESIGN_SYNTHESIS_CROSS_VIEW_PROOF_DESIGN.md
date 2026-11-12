@@ -729,3 +729,32 @@ Design Synthesis
 
 **検収の出力**：対象・問い・Required集合→実Read cohort/Provider→不変なArtifact/Effect→相手に届いた実物→業務完了の判断、の各辺に根拠と未検証を記録する。最小例は注文確定単価1,200円に対する注文Header/Detailの版ずれ、帳票保存後の発行記録失敗、別媒体/再送時のUnknown。これは設計提案であり、今回の新規実CLI/DB/印刷/配信試験はNOT RUN。
 
+
+### 16.9 Derived IndexとFingerprintはAccepted Subjectと資格を変更しない（2026-11-12 追加評価）
+
+モデルの説明・図・AI Context・CRUD表がすべて同じSubjectを指すためには、単に`kind/id`のRefが揃うだけでなく、**参照を導出する過程で入力の同一性や状態が破壊されないこと**が前提となる。
+
+現行公開main `718a8b74`の`internal/threeelement/model.go`では、次のSource-level反例がある（実Go Test・CLI再現は今回NOT RUN）。
+
+- **ID collision**：`Index()`はData/Function/Businessを各mapに`data[e.ID]=e`等で格納する。kind内の二つの要素が同じIDなら後勝ち縮約されるが、`Validate()`の構造診断にkind内ID重複検査がない。`SameNameConflicts()`は名前の重複であり、同ID/異名を検出しない。
+- **Derived fingerprint mutates source**：`ModelFingerprint(model ThreeElementModel)`は値コピーされたStructの`DataElements[i].AuthorityLimits=nil`等を実行し、Sliceの共有Backing Arrayを通じて呼出し元の要素Fieldを消す。ハッシュを求める読取り専用処理が入力モデルの状態に副作用を起こす構造。
+- **Self-reference**：`json.Marshal(model)`に`model.ModelFingerprint`自身が含まれるため、先に計算して同Fieldへ格納すると、内容が実質同じでも次の計算は別Digestになる。既存`model_test.go`は空Fingerprint状態同士の比較のみ。
+
+この実装上の欠落は公開[Issue #4475](https://github.com/hat47x/tei-platform/issues/4475)へ限定委譲し、#4472のCRUD上のData索引誤用と区別する。
+
+**望ましい仕様の成立条件**：Stable/Qualified Subjectは同Kind同ID衝突を診断し、CrossKind同IDの合法性はKind+Scope契約に従う。Index/Graph/CRUD/AI Context/Fingerprintは原モデルを変えずに計算でき、派生結果を格納しただけで内容Digestが変化しない。モデルの意味的なFingerprintを変える入力と、Derived Diagnostic・現在Authority/Grant・実観測を変える入力は混同しない。現時点の`ThreeElementModel`型・3戻り値・JSON Field構成を将来仕様の制限として採用しない。
+
+**判別例・所有順**：TE-ID-01〜06（#4475）の正負を先に固定し、Input ID衝突が未解決なら「この図のSubjectは一意」とは主張しない。純粋なFingerprint計算は同一Meaning+異AuthorityLimitsでの値と現在資格を別に表示。実装内部の索引改善は#4475、3視点Projectionの利用条件は#1124、Consumerでの問い相対の適格性は本Design Synthesis。新Identity/Permission Registryを先行追加しない。
+
+### 16.10 一つの可読なSourceからの参照閉包（2026-11-12 追加評価）
+
+主線の注文確定単価と、異分野対照の測定値を、単なる例の数ではなく**同じ意味を通す一つの縦断構造**として検査する。
+
+- Input/Source: 人が読めるDomain定義、型・Rule、Query Native資産、Function、Scenarioを明示。説明上のSyntax Sugarが複数あっても`Language Pin→同じMeaning`への変換条件を保持（#4359/#988/#2621）。
+- Resolved: すべてのType/Result/Contract/Provider参照が確定、または未確定な理由が説明できる。未宣言のResult TypeやLegacy Namespaceを暗黙に補わない。
+- Actual: 実行Query/Raw結果/Mappingの物理DB・Input/Result・粒度/時点からData Context、表示/Action、独立Read/Expectedへ、同一のSource/Subject/Revisionを追える（#2586/#2611/#2506）。
+- Proof: 相互参照を表示できるだけで正常終了とせず、Source未取得／別物理DB／未宣言列／同ID衝突／部分Context／Authority差を一因子ずつ変えて結論の適格性が変わるか確認する。
+
+これは3視点以外のDomainにも通じる設計上の**可読な最小例**の条件であり、現在のScript文法・Physical Queryを正本にするものではない。Domain expertの認知順を優先し、関係する契約が増える場合は標準Recipeで隠蔽できる複雑さと専門家が明示すべき判断を分ける。現実装で使えない構文を理由により優れた表現案を棄却しない。一方で、その構文が既存Parserで使えると主張しない。
+
+
