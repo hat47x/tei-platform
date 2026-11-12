@@ -111,19 +111,31 @@ type Diagnostic struct {
 	SubjectIDs []string `json:"subjectIds,omitempty"`
 }
 
-// ModelFingerprint returns a stable digest for the model content.
+// ModelFingerprint returns a stable digest for the model content without
+// changing the caller's model. The derived fingerprint must not hash itself.
 func ModelFingerprint(model ThreeElementModel) string {
-	// Exclude diagnostics and transient fields from the fingerprint.
+	// These fields describe observation and authority, not the structural
+	// model content. Clear them only on the local projection being hashed.
+	model.ModelFingerprint = ""
 	model.Diagnostics = nil
 	model.AuthorityLimits = nil
-	for i := range model.DataElements {
-		model.DataElements[i].AuthorityLimits = nil
+	if len(model.DataElements) > 0 {
+		model.DataElements = append([]DataElement(nil), model.DataElements...)
+		for i := range model.DataElements {
+			model.DataElements[i].AuthorityLimits = nil
+		}
 	}
-	for i := range model.FunctionElements {
-		model.FunctionElements[i].AuthorityLimits = nil
+	if len(model.FunctionElements) > 0 {
+		model.FunctionElements = append([]FunctionElement(nil), model.FunctionElements...)
+		for i := range model.FunctionElements {
+			model.FunctionElements[i].AuthorityLimits = nil
+		}
 	}
-	for i := range model.BusinessElements {
-		model.BusinessElements[i].AuthorityLimits = nil
+	if len(model.BusinessElements) > 0 {
+		model.BusinessElements = append([]BusinessElement(nil), model.BusinessElements...)
+		for i := range model.BusinessElements {
+			model.BusinessElements[i].AuthorityLimits = nil
+		}
 	}
 	b, _ := json.Marshal(model)
 	sum := sha256.Sum256(b)
@@ -159,17 +171,47 @@ func NewThreeElementModel(modelID, name string) ThreeElementModel {
 }
 
 // Index builds lookup maps by stable ID for each element kind.
+// A duplicate ID WITHIN a kind is ambiguous: leave it out of the lookup
+// instead of silently selecting the last definition. Validate reports each
+// collision as an error. Equal IDs across different kinds remain distinct.
 func (m ThreeElementModel) Index() (map[string]DataElement, map[string]FunctionElement, map[string]BusinessElement) {
 	data := map[string]DataElement{}
+	ambiguousData := map[string]bool{}
 	for _, e := range m.DataElements {
+		if ambiguousData[e.ID] {
+			continue
+		}
+		if _, exists := data[e.ID]; exists {
+			delete(data, e.ID)
+			ambiguousData[e.ID] = true
+			continue
+		}
 		data[e.ID] = e
 	}
 	fn := map[string]FunctionElement{}
+	ambiguousFunction := map[string]bool{}
 	for _, e := range m.FunctionElements {
+		if ambiguousFunction[e.ID] {
+			continue
+		}
+		if _, exists := fn[e.ID]; exists {
+			delete(fn, e.ID)
+			ambiguousFunction[e.ID] = true
+			continue
+		}
 		fn[e.ID] = e
 	}
 	bus := map[string]BusinessElement{}
+	ambiguousBusiness := map[string]bool{}
 	for _, e := range m.BusinessElements {
+		if ambiguousBusiness[e.ID] {
+			continue
+		}
+		if _, exists := bus[e.ID]; exists {
+			delete(bus, e.ID)
+			ambiguousBusiness[e.ID] = true
+			continue
+		}
 		bus[e.ID] = e
 	}
 	return data, fn, bus
@@ -178,6 +220,57 @@ func (m ThreeElementModel) Index() (map[string]DataElement, map[string]FunctionE
 // Validate runs structural checks and returns diagnostics.
 func (m ThreeElementModel) Validate() []Diagnostic {
 	var diags []Diagnostic
+	// Detect collisions against the source arrays before looking anything up.
+	// Code values are literal so repository-wide diagnostic coverage verifies
+	// each public diagnostic contract against its independent test.
+	dataPositions := map[string]int{}
+	for i, e := range m.DataElements {
+		if e.ID == "" {
+			continue // EMPTY_DATA_ID is separately diagnosed below.
+		}
+		if first, exists := dataPositions[e.ID]; exists {
+			diags = append(diags, Diagnostic{
+				Code:       "DUPLICATE_DATA_ID",
+				Severity:   "error",
+				Message:    fmt.Sprintf("data id %q is duplicated at positions %d and %d", e.ID, first, i+1),
+				SubjectIDs: []string{e.ID},
+			})
+		} else {
+			dataPositions[e.ID] = i + 1
+		}
+	}
+	functionPositions := map[string]int{}
+	for i, e := range m.FunctionElements {
+		if e.ID == "" {
+			continue // EMPTY_FUNCTION_ID is separately diagnosed below.
+		}
+		if first, exists := functionPositions[e.ID]; exists {
+			diags = append(diags, Diagnostic{
+				Code:       "DUPLICATE_FUNCTION_ID",
+				Severity:   "error",
+				Message:    fmt.Sprintf("function id %q is duplicated at positions %d and %d", e.ID, first, i+1),
+				SubjectIDs: []string{e.ID},
+			})
+		} else {
+			functionPositions[e.ID] = i + 1
+		}
+	}
+	businessPositions := map[string]int{}
+	for i, e := range m.BusinessElements {
+		if e.ID == "" {
+			continue // EMPTY_BUSINESS_ID is separately diagnosed below.
+		}
+		if first, exists := businessPositions[e.ID]; exists {
+			diags = append(diags, Diagnostic{
+				Code:       "DUPLICATE_BUSINESS_ID",
+				Severity:   "error",
+				Message:    fmt.Sprintf("business id %q is duplicated at positions %d and %d", e.ID, first, i+1),
+				SubjectIDs: []string{e.ID},
+			})
+		} else {
+			businessPositions[e.ID] = i + 1
+		}
+	}
 	dataByID, fnByID, busByID := m.Index()
 
 	for _, e := range m.DataElements {
@@ -333,6 +426,14 @@ func (m ThreeElementModel) UnusedData() []string {
 			used[op.DataID] = true
 		}
 	}
+	// An explicit-only CRUD mapping is still a Function→Data reference.
+	// Only a uniquely resolved Function proves usage; unknown/ambiguous
+	// Function IDs must not hide an otherwise unused Data element.
+	for _, crud := range m.CRUDDefinitions {
+		if _, ok := fnByID[crud.FunctionID]; ok {
+			used[crud.DataID] = true
+		}
+	}
 	var out []string
 	for _, d := range m.DataElements {
 		if !used[d.ID] {
@@ -379,20 +480,24 @@ func (m ThreeElementModel) MissingBusinessFunctionMapping() []string {
 	return out
 }
 
-// ContradictoryCRUDs returns CRUD definitions that conflict within the same function-data pair.
+// ContradictoryCRUDs returns every later CRUD definition whose operation
+// flags conflict with the preceding definition for the same Function/Data pair.
+// Keep source order and the source definition intact; never silently choose a
+// winning definition when constructing validation evidence.
 func (m ThreeElementModel) ContradictoryCRUDs() []CRUDDefinition {
 	type pair struct{ fn, data string }
 	best := map[pair]CRUDDefinition{}
+	var conflicts []CRUDDefinition
 	for _, crud := range m.CRUDDefinitions {
 		key := pair{crud.FunctionID, crud.DataID}
 		if prev, ok := best[key]; ok {
 			if prev.Create != crud.Create || prev.Read != crud.Read || prev.Update != crud.Update || prev.Delete != crud.Delete {
-				return append([]CRUDDefinition{}, crud)
+				conflicts = append(conflicts, crud)
 			}
 		}
 		best[key] = crud
 	}
-	return nil
+	return conflicts
 }
 
 // UnknownDependencies returns function invokes that reference nonexistent functions.

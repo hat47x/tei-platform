@@ -27,6 +27,7 @@
 | [`check-public-boundary/`](check-public-boundary/) | 追跡ファイルに、非公開資料の名前・所在のマーカーが入っていないかを検査する（#2342 / #2436） |
 | [`repositoryqualification/`](repositoryqualification/) | リポジトリ検証条件の共通処理 |
 | [`reference-ai-tuning-observation/`](reference-ai-tuning-observation/) | AI性能チューニング用の設計/観測/統計/Provider/開示/受領の**合成入力のみ**を照合する試験用Consumer。実Provider/業務意味/実性能は未証明（#3271/#3262、設計文書 §9〜10）。 |
+| [`reference-browse-read/`](reference-browse-read/) | 一つのbrowse Patternを、Environment束縛を経て、明示確認した使い捨てPostgreSQLの読取専用トランザクションで実行し、Function Data ContextをJSONで返す参照入口（`tei` CLIではない）。束縛はhost申告、被覆は常に`unestablished`、RLS・マスクされたNULLは判別不能のまま。実PG試験は`TEI_BROWSE_READ_PG_*`が揃ったときだけ実行し、未設定はNOT RUN（[#2586](https://github.com/hat47x/tei-platform/issues/2586)） |
 | [`reference-cli-trace-benchmark/`](reference-cli-trace-benchmark/) | 合成Workspaceによるtraceの処理段別の時間・メモリ計測と出力不変の確認 |
 | [`reference-mcp-readonly-adapter/`](reference-mcp-readonly-adapter/) | 既存の読み取り操作（model catalog・inspect・trace・validate）をMCPのtoolとして公開する参照Adapter。Workspaceは起動時に固定し、CLIと同じ `internal/operations` を呼ぶ（#3400） |
 | [`reference-change-packet/`](reference-change-packet/) | 変更範囲・危険度・検証・停止条件をJSONで宣言し、範囲確認と検証実行・証拠記録を行う参照（#2017） |
@@ -79,6 +80,7 @@
 | [`reference-authoring-auxiliary/`](reference-authoring-auxiliary/) | 設計の補助情報（用語・改訂履歴・注記・区分）の置き場所と意味の版の境界の確認 |
 | [`reference-authoring-witness-openssh/`](reference-authoring-witness-openssh/) | OpenSSHを使った記述作業の参照確認 |
 | [`reference-authority-evidence-trust/`](reference-authority-evidence-trust/) | 情報源の権威と検証根拠の信頼境界の確認 |
+| [`reference-b2c-change-inspector/`](reference-b2c-change-inspector/) | B2C独自Frontendの**明示された依存関係のみ**を読み取り、変更の影響候補・未観測範囲・判断の限界を返す合成read-only Reference（#3509）。公開許可や実Commerce/Experimentの証明ではない |
 | [`reference-batch-completeness/`](reference-batch-completeness/) | 一括導出の行別失敗と集合演算の結果完全性を、NULL・未取得・評価失敗を区別して判定する読取り専用の参照（#1724） |
 | [`reference-business-dfd/`](reference-business-dfd/) | 業務データフロー図の読取り専用参照 |
 | [`reference-business-procedure-check/`](reference-business-procedure-check/) | 業務手順と担当・機能・データの整合確認 |
@@ -260,6 +262,7 @@
 | [`reference-sui-adoption/`](reference-sui-adoption/) | SUI移行の参照データと検査 |
 | [`reference-sui-canonical-probe/`](reference-sui-canonical-probe/) | SUIの意味構造を `.tei` で宣言したときの解決結果と、宣言しない損失を read-only で報告する probe（M2） |
 | [`reference-sui-reference-consumer/`](reference-sui-reference-consumer/) | SUIが返す`tai.reference.sui-document-reference/v0`のenvelopeを検査するread-only consumer。acceptedMeaningの一留、未レビュー本文の保留、同名Card・並行Edge・containment/affiliationのoccurrenceを保つことを確認する（P7、Product APIではない） |
+| [`reference-sui-record-projection/`](reference-sui-record-projection/) | SUIの reference envelope から、開示判断つきの record 投影を作る read-only 参照（M3・M4・M5）。本文を運ばず、項目×開示先を present/withheld/unknown/not-applicable で返し、Source状態を宣言のまま使う |
 | [`reference-scope-isolation-matrix/`](reference-scope-isolation-matrix/) | SUI の scope isolation 14経路（ADR-0059 gate 5）を言語非依存の機械可読行列として検査する。経路の網羅・coverage状態・根拠の有無を確かめ、SUI checkout を渡したときは試験名の実在まで照合する（認可の正本ではない） |
 | [`reference-sui-interaction/`](reference-sui-interaction/) | 画面操作とApplication Actionの接続例 |
 | [`reference-transform-runtime-engine/`](reference-transform-runtime-engine/) | 決定的な変換処理の実行例 |

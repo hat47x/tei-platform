@@ -1,0 +1,87 @@
+name: Plugin Registry E1 P/C local CAS reference
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - .github/workflows/plugin-registry-e1-local-handoff.yml
+      - tools/reference-build-artifact-store/**
+      - tools/reference-plugin-registry/**
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/plugin-registry-e1-local-handoff.yml
+      - tools/reference-build-artifact-store/**
+      - tools/reference-plugin-registry/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-registry-e1-local-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  local-publication-consumer:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GOENV: off
+      GOWORK: off
+      GOTOOLCHAIN: local
+    steps:
+      - name: Checkout the exact GitHub event candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Record the candidate and PR head as different identities
+        shell: bash
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          if [[ "$GITHUB_EVENT_NAME" = pull_request ]]; then
+            read -r commit base head extra < <(git rev-list --parents -n 1 HEAD)
+            test "$commit" = "$GITHUB_SHA"
+            test "$head" = "$PR_HEAD_SHA"
+            test -z "${extra:-}"
+            printf 'tested-merge-candidate=%s\nsource-pr-head=%s\n' "$GITHUB_SHA" "$PR_HEAD_SHA"
+          else
+            printf 'tested-push-commit=%s\n' "$GITHUB_SHA"
+          fi
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+
+      - name: Install root Go toolchain
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
+      - name: Recheck test-only signed Release and independent Go/Node readers
+        working-directory: tools/reference-plugin-registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          go version
+          go test -count=1 ./...
+          node --version
+          node --test verify.test.mjs
+
+      - name: Test existing CAS P/readback and separate-process Consumer C
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test -count=1 -v ./tools/reference-build-artifact-store -run '^(TestRegistryE1ConsumerSubprocess|TestRegistryE1PublisherAndConsumerDifferentProcesses)$'
+
+      - name: Confirm source checkout remains unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"

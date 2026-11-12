@@ -62,6 +62,11 @@ const (
 	resultModePlan          = "plan"
 	resultModeHandoff       = "handoff"
 	resultModeReview        = "review"
+	// resultModeInventoryDetail selects one plugin's row plus the report-level
+	// context; resultModeInventoryDiagnose restricts the report to rows that
+	// carry a reason code. Both are plugin-inventory shapes (#4376).
+	resultModeInventoryDetail   = "detail"
+	resultModeInventoryDiagnose = "diagnose"
 )
 
 // isResultEnvelopeCommand reports whether the command wraps its output in the
@@ -74,7 +79,7 @@ const (
 func isResultEnvelopeCommand(command string) bool {
 	switch command {
 	case "workspace-files", "source-index", "requirements",
-		"plugin-lock", "plugin-resolve", "plugin-runtime-plan",
+		"plugin-lock", "plugin-resolve", "plugin-runtime-plan", "plugin-inventory",
 		"knowledge-context", "knowledge-qualify",
 		"knowledge-review-plan", "knowledge-review-handoff",
 		"knowledge-review-disclose", "knowledge-data-design-candidate-review":

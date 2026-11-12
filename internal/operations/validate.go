@@ -32,12 +32,20 @@ type WorkspaceValidation struct {
 	Workspace *workspace.WorkspaceIdentity
 }
 
+// HasErrors includes both Canonical diagnostics and manifest source-root
+// failures. A missing declared root has no Canonical Subject, but it still
+// makes the Workspace invalid (the same rule catalog and validate JSON use).
 func (r WorkspaceValidation) HasErrors() bool {
 	if r.Direct != nil {
 		return r.Direct.Severity == validation.Error
 	}
 	for _, d := range r.Diagnostics {
 		if d.Diagnostic.Severity == validation.Error {
+			return true
+		}
+	}
+	for _, finding := range r.SourceRootFindings {
+		if finding.Severity == "error" {
 			return true
 		}
 	}

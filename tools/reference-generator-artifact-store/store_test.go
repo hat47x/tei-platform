@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"reflect"
 	"runtime"
 	"strings"
 	"sync"
@@ -369,10 +368,36 @@ func TestPutAndGetJavaArtifact(t *testing.T) {
 			if err != nil {
 				t.Fatalf("java -cp %s Main, fixture %s: %v: %s", classDir, tc.ID, err, output)
 			}
-			var gotJSON, wantJSON any
-			if json.Unmarshal(output, &gotJSON) != nil || json.Unmarshal(tc.Want, &wantJSON) != nil ||
-				!reflect.DeepEqual(gotJSON, wantJSON) {
+			// TeiFailure answers with the classification axes as well as the
+			// fields the fixture states. Compare the stated fields, then require
+			// the axes for a refusal, so a generated target that drops one is
+			// caught while one that adds a field is not a false failure.
+			var gotJSON map[string]any
+			var wantJSON map[string]any
+			if json.Unmarshal(output, &gotJSON) != nil || json.Unmarshal(tc.Want, &wantJSON) != nil {
 				t.Fatalf("fixture %s: got %s, want %s", tc.ID, output, tc.Want)
+			}
+			for key, want := range wantJSON {
+				if gotJSON[key] != want {
+					t.Fatalf("fixture %s %s: got %v, want %v", tc.ID, key, gotJSON[key], want)
+				}
+			}
+			if wantJSON["state"] != "error" {
+				continue
+			}
+			switch wantJSON["code"] {
+			case "CURRENCY_MISMATCH", "UNIT_MISMATCH", "PRECISION_OVERFLOW":
+				if gotJSON["kind"] != "business_rejection" || gotJSON["retryable"] != "not_retryable" || gotJSON["effectUnknown"] != false {
+					t.Fatalf("fixture %s business rejection lost its classification axes: %s", tc.ID, output)
+				}
+			case "DECIMAL_INVALID":
+				if gotJSON["kind"] != "technical_failure" || gotJSON["retryable"] != "lookup_first" || gotJSON["effectUnknown"] != true {
+					t.Fatalf("fixture %s technical failure lost its classification axes: %s", tc.ID, output)
+				}
+			default:
+				if _, ok := gotJSON["kind"]; !ok {
+					t.Fatalf("fixture %s refusal carries no kind: %s", tc.ID, output)
+				}
 			}
 		}
 	}

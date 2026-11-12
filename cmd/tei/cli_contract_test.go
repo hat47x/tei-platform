@@ -64,7 +64,10 @@ func TestDiscoveryAdvertisesTheCommandsOwnSchemaVersion(t *testing.T) {
 		if cmd.SchemaVersion == "" {
 			t.Errorf("%s advertises no schemaVersion", cmd.Name)
 		}
-		if cmd.Name == "model locate" || cmd.Name == "model overview" {
+		// A subcommand's schema joins its words with "-" (model locate ->
+		// tei.cli.model-locate/v0); model catalog keeps its older name.
+		if cmd.Name == "model locate" || cmd.Name == "model overview" ||
+			cmd.Name == "model document-draft" || cmd.Name == "model document-reconcile" {
 			if cmd.SchemaVersion != "tei.cli."+strings.ReplaceAll(cmd.Name, " ", "-")+"/v0" {
 				t.Errorf("%s schemaVersion=%q", cmd.Name, cmd.SchemaVersion)
 			}

@@ -1,4 +1,4 @@
-﻿# 機能設計文書
+# 機能設計文書
 
 ここには、複数のIssueにまたがる機能について、意味モデル、記述方法、検証、実行時の境界をまとめた設計文書を置きます。採用前の案も、対象となるIssueと文書の状態を冒頭に明記して管理します。
 
@@ -29,6 +29,7 @@
 
 | 文書 | 対象 |
 | --- | --- |
+| [`SCRIPT_LAUNCH_ENTRY_TEST_QUALIFICATION_2026-11.md`](SCRIPT_LAUNCH_ENTRY_TEST_QUALIFICATION_2026-11.md) | Script/Functionの公開Entry→製品Go Binary実起動と、OKF/DSL近傍の直接テスト・Driver Scenario結合テストの責務分担（#4502/#4495/#1180、実装前設計） |
 | [`ETL_BATCH_FUNCTION_COMPOSITION_DESIGN_2026-11.md`](ETL_BATCH_FUNCTION_COMPOSITION_DESIGN_2026-11.md) | ETL・Batch処理を既存Function・Data Operations・Operator・Pluginの合成として表す要件・基本設計・実装計画（[#1130](https://github.com/hat47x/tei-platform/issues/1130)・[#2622](https://github.com/hat47x/tei-platform/issues/2622)・[#4194](https://github.com/hat47x/tei-platform/issues/4194)、実装前設計・Owner未採用） |
 | [`AI_PERFORMANCE_TUNING_OBSERVABILITY_2026-11.md`](AI_PERFORMANCE_TUNING_OBSERVABILITY_2026-11.md) | 生成AIによる性能チューニングの設計ヒント・統計の実測と、Source／Function／Query／Provider／受領の資格を分けた独立Benchmark・改善検証（#3271・#3262・#2586、設計・実証候補） |
 | [`DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md`](DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md) | 汎用データソース・ワークベンチの標準範囲（接続・閲覧・構造定義・Migration）と縦断実証の設計（[#3270](https://github.com/hat47x/tei-platform/issues/3270)、[RQ-035](../../requirements/TEI_PRODUCT_REQUIREMENTS.md)、設計・検証計画） |
@@ -71,6 +72,7 @@
 | [`SUI_TEI_MIGRATION_IMPLEMENTATION_PACKET_2026-11.md`](SUI_TEI_MIGRATION_IMPLEMENTATION_PACKET_2026-11.md) | SUI→TEI移行のM1〜M6を、変更範囲・型・試験・受入・Owner判断・完了条件までPR単位に具体化した実装前の提案（[#3401](https://github.com/hat47x/sui-sensemaking/issues/3401)、[#2497](https://github.com/hat47x/tei-platform/issues/2497)、未採用） |
 | [`CROSS_VIEW_CHANGE_QUALIFICATION_REFERENCE_DRAFT.md`](CROSS_VIEW_CHANGE_QUALIFICATION_REFERENCE_DRAFT.md) | Issue #1143で検討中の、複数の視点にまたがる変更の適格性確認案。参照用の契約としては未採用 |
 | [`STUDIO_CONSUMER_FRESHNESS_BOUNDARY_2026-10.md`](STUDIO_CONSUMER_FRESHNESS_BOUNDARY_2026-10.md) | #1124の非Host Studio Consumerが非同期応答・Graph描画選択・Source/Accepted/readinessの鮮度を別々に検査する未採用の設計補足 |
+| [`PLUGIN_MANAGEMENT_CONTRACT_2026-11.md`](PLUGIN_MANAGEMENT_CONTRACT_2026-11.md) | プラグイン管理の状態分離・理由コード対応・role契約対応表・データlevel導出を1箇所にまとめる管理契約（[#2044](https://github.com/hat47x/tei-platform/issues/2044)、S1は[#4376](https://github.com/hat47x/tei-platform/issues/4376)で実装、S2〜S5は追記） |
 | [`BUSINESS_EFFECT_LIFECYCLE_DESIGN_2026-10.md`](BUSINESS_EFFECT_LIFECYCLE_DESIGN_2026-10.md) | 副作用を伴う実行の段階、確定後の外部効果、冪等の識別子、確定状態、補償、一括処理の再開をまとめる、評価待ちの設計（[GitHub #1129](https://github.com/hat47x/tei-platform/issues/1129)、[#1130](https://github.com/hat47x/tei-platform/issues/1130)） |
 | [`BUSINESS_ACTION_COMPLETION_EVIDENCE_DESIGN_2026-11.md`](BUSINESS_ACTION_COMPLETION_EVIDENCE_DESIGN_2026-11.md) | Business Actionの完了述語、必要対象集合の完全性、Function利用箇所・実確定Effect・外部証拠の接合を区別する未採用の設計（[#1125](https://github.com/hat47x/tei-platform/issues/1125)、[#1119](https://github.com/hat47x/tei-platform/issues/1119)） |
 | [`EXECUTION_CORRELATION_DESIGN_2026-10.md`](EXECUTION_CORRELATION_DESIGN_2026-10.md) | 一つの業務操作を実行先から提供元まで追跡し、意味の版・ビルド・ロックへ戻るための識別子と記録の規則。担当Issueは無く、評価待ち |
@@ -175,6 +177,11 @@
 | [`TEI_MD_DOMAIN_DIAGRAM_TO_BUILD_LOWERING_2026-11.md`](TEI_MD_DOMAIN_DIAGRAM_TO_BUILD_LOWERING_2026-11.md) | *.tei.md ドメイン知識の図表表現からコード生成・ビルドへ到る縦断設計（設計候補、2026-11-11） |
 | [`TEI_MD_DOMAIN_DIAGRAM_TO_BUILD_IMPLEMENTATION_GUIDE_2026-11.md`](TEI_MD_DOMAIN_DIAGRAM_TO_BUILD_IMPLEMENTATION_GUIDE_2026-11.md) | *.tei.md ドメイン図表→Build 実装導線（P0-A成立後、P1-B〜P3-Dの受入・依存Owner・再利用Fixture） |
 | [`TEI_SHO_OKF_DOMAIN_LINT_DOCUMENT_UNIT_2026-11.md`](TEI_SHO_OKF_DOMAIN_LINT_DOCUMENT_UNIT_2026-11.md) | TEI/SHOのOKF知識バンドルとドメインLint：段階導入の検証計画 |
+| [`TEI_SHO_DOCUMENT_DRAFT_INTEGRATION_2026-11.md`](TEI_SHO_DOCUMENT_DRAFT_INTEGRATION_2026-11.md) | TEI受理済みモデルの一要素と一関係を、SourceとRevisionを保持した説明文書DraftとしてSHOへ渡し、編集・保存・再開・モデル改版時の再確認までを行う最小統合機構（[SHO #19](https://github.com/hat47x/sho-composer/issues/19)・[SHO #4](https://github.com/hat47x/sho-composer/issues/4)・[SHO #6](https://github.com/hat47x/sho-composer/issues/6)、[#3394](https://github.com/hat47x/tei-platform/issues/3394)のSHO文書段、実装済みの最小基線） |
+| [`TEI_SHO_DOCUMENT_DRAFT_NEXT_STAGES_2026-11.md`](TEI_SHO_DOCUMENT_DRAFT_NEXT_STAGES_2026-11.md) | 上の契約を段階2〜5（CRUD表・三要素分析図・仕様書・固定納品版）へ伸ばす実行計画と、相互CI・Studio実組込み・逆方向禁止・`*.tei.md`取込みの横断課題、Owner判断事項の一覧（実装前設計） |
+| [`TEI_STUDIO_SHO_EMBEDDING_FORM_2026-11.md`](TEI_STUDIO_SHO_EMBEDDING_FORM_2026-11.md) | TEI Studio から SHO 文書編集部品を利用する形態の実測と決定（子プロセス起動を維持）・失敗分類6種・未測定（配布・Linux/macOS）（代行決定済み） |
+| [`DOCUMENT_DRAFT_CITATION_AND_OCCURRENCE_ID_2026-11.md`](DOCUMENT_DRAFT_CITATION_AND_OCCURRENCE_ID_2026-11.md) | Draft 引用の解決（`recorded-not-resolved` のまま）と Occurrence ID の永続性（snapshot-local のまま）の代行決定と根拠・撤回条件 |
+| [`TEI_MD_READ_SIDE_DESIGN_2026-11.md`](TEI_MD_READ_SIDE_DESIGN_2026-11.md) | SHO 保存物（`*.tei.md`）の TEI 側読み取り設計。読み取り側が答えるべき4つ（R-01〜04）・Parser完了後も変えない境界・Parser 入出力契約。実装は Parser（#3346）完了後（設計のみ） |
 
 ## 関連する参照事例と評価
 
@@ -341,7 +348,7 @@ S1 realistic intent / candidate frontier
 - [権限の強制の適用計画](PERMISSION_ADOPTION_PLAN_2026-11.md)（要求＝能力、付与＝環境。実行時に再確認して記録する）
 - [動的な出力パスと宣言スコープ](DYNAMIC_PATH_GRANT_DESIGN_2026-11.md)（環境の付与は静的、実行時のパスは動的。両者の不一致と選択肢）
 
-# 機能設計文書
+## 機能設計文書
 
 ここには、複数のIssueにまたがる機能について、意味モデル、記述方法、検証、実行時の境界をまとめた設計文書を置きます。採用前の案も、対象となるIssueと文書の状態を冒頭に明記して管理します。
 
