@@ -117,3 +117,91 @@ func mustIndex(t *testing.T, root string) sourceindex.Index {
 	}
 	return idx
 }
+
+
+// TestReadWorkspaceSubjectRejectsSameOffsetRetargetAndTracksSourceOnlyDrift
+// characterizes a real Loader/Index read for a UI or harness that pins an
+// exact semantic Subject. A byte offset or matching canonical value alone is
+// not a durable selection ticket or current edit authority.
+func TestReadWorkspaceSubjectRejectsSameOffsetRetargetAndTracksSourceOnlyDrift(t *testing.T) {
+	root := documentDraftFixture(t)
+	semanticPath := filepath.Join(root, "semantic", "sales", "order.tei")
+	original, err := os.ReadFile(semanticPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldSubject := sourceindex.Subject{Kind: "semantic-data", ID: "sales.order"}
+	originalRead, err := ReadWorkspaceSubject(root, oldSubject)
+	if err != nil {
+		t.Fatalf("original subject read: %v", err)
+	}
+	originalRefs := mustIndex(t, root).ReferencesFor(oldSubject)
+	if len(originalRefs) != 1 {
+		t.Fatalf("original source references = %d, want one", len(originalRefs))
+	}
+
+	// A Source-only edit is a new managed Source revision even when the
+	// semantic World, subject and canonical JSON remain unchanged.
+	withTrailingWhitespace := append(append([]byte(nil), original...), '\n')
+	if err := os.WriteFile(semanticPath, withTrailingWhitespace, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	sourceEdited, err := ReadWorkspaceSubject(root, oldSubject)
+	if err != nil {
+		t.Fatalf("read after source-only edit: %v", err)
+	}
+	if originalRead.ModelRevision == sourceEdited.ModelRevision ||
+		originalRead.Inspection.SourceIndexFingerprint == sourceEdited.Inspection.SourceIndexFingerprint {
+		t.Fatal("source-only revision drift was not visible to the pinned subject reader")
+	}
+	if originalRead.Inspection.WorldFingerprint != sourceEdited.Inspection.WorldFingerprint ||
+		string(originalRead.Inspection.Canonical) != string(sourceEdited.Inspection.Canonical) {
+		t.Fatal("source-only edit unexpectedly changed the typed subject")
+	}
+
+	// Both declaration names have exactly five bytes. The new subject's
+	// Source range therefore occupies the same location as the old one.
+	// A consumer that keeps only the source span would silently retarget.
+	retargeted := strings.Replace(string(original), "data Order", "data Other", 1)
+	if retargeted == string(original) || len(retargeted) != len(original) {
+		t.Fatal("invalid same-offset negative fixture")
+	}
+	if err := os.WriteFile(semanticPath, []byte(retargeted), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, err = ReadWorkspaceSubject(root, oldSubject)
+	var missing *InspectionError
+	if !errors.As(err, &missing) || missing.Code != InspectionNotFound {
+		t.Fatalf("old pinned subject must not retarget to new declaration: %v", err)
+	}
+	newSubject := sourceindex.Subject{Kind: "semantic-data", ID: "sales.other"}
+	current, err := ReadWorkspaceSubject(root, newSubject)
+	if err != nil {
+		t.Fatalf("new subject read: %v", err)
+	}
+	currentRefs := mustIndex(t, root).ReferencesFor(newSubject)
+	if len(currentRefs) != 1 || currentRefs[0].ArtifactPath != originalRefs[0].ArtifactPath ||
+		currentRefs[0].Range != originalRefs[0].Range {
+		t.Fatalf("same-position negative fixture did not preserve source location: old=%+v new=%+v",
+			originalRefs, currentRefs)
+	}
+	if current.ModelRevision == originalRead.ModelRevision ||
+		current.Inspection.Subject == originalRead.Inspection.Subject {
+		t.Fatal("distinct Source and semantic Subject were collapsed by same byte position")
+	}
+
+	// A->B->A can recover the same descriptive revision, but does not prove
+	// the intermediate state never existed or restore an expired edit grant.
+	if err := os.WriteFile(semanticPath, original, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	restored, err := ReadWorkspaceSubject(root, oldSubject)
+	if err != nil {
+		t.Fatalf("restored subject read: %v", err)
+	}
+	if restored.ModelRevision != originalRead.ModelRevision ||
+		restored.Inspection.WorldFingerprint != originalRead.Inspection.WorldFingerprint ||
+		string(restored.Inspection.Canonical) != string(originalRead.Inspection.Canonical) {
+		t.Fatal("restored bytes no longer yield the same descriptive subject read")
+	}
+}
