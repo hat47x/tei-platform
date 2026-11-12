@@ -1410,6 +1410,8 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 
 **組織C1のSchema/UI Mapping変更追補（§10.9/§10.9.4）**：実テーブル定義とDesired Schema、各版の**テーブル定義モデルFieldそのもの**、上位の業務意味/Computed Field、Function/UI要素とBindingを分離する。正本でFieldが削除されたDesired版、または完全観測で削除を確認したActual版では、**その版のテーブル定義モデルからFieldを除去**する。一方、UI要素は残して未マッピング警告、CRUD/派生Query/SHO/AI対象の依存を診断する。外部DBの変化を理由にDesired Sourceを無断更新しない。partial/unavailableを削除確定とせず、同名再作成・Schema ABAで旧Bindingを復活させない。画面追加だけでは列を作らず、明示的開発者操作→Preview→Migration/Grant→実DB再観測へ進める。GUI/CLI/実Targetは同じ操作意味。#4515の**Subject Pin先行**と描画Edgeの非意味ID・Relation Pin unsupportedを織り込み、#1143の横断変更資格、#2497の逆写像、#4125の旧新Client互換と照合する。ORG-MAP-01〜10は既存Expectedを改訂・再利用（実試験NOT RUN）。#1126/#1124/#3270/#1452/#4479/#4501へ配分し、#2586の実Read優先を維持。三要素分析法は業務向けの方法論/PluginでありTEI汎用Coreを専用固定しない。
 
+**組織モデルの参照・未使用診断とStudio性能（§10.10）**：#4472の三要素CRUD索引/明示定義・矛盾表示と#4475の同Kind同ID/Fingerprint純粋性を先に検証し、その後#1177/#3788の既存Source Index/Traceで順方向・逆方向参照、Source位置への高速移動、Scope完全時だけの「参照数0・未使用候補」を実証。0件/partial/unknown/未解析Pluginを混同せず、静的Unusedから自動削除しない。#4515のSubject Pinを先行、意味Relation ID未確認の描画Edgeから編集しない。大規模性能はcold/warm p50/p95、CPU/メモリ、Index構築と実Query/描画を分離計測。必要なPanel/Pluginだけ遅延起動する案を#1824で比較し、第二Index/Parser/Hostは作らない。WU-12/13とORG-MAP/CXのExpectedを再利用し、#2586実Read優先を維持。実ナビゲーション/性能・Owner意味受理はNOT RUN。
+
 **採否**：新規Source/Rule/公的契約や業務責任の解釈はOwnerの意味受理が必要。本追補はdocs-onlyであり、実Org Provider/Host・SHO/HarnessとのOrg C1 E2E・Owner意味受理は **NOT RUN**。
 
 ## 先に固定しないもの
