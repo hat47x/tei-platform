@@ -206,7 +206,6 @@ func TestReadWorkspaceSubjectRejectsSameOffsetRetargetAndTracksSourceOnlyDrift(t
 	}
 }
 
-
 // Two Workspaces can expose the same Canonical Subject and byte-identical
 // semantic Source yet be distinct authoring and consumer scopes. A pinned
 // target must not use world/source fingerprints as its Workspace identity.
