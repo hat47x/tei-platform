@@ -1170,3 +1170,57 @@ main [#3760](https://github.com/hat47x/tei-platform/pull/3760)では明示Build 
 | ESD-57 | Role正しくParse、Rowset 0件/partial/非開示、またはGUI選択が旧Revision。結果/表示成功を完全Read・操作資格へ昇格させない | #2586/#1124/#2514 |
 
 **最小Exit**：E0 Preludeの実CLI現状と固定12型を再現、K0/K1/K2の失効・衝突を手書きExpectedで評価（新Proto APIは不要）。E1 #3479外部Provider Source/Manifest版の差を用途Requiredへ結び、必要なProviderだけunknownに落とす。E2 #2586一Function実Readと#951正しいProvider Entry/Sourceを**同一Attempt**で照合。E3 ADR-0048共通APIのCLI/MCP受領結果を検証。全ケースが局所PASSしてもOwner Meaning/正式Provider S2-product/全Source原子性/盲検T1-B/外部H2/H3/実DB Commit/G4は別資格。既存#1119 G0〜G4と#1180/#2514 Scenario正本は不変。
+
+---
+
+<!-- tei-role-one-function-actual-use-and-observer-trust-20261112 -->
+## 24. 2026-11-12：自己記述の合格を「同名の定義」から「一用途で実消費した証拠」へ進める
+
+**今回の増分判断**：§23は標準Prelude、Imported Provider鮮度、共通APIの**候補と必要条件**を整理した。本節は、11/12の他レーンで確認された実Sourceと敵対的なBuild観測を使い、**Source／Meaning／Realizationの同値性が一致しない場合に、どこで止めるか**を一Functionの最短受入に固定する。新たなCore型・独自Host・第二Resolver・Reader・Test Runnerは作らない。実際の採否は#2620と関連Ownerに委ねる。
+
+### 24.1 三種類の同値性を独立に判定する
+
+| 同値性 | 一致に必要なもの | 一致しても不足するもの |
+| --- | --- | --- |
+| **名称・構造** | Workspace/Subject/Role/Query ID、型、宣言Shape、Version | Sourceの参照先、物理SQL、適用時点、業務意味 |
+| **意味** | 独立RequiredとExpected、単位・NULL/欠損・粒度・関係・時間・Scope、Ownerが受理した適用範囲 | 実選択Provider、実DB Read、実Host権限 |
+| **実消費・観測** | exact Source occurrence／Manifest／Dependency closure、選択Plugin/Provider/Artifact／実Entry／Invocation Attempt、実RowsetとConsumer受領 | 未受理のMeaning、現在Grant・最終Effect／Outcome |
+
+これらのいずれか一つがUnknownなら**その列のみUnknown**とする。Source bytesが同じ、Semantic Worldが同じ、Build成果物のbytesが同じ、CLIとMCPの返却JSONが同じ、という観測はそれぞれ別Claimであり、横断の同一性は自動的に成立しない。存在を否定する場合、当該Universe/Scopeが**閉じている証拠**が必要。未ロード・未選択・権限不足・途中切断・欠けたRequiredの条件では「不存在」を返さない。
+
+### 24.2 同名Queryの実際の食い違いを、自己記述Roleの最初の異種Domain試験とする
+
+現mainでは二つのWorkspaceが**同じ** `order_entry.recent_orders` を別Sourceとして定義する。[main #4258](https://github.com/hat47x/tei-platform/pull/4258)/[#4344](https://github.com/hat47x/tei-platform/pull/4344)により、Reference側は `public.orders` / `:from` / 5列、X-TEA側は `sales."order"` / `:status` / 2列とSource-staticに区別される。Reference SQLが`:from`を要求するのにQuery宣言に `input from` がないことも、Runtime Input Bindingとしては未解決。同じQuery ID・結果ID・似た業務説明から **同一Selection／同一SQL／意味同等**とは言えない。
+
+[旧Draft #4076](https://github.com/hat47x/tei-platform/pull/4076)はclosed/unmerged。#2586の11/12 current-main監査では旧Draftの `ExecuteBrowseQueryInEnvironment` と `internal/functioncontext` の該当製品パスを確認できず、旧Branchの実PG試験PASSを現在mainのProduct R0に加算できない。[Draft #4482](https://github.com/hat47x/tei-platform/pull/4482)／[Draft #4484](https://github.com/hat47x/tei-platform/pull/4484) は最初の未接続辺を一Functionで直す入場計画。自己記述側は、この既存P0-Rを置換せず、同一IDでも `Workspace Root → exact Query Source → SQL asset → declared Input → selected DB Alias/Instance → actual Rowset → Function Context → Consumer` を判別するRead-only契約だけを追加する。正例の全Rowset・0件・partial/NULL・実Provider B/A取り違えは#2586/#2514の独立Expectedが所有。
+
+### 24.3 Inspectorの実装済み範囲と、証明していない実装同一性
+
+main統合[#3381](https://github.com/hat47x/tei-platform/pull/3381)/[#3371](https://github.com/hat47x/tei-platform/pull/3371)/[#3540](https://github.com/hat47x/tei-platform/pull/3540)により、CLIとStudioへHost-owned read-only Inspectorの接合点は存在する。ただし現行の局所Go Call・Host Inventory・実関数Entry記録だけでは、**正式Profile/Contractが選んだ外部Providerの独立Build/Link、同一Load Source、現在Grant、二Consumer実製品資格**まで立証されていない。#1251の[main #4258](https://github.com/hat47x/tei-platform/pull/4258)関連試験で、B選択→B Entryという局所正例と、Inventoryの一貫した虚偽／同Manifest異Semantic Sourceという残留負例は別扱い。結果JSONやProvider IDが一致しても、実ConsumeされたSourceを再確認する。
+
+Roleを第一級のDataとして表現できることは、Provider ConformanceやOwner Meaningを**自己承認することではない**。`std.*`固定PreludeをSourceへ移すK0〜K3も同様に、現Go実装の12型と可読な候補定義の型名一致をIndependent Expectedにしない。必要な場合は異型/NULL/精度・依存循環の負例を挟み、既存#988 Bootstrap/Language Selectionと#4350 Facet・Mapping工程を使用する。
+
+### 24.4 『選ばれた対象』と『実際に使った状態』を検査の主語にする
+
+Studio/AI対話では、ユーザーが固定した `meaningSubjectId / occurrence / source reference / revision / scope / selected view / allowed operation` を**一つの作業Contextとして保持**する。図面切替、Canvas再配置、別Sourceに同名Subjectがある、後から届いたReply、別Provider版への解決変更だけでは、AIの編集対象を無音切替しない。Source/Revision/Policyが失効したら対象の再束縛・Previewと独立再Readを要求する。UI表示上のSource pathや隠しRoleの存在を開示権限の代わりにしない。Ownerは#3262/#1124/#2516/#267。
+
+この原則はBuildにも適用する。[Issue #4486](https://github.com/hat47x/tei-platform/issues/4486)の11/12実測では、self-build childが渡されたstate Pathを**申告だけ正しく書き戻し実際には共有**していても、現行申告比較は `l2b.claimed=true` に到達し得る。空ディレクトリを作るだけで事後確認もすり抜ける。一方、Linux user/mount namespaceで書込を境界制約した限定実験では負例を停止できた。ただし実験コードは未コミット、他OS/本番Entrypoint/Source Closure/G4は未検証。**自己申告・後検査・Host強制**を Evidence basis 別に表示し、同じ`claimed`を独立観測と呼ばない。OS境界をRole自己解釈や一Function P0の新Hard Gateにせず、#2831/#4486に委譲する。
+
+### 24.5 一軸の独立反例 ESD-58〜65（#1180/#2514に委譲・NOT RUN）
+
+| ID | 独立に変える要因 | 必要なExpected／Owner |
+| --- | --- | --- |
+| ESD-58 | 同じQuery ID、別Workspaceの `public.orders` と `sales."order"` | 同名の宣言は別Source/SQL/Parameter・別Expected。Source-static対照を#2586へ引渡し |
+| ESD-59 | Reference SQLの`:from`だけが必須、QueryにInput宣言なし | Sourceとして読めてもRuntime Input Closureは未成立。暗黙Bindを拒否。#2586/#4359 |
+| ESD-60 | SourceもResultも同型だが、Selected=B/実Entry=A | 実Profile→Artifact/Entry/Source/Invocationを比較し、値一致でもFAIL。#1251/#951 |
+| ESD-61 | InspectorのHost Inventoryは一貫するが同Manifest・異Semantic Source | Hostの自己報告ではSource実消費を証明できない。独立Source witnessを要求。#1251/#3479 |
+| ESD-62 | 同名・同位置の別SubjectへCanvas遷移後、旧AI Replyが届く | PinされたIdentity/Revision/Occurrenceが一致しない編集Intentは再束縛／拒否。#3262/#1124 |
+| ESD-63 | Requirementの対象集合がpartialで未読込の唯一Ruleだけ不足 | `required=[]`・0件・正常JSONを全件不在にしない。独立Required／Scopeを明示。#3262/#2514 |
+| ESD-64 | self-build childが二回の共有stateを別Pathと自己申告し成果物は一致 | 申告ベースの成功とHost強制の隔離を分け、G4に昇格しない。#4486/#2831 |
+| ESD-65 | 同じ12 Prelude型名・同じCanonical投影だがNULL/Precision/Role依存の意味差 | 文字列・構造同値を受理済みMeaningとしない。K0〜K3独立Expectedで段階停止。#988/#2620 |
+
+### 24.6 最短の実行順と終了条件
+
+**E0（自己記述側）**：現main `std.*` Preludeの固定12型とSourceなし状態を実CLIで取得する既存§23のExitを再利用し、Ownerが受け入れる意味Expectedを列挙。新Parserへの移設は最初のPoCでは求めない。**E1（P0-R、横断最優先）**：#2586が `recent_orders` のRoot/SQL/Parameter差をSource-staticで固定し、1件の実PG Provider Read→Rowset→Function Context→通常CLIへ一Attemptで到達できる最初の不足辺を修正。**E2（S2-product）**：#1251/#951が正式Provider Selection・実Artifact/同一Load Source・通常CLI/Studio Call-site一致を反証可能にする。**E3（Consumer/Build）**：ADR-0048 CLI/MCPのMeaning診断/完全受領と、#2831のBuilder/State観測基盤を個別に確認し、同一Attemptの十分なWitnessのみ#1163へ渡す。
+
+**停止条件**：前段の局所PASSを相互に足し合わせて全Function/全Required/Owner受理/G4とは呼ばない。実Function Read、OS強制隔離、全Prelude Source化、未知Rule T1-B、正式Meaning/Authorityを、この文書追補の時点で完了扱いしない。UI固定Selectionと共通APIは実Provider未結線の代替ではない。過去のPR・Issueの実測と、今回のESD-58〜65の未実行提案を区別する。
