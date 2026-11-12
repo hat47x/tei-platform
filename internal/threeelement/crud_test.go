@@ -41,7 +41,6 @@ func TestGenerateFunctionDataCrossReference(t *testing.T) {
 	}
 }
 
-
 // TestCRUDDataNamesUseTheDataIndex exercises a cross-kind ID collision.
 // Data and Business IDs belong to different maps; using the Business map to
 // render a Data name silently substitutes an unrelated subject.
