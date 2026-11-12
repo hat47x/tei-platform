@@ -38,7 +38,7 @@ func TestExhaustiveLabelRequiresFiniteCompleteEnumeration(t *testing.T) {
 	p := CandidateProblem{Functions: make([]Function, 10)}
 	for i := range p.Functions {
 		p.Functions[i] = Function{
-			ID: fmt.Sprintf("f%02d", i),
+			ID:      fmt.Sprintf("f%02d", i),
 			Allowed: []string{"sales", "billing", "inventory"},
 		}
 	}
@@ -59,7 +59,7 @@ func TestExhaustiveStatusRespectsRequestedCandidateBound(t *testing.T) {
 	p := CandidateProblem{Functions: make([]Function, 4)}
 	for i := range p.Functions {
 		p.Functions[i] = Function{
-			ID: fmt.Sprintf("f%02d", i),
+			ID:      fmt.Sprintf("f%02d", i),
 			Allowed: []string{"sales", "billing"},
 		}
 	}
