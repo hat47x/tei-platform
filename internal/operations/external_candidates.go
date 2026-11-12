@@ -112,6 +112,7 @@ const (
 	ExternalCandidateIncomplete     = "EXTERNAL_CANDIDATE_INCOMPLETE"
 	ExternalCandidateFailed         = "EXTERNAL_CANDIDATE_FAILED"
 	ExternalCandidateNotFound       = "EXTERNAL_CANDIDATE_NOT_FOUND"
+	ExternalCandidateAmbiguous      = "EXTERNAL_CANDIDATE_AMBIGUOUS"
 )
 
 // ExternalCandidateAuthorityLimits is the fixed set of statements this
@@ -207,23 +208,47 @@ func ExternalCandidates(request ExternalCandidateRequest, at time.Time) (Externa
 	if view.Unknowns == nil {
 		view.Unknowns = []externalanalysis.Unknown{}
 	}
+	// Candidate IDs are producer-owned and may not be unique. Derived
+	// relation handles can also collide for parallel edges with identical
+	// from/to/kind. Never let iteration order silently choose the last match.
+	observationMatches := 0
 	for _, observation := range candidates.Observations {
 		if observation.NodeID == request.ObservationID || observation.ObservationID == request.ObservationID {
-			selected := observation
-			view.Observation = &selected
+			observationMatches++
+			if observationMatches == 1 {
+				selected := observation
+				view.Observation = &selected
+			}
 			continue
 		}
 		view.Unselected.Observations++
 	}
+	relationMatches := 0
 	for _, relation := range candidates.Relations {
 		if relation.RelationID == request.RelationID {
-			selected := relation
-			view.Relation = &selected
+			relationMatches++
+			if relationMatches == 1 {
+				selected := relation
+				view.Relation = &selected
+			}
 			continue
 		}
 		view.Unselected.Relations++
 	}
 	view.Unselected.Unknowns = len(candidates.Unknowns)
+	if observationMatches > 1 || relationMatches > 1 {
+		// None of the matching occurrences is a qualified unique selection.
+		// Keep the attempt and coverage for diagnosis, without returning any
+		// arbitrary candidate or claiming that only one was projected.
+		view.Observation = nil
+		view.Relation = nil
+		view.Unselected.Observations = len(candidates.Observations)
+		view.Unselected.Relations = len(candidates.Relations)
+		return view, &ExternalCandidateError{
+			Code: ExternalCandidateAmbiguous,
+			Message: fmt.Sprintf("external candidate selection is ambiguous: observation %q matches %d occurrences, relation %q matches %d occurrences", request.ObservationID, observationMatches, request.RelationID, relationMatches),
+		}
+	}
 	if view.Observation == nil {
 		return view, &ExternalCandidateError{Code: ExternalCandidateNotFound, Message: fmt.Sprintf("observation %q is not in Evidence %s", request.ObservationID, candidates.EvidenceID)}
 	}

@@ -2,7 +2,7 @@ name: REA external evidence intake (real CLI and saved fixtures)
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'feat/rea-*', 'fix/rea-*']
     paths:
       - .github/workflows/rea-external-evidence-intake.yml
       - 'internal/externalanalysis/**'
