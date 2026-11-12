@@ -1400,7 +1400,7 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 **段階計画の正本**：[高度組織モデリングの段階計画 §10](design/ORGANIZATION_STAGED_MODELING_PLAN_2026-11.md#10-2026-11-12-横断統合組織責任実行三視点知識consumerを一案件で接合する採用前計画)。#2386の意味Ownerと既存Data/Relation/Rule/Operationを維持し、組織専用Core/Workflow Engine/Policy Engine/第二Expected正本は追加しない。
 
 - **基線の訂正**：PR #4342の設計計画、#4399の構造テスト、#3741の責任Cutover設計、#4256のSUI/CSW候補境界、TEI→SHOの#4317/#4467はmain統合済み。ただし#4399の構造test PASSは二時点Query結果・承認候補・委任拒否等の製品上の振る舞いを保証しない。#4479の固定対象AI指示はDraft。
-- **次の独立Evidence**：#4490でORG-BEH-01/02（valid/knownの結果差・WHERE/ORDER/EXISTSの非出力依存）を最初に実行。次にDirective/候補/代理/Case移管・ABA。WU-11〜14は業務手順・Handoff ACK・loss-aware Projection・固定対象と再投影・保護Field例外を既存Ownerへ引き渡す。
+- **次の独立Evidence**：#4490でORG-BEH-01/02（valid/knownの結果差・WHERE/ORDER/EXISTSの非出力依存）を最初に実行。次にDirective/候補/代理/Case移管・ABA。WU-11〜14は子Issue #4501 に分離し、業務手順・Handoff ACK・loss-aware Projection・固定対象と再投影・保護Field例外を既存Ownerへ引き渡す。
 - **Case C1の接合**：Membership変更≠Case責任移管≠Rule候補≠現行Host Grant≠Effect Receipt≠Handoff ACK。Source/Meaning、実Query/Read Cohort、Business Decision、Authority/Effect、Consumer受信のそれぞれを同一Attemptで明示的に照合。単なるCase ID/World hash一致は同一資格の証拠ではない。
 - **優先順位**：全体の実Provider Read #2586 HJ-09を最優先に保ち、組織C1の合成Behavioral Expectedを並行作成。続いて実Org Rowset/Scope #2506/#2622、三視点/GUI/SHO #1124/#2497/#2516、Host Grant/Effect #1174/#2499、業務Handoff #1125/#1444へ接続。各段階は実測・未実行・Owner未受理を分ける。普通の組織Dataを組織管理モジュールというだけで特別な秘密情報にしない。
 
