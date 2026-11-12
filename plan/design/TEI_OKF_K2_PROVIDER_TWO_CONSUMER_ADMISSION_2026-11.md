@@ -158,3 +158,48 @@ DSH、Codex、Claude Code等のハーネスは共通の選択対象・Source Sco
 ### 証拠の鮮度
 
 直前HEAD `d141bd8c6320c5823625feee6b546c919f0a38b2` のCache Full vs Incremental CI [#43151569560](https://github.com/hat47x/tei-platform/actions/runs/43151569560) は**completed/success**。Repository Health CI [#43151569576](https://github.com/hat47x/tei-platform/actions/runs/43151569576) は確認時点**in_progress**。この後のコミットについてはCIを改めて確認すること。**P0a/P0b、K2-A〜E、正式Oracle、Owner受理はNOT RUN**。
+
+
+## 2026-11-12 統合レビュー：実Provider先行・文書Handoff・Typed Lifecycle
+
+### 統合判断：K2の前提を増やさない
+
+K2の最小縦切りは、現行`.tei`定義を起点とする**実Function Provider Read**、既存Typed Application API、既存CLI/Studio Adapter、SHO実Readerの独立受領とする。`*.tei.md`全面移行、OKF独立Host、万能Harness、独立Policy Engine、Plugin Graph Patch ABIの確定は**K2のP0条件にしない**。Markdown/OKFは原文を失わないSource/Reference投影として追加し、業務FunctionやDB Readの存在を形式読取だけで証明しない。
+
+P0aは二つの経路を別票にする。(A) OKF Reader/Source→Provider→TEI/SHO Consumer、(B) `order_entry.recent_orders`等の現行`.tei` Function→Query→DB Binding→実Provider Read→Rowset→CLI Reply。Aの実Reader成功はBの実DB Provider成功を意味せず、Bの成功もOKF F0/F1/F2の合格を意味しない。
+
+### Typed Lifecycle Graphと実行権限の境界
+
+Plugin lifecycleを将来型付きGraphで表す際の最小ノード候補は`Activity`、`Interaction`、`Operation`、`Wait`、`Approval`、`Observation`。各ノード/辺はGuard、Owner、Effect、Version、Source Locatorを持てる。ただしGraphの**編集可能性**と、Hostが実行を許可した**Current Grant**は別資格。GraphにApprovalノードがあることはOwnerの実承認ではなく、Operationノードがあることは実Invokeではない。
+
+Graph投影の同label別Node、複数Edge、Source/Target向き、Condition、Owner、Effectの欠落はLossとして診断し、保存/再読込でidentityを失わせない。Plugin配布方式・BOM Schema・Patch ABIは未決定として留保する。
+
+### SHO・SUI・TEIの文書Handoffと著者編集保護
+
+SHOの`Working Copy`、正式保存（Conditional Update/CAS）、保存後の**独立再読取**を別Gateとする。SUIからSHO/TEIへ渡すHandoffには固定した対象ID・Source Revision・選択範囲・送信元と受信先Scopeを含める。Handoff Receiptは**対象が届いたこと**を示すにとどまり、AIセッションの継続、編集の保存、Ownerの受理、生成文書の公開を意味しない。
+
+TEIからSHOへ文書を生成/再投影する際は、著者編集領域と生成領域を区別し、再生成が人間の編集を黙って上書きしない。Source移動、同名別内容、CAS競合、変更なし保存、再開時の参照再解決を別試験とする。SHO #29のUTF-16→UTF-8範囲変換のマージは必要条件の一部であり、正式保存・再投影競合の合格ではない。
+
+### AIハーネスの最小相互運用試験
+
+共通Typed Application API上で`Capability Discovery→Preflight→Invocation→Post-check→Resume`を実行順序として検証する。ハーネス別Adapter（DSH/Codex/Claude Code等）は共通Scope/Grant/Receiptを保持し、機能差はCapabilityで明示する。Resumeが過去AttemptのReceiptを再表示しても、**新しい実Invokeの証拠にはしない**。Preflightが成功しても実Effect許可・実受領は別票。
+
+比較項目は再現性、対象誤指定、拒否の正しさ、Effect境界、再開時の古いGrant/Source Revisionの失効、実Provider接続、追加レイテンシ。K2のために新規Harness本体を実装しない。
+
+### 既存修正との依存関係
+
+[TEI PR #4507](https://github.com/hat47x/tei-platform/pull/4507) は**マージ済み**（2026-11-12再確認）。Fingerprint自己混入防止、AuthorityLimits保持、図Draft回帰試験の修正成果は、現在のSource/Artifact/Evidence失効設計を検証する際の関連実装として追跡する。ただしPRマージをK2 Provider実Invoke、Current Grant検証、Owner Meaning受理の証拠に流用しない。
+
+### 追加受入票（独立Expected、未実施）
+
+| ID | 実行する反例・正例 | 合格条件 |
+| --- | --- | --- |
+| I1 | 現行`.tei` Functionから実DB Provider Read | Query/Binding/実Provider/Rowset/CLI Replyの同一Attempt証拠。未接続なら未実装 |
+| I2 | OKF原文Readerと実DB Readの証拠を比較 | 各々別Scope・別Receipt。片方のPASSで他方をPASSにしない |
+| I3 | Lifecycle GraphのApproval表示だけでInvoke | Current Grantがなければ拒否。Graph表示は許可を発行しない |
+| I4 | SUI→SHO Handoff後にSource移動/改訂 | 固定Selection Contextを再解決し、曖昧なら停止 |
+| I5 | TEI生成文書の再投影とSHO著者編集が競合 | CAS拒否時はWorking Copy保全。黙った上書きをしない |
+| I6 | AIハーネスResumeで古いGrant/Receiptを再利用 | 新しいPreflightとCurrent Grant照合。古いReceiptを新Invokeとみなさない |
+| I7 | Fingerprint同一・AuthorityLimits/Generator変更 | Source再利用とMeaning/Artifact/Grant資格を別判定 |
+
+**証拠状態**：I1〜I7は計画でありNOT RUN。旧HEAD `c2ab617097c0eb7292c38265de4b8bd8ec0dd8c1` の[Repository Health #43152455070](https://github.com/hat47x/tei-platform/actions/runs/43152455070) と[Cache Verification #43152455133](https://github.com/hat47x/tei-platform/actions/runs/43152455133) は**completed/success**。この後のHEADは別途CI確認する。
