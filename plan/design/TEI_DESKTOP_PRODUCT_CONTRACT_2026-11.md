@@ -4,6 +4,59 @@
 >
 > 目的：Desktopを個別フレームワークや「独立したTEI Host」としてではなく、共通Application APIと選択された製品機能をOS上で安全に利用する実現形態として検収する。
 
+## 0. 今回の実装引継ぎ：一つの操作を製品として通す（2026-11-13整理）
+
+**読み方**：本節を現在の実装順と完了条件の短い入口とし、§1〜15は根拠・負例・設計の履歴として参照する。DT-01〜38、NAV/ED/PINの個別試験票は既存Ownerに残し、ここへ二重登録しない。#2586の実Function→Provider Read、#1251の実Plugin Invokeを優先する方針も変更しない。
+
+### 0.1 判断・実証・未決を切り分けた状態表
+
+| 主題 | 現時点で利用する判断／根拠 | Desktop製品として未確認のこと | 返却先 |
+| --- | --- | --- | --- |
+| Model Identity | 同Kind同ID重複診断の限定修正 #4524 はmerged。#4521 の実Workspace Map↔Locate比較はDraft | 同一Workspace/Source版での完全な逆参照・実Workbenchとの一巡、Grant/全参照元の閉包 | #1124/#3788/#2514 |
+| Studio Pin | `InspectSubject`とWorkbenchの一時選択・応答世代制御は存在。#4515のPin実装計画がOwner | 明示Pin・再資格化・複数対象・AIへの実送出／受領、描画Edgeの正式Relation identity | #4515/#1824/#4479 |
+| Source Change | #4533で**限定合成実験16件中15件一致**、1件の不存在/曖昧分類が不一致。Source値spanの製品提供や正式Acceptanceは別 | 正規Parser由来の値span、操作粒度の書戻し、失効Grant、実Wails・再投影・Source受理 | #2497/#4533/#3788 |
+| CRUD・影響表示 | #4524の同ID衝突修正とは別に、#4513のData索引、#4534のCRUD矛盾資格はDraft。#4535はB2Cの明示Native Binding段階計画の限定Merged | CRUD由来Impactの完全性、DB SchemaとUI Bindingの実Source差分、実DDLやOwner Meaning | #4472/#1124、DB/Studio Owner |
+| Performance | #1177は`trace full -limit 1`でも内部全走査になり得ることを指摘 | Plugin数・Source規模別の実測、Scoped Queryの費用、実Wails上の入力/移動遅延 | #1177/#2600 |
+| GUI / SHO / Harness | 共通Application APIと既存Studio Bridgeを利用。SHO文書Open/ResumeとSaveは分離 | Desktopの実OS連続操作、SHO Save、外部Harnessの実受領、Disclosure、実Effect Receipt | #3421/#1824、SHO/TAI Owner |
+
+**状態表示の契約**：`identity-resolved`相当の対象一意性と`authority-qualified`相当の現在権限を一つの「準備完了」にしない。`authority-conflicted`、unknown、unsupportedなどの未知・競合を受けたConsumerは、分からない状態のまま理由と出所を表示し、勝手な成功推定や別の正本/Grantの創設をしない。これらは既存OwnerのQualifierに沿った**表示要件**であり、Desktop独自の新enumや認可APIを宣言するものではない。対象の存在・参照数・診断から非公開情報を推定できないよう#2516の開示契約を適用する。
+
+### 0.2 実装を一巡させる代表作業：参照→固定→AI依頼→修正候補
+
+一つの公開合成Workspaceと同一の独立Expectedを用いる。最初から編集・AI送信を全部実装する必要はなく、**各段階が前段の資格を不正に引き継がない**ことを比較する。
+
+1. **Find**：既存CLI `catalog/inspect/trace/source-index`（利用可能な正規入口）から一つのData/Function Subjectを一意に見つけ、Source・Revisionと参照範囲を表示する。未保存Bufferは別Versionとして持つ。該当0件、同名複数、部分索引を区別する。
+2. **Navigate**：Definition→Reference occurrence→Back/Forwardを同じSubjectで行う。参照数0は完全性・調査範囲が証明されるまでは「未使用候補」。表示順、Graph座標、描画Edge IDを意味Identityにしない。
+3. **Pin**：明示したSubject Intentを固定し、Focus/検索/Tab変更後も維持。別Workspace同FP、A→B→A、旧Replyで現在資格は要再確認。正式Relation occurrenceを持たないEdgeはPin unsupportedを維持。
+4. **Compose / Preview**：固定対象に関連/比較/除外、Scope、参照Source/SHO片、指示を明示的に加える。外部HarnessのRecipient・実送出予定byte・Grant・版をプレビューする。ここまでは外部送信しない。空のRequired集合、欠落Reference、partial Closureを「全部安全」と表示しない。
+5. **Candidate / Review**：AIが示すQuick FixやUI編集案は候補であってAccepted Meaningではない。Sourceの一属性変更を扱う場合は#4533の値span・一意性・変更前値・版・操作別逆写像の条件を確認し、不足なら**read-only Preview止まり**。Source書込みは既存Acceptance、DB実Effectは別Ownerへ。
+6. **Reinspect / Return**：再Read/再Projectionで、対象・Reference・UI Binding・警告・未解決を比較。Source/Document/Meaning/Artifact/Effectは別々の結果資格とする。古いAI応答やWails Windowの後着結果を現在操作へ自動Applyしない。
+
+最初の一巡の対象は**Find→Navigate→Pin→Compose Previewまでのread-only**に限定する。AI送信、Source Write、DB/Script実起動、SHO保存は、既存Ownerが実資格を実証した場合にだけ段階的に接続する。
+
+### 0.3 実装担当へ渡す最小単位と受入の停止条件
+
+| 入口 | 最初に実行すること | 終了条件と意図的にしないこと |
+| --- | --- | --- |
+| **E0 + N0** | #3788/#1124が実Workspaceの`catalog/inspect/Map/Locate/source-index`を同Source版で照合し、未保存Buffer、Occurrence、参照Coverageの実在/欠落を記録 | ED-01〜04/10とNAV-01〜03をHeadlessで独立Expectedと照合。ない値span/Relation IDをUIで創作しない |
+| **B0** | #4515がWorkbench Source TypeScriptにSubject Pin Intentと再資格化を接続 | PIN-S0-01〜07、NodeだけPin可。Canvas/描画Edgeから業務Relationを確定しない |
+| **C0** | #4479/#2516/TAIがPin Subject＋関連/比較/除外の用途限定Projectionと**Mock送信Preview**を試す | Intent/Source/Grant/Recipient/予定byteを比較。ここでは実Harness送信・Result受入・自動Applyを主張しない |
+| **V0** | #2497/#4533が一属性だけ、Parser由来値span＋typed changeの候補を確認 | 不適格操作のSource byte変更0。正式Acceptance/Owner意味受理/GrantのE2Eは別試験 |
+| **P0 + W0** | #1177/#2600で処理段別に計測。#3421/#1824で同Fixtureを実Wails→IPC→Application APIへ | full結果とpartial表示を区別し、actual OS、Headless、合成のEvidenceを別票記録 |
+
+E0/N0/B0は独立に進行可能。C0はPinの一意性と現在資格に依存するが、Mock Previewは外部Harness実装を必須としない。V0のSource書込みをC0の成立条件にしない。N0の局所参照表示を待たずに#2586/#1251の実Provider P0を進める。各実装の失敗結果は元Issueに返し、§0はOwnerを置換する管理表にならない。
+
+### 0.4 設計へ戻す判断は四つだけ
+
+- **同一対象の解決不能**：必要なSource-backed Definition/Reference Occurrenceまたは値spanが無い。Decoder/Readerの欠落を新しいStudio索引で推測補完しない。
+- **完全性の不明**：未ロードPlugin・動的参照・部分Read・UI/DB依存の欠落。read-only局所表示を許容しても全件Renameや「影響なし」を許可しない。#4518/#4535のB2C Native一フィールドの段階検証と同様、`affected / scoped-unaffected / unknown`を分けるが、その限定的な進捗を一般GUI Mappingの実装済みとみなさない。
+- **現在資格の不明**：Source/Grant/Disclosure/Artifact/Window epochが不一致または未取得。プレビュー済みの情報をそのまま外部送出・適用しない。
+- **性能上の実測失敗**：Startup/入力/NavigationをPlugin数・Index cold/warm別に測り、正確性を保ったまま既存Indexの再利用・Scoped Queryを比較する。原因未測定の全体的な新Cache/Indexerを先に作らない。
+
+**レビューの完了条件**：実Source＋同版Fixture＋独立Expected＋actual Producer/Consumer＋結果資格（PASS/FAIL/NOT RUN/unsupported）の一組が少なくともE0/N0またはB0で確認できること。設計追記やPRを開いた事実だけでこの条件を達成したとみなさない。現時点では本節の統合シナリオの実Wails/実AI/実DB E2Eは**NOT RUN**。
+
+---
+
 ## 1. 位置づけと判断済み前提
 
 - **TEI Studio**はData/Function/Business三視点、Data Context、Source/Meaning、DBクライアント、Plugin、テスト、SHO文書機能への統合Workbench。
