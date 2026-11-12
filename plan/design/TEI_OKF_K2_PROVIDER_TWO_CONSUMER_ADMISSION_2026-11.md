@@ -118,3 +118,43 @@ Provider契約はCapability/Offer/Binding/Selection/Build/Invoke/Receiptの段�
 2026-11-12確認：本PRの旧exact HEAD `07d68486c9ef814e23a2fde737762f20e275ffc2` に対して、[TEI PR・main健全性確認 #43147121828](https://github.com/hat47x/tei-platform/actions/runs/43147121828) と [TEI Cache Full vs Incremental Verification #43147121814](https://github.com/hat47x/tei-platform/actions/runs/43147121814) は**completed/success**。この証拠は当該HEAD・当該CIに限定し、後続コミットの成功、K2実Provider、三要素分析法の正式受理、DSLの完成を証明しない。
 
 **次のゲート**：P0の実Call Siteマトリクスを現mainのコード・テスト・固定SHAで埋める。K2-Aに必要な「選択B→実Load B→実Invoke B→独立Expected」を一つの実Attemptで確認できない限り、K2-AをPASSにしない。
+
+
+## 2026-11-12 検証計画の収束：独立Oracle・生成AIハーネス・段階的な正式採用
+
+### 受入を自動化する前に「独立Expected」を固定する
+
+テストDSLと生成AIによるテスト拡張は、同じ実装からExpectedを逆算してしまう循環を避ける。固定Fixtureの原Byte・仕様上の制約・Ownerが受理した範囲・外部Reference Readerの観測を**別々の根拠**として扱う。上流Reference Readerに既知のGapがあれば、上流が受理したことをOKF仕様適合とみなさない。
+
+一件目の独立Oracleは、(a) Provider A/Bの選択、(b) 実Invoke ID、(c) Source/Manifest改訂、(d) Consumer A/BのReceived集合、(e) Required集合、(f) current Grantを入力とし、`PASS/FAIL/UNKNOWN/NOT RUN`を出す**read-onlyの検証器**として設計する。実Providerを実行する経路とOracleの判定ロジックは分離する。Oracleが同じRuntime結果をExpectedとして採用した場合は不合格。
+
+### 受入票の粒度と機械可読な試験DSL
+
+| 契約単位 | 最低限の検査 | 誤判定を防ぐ条件 |
+| --- | --- | --- |
+| Source/Reference | identity、raw digest、revision、scope、read status | stale/unavailable/partialをfreshへ自動昇格しない |
+| Structure | type、source span、node/edge identity、NULL/欠損、parser pin | 見た目の一致で同一構造としない |
+| Provider | Capability、Offer、Selection、Load、Invoke、effect class | 宣言上のProvider IDを実Call IDとして流用しない |
+| Consumer | TEI/SHO別のreceived、unsupported、missing、partial | 二つの別CI成功を同一Attemptとしない |
+| Authority | Owner、Audience、current Grant、Disclosure、Effect | AI提案や古いGrantを現在の許可へ昇格しない |
+
+試験DSLの標準化では、表形式の近傍テストを入力とし、内部表現は独立Expectedと実Observationの二系統を保持する。K2のためだけに新しい専用DSLやPolicy Engineを先行実装しない。
+
+### AIハーネスによる実装支援の安全な責務
+
+DSH、Codex、Claude Code等のハーネスは共通の選択対象・Source Scope・Tool Contract・Receiptを通して等価に扱う。ハーネス固有の実行手順はAdapterに隔離する。AIに実装やテストを委任しても、**Ownerの業務意味受理、Current Host Grant、正式Publish/DB Effectの許可を自動で得たことにはならない**。
+
+生成AIが検証コードとExpectedを同時に生成した場合は、独立性を満たさない可能性を診断する。AIが作った候補はDraftに留め、仕様・固定Fixture・反例から別経路で照合する。対象Selection ContextはSource ID/Revision/Byte span/semantic targetを固定し、GUI操作で偶発的に選択が解除されても勝手に対象を変更しない。
+
+### P0〜K2-Eの具体的な作業分割と停止条件
+
+1. **P0a（実装探索）**：現main SHAを固定し、`Capability→Offer→Selection→Build/Load→Invoke→CLI Reply`の実Call Siteをファイル・行・テストで列挙。見つからない辺を明記。
+2. **P0b（独立Oracle）**：Fixture/Required/ExpectedをRuntimeから独立に固定し、選択B→A実Invoke、正常空result、部分配送、Source-only driftの最低4負例を先に定義。
+3. **K2-A（TEI実呼出し）**：既存Provider契約を用い、選択B→実Load B→実Invoke B→CLI実受領を一Attemptで観測。静的選択やmockのみなら不合格。
+4. **K2-B/C（SHO実呼出しと閉包）**：SHO private側で同一Providerを実Invokeし、TEIとSHOの各Receiptを独立Expectedに照合。権限境界を維持。
+5. **K2-D/E（敵対的・拡張検証）**：A/B誤呼出し、Source/Manifest 2×2改訂、ABA、Grant変更、partial、2 Provider×2 Consumerの4 exact tuple、CLI/Studio限定Parityを実行。
+6. **Owner採否**：F0/F1/F2、原方式との差分、K2の性能/効果/リスク、正式Plugin契約を別々に審査。K2の限定PASSを正式製品導入へ自動昇格しない。
+
+### 証拠の鮮度
+
+直前HEAD `d141bd8c6320c5823625feee6b546c919f0a38b2` のCache Full vs Incremental CI [#43151569560](https://github.com/hat47x/tei-platform/actions/runs/43151569560) は**completed/success**。Repository Health CI [#43151569576](https://github.com/hat47x/tei-platform/actions/runs/43151569576) は確認時点**in_progress**。この後のコミットについてはCIを改めて確認すること。**P0a/P0b、K2-A〜E、正式Oracle、Owner受理はNOT RUN**。
