@@ -588,3 +588,32 @@ Catalog／Validate／Map／Locate等が同一fixtureを別Loadする場合、Fin
 **実証順**：P0は#4392のexact-head CIと#1124の実Workbenchでの旧画面・後着応答拒否を既存担当で継続。P1は実Catalog／Map／Locate／Traceの同一Source対照から、上記の問い相対のread-only表示・限定Evidence JoinをConsumerに接続する。Build・ETL・Subsystemは既存Ownerが実取得したEvidenceだけを再利用。P2は[#2018](https://github.com/hat47x/tei-platform/issues/2018)の同一Task／独立Expectedで、正答・false-qualified・Unknown保持、調査／編集／再試験時間、人手／Tool費用を比較する。Studioの図表完成を業務実Read／実Provider選択・Invoke／Self-buildの新Hard Gateにしない。抽象化で認知・検証負担が増えるなら限定read-onlyへ戻す。
 
 **資格の上限**：この章は設計候補で、STQの成功、実Studio／Wails・Production Disclosure／Grant、実Provider／DB、Owner Meaning、認知負荷削減は未実証。既存PRの異なる局所PASSを一つの製品E2E成功に合算しない。
+
+### 16.6 2026-11-12 実StudioのProducer→Consumer切断点（main静的照合）
+
+**固定main** ea9e4560a835323c1d6d748486216b9ea011a965。確認対象：internal/operations/model_location.go、model_map.go、model_catalog.go、cmd/tei-studio/main.go、assets/client.mjs／main.js／preview-scope.mjs、internal/studiohost/command.go。この節は設計・受入候補であり、コード変更・実画面実証ではない。
+
+- **既存Producer**：operations.LocateWorkspaceはloadCatalogReadの一回のWorkspace LoadからSubject／親・子・兄弟／typed Incoming・Outgoing、Total／Omitted、Coverage.Derived／NotDerived、Validation／Attention、World・Index・ModelRevisionを返す。これは他Operationとの同一Read Attempt・FS原子的Snapshotではない。operations.MapWorkspaceは別のread-only部分投影で、Coverageはpartial-projection。
+- **切断点**：現StudioBridge／assets/client.mjsが公開するのはCatalog／Validate／Inspect／View／Command等で、MapWorkspaceとLocateWorkspaceの公開メソッドはない。assets/main.jsにも対応する実表示入口がない。Operationの存在だけで実Studio受信を主張しない。**初回はLocate-first**で一つの実Relationをread-only表示し、Graph Rendererや第二Model Storeを先行実装しない。
+- **Validation**：現mainのMapWorkspaceはCatalogWorldの後にValidationを設定しないため、Map埋込Catalogの初期値をValidation失敗・成功の実根拠にしない。[Draft #4392](https://github.com/hat47x/tei-platform/pull/4392)が既存Producer側の修正担当。Locateは一回のcatalogWorkspaceLoadedでValidationを構成するが、それでも外部Provider・Owner Meaning・現在Grantを証明しない。
+- **鮮度**：assets/preview-scope.mjsのcontext／sequenceは、画面の入力・Workspace変更で旧Promiseのpublishを拒否する仕組みであり、外部Source／Plugin／Policy／Grant変更の自動観測ではない。既描画DOM／ARIA／AI Contextも自動撤回しない。観測不能期間の即時失効を保証せず、再読取と別Ownerが提供する有効な失効通知を区別する。
+- **Commandの資格**：StudioBridgeにはPlan／Execute系が存在する。internal/studiohost/command.goが扱うのはreference executorと非永続MemoryStoreで、画面由来allowed一覧に対するreference authorizer（空一覧ならreference-allow-all）を使う。ReadOnlyという実装名や画面のExecute成功を、正式な本番Grant／実DB Commit／Business Completeの証拠にしない。mode／durability／Effect／Receiptを別々に表示する。
+
+### 16.7 同一Workbenchでの最初の縦切り（既存Ownerへ渡す受入）
+
+**対象**：公開reference/workspaceの semantic-relation:sales.order.lines 一件。既存[#3865](https://github.com/hat47x/tei-platform/pull/3865) Model Locateと[#3866](https://github.com/hat47x/tei-platform/pull/3866)のtyped Map限定照合を再利用。Ownerは[#1124](https://github.com/hat47x/tei-platform/issues/1124)のConsumer実接続、[#1824](https://github.com/hat47x/tei-platform/issues/1824)の既存Workbench技術資産。Pin／Focus／Transient Selectionの契約は[Draft #4473](https://github.com/hat47x/tei-platform/pull/4473)／[Draft #4479](https://github.com/hat47x/tei-platform/pull/4479)に委譲し、第二Storeを設けない。
+
+1. **Transport**：既存許可Workspace IDから既存rootを解決する薄いread-only Locate Adapterを使う。任意のfilesystem path・新Hostを公開せず、Subject kind/idとlimitを正確に渡し、失敗を既存分類へ委譲する。実CLI／Go Operationで応答できたことと、実Wails/Browser Consumerが同一要求・結果を受領したことを別に記録する。Hostは現実のAdapterであり、TEI全体の必須アーキテクチャにしない。
+2. **View**：親Data→Relation→参照先Data、SourceStatus、typed role、Validation／Attention、Coverage.NotDerived、Total／Omitted、観測Revisionをread-only表示。Catalog Validation NGでも観察は許すが、編集・実行権限に昇格しない。公開可能なSource／診断だけを表示し、privateな存在・件数を漏らさない。
+3. **Staleness**：Workspace／選択／Qの変更による旧応答後着拒否と、既表示の資格撤回は別assert。Source移動／A→B→A／Grant失効をProducerから実観測した場合の再資格化も別assert。実観測のない変更はunknownのまま、「常に最新」を名乗らない。
+4. **Editing**：一意のSource Anchor／Revision、可逆なtyped patch、Preview、Shared Acceptance、適用後の独立Readbackが成立するまでは図面編集を完成扱いしない。実Business Effect／SHO Writer／AI外部送出は別Ownerで検証。
+
+| Case（新規試験は全てNOT RUN） | 仕込み | 独立Expected／担当 |
+| --- | --- | --- |
+| STQ-09 | Go Locate成功、Studio BridgeにLocate未公開 | Producer成功と実Workbench受領を混同しない。#1124／#1824 |
+| STQ-10 | Locate limit=1、未導出のQuery依存あり | Omitted／NotDerivedを保持し、非表示の辺を不存在としない。#3865／#1124 |
+| STQ-11 | TypeRef Validation NG、Relationはindexed | Navigation成功＋Validation NGを並記し、編集・実行不可を維持。#4392／#1124 |
+| STQ-12 | Source移動またはGrant失効を観測、旧Locate応答が後着 | 後着拒否と既描画撤回を独立検証。未観測期間の即時失効は未証明。#1124／#2516 |
+| STQ-13 | Reference Commandのallowed入力／MemoryStoreを変更 | reference mode・非永続性を保持し本番認可・実DB Effectを主張しない。#2997／#1124 |
+
+**資格と優先**：P0は#4392の既存Validation修正のexact-head照合と#1124の安全なSelection、P1は上記Locate-firstの実Consumer受領、P2はSource逆編集と問別の認知負担を検証する。実Wails／WebView／実DB・Provider、Current Disclosure／Owner Acceptance、原子的な複数Read、Source watcher、STQ-09〜13の新試験はNOT RUN／NOT PROVEN。別Graph正本、Runner、Host必須化、Verifier、Registryを追加しない。
