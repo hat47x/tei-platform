@@ -139,11 +139,11 @@ func runThreeElementCRUD(args []string, out io.Writer) (int, error) {
 		OK:      true,
 		OKScope: "projection-produced-only",
 		Result: struct {
-			SchemaVersion                string                         `json:"schemaVersion"`
-			Rows                         []threeelement.CRUDTable       `json:"rows"`
-			StructuralOK                 bool                           `json:"structuralOk"`
-			CRUDConflictStatus           string                         `json:"crudConflictStatus"`
-			ContradictoryCRUDDefinitions []threeelement.CRUDDefinition  `json:"contradictoryCrudDefinitions,omitempty"`
+			SchemaVersion                string                        `json:"schemaVersion"`
+			Rows                         []threeelement.CRUDTable      `json:"rows"`
+			StructuralOK                 bool                          `json:"structuralOk"`
+			CRUDConflictStatus           string                        `json:"crudConflictStatus"`
+			ContradictoryCRUDDefinitions []threeelement.CRUDDefinition `json:"contradictoryCrudDefinitions,omitempty"`
 		}{
 			SchemaVersion:                "tei.three-element.crud/v0",
 			Rows:                         rows,
