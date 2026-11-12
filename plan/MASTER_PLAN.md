@@ -330,6 +330,31 @@ SQL/NoSQL/ログ等のリバース結果は、**Physical Observation→Structura
 **責務と停止線**：REAの詳細な受入票・独立Expected・最新状態の正本は[#3394の2026-11-12横断追補](https://github.com/hat47x/tei-platform/issues/3394#issuecomment-6813994847)。共通API=#1158/#3419、Provider実Call=#1251、Source/Context=#3262、実Function Read=#2586、DB移行=#4125に帰属。第二Parser/Host/Registry/Meaning Ledger/移行Gateは作らない。新規Consumer実E2E・正式Source Loader・実DB/Owner受理は**NOT RUN**。既存P0の一Function実ReadとPlugin-first実Consumerを、REA T1-B/SHO完成でブロックしない。
 
 
+### REA受領から編集までの変更伝播規約（2026-11-12、#3394×#1124×#1126×#3270）
+
+**対象を三つに分ける**。①REA／外部DB Reverseの`Observed Schema`、②TEIで編集・受理する`Table Definition`、③Table Definitionを写像した`Data Model`は、同じ名前でも別の出典・版・適格性を持つ。実DBとの差分は同期候補であり、**外部観測の欠落やREAのpartialをTEI定義の削除として扱わない**。正式な`Table Definition`の変更は、その同一版に束縛されたData Model投影と、機能モデルUIのBinding・CRUD・Query参照・SHO引用へ**変更影響**を通知する。外部REA Node/Edge IDと正式TEI要素ID、Canvas上のOccurrence IDを混用しない。
+
+**GUI/CLI共通の操作意味を固定する**。画面上でUI項目を追加しても、テーブルや列は自動生成しない。必要なら「新しいテーブル項目を作成して結び付ける」を明示的に指示でき、Studioの操作とCLI/CUI・AIハーネスからの操作提案は**同じ型付きIntent・Preview・診断・更新前Revision検査**を通る。明示された編集によってTEI Table DefinitionのField IDを削除したときは、Data Modelの対応項目を同じ編集結果から消し、機能モデルのUI項目は**残したままBindingを解除し未マッピング警告**を出す。元のFieldと同名の別IDへ自動付替えしない。参照するQuery・Rule・CRUD・画面処理・文書・固定Selectionには影響／失効を表示し、削除された列への暗黙保存は拒否する。変更前に依存先をPreviewできるようにするが、Authoringでの削除が**実DB DDL Apply済み**であることは意味しない。
+
+**実DB側への反映は別のEffect**。Workbench／Migrationの既存`Schema Diff→Plan→Apply→独立Read-back`を再利用し、破壊的DDL、対象Alias・Principal・Grant・読取時点と履歴は別資格で確認する。DB側で列の不在が観測されても、TEI定義・Function UI・Owner受理は自動変更せずDriftとして示す。逆にTEI定義を削除しても、実DBはApplyと再観測が済むまで`Target Observed Actual`として旧状態の可能性を保持する。Modelerの表示一致やREA EvidenceはDDL・DB Read・Meaning受理の代替ではない。これは過剰な承認プロセスの導入ではなく、通常開発の変更確認と生成AIの誤推定防止である。
+
+**独立Expectedと偽PASS防止（仕様候補、未実装）**：
+
+| Case | 操作・反例 | 必ず成り立つこと |
+| --- | --- | --- |
+| REA-MAP-01 | 機能モデルにUI項目だけを追加 | Data Model／Table Definition／実DB列は増えない。UIは未マッピングを表示 |
+| REA-MAP-02 | 明示操作でTable DefinitionにFieldを追加してUIへ結合 | 事前Previewと版照合を経て、Field IDとUI Bindingが一致。物理DDLは未適用扱い |
+| REA-MAP-03 | Table Definitionの参照中Fieldを削除 | Data Model対応項目を削除、UI自体は存続しBinding解除＋診断。旧FieldへのWrite拒否 |
+| REA-MAP-04 | 削除済みFieldと同名の別IDを再作成 | UIの自動再結合なし。Pin Selectionも旧IDを指し、別対象へ黙示変更しない |
+| REA-MAP-05 | REA／実DB Reverseのpartial・permission-denied・0件 | 不在を削除と断定せず、Observed差分・unknownを保持 |
+| REA-MAP-06 | 同一Field IDのrenameと、別Fieldへのreplace | renameはID基準でBindingを保持、replaceは明示対応付けがなければ未マッピング |
+| REA-MAP-07 | TEI定義を削除したが実DBのDROPは未実施・失敗・結果不明 | Definition/Projection更新とDBのActualを区別し、移行成功の偽PASSなし |
+| REA-MAP-08 | 旧Revisionで作成したUI/AI編集案をSource変更後に適用 | staleを検出し再Preview／再指定を要求。旧選択の自動付替えなし |
+| REA-MAP-09 | 同じ変更をGUIとCLIから提案 | 同じField ID・影響集合・診断意味・効果境界を返す。GUIだけの隠れた更新なし |
+| REA-MAP-10 | SHO著者が説明文を編集した後にField削除／REA再解析 | 文書引用はstale表示、著者文の無断書換えはしない。正式Source再解決を別確認 |
+
+**責務と実行順**：定義とData Modelの連動・Modeler投影は#1126/#1124、UI Binding／変更逆写像は機能モデルと#2500、外部観測とREA入場は#3394、実DBとの差分とDDLは#3270/#4125、Source Revision／失効とCLI・AIの固定選択は既存Operation契約、SHOは#4317/#4467の再投影に配賦する。最初の実装出口は`REA-MAP-01/03/04/05`を同じread-only Inspector・編集Preview上で独立Expectedに照らすこと。その後、明示Add/Edit・GUI/CLI一致・実DB Read-back・SHO再読込へ進む。**原典の三要素分析法に忠実な機能と、TEI独自の編集支援を区別する**。本節はPlanであり、実製品E2E・Owner意味受理・DDL適用は**NOT RUN**。
+
 **検討中の横断追補（DBアクセス・Query/2way SQL）**：対象DataSourceの既存Binding解決、DB別Native SQLの選択規約、SQL編集時の診断と分岐検証、異種DBでの意味同値性を、[DBアクセス・Query選択・2way SQLの最小適合計画](https://github.com/hat47x/tei-platform/issues/2622#issuecomment-6772875802)で小さな実証へ分解する。#2611・#2622・#2387・#2667に既存の責務を残し、新しいCore API・正式DSL構文・実DB対応の採用・完了を意味しない。
 **2026-11-09／Product Queryの物理入力乖離を解消（独立Source Fixture段階）**：[Workbench設計§22](design/DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)と[隔離PG Product Fixture](../examples/data-source-workbench/README.md)に、既存`postgres_seed.sql`の`sales_order`4列と、実`order_entry.recent_orders` SQLが要求する`public.orders`5列＋`:from`の**物理Schema不一致**を反映した。従来F-01〜10を壊さず、専用`recent_orders_product_seed.sql`を別Sourceとして追加し、3行／境界一致2行／後方0行の独立Source-static ExpectedをGoで判別する。**これは実PostgreSQL接続・Provider Invoke成功ではない**。最初の未成立実行辺は、固定Function/Queryの実Consumed SQL+args→Alias/物理Instance/Provider→実Rowset/Function Data Context。Ownerは#2586、実ProductのCLI/Studioは#1251、Schema適用は#2892。main #3540の静的Inspector S2-referenceは実CLI/Wails経路まで前進したが、外部Plugin Build/Grant/2×2実BOMを証明せず、異質JSONLは後続比較とする。新Gate/Host/Query正本なし。
 
