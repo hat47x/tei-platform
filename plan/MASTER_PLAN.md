@@ -10,7 +10,7 @@
 
 関連文書は次のとおりです。
 
-- [Script/Function起動の製品検証と直接テスト](design/SCRIPT_LAUNCH_ENTRY_TEST_QUALIFICATION_2026-11.md)：#4495のGo製品Binary/CLI・共通API二入口を最短P0-Lとして実Provider実呼出しまで検証する。DSL/OKF近傍の要素直接テストと#1180 Driver Scenarioの横断テストを分け、独立Expected・Source/Artifact/Host作用/Effect/受領は既存Ownerで検収する。設計・作業順の整理であり、Product Q2・実DB・全Target同値は未実証。
+- [Script/Function起動の製品検証とGenerator接続](design/SCRIPT_LAUNCH_ENTRY_TEST_QUALIFICATION_2026-11.md)：#4495のGo製品Binary/CLI・共通API二入口による実Provider呼出しを最短P0とする。DSL/OKFの要素直接テストと#1180 Driver Scenarioの結合テストを分ける。後続では標準Generatorの選択・設定をAIによる新規生成より優先し、案件固有差分、生成物の所有競合・順序・部分失敗、独立Expected、ファイル/要素単位レビューを#1016/#951/#1121/#2514へ分担する。Source/Artifact/実Host/Effect/受領は各Ownerが検収する。設計と作業順のみで、Product Q2や実DB/全Targetの実証ではない。
 - [理想の利用像を製品の受入へつなぐ計画](workstreams/PRODUCT_COMPLETION_PLAN.md)と[製品設計](design/PRODUCT_COMPLETION_DESIGN.md)は、設計書の編集、実接続、標準構成、帳票、複合表現、分野拡張、運用・費用をG01〜G71の作業へ結ぶ。最新の型・表現、DSL、ETL、プラグイン管理の段階計画へ接続し、申請等の一巡から添付、検索、通知、外部契約、継続イベント、デバッグ、利用者の管理を補う。評価は [#3796](https://github.com/hat47x/tei-platform/issues/3796)と各担当Issueで行い、既存のヘッドレス実証からGUIへ進む順序と、実Readを含む現在の主線を保つ。
 - [Issue #2586](https://github.com/hat47x/tei-platform/issues/2586#issuecomment-6773141846) ：Plugin・Function実Read・三視点Model Map・実Effect・Build・Consumerを、**宣言／実選択／実入力／実呼出し／受領／現在資格**で区別する横断受入計画。§9はS2-reference（#3540）・限定L2-b（#3785/#3795）・限定L3・Hookの実績を反映。**S2-product／Function R0／全体G4は未資格**。各担当は#1251/#2586/#2831/#1124/#2600等を維持し、新Gate/第二正本を設けない。
 - `product/`
