@@ -45,7 +45,6 @@ func TestSameNameConflicts(t *testing.T) {
 	}
 }
 
-
 // TestModelFingerprintPreservesAuthorityAndIgnoresItsOwnDigest pins both
 // invariants: calculating a structural fingerprint cannot remove the element's
 // authority limits, and storing the derived hash cannot change that same hash.
