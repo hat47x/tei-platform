@@ -98,3 +98,15 @@ func TestStrictInputAndStableReport(t *testing.T) {
 		t.Fatal("unrecognized input was silently discarded")
 	}
 }
+
+func TestRequiredUnknownLayerDoesNotBecomeClosedCoverage(t *testing.T) {
+	v := sample()
+	v.Nodes[2].Layer = "unknown"
+	r, err := inspect(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Coverage != "partial-or-unverified" || strings.Join(r.Unresolved, ",") != "pdp.offer-rule" {
+		t.Fatalf("unknown classification was counted as covered: %#v", r)
+	}
+}
