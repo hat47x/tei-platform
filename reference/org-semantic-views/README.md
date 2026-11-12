@@ -14,8 +14,11 @@ node --test reference/org-semantic-views/verify-acquisition.mjs
 node --test reference/org-semantic-views/verify-rule-footprint.mjs
 node --test reference/org-semantic-views/verify-query-dependencies.mjs
 node --test reference/org-semantic-views/verify-temporal.mjs
+node --test reference/org-semantic-views/verify-capacity-scenarios.mjs
 ```
 
+
+**2026-11-12 capacity/scenario pressure (ORG-CAP-01..05/07):** `verify-capacity-scenarios.mjs` reuses the existing `org-synthetic-r7` files with exact baseline `validAt=2027-06-15`, `knownAt=2027-07-01`. P1/A1=100, P2/A2=60, P2/A3=40, P3/A4=100 basis points yield 3 unique people, 4 Membership occurrences, D1=160, D2=140, total=300 (3.0 FTE under this fixture's unit convention). Seven Node subtests verify uniqueness vs membership count, JOIN double counting, a read-only P1 absence assumption, a P2 allocation-shift assumption, incomplete/unknown inputs, retrospective knownAt change, invalid occurrence/basis and lack of fixture mutation. Literal Expected is in the test file. **This is a synthetic closed-world calculation only; it does not validate actual database rowsets, live employee availability, grant/qualification, Case/Directive, TEI Product Query, Studio/SHO/Harness or Owner acceptance.**
 
 **2026-11-08 temporal pressure (ORG-TM-01..08):** `verify-temporal.mjs` reuses `source-fixture.json` and `source-fixture.mjs`, with sixteen Node subtests for concurrent Memberships, retroactive correction, half-open boundaries, Position overlaps, source-version ambiguity, incomplete period reads, historic known-time cuts, equal-label/different-cohort snapshots, and the separate historical-knowledge claims of an upstream source versus TEI's actual observation (ORG-KH-01..04). The single-/multi-incumbent choices are test-only alternatives: none is a TEI-wide business rule. Independent literal expectations are fixture-local; this does not test Native TEI temporal query, actual Provider/DB, current Tenant/Host Grant, or Owner meaning acceptance. Exact-head CI must be checked separately.
 

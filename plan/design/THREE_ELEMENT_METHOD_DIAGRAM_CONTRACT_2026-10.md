@@ -1259,3 +1259,45 @@ DMU-01〜09、他DraftのORG-MAP-01〜10（#4500）と期待値・入力を照�
 (1) G1で既存#2016の実Referenceを用いて同一Accepted SemanticとTargetの構成票が作れること、(2) G3で独立Expectedにより誤Generatorを確実に落とせること、(3)実際の選択GeneratorとBuild投入byte/成果物のSource帰属が#2595の範囲で確認できること、(4)そのうえで、必要なら#4198 R1/R4のGraph Patch→Source帰還→実Targetの限定縦断に進むこと。この順にClaimを高める。
 
 **状態**：G1/G3/G2は他Ownerの計画を引用する設計引渡し。Graph-firstの製品採用、#4544 GG試験実行、今回の実Go/CLI/Studio/Host/CI追加試験、Owner意味受理は**NOT RUN / NOT ACCEPTED**。本追補でP0実Provider/Function Read/Script起動の優先順位は変更しない。
+
+## 31. 実Provider Readの製品経路への昇格とStudioセルフビルドへの接続（2026-11-13）
+
+§25 S0・§26 A/D・§29 A〜Eの優先度を、[Draft #4539](https://github.com/hat47x/tei-platform/pull/4539)の**限定された実証成果**を踏まえて更新する。対象は#2586の一Function実Readであり、TEI Studio Desktopによるセルフビルドという最上位の製品目標へ、既存の#1824/#2831の契約を使って段階的に接続する。**新しいDB Provider/Query Engine/Studio Host/Build Graph正本は作らない**。
+
+### 31.1 実証済みの範囲と未接続の範囲を区別する
+
+#4539のPR提出者は、`order_entry.recent_orders`（`public.orders`、`:from`、5列）に対し、既存Driver/Environment束縛→PostgreSQL 16.15→Raw Rows→read-only Function Data Context→専用`tools/reference-browse-read`の別プロセス入口を試験したと報告している。正常取得、時刻境界、0件、NULL・列欠落、SQL Source改版、JOIN重複、RLS/列権限/マスキングを含む。GitHubで**当該Draft PRのCI completed/successを確認した**が、GitHub CI成功を外部PostgreSQL実試験の独立再現やmain統合に読み替えない。PR自体は**Draft・未マージ**である。
+
+| Claim | 現在わかること | 次に必要な証拠 |
+| --- | --- | --- |
+| Provider実Read | #4539の隔離PG16.15とDriver/Executorで限定実行。Environmentの選択・Query SQL digestが診断にある | PRを必要なレビュー・差分・CIで統合後、**同じSource/Providerを通常製品CLIで実呼出し** |
+| 実行結果の意味 | RowsetとFunction Contextへの変換。Coverageは`unestablished`、`EmptyJustified=false` | Rowsetの粒度・対象・RLS/DB接続の現在性を明示し、完全取得や不存在を**根拠なく主張しない** |
+| 利用者が使う入口 | 専用`tools/reference-browse-read`でJSON受領。**`cmd/tei`には未結線** | 現行CLI契約との競合解消後、実`tei` CLIで同一Query/型付き引数/拒否を検証（#4453/#4452/#4322と調整） |
+| Studio Consumer | Studio/Wailsからの同一Read・画面受領・現在Disclosureは未試験 | #1824の現行Bridge/Root選択へ限定read-only接続し、CLIと同一Result/Scopeを比較。Pinned Subject=実DB/Host Grantではない |
+| Studio self-build | 現行Go seed/既存self-build Reference・BuildPlanを再利用可能な候補 | #2831で**標準データ上の実Build Graph→TEI CLI/Studio代表Artifact→stage0/1/2**を独立受入。実Read成功だけで自動達成としない |
+
+**過去の「P0実Provider呼出しはすべて未実証」という一括表現を改める。** 局所・隔離実DBでの実Readには前進がある。ただし通常`tei` CLI、Studio、AI Harness、実業務Commitを証明しないため、§26のS0は依然製品Consumer経路での受入が必要である。#4539のQuery以外のX-TEA定義、SQL方言・DB Aliasも同じ資格へ自動拡大しない。
+
+### 31.2 次の実装引渡し：一つのReadを二Consumerへ
+
+| 着手順 | 実装担当・既存資産 | 最小検収と停止条件 |
+| --- | --- | --- |
+| R0a：既存基線を保全 | #4539/#2586、既存Environment/Driver/Function Context | 受理した一Functionと実SQL/Provider/Contextを固定。既存PG試験・独立ExpectedとSource digestを保持し、`tei`接続のための新Engineを作らない |
+| R0b：製品CLIへ接続 | #1251/#2586、`cmd/tei`既存契約と#4453/#4452/#4322 | `tei`実プロセスから同じQuery→Environment→Provider→Rowsetを受領。Provider未登録/Environment不一致/引数missing・NULL・型違いで**Executor呼出0**。返却が同値でもSelected B・Actual Aなら失格 |
+| R0c：Studio read-only受領 | #1824/#4515/#2586/#2516 | 同一Fixtureを現行Studio Bridgeで受け、CLIとのSource/Target/Attempt/Result/Scopeを照合。後着旧応答・Root切替・Grant/Disclosure未知を安全に区別し、UIに`complete`/書込み可能と偽表示しない |
+| R0d：Studioセルフビルドを別の製品受入へ | #2831/#943/#2620/#1063/#1121 | 標準Data/Role/Dependencyで表した実TEI BuildをGo seed/現行Adapterで実Artifactに変換、Artifact bytes・Toolchain・Source closure・再現性を確認。**R0b/R0cとは別の成功判定** |
+| 後続：実業務操作/異質Consumer | #4495/#1174/#1129/#4543 | Entry公開・Host current Grant・Effect/Receipt・外部Harnessを個別検証。ReadだけでWrite/Effectが成立したことにしない |
+
+R0bとR0dは並行に進められる。ただしStudio Desktopをセルフビルドする最終目標の検証では、**そのStudioが使用した実CLI/Bridge/ArtifactとBuild GraphのSource/Target/Toolchainが一致していること**を照合する。CLI、Studio、self-build各担当が新たに独立したSource/Plugin/Meaningの正本を持たないようにする。
+
+### 31.3 重要な独立負例（既存Scenarioへ接続）
+
+- **0行と完全不存在**：RLSや異なるDBで同じSQL/引数が0件/1件になり得る。単なる0行、ページサイズ未満、正常`Rows=0`を`complete`や`EmptyJustified=true`へ昇格させない（#4539・#2586 HJ-03/04）。
+- **NULLと観測不能**：列値NULL、列DROPによるSQLSTATE 42703、列権限拒否SQLSTATE 42501、マスキングView由来NULLは別事実。表示可能なNULLだけから原データの意味・存在を推測しない（§27.7・#2516）。
+- **宣言と実接続の差**：同じEnvironment名でも実DBのPrincipal/Schema/Version/Read-only Snapshotが異なる場合、`host-asserted`以上の帰属を宣言だけで保証しない。DSN/秘密情報はReceipt・AI文脈へ複写しない。
+- **GUIとCLIの差**：CLI成功後、Studioだけが古いWorkspace・Root・Sourceを参照する場合はR0c失格。AIへの固定対象選択もHost Grantではなく、結果開示は現在のPolicyで判断する。
+- **自己生成と自作検証**：#4544のGenerator G1/G3が生成した期待値を、そのまま#4539や#2831の実行成功の独立Expectedとして用いない。生成Artifactの同一ハッシュだけでは実行時選択・意味・Effectを証明できない。
+
+既存#1180/#2514のExpectedを再利用し、#4539のPG PQ正負ケース・#2586 HJ・#4515 PIN・#2831 SBを**別の正式テスト系列に複製せず交差参照**する。Source/World Revision、Query SQL digest、Environment/実Provider、DB観測範囲、Operation/Attempt、Consumer、Toolchain/Artifactを用途別に結合し、未取得は`unknown/unestablished`として残す。
+
+**状態**：#4539に記録された実PG/専用ツール実証は既存Draftの成果。本節はその限定成果と残差を計画に反映しただけである。今回の`tei` CLI接続、Studio Consumer、自身の実Artifactの全セルフビルド、実Host/Effect、Owner受理、および本書からの新規製品試験は**NOT RUN**。
