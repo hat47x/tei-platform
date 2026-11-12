@@ -1001,3 +1001,44 @@ StudioでUI要素を選択しAI/DSH系Harnessへ細かく指示する設計は�
 | **TEA-Q21** | 過去Action実EffectとConsumer Readbackが成功した後、Provider/DB snapshotを更新 | 旧Receiptは履歴のまま保全、新Attemptの成功・業務受理は未観測。現在のRowset/Writer閉包を旧観測で補わない |
 
 **責務・優先順**：P0は既存#1124／#3262の一Function・一Data Relation・一Business参照と、異なる二版／二Instanceのread-only比較。Source差の局所Readは既存#2516/#2626に照合し、#2586の実Provider初回Read・#1251のPlugin実消費を前提待ちで停止させない。P1で#1143/#2600の変更影響・Source再資格化を使用し、追加独立Expectedの採否は#2514/#4134、最終受理は#267、Self-buildは#2831へ引渡す。**本節は設計のみ**であり、TEA-Q15〜Q21の実行、実Studio/SHO、複数Instance実配備、実Provider・現Policy/Owner受理はすべてNOT RUN。新Core/DSL/Policy Engine/Proof Store/Universal Cache/Hostは導入しない。
+
+### 34.11 Legacy観測・Desired受理・Target観測の三要素比較（2026-11-12：採用前）
+
+**TEA固有の移行・再構築の問い**：既存のData／Function／BusinessはMethodの三観点（§34.1）である。一方、既存Source・実動作を知る**L=Legacy Observed Actual**、Ownerが選択した**D=Desired Accepted Meaning**、再生成先で確認した**T=Target Observed Actual**は**観測・権限の三つの別文脈**であり、三要素・三層に第3の27セルCanonicalを追加する設計ではない。[#3394](https://github.com/hat47x/tei-platform/issues/3394)のREA/X-TEA等の外部解析候補、[#1031](https://github.com/hat47x/tei-platform/issues/1031)のSource-faithful cross-view観測、[#4125](https://github.com/hat47x/tei-platform/issues/4125)のDB移行検収を**既存Ownerのまま**問相対に合成する。LやTのSource observationをTEI Accepted Sourceへ暗黙昇格せず、Dの宣言を実行済みの事実に変えない。
+
+| TEA観点 | L：Source／旧動作から観測 | D：受理する目標意味 | T：新しいTargetの独立観測 |
+| --- | --- | --- | --- |
+| **Data** | 旧Schema/実Row、旧Key・Relation候補、Nullable/履歴の観測範囲 | 業務Identity・Key/FD・Relation・履歴・値域・移行変換規則 | 実Schema／Rowset／Key集合・NULL・Multiplicity・履歴、Snapshot/CDCの独立読取 |
+| **Function** | 旧Function I/O・宣言CRUD、実行ログ／外部副作用があればその限定Evidence | 入出力・Failure・Effect・依存Function/Capability・必要な互換条件 | 生成Artifactだけでなく実Provider選択／Invocation／Effect／実Consumer結果 |
+| **Business** | Manual/External Step、Actor/Handoff、旧業務フロー候補、実施記録の有無 | 手順・意図的な変更・規則・責任・受理する例外／運用条件 | 人の作業・外部連携を含む実際の業務結果と、その観測／Owner判断 |
+
+**三者の対応は推論としての自動同一化を禁止**：L→DはSource/Artifact/Business Element間の**候補Mapping**と個別の採否、D→Tは生成・実現・観測の適合評価である。LとTの表示名・PK・Source IDが一致しても同じ業務意味とはいえない。逆に意図的な業務改善でLとDが異なる場合、L≠Tは自動で不適合ではないが、**明示的に受理された差分の範囲外で失われた意味**は検証対象のまま保持する。分割・統合・複数Role/Relation occurrence・Target別物理実現は多対多対応と曖昧さを残し、候補の一意化や旧Source TokenからのCanonical ID創作を行わない。
+
+**旧実装由来の観測の限界**：例えば[#1031](https://github.com/hat47x/tei-platform/issues/1031)のTaskAction→Function→IOTable CRUDは導出経路であって、旧Business Action固有の実Effectではない。同じ導出をTargetへ作り直してもL/Tの実Effect比較は成立しない。外部REAのread-only Evidenceが完全に受領されても、Accepted Meaning/現行AuthorityやSource/Runtime Closureとは別。#3394ではREA 6.7単一JSONと6.8 JSONL終端など**プロトコル版差の局所証拠**があり、Producer/Receiver完全性と意味変換を別に検収する。
+
+### 34.12 意味保存の義務は「三視点の対応」と「実行上の観測」を別々に扱う
+
+一つの業務問いQについて、Dが要求する**保存義務**を、Qualified Subject/Relation occurrence・適用時点・対象母集団・業務Key/Value意味・Function I/O/Failure/Effect・Business Manual/Handoff・許容された変更範囲・独立Expectedに戻れる参照の**組合せ**として表す。これは既存Requirement/Rule/Scenario/Evidenceの読取専用対応表であり、新DSL/Contract Kind/Proof Engineではない。業務Owner未受理のL→D候補はAccepted義務にならず、旧実装から未知のRuleを無言で推定しない。
+
+1. **Lの観測資格**：実Source/External Producer版、Raw/Result受領、Source Scope・Relation ID・必要Coverageを区別。構文/Source分析から旧Transactionや全Business Rule・全Writerの実在を推測しない。
+2. **L→Dの提案・差分受理**：Source候補とDのQualified Subject/Roleを相互参照し、欠落・統合・新規・意図的変更を説明する。Explicit Source Proposal/Shared Acceptance [#267](https://github.com/hat47x/tei-platform/issues/267)を経ず、外部ObservationをCanonicalに格納しない。未決や多対多はUnresolved。
+3. **D→Tの実現資格**：採用したMeaning/Rule/Target/Provider/ArtifactのPinと、生成・Build/Load/Invocationの実消費を区別。Artifact同byteやSource World FPだけでは実TargetがDを履行した証拠にならない（#2586/#1251/#2831）。
+4. **問い相対の独立比較**：同じData粒度/NULL/重複/時点、Function Failure/Effect、Business Manual/External Stepの必要集合と、旧新の実Attempt/独立Expectedを照合する。L/Tが別時点や旧新Client混在・CDC遅延下なら、同じSnapshotでないことを明示し、比較不能を等価にしない。判定は各Obligationの支持・反例・Unknown・許容差分に分け、全システムの単一Equivalent Booleanは採用しない。
+5. **Cutover/Owner判断は別**：[DB移行 #4125](https://github.com/hat47x/tei-platform/issues/4125)のExpand/Backfill/Validate/Cutover/Contract、[#1174](https://github.com/hat47x/tei-platform/issues/1174)のEffect/Receipt、[#2514](https://github.com/hat47x/tei-platform/issues/2514)の独立Oracleへ委譲する。TEAの図表・比較PASSだけでRelease、Runtime Grant、業務Meaningを採否しない。
+
+**禁じる推移律**：L観測→D候補のMappingと、D→Tの合成Projectionが共に成功しても、LとTの業務・実動作同等性を自動結論しない。両者は出発点のAuthority、必要なSource閉包、対象母集団、時点、実観測の性質が違い得る。同じGeneratorから作ったTargetとExpectedの一致は独立比較ではない。逆に、LとDが明示的に異なることは、D→Tの必要な観測を省く理由にならない。
+
+### 34.13 旧新の三要素比較に固有の反証（TEA-Q22〜Q29、追加試験NOT RUN）
+
+| ID | 対照 | 必要な判断と停止線 |
+| --- | --- | --- |
+| **TEA-Q22** | Legacy/Targetで同じPhysical PK、別の業務Key/FD | PK一致をDのBusiness Identity/FD保存の証拠にしない。意味に必要なKey対応と実Data検証は別 |
+| **TEA-Q23** | 旧TaskAction→Function→IOTable UをTargetにも再現 | Source経路の一致と旧新Action固有実Effect／Txの一致を区別。双方の未観測をPASSへ昇格しない |
+| **TEA-Q24** | Legacyに人手電話確認のStepがあり、新UIに対応Functionがない | Manual/External Actionを自動実装不能・欠落と断定しない。Dで受理された実施方法・責任・結果の保存を別照合 |
+| **TEA-Q25** | DがLegacyの旧規則から意図的変更を受理、Targetが旧挙動と異なる | L≠Tを自動FAILにも、自動改善成功にもせず、受理済差分と未受理差分を分ける |
+| **TEA-Q26** | 旧Data Relationが新Targetの2 Relationに分割、同名のLinkも残る | 旧ID→新ID一対一を発明しない。Mapping/Source/Role/関係端点を個々に証明 |
+| **TEA-Q27** | DB Cutoverで旧新Client並走中、CDC欠落・異時点Snapshot | 局所的なRow一致・Schema一致から全件移行成功を主張しない。#4125既存Ownerへ |
+| **TEA-Q28** | 外部REA 6.7単一JSONと6.8 JSONLで終端/部分受領が異なる | Protocolの受理資格とSource Observation、Product Typed Reader、TEA Meaningを分離。外部CandidateをAccepted Canonicalに偽装しない |
+| **TEA-Q29** | D由来のGenerated Targetと同じRuleから生成したExpectedが一致 | 非独立Expectedによる自己証明を拒否。別Ownerの固定/独立ExpectedでData/Function/Businessの必要Claimを比較 |
+
+**初回の狭い検収出口**：公開・合成の一つのLegacy Source観測（Business Step→Function→Data Relation）、一つのDのQualified Meaning/Rule候補、一つのTのread-only Function/Provider受領を、同一の問いQから別々に辿れるかを比較する。新Target実Effect・DB Cutover・Owner Meaning受理はその後の独立試験とする。#3394の外部REA Product入場、#2586実Function Read、#1124同一Studio Consumer、#4134/2514独立Expectedの進行を相互ブロッカーにしない。**§34.11〜13とTEA-Q22〜Q29は設計案、実試験／実GUI／実DB旧新比較／実Provider Effect／Owner受理はNOT RUN。** TEA専用Reader、第二Canonical、Migration Engine、Host、Truth/Proof Storeを新設しない。
