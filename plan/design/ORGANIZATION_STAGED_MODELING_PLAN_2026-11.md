@@ -816,7 +816,7 @@ WU-11〜14をWU-06〜10の「全部完了待ち」にしない。前段の**必�
 
 #### 10.10.1 参照一覧を信頼できる条件
 
-1. **基礎の誤りを種類ごとに受入**：#4475のFingerprint入力破壊はmain統合PR #4507、同Kind同IDの重複診断と曖昧なIndex entry拒否はmain統合PR #4524で限定修正済み。ただし、全Derived/CLI/SHO Consumerが不適格入力を排除する保証は別。#4472のData索引取り違えはDraft PR #4513で3箇所を限定修正する提案がある一方、明示CRUD-only脱落・矛盾をOK表示する問題は未解決。独立正負試験とProduct Consumer結果を確認するまで、CRUD参照数・未使用表示を全体として正しいと断言しない。
+1. **基礎の誤りを種類ごとに受入**：#4475のFingerprint入力破壊はmain統合PR #4507、同Kind同IDの重複診断と曖昧なIndex entry拒否はmain統合PR #4524で限定修正済み。ただし、全Derived/CLI/SHO Consumerが不適格入力を排除する保証は別。#4472のData索引取り違えはPR #4513（squash merge `7e36f85ad0f23aed0bf8f8ecec47c7b160574a3d`）で3箇所を限定修正しmain統合済み。明示CRUD-only脱落・矛盾をOK表示する問題は未解決。独立正負試験とProduct Consumer結果を確認するまで、CRUD参照数・未使用表示を全体として正しいと断言しない。
 2. **参照の種類を混ぜない**：宣言上の参照、型付きRelation、Function→Data CRUD、Business Task→Function、SQL WHERE/ORDER/EXISTS等の非出力依存、UI Binding、SHO引用、実Provider Readは別種。逆引きは有向Edgeの逆方向検索であって、業務上の逆向き依存関係を意味しない。
 3. **対象の同一性**：Workspace、Kind、Stable Subject ID、Relation occurrence、Source revision、Source位置と必要なvalid/known/Scopeを保持する。Label、図面座標、同じ始点・終点、描画用Edge ID、単独のSource offsetを意味IDとしない。参照の出現位置が複数ならoccurrenceを区別。
 4. **0件とunknownを分離**：指定したSource/Provider/Plugin・Dependency Closureを必要十分に取得し、未解決参照がなく、**指定範囲について全件検査できた場合だけ**「参照数0」「その範囲で未使用候補」と表示。partial、permission denied、unavailable、未解析のDynamic ReferenceやPluginには「不明／未検査」を付す。0件、空配列欄の欠落、対象不存在、非表示、非開示は別状態。
@@ -852,16 +852,16 @@ WU-11〜14をWU-06〜10の「全部完了待ち」にしない。前段の**必�
 
 | 既存成果・Owner | 実際に確認された範囲 | 組織C1の実行に残るもの |
 | --- | --- | --- |
-| #4507/#4524 merged（#4475） | Fingerprint入力破壊・自己参照の限定修正、およびData/Function/Businessの**同Kind同ID重複をエラーにしIndexから除外**する修正はmain統合済み | Derived/CLI/SHO等の全ConsumerがValidate結果を必ず評価する保証、現在Disclosure/Grantは別。#4514 Source-only driftはDraft |
-| #4513 Draft（#4472） | CRUD表/Function-Data参照/GapのData索引3箇所を修正するコードと独立対照テスト | **未マージ**。明示CRUD-only行、矛盾定義、OK誤表示を修正したことにはならない。実Go/CLI/CIの合否は別取得 |
+| #4507/#4524 merged（#4475） | Fingerprint入力破壊・自己参照の限定修正、およびData/Function/Businessの**同Kind同ID重複をエラーにしIndexから除外**する修正はmain統合済み | Derived/CLI/SHO等の全ConsumerがValidate結果を必ず評価する保証、現在Disclosure/Grantは別。#4514のSource-only drift修正もmain統合済みだが、Source再束縛と現在Disclosure/Grantは別 |
+| #4513 merged（#4472） | CRUD表/Function-Data参照/GapのData索引3箇所を修正し、Data/Business同名IDの独立対照テストを追加。該当HEADのGitHub Actions 5 workflowがSUCCESS、main squash `7e36f85ad0f23aed0bf8f8ecec47c7b160574a3d` | 明示CRUD-only行、重複定義の後勝ち、矛盾診断/OK誤表示、Product全Consumerの完全性は別。旧索引の修正をCRUD全体のPASSにしない |
 | #3906 closed、CLI JSON契約 | trace.unresolvedは**返した行の未解決数**、projectionUnresolvedは**グラフ投影全体で落ちた参照**と明記済み | trace.unresolved=0だけで全Workspace/同Subjectの必要参照が完全と推定しない。両方とScope/Required Closureを照合する |
-| #4532 Draft（#2510合成Reference） | org-synthetic-r7、3人/4所属/3.0 FTE、known改版の2.4 FTEを参照。固定HEAD fa2d8ce98ff77536f51e32095748f63d935a2d07 の Node Actions #43242282586は313/313 PASS（うち追加7件） | 合成Node資格のみ。正式TEI Query/Provider/Context/Studio/Host、ORG-CAP-06/08、Owner受理は別 |
+| #4532 Draft（#2510合成Reference） | org-synthetic-r7、3人/4所属/3.0 FTE、known改版の2.4 FTEを参照。固定HEAD fa2d8ce98ff77536f51e32095748f63d935a2d07 の Node Actions #43242282586は313/313 PASS（うち追加7件）。関連4 WorkflowはSUCCESS | 現mainへのマージ可否は未成立（2026-11-13調査時 GitHub mergeable=false）。合成Node資格のみで、正式TEI Query/Provider/Context/Studio/Host、ORG-CAP-06/08、Owner受理は別 |
 | #4257 merged／#4542は親#4322へ統合（外部解析ツールREA） | REA 6.7は単独JSON、6.8は7 record＋metadata終端という版差を確認。#4542の重複Node/Relation・並行Edge由来の識別子衝突拒否は、親#4322上の限定経路でGo契約・REA 6.7/6.8実Tool CI成功 | **親#4322はmain未統合**。同一Attemptの共通read-only API Receiver、Source/Attempt改版後の再資格化（REA-ID-04）、正式Meaning・CRUD/Unused/Hostは未実証。Accepted Graphへ混入しない |
 
 **read-only参照表示の入場条件**：適格な参照検索を、（A）Accepted Source/Meaningに属するProduct Cross Reference、（B）REA等からの外部Observation/Structural Candidate、（C）Source不足・未解決・partialの三群として扱う。同名や同端点が一致しても群間でReferenceを加算して「利用実績」としない。外部候補はSource locator、Producer version、record/edge ID、方向、多重性、raw digest/受領byte、Coverage、Known/Validの有無を区別し、正式な意味Role/Relation occurrence/業務時点は#2386の意味Ownerが採否を判断する。外部候補しか見つからないData/Function/Businessは「正式参照0・候補あり・Coverage未確認」を区別して提示する。
 
 **最小の次のProduct Exit（重複Expectedなし）**：
-1. #4472のData索引/明示CRUD-only/矛盾表示の残余を独立Expectedと実Consumerで解消し、#4524で合格した同Kind重複診断が**各Consumerでも尊重されるか**別途確認する。#4513のData索引修正のみでCRUD/未使用の全体適格と呼ばない。
+1. #4513で修正済みのData索引を正本として、**未修正の明示CRUD-only行脱落・矛盾表示・後勝ち縮約**を#4472の独立Expectedと実Consumerで解消する。#4524の同Kind重複診断が各Consumerでも尊重されるか別確認。CRUD/未使用の全体適格は未成立。
 2. #3906の二種の未解決数とSource Index/Scopeを同一CLI応答で判別し、完全0・投影未解決あり・部分取得の3入力で未使用の結論が切り替わることを実証（#3262/#1177）。UI・AIの未使用削除は禁止。
 3. #3394の外部REA T1-Aは、実際の共通read-only APIに1 Observation＋1 Edgeを送出して実Receiverのbyte・識別・方向・partialを照合する。Product Cross Referenceに混入させず候補として保持。外部ProducerのCI成功だけを実TEI Reader成功にしない。
 4. #4515 Subject Pinと#3788 Source移動/CRUD/Studioを**同一受理済み合成Source・同一Revision**へ限定接続。#2497のloss/逆写像を保持し、完全性不明時の変更はPreviewで停止。#2586実Read縦断は独立P0のまま先行する。
@@ -909,7 +909,7 @@ WU-11〜14をWU-06〜10の「全部完了待ち」にしない。前段の**必�
 
 **着手と帰属**：U0＝#1124/#1127のread-only UI分類・既存Data Context選択、U1＝#1126/#3270のDesired Field明示生成Previewと未Mapping、U2＝#4518/#2582の問い相対affected/scoped-unaffected/unknown、U3＝#4515/#3788のSubject Pin/Source Jump、U4＝#2586の実Query→Consumerと#4125の実Schema/Host独立Read、U5＝SHO #50/TAIの元Source再束縛とRecipient受領。U0〜U3はP0実Readをブロックせず並行可。**受入は既存ORG-MAP/ORG-CAP/ORG-BEH/CX/PINを再利用し、新しい第二Expected Storeや共通Runtimeを作らない**。
 
-**実証資格**：#4524の同Kind同ID重複対策はmain統合済み（入力モデル内の限定保証）。#4513 CRUD索引、#4514 Source-only drift、#4532 Node合成はDraftであり、これらの修正/合成PASSをUI→Desired→実DDL→Provider→Studio/SHO/HostのE2Eへ昇格しない。本節の追加経路は設計・受入候補であり、実Go/Node試験・実GUI/DB/SHO/AI連携・Owner意味受理は **NOT RUN / NOT ACCEPTED**。
+**実証資格**：#4524の同Kind同ID重複、#4513のData索引、#4514のSource-only driftはmain統合済み（いずれも範囲を限定したProduct修正）。#4532のNode合成7件はCI成功を確認済みだがDraft・未マージ。これらをUI→Desired→実DDL→Provider→Studio/SHO/HostのE2Eへ昇格しない。本節の追加経路は設計・受入候補であり、実Go/Node試験・実GUI/DB/SHO/AI連携・Owner意味受理は **NOT RUN / NOT ACCEPTED**。
 
 #### 10.11.4 組織上の担当とサブシステムの更新責任を分離する
 
