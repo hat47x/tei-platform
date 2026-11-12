@@ -1,0 +1,56 @@
+# TEI横断統合：保証範囲・失効・受渡しの検収記録（2026-11-12）
+
+> 状態：既存設計の整理と受入計画。新たなCore Schema／Gate／Runner／Host／Resolver／Registry／Authority／テスト正本は採用しない。実Provider・実Host・実Consumerの新規E2EとOwner意味受理は **NOT RUN**。
+
+## 1. 統合で維持する区別
+
+TEIのCore最小化、Everything is Data、Everything is Plugin、専門家可読のDSL、Go単一バイナリを基本とし、外部Host向けJava/.NET/WASM等は既存のTarget契約から実現する。SQLはSourceとして許容し、Data Operations／明示Function Data Contextで通常Queryを表す。Native SQLを無条件排除したり、構文のGo親和性から人間のAuthoringを決めたりしない。
+
+**三要素分析法**は渡辺幸三氏の設計手法として、データ構成・機能構成・業務構成、および**データモデル・機能モデル・業務モデル**を区別して扱う。TEIのGraph／CRUD表／Model Mapは、X-TEA Modelerのモデルと相互参照するための拡張Projection候補であり、図面やCRUD表だけを業務意味の第二正本にしない。旧計画の便宜的な「三視点」表記を手法の正式名称としては使用しない。X-TEA由来の図面・関係・粒度・参照位置とTEI拡張部分のFit/Gapは #1124 / [Draft #3263](https://github.com/hat47x/tei-platform/pull/3263) / #2514 に従って個別検証する。参考：[渡辺幸三氏の三要素分析法の説明](https://atmarkit.itmedia.co.jp/fbiz/cbuild/complete/doa/01/02.html)。
+
+## 2. 同じものとみなさない境界
+
+| 境界 | 受渡しに必要な実証 | 典型的な誤昇格 | 既存のOwner |
+| --- | --- | --- | --- |
+| 外部原文→管理Source→受理意味 | 原文byte/位置・Root・Parser actual・Candidate/Owner acceptanceの区別 | 原文の存在やMarkdown保存を実Load・意味受理とみなす | #2621/#3262/#2620/#1126 |
+| Function/Query宣言→Plugin実選択/Load | Source revision、選択Lock、Artifact member、actual Provider/SQL bytes/args | Bを選択しAを呼んでも結果が同値ならPASS | #951/#1251/#2586/#4495 |
+| Provider実Read→Context/Model投影 | actual Rowset、Presence/NULL/missing、grain/identity、Scope/coverage、現時点の開示条件 | 0件、partial、JOIN 6行を不存在・完全性・Entity 6件とみなす | #2586/#2506/#2497/#2516 |
+| Model/SHO/GUI固定対象→AI/他Consumer | 選択対象ID/occurrence・revision・用途・受信者・実受領・競合処理 | focusやUI表示成功を、固定対象の再解決・権限・受領済みとみなす | #1124/#1158/#2516、Draft #4479、SHO Owner |
+| 公開Entry/Trigger→Invocation→Effect | Entry/Artifact/Provider現在性、Host trusted context、実Attempt、Receipt/独立Read | Trigger発火・ACK・exit 0をCommit/効果/再送安全へ昇格 | #4495/#4497/#4502/#1174 |
+| 一試行の合格→変更後の再利用/BOM | 依存閉包・実入力・Toolchain/Target/Consumer/Grant/目的と適格性 | Source hash一致、別試行の部分PASSを全資格へ合算 | #2600/#2514/#1180/#3267/#2831 |
+
+「同一ID」だけでは同一対象・同一出典・同一時点・同一資格ではない。各境界の検査では、既存Scenario/Independent Expectedに **Source location/occurrence、World/Meaning revision、actual inputs、SelectionとInvokedの実体、Host/Grant、scope/grain、受信したConsumer、Attempt/Effect Receipt、観測者、exact HEAD、未探索依存**を必要な範囲だけ対応させる。これは検収票の観点であり新しい公開データ型ではない。
+
+## 3. 選択的再検証の原則（担当#3の主張を保持）
+
+変更イベントから「既知の影響」と「未知の依存」を別々に求め、**失効する保証だけを再検査**する。ただし未知依存・Source解決失敗・未資格の外部Providerについて、安全な試験省略を認めない。不要な全体再Buildを避けることと、未確認なのにPASSを返さないことを同時に満たす。
+
+| 対照 | 期待される判別／停止 |
+| --- | --- |
+| 同Source byte・同Meaning IDでPlugin実装／推移依存の実byteだけ変更 | 既存受理意味の履歴は保持可能でも、Build/実Invoke資格を別途失効・再検証 |
+| A→B→A、Source移動、同名別Root、外部Manifest改版 | 同hashへの復帰や同名で現在の読込実体・依存を証明しない。actual Load/Source位置を再照合 |
+| 新しいSQL/Provider候補だけ追加、元SQL byte不変 | 「存在しない候補」への依存が変わる。Query選択と実SQL/Providerの再検証 |
+| Row Scope/RLS、Grant、用途/Recipient、Policy epochだけ変更 | 古い実Rowset/Consumer開示の資格を再利用しない。意味定義・Artifactの歴史記録を不必要に消さない |
+| 無関係なPlugin追加／layout座標だけ変更 | 選択・依存・生成入力に非影響と示せる部分を再利用候補とし、全体を自動失効させない |
+| Commit後Receipt喪失、ACK loss、Consumer body不達 | 成功/失敗の二値化、無条件の再送、ログ送出成功から業務結果の確定を禁止 |
+
+再利用は **Artifact reuse / Build skip / Evidence reuse / 現在の実行・開示資格**を分離する。再検証範囲の正しさは#2600/#2514、実Buildセルフビルドは#2831、exact tupleのBOMは#3267が所有する。独立Expectedや実Product E2Eが無ければ、unknown/NOT RUNのままとする。
+
+## 4. 次の実装順（既存Critical Path #1119を上書きしない）
+
+1. **P0-R Product Read**：一つのWorkspaceと一つの`order_entry.recent_orders`を固定。現行mainの`reference/workspace`と別`examples/xtea-lowcode`は同名QueryでもSQL/Parameter/Fixtureが異なるため混合しない。宣言→実SQL/args→実PostgreSQL Provider→Rowset→Function Data Context→一Consumerを同一Attemptで検証（#2586）。B-OtherSQL・B-Presence/Partialを負例とする。
+2. **並列P0-T/P0-H**：実製品CLI/StudioのSelected=B→actual Invoked=B（#1251）と、外部HarnessのTool出力・受信/許可Sinkまでの実受領（#2509/#2515）を別個の資格として確認。Referenceや合成CI成功を製品合格へ移さない。
+3. **P1 Model/Authoring**：データモデル・機能モデル・業務モデルのSource逆参照とCRUD、SHO Draft/正式保存・再読取、固定対象Selectionの失効・ABA・人的編集競合を同じ改訂で対照（#1124/#2621/#4501、Draft #4479）。X-TEA Modelerとの一致・TEI独自拡張を列ごとに判別する。
+4. **P1 Launch Read-only**：同じ受理済みFunctionのDirect API／CLI二入口、Entry公開とactual Invoke、一つのpure OperationでEL-01〜12を検証。Schedule/Event/BatchのTR試験は独立後続（#4495/#4497/#4502）。Trigger/Graphの正式GeneratorをP0-RのHard Dependencyにしない。
+5. **後続P2 Effect/Composition**：protected書込を実Host Grant、Operation ID、Commit／Recorder故障、独立Read/Receiptで検証（#1174）。Provider 2版×Consumer 2版の4 exact tupleを各実Build/Invokeで試験（#3267）。REA、SUI、SEI、CSW、KON、SHO、B2C、組織C1の個別Consumer適格は別票。実Twin/大規模Ontology、全Lifecycle Graph Generator、全体G4をこの段の局所成功から推論しない。
+
+## 5. 反証と撤回条件
+
+- **正本の増殖**：diagram/matrix/SHO/外部Evidence/AI候補がTEIのAccepted Meaningや既存Owner Acceptanceを直接置換する場合は撤回。
+- **権限の混線**：Selected・Loaded・Exposed・Authenticated・Authorized・Effect-observedを同一boolとする設計は撤回。
+- **根拠の合成**：別Run／別Workspace／別Function／別ProviderのPASSをつないでE2E合格とする設計は撤回。
+- **過剰な共通化**：新Host/Registry/Resolver/Graph Compiler/Policy/Workflow/Schedulerを、既存Ownerで説明可能な課題の必須条件にする場合は差戻し。
+- **可読性の後退**：Goの構文都合やAIツール都合で専門家の認知順、三要素分析法の原典の関係・粒度・表記を失わせる場合は差戻し。
+- **未知の隠蔽**：unknown/unresolved/partial/not-observedや未探索依存をPASS・ゼロ件・差分なしとして表現した場合は失格。
+
+この文書は既存#1119（実施順）、#2586（初回実Read）、#1180/#2514（独立検証基準）および各Owner Issueへの**判断・反証用参照**である。正式な採否と製品受理は各Ownerの証拠に戻す。
