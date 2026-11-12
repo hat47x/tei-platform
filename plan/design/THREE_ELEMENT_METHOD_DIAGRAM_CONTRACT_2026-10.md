@@ -1028,6 +1028,32 @@ CLIでは非対話操作も、承認済み変更の明示的な入力と対象�
 
 **状態**：設計と検証候補の追補のみ。GUI/CLI編集、Migration、DB再観測、DMUの実行、Owner意味受理はすべてNOT RUN。
 
+### 27.6 テーブル変更からEntry/Trigger/実行までの影響資格（#4502/#4495への引渡し）
+
+第27節の「列・UIの変更」は**モデル編集の操作**である。実行に向けては、Function/Script Source、型付きOperation、公開Entry、Trigger Binding、実際にLinked/LoadedされたArtifact、実行Attemptまで、**同じ変更がどの依存を無効化するか**を別に確認する。Scriptの存在とEntry公開、Triggerの存在と実起動、Job受付と業務Effectを同一視しない（#4502/#4495）。ここでは起動器・Scheduler・Effect Engineを新設せず、既存契約に要求する**依存の追跡とAdmissionの停止条件**だけを整理する。
+
+| 変更・観測 | 変更後に照合する対象 | 断定・自動操作してはいけないこと |
+| --- | --- | --- |
+| UI項目の追加・削除 | UI Mapping・Form/Page・関連FunctionとEntryの入力要件への影響 | UI追加から列・Script・公開Entryを自動作成、UI削除だけで公開Entryを一律削除 |
+| Sourceのテーブル列削除／rename | Data Modelの現行列、全UI Mapping、Queryの参照列・`SELECT *`・`NATURAL JOIN`等の暗黙列集合、CRUD/Rule/Script入力、生成Artifact | 旧Function/Scriptの修復先を同名・同型で推測。非出力列を「依存なし」と判断 |
+| SourceのFunction/Operation契約変更 | Source/Contract Revision、必須引数（missing/NULL/unfetched）、公開Entry、Triggerの引数束縛、Linked/Loaded Artifact | Functionが存在するだけで起動可能、古いEntryやArtifactを現行扱い |
+| Actual DBだけの外部Schema変更 | Actual/Desiredの差分、取得範囲/時点、Provider/DB alias、Query/Field Mapping、次のInvocationの現在資格 | PartialなSchema観測から不存在を確定、Source/Desiredを無断変更 |
+| Triggerの改版・停止／Grant失効 | EntryとTarget、予定/配送Event、現在のAdmission、実Attempt/Effect | Trigger停止＝既存Effect取消、以前のGrant＝現在権限、設定済み定時刻＝実Run成功 |
+| Source/Provider/Artifactの差替え（A→B→Aを含む） | Selectionの起点、Revision、実Loaded bytes、選択Providerと実Invoker、Attempt/Effect | 元のFPに戻っただけで旧実行資格・旧選択・旧承認を復活 |
+
+**影響検出は依存の確実性を表示する。** Source上の直接参照だけでなく、Queryの列集合依存、式・Rule、手書きコード、外部Source/Providerに渡したMappingの未観測・曖昧さを区別する。依存を全件確認できない場合、影響「0件」ではなく`partial/unresolved`とし、影響するOperationの次回起動は必要な条件を再確認する。一方、関係のないOperation/Plugin/Consumerを無条件で停止させない。
+
+**保存から実実行までの段階**：①Source変更候補と影響一覧→②Source確定とモデル/UI再投影→③必要なFunction/Entry/Trigger契約の再評価→④Artifact生成・実ロード版照合→⑤Invocation時のTarget/Subject/Current Grant・Source/Artifact/Provider版の再照合→⑥実Attempt/Effect Receiptの独立観測。①〜④を終えても、⑤の現在資格や⑥の実行結果は成立しない。逆に既に確定したEffectは、後からSource/Entry/Triggerを削除しても取り消されたことにならない。Queued済み/実行中/ACK不明のAttemptは、#1174/#4502の既存Recovery・Cancel契約に委ねる。
+
+**検証の最小交差点**（新しいテストID・第二Scenario正本を作らない）：
+
+1. **DMU-03/04 × #4495 EL-03**：二画面で利用している列をSourceから削除。UI要素2件は保持、有効Mappingは0。依存Script/Entryが旧Contract/Artifactを使う起動要求は拒否。実DB列が旧まま残っていればDesired/Actual差を維持。
+2. **DMU-05/07 × #2586 HJ-01〜04**：外部DBの列変更またはpartial取得。Schema情報の不明点を保持し、Query/Contextの列・grain・完全性を確認できないClaimを確定しない。
+3. **DMU-06/08 × #4515 PIN-S0**：同名列再作成、Subject/Source A→B→A。固定UI/AI対象の旧Intentは残せても現在資格を復活させず、描画Edgeから業務更新先を推測しない。
+4. **#4502 N02/N06・#4495 EL-07 × DMU-03**：Trigger発火後にSource/Grant/Artifactが失効した場合は実起動時に拒否。Commit後のACK喪失ならEffectを`unknown`として保持し、再送で二重実行しない。Trigger停止・取消をRollback成功と呼ばない。
+
+**Ownerの範囲**：Data/Logical/Physical変更は#1126/#1143、Workbench/モデル編集は#1124/#4515、SQL/Query依存は#2387/#2586、UI逆写像は#2500/#2497、Entry/Trigger/Invocationは#4502/#4495、Actual DB/Migrationは#3270、Effect/Recoveryは#1174/#1129、独立Expectedは#1180/#2514。先行する**P0実Read/実Provider呼出しは継続**し、上記交差ケースの実Target実行は各担当の証拠が集まるまで`NOT RUN`とする。
+
 ## 28. 方法論プラグインと通常開発の受理：Coreに固定しない協業契約（2026-11-12）
 
 ### 28.1 三要素分析法は重要な標準構成、しかし唯一の方法論ではない
