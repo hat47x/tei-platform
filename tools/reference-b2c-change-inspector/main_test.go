@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"os"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -108,5 +110,30 @@ func TestRequiredUnknownLayerDoesNotBecomeClosedCoverage(t *testing.T) {
 	}
 	if r.Coverage != "partial-or-unverified" || strings.Join(r.Unresolved, ",") != "pdp.offer-rule" {
 		t.Fatalf("unknown classification was counted as covered: %#v", r)
+	}
+}
+
+func TestFixedFixtureMatchesIndependentExpected(t *testing.T) {
+	b, err := os.ReadFile("example-input.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected, err := os.ReadFile("example-expected.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := run(bytes.NewReader(b), &out); err != nil {
+		t.Fatal(err)
+	}
+	var got, want any
+	if err := json.Unmarshal(out.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(expected, &want); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("fixture != independent expected\nactual: %s\nexpected: %s", out.String(), string(expected))
 	}
 }
