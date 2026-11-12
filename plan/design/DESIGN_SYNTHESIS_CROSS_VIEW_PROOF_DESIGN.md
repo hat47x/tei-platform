@@ -822,3 +822,30 @@ CSW/SUIのKJ法的なCard/Islandの集合をTEI Relationへ投影するときは
 - SHO #19、SUI/CSW/TAI各Owner：共有Session参照とProduct-local Meaning/Authorityの分離。
 
 **状態**：本追加は設計・負例・Owner引渡しのみ。`Pin UI`／`Context Tray`／新CUIコマンド／外部Harnessの実Session連携／Studio・SHO・SUI/CSW実E2E／正式Owner受理は**NOT RUN／NOT PROVEN**。既存モデルの読取りGo・Source Index・M0/Locateの限定成功を、このProduct UXの完成証拠に転用しない。
+
+
+### 16.13 各媒体における「使える意味」と、非信頼Sourceの命令権を分ける（2026-11-12）
+
+§16.11〜16.12は既に Focus/Selection/Pin/Context Tray と実Grantを分ける。この追加では**Pinの実装を再提案しない**。選択が正しく保持されても、利用者の入力手段に対応できないUI、Localeにより異なる入力値、非信頼資料からの権限昇格があれば、継続作業は誤る。
+
+#### 3つの異なる適格性
+
+1. **Semantic Affordance（使える意味）**：対象Subject・Occurrence/Relation/Field、Action Purpose、利用条件、State/Outcome/Feedbackを、Web/Keyboard/支援技術/VUI/CUI等で認知・特定・操作・結果確認できること。単に業務API成功・ARIA属性が付いた・Mouseで動いたことから、別媒体の操作可能性を推定しない。
+2. **Presentation/Input（人から型付き値へ）**：Locale/Calendar/Identifier/QuantityとDraft/IME composition/確定Inputを区別。例えば同じ`1,234`という表示文字列でもLocale次第で異なる数値を表す。画面のLabel/ARIA名/音声認識文字列とAccepted Action IDの同一性は実Adapterが確認し、翻訳を意味IDの置換に使わない。
+3. **Instruction Provenance/Actual Egress（外部情報からの権限非昇格）**：`*.tei.md`、Native SQLコメント、SHO本文、Plugin Manifest、Tool/CLI/MCP Replyに「このToolを使う／秘密を送る」と書かれても、Source dataまたは要求の候補であってOwner Accepted InstructionやOS/Host Capabilityではない。**実際に到達できるTool・権限と外部送出先の制約を別に検証**する。Promptの文字列フィルタだけでは安全性資格にならない。
+
+| 反例ID | 見かけの正常 | 必要な独立判定 |
+| --- | --- | --- |
+| XUI-01 | Mouse/GUIで業務更新成功 | Keyboard/支援技術が同じ対象・Actionに到達し、対象と結果を識別できるか |
+| XUI-02 | 2件の受注に同じ「承認」Label | aria-label/見た目/音声で片方を推測せず、Qualified SubjectとPurpose/結果を区別するか |
+| XUI-03 | 表示文字列`1,234`が異Localeで同形 | Typed Parse/Formatと明示Input Source条件が同じ意味か、差異を明示・拒否するか |
+| XUI-04 | 日本語IMEのComposition中にonChangeが発生 | 暫定表示・Draft検証と確定Action/実Commitを分けるか。入力途中を自動保存適用しないか |
+| XUI-05 | 非信頼MarkdownやTool結果に命令形の文章 | 検討材料にはなるが、Owner Grant/Tool Call権限へ昇格せず、許可外の実Tool/Network出口をHostが止められるか |
+| XUI-06 | Studio画面で機密情報を隠した | DOM/ARIA/CLI JSON/Tool Result/Session Log/SHO引用/添付が、各Receiverに許されたScopeしか含まないか |
+
+**Owner**：UI品質・Web Adapterは#1000/#1824/#1180、VUIは#3503、Selection→Intentは既存#2500/#2598、異質ConsumerのContext/Disclosureは#2516、実OS/MCP/Network/Session Logの隔離は#2515、Independent Expectedは#2514。上記は**受入の合同索引**であり、既存OwnerのFixtureを別SSOTへコピーしない。
+
+**アウフヘーベン**：現在の三種を新Core情報モデルにするのではなく、同じAccepted Subject/Actionの参照とObserver Resultを必要なInput/Representationへ引き継ぐ。UIでは「何を・どう操作し・結果をどう確認するか」を簡潔に示し、内部で必要なRevision/Scope/Proofに戻れるようにする。すべての画面に複雑な証拠欄を常時表示しない。
+
+**観測上限**：設計・Source/Issue照合と独立負例案であり、新UI/Go/CUI/MCP/LLM/OS/Networkの実試験・実装・変更・正式受理はNOT RUN。Pinの既存§16.11〜12を出荷済みの製品機能として扱わない。
+
