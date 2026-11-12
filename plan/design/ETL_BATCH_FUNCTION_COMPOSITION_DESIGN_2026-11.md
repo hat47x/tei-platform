@@ -574,3 +574,55 @@ R1のFile byteが完全でも、業務対象母集団がProvider/OwnerによりC
 5. **P2/#2542/#4194/#4502/#4510**：Event/External Worker/Relay/Studioは既存起動・Delivery・Observationの契約へ差し込む。外部Task Success・ACK・Manifest・画面の緑表示のいずれもBusiness Acceptedへ自動昇格させない。
 
 **外部調査との位置づけ**：Apache BeamのWindow/Trigger/Pane/late dataの区別（https://beam.apache.org/documentation/programming-guide/）と、OpenLineageのJob/Run/Input/Output facetの区別（https://openlineage.io/docs/spec/facets/）は、上の責務分離の比較対象である。BeamやOpenLineageのRuntime/SchemaをTEIへ導入する判断ではない。新しいGo/SQL/二Provider・実DB/Stage・Studio・Business Owner受理の試験は**NOT RUN**。
+
+## 21. 部分入力でも保持できるClaim：Witness・Bound・Finalの資格（2026-11-12、設計候補）
+
+**問題設定**：§18のPopulation Completeが不明でも、一部の事実は限定的に正しく言える。ただし「partial resultを業務の最終集計としてPublishしてよい」こととは別。§19の演算子Rewrite資格、§20の複数Source Business Cut・用途別Graphと合わせ、[Conformance #2514](https://github.com/hat47x/tei-platform/issues/2514)、[Measure #2593](https://github.com/hat47x/tei-platform/issues/2593)、[Data Operations #2622](https://github.com/hat47x/tei-platform/issues/2622)、[Trait #3279](https://github.com/hat47x/tei-platform/issues/3279)、[Cross-layer Draft #4522](https://github.com/hat47x/tei-platform/pull/4522)へ受入条件として返す。正式なClaim enum/証明Engine/特別なPartial Publisherを新設する提案ではない。
+
+### 21.1 同じ固定Snapshotに対する部分集合と、別Revisionの変化を混ぜない
+
+対象Fact集合を D、実検証済みの部分集合を S とする。以下の限定推論は **Sが同じ固定・必要なSnapshot Dの真正な部分集合であり、Fact identity・重複・Null/単位/Scope・対象業務Cutが保全**された場合に限る。Sの行がSourceに存在したことと、未取得D＼Sについて何が存在するかは独立である。
+
+**非単調なChangeと区別**：新Revisionで更新・削除・Rekey・Correctionがある場合はS⊆Dという拡張条件を失う。同一内容へ戻るSource A→B→A、Cross-source不整合、Providerのopaque Filter、後着Recordの削除、Current Grant失効でも旧Witness/Boundの現在適格性は自動保持されない。Incremental RunのDelta/Restatementは§18.2、実変更履歴は#2622/#2600へ返す。
+
+| 提示可能なClaim | 固定Snapshot内の証明条件 | 完全性が無いと禁止するClaim |
+| --- | --- | --- |
+| **Verified Witness（存在する一件）** | そのFactの出典、入力Scope・型・Fact identityと現在の閲覧資格が検証済み。正の存在判定・条件を満たす実例の観測 | 観測していない対象が存在しない、期間全件が成立 |
+| **One-sided Bound（下界・上界）** | Measure/演算が追加Factに対して単調であること、値域・重複規約・計算の精度が有資格。例：非負ContributionのSUMは下界、重複なしCOUNTは下界、非空集合のMAXは下界・MINは上界 | 真の総額・最終COUNT/順位・一般的なSUMの下界 |
+| **Complete / Final Result** | 必要Source/Partition/Temporal Cutの閉包・全件被覆、選択演算の独立Expected、出力・公開Generationと必要なConsumer readback。業務Effect/Owner受理はさらに別 | EOF・Watermark・Partial PaneのみでBusiness Acceptedへ昇格 |
+
+**数式上の候補**：入力拡張 S⊆D が資格化された場合、肯定的な存在証人の保持、重複を正しく扱ったCOUNTの下界、値が非負のSUMの下界は成り立ち得る。一方、受理されたFactに負の金額・返品・取消が混ざるとSUM(S)≤SUM(D)とは限らない。負値のない集合でも平均、中央値、Top-N、NOT EXISTS/anti-join、全件Validation PASSを部分観測から確定できない。外部JOINの有効時点・参照Sourceが未整合なら、陽性Witnessさえ「同じ業務Cutで真」とは言えず、観測Vectorに相対化する（§20.2）。
+
+### 21.2 「単調」でも業務的な最終性・公開権限は得られない
+
+- **演算単調性**と**事実の時間的安定性**は独立。固定Snapshotの追加観測に対して保持される陽性Witnessであっても、後の訂正RevisionでそのFactが削除されれば新RevisionのTruthとは限らない。Mergeable、Retractable、Monotone-under-extension、Population Completeを一つのTraitに畳まない。
+- **局所的な導出は全体集計を証明しない**。例えば顧客Aの100円明細を1件観測したなら「Aにその明細が存在した」というClaimは可能だが、Aの請求額100円・未取得取引なし・会計Period終了は不可。厳密に非負でその他の条件を満たした場合だけ「同じ対象集合・同じSnapshotにおける合計が少なくとも100円」というBound候補を示せる。
+- **存在の表示自体が情報漏洩になり得る**。Witness/Bound/unknownの区別、件数・パス・Source identityを公開Consumerへ出す前に#2516のCurrent Disclosureを評価する。拒否・未取得・秘匿はそれぞれ意味が違うが、低権限側には秘匿要素の存在を推測できる情報を返さない。
+- **部分公開は明示的なConsumer契約が必要**。Early/Partial/Aggregate candidateを出せる計算能力と、そのConsumerがその不完全結果を受け取る権限・用途は別。W3の最初の固定TSV Batchは従来どおり未完了を通常Final成果物として公開しない。必要なら将来のアナリティクスConsumerだけに、必要範囲・as-of・Qualifierを伴った限定出力候補を検討し、#2604の一式公開/Reader資格や#267 Owner受理を飛び越えない。
+- **WatermarkはProviderが定める進捗意味**。Window end通過・Pane emitから実Source/外部マスタ・業務CUDまで完全閉包したとは推測しない。参考：Apache Beamの[Watermarks and late data](https://beam.apache.org/documentation/programming-guide/)では遅延要素とearly/late paneを区別している。TEIにBeamのWindow/Trigger Runtimeを必須導入する趣旨ではない。
+
+### 21.3 既存N/MC/DOへの反証ケース（独立Expectedの候補、未実行）
+
+同じ顧客A・同一JPY単位・Pinned Snapshot R1を固定し、実入力S={o1: accepted 1個×100円}、R1内の未取得候補を分けて比較する。下記は生成プログラムの出力をOracleに使わない手書きExpectedであり、現行製品実装の合格ではない。
+
+| 一因子変更 | 限定的な正しいClaim | 拒否すべき誤Claim |
+| --- | --- | --- |
+| Sを真正に観測、残りPartitionは未取得 | R1相対のo1存在はWitness。非負金額・重複なしの保証があれば金額100円は下界候補 | R1の総額100円、他顧客が存在しない、Final |
+| 未取得Partitionに+40円の同顧客Fact | 観測Sの金額下界100円、全件を読んだ場合の金額140円 | 部分入力で総額100円と確定 |
+| 未取得Partitionに返品−200円のFact | R1の全件金額は−100円。Sの100円は下界ではない | SUMというOperator名だけで下界を自動付与 |
+| 未取得顧客マスタに対応Cが存在 | ordersにあるCの観測は可能。anti-joinでのC未登録は未資格 | partial masterにC行が無い→Cは存在しない |
+| R2でo1を訂正削除する | 旧R1のWitnessは歴史的記録として保持。R2の新Claimは再資格化 | R1の陽性Witness・GrantをR2の現行真実へ流用 |
+| Sの実観測と値は同じだが閲覧Grantを失効 | 歴史的Evidenceは残せる。現在の開示は拒否/保留 | Value digest一致からCurrent Disclosureを復活 |
+| 1行目acceptedの到着後にEarly Triggerが発火 | 当該Snapshotの部分Paneという説明は可能（Providerが保証する範囲内） | Trigger発火・Watermark通過だけでFinal/Business Accepted |
+
+関係代数の追加入力に対する単調性は、選択・射影・正のJOIN/UNIONと、否定/差集合で異なる（例：[Duke Database講義](https://courses.cs.duke.edu/fall20/compsci316/Lectures/02-relational-notes.pdf)）。この数学的区別を、Providerの実保証、Current Authority、業務的な時間Cutへそのまま昇格しない。
+
+### 21.4 受入順・既存Ownerと停止線
+
+1. **P0 / #4410 W1/W2**：現行TSVのpartialをFinalとして出さない規則を維持。独立Expectedに、真の空・未取得・真正な陽性Witness・非負Contribution/負Contribution・マスタ欠落の説明を追加する候補。追加Fixture/Case番号はOwnerが既存N-02/03/11/12、MC/DOのいずれに収めるか判断。
+2. **P1 / #2593/#2622/#3279/#2514**：Measure×Operation×Axes×Temporal Cut×Providerの条件付き法則と実Conformanceを分離。手書きOracle→限定Go/Provider独立対照の順で検証し、数学的性質のみから全Consumerへ保証を広げない。
+3. **P1 / #2604/#2516/#1130**：同じCandidate結果がData Readで可視でも、Final Artifact Publication/Consumer use/業務Effectへ昇格しない。部分結果を公開する要件がない現在のP0では新Partial Publisherを作らない。
+4. **P1〜P2 / #1124/#4510/#4487**：Studio/TEAの問い相対Graphで、限定Witness・Bound・Unknown・完全結果を可視化。隠れたWriter、未読Source、Observed cut不整合を偽の不存在・Writerゼロへ縮約しない。新Graph正本/専用Claim Engineなし。
+5. **P2 / #2542/#4502/#4194**：実外部Stream/Relay/EKIのWatermark・ACK・Worker Resultと、Provider Dataset/Business OwnerのFinal資格を分離して観測する。締め・補正の実承認は従来Ownerへ戻す。
+
+**停止線と検証範囲**：この§21は既存設計・独立小規模数学反例と公開研究に基づく設計案。Syntheticな非負SUMと返品の対照はローカルPython上で集合追加ケースを列挙して確認したが、TEI Go/CLI/実DB/EKI/MFT/Studio・独立Consumer/実Disclosure/Owner受理・exact-head CIは **NOT RUN / NOT ACCEPTED**。新Schema、演算Engine、Scheduler、Host、Validator/Claim Storeや第二のOracleを追加しない。
