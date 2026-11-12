@@ -631,7 +631,7 @@ Catalog／Validate／Map／Locate等が同一fixtureを別Loadする場合、Fin
 | 固定対象Pinを再利用 | 旧意図と未解決を保全し、現Source/Scope/Grantを再資格化 | Pin表示が残る＝送信・編集・意味受理の現在資格 |
 | TEI Sourceへ書き戻す | 正式Readerで解析した一意Source Anchor、現在Revision、可逆Patchと既存Acceptanceがある場合のみ案内 | Legacy XML・非可逆Graph・Raw Draftから自動Patch |
 
-[Authoring #2621](https://github.com/hat47x/tei-platform/issues/2621)の最新方針はTEI向け新規Authoring Sourceを *.tei.md とし旧 *.tei を段階的に移行すること。ただし[Migration Draft #3030](https://github.com/hat47x/tei-platform/pull/3030)の実Reader/Parser/Source Span/受入が成立するまでは、**拡張子やMarkdown保存成功だけではLoaded/Parsed/Accepted/Build入力とは表示しない**。未管理のRaw Draftを失わず保存・再開することと、管理Rootでの正式TEI Loader拒否、TEI意味受理を区別する。SHO Writer／Authoring Parserの二重実装はしない。
+[Authoring #2621](https://github.com/hat47x/tei-platform/issues/2621)の最新方針はTEI向け新規Authoring Sourceを *.tei.md とし旧 *.tei を段階的に移行すること。ただし[統合済み移行計画 #3030](https://github.com/hat47x/tei-platform/pull/3030)の方針を保持しつつ、[統合済みGuard #3031](https://github.com/hat47x/tei-platform/pull/3031)は未束縛Readerを拒否する。正式Reader/Parser/Source Span/意味受入が製品経路で成立するまでは、**拡張子やMarkdown保存成功だけではLoaded/Parsed/Accepted/Build入力とは表示しない**。未管理のRaw Draftを失わず保存・再開することと、管理Rootでの正式TEI Loader拒否、TEI意味受理を区別する。SHO Writer／Authoring Parserの二重実装はしない。
 
 ### 16.9 旧観測 L／目標受理 D／新観測 T の問い相対なStudio比較
 
