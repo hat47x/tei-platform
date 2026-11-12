@@ -375,18 +375,6 @@ func (m ThreeElementModel) Validate() []Diagnostic {
 		}
 	}
 
-	// Conflicting explicit CRUD definitions are not merely a supplementary
-	// report: they make the model structurally ambiguous. Emit errors here so
-	// both Validate() and ValidateModel().OK agree on admissibility.
-	for _, crud := range m.ContradictoryCRUDs() {
-		diags = append(diags, Diagnostic{
-			Code:       "CONTRADICTORY_CRUD_DEFINITION",
-			Severity:   "error",
-			Message:    fmt.Sprintf("CRUD %q conflicts with another definition for function %q and data %q", crud.ID, crud.FunctionID, crud.DataID),
-			SubjectIDs: []string{crud.ID, crud.FunctionID, crud.DataID},
-		})
-	}
-
 	sort.Slice(diags, func(i, j int) bool {
 		if diags[i].Severity != diags[j].Severity {
 			return severityRank(diags[i].Severity) < severityRank(diags[j].Severity)
