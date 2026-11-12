@@ -21,31 +21,31 @@ func TestMisplacedDeclarationNamesTheDeclaration(t *testing.T) {
 			name:  "after an application declaration",
 			parse: parseApplicationForTest,
 			src:   "application order_entry {\n}\n\nmigration 20261111_001 {\n    database sales_core\n    recovery forward-fix\n}\n",
-			want:  `"migration" starts a migration`,
+			want:  `"migration" starts a migration, which cannot be declared after the end of this declaration; declare it under databases/<database>/migrations, for example <database>/migrations/<id>.tei`,
 		},
 		{
 			name:  "after a database declaration",
 			parse: parseDatabaseForTest,
 			src:   "database sales_core {\n    kind relational\n    ownership managed-here\n}\n\ndatabase-release sales_core 5.0.0 {\n    data-readiness ready\n}\n",
-			want:  `"database-release" starts a database release`,
+			want:  `"database-release" starts a database release, which cannot be declared after the end of this declaration; declare it under databases/<database>/releases, for example <database>/releases/<version>.tei`,
 		},
 		{
 			name:  "inside the application body",
 			parse: parseApplicationForTest,
 			src:   "application order_entry {\n    realize Order\n}\n",
-			want:  `"realize" starts a realization, which cannot be declared in the application body`,
+			want:  `"realize" starts a realization, which cannot be declared in the application body; declare it under applications/<application>/realizations, for example <application>/realizations/<capability>.tei`,
 		},
 		{
 			name:  "inside the database body",
 			parse: parseDatabaseForTest,
 			src:   "database sales_core {\n    kind relational\n    migration 20261111_001\n}\n",
-			want:  `"migration" starts a migration, which cannot be declared in the database body`,
+			want:  `"migration" starts a migration, which cannot be declared in the database body; declare it under databases/<database>/migrations, for example <database>/migrations/<id>.tei`,
 		},
 		{
 			name:  "inside a semantic namespace",
 			parse: parseSemanticFileForTest,
 			src:   "namespace sales\n\nmigration 20261111_001 {\n}\n",
-			want:  `"migration" starts a migration, which cannot be declared in a semantic namespace`,
+			want:  `"migration" starts a migration, which cannot be declared in a semantic namespace; declare it under databases/<database>/migrations, for example <database>/migrations/<id>.tei`,
 		},
 	}
 	for _, c := range cases {
@@ -61,7 +61,7 @@ func TestMisplacedDeclarationNamesTheDeclaration(t *testing.T) {
 			if !strings.Contains(message, c.want) {
 				t.Errorf("message does not name the declaration: %s", message)
 			}
-			if !strings.Contains(message, "declare it in its own file") {
+			if !strings.Contains(message, "declare it under") {
 				t.Errorf("message does not say where it belongs: %s", message)
 			}
 		})

@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -163,8 +162,35 @@ func TestJavaClassSetRestoreRunsFixturesFromStoreBytesOnly(t *testing.T) {
 		if err := json.Unmarshal([]byte(stdout), &got); err != nil {
 			t.Fatalf("case %s produced non-JSON %q: %v", testCase.ID, stdout, err)
 		}
-		if !reflect.DeepEqual(got, testCase.Want) {
-			t.Fatalf("case %s got=%v want=%v", testCase.ID, got, testCase.Want)
+		// TeiFailure answers with the classification axes as well as the fields
+		// the shared fixture states. Compare the stated fields, then require the
+		// axes, so a generated target that drops one is caught and a target that
+		// adds a field the fixture does not mention is not a false failure.
+		for key, want := range testCase.Want {
+			if got[key] != want {
+				t.Fatalf("case %s %s = %v want %v", testCase.ID, key, got[key], want)
+			}
+		}
+		if testCase.Want["state"] != "error" {
+			continue
+		}
+		// A refusal carries all three axes. A business rejection answers the
+		// request itself, so it carries no effect and must not be resent
+		// unchanged; a technical failure reports the host or a provider failing,
+		// so it leaves the effect state undecidable and asks for a lookup first.
+		switch testCase.Want["code"] {
+		case "CURRENCY_MISMATCH", "UNIT_MISMATCH", "PRECISION_OVERFLOW":
+			if got["kind"] != "business_rejection" || got["retryable"] != "not_retryable" || got["effectUnknown"] != false {
+				t.Fatalf("case %s business rejection lost its classification axes: %v", testCase.ID, got)
+			}
+		case "DECIMAL_INVALID":
+			if got["kind"] != "technical_failure" || got["retryable"] != "lookup_first" || got["effectUnknown"] != true {
+				t.Fatalf("case %s technical failure lost its classification axes: %v", testCase.ID, got)
+			}
+		default:
+			if _, ok := got["kind"]; !ok {
+				t.Fatalf("case %s refusal carries no kind: %v", testCase.ID, got)
+			}
 		}
 	}
 }

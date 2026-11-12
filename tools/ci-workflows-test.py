@@ -25,9 +25,18 @@ CANCEL_EXPRESSION = "${{ github.event_name == 'pull_request' }}"
 CANCEL_ONLY_PULL_REQUEST = 'cancel-in-progress: ' + CANCEL_EXPRESSION
 
 
-def command(*argv, cwd=None, env=None, check=True):
-    return subprocess.run(argv, cwd=cwd, env=env, text=True,
+# The workflow scripts print Japanese, and subprocess with text=True decodes
+# with the locale default (cp932 on a Japanese Windows install). The decode then
+# raises UnicodeDecodeError in the reader thread and the case fails with an
+# AttributeError instead of a real finding. Read the bytes as UTF-8 everywhere:
+# CI on Linux is UTF-8 already, so this only makes the two hosts agree (#4355).
+def _run(argv, cwd=None, env=None, check=True):
+    return subprocess.run(argv, cwd=cwd, env=env, encoding='utf-8', errors='replace',
                           capture_output=True, check=check)
+
+
+def command(*argv, cwd=None, env=None, check=True):
+    return _run(argv, cwd=cwd, env=env, check=check)
 
 
 # The workflow bodies are bash, and the cases below depend on the environment
@@ -45,7 +54,8 @@ def _bash_forwards_environment(candidate):
     probe = 'echo "$TEI_BASH_PROBE"'
     env = dict(os.environ, TEI_BASH_PROBE='forwarded')
     try:
-        result = subprocess.run([candidate, '-c', probe], env=env, text=True,
+        result = subprocess.run([candidate, '-c', probe], env=env,
+                                encoding='utf-8', errors='replace',
                                 capture_output=True, check=False, timeout=60)
     except (OSError, subprocess.SubprocessError):
         return False
@@ -72,7 +82,8 @@ def _any_bash():
         if not candidate:
             continue
         try:
-            result = subprocess.run([candidate, '-n', '-c', 'true'], text=True,
+            result = subprocess.run([candidate, '-n', '-c', 'true'],
+                                    encoding='utf-8', errors='replace',
                                     capture_output=True, check=False, timeout=60)
         except (OSError, subprocess.SubprocessError):
             continue

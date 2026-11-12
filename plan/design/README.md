@@ -1,4 +1,4 @@
-﻿# 機能設計文書
+# 機能設計文書
 
 ここには、複数のIssueにまたがる機能について、意味モデル、記述方法、検証、実行時の境界をまとめた設計文書を置きます。採用前の案も、対象となるIssueと文書の状態を冒頭に明記して管理します。
 
@@ -29,6 +29,7 @@
 
 | 文書 | 対象 |
 | --- | --- |
+| [`ETL_BATCH_FUNCTION_COMPOSITION_DESIGN_2026-11.md`](ETL_BATCH_FUNCTION_COMPOSITION_DESIGN_2026-11.md) | ETL・Batch処理を既存Function・Data Operations・Operator・Pluginの合成として表す要件・基本設計・実装計画（[#1130](https://github.com/hat47x/tei-platform/issues/1130)・[#2622](https://github.com/hat47x/tei-platform/issues/2622)・[#4194](https://github.com/hat47x/tei-platform/issues/4194)、実装前設計・Owner未採用） |
 | [`AI_PERFORMANCE_TUNING_OBSERVABILITY_2026-11.md`](AI_PERFORMANCE_TUNING_OBSERVABILITY_2026-11.md) | 生成AIによる性能チューニングの設計ヒント・統計の実測と、Source／Function／Query／Provider／受領の資格を分けた独立Benchmark・改善検証（#3271・#3262・#2586、設計・実証候補） |
 | [`DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md`](DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md) | 汎用データソース・ワークベンチの標準範囲（接続・閲覧・構造定義・Migration）と縦断実証の設計（[#3270](https://github.com/hat47x/tei-platform/issues/3270)、[RQ-035](../../requirements/TEI_PRODUCT_REQUIREMENTS.md)、設計・検証計画） |
 | [`HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md`](HTTP_RESPONSE_DECISION_GRAPH_DESIGN.md) | HTTP応答のServer/Client例外契約と、Graph/Table/Traceの相互検証（[#3274](https://github.com/hat47x/tei-platform/issues/3274)、設計候補） |
@@ -49,6 +50,7 @@
 | [`APPLICATION_DRIVER_V1_DESIGN.md`](APPLICATION_DRIVER_V1_DESIGN.md) | 構成パターンの解決から、機能と契約に基づく問い合わせの実行、観測までの境界（ISSUE-000006 / ADR-0019 / ADR-0020 / ADR-0021 / ADR-0023） |
 | [`DATABASE_CONTRACT_QUERY_V1_DESIGN.md`](DATABASE_CONTRACT_QUERY_V1_DESIGN.md) | 契約に基づく問い合わせの形式、SQLによる実現、実行器との対応付け、提供実装の実行基盤という四層（ISSUE-000018〜ISSUE-000021 / ADR-0007 / ADR-0021） |
 | [`DATABASE_DIALECT_PLUGIN_DESIGN_2026-10.md`](DATABASE_DIALECT_PLUGIN_DESIGN_2026-10.md) | PostgreSQLとSQLiteを対象に、関係データベースの共通契約と製品ごとの方言プラグインを分ける検討案（識別子、方言の面、製品の版、現行コードの仕分け、実施順序） |
+| [`SQL_DIALECT_LIMITATIONS_2026-11.md`](SQL_DIALECT_LIMITATIONS_2026-11.md) | SQL方言の共通契約（`internal/database/sqlgen`）が運ぶ構成要素（CTE・名前付きウィンドウ・集合操作）、未対応の構成要素、DBごとの差、呼出し側が担う契約（検証済み識別子の受渡し、未配線の名前付きパラメータ） |
 | [`EXPLICIT_FUNCTION_DATA_MAPPING_AND_STANDARD_ROLES_2026-11.md`](EXPLICIT_FUNCTION_DATA_MAPPING_AND_STANDARD_ROLES_2026-11.md) | Functionごとに必要なRelation Path／Field／Scopeを明示し、標準Data構造へ意味Roleを適用するHeadless検証。Read Footprint・Claim Closure・実Provider／開示資格の区別（[#2506](https://github.com/hat47x/tei-platform/issues/2506)、[#2620](https://github.com/hat47x/tei-platform/issues/2620)、評価待ち） |
 | [`DATABASE_QUERY_INPUT_NULLABILITY_2026-10.md`](DATABASE_QUERY_INPUT_NULLABILITY_2026-10.md) | Query入力のmissingと明示NULLを区別し、presence/nullを契約で明示してSQL実行前に拒否する検討案（[#2056](https://github.com/hat47x/tei-platform/issues/2056)、未採用） |
 | [`GENERATOR_REVOCATION_APPROVAL_BOUNDARY_2026-10.md`](GENERATOR_REVOCATION_APPROVAL_BOUNDARY_2026-10.md) | 生成器の失効承認recordをregistry編集と分離し、対象一致・監査・再生成の完了条件を整理する検討案（[#2076](https://github.com/hat47x/tei-platform/issues/2076)、未採用） |
@@ -69,6 +71,7 @@
 | [`SUI_TEI_MIGRATION_IMPLEMENTATION_PACKET_2026-11.md`](SUI_TEI_MIGRATION_IMPLEMENTATION_PACKET_2026-11.md) | SUI→TEI移行のM1〜M6を、変更範囲・型・試験・受入・Owner判断・完了条件までPR単位に具体化した実装前の提案（[#3401](https://github.com/hat47x/sui-sensemaking/issues/3401)、[#2497](https://github.com/hat47x/tei-platform/issues/2497)、未採用） |
 | [`CROSS_VIEW_CHANGE_QUALIFICATION_REFERENCE_DRAFT.md`](CROSS_VIEW_CHANGE_QUALIFICATION_REFERENCE_DRAFT.md) | Issue #1143で検討中の、複数の視点にまたがる変更の適格性確認案。参照用の契約としては未採用 |
 | [`STUDIO_CONSUMER_FRESHNESS_BOUNDARY_2026-10.md`](STUDIO_CONSUMER_FRESHNESS_BOUNDARY_2026-10.md) | #1124の非Host Studio Consumerが非同期応答・Graph描画選択・Source/Accepted/readinessの鮮度を別々に検査する未採用の設計補足 |
+| [`PLUGIN_MANAGEMENT_CONTRACT_2026-11.md`](PLUGIN_MANAGEMENT_CONTRACT_2026-11.md) | プラグイン管理の状態分離・理由コード対応・role契約対応表・データlevel導出を1箇所にまとめる管理契約（[#2044](https://github.com/hat47x/tei-platform/issues/2044)、S1は[#4376](https://github.com/hat47x/tei-platform/issues/4376)で実装、S2〜S5は追記） |
 | [`BUSINESS_EFFECT_LIFECYCLE_DESIGN_2026-10.md`](BUSINESS_EFFECT_LIFECYCLE_DESIGN_2026-10.md) | 副作用を伴う実行の段階、確定後の外部効果、冪等の識別子、確定状態、補償、一括処理の再開をまとめる、評価待ちの設計（[GitHub #1129](https://github.com/hat47x/tei-platform/issues/1129)、[#1130](https://github.com/hat47x/tei-platform/issues/1130)） |
 | [`BUSINESS_ACTION_COMPLETION_EVIDENCE_DESIGN_2026-11.md`](BUSINESS_ACTION_COMPLETION_EVIDENCE_DESIGN_2026-11.md) | Business Actionの完了述語、必要対象集合の完全性、Function利用箇所・実確定Effect・外部証拠の接合を区別する未採用の設計（[#1125](https://github.com/hat47x/tei-platform/issues/1125)、[#1119](https://github.com/hat47x/tei-platform/issues/1119)） |
 | [`EXECUTION_CORRELATION_DESIGN_2026-10.md`](EXECUTION_CORRELATION_DESIGN_2026-10.md) | 一つの業務操作を実行先から提供元まで追跡し、意味の版・ビルド・ロックへ戻るための識別子と記録の規則。担当Issueは無く、評価待ち |
@@ -173,6 +176,11 @@
 | [`TEI_MD_DOMAIN_DIAGRAM_TO_BUILD_LOWERING_2026-11.md`](TEI_MD_DOMAIN_DIAGRAM_TO_BUILD_LOWERING_2026-11.md) | *.tei.md ドメイン知識の図表表現からコード生成・ビルドへ到る縦断設計（設計候補、2026-11-11） |
 | [`TEI_MD_DOMAIN_DIAGRAM_TO_BUILD_IMPLEMENTATION_GUIDE_2026-11.md`](TEI_MD_DOMAIN_DIAGRAM_TO_BUILD_IMPLEMENTATION_GUIDE_2026-11.md) | *.tei.md ドメイン図表→Build 実装導線（P0-A成立後、P1-B〜P3-Dの受入・依存Owner・再利用Fixture） |
 | [`TEI_SHO_OKF_DOMAIN_LINT_DOCUMENT_UNIT_2026-11.md`](TEI_SHO_OKF_DOMAIN_LINT_DOCUMENT_UNIT_2026-11.md) | TEI/SHOのOKF知識バンドルとドメインLint：段階導入の検証計画 |
+| [`TEI_SHO_DOCUMENT_DRAFT_INTEGRATION_2026-11.md`](TEI_SHO_DOCUMENT_DRAFT_INTEGRATION_2026-11.md) | TEI受理済みモデルの一要素と一関係を、SourceとRevisionを保持した説明文書DraftとしてSHOへ渡し、編集・保存・再開・モデル改版時の再確認までを行う最小統合機構（[SHO #19](https://github.com/hat47x/sho-composer/issues/19)・[SHO #4](https://github.com/hat47x/sho-composer/issues/4)・[SHO #6](https://github.com/hat47x/sho-composer/issues/6)、[#3394](https://github.com/hat47x/tei-platform/issues/3394)のSHO文書段、実装済みの最小基線） |
+| [`TEI_SHO_DOCUMENT_DRAFT_NEXT_STAGES_2026-11.md`](TEI_SHO_DOCUMENT_DRAFT_NEXT_STAGES_2026-11.md) | 上の契約を段階2〜5（CRUD表・三要素分析図・仕様書・固定納品版）へ伸ばす実行計画と、相互CI・Studio実組込み・逆方向禁止・`*.tei.md`取込みの横断課題、Owner判断事項の一覧（実装前設計） |
+| [`TEI_STUDIO_SHO_EMBEDDING_FORM_2026-11.md`](TEI_STUDIO_SHO_EMBEDDING_FORM_2026-11.md) | TEI Studio から SHO 文書編集部品を利用する形態の実測と決定（子プロセス起動を維持）・失敗分類6種・未測定（配布・Linux/macOS）（代行決定済み） |
+| [`DOCUMENT_DRAFT_CITATION_AND_OCCURRENCE_ID_2026-11.md`](DOCUMENT_DRAFT_CITATION_AND_OCCURRENCE_ID_2026-11.md) | Draft 引用の解決（`recorded-not-resolved` のまま）と Occurrence ID の永続性（snapshot-local のまま）の代行決定と根拠・撤回条件 |
+| [`TEI_MD_READ_SIDE_DESIGN_2026-11.md`](TEI_MD_READ_SIDE_DESIGN_2026-11.md) | SHO 保存物（`*.tei.md`）の TEI 側読み取り設計。読み取り側が答えるべき4つ（R-01〜04）・Parser完了後も変えない境界・Parser 入出力契約。実装は Parser（#3346）完了後（設計のみ） |
 
 ## 関連する参照事例と評価
 
@@ -339,7 +347,7 @@ S1 realistic intent / candidate frontier
 - [権限の強制の適用計画](PERMISSION_ADOPTION_PLAN_2026-11.md)（要求＝能力、付与＝環境。実行時に再確認して記録する）
 - [動的な出力パスと宣言スコープ](DYNAMIC_PATH_GRANT_DESIGN_2026-11.md)（環境の付与は静的、実行時のパスは動的。両者の不一致と選択肢）
 
-# 機能設計文書
+## 機能設計文書
 
 ここには、複数のIssueにまたがる機能について、意味モデル、記述方法、検証、実行時の境界をまとめた設計文書を置きます。採用前の案も、対象となるIssueと文書の状態を冒頭に明記して管理します。
 
@@ -354,3 +362,10 @@ S1 realistic intent / candidate frontier
 
 `docs/`とは役割を分けます。`docs/`では実装済みの構成と利用方法を説明し、ここでは採用前の案や変更に必要な機能設計を扱います。実装状況が変わった場合は、この設計文書を現行構成の説明に流用せず、`docs/architecture.md`を更新します。
 - [設計書から実行結果までをつなぐ製品設計](PRODUCT_COMPLETION_DESIGN.md)
+
+- [成果物の入力契約（設計記録）](ARTIFACT_INPUT_CONTRACT_2026-11.md)
+- [SQLite introspection の制限と未対応事項](SQLITE_INTROSPECTION_LIMITATIONS_2026-11.md)
+- [共通の例外・失敗モデル（2026-11）](UNIFIED_FAILURE_MODEL_2026-11.md)
+- [2waySQL-like記述との整合性](WAY_SQL_ALIGNMENT_2026-11.md)
+- [DriverシナリオのMarkdown記述（設計候補）](DRIVER_SCENARIO_MARKDOWN_AUTHORING_2026-11.md)
+- [組織データ保護の境界（2026-11）](ORGANIZATION_DATA_PROTECTION_BOUNDARY_2026-11.md)

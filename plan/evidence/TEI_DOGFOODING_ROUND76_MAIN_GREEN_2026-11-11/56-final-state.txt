@@ -1,0 +1,22 @@
+Green on this branch (verified locally):
+  ./tools/repository-plan-check -run TestSchemaVersionLiteralsHaveATest   ok
+  ./internal/threeelement ./internal/reacandidate ./internal/artifact     ok
+  ./cmd/tei (three-element family, relation-query)                        ok
+  go vet ./cmd/tei            0 errors   (plain main: 2 kinds of error)
+  gofmt -l .                  empty
+
+Still red on this branch AND on plain main (not caused by this branch):
+  TestEveryDiagnosticCodeIsMentionedByATest    5 codes (saveunit 3, query 2)
+  TestMarkdownRelativeLinksResolve             1 link (internal/saveunit/README.md)
+  TestPlanReadmesMentionEveryEntry             18 entries
+  TestToolsReadmeMentionsEveryEntry
+  TestExportedStringConstantsHaveATestOrAnEntry
+  TestThreeElementReaIntake* (6 tests)         rea-intake subcommand is not dispatched
+
+CI on PR 4408 (all three reproduce from main-side breakage):
+  cache-verification   actions/upload-artifact@5d5d22a3 does not exist (HTTP 422)
+  observed-real-cli    "artifacts returned invalid JSON"
+  repository-health    the cmd/tei failures listed above
+
+Plain main cannot even build cmd/tei's test package, so its own red set is
+larger than this branch's: this branch strictly reduces it.

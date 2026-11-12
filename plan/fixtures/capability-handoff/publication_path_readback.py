@@ -49,7 +49,12 @@ def verify_ledger_publication_paths(members, directory):
     entries = list(directory.iterdir())
     if any(entry.is_symlink() or not entry.is_file() for entry in entries):
         raise AssertionError("unexpected directory or symlink in published output")
-    actual_paths = {entry.name for entry in entries if entry.name != "manifest.json"}
+    # `manifest.json` and `evidence.json` are publication metadata the Writer
+    # adds, not artifact members. The member set is what this readback binds to
+    # bytes, so the two metadata files are excluded from it. Everything else in
+    # the directory must be a declared member: an unexpected file still fails.
+    actual_paths = {entry.name for entry in entries
+                    if entry.name not in ("manifest.json", "evidence.json")}
     if actual_paths != set(expected_by_path):
         raise AssertionError(
             f"published ledger path set mismatch: missing={sorted(set(expected_by_path)-actual_paths)}, "

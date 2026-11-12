@@ -1,0 +1,7 @@
+added a list entry that no constant names
+--- FAIL: TestEveryDeclaredCapabilityKindIsInTheReportList (0.00s)
+    vocabulary_invariant_test.go:43: declared 7 kinds but the list has 8; a constant was added without updating the list
+FAIL
+FAIL	tei/internal/plugin	0.006s
+FAIL
+restored model.go

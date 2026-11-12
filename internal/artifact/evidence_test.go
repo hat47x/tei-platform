@@ -427,3 +427,14 @@ func TestStagedSetVerifiesEvidenceFileWhenPresent(t *testing.T) {
 		t.Fatal("tampered evidence must fail staged verification")
 	}
 }
+
+// TestEvidenceSchemaVersionIsThePublishedLiteral names the identifier the schema
+// coverage ratchet (tools/repository-plan-check) looks for. The version was written
+// by source and read by the tests above, but no test spelled the identifier, so the
+// ratchet could not see it. The literal is asserted here so a rename cannot pass
+// unnoticed.
+func TestEvidenceSchemaVersionIsThePublishedLiteral(t *testing.T) {
+	if EvidenceSchemaVersion != "tei.artifact.evidence/v0" {
+		t.Fatalf("evidence schema version changed: %s", EvidenceSchemaVersion)
+	}
+}
