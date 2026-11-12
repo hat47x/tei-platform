@@ -105,7 +105,7 @@ func TestReceiptSchemaVersionIsExplicitAndStable(t *testing.T) {
 	if receipt.SchemaVersion != expected {
 		t.Fatalf("schema version=%q want %q", receipt.SchemaVersion, expected)
 	}
-	if receipt.Promotion.AcceptedMeaning || receipt.Promotion.CanonicalSubject || receipt.Promotion.DatabaseObserved {
+	if receipt.Promotion.AcceptedMeaning || receipt.Promotion.CanonicalWorld || receipt.Promotion.DatabaseObservation {
 		t.Fatalf("receipt must not silently promote external evidence: %+v", receipt.Promotion)
 	}
 }
