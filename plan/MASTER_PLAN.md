@@ -391,7 +391,7 @@ SQL/NoSQL/ログ等のリバース結果は、**Physical Observation→Structura
 <!-- rea-ref-coverage-20261112 -->
 ### REA由来参照とTEI参照索引の区別・高速移動（2026-11-12、#3394×#3788×#1124）
 
-**参照の出典と資格を保持する。** REAが発見した静的Relation／同名・近接の構造候補、TEIで受理したData・Function・Businessのモデル参照、実DBのFK／Query観測、実行時の依存は同じ「参照」ではない。既存Source Index／ModelRef／trace／三要素分析法の横断参照を再利用し、表示や検索では`origin=external-observation/candidate/accepted/runtime-observed`（分類候補）、`subject-kind+stable-id`、外部Edge IDと向き・多重性、Source span/revision、確認済み範囲・未解決・必要な開示範囲を区別する。REАのEdge IDや描画用Edge IDを正式TEI Relation IDへ暗黙変換しない。新しい意味正本・Graph Engine・LSPを作らない。
+**参照の出典と資格を保持する。** REAが発見した静的Relation／同名・近接の構造候補、TEIで受理したData・Function・Businessのモデル参照、実DBのFK／Query観測、実行時の依存は同じ「参照」ではない。既存Source Index／ModelRef／trace／三要素分析法の横断参照を再利用し、表示や検索では`origin=external-observation/candidate/accepted/runtime-observed`（分類候補）、`subject-kind+stable-id`、外部Edge IDと向き・多重性、Source span/revision、確認済み範囲・未解決・必要な開示範囲を区別する。REAのEdge IDや描画用Edge IDを正式TEI Relation IDへ暗黙変換しない。新しい意味正本・Graph Engine・LSPを作らない。
 
 **件数と「未使用」は閉じた範囲でのみ確定する。** 参照数は`confirmed / candidate / unresolved`と検索範囲・Snapshot/Revision・Coverageを併記する。外部REAのpartial、権限不足、未取得Source、動的参照、未観測Pluginが残るときは「確認済み参照0件（未確認あり）」と表示し、「未使用確定」や安全な削除の根拠にしない。Candidateを正式参照数へ足し込まず、欠落をゼロに変換しない。AI向けCUIとStudioでは同じ型付き検索結果・診断・固定Selectionを扱い、引用元・参照先・参照元・SHO上の出典へキーボード主体で移動し、戻る／再移動の履歴を保持する。Pinは現在性・用途別Disclosure・改版で再資格化し、古い結果を最新の画面に上書きしない。
 
