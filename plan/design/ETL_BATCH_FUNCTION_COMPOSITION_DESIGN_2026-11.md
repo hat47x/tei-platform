@@ -411,3 +411,64 @@ Checkpointは「どこまで進んだか」の記録であり、**「同じ意�
 - **未決**: §15のO-01〜O-10。決めるまで実装の対象にしない、または既定案を選んで覆す条件をPR本文へ書く。
 - **停止線**: §14の各Wの停止条件と、§1の「第二のDSL/データモデル/Workflow Engineを作らない」規則。
 - **次の作業**: 本設計の起票（Issue更新と子Issue起票）までで止め、大規模実装は開始しない。実装はW1の独立Expectedから始める。`.NET`評価は[#4435](https://github.com/hat47x/tei-platform/issues/4435)、main由来の失敗は[#4434](https://github.com/hat47x/tei-platform/issues/4434)が担当。
+
+## 18. 入力閉包と業務期間の再集計：Claim相対の完全性・遅着・訂正（2026-11-12、設計候補）
+
+- **状態**：既存 #1130 / #4410 / #4411 のW1〜W8、N-01〜12の受入を明確化する設計候補。新Core/正式API、第二DSL、専用ETL Engine、Runner、Authority、Manifestの採用を意味しない。実装・正式Owner判断は別資格。
+- **目的**：物理ファイルの読了と、業務期間の全Fact取得を区別する。Source revisionと業務期・Capture時点・実行Attempt・公開Generationを分離し、遅着と訂正を無条件のCheckpoint再開で処理しない。
+
+### 18.1 Claim相対のInput Closure
+
+| 独立したClaim | 最低限必要な証拠 | そこから推論できないこと |
+| --- | --- | --- |
+| **Physical Read Complete** | pinned物理ObjectのEOF、length/digest/形式照合、Reader attempt | 物理Objectに業務全件が入っている |
+| **Required Source Closure** | 問いに必要なSource/Relation/FX表/Rule/Partition/業務期の列挙、受理済みMeaning・Source identityとの対応 | 要求を宣言しただけで実際に読めたこと |
+| **Population Complete** | 対象Factの粒度・母集団・重複規則・Partition/snapshot coverageと、必要なら独立件数・Key集合など | EOFや件数一致から業務全件・未知Readerの不存在 |
+| **Temporal Cut Qualified** | 有効業務期、capture as-of、event/ingestion時刻、source snapshot・watermark範囲、遅延許容・観測時刻 | 単なるRun開始時刻やTrigger成功から業務締め完了 |
+| **Output/Publication/Consumer Qualified** | 実Outputの法則適合、独立Expected、実Member bytes、Generation/Reader pin、Effect/Ownerの別証拠 | Transform成功から公開一式性・取込・業務受理 |
+
+Claimに必要なSource/Reader/Relationが未Loaded・Unknown・非開示なら、そのClaimについて全件・不存在を主張しない。一件の存在の観測は限定的な陽性Witnessとなり得るが、不存在や全称には必要なClosureが要る。公開可能なCoverage理由と秘密の件数・パスも分ける（#2514/#2516、Studio Draft #4510、TEA Draft #4487）。ここでは新しいClaim Engineを実装しない。
+
+**比較票（正式Schemaではない）**：Question、Accepted Meaning/Function、Data/Fact identityとbase grain、業務Periodとtimezone、必要Source roots/partition/lookup-rate revisions、期待する集合・complete条件、実Snapshot/Reader attempt/byte digest、Actual Consumed range、Coverage/欠落理由、Operator Lawと単位、独立Expected、Disclosure/Current Grant。Required・Declared・Selected・Consumed・Observedは混ぜない（#2831/#3279）。
+
+### 18.2 業務Dの時点分離と再実行の三形態
+
+同じ業務期Dであっても、(1) valid/effective business period、(2) source snapshot / capture as-of、(3) processing・physical Attempt、(4) publication・Reader observedAt は別の時点。event timeとingestion timeも別。Periodの端点・timezone・業務カレンダーを固定し、実行日から勝手に業務基準日を推測しない。
+
+| 実行形態 | Source/Result条件 | 拒否・停止条件 |
+| --- | --- | --- |
+| **Same-Run Resume** | pinned Source/Plan/Meaning、Input digest・処理済み範囲、出力世代、current fenceを照合 | old checkpointを新Snapshotへ流用しない。Unknown Effectを自動再実行しない |
+| **New Delta Run** | base revisionからtarget revisionへ連続した変更履歴、削除/訂正/再出現・watermark・遅着を確認 | base=targetを要求しない。CDCのgapや欠落が不明ならunsupported/unknown |
+| **Restatement / Correction Output** | 同じ業務期でも新Source Snapshotまたは訂正Ruleを明示し、新Run・新Artifact Generationを形成 | 旧Runや旧Outputを黙って上書きしない。業務期のclose/reopen、Ledger訂正/Effectは別Owner判断 |
+
+初期の安全な候補は**有界Snapshotを完全再読込して別Generationで再集計**する方式。CDC完全性や外部Stream受信保証が実証されるまでは自動差分・遅延補正を全件成功としない。ただし全案件に全件再集計を強制する新しい製品規則ではない。予定Slot/Trigger occurrence、配送Attempt、RunKey、実行Attempt、Operation ID、再公開Generationは別の同一性であり、同じ日付から無条件に同一IDを導出しない（#4502）。
+
+### 18.3 MergeableとRetractableを別Traitとして扱う
+
+- 同一単位のSUMがチャンクmerge可能でも、Sourceの全Factが重複なく被覆されたという保証は別。AVGは(sum,count)、COUNT DISTINCTは正確な集合状態等が必要で、Stockの時間方向SUM、JOIN fanout、quantityの単位混在はDecimal型だけでは適格にならない（#2593）。
+- **撤回/訂正可能性は結合則からは導けない**。SUMを安全に差分更新するにはFact identityとbefore/afterまたは有資格なsigned delta、変更・削除履歴の全件性が必要。MIN/MAXで過去の極値を削除すれば残る集合または十分な状態を再参照する必要がある。Mergeable / Retractable / Source Complete / Effect Replay Safeは独立の資格。
+- Traitの設計意図、静的推論、実Provider/TargetでのConformanceを区別。SQL Pushdownや並列化を数学的法則だけで実行許可せず、NULL/Collation/Decimal精度・Snapshot/Scope/現在Grantを確認する（#2622/#3279/#2514）。
+
+### 18.4 固定反例（既存N/EF/APの独立Expectedへ接続）
+
+新しいScenario正本を作らず、N-02/03/06/08/11/12、#2542 EF-01/04、#2604 AP-01/06の一因子変形として扱う。ここでは全行JPY、quantityは同種の「個」で統一し、rate/丸めを固定する。
+
+| 入力の差分 | 手書きIndependent Expected | 禁止する誤成功 |
+| --- | --- | --- |
+| R1のp1: o1=A accepted 2個×100円、o3=A pending 100個×1円。p2: o2=A accepted 3個×200円、o4=B accepted 1個×50円 | 完全取得時はA数量5/800円、B数量1/50円 | pending算入、分割された同Groupの最終chunkだけを採用 |
+| p1のEOF/digestは正常だがp2のReaderはfailed/未取得 | p1の部分結果は計算可能でも、R1全体はunqualified。Bの不存在は主張不可 | p1の物理読了を業務期D全件Completeとする |
+| R1公開後、同じ業務期Dの遅着o5=A accepted 1個×40円を別Snapshot R2で観測 | R2のA数量6/840円、B数量1/50円。旧R1は当時のas-ofとして保持 | 旧Checkpointへo5を継足し、R1の証拠を改ざん |
+| o2が3個から2個へ訂正されたR3 | 完全な差分または全件再読込ならA数量5/640円 | after-onlyを新規Factとして加算、旧Contributionを黙って残す |
+| 同じ予定Slotを再Deliveryする一方、SourceはR1→R2に変わる | Trigger/Delivery/Run/Source/Generationを別列で観測 | 同じ日付だから同一Operation IDで無条件再開してよい |
+
+R1のFile byteが完全でも、業務対象母集団がProvider/OwnerによりClosedと確認されなければ、R1の結果は**観測Snapshot相対**の意味に限る。遅着後の再集計がAnalysis Artifactの再発行で済むか、Period reopen / Correction / Business Effectを必要とするかは#1129/#1130/#1174のOwner判断。Artifactを新世代で公開できたことは業務Ledger更新済みの証明ではない。
+
+### 18.5 反映順・Owner境界
+
+1. **P0 / #4410 W1/W2**：固定TSVのEOFとClaim-relative Population Completenessを別Assertionにする。N-11の真の空/未取得、N-03のGroup merge、#2593の単位を既存独立Expectedで確認。初回SliceへStream/CDC Engineを足さない。
+2. **P1 / #4410 W3/W5、#2604**：Data Output digest、Run Evidence、R1/R2公開Generationと実Consumer readbackを別資格として比較。新Publisher/Manifestを作らない。
+3. **P1 / #4411 W6/W7**：Resume/Delta/Restatementの適格性表、Required・Consumed Source Closure、Source改版時の失効、Commit Unknownの照会停止を既存Runlog/Receiptへ接合。新RunKey・Checkpoint正本を追加しない。
+4. **P2 / #2542/#2593/#4502/#4194**：実Provider/TargetのSnapshot・CDC・Event遅着・Trigger occurrence・EKI Resultを実証した範囲から段階的に接続。外部ACKやWorker CompletedはBusiness Acceptedではない。
+5. **Studio / #1124/#4510**：Dataflow/Temporal Dependency/Publication/Evidenceを型付きGraphの用途相対Projectionとし、未取得/非開示を「図に無いので実際に存在しない」と見せない。Source改版後の旧Preview・旧選択は実編集/Effect資格に昇格させない。
+
+**実証範囲と停止線**：今回の追補はmainの設計・既存Issue/PRの静的照合に基づく設計候補。上表の新規Execution/Go/CLI/実DB・MFT/EKI/Studio/Independent Consumer/Owner採用はNOT RUN。第二のSource/Scenario/Oracle/Temporal Engine/Host/Registry/Authorityを導入しない。
