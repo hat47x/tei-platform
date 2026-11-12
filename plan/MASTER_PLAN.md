@@ -12,7 +12,7 @@
 
 - [理想の利用像を製品の受入へつなぐ計画](workstreams/PRODUCT_COMPLETION_PLAN.md)と[製品設計](design/PRODUCT_COMPLETION_DESIGN.md)は、設計書の編集、実接続、標準構成、帳票、複合表現、分野拡張、運用・費用をG01〜G71の作業へ結ぶ。最新の型・表現、DSL、ETL、プラグイン管理の段階計画へ接続し、申請等の一巡から添付、検索、通知、外部契約、継続イベント、デバッグ、利用者の管理を補う。評価は [#3796](https://github.com/hat47x/tei-platform/issues/3796)と各担当Issueで行い、既存のヘッドレス実証からGUIへ進む順序と、実Readを含む現在の主線を保つ。
 - [Issue #2586](https://github.com/hat47x/tei-platform/issues/2586#issuecomment-6773141846) ：Plugin・Function実Read・三視点Model Map・実Effect・Build・Consumerを、**宣言／実選択／実入力／実呼出し／受領／現在資格**で区別する横断受入計画。§9はS2-reference（#3540）・限定L2-b（#3785/#3795）・限定L3・Hookの実績を反映。**S2-product／Function R0／全体G4は未資格**。各担当は#1251/#2586/#2831/#1124/#2600等を維持し、新Gate/第二正本を設けない。
-- [Desktop横断製品契約・実OS検収計画](design/TEI_DESKTOP_PRODUCT_CONTRACT_2026-11.md) ：Studio/SHO単独/生成Desktopを分離し、ADR-0048の共通Application APIを利用。Context・Resource・Operationの同一性、三要素分析法とSHO/DB/AIのHandoff、状態・Evidence・実OSをDT-01〜38で検証する**提案中**の計画。実装順序はCLI/Headlessでの独立Expected→実Wailsの一経路→SHO/DB/Pin→実Effect/配布。新Host・新Owner・一括Hard Gateは設けない。PR #4498はDraft、実OS E2E/Owner受理は未実施。\n- `product/`
+- [Desktop横断製品契約・実OS検収計画](design/TEI_DESKTOP_PRODUCT_CONTRACT_2026-11.md) ：Studio/SHO単独/生成Desktopを分離し、ADR-0048の共通Application APIを利用。Context・Resource・Operationの同一性、三要素分析法とSHO/DB/AIのHandoff、状態・Evidence・実OSをDT-01〜38で検証する**提案中**の計画。**§12（2026-11-12）**で「テーブル定義→Data Model写像→機能モデルUI Binding」の明示変更契約を追加。画面項目追加による列の暗黙生成を禁止し、列削除は対象UIを残したままBindingを解除し警告する。最初の縦切りは共通FixtureのU1〜U4/U7のCLI/Headless read-only Impact確認であり、新検収番号・新Ownerは作らない。順序はHeadless→実Wails→SHO/DB/Pin→実Effect/配布。#1529のReference close、#4507 merged、#4513/#4514 Draftと実OS未検収を区別する。新Host・新Owner・一括Hard Gateなし、PR #4498はDraft。\n- `product/`
 - `requirements/`
 - `plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
