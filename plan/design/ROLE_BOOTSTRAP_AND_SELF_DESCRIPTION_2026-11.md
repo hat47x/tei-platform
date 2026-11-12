@@ -1122,3 +1122,71 @@ Source Fingerprint一致だけでは現在のResult同値を保証しない。�
 **後続**：`*.tei.md`の意味Source読取は#2621（[closed #3346](https://github.com/hat47x/tei-platform/issues/3346)は未読込が明示されるProduct挙動の限定合格、正式Parserではない）、REA/SHO由来EvidenceのCandidate採用は#3394/#267、SEI判断は[Ontology #3475](https://github.com/hat47x/tei-platform/issues/3475)のO0設計比較に留める。セルフビルドの物理L3とBuild Intent解釈/G4は#2831で別審査。現行Critical Path G0〜G4を変更せず、Raw資料の存在やRole文字列からRuntime権限・SEI Decision・DB更新を生成しない。
 
 **追加独立反例（Scenario正本への提案・この節で実行しない）**：ESD-45 同Role Source・異Row値、ESD-46 同Row値・Role除去、ESD-47 Source-only改訂でWorld同一の旧Packet不正流用、ESD-48 Capability/Application全宣言有りでも実Invoke欠落、ESD-49 Rate規則Rows0件のcomplete/partial/非開示区別。新Runner/Registry/文法/Host、第二Evidence SSOTは作らない。
+
+## 23. 2026-11-13 横断統合：自己記述の製品価値・適格性・第二の意味正本を作らない実証順
+
+本節は、#2620 の既存SDX/ESD、#4536 の最小Role実装、#4359 のDSL表層比較、#4350 の標準データ様式、#1124 の統合Modeler、#2514 の独立検証基準、#1251 のPlugin実Provider、#2831 のTEI全体セルフビルドを**一つの製品像と実装順へ照合する追補**である。上記のIssueの正本・受入権限を移さない。本節の追加は設計であり、新Product E2E、正式Role Definition/Interpreter、Owner意味受理は行っていない。
+
+### 23.1 到達像と、同じ「自己」を混同しないこと
+
+TEIの自己記述は「開発者がTEIの言語・型・Role・Operator・Generatorの意味と依存関係を標準構造で読め、変更候補を検証・再生成できること」を最優先価値とする。利用者のためには、簡潔な業務記述・三視点の相互参照・逆引き・影響分析・保存後再検査につながることが重要である。Go ASTや現行Semanticの制約は実現性・互換性を調べる対象であって、目指す仕様そのものの上限ではない。
+
+| 到達段階 | 何ができれば成立するか | それだけでは成立しないもの |
+| --- | --- | --- |
+| D0 定義を読める | Role/Function/Test/Generatorなどの記述を通常データとして読め、Source occurrenceと安定Subjectを追跡できる | 意味適合・実行資格 |
+| D1 意味を解釈できる | 明示選択したInterpreter/OperatorとRequired Shapeで型付き候補・診断を得る | 別Targetの動作同値・Owner意味受理 |
+| D2 表現を往復できる | 表・式・図・DSLなどから必要なIdentity/Relation/NULL/grain等を損失表示付きで投影・必要なら逆写像する | 自動Writable・意図しないSource書換え |
+| D3 安全に改版できる | 固定された旧意味・Source/版と候補新意味を独立Expected・差分・必要再資格化で比較できる | 変更の自動承認・現在Host Grant |
+| D4 自分自身を構築できる | #2831のTEI Build Intent→実Builder→実Artifact→Stage2再入を同一実際の経路で観測できる | 定義自己解釈(D1)の証拠からセルフビルド合格を推論すること |
+
+D0〜D4は機能の大まかな到達像であり、すべてを同時に要求する共通Gateではない。Product用途ごとに必要な段階と観測を明示し、最初のRead-only実証をGUIやセルフビルドの完成待ちにしない。
+
+### 23.2 最小Bootstrapと自己記述可能領域の境界
+
+**固定の最小根**は既存Workspace/Sourceの読取り、基本値・Record/Sequence/Refの構造識別、版と実装の既存選択、必須入力の検査を行う。標準データで記述される領域は「型とFacet」「Role Required Shapeと適用条件」「Operator/Plugin契約」「Function/Rule/Test/Projection/Build定義」。これらは既存の意味OwnerやResolver/Builderへ明示bindingして初めて意味候補となる。記述の自己申告から新しい実行能力を生み出さない。
+
+「Roleを標準Recordで記述できること」と「そのRecordを実Role契約として評価できること」は異なる。契約が存在しない箇所は unsupported と記録し、その不足を満たす最小拡張を #988/#951/#2620 へ渡す。万能なMeta Interpreter、第二Role Registry、別のSource Writer、新Hostを前提にしない。
+
+自己参照のGraph/Refは遅延参照として残せるが、解釈を実行するのに未解釈の自分自身を必要とする eager閉路は拒否する。改版候補Bは**現在資格を持つ旧Interpreter A**で隔離して検査し、Source/Contract/Implementationのexact Pin、独立Expected、Ownerの通常開発相当のレビューを経たうえで切り替える。A→B→Aとsource byte一致だけで過去の受理・Current Grantを復活させない。
+
+### 23.3 意味と表現の境界：同一Shapeでも同じ意味とは限らない
+
+標準構造（Value/Record/Sequence/Relation/Graph/Ref/Expression）と、その構造へ適用する意味Role、型/Facet、Operator、表示表現は別の関心事とする。「同じRole」という語でも、Semantic Role、業務Actor/手続き上の担当、実装Pluginの選択、Runtime Principal/Grantは相互に変換しない。
+
+三要素分析法のデータモデル・機能モデル・業務モデルは原典の用語・図法・相互参照を尊重する。同じGraph等で格納できても、三種のRoleを並べるだけで原典再現と呼ばない。正本の意味IDと、Source occurrence、図の表示ID、Relationのoccurrence、CRUDセル、時間条件、Identityを区別する。三視点の逆引き・参照数・未使用項目は同じ依存グラフの用途別投影とし、専用Editor正本を複製しない。
+
+Projection PとClaim Qについて、異なる原状態A/Bが P(A)=P(B) だが Q(A)≠Q(B) となる場合、PだけではQを判断できない。Graphの多重辺、SQL由来の重複、NULL/未取得/非開示/完全0件、部分取得の否定依存、数量の単位・丸め位相、履歴時点などを**当該Claimに必要な範囲で**損失として明示する。表示が等しいことからMeaning/編集/実行の適格性を推定しない。#2495/#2497/#2500/#2544のOwnerで扱う。
+
+### 23.4 AI・Studio・OKFとの接合
+
+Studio/CLI/外部AI Harnessは、カーソル上の一時選択とは別に、**固定Subject（Workspace/Meaning ID/Source occurrence/Revision/用途）**を明示的に保持する。Source改版・A→B→A・遅延Reply・Current Disclosure変更時に、選択意図は維持しても現在の適格性は再評価する。図の描画edge IDを意味Relationとして自動採用しない。画面上のPreviewやAI提案からSourceへ反映する場合は、既存Typed Operation・Preview/Diff・Conditional Save・保存後独立Readを再利用する。AI Harnessは等価なAdapter候補であり、特定製品をTEIの意味正本にしない。
+
+OKF等の文書管理、SHO文書、Git/NAS/S3等の外部Evidence保管は出典の追跡とレビューを支えるが、Readerが解釈できた事実からMeaning受理・正しさ・実行資格を保証しない。AI生成による誤った設計の混入を検出しやすくすることを重視し、承認単位はファイルまたは意味のある要素・Role単位、人的判断は通常開発相当とする。AI生成Test/Expectedの自己追認は#2514の独立期待値で防ぐ。
+
+### 23.5 Claim相対の最小観測票（第二Schema/証拠ストアではない）
+
+| 列群 | 最初に収集する実際の情報 | 不明のときの扱い |
+| --- | --- | --- |
+| 対象・出典 | Workspace / Subject identity / Source occurrence・span・raw digest・Revision・Manifest raw | 対象を仮の同名Subjectへ付け替えない |
+| Requiredと実読 | 外部根拠付きRequired Source、Declared Source、Loader実読、実Parser/Interpreter/ConsumerのConsumed | 自己申告required=[]を完全性の根拠にしない。未読込はunknown |
+| 解釈 | Source表層、Role use-site、Shape、Semantic/Facet、Language/Role/Operator実選択・推移pin、型付きCandidate/診断 | Role文字列/Type ID一致だけで汎用解釈や意味同値を宣言しない |
+| 利用条件 | Target/Artifact/実Builder・実Provider/実Consumer、現在Scope/Grant/Disclosure、Effects/Receipt | read-only/preview、Build success、過去の受理を実行許可にしない |
+| 検証 | 独立Expected revision、既知Mutant、Actual、負例、Coverage分母、Claim上限、同一Attempt識別 | skippedをPASSにしない。別Attempt・別Subjectの緑を加算しない |
+
+内部の照合は用途ごとに Required(C) / Observed(C) / Undischarged(C) を分け、Claimに必要なSource/実装/Consumerのどこが最初に未証明かを特定する。Source/World/Artifactの指紋が同じでもManifest必須Root、外部原文、実Provider消費、現在権限が同じとは限らない。観測不足なら unknown、契約欠落なら unsupported、反証に成功した場合は FAIL/insufficient を独立に記録する。
+
+### 23.6 実装計画：Roleの局所成功から汎用化へ進む条件
+
+**P0a（#4536：実Go Fit/Gap）**：mainの既存fx.rate、Role重複拒否、Source Index、既存Language Plugin Selection/Workspace Loaderから一つのSubjectの読取経路を再現し、上の観測票を記載。既存テストを再利用し、全Managed Sourceを読んだと推測しない。現行Goの限界は理想仕様の否定ではなく最小Gapとして扱う。
+
+**P0b（#4536：独立Expected）**：Role有無と同Role異行値の対照に、必須Source未読込、同Role/型でも異なるNULL・partial・完全0件の一因子反例を加える。ただし現行Rate APIがそれらを区別できない場合は黙って既定値を修正せず未対応と記録。実Source/同Revision/同Attemptの範囲を固定し、#1180/#2514の既存Scenario/Expectedを使用。
+
+**P0c（#4536：汎用化の最低条件）**：標準Record/RefのRole Descriptorを、専用データ項目名をハードコードせず**既存の解釈/選択契約へ明示bindingできるか**を調査。単一ドメイン専用関数の成功を汎用Interpreter成功にしない。必要なRequired Shapeやimplementation pinが欠ける場合は、不足フィールドと実消費点を示して#988/#951/#2620へ返す。
+
+**P1（異質な第二Subject）**：fx.rateだけに最適化された構造を避けるため、既存Validation（例：sales.order_line.quantity_positive）等、意味・型・必要Sourceの異なる**一つのSubject**に同じ解釈手順を適用する。元のRoleと無関係なSubjectを同一Attemptと称しない。#4359の新rule糖衣はそのParser/anchor/既存Validationへの変換が独立に成立した後で比較し、旧構文を無断移行しない。
+
+**P2（異種Consumerの限定往復）**：同じ受理済みMeaning/RevisionをCLI JSONとStudio/SHOの二種の表現へ投影し、元Source位置・参照・必要なIdentity・診断・Claim相対の情報損失を確認。編集可能性とHost実行権限は別の検証とする。Product Inspector/実Providerは#1251、実DB Readは#2586、Modelerは#1124、全体セルフビルドは#2831がOwner。
+
+**性能の検収**：P0の既存Read-only baselineと比べて、余分なSource scan、再Lex、未選択Pluginのload、依存全走査、増分再検証範囲、CLI応答時間・メモリを計測する。最初から数値目標を仮定しない。Source位置/影響追跡に必要な情報を減らして高速化しない。IDE/Studioに新たな解決エンジンを持たせず、既存Go Application ServiceとCLIを共用する。
+
+**完了の停止線**：#4536の実Go接合は局所P0の完了、#4359は表層と意味変換、#1251/#2586は実Provider/Read、#2831は実TEI再入をそれぞれ独立審査する。旧#1119 G0〜G4に新しい全件必須Gateを追加しない。今回のESD/SD-S0の拡張Caseの新規実装・実行、Product Role Descriptor Interpreter、Studio/SHO、Current Grant、実Target/セルフビルド資格は **NOT RUN / NOT PROVEN**。
