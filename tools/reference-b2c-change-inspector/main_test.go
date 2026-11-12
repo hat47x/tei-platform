@@ -215,3 +215,46 @@ func TestKnownBusinessImpactRetainsUnknownCoverage(t *testing.T) {
 		t.Fatalf("known impact and unknown closure were conflated: %+v", r)
 	}
 }
+
+func TestRequiredConsumerIndirectUpstreamGapIsNotClosed(t *testing.T) {
+	v := sample()
+	v.Required = []string{"pdp.consent"}
+	v.Nodes = append(v.Nodes,
+		node{ID: "native.adapter", Layer: "interaction"},
+		node{ID: "native.provider", Layer: "business"},
+		node{ID: "native.sibling", Layer: "presentation"},
+	)
+	v.Edges = []edge{
+		{From: "unknown.sql", To: "native.provider"},
+		{From: "native.provider", To: "native.adapter"},
+		{From: "native.adapter", To: "pdp.consent"},
+		{From: "native.adapter", To: "native.provider"}, // cycle
+		{From: "native.provider", To: "native.sibling"},
+		{From: "native.sibling", To: "unknown.sibling"},
+	}
+	got, err := inspect(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The changed content is disconnected. The question's required
+	// consumer still has a known two-hop route to the missing Provider.
+	if got.Coverage != "partial-or-unverified" ||
+		got.Disposition != "incomplete-scope-needs-review" ||
+		!reflect.DeepEqual(got.Unresolved, []string{"unknown.sql"}) ||
+		!reflect.DeepEqual(got.Lanes, []string{"C0"}) {
+		t.Fatalf("indirect required dependency was called closed or unrelated sibling was included: %+v", got)
+	}
+
+	// Drop only the upstream gap. The downstream sibling's missing
+	// dependency is not part of this Required consumer's input closure.
+	v.Edges = v.Edges[1:]
+	got, err = inspect(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Coverage != "declared-closed-only" ||
+		got.Disposition != "no-known-critical-impact-within-declared-scope" ||
+		len(got.Unresolved) != 0 {
+		t.Fatalf("unrelated downstream sibling over-invalidated the question: %+v", got)
+	}
+}
