@@ -351,9 +351,10 @@ func readUnknowns(unknowns []graphUnknown) []Unknown {
 	return out
 }
 
-// derivedRelationID is the handle for an edge the producer did not name. It is
-// a digest of the Evidence ID and the edge's endpoints and kind, so the same
-// edge read twice gets the same handle and a different edge does not.
+// derivedRelationID is a provisional handle when the producer omitted an ID.
+// It is deterministic within the same Evidence and endpoints/kind, but parallel
+// occurrences with the same tuple collide. A caller must reject non-unique
+// selected handles rather than treating this digest as a stable edge identity.
 func derivedRelationID(evidenceID, from, to, kind string) string {
 	sum := sha256.Sum256([]byte(strings.Join([]string{evidenceID, from, to, kind}, "\x00")))
 	return "sha256:" + hex.EncodeToString(sum[:])
