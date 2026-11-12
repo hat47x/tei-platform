@@ -22,6 +22,7 @@
 - [部分モデルを再検討する条件](SUBSYSTEM_CANONICAL_REOPEN_GATE_2026-09.md)
 - [三視点ローコード実証の計画](TEI_PRODUCT_CRITICAL_PATH_2026-10.md)
 - [増分ビルドの再利用・Evidence・再資格化の実行対照手順](INCREMENTAL_REUSE_EVIDENCE_EXECUTION_PROTOCOL_2026-11.md)
+- [main健全性・CI Evidence・関連リポジトリ横断の運用計画](CI_MAIN_HEALTH_AND_EVIDENCE_CROSS_REPO_2026-11.md)（既存検証・自律統合・保管方式への接続案。新GateやCI再有効化の決定ではない）
 - [Issueの深掘り対象の選定と作業順序](ISSUE_DEEPENING_2026-11.md)
 - [深掘り設計の上流接続](UPSTREAM_CONNECTION_2026-11.md)
 - [TAI上流への立ち戻りと、5課題の整合](TAI_UPSTREAM_ALIGNMENT_2026-11.md)
