@@ -561,9 +561,9 @@ Design Synthesis
 
 一方、durable proof object、generic Claim、graph storage、global revision等のCore採用は、Reference Evidenceが具体的なlossを示すまで保留します。
 
-この方針により、三要素分析的なcross-viewの強みを保持しつつ、TEIの小さいkernel、file-native authority、Shared Acceptance Boundary、Derived Cognitionの非authority性を崩さずにDesign Synthesisへ接続できます。
+この方針により、三要素分析法のモデルに基づくcross-viewの強みを保持しつつ、TEIの小さいkernel、file-native authority、Shared Acceptance Boundary、Derived Cognitionの非authority性を崩さずにDesign Synthesisへ接続できます。
 
-## 16. 三視点の検証を説明・操作・実装で一貫させる（2026-11-12 評価案）
+## 16. 三要素分析法のモデルの検証を説明・操作・実装で一貫させる（2026-11-12 評価案）
 
 > 状態: **追加の設計・受入計画。実装と正式契約の採用ではない。**
 > 同じ関心事について複数の図・表・Tool Result・AI説明を作るとき、どの問いを検証したかを失わないことを目的とする。既存Ownerは #1124（モデル投影）、#1127（標準CRUD）、#3250（Subsystem分割）、#3262（必要Design Context）、#2514（独立Expected）、#1163（同一改訂Evidence）とし、現Productの具体的不整合は [#4472](https://github.com/hat47x/tei-platform/issues/4472) で扱う。
@@ -581,7 +581,7 @@ Design Synthesis
 
 以上は説明用の論理依存であり、すべてを固定したCore Objectの階層として導入するものではない。
 
-三視点は業務向けの重要なMethod Profileだが、科学データ／通信／編集／XRでも同じSubject・Source・Meaning・Scope・根拠つきProjectionを使う。CoreにBusiness Procedureを必須導入しない。新しいDomain Profileを作る際も、既存の三視点の完全コピーから始めず、分野の問いたいことを先に定義する。
+三要素分析法のモデルは業務向けの重要なMethod Profileとして扱うが、科学データ／通信／編集／XRでも同じSubject・Source・Meaning・Scope・根拠つきProjectionを使う。CoreにBusiness Procedureを必須導入しない。新しいDomain Profileを作る際も、三要素分析法のモデルの単純な複製から始めず、分野の問いたいことを先に定義する。
 
 ### 16.2 「OK」を一つの真偽値へ潰さない
 
@@ -624,11 +624,11 @@ Design Synthesis
 
 **P2／実DB・Target Owner**: 注文確定時の保存単価、商品マスター改版、同じ版の画面／新規帳票、訂正の正規Operation、発行済み帳票の別Assetというケースで、Mockの表示一致ではなく、実Provider/Consumer/独立Observationを結ぶ。
 
-段階の判定は、一件の現在のコード欠陥の修正から直接「三視点の製品全体が検証済み」へ広げない。逆に、現実装が未対応であることを理由に将来仕様の表現を貧弱にする必要もない。要求した価値に向けた最小の反例・受入へ戻す。
+段階の判定は、一件の現在のコード欠陥の修正から直接「三要素分析法のモデルに関する製品機能全体が検証済み」へ広げない。逆に、現実装が未対応であることを理由に将来仕様の表現を貧弱にする必要もない。要求した価値に向けた最小の反例・受入へ戻す。
 
 ### 16.5 アウフヘーベンの判断
 
-「三視点の個別ツールを高度化する」「AI向けContextを別実装する」「試験用Proof DBを別に作る」という三つの発想を足すのではなく、**各Consumerが同一のAccepted Subjectと問いに相対的な根拠へ戻れること**を共通原理にする。既存Proof Obligation、Source Index、Canonical/Shared Acceptance、Read-only Projection、共通Operation API、Conformanceを合成すれば、この原理の多くは新しいCore Kindなしに評価できる。
+「三要素分析法のモデルを扱う個別ツールを高度化する」「AI向けContextを別実装する」「試験用Proof DBを別に作る」という三つの発想を足すのではなく、**各Consumerが同一のAccepted Subjectと問いに相対的な根拠へ戻れること**を共通原理にする。既存Proof Obligation、Source Index、Canonical/Shared Acceptance、Read-only Projection、共通Operation API、Conformanceを合成すれば、この原理の多くは新しいCore Kindなしに評価できる。
 
 もし共通化によって専門家が扱う自然な記述順やNative SQLの表現力、GUIの安定した対象選択、Target固有の最適化が失われるなら、抽象化の方を修正する。共通化自体は目的ではない。
 
@@ -638,7 +638,7 @@ Design Synthesis
 
 #### 価値の新発見から仕様へ
 
-三視点のProjectorとCRUD列挙、Design Context Query、AI編集支援、独立Expectedは、個別機能の集合としても説明できる。しかし横断して観察すると、より高位の価値候補を検討できる。
+三要素分析法のモデルのProjectorとCRUD列挙、Design Context Query、AI編集支援、独立Expectedは、個別機能の集合としても説明できる。しかし横断して観察すると、より高位の価値候補を検討できる。
 
 > **価値候補 VQ-01（未採用）**：人とAIが、同じ対象・同じ変更について「何を根拠に、どこまで確認できたか」を共有し、複数の表現やTargetを横断してもその理解を失わない。
 
@@ -656,7 +656,7 @@ Design Synthesis
 
 #### アウフヘーベンの比較基準
 
-1. **保存すべきもの**：三視点Methodの明瞭さ、Native SQLと既存資産、DSLの専門家向け認知順、Targetごとの適正化、人間の安定したGUI選択。
+1. **保存すべきもの**：三要素分析法のモデルのMethodとしての明瞭さ、Native SQLと既存資産、DSLの専門家向け認知順、Targetごとの適正化、人間の安定したGUI選択。
 2. **否定すべきもの**：機能ごとの第二の意味正本、図とAIと試験でのID・Source解決の重複、無根拠な万能OK、暗黙に最初/最後を選ぶ解決、検証できない「共通だから正しい」。
 3. **統合して得るもの**：Qualified Subject・問い相対の根拠を共通にし、Methodごとの解釈/ProjectionとTargetごとの実現はPlugin等で可変にする。
 4. **棄却条件**：共通化で結果の解釈（NULL・Coverage・粒度・Actor・Authority・Effect）が失われる、分野の表現力が落ちる、Source provenanceが切れる、機構が増えて利用者に説明できなくなる、独立Expectedで差が判別できない。
@@ -744,7 +744,7 @@ Design Synthesis
 
 **望ましい仕様の成立条件**：Stable/Qualified Subjectは同Kind同ID衝突を診断し、CrossKind同IDの合法性はKind+Scope契約に従う。Index/Graph/CRUD/AI Context/Fingerprintは原モデルを変えずに計算でき、派生結果を格納しただけで内容Digestが変化しない。モデルの意味的なFingerprintを変える入力と、Derived Diagnostic・現在Authority/Grant・実観測を変える入力は混同しない。現時点の`ThreeElementModel`型・3戻り値・JSON Field構成を将来仕様の制限として採用しない。
 
-**判別例・所有順**：TE-ID-01〜06（#4475）の正負を先に固定し、Input ID衝突が未解決なら「この図のSubjectは一意」とは主張しない。純粋なFingerprint計算は同一Meaning+異AuthorityLimitsでの値と現在資格を別に表示。実装内部の索引改善は#4475、3視点Projectionの利用条件は#1124、Consumerでの問い相対の適格性は本Design Synthesis。新Identity/Permission Registryを先行追加しない。
+**判別例・所有順**：TE-ID-01〜06（#4475）の正負を先に固定し、Input ID衝突が未解決なら「この図のSubjectは一意」とは主張しない。純粋なFingerprint計算は同一Meaning+異AuthorityLimitsでの値と現在資格を別に表示。実装内部の索引改善は#4475、三要素分析法のモデルからのProjectionの利用条件は#1124、Consumerでの問い相対の適格性は本Design Synthesis。新Identity/Permission Registryを先行追加しない。
 
 ### 16.10 一つの可読なSourceからの参照閉包（2026-11-12 追加評価）
 
@@ -755,13 +755,13 @@ Design Synthesis
 - Actual: 実行Query/Raw結果/Mappingの物理DB・Input/Result・粒度/時点からData Context、表示/Action、独立Read/Expectedへ、同一のSource/Subject/Revisionを追える（#2586/#2611/#2506）。
 - Proof: 相互参照を表示できるだけで正常終了とせず、Source未取得／別物理DB／未宣言列／同ID衝突／部分Context／Authority差を一因子ずつ変えて結論の適格性が変わるか確認する。
 
-これは3視点以外のDomainにも通じる設計上の**可読な最小例**の条件であり、現在のScript文法・Physical Queryを正本にするものではない。Domain expertの認知順を優先し、関係する契約が増える場合は標準Recipeで隠蔽できる複雑さと専門家が明示すべき判断を分ける。現実装で使えない構文を理由により優れた表現案を棄却しない。一方で、その構文が既存Parserで使えると主張しない。
+これは三要素分析法のモデルの適用対象以外のDomainにも通じる設計上の**可読な最小例**の条件であり、現在のScript文法・Physical Queryを正本にするものではない。Domain expertの認知順を優先し、関係する契約が増える場合は標準Recipeで隠蔽できる複雑さと専門家が明示すべき判断を分ける。現実装で使えない構文を理由により優れた表現案を棄却しない。一方で、その構文が既存Parserで使えると主張しない。
 
 
 
 ### 16.11 GUI/CUI共通の安定した対象固定と、問い相対のContext Tray（他チャット11/10〜12の成熟差分）
 
-**狙う利用価値**：利用者が三視点図、CRUD表、Source、規則、SHO文書、SUIのCard等を行き来しながら、**今どの要素／関係／範囲についてAIと話しているかを失わない**。選択を自然に保ちつつ、違う対象・版へ誤適用しない。これは既存§16の「同じ問いに戻れる」を利用者操作で実現するための条件であり、新しい意味正本・ハーネス常駐Host・Session Registryの採用を意味しない。
+**狙う利用価値**：利用者が三要素分析法のモデル図、CRUD表、Source、規則、SHO文書、SUIのCard等を行き来しながら、**今どの要素／関係／範囲についてAIと話しているかを失わない**。選択を自然に保ちつつ、違う対象・版へ誤適用しない。これは既存§16の「同じ問いに戻れる」を利用者操作で実現するための条件であり、新しい意味正本・ハーネス常駐Host・Session Registryの採用を意味しない。
 
 #### 三層の選択を混ぜない
 
