@@ -869,3 +869,59 @@ StudioでUI要素を選択しAI/DSH系Harnessへ細かく指示する設計は�
 新しいGate／Registry／Domain Parser／Graph Authority／Host／Runner／専用Harness Session Storeを導入しない。必要なテストは既存Go/CLI、[#2514](https://github.com/hat47x/tei-platform/issues/2514)/[#1180](https://github.com/hat47x/tei-platform/issues/1180)のIndependent Expectedに接続する。
 
 **現在の状態**：本§33・二Reader照合Go試験は当該Draftのソースとして保存する計画変更。新Headの`gofmt/go test/vet`とRepository Healthが実際に成功するまで、Product MapやAI-Harness操作を合格扱いしない。図表の完全性・実Studio/SHO/DSH送出、業務効果・Meaning Acceptanceは未実証。
+
+## 34. TEA三要素×三層を「問い相対の証拠」として投影する（2026-11-12、採用前）
+
+**状態**：Method／Cross-viewの設計・受入候補。新Core Kind・9セルCanonical・Evidence Store・Policy Engine・Runner・Hostを採用しない。新たな実CLI/Go/Node/Studio/Provider試験や業務Owner受理は主張しない。[三要素Method Draft #4478](https://github.com/hat47x/tei-platform/pull/4478)はLifecycle/AI Harness、[実CLI→Node Draft #4396](https://github.com/hat47x/tei-platform/pull/4396)はCatalog/Validation表示を担当。本節は図表間Cross-referenceに**何を根拠として表示・診断できるか**だけを扱い、両PRの変更pathを触らない。
+
+### 34.1 三要素と三層は直交するが、9種類の正本を作らない
+
+[三要素分析法の原典説明](https://atmarkit.itmedia.co.jp/fbiz/cbuild/complete/doa/01/01.html)ではData／Function／Businessの各観点を論理要件・物理制約・実装で見る。TEIではこれを**9個のモデルや状態フィールドではなく、既存Source・Semantic Role・Binding/Target・Evidenceに対する問い相対のProjection**として扱う。元の方法論は業務システムに特化するので、汎用TEIの他Domainへ全語彙を強制しない。
+
+| 観点 | 論理要件 | 物理制約 | 実装・観測 |
+| --- | --- | --- | --- |
+| Data | 業務Identity、Key/FD、値域、Relation | DBMS、Storage、所在地・分離制約、Schema/Provider選択条件 | 実Schema・制約、実Rows/Read、移行と品質の独立観測 |
+| Function | Interaction/UI、Command、I/O、Function-level CRUD | 言語/Framework、Capability、実行・Transport制約 | 実Artifact/Provider選択、Invoke/Read、Effect/Receipt/独立Readback |
+| Business | Procedure、Manual/External Step、Actor、Trigger、業務規則 | 人員・組織・担当配置、業務時間、社内制度・社会的制約（IT設定とは限らない） | 実際の作業遂行と業務結果の観測。ログだけで人の実施やOwner受理を代替しない |
+
+物理制約のうち人員・社会的条件は自動抽出を前提にせず、出典・時点・開示資格を必要とする。Business Actorを実Authorization Principalへ昇格させない。物理FKから業務Keyを、実Rowから全母集団を、Function宣言から実Action Effectを逆算しない。
+
+### 34.2 Cross-view Queryの最小構成（説明用で正式Schemaではない）
+
+同じSource/Accepted Meaningから導出した図・CRUD表・CLI/MCP・SHO表示は、用途に応じ公開資格済みSliceの**問Qに対する証拠**を示す。既存Typed Ref・Evidence・Coverage・Projectionの組合せで次を保持する。別のStore、DSL、Authorityを作らない。
+
+1. **Question/Use-site**：例えば「Business ActionがOrderを更新したか」と「FunctionがUを宣言するか」を別の問にする。
+2. **Subject/Relationの同一性**：Workspace観測、Qualified Subject（Scope/Kind/ID）、多重Relation occurrence、Source/Meaning Revision、effective time、各Reader Attemptの対応関係を保持。同名・表示ID・Source locator・Fingerprintだけで同一Workspace/Readと見なさない。
+3. **Premises/Derivation**：Source-backed、declared Function-level C/R/U/D、derived-potential、inferred-indirect、observed-effectの起源を分離。導出Rule/version、複数Source、競合宣言、未解決Endpointを保存。
+4. **Coverage/Disclosure**：問に必要なSource、Role、Relation、Writer、Observationの母集団と被覆を宣言。非表示・非開示・not-examinedは0件にしない。Raw CountsやPrivate Edgeは公開Sliceより前に資格審査する。
+5. **Realization/Observation**：Provider/Artifact/Target/Build Unit、Operation/Attempt、I/O、Tx/Recovery、Receipt・独立Readbackを別Evidenceへ参照。静的Sourceの一致は実呼出し成功ではない。
+6. **Assessmentの限界**：根拠付き矛盾、実現保証の欠落、証拠不足/失効、明示的対象外を区別し既存Validation/Trait Assessmentから説明する。新しい全域Core Enumにはしない。
+
+**不存在判定**：あるQとScopeについて必要なSource/Relation/Roleの閉包、現行のReader/Rule版、公開資格が成立する範囲でのみ「そのScopeでは該当なし」と言える。未知Writer・未読込Source・部分Model Map・非開示Relationがある場合はunknownであり、全域の越境CUD 0や「図にないので不存在」と表示しない。非公開対象の有無や件数も漏らさない。
+
+### 34.3 三視点を跨いでもDirectnessと実行の資格を失わない
+
+- Business Action→Function→Dataは導出経路であり、Function-level UをAction固有の実Uへ昇格させない。Functionを持たないManual/External Actionも残す。[#1031](https://github.com/hat47x/tei-platform/issues/1031)のX-TEA Source観測は別Evidence。
+- 同じFunction→Dataの複数R/Uや矛盾宣言を行・Occurrence単位で残す。Draft [#4403](https://github.com/hat47x/tei-platform/pull/4403)は、合成CharacterizationでCRUD表の複数行とCrossReferenceの先頭優先、矛盾報告があってもOK=trueになり得る境界を記録した。これは製品Validator変更・全Writer把握の証拠ではない。#1127/#1132/#3250が判断Owner。
+- ETL/ELT Transform/Join/AggregateはFunction/Operation側のData lineage。スケジュール・承認・手動引継ぎ・File Relayは該当Business/External Operation Roleを別に示す。Batchの結果値、全Member完了、Publish、Recipient受領、Resume、Delta、Effect/Recoveryを同一視しない。[ETL/Batch設計](ETL_BATCH_FUNCTION_COMPOSITION_DESIGN_2026-11.md)と[#1130](https://github.com/hat47x/tei-platform/issues/1130)へ委譲する。
+- Subsystemの論理更新責任とData所有候補、direct CUD、委譲、effective/observed Effect、物理Target、業務Ownerを別軸にする。[#3250](https://github.com/hat47x/tei-platform/issues/3250)の候補・ScoreはAcceptedや実Tx証拠ではない。
+- モデル由来TestはObligation候補を[#4134](https://github.com/hat47x/tei-platform/issues/4134)へ渡すが、モデルから生成したExpectedで同じモデルの正しさを自己証明しない。受理済みRule／手書き固定Expected／独立実観測が必要（#2514/#1180）。
+
+### 34.4 追加の反証候補（すべて新試験NOT RUN）
+
+| ID | 対照と最小期待 | Owner |
+| --- | --- | --- |
+| TEA-Q01 | 実sales.order.lines RelationのModel Map/Locateは同一Qualified意味を指すが、Source移動後は旧Locatorを失効。別Read Attemptを原子的同一と呼ばない | #1120/#1124 |
+| TEA-Q02 | 同じFunction→DataにRとU、または相反するCRUD宣言。先頭行への縮約による喪失・競合を明示し、唯一Writerや無矛盾を断言しない | #1127/#3250/#4403 |
+| TEA-Q03 | Functionを持たないManual ActionとFunction-level Uの経路が同居。欠落扱いせずAction固有実Effectは不明 | #1125/#1031 |
+| TEA-Q04 | ETL Batch exit成功でも一部Member未公開・Recipient独立Read欠落。全件完了や自動再実行適格を推定しない | #1130/#2604/#1174 |
+| TEA-Q05 | Subsystem間direct Updateを委譲候補へ置換。score改善をEffective Effect/Tx/Recovery証明にしない | #3250/#267 |
+| TEA-Q06 | Closed Domain IntentとJava/SQL制約観測はあるがWriter集合または人員条件が未知。保証欠落と実違反を区別する | #3278/#1126/#2386 |
+| TEA-Q07 | Private Relationのみ変えた二世界、同名異Scope、別Workspace同Snapshot。Public Graph/ARIA/ToolにPrivate件数を漏らさず旧Bindを拒否 | #2516/#1124 |
+| TEA-Q08 | 意味RuleとExpectedを同一生成器で作った後にMutantを実行。自己生成Expectedでは合格不可、独立固定Expectedで照合 | #4134/#2514/#1180 |
+
+### 34.5 最小組込み順と停止線
+
+**P0**：#1124の同一Consumer実Source/選択/currentnessと#2586の実Provider Readを最優先に保ち、実Relation一件からData/Function/Businessの根拠付きread-only Queryを試す。#4396の実CLI→別Node限定証拠をSame Attempt/Owner受理と呼ばない。**P1**：#4403の多重CRUD・矛盾を既存Model/Consumerの受入候補としてOwnerへ返す。Validator Error化、Directness、Owner採否はここで決めない。**P2**：ETL・Subsystem・Traitの必要なEvidenceだけを問Qへ結合する。**P3**：一意で可逆なEdit IntentだけProposal→Impact/Validation→既存Shared Acceptance→再投影。Plugin Build/複数Instance/Self-buildは#951/#2831の別資格。
+
+**撤回条件**：既存modelref・Evidence・Cross-view表で問いと根拠を説明でき、追加抽象に効果が無い／第二正本を作る／Private件数を漏らす／derivedをActualへ昇格する／Method更新だけでAccepted Meaningが変わる場合は専用の実装を追加せず既存Projectionへ戻す。**TEA-Q01〜08の新試験、実Policy/Studio GUI/Provider/業務Owner受理はNOT RUN／NOT ACCEPTED**。
