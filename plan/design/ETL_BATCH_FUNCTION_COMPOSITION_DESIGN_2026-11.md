@@ -615,7 +615,7 @@ R1のFile byteが完全でも、業務対象母集団がProvider/OwnerによりC
 | Sの実観測と値は同じだが閲覧Grantを失効 | 歴史的Evidenceは残せる。現在の開示は拒否/保留 | Value digest一致からCurrent Disclosureを復活 |
 | 1行目acceptedの到着後にEarly Triggerが発火 | 当該Snapshotの部分Paneという説明は可能（Providerが保証する範囲内） | Trigger発火・Watermark通過だけでFinal/Business Accepted |
 
-関係代数の追加入力に対する単調性は、選択・射影・正のJOIN/UNIONと、否定/差集合で異なる（例：[Duke Database講義](https://courses.cs.duke.edu/fall20/compsci316/Lectures/02-relational-notes.pdf)）。この数学的区別を、Providerの実保証、Current Authority、業務的な時間Cutへそのまま昇格しない。
+関係代数の追加入力に対する単調性は、選択・射影・正のJOIN/UNIONと、否定/差集合で異なる（例：[monotone query研究レビュー](https://pmc.ncbi.nlm.nih.gov/articles/PMC10328546/)）。この数学的区別を、Providerの実保証、Current Authority、業務的な時間Cutへそのまま昇格しない。
 
 ### 21.4 受入順・既存Ownerと停止線
 
