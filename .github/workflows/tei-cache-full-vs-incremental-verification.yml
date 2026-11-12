@@ -38,21 +38,21 @@ jobs:
           check-latest: false
           cache: false
 
-      - name: Cache verification testsを実行
-        shell: bash
-        run: |
-          set -euo pipefail
-          go version
-          go test ./tools/reference-cache-full-vs-incremental-verification/... -v -count=1
-
-      - name: 検証結果を保存
-        if: always()
+      # 1回の実行結果をそのまま保存する。別Runの再実行結果を混ぜない。
+      - name: Cache verification testsを実行し証拠を保存
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p "$GITHUB_WORKSPACE/artifacts"
-          go test ./tools/reference-cache-full-vs-incremental-verification/... -v -count=1 > "$GITHUB_WORKSPACE/artifacts/verification.log" 2>&1 || true
-          cp "$GITHUB_WORKSPACE/artifacts/verification.log" "$GITHUB_WORKSPACE/artifacts/verification-results.txt"
+          {
+            printf 'commit=%s\\n' "$GITHUB_SHA"
+            printf 'runner_os=%s\\n' "$RUNNER_OS"
+            printf 'runner_arch=%s\\n' "$RUNNER_ARCH"
+            go version
+            go env GOOS GOARCH GOVERSION GOTOOLCHAIN GOFLAGS GOWORK GOENV
+          } > "$GITHUB_WORKSPACE/artifacts/run-context.txt"
+          go test ./tools/reference-cache-full-vs-incremental-verification/... -v -count=1 \\
+            2>&1 | tee "$GITHUB_WORKSPACE/artifacts/verification.log"
 
       - name: 検証結果をアップロード
         if: always()
