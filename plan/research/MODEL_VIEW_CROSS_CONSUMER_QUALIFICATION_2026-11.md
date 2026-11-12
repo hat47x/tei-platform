@@ -86,3 +86,57 @@ MV-01の次の一手として、既存`internal/operations/model_catalog_validat
 - `catalogValidation`は`SourceRootFindings`のerrorを数える一方、`WorkspaceValidation.HasErrors()`は確認したmainコードでは`Direct`／`Diagnostics`のerrorを確認し、`SourceRootFindings`を走査しない。**Source-root-onlyのerrorがあるWorkspace**について、これらをそのまま合否として比べれば不一致の可能性がある。実CLIの`validate -json`がどの規則を使うか、発火可能なRoot負例とともに[#2823](https://github.com/hat47x/tei-platform/issues/2823)／[#3674](https://github.com/hat47x/tei-platform/issues/3674) Ownerへ返して調べる。現在のProduct CLIが誤判定したという実証結果ではない。
 
 これらは本PRの既存4 operationテストの成否とは**独立の未検証問題**。正式なValidation状態Schemaや新検証器を先に増やさず、同一Rootの`CatalogWorkspace`／`ValidateWorkspace`／CLI JSONを実Source-root-only負例で照合した上で最小対応を判断する。**NOT RUN / NOT PROVEN**。
+
+## 5. 2026-11-11：Source-root-onlyエラーを跨ぐValidation資格の整合（小さい実装修正候補）
+
+**更新した事実**：[#3808](https://github.com/hat47x/tei-platform/pull/3808)の検証NG WorkspaceによるCatalog／Validate／Inspect／Source Trace回帰と[#3543](https://github.com/hat47x/tei-platform/pull/3543)の実Workbench A/J限定結線は**main統合済み**。[#4239](https://github.com/hat47x/tei-platform/pull/4239)の歴史Source A/B→実CLI/MCP受領、[#4279](https://github.com/hat47x/tei-platform/pull/4279)のOperationSurface代表Bindingの非完全性負例もmain統合済み。ただし成功した各試験は同一Provider/Attempt/Owner業務意味のEnd-to-end証拠ではない。[旧Draft #3518](https://github.com/hat47x/tei-platform/pull/3518)はそれ自体**未統合でclosed**だが、後継[#3866](https://github.com/hat47x/tei-platform/pull/3866)の型付きModel Map M0は[統合PR #4079](https://github.com/hat47x/tei-platform/pull/4079)でmainへ移植済み（`internal/operations/model_map.go`）。M0の`Coverage=partial-projection`は維持され、業務三視点・実Effect・現在権限の完成を意味しない。
+
+### MV-10：同じ実Workspaceで、manifestの存在しないRootだけがerror
+
+[#2823](https://github.com/hat47x/tei-platform/issues/2823)にあるRoot処理の実装を2026-11-11のmain `2202baa96e5e845c996da62c8f8df27e00d45c43`で照合した。現行の`WorkspaceValidationReportFrom`（CLI/MCP共通投影）と`catalogValidation`は、`SourceRootFindings`の`error`を不合格に含める。一方`WorkspaceValidation.HasErrors()`は`Direct`と`Diagnostics`だけを見るため、**Source-root-only errorを見落とす静的な規則差**があった。これは新しいValidationの意味判断ではなく、既存の不合格判定への一致問題である。
+
+最小修正候補は、`WorkspaceValidation.HasErrors()`へ`SourceRootFindings`のerrorの検査を追加すること。診断本体の複製や第二Validator／Schemaを作らず、既存APIの利用者がCatalog/CLI報告と異なる不合格判定をしないようにする。
+
+| 実Workspaceの固定対照 | 型付きHasErrors | Catalog Validation | CLI/MCP共通Report |
+| --- | --- | --- | --- |
+| `semantic`正常＋宣言した`nonexistent` Rootが存在しない | `true`が必要 | `ok=false`、error件数≥1 | `ok=false` |
+| `semantic`正常＋存在する未知`future` Root | `false`が必要（warningのみ） | `ok=true`、warning件数≥1 | `ok=true` |
+
+本変更の実Goテストは`internal/operations/validate_test.go`へ、既存`writeWorkspaceFixture`を使って上記の**二つの実ファイル系Workspace**を作る。Loader→Source Index→Catalog/Validate→共通Reportの既存経路を使用し、入力全件やHostによる外部実行の保証はしない。異なるOperationの実行は別々のLoadであり、結果のFingerprint一致から**原子的な同一Attempt**を推論しない。
+
+### MV-11：Native Model Map内のCatalog Validationは「未実行」と「不合格」を区別する
+
+現行mainの`MapWorkspace`は`CatalogWorld`を直接呼んで`ModelMap.Catalog`に格納するが、`CatalogWorkspace`とは異なり`catalogValidation(loaded)`を設定していなかった。そのため**健全な実Workspaceでも埋込Catalogの`validation.ok=false`がGoの初期値で残る**。これはModel Mapを「Validation NG」と表示した場合に実害となる、具体的なProducer差である。
+
+最小修正は、`MapWorkspace`が持つ**同一Load結果**で`catalogValidation(loaded)`を計算して埋込Catalogへセットすること。新しいValidation正本/Readerは作らない。実ファイル系Workspaceの「健全／未定義TypeRef」「missing source root／未知root warning」を既存`CatalogWorkspace`・`ValidateWorkspace`・`WorkspaceValidationReportFrom`と対照する回帰試験を提出する。Graphの`resolved`が業務Relation受理でないこと、`partial-projection`であることは変えない。
+
+**停止線**：この修正によって、低水準の`CatalogWorld`自体へ「未検証」の第三状態は追加しない。Read-only Mapの内部で検証済み結果を作るだけで、現在のSource・Relation全件閉包、Map Renderer、Studio受領・編集Grant、Owner Meaningは依然 **NOT PROVEN**。
+
+**独立の残課題**：`CatalogWorld(world, idx, ...)`を直接呼ぶ際の`Validation.OK`初期値は、`CatalogWorkspace`の検証済み結果と別物。今回の修正はこの低水準関数に検証資格を付与しない。また将来の三視点図やCRUD表で「Rootが未取得」と「対象が存在しない」を混同してはいけない。
+
+**実証資格**：この節は提案した最小製品修正とその二つの回帰条件を記録するもの。変更のGo試験、実CLI/MCP、Studio・Model Map・Runtime/Provider、完全なSource Closure、Current Grant/Owner MeaningとCIが**exact HEADで確認されるまでNOT PROVEN**。新Core/Host/Reader/Policyを増設しない。
+
+## 6. 2026-11-11：Validation一致からSourceの現行性・Claim再利用へ飛躍しない受入線
+
+**追加の横断所見**：MV-10/11で修正するのは、`HasErrors`・Catalog・Mapに渡る**同一Workspace内容に対する検証成否の表現**である。これにより、別Root／別時点での同じSourceの消費や業務Claimの再利用が保証されるわけではない。
+
+- [#4329](https://github.com/hat47x/tei-platform/pull/4329)は、ConsumerのWorld/Source Index Fingerprintや**実CLI応答13件すべてが不変**でも、Import先Provider raw／Manifestの内容が変わる二世界を実CLIで観測した、と記録している。Consumerが必要とする1-hop依存がIndex外または未観測なら`unknown`に止め、旧Fingerprintを現行資格として配布しない設計候補。**同PRは現時点でOpen／未統合**、Providerの真正な宣言と全Closureは未観測。
+- [#4393](https://github.com/hat47x/tei-platform/pull/4393)は、独立したRequired依存の閉包と、実際に消費した入力集合の閉包を分離している。ただし`dependencies_closed`と`consumption_closed`の真偽値は**合成fixtureの作者が与えた前提**であり、実Providerから二閉包を観測した証拠ではない。
+- [#4335](https://github.com/hat47x/tei-platform/pull/4335)は、DerivedIRと宣言されたData Context束縛でread-only変更影響を`retain/recheck/unknown`に分類するDraft。`retain`は既存の資格維持候補であって、`Read`・`Validation`・`Eligibility`の新しい合格ではない。実SQL Worker/Provider/DBの閉包は未証明。
+- [#4396](https://github.com/hat47x/tei-platform/pull/4396)の実CLI Catalog/Validate→独立Node三要素Consumerには、固定headの専用試験成功の記録がある。これはReaderのValidator判定を**別プロセスへ渡せる**限定根拠であり、Source Attemptの原子性、実三要素Role、Current Disclosure/編集権限まで移すものではない。
+
+### MV-12：五つのView資格と、必要・消費・観測Closureの対応表
+
+| Consumerが利用したい判断 | このPRが改善する範囲 | 追加で必要な独立証拠・拒否条件 |
+| --- | --- | --- |
+| **Read/Validation**：このWorkspaceは読めた・不合格か | MV-10/11：Root error／warningと型エラーの局所判定をCatalog/Map/Typedで一致させる | 各OperationのReader Attempt・実使用byte。低水準`CatalogWorld`を呼ぶだけならValidationは未実施 |
+| **Identity**：このModel Mapと別Consumerは同じ対象か | 同じfixtureでWorld/Source Index fingerprint・Manifestの観測一致を試験する | 別Root／別Attempt／Import先Providerの真正なSourceは別照合。Fingerprint・表示Key一致だけでSource-owned同一性に昇格しない |
+| **Coverage**：必要なRole/Source・実Consumedの集合が閉じたか | Mapの`partial-projection`と未資格Roleを保持する | 独立Required集合と実Consumed集合のSource/Revision/Providerを各Ownerが観測。未知や未取得を0件／不在に変換しない |
+| **Change impact**：このClaimは再利用可能か | 変更前後のValidator判定だけを再確認する候補 | Required+Consumedの閉包、影響経路と非単射Mappingを独立Expectedで検査。変更を観測しただけでCommitや業務Effectを主張しない |
+| **Eligibility**：今Viewから編集・公開・実行できるか | **このPRによる新規資格なし** | 現Source/Consumer epoch、Ownerが受理した意味、現在のDisclosure/Grant、一意Source anchor、#267のtyped Preview/Acceptanceを独立に確認 |
+
+**次に引き渡す反例**：同じ基礎Workspaceで`validation.ok=true`／Map links不変の状態から、Consumer Fingerprint外のProviderを改版する。Catalog/MapのValidation表示は直ちに「業務Claim現在有効」へ昇格せず、RequiredにProviderが含まれる場合は#4329の`unknown`、実Consumedを未観測なら#4393の`unresolved-impact`相当として**別々に停止**させる。公開UIに出す内訳はCurrent Disclosureに従い、Private Providerの存在を表示漏洩しない。実Studioでの失効／旧DOM拒否は#1124のOwnerに残す。
+
+**計画上の優先順**：P0は#4392の新headについて局所試験と全Healthの失敗原因を分離して確定する。P1は#4329/#4393のRequired・Consumed証拠を各Ownerが独立に測定できる場合だけConsumerへ移す。P2は同じ条件で#4396の実CLI→Node/三視点と#1124の実Workbenchへ接続し、正しいUnknown・旧証拠失効・操作拒否を検証する。P3はセルフビルドの選択／実消費ArtifactやETL/MFTのManifest／Receiptに類似の証拠要件が反復した場合に、個別実行のOwnerへ**評価票だけ**を引き渡す。第二Reader/Runner/Host/Proof Storeや共通の`verified`状態は追加しない。
+
+**資格**：この節は既存の他担当Draftの記録・コード・CI上限を整理した研究計画。横断MV-12実行、Providerの真正な閉包、現行Policy、Studioの実UI、実Build/ETL業務Effect、Owner受理および認知負荷比較は **NOT RUN / NOT PROVEN**。
