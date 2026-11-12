@@ -118,7 +118,6 @@ func mustIndex(t *testing.T, root string) sourceindex.Index {
 	return idx
 }
 
-
 // TestReadWorkspaceSubjectRejectsSameOffsetRetargetAndTracksSourceOnlyDrift
 // characterizes a real Loader/Index read for a UI or harness that pins an
 // exact semantic Subject. A byte offset or matching canonical value alone is
