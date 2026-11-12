@@ -539,15 +539,15 @@ X-TEAの項目単位「参照／被参照箇所の一覧・ジャンプ」をStu
 
 - **Definition**：`workspace/sourceRef + qualified Subject/Element ID + source occurrence/span + source revision`（実在するId/Source位置が得られる範囲のみ）。文書の同一内容が二箇所にある場合のOccurrenceを区別する。
 - **Reference Edge**：参照元occurrence、参照先qualified ID、参照種別（data-binding / relation / function-call / workflow / CRUD / query / document-citation等）、Direction、Provider/Projection、Evidence/Scopeを保持する。X-TEA旧Sourceに由来する観測IDを、検証なしにTEI Accepted Meaning IDへ昇格しない。
-- **Reference Count**：推測文字列出現数と解決済み意味参照数を別に扱う。重複、多重辺、同名別対象、読み取り不可のSourceを静かに統合しない。
-- **Index資格**：対象Source/Model/Plugin contract revision、Covered Scope、complete/partial/unavailable/unknown、diagnostics、未解決参照数、生成時刻を付す。指数的な再計算を避け、既存の依存追跡/増分Build/Cache契約に接続する。
+- **Reference Count**：推測文字列出現数と解決済み意味参照数を別に扱う。重複、多重辺、同名別対象、読み取り不可のSourceを静かに統合しない。**問いQに必要な参照元Universeと可視範囲が確定していないとき、参照0を不存在の証明に用いない**。限定陽性（一つ見つかった）と全件不在（全必要入力を検査した）は独立Claim（#4510/#4527）。
+- **Index資格**：対象Source/Model/Plugin contract revision、Covered Scope、complete/partial/unavailable/unknown、diagnostics、未解決参照数、生成時刻を付す。**Required（問いの必要集合）／Selected（選択Reader/Provider）／Consumed（実読取Source）／Qualified（現在用途への適用）を同じ「完全」フラグへ畳まない**（#4510/#4527）。指数的な再計算を避け、既存の依存追跡/増分Build/Cache契約に接続する。
 - **失効と継続性**：Source/Relation/Plugin version/Grant/Workspaceが変わったら影響箇所を選択的再観測する。IndexのCache hitをOwner Meaning受理や現在の開示資格とみなさない。Index未完成でもSource Editor/Inspectは使用可能。
 - **Plugin Provider**：Pluginは対応するSource/Reference/Statisticのread-only抽出を登録可能。ただし起動時の全Pluginロード/全Workspace走査を必須とせず、可視範囲・機能使用時に必要な部分を遅延計算する。外部Providerが応答しない場合はpartial/unsupportedとし、全Studioの操作を停止しない。
 
 ### 14.3 「未使用」の判定を誤らない
 
 - **参照0・完全索引**：当該Workspace/定義群/参照種別の**検証した範囲内で参照なし**。Sourceの動的参照・外部公開API・実行時反射・外部文書を網羅できない場合、製品全体の「未使用」と言い切らない。
-- **参照0・部分索引**：「確認範囲では0件、未調査の参照元あり」。未解決、権限非開示、未導入Plugin、Sourceの破損・観測不能をそれぞれ件数/資格で示す。
+- **参照0・部分索引**：「確認範囲では0件、未調査の参照元あり」。未解決、権限非開示、未導入Plugin、Sourceの破損・観測不能を区別する。ただし**件数・隠れた対象の存在・Source path自体が秘密となるAudienceには表示しない**。内部診断の件数や理由をGraph/DOM/ARIA/CLI JSON/外部AIへそのまま流さず、許可されたAudience向けには「この問いでは判断不能」等の限定表示を用いる（#2516/#4510）。
 - **参照あり**：クリックで各出現へ移動。参照数は「異なる参照元」または「Occurrence件数」なのか表示で区別する。UIマッピング解除の候補は、索引の完全性・現在Sourceに応じて警告し、参照0だけで自動削除しない。
 - **統計**：定義数、直接参照/逆参照数、未解決数、未使用候補、循環、重複、影響依存、Source欠落/権限不明などを出せる範囲で提供。性能測定・実利用ログは既定で収集/外部送信を要求しない。
 
@@ -576,21 +576,21 @@ X-TEAの項目単位「参照／被参照箇所の一覧・ジャンプ」をStu
 | 試験候補 | 一因子差・独立Expected | 現在 |
 | --- | --- | --- |
 | NAV-01 | Subject Aを複数箇所で参照。定義→参照→戻る→進むが元Qualified ID/Occurrenceへ到達。Source行番号だけの一致は不合格 | NOT RUN |
-| NAV-02 | 同Label二Subjectと同端点二Relation。参照数と移動先を混合せず、描画用Edge IDのSemantic Pinを拒否 | NOT RUN |
-| NAV-03 | 参照0のSourceに未取得Plugin/権限非開示/動的参照がある。全体未使用と断定せず、範囲内0とpartial/unknownを表示 | NOT RUN |
+| NAV-02 | 同Label二Subjectと同端点二Relation、さらに同Kind同ID衝突。曖昧IDを後勝ちで解決せず、参照数/移動先を混合しない。描画用Edge IDのSemantic Pinを拒否。#4524のコード提案PASSを実Workbench PASSへ転用しない | NOT RUN |
+| NAV-03 | 問いQで参照0、未取得Plugin/動的参照/Private Relationの有無だけ異なる対照二世界。全体未使用と断定しない。低権限側でPrivateの有無・件数・診断理由をGraph/DOM/ARIA/Tool/AIに漏らさず、内部側は不足を区別 | NOT RUN |
 | NAV-04 | Index生成後Source A→B→A、Workspace切替、遅延旧Reply。Index/Reference表示の旧資格を自動復活させず、現在Pinに勝手に再結合しない | NOT RUN |
 | NAV-05 | 参照一覧の多数Occurrenceと未解決/重複を保全しつつ仮想表示。画面上限で切れた件数を「全件」と誤表示しない | NOT RUN |
 | NAV-06 | Command Palette→対象選択→Pin→根拠/除外→Previewをマウスなしで操作。IME/Esc/Tab/支援技術で誤解除・誤送出0 | NOT RUN |
-| NAV-07 | Provider/Plugin一つのSlow/Crashを注入。Source Edit/Inspectが利用可能で失敗範囲と不足数を表示。外部送信や実Effect 0 | NOT RUN |
+| NAV-07 | Provider/Plugin一つのSlow/Crashを注入。Source Edit/Inspectが利用可能で失敗範囲を許可Scope内で表示。さらにread-only IndexのローカルCache書込み・外部Network Readを業務DB更新や外部送出と別作用として観測し、意図しないNetwork Upload/実Effect 0 | NOT RUN |
 | NAV-08 | Plugin 0/少数/多数×Index cold/warm×小/大Fixtureで入力/移動/起動/memoryを計測。再現環境・p95/p99と費用を区別 | NOT RUN |
 
 ### 14.7 今すぐ既存Ownerに渡せる最小パケット
 
-**N0（Headless、#1124/#2514）**：既存Catalog/InspectとSource Indexの返すID/位置/参照辺の粒度を実コードで棚卸しし、Source-backedでない参照種別を列挙。NAV-01〜03の独立Expectedを先に手書きする。この時点で欠けたRelation occurrence IDをUIで発明しない。
+**N0（Headless、#1124/#2514）**：既存Catalog/Inspect/Map/LocateとSource Indexの返すID/位置/参照辺の粒度を実コードで棚卸しし、Source-backedでない参照種別を列挙。NAV-01〜03の独立Expectedを先に手書きする。Draft PR #4521の実Workspace Relation Map↔Locate比較は出発点だが、別Load間の一致は原子的Snapshot/Grant/全参照元の閉包を証明しない。Draft PR #4524の重複ID診断もSource付き実Workbenchの誤束縛防止に接続して初めてConsumer受入となる。この時点で欠けたRelation occurrence IDをUIで発明しない。
 
-**N1（read-only逆参照、#1824/#1124）**：一つのSubjectと参照元二箇所を持つFixtureで「定義へ移動・参照箇所一覧・戻る」を既存Operation/Projectionへ接続する。既存Indexだけでは足りなければ限定的な導出Index/Diagnosticを追加し、Source-backed参照のみcomplete扱いとする。
+**N1（read-only逆参照、#1824/#1124/#3788）**：一つのSubjectと参照元二箇所を持つFixtureで「定義へ移動・参照箇所一覧・戻る」を既存Operation/Projectionへ接続する。未保存Bufferを参照するEditorは保存済みSourceと別Revisionとして扱い、UTF-8/CRLF位置・旧診断後着・改名の部分参照集合を#3788のED-01〜10と照合する。既存Indexだけでは足りなければ限定的な導出Index/Diagnosticを追加し、Source-backed参照のみ用途・範囲限定でcomplete扱いとする。
 
-**N2（Pin＋Command Palette、#4515/#1824）**：Subject Pinを先に検証し、Navigation history/キーボード操作を後続接続。送出はMock/Previewのみで、外部Harnessの実送出は#2516/TAIのOwnerへ引き渡す。
+**N2（Pin＋Command Palette、#4515/#1824/#4503）**：Subject Pinを先に検証し、Navigation history/キーボード操作を後続接続。PinとEvidence参照の現在Grant/Source資格は別。送出はMock/Previewのみとし、外部HarnessやNAS/S3の実Fetch/Upload（ローカルCache書込みを含む実作用）は#4503/#4307/#2516/TAIのOwnerへ引き渡す。UI上のread-onlyをFS書込みゼロ・Networkゼロと同義にしない。
 
 **N3（負荷試験、#2600/Studio Plugin Owner）**：IndexとPluginの有無によるStartup/Navigation/Inputの基線をHeadlessと実Wailsで別計測し、再現可能な性能退行をCIの対象候補へ。全Plugin常駐・一括索引・既定の使用状況追跡を要求しない。
 
