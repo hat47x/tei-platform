@@ -205,7 +205,6 @@ func TestUnsoundWorkspaceCatalogInspectAndTraceKeepValidationDistinct(t *testing
 	}
 }
 
-
 // An invalid Workspace remains navigable, but all real read-only projections
 // must carry the *same failed validation verdict*. An indexed Subject or a
 // structurally resolved Map link is not an acceptance or execution grant.
