@@ -863,3 +863,62 @@ ChatのStream delta、Voiceのpartial ASR、HarnessのTool提案、B2CのExperim
 **追加の反例観点（既存LGX-17〜24に付帯）**：大量Selectionの一部が未取得、Graph同名多重Edgeの誤編集、Graph Patch順序非可換、Owner未受理の条件変更、実行中Grant失効、同名異内容Source、Plugin版A→B→A、選択Bと実Invoker A、Chat partial ToolがEffectを起こす、B2C非関与Routeへの必須JS混入。これらを#1180/#2514の独立Expectedへ還元し、第二テストSSOTを作らない。
 
 **採否停止線**：第二正本/第二Auth/第二Resolverが必要になる、AI候補をOwner受理と同一化する、静的UNKNOWNをPASSにする、未実行Targetを適合済みと表示する、Sourceへ帰還できないProjectionを編集可能と称する。この場合は設計を増築せず既存契約へ戻す。
+
+## 25. 実装引渡し：Selection Context・Patch・Execution Evidenceの最小縦断契約（2026-11-12）
+
+§23〜24の設計を実装可能な単位へ分解する。**新しい公開APIや正式Schemaの採用ではなく、既存ContractへのFit/Gapを調べるためのReference**である。#1124（Modeler）、#3262（Source Context）、#3503（Lifecycle）、#1251（Provider実Consumer）、#1180/#2514（Scenario/Expected）をOwnerとし、二重の正本・Resolver・Hostを作らない。
+
+### 25.1 Selection Contextは「表示選択」ではなく変更対象の契約
+
+最低限の情報を以下に分離する。
+
+| 区分 | 必須情報 | 禁止する解釈 |
+| --- | --- | --- |
+| Identity | qualified Subject ID、Kind、Relation/Edge ID、複数対象の集合演算 | 表示名・行番号・座標をIDにする |
+| Provenance | Workspace、World/Snapshot、Source URI/Span、Revision、fingerprint | 同名Source・同bytesの再出現を無条件に同一資格とする |
+| Scope | Consumer、選択時の可視範囲、未取得/非開示/曖昧の件数 | 見えた対象だけを完全集合と主張する |
+| Intent | read / explain / propose / edit / invoke の要求種別 | 選択操作だけでWrite/Effect Grantが成立したとする |
+| Lifetime | 固定時点、期待Revision、再解決方針、失効理由 | セッション存続で対象が常に現行とみなす |
+
+**権限はSelection Contextへ永続Grantとして埋め込まない**。選択時のScopeは診断用であり、実際のRead/Write/Effect時にHostが現在権限を判定する。固定選択の解除は明示操作とし、旧対象が消失した場合は自動で近傍の別対象へ付け替えない。
+
+### 25.2 Proposed Patchから実行までの状態遷移
+
+~~~text
+Selected Context
+  -> Proposed Change (AI / Human)
+  -> Structural Validation
+  -> Owner Meaning Acceptance [業務意味を変える場合]
+  -> Source Commit / Revision
+  -> Effective Graph + Plugin Lock
+  -> Target Artifact + Build Evidence
+  -> Host Authorization + Actual Invocation
+  -> Outcome / Effect Receipt / UNKNOWN
+~~~
+
+- **構造のみの変更**：layout-onlyはSource業務意味・生成Artifactを変更しない。単なる表示設定も対象・Scopeの可視性検査は必要。
+- **意味を変える変更**：Edge/Guard/Operation/Relationの変更はOwner受理の範囲を明示し、意味未受理ならSource候補として保留する。
+- **実行中の変更**：旧Attemptを黙って新Graphへ移さない。継続、明示Migration、拒否を区別し、既存Effect receiptとunknown commitを保持する。
+- **外部参照**：Source move/content change/permission-denied/unavailable/partial/not-foundは別状態。A→B→Aでも旧資格を自動復活させない。
+
+### 25.3 実Consumerを通した三つのReference Slice
+
+| Slice | 入力 | 実証する出口 | 主Owner |
+| --- | --- | --- | --- |
+| S0: Inspect | 実Workspace、選択Provider B、CLI/Studioの同一Subject | 選択B=実Invoker B、実Consumer受領、Source/Attempt一致 | #1251 / #1824 |
+| S1: Modeler Selection | 実Source Indexの同名多重Edge、固定Selection Context、AI提案 | 選択ID維持、曖昧拒否、Owner未受理時Effect 0 | #1124 / #3262 |
+| S2: Graph Patch | 既存OperationへValidation追加と条件分岐、同一Independent Expected | 合成Graph、Source帰還、Target実Artifact、全Path Guard/Effect | #3503 / #3278 / #1121 |
+
+S0未実証の段階でS2の実Provider parityをPASSとしない。S1のread-only表示は編集・実行資格の証拠ではない。S2でTargetを実行しない場合はDesign/Buildまでの限定PASSに留める。
+
+### 25.4 Evidence Joinの最小照合キー
+
+**同じログが存在することと、同じ実行に由来することは別**。Evidenceを突き合わせる際は、少なくともWorkspace/World/Snapshot、Source revision、Operation/Attempt identity、Consumer/Target、selected Plugin/Provider Lock、Artifact revision、Host authority context、Effect identity/receiptを用途別に照合する。全部を一つの巨大IDに押し込まない。取得不能な項目はUNKNOWNとして示し、類似するタイムスタンプや表示名で結合しない。
+
+### 25.5 受入票と失敗時の報告
+
+各Sliceの報告には「Source実体」「選択Provider」「実Invoker」「Consumer受領」「Independent Expected」「Effect/Receipt」「Target coverage」「実行SHA/環境」「未検証事項」を記載する。局所合成テスト、CI成功、実Workspace実行、Owner意味受理は別欄とする。
+
+**採用判定**：S0で実Consumerが成立し、S1で安定Selection/Source資格が成立し、S2で少なくとも一Targetの実生成・実行と全Path Obligationが成立した場合に、Graph編集→実Targetの限定縦断を主張できる。Chat/VUI/SHO/B2C全Targetの適合はその後に個別検証する。
+
+**状態**：本節は設計と受入票の追加のみ。S0/S1/S2の実行、Target生成、Owner受理、CI検証は本変更ではNOT RUN。
