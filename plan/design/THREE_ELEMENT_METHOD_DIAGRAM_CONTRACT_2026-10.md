@@ -1077,7 +1077,7 @@ CLIでは非対話操作も、承認済み変更の明示的な入力と対象�
 
 第27.7節の六区分は**UI項目からデータ項目への対応**を説明するものであり、Data/Function/Businessを横断するCRUD宣言が業務上矛盾しないかを示すものではない。たとえば列への対応が現行Sourceで有効であっても、同じFunction×Dataに「更新あり」と「更新なし」の相反する明示CRUD宣言があれば、保存可否や変更影響の判断には追加のレビューが必要になる。逆にCRUD矛盾があっても、無関係な項目のread-only参照や局所検証まで無条件に停止させない。
 
-[Draft #4534](https://github.com/hat47x/tei-platform/pull/4534)は、`ContradictoryCRUDs()`の全件報告と、構造診断上の`OK`・CRUDの`conflicts-require-review`を別に扱う限定Product修正である。**Draftであってmain採用済みではない**。当初の「矛盾＝一律hard error」案は既存Issue #4472の判断保留と合致せず撤回されたため、ここでも新しい一律Error/Exit codeを定義しない。
+[main統合済み #4534](https://github.com/hat47x/tei-platform/pull/4534)は、`ContradictoryCRUDs()`の全件報告と、構造診断上の`OK`・CRUDの`conflicts-require-review`を別に扱う限定Product修正である。**2026-11-12 23:02 UTCにmainへマージ済み**（merge `5f35d5dc`）。構造OK・矛盾一覧・要レビュー表示という限定修正であり、Derived CRUD/Studio変更適用/Owner業務受理を証明しない。当初の「矛盾＝一律hard error」案は既存Issue #4472の判断保留と合致せず撤回されたため、ここでも新しい一律Error/Exit codeを定義しない。
 
 | 判断したいこと | 確認する証拠 | 主張できないこと |
 | --- | --- | --- |
@@ -1088,7 +1088,7 @@ CLIでは非対話操作も、承認済み変更の明示的な入力と対象�
 
 **実装・検収の順序**：#4472が既存TE-CR-01〜06でData索引取り違え、明示CRUD-only行の脱落、矛盾の全件報告と表示資格を照合する。#4534のReview StatusをStudio/CLI/CUIに渡しても、それは既存Modeler/Operation上の**レビューが必要である旨の診断**であり、第二のApproval Engineではない。UI Mapping失効（DMU-03/05/07）と矛盾CRUD（TE-CR-03/04）が同時にある場合、両方を別に表示して、未確定の更新先への実書込みを実行しない。構造問題のない別Subjectの閲覧は継続できるよう、無関係範囲へ一律のFAILを伝播させない。
 
-**受入証拠の上限**：#4392/#4524のmain統合済み修正はValidationと重複ID索引を限定的に改善したが、CRUD矛盾の表示・明示行の保全・実Studio/Host更新を証明しない。#4534/#4513等のDraftを本節の追記だけで採用済みとしない。新しいScenario正本は作らず、TE-CR/DMUの既存Expectedを#1180/#2514で束縛する。**本節の実製品試験・Ownerの業務判断はNOT RUN**。
+**受入証拠の上限**：#4392/#4524のmain統合済み修正はValidationと重複ID索引を限定的に改善したが、CRUD矛盾の表示・明示行の保全・実Studio/Host更新を証明しない。#4534のmain統合は確認済みだが、#4513等のDraftや未実装の派生Consumerを採用済みとはしない。新しいScenario正本は作らず、TE-CR/DMUの既存Expectedを#1180/#2514で束縛する。**本節の実製品試験・Ownerの業務判断はNOT RUN**。
 
 ## 28. 方法論プラグインと通常開発の受理：Coreに固定しない協業契約（2026-11-12）
 
@@ -1262,15 +1262,15 @@ DMU-01〜09、他DraftのORG-MAP-01〜10（#4500）と期待値・入力を照�
 
 ## 31. 実Provider Readの製品経路への昇格とStudioセルフビルドへの接続（2026-11-13）
 
-§25 S0・§26 A/D・§29 A〜Eの優先度を、[Draft #4539](https://github.com/hat47x/tei-platform/pull/4539)の**限定された実証成果**を踏まえて更新する。対象は#2586の一Function実Readであり、TEI Studio Desktopによるセルフビルドという最上位の製品目標へ、既存の#1824/#2831の契約を使って段階的に接続する。**新しいDB Provider/Query Engine/Studio Host/Build Graph正本は作らない**。
+§25 S0・§26 A/D・§29 A〜Eの優先度を、[main統合済み #4539](https://github.com/hat47x/tei-platform/pull/4539)の**限定された実証成果**を踏まえて更新する。対象は#2586の一Function実Readであり、TEI Studio Desktopによるセルフビルドという最上位の製品目標へ、既存の#1824/#2831の契約を使って段階的に接続する。**新しいDB Provider/Query Engine/Studio Host/Build Graph正本は作らない**。
 
 ### 31.1 実証済みの範囲と未接続の範囲を区別する
 
-#4539のPR提出者は、`order_entry.recent_orders`（`public.orders`、`:from`、5列）に対し、既存Driver/Environment束縛→PostgreSQL 16.15→Raw Rows→read-only Function Data Context→専用`tools/reference-browse-read`の別プロセス入口を試験したと報告している。正常取得、時刻境界、0件、NULL・列欠落、SQL Source改版、JOIN重複、RLS/列権限/マスキングを含む。GitHubで**当該Draft PRのCI completed/successを確認した**が、GitHub CI成功を外部PostgreSQL実試験の独立再現やmain統合に読み替えない。PR自体は**Draft・未マージ**である。
+#4539のPR提出者は、`order_entry.recent_orders`（`public.orders`、`:from`、5列）に対し、既存Driver/Environment束縛→PostgreSQL 16.15→Raw Rows→read-only Function Data Context→専用`tools/reference-browse-read`の別プロセス入口を試験したと報告している。正常取得、時刻境界、0件、NULL・列欠落、SQL Source改版、JOIN重複、RLS/列権限/マスキングを含む。GitHubで**当該PRのCI completed/success**と**2026-11-12 23:08 UTCのmain統合（merge `ee1af44c`）**を確認した。ただし、提出者が報告した隔離PostgreSQL実試験を本レビューで独立再実行したわけではなく、通常製品CLI・Studioの実証でもない。
 
 | Claim | 現在わかること | 次に必要な証拠 |
 | --- | --- | --- |
-| Provider実Read | #4539の隔離PG16.15とDriver/Executorで限定実行。Environmentの選択・Query SQL digestが診断にある | PRを必要なレビュー・差分・CIで統合後、**同じSource/Providerを通常製品CLIで実呼出し** |
+| Provider実Read | #4539の隔離PG16.15とDriver/Executorで限定実行。Environmentの選択・Query SQL digestが診断にある | mainへの統合済み実装を基準に、**同じSource/Providerを通常製品CLIで実呼出し** |
 | 実行結果の意味 | RowsetとFunction Contextへの変換。Coverageは`unestablished`、`EmptyJustified=false` | Rowsetの粒度・対象・RLS/DB接続の現在性を明示し、完全取得や不存在を**根拠なく主張しない** |
 | 利用者が使う入口 | 専用`tools/reference-browse-read`でJSON受領。**`cmd/tei`には未結線** | 現行CLI契約との競合解消後、実`tei` CLIで同一Query/型付き引数/拒否を検証（#4453/#4452/#4322と調整） |
 | Studio Consumer | Studio/Wailsからの同一Read・画面受領・現在Disclosureは未試験 | #1824の現行Bridge/Root選択へ限定read-only接続し、CLIと同一Result/Scopeを比較。Pinned Subject=実DB/Host Grantではない |
@@ -1300,4 +1300,47 @@ R0bとR0dは並行に進められる。ただしStudio Desktopをセルフビル
 
 既存#1180/#2514のExpectedを再利用し、#4539のPG PQ正負ケース・#2586 HJ・#4515 PIN・#2831 SBを**別の正式テスト系列に複製せず交差参照**する。Source/World Revision、Query SQL digest、Environment/実Provider、DB観測範囲、Operation/Attempt、Consumer、Toolchain/Artifactを用途別に結合し、未取得は`unknown/unestablished`として残す。
 
-**状態**：#4539に記録された実PG/専用ツール実証は既存Draftの成果。本節はその限定成果と残差を計画に反映しただけである。今回の`tei` CLI接続、Studio Consumer、自身の実Artifactの全セルフビルド、実Host/Effect、Owner受理、および本書からの新規製品試験は**NOT RUN**。
+**状態**：#4539の実PG/専用ツール実証に関するコードと限定試験はmain統合済み。本節はその限定成果と残差を計画に反映しただけである。今回の`tei` CLI接続、Studio Consumer、自身の実Artifactの全セルフビルド、実Host/Effect、Owner受理、および本書からの新規製品試験は**NOT RUN**。
+
+## 32. TEI Studio Desktopをセルフビルドする製品縦断とX-TEA移管（2026-11-13）
+
+**最優先の製品目標は、TEI StudioのDesktop版を実際に構築し、TEI自身で次のTEI/Studioビルドを成立させること**。§31のPostgreSQL実Readを、ただちにセルフビルドの完成と見なさない。既存#1824（Wails/Desktop）、#2831（TEI全体Build）、#4544（Generator）、#4495（実Entry）、#1124/#950/#1031（X-TEAからのModeler移管）を**三つの実装レーン**に揃え、新たなStudio Host/Build Graph/Runner/正本は設けない。
+
+### 32.1 三つのレーンと最初の委任範囲
+
+| レーン | 目標と最初の実装対象 | 完了してもまだ主張できないこと |
+| --- | --- | --- |
+| **P0-A：実WailsにTEI生成部品を接続** | 現行Studio/Wailsのseedビルドと実起動を基線に、既存Operation/API/Bridgeに接続する**小さなTEI生成UI/Service部品1件**を実Desktopの実行に組み込む。正規のUser Action→Bridge→Go API→実Result→画面反映を、独立Expected/実起動ログ/版で照合（#1824/#1121/#4544） | サンプルHTMLへの描画、生成ファイルがあるだけ、開発用Web表示だけではDesktop統合・完全セルフビルドは未達 |
+| **P0-B：Stage1自身がStage2 Buildを開始** | #2831の標準Data/Role/BuildIntent→Resolved Plan→Go seed→Stage1 Artifactを使う。**実際に起動したStage1 TEIがStage2を発行し、その成果物を独立に検査**する。宣言Source/実Load byte/Toolchain/Generator/Plugin Lock/Artifact provenanceを突合し、Docs-only変更による無関係Artifact再構築も検査 | 外部LauncherがGo buildを2回実行、Stage1/2のハッシュ一致のみ、既存ReferenceのSB-3成功だけではTEI自身の自己再構築にならない |
+| **P0-C：X-TEA三要素とData ScriptのDesktop Plugin化** | Data/Function/Businessの原典に忠実な表示・CRUD相互参照・項目レベル参照/ジャンプの**read-only最小スライス**を、既存StudioのPlugin/Projectionへ接続。次に明示的なモデル編集往復、保存・Validation/Rule/Driverの段階移管を検証（#1124/#950/#1031/#1126） | 三つのRole名が並ぶだけで原典再現としない。参照表示ができても安全な逆編集、DB更新、実Host Effectは未実証 |
+
+**初回の高難度作業委任はP0-A一件に絞る。** P0-Bに必要なSource/Artifact/Build接合情報を同じ作業票で残すが、最初から三レーン全部の完成を一つのPRの受入条件としない。P0-BのBuild定義・既存Seed実証は独立に並行作業でき、P0-Cのread-only三視点移植も独立に準備できる。#4495の製品CLI/API実Provider起動と§31 R0b/R0cの実Readは別のP0実装レーンとして進め、P0-AのWails完成をHard Gateにしない。
+
+### 32.2 Desktop self-buildの段階判定
+
+| 段階 | 独立に確認する実績 |
+| --- | --- |
+| **DS-S0：Seed** | 現行Go/Wails/Studioをclean環境でビルドし、**実OSで起動**。既存Go API/Bridgeへの呼出と画面受領を観測。TEI生成によるものとは主張しない |
+| **DS-S1：宣言と実工程の突合** | 現行Studio Buildに関わるSource、生成部品、Generator、依存、Toolchain、Bundle、動的/暗黙の工程を列挙し、標準Build定義と実際の工程の欠落を診断 |
+| **DS-S2：生成部品の実使用** | TEIで生成した部品の実バイトと選択Generator/Sourceを特定し、**DS-S0と同じ実Desktop**で当該機能が動いたことを確認。手書き領域は上書きしない |
+| **DS-S3：Stage1→Stage2再入場** | seedが作ったStage1実ProcessがBuildIntent/Planを消費してStage2を起動し、Stage2 Artifact/Receiptを生成。外部Launcherによる二度ビルドを排除し、差分/失効/必要閉包を確認 |
+| **DS-S4：製品利用** | 再生成したStudioを実OSで起動し、同一Workspaceの対象選択→API/Bridge→結果表示、必要なら実Provider Readを別Claimとして結ぶ。X-TEA三視点は原典との忠実度を明示 |
+
+**成功の上限を明確にする**：DS-S0は通常Go/Wailsのビルド成功、DS-S2はTEI生成部品の実Desktop動作、DS-S3はTEI自身のStage2実行、DS-S4は製品利用の受入である。単独のGenerator Reference合格、ハッシュ一致、CIの緑、Go Binary起動だけでDS-S3/DS-S4には到達しない。Go単一バイナリは標準の配布形態だが、外部Host向け別Targetの適格性やWailsのOS別挙動を証明するものではない。
+
+### 32.3 引渡し時の最小証拠と敵対的負例
+
+- **同一版**：Workspace Root/World、Source occurrence/Revision、Ownerが確認した意味範囲、選択Generator/Plugin Lock、実Builder/Toolchain、BuildPlan、生成・実Load Artifact、起動Process/Attempt、実Consumer受領を照合する。Display Label・生成器自己申告・ファイル名・前後DigestのみでJoinしない。
+- **古いUI応答**：StudioがWorkspace AからBへ切替後、Aの遅延Bridge応答が到着してもBのResultとして表示しない。Pinned Subjectの保持は実Readの開示許可ではない。
+- **自動生成の境界**：既存の手書きUI/Service Source、Data Script保存の編集対象、SHO文書のWorking Copyを無断上書きしない。Graph/CRUDの意味損失はReview要診断として残す。
+- **実ビルドとの差**：Stage1が自力でStage2を始めない、Source declared D1/実Build D2、選択Generator B/実利用A、必要Dependency未読込、Plugin改版A→B→Aは、それぞれ対応するDS-S2/S3を不合格またはUNKNOWNにする。
+- **Plugin化の限界**：三視点read-onlyが成功しても、表/CRUDの明示行脱落、同名多重Relation、Modeler逆編集、Data Scriptの汎用保存、業務Effectは別途検証する（#4472/#1143/#1180/#2514）。
+
+### 32.4 全体計画の順序と停止線
+
+1. **先行P0**：P0-Aの実Desktop生成部品、#4495の実Go CLI/API起動、§31 R0bの通常`tei` CLI実Readは、それぞれ独立に最小E2Eを作る。Fable等に委任する初回作業はP0-Aのみとし、実Snapshot/Resultを渡す。
+2. **並行P0**：P0-Bの#2831実Stage1→Stage2、#4544のG1→G3、P0-CのX-TEA三視点read-only基線を並行する。G2汎用合成、Lifecycle Graph Compiler完成、SHO/VUI/外部Harnessの全面完成は先行条件にしない。
+3. **統合判定**：P0-A/Bの実Artifact・起動ProcessとP0-Cの原典に忠実なPlugin構成を、同じDesktopとSource版で突合。差分があれば未統合として可視化し、実装済みと表現しない。
+4. **後続拡張**：Data Scriptの保存・Load/Save hook、SmartDB/XF標準機能、複雑なRelation編集、DB Migration、異質Target/Consumer、性能チューニングへ進める。X-TEAの動的Binder性能を再導入せず、生成を基本とする。
+
+**Owner**：#1824 Studio/Wails、#2831 Self-build、#4495 Entry/CLI、#4539/#2586実Read、#4544 Generator、#1124/#950/#1031 X-TEA原典・三視点、#3278 Trait、#1180/#2514 Expected。#1119のG0〜G4既存受入を置換しない。**状態**：段階・テストの設計引渡しのみ。今回のDS-S0〜S4製品E2E、Fableへの実委任、OS起動、再生成Studio実動作、Owner採用は**NOT RUN / NOT ACCEPTED**。

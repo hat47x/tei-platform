@@ -8,50 +8,48 @@ import (
 
 // CRUDTable is one row of a generated CRUD table.
 type CRUDTable struct {
-	FunctionID   string `json:"functionId"`
-	FunctionName string `json:"functionName"`
-	DataID       string `json:"dataId"`
-	DataName     string `json:"dataName"`
-	Create       bool   `json:"create"`
-	Read         bool   `json:"read"`
-	Update       bool   `json:"update"`
-	Delete       bool   `json:"delete"`
-	Source       string `json:"source,omitempty"`
+	FunctionID              string `json:"functionId"`
+	FunctionName            string `json:"functionName"`
+	DataID                  string `json:"dataId"`
+	DataName                string `json:"dataName"`
+	Create                  bool   `json:"create"`
+	Read                    bool   `json:"read"`
+	Update                  bool   `json:"update"`
+	Delete                  bool   `json:"delete"`
+	Source                  string `json:"source,omitempty"`
+	ConflictingDeclarations bool   `json:"conflictingDeclarations,omitempty"`
 }
 
-// GenerateCRUDTable derives a deterministic CRUD table from the model.
-// It prefers explicit CRUDDefinitions; missing pairs are filled from FunctionElement.Operations.
+// GenerateCRUDTable derives a deterministic, read-only CRUD table.
+// It includes declared Function/Data pairs even when the Function has no
+// Operations. ConflictingDeclarations is a review flag, not Owner acceptance.
 func GenerateCRUDTable(model ThreeElementModel) []CRUDTable {
-	dataByID, _, _ := model.Index()
-
+	dataByID, fnByID, _ := model.Index()
 	type pair struct{ fn, data string }
 	explicit := map[pair]CRUDDefinition{}
 	for _, crud := range model.CRUDDefinitions {
 		explicit[pair{crud.FunctionID, crud.DataID}] = crud
 	}
-
+	conflicting := conflictingCRUDPairs(model)
+	seen := map[pair]bool{}
 	var rows []CRUDTable
 	for _, fn := range model.FunctionElements {
 		for _, op := range fn.Operations {
+			key := pair{fn.ID, op.DataID}
 			row := CRUDTable{
-				FunctionID:   fn.ID,
-				FunctionName: fn.Name,
-				DataID:       op.DataID,
-				DataName:     dataByID[op.DataID].Name,
-				Source:       "derived",
+				FunctionID:              fn.ID,
+				FunctionName:            fn.Name,
+				DataID:                  op.DataID,
+				DataName:                dataByID[op.DataID].Name,
+				Source:                  "derived",
+				ConflictingDeclarations: conflicting[[2]string{fn.ID, op.DataID}],
 			}
-			if crud, ok := explicit[pair{fn.ID, op.DataID}]; ok {
-				row = CRUDTable{
-					FunctionID:   crud.FunctionID,
-					FunctionName: fn.Name,
-					DataID:       crud.DataID,
-					DataName:     dataByID[crud.DataID].Name,
-					Create:       crud.Create,
-					Read:         crud.Read,
-					Update:       crud.Update,
-					Delete:       crud.Delete,
-					Source:       crud.Source,
-				}
+			if crud, ok := explicit[key]; ok {
+				row.Create = crud.Create
+				row.Read = crud.Read
+				row.Update = crud.Update
+				row.Delete = crud.Delete
+				row.Source = crud.Source
 			} else {
 				for _, ch := range strings.ToUpper(op.Operations) {
 					switch ch {
@@ -67,9 +65,32 @@ func GenerateCRUDTable(model ThreeElementModel) []CRUDTable {
 				}
 			}
 			rows = append(rows, row)
+			seen[key] = true
 		}
 	}
-
+	// Explicit definitions are a source of model facts in their own right.
+	// If a pair is absent from Function.Operations, do not silently drop it.
+	// Contradictions must still be separately reviewed (not last-wins proof).
+	for _, declared := range model.CRUDDefinitions {
+		key := pair{declared.FunctionID, declared.DataID}
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		crud := explicit[key]
+		rows = append(rows, CRUDTable{
+			FunctionID:              crud.FunctionID,
+			FunctionName:            fnByID[crud.FunctionID].Name,
+			DataID:                  crud.DataID,
+			DataName:                dataByID[crud.DataID].Name,
+			Create:                  crud.Create,
+			Read:                    crud.Read,
+			Update:                  crud.Update,
+			Delete:                  crud.Delete,
+			Source:                  crud.Source,
+			ConflictingDeclarations: conflicting[[2]string{crud.FunctionID, crud.DataID}],
+		})
+	}
 	sort.Slice(rows, func(i, j int) bool {
 		if rows[i].FunctionID != rows[j].FunctionID {
 			return rows[i].FunctionID < rows[j].FunctionID
@@ -91,12 +112,13 @@ type BusinessFunctionCrossReference struct {
 
 // FunctionDataCrossReference describes Function→Data mappings.
 type FunctionDataCrossReference struct {
-	FunctionID   string `json:"functionId"`
-	FunctionName string `json:"functionName"`
-	DataID       string `json:"dataId"`
-	DataName     string `json:"dataName"`
-	Operations   string `json:"operations"`
-	Source       string `json:"source,omitempty"`
+	FunctionID              string `json:"functionId"`
+	FunctionName            string `json:"functionName"`
+	DataID                  string `json:"dataId"`
+	DataName                string `json:"dataName"`
+	Operations              string `json:"operations"`
+	Source                  string `json:"source,omitempty"`
+	ConflictingDeclarations bool   `json:"conflictingDeclarations,omitempty"`
 }
 
 // GenerateBusinessFunctionCrossReference derives Business→Function mappings.
@@ -129,59 +151,58 @@ func GenerateBusinessFunctionCrossReference(model ThreeElementModel) []BusinessF
 	return out
 }
 
-// GenerateFunctionDataCrossReference derives Function→Data mappings including CRUD.
+// GenerateFunctionDataCrossReference derives Function→Data mappings including
+// explicit-only CRUD pairs. It does not reclassify conflicting declarations.
 func GenerateFunctionDataCrossReference(model ThreeElementModel) []FunctionDataCrossReference {
-	dataByID, _, _ := model.Index()
-
+	dataByID, fnByID, _ := model.Index()
 	type pair struct{ fn, data string }
 	explicit := map[pair]CRUDDefinition{}
 	for _, crud := range model.CRUDDefinitions {
 		explicit[pair{crud.FunctionID, crud.DataID}] = crud
 	}
-
-	type key struct {
-		fn   string
-		data string
-	}
-	seen := map[key]bool{}
+	conflicting := conflictingCRUDPairs(model)
+	seen := map[pair]bool{}
 	var out []FunctionDataCrossReference
-
 	for _, fn := range model.FunctionElements {
 		for _, op := range fn.Operations {
-			k := key{fn.ID, op.DataID}
-			if seen[k] {
+			key := pair{fn.ID, op.DataID}
+			if seen[key] {
 				continue
 			}
-			seen[k] = true
+			seen[key] = true
 			row := FunctionDataCrossReference{
-				FunctionID:   fn.ID,
-				FunctionName: fn.Name,
-				DataID:       op.DataID,
-				DataName:     dataByID[op.DataID].Name,
-				Operations:   strings.ToUpper(op.Operations),
-				Source:       "derived",
+				FunctionID:              fn.ID,
+				FunctionName:            fn.Name,
+				DataID:                  op.DataID,
+				DataName:                dataByID[op.DataID].Name,
+				Operations:              strings.ToUpper(op.Operations),
+				Source:                  "derived",
+				ConflictingDeclarations: conflicting[[2]string{fn.ID, op.DataID}],
 			}
-			if crud, ok := explicit[pair{fn.ID, op.DataID}]; ok {
-				var ops []string
-				if crud.Create {
-					ops = append(ops, "C")
-				}
-				if crud.Read {
-					ops = append(ops, "R")
-				}
-				if crud.Update {
-					ops = append(ops, "U")
-				}
-				if crud.Delete {
-					ops = append(ops, "D")
-				}
-				row.Operations = strings.Join(ops, "")
+			if crud, ok := explicit[key]; ok {
+				row.Operations = operationsForCRUD(crud)
 				row.Source = crud.Source
 			}
 			out = append(out, row)
 		}
 	}
-
+	for _, declared := range model.CRUDDefinitions {
+		key := pair{declared.FunctionID, declared.DataID}
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		crud := explicit[key]
+		out = append(out, FunctionDataCrossReference{
+			FunctionID:              crud.FunctionID,
+			FunctionName:            fnByID[crud.FunctionID].Name,
+			DataID:                  crud.DataID,
+			DataName:                dataByID[crud.DataID].Name,
+			Operations:              operationsForCRUD(crud),
+			Source:                  crud.Source,
+			ConflictingDeclarations: conflicting[[2]string{crud.FunctionID, crud.DataID}],
+		})
+	}
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].FunctionID != out[j].FunctionID {
 			return out[i].FunctionID < out[j].FunctionID
@@ -189,6 +210,33 @@ func GenerateFunctionDataCrossReference(model ThreeElementModel) []FunctionDataC
 		return out[i].DataID < out[j].DataID
 	})
 	return out
+}
+
+// conflictingCRUDPairs flags an ambiguous projection without making a
+// structural severity or business-meaning decision.
+func conflictingCRUDPairs(model ThreeElementModel) map[[2]string]bool {
+	conflicting := map[[2]string]bool{}
+	for _, crud := range model.ContradictoryCRUDs() {
+		conflicting[[2]string{crud.FunctionID, crud.DataID}] = true
+	}
+	return conflicting
+}
+
+func operationsForCRUD(crud CRUDDefinition) string {
+	var ops []string
+	if crud.Create {
+		ops = append(ops, "C")
+	}
+	if crud.Read {
+		ops = append(ops, "R")
+	}
+	if crud.Update {
+		ops = append(ops, "U")
+	}
+	if crud.Delete {
+		ops = append(ops, "D")
+	}
+	return strings.Join(ops, "")
 }
 
 // CRUDGap reports CRUD cells that are expected but absent.

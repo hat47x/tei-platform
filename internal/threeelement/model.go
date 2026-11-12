@@ -426,6 +426,14 @@ func (m ThreeElementModel) UnusedData() []string {
 			used[op.DataID] = true
 		}
 	}
+	// An explicit-only CRUD mapping is still a Function→Data reference.
+	// Only a uniquely resolved Function proves usage; unknown/ambiguous
+	// Function IDs must not hide an otherwise unused Data element.
+	for _, crud := range m.CRUDDefinitions {
+		if _, ok := fnByID[crud.FunctionID]; ok {
+			used[crud.DataID] = true
+		}
+	}
 	var out []string
 	for _, d := range m.DataElements {
 		if !used[d.ID] {

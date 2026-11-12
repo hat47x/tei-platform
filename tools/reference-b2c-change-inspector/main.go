@@ -93,6 +93,7 @@ func inspect(in input) (report, error) {
 		byID[n.ID] = n
 	}
 	outgoing := map[string][]string{}
+	incoming := map[string][]string{}
 	missing := map[string]bool{}
 	// Required is the caller's question-bound universe, not every node
 	// available in a Workspace. A complete universe is only asserted by
@@ -112,6 +113,7 @@ func inspect(in input) (report, error) {
 			return report{}, errors.New("edge endpoints must not be empty")
 		}
 		outgoing[e.From] = append(outgoing[e.From], e.To)
+		incoming[e.To] = append(incoming[e.To], e.From)
 		// Unknown edge endpoints matter if they touch the explicitly
 		// required universe. Unrelated malformed source inventories
 		// must not force a full requalification of this question.
@@ -131,6 +133,29 @@ func inspect(in input) (report, error) {
 			return report{}, errors.New("unobserved subject must not be empty")
 		}
 		missing[id] = true
+	}
+
+	// Edges point from a source toward its dependents. When a Required
+	// consumer depends on a known intermediate node, unknown inputs further
+	// upstream are still gaps in that requested consumer's declared closure.
+	// The previous direct-neighbor check alone silently missed such gaps.
+	// Traverse only upstream from Required: following downstream siblings
+	// would unnecessarily invalidate independent consumer questions.
+	seenUpstream := map[string]bool{}
+	upstreamQueue := append([]string(nil), in.Required...)
+	for len(upstreamQueue) > 0 {
+		id := upstreamQueue[0]
+		upstreamQueue = upstreamQueue[1:]
+		if seenUpstream[id] {
+			continue
+		}
+		seenUpstream[id] = true
+		n, exists := byID[id]
+		if !exists || n.Layer == "unknown" {
+			missing[id] = true
+			continue
+		}
+		upstreamQueue = append(upstreamQueue, incoming[id]...)
 	}
 
 	visited := map[string]bool{}

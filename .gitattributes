@@ -326,3 +326,6 @@
 
 # Capability kind vocabulary output is hashed as raw bytes by its README.
 /plan/evidence/CAPABILITY_KIND_VOCABULARY_2026-11-11/** -text
+
+# Captured REA 6.7/6.8 CLI fixtures are exact bytes (including UTF-16LE BOM on Windows).
+/internal/externalanalysis/testdata/** -text
