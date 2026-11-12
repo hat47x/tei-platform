@@ -460,7 +460,6 @@ func TestThreeElementDiagramPreservesDeclaredElementAuthorityLimits(t *testing.T
 	}
 }
 
-
 // TestThreeElementDiagramReconcileDetectsAuthorityOnlySourceDrift proves that
 // the current diagram Source must be requalified even when its STRUCTURAL
 // fingerprint is unchanged. The source JSON, not the generated report, supplies
