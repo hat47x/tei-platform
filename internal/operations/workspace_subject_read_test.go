@@ -205,3 +205,48 @@ func TestReadWorkspaceSubjectRejectsSameOffsetRetargetAndTracksSourceOnlyDrift(t
 		t.Fatal("restored bytes no longer yield the same descriptive subject read")
 	}
 }
+
+
+// Two Workspaces can expose the same Canonical Subject and byte-identical
+// semantic Source yet be distinct authoring and consumer scopes. A pinned
+// target must not use world/source fingerprints as its Workspace identity.
+func TestReadWorkspaceSubjectDoesNotCollapseSameModelAcrossWorkspaces(t *testing.T) {
+	firstRoot := documentDraftFixture(t)
+	secondRoot := documentDraftFixture(t)
+	manifestPath := filepath.Join(secondRoot, "tei.workspace.yaml")
+	manifest, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	changed := strings.Replace(string(manifest), "workspace: subject_read_test", "workspace: another_read_test", 1)
+	if changed == string(manifest) {
+		t.Fatal("second Workspace fixture did not change its declared identity")
+	}
+	if err := os.WriteFile(manifestPath, []byte(changed), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	subject := sourceindex.Subject{Kind: "semantic-data", ID: "sales.order"}
+	first, err := ReadWorkspaceSubject(firstRoot, subject)
+	if err != nil {
+		t.Fatalf("first Workspace read: %v", err)
+	}
+	second, err := ReadWorkspaceSubject(secondRoot, subject)
+	if err != nil {
+		t.Fatalf("second Workspace read: %v", err)
+	}
+	if first.Inspection.WorldFingerprint != second.Inspection.WorldFingerprint ||
+		first.Inspection.SourceIndexFingerprint != second.Inspection.SourceIndexFingerprint ||
+		first.ModelRevision != second.ModelRevision ||
+		string(first.Inspection.Canonical) != string(second.Inspection.Canonical) {
+		t.Fatal("only the Workspace declaration changed, but semantic Source or meaning also changed")
+	}
+	if first.Inspection.Workspace == nil || second.Inspection.Workspace == nil {
+		t.Fatal("inspect omitted the authoring Workspace identity")
+	}
+	if first.Inspection.Workspace.Name == second.Inspection.Workspace.Name ||
+		first.Inspection.Workspace.Manifest.SHA256 == second.Inspection.Workspace.Manifest.SHA256 {
+		t.Fatal("different Workspaces collapsed into one identity despite equal semantic fingerprints")
+	}
+	// This test observes identity, not a current authorization, a security
+	// namespace or a qualified cross-Workspace edit operation.
+}
