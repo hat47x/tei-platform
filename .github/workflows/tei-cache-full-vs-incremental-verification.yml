@@ -45,13 +45,13 @@ jobs:
           set -euo pipefail
           mkdir -p "$GITHUB_WORKSPACE/artifacts"
           {
-            printf 'commit=%s\\n' "$GITHUB_SHA"
-            printf 'runner_os=%s\\n' "$RUNNER_OS"
-            printf 'runner_arch=%s\\n' "$RUNNER_ARCH"
+            printf 'commit=%s\n' "$GITHUB_SHA"
+            printf 'runner_os=%s\n' "$RUNNER_OS"
+            printf 'runner_arch=%s\n' "$RUNNER_ARCH"
             go version
             go env GOOS GOARCH GOVERSION GOTOOLCHAIN GOFLAGS GOWORK GOENV
           } > "$GITHUB_WORKSPACE/artifacts/run-context.txt"
-          go test ./tools/reference-cache-full-vs-incremental-verification/... -v -count=1 \\
+          go test ./tools/reference-cache-full-vs-incremental-verification/... -v -count=1 \
             2>&1 | tee "$GITHUB_WORKSPACE/artifacts/verification.log"
 
       - name: 検証結果をアップロード
