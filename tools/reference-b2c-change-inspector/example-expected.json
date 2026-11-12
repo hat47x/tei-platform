@@ -1,0 +1,16 @@
+{
+  "schema": "tei.reference.b2c-change-report/v0",
+  "scope": "synthetic-public-pdp",
+  "baseRevision": "R0",
+  "candidateRevision": "R1",
+  "impacted": ["pdp.banner", "pdp.offer-rule"],
+  "lanes": ["C0", "C3"],
+  "unresolved": ["external-cms-dynamic-link"],
+  "coverage": "partial-or-unverified",
+  "disposition": "known-interaction-business-or-release-impact",
+  "authorityLimits": [
+    "input-inventory-and-closure-are-unverified-claims",
+    "native-frontend-source-and-external-services-not-inspected",
+    "no-release-grant-effect-or-conversion-claim"
+  ]
+}

@@ -717,3 +717,39 @@ GUIでは固定Selectionを明示的な「対象・文脈棚」として見せ�
 既存の#2586（実Read）、#3262（Context/Consumer）、#1452/#1124/#1158/#1824（対象指定と変更）、#951/#1251（Provider/Plugin）、#3271（Cache）、#1180/#2514（独立Expected）、#565（Quality）へ責務を戻す。SHO/SUI/SEI/CSW/KONは必要時のConsumer/連携先であり、TEIの初回実ReadやCache比較の必須Host/Storageにしない。
 
 **状態（2026-11-12）**：固定Selectionの実GUI/CUI一貫性、製品横断Sessionの実配送、DSH完全受領、実DB A/B、AI改善の適用、Owner受理は **NOT RUN / NOT ACCEPTED**。本節は計画接合と反例整理のみ。
+
+
+## 24. 実験Evidenceの外部保管とAI Contextへの選択的開示（2026-11-12）
+
+§21のBenchmark、§22のHarness、§23の固定Selectionは同じ一AttemptのSource/Revision/Actual Invocation/Consumerを参照する。ただし**Evidence本体をGitHubへ全量アップロードすることは要件としない**。Gitには小さな宣言・Manifest参照・再現手順・期待値を置き、巨大なTrace/Histogram/Rowset Snapshot/画面記録等は既存Local CASまたは選択可能なNAS/S3 Providerへ保持する。KON Dataspace、外部Evidence Store、クラウドを必須のTEI Runtime依存としない。
+
+### 24.1 保管と受理を別の次元に分ける
+
+| 次元 | 残すもの | 証明しないこと |
+| --- | --- | --- |
+| Identity | Subject/Revision/Attempt/Source fingerprint、Artifact/Content digest、型・サイズ・Retention分類 | digest一致だけでSource Meaning、現時点のGrant、Consumer受領 |
+| Storage resolution | Local/NAS/S3のProvider識別子、Object keyまたはopaque locator、実読取可否、byte照合 | Git commitに参照があるだけでObjectが現在取得可能 |
+| Qualification | 実Provider呼出し、Result/Consumer受領、独立Expected、測定Window/欠測、Benchmark verdict | Object保存成功だけで実Read・性能改善・Owner受理 |
+| Disclosure/Egress | 送出目的、宛先、最小Projection、現在のGrant、遮蔽と開示記録 | Git参照の公開可否からRaw Evidenceの公開可否 |
+| Lifecycle | retain/expire/delete、失効・再計測・復元の記録、offline時のunknown | A→B→Aやdigest一致による旧Evidenceの自動復権 |
+
+この表は既存#2600のWorld/Artifact/Evidence区分と#3262のDesign Context、#3271のCache再利用資格を**参照**するだけで、第二Proof Registryや新しい固定Canonical Schemaを追加しない。CASに同じbyteが残っていても、Toolchain/Provider/DB Dataset/Grantが違えば当該Performance Claimの再利用は独立審査とする。
+
+### 24.2 外部Harnessへ渡すのはEvidence本体ではなく許可されたProjection
+
+AIが「遅いQueryを調べる」と指示された場合、まず固定SelectionのQualified ID/Revisionと、低Cardinalityの集計、測定条件、正しさの判定、unknown、必要なら不透明なEvidence参照を送る。**NAS/S3 URL・認証情報・SQL引数・個別Rowset・内部pathを無条件に送らない**。HarnessがRaw Evidenceを必要とする場合は、既存Host/ProviderのCurrent Disclosureを再評価して、目的・範囲・期限を限定した明示操作を要求する。AIの応答に含まれるLocatorは参照情報であって、Hostの権限を変更しない。
+
+### 24.3 既存Driver/CIへ接続する反例
+
+- **EV-01** Git commit/ManifestはあるがNAS/S3 objectが消失、権限拒否、offline。再現不能はunknown/unavailableとしPASSを流用しない。
+- **EV-02** 同digestのbyteが別Toolchain/DB Snapshot/Targetで観測された。保存Objectを再利用できてもPerformance Evidenceを再受理しない。
+- **EV-03** Source A→B→A、Provider ManifestまたはDB行/RLSだけ変更。World fingerprint同値で旧Benchmark/Current Grantを復権しない。
+- **EV-04** Harnessへ小さな統計Projectionのみ許可したが、Raw SQL/Rowset/NAS URLがTool ReplyやSession Logへ混入。開示違反として拒否し、保存成功と切り離す。
+- **EV-05** CLIはEvidenceを出力したがTool Reply part/end欠落、またはAIが未読の外部Objectを読んだと主張。Consumer/Model受領の資格を付けない。
+- **EV-06** Cache Hitが増えたがSource失効・p99・Originピーク・DB write latency・計測費が不明。正しさ/性能の採用判定を保留。
+- **EV-07** Selection Pinは維持されているがSource occurrence/Grantが変化。古いEvidence参照を含むAI Contextを自動再送しない。
+- **EV-08** Local-only設定でGitHubへRaw Evidenceを送らずに独立Expectedと再現手順を保持。クラウド未使用を不合格にしない。
+
+EV-01〜08は新しいCase SSOTではなく#1180/#2514のScenarioに付ける**反例候補**であり、既存#2600/#3262/#3271の試験と重複実装しない。最初の実証はLocal-onlyの一Attempt（Manifest→Local CAS保存→再読取・byte照合→限定Context送出拒否/許可→独立Expected）とする。次にNAS/S3はProvider別に、障害・再取得・Retention/削除を確認する。実DBのM1b→R0をこの外部保管実証の前提にも逆依存にもせず、互いの資格を別記する。
+
+**状態（2026-11-12）**：既存Local CAS機能の存在と本節の計画接合は、Git同期・NAS/S3実運用・選択的AI開示・EV-01〜08実行・実DB性能Benchmark・Owner受理の合格を意味しない。これらは **NOT RUN / NOT ACCEPTED**。

@@ -79,6 +79,7 @@
 | [`reference-authoring-auxiliary/`](reference-authoring-auxiliary/) | 設計の補助情報（用語・改訂履歴・注記・区分）の置き場所と意味の版の境界の確認 |
 | [`reference-authoring-witness-openssh/`](reference-authoring-witness-openssh/) | OpenSSHを使った記述作業の参照確認 |
 | [`reference-authority-evidence-trust/`](reference-authority-evidence-trust/) | 情報源の権威と検証根拠の信頼境界の確認 |
+| [`reference-b2c-change-inspector/`](reference-b2c-change-inspector/) | B2C独自Frontendの**明示された依存関係のみ**を読み取り、変更の影響候補・未観測範囲・判断の限界を返す合成read-only Reference（#3509）。公開許可や実Commerce/Experimentの証明ではない |
 | [`reference-batch-completeness/`](reference-batch-completeness/) | 一括導出の行別失敗と集合演算の結果完全性を、NULL・未取得・評価失敗を区別して判定する読取り専用の参照（#1724） |
 | [`reference-business-dfd/`](reference-business-dfd/) | 業務データフロー図の読取り専用参照 |
 | [`reference-business-procedure-check/`](reference-business-procedure-check/) | 業務手順と担当・機能・データの整合確認 |

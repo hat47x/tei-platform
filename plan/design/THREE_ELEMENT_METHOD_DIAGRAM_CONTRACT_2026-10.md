@@ -1054,6 +1054,24 @@ CLIでは非対話操作も、承認済み変更の明示的な入力と対象�
 
 **Ownerの範囲**：Data/Logical/Physical変更は#1126/#1143、Workbench/モデル編集は#1124/#4515、SQL/Query依存は#2387/#2586、UI逆写像は#2500/#2497、Entry/Trigger/Invocationは#4502/#4495、Actual DB/Migrationは#3270、Effect/Recoveryは#1174/#1129、独立Expectedは#1180/#2514。先行する**P0実Read/実Provider呼出しは継続**し、上記交差ケースの実Target実行は各担当の証拠が集まるまで`NOT RUN`とする。
 
+
+### 27.7 UIとData項目の対応状態：六つの診断区分（正式enum未採用）
+
+§27.1〜27.6の削除／再対応付け規則を実装へ渡すため、UIの一つの項目について次の**状態の違い**をGUIとCUIで説明できることを求める。これは既存Binding/Source/Observationから導出する**診断上の区分**であり、新Core enum、新Mapping Registry、新Writerの採用を意味しない（#1126/#1143/#2497/#2500）。状態名の製品表記は既存実装と照合してから決定する。
+
+| 状況 | 根拠と表示 | 有効な更新先・自動再対応付け |
+| --- | --- | --- |
+| 対応有効 | 現行Source版と参照先Identityが確認でき、必要Scopeが成立 | 現行Bindingの候補。ただし書込みはOperation/現在Grantを別確認 |
+| 意図的に未設定 | UI Draft/計算値/一時入力等、保存先を指定していない | UI定義の保存は可。保存先への更新Intentはなし |
+| 削除確定 | 権威あるSource上の項目削除・対応関係の失効を確認 | UI要素は保持、有効Bindingは解除。旧参照は診断・履歴のみ |
+| 旧版参照 | Source/Contract/Workspaceの基準版が古い | Pinの意図・旧Binding履歴は保持しても、利用前に再解決 |
+| 対応先が曖昧 | rename/split/同名再作成/多重Relationで複数候補 | 候補を提示し、明示確認まで自動付替え・実行しない |
+| 観測不十分 | partial/unfetched/unavailable/permission-denied/Source reader失敗 | 不存在や削除を断定しない。開示可能な範囲で不明点を表示 |
+
+**重要な区別**：UIのDraftは、業務Operationの公開や実行まで許すものではない。物理DBのActual Schemaを読めなかっただけでDesired/Accepted定義の列を削除しない。外部Actualから削除を完全に観測した場合も、Source上のDesired変更とは別に扱う。逆に権威あるSourceから列削除が確定した場合は、UIに旧値を書き込めるBindingを残さない。独立の計算項目/業務概念は、物理依存が失効しても無条件に意味自体を消さず、依存不整合を示す。
+
+**検収への接続**：既存DMU-01/03/04/05/06/07/08/10、#4500 ORG-MAP、#4515 PIN-S0、#4495 EL-03を同一Fixtureで対照する。特に「削除確定」と「観測不十分」を取り違える負例、「旧版参照」から同名列へ自動復活させる負例、「意図的に未設定」を一律ErrorにしてUI Draftすら保存できなくする過剰拒否を検査する。独立Expectedは#1180/#2514へ渡し、第二のテスト正本を作らない。
+
 ## 28. 方法論プラグインと通常開発の受理：Coreに固定しない協業契約（2026-11-12）
 
 ### 28.1 三要素分析法は重要な標準構成、しかし唯一の方法論ではない
@@ -1116,7 +1134,7 @@ DMU-01〜09、他DraftのORG-MAP-01〜10（#4500）と期待値・入力を照�
 3. **Preview → Source/Edit/Apply**：同じSubject/Source/Revisionの変更候補と影響範囲を確認。Sourceへ安全に帰還できない図表はread-only。編集採用とDB Apply/Host Effectは別。
 4. **Verify → Observation**：MapとLocateが同一Fingerprintでも、別Load間の一致は原子的Readを証明しない。実Consumer受領、Host Invocation、Effectは各々独立に観測する。
 
-**関連PRと資格（2026-11-12夜のIssue照合時点）**：[#4524](https://github.com/hat47x/tei-platform/pull/4524)は同Kind同IDの誤索引を防ぐ限定修正、[#4392](https://github.com/hat47x/tei-platform/pull/4392)はMap埋込Validation等の修正で、双方ともIssue上のPR状態は**closed**へ変化している。ただし**closedだけではmerged・現行mainの適合・CI成功を証明しない**。[#4521](https://github.com/hat47x/tei-platform/pull/4521)は実SourceのMap/Locateを限定比較し、旧HEADのValidation不一致／新HEADの検証範囲を区別している。受入担当は各PRの**merged_at、mainにあるBlob、exact HEADの試験、実ConsumerのRead**を独立に確認する。これらを一括して「Modeler完成」とは呼ばない。 旧X-TEAの空・欠落IDは一時Occurrenceとして読取・移動できても、永続Semantic IDや逆編集先を捏造しない（#1031/#4510）。
+**関連PRと資格（2026-11-13のPRメタデータ再確認）**：[#4524](https://github.com/hat47x/tei-platform/pull/4524)は同Kind同IDの誤索引を防ぐ限定修正として**2026-11-12 14:46:53 UTCにmainへmerge**、[#4392](https://github.com/hat47x/tei-platform/pull/4392)はMap埋込Validationの限定修正として**同日14:45:58 UTCにmerge**された。これは両修正の統合を示すが、**Studioの実Consumer、完全な三要素図・CRUD、Current Disclosure、実編集資格、別PRのCI成功は含まない**。[#4521](https://github.com/hat47x/tei-platform/pull/4521)は実SourceのMap/Locateを限定比較し、旧HEADのValidation不一致／新HEADの検証範囲を区別している。受入担当は各PRの**merged_at、mainにあるBlob、exact HEADの試験、実ConsumerのRead**を独立に確認する。これらを一括して「Modeler完成」とは呼ばない。 旧X-TEAの空・欠落IDは一時Occurrenceとして読取・移動できても、永続Semantic IDや逆編集先を捏造しない（#1031/#4510）。
 
 ### 29.3 Studioの高速性を損なわない拡張境界
 

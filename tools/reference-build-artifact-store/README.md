@@ -208,3 +208,24 @@ Host権限、案件による業務意味の受理は**未検証**。
 `go test ./tools/reference-build-artifact-store` は、二件の完全公開・順序非依存・冪等再公開、Role欠落・余剰・後段digest不一致の公開ゼロ、破損二件目での部分公開失敗、ゼロ長artifactの正確な取得を検証する。
 
 **未成立**：実Builderからの`ArtifactSet`生成と権限あるPublishの経路、複数CASオブジェクトの原子的Commit、別Host間での可用性、本番署名・Build AttestationのTrust、Deployment/Runtime Acceptance、失効、GC。従来の`buildReferenceEvidence`は固定digestの合成Referenceであるため、この公開経路へ接続しただけでは実Build end-to-endの成立としません。
+
+
+## Registry E1-A：別ProcessのPublication P→Consumer C（局所Reference）
+
+追跡：[Registry #2589](https://github.com/hat47x/tei-platform/issues/2589)、[公開一式 #2604](https://github.com/hat47x/tei-platform/issues/2604)。これは**既存CASの`publishExactMembers`と`getMembers`をそのまま使うテスト**であり、第二のStore・Publisher・Resolver・Trust Authorityを追加しない。
+
+`registry_e1_pc_test.go`は、[P0-A Registryの固定Fixture](../reference-plugin-registry/fixture.json)を使って次を確かめる。
+
+1. 固定Release Descriptorの完全Digestと必須Role `core` / `ui` のDigestを**独立に固定**し、Publisher Pが全MemberをCASに公開して再取得する。既存のPub/Get Receiptと実Byteを使用。
+2. 新しいOSプロセスのConsumer Cが同じStoreを別Handleで開き、Publisherのメモリ上のBytes・Receiptを**受け取らず**、同じ固定ReleaseからRole/Digestを別に読み取り、CASから実Byteを再取得する。
+3. Publisherの成功後に必須Memberを削除／改竄した場合、Cの別Attemptを`missing`／`corrupt`として失敗にする。
+4. RoleとDigestの対応をConsumer側で入れ替えても、両方のByteを取得できた事実だけで受理しない。
+
+```sh
+go test -count=1 -v ./tools/reference-build-artifact-store \
+  -run '^(TestRegistryE1ConsumerSubprocess|TestRegistryE1PublisherAndConsumerDifferentProcesses)$'
+```
+
+専用CI：[`plugin-registry-e1-local-handoff.yml`](../../.github/workflows/plugin-registry-e1-local-handoff.yml)。P0-AのGo/Nodeテストと、この別Process Readbackの試験を同じGit候補版で実行する。PRの`pull_request`イベントでは**merge candidate**を測り、PR Headの直接試験と同一視しない。試験で使用するテスト鍵／Policyは本番用ではない。
+
+**保証上限**：CはPublisherとは**別OS Process／別Read Attempt**だが、Store ReaderのGo実装は共通である。別言語Reader、別ホスト・別Storage、実GitHub Release、GitHub Repository所有者とIssuerの現在Trust、Version CAS、公開Namespace登録、Origin/Disclosure、同時更新のABA耐性、実Plugin Load／業務Effectは**未実証**。固定Releaseの署名・Attestationの妥当性は別のP0-A試験が評価し、このCAS試験単独では検証しない。過去のPublisher Receiptは現在のC取得・現在Authorityを保証しない。

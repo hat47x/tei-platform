@@ -55,6 +55,10 @@ func MapWorkspace(root string) (ModelMap, error) {
 	catalog := CatalogWorld(loaded.World, idx, "", worldFP, sourceFP)
 	identity := loaded.Identity()
 	catalog.Workspace = &identity
+	// CatalogWorld is a low-level projection and does not run validation.
+	// MapWorkspace must carry the same verdict as CatalogWorkspace for this
+	// loaded Workspace, without interpreting a zero-value OK as a failure.
+	catalog.Validation = catalogValidation(loaded)
 	return MapWorld(loaded.World, catalog), nil
 }
 
