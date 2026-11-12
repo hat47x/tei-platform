@@ -722,7 +722,7 @@ WU-11〜14をWU-06〜10の「全部完了待ち」にしない。前段の**必�
 
 ### 10.9 データ構造変更と画面マッピングの整合をC1で固定する（2026-11-12追補）
 
-**他チャットの確定方針を組織C1へ適用**：データソースがRDBのとき、現行データモデルの物理項目写像は実テーブル定義との対応を保つ。テーブル項目の削除が実適用・再観測まで確認された場合、対応する**現行物理項目写像は消える**。ただしその項目を使う画面のUI要素は勝手に削除せず、**未マッピング要素**として残し警告する。反対に、画面へ項目を追加しただけではTable/Columnを生成・適用しない。これはModeler/Studio/CLI/AIハーネス共通の操作意味とする。
+**他チャットの確定方針を組織C1へ適用**：テーブル定義を直接表現するデータモデルは、その**対象版のテーブル定義の写像**である。正本のテーブルFieldを明示削除し、その版を採用した時点で、**同じ版のデータモデル上からField要素そのものが消える**。実DBへの外部変更を完全な観測で確認した場合も、**Actual Schema投影の現行モデルFieldは消える**。ただし外部DB観測を理由にTEIのDesired Sourceまで無断で書き換えない。Desiredに旧Fieldが残れば、差分・ドリフトを示す。独立定義の業務意味/Computed Fieldは必要に応じ残し、失った物理依存を診断する。Function/UIの**表示要素は削除せず未マッピング警告**、画面追加だけでDB列を作らない。GUI/CLI/AIハーネスで同一の操作意味とする。
 
 #### 10.9.1 三つの構造状態と三つの変更入口
 
@@ -746,7 +746,7 @@ WU-11〜14をWU-06〜10の「全部完了待ち」にしない。前段の**必�
 | M1 UIに「兼務区分」U2を追加 | Actual/Desiredとも不変 | U2をunmappedとして表示し、Binding候補だけ提示 | 業務Rule/DDL/Grant/Effectなし |
 | M2 開発者が兼務Field F2を明示追加 | Desired F2とMigration Planを作り、Apply前はActualにF2なし | U2→Desired F2は設計中と明示、実画面の保存先確定にはしない | 変更内容と受入範囲に応じ通常の開発者Review |
 | M3 F2適用・再観測 | 対象実DBでActual F2を確認し物理Mapping確立 | U2のBindingを明示承認すれば有効、未承認ならunmapped | 必要なら既存Function/Validation試験と実Provider試験 |
-| M4 F1削除が実適用・再観測済み | 現行ActualにF1なし、M1物理対応は無効 | U1は残すがBinding削除・「対応項目なし」を警告。CRUD/SHO/AI参照を失効診断 | Case C1責任やMembership別属性を推測で書き換えない |
+| M4 F1削除が実適用・完全再観測済み | **現行ActualテーブルモデルからF1 Fieldを除去**。Desiredが旧Fieldを保持するなら差分として診断。旧版Source/履歴は保全 | U1は残すが、Actual側Bindingを無効化し「対応項目なし」を警告。CRUD/SHO/AI参照を失効診断 | Case C1責任やMembership別属性を推測で書き換えない |
 | M5 古いSource/AI応答が後着 | F1の旧revisionを参照 | 固定Selectionは意図として残せてもApplyは禁止。Previewで再対応付けを要求 | 古い実行資格・Receiptを流用しない |
 
 **補足**：非RDB/仮想Field/計算Field/APIの画面Bindingには物理列を必須にしない。Source Provider別の能力を説明し、RDBのDDL意味をREST/OData/ログへ強制しない。直接DB操作と業務Function経由の更新は同義ではない。表削除やデータ消失を伴う操作の実適用は既存Migration/Host Grant/Effectと独立Readの範囲内でのみ実証する。
@@ -758,14 +758,46 @@ WU-11〜14をWU-06〜10の「全部完了待ち」にしない。前段の**必�
 | ORG-MAP-01 | U2の追加でActual/Desiredの列数が変わらず、U2はunmapped。UI要素数が増えたことはDB列作成の証拠ではない |
 | ORG-MAP-02 | 開発者の明示Field追加はDesiredだけ変化。DB Apply前は実Rowset/保存資格が未成立 |
 | ORG-MAP-03 | 実F2追加後の独立Schema ReadでF2を確認。UI Bindingは別の明示選択として保持 |
-| ORG-MAP-04 | F1の実削除後、モデルの現行物理項目写像は無効、U1は保持されunmapped診断、CRUD/SHO/AI参照は要再確認 |
-| ORG-MAP-05 | Migration拒否・部分失敗・別環境のみ成功では、対象ActualでF1削除が観測されない限り現行写像を勝手に削除しない |
+| ORG-MAP-04 | F1の実削除・完全再観測後、**Actualテーブル定義モデルの現行Field一覧からF1が除去**される。U1は保持されunmapped診断、DesiredにF1が残るならドリフト、CRUD/SHO/AI参照は要再確認 |
+| ORG-MAP-05 | Migration拒否・部分失敗・別環境のみ成功では、対象ActualにおけるF1削除が**完全に観測**されない限り現行Field要素を勝手に削除しない。Desiredでの削除Intentとは別 |
 | ORG-MAP-06 | 同名/同型F1再作成、Rename、A→B→A、古い固定Selectionのいずれでも暗黙Rebindと旧Grant流用を拒否 |
 | ORG-MAP-07 | 物理org_membership変更だけでCase C1のhandlingUnit/責任・承認者・ACKが自動更新されない |
-| ORG-MAP-08 | Source/Provider/Scope partialで欠落した列を削除と断定しない。UIの診断にunknownとunmappedを区別 |
+| ORG-MAP-08 | Source/Provider/Scope partialで欠落した列を削除と断定しない。Fieldの存在がunknownな場合と、完全観測で存在せずunmapped確定な場合をUI/CLIとも別表示 |
 | ORG-MAP-09 | RDB非依存のComputed/Input-only/API BindingはFieldのないことだけで拒否せず、Provider/Ruleと出典を検証 |
-| ORG-MAP-10 | GUI、CLI、Target画面上のAI編集のいずれも、同じ意図・差分・資格・Preview・結果を示し、明示Applyまで物理変更しない |
+| ORG-MAP-10 | GUI、CLI、Target画面上のAI編集のいずれも、同じ対象Identity・意図・差分・現在資格・Preview・結果を示し、明示Applyまで物理変更しない。描画Edge IDを意味Relation IDへ昇格しない |
 
 **Owner配分／既存基盤とのFit**：データ項目/論理物理対応は#1126、三要素分析法の相互牽制・投影は#1124、横断変更資格は#1143、Source/Schema Workbenchは#3270、Migrationは#4125/#2892/#2887、Target画面からの変更は#1452、GUI/CUI固定対象は#4479、失われる情報・逆写像は#2497/#2500、ORG C1業務意味・横断Scenarioは#2386/#4501。**第二のMapping正本、汎用Migration Engine、画面定義専用Core、新Workflow/ACLは作らない**。
 
 **段階順**：最初にM0/M1/M4の**read-only静的Source→モデル/画面参照診断**と手書きExpectedを実施し、次にDesired/Actualの分離（M2/M3/M5）を既存実Schema APIと結合する。その後に実DB独立Read/実Target/SHOを#2586のP0実Readや各OwnerのGateに接続する。全Org-MAPケースの局所試験を全製品のE2Eへ昇格しない。**状態**：新Expected・実GUI/CLI・実DDL/Read・Owner意味受理は NOT RUN。
+
+#### 10.9.4 一操作をどの版のモデルに反映するか（UI/CLI共通Decision Table）
+
+「モデルから削除」の意味を、**何を正本とするモデルか・どの版の話か**まで固定する。**テーブル定義モデルのFieldの削除**と、**Function/UI要素を残したままBindingを外す**ことを別の意味変化として扱い、両方の対象Identityを維持する。データモデルの上位の業務概念を、物理Columnの削除に連動して無条件に消してはならない。
+
+| Event / 観測資格 | 現行テーブル定義モデル | Function/UI・CRUD・派生参照 | 許される操作 |
+| --- | --- | --- | --- |
+| UIの新しい入力欄追加（org兼務区分U2） | ActualもDesiredも不変 | U2は未対応、候補Mappingを示す | 明示的な新規Field設計への**提案**のみ |
+| TEIのDesired Column F2を明示追加 | Desired版にはF2を追加、Actualには未出現 | U2を「設計中」と示し、実保存可能とは表示しない | Schema差分/DDL Preview、明示Apply |
+| 実DBでF2の追加を完全に再観測 | Actual版のテーブルモデルにF2が出現 | U2は明示Mapping採用の後に有効 | Actual Reader/Consumerの別検証 |
+| TEIのDesired Field F1を明示削除、実DBはまだ旧版 | **Desired版からF1を除去**、Actual版にはF1が残る | U1は残す。Desired投影で未マッピング、実稼働Actualへの影響は別判定 | Impact/Dependency/旧新Client/移行PlanをPreview |
+| 直接DB操作等でF1削除を完全再観測、TEI Desiredは旧版 | **Actual版からF1を除去**、Desiredとのドリフトを記録 | U1は残すがActual Bindingを無効、CRUD/派生Query等は要再評価 | 原因と影響調査。Desired Sourceの無断書換え不可 |
+| Schema観測がpartial・unavailable・permission denied | ActualではFieldの不存在を**確定しない** | 「存在不明/取得不足」であり削除済みとは表示しない | 再観測。確定不存在を前提とするWrite/移行判定は停止 |
+| 同名Column再作成、Rename候補、A→B→A | 新旧のSource/Field occurrence・revisionを区別 | U1の旧Bindingを黙って復活させない | 明示Rename/Mapping受理後に再評価 |
+
+**操作の最小識別子（テスト票であり新Core Schemaではない）**：Subject/Workspace（Pin Intent）、表示Projection版、TEI Source/Desired版、実DB target/Provider/Actual観測Epoch、Field occurrenceとUI element IDを別列にする。
+
+**影響計算**：SQLのSELECT出力だけでなく **WHERE・ORDER・EXISTS・派生Field・Rule・Report・CRUD** を追跡する。F1が画面に表示されていなくても、変更影響は0とは限らない。Read Cohortが不足すれば「全影響なし」を確定できない。
+
+**AI固定対象の段階導入（#4515）**：現行Workbenchで初めに固定するのはSource-backed **Subject**。現在のrelatedGraph()が生成する親子Edgeの描画ID parent:subjectKey(child) は**Relation occurrence IDを保証しない**。同じ端点の複数意味Relation、異なるWorkspace、同offset別Subjectが区別できない状態では、EdgeをAI編集対象にしない。正式Relation ID・Source版・出典へ解決できるまで**Edge操作は閲覧のみ、更新選択はunsupported**。Node Pinも選択意図であり現在Grantではない。既表示DOM/ARIAの開示失効は#2516側で扱う。
+
+**Undo/競合**：ローカルPin/表示編集意図のUndoと実DDL/データ変更のUndoを同一視しない。DROPをUI Undoだけで復元したと表示しない。操作前後にSource/DB/Policy/Grant/ProjectionのRevisionと実観測を再照合し、後着AI応答・同名再作成・A→B→Aでは旧Bindingと旧Grantを復活させない。
+
+**既存Expectedへの追加assert（新ID・第二正本を作らない）**：
+- ORG-MAP-04/05/08：完全Readで「Field F1不存在」とpartialで「F1未観測」を**異なる結果**として返す。UI U1は残り、前者だけがActual版Field一覧からF1を除去した状態。Desired版の削除はSource Intentの別操作。
+- ORG-MAP-06/10と#4515 PIN-S0-03/04：同名・同offset・描画Edge・A→B→Aの変化で古いPin/Mapping/AI Applyを拒否。未実装ならunsupportedと返し、成功としない。
+- ORG-MAP-07と#4490 ORG-BEH-02：F1がWHERE/Rule等に**非出力参照**されれば、削除・型変更に伴いQuery/集計/派生値の再検証が必要。Case C1責任や実Grantは暗黙に更新しない。
+- ORG-MAP-03/05と#4125：Desired→DDL→実DB Apply→独立再観測は別証拠。DB変更成功は全旧新Client/Business Meaning受理を意味しない。
+
+**最短の引渡し**：W1は#4515 Workbench Subject Pinと#1124/#1143のread-only schema/UI diff・unmapped診断を並行実証。W2は#3270/#1126の既存Actual/Desired Inspectorへ変更資格を接続。W3は#4125の独立Schema再観測と#2586実Query/Consumer、#1452実Target/SHO/AI後着を照合。W1だけで正式Relation Pin、Schema Apply、Current Grantを完了扱いしない。
+
+**状態**：本節は既存受入条件の明確化。ORG-MAP-01〜10、PIN-S0、実DB/DDL、実GUI/CLI/Host/SHO、Ownerの意味受理について新しい実行証拠は **NOT RUN / NOT ACCEPTED**。
