@@ -163,3 +163,93 @@ UI Focus/Transient Selection
 - CUIの自動操作がGUIの偶然のFocus選択へ依存しないか。GUIもCUIも同じTask/Source Scopeを明示して再現できるか。
 
 **未決事項**：Pin/Task票の永続化方法・保持期間・復元のUX、静的/動的選択を正式に表現する型、外部Harness接続形式、可視化の優先順位、Keyboard shortcut、外部送信Previewの粒度、Owner/OS別のDisclosure。この文書は設計案であり、比較と実Product試験なしに正式採用しない。
+
+## 11. 2026-11-12 横断照合：実装済みの文書往復とGUI統合の不足辺
+
+### 11.1 新しい実装基線を区別して受け取る
+
+| 実際に確認したGitHub統合 | 本計画に再利用できる範囲 | まだ証明しない範囲 |
+| --- | --- | --- |
+| [TEI #4317](https://github.com/hat47x/tei-platform/pull/4317) merged | 受理モデルの一要素/一関係からSHO向け文書Draftを生成し、保存・再開・再確認する最小経路 | 全Data/Function/Business意味保持、GUI操作の往復、外部Host/実DB |
+| [TEI #4467](https://github.com/hat47x/tei-platform/pull/4467) merged | 文書再投影時のマージ方針を既存実装へ接続 | 著者文・図・出典・多重Relation・部分欠落を含む一般ケースの安全性 |
+| [SHO #36](https://github.com/hat47x/sho-composer/pull/36) merged | TEIモデル由来の文書Draftを消費側で開き、編集し、保存・再開する経路 | Studio埋込みの操作全体、同時編集の強い競合解決、Owner受理 |
+| [SHO #40](https://github.com/hat47x/sho-composer/pull/40) merged | Studio組込み形態を測るためのランナー | Studio/SHO統合GUIの実E2E資格、デスクトップ上の実利用者操作 |
+
+この四つは**局所実装の統合**であり、各PRのCIを相互に足して「同じHEAD/AttemptのGUI往復PASS」としない。具体的な最新統合コミットは各PRのMerge Commitを参照する。GUI初期実装では既存DocumentDraft/Writer/Readerを**外側から操作するAdapter**を優先し、Editor内に独自のDraft Merge/TEI Meaning Serviceを再実装しない。
+
+[TEI #4484](https://github.com/hat47x/tei-platform/pull/4484) はFunction→実SQL/Provider/RowsetのP0と文書投影の資格を横断主線へ整理した**未マージDraft**。本設計は#4484のData Context資格を先取りしない。実DBから未取得の値を、三視点/SHOで表示できたからといって取得済みと扱わない。
+
+### 11.2 実画面の具体的な状態遷移（同一作業例）
+
+**題材**：受注Function `order.submit` と `OrderLine` への特定Relationを調べ、CRUD表からSHO設計書の一段落へ説明を追加し、AIに影響範囲を確認する。
+
+| 画面/操作 | 見せるもの | 実操作・不変条件 |
+| --- | --- | --- |
+| Modeler / Data | Node・typed Relation、同端点多重Edge、現在Source版、partial/unknown | Edgeを一つ選び「作業対象へ固定」。位置やハイライト変更はPresentationのみ |
+| Modeler / Function | Functionと宣言されたRead/Create/Update/Delete、Source到達 | 固定したRelationとFunctionを別のQualified Identityとして保持 |
+| Modeler / Business | Procedure/TaskActionとFunction参照、manual/external action | Derived potential pathを実Effectと同一表示しない |
+| CRUD / Cross-reference | Cellの根拠Edge/Function、Declared/Derived/Observed区分、coverage | Cell→構成要素→Sourceへ移動。集計Cellから一意なSourceへ逆編集できなければread-only |
+| SHO Composer | 受理モデル由来のDocumentDraft、編集本文、引用/Occurrence、Raw/Dirty/保存済み版 | 著者が追記した文章はSource意味に自動書戻ししない。TEI更新時は再投影差分/衝突を提示 |
+| Context Shelf | 主対象・根拠・比較/除外、Source版・現在資格・用途 | Focus/Tab/IME/Prompt編集でPinを解除しない。別Taskへの暗黙コピー禁止 |
+| AI/Review | 実際に共有するPublic Slice、根拠と未解決、提案差分 | Current Disclosureを送信前再確認。AI提案はPin/Meaning/文書への自動適用ではない |
+| Save/Accept | SHO Draft Save、TEI Meaning Acceptance、Host Effectを別の操作/Receipt | Source byte一致、Writer Save、Owner受理、実Provider Effectは別の資格として表示 |
+
+**UX原則**：全画面に常駐する巨大なInspectorではなく、操作した要素の**必要な状態だけ**を表示する。SHO単独では執筆幅/IME/Undoを優先し、外部モデルやHarnessのReaderを編集Hot Pathで自動起動しない。ModelerはData/Function/Businessを独立した第二正本にせず、同じSourceの役割別Projectionとして扱う。
+
+### 11.3 GUI状態の最小契約（正式API型ではない）
+
+各操作で、画面の**状態名**を単一の成功/失敗に圧縮しない。例えば以下は独立した表示軸であり、UI側の新しいAuthorityではない。
+
+- **Draft**：clean / dirty / saving / saved / conflict / unknown。保存した事実はTEI解釈の成功を示さない。
+- **Resolution**：current / stale / ambiguous / partial / unavailable / permission-denied / unknown。PinしたIntentが残っていても現在の操作可否は別。
+- **Projection**：source-linked / derived / lossy / not-supported / unknown。Diagram表示できることと安全に逆編集できることを分離。
+- **Review**：candidate / previewed / accepted / rejected / not-applicable / unknown。選択をPinしたことはOwner Meaning Acceptanceではない。
+- **Handoff**：not-requested / previewed / dispatched / acknowledged / received / failed / unknown。Harnessへ送信したことと相手が正しく受領・利用したことを分離。
+- **Execution**：not-requested / proposed / authorized / attempted / observed / unknown。文書保存やAIの「実行しました」という回答をHost EffectのReceiptに昇格しない。
+
+複数軸の合成による「全部OK」バッジを既定で設けない。UIでの短縮表示は、利用者が行う**次の操作に必要な不一致と根拠**を優先する。
+
+### 11.4 再投影のユーザー体験と保存競合
+
+1. 既存TEI Source版R0から文書Draft D0を生成し、SHOがD0を編集・保存する。保存済みDocument RevisionとDirty Buffer Revisionを別に保持。
+2. TEI SourceがR1へ変更されたとき、R1から再投影したD1を、**D0原型・SHO著者編集・D1生成候補**の三者として比較する。二者差分で著者編集を消さない。
+3. 既存#4467の再投影方針を利用し、再生成可能な領域と著者編集領域、参照版/出典、曖昧な対応付け、削除された対象を分類。自動適用可能性は個別に検証する。
+4. 古いSource/Document版、外部Editorの競合Save、同名別Occurrence、BOM/CRLF、未取得のRelationがあれば、ユーザーに根拠付き候補と保留理由を表示。**新しい版の全自動Merge成功を既定にしない**。
+5. 適用後は実disk再Read、元Source/文書のidentityとbyte/Revision、Projection、Citation/Referenceを再確認。TEI Meaningの更新は別のShared Acceptance Boundaryへ送る。
+
+SHO→SUI選択Handoffの[SHO #31](https://github.com/hat47x/sho-composer/issues/31)では、元文書のUTF-16選択と原文UTF-8 byte span、R0 diskとDirty Buffer、選択外の秘匿情報を別扱いにする。GUIのPinは**未保存Bufferの選択**も表現できるが、実diskのSourceを示すように偽装しない。外部送出可能な内容の決定は既存SHO/Hostの現在資格に委ねる。
+
+### 11.5 統合GUIの追加実証（既存Expectedへの差分）
+
+| Case | 実操作の連鎖 | 独立Expected（現時点はNOT RUN） |
+| --- | --- | --- |
+| GUI-X1 | Relation Edge固定→Function/Business/CRUDへ移動→SHOへ引用→戻る | Edge ID・Source位置・版が一致し、同端点の別Edgeを誤採用しない |
+| GUI-X2 | TEI R0→SHO D0編集→TEI R1→文書再投影→保存再開 | 著者文・根拠・未解決を保持し、無断上書き/Source逆書戻し0 |
+| GUI-X3 | 日本語IME・BOM/CRLF・UTF-16範囲選択→Pin→外部Editor Save | byte span/Document Revisionを再確認し、旧Spanから別Occurrenceを誤選択しない |
+| GUI-X4 | Data/Function/Businessで同一Subjectを異なるラベルで表示→AIが関係候補提案 | 既存Pinと候補を分離し、ユーザーの明示採用前のPin変更0 |
+| GUI-X5 | CRUD derived cell、部分取得、Function実Read未接続 | 「Declared/Derived/Observed」「partial/unknown」を維持し、実DB ReadやBusiness Effectの証拠にしない |
+| GUI-X6 | CLI/headless、Studio Web、SHO standalone、Harness未接続を切替 | 同じ対象参照を適格な経路で再解決。未接続でもSHOのRaw SaveとTEIのread-only inspectは各々独立 |
+| GUI-X7 | 保存中にSource/Grant変更、AI旧応答後着、Handoff途中切断 | Source/Task/Disclosure epoch不一致を拒否し、送出/受領/保存の各Receiptを別記録 |
+| GUI-X8 | 画面遷移/Inspector表示/外部Editor往復の利用者試験 | Pinの誤解除数、対象再説明回数、目的の再確認手数、誤編集数、SHO入力遅延をB0（固定なし）と比較 |
+
+GUI-X1〜X8は既存#1824 CTX、#1124 M、#1180 Scenario、SHO #4/#31のExpectedへ対応付ける**Cross-view受入票**であり、別Runner/第二SSOTを新設しない。まずX1・X3・X5をread-only/公開Fixtureで実施し、Writerや外部AIが必要なX2・X7を後続とする。
+
+### 11.6 横断責務の最小境界
+
+- **TEI**：Source/Meaning/Typed Operation、Data/Function/Business/CRUD Projection、可逆性・Impact、Shared Acceptance。Function実Read/Plugin Provider資格は#2586/#1251のP0が別途所有。
+- **SHO**：Raw Markdown/文書Occurrence/著者編集/保存再開/再投影の消費側。モデルを読んだだけで第二Meaning Authorityを作らない。
+- **SUI/CSW**：Card/Island/知識構造と探索提案を必要最小のSelection/Handoffとして渡す。配置や近接性をTEIの業務Relationと混同しない。
+- **SEI**：根拠評価と推論の候補。採否/Owner Meaningを代行しない。
+- **KON**：適格な保存・版・権限のサービス候補。採用済みの万能Host/中央Registryであるかのように要求しない。
+- **TAI/外部Harness**：Activity/Session継続と必要なQualified Contextの受渡し。各製品のAuthority、OS/Host隔離、Grant、Source資格を継承したとみなさない。
+
+### 11.7 次に着手する実装の順序を狭める
+
+**最小GUI縦切り**：実Source上の一つのRelation EdgeをCLI/headlessでqualified inspect → StudioのData viewでPin → Function/Business/CRUDへ移動 → Inspector/Context Shelfで同じEdgeへ戻る → Source改版/同名異ID/後着を拒否。SHO Editor/外部Harnessの存在はこの受入の前提としない。
+
+**第2縦切り**：#4317/#4467とSHO #36/#40の既存実装を再利用し、受理モデル一要素+一関係→SHO Draft→著者編集→保存再開→再投影差分の実UI Consumerを測る。まず既存Headless/Reader/Writerを呼び、別のGraph Parser/文書Merge Engineを追加しない。
+
+**第3縦切り**：SHOの選択OccurrenceとTEIのRelationをTaskの比較/根拠として固定→送出予定Public Slice Preview→実外部Harnessで選択的Handoff→戻った候補をGUI上で明示採用/却下。OS/Host隔離とDisclosure Gate未資格なら外部送信は行わずローカル候補で止める。
+
+**計画反映先**：この節は#1824 Studio GUI、#1124三視点、SHO #19文書UI、SHO #31 Handoff、TAI #271 Activityの横断リンクを担当。MASTER_PLAN作業領域Gの内容は既存PR #4325/#4484のレビュー後に最小リンクのみ追加し、同じ規範を複数文書へ複写しない。
+
