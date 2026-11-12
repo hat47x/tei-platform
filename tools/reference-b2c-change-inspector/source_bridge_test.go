@@ -16,7 +16,7 @@ import (
 const (
 	b0SourcePath = "semantic/sales/order.tei"
 	b0OrderA     = "namespace sales\n\ndata Order {\n    attribute orderId type std.text\n}\n"
-	b0OrderB     = "namespace sales\n\ndata Order {\n    attribute orderId type std.code\n}\n"
+	b0OrderB     = "namespace sales\n\ndata Order {\n    attribute orderId type std.identifier\n}\n"
 )
 
 // b0StrictRead intentionally reuses the product Workspace loader, the index
