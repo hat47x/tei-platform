@@ -1072,6 +1072,24 @@ CLIでは非対話操作も、承認済み変更の明示的な入力と対象�
 
 **検収への接続**：既存DMU-01/03/04/05/06/07/08/10、#4500 ORG-MAP、#4515 PIN-S0、#4495 EL-03を同一Fixtureで対照する。特に「削除確定」と「観測不十分」を取り違える負例、「旧版参照」から同名列へ自動復活させる負例、「意図的に未設定」を一律ErrorにしてUI Draftすら保存できなくする過剰拒否を検査する。独立Expectedは#1180/#2514へ渡し、第二のテスト正本を作らない。
 
+
+### 27.8 CRUD矛盾とMapping失効は別の診断資格（#4472/#4534）
+
+第27.7節の六区分は**UI項目からデータ項目への対応**を説明するものであり、Data/Function/Businessを横断するCRUD宣言が業務上矛盾しないかを示すものではない。たとえば列への対応が現行Sourceで有効であっても、同じFunction×Dataに「更新あり」と「更新なし」の相反する明示CRUD宣言があれば、保存可否や変更影響の判断には追加のレビューが必要になる。逆にCRUD矛盾があっても、無関係な項目のread-only参照や局所検証まで無条件に停止させない。
+
+[Draft #4534](https://github.com/hat47x/tei-platform/pull/4534)は、`ContradictoryCRUDs()`の全件報告と、構造診断上の`OK`・CRUDの`conflicts-require-review`を別に扱う限定Product修正である。**Draftであってmain採用済みではない**。当初の「矛盾＝一律hard error」案は既存Issue #4472の判断保留と合致せず撤回されたため、ここでも新しい一律Error/Exit codeを定義しない。
+
+| 判断したいこと | 確認する証拠 | 主張できないこと |
+| --- | --- | --- |
+| モデルを構造として読めるか | Source/Kind/ID索引・構文/参照診断、構造OKの適用範囲 | CRUD業務整合・安全な更新・Owner意味受理 |
+| CRUD宣言に矛盾が見つかったか | 全宣言・同一Function×Dataの比較・衝突一覧・対象Scope | 最初の一件のみで衝突網羅、矛盾を後勝ちで消す |
+| CRUD表やクロスリファレンスを投影できるか | 明示CRUD-only行、操作由来行、Data索引、未解決/部分集合 | 表に見えた範囲がモデル全件、正しいData名を保証 |
+| 対象の変更を実行できるか | 有効Mapping、Operation/Entry、現在Target/Grant、Owner判断が必要な差分 | `validate.ok=true`や`crud.ok=true`だけで書込み許可 |
+
+**実装・検収の順序**：#4472が既存TE-CR-01〜06でData索引取り違え、明示CRUD-only行の脱落、矛盾の全件報告と表示資格を照合する。#4534のReview StatusをStudio/CLI/CUIに渡しても、それは既存Modeler/Operation上の**レビューが必要である旨の診断**であり、第二のApproval Engineではない。UI Mapping失効（DMU-03/05/07）と矛盾CRUD（TE-CR-03/04）が同時にある場合、両方を別に表示して、未確定の更新先への実書込みを実行しない。構造問題のない別Subjectの閲覧は継続できるよう、無関係範囲へ一律のFAILを伝播させない。
+
+**受入証拠の上限**：#4392/#4524のmain統合済み修正はValidationと重複ID索引を限定的に改善したが、CRUD矛盾の表示・明示行の保全・実Studio/Host更新を証明しない。#4534/#4513等のDraftを本節の追記だけで採用済みとしない。新しいScenario正本は作らず、TE-CR/DMUの既存Expectedを#1180/#2514で束縛する。**本節の実製品試験・Ownerの業務判断はNOT RUN**。
+
 ## 28. 方法論プラグインと通常開発の受理：Coreに固定しない協業契約（2026-11-12）
 
 ### 28.1 三要素分析法は重要な標準構成、しかし唯一の方法論ではない
@@ -1164,7 +1182,7 @@ DMU-01〜09、他DraftのORG-MAP-01〜10（#4500）と期待値・入力を照�
 ### 29.5 計画上の優先順位と停止条件
 
 - **P0維持**：#1251の通常CLI/Studio実Provider Invoke、#2586のFunction→Query→実Rowset→Consumer受領。Navigatorを先行Hard Gateにしない。
-- **P1a**：既存Map/Locate/Validationの整合と曖昧IDのfail-closed。#4392/#4524のexact-head CI、merge可否を各Ownerが確認。
+- **P1a**：#4392（Map/Locate Validation整合）と#4524（同Kind同ID重複索引拒否）はmain統合済み。その限定実装を現行mainで確認し、#4521の実Relation一件を用いてread-onlyの統合・Consumer受領の残差を検証する。統合済み局所テストをStudio完了へ昇格しない。
 - **P1b**：実Sourceでread-only Locate→references→jump→backをStudio/CUIへ一件接続。Coverage/未索引を示す（#1124/#1824）。
 - **P1c**：固定Pin→AI PreviewでScope/Revision/Disclosureを再検査（#4479/#2516）。
 - **P2**：Graph/CRUD逆編集、変更影響、Artifact/実Effectを§25 S2と#1143/#2497へ接続。
@@ -1175,14 +1193,16 @@ DMU-01〜09、他DraftのORG-MAP-01〜10（#4500）と期待値・入力を照�
 **状態**：設計・バックログ・Expected候補のみ。新Navigation/Index/Pin UI、NAV-01〜10、性能実測、CI、現在Disclosure、Owner意味受理は**NOT RUN / NOT ACCEPTED**。
 
 
-### 29.6 参照ナビゲーションとScript近傍テストの統合受入（#4525/#4502）
+### 29.6 参照ナビゲーションとScript近傍テストの統合受入（#4543/#4502）
 
-**実装で追加するのは第二のテスト体系ではなく、同じSourceから「どこを参照するか」と「何が実行されたか」を別々に観測する経路である。** #4525の近傍直接テスト（Rule/Operator/Function/Hook）と、#1180の複数Function/Driver Scenario、#4495の製品Entry/Invocation、#2586の実Query/Provider/Consumerは責務を分ける。以下は既存Expectedの**引渡し・照合条件**であり、新しい正式DSL/Runner/Oracle/Consoleコマンドを定義しない。
+**#4525は未マージで終了し、後継の[Draft #4543](https://github.com/hat47x/tei-platform/pull/4543)がScript起動・近傍テストの計画を担う**。同DraftはPreviewと実行直前Admissionの資格、Source/Entry/Provider/Artifact/Target/Grantを同一Attemptで追うPL-R06〜08を追加しているが、実Go CLI二入口・実Provider/Effectの製品実証ではない。
+
+**実装で追加するのは第二のテスト体系ではなく、同じSourceから「どこを参照するか」と「何が実行されたか」を別々に観測する経路である。** #4543の近傍直接テスト（Rule/Operator/Function/Hook）と、#1180の複数Function/Driver Scenario、#4495の製品Entry/Invocation、#2586の実Query/Provider/Consumerは責務を分ける。以下は既存Expectedの**引渡し・照合条件**であり、新しい正式DSL/Runner/Oracle/Consoleコマンドを定義しない。
 
 | 受入経路 | 必要な一致と観測 | 合格の上限 |
 | --- | --- | --- |
 | A：Source→Locate/Map→参照往復（§29 P1a/b） | 実Workspace Root/Source Revision、qualified Subject、Relation occurrence、Source range、Validation済みか、Coverage/Disclosure。別Loadなら別Attemptとして記録 | read-only navigationの限定合格。編集資格・実Function実行ではない |
-| B：Source→Rule/Function近傍直接テスト（#4359/#988/#2620/#4525） | 近傍Source/Operator/Plugin版と独立Expected、入力のmissing/NULL/partial、**実際に参照したSource集合**。実行位置とテスト位置の一致だけを根拠にしない | 局所意味/実装特性の合格。Product Entry/Hostの資格ではない |
+| B：Source→Rule/Function近傍直接テスト（#4359/#988/#2620/#4543） | 近傍Source/Operator/Plugin版と独立Expected、入力のmissing/NULL/partial、**実際に参照したSource集合**。実行位置とテスト位置の一致だけを根拠にしない | 局所意味/実装特性の合格。Product Entry/Hostの資格ではない |
 | C：Function→Entry/Trigger→Product CLI Process（#4495/#4502） | 実Entry公開版、型付き引数、selected Provider、Linked/Loaded bytes、実Invoker、Operation/Attempt、結果の観測。CLIと共通APIの二入口を同じMeaningへ接続 | 観測した一Target/Consumerの実起動。Trigger設定や擬似Executorだけで実Effectは証明しない |
 | D：Query→Rowset→Function Data Context→Consumer（#2586） | 実Source/DB alias/Schema、Provider選択と実Read、Rowset grain/Scope/Completeness、Consumer受領と独立Expected | 実Readの一往復。参照0件、集計値、欠落から不存在や更新適格を推測しない |
 | E：Operation→Host Effect/Recovery（#1174/#1129） | current Grant、実Commit/Receipt、独立Observer、ACK喪失と未知結果の扱い | 実行したEffectだけの受入。B/C/Dの結果を流用しない |
@@ -1191,9 +1211,9 @@ DMU-01〜09、他DraftのORG-MAP-01〜10（#4500）と期待値・入力を照�
 
 **実装担当への直近の小さな引渡し**：
 - #4392/#4524の**取り込み実態と現main実テスト**を確認したうえで、#4521の実Relation一件をAのread-only基線にする。既存の負例（同Kind同ID、Map/Locate Validationの不整合、同FP別Root）を流用する。
-- #4495/#4525はB/Cのテストを受け持ち、Aで見える参照・出典を起動契約へ渡しても、**Mapに存在する＝公開Entryあり**とは扱わない。
+- #4495/#4543はB/Cのテストを受け持ち、Aで見える参照・出典を起動契約へ渡しても、**Mapに存在する＝公開Entryあり**とは扱わない。
 - #2586のDは最優先の実Read主線。A/BのGUI・文書対応が未完成でも開始できる。
 - Scopeを限定できる領域では独立した無関係Plugin/MethodのエラーでA〜D全体を止めない。ただし**問いに必要なRequired Closure**に欠落がある場合は、その問いの結果だけ`unknown/blocked`を残す（#2582/#4518）。参照数0や未索引0を「絶対未使用」の証拠にはしない。
 
-**優先順位と停止条件**：P0は#1251/#2586と#4495の実Provider/CLI経路。§29.5のP1aはMap/Locate/Validation/Source Indexの実現状確認、P1bは一件の参照往復、**P1cはPin→AI Previewのまま維持**する。#4525の近傍直接テストとSource/Scope照合はP1bと並行できる独立の試験準備とし、PinやGUIの完成を実起動・直接テストのHard Gateにはしない。P2は安全な逆編集影響、P3は異質Consumerと性能。追加の横断Test SSOT、独自Acceptance Engine、同期全Pluginロード、実証前のTarget普遍適合宣言は行わない。**本節はdocs-onlyでありA〜Eの新しい通し実行はNOT RUN。**
+**優先順位と停止条件**：P0は#1251/#2586と#4495の実Provider/CLI経路。§29.5のP1aはMap/Locate/Validation/Source Indexの実現状確認、P1bは一件の参照往復、**P1cはPin→AI Previewのまま維持**する。#4543の近傍直接テストとSource/Scope照合はP1bと並行できる独立の試験準備とし、PinやGUIの完成を実起動・直接テストのHard Gateにはしない。P2は安全な逆編集影響、P3は異質Consumerと性能。追加の横断Test SSOT、独自Acceptance Engine、同期全Pluginロード、実証前のTarget普遍適合宣言は行わない。**本節はdocs-onlyでありA〜Eの新しい通し実行はNOT RUN。**
 
