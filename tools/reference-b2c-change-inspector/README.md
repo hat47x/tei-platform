@@ -9,6 +9,8 @@ go test ./tools/reference-b2c-change-inspector
 cat tools/reference-b2c-change-inspector/example-input.json | go run ./tools/reference-b2c-change-inspector
 ```
 
+The executable itself stays Go-standard-library-only. The **additional `source_bridge_test.go`** imports existing TEI internal APIs **in tests only**: `workspace.Load` + `BuildSourceIndexFromLoad` + `operations.InspectionFromLoad`. These tests pin one Workspace Load's managed Source bytes and Source occurrence, check A→B→A and root mismatches, and show that a changed Workspace manifest/identity can coexist with the same managed Source content revision. They do **not** claim atomic multi-file reads, imported-Workspace closure, whole-Native dependency coverage, actual Provider invocation, or a release grant. See [#4518](https://github.com/hat47x/tei-platform/issues/4518) for the B0-S1 implementer handoff.
+
 The edges point from a changed subject **toward its dependents**. Layers provide hints only (`content → C0`, `presentation → C1`, `interaction → C2`, `business/consent → C3`, `release/measurement → C4`). There are no inferred dynamic imports, provider capabilities, authoritative business checks, consent permissions, or actual delivery readbacks. Unknown nodes and the caller-declared `unobserved` list prevent a scoped noncritical result. Duplicate node identity and unknown layer are errors.
 
 Provenance of real source bytes, exact provider invocation, host authorization, complete requested set, actual browser delivery, production statistics, and actual effect remain owned by #2586, #1158, #951, #1174, #2514, #2600, #3271, #3509 and existing target consumers. This reference must not be wired as an automatic deploy approval or production security gate.
