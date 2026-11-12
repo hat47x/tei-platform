@@ -459,3 +459,137 @@ func TestThreeElementDiagramPreservesDeclaredElementAuthorityLimits(t *testing.T
 		}
 	}
 }
+
+
+// TestThreeElementDiagramReconcileDetectsAuthorityOnlySourceDrift proves that
+// the current diagram Source must be requalified even when its STRUCTURAL
+// fingerprint is unchanged. The source JSON, not the generated report, supplies
+// the independent expectation for the authority difference.
+func TestThreeElementDiagramReconcileDetectsAuthorityOnlySourceDrift(t *testing.T) {
+	modelPath := diagramFixture(t)
+	raw, err := os.ReadFile(modelPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var source map[string]any
+	if err := json.Unmarshal(raw, &source); err != nil {
+		t.Fatal(err)
+	}
+	elements := source["dataElements"].([]any)
+	order := elements[0].(map[string]any)
+	order["authorityLimits"] = []string{"owner-review-required"}
+	withLimits, err := json.Marshal(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(modelPath, withLimits, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	recorded, err := Build(Request{DocumentKind: DocumentKindThreeElementDiagram, ModelPath: modelPath})
+	if err != nil {
+		t.Fatalf("first Build: %v", err)
+	}
+	before, err := Reconcile(recorded, "")
+	if err != nil {
+		t.Fatalf("unchanged Reconcile: %v", err)
+	}
+	if before.ModelReference.Status != ModelReferenceCurrent {
+		t.Fatalf("unchanged model reference=%+v", before.ModelReference)
+	}
+	if len(before.NeedsReconfirmation) != 0 {
+		t.Fatalf("unchanged source requires reconfirmation: %v", before.NeedsReconfirmation)
+	}
+
+	order["authorityLimits"] = []string{"owner-approval-revoked"}
+	changed, err := json.Marshal(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(modelPath, changed, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	updated, err := Build(Request{DocumentKind: DocumentKindThreeElementDiagram, ModelPath: modelPath})
+	if err != nil {
+		t.Fatalf("second Build: %v", err)
+	}
+	if updated.Model.ModelRevision != recorded.Model.ModelRevision {
+		t.Fatalf("authority-only edit changed structural fingerprint: %q != %q",
+			updated.Model.ModelRevision, recorded.Model.ModelRevision)
+	}
+	after, err := Reconcile(recorded, "")
+	if err != nil {
+		t.Fatalf("authority-only Reconcile: %v", err)
+	}
+	if after.ModelReference.Status != ModelReferenceStale ||
+		!containsString(after.ModelReference.Diffs, "sourceFingerprint") {
+		t.Fatalf("authority-only source change was not requalified: %+v", after.ModelReference)
+	}
+	if len(after.NeedsReconfirmation) != 1 ||
+		len(after.Occurrences) != 1 ||
+		after.Occurrences[0].Status != OccurrenceContentChanged {
+		t.Fatalf("diagram authority change not reported per occurrence: %+v", after)
+	}
+}
+
+// TestThreeElementDiagramReconcileDetectsByteOnlyAndMissingSourceDigest
+// distinguishes a source-only change from a missing historic observation.
+// Neither may silently make a recorded draft current.
+func TestThreeElementDiagramReconcileDetectsByteOnlyAndMissingSourceDigest(t *testing.T) {
+	modelPath := diagramFixture(t)
+	recorded, err := Build(Request{DocumentKind: DocumentKindThreeElementDiagram, ModelPath: modelPath})
+	if err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+	raw, err := os.ReadFile(modelPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var source map[string]any
+	if err := json.Unmarshal(raw, &source); err != nil {
+		t.Fatal(err)
+	}
+	// Reformat only: decoded structure and diagram remain identical.
+	pretty, err := json.MarshalIndent(source, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(pretty) == string(raw) {
+		t.Fatal("expected a distinct raw representation")
+	}
+	if err := os.WriteFile(modelPath, pretty, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	reformatted, err := Build(Request{DocumentKind: DocumentKindThreeElementDiagram, ModelPath: modelPath})
+	if err != nil {
+		t.Fatalf("reformatted Build: %v", err)
+	}
+	if recorded.Model.ModelRevision != reformatted.Model.ModelRevision ||
+		recorded.Occurrences[0].ContentDigest != reformatted.Occurrences[0].ContentDigest {
+		t.Fatal("source-only formatting altered the structural model/diagram")
+	}
+	diff, err := Reconcile(recorded, "")
+	if err != nil {
+		t.Fatalf("Reconcile: %v", err)
+	}
+	if diff.ModelReference.Status != ModelReferenceStale ||
+		!containsString(diff.ModelReference.Diffs, "sourceFingerprint") ||
+		len(diff.Occurrences) != 1 ||
+		diff.Occurrences[0].Status != OccurrenceConditionsChanged {
+		t.Fatalf("source formatting drift was not distinguished: %+v", diff)
+	}
+
+	// An old or incomplete draft without the source digest must not be
+	// accepted as current merely because the structural digest is identical.
+	missing := reformatted
+	missing.Occurrences = append([]Occurrence(nil), reformatted.Occurrences...)
+	missing.Occurrences[0].GenerationConditions.InputDigests = nil
+	unknown, err := Reconcile(missing, "")
+	if err != nil {
+		t.Fatalf("missing digest Reconcile: %v", err)
+	}
+	if unknown.ModelReference.Status != ModelReferenceStale ||
+		!containsString(unknown.ModelReference.Diffs, "sourceFingerprint") {
+		t.Fatalf("missing source digest silently qualified: %+v", unknown.ModelReference)
+	}
+}
