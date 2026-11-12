@@ -10,6 +10,10 @@ type ValidationReport struct {
 	ModelID                string              `json:"modelId"`
 	ModelFingerprint       string              `json:"modelFingerprint"`
 	OK                     bool                `json:"ok"`
+	// OK only concerns the existing structural Diagnostic error count.
+	// It cannot be read as approval of contradictory or incomplete CRUD.
+	OKScope                string              `json:"okScope"`
+	CRUDConflictStatus     string              `json:"crudConflictStatus"`
 	ErrorCount             int                 `json:"errorCount"`
 	WarningCount           int                 `json:"warningCount"`
 	InfoCount              int                 `json:"infoCount"`
@@ -32,6 +36,7 @@ func ValidateModel(model ThreeElementModel) ValidationReport {
 		ModelFingerprint: model.ModelFingerprint,
 		Diagnostics:      diags,
 		AuthorityLimits:  model.AuthorityLimits,
+		OKScope:          "structural-diagnostics-only",
 	}
 	for _, d := range diags {
 		switch d.Severity {
@@ -48,6 +53,12 @@ func ValidateModel(model ThreeElementModel) ValidationReport {
 	report.UnreferencedFunctions = model.UnreferencedFunctions()
 	report.MissingBusinessMapping = model.MissingBusinessFunctionMapping()
 	report.ContradictoryCRUDs = model.ContradictoryCRUDs()
+	report.CRUDConflictStatus = "no-conflicts-detected"
+	if len(report.ContradictoryCRUDs) > 0 {
+		// A conflict requires separate review; it is not automatically a
+		// structural hard error or permission to use a last-writer projection.
+		report.CRUDConflictStatus = "conflicts-require-review"
+	}
 	report.UnknownDependencies = model.UnknownDependencies()
 	report.SameNameConflicts = model.SameNameConflicts()
 	return report
