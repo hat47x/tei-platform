@@ -814,7 +814,7 @@ WU-11〜14をWU-06〜10の「全部完了待ち」にしない。前段の**必�
 
 #### 10.10.1 参照一覧を信頼できる条件
 
-1. **基礎の誤りを先に修正**：#4472のData索引取り違え・明示CRUD脱落・矛盾をOK表示する問題、#4475の同Kind同ID・Fingerprint算出時の入力破壊を既存Ownerの正負試験で解消する。未解決ならCRUD参照数・未使用表示を正しいと断言しない。
+1. **基礎の誤りを種類ごとに受入**：#4475のFingerprint入力破壊はmain統合PR #4507で限定修正済みだが、同Kind同IDの重複診断は別。#4472のData索引取り違えはDraft PR #4513で3箇所を限定修正する提案がある一方、明示CRUD-only脱落・重複後勝ち・矛盾をOK表示する問題は未解決。各Issueの独立正負試験とProduct Consumer結果を確認するまで、CRUD参照数・未使用表示を全体として正しいと断言しない。
 2. **参照の種類を混ぜない**：宣言上の参照、型付きRelation、Function→Data CRUD、Business Task→Function、SQL WHERE/ORDER/EXISTS等の非出力依存、UI Binding、SHO引用、実Provider Readは別種。逆引きは有向Edgeの逆方向検索であって、業務上の逆向き依存関係を意味しない。
 3. **対象の同一性**：Workspace、Kind、Stable Subject ID、Relation occurrence、Source revision、Source位置と必要なvalid/known/Scopeを保持する。Label、図面座標、同じ始点・終点、描画用Edge ID、単独のSource offsetを意味IDとしない。参照の出現位置が複数ならoccurrenceを区別。
 4. **0件とunknownを分離**：指定したSource/Provider/Plugin・Dependency Closureを必要十分に取得し、未解決参照がなく、**指定範囲について全件検査できた場合だけ**「参照数0」「その範囲で未使用候補」と表示。partial、permission denied、unavailable、未解析のDynamic ReferenceやPluginには「不明／未検査」を付す。0件、空配列欄の欠落、対象不存在、非表示、非開示は別状態。
@@ -845,3 +845,23 @@ WU-11〜14をWU-06〜10の「全部完了待ち」にしない。前段の**必�
 **段階と停止線**：R0=#4472/#4475のProduct参照正確性、R1=#3788/#1177のHeadless前後参照と完全性、R2=#4515のSubject Pinを用いたStudio移動、R3=#1143のRename/Delete Preview、R4=#1824/#2600の大規模/Plugin性能比較。R0/R1を#2586の初回実Provider Readの完了待ちにはしない。どの段階でも、未知の参照を「0件」として削除提案する、旧SourceへAIが書戻す、画面描画成功を実Grant/Effectと呼ぶ場合は停止。
 
 **状態**：本節は既存Issueの受入条件と順序を接続する設計。新しいGo/Node試験、Studio/CLI操作、性能計測、実Provider Read、Owner意味受理は**NOT RUN / NOT ACCEPTED**。
+
+#### 10.10.4 現在の製品資格を消費者別に記録する（実行前チェック、2026-11-13）
+
+| 既存成果・Owner | 実際に確認された範囲 | 組織C1の実行に残るもの |
+| --- | --- | --- |
+| #4507 merged（#4475） | ThreeElement ModelFingerprintの入力破壊・自己参照を限定修正し、文書図のAuthorityLimits保持も追加 | 同Kind同IDと他の曖昧性・現在Disclosure/Grantは未解決。#4514のSource-only drift補正はDraft |
+| #4513 Draft（#4472） | CRUD表/Function-Data参照/GapのData索引3箇所を修正するコードと独立対照テスト | **未マージ**。明示CRUD-only行、矛盾定義、OK誤表示を修正したことにはならない。実Go/CLI/CIの合否は別取得 |
+| #3906 closed、CLI JSON契約 | trace.unresolvedは**返した行の未解決数**、projectionUnresolvedは**グラフ投影全体で落ちた参照**と明記済み | trace.unresolved=0だけで全Workspace/同Subjectの必要参照が完全と推定しない。両方とScope/Required Closureを照合する |
+| #4532 Draft（#2510合成Reference） | org-synthetic-r7、3人/4所属/3.0 FTE、known改版の2.4 FTEを参照。固定HEAD fa2d8ce98ff77536f51e32095748f63d935a2d07 の Node Actions #43242282586は313/313 PASS（うち追加7件） | 合成Node資格のみ。正式TEI Query/Provider/Context/Studio/Host、ORG-CAP-06/08、Owner受理は別 |
+| #4257 merged、#3394（REA） | REA 6.7は単独JSON、6.8は7 record＋metadata終端のJSONLという外部Producerの版差を実CIで観測 | **TEI共通read-only Application APIへの1 Observation＋方向・ID付きRelation 1件の実受領は未証明**。Product Accepted Graph/CRUD/未使用判定へ混入しない |
+
+**read-only参照表示の入場条件**：適格な参照検索を、（A）Accepted Source/Meaningに属するProduct Cross Reference、（B）REA等からの外部Observation/Structural Candidate、（C）Source不足・未解決・partialの三群として扱う。同名や同端点が一致しても群間でReferenceを加算して「利用実績」としない。外部候補はSource locator、Producer version、record/edge ID、方向、多重性、raw digest/受領byte、Coverage、Known/Validの有無を区別し、正式な意味Role/Relation occurrence/業務時点は#2386の意味Ownerが採否を判断する。外部候補しか見つからないData/Function/Businessは「正式参照0・候補あり・Coverage未確認」を区別して提示する。
+
+**最小の次のProduct Exit（重複Expectedなし）**：
+1. #4472の残余と#4475の同Kind重複を独立Expectedと実Consumerで解消。#4513のData索引修正のみでCRUD/未使用の全体適格と呼ばない。
+2. #3906の二種の未解決数とSource Index/Scopeを同一CLI応答で判別し、完全0・投影未解決あり・部分取得の3入力で未使用の結論が切り替わることを実証（#3262/#1177）。UI・AIの未使用削除は禁止。
+3. #3394の外部REA T1-Aは、実際の共通read-only APIに1 Observation＋1 Edgeを送出して実Receiverのbyte・識別・方向・partialを照合する。Product Cross Referenceに混入させず候補として保持。外部ProducerのCI成功だけを実TEI Reader成功にしない。
+4. #4515 Subject Pinと#3788 Source移動/CRUD/Studioを**同一受理済み合成Source・同一Revision**へ限定接続。#2497のloss/逆写像を保持し、完全性不明時の変更はPreviewで停止。#2586実Read縦断は独立P0のまま先行する。
+
+**Owner/証拠の境界**：組織Meaning #2386、三要素CRUD #4472/#4475、外部REA受領 #3394/#3419、参照/未使用 #3262/#1177/#3788、Studio #4515/#1124、独立Expected #2514/#1180。新しい共通Referencer、第三Source Store、REAを直接意味認定するConverterは作らない。#3906は契約説明として既にclosedであり、同じIssueを再起票しない。§10.10.4は現在状態のレビューと次の受入要求であって、新たなGo/Node/REA Product実行を行った証拠ではない。
