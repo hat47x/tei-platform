@@ -621,7 +621,7 @@ WU-11〜14をWU-06〜10の「全部完了待ち」にしない。前段の**必�
 
 ### 10.7 三要素分析法・REA・DB/SHO・AIハーネスを組織C1に接続する（2026-11-12追補）
 
-**方法論の帰属**：渡辺幸三氏のX-TEA Modelerに示される**三要素分析法**のData・Function・Businessモデルを基準にする。「三視点モデル」は方法論名として用いない。TEI独自のGraph/CRUD/Source Provenance/Execution Evidenceを接合する部分は**TEI側の拡張**であり、X-TEA原典に存在すると主張しない。一次のモデル要素・操作の同一性を断定するには原本・版・要素ID・出典位置が必要。未照合の名称は候補と明記する。
+**方法論の帰属・適用範囲**：X-TEA Modelerに関係する**三要素分析法**（データモデル・機能モデル・業務モデル）を、業務システム向けOrganization C1の評価方法として用いる。「三視点モデル」は方法論名としない。業務フロー、機能・業務階層、原典に由来するCRUD・逆引きクロスレファレンス・三者の相互牽制は可能な限り忠実に検証する。一方、TEIの汎用Coreを三要素分析法専用に固定しない。業務系では選択可能な標準/Domain Plugin・モデル投影として利用し、通常コード、非業務ドメイン、任意のGraph/Time/Spatial構造を妨げない。TEI独自のSource Provenance、Read/Execution Evidence、SHO/Harnessへの写像は**TEI側の拡張**と明示。原典と同一の機能・操作と主張するには版・出典位置・実Consumer比較を要し、未照合は候補とする。
 
 | 三要素分析法に沿う区分 | C1の最小例 | 保存する境界／横断検証 |
 | --- | --- | --- |
@@ -719,3 +719,53 @@ WU-11〜14をWU-06〜10の「全部完了待ち」にしない。前段の**必�
 **実装順**：#2510にある人数/FTE独立Expectedを再利用し、ORG-CAP-01/02の純粋なQuantity/Graph集計→03/04のread-only Scenario差分→05/06のRule/Scope/partial→07/08の実Consumer/鮮度へ進める。#4490のORG-BEH、#4501のCXケースとの重複Expectedは新規作成せず共有する。最初の製品実Read #2586をブロックしない。
 
 **停止条件**：シナリオの仮定をAccepted Sourceへ無断で書戻す、FTEを権限やCase責任へ自動変換する、人数・所属件数・FTEの粒度を暗黙に混同する、SQL/Graph/SHO/AIの表示成功を実Provider/Effect成功へ昇格する場合は不合格。**状態**：本節は設計・合成Expected候補。ORG-CAP-01〜08の実行、実Org Provider、実シナリオConsumer、Owner意味受理は **NOT RUN / NOT ACCEPTED**。
+
+### 10.9 データ構造変更と画面マッピングの整合をC1で固定する（2026-11-12追補）
+
+**他チャットの確定方針を組織C1へ適用**：データソースがRDBのとき、現行データモデルの物理項目写像は実テーブル定義との対応を保つ。テーブル項目の削除が実適用・再観測まで確認された場合、対応する**現行物理項目写像は消える**。ただしその項目を使う画面のUI要素は勝手に削除せず、**未マッピング要素**として残し警告する。反対に、画面へ項目を追加しただけではTable/Columnを生成・適用しない。これはModeler/Studio/CLI/AIハーネス共通の操作意味とする。
+
+#### 10.9.1 三つの構造状態と三つの変更入口
+
+1. **Actual Schema**：特定DB接続・Provider・Scope・観測時点で実際に取得できた構造。完全取得・権限・観測Epochを記録。取得失敗/partialで「列がない」を確定しない。
+2. **Desired Schema / Change Intent**：開発者が明示して編集した希望構造。物理DDLの実行結果ではない。Preview/Impactを経てMigration Apply資格のある操作のみ実施する。
+3. **Model / UI Projection**：Dataモデルの物理写像、論理Relation/Rule、Functionモデルの画面項目、Businessモデルの処理/CRUD、Studio/SHO文書の各表示。Actual/Desiredのどちらを示すか明示し、UIは独立した要素IDとMap Targetを持つ。UI要素はDB列の別名ではない。
+
+| 操作入口 | 許可する最初の動作 | 自動実行しない動作 |
+| --- | --- | --- |
+| UI/Functionモデルへ項目を追加 | UI要素だけ生成し、未マッピングを表示。既存Data Field/Derived Field/入力専用項目への明示Bindingを提案できる | 新しいRDB列・業務意味・権限を黙って作る |
+| 開発者がDataモデル/Schema Workbenchで新Fieldを明示 | Desired Field・対応Source差分・制約/依存・Migration PlanとPreviewを作る | 実DB Apply、既存UIへの無断Binding、既存Host Grantの推測 |
+| 実DBの列を削除/変更 | Schema観測でActualの変更を検出し、現行Data物理写像と下流参照のImpactを再計算 | 依存UI要素や業務責任/Caseを連鎖削除、旧物理列へ黙ってリバインド |
+
+**逆方向の扱い**：Modelerによる列削除指定はまずDesired上の提案であり、実DBを削除したことにはしない。Migration成功ログのみでもActual確定とはせず、別Readで対象列の消失を確認する。別名で同型列が現れても、明示されたRename/Mappingの採否がない限り旧Field Identityを再利用しない。過去Model/文書の引用は版付きで残す一方、**現在の有効Mapping**は外す。A→B→Aでも旧Mapping/AI提案は自動復活しない。
+
+#### 10.9.2 組織C1の最小変更トレース
+
+| ステップ | データ側 | Function/UI側 | Business/Effect側 |
+| --- | --- | --- | --- |
+| M0 基準 | org_membership.assigned_unit_idを物理Field F1として観測、モデル写像M1 | U1=「配属先」、U1→M1で有効 | MembershipとCase C1のhandlingUnitは別関係 |
+| M1 UIに「兼務区分」U2を追加 | Actual/Desiredとも不変 | U2をunmappedとして表示し、Binding候補だけ提示 | 業務Rule/DDL/Grant/Effectなし |
+| M2 開発者が兼務Field F2を明示追加 | Desired F2とMigration Planを作り、Apply前はActualにF2なし | U2→Desired F2は設計中と明示、実画面の保存先確定にはしない | 変更内容と受入範囲に応じ通常の開発者Review |
+| M3 F2適用・再観測 | 対象実DBでActual F2を確認し物理Mapping確立 | U2のBindingを明示承認すれば有効、未承認ならunmapped | 必要なら既存Function/Validation試験と実Provider試験 |
+| M4 F1削除が実適用・再観測済み | 現行ActualにF1なし、M1物理対応は無効 | U1は残すがBinding削除・「対応項目なし」を警告。CRUD/SHO/AI参照を失効診断 | Case C1責任やMembership別属性を推測で書き換えない |
+| M5 古いSource/AI応答が後着 | F1の旧revisionを参照 | 固定Selectionは意図として残せてもApplyは禁止。Previewで再対応付けを要求 | 古い実行資格・Receiptを流用しない |
+
+**補足**：非RDB/仮想Field/計算Field/APIの画面Bindingには物理列を必須にしない。Source Provider別の能力を説明し、RDBのDDL意味をREST/OData/ログへ強制しない。直接DB操作と業務Function経由の更新は同義ではない。表削除やデータ消失を伴う操作の実適用は既存Migration/Host Grant/Effectと独立Readの範囲内でのみ実証する。
+
+#### 10.9.3 追加の独立受入ケース（既存Driverを再利用）
+
+| ID | 期待と反例 |
+| --- | --- |
+| ORG-MAP-01 | U2の追加でActual/Desiredの列数が変わらず、U2はunmapped。UI要素数が増えたことはDB列作成の証拠ではない |
+| ORG-MAP-02 | 開発者の明示Field追加はDesiredだけ変化。DB Apply前は実Rowset/保存資格が未成立 |
+| ORG-MAP-03 | 実F2追加後の独立Schema ReadでF2を確認。UI Bindingは別の明示選択として保持 |
+| ORG-MAP-04 | F1の実削除後、モデルの現行物理項目写像は無効、U1は保持されunmapped診断、CRUD/SHO/AI参照は要再確認 |
+| ORG-MAP-05 | Migration拒否・部分失敗・別環境のみ成功では、対象ActualでF1削除が観測されない限り現行写像を勝手に削除しない |
+| ORG-MAP-06 | 同名/同型F1再作成、Rename、A→B→A、古い固定Selectionのいずれでも暗黙Rebindと旧Grant流用を拒否 |
+| ORG-MAP-07 | 物理org_membership変更だけでCase C1のhandlingUnit/責任・承認者・ACKが自動更新されない |
+| ORG-MAP-08 | Source/Provider/Scope partialで欠落した列を削除と断定しない。UIの診断にunknownとunmappedを区別 |
+| ORG-MAP-09 | RDB非依存のComputed/Input-only/API BindingはFieldのないことだけで拒否せず、Provider/Ruleと出典を検証 |
+| ORG-MAP-10 | GUI、CLI、Target画面上のAI編集のいずれも、同じ意図・差分・資格・Preview・結果を示し、明示Applyまで物理変更しない |
+
+**Owner配分／既存基盤とのFit**：データ項目/論理物理対応は#1126、三要素分析法の相互牽制・投影は#1124、横断変更資格は#1143、Source/Schema Workbenchは#3270、Migrationは#4125/#2892/#2887、Target画面からの変更は#1452、GUI/CUI固定対象は#4479、失われる情報・逆写像は#2497/#2500、ORG C1業務意味・横断Scenarioは#2386/#4501。**第二のMapping正本、汎用Migration Engine、画面定義専用Core、新Workflow/ACLは作らない**。
+
+**段階順**：最初にM0/M1/M4の**read-only静的Source→モデル/画面参照診断**と手書きExpectedを実施し、次にDesired/Actualの分離（M2/M3/M5）を既存実Schema APIと結合する。その後に実DB独立Read/実Target/SHOを#2586のP0実Readや各OwnerのGateに接続する。全Org-MAPケースの局所試験を全製品のE2Eへ昇格しない。**状態**：新Expected・実GUI/CLI・実DDL/Read・Owner意味受理は NOT RUN。
