@@ -94,10 +94,16 @@ func inspect(in input) (report, error) {
 	}
 	outgoing := map[string][]string{}
 	missing := map[string]bool{}
-	// An explicitly unknown classification is a gap even when it is not
-	// reachable from a currently changed node.
-	for id, n := range byID {
-		if n.Layer == "unknown" {
+	// Required is the caller's question-bound universe, not every node
+	// available in a Workspace. A complete universe is only asserted by
+	// the caller; this reference cannot prove it independently.
+	required := map[string]bool{}
+	for _, id := range in.Required {
+		if strings.TrimSpace(id) == "" {
+			return report{}, errors.New("required subject must not be empty")
+		}
+		required[id] = true
+		if n, exists := byID[id]; !exists || n.Layer == "unknown" {
 			missing[id] = true
 		}
 	}
@@ -105,17 +111,19 @@ func inspect(in input) (report, error) {
 		if e.From == "" || e.To == "" {
 			return report{}, errors.New("edge endpoints must not be empty")
 		}
-		if _, exists := byID[e.From]; !exists {
-			missing[e.From] = true
-		}
-		if _, exists := byID[e.To]; !exists {
-			missing[e.To] = true
-		}
 		outgoing[e.From] = append(outgoing[e.From], e.To)
-	}
-	for _, id := range in.Required {
-		if _, exists := byID[id]; !exists {
-			missing[id] = true
+		// Unknown edge endpoints matter if they touch the explicitly
+		// required universe. Unrelated malformed source inventories
+		// must not force a full requalification of this question.
+		if required[e.From] {
+			if n, exists := byID[e.To]; !exists || n.Layer == "unknown" {
+				missing[e.To] = true
+			}
+		}
+		if required[e.To] {
+			if n, exists := byID[e.From]; !exists || n.Layer == "unknown" {
+				missing[e.From] = true
+			}
 		}
 	}
 	for _, id := range in.Unobserved {
@@ -154,7 +162,7 @@ func inspect(in input) (report, error) {
 			impacted[id] = true
 		}
 	}
-	complete := in.DeclaredScopeClosed && len(missing) == 0
+	complete := in.DeclaredScopeClosed && len(in.Required) > 0 && len(missing) == 0
 	coverage := "partial-or-unverified"
 	if complete {
 		coverage = "declared-closed-only"
