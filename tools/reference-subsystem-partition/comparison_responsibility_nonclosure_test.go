@@ -75,3 +75,50 @@ func TestComparePartitionsStableElementSetsDoNotProveStableResponsibility(t *tes
 		})
 	}
 }
+
+// Subsystem strings in the reference evaluator are structural membership IDs,
+// NOT display names. Relabeling those keys as though they were UI labels is
+// interpreted as a move, even when the caller also relabels the Owner.
+func TestComparePartitionsChangingSubsystemKeyIsNotDisplayRename(t *testing.T) {
+	before := PartitionSnapshot{
+		Label:       "before",
+		Assignments: []Assignment{{Function: "checkout", Subsystem: "sales"}},
+		Writes: []Write{{
+			ID: "write-order", Function: "checkout", Data: "order",
+			Owner: "sales", Operation: "U", Source: "same-source", Weight: 1,
+		}},
+	}
+	// A caller has renamed *structural keys*, not merely a display label.
+	after := PartitionSnapshot{
+		Label:       "after",
+		Assignments: []Assignment{{Function: "checkout", Subsystem: "orders"}},
+		Writes: []Write{{
+			ID: "write-order", Function: "checkout", Data: "order",
+			Owner: "orders", Operation: "U", Source: "same-source", Weight: 1,
+		}},
+	}
+	report, err := ComparePartitions(before, after)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !report.DiffModelsConsistent || report.MovedFunctionCount != 1 ||
+		len(report.MovedFunctions) != 1 || report.MovedFunctions[0] != "checkout" ||
+		report.BeforeCrossWrites != 0 || report.AfterCrossWrites != 0 {
+		t.Fatalf("relabeling structural Subsystem keys is observed as a move: %+v", report)
+	}
+
+	// When only assignment was relabeled and the former Owner key remains,
+	// a spurious-looking boundary also appears. This is why formal rename
+	// must preserve qualified subsystem IDs and change labels elsewhere.
+	after.Writes[0].Owner = "sales"
+	mismatch, err := ComparePartitions(before, after)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if mismatch.MovedFunctionCount != 1 || mismatch.AfterCrossWrites != 1 ||
+		!mismatch.DiffModelsConsistent {
+		t.Fatalf("Owner/assignment key mismatch should count cross-boundary: %+v", mismatch)
+	}
+	// This test does NOT define or accept a new Subsystem name field or
+	// automatically infer lineage, current authority, or rename semantics.
+}
