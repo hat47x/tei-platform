@@ -171,3 +171,36 @@ func TestB0RealWorkspaceSourceObservationNotClosure(t *testing.T) {
 		t.Fatal("inspection lacks read-only authority limits")
 	}
 }
+
+
+// TestB0ManifestIdentityIsNotManagedSourceRevision detects an ABA-like
+// misbinding in which the managed Source bytes are unchanged while the
+// Workspace manifest changes. ModelRevision alone is not a Workspace identity.
+func TestB0ManifestIdentityIsNotManagedSourceRevision(t *testing.T) {
+	root := t.TempDir()
+	manifestPath := filepath.Join(root, "tei.workspace.yaml")
+	writeManifest := func(name string) {
+		t.Helper()
+		content := "workspace: " + name + "\nformatVersion: 1\nsources:\n  - semantic\n"
+		if err := os.WriteFile(manifestPath, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writeManifest("b2c_source_a")
+	b0Write(t, root, b0OrderA)
+	_, firstIndex, first := b0StrictRead(t, root)
+
+	writeManifest("b2c_source_b")
+	_, secondIndex, second := b0StrictRead(t, root)
+	if sourceindex.ModelRevision(firstIndex) != sourceindex.ModelRevision(secondIndex) {
+		t.Fatal("same managed Source bytes changed their content revision")
+	}
+	if first.Workspace.Name == second.Workspace.Name {
+		t.Fatalf("manifest drift was not visible in actual Workspace identity: %v %v", first.Workspace, second.Workspace)
+	}
+	if b0Artifact(t, first, b0SourcePath).Fingerprint != b0Artifact(t, second, b0SourcePath).Fingerprint {
+		t.Fatal("manifest-only change modified managed Source artifact fingerprint")
+	}
+	// The test intentionally does not claim an effective consumer Contract
+	// or present-day authorization based on the equal content revision.
+}
