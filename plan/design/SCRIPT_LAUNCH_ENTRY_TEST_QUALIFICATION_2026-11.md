@@ -287,6 +287,8 @@ Go静的合成は、Generatorの出力Member/Composition・ビルド実体と、
 
 ## 10. Script Launch・標準Generator・TEIセルフビルドの接続点
 
+**番号の区別**：以下のGenerator「G1→G3→G2」は[#4544](https://github.com/hat47x/tei-platform/issues/4544)内の検証順であり、[#1119](https://github.com/hat47x/tei-platform/issues/1119)の製品横断G0〜G4とは別の作業ラベルである。どちらの番号もScript Launchの新しい実行状態や必須Gateではない。
+
 TEI Studioデスクトップ版の構築と、TEI自身によるセルフビルドを製品全体の重要な到達目標とする。一方、**実Go Functionの起動、標準Generatorの適合、セルフビルドの成功は、検収単位も未実証点も異なる**。最初から三つを一つの合格条件に束ねず、各レーンを先行並列で進め、実際の成果物の受渡しを一つの縦断例で確かめる。
 
 | レーン（既存Owner） | 最初に成立させる独立の証拠 | 次のレーンへの引継ぎ物 |
