@@ -94,6 +94,13 @@ func inspect(in input) (report, error) {
 	}
 	outgoing := map[string][]string{}
 	missing := map[string]bool{}
+	// An explicitly unknown classification is a gap even when it is not
+	// reachable from a currently changed node.
+	for id, n := range byID {
+		if n.Layer == "unknown" {
+			missing[id] = true
+		}
+	}
 	for _, e := range in.Edges {
 		if e.From == "" || e.To == "" {
 			return report{}, errors.New("edge endpoints must not be empty")
