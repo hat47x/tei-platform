@@ -758,3 +758,67 @@ Design Synthesis
 これは3視点以外のDomainにも通じる設計上の**可読な最小例**の条件であり、現在のScript文法・Physical Queryを正本にするものではない。Domain expertの認知順を優先し、関係する契約が増える場合は標準Recipeで隠蔽できる複雑さと専門家が明示すべき判断を分ける。現実装で使えない構文を理由により優れた表現案を棄却しない。一方で、その構文が既存Parserで使えると主張しない。
 
 
+
+### 16.11 GUI/CUI共通の安定した対象固定と、問い相対のContext Tray（他チャット11/10〜12の成熟差分）
+
+**狙う利用価値**：利用者が三視点図、CRUD表、Source、規則、SHO文書、SUIのCard等を行き来しながら、**今どの要素／関係／範囲についてAIと話しているかを失わない**。選択を自然に保ちつつ、違う対象・版へ誤適用しない。これは既存§16の「同じ問いに戻れる」を利用者操作で実現するための条件であり、新しい意味正本・ハーネス常駐Host・Session Registryの採用を意味しない。
+
+#### 三層の選択を混ぜない
+
+| 層 | 意味 | 変更される操作と不変条件 |
+| --- | --- | --- |
+| **Focus** | キーボード・マウス・入力欄の現在位置 | 移動、別窓のクリック、AI入力欄へのFocus移動で変わる。**Pinned Targetを自動解除しない** |
+| **Transient Selection** | 現画面の一時的な行・Node・範囲・複数Occurrence | 範囲選択やキャンバス移動で変わる。Pinの候補だが**それだけではSource編集対象／権限を確定しない** |
+| **Pinned Target／Task Context** | 利用者が明示固定したQualified Subject・Relation/Cell・Source occurrence・関係・問い・用途・Scopeの組 | 明示的なPin/追加/置換/解除、またはSource改版に伴う**再資格化要求**で管理。クリック外し、Canvas切替、チャット入力では消さない。旧参照が失効しても黙って別対象へ再束縛しない |
+
+Pinned Targetは**機能上の保持参照**であってAccepted Meaning、現在Host Grant、外部AIへの開示許可ではない。UI上の強調表示を完全性証拠としない。長い作業で複数Targetを固定する場合は同一Kind+IDを重複して意味対象へ増殖させず、**意味対象の集合と描画Occurrenceの集合**を別扱いにする。関係Edge、CRUD Cell、SourceのByte Span、Graphの複数Occurrenceは可逆性が異なるため、Node/Cellの区別を消さない。
+
+#### 最小の共有Context Envelope（正式Schema未採用）
+
+新しい公開`ContextPacket`型を増やすのではなく、既存`model locate`、Typed Model Map、`Catalog/Inspect/Trace`、#3262のDesign Context Query、#2516の用途別Disclosureの**既存結果を参照**して、利用者が作業対象を確認できるread-only投影を比較する。
+
+- **Target**：Product・Workspace identity、Qualified Kind/ID、Relation Instance ID／Function×Data Pairと宣言Occurrence、View/Canvas・表示Occurrence、必要ならEditor座標と原Source byte範囲。**同名や同位置だけでは一致判定しない**。
+- **Question**：利用者が指示した変更意図・参照対象、Required/Query Scope・Actor/時点、同じ問の許容Operation（inspect／propose／preview等）。適格性不明の変更操作は提案段階で止める。
+- **Snapshot/Completeness**：World／Source Index／Model Revision、Source/外部Provider/Plugin versionの観測状態、Required・loaded・returned・omitted、Unknown/Unresolved、bounded page・continuation/end、同時に観測できた範囲。Fingerprint一致だけでSource外の依存やA→B→A履歴を保証しない。
+- **Disclosure/Effect**：現在のAudience/Consumerへの開示可能な投影と、禁止・未検証の項目。現在Edit Grant/Meaning Acceptanceは**Apply直前**に別のOwnerで再検証。AIへの送出前に権限・Raw/件数の漏洩を点検し、送信していない部分の存在は推測させない。
+- **Lifecycle**：Pin作成元、User明示操作、対象Revision、問い合わせごとのRequest/Response correlation、後着結果の採否、Preview/Acceptance/Apply/Receiptの独立状態。UIには「保持中」「再確認必要」「解決不能」を区別し、裏で別対象へ置換しない。
+
+**CUIの同等性**は、ユーザーが明示指定した`Kind+ID+Workspace+Scope`をテキスト経由でも保持し、後続のread-only操作が同じContextで解決できること。CLIの新flagや永続Sessionファイルを先に必須化しない。既存`model locate`の`limit/total/omitted/coverage.notDerived`と、M0の`partial-projection`を利用し、近傍が省略されても「全件なし」とは答えない。CUIからTargetが複数選ばれた場合も、意図した集合と順序を再現し、曖昧さをFirst-Winsにしない。
+
+#### 複数製品・AIハーネスへのハンドオフ
+
+TEI/SUI/SEI/SHO/CSWが共通のHarness Sessionを利用するとき、**共有するのは作業対象の参照・問い・復帰位置・選択の履歴の必要部分**。各製品の正本Source・Meaning・Host Grant・DisclosureをSessionへ移管しない。AIハーネスは共通Application OperationのConsumer/Orchestratorで、DSH／Codex／Claude Code等の実装差はAdapterの機能宣言で示す。TEI/SHOの画面に特定Harnessを直接組み込むことを必須としない。
+
+CSW/SUIのKJ法的なCard/Islandの集合をTEI Relationへ投影するときは、**多対一・部分集合・表示順・提案Relation**の情報落ちを記録する。図を介した遷移で業務Relation IDが一意に確定しない場合はread-only。SHOの文字選択ではUTF-16表示位置と原文UTF-8 Byte Span・dirty bufferを別に扱う。図面/文書を跨いだ選択でも「同じPinだからSource Write可」とはしない。
+
+### 16.12 Pinの安定性と失効の敵対的受入（提案・未実行）
+
+ここでは「選択が解除されない便利さ」と「無効な選択へ誤作用しない安全性」を**同時**に評価する。既存#1124/#1452/#3262/#2514の検収に以下の正負対照を引き渡し、第二Test Runner/Proof Storeは作らない。
+
+| ID | 変更する一要因 | 合格条件 |
+| --- | --- | --- |
+| PIN-01 | 図のRelation RをPin→AI入力欄をFocus→別Canvasへ切替 | Pinは保持。FocusやTransient Selectionが変わっても、操作対象はRのまま |
+| PIN-02 | 同じSubjectを2 Canvasの3 Occurrenceに表示 | 意味対象は1件、表示Occurrenceは3件。どれを操作したかが復元可能 |
+| PIN-03 | 同端点・同種別だが別Relation IDの2辺 | Edgeの見た目や列挙順で自動選択しない。Identity不明ならApply拒否 |
+| PIN-04 | Pin作成後にSource移動／Byte改訂／A→B→A | 保持中の対象を勝手に置換しない。`needs-requalification`として再取得・Revision/LocatorとAuthorityを再検証 |
+| PIN-05 | Source不変、開示Grantだけ失効 | 表示・Tool送信・既キャッシュの資格を再判定。Pin保持と外部送信可否を分離 |
+| PIN-06 | 関連要素100件のうち`limit=1`・Provider必要Source未観測 | 残件・notDerived・Source外依存をUnknown/omittedとし、全100件が見えた・不存在と主張しない |
+| PIN-07 | AのInspect開始→BへPin変更→Aの応答後着 | BをAで上書きしない。Requestに束縛したAの結果を、現在Bの結果として表示しない |
+| PIN-08 | 複数Pinned Cellを1まとめにAIへ渡す | 各(Function,Data,宣言Occurrence)とUnknown/Conflictを保持。CRUD衝突を後勝ちで消さない |
+| PIN-09 | SHOで保存先だけ変更、原Markdown Byteは同じ | 相対Link/Asset解決の再確認が必要。TEI MeaningやSourceは自動改版しない |
+| PIN-10 | 同一Harness Sessionが別製品へ遷移 | 参照/問い/復帰位置を維持できるが、新Productの開示・現在Grantを継承したとみなさない |
+| PIN-11 | 明示Unpin→Undoで復帰 | Undoは**対象参照の復元**まで。旧Grant・旧Revision・旧AI Replyの自動再許可なし |
+| PIN-12 | Read-only Context内でAI変更候補が生成 | Preview/Source Diffは可能でもAccepted/Applied/Observedを自称せず、Shared Acceptanceと再読込に進む |
+
+**採否を決める比較**：同じScenarioと独立Expectedで (A)一時Selectionだけ、(B)Pinned Target＋限定Context、(C)HarnessのSession再利用を比較。選択の再指定回数・対象誤認率・Context漏洩／未解決の明瞭さ・操作の再現性とSource再資格化を測る。作業の容易さのために権限・受理・依存完全性の条件を緩めない。最小PoCは既存`sales.order.lines`と二Canvas、同名異ID Relation、Studio→SHOの参照1件で充分。初回から本番AI／全Pluginを接続する必要はない。
+
+**Owner/実装順**：
+- #1124：Modeler内のPin保持、選択Scope・Relation/CRUD Cell Source、read-only Previewと逆写像の可否。
+- #1452/#1824：実Target/Studio GUIでのFocus/Selection・旧応答制御、AI入力からの元View復帰。
+- #3262/#2516：用途相対ContextのSource閉包／Unknownと現在Disclosure。特に[Draft #4329](https://github.com/hat47x/tei-platform/pull/4329)のConsumer FP外のSource依存を`unknown`で止める結果を共有する。
+- #4472/#4475：CRUDの明示宣言・索引欠落と同Kind ID衝突、Fingerprint純粋性を先に修正・検証。**未修正ModelをPinの正しいIdentityとして前提にしない**。
+- #2586/#1251：実Function→Provider Readと正式Plugin実Invokeを最優先に維持。GUI PinとM0/LocateはこのP0の新しいHard Gateではない。
+- #2514/#1163：独立ExpectedとSource/Provider/Consumerの版・Attemptの照合。実Result/Effectの完成判定は別Owner。
+- SHO #19、SUI/CSW/TAI各Owner：共有Session参照とProduct-local Meaning/Authorityの分離。
+
+**状態**：本追加は設計・負例・Owner引渡しのみ。`Pin UI`／`Context Tray`／新CUIコマンド／外部Harnessの実Session連携／Studio・SHO・SUI/CSW実E2E／正式Owner受理は**NOT RUN／NOT PROVEN**。既存モデルの読取りGo・Source Index・M0/Locateの限定成功を、このProduct UXの完成証拠に転用しない。
