@@ -1172,7 +1172,7 @@ DMU-01〜09、他DraftのORG-MAP-01〜10（#4500）と期待値・入力を照�
 **同一Fixtureの条件**：A〜Eに共通の意味上のSubjectを使っても、異なるWorkspace Root、Model Revision、Source-only改版、DB/Grant/Plugin更新、Load時点を同一のObservationとして結合しない。Content FingerprintだけでSource Identity/Current Eligibilityを証明しない。直接テストのExpectedは、生成AIが作成した実装コードや生成テスト結果から逆算して確定させない。
 
 **実装担当への直近の小さな引渡し**：
-- #4392/#4524の**取り込み実態と現main実テスト**を確認したうえで、#4521の実Relation一件をAのread-only基線にする。已存の負例（同Kind同ID、Map/Locate Validationの不整合、同FP別Root）を流用する。
+- #4392/#4524の**取り込み実態と現main実テスト**を確認したうえで、#4521の実Relation一件をAのread-only基線にする。既存の負例（同Kind同ID、Map/Locate Validationの不整合、同FP別Root）を流用する。
 - #4495/#4525はB/Cのテストを受け持ち、Aで見える参照・出典を起動契約へ渡しても、**Mapに存在する＝公開Entryあり**とは扱わない。
 - #2586のDは最優先の実Read主線。A/BのGUI・文書対応が未完成でも開始できる。
 - Scopeを限定できる領域では独立した無関係Plugin/MethodのエラーでA〜D全体を止めない。ただし**問いに必要なRequired Closure**に欠落がある場合は、その問いの結果だけ`unknown/blocked`を残す（#2582/#4518）。参照数0や未索引0を「絶対未使用」の証拠にはしない。
