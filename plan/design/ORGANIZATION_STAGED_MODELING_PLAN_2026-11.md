@@ -881,6 +881,8 @@ WU-11〜14をWU-06〜10の「全部完了待ち」にしない。前段の**必�
 
 **新Fieldの明示設計操作**では、「この入力欄を永続保存する」「既存Sourceに対応付ける」「計算値にする」等の意思をStudio/CLI/固定対象AIの同じOperation Intentとして確認する。次いでSource/Desired RevisionへCandidate Patch→Impact Preview→既存の変更受理→必要時のみSchema Migration→対象DBの独立Readへ進む。**通常の開発者によるモデル変更は通常のレビュー・テストでよい**。追加の独立したMeaning承認Engineや常時の重い承認フローは設けない。ビジネスルールの解釈や既存権限変更が必要な場合のみ該当Owner/Hostへ戻す。
 
+**逆編集の追加停止線（#4533）**：Source-backed既存属性へUI/表から直接編集を返す場合は、操作ごとに対象一意、属性の恒等表示、局所的な**値Span**、現在Source版とSpan値の一致、変更後のValidate/再投影の5条件を確認する。属性**名**のSpanを属性**値**のSpanと取り違えない。Graph→Treeの隠れたEdge、集計値、丸め・単位換算後の値、非単射のProjectionをそのまま原Sourceへ書き戻さない。#4533の合成一属性パッチ実測は一般UI→DB更新の製品資格ではない。Source Patch適用にも正式のWriter/Grantが別途必要であり、実DDLはさらに別Effectとする。
+
 #### 10.11.2 変更影響は「問い・Claim・Consumer」相対で評価する
 
 同じUI/Schema変更に対して、影響範囲は全Workspaceの単一staleフラグでは判定しない。#2582のClaim別Required集合、#4518/#4526の限定Closure/Native Source Binding、#2387のSQL依存、#3262の必要設計情報を組み合わせ、次の3結果を区別する。
