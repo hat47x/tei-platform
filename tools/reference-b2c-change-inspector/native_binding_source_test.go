@@ -93,10 +93,10 @@ func TestB0OneNativeFieldBoundToActualManagedSource(t *testing.T) {
 	}
 	loadedA, indexA := read()
 	pin := b0NativeSourcePin{
-		ConsumerID: "native-pdp.order-id",
-		WorkspaceName: "native_pdp_source_case",
-		Subject: sourceindex.Subject{Kind: "semantic-attribute", ID: "sales.order.order_id"},
-		SourcePath: b0SourcePath,
+		ConsumerID:        "native-pdp.order-id",
+		WorkspaceName:     "native_pdp_source_case",
+		Subject:           sourceindex.Subject{Kind: "semantic-attribute", ID: "sales.order.order_id"},
+		SourcePath:        b0SourcePath,
 		SourceFingerprint: b0SourceDigest([]byte(b0OrderA)),
 	}
 	inspectionA, err := b0CheckNativePin(loadedA, indexA, pin)
@@ -126,16 +126,16 @@ func TestB0OneNativeFieldBoundToActualManagedSource(t *testing.T) {
 	// This declaration is a hypothesis supplied by the caller, NOT a verified
 	// native dependency graph or evidence of an actual Consumer invocation.
 	declared := input{
-		Schema: inputSchema,
-		Scope: pin.ConsumerID,
-		BaseRevision: sourceindex.ModelRevision(indexA),
-		CandidateRevision: sourceindex.ModelRevision(indexB),
+		Schema:              inputSchema,
+		Scope:               pin.ConsumerID,
+		BaseRevision:        sourceindex.ModelRevision(indexA),
+		CandidateRevision:   sourceindex.ModelRevision(indexB),
 		DeclaredScopeClosed: false,
-		Nodes: []node{{ID: sourceNode, Layer: "business"}, {ID: pin.ConsumerID, Layer: "presentation"}},
-		Edges: []edge{{From: sourceNode, To: pin.ConsumerID}},
-		Changed: []string{sourceNode},
-		Required: []string{sourceNode, pin.ConsumerID},
-		Unobserved: []string{"native-pdp.dynamic-import-not-inspected"},
+		Nodes:               []node{{ID: sourceNode, Layer: "business"}, {ID: pin.ConsumerID, Layer: "presentation"}},
+		Edges:               []edge{{From: sourceNode, To: pin.ConsumerID}},
+		Changed:             []string{sourceNode},
+		Required:            []string{sourceNode, pin.ConsumerID},
+		Unobserved:          []string{"native-pdp.dynamic-import-not-inspected"},
 	}
 	report, err := inspect(declared)
 	if err != nil {
@@ -166,17 +166,17 @@ func TestB0NativeBindingRefusesWrongWorkspaceSubjectAndOccurrence(t *testing.T) 
 		t.Fatal(err)
 	}
 	base := b0NativeSourcePin{
-		ConsumerID: "native-pdp.order-id",
-		WorkspaceName: "native_binding_negative",
-		Subject: sourceindex.Subject{Kind: "semantic-attribute", ID: "sales.order.order_id"},
-		SourcePath: b0SourcePath,
+		ConsumerID:        "native-pdp.order-id",
+		WorkspaceName:     "native_binding_negative",
+		Subject:           sourceindex.Subject{Kind: "semantic-attribute", ID: "sales.order.order_id"},
+		SourcePath:        b0SourcePath,
 		SourceFingerprint: b0SourceDigest([]byte(b0OrderA)),
 	}
 	if _, err := b0CheckNativePin(loaded, idx, base); err != nil {
 		t.Fatalf("positive control failed: %v", err)
 	}
 	cases := []struct {
-		name string
+		name   string
 		mutate func(*b0NativeSourcePin)
 	}{
 		{"wrong-workspace", func(p *b0NativeSourcePin) { p.WorkspaceName = "other_workspace" }},
