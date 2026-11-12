@@ -801,3 +801,41 @@ WU-11〜14をWU-06〜10の「全部完了待ち」にしない。前段の**必�
 **最短の引渡し**：W1は#4515 Workbench Subject Pinと#1124/#1143のread-only schema/UI diff・unmapped診断を並行実証。W2は#3270/#1126の既存Actual/Desired Inspectorへ変更資格を接続。W3は#4125の独立Schema再観測と#2586実Query/Consumer、#1452実Target/SHO/AI後着を照合。W1だけで正式Relation Pin、Schema Apply、Current Grantを完了扱いしない。
 
 **状態**：本節は既存受入条件の明確化。ORG-MAP-01〜10、PIN-S0、実DB/DDL、実GUI/CLI/Host/SHO、Ownerの意味受理について新しい実行証拠は **NOT RUN / NOT ACCEPTED**。
+
+### 10.10 参照ナビゲーション・未使用診断・大規模Studio性能（2026-11-12横断統合）
+
+**設計方針**：組織C1を題材に、定義項目から「定義へ移動」「参照先へ移動」「参照元の一覧」「未使用候補」「変更影響」をGUI・CLIで共通化する。既存のSource Index、ModelRef Derived Graph、三要素分析法のモデルのCross Reference、trace/inspectを再利用。第二の参照正本やStudio専用Parserは作らない。**正確性→対象範囲の完全性→操作応答時間**の順に実証する。
+
+#### 10.10.1 参照一覧を信頼できる条件
+
+1. **基礎の誤りを先に修正**：#4472のData索引取り違え・明示CRUD脱落・矛盾をOK表示する問題、#4475の同Kind同ID・Fingerprint算出時の入力破壊を既存Ownerの正負試験で解消する。未解決ならCRUD参照数・未使用表示を正しいと断言しない。
+2. **参照の種類を混ぜない**：宣言上の参照、型付きRelation、Function→Data CRUD、Business Task→Function、SQL WHERE/ORDER/EXISTS等の非出力依存、UI Binding、SHO引用、実Provider Readは別種。逆引きは有向Edgeの逆方向検索であって、業務上の逆向き依存関係を意味しない。
+3. **対象の同一性**：Workspace、Kind、Stable Subject ID、Relation occurrence、Source revision、Source位置と必要なvalid/known/Scopeを保持する。Label、図面座標、同じ始点・終点、描画用Edge ID、単独のSource offsetを意味IDとしない。参照の出現位置が複数ならoccurrenceを区別。
+4. **0件とunknownを分離**：指定したSource/Provider/Plugin・Dependency Closureを必要十分に取得し、未解決参照がなく、**指定範囲について全件検査できた場合だけ**「参照数0」「その範囲で未使用候補」と表示。partial、permission denied、unavailable、未解析のDynamic ReferenceやPluginには「不明／未検査」を付す。0件、空配列欄の欠落、対象不存在、非表示、非開示は別状態。
+5. **未使用候補から自動削除しない**：公開API、外部呼出し可能Function、将来の契約、意図的なManual Task、動的参照は静的0件でも確定Unusedとは限らない。削除・Renameは#1143/#1126/#4125の明示変更Previewへ。参照一覧からの移動はread-only、AI Pinは#4515のSubjectから始める。
+
+#### 10.10.2 C1の既存Expectedを使う操作・負例
+
+#2510の公開合成Source、#4501 CX-04〜09、#4472 TE-CR、#4515 PIN-S0、#4490 ORG-BEH-02の**既存Expectedを再利用**。以下は実行の組合せであり新Expected Storeを作らない。
+
+| 操作・負例 | 判別する期待 | 実装Owner |
+| --- | --- | --- |
+| OrgUnit D1とMembership A1を順方向・逆方向で移動 | 双方向から同じReference occurrenceとSource位置を開く。表示上のページ分割で全件数の分母を失わない | #3788/#1177、CX-04 |
+| P1の兼務で二つの意味Relationが同端点 | Relation occurrence/Role/時点を区別し、表示Edgeだけから変更対象を確定しない | #4515/#2497、CX-05/08 |
+| Business Task→Function→CRUD→Data F1 | 明示CRUDも非出力SQL依存も参照に残す。#4472未修正時は未資格と表示 | #4472/#1124、CX-13/16 |
+| F1削除後に画面U1の参照元を列挙 | 現行Actual Fieldの確定不存在とpartial未観測は別。U1を残してunmapped、Desiredとのドリフトも区別 | #1126/#1143、ORG-MAP-04/05/08 |
+| F_unusedと外部公開Functionの静的参照を比較 | 完全探索で0なら前者は未使用候補。後者は実際の外部利用が未観測で、0を削除資格としない | #3788/#3262/#2514 |
+| Workspace/Source改版・ABAと遅延Inspect | 古い検索結果やPinを現在の編集資格に再利用しない | #4515/#2505、ORG-MAP-06/10 |
+
+#### 10.10.3 高速性・Plugin肥大化防止の実測
+
+**既存#1177に性能実測を追加**し、Index・Cache・Plugin Runtimeを複製しない。同じ公開合成C1をSource/Relation/CRUD数で小・中・大に拡張し、trace summary/full/limit=1、逆引き、未使用診断でcold/warm p50/p95、ピークメモリ、Workspace読込み・Source Index・Derived Graph・Query・描画それぞれの時間、変更後の再計算範囲、入力→応答時間を分けて測る。閾値は測定後にOwner判断とし、根拠なく固定しない。
+
+- limit=1で表示が1件でも内部は全件Load/Sortする可能性がある。**全件数の正確さと表示ページの高速さを別に測る**。暗黙の検索打切りで結果を高速化しない。
+- Source/Meaning/Dependency/Plugin版、Query Footprint、Scope等が変わったらIndex再利用資格を再評価。結果件数やSource hashが偶然同じでもA→B→Aの旧資格を復活させない。#2600のBuild Artifact/Evidence cacheとは別。
+- Studio PluginはCapability発見→必要なPanel/Providerだけ起動する方針を検証し、非使用PluginがExplorer/Inspect/Trace/キーボード応答を遅くしないよう測定する。ただし**未起動Pluginの参照を0と誤報しない**。
+- 通常編集でクリック・キーボードから定義へ移動し、参照元一覧から元の位置へ戻る操作を#3788で検証。AIに送る文脈は固定Subjectと必要最小範囲、現在のDisclosure資格に制限。#2516の既表示DOM/ARIA境界を別検証する。
+
+**段階と停止線**：R0=#4472/#4475のProduct参照正確性、R1=#3788/#1177のHeadless前後参照と完全性、R2=#4515のSubject Pinを用いたStudio移動、R3=#1143のRename/Delete Preview、R4=#1824/#2600の大規模/Plugin性能比較。R0/R1を#2586の初回実Provider Readの完了待ちにはしない。どの段階でも、未知の参照を「0件」として削除提案する、旧SourceへAIが書戻す、画面描画成功を実Grant/Effectと呼ぶ場合は停止。
+
+**状態**：本節は既存Issueの受入条件と順序を接続する設計。新しいGo/Node試験、Studio/CLI操作、性能計測、実Provider Read、Owner意味受理は**NOT RUN / NOT ACCEPTED**。
