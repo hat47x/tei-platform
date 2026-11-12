@@ -562,3 +562,73 @@ Design Synthesis
 一方、durable proof object、generic Claim、graph storage、global revision等のCore採用は、Reference Evidenceが具体的なlossを示すまで保留します。
 
 この方針により、三要素分析的なcross-viewの強みを保持しつつ、TEIの小さいkernel、file-native authority、Shared Acceptance Boundary、Derived Cognitionの非authority性を崩さずにDesign Synthesisへ接続できます。
+
+## 16. 三視点の検証を説明・操作・実装で一貫させる（2026-11-12 評価案）
+
+> 状態: **追加の設計・受入計画。実装と正式契約の採用ではない。**
+> 同じ関心事について複数の図・表・Tool Result・AI説明を作るとき、どの問いを検証したかを失わないことを目的とする。既存Ownerは #1124（モデル投影）、#1127（標準CRUD）、#3250（Subsystem分割）、#3262（必要Design Context）、#2514（独立Expected）、#1163（同一改訂Evidence）とし、現Productの具体的不整合は [#4472](https://github.com/hat47x/tei-platform/issues/4472) で扱う。
+
+### 16.1 技術的な統合：一覧や図表ではなく、問いへ戻れるProjection
+
+最小の説明順は次の通りとする。
+
+1. **何を変えたいか**（Businessの目的、または分野固有の対象・条件）。
+2. **何が同一の対象か**（Data / Subjectの業務IdentityとOccurrence、版）。
+3. **どんな規則が成立するか**（Constraint / State / Operation / OwnershipのAcceptedな意味）。
+4. **どの視点から確認するか**（Data、Function、Business Procedure、CRUD、Graph、AI向け構造化Contextなどの導出）。
+5. **何を問うか**（指定Scope内の必要Functionは存在するか／この更新が許されるか／違反はどのSourceにあるか）。
+6. **どこまで確認できたか**（構造検査／意味の整合／Provider選択／実呼出／Effect／独立再観測とExpected）。
+
+以上は説明用の論理依存であり、すべてを固定したCore Objectの階層として導入するものではない。
+
+三視点は業務向けの重要なMethod Profileだが、科学データ／通信／編集／XRでも同じSubject・Source・Meaning・Scope・根拠つきProjectionを使う。CoreにBusiness Procedureを必須導入しない。新しいDomain Profileを作る際も、既存の三視点の完全コピーから始めず、分野の問いたいことを先に定義する。
+
+### 16.2 「OK」を一つの真偽値へ潰さない
+
+現Productでは以下を静的確認した（main 2026-11-12、`718a8b74`）。実Go Test・実CLI実行による新たな合格主張はない。
+
+- `internal/threeelement/validate.go`: `report.OK = report.ErrorCount == 0` であり、後から格納する `ContradictoryCRUDs` と独立。したがって`OK=true`でもCRUDの矛盾は存在し得る。
+- `cmd/tei/cli_three_element.go`: `three-element crud` は表の導出を行った後、結果の`OK:true`を返す。これは業務上の更新許可や全視点の完全整合を証明しない。
+- `internal/threeelement/crud.go`: `GenerateCRUDGaps` は明示CRUDのみからGapを求め、Function OperationのRを無視して「CRUDなし」を返し得る。他方、明示CRUDのRead不足らしき内部`missing`を結果に加えない分岐がある。**Readが必須かは契約相対**であり、全Functionへ固定してはいけない。
+
+望ましいConsumer表示は、**今回実施した操作の成功**、**検出した診断**、**その問いに対する適格性**を混ぜない。新しい一律の`ValidationState` enumや恒久的な`ProofRecord`をCoreへ追加する前に、既存`ValidationReport`／Proof Obligation／DesignContextPacketのread-only表示と適格性を利用する。
+
+例:
+
+| 問い | 実行上の事実 | 意味・適格性として返すべきこと |
+| --- | --- | --- |
+| CRUD表を導出できたか | CLIはJSONを返した | `projection-produced` は導出成功を表すだけ。対象集合・未収録と矛盾の有無は別 |
+| このFunctionが対象Dataを書けるか | 表にUがある | Acceptedな操作の意味／状態条件／現在Grant／Effectへ遡らなければ`authorized`ではない |
+| 全視点に矛盾はないか | 構造Error数が0 | Requiredな検査対象が閉じているか、矛盾一覧とunresolvedが残るかに応じて限定 |
+| 注文確定は終わったか | Command受理/HTTP 200 | 更新したDB・帳票発行・外部相手の独立観測を、業務完了へ無断昇格しない |
+
+表の文言は採用済みのCLI診断コードや新しい永続属性の確定を意味しない。
+
+### 16.3 コードを誤読しにくくする小さな抽象化
+
+文書化中に見えた実装の読みにくさは、単なる説明追加で回避せず、APIや処理責務の改善対象とする。
+
+- `ThreeElementModel.Index()` は **Data Map / Function Map / Business Map の3つを位置で返す**。 `crud.go` では `_, _, dataByID := model.Index()` としてBusiness MapをData Mapとして扱う箇所がある。Compilerの型が異なる場合に検出されるかどうかに頼らず、`indices.DataByID`のような名前付き結果、または`IndexData()`等の責務別参照を比較する。旧APIとConsumer影響を測って選定する（#4472）。
+- `GenerateCRUDTable`／`GenerateFunctionDataCrossReference`／`GenerateCRUDGaps` は、`CRUDDefinitions`の明示側と`FunctionElements.Operations`の導出側で列挙・優先・欠落判定が異なる。**Function×Dataの候補と根拠を保つ中間read-only view**を共通の入力とする案を比較し、衝突を後勝ち縮約しない。新しいCanonical CRUD正本を作るわけではない。
+- 表の空欄、未取得、明示的なNo、矛盾、未検査を同じ`false`と読ませない。区別は入力契約と説明の両方で保持し、開示範囲を越える未公開の存在・件数を漏らさない。
+
+これらは内部実装を固定する提案ではなく、より誤用しにくい代替を**独立Fixtureで比較するための選択肢**である。
+
+### 16.4 最小の正負対照と段階判断
+
+**P0／#4472**: Data/Function/Businessに名前を独立に設定した索引誤参照の正例、同一ID異種Kindの負例、明示CRUDのみ、Operation由来のみ、両方一致／競合、必要Read有／正当なWrite-only、構造OKだがCRUD矛盾ありのケースを試す。出力のName/ID、表のPair集合、Gap、Diagnostics、CLI/既存Consumer受領まで比較する。
+
+**P1／#1124/#3250**: 同じ受理済みSubject/Scope/RevisionからData図・Function図・Business Procedure図・CRUD表を導き、モデル上の更新違反またはFunction不足を一件仕込む。Graphに出ていないことを「存在しない」に変えず、証明できないときはunresolvedを維持。Source参照と図面上のOccurrenceは別。
+
+**P1／#3262/#2514/#1163**: AI/CUIとStudioで同じ問いを表示し、Candidate/Accepted/Observedを混同せず、元Source、独立Expected、必要集合と開示Scopeを一致させる。読める説明は`証明義務の根拠と結論`を短く表す。すべての詳細をスライドや一画面に羅列する必要はない。
+
+**P2／実DB・Target Owner**: 注文確定時の保存単価、商品マスター改版、同じ版の画面／新規帳票、訂正の正規Operation、発行済み帳票の別Assetというケースで、Mockの表示一致ではなく、実Provider/Consumer/独立Observationを結ぶ。
+
+段階の判定は、一件の現在のコード欠陥の修正から直接「三視点の製品全体が検証済み」へ広げない。逆に、現実装が未対応であることを理由に将来仕様の表現を貧弱にする必要もない。要求した価値に向けた最小の反例・受入へ戻す。
+
+### 16.5 アウフヘーベンの判断
+
+「三視点の個別ツールを高度化する」「AI向けContextを別実装する」「試験用Proof DBを別に作る」という三つの発想を足すのではなく、**各Consumerが同一のAccepted Subjectと問いに相対的な根拠へ戻れること**を共通原理にする。既存Proof Obligation、Source Index、Canonical/Shared Acceptance、Read-only Projection、共通Operation API、Conformanceを合成すれば、この原理の多くは新しいCore Kindなしに評価できる。
+
+もし共通化によって専門家が扱う自然な記述順やNative SQLの表現力、GUIの安定した対象選択、Target固有の最適化が失われるなら、抽象化の方を修正する。共通化自体は目的ではない。
+
