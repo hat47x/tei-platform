@@ -17,8 +17,8 @@
 | Model Identity | 同Kind同ID重複診断の限定修正 #4524 はmerged。REAの同一tuple由来仮IDの曖昧選択拒否 #4542 もmerged。#4521 の実Workspace Map↔Locate比較はDraft | 仮ID・描画IDと正式Relation occurrenceを区別した、実Workbenchでの参照往復、Grant/全参照元の閉包 | #1124/#3788/#2514、REA Owner |
 | Studio Pin | `InspectSubject`とWorkbenchの一時選択・応答世代制御は存在。#4515のPin実装計画がOwner | 明示Pin・再資格化・複数対象・AIへの実送出／受領、描画Edgeの正式Relation identity | #4515/#1824/#4479 |
 | Source Change | #4533で**限定合成実験16件中15件一致**、1件の不存在/曖昧分類が不一致。Source値spanの製品提供や正式Acceptanceは別 | 正規Parser由来の値span、操作粒度の書戻し、失効Grant、実Wails・再投影・Source受理 | #2497/#4533/#3788 |
-| CRUD・影響表示 | #4524の同ID衝突修正とは別に、#4513のData索引、#4534のCRUD矛盾資格はDraft。#4535はB2Cの明示Native Binding段階計画の限定Merged | CRUD由来Impactの完全性、DB SchemaとUI Bindingの実Source差分、実DDLやOwner Meaning | #4472/#1124、DB/Studio Owner |
-| 実Provider Read | PR #4539（Draft）で、PG16.15の一Functionに限りEnvironment束縛→実SQL/Raw Rows→Function Data Context→別プロセスJSONを実証。NULL/0行/RLS/欠列/拒否の負例あり | 通常`tei` CLI、実Studio/実Harness Consumer、データの完全性・現在Grant・Owner意味受理。DB選択の`host-asserted`も別資格 | #2586/#3421/#1251、Function Data Context Owner |
+| CRUD・影響表示 | #4524の同ID衝突拒否に加え、#4513のData索引、#4534のCRUD全矛盾診断と構造OK・レビュー資格の分離は**main統合済み**。#4535はB2C Native Bindingの限定計画Merged | 完全なCRUD導出/Consumer影響確認、DB SchemaとUI Bindingの実Source差分、実DDLやOwner Meaning。CRUDの`ok:true`を業務適用可能とみなさない | #4472/#1124、DB/Studio Owner |
+| 実Provider Read | PR #4539は**main統合済み**。PG16.15の一FunctionについてEnvironment束縛→実SQL/Raw Rows→Function Data Context→別プロセスJSONを限定実証（NULL/0行/RLS/欠列/拒否）。`tools/reference-browse-read`の成功が根拠 | 通常`tei` CLI、実Studio/実Harness Consumer、全件/不存在、現在Grant/Owner意味受理。DB選択の`host-asserted`も別資格 | #2586/#3421/#1251、Function Data Context Owner |
 | Performance | #1177は`trace full -limit 1`でも内部全走査になり得ることを指摘 | Plugin数・Source規模別の実測、Scoped Queryの費用、実Wails上の入力/移動遅延 | #1177/#2600 |
 | Studioセルフビルド | `cmd/tei-studio/main.go`の実Wails v3/`studiohost` Bridgeと、#2831のGo Build Closure/Stage0→2 Fit/Gapを利用する。#4544のGenerator G1/G3は設計・検証計画 | Studioの実OS Build/Launchと実IPC、TEI Build IntentからのStudio ArtifactSet、stage1生成TEI自身によるstage2 Build、依存閉包・配布物の実照合 | #1824/#3421/#2831/#2595/#1251/#2600 |
 | GUI / SHO / Harness | TEI #4317/#4467、SHO #36/#40でDraftの生成・編集・保存・再開・再投影と限定Studio組込み測定の基礎はmain統合済み。SHO #48/#49でHandoffのSource不一致負例・Claim Ceilingを実証 | 同一Markdownで異なる元TEI Source/Subjectの再束縛、実TEI→SHO統合GUI、現在Grant、実Harness Tool/外部送出。既存Writerの局所Save成功は統合Desktop Save成功ではない | #3421/#1824、SHO #19/#6、TAI Owner |
@@ -38,7 +38,7 @@
 
 最初の一巡の対象は**Find→Navigate→Pin→Compose Previewまでのread-only**に限定する。AI送信、Source Write、DB/Script実起動、SHO保存は、既存Ownerが実資格を実証した場合にだけ段階的に接続する。
 
-**実データの並行縦切り（R0b）**：上記の操作から独立して、#4539の限定Referenceで観測できた`Query→Environment→実PostgreSQL→Raw Rows→Function Data Context`を、まず通常の`tei` CLIに接続し、同じ入力/独立Expected・実SQL digest・明示Instance・Consumerが実際に受領したJSONで比較する。次にStudioのread-only Result表示へ薄く接続する。**R0bはB0のPin実装を待つ必要はない**が、両方を接合する段階ではSource/Environment/Selected Providerと実Invokeを混同しない。部分取得・0件・RLS/列権限は`complete`/不存在を主張せず、Consumerが`unestablished`を保持する。Reference工具の成功から製品CLI接続完了へ自動昇格しない。
+**実データの並行縦切り（R0b）**：上記の操作から独立して、mainへ統合済み#4539の限定Referenceで観測できた`Query→Environment→実PostgreSQL→Raw Rows→Function Data Context`を、まず通常の`tei` CLIに接続し、同じ入力/独立Expected・実SQL digest・明示Instance・Consumerが実際に受領したJSONで比較する。次にStudioのread-only Result表示へ薄く接続する。**R0bはB0のPin実装を待つ必要はない**が、両方を接合する段階ではSource/Environment/Selected Providerと実Invokeを混同しない。部分取得・0件・RLS/列権限は`complete`/不存在を主張せず、Consumerが`unestablished`を保持する。Reference工具の成功から製品CLI接続完了へ自動昇格しない。
 
 **SHO文書の並行縦切り（H0）**：TEI #4317/#4467とSHO #36/#40の既存Draft/Writer/再投影を再利用して、実Source-backed Subject→Document Draft→SHOのOpen/Edit/Save/Resume→再投影候補へ一巡する。モデルが表現する事実、Document Raw、著者の編集、Accepted Meaning、開示・実Effectを同一状態へ統合しない。最初の差分は**元Source/Subjectを実際に再解決したか**の証拠であり、既存SHOのローカル保存を二重実装しない。SHO PR #50が提案するQH-08〜10は検収案（Draft・未実行）として参照する。QH-08は同一Markdown・異Source/Subject、QH-09は問い相対のRequired/実Read/実受領とpartial/hidden、QH-10は前回Receiptの再生と当該Attemptの実Consumer呼出しを区別する。
 
@@ -48,13 +48,13 @@
 | --- | --- | --- |
 | **E0 + N0** | #3788/#1124が実Workspaceの`catalog/inspect/Map/Locate/source-index`を同Source版で照合し、未保存Buffer、Occurrence、参照Coverageの実在/欠落を記録 | ED-01〜04/10とNAV-01〜03をHeadlessで独立Expectedと照合。ない値span/Relation IDをUIで創作しない |
 | **B0** | #4515がWorkbench Source TypeScriptにSubject Pin Intentと再資格化を接続 | PIN-S0-01〜07、NodeだけPin可。Canvas/描画Edgeから業務Relationを確定しない |
-| **R0b（実ReadのProduct接続）** | #2586がPR #4539の実Source/Environment/Provider/SQL bytes/params/実Rowset/Contextを、既存`tei` CLI Application APIへ薄く接続し、その後#3421がStudio read-only Consumerで受領 | 正常・NULL・RLS・0件・列欠落・別Instance誤選択を同一Expectedで比較。`completeness=unestablished`を維持。普通の`tei` CLI/実Wails/実Harnessは現在NOT RUN |
+| **R0b（実ReadのProduct接続）** | #2586がmain統合済みPR #4539の実Source/Environment/Provider/SQL bytes/params/実Rowset/Contextを、既存`tei` CLI Application APIへ薄く接続し、その後#3421がStudio read-only Consumerで受領 | 正常・NULL・RLS・0件・列欠落・別Instance誤選択を同一Expectedで比較。`completeness=unestablished`を維持。普通の`tei` CLI/実Wails/実Harnessへの製品経路は現在NOT RUN |
 | **H0（TEI→SHOの現在Source再束縛）** | TEI #4317/#4467、SHO #36/#40の既存Draft/Writer/Reader/再投影を使う。SHO PR #50のQH-08〜10を元Ownerで実行する | 同一Markdownで別TEI Source/Subjectの3票を受領し、実Product Readerで再解決。Source現在版、Document Raw、Required/Read Coverage、外部Receipt replay・Grantを別票に記録。Studio実OS HandoffはNOT RUN |
 | **C0** | #4479/#2516/TAIがPin Subject＋関連/比較/除外の用途限定Projectionと**Mock送信Preview**を試す | Intent/Source/Grant/Recipient/予定byteを比較。ここでは実Harness送信・Result受入・自動Applyを主張しない |
 | **V0** | #2497/#4533が一属性だけ、Parser由来値span＋typed changeの候補を確認 | 不適格操作のSource byte変更0。正式Acceptance/Owner意味受理/GrantのE2Eは別試験 |
 | **P0 + W0** | #1177/#2600で処理段別に計測。#3421/#1824で同Fixtureを実Wails→IPC→Application APIへ | full結果とpartial表示を区別し、actual OS、Headless、合成のEvidenceを別票記録 |
 
-E0/N0/B0、R0b、H0は**並走可能**。R0bでは#4539がDraftである以上、同Branchの実証とmainで再利用可能なAPIを区別する。H0ではSHO PR #50がDraftである以上、既存Writerの実装・局所PASSとQH-08〜10の将来検証を混同しない。H0はR0bの実PostgreSQL接続をHard Dependencyにしない（文書由来の実TEI Source再読取が先）。C0はPinの一意性と現在資格に依存するが、Mock Previewは外部Harness実装を必須としない。V0のSource書込みをC0の成立条件にしない。N0の局所参照表示を待たずに#2586/#1251の実Provider P0を進める。各実装の失敗結果は元Issueに返し、§0はOwnerを置換する管理表にならない。
+E0/N0/B0、R0b、H0は**並走可能**。R0bでは#4539がmain統合されたため、その限定Reference実装は再利用する。ただし`tools/reference-browse-read`を通常`tei` CLI製品APIや実Studioの証拠に読み替えない。H0ではSHO PR #50がDraftである以上、既存Writerの実装・局所PASSとQH-08〜10の将来検証を混同しない。H0はR0bの実PostgreSQL接続をHard Dependencyにしない（文書由来の実TEI Source再読取が先）。C0はPinの一意性と現在資格に依存するが、Mock Previewは外部Harness実装を必須としない。V0のSource書込みをC0の成立条件にしない。N0の局所参照表示を待たずに#2586/#1251の実Provider P0を進める。各実装の失敗結果は元Issueに返し、§0はOwnerを置換する管理表にならない。
 
 ### 0.4 設計へ戻す判断は四つだけ
 
@@ -69,16 +69,16 @@ E0/N0/B0、R0b、H0は**並走可能**。R0bでは#4539がDraftである以上�
 
 | 基盤の実証 | 採用できること | Desktopへ持ち越す未証明事項 |
 | --- | --- | --- |
-| #4539（Draft、使い捨てPG16.15） | 実Readの拒否点、Environment/Instance/実SQL digest、Raw Rows→Function Data Context、0件/NULL/RLSを不明として保持する振る舞い | 通常`tei` CLI、Wails、外部Harness、全件/不存在、Tenant現在Grant、Owner Meaning |
+| #4539（merged、使い捨てPG16.15） | 実Readの拒否点、Environment/Instance/実SQL digest、Raw Rows→Function Data Context、0件/NULL/RLSを不明として保持する振る舞い | 通常`tei` CLI、Wails、外部Harness、全件/不存在、Tenant現在Grant、Owner Meaning |
 | #4524（merged） | 同Kind同IDの曖昧Lookupを拒否する基礎 | 実Sourceからの多重Relation識別、項目単位の完全な逆参照、Workbench Pin |
 | #4542（merged） | REAの未命名Relationから導いた同一tuple ID衝突を選択で拒否する基礎 | IDの安定した正式意味受理・多重Edgeを含むGraph操作の実承認 |
-| #4534（Draft） | CRUD構造OKと矛盾のレビュー要否を分離する候補 | 実Consumerが`ok:true`だけで影響分析や更新を許可しないこと、全CRUD導出の完全性 |
+| #4534（merged） | CRUD構造OKと矛盾のレビュー要否を機械可読に分離し、複数矛盾を列挙する実装 | 実Consumerが`ok:true`だけで影響分析や更新を許可しないこと、全CRUD導出の完全性 |
 | TEI #4317/#4467、SHO #36/#40（merged） | TEI Accepted ModelからのDraft、SHO側の編集/保存/再開、再投影、限定Studio組込み測定を既存実装として再利用できる | 元TEI Sourceの現在再解決、Studio製品の実OS Handoff、著者RawとMeaningの受理・競合の横断検収 |
 | SHO #48/#49（merged）、#50（Draft） | 同じMarkdownでもSource/Subject宣言が異なる負例と、ReceiptのClaim Ceilingを参照可能。#50のQH-08〜10は次の実行チケット案 | 実TEI→SHO再束縛、問い相対のRequired/取得/受領の閉包、Receipt replayと当該Attempt実Consumer、実Agent/Tool Grant/OS egress |
 
 **最小の証拠票（元Ownerに記録し、この設計書で重複管理しない）**：`Input Source/byte digest | Workspace/Environment/Instance | Chosen→Invoked Provider | Function/Query ID | actual SQL digest+typed params | Field Presence/NULL/Rowset grain | Scope/RLS/coverage | Consumer received body | Grant/Disclosure | Attempt/Receipt | exact code HEAD | PASS/FAIL/NOT RUN`。認証情報・DSN原値・非公開RowのRaw bytesは公開票へ転記しない。作用のないReadでも外部送信・Cache書込み・Network接続は別観測として記録し、画面のread-onlyを「外部に何も送らない」と同義にしない。
 
-**次のレビューポイント**：N0/B0またはR0bの実Consumer一巡が出たらその結果を最優先で反映し、設計上の不足が具体的な負例で示されない限り新しい§やDTを増やさない。#4539/#4534のDraftを製品資格に昇格させるには、既存Ownerによるreview・統合と**exact HEAD**の証拠が必要である。
+**次のレビューポイント**：N0/B0またはR0bの実Consumer一巡が出たらその結果を最優先で反映し、設計上の不足が具体的な負例で示されない限り新しい§やDTを増やさない。#4539/#4534のmain統合を製品Consumer資格に昇格させるには、通常`tei` CLI/実Studioからの**actual invocation・受領**を同じ独立Expectedとexact HEADで示す必要がある。
 
 
 ### 0.6 Desktopセルフビルドへの最短経路（今回の横断統合）
@@ -102,6 +102,25 @@ E0/N0/B0、R0b、H0は**並走可能**。R0bでは#4539がDraftである以上�
 **X-TEAからの段階的移管**：最初は既存Data/Function/BusinessのModel Map/CRUD/参照移動とDBのread-only Consumerを、選択PluginとしてStudioへ接続する。旧XF/SmartDBのモデル意味・識別子・業務Effect・SQL方言を表示の類似だけで互換扱いしない。実DB更新やX-TEAの業務実行は#1124/#1127/#2586/DB Ownerに分け、Studio本体のS0〜S2をX-TEA全機能移管の完了待ちにしない。
 
 **完了の呼称**：S0のみなら「既存ツールチェーンからのDesktop構築」、S2までなら「TEI定義に基づくStudio構築」、S3と実Process/Artifact証拠が揃って初めて「TEI自身による再帰的ビルド」。Studioの実利用可能性にはS4のOS/IPC検収も必要。ビット列一致は再帰的実行の代替ではなく、異なるGo/Wails/OSに無条件のbyte同一性を要求しない。すべての状態を対象Scopeとexact HEAD付きで元Ownerに記録する。新しいHeadless Runner/Host/Policy/Registry/必須Plugin群は設けない。
+
+#### S0の実行指示（最初のFable担当：P0-A）
+
+**既存の実行入口**：`cmd/tei-studio/main.go`は`//go:embed assets`とWails v3 Service、許可されたWorkspaceへ委譲する`StudioBridge`を持つ。現在の`cmd/tei-studio/go.mod`は**Go 1.26.11、Wails v3.0.0-beta.29**を固定し、`replace tei => ../..`でroot moduleを参照する。`cmd/tei-studio/README.md`に残る**Go 1.26.9**の記述は現行`go.mod`と食い違うため、実際のBuildでは`go.mod`と`go env`を確認する。Wails依存の最新版へ無条件更新せず、まずロック済み版で実証する。
+
+1. **同一commitの基準検査**：`reference/tei-studio-workbench`でNode 24以上を使い`npm ci`→`npm test`→`npm run typecheck`→`npm run build`。出力`dist/main.js`・`dist/dependencies.json`・`dist/THIRD_PARTY_NOTICES.txt`の存在とdigestを確認する。これを`cmd/tei-studio/assets`へ統合する場合、検証用隔離checkoutで正しい配置を実証し、原Sourceや他Ownerの生成物を黙って上書きしない。
+2. **Headless/Serverの橋渡し**：nested module `cmd/tei-studio`で`CGO_ENABLED=0 go build -mod=readonly -tags server -o tei-studio-server .`を実行し、明示許可した`../../reference/workspace`を`-workspace`で与え、loopback `127.0.0.1`で起動。実listener→Wails RPC→`StudioBridge.ListWorkspaces/CatalogWorkspace/InspectSubject`→既存`studiohost`への到達を観測する。Asset静的配信や`Call.ByName`名の文字列一致だけではIPC成功としない。`WAILS_SERVER_HOST=0.0.0.0`の拒否や許可外Workspace拒否を負例とする。
+3. **実Desktop OSの検査**：同じnested moduleの`go build -mod=readonly -o tei-studio .`を対象OSの必要なWebView依存が揃った環境で実行し、`./tei-studio -workspace ../../reference/workspace`相当で実Windowを起動。**WindowsネイティブとWSL上のServer検査は別票**。実Window内のCatalog/Inspect、別Workspace/Source改版後の警告と旧応答排除を確認する。DevTools/WebView2 debug portを使う場合はloopback・試験限定とし、外部開示や業務Grantを正当化しない。
+4. **対照**：同じ実Source・Subject・RevisionでCLI/HeadlessとWeb Server/実Wailsからの結果型、診断・Source Status・失敗分類・Source/World Fingerprint・未解決を照合。Rendererが`workspace root`や`actor`を偽装してもHost allowlistを越えない。Desktopを生成業務Target、SHO Writerの実Save、実DB Updateと同一視しない。
+5. **Evidenceと停止**：exact commit、OS/Arch、Go/Wails/Node/実WebView版、Nested/Root module digest、UI asset digest、build flags、actual binary digest、実Process/Window、RPC request/reply、Source Scope、PASS/FAIL/SKIP/NOT RUNを記録。OS/WebView不備は`environment-blocked`等の実理由を添え、headless/server成功を実Desktop PASSに振り替えない。S0が成立したらすぐS1で**最初に欠けるBuild入力**を一つ特定し、Builder全体の作り直しに進まない。
+
+このP0-Aでは、実GoプロセスやWails実OSの**実証を行っていない**。上記はFable等の実装担当へ渡す実行手順であり、過去のPoC/READMEの成功記述を今回のexact HEAD成功と扱わない。
+
+#### P0-B（Stage1→Stage2再入）とP0-C（X-TEA三視点Plugin）の引継ぎ
+
+- **P0-B／#2831**：P0-Aで得た実Binary・Source/Asset/Plugin閉包をSeedとして、TEI Build Intent→Builder/ArtifactSetのS1/S2、stage1自身の実ProcessによるStage2起動S3へ進める。プロセスのImage digestと実際のBuilder invoker/Attemptを紐付け、Go launcherの二度実行を再帰成功に数えない。
+- **P0-C／#1124/#1125/#1251**：X-TEA Modeler由来の**Data/Function/Businessの三要素分析法**、原典の図表・CRUD・相互参照をまず同名/方向/多重度/セル意味を保って読取り・表示する。TEIの汎用モデル/Graphへ拡張できるが、原典にない推論・自動変更を「X-TEA継承」と称さない。正式名称・行列軸・導出規則の未確認は差異/unknownを明記する。Studioでの最小Consumerを先に通し、X-TEA全機能移植やSmartDB/DB EffectをS0の必要条件にしない。
+- **共通の優先関係**：P0-Aの実Wails接続を最初の集中課題とし、P0-B/P0-Cは実装準備・独立Expected作成を並走可能にする。実PG Readのmain基盤統合（#4539）によりR0bでは**通常CLI/Studioの実Consumer接続**を検収する段階へ進める。#4513/#4514/#4534のmain修正はModeler/SHOの負例検証へ利用し、製品全体の受入を推測しない。
+
 
 
 ---
