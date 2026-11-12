@@ -525,3 +525,73 @@ B0 `reference/tei-studio-workbench/main.ts`で一時選択とPin意図を分離�
 - §10のEnvelope、§11の状態分類、§12のUI/Schema操作を第二の永続モデル/Registry/Controllerに実装しない。独立した意味概念を、必要な既存Application API DTO/Diagnosticへ分配する。
 - 既存#1529のReference closeを実OS検収に流用しない。#4507のMergedはFingerprint副作用に関する限定修正であり、#4513/#4514や#4515、実Wails/DBの合格ではない。
 - 次のレビューは**追加のDT番号より先にA0/A1またはB0/B1の実Evidence**を確認する。実コードから新たな不一致が見つかった場合だけ設計へ戻る。
+
+
+## 14. 第7次統合：項目レベル横断ナビゲーション・AI指示操作・Plugin負荷制御（2026-11-12）
+
+### 14.1 利用者価値と既存実装の起点
+
+X-TEAの項目単位「参照／被参照箇所の一覧・ジャンプ」をStudioの基礎操作として扱い、TEIの標準構造とData/Function/Business、画面Binding、SQL/Query、SHO引用、Plugin提供項目へ拡張できるようにする。豊富な統計/リファレンスは、**何を観測した結果か**とセットで表示する。キーボードで操作を完結できること、選択対象を固定したままAIへ詳細な指示を渡せることを、機能追加と同等の製品品質とする。
+
+確認した現行main（2026-11-12）：`reference/tei-studio-workbench/main.ts`にはCatalogの一覧/検索、Subject Inspect、Xead Source観測と選択の画面があり、`reference/tei-studio-workbench/presentation.ts`はRead-only Catalog/Inspectの資格を確認する。Xead観測表示はテーブル・項目・診断件数を持ち、表示上限を設けるが、**項目ごとの正規化済み逆参照索引と移動履歴を提供したという根拠はない**。`responses.ts`の世代制御はUI応答順序であり、Source/Grantの現在性を認可しない。#4515の最小Subject Pinが未完了なら、先にそこを成立させる。新たな中央Index Registryや独立Source Authorityを作らない。
+
+### 14.2 Index契約：参照関係はSource-backedな派生データ
+
+- **Definition**：`workspace/sourceRef + qualified Subject/Element ID + source occurrence/span + source revision`（実在するId/Source位置が得られる範囲のみ）。文書の同一内容が二箇所にある場合のOccurrenceを区別する。
+- **Reference Edge**：参照元occurrence、参照先qualified ID、参照種別（data-binding / relation / function-call / workflow / CRUD / query / document-citation等）、Direction、Provider/Projection、Evidence/Scopeを保持する。X-TEA旧Sourceに由来する観測IDを、検証なしにTEI Accepted Meaning IDへ昇格しない。
+- **Reference Count**：推測文字列出現数と解決済み意味参照数を別に扱う。重複、多重辺、同名別対象、読み取り不可のSourceを静かに統合しない。
+- **Index資格**：対象Source/Model/Plugin contract revision、Covered Scope、complete/partial/unavailable/unknown、diagnostics、未解決参照数、生成時刻を付す。指数的な再計算を避け、既存の依存追跡/増分Build/Cache契約に接続する。
+- **失効と継続性**：Source/Relation/Plugin version/Grant/Workspaceが変わったら影響箇所を選択的再観測する。IndexのCache hitをOwner Meaning受理や現在の開示資格とみなさない。Index未完成でもSource Editor/Inspectは使用可能。
+- **Plugin Provider**：Pluginは対応するSource/Reference/Statisticのread-only抽出を登録可能。ただし起動時の全Pluginロード/全Workspace走査を必須とせず、可視範囲・機能使用時に必要な部分を遅延計算する。外部Providerが応答しない場合はpartial/unsupportedとし、全Studioの操作を停止しない。
+
+### 14.3 「未使用」の判定を誤らない
+
+- **参照0・完全索引**：当該Workspace/定義群/参照種別の**検証した範囲内で参照なし**。Sourceの動的参照・外部公開API・実行時反射・外部文書を網羅できない場合、製品全体の「未使用」と言い切らない。
+- **参照0・部分索引**：「確認範囲では0件、未調査の参照元あり」。未解決、権限非開示、未導入Plugin、Sourceの破損・観測不能をそれぞれ件数/資格で示す。
+- **参照あり**：クリックで各出現へ移動。参照数は「異なる参照元」または「Occurrence件数」なのか表示で区別する。UIマッピング解除の候補は、索引の完全性・現在Sourceに応じて警告し、参照0だけで自動削除しない。
+- **統計**：定義数、直接参照/逆参照数、未解決数、未使用候補、循環、重複、影響依存、Source欠落/権限不明などを出せる範囲で提供。性能測定・実利用ログは既定で収集/外部送信を要求しない。
+
+### 14.4 ナビゲーションと高速入力の操作契約
+
+1. **定義へ移動／参照一覧／逆参照一覧**をキーボード主体のCommand Palette/対象メニューから同じTyped Operationへ接続する。初期の具体的なキー割当はキーボード配列、OS/IME、アクセシビリティとの衝突を測定して決める。ショートカットを設定可能にし、固定キーの押下を機能利用の唯一経路にしない。
+2. 移動履歴はSource/qualified ID/Occurrence/revision/Workspaceを保持し、`戻る／進む`を画面スクロール位置だけでなく**意味対象の復帰**として実装する。別版へ移った場合は旧対象の資格を明示し、行番号一致で自動再束縛しない。
+3. **Focus/Temporary SelectionとPinned Targetは独立**。ジャンプ・検索・パネル切替・IME変換・Escapeで確定Pinを解除しない。Reference EdgeのPinは正式Occurrence IDがある場合だけ対応し、表示用`parent:` IDは引き続きunsupported（#4515）。
+4. AIへの指示は固定対象、追加の根拠/比較/除外、対象範囲、指示テキストを**明示的に編集できる入力面**として提供する。キーボードから対象追加/除外、Source/SHO/DB参照の再確認、送信Previewへ移れるようにする。ユーザーが何を意図したかをAIが補完しても、確定Pin・対象Scope・Disclosureの承認にはならない。
+5. 外部Harness送出はRecipient/送出予定bytes/Grant/Revision/現在Sourceを直前に検証。閲覧用の高速操作と外部開示・Meaning受理・実Effectには別の適用資格を用いる。
+
+### 14.5 Pluginを追加してもStudioが鈍くならない境界
+
+| 問題 | デフォルト戦略 | 計測・失敗時 |
+| --- | --- | --- |
+| 大量Pluginの初期化 | 必須CapabilityだけBootstrap。非必須Provider/Index/描画はDemand Loading | Startup cold/warm、初期化数/費用、失敗Pluginによる他機能への波及 |
+| 巨大な逆参照Index | Source単位に差分更新・必要な範囲の遅延索引、表示は仮想リスト/ページング | Workspace規模別Memory/CPU、Index更新時間、partial時の件数正しさ |
+| UI操作中のIndexer/AI負荷 | 入力・フォーカス・移動操作を優先し、重い作業を中断可能なRead-only Background Taskへ | キー入力→描画p95/p99、Navigation p95/p99、空振り/後着/中断 |
+| Provider遅延・停止 | タイムアウト、要求上限/スコープ、キャンセルと結果の資格を分離 | unsupported/partialと診断し、既存Editorを停止しない |
+| StudioとSHO/生成Targetの依存肥大化 | Product/Build Profileごとに不要Plugin/開発Instrumentationを物理除外 | Binary/Asset/依存閉包、起動遅延、実Artifact BOMを比較 |
+
+数値SLOは未測定で固定しない。まずCold/Warm・Plugin 0/少数/多数・Source小/大・Index完備/部分/未生成の対照Workloadを計測し、許容SLOをOwnerが採用する。AIへの意思伝達は**単なるクリック数**だけでなく、目的の対象を正しく指示できた割合・修正回数・操作所要時間でも比較する。これらの測定結果を実データの無断収集や外部送信の根拠にしない。
+
+### 14.6 最小受入票（既存#1824/#1124/#4515/#2514/#2600へ配分。新DT番号は作らない）
+
+| 試験候補 | 一因子差・独立Expected | 現在 |
+| --- | --- | --- |
+| NAV-01 | Subject Aを複数箇所で参照。定義→参照→戻る→進むが元Qualified ID/Occurrenceへ到達。Source行番号だけの一致は不合格 | NOT RUN |
+| NAV-02 | 同Label二Subjectと同端点二Relation。参照数と移動先を混合せず、描画用Edge IDのSemantic Pinを拒否 | NOT RUN |
+| NAV-03 | 参照0のSourceに未取得Plugin/権限非開示/動的参照がある。全体未使用と断定せず、範囲内0とpartial/unknownを表示 | NOT RUN |
+| NAV-04 | Index生成後Source A→B→A、Workspace切替、遅延旧Reply。Index/Reference表示の旧資格を自動復活させず、現在Pinに勝手に再結合しない | NOT RUN |
+| NAV-05 | 参照一覧の多数Occurrenceと未解決/重複を保全しつつ仮想表示。画面上限で切れた件数を「全件」と誤表示しない | NOT RUN |
+| NAV-06 | Command Palette→対象選択→Pin→根拠/除外→Previewをマウスなしで操作。IME/Esc/Tab/支援技術で誤解除・誤送出0 | NOT RUN |
+| NAV-07 | Provider/Plugin一つのSlow/Crashを注入。Source Edit/Inspectが利用可能で失敗範囲と不足数を表示。外部送信や実Effect 0 | NOT RUN |
+| NAV-08 | Plugin 0/少数/多数×Index cold/warm×小/大Fixtureで入力/移動/起動/memoryを計測。再現環境・p95/p99と費用を区別 | NOT RUN |
+
+### 14.7 今すぐ既存Ownerに渡せる最小パケット
+
+**N0（Headless、#1124/#2514）**：既存Catalog/InspectとSource Indexの返すID/位置/参照辺の粒度を実コードで棚卸しし、Source-backedでない参照種別を列挙。NAV-01〜03の独立Expectedを先に手書きする。この時点で欠けたRelation occurrence IDをUIで発明しない。
+
+**N1（read-only逆参照、#1824/#1124）**：一つのSubjectと参照元二箇所を持つFixtureで「定義へ移動・参照箇所一覧・戻る」を既存Operation/Projectionへ接続する。既存Indexだけでは足りなければ限定的な導出Index/Diagnosticを追加し、Source-backed参照のみcomplete扱いとする。
+
+**N2（Pin＋Command Palette、#4515/#1824）**：Subject Pinを先に検証し、Navigation history/キーボード操作を後続接続。送出はMock/Previewのみで、外部Harnessの実送出は#2516/TAIのOwnerへ引き渡す。
+
+**N3（負荷試験、#2600/Studio Plugin Owner）**：IndexとPluginの有無によるStartup/Navigation/Inputの基線をHeadlessと実Wailsで別計測し、再現可能な性能退行をCIの対象候補へ。全Plugin常駐・一括索引・既定の使用状況追跡を要求しない。
+
+**順序**：既存§13のA（UI/Schema）・B（Subject Pin）とN0は並走可。N1はN0のSource-backed参照条件、N2はB0/B1のPin条件、N3はread-only fixtureが成立した段階で始める。**実作業の次の評価はA0/A1・B0/B1・N0のEvidenceで行う**。設計節を増やすことを進捗指標にしない。
