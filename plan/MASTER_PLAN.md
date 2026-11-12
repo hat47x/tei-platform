@@ -1414,6 +1414,8 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 
 **三要素・REA・組織参照の実証資格（§10.10.4）**：三要素Fingerprint入力破壊はmain統合 #4507 で限定修正済み、CRUDのData索引3箇所はDraft #4513で修正提案中（明示CRUD脱落・矛盾表示は別残）。CLIのtrace.unresolvedは返却行の未解決、projectionUnresolvedは全Graph投影の脱落を示す（#3906）。一方のみが0でも全体完全とは判定しない。外部REA 6.7/6.8のProducer Protocol検証 #4257 と、実TEI受領・Owner Accepted Meaning・正式CRUD参照は別（#3394）。ORG r7のNode 7件はPR #4532の固定HEAD fa2d8ce.../Actions #43242282586で合成CI成功、実Provider/Studio/Hostの代替ではない。組織参照の次のExitは「Accepted参照／外部候補／未解決・partial」の三群を混同せず、#4472/#4475→#3262/#1177→#3394実Receiver→#4515/#3788の順に既存Expectedで段階確認する。P0 #2586は維持。追加した§10.10.4は設計/現況の照合で、新製品試験はNOT RUN。
 
+**UI起点のデータ文脈設計とClaim別再評価（§10.11）**：業務向けModelerではUI部品から既存Field／新しい永続Field候補／Derived／Transientの4経路を選択し、**新Fieldの明示設計操作**が行われた場合に限ってData Context→Desired Schema→Impact Preview→既存Migration/Grant→実DB独立再観測へ進む。UI配置だけではDDL/実DB変更なし。SQLの`SELECT *`/`alias.*`/`NATURAL JOIN`やWHERE/NOT EXISTS等の暗黙依存も追い、#2582/#4518/#4526のClaim別Required Closureでaffected/scoped-unaffected/unknownを判別。無関係なUnknownで全画面を過剰失効させず、未知の依存を無影響としない。SHO #50 QH-08〜10で同Markdown別Source・TEI実再束縛・実Recipient受領の資格を分離。#4524は三要素同Kind同ID重複対策としてmain統合済みだがConsumer全面Gateではない。#4513/#4514/#4532はDraft。ORG-MAP/ORG-CAP/ORG-BEH/CX/PIN既存Expectedの追加assertのみとし、別Engine/Accepted意味正本を作らない。#2586の実Read P0優先を維持。新しいProduct E2EはNOT RUN。
+
 **採否**：新規Source/Rule/公的契約や業務責任の解釈はOwnerの意味受理が必要。本追補はdocs-onlyであり、実Org Provider/Host・SHO/HarnessとのOrg C1 E2E・Owner意味受理は **NOT RUN**。
 
 ## 先に固定しないもの
