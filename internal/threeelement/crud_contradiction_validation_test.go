@@ -6,10 +6,10 @@ import (
 	"testing"
 )
 
-// The expectation is authored independently of ValidateModel and
-// ContradictoryCRUDs: different flags for the SAME Function/Data pair are
-// invalid, regardless of which definition was encountered last.
-func TestContradictoryCRUDDefinitionsFailModelValidation(t *testing.T) {
+// The expected conflicts are authored independently of ValidateModel and
+// ContradictoryCRUDs. Structural OK must not be misrepresented as CRUD
+// consistency or Owner acceptance; the unresolved conflict has its own status.
+func TestContradictoryCRUDDefinitionsRequireSeparateReview(t *testing.T) {
 	model := NewThreeElementModel("crud-conflicts", "Independent contradiction fixture")
 	model.DataElements = []DataElement{
 		{ID: "order", Name: "Order"},
@@ -32,12 +32,14 @@ func TestContradictoryCRUDDefinitionsFailModelValidation(t *testing.T) {
 		t.Fatal(err)
 	}
 	report := ValidateModel(model)
-	if report.OK {
-		t.Fatalf("conflicting CRUD definitions must not be valid: %+v", report)
+	if !report.OK || report.ErrorCount != 0 {
+		t.Fatalf("CRUD conflicts must not be unilaterally escalated to structural errors: %+v", report)
 	}
-	if report.ErrorCount != 3 {
-		t.Fatalf("each conflicting later definition is an error: want 3, got %d; diagnostics=%+v",
-			report.ErrorCount, report.Diagnostics)
+	if report.OKScope != "structural-diagnostics-only" {
+		t.Fatalf("structural OK must have explicit scope, got %q", report.OKScope)
+	}
+	if report.CRUDConflictStatus != "conflicts-require-review" {
+		t.Fatalf("conflict status lost: %q", report.CRUDConflictStatus)
 	}
 
 	wantIDs := []string{"order-read", "invoice-update", "order-create-again"}
@@ -49,31 +51,17 @@ func TestContradictoryCRUDDefinitionsFailModelValidation(t *testing.T) {
 		t.Fatalf("first-conflict-only / last-writer-wins bug: got %v, want %v", gotIDs, wantIDs)
 	}
 
-	wantDiagnosticSubjects := map[string][3]string{
-		"order-read":         {"order-read", "submit", "order"},
-		"invoice-update":     {"invoice-update", "bill", "invoice"},
-		"order-create-again": {"order-create-again", "submit", "order"},
-	}
-	seen := map[string]bool{}
+	// The underlying source is still structurally well-formed; selecting
+	// error/warning severity for conflicting business declarations belongs
+	// to the Owner. A separate machine-readable status makes this explicit.
 	for _, diagnostic := range model.Validate() {
-		if diagnostic.Code != "CONTRADICTORY_CRUD_DEFINITION" {
-			continue
+		if diagnostic.Code == "CONTRADICTORY_CRUD_DEFINITION" {
+			t.Fatalf("unaccepted severity policy leaked into structural diagnostics: %+v", diagnostic)
 		}
-		if diagnostic.Severity != "error" || len(diagnostic.SubjectIDs) != 3 {
-			t.Fatalf("contradiction must have error severity and all typed IDs: %+v", diagnostic)
-		}
-		var subjects [3]string
-		copy(subjects[:], diagnostic.SubjectIDs)
-		if expected, exists := wantDiagnosticSubjects[subjects[0]]; !exists || expected != subjects {
-			t.Fatalf("wrong contradiction subject: %v, expected one of %+v", subjects, wantDiagnosticSubjects)
-		}
-		if seen[subjects[0]] {
-			t.Fatalf("same contradiction emitted twice: %v", subjects)
-		}
-		seen[subjects[0]] = true
 	}
-	if len(seen) != len(wantDiagnosticSubjects) {
-		t.Fatalf("direct Validate omitted contradictions: got %v, want %v", seen, wantDiagnosticSubjects)
+	if again := ValidateModel(model); !reflect.DeepEqual(again.ContradictoryCRUDs, report.ContradictoryCRUDs) {
+		t.Fatalf("conflict enumeration changed across identical calls: first %v, second %v",
+			report.ContradictoryCRUDs, again.ContradictoryCRUDs)
 	}
 	after, err := json.Marshal(model)
 	if err != nil {
@@ -87,7 +75,7 @@ func TestContradictoryCRUDDefinitionsFailModelValidation(t *testing.T) {
 // Identical declarations for the same pair are not contradictory merely
 // because they have two source records. A separate duplicate-record policy
 // must not be accidentally introduced as part of the conflict fix.
-func TestIdenticalCRUDDefinitionsDoNotBecomeConflictErrors(t *testing.T) {
+func TestIdenticalCRUDDefinitionsHaveNoConflictStatus(t *testing.T) {
 	model := NewThreeElementModel("crud-agree", "Agreeing declarations")
 	model.DataElements = []DataElement{{ID: "order", Name: "Order"}}
 	model.FunctionElements = []FunctionElement{{ID: "submit", Name: "Submit"}}
@@ -96,7 +84,8 @@ func TestIdenticalCRUDDefinitionsDoNotBecomeConflictErrors(t *testing.T) {
 		{ID: "entry-b", FunctionID: "submit", DataID: "order", Create: true, Read: true},
 	}
 	report := ValidateModel(model)
-	if !report.OK || report.ErrorCount != 0 || len(report.ContradictoryCRUDs) != 0 {
+	if !report.OK || report.ErrorCount != 0 || len(report.ContradictoryCRUDs) != 0 ||
+		report.CRUDConflictStatus != "no-conflicts-detected" {
 		t.Fatalf("agreeing flags are not a contradiction: %+v", report)
 	}
 }
@@ -119,7 +108,8 @@ func TestCRUDConflictIsQualifiedByFunctionAndDataPair(t *testing.T) {
 		{ID: "three", FunctionID: "submit", DataID: "invoice", Update: true},
 	}
 	report := ValidateModel(model)
-	if !report.OK || len(report.ContradictoryCRUDs) != 0 {
+	if !report.OK || len(report.ContradictoryCRUDs) != 0 ||
+		report.CRUDConflictStatus != "no-conflicts-detected" {
 		t.Fatalf("distinct qualified pairs must remain independently valid: %+v", report)
 	}
 }
