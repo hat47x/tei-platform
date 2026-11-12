@@ -384,3 +384,79 @@ func TestThreeElementDiagramReconcileRefusesADraftWithoutAModelPath(t *testing.T
 		t.Fatal("Reconcile accepted a diagram draft with no model path")
 	}
 }
+
+
+// TestThreeElementDiagramPreservesDeclaredElementAuthorityLimits is an
+// independent consumer regression: the generated diagram must still carry
+// limits declared in the source JSON after a structural fingerprint is computed.
+func TestThreeElementDiagramPreservesDeclaredElementAuthorityLimits(t *testing.T) {
+	modelPath := diagramFixture(t)
+	raw, err := os.ReadFile(modelPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var source map[string]any
+	if err := json.Unmarshal(raw, &source); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{
+		"data:sales.order":        "data-owner-approval",
+		"function:sales.order.submit": "function-review-required",
+		"business:sales.checkout": "business-scope-limited",
+	}
+	setLimit := func(field, id, limit string) {
+		t.Helper()
+		elements, ok := source[field].([]any)
+		if !ok {
+			t.Fatalf("%s is not an element array", field)
+		}
+		for _, item := range elements {
+			element, ok := item.(map[string]any)
+			if !ok {
+				t.Fatalf("%s has non-object element", field)
+			}
+			if element["id"] == id {
+				element["authorityLimits"] = []string{limit}
+				return
+			}
+		}
+		t.Fatalf("missing %s/%s", field, id)
+	}
+	setLimit("dataElements", "sales.order", want["data:sales.order"])
+	setLimit("functionElements", "sales.order.submit", want["function:sales.order.submit"])
+	setLimit("businessElements", "sales.checkout", want["business:sales.checkout"])
+
+	updated, err := json.Marshal(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(modelPath, updated, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	draft, err := Build(Request{DocumentKind: DocumentKindThreeElementDiagram, ModelPath: modelPath})
+	if err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+	diagram := draft.Occurrences[0].Content.Diagram
+	if diagram == nil {
+		t.Fatal("diagram content is missing")
+	}
+	seen := map[string]bool{}
+	for _, node := range diagram.Nodes {
+		key := node.Layer + ":" + node.ID
+		limit, expected := want[key]
+		if !expected {
+			continue
+		}
+		seen[key] = true
+		if len(node.AuthorityLimits) != 1 || node.AuthorityLimits[0] != limit {
+			t.Fatalf("node %s lost source authority limits: got %v, want [%s]",
+				key, node.AuthorityLimits, limit)
+		}
+	}
+	for key := range want {
+		if !seen[key] {
+			t.Fatalf("source node %s was omitted from the diagram", key)
+		}
+	}
+}
