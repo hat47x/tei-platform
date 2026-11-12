@@ -626,3 +626,58 @@ R1のFile byteが完全でも、業務対象母集団がProvider/OwnerによりC
 5. **P2 / #2542/#4502/#4194**：実外部Stream/Relay/EKIのWatermark・ACK・Worker Resultと、Provider Dataset/Business OwnerのFinal資格を分離して観測する。締め・補正の実承認は従来Ownerへ戻す。
 
 **停止線と検証範囲**：この§21は既存設計・独立小規模数学反例と公開研究に基づく設計案。Syntheticな非負SUMと返品の対照はローカルPython上で集合追加ケースを列挙して確認したが、TEI Go/CLI/実DB/EKI/MFT/Studio・独立Consumer/実Disclosure/Owner受理・exact-head CIは **NOT RUN / NOT ACCEPTED**。新Schema、演算Engine、Scheduler、Host、Validator/Claim Storeや第二のOracleを追加しない。
+
+## 22. Change Streamと再計算の受入：Snapshot接合・撤回可能性・回復（2026-11-12、設計候補）
+
+**位置づけ**：`21は**固定Snapshotの部分入力**でも保持できるWitness/Bound/Finalを扱う。これに対して本節は**異Revision間の追加・更新・削除イベントを使った再計算**が適格かを扱う。`18.2のSame-Run Resume / New Delta Run / Restatementと`19の意味保存を前提とし、ETL専用CDC Engine、第二Checkpoint/Scenario/Manifest/State Store、Scheduler、TEI必須Hostを導入しない。#1130のW7・[#4411](https://github.com/hat47x/tei-platform/issues/4411)の受入Pressureとして実装Ownerへ渡す。
+
+### 22.1 「変更が届いた」と「変更集合が完全」を区別する
+
+| 変更・配送形式 | 必要な追加保証 | 無条件に主張しないこと |
+| --- | --- | --- |
+| **Append-only** | Sourceの不変Fact規約、Event/Fact identity、重複、対象Partition、取り込んだ位置と完了範囲 | 後から訂正・取消・削除されないことが宣言だけで成立する |
+| **Keyed Upsert（after-only）** | 一意で安定したKey、Keyごとの順序/Revision、**同じScope・版の旧Fact State** | UPDATE_AFTERをINSERTとして加算できる。旧寄与を知らずにSUMを訂正できる |
+| **Before/After Retract** | 旧行と新行の対応、Update/Deleteの連続性、失われたEvent/二重配送の判別、演算側のretraction適格性 | beforeとafterの片方が欠けても同じ結果になる |
+| **Key-only DELETE** | 過去のFact/寄与を復元できる有資格State、または残存集合の完全再読込 | Keyだけから過去の金額・Groupを導出できる |
+| **Snapshot→Tail接合** | 固定Snapshot境界、Change log開始位置、並走範囲の重複排除、Gap/Retention、必要なSource間のCut | Snapshot終了後のTail購読があれば途中の変更を全件捕捉した |
+| **Watermark/Deadline/Trigger** | Event timeと観測/処理時点、Sourceによる遅延規則、窓、late eventの扱い、業務期/Ownerの締め規則 | Watermark通過・Scheduler成功・Task Completed = Business Final |
+
+Snapshotのp1/p2読取が成功しても、Tailの途中Gapで訂正イベントを失えばNew Delta Runは`unqualified`である。未確認の欠落を「変更0件」にせず、完全に固定したSnapshotを再読取できる場合のみ**別Run・新GenerationのFull Restatement**へ移る。Full Snapshotすら不完全なら`unknown/unsupported`。ProviderのSnapshot/CDC形式と実保持期限は#2622/#2542が適合確認を担当する。
+
+### 22.2 演算の結合法則と撤回法則は別
+
+- **Mergeable**：固定Cutで重複・欠落なく分割した部分状態を結合できる。SUMの合成、AVGの`(sum,count)`はこの例である。これだけではDelete・Correctionの安全な適用は証明できない（#2593）。
+- **Retractable**：更新/削除されるFactの**旧寄与**を有資格に取得し、新寄与との差を演算規則に従って反映できる。SUMでも旧Contribution不明なら差分訂正は不可。DISTINCTは必要なID/出現回数、MIN/MAXは削除後の残存候補を要する。
+- **Impact complete**：実読行に加え`NOT EXISTS`等の否定依存、Filter/Top-Nの集合依存、FX rate/Lookup/Calendar/Rule版・Scope/Temporal Cut変更を含む、安全な影響**上界**が確認できる。`Consumed 0 rows`を依存0としない（#2600 IB-07/09/10）。
+- **Replay-safe**：値の再計算と、DB Write/Import/Message等のEffect再送は別資格。Operation ID・Current Grant・Commit/Receiptを使い、Commit Unknownを再送可能として推論しない（#1174/#2499）。
+
+### 22.3 固定反例（既存`18.4 R1〜R3を拡張、Expectedは手計算）
+
+業務期D、同一JPY/数量単位、R1はAのo1=2×100円、o2=3×200円、Bのo4=1×50円で全件固定。R2でAのo5=1×40円を追加。R3でo2を3個→2個へ訂正。R4でo1を削除する。
+
+| 対照入力 | Aの独立Expected（数量/金額） | 誤成功として検出すること |
+| --- | --- | --- |
+| R1 Full Snapshot | **5 / 800円** | p2未取得なのに全件Final |
+| R2 Append o5 | **6 / 840円** | 同Event IDの再配送を二重加算 |
+| R3 Correct o2（旧3×200→新2×200） | **5 / 640円** | after-only新400円を追加し旧600円を残す |
+| R4 Delete o1 | **3 / 440円** | key-only Deleteなのに旧寄与未取得で差引成功 |
+| R4以降、o5の追加Eventを同一Event IDで再配送 | **3 / 440円**（そのSourceが同一Eventとして識別できる場合） | 同Byteの別業務Eventまで誤dedup |
+| Rate表だけ改版、注文Factは不変 | 新Rate・適用日未指定のため金額Expectedは**未定**。必要Sourceを再評価 | 注文byte不変⇒出力不変 |
+| R2→R3の訂正Event欠落 | Deltaは`unknown`。完全な新SnapshotならRestatement候補 | 不完全TailからR3の全件Finalを推定 |
+
+独立Expectedは実装出力から生成しない。R1〜R4の算術が一致しても、Change log連続性、Source/Scope/Business Cut、公開Generation、Consumerの実読取、Owner受理を**別列**で確認する。新しいCase ID正本を作らず、`13 N-02/03/06/08/11/12、#2593 MC-08、#2600 IB-09、#2514へ一因子変形として返す。
+
+### 22.4 CheckpointとPublicationの非原子境界
+
+**記録したoffset＝Effectなし／Published済み**ではない。純粋計算でも「新Generationを公開した直後にRunLogのCheckpoint保存に失敗」と「Checkpoint保存後、公開前にCrash」は別の故障注入である。再起動時にCheckpointの進捗だけを信用せず、Run/Attempt・Source Cut・物理Member/Generation・実Publisher状態を独立Readbackし、古いWriterのFence/実Provider Commitは対応Ownerが確認する（`9/#2604/#1174）。同じByteの再生成が安全でも、外部Recipientへの再送は別。明示的な一式公開・独立Reader保証がない場合`unknown`を維持し、第二のPublisher/Transaction Coordinatorは先行導入しない。
+
+### 22.5 既存計画への最小追加
+
+1. **P0 / #4410 W1/W2**：最初のPure TSV実行を優先し、上表の算術Expectedを既存Nに関連付ける。CDC/Stream/追加DSLは初回受入のHard Gateにしない。
+2. **P1 / #4411 W7 + #2622/#2593/#3279**：Source Change Form×Operator Law×旧Stateの有資格性をread-onlyで比較。Snapshot→Tail Gap、before欠落、key-only Deleteを`unsupported/unknown`とする。実Target Fulfillmentは別。
+3. **P1 / #2604/#2514/#1174**：一つの故障注入でPublished Generation、Checkpoint、Consumer Read、Effect/Receiptを別観測。純粋変換のRecoveryから業務Effect再試行の安全性を一般化しない。
+4. **P2 / #2600/#2831/#2582/#4510**：正しい局所再計算と過小・過大な再評価、Negative Dependency、旧Planの失効と現行Disclosureを複合GraphへProjection。図外の実消費・非開示を不存在扱いしない。
+
+**外部比較（採用決定ではない）**：Apache FlinkはAppend/Upsert/Retractと`UPDATE_BEFORE`/`UPDATE_AFTER`/`DELETE`を区別する（https://nightlies.apache.org/flink/flink-docs-stable/docs/dev/table/functions/ptfs/）。Debezium PostgreSQLは初期Snapshotと継続的なChange Streamを接続する（https://debezium.io/documentation/reference/connectors/postgresql.html）。BeamのWatermark/Allowed Lateness/Triggerは遅着データ処理の比較対象（https://beam.apache.org/documentation/programming-guide/）。TEI固有のCDC/Temporal Engineを採用する根拠にはしない。
+
+**証拠と停止線**：本文は設計・独立算術Expected・外部仕様の静的比較。Go/CLI/実DB・CDC・Snapshot→Tail・Crash/復旧・実Consumer・実Provider Receipt・Owner意味受理は **NOT RUN / NOT ACCEPTED**。新Core型、第二DSL/Verifier/Artifact Store、必須Hostを追加しない。
