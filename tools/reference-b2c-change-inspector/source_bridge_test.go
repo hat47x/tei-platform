@@ -114,10 +114,10 @@ func TestB0PinnedSourceReadSeparatesBytesFromCurrentness(t *testing.T) {
 		Schema: inputSchema, Scope: "native-pdp-undiscovered",
 		BaseRevision: revA, CandidateRevision: revB,
 		DeclaredScopeClosed: false,
-		Nodes: []node{{ID: "semantic-data:sales.order", Layer: "business"}},
-		Changed: []string{"semantic-data:sales.order"},
-		Required: []string{"semantic-data:sales.order"},
-		Unobserved: []string{"native-client-dynamic-edge"},
+		Nodes:               []node{{ID: "semantic-data:sales.order", Layer: "business"}},
+		Changed:             []string{"semantic-data:sales.order"},
+		Required:            []string{"semantic-data:sales.order"},
+		Unobserved:          []string{"native-client-dynamic-edge"},
 	}
 	out, err := inspect(in)
 	if err != nil {
@@ -171,7 +171,6 @@ func TestB0RealWorkspaceSourceObservationNotClosure(t *testing.T) {
 		t.Fatal("inspection lacks read-only authority limits")
 	}
 }
-
 
 // TestB0ManifestIdentityIsNotManagedSourceRevision detects an ABA-like
 // misbinding in which the managed Source bytes are unchanged while the
