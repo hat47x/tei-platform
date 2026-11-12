@@ -160,11 +160,11 @@ Wails公式の[Roadmap](https://v3.wails.io/status/)ではv3.0.0をStableとし�
 
 **本稿はドキュメント・計画だけの更新**である。既存Issueの完了チェック、PRの統合、OwnerのMeaning/Host Authority受理、実OSテストのPASSを変更しない。
 
-## 9. 第2次横断統合：Context・Resource・Operationの連続性（2026-11-12追補）
+## 9A. 第2次横断統合：Context・Resource・Operationの連続性（2026-11-12追補）
 
 本節は他チャットのDesktop/SHO/DB Client/AI Harness/性能・テスト議論から、Desktopで反証可能な最小契約だけを取り出す。#1824、#1529、#1158、#1124、#1174、#2516、SHO既存Ownerを置換しない。**状態：設計候補、実GUI・実DB・実Harnessの組合せE2EはNOT RUN。**
 
-### 9.1 3つの連続性を別々に検証する
+### 9A.1 3つの連続性を別々に検証する
 
 | 連続性 | 同一性・版を照合するもの | 禁止する短絡 |
 | --- | --- | --- |
@@ -174,7 +174,7 @@ Wails公式の[Roadmap](https://v3.wails.io/status/)ではv3.0.0をStableとし�
 
 これらは新しい中央Registryや単一Session DBを作る要求ではない。各既存Ownerの現在資格を読み取り、Product/Window/Host/Consumer間で必要な証拠だけを引き継ぐ。
 
-### 9.2 Windows・WSL・外部ファイルに対するResource境界
+### 9A.2 Windows・WSL・外部ファイルに対するResource境界
 
 Windows nativeの `C:\...`、WSL Linuxの `/home/...`、DrvFsの `/mnt/c/...`、UNC `\\wsl.localhost\...` は**同一文字列名前空間ではない**。同じSourceらしい表示名でも、実行主体、アクセス許可、ファイル監視、ロック、rename/replace、シンボリックリンク、大小文字の扱いが異なり得る。
 
@@ -184,7 +184,7 @@ Windows nativeの `C:\...`、WSL Linuxの `/home/...`、DrvFsの `/mnt/c/...`、
 - Windows ACL、reparse point、UNC/WSL境界、競合rename、ファイル共有/ロックの違いを実OS負例で確認する。Linuxでの合成試験をWindows Resource Enforcementの証明に転用しない。
 - WSLパス由来の既知障害があると決めつけない。まずWindows native/WSL home/DrvFs/UNCの四条件を同じ公開fixtureで比較し、失敗が再現した環境だけを記録する。
 
-### 9.3 DB ClientとRead Cohort：モデルから実データへの接続
+### 9A.3 DB ClientとRead Cohort：モデルから実データへの接続
 
 StudioのDBクライアントはNative SQLを入力可能にしつつ、TEI標準Queryへの変換候補とTarget SQLを比較できるようにする。DB方言、データソースのPlugin、Providerの選択、業務意味の受理は既存Ownerに委譲する。
 
@@ -198,7 +198,7 @@ StudioのDBクライアントはNative SQLを入力可能にしつつ、TEI標�
 
 DBの全行をAIやSHOへ暗黙に送らず、選択した列/行/Projection、集合の完全性、開示資格をPreviewして渡す。大きなRowsetは仮想化・ページ取得し、表示上の行番号を永続Semantic IDとみなさない。
 
-### 9.4 SHO単独とStudio埋込みの「同じ文書コア」
+### 9A.4 SHO単独とStudio埋込みの「同じ文書コア」
 
 - 通常MarkdownはTEI Plugin/DB/クラウド/KON/AIが利用できなくても編集・保存可能とする。
 - SHO Reader/Writerの実装とEditorの見た目は分ける。StudioからSHO機能を呼ぶ際、Document Core・Occurrence・Source/Buffer byte span・保存競合契約を共有し、別Writerや第二Source Authorityを作らない。
@@ -206,7 +206,7 @@ DBの全行をAIやSHOへ暗黙に送らず、選択した列/行/Projection、�
 - Draft保存→ファイル保存→Document Review→TEI Meaning Acceptance→Build/Executionはそれぞれ独立した資格。Markdown保存が自動的にTEI受理へ昇格しない。
 - 軽量SHO単独配布はStudio Modeler/DB Provider/AI Harnessを必須にしない。共通Document Coreの更新が単独版とStudio埋込み版で異なる場合、互換範囲・Source byte・Occurrence mappingを試験する。
 
-### 9.5 精密AI対象固定と複数Productの引継ぎ
+### 9A.5 精密AI対象固定と複数Productの引継ぎ
 
 Focus/Temporary Selection、Pinned Target Set、Activity Context、Harness Session/Attemptを別Revisionで扱う。Graph同端点多重Edge、Data/Function/Business横断、DB行集合、SHO引用Occurrenceを、qualified identityで選択できるようにする。
 
@@ -216,7 +216,7 @@ Focus/Temporary Selection、Pinned Target Set、Activity Context、Harness Sessi
 - 外部Harnessへの送出はRecipient、実送出byte、現在Disclosure、Source/Grant/Context Revisionを直前に検査。Preview→明示送出→実受領を別結果として記録する。
 - Harnessを切り替えてもSource Meaning・Grant・Accepted Contextの正本をHarness側に作らない。CUIからも同じ論理ID固定を操作可能にする。
 
-### 9.6 性能・Plugin・配布の閉包
+### 9A.6 性能・Plugin・配布の閉包
 
 Desktopの「軽量」はBinaryサイズだけでなく、初回起動、Window復帰、入力応答、Inspectorの実Provider Read、巨大Sourceの表示、Plugin初期化、AI送出待ちを別計測する。
 
@@ -226,7 +226,7 @@ Desktopの「軽量」はBinaryサイズだけでなく、初回起動、Window�
 - Production Buildの実埋込Asset digestと実行物の対応を記録。CIのBuild成功、Windows WebView2スモーク、配布署名/更新/rollback、生成Desktop Targetは別の検収結果。
 - レイテンシやメモリの絶対SLOは未測定で固定しない。まず公開fixtureの基線を取り、閾値と許容する劣化をOwner判断へ返す。
 
-### 9.7 追加する独立Expected（既存受入票への追補候補、すべてNOT RUN）
+### 9A.7 追加する独立Expected（既存受入票への追補候補、すべてNOT RUN）
 
 | ID | 一因子差・失敗を検出する条件 | Owner |
 | --- | --- | --- |
@@ -241,7 +241,7 @@ Desktopの「軽量」はBinaryサイズだけでなく、初回起動、Window�
 | DT-21 | Plugin無効化/未導入でも原文Editor利用可。Production Artifactで専用Computer Use endpoint物理不在 | #4379/#2391 |
 | DT-22 | Studio/SHO/生成Desktopの異なるBinary・Asset/Kit版で同じMeaning Contractの範囲を比較。旧Artifactの証拠を新Artifactへ転用しない | #1824/#259/#943 |
 
-### 9.8 計画反映と次の縦切り
+### 9A.8 計画反映と次の縦切り
 
 **P0**：既存#3421/#1824の `inspect` 実IPC→実WebViewと、#1529の外部編集競合・後着防止を一つの公開fixtureで通す。Windows native/WSLのResource比較は先にread-onlyで測り、未検証の書込みを開放しない。
 
@@ -398,3 +398,69 @@ GitはSource/Contract/Plan/小さなManifestの管理に適する。一方、画
 **横断統合**：SHO Writerの条件付きSave、DB実Provider Read、Pin/Disclosure、外部Effect Receiptの各Ownerが実契約を提供した段階で、DT-31/33/37をGUIでも検証する。
 
 **受入**：DT-01〜38をすべて単一Gateにせず、Source/Meaning・文書・Read・Effect・配布のCapabilityごとに必要な受入票を定める。未実装CapabilityのNOT RUNを、他Capabilityの合格を妨げる架空の依存条件にしない。
+
+
+## 12. 第5次統合：画面項目・テーブル定義・Data Modelの変更契約と最小実装パケット（2026-11-12）
+
+### 12.1 先に守る利用者契約（個別設計ではなく全UIの共通規則）
+
+テーブルに対応するData Modelは、**権限あるテーブル定義の写像**として扱う。機能モデル側の画面項目はそのData Modelを参照するが、画面項目とテーブル項目は一対一である必要がない。この原則は三要素分析法のモデルを単なる三種類のRoleへ縮約しないという#1124の判断と併存する。テーブルに由来しない非RDB/仮想Data等への一律適用はしない。
+
+| 操作 | UI/Modelの期待 | 書込み境界・禁止事項 |
+| --- | --- | --- |
+| 画面項目を追加 | **未マッピング**のUI要素を作る。既存項目を選択した場合だけBinding Candidateを作る | テーブル列、Data Model属性、実DBに暗黙追加0 |
+| UI項目を削除／並べ替え／名前変更 | UI定義だけ変更する | Table Schema/DB列への意図しない変更0 |
+| 既存列をUIへマッピング | qualified Table/Column identityとSource/Schema Revisionを指す明示Bindingを作る。同じ列への複数UI要素のBindingを許す | label/配列index/画面座標で列を同定しない。DB Schema変更0 |
+| テーブル列の表示名を変更 | stable Column identityが保たれる場合はBindingを維持し再Projectionする | 変更前後が同じ列か判断できない場合は確認が必要 |
+| テーブル列を削除する提案 | Impact PreviewにData Modelから消える属性と、参照する全UI要素を列挙する。保存前はCandidate | UI要素そのものを黙って削除しない。実DDL/業務DB Mutationを走らせない |
+| テーブル列の削除が正当に確定 | 該当列をData Modelの写像から除去。該当する各UI要素を残して**Bindingを除去し、未マッピング警告**を表示。元参照は変更履歴/診断に残す | 別列へ自動再マッピング0。対象参照がpartial/unknownなら「影響なし」と断定しない |
+| 同名の列を新規作成 | 新しいColumn identityとして扱う。以前除去されたBindingは未マッピングのまま | 同じ名称による黙った再Binding0 |
+| 列の型・NULL可否・Relationを変更 | Binding互換性を再評価。必要に応じ入力制約・表示・Validationの警告や変更候補を出す | データ変換・既存行変更・有効なBindingとすることを推測で確定しない |
+| 外部DB/Sourceが更新された | Source/Schemaの実観測からData Modelを再投影し、現在のBinding資格を検査 | Watcher通知・UIキャッシュ・同名一致だけで現在性を保証しない |
+
+**二つの確定を混同しない**：Sourceとしてのテーブル定義変更の受理と、実DBに適用されるDDL/Migrationは別操作である。実DB変更が必要なら、Provider/Target、適用順、破壊的影響、Rollback可否、実Receiptを既存DB移行・Command Ownerが扱う。外部DBが定義のAuthorityであるとき、TEI側のSource修正だけで実DBを変更したと表示しない。ドメイン専門家による意味受理と開発者によるDDL/キー/Relationの技術検証は、通常開発相当の協業で十分であり、Desktop専用承認組織を作らない。
+
+### 12.2 変更の前後で保存すべきもの
+
+- **Preview**：変更前Schema/Source revision、対象qualified Column ID、参照するUI Element ID集合、影響を受けるFunction/Business/CRUD/SHO/Queryへの既知依存、完全性（complete/partial/unknown）、予定するBinding解除、非互換、実DB作用の有無を示す。
+- **Apply**：Source authority/権限/実byteを直前に照合して既存Acceptanceへ委譲する。画面追加から直接列追加するAPIは用意しない。対象が不明なら無操作または明示的な解決要求で停止し、空のImpactを成功とみなさない。
+- **再読込み**：Accepted SourceからData ModelとUI定義を再Project。削除済み列を参照したUI要素は残すがBindingは空、警告は利用者が解消するまで残す。障害やクラッシュがあっても未確定のMigrationやAI提案を既定で再実行しない。
+- **記録**：変更票/Receiptに元Column identity、解除されたUI ID集合、除去理由、Source/Artifact revisionを保存する。UI定義内に期限切れの隠れBindingを残して誤再接続しない。
+- **表示**：項目が「データと未接続」なのか「列が削除されたため解除された」のかを区別する。データ欠損・NULL・非開示とは混同しない。
+
+### 12.3 一つの最小Fixtureと独立Expected（追加DT番号は採番しない）
+
+Fixture `table-backed-ui-mapping-v1`（概念案）：Table `Customer` に stable Column ID `c-id`、`c-name`、`c-email`。UI Element `u-name` と `u-alias` はともに `c-name` を参照し、`u-note` は未マッピング。元Source RevisionとSchema Authorityを固定する。これはテストを作るための架空のDB例であり実Provider動作の主張ではない。
+
+| 確認 | 一因子差 | Expected |
+| --- | --- | --- |
+| U1 | `u-extra`をUIに追加 | UI要素1増、Schema列0増、DB Write 0 |
+| U2 | `u-name`をUIから削除 | `c-name`は存続、`u-alias`のBindingは存続 |
+| U3 | `c-name`の表示名だけ変更、ID不変 | `u-name`/`u-alias`のBindingを保持 |
+| U4 | `c-name`削除のPreviewだけを実施 | 影響2UI要素を明示、Accepted Source変更0、DB DDL 0 |
+| U5 | `c-name`削除をSourceとして正式に確定・再読込み | Data Modelの`c-name`が消え、2UI要素は残るがBindingなし・警告あり。元Bindingは変更記録に残る |
+| U6 | 新しい `c-name-new` に同じ文字列名を与える | 以前の2UI要素を自動Binding 0 |
+| U7 | Preview後に外部Source改版、またはImpactがpartial | 旧変更の確定拒否、未解決を表示、意図しない列/Binding変更0 |
+| U8 | 既知の列の型を非互換に変更 | 互換性を診断。変更候補なしで入力値変換・業務データ書換え0 |
+| U9 | UI要素を追加して「この項目用のDB列も作りたい」と明示操作 | 列の名前/型/NULL/精度/キー/Relation/移行影響を別候補としてPreviewし、明示的なSource変更・Migration/Receiptの資格が揃うまでDDL 0 |
+
+上記は既存DT-14（外部変更）、DT-18（固定対象）、DT-24（Projection loss）、DT-31（保存と意味受理）、DT-32（後着）、DT-38（Headless/実Wails比較）の**具体化**であって、別Gateや別受入体系を追加するものではない。三要素CRUDのData名の誤参照と明示定義欠落（#4472/PR #4513）は別の基底欠陥として先に修正し、正しくないCRUD表を依存Impactの完全性証拠として採用しない。
+
+### 12.4 現行mainに対する事実と実装開始位置（2026-11-12確認）
+
+- `cmd/tei-studio/main.go`の`StudioBridge`は`ListWorkspaces`/`CatalogWorkspace`/`ValidateWorkspace`/`InspectSubject`/`ObserveXead`に加え、`ViewPattern`/`ViewApplication`/`ViewPackage`、Command Plan/Reference実行系、SHO `OpenShoDocument`/`ResumeShoDocument`を公開している。**五操作しかないとの古い棚卸し記述を現在実装の正確な一覧としない**。SHO WriterをStudioが直接提供していると解釈しない（Bridge注釈ではSaveなし）。
+- `cmd/tei-studio/assets/main.js`は`preview-scope.mjs`による非同期表示の制御があるが、これだけで実Wails Window/多窓後着/Source改版との競合がPASSしたとはいえない。
+- `internal/threeelement/crud.go`（現mainを今回確認）ではData索引の第三戻り値参照、明示CRUDの組合せ脱落と衝突縮約が残る。PR #4513はDraft。Fingerprintの入力書換えはPR #4507がmergedだが、Source-only driftの再資格化PR #4514はDraft。
+- #1529はclosedで参照Hostの競合・Draft復旧に受入チェックがある。実Wails・実DB・Windows/WSLの合格に拡大解釈しない。現在の製品接続Ownerは#3421/#1824/#1124と各DB/SHO担当。
+
+### 12.5 実装パケット：最初の作業は書込みUIではなく「影響の完全性」
+
+| 順 | 変更単位 | 作業場所・Owner | 先に必要な証拠 |
+| --- | --- | --- | --- |
+| A | `Customer` fixtureと、Schema列→Data Model属性→UI Bindingの現行表現を棚卸しする。未実装のBinding形式を作った体で扱わず、実在するModel/APIを先に示す | #1124（Modeler）、#1824（UI） | Source identity/Revisionと適用可能なProjectionの実コード |
+| B | U1〜U4、U7のread-only Impact/PreviewをCLI/Headlessで一巡。unknown依存を失わず、CRUD #4472の修正資格を反映 | #1124、#4472、#2514 | 独立Expected、実CLI Result、Projection loss |
+| C | Source承認→再Projection→Binding解除・警告表示をSource/Meaning Ownerの既存経路に接続。U5/U6/U8を合成Hostで検証 | #1124、#1158、#1529既存Reference | Source byte before/after、UI Element ID、解除記録 |
+| D | 同じFixtureを実Wails `StudioBridge`経由で再現。Workspace変更・Window epoch・Source drift負例を追加 | #3421/#1824 | 実IPC/Window Evidence、旧応答後着の排除 |
+| E | 「DB列も作る」明示操作をMigration計画として**別**に実装。SHOへの影響レポートとAIへの固定対象引継ぎも同じImpact Resultから派生 | DB移行/#3422、SHO、#4479 | 実Provider/DB Receipt、Disclosure Preview、Source/Consumer一致 |
+
+最初に満たす完了条件は**U1〜U4/U7を同じFixtureでHeadless PASSとし、根拠と未知範囲を保存すること**。C以降は先行PASSを勝手に宣言せずCapability別に判定。既存Plugin/APIを接続できるだけで十分な場合は新Codeを作らず、AI/開発者向け操作はGUIと同じ意味契約をCLIから利用する。
