@@ -592,6 +592,51 @@ X-TEAの項目単位「参照／被参照箇所の一覧・ジャンプ」をStu
 
 **N2（Pin＋Command Palette、#4515/#1824/#4503）**：Subject Pinを先に検証し、Navigation history/キーボード操作を後続接続。PinとEvidence参照の現在Grant/Source資格は別。送出はMock/Previewのみとし、外部HarnessやNAS/S3の実Fetch/Upload（ローカルCache書込みを含む実作用）は#4503/#4307/#2516/TAIのOwnerへ引き渡す。UI上のread-onlyをFS書込みゼロ・Networkゼロと同義にしない。
 
-**N3（負荷試験、#2600/Studio Plugin Owner）**：IndexとPluginの有無によるStartup/Navigation/Inputの基線をHeadlessと実Wailsで別計測し、再現可能な性能退行をCIの対象候補へ。全Plugin常駐・一括索引・既定の使用状況追跡を要求しない。
+**N3（負荷試験、#1177/#2600/Studio Plugin Owner）**：既存trace/inspectが全Workspaceを読む段階、Source Index、sort、sliceの各費用を測り、全件正確なsummaryと速い局所参照表示の費用を別計測する。IndexとPluginの有無によるStartup/Navigation/Inputの基線をHeadlessと実Wailsで比較し、再現可能な性能退行をCIへ渡す。表示行の`limit=1`を実処理量の削減とみなさず、全Plugin常駐・既定の使用状況追跡を要求しない。
 
 **順序**：既存§13のA（UI/Schema）・B（Subject Pin）とN0は並走可。N1はN0のSource-backed参照条件、N2はB0/B1のPin条件、N3はread-only fixtureが成立した段階で始める。**実作業の次の評価はA0/A1・B0/B1・N0のEvidenceで行う**。設計節を増やすことを進捗指標にしない。
+
+## 15. 実証への収束：Navigate・Pin・Changeの資格を分離する（2026-11-13）
+
+本節は11月12日に更新された#3788（未保存BufferとIDE連携）、#1177（大Workspaceのtrace/inspect）、#4533（操作別の逆編集の限定実測）、#4515（Subject Pin）を§12〜14へ接合する。#4521（実Workspace Map/Locate比較）と#4524（重複ID検査）は、実際のSource/Consumer資格に沿って既存N0へ統合する。各Issueの設計/試行はこの文書で採用済み実装やPASSへ昇格しない。
+
+### 15.1 三つの独立能力と停止線
+
+| 操作 | できることを主張するための条件 | 条件が足りない場合 |
+| --- | --- | --- |
+| **Navigate**：定義へ移動、逆参照、戻る | qualified ID、Definition/Reference occurrence、解決数、出典位置、SourceまたはBufferの版、索引のCoverage | 同名候補/不明/部分結果を示す。参照0件を対象不存在/索引未完備/参照なしと混同しない |
+| **Pin**：対象を固定して作業を続ける | 明示したPin Intent、Workspace Origin、Host Inspectで確認できる対象と現在資格 | Intentは残して現在性をunknown/要再資格化。描画用Edge IDを意味Relation IDとして固定しない |
+| **Change**：投影からSourceの値を修正 | **操作ごとに**一意なSource定義、所有属性の恒等写像、正確な値span、改版条件、変更前値の一致、既存受理・書込資格、再読込/再投影 | Navigate/Previewは残し、Applyはunsupported/ambiguous/stale/withheldとして停止 |
+
+Navigateが成功してもPin/Changeの許可を意味しない。Graph→Treeで非表示の第二の親やEdge IDが失われている場合、Node属性への移動とEdgeの移動・削除を区別する。JOIN集計やNULLを含む部分取得からの書戻しも、表示できることを根拠に自動許可しない。逆編集の実装は#2497/#4533、Studio UIは#1824、現在Grantは既存Host/Ownerに帰属する。
+
+### 15.2 未保存Buffer・位置情報・A→B→Aの正しい扱い
+
+- `tei source-index`が返す保存済みSourceの位置と、編集中Bufferの版付き位置は別。Buffer v2へ編集した後にBuffer v1の診断・参照が到着しても現在位置を更新しない。UTF-8 byte offsetとLSPの文字位置は、CRLF/多バイト文字/絵文字で正負試験を行う（#3788 ED-01〜04/10）。
+- Sourceの属性名spanと**属性値span**を混同しない。#4533の報告では値spanを正規表現で仮に取得しており、本番の編集適格性には使えない。正規Reader/Source Indexから値spanを得られなければSource Writeはunsupported。
+- 参照解決0件ならunsupported/not-found、2件以上はambiguousを区別する。#4533の限定実験は16ケース中15ケースでExpectedと一致し、存在しないSubjectをambiguousにした1件は不一致。実験スクリプト未収録、Graphは合成、正式Shared Acceptance/実Wails/実Grantは未検証であり、製品PASSではない。
+- **A→B→A**で内容byteがAへ戻るとcontent fingerprintも戻り、過去の変更をfingerprintだけでは検知できない。改版履歴を要する操作はSource revision/Host observationなど別の単調な資格を要する。観測できなければ「一度も改版されなかった」と推定せずunknown/要再資格化にし、現在Grant/Meaning/Pin/AI開示を自動復活させない。内容だけが重要な純粋read-only投影と、履歴や実効果を問う操作の資格を区別する。
+
+### 15.3 完全な参照数と高速な局所表示を別のQuery契約にする
+
+| 要求 | 意味 | 完了・表示条件 |
+| --- | --- | --- |
+| **Complete summary** | 対象Workspaceと参照種別の全件・未解決を調べる | 実全量探索後のみcomplete。実行費用が大きければ「計算中/不明」を許し、黙って件数を切らない |
+| **Scoped interactive navigation** | 注目Subject周辺だけをすぐに表示 | Covered Scopeを明記し、未読込/動的参照/非開示/別Pluginの範囲をpartialとする。全Workspace未使用の証拠にしない |
+| **Preview rename/impact** | 変更対象の既知参照を列挙し安全な変更候補を作る | 依存の完全性が必要な操作はpartialでApply停止。UI要素の移動・検索は継続可能 |
+
+#1177の既存`trace full -limit 1`は、表示行が1件でも全Workspace側を処理する経路があると報告されている。表示limitをスキャンlimitの別名にせず、(1) load、(2) Source Index、(3) Derived Graph、(4) sort、(5) projection、(6) UI描画の時間/CPU/Memoryを分解測定する。計測後に必要な段だけ増分/キャッシュ/遅延計算する。性能上の改善により出所・多重性・対象の完全性・開示Scopeを失ってはならない。
+
+### 15.4 既存受入票へ接続する実装順序
+
+| 作業 | Ownerと既存Expected | 必要な実行証拠 | 現状 |
+| --- | --- | --- | --- |
+| E0 Dirty Buffer | #3788 ED-01〜06/10 | 一つの実Source、未保存Buffer改版、同名異ID、UTF-8/CRLF、旧応答排除、実位置 | Desktop経路NOT RUN |
+| N0/N1 Navigate | #1124/#3788/#2514、§14 NAV-01〜05、#4521/#4524 | Catalog/Map/Locate/Indexの出典・一致範囲、定義→参照→戻る、索引部分時の0件表示 | 実Workspaceの局所報告あり／Desktop一巡NOT RUN |
+| B0 Pin | #4515 PIN-S0-01〜07 | Subject固定とFocus分離、Workspace切替、A→B→A、描画ID拒否、外部送信0 | NOT RUN |
+| V0 Inverse Edit | #2497/#4533 | Source値span、1属性のパッチ・差分・再Projection、Apply失敗でSource無変更、実受理とは別 | 限定合成実測報告あり／製品未受入 |
+| P0 Performance | #1177/#2600、§14 NAV-07〜08 | trace summary/full/-limit 1、Plugin数×cold/warm×Source規模、実Wails別票 | NOT RUN |
+
+**最初の変更パケット**：E0とN0とB0は並走可能。N0では新しいIndex Engineを設計する前に、現存CLIのSource-backed定義・参照・位置・Coverage・欠落を一件の実Workspaceで照合する。V0はParser由来の値spanと変更の資格が揃った局所一属性だけに限定。P0はベースラインを先に取得する。CLI/Editorの成功を実Wails/実DB/外部Harnessの成功へ転用しない。
+
+**優先順位は不変**：実Plugin Invoke #1251と実Function→Provider Read #2586のP0を、Desktopの参照ナビゲーションや実Wails整備でブロックしない。適格な実装が出たものから既存OwnerへEvidenceを渡す。DT-01〜38/NAV-01〜08/ED-01〜12/PIN-S0の重複試験票を再作成せず、必要な異なる観測だけをOwnerに追加する。
