@@ -80,3 +80,67 @@ Subsystem再命名は役割・更新責務が改善された可能性を示す**
 **撤回・縮小**: 同一のClaim表を各Ownerが二重管理する、Consumer間で意味がずれる、Scope/Policy漏えいが増える、実験で理解・修正負担が減らない、または既存Contractで十分に表現できるなら、新しい抽象や永続化は導入しない。再利用できる比較表として留める。
 
 **本書の証拠上限**: GitHubの既存Issue/PRと設計・Sourceの静的照合に基づく横断設計だけ。新規Go/Node/Windows/Wails実行、実Build/ETL/DB/EKI Consumer、Current Grant、外部Policy、Ownerの仕様採用は確認していない。
+
+## 6. 問いに相対化した再資格化：履歴の保存と現在の使用適格性（2026-11-12追補）
+
+**今回の判断候補**：変更に対する影響は「Fileが変わったか」ではなく、**一つの問いとそのClaimが必要とする依存・観測・使用条件が変わったか**で判定する。新しいClaim Registry／Proof Engine／共通Schemaを作る提案ではない。
+
+一時的なレビュー票で、対象Claimの輪郭を \`Q=(subject, scope, predicate, quantifier, observationBoundary, requestedUse)\` と記述できる。これらは既存のQuery/Function Data Context、Scope/Identity、Scenario、Consumer、Disclosure契約から照合する列であり、新しい固定DTOを要求しない。
+
+- \`predicate\`：問いで実際に解釈された条件。無視されたWHERE/Role/Window等があれば閉包成立や不存在を宣言しない。
+- \`quantifier\`：**存在**、**不存在**、**全件**、**変化**、**効果**など、問いの論理的な強さ。存在の一例を観測しただけでは全件処理や他要素の不存在にならない。
+- \`observationBoundary\`：実Source Reader、Snapshot、InputCut、Artifact Generation、Consumer、Effect Reader等、どの境界まで実際に観測したか。
+- \`requestedUse\`：read-only表示、モデル変更Proposal、逆編集、再実行、外部公開、業務受理等。read-onlyでのpreservedはEditable/Executableを含意しない。
+
+**限定的な再利用の必要条件（十分条件ではない）**：
+
+1. 問いの解釈・Scope・観測対象・既存証拠の版を固定できる。
+2. **その問いに必要な依存集合**と解決/未解決の閉包が取得され、実際に消費した依存・Reader/Providerの範囲と区別できる。
+3. 変更差分が、その依存または未解決閉包を変えないと確かめられた範囲のみ、read-only Claimの既存資格を保持候補にする。依存が不明なら「無関係」と結論しない。
+4. Mapping/Trait/Targetの保存・履行、Current Grant/Disclosure、実Operationの権限、実Effect・Owner受理は、それぞれ必要なOwnerの現行条件で独立評価する。
+5. Source→B→Aなど、byteやDigestが以前と一致しても、失効したGrant、Publication Generation、Owner判断、実行Attemptを自動復活させない。
+
+**肯定・否定・全件Claimの非対称性**：あるSnapshotに一件存在するという限定的証拠は、その一件の存在に十分でも、全件処理／不存在／外部Effectには不十分。不存在または「すべて」の主張は、問われたUniverse・Predicate・期間・全Reader/Writer・未観測を閉じた証拠が必要である。追加行・遅延訂正・未観測Writer・部分InputCutが加わると、過去の全件Claimは保持できても現在の全件Claimは再評価対象になる。SQL演算の単調性だけから、Source/Policy/Runtimeを跨いだ資格保存を推定しない。
+
+**既存研究の利用限界**：[Query Impact Draft #4335](https://github.com/hat47x/tei-platform/pull/4335) の \`retain / recheck / unknown\` は、合成\`DerivedIR\`とcallerが申告したContext束縛・取得状態に対する**read-only Claim**の判定であり、\`operationEligibility=not-evaluated\`。同じ語を他領域の製品Contractへ無審査で移植しない。[Required/Consumed二閉包 Draft #4393](https://github.com/hat47x/tei-platform/pull/4393) の合成booleanも実Reader/Buildの証拠ではない。
+
+## 7. 変更種別と必要な再確認の有限行列（既存Ownerへの引渡し）
+
+「再検証しない」は暗黙のPASSではなく、**当該Claimの完全な依存閉包に無関係と確認できた場合の限定判断**である。次表の判断は提案であり、実Source/Provider/Targetを使った試験はNOT RUN。
+
+| 一因子変更 | 原則維持できる歴史的事実 | 再確認対象 / 許されない推論 | 主管 |
+| --- | --- | --- | --- |
+| 図表Layoutだけの移動 | 旧Sourceの静的事実、旧Projectionの当時の値 | 意味再受理は通常不要。ただし旧View/selection epoch、逆編集資格、公開View一式は用途別に検査 | #1124 / #2497 / Draft #4510 |
+| 他FunctionのSource変更 | 旧read-only Query結果・当時のObservation | Required/Consumed・Source/Context・規則の閉包が独立なら限定retain。未解析Predicate、global rule・default Provider変更ならunknown/recheck | #2582 / #2506 / Draft #4335 |
+| 選択Provider／Required Trait／Template変更 | 変更前Artifactと試験記録 | 実Binding/Target適合・Build実消費・Consumer再読取を再照合。未選択Plugin追加が無影響とはdefault選択/Lock不変の証拠なしに断定しない | #951 / #3278 / #2831 |
+| Published Artifactのbyteは同じで公開世代が異なる | byte同一性と過去の受領 | 世代・Manifest・受領Attempt・current Trustを再評価。byte同一性は同一公開／同一実行を証明しない | #2604 / #2589 |
+| ETLのInputCut／時間窓／Correction変更 | 旧Runの履歴Output・receipt | 必須入力閉包、Stage・Checkpoint再開条件、Publication Generation／Consumerを再評価。Commit Unknownの自動再実行は禁止 | #1130 / #2542 / #1174 |
+| サブシステム名変更のみ／直接CUD→Owner Command委譲 | 元の意味と過去のDirect CRUD / Effect記録 | 名称だけなら意味IDを推測変更しない。委譲ならWriter閉包・Effect/Tx/Recovery・Owner受理を別途検査 | #3250 / #267 / #1129 |
+| Current Grant／Disclosure／Publisher資格が失効 | 当時の認可・受領・静的Source事実 | 現在の公開・編集・実行を再判定。旧PASSやA→B→Aを現行Authorityに流用しない | #2516 / #1174 / #2589 |
+| Private Worldのみ変更、Public Slice同一 | 許可された公開Source/見えてよい結果 | 公開Count/Score/Diagnostic/Graph/DOM/Tool応答が秘密差分から変化しないことを検証。非公開件数のredacted表示も自動許可しない | #2516 / #3250 |
+
+**限定判定結果の読み方**：\`retain\`は「旧read-only Claimの限定利用を続けられる」、\`recheck\`は「当該契約の再取得・検証が必要」、\`unknown\`は「安全な選択には必要な情報が不足」。どれも現在の実行Authority・業務受理・強い不存在証明を兼ねない。前後版の比較、実際のSource closure、Current Policy、独立Expectedを既存Ownerに委ねる。
+
+## 8. 最小の横断Witness：誤ったretainと無用なinvalidatingを同時に検出する
+
+一つの固定Source/Contextに、\`D1 = OrderLines\`、\`D2 = PromotionRates\`、\`D3 = unrelated Settings\` を置く。以下は*試験用の架空データモデル*で、製品の既存\`order_entry\`にこれらのテーブルが存在する主張ではない。Independent Expectedを既存[#2514](https://github.com/hat47x/tei-platform/issues/2514) / [#1180](https://github.com/hat47x/tei-platform/issues/1180)に置き、第二Fixture SSOTを作らない。
+
+| 対象Claim | 変更 | 条件付きExpected（独立Oracleへ引渡す案） |
+| --- | --- | --- |
+| Q1: \`SUM(D1.amount)\`（D1のみ読取） | D2だけの行変更 | D1しか読まない完全な解析閉包、同版・同Scopeならread-only Claimはretain候補。現在のGrant・表示Disclosureは別 |
+| Q2: \`SUM(D1.amount * COALESCE(D2.rate,0))\`（Join） | D2変更 | recheck。外部結合・集計の非単調性やD2の部分取得を忘れない |
+| Q3: \`D3\`を読まないQ1 | D3だけ変更。ただしGlobal Ruleやdefault Binding変更はなし | Q1の完全な依存閉包が独立ならretain候補。広域無効化のみを要求する実装はfalse invalidation |
+| Q4: \`該当D2行は存在しない\` | D2の部分取得／未観測Writer追加 | unknown。0行の表示、同一DigestのQuery Plan、古いWindowから不存在を証明しない |
+| Q5: Q1を公開したStudio Table | Context/epoch更新・Grant失効 | 静的意味は変わらなくても、旧DOMのEdit/Inspect、現在のDisclosureを再確認。Read成功は逆編集資格ではない |
+| Q6: Q2をETL出力し2-member Datasetで公開 | 片方のみ新世代／ACKだけ成功 | Publication/Consumer/Business Acceptedを別に判定、世代混合を完全成果物としない |
+| Q7: Legacy observed LとOwner accepted Dで税率の訂正を採用しTarget Tで結果確認 | T=DでL≠T | 受理された意図的変更は旧挙動との単純一致FAILとしない。一方Tの実EffectやOwner受理を合成Outputから推定しない |
+
+評価では、**false retained**（再検証が必要なのに保持）、**unnecessary invalidation**（無関係と証明できるのに全失効）、**unknown erased**（未確認を成功/不存在へ丸める）の3分類を独立に計上する。実Sourceからこの比較票へ必要な列が供給できなければ、まずそのGapを既存Ownerへ返す。新しい全域Impact Engineやメタ生成器を作らない。
+
+### Studio・三要素分析法・認知負荷への接続
+
+一つの問いのread-only回答と、その根拠のSource/Scope/Revision、欠けた依存、表示損失、変更影響を同じConsumerで辿れることを最低基準とする。原典三要素分析法のData/Function/Business相互牽制は、Legacy observed L／Owner accepted D／Target observed Tという移行比較軸とは**直交**する。Method ProfileやTEA固有Rendererから新たなCanonical/権限を作らない（#1124と[Draft #4510](https://github.com/hat47x/tei-platform/pull/4510)がConsumer側Owner）。
+
+比較評価は**正しいretain/recheck/unknown率、Source到達操作数、誤った全件・不存在判断、AIの修正往復、失われた編集情報の検出率**を計測する。既存文章/単一図に対する優位性は未測定。利益が確認できない新しい共通抽象は縮小する。
+
+**§6〜8の証拠上限**：2026-11-12時点の既存GitHub Issue/PRの静的照合と、反証可能な新設計の記述のみ。新Go/Node、実SQL/DB、Studio/Browser、EKI/ETL実Provider、Current Policy、実Owner受理は本追補では**NOT RUN / NOT PROVEN**。
