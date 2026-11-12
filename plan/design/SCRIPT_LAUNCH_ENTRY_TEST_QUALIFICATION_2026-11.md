@@ -187,3 +187,17 @@ CLI/GUIで選択した対象を**固定した作業対象（Pinned Work Set）**
 最初のP0-Lの試験票には、元のIssue/Fixture IDと独立Expected（#1180/#2514）への**参照**を置く。ログからExpectedを再生成しない。AIがIssueやContextを読んで補助テストを提案する場合、未提示の必要情報を自律発見したか、公開Sourceの引用を反復しただけか、Provider/Consumerへ実到達したかを区別する。TEST-T1B（#2514）は独立Reviewerの判別基準を保ち、P0-Lの合否へ無条件に加算しない。
 
 **完了上限**：同一Attemptで成功したpure Q2は、Q3の実SQL/rowsetやQ4の保護された書込み、Q5の外部受領を含まない。GitHub Actionsのsuccessも、PRの現在HEAD・該当Testの実PASS・実CLI呼出し・観測したClaimに照らして報告する。
+
+### 8.4 Providerの実到達証拠は配布形態によって違う
+
+TEIの第一配布形態はGo単一バイナリである。一方、外部Host向けのJava/.NET/WASMや、Script/Pluginの動的実行も許容する。**「実ロード」を一律に共有ライブラリのLoadイベントや外部プロセス起動へ限定しない**。代わりに、どのArtifactにどのProvider実装を含め、実行時に何を選択し、実際にどのCall Siteを通ったかを、配布形態ごとに検収する。
+
+| 実現形態 | 実Provider到達の最小観測 | 誤った合格 |
+| --- | --- | --- |
+| **Go静的合成・単一バイナリ（P0）** | 固定されたGo Build/ArtifactとComposition・Provider選択、実Instanceへの型付きCall。合成の比較試験では**A/B二実装を同じResultにし、独立のCall Counter/Spy・Call SiteでBのみが呼ばれた**ことを観測する | 単に`ProviderID="B"`という自己申告を返す、BがBuildに含まれている、Resultが600 |
+| **解釈Script／Language Plugin** | 消費した元Script Byte・Source occurrence・Interpreter/Operator版と実Executorが一致し、公開Entryの対象として実評価される | Parse/Anchor/Role labelだけで起動資格や無副作用を付与 |
+| **動的Plugin／外部Process／WASM等** | Contract/Pin・選択Runtime実装・実ロード成果物/実Process・呼出し・能力表現の一致 | Package存在やプロセス起動、Wire ACKだけでFunction/Effect成功と宣言 |
+
+「Bのみが呼ばれた」は**既存の型付きApplication API経由でテストし、参照ExecutorやStubへの別経路を用意して満たさない**。静的Linkの監査に不適切な動的Module IDを要求してGo単一バイナリを不利にしない。逆にGo Binaryが一つであっても、その中のどのProvider実装に実Dispatchしたかを結果値から推測しない。Hook/Child Functionが追加のProviderを呼ぶ場合、その到達は親の単一pure Q2に暗黙で加算しない。
+
+**担当**：P0の型付きProvider Callは#4495、Build/Plugin選択は#1251/#951、外部Target/Process/WASMの能力差は#2390/#4384、OS egress/実資源は#2504。ここから新ABI・共有Runner・第二Plugin Registryを採用しない。
