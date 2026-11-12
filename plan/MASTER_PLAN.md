@@ -355,6 +355,29 @@ SQL/NoSQL/ログ等のリバース結果は、**Physical Observation→Structura
 
 **責務と実行順**：定義とData Modelの連動・Modeler投影は#1126/#1124、UI Binding／変更逆写像は機能モデルと#2500、外部観測とREA入場は#3394、実DBとの差分とDDLは#3270/#4125、Source Revision／失効とCLI・AIの固定選択は既存Operation契約、SHOは#4317/#4467の再投影に配賦する。最初の実装出口は`REA-MAP-01/03/04/05`を同じread-only Inspector・編集Preview上で独立Expectedに照らすこと。その後、明示Add/Edit・GUI/CLI一致・実DB Read-back・SHO再読込へ進む。**原典の三要素分析法に忠実な機能と、TEI独自の編集支援を区別する**。本節はPlanであり、実製品E2E・Owner意味受理・DDL適用は**NOT RUN**。
 
+### モデル変更からScript起動までの連鎖を最小化する受入順（2026-11-12、#3394×#1124×#4515×#4502）
+
+**既存二経路を混ぜない。**「外部REA／Workbenchによる観測→候補→TEI定義への明示的採用」は#3394の外部Evidence入場であり、「受理済みTEI Table Definition／Function／UI宣言の編集→参照切れ診断→必要時の再接続」は#1126/#1124の編集経路とする。どちらも`Preview / Change Intent / Source Revision check / Authoritative Source write / Reprojection / Diagnostics`の既存契約の範囲で検討するが、同一Operationで自動的に外部Sourceや実DBへ書き込まない。OKFは文書や根拠のIdentity・Version・Links・Lintを通常のGit／レビュー／試験と併用する。専用Owner意味承認Engine・第二Ledgerは設けない（#4143のK0〜K5は用途別Admissionと独立に検収）。
+
+**実装と機能公開の連鎖を切る。** UIの新規追加・画面変更・REAのFunction候補発見は、テーブルFieldの新設・公開Entry・Trigger/Script起動の作成を**暗黙に実施しない**。Function／Entry／Fieldを削除・rename・移動・版変更した場合は、依存するFunction UI Binding、Script/Entry Input Mapping、Trigger Binding、Query/CRUD、SHO引用のうち各々の**未解決参照を残して診断**し、同名・同offset・同表示位置の別IDへ自動付替えしない。依存先の意味と実体を同定できるrenameはStable Identityと版の検査によって継続を判定し、同定できないreplace/split/mergeは候補提示へ戻す。Triggerは保存・発火しても現在のEntry公開/Host Grant/Artifact資格を示さず、Script Launch P0の実起動Ownerは#4495、manual/schedule/event/batchのbindingは#4497/#4502へ渡す。
+
+**Pinは段階的に適格化する。** #4515の現行Studio Workbenchにおける最初の実装対象は`WorkspaceRef + Subject(kind,id)`の**read-only Pin Intent**。ユーザーの明示Pin/Unpinと一時選択・ハイライトは独立とし、Workspace変更、Source改版、同offset別Subject、A→B→A、後着返信では`needs-requalification/unresolved/unknown`を返す。現在のInspection事実を現在のGrant、実行権限、外部Harness送信許可へ昇格させない。Studioの`parent:<subjectKey>`のような**描画用Edge IDを正式RelationのOccurrence Identityとみなさない**。Relation/CRUDセル/SHO spanのPinは、別Ownerで出典裏付けのある正式Relation識別子を導入・再解決できた後の受入対象とする。Subject Pinの初期実装をGraph全機能の完成に依存させない。
+
+**次の小さな独立Expected（上記REA-MAPの拡張、採用済み・試験済みではない）**：
+
+| Case | 入力・操作 | 期待・拒否 |
+| --- | --- | --- |
+| REA-X-01 | UI項目を増やす／UI項目のみを削除 | Table Definition・実DB・公開Entryの増減なし。明示したUI変更のみ |
+| REA-X-02 | Fieldを明示削除し、同Fieldを複数UI/Query/CRUD/Script Inputが参照 | Data Model写像からFieldを除き、UIは残して未Mapping警告。すべての依存先の参照切れを検出し暗黙Write/Launchを拒否 |
+| REA-X-03 | Function/Entryの削除・rename・同名別IDでTriggerを再評価 | Bindingの一意な現在性が確かめられなければunresolved。自動再公開、再実行、別Functionへの付替えなし |
+| REA-X-04 | REAの外部Graphに平行EdgeがあるがStudio描画EdgeにしかIDがない | Subject Pinは許容しうるが意味Relation Pinはunsupported。業務Relation受理と誤表示しない |
+| REA-X-05 | Subject Pin後にWorkspace切替・Source改版・同offset A→B→A・旧Reply後着 | Pin Intentを維持しつつ現在資格を失効。silent retarget/旧返信の現在表示なし |
+| REA-X-06 | GUI・CLI・AIから同じField編集案を要求 | 変更前・後の対象Identity、影響集合、診断意味、Source版、Action/Effect境界が同じ。AI案だけに権限追加なし |
+| REA-X-07 | 外部REAのpartial/unknown、またはOKF broken linkを含む文書を読む | 形式の取得成功と「全項目不在」「意味受理」「Current Grant」を混同せず、用途に応じunknown/needs-review |
+| REA-X-08 | Triggerが発火したがEntry未公開／Artifact版不一致／現在Grant欠落 | 起動しない。Trigger occurrence・Invocation/Attempt・Effect Receiptを独立観測し、ACK成功を業務成功としない |
+
+**非重複の実装配賦・受入ゲート**：P0-A=#4322からREA Observation 1件＋有向Relation 1件の現main移植（製品API・受領bytesの独立照合）。P0-B=#4515で**Subject Pin**の初回GUI実Consumer（read-only）。両者は**並行**し、互いの未完了をHard dependencyにしない。P1=#1126/#1124で正式Table Definition更新のMapping解除とCLI/Studio診断の同値性（REA-X-01〜03/06）、#4495のpure Function二入口Invokeは別レーンで先行。P2=#3394の外部Graph候補から正式Relation/三要素分析法のモデル・CRUD/SHOへの**選択的**取込、#3270の実DB観測/Apply/Read-back、#4497のTrigger Effect・#4143のOKF K2以降を段階的に結合する。X-TEA Modeler原典に基づく三要素分析法の図面・機能階層・業務モデル・相互参照は#1124/#1125/#1031の忠実性検証を維持し、TEI独自のAI/Pin/Script拡張を原典機能だと記述しない。**本計画は仕様候補であり、実Go/Studio/REA Product E2E、実Provider Read、Owner受理、実DDL/実EffectはNOT RUN。**
+
 **検討中の横断追補（DBアクセス・Query/2way SQL）**：対象DataSourceの既存Binding解決、DB別Native SQLの選択規約、SQL編集時の診断と分岐検証、異種DBでの意味同値性を、[DBアクセス・Query選択・2way SQLの最小適合計画](https://github.com/hat47x/tei-platform/issues/2622#issuecomment-6772875802)で小さな実証へ分解する。#2611・#2622・#2387・#2667に既存の責務を残し、新しいCore API・正式DSL構文・実DB対応の採用・完了を意味しない。
 **2026-11-09／Product Queryの物理入力乖離を解消（独立Source Fixture段階）**：[Workbench設計§22](design/DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)と[隔離PG Product Fixture](../examples/data-source-workbench/README.md)に、既存`postgres_seed.sql`の`sales_order`4列と、実`order_entry.recent_orders` SQLが要求する`public.orders`5列＋`:from`の**物理Schema不一致**を反映した。従来F-01〜10を壊さず、専用`recent_orders_product_seed.sql`を別Sourceとして追加し、3行／境界一致2行／後方0行の独立Source-static ExpectedをGoで判別する。**これは実PostgreSQL接続・Provider Invoke成功ではない**。最初の未成立実行辺は、固定Function/Queryの実Consumed SQL+args→Alias/物理Instance/Provider→実Rowset/Function Data Context。Ownerは#2586、実ProductのCLI/Studioは#1251、Schema適用は#2892。main #3540の静的Inspector S2-referenceは実CLI/Wails経路まで前進したが、外部Plugin Build/Grant/2×2実BOMを証明せず、異質JSONLは後続比較とする。新Gate/Host/Query正本なし。
 
