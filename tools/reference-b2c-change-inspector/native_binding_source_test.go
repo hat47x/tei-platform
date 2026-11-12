@@ -115,6 +115,10 @@ func TestB0OneNativeFieldBoundToActualManagedSource(t *testing.T) {
 		t.Fatalf("declared binding did not resolve one real Source: %v", err)
 	}
 	ref := inspectionA.Sources.References[0]
+	if ref.Range.Start.Offset < 0 || ref.Range.End.Offset > len(b0OrderA) ||
+		string(b0OrderA[ref.Range.Start.Offset:ref.Range.End.Offset]) != "orderId" {
+		t.Fatalf("Source occurrence anchor differs from fixed expected token: %+v", ref.Range)
+	}
 	if ref.Subject != pin.Subject || ref.ArtifactPath != b0SourcePath ||
 		len(inspectionA.Canonical) == 0 || len(inspectionA.AuthorityLimits) == 0 {
 		t.Fatalf("binding failed independent identity/authority checks: %+v", inspectionA)
