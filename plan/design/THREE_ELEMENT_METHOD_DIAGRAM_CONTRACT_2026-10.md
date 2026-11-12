@@ -1177,5 +1177,5 @@ DMU-01〜09、他DraftのORG-MAP-01〜10（#4500）と期待値・入力を照�
 - #2586のDは最優先の実Read主線。A/BのGUI・文書対応が未完成でも開始できる。
 - Scopeを限定できる領域では独立した無関係Plugin/MethodのエラーでA〜D全体を止めない。ただし**問いに必要なRequired Closure**に欠落がある場合は、その問いの結果だけ`unknown/blocked`を残す（#2582/#4518）。参照数0や未索引0を「絶対未使用」の証拠にはしない。
 
-**優先順位と停止条件**：P0は#1251/#2586と#4495の実Provider/CLI経路。P1aはMap/Locate/Validation/Source Indexの実現状確認、P1bは一件の参照往復、P1cは近傍直接テストとのSource/Scope照合。P2はPin→AI共有・逆編集影響、P3は異質Consumerと性能。追加の横断Test SSOT、独自Acceptance Engine、同期全Pluginロード、実証前のTarget普遍適合宣言は行わない。**本節はdocs-onlyでありA〜Eの新しい通し実行はNOT RUN。**
+**優先順位と停止条件**：P0は#1251/#2586と#4495の実Provider/CLI経路。§29.5のP1aはMap/Locate/Validation/Source Indexの実現状確認、P1bは一件の参照往復、**P1cはPin→AI Previewのまま維持**する。#4525の近傍直接テストとSource/Scope照合はP1bと並行できる独立の試験準備とし、PinやGUIの完成を実起動・直接テストのHard Gateにはしない。P2は安全な逆編集影響、P3は異質Consumerと性能。追加の横断Test SSOT、独自Acceptance Engine、同期全Pluginロード、実証前のTarget普遍適合宣言は行わない。**本節はdocs-onlyでありA〜Eの新しい通し実行はNOT RUN。**
 
