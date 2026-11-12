@@ -1116,7 +1116,7 @@ DMU-01〜09、他DraftのORG-MAP-01〜10（#4500）と期待値・入力を照�
 3. **Preview → Source/Edit/Apply**：同じSubject/Source/Revisionの変更候補と影響範囲を確認。Sourceへ安全に帰還できない図表はread-only。編集採用とDB Apply/Host Effectは別。
 4. **Verify → Observation**：MapとLocateが同一Fingerprintでも、別Load間の一致は原子的Readを証明しない。実Consumer受領、Host Invocation、Effectは各々独立に観測する。
 
-**現在の関連PRと資格**：[#4524](https://github.com/hat47x/tei-platform/pull/4524)は同Kind同IDを一意として誤索引しない修正のDraft。[#4392](https://github.com/hat47x/tei-platform/pull/4392)はMap埋込Validation等の修正Draft。[#4521](https://github.com/hat47x/tei-platform/pull/4521)は実SourceのMap/Locateを限定比較し、旧HEADにはValidation不一致によるCI失敗が記録されている。**これらの新しいhead/CI/merge状態を確認せず採用済みとしない。** 旧X-TEAの空・欠落IDは一時Occurrenceとして読取・移動できても、永続Semantic IDや逆編集先を捏造しない（#1031/#4510）。
+**関連PRと資格（2026-11-12夜のIssue照合時点）**：[#4524](https://github.com/hat47x/tei-platform/pull/4524)は同Kind同IDの誤索引を防ぐ限定修正、[#4392](https://github.com/hat47x/tei-platform/pull/4392)はMap埋込Validation等の修正で、双方ともIssue上のPR状態は**closed**へ変化している。ただし**closedだけではmerged・現行mainの適合・CI成功を証明しない**。[#4521](https://github.com/hat47x/tei-platform/pull/4521)は実SourceのMap/Locateを限定比較し、旧HEADのValidation不一致／新HEADの検証範囲を区別している。受入担当は各PRの**merged_at、mainにあるBlob、exact HEADの試験、実ConsumerのRead**を独立に確認する。これらを一括して「Modeler完成」とは呼ばない。 旧X-TEAの空・欠落IDは一時Occurrenceとして読取・移動できても、永続Semantic IDや逆編集先を捏造しない（#1031/#4510）。
 
 ### 29.3 Studioの高速性を損なわない拡張境界
 
@@ -1155,3 +1155,27 @@ DMU-01〜09、他DraftのORG-MAP-01〜10（#4500）と期待値・入力を照�
 **撤回条件**：観測0件を無条件に未使用と表示、表示名・位置から編集先を創作、partialをcompleteとして表示、別Loadを原子的Readと呼ぶ、SelectionをGrantとして扱う、Navigation初期表示に全Plugin同期ロードを要求する、実測なしで高速化を主張する。いずれも限定read-onlyへ戻して再検証する。
 
 **状態**：設計・バックログ・Expected候補のみ。新Navigation/Index/Pin UI、NAV-01〜10、性能実測、CI、現在Disclosure、Owner意味受理は**NOT RUN / NOT ACCEPTED**。
+
+
+### 29.6 参照ナビゲーションとScript近傍テストの統合受入（#4525/#4502）
+
+**実装で追加するのは第二のテスト体系ではなく、同じSourceから「どこを参照するか」と「何が実行されたか」を別々に観測する経路である。** #4525の近傍直接テスト（Rule/Operator/Function/Hook）と、#1180の複数Function/Driver Scenario、#4495の製品Entry/Invocation、#2586の実Query/Provider/Consumerは責務を分ける。以下は既存Expectedの**引渡し・照合条件**であり、新しい正式DSL/Runner/Oracle/Consoleコマンドを定義しない。
+
+| 受入経路 | 必要な一致と観測 | 合格の上限 |
+| --- | --- | --- |
+| A：Source→Locate/Map→参照往復（§29 P1a/b） | 実Workspace Root/Source Revision、qualified Subject、Relation occurrence、Source range、Validation済みか、Coverage/Disclosure。別Loadなら別Attemptとして記録 | read-only navigationの限定合格。編集資格・実Function実行ではない |
+| B：Source→Rule/Function近傍直接テスト（#4359/#988/#2620/#4525） | 近傍Source/Operator/Plugin版と独立Expected、入力のmissing/NULL/partial、**実際に参照したSource集合**。実行位置とテスト位置の一致だけを根拠にしない | 局所意味/実装特性の合格。Product Entry/Hostの資格ではない |
+| C：Function→Entry/Trigger→Product CLI Process（#4495/#4502） | 実Entry公開版、型付き引数、selected Provider、Linked/Loaded bytes、実Invoker、Operation/Attempt、結果の観測。CLIと共通APIの二入口を同じMeaningへ接続 | 観測した一Target/Consumerの実起動。Trigger設定や擬似Executorだけで実Effectは証明しない |
+| D：Query→Rowset→Function Data Context→Consumer（#2586） | 実Source/DB alias/Schema、Provider選択と実Read、Rowset grain/Scope/Completeness、Consumer受領と独立Expected | 実Readの一往復。参照0件、集計値、欠落から不存在や更新適格を推測しない |
+| E：Operation→Host Effect/Recovery（#1174/#1129） | current Grant、実Commit/Receipt、独立Observer、ACK喪失と未知結果の扱い | 実行したEffectだけの受入。B/C/Dの結果を流用しない |
+
+**同一Fixtureの条件**：A〜Eに共通の意味上のSubjectを使っても、異なるWorkspace Root、Model Revision、Source-only改版、DB/Grant/Plugin更新、Load時点を同一のObservationとして結合しない。Content FingerprintだけでSource Identity/Current Eligibilityを証明しない。直接テストのExpectedは、生成AIが作成した実装コードや生成テスト結果から逆算して確定させない。
+
+**実装担当への直近の小さな引渡し**：
+- #4392/#4524の**取り込み実態と現main実テスト**を確認したうえで、#4521の実Relation一件をAのread-only基線にする。已存の負例（同Kind同ID、Map/Locate Validationの不整合、同FP別Root）を流用する。
+- #4495/#4525はB/Cのテストを受け持ち、Aで見える参照・出典を起動契約へ渡しても、**Mapに存在する＝公開Entryあり**とは扱わない。
+- #2586のDは最優先の実Read主線。A/BのGUI・文書対応が未完成でも開始できる。
+- Scopeを限定できる領域では独立した無関係Plugin/MethodのエラーでA〜D全体を止めない。ただし**問いに必要なRequired Closure**に欠落がある場合は、その問いの結果だけ`unknown/blocked`を残す（#2582/#4518）。参照数0や未索引0を「絶対未使用」の証拠にはしない。
+
+**優先順位と停止条件**：P0は#1251/#2586と#4495の実Provider/CLI経路。P1aはMap/Locate/Validation/Source Indexの実現状確認、P1bは一件の参照往復、P1cは近傍直接テストとのSource/Scope照合。P2はPin→AI共有・逆編集影響、P3は異質Consumerと性能。追加の横断Test SSOT、独自Acceptance Engine、同期全Pluginロード、実証前のTarget普遍適合宣言は行わない。**本節はdocs-onlyでありA〜Eの新しい通し実行はNOT RUN。**
+
