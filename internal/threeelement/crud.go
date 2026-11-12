@@ -22,7 +22,7 @@ type CRUDTable struct {
 // GenerateCRUDTable derives a deterministic CRUD table from the model.
 // It prefers explicit CRUDDefinitions; missing pairs are filled from FunctionElement.Operations.
 func GenerateCRUDTable(model ThreeElementModel) []CRUDTable {
-	_, _, dataByID := model.Index()
+	dataByID, _, _ := model.Index()
 
 	type pair struct{ fn, data string }
 	explicit := map[pair]CRUDDefinition{}
@@ -131,7 +131,7 @@ func GenerateBusinessFunctionCrossReference(model ThreeElementModel) []BusinessF
 
 // GenerateFunctionDataCrossReference derives Function→Data mappings including CRUD.
 func GenerateFunctionDataCrossReference(model ThreeElementModel) []FunctionDataCrossReference {
-	_, _, dataByID := model.Index()
+	dataByID, _, _ := model.Index()
 
 	type pair struct{ fn, data string }
 	explicit := map[pair]CRUDDefinition{}
@@ -206,7 +206,7 @@ type CRUDGap struct {
 // but no CRUD covers the expected direction.
 func GenerateCRUDGaps(model ThreeElementModel) []CRUDGap {
 	var gaps []CRUDGap
-	_, fnByID, dataByID := model.Index()
+	dataByID, fnByID, _ := model.Index()
 
 	// Build explicit CRUD lookup.
 	type pair struct{ fn, data string }

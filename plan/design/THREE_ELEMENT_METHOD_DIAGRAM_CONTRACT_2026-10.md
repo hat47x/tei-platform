@@ -1217,3 +1217,45 @@ DMU-01〜09、他DraftのORG-MAP-01〜10（#4500）と期待値・入力を照�
 
 **優先順位と停止条件**：P0は#1251/#2586と#4495の実Provider/CLI経路。§29.5のP1aはMap/Locate/Validation/Source Indexの実現状確認、P1bは一件の参照往復、**P1cはPin→AI Previewのまま維持**する。#4543の近傍直接テストとSource/Scope照合はP1bと並行できる独立の試験準備とし、PinやGUIの完成を実起動・直接テストのHard Gateにはしない。P2は安全な逆編集影響、P3は異質Consumerと性能。追加の横断Test SSOT、独自Acceptance Engine、同期全Pluginロード、実証前のTarget普遍適合宣言は行わない。**本節はdocs-onlyでありA〜Eの新しい通し実行はNOT RUN。**
 
+
+## 30. Lifecycle Graphから生成器への引渡し資格：G1→G3→G2（2026-11-13）
+
+本節は#4198の「型付きGraphをGeneratorの第一入力にできるか」という**未検証の仮説**と、#4544（Generator自己記述G1/G3）、[Draft #4541](https://github.com/hat47x/tei-platform/pull/4541) §24（自己記述から生成器生成への受渡し）を接続する。**新Generator Engine、第二Graph正本、独自Semantic Verifier、Toolchain/Plugin Registryを作る計画ではない**。GeneratorのSource/選抜/実BuildのOwnerは既存#2016/#2595/#1121/#951/#2600、独立Expectedは#1180/#2514に残す。
+
+### 30.1 Graphの表示・意味・生成入力を区別する
+
+- **Authoritative Semantic**：Sourceに受理されたFunction/Relation/Rule、型・Facet・NULL/Absent/Unfetched、粒度・単位・時点・丸め、業務Effectと必要な権限。三要素分析法はMethod/Profileとしてこの意味を説明し、図面が第二正本になるわけではない。
+- **Graph Projection / Proposed Patch**：GUI・Mermaid等の図形/編集候補と、Source・Relation occurrence・Owner確認範囲を区別する。Graphを実際に生成入力にできるかは、既存標準データ構造とRole/Operatorへのlosslessな復元で判別する。描画専用Edge ID・レイアウト座標・曖昧CRUD・未確定AI Mappingを入力の意味IDに昇格させない。
+- **Generation Intent / Selected Implementation**：受理済み意味を、Target Profileと選択可能な標準Operator/Generatorの契約へ束縛する**候補の構成票**。既存Resolver/Selectionを使い、不足したCapabilityは明示する。生成AIが補った固有Transform/Pluginは候補であり、選択や意味受理の証拠にならない。
+- **Artifact / Actual Invocation**：Generatorの選択・検査、実際に使用したGenerator/依存Source bytes、生成物、Builder、実Target、Host/ConsumerのCall/Effectはすべて別Claimとする。Sourceのbyteが一致してもImplementation/Toolchain/Generator/Current Grantの資格を省略しない。
+
+**初回の採否判断**：Graphのノード/辺を第一入力にすること自体は採用せず、**同じAccepted Semantic→標準データ/Role→Generation Intent**が、Graphを経由する場合と経由しない場合に意味上同じTarget生成指示を構成できるかを比較する。非可逆Graphや未対応Methodはread-only/unsupportedにとどめ、通常のコード生成・手書きコードの経路を停止しない。
+
+### 30.2 実装の小さな順序とOwner
+
+| 順序 | 既存Owner | 具体的な引渡し／反証 |
+| --- | --- | --- |
+| G1：構成票 | #4544/#2016/#2620 | 受理済み単一pure Function（既存line-amountなど）とTarget Profileを固定。標準Generator/Operatorで足りる範囲と生成AI追加の必要範囲を示し、実際に選択したImplementationとSource版を明示。未受理Graph Patchを混入させない |
+| G3：意味適合 | #4544/#2514/#1180 | 独立Expectedと既知Mutant（欠損をゼロ化、丸め差、同Resultでも別Meaning、選択Bに対して実呼出しA）で判別。自己生成したコードと期待値の相互保証を禁止 |
+| G2：合成資格 | #4544/#3278/#951/#1121 | 実例で二Transform/Guardの順序差・競合・partial failureを測る。原子的Traitの必要義務、全Path Authority/Effect、手書き領域の再生成保全を確認し、交換可能な一般法則を先取りしない |
+| Product受入 | #1251/#4495/#2586/#2595 | 同じSource/Target/AttemptでSelected→Linked/Loaded→Actual Invoked→Consumer Receivedを実観測。生成器Reference成功は製品CLI/Studioや実RowsetのPASSではない |
+
+**初期縦断は「ひとつの受理済みpure Function・ひとつの既存Target・ひとつの独立Expected」**に限定する。通常配布のGo単一Binaryを基本とし、Java/.NET/WASMなど外部Host向けTargetは個別資格を付す。Graph/Studio、AI Harness、異質Target、実DB書込みをすべて最初のHard Gateにしない。
+
+### 30.3 Lifecycle/CRUD/Mappingに特有の負例
+
+| 既存Expectedとの接合 | 入力差と必要な判断 |
+| --- | --- |
+| #4544 GG-04 × §27.8/§29 | 図形/Row数が同じでも、Relation多重度・CRUD矛盾・Queryのgrain/Scopeが異なる。Target指示へ欠落するならGraph-firstを不適格にし、コードを自動生成して成功扱いにしない |
+| #4544 GG-05 × §24/§25 | Validation/Guardを加える前後、Plugin/Transform A→BとB→Aで全Path Obligationが変わる。Targetを実行しない静的UNKNOWNは実行時安全のPASSではない |
+| #4544 GG-06 × §25 S0 | Generator/Provider B選択、実際はA使用、出力値が偶然一致する。実選択・実ロード・実呼出しIdentityが異なるためFAIL |
+| #4544 GG-02/03 × §27.7 | NULL/未取得・丸め・未マッピングUI項目・旧版列で正しい更新先が未確定。AI候補によるゼロ化/別列への補完は禁止し、Source/Contract Gapを診断 |
+| #4544 GG-07/09 × §24 | Generator版だけ更新、Script A→B→A、宣言Sourceと実Build入力不一致。Artifact/Evidenceの再資格化を必要範囲に限定し、実Build投入bytesを未確認ならUNKNOWN |
+
+既存#4544のGGケースを**本書内で再起票せず、交差条件だけを付記**する。AI CandidateをAuthoritative Meaningへ変えるときは通常開発相当のレビューとSource差分確認を使い、OKF等による資料追跡を必須の新承認制度にしない。
+
+### 30.4 何ができたら、この計画を進めるか
+
+(1) G1で既存#2016の実Referenceを用いて同一Accepted SemanticとTargetの構成票が作れること、(2) G3で独立Expectedにより誤Generatorを確実に落とせること、(3)実際の選択GeneratorとBuild投入byte/成果物のSource帰属が#2595の範囲で確認できること、(4)そのうえで、必要なら#4198 R1/R4のGraph Patch→Source帰還→実Targetの限定縦断に進むこと。この順にClaimを高める。
+
+**状態**：G1/G3/G2は他Ownerの計画を引用する設計引渡し。Graph-firstの製品採用、#4544 GG試験実行、今回の実Go/CLI/Studio/Host/CI追加試験、Owner意味受理は**NOT RUN / NOT ACCEPTED**。本追補でP0実Provider/Function Read/Script起動の優先順位は変更しない。
