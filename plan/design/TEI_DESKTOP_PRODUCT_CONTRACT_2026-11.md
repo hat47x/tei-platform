@@ -408,7 +408,7 @@ GitはSource/Contract/Plan/小さなManifestの管理に適する。一方、画
 
 | 操作 | UI/Modelの期待 | 書込み境界・禁止事項 |
 | --- | --- | --- |
-| 画面項目を追加 | **未マッピング**のUI要素を作る。既存項目を選択した場合だけBinding Candidateを作る | テーブル列、Data Model属性、実DBに暗黙追加0 |
+| 画面項目を追加 | UI要素を作る。テーブル連動型の入力要素は未マッピングから始め、既存列の明示選択または利用者が実行した「既存列から画面生成」でBinding Candidateを作る | テーブル列、Data Model属性、実DBに暗黙追加0 |
 | UI項目を削除／並べ替え／名前変更 | UI定義だけ変更する | Table Schema/DB列への意図しない変更0 |
 | 既存列をUIへマッピング | qualified Table/Column identityとSource/Schema Revisionを指す明示Bindingを作る。同じ列への複数UI要素のBindingを許す | label/配列index/画面座標で列を同定しない。DB Schema変更0 |
 | テーブル列の表示名を変更 | stable Column identityが保たれる場合はBindingを維持し再Projectionする | 変更前後が同じ列か判断できない場合は確認が必要 |
@@ -418,7 +418,7 @@ GitはSource/Contract/Plan/小さなManifestの管理に適する。一方、画
 | 列の型・NULL可否・Relationを変更 | Binding互換性を再評価。必要に応じ入力制約・表示・Validationの警告や変更候補を出す | データ変換・既存行変更・有効なBindingとすることを推測で確定しない |
 | 外部DB/Sourceが更新された | Source/Schemaの実観測からData Modelを再投影し、現在のBinding資格を検査 | Watcher通知・UIキャッシュ・同名一致だけで現在性を保証しない |
 
-**二つの確定を混同しない**：Sourceとしてのテーブル定義変更の受理と、実DBに適用されるDDL/Migrationは別操作である。実DB変更が必要なら、Provider/Target、適用順、破壊的影響、Rollback可否、実Receiptを既存DB移行・Command Ownerが扱う。外部DBが定義のAuthorityであるとき、TEI側のSource修正だけで実DBを変更したと表示しない。ドメイン専門家による意味受理と開発者によるDDL/キー/Relationの技術検証は、通常開発相当の協業で十分であり、Desktop専用承認組織を作らない。
+**二つの確定を混同しない**：Sourceとしてのテーブル定義変更の受理と、実DBに適用されるDDL/Migrationは別操作である。UI定義を別Sourceへ保持している場合は、削除後の旧Bindingを実行可能状態に放置せず、同じ変更計画内で解除を準備する。複数Sourceへの原子的保存を既存基盤が保証しない場合は、「保存済み／UI同期保留」を明示して影響機能の公開・実行を停止し、架空の原子性を主張しない。実DB変更が必要なら、Provider/Target、適用順、破壊的影響、Rollback可否、実Receiptを既存DB移行・Command Ownerが扱う。外部DBが定義のAuthorityであるとき、TEI側のSource修正だけで実DBを変更したと表示しない。ドメイン専門家による意味受理と開発者によるDDL/キー/Relationの技術検証は、通常開発相当の協業で十分であり、Desktop専用承認組織を作らない。
 
 ### 12.2 変更の前後で保存すべきもの
 
@@ -426,7 +426,7 @@ GitはSource/Contract/Plan/小さなManifestの管理に適する。一方、画
 - **Apply**：Source authority/権限/実byteを直前に照合して既存Acceptanceへ委譲する。画面追加から直接列追加するAPIは用意しない。対象が不明なら無操作または明示的な解決要求で停止し、空のImpactを成功とみなさない。
 - **再読込み**：Accepted SourceからData ModelとUI定義を再Project。削除済み列を参照したUI要素は残すがBindingは空、警告は利用者が解消するまで残す。障害やクラッシュがあっても未確定のMigrationやAI提案を既定で再実行しない。
 - **記録**：変更票/Receiptに元Column identity、解除されたUI ID集合、除去理由、Source/Artifact revisionを保存する。UI定義内に期限切れの隠れBindingを残して誤再接続しない。
-- **表示**：項目が「データと未接続」なのか「列が削除されたため解除された」のかを区別する。データ欠損・NULL・非開示とは混同しない。
+- **表示**：項目が「データと未接続」なのか「列が削除されたため解除された」のかを区別する。データ欠損・NULL・非開示とは混同しない。必須Bindingの有無はUI要素の用途とOperation契約で決める。表示専用ラベル・計算値・API由来項目まで「テーブル未接続だから不正」としない。Draft保存は可能でも、必須Binding不成立の実操作・公開・生成は、その対象Capabilityで拒否できるようにする。
 
 ### 12.3 一つの最小Fixtureと独立Expected（追加DT番号は採番しない）
 
@@ -463,4 +463,65 @@ Fixture `table-backed-ui-mapping-v1`（概念案）：Table `Customer` に stabl
 | D | 同じFixtureを実Wails `StudioBridge`経由で再現。Workspace変更・Window epoch・Source drift負例を追加 | #3421/#1824 | 実IPC/Window Evidence、旧応答後着の排除 |
 | E | 「DB列も作る」明示操作をMigration計画として**別**に実装。SHOへの影響レポートとAIへの固定対象引継ぎも同じImpact Resultから派生 | DB移行/#3422、SHO、#4479 | 実Provider/DB Receipt、Disclosure Preview、Source/Consumer一致 |
 
-最初に満たす完了条件は**U1〜U4/U7を同じFixtureでHeadless PASSとし、根拠と未知範囲を保存すること**。C以降は先行PASSを勝手に宣言せずCapability別に判定。既存Plugin/APIを接続できるだけで十分な場合は新Codeを作らず、AI/開発者向け操作はGUIと同じ意味契約をCLIから利用する。
+最初に満たす完了条件は**U1〜U4/U7を同じFixtureでHeadless PASSとし、根拠と未知範囲を保存すること**。この段階のPASSはUIの実DB書込みや実Wails、SHO保存を意味しない。C以降は先行PASSを勝手に宣言せずCapability別に判定。既存Plugin/APIを接続できるだけで十分な場合は新Codeを作らず、AI/開発者向け操作はGUIと同じ意味契約をCLIから利用する。
+
+
+## 13. 第6次統合：採用前の収束レビューと既存Issueへの実装引継ぎ（2026-11-12）
+
+### 13.1 現時点で先に固定できる契約と、まだ固定しない契約
+
+| 区分 | 取り扱い | 根拠Owner・現在の資格 |
+| --- | --- | --- |
+| **固定**：テーブル連動型Data Modelの写像、UI項目追加の非DDL、列削除時のUI要素維持＋Binding解除＋警告 | §12の利用者操作契約として提案。Table Sourceの編集/受理と実DB Migrationは分離 | #1124、DB移行Owner。GUI/CLI・実DB E2E未実施 |
+| **固定**：表示用Selectionと作業意図としてのPinned Subjectは別。Pin≠現在Grant/Meaning Acceptance | 既存Inspect/Hostへ接続。Pin後のSource/Workspace/Grantの現在性は別審査 | #4515（実装予定）、#1824、#4479（Draft） |
+| **未採用**：Graph描画用Edge IDをSemantic Relation identityとして固定 | `parent:`等の描画IDはRelation Pin不可。関係の正式Occurrence IDが得られるまでread-only/unsupported | #4515、#1124。GUI Relation Pinの合格なし |
+| **未採用**：Handoff Envelopeを公開ABI・永続Session DBとする | §10は受渡しに必要な意味の一覧。型名・wire schema・持続方式は実Typed APIのOwnerで決める | ADR-0048/#1158、#3421 |
+| **未採用**：未マッピングの全UI項目を不正とする | 表示のみ・計算・API項目はTable Binding不要。入力の必須性とOperation依存を文脈別に検証 | #1124、Function/UI Owner |
+| **未採用**：外部DBの欠落観測だけでTable Source/TEI意味定義を削除 | 外部観測と宣言Authorityの差分を示し、同期操作を明示する。Provider側変更をDesignerの自動Applyにしない | DBクライアント／移行Owner |
+
+三要素分析法はデータモデル・機能モデル・業務モデルの原典に忠実な方式として扱う。**TEIの汎用コアに三要素だけを固定せず**、標準・業務ドメイン・案件の各Plugin/Roleが同じSource/Operation契約を利用する。非RDB、グラフ、時系列等へ「Data Model＝物理テーブル」を一律適用しない。
+
+### 13.2 UI Bindingの可視状態と操作資格
+
+「マッピング有無」だけでは障害診断が不足する。GUI/CLIは少なくとも次の意味を区別して表示する。以下は**表示の意味分類**であり、共通APIに新しいenumを採用したものではない。
+
+| 状況 | 利用者に見せるもの | Draft / Preview / Publish・Execute |
+| --- | --- | --- |
+| UI要素にBinding不要（説明・装飾・自前計算等） | 正常：Binding対象外。計算依存がある場合は別途診断 | Draft可／計算契約に従う |
+| Binding可能だが未設定 | 未接続の明示。候補から選べる | Draft可／必須入力のPublish・Executeを拒否 |
+| 以前Bindingした列が正当に削除された | 元列・影響元・解除理由の警告。UI要素を残す | Draft可／当該機能の実操作は依存条件に応じ拒否 |
+| Source/Providerの取得がpartial・unavailable・denied | 不明・現在資格未確認。**存在しない列とは断定しない** | 閲覧/編集Draft可／現在資格のない確定・実行を拒否 |
+| 同名の新列または同端点の別Relationが出現 | 別対象であることを示し、明示再Bindingを要求 | 自動再Binding・旧Preview Applyなし |
+| 型・NULL可否・Cardinality変更により不適合 | 必要な型変換/入力制約/影響先を診断 | Draft可／影響する実操作は適合確認まで拒否 |
+
+削除された列の旧Bindingが別Sourceに残存するなら、Projectorはそれを**有効Bindingとして実行側へ渡さない**。UI/Source更新の原子性が未証明の段階では、二段階の保存成否と修復候補を表示する。無条件に全Workspaceの利用を停止せず、影響するConsumerと操作に局所化する。
+
+### 13.3 最小の「一巡」を二系統に分ける（既存テスト再利用）
+
+**系統A — UI/Schema整合**（§12 U1〜U9の再利用）：
+A0 現存のTable Source・UI Source・Bindingの実表現を棚卸しし、独立Expectedを作る。A1 HeadlessでU1〜U4/U7のPreview/拒否を確認。A2 適格なAccepted変更後に再Projectionして、U5/U6のUI残存・旧Binding不活性・警告を観測。A3 同じScenarioで実Wails Window→IPC→共通API→Result/Sourceを照合。A4 DB実DDL/ReceiptとSHO/AI連携は別のConsumer受入。
+
+**系統B — Workbench Subject Pin**（#4515 PIN-S0-01〜07の再利用）：
+B0 `reference/tei-studio-workbench/main.ts`で一時選択とPin意図を分離。B1 既存`InspectSubject`とOrigin Workspace・epochによるread-only再解決を行う。B2 source drift/同offset別Subject/同FP別Workspace/後着Replyで要再資格化とする。B3 Source-backed Relation IDが利用可能になるまで描画Edge Pinをunsupportedと表示。B4 実Workbench/支援技術の表示・DOM/ARIA開示は別Ownerの実Consumer試験とする。
+
+**先行関係**：AのRead-only PreviewとBのSubject Pinは独立に並行可能。#4472/PR #4513のCRUD不具合修正はCRUD派生Impactの「完全性」を主張する前に必要だが、列・UI要素を数える局所Fixtureのread-only作成自体を無意味にブロックしない。#4497のTrigger/Entry削除・再Bindingも同名自動復旧不可という規則を共有するが、Desktop専用のTrigger Engineは作らない。
+
+### 13.4 実装・Owner受入の比較票（新しい試験番号を増やさない）
+
+| 対象 | 先に提出する成果物 | 実行して区別する証拠 | 現状 |
+| --- | --- | --- | --- |
+| A0/A1 | 実Source/Bindingの棚卸し・U1〜U4/U7の独立Expected | CLI/Headless入力byte、Schema/Consumer scope、Before/After、診断、完全性 | **NOT RUN** |
+| A2 | 列削除のImpact→Accepted→再Projection | UI要素ID存続、旧Binding不活性、Source改版、部分保存時の修復表示 | **NOT RUN** |
+| A3 | 実WailsのGUI/CLI同一Fixture比較 | 実Window、IPC、Host Root、旧Reply後着、ResultとSource identity | **NOT RUN** |
+| A4 | DB実Provider/SHO/Harnessへの段階接続 | 実Invoke/Receipt、文書保存とMeaning受理区分、送出Disclosure | **NOT RUN** |
+| B0〜B2 | 一時選択とPinned SubjectのSource TypeScript実装 | #4515のPIN-S0-01〜03/05〜06、exact HEAD TypeScript/Node/実GUI | **NOT RUN** |
+| B3/B4 | 形式上のRelation Pin非対応、支援技術・送出の検証 | PIN-S0-04/07、真のRelation IDと描画IDの不一致、DOM/ARIA | **NOT RUN** |
+
+各OwnerはPASS/FAIL/NOT RUN/unsupportedを別票に記録し、合成Provider、ブラウザーSmoke、CI Build成功を実Wails/実DB/外部Harnessの資格へ昇格しない。独立Expectedの作成時は実装側の投影結果から期待値を自動複写しない。
+
+### 13.5 統合に伴う文書整理
+
+- この文書のDT-01〜38は横断的な**検証観点の索引**として維持する。採否・優先度・実行結果の正本はADR-0048/#1158、#1124、#1824/#4515、#3421、SHO/DB/Effectの既存Ownerに残す。
+- §10のEnvelope、§11の状態分類、§12のUI/Schema操作を第二の永続モデル/Registry/Controllerに実装しない。独立した意味概念を、必要な既存Application API DTO/Diagnosticへ分配する。
+- 既存#1529のReference closeを実OS検収に流用しない。#4507のMergedはFingerprint副作用に関する限定修正であり、#4513/#4514や#4515、実Wails/DBの合格ではない。
+- 次のレビューは**追加のDT番号より先にA0/A1またはB0/B1の実Evidence**を確認する。実コードから新たな不一致が見つかった場合だけ設計へ戻る。
