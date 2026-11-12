@@ -28,6 +28,15 @@
 | G61〜G64 | DSL文法と互換、外部形式の取込・交換、オフライン再同期、継続運用と復旧 | [#1063](https://github.com/hat47x/tei-platform/issues/1063)、[#2621](https://github.com/hat47x/tei-platform/issues/2621)、[#3270](https://github.com/hat47x/tei-platform/issues/3270)、[#2597](https://github.com/hat47x/tei-platform/issues/2597)、[#3796](https://github.com/hat47x/tei-platform/issues/3796) |
 | G65〜G71 | 業務資産、検索、通知、外部契約、継続イベント、デバッグ・模擬実行、利用者のライフサイクル | [#4426](https://github.com/hat47x/tei-platform/issues/4426)、[#4427](https://github.com/hat47x/tei-platform/issues/4427)、[#4428](https://github.com/hat47x/tei-platform/issues/4428)、[#2542](https://github.com/hat47x/tei-platform/issues/2542)、[#3274](https://github.com/hat47x/tei-platform/issues/3274)、[#3789](https://github.com/hat47x/tei-platform/issues/3789)、[#3412](https://github.com/hat47x/tei-platform/issues/3412) |
 
+## G49 B0の実装Referenceと製品受入の間（2026-11-12）
+
+- [PR #4499](https://github.com/hat47x/tei-platform/pull/4499)のG49限定Coverage受入はmain統合済み。これは**受入条件の計画統合**であって実B2C機能の完成ではない。
+- [PR #4506](https://github.com/hat47x/tei-platform/pull/4506)は`tools/reference-b2c-change-inspector`に、明示された合成Node/Edge・変更対象・Scopeから到達NodeとC0〜C4影響候補・未解決を返すread-only Go Referenceを提案。固定独立Expected JSONと8件の局所正負テストを含む。PRのCIとマージ状態はPRで追跡し、ここでは採用済みとしない。
+- **資格上限**：入力`declaredScopeClosed`は依存関係の実完全性を証明しない。未知Node/Layerや未観測Sourceを含む場合は部分結果とする。C0/C1だけで「影響なし」と出ても、その判断は申告された範囲内に限る。公開許可、Consent/Grant、Commerce Effect、CVR改善は判定しない。Fixture-local JSONを新Core/正式ABIに昇格させない。
+- **次の受入**：①#2586の実Workspace/Query→選択Provider→実Rowset→Headless Consumerを同一Attemptで成立させる、②その実Readに対してSource revision/Required Closure/Observed Read Traceを持つ限定Adapterを検証する、③Native実ConsumerのR0/R1変更をBrowserで観測し、未取得部分を明示する、④Commerce/Experimentの実Effect・Exposure・売上・因果評価を独立資格で追う。①をB2C ReferenceのCI成功に従属させない。
+- **比較**：[生産性ベンチマーク #2018](https://github.com/hat47x/tei-platform/issues/2018)のH0（Native単独）/H1（Native＋TEI typed contract）/H2（任意のExperiment adapter）を同一変更・同一Expected・同一運用条件で測る。Build/Bundle/Runtime依存、開発時間、回帰欠落、配信・rollback、観測欠測と総コストを区別し、売上向上を先取りしない。
+- **横断Owner**：B2C #3509、実Read #2586、実Effect #1174、Provider #951、Graph/Trait #4198/#3278、Independent Expected #2514、Evidence #4307。専用Scheduler、第二Host、第二Analytics/Commerce Engineを設けない。実Product/Native Browser/実Commerce/Field Experiment/Owner受理は**NOT RUN / NOT ACCEPTED**。
+
 ## 最新の作業単位へ接続する
 
 2026年11月11日のmain `9d31f82486b2eac42791f4f3bc5cd588d69cb4fc`と関連Issueを照合した。以下は着手先の更新であり、Issueの起票・限定Reference・候補Parserを製品の完成へ数えない。以後の進捗は各Issueと[実装状況](../../docs/status.md)から再取得する。
