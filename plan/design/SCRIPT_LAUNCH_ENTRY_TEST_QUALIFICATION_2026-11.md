@@ -284,3 +284,25 @@ Go静的合成は、Generatorの出力Member/Composition・ビルド実体と、
 **後続作業への引渡し**：G1（Generator DefinitionとImplementation Candidateの区別）→G3（独立した意味Conformance）→G2（所有/順序/部分失敗を伴う合成）の順に検証を進める。G5の方式・ABI比較とG7の自己記述Bootstrapは並行研究とし、P0製品起動に必須化しない。G9のLifecycle Guard・G10のAI生成Pluginの信頼境界は、Entryの実行直前の認可・Effect/Read Footprint検査へ接続する。これらは**検討課題の略称**であり、新しいCore機能が採用・実装済みという意味ではない。
 
 **実施状態**：既存Issue/標準契約と別チャットの設計を統合した作業順・受入候補のみ。GC-01〜07の製品Go/CLI/Provider/Host E2E、複数Generatorの実合成・人間レビュー運用実績は **NOT RUN**。初回P0のpure Function実起動は引き続き#4495が担当する。
+
+## 10. Script Launch・標準Generator・TEIセルフビルドの接続点
+
+TEI Studioデスクトップ版の構築と、TEI自身によるセルフビルドを製品全体の重要な到達目標とする。一方、**実Go Functionの起動、標準Generatorの適合、セルフビルドの成功は、検収単位も未実証点も異なる**。最初から三つを一つの合格条件に束ねず、各レーンを先行並列で進め、実際の成果物の受渡しを一つの縦断例で確かめる。
+
+| レーン（既存Owner） | 最初に成立させる独立の証拠 | 次のレーンへの引継ぎ物 |
+| --- | --- | --- |
+| **L：Script Launch #4495** | 現在公開される一Entryから、実Go製品CLIと直接Typed APIが同じ選択済みProviderを実呼出し。非公開・選択誤り・結果未取得を拒否 | 対象Function/EntryのMeaning、Target、実Provider identity、実CLI Artifactと観測Result、独立Expected |
+| **G：標準Generator #4544/#1063** | 既存Generatorを優先選択し、Accepted MeaningからGoの一実装候補を生成・独立Conformanceで比較。使用したSource/Generator/出力物・既知Mutantを固定 | 検証済み生成候補と生成Source、実Builderへの入力、必要なRole/Operator Pin、適用可能なTarget範囲 |
+| **B：TEIセルフビルド #2831** | 既存標準Build graphとGo adapterから**TEI CLI等の実Artifact**を構築し、宣言Graphと実Command/実消費Source、ArtifactSet・toolchain・stageを照合 | 実ビルドした対象CLIのdigest/Target/実行可能なartifactと、独立のBuild Evidence。Stage1/2収束≠Seed trust |
+
+三つの合流では、**Bで得た実CLIバイナリをLのCLI入口として呼べるか**を一つの公開合成Functionで試す。ただしこれは**各独立検収後の結合試験**であり、初回LのCLIを「TEIセルフビルド済みの成果物だけ」に制限しない。Gで得たFunction実装候補も、意味適合だけでLの公開Entryを自動生成・公開・許可しない。直接APIの試験用GoバイナリとCLI製品バイナリは物理的に別でもよく、同じSource/意味・選択Provider契約・実Callをそれぞれのbuildに対して確認する。
+
+**合流でだけ判別する失敗（新たな独立Expected SSOTは作らない）**：
+- **LB-01**：Bが正常ビルドしたCLIと、Lが実行したCLIのartifact digestまたはTargetが異なる。L単独のQ2結果は保留せず対象を区別し、**B→L引継ぎの一致だけ**を不合格にする。
+- **LG-01**：Gで独立検証した候補とLが実呼出ししたProviderが違う。数値が600で一致しても**G→L引継ぎは未成立**。実Provider選択と実Callの証拠を再確認する。
+- **GB-01**：GのSource/Generator版がBの実消費入力に含まれず、古い生成物でCLIをビルドした。Build/Evidenceの再利用を止め、依存/Source Closureの不足を#2600/#2595へ返す。
+- **SL-01**：Studio表示やPinで「実行可能」に見えるが、Hostの公開Entry/現在Grantが不一致。Studio/AIへの結果投影と実起動は別Owner（#4515/#1824）で検収する。
+
+**主線との関係**：Lの最小Q2 → Gの最小Generator→ Bの実CLI全体Buildをすべて完了してから初めて製品を動かす、という直列化は行わない。#4495と#4544/#2831を並列に進め、足場がそろった時点でB→L、G→L、G→Bの順に接続可能なところだけ確認する。B→L統合後にStudio/Desktop（#1824）から同じTyped Operationを起動し、さらにStudio自身のBuild/更新をTEIモデルへ移す。初回のStudio GUI/Wailsや本番DB/外部HostはHard Gateにしない。
+
+**報告**：各レーンの実ソース・Artifact/Producer・Builder/Toolchain・実Consumer・Independent Expected・試験結果/未取得を別欄にする。CI成功や同値Outputを三レーンすべての合格に加算せず、結合テスト未実施なら`NOT RUN`。本節は計画と受入候補であり、L/G/Bの新規実結合試験は**NOT RUN**。
