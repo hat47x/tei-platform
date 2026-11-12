@@ -1233,3 +1233,62 @@ OKF等の文書管理、SHO文書、Git/NAS/S3等の外部Evidence保管は出�
 具体的な引渡しは、#4544（G1/G3候補選抜）、#2595（実Build input closure）、#1121（Target-neutral Lowering）、#943/#1370（Artifact/実行同一性）、#2600（増分再資格化）、#2831（TEI全体セルフビルド）。最初の実証はCLI/headlessを先行し、Studio/SHO/Web/EKIなどの完成を必須にしない。TEIの通常Go単一バイナリ配布と、必要に応じた外部Java/.NET/WASM Targetの方針を維持する。
 
 **Evidence：本§24は設計書への追補のみ。** 現行mainの参照生成器READMEと#2016/#2595/#1063等を静的に照合した。GG-01〜10の新規Go/Target/AI候補試験、Descriptor→Generatorの製品縦断、再生成の実Artifact、正式Owner意味受理は **NOT RUN / NOT PROVEN**。既存#1119のG0〜G4を変更しない。
+
+## 25. 2026-11-13 製品縦断への収束：自己記述・生成器・Function起動・セルフビルドを結ぶ
+
+§23のD0〜D4、§24のG1→G3→G2は、**成立を区別するための段階**であり、それぞれに別の製品エンジンを設ける意味ではない。Studio・Function起動・データ様式・AI Harness・Self-Buildの議論を踏まえると、最優先目標は**図表とDSLに記述された意味から実際のFunctionを呼び出せること、さらにTEI自身の実成果物を再構築できること**である。GUIが完成するまで製品CLI/共通APIの実証を止めない。
+
+本節は既存の[#4495](https://github.com/hat47x/tei-platform/issues/4495)（Function→Entry→実Invoke）、[#4536](https://github.com/hat47x/tei-platform/issues/4536)（Role読取）、[#4544](https://github.com/hat47x/tei-platform/issues/4544)（Generator構成・Conformance）、[#2831](https://github.com/hat47x/tei-platform/issues/2831)（全体Self-Build）を**別Ownerのまま接続**する。新Coordinator、第二Resolver/Registry/Host、新しいG0〜G4 Gateは作らない。
+
+### 25.1 実験対象は異なる。同名・同値を同一契約とみなさない
+
+| 対象 | 既存の成立範囲 | まだ主張できないこと |
+| --- | --- | --- |
+| fx.rate（#4536） | 実WorkspaceのRole表層、Source Index、ドメイン専用Fallback解釈 | 汎用Role InterpreterやGeneratorへの接続 |
+| line-amount（#2016/#4544） | 固定Contract・Fixture、多言語Generator候補と選抜Reference | 製品Function Entryと同一Meaning/版であること |
+| #4495 pure Function（例：数量2×単価300＝600） | 共通APIと製品CLI二入口からの実Provider Invokeを目指す最小計画 | 同じ結果のline-amountを意味同一と判定すること、self-build |
+
+**最初の製品結合対象は#4495のAccepted Function/Entry一件**とする。#4544のGenerator CandidateをそのFunctionの同じMeaning/Contractに束縛できるかは、Identity/入力・出力型/NULL・丸め/Target Profile/Source revisionを比較してから決める。異なる参照Fixtureの成功を同一Attemptの合格に加算しない。束縛不能なら明示unsupported/Gapで止め、Generatorを恣意的に作り替えない。
+
+### 25.2 最短の実証順と並走の境界
+
+| 順序・Owner | 最小検証と成立した場合の上限 |
+| --- | --- |
+| **P0-X #4495（製品最優先）** | pure/read-only Function一件を同じEntryから直接Typed Application APIと実tei CLIで起動。Source/Meaning/Entry/selected Provider/loaded implementation/actual Invoke/Resultを一改訂で追跡。結果一致でもB選択A実行は拒否。Product Function起動の局所資格まで |
+| **P0-S #4536（並行）** | fx.rateの独立Required Sourceと実Reader/Role解釈を接合。汎用GeneratorやGUIを待たずにGapを特定 |
+| **P0-G #4544（並行）** | 既存line-amount Contractで標準Generator選択・意味的Conformance・既知Mutantを検査。参照Generator合格をP0-Xに足さない |
+| **P1-J #4495×#4544** | 同じAccepted Function/ContractをInputにできる場合のみ、Generator構成→生成したEntry/Provider→製品CLI実Invokeを一Attemptで比較。Contract Fit不成立ならjoinも不成立 |
+| **P1-B #2831（並行）** | TEI Build Intent→実Builder入力→実Artifact、さらにStage1実プロセス自身によるStage2 Build呼出しを分離実証。二回Go buildしただけでは再入成功にならない |
+| **P2-UI #1124/#3422** | 同一Subjectの固定選択をStudio/図表へ投影し、CLI・Typed APIと出典/失効/結果を比較。GUI完成はP0-Xの必須条件ではない |
+
+#4198の型付きLifecycle Graphは不変Obligation＋可変Hookの候補だが、Graph Compiler完成を初回pure Function起動の前提にしない。最初は既存APIで型/選択/実Invoke/現在資格/Resultを検査する。業務Effect・DB更新の実証は#1129/#1174等へ委譲し、合成pure成功を更新権限へ拡大しない。TEI Studioは一つの意味正本と図表/DSL/SQL/テストから実システムにつながることを優先する。
+
+### 25.3 既存Scenario正本へ渡す独立反例（仮ID／未実装）
+
+| ID | 一因子変更 | 期待する停止線 |
+| --- | --- | --- |
+| SJ-01 | Product FunctionとGenerator候補の出力値を同じに保ち、Meaning/NULL/丸め/Contract revisionだけ変更 | 同一契約としてjoinせず、unsupported/不一致を表示 |
+| SJ-02 | Selected Generator/Provider B、実Loaded/Invoked A（結果は同値） | 実Identity不一致でFAIL |
+| SJ-03 | 自称Required空、しかしManifest rootまたは実Consumed依存が欠落 | 完全性はunknown、空の検査成功としない |
+| SJ-04 | Meaning不変でGeneratorだけ変更／未選択Pluginだけ変更／レイアウトだけ変更 | 必要な部分のみ再資格化。旧Artifactの不当再利用と全域無駄ビルドの両方を検出 |
+| SJ-05 | Stage1/Stage2 digestは同じだが、外部Launcherが二度Build | Stage1自身の実Process／Stage2実Invokeが無ければSelf-Build L3不成立 |
+| SJ-06 | Studio/AIが固定した対象のWorkspace/Source/Grant改版後に旧Replyが到着 | 旧対象への誤再束縛・旧Grantの現在利用を拒否 |
+| SJ-07 | 同一表示Graph/CRUDに異なるRelation多重度・Source occurrenceが潜む | 投影の一致から元Meaning/逆編集/実行資格を推論しない |
+
+SJ-01/02はP1-Jで優先、SJ-03/04は#2600/#2595、SJ-05は#2831、SJ-06/07は#1124/#2497/#2516へ引き渡す。独立Expectedの正本は#1180/#2514に置き、実装候補自身や生成AIによる正解の自己作成を避ける。
+
+### 25.4 必要な証拠はClaim相対の最小列でつなぐ
+
+**Source/Meaning**＝Workspace/Subject/Source occurrence・raw byte/revision、Manifest/独立Required集合、Role/Operator/Facet、Accepted Meaning・Contract revision。
+
+**Composition/Build/Runtime**＝Target、Selected Generator/Provider/Pluginとactual bytes、build-onlyとruntime dependency、実Builder消費入力、Artifact/Process image、Entry/Operation/Attempt/実Invoke。
+
+**独立検証/Consumer**＝独立Expected・Mutant・Actual Result/Failure、現在Host Grant、開示に適格なConsumer、Claim上限、未確認/未対応/未実施。CLIとAPIは外側のJSON bytesではなく、型付きOutcomeとFailure/出典の意味を比較する。
+
+**性能・失効**＝Role/Generator/Plugin改版から実際に再解析・再生成した範囲、所要時間・メモリ。非選択Pluginやlayout-only変更によって無関係な意味を無効化せず、必要なSource/Build/Host改版は見落とさない。
+
+これは既存Source Index/Scenario/Receiptの**照合票**であり、新しい公開Schema・Proof Storeではない。欠けた入力を既定値補完せずunknown/unsupported/not-run/failedで区別する。ドメイン専門家による業務意味の確認は通常開発相当とし、生成AIの誤解を独立Expected・出典管理（SHO/OKF等）・レビューで検出する。
+
+### 25.5 今回の状態
+
+#4495/#4536/#4544/#2831と既存設計を静的に照合した設計追補のみ。SJ-01〜07の新Go/CLI/Studio/Builder実行、同じMeaningのRole→Generator→Function→製品Invoke結合、TEI Stage1実プロセスからのStage2再入、Owner意味受理は **NOT RUN / NOT PROVEN**。既存#1119のG0〜G4は変更しない。
