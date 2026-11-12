@@ -73,8 +73,8 @@ func duplicateSelectedObservation(t *testing.T, graph map[string]any) {
 
 func TestExternalCandidatesRejectsNonUniqueProducerAndDerivedIdentities(t *testing.T) {
 	tests := []struct {
-		name   string
-		mutate func(*testing.T, map[string]any)
+		name     string
+		mutate   func(*testing.T, map[string]any)
 		selectID func(externalanalysis.Candidates) string
 	}{
 		{
@@ -101,13 +101,17 @@ func TestExternalCandidatesRejectsNonUniqueProducerAndDerivedIdentities(t *testi
 		t.Run(tc.name, func(t *testing.T) {
 			path := ambiguousCandidateFixture(t, func(graph map[string]any) { tc.mutate(t, graph) })
 			raw, err := os.ReadFile(path)
-			if err != nil { t.Fatal(err) }
+			if err != nil {
+				t.Fatal(err)
+			}
 			receipt := externalanalysis.Receive(raw, externalanalysis.Tool{Name: "rea", Version: "6.8.0", Present: true}, candidateReadAt)
 			if receipt.Evidence == nil {
 				t.Fatalf("mutated evidence unexpectedly rejected before selection: %+v", receipt)
 			}
 			candidates, err := externalanalysis.ReadCandidates(receipt.EvidenceBody())
-			if err != nil { t.Fatalf("read candidate graph: %v", err) }
+			if err != nil {
+				t.Fatalf("read candidate graph: %v", err)
+			}
 			relationID := tc.selectID(candidates)
 			view, err := operations.ExternalCandidates(operations.ExternalCandidateRequest{
 				EvidencePath: path, ToolVersion: "6.8.0",
