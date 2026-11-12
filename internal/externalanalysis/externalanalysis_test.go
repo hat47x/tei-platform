@@ -92,6 +92,24 @@ func mustJSON(t *testing.T, raw []byte) map[string]any {
 	return value
 }
 
+// TestReceiptSchemaVersionIsExplicitAndStable pins the external receipt shape
+// independently of the producer's Evidence format. A received envelope is not
+// an Owner-accepted semantic model or an authorization to execute the result.
+func TestReceiptSchemaVersionIsExplicitAndStable(t *testing.T) {
+	raw := fixture(t, "rea-6.8.0/analysis.json")
+	receipt := externalanalysis.Receive(raw, presentTool("6.8.0"), acquisition)
+	if receipt.State != externalanalysis.StateComplete {
+		t.Fatalf("receipt state=%s reason=%s", receipt.State, receipt.Reason)
+	}
+	const expected = "tei.externalanalysis.receipt/v0"
+	if receipt.SchemaVersion != expected {
+		t.Fatalf("schema version=%q want %q", receipt.SchemaVersion, expected)
+	}
+	if receipt.Promotion.AcceptedMeaning || receipt.Promotion.CanonicalSubject || receipt.Promotion.DatabaseObserved {
+		t.Fatalf("receipt must not silently promote external evidence: %+v", receipt.Promotion)
+	}
+}
+
 // TestReceiveRealSavedEvidence is the normal case: the saved output of a real
 // analysis run, received and measured. Every field the coordination needs is
 // asserted against the pinned value, including the digest of the bytes as they
