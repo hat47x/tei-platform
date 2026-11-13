@@ -832,15 +832,15 @@ Data Workbench #3270、REST Decision Graph #3274、三要素モデルとCRUD/SHO
 
 ### 20.1 現物が既に保証していることと、まだ保証していないこと
 
-2026-11-13時点のmainの\`internal/hook\`を静的に確認した。既存の\`Runner\`は\`application.Hook\`の位相・reads/produces/uses・scope・失敗方針を利用する。\`PhaseOrder\`はrecord Pattern用の固定順序であり、\`RunBeforeChange\`→実際の変更適用→\`RunAfterChange\`は異なる時点で実行する。\`PhaseReport\`は\`executed/warned/skipped/notEvaluated/refused/produced/uncalled/calls\`を区別する。\`Declared\`は宣言外のCapability呼出しを拒否し、\`CommandCaller\`は呼出し先のCommand境界を使う。
+2026-11-13時点のmainの`internal/hook`を静的に確認した。既存の`Runner`は`application.Hook`の位相・reads/produces/uses・scope・失敗方針を利用する。`PhaseOrder`はrecord Pattern用の固定順序であり、`RunBeforeChange`→実際の変更適用→`RunAfterChange`は異なる時点で実行する。`PhaseReport`は`executed/warned/skipped/notEvaluated/refused/produced/uncalled/calls`を区別する。`Declared`は宣言外のCapability呼出しを拒否し、`CommandCaller`は呼出し先のCommand境界を使う。
 
 これらは**現行のHook意味論の重要な実装資産**である。しかし、任意のPlugin Graph Patchが同等に適用できること、Runtimeの実Effectをすべて観測できること、独立したTargetの現在Grantを保証することまでは意味しない。特に次の差は残す。
 
-- \`RunSequence\`は未知の位相を拒否する。一方、\`RunReachable\`は未知の位相を理由付きでskippedとして記録し得る。入口の違いを無視して「Graphへ無損失移行済み」とは判定しない。R0でこの意味差を列挙し、対象Consumerの期待を明記する。
-- \`ReferenceReach\`で到達できない\`after-*\`、必要なread/row set/callerが揃わない位相、正常に実行して条件を満たさなかった位相は、いずれも異なる状態である。Graphの一律\`success\`・\`no-op\`へ統合しない。
-- \`uses\`宣言があっても、入力対応やCallerが無ければ\`uncalled/notEvaluated\`となり得る。宣言・選択・到達・実呼出し・外部受領を別々に観測する。
-- \`internal/hook/run.go\`の\`Hook.Error.HasEffectUnknown()\`は現在falseを返す。参照Ruleの不成立に適用効果が無いことと、将来のeffectful Plugin/Commandが既に実作用を起こしたか不明なことを同一視してはならない。呼出し先の\`CommitUncertainError\`などに含まれる\`lookup_first / effectUnknown\`は既存\`internal/failure\`契約（main統合#4315）を介して保持し、Hookの一般的拒否へ潰さない。これは**新Plugin適用時の検証条件**であり、現行Hookに未確認の本番効果があると断定するものではない。
-- \`after-*\`の不成立は、「変更前に拒否された」と同義ではない。参照Memory Storeで取り消せても、実DB Commit/外部送信/受領済みEffectの自動rollbackは推定しない。#1174のEffect/Receipt/再試行責務を再利用する。
+- `RunSequence`は未知の位相を拒否する。一方、`RunReachable`は未知の位相を理由付きでskippedとして記録し得る。入口の違いを無視して「Graphへ無損失移行済み」とは判定しない。R0でこの意味差を列挙し、対象Consumerの期待を明記する。
+- `ReferenceReach`で到達できない`after-*`、必要なread/row set/callerが揃わない位相、正常に実行して条件を満たさなかった位相は、いずれも異なる状態である。Graphの一律`success`・`no-op`へ統合しない。
+- `uses`宣言があっても、入力対応やCallerが無ければ`uncalled/notEvaluated`となり得る。宣言・選択・到達・実呼出し・外部受領を別々に観測する。
+- `internal/hook/run.go`の`Hook.Error.HasEffectUnknown()`は現在falseを返す。参照Ruleの不成立に適用効果が無いことと、将来のeffectful Plugin/Commandが既に実作用を起こしたか不明なことを同一視してはならない。呼出し先の`CommitUncertainError`などに含まれる`lookup_first / effectUnknown`は既存`internal/failure`契約（main統合#4315）を介して保持し、Hookの一般的拒否へ潰さない。これは**新Plugin適用時の検証条件**であり、現行Hookに未確認の本番効果があると断定するものではない。
+- `after-*`の不成立は、「変更前に拒否された」と同義ではない。参照Memory Storeで取り消せても、実DB Commit/外部送信/受領済みEffectの自動rollbackは推定しない。#1174のEffect/Receipt/再試行責務を再利用する。
 
 ### 20.2 Graph方式へ渡す最小の変換規則
 
@@ -849,11 +849,11 @@ Data Workbench #3270、REST Decision Graph #3274、三要素モデルとCRUD/SHO
 | 現行Hookの事実 | Graph上で必要な関係 | 最初に検証する条件 |
 | --- | --- | --- |
 | record PatternとHook宣言 | 実行対象・位相・Source occurrenceへの参照 | 同名/同ID別Sourceで再束縛しない |
-| \`reads / produces / uses\` | Input依存／候補Output／呼出し義務 | 欠落・NULL・未取得・宣言外を成功にしない |
-| \`PhaseOrder\`とbefore/afterの分離 | 順序・Guard・実変更境界への辺 | 変更前後の位相が入れ替わらない |
-| \`Reach\`と\`PhaseReport\` | 到達性と実際の観測を別Relationにする | skipped/notEvaluated/warnedをPASSにしない |
-| \`Declared\`／\`CommandCaller\` | Contract/Selected Providerから実Callへの拘束 | 別Provider/曖昧Pattern/現在Grantの迂回を拒否 |
-| \`Failure\`／Effect/Receipt | 業務不成立・技術失敗・副作用不明 | effectUnknownなら照会前に再送しない |
+| `reads / produces / uses` | Input依存／候補Output／呼出し義務 | 欠落・NULL・未取得・宣言外を成功にしない |
+| `PhaseOrder`とbefore/afterの分離 | 順序・Guard・実変更境界への辺 | 変更前後の位相が入れ替わらない |
+| `Reach`と`PhaseReport` | 到達性と実際の観測を別Relationにする | skipped/notEvaluated/warnedをPASSにしない |
+| `Declared`／`CommandCaller` | Contract/Selected Providerから実Callへの拘束 | 別Provider/曖昧Pattern/現在Grantの迂回を拒否 |
+| `Failure`／Effect/Receipt | 業務不成立・技術失敗・副作用不明 | effectUnknownなら照会前に再送しない |
 
 **適用可能なGraph**、**Targetに生成できるGraph**、**稼働中のExecutionへ安全に切り替えられるGraph**は別資格とする。追加Validation、Branch、並列化、Replaceは、型・Source/Target・必要Guard・Effect Fence・独立Expectedが成立してから段階導入する。既存Hook RunnerはR0/R1の比較対象として残し、Graph方式を先に全Targetへ強制しない。
 
@@ -861,14 +861,14 @@ Data Workbench #3270、REST Decision Graph #3274、三要素モデルとCRUD/SHO
 
 | 順 | 実行・引渡し | 検証の出口 | Owner |
 | --- | --- | --- | --- |
-| **H0：現行意味の固定** | 実record Pattern一件でbefore→Memory Store変更→after、宣言されたCapability一件を選ぶ。既存\`PhaseReport\`と\`Failure\`を固定 | 実際のRunnerの結果・失敗条件を独立Expectedで比較可能。既存入口ごとの不一致は隠さない | #4198 #1180 #2514 |
+| **H0：現行意味の固定** | 実record Pattern一件でbefore→Memory Store変更→after、宣言されたCapability一件を選ぶ。既存`PhaseReport`と`Failure`を固定 | 実際のRunnerの結果・失敗条件を独立Expectedで比較可能。既存入口ごとの不一致は隠さない | #4198 #1180 #2514 |
 | **H1：read-only Graph projection** | SourceのPattern/Hook/呼出し依存を既存Model/Source Indexから投影し、対象への逆参照を保持 | Graph→Sourceへ戻れる。レイアウト変更だけでは意味/Build revisionを変えない | #4198 #1124 #2620 |
 | **H2：限定Patch二件** | 追加ValidationとBranchを、既存#3278の全Path Obligation・Trait履行へ接続 | Guard迂回、実変更後の再検証不足、順序競合を拒否。第二RunnerやResolverを追加しない | #3278 #951 #1016 #1121 |
 | **H3：実Consumer・Plugin** | #1251 Inspectorの選択実Callと#4570 X-TEA三視点のHost-owned選択を比較し、通常CLI／実Wails Desktopの入口を個別照合 | B selected→A invoked、別Root/同Manifest/別Sourceを結果同値でも合格にしない。三視点Source factと意味受理も分離 | #1251 #1158 #1824 #1124 |
 | **H4：Graph→Desktop Build** | #4572の契約Source/Transform/生成TS/Bundle/Go embed/実WebView2を、#2831のBuildIntent→実Builder/Stage1→Stage2へ接続 | 選択Assetと実Desktop Artifact、実Entry/Consumerが同一Attemptで結ばれる。OS書込境界の証拠は#4486に従う | #2831 #1824 #943 #4544 |
 | **H5：異質Consumer** | B2C Headless、AI Web Chat、VUI、外部Harnessへ同一Operationの候補Event/提示/確認を投影 | partial引数・古い確認・Effect unknownをCurrent Grantや成功へ昇格させない | #3503 #3509 #1174 #2515 |
 
-H0/H1はStudioセルフビルドの先行必須条件ではない。H3/H4の既存Draftを適格化する作業は最優先として並行可能。#2586の実DB readもGraph Compiler完成を待たない。フック規則Pluginの実供給とDesktop UI呼出しは#4146で指摘された未接続点であり、単に\`hook.Runner\`が存在することを完了と呼ばない。
+H0/H1はStudioセルフビルドの先行必須条件ではない。H3/H4の既存Draftを適格化する作業は最優先として並行可能。#2586の実DB readもGraph Compiler完成を待たない。フック規則Pluginの実供給とDesktop UI呼出しは#4146で指摘された未接続点であり、単に`hook.Runner`が存在することを完了と呼ばない。
 
 ### 20.4 独立負例と採否
 
@@ -876,11 +876,11 @@ H0/H1はStudioセルフビルドの先行必須条件ではない。H3/H4の既�
 
 | Case | 一因子だけ変える | 期待する判別 |
 | --- | --- | --- |
-| **HG-01** | 未知Phaseを\`RunSequence\`と\`RunReachable\`から入力 | 現行入口の拒否／理由付きskipの差を記録し、無条件同値を拒否 |
+| **HG-01** | 未知Phaseを`RunSequence`と`RunReachable`から入力 | 現行入口の拒否／理由付きskipの差を記録し、無条件同値を拒否 |
 | **HG-02** | 行ScopeなのにRowsetがない／Rowsetを渡す | 未評価と実行を別に扱い、0件・未取得を混同しない |
-| **HG-03** | \`uses\`は宣言済み、Caller/入力対応が欠ける | \`uncalled/notEvaluated\`を実行成功へ変換しない |
-| **HG-04** | 変更適用後の\`after-*\`でRule拒否 | 実変更・補償・外部Effectの資格を別に残す。rollbackの虚偽表示なし |
-| **HG-05** | Capability実行後にACK喪失 | \`effectUnknown\`／\`lookup_first\`を既存Failure経路で保持、無条件再実行しない |
+| **HG-03** | `uses`は宣言済み、Caller/入力対応が欠ける | `uncalled/notEvaluated`を実行成功へ変換しない |
+| **HG-04** | 変更適用後の`after-*`でRule拒否 | 実変更・補償・外部Effectの資格を別に残す。rollbackの虚偽表示なし |
+| **HG-05** | Capability実行後にACK喪失 | `effectUnknown`／`lookup_first`を既存Failure経路で保持、無条件再実行しない |
 | **HG-06** | Plugin Patchで必須Guardを迂回／順序競合 | Graphを適用拒否し、実Effectを0件にする |
 | **HG-07** | Graph図の座標のみ変更／Hook意味を変更 | 前者は意味・Build無変更、後者だけ依存範囲で再検証 |
 | **HG-08** | 選択Provider Bの代わりに同値結果のAを実呼出し | 結果同値でも不合格。Target実Entry/Artifact/Sourceを別欄で確認 |
