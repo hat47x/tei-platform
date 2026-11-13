@@ -116,3 +116,41 @@ Authoring Source / external Observation
 各Ownerは新しい全体フレームワークを待たず、担当AWの**一つの正例と一つの最も危険な負例**を既存テストDriverへ追加する。最初に独立Expectedとexact HEAD/Source/実呼出し点を固定し、最小deltaを実装、実出力をReadbackする。失敗時は「最初に欠けた辺」とOwnerを一件に絞って戻す。全体計画の優先順は#1119、独立Expectedは#1180/#2514、実Provider Readは#2586に従う。
 
 この追補のAW-01〜10は**設計上の検収候補**であり、各テストの実装・実行・CI合格を意味しない。
+
+## 9. 保証の合成と失効の最小契約（11/13追補）
+
+AWの合否を並べるだけでは製品機能の保証にならない。既存Conformance票・Build Receipt・実行Receiptに共通する**照合規則**として扱い、新しい中央Registryや実行基盤は設けない。
+
+### 9.1 Evidenceを合成できる条件
+
+1. **対象一致**：Workspace root、Source locator/occurrence、Function/Operation ID、Target、Model revisionを対応付ける。同名だけでは不可。
+2. **実行系列一致**：selected/loaded/invoked Provider、Artifact digest、引数、Host、Attempt/Operation identityを照合する。別Attemptをつなぐには独立した同値性の証拠が必要。
+3. **観測範囲一致**：Rowsetのgrain・coverage・Presence、Consumer用途・Recipient・Grant/Policy時点を照合する。部分集合を全体へ昇格しない。
+4. **Claim種別一致**：構文解析、Meaning受理、実Read、実Consumer受領、Effect確認は相互代替しない。欠けた境界はNOT RUNまたはUNKNOWN。
+5. **現在資格**：Source移動、Plugin再選択、Grant変更、外部依存の不明化を再評価する。履歴のPASSを保持しつつ現在資格をSTALEにできる。
+
+合成は**必要な境界だけ**に適用する。pure ReadにEffect Receiptを要求しない。protected WriteではACKやHTTP 200をDB Commitの代用にしない。意味の受理は通常の開発手順に従い、AI候補から自動付与しない。
+
+### 9.2 失効・再利用の判断表
+
+| 単独変更 | 保持できる可能性があるもの | 再確認が必要なもの | 禁止する短絡 |
+| --- | --- | --- | --- |
+| Layout/Graph座標だけ | Source/Meaning・型付きRead | 実UI対象解決と表示を主張するConsumer | 全Buildを無条件に失効 |
+| Source移動・同名別Root・A→B→A | 過去の受理履歴 | 現在locator、参照先、依存閉包 | 同じbytesなら同じSource |
+| Plugin実体/選択Lock変更 | 意味受理・無関係Artifact | actual Loaded/Invoked、生成物、Provider結果 | selected文字列だけでInvokeを保証 |
+| SQL投影/Scope/RLS変更 | 無関係Function・意味定義 | Query、実Rowset、coverage、開示 | 0件を不存在と断定 |
+| Grant/Recipient/用途変更 | 過去のReceiptと業務結果の履歴 | 現在の実行・開示・受領資格 | 古いPASSを現在の許可に流用 |
+| Generator/Toolchain変更 | Sourceと意味の受理 | Artifact・Build/Target適格 | Source hashで生成物同一を保証 |
+| ACK/Receipt喪失 | 送信試行の事実 | Host/DB独立観測、Operation ID | unknownを失敗としてblind retry |
+
+依存閉包が未探索なら「影響なし」と判定しない。他方、既存Index/Build Graphで非依存を証明できる領域は不要に失効させない。検証省略の理由もEvidenceに残す（#2600/#3267）。
+
+### 9.3 Ownerへの最小引渡し
+
+- **#2586**：AW-01/03の独立Expectedを固定し、reference/workspaceに限定した実PG Read→型付きContext→一Consumerを同一Attemptで照合。
+- **#1251**：AW-02を実CLI/Studioで検査。選択B／実呼出しAをFAILとし、実Loadの観測点がなければPASSにしない。
+- **#2509/#2515**：AW-10のTool送信と外部受信を別観測で結ぶ。受領と意味受理を区別。
+- **#1124・SHO担当**：AW-04/05のSource occurrence・固定対象・人手編集競合を検証し、見た目から書戻し対象を推測しない。
+- **#2600/#3267**：AW-08で無関係変更の再利用と、実体変更時の失効を対で測る。
+
+完了条件は担当Issueに**独立Expected、exact HEAD、実経路、正例・負例、判定、未検証範囲**を記録したこと。計画追記やDraft PR、静的Inspectorだけでは完了としない。#1119のCritical Pathと各Ownerの責務は変更しない。
