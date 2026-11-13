@@ -312,6 +312,10 @@ H0/H1と異質領域の要件探索は並行可能。H2/H4の実Effect資格は�
 | DSL-X04 | Source byteは同一でRole/Operatorの推移依存Pinのみ変わる | 過去Evidenceを保持し現在の意味／Build資格を再照合 |
 | DSL-X05 | DSLコメントやMarkdown体裁だけを編集・保存 | 非対象byte不変、意味影響／位置再解決／Build省略資格を別判定 |
 | DSL-X06 | TEI Simulationは業務拒否、生成Go Targetは成功扱い | EQ1 FAIL。Goのexit 0を業務成功にしない |
+| DSL-X07 | SF-Dの短いOperator呼出しにRule IDが存在しない | subject＋OperatorからRule IDを推測しない。ID/Scopeを明示するか、その表層はEQ0比較対象外と記録 |
+| DSL-X08 | SF-BのRelation経由属性名が既存Canonical Attributeと異なる | 属性Path→意味属性のMappingを明示し、暗黙に別IDへ読み替えない。曖昧・未定義は拒否 |
+
+**S0対照票に残す重要な前提差**：#4361のSF-Dは簡略例のままだと論理Rule IDを記さない一方、SF-A/B/CのExpectedはValidation IDの同一性を要求している。論理IDを自動合成して4表層がEQ0で同値と主張してはならない。また#4359の改善規則文でRelation経由の「sales.order.lines.line_number」と既存意味属性「sales.order_line.line_number」の対応は、型と名前が似ているだけでは同一と確定しない。まず明示Mappingか未対応診断とし、自然な表層を優先しつつResolverに業務意味を推測させない。独立Expectedは既存Evaluatorの出力や実装コメントを唯一の根拠とせず、受理済み契約・数学的境界・個別業務Scenario等、**被検証実装とは別の根拠**を最初に固定する。評価器コードはそのExpectedとの比較対象である。
 
 **方式切替の条件**：A3の式境界・Source span・診断安定性が負例に耐えないならA2へ寄せる。A1が専門家の認知順・表層忠実性を損なうなら内部表現に限定する。A4＝生成GoはFrontend方式の勝敗に連動させず、Target個別の正しさと性能で判断する。方式選択時に、同一Fixture・独立Expected・実修正コスト・ビルド時間を比較する。計画とConformance候補の追補であり、今回の新規実行、正式Grammar/Operator/Runtime採用、Owner意味受理、#1119 Gate変更は**NOT RUN／NOT ACCEPTED**。
 
