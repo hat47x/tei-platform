@@ -1513,7 +1513,7 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 
 **採否**：新規Source/Rule/公的契約や業務責任の解釈はOwnerの意味受理が必要。本追補はdocs-onlyであり、実Org Provider/Host・SHO/HarnessとのOrg C1 E2E・Owner意味受理は **NOT RUN**。
 
-**Studio Desktopの実構築→TEIセルフビルド／組織C1受入の最短接続（組織計画§10.12）**：製品の最優先目標は**Wails/Go版TEI Studio Desktopの実OS起動**（#1824）と、既存TEI Typed Build Graphを使った**stage1 TEI実プロセスからstage2 Studioを再生成するセルフビルド**（#2831）。Go CLIのセルフビルドCI成功をDesktop起動・D2再生成成功とは見なさない。組織C1のread-only Data/三要素CRUDは#4551 main統合の派生結果と接続し、#4539の実PG受注Queryは通常tei CLI→Studioの別Consumer経路に結ぶ（同一業務Queryだと誤認しない）。X-TEA三要素は業務向けPluginとして移植し、汎用Coreを固定しない（#1124/#1125/#1251）。D0実Desktop、D1 Model/Provider受領、D2セルフビルド、D3 X-TEA Plugin、D4 Pin/SHO/AI適用の各資格を独立Expectedとexact HEADで判定する。#2586の通常CLI Provider実ReadはGUI完成待ちにせず並行P0。#4500/#4551のmain統合は確認済みだが、D0〜D4の実行証拠は未成立。新Build Engine/Host/Scenario正本を作らない。
+**Studio Desktopの実構築→TEIセルフビルド／組織C1受入の最短接続（組織計画§10.12）**：製品の最優先目標は**Wails/Go版TEI Studio Desktopの実OS起動**（#1824）と、既存TEI Typed Build Graphを使った**stage1 TEI実プロセスからstage2 Studioを再生成するセルフビルド**（#2831）。Go CLIのセルフビルドCI成功をDesktop起動・D2再生成成功とは見なさない。**生成Workbenchのserver/Chromiumでの成功と通常Wails Desktop/WebView2での成功も合算しない**。#4541のGD-0〜4に沿い、生成assetをserverなしのDesktopへ組み込み、実WebView2→IPC→Go Catalog/Inspect応答まで同一HEAD・実Process・Selectionで検証する。組織C1のread-only Data/三要素CRUDは#4551 main統合の派生結果と接続し、#4539の実PG受注Queryは通常tei CLI→Studioの別Consumer経路に結ぶ（同一業務Queryだと誤認しない）。X-TEA三要素は業務向けPluginとして移植し、汎用Coreを固定しない（#1124/#1125/#1251）。D0実Desktop、D1 Model/Provider受領、D2セルフビルド、D3 X-TEA Plugin、D4 Pin/SHO/AI適用の各資格を独立Expectedとexact HEADで判定する。#2586の通常CLI Provider実ReadはGUI完成待ちにせず並行P0。#4500/#4551のmain統合は確認済みだが、D0〜D4の実行証拠は未成立。新Build Engine/Host/Scenario正本を作らない。
 
 ## 先に固定しないもの
 
