@@ -753,3 +753,48 @@ AIが「遅いQueryを調べる」と指示された場合、まず固定Selecti
 EV-01〜08は新しいCase SSOTではなく#1180/#2514のScenarioに付ける**反例候補**であり、既存#2600/#3262/#3271の試験と重複実装しない。最初の実証はLocal-onlyの一Attempt（Manifest→Local CAS保存→再読取・byte照合→限定Context送出拒否/許可→独立Expected）とする。次にNAS/S3はProvider別に、障害・再取得・Retention/削除を確認する。実DBのM1b→R0をこの外部保管実証の前提にも逆依存にもせず、互いの資格を別記する。
 
 **状態（2026-11-12）**：既存Local CAS機能の存在と本節の計画接合は、Git同期・NAS/S3実運用・選択的AI開示・EV-01〜08実行・実DB性能Benchmark・Owner受理の合格を意味しない。これらは **NOT RUN / NOT ACCEPTED**。
+
+
+## 25. DB編集・固定Selection・Cache性能の境界：Pending Changesは未確定の世界（2026-11-13）
+
+他領域のDB Client/Studio、Test DSL、Self-Build、Harnessの検討を§21〜24へ接続する。**DB読取結果・編集候補・Commit後の実状態・Cache内容は同じものではない**。性能最適化が行編集の正しさや権限を壊さないよう、読取と更新を分けた最小縦断を既存#2586/#1129/#3271/#1180へ返す。
+
+### 25.1 状態の独立性
+
+| 対象 | 主な識別・観測 | 他状態への昇格を禁止する条件 |
+| --- | --- | --- |
+| Subject Pin | Qualified ID、Source/Provider、Revision、Scope、Current Grant | Pin/表示行選択だけではRow Edit Selection・更新権限にならない |
+| Read Snapshot | 実Provider、DB可視範囲、Query/params、Result completeness、Read epoch/Version、Consumer受領 | 0件/partial/欠列やRLS下の結果を完全母集団・現在値と断定しない |
+| Pending Changes | 変更前値、変更候補、行Key、期待Version、Validation、作業Copy | 画面表示/Preview/AI提案をDB write/業務承認としない |
+| Commit Attempt | Operation/Attempt identity、CAS/条件付き更新、Transaction結果、Rollback/Cancel/Unknown | SQL実行応答やタイムアウトだけでCommit成功・失敗を断定しない |
+| Post-commit Read | Receiptと独立の実Provider再読取、更新Key/Version/Grant | ReceiptだけでConsumer可視性・Cache失効完了としない |
+| Cache Projection | Cache key/Generation、Source/Policy/Grant、Origin read/Invalidateの実観測 | Hit/TTL/Hook ACKから現在の業務状態・更新成功を推論しない |
+
+Read Snapshotが不完全な場合は、編集可否や更新対象の一意性を別途確認する。Cursor、page、limit、streamingの途中結果は取得済み部分と全件完了を区別する。複数選択の固定集合と更新対象行集合を混同せず、Update時には現在のKey/Version/Grant/Source bindingを再解決する。
+
+### 25.2 実Read後の最小縦断と性能測定の順序
+
+**R0** `order_entry.recent_orders`の実Product SQLを隔離PGで実行し、Function→Query/Relation→Selected/Invoked Provider→Rowset→Function Context→CLI Consumerを一Attemptで照合する。Product Seedの静的Expected（3/2/0件、Decimal、順序）を独立検証に使い、実行前は合格と呼ばない。
+
+**R1** Headless SQL Console/Studioで同じProviderに対するread-onlyな結果と取得完全性を表示し、PinとRow Edit Selectionの分離、NULL/欠列/0件/partial、Cursor/Scopeを確認する。Query Parserや画面部品の新規構築をR0の前提にしない。
+
+**R2** 更新可能な単一行/項目についてPending Changesを表示し、条件付き更新（Key+Version等）と競合・権限拒否・取消・不明結果を検証する。CASはDB方言・Provider機能に応じた既存拡張点へ置き、万能CASや第二Transaction Managerを要求しない。
+
+**R3** Commit Attempt/Receiptと独立Readで可視結果を確認し、§17/§20/§21のCache invalidate/再populate/Origin負荷を測る。Commitの観測、Outbox/CDC/Hookの観測、Cache失効、Consumerが新状態を受領する時点は別。Read-only最適化A/BをR2/R3の完成まで一律停止する必要はないが、更新競合・鮮度を主張する性能改善にはR3相当の証拠を必須とする。
+
+**R4** 固定SelectionからAI Harnessへread-only Contextを渡し、改善提案をPreview。書込み・認可変更・本番DB操作は既存Host/Owner承認と独立Expectedへ戻す。AIの説明、Skill宣言、Tool成功をReceiptやOwner受理へ昇格しない。
+
+### 25.3 独立Expectedに加える負例（既存Scenarioへ接続）
+
+- **RW-01** Pinが同じでも表示行/Source occurrence/Providerが変更。更新対象を黙って別行へ付替えない。
+- **RW-02** Read後に別Transactionが行Versionを更新。旧Pending Changesの条件付き更新は競合となり、上書きしない。
+- **RW-03** RLS/Grantが変わり行が見えなくなった。古いRowset/Cache Hitから更新権限を復元しない。
+- **RW-04** SQLがTimeout/Connection LostでCommit結果Unknown。再送で二重副作用を起こさず、Operation/Attemptと独立Readで照合する。
+- **RW-05** Commit成功でもCacheに旧Generationが残る/旧populateが競合。Consumerの実受領までFreshとしない。
+- **RW-06** Cursorの一部のみ取得、0件/NULL/欠列。全件・不存在・値0を同一視しない。
+- **RW-07** SQL Consoleの複数Statementで部分成功/取消。文単位と全体の結果を分け、Transaction境界を曖昧にしない。
+- **RW-08** AIが更新SQLを提示。PreviewからApplyへの自動昇格を拒否し、Current Grant/Version/Owner受理を再評価する。
+
+これらは新しいTest DSLや第二Scenario SSOTではなく、#1180/#2514の既存独立Expected、#1129の編集、#2586の実Read、#3271のCacheへ配分する**未実行の反例候補**。R0はStudio Self-Build/SHO投影/DSH完全配送より先に実証し、Desktop/Wails受領とセルフビルドは別の資格として後続に接続する。新Host、中央Registry、独立Proof Store、全Provider共通の強制Snapshot Managerを追加しない。
+
+**状態（2026-11-13）**：本節は横断計画の接合のみ。R0〜R4の製品縦断、RW-01〜08の実Provider試験、性能A/B、AI実適用、Desktopセルフビルド、Owner受理は **NOT RUN / NOT ACCEPTED**。

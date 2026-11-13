@@ -49,6 +49,11 @@ type rpcRequest struct {
 type rpcError struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
+	// Data carries the CLI's own failure code when the error stands for one
+	// (#3420). A caller that switches on failure.code must reach the same
+	// answer over MCP as over the CLI, instead of comparing a JSON-RPC
+	// protocol code with an envelope code.
+	Data map[string]any `json:"data,omitempty"`
 }
 
 type rpcResponse struct {
@@ -303,7 +308,15 @@ func handle(request rpcRequest, workspace string) rpcResponse {
 	case "tools/call":
 		result, err := callTool(request.Params, workspace)
 		if err != nil {
-			response.Error = &rpcError{Code: -32602, Message: err.Error()}
+			response.Error = &rpcError{
+				Code:    -32602,
+				Message: err.Error(),
+				// A usage mistake is the same mistake the CLI reports as
+				// INVALID_ARGUMENT, so the envelope code travels with the
+				// protocol error. A caller that switches on failure.code
+				// reaches the same answer over both transports (#3420).
+				Data: map[string]any{"failureCode": "INVALID_ARGUMENT"},
+			}
 			return response
 		}
 		response.Result = result
