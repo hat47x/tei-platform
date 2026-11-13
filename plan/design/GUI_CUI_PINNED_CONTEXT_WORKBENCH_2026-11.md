@@ -461,3 +461,58 @@ G-01〜04に必要な入力は最小の公開合成Fixture。G-05/G-06は既存S
 **受入条件の不変部分**：X-TEA Modelerの三要素分析法（データモデル・機能モデル・業務モデル）の互いの根拠確認を重視し、汎用TEIの追加Graph/SHO/SUI構造は拡張と表示する。実モデル上で「任意の辺をPinできた」と表記するのは実Relation identity/Sourceへの一意解決・独立負例が成立した後に限る。
 
 **状態**：本追補はmain実ソースの静的照合、既存計画の順序補正、implementer Issueの起票まで。実Pin実装/Workbench E2E/Relation resolver/SHO・TAI実Handoff、実Host/Grant、正式Owner採用は**NOT RUN**。
+
+
+## 15. 2026-11-13 横断収束：参照移動・固定・変更を分け、未保存Sourceを扱う
+
+> [TEI Studio実装 #4515](https://github.com/hat47x/tei-platform/issues/4515) のScopeを維持しつつ、他Ownerで成熟したGUI/DB/SHO/TAIの契約を、最初の実装が誤って前倒ししないための追加条件。**この追補自体はコード変更・実テストではない**。
+
+### 15.1 画面上の「対象」の三つの動詞
+
+| 操作 | 必須の識別・状態 | 許されること | 許されないこと |
+| --- | --- | --- | --- |
+| **参照移動（Navigate）** | Workspace・表示対象・Source位置/Revision・可視範囲 | 検索結果/参照元/参照先へ移動し、現在の内容を読む | 移動しただけでPin、編集、AI送出、意味受理 |
+| **固定（Pin）** | Workspace・Subject/OccurrenceのQualified Identity・選択意図・その時点の観測状態 | Focus/別ビュー/AI入力欄を移動しても、元の対象を再訪する意図を保持 | Source変更・A→B→A・同名別Workspace・権限変更で、黙って別対象へ再束縛 |
+| **変更（Propose/Apply）** | 変更候補、Target実再解決、元Revision、Diff、適用先と権限、独立Expected | 変更案Preview→確認→Owner/Productの適用操作→結果再読取 | Pinを編集権限・Source正本・DB Commit・業務意味受理と同一視 |
+
+**UI表現**：最初のWorkbenchでは「表示中の対象」と「固定した対象」を別表示する。固定対象の状態は`intended / currently-inspected / needs-requalification / unavailable / unsupported`など**観測できる事実の範囲**で表示する。`currently-inspected`は現在Grant/Disclosureを証明しない。確認できない値を`valid`や`authorized`と呼ばない。
+
+### 15.2 未保存バッファと正本Source
+
+- Source本文の**未保存バッファ**は、閲覧・比較・AIへの候補文脈の対象となり得る。ただし`buffer identity + edit generation + encoding/byte-range`と、保存済み`Source identity + revision`を区別する。
+- **未保存Buffer上の位置**を、保存済みSourceの同offsetや同Labelと同一と断定しない。変更後の位置は、編集履歴による明示Mappingか再解決がなければ`unresolved`。
+- AIが未保存内容から変更案を返しても、Sourceへの適用前に現在Buffer/Source両方のRevisionと差分を再確認する。保存時はSHO Writer/TEI Productの各Ownerを利用し、Studio側に第二の保存器を作らない。
+- 同じByte内容に戻る**A→B→A**は、Digestだけでは変更の履歴を表せない。観測世代・Source revision・操作Receiptを使える範囲で保持し、欠ける場合は`unknown`として再資格化する。旧Pinの資格を自動復活させない。
+
+### 15.3 DB Workbench・三要素分析法・SHO・TAIへの射影
+
+| Consumer | Pinの第一段階で共有できるもの | 追加のOwner検証が必要なもの |
+| --- | --- | --- |
+| TEI Modelerのデータ/機能/業務モデル | Qualified Subjectの参照意図、参照数/被参照数の探索入口 | 正式Relation occurrence、多重辺、CRUD Cell、意味属性、Lossと編集逆写像（#1124/#4472/#2497） |
+| DB Client / Workbench | 接続と取得結果を混同しないSelection意図 | RowsetのSnapshot/完全性、Key・Version・Read epoch、Commit/Rollback/UnknownとReceipt（#4496） |
+| SHO Editor / SUI | Document/Source/原文span/Buffer revisionの引用意図 | 文書保存・再開後の再解決、著者編集を保護した再投影、SHO Writerの適用結果 |
+| TAI / 外部Harness | 明示的に選んだ対象集合と用途、限定されたPreview | Product再解決、現在Disclosure、実Transport/Consumer受領、Harness OperationとEffect（TAI #629/#633） |
+
+これらのConsumerが**同じPin Storeを共有することはP0の条件ではない**。共有するのはQualified参照の意味と、Productが責任を持つ再解決・開示境界である。DB行SelectionをModelerのSubject IDに偽装しない。SHO文書位置を意味Relation IDに偽装しない。
+
+### 15.4 #4515の独立Expectedへ追加する反例
+
+| ID | 入力・操作 | 期待結果 |
+| --- | --- | --- |
+| PIN-S1-01 | Subject AをPin→Subject BへNavigate→AのSourceへ戻る | Pin IntentはAのまま。NavigateだけではPinも変更も実行されない |
+| PIN-S1-02 | AをPin→未保存Bufferで文字挿入→同offsetをクリック | 同offsetをAの原位置と誤認しない。Buffer generation/Source revisionの相違を表示 |
+| PIN-S1-03 | Source A→B→Aで内容Digestが復帰 | 過去のPin資格を自動復活0。観測履歴がなければ現在性はunknown |
+| PIN-S1-04 | DBのRowsetをPin→Cursor/Snapshot失効→Applyを要求 | Pin意図は保持可、DB ApplyはKey/Version/Read epoch等の独立検査なしに実行0 |
+| PIN-S1-05 | Source未保存/Grant未確認の状態でAI送信Preview | 開示範囲・Buffer由来・欠落を明示し、適格性を確認できない部分の自動送出0 |
+| PIN-S1-06 | 同じSource位置に二つのRelation候補、Graph表示線だけ存在 | Graphの`parent:`Edgeを意味Relation IDとして固定0。正式なOccurrence解決を要求 |
+| PIN-S1-07 | 一つのSubjectの参照数が0、探索がpartial | 「未使用確定」ではなく、探索範囲と未取得部分を明示 |
+
+### 15.5 実装順序と成果判定
+
+1. **#4515：現行Source TypeScriptで一件のSubject Pin**。既存`inspectSubject`、`inspectEligibility`、`readInspection`、`responses.ts`を再利用し、Focus移動・同名別Workspace・旧Replyを独立Expectedで確認する。ここにDB Apply/SHO Writer/外部Harnessを混ぜない。
+2. **#1824/#1124：参照移動と固定を接続**。三要素分析法の参照元/参照先ジャンプと、Pinの意図・Source位置を独立して表示。Relation identityはProduct側の一意解決が得られたときだけ正式サポート。
+3. **#4496/#2497：編集候補Preview**。未保存Buffer、DB Rowset、Modeler逆写像を各Ownerで別々に検証。保存・Commit・業務受理は別Receipt。
+4. **SHO/TAI：外部文書・Harnessの限定共有**。SHOの保存/再開とTEI元Sourceの再解決を別判定し、TAIのIntent/Resolve/Projection/Transport/Consumer/Harnessを混同しない。
+5. **証拠**：TypeScript typecheck/test/build、実Browser・CLI、同一HEADの独立Expected、旧表示のDOM/ARIA/Preview失効をそれぞれ記録。合格しない項目は`NOT RUN / BLOCKED / FAIL`を分ける。
+
+**現状の線引き**：2026-11-13時点、#4508はmainへマージ済み、#4498はDraft。#4515はOpenで、`reference/tei-studio-workbench/main.ts`にはまだ明示Pinがない。したがってこの節は**既存計画と実装境界の整合**であり、Pin UIやSource Applyが実装されたとの主張ではない。
