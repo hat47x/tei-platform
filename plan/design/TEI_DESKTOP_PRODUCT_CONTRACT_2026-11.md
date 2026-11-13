@@ -218,6 +218,35 @@ Stage1がStage2を生成する場合、**現在実行中のDesktopと生成先�
 **反映先と責務**：Build/再帰の実装と証拠は#4583/#2831、Windows Window/IPCと更新切替は#1824/#3421、対象固定は#4515、X-TEA三要素分析法のモデルは#1124/#4570、独立Expectedは#1180/#2514、Evidenceは#1163、配布BOMは#3267が引き続きOwner。本節はこれらのIssueを重複起票せず、製品操作で何を観測すれば合格かを明確にする設計追補である。新Go/Node/Windows/実DBの実行やOwner正式受理は、本節の追記によって成立しない。
 
 
+
+#### E. 編集中の定義と実Build入力を混同しない：Desktop実装の追加契約
+
+StudioはSourceの調査・編集・Buildを同じ画面から扱えるが、**「画面で見えている内容」と「Builderが実際に読んだ内容」は同じとは限らない**。この問題はCLIにも存在するが、未保存Bufferと複数Windowを持つDesktopで特に表面化する。#3788のDirty Buffer、#1529の保存競合、#2595の実Source Binding、#2831/#4583のBuild Attemptを接続し、別のWorkspace Snapshot DBや第二Source正本は作らない。
+
+| 状態・操作 | 初回の扱い | 実際に検証すること |
+| --- | --- | --- |
+| **保存済みCanonical Source** | 初回のBuild対象は、Hostが許可Rootから再解決した**保存済みSource**と明示Build Profileに限定する。画面の一時選択や編集Bufferを入力Sourceに暗黙転用しない | Source identity・revision・raw digest、実解決先、選択Plugin/Builder、実消費入力の対応 |
+| **未保存Buffer** | 入力欄には「未保存の変更は今回のビルドに含まれない」と表示する。Build操作に暗黙のSave・Accept・Provider更新を連結しない | 保存済みAとBuffer Bが異なるとき、AからのBuildをAと表示。Bを使ったと主張しない |
+| **保存・受理・Buildの分離** | 「保存」「意味の受理」「ビルド」「実行/切替」は別操作。将来、Buffer Bの試行ビルドを支援する場合も**明示的な隔離入力**と別Attempt/資格を必要とする。初回には実装要求しない | SaveだけではAccepted Meaningにしない。Preview／AI提案／Buildは実Effect実行や正式配布の許可にならない |
+| **Build前後の改版** | Resolve時と実Builder消費時のbytes・版を比較し、生成後の現在Sourceとも区別する。読み込み中やビルド中に外部編集が入った場合、実Input確定不能ならBuildの現在適格性をunknownにする | 計画時A／実消費Bの不一致はFAILまたは再解決した別Attempt。後からAに戻るA→B→Aでも履歴資格を自動復活しない |
+| **複数Window・外部Editor** | Window A/Bが別のDirty Bufferを持っていてもBuild対象をFocus中Windowで暗黙変更しない。保存競合は#1529の既存Writer/Source Ownerへ返す | Window/Buffer epochとCanonical Sourceの照合。旧WindowのSave/Build応答が現Windowへ成功として混入しない |
+| **Stage1/Stage2と実Consumer** | Stage1の実Processが選んだInput Snapshot、Stage2 exeの実Artifact、Stage2が再読取したWorkspace Sourceは**三つの別観測**とする。Stage2起動後のSource変更も可能 | Builder InputとArtifactSet、WebView2/IPC受領時のSource status、Stage2 Consumerの実exe/Window IDが一致するか |
+
+**Build Previewに必要なのは新しい大規模Editorではない**。既存のread-only Inspect/Build Report上に、(a)表示中のSource/Buffer版、(b)Buildが選んだ保存済みSource/Profile、(c)実消費が観測できた版と不足工程、(d)生成したArtifactと実Consumerを、**利用可能な証拠だけ**別々に表示する。Declared/Observed/限定境界内のEnforcedは別資格とし、同じdigestを一度計測しただけで全依存・OS境界の強制を保証しない。GUI/CUIは同じ元のOperation/Receiptへ辿れる必要があり、UI独自のビルド状態正本を作らない。
+
+**既存独立Expectedへの差分（新番号・新Gateは増やさない）**：
+
+- **ED-01〜04／BD-03**：保存済みA、Dirty Buffer B、Source IndexはA、画面表示はB。Aを明示Buildすると実入力Aのみ・Bは未保存と表示。Bを勝手に保存／ビルド／Acceptedへ昇格させたらFAIL。
+- **BD-04〜06／DT-02**：Build Preview AでBuilder実消費B、または途中でA→B→A。宣言と実消費の不一致を隠す、過去の合格を現在資格へ復元する、Stage0外部Launcher二重BuildをL3に数える場合はFAIL。
+- **DT-04／PIN-S0-03**：Window 1の旧Save/Build結果がWindow 2の現Source/Pinに後着。PinのIntentと履歴Receiptは残せても、現在のSave/Build/Consumer資格の自動更新は0。
+- **BD-07／DT-10〜11**：Stage2 exeのBuildはPASSでも別exe・旧JS・別Sourceを読んだWindowの合格を流用しない。旧Desktopが動くことは失敗した新Buildの成功ではない。
+- **#2514／#1163**：Expectedを生成物自身やAI候補からコピーせず、実Input→実Invoked Builder→Artifact→Consumerまで同一Attemptの因果を照合。秘匿bytesやDSN/Credentialは公開Receiptへ含めない。
+
+**実装順序**：まず#2831/#4583のN0〜N3実Build接続（B1）を妨げず、既存IssueへこのBuffer対照をExpectedとして渡す。次に#3788/#1824のread-only Source/Buffer版表示と#4515のPinを実Workbenchに結ぶ。B2/B3でStage1→Stage2とWebView2を再検証してから、Desktopの実操作からBuildを起動するUIを追加・受け入れるか決める。GUIの機能が増えることより、CLIと同じ限定Source/Operationを選び、間違った版をビルドしないことを優先する。
+
+**資格**：これは設計上の受入契約であり、現行WorkbenchにBuild Preview/Dirty Buffer編集/再帰Build UIが実装されたという主張ではない。新しいOS/Go/Node/Windows実行、未保存Sourceの実ビルド、Owner正式受理はNOT RUN。
+
+
 ---
 
 ## 1. 位置づけと判断済み前提
