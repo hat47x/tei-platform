@@ -1,49 +1,44 @@
 # DSL構文候補の比較票（S0・#4361）
 
-- **状態**: 設計比較。**測定ではない。**人間の被験者実験も、生成AIによる採点もしていない。
-- **親**: [#4359](https://github.com/hat47x/tei-platform/issues/4359)
-- **独立Expected**: `rule_authoring_expected_20261111.json`（同じディレクトリ）
-- **対象課題**: `reference/workspace/semantic/sales/validation.tei` の2規則
+- **状態**：設計比較。正式構文の選定ではなく、専門家の可読性やビルド速度の実測も行っていない。
+- **親**：[DSL構文拡充 #4359](https://github.com/hat47x/tei-platform/issues/4359)
+- **独立Expected**：同じディレクトリの `rule_authoring_expected_20261111.json`
+- **対象**：`reference/workspace/semantic/sales/validation.tei` の正数・関係内一意性の2規則
+- **関連**：[Frontend／Backendを分離した横断計画 Draft #4599](https://github.com/hat47x/tei-platform/pull/4599)、[Role・Operator境界 #988](https://github.com/hat47x/tei-platform/issues/988)
 
-この票は「どの記法が優れているか」を数値で決めない。各軸について、**この設計で成立しやすいか**と**その根拠**を書く。最終的な構文の採否はOwnerが決める。
+## 競合するのは3つのFrontend方式
 
-## 比較する4方式
+| 方式 | 表層の候補 | 実装・評価の現状 |
+| --- | --- | --- |
+| A1 Go式を利用 | 明示的な式位置でGo互換の表現を読む | 構文ノイズ、型と位置の変換、意味の保存を比較する候補 |
+| A2 独自構文 | ドメインの対象→条件→判定に沿う低ノイズな記法 | 既存`validation`および候補`rule`の差を比較する |
+| A3 ハイブリッド | 宣言はA2、必要な式位置に限り外部式Parserを利用 | **候補の骨格のみ**。汎用式Parserとの統合を実装済みとはしない |
 
-| 方式 | 内容 |
-| --- | --- |
-| A1 Go式AST直接 | `x = f(y)` 等のGo式を式として受理し、`go/ast`で解析する |
-| A2 独自構文 | 宣言語・前置詞・行指向の専用文法 |
-| **A3 ハイブリッド** | 骨格はA2、**明示された式位置だけ**既存演算子互換 |
-| A4 DSL→Goコード生成 | DSLからGoを生成し、Goとして解釈する |
+**A4「DSL→Goコード生成」はFrontendの第四候補ではない。** A1〜A3のいずれかを解釈し、既存の型付き意味へLoweringした後で選べるBackend／Targetの一つである。A2/A3とGoコード生成は併用できる。TEIのGo単一バイナリ配布方針と、日常DSLにGoの`package`／`func`／`struct`等を露出させない方針は両立する。
 
-## 評価軸
+## 比較軸と、まだ証明できないこと
 
-凡例: ○=成立しやすい、△=条件付き、×=成立しにくい。**根拠の列が無い行は主張として扱わない。**
+| 観点 | Frontendごとに確認すること | 現時点の上限 |
+| --- | --- | --- |
+| 可読性と認知順 | 2規則のSourceを並べ、対象、Scope、述語、結果を読み取る順序と記述上の重複を比較 | 根拠付きの設計判断のみ。AIだけで専門家評価済みとはしない |
+| 型・意味 | 同じ明示Rule ID、Attribute、Relation、型・NULL/未取得Policyを既存`semantic.Validation`へ変換できるか | SF-A/Bの限定変換。SF-C/Dは未実装 |
+| Source位置・診断 | 元SourceのUTF-8 byte span、CRLF、重複ID、曖昧参照、stale編集の拒否 | 候補`rule`の単一parse/anchorはPR #4405で局所実装。旧`semantic_anchor.go`の再Lexは別途#4364 |
+| 演算・情報要求 | 0と負数、空集合と取得不能、NULLと部分取得、実Read集合・短絡が変わらないか | Stub上の値判定のみ。実Data Context・Providerの完全性は#2586/#2506 |
+| 金額精度・単位 | 受理済みMeaningの数量・単位・丸め位相を各Backendが維持するか | Goに組込decimal型が無いことは、生成Targetが精度を保てないことの証拠にはならない。Target別検証が必要 |
+| AIによる編集 | 一因子修正の差分、対象外byte不変、旧Revision・曖昧Occurrenceの拒否 | 比較計画のみ。生成AIの変更品質は未測定 |
+| ビルド速度 | 同一WorkloadでParse／Lower／Buildの実時間と再計算数を比較 | **未測定**。A1/A2/A3やGo生成の優劣を採点しない |
+| Go内部親和性 | Go AST／既存Lexer／Source逆写像の実装コストを比較 | 内部評価項目。専門家の可読性に優先しない |
 
-| 軸 | A1 | A2 | A3 | A4 | 根拠 |
-| --- | --- | --- | --- | --- | --- |
-| ドメイン専門家の可読性 | × | ○ | ○ | △ | A1は宣言・型・波括弧・`func`が日常記述に混ざる。A4は生成Goを読む必要がある |
-| 記述量（同一課題） | △ | ○ | ○ | ○ | A1は式自体は短いが宣言が長い。2規則の比較はfixtureのSF-01〜SF-04で行う |
-| 認知順（対象→条件→判定→結果） | × | ○ | ○ | △ | A1は結果が先に来やすい。A3は`rule <id>: <subject> is <predicate> [per <scope>]`で対象→述語の順を文法が保証 |
-| 構文解析の安定性 | ○ | △ | ○ | ○ | A1/A4はGo parser。A2は曖昧性を作りやすい。A3は式部分だけ既存parserへ委譲 |
-| 型検査 | ○ | ○ | ○ | ○ | いずれも既存`semantic`/`validation`/`operator`へ落とせる（新型は作らない） |
-| Source span | △ | ○ | ○ | × | A1は`go/token`位置と糖衣の対応表が要る。A4は生成物の位置が原Sourceに対応しない。A3は表層Lexerがbyte spanを保持（本PRで実装） |
-| エラー診断 | △ | ○ | ○ | × | A1はGoのメッセージ。A4は原Sourceと行がずれる。A3はDSL語彙で位置付き（本PRで10ケースを固定） |
-| Nullabilityの明示 | △ | ○ | ○ | △ | A1はGoのzero valueと`nil`が混ざる。A3は`required/optional`等を明示語として持てる |
-| 金額精度 | × | ○ | ○ | × | A1/A4はGoにdecimalが無く、生成Goの型選択が意味を決めてしまう |
-| 依存関係追跡 | △ | ○ | ○ | × | A1はimport/型依存が混ざる。A4は生成コードの依存が意味に見える |
-| ビルド速度 | ○ | △ | △ | ○ | A3は2段parseのコストがある。本PRでは1回のparseで値とanchorを返す形にして二重Lexを避けた |
-| 生成AIの変更容易性 | △ | ○ | ○ | × | A1は学習済みだが意味語彙が弱い。A3は文法と正負例を渡せる。A4は意味変更がコード差分になる |
-| **Go AST/既存Parser親和性（内部評価のみ）** | ○ | △ | ○ | ○ | A3は既存`internal/syntax`のLexer/Token/Positionと`semantic.Validation`をそのまま再利用する |
+## Fixtureと独立Expectedの扱い
 
-## 暫定推奨
+`SF-01〜04`は旧`validation`と新`rule`候補の同じ明示ID・意味候補を比較する。`SF-05` Markdown表はProfile/Reader未実装。`SF-06` Operator呼出し案は**Rule IDを宣言しておらず、同一Validation IDは未成立**。Operator名からIDやPinを暗黙に作らない。
 
-**A3 ハイブリッド**。骨格は低ノイズ独自構文、式位置だけ既存演算子に限定する。Goの宣言語（`func`/`struct`/`package`/`import`/型引数）は日常記法に出さない。
+`EX-01〜03`の正数判定と`EX-06〜08`の一意性は数学的な意味を基準に置く。`EX-04/05/09`のNULL・未取得は選択されたPolicy、`EX-10〜16`の診断名は既存実装との互換性をそれぞれ検証する。**新Parserの出力から独立**であることと、**既存Evaluatorの正しさから独立**であることを混同しない。
 
-**採用条件**: Ownerがこの票と fixture（SF-01〜SF-06、EX-01〜EX-16、N-01〜N-12）を読むこと。票とfixtureは本PRの実装結果を根拠にしていない。
+`EX-08`の空集合は完全に観測したStubの空Scopeに限定する。実Providerから0行返った事実だけで、全件一意性が成立したと判定しない。また、各グループの登録数とGo Testが実際に消費するCase数を別に報告する。
 
-## この票が主張しないこと
+## 次の受入と境界
 
-- 数値スコア、可読性の測定値、AIの採点結果
-- 実装済み表層（SF-A/SF-B）以外の同値性（SF-C Markdown表とSF-D Operator pinは`NOT IMPLEMENTED`）
-- 正式採用、意味受理、実行権限
+最初は#4361のExpected→#4362/#4363のParseと型付き意味→#4364のSource位置→#988/#2586の実Readerという順で評価し、Desktopセルフビルド#4583/#2831とは並行させる。生成GoはSourceの意味正本ではなく、実Builder・Artifact・Consumerを別途検証する。
+
+**採否**：A3は引き続き有力な検討候補だが、正式採用・全Reader・実Provider・編集往復・実Targetの同値性をこの票から認定しない。人間被験者・仮想専門家による採点、未実装表層の合格判定は行わない。
