@@ -1098,3 +1098,37 @@ M0/M1で一Relationの照合を成立させたら、[#1031](https://github.com/h
 **責務の切分け**：現mainのMapWorkspaceはCatalogWorldを直接生成しており、低水準のCatalogWorldはValidationを実行しない。**未評価のGoゼロ値falseは、実Validatorの不合格証拠ではない**。[既存Draft #4392](https://github.com/hat47x/tei-platform/pull/4392)がMapの同一LoadからcatalogValidation(loaded)を設定する本体修正を所有するので、TEA側で第二Validation Engineを実装しない。#4521新head a849471e05e3146c01d5b544ff6440c542c1baf5 ではMap/LocateのValidation同値assertを除き、Locateの実ValidatorがOK=trueであることと、実Relation/親/Target・Source ID・版・partial/NotDerivedを照合する検査を残した。**修正後headの全Health完了まではM0実試験PASSを主張しない**。
 
 **Method側の設計含意**：TEA三視点でinvalidと表示するには、その対象とRule・Sourceについて検証が実行され、資格付きの不合格結果があることが必要。未実行／未受信／不開示をfalseへ縮約して業務図面へ赤表示しない。既存の状態・ProvenanceをConsumerで説明し、新しいcheckedフラグや独自Truth Storeは設けない。ValidなSourceというだけでRelation全件閉包・Current Disclosure・EditEligible・Effect・Owner Meaningを証明しない。既存#4392と[#4510](https://github.com/hat47x/tei-platform/pull/4510)を実装Ownerとして保持し、#4521は型付きread-only Relation照合のみで受け入れる。
+
+## 36. 実X-TEA三視点PluginとTEI-native三視点を別資格で合流する（2026-11-13、設計追補）
+
+### 36.1 現行実装：二つの異なるSource経路を一つの正本へ偽装しない
+
+2026-11-13確認main `f3b58e7b580f0ecbea1d2feb156f52c2147f63a7` において[#4392](https://github.com/hat47x/tei-platform/pull/4392)のMap/Catalog/Validate一致修正は**merged**。既存[TEA Go Draft #4521](https://github.com/hat47x/tei-platform/pull/4521) の修正後exact head `a849471e05e3146c01d5b544ff6440c542c1baf5` はRepository Healthを含む **11/11 checks completed/success**。公開実 TEI-native Source `semantic-relation:sales.order.lines` の Map/Locate の一致が局所試験として成立した。PR自体はDraft・未統合で、二Readerは別Load、Current Policy/Studio受領ではない。検証NG時の保持は[Draft #4557](https://github.com/hat47x/tei-platform/pull/4557)が別担当。
+
+並行する[X-TEA三要素分析法のStudio Plugin Draft #4570](https://github.com/hat47x/tei-platform/pull/4570) は exact head `8d8f1439d260a3ebb0a633c2f2e040ab25b20cc4` で**11/11 GitHub checks completed/success**。`internal/operations/three_view.go`のSource-format中立なread-only Navigation Contract、`cmd/tei-studio/plugins/xteathreeview`の `.xead` Reader/配置規則、既存`threeelement.GenerateCRUDTable`、選択済Provider実Entry観測、`StudioBridge.NavigateThreeView`、独立 `/three-view/` 画面、合成`.xead`によるWindows WebView2スモークが存在する。旧X-TEA実設計Source、別Workspace同BytesのPin、正式Meaning/Disclosure、実Workbench入口、人のGUI受入、編集・Effect・DBは**未実証**。本§36はそのOwnerブランチへコードを重ねない。
+
+| 経路 | 正本・資格 | 可能になったこと | なお主張できないこと |
+| --- | --- | --- | --- |
+| TEI-native `Workspace→Catalog/Map/Locate` | TEI Source Kind+ID、World/Index/Model Revision、Workspace identity、partial coverage | 一Relationの親/Target/Sourceを型付きで照合。#4521実試験PASS | X-TEA Raw解釈、正式Role/Disclosure、Consumerの同Attempt受領、全Graph/Effect |
+| X-TEA Raw `.xead`→Plugin→Studio | 原文Artifact digest、Source位置のoccurrence、MappingFingerprint、DerivationRevision、Plugin/Host観測、single-source coverage | 合成Business→Function→Function-declared CRUD→Data→Source位置、通常/生成StudioとWindows read-only試験 | 正式TEI Canonical Identity、受理Meaning、旧実Source全件、Action固有CRUD、Provider認定・現在Grant |
+| Function→Environment→PG16→Context | [merged #4539](https://github.com/hat47x/tei-platform/pull/4539) の使い捨てPG16・参照CLI・独立Read | 明示されたFunction Data Contextへの限定的な実Rowset結合 | 通常`tei` CLI/Studio受信、旧X-TEA業務との同等性、全件・Closed world・Write Effect |
+
+**合流規則**：これらは同じBusiness/Data/Functionの見方を持ち得ても、**同一のSubject Identity／Authority／Reader Attemptを共有しない**。X-TEA Source ID、位置依存Token、表示名、TEI-native Kind+ID、実PG Table/Column を暗黙に相互変換しない。X-TEA Source Fact→Structural Candidate→Owner受理Meaning（現v0は`not-bound`）を分離し、正式Mapping/Current Scope/Rule/Disclosureの既存Owner資格がない限り、L（Legacy observed）からD（Desired accepted）へ昇格しない。実PG ReadをT（Target observed）と認定できても、特定Lとの意味同等性は別Expectedが必要。
+
+### 36.2 新たに見つかったPin同一性の反例候補（#4614既存受入へ追記）
+
+[PR #4570](https://github.com/hat47x/tei-platform/pull/4570) の静的コードから、`ThreeViewPin={Occurrence,SourceArtifactDigest}` とHostの `held=(digest一致 && occurrence存在)` は**Workspace identityとSourcePathをPin-originとして比較していない**。`CrossViewSourceNodes`のOccurrenceは原文digest＋要素位置由来である。一方、三視点画面はWorkspace/Source変更後もPinを意図的に保持するため、**別Workspace・同Path・同Bytes**、または**同Workspace・別Path・同Bytes**で、別対象のままのPinを「保持中」と報告し得る。これは**コードからの条件付き推論**であって当該二世界の実Go/Browser再現はNOT RUN。正本ID／権限漏洩の実事故を主張しない。
+
+既存[#4614](https://github.com/hat47x/tei-platform/issues/4614#issuecomment-6852919600)へ、PIN-XW-01（別Workspace同Bytes）、PIN-XW-02（別SourcePath同Bytes）、PIN-XW-03（元Scopeへの戻りとA→B→A・Grant差）を**固定の公開合成対照候補**として引き渡した。期待は「意図的Pinは解除しない」「対象外Scopeではheldと表示しない」「同名・同IDの別要素へ再束縛しない」の三条件を同時に満たすこと。現在のPlugin契約v0はSource bytes内での局所Pin整合のみ。既存Workspace/Source originを利用者画面側で保持するか、将来の契約で型付きに束縛するかは#4614/#1124 Owner判断であり、TEA独自のPin Store、新Canonical ID/Role Resolverを作らない。
+
+### 36.3 受入順序：実Source、現在公開、製品Consumerを同じPASSに畳まない
+
+| 優先 | 既存Owner | 実証内容・停止線 |
+| --- | --- | --- |
+| P0-A（局所基線） | #4521/#4392/#4557 | TEI-native正常RelationのMap/Locate 11/11 PASS、MapのValidation修正merged。検証NGケースは別Draftで再実証し、Source/Meaning/Actionの完全性へ飛躍しない |
+| P0-B（X-TEA適合） | #4570/#4615/#1031/#941 | 同一固定の実`.xead`を既存Source Readerと三視点Pluginで独立集計比較。Source Token/導出Policy/未知/欠落ID/重複、未配置/省略、Function-level CRUDを残す。**公開は集計とFingerprintのみ**、実原文や旧IDを再配布しない。`.xeaf`・複数Sourceと設計Functionの非1:1は後続資格 |
+| P0-C（Pin/Studioの安全） | #4614/#4613/#1124/#2516 | 同Bytes別Workspace/SourceのPin再束縛拒否、Workbench入口/古い応答/現在Disclosure、Desktop人間受入を独立に実行。Desktop合成スモーク合格をCurrent Grantへ昇格しない |
+| P0-D（実Function） | #2586/#4539/#1251/#4510 | 既存実PG Readを通常`tei` CLI→Studio Bridgeの同一Read到達へ引渡す。表示CRUDから実Read/Action Effectを推論しない。P0-B/Cを実ReadのHard Gateにしない |
+| P1（編集・再生成） | #4538/#267/#2831/#4541 | 一意なSource SlotでのPreview/Acceptance/独立再読込と通常・生成Desktopのself-buildは別受入。Generic Core/Host必須化・未選択Provider物理混入の黙認を避ける |
+
+本§36は既存実装・exact-head CI・Issue/PR契約の照合から得た**研究・検収設計の更新**。X-TEA正確な実Sourceの再演、PIN-XWの実試験、Current Disclosure、正式TEI Meaning Mapping、元業務とTargetの同等性、Owner受理・ユーザー認知負荷比較は**NOT RUN / NOT ACCEPTED**。新Core Kind/Schema/Host/Policy/Runner/Plugin Registryや無条件のRequired Gateを追加しない。
