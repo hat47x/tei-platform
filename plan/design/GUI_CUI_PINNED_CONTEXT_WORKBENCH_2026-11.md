@@ -749,3 +749,53 @@ type LocalPin = { intent: PinIntent; observation: PinObservation };
 **実装上の停止線**：Pinのために`inspect()`を呼んでFocus/Editorを動かす、Pin Aと選択Bの結果を同一laneで競合させる、旧ResponseをGrant/Effectの根拠にする、Source Revisionが不明な状態を`authorized`と表示する案は採用しない。
 
 **状態**：本節は現行コードから特定した競合と解消条件の計画反映。Pin実装、生成Reader統合、実Desktop/CLI試験は**NOT RUN**。
+
+
+## 20. 2026-11-13 固定操作の世代管理：同一Subjectへの再Pinと旧応答のABA拒否
+
+> 現行mainの`responses.ts`実装を確認して§19の独立lane設計を補強。**lane分離は必要だが十分ではない**。本節は実装上の正負Expectedであり、実コード変更・テストPASSではない。
+
+### 20.1 現行`createResponseScope`の正確な保証
+
+`responses.run(lane, operation, publish, failure)`は`context`とlaneごとのsequenceを捕捉し、結果到着時に最新の呼出しだけをpublishする。`reset()`はcontextを進めて全laneを無効化し、`invalidate(lane)`は指定laneのsequenceを進める。これは**UI応答の順序制御**であり、Host処理の取消、ProductのSource改版検知、現在Disclosure/Grantの検査を行わない。
+
+特に、Pin Aの再確認を開始→Unpin→同じAを再Pinという操作では、**Unpin時に`pinned-inspection`をinvalidateしなければ旧A応答が新しいAのObservationへ書き込まれる**。Subject ID/Workspace IDが同じでも、Pin Intentの世代は異なる。
+
+### 20.2 Pin generationとReader requestの二重照合
+
+- Workbench内で`pinGeneration`を単調増加させ、Pin、Unpin、Undo、Workspace切替、明示再資格化の際に旧資格を失効させる。数値の大小を永続的なRevisionと誤認せず、現在のWorkbench lifetime内だけで比較する。
+- `reinspectPinned`開始時に`{ pinGeneration, workspaceEpoch, workspaceId, kind, subjectId }`を捕捉する。応答時には**laneの最新性に加え、これらの一致**を検査する。Readerから実際に得られるSource/Catalogの現在性は`readInspection`とProduct契約で別途照合する。
+- Unpin時は`responses.invalidate("pinned-inspection")`を実行し、Pin Observationを破棄する。Undoは旧Pinの**対象指定意図**のみ復元し、新しい`pinGeneration`と`unqualified`から開始する。
+- `responses.reset()`がWorkspace変更で呼ばれても、旧WorkspaceのPin Intentを新Workspaceの同名Subjectへ移植しない。旧Intentを保持するUIなら`needs-requalification`とし、旧Workspace名と新Workspace名を混ぜて表示しない。
+- `pinGeneration`は旧UI応答の混入を拒否するためのローカル世代。SourceのA→B→A、同Fingerprint別Workspace、Grant改版の検証を代行しない。これらはProduct Reader/Source revisionと独立の再資格化が必要。
+
+### 20.3 実装に使う最小の純粋状態遷移
+
+```text
+pin(A):          generation++, intent=A, observation=unqualified
+reinspect(A):    capture(generation, workspaceEpoch, A), reader request
+select(B):       selected=B, pin intent/observation unchanged
+unpin():         invalidate pinned lane, generation++, intent=null
+undo():          generation++, intent=A, observation=unqualified
+workspace(B):    invalidate pinned lane, generation++, old intent needs-requalification
+reply(A):        publish only if lane current AND captured generation/epoch/identity current
+```
+
+`selected`がBの間に`reinspect(A)`してもEditor/Graph/Noticeを変更しない。応答失敗時もPin Observationだけを更新する。Pinの資格表示を`authorized`や`fresh`と呼ばず、**このReader観測時点で照合済み**という意味に限定する。
+
+### 20.4 追加の負例と検収順
+
+| ID | 操作 | Expected |
+| --- | --- | --- |
+| PIN-ABA-01 | AをPin→再確認開始→Unpin→Aを再Pin→旧応答到着 | 新PinのObservationは未資格。旧応答による更新0 |
+| PIN-ABA-02 | AをPin→再確認開始→Unpin→Undo→旧応答到着 | UndoはIntentだけ復元。旧Observation復活0 |
+| PIN-ABA-03 | AをPin→再確認開始→Workspace A→B→A→旧応答到着 | 同Workspace ID復帰でも旧epochの応答採用0 |
+| PIN-ABA-04 | AをPin、Bを通常Inspect→A再確認が失敗 | BのEditor/Graph/Source Statusの変更0。Pinのみ失効 |
+| PIN-ABA-05 | AをPin→A再確認→別のA再確認を開始→旧A成功が後着 | 同lane内で最新Requestだけ採用 |
+| PIN-ABA-06 | AをPin→Source A→B→A、ReaderのSource revision不明 | ローカルgeneration一致だけでSource資格復活0。現在性はunknown |
+
+**検収順**：まず`responses.test.mjs`で`invalidate("pinned-inspection")`と独立laneの既存保証を確認する。その後、Workbench Pin stateの純粋な状態遷移テストでgeneration/identity/epochの二重照合を検証し、最後に実`main.ts`のEditor/Graph/Pin表示が干渉しないことを検証する。Node合成PASSを実Windows Desktop/Host GrantのPASSに転記しない。
+
+**担当**：#4515がローカルPin stateと実Workbench統合を所有。#4572の生成Reader、#4579の実WebView2、#2831のセルフビルドは各Ownerの証拠と同一HEADで接続する。新たな共通Session Storeや公開ABIは作らない。
+
+**状態**：この節は`responses.ts`の現在の保証と限界に基づく計画更新。実装・typecheck・Node/Browser/Windows試験は**NOT RUN**。
