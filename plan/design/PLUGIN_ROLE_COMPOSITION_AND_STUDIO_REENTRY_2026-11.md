@@ -173,3 +173,64 @@ Pluginの種類をCore固定enumへ追加せず、**用途別Roleと、どの段
 この検証から「一つの契約と既存Composition/Build/Operationで、通常Studio・生成Studioの必要な実装を選択し、実Consumerまで追える」ことが示されれば、同じ方法をDSL/Query、DB Provider、SHO連携、CLI/MCP、実行Applicationへ段階展開する。ただし各Targetでの実Grant、部分取得、Effect、外部Host、表示・編集の適格性は別に検証する。モデル専門家の意味受理やX-TEA原典との対応を、プラグインの適合試験で代行しない。
 
 **状態**：この章は現行Draft Sourceの静的照合と実装・検収計画の追補。PXR-09〜15の新Go/CLI/Windows/Stage2試験、全Build Intent、正式Owner意味受理は**NOT RUN／NOT ACCEPTED**。
+
+
+---
+
+<!-- plugin-assurance-declared-observed-enforced-20261113 -->
+## 9. 宣言・観測・強制を区別するプラグイン実装保証（2026-11-13横断追補）
+
+### 9.1 設計判断
+
+Plugin-firstの保証は、**宣言（Declared）／観測（Observed）／強制（Enforced）**を分けて扱う。これは新たなCore enum、万能Proof Store、横断認証機構ではなく、既存の#951/#1016（Selection）、#2595/#4583（Builder/Source）、#4486（Host境界）、#3267（Artifact）、#1251（Invocation）、#1174（Effect/Grant）にある事実を読み取り専用で照合するための判定上の区分である。各段階のSubject・Target・Source Revision・Process・Attempt・観測範囲を保持する。
+
+| 区分 | 確認対象 | 主張できないこと |
+| --- | --- | --- |
+| **Declared** | 契約・Trait義務・ProfileでのProvider選択・Build Input/Recipe・Resource/Effect要求 | 本当にビルドした、読み取った、呼び出した、権限がある |
+| **Observed** | Host-selected entry・実Process image/argv・実Artifact/配信byte・事前/事後のSource digest・Consumer受領 | 未宣言のInput/Processが**存在しなかった**こと、時点間のTOCTOU/ABAが無かったこと |
+| **Enforced** | 明示した境界WにおけるOS/Hostの拒否。例：未許可Resource書込み、誤Provider Binding、Grant拒否 | W外の読取り・ネットワーク・別OSも禁止したこと、業務意味・実Effectが受理済みであること |
+
+**誤った昇格を避ける：** Windows CIでN0〜N3の名前付きファイルSHAを採取しても、後読みは実Builderが同じbyteを消費した証拠ではない。Go \`go list -deps\`・静的importは入力閉包の候補だが、Child側に未列挙のファイル読込み、Node/esbuildのtransitive input、実行中差替えは別に判別する。実Entry symbolの観測は呼出しの参考になっても真正な署名・Conformance・現在Grantではない。強制された**不存在**は特定の資源種別と境界W内でだけ主張する。
+
+[#4587](https://github.com/hat47x/tei-platform/pull/4587) HEAD \`d7ad13ceabc39b3917a129409630879564f8384c\`のWindows CIについては、N0〜N3の**指定したファイル**と実生成Desktopの観測が成功している。これは計画に役立つ足場だが、同PRの\`qualifiedBuildIntent=false\`／\`dependencyClosure=unknown\`を維持する（[#4583の実装観測記録](https://github.com/hat47x/tei-platform/issues/4583#issuecomment-6847330010)）。その後のHEAD/CIは別試行として検収する。
+
+[#4486](https://github.com/hat47x/tei-platform/issues/4486)ではLinux opt-in \`tei self-build -state-boundary\`の書込み隔離が局所試験で成立した。しかし読取り共有、ネットワーク、環境変数、常駐Process、別マウント、Windowsは境界Wの外である。二回目のstateが存在していたという事後検査（\`entry-post-hoc\`）と、境界内の書込み禁止（\`host-boundary\`）を混同しない。前者から「隠れた共有が不可能」と推論しない。**この境界をWindowsのB1/B2へ機械的に当てはめない**。
+
+### 9.2 B1で最初に閉じる一辺
+
+Studio全工程の一般化に先立ち、**N0の生成Inspector TS → N2 esbuild → N3 Go embed**の一経路だけを、既存Build ExecutionとArtifactSetへ接続する。
+
+1. **宣言**：入力Source/Transform、選択済みBuilder・Toolchain、出力のrole、Target/build tags、前段成果物への参照を、既存の受理可能な型へ落とす。Desktop exeを偽Plugin Subjectにしない。
+2. **実起動**：Entryが起動するProcess image、argv、作業領域、受け渡す入力・出力、Child Attemptを固定して記録する。選択Builder B／実起動A、宣言N0／実消費旧TSを区別する。
+3. **実受領**：N2のJS byte→N3 embedに渡した資産→Stage2 exeが配信したJSとInspector実使用を照合する。単に事後ファイルをハッシュしただけなら\`observed-post-hoc\`相当の限定記録にとどめ、実読取時点が不明な辺を\`unknown\`とする。
+4. **強制境界**：固定Snapshot／入力の実読取観測／OS境界のうち既存仕組みで成立するものだけを採用。未実装の読取り・ネットワーク・Windows隔離は\`unsupported\`または\`unknown\`。B1の最小実呼出し証拠を、全OS完全隔離の実装まで止めない。
+5. **再利用**：#2600には「真に未選択・未消費のPlugin変更」と「未列挙だが実消費されたSource変更」を対照させる。Build byte一致、Evidence再利用、現在の受理資格は個別に判定する。
+
+### 9.3 独立Expectedの追加候補 PRA-01〜08
+
+既存#1180/#2514のScenarioに接続する差分であり、第二Runner・Gateは作らない。
+
+| Case | 注入・比較 | 期待される判定 |
+| --- | --- | --- |
+| **PRA-01** | N0出力TSをN2起動前に差替え、事後は元byteへ戻す（A→B→A） | 後読みSHA一致のみではPASSせず、実読取/固定Snapshotが無ければunknown |
+| **PRA-02** | 選択Builder Bと実Process Aの出力が同じ | 実image/argv不一致でFAIL |
+| **PRA-03** | \`package-lock\`以外の実transitive JS inputを変更、目録から欠落 | 実依存閉包をqualifiedとしない。差分/読み取りを追跡 |
+| **PRA-04** | Stage2に必要なProviderが欠ける一方、Stage1のGeneratorは動いている | Stage2提供資格FAIL、Stage1のGenerator成功は維持 |
+| **PRA-05** | Stage1専用GeneratorがStage2から除外される | 選択Targetが必要としなければ正当。単純な「Plugin欠落」では拒否しない |
+| **PRA-06** | Linux書込境界が通るが読取り共有・ネットワークに依存 | W内の書込み制約のみ支持。完全なstate isolationは未成立 |
+| **PRA-07** | Hookの\`uses\`を宣言したがGuard拒否／二重Call／Commit ACK喪失 | 宣言≠呼出。Guard拒否時の0回・多重作用・unknown Effectを別に判定 |
+| **PRA-08** | DB ProviderがRLSで一部の行のみ返し、UI/AIが全件として表示 | 実Read成功でも全体被覆・現在開示は未成立。partial/unestablishedを維持 |
+
+### 9.4 DSL・Trait・Hook・AI協業への適用順
+
+| 接続先 | 共通にすること | 固有のOwnerと未証明事項 |
+| --- | --- | --- |
+| **DSL／Target Generator** | Source→型付き意味→選択Operator/Provider→生成実装の対応。構文同値だけでなく、評価順序・数量精度・NULL・依存失効の比較 | #4361〜#4367、#1121、#2595。新DSLの全文法・全Target Conformanceを本Plugin計画で確定しない |
+| **原子的Trait** | \`required\`→Default/Provider/Generated/Manual/Externalの実Fulfillmentと失敗診断。単に宣言されたHintを保証にしない | #3278/#951。Trait追加で新Core enumを要求しない |
+| **Hook／Lifecycle** | Contract選択・実呼出し回数・Guard・Failure/Effectを区別し、Graphの静的表示を実Callとみなさない | #4589/#4602/#4198/#1174。未知Effect時の再送禁止。全Graph CompilerをB1の前提にしない |
+| **DB Provider／Query** | 選択済みEnvironment→実Reader→Rowset/Context→Consumer受領。Source/Session/Grant・RLSの未知を分ける | #2586/#3270。実PG Reference CLI成功をStudio/本番Grantに拡大しない |
+| **AIと人間の協業** | AIの候補Proposal、固定Selection・Source/Revision、実Apply、Build開始、実Consumerを分離。結果に根拠と欠落を示す | #2514/#2516/#1824。AI推定・検証PASSを業務意味の受理・現在権限に置換しない |
+
+実装・配布の第一目標は引き続き**Studio DesktopをTEI自身が再構築し、生成されたStage2実行ファイルで利用できること**。PRAは必要な縦断の反例を短く固定するものであり、X-TEA実Source、全Plugin移行、DSL全面自己記述、AI Harness自律Apply、他言語TargetをP0へ積み上げるものではない。
+
+**状態**：現行Issue/PR/Sourceの静的照合に基づく設計・検収引渡し。PRA-01〜08の新Go/Node/Windows/OS境界試験、Stage1→Stage2 Desktop全工程、正式Owner意味受理は**NOT RUN／NOT ACCEPTED**。
