@@ -144,3 +144,52 @@ Subsystem再命名は役割・更新責務が改善された可能性を示す**
 比較評価は**正しいretain/recheck/unknown率、Source到達操作数、誤った全件・不存在判断、AIの修正往復、失われた編集情報の検出率**を計測する。既存文章/単一図に対する優位性は未測定。利益が確認できない新しい共通抽象は縮小する。
 
 **§6〜8の証拠上限**：2026-11-12時点の既存GitHub Issue/PRの静的照合と、反証可能な新設計の記述のみ。新Go/Node、実SQL/DB、Studio/Browser、EKI/ETL実Provider、Current Policy、実Owner受理は本追補では**NOT RUN / NOT PROVEN**。
+
+## 9. Evidence Join：独立Witnessを越える保証を成立させる結線資格（2026-11-13追補）
+
+- **状態**：設計候補。2026-11-13のmain `f3b58e7b580f0ecbea1d2feb156f52c2147f63a7と既存PR/Issueを静的照合。新規Go/Node/Windows/実PGをこの節のためには実行していない。
+- **狙い**：一つのSource、操作、Builder、Artifact、Consumerについて、各工程が別々にPASSした事実を単純に足すだけで「一続きの成功」に変えない。一方で実際に結線を観測した段階は、必要以上にunknownへ落とさない。
+- **非目標**：Proof Registry、Universal Event Bus、分散トランザクション、第二Source Index、永続的な共通Evidence Schema、全工程を単一Attemptへ強制すること。
+
+### 9.1 Witnessを結ぶときに必要な五つの照合
+
+各領域の既存Result・Manifest・RunLog・Source/Pin・Scenarioから、次の**比較列だけ**を一時的に取り出す。証拠IDが存在する／両文書に同じDigestが書かれた、というだけでは結合資格を得ない。
+
+| 比較 | 結合可能な限定条件 | 証拠が欠ける場合 |
+| --- | --- | --- |
+| **対象**（Subject） | canonical Kind/IDとScope/Workspace、legacy Source occurrenceの所有元・Path・位置、問いのPredicateが意味上の同じ対象を指すことを各Readerで確認 | 同名、同bytes、同offset、同View IDだけなら対象の同一性はunknown |
+| **物質**（Material） | 実Consumed input byte／Selected Artifact／実Consumer byteの対応が、各工程に必要な独立Observationで分かること | Manifestの宣言・計画・SHAだけで実Consumer到達や完全消費を推定しない |
+| **試行・因果**（Attempt/causality） | Builder→Artifact→Consumerは必要なAttempt/Generationを明示して対応付ける。独立Readerは別Attemptでもよいが、どのState/Windowを観測し先行処理とどう関係するかを示す | 二つのCIがGreen、同じArtifact hash、時刻の近接だけでは一続きの実行ではない |
+| **保存・閉包**（Preservation/closure） | 必須Trait、Function Data Context、Mapping loss、Required集合、実Consumed集合、完全性を**問いごと**に照合 | データが読めた、Mapが正しい、0行、部分Graphが描けたことから全件・不存在・可逆Writeは導けない |
+| **現在の資格**（Authority/use） | Consumer用途、Disclosure、Current Grant、操作権限、Owner受理を対応する既存Ownerへ確認 | 正しいTargetの読取・旧時点の成功から公開/編集/Effect/意味採用を推論しない |
+
+ここでいうEvidence Joinは、既存の独立Witness間の**限定された参照関係**であり、単一の自動`verified`状態ではない。例えば`Observed(Build→Artifact)`と`Observed(Consumer←Artifact)`を結んでも、`Qualified(Whole Required Universe)`や`Accepted(Business Meaning)`は自動生成されない。
+
+### 9.2 独立事例で確認した誤結線と現在の上限
+
+| 確認した事例 | 確認された事実・現実の上限 | 横断的な反証 |
+| --- | --- | --- |
+| [#4584 merged](https://github.com/hat47x/tei-platform/pull/4584)のSource Index | 旧Canonical Subjectの参照0件を`ok:true`で返していた不整合に対し、同一Workspace Load/Indexを使う`InspectionFromLoad`でSubjectを先に確かめ、`SUBJECT_NOT_FOUND`を拒否するよう修正 | `references:[]`はSubject不存在、未使用、Meaning受理のいずれの証明でもない。対象存在とSource参照数は独立Claim |
+| [Studio/X-TEA Draft #4570](https://github.com/hat47x/tei-platform/pull/4570) のPin | 合成Source→選択Provider→Bridge→Windows WebView2のread-only道筋は限定的に試験済み。一方同一bytes・Occurrenceで別Workspace/別PathへPinが`held`になる可能性は静的な負例候補（[#4614](https://github.com/hat47x/tei-platform/issues/4614)） | Content digestとOccurrenceだけでWorkspace/Source identityが保持されるとは言えない。実再現・修正の受入は既存Owner |
+| [Desktop Build Draft #4587](https://github.com/hat47x/tei-platform/pull/4587) | N2で定義したPowerShell変数を次Step N3で使って実際にCIが失敗し、Step間Artifact参照へ修正後の固定HEADで両Desktop Job成功。次のHEADではN2 esbuild選択入力24件、N3 Go選択入力303件の前後hashを記録 | 工程間の暗黙状態は証拠辺にならない。実選択ファイルの前後hashも、実read-time全byte、外部Toolchain、Stage1 TEI自身のWindows Stage2駆動の証明ではない |
+| [実PG Read #4539 merged](https://github.com/hat47x/tei-platform/pull/4539) | Driver/Executor→PG16→Function Data Contextの限定実Readは成立。RLS下の2/3可視、0行、NULL/Maskは`unestablished`として区別。製品`tei` CLI→Studio Consumerは未結線 | 正しいPG結果でも0行を全集合の不存在と断定できず、独立Reader成功をStudio受領とみなせない |
+| [B2C Required #4550 merged](https://github.com/hat47x/tei-platform/pull/4550) | Caller申告Graph上でRequired Consumerに至る多段上流のUnknownを保持し、無関係なSiblingの過剰失効を回避 | 単に隣接1辺だけを検査した`declared closed`やGraph全連結成分の無差別失効は、どちらも問いへの正確な再資格化にならない |
+
+**既存Ownerの切分け**：対象存在/Source Index＝#4577/#1120、実PG→Consumer＝#2586/#2514、Studio Pin/Validation/Current Disclosure＝#4614/#1124/#2516、Build実工程＝#2831/#4583、実Effect＝#1174/#1180、Business/Subsystem＝#3250/#1125。横断原則からこれらのOwnerへ実装責務を移さない。[Architecture Draft #4527](https://github.com/hat47x/tei-platform/pull/4527)は「未確定Claim→次の最小証拠辺」の全体図、[Studio Draft #4510](https://github.com/hat47x/tei-platform/pull/4510)はGUI用途別表示と受入のOwner。本書は**証拠辺を結合した際の主張の上限**のみを扱う。
+
+### 9.3 ひとつの縦断Witnessの受入順と、再利用の制約
+
+**先に試すP0**：#4583 B1-A/BのN0 Inspector Source、N1 PoC B、N2 esbuild JS、N3 nested Go/Wails exe、WebView2 Consumerを**単一のBuild試行で**つなぐ。既存BuildIntent/ArtifactSetが表現できる工程を実Builderへ渡し、表現できない工程は`unsupported/unknown`のまま開示する。同一CI/同一Sourceだけで`BuildIntent-qualified`、`Stage1→Stage2 self-build`とは言わない。B2/B3の実再入と実Consumerは次段の独立資格である。
+
+**並行する別P0**：#2586の実PG Readを通常`tei` CLI/typed Operationから受領し、同じ対象・版のFunction Data Contextへ結び、一つのStudioまたは別Consumerが受領した事実を個別に確認する。PG独立Readerは元QueryのResultを照合できるが、Source/Meaning版、Current Grant、全件Universeを自動証明しない。
+
+**反証候補（新しいFixture正本ではない）**：
+
+1. Builder AとConsumer Bが同じJS byte digestを持つが、Artifact generation／読取対象が異なる場合に、同一Attemptの縦断成功を主張しない。
+2. 同一`.xead` byte・同一Occurrenceを別Workspace/Pathに配置した場合に、旧Pinの対象を維持したと推定しない。
+3. 旧Canonical Subjectに`references:[]`が返ったとしても、Subject存在/不存在は別の実Readerで確かめる。
+4. 中間Subjectの2段上流に未解決Requiredが残るとき、対象Consumerの閉包を認定しない。一方、無関係なSiblingまで一括失効させない。
+5. 実PG QueryがRLS下で0行を返しても、全Dataの不存在を主張しない。
+6. N2からN3へのOutputをShellローカル変数に依存させた場合に、工程間受渡しの証拠が無いとして拒否する。
+
+各反証は[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)の既存Scenario/Independent Expected、各実装OwnerのCIで具体化する。**本節は追加の実装/試験を行っていない**。前段で実測されたPASS/FAILは対象のexact HEADと試験範囲の履歴として保持し、今回の設計の製品資格には合算しない。
