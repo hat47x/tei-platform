@@ -19,7 +19,9 @@
 | Source Change | #4533で**限定合成実験16件中15件一致**、1件の不存在/曖昧分類が不一致。Source値spanの製品提供や正式Acceptanceは別 | 正規Parser由来の値span、操作粒度の書戻し、失効Grant、実Wails・再投影・Source受理 | #2497/#4533/#3788 |
 | CRUD・影響表示 | #4524の同ID衝突拒否に加え、#4513のData索引、#4534のCRUD全矛盾診断と構造OK・レビュー資格の分離は**main統合済み**。#4535はB2C Native Bindingの限定計画Merged | 完全なCRUD導出/Consumer影響確認、DB SchemaとUI Bindingの実Source差分、実DDLやOwner Meaning。CRUDの`ok:true`を業務適用可能とみなさない | #4472/#1124、DB/Studio Owner |
 | 実Provider Read | PR #4539は**main統合済み**。PG16.15の一FunctionについてEnvironment束縛→実SQL/Raw Rows→Function Data Context→別プロセスJSONを限定実証（NULL/0行/RLS/欠列/拒否）。`tools/reference-browse-read`の成功が根拠 | 通常`tei` CLI、実Studio/実Harness Consumer、全件/不存在、現在Grant/Owner意味受理。DB選択の`host-asserted`も別資格 | #2586/#3421/#1251、Function Data Context Owner |
+| Function生成・Builder | Draft #4559 は `order_entry.recent_orders` のread-only生成Go CLIで Source→生成→Go Build→実PG Readを限定実証。手書きExpected、同SQLの直接照合、生成物のdigest/Manifestの不一致拒否を確認 | 単一Function参照試行であり**Studio生成/再帰Self-Buildでない**。正式な `input from` 宣言と `.sql` の正規Source Index包含がない。Windows/Environment/Grant/Runtime read-only負例は未検証 | #1121/#2831/#2595/#2621、#4559 |
 | Performance | #1177は`trace full -limit 1`でも内部全走査になり得ることを指摘 | Plugin数・Source規模別の実測、Scoped Queryの費用、実Wails上の入力/移動遅延 | #1177/#2600 |
+| 外部Evidence候補 | REA R1 Receiver/Readerの #4547 はmain統合済み。元byte/digest・Producer版・部分/未取得・Coverageの区別を保持。候補の型付きread-only Operation #4548 はmain向けDraft | REA CandidateはTEI Accepted Data/Function/Businessや業務Relationの確定ではない。Studio Consumer、外部候補→正式SourceのOwner判断、Runtime/Grantは未実行 | #3394/#1124/#4515、#4548 |
 | Studioセルフビルド | `cmd/tei-studio/main.go`の実Wails v3/`studiohost` Bridgeと、#2831のGo Build Closure/Stage0→2 Fit/Gapを利用する。#4544のGenerator G1/G3は設計・検証計画 | Studioの実OS Build/Launchと実IPC、TEI Build IntentからのStudio ArtifactSet、stage1生成TEI自身によるstage2 Build、依存閉包・配布物の実照合 | #1824/#3421/#2831/#2595/#1251/#2600 |
 | GUI / SHO / Harness | TEI #4317/#4467、SHO #36/#40でDraftの生成・編集・保存・再開・再投影と限定Studio組込み測定の基礎はmain統合済み。SHO #48/#49でHandoffのSource不一致負例・Claim Ceilingを実証 | 同一Markdownで異なる元TEI Source/Subjectの再束縛、実TEI→SHO統合GUI、現在Grant、実Harness Tool/外部送出。既存Writerの局所Save成功は統合Desktop Save成功ではない | #3421/#1824、SHO #19/#6、TAI Owner |
 
@@ -70,6 +72,8 @@ E0/N0/B0、R0b、H0は**並走可能**。R0bでは#4539がmain統合されたた
 | 基盤の実証 | 採用できること | Desktopへ持ち越す未証明事項 |
 | --- | --- | --- |
 | #4539（merged、使い捨てPG16.15） | 実Readの拒否点、Environment/Instance/実SQL digest、Raw Rows→Function Data Context、0件/NULL/RLSを不明として保持する振る舞い | 通常`tei` CLI、Wails、外部Harness、全件/不存在、Tenant現在Grant、Owner Meaning |
+| #4559（Draft） | 一つのread-only FunctionのSource→生成→Build→実PG Rowset、Manifest/Binary digestと独立Expectedの限定実証 | 同生成器がStudio Wails/UI Assets/全Plugin閉包を構築した証拠ではない。SQL `:from` の正式入力宣言、`.sql` Source Index、Windows/実Runtime read-only拒否は不足 |
+| #4547（merged）・#4548（Draft） | REA captured Evidenceのbyte-level Receiverをmainで再利用し、後段のtyped Candidate/受領Pinを別PRで検証 | ModelのAccepted Meaning、Studio Relation Pin、実Source再解決・Disclosure、X-TEA三視点互換へは未到達 |
 | #4524（merged） | 同Kind同IDの曖昧Lookupを拒否する基礎 | 実Sourceからの多重Relation識別、項目単位の完全な逆参照、Workbench Pin |
 | #4542（merged） | REAの未命名Relationから導いた同一tuple ID衝突を選択で拒否する基礎 | IDの安定した正式意味受理・多重Edgeを含むGraph操作の実承認 |
 | #4534（merged） | CRUD構造OKと矛盾のレビュー要否を機械可読に分離し、複数矛盾を列挙する実装 | 実Consumerが`ok:true`だけで影響分析や更新を許可しないこと、全CRUD導出の完全性 |
@@ -98,6 +102,8 @@ E0/N0/B0、R0b、H0は**並走可能**。R0bでは#4539がmain統合されたた
 **負例の最小セット**：①未選択Pluginを追加しただけでStudio Binaryに`init`/blank import/埋込みAssetが混入、②Source bytesは同じだが選択Generator・Toolchain・Wails Asset版が違う、③`go.sum`だけ一致して選択Module実bytesがない、④Stage1生成TEIを**実呼出しせず**Go launcherを二回実行して再帰成功と誤称、⑤S0/S2で同じUI描画でもIPCが実Consumerへ届かない、⑥Stage2のバイナリは起動するがRead Source/Plugin/Scopeが違う。いずれも実Artifact/Process/IPCと独立Expectedで比較し、仮説だけのPASSを認めない。
 
 **AIによる生成器生成との接続**：#4544のG1（標準部品の合成→不足分だけAI/手書き/Plugin候補）とG3（NULL、丸め、Provider選択の独立Conformance）は、S1/S2の生成器適格性を強化する**並行作業**。G2の汎用合成規則、Role自己解釈#4536、正式DSL`*.tei.md` Readerを、Studio S0や#2586の前提にしない。Generator候補の自己申告と実Builder入力・生成成果物・Ownerの意味受理を区別する。
+
+**生成Functionの実証をStudioセルフビルドの判別に使う**：mainの実Provider Read #4539と、Draft #4559の実生成CLIを、同一Function/SQL bytes/typed params/独立Expectedで比較する。ただしSourceとしてのSQL本文が正規Source Indexに含まれない現状と、`:from`がFunction/Queryの正式`input`として宣言されない現状は、S1の**選択・実消費入力ClosureとInterface契約の未解決**として記録する。#4559が独自SQL digestを保持することは限定的な改版検知であり、TEI全体のBuild Closure/正式入力宣言/Owner意味受理を充足したことを意味しない。S0-R/S0-Uの実Studio起動・IPC検証を#4559のマージ待ちにしない。
 
 **X-TEAからの段階的移管**：最初は既存Data/Function/BusinessのModel Map/CRUD/参照移動とDBのread-only Consumerを、選択PluginとしてStudioへ接続する。旧XF/SmartDBのモデル意味・識別子・業務Effect・SQL方言を表示の類似だけで互換扱いしない。実DB更新やX-TEAの業務実行は#1124/#1127/#2586/DB Ownerに分け、Studio本体のS0〜S2をX-TEA全機能移管の完了待ちにしない。
 
@@ -130,6 +136,7 @@ E0/N0/B0、R0b、H0は**並走可能**。R0bでは#4539がmain統合されたた
 
 - **P0-B／#2831**：P0-Aで得た実Binary・Source/Asset/Plugin閉包をSeedとして、TEI Build Intent→Builder/ArtifactSetのS1/S2、stage1自身の実ProcessによるStage2起動S3へ進める。プロセスのImage digestと実際のBuilder invoker/Attemptを紐付け、Go launcherの二度実行を再帰成功に数えない。
 - **P0-C／#1124/#1125/#1251**：X-TEA Modeler由来の**Data/Function/Businessの三要素分析法**、原典の図表・CRUD・相互参照をまず同名/方向/多重度/セル意味を保って読取り・表示する。TEIの汎用モデル/Graphへ拡張できるが、原典にない推論・自動変更を「X-TEA継承」と称さない。正式名称・行列軸・導出規則の未確認は差異/unknownを明記する。Studioでの最小Consumerを先に通し、X-TEA全機能移植やSmartDB/DB EffectをS0の必要条件にしない。
+  - **REA Evidenceとの接続限界**：main #4547のReceiver/Readerは候補の出典byte・版を保つ参考経路として再利用できる。しかし#4548の型付きObservation/Relation CandidateはDraftであり、Data/Function/Businessとの対応、モデル上のRelation occurrence、CRUD導出、X-TEA原典意味のOwner受理を自動生成しない。まずread-only Candidateと正式Modelを分け、同名ID・多重Relation・Source漂流・部分/非開示の負例を既存#1124/#3394へ渡す。
 - **共通の優先関係**：P0-Aの実Wails接続を最初の集中課題とし、P0-B/P0-Cは実装準備・独立Expected作成を並走可能にする。実PG Readのmain基盤統合（#4539）によりR0bでは**通常CLI/Studioの実Consumer接続**を検収する段階へ進める。#4513/#4514/#4534のmain修正はModeler/SHOの負例検証へ利用し、製品全体の受入を推測しない。
 
 
