@@ -834,3 +834,29 @@ reply(A):        publish only if lane current AND captured generation/epoch/iden
 **進行可能な範囲**：#4597の状態遷移コードは単体テスト・型検査の成功が確認できたため、レビューと#4515の`main.ts`局所UI設計へ進められる。ただしembed一致がFAILのままマージしない。CI再実行・差分修正後のexact HEADを別途検証する。
 
 **注意**：上記は実ログで確認した範囲。ほかのWorkflowの未完了/結果を推測してPASSへ加算しない。
+
+
+## 22. 2026-11-13 Pin初期実装のCI結果と生成Bundle失効の分離
+
+[Draft #4597](https://github.com/hat47x/tei-platform/pull/4597)の旧HEAD `c9302d55c9d9759f95aeb61f5686fea114fd04ba` に対する[Workbench embedded bundle CI #43385273632](https://github.com/hat47x/tei-platform/actions/runs/43385273632)を確認した。
+
+- **PASS（同HEAD）**：Workbench `npm test` 27件（Pinの新規7件を含む）、`npm run typecheck`、`npm run build`。
+- **FAIL（同HEAD）**：生成`reference/tei-studio-workbench/dist/main.js`と`cmd/tei-studio/assets/workbench/main.js`のbyte比較。CIログはbyte 649340、line 18643で不一致を記録。
+- **原因は未確定**：このPRの`main.ts`および埋込み`main.js`はmainと同一Git blob SHA。Pin状態遷移はentrypointに未接続。したがって「PinコードがBundle差異を起こした」とは断定せず、同時に「既存の失敗だから無視してよい」ともしない。
+
+新HEAD `247a6ba6579d8feab618419c100a1e16bb1fe65a` で`.github/workflows/studio-pin-state-contract.yml`を追加。Pinの7件とWorkbench型チェックを独立のCIゲートで実行する。**新HEADの専用CI結果は未確認**。従来のembedded bundle CIは製品統合ゲートとして維持し、通過するまでDesktopへマージしない。
+
+### 22.1 失敗を隠さず前進する検収の分離
+
+| Gate | 証拠 | 現在の状態 |
+| --- | --- | --- |
+| P0 Pin純粋状態遷移 | PIN-ABA-01〜06＋Unpin後着、Node 24 | 旧HEADで7件PASS、新HEADは要確認 |
+| P1 Workbench Source型・既存試験 | 27件＋TypeScript | 旧HEAD PASS、新HEADは要確認 |
+| P2 Source→生成JS→埋込みJS byte一致 | 同一HEADでの`npm run build`と`cmp` | **旧HEAD FAIL、原因調査中** |
+| P3 実Workbench Pin UI | `main.ts`配線、別lane、Focus/Graph非干渉 | 未実装 |
+| P4 Windows実WebView2＋生成Reader | #4572/#4579と同一統合HEADの実Consumer | 未実施 |
+| P5 TEI Desktopセルフビルド | #2831 Build Intent/Stage2/Receipt | 未実施 |
+
+P0/P1がPASSしてもP2〜P5をPASSにしない。P2の解消は**現在の正しいSource・生成器・Toolchainと実埋込みbyteの差分を検証してから**行う。根拠なく生成Bundleを手編集・上書きしない。新規CIの追加は既存CIを置換しない。
+
+**次のOwner作業**：#4597は専用CIのexact HEAD結果を確認し、P0/P1の検証を確定。Workbench生成物のOwnerはP2の入力Source・生成器版・bundle差異を調査。#4515はP3の局所UI配線、#4572/#4579はP4、#2831はP5。Draft状態を維持し、結果を個別Receiptとして記録する。
