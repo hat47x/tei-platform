@@ -999,3 +999,53 @@ Instrumented boundaryが部分的なら、**「観測できた範囲のGraph整�
 5. **P2 #2604/#1174/#2542/#2516**：Pub→Pin→Read→Applied/Effect→Ownerを別Attempt/時点と現在資格でつなぐ。Commit Unknown/旧Generation/現在Grant失効時に自動再送・無条件公開へ進めない。
 
 **証拠上限**：本§28は既存main/Draft/Issueと横断設計の静的照合に基づく**ETLの限定受入案**で、正式Event schema・Recorder/Graph Engine・新Runner・新Proof Store/Hostを追加しない。TEI Go/CLI/Provider/Studio/Stage2の新実行、全工程網羅性、外部Effect非存在、独立Consumerの同一Result受領、現在Disclosure・Owner Meaning、exact-head CIは **NOT RUN / NOT ACCEPTED**。
+
+## 29. 下流Applyの競合粒度：Full Replace・Scoped Replace・Deltaと不変条件（2026-11-13、設計候補）
+
+**§27を精密化し、§28と区別する**：§27の「受理済み期待旧Generationを検査してから下流EffectをApply」は、同じOwner/期間に閉じた訂正を安全側で説明する。しかし**期間D全体を1つのCAS粒度**にすると、独立した顧客A/Bの修正さえ競合し得る。逆に**明細Key単位のCAS**なら同じ顧客の集計・期間合計・他SubsystemのBusiness Invariantを壊す余地がある。§28は実行/省略Traceの閉包を扱い、本節は**業務的に許されるWrite・Read依存・Invariantの範囲**を扱う。既存[#3250のInvariant-aware検討](https://github.com/hat47x/tei-platform/issues/3250#issuecomment-6853879476)、[#2564](https://github.com/hat47x/tei-platform/issues/2564)、[#1174](https://github.com/hat47x/tei-platform/issues/1174)、[#2593](https://github.com/hat47x/tei-platform/issues/2593)、[#2622](https://github.com/hat47x/tei-platform/issues/2622)、[#2600](https://github.com/hat47x/tei-platform/issues/2600)へ条件を返す。新Write Scope DTO・Saga/Transaction Engine・専門のConflict Resolverを追加しない。
+
+### 29.1 競合単位は最低三つのFootprintから決まる
+
+| 分離する面 | 当該Operationで検証すること | 省くと起こる失敗 |
+| --- | --- | --- |
+| **Write footprint** | Owner・業務対象/期間・Group/Field・実際に更新/削除/追加する対象集合 | 古いFull Resultが他Groupの更新を上書き。削除対象や新規行を見落とす |
+| **Read/Precondition footprint** | 集計に寄与するSource Cut/Rule/FX/Lookup・Predicate/Scope・期待旧版、必要な未取得/否定依存 | 書き先Keyが別でも、古いRateや新規Accepted明細の影響を見落とす |
+| **Business Invariant/Effect footprint** | 期間合計・グループ横断制約・受理済み更新Intent・現行Grant/Receipt・Owner側Action | 行が別なら独立と誤認。越境Direct CUD=0だけで整合性PASSとする |
+
+**局所化の十分条件候補は、同じOwner/Source Cut・意味版のもと、相互のWrite/Required Read/Invariant依存に干渉がないことを有資格に証明でき、実TargetのCommit境界がその条件を守る場合だけ**。不足があればConflictを過小検出してはいけないが、無関係と確認済みの別Groupまで一律失効/Rejectしない（#3250/#4522/#2600）。
+
+### 29.2 Full／Scoped／Deltaは適用時の意味が異なる
+
+| 形態（説明用の呼称。正式Enumではない） | 必要な追加資格 | 安易に認めないこと |
+| --- | --- | --- |
+| **Full Replace（業務期D全体）** | Dの必要Input/Population/Temporal Cutの閉包、対象全集合（削除/欠落も含む）、期待旧版群またはOwner受理の同等Fenceを同じEffect境界で照合 | Aの期待版だけ一致しているからBも古い値で上書き可能。既存行の件数一致からPhantom不在 |
+| **Scoped Replace（顧客A等）** | 受理済み対象Predicate/KeyとScope内の完全性、Group移動・未取得/新規Matching行、Scope外Read/Invariant非干渉、現在Applied版 | 既存のA行だけCASすれば「新規A明細なし」も保証されたと宣言 |
+| **Corrective Delta（旧寄与→新寄与）** | Fact/Event identity・連続したbase→target・旧寄与/新寄与・単位/丸め/Operator Retractable・重複配送とReceipt | UPDATE_AFTERだけを別INSERTとして加算、key-only DELETEから旧金額を推定、Delta Byte一致で再送安全 |
+
+これらはTEI共通Operation/Function・Providerの型付きContractを比較するための表であって、新DSL/Engineを選定するものではない。**同じArtifact Generationを読めたことと、下流のどのScopeを置換できるかは別**（§23）。条件付きRow UPDATEだけでは複数行のFull Replaceや外部Recipientまで原子的に保全できない。参照：[PostgreSQL UPDATE](https://www.postgresql.org/docs/current/sql-update.html)、[Transaction Isolation](https://www.postgresql.org/docs/current/transaction-iso.html)。
+
+### 29.3 二顧客と共有集計による独立Expected
+
+合成のBilling/期間D、同一JPY単位で、最初にA=800円/rev1、B=50円/rev1が実Targetにあるとする。A→640円、B→70円の二つの訂正を考える。**A/B間にBusiness Invariant・共通Read依存がない**とOwnerが受理した有限Caseに限れば、異なるGroupへの期待旧版付き更新は両方成立できる。この状況で期間全体を一つの版として必ず競合にするのは、安全だが過度に直列化する候補である。
+
+| 一因子条件 | 独立Expected |
+| --- | --- |
+| A rev1→rev2=640、B rev1→rev2=70、相互に独立が立証済み | 最終A640/B70。両操作を不要に全期間Conflictとしない |
+| 古い全期間Snapshot (A800/B50) から作ったResult (A640/B50) を両Patch後にFull Replace | Bのrevが旧値と違うのでFull不適格。B70を50へ巻き戻さない |
+| 二つの明細o1/o2は別Keyだが同じA集計に寄与 | 明細のRow CAS成功だけでA集計が一致すると主張しない。A集計側の再評価/CASまたは有資格演算合成が必要 |
+| 旧SnapshotでPredicate status=acceptedの行を列挙後、新しいaccepted行を別TransactionがInsert | 既存RowのCASだけではPredicate対象集合の閉包を示せない。Providerの隔離/業務Cutと再資格化が必要 |
+| AとBが共通期間総額を満たす、またはAがBのFX/Ruleを参照 | 異なるWrite Groupでも非干渉ではない。Read/Invariant footprintの保全が必要 |
+| 同OperationIDで期待旧版または対象Scopeだけ変える | 同じ再送とは扱わない。#2564のRequestHash・同一性規則へ戻す |
+| Full ApplyのACK-loss、または途中までのEffect | Unknown/部分成功の実照会。無条件retry・別Scopeへの自動分割をしない |
+
+**局所計算**：Python標準SQLiteのin-memory表でA/B各rev1から、B=70/rev2とA=640/rev2の期待旧版付き更新を順に適用し、旧rev1によるA再更新は0行であることを確認した。A/Bの現行rev2からは、旧Fullの期待版(A rev1/B rev1)が一致せず拒否候補となる。もしBを無条件に50円へ上書きすると20円のLost Updateである。**同時実Tx・Full Replace/Predicate Lock・実TEI/PG/Owner Grantの試験ではない**。
+
+### 29.4 最小実装順と責務の停止線
+
+1. **P0/#4410**：固定Pure TSV→Filter/Convert/Aggregate→決定的Body＋独立Expected・二入口が先。Full/Scoped/Deltaの実DB Applyを初回のHard Gateにしない。
+2. **P1/#1174/#2564/#2514/#2542**：Owner/Period/Scope・期待旧版・Operation/Requestと対象ProviderのAtomic条件付きApplyを結び、Full/Scoped/DeltaのConflict/Unknownを一因子ずつ実検証。新DB/Effect Coordinatorなし。
+3. **P1/#3250/#2593/#2622/#3279**：業務不変条件を必須同居へ機械変換せず、Owner側Action、条件付Commit、順序・補償、要件の緩和を独立なTrade-offとして可視化。
+4. **P1/#2600/#4518/#4522**：Full/Selectiveの同一Revision検証とは別に、Applied Scopeの過小/過大Conflictと現在Disclosureを比較。
+5. **P2/#2604/#1124/#4510**：実Artifact Generation/ReaderからOwner側Applied Scope/Conflict/UnknownへEvidence Edgeを結ぶ。秘密Source・Reader・Writerを公開図で漏らさない。
+
+**検証上限**：GitHubのIssue/既存限定参照実装・公開SQL仕様の静的照合と、独立SQLite単一接続の局所更新検算まで。新TEI Go/CLI・実PostgreSQL/複数Process・Full Replace/外部Import・Current Grant・Owner意味受理・exact-head CIは**NOT RUN / NOT ACCEPTED**。新Canonical Write Mode/Proof Engine/Hostを追加しない。
