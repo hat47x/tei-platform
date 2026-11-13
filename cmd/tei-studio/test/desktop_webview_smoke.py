@@ -650,6 +650,49 @@ return {
         if not isinstance(page_state.get("inspectionReaderCalls"), int) or page_state["inspectionReaderCalls"] < 1:
             raise RuntimeError(f"Generated Inspector reader did not record the initial Inspect: {page_state.get('inspectionReaderCalls')!r}")
 
+        # Opt-in in the generated-native-Desktop CI job only. The ordinary
+        # Wails Desktop smoke retains its existing behavior and requirements.
+        # Match the actual same-origin resource served inside the native WebView2
+        # to the bytes pinned before the generated Desktop binary was built.
+        expected_bundle_digest = os.environ.get("TEI_GENERATED_WORKBENCH_BUNDLE_SHA256")
+        if expected_bundle_digest:
+            if not re.fullmatch(r"[0-9a-f]{64}", expected_bundle_digest):
+                raise RuntimeError("The generated Workbench bundle digest is not a lowercase SHA-256")
+            bundle_probe_script = """
+const done = arguments[arguments.length - 1];
+(async () => {
+  const response = await fetch('/workbench/main.js', { cache: 'no-store' });
+  if (!response.ok) throw Error(`Workbench resource status ${response.status}`);
+  const raw = await response.arrayBuffer();
+  const digest = await crypto.subtle.digest('SHA-256', raw);
+  const sha256 = Array.from(new Uint8Array(digest))
+    .map(v => v.toString(16).padStart(2, '0')).join('');
+  done({ sha256, bytes: raw.byteLength, pathname: new URL(response.url).pathname });
+})().catch(error => done({ error: String(error) }));
+"""
+            bundle_response = webdriver_request(
+                base_url,
+                "POST",
+                f"/session/{driver_session}/execute/async",
+                {"script": bundle_probe_script, "args": []},
+                timeout_seconds=30,
+            ).get("value", {})
+            facts["generated_workbench_bundle"] = {
+                "expected_sha256": expected_bundle_digest,
+                "webview_response": bundle_response,
+            }
+            if bundle_response.get("error") or (
+                bundle_response.get("pathname") != "/workbench/main.js"
+                or bundle_response.get("sha256") != expected_bundle_digest
+            ):
+                raise RuntimeError("Native WebView2 served a different Workbench bundle than the generated input")
+            record(
+                "generated-workbench-asset-verified",
+                sha256=expected_bundle_digest,
+                bytes=bundle_response.get("bytes"),
+                pathname=bundle_response.get("pathname"),
+            )
+
         # Invoke the same registered Host methods through Wails' runtime and compare
         # their values with the actual WebView projection, rather than relying on a mock.
         bridge_script = """
