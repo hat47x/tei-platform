@@ -1433,3 +1433,49 @@ GD-1はexact PR HEADのSource/Command/Responses/Graph Pinと同一fixtureからG
 **今回更新できるClaim**：§27のGD-1〜3、§26のDS1について「固定PoC B Generated WorkbenchをWindows Wails実Desktopへ収録し、実WebView2/IPC/Hostから利用できた」ことの限定実証。DS0 ordinary Desktopも同一Runの別Jobで成功。`#4559`のFunction生成や`#4570`の三要素Plugin、DB Provider、Role Interpreter一般化の資格は付随しない。**DS2/GD-4 Build IntentからのTEI駆動BuilderとDS3/L3 Stage1自身によるStage2再入は依然NOT RUN/NOT PROVEN**。Buildに含まれる全依存、OS境界W、全Platform、現在Host Grant・業務Ownerの意味受理も証明しない。
 
 **次の実装引渡し**：#2831は今回の生成Source/Toolchain/Build Target/実Exe digestを`BuildIntent→actual Builder input→Stage1 Process→Stage2 Desktop Artifact`に接続し、Runnerが外部から2回buildする偽L3と区別する。#1824はこの実WebView2 smokeを退行基線として維持し、#4570の三視点Pluginは同じConsumer契約へ接続する際に別途実検収する。新規Registry、Proof Store、E2E Runnerを作らない。
+
+## 29. 2026-11-13 横断更新：部品再入と生成Desktopを実Build Intentへ接合する
+
+### 29.1 前節で未成立だった二つの辺が別々のDraftで前進した
+
+**前提は変更せず、観測された到達点のみ更新する。** #2831の最終目標はTEI自身によるStudio Desktop全体の再構築であり、#4495のpure Function起動やGenerator自己記述は別の重要レーンである。
+
+| Subject・PR | 実証済みの狭いClaim | 未成立・統合時の停止線 |
+| --- | --- | --- |
+| [#4579](https://github.com/hat47x/tei-platform/pull/4579) HEAD 5b9fb2a（2026-11-13） | [Windows Actions #43361607881](https://github.com/hat47x/tei-platform/actions/runs/43361607881) completed/success。同一JobのPoC B固定Source→generated Workbench＋Go services→native Wails studio_generated（serverなし）→WebView2 real IPC。生成JSと実WebView2配信JSのSHA-256一致（681,264 bytes、351bedd94693e80d08baca611625368c05ff59450f27c79c5a6ebc0c6e247d63） | TEI Build Intentに登録されたBuildではない。Stage1自身のStage2 Desktop build・全Source closure・全OS・実業務Meaningの受理ではない |
+| [#4572](https://github.com/hat47x/tei-platform/pull/4572) HEAD be403a6（2026-11-13） | Inspector reader一つのContract＋deterministic-transform Source→生成TS→esbuild/Go embed→実Windows WebView2使用を局所実測。Linux/WSL2の stage_reentry.py では**Stage1のTEI実ProcessがStage2でGo生成器と部品を再構築**し reentryObserved=true。CI #43342784405/#43342784377/#43342784325 はexact HEADでsuccess | **Stage2にWails Desktopは含まれない。** Node/esbuildとWailsの工程はBuild Graph外。Stage2のGo childはStage0 seed由来。local実測とCI成功の対象試験も別。L2-b/G4/総合Desktop再入を主張しない |
+| [#4559](https://github.com/hat47x/tei-platform/pull/4559) HEAD c5fcc1d（2026-11-13） | order_entry.recent_orders Sourceからread-only Go CLIを生成し、実PostgreSQLと既存参照Readerを比較する限定実測 | input from未宣言、SQL Source Index外、Host/Environmentと全Consumerの同一性は未資格。Studio再入の合格に足さない |
+| [#4570](https://github.com/hat47x/tei-platform/pull/4570) HEAD 4d89ad0（2026-11-13） | X-TEA**三要素分析法のモデル** Data/Function/Business・CRUDのread-only Bridgeを合成Workspace/server UIから到達 | 実Native WebView2と実X-TEA原典Sourceは未確認。業務意味受理とTEI独自拡張を区別 |
+
+いずれもDraft／未mergeである。#4579の成功した固定PoC Bと、#4572のInspector部品は異なるSubject・生成方式・コミット・実行Attemptなので、各成功を単に足してDS3合格としてはならない。
+
+### 29.2 次に作る最小の実装差分は「Builderを管理する一本の縦断」である
+
+**P0接続**：#2831の既存 self-build outer／Build Catalog／Build Intentに、#4572のdeterministic part transform、#4579のWorkbench/UI＋Go service composition、TypeScript→esbuild→実embed、独立cmd/tei-studio moduleでのnative Windows Wails executable Buildを**既存Plan/Builder Adapterの範囲で**表現できるかFit/Gapを先に実コードで確認する。新DSL/汎用Stage Engineを起票の前提にしない。
+
+対象の一本は、固定されたMeaning/Source/生成器を持つread-only Inspector操作、固定PoC B fixture、同じ生成Desktop Targetを選ぶ。Source Contractと手書き比較Oracleを共有させず、両Draftの成果を実際に統合した**単一のexact HEAD**で検証する。PoC B由来の生成Go ServiceとInspector readerは別由来としてPinを保持し、どちらかを暗黙に書き換えない。
+
+最初の実装単位：
+1. **B0 枝の統合基線と反例を固定**：#4572/#4579の合流で共通cmd/tei-studio/test/desktop_webview_smoke.pyの*両方の判別条件*を保持。#4572差分のPython __pycache__/*.pyc二件は追跡不要な生成物として除外・再混入防止。両者のGo/Node/Python/WinToolchainやbundle digestが異なるため、過去別HEADのdigestを統合HEADのExpectedとして流用しない。
+2. **B1 定義→Transform→Bundle→Target Buildを計画へ接合**：実Source raw/Generator Source/Contract Revision、各中間生成物、esbuild/Go embed、cmd/tei-studio独立go.mod/go.sum、Wails build tags（studio_generated、serverなし）、Toolchain・OSの入力集合を列挙。既存Build Catalog表現不能のNodeは明示unsupportedにして追加の最小Adapterを別途評価する。
+3. **B2 Stage1実Process→Stage2 Desktop**：Stage1のTEI image digest/argv/execution Attempt、実Builderへの入力・Target・Artifact digestを保ち、**Stage1自身がStage2 Desktop Buildを起動した**ことを観測。Stage0/外部Python/Workflowが二度Wails buildした場合は拒否。OS跨ぎで実ビルド不能ならremote実行を暗黙採用せず、対応Target/実Gatewayの契約と認可・Outputを別検証する。
+4. **B3 Stage2実Desktop Consumer**：Stage2のexeをそのexact HEADの実Windows WebView2で起動。生成partが使われた証拠、実取得bundleのbyte/digest、Catalog/Inspect/Graph/Hostの実応答を再取得し、Stage1とStage2それぞれのConsumer資格を比較。数値・digestの一部分一致を全体再現性とはしない。
+
+### 29.3 独立した拒否条件、証拠と優先順位
+
+| ID | 故障・一因子変更 | 期待する判定 |
+| --- | --- | --- |
+| BD-01 | #4572/#4579を別HEADのまま二つのGreenで合算 | Product結合未成立。単一統合HEADで実行が必要 |
+| BD-02 | 合流時にWebView2 PythonからInspector使用検査またはgenerated JS digest検査を落とす | 少なくとも片方の既知負例を検出しないため不合格 |
+| BD-03 | Catalogで選択したTransform Bに対してBuilderがAを実行、または旧bundleをembed | 実Consumed Source/Builder/asset identity不一致でFail。画面が同じでも拒否 |
+| BD-04 | Build IntentにNode/esbuild/Wails工程が無いのに全体Builtと主張 | Build-closure不成立。未表現工程をunknown/unsupportedとする |
+| BD-05 | Linux/Windows Toolchain、nested module sum、Wails tagsやGo/Node版を無断変更 | Target/Profile違いの別Attempt。過去digestの流用禁止 |
+| BD-06 | Stage2 DesktopをStage0/Runnerが起動し、Stage1は部品だけ生成 | 自己再入の部分成立とDesktop全体DS3の不成立を区別 |
+| BD-07 | Stage2 exe成功・WebView/IPCが未起動、または旧契約のInspector dataset | DS3のBuild Attemptと実Consumer資格を別に判定 |
+| BD-08 | Build stateの宣言外読み書きをchild自己申告のみで否定 | #4486の観測境界W内にOS側の強制がない限り当該非干渉を認定しない |
+
+実証票は Source/Contract Revision、Generation Intent・selected Generator、actual Builder bytes、Build Target OS/Toolchain、nested module、Intermediate artifact hash、Stage1 process/Stage2 invocation、Stage2 native exe、実WebView2 readback/IPC、独立Expected・negative test・Scopeを**同一exact HEAD/Attemptの参照**として並べる。既存Receipt・#1180/#2514を再利用し、第二のRegistry・Host・Provenance Storeは作らない。
+
+**次に解く順序**：#2831 B0/B1を実装着手の主線に置く。#1824は既存Windows generated-desktop jobを継続基線とし、#4572/#4579の合流後も反例を削らない。#1124の三要素分析法のモデルPluginと#2586/#4559の実Function・DB受領は並走させるが、Desktop Self-Buildの新Hard Gateにしない。#4544 G1/G3/G2で生成器自体をAIに作らせる研究をB0〜B3の先行条件にしない。
+
+**この§29の状態**：PR #4579 CI success、#4572 exact HEAD CI successおよびbranchの局所reentry実測、#4559/#4570のDraft試験報告を静的照合した計画更新。**統合HEADのBuild Intent→Stage1 TEI→Stage2 native Windows Desktop→実WebView2というB0〜B3の新試験はNOT RUN**。Owner受理・全Platform G4も未証明。
