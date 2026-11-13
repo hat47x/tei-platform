@@ -1208,3 +1208,38 @@ M0/M1で一Relationの照合を成立させたら、[#1031](https://github.com/h
 | **TEA-Q40** | 旧Lの構造候補・DのOwner未受理・Tの実PG ReadがそれぞれPASSしても、L/Tの実業務同等性、TのWriter閉包、D意味受理はPASSしない | #267/#2586/#2514。実Legacy↔Target対応試験未実施 |
 
 **優先**：(1)現在Draftの#4570 read-only Producerが持つcoverageとStudio表示の差を合成独立Expectedで検証、(2) #4615 実Sourceの集計と原典配置規則、(3) #4614 Origin-qualified Pin、(4) #3250のDecision-relevant Unknownを問相対調査、(5) #2586の通常`tei` CLI→Studioの実Readはこれらと**並列**。[#4557](https://github.com/hat47x/tei-platform/pull/4557)は今回mainへmerged：検証NGのMap/Locate閲覧とVerdict保持をGo回帰で実証済み。先行[#4521](https://github.com/hat47x/tei-platform/pull/4521)は実公開Relationの正常系CI PASSだがDraft未統合。実X-TEAの原典完全性・Current Grant/Disclosure・Owner受理・Product実E2Eは未証明。TEAの図面と開発パイプラインに新たな暗黙処理や必須Hostを加えない。
+
+## 39. 異種Producerの三要素Evidenceを結ぶ際の禁止推移（2026-11-13、採用前・他領域横断）
+
+### 39.1 REA実Candidate Intakeの到達点を三視点へ正しく取り込む
+
+2026-11-13確認main `b03c415e5fd13d8feec96d9669d96d6db9035e8c` の `internal/reacandidate/` と[REA受容設計](REA_THREE_ELEMENT_CANDIDATE_INTAKE_2026-11.md)を照合。既存 `tei three-element rea-intake` は **External Attempt JSON→`DecodeAttemptEvidence`→`GenerateCandidates`→`BindCandidates`→`PreviewAdoption`/`CompareCandidateSets`/`BuildReviewPacket`** を実装済み。CLI／Goの合成Fixture試験があるが、実ProviderのこのAttemptをStudio三視点/通常CLIへ連結してOwnerが受理したことではない。Candidateの`accepted=false`・`ownerDecision=pending`、必要なら`source-digest-conflict`/`independently-bound`、`meaningLoss`を維持し、Candidate IDをTEI Canonical IDとみなさない。
+
+**既存の実装上のClosed Vocabulary**：`internal/reacandidate/coverage.go` の `EvaluateThreeElementCoverage` は、REAの静的な外部node/有向edgeがある場合Dataだけを`data=supported`とし、**Function/Businessは各`unsupported`**（理由と必要Evidence付き）。同じAttemptにFunctionらしいrelation labelがあってもFunction supportedへ昇格しない。これはREA Producerの提示事実の限界であり、Function/Businessの不存在・取得失敗・Current Policy拒否ではない（既存`TestThreeElementCoverageSupportsOnlyData`、`TestThreeElementCoverageRelationLabelsDoNotSupportFunction`）。グラフの`coverage.complete`はこの三観点全体の完備を意味しない。
+
+| 証拠のProducer／別Owner | 主張できる最小の局所事実 | **無いことを主張できない対象** |
+| --- | --- | --- |
+| TEI-native Map/Locate（#4392/#4557/#4521） | Qualified TEI Source Kind+IDで局所Source/Relation/Validationを閲覧 | 必要なRole全件、実Function、実業務遂行、現在Disclosure |
+| X-TEA `.xead` Studio Plugin [#4570](https://github.com/hat47x/tei-platform/pull/4570) | 一件のLegacy SourceのData/Function/Business構造候補、Function-declared CRUD、Source occurrence、single-source coverage | `.xeaf`/別Source/実SQL/業務Actorの遂行能力と実作業記録、Canonical Accepted Meaning |
+| REA external Intake [#3394](https://github.com/hat47x/tei-platform/issues/3394) | 外部Attemptの構造観測・有向edgeのData-shaped候補と独立束縛状態（現Productで`data=supported`、`function/business=unsupported`） | Function/Businessの不在、業務規則・実runtime effect、Canonical ID一致、Owner Meaning受理 |
+| Environment→PG16 Function Context [merged #4539](https://github.com/hat47x/tei-platform/pull/4539) | 明示Environment/Providerへの限定実Read・Rowset返却 | 旧X-TEAのFunction/Actionとの同義、Target全Writer/業務Effect、Human Business Actual |
+| 組織／Business Activity（#2386、#1124） | 受理されたBusiness Source/Role/手順や、必要なら実担当者・時点の限定Observation | 手順の記述だけで実行されたか、実施可能な要員がいるか、権限が現在有効か |
+
+### 39.2 九つの観点を増やさず、二つの独立受入問いで突き合わせる
+
+[三要素分析法の原典](https://atmarkit.itmedia.co.jp/fbiz/cbuild/complete/doa/01/01.html)ではData/Function/Businessと論理要件／物理制約／実装を直交に扱い、**業務実装とは業務手順を遂行できる実際の要員**も含む。既存[Diagram Contract §14](THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)は九観点を既に表形式で設計済みであり、ここで新しい9型・新Matrix SSOT・Business Workflow強制を提案しない。本§39は、Producerの支持範囲が異なる証拠を同じ図表に置くときの、独立Expectedを具体化する差分である。
+
+| ID | 最小合成対照・独立Expected | 既存Ownerと停止線 |
+| --- | --- | --- |
+| **TEA-Q41** | REA graph coverageがcompleteでData candidateが1件。`threeElementCoverage.function=unsupported`・`business=unsupported`と理由が消えず、Function/Businessを0件・Absent・検証済みと表示しない | #3394既存coverage試験を再利用、#1124 Consumer資格は別。新試験NOT RUN |
+| **TEA-Q42** | 同じ表示名／Source pathだがREA candidateは`provider-reported`のみ、またはcurrent Workspace byteが不一致。X-TEAの同名DataやTEI-native Subjectと自動Joinせず`source-digest-conflict`/unresolvedを保持 | #3394/#1120/#267。外部ID/Source span・受理Mappingがない限りCanonical同一性不明 |
+| **TEA-Q43** | X-TEA `.xead`にFunction宣言Rあり、独立実PG Queryが成功。同じ文字列のFunctionでもAccepted Mapping/Selected Provider/同Attempt/時点を別に照合し、Legacy Functionの実行成功としない | #4570/#2586/#1251。局所read証拠を旧新Effect比較へ昇格しない |
+| **TEA-Q44** | Business TaskActionのSource FactとOrgの担当者割当候補があり、実作業記録・手順実行の独立観測が無い。Business実装/遂行は`not-observed`とし、欠勤・人員不足・実行許可の有無を推論しない | #1124/#2386/#1174。必要時にManual/External Stepの独立Expectedへ |
+| **TEA-Q45** | 同じ公開SliceでPrivate REA Observation/旧Business Stepを二世界で増減。公開三視点の候補・不支持理由・Unknown件数・digest／DOM/Tool JSONがPrivate差分で変化しない | #2516 Current Disclosure。Private集計を公開後にredactする方式は不許可 |
+| **TEA-Q46** | REA v6.8の`truncated=false`でも`status=unknown`・`omitted_count>0`等の局所実値。REA `qualification`、X-TEA `single-source coverage`、TEI Map `partial-projection`の3つのcomplete/partialを同一分母の一つの真偽値にしない | #3394/#4615/#4557。CLAIMの分母とAttempt・Ruleを残す |
+
+### 39.3 最小の実施順と採否・撤回条件
+
+**最初に実装/検収すべきものはTEA-Q41とQ43の二件だけ**。Q41は既存REA `BuildReviewPacket.ThreeElement`を読み出すConsumerがunsupportedの二面を「不存在」へ変えないか、公開合成の既存Fixtureで確認する。Q43は一つのFunctionに限定し、旧宣言と実Target Readの対応を**Ownerが受理したMappingとは分けて**照合する。新REA Reader・TEA正本・検証エンジン・業務実行Runnerを作らない。X-TEA実Source T1-B、`.xeaf`、Studio Consumer、実PG通常CLI結線と旧新Actual比較の順序は各Owner #4615/#3394/#2586/#2514に委ね、相互のHard prerequisiteにしない。
+
+**反証の停止線**：`data=supported`を「正式なData Business Identity」と扱う、REAが`function=unsupported`であるのをFunction 0件と描画、X-TEA Business Actionを実作業完了と記す、あるいはPG実Readがあるというだけで旧X-TEA Functionが同じものだと宣言するなら、この異種Joinは不合格。Owner Accepted、Current Disclosure、外部実AttemptのSource closureと実Business executionは**未証明**。本§39は設計の横断接続で、新Go/Node/Windows/E2E試験とOwner採用は**NOT RUN / NOT ACCEPTED**。
