@@ -1511,6 +1511,8 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 
 **実PostgreSQL Readと組織Queryを接続する実装順（§10.10.4/§10.11）**：#2586のmain統合済み #4539（squash `ee1af44c`）は、受注Query `order_entry.recent_orders`を一つのEnvironment/Database Instanceと実PG16.15 Providerへ明示結合し、Raw Rows→Function Data Context→隔離CLI `tools/reference-browse-read` で実読取した限定実装。使い捨てPGで0件、NULL/欠落、RLS、権限拒否、Source SQL差を対照し、該当HEADの7 WorkflowはSUCCESS。ただし現在の製品`tei` CLI/Studio/SHO/AI Harnessには未結線、Env↔実Providerはhost-asserted、coverage/不存在/current Grantは未確立、参照実装のmain統合は確認済み。ただし通常CLI/Studio/組織固有Queryは未完。P0の次の一手は**通常CLIで選択と実Invokeと同一AttemptのQuery/params/Rowset/Context受領を一致させる**こと。最初の実例は受注Queryであり、組織C1のData/Case/二時点業務Queryへの実移植は別受入。#4534のCRUDレビュー資格をHost許可と混同しない。新Runtime/独立Expectedなし、GUI完成をCLI P0の前提にしない。
 
+**二時点SQLの実装不足を具体的に修正（§10.11.5、#4490）**：既存org-staged-axisのas-of Queryは把握時点の比較方向が逆、終了時点の条件が欠落、物理Persistence表名も不一致だった。Native Goの旧WU-07テストは入力の宣言だけを検証し、SQL実行ではなかった。Queryの引数をvalid_at/known_atとし半開区間の2軸で絞り、Mappingの期間終了列と物理表を一致させる最小修正を別PRで実施する。ただし現Persistenceのmembership_id単独PKでは同一occurrenceの複数既知版を共存できず、二時点実保存・実PG Provider/行の整合・partial/Source観測時点は未検証。実装順は構造整合→版履歴の保持→実ProviderでknownAt変更の独立Expected→Studio/SHO/Case C1接続。#2586の受注Query P0実Readは妨げず、組織専用Temporal Engineや第二Runtimeを作らない。
+
 **採否**：新規Source/Rule/公的契約や業務責任の解釈はOwnerの意味受理が必要。本追補はdocs-onlyであり、実Org Provider/Host・SHO/HarnessとのOrg C1 E2E・Owner意味受理は **NOT RUN**。
 
 ## 先に固定しないもの
