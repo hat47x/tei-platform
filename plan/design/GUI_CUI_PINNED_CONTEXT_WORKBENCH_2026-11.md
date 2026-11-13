@@ -836,7 +836,7 @@ reply(A):        publish only if lane current AND captured generation/epoch/iden
 **注意**：上記は実ログで確認した範囲。ほかのWorkflowの未完了/結果を推測してPASSへ加算しない。
 
 
-## 22. 2026-11-13 Pin初期実装のCI結果と生成Bundle失効の分離
+## 23. 2026-11-13 Pin初期実装のCI結果と生成Bundle失効の分離
 
 [Draft #4597](https://github.com/hat47x/tei-platform/pull/4597)の旧HEAD `c9302d55c9d9759f95aeb61f5686fea114fd04ba` に対する[Workbench embedded bundle CI #43385273632](https://github.com/hat47x/tei-platform/actions/runs/43385273632)を確認した。
 
@@ -844,9 +844,9 @@ reply(A):        publish only if lane current AND captured generation/epoch/iden
 - **FAIL（同HEAD）**：生成`reference/tei-studio-workbench/dist/main.js`と`cmd/tei-studio/assets/workbench/main.js`のbyte比較。CIログはbyte 649340、line 18643で不一致を記録。
 - **原因は未確定**：このPRの`main.ts`および埋込み`main.js`はmainと同一Git blob SHA。Pin状態遷移はentrypointに未接続。したがって「PinコードがBundle差異を起こした」とは断定せず、同時に「既存の失敗だから無視してよい」ともしない。
 
-新HEAD `247a6ba6579d8feab618419c100a1e16bb1fe65a` で`.github/workflows/studio-pin-state-contract.yml`を追加。Pinの7件とWorkbench型チェックを独立のCIゲートで実行する。**新HEADの専用CIはcompleted/success**（Run `433...`の番号は別途GitHub Actions上で参照、`pin-intent-contract`のPin 7件・型チェックStepすべてsuccess）。ただしembedded bundle CIは別GateでありP2は未解決。従来のembedded bundle CIは製品統合ゲートとして維持し、通過するまでDesktopへマージしない。
+新HEAD `247a6ba6579d8feab618419c100a1e16bb1fe65a` で`.github/workflows/studio-pin-state-contract.yml`を追加。Pinの7件とWorkbench型チェックを独立のCIゲートで実行する。**新HEADの専用CIはcompleted/success**（[Run #43394212153](https://github.com/hat47x/tei-platform/actions/runs/43394212153)、`pin-intent-contract`のPin 7件・型チェックStepすべてsuccess）。ただしembedded bundle CIは別GateでありP2は未解決。従来のembedded bundle CIは製品統合ゲートとして維持し、通過するまでDesktopへマージしない。
 
-### 22.1 失敗を隠さず前進する検収の分離
+### 23.1 失敗を隠さず前進する検収の分離
 
 | Gate | 証拠 | 現在の状態 |
 | --- | --- | --- |
@@ -860,3 +860,22 @@ reply(A):        publish only if lane current AND captured generation/epoch/iden
 P0/P1がPASSしてもP2〜P5をPASSにしない。P2の解消は**現在の正しいSource・生成器・Toolchainと実埋込みbyteの差分を検証してから**行う。根拠なく生成Bundleを手編集・上書きしない。新規CIの追加は既存CIを置換しない。
 
 **次のOwner作業**：#4597は専用CIのexact HEAD結果を確認し、P0/P1の検証を確定。Workbench生成物のOwnerはP2の入力Source・生成器版・bundle差異を調査。#4515はP3の局所UI配線、#4572/#4579はP4、#2831はP5。Draft状態を維持し、結果を個別Receiptとして記録する。
+
+
+## 24. 2026-11-13 同一HEADの検証票と統合停止条件
+
+#4597の**現HEAD** `247a6ba6579d8feab618419c100a1e16bb1fe65a` に紐づくGitHub Actions結果を再確認した。旧HEADの27件PASSと混同せず、現在の各Workflowの結果を分けて記録する。
+
+| Workflow | Run | 結果 | 解釈 |
+| --- | --- | --- | --- |
+| Studio Pin intent state contract | [43394212153](https://github.com/hat47x/tei-platform/actions/runs/43394212153) | **SUCCESS** | Pin局所状態の専用契約ゲート。GUI Pin・Source資格の保証ではない |
+| TEI Cache Full vs Incremental | 43394212199 | SUCCESS | キャッシュ系ゲート。PinのGUI資格へ転用しない |
+| TEI Studio #8 independent consumer | 43394212142 | SUCCESS | 当該Workflowの独立Consumer試験。Pin UI未配線 |
+| TEI Studio PoC A Wails Host | 43394212173 | SUCCESS | 当該Host試験。Pin操作の実Desktop証拠ではない |
+| TEI Studio Workbench embedded bundle | [43394213664](https://github.com/hat47x/tei-platform/actions/runs/43394213664) | **FAILURE** | Source生成物とDesktop埋込みの整合ゲートは未通過 |
+| TEI PR・main 健全性確認 | 43394212159 | **FAILURE** | 別の失敗。原因をbundleと同一と推測しない |
+| 依存の既知脆弱性確認 | 43394212157 | SUCCESS | 依存の当該Workflowに限定 |
+
+**採否**：専用Pin契約は現HEADでPASS。**PR全体は受入未完了**でありDraftを維持する。embedded bundleの差異は実生成物の入力/byteを比較してOwnerが解消し、健全性確認FAILはログを別途調査する。生成JSを手で修正しない。
+
+**実装の次の一手**：#4515でPin UI配線を行う際、`pin-state.ts`の純粋関数を利用し、`responses.run("pinned-inspection")`のReader結果を`readInspection`で検査した後に限りObservationへ反映する。通常`inspection` laneのEditor/Graphを触らない。これを同一HEADで検証してから#4572/#4579との統合へ進む。
