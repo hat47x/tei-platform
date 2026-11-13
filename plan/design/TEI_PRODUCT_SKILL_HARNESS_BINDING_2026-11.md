@@ -762,3 +762,43 @@ TAI Activityは計画・Attempt・Lease/Fence・再試行制御、AI Sessionは�
 **検収Owner**：HE-58/61/62/65はTEI Modeler・SUI・SHO、HE-59/60はTEI Evidence/TAI #168、HE-63/64はTEI #4583・TAI Activity。既存のSource/Operation/Build Receiptと独立Expectedを使い、中央Evidence送信サービスや独自Build Managerは新設しない。
 
 **今回の資格**：§15は旧Draft #4477からbyte-prefix一致で再取り込み、§16は横断の受入設計。HE-58〜65、正式TEI→SUI→SHO往復、実Windows Desktop一体Self-build、実H2/H3四Session、OS/Egress拒否、Owner意味受理は**NOT RUN**。
+
+
+---
+
+<!-- harness-qualification-ledger-20261113 -->
+## 17. 2026-11-13：横断検収を進めるためのEvidence Ledger（最小運用契約）
+
+§15/16の受入票を実装Ownerが使用できるよう、**新たな中央台帳サービスを作らず**、各Issue/PR/CIに記録する最小フィールドを統一する。観測した事実と、観測から許されるClaimを別に保持する。
+
+| 項目 | 必須内容 | 欠落時の扱い |
+| --- | --- | --- |
+| Subject | qualified identity、Source Revision、Scope、選択epoch | 対象同一性はUNKNOWN |
+| Attempt | exact HEAD、実OS/Target、Process image/argv、実Toolchain | 別実行の証拠を合算しない |
+| Declared/Actual | Plan/Recipeの宣言、実Invoker、実消費したInput/Output roleとDigest | 不一致なら該当段階FAIL、未観測はUNKNOWN |
+| Consumer | 送信Payload byte、受信者、ACK、Consumerが実際に読んだbyte/時点 | SentだけではDelivery PASS不可 |
+| Authority | Source現在性、Grant/Disclosure、業務Hostの認可・Receipt | AI判断やTool exit0で代替不可 |
+| Expected | 独立に用意した正例・一条件変更負例・未取得/NULL/0件の区別 | 比較適格なPASSを主張しない |
+| Claim | B0/B1/B2/B3、H2/H3、SHO保存など個別のPASS/FAIL/UNKNOWN/NOT RUN/unsupported | 上位Claimへ自動昇格しない |
+
+**UNKNOWNとNOT RUNの区別**：実行したが観測欠落・証拠矛盾はUNKNOWN、試験自体を未実施ならNOT RUN、Target/Builderが対応しないと事前に確定した場合のみunsupported。途中失敗は完了した下位段階のPASSを残しつつ、上位ClaimをFAIL/UNKNOWNにする。旧HEADのCI成功は新HEADへ移さない。
+
+### 17.1 Ownerごとの受入証拠
+
+| Lane / Owner | 次に提出する最小Witness | 他レーンへ渡す上限 |
+| --- | --- | --- |
+| TEI Desktop #4583 / #2831 | #4587同一HEAD B0成功を基線とし、B1の各N0〜N3実Invoker・Input/Output・Toolchain・未対応工程、B2 Stage1実Process、B3 WebView2実Consumer | B0成功だけではSelf-build L3を認定しない |
+| TEI Product #3262 | `recent_orders`実Function→Query/Provider→Rowset→Mapper→Data Context→Consumer、独立Expected | `submit`の局所実績を転用しない |
+| TAI/TEI Harness #2509 | 実外部HarnessのTool Request/argv/Reply終端/Consumer、Current Grant、OS禁止Read/Egress拒否 | H2 0/4を局所成功で埋めない |
+| TEI→SUI→SHO | 固定対象Identity/Revision/epoch、送信時Disclosure、受信byte、正式保存・別Open・元Source再解決 | Payload/Receipt一致を意味受理にしない |
+| SEI | 実Source-linked Recommendationの保存・再開、Question/Unknown/Conflict、実Read Revision | Method局所合成成功を実H3にしない |
+
+### 17.2 最小の比較適格ゲート
+
+同じテストを再実行しても、**同じ証拠**にはならない。各Attemptの`Observed At`、Source/Toolchain Revision、Provider/Host/Consumerを固定する。比較する二つの方式では事前に共通のGoal/Universe/Expected/失敗時停止条件を宣言し、試験後に都合よく成功条件を変更しない。
+
+特に、`Rowset=[]`と実不存在、`source-index count=0`とCanonical Subject不存在、`ACK=true`とConsumer Used、`Build Artifact exists`とStage2 WebView2成功、`Tool exit0`とBusiness Effect、`Source bytes same`とOwner Meaning Acceptedを**同値にしない**。
+
+**運用上の次手**：#4583/#4593のBuild Fit/Gapを製品Ownerの正本、#2509の実H2をHarness Ownerの正本とし、この§17は証拠の受渡し形式だけを規定する。重複Issue、別Build Manager、第二Evidence DB、中央Meaning Registryは不要。
+
+**資格**：本節は受入設計であり、ここに列挙した新しい実Attempt/Consumer Probeを実行したものではない。#4587のB0同一HEAD Windows CIは既存の限定PASS。B1〜B3一体Self-build、外部H2/H3、SHO正式往復はNOT RUN。
