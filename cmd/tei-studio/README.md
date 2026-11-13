@@ -22,13 +22,17 @@ AssetOptions.Middlewareへ呼出し計数用handlerを接続し、後段からSt
 
 ## バージョン・起動
 
-Go `1.26.9`、Wails `github.com/wailsapp/wails/v3@v3.0.0-beta.29`（pre-release）。基準mainは`128429482e02d96afe0123ee7da023256094dfca`です。`cmd/tei-studio/go.mod`・`go.sum`は、[#1824の実生成記録](https://github.com/hat47x/tei-platform/issues/1824#issuecomment-6167299922)と[Go1.26.9のCI実生成artifact](https://github.com/hat47x/tei-platform/actions/runs/38575429096)の内容と一致したものを採用しています。
+**現行mainのnested module宣言（2026-11-13静的照合）**：`cmd/tei-studio/go.mod`はGo `1.26.11`、Wails `github.com/wailsapp/wails/v3@v3.0.0-beta.29`（pre-release）に固定されています。`go version`と`go env GOTOOLCHAIN`も実行時に記録してください。以下の実行例は**固定beta.29の限定再現試験**であり、配布用の版指定ではありません。旧基準main `128429482e02d96afe0123ee7da023256094dfca`とGo 1.26.9での過去記録を、現行HEADでの再実証と混同しないでください。
+
+**配布版へ向けた別検証**：Wails v3.0.0が2026-10-26、v3.1.0が2026-11-01に公開されています。公式[v3.0.0リリースノート](https://github.com/wailsapp/wails/releases/tag/v3.0.0)はbeta.30以前からの更新を推奨し、iframe/IPCの継続的な注意事項も示します。現在のbeta.29を外部公開・非信頼HTML/iframeの実行に用いず、隔離PRで安定版`v3.1.0`と対応CLI/依存Lockに切り替え、実Window/IPC、Wails runtime/Origin/Host/WebSocket、UI Asset、StudioBridgeの互換を**同一Fixture・exact HEAD**で確認してから採用してください。製品採用までの境界・証拠は[Desktop計画 §0.6](../../plan/design/TEI_DESKTOP_PRODUCT_CONTRACT_2026-11.md)と[#1824](https://github.com/hat47x/tei-platform/issues/1824)が担当します。`cmd/tei-studio/go.mod`・`go.sum`は、[#1824の実生成記録](https://github.com/hat47x/tei-platform/issues/1824#issuecomment-6167299922)と[Go1.26.9のCI実生成artifact](https://github.com/hat47x/tei-platform/actions/runs/38575429096)の内容と一致したものを採用しています。
 
 ```sh
-# リポジトリrootから実行する。go versionは1.26.9
+# リポジトリrootから実行する。go.modのGo 1.26.11以上の適合実体を確認
 cd cmd/tei-studio
+go version
+go env GOTOOLCHAIN
 go mod download
-go mod tidy
+# 再現試験ではgo mod tidyによるlock変更を先に行わない
 git diff --exit-code -- go.mod go.sum  # 依存lockに予期しない変更がないこと
 
 # Linux上のWails Server BuildはCGO無効。read-only loopback限定
