@@ -74,7 +74,7 @@ func TestSourceIndexRejectsMissingOrUnsupportedCanonicalSubject(t *testing.T) {
 	root := filepath.Join(testRepositoryRoot(t), "reference", "workspace")
 	for _, tc := range []struct {
 		name, kind, id, wantCode string
-		wantExit                int
+		wantExit                 int
 	}{
 		{"renamed-validation", "semantic-validation", "sales.order_line.line_number_positive_not_found", "SUBJECT_NOT_FOUND", 1},
 		{"unsupported-kind", "not-a-kind", "nothing", "UNSUPPORTED_SUBJECT_KIND", 2},
