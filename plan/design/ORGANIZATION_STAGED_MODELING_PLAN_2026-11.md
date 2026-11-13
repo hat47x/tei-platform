@@ -936,15 +936,17 @@ WU-11〜14をWU-06〜10の「全部完了待ち」にしない。前段の**必�
 
 | 段階 | 最小の実動作・独立Expected | 禁止する実証の読み替え |
 | --- | --- | --- |
-| **D0 実Desktop** | 同一HEADのWails/Go Desktopを実OSでビルド・起動。画面→既存Go共通API→応答を観測し、Workspace/Source版を表示 | CLIセルフビルドCI成功・JS描画・Bridge単体テストだけでDesktop起動PASSとしない（#1824） |
+| **D0 実Desktop** | **生成Workbenchを埋め込んだ**Wails/Go Desktopを同一HEADから実OSでビルド・起動。生成asset・Service接続・WebView2表示→IPC→Go共通Catalog/Inspect API→画面結果を同一Attemptで照合。Workspace/Source版とSelectionを記録 | 生成Workbenchのserver版Chromium成功＋通常DesktopのWebView2 smoke成功を足し合わせてもD0不成立。Go CLIセルフビルドCI・Bridge単体PASSも代替不可（#1824/#4541） |
 | **D1 一つのData/CRUD表示と実Read** | 合成r7 C1のPerson/OrgUnit/Membershipを#4551の派生CRUDと表示。別例の受注Queryで#4539の実Provider Readを通常tei CLI→Studio Consumerへ接続し、Selected/Loaded/Invoked/Receivedを照合 | 異なる受注Queryと組織C1 Queryを同一実Readと合算しない。Org二時点実Query、coverage、現在Grantは未成立（#2586/#4501） |
 | **D2 TEIによるDesktop再構築** | D0のStudio Source/Plugin/Toolchain/Target/Artifactを既存TEI Typed Build Graphに束縛。trusted stage0→実stage1 TEIプロセス→stage2 Builder実起動→Studio実Artifact・Image・Receipt照合 | Go launcherが2回ビルド、同digest、Plan PreviewのみをTEIセルフビルドと呼ばない。L1/L2/L3を別判定（#2831） |
 | **D3 X-TEA三要素Plugin** | Data/Function/Business図、CRUD、参照/被参照、手作業TaskをStudioの業務向けPluginとして同じ受理Sourceから投影。Plugin無効時も汎用Studio操作は継続 | 汎用TEI Coreを三要素専用に固定しない。X-TEA原典との完全互換や実編集は別試験（#1124/#1125/#1251） |
 | **D4 編集とSHO/AI連携** | Source-backed Subject Pin→参照元/先へ移動→Preview→版再照合。SHO著者編集保全とAI後着・Source ABA負例 | 固定Pin/描画EdgeからGrantや正式Relation IDを推測せず、Write/Effect/ACKを別確認（#4515/#2516/#4501） |
 
+**生成UIの実Desktop受入への引渡し**：既存の生成Workbench server/Chromium経路と、通常Wails Desktop/WebView2経路は**二つの独立した合格**である。#4541のGD-0〜4を新Expectedとして再定義せず、生成asset（studio_generated、serverなし）→Desktop配布物→WebView2表示→IPC→Go Catalog/Inspect→応答の**同一Build/実Process/Selection**を一巡する。Wails旧版での隔離再現と新版への移行評価は分離し、成功した片方だけで他方の互換性を宣言しない。D0が成功してもStage1 TEIがStage2を生成したとはならない（D2別判定）。
+
 **最短の証拠票**：exact HEAD、Source Revision、Selected/Loaded/Invoked/Received、Process Image、Build Input/Toolchain、Artifact digest、Consumer、Scope、受入状態を**観測したものだけ**記録。D0とD2を一つのself-build PASSに合算しない。CLI実Provider接続とDesktopセルフビルドは並行P0であり相互のHard Gateではない。既存#1180/#2514の独立Expectedと#1119のCritical Pathを再利用し、第二Builder/Parser/Runner/Host/Scenario正本は作らない。
 
-**現況**：組織計画#4500 main統合（squash e5140059）。明示CRUD/Unused修正#4551 main統合（squash 1a2271d8）。外部解析REA #4547/#4548は独立Draftの候補受領であり、正式Meaning/受信/認可とは別。D0〜D4のDesktop実起動、Studio自己再ビルド、組織C1の実DB Query、X-TEA Plugin実受入は**NOT RUN**。
+**現況**：組織計画#4500 main統合（squash e5140059）。明示CRUD/Unused修正#4551 main統合（squash 1a2271d8）。外部解析REAの受領Reader #4547はmain統合済み（R1の限定資格）。型付き候補 Operation #4548は未マージ（R2）。どちらもAccepted Meaning、Current GrantやStudio独立Consumerでの実受領を証明しない。D0〜D4のDesktop実起動、Studio自己再ビルド、組織C1の実DB Query、X-TEA Plugin実受入は**NOT RUN**。
 
 
 #### 10.12.1 Desktop自己再構築の反証可能な受入（D0/D2の追加条件）
