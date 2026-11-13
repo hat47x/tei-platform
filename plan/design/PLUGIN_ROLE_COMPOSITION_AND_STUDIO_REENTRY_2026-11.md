@@ -121,15 +121,15 @@ Hook/Lifecycle Graphは[#4589](https://github.com/hat47x/tei-platform/pull/4589)
 <!-- plugin-stage2-xtea-conformance-20261113 -->
 ## 8. 最初の非Builtin Providerを通した製品構成の実証（2026-11-13追補）
 
-この章では[#4570](https://github.com/hat47x/tei-platform/pull/4570)のX-TEA由来の「三要素分析法のモデル」を、Plugin-firstとStudio自己再構築が交差する**具体的な圧力試験**として位置付ける。利用者向けの概念名は「三要素分析法のモデル」とし、内部パッケージ名や既存のOperation識別子 \`three-view\` は移行コスト・互換性の検証なしに変更しない。画面に表示する三つの視点を「三視点」と呼ぶことと、モデル全体の名称を取り違えない。
+この章では[#4570](https://github.com/hat47x/tei-platform/pull/4570)のX-TEA由来の「三要素分析法のモデル」を、Plugin-firstとStudio自己再構築が交差する**具体的な圧力試験**として位置付ける。利用者向けの概念名は「三要素分析法のモデル」とし、内部パッケージ名や既存のOperation識別子 `three-view` は移行コスト・互換性の検証なしに変更しない。画面に表示する三つの視点を「三視点」と呼ぶことと、モデル全体の名称を取り違えない。
 
 ### 8.1 現行実装のFit／Gap
 
-#4570のDraft Sourceを静的に確認すると、\`cmd/tei-studio/host_three_view.go\`が\`plugins/xtea-three-view\`の\`Navigate\`を明示的にimportし、\`internal/threeviewadapter/host.go\`が既存\`composition.Registry\`で\`authoring-tool\` scopeを選択する。Hostは実関数symbolを照合する。通常の\`host_default.go\`と生成版\`host_generated.go\`はいずれも\`withStudioThreeView\`を呼ぶ構成になっている。この事実から、**二つのBuild tagで同じ論理Providerを扱うSource上の候補**までは確認できる。
+#4570のDraft Sourceを静的に確認すると、`cmd/tei-studio/host_three_view.go`が`plugins/xtea-three-view`の`Navigate`を明示的にimportし、`internal/threeviewadapter/host.go`が既存`composition.Registry`で`authoring-tool` scopeを選択する。Hostは実関数symbolを照合する。通常の`host_default.go`と生成版`host_generated.go`はいずれも`withStudioThreeView`を呼ぶ構成になっている。この事実から、**二つのBuild tagで同じ論理Providerを扱うSource上の候補**までは確認できる。
 
 ただし、これは#4570のDraft branch上の構成であり、mainへの統合・正式Application Profileの選択・必要Source closureを持つBuild Intent・実Windows Wails/WebView2での当該Provider呼出し、Stage2再構築の証拠ではない。静的Go importで実装が利用可能であることと、対象Profileで必要なProviderが正しく選択され、成果物へ収録され、実Consumerから呼ばれたことは区別する。
 
-また、\`threeviewadapter\`には\`inspectoradapter\`と似たHost選択・束縛が局所的に存在する。重複を増やすのは望ましくないが、両者の選択失効・Source照合・エラー開示・call-site差を独立Expectedで比較するまでは**新しい万能Adapterへ一括統合しない**。共通化するのは判別できた契約だけとする。
+また、`threeviewadapter`には`inspectoradapter`と似たHost選択・束縛が局所的に存在する。重複を増やすのは望ましくないが、両者の選択失効・Source照合・エラー開示・call-site差を独立Expectedで比較するまでは**新しい万能Adapterへ一括統合しない**。共通化するのは判別できた契約だけとする。
 
 ### 8.2 Role×Stage×Consumerを一つの検収票にする
 
@@ -137,33 +137,33 @@ Pluginの種類をCore固定enumへ追加せず、**用途別Roleと、どの段
 
 | 列 | 何を記録するか |
 | --- | --- |
-| Subject/Target/Build variant | 対象Application・Studio通常版／\`studio_generated\`・OS・build tags |
-| Contract/Scope/Required | \`tei.operations.three-view-navigation/v0\`、\`authoring-tool\`、このProfileで提供必須か |
+| Subject/Target/Build variant | 対象Application・Studio通常版／`studio_generated`・OS・build tags |
+| Contract/Scope/Required | `tei.operations.three-view-navigation/v0`、`authoring-tool`、このProfileで提供必須か |
 | Selected/Implementation | exact Provider ID・選択epoch・実inventory binding・Host観測entry |
 | Build provenance | 実消費Go source/import・nested module・Toolchain・Build Intent/Plan・ArtifactSet・実binary |
-| Consumer/Attempt | Stage1 Builder、Stage2 \`StudioBridge.NavigateThreeView\`、実Windows WebView2の呼出しと受領、親子Attempt |
-| Source/Result/Qualification | \`.xead\`原byte digest、Workspace・Source位置・pin・coverage・typed failure・独立Expected・現在資格 |
+| Consumer/Attempt | Stage1 Builder、Stage2 `StudioBridge.NavigateThreeView`、実Windows WebView2の呼出しと受領、親子Attempt |
+| Source/Result/Qualification | `.xead`原byte digest、Workspace・Source位置・pin・coverage・typed failure・独立Expected・現在資格 |
 
-**「宣言はあるが実Consumerが無い」**と**「必要なのに実binaryから欠落」**は異なる不合格原因であり、同じ\`missing plugin\`に潰さない。SourceにIDがない業務ActionのIdentityを補完しない。Source occurrenceはSource byte位置であってCanonical IDではなく、参照0件はSubject不存在の証拠にしない。
+**「宣言はあるが実Consumerが無い」**と**「必要なのに実binaryから欠落」**は異なる不合格原因であり、同じ`missing plugin`に潰さない。SourceにIDがない業務ActionのIdentityを補完しない。Source occurrenceはSource byte位置であってCanonical IDではなく、参照0件はSubject不存在の証拠にしない。
 
 ### 8.3 最小の実装順
 
-- **X0（#4570/#1124）**：合成\`.xead\`でread-only\`NavigateThreeView\`の独立Expectedを固定する。原典Fact／構造候補／受理済みMeaningを分離し、契約v0の\`not-bound\`を守る。Functionの宣言CRUDと業務Actionの推測CRUDを混同しない。
+- **X0（#4570/#1124）**：合成`.xead`でread-only`NavigateThreeView`の独立Expectedを固定する。原典Fact／構造候補／受理済みMeaningを分離し、契約v0の`not-bound`を守る。Functionの宣言CRUDと業務Actionの推測CRUDを混同しない。
 - **X1（#1251/#951）**：通常Studioの実Host選択→Provider実Entry→Typed Resultと、Inspectorで既にある同種経路を比較する。CLI/Studioを同一契約の別Consumerへ拡張するのは製品S2接続後。内部Adapter重複の縮小はこの検証から必要部分だけ抽出する。
-- **X2（#1824/#4570）**：通常版と\`studio_generated\`版を**それぞれ実Windows Desktop**としてビルドし、実\`StudioBridge\`→Provider→Resultと、画面のSource navigationを確かめる。server buildやGo testの成功はDesktop試験の代わりにしない。
+- **X2（#1824/#4570）**：通常版と`studio_generated`版を**それぞれ実Windows Desktop**としてビルドし、実`StudioBridge`→Provider→Resultと、画面のSource navigationを確かめる。server buildやGo testの成功はDesktop試験の代わりにしない。
 - **X3（#4583/#2831）**：Studio全体のN0〜N3を既存Build Execution／ArtifactSetへ載せ、Stage1 TEI実ProcessがStage2を構築した後、**そのStage2 exe自身**が当該Providerを呼んだ証拠を取る。B1/B2/B3に新しいGateを追加せず、X-TEA試験はB1のHard Dependencyにしない。
-- **X4（#3267/#2600）**：同じ必要Providerが収録される正例と、未選択Plugin Cが混入しない負例を、\`go list -deps\`、選択Source・import、実binary・必要symbol・実呼出しの複数観測で判別する。inlining等によりsymbol一つが無いことだけで物理欠落を断定しない。
+- **X4（#3267/#2600）**：同じ必要Providerが収録される正例と、未選択Plugin Cが混入しない負例を、`go list -deps`、選択Source・import、実binary・必要symbol・実呼出しの複数観測で判別する。inlining等によりsymbol一つが無いことだけで物理欠落を断定しない。
 
 ### 8.4 PXR-09〜15：既存#1180/#2514へ引き渡す追加の独立Expected候補
 
 | ID | 故障注入・対照 | 期待判定 |
 | --- | --- | --- |
-| PXR-09 | 通常版だけX-TEA Providerが入り、\`studio_generated\`版では\`withStudioThreeView\`の実Callが欠落 | 同じ契約を提供すると宣言したTargetの資格だけFAIL。別版の成功を流用しない |
+| PXR-09 | 通常版だけX-TEA Providerが入り、`studio_generated`版では`withStudioThreeView`の実Callが欠落 | 同じ契約を提供すると宣言したTargetの資格だけFAIL。別版の成功を流用しない |
 | PXR-10 | 固定Providerは同じだが、生成版に別実装が同じJSONを返す | selected ID／実Entryとbinaryの一致を照合。結果同値だけではProvider同一性を認めない |
 | PXR-11 | Bundleに未選択Provider Cを追加し、静的import／init等を経て生成Desktopへ混入 | 実閉包非干渉をFAIL。候補Catalogの増加だけなら許容 |
-| PXR-12 | 画面に「三要素分析法のモデル」が現れるがProviderは呼ばれていない／既存JS結果を表示 | 実\`StudioBridge\` call／actual entry／Source読取を要求。単なる画面表示は実Plugin利用の証拠でない |
+| PXR-12 | 画面に「三要素分析法のモデル」が現れるがProviderは呼ばれていない／既存JS結果を表示 | 実`StudioBridge` call／actual entry／Source読取を要求。単なる画面表示は実Plugin利用の証拠でない |
 | PXR-13 | 同名別ID、ID重複、Source変更後のpin、参照0件、coverage partial | 自動同定・全件性・意味受理は禁止。Qualified targetの保持／stale／partialを区別 |
-| PXR-14 | \`threeviewadapter\`と\`inspectoradapter\`の重複を解消した際、一方のみProvider不在をBuiltinへfallback | 既存の両入口・負例を保持。欠落・失効はfail closed |
+| PXR-14 | `threeviewadapter`と`inspectoradapter`の重複を解消した際、一方のみProvider不在をBuiltinへfallback | 既存の両入口・負例を保持。欠落・失効はfail closed |
 | PXR-15 | Stage1 Source/CIはPASSだがStage2実binaryに必要Providerが含まれず、旧exeで画面試験を実施 | Stage2の実image digest／Build Attempt／Provider／実Consumerを結べないならB3・X3は未成立 |
 
 これらは**既存のPXR-01〜08、PXC-01〜08を置換しない補助試験候補**である。実装に先立って独立Expectedを固定し、同じFixtureから正負例を比較する。単に列を埋めたレポートをConformance/Owner受理と呼ばない。
@@ -190,11 +190,11 @@ Plugin-firstの保証は、**宣言（Declared）／観測（Observed）／強�
 | **Observed** | Host-selected entry・実Process image/argv・実Artifact/配信byte・事前/事後のSource digest・Consumer受領 | 未宣言のInput/Processが**存在しなかった**こと、時点間のTOCTOU/ABAが無かったこと |
 | **Enforced** | 明示した境界WにおけるOS/Hostの拒否。例：未許可Resource書込み、誤Provider Binding、Grant拒否 | W外の読取り・ネットワーク・別OSも禁止したこと、業務意味・実Effectが受理済みであること |
 
-**誤った昇格を避ける：** Windows CIでN0〜N3の名前付きファイルSHAを採取しても、後読みは実Builderが同じbyteを消費した証拠ではない。Go \`go list -deps\`・静的importは入力閉包の候補だが、Child側に未列挙のファイル読込み、Node/esbuildのtransitive input、実行中差替えは別に判別する。実Entry symbolの観測は呼出しの参考になっても真正な署名・Conformance・現在Grantではない。強制された**不存在**は特定の資源種別と境界W内でだけ主張する。
+**誤った昇格を避ける：** Windows CIでN0〜N3の名前付きファイルSHAを採取しても、後読みは実Builderが同じbyteを消費した証拠ではない。Go `go list -deps`・静的importは入力閉包の候補だが、Child側に未列挙のファイル読込み、Node/esbuildのtransitive input、実行中差替えは別に判別する。実Entry symbolの観測は呼出しの参考になっても真正な署名・Conformance・現在Grantではない。強制された**不存在**は特定の資源種別と境界W内でだけ主張する。
 
-[#4587](https://github.com/hat47x/tei-platform/pull/4587) HEAD \`d7ad13ceabc39b3917a129409630879564f8384c\`のWindows CIについては、N0〜N3の**指定したファイル**と実生成Desktopの観測が成功している。これは計画に役立つ足場だが、同PRの\`qualifiedBuildIntent=false\`／\`dependencyClosure=unknown\`を維持する（[#4583の実装観測記録](https://github.com/hat47x/tei-platform/issues/4583#issuecomment-6847330010)）。その後のHEAD/CIは別試行として検収する。
+[#4587](https://github.com/hat47x/tei-platform/pull/4587) HEAD `d7ad13ceabc39b3917a129409630879564f8384c`のWindows CIについては、N0〜N3の**指定したファイル**と実生成Desktopの観測が成功している。これは計画に役立つ足場だが、同PRの`qualifiedBuildIntent=false`／`dependencyClosure=unknown`を維持する（[#4583の実装観測記録](https://github.com/hat47x/tei-platform/issues/4583#issuecomment-6847330010)）。その後のHEAD/CIは別試行として検収する。
 
-[#4486](https://github.com/hat47x/tei-platform/issues/4486)ではLinux opt-in \`tei self-build -state-boundary\`の書込み隔離が局所試験で成立した。しかし読取り共有、ネットワーク、環境変数、常駐Process、別マウント、Windowsは境界Wの外である。二回目のstateが存在していたという事後検査（\`entry-post-hoc\`）と、境界内の書込み禁止（\`host-boundary\`）を混同しない。前者から「隠れた共有が不可能」と推論しない。**この境界をWindowsのB1/B2へ機械的に当てはめない**。
+[#4486](https://github.com/hat47x/tei-platform/issues/4486)ではLinux opt-in `tei self-build -state-boundary`の書込み隔離が局所試験で成立した。しかし読取り共有、ネットワーク、環境変数、常駐Process、別マウント、Windowsは境界Wの外である。二回目のstateが存在していたという事後検査（`entry-post-hoc`）と、境界内の書込み禁止（`host-boundary`）を混同しない。前者から「隠れた共有が不可能」と推論しない。**この境界をWindowsのB1/B2へ機械的に当てはめない**。
 
 ### 9.2 B1で最初に閉じる一辺
 
@@ -202,8 +202,8 @@ Studio全工程の一般化に先立ち、**N0の生成Inspector TS → N2 esbui
 
 1. **宣言**：入力Source/Transform、選択済みBuilder・Toolchain、出力のrole、Target/build tags、前段成果物への参照を、既存の受理可能な型へ落とす。Desktop exeを偽Plugin Subjectにしない。
 2. **実起動**：Entryが起動するProcess image、argv、作業領域、受け渡す入力・出力、Child Attemptを固定して記録する。選択Builder B／実起動A、宣言N0／実消費旧TSを区別する。
-3. **実受領**：N2のJS byte→N3 embedに渡した資産→Stage2 exeが配信したJSとInspector実使用を照合する。単に事後ファイルをハッシュしただけなら\`observed-post-hoc\`相当の限定記録にとどめ、実読取時点が不明な辺を\`unknown\`とする。
-4. **強制境界**：固定Snapshot／入力の実読取観測／OS境界のうち既存仕組みで成立するものだけを採用。未実装の読取り・ネットワーク・Windows隔離は\`unsupported\`または\`unknown\`。B1の最小実呼出し証拠を、全OS完全隔離の実装まで止めない。
+3. **実受領**：N2のJS byte→N3 embedに渡した資産→Stage2 exeが配信したJSとInspector実使用を照合する。単に事後ファイルをハッシュしただけなら`observed-post-hoc`相当の限定記録にとどめ、実読取時点が不明な辺を`unknown`とする。
+4. **強制境界**：固定Snapshot／入力の実読取観測／OS境界のうち既存仕組みで成立するものだけを採用。未実装の読取り・ネットワーク・Windows隔離は`unsupported`または`unknown`。B1の最小実呼出し証拠を、全OS完全隔離の実装まで止めない。
 5. **再利用**：#2600には「真に未選択・未消費のPlugin変更」と「未列挙だが実消費されたSource変更」を対照させる。Build byte一致、Evidence再利用、現在の受理資格は個別に判定する。
 
 ### 9.3 独立Expectedの追加候補 PRA-01〜08
@@ -214,11 +214,11 @@ Studio全工程の一般化に先立ち、**N0の生成Inspector TS → N2 esbui
 | --- | --- | --- |
 | **PRA-01** | N0出力TSをN2起動前に差替え、事後は元byteへ戻す（A→B→A） | 後読みSHA一致のみではPASSせず、実読取/固定Snapshotが無ければunknown |
 | **PRA-02** | 選択Builder Bと実Process Aの出力が同じ | 実image/argv不一致でFAIL |
-| **PRA-03** | \`package-lock\`以外の実transitive JS inputを変更、目録から欠落 | 実依存閉包をqualifiedとしない。差分/読み取りを追跡 |
+| **PRA-03** | `package-lock`以外の実transitive JS inputを変更、目録から欠落 | 実依存閉包をqualifiedとしない。差分/読み取りを追跡 |
 | **PRA-04** | Stage2に必要なProviderが欠ける一方、Stage1のGeneratorは動いている | Stage2提供資格FAIL、Stage1のGenerator成功は維持 |
 | **PRA-05** | Stage1専用GeneratorがStage2から除外される | 選択Targetが必要としなければ正当。単純な「Plugin欠落」では拒否しない |
 | **PRA-06** | Linux書込境界が通るが読取り共有・ネットワークに依存 | W内の書込み制約のみ支持。完全なstate isolationは未成立 |
-| **PRA-07** | Hookの\`uses\`を宣言したがGuard拒否／二重Call／Commit ACK喪失 | 宣言≠呼出。Guard拒否時の0回・多重作用・unknown Effectを別に判定 |
+| **PRA-07** | Hookの`uses`を宣言したがGuard拒否／二重Call／Commit ACK喪失 | 宣言≠呼出。Guard拒否時の0回・多重作用・unknown Effectを別に判定 |
 | **PRA-08** | DB ProviderがRLSで一部の行のみ返し、UI/AIが全件として表示 | 実Read成功でも全体被覆・現在開示は未成立。partial/unestablishedを維持 |
 
 ### 9.4 DSL・Trait・Hook・AI協業への適用順
@@ -226,7 +226,7 @@ Studio全工程の一般化に先立ち、**N0の生成Inspector TS → N2 esbui
 | 接続先 | 共通にすること | 固有のOwnerと未証明事項 |
 | --- | --- | --- |
 | **DSL／Target Generator** | Source→型付き意味→選択Operator/Provider→生成実装の対応。構文同値だけでなく、評価順序・数量精度・NULL・依存失効の比較 | #4361〜#4367、#1121、#2595。新DSLの全文法・全Target Conformanceを本Plugin計画で確定しない |
-| **原子的Trait** | \`required\`→Default/Provider/Generated/Manual/Externalの実Fulfillmentと失敗診断。単に宣言されたHintを保証にしない | #3278/#951。Trait追加で新Core enumを要求しない |
+| **原子的Trait** | `required`→Default/Provider/Generated/Manual/Externalの実Fulfillmentと失敗診断。単に宣言されたHintを保証にしない | #3278/#951。Trait追加で新Core enumを要求しない |
 | **Hook／Lifecycle** | Contract選択・実呼出し回数・Guard・Failure/Effectを区別し、Graphの静的表示を実Callとみなさない | #4589/#4602/#4198/#1174。未知Effect時の再送禁止。全Graph CompilerをB1の前提にしない |
 | **DB Provider／Query** | 選択済みEnvironment→実Reader→Rowset/Context→Consumer受領。Source/Session/Grant・RLSの未知を分ける | #2586/#3270。実PG Reference CLI成功をStudio/本番Grantに拡大しない |
 | **AIと人間の協業** | AIの候補Proposal、固定Selection・Source/Revision、実Apply、Build開始、実Consumerを分離。結果に根拠と欠落を示す | #2514/#2516/#1824。AI推定・検証PASSを業務意味の受理・現在権限に置換しない |
@@ -234,3 +234,65 @@ Studio全工程の一般化に先立ち、**N0の生成Inspector TS → N2 esbui
 実装・配布の第一目標は引き続き**Studio DesktopをTEI自身が再構築し、生成されたStage2実行ファイルで利用できること**。PRAは必要な縦断の反例を短く固定するものであり、X-TEA実Source、全Plugin移行、DSL全面自己記述、AI Harness自律Apply、他言語TargetをP0へ積み上げるものではない。
 
 **状態**：現行Issue/PR/Sourceの静的照合に基づく設計・検収引渡し。PRA-01〜08の新Go/Node/Windows/OS境界試験、Stage1→Stage2 Desktop全工程、正式Owner意味受理は**NOT RUN／NOT ACCEPTED**。
+
+
+---
+
+<!-- plugin-profile-closure-20261113 -->
+## 10. 案件別の選択と静的Composition：固定参照構成から生成製品への移行
+
+### 10.1 現行の固定構成が実証していること
+
+[#4570](https://github.com/hat47x/tei-platform/pull/4570)のDraft Sourceでは、`cmd/tei-studio/host_three_view.go`が`tei/plugins/xtea-three-view`をbuild tagなしでimportし、`studioThreeViewInventory()`に明示的な`Navigate`関数を登録する。`newStudioThreeViewHost()`は`xteathreeview.ProviderID`を引数としてHost選択する。通常版`host_default.go`と生成版`host_generated.go`はともに`withStudioThreeView`を経由する。
+
+これは**固定参照構成で、Providerを選択し、同じGo実装へ到達する候補経路を持つ**という有意義な実装である。しかし、Application Composition Profileがプラグインの必要性を解決し、その結果から**target別のGo import／linkを生成・除外**した証拠ではない。また、`host_three_view.go`の無条件importがある現構成で「非選択PluginはStage2から物理除外される」と主張してはならない。現在の固定Bundleでは、あらかじめ必要として組み込んだプラグインであることと、Product Profileの任意選択機能であることを混同しない。
+
+この差は、新Resolverや動的ローダーの不足ではない。**現在の選択結果を、Target向けの静的Composition・Build Closureへ伝える接続の不足**である。
+
+### 10.2 プラグインに関する三つの問いを独立に扱う
+
+1. **この製品構成で必要か**：#1016/#951の既存Profile/Contract/Scope/Trait要件から、選択する機能・実Providerを確定する。標準セットに含まれるという事実だけでは、全Targetへの実同梱義務は生じない。一方、標準Profileが明示的に要求するものは必要である。
+2. **成果物へ組み込まれたか**：#2595/#1080/#1097/#3267の実Build入力、生成Go import・link、embed、ArtifactSetで検証する。Providerが存在しても、選択先の実Targetに入っているとは限らない。未選択CがGo import/initで入る場合、物理除外の要求を満たさない。
+3. **誰がどの操作で使えるか**：#1158/#1251の実Call-site／Typed Result、#1174/#2516の現在Grant・開示を確認する。実Binaryに含まれることは、自動公開・権限付与・Effect成功を意味しない。
+
+この三問の回答を、**Source/Model Revision・Target/Profile・Contract/Provider ID・Build Attempt・実Artifact・実Consumer Attempt**で結び付ける。World Fingerprint／Model Revision／Artifact Revisionは、対象集合と失効用途が違うため単一Hashにしない。異なるTarget間でBinary byte一致を要求せず、契約が同じ場合の型付きOperationの意味・負例を比較する。
+
+### 10.3 固定参照構成とProduct構成の合格条件
+
+| 対象 | どこまで合格と言えるか | 次に必要な検査 |
+| --- | --- | --- |
+| 固定した参照Bundle（現#4570） | Hostが選んだProviderを実Go call-siteで呼出す局所Reference | 実Windows `StudioBridge`／Provider／Read結果とSource navigation |
+| 通常Studioと`studio_generated`の固定構成 | 両variantの宣言された必須Providerが実同梱・実Callされた | 各variantのbinary／実WebView2／独立Expected。server-only成功では不可 |
+| 案件別Application ProfileからのProduct構成 | Profileで選択したContract/Providerを、既存Composition→Target Generator→実Buildへ束縛できる | **required／not-required**の両Profileで生成Go import・link/Artifact・実Call/露出差を比較 |
+| 配備後の現在資格 | 現在のHost/Grant・要求Scope・Consumerに適合する | 旧Artifact/Evidenceの再利用が現在のGrant/Owner意味受理を復活させない |
+
+最初の段階で、製品CLI・Studio・全Plugin・全Targetの動的切替は要求しない。**参照構成に必要な実装が入ることの立証をP0、案件別Profileに不要な実装を物理除外する保証をその後のP1**とし、順序を逆転しない。固定参照Bundleの成功からProduct Profile対応済みと呼ばない。
+
+### 10.4 PPC-01〜08：選択閉包の独立Expected候補
+
+既存#1180/#2514のScenarioへ接続し、新たなSource/Contract/Scenario正本を作らない。
+
+| ID | 差分・故障注入 | 必須判定 |
+| --- | --- | --- |
+| PPC-01 | 固定参照構成が`xtea-three-view`をimport・選択し、実Bridgeから呼ぶ | 限定ReferenceとしてPASS可能。案件別Profileによる生成とは判定しない |
+| PPC-02 | Profileが三要素分析法Modelerを要求するが、静的生成importかStage2成果物から欠ける | 必須Provider欠落。Build/Consumer資格FAIL |
+| PPC-03 | Profileでは三要素分析法Modelerが不要だが、無条件Go import/initで成果物に残る | 物理除外を要求するProfileではFAIL。未公開なら現在Grant違反まで推定しない |
+| PPC-04 | 同じ論理ContractでProvider AとBを切替。結果JSONは同じだが、生成import・実Entryが旧Aのまま | Selected B→actual AをFAIL。Result同値は不十分 |
+| PPC-05 | PluginのPresentationだけを変更し、業務Operation/ContractとGenerator入力には変更なし | 影響対象だけ再生成。Source/入力閉包が無関係なら過剰失効を検出 |
+| PPC-06 | Required TraitのProvider履行が欠けるが、Presentation表示とHook宣言だけは存在 | 義務未履行として診断。Hint／画面表示を実装保証に昇格しない |
+| PPC-07 | Dirty Buffer Bを画面表示中、保存済Source AをBuild Intentで選択。BuilderがBを読んだ | Plan/Actual不一致。暗黙保存・Meaning受理はしない。AをBuildするならAと明示 |
+| PPC-08 | AIまたはREAの外部候補を既存Modelerへ受渡したが、旧Pin/別Source／Scopeで実Providerへ接続 | 候補受領≠現在の対象確定。Source・Targetを再確認し、業務MeaningやGrantを自動付与しない |
+
+PPC-05は`PRA`の実Builder消費入力、#2600のfalse invalidation/false reuse、#2595の消えた依存辺・実読取時点を再利用する。PPC-07は#4583のDirty Buffer/Canonical Source、PPC-08は#4515/#3394/#2516の既存Ownerへ戻す。重複実装をしない。
+
+### 10.5 実装の最短順と撤回条件
+
+- **S0 現在の固定参照構成を据え置く**：#4570を無理に汎用Plugin Hostへ書き換えない。X-TEA固有の読み取りと、共通Operation・Target依存の責務を維持する。
+- **S1 #4583 B1-Bを優先**：N0→N2→N3の既存Builder実入力とArtifactSetの接続を実装する。Stage2 WailsのBuild Inputの完全性やOS隔離を未実証なら`unknown`とする。#4587のCI Shellを正式Builderだと偽らない。
+- **S2 #1251の製品呼出し**：通常CLI実binaryと実Wails Bridgeが選択済みProviderを呼んだWitnessを別々に取る。read-only Inspectorから始め、三要素分析法のモデルを独立の二例目にする。
+- **S3 #1016/#951/#1121のProfile→静的Composition**：既存Selectionが`required/not-required`を確定できる場合に限り、Target側の明示import・必要Artifactへ翻訳する。新Plugin Manager、Core固定enum、無条件のGo Module分割は不要。
+- **S4 差分Build・可視化**：#2600に選択あり/なしのBuild閉包と再生成時間を渡す。Studio/CLIの既存Inspect/診断へ「宣言／実選択／組込／実呼出／現在資格」の読取り専用情報を投影し、未知・部分観測も隠さない。
+
+**撤回条件**：この方法に第二Resolver／第二Runtime Authorityが必要になる、Targetの静的構成を記述するだけで毎回全Pluginを一括importしなければならない、各表現の表示変更が必ず全Go成果物の意味再受理を必要にする、またはCIの事後Hashを実消費閉包と扱わないと成立しない場合は、Profile連携の抽象を縮小し、一機能の差分へ戻す。
+
+**資格**：本章は#4570/#4587等の現行Draft Source、他チャットのUX・DSL・REA・Trait設計に基づくFit/Gapと独立Expectedの提案である。PPC-01〜08の新Go/CLI/Windows Target試験、Profileからの静的import生成、Stage1自身によるStage2全Desktop再構築、正式Owner受理は**NOT RUN／NOT ACCEPTED**。
