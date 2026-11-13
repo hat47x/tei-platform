@@ -85,12 +85,12 @@ Subsystem再命名は役割・更新責務が改善された可能性を示す**
 
 **今回の判断候補**：変更に対する影響は「Fileが変わったか」ではなく、**一つの問いとそのClaimが必要とする依存・観測・使用条件が変わったか**で判定する。新しいClaim Registry／Proof Engine／共通Schemaを作る提案ではない。
 
-一時的なレビュー票で、対象Claimの輪郭を \`Q=(subject, scope, predicate, quantifier, observationBoundary, requestedUse)\` と記述できる。これらは既存のQuery/Function Data Context、Scope/Identity、Scenario、Consumer、Disclosure契約から照合する列であり、新しい固定DTOを要求しない。
+一時的なレビュー票で、対象Claimの輪郭を `Q=(subject, scope, predicate, quantifier, observationBoundary, requestedUse)` と記述できる。これらは既存のQuery/Function Data Context、Scope/Identity、Scenario、Consumer、Disclosure契約から照合する列であり、新しい固定DTOを要求しない。
 
-- \`predicate\`：問いで実際に解釈された条件。無視されたWHERE/Role/Window等があれば閉包成立や不存在を宣言しない。
-- \`quantifier\`：**存在**、**不存在**、**全件**、**変化**、**効果**など、問いの論理的な強さ。存在の一例を観測しただけでは全件処理や他要素の不存在にならない。
-- \`observationBoundary\`：実Source Reader、Snapshot、InputCut、Artifact Generation、Consumer、Effect Reader等、どの境界まで実際に観測したか。
-- \`requestedUse\`：read-only表示、モデル変更Proposal、逆編集、再実行、外部公開、業務受理等。read-onlyでのpreservedはEditable/Executableを含意しない。
+- `predicate`：問いで実際に解釈された条件。無視されたWHERE/Role/Window等があれば閉包成立や不存在を宣言しない。
+- `quantifier`：**存在**、**不存在**、**全件**、**変化**、**効果**など、問いの論理的な強さ。存在の一例を観測しただけでは全件処理や他要素の不存在にならない。
+- `observationBoundary`：実Source Reader、Snapshot、InputCut、Artifact Generation、Consumer、Effect Reader等、どの境界まで実際に観測したか。
+- `requestedUse`：read-only表示、モデル変更Proposal、逆編集、再実行、外部公開、業務受理等。read-onlyでのpreservedはEditable/Executableを含意しない。
 
 **限定的な再利用の必要条件（十分条件ではない）**：
 
@@ -102,7 +102,7 @@ Subsystem再命名は役割・更新責務が改善された可能性を示す**
 
 **肯定・否定・全件Claimの非対称性**：あるSnapshotに一件存在するという限定的証拠は、その一件の存在に十分でも、全件処理／不存在／外部Effectには不十分。不存在または「すべて」の主張は、問われたUniverse・Predicate・期間・全Reader/Writer・未観測を閉じた証拠が必要である。追加行・遅延訂正・未観測Writer・部分InputCutが加わると、過去の全件Claimは保持できても現在の全件Claimは再評価対象になる。SQL演算の単調性だけから、Source/Policy/Runtimeを跨いだ資格保存を推定しない。
 
-**既存研究の利用限界**：[Query Impact Draft #4335](https://github.com/hat47x/tei-platform/pull/4335) の \`retain / recheck / unknown\` は、合成\`DerivedIR\`とcallerが申告したContext束縛・取得状態に対する**read-only Claim**の判定であり、\`operationEligibility=not-evaluated\`。同じ語を他領域の製品Contractへ無審査で移植しない。[Required/Consumed二閉包 Draft #4393](https://github.com/hat47x/tei-platform/pull/4393) の合成booleanも実Reader/Buildの証拠ではない。
+**既存研究の利用限界**：[Query Impact Draft #4335](https://github.com/hat47x/tei-platform/pull/4335) の `retain / recheck / unknown` は、合成`DerivedIR`とcallerが申告したContext束縛・取得状態に対する**read-only Claim**の判定であり、`operationEligibility=not-evaluated`。同じ語を他領域の製品Contractへ無審査で移植しない。[Required/Consumed二閉包 Draft #4393](https://github.com/hat47x/tei-platform/pull/4393) の合成booleanも実Reader/Buildの証拠ではない。
 
 ## 7. 変更種別と必要な再確認の有限行列（既存Ownerへの引渡し）
 
@@ -119,18 +119,18 @@ Subsystem再命名は役割・更新責務が改善された可能性を示す**
 | Current Grant／Disclosure／Publisher資格が失効 | 当時の認可・受領・静的Source事実 | 現在の公開・編集・実行を再判定。旧PASSやA→B→Aを現行Authorityに流用しない | #2516 / #1174 / #2589 |
 | Private Worldのみ変更、Public Slice同一 | 許可された公開Source/見えてよい結果 | 公開Count/Score/Diagnostic/Graph/DOM/Tool応答が秘密差分から変化しないことを検証。非公開件数のredacted表示も自動許可しない | #2516 / #3250 |
 
-**限定判定結果の読み方**：\`retain\`は「旧read-only Claimの限定利用を続けられる」、\`recheck\`は「当該契約の再取得・検証が必要」、\`unknown\`は「安全な選択には必要な情報が不足」。どれも現在の実行Authority・業務受理・強い不存在証明を兼ねない。前後版の比較、実際のSource closure、Current Policy、独立Expectedを既存Ownerに委ねる。
+**限定判定結果の読み方**：`retain`は「旧read-only Claimの限定利用を続けられる」、`recheck`は「当該契約の再取得・検証が必要」、`unknown`は「安全な選択には必要な情報が不足」。どれも現在の実行Authority・業務受理・強い不存在証明を兼ねない。前後版の比較、実際のSource closure、Current Policy、独立Expectedを既存Ownerに委ねる。
 
 ## 8. 最小の横断Witness：誤ったretainと無用なinvalidatingを同時に検出する
 
-一つの固定Source/Contextに、\`D1 = OrderLines\`、\`D2 = PromotionRates\`、\`D3 = unrelated Settings\` を置く。以下は*試験用の架空データモデル*で、製品の既存\`order_entry\`にこれらのテーブルが存在する主張ではない。Independent Expectedを既存[#2514](https://github.com/hat47x/tei-platform/issues/2514) / [#1180](https://github.com/hat47x/tei-platform/issues/1180)に置き、第二Fixture SSOTを作らない。
+一つの固定Source/Contextに、`D1 = OrderLines`、`D2 = PromotionRates`、`D3 = unrelated Settings` を置く。以下は*試験用の架空データモデル*で、製品の既存`order_entry`にこれらのテーブルが存在する主張ではない。Independent Expectedを既存[#2514](https://github.com/hat47x/tei-platform/issues/2514) / [#1180](https://github.com/hat47x/tei-platform/issues/1180)に置き、第二Fixture SSOTを作らない。
 
 | 対象Claim | 変更 | 条件付きExpected（独立Oracleへ引渡す案） |
 | --- | --- | --- |
-| Q1: \`SUM(D1.amount)\`（D1のみ読取） | D2だけの行変更 | D1しか読まない完全な解析閉包、同版・同Scopeならread-only Claimはretain候補。現在のGrant・表示Disclosureは別 |
-| Q2: \`SUM(D1.amount * COALESCE(D2.rate,0))\`（Join） | D2変更 | recheck。外部結合・集計の非単調性やD2の部分取得を忘れない |
-| Q3: \`D3\`を読まないQ1 | D3だけ変更。ただしGlobal Ruleやdefault Binding変更はなし | Q1の完全な依存閉包が独立ならretain候補。広域無効化のみを要求する実装はfalse invalidation |
-| Q4: \`該当D2行は存在しない\` | D2の部分取得／未観測Writer追加 | unknown。0行の表示、同一DigestのQuery Plan、古いWindowから不存在を証明しない |
+| Q1: `SUM(D1.amount)`（D1のみ読取） | D2だけの行変更 | D1しか読まない完全な解析閉包、同版・同Scopeならread-only Claimはretain候補。現在のGrant・表示Disclosureは別 |
+| Q2: `SUM(D1.amount * COALESCE(D2.rate,0))`（Join） | D2変更 | recheck。外部結合・集計の非単調性やD2の部分取得を忘れない |
+| Q3: `D3`を読まないQ1 | D3だけ変更。ただしGlobal Ruleやdefault Binding変更はなし | Q1の完全な依存閉包が独立ならretain候補。広域無効化のみを要求する実装はfalse invalidation |
+| Q4: `該当D2行は存在しない` | D2の部分取得／未観測Writer追加 | unknown。0行の表示、同一DigestのQuery Plan、古いWindowから不存在を証明しない |
 | Q5: Q1を公開したStudio Table | Context/epoch更新・Grant失効 | 静的意味は変わらなくても、旧DOMのEdit/Inspect、現在のDisclosureを再確認。Read成功は逆編集資格ではない |
 | Q6: Q2をETL出力し2-member Datasetで公開 | 片方のみ新世代／ACKだけ成功 | Publication/Consumer/Business Acceptedを別に判定、世代混合を完全成果物としない |
 | Q7: Legacy observed LとOwner accepted Dで税率の訂正を採用しTarget Tで結果確認 | T=DでL≠T | 受理された意図的変更は旧挙動との単純一致FAILとしない。一方Tの実EffectやOwner受理を合成Outputから推定しない |
