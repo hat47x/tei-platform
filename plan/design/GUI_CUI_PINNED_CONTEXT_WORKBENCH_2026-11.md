@@ -639,3 +639,77 @@ B0/B1の実装証拠は#4572/#4579の**それぞれのHEAD/環境**に束縛さ�
 **計画反映**：本節は#4479の実装接続規範。#4515がPin UI、#4572が生成Inspector、#4579が実Desktop Consumer、#2831がセルフビルドの実証Owner。mainのMASTER_PLANにはすでに#4515とDesktopセルフビルドの作業領域があるため、並行変更の多い正本へ本節を複製しない。実装結果・CI・独立Expectedは各OwnerのIssue/PRへ追記する。
 
 **状態**：この節はPR本文・局所CI記録の照合と設計接続であり、#4515のPin実装、#4572/#4579のmain統合、B2/B3製品全体セルフビルド、実SHO/TAI Handoffの成功は主張しない。
+
+
+## 18. 2026-11-13 実装着手判定：生成Inspectorと固定対象の結合に必要な最小差分
+
+> §17を「次の実装担当が変更・検証できる」契約へ落とす。#4515の既存Scopeを維持し、#4572/#4579はDraftのため統合HEADが成立するまで実装完了としない。**この節のExpectedは未実行**。
+
+### 18.1 実装可能な最小状態と禁止する結合
+
+`reference/tei-studio-workbench/main.ts`に存在する一時的`selected`をそのままPinとして使わない。最初の実装では次の**Workbench-localの読み取り専用状態**を区別する。型名は例示であり公開ABIではない。
+
+```ts
+type PinIntent = {
+  workspaceId: string;
+  subject: { kind: string; id: string };
+  originEpoch: number;
+};
+type PinObservation =
+  | { state: "unqualified" }
+  | { state: "inspected"; observedEpoch: number }
+  | { state: "needs-requalification"; reason: string }
+  | { state: "unavailable"; reason: string };
+type LocalPin = { intent: PinIntent; observation: PinObservation };
+```
+
+`inspected`は「このepochのReader応答と意図したSubjectを照合した」に限定する。Source Revision/WorldFP/SourceIndexFP/Manifest/Policy/Grantの未取得値を架空の必須値にせず、**現在Readerで観測可能な識別値だけを明示**する。実Productの資格は別途評価する。
+
+- `select(subject)`は一時表示対象を変えるだけでPinに影響しない。
+- `pin(subject)`は明示操作だけでIntentを記録し、Inspectの実結果を別のObservationとして持つ。Pinを選んだ瞬間に`authorized`へ遷移させない。
+- `inspectResult(requestId, workspaceEpoch, subject)`は、**requestが発行された対象**と現Pin Intentが一致した場合に限ってObservationへ反映する。後着旧Replyは破棄し、Intentを書き換えない。
+- `workspaceChanged`は前WorkspaceのIntentを別Workspaceへ付け替えず、`needs-requalification`にする。UIがTaskごとにPinを分離する場合も、そのTask境界を暗黙の共通Storeへ昇格しない。
+- `sourceChanged`を確実に観測できるときはObservationを失効させる。**Source/Grant変更を観測する仕組みが未接続なら現在性はunknown**であり、過去のInspect成功を継続的な権限証明としない。
+- `unpin`はLocal Intentを解除するだけ。Undoで戻してもObservationは`unqualified`から再照合し、旧Source資格・旧外部送信許可を復活させない。
+
+### 18.2 UIの最小変更とアクセシビリティ
+
+初期UIはInspectorの近傍に「現在表示中の対象」と「固定した対象」を**別領域**で示し、Pin/Unpin/再確認を明示操作にする。既存のGraph/List/Source/Editorを大きく作り直さない。Shelfを折り畳んでもIntentは消さない。
+
+- Buttonに現在の操作と対象を識別できるAccessible Nameを付与。キーボードでも操作可能にする。
+- IME確定前、Esc、空白クリック、別タブ移動で自動Unpinしない。
+- 未資格の対象では、Sourceの秘密本文・Path・件数をChip/Tooltip/ARIAに再表示しない。UI状態遷移だけで漏洩防止を保証せず、現在Disclosureの検証は#2516で独立に行う。
+- Relation Edgeは現`relatedGraph()`の表示用`parent:` IDしかなければPin操作を出さない。Source-backedな正式Relation occurrenceを返せるConsumerを後段で接続する。
+
+### 18.3 統合時に起こり得る競合を先に定義
+
+| 同時進行の変更 | 統合上の注意 | 合格条件 |
+| --- | --- | --- |
+| #4515 Workbench `main.ts` | PinのStateとUI操作の差分を局所化し、`selected`と混ぜない | 旧選択処理・Inspector/Graph/Commandの既存Test維持 |
+| #4572 `readInspection`生成化 | 手書き関数の実装にPinを直接結合しない。既存`presentation.ts`のexport経由の契約を再利用 | 生成Readerの同一Subject応答でPinの再確認を実施 |
+| #4579 生成Workbench＋Wails | Source TS→生成JS→Go embed→実WebView2のbyteとConsumerを照合 | **同一統合HEAD**の実WebView2でPin操作を観測。別PRのPASSを合成しない |
+| #4504 Source/Workspace同一性 | 同offset・同FP・A→B→A負例をPinの現在性に接続 | Source Identityの不一致を再束縛で隠さない |
+| SHO/TAI/REA | 文書Occurrence/外部CandidateとWorkbench SubjectのIdentityを別々に扱う | Pinから無断Apply/Send/Meaning受理へ進まない |
+
+### 18.4 最小検証順序と合否
+
+**最初の1本は合成FixtureでのPin State正負テスト**とする。UI表示とHost ReaderはMock/Fixtureの役割を明示し、MockのPASSを実ReaderのPASSへ昇格しない。
+
+1. `PIN-IMP-01`：Subject Aを選択→明示Pin→Subject BをInspect→Aへ戻る。Pin IntentはAのまま、現在SelectionはBに変化してよい。
+2. `PIN-IMP-02`：AをPin→旧A応答を保留→B/Workspaceを切替→旧A応答を返す。Intentの誤再束縛0、旧応答による現在資格の復活0。
+3. `PIN-IMP-03`：A→B→Aで同じDigest/同offsetに戻す。世代・Source Revisionが不明なら`needs-requalification`。以前のInspect結果を再利用しない。
+4. `PIN-IMP-04`：Unpin→Undo。Intentだけ戻り、Observationは未資格。外部Send/Apply/Effect=0。
+5. `PIN-IMP-05`：同一端点の複数Relationを描画する。表示用Edge IDから意味RelationのPin成功0。
+6. `PIN-IMP-06`：生成Readerを含む**同一HEAD**でtypecheck/test/build→実Windows WebView2→通常CLIの対象再照合を実施。各段階のexact SHA/環境/未実行を別記。
+
+**テストのOwner**：最初のState/UIは#4515。生成Inspectorのbyte/使用証拠は#4572、実Desktopは#4579、Desktop全体Build Graphは#2831。テスト名を第二Scenario SSOTとして重複実装せず、既存#1180/#2514の独立Expectedに差分を登録する。
+
+### 18.5 ここで実装を止める条件
+
+- 実ReaderのSubject Identity/Workspaceが確認できず、Labelや描画Edgeだけで一意と推測する。
+- `responseScope`のlane制御だけでHost認可・Disclosure失効が保証されたと解釈する。
+- `readInspection`生成化が成功したことを、PinやDesktop全体セルフビルドの合格とする。
+- SHО未保存Buffer/DB Rowset/REA候補の別種Identityを、Workbench Subjectと同じID空間へ押し込む。
+- Source・Model・生成器・Pluginの改版で、古いObservationを新しい実行資格として再利用する。
+
+**引継ぎ成果**：#4515が最初に変更するファイル、保持する状態、受け入れる6つの正負Expected、#4572/#4579との同一HEAD統合条件が確定した。**コード変更・独立試験・Desktop統合はこの追補では未実施**。
