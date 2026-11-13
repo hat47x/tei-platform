@@ -511,6 +511,9 @@ SQL/NoSQL/ログ等のリバース結果は、**Physical Observation→Structura
 
 **Tool版の資格は不連続とする。** #4257は実REA 6.7.0単独JSONと6.8.0のJSONL終端を対象にした限定実証。外部REA 6.9.0の選択読取／リンク探索／ページングは新しいT0-06の固定Tool＋Source＋Scopeで、終端・未取得ページ・Relation Identity・Coverage/Unknown・Consumer受領を別に検収する（#3394/#4561）。既存Evidenceを再利用できても、解析版更新や必要なSource閉包・Provider実消費・完全性を自動認定しない。
 
+<!-- rea-r3-specific-ci-blockers-20261113 -->
+**関連PRの具体的な失敗理由を追跡する。** [Source-index修正 #4584](https://github.com/hat47x/tei-platform/pull/4584)の固定HEAD `e1f589f` は8 Workflow中7 successで、Repository Healthの実ログは`gofmt drift in: cmd/tei/source_index_test.go`。これはSubject存否の設計否定ではなく、整形不適合による採用停止であり、`gofmt`修正後のexact-HEAD再検証が必要。[三視点Plugin #4570](https://github.com/hat47x/tei-platform/pull/4570)の固定HEAD `4d89ad0` は、Repository Architectureの`tei/plugins/xtea-three-view -> tei/internal/xeadsource`という**正規Product Graphから旧Source Adapterへの直接依存**が拒否され、生成Hostの`TestGeneratedGoServicesRunThroughRealHost`は`unexpected Wails exports: 16`で失敗した。PluginをCoreへ埋め込む／禁止依存を許可リストへ追加するのではなく、既存Adapter境界で依存方向を修正し、公開Bridge契約と生成Hostの両経路を同じHEADで再検査する（#1124/#1824）。R3外部Candidate受領はこの三視点Pluginの修復をHard prerequisiteとせず、既存共通APIの最小別Consumerで先行可能とする。**失敗Jobの実ログは原因特定の証拠だが、対策の実装・再テストはNOT RUN。**
+
 **到達条件と優先順位**：R2 main統合済み→R3の同一Evidence・独立二Consumer実受領→T1-Bの一機能対応Preview→T2の旧実測／受理済み意味／新実測・SHO Save/Reopen。#4584のSubject存否を誤成功させる問題、#4570の三視点server経路と実Windows Desktopの差、生成Inspector別HEAD成功の非加算は別資格として保持する。TEI Studioセルフビルドと#2586通常Product Provider Readの完了をR3に依存させない。
 
 **検討中の横断追補（DBアクセス・Query/2way SQL）**：対象DataSourceの既存Binding解決、DB別Native SQLの選択規約、SQL編集時の診断と分岐検証、異種DBでの意味同値性を、[DBアクセス・Query選択・2way SQLの最小適合計画](https://github.com/hat47x/tei-platform/issues/2622#issuecomment-6772875802)で小さな実証へ分解する。#2611・#2622・#2387・#2667に既存の責務を残し、新しいCore API・正式DSL構文・実DB対応の採用・完了を意味しない。
