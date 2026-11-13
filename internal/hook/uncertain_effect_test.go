@@ -143,3 +143,49 @@ func TestRunRowsKeepsUnknownEffectAcrossBothWrappers(t *testing.T) {
 		t.Fatalf("row wrapper erased the called Command's uncertain effect: %v", err)
 	}
 }
+
+func TestUncertainEffectInsideNotSatisfiedIsNotBusinessOutcome(t *testing.T) {
+	uncertain := command.NewUnknownExecutionError("COMMAND_COMMIT_FAILED", "commit result missing", nil)
+	notSatisfied := &NotSatisfied{
+		Reason: "rule could not confirm the result",
+		Outcome: OutcomeUnmet,
+		Cause: uncertain,
+	}
+	err := wrapFailure(notSatisfied, &application.Hook{Phase: "before-update", Failure: "warn"})
+	if err == nil {
+		t.Fatal("effect uncertainty was silently accepted")
+	}
+	var warning *Warning
+	if errors.As(err, &warning) {
+		t.Fatal("effect uncertainty inside NotSatisfied became a warning")
+	}
+	if outcome, ok := OutcomeOf(err); ok {
+		t.Fatalf("unknown effect was reported as business outcome %q", outcome)
+	}
+	f, ok := failure.AsFailure(err)
+	if !ok || f.Kind() != failure.TechnicalFailure ||
+		f.Retryable() != failure.LookupFirst || !f.HasEffectUnknown() {
+		t.Fatalf("the effect fence was lost inside business outcome: %v", err)
+	}
+}
+
+func TestReachableDoesNotReportBusinessOutcomeForUncertainEffect(t *testing.T) {
+	world := hookWorld("warn")
+	world.Applications[0].Patterns[0].Interaction.Hooks[0].Uses = nil
+	runner := Runner{
+		World: world,
+		Implementation: fakeImplementation{err: &NotSatisfied{
+			Reason: "cannot confirm",
+			Outcome: OutcomeUnmet,
+			Cause: command.NewUnknownExecutionError("COMMAND_COMMIT_FAILED", "ack missing", nil),
+		}},
+	}
+	report, err := runner.RunReachable(context.Background(), "order_entry",
+		"order_entry.order_record", invocation().Reads, ReferenceReach{})
+	if err == nil {
+		t.Fatal("RunReachable continued after an uncertain effect")
+	}
+	if report == nil || report.Refused != "before-update" || report.Outcome != "" {
+		t.Fatalf("unknown effect was misclassified as a clean refusal: %+v", report)
+	}
+}
