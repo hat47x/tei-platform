@@ -1399,3 +1399,28 @@ X-TEAは参照元の歴史的名称として必要な範囲で使い、新規実
 性能検収では、generated server版とDesktop版のBuild時間・JS生成時間・不要Pluginの組込・manifest依存・差分変更時の再生成範囲を**実測後に比較**する。未計測の速度改善、全OS再現性、GUIの正式品質を約束しない。正式DSL字句文法／Unicode識別子／新Target ABIもここで採用しない。
 
 **今回の確認範囲：GitHub mainの既存2 Workflows、Workbench pin/adaptor、Studio Go embed/Bridge、Build Intent outer、他Issue/PRの静的読取と設計追補。** GD-1〜4の新規実Windows Wails Build／WebView2/生成Desktop/Stage2実行、Go/Node CI実行、Ownerの意味受理は **NOT RUN / NOT PROVEN**。#1119 G0〜G4変更なし。
+## 28. 2026-11-13 最初の実装PR：生成Workbenchを実Windows Wails Desktopで使用する
+
+### 28.1 §27の設計から実装への接続
+
+第27節GD-1〜3を、[#4579 Draft](https://github.com/hat47x/tei-platform/pull/4579)（`ci/generated-wails-desktop-webview2-20261113`）で具体化した。**従来のordinary Windows WebView2 Jobは残し**、同じWorkflowに独立の`generated-desktop-webview2-smoke` Jobを追加している。このJobは#1824に既存のPoC B `reference-studio-static-composition`／`compose-ui.mjs`／`connect-workbench.mjs`と、既存`desktop_webview_smoke.py`を呼ぶため、新しい生成器・Desktop Host・WebDriver/Runnerを実装しない。
+
+GD-1はexact PR HEADのSource/Command/Responses/Graph Pinと同一fixtureからGenerated Go `services.generated.go`／UI／Workbench TypeScript／esbuild JavaScriptの実byteを記録する。GD-2はWindowsの独立Studio Go module/Toolchainを使用し、**`studio_generated`だけを指定して（`server`は付けず）**native Wails Desktop exeをBuildする。GD-3は同一exeを既存WebView2 smokeで実起動し、Graph/Command、`StudioBridge.CatalogWorkspace`、`InspectSubject`、`ValidateWorkspace`等の結果を実画面で比較する。
+
+さらに、生成時 `cmd/tei-studio/assets/workbench/main.js` のSHA-256をJob環境へ渡し、実WebView2がsame-origin `/workbench/main.js` から再取得したbyteのSHA-256と一致しない場合はFAILとする。この検査は生成版Jobでのみ有効化し、通常版Desktop smokeの合格条件を変えない。**Source byte→生成asset→WebView2配信byte**を同一Jobで照合するが、実生成Goサービスの全命令・全Plugin呼出、バイナリ内Embed自体の独立検査、完全Builder input closureや配布依存の認定までは主張しない。
+
+### 28.2 独立する次の成果と並行レーン
+
+| Owner/PR | 既に進んだ範囲と今回の停止線 |
+| --- | --- |
+| #1824／#4579 | 生成Workbenchのnative Windows WebView2・実Bridgeを検証する初回CI。Workflow committed≠CI Green。負例はsource pin不一致、生成bundleと実配信bundleの不一致、実Wails/IPC失敗 |
+| #2831 | #4579で観測する生成Source／nested module／Target／実exeを、既存Build IntentとStage1実プロセスのStage2再入へ接続。#4579自体はL3の証拠ではない |
+| #1124／[Draft #4570](https://github.com/hat47x/tei-platform/pull/4570) | 三要素分析法のread-only PluginをStudioBridgeから到達させる別レーン。現時点ではserver UI試験まで、Windows native Desktopは別資格。#4579の生成asset CIと混ぜてOwnerの編集領域を競合させない |
+| #1121／[Draft #4559](https://github.com/hat47x/tei-platform/pull/4559) | 実Query `recent_orders` のSource束縛Function生成Referenceは、入力parameterの正式宣言・SQL Source Index等が未完了。生成UIのGreenを実Function生成やDBの完結に昇格しない |
+| #4536／#4544 | Role自己記述／Generator契約のProduct汎化は独立研究。PoC B固定Fixtureでの生成Desktop成功により万能Interpreter完成と主張しない |
+
+### 28.3 CIの最初の資格と次の判定
+
+新しいJobを含む[#4579](https://github.com/hat47x/tei-platform/pull/4579) HEAD `5b9fb2a5300ac0b2b33476ade753596693c3407e`について、2026-11-13のPR Open後に`TEI Studio Wails Desktop WebView smoke`などのGitHub Actionsがqueued/in_progressであることを確認した。**本段階ではCI successは未確認**。正確なWorkflow run／Job step／exact HEAD／生成bundle digest／実WebView2 snapshot／失敗時のlogを取得して検収する。`server`版Green、ordinary Desktop Green、生成版native Desktop Greenは別Claimとする。直接確認できないものはNOT VERIFIEDと表示し、推測したPASSにしない。
+
+**今回の追加は設計§28と実CI Draft PRの新設であり、セルフビルドStage1→Stage2、X-TEA native Desktop実受入、実DBのStudio受領はまだ完了していない。** 既存#1119 G0〜G4／#1180独立Expectedを変更せず、Source/Build/Consumerを連鎖させる最初の狭い実証を優先する。
