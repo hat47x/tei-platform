@@ -10,6 +10,7 @@ import (
 	"tei/internal/core"
 	"tei/internal/dependency"
 	"tei/internal/knowledgecontext"
+	"tei/internal/operations"
 	"tei/internal/plugin"
 	pluginruntime "tei/internal/plugin/runtime"
 	"tei/internal/validation"
