@@ -68,6 +68,7 @@ type ReaggregationReport struct {
 	Result     string                 `json:"result,omitempty"`
 	ResultNull bool                   `json:"resultNull,omitempty"`
 	Exact      string                 `json:"exact,omitempty"`
+	Unit       string                 `json:"unit,omitempty"`
 }
 
 // EvaluateReaggregation converts the request and delegates the decision.
@@ -109,6 +110,7 @@ func EvaluateReaggregation(in ReaggregationInput) ReaggregationReport {
 		Code:       got.Code,
 		Gap:        got.Gap,
 		Exact:      got.Exact,
+		Unit:       got.Unit,
 		ResultNull: got.Result.State == derivationref.Null,
 	}
 	if got.Result.State == derivationref.Present {

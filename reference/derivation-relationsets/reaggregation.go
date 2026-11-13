@@ -177,6 +177,18 @@ type Report struct {
 	Findings []Finding
 	Result   derivationref.Input
 	Exact    string
+	// Unit is the unit of an eligible result, composed from the declared
+	// component units without cancellation or conversion ("point/observation",
+	// "USD/EUR"). Whether that unit is meaningful stays with D8 #1705.
+	Unit string
+}
+
+func resultUnit(c Claim, required []Component) string {
+	unit := c.Components[required[0]].Unit
+	if len(required) > 1 {
+		unit += "/" + c.Components[required[1]].Unit
+	}
+	return unit
 }
 
 func requiredComponents(law Law) []Component {
@@ -316,7 +328,7 @@ func Reaggregate(c Claim) Report {
 
 	for _, name := range required {
 		if totals[name].State == derivationref.Null {
-			return Report{Verdict: Eligible, Code: CodeOK, Requires: required, Result: derivationref.Input{State: derivationref.Null}}
+			return Report{Verdict: Eligible, Code: CodeOK, Requires: required, Result: derivationref.Input{State: derivationref.Null}, Unit: resultUnit(c, required)}
 		}
 	}
 	value, _ := new(big.Rat).SetString(totals[required[0]].Decimal)
@@ -327,7 +339,7 @@ func Reaggregate(c Claim) Report {
 		}
 		value.Quo(value, divisor)
 	}
-	report := Report{Verdict: Eligible, Code: CodeOK, Requires: required, Exact: value.RatString()}
+	report := Report{Verdict: Eligible, Code: CodeOK, Requires: required, Exact: value.RatString(), Unit: resultUnit(c, required)}
 	if decimal, ok := terminatingDecimal(value); ok {
 		report.Result = derivationref.Input{State: derivationref.Present, Decimal: decimal}
 	}

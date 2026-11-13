@@ -154,3 +154,36 @@ func TestZeroDenominatorAndRepeatingDecimals(t *testing.T) {
 		t.Fatalf("9/7: %+v", got)
 	}
 }
+
+// Design decisions recorded in the README ("再集計の適合に含めないと決めた検査").
+func TestCompositionDoesNotDependOnUnitAgreementOrSign(t *testing.T) {
+	// Units of paired components need not agree; the result unit is reported
+	// uncancelled and unconverted instead of being dropped.
+	c := mc03Ratio()
+	n, d := c.Components[ComponentNumerator], c.Components[ComponentDenominator]
+	n.Unit, d.Unit = "USD", "order"
+	c.Components[ComponentNumerator], c.Components[ComponentDenominator] = n, d
+	got := Reaggregate(c)
+	wantEligible(t, got, "3/4", "0.75")
+	if got.Unit != "USD/order" {
+		t.Fatalf("unit = %q", got.Unit)
+	}
+	if mean := Reaggregate(mc02Mean()); mean.Unit != "point/observation" {
+		t.Fatalf("mean unit = %q", mean.Unit)
+	}
+	if sum := Reaggregate(mc01LineTotal(Row{Identity: "H/L1", Amount: amount("100")})); sum.Unit != "JPY" {
+		t.Fatalf("sum unit = %q", sum.Unit)
+	}
+	lost := mc02Mean()
+	lost.Scope = ""
+	if got := Reaggregate(lost); got.Unit != "" {
+		t.Fatalf("a non-eligible report must not carry a unit: %+v", got)
+	}
+
+	// Additivity does not depend on sign: (-1 + 8) / (-2 + 10) = 7/8.
+	signed := mc03Ratio()
+	n, d = signed.Components[ComponentNumerator], signed.Components[ComponentDenominator]
+	n.Set.Rows[0].Amount, d.Set.Rows[0].Amount = amount("-1"), amount("-2")
+	signed.Components[ComponentNumerator], signed.Components[ComponentDenominator] = n, d
+	wantEligible(t, Reaggregate(signed), "7/8", "0.875")
+}
