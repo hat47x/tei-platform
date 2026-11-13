@@ -293,6 +293,66 @@ jobs:
           if (-not (Test-Path -LiteralPath $env:STUDIO_DESKTOP_EXE)) { throw 'Generated Desktop executable not created' }
           (Get-FileHash -LiteralPath $env:STUDIO_DESKTOP_EXE -Algorithm SHA256).Hash.ToLowerInvariant() |
             Add-Content -Path (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'generated-desktop-exe.sha256') -Encoding utf8
+          # B1-A observation only. This is a bounded set of named files consumed
+          # by this CI recipe, NOT an authoritative BuildIntent graph/closure.
+          # A different OS/process/builder/hidden Node/Go input remains unknown.
+          $namedHash = {
+            param([string]$path)
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "B1-A named input missing: $path" }
+            return (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
+          }
+          $n0Report = Get-Content -LiteralPath (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n0-inspector-generator.json') -Raw | ConvertFrom-Json
+          $n0Part = & $namedHash 'reference/tei-studio-workbench/inspection-reader.generated.ts'
+          if ($n0Report.artifactDigest -ne "sha256:$n0Part") { throw 'N0 part was changed after regeneration' }
+          $bundle = & $namedHash 'cmd/tei-studio/assets/workbench/main.js'
+          if ($bundle -ne $env:TEI_GENERATED_WORKBENCH_BUNDLE_SHA256) { throw 'N2 Workbench changed after generation' }
+          $exe = & $namedHash $env:STUDIO_DESKTOP_EXE
+          $head = (git rev-parse HEAD).Trim()
+          if ($head -ne $env:CANDIDATE_HEAD_SHA) { throw 'B1-A observation refers to a different HEAD' }
+          $observation = @{
+            status = 'bounded-workflow-observation'
+            qualifiedBuildIntent = $false
+            dependencyClosure = 'unknown'
+            ownerAcceptance = 'not-evaluated'
+            exactHead = $head
+            attempt = "${{ github.run_id }}-${{ github.run_attempt }}"
+            platform = 'windows-2022'
+            goVersion = (go version)
+            nodeVersion = (node --version)
+            n0 = @{
+              inputContractSha256 = & $namedHash 'reference/tei-studio-workbench/inspection-reader.contract.json'
+              inputTransformSha256 = & $namedHash 'reference/tei-studio-workbench/builder-sources/inspection-reader-v1.transform.json'
+              observedPartSha256 = $n0Part
+              source = 'go run ./tools/reference-studio-part-generator'
+              stage1GeneratedTeiInvoker = $false
+            }
+            n1 = @{
+              fixtureSha256 = & $namedHash 'tools/reference-studio-static-composition/fixture.json'
+              generatedGoServiceSha256 = & $namedHash 'internal/studiohost/staticservices/services.generated.go'
+              generatedTypeScriptSha256 = & $namedHash 'reference/tei-studio-workbench/main.generated.ts'
+              invoker = 'workflow:go run + node composition'
+            }
+            n2 = @{
+              inspectorInputSha256 = $n0Part
+              generatedMainInputSha256 = & $namedHash 'reference/tei-studio-workbench/main.generated.ts'
+              packageLockSha256 = & $namedHash 'reference/tei-studio-workbench/package-lock.json'
+              workbenchBundleSha256 = $bundle
+              invoker = 'workflow:node/esbuild'
+            }
+            n3 = @{
+              bundleInputSha256 = $bundle
+              generatedGoServiceInputSha256 = & $namedHash 'internal/studiohost/staticservices/services.generated.go'
+              rootGoModSha256 = & $namedHash 'go.mod'
+              rootGoSumSha256 = & $namedHash 'go.sum'
+              nestedGoModSha256 = & $namedHash 'cmd/tei-studio/go.mod'
+              nestedGoSumSha256 = & $namedHash 'cmd/tei-studio/go.sum'
+              desktopExeSha256 = $exe
+              buildTags = 'studio_generated'
+              invoker = 'workflow:go build (not a Stage1 TEI binary)'
+            }
+          }
+          $observation | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'b1-stage-input-observation.json') -Encoding utf8
+          Write-Host "B1-A-named-input-observation-recorded sha256:$exe"
       - name: Verify generated bundle served by the native WebView2 and real StudioBridge
         shell: pwsh
         run: |
