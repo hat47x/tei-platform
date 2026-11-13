@@ -244,3 +244,56 @@ Subsystem再命名は役割・更新責務が改善された可能性を示す**
 **状態更新（2026-11-13）**：E1-B #4529はmain `b03c415e5fd13d8feec96d9669d96d6db9035e8c`へ統合済み。HTTPの実Artifact byte受領という限定事実は維持するが、signed Release Descriptor自身のuntrusted HTTP取得→Consumer独立検証→Member byte検証は次のE1-Cであり未成立。別のLocal Fixtureの署名PASSをHTTP配布の一続きの署名済み検証へ昇格しない。
 
 **今回のEvidence上限**：既存GitHubのIssue/PR・文書の静的照合により新しい設計を記述しただけ。Registry E1-C、複数Source atomic snapshot、AI協業Studio実操作、B1/B2/B3 Desktop self-build、本書の反証E2E、Owner採否は`NOT RUN / NOT ACCEPTED`。
+
+## 11. Decision-relevant Qualification Slice：変更を局所化するための反実仮想を含む依存閉包（2026-11-13追補）
+
+**採否**：設計・研究候補。新しい共通Closure Solver、Proof Planner、Global Impact Cache、永続Claimスキーマ、Hard Gateは提案しない。各Ownerが持つ既存IR/Graph/Build Plan/Source Index/Scenarioの**読み取り専用比較票**として扱う。
+
+### 11.1 観測された消費入力と「変更後に必要になり得る入力」は異なる
+
+ある問い`Q`の限定的な使用資格を変更`Δ`の後も保持するには、**前回の実Consumed集合と変更集合が非交差**であるだけでは不十分である。少なくとも次を区別する。
+
+| 依存層 | 閉包・証拠 | 不在と誤認しやすいもの |
+| --- | --- | --- |
+| Declared Required | 元のMeaning/Contractが要求するData、Function、Constraint、Result Slice、Trait、Targetの必要集合 | 宣言に載らない動的Plugin、暗黙の環境、負の条件、外部Writer |
+| Resolved / Selected | その版・Scope・Context・Profile・Policyで実際に選択されたProvider、Source、Builder、Operation path | 条件分岐、選択規則、Feature flag、外部設定の変更で新たに選ばれる別経路 |
+| Actually Consumed / Observed | 固定AttemptでReader/Builder/Consumerが読んだbyte・依存と、Independent Observation | 未実行分岐、late input、opaque解析、不完全Tracer、非公開依存 |
+| Qualification obligations | 当該`Q`を利用・編集・公開・再実行するのに必要なCompleteness、Source identity、Output loss、Authority、Effect | read-onlyが有効でもWrite/EffectやCurrent Grantは別資格 |
+
+**変更後の反実仮想**：旧AttemptがAだけ読んだとしても、「Bの変更が選択条件を変え、次のAttemptではBを読む可能性」があるなら`B∉OldConsumed`から`NoImpact`を導かない。Queryの`NOT EXISTS`、LIMIT/ORDER BY、JOIN・集合差、RLS、Provider既定値、Build tag、Template/Toolchain選択、ETL後着訂正、SubsystemのCommand委譲の前後も同じである。
+
+読み取り専用`retain`を限定主張できる必要条件は、(1)質問・Subject・Scope/Context・契約版・選択規則の対応が確認でき、(2)問いに関係する**Potential/Required/negative/control**依存の閉包が十分に開示・解決され、(3)その閉包から`Δ`への影響が無いと確認され、(4)現在のRequested Use/Disclosure/Grantの別要件が満たされることである。これらの条件は**十分条件ではなく**、各Ownerの実Readerや独立Expectedを置換しない。
+
+変更内容が実際に必要な依存へ到達した場合は`recheck`。必要な依存が未解決・非開示・動的で、変更への到達可否が判定できない場合は`unknown`であり、**無関係と断定しない**。ただし全Graph連結成分へ無差別に失効を広げることも正当化されない。明示的な拒否条件・意味不一致は単なる`unknown`に丸めない。公開Consumerへの理由・欠損件数の開示は#2516のPolicyに従う。
+
+### 11.2 「論理更新凝集」と「変更・再検証の局所性」は別の目的関数
+
+サブシステム分割では、外部へのDirect CUDを減らしても、委譲したOwner Commandの実Effectや多段上流の依存が増減し得る。**Direct CUDが0**は**越境再資格化が0**、**実Transactionが局所的**、**変更負担が小さい**ことの証明ではない。
+
+横断比較では次の別々の測定値を保持する。各値は問われた範囲・Input/Output・独立Expectedに相対化する。
+
+| 観点 | 指標候補（提案） | 本書で判断しないこと |
+| --- | --- | --- |
+| Ownership / Write | Declared Direct CUD越境、Unknown Writer、Owner-side Command委譲 | 実Effect/Txの保証・最終Subsystem名称 |
+| Requalification locality | 実際に必要だった再検証数、誤retain、誤全失効、unknown残存と理由 | 全製品の影響解析の完全性 |
+| Time / Cost | full対selectiveの再実行数・待ち時間、分析/AI再確認の往復・Token、修復費用 | 測定前の生産性改善率 |
+| Reversibility / Safety | Mappingの損失、旧Source Pin、部分Source/Private Worldの開示、Edit eligibility | 展開/配備資格やCurrent Grant |
+
+候補の優劣は、必要なOwner/Constraintを満たす候補間で**同一の問い・試験条件・観測版**を比較して初めて判断する。`#3250`のCandidate ScoreやDeclared Graph reachabilityを製品全体の正解・Globally optimalとみなさない。Measure側のOwnerは[#2600](https://github.com/hat47x/tei-platform/issues/2600)、Subsystem側は[#3250](https://github.com/hat47x/tei-platform/issues/3250)、Query側は[#2582](https://github.com/hat47x/tei-platform/issues/2582)。
+
+### 11.3 既存Scenarioへ渡す最小の独立対照（すべて新規実行はNOT RUN）
+
+| 対照 | 変更と観測 | 必須の判定 |
+| --- | --- | --- |
+| DR-01 | 旧AttemptはProvider Aだけ消費。新RevisionでFeature flagがB選択へ変わるが、旧Artifact byteは偶然同じ | `OldConsumed∩Δ=∅`だけでretainしてはいけない。Resolved selectionと実Builder/Readerを再確認 |
+| DR-02 | Q1はD1だけで完全に導出。D2の値だけ変わり、Q1に到達する否定依存・default Bindingは無しと明示確認 | Q1 read-only限定retainを保持候補にする。Q2=D1×D2はrecheck。全Context失効は過剰 |
+| DR-03 | `NOT EXISTS`対象が部分取得、別Readerで0行。後着D2またはRLS外行あり | 0行から不存在を主張せずunknown。特定Subjectの存在・Canon IDも別検査 |
+| DR-04 | Direct CUDをOwner Commandへ移し、外部Writerは消えたが実Effectは別Subsystemへ波及 | Direct CUDの局所性とEffect/Tx/再検証局所性を独立表示 |
+| DR-05 | Build Planに宣言した入力はA、実Consumedに未宣言B、外部Toolchain依存未観測 | 実Outputの成功や実消費の列挙だけで全Required閉包・SelfBuild G4を主張しない |
+| DR-06 | Public Sliceは同じでPrivate Worldだけ増加、理由コード/Count/Score/DOMが変化 | Published/Studio/AI ConsumerはPrivate有無を漏らす「安全な局所説明」を出さない |
+
+採点は正解`retain/recheck/unknown`だけでなく、**根拠と未確認の局所化**、誤全件/不存在・誤Edit/Effect許可、False Invalidation、既存Source/Ownerへの到達操作数を別に記録する。Scenario SSOTは[#1180](https://github.com/hat47x/tei-platform/issues/1180)、独立Expectedは[#2514](https://github.com/hat47x/tei-platform/issues/2514)。Query Draft [#4335](https://github.com/hat47x/tei-platform/pull/4335) と合成Required/Consumed Draft [#4393](https://github.com/hat47x/tei-platform/pull/4393) は、それぞれの固定範囲から実Target一般へ昇格しない。
+
+**進め方**：まず#2600の既存Build/Incremental Referenceと#2582のQuery局所判定、#3250の分割評価を**同一の説明原則で照合**する。必要なら既存Ownerの一実Source・一機能・二Consumerで反例を実装する。Studio Desktop Self-build [#4583](https://github.com/hat47x/tei-platform/issues/4583) のB1-B→B2→B3を直接P0として優先し、この比較表を新たな前提Gateにはしない。測定によって理解・変更費用が下がらないなら、横断共通実装を作らず設計上の説明・試験観点のみに縮退する。
+
+**本追補の証拠上限**：2026-11-13現行main`b03c415e5fd13d8feec96d9669d96d6db9035e8c`および既存Issue/PRの静的読取。ここで示すDR-01〜06は反証候補であり、実Provider/Builder、Query改版、実DB、Studio、Product Consumer、Current Grant、Owner受理の新しい試験は`NOT RUN`。
