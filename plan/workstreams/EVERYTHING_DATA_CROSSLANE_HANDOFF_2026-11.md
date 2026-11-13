@@ -437,6 +437,41 @@ H0/H1と異質領域の要件探索は並行可能。H2/H4の実Effect資格は�
 **状態**：判定順と反例の設計追補のみ。Source Writer/Parser/Plugin/実Query/増分Scheduler/実Generated Targetの新実装・追加試験は**NOT RUN**。新DSL表層構文の正式受理、Owner意味受理、実効果の許可は**NOT ADOPTED**。
 
 
+
+#### DSL候補を製品Workspaceへ昇格させる際の境界と失敗原子性（2026-11-13、実PR再照合）
+
+**実装境界の更新**：[PR #4405](https://github.com/hat47x/tei-platform/pull/4405) は ParseRuleAuthoringFile、RuleNamespace、Anchor、FormatRuleAuthoring、既存Validator/Evaluator向けの試験を実装した **open・未mergeの独立Parser第一縦断**。PR本文には限定Go build/vet/testと既存Workspaceのvalidate実行結果がある。しかし、この結果は新しいruleが**通常のWorkspace読込で選択・受理された証明ではない**。
+
+特に実Codeの RuleNamespace(file) は、正常な宣言の semantic.Validation を返しつつ、無効な宣言の RuleConversionIssue を同時に返せる。候補を保持して全エラーを出すのは適切だが、**製品Loaderがissuesを無視して有効な宣言だけ採用すると、不完全なWorldを完全と誤認する**。候補解析・診断の部分成功と、Product Worldへの採用・SourceAcceptanceを区別し、既存のValidation境界でfail-closedに扱う。候補API自体の変更はこの提案に含めず、**接続側の採用条件**とする。
+
+[Draft #4607](https://github.com/hat47x/tei-platform/pull/4607) は #4405の実装ブランチをbaseとした**積上げ差分**（S0 Expected JSON・比較票・Go契約テストの3ファイル）。34ケースの目録と意味Expectedの根拠区分は補正されたが、当該PR本文はGo/CI **未実行**と明記する。#4405の限定テスト成功を#4607の新テストPASSへ流用しない。#4607は親#4405を取り込んだ同一HEADで再確認し、mainへの独立並行マージを予定しない。
+
+**最短の製品導入順**（[#4367](https://github.com/hat47x/tei-platform/issues/4367)とLanguage Ownerの採否を優先。C1＝formatVersion 3は未採用の候補）：
+
+| 段階 | 具体的な受入条件 | 成功時にも未証明のもの |
+| --- | --- | --- |
+| G0 候補 | #4405のParser→候補Lowering→既存Validator/Evaluatorを、#4607の独立Expectedと同じ実HEADで確認 | 通常Workspaceの新rule受理・実Provider・Editor保存 |
+| G1 選択入口 | Workspace formatVersionと選択Language pinからParserを一意決定。旧v1/v2を不変とし、未選択・未知pin・黙ったfallbackを拒否 | Ownerの業務意味受理、現在の実行Grant |
+| G2 Product World | 全SourceでParse/Lowering issuesと同ID衝突を検査。**問題のある必須宣言を除外した一部のWorldを成功として公開しない**。診断用の部分Candidateは保持可 | Editor Writer・生成Go・Build完了 |
+| G3 Source Index/Save | 選択された同じSource occurrenceのbyte span・Base Revisionを保持。明示Formatterとno-op Save／局所Patchを分離し、staleならzero-write | Studio実受領、生成Artifact |
+| G4 Target/Consumer | 既存Build IntentにLanguage/Operator/Generator/Target版を結び、実Builder/Artifact/Consumerの到達範囲を照合 | Read-only評価やSimulationから実Effect／Owner受理への昇格 |
+
+**区別可能な反例の追加候補**（既存#4361〜#4367と#2514のExpected／テスト記録を再利用し、第二Runnerを作らない）：
+
+| ID | 一因子の変更 | 判定 |
+| --- | --- | --- |
+| DSL-I01 | 同じSourceに正常ruleと未解決属性ruleを共存させる | RuleNamespaceの部分Candidate＋issuesは診断可能。しかし問題ruleを欠落のまま完全Worldとして公開しない |
+| DSL-I02 | 旧validationと新ruleを**別Source**に宣言し同じCanonical IDを与える | 個別Parseが成功してもWorkspace全域で重複拒否。先勝ち・ファイル順で解消しない |
+| DSL-I03 | v1/v2の新rule、選択した新形式候補、未知Language pinを比較 | 版／Pinから選ばれた入口のみ使用。未採用v3や tei.md を暗黙有効化しない |
+| DSL-I04 | 同値ruleを別ファイルへ移動し、CRLF/BOMとBuffer改版を挟む | 意味ID維持とSource occurrence/span更新を区別。古いrangeへの書戻しはzero-write |
+| DSL-I05 | Formatterがファイル全体の文字列を返すがStudioの対象は単一宣言 | Formatter成功は局所Writer完成を意味しない。明示操作では対象外byte不変、無操作Saveは実書込0 |
+| DSL-I06 | #4405と#4607の別HEAD試験結果を組み合わせる | 1つの組合せ上で再実行。独立Expected目録、Goテスト、実Product実行を別資格として記録 |
+
+**既存Ownerへの受渡し**：G0は#4361/#4362/#4363/#4365と#4405/#4607。G1は#4367/#988/#1018。G2は#4363/#4364と既存workspace Validator/SourceAcceptance。G3は#4366/#3788。G4は#2600/#2831/#2514。設計候補や部分試験から他Ownerの完了を推定しない。
+
+**セルフビルド優先の停止線**：現行の受理済みDSLでStudio Desktopを構築できるなら、新ruleのG1〜G3完成を新たなHard Gateとしない。ただし新ruleを通常製品入口で利用可能にするときは、G1/G2の選択と失敗原子性を先に検証する。**今回は設計追補のみ。G0〜G4の新通し試験、#4607のGo/CI、Writer/実Product/Studio、正式文法採否はNOT RUN・NOT ADOPTED。**
+
+
 ### 9.6 用途別に定義するDesign Contextの完全性と、テスト提案・表示・実行の資格（2026-11-07、横断追補）
 
 **主張別の完全性は一列の成熟度ではない**：同じSource/World/Functionでも「設計情報を使ってテスト候補を考える」「Providerの取得結果を検証する」「Function内で表現する」「書込みを実行する」は必要な証拠集合が異なる。すべてに実DB/書込みGrantを要求するとテスト設計や文書閲覧が不必要に停止し、逆に「read-only CLIの結果が完全」を全用途の実行資格に流用すると誤った自動化になる。標準データ構造・標準表現型・Function Contextは共通Carrierとして使うが、**Required ObligationとConsumed Evidenceを利用目的／対象Scope／Consumerごとに判定**する（#2619/#2507/#2497）。
