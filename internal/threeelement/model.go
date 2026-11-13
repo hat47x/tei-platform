@@ -426,6 +426,14 @@ func (m ThreeElementModel) UnusedData() []string {
 			used[op.DataID] = true
 		}
 	}
+	// An explicit-only CRUD mapping is still a Function→Data reference.
+	// Only a uniquely resolved Function proves usage; unknown/ambiguous
+	// Function IDs must not hide an otherwise unused Data element.
+	for _, crud := range m.CRUDDefinitions {
+		if _, ok := fnByID[crud.FunctionID]; ok {
+			used[crud.DataID] = true
+		}
+	}
 	var out []string
 	for _, d := range m.DataElements {
 		if !used[d.ID] {
@@ -472,20 +480,24 @@ func (m ThreeElementModel) MissingBusinessFunctionMapping() []string {
 	return out
 }
 
-// ContradictoryCRUDs returns CRUD definitions that conflict within the same function-data pair.
+// ContradictoryCRUDs returns every later CRUD definition whose operation
+// flags conflict with the preceding definition for the same Function/Data pair.
+// Keep source order and the source definition intact; never silently choose a
+// winning definition when constructing validation evidence.
 func (m ThreeElementModel) ContradictoryCRUDs() []CRUDDefinition {
 	type pair struct{ fn, data string }
 	best := map[pair]CRUDDefinition{}
+	var conflicts []CRUDDefinition
 	for _, crud := range m.CRUDDefinitions {
 		key := pair{crud.FunctionID, crud.DataID}
 		if prev, ok := best[key]; ok {
 			if prev.Create != crud.Create || prev.Read != crud.Read || prev.Update != crud.Update || prev.Delete != crud.Delete {
-				return append([]CRUDDefinition{}, crud)
+				conflicts = append(conflicts, crud)
 			}
 		}
 		best[key] = crud
 	}
-	return nil
+	return conflicts
 }
 
 // UnknownDependencies returns function invokes that reference nonexistent functions.

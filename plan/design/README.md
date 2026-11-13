@@ -30,6 +30,7 @@
 | 文書 | 対象 |
 | --- | --- |
 | [`AI_GENERATOR_AUTHORING_STANDARD_2026-11.md`](AI_GENERATOR_AUTHORING_STANDARD_2026-11.md) | 生成AIがコードジェネレータを作るときの標準方式の設計案（未採用）。Transform Source・外部Generator・Generator Definitionの3方式の比較、共通の最小契約、停止条件、決定性と生成AI過程の分離、メタ生成の境界、検証手順。最小実証は[`tools/reference-generator-selection/`](../../tools/reference-generator-selection/README.md)の`validation`契約（[#4553](https://github.com/hat47x/tei-platform/issues/4553)） |
+| [`SCRIPT_LAUNCH_ENTRY_TEST_QUALIFICATION_2026-11.md`](SCRIPT_LAUNCH_ENTRY_TEST_QUALIFICATION_2026-11.md) | Script/Functionの公開Entry→製品Go Binary実起動と、OKF/DSL近傍の直接テスト・Driver Scenario結合テストの責務分担（#4502/#4495/#1180、実装前設計） |
 | [`ETL_BATCH_FUNCTION_COMPOSITION_DESIGN_2026-11.md`](ETL_BATCH_FUNCTION_COMPOSITION_DESIGN_2026-11.md) | ETL・Batch処理を既存Function・Data Operations・Operator・Pluginの合成として表す要件・基本設計・実装計画（[#1130](https://github.com/hat47x/tei-platform/issues/1130)・[#2622](https://github.com/hat47x/tei-platform/issues/2622)・[#4194](https://github.com/hat47x/tei-platform/issues/4194)、実装前設計・Owner未採用） |
 | [`AI_PERFORMANCE_TUNING_OBSERVABILITY_2026-11.md`](AI_PERFORMANCE_TUNING_OBSERVABILITY_2026-11.md) | 生成AIによる性能チューニングの設計ヒント・統計の実測と、Source／Function／Query／Provider／受領の資格を分けた独立Benchmark・改善検証（#3271・#3262・#2586、設計・実証候補） |
 | [`DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md`](DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md) | 汎用データソース・ワークベンチの標準範囲（接続・閲覧・構造定義・Migration）と縦断実証の設計（[#3270](https://github.com/hat47x/tei-platform/issues/3270)、[RQ-035](../../requirements/TEI_PRODUCT_REQUIREMENTS.md)、設計・検証計画） |
