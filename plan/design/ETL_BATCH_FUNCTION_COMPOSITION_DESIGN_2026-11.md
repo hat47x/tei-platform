@@ -836,3 +836,50 @@ Snapshotのp1/p2読取が成功しても、Tailの途中Gapで訂正イベント
 **比較先**：[Apache Iceberg Snapshot Reference/Retention](https://iceberg.apache.org/docs/latest/branching/) と [Delta Lake VACUUM保持期間](https://docs.delta.io/delta-utility/) は実Readerと旧世代回収を区別する参考。TEIへIceberg/Delta Runtimeや新GC Schedulerを採用する決定ではない。
 
 **証拠上限**：GitHubの既存限定実Reader負例・静的Source照合・独立合成4イベントの順列のみ。新しいTEI Go/CLI、並走Provider、GC/OS原子性、外部Consumer/Import、Current Grant/Owner業務受理、exact-head CIは **NOT RUN / NOT ACCEPTED**。
+
+## 26. 変更前後Graphと同一CandidateのFull対Selective：過少・過大再計算の独立検収（2026-11-13、設計候補）
+
+**追加した判断**：§24でAffected/Unaffectedを論じたが、「R0とR1で値が違うことを検出した」だけでは**R1の選択的再計算が正しい**ことを証明できない。比較は(1)R0→R1の依存・意味・Source変更を発見、(2)**同一R1のAccepted Meaning・Scope/Cut・Target契約**でFull CleanとSelectiveを独立に実行/観測、(3)対象Claim・Output Member・診断/Effectを照合、(4)省略の根拠と実時間を別判定、の順とする。新たなETL専用キャッシュ検証器、Runner、Fixture/Scenario SSOTは作らない。正式なOperator最適化規則の採用ではなく、既存受入を利用した最小Pressure。
+
+### 26.1 不変条件：Before/Afterは影響発見、Full/SelectiveはR1正しさの判定
+
+| 比較 | 固定する項目 | 許される結論・禁止する結論 |
+| --- | --- | --- |
+| **R0→R1 Meaning/Dependency差** | Consumer/Question、R0とR1のSource/Rule/Graph版、Edgeの追加・削除・再束縛・実Scope/Predicate | 影響候補と未知の発見。**R0 ResultとR1 Resultの不一致**自体はSelective失敗ではない |
+| **Full(R1) と Selective(R1)** | 同じAccepted Meaning、Required集合・Source Cut（複数Sourceなら適格なVector）、Target/Operator/Decimal・Rule版、Expectedと対象Consumer | 出力値・Row/Group/NULL・必要Member/診断を比較。両者一致だけで「全業務入力が完全」「外部Effect安全」と言わない |
+| **省略の資格** | Claim-relative Required閉包、R0/R1の旧消失辺、R1選択/実消費、必要な集合・否定依存、未観測Scope、実変更の非干渉 | 影響なしの**証拠があるClaimだけ**skip候補。他ClaimのUnknownを無条件に伝播させない |
+| **再利用の資格** | Result/Artifact byte、Source/Meaning/Plugin版、Independent Expected、Release Generation・Reader pin・Current Disclosure | Output同byteでも旧Evidence/Grant/Owner Meaningを無条件に復活させない（§23/§25） |
+| **性能** | Full/Selectiveで同条件・同対象の実Run/Cache hit/miss、再実行Stage数、CPU/I/O、冷暖起動/時間分布 | 省略の正しさが未確認なら高速化成功と評価しない |
+
+既存[統合済み #4277](https://github.com/hat47x/tei-platform/pull/4277) の `tools/reference-cache-full-vs-incremental-verification/` はSource/Model/Dependency/Operator/Plugin/Toolchain/Receipt・Artifactの比較とCE-01〜06の負例を持つ。ただし**read-onlyのRunReport比較であり、実Full/Selective Runnerを自ら駆動しない**。そのレポートにFixture値を入れてPASSした事実を実Go/ETL実行の同等性へ昇格しない。まず既存報告形式と期待判定を再利用し、実Runnerがある段階でだけ同一R1を二方式で実行し独立Observedを投入する。
+
+### 26.2 旧依存辺の削除と問い相対Required：N16/N17をETLへ接続
+
+[統合済み #4591](https://github.com/hat47x/tei-platform/pull/4591) は参照B2C Inspectorに**申告された**R0-only Edgeを加え、削除辺の旧dependentを影響候補に残せる。ただし[未統合 #4592](https://github.com/hat47x/tei-platform/pull/4592) の反例は、旧辺削除からR1の全下流を無条件に辿ると、対象外のConsumer/Unknownまで過剰失効し得ることを示す。採用候補は、旧辺由来の起点は**対象ConsumerのR0∪R1 Required上流の内側**に制限し、別途明示されたRule変更は本来の全下流を評価する、という探索の分離。#4592はまだ実装・Ownerの最終受入が済んだ正本ではなく、main #4591との差を維持する。
+
+| 一因子差分（合成。Edge方向はSource→Dependent） | 対象Consumer PのExpected | 別Consumer S/残存UnknownのExpected |
+| --- | --- | --- |
+| R0: Rate→Rule→P、R1: Rule→P。Rate→Ruleだけ削除 | **PのMeaning/経路再評価**。R0の旧従属を見落とさない | Sに旧Edge由来のRequired Pathがないなら、削除だけでSを失効させない |
+| 同じR1でRule→Sも存在、明示Changedは空 | Pに対する旧辺削除の影響候補を保持 | SをR1 forward siblingだからという理由だけで影響ありとしない |
+| 同じGraphで明示Changed=Ruleが追加 | PとSの各Required/選択経路を再評価 | 「旧辺削除に関係しない」からとSのRule変更影響を隠さない |
+| R0のRate→Rule→P二段鎖がR1で丸ごと削除、Source Rateは未観測 | Pの旧従属と未観測上流を**unknown**として残す | 未観測Sourceを不存在としない。対象外ConsumerへUnknownを伝播しない |
+| R0で別Rule X→別Consumer Tの無関係旧Edgeだけ削除 | Pの閉じたRequired集合が本当に無関係なら非影響候補 | Tは別問いで独立評価。変更があるから全世界再実行とはしない |
+| 同一Query IDのままWHERE/ORDER/SQL/Environment、RLS Scopeのみ変更 | Required/Selected/Observedの再照合が必要 | 出力Rows一致・0件から物理/業務全件性を推測しない |
+
+**Sourceの実保証**：R0-only Edgeは入力者が申告した仮定であって、旧Native/SQL/Plugin依存を実Readerが全て列挙した証明ではない。#4592修正が将来mergeされても、実R0/R1 Source・Actual Consumed Closure・Current Grantは追加資格を要する（#2586/#3262/#2514/#2600）。自動的なNative/SQLソーススキャナや正式Dependency Core型は本案に含めない。
+
+### 26.3 「読取要求」と「実Read」を区別する独立検証
+
+[Draft #4608](https://github.com/hat47x/tei-platform/pull/4608) はRuleのValidation Sourceに対するNumber/RelationKeysの**呼出先・順序・回数**をProbeで照合し、同じ値が返る誤Attribute/Relation参照を検出する。これはValue equality（EQ1）と**Interface Read Demandの限定的なEQ2**を区別する実装候補であって、実PGの読込列・Runtimeの短絡・Provider出典・秘匿/ACLを観測したことではない。
+
+[統合済み #4539](https://github.com/hat47x/tei-platform/pull/4539) のEnvironment→実PostgreSQL→一時Function Data Contextは別の限定したObserved Read起点である。Query 0件/RLS 2/3/Mask NULLでもCoverageはunestablished。従って、**要求されたSource（Required）→実呼出要求（Demand）→実Provider Reader（Observed）→独立Consumer（Received）**は一つのPASSに畳まない。Rule DraftをPG実Readerへ勝手に結線せず、#2586/#2514/#988と既存Ownerに接続候補を返す。
+
+### 26.4 最小実証順：まず正しい部分集合、次に速さ
+
+1. **P0 #4410**：最初の副作用なしTSV Filter/Convert/Aggregateと独立Expectedを優先。新Full/Selective Engineを必須化せず、R0/R1のRule・Rate・Source変化に対する手書きAffected/Unaffected・Unknownだけを既存Nへ付帯する。
+2. **P1 #2600/#4518/#2582**：#4591が申告旧Edgeまで対応した事実と#4592の未統合修正を区別し、**旧辺削除・無関係旧辺・二段鎖・sibling**の影響票を確認。正しく局所化できないときは対象Claimをunknownにし、他Claimを不用意に失効させない。
+3. **P1 #4277/#2514/#2622**：ReferenceのFull/Incremental比較に独立Expectedと同一R1・同一Target条件を束縛。Read-onlyレポート比較の段階はREFERENCEと表示し、実Provider/ETLのFull/Selective両Runは新規受入対象として分離。
+4. **P1 #4608/#4539/#2586**：限定Rule Demand、実Environment/PGのRead、Data Context、同一Contextを読む二Consumerの**証拠辺**を個別に検証。正式製品`tei` CLI、Studio、Owner Meaning・現在Grantは未証明のまま。
+5. **P2 #2831/#2604/#4510**：セルフビルドの実Builder/Stage2/Artifact消費、OutputのGeneration Pin、Studioの問い相対Graphを照合。skipの正しさを実証した後、Cold/Warm FullとSelectiveの時間・再実行数を計測する。
+
+**現時点の証拠上限**：統合済みの参照比較#4277、申告旧Edgeの#4591、限定実PGの#4539、およびDraft #4592/#4608を静的照合した設計案。今回、新たなGo/CLI/PG、同一R1 Full/Selective二実行、失敗注入、CI、実Consumer/Studio、Owner意味受理は**NOT RUN / NOT ACCEPTED**。新Second Oracle/Graph Solver/Cache/Runtime、固定Host/新Grant Issuerは作らない。
