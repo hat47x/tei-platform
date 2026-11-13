@@ -41,7 +41,7 @@ WSL2 Ubuntu 22.04、`go1.27.3 linux/amd64`、供給は`GOMODCACHE/cache/download
 
 判定10項目（`stage1TeiArtifactIsStage2Invoker`・`stage2PartMadeByStage2RebuiltGenerator`・`partsEqual`・`stage2PartIsTheCommittedPart`ほか）はすべて`true`で、`reentryObserved=true`でした。`--self-test`の5件（Stage0のTEIが二回作っただけの場合などを不成立とする）もPASSです。
 
-この試行は上記headに、未コミットの本記録・README・`stage_reentry.py`が加わった作業木で行いました（いずれもBuild入力のGo sourceではありません）。
+上の表の初回の試行は、`1bcd035`に未コミットの本記録・README・`stage_reentry.py`が加わった作業木で行いました（いずれもBuild入力のGo sourceではありません）。その後、コミット済みの**クリーンな作業木 `3fdda8fe`** で同じ手順を再実行し、判定10項目すべてtrue（`reentryObserved=true`）を再確認しました。
 
 ## 実行した検証
 
