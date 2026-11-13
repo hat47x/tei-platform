@@ -945,3 +945,57 @@ Event時刻／Business Effective時点／Source Cut／Generation公開時刻／�
 5. **P2 / #1124/#4510/#4487**：Studio/TEAはSource Cut→Generated→Published→Read→Effect→Owner、Supersession/Conflict/unknownを問い相対に表示。非開示Writer・Readerの数を漏らさず、画面上の旧選択でEffectを実行しない。
 
 **停止線**：業務版の比較・補償の意味・適用権限の発行主体・外部Commitの再試行可否は既存Ownerに委ねる。自動的な最大Generation採用/逆演算/Saga、TEI Coreの新全順序型やTransaction Coordinatorを追加しない。**§27は設計・SQLite局所参照検算・既存Issue静的照合であり、新たなTEI Go/CLI・実PG/Provider/外部Import/Owner意味受理・exact-head CIは NOT RUN / NOT ACCEPTED**。
+
+## 28. 実行・省略工程の観測閉包：Planと同一Attemptの実Traceを突き合わせる（2026-11-13、設計候補）
+
+**焦点**：§26では同じR1に対するFull/Selectiveの結果と影響範囲を比較し、§27では後続業務Effectの受理済み順序を分けた。しかし「Plan内で選択したStageが本当に走ったか」「省略したStageは何を根拠に不必要と判断したか」「図にない実Read/外部処理がないと言えるか」は、**値やArtifact一致からは導けない別Claim**である。セルフビルド[#2831](https://github.com/hat47x/tei-platform/issues/2831)のBuildIntent→実Builder→Stage2、Studio[#1124](https://github.com/hat47x/tei-platform/issues/1124)/[Draft #4510](https://github.com/hat47x/tei-platform/pull/4510)の図表、増分[#2600](https://github.com/hat47x/tei-platform/issues/2600)の実Consumed、横断[Draft #4522](https://github.com/hat47x/tei-platform/pull/4522)のEvidence Joinを、**ETL一件のread-only受入票**として合成する。新Runtime/Tracer/Source Registry/Graph正本/Receipt Engineは採用しない。
+
+### 28.1 実行Graphは「宣言・選択・実呼出・読取・結果」の範囲付き突合
+
+| 観測段階（正式状態enumの提案ではない） | 独立に必要な証拠 | その段階のPASSだけでは言えないこと |
+| --- | --- | --- |
+| **Declared / Required** | 受理済みFunction/Plan・Operator、Required Source/Rule/Scope、想定Stage/Effect・外部境界、Meaning/Graph Revision | 全依存が選択・実ロード・実消費された |
+| **Selected / Lowered** | Step/Provider/Plugin/Targetの選択、実SQLやFile/Command・版、R1 Source Cut、Plan→選択Stageの対応 | 実Providerが呼ばれた、OS/外部Pluginで他工程が存在しなかった |
+| **Invoked / Completed / Failed** | **同じ計算Attempt**でのStep開始・終端・失敗・順序、実invoker/実Process・Provider呼出の対応、観測器の被覆 | 呼出成功＝期待した入力byte消費、結果確定、全業務Effect発生なし |
+| **Skipped / Blocked / Unknown** | Skipは対象StepとClaimに相対化した依存閉包・再利用候補・非影響根拠。BlockedはGuard/Validation/前段失敗。Unknownは実行状態または被覆不足 | 単にStepのTraceがない＝安全Skip。Blocked/未開始＝Cache Hitや全体無作用 |
+| **Consumed / Produced** | 実Open/File Member/SQL実行とReturned Rowset/NULL/部分性、Source occurrence・Scope/Cut、実Output/Artifact Member・Digest・Attempt | 「0 rows」＝Collection全件空、宣言Source＝実Consumed、Output digest一致＝同一実行 |
+| **Published / Received / Effect Readback** | 出力GenerationのPublish、別ConsumerのPin/Read、下流Operation/Commit・後日の独立Readback・Owner/Current Grantを**別々の証拠**で接続 | 異なるAttemptのReadbackを生産Attemptと同一視、ACK/画面表示＝業務受理 |
+
+**同一Attemptを要求する箇所**：Planの選択→Stepの実Invocation→その実Read/実Outputへ因果帰属させる際には、Run/Attempt/Stepまたは同等の実行識別、Source/Rule revisionと実Targetを関連付ける。**別Attemptを許容する箇所**：独立Reader/DB ReadbackやConsumer検収は別の実行であること自体が有効で、対象State/Generation・時点・Scope・前段Result/Operationの関係を示し、限定的な整合Claimだけを形成する。二つのGreen・同じValue/Digestだけでは因果Joinを成立させない。Source A→B→Aや同Byte別Workspace、並行別Runがある場合は特に旧Attemptの資格を流用しない。
+
+### 28.2 「図中になければ無い」を成立させるための観測範囲
+
+**図の完全性は問いと観測境界に相対化する**。例えば「この限定した純粋TSV参照処理の、既知のFile ReaderとStage Adapter経由のI/O/実行Stageは図と一致する」というClaimなら、列挙した入口・実呼出・計算・出力で閉包を検査できる。一方、任意Pluginの不透明な内部、OSの暗黙I/O、DB Trigger、外部Worker、未保存Editor Buffer/Studio別Workspace、非開示Sourceまで図外の不存在を普遍的に宣言しない。
+
+最低限の三つの突合：
+
+1. **Planned→Executed**：列挙したSelected StageごとにCompleted/Failed/Blocked/Skipped/Unknownを別に集約する。Completedには実CallerのIdentity/Attempt/版、Skippedにはその対象Claimについて成立したRequired・Consumedの閉包と非影響根拠を対応付ける。単純な計算Stageの予定外実行/未申告外部Side Effectがあれば、観測可能な範囲でPlan discrepancyとして扱う。
+2. **Required→Consumed**：必要なSource/Range/Predicate/negative dependency/Lookup/rate等と、実Provider/Readerが**そのAttemptで**消費した入力を照合。実Read行が0・部分Page・RLS/Mask・Source Binding未検証・opaque externalはClosure=unknownを保持。読取要求（Draft[#4608](https://github.com/hat47x/tei-platform/pull/4608)の限定Probe）と物理Read（統合済[#4539](https://github.com/hat47x/tei-platform/pull/4539)の実PG）を別証拠とする。
+3. **Produced→Used**：Planにある最終Output member/Manifestが、実生成・Stage→Publish→Reader pin・実Consumerの必要Memberを経て到達したかを照合。公開Ref切替・二世代混在・途中停止・Commit Unknownは§23/§25/§27と[#2604](https://github.com/hat47x/tei-platform/issues/2604)/[#1174](https://github.com/hat47x/tei-platform/issues/1174)に委譲する。
+
+Instrumented boundaryが部分的なら、**「観測できた範囲のGraph整合」**までは言えても「他に処理がない」と言ってはならない。この区別はStudioの表示にも残し、Unknown Node/外部境界を図から消さない。Plan Graphを実行器そのものに置換せず、Data/Control/Effect/Observationの別Relationとして同じSource/Revへ投影する（§20）。
+
+### 28.3 独立Expected：同じR1の二方式と未観測工程
+
+すべて設計上の手書きExpected。固定R1でConsumer AはQuantityだけ、Consumer BはRate依存のJPY金額を出すという§24/§26と同じ合成条件とし、実製品の試験ではない。
+
+| 一因子の違い | Qualified claim / 意図的に拒否するClaim |
+| --- | --- |
+| R1でRateだけ改版。AはそのSourceと非干渉が**閉包証明済み**。SelectiveがAを根拠付きSkip、Bを実Invoke/実Consumed | Aのskipは**局所候補**、Bの再計算を証拠付ける。Full(R1)とSelective(R1)のResult/必要Member/診断は別Attemptで比較。Aの過去Grant/Meaning受理を継承しない |
+| 同じResult byteだが、Bが未Invoke/欠落Trace、skip理由も不明 | Bの計算実行・安全skipは**unknown**。Byte比較PASSのみから実行Graph完了へ昇格しない |
+| Rateの実Readerは宣言Graphに無く、Runtimeで外部Lookupが行われた | 監視対象内で実Readを観測したなら**宣言Graphと実行Graphの不一致**。実際のI/Oが追跡対象外なら「無い」ではなく観測閉包未証明 |
+| Guard NGでTransformが一度も呼ばれない。前段に既にEffect/Temp/ログ出力がある | Transformは**blocked/not-invoked**であり、最適化skipではない。Run全体を無作用へ丸めない |
+| Rule Probeは正しいAttributeを要求したが、Providerが別Environment/SQL/Scopeを読んだ | Interface Demandは限定PASS、実Source/Target一致は不適格。Read Demandと実Provider Readを同一証拠にしない |
+| PostgreSQL Queryが0行またはRLSで2/3行、Result Digestは期待と同じ | Source Population Complete/全件不存在は**未成立**。見かけの0件を全業務Factが0としない |
+| Generation G2を別Consumerが**別Attempt**でPinして必要Memberを読んだ | 別Attempt/別時点のQualified Read Witnessとして記録。ProducerがG2を生成した同じAttemptだったとは言わない |
+| BuildIntentに記載のないesbuild/embed/外部Commandや、Stage1自身が起動していないStage2が存在 | 限定的な工程観測は記録できるが、Self-build L2/L3と「図に無ければ無い」の完全Claimは保留（#2831/#4583） |
+
+### 28.4 実装順：新Tracerを作る前に既存の観測を結び付ける
+
+1. **P0 #4410 W1/W2/W3/W5**：固定TSVのInput/Output digest、直接Go・CLI二入口、Independent Expectedを先行。Pure Runについては観測できる入口/Reader/Writerと失敗時の未公開を、**そのRunだけ**の限定Ledger/RunLog/Artifact対照票へ記録する。未実装のHookを製品Runtimeへ必須化せず、外部Effect=0の検収は試験対象のI/O/Effect境界を明示する。
+2. **P1 #4277/#2600/#2514**：既存\`tools/reference-cache-full-vs-incremental-verification\`のread-only Full/Incremental比較、#2600 DI-01/02/07の事前固定Expected、§26の同一R1比較へ「各StageのPlanned・Invoked・Skipped reason・実Consumed」を照合するレビュー列を付ける。参照RunReportに作者が値を埋めた成功を実Runner Observedへ昇格しない。
+3. **P1 #2586/#2622/#4608**：まずDraftのRule Demandの実呼出範囲と、merged #4539の実PG Provider Read/Contextを別列で取り、次に**通常\`tei\` CLI→実Context→異質二Consumer**で実Producer Attempt/Consumer Readを独立結線。Query/Provider版・RLS・Source Coverageを持たないなら欠損を表示。#4539の成功を製品CLI受領へ昇格しない。
+4. **P1〜P2 #2831/#4583/#4510**：同じBuild Target/RevisionのBuildIntent→選択Build Step→実Invoked Builder→選択/実消費Input→Artifact Member→実WebView2/Stage2 Processの**不足一辺**を逐次観測。別HEADのGreen、選択されたGo/esbuild Source一覧と実Read時Source Closure、Stage1自身のStage2駆動を混同しない。Studioのread-only図表はScope/unknown/外部Boundaryを残す。
+5. **P2 #2604/#1174/#2542/#2516**：Pub→Pin→Read→Applied/Effect→Ownerを別Attempt/時点と現在資格でつなぐ。Commit Unknown/旧Generation/現在Grant失効時に自動再送・無条件公開へ進めない。
+
+**証拠上限**：本§28は既存main/Draft/Issueと横断設計の静的照合に基づく**ETLの限定受入案**で、正式Event schema・Recorder/Graph Engine・新Runner・新Proof Store/Hostを追加しない。TEI Go/CLI/Provider/Studio/Stage2の新実行、全工程網羅性、外部Effect非存在、独立Consumerの同一Result受領、現在Disclosure・Owner Meaning、exact-head CIは **NOT RUN / NOT ACCEPTED**。
