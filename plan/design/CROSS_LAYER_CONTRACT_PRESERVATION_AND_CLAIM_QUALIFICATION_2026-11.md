@@ -193,3 +193,52 @@ Subsystem再命名は役割・更新責務が改善された可能性を示す**
 6. N2からN3へのOutputをShellローカル変数に依存させた場合に、工程間受渡しの証拠が無いとして拒否する。
 
 各反証は[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)の既存Scenario/Independent Expected、各実装OwnerのCIで具体化する。**本節は追加の実装/試験を行っていない**。前段で実測されたPASS/FAILは対象のexact HEADと試験範囲の履歴として保持し、今回の設計の製品資格には合算しない。
+
+## 10. 複数入力の整合カットと、同一bytesから保証を推定しない原則（2026-11-13追補）
+
+- **状態**：横断設計候補・未採用。2026-11-13のPR/Issue静的照合に基づく。新しい共通Cut DTO、Timeline Database、イベントBus、Snapshot Coordinator、Host、Release Verifier、AI Task Storeは提案しない。
+- **目的**：同じdigestでもScope/生成世代/公開先/Source状態/Grantが違い、逆に異なるbyteでも正しく保存された業務意味が同じ場合がある。「何が固定された集合か」「どの時点間の因果・整合が確認されたか」を使途ごとに区別する。
+
+### 10.1 同一性は一つのHashやEpochで代用しない
+
+一つのClaimの必要条件に限り、既存Result/Manifest/Source Index/Context/Pin/Receiptの中から次の同一性を照合する。
+
+| 区別する軸 | 何を固定・観測したか | 誤って導いてはならないこと |
+| --- | --- | --- |
+| 業務意味・Subject | Accepted Meaning Revision、typed SubjectとScope | 同名・同ID風の外部表現・View occurrenceが同一Canonicalとは限らない |
+| AuthoringとSource実体 | 保存済Source bytes/位置、未保存Editor buffer、Source Index fingerprint | Dirty Bufferの編集中R1がBuildに使われた、またはR0へ自動受理されたとみなさない |
+| 入力集合の整合カット | Sourceごとの取得Snapshot/Cursor、業務期間、物理観測時刻、必要集合・取得粒度 | 複数Readerの取得が成功しても、**単一の整合したDB/業務時点**を観測したとは限らない |
+| Buildと実消費 | 宣言Build Intent、選択Builder/Toolchain、実消費Source/Embed/外部依存、Attempt | 実Artifactが同byteでも当該Build Planが実行されたことにならない |
+| 公開と配送 | Artifact bytes、Release Descriptor、署名対象、Publication Generation、配送/受領Attempt | HTTP GET成功・ACK・署名成功から現在Publisher Trust、全Member取得、業務取込みは推定できない |
+| Current Use | Workspace/Source Pin、Consumer用途・Disclosure、現在Grant/Owner受理 | 同digest・過去のRead成功を現在の公開・編集・実行資格に流用しない |
+
+**整合カット**とは、各Reader/Process/Consumerが何をどの版で観測し、その結果を一緒に扱える保証があるか、という**比較上の範囲**を指す。永続型や一律のグローバル時刻を要求する語ではない。DB Transaction Snapshot、Fileの確定Marker、HTTP Releaseのpin、Stage1/Stage2 Process Imageなど、それぞれの独立した取得境界を同じものと偽称しない。
+
+### 10.2 結線の強さを、対象と用途に合わせて制限する
+
+**限定的な同時利用の条件**（各Ownerが対応付け可能な場合のみ）：
+
+1. 二つ以上の入力Sourceには、各々のRevision、Data/Business time、取得境界、可視範囲（RLS/Tenant等）、InputCutを記録できる範囲で明示する。**同じwall-clock timestamp**や同じ業務期間名から分散全体のatomic snapshotを生成しない。
+2. 変換・生成の入力を結合する際、Required集合とActually Consumed集合を別扱いにし、未読込Plugin・動的依存・外部Toolchain・未確定Write/Correctionがあれば、全入力閉包は`unknown`に留める。
+3. ArtifactとOutputが同じbyteでも、Production/Publication Generation、Source-Artifact Binding、実Consumerの取得Attemptを別の証拠で対応付ける。符号化・改行変換・暗号化等でbyteが異なる場合は、明示した変換とLoss/Conformanceを検証するまで内容同値としない。
+4. 署名されたRelease宣言があることと、Consumer自身が**未信頼HTTP responseから宣言を取得し、検証し、各Member実byteまで照合したこと**を分ける。Current Publisher委任、RegistryのOwnership、公開先のDisclosure、Provider Runtimeの現在権限はさらに別のClaim。
+5. Studioの表示中Source R0／未保存Buffer R1／AIが基にしたR0／明示Accepted Meaning／実Builder消費Inputを分ける。人間がBを編集中にPin Aを裏で再確認しても、Editor/Graph/Dirty Buffer/Undo/選択Bを無断変更しない。Source再取得やAI応答はProposal/Reviewの入口であって自動Save/Apply/Buildではない。
+
+これらはすべて対象Claimの**必要条件候補**であり、列の存在だけで完全性や業務受理を証明しない。開示制限のあるConsumerには、Private Worldの有無・件数・欠落理由・検査Coverageも許可なしで返さない。
+
+### 10.3 既存Ownerへ渡す圧力試験（新しいFixture正本を作らない）
+
+| 反証対象 | 否定する危険な短絡 | 既存Ownerと優先度 |
+| --- | --- | --- |
+| 同じ業務期間だがDBとファイルを異なる時点に取得し、後から訂正行が到着 | `period同一 = global consistent snapshot`、`partialの0件 = 全件不存在` | [ETL #1130](https://github.com/hat47x/tei-platform/issues/1130) / [MFT #2542](https://github.com/hat47x/tei-platform/issues/2542)、P1 |
+| データAは新世代、データBは旧世代で、どちらのbyteも正しい | 各member digest PASS = Dataset全体の同一世代Publication PASS | [Artifact #2604](https://github.com/hat47x/tei-platform/issues/2604)、P1 |
+| [Registry Draft #4529](https://github.com/hat47x/tei-platform/pull/4529)のE1-BではConsumerがHTTP Artifactを取得する一方、署名対象Release宣言はlocal fixtureから取得 | 実HTTP byte PASS＋別途Signature PASS = Consumerが署名済み宣言もHTTPで検証した | [Registry #2589](https://github.com/hat47x/tei-platform/issues/2589)のE1-C、P1。別のVerifier/Trust Rootを本書に作らない |
+| AI提案R0と編集中Dirty Buffer R1が異なり、別タブのPin Aを再確認 | 古いSource/Pinned Consumerの再読込 = 編集中Bの内容と現在操作資格も更新された | [Studio協業 #4515](https://github.com/hat47x/tei-platform/issues/4515)、[UX Draft #4605](https://github.com/hat47x/tei-platform/pull/4605)、P1並走 |
+| 固定Contract/生成JSを同じCIで観測したが、BuildIntentはNode/esbuild/Nested Wailsを実駆動しない | 同Attempt・同digest = Stage1自身によるStage2 Desktop Build/完全Consumed閉包 | [Self-build #2831](https://github.com/hat47x/tei-platform/issues/2831)、[Desktop P0 #4583](https://github.com/hat47x/tei-platform/issues/4583)、**最優先P0** |
+| 別Workspaceに同じ`.xead` bytesと同一Occurrenceがある | 同Content fingerprint = 別Workspaceでも同じSource Pin/編集対象 | [#4614](https://github.com/hat47x/tei-platform/issues/4614)、[#1124](https://github.com/hat47x/tei-platform/issues/1124)、P1並走 |
+
+**受入資料と実験**：各Ownerの既存Scenario SSOT [#1180](https://github.com/hat47x/tei-platform/issues/1180)、独立Expected [#2514](https://github.com/hat47x/tei-platform/issues/2514)、現在Authority/Disclosureの既存契約に委ねる。最小の正負対照は、(a)byte同一でもScope/Publication/Attemptが異なる、(b)宣言された変換によりbyteが異なるが意味同値を検証できる、(c)必要閉包未取得、(d)既知の無関係変更、(e)Private Worldのみ変更、を別々に用意し、`false retained / unnecessary invalidation / unknown erased`を記録する。
+
+**禁止する横断的な主張**：Source digestの一致からMeaningやGrantを昇格、Manifest合格から実Builder呼出しを昇格、ファイル受領から業務Commitを昇格、合成private fixtureから実Disclosure資格を昇格、局所Readから全件/不存在を昇格。新たなHard Gate追加も、Studio DesktopセルフビルドP0の他レーン依存化も行わない。
+
+**今回のEvidence上限**：既存GitHubのIssue/PR・文書の静的照合により新しい設計を記述しただけ。Registry E1-C、複数Source atomic snapshot、AI協業Studio実操作、B1/B2/B3 Desktop self-build、本書の反証E2E、Owner採否は`NOT RUN / NOT ACCEPTED`。
