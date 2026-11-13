@@ -993,8 +993,8 @@ Instrumented boundaryが部分的なら、**「観測できた範囲のGraph整�
 ### 28.4 実装順：新Tracerを作る前に既存の観測を結び付ける
 
 1. **P0 #4410 W1/W2/W3/W5**：固定TSVのInput/Output digest、直接Go・CLI二入口、Independent Expectedを先行。Pure Runについては観測できる入口/Reader/Writerと失敗時の未公開を、**そのRunだけ**の限定Ledger/RunLog/Artifact対照票へ記録する。未実装のHookを製品Runtimeへ必須化せず、外部Effect=0の検収は試験対象のI/O/Effect境界を明示する。
-2. **P1 #4277/#2600/#2514**：既存\`tools/reference-cache-full-vs-incremental-verification\`のread-only Full/Incremental比較、#2600 DI-01/02/07の事前固定Expected、§26の同一R1比較へ「各StageのPlanned・Invoked・Skipped reason・実Consumed」を照合するレビュー列を付ける。参照RunReportに作者が値を埋めた成功を実Runner Observedへ昇格しない。
-3. **P1 #2586/#2622/#4608**：まずDraftのRule Demandの実呼出範囲と、merged #4539の実PG Provider Read/Contextを別列で取り、次に**通常\`tei\` CLI→実Context→異質二Consumer**で実Producer Attempt/Consumer Readを独立結線。Query/Provider版・RLS・Source Coverageを持たないなら欠損を表示。#4539の成功を製品CLI受領へ昇格しない。
+2. **P1 #4277/#2600/#2514**：既存`tools/reference-cache-full-vs-incremental-verification`のread-only Full/Incremental比較、#2600 DI-01/02/07の事前固定Expected、§26の同一R1比較へ「各StageのPlanned・Invoked・Skipped reason・実Consumed」を照合するレビュー列を付ける。参照RunReportに作者が値を埋めた成功を実Runner Observedへ昇格しない。
+3. **P1 #2586/#2622/#4608**：まずDraftのRule Demandの実呼出範囲と、merged #4539の実PG Provider Read/Contextを別列で取り、次に**通常`tei` CLI→実Context→異質二Consumer**で実Producer Attempt/Consumer Readを独立結線。Query/Provider版・RLS・Source Coverageを持たないなら欠損を表示。#4539の成功を製品CLI受領へ昇格しない。
 4. **P1〜P2 #2831/#4583/#4510**：同じBuild Target/RevisionのBuildIntent→選択Build Step→実Invoked Builder→選択/実消費Input→Artifact Member→実WebView2/Stage2 Processの**不足一辺**を逐次観測。別HEADのGreen、選択されたGo/esbuild Source一覧と実Read時Source Closure、Stage1自身のStage2駆動を混同しない。Studioのread-only図表はScope/unknown/外部Boundaryを残す。
 5. **P2 #2604/#1174/#2542/#2516**：Pub→Pin→Read→Applied/Effect→Ownerを別Attempt/時点と現在資格でつなぐ。Commit Unknown/旧Generation/現在Grant失効時に自動再送・無条件公開へ進めない。
 
