@@ -670,9 +670,9 @@ WU-11〜14をWU-06〜10の「全部完了待ち」にしない。前段の**必�
 | Skill / Qualification | 出典・適用業務・評価時点・有効期間・証明資格 | 技能=役職、資格=現行Host Grant |
 | Location / Facility | 地点・時間帯・設備容量・安全上の制約 | 地理的所属=指揮命令・権限継承 |
 
-数量は value/unit/basis/grain/validAt/knownAt/source/coverage を検査する。
+数量は value/unit/basis/grain/validAt/knownAt/source/coverage を検査する。単位変換可能であっても、Basis（例：月間予定工数と実績工数、予算と実支出）が異なれば無条件に合算しない。未取得・NULL・非開示・0を区別する。配賦合計が1を超えるか否かは雇用形態・用途によるため、Coreが一律に拒否せずOwner Ruleに委ねる。
 
-**数量名と倍率の負例（2026-11-13、#1705/#2495/#2593）**：既存r7 fixtureの `allocations[].basisPoints` は歴史的な**保存フィールド名**であり、金融で一般的なbasis point（1 bp=0.01%）として正規化してはならない。r7の合成期待では **raw 100=1.0 FTE／raw 60=0.6 FTE** と明示する。これはfixture固有の `fte-hundredths` 換算であって、正式TEI Unit宣言でも実企業のFTE定義でもない。何も宣言がないConsumerがraw値を汎用bpとして解釈して結果を出すことは**不合格**。Unit/Scale/Basisが未確認なら `unknown` または `unsupported` とし、同じ整数100でも「金融bp→比率100/10000」「このfixtureのFTE百分の一→FTE100/100」を別変換として判別する。**既存source-fixture.jsonのフィールドを一括Rename/100倍移行しない**。実データ受入側の型付き換算・Decimal精度/丸めは#1705、Measure粒度/再集計は#2593、複数facetの意味は#2495に返す。外部の単位定義は [Investor.gov](https://www.investor.gov/introduction-investing/investing-basics/glossary/basis-point) を参照。単位変換可能であっても、Basis（例：月間予定工数と実績工数、予算と実支出）が異なれば無条件に合算しない。未取得・NULL・非開示・0を区別する。配賦合計が1を超えるか否かは雇用形態・用途によるため、Coreが一律に拒否せずOwner Ruleに委ねる。
+**数量名と倍率の負例（2026-11-13、#1705/#2495/#2593）**：既存r7 fixtureの `allocations[].basisPoints` は歴史的な**保存フィールド名**であり、金融で一般的なbasis point（1 bp=0.01%）として正規化してはならない。r7の合成期待では **raw 100=1.0 FTE／raw 60=0.6 FTE** と明示する。これはfixture固有の `fte-hundredths` 換算であって、正式TEI Unit宣言でも実企業のFTE定義でもない。何も宣言がないConsumerがraw値を汎用bpとして解釈して結果を出すことは**不合格**。Unit/Scale/Basisが未確認なら `unknown` または `unsupported` とし、同じ整数100でも「金融bp→比率100/10000」「このfixtureのFTE百分の一→FTE100/100」を別変換として判別する。**既存source-fixture.jsonのフィールドを一括Rename/100倍移行しない**。実データ受入側の型付き換算・Decimal精度/丸めは#1705、Measure粒度/再集計は#2593、複数facetの意味は#2495に返す。外部の単位定義は [Investor.gov](https://www.investor.gov/introduction-investing/investing-basics/glossary/basis-point) を参照。
 
 #### 10.8.2 既存Source fixtureを正本とする：P1/P2/P3とD1/D2
 
