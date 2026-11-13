@@ -13,6 +13,9 @@ on:
       - 'internal/driver/**'
       - 'tools/reference-expected-state-update/**'
       - 'reference/web-api-contract/**'
+      - 'reference/org-staged-axis/**'
+      - 'internal/operations/org_axis_asof_physical_test.go'
+      - 'internal/operations/org_axis_asof_postgres_integration_test.go'
       - '.github/workflows/tei-postgres-unrun-suites-ci.yml'
       - 'go.mod'
       - 'go.sum'
@@ -23,6 +26,9 @@ on:
       - 'internal/driver/**'
       - 'tools/reference-expected-state-update/**'
       - 'reference/web-api-contract/**'
+      - 'reference/org-staged-axis/**'
+      - 'internal/operations/org_axis_asof_physical_test.go'
+      - 'internal/operations/org_axis_asof_postgres_integration_test.go'
       - '.github/workflows/tei-postgres-unrun-suites-ci.yml'
       - 'go.mod'
       - 'go.sum'
@@ -67,6 +73,8 @@ jobs:
       TEI_EXPECTED_STATE_PG_CONFIRM_ISOLATED: tei_expected_state_e2e
       TEI_WEB_SCOPED_PG_DSN: postgres://tei:tei_integration_only@localhost:5432/tei_web_scoped_e2e?sslmode=disable
       TEI_WEB_SCOPED_PG_CONFIRM_ISOLATED: tei_web_scoped_e2e
+      TEI_ORG_AXIS_PG_DSN: postgres://tei:tei_integration_only@localhost:5432/tei_org_axis_e2e?sslmode=disable
+      TEI_ORG_AXIS_PG_CONFIRM_ISOLATED: tei_org_axis_e2e
       PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
       - name: 検証対象を取得
@@ -102,7 +110,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for name in tei_command_e2e tei_standard_crud_e2e tei_expected_state_e2e tei_web_scoped_e2e; do
+          for name in tei_command_e2e tei_standard_crud_e2e tei_expected_state_e2e tei_web_scoped_e2e tei_org_axis_e2e; do
             docker exec "${{ job.services.postgres.id }}" \
               psql -v ON_ERROR_STOP=1 -U tei -d postgres -c "CREATE DATABASE ${name}"
           done
@@ -113,7 +121,7 @@ jobs:
           set -euo pipefail
           # A DSN that is empty would make every test below skip, and a skipped
           # test exits 0, so the empty case is rejected before the run.
-          for key in TEI_COMMAND_PG_DSN TEI_STANDARD_CRUD_PG_DSN TEI_EXPECTED_STATE_PG_DSN TEI_WEB_SCOPED_PG_DSN; do
+          for key in TEI_COMMAND_PG_DSN TEI_STANDARD_CRUD_PG_DSN TEI_EXPECTED_STATE_PG_DSN TEI_WEB_SCOPED_PG_DSN TEI_ORG_AXIS_PG_DSN; do
             test -n "${!key:-}" || { echo "${key} is empty; the suites would skip" >&2; exit 1; }
           done
           log="$RUNNER_TEMP/go-test.log"
@@ -129,6 +137,8 @@ jobs:
             ./tools/reference-expected-state-update | tee -a "$log"
           go test -count=1 -v -timeout 10m -run 'TestScopedPostgres|TestScopedTenantPostgres' \
             ./reference/web-api-contract | tee -a "$log"
+          # Native .tei as-of Query: actual physical valid/known/quantity predicates.
+          go test -count=1 -v -timeout 10m -run '^TestOrgAxisAsOfActualPostgresOptIn
 
       - name: SKIPとFAILの検証
         shell: bash
@@ -163,6 +173,56 @@ jobs:
             'TestScopedTenantPostgresAgainstIsolatedDatabase'
             'TestScopedPostgresDefaultOrderRevealsUnpublishedOrderedAt'
             'TestScopedTenantPostgresDefaultOrderRevealsUnpublishedOrderedAt'
+            'TestOrgAxisAsOfActualPostgresOptIn'
+          )
+          for name in "${required[@]}"; do
+            grep -Eq -- "^[[:space:]]*--- PASS: ${name} \(" "$log" || { echo "required test did not PASS: ${name}" >&2; exit 1; }
+          done
+
+      - name: 検証後の変更を検出
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+ \
+            ./internal/operations | tee -a "$log"
+
+      - name: SKIPとFAILの検証
+        shell: bash
+        run: |
+          set -euo pipefail
+          log="$RUNNER_TEMP/go-test.log"
+          # The DSN-gated tests are the reason this workflow exists: a SKIP that
+          # names the DSN means the environment did not reach the test.
+          if grep -Eq -- '^[[:space:]]*--- SKIP: .*(PostgreSQL|PG_DSN|tenant PostgreSQL)' "$log"; then
+            echo "a DSN-gated test skipped although the DSNs are set:" >&2
+            grep -E -- '^[[:space:]]*--- SKIP:' "$log" >&2
+            exit 1
+          fi
+          if grep -Eq -- '^[[:space:]]*--- FAIL:' "$log"; then
+            echo "unexpected FAIL in the real-PostgreSQL run:" >&2
+            grep -E -- '^[[:space:]]*--- FAIL:' "$log" >&2
+            exit 1
+          fi
+          # Name the tests so a rename or a removed call cannot turn this job
+          # green by running nothing.
+          required=(
+            'TestStorePersistsStagesAcrossReconnect'
+            'TestRowLockBlocksASecondWriter'
+            'TestTwoProcessesCannotBothDispatch'
+            'TestTwoProcessesCannotBothTakeOver'
+            'TestStandardCRUDUpdateAgainstIsolatedPostgres'
+            'TestPGConflictIsABusinessResultAndKeepsTheFirstUpdate'
+            'TestPGTwoConnectionsApplyExactlyOneUpdate'
+            'TestPGCommitAcknowledgementLossOverSocket'
+            'TestPGRuntimeStageUnknownTakeoverEndToEnd'
+            'TestScopedPostgresAgainstIsolatedDatabase'
+            'TestScopedTenantPostgresAgainstIsolatedDatabase'
+            'TestScopedPostgresDefaultOrderRevealsUnpublishedOrderedAt'
+            'TestScopedTenantPostgresDefaultOrderRevealsUnpublishedOrderedAt'
+            'TestOrgAxisAsOfActualPostgresOptIn'
           )
           for name in "${required[@]}"; do
             grep -Eq -- "^[[:space:]]*--- PASS: ${name} \(" "$log" || { echo "required test did not PASS: ${name}" >&2; exit 1; }
