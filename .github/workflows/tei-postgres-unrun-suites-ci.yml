@@ -146,55 +146,7 @@ jobs:
           go test -count=1 -v -timeout 10m -run 'TestScopedPostgres|TestScopedTenantPostgres' \
             ./reference/web-api-contract | tee -a "$log"
           # Native .tei as-of Query: actual physical valid/known/quantity predicates.
-          go test -count=1 -v -timeout 10m -run '^TestOrgAxisAsOfActualPostgresOptIn
-
-      - name: SKIPとFAILの検証
-        shell: bash
-        run: |
-          set -euo pipefail
-          log="$RUNNER_TEMP/go-test.log"
-          # The DSN-gated tests are the reason this workflow exists: a SKIP that
-          # names the DSN means the environment did not reach the test.
-          if grep -Eq -- '^[[:space:]]*--- SKIP: .*(PostgreSQL|PG_DSN|tenant PostgreSQL)' "$log"; then
-            echo "a DSN-gated test skipped although the DSNs are set:" >&2
-            grep -E -- '^[[:space:]]*--- SKIP:' "$log" >&2
-            exit 1
-          fi
-          if grep -Eq -- '^[[:space:]]*--- FAIL:' "$log"; then
-            echo "unexpected FAIL in the real-PostgreSQL run:" >&2
-            grep -E -- '^[[:space:]]*--- FAIL:' "$log" >&2
-            exit 1
-          fi
-          # Name the tests so a rename or a removed call cannot turn this job
-          # green by running nothing.
-          required=(
-            'TestStorePersistsStagesAcrossReconnect'
-            'TestRowLockBlocksASecondWriter'
-            'TestTwoProcessesCannotBothDispatch'
-            'TestTwoProcessesCannotBothTakeOver'
-            'TestStandardCRUDUpdateAgainstIsolatedPostgres'
-            'TestPGConflictIsABusinessResultAndKeepsTheFirstUpdate'
-            'TestPGTwoConnectionsApplyExactlyOneUpdate'
-            'TestPGCommitAcknowledgementLossOverSocket'
-            'TestPGRuntimeStageUnknownTakeoverEndToEnd'
-            'TestScopedPostgresAgainstIsolatedDatabase'
-            'TestScopedTenantPostgresAgainstIsolatedDatabase'
-            'TestScopedPostgresDefaultOrderRevealsUnpublishedOrderedAt'
-            'TestScopedTenantPostgresDefaultOrderRevealsUnpublishedOrderedAt'
-            'TestOrgAxisAsOfActualPostgresOptIn'
-          )
-          for name in "${required[@]}"; do
-            grep -Eq -- "^[[:space:]]*--- PASS: ${name} \(" "$log" || { echo "required test did not PASS: ${name}" >&2; exit 1; }
-          done
-
-      - name: 検証後の変更を検出
-        if: always()
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
- \
+          go test -count=1 -v -timeout 10m -run '^TestOrgAxisAsOfActualPostgresOptIn$' \
             ./internal/operations | tee -a "$log"
 
       - name: SKIPとFAILの検証
