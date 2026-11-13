@@ -399,6 +399,8 @@ H0/H1と異質領域の要件探索は並行可能。H2/H4の実Effect資格は�
 
 **問題の切り分け**：DSLを短い表層へ変換しても、同じMeaning候補へLoweringできること（**解釈の一致**）、表示やQueryで同じ値を得ること（**用途・入力を固定した観測の一致**）、元のSourceへ安全に編集を戻せること（**局所逆写像が定義できること**）は別の主張である。さらに一回の成功評価でたまたま参照しなかったデータは、将来の評価や増分再利用にとって無関係とは限らない。Sourceの元byte・Occurrence・Current Revisionを保持する#4364/#4366と、#2497の構造保存写像、#2582の機能データ文脈の反応、#2600の正しい増分省略を、**一つの固定Subjectの別々の判定**として接合する。新たなRewrite Engine、Dependency Resolver、Proof schemaや一般的な全自動Optimizerは採用しない。
 
+**現時点の実装境界（再確認）**：S5担当の[PR #4405](https://github.com/hat47x/tei-platform/pull/4405)（open、未merge）には、`FormatRuleAuthoring`による局所構文の整形候補、再Parseした意味不変の確認、コメント／未解決参照の拒否、片方向Previewと局所テストがある。一方で**通常Save/Writerへの接続と、実Editor経由のzero-write保証はまだない**（#4366の実装者コメント）。この既存実装を破棄して新Formatterを作らず、既存の拒否結果・再ParseをS5の足場として評価する。PR #4405内のローカル成功と、PR #4599で予定したStudio/CLI通常入口の検証を区別する。
+
 **必要な依存と、観測した依存を混同しない**（以下の集合名は比較票の列名であって製品APIではない）：
 
 | 判定対象 | 追跡するもの | それだけでは証明できないこと |
@@ -421,10 +423,10 @@ H0/H1と異質領域の要件探索は並行可能。H2/H4の実Effect資格は�
 
 | ID | 一因子の変更 | 受入／拒否と見落とす依存 |
 | --- | --- | --- |
-| DSL-DP01 | falseの分岐がsecret参照を短絡し、後でflagがtrueになる | 初回の実Read 0は正常でも、flagの変更で再評価が必要。secretの先読みは禁止。PotentialとObservedを両方報告 |
+| DSL-DP01 | 短絡を定めたOperatorで、falseの分岐がsecret参照を短絡し、後でflagがtrueになる | 初回の実Read 0は正常でも、flagの変更で再評価が必要。secretの先読みは禁止。PotentialとObservedを両方報告 |
 | DSL-DP02 | D2が部分取得のとき、D1だけの合計とD2依存のJOIN合計を並置 | 独立D1完全ならその局所合計は使用可能。JOIN/NOT EXISTSの完全性はClaim別に拒否。無関係D2を根拠なく全体失効に使わない |
-| DSL-DP03 | NOT EXISTSが0件と出た後、対象Scopeに一致行を追加する | 旧0件の観測では不存在の証人にならない。母集団と述語の負依存により結果再評価／retract |
-| DSL-DP04 | SELECT * / 暗黙列集合 / Provider選択候補が増える | 旧Consumerの明示Read列が同じでも、結果型・列順・解決候補が変わり得る。Schema/Selection閉包が不明ならskip未資格 |
+| DSL-DP03 | NOT EXISTSが0件と出た後、対象Scopeに一致行を追加する | Scope/Snapshot全件が確認できる0件はその時点の不存在判定に使えても、以後の新規行追加で失効する。負依存により再評価／retract |
+| DSL-DP04 | SELECT * の基底Schemaに列を一つ追加 | 旧Consumerの明示Read列が同じでも、結果型・列順が変わり得る。Schema/出力集合が不明ならskip未資格 |
 | DSL-DP05 | Graph/集計の同じ表示セルへ複数の元辺・行が投影される | 値を読めても逆写像は一意でない。更新対象を推定して書き戻さず、候補／read-only |
 | DSL-DP06 | AI/Studioが古いBufferのspanを新しいSourceへ適用する、または別Occurrenceが同じラベル | Source/Buffer revisionと同定を再確認し、stale/ambiguousならzero-write。適用済みと偽らない |
 | DSL-DP07 | 新旧構文が同じMeaningへLoweringされるがコメント・改行コード・字句が異なる | 無操作Saveでは元byte保持。明示整形のみ対象範囲に限定。Sourceの一致をMeaning同値から推定しない |
