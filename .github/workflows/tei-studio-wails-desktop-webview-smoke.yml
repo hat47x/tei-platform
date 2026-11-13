@@ -217,20 +217,68 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          # This is the existing one-part generator, not a new Build Engine or a B1 BuildIntent run.
+          # The TEI CLI is the real invoker of the N0 generator child.
+          # This is primitive self-build, NOT a BuildIntent execution or a
+          # generated Stage1 TEI constructing the Stage2 Desktop.
           go test -count=1 ./tools/reference-studio-part-generator
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $contract = 'reference/tei-studio-workbench/inspection-reader.contract.json'
           $transform = 'reference/tei-studio-workbench/builder-sources/inspection-reader-v1.transform.json'
           $consumedSource = 'reference/tei-studio-workbench/inspection-reader.generated.ts'
           $generated = Join-Path $env:RUNNER_TEMP ('tei-inspection-reader-' + [guid]::NewGuid().ToString('N') + '.ts')
-          $reportLines = & go run ./tools/reference-studio-part-generator -contract $contract -transform $transform -artifact-out $generated
+          $teiExe = Join-Path $env:RUNNER_TEMP ('tei-n0-invoker-' + [guid]::NewGuid().ToString('N') + '.exe')
+          $generatorExe = Join-Path $env:RUNNER_TEMP ('tei-n0-generator-' + [guid]::NewGuid().ToString('N') + '.exe')
+          go build -mod=readonly -o $teiExe ./cmd/tei
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if (-not (Test-Path -LiteralPath $generated)) { throw 'N0 generator did not create a part artifact' }
-          $reportJson = $reportLines -join "`n"
-          $report = $reportJson | ConvertFrom-Json
+          go build -mod=readonly -o $generatorExe ./tools/reference-studio-part-generator
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $childArgs = @('-contract', $contract, '-transform', $transform, '-artifact-out', $generated)
+          $childArgsPath = Join-Path $env:RUNNER_TEMP ('tei-n0-argv-' + [guid]::NewGuid().ToString('N') + '.json')
+          ConvertTo-Json -InputObject $childArgs -Compress | Set-Content -LiteralPath $childArgsPath -Encoding utf8
+          $entryLines = & $teiExe self-build -child $generatorExe -child-arg-file $childArgsPath -artifact $generated
+          if ($LASTEXITCODE -ne 0) { throw 'TEI self-build CLI did not complete its N0 observation' }
+          $entryJson = $entryLines | Out-String
+          $entry = $entryJson | ConvertFrom-Json
+          if ($entry.schemaVersion -ne 'tei.cli.self-build-entry/v0' -or -not $entry.artifactCrossCheckMatched -or
+              $entry.invoked.exitCode -ne 0 -or $entry.l3Claimed) { throw 'TEI N0 process invocation or artifact cross-check failed' }
+          $expectedArgv = @($generatorExe) + $childArgs
+          if ($entry.invoked.argv.Count -ne $expectedArgv.Count) { throw 'TEI invoked different N0 argument count' }
+          for ($i = 0; $i -lt $expectedArgv.Count; $i++) {
+            if ([string]$entry.invoked.argv[$i] -cne [string]$expectedArgv[$i]) { throw "TEI invoked different N0 argv[$i]" }
+          }
+          $invokerHash = (Get-FileHash -LiteralPath $teiExe -Algorithm SHA256).Hash.ToLowerInvariant()
+          $generatorHash = (Get-FileHash -LiteralPath $generatorExe -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($entry.invokerDigest -ne "sha256:$invokerHash") { throw 'TEI N0 invoker image digest mismatch' }
+          if ($entry.invoked.executableDigest -ne "sha256:$generatorHash") { throw 'TEI N0 generator image digest mismatch' }
+          if (-not (Test-Path -LiteralPath $generated)) { throw 'TEI N0 child did not create a part artifact' }
           $actual = (Get-FileHash -LiteralPath $generated -Algorithm SHA256).Hash.ToLowerInvariant()
-          $consumed = (Get-FileHash -LiteralPath $consumedSource -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($entry.childArtifactDigest -ne "sha256:$actual" -or
+              $entry.artifactCrossCheckedDigest -ne "sha256:$actual") { throw 'TEI N0 child report differs from the generated part bytes' }
+          $entryJson | Set-Content -LiteralPath (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n0-tei-self-build-entry.json') -Encoding utf8
+          Write-Host "N0-tei-process-invoked-generator sha256:$actual"
+          # A duplicate exact output is a negative test. It must not overwrite
+          # the file the actual TEI-invoked child produced.
+          $priorPreference = $ErrorActionPreference
+          $ErrorActionPreference = 'Continue'
+          $duplicateOutput = & $teiExe self-build -child $generatorExe -child-arg-file $childArgsPath -artifact $generated 2>&1
+          $duplicateExit = $LASTEXITCODE
+          $ErrorActionPreference = $priorPreference
+          if ($duplicateExit -eq 0 -or (($duplicateOutput | Out-String) -notmatch 'artifact path already exists')) {
+            throw 'TEI N0 duplicate output was not refused'
+          }
+          $afterRejectedDuplicate = (Get-FileHash -LiteralPath $generated -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($afterRejectedDuplicate -ne $actual) { throw 'TEI N0 duplicate attempt altered the original part' }
+          # Independently regenerate to another path. The generator report
+          # recorded below belongs to this comparison run, not to the child
+          # report that the TEI CLI actually verified.
+          $comparison = Join-Path $env:RUNNER_TEMP ('tei-inspection-reader-compare-' + [guid]::NewGuid().ToString('N') + '.ts')
+          $reportLines = & $generatorExe -contract $contract -transform $transform -artifact-out $comparison
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $reportJson = $reportLines | Out-String
+          $report = $reportJson | ConvertFrom-Json
+          $comparisonHash = (Get-FileHash -LiteralPath $comparison -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($comparisonHash -ne $actual) { throw 'Independent N0 regeneration differs from the TEI-invoked artifact' }
+                    $consumed = (Get-FileHash -LiteralPath $consumedSource -Algorithm SHA256).Hash.ToLowerInvariant()
           if ($actual -ne $consumed) { throw 'N0 regenerated Inspector differs from the TypeScript consumed by Workbench' }
           if ($report.artifactDigest -ne "sha256:$actual") { throw 'N0 generator receipt differs from the actual generated bytes' }
           $contractHash = (Get-FileHash -LiteralPath $contract -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -385,7 +433,9 @@ jobs:
             return (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
           }
           $n0Report = Get-Content -LiteralPath (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n0-inspector-generator.json') -Raw | ConvertFrom-Json
+          $n0TeiEntry = Get-Content -LiteralPath (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n0-tei-self-build-entry.json') -Raw | ConvertFrom-Json
           $n0Part = & $namedHash 'reference/tei-studio-workbench/inspection-reader.generated.ts'
+          if (-not $n0TeiEntry.artifactCrossCheckMatched -or $n0TeiEntry.artifactCrossCheckedDigest -ne "sha256:$n0Part") { throw 'TEI-invoked N0 artifact changed before N3' }
           if ($n0Report.artifactDigest -ne "sha256:$n0Part") { throw 'N0 part was changed after regeneration' }
           $bundle = & $namedHash 'cmd/tei-studio/assets/workbench/main.js'
           if ($bundle -ne $env:TEI_GENERATED_WORKBENCH_BUNDLE_SHA256) { throw 'N2 Workbench changed after generation' }
@@ -406,7 +456,11 @@ jobs:
               inputContractSha256 = & $namedHash 'reference/tei-studio-workbench/inspection-reader.contract.json'
               inputTransformSha256 = & $namedHash 'reference/tei-studio-workbench/builder-sources/inspection-reader-v1.transform.json'
               observedPartSha256 = $n0Part
-              source = 'go run ./tools/reference-studio-part-generator'
+              source = 'tei self-build primitive child: reference-studio-part-generator (not BuildIntent)'
+              teiInvokerDigest = $n0TeiEntry.invokerDigest
+              actualGeneratorDigest = $n0TeiEntry.invoked.executableDigest
+              processEntryReceipt = 'n0-tei-self-build-entry.json'
+              invocationCrossChecked = $n0TeiEntry.artifactCrossCheckMatched
               stage1GeneratedTeiInvoker = $false
             }
             n1 = @{
