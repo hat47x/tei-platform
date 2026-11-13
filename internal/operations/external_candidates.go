@@ -36,9 +36,9 @@ type ExternalCandidateRequest struct {
 	// optionally pin a previously inspected, producer-declared Evidence attempt.
 	// A mismatch refuses selection; a match is NOT proof that the underlying
 	// Source is still current or that a consumer has disclosure/write authority.
-	ExpectedEvidenceID      string
-	ExpectedReceivedDigest  string
-	ExpectedSourceRevision  string
+	ExpectedEvidenceID     string
+	ExpectedReceivedDigest string
+	ExpectedSourceRevision string
 	// Tool records what the calling entry observed about the external tool in
 	// this environment. The projection records it and does not probe: whether
 	// the tool could have run here is an observation the entry makes at the
@@ -230,7 +230,7 @@ func ExternalCandidates(request ExternalCandidateRequest, at time.Time) (Externa
 		view.Unselected.Relations = len(candidates.Relations)
 		view.Unselected.Unknowns = len(candidates.Unknowns)
 		return view, &ExternalCandidateError{
-			Code: ExternalCandidateStale,
+			Code:    ExternalCandidateStale,
 			Message: "the received external Evidence no longer matches the pinned evidence identity, raw digest, or declared source revision",
 		}
 	}
@@ -267,7 +267,7 @@ func ExternalCandidates(request ExternalCandidateRequest, at time.Time) (Externa
 		view.Unselected.Observations = len(candidates.Observations)
 		view.Unselected.Relations = len(candidates.Relations)
 		return view, &ExternalCandidateError{
-			Code: ExternalCandidateAmbiguous,
+			Code:    ExternalCandidateAmbiguous,
 			Message: fmt.Sprintf("external candidate selection is ambiguous: observation %q matches %d occurrences, relation %q matches %d occurrences", request.ObservationID, observationMatches, request.RelationID, relationMatches),
 		}
 	}

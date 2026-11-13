@@ -92,8 +92,8 @@ func TestExternalCandidatesRejectsNonUniqueProducerAndDerivedIdentities(t *testi
 			selectID: func(c externalanalysis.Candidates) string { return c.Relations[0].RelationID },
 		},
 		{
-			name: "producer repeats observation node ID",
-			mutate: duplicateSelectedObservation,
+			name:     "producer repeats observation node ID",
+			mutate:   duplicateSelectedObservation,
 			selectID: func(_ externalanalysis.Candidates) string { return candidateRelationID },
 		},
 	}
