@@ -1353,11 +1353,11 @@ R0bとR0dは並行に進められる。ただしStudio Desktopをセルフビル
 
 | 対象 | 最小実装の出発点 | ここでは成立しない主張 |
 | --- | --- | --- |
-| **D-W：Desktop生成部品（P0-A、最優先）** | 既存Studioの読取Operation（例：CatalogまたはLocate）から、選択した一Subjectのqualified identity・Source位置・Coverageを表示する、TEI生成UI/Serviceの最小部品。既存Application API/Bridgeを使い、起動中の実Wails Desktopでユーザー操作→結果受領→画面反映まで確認する | 単なる手書きStudio実装、Webプレビュー、ファイル生成のみ、別のCLIでの実験 |
+| **D-W：Desktop生成部品（P0-A、最優先）** | **既存PoC B/Workbench生成を再利用**。生成済みUIとGoサービスをWindowsのstudio_generated（serverなし）実Desktopに組み込み、WebView2でGraph/Commandの実操作→Bridge→Host→結果表示を確認。必要なread-only Catalog/Locateも既存APIから選ぶ | 単なる手書きStudio実装、generated serverでのChromium結果、生成済みWindows exeのBuildのみ、別のCLIでの実験 |
 | **F-B1：Source束縛Function生成（#4559、独立Reference）** | 既存Loader/Resolver、Query Source、Target Dialect、生成manifest/実Binary/receiptから、read-only PostgreSQL CLI一件を生成し、独立Expectedと実DBで確認。#4539の手配線Readとの限定比較に使う | Wailsの生成部品、Environment/実Provider束縛の同一性、通常製品tei CLI、実Desktop利用、Host Grant、全件取得、Studio自己ビルド |
 | **B-S：TEI Stage1→Stage2（P0-B、並行）** | #2831の既存BuildIntent/Plan/Go Adapter/Source closureで、実Stage1 TEI Processが次の実Buildを起動し、Artifact/Toolchain/実入力を照合 | F-B1のBinary再生成やGo buildを2回実行するだけでのセルフビルド成立 |
 
-**D-Wの最小実行票（最初の高難度委任、#1824 Owner）**：① 現行mainのStudio Desktopを実OSでclean build・実起動し、既存read-only OperationのResultを確認 → ② 一Subjectだけを扱う部品を既存の生成器選抜/Transform方式に沿って生成し、Sourceと選択Generator、生成ファイル、実Buildで消費したファイル、Loaded Desktopバイトの対応を確定 → ③ 同じ実Desktopでユーザーの対象選択からBridge/型付きAPI/Result/画面までを一往復 → ④ 選択Source/Workspaceを切り替え、旧結果を新結果として表示しない負例を実行 → ⑤ 使用した生成部品を取り除いた場合の独立Expectedの失敗で、手書き代替・未importの生成ファイルを検出する。**Component単体と実Desktop Productを別判定**する。初回は書込・外部DB・AIハーネスを不要とし、業務Meaningの新承認を要求しない。
+**D-Wの最小実行票（最初の高難度委任、#1824 Owner）**：現mainの二つの既存Workflowを読んで、以下の**実Consumer未接続Edge**に限定する。① 現行通常Windows Desktop→WebView2 smoke、既存PoC B生成→studio_generated/server→Chromiumの二つを、別Process/Attemptの基線として記録。加えて既存PoC A CIはstudio_generated（serverなし）のWindows exeの**Buildのみ**行っており、実WebViewは別証拠だと扱う。② 同一候補HEAD/Workspace/Generator版で既存reference-studio-static-composition、compose-ui、connect-workbench、esbuildを使用し、ui.generated.mjs・services.generated.go・bundle/埋込Assetの実Digestを取得。必要なSource Pinを無断変更しない。③ Windowsのstudio_generated（serverなし）実Desktop binaryをBuildし、Go Module/Assets/生成部品の**実Build消費**とexe digestを突合。④ その同じexeを実Windows WebView2で起動し、既存WebDriverで生成Graph/Commandの操作→StudioBridge/Host Result→画面まで実観測する。⑤ 生成Asset未収録・未import・手書き同値代替、古いWorkspace/Rootの後着応答、誤Host/開示条件を独立負例で検査する。**Component単体・実Desktop Build・WebView2の実Consumerは別判定**とし、新たなUI Generator、Studio Host、Runnerを先に作らない。初回は書込・外部DB・AIハーネスを不要とし、業務Meaningの新承認を要求しない。現行Wails版の安全性/安定版更新判断は#1824/#4498で別途資格確認する。
 
 **F-B1の既知の残差と利用条件（#1121/#2586 Owner）**：
 
@@ -1367,6 +1367,6 @@ R0bとR0dは並行に進められる。ただしStudio Desktopをセルフビル
 - #4559のmanifest/receiptと古いBinary拒否は、**生成物の整合性**の限定Reference。実Provider Binding、現在Grant/Disclosure、Runtime Result、Owner意味受理、Host Effectは別資格。D-WへそのままCLI Binaryを埋め込まず、使えるGenerator/Build/Receiptの共通契約だけを比較してから再利用する。
 - #4539はmain統合済みで、専用CLI経由の実Provider Readという比較基準がある。F-B1はEnvironment経由の実行ではないため、**同じ行が返っても同一Execution/Provider/Scopeとは判定しない**。最初の通常tei CLI/Studio read-only実Readは§31 R0b/R0cとして独立継続する。
 
-**既存Expectedへ返す限定反証**（新Scenario正本を作らない）：D-W1 生成部品がファイルに存在するだけで実Desktop未使用、D-W2 手書きコードが同値Resultを返す、D-W3 Workspace A→B後に旧A応答が遅延到着、F-B1-1 Query SQLだけ変更したのに生成Revision/実Binaryが不変、F-B1-2 SQLのundeclared入力を正式型契約と誤認、F-B1-3 stale Binaryのreceiptのみ書換え、F-B1-4 READ ONLY静的検査のみで書込拒否試験を省く、B-S1 外部Launcherによる二回BuildでStage1自身のStage2実行を捏造。#1180/#2514の既存Scenario/Expected、#2831 SB、#4559 B1試験に紐付け、同じテストを各PRで複製しない。
+**既存Expectedへ返す限定反証**（新Scenario正本を作らない）：D-W1 生成部品がファイルに存在する／Windows exeがBuild済みでも実WebView2 Consumer未使用、D-W2 generated server Chromiumまたは手書きコードだけが同値Resultを返す、D-W3 Workspace A→B後に旧A応答が遅延到着、F-B1-1 Query SQLだけ変更したのに生成Revision/実Binaryが不変、F-B1-2 SQLのundeclared入力を正式型契約と誤認、F-B1-3 stale Binaryのreceiptのみ書換え、F-B1-4 READ ONLY静的検査のみで書込拒否試験を省く、B-S1 外部Launcherによる二回BuildでStage1自身のStage2実行を捏造。#1180/#2514の既存Scenario/Expected、#2831 SB、#4559 B1試験に紐付け、同じテストを各PRで複製しない。
 
 **Ownerと優先順位**：P0-A D-Wは#1824（Desktop Consumer）と#1121/#4544（生成）で最初の一件。F-B1の生成器品質・正式入力/Source Index残差は#4559/#1121、通常製品Readは#2586/#1251、Stage1再入場は#2831が担当。P0-CのX-TEA read-only三視点#1124はD-Wで使えるSubject/Locateがあればその後に接続し、原典互換の範囲を新たに推測しない。**今回のD-W1〜3、F-B1-1〜4、B-S1を新たに製品実試験したわけではない。D-W実OS動作、Source-bound生成のmain統合、全CI、Stage2実自己起動、Owner意味受理はいずれもNOT RUN / NOT PROVEN。**
