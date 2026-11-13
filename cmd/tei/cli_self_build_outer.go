@@ -240,6 +240,12 @@ func applyEvidenceDefaults(parsed selfBuildOuterArgs) selfBuildOuterArgs {
 	if parsed.InProcess.requested() && !parsed.RebuildCheckSet {
 		parsed.RebuildCheck = true
 	}
+	// -state-boundary only affects the second build, so asking for it without
+	// -rebuild-check would silently do nothing. The flag's help says it implies the
+	// check; make that true instead of leaving the boundary unused.
+	if parsed.StateBoundary && !parsed.RebuildCheckSet {
+		parsed.RebuildCheck = true
+	}
 	return parsed
 }
 

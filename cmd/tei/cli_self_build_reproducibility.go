@@ -90,7 +90,11 @@ type selfBuildStateSeparation struct {
 const (
 	stateSeparationChildStatementScope = "the state directory the child reported is the one this entry passed"
 	stateSeparationPostHocScope        = "the second build created the state directory this entry passed, and the listing of the first build's state directory was unchanged across the second build"
-	stateSeparationHostBoundaryScope   = "the second build ran in a mount namespace whose root tree was read-only, with only the passed state directory and the artifact directory writable, and the first build's state directory masked by an empty tmpfs"
+	// The wording names what the mechanism does and stops there: the read-only
+	// remount covers the root tree, and filesystems mounted separately inside the
+	// namespace (/proc, /sys, /dev) are outside it, so this is not "nothing else was
+	// writable".
+	stateSeparationHostBoundaryScope = "the second build ran in a mount namespace where the root tree was remounted read-only, the passed state directory and the artifact directory were reopened for writing, and the first build's state directory was masked by an empty tmpfs; filesystems mounted separately from the root tree are not covered"
 )
 
 // withArtifactAndState returns the child argv with the values of -artifact-out and
