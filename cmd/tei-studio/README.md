@@ -5,10 +5,10 @@ Issue [#1824](https://github.com/hat47x/tei-platform/issues/1824)、担当#2。�
 ## 現在の構成
 
 - `internal/studiohost`: Wailsに依存しない薄いHost allowlist。Workspace rootは起動時の`-workspace`でのみ指定し、Rendererの入力では選ばせない。Canonical product operationsを呼び出し、Studio限定のsource observerには許可済みWorkspaceから上限付きで読み取ったバイト列だけを渡します。
-- `cmd/tei-studio/main.go`: `StudioBridge`の12メソッドをWails serviceへ手登録する、PoC Aの通常ビルド入口。内訳は読取り専用の5操作（`ListWorkspaces`・`CatalogWorkspace`・`ValidateWorkspace`・`InspectSubject`・`ObserveXead`）と、`assets/client.mjs`が名指す7つの投影・Command操作（`ViewPattern`・`ViewApplication`・`ViewPackage`・`PlanCommand`・`ExecuteCommand`・`ExecuteCommandWithPeriods`・`ExecuteCommandWithPolicy`）です。**7つは長く未登録で、Workbenchのビュー・Command操作がbindingで失敗していた**（[#4295](https://github.com/hat47x/tei-platform/issues/4295)）。`bridge_parity_test.go`が`client.mjs`の名前と`main.go`のメソッドを突き合わせます。SHO 文書編集部品の子プロセス起動（`OpenShoDocument`・`ResumeShoDocument`）もここにあり、**save は含まない**。実装は `cmd/tei-studio/sho_document.go`。
+- `cmd/tei-studio/main.go`：Wails Serviceへ手登録する`StudioBridge`の**15メソッド**。内訳はread-onlyの5操作（`ListWorkspaces`・`CatalogWorkspace`・`ValidateWorkspace`・`InspectSubject`・`ObserveXead`）、`assets/client.mjs`から呼べる表示・Commandの8操作（`ViewPattern`・`ViewApplication`・`ViewPackage`・`PlanCommand`・`ExecuteCommand`・`ExecuteCommandWithPeriods`・`ExecuteCommandWithPolicy`・`ExecuteCommandWithReferenceStore`）、SHO子プロセス連携の2操作（`OpenShoDocument`・`ResumeShoDocument`）。#4295以前には表示・Commandの7操作が未登録で失敗していたが、**現行の登録状態は当該時点と異なる**。`bridge_parity_test.go`は`client.mjs`の13名とGo Service登録の対応を検査する。SHOの**SaveはStudioBridgeにない**（`cmd/tei-studio/sho_document.go`）。
 - `cmd/tei-studio/window_{desktop,server}.go`: 同じGo serviceをWeb（`-tags server`）とDesktopで使用。Webは`127.0.0.1`固定です。環境変数`WAILS_SERVER_HOST`が明示された場合、値が`127.0.0.1`以外なら起動を拒否します。
 - `cmd/tei-studio/xead_observer.go`: `internal/xeadsource`を使うStudio専用の読取り・投影adapter。nested moduleの外へこのadapter依存を広げず、`internal/operations`から分離します。
-- `cmd/tei-studio/assets`: Go側へ埋め込むbootstrapとWorkbench画面。Desktopは`/workbench/`を初期表示し、Serverの既定ページは従来どおりbootstrapです。Workbenchは既存の読取り専用5操作と7つの投影・Command操作を使うStudioの開発・作成Host画面であり、生成Desktop Application Targetや正式な業務アプリではありません。
+- `cmd/tei-studio/assets`: Go側へ埋め込むbootstrapとWorkbench画面。Desktopは`/workbench/`を初期表示し、Serverの既定ページは従来どおりbootstrapです。Workbenchは既存の読取り専用5操作と8つの投影・Command操作を使うStudioの開発・作成Host画面であり、生成Desktop Application Targetや正式な業務アプリではありません。
 
 ### Server HTTP呼出しの境界
 
@@ -49,20 +49,20 @@ go build -mod=readonly -o tei-studio .
 ./tei-studio -workspace ../../reference/workspace
 ```
 
-Go検査はリポジトリrootで`go test -count=1 ./internal/workspace ./internal/operations ./internal/studiohost`、JS検査は`node --test cmd/tei-studio/test/*.test.mjs`を実行します。`cmd/tei-studio`はnested Go moduleのため、rootのGoテストはrootへ戻してから実行してください。Wails CLIと版を一致させる場合の指定は `go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.29`。PoCだけをnested Go moduleに隔離し、rootの全体CIでCGO/OS WebView依存を無条件に増やしません（ADR-0033の恒久的なsubproject構成決定ではありません）。最初の表示は生成bindingを使用せず、公式の`Call.ByName`を直接呼ぶbootstrapです。#3のTypeScript UIが整い次第、同じ`StudioBridge`の12操作から公式生成bindingへ移します（`bridge_parity_test.go`が`assets/client.mjs`の呼出名と登録メソッドの一致を検査します）。
+Go検査はリポジトリrootで`go test -count=1 ./internal/workspace ./internal/operations ./internal/studiohost`、JS検査は`node --test cmd/tei-studio/test/*.test.mjs`を実行します。`cmd/tei-studio`はnested Go moduleのため、rootのGoテストはrootへ戻してから実行してください。Wails CLIと版を一致させる場合の指定は `go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.29`。PoCだけをnested Go moduleに隔離し、rootの全体CIでCGO/OS WebView依存を無条件に増やしません（ADR-0033の恒久的なsubproject構成決定ではありません）。最初の表示は生成bindingを使用せず、公式の`Call.ByName`を直接呼ぶbootstrapです。#3のTypeScript UIが整い次第、`client.mjs`が公開する13操作から公式生成bindingへ移します（`bridge_parity_test.go`が`assets/client.mjs`の呼出名と登録メソッドの一致を検査します）。
 StudioのGo検査は`cmd/tei-studio`内で`go test -mod=readonly -count=1 -tags server .`を実行します。
 
 ## #3への引継ぎ：bootstrapと正式UIの交換点
 
 - **#2が所有するHost側登録点**：`cmd/tei-studio/main.go`の`application.NewService(&StudioBridge{host: host})`。`//go:embed assets`で埋め込む`cmd/tei-studio/assets/`を`application.AssetFileServerFS(assets)`で配信する。Server/Desktop双方のGo Operationはここで同じものを使用する。
 - **交換する資産（#3所有の構成出力）**：`assets/index.html`と`assets/main.js`が仮の一覧/検証/参照UI。#3のfrontend composition rootで生成するHTML/JS/CSSを、統合検査専用snapshotの同配信位置へ配置する。#3が#2の原branchを直接変更する必要はない。正式なbuild入力/配布layoutは#3のroot提出後に合意する。
-- **維持するHost-neutral Port**：`assets/client.mjs`の`createReadOnlyClient(callByName)`は12操作（読取り専用5・投影とCommand 7）を提供するHost adapter用port。`assets/main.js`が`/wails/runtime.js`の`Call.ByName`を注入する。#3のUI部品（Editor/Graph/Command）はWailsに直接依存せず、この5操作の結果をStudio固有Presenter経由で使用する。
+- **維持するHost-neutral Port**：`assets/client.mjs`の`createReadOnlyClient(callByName)`は13操作（読取り専用5・投影とCommand 8）を提供するHost adapter用port。`assets/main.js`が`/wails/runtime.js`の`Call.ByName`を注入する。#3のUI部品（Editor/Graph/Command）はWailsに直接依存せず、必要なOperation結果をStudio固有Presenter経由で使用する。
 - **現在のbootstrapが使用する1行の接続例**：`const studioHost = createReadOnlyClient((name, ...args) => Call.ByName(name, ...args));`。呼出名は`main.StudioBridge.*`、戻りは本README下記の`{ok,value}`/`{ok:false,failure}`。画面の成功表示をValidation合格や編集権限と取り違えない。
 - **#1への手登録比較基準**：PoC B builderはこの手登録Hostと#3のUI出力を対照とし、生成物は検証snapshotで接続する。#1/#3からこのbranchの`main.go`を同時編集しない。
 
 ## #3/#6/#10への固定でない接続申し送り
 
-Wails JavaScript service名（初期bootstrap）：`main.StudioBridge`。公開メソッドは5つです。`ObserveXead`は許可済みWorkspace内の単一`.xead`ファイルを読み、境界付きprojectionを返します。ファイル内容や内部例外はfailure messageへ含めません。
+Wails JavaScript service名（初期bootstrap）：`main.StudioBridge`。初期bootstrapで扱った5操作に加え、現行のGo Serviceには表示・Commandの8操作とSHOのOpen/Resumeの2操作があり、合計15操作です（`client.mjs`から直接呼ぶのは13操作）。`ObserveXead`は許可済みWorkspace内の単一`.xead`ファイルを読み、境界付きprojectionを返します。ファイル内容や内部例外はfailure messageへ含めません。
 
 ### SHO 文書編集部品の子プロセス起動（#3394連携）
 
@@ -101,7 +101,7 @@ Wails Server BuildはEvent broadcastとService singletonを持ちます。本PoC
 
 ## PoC B生成GoサービスをHost内部で利用する固定実装（#1833連携）
 
-通常の `go build` は`host_default.go`から`NewReadOnlyWithXeadObserver`を使い、通常Operation経路とStudio限定のXEAD observerを同じWorkspace allowlist配下へ接続する。`studio_generated` ビルドタグ指定時だけ、`host_generated.go` が #1833の出力した `staticservices.NewCatalogService` / `NewValidateService` をコンパイル時の型検査付きでHostの `ServiceFactory` に注入する。Wailsのサービス登録は `StudioBridge` の12操作のみ。生成サービスをWailsへ登録しない。
+通常の `go build` は`host_default.go`から`NewReadOnlyWithXeadObserver`を使い、通常Operation経路とStudio限定のXEAD observerを同じWorkspace allowlist配下へ接続する。`studio_generated` ビルドタグ指定時だけ、`host_generated.go` が #1833の出力した `staticservices.NewCatalogService` / `NewValidateService` をコンパイル時の型検査付きでHostの `ServiceFactory` に注入する。Wailsのサービス登録は `StudioBridge` の15操作のみ。生成サービスをWailsへ登録しない。
 
 `internal/studiohost.ReadOnly` がRendererのWorkspace IDを起動時allowlistに照合し、許可済みrootを確定させてからだけFactoryへ渡す。**allowlistは名前だけでなく物理rootの同一性を保証する**。起動時に`EvalSymlinks`で実体rootを解決して`os.FileInfo`を保持し、各操作の前に`os.Stat`＋`os.SameFile`で同一性を再検査する（`WORKSPACE_ROOT_CHANGED`）。設定したaliasだけを置換しても、起動時に固定した実体rootは変わらない。root自体のrename・置換はfail closedになる。生成サービスは `Catalog(namespace)` / `Validate()` のみ担当し、List/Inspectは従来どおり。通常経路はFactory=nilで直接Operation呼出し。Factory構築失敗、サービス欠落、Operation失敗は従来のHost failure envelopeへ変換し、非分類の内部エラー/絶対パスは公開しない。
 
@@ -123,6 +123,6 @@ CGO_ENABLED=0 go build -mod=readonly -tags 'studio_generated,server' -o tei-stud
 ./tei-studio-generated-server -workspace ../../reference/workspace -port 43128
 ```
 
-検証項目：型付きコンストラクタの実Goコンパイルと生成サービスを経由したHostメソッド実行、通常Hostの12操作/回帰、未知Workspace ID拒否、許可済みroot以外をFactoryに渡さないこと、内部例外のメッセージ抑止、警告・診断を含む結果一致、Wails Serverのloopback起動・非loopback環境変数拒否。これらは `studio_generated,server` タグと #1833出力の両方を含む **固定snapshotでの実行結果** と分けて記録する。HTTP health成功だけでWails IPCや実Desktop画面での生成Operation呼出し成功は主張しない。
+検証項目：型付きコンストラクタの実Goコンパイルと生成サービスを経由したHostメソッド実行、通常Hostの13共通Adapter操作/回帰（SHOの2操作は別試験）、未知Workspace ID拒否、許可済みroot以外をFactoryに渡さないこと、内部例外のメッセージ抑止、警告・診断を含む結果一致、Wails Serverのloopback起動・非loopback環境変数拒否。これらは `studio_generated,server` タグと #1833出力の両方を含む **固定snapshotでの実行結果** と分けて記録する。HTTP health成功だけでWails IPCや実Desktop画面での生成Operation呼出し成功は主張しない。
 
 検証済みの通常Host head/Browser/Windows Desktop binary結果を、この生成構成の実Desktop稼働やWeb認証/Session隔離の合格へ転用しない。生成型追加と既存`Services(root) []any`の一般化については#1との境界に留め、二重Registry/Renderer指定のrootは作らない。
