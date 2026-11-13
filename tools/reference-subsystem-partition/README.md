@@ -4,17 +4,13 @@ Status: experimental, **read-only, caller-supplied candidate-only**. Issue [#325
 
 ## Purpose and exact result
 
-The Go package exposes only `Evaluate(Problem)`. It neither reads external files nor edits Source or calls a Provider. Its input must explicitly supply:
+The Go package exposes `Evaluate(Problem)` for the **existing** fixed-owner exact reference, plus the following candidate-generation extension under the new files in this package:
 
-- Unique Function IDs, each with a nonempty finite set of allowed Subsystem memberships.
-- Distinct direct-write **relation occurrence** IDs and candidate Data IDs; each occurrence states the Function, fixed candidate Data owner, exact operation C/U/D, source locator, and **positive integer** weight. Reads, delegated effects, procedures, SQL/Trigger execution, workload frequency and migration semantics are **not** inferred.
-- Optional undirected must-link relations between Functions. Every linked component must share one Subsystem.
+- `CoverageReport` / `BuildCoverageReport` (`coverage.go`): subject-level provenance status including `declared-source`, `parsed-extracted`, `derived-potential`, `inferred-indirect`, `observed-effect`, `unresolved`, and `not-examined`.
+- `AccessGraph` / `BuildAccessGraph` (`graph.go`): Function-Data bipartite graph with Read edges and Write (C/U/D) edges split into separate sets. Delegation (Invocation) edges are captured separately and are **not** counted as direct writes.
+- `CandidateProblem`, `GenerateCandidates`, `ParetoFront`, `EvaluateCandidates` (`generate.go`, `evaluate.go`): deterministic candidate generation (exhaustive for N<=10), ranked output, multi-objective breakdown (cross-write count/weight, cross-read count, cohesion, max size), and Pareto front. Heuristic mode is labeled `candidate-ranked`.
 
-Under **only these constraints**, form connected components of must-links. For each component, intersect the Functions' allowed Subsystem sets, then choose the allowed Subsystem retaining the most direct-write weight inside the component. Sum all remaining cross-owner write weights. Since components do not constrain one another, this yields an **exact optimum for the supplied graph**. It is not merely the independent-Function lower bound.
-
-If a component has no common allowed Subsystem, the result is `infeasible` with **no numeric optimum**. Incomplete or invalid inputs return an error rather than silently substituting an empty graph or treating an unresolved owner as a zero-cost edge. The result lists deterministic placements, component scores and crossed relation IDs; ties select the lexicographically first Subsystem.
-
-This proof does **not** apply directly to cannot-link, capacity limits, time-dependent owners, split Functions, cross-component business/transaction constraints, changed CRUD operations, negative weights, or unknown edges. Callers must not omit such constraints and then present the result as globally optimal. Known-only optimum zero never establishes system-wide zero unless the separate Source/Claim closure is qualified.
+All new outputs include `authorityLimit` and are **candidate-only**; they do not resolve accepted ownership, grant authorization, or infer runtime effects. Callers must not omit constraints (capacity, cannot-link, shared-update) and then present the result as globally optimal.
 
 ## Scope and authority boundaries
 
@@ -26,15 +22,36 @@ Any result returned to Studio, CLI, MCP, AI or another consumer must first use a
 
 No output represents actual CRUD effects, a Tx receipt, a Source-changing proposal, a migration cutover or formal Owner approval. Do not use it to issue writes. Owners for application/operation/Source, Studio UI, independent expected, disclosure, and runtime execution remain separate.
 
-## Tests and qualification
+## Test and qualification
 
 Run at the repository root:
 
-    go test ./tools/reference-subsystem-partition
+    go test ./tools/reference-subsystem-partition -count=1
     go vet ./tools/reference-subsystem-partition
+    gofmt -l tools/reference-subsystem-partition
 
 Tests include the design cases SP-37/38/39/41, a must-link counterexample in which independent lower bound 0 is not feasible, deterministic tie-breaking, input rejection, and an **independent exhaustive assignment oracle** over 1,372 small allow-set/must-link combinations. The exhaustive test does not call the evaluator's component-contraction procedure.
 
+The new candidate-generation tests use a fixed fixture in `testdata/fixture.json` with an independently authored expected JSON `testdata/fixture-expected.json`. The expected values are **hand-written** and are not generated from the implementation output.
+
 Further needed (not implemented by this package): Source closure and actual Accepted owner/Function I/O producer (SP-42), Current Grant and public noninterference (SP-31/43), Boundary Repair/Effector/Tx/Recovery (SP-44), and trusted full repository-health-check on the exact merged revision. Local/CI test PASS is not evidence for those obligations.
+
+## S6-S7 (added for #4413)
+
+- `ComparisonReport` / `BuildComparisonReport` (`compare.go`): deterministic ranked comparison of candidates (cross-boundary counts/weights, cohesion, max size).
+- `PartitionSnapshot` / `ComparePartitions` (`compare.go`): before/after comparison table reporting moved function count, boundary delta, write reclassification by operation (internal vs cross), residual `unresolved` / `not-examined` counts, and Function/Data set differences. Movement is placement-only; set differences are cross-checked against `threeelement.DiffModels` so a placement change is never reported as a Source definition change.
+- `ProjectionInput` / `BuildProjectionReport` (`projection.go`): per-subsystem projection of Function, write/read edges and invocation dependencies.
+- `BuildERProjection` (`projection.go`): per-subsystem ER view that preserves external reference nodes with `ownership: external` and the referencing occurrence ids. Subjects outside a supplied Public Slice are marked `non-disclosed` with a reason code instead of being deleted.
+- `BuildCRUDMatrix` (`projection.go`): whole-world Function×Data C/R/U/D table with a provenance origin column. Undetermined provenance is marked, never rendered as "no operation".
+- `BuildDependencyGraph` (`projection.go`): typed dependency graph separating invocation, function-data-write, data-data-relation and external-boundary edges. Delegation is never drawn as a cross-boundary direct CUD edge.
+- Every projection carries `authorityLimit` and a digest derived from the candidate id and the exact supplied graph, so ER/CRUD/dependency outputs can be shown to share one candidate.
+
+These are preview outputs and do not change accepted ownership, grant authorization, or expose runtime effects.
+
+### Not implemented here
+
+- `ercrossview.Project` is not called: this package projects caller-supplied candidate graphs and never builds an `ir.World`, so no logical baseline is taken from the ER cross-view. Logical and physical separation is still enforced by construction (no Table/PK/UNIQUE/FK is projected).
+- Data–Data relation edges require caller-supplied relations and are reported as absent rather than inferred.
+- Public Slice selection itself, and enforcement of disclosure for private edges, remain in #2516/#1124.
 
 **No main integration or Owner Meaning Acceptance is implied by creating this reference.**

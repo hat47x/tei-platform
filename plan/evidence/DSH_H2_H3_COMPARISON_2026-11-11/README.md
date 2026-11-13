@@ -110,7 +110,7 @@ Provider請求額ではない。
 
 ## 7. 検証基盤と限界
 
-検証基盤は [`tools/dsh-session-evidence/`](../../tools/dsh-session-evidence/)（回帰テスト34件、
+検証基盤は [`tools/dsh-session-evidence/`](../../../tools/dsh-session-evidence/)（回帰テスト34件、
 合成fixtureのみ）。本Evidenceの機械可読相関は `session-summary.json`・`trial-group.json`・
 `checker-verdict.json`・各Sessionの `run.json`（Tool入力・result digest・usage・argv分類を含む）。
 

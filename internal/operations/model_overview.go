@@ -75,6 +75,13 @@ type ModelSectionScope struct {
 	// sectioned. With this list they can read the artefact back immediately
 	// (#4128).
 	ReadableWithoutSection []string `json:"readableWithoutSection"`
+	// NotReadableWithoutSection are the kinds in NotCoveredKinds that no
+	// read-only command resolves by name today. Listing the complement keeps
+	// the answer from being a difference the caller must compute: an absent
+	// kind would otherwise read as "not sectioned yet" rather than "no route
+	// exists", and a designer who just declared one would look for a command
+	// that is not there (#4128).
+	NotReadableWithoutSection []string `json:"notReadableWithoutSection"`
 }
 
 // declaredLayerKinds names the World collections that hold author-written
@@ -123,16 +130,22 @@ func sectionScope(catalog ModelCatalog, world ir.World) ModelSectionScope {
 	// A not-covered kind is readable when its own operation accepts it. Reading
 	// the same list the CLI advertises keeps the two answers together.
 	readable := []string{}
+	notReadable := []string{}
 	for _, kind := range notCovered {
 		if supportedInspectionKind(kind) {
 			readable = append(readable, kind)
+		} else {
+			notReadable = append(notReadable, kind)
 		}
 	}
+	sort.Strings(readable)
+	sort.Strings(notReadable)
 	return ModelSectionScope{
-		RootsAre:               "catalog-root-entries",
-		CoveredKinds:           coveredKinds,
-		NotCoveredKinds:        notCovered,
-		ReadableWithoutSection: readable,
+		RootsAre:                  "catalog-root-entries",
+		CoveredKinds:              coveredKinds,
+		NotCoveredKinds:           notCovered,
+		ReadableWithoutSection:    readable,
+		NotReadableWithoutSection: notReadable,
 	}
 }
 

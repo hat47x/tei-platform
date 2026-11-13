@@ -27,6 +27,7 @@
 | [`check-public-boundary/`](check-public-boundary/) | 追跡ファイルに、非公開資料の名前・所在のマーカーが入っていないかを検査する（#2342 / #2436） |
 | [`repositoryqualification/`](repositoryqualification/) | リポジトリ検証条件の共通処理 |
 | [`reference-ai-tuning-observation/`](reference-ai-tuning-observation/) | AI性能チューニング用の設計/観測/統計/Provider/開示/受領の**合成入力のみ**を照合する試験用Consumer。実Provider/業務意味/実性能は未証明（#3271/#3262、設計文書 §9〜10）。 |
+| [`reference-browse-read/`](reference-browse-read/) | 一つのbrowse Patternを、Environment束縛を経て、明示確認した使い捨てPostgreSQLの読取専用トランザクションで実行し、Function Data ContextをJSONで返す参照入口（`tei` CLIではない）。束縛はhost申告、被覆は常に`unestablished`、RLS・マスクされたNULLは判別不能のまま。実PG試験は`TEI_BROWSE_READ_PG_*`が揃ったときだけ実行し、未設定はNOT RUN（[#2586](https://github.com/hat47x/tei-platform/issues/2586)） |
 | [`reference-cli-trace-benchmark/`](reference-cli-trace-benchmark/) | 合成Workspaceによるtraceの処理段別の時間・メモリ計測と出力不変の確認 |
 | [`reference-mcp-readonly-adapter/`](reference-mcp-readonly-adapter/) | 既存の読み取り操作（model catalog・inspect・trace・validate）をMCPのtoolとして公開する参照Adapter。Workspaceは起動時に固定し、CLIと同じ `internal/operations` を呼ぶ（#3400） |
 | [`reference-change-packet/`](reference-change-packet/) | 変更範囲・危険度・検証・停止条件をJSONで宣言し、範囲確認と検証実行・証拠記録を行う参照（#2017） |
@@ -54,6 +55,7 @@
 | [`reference-cache-full-vs-incremental-verification/`](reference-cache-full-vs-incremental-verification/) | キャッシュ・増分処理がフル処理と同じ結果を出すかを比較する参照。食い違う入力・依存・キャッシュ項目・artifactを診断として特定し、キャッシュ再利用による偽陽性を検出する（#4219） |
 | [`reference-cache-invalidation/`](reference-cache-invalidation/) | World・Model・Artifact・Evidenceの版と依存閉包からArtifact再利用・Build省略・Evidence再利用を個別に判定するread-only参照。未知依存、途中失敗、A→B→Aでの証拠誤再利用を拒否（#2595 #2600 #3267）。実キャッシュストアや実Buildとは未接続 |
 | [`reference-build-catalog-authoring/`](reference-build-catalog-authoring/) | builder catalogを能力宣言から組み立てる参照。artifactのdigestは実ファイルから計算し、宣言にdigestを書くことと`-root`の外を指すことを拒否する。製品のファイル形式を変えずにcatalogを用意する手段（#2831 SB-C0 §4.32） |
+| [`reference-application-binary/`](reference-application-binary/) | TEIワークスペースから実行可能なGoコードを生成し、外部TEI runtime・動的Pluginなしの単一バイナリとして配布する参照。`databases/`のMigrationを抽出して`migrations.go`を生成し起動時に適用する。P0-A段階別縦断（Parse/Model/Generate/Build）を独立期待値で照合する。実行の実Provider適合・Owner意味受理・Host Grantは未証明（[P0-A判定記録](../plan/gate/P0A_VERTICAL_LOWERING_EVIDENCE_2026-11.md)） |
 | [`reference-offline-storage/`](reference-offline-storage/) | 個人向けに、root内へ閉じたローカル保存を提供する基盤pluginの参照（#2020） |
 | [`reference-export-package/`](reference-export-package/) | SIer向けに、manifestとdigest付きの配布zipを作る基盤pluginの参照（#2020） |
 | [`reference-delivery-profile/`](reference-delivery-profile/) | 提供形態ごとにpluginを選択し、必須能力が揃っているかを検証する参照（#2020） |
@@ -78,6 +80,7 @@
 | [`reference-authoring-auxiliary/`](reference-authoring-auxiliary/) | 設計の補助情報（用語・改訂履歴・注記・区分）の置き場所と意味の版の境界の確認 |
 | [`reference-authoring-witness-openssh/`](reference-authoring-witness-openssh/) | OpenSSHを使った記述作業の参照確認 |
 | [`reference-authority-evidence-trust/`](reference-authority-evidence-trust/) | 情報源の権威と検証根拠の信頼境界の確認 |
+| [`reference-b2c-change-inspector/`](reference-b2c-change-inspector/) | B2C独自Frontendの**明示された依存関係のみ**を読み取り、変更の影響候補・未観測範囲・判断の限界を返す合成read-only Reference（#3509）。公開許可や実Commerce/Experimentの証明ではない |
 | [`reference-batch-completeness/`](reference-batch-completeness/) | 一括導出の行別失敗と集合演算の結果完全性を、NULL・未取得・評価失敗を区別して判定する読取り専用の参照（#1724） |
 | [`reference-business-dfd/`](reference-business-dfd/) | 業務データフロー図の読取り専用参照 |
 | [`reference-business-procedure-check/`](reference-business-procedure-check/) | 業務手順と担当・機能・データの整合確認 |
@@ -248,6 +251,9 @@
 | [`reference-type-reorg-impact/`](reference-type-reorg-impact/) | 意味の型の統合案が及ぼす影響を一覧する読取り専用の参照（#1806） |
 | [`reference-model-search/`](reference-model-search/) | 意味の名称を横断して検索し、置換を変更案として出す読取り専用の参照（#1804） |
 | [`reference-semantic-mapping-check/`](reference-semantic-mapping-check/) | 意味の定義と物理項目の対応について、定義へ遡る道が一つか、未記入の要素、複数の定義に一致する要素、定義の追加で変わる要素の範囲を検査する参照。合成データのみで、実在のデータ辞書とは未接続（#2095） |
+| [`reference-facet-mapping-check/`](reference-facet-mapping-check/) | 標準データ構造と標準表現型の間の写像を、12列の写像契約と両側のFacetで突き合わせ、保持・損失・不適合・不明を判定する参照。読み取りの成功を編集逆写像の成功から分け、証拠のない保存主張は`unknown`へ落とす。合成fixtureのみで、実Provider・実Renderer・業務意味の受理は示さない（#4351 / #4350 S1） |
+| [`reference-facet-structure-check/`](reference-facet-structure-check/) | 標準データ構造の族ごとに、直交Facetの記述で載るか・現行Sourceに場所が無い意味は何か・どの採用先（基礎型／合成型／意味Facet／標準Plugin／表現型）へ返すかをread-onlyで判定する参照。Core型の採用は判定せず`core-type`を拒否してADRへ戻す。多重度・単位は推定しない。合成descriptorのみで、実Provider・Owner意味受理は示さない（#4352 / #4350 S2） |
+| [`reference-representation-binding-check/`](reference-representation-binding-check/) | 意味を伴う表現インスタンスが1つのFunction Data Contextに所有され、Scope・grain・軸role・Selection・操作資格へ束縛されているかをread-onlyで検査する参照。Context外の配置、layoutを意味とする主張、SelectionをIdentityとする主張、Domain TimeとPlayback Timeの同一視、集約点の逆写像を拒否する。合成descriptorのみで、実Renderer・実Media再生・業務意味の受理は示さない（#4353 / #4350 S3） |
 | [`reference-semantic-extension-catalog/`](reference-semantic-extension-catalog/) | 意味拡張の登録・解決・検証 |
 | [`reference-subsystem-cud/`](reference-subsystem-cud/) | 部分システムの登録・参照・更新・削除の境界確認 |
 | [`reference-tei-eki-contract/`](reference-tei-eki-contract/) | TEIのJob・Flow設計がEKIのP0 OpenAPIで失う意味（`notBefore`・期限・effect_mode・資源制約など）を、実contractへの射影で検出する隔離した試験用の参照。実Provider・認可・実行層ではなく、外部contractの受理を示さない |
@@ -255,6 +261,9 @@
 | [`reference-sui-action-boundary/`](reference-sui-action-boundary/) | SUIの操作とTEI Actionの接続例 |
 | [`reference-sui-adoption/`](reference-sui-adoption/) | SUI移行の参照データと検査 |
 | [`reference-sui-canonical-probe/`](reference-sui-canonical-probe/) | SUIの意味構造を `.tei` で宣言したときの解決結果と、宣言しない損失を read-only で報告する probe（M2） |
+| [`reference-sui-reference-consumer/`](reference-sui-reference-consumer/) | SUIが返す`tai.reference.sui-document-reference/v0`のenvelopeを検査するread-only consumer。acceptedMeaningの一留、未レビュー本文の保留、同名Card・並行Edge・containment/affiliationのoccurrenceを保つことを確認する（P7、Product APIではない） |
+| [`reference-sui-record-projection/`](reference-sui-record-projection/) | SUIの reference envelope から、開示判断つきの record 投影を作る read-only 参照（M3・M4・M5）。本文を運ばず、項目×開示先を present/withheld/unknown/not-applicable で返し、Source状態を宣言のまま使う |
+| [`reference-scope-isolation-matrix/`](reference-scope-isolation-matrix/) | SUI の scope isolation 14経路（ADR-0059 gate 5）を言語非依存の機械可読行列として検査する。経路の網羅・coverage状態・根拠の有無を確かめ、SUI checkout を渡したときは試験名の実在まで照合する（認可の正本ではない） |
 | [`reference-sui-interaction/`](reference-sui-interaction/) | 画面操作とApplication Actionの接続例 |
 | [`reference-transform-runtime-engine/`](reference-transform-runtime-engine/) | 決定的な変換処理の実行例 |
 | [`reference-transform-runtime-engine-build/`](reference-transform-runtime-engine-build/) | 変換実行基盤の構築確認 |

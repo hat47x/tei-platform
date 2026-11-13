@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "tei.subsystem-partition.fixture/v0",
+  "functions": [
+    {"id": "F1_order_submit", "allowed": ["sales"]},
+    {"id": "F2_order_change", "allowed": ["sales"]},
+    {"id": "F3_order_cancel", "allowed": ["sales", "billing"]},
+    {"id": "F4_invoice_void", "allowed": ["sales", "billing"]},
+    {"id": "F5_month_end_correct", "allowed": ["sales", "billing"]},
+    {"id": "F6_invoice_issue", "allowed": ["billing"]},
+    {"id": "F7_stock_allocate", "allowed": ["inventory", "sales"]},
+    {"id": "F8_stock_adjust", "allowed": ["inventory"]},
+    {"id": "F9_customer_register", "allowed": ["crm", "billing"]},
+    {"id": "F10_shipment_request", "allowed": ["inventory", "sales"]}
+  ],
+  "dataIds": [
+    "sales.order", "sales.order_line", "billing.invoice", "inventory.stock", "crm.customer", "external.tax_ledger"
+  ],
+  "writeEdges": [
+    {"id": "w01", "function": "F1_order_submit", "data": "sales.order", "operation": "C", "provenance": "declared-source", "directness": "direct", "sourceLocator": "fixture:w01", "multiplicity": 1, "coverage": "examined", "staleness": "current", "notes": "", "owner": "sales"},
+    {"id": "w02", "function": "F1_order_submit", "data": "sales.order_line", "operation": "C", "provenance": "declared-source", "directness": "direct", "sourceLocator": "fixture:w02", "multiplicity": 1, "coverage": "examined", "staleness": "current", "notes": "", "owner": "sales"},
+    {"id": "w03", "function": "F2_order_change", "data": "sales.order", "operation": "U", "provenance": "declared-source", "directness": "direct", "sourceLocator": "fixture:w03", "multiplicity": 1, "coverage": "examined", "staleness": "current", "notes": "", "owner": "sales"},
+    {"id": "w04", "function": "F3_order_cancel", "data": "billing.invoice", "operation": "U", "provenance": "declared-source", "directness": "direct", "sourceLocator": "fixture:w04", "multiplicity": 1, "coverage": "examined", "staleness": "current", "notes": "", "owner": "billing"},
+    {"id": "w05", "function": "F4_invoice_void", "data": "billing.invoice", "operation": "U", "provenance": "declared-source", "directness": "direct", "sourceLocator": "fixture:w05", "multiplicity": 1, "coverage": "examined", "staleness": "current", "notes": "", "owner": "billing"},
+    {"id": "w06", "function": "F5_month_end_correct", "data": "sales.order", "operation": "U", "provenance": "declared-source", "directness": "direct", "sourceLocator": "fixture:w06", "multiplicity": 1, "coverage": "examined", "staleness": "current", "notes": "", "owner": "sales"},
+    {"id": "w07", "function": "F5_month_end_correct", "data": "billing.invoice", "operation": "U", "provenance": "declared-source", "directness": "direct", "sourceLocator": "fixture:w07", "multiplicity": 1, "coverage": "examined", "staleness": "current", "notes": "", "owner": "billing"},
+    {"id": "w08", "function": "F6_invoice_issue", "data": "billing.invoice", "operation": "C", "provenance": "declared-source", "directness": "direct", "sourceLocator": "fixture:w08", "multiplicity": 1, "coverage": "examined", "staleness": "current", "notes": "", "owner": "billing"},
+    {"id": "w09", "function": "F7_stock_allocate", "data": "inventory.stock", "operation": "U", "provenance": "declared-source", "directness": "direct", "sourceLocator": "fixture:w09", "multiplicity": 1, "coverage": "examined", "staleness": "current", "notes": "", "owner": "inventory"},
+    {"id": "w10", "function": "F8_stock_adjust", "data": "inventory.stock", "operation": "U", "provenance": "declared-source", "directness": "direct", "sourceLocator": "fixture:w10", "multiplicity": 1, "coverage": "examined", "staleness": "current", "notes": "", "owner": "inventory"},
+    {"id": "w11", "function": "F9_customer_register", "data": "crm.customer", "operation": "C", "provenance": "declared-source", "directness": "direct", "sourceLocator": "fixture:w11", "multiplicity": 1, "coverage": "examined", "staleness": "current", "notes": "", "owner": "crm"},
+    {"id": "w12", "function": "F7_stock_allocate", "data": "sales.order_line", "operation": "R", "provenance": "parsed-extracted", "directness": "direct", "sourceLocator": "fixture:w12", "multiplicity": 1, "coverage": "examined", "staleness": "current", "notes": "", "owner": "sales"}
+  ],
+  "readEdges": [
+    {"id": "r01", "function": "F1_order_submit", "data": "inventory.stock", "provenance": "parsed-extracted", "sourceLocator": "fixture:r01", "notes": ""},
+    {"id": "r02", "function": "F3_order_cancel", "data": "sales.order", "provenance": "parsed-extracted", "sourceLocator": "fixture:r02", "notes": ""},
+    {"id": "r03", "function": "F4_invoice_void", "data": "sales.order", "provenance": "parsed-extracted", "sourceLocator": "fixture:r03", "notes": ""},
+    {"id": "r04", "function": "F5_month_end_correct", "data": "billing.invoice", "provenance": "parsed-extracted", "sourceLocator": "fixture:r04", "notes": ""},
+    {"id": "r05", "function": "F7_stock_allocate", "data": "sales.order_line", "provenance": "parsed-extracted", "sourceLocator": "fixture:r05", "notes": ""},
+    {"id": "r06", "function": "F10_shipment_request", "data": "sales.order", "provenance": "parsed-extracted", "sourceLocator": "fixture:r06", "notes": ""}
+  ],
+  "invocations": [
+    {"caller": "F3_order_cancel", "callee": "sales.order.cancel", "pattern": "order.cancel", "provenance": "declared-source", "sourceLocator": "fixture:inv01", "notes": "delegation"}
+  ],
+  "mustLinks": [
+    {"left": "F3_order_cancel", "right": "F4_invoice_void"},
+    {"left": "F4_invoice_void", "right": "F5_month_end_correct"}
+  ],
+  "constraints": [
+    {"kind": "must-separate", "id": "cs-01", "left": "F9_customer_register", "right": "F6_invoice_issue"},
+    {"kind": "capacity", "id": "cap-01", "subsystem": "sales", "maxSize": 5},
+    {"kind": "capacity", "id": "cap-02", "subsystem": "billing", "maxSize": 5},
+    {"kind": "capacity", "id": "cap-03", "subsystem": "inventory", "maxSize": 5},
+    {"kind": "capacity", "id": "cap-04", "subsystem": "crm", "maxSize": 5},
+    {"kind": "external-owned", "id": "ext-01", "left": "external.tax_ledger"}
+  ]
+}

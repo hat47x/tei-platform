@@ -1,0 +1,22 @@
+# B2C change coverage — bounded read-only Reference (#3509)
+
+**NOT a product feature or a complete native-code analyzer.** The tool accepts only an explicitly declared dependency inventory and computes reachable impacts. Its `declaredScopeClosed` field is an **unverified input assertion**: even the `declared-closed-only` outcome is never a whole-site non-impact, release, authority, payment, or conversion claim.
+
+Run locally (standalone standard-library Go package):
+
+```sh
+go test ./tools/reference-b2c-change-inspector
+cat tools/reference-b2c-change-inspector/example-input.json | go run ./tools/reference-b2c-change-inspector
+```
+
+The executable itself stays Go-standard-library-only. The **additional `source_bridge_test.go`** imports existing TEI internal APIs **in tests only**: `workspace.Load` + `BuildSourceIndexFromLoad` + `operations.InspectionFromLoad`. These tests pin one Workspace Load's managed Source bytes and Source occurrence, check A→B→A and root mismatches, and show that a changed Workspace manifest/identity can coexist with the same managed Source content revision. They do **not** claim atomic multi-file reads, imported-Workspace closure, whole-Native dependency coverage, actual Provider invocation, or a release grant. See [#4518](https://github.com/hat47x/tei-platform/issues/4518) for the B0-S1 implementer handoff.
+
+The **test-only `native_binding_source_test.go`** binds one caller-declared Native PDP field to an actual Workspace `semantic-attribute` Subject and one Source occurrence from the **same Load-time strict Index**. It rejects stale byte pins, wrong Workspace name or **separate Workspace root despite identical manifest and Source bytes**, wrong Source path, missing Subject, wrong kind, and empty consumer. The root check is tied to the existing strict Load-time Source Index; it is not a global Workspace identity or write authorization. A changed Source can be explicitly rebound for a new question-bound impact report, with an unobserved Native import kept `partial-or-unverified`. The Native field and edge remain **declarations, not observed browser/Provider/Consumer calls**. No production adapter, public ABI, write/release grant, or Native scanner is added; see [B0-S1a #4518](https://github.com/hat47x/tei-platform/issues/4518).
+
+The edges point from a changed subject **toward its dependents**. Layers provide hints only (`content → C0`, `presentation → C1`, `interaction → C2`, `business/consent → C3`, `release/measurement → C4`). There are no inferred dynamic imports, provider capabilities, authoritative business checks, consent permissions, or actual delivery readbacks. Unknown nodes prevent a scoped noncritical result when they are **required for the question, reachable from a changed subject, or reachable upstream through known dependencies of a Required consumer**. A disconnected or downstream sibling of that consumer does not by itself invalidate the question. The declared directed edges still come from the caller, so no real-world dependency completeness is proven. A missing endpoint of an edge touching a required subject is likewise unresolved, even when that subject is not reached from the current change. Unrelated, disconnected unknowns do not force this question to be invalidated. The caller-declared `unobserved` entries are always treated as relevant gaps. A nonempty `required` list and `declaredScopeClosed=true` are necessary for the local `declared-closed-only` outcome but are **not verified as a complete real-world dependency inventory**. Duplicate node identity and unsupported layers are errors.
+
+Provenance of real source bytes, exact provider invocation, host authorization, complete requested set, actual browser delivery, production statistics, and actual effect remain owned by #2586, #1158, #951, #1174, #2514, #2600, #3271, #3509 and existing target consumers. This reference must not be wired as an automatic deploy approval or production security gate.
+
+The manually fixed `example-expected.json` is checked against the CLI output by `TestFixedFixtureMatchesIndependentExpected`. The expected output is not regenerated from the inspector.
+
+Cases demonstrate the existing BC-16/27/41 (C0 vs C3), BC-18/19/32 (partial Graph), BC-35 (identity), and BC-36 (bounded H1) concerns, but they do not claim those BCs have passed end-to-end. The JSON representation is **fixture-local**, not an accepted TEI contract, plugin ABI, schema, or new scenario SSOT.

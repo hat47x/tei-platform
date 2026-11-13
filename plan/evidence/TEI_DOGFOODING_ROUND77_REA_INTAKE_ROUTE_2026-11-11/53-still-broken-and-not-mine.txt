@@ -1,0 +1,12 @@
+The other two cmd/tei failures (TestDiscoveryAdvertisesEveryModeAResponseCanCarry
+and TestDiscoveryWriteFlagsMatchObservedFileEffects) reference a `rea-evidence`
+command that has NO implementation:
+
+  grep -rn "runReaEvidence" --include=*.go cmd/tei/ | grep -v _test   -> empty
+
+Unlike rea-intake, there is nothing to route to. Not fixed here.
+
+gofmt -l . reports 6+ unformatted files on plain main
+(cmd/tei/cli_relation_query.go, internal/database/sqlgen/*). Formatting one of them
+would be arbitrary, and repository-health does not run gofmt, so this round
+records the finding and changes nothing.

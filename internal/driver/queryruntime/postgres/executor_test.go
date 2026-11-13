@@ -69,11 +69,11 @@ func TestExecuteRelationQueryRejectsLazyMode(t *testing.T) {
 		Steps: []query.ResolvedRelationStep{
 			{
 				Relation: semantic.Relation{
-					ID:         "sales.order.customer",
-					Keys:       []semantic.RelationKey{{SourceAttribute: "sales.order.customer_id", TargetAttribute: "customer.customer.customer_id"}},
+					ID:   "sales.order.customer",
+					Keys: []semantic.RelationKey{{SourceAttribute: "sales.order.customer_id", TargetAttribute: "customer.customer.customer_id"}},
 				},
-				Source:   semantic.Data{ID: "sales.order"},
-				Target:   semantic.Data{ID: "customer.customer"},
+				Source: semantic.Data{ID: "sales.order"},
+				Target: semantic.Data{ID: "customer.customer"},
 			},
 		},
 		SQL: "SELECT 1",
@@ -119,11 +119,11 @@ func TestExecuteRelationQueryRejectsBatchWithoutSize(t *testing.T) {
 		Steps: []query.ResolvedRelationStep{
 			{
 				Relation: semantic.Relation{
-					ID:         "sales.order.customer",
-					Keys:       []semantic.RelationKey{{SourceAttribute: "sales.order.customer_id", TargetAttribute: "customer.customer.customer_id"}},
+					ID:   "sales.order.customer",
+					Keys: []semantic.RelationKey{{SourceAttribute: "sales.order.customer_id", TargetAttribute: "customer.customer.customer_id"}},
 				},
-				Source:   semantic.Data{ID: "sales.order"},
-				Target:   semantic.Data{ID: "customer.customer"},
+				Source: semantic.Data{ID: "sales.order"},
+				Target: semantic.Data{ID: "customer.customer"},
 			},
 		},
 		SQL: "SELECT 1",

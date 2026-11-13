@@ -7,8 +7,8 @@ import (
 
 	"tei/internal/application"
 	"tei/internal/core"
-	postgresprovider "tei/internal/database/providers/postgres"
 	"tei/internal/database/persistence"
+	postgresprovider "tei/internal/database/providers/postgres"
 	postgressqlgen "tei/internal/database/sqlgen/postgres"
 	"tei/internal/driver"
 	"tei/internal/driver/queryresult"

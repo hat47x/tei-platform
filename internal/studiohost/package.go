@@ -20,7 +20,7 @@ func (h *ReadOnly) ViewPackage(workspaceID, applicationID, packageID string) Pac
 	}
 	value, err := applicationview.BuildPackage(loaded.World, core.CanonicalID(applicationID), core.CanonicalID(packageID))
 	if err != nil {
-		return PackageResponse{Failure: &Failure{Code: "VIEW_FAILED", Stage: "view", Message: err.Error()}}
+		return PackageResponse{Failure: classifiedFailure("VIEW_FAILED", "view", err.Error())}
 	}
 	return PackageResponse{OK: true, Value: &value}
 }

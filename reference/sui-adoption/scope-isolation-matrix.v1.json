@@ -1,0 +1,235 @@
+{
+  "schema": "tei.conformance.scope-isolation-matrix/v1",
+  "source": {
+    "requirement": "ADR-0059 implementation gate 5 (hat47x/sui-sensemaking)",
+    "requirementPath": "01_Plans/adr/ADR-0059-saas-tenant-authorization-boundary.md",
+    "requirementText": "同じdocIdを持つテナント AとBを使い、GET/PUT/list/search/count/export/share/import/MCP/webhook/job/audit/cache/agent の認証情報について、越境のネガティブマトリクスを、統合テストとE2Eで固定する",
+    "authority": "sui-sensemaking",
+    "languageIndependent": true
+  },
+  "rules": {
+    "applicability": "該当機能があれば必須。機能を持たない経路は not-applicable と理由を書く",
+    "coverage": "covered は実試験名を1つ以上持たなければならない。uncovered は理由と担当を書く",
+    "evidence": "試験名は実在するソースファイルへ束縛する。改名したら本行列も更新しなければ検査が失敗する",
+    "doesNotProve": [
+      "合成FixtureやHTTP単体のPASSを、実Provider・実Postgresの越境遮断の証拠にしない",
+      "行列の網羅を、Ownerの意味受理や本番配備の資格にしない"
+    ]
+  },
+  "paths": [
+    {
+      "id": "get",
+      "route": "GET /docs/{doc_id}",
+      "status": "covered",
+      "tests": [
+        {
+          "repo": "sui-sensemaking",
+          "file": "03_Implement/backend/tests/test_docs_tenant_isolation.py",
+          "name": "test_same_doc_id_reads_only_active_tenant_payload"
+        },
+        {
+          "repo": "sui-sensemaking",
+          "file": "03_Implement/backend/tests/test_saas_e2e_tenant_isolation.py",
+          "name": "test_same_doc_id_different_tenant_returns_correct_payload"
+        },
+        {
+          "repo": "sui-sensemaking",
+          "file": "03_Implement/backend/tests/test_saas_e2e_tenant_isolation.py",
+          "name": "test_tenant_cannot_access_other_tenant_document"
+        }
+      ]
+    },
+    {
+      "id": "put",
+      "route": "PUT /docs/{doc_id}",
+      "status": "covered",
+      "tests": [
+        {
+          "repo": "sui-sensemaking",
+          "file": "03_Implement/backend/tests/test_docs_tenant_isolation.py",
+          "name": "test_put_updates_only_the_resolved_tenant_row"
+        },
+        {
+          "repo": "sui-sensemaking",
+          "file": "03_Implement/backend/tests/test_saas_e2e_tenant_isolation.py",
+          "name": "test_put_is_tenant_scoped"
+        }
+      ]
+    },
+    {
+      "id": "list",
+      "route": "GET /docs",
+      "status": "covered",
+      "tests": [
+        {
+          "repo": "sui-sensemaking",
+          "file": "03_Implement/backend/tests/test_docs_tenant_isolation_surfaces.py",
+          "name": "test_list_returns_only_the_active_tenants_documents"
+        },
+        {
+          "repo": "sui-sensemaking",
+          "file": "03_Implement/backend/tests/test_docs_tenant_isolation_surfaces.py",
+          "name": "test_list_cursor_from_another_tenant_does_not_reveal_rows"
+        }
+      ]
+    },
+    {
+      "id": "search",
+      "status": "not-applicable",
+      "reason": "SUIに検索routeが無い。追加した時点で covered へ変える義務が生じる"
+    },
+    {
+      "id": "count",
+      "status": "not-applicable",
+      "reason": "SUIに件数routeが無い。追加した時点で covered へ変える義務が生じる"
+    },
+    {
+      "id": "export",
+      "route": "POST /docs/{doc_id}/export-audit",
+      "status": "covered",
+      "tests": [
+        {
+          "repo": "sui-sensemaking",
+          "file": "03_Implement/backend/tests/test_docs_tenant_isolation_surfaces.py",
+          "name": "test_export_audit_of_another_tenants_document_is_not_found_and_not_recorded"
+        },
+        {
+          "repo": "sui-sensemaking",
+          "file": "03_Implement/backend/tests/test_docs_tenant_isolation_surfaces.py",
+          "name": "test_export_audit_events_carry_the_active_tenant_and_are_not_deduplicated_across_tenants"
+        }
+      ]
+    },
+    {
+      "id": "share",
+      "route": "document access metadata (visibility / policy binding)",
+      "status": "covered",
+      "tests": [
+        {
+          "repo": "sui-sensemaking",
+          "file": "03_Implement/backend/tests/test_document_access_rls_postgres.py",
+          "name": "test_identical_doc_id_across_tenants_stays_isolated_under_rls"
+        },
+        {
+          "repo": "sui-sensemaking",
+          "file": "03_Implement/backend/tests/test_docs_access_control_integration.py",
+          "name": "test_tenant_scoped_profile_denies_read_when_adapter_is_missing"
+        }
+      ],
+      "note": "RLS試験はPostgreSQLを要する。HTTP経路の越境は access control integration 側で固定する"
+    },
+    {
+      "id": "import",
+      "route": "PUT /docs/{doc_id} (imported payload)",
+      "status": "covered",
+      "tests": [
+        {
+          "repo": "sui-sensemaking",
+          "file": "03_Implement/backend/tests/test_docs_tenant_isolation_surfaces.py",
+          "name": "test_imported_payload_cannot_carry_tenant_authority"
+        }
+      ]
+    },
+    {
+      "id": "mcp",
+      "route": "MCP document read (stdio / http)",
+      "status": "covered",
+      "tests": [
+        {
+          "repo": "sui-sensemaking",
+          "file": "03_Implement/backend/tests/test_agent_credential_http.py",
+          "name": "test_same_doc_id_resolves_only_inside_the_credentials_tenant"
+        },
+        {
+          "repo": "sui-sensemaking",
+          "file": "03_Implement/backend/tests/test_agent_credential_http.py",
+          "name": "test_list_returns_only_granted_documents"
+        }
+      ]
+    },
+    {
+      "id": "webhook",
+      "status": "not-applicable",
+      "reason": "SUIにwebhook送信機能が無い。追加した時点で covered へ変える義務が生じる"
+    },
+    {
+      "id": "job",
+      "status": "not-applicable",
+      "reason": "SUIに常駐jobが無い。追加した時点で covered へ変える義務が生じる"
+    },
+    {
+      "id": "audit",
+      "route": "GET /admin/provision/audit (保存された監査の読み取り)",
+      "status": "covered",
+      "tests": [
+        {
+          "repo": "sui-sensemaking",
+          "file": "03_Implement/backend/tests/test_admin_audit_trail.py",
+          "name": "test_stage_b_read_api_is_tenant_scoped_while_stage_a_is_global"
+        }
+      ]
+    },
+    {
+      "id": "cache",
+      "route": "browser storage / server cache",
+      "status": "uncovered",
+      "reason": "browser保存は tenantId で名前空間化されているが、切り替え時の破棄を tenant 境界として固定する試験が無い",
+      "owner": "SUI のフロントエンド回帰試験"
+    },
+    {
+      "id": "agent",
+      "route": "agent credential (opaque / OAuth)",
+      "status": "covered",
+      "tests": [
+        {
+          "repo": "sui-sensemaking",
+          "file": "03_Implement/backend/tests/test_agent_credential_http.py",
+          "name": "test_ungranted_documents_look_the_same_as_missing_ones"
+        },
+        {
+          "repo": "sui-sensemaking",
+          "file": "03_Implement/backend/tests/test_agent_credential_http.py",
+          "name": "test_tenant_hints_in_the_request_are_never_trusted"
+        },
+        {
+          "repo": "sui-sensemaking",
+          "file": "03_Implement/backend/tests/test_agent_oauth_http.py",
+          "name": "test_the_same_subject_can_be_bound_in_two_tenants_without_seeing_each_other"
+        }
+      ]
+    }
+  ],
+  "extensions": [
+    {
+      "id": "tei-reference-route",
+      "route": "GET /docs/{doc_id}/tei/sui-reference",
+      "status": "covered",
+      "note": "ADR-0059の14経路に含まれないが、同じ境界を持つ経路として同じ負例を要求する",
+      "tests": [
+        {
+          "repo": "sui-sensemaking",
+          "file": "03_Implement/backend/tests/test_tei_sui_reference_tenant_boundary.py",
+          "name": "test_reference_route_serves_only_the_active_tenants_artifact"
+        },
+        {
+          "repo": "sui-sensemaking",
+          "file": "03_Implement/backend/tests/test_tei_sui_reference_tenant_boundary.py",
+          "name": "test_reference_route_does_not_serve_another_tenants_binding"
+        }
+      ]
+    },
+    {
+      "id": "tei-epistemic-projection",
+      "route": "GET /docs/{doc_id}/epistemic/projection",
+      "status": "covered",
+      "note": "artifactの紐付けを tenant と doc に束縛する",
+      "tests": [
+        {
+          "repo": "sui-sensemaking",
+          "file": "03_Implement/backend/tests/test_tei_epistemic_tenant_route.py",
+          "name": "test_binding_of_another_tenant_is_not_served"
+        }
+      ]
+    }
+  ]
+}
