@@ -8,6 +8,7 @@ import (
 
 	"tei/internal/application"
 	"tei/internal/command"
+	"tei/internal/core"
 	"tei/internal/failure"
 )
 
@@ -92,5 +93,53 @@ func TestRunSequenceStopsAfterUnknownEffectEvenWithWarnPolicy(t *testing.T) {
 	f, ok := failure.AsFailure(err)
 	if !ok || !f.HasEffectUnknown() || f.Retryable() != failure.LookupFirst {
 		t.Fatalf("sequence lost effect uncertainty: error=%v", err)
+	}
+}
+
+func TestRunReachableDoesNotWarnOnUnknownEffect(t *testing.T) {
+	world := hookWorld("warn")
+	world.Applications[0].Patterns[0].Interaction.Hooks[0].Uses = nil
+	runner := Runner{
+		World: world,
+		Implementation: fakeImplementation{
+			err: command.NewUnknownExecutionError("COMMAND_COMMIT_FAILED", "ack lost", nil),
+		},
+	}
+	report, err := runner.RunReachable(context.Background(), "order_entry",
+		"order_entry.order_record", invocation().Reads, ReferenceReach{})
+	if err == nil {
+		t.Fatal("RunReachable continued after an unknown effect")
+	}
+	if report == nil || report.Refused != "before-update" {
+		t.Fatalf("unknown-effect phase was not refused: %+v", report)
+	}
+	if len(report.Warned) != 0 {
+		t.Fatalf("unknown-effect phase became a warning: %+v", report)
+	}
+	f, ok := failure.AsFailure(err)
+	if !ok || !f.HasEffectUnknown() || f.Retryable() != failure.LookupFirst {
+		t.Fatalf("RunReachable lost effect uncertainty: %v", err)
+	}
+}
+
+func TestRunRowsKeepsUnknownEffectAcrossBothWrappers(t *testing.T) {
+	world := hookWorld("reject")
+	h := &world.Applications[0].Patterns[0].Interaction.Hooks[0]
+	h.Scope = "row"
+	h.Uses = nil
+	runner := Runner{
+		World: world,
+		Implementation: fakeImplementation{
+			err: command.NewUnknownExecutionError("COMMAND_COMMIT_FAILED", "ack lost", nil),
+		},
+	}
+	err := runner.RunRows(context.Background(), invocation(),
+		[]map[core.CanonicalID]string{{"sales.order.status": "open"}})
+	if err == nil {
+		t.Fatal("row execution did not refuse an uncertain effect")
+	}
+	f, ok := failure.AsFailure(err)
+	if !ok || !f.HasEffectUnknown() || f.Retryable() != failure.LookupFirst {
+		t.Fatalf("row wrapper erased the called Command's uncertain effect: %v", err)
 	}
 }
