@@ -814,3 +814,23 @@ reply(A):        publish only if lane current AND captured generation/epoch/iden
 **実行証拠**：GitHubに3ファイル変更を作成し、Draft PRを起票した。Node 24の`npm run typecheck`、`npm test`、`npm run build`、生成Bundle/実WebView2/CLIは**NOT RUN**。CIと実環境の結果を同一HEADで収集するまでマージを保留する。
 
 **次の実装ゲート**：#4597のCI/型・テスト検証→#4515で`main.ts`へ明示Pin/Unpin/再確認のUIを結合→#4572生成Readerと#4579実Desktopの同一HEADでE2E→#2831 Build Graph。これ以上の独立Store/Policy Engineを増設しない。
+
+
+## 22. 2026-11-13 #4597のexact HEAD CI観測と次の修正条件
+
+[Pin状態遷移 Draft #4597](https://github.com/hat47x/tei-platform/pull/4597) HEAD `c9302d55c9d9759f95aeb61f5686fea114fd04ba`に対する [Workbench embedded bundle Actions #43385273632](https://github.com/hat47x/tei-platform/actions/runs/43385273632) を実ログで確認した。
+
+| 観測 | 実際の結果 | 採用できるClaim |
+| --- | --- | --- |
+| `npm test` | 27件PASS/0 FAIL（PIN-ABA-01〜06とUnpin負例を含む） | 現HEADのWorkbench単体テストでPin純粋状態遷移が成立 |
+| `npm run typecheck` | Step成功 | 現HEADのTypeScript型検査成功 |
+| `npm run build` | Step成功 | Workbench SourceからBundle生成は成功 |
+| `cmp reference/tei-studio-workbench/dist/main.js cmd/tei-studio/assets/workbench/main.js` | **FAIL**。byte 649340、line 18643で差異 | Desktop埋込みBundleのSource一致は**不成立**。生成成功をembed一致と呼ばない |
+| Cache Full vs Incremental | 同HEAD Workflow success | PinのDesktop実Consumerや埋込みBundle一致の代用不可 |
+| Windows Desktop Pin UI | **NOT RUN**（そもそも#4597ではUI未接続） | Pin UI/実WebView2の完成Claim不可 |
+
+**修正ゲート**：生成`dist/main.js`と埋込み`assets/workbench/main.js`の差異について、同じNode/esbuild/依存/Sourceのもとで差分を確認し、**生成物が現在Sourceから再現されること**を証明してから同期する。原因を「Pin状態モジュール追加」や「既存mainの不整合」と断定しない。生成JSを手編集せず、#4572/#4579と競合する生成物・Build RecipeのOwnerと調整する。
+
+**進行可能な範囲**：#4597の状態遷移コードは単体テスト・型検査の成功が確認できたため、レビューと#4515の`main.ts`局所UI設計へ進められる。ただしembed一致がFAILのままマージしない。CI再実行・差分修正後のexact HEADを別途検証する。
+
+**注意**：上記は実ログで確認した範囲。ほかのWorkflowの未完了/結果を推測してPASSへ加算しない。
