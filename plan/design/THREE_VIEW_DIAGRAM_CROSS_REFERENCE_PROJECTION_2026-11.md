@@ -1132,3 +1132,43 @@ M0/M1で一Relationの照合を成立させたら、[#1031](https://github.com/h
 | P1（編集・再生成） | #4538/#267/#2831/#4541 | 一意なSource SlotでのPreview/Acceptance/独立再読込と通常・生成Desktopのself-buildは別受入。Generic Core/Host必須化・未選択Provider物理混入の黙認を避ける |
 
 本§36は既存実装・exact-head CI・Issue/PR契約の照合から得た**研究・検収設計の更新**。X-TEA正確な実Sourceの再演、PIN-XWの実試験、Current Disclosure、正式TEI Meaning Mapping、元業務とTargetの同等性、Owner受理・ユーザー認知負荷比較は**NOT RUN / NOT ACCEPTED**。新Core Kind/Schema/Host/Policy/Runner/Plugin Registryや無条件のRequired Gateを追加しない。
+
+## 37. 三要素CRUDをサブシステムの更新責任へ昇格させる条件（2026-11-13、採用前）
+
+### 37.1 原典宣言・導出行・正式な更新責任・実Effectは四つの異なるClaim
+
+前節の実X-TEA Plugin [#4570](https://github.com/hat47x/tei-platform/pull/4570) の固定head `8d8f1439d260a3ebb0a633c2f2e040ab25b20cc4` を具体的に点検すると、`navigate.go` はX-TEA `.xead` のSource-backed `function-data-operation`ごとに **Source relation occurrence** を記録し、一時的な `threeelement.CRUDDefinition` を宣言粒度で生成する。続いてmainの `threeelement.GenerateCRUDTable` を呼び、同じFunction occurrence×Data occurrenceを原則1行の表示用CRUDへ投影する。現在の `GenerateCRUDTable` は重複pairの明示定義を内部mapで後勝ち格納するが、`ConflictingDeclarations` という要レビュー印を併せて付ける。X-TEA Pluginはさらに同pairの関係が2件以上なら `Conflicting=true` とする。**画面にC/R/U/D列が描けることと、業務的に確定した更新責任は同義ではない**。表示行の論理値・後勝ち選択だけをサブシステム分割の確定CUDへ接続しない。
+
+| 階層 | 既存の根拠・粒度 | 実際に使用できる判断 | 昇格禁止の境界 |
+| --- | --- | --- | --- |
+| **A. Source宣言** | `.xead`のIOTable→Function/DataとSource occurrence、Operation、Source digest／Reading rule | 原典の個別宣言が存在するというread-only事実 | Source ID/OccurrenceだけからAccepted CanonicalのIdentity/Ownerを作らない |
+| **B. 三視点導出行** | `function-data-operation`群→`threeelement.GenerateCRUDTable`、レビュー印、single-source coverage | Function×Dataの表示用CRUD候補と曖昧性の可視化 | 複数宣言・矛盾・未配置をOR/last-winsで確定値にしない。Action固有CRUDでもない |
+| **C. 論理更新責任** | 既存#267/#1120/#1127によるQualified Scope/Revision、Accepted Direct CUDとData Primary Owner、問相対Required closure | 分割候補の越境Direct CUD評価への資格付き入力 | Source Fact/候補/現在未開示の辺を確定Ownerや0 Writerに変換しない |
+| **D. Target実Effect** | 実Provider選択・Invocation、SQL/Rowset、Tx/Receipt、独立Readback（#2586/#1174） | 特定Attemptで観測した限定的な実動作 | Cの宣言・Generatorの出力・#4539のread-only RowsetだけでWrite/全件/成功Commitを主張しない |
+
+**非可換な操作**：宣言occurrenceの集合を単純に`Function×Data→boolean CRUD`へ集約し、その表からData Owner/越境CUDを計数する順序では、複数宣言の出典・相反するC/U/Dの値・Current Disclosure・必要Source欠落を復元できない。逆にOwnerの受理・Source/Rule・Directness・Closureを先に資格付けした上で集約するなら、**問いに限定した**既知Writer候補を安全に評価できる。この順序差は単なる表示選択ではなく、判断の正当性の差である。TEAに新しいCRUD SSOTや独立Validatorを加えるのではなく、既存ProducerのSource occurrence／review flag／coverage／AuthorityLimitsから未資格を保持して既存Ownerへ返す。
+
+### 37.2 サブシステム分割の条件付き最適性とTEAの表示責務
+
+[Subsystem Issue #3250](https://github.com/hat47x/tei-platform/issues/3250#issuecomment-6852946660) のSP-U01〜06は、既知のDirect CUD辺だけならAが最良でも、未確定辺の有無でBへ優劣が逆転し得る合成Expectedを設計している。`exact-for-supplied-graph`は**与えられたGraph**の探索資格であって業務全域の最適性ではない。未知の辺を列挙できていない場合、TEAは図上の空白・CRUD列空欄・Unknown/omitted/partialを「越境CUD=0」や「改善成功」に変換しない。
+
+有限で資格付け済みの仮説集合と共通のworld集合Ωがあるときだけ、候補pとqの差を各同一worldで比較できる。全worldで厳密にpが優る十分必要条件は `max_{ω∈Ω}(cost(p,ω)-cost(q,ω)) < 0`（同じ指標・単位・制約の下）。異なる候補を別々に区間化してから共通未知辺の相関を忘れた比較を、厳密な順位保証として報告しない。Ωが正当化できない場合はrank-indeterminateとし、**順位を逆転させ得る未資格なSource Relationの調査**を優先候補として示す。Private Sourceを順位算出へ混ぜて公開時だけ隠すことは[#2516](https://github.com/hat47x/tei-platform/issues/2516)に反する。認可された公開Sliceから問いごとの入力を構成する。
+
+### 37.3 最初の追加検収：同じ見た目でも異なる業務判断を導く反例
+
+| ID | Source／操作 | 独立Expectedと責務 |
+| --- | --- | --- |
+| **TEA-Q30** | 同一X-TEA Function/Dataに異なるIOTable CとUの宣言、AB/BA順序反転 | 関係occurrenceの数と種類は保持。CRUD表示の`conflicting`が真のまま、最終列値（後勝ち）が変わっても**確定CUD評価・Subsys順位へ連動しない**。X-TEA実Go回帰は#4570/#4615、意味粒度は#4472へ |
+| **TEA-Q31** | 同じC宣言を同pairに二重配置 | Source宣言2件と表示pair1件を区別。「実Write2回」や「更新責任2倍」を出さない。X-TEA PluginのSource occurrenceを残し、#3250既存SP-M2の評価経路に戻す |
+| **TEA-Q32** | 未読込Sourceまたは`.xeaf`にだけ存在し得る別Function/Action/Writer | single-source `coverage.complete`でも必要Source全閉包・業務Action/Runtime Effectはunknown。#4615の実Source/.xeafと#2586の実Providerは独立検収 |
+| **TEA-Q33** | before/afterでMap/CRUD上のCUD候補が減少したがSource Reader被覆も縮小 | 見た目のスコア改善を正式な責務改善へ昇格させない。#3250 SP-X25/26の観測差、Source/Revision/Disclosure同一性を先に照合 |
+| **TEA-Q34** | Graph/Layout/表示名またはSubsystem Snapshot Labelだけ変更 | Qualified Owner/Direct CUD不変なら責務移管・正式Renameと表示しない。#3250のSP-X23/24、#1120のIdentity/Lineage Ownerへ戻す |
+| **TEA-Q35** | W0で固定したPinを同一bytesのW1へ切替え、その先のCRUD/Source表で評価 | #4614のPIN-XW-01/02。Pinの保持と現在Scopeでの有効性を分離し、別Workspaceの同Digest/Occurrenceを同じ資格として再使用しない |
+
+この6件は**既存Ownerへの問相対Expectedの提案であり、新Go試験・新Renderer実行・実X-TEA Source／実DB EffectはNOT RUN**。同じテストを#3250/#4570のSource変更へ二重実装しない。粒度Ownerは#4472、Legacy Fidelityは#4615、Pinは#4614、Scope/Disclosureは#2516、論理Subsystemの順位は#3250、Independent Expectedは#2514とする。
+
+### 37.4 今回確定した状態と、実装順序
+
+- 旧§36のCI未完了表現は**記録時点の履歴**。PR #4487の直前head `2d97ca68ecc69d89ff5842716d811e7431b954b8` はGitHubで**Cache/Repository Health 2/2 completed/success**と確認。ただしこの§37を追加した新headのCIや設計Owner採用は別。
+- 実装優先は、(1) #4570/#4615でSource declaration occurrence→function-level CRUD表示の出典保持と実Source忠実性、(2) #4614でWorkspace/Sourceを跨ぐPin拒否、(3) #4472/#3250でMeaning/Direct CUDの資格後にだけ候補順位比較、(4) #2586の通常製品CLI/Studio Readを**並列**に接続する順。P0 Product ReadとStudioセルフビルドを、三要素分析Methodの追加仕様や#3250完全性の待ちで止めない。
+- TEA/StudioはSource Fact→Structural Candidate→Accepted MeaningとL/D/Tを区別する既存契約を使用。新Core Kind・Host・Graph SSOT・Role Resolver・Policy/Proof Engine・Updater/Transaction Oracleを導入しない。業務Owner受理、Current Grant、原典Source全文対応、実更新実行、認知負荷の定量効果は**未証明**。
