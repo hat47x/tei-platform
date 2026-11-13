@@ -146,3 +146,19 @@ MV-01の次の一手として、既存`internal/operations/model_catalog_validat
 **計画上の優先順（2026-11-13更新）**：P0の#4392はmain統合・統合コミット16/16成功まで確定。次は#4557の検証NGの二負例と#4521の正常Relationの各exact-head結果を別々に確認し、失敗したテストFixtureをProductの失敗と誤認しない。P1は#4329/#4393のRequired・Consumed証拠を各Ownerが独立に測定できる場合だけConsumerへ移す。P2は同じ条件で#4396の実CLI→Node/三視点と#1124の実Workbenchへ接続し、正しいUnknown・旧証拠失効・操作拒否を検証する。P3はセルフビルドの選択／実消費ArtifactやETL/MFTのManifest／Receiptに類似の証拠要件が反復した場合に、個別実行のOwnerへ**評価票だけ**を引き渡す。第二Reader/Runner/Host/Proof Storeや共通の`verified`状態は追加しない。
 
 **資格**：この節は既存の他担当Draftの記録・コード・CI上限を整理した研究計画。横断MV-12実行、Providerの真正な閉包、現行Policy、Studioの実UI、実Build/ETL業務Effect、Owner受理および認知負荷比較は **NOT RUN / NOT PROVEN**。
+
+## 7. 2026-11-13：モデル指紋とRoot実在の検証資格は別（MV-13）
+
+**新しい反証候補**：同じManifest・同じSemantic Source・同じcanonical subjectを固定し、Manifestに宣言した**未解釈の空Source Root**を「欠落」から「実在」にだけ変える。現在のLoader契約では欠落はerror、未知だが存在するRootはwarning。内容由来のWorld／Source Index／ModelRevisionが不変でも、**現在のValidation判定が変化するか**を実Go Product APIで直接試験する。
+
+| 意図的な変化 | 独立Expected | 誤った結論 |
+| --- | --- | --- |
+| `future`がManifestで宣言済みだが実ディレクトリなし | `Catalog/Map/Locate.validation.ok=false`、Root-only error、indexed Subjectのread-only閲覧は可能 | Catalogが読めた・Mapが描けたのでValidation合格 |
+| Manifest／Semantic byteは同一、空の`future`ディレクトリだけ追加 | `validation.ok=true`でunknown-root warning、構造的なModel MapのLinkは同じ | World/Index/ModelRevision FPが変わらないから、以前のValidation NGをそのまま表示 |
+| A/Bの構造・Source Identityが同値 | 対象Subject/Map Linkの**構造的な比較結果は保持可能** | Validation変化に連動して無関係なRelation／Identity／業務Effectまで改変 |
+
+**受入**：[#4616](https://github.com/hat47x/tei-platform/pull/4616) の`TestModelViewRootAvailabilityChangesValidationWithoutStructuralDrift`が既存`CatalogWorkspace`・`MapWorkspace`・`LocateWorkspace`・`ValidateWorkspace`を別Loadとして照合する。**現時点はCI実証待ちの研究・試験候補**。Fingerprint同値の実証は当該exact headでPASSした場合だけ成立とする。実UI／Watcher／Current Grantの実装をこのPRでは追加しない。
+
+**Studioへの引継ぎ**：#4510/#4515は、Pin/Inspectorで**構造の同一性**と**Validationの現在性**を別判定とし、旧表示値を無条件維持しない。実Source/Rootが変化したことを検知・再読取する手段が未証明なら、UIは現在のValidation OKを主張できない。原子的Loadと複数ConsumerのObservation/Disclosureは#1124/#2516の既存Ownerが別に評価する。
+
+**閉包と資格の限界**：存在する未知Rootは現Loaderに**未解釈**であり、その内容/Provider/Required/Consumedが完全であるとの意味ではない。warning-onlyのValidation合格を「全Source／全Role・Business Meaning／Effect合格」に昇格しない。対象外：自動Watcher、編集逆変換、新Proof Store、第二Validator/Reader/Host、正式なグローバルEpoch。実StudioとETL/セルフビルドの試験は **NOT RUN / NOT PROVEN**。
