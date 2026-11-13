@@ -713,3 +713,39 @@ type LocalPin = { intent: PinIntent; observation: PinObservation };
 - Source・Model・生成器・Pluginの改版で、古いObservationを新しい実行資格として再利用する。
 
 **引継ぎ成果**：#4515が最初に変更するファイル、保持する状態、受け入れる6つの正負Expected、#4572/#4579との同一HEAD統合条件が確定した。**コード変更・独立試験・Desktop統合はこの追補では未実施**。
+
+
+## 19. 2026-11-13 実コード再確認：Inspectの単一laneとPin再確認を分離する
+
+> #4515実装着手前のコード照合。対象は現行main `reference/tei-studio-workbench/main.ts` と `responses.ts`。この節は**既存Readerを複製しないための最小設計修正**であり、コード変更やテストPASSではない。
+
+### 19.1 観測された具体的な競合
+
+現行`inspect(subject)`は`responses.run("inspection", ...)`で**一時的な選択対象**の最新応答だけを表示する。内部では`selected`の変更、Inspector本文・Source Status・Graph・Noticeの更新が一つの操作にまとまっている。これをそのままPin再確認へ呼び出すと、**Pin Aを再確認しただけなのに、利用者が表示中のSubject BがAへ戻る**副作用が生じる。また、Pin Aの再確認中にBをInspectすると、同一`inspection` laneの後着抑制によってAの資格確認結果が捨てられ得る。
+
+逆に、Pinの状態へBのInspect応答を無条件に流すと、Pin AをBへ誤再束縛する。したがって、**選択Inspectorの応答laneとPin資格確認の応答laneは論理的に独立**させる。ただしProduct Reader、Host Root、Catalog/Source資格検査は同一の既存契約を利用し、第二Reader/Policy Engineを作らない。
+
+### 19.2 最小の実装方法（内部契約、公開ABIではない）
+
+1. `pin(selected)`は`workspaceId + Subject(kind,id) + workspaceEpoch`をIntentへ保存するだけ。現在のInspect応答を利用する場合も、発行時のSubject/WorkspaceとCatalog/Readerの一致を確認する。PinはInspector本文を自動的に複製しない。
+2. `reinspectPinned()`は`inspect()`を呼ばず、**同じ`client.inspectSubject`をread-onlyで呼ぶ専用のPin observation lane**を使う。例えば`responses.run("pinned-inspection", ...)`。結果は`readInspection`の既存契約で検査し、`selected`・Editor・Graph・Noticeを変更しない。
+3. `readInspection`の戻り値がPin IntentのSubject、Workspace/Catalog観測世代と一致する場合のみ、PinのObservationを更新。生成Readerの実装が切り替わってもこのReader契約を再利用する。失敗・曖昧・改版ならIntentは保持し、Observationだけ`needs-requalification`または`unavailable`へ移す。
+4. Workspace変更時は`responses.reset()`だけに頼らず、Pinの`originEpoch`と`workspaceId`も照合する。旧WorkspaceのPinを新Workspaceへ自動移植しない。再確認中のA→B→Aは同じIDでも新世代として扱う。
+5. 現在表示中のSource/GraphとPinの現在性は独立表示する。Pinの再確認成功をAI送出・Source Apply・現在Grant/Disclosureの許可と解釈しない。
+
+### 19.3 新しい独立Expected
+
+| Case | 操作 | Expected |
+| --- | --- | --- |
+| PIN-LANE-01 | AをPin、Bを選択表示中にPin Aを再確認 | Bの`selected`、Editor本文、Graph選択は変化0。Pin Observationだけ更新 |
+| PIN-LANE-02 | Pin Aの再確認を保留し、通常Inspect Bを完了 | Bの表示とAの資格結果が**互いのlaneを取消さない**。同じProduct Readerを使用 |
+| PIN-LANE-03 | Pin A再確認中にWorkspace切替、旧A応答が後着 | 新WorkspaceのPinへ再束縛0。旧Observationの現在資格復活0 |
+| PIN-LANE-04 | Pin A再確認のReader応答が曖昧/STALE_MODEL_PROJECTION | Pin IntentはAのまま。現在資格は不明/再資格化必要。Inspector Bの本文・Source Statusを上書き0 |
+| PIN-LANE-05 | AをUnpin/Undo後、旧Pin再確認応答が到着 | Undo後のPin Observationは未資格。旧応答で許可済み表示0 |
+| PIN-LANE-06 | `readInspection`を生成版へ切替、同一HEADでA/Bを別lane検証 | 生成部品が実使用されてもA/Bの誤表示・誤束縛0。生成byte一致のみでPin合格扱い0 |
+
+**実装Owner**：#4515で`main.ts`の最小状態とlane分離、`responses.ts`の既存API再利用を実装。#4572で生成Reader契約を確認、#4579で実Desktop Consumerへ接続。テストは`responses.test.mjs`のlane基礎試験だけで代用せず、**実Workbenchの`selected`・Editor・Pin Observationが同時に正しい**ことを検査する。独立Expectedの正本は#1180/#2514に接続する。
+
+**実装上の停止線**：Pinのために`inspect()`を呼んでFocus/Editorを動かす、Pin Aと選択Bの結果を同一laneで競合させる、旧ResponseをGrant/Effectの根拠にする、Source Revisionが不明な状態を`authorized`と表示する案は採用しない。
+
+**状態**：本節は現行コードから特定した競合と解消条件の計画反映。Pin実装、生成Reader統合、実Desktop/CLI試験は**NOT RUN**。
