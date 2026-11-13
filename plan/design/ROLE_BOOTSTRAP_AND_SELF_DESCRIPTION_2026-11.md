@@ -1345,3 +1345,57 @@ DS0とDS2は早期に並行し、DS1では最小のread-only部品だけを選�
 DS-N01〜04をDS0〜3の初回優先反例とする。観測列は Exact HEAD、Target/OS、Manifest・Source closure、実Build input、nested dependency、Stage1/Stage2 Process、Selected/Actual Builder、Artifact digest、Desktop実Consumer、独立ExpectedとClaim ceiling。第二のFixture/Receipt/Proof Registryは作らず#1180/#2514/#943/#2831の正本を参照する。
 
 **状態**：今回の追補はmainのWails Studio module/Bridge/self-build outerとmain統合済み#4539/#4534、既存#4486・#1824・#2831および関連チャットとの静的照合に基づく設計更新のみ。DS0〜3の実Build、Stage2再入、OS境界、通常tei CLI→Studio実PG受領、X-TEA Desktop Plugin E2Eは新たに実行していない（NOT RUN / NOT PROVEN）。#1119 G0〜G4を変更しない。
+## 27. 2026-11-13 Generated Desktopを最初の接合対象とする：既存CIの断線を最小化
+
+### 27.1 確認できる二つの実試験と、両者の間に残る具体的なEdge
+
+現在mainの `.github/workflows/tei-studio-wails-poc-a-ci.yml` の `generated-current-workbench-browser` は、PoC Bのfixture/Go staticservices/UIを生成→`connect-workbench.mjs`で現行Workbenchを固定Pin照合→`main.generated.ts`をesbuildでDesktop埋込先の `cmd/tei-studio/assets/workbench/main.js`へ出力→`studio_generated,server` tag付きGo HostをBuild→loopbackのChromiumでGraph/Command操作を検証する。Sourceと生成bundle等のdigestも記録する。**これは生成Workbenchを含むserver-modeの実Browser/Host Sliceであり、Windows Wails Desktop WebView2の実行ではない。**
+
+別の `.github/workflows/tei-studio-wails-desktop-webview-smoke.yml` はWindows 2022/Go 1.26.11で通常の `cmd/tei-studio` Wails DesktopバイナリをBuildし、`test/desktop_webview_smoke.py`を使ってWebView2を実操作する。現行JobのBuildは `go build -mod=readonly -o ... .` で、**生成候補専用の `studio_generated` tagと直前のPoC B/Workbench生成を含まない**。したがってこの二つのGreenを足して『生成したWorkbenchを実Desktopで使った』と主張しない。現行CIの完全な今次実行結果は別途exact HEADで確認し、Workflowコードの存在だけでGreenとしない。
+
+なお、`cmd/tei-studio/main.go`は `//go:embed assets` によって生成済みassetsを実バイナリへ収録する形式である。生成assetが存在すること、Buildがどのasset byteを取り込んだか、WebView2が実際にそのassetを表示したことは**三つの別観測**とする。`reference/tei-studio-workbench/build.mjs`にはesbuildの依存metafileとTHIRD_PARTY_NOTICES出力があるが、現行generated-current-workbenchジョブはesbuild直呼出しのため、配布時に必要な依存・ライセンス情報の保持範囲を別途照合する。
+
+### 27.2 最初の縦断試験を既存Jobの差分として実装する（#1824 Owner）
+
+| Step | 実変更・観測 | 明示的な失敗条件 |
+| --- | --- | --- |
+| **GD-0 現行主線を保存** | ordinary Windows WebView2実行とgenerated server Browserのそれぞれのexact HEAD、build tag、Go/Node/Wails版、実artifact/画面結果を保存 | 片方の成功を他方に転用しない |
+| **GD-1 原Sourceを固定して生成** | 既存`reference-studio-static-composition`→`compose-ui.mjs`→`connect-workbench.mjs`を**同一checkout/固定fixture**で実施。現行`main.ts`/Command/Responses/GraphのPin、生成Source/JS/Go blobとdigestを採取 | Unknown Workbench revision、依存不一致、改変済みderived output、pin bypassを拒否 |
+| **GD-2 生成assetを実Desktopへ** | GD-1で生成した `assets/workbench/main.js` と `services.generated.go` を保持し、Windows Wailsで **`studio_generated`（serverは付けない）** を付けて実exeをBuild。実Build image/Go module sum/asset digest/Targetを結び付ける | Windows/nested dependency失敗、Selected bundle Bなのに実exeがAを収録、通常Desktopを誤流用 |
+| **GD-3 実WebView2/IPC受領** | 同じexeを既存`desktop_webview_smoke.py`の入口で起動し、固定WorkspaceのGraph/Command等の**生成版だと識別できる表示・IPC呼出し・結果**を採取。read-only意味は既存`studiohost`へ委譲する | 画面だけ表示、偽Host、方法未登録、未知Failure、旧Process/旧assetへの接続、未実施をPASSにしない |
+| **GD-4 Self-Buildへ引渡し** | GD-2の実入力閉包を #2831 Build Intent/actual Builderへ接続し、Stage1 TEI image→Stage2生成Desktop exeの同一Attemptを追う | 外部スクリプトによる二度Buildや同digestだけではL3にならない |
+
+GD-1〜3は**既存PoC BとWindows smokeの組合せに限定した小PR**として #1824 が所有する。専用Runtime/Resolver/Host/CI Runnerを新設しない。Source PinやTargetに不整合がある場合は理由を記録し、無制限に新しいPinを受理させてGreenにしない。既存Jobが同じ範囲を既に実行していた場合は重複実装せず、そのexact HEAD/Attemptを採用して不足だけ補う。
+
+### 27.3 自己記述すべき最小のBuild関係（新DSL/Schemaではない）
+
+最初の自己記述は、LanguageやGeneratorの一般再帰定義ではなく、**特定のDesktop部品一件を構築する際の依存と選択の説明**とする。既存のBuild Intent/Target-neutral Planと、Source Index/Selection/Artifact Lockに、次の情報が届くかをread-onlyに調べる。
+
+| 既存の何を参照するか | 最低限追跡する識別子・関係 |
+| --- | --- |
+| Source / Definition | Workspace・Meaning/Subject・原WorkbenchのSource occurrenceとbyte/Revision、固定PinとRequired閉包 |
+| Plugin/Generator Selection | PoC B Generatorと実選択Implementation、入力fixture・Go/TSの契約と出力、未選択Pluginの非干渉 |
+| Transform / Derived Source | fixture→staticservicesとui.generated→main.generated.ts→esbuild JS、各入力/出力digestと実toolchain |
+| Target Build | Desktop target OS、nested Go module/go.sum、build tag studio_generated、実embed対象、actual builder実入力・exe image |
+| Consumer | 実Wails process/WebView2、呼出したStudioBridge method/typed API、固定Subjectと返答。read-onlyとCurrent Grantを別資格 |
+
+**接合点が無ければ新型を発明するのではなく、最初に不足した既存契約の入力・出力欄を明記する。** 例えば生成Sourceを実Builderの入力として外部から観測できないなら、Build Intentだけを正しい意味で書けたとしてもDS2に昇格しない。Derived UIのSource code/byteが同じでも、別Toolchain/asset packaging/実Host imageなら同じ成果物とは認定しない。
+
+### 27.4 最初の反例、他レーンの進捗、性能
+
+| Case | 変更 | 独立Expected / Claim上限 |
+| --- | --- | --- |
+| GD-N01 | Generated server browser成功、ordinary Desktop smoke成功、生成Desktop試験は未実行 | `generated-desktop`はNOT RUN。PASS加算禁止 |
+| GD-N02 | main.tsだけ更新・Command/Responses/Graph Pinが古い／生成bundleだけ古い | Pin/依存改版不一致を拒否。旧assetを実Desktopへ流さない |
+| GD-N03 | Go Serviceは生成版、JS assetは通常版（または逆） | 実Binary/asset/IPCの同一Selection/Revisionを証明できずFAIL |
+| GD-N04 | Linux server tag成功、Windows Desktop targetでnested dependency不備 | Windows Desktopの成功に昇格しない |
+| GD-N05 | Build graph宣言と実Build入力が異なる／build state非分離 | #4486の強制境界Wで観測できた範囲以外はunknown、SelfBuild L3不成立 |
+| GD-N06 | 生成したUI上のGraphだけ一致、意味Relation・Pin・Selected Providerが異なる | 表示同一からMeaning/実作用を推論しない |
+
+直近mainでは[#4550](https://github.com/hat47x/tei-platform/pull/4550)のRequired Consumerの間接依存探索、[#4552](https://github.com/hat47x/tei-platform/pull/4552)の実PG→Function Context計画反映が統合済み。前者はCaller申告Graph内の閉包に限られ、全Source universe証明ではない。後者は既存[#4539](https://github.com/hat47x/tei-platform/pull/4539)の実PG Reference成功を更新した計画で、製品`tei` CLI／Wails IPC実受領ではない。**GUIをBuildしてもDB/Relationの業務意味を勝手に自動受理しない。**
+
+X-TEAは参照元の歴史的名称として必要な範囲で使い、新規実装のPlugin/Capability命名はTEI体系へ揃える。三要素分析法（データモデル／機能モデル／業務モデル）はRole名三つに還元せず、Source位置・CRUD・参照多重度と原典の意味を保持。これらの本格Plugin移管、REA/SHO/AI連携、実PG/Wails双ConsumerはGD-1〜3のHard Dependencyではなく、同じSource/Typed Operation/Plugin契約へ段階的に追加する。
+
+性能検収では、generated server版とDesktop版のBuild時間・JS生成時間・不要Pluginの組込・manifest依存・差分変更時の再生成範囲を**実測後に比較**する。未計測の速度改善、全OS再現性、GUIの正式品質を約束しない。正式DSL字句文法／Unicode識別子／新Target ABIもここで採用しない。
+
+**今回の確認範囲：GitHub mainの既存2 Workflows、Workbench pin/adaptor、Studio Go embed/Bridge、Build Intent outer、他Issue/PRの静的読取と設計追補。** GD-1〜4の新規実Windows Wails Build／WebView2/生成Desktop/Stage2実行、Go/Node CI実行、Ownerの意味受理は **NOT RUN / NOT PROVEN**。#1119 G0〜G4変更なし。
