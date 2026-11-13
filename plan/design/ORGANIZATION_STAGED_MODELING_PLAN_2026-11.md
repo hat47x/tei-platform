@@ -929,3 +929,42 @@ WU-11〜14をWU-06〜10の「全部完了待ち」にしない。前段の**必�
 **Guard・Effect**：異動・委任・承認・Case引継ぎなど業務操作では、必要な条件（Required）、現在満たされた条件（Supplied）、不足条件（Missing）を既存Rule/HostのPreflightで比較する。条件未確認は許可扱いにしない。開始前の現在Grant、対象・Rule/Source/Provider版、Action Intent、Attempt/Operation ID、外部Effect/Receipt、ACKを分離し、レスポンス喪失後の無条件再実行や過去の承認資格流用を禁止する。業務完了・コミット不明時の扱いは#1129/#1174等の既存Ownerに委ね、組織専用Guard/Workflow/Authorization Runtimeは作らない。
 
 **最短受入と停止条件**：①r7の配賦/時点切替とCase C1移管の非連動を既存Expectedで確かめる、②同Subsystem ID/異責務・異ID/同責務候補の反例を既存#3250のRead-only比較と突き合わせる、③変更前後のCUD/Ownerを#4472の正しい索引と独立Expectedで照合し、未知依存ならunknown、④実Handoff/Grant/ACKは別Provider/Host試験に留保。図やSourceの一致、SHO説明、AI提案、CLIのPreview成功だけで実Effectを主張しない。実Org→Subsystem/Host接続の新しい実装・試験は**NOT RUN**。
+<!-- org-six-scope-headless-20261113 -->
+### 10.12 組織の所属とPlugin・B2C・外部Hostの適用範囲を分ける（2026-11-13、横断受入案）
+
+**今回の成熟差分**：§10.2〜10.11の組織意味・C1責任・実Read・開示の区別を、他レーンの「Everything is Plugin」「完全HeadlessなB2C」「生成AIによるSource編集」へ接続する。適用範囲を単一の「所属組織」や「Tenant」の親子Treeに押し込めない。次の六つは**受入時に確認する観点**であり、新Core enum・横断権限表・共通Host・新しいPolicy Engineの採用ではない。
+
+| 確認する適用範囲 | 誰が何を決めるか | 組織関係から推測してはいけないこと |
+| --- | --- | --- |
+| 配布（Distribution） | Publisher、配布先、Artifact/版、導入条件。既存Plugin/Delivery契約で評価 | 同じPluginが配布された = 対象アプリに組み込まれ、呼出可能 |
+| 設計・編集（Authoring） | 開発者/文書著者とSource変更経路。AIは対象固定・候補・Preview、通常の開発Reviewを利用 | Source編集可能 = 実行可能／業務意味受理済み／他Tenantの秘密を閲覧可能 |
+| 構成（Composition） | アプリが選択・束縛したContract、Provider、Version、Build Artifactと実Consumer | 配布済みまたは依存宣言あり = 実Load・Invoke・現在利用資格あり |
+| 組織（Organization） | 法人、OrgUnit、Person、Membership、Position、Responsibility、業務Role/時点 | 所属・兼務・後継関係・REAのAgent = Account/Principal/Tenant Grant |
+| 実行（Runtime） | Hostが検証したPrincipal/Tenant/Resource/Operation、現在Grant/Policy epoch、Effect/Receipt | 候補・事前表示・Source/Plugin一致 = 現在の実行許可／効果確定 |
+| 開示（Disclosure） | Consumer、目的、受信先、許されたData Slice、Export/ログ/診断/SHO/外部Harness送出 | DBの行が存在する／実行が許される = すべてのConsumerへ同じ内容を出してよい |
+
+**業務上の関係と利用資格を独立に保持する**：同じPersonが二つの法人・部門に関与しても、Membershipはそれぞれ独立したoccurrenceであり、複数Tenantの読取権・実行Grantを生まない。Person、利用者Account、認証Principal、B2C購買者、外部取引先、REA（Resource–Event–Agent）のAgentは、同一人物の可能性があっても、対応Sourceと業務Ruleなしに同一Identityとしない。B2C利用者を従業員のMembershipに押し込めず、独自Frontendから同じ型付きApplication APIを呼ぶことを正規経路として扱う。標準Renderer、TEIの必須Web Runtime、常駐Gatewayの追加を前提にしない（#3509、ADR-0048）。
+
+**一つのC1から組み立てるが、存在しないSourceを補わない**：既存 r7 SourceはP1/P2/P3、D1/D2、A1〜A4とvalid/knownを持つ。P2がD1/D2を兼務する**組織上の事実**はそのまま使う。しかしr7には「D1とD2が別法人・別Tenant」「購買者Account」「二つのHost Grant」を確定するSourceはない。そこを黙って補完せず、実証時には**Scenario overlayとして独立に追加した合成Tenant A/B、Consumer/Account、Host/Grant/Artifact**を明示し、元r7の正式意味・現行Sourceと区別する。Case C1/責任RやB2C購入操作の追加も同様に仮定として固定し、実Provider/HostのObservedを得るまでProduct実証と呼ばない。
+
+| 既存の独立検証を使う横断対照（新しいExpected正本は作らない） | 観測すべき差分と拒否条件 | 主担当 |
+| --- | --- | --- |
+| P2の兼務A2/A3は同じまま、Tenant A/BのGrantだけ片側なしにする | 組織Projectionは同じ、許可されない側の実Read/Effectは許可済みと表示しない。アクセス拒否/未検証と0件を区別 | #2386/#4490 BEH-05、#2903 SCOPE-1〜4、#1174 |
+| 同一Pluginの配布先をA/Bにし、CompositionでAだけ選択、またはAのみ旧版をLoad | Distribution、Selected、Built/Included、Advertised、Invokedを別に観測。Bへの配布だけでBのProvider実呼出・権限を認めない | #951/#1016、#2903 |
+| AIにSource編集を許すが、別Tenantの実データRead/業務Actionを与えない | Source変更候補と固定Selection/Previewは可。実データの取得・Disclosure・Effectは現在の別資格がなければ不可 | #4515/#4501 CX-07〜09、#2516 |
+| P2の「組織上の担当」と、別ConsumerのB2C購買者を対応付けない二入力 | 同じ氏名・メール・Agent表示でPerson/Account/Principalを統合しない。Headless UIのRead/Actionは独立したConsumer・主体・対象Bindingで判定 | #2386/#2510、#3509、#1158 |
+| 同じ業務キーのデータをTenant A/Bにそれぞれ置き、read cohortとresourceが異なる | キー一致やRowset形状一致からTargetやRecord同一性を推定しない。Provider/alias/Scope/実Rowset・Consumerを同一Attemptで照合 | #2586/#2506/#2622、#2903 JOIN-01〜06 |
+| C1承認候補を先に求め、Grant撤回後に実行し、効果の返信も失われる | 候補や事前Grantから最終許可を推定しない。対象Resourceの現在資格とCommit/Receiptのunknownを分離、無条件再送しない | #4490 BEH-04〜06、#1174/#2499 |
+| B2C公開結果・SHO説明・外部Harnessの許可済みSliceを同じにして、非公開Fieldだけ変更する | Secret側変更でCount、診断、Tooltip、Export、ログに差が出るなら不合格。通常の組織Dataに一律の専用ACLは付けない | #4501 CX-10〜12、#2516/#2020 |
+
+**実装順・証拠の合格上限**：
+
+1. **O0：意味と期待の固定**。#4490のBEH、#4501のCX、#2903のSCOPE/JOIN、#3509のB0〜B4を既存の独立Expectedとして照合。r7 SourceとScenario overlayを別表示し、複数Fixtureを同じ実行版に合算しない。正常系と各差分の期待は実装から逆生成しない。
+2. **O1：先行する実Readの利用**。#2586の通常 tei CLIから実Source→Environment→Provider Rows→Function Data Context→一Consumerの同一Attemptをまず完成させる。その成功を組織C1、複数Tenant、B2Cへ自動横展開しない。組織C1は必要な組織Source/Query/時点・Scopeを接続した後の別試験とする。
+3. **O2：構成と二Consumerの読取**。#1016の選択済みPlugin/Target実束縛を確認し、CLIとHeadless独自Frontendに同じ型付き契約を適用。UIが別でもSubject/Resource、Required Read、受領Sliceが一致する場合と、不一致で別資格になる場合を判別する。Browserや標準UIを全ConsumerのHard Gateにしない。
+4. **O3：現在実行と開示**。実Host/ProviderのGrant/Effect/Receipt・取消・用途別開示は#1174/#2499/#2516 Ownerが検証する。配布停止やMembership変更だけで既Commitが取り消されたとしない。別Tenantに関する許可を推測して実Runしない。
+5. **O4：モデルへの還元**。共通Data/Relation/Context/Plugin Contractで表現できなかった不足をFIT/GAPとして既存Issueへ返す。単純組織S1・純粋なPlugin D0・B2C完全Headlessの不要な依存を増やさない。Domain Ownerが意味/業務Ruleを、開発者がデータ設計・契約と実検証を担い、AI候補の採否は通常のReview/テスト工程で行う。
+
+**停止・撤回条件**：所属によるTenantの自動同一視、同姓同名によるAccount統合、配布=実Load=現行Grantという短絡、B2Cに標準UI/共通Hostを強制、保護項目の表示非表示だけでExport安全宣言、partial/permission deniedを0件と解釈、旧Receipt/Grantを現在へ復活させる、合成fixture PASSを実Host E2Eへ昇格する場合は、該当Claimを不適格としてOwnerへ返す。
+
+**状態**：本節は§10.1〜10.11を横断する**受入設計の追補**であり、新しい六Scope Core、Model/Plugin Writer、B2C実Consumer、組織C1実Provider、実Multi-Tenant/IdP/Host/Effect、CI実行、Ownerの業務意味受理は **NOT RUN / NOT ACCEPTED**。最優先のTEI Desktopセルフビルドおよび #2586 の実Readを阻害する新しいHard Gateにはしない。
