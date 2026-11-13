@@ -247,3 +247,30 @@ S0/S1/S2はK2-A/B/Cと**相互参照**するが、同じ試験に統合しない
 | SB7 | 未対応型・未取得・Protobuf Presence欠落を含むReader | Loss/UNKNOWNを明示し、完全性PASSを禁止 |
 
 **証拠状態**：SB1〜SB7は独立Expectedを定めた**計画（NOT RUN）**。実PostgreSQL Read等の先行成果は、その元コミット/CIの限定範囲でのみ認める。旧HEAD `428e1b07490d7ae8f87552d651782da960433d7f` のRepository HealthとCache Full vs Incrementalは2026-11-13確認時点**completed/success**。この後のHEADは別途CI確認する。
+
+
+## 2026-11-13 P0a探索結果・検証可能な引継ぎ票
+
+### 現時点で確認できた事実と探索の限界
+
+2026-11-13の現mainに対するGitHubコード検索（`ProviderSelection`、`selected_provider_id`、`FunctionDataContext`、`InvokeProvider`、`provider`、`ApplicationAPI`、`postgres`、`hook.Runner`）は、検索結果がすべて0件だった。**これは実装が存在しないことの証明ではない**。検索インデックス、Private/権限、検索APIの一致条件、命名差異による未発見を区別できていないため、P0aは**BLOCKED: source discovery unverified**とする。従来のチャット上の「実PostgreSQL Readがある」という整理も、今回の検索だけでは実コード位置を確認できなかった。
+
+### P0a引継ぎ用の最小証拠票
+
+| 対象 | 現在の観測 | 必要な追加証拠 |
+| --- | --- | --- |
+| main revision | この調査でmainのSHAを固定していない | mainの完全SHAと検索時刻 |
+| Capability/Offer | GitHub検索0件 | 定義ファイルと行、対応する契約テスト |
+| Selection/Binding | GitHub検索0件 | A/Bの選択ロジックと選択IDの伝播箇所 |
+| Build/Load | GitHub検索0件 | 実Providerロード箇所、Source/Manifest消費、版 |
+| Invoke/Effect | GitHub検索0件 | 実関数呼出しとHost Grant、Operation/Attempt ID |
+| CLI Reply/Consumer | GitHub検索0件 | Raw/typed受領、0件/partial/失敗、独立Expected |
+| SHO private Reader | 既存SHO #27の限定K1R成功 | K2実Provider呼出しの実Call Siteと独立Receipt |
+
+**再探索手順**：GitHub APIのインデックス検索を唯一の根拠にせず、現mainのリポジトリツリーを取得して、Go/DSLの対象パッケージ・既存CI・実テストの参照先をファイル単位でたどる。コードが見つかった時点で`main SHA / path:line / call edge / test / observed vs expected / unknown`を同一票に記録する。実Providerが未接続なら、まずテストで赤を再現し、最小Adapterだけを追加する。
+
+### 先行ゲートの取り扱い
+
+P0aがBLOCKEDの間、K2-Aを「着手可能」「既存実装あり」と推定しない。P0bのExpected・負例の計画作成は進められるが、実Provider経路の検証を経ない限り合格を宣言しない。StudioセルフビルドのS0/S1/S2も同様に独立の実行証拠を必要とする。
+
+**CI証拠**：旧HEAD `d3895a0bc2d6c664a6b58a834a5807bd41f247a5` のCache Full vs Incrementalは**completed/success**、Repository Healthは確認時点**in_progress**。この後のHEADのCIは別判定。
