@@ -472,6 +472,22 @@ SQL/NoSQL/ログ等のリバース結果は、**Physical Observation→Structura
 | REA-HO-04 | 新旧Functionは件数一致だがTenant別Key・NULL/金額・有効時点・ソート同値順位が異なる | 独立ExpectedでFAIL/unknown。Query/Provider選択や生成ログだけでは同値としない |
 | REA-HO-05 | SHOを保存後にSourceが改版、または外部Evidenceは同digestでも現在の開示権限が変化 | 著者文・元引用・Source参照の資格を別に再確認。旧Receipt・候補・Pinから自動再受理／外部送出しない |
 
+<!-- rea-product-locator-verdict-20261113 -->
+#### 正式参照への接続前に防ぐ二つの偽PASS（2026-11-13、実証資格の追補）
+
+**対象の存在と参照の有無は別の問い。** 実mainの`tei source-index -subject-kind ... -subject-id ...`では、改名後の不在Subjectにも`ok:true`・空`references`・exit 0を返す反例（#4577）が実測され、[修正PR #4584](https://github.com/hat47x/tei-platform/pull/4584)で既存`InspectionFromLoad`を使った正規Subject存在確認が提案・実装されている。REA候補からTEIのQualified Refへ対応付けるとき、**まず同一Workspace/Source版におけるCanonical Subjectの一意な存在を確認し、次にそのSubjectに紐づくSource引用・参照関係を検索する**。不在・Unsupported Kind・存在するが参照0・Index取得失敗・partialを別状態としてConsumerへ運び、空配列から存在・不存在・未使用を推論しない。#4584の固定HEADでActionsは8件中7件success・Repository Health 1件failure（本追補の確認時点）、main未統合。修正を現mainの正常経路として先取りせず、Source Index/EditorのOwner #4577/#3788へ検収を戻す。
+
+**Studio三視点のserver成功は外部REAのDesktop入場ではない。** [Draft #4570](https://github.com/hat47x/tei-platform/pull/4570)は共通操作→X-TEA固有Plugin→実選択されたGo Provider→Studio Bridge／server画面までを合成Workspaceで局所実証し、Source位置・`occurrence`・固定Pin・CRUDを保持する。ただし`occurrence`はIdentityではなく、外部REA Node/Relation IDともTEI Qualified Refとも別。#4570の固定HEAD Actionsは11件中9件success・Repository Health/Wails Host 2件failureで、実Windows Desktop・実X-TEA原典対象の適合は未検証。#4548の12 Workflow成功や別HEADの生成Inspector/Desktop #4572/#4587の成功を加算し、「同一のREA Candidateが実Desktopで表示・再選択・再受領された」とは判定しない。R3は`operations.ExternalCandidates`の**実同一Attempt**を通常CLIと独立Consumerで受領し、それぞれのApplication API route／Selected・Invoked・Received／Consumer digest・固定対象・Coverage/Unknownを確認する。三視点Pluginはその後に正式モデルのread-only照合へ接続する。#4548自体は現在open/unmerged。
+
+**REAという名前の区別**：外部逆解析ツールREAと、会計・業務分析法としてのResource–Event–Agent（資源・経済事象・経済主体）は別概念である。外部解析ツールが返す`Agent`や`Relation`を会計上のAgent／Event、TEI業務Actor、実Principal/Grantへ型名一致で変換しない。Resource–Event–Agentを扱う場合も、業務上の意味を検討するための任意Projectionとして、三要素分析法のFunction/Business・Source観測との対応をレビューする。新しいCanonical型・標準DSL・共通承認機構をここで採用しない（#1124/#2386/#3394）。
+
+| 追加反例（設計のみ） | 故障入力 | 必須の判別 |
+| --- | --- | --- |
+| REA-HO-06 | 旧Qualified RefのSource宣言は改名で消えたが`source-index`が空の参照配列で成功する。REA候補の名前は一致する | #4577/#4584の実CLI経路で`SUBJECT_NOT_FOUND`を確認。候補の一件採用・参照0＝未使用・Source更新を拒否。全件Index空とは分ける |
+| REA-HO-07 | REA R2契約CI、三視点server、生成Inspector Desktopがそれぞれ別HEADで成功する一方、三視点Wails/Repository Healthは失敗する | ClaimごとにTested HEAD/Transport/Source/Consumer/受領byteを照合。異なるHEADのPASSを合算せず、外部REA→実Desktop Candidate受領はNOT RUNに維持 |
+
+**採用と検証の優先順位**：#4584のSource Subject存否修正を#3788の通常参照操作へ接続すること、#4548のR2を現mainへ受け入れること、#3394でR3の実独立Consumerを測ることを**並列の小作業**とする。#4570の三視点Pluginは実Wails/原典Sourceの検証を別Owner #1124で進める。保存Evidenceの現在開示は#4503、実Query→Contextは#2586の既存経路で継続し、REA R3や全Modeler完成でDesktopセルフビルドを止めない。REA-HO-06/07の製品縦断試験はこの追補ではNOT RUN。
+
 **実施順と既存Owner**：R2 #4548のexact-HEAD/full CIとmain採否→R3 #3394で通常CLI＋独立Consumer受領→#1124/#1125で一件のread-only対応Preview・Ownerによる通常Source編集→#2586/#2387と#2514/#1180で固定Functionの実Read・旧新独立Expected→SHO側の保存/再読取。保存Evidenceの実体と外部開示は#4307/#4503、実行・権限・Effectは#1174、Schema/移行切替は#4125へ委ねる。REA 6.9.0の選択読取・欠落リンク・ページングの版別検収は#3394/#4561に残し、#4257の6.7/6.8合格を継承しない。**ここでは追加のEngine/Registry/正式DSL/承認システムも、Desktopセルフビルドや#2586を止める新Gateも導入しない。**
 
 **検討中の横断追補（DBアクセス・Query/2way SQL）**：対象DataSourceの既存Binding解決、DB別Native SQLの選択規約、SQL編集時の診断と分岐検証、異種DBでの意味同値性を、[DBアクセス・Query選択・2way SQLの最小適合計画](https://github.com/hat47x/tei-platform/issues/2622#issuecomment-6772875802)で小さな実証へ分解する。#2611・#2622・#2387・#2667に既存の責務を残し、新しいCore API・正式DSL構文・実DB対応の採用・完了を意味しない。
