@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"unicode"
 )
 
 // inspectJSONKeys rejects repeated object keys at every depth before the
@@ -48,7 +49,7 @@ func walkJSONObjectKeys(dec *json.Decoder) error {
 			if !ok {
 				return errors.New("JSON object key is not a string")
 			}
-			canonical := strings.ToLower(key)
+			canonical := simpleFoldJSONKey(key)
 			if keys[canonical] {
 				return fmt.Errorf("duplicate or case-shadowed JSON key %q", key)
 			}
@@ -70,4 +71,27 @@ func walkJSONObjectKeys(dec *json.Decoder) error {
 	default:
 		return fmt.Errorf("unexpected JSON delimiter %q", delim)
 	}
+}
+
+
+// simpleFoldJSONKey canonicalizes each Unicode simple-fold equivalence class.
+// encoding/json matches struct fields with Unicode simple folding, which is
+// broader than strings.ToLower: "scope" and "ſcope" address the same field.
+// A map keyed by strings.ToLower therefore permits a later declaration to
+// overwrite an earlier one without a duplicate-key error. This normalization
+// is deterministic and linear in key length; it does not infer any domain
+// meaning from the JSON document.
+func simpleFoldJSONKey(key string) string {
+	var folded strings.Builder
+	folded.Grow(len(key))
+	for _, r := range key {
+		min := r
+		for next := unicode.SimpleFold(r); next != r; next = unicode.SimpleFold(next) {
+			if next < min {
+				min = next
+			}
+		}
+		folded.WriteRune(min)
+	}
+	return folded.String()
 }
