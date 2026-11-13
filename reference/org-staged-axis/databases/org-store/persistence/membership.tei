@@ -7,7 +7,9 @@ persist org_store.membership {
     column organization.membership.org_unit_id -> org_unit_id storage varchar required
     column organization.membership.allocation -> allocation storage decimal optional
     column organization.membership.valid_from -> valid_from storage datetime-tz optional
+    column organization.membership.valid_to -> valid_to storage datetime-tz optional
     column organization.membership.known_from -> known_from storage datetime-tz optional
+    column organization.membership.known_to -> known_to storage datetime-tz optional
 
     primary-key organization.membership.membership_id
 }
