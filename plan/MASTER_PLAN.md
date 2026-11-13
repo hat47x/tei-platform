@@ -412,6 +412,24 @@ SQL/NoSQL/ログ等のリバース結果は、**Physical Observation→Structura
 
 **検収順**：P0は#4472/#4475の正負回帰＋#3788の既存Source Indexから一Subjectの参照元・参照先一覧（Scope/unknown付き）をCLIで確定、P1で#4515のSubject Pinを利用したStudioキーボード移動と独立同値検証、P2でREA Observationと正式参照を並列表示し、SHO/変更影響・モデル統計に接続する。未受理外部Graphの一部取得を「全体把握・全件未使用確定」とは呼ばない。
 
+### 2026-11-13／REA受領のmain統合後：実Consumer・参照完全性・Desktop優先の受入順（#3394）
+
+**実装済みと未実証を区別する**。外部逆解析REAの版別Protocol検査（#4257）、外部EvidenceのReceiver／Candidate Reader（[R1 #4547](https://github.com/hat47x/tei-platform/pull/4547)）は**main統合済み**。後段の型付き`operations.ExternalCandidates`（[R2 #4548](https://github.com/hat47x/tei-platform/pull/4548)）は2026-11-13確認時点では**open、main未統合**であり、選択されたObservation 1件＋有向Relation 1件の実Go試験や固定Evidence ID／raw digest／producer-declared Source Revisionの一致を、CLI・Studio・独立Harnessが実受領した証拠と混同しない。旧#4322の大規模差分は丸ごとマージしない。R1のReaderが扱う外部REA Observation/Relationは、三要素分析法やResource–Event–Agentという別概念へ無条件に写像しない。
+
+**三要素分析法の基底修正を再利用**：[#4513](https://github.com/hat47x/tei-platform/pull/4513)のData索引、[#4534](https://github.com/hat47x/tei-platform/pull/4534)のCRUD矛盾の列挙と`ok`の資格分離、[#4551](https://github.com/hat47x/tei-platform/pull/4551)の明示CRUD-only組の投影・`UnusedData()`補正、[#4507](https://github.com/hat47x/tei-platform/pull/4507)／[#4524](https://github.com/hat47x/tei-platform/pull/4524)のFingerprint純粋性／同種ID衝突、[#4514](https://github.com/hat47x/tei-platform/pull/4514)のDiagram Source-only drift検知はそれぞれ限定範囲でmain統合済み。従来の「#4472/#4475はすべて未修正」という読替えはしない。ただし実Studio／SHO／AI Consumerでの行・矛盾・unknown・参照件数の同値、未使用確定、編集資格までが実証されたわけではない。
+
+**次に進めるR3実Consumerの条件**：#4548が最新HEAD・必要CI・Source範囲を固定してmainへ受理された後、既存共通read-only Operation（#1158/#3419）を通して、(A)実CLIと(B)別プロセス・別入口のStudioまたはMCP Consumerが**それぞれ実際に同じ限定候補を呼び出し・受領**したことを観測する。CLI JSONの再印字／同じGo単体試験を別名で実行したものは第二Consumerでない。元raw byte／受領digest／Evidence・Tool版／Attempt／Source位置・外部Node・Relation ID／edge方向／Coverage・Unknown・Unselectedを照合する。CLIでのローカル`EvidencePath`受領をStudio／Harnessへ任意Pathアクセスとして広げず、既存Workspace Root allowlist・限定Fetch／用途別Disclosure（#4503、#2516）に従う。**Pinは選択意図であり、元Sourceの現在性・Host Grant・外部送出許可・正式意味受理ではない**。Pin不一致、Source改版・同Root名別実体・A→B→A、同名別ID、平行辺・ID重複ではsilent retargetを拒否する。
+
+| 既存受入ケース | R3で要求する独立Expected | 成立しない主張 |
+| --- | --- | --- |
+| XS-08／REA-STORE-01 | CLIと独立Consumerが同じ保存Evidenceから選択1+1を実Callし、同じraw digest・Attempt・外部ID・方向・unknown/Unselectedを受領。実受領の記録は入口ごとに別 | JSON表示一致だけで二Consumer実Call完了 |
+| REA-REF-01/02/03 | 参照元/先と件数にSource Kind・Scope・Revision・Coverageを併記。0件の`unused`確定は問合せ対象のRequired Dependency Closureがcompleteのときに限る | REAのpartial/権限外/Plugin未解析を参照なしと断定 |
+| REA-REF-04／REA-X-05 | 元Source変更・同一表示別Root・同名別ID・ABAでは古いPin/後着Replyをcurrentへ昇格しない | digest/モデル名一致だけで現在の編集・送出資格 |
+| REA-REF-05／REA-X-04 | 修正済み三要素Productの明示CRUD-only・矛盾・同Kind ID重複を実Consumerへ流し、描画用`parent:`辺を正式Relation Pinとして採用しない | 1+1候補を業務CRUD・全Graph・Accepted Meaningと扱う |
+| REA-MAP-03/05/10 | 外部観測にない列をTEI定義から削除せず、正式Field削除の影響PreviewとSHO著者編集を別々に保護する | External Candidate／DB DDL／文書再投影の自動成功 |
+
+**製品優先順位**：最優先はTEI Studio Desktopの実Wails接続とTEI自身のセルフビルド（#1824/#3421）。#2586の実Function→Provider→Rowset ReadとScript起動のpure Entry実証も並行P0であり、REA R3／SHO／全外部Graphの完成をHard dependencyにしない。R3は既存Desktop経路のRead-only Consumerとして段階的に足し、新Host・第二Parser・専用意味受理Engine・Evidence正本を増やさない。これらのR3 Product E2E、Source現在再読取、実Storage送出・Grant、Owner意味受理は**本追記時点でNOT RUN**。実装担当・試験実施・結果更新は#3394、#3788、#4515、#4472、#4503の既存Ownerに戻す。
+
 **検討中の横断追補（DBアクセス・Query/2way SQL）**：対象DataSourceの既存Binding解決、DB別Native SQLの選択規約、SQL編集時の診断と分岐検証、異種DBでの意味同値性を、[DBアクセス・Query選択・2way SQLの最小適合計画](https://github.com/hat47x/tei-platform/issues/2622#issuecomment-6772875802)で小さな実証へ分解する。#2611・#2622・#2387・#2667に既存の責務を残し、新しいCore API・正式DSL構文・実DB対応の採用・完了を意味しない。
 **2026-11-09／Product Queryの物理入力乖離を解消（独立Source Fixture段階）**：[Workbench設計§22](design/DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)と[隔離PG Product Fixture](../examples/data-source-workbench/README.md)に、既存`postgres_seed.sql`の`sales_order`4列と、実`order_entry.recent_orders` SQLが要求する`public.orders`5列＋`:from`の**物理Schema不一致**を反映した。従来F-01〜10を壊さず、専用`recent_orders_product_seed.sql`を別Sourceとして追加し、3行／境界一致2行／後方0行の独立Source-static ExpectedをGoで判別する。**これは実PostgreSQL接続・Provider Invoke成功ではない**。最初の未成立実行辺は、固定Function/Queryの実Consumed SQL+args→Alias/物理Instance/Provider→実Rowset/Function Data Context。Ownerは#2586、実ProductのCLI/Studioは#1251、Schema適用は#2892。main #3540の静的Inspector S2-referenceは実CLI/Wails経路まで前進したが、外部Plugin Build/Grant/2×2実BOMを証明せず、異質JSONLは後続比較とする。新Gate/Host/Query正本なし。
 
