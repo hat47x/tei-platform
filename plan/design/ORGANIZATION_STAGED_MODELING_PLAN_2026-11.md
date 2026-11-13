@@ -382,6 +382,16 @@
 | 停止条件 | SQL実行・実Provider Rowset・Row Scope 強制が必要になった場合（#2586/#2622/#1656） |
 | 要求ロール | `implementer` |
 
+**2026-11-13 実Query境界の設計修正／独立Draft [#4567](https://github.com/hat47x/tei-platform/pull/4567)**：実Source `reference/org-staged-axis` の `as_of_membership.tei` を点検したところ、`known_from >= :known_from` は既存r7の「把握時点までに知り得た所属」という合成Expectedと逆方向であり、`valid_to`/`known_to`未評価、`organization.membership`と物理Mapping `public.org_memberships` の不一致も判明。候補PRで両時点の半開区間、物理TableとPersistenceの終了列を整合する。ただし半開区間とNULL上限の採用はこのfixtureの**試験仮定**であり、汎用TEI Coreの無条件の意味確定ではない。
+
+| 経路 | このPRで確認したいこと | 未成立の条件 |
+| --- | --- | --- |
+| Go Product Loader→Native Query→Postgres parameter binder→instrumented SQL driver→Result Mapping | 現行SourceのWHEREと引数／AliasとSemantic出力を実機構で検証。Mock SQL driverはWHERE評価をしない | 実DB行数・隔離/権限、Function Data Context、Consumerへの実受領 |
+| 明示隔離PG `tei_org_axis_e2e` opt-in | テスト専用の相異なるMembership IDでvalid/known上下端と配賦しきい値の実行結果を独立Expectedに照合 | CIで自動の実PG接続、権限/Scope、同一Occurrenceの遡及訂正の複数履歴行 |
+| r7のA2有効期間の遡及訂正 | 現行合成NodeでknownAt変化による4件→3件・3.0→2.4 FTEは検証済み | **物理PKがMembership ID単独**なので、同一Occurrenceの訂正前後版を同じ物理Tableへ保存できない。History/版キー/不変ID/Source観測時点の決定が必要 |
+
+**実装の次段受入**：①#4567のNode既存Expectedに反しない製品Query Bindingと実PG半開区間を限定合格、②現行DB Persistenceで同一Membership IDの異なるknown版を併存できない負例を実測、③履歴ID・保存方式の候補を#2510/#2386と既存DB Ownerへ提示、④採用後にr7/A2の前後を同一Provider Read Cohortで実取得して#2586のFunction Context／Studio/SHOへ接続。不可視Row・partial・未受理時点条件から「該当0件=不存在」は導出しない。#2586 P0を本検証で遅らせない。**#4567は独立Draftであり、この時点でCI・実PG・Owner意味受理は未確認**。
+
 ### WU-08 遡及訂正と辞令イベント（S3）
 
 | 項目 | 内容 |
