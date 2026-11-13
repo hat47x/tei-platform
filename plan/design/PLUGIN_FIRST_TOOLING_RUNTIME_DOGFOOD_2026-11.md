@@ -911,7 +911,7 @@ H0/H1はStudioセルフビルドの先行必須条件ではない。H3/H4の既�
 | **HG-10** | `uses`ありのbefore位相でReference Ruleが`NotSatisfied`を返す。effectfulなCallerの実Call数を数える | Guard-firstを要求するBindingなら実Call **0**。先行実Callがあれば現行意味との差を報告しGraph適格化は拒否 | #1129/#4198、#1180/#2514 |
 | **HG-11** | 同じCapabilityを`uses`と`Guarded.RunWithCaller`が呼ぶ構成 | 正常時の許された呼出し数を明示し、予期しない2回をFAIL。Row Scope 2行では「各行1回」と「全体2回」を区別 | #1129/#1251、#1174 |
 | **HG-12** | 同じ宣言を`Run`／`RunSequence`／`RunReachable`／`RunRows`で試す | 意図した入口差（Reach/Row/呼出し義務）のみ許容。Result一致だけでEffect同値を宣言しない | #1129/#4198 |
-| **HG-13** | 下位Commandが`CommitUncertainError`を返し、Hookが`HOOK_REJECTED`で包む | 最外CLI/Studioの分類が`lookup_first`かつ`effectUnknown=true`を保つ。外側Hookの`false`で消さない | #3807/#1174/#1158 |
+| **HG-13** | 下位Commandが作用不明の`ExecutionError`を返し、Hookが`HOOK_REJECTED`で包む | 共通`failure.Failure`の分類が`lookup_first`かつ`effectUnknown=true`を保つ。外側Hookの`false`で消さない | #1174/#1158、実装参照PR #4315 |
 | **HG-14** | `on-failure warn`で実作用不明の下位呼出しに到達 | WARNだけで後続Effectを継続しない。Operation Identityで照会・再評価するまで再送禁止 | #1129/#1174 |
 | **HG-15** | 完全に取得した0行と、Rows未供給/partial/permission-deniedを対照 | いずれも「呼出し0回」でも、適格性と診断は別。未知を空集合へ潰さない | #3262/#2586/#1129 |
 | **HG-16** | selected B→actual A／旧Providerに更新、または実Builder外のDependency更新 | Hookの`Called`や生成TSのbyte一致だけではQualifiedとしない。実Artifact・Entry・Consumer・Target別に拒否 | #951/#1251/#2831 |
@@ -919,3 +919,5 @@ H0/H1はStudioセルフビルドの先行必須条件ではない。H3/H4の既�
 これらは**既存#1180/#2514の独立Expectedへ渡す候補**であり、新Scenario正本や新Graph Engineの実装宣言ではない。最初の実施はHG-10/11/13（effectful Hookを実Targetへ渡す前の安全性）とHG-15（read-only Data/Rowset境界）に絞る。修正案は#1129（業務Hook/作用）、#3807（Failure共通契約）、#1251（実Plugin）、#4198（Graph合成）の担当範囲で設計する。TEI Studio生成部品の既存#4572/#2831、X-TEA三視点#4570/#1124、実Function Read #2586を、このHook整理が済むまで停止させない。
 
 **証拠資格**：現在mainのHook・Failure SourceをGitHubで静的読解。上述HG-10〜16のGoテストと本番Provider/実Effect、実Desktop、Graph Compilerはこの追補では**NOT RUN**。コード上の潜在的な順序・二重実行・Failure伝播の懸念を、実行済み事故や検証済み回帰と混同しない。
+
+**HG-13/HG-14の実装状況（11/13追記）**：[Draft PR #4602](https://github.com/hat47x/tei-platform/pull/4602)が、Hook Errorの下位Failure伝播とEffect不明時のwarn継続拒否を局所実装し、RunSequence/RunReachable/RunRowsの回帰試験を追加している。**Draft・未マージ**であり、実DB Commit/二重呼出し（HG-10/11）やDesktop E2Eの合格は主張しない。#3807はCLI失敗符号統合の完了Issueであり、今回の実作用Hookの実装Ownerに置かない。
