@@ -10,6 +10,7 @@ import (
 	"tei/internal/core"
 	"tei/internal/dependency"
 	"tei/internal/knowledgecontext"
+	"tei/internal/operations"
 	"tei/internal/plugin"
 	pluginruntime "tei/internal/plugin/runtime"
 	"tei/internal/validation"
@@ -231,6 +232,17 @@ func sourceIndexJSON(out io.Writer, workspacePath, worldPath, subjectKind, subje
 	}
 	inspection, mode, err := buildSourceIndexInspection(workspacePath, subjectKind, subjectID)
 	if err != nil {
+		// Match inspect/trace's canonical identity failures: absence or
+		// ambiguity is a failed subject lookup (exit 1), not a successful
+		// empty Source Index nor a generic index-build error.
+		var subjectError *operations.InspectionError
+		if errors.As(err, &subjectError) {
+			exitCode := 2
+			if subjectError.Code == operations.InspectionNotFound || subjectError.Code == operations.InspectionAmbiguous {
+				exitCode = 1
+			}
+			return emitResult(out, resultFailure("source-index", subjectError.Code, err), exitCode)
+		}
 		var stage *sourceIndexStageError
 		code := resultCodeSourceIndexFailed
 		if errors.As(err, &stage) && stage.Stage == sourceIndexStageLoad {
