@@ -799,3 +799,18 @@ reply(A):        publish only if lane current AND captured generation/epoch/iden
 **担当**：#4515がローカルPin stateと実Workbench統合を所有。#4572の生成Reader、#4579の実WebView2、#2831のセルフビルドは各Ownerの証拠と同一HEADで接続する。新たな共通Session Storeや公開ABIは作らない。
 
 **状態**：この節は`responses.ts`の現在の保証と限界に基づく計画更新。実装・typecheck・Node/Browser/Windows試験は**NOT RUN**。
+
+
+## 21. 2026-11-13 実装着手の記録：Pin世代管理の純粋状態遷移
+
+[Draft #4597](https://github.com/hat47x/tei-platform/pull/4597)（base main、HEAD `c9302d55c9d9759f95aeb61f5686fea114fd04ba`）で、#4515の第一段階を**コード化**した。
+
+- `reference/tei-studio-workbench/pin-state.ts`：`initialPinState`、`pinSubject`、`unpinSubject`、`restorePinIntent`、`invalidatePin`、`pinRequest`、`acceptPinObservation`。同じSubjectを再Pinしてもgenerationが異なるため旧Reader応答を受理しない。
+- `pin-state.test.mjs`：PIN-ABA-01〜06とUnpin後の後着拒否、計7件の正負試験を追加。
+- `package.json`：Workbenchの標準`npm test`へ新テストを登録。
+
+**重要な制約**：これはUIと切り離した純粋状態遷移であり、現`main.ts`のPin操作・`responses.invalidate("pinned-inspection")`・生成Reader `readInspection`との実結合・Windows DesktopのPin E2Eは未実装。PinObservationの`inspected`はProduct Reader検査後にのみ呼出側が渡せる観測であり、Source/Grant/Disclosureの現在性を保証しない。従って**「Pin UI実装済み」とは扱わない**。
+
+**実行証拠**：GitHubに3ファイル変更を作成し、Draft PRを起票した。Node 24の`npm run typecheck`、`npm test`、`npm run build`、生成Bundle/実WebView2/CLIは**NOT RUN**。CIと実環境の結果を同一HEADで収集するまでマージを保留する。
+
+**次の実装ゲート**：#4597のCI/型・テスト検証→#4515で`main.ts`へ明示Pin/Unpin/再確認のUIを結合→#4572生成Readerと#4579実Desktopの同一HEADでE2E→#2831 Build Graph。これ以上の独立Store/Policy Engineを増設しない。
