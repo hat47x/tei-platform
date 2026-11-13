@@ -360,6 +360,40 @@ H0/H1と異質領域の要件探索は並行可能。H2/H4の実Effect資格は�
 **終了条件**：独立Expected・既知負例と一件のcurrent Source実消費を対応づけ、少なくともW01（構文）、W03（Grain）、W04（否定依存）、W06（編集拒否）の各一件で、期待通りに成立したClaimと`NOT PROVEN/NOT RUN`を明示できること。W02/W05/W07/W08は後段Ownerへの段階引渡し。修正行数・byte diff・誤修正・再生成時間は可能な範囲で実測し、AIのみの採点や未測定の可読性向上率を出さない。現状は**設計追補のみ／DSL-W01〜W08は新規NOT RUN、製品実装・正式意味受理は未実施**。
 
 
+
+#### DSLの振る舞い・時間・Traitを、表層構文から切り離して検証する（2026-11-13、他レーン統合）
+
+**追加の判断**：業務規則、Query、Decision、手作業、イベント処理、シミュレーションを、短いDSLの同じ文型へ押し込まない。必要な区別は (1) 構造と参照、(2) 振る舞いの意味、(3) 評価・時間進行の規則（Model of Computation）、(4) Targetでの実現方法。これらは検証時に独立させる**設計上の観点**であって、新しいCore enum／DSLキーワード／共通Simulatorを追加する決定ではない。第一縦断の正数・一意性Validationには不要な時間・状態契約を課さず、時間や状態に依存するSubjectにのみ明示した実装契約を要求する。
+
+| Subjectの例 | 意味と評価の必要条件（候補） | 自動的に同値としないもの | 主な既存Owner |
+| --- | --- | --- | --- |
+| 純粋な数値計算・Validation | 演算子・型・精度・丸め・NULL/未取得方針と評価Scope | 同じGo数値型／同じ最終値だけの一致 | #988、#1063、#4361〜#4367 |
+| Query・関係集約 | 業務Identity、粒度、Snapshot、必要全件性、非出力列を含む要求依存 | Rowset 0件と不存在、JOIN行とEntity、SELECT列だけの依存 | #2506、#2586、#2387 |
+| 状態遷移・業務Command | 初期状態、Guard、遷移順、同時発生時の規則、失敗・再試行、観測可能なEffect | 最終状態が同じなら操作順や途中の外部効果も同じ | #1129、#1130、#4502、#1174 |
+| イベント／周期処理 | Event identity、時点・順序、遅着/重複、周期・タイムゾーン／時刻系、取消・再開 | 異周期の暗黙補間、時刻一致だけの順序確定、取消＝Rollback | #1063、#1130、#1180、#2514 |
+| Graph・動的シミュレーション | 参照辺と評価依存を区別。遅延／同時更新／積分ステップ／誤差許容／保存・再開が必要なら明示 | 循環するGraphの表現＝eager評価閉路の許可、別Targetの最終スナップショット一致＝軌跡一致 | #2495、#2620、#1063、#1121 |
+
+**原子的Traitとの接合**：[#3279](https://github.com/hat47x/tei-platform/issues/3279)／[#3278](https://github.com/hat47x/tei-platform/issues/3278)の方針を再利用する。構造を説明するRole、型やFacet、実装義務を課すAtomic Trait、実際の実装MethodとFulfillment、実Targetの観測、Host Grantを区別する。たとえば「チェックポイントから再開可能」を必要なTraitとして宣言したなら、単なる注記ではなく、選択Targetにおける具体的な保存・復帰操作と独立検証を要求する。手動実装必須の部分が未履行なら対象Compositionで unfulfilled、実装が存在しても試験未実施なら provided-but-unverified と説明し、既存Validator/Resolverの責務に渡す。未読込の必須Trait・競合Traitは「要求なし」や暗黙の標準実装にしない。Role宣言や trusted/pure の文字列によって現在のAuthorityを付与しない。これによりEverything is Pluginを守り、構文Parserにドメイン実装要件を組み込まない。
+
+**数値リテラルとSource忠実性**：Go式ASTを部分利用する候補A3でも、数字をGoの既定浮動小数点値として先に解釈し、金額・数量の意味を暗黙決定しない。原表層の数字の字句、単位・精度、選択した意味型、Operator版を区別し、Targetでは十進演算等の適格な実装へ明示Loweringする。表面上の 1.00 と 1 の同値は型・精度Facetの条件付きで判定する。小数点形式、指数表記、負値、丸め箇所をParserが推測して補正しない。要求のない桁数や税区分を便宜的に決定しない。数値一致だけでread-only評価、Java/Go出力、実Providerへの適合を一括PASSとしない。
+
+**他Domainで誤って同値化しないための反例**（既存#2514/#1180の独立Expected／試験記録へ渡す候補であり、新しいRunnerや正本ではない）：
+
+| ID | 一因子を変える対照 | 独立して検証すべき点・停止線 |
+| --- | --- | --- |
+| DSL-B01 | 金額候補を十進の 0.1 + 0.2 からGoの浮動小数点演算へ置換 | 独立に固定した十進Expectedと演算時点・丸めの区別。数値型選択と精度規則が未受理なら同値はNOT PROVEN |
+| DSL-B02 | 同じ最終状態だが2イベントの順序を入れ替える | 実Guard評価・中間状態・副作用の要求と観測列を比較。Stateだけの一致でイベント順序・Effect同値と言わない |
+| DSL-B03 | 遅着した同一Event／再送Operationと、異なる新Event | identity・時点・重複判定・取消/再開資格を区別。二度実行して同じ結果なら冪等と推定しない |
+| DSL-B04 | Graphに循環参照があるが遅延評価、対照はeagerなA→B→A依存 | 参照循環は表現として保持し、未許可のeager評価閉路を診断。自動固定点Solverを導入しない |
+| DSL-B05 | 異なる周期のSubjectを接続し途中状態から再開 | 時点換算・補間・イベント順序・状態Checkpoint／復帰の既存契約の有無を判定。未定義ならunsupported／NOT PROVEN。ゲーム/ロボティクス等の非業務Domainでも検証するが、実Godot/物理EngineをDSL P0の先行条件にしない |
+| DSL-B06 | 必須Traitのmanual-required未実装／generated対象なし／Provider未読込 | #3279のFulfillment／Required閉包に沿ってunfulfilled/unknownを判定。表層Roleがあるだけで受理・実Target対応にしない |
+| DSL-B07 | 同じSemantic/SourceからSimulation候補と生成Go Targetへ展開 | 同じ固定Expectedに加え必要な観測面（時点・診断・要求Read・中間状態）と実Target Artifact/実Consumerを別資格とする。Simulationの局所PASSで実Effect/セルフビルドは合格しない |
+
+**検証と導入の優先順位**：まず既存のS0〜S6でpure/read-onlyの2規則を通し、DSL-B01はS7/S8の型・式候補を評価する際の負例とする。続いて既存#1129/#4502の一状態遷移を、観測するEvent/Guard/Effectの範囲を決めてread-only比較する。DSL-B02/B03は現在のWriter・Receipt資格と切り離し、実副作用を観測する段階は#1174に委譲。DSL-B04/B05は非業務DomainのPressure Corpusと#1063へ引渡し、具体的なModel of Computationが必要になった時点でDomain Plugin／Target Contractで解決できるか判定する。DSL-B06を#3279、DSL-B07を#2831/#2514へ引渡す。P0のStudio Desktopセルフビルドには新DSL文法・Simulation/物理Engine・Trait汎用Interpreterを追加のHard Gateとしない。
+
+**判断を保留する事項**：同時刻イベントの優先規則、循環の評価方式、離散/連続時刻の統合、数値許容誤差や状態Checkpointの形式、Trait公開Schema、新たな自己記述Role構文は各Domain/PluginのRequiredに対して必要になった場合に比較・Owner判断とする。汎用Coreに先取りしない。ここでのケースは設計上の受入候補であり、**新Parser／Goテスト／実Game/Robot/Provider／Simulator／実Generated Target／Owner意味受理はいずれもNOT RUN・NOT ADOPTED**。
+
+
 ### 9.6 用途別に定義するDesign Contextの完全性と、テスト提案・表示・実行の資格（2026-11-07、横断追補）
 
 **主張別の完全性は一列の成熟度ではない**：同じSource/World/Functionでも「設計情報を使ってテスト候補を考える」「Providerの取得結果を検証する」「Function内で表現する」「書込みを実行する」は必要な証拠集合が異なる。すべてに実DB/書込みGrantを要求するとテスト設計や文書閲覧が不必要に停止し、逆に「read-only CLIの結果が完全」を全用途の実行資格に流用すると誤った自動化になる。標準データ構造・標準表現型・Function Contextは共通Carrierとして使うが、**Required ObligationとConsumed Evidenceを利用目的／対象Scope／Consumerごとに判定**する（#2619/#2507/#2497）。
