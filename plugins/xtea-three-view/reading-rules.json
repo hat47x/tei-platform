@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "three-view-reading-rules",
+  "status": "plugin-owned",
+  "purpose": "States which source constructs this plugin places in the Data, Function and Business views, which it reads as evidence of a relation or a field, and which it leaves unplaced. A placement is a structural candidate. It is not a transcription of a reference model and it accepts no meaning.",
+  "sourceProfiles": {
+    "xead": {
+      "rootKind": "System",
+      "supportedFormatVersions": ["1.2"]
+    }
+  },
+  "constructMappings": {
+    "xead": {
+      "System": {"classification": ["source-metadata"]},
+      "Table": {
+        "classification": ["three-view-data"],
+        "authorityLimits": ["view-placement-is-a-structural-candidate-not-an-accepted-entity"]
+      },
+      "TableField": {
+        "classification": ["three-view-field"],
+        "authorityLimits": ["source-field-is-not-an-accepted-attribute"]
+      },
+      "TableKey": {"classification": ["field-reference-evidence"]},
+      "TableKeyField": {"classification": ["field-reference-evidence"]},
+      "Function": {
+        "classification": ["three-view-function"],
+        "authorityLimits": ["view-placement-is-a-structural-candidate-not-an-accepted-function"]
+      },
+      "IOTable": {"classification": ["relation-evidence"]},
+      "IOPanel": {"classification": ["interaction-target"]},
+      "IOSpool": {"classification": ["interaction-target"]},
+      "Task": {
+        "classification": ["three-view-business"],
+        "authorityLimits": ["view-placement-is-a-structural-candidate-not-an-accepted-business-process"]
+      },
+      "TaskAction": {
+        "classification": ["three-view-business"],
+        "authorityLimits": [
+          "view-placement-is-a-structural-candidate-not-an-accepted-business-action",
+          "action-without-a-source-id-is-addressable-only-as-an-occurrence"
+        ]
+      },
+      "TaskFunctionIO": {"classification": ["relation-evidence"]}
+    }
+  }
+}

@@ -77,6 +77,12 @@ var studioFailureCodes = map[string]studioFailureClassification{
 	"SUBJECT_AMBIGUOUS":         {"business_rejection", "not_retryable", false},
 	"XEAD_UNSUPPORTED_FORMAT":   {"business_rejection", "not_retryable", false},
 	"XEAD_SOURCE_TOO_LARGE":     {"business_rejection", "not_retryable", false},
+	// The three-view request is refused as asked: the host has no Provider for
+	// it, or the named source is not one the selected Provider reads.
+	"THREE_VIEW_UNAVAILABLE":        {"business_rejection", "not_retryable", false},
+	"THREE_VIEW_UNSUPPORTED_SOURCE": {"business_rejection", "not_retryable", false},
+	"THREE_VIEW_SOURCE_TOO_LARGE":   {"business_rejection", "not_retryable", false},
+	"THREE_VIEW_SOURCE_REJECTED":    {"business_rejection", "not_retryable", false},
 
 	// The host or a provider failed. Whether anything was applied is not
 	// decidable from the code alone, so the caller must look the result up
@@ -90,6 +96,8 @@ var studioFailureCodes = map[string]studioFailureClassification{
 	"XEAD_SOURCE_READ_FAILED":       {"technical_failure", "lookup_first", true},
 	"XEAD_PARSE_FAILED":             {"technical_failure", "lookup_first", true},
 	"XEAD_PROJECTION_FAILED":        {"technical_failure", "lookup_first", true},
+	"THREE_VIEW_SOURCE_READ_FAILED": {"technical_failure", "lookup_first", true},
+	"THREE_VIEW_PROJECTION_FAILED":  {"technical_failure", "lookup_first", true},
 }
 
 // classify fills the three axes from the table when the producer left them
@@ -186,6 +194,10 @@ type ReadOnly struct {
 	refs         []WorkspaceRef
 	services     ServiceFactory
 	xeadObserver XeadObservationObserver
+
+	// ThreeView is composed by the host. When nil, NavigateThreeView answers
+	// THREE_VIEW_UNAVAILABLE; there is no built-in three-view reading.
+	ThreeView ThreeViewFactory
 
 	// CommandLifecycle is composed by the host. When set, the
 	// ExecuteCommandWithLifecycle path records dispatch/observe/unknown stages

@@ -22,7 +22,7 @@ func newStudioHost(paths []string) (*studiohost.ReadOnly, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newStudioHostWithInspector(paths, inspector)
+	return withStudioThreeView(newStudioHostWithInspector(paths, inspector))
 }
 
 // newStudioHostWithInspector serves the Inspector the composing Host already

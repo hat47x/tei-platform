@@ -45,6 +45,14 @@ func (b *StudioBridge) ObserveXead(workspaceID, relativePath string) studiohost.
 	return b.host.ObserveXead(workspaceID, relativePath)
 }
 
+// NavigateThreeView reads the Data / Function / Business views, the CRUD
+// matrix and the item-level references of one Workspace source through the
+// three-view Provider the Host selected. The pin arguments carry a target the
+// caller fixed on purpose; both empty means none. The Bridge adds nothing.
+func (b *StudioBridge) NavigateThreeView(workspaceID, sourcePath, pinOccurrence, pinSourceDigest string) studiohost.ThreeViewResponse {
+	return b.host.NavigateThreeView(workspaceID, sourcePath, pinOccurrence, pinSourceDigest)
+}
+
 // OpenShoDocument relays a draft the TEI projection produced into the real SHO
 // document CLI and returns the document state it reports. The Studio does not
 // edit, save or interpret the document: it shows what the consumer's own tool
