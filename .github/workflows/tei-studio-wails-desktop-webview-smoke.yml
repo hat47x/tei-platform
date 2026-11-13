@@ -237,6 +237,13 @@ jobs:
           $transformHash = (Get-FileHash -LiteralPath $transform -Algorithm SHA256).Hash.ToLowerInvariant()
           if ($report.contractBytesDigest -ne "sha256:$contractHash") { throw 'N0 generator consumed a different contract Source' }
           if ($report.transformBytesDigest -ne "sha256:$transformHash") { throw 'N0 generator consumed a different transform Source' }
+          # The next npm/esbuild step imports this exact path. Install the bytes
+          # produced by N0 in this run, not merely the checked-in equivalent.
+          # The preceding equality check still fails if the checked-in generated
+          # source was stale, so this copy cannot silently mask Source drift.
+          Copy-Item -LiteralPath $generated -Destination $consumedSource -Force
+          $installed = (Get-FileHash -LiteralPath $consumedSource -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($installed -ne $actual) { throw 'N0 generated part was not installed as the Workbench input' }
           $reportJson | Set-Content -Path (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n0-inspector-generator.json') -Encoding utf8
           foreach ($pair in @("N0.contract=$contractHash", "N0.transform=$transformHash", "N0.output=$actual", "N0.workbenchInput=$consumed")) {
             $pair | Add-Content -Path (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'generation-provenance.txt') -Encoding utf8
