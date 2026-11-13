@@ -376,7 +376,7 @@ jobs:
               workbenchBundleSha256 = $bundle
               esbuildSelectedSources = 'n2-esbuild-selected-sources.json'
               esbuildSelectedCount = $metaObservedSources.Count
-              esbuildOutput = $bundleOutput[0]
+              esbuildOutput = 'cmd/tei-studio/assets/workbench/main.js'
               selectionBasis = 'esbuild-metafile/post-build-file-hash'
               invoker = 'workflow:node/esbuild'
             }
