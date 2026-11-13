@@ -147,7 +147,7 @@ Subsystem再命名は役割・更新責務が改善された可能性を示す**
 
 ## 9. Evidence Join：独立Witnessを越える保証を成立させる結線資格（2026-11-13追補）
 
-- **状態**：設計候補。2026-11-13のmain `f3b58e7b580f0ecbea1d2feb156f52c2147f63a7と既存PR/Issueを静的照合。新規Go/Node/Windows/実PGをこの節のためには実行していない。
+- **状態**：設計候補。2026-11-13のmain `f3b58e7b580f0ecbea1d2feb156f52c2147f63a7` と既存PR/Issueを静的照合。新規Go/Node/Windows/実PGをこの節のためには実行していない。
 - **狙い**：一つのSource、操作、Builder、Artifact、Consumerについて、各工程が別々にPASSした事実を単純に足すだけで「一続きの成功」に変えない。一方で実際に結線を観測した段階は、必要以上にunknownへ落とさない。
 - **非目標**：Proof Registry、Universal Event Bus、分散トランザクション、第二Source Index、永続的な共通Evidence Schema、全工程を単一Attemptへ強制すること。
 
