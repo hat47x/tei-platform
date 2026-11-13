@@ -667,3 +667,98 @@ DSH採用順は**既存Skillの直接利用→標準Skill機構→明確な不�
 | **HQ-49** | H3でSkill本文は実読込、独立回答品質は不改善 | Product Skill Loadと採用価値・正式比較資格を別判定。TAI #488/#422 |
 
 **成熟度の区別**：SEI #770の局所34件は合成Methodの限定PASS。TAI既存Tool/Skill Readは歴史的な技術Witness。HQ-42〜49の**新しい実験、CSW B0/B1/B2、比較適格H2/H3四Session、実OS/全Egress拒否、実Provider負の証明、Owner意味受理はNOT RUN**。AI発見→業務採用の新中央認可、第二Query/Method Engine、別Harness Runner/Hostは作らない。
+
+
+---
+
+<!-- harness-activity-control-delivery-effect-20261112 -->
+## 15. 2026-11-12：Activity Control／Delivery／Business Effect／Decisionの完了条件を独立化
+
+### 15.1 他製品の進捗を横断契約へ還元する
+
+11月9日以降のTAI Activity、SEI再開、SHO保存・Readback、YI共有Session、TEI Plugin/Providerの議論から、`Activity completed`という単一Booleanは不十分と判断する。次の**4つの観測面**を分離し、TEI/TAI/SEIの既存API・Receipt・Source参照に投影する。新しい中央Activity Store／Lease Engine／Permission Engineは作らない。
+
+| 面 | 実際に確認すべき事実 | 成功しても保証しないこと |
+| --- | --- | --- |
+| **Control** | Activity/Attempt identity、Lease/Fence、割付、終了理由、Retry適格性 | Tool Replyの完全受信、業務副作用、判断受理 |
+| **Delivery** | Tool Request→実argv/プロセス→stdout/stderr→Tool Reply終端→Harness Consumer実受領、Egressと開示 | 業務Operationの成功、Sourceの鮮度、Effect |
+| **Business Operation** | 型付きFunction/Operation、実Provider Read/Write、Rowset/Effect、Host認可、冪等性・実Receipt | Ownerによる意味受理、AI推薦の正当性 |
+| **Decision** | SEI Recommendation、根拠Source/Revision、Question/Unknown/Conflict、Owner受理・再開 | Tool Deliveryや業務Effectの成立 |
+
+`Attempt exit=0`、`Decision=allow`、`CLI stdout received`、`Plugin selected`は互いの代替証拠ではない。再実行時はControlの新Attemptと業務Operationの冪等性キーを混同しない。実Effect後にReplyが欠落した場合、単純再実行せず、既存Host/Providerの実Receiptを照合してから再試行可否を判断する。
+
+### 15.2 初回の縦切りを二本に分ける
+
+**P0-D（業務データ経路）**：`order_entry.recent_orders`の実Function→Query/SQL→Provider→実Rowset→Mapper→Data Context→Consumerを**同一Attempt**で追跡し、独立Expected（行集合・順序・NULL・Predicate・粒度・取得完了）と対照する。既存`sales.order.submit`の13 CLI Reply／42 Consumer Controlsは別FunctionのD局所Witnessであり、このP0-Dの成功に流用しない。実DB/Provider/Consumerのどこで未到達かを段階別に表示する。
+
+**P0-T/A（Harness配送・開示）**：一つのread-only Tool Requestを外部Harnessから実CLIへ送信し、実プロセス・完全Reply・Consumer実受領・現在Grant/Disclosure・OS禁止Read拒否を独立に記録する。H2最初の比較適格Sessionが成立するまで、四Sessionの統計的比較やSkill増分価値を成功と主張しない。P0-DとP0-T/Aは並列に進め、互いの完成をHard dependencyにしない。
+
+**P1-H3（保存・再開）**：SEIのSource Index参照→Recommendation保存→resume再読取は局所の実装・観測範囲を確認し、`Question/Unknown/Conflict`の保存と独自Methodの判断改善を別資格にする。SHOのテスト用実ファイル書込み／別Open再読取が成立しても、正式Editor保存・競合・耐久性の証拠ではない。KONは後続保存先候補であり、最初のH2/H3の必須基盤にしない。
+
+### 15.3 Plugin／Session／UI選択の同一性
+
+- `Declared → Selected → Loaded → Invoked → Source Consumed → Delivered → Accepted`を**必要なClaimに応じた観測段階**として扱う。全部を常に直列必須ゲートにしない。実Inspector/HTTP Host/Source Importの局所証拠は、正式CLI/Studio Provider Invoke、実Host認可、Source消費の独立証拠へ自動昇格させない。
+- TEI Modeler/SHO/SUI/CSWの選択対象は、行番号や表示名ではなく**qualified identity + Source Revision + selection epoch**としてHarness Sessionへ渡す。UI上で選択解除が起きても、明示的に固定した対象は維持し、ユーザーの再選択／失効／権限変更でのみ更新する。AIへ渡す前にCurrent Disclosureを再検査する。
+- Session共有は、製品別のMeaning・Grant・編集正本を一つのHarness内部Stateへ移管することではない。各製品の既存型付きOperation/APIとEvidence参照を通して再解決し、古いSession Raw/Tool Replyが新しいModel Inputへ混入する反例を試験する。
+- `RQ-036`のModel MapとVerified BOMの採番衝突は**別契約**として維持し、Owner判断まで統合しない。新たな中央BOM/Registryを作らない。
+
+### 15.4 実行可能な負例（HA-50〜57）
+
+| ID | 一条件だけ変更する反証 | 判定 |
+| --- | --- | --- |
+| **HA-50** | Control Attempt終了後にTool Reply終端だけ欠落 | Control完了≠Delivery完了。H2不合格 |
+| **HA-51** | Provider Effect成立後にReplyが失われ、Harnessが再試行 | 実Receipt/冪等性確認なしの二重Effectを拒否 |
+| **HA-52** | `recent_orders`の非表示Predicateのみ変更し、表示Rowsetは同じ | 独立Expected/Query Source RevisionでD再資格化 |
+| **HA-53** | `submit`の13/42だけ成功し`recent_orders`実Provider未到達 | P0-Dは未成立のまま |
+| **HA-54** | Plugin Selected=BだがInvoked=A、またはSource Consumedが旧Revision | 実Invoke/消費Sourceで失格 |
+| **HA-55** | UIの固定選択を視覚的に解除し、別対象をクリック | 明示解除なしでHarness対象が変わらない |
+| **HA-56** | Session Resume後にSource/Grantが失効し、旧RawがModel Inputへ再出現 | 再解決/Disclosure失敗として拒否 |
+| **HA-57** | SEI Decisionのみ保存しQuestion/Unknown/Conflictが欠落 | H3未解決継続は不合格、Recommendation保存成功とは別 |
+
+**受入順**：HA-50/51はTAI #168／TEI #2509/#2515、HA-52/53はTEI #2586/#3262、HA-54はPlugin #1251/#951、HA-55/56はModeler/SHO/TAI Session、HA-57はSEI既存Reader/WriterのOwnerへ渡す。独立Expected、実Tool/Provider/Host/Consumerの観測がない限りPASSとしない。
+
+**今回の資格**：§15は既存議論の責務分離と受入票の追加。HA-50〜57、`recent_orders`同一Attempt E2E、比較適格H2四Session、正式Editor/Session固定選択、実Effect後Reply欠落の再実行、Owner意味受理は**NOT RUN**。新中央Host/Registry/Runner/Activity Engineを要求しない。
+
+
+---
+
+<!-- harness-fixed-selection-transmission-selfbuild-20261113 -->
+## 16. 2026-11-13：固定対象・Evidence取得/送信・Self-build実Attemptの受入境界
+
+### 16.1 同じ対象を扱ったことと同じ情報を受け取ったことは異なる
+
+TEIの三要素図／CRUD／Model Map、SUI選択、SHO文書化、TAI共有Sessionを結ぶ際、`Selected Item`は表示ラベル・行番号ではなく`Qualified Identity + Source Revision + Selection Epoch + Scope`で固定する。固定した選択は画面上のフォーカス変化で黙って切替えず、明示解除・失効・Grant変更時には再解決する。
+
+Evidenceは**取得資格（Acquisition）**と**送信資格（Transmission）**を別にする。取得できたRaw、保存できたEvidence、内部で引用できるSource、外部Harness/SHO/LLMへ開示可能なPayloadは同義ではない。送信直前に対象・受信者・目的・Current Grant/Disclosure・Payload実byte・Source Revisionを照合し、`Prepared → Authorized → Sent → Receiver ACK → Consumer Used`を区別する。ACKは意味受理や永続保存の証拠ではない。
+
+SHOへのPayload byte一致・Receipt一致は、TEI元対象の現在性・業務意味・正式Editor保存を保証しない。SHOの著者文を保持した再投影と、TEI Sourceの再解決を独立検収する。Sourceが同一bytesへ戻るA→B→Aも、観測履歴と受理済みMeaningの鮮度を一律に回復させない。
+
+### 16.2 Activity／AI Session／Product Operationの実行所有者
+
+TAI Activityは計画・Attempt・Lease/Fence・再試行制御、AI Sessionは対話・Tool入出力・受信者、TEI Product Operationは実Function/Build/Providerの実行とReceiptを所有する。中断したBuildをTAIが`Activity=running`だけで再開せず、TEIの**実Build Attempt**を照会して、実行中／完了／失敗／不明を区別する。旧Receiptを新Attemptへ転用しない。
+
+最優先のTEI Studio Desktopセルフビルドは、生成部品とWindows Desktopを**単一Build Intent／単一実行**へ束ねることを製品Ownerの検収目標とする。個々のGenerator・CLI・Desktopビルド成功を合算してセルフビルド成功と主張しない。TEI #4583で実行統合を扱い、YIC/TAIに第二Build Managerを作らない。Harnessの役割は実Attemptの起動・照会・証拠受領までであり、TEIのビルド正本を移管しない。
+
+### 16.3 既存計画との優先順位
+
+- **P0-H2**：TAI #168の外部Harness実Skill Load／実Tool Request→実CLI→完全Reply→Consumer／OS隔離・Egress・現在開示。H2/H3比較適格は現状0/4であり、局所Tool/Skill成功を補填しない。
+- **P0-Product**：TEIの一つの固定対象でModeler/CLI→SUI/SHO→再開→元Source再解決の往復を実測。三要素図/CRUDの参照数0、矛盾、未使用、欠落は表示だけでなく元Source/依存追跡と照合する。TEI→SUI→SHOの正式QH-P0は未実施。
+- **P0-Self-build（並列）**：TEI #4583の単一Build Intent/Attempt、生成物・Desktop・Receiptの一体検収。H2にWindowsビルドをHard dependency化しない。
+- **P1**：SEIのQuestion/Unknown/Conflictの永続化、SHO著者文を保護した再投影、KONのNAS/S3・Git Binding、AI性能統計。Evidence保存先の存在と送信資格を混同せず、KON/外部Storageを最初のH2の必須基盤にしない。
+
+### 16.4 追加の最小反証（HE-58〜65）
+
+| ID | 一条件だけ変える | 失格となる誤った主張 |
+| --- | --- | --- |
+| **HE-58** | 固定選択後にUIフォーカスだけ変更 | 選択対象を別Identityへ暗黙に変更 |
+| **HE-59** | Raw取得成功後、受信者またはGrantだけ変更 | 取得済みを根拠に旧Payloadをそのまま送信 |
+| **HE-60** | Sentは記録、Receiver ACKが欠落 | Tool Delivery/Consumer Usedまで成功と扱う |
+| **HE-61** | SHO Payload/Receipt一致、TEI元Sourceだけ変更 | 元対象・意味・現在性まで保証と扱う |
+| **HE-62** | A→B→AでSource bytesが元に戻る | 途中の失効・Owner再受理を自動回復 |
+| **HE-63** | Build途中でTAI Activityを中断し再開 | TEI実Build Attempt照会なしで二重実行 |
+| **HE-64** | Generator成功、Windows Desktop失敗 | 個別成功の合算でSelf-build PASS |
+| **HE-65** | CRUD参照数0だが明示CRUD-only参照が存在 | 未使用・欠落を断定しSHOへ誤送信 |
+
+**検収Owner**：HE-58/61/62/65はTEI Modeler・SUI・SHO、HE-59/60はTEI Evidence/TAI #168、HE-63/64はTEI #4583・TAI Activity。既存のSource/Operation/Build Receiptと独立Expectedを使い、中央Evidence送信サービスや独自Build Managerは新設しない。
+
+**今回の資格**：§15は旧Draft #4477からbyte-prefix一致で再取り込み、§16は横断の受入設計。HE-58〜65、正式TEI→SUI→SHO往復、実Windows Desktop一体Self-build、実H2/H3四Session、OS/Egress拒否、Owner意味受理は**NOT RUN**。
