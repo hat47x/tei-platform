@@ -854,6 +854,11 @@ StudioのMethod（#4570）、固定PinのUI接続（#4597/#4515）、Function→
 | Goから`validation`を除いた旧/不完全Payloadと`ok=false`のPayloadを比較 | 前者はunknownであり後者はNG。欠損をOKとしない。UI表示可とOwner意味受理・現在Grantは独立 |
 | Partial Map／Locateの`notDerived`家族に対して関連Edgeが0本 | `no relation exists`やWriterなしとは結論しない。未導出範囲をユーザーの問いに相対的に示す（STQ-08/21） |
 
+**Validationの現在性をContent Fingerprintから切り離す（他チャットのMV-13接続）**：Goの`catalogValidation(loaded)`は、意味構造の`validation.Validate(loaded.World)`だけでなく、実`loaded.SourceRootFindings`のseverityも合算する。一方、Workbenchが現在保持する`worldFingerprint`・`sourceIndexFingerprint`はRootの**実在状態の現在資格**を証明するものではない。宣言したSource Rootがmissing→present／present→missingへ変わると、宣言モデルの編集がなくても検証結果が変化し得る。どの条件でFingerprintまで不変になるかは**独立の再Load比較をまだ行っておらず未確定**であり、同一値の観測を先に仮定しない。
+
+**既存Consumerへ渡す最小反例**：固定公開Workspace・同一manifest/semantic byteでRootの実在状態を切り替え、毎回の`CatalogWorkspace`と`ValidateWorkspace`で`WorkspaceIdentity`、`validation.ok/errorCount/warningCount`、World/Index FP、Reader Attemptを独立観測する。構造FPが同一でもVerdictが異なる実測条件があれば、古いCatalog OKを現在性として継承せず、Root変更の監視が未実装なら**検出できると主張しない**。後着の別Workspace/別AttemptのValidate Replyは既存`workspaceEpoch`/`responses`で拒否し、現在のCatalogに属さない`validation.ok`で上書きしない。Go Producerが現在持つ`workspace`・`validation`を`readCatalog`で落とさない候補修正は#1124の既存Consumer担当に委譲する。#4557の単一状態の失敗負例は、**同一Workspaceでの時間差更新**を自動実証したものではない。新Watcher・Snapshot Coordinator・第二Validator・新Case IDを作らず、#1180/#2514のExpectedへこの一対照のみ引き継ぐ。
+
+**横断資格への転用禁止**：`Catalog validation`の再取得が成功しても、#2586の実Provider Required/Consumed入力、#4583のN2/N3 Builder実Consume、#4529の配布Artifact HTTPバイト／署名・現在Publisher、#4515のPinのSource/Grant/Disclosureを自動再資格化しない。それぞれの現在のConsumerとOwnerが、自分のPurpose/Attempt/Scopeで再照合する。Studio P0は#4583 B1-B→B2→B3のまま。
 **Editorの実装上限も訂正**：本mainの`reference/tei-studio-editor/editor.ts`は`createReadOnlyTextEditor`であり、**現在のWorkbenchにDirty Bufferや保存可能な編集操作は存在しない**。§16.22〜23の「Pin A再読取はBに干渉しない」の現時点の実証対象はread-only `EditorSnapshot`のdocumentId/version/text/selection、Graph、通常Inspect応答とDOM/ARIAである。Dirty Buffer・Undo/Save保護は[Draft #4538](https://github.com/hat47x/tei-platform/pull/4538)等の編集縦断を実Studioに接続した**後の受入条件**であり、現行機能を装わない。
 
 **開発順**：#4583 B1-B→B2→B3は最優先のまま、#4515 Workbench Pin UI、#4613三視点入口、#2586実Provider Readは並行。#4557の負例を理由にBuildIntentへ新Validator/Gateを追加しない。新Reader、共通Selection Store、Policy、Host、Engineを作らない。本追補は既存Source/Go Test/CI静的照合と文書修正のみ。新Go/Node/Windows/GUI/Grant/Owner意味受理は**NOT RUN**。
