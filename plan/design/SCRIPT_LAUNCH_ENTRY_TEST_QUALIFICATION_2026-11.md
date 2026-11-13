@@ -378,3 +378,76 @@ Resultの外側JSON全byte一致は要求せず、意味値・Failure・版・�
 | **#1180／#2514／#1163** | 独立ExpectedとDriver Scenario、exact actual Evidence Packetを既存Ownerで管理する |
 
 **状態と停止線**：この追補は実装用の設計整理であり、Go製品Function実起動・CLI/API二入口のProduct Q2・実DB Effect・EKI/外部Host・Stage1→Stage2 Desktopの新実証は**NOT RUN**。型付きOperationの具体的Go API/CLI引数、SourceからEntry公開を投影する構造、正式Trigger DSLは現行CodeのFit/Gapを経て各Ownerが決める。新しいRunner/TEI専用Host/Permission Engine/Scenario SSOTを導入しない。
+
+## 12. 実装接合の再精査：Capability Resultを再利用し、Entry公開・実Call・実行資格を埋める（2026-11-14）
+
+前節§11は現行\`command.Request\`と\`CommandPlan\`の不足辺を示した。追加で現行mainの\`internal/semantic/model.go\`と\`internal/semantic/capabilityinvoke/invocation.go\`を確認すると、**Capabilityの単一Output/名前付きOutcomeを区別する既存実装**がある。したがって、純粋Function用の値を\`command.Result\`に無理に追加する案は採らない。以下は既存契約の適合調査を先に行う実装指示であり、新API/Schema/CLI構文の採用を意味しない。
+
+### 12.1 最初に再利用を検査する既存Capability境界
+
+- \`semantic.Capability\`は\`Inputs []Parameter\`、\`Output core.CanonicalID\`、\`Outcomes []Outcome\`、\`Effect *DataEffect\`を持ち、単一結果型と名前付き業務結末を意味上で区別する。**Capabilityが存在するだけではどのHost/Consumerへ公開されるかは決まらない**。
+- \`semantic/capabilityinvoke.BusinessResult\`は\`Capability\`、\`Mode=output|outcome\`、\`Outcome\`、\`Payload any\`を持つ。\`Invoke\`は\`Adapter\`呼出し、Capability identityとResult mode／Outcome名を検査する。ただし\`ValidateBusinessResult\`は**Output Payloadの具体的な型・NULL/丸め・単位を包括検証するものではない**。Provider本人の識別自己申告、\`Payload any\`、値600だけでProduct Q2としない。
+- \`command.Invoker\`は対話CommandとData Effect/Transactionの既存Ownerであり、\`Inputs map[string]string\`を現状の形式として尊重する。\`BusinessResult\`の\`Payload\`を\`command.Result\`の\`Outcome\`へ偽装しない。Effectful Actionは既存Command/Effect Ownerで今後接続し、P0純粋Functionの新規経路を「全てのActionの実行規則」に先行拡大しない。
+- \`SelectedServiceCarrierInvoker\`は、Host generation/current Service acceptanceを固定したService実装の特例的な実呼出し足場。Go静的合成pure FunctionにはCompositionが実選択した実装への直接の型付きCallを認め、**同一Result契約・実Call同一性を形態別に検査**する。
+
+結論：**①Meaning/Result契約、②公開Entry Binding、③Host実行資格、④実Provider選択、⑤Resultの実型値、の五つは独立した根拠を必要とする**。既存の\`capabilityinvoke\`をProductの公開・選択・認可・実Callのすべてを持つ新Dispatcherへ変えない。
+
+### 12.2 起動可能性は一個のReadyフラグではない
+
+発見・プレビュー・実行可能・実行済みを単一\`ready/ok\`に畳まず、既存Source/Composition/Host/Runtimeから**必要なときに読取りで導出**する。専用永続Registryは作らない。
+
+| 必要な判定 | 根拠となるOwnerと観測 | 未充足時の表示と処理 |
+| --- | --- | --- |
+| 定義が解決できる | Workspace/Kind/ID/Source occurrence、曖昧性・Required Source/Operator | missing/ambiguous/partial/unknown、同名fallback禁止 |
+| 意味・型が適合する | Accepted Function/Capability Contract、Output type、Input state、Target fit | unsupported/invalid/not-representable、数値一致のみでPASS不可 |
+| Entryとして公開されている | 選択済みApplication Composition/Profileと現在の公開版・Consumer surface | discoverableとpublishedを別表示。非公開時にProvider call0 |
+| Artifactと実Providerを選べる | Build/Plugin Lock、対象Target、実Binary/Artifact、実Call route | selectedとincluded/loaded/calledの相違を明示。未選択候補は呼ばない |
+| 現在のHostが入場を許す | Hostが確立したPrincipal/Scope/Grant、期間・Resource、対象Revision、期限 | authorizedがunknown/失効なら実Call拒否。PreviewやPinはGrantでない |
+| 実結果を検収できる | 実Call Witness、Result bytes/typed payload、独立Expected、Failure/Effect別観測 | exit0/ACKのみならresult unverified。純粋計算とHost I/Oを分離 |
+
+**QualifierはClaimごとに付く**。たとえばEntryはpublished、Artifactはincluded、Grantはunknown、実Callはnot-executedでよい。表記上の部分成功を全起動資格へ昇格しない。公開／現在許可／実呼出しと、履歴の保存／現在の開示許可も別。
+
+### 12.3 最小のProduct APIへ渡す情報と、その更新境界
+
+新しい共通Envelopeを固定する前に、既存\`internal/operations\`と\`capabilityinvoke\`の可用な値／Ownerを棚卸しする。追加が必要な場合、**一つの公開Function起動専用の型付きOperation**に限定し、Conceptualな次の項目を欠かさず扱う。これはGo構造体・DSL・Wire schemaの正式提案ではない。
+
+- **Callerからの起動意図**：Qualified Entry Ref、Contract expected revision、typed inputs（\`value\`／\`explicit-null\`／\`missing\`／\`unfetched\`を区別）、Target/Subjectとexpected revision、必要ならoperation identity/deadline。External actor/role/grantはAuthorityとして受け取らない。
+- **Hostだけが解決する値**：current Workspace/Environment/Principal/Scope/Grant、現在公開Entry、選択ProviderとArtifact、実行Profile/Resource policy、実行対象の一意性、消費可能なDisclosure。この値を文字列フィールドの申告に任せない。
+- **Providerから帰る値とHostの検査**：既存Result Modeと実Payload、実Call Site/Artifactの観測、Contract Output typeに対する入力・出力検査、Failure種別。Output自体は\`nil\`／明示NULL／未返却の区別と契約上の期待を保持し、\`Payload any\`のまま無検査合格にしない。
+- **履歴上のID**：Trigger occurrence／Operation／Attempt／実外部ExecutionRef／Effect receiptを混同しない。既存#1130/#1174/#4198のOwnerにある再送・実行履歴へ結び、新たな全Function共通Run Storeを作らない。pure P0では観測できないIDを架空に生成して埋めない。
+
+Prepare時に解決できた契約・対象は**許可トークンではなく候補**である。Source A→B→Aやalias更新で同じ表示名・最終byteになっても旧Prepareを自動承認しない。開始時に実Target/Version/Grantと選択Providerを照合する。長時間実行、Commit直前、子Function呼出しの現在性は各Ownerのfence/leaseに委譲し、短命のPrepared Invocationだけで保証しない。
+
+### 12.4 Process境界の独立Call Witness：直接APIと実CLIを同一試験で偽装しない
+
+**同一ResultのA/B対照**が最初の核心。Call SpyをProvider内部の\`ProviderID="B"\`自己申告にせず、**Composition/Hostが選択した実装を呼ぶ境界の外側**で観測する。プロセス内テストのin-memory counterだけで、別プロセスの実\`tei\` CLIが同じProviderを呼んだことにはならない。
+
+- 直接API試験：実Provider A/Bを同じMeaning/Result=600で構成し、Bを選択する。Host-owned outer spyでA=0、B=1と契約・typed outputの一致を確認。B選択/A呼出しの故障注入でFAIL。
+- CLI試験：実\`cmd/tei\`製品バイナリを**subprocessとして起動**。binary digest/argv/exit/stdout/stderrを採り、CLIプロセス内の**実Provider境界**で採った観測と照合。単なる親Go testのcounterやCLIが出した\`provider=B\`文字列、ReferenceExecutorの一致では不合格。観測用ファイル・Traceを使うなら、そのファイル作用をテスト用Host I/Oとして明示し、Provider実計算のpure保証と混同しない。
+- **再現性**：実Go binary build/実行と該当Testを同一exact HEAD・Target・Fixtureで報告し、\`go test\`の対象が0件・skip・mock-onlyなら不合格。独立Expected=600は#1180/#2514から参照し、Resultや生成AIの出力から正解を生成しない。
+- **失敗分類**：Entry未公開、Provider選択不一致、Input invalid、Output shape不正、Result本文欠損、cancel-before-call、timeout-after-callを分ける。純粋Functionの出力欠損を「業務否認Outcome」へ変換しない。Effect unknownは#1174の既存契約へ渡す。
+
+この検証で必要なのは**何が選ばれ、どこが実Callされ、何を返したか**である。Go静的合成に動的Module loadのイベントを要求しない。逆に外部TargetのProcess/Worker ACKをGo静的Call Witnessの代用にもしない。
+
+### 12.5 DSL・Trait・Hook・AI・X-TEA・Desktopの統合条件
+
+- **DSL/Role**（#988/#2620/#4359/#4599）：表層構文やGo生成コードで業務意味を二重定義しない。Output型、decimal精度・丸め、NULL、評価順、Operator版を、受理済みCapability意味から実Providerへ写す。部分的な\`*.tei.md\` Readerや固定OKF IDは意味受理・実Entry公開の代用にならない。
+- **Trait/Plugin**（#3278/#951/#1251/#4601）：Atomic Traitのrequired methodが未実装、実Provider未選択、Targetに表現不可なら\`unsupported\`。Builder/Generator RoleとStage2 Runtime Provider Roleは別。Stage2の起動に不要なGeneratorや未選択Pluginを勝手に同梱/初期化しない。
+- **Hook/Effect**（#1129/#1174/#4198）：\`before/after validate/transform/commit/notify\`の候補順序は既存Lifecycle Ownerで検証し、GuardをGenerator Hookから迂回しない。pure P0はOS出力・ログ書込み等のHost I/Oを別作用として観測。Trusted Developer Scriptのraw SQL/file/network能力とDelegated Macroの公開能力を混同しない。
+- **AI/Studio**（#4515/#3422/#2502）：Inspect→Preview→Run→Observeの利用者導線を同じTyped Operationの投影として設計。Pin維持と資格失効を両立し、AI提案・Preview PASS・Generator Reviewから実行Grantを発行しない。現在Disclosureで秘密・別Workspace・未公開Entryを開示しない。
+- **X-TEA移植**（#1124/#1129）：Data ScriptはTable/FieldのLoad/Save/Tx phaseのOwnerへBindし、内部Hookが全て公開Entryへ自動昇格する方式にしない。従来のTableEvaluator/Session等の意味をFacade/Pluginで提供しても、その実Host/DB Effectは別検収。
+- **Self-Build**（#2831/#4583/#4601）：全体最優先は**TEIがStudio Desktop Stage2を再構築し、その実Windows Consumerを検査すること**。FunctionレーンのL0は独立先行。合流時には、Stage2実binaryに公開Entry/Runtime Providerが含まれ、実Studio IPC→共通Operation→実ProviderのCall Witnessがあることを確かめる。Draft #4587の既存B0（生成Inspector/実WebView2）のGreenをこのFunction起動成功へ流用しない。
+
+### 12.6 既存計画の最小PR分割と、証拠に応じた停止線
+
+| 作業単位・Owner | 実装時の作業範囲 | 初回に要求すること／後続に残すこと |
+| --- | --- | --- |
+| **L-A #4495 / #3422** | 既存\`Capability\`/結果modeと公開Entryの解決を接続し、必要最小の型付きOperationを作る。必要なら既存\`capabilityinvoke\`を値検査の足場とする | P0に必要な数量・単価・Result形を先に通す。すべての入力状態・全CLI ABIの同時刷新はしない |
+| **L-B #4495 / #1251** | Go単一Binaryの選択B・実Call Bと、Product CLI subprocessの同一Operationを観測 | EL-01/04/08/12、独立600、実Call Witness。Reference/外部Service/MockはQ2へ昇格しない |
+| **L-C #4495 / #2502 / #2514** | NULL/unfetched、型不一致、Source/Entry/Target/Artifact/Grant失効、子権限を局所負例に追加 | 初回Q2のBlockingにせず、既存Scenario SSOT/Driverで対象ごとに資格化 |
+| **T-A #4497 / #1130** | TriggerDefinition→Occurrence→Prepared Invocationのread-only投影、入場再検査、重複配送・期限を既存Ownerへ渡す | Scheduler/Brokerを作らない。実Delivery/Commit/ReceiptはG2/Effectで別 |
+| **LB/G/B合流 #4544 / #2831 / #4583 / #1824** | G実生成→B実消費→L実Call→Stage2実Desktop Consumerを、同じAccepted Contractと因果的に結ぶ | レーン別PASSを加算せず、実Artifact引継ぎ・実実装使用・独立Consumer検収を個別に記録 |
+
+**変更による再検証**：World Fingerprint／Model Revision／Artifact Revisionを混同しない。Source、Meaning/Role/Operator、Provider Lock/Toolchain、Entry公開、Host Grant、実Call route、Disclosureのどれが変わったかで、そのClaimに必要な資格だけを再検査する。layout-only変更や無関係Plugin追加で全Buildを無条件にやり直さず、必要な否定依存・未読込・外部参照が不明なら\`unknown/partial\`を維持。A→B→Aでも旧Authorization/Entry資格は自動復活しない（#2600/#3262/#2514）。
+
+**実施状態**：本節は現行mainの個別Sourceと既存Issue/他レーンのDraftを照合した**docs-only実装計画**。新Go Product Function起動、実\`tei\` subprocess、型付きOutput/Entry受入、Host/DB/EKI Effect、Stage1→Stage2 Function合流の本節による検証は**NOT RUN**。形式の最終採否・Owner Meaning Acceptanceは既存Issue/ADRで判断する。
