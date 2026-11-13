@@ -37,6 +37,14 @@ jobs:
         with:
           go-version-file: go.mod
           cache: false
+      - name: Require gofmt (show exact diff on mismatch)
+        run: |
+          set -euo pipefail
+          files="$(gofmt -l internal/operations/external_candidates.go internal/operations/external_candidates_ambiguity_test.go internal/operations/external_candidates_pin_test.go internal/operations/external_candidates_test.go)"
+          if [ -n "$files" ]; then
+            gofmt -d internal/operations/external_candidates.go internal/operations/external_candidates_ambiguity_test.go internal/operations/external_candidates_pin_test.go internal/operations/external_candidates_test.go
+            exit 1
+          fi
       - name: Test exact candidate and shared reader
         run: |
           set -euo pipefail
