@@ -1548,3 +1548,39 @@ version-pinned BuildIntent / Source revision
 [Draft #4587](https://github.com/hat47x/tei-platform/pull/4587)の固定HEAD 708ca27e、[Windows CI #43385876034](https://github.com/hat47x/tei-platform/actions/runs/43385876034)では、N0 Inspectorの実再生成、使用TSのbyte一致、通常版・生成版WebView2 Jobの成功を限定的に確認できる。ただし、**N0〜N3の全工程をTEI Build Intentが駆動したB1、Stage1実TEIによるStage2 Desktopの構築B2、そのStage2自身の実Consumer B3は未成立**。別のPR HEADへCI成功を継承しない。
 
 着手順は #4583 B1（実入力閉包）→ B2（Stage1→Stage2）→ B3（実WebView2 Consumer）。その後に非Builtin Providerの通常／生成Studio両系統、固定対象の再解決、三要素モデルの実原典適合を段階的に合流する。並行担当は独立Expectedと負例を先に準備してよい。ここで行ったのは既存GitHub記録の静的整理のみ。新Go/Node/Windows/DB試験とOwner意味受理は行っておらず、製品全体G4は未資格。
+---
+
+<!-- tei-cp-crosschat-second-pass-20261113 -->
+## 2026-11-13 第2次横断レビュー：実消費の証拠、Pin非干渉、Providerの実同梱
+
+前節のP0-A/B/Cの優先順位を変えず、他チャットの実コードレビューから具体化した**最初の失敗例と実装順**を補う。新しいBuild Manager、Source Registry、承認Engine、Hostを作らない。各担当Issueで受入を管理し、この節は接合点だけを扱う。
+
+### A. Build入力：事後ハッシュと実際の消費を区別する
+
+[#4583](https://github.com/hat47x/tei-platform/issues/4583)のB1-Bで、[Draft #4587](https://github.com/hat47x/tei-platform/pull/4587)の `b1-stage-input-observation.json` は、ビルド後に指定ファイルを再読取した目録であり、esbuildやGo Builderがそのbyteを実際に消費した証明ではないと確認された。現状の `qualifiedBuildIntent=false`、`dependencyClosure=unknown` を維持する。
+
+最初の一本は **N0生成Inspector TS → N2 esbuild → N3 Go embed** に限定する。各工程の直前に入力・Toolchain・実Invokerを固定し、出力と次工程の入力を同じAttemptに対応づける。工程後の変更も照合するが、pre/post一致だけでTOCTOUやA→B→Aが解消したとは扱わない。実消費の完全な証拠が必要な場合は不変SnapshotやOS読取境界の実証を別資格とする。
+
+独立Expectedは、(1)esbuild直前のTS差替え、(2)Go build直前のJS/Go差替え、(3)ビルド後差替えによる事後目録の偽装、(4)未宣言の推移的import、(5)選択Builder Bと実Invoker Aの不一致。実験できない境界はunsupported/UNKNOWNと記録する。Desktop exeをPlugin Subjectと偽装せず、既存Execution→ArtifactSet→Subject Bindingの適合から始める。Ownerは#4583/#2831、増分失効は#2600。
+
+### B. Pin再確認：画面のInspectと独立した読取経路
+
+[#4515](https://github.com/hat47x/tei-platform/issues/4515)で確認された現行 `inspect(subject)` は、応答と同時にselected/Editor/Graph/Noticeを更新する。Pin Aの資格再確認に同じ入口を用いると、利用者がBを閲覧中でもAへ表示が戻る。**Pinの再確認は画面選択を変更しない**ことを受入条件にする。
+
+既存 `client.inspectSubject`/`readInspection` を再利用し、`pinned-inspection` laneでPin Observationだけを更新する。Pin/Unpin/Undo/Workspace切替でローカル世代を更新し、応答はlaneの最新性、captured generation/epoch、qualified Subjectの一致で採用する。同じSubjectをUnpin→再PinしたA→Aでも旧応答を拒否する。ローカル世代はSource Revision/Grant/Disclosureの現在性を証明しないため、製品側の再資格化を別に行う。
+
+[Draft #4597](https://github.com/hat47x/tei-platform/pull/4597)はPinの純粋状態遷移に限定される。最初に既存responsesテスト、次にPin状態テスト、最後に実WorkbenchでEditor/Graph非干渉と生成Inspector使用を検証する。Pin状態テストだけでDesktop/Source/Grantの受入へ昇格させない。Ownerは#4515/#1824。
+
+### C. Plugin構成：選択と実収録を両方向から確認する
+
+[#4583のX-TEA横断引渡し](https://github.com/hat47x/tei-platform/issues/4583)と[Draft #4601](https://github.com/hat47x/tei-platform/pull/4601)に従い、Build-time GeneratorとStage2 Runtime Providerを区別する。最初の非Builtin例は[Draft #4570](https://github.com/hat47x/tei-platform/pull/4570)の読取り専用三要素モデルとする。
+
+必要なProviderが**選択されたのにStage2から欠落**した場合と、**未選択なのにimport/init/embedから混入**した場合を対で検査する。Build Profile、依存Go Source、nested Studio module/tags、実Wails Artifact、実Bridge呼出しを同じ選択に結び付ける。通常Studioの静的importやB0/N0のWebView2成功だけでは、生成Stage2がX-TEA Providerを実行したことにはならない。X-TEA全Function・実原典・SHO/KON/他Targetはこの最小試験の前提にしない。Ownerは#1251/#951/#1016/#1124、Stage2への結合は#4583。
+
+### D. 最小の協業・dogfoodingシナリオ
+
+開発者と生成AIがCLI/CUIでSubjectを特定し、Source位置と参照・被参照を確認する。Studioでは人間がBを表示したままAをPinし、AIがAの根拠を再確認してもBの表示を変更しない。AIの提案はSourceに戻し、通常のレビュー、Validation、再読込、再Projectionで確認する。参照0件・対象不存在・partial/unavailableを区別する。OKFによる文書管理は根拠の可用性を高める手段であり、業務意味の自動承認にはしない。
+
+この協業シナリオとStage2のBuild/Provider検証は**別のAttempt/別の資格**であり、相互の成功を合算しない。実装順は B1の実消費観測 → Pin非干渉の実Workbench接続 → B2/B3の実Stage2 → Optional Provider実呼出し。CLIの実PostgreSQL Read (#2586/#1251) は並行して進め、Desktop完成を待つHard Dependencyとしない。
+
+**検証状況**：本追補は既存GitHub Issue/PRのレビュー内容の計画反映のみ。新しいGo/Node/Windows/PostgreSQL実行はNOT RUN。既存Draftの最新HEAD CIを本追補で追試したものではなく、B1〜B3、全体G4、Ownerによる意味受理は未資格。
