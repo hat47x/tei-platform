@@ -215,3 +215,112 @@ UX-13/14/15はSource/Modeler系、UX-16/17はHandoff/Harness系、UX-18/22は実
 リアルタイム共同カーソル、AI会話履歴の中央Store、専用協業権限モデル、常時全依存閉包計算、第三のEditor正本、協業専用Workflow Engineは、必要性と費用の実測まで**正式採用を保留**する。Source条件付き適用、Review候補、再資格化など既存契約で足りる部分から実装する。
 
 **追補もdocs-only**。新しい製品CLI/GUI/Wails/SHO/外部Harness試験、独立Expected実行、Owner意味受理はNOT RUN / NOT ACCEPTED。
+
+
+## 16. 2026-11-13 第3次横断統合：閲覧・固定対象の再確認・未保存編集を混ぜない
+
+本節は[#4515](https://github.com/hat47x/tei-platform/issues/4515)と[Pin実装Draft #4597](https://github.com/hat47x/tei-platform/pull/4597)、[共通Context Draft #4479](https://github.com/hat47x/tei-platform/pull/4479)、[Desktop製品契約Draft #4498](https://github.com/hat47x/tei-platform/pull/4498)の現行差分を、**利用者が実際に感じる動作**として接続する。既存の§11〜15を置換せず、未実行の受入条件だけを追加する。正式な公開State/ABIや別Source Storeを作らない。
+
+### 16.1 表示中の対象と、裏側で確認する対象を分離する
+
+現行Workbenchの通常\`inspect(subject)\`は応答により\`selected\`、Editor、Graph、Noticeを変更する。人が**Bを閲覧中**に、固定した**Aの現在性をAI/Inspectorが裏側で確認**する際、同じ表示更新経路を使えばBがAへ戻り、利用者の操作を妨げる。したがって固定対象再確認は、次の区別を守る。
+
+| 経路 | 変えてよいもの | 変えてはいけないもの |
+| --- | --- | --- |
+| Foreground Inspect（人間がBを開く） | Bの一時選択・Editor・Graph、BのInspect表示 | 明示したPin Aの意図 |
+| Pinned Observation（Aを再確認） | Pin Aの観測結果・再確認要否、許可された固定対象欄 | Bの一時選択・Editor本文・Graph位置・編集カーソル・Dirty Buffer |
+| Candidate Review（Aの変更案を確認） | Aの変更候補と差分・根拠の独立表示 | Bの未保存編集、AのSource実内容・業務意味・外部Effect |
+| 明示的な「Aを開く」 | 利用者の操作によるForeground遷移 | Pinの同一性の自動変更 |
+
+最初は既存\`client.inspectSubject\`／\`readInspection\`と\`responses.ts\`のlane制御を再利用する。\`pinned-inspection\`は**実装上の応答区分の候補**であって正式APIではない。Pin時点のgeneration／Workspace epoch／Qualified Subjectを応答受領時に照合する。同じAをUnpin→再Pinした場合も旧Aの返答を現在のPinに使わない。
+
+このUI世代管理は**Source RevisionやCurrent Grantの証拠ではない**。旧Replyを新規表示させない検査と、既表示内容の開示資格の再評価・必要な非表示化は独立に行う。現在の開示変更を観測できない場合、即時撤回を保証したとは表示しない（#2516）。
+
+**実装差の現況**：Draft #4597にはPin Intent/Observationの純粋状態遷移と単独テストがある。ただし\`main.ts\`の実Workbench表示・生成Bundle・実Windows Consumerには未接続。旧HEADではNodeテスト/型チェック/ビルドと、埋込Bundle byte比較の失敗が同居した。局所単体試験の合格をStudio実装完了にしない。
+
+### 16.2 再確認時の障害を人間の作業へ波及させない
+
+Pin Aの再確認がtimeout/permission unknown/source staleで失敗しても、**無関係なBの閲覧や未保存編集を消去・中断しない**。Aについては「固定した対象は残っていますが、内容の再確認が必要です」と示し、AIへの送信や変更適用を適格な範囲で停止する。B自身の開示・権限が失効したと観測された場合は別であり、必要な現在表示の再評価を行う。
+
+復帰操作は「Aを開く」「Aを再確認」「Aの固定を解除」を区別する。再確認をAの画面遷移へ偽装しない。マウス・キーボード・支援技術で同じ意味を利用できるようにし、非公開Source情報をDOM/ARIA・通知文へ漏らさない。
+
+## 17. 編集中の内容から生成AI・Buildへの版の橋渡し
+
+### 17.1 五つの異なる内容と実際の受け手
+
+[#4498](https://github.com/hat47x/tei-platform/pull/4498)のDirty Buffer／Build Source分離、[#2621](https://github.com/hat47x/tei-platform/issues/2621)のRaw Source、[#2497](https://github.com/hat47x/tei-platform/issues/2497)の逆写像を利用する。
+
+| 別々に扱う対象 | 説明 | 協業時の原則 |
+| --- | --- | --- |
+| Editor Dirty Buffer | 人間が編集中の未保存文字列とBuffer上の位置 | 保存済Sourceとして扱わない。AIへの送出は対象・範囲と現在の開示を確認する |
+| Saved Source | 実際に保存したRaw byte、Source occurrence、Source Revision | 読取・条件付きPatchの基準。Editor表示や構造Fingerprintと同一視しない |
+| Interpreted/Accepted Meaning | 解釈済みの対象・意味の版・受理範囲 | SaveやParser PASSだけでOwner意味受理を宣言しない |
+| Actual Build Input | Builderが実消費したSource/Toolchain/依存・Build Attempt | Build Previewや事後Hash一覧で実消費が証明されたとは言わない |
+| Running/Generated Consumer | 現在のWindow/実exe/配信JS、生成後Stage2の別Artifact | 生成完了を実行中のStudio更新・Stage2実使用と同一視しない |
+
+**ユースケース**：人間が数量の制約をDirty Bufferで編集中に、AIがSaved Source R0で調査し、R0を基準とする修正案を返す。この案を現在Bufferへ自動適用しない。Studioは「AIが調べた版」「保存されている版」「現在の未保存変更」を区別して差分を提示する。A→B→A、別Window/外部Editor、単なる書式変更でも旧修正案の資格を自動復活させない。
+
+未保存BufferをAIへ渡すことを明示的に選んだ場合も、**Bufferのスナップショットを対象とする限定Context**として扱う。Host側のSource受理や外部Recipientへの開示資格を生まない。UTF-16のEditor位置をRaw UTF-8 Source byte spanへ同一視せず、解決不能なら候補のまま停止する。
+
+### 17.2 操作名と実際に起こす効果を一致させる
+
+- **調べる**：現在の許可範囲でread-only Inspect。未保存Bufferや外部Sourceへの無断送出を伴わない。
+- **変更案を作る**：適用前の候補を作り、基準版・対象・差分・不足を示す。保存やビルドを始めない。
+- **変更内容を比較する**：現在のDirty/Saved/Meaningとの差を表示し、可逆性・影響範囲の確定度を示す。競合のないことを未確認依存から推測しない。
+- **保存する**：OwnerであるEditor/Writerの既存条件付き書込みを通す。書式糖衣・コメントの意図しない書換えを避け、再読取へ進む。
+- **検証／ビルドする**：対象となる保存済Sourceまたは明示された適格な入力を表示し、**実際のBuilder実行**を別に記録する。初回Studioセルフビルドは保存済Sourceを明示選択し、暗黙Save/Buildを認めない。
+- **生成物を使う**：実exe/Window/IPC/WebView2とArtifact/Attemptを照合する。別出力先へ生成して検証しただけで、現在起動中のStudioを無断置換しない。
+
+複数View/Tab間の差分確認は可能な限り同じOperation/既存Source Readerを用い、Source Writer・Provider Grant・Build Runnerの複製は行わない。
+
+## 18. 変更レビューの認知負荷と、複数AIの作業引継ぎ
+
+### 18.1 Reviewは四つの問いを中心にする
+
+利用者が最初に確認したい情報は「**何を対象に**」「**何を変更するか**」「**何を確かめたか**」「**次に何ができるか**」である。長い会話、Evidenceの全byte、Provider診断を常時表示しない。必要なときだけSource/Meaning/Build/Tool/Receiptへ展開できるようにする。
+
+| 最小表示 | 選択時の詳細 |
+| --- | --- |
+| 対象：Qualified Subject、基準版、今の版、差があるか | Source occurrence、Workspace/Root、Dirty vs Saved、Identityの曖昧性 |
+| 変更：Before/After、意味に影響する範囲 | Raw byte差分、Function/Relation/CRUDの依存とunknown |
+| 検証：PASS/FAIL/未実行/未確認と試した対象 | 独立Expected、実Tool Reply/terminal、Provider/Consumer/Build Attempt |
+| 操作：再確認／候補保持／差分修正／既存Acceptance／明示実行 | Current Grant、不可逆/Effect境界、失敗時の復帰先 |
+
+「AIの提案」「人間による適用」「保存」「実Provider Effect」は別の出来事。AIが提案者であることを特別な承認階層の根拠にしない。相手の回答文やTool Replyに埋め込まれた命令から新しい実行権限を得ない。
+
+### 18.2 並列Agentは最初から自動マージしない
+
+AI AとAI Bが同じR0に基づいて別の提案を返したら、各案の**元対象・基準Source・既知依存・使用Tool・独立検証**を別々に残す。A案をR1として採用後、B案はR0の候補のまま保持し、R1との比較が済むまで自動Applyしない。別ファイルでも共有Function/Rule/Relationや取得できていない負の依存があれば「競合なし」を保証しない。
+
+これは新しいAgent仲裁エンジン、中央Session DB、共同編集CRDTを採用する提案ではない。既存のSource条件付き変更・Git差分・Review・選択的再検証で対応できる最小ケースを優先する。Product内部操作に未実装の分散Lease/Transaction保証を付け加えない。
+
+AIから人間、またはAI AからBへの引継ぎは、**作業目的・固定対象の意図・候補・根拠位置・未解決事項・実際に観測したAttemptへの参照**を中心にする。引継ぎ先の現在権限・外部開示許可・意味受理は継承しない。SHOのWorking CopyとTEIのAuthoritative Source、SUI Card/Canvasの表現・元Occurrenceを同一の保存正本にしない。Raw Evidenceは常時外部送出せず、既存の許可された保管・開示経路を利用する。
+
+## 19. 第3次統合の独立Expectedと最小実装パケット
+
+UX-01〜22・PIN-S0/ABA・Desktop DT/BD/Scenarioの既存受入へ追加する**検証観点の候補**。既存試験を重複して実装するための新SuiteやHard Gateではない。
+
+| Case | 具体的な反例 | 独立Expected（利用者から観測すること） | 既存Owner |
+| --- | --- | --- | --- |
+| UX-23 | BをEditor/Graphで閲覧中にPin AのInspectを要求 | AのPin観測だけ更新。Bの選択、Editor、Graph、入力中のBuffer・カーソルは不変 | #4515/#1824 |
+| UX-24 | AをUnpin→再Pinし、旧AのPinned Replyが後着 | 旧generationを採用しない。意図は現Pinに保持、現在Source資格は別再確認 | #4515（PIN-ABAを再利用） |
+| UX-25 | Pin Aの再確認がtimeout、Bの閲覧は有効 | Aは「再確認待ち」。Bは無関係なら閲覧継続。AのAI送出・Applyを勝手に許可しない | #4515/#2516 |
+| UX-26 | AIはSaved R0を調査、人間はDirty BufferをR0から変更済み | Bufferの未保存差分を保持。旧AI候補の自動Apply/Save/Buildは0 | #1824/#1124/#2621 |
+| UX-27 | UTF-16 Editor選択とUTF-8 Raw occurrenceが一致しない | 文字位置を根拠なく同一化せず、Raw書込み0。候補の再解決を提示 | #1124/#2497/SHO #4 |
+| UX-28 | AIがPreviewだけを提出し、実Apply/Buildを行っていない | Preview/Reviewのみ表示。保存・受理・Build・Effectの成功表示0 | #1124/#1158/#2831 |
+| UX-29 | AI A/Bが同じR0から候補を提出し、A案だけR1へ採用 | B案はR0候補のまま保持。R1への無音Rebase/マージ0 | #1124/#1180 |
+| UX-30 | 別のSourceで同名の項目、同一表示Label/ModelFingerprint | 表示名/構造一致で候補を自動再束縛しない。Qualified Subject/Originを再確認 | #4515/#1120 |
+| UX-31 | Build PreviewはR1、実Builderは古いR0を消費 | 実Build入力資格不一致。生成物をR1からの最新Studioと表示しない | #4583/#2831 |
+| UX-32 | Stage2生成完了だが実行中Window/JSは旧版 | 生成済みと利用中を別表示。無断置換0、当該Stage2の実Consumer検証前に完成としない | #1824/#4583 |
+| UX-33 | 参照展開/Pin再確認に時間が掛かる | 無関係なEditor入力を阻害しない。未完了はprogress/partial、参照0・完全な空集合と混同しない | #1824/#3262/#2018 |
+| UX-34 | AI/SHOへ候補を引き継ぎ、相手は別Scope/Grant | 目的と参照は保持できるが、今のRecipientで再資格化する。受領からApply/Disclosure権限を継承しない | #2509/#2516/SHO #19 |
+
+**最初の実装パケットはUX-23に絞る。** まず#4597の純粋Pin状態遷移、現行\`main.ts\`のForeground Inspect、\`responses.ts\`の応答制御、\`readInspection\`のHost結果検査のFit/Gapをとる。次に実Workbenchで「B閲覧中にAを裏で確認」の正負を検証する。生成埋込JSのbyte一致と実Windows WebView2を同じHEADで別assertし、状態テストのPASSだけで製品UXのPASSへ昇格させない。
+
+UX-26〜28のDirty Buffer→Review→条件付きSaveと、UX-31〜32のBuild/Consumerは**別の受入レーン**に残す。#4583 B1-B（N0→esbuild→Go embedの実Builder辺）→B2 Stage1実TEI→B3そのStage2実Consumerの最優先順を変更しない。AI送出や複数Agentの自動仲裁を最初のDesktop/PinのHard Gateに追加しない。
+
+### 判定と停止線
+
+- **この追補は文書のみ**。追加UX-23〜34、実WorkbenchのPinned Observation、Dirty Buffer競合、実AI Handoff、実Builder/Stage2、Current Disclosureの新規試験は**NOT RUN**。
+- #4597の純粋Pin試験と生成Bundle不一致は別の事実として保持する。正しいUI結果の説明だけでは、exact HEADのNode/Windows/Consumer資格を代替しない。
+- 新しい正式Schema、協業専用Task Store、Approval Engine、Host/Writer/Renderer、Harness Runner、実行時AI必須化は提案しない。
