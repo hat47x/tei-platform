@@ -41,6 +41,17 @@
 - **順序と証拠の上限**：#2586の実Function→実Query/Provider→Rowset→Function Data Context→ConsumerをP0に維持し、B0-Sの完成をHard Gateとしない。#4350 DF-X06は標準表現/Nativeの異質Consumerの同一意味を検査。#4496/#4515は固定Subject/Scope/Read epoch/操作資格を所有し、#4507/#4514のSource-only driftでは同byteの復帰とSource/Authorityの現行性を区別する。B1a実Native Consumer、B1b実Commerce Effect/別Read、B2実配信/Exposure/Consent、B3のCVR・利益因果評価は**別の未実証資格**。
 - **性能・プラグイン・Evidence**：#2018でH0 Native単独/H1 TEIのBuild時契約/H2任意Experiment Adapterを、同じ変更・独立Expectedと導入/改訂/運用費用で比較する。#951/#4198/#3278のProvider/Graph/Traitは実選択と実呼出しを照合。#4307/#2516に従い非公開Evidence・その存在情報をGitHubや外部Harnessへ必須送出しない。公開の権限、Consent/Grant、現在価格、実注文Effect、売上改善をB0で宣言しない。
 
+<!-- b2c-b1a-principal-scope-20261113 -->
+## G49 B1a：独立Native Consumerに実データを渡す際の主体と対象範囲（2026-11-13）
+
+**最初の対象を実Functionの意味に合わせる。** main [#4539](https://github.com/hat47x/tei-platform/pull/4539)は`order_entry.recent_orders`の実PG Read→Function Data Contextに限定し、main [#4540](https://github.com/hat47x/tei-platform/pull/4540)は申告されたNative PDPの`order-id`項目→Semantic Source一項目の束縛に限定する。両者を同じ実Frontend Functionとみなさない。B1aの最小候補は非公開の合成データによる**read-only注文履歴Consumer**とし、Function/Query Input/Result列・出典・用途・実Consumer受領の対応を[#2586](https://github.com/hat47x/tei-platform/issues/2586)の同一Attemptで検証する。商品詳細PDPを構築するときは、その目的に適した受理済み商品Data/Queryを別途必要とする。
+
+**B2C利用者と組織所属を分ける。** 公開閲覧者・ログイン済み消費者・ゲスト購入者・業務運用者が、必ずしもOrg Membershipを持つとは限らない。組織モデルをB2C利用の必須条件にせず、案件が必要とする場合に限り[#2386](https://github.com/hat47x/tei-platform/issues/2386)へ結び付ける。認証方法/本人の出所は[#3412](https://github.com/hat47x/tei-platform/issues/3412)、Browser Session/要求保護は[#1043](https://github.com/hat47x/tei-platform/issues/1043)、読み取り用途・行/列Scopeは[#1656](https://github.com/hat47x/tei-platform/issues/1656)、現在の実行Authority/Effectは[#1174](https://github.com/hat47x/tei-platform/issues/1174)、用途別開示は[#2516](https://github.com/hat47x/tei-platform/issues/2516)を既存Ownerとする。TEI Coreに第二のUser/Identity/Tenant台帳を追加しない。**`:from`日時条件やFrontendが指定したcustomerIdは、利用者本人の注文を選別する認可根拠ではない。** Host側の実Principal/業務Subject対応とRead Grant/行範囲が確認できない注文データを一般向けAPIへ公開しない。
+
+**順序・検証資格**：製品`tei`/既存Application経路から実Provider/Raw Resultを読み、独立Native Consumerが同じ値・Presence・Scope/Completeness・版を受領したことを確かめる。Public/Privateの実Hostアクセス、Guest/Checkout、Consent/Experiment、旧Clientの契約版と価格の再確認は後続の独立資格で検査する。既存B0-S1 [#4518](https://github.com/hat47x/tei-platform/issues/4518)を新しい公開APIの前提Gateにしない。独立Expected候補BC-43〜48と担当・停止線は[親Issueの引渡し](https://github.com/hat47x/tei-platform/issues/3509#issuecomment-6847438801)を参照し、別のテスト正本を作らない。
+
+**状態**：B1a Product CLI→実Native Consumer、顧客単位の実Grant/Read、公開Browser、Commerce/売上効果の検証は**NOT RUN / NOT ACCEPTED**。Studio Desktopセルフビルド[#2831](https://github.com/hat47x/tei-platform/issues/2831)の最優先を変えず、Runtime-zeroを選べるHeadless/外部Frontend方式を維持する。
+
 ## 最新の作業単位へ接続する
 
 2026年11月11日のmain `9d31f82486b2eac42791f4f3bc5cd588d69cb4fc`と関連Issueを照合した。以下は着手先の更新であり、Issueの起票・限定Reference・候補Parserを製品の完成へ数えない。以後の進捗は各Issueと[実装状況](../../docs/status.md)から再取得する。
