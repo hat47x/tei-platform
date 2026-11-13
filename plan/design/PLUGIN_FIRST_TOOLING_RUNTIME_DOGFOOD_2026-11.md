@@ -889,31 +889,32 @@ H0/H1はStudioセルフビルドの先行必須条件ではない。H3/H4の既�
 **停止・撤回条件**：この最小例で既存Hookを二重実装しなければGraphを試せない、Provider/Authority/Failureの第二正本が必要になる、GraphがHookの未評価や部分作用を表現できない、実Target/Sourceへの逆対応が失われる、という場合はGraphの適用範囲を縮小する。固定Phaseの実行を保ちつつ、将来の一般Lifecycleに必要な差だけ段階的に拡張する。
 
 **今回の証拠資格**：現行mainのHook Sourceと別Draft #4570/#4572、main統合#4315/#4146、#4198/#2831の設計・受入条件を静的に照合した計画追補。新しいGo/Windows/OS境界/Graph Compiler試験、正式Plugin ABI・Owner意味受理は**NOT RUN／NOT ACCEPTED**。
+
 ### 20.5 実装上の未解決点：規則評価・宣言した呼出し・実作用の順序
 
 <!-- hook-effect-order-regression-20261113 -->
 
-**現行mainのSource監査で見つかったFit/Gap。製品障害を実行確認したという主張ではない。** 現行実装は既に\`Declared\`と\`CommandCaller\`でCapabilityを制限する一方、呼出しのタイミングと呼出し回数について入口が完全には同値でない。型付きLifecycle Graphの初回実装では、この非同値を曖昧に包まず、実Providerを使った負例を先に設ける。
+**現行mainのSource監査で見つかったFit/Gap。製品障害を実行確認したという主張ではない。** 現行実装は既に`Declared`と`CommandCaller`でCapabilityを制限する一方、呼出しのタイミングと呼出し回数について入口が完全には同値でない。型付きLifecycle Graphの初回実装では、この非同値を曖昧に包まず、実Providerを使った負例を先に設ける。
 
-1. \`internal/hook/reach.go\`の\`RunReachable\`は、\`uses\`のある位相で\`RunDeclaredCalls\`を実行し、その後に\`RunWithDeclaredValues\`で規則を評価する。したがって、**実装が不成立を返す前にCapability境界へ到達し得る**。読み取り専用Referenceの局所成功を、変更を伴うCommandでも「Guardが先に拒否する」と読み替えない。
-2. \`RunWithDeclaredValues\`は\`ProducingImplementation\`以外では\`runDeclared\`を経由し、\`CallingImplementation\`なら\`RunWithCaller\`を呼ぶ。\`Guarded.RunWithCaller\`もCapabilityを呼ぶ。このため、\`RunReachable\`の先行\`RunDeclaredCalls\`と重なる構成では、**同じ宣言に基づく呼出しが二度境界へ到達する可能性**がある。行Scopeの\`RunRows\`／\`applyReachableRows\`も\`RunRowCalls\`と\`RunWithCaller\`を別々に用いるため、同じ観点で検査する。\`CallOutcome.Called=true\`は境界への到達であり、実Provider呼出し・実Effect・一度限りの保証ではない。
-3. \`Run\`／\`RunSequence\`はImplementationがCallerを使う契約を中心に実行する一方、\`RunReachable\`は宣言\`uses\`から自動呼出しを行う経路がある。**\`uses\`を「呼出し権限の上限」と解釈する場合と「必ず実行する義務」と解釈する場合を、正式なひとつの意味として混ぜない**。既存DSL/旧モデルを静かに改変せず、入口別の実際の意味を棚卸しし、実作用を伴うGraph Bindingに必要な追加情報（Guard前後・実行者・最大回数）だけを既存Contract/Traitに結び付ける。適格化できない組合せは実行対象から除外する。
-4. \`internal/hook/run.go\`の\`hook.Error.HasEffectUnknown()\`は常に\`false\`。実行先から来た\`CommitUncertainError\`等が\`wrapFailure\`で\`Hook.Error{Cause:...}\`に包まれると、\`failure.AsFailure\`は外側の\`Hook.Error\`を取得し、元の\`lookup_first/effectUnknown\`を読み取れない可能性がある。**一度実Effect境界へ到達した失敗を「作用なしの拒否」に変換しない**。\`warn\`の継続方針も効果不明のまま次の実作用へ進める根拠にはならない。正本は既存\`internal/failure\`、\`#1174\`のOperation Identity/Receiptに置く。
-5. 行Scopeの0件は、実際に完全取得した0件と、Rowset自体が与えられなかった状態で異なる。\`RunRows\`は空\`rows\`で正常終了する一方、\`RunReachable\`は\`len(Rows)==0\`で行到達をskippedとする。現行の値だけで取得完全性を推測せず、#3262のRequired/Loaded/Bound、#2586の実Readと結ぶ。既存の\`rows_uses_parity_test.go\`は行Scopeの入口間検証資産として再利用する。
+1. `internal/hook/reach.go`の`RunReachable`は、`uses`のある位相で`RunDeclaredCalls`を実行し、その後に`RunWithDeclaredValues`で規則を評価する。したがって、**実装が不成立を返す前にCapability境界へ到達し得る**。読み取り専用Referenceの局所成功を、変更を伴うCommandでも「Guardが先に拒否する」と読み替えない。
+2. `RunWithDeclaredValues`は`ProducingImplementation`以外では`runDeclared`を経由し、`CallingImplementation`なら`RunWithCaller`を呼ぶ。`Guarded.RunWithCaller`もCapabilityを呼ぶ。このため、`RunReachable`の先行`RunDeclaredCalls`と重なる構成では、**同じ宣言に基づく呼出しが二度境界へ到達する可能性**がある。行Scopeの`RunRows`／`applyReachableRows`も`RunRowCalls`と`RunWithCaller`を別々に用いるため、同じ観点で検査する。`CallOutcome.Called=true`は境界への到達であり、実Provider呼出し・実Effect・一度限りの保証ではない。
+3. `Run`／`RunSequence`はImplementationがCallerを使う契約を中心に実行する一方、`RunReachable`は宣言`uses`から自動呼出しを行う経路がある。**`uses`を「呼出し権限の上限」と解釈する場合と「必ず実行する義務」と解釈する場合を、正式なひとつの意味として混ぜない**。既存DSL/旧モデルを静かに改変せず、入口別の実際の意味を棚卸しし、実作用を伴うGraph Bindingに必要な追加情報（Guard前後・実行者・最大回数）だけを既存Contract/Traitに結び付ける。適格化できない組合せは実行対象から除外する。
+4. `internal/hook/run.go`の`hook.Error.HasEffectUnknown()`は常に`false`。実行先から来た`CommitUncertainError`等が`wrapFailure`で`Hook.Error{Cause:...}`に包まれると、`failure.AsFailure`は外側の`Hook.Error`を取得し、元の`lookup_first/effectUnknown`を読み取れない可能性がある。**一度実Effect境界へ到達した失敗を「作用なしの拒否」に変換しない**。`warn`の継続方針も効果不明のまま次の実作用へ進める根拠にはならない。正本は既存`internal/failure`、`#1174`のOperation Identity/Receiptに置く。
+5. 行Scopeの0件は、実際に完全取得した0件と、Rowset自体が与えられなかった状態で異なる。`RunRows`は空`rows`で正常終了する一方、`RunReachable`は`len(Rows)==0`で行到達をskippedとする。現行の値だけで取得完全性を推測せず、#3262のRequired/Loaded/Bound、#2586の実Readと結ぶ。既存の`rows_uses_parity_test.go`は行Scopeの入口間検証資産として再利用する。
 
-**当面の適用方針**：純粋・read-onlyのHookでは既存Runnerを維持する。実DB変更・外部送信などを\`uses\`から起動する前に、Guard評価位置、呼出し主体と回数、失敗後の作用観測を既存Command/Effect契約で検査する。複数Hookの順序・分岐/並列化をGraphへ移す場合も、既存実行にない「安全」を図の見た目から推論しない。既存\`PhaseOrder\`を全PluginのCore固定列として昇格しない。
+**当面の適用方針**：純粋・read-onlyのHookでは既存Runnerを維持する。実DB変更・外部送信などを`uses`から起動する前に、Guard評価位置、呼出し主体と回数、失敗後の作用観測を既存Command/Effect契約で検査する。複数Hookの順序・分岐/並列化をGraphへ移す場合も、既存実行にない「安全」を図の見た目から推論しない。既存`PhaseOrder`を全PluginのCore固定列として昇格しない。
 
 ### 20.6 最初に追加すべき独立負例と、変更の所有者
 
 | Case | 一因子変更と実際に数えるもの | 期待／停止条件 | Owner |
 | --- | --- | --- | --- |
-| **HG-10** | \`uses\`ありのbefore位相でReference Ruleが\`NotSatisfied\`を返す。effectfulなCallerの実Call数を数える | Guard-firstを要求するBindingなら実Call **0**。先行実Callがあれば現行意味との差を報告しGraph適格化は拒否 | #1129/#4198、#1180/#2514 |
-| **HG-11** | 同じCapabilityを\`uses\`と\`Guarded.RunWithCaller\`が呼ぶ構成 | 正常時の許された呼出し数を明示し、予期しない2回をFAIL。Row Scope 2行では「各行1回」と「全体2回」を区別 | #1129/#1251、#1174 |
-| **HG-12** | 同じ宣言を\`Run\`／\`RunSequence\`／\`RunReachable\`／\`RunRows\`で試す | 意図した入口差（Reach/Row/呼出し義務）のみ許容。Result一致だけでEffect同値を宣言しない | #1129/#4198 |
-| **HG-13** | 下位Commandが\`CommitUncertainError\`を返し、Hookが\`HOOK_REJECTED\`で包む | 最外CLI/Studioの分類が\`lookup_first\`かつ\`effectUnknown=true\`を保つ。外側Hookの\`false\`で消さない | #3807/#1174/#1158 |
-| **HG-14** | \`on-failure warn\`で実作用不明の下位呼出しに到達 | WARNだけで後続Effectを継続しない。Operation Identityで照会・再評価するまで再送禁止 | #1129/#1174 |
+| **HG-10** | `uses`ありのbefore位相でReference Ruleが`NotSatisfied`を返す。effectfulなCallerの実Call数を数える | Guard-firstを要求するBindingなら実Call **0**。先行実Callがあれば現行意味との差を報告しGraph適格化は拒否 | #1129/#4198、#1180/#2514 |
+| **HG-11** | 同じCapabilityを`uses`と`Guarded.RunWithCaller`が呼ぶ構成 | 正常時の許された呼出し数を明示し、予期しない2回をFAIL。Row Scope 2行では「各行1回」と「全体2回」を区別 | #1129/#1251、#1174 |
+| **HG-12** | 同じ宣言を`Run`／`RunSequence`／`RunReachable`／`RunRows`で試す | 意図した入口差（Reach/Row/呼出し義務）のみ許容。Result一致だけでEffect同値を宣言しない | #1129/#4198 |
+| **HG-13** | 下位Commandが`CommitUncertainError`を返し、Hookが`HOOK_REJECTED`で包む | 最外CLI/Studioの分類が`lookup_first`かつ`effectUnknown=true`を保つ。外側Hookの`false`で消さない | #3807/#1174/#1158 |
+| **HG-14** | `on-failure warn`で実作用不明の下位呼出しに到達 | WARNだけで後続Effectを継続しない。Operation Identityで照会・再評価するまで再送禁止 | #1129/#1174 |
 | **HG-15** | 完全に取得した0行と、Rows未供給/partial/permission-deniedを対照 | いずれも「呼出し0回」でも、適格性と診断は別。未知を空集合へ潰さない | #3262/#2586/#1129 |
-| **HG-16** | selected B→actual A／旧Providerに更新、または実Builder外のDependency更新 | Hookの\`Called\`や生成TSのbyte一致だけではQualifiedとしない。実Artifact・Entry・Consumer・Target別に拒否 | #951/#1251/#2831 |
+| **HG-16** | selected B→actual A／旧Providerに更新、または実Builder外のDependency更新 | Hookの`Called`や生成TSのbyte一致だけではQualifiedとしない。実Artifact・Entry・Consumer・Target別に拒否 | #951/#1251/#2831 |
 
 これらは**既存#1180/#2514の独立Expectedへ渡す候補**であり、新Scenario正本や新Graph Engineの実装宣言ではない。最初の実施はHG-10/11/13（effectful Hookを実Targetへ渡す前の安全性）とHG-15（read-only Data/Rowset境界）に絞る。修正案は#1129（業務Hook/作用）、#3807（Failure共通契約）、#1251（実Plugin）、#4198（Graph合成）の担当範囲で設計する。TEI Studio生成部品の既存#4572/#2831、X-TEA三視点#4570/#1124、実Function Read #2586を、このHook整理が済むまで停止させない。
 
