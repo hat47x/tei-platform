@@ -980,4 +980,54 @@ CLI自己dogfood第78ラウンドと[Issue #4455](https://github.com/hat47x/tei-
 
 **依存を増やさない**：AI生成Generatorの一般規約（G1）は既存担当の検討とし、dogfooding側で第二のGenerator標準を作らない。X-TEA移管、SHO、KON、外部Harness、B2C、全Target配布を初回StudioセルフビルドのHard Gateに追加しない。標準データ構造・Role/DSLの改良は、上記の実Source/Build/Readから実際に表現不能が見つかった場合だけ#2620/#988へ差分を返す。自然な認知順とノイズの少ない専門家可読表記を評価し、Goの内部実装都合でDSLを複雑化しない。
 
-**判定（本追補）**：#4587の**旧固定HEAD B0**、#4539 mainの実Read、#4559の別Draftによる実PG生成CLI、#4570のServer／合成GUIは別々の限定実証。#4587新HEADのN0実生成、B1全工程BuildIntent、B2 Stage1実Process→Stage2 Windows exe、B3 Stage2実Consumer、通常`tei` CLI実Read、Studio Pin製品実装、X-TEA実Source、Owner意味受理は**今回NOT RUN／未資格**。計画の更新だけで実行・採用・配布を宣言しない。
+**判定（本追補）**：#4587の**旧固定HEAD B0**に加えて**新HEAD `708ca27e`／Windows CI #43385876034でN0のSource実再生成・使用TSのbyte一致・同Job実WebView2配信Byte検査が限定PASS**。#4539 mainの実Read、#4559の別Draftによる実PG生成CLI、#4570のServer／合成GUIは別々の限定実証。B1全工程BuildIntent、B2 Stage1実Process→Stage2 Windows exe、B3 Stage2実Consumer、通常`tei` CLI実Read、Studio Pin製品実装、X-TEA実Source、Owner意味受理は**今回NOT RUN／未資格**。計画の更新だけで実行・採用・配布を宣言しない。
+
+<!-- tei-mvp-dogfood-20261113-loop-witness-review-v1 -->
+### 15.11 再基準化：生成Inspector N0の現行実Windows PASSとB1の残り
+
+[Draft #4587](https://github.com/hat47x/tei-platform/pull/4587) の**新HEAD `708ca27eb39ae31a039565429876f214a421ca52`**で、[Windows Actions #43385876034](https://github.com/hat47x/tei-platform/actions/runs/43385876034)の生成版・通常版WebView2 Jobがともにcompleted/success。生成版JobではSourceに基づくInspector N0再生成と使用TSのbyte一致（SHA-256 `6d3dfe806ef758dc4746ccc34b5ae646533eb056b78cbbc098630993d384586b`）、実配信JS検査（682,327 bytes、SHA-256 `755e5e85f8487d4e5361fe4262c77595c3ebc048068f2647b0b27862de804299`）が同一Jobで確認されている。**この限定N0＋実Windows ConsumerはPASS**。旧B0だけの証拠ではない。ただしDraft未統合、同HEADでのTEI BuildIntentによるN0〜N3実駆動とStage1→Stage2 Desktopは未実施である。
+
+B1の次の検収票では工程を**正本Source／実入力／実起動者／出力Artifact／実Consumer**の五列で固定する。N0=Inspector契約・transform→生成TS、N1=PoC B生成Go/TS、N2=Node24・固定lock・esbuild→JS、N3=nested `cmd/tei-studio` Go module・Wails・embed→Windows exe。現行`tei self-build`の単一Recipe/Output表現とCIの多工程を混同せず、既存BuildIntent/Build Execution/ArtifactSetへ接合可能なもの、薄いTarget Adapterが必要なもの、未表現・未観測のものを分ける。Source変更・生成器変更・依存lock変更・生成JSだけの旧版混入を個別に拒否する。
+
+工程票の完成は製品PASSそのものではない。B2では**Stage1で構築したTEIの実Process imageが**Stage2のPlan解決と既存Builderへの要求を駆動したことを確認し、B3ではそのStage2実exeから同一生成部品を実Windows WebView2が消費する。外部CI・Pythonが二回のビルドを手配しただけならB2不成立。
+
+### 15.12 dogfoodingの単位を「実際の作業一往復」にする
+
+dogfoodingをコマンド一覧の操作確認で終わらせず、開発者や生成AIがTEI自身の設計・変更・検証を進められたかを見る。ただし、異なるSubject・別Attemptの成果を一件の一往復に合算しない。
+
+| 仕事 | 一往復の開始・完了の形 | 初回に実証しないもの | 主担当 |
+| --- | --- | --- | --- |
+| **SELF-R：自分の設計を読む** | TEI自身のCLI契約の宣言・文書・実コマンドを固定実行物で発見→inspect/trace/source-index→原Source位置へ戻り、差分・診断を記録。既知Subjectと未対応Kindを別診断 | リポジトリ内の全MarkdownがTEI Roleとして読めること、全設計の意味受理 | #3149の既存実測を継続利用、#3262/#3419 |
+| **SELF-G：部品を変えて自分で使う** | Inspector契約Sourceに非破壊変更→N0再生成→N2/N3生成→実Windows Consumerが新Byteを使用。B1成立後はStage1 TEIがStage2全体を構築し、同じ変更を再検証 | 初回から全Studio UIの自己記述、Goコンパイラの自作、すべてのPlatformでの配布適格 | #4583/#2831/#1824 |
+| **SELF-D：一Functionで実DBを読む** | `order_entry.recent_orders`のQuery Source/明示Environment/選択Provider→通常`tei` CLIの実Invoker→typed params/実SQL/Rowset/Contextを受領。独立Readで同じ対象範囲を比較 | DB Commit、全レコード不存在、X-TEA別Queryとの同一視、Studio全CRUD | #2586/#1251/#951 |
+| **SELF-S：Studioで固定対象を調べる** | 明示Subject Pin意図→Host `InspectSubject`実再解決→Source-backed Inspector→Source参照。Workspace A→B→Aと後着返信で現在資格を取り戻さない | 描画用edge IDの意味Relation化、PinによるGrant/AI外部送信許可 | #4515/#1824/#2516 |
+
+SELF-Rは既存`.tei`とCLI実契約を先に扱い、`*.tei.md`の一般Markdown管理・Loader読取・Role解析を同一視しない。SELF-Gは現在実証済みのN0を第一対象にし、IDE全機能の完成を待たない。SELF-Dの実Read Referenceがmain統合済みである事実と、製品CLI実受領の未接続を区別する。
+
+全仕事で、操作回数・最初の有用な応答までの時間・再試行回数・対象へ戻れなかった理由・Source改版時の誤成功・必須試験のSKIPと未実行を記録する。速度の基準値は事前に固定せず、正しさの検証と実測性能を別表にする。Cache/Incrementalのcold/warm比較と不正skip検知は#2600の既存Ownerへ渡し、初回B1/B2のHard Gateにはしない。
+
+### 15.13 Build Graphの完全性を三種類の証拠に分ける
+
+[#4486](https://github.com/hat47x/tei-platform/issues/4486)が示したとおり、**子Processの申告と成果物digestだけでは、未宣言の工程やstate共有の不存在は証明できない**。最初に主張する範囲W（OS、Process、Read/Write/Network、実toolchain、対象Workspace）を明記する。
+
+| 証拠区分 | 確認できること | それだけでは言えないこと |
+| --- | --- | --- |
+| Declared | Build Graphの型・選択・依存・Output roleが整合する | 現実にすべてのInputを消費したこと |
+| Observed | entryがbyteを読み実Processを起動した、実Artifact/Consumerが一致した | 監視していない子Process・隠れた入力／書込が無かったこと |
+| Enforced（限定W内） | OS等の境界によって、指定資源への未宣言アクセスを実際に禁止した | 観測・隔離していない読取、ネットワーク、別OSでの同等保証 |
+
+#4486のLinux user/mount namespaceで負例が落ちた**限定実測**は、Windows WailsのBuild全体に自動移転しない。B1/B2で境界を強制できない場合は`unknown/unperformed`として保持し、Stage1→Stage2の**実再入**と、Build閉包の**強制保証**を別々に判定する。新Sandbox Engineや全OS同時実装をMVPの追加必須課題にしない。OS境界を使用した場合はObserver/Process/Artifactのexact版とscopeを#1163 Packetに記録する。
+
+既存のL1/L2/L3は再定義しない。Stage1 Image digestと実Process Imageの一致、選択Builderと実Invoker、Nested module、実生成Desktop、Source Closureに未知が残る場合は、限定PASSと未確認を併記する。内容一致、Graphの整合、Stage再入、Seed Trust、実Host利用許可は異なる主張である。
+
+### 15.14 誤成功を修正対象として循環させる：MVPドッグフードの運用
+
+一つのdogfooding Attemptで見つけた不具合は、**再現のための固定入力→実Observed→独立Expected→最初に途切れた辺→既存Owner→次の確認試験**の順に切り分ける。新しいTriage Ledgerは作らず、既存#3149の実測記録と#1163のEvidence Packet、修正先Issueへ残す。
+
+[#4455](https://github.com/hat47x/tei-platform/issues/4455)のように**テストだけがmainに入り実Commandが未統合で常時赤になる例**は、Baseline failureとして出典と現在性を固定し、全体をGreenと偽称しない。実装なしの成功スタブ、既知赤の無条件SKIP、別PRのPASS合算は禁止。修正Ownerは、対象実装を統合するか、未実装の契約をテスト対象から明示的に除外するかを選び、変更後のmain exact HEADで再検証する。dogfooding担当が独断で機能の意味を確定しない。
+
+Studioの#4597 Pin stateは状態遷移だけのDraftであり、実`main.ts`/Inspector/Windowsへ接続されていない。Pinしたというユーザー意図はSourceが改版しても残せるが、旧Reader Replyや元の現在資格を復活させない。SELF-Sを今後実装する際も、実Root/Subjectを再解決したこと・当該Source改版を観測したこと・現在のDisclosure/Grantを確認したことはそれぞれ別に示す。
+
+**近接する実行順**は、(1) #4587の現HEAD限定PASSを#4583 B1-Aの入力証拠として固定、(2) B1-Bの既存Builder/Adapter Fit/Gapと製品CLI実Readを並行、(3) B2/B3の実Desktop再入、(4) SELF-R/SELF-G/SELF-D/SELF-Sの利用実績を既存Packetで比較、の順である。#4359のDSL構文選定、#2620の自己記述、#2600のCache性能は**実際に表現できない事象や誤再利用が判明した場合の既存改良先**とする。Source表現の可読性は専門家の認知順を最優先し、Go構文に引きずられた改変は求めない。
+
+**この追補の証拠上限**：#4587の新HEAD/Windows CIを既存PRから参照し、#4486/#4455/#4597等の現行Issue/PRとのFit/Gapを整理した計画変更。今回独自のGo/Node/Windows/実PG/実Sandbox/Studio/Harness/Owner意味受理試験は**NOT RUN**。既存の限定PASSは保持し、単一BuildIntent Stage1→Stage2 Windows Desktopは未資格。
