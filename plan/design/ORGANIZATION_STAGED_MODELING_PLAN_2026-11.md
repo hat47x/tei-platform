@@ -945,3 +945,22 @@ WU-11〜14をWU-06〜10の「全部完了待ち」にしない。前段の**必�
 **最短の証拠票**：exact HEAD、Source Revision、Selected/Loaded/Invoked/Received、Process Image、Build Input/Toolchain、Artifact digest、Consumer、Scope、受入状態を**観測したものだけ**記録。D0とD2を一つのself-build PASSに合算しない。CLI実Provider接続とDesktopセルフビルドは並行P0であり相互のHard Gateではない。既存#1180/#2514の独立Expectedと#1119のCritical Pathを再利用し、第二Builder/Parser/Runner/Host/Scenario正本は作らない。
 
 **現況**：組織計画#4500 main統合（squash e5140059）。明示CRUD/Unused修正#4551 main統合（squash 1a2271d8）。外部解析REA #4547/#4548は独立Draftの候補受領であり、正式Meaning/受信/認可とは別。D0〜D4のDesktop実起動、Studio自己再ビルド、組織C1の実DB Query、X-TEA Plugin実受入は**NOT RUN**。
+
+
+#### 10.12.1 Desktop自己再構築の反証可能な受入（D0/D2の追加条件）
+
+D0/D2の判定では**同じ成果物が存在する**ことと**TEI自身がその成果物を作った**ことを分ける。stage0を信頼することは認めるが、stage2に至る主要な生成・選択・ビルド操作がstage1 TEIの実プロセスと既存Build Graphを経由した事実を、外部から照合する。名前やdigestが一致しただけの別製ビルド、前回生成したArtifactの流用はself-buildの証拠ではない。
+
+| 判別する負例・受入ケース | 必ず区別して照合するもの | Gate・Owner |
+| --- | --- | --- |
+| **D2-SB-01** stage0のラッパーがstage2を直接ビルドし、stage1は起動しただけ | stage1のProcess Imageと起動引数、子/下流Invoke、Graph内のTask/Target、stage2出力のProducer経路を別々に観測。stage1が実Builderを起動・制御しない場合はD2不合格 | #2831、既存SB-C0/Receipt。新Runnerを作らない |
+| **D2-SB-02** stage1のSource/Plugin/Toolchainを変えても、旧stage2のCache結果が残る | Source/Meaning/Plugin契約・Compiler/Generator/Target/OS/archの入力束、再計算判断、出力digestを照合。変化が影響し得るのに旧成果を再利用する場合は拒否 | #2831/#2600、build/Evidence/receipt再利用資格を分離 |
+| **D2-SB-03** ビルドが途中失敗したのに旧Receipt・成功画面が出る | Attemptごとに開始/完了/失敗、成果物の実所在、要求入力と出力版、Partialと最終資格を分ける。失敗Attemptを成功に繰り上げない | #2831/#1180、実EffectはHost別資格 |
+| **D2-SB-04** stage2のバイナリdigestが同じだがStudio起動/Go API応答がない | D0で試したOS/arch・起動可能なImage・Wails BridgeからGo共通APIへの実応答をstage2でも再観測。stage2 Artifactだけの一致はD0/D2両方のPASSではない | #1824/#2831、実OS受入 |
+| **D2-SB-05** 署名・時刻・パッケージmetadata等でバイト一致しない | 決定的なBuild Manifest/Source/Toolchainと、実起動・最低限のUI/API挙動の差を別欄に記録。byte同一性が必要な対象では厳密比較し、非決定的な包装差だけを独立に説明してから同等性を判断する。単にdigest差を無視した自動PASSは禁止 | #2831、比較対象と許容差分を事前宣言 |
+| **D2-SB-06** D0ではX-TEA Pluginが有効だがstage2でPlugin閉包欠落・版不一致 | Core、Plugin Manifest、必要契約/依存/配置、三要素Data/Function/Business/CRUDのread-only観測を別確認。Plugin無効時も汎用Studioが動くことを判別 | #1824/#1251/#1124、D3はD2完了の一律Hard Gateではない |
+| **D2-SB-07** Sourceや依存がA→B→Aと戻る間に旧Selection/Expected/Build Evidenceを再利用 | 入力byteが戻った場合でも途中の変更・Toolchain/Plugin・World/Meaning資格と現在のConsumer観測を再照合。古い承認を自動復活させない | #2600/#2831/#2514、Result/Meaningの資格は別 |
+
+**比較を先に狭くする**：最初は一つのOS/arch、一つのWorkspace、一つの最小Desktop起動、一つのGo API応答、一つのread-only三要素投影に限定する。OS横断、署名配布、全Plugin/全Target/全業務Functionの完全性をP0の入場要件にしない。P0の完成条件を段階ごとに明確にし、D2の成立後にD3/D4を順次拡張する。ただし#2586の実Provider→通常CLI接続はDesktopとは**並列のP0**であり、双方を相互待ちにしない。
+
+**取り扱う証拠の範囲**：これは#2831/#1824の既存テスト・Receiptへの受入要求の追加であり、新しいCore Model、専用Self-build Runner、第二Receipt Storeを定義しない。実stage1→stage2プロセス、実OSでのstage2 Studio起動、Pluginの実閉包・失敗時復旧・UI/Source同一性の試験は**今回NOT RUN**。それらを確認するまでは、#4551のCRUD派生Go PASSも#4539の受注Provider Read PASSもDesktop自己再構築のPASSと呼ばない。
