@@ -71,6 +71,12 @@ func main() {
 	}
 	sum := sha256.Sum256([]byte(body))
 	if state != "" {
+		// Honouring -state means creating it, not just printing it back: the entry
+		// checks that the second run's directory exists (#4486 S1).
+		if err := os.MkdirAll(state, 0o755); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
 		fmt.Printf("{\"schemaVersion\":\"tei.reference.go-build-with-supply/v0\",\"artifactDigest\":\"sha256:%s\",\"stateDir\":%q}\n", hex.EncodeToString(sum[:]), state)
 	} else {
 		fmt.Printf("{\"schemaVersion\":\"tei.reference.go-build-with-supply/v0\",\"artifactDigest\":\"sha256:%s\"}\n", hex.EncodeToString(sum[:]))

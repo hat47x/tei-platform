@@ -58,6 +58,14 @@ func main() {
 	}
 	report := fmt.Sprintf("{\"schemaVersion\":\"tei.reference.go-build-with-supply/v0\",\"artifactDigest\":%q", digest)
 	if state != "" {
+		// A child that reports a state directory is claiming it used it. Creating it
+		// is part of that claim: the entry now checks the directory exists, so a
+		// fixture that only prints the path would be modelling a child that does
+		// not honour -state (#4486 S1).
+		if err := os.MkdirAll(state, 0o755); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
 		report += fmt.Sprintf(",\"stateDir\":%q", state)
 	}
 	if definition != "" {
