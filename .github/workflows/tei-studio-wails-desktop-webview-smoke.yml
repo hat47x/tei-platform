@@ -270,9 +270,32 @@ jobs:
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             npm run typecheck
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-            node --input-type=module -e 'import { build } from "esbuild"; import { resolve } from "node:path"; await build({ absWorkingDir: process.cwd(), entryPoints: ["main.generated.ts"], outfile: resolve(process.cwd(), "../../cmd/tei-studio/assets/workbench/main.js"), bundle: true, format: "esm", platform: "browser", target: "es2022", nodePaths: [resolve(process.cwd(), "node_modules")] });'
+            # esbuild's metafile is emitted by the very build that produces the
+            # Desktop bundle, not by a second dry-run resolver.
+            node --input-type=module -e 'import { build } from "esbuild"; import { resolve } from "node:path"; import { writeFileSync } from "node:fs"; const result = await build({ absWorkingDir: process.cwd(), entryPoints: ["main.generated.ts"], outfile: resolve(process.cwd(), "../../cmd/tei-studio/assets/workbench/main.js"), bundle: true, format: "esm", platform: "browser", target: "es2022", metafile: true, nodePaths: [resolve(process.cwd(), "node_modules")] }); writeFileSync(resolve(process.env.STUDIO_SMOKE_EVIDENCE_DIR, "n2-esbuild-metafile.json"), JSON.stringify(result.metafile, null, 2));'
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           } finally { Pop-Location }
+          # The actual esbuild execution reports its selected source members.
+          # This is stronger than checking a file happened to be present.
+          # It is still builder-reported post-build evidence, not a read-time
+          # snapshot or proof that no undeclared input/environment was consumed.
+          $metafilePath = Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n2-esbuild-metafile.json'
+          if (-not (Test-Path -LiteralPath $metafilePath -PathType Leaf)) { throw 'N2 esbuild did not emit a metafile' }
+          $metafile = Get-Content -LiteralPath $metafilePath -Raw | ConvertFrom-Json -AsHashtable
+          if (-not $metafile.inputs -or -not $metafile.outputs) { throw 'N2 esbuild metafile is incomplete' }
+          $selected = @($metafile.inputs.Keys)
+          foreach ($required in @('main.generated.ts', 'inspection-reader.generated.ts')) {
+            if ($selected -notcontains $required) { throw "N2 esbuild did not select required Source: $required" }
+          }
+          $metaObservedSources = @()
+          foreach ($inputPath in ($selected | Sort-Object)) {
+            $physical = Join-Path 'reference/tei-studio-workbench' $inputPath
+            if (-not (Test-Path -LiteralPath $physical -PathType Leaf)) { throw "N2 esbuild selected a Source that cannot be observed: $inputPath" }
+            $hash = (Get-FileHash -LiteralPath $physical -Algorithm SHA256).Hash.ToLowerInvariant()
+            $metaObservedSources += @{ path = $inputPath; selectedByEsbuild = $true; digestAfterBuild = "sha256:$hash" }
+          }
+          $metaObservedSources | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n2-esbuild-selected-sources.json') -Encoding utf8
+          Write-Host "N2-esbuild-selected-inputs-recorded count=$($selected.Count)"
           $bundle = 'cmd/tei-studio/assets/workbench/main.js'
           $source = 'reference/tei-studio-workbench/main.generated.ts'
           $goService = 'internal/studiohost/staticservices/services.generated.go'
@@ -346,6 +369,9 @@ jobs:
               generatedMainInputSha256 = & $namedHash 'reference/tei-studio-workbench/main.generated.ts'
               packageLockSha256 = & $namedHash 'reference/tei-studio-workbench/package-lock.json'
               workbenchBundleSha256 = $bundle
+              esbuildSelectedSources = 'n2-esbuild-selected-sources.json'
+              esbuildSelectedCount = $metaObservedSources.Count
+              selectionBasis = 'esbuild-metafile/post-build-file-hash'
               invoker = 'workflow:node/esbuild'
             }
             n3 = @{
