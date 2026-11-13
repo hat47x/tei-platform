@@ -296,6 +296,8 @@ jobs:
           # B1-A observation only. This is a bounded set of named files consumed
           # by this CI recipe, NOT an authoritative BuildIntent graph/closure.
           # A different OS/process/builder/hidden Node/Go input remains unknown.
+          # The Wails Build step above runs from the nested Go module; hash from repo root.
+          Set-Location $env:GITHUB_WORKSPACE
           $namedHash = {
             param([string]$path)
             if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "B1-A named input missing: $path" }
