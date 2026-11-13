@@ -104,6 +104,14 @@ jobs:
           check-latest: false
           cache: false
 
+      - name: Native organization as-of Go source formatting
+        shell: bash
+        run: |
+          set -euo pipefail
+          gofmt -d internal/operations/org_axis_asof_physical_test.go \
+            internal/operations/org_axis_asof_postgres_integration_test.go | tee "$RUNNER_TEMP/org-asof-gofmt.diff"
+          test ! -s "$RUNNER_TEMP/org-asof-gofmt.diff"
+
       # The suites create their own tables and drop their own schemas; separate
       # databases keep them from seeing each other's relations.
       - name: 使い捨てデータベースを作成
