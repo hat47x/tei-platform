@@ -133,3 +133,85 @@ U0とU1のHeadless部分は並走可能。U3/U4/U5を#2831のDesktopセルフビ
 2026-11-13のIssue/PR記録において、#4515のSubject Pinはread-only実装・試験前、Draft #4479は固定対象/Contextの設計であり実GUI/外部Harnessの完了ではない。#4572/#4579/#4583は生成部品・Windows DesktopとBuild Intent/Stage1→Stage2に異なる資格を持ち、別Attemptの成功を一体セルフビルドの成功へ昇格できない。#2509には外部Harnessの限定read-only/Skill Load実証があるが、実効OS隔離・完全なTool受領・外部開示適格性・AI編集往復は未証明。
 
 本書では設計と受入条件を整理したのみで、実TEI CLI、Node、Go/Wails、OS隔離、外部AIの新しい試験、Owner Meaning Acceptance、正式仕様の採用は**NOT RUN / NOT ACCEPTED**。以後の状態は各Owner Issueとdocs/status.mdを正本として確認する。
+
+
+## 11. 協業状態の境界：対象・版・根拠・受領を分ける
+
+前節のFocus/Pin/Task/Reviewに新たな正本を追加せず、少なくとも次の**独立した現在性**をUI/CUIで説明する。表示・検証項目の設計であって、新しい永続Schemaや単一の「有効」フラグの提案ではない。
+
+| 区分 | 問い | 不成立時の体験 | Owner |
+| --- | --- | --- | --- |
+| Target Identity | 今のWorkspace/Kind/ID/Occurrenceは固定対象と同じか | Pinの意図を残し、別対象への自動再束縛を止める | #4515/#1120 |
+| Source/Meaning | Source bytes/Revisionと意味解釈は今回の作業の元情報と整合するか | 古い資料・提案を明示し、現在Sourceへの適用を保留 | #1124/#3262 |
+| Context Completeness | この問いのRequired集合と実Read集合は閉じているか | 取得済み・未探索・partial/unknownを区別。空を不存在にしない | #3262/#2514 |
+| Disclosure/Authority | 現在のConsumer/Recipientへの開示・Operation権限があるか | 送出/Applyを停止。未観測の変化はunknown | #2516/#1174 |
+| Delivery/Execution | このAttemptのTool Reply、終了、Provider呼出し、実観測は揃ったか | 受領不完全・実行未確認・確定不明を別表示 | #2509/#1158/#1174 |
+
+**反例**：Sourceの注釈・AuthorityLimitsだけが変わり構造ModelFingerprintが不変でも、旧ReviewのSource資格は自動復帰しない（TEI #4514）。同Kind同ID重複や明示CRUDの矛盾を、Indexの後勝ちや画面の最後の値で確定Meaningにしない（#4472/#4475）。source-indexの空結果から対象の不存在を推定しない。既存の診断/Producerがまだ不十分な箇所は未確認として保留する。
+
+利用者向けには「対象は固定されています。内容は再確認が必要です」「参照先の取得が完了していません」「現在の定義と提案時の定義が異なります」「実行結果を確認できません」など短い文言を用いる。全画面に大量の証拠票や承認確認を常時表示しない。詳細根拠は必要時に開く。
+
+## 12. 作業の交代と同時編集：最小の協業手順
+
+まず単一Source/対象に対する一変更を扱う。多主体対応のために中央Task Storeやリアルタイム共同編集を先に増設せず、既存Operationを次の順で接続する。
+
+1. **Locate**：Qualified ID・Workspace/Originから実対象を再取得する。画面Focusを入口に利用しても、固定する作業対象はFocusから独立する。
+2. **Observe**：現在のSource/Meaning/Required/開示可能な範囲を取得する。TEIのSource読取とUI/Harnessの完全受領を別扱いにする。
+3. **Propose**：対象、基準版、変更意図、実際に確認した根拠へ変更候補を結び付ける。人間案/AI案のどちらにも同じ変更契約を利用する。
+4. **Review**：現在Sourceとの照合、Source差分・意味差分・影響/不足/競合を表示。再束縛や採用、破棄は明示操作とする。
+5. **Apply/Observe**：既存AcceptanceとProvider資格で条件付き適用する。保存、Meaning受理、実Effect、Receipt、独立Readerの観測を別々に表示する。
+
+これは**操作順の提案**であり、正式な外部Wire APIやTask JSON schemaではない。
+
+### 競合をどう扱うか
+
+- 人間AとAI Bが基準版R0から開始し、AがR1へ保存した場合、後着したBのR0提案は**R1へ無音適用しない**。Bの案を保持し、明示再比較・再計算できるようにする。
+- 別ファイル・別SubjectでもFunction/Rule/Relationの依存があれば競合し得る。依存閉包がunknownなら「競合なし」もunknownとする。
+- AIの終了・再開と、実Source保存/実Operation Effectを混同しない。同じHandoff PayloadやResultの再送は、元TEI Sourceの当該Attemptの再読取・実行を証明しない。
+- 開示資格の変更が観測されたら既存Consumerで再評価する。観測できない期間の即時権限失効通知まで保証しない。無関係な許可済み対象の閲覧は不必要に停止しない。
+- 最初は候補の保持・明示Diff・条件付き保存を検証する。自動マージ、Agent間の仲裁、リアルタイムカーソル同期は後続採否とする。
+
+判断の経緯は既存Issue/PR、Source、設計文書、任意のOKF管理から再発見できるようにする。AI要約は出典付き候補であって第二のMeaning正本ではない。SHOのWorking Copy/文書保存/独立再読取とTEIのSource/Meaning受理を混同しない（SHO Draft #50 QH-08〜10）。
+
+## 13. 協業パネル・レビューの最小表示
+
+| 場所 | 標準で示す | 詳細表示で示す |
+| --- | --- | --- |
+| Model Map/Tree | 現在位置、モデル種別、参照元/先、未解析の有無 | Relationの向き・多重度、Source occurrence、Scope |
+| Pinned Target | 対象名/Kind、固定状態、再確認要否、明示解除 | Workspace/Origin、ID、版、Source状態/現在資格 |
+| AI Handoff Preview | 対象、目的、送る範囲、依頼する操作種別 | 実送信Slice、許可されたRecipient、未取得・unknown |
+| Candidate Review | 変更意図、Source/意味差分、影響要約、未確認 | 実Read、基準版、Expected、依存、Tool/Provider Result |
+| 実行結果 | 保存・拒否・確定不明と次の操作 | Source再読取、業務拒否/技術失敗、Receipt/Effect/Observation |
+
+低権限利用者へ「非公開情報が何件あるか」も無条件に開示しない。CLI/CUIには同じ意味の構造化状態を渡し、画面文言そのものへの依存は作らない。
+
+「AIへ調査を依頼」「変更案を採用」「外部作用を実行」は別Action。AI応答・外部Tool内容は信頼できない入力であり、そこに埋め込まれた命令から権限変更や自動Applyを発火させない。新しいApproval Engineを作るのでなく、既存のUser Intent/Operation/Host Grantで判定する。
+
+## 14. 協業固有の独立Expected候補（UX-13〜22）
+
+前節UX-01〜12と重複しない失敗モードを、既存Scenarioと独立Expectedへ引き渡す。**未実行**であり、新Hard Gateにはしない。
+
+| Case | 反例 | Expected | Owner |
+| --- | --- | --- | --- |
+| UX-13 | 人間がR0→R1へ編集し、AIのR0案が後着 | 自動Apply 0。旧候補保持。現在R1との再比較が必要 | #1124/#1180 |
+| UX-14 | 構造Fingerprint不変でSource byte/AuthorityLimitsのみ改訂 | 旧Reviewをcurrentと表示しない。Source/Grantの再資格化は別 | #1124/#2516 |
+| UX-15 | 同Kind ID重複／明示CRUDの矛盾 | 後勝ち値を確定値として表示・書込しない。候補と出典/診断を区別 | #4472/#4475/#1124 |
+| UX-16 | 同じHandoff PayloadでもTEI実Source/Subjectが異なる | Payload一致だけで成功にせず、TEI実Source再解決で相違を識別 | SHO #19/TEI #3262 |
+| UX-17 | 外部Harnessで56要求/55返信・途中切断 | 完全受領・検証完了を表示しない。実Reply/終了を区別 | #2509/#3262 |
+| UX-18 | Grant失効を観測後、旧成功Replyと既表示DOM/ARIAが残る | 旧Replyの新規表示拒否と既表示内容の開示再評価を別assert | #2516/#1824 |
+| UX-19 | 外部AI文章に「権限を上げて自動Apply」とある | 文章から権限獲得/実Operation 0。通常提案として処理 | #1158/#1174 |
+| UX-20 | AI A/Bが別ファイル編集、共通Function依存未解決 | 自動的に競合なしと宣言しない。依存のknown/unknownを表示 | #1124/#3262 |
+| UX-21 | 同じOperation Resultが外部Harnessから再送 | 同じテキストの再受領を新実行・再検証とみなさない | #2509/#1174 |
+| UX-22 | ScenarioはPASSでも実Windows Studio配信JSは旧版 | 実画面を合格にせず、Asset/Consumerと生成Attemptを照合 | #1824/#2831/#4583 |
+
+UX-13/14/15はSource/Modeler系、UX-16/17はHandoff/Harness系、UX-18/22は実Desktop Consumer、UX-19/20/21は後続協業一巡へ渡す。失敗の表示では拒否・未解決・未実行・結果不明を区別する。
+
+## 15. 次の最小縦断と採否保留事項
+
+当面の実装優先は変更しない。#1824の実Wails Window→IPC、#4515のSubject Pin一件、#2831/#4583のStage1→Stage2 Desktop実再入を維持する。#1124の三要素クロスレファレンスと#3262のRequired取得を、実際に使える範囲で測る。
+
+**最小シナリオ**は公開合成Subject一件の「選択→明示Pin→画面移動→同Subjectへ復帰→R0からR1へのSource改訂→旧AI/旧CLI応答後着→現在性失効表示→再Inspect」である。まずAIなしでHeadlessと実Windows Consumerを**別々に**検証し、後段にAI/SHO Handoffを追加して同じ独立Expectedと比較する。
+
+リアルタイム共同カーソル、AI会話履歴の中央Store、専用協業権限モデル、常時全依存閉包計算、第三のEditor正本、協業専用Workflow Engineは、必要性と費用の実測まで**正式採用を保留**する。Source条件付き適用、Review候補、再資格化など既存契約で足りる部分から実装する。
+
+**追補もdocs-only**。新しい製品CLI/GUI/Wails/SHO/外部Harness試験、独立Expected実行、Owner意味受理はNOT RUN / NOT ACCEPTED。
