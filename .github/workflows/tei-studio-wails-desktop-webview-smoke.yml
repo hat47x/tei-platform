@@ -323,9 +323,55 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           git diff --exit-code -- go.mod go.sum
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Observe the Go package/file selection using the same tags and nested
+          # module as the real Desktop build. The go list report is not an
+          # independent proof of read-time inputs, nor a qualified BuildIntent.
+          $rows = @(go list -mod=readonly -deps -tags studio_generated -f '{{.Dir}}|{{join .GoFiles ","}}|{{join .CgoFiles ","}}|{{join .SFiles ","}}|{{join .CFiles ","}}|{{join .HFiles ","}}|{{join .SysoFiles ","}}|{{join .EmbedFiles ","}}' .)
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $rootPrefix = [IO.Path]::GetFullPath($env:GITHUB_WORKSPACE) + [IO.Path]::DirectorySeparatorChar
+          $selectedGoFiles = @{}
+          $kinds = @('go', 'cgo', 'asm', 'c', 'header', 'syso', 'embed')
+          foreach ($row in $rows) {
+            $cols = @($row -split '\|', 8)
+            if ($cols.Count -ne 8) { throw "N3 go list returned an unexpected record: $row" }
+            $dir = $cols[0]
+            if ([string]::IsNullOrWhiteSpace($dir)) { continue }
+            for ($i = 1; $i -le 7; $i++) {
+              foreach ($member in @($cols[$i] -split ',')) {
+                if ([string]::IsNullOrWhiteSpace($member)) { continue }
+                $physical = [IO.Path]::GetFullPath((Join-Path $dir $member))
+                if (-not $physical.StartsWith($rootPrefix, [StringComparison]::OrdinalIgnoreCase)) { continue }
+                if (-not (Test-Path -LiteralPath $physical -PathType Leaf)) { throw "N3 selected file missing: $physical" }
+                $relative = [IO.Path]::GetRelativePath($env:GITHUB_WORKSPACE, $physical).Replace('\', '/')
+                $sha = (Get-FileHash -LiteralPath $physical -Algorithm SHA256).Hash.ToLowerInvariant()
+                if ($selectedGoFiles.ContainsKey($relative)) {
+                  if ($selectedGoFiles[$relative].before -ne $sha) { throw "N3 source changed during selection: $relative" }
+                } else {
+                  $selectedGoFiles[$relative] = @{ before = $sha; kind = $kinds[$i - 1] }
+                }
+              }
+            }
+          }
+          foreach ($required in @('cmd/tei-studio/main.go', 'cmd/tei-studio/assets/workbench/main.js')) {
+            if (-not $selectedGoFiles.ContainsKey($required)) { throw "N3 Go build did not select required source/embed: $required" }
+          }
+          if ($selectedGoFiles.Count -eq 0) { throw 'N3 go list selected no in-repository files' }
           go build -mod=readonly -tags studio_generated -o $env:STUDIO_DESKTOP_EXE .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if (-not (Test-Path -LiteralPath $env:STUDIO_DESKTOP_EXE)) { throw 'Generated Desktop executable not created' }
+          # Re-read the selected in-repository bytes after the real go build.
+          # Changes during the attempt invalidate this bounded observation.
+          $goSelectionManifest = @(
+            foreach ($relative in @($selectedGoFiles.Keys | Sort-Object)) {
+              $physical = Join-Path $env:GITHUB_WORKSPACE ($relative.Replace('/', '\'))
+              $after = (Get-FileHash -LiteralPath $physical -Algorithm SHA256).Hash.ToLowerInvariant()
+              $entry = $selectedGoFiles[$relative]
+              if ($after -ne $entry.before) { throw "N3 selected input changed during go build: $relative" }
+              @{ path = $relative; kind = $entry.kind; digestBeforeBuild = "sha256:$($entry.before)"; digestAfterBuild = "sha256:$after" }
+            }
+          )
+          $goSelectionManifest | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n3-go-selected-sources.json') -Encoding utf8
+          Write-Host "N3-go-selected-in-repo-inputs-recorded count=$($goSelectionManifest.Count)"
           (Get-FileHash -LiteralPath $env:STUDIO_DESKTOP_EXE -Algorithm SHA256).Hash.ToLowerInvariant() |
             Add-Content -Path (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'generated-desktop-exe.sha256') -Encoding utf8
           # B1-A observation only. This is a bounded set of named files consumed
@@ -389,6 +435,9 @@ jobs:
               nestedGoSumSha256 = & $namedHash 'cmd/tei-studio/go.sum'
               desktopExeSha256 = $exe
               buildTags = 'studio_generated'
+              goSelectedSources = 'n3-go-selected-sources.json'
+              goSelectedInRepoCount = $goSelectionManifest.Count
+              goSelectionBasis = 'go-list-with-matching-build-tags/pre-post-hash'
               invoker = 'workflow:go build (not a Stage1 TEI binary)'
             }
           }
