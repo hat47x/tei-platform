@@ -629,7 +629,7 @@ R1のFile byteが完全でも、業務対象母集団がProvider/OwnerによりC
 
 ## 22. Change Streamと再計算の受入：Snapshot接合・撤回可能性・回復（2026-11-12、設計候補）
 
-**位置づけ**：`21は**固定Snapshotの部分入力**でも保持できるWitness/Bound/Finalを扱う。これに対して本節は**異Revision間の追加・更新・削除イベントを使った再計算**が適格かを扱う。`18.2のSame-Run Resume / New Delta Run / Restatementと`19の意味保存を前提とし、ETL専用CDC Engine、第二Checkpoint/Scenario/Manifest/State Store、Scheduler、TEI必須Hostを導入しない。#1130のW7・[#4411](https://github.com/hat47x/tei-platform/issues/4411)の受入Pressureとして実装Ownerへ渡す。
+**位置づけ**：§21は**固定Snapshotの部分入力**でも保持できるWitness/Bound/Finalを扱う。これに対して本節は**異Revision間の追加・更新・削除イベントを使った再計算**が適格かを扱う。§18.2のSame-Run Resume / New Delta Run / Restatementと§19の意味保存を前提とし、ETL専用CDC Engine、第二Checkpoint/Scenario/Manifest/State Store、Scheduler、TEI必須Hostを導入しない。#1130のW7・[#4411](https://github.com/hat47x/tei-platform/issues/4411)の受入Pressureとして実装Ownerへ渡す。
 
 ### 22.1 「変更が届いた」と「変更集合が完全」を区別する
 
@@ -651,7 +651,7 @@ Snapshotのp1/p2読取が成功しても、Tailの途中Gapで訂正イベント
 - **Impact complete**：実読行に加え`NOT EXISTS`等の否定依存、Filter/Top-Nの集合依存、FX rate/Lookup/Calendar/Rule版・Scope/Temporal Cut変更を含む、安全な影響**上界**が確認できる。`Consumed 0 rows`を依存0としない（#2600 IB-07/09/10）。
 - **Replay-safe**：値の再計算と、DB Write/Import/Message等のEffect再送は別資格。Operation ID・Current Grant・Commit/Receiptを使い、Commit Unknownを再送可能として推論しない（#1174/#2499）。
 
-### 22.3 固定反例（既存`18.4 R1〜R3を拡張、Expectedは手計算）
+### 22.3 固定反例（既存§18.4 R1〜R3を拡張、Expectedは手計算）
 
 業務期D、同一JPY/数量単位、R1はAのo1=2×100円、o2=3×200円、Bのo4=1×50円で全件固定。R2でAのo5=1×40円を追加。R3でo2を3個→2個へ訂正。R4でo1を削除する。
 
@@ -665,11 +665,11 @@ Snapshotのp1/p2読取が成功しても、Tailの途中Gapで訂正イベント
 | Rate表だけ改版、注文Factは不変 | 新Rate・適用日未指定のため金額Expectedは**未定**。必要Sourceを再評価 | 注文byte不変⇒出力不変 |
 | R2→R3の訂正Event欠落 | Deltaは`unknown`。完全な新SnapshotならRestatement候補 | 不完全TailからR3の全件Finalを推定 |
 
-独立Expectedは実装出力から生成しない。R1〜R4の算術が一致しても、Change log連続性、Source/Scope/Business Cut、公開Generation、Consumerの実読取、Owner受理を**別列**で確認する。新しいCase ID正本を作らず、`13 N-02/03/06/08/11/12、#2593 MC-08、#2600 IB-09、#2514へ一因子変形として返す。
+独立Expectedは実装出力から生成しない。R1〜R4の算術が一致しても、Change log連続性、Source/Scope/Business Cut、公開Generation、Consumerの実読取、Owner受理を**別列**で確認する。新しいCase ID正本を作らず、§13 N-02/03/06/08/11/12、#2593 MC-08、#2600 IB-09、#2514へ一因子変形として返す。
 
 ### 22.4 CheckpointとPublicationの非原子境界
 
-**記録したoffset＝Effectなし／Published済み**ではない。純粋計算でも「新Generationを公開した直後にRunLogのCheckpoint保存に失敗」と「Checkpoint保存後、公開前にCrash」は別の故障注入である。再起動時にCheckpointの進捗だけを信用せず、Run/Attempt・Source Cut・物理Member/Generation・実Publisher状態を独立Readbackし、古いWriterのFence/実Provider Commitは対応Ownerが確認する（`9/#2604/#1174）。同じByteの再生成が安全でも、外部Recipientへの再送は別。明示的な一式公開・独立Reader保証がない場合`unknown`を維持し、第二のPublisher/Transaction Coordinatorは先行導入しない。
+**記録したoffset＝Effectなし／Published済み**ではない。純粋計算でも「新Generationを公開した直後にRunLogのCheckpoint保存に失敗」と「Checkpoint保存後、公開前にCrash」は別の故障注入である。再起動時にCheckpointの進捗だけを信用せず、Run/Attempt・Source Cut・物理Member/Generation・実Publisher状態を独立Readbackし、古いWriterのFence/実Provider Commitは対応Ownerが確認する§9/#2604/#1174）。同じByteの再生成が安全でも、外部Recipientへの再送は別。明示的な一式公開・独立Reader保証がない場合`unknown`を維持し、第二のPublisher/Transaction Coordinatorは先行導入しない。
 
 ### 22.5 既存計画への最小追加
 
@@ -734,3 +734,56 @@ Snapshotのp1/p2読取が成功しても、Tailの途中Gapで訂正イベント
 **外部仕様との比較（採用判断ではない）**：[Apache Iceberg仕様](https://iceberg.apache.org/spec/)はReader Snapshot隔離・Snapshot Reference/Retentionを区別する。[Delta Lake Change Data Feed](https://docs.delta.io/delta-change-data-feed/)はChange Logの保持期限/VACUUMと前提Versionを扱う。[OpenLineage](https://openlineage.io/docs/spec/facets/)はJob/Run/Input/Outputの追跡Facetを分ける。これらは検討対象であり、TEIにIceberg/Delta/Lineage Runtimeや新Schemaを必須採用する理由ではない。
 
 **検証上限**：Issue/PR/設計文書と公開仕様の静的照合、及び上記2世代のローカル合成組合せ計算。実TEI Go/CLI/Publisher/DB/Consumer/Host/CDN/EKI/Studio、現行Grant/Owner Meaning Acceptance、exact-head CIは **NOT RUN / NOT ACCEPTED**。新Runtime/Release Engine/Publisher/Manifest/DB Transaction Coordinatorなし。
+
+## 24. 依存Graph改版によるETL再計算：削除辺・否定依存・局所再資格化（2026-11-13、設計候補）
+
+**今回の追加論点**：§18〜§23はInput/Change/計算/公開の正当性を分離した。しかし**計算で参照するData/Rule/Source/Providerの関係自体が増減・再束縛された場合**、古いGraphから新しいGraphへどのOutput・Evidenceを保持してよいかは別の問いである。#2600のDI-01〜08（依存辺差分・正しいskip/過剰失効）、#2582のRC-01〜09（Data Contextの反応的再評価）、#2622のData Operations、#2514の独立Expectedを、ETL/BatchのConsumerへ**最小限に適用**する。新しいDependency Engine/Graph正本/Optimizer/Cache/Claim Registryを採用しない。
+
+### 24.1 「変化した事実」と「変化した依存構造」を別々に比較
+
+| 判定面（既存Source・Projectionを再利用） | Before/Afterで確認すること | これだけでは不足すること |
+| --- | --- | --- |
+| **Required / Accepted** | Accepted Meaning、Function Data Context、Predicate/Join/Group/Scope/Temporal Cut、Required Source・否定/集合依存、Role/版 | 宣言しただけではProviderがその範囲を実Readした証拠はない |
+| **Selected / Lowered** | 解決したQuery/Operator/Plugin Instance/Target、実際のSQL/外部Binding・Source選択、Toolchain/Artifact | 正しい選択でも実ロード/実Read/実Outputと一致するとは限らない |
+| **Consumed / Observed** | 実際のSource/Range/Member/byte、Returned rows/NULL、Read Attempt/Result/拒否、Coverage/未ロードの理由 | 0行から対象Collectionが空とは言えず、未読の負の依存も消えない |
+| **Reusable Result** | 正しい計算結果の候補、Semantic版・Output bytes/Generation・現在必要なReader条件 | 計算Byte一致だけでは古い独立Expected・Owner受理・現在Grant/Disclosureは再利用できない |
+| **Impact / No-impact** | 上記の前後Edge/PathとClosureで、Claimごとの影響の**安全な上界**・非影響の理由 | 未発見の辺・opaque Providerを「影響なし」へ丸めてよいわけではない |
+
+**判定単位はConsumer/Claim × Meaning revision × Source Scope/Cut**。同じDataを読む二つのFunctionでも、必要なRule/Source・Group/Output・認可範囲は異なる。差分で変更されたEdgeの単なる前後集合だけでは不十分で、削除されたEdgeから到達していたConsumer、新しく到達するConsumer、別経路の有無と既存実Consumed/未観測範囲を区別する（#2600 DI-01/02）。新Graphが閉じていない場合は「このConsumerでは未解決」と表示し、無関係な他Consumerまで一律に失効させない。
+
+### 24.2 一つの正しい再計算省略と、一つの誤省略を同じ入力で識別
+
+**合成の独立Expected**：同じOrders Snapshot O1を読む二Consumer A/Bを想定する。
+
+| 変更 | A: 数量集計SUM(quantity) | B: JPY換算売上SUM(amount×rate) | 診断・再計算のExpected |
+| --- | --- | --- | --- |
+| Rate版R1→R2、Orders O1は不変。Required GraphでAはRate非依存、BはRate依存と閉包確認済み | **計算結果の再利用候補** | **再計算/再検証必要** | Aのrate非干渉が説明可能。Bで旧rateの結果を流用したらFalse Reuse |
+| AのMeaning v1は売上、v2は数量へ変更し、Rateへの依存辺も削除 | **Meaning変更時点に再評価が必要** | Bは従来通り | Aで旧売上Outputを新数量Outputとして流用するのは誤り。v2の成立後の次回Rate変更ではAは非影響候補 |
+| 新規RuleがAのFilter条件に追加。現Snapshotの結果byteが偶然同一 | **Required Closure/意味版の再資格化が必要** | Ruleに無関係なBは候補保持 | Result一致をRule/検証資格の永久再利用へ昇格しない |
+| BがNOT EXISTS参照先の新しいDeliveryを観測（旧Readは0行） | AがそのSourceに非依存なら候補保持 | Bの該当集合を撤回/再評価 | 旧Consumedが0件だったことから「Bに依存無し」と言わない |
+| Query IDは同じでSQL/WHERE/ORDER/Environment/Scopeだけ変化 | 対象Claimの選択/Scopeを再評価 | 同左、必要なものだけ | Query ID一致・前回Rows一致を実Provider意味適合へ昇格しない |
+| Source A→B→A、結果byteは最終的に同一。旧Artifact/Grantは別版 | 計算byte再利用は条件付き候補 | 同左 | 現在のSource/Owner/Expected/Reader/Grant受理は再検証。古いReceiptを復活させない |
+
+「影響あり」は必ず全件再実行を意味しない。局所的な再導出、Stage単位の再評価、Artifact bytesの有資格な再利用、独立Expected/Disclosureだけの再資格化などを別選択肢とし、手段を**意味を保存できる実Targetの能力**に応じて選ぶ。逆に「影響なし」には、対象Claimに必要な閉じた依存範囲と、その変更の非干渉根拠が必要である。単に実Readされた行が同じ・選択Graphに辺が見えないだけでは不足する。
+
+### 24.3 実Sourceへ接続する最初の観測点：#4539の資格上限
+
+[統合済み #4539](https://github.com/hat47x/tei-platform/pull/4539) は、Environmentに束縛した実PostgreSQL Query Read→限定Function Data Context→別ProcessのReference CLI受領を実証している。ただしこれは**製品 tei CLI / Studio / 認可された実Hostの一気通貫ではない**。実Queryの0行についてEmptyJustifiedはfalse、RLSで2/3行になってもCoverageはunestablished、マスクViewでNULLが返る場合はNULLの出自が不明、SQL/Source版変更に応じた全件・不存在/再利用判定は未証明である。
+
+初期接続では、次の三種の入力だけを既存Provider/Function Context比較票へ束縛する。
+
+- **Q1 positive**：固定Environment・SQL・scopeで実取得行とObserved Attemptを記録。限定した陽性Witnessは可能だが、全件数・全Contextを証明しない。
+- **Q2 empty/RLS**：0件・2/3件・NULL maskingを各々別の部分/未資格Claimとして表示。見かけ上同じ0件/NULLでも実SQL・Environment・Grantを省略しない。
+- **Q3 changed selection**：SQL/WHERE/Scope/Role/Source alias変更後、実選択・実Consumedの再比較が必要。Source/Query IDが同名でも旧Contextの現在性は自動継承しない。
+
+#2586/#2622のProvider/実Query入力が完了する前に、#4410のPure TSV最小縦断を実PG/Studioに置き換えない。#4539のReference Entryを製品Batchが採用済みと偽らず、独立Read/Ownerを求める。
+
+### 24.4 Test/計画の優先順位（既存DI/RC/Nを再利用）
+
+1. **P0 / #4410 W1〜W5**：TSV Filter/Convert/Aggregateの固定Expectedと二入口は維持。Rate依存、Rule改版、余分/欠落Partitionについて、事前に独立ExpectedのAffected/Unaffected一覧を手書きし、実装出力から採点表を生成しない。
+2. **P1 / #2600 DI-01/02/03/05・#2582 RC-01/03/04/05**：改版前後のRequired/Selected/Consumed EdgeとScopeを同じClaimへ対応させ、False Reuse、Unnecessary Invalidation、Unknown Erasedを区別。**最小の次の一辺**が未観測ならそのEdgeとOwnerを示し、Graph全体の完全性を捏造しない（[横断設計Draft #4527](https://github.com/hat47x/tei-platform/pull/4527)、[#4522](https://github.com/hat47x/tei-platform/pull/4522)）。
+3. **P1 / #2622/#2586/#2514**：#4539のReadを参照起点としてQ1〜Q3のSQL/Row/Context/Environment束縛を独立Expectedで判別し、製品 tei CLI/Studio・Closed-world Scopeは別Gateのまま保持。失敗/未取得/NULL/部分RLSを同列の成功Rowsに変換しない。
+4. **P2 / #2600/#2831**：Full clean vs Selectiveの意味・Member Set・実入力・Changed Edgeを同一対象Revisionで比較し、実Latency/再実行数を**正しさの後**に計測。Stage1生成Builder/Stage2実ProcessのSelf-build問題をETL単独の成功で代替しない。
+5. **P2 / #2604/#2516/#4510**：§23のReader Pin/公開Generation・Current Disclosureと、Studioの問い相対Data/Control/Effect/Evidence投影を接続。計算Outputを再利用できても、現Consumer/業務Ownerの実使用資格を別照合する。
+
+**禁止する設計の混線**：#2600のBuild Skip正本、#2582の反応的Data Context、#2622のProvider能力、#2514の独立Expected、#1180のScenario、#2604の一式公開、#267の意味受理は各Ownerのまま。新Graph Solver、Source Registry、Cache、Evidence/Claim Engine、CDC Runtime、固定Hostは追加しない。§24は**宣言・選択・実観測の既存Graphを比較するread-only設計候補**であり、実Go/CLI/DB差分、Selective性能測定、Studio/Owner受理は **NOT RUN / NOT ACCEPTED**。
