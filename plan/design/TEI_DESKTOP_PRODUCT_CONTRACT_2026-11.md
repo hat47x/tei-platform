@@ -106,6 +106,8 @@ E0/N0/B0、R0b、H0は**並走可能**。R0bでは#4539がmain統合されたた
 
 **次の最小実装単位**：B1ではまず、#4587の同一HEADから**実消費された契約Source・deterministic transform・PoC B Go/TS生成・esbuild/Node・生成JS・`//go:embed`・nested Go module・Wails Windows Target**を一つのBuild Intentと実行Receiptに対応づける。既存Build Catalog/Builderが表現できない工程だけ`unsupported`とし、必要最小のTarget Adapterを検討する。B2はStage1のTEI実Processが**そのIntentを呼び出す主体**であること、B3は**そのStage2 exe**がWebView2上で同じInspector/JS/IPCを消費したことを別々に立証する。S0-R/S0-U、X-TEA Plugin、実DB Consumerの作業をB1のHard Gateにしない。
 
+**Plugin Hook/Lifecycle Graphとの接続（横断#4589、実装Ownerは#4198/#1251）**：X-TEA三視点Plugin #4570や生成Inspector #4572を、StudioのBuild/Consumerへ接続する際に、既存の固定Phase Hookを可変Lifecycle Graphの新しい意味体系へ置き換えない。現行`RunSequence`の未知Phase拒否と`RunReachable`の理由付きskipは異なる。宣言`uses`と実際の`Called`/Capability、`before-*`と`after-*`、`skipped/notEvaluated/warned/refused`と成功、`EffectUnknown`と安全な再試行を混同しない。実DB更新など副作用のあるPluginは既存#1174のReceipt/lookup-firstと#4315のFailureへ委譲し、read-only Inspector/三視点Pluginの局所成功からEffect安全性を推論しない。#4589はdocs-onlyのPRで、Hook/Graph同値の実装やWindows製品試験は**NOT RUN**。#4198のGraph Compiler/HG-01〜09をDesktop B1/B2の新Hard Gateにせず、既存Hook契約を壊さないことを現行実装の検収条件とする。
+
 **ここから先の最小不足辺**：#4579で「生成Service+生成Workbenchの実Desktop受領」は限定成立、#4572で「一部品のSource→Transform→実使用/局所再入」は限定成立した。次は**同一Build Intent/選択閉包で、Node/esbuildの生成入力、`assets/workbench/main.js`、Go `embed`、nested `cmd/tei-studio`、Wails/Toolchainと選択Pluginを宣言・実消費まで照合し、Stage1のTEI実ProcessをBuild計画の呼出主体にすること**。この一辺の証拠が出るまでStudio全体のSelf-buildを完了扱いしない。新Generator/Host/Index Registryは作らず、既存#2831/#2595のArtifactSet/Builderと#4572の部品生成Runnerを再利用する。
 
 **実装統合の最短パケット（S1-I：#2831/#1824、2026-11-13）**。これは新しいBuild段階ではなく、既存S1/S2/S3の**まだ欠けている辺を一つに絞った引継ぎ**である。
