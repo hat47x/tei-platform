@@ -61,9 +61,8 @@ func (r Runner) applyReachableRows(ctx context.Context, report *PhaseReport, app
 			continue
 		}
 		report.Refused = phase
-		var notSatisfied *NotSatisfied
-		if errors.As(err, &notSatisfied) {
-			report.Outcome = notSatisfied.Outcome
+		if outcome, ok := OutcomeOf(err); ok {
+			report.Outcome = outcome
 		}
 		report.Reasons[phase] = fmt.Sprintf("row %d: %v", index, err)
 		return &RowRefusal{Row: index, Err: err}
