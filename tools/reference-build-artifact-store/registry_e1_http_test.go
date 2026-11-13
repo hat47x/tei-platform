@@ -188,8 +188,12 @@ func TestRegistryE1HTTPTransportToSeparateProcess(t *testing.T) {
 	t.Run("missing member after Publisher readback", func(t *testing.T) {
 		store, members := registryE1PublishedStore(t)
 		path, err := store.pathForDigest(members[1].Digest)
-		if err != nil { t.Fatal(err) }
-		if err := os.Remove(path); err != nil { t.Fatal(err) }
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Remove(path); err != nil {
+			t.Fatal(err)
+		}
 		server := httptest.NewServer(registryE1LoopbackHandler(store, "", "", ""))
 		defer server.Close()
 		registryE1RunHTTPConsumer(t, server.URL, "", "missing")
@@ -197,9 +201,15 @@ func TestRegistryE1HTTPTransportToSeparateProcess(t *testing.T) {
 	t.Run("remote backend corrupt becomes unavailable rather than accepted", func(t *testing.T) {
 		store, members := registryE1PublishedStore(t)
 		path, err := store.pathForDigest(members[1].Digest)
-		if err != nil { t.Fatal(err) }
-		if err := os.Chmod(path, 0o600); err != nil { t.Fatal(err) }
-		if err := os.WriteFile(path, []byte("corrupted-after-publication"), 0o600); err != nil { t.Fatal(err) }
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chmod(path, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte("corrupted-after-publication"), 0o600); err != nil {
+			t.Fatal(err)
+		}
 		server := httptest.NewServer(registryE1LoopbackHandler(store, "", "", ""))
 		defer server.Close()
 		registryE1RunHTTPConsumer(t, server.URL, "", "unavailable")
