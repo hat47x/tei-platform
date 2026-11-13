@@ -1172,3 +1172,39 @@ M0/M1で一Relationの照合を成立させたら、[#1031](https://github.com/h
 - 旧§36のCI未完了表現は**記録時点の履歴**。PR #4487の直前head `2d97ca68ecc69d89ff5842716d811e7431b954b8` はGitHubで**Cache/Repository Health 2/2 completed/success**と確認。ただしこの§37を追加した新headのCIや設計Owner採用は別。
 - 実装優先は、(1) #4570/#4615でSource declaration occurrence→function-level CRUD表示の出典保持と実Source忠実性、(2) #4614でWorkspace/Sourceを跨ぐPin拒否、(3) #4472/#3250でMeaning/Direct CUDの資格後にだけ候補順位比較、(4) #2586の通常製品CLI/Studio Readを**並列**に接続する順。P0 Product ReadとStudioセルフビルドを、三要素分析Methodの追加仕様や#3250完全性の待ちで止めない。
 - TEA/StudioはSource Fact→Structural Candidate→Accepted MeaningとL/D/Tを区別する既存契約を使用。新Core Kind・Host・Graph SSOT・Role Resolver・Policy/Proof Engine・Updater/Transaction Oracleを導入しない。業務Owner受理、Current Grant、原典Source全文対応、実更新実行、認知負荷の定量効果は**未証明**。
+
+## 38. 三視点の局所completeと「図中になければ無い」の成立範囲（2026-11-13、設計追補）
+
+### 38.1 原典の九観点と現在のread-only三視点は同一の完全性Claimではない
+
+原典の三要素分析法は**Data/Function/Businessの三つのアスペクト**を、**論理要件・物理制約・実装**の三層から見る九観点を説明している（[原典解説](https://atmarkit.itmedia.co.jp/fbiz/cbuild/complete/doa/01/02.html)）。TEIはこれを第二Canonicalや9新型にせず、既存Source/Decision/実Observationを問相対に重ねるMethod Profileとして扱う。最新[X-TEA read-only Plugin Draft #4570](https://github.com/hat47x/tei-platform/pull/4570)の`three-view-navigation/v0`は、**一件の`.xead` Sourceについての構造候補・Function宣言CRUD・表示位置**を返す。単独で論理要件/物理制約/実装の九観点の完全な実観測や原典Modelerとの意味同等性を証明したわけではない。
+
+「図中になければ存在しない」と即断可能な完全性は、**必要なSource/Plugin/Build/Effectの宣言集合が閉じ、現在の開示資格とReader Attemptが整合し、その問いの投影が完全な場合にだけ成立する条件付きClaim**として表す。単一`.xead`を局所的に完全投影できたことから、別`.xead`、`.xeaf`、人手業務、未観測Provider、実Writerの不存在は導かれない。開示が限定された利用者への表示ではPrivate項目の件数すら無資格に漏らさない。
+
+### 38.2 UIで観測された具体的なClaim Ceilingの相違
+
+固定PR #4570 head `8d8f1439d260a3ebb0a633c2f2e040ab25b20cc4`のSource静的照合：`navigate.go`は`coverage.Status=partial`を `UnplacedConstructs` / `UnknownConstructs` / `UnresolvedRelations` / **`len(OmittedRelations)`** の論理和で判定する。一方 `cmd/tei-studio/assets/three-view/main.js`は partial画面で前3項目しか表示せず、`OmittedRelations`の種類と件数を隠す。例えば**他3項目がゼロ・OmittedRelationsが1件**なら、「部分的、未配置0・未知0・未解決0」という見た目になり、部分的である根拠を失う。`complete`時の表示は「全要素を配置しました。」だが、Source metadata/SystemやRelation evidenceなどのSource constructは必ずしもData/Function/Businessの`ThreeViewSubject`にならない。`Scope=single-source-artifact`の**定義済みProjectionで未配置等なし**を、「原典Source全要素を三視点へ配置済み」へ広げない。
+
+**最小修正・Owner境界**：既存`coverage.scope/status/omittedRelations`が持つ資格を説明するだけでよい。既存[#4613の受入追補 CV-01〜04](https://github.com/hat47x/tei-platform/issues/4613#issuecomment-6854940903)には、省略1件だけのpartial/真因表示、Source metadataを含むcomplete文言の限定、別Source未読込、遅延応答失効を記録した。表示が新しい全件カウントを必要とするときだけ[#4615](https://github.com/hat47x/tei-platform/issues/4615)が実X-TEA Sourceの出典に戻る。表示はOwnerのCurrent Disclosureで資格付けされたcountsのみ。既存#4570/#4613の実装へ別ブランチから重複コードを足さない。**これらの実Node/Browser負例はNOT RUN**。
+
+### 38.3 観測事実・証拠Join・問相対Closureを三段階で分離する
+
+| 判断段階 | 正の証拠 | この段階だけでは不足するもの |
+| --- | --- | --- |
+| **P. 投影内の事実** | 型付きSource Fact/Occurrence、Source digest、Mapping rule、`coverage`の範囲と欠落内訳、Validation Attempt | 名前/旧Source ID/Occurrence一致だけではAccepted Subject、現在Scope、実Action Effectではない |
+| **J. 証拠間のJoin資格** | 同じ問い・対象・Workspace/Source origin、Reader Attempt/Revision、Derivation rule、業務Owner Decision、現在Audience Disclosure、実Provider Attemptの必要なリンクを個別照合 | FPが同じ二Readerを単一atomic Readにしない。Graph/Sourceの同型性をOwner Meaningや実Invocationの同一性へ推移させない |
+| **Q. 問いに対するClosed-world** | その問いに必要なSource/Role/Relation/Provider/Manual Step集合が資格付きで列挙され、必要Reader/Policy/受理証跡が現在有効で、公開Slice内の未観測・未解決を説明できる | `coverage.complete`だけで「0 Writer」「越境更新0」「実処理無し」「Subsystem最適」を証明できない |
+
+**absence(Q,x)を許す最低条件**：必要な集合`Required(Q)`と検査範囲`Observed(Q)`の一致をそのAudience/時点で受理済みの根拠で確認し、Source/Rule/Read Attempt/Current Disclosureがその問いに適格で、`x`の存在を判定するRelation family自体の被覆が十分であること。いずれか未資格なら `unknown / not-qualified`（禁止された内容の存在を推測しない）。これは既存契約を組み合わせるための**受入上の述語**であり、TEAの新Truth Store・新Checker・新Policy Engineの実装要求ではない。
+
+### 38.4 影響を最大化する次の小検証と作業順
+
+| ID | 対照と独立Expected | 担当/状態 |
+| --- | --- | --- |
+| **TEA-Q36** | `partial`かつomitted=1、他の欠落カウンタ0。UI/ARIA/Tool JSONに省略理由が残り、仮の全件数や不存在を断定しない | #4613の表示・#4570のProducer。新実GUIテスト未実施 |
+| **TEA-Q37** | `single-source`で`complete`、別`.xeaf`/別Sourceに必要なFunction/Writerがあり得る。表題・診断は局所completeと問いのclosureを別表示 | #4615/#1031。実外部Sourceの比較未実施 |
+| **TEA-Q38** | 同じSource bytes/Occurrenceでも別Workspace/別SourcePathでPin再資格が失敗し、現在選択だけで他方のSubjectへ再束縛しない | #4614のPIN-XW-01〜03。実再現未実施 |
+| **TEA-Q39** | 既知CUD辺しか観測していない二つの分割候補に未知の逆転辺を与える。見た目の`complete`や局所score優勢をOwner採用の最適解にしない | #3250のSP-U01〜06、#2516。新Product最適化試験未実施 |
+| **TEA-Q40** | 旧Lの構造候補・DのOwner未受理・Tの実PG ReadがそれぞれPASSしても、L/Tの実業務同等性、TのWriter閉包、D意味受理はPASSしない | #267/#2586/#2514。実Legacy↔Target対応試験未実施 |
+
+**優先**：(1)現在Draftの#4570 read-only Producerが持つcoverageとStudio表示の差を合成独立Expectedで検証、(2) #4615 実Sourceの集計と原典配置規則、(3) #4614 Origin-qualified Pin、(4) #3250のDecision-relevant Unknownを問相対調査、(5) #2586の通常`tei` CLI→Studioの実Readはこれらと**並列**。[#4557](https://github.com/hat47x/tei-platform/pull/4557)は今回mainへmerged：検証NGのMap/Locate閲覧とVerdict保持をGo回帰で実証済み。先行[#4521](https://github.com/hat47x/tei-platform/pull/4521)は実公開Relationの正常系CI PASSだがDraft未統合。実X-TEAの原典完全性・Current Grant/Disclosure・Owner受理・Product実E2Eは未証明。TEAの図面と開発パイプラインに新たな暗黙処理や必須Hostを加えない。
