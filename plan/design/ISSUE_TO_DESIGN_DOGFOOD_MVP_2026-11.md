@@ -875,3 +875,62 @@ Ontology DSL／Decision Twin／外部シミュレーションSDKの本格製品�
 **初回一Functionの優先順位は不変**：#2586の実Function→Query→Provider Read、#1124の三視点Source/Meaning、#1251の通常CLI・実Wails S2を並走し、同じActor/Scope/Source Revision/Read Cohortが確認された部分だけP0-Cで接合する。静的公開／KON／B2C／SHO／AI性能改善は任意のPressure/Consumer試験であり、初回Product R0のHard Gateに追加しない。標準表現の変更とBusiness Meaning/Effectの変更を自動同一化しない。
 
 **資格上限**：#3505/#3439の採用設計と#3528/#3529/#3512の未統合Draftから抽出した受入境界のみ。新Web/KON/静的配信/B2C商用Checkout/SHO正式Writer/Browser/実CVRの製品E2E・Owner Meaning受理は今回NOT RUN。新独立Expected正本、万能Gateway、専用Runner、Auth/Runtimeを追加しない。
+
+## 15. TEI MVP dogfoodingの実行順と製品資格（2026-11-13 横断統合）
+
+### 15.1 このdogfoodingで最終的に示す価値
+
+TEIを使ってTEI自身の設計を読み、必要な変更を検証し、TEI Studioの代表部品を生成し、さらにTEI自身が次段のStudioを構築できることを目指す。Go単一バイナリ配布を標準としつつ、実Buildには明示的に選択されたGo/Node/esbuild/Wails等のtoolchainを用いてよい。「単一バイナリで配布する」と「すべての生成工程が外部ツール無しで完結する」は別要件である。
+
+専門家可読のSource／DSLを正本とし、Go特有の構文を日常記述へ強制しない。Everything is Data／Role／Plugin-firstを利用しても、Sourceの保存、構造候補、業務意味の受理、実Provider選択、実呼出し、実行許可、成果物の再利用資格を同一の事実として扱わない。
+
+初回は完全なTEI製品全体ではなく、一つのSource-backed Inspector部品と一つの実Read Functionを選ぶ。これらは**別のSubject・別のAttemptで実証済み**なので、接続後に同一Attemptで観測し直すまでは一件の製品E2E合格に合算しない。既存#1119のG0〜G4と#1163のEvidence Packetを維持し、本節独自のGate／Runner／意味正本は作らない。
+
+### 15.2 2026-11-13に確認できる実績とその上限
+
+| 系統 | 既存結果 | 製品として残る断線・判断 |
+| --- | --- | --- |
+| CLI自己調査 | #3149の実測記録と`plan/workstreams/TEI_DOGFOODING_CLI_SELF_DESIGN_2026-11.md`第78ラウンドまで。古い証拠、孤児テスト、赤が常態化する問題を再現 | TEI自身の全設計をCLIから完全発見・編集可能とはしない。未対応Kindと存在しないSubject、Tool返答欠落を区別 |
+| 実Function Read | #2586 / merged PR #4539：`order_entry.recent_orders`を明示Environment→実PostgreSQL→Rowset→一時Function Data Contextへ。参照CLIと実Reader試験の限定成功 | 通常の製品`tei` CLI／Studioにはまだ未接続。取得結果のclosed-world資格、現在Grant、業務意味受理は未成立 |
+| 生成Inspector | Draft PR #4572：Source→決定論的Inspector reader→Windows WebView2で実使用、局所Stage1実Process→Stage2部品再生成 | Node/esbuildとnested Wails Buildが同一TEI Build Graphの外。Stage2 Desktopの一巡ではない |
+| 生成Desktop | Draft PR #4579：生成Go Service／WorkbenchがWindows Wails Desktopで同じexe・実IPC／WebView2を通過 | #4572とは別HEAD・別Attempt。両PRはDraftで、mainの製品資格ではない |
+| Studio全体セルフビルド | #2831/#4583に既存B0〜B3とI0〜I3の実装・受入順あり | 単一Build IntentのStage1 TEI実ProcessがStage2 Studio artifactの実Builderを発行し、実Windows Consumerが受け取る証拠はNOT RUN |
+
+### 15.3 既存P0で進める最小接続順
+
+| 作業順・既存Owner | 実際に接続するもの | 受入時に必ず観測するもの |
+| --- | --- | --- |
+| **A／自己調査（#3149終了分の再利用、#3262／#3419）** | TEI CLIのcatalog→inspect→trace／source-index→元Sourceへの復帰。Studioも同一Application Operationへ | Subject kind/id、Workspace実Root、Source location、World/Index版、未対応／not-found／unknown／partial。0件を不存在としない |
+| **B／製品実Read（#2586、#1251、#951）** | `order_entry.recent_orders`のFunction→Query Source→Environment/選択Provider→実Invoke→SQL/params→Rowset→Context→製品`tei` CLI実受領 | 選択Providerと実Invoke先が一致。実Query byteと選択時点、RowsetのNULL/0件/拒否、Contextの`unestablished`を保持。B選択時A実行を失敗にする |
+| **C／実Desktop（#1824、#1251、#3419）** | Windows Wails Studio→実IPC→共通型付きOperation／Source-backed Inspector→画面表示 | 実WebView2のRPCと同一Workspace/Source/Subject、生成JS byte、旧応答残留拒否。CLI側の同一JSON・Error意味との比較は実際に両Consumerを走らせてから |
+| **D／Studio再生成（#4583／#2831）** | #4572+#4579の統合HEAD→既存Build Intent／Builder→Stage1 TEI実Process→Stage2 Studio exe→実WebView2 Consumer | 宣言Build Graphと実消費input／toolchain／nested module／embed／artifactの一致、Stage1実Process/argv/child builder、Stage2 exeと配信JSのSHA、生成Inspector実使用。外部Launcherの二重buildは不合格 |
+| **E／利用者体験の再帰dogfood（#1124、#1163）** | 出来上がったStudioから同じTEI Source-backed Subjectをinspect／参照元へ移動し、変更差分と診断を確認。編集・再生成は実経路が整った後に段階拡張 | 説明や図だけでなく元Sourceへ移動できること。編集候補、保存実Effect、Owner受理を混同しない。TEI全体の設計が既にモデル化されているとは主張しない |
+
+A/B/Cは独立に実証を進める。DをMVP最優先の到達目標とするが、Bの業務Readや通常CLIの利用をD完成まで停止しない。Eの本格的なModeler編集、SHO正式保存、実DB Write、外部Harness／MCP完受を初回Dの先行条件にはしない。
+
+### 15.4 反例は既存Scenario／独立Expectedへ渡す
+
+新しいTest SSOTは起こさず、#1180のDriver Scenarioと#2514の独立Expectedで次を判別する。
+
+- **対象・Source**：同名別Workspace、Source位置移動、A→B→A、0件／未取得／NULL／permission-denied／unsupported、読込前の見かけ上の成功。
+- **Provider・Read**：選択Bなのに実呼出しA、Environment/Provider未結合、SQL raw byte変更、SQL/params不一致、Provider結果未到着を空集合として表示する誤り。
+- **Consumer**：同じSourceでもCLIとDesktopが異なるWorkspace／版を使用、旧RPC受領、生成済みbundleや契約digestの不一致、Tool途中切断・stderr混入・recipient側未受領。
+- **Build**：Node/esbuild/nested `go.mod/go.sum`／Wails／embed／build tagがGraph外、Stage2のBuilderをStage0 seedから直接起動、実WindowsでないServer-only検証、Source一致だがtoolchain/engineが異なる。
+- **許可・資格**：read-only説明でも指定出力先へファイルを書いた場合、Allow表示でも実Provider Commit未確認、旧Evidence／Cache hitから現行Grant・Owner受理を復活させる誤り。
+
+対象Revisionに対する既存Expectedと実観測を別に保つ。正しい限定PASSを残しながら、接続されていない辺はNOT RUN／UNKNOWN／FAILのいずれかに分類する。失敗した試験を安易に常態的な許容赤として扱わず、未統合実装／テスト先行／実退行を切り分ける。
+
+### 15.5 同一Attemptで残す検収票（#1163を使い、第二Ledgerを作らない）
+
+各実行について、目的のClaim、exact repo/PR HEAD、実行OS/arch、Go/Node/Wails/WebView2版、選択Workspaceのrealpath、Source/World/Index identity、required集合／解決範囲、選択Contract/Provider/Plugin／lockと実Invoke、SQL/params／Raw Rows／Context、Build Intent/実input／Toolchain／Stage identity、artifact digest、実Consumer request/response、Independent Expected、負例結果、SKIP/NOT RUN、現在のGrant／Owner意味受理の有無を**そのClaimに必要な範囲で**記録する。
+
+収集できない欄を架空の値で埋めない。実行されたCLI・Server・Windows・PG・Harness等の**別Attemptの局所PASSを加算して最終製品合格にしない**。生成されたソースのbyte一致はBuildの閉包、Studio実使用、Seed Trust、正式Meaningのいずれの代理証明でもない。
+
+### 15.6 今回の反映と実装引渡し
+
+1. #4583のB0（同一HEADへの統合、重複smoke保持、`__pycache__`除外）を先に閉じ、B1で現Build Catalog／GraphへNode/esbuild・Wails/nested moduleを収録。B2/B3でStage1起動とStage2 Windows Consumerを接続する。#2831/#1824の既存Ownerを変更しない。
+2. #2586のmain実Read Referenceを通常`tei` CLIの**実Product Operation**から起動できる最短Adapterでつなぐ。Provider選択と実Invokeを#951/#1251の既存経路で照合する。新Query Engine、第二Source Storeは追加しない。
+3. #3262ではAの設計Context/Required/Source/Result statusを同一Subjectで確認し、CのStudioとの比較は実Consumerを通した場合にのみ資格を付ける。
+4. 完了報告は#1163の既存Packetで統合。#1119既存G0〜G4を再定義せず、セルフビルド、製品実Read、Studio表示、現在の作用許可を別Claimとする。
+
+**現時点の判定**：今回の追補はGitHub既存main・Issue・Draft PRの結果を踏まえた**設計計画の再基準化**。この追補に伴う新しいGo/Node/実PG/Windows/Studio/Harnessの実行、単一AttemptのE2E、製品Build Graphの閉包、Owner意味受理は実施していない。実測値は既存PR/Issueが示す限定対象にのみ帰属する。
