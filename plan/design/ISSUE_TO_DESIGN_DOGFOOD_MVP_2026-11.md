@@ -1073,3 +1073,54 @@ Studioの#4597 Pin stateは状態遷移だけのDraftであり、実`main.ts`/In
 各dogfood結果は#1163の既存Evidence Packetで `Source/Subject/Required/Selection→actual invocation→Consumer receipt→independent expected→first missing edge` をClaim相対に突合。Source閲覧の可読性、読取完結までの操作数・所要時間、偽成功、ビルド待ち時間のcold/warm計測は別指標として保持。外部根拠（OKF等）の版・引用、AI候補、通常のOwnerレビュー、実実行権限は別管理とし、生成AIの誤推測対策として承認階層を増殖させない。
 
 **この追補の上限**：#4587新HEADのWindows実測、#4601/#4605/#4603/#4602等の既存PR記録を**文書に反映**したもの。今回この文書を用いたGo/Node/Windows/PG/実Harness/OS分離・実Stage2セルフビルド試験はNOT RUN。mainへの自動統合、正式DSL採用、Owner意味受理・配布資格の付与は行わない。
+
+<!-- tei-dogfood-20261113-causal-consumption-and-operator-loop-v1 -->
+### 15.19 B1-Aの更新：「検査済みTSを配置した」から「内容が使われた」へ（2026-11-13）
+
+[Draft #4587](https://github.com/hat47x/tei-platform/pull/4587) HEAD `7babc6ad889960c5e75c1c3cbdd00a1518adeec5` の [Windows CI #43394244960](https://github.com/hat47x/tei-platform/actions/runs/43394244960)では、N0 Generator実行→一時TS生成→チェックイン版とのbyte照合→**生成した実ファイルを`inspection-reader.generated.ts`へCopy-Itemで配置**→配置後hash再照合→後続Node/esbuild、生成版Wails Desktop/WebView2へ到達。生成版と通常版Jobがcompleted/success。N0 SHA-256 `6d3dfe806ef758dc4746ccc34b5ae646533eb056b78cbbc098630993d384586b`、生成bundleは682,327 bytes/SHA-256 `755e5e85f8487d4e5361fe4262c77595c3ebc048068f2647b0b27862de804299`、当該HEADの生成exe SHA-256は`ef545b98746a97dac27aff587b61dada206df959f034f97ad07d8397ca2b7cf0`。以前の`d7ad13ce` HEADのexe digestを流用しない。
+
+この限定実証で、N0生成とWorkbench入力配置の**実file handoff**は先行した「チェックイン版との一致検査のみ」から進んだ。ただし、`Copy-Item`先をesbuild内部が期待どおり読み、変更したN0意味がbundle→embed→実UIへ**因果的に伝播すること**、Go/Nodeのtransitive dependency closure、TEI BuildIntentのN0〜N3実駆動、Stage1再入／Stage2 Desktopは別Claimである。
+
+**次の局所介入実験案（Owner #4583、Scenario #1180／独立Expected #2514）**：
+- **DF-C01 基線**：同一exact HEAD／同一Source Contract／同一生成TS／N2 JS／N3 exe／実Windows WebView2のhash・実Consumer応答を一Attemptへ束縛。既存B1-A票を使い、新Ledgerを設けない。
+- **DF-C02 正方向の変更**：受理済みSourceを改変せず、一時隔離FixtureにInspector契約の互換性を保った**観測可能な変更**を与え、事前にExpected変更箇所を固定。N0生成TSの差→N2 bundle実差→N3 exeの実再構築→Inspector実応答の差が同じ原因から説明できるか確認する。出力hashだけ変わり実応答が変わらない場合は意味伝播PASSとしない。
+- **DF-C03 負方向の混入**：古い生成TS、古いbundle、実Consumerが読むAssetのどれか一つを別版へ置換し、誤って一致・成功と判定しないか確かめる。Buildタグ、nested Go module、外部Node/esbuild stepの欠落も既存BD負例と突合する。
+- **DF-C04 因果の範囲**：実使用した入力・Processを追跡できた範囲でのみObservedと記録。未宣言入力の不存在は、指定範囲Wで実際に強制した場合だけEnforcedとする。試験が利用しない隠れた分岐や未読込Sourceまで完全としない。
+
+DF-C01〜04は**新たなテスト実行結果ではなく、次の実装・テストへ渡す独立Expected案**。B1-Bの最小Adapterで、一つのN0→N2辺の実Builder選択/起動と生成結果の因果関係を確認してからN1/N3へ拡げる。
+
+### 15.20 最小の利用者仕事を、Sourceへ復帰できるかで測る
+
+人間とAIは同じread-only Operation/Readerを使い、**利用体験の合格を出力JSONの成立だけで代替しない**。まずAI OFFで一つの実Subjectを起点に `commands → catalog → inspect → trace/source-index → Source位置へ戻る` を再現する。StudioではSource/Graph/Inspectorの一時Focusと明示Pinを分け、移動後の再Inspectで同じQualified Subjectを確認する。外部Harnessはその後の限定Context受領だけを独立評価し、Host Permission・Accepted Meaning・実Applyを付与しない。
+
+| Probe | 起点・独立Expected | Reject / 保留 |
+| --- | --- | --- |
+| **DF-R01 既存Subject** | `order_entry.recent_orders`等、実Sourceに存在する既知IDを固定し、実Source/Span/Source Index版まで復帰。CLI側とStudio側が別Attemptなら別票 | 単なる`ok=true`、同名別Rootへの再束縛、Index一致だけで現在Grant |
+| **DF-R02 不存在 vs 参照0件** | 現mainに統合された[#4584](https://github.com/hat47x/tei-platform/pull/4584)の修正を用い、改名後の旧IDは`SUBJECT_NOT_FOUND`／exit 1、存在するが参照0のSubjectは空参照を正しく区別。Unsupported Kindはexit 2 | `references=[]`をSubject不存在とする、または不存在なのにsuccess |
+| **DF-R03 表層Sourceの可読性** | 同じ意味の既存DSL／Markdown糖衣候補を専門家の認知順で読めるか比較し、元表層・byte span・NULL/未知を保持。新`rule`構文は[#4405](https://github.com/hat47x/tei-platform/pull/4405)の独立Draftとして評価 | 未採用文法を通常`workspace.Load`の実受理とみなす、保存時に自動整形する |
+| **DF-R04 AIへの限定Handoff** | 人間が固定したSubjectと用途相対Required SourceのみをAIが参照し、提示するSource引用/差分候補を通常レビューへ戻す。AIなしで同等の事実へ到達できる経路を先に確認 | 未解決Source/Policyを補完して回答、古いReply、AI候補の自動適用 |
+
+測定は「最初の有用な根拠までの時間」「必要な画面/CLI操作数」「正しい元Sourceへの到達」「不存在・Unknown・未取得の誤成功数」「人間の候補採否」とし、頭数の多い架空ベンチマークを作らない。対照は同じSource版と問い相対Required集合でのみ比較し、AI/GUIの成功をCLI資格へ合算しない。
+
+### 15.21 B1-Bの現行実装Fit/Gap：何が製品型にあり、まだ無いか
+
+現行mainの`internal/buildintent/intent.go`と`resolve.go`、`catalog.go`、`cmd/tei/cli_self_build_outer.go`、`tools/reference-build-execution-binding/main.go`、#4587のWindows Workflowを静的照合した。
+
+| 実在する入口 | 確認できる範囲 | MVPに残る断線 |
+| --- | --- | --- |
+| `buildintent.ParseIntent/Resolve` | Source Resolver／Builder Resolver／Dependency Resolver／Target Catalogのportから、exact Planを導出する。Command recipeの概念はある | 現行`BuildIntent.Validate`はSubject kindを`plugin`に限定。**Studio exeを仮のPlugin IDで通すことはしない** |
+| `tei self-build`外側 | 明示`-child`実行とIntent／Resolver／Planの限定照合。qualifiedはfalse | Stage1 TEI imageがN0→N3を自ら解決・実行する完成した製品入口ではない |
+| `reference-build-execution-binding` | ArtifactSet/BuildExecution/Subject BindingのReference例を保持 | `package main`の参照実装をそのまま`internal`の製品APIとしてimportできない |
+| Windows Workflow #4587 | N0実生成・N2ファイル配置・外部Node/esbuild・nested Wails・実WebView2試験 | CIスクリプト自体はTEI BuildIntent/正式BuilderによるN0〜N3の実駆動ではない |
+
+既存#2831/#4583のOwnerが、**一成果物のBuilder接続を最小実装して通す経路**を優先する。Subject一般化・Target Adapterが必要なら既存Build Execution/ArtifactSetとの整合を差分に限って示し、先に巨大な多工程Graph ABIを採用しない。非PluginのexeとStage1時のみ必要なGenerator、Stage2 Runtime Providerの役割を区別する（#4601）。今回の静的確認は製品実Buildの成功ではない。
+
+### 15.22 実装受入の停止条件と引渡し
+
+一つの機能に対して、**Source/宣言を見た→実Processが読んだ→成果物が変わった→実Consumerが受領した→ユーザーが元Sourceへ戻れた**を同一Attemptないし因果で明示した連続Attemptで確認する。異なるAttemptをつなぐ場合、親Child関係・Stage1 image digest・再使用したArtifact/Workspaceの版と完全な受渡しを明示し、単純なhash等値だけでは因果としない。Stage1とは別の外部Launcherが二回Buildした場合、Stage2 L3は不成立。
+
+**Stop / 未資格**：Subject不在または曖昧、必要Source未ロード、Build選択Bと実Invoker A、N0旧TS／N2旧bundle、後着Reader Replyの現在資格不明、独立Expected未固定、必須Case SKIP、Build Graph外工程、実DB selectedとactual instance不一致、`effectUnknown`の無条件再試行。どれも単にwarnに落として全体PASSを返さない。新たな製品Gateではなく既存#1119/#1180/#2514の判定へ渡す。
+
+**既存Ownerへの最短引渡し**：#4587の実N0→N2ファイル受渡しを#4583 B1-Bの入力証拠とし、#2831がStage1の実Plan/Builder呼出しを引き受ける。Source復帰の誤判定は#3262/#4515と#4584の既存CLI契約に沿って評価。AI協業のFocus/Pin/Activity/Reviewは#4605へ、Rule表層・Formatter/zero-writeは#4359/#4366へ、実PG Readは#2586へ、それぞれ別の受入票として渡す。シナリオとExpectedは#1180/#2514、実Evidenceは#1163、性能は#2600へ置き、第二の管理体系を作らない。
+
+**今回の資格**：#4587固定Windows CI、現行main Source、他DraftのSource/Planを読み直した**docs-onlyの計画更新**。DF-C01〜04/DF-R01〜04は未実行の次段試験案であり、実Go/Windows/Node/DB/Harness、Owner業務意味受理、B1-B/C・B2・B3、配布品質、Stage2資格は**NOT RUN / UNKNOWN**。
