@@ -158,6 +158,18 @@ Gate C — PAS-04 Evidence — Ready
 
 判定段階Cの後は、定義の記述・知識の活用と、二つ目の実行先の検証を並行して進めます。互いの完成を待つ必要はありません。最初の実行先で確認した違いと検証根拠を共有します。
 
+### Studio Desktopセルフビルドを最優先にする現行の実証順（2026-11-13）
+
+**最上位の製品目標は、TEI Studio Desktopを実OS上で構築・利用し、TEI自身が次のStudioを再構築すること**。この目的に対し、最初から新しいDSL/汎用Interpreter/独立Build Hostや全機能のX-TEA・B2C実装を要求しない。既存Wails、Workspace/Source Index、標準BuildIntent/Builder、型付きOperation/Providerを使い、以下の証拠を段階的に接続する。段階の記述は新しい全体Hard Gateではない。
+
+1. **実Desktopへの生成部品接続**：[Draft PR #4572](https://github.com/hat47x/tei-platform/pull/4572)で、TEI契約Source→既存の決定論Transform→Inspector reader（TypeScript）→esbuild bundle→Go `//go:embed`→**実Windows WebView2 Desktopでの利用**を局所実測。生成前bundleを使った負例とSource digestの対照も報告され、PR exact-headのHealth/Workbench Embed/Windows WebView Smoke等は成功。ただし**Draft・main未統合**であり、実Wails表示に成功したこととStudio全体のTEI自己生成は別資格。
+2. **実Builder入力の閉包**：#2831の既存BuildIntent/Builderへ、前項のTransform/生成Sourceだけでなく、**実際に実行したNode/esbuild・Wails Build・nested Studio module・Go embed**を、必要入力・実呼出し・出力Artifactとして明示的に結ぶ。#4572ではbundling/Wails BuildがまだTEI Build Graphの外にあり、`l2b`合格やBuilder完全性を宣言しない。別のBuild Engineを作らず、既存Adapterが実行できる必要工程を一つずつ通す。
+3. **自己再入場とOS境界**：Stage1として実生成したTEIの**プロセスイメージ**がStage2のBuildPlan解決・Builder要求・実Artifact生成を駆動したことを実行証拠で確認する（#2831）。[main PR #4575](https://github.com/hat47x/tei-platform/pull/4575)のentry事後状態観測は、空ディレクトリを作るだけの偽独立を防がない。[PR #4578](https://github.com/hat47x/tei-platform/pull/4578)の境界launcherも現時点で入口Flagが未結線。Child申告、二回のByte一致、Stage0製Go Build、局所Reentryだけで**全体セルフビルド／OS隔離**としない。
+4. **異質Consumerで製品の基盤を試す**：[main #4539](https://github.com/hat47x/tei-platform/pull/4539)は実PostgreSQL→一時的Function Data Context→限定Reference CLIを実装済み。次は#2586/#4495で製品`tei` CLI・Typed APIへ結線し、#1124の実Studio IPCと同一結果の受領を独立Expectedで確認する。[X-TEA三視点プラグインDraft #4570](https://github.com/hat47x/tei-platform/pull/4570)はStudio Bridge/CRUD/Source Navigateの局所試験があるが、実DesktopでのX-TEA原典受入は未実施で、exact-headの全体CIに失敗が残る。X-TEAを正本通り再現しつつ、Studioセルフビルドの先行必須条件としない。
+5. **Source/選択の失敗を隠さない**：[Issue #4577](https://github.com/hat47x/tei-platform/issues/4577)では`tei source-index`のSubject指定時に不存在を`ok:true`・exit 0と報告する不一致が実測されている。解消までは`inspect`/`trace`等の存在検査を別に行い、空のReference集合をSubject不存在・取得不能・未使用の証拠に昇格させない。B2Cの[main #4550](https://github.com/hat47x/tei-platform/pull/4550)は**申告Graph内**のRequired多段上流依存を検証する限定Referenceで、実Native/SQL全依存の閉包を保証しない。
+
+**検収票の分離**：生成したSource、実Builder入力、生成したArtifact、Stage1実Process、Stage2実呼出し、実Desktop WebViewでの使用、外部Provider/Consumerの受領を別欄に記録する。各段階に対応した実失敗・Source改版・未取得/partial・同名別Workspace・旧bundleの負例を独立Expectedで確認する（#1180/#2514）。**今回の計画追補は実装・GUI・CLI・Stage2の新たな製品E2Eを実行したものではない**。
+
 ## 現在の判定段階と引継ぎ
 
 ### 判定段階A：アプリケーションの意味を実行・検証環境へ渡せる
