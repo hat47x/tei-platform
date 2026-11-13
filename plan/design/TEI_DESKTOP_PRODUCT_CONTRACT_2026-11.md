@@ -178,6 +178,46 @@ E0/N0/B0、R0b、H0は**並走可能**。R0bでは#4539がmain統合されたた
 
 
 
+
+### 0.7 セルフビルドをDesktopの日常操作として検収する（2026-11-13 横断収束）
+
+**製品の一巡**は「開発者がStudioで定義を見つける → その定義を入力とするBuildを確認する → TEI自身が次のDesktopを構築する → 生成された実Desktopで結果を再確認する」である。既存#2831/#4583のBuild検収を、#1824の実Window/IPC、#4515の対象固定、#1124の参照追跡へ接続する。**画面が動くことと、TEIが画面を作ったことは別の事実**であり、二つを同時に観測できる最小の作業に絞る。新しいBuild Engine、Desktop専用の意味正本、第二のGrant、CI Runnerを設けない。
+
+#### A. 実装する操作面と、各面が保証できる範囲
+
+| 利用者の操作面 | 初回に提供するもの | ここで推定・自動実行しないもの |
+| --- | --- | --- |
+| **Source / Subject** | Workspace選択、Catalog/Inspect、定義と参照箇所への移動、明示Subject PinとSource改版表示。出典を持つ対象に限って操作する | 検索ヒット・描画Edge ID・参照件数0を正式Identity、完全性、現在Grantへ昇格しない。#4515のPin状態単体を実UI統合済みと呼ばない |
+| **Build Preview** | 既存Build Catalog/Intentが**宣言した**対象、選択Recipe、Toolchain、必要Source/Artifactと、実CIが**観測した**N0 Inspector生成／N1 Service・Workbench生成／N2 Node・esbuild／N3 nested Go・Wailsの対応表。不足辺はunsupported/unknownとして表示 | CIスクリプトの実行順を正規Build Planと見なさない。ファイルSHAの目録から全依存閉包・実Builderの選択・OS隔離を証明しない |
+| **Build Attempt / Evidence** | 指定AttemptごとのStage1 TEI実Process image、実Builder/argv、入力の実消費、Stage2 ArtifactSet/digest、エラー・未実施を既存#1163 Evidenceとして参照する。まずHeadless/CLIで、画面は同じread-only投影を後から使う | 外部Launcher/CIが二回Buildしただけで再帰成功と表示しない。完了通知・配送ACK・Consumer受領は別に判定 |
+| **実Desktopで再確認** | **当該Stage2 exe** の実Windows WebView2/StudioBridge→Host→Source-backed Catalog/Inspect、現契約の生成Inspector使用、WebView2配信JSの実byteを同じArtifact/Attemptに結ぶ | Stage0/B0の別exeや旧Window/旧JSによる見かけ上同じ表示をStage2 ConsumerのPASSにしない。X-TEA三要素Pluginの収録・Grantは別途実呼出しで確認 |
+
+初回の表示は既存Workbench/Inspectorに小さなBuild/Evidenceの参照面を足す**候補**とし、大規模な統合IDE・常駐AI Chat・新しいDesktop DBを先に作らない。人とAIは同じ限定Operation/Source参照を使う。AIが提案するSource変更とBuild実行は別の意図であり、**候補のPreviewだけでは書込み・ビルド・実作用を開始しない**。外部Harnessへ渡す場合もPinした対象とSource/Workspace版・Recipient/Disclosureを送信直前に再照合する。
+
+#### B. ビルド直後に実行中のStudioを上書きしない
+
+Stage1がStage2を生成する場合、**現在実行中のDesktopと生成先を別Artifact/配置先**として扱う。特にWindowsでは実行中のexe/DLLの置換・ファイルロック・更新途中の起動失敗を無視できない。まず新しい隔離先へ生成し、digest・依存BOM・実OS起動/IPCを確認する。切替・更新・再起動はその後の明示的な配布/更新操作として#1824/#3267に引き渡す。ビルド成功を即時の自己更新成功へ変換しない。隔離方法とOSでの実強制は未検証であり、pathが異なるだけで書込み隔離が証明されたと表示しない。
+
+#### C. 完了を判別できる対照試験（既存#4583 BD、#1824 DT、#1180/#2514に差分接続）
+
+| 反例または比較 | 独立ExpectedとDesktop表示 |
+| --- | --- |
+| 実CIにN0〜N3のファイルハッシュはあるが、TEI Build IntentにNode/esbuildが未接続 | 「実生成の観測あり／TEIによる全工程Buildは未資格」。Build Previewに未接続辺を残す |
+| Stage1を起動せずCI/LauncherがStage2 exeを作成 | 成果物の存在は表示可、再帰セルフビルドは不成立。actual process/argvから区別する |
+| Stage2 exeは生成されたが、別Window・別HEADのWebView2でCatalog/Inspectorが成功 | Stage2 Consumerは未受入。実exe/Window/IPC/配信JSとAttemptを再束縛する |
+| Source A→B→A、旧Pin/旧Inspect/旧Build Receiptが後着 | 意図・履歴は残すが現在資格を自動復活させない。実Workspace/Source/Pin/Window世代の再確認を要求する |
+| Stage2の配布後にPluginの実Providerが欠落・別Providerを呼ぶ | UIが同じでも実Invocation/Plugin BOM不一致として扱い、明示Selectionと実収録・実消費を別照合する |
+| Stage2 Build途中で失敗し、旧Studioは起動中 | 旧成果物を勝手に最新・成功としない。旧Windowでの参照作業は継続可、失敗Attemptと未完成Artifactは別票に残す |
+
+#### D. 最新実証と次に着手する一辺
+
+[Draft #4587](https://github.com/hat47x/tei-platform/pull/4587) の **HEAD `d7ad13ceabc39b3917a129409630879564f8384c`／[Windows CI #43388804188](https://github.com/hat47x/tei-platform/actions/runs/43388804188)** では、生成版・通常版WebView2 Jobが成功し、N0〜N3の**名前付き入力ファイル**を実ファイルからSHA-256で記録した `b1-stage-input-observation.json` と、実配信JSのbyte照合が共存する。生成exe SHA-256は `9c86cd2b4e3894eb9dcca1f5c7fd5a7ed18d0c274af068a83406e9f25967f437`。これは**固定入力の実観測とB0実Consumerの限定PASS**であり、目録自体が明記する `qualifiedBuildIntent=false`／`dependencyClosure=unknown` を変えない。B1全工程の実BuildIntent駆動、B2 Stage1→Stage2 Desktop、B3そのStage2 exeの実Consumerは**NOT RUN**。当該PRはDraft/未統合。
+
+**次の実装はB1一辺に集中する**：現行#4583のB1-Aで得たN0〜N3の観測目録から、宣言Build Planが実消費する入出力・Invokerの不足を特定し、既存Build Execution/ArtifactSetに適合する最小Target Adapterだけを検証する。UIでのBuild Previewは、そのデータを正しく可視化できるところまでに限定する。B1が通ったらB2実Stage1 Process、続いてB3当該Stage2 exeのWebView2を通し、初めて「StudioがStudioを構築した」と製品上で表示できる。#2586実Provider Read、#4515 Pin UI、#4570三要素分析法Pluginは並走可能で、いずれもB1の新Hard Gateにしない。
+
+**反映先と責務**：Build/再帰の実装と証拠は#4583/#2831、Windows Window/IPCと更新切替は#1824/#3421、対象固定は#4515、X-TEA三要素分析法のモデルは#1124/#4570、独立Expectedは#1180/#2514、Evidenceは#1163、配布BOMは#3267が引き続きOwner。本節はこれらのIssueを重複起票せず、製品操作で何を観測すれば合格かを明確にする設計追補である。新Go/Node/Windows/実DBの実行やOwner正式受理は、本節の追記によって成立しない。
+
+
 ---
 
 ## 1. 位置づけと判断済み前提
