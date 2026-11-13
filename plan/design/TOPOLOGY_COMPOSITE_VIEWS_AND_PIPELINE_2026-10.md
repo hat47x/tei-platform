@@ -805,3 +805,36 @@ Source改版・同offset別Subject・Workspace別Manifest、Rule/Method版、Pro
 StudioのMethod（#4570）、固定PinのUI接続（#4597/#4515）、Function→実Provider→通常Consumer（#2586）、可逆Source Writer（#4538）は**並行**し、B1-BのHard Dependencyにしない。特にMethod/プラグイン/表現図面を増やした成果そのものを、ユーザーの認知負荷低下と取り違えない。Source/Graph位置・Unknown説明・誤った不存在判定・操作回数/時間を、同じタスクで汎用InspectとMethod Viewの対照として評価する（#4487/#2514）。
 
 **証拠上限**：#4587/#4570/#4597の結果はそれぞれの固定headと合成/CI条件に限定。今回の追補は既存PR/CI/Sourceの静的照合・設計編集であり、同一headの新三者統合・実OS再入・新Browser試験・実X-TEA Source・正式Meaning/Grant・Owner受理はNOT RUN。CI失敗のPRは拒否理由を区別して保持し、修正前headの成功や他PRの成功を転用しない。
+
+### 16.22 2026-11-13：Workbench の Pin 再確認は通常 Inspect の「表示副作用」を再利用しない
+
+**固定照合**：main f3b58e7b580f0ecbea1d2feb156f52c2147f63a7／[Draft #4597](https://github.com/hat47x/tei-platform/pull/4597) head 247a6ba6579d8feab618419c100a1e16bb1fe65a／[Draft #4587](https://github.com/hat47x/tei-platform/pull/4587) head 001b40ce40a6cacddfe75a1e06405958962dd9a8。実装は [#4515](https://github.com/hat47x/tei-platform/issues/4515)、独立ExpectedのOwnerは #1180/#2514、UXは[Draft #4605](https://github.com/hat47x/tei-platform/pull/4605)のUX-23とする。本追補は既存仕様の**実コード上の切断点**を示すだけで、新Pin State／Reader／Approval／Hostを定義しない。
+
+現 main の reference/tei-studio-workbench/main.ts の inspect(subject) は、RPCを始める前に selected、title、renderList、editor.setDocument(pending)、relatedGraph→graph.update、graph.setSelectedNode、source-status を**直ちに変更**する。返信後もEditor・source-status・noticeを更新する。したがって「Pin Aを再資格化するため通常inspect(A)を呼ぶ」実装は、利用者が現在Bを編集している場合、**Bの表示・Dirty Bufferの保全に反する**。既存responses.tsのlane/epoch Guardは後着返信の可視化を守るが、開始前に実行したこれらの同期副作用を取り消さない。
+
+#4597 pin-state.tsのPinIntentは workspaceId／workspaceEpoch／Subject kind+id／generationを保持し、acceptPinObservationは要求のgeneration/Workspace/Subjectを照合する。ただしSource RevisionやCurrent Grantの検証は**呼出元の責任**。#4587が生成した readInspection はSubject・WorldFP・SourceIndexFPとread-only effectを照合するが、Source-only Drift、Workspace Root/Grantの現行性、Audience Disclosure、実操作Authorityは成立させない。また生成Readerの document.documentElement.dataset へのProvenance/Calls記録は「この実Generated Readerが使用された」観測であり、**Pin A／表示Bのどのlaneで呼ばれたかを単独で識別するReceiptではない**。
+
+**最小Consumer配線案（設計、未実装）**：
+1. Pin Aの独立Requestを #4597 の pinRequest で固定し、既存CatalogのInspect eligibilityを確認する。RPCは既存StudioBridge.inspectSubjectを利用する。表示Bのselectedを切り替えたり、通常inspect(A)を経由しない。
+2. 応答を現在のPin Requestにのみ適用する前に、既存readInspectionの検証とworkspaceEpoch／generationの整合を確認する。Source Revision/Manifest Root/Disclosureの現行性が実Readerで立証できなければ、Pin Intentは保持しつつ observationを needs-requalification / unqualified のままにする。「FP一致＝authorized」にはしない。
+3. 成功・拒否・後着のいずれもAのPin表示領域だけを更新する。BのEditor Document/Dirty Buffer/選択/Graph/Graph Note/通常Notice・Undoを変更せず、再確認のためのAI Context送出・Save・Effect 0とする。検証できる場合のみPinカードの限定read-only観測をinspectedにする。
+4. 同じBrowserで生成Readerが呼ばれたことと、**どのPin Requestが受理されたか**は独立観測とし、全体dataset呼出回数だけから「Aを再確認した」と断言しない。
+
+| 既存受入IDへ接続する故障注入 | 独立に観測する期待結果 |
+| --- | --- |
+| UX-23／PIN-S0-01：AをPinしBをInspectしてDirty編集、Aだけ裏再読取 | Bの選択・Editor文字列・Dirty flag・Graph node/edge・Undo・Noticeはbefore/afterで不変。Pinだけ限定資格更新 |
+| PIN-S0-02/03・ESD-73：同Content/同Fingerprintだが別許可WorkspaceRefへ切替、A→B→A、旧A Replyが後着 | generation/Workspace比較で再束縛0。Source再読取・Grantなしでinspected/currentへ復活しない |
+| STQ-02/12・#4514：Source-only変更でWorldFPは同じ、Catalog/ReaderのFPが一致 | FPだけでは現在Sourceを保証しない。変更を観測できればPin再資格化し、通知未実証なら即時検出を主張しない |
+| #4587 / #4583：Generated Readerの使用回数が増え、A/BいずれかのInspectで同じ契約digestを表示 | 使用回数は実Generated Part利用の証拠、Pin Aの正しいqualified reply受理やBの非干渉は別Expectedで判定 |
+
+**合流の物理条件**：#4597の既存Pin状態モジュールは現在 main.ts に未接続。#4587は生成Inspector readerと生成済みBundle/CIを変更し、#4597とは reference/tei-studio-workbench/package.json が重複する。両PRの**既存test scriptを包含**してSource TypeScriptで接合し、generated artifactを正規手順で再生成・byte照合する。新たなPin実UI、Dirty Buffer保全、通常/生成両Windows WebView2は同一headで実行するまで NOT RUN。#4570の独立 /three-view/ との固定対象共有・Human Acceptanceは別[#4613](https://github.com/hat47x/tei-platform/issues/4613)へ委譲する。
+
+### 16.23 B1 の新しい観測結果と、Studio が提供する判定の上限
+
+[Draft #4587](https://github.com/hat47x/tei-platform/pull/4587)のhead 001b40ce40a6cacddfe75a1e06405958962dd9a8 は**15件のexact-head Checkがcompleted/success**。[Windows CI #43426489587](https://github.com/hat47x/tei-platform/actions/runs/43426489587)では生成版と通常版のWebView2 Jobがともに成功し、N2 esbuild選択入力24件、N3 Go選択Source303件、生成JS実配信 byte 682,327／SHA-256 755e5e85f8487d4e5361fe4262c77595c3ebc048068f2647b0b27862de804299 を記録した。これらは**Toolchainが申告する選択集合とBuild前後の指定byte観測**であり、actual read-timeの完全なSource/Toolchain/Module Cache依存閉包、外部Runner/Env/OS/ABI、BuildIntentが実Builderを選択・起動したことを保証しない。
+
+現main internal/buildintent/intent.go の BuildIntent.Validate() は Intent Subject kind=pluginだけを許し、BuildIntent自体は一つのSubject/Builder/Recipe/Outputを宣言する。cmd/tei/cli_self_build_outer.go は宣言／実Child／artifactを照合するが、一つのChildの内部でN0→N2→N3を隠しただけでは全工程のDeclared/Consumed/Effectを表現したことにならない。**Studio Desktop exeを偽Pluginとして登録しない**。#4583 B1-Bは、既存Build Execution／ArtifactSetと適合する**まず一つのN2 JS→N3 Wails埋込み境界**で「指定したOutput artifact digest／実Consumerが読んだbyte／実Builder selection・Invocation」を照合し、Source required closureとToolchainの未証明範囲をunknownのまま報告することを先行案とする。Shell step間変数の持ち越しが失敗した#4587の旧headを反例として、引渡しは明示Artifact/Receiptで行う。新共通DAG/Runner、Stage2専用Host、隠れbuild hookを導入しない。
+
+**優先順位**：P0は#4583 B1-B→B2実Windows Stage1 TEI→Stage2 Desktop→B3そのexeの実WebView2。並行して#4515（Pinを実Workbench UIへ）、#4613（三視点のWorkbench入口）、#2586（通常Product Consumerへの実Read）を進める。#4570の三要素Method全部、AI協業、Plugin Profile全閉包、実DB書込をP0のHard Gateにしない。B0 CI成功も、Source Editor・Current Grant・Owner Meaning・L2/L3/G4への自動資格移譲にしない。
+
+**本節のEvidence**：既存Source、PR/Issue、exact-head CIの確認および設計文書の更新だけ。新Go/Node/Windows/Browser試験、実Pin UI、実BuildIntent N2→N3、一つの共通ConsumerとOwner意味受理はNOT RUN。実装と実行証拠はそれぞれの既存Ownerに保持する。
