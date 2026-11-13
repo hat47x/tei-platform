@@ -351,3 +351,93 @@ func TestB1AgainstRealPostgres(t *testing.T) {
 		t.Errorf("dropped column accepted: %s", msg)
 	}
 }
+
+// b1ReferenceRows runs the existing Environment-bound reference Consumer
+// (tools/reference-browse-read, a hand-wired path that is not generated) against
+// the same database and returns its rows as column -> rendered value.
+func b1ReferenceRows(t *testing.T, refBin, dsn, from string) []map[string]any {
+	t.Helper()
+	cmd := exec.Command(refBin, "-workspace", b1Workspace(t), "-environment", "development",
+		"-application", b1App, "-pattern", b1Pattern, "-dsn-env", "RBR_DSN",
+		"-confirm-isolated", "tei_task9_probe", "-param", "from=time:"+from)
+	cmd.Env = append(os.Environ(), "RBR_DSN="+dsn)
+	var o bytes.Buffer
+	cmd.Stdout = &o
+	_ = cmd.Run()
+	var resp struct {
+		OK      bool `json:"ok"`
+		Context *struct {
+			Rowset struct {
+				RawColumns []string `json:"rawColumns"`
+			} `json:"rowset"`
+			Rows [][]struct {
+				State string `json:"state"`
+				Value any    `json:"value"`
+			} `json:"rows"`
+		} `json:"context"`
+		Error *struct{ Code, Message string } `json:"error"`
+	}
+	if err := json.Unmarshal(o.Bytes(), &resp); err != nil || !resp.OK || resp.Context == nil {
+		t.Fatalf("reference Consumer failed: %v %s", err, o.String())
+	}
+	var rows []map[string]any
+	for _, r := range resp.Context.Rows {
+		m := map[string]any{}
+		for i, c := range r {
+			if c.State == "null" {
+				m[resp.Context.Rowset.RawColumns[i]] = nil
+			} else {
+				m[resp.Context.Rowset.RawColumns[i]] = c.Value
+			}
+		}
+		rows = append(rows, m)
+	}
+	return rows
+}
+
+// B0 comparison: the generated binary and the hand-wired reference Consumer must
+// return the same rows, in the same order, for the same Source and database.
+func TestB1MatchesHandWiredReference(t *testing.T) {
+	dsn := os.Getenv("TEI_TASK9_PG_DSN")
+	if dsn == "" {
+		t.Skip("TEI_TASK9_PG_DSN not set (NOT RUN)")
+	}
+	refBin := filepath.Join(t.TempDir(), "reference-browse-read")
+	build := exec.Command("go", "build", "-o", refBin, "./tools/reference-browse-read")
+	build.Dir = p0aRepoRoot(t)
+	if out, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build reference Consumer: %v %s", err, out)
+	}
+	_, out := b1Generate(t, b1Workspace(t))
+	_, bin := b1BuildBinary(t, out)
+	for _, from := range []string{"2026-11-07T09:00:00Z", "2026-11-07T10:05:00Z", "2026-11-07T10:10:01Z"} {
+		ref := b1ReferenceRows(t, refBin, dsn, from)
+		msg, code := b1Run(bin, []string{"TEI_DSN=" + dsn}, "query", b1Pattern, "--from="+from)
+		if code != 0 {
+			t.Fatalf("generated binary: %s", msg)
+		}
+		body, _, _ := strings.Cut(msg, "|")
+		var got []map[string]any
+		if err := json.Unmarshal([]byte(body), &got); err != nil {
+			t.Fatal(err)
+		}
+		if len(got) != len(ref) {
+			t.Fatalf("from=%s: generated %d rows, reference %d", from, len(got), len(ref))
+		}
+		for i := range ref {
+			for col, rv := range ref[i] {
+				if gv, ok := got[i][col]; !ok || strings.TrimSpace(sprint(gv)) != strings.TrimSpace(sprint(rv)) {
+					t.Errorf("from=%s row %d %s: generated %v, reference %v", from, i, col, got[i][col], rv)
+				}
+			}
+		}
+	}
+}
+
+func sprint(v any) string {
+	if v == nil {
+		return "<null>"
+	}
+	b, _ := json.Marshal(v)
+	return string(b)
+}
