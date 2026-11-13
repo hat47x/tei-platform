@@ -203,3 +203,47 @@ TEIからSHOへ文書を生成/再投影する際は、著者編集領域と生�
 | I7 | Fingerprint同一・AuthorityLimits/Generator変更 | Source再利用とMeaning/Artifact/Grant資格を別判定 |
 
 **証拠状態**：I1〜I7は計画でありNOT RUN。旧HEAD `c2ab617097c0eb7292c38265de4b8bd8ec0dd8c1` の[Repository Health #43152455070](https://github.com/hat47x/tei-platform/actions/runs/43152455070) と[Cache Verification #43152455133](https://github.com/hat47x/tei-platform/actions/runs/43152455133) は**completed/success**。この後のHEADは別途CI確認する。
+
+
+## 2026-11-13 セルフビルド優先の横断統合と依存関係の再編
+
+### 製品目標から逆算したK2の位置
+
+最優先の製品目標は**TEI Studio DesktopをTEI自身で生成・構築できること**。K2の実Provider二Consumer受入は、この目標を阻害しない**共通実行契約の検証**として扱う。OKF全仕様実装や独立Host/Registry、全面的な`*.tei.md`移行、汎用Lifecycle Graph編集UIの完成をセルフビルドの前提にしない。
+
+現行の進捗は、実PostgreSQL読取→Function Data Contextの限定経路が存在し、Inspector生成部品のWindows Desktop利用とStudio/SHO Handoffには限定的な実証がある一方、**TEI自身の生成→Bundle→Wails Desktop起動→Stage2再構築の全体連鎖は未達**、という別々の証拠として扱う。個別の実装/CIがマージ済みかどうかは各PR/HEADの証拠で更新する。
+
+### 最小Critical Path（同一実行で結ぶ）
+
+| 順 | 作業 | 検収する境界 | 先行不要なもの |
+| --- | --- | --- | --- |
+| S0 | 固定Function/Entry/Source Revisionから実Provider Read→Function Data Context→共通Application API/CLI Reply | 実選択Provider ID、実Invoke、Raw/typed受領、正常/0件/失敗、独立Expected | OKF F2受理、Studio全GUI、全DSL構文 |
+| S1 | 同じFunction/EntryをWails Desktopの実Workbench/Inspectorから起動し、Bridge→UI受領を観測 | Windows実Desktop、Native Source、Grant、Scope、Replyの同一性 | 全Plugin Graph Editor |
+| S2 | TEI生成器で最小Studio部品を生成→Bundle→Desktop起動し、Stage1/Stage2の生成物・版・振舞いを比較 | Toolchain/Generator/Source/Artifact/Executionの各Revision、独立Expected | 完全な自己記述DSL |
+| K2-A | S0と共通のProvider契約を使い、A/B選択→B実Load/Invokeを検証 | 宣言IDではなく実Call SiteのID | 新しいProvider Host |
+| K2-B/C | SHO private実Reader/AdapterとTEI Consumerを同じProvider契約で照合 | 独立Received/Required、原文とMeaningの分離 | SHO正式Writer/Owner受理 |
+
+S0/S1/S2はK2-A/B/Cと**相互参照**するが、同じ試験に統合しない。S0は実Provider、S1はDesktop Bridge、S2は自己生成の合格をそれぞれ独立に宣言する。K2はSource/Provider/Consumer境界を検証する。
+
+### 他チャットからの成熟成果の接続
+
+- **TEI DSL自己記述**：D0読取→D4再構築を長期段階として維持。最初のセルフビルドでは現行`.tei`と既存生成器を使い、構文の全面刷新を停止条件にしない。G1生成規約→G3独立意味適合→G2 Plugin合成の順序を参考に、生成器選択の誤りを独立Expectedで検出。
+- **TEI Studio/三要素Modeler**：Inspector生成物の実Desktop使用と、三要素分析法Modeler PluginのDraft読取を別扱い。GraphのData/Function/Business参照、CRUD、Source Index、未使用項目、欠落・矛盾の診断はK2のProvider実Invoke証拠ではないが、S1の観測・探索UIへ接続する。
+- **横断Plugin**：Operation Contract＋Composition/Lifecycle Graph＋Target別Generator/Binding＋実行Receiptの責務分離を採用。hook.RunnerのCLI/Studio入口配線は、規則Pluginの実供給やDesktop UI実使用の証拠と区別。Lifecycle Graph全文の管理は既存Issue [#4198](https://github.com/hat47x/tei-platform/issues/4198)へ委ね、K2計画には必要なContract/負例のみ置く。
+- **SHO/SUI Handoff**：Working Copy→CAS Save→独立再読取と、SUI→TEI/SHOの固定Selection Contextを分離。Handoff ReceiptはAIセッション継続、文書の正式保存、Owner Meaning受理を意味しない。
+- **標準データ型/取得完全性**：原Byte、Protobuf Presence、xarray座標、地理軸、FTE等の意味保存は標準データ表現側の独立検証対象。K2はRaw/typed変換でLossを可視化し、未対応型の存在を黙って捨てない。関連する[Draft PR #4549](https://github.com/hat47x/tei-platform/pull/4549)の内容は未マージとして扱い、実装済みとみなさない。
+- **B0-R/増分依存**：変更元から到達可能な未知依存を検出し、無関係な未知ノードによる全件再検証を避ける。Source/Manifest/Toolchain/Authorityの失効は別々に扱い、Cache Full vs IncrementalのCI緑を個別Provider意味の同値性と混同しない。
+
+### 優先的に追加する独立受入シナリオ
+
+| ID | シナリオ | 独立Expected |
+| --- | --- | --- |
+| SB1 | 実PostgreSQL Function Read→CLI→Windows Wails Bridge→UI | 固定Function/Entry/Source Revisionの同一性、実Provider受領、表示Lossの診断 |
+| SB2 | 生成した最小StudioをBundleしてStage1/Stage2で起動 | 生成器・Toolchain・Artifact版、起動結果、独立振舞い比較。単なるGo build成功では不可 |
+| SB3 | 同label別Data/Function/Business、CRUDの未使用/矛盾 | Source Identityを保ち、Graph/Inspector表示の参照先取り違えを拒否 |
+| SB4 | Provider B選択後にAが実Invokeされる | 同一Attemptの実ID不一致でFAIL。UI表示や同値出力で救済しない |
+| SB5 | Native Source改訂・Source-only/Manifest-only変更 | 影響範囲と失効Receiptを分離。旧Evidence再利用を正当化しない |
+| SB6 | SHO Handoff成功後にCAS競合、再開時の原文改訂 | Working Copy保持、再解決、無断上書きなし。Handoffのみを正式保存としない |
+| SB7 | 未対応型・未取得・Protobuf Presence欠落を含むReader | Loss/UNKNOWNを明示し、完全性PASSを禁止 |
+
+**証拠状態**：SB1〜SB7は独立Expectedを定めた**計画（NOT RUN）**。実PostgreSQL Read等の先行成果は、その元コミット/CIの限定範囲でのみ認める。旧HEAD `428e1b07490d7ae8f87552d651782da960433d7f` のRepository HealthとCache Full vs Incrementalは2026-11-13確認時点**completed/success**。この後のHEADは別途CI確認する。
