@@ -232,7 +232,7 @@ Subsystem再命名は役割・更新責務が改善された可能性を示す**
 | --- | --- | --- |
 | 同じ業務期間だがDBとファイルを異なる時点に取得し、後から訂正行が到着 | `period同一 = global consistent snapshot`、`partialの0件 = 全件不存在` | [ETL #1130](https://github.com/hat47x/tei-platform/issues/1130) / [MFT #2542](https://github.com/hat47x/tei-platform/issues/2542)、P1 |
 | データAは新世代、データBは旧世代で、どちらのbyteも正しい | 各member digest PASS = Dataset全体の同一世代Publication PASS | [Artifact #2604](https://github.com/hat47x/tei-platform/issues/2604)、P1 |
-| [Registry Draft #4529](https://github.com/hat47x/tei-platform/pull/4529)のE1-BではConsumerがHTTP Artifactを取得する一方、署名対象Release宣言はlocal fixtureから取得 | 実HTTP byte PASS＋別途Signature PASS = Consumerが署名済み宣言もHTTPで検証した | [Registry #2589](https://github.com/hat47x/tei-platform/issues/2589)のE1-C、P1。別のVerifier/Trust Rootを本書に作らない |
+| [Registry E1-B merged #4529](https://github.com/hat47x/tei-platform/pull/4529)ではConsumerがHTTP Artifactを取得する一方、署名対象Release宣言はlocal fixtureから取得 | 実HTTP byte PASS＋別途Signature PASS = Consumerが署名済み宣言もHTTPで検証した | [Registry #2589](https://github.com/hat47x/tei-platform/issues/2589)のE1-C、P1。別のVerifier/Trust Rootを本書に作らない |
 | AI提案R0と編集中Dirty Buffer R1が異なり、別タブのPin Aを再確認 | 古いSource/Pinned Consumerの再読込 = 編集中Bの内容と現在操作資格も更新された | [Studio協業 #4515](https://github.com/hat47x/tei-platform/issues/4515)、[UX Draft #4605](https://github.com/hat47x/tei-platform/pull/4605)、P1並走 |
 | 固定Contract/生成JSを同じCIで観測したが、BuildIntentはNode/esbuild/Nested Wailsを実駆動しない | 同Attempt・同digest = Stage1自身によるStage2 Desktop Build/完全Consumed閉包 | [Self-build #2831](https://github.com/hat47x/tei-platform/issues/2831)、[Desktop P0 #4583](https://github.com/hat47x/tei-platform/issues/4583)、**最優先P0** |
 | 別Workspaceに同じ`.xead` bytesと同一Occurrenceがある | 同Content fingerprint = 別Workspaceでも同じSource Pin/編集対象 | [#4614](https://github.com/hat47x/tei-platform/issues/4614)、[#1124](https://github.com/hat47x/tei-platform/issues/1124)、P1並走 |
@@ -240,5 +240,7 @@ Subsystem再命名は役割・更新責務が改善された可能性を示す**
 **受入資料と実験**：各Ownerの既存Scenario SSOT [#1180](https://github.com/hat47x/tei-platform/issues/1180)、独立Expected [#2514](https://github.com/hat47x/tei-platform/issues/2514)、現在Authority/Disclosureの既存契約に委ねる。最小の正負対照は、(a)byte同一でもScope/Publication/Attemptが異なる、(b)宣言された変換によりbyteが異なるが意味同値を検証できる、(c)必要閉包未取得、(d)既知の無関係変更、(e)Private Worldのみ変更、を別々に用意し、`false retained / unnecessary invalidation / unknown erased`を記録する。
 
 **禁止する横断的な主張**：Source digestの一致からMeaningやGrantを昇格、Manifest合格から実Builder呼出しを昇格、ファイル受領から業務Commitを昇格、合成private fixtureから実Disclosure資格を昇格、局所Readから全件/不存在を昇格。新たなHard Gate追加も、Studio DesktopセルフビルドP0の他レーン依存化も行わない。
+
+**状態更新（2026-11-13）**：E1-B #4529はmain `b03c415e5fd13d8feec96d9669d96d6db9035e8c`へ統合済み。HTTPの実Artifact byte受領という限定事実は維持するが、signed Release Descriptor自身のuntrusted HTTP取得→Consumer独立検証→Member byte検証は次のE1-Cであり未成立。別のLocal Fixtureの署名PASSをHTTP配布の一続きの署名済み検証へ昇格しない。
 
 **今回のEvidence上限**：既存GitHubのIssue/PR・文書の静的照合により新しい設計を記述しただけ。Registry E1-C、複数Source atomic snapshot、AI協業Studio実操作、B1/B2/B3 Desktop self-build、本書の反証E2E、Owner採否は`NOT RUN / NOT ACCEPTED`。
