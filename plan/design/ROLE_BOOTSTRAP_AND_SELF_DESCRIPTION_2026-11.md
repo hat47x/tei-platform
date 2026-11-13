@@ -1479,3 +1479,34 @@ GD-1はexact PR HEADのSource/Command/Responses/Graph Pinと同一fixtureからG
 **次に解く順序**：#2831 B0/B1を実装着手の主線に置く。#1824は既存Windows generated-desktop jobを継続基線とし、#4572/#4579の合流後も反例を削らない。#1124の三要素分析法のモデルPluginと#2586/#4559の実Function・DB受領は並走させるが、Desktop Self-Buildの新Hard Gateにしない。#4544 G1/G3/G2で生成器自体をAIに作らせる研究をB0〜B3の先行条件にしない。
 
 **この§29の状態**：PR #4579 CI success、#4572 exact HEAD CI successおよびbranchの局所reentry実測、#4559/#4570のDraft試験報告を静的照合した計画更新。**統合HEADのBuild Intent→Stage1 TEI→Stage2 native Windows Desktop→実WebView2というB0〜B3の新試験はNOT RUN**。Owner受理・全Platform G4も未証明。
+## 30. 2026-11-13 同一HEAD生成Desktop検収：B0実証とB1の実入力断線
+
+### 30.1 初めて成立した限定的な同一HEAD実証
+
+[統合検証用Draft PR #4587](https://github.com/hat47x/tei-platform/pull/4587) HEAD `b26e87781e00b19bf142b22a35cfc62a857e88a3`を、#4572のInspector契約Source/Transform/Generated readerをSeedとして、#4579の独立Windows生成Desktop Jobとsame-origin JS digest検査を接続して作成した。元PRの各HEADやmainを書き換えず、重複mergeを防ぐため**一時的な統合検証PR**とする。#4583のB0がOwner。
+
+[Windows Actions #43368714294](https://github.com/hat47x/tei-platform/actions/runs/43368714294)では、生成版 `generated-desktop-webview2-smoke` **completed/success**、通常版 `desktop-webview2-smoke` **completed/success**。生成版一JobでPoC B Go/TypeScript生成→esbuild→Windows native Wails studio_generated（serverなし）→実WebView2/StudioBridge検査へ到達。統合Python smokeは、契約から生成したInspector readerの実WebView digest/受理回数（初回/Graph後）と、実配信JSのbyte hashを**同時に失敗条件**とする。後続ログに`generated-workbench-asset-verified`が出たので、その前のInspector判定もこのJobで通過した。
+
+実WebView2配信bundleは **682,327 bytes／SHA-256 `755e5e85f8487d4e5361fe4262c77595c3ebc048068f2647b0b27862de804299`**。#4579単独の681,264 bytes／SHA-256 `351b...`とは**別HEAD・別生成Sourceに対応する別Artifact**であり旧digestを持ち越さない。Catalog 72件、`sales.order`からGraph `sales.order.order_id`、エラー0・警告3などをログで確認。Embedded Bundle、Incremental、Independent Consumer、依存脆弱性の同HEAD CIもsuccess（全CIの終了一覧は別確認）。
+
+統合に際して、#4572に混入していた追跡済みPython bytecode（`.pyc`）2件を**統合ブランチから除去**、`.gitignore`に__pycache__/と*.py[cod]を追加。これを正式#4572が自動的に修正済みとは扱わない。合流時は元ordinary Desktop、Generated Desktop、Inspector使用、実WebView2配信hashの四条件を一つも削除しない。
+
+**成立Claim**＝『この固定Source/Windows Runner/Toolchain/PoC B/Contractに対し、生成Inspectorと生成Desktopを一つのexact HEADで実WebView2が消費した』。**未成立**＝#4583 B1 BuildIntentからの全Node実Builder実行、B2 Stage1生成TEI自身がStage2 DesktopをBuild、B3そのStage2 exe実WebView2、Host OS境界Wでのstate非干渉、全OS配布/Plugin/Owner受理/G4。B0の局所成功からDS2/DS3を昇格させない。
+
+### 30.2 次のB1を構成する実Nodeと、既存APIで足りない境界
+
+main `cmd/tei/cli_self_build_inprocess.go` は実Build Catalog raw/digest/rootを読み、`buildintent.ParseBuildCatalog`と既存解決経路を呼ぶ。一方#4572 `tools/reference-studio-part-generator/main.go` は**単一TypeScript部品のchild**を実現するだけで、`stage_reentry.py`の説明にもNode/esbuildとWails BuildはGraph外と明記されている。#4579のWindows Jobは実生成・Bundle・Wailsを行うが、**GitHub Actions Runnerが順序を管理する**。これは新Builderを作るべき根拠ではなく、まず既存BuildIntent/Build CatalogのFit/Gapを実消費工程で照合するべき根拠である。
+
+| Build Node候補 | 必要な実Producer/Consumer・失効入力 | 現在の境界 |
+| --- | --- | --- |
+| N0 Inspector契約→TS | 契約raw、Transform Source/Engine、生成TSのexact bytes | #4572 childで実証。Catalog/Intent全体のNodeは未接続 |
+| N1 PoC B生成Go/TS | 固定fixture、Composition Generator/Source、生成services/entry TS | #4579 Runner上で実行。TEI BuildIntentの実Nodeではない |
+| N2 Bundle | N0/N1のTS＋既存Workbench/Command/Graph、npm lock・Node/esbuild、生成JS/assetのbyte | 実esbuildはWindows Jobで呼ぶが、TEI Graph外 |
+| N3 Desktop Binary | N2 JSの実embed、Studio nested go.mod/go.sum、Go/Wails/Target/tags、実exe digest | Windows Jobでnative build、TEI Graph外 |
+| Consumer検証 | N3実Process/WebView2、N2 served JS、Inspector使用、IPC | #4587 B0は実検証済み。ただしStage2生成物ではない |
+
+**実装順**：B1a実Job/NodeのRead-only inventoryとBuildCatalogに表現可能なinput/output/orderingの表作成 → B1b最初に未表現のNode/Adapterだけ既存Build契約へ加える → B1c TEI自身のactual resolved plan/consumed byteとCI/OS側actualを比較 → B2 Stage1自身の実ProcessがN0〜N3を経由したStage2実exeを構築 → B3新Stage2 exeをWindows WebView2が受領。WindowsでStage1再入に直接到達できない場合は`unsupported`とし、Linuxで部品だけ再入できた過去実績を流用しない。
+
+**次の独立負例**：生成契約のみ変更してN2の旧assetを流用／npm lockまたはnested moduleだけ変更してN3を再利用／N1 Go servicesの旧版とN0新Inspectorを混在／CI RunnerがN3を直接BuildしてStage1実Processは非参加／二回Buildのstateが宣言外共有、を一因子ごとに分離する。Expectedの正本は#1180/#2514、Build Ownerは#2831、Desktop実Consumer Ownerは#1824、B0〜B3接合は#4583。新DSL・Host・Meta Interpreter・第二CI Runnerなし。
+
+**本節の状態**：#4587 exact HEADのWindows native Job二本成功は実証済み。B1 Build Catalog/Intent実合成、B2 Stage1→Stage2 Desktop、B3 Stage2実WebView2、正式Meaning/Owner受理は **NOT RUN / NOT PROVEN**。PR #4541は設計Draft、PR #4587もDraft／main未merge。
