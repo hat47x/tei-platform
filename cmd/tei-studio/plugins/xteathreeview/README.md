@@ -61,16 +61,29 @@ node --test cmd/tei-studio/test/three-view-client.test.mjs
 ### 確認できた範囲と、できていない範囲
 
 - 確認した：上記のGo・Node試験。Studioのserverビルド（`-tags server`）を合成Workspaceで起動し、ブラウザで`/three-view/`を開いて、Business→Function→CRUD→DataのSource位置への移動と、固定した対象が選び直しの後も保持されることを画面で確かめた。
-- **未実施**：実Desktop（WebView2のウィンドウ）でのGUI受入。serverビルドは同じ`StudioBridge`と同じ画面資産を使いますが、Desktopの確認の代わりにはなりません。
+- 確認した：Windows実機のDesktop（WebView2のウィンドウ）で同じ移動と固定の保持を確かめるスモーク試験[`desktop_three_view_smoke.py`](../../test/desktop_three_view_smoke.py)。CIの`tei-studio-wails-desktop-webview-smoke.yml`で走り、[PR #4570](https://github.com/hat47x/tei-platform/pull/4570)のhead `c98f4d44f`で通過した（[実行記録](https://github.com/hat47x/tei-platform/actions/runs/43419938104)）。画面に出た内容とBridgeの戻り値を機械的に照合する試験であり、**人による画面の受入ではありません**。
+- 確認した：`tei-studio -workspace <root> -three-view design/order.xead`が、ウィンドウもserverも起動せずに同じ応答をJSONで出力すること（後述）。
 - **未実施**：実際のX-TEA設計Sourceでの確認。合成データでの成功は、実Sourceを正しく読める証拠ではありません。
 - 関数のシンボルと実行ファイルのダイジェストは、このプロセス自身の観測です。成果物の署名、適合性の認定、権限の付与ではありません。
 
+## コマンドラインからの読取り
+
+```bash
+tei-studio -workspace <Workspaceのroot> -three-view design/order.xead
+tei-studio -workspace <root> -three-view design/order.xead -pin-occurrence <occurrence> -pin-source-digest <sha256:...>
+```
+
+画面と同じHostの構成で、同じ`StudioBridge.NavigateThreeView`を呼び、応答をJSONで標準出力へ出して終了します。終了コードは、応答が返れば0、読取りを拒否すれば1です。0は「Sourceが完全である」「受理済みである」ことを意味しません。応答の`coverage`と各層を見てください。
+
+この入口が`tei`コマンドではなくStudioの実行ファイルにあるのは、`tei`コマンドがルートmoduleから作られ、ルートmoduleはX-TEAの読取り部なしでビルドできなければならないためです。
+
 ## 既知の難所と、分けて進められる作業
 
-1. **Desktopでの受入**：実WebView2で`/three-view/`を開く試験。既存のDesktop向けスモーク試験へ一画面を足す形で、この変更と独立に進められます。Workbench（`/workbench/`）への入口追加は、生成済みバンドルの再構築を伴うため別の変更にします。
+1. **人による画面の受入と、Workbenchからの入口**：機械的なスモーク試験は通っていますが、人が実Desktopで見て受け入れる確認は残っています。Workbench（`/workbench/`）への入口追加は、生成済みバンドルの再構築を伴うため別の変更にします。
 2. **受理済みMeaningの結び付け**：既存の受理経路で受理されたCanonical対象へ、`occurrence`をどう結ぶか。契約のv1で扱います。受理の記録を根拠にし、名前やIDの一致からは結びません。
 3. **項目レベルの参照の拡張**：現在は、キーの構成項目→項目だけです。画面・帳票の項目からテーブル項目への参照は、原典での表現を確かめてから加えます。
 4. **Hostの選択機構の一本化**：`threeviewadapter`は`inspectoradapter`と同じ選択・束縛の処理を持っています。二つを一つの汎用Hostへまとめる作業は、Inspectorの経路を変えるため分けました（[#1251](https://github.com/hat47x/tei-platform/issues/1251)、[#951](https://github.com/hat47x/tei-platform/issues/951)）。
-5. **CLIからの同じ操作**：`tei`コマンドに同じ型付き操作の入口を足し、StudioとCLIで同じProviderへ入ることを比べる。
-6. **pinの保存**：pinは呼び出し側が持つ値で、Hostは状態を持ちません。再起動をまたぐ保存と、複数画面での共有は未着手です。
-7. **`.xeaf`と複数Source**：この切片は`.xead`一件だけを読みます。設計と実行定義の対応、複数Sourceにまたがる参照は扱いません。
+5. **`tei`コマンドからの同じ操作**：Studioの実行ファイルには入口を足しました。`tei`コマンドから呼ぶには、プラグインをルートmoduleの外の独立した成果物として選択・起動する仕組みが要ります（次項と同じ前提）。
+6. **`plugins/`配下の独立moduleへの移動**：入れ子moduleを漏れなく検査する仕組みを先に整えてから移します（[#1251](https://github.com/hat47x/tei-platform/issues/1251)）。
+7. **pinの保存**：pinは呼び出し側が持つ値で、Hostは状態を持ちません。再起動をまたぐ保存と、複数画面での共有は未着手です。
+8. **`.xeaf`と複数Source**：この切片は`.xead`一件だけを読みます。設計と実行定義の対応、複数Sourceにまたがる参照は扱いません。

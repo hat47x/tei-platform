@@ -135,6 +135,52 @@ func TestStudioThreeViewSelectionDecidesTheEnteredCode(t *testing.T) {
 	}
 }
 
+// The headless entry prints what the Bridge method returns, through the same
+// selected Provider, and reports a refused read with a non-zero exit code.
+func TestHeadlessThreeViewPrintsTheBridgeResponse(t *testing.T) {
+	root := studioThreeViewFixture(t)
+	normal, err := newStudioThreeViewHost()
+	if err != nil {
+		t.Fatal(err)
+	}
+	bridge, seen := studioThreeViewBridge(t, []string{root}, normal)
+	var out bytes.Buffer
+	if code := runHeadlessThreeView(&out, bridge, studioThreeViewSource, "", ""); code != 0 {
+		t.Fatalf("exit code %d: %s", code, out.String())
+	}
+	if len(*seen) != 1 || (*seen)[0].ObservedEntry != studioWantThreeViewEntry {
+		t.Fatalf("the headless read did not enter the plugin: %+v", *seen)
+	}
+	var printed studiohost.ThreeViewResponse
+	if err := json.Unmarshal(out.Bytes(), &printed); err != nil {
+		t.Fatal(err)
+	}
+	direct := bridge.NavigateThreeView("workspace-1", studioThreeViewSource, "", "")
+	if !printed.OK || printed.Value == nil || !reflect.DeepEqual(*printed.Value, *direct.Value) {
+		t.Fatalf("the printed response is not the Bridge response:\n%s", out.String())
+	}
+
+	out.Reset()
+	pin := printed.Value.Subjects[0].Occurrence
+	if code := runHeadlessThreeView(&out, bridge, studioThreeViewSource, pin, printed.Value.Source.ArtifactDigest); code != 0 {
+		t.Fatalf("exit code %d with a pin: %s", code, out.String())
+	}
+	if err := json.Unmarshal(out.Bytes(), &printed); err != nil || printed.Value.Pin == nil ||
+		printed.Value.Pin.Occurrence != pin || printed.Value.Pin.Status != operations.ThreeViewPinHeld {
+		t.Fatalf("the pin was not printed as held: %v %s", err, out.String())
+	}
+
+	out.Reset()
+	if code := runHeadlessThreeView(&out, bridge, "design/absent.xead", "", ""); code != 1 {
+		t.Fatalf("a refused read exited with %d: %s", code, out.String())
+	}
+	var refused studiohost.ThreeViewResponse
+	if err := json.Unmarshal(out.Bytes(), &refused); err != nil || refused.OK || refused.Value != nil ||
+		refused.Failure == nil || refused.Failure.Code != "THREE_VIEW_SOURCE_READ_FAILED" {
+		t.Fatalf("the refusal was not printed as a typed failure: %v %s", err, out.String())
+	}
+}
+
 func TestStudioThreeViewEnforcesTheWorkspaceAllowlist(t *testing.T) {
 	normal, err := newStudioThreeViewHost()
 	if err != nil {
