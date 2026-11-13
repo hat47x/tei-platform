@@ -1,0 +1,34 @@
+name: Studio Pin intent state contract
+
+on:
+  pull_request:
+    paths:
+      - "reference/tei-studio-workbench/pin-state.ts"
+      - "reference/tei-studio-workbench/pin-state.test.mjs"
+      - "reference/tei-studio-workbench/package.json"
+      - ".github/workflows/studio-pin-state-contract.yml"
+  push:
+    paths:
+      - "reference/tei-studio-workbench/pin-state.ts"
+      - "reference/tei-studio-workbench/pin-state.test.mjs"
+      - "reference/tei-studio-workbench/package.json"
+      - ".github/workflows/studio-pin-state-contract.yml"
+
+jobs:
+  pin-intent-contract:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: reference/tei-studio-workbench
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: reference/tei-studio-workbench/package-lock.json
+      - run: npm ci
+      - name: Run isolated Pin intent state negatives
+        run: node --test pin-state.test.mjs
+      - name: Typecheck current Workbench source
+        run: npm run typecheck
