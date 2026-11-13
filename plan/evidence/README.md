@@ -462,6 +462,7 @@
 
 - [DSH外部Harness H2/H3 比較試験（2026-11-11、TEI #2509 / TAI #168 / SK-02）](DSH_H2_H3_COMPARISON_2026-11-11/)
 - [MCPサーバーを5つ繋ぐとハンドシェイク20件・Tool 32個になり、増え方は線形のまま（2026-11-11、#2515 H6-E2）](DSH_MCP_FIVE_SERVERS_2026-11-11/)
+- [コンテナとuidによる読取り隔離：4 Slotを別uid・mode 700に置き、DSH実Toolから他SlotとReviewer資料が全件`Permission denied`（2026-11-11、#2515 / TAI #168 G0。Mockを相手にした事前検査で、実Providerへの送出とH2/H3の比較Sessionは未実施）](DSH_G0_CONTAINER_ISOLATION_2026-11-11/)
 - [Studio の binding 欠落で、ビューと Command 操作が到達できていなかった件（2026-11-11）](STUDIO_BRIDGE_MISSING_METHODS_2026-11.md)
 - [「成果物と違うdigestを申告する」は、ディスクとの比較で止まる（追認）](TEI_GO_SELF_BUILD_ARTIFACT_DIGEST_STOPS_2026-11-11.md)
 - [セルフビルド実現の計画～設計の完了記録](TEI_GO_SELF_BUILD_REALIZATION_COMPLETE_2026-11-11.md)
