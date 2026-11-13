@@ -30,6 +30,16 @@ func TestOrgAxisAsOfQueryPhysicalBinding(t *testing.T) {
         t.Fatalf("unexpected query/application count: q=%d app=%d", len(loaded.World.Queries), len(loaded.World.Applications))
     }
     q := loaded.World.Queries[0]
+    foundMapping := false
+    for _, mapping := range loaded.World.Persistence {
+        if mapping.SemanticData != "organization.membership" { continue }
+        if mapping.Table != "public.org_memberships" || len(mapping.PrimaryKey) != 1 ||
+            mapping.PrimaryKey[0] != "organization.membership.membership_id" {
+            t.Fatalf("as-of physical mapping/identity does not match Query contract: %+v", mapping)
+        }
+        foundMapping = true
+    }
+    if !foundMapping { t.Fatal("as-of Query has no native Membership physical mapping") }
     if q.ID != "org_axes_view.as_of_membership" || q.Datasource != "org_read" {
         t.Fatalf("wrong native query: %+v", q)
     }
