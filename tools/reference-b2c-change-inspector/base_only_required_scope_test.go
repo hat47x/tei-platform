@@ -64,7 +64,9 @@ func TestDeletedTwoHopChainRetainsRelevantUnknownAndConsumer(t *testing.T) {
 			{ID: "native.pdp", Layer: "presentation"},
 			{ID: "old.rule", Layer: "business"},
 			{ID: "unrelated.page", Layer: "presentation"},
+			{ID: "unrelated.release", Layer: "release"},
 		},
+		Edges: []edge{{From: "old.rule", To: "unrelated.release"}},
 		BaseOnlyEdges: []edge{
 			{From: "removed.source", To: "old.rule"},
 			{From: "old.rule", To: "native.pdp"},
@@ -81,6 +83,17 @@ func TestDeletedTwoHopChainRetainsRelevantUnknownAndConsumer(t *testing.T) {
 		!reflect.DeepEqual(r.Unresolved, []string{"removed.source"}) ||
 		r.Coverage != "partial-or-unverified" ||
 		r.Disposition != "known-interaction-business-or-release-impact" {
-		t.Fatalf("R0-only chain was lost or unrelated chain was included: %+v", r)
+		t.Fatalf("R0-only chain was lost or candidate release sibling was included: %+v", r)
+	}
+	// An explicit change has a broader reach than a deletion inferred only
+	// from the question's R0 dependency chain.
+	v.Changed = []string{"old.rule"}
+	r, err = inspect(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(r.Impacted, []string{"native.pdp", "old.rule", "unrelated.release"}) ||
+		!reflect.DeepEqual(r.Lanes, []string{"C1", "C3", "C4"}) {
+		t.Fatalf("explicit changed source unexpectedly lost its downstream: %+v", r)
 	}
 }
