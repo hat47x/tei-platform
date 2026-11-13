@@ -883,3 +883,65 @@ Snapshotのp1/p2読取が成功しても、Tailの途中Gapで訂正イベント
 5. **P2 #2831/#2604/#4510**：セルフビルドの実Builder/Stage2/Artifact消費、OutputのGeneration Pin、Studioの問い相対Graphを照合。skipの正しさを実証した後、Cold/Warm FullとSelectiveの時間・再実行数を計測する。
 
 **現時点の証拠上限**：統合済みの参照比較#4277、申告旧Edgeの#4591、限定実PGの#4539、およびDraft #4592/#4608を静的照合した設計案。今回、新たなGo/CLI/PG、同一R1 Full/Selective二実行、失敗注入、CI、実Consumer/Studio、Owner意味受理は**NOT RUN / NOT ACCEPTED**。新Second Oracle/Graph Solver/Cache/Runtime、固定Host/新Grant Issuerは作らない。
+
+## 27. 下流Effectの旧Generation適用拒否と業務補償：Accepted Supersessionを別契約にする（2026-11-13、設計候補）
+
+**独立Gap**：§23はPublication/Consumer Read/Applied/Owner Acceptanceの証拠境界、§25は旧G1のRetention/GCと有限Consumer群への到達を扱う。§24/26は変更依存とFull/Selective再計算の正しさを扱う。しかし、下流の**現在の業務状態がG2へ進んだ後、遅れて届いたG1や比較不能な別訂正によってG2が上書きされない条件**は未明示である。このGapは[Effect Fence #1174](https://github.com/hat47x/tei-platform/issues/1174)、[Command/Receipt CAS #2564](https://github.com/hat47x/tei-platform/issues/2564)、[Import Unit #2542](https://github.com/hat47x/tei-platform/issues/2542)、[Subsystem Owner #3250](https://github.com/hat47x/tei-platform/issues/3250)に渡す。**新しいETL用Transaction Engine、Saga Coordinator、Command State Store、Host/Grant Issuer、第二Receipt Ledgerは作らない**。
+
+### 27.1 Generation identity／受理済み業務順序／実Applyを混同しない
+
+| 独立のClaim | 確認条件 | 推定してはならないこと |
+| --- | --- | --- |
+| **Source/Result Generation** | 対象Owner/Subsystem、業務期間、Source Cut/Rule・Meaning版、Output/Manifest/Reader Attempt | 世代文字列の辞書順、作成時刻、配送順だけで業務的な前後関係が決まる |
+| **Accepted Supersession** | Ownerが当該対象・期間で受理した現行版、期待旧版→次版の業務意味/訂正根拠 | 複数Source Vector・別業務期・別Branchを単一の巨大な全順序にできる |
+| **Authorized & Committed Apply** | 現在Grant/Scope、対象Providerの同一効果境界における期待旧版検査、Operation/Request、Receipt・独立Readback | 一式Read完了・公開済み・ACK受信なら業務効果がCommitした |
+| **Cohort Correction Accepted** | 受理された有限Consumer集合と各Consumerの取込・業務Owner判断（§25） | BillingがG2適用済みならArchiveや外部受取先も同じ |
+
+Event時刻／Business Effective時点／Source Cut／Generation公開時刻／配送到着時刻／実Apply・Owner受理時刻も別。**最後に到着したものが正しい、またはGeneration番号が大きければ自動上書き可**とは決めない。異なるRule・並行する業務Proposal・Source Vectorは、Ownerが明示する比較可能性/受理関係が無ければ未比較・保留とする。
+
+### 27.2 下流の現在版と期待旧版を、実更新と同じ境界で照合
+
+同一Owner・業務期間Dの現在適用済み版がG1（顧客A：数量5/金額800円）で、受理済みの訂正G1→G2（数量5/640円）を適用する場合の候補手順：
+
+1. **独立Read資格**：G2の固定Input Cut・Rule・必要Output Memberを§23に従いPinned Generationで実読取。Reader成功はAction Authority/Commitではない。
+2. **Ownerが受理した更新Intent**：対象のLogical Owner/Period/Scope、G1→G2という具体的Supersession・訂正内容・副作用形式を確認。Expected currentが不明ならGeneration文字列の比較で代用しない。
+3. **対象ProviderのEffect境界**：**適用時のCurrent Grant**と、Targetの現行適用版がG1であることを確認し、合致した場合だけG2更新と版・受領記録を結ぶ。これを別々のread-then-writeに分けて競合窓を作らない。Providerが条件付き書込みや同Tx Receiptを実現できなければunsupported/unknownに止め、TEI Coreで分散原子性を補ったとは言わない。
+4. **ConflictとUnknownを分離**：現行版が既にG2/G3なら旧G1からの適用はReject/Conflictとし、G1へ黙って戻さない。ネットワーク切断、Commit ACK欠落、Recorder故障なら実Effectはunknownであり、独立Receipt Lookup・Resource Read・現在Grant/Operation同一性を#1174/#2564で再確認する。明確なConflictとunknownを同じretry対象にしない。
+5. **別Subsystemのデータ**：ETLから他SubsystemのTableへ直接CUDするより、Owner側の受理済みAction/Importへ委譲する。委譲できても実Import/Owner受理が自動成功するわけではない（#3250）。
+
+**単一DB参照候補**：PostgreSQLではUPDATE WHEREに現在版の期待値を含め、RETURNINGで実際の更新行を確認できる（https://www.postgresql.org/docs/current/sql-update.html および https://www.postgresql.org/docs/current/dml-returning.html）。Read Committed/Repeatable Read/Serializableによる競合時の結果・Retry条件は別に評価する（https://www.postgresql.org/docs/current/transaction-iso.html）。**一行の条件付きUPDATEは、複数DB・外部Recipient・業務Owner Acceptanceの分散原子性を証明しない**。
+
+### 27.3 Restatement、業務補償、公開ポインタRollbackは別操作
+
+- **結果Restatement**：新Source/Rule Cutに基づく完全な新Generationへ置換。ただし必要なOwner受理済みの前後関係・適用版条件がなければ下流CUDを行わない。
+- **業務補償**：G2の訂正をさらに取り消す場合、Ownerが受理する**新しいCorrection/Compensation Effect**を要求する。最終金額がG1と同じ800円でも、G1の再送ではなくG2やG3を経た新G4の履歴/Operationを保全する。外部の送金・通知等が必ず一つの逆操作で戻せるとは言わない。
+- **Release pointer rollback**：公開ポインタG2→G1の切替は、既に適用されたDB Effect、受取先への配送、Business Acceptanceを取り消さない。旧データのRead可否も現行Disclosure/保持期限に従う（#2604/#2516）。
+- **同Byte・別意味**：G1とG4のOutput金額/byteが偶然一致しても、Source Cut・意味版・受理されたSupersession・新Request/Receipt・現在Grantは別。Result Digestを冪等キーやBusiness Versionの代用にしない。
+
+### 27.4 最小独立Expected：G1→G2→G3→G4（既存N/EF/RCAS/APへ一因子で返す）
+
+合成の受理済み直線経路を、Owner=Billing、期間D、A数量5、G1=800円、G2=640円、G3=700円、G4=800円（新補償）と定義する。これは**設計用の手書きExpectedであり、実業務Ownerの承認記録ではない**。
+
+| 一因子変更・配送順序 | 条件付きExpected |
+| --- | --- |
+| G1 Applied後に受理済みG1→G2を適用 | G2/640円の実Target状態候補。Receipt/独立Read/Owner Acceptanceを別採点 |
+| G2の後で古いG1初回配送やG1前提のWrite | Conflict/Reject。G2を800円へ上書きしない |
+| G3がG2に先行到着、現在TargetはG1 | G1→G3を別途Owner受理していない限り拒否/保留。最大世代選択しない |
+| G1を期待版に持つG2と別G2bが競合 | 同じOwner/対象を同一条件付きCommitで両方成功させない。敗者は再比較/再受理 |
+| G2 Commit後のACK喪失・Log不全 | Effect unknown。照会優先、無条件の再Import不可 |
+| G3後に新補償G4へ適用、金額800円 | 新G4/新Operationであり、古いG1のReceiptや実行を復活させない |
+| Billing G2済み、Archive G1 Read済み、第三宛先Offline | Billing局所Appliedと業務cohort全体の訂正完了は別 |
+| G2 Read時はGrant有効、Apply前に失効 | 適用権限の再確認・拒否。Read時Grantを現在のApply根拠にしない |
+| G2→G1へ公開ポインタのみRollback | 実Target Applied StateとOwner AcceptanceはG2のまま残り得る |
+
+**局所参照検算**：Python標準SQLiteの単一in-memory接続で、Owner/Period/期待旧Generationを条件とするUPDATEを実行。G1初期800→G2 640成功、遅延G1再Insert/G1前提Writeは更新0件、G2→G3 700成功、G3→新G4 800成功、最終G4/800円を確認。**同時実行、実PostgreSQL、TEIのProvider/Effect Receipt/Current Grantは検証していない**。
+
+### 27.5 既存Owner・検証優先順
+
+1. **P0 / #4410 W1〜W5**：固定TSVのPure Go/CLI同義・独立Expectedを優先し、DB CUDや新Sagaを初回受入Gateにしない。
+2. **P1 / #4411/#1174/#2564/#2514**：既存RCAS-01〜06・RequestHash/OperationIDと一つのOwner/Periodを束縛。Conflict、ACK-loss Unknown、同OperationのReceipt再観測、後続別Operation、現在Grantを同じ実Provider/Targetで別々に試す。既存実PG/Command局所証拠を流用してETL本体Apply成功と断定しない。
+3. **P1 / #2542/#3250/#2604**：Owner側Action/Importへの委譲、Pinned Generation、実Effect/業務受理を接続。外部Recipientとの非原子境界を残す。
+4. **P1 / #2600/#2516/#4522**：Source A→B→A、G1/G4同Byte、Grant-only変更、G3先行と無関係Consumerを一因子変化させ、false retain/過剰invalidating/unknown erasedを独立採点。
+5. **P2 / #1124/#4510/#4487**：Studio/TEAはSource Cut→Generated→Published→Read→Effect→Owner、Supersession/Conflict/unknownを問い相対に表示。非開示Writer・Readerの数を漏らさず、画面上の旧選択でEffectを実行しない。
+
+**停止線**：業務版の比較・補償の意味・適用権限の発行主体・外部Commitの再試行可否は既存Ownerに委ねる。自動的な最大Generation採用/逆演算/Saga、TEI Coreの新全順序型やTransaction Coordinatorを追加しない。**§27は設計・SQLite局所参照検算・既存Issue静的照合であり、新たなTEI Go/CLI・実PG/Provider/外部Import/Owner意味受理・exact-head CIは NOT RUN / NOT ACCEPTED**。
