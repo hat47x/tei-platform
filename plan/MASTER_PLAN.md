@@ -347,9 +347,9 @@ SQL/NoSQL/ログ等のリバース結果は、**Physical Observation→Structura
 
 **実装済み（本節の追補時点）**：[PR #4547](https://github.com/hat47x/tei-platform/pull/4547)をmainへ統合（squash `030936b3a48690b63150a8495efa4dc8634eb1c2`）。既存REA 6.7.0/6.8.0の保存済みバイト列からReceipt／構造候補を読む `internal/externalanalysis` と実捕捉Fixture・負例、既存共通JSONLの受領済みbyte読取を再利用可能にした。全体Health・セルフビルド・キャッシュ・依存検査・ドッグフードの**5系統CIが合格**した固定HEADに基づく統合である。ただし**Readerのmain入り≠製品Operation・通常tei CLI・Studio/MCP独立Consumer・Owner意味受理・実Provider/DB観測の完了**。
 
-**次の小分割**：[PR #4548](https://github.com/hat47x/tei-platform/pull/4548)をmain起点の独立5ファイル差分へ組み直した。外部Observation 1件＋有向Relation 1件のread-only `operations.ExternalCandidates`、Producer ID/Derived Handle重複の**曖昧選択拒否**、期待Evidence ID・受領Raw Digest・Producer宣言Source Revisionによる**旧Pinの選択前拒否**と独立Go負例が対象。専用Go契約の成功は確認済みだが、**本追補時点ではmain向けの全体Health・セルフビルド・Wails検証を実行中**として、main合格や実Consumer受領を先取りしない。ハッシュ一致は過去の受領byte一致であり、元Sourceの現在性／A→B→A／Workspace Root／開示資格／実行権限／業務Meaning受理ではない。
+**R2のmain統合（2026-11-13）**：[PR #4548](https://github.com/hat47x/tei-platform/pull/4548)を独立した5ファイルの型付きread-only Operationとしてmainへsquash統合（`f843b3a894775f9f82049046d4566f37ded9d09a`）。Observation 1件＋有向Relation 1件の固定選択、外部IDの曖昧性拒否、受領Digest・Evidence ID・Producer申告Source Revisionの照合を実装した。PR HEAD `8b9ad73e5f8899edff83e2350ab52efb78ebfe5f`の12 Workflowはcompleted/success。ただしその成功とmain統合は**通常CLI/StudioによるR3実受領・元Source現在性・正式Meaning受理**を保証しない。次の実装対象は共通API二入口の実Consumer受領であり、旧PR #4322の42ファイルを一括移植しない。
 
-**製品全体の順序**：最優先は**TEI Studio Desktopの実Wails Desktop接続とTEIによるセルフビルド**（#1824/#3421；S0 実build→起動→Catalog/Inspect→共通API、以後S1〜S4で再生成／再入場／実OS検収）。REA R1/R2はこれを阻害しない独立read-only線であり、REA/SHO/三要素分析法すべての完成をDesktopセルフビルドや実Provider Read→通常CLI（#2586）の前提にしない。R2のmain受入後のR3は**通常CLIと独立した第二Consumerで、同じSelected/Invoked/Received・Digest/Attempt/Coverageを実受領**する最小縦断とし、独自のHost/Registry/Parser/Grant Engineを作らない。REA観測から汎用Graph・三要素分析法のData/Function/Business、SHO文書へ進む際は、Source根拠・外部Identity・Scope・意味の明示的採否を分離する。最新版・Ownerは[#3394](https://github.com/hat47x/tei-platform/issues/3394)を参照。
+**製品全体の順序**：最優先は**TEI Studio Desktopの実Wails Desktop接続とTEIによるセルフビルド**（#1824/#3421；S0 実build→起動→Catalog/Inspect→共通API、以後S1〜S4で再生成／再入場／実OS検収）。REA R1/R2はこれを阻害しない独立read-only線であり、REA/SHO/三要素分析法すべての完成をDesktopセルフビルドや実Provider Read→通常CLI（#2586）の前提にしない。main統合済みR2を使うR3は**通常CLIと独立した第二Consumerで、同じSelected/Invoked/Received・Digest/Attempt/Coverageを実受領**する最小縦断とし、独自のHost/Registry/Parser/Grant Engineを作らない。REA観測から汎用Graph・三要素分析法のData/Function/Business、SHO文書へ進む際は、Source根拠・外部Identity・Scope・意味の明示的採否を分離する。最新版・Ownerは[#3394](https://github.com/hat47x/tei-platform/issues/3394)を参照。
 
 ### REA受領から編集までの変更伝播規約（2026-11-12、#3394×#1124×#1126×#3270）
 
@@ -430,14 +430,14 @@ SQL/NoSQL/ログ等のリバース結果は、**Physical Observation→Structura
 | REA-REF-06 | CLI/CUIとStudioから同じ参照元一覧・参照数・依存変更Previewを取得 | 同一Scope/Revision/Grantで結果・unknown/diagnosticが一致。ショートカット操作は追加権限を持たない |
 | REA-REF-07 | 大量参照・Plugin未ロード・1 Sourceのみ変更 | 変更影響のある範囲だけ失効・再索引し、不要Pluginの起動を要求しない。実測p50/p95と全件照合の一致を記録 |
 
-**検収順**：P0はmain統合済み#4472/#4475の回帰を固定基線として、#3788の既存Source Indexから一Subjectの参照元・参照先一覧（Scope/unknown付き）を**通常CLIで実受領**し、列挙した個々のRelationと対応する元Source位置を突合する。#4548の型付き`ExternalCandidates`はmain受入の可否を独立に判定し、候補1 Observation＋有向Relation 1件のRead成功を参照索引への正式登録とみなさない。P1は#4515のSubject Pinを利用し、同じQualified Subject・出典・RevisionでStudioの定義移動／逆引き／戻るとCLIの結果を照合する。P2は外部候補と正式参照を**別の参照集計列**で並列表示し、SHOの引用・編集Preview・モデル統計・AIの用途別開示へ接続する。未受理外部Graphの部分取得を「全体把握・全件未使用確定」と呼ばない。
+**検収順**：P0はmain統合済み#4472/#4475の回帰を固定基線として、#3788の既存Source Indexから一Subjectの参照元・参照先一覧（Scope/unknown付き）を**通常CLIで実受領**し、列挙した個々のRelationと対応する元Source位置を突合する。main統合済み#4548の型付き`ExternalCandidates`は受領可能な候補Operationとして扱い、候補1 Observation＋有向Relation 1件のRead成功を参照索引への正式登録とみなさない。P1は#4515のSubject Pinを利用し、同じQualified Subject・出典・RevisionでStudioの定義移動／逆引き／戻るとCLIの結果を照合する。P2は外部候補と正式参照を**別の参照集計列**で並列表示し、SHOの引用・編集Preview・モデル統計・AIの用途別開示へ接続する。未受理外部Graphの部分取得を「全体把握・全件未使用確定」と呼ばない。
 
 <!-- rea-question-bound-reference-20261113 -->
 ### 外部REAの参照・未使用判定を「問いに必要な証拠」で検収する（2026-11-13、#3394×#3788×#4472）
 
 **存在の証拠と不存在の証拠は非対称。** REAの同一実Attemptで捕捉したExternal Relation 1件は、「指定Source/版/解析範囲に、指定向き・Edge IDの候補が観測された」という**存在の限定Witness**になる。一方「関連がない」「未使用」「直接Writerがいない」「移行後も同等」は、該当Subject・参照Kind・Source/Dependency・未ロードPlugin・動的到達・必要な業務意味・現在用途について、**その問いに必要な集合の取得と未解決数**が確認できる場合に限って判定する。検索結果の空配列、confirmed=0、Validation.OK、Delivery success、単独digest一致を全称／不存在／完全性の証拠にしない。必要集合を列挙できないときはunknown/not-examinedを明示し、判断不能を正常なゼロに変えない。これは#4527の問い相対の閉包と#4487の三要素横断Evidenceの議論を、REAの参照画面へ適用する提案であり、新たなVerifierやEvidence正本を作らない。
 
-**最近mainへ入った修正と残る不足を区別する。** #4507（Fingerprint純粋性）、#4524（同Kind同ID曖昧性拒否）、#4513（CRUD Data索引誤用）、#4534（CRUD衝突全件報告と構造的OK／要レビューの別表示）は限定修正として統合済み。したがって前節REA-REF-05の全項目を一律「未修正」としない。ただし**明示的なCRUDDefinitionだけが存在しFunction Operationsが空のとき、派生CRUD表・横断参照から行が脱落する問題**（#4472/#4403）と、Derived Consumer/Studioの採用・変更影響判定は残る。Function-level CRUD、業務Action、SubsystemのDirect Writer候補、実行時のEffect/Rowsetをひとつの確定Writer件数に縮約しない（#3250/#4520）。okScope=structural-diagnostics-onlyも業務整合性・Owner受理を意味しない。
+**修正済みの基底と未検収Consumerを区別する。** #4507（Fingerprint入力非破壊）、#4524（同Kind同ID）、#4513（Data索引）、#4534（CRUD矛盾・構造OK/要レビュー）、#4551（明示CRUD-onlyとUnusedData）はmain統合済み。基底の修正済み項目を未修正と記さない。一方、Studio／SHO／AIが明示CRUD-onlyと要レビュー診断を正しく受け取り、変更Previewの停止へ結び付ける製品E2Eは未検収。Function CRUD、業務Action、Subsystem Writer、実Effectを一つのWriter数に畳まない（#3250/#4520）。
 
 **受入候補（独立Expected、実Product試験はNOT RUN）**：
 
@@ -448,7 +448,70 @@ SQL/NoSQL/ログ等のリバース結果は、**Physical Observation→Structura
 | REA-QC-03 | 明示CRUD UのみでFunction Operations空、または矛盾CRUD U/D複数 | 派生表0行・単一行を「直接更新なし」「矛盾なし」と扱わず、脱落/要レビューを独立表示 |
 | REA-QC-04 | 同じEvidence IDとraw digestだがSource現在版／Workspace／Disclosureが変化 | #4548の受領Receipt Pin一致だけでは現在のSource/閲覧・配信・編集資格PASSにしない。必要な再解決で失効またはunknown |
 
-**実装順**：P0は#4547のmain統合済みReceiverと#4548の型付きOperationの限定受入を優先し、実際のSource/Reader/Consumer受領に対するclaim上限を明記。P1は#4472/#4403の明示CRUD-only脱落を修復・判別し、#3788で一Subjectの参照/被参照を**閉包の範囲とセット**で返す最小read-only CLI。P2は#4515のStudio Subject Pinと独立Consumerを結び、REA候補と正式参照を並列表示して高速移動・参照数・変更影響を検収する。未受理Relation Edgeの正式Pin、外部Harness送出、Source書戻し、実DB Apply、SHO著者文変更、Owner意味受理は別の資格。**TEI Studio Desktop実Wails起動・セルフビルド、および#2586の実Function Readをこれら全体の完成でブロックしない。**
+**実装順**：P0はmain統合済み#4547のReceiverと#4548のExternalCandidatesを基線に、#3788で一Subjectの参照／被参照とSource位置を通常CLIから実受領する。#4577/#4584のSubject不存在を参照0件と混同しない修正を別検収。P1は#4515のSubject PinとR3の独立Consumerで同一Candidateの方向・出典・unknownを比較し、#4551/#4534のCRUD/要レビューが実Consumerへ届くか確認。P2で選択された候補だけをModeler/SHOと旧新実Readへ渡す。REAの正式意味受理・実DB/Effect・SHO著者文更新は別資格。**Desktopセルフビルドと#2586の実ReadにR3完了を要求しない。**
+
+### REA候補から三要素分析法・SHO・一機能移行への受渡し（2026-11-13、#3394）
+
+**観測から設計への対応付けは、単なる型変換ではない。** REAの外部Observation／有向Relation（Evidence ID・元raw digest・実Attempt・Producer版・Source位置／申告Revision・Coverage／unknown）と、TEIのData／Function／BusinessのQualified Ref・Source Revisionを**異なるIdentity**として扱う。対応は1対1に限らず、複数Sourceが一機能を実装する場合、同一Sourceが複数機能へ関係する場合、手作業・判断がSourceに現れない場合を許容する。外部Node/Edgeの名称一致やSQL FKだけで業務Key・CRUD・Business Procedureを正式採用しない。採否と根拠・未対応を既存Modelerの候補Previewと通常のSourceレビューに残し、第二のMapping正本／専用承認Engineは設けない（#1124/#1125/#1126/#3394）。
+
+**最初は一機能だけを縦断する。** R1（#4547）保存Evidence Readerのmain統合を基線とし、R2（#4548）はmain統合済み（squash `f843b3a894775f9f82049046d4566f37ded9d09a`）を基線とする。続いてR3で通常CLIと実際に独立したStudio／別Transport Consumerの同一Evidence・Attempt・選択1 Observation＋有向1 Relationを受領検査する。その後のT1-Bでは、外部候補→正式TEI Data／Function／Businessの対応表を**read-onlyのレビュー候補**として比較し、Ownerが受理したSourceだけを既存の編集・Preview・再投影へ渡す。T2では同一FunctionのQuery／Binding／Provider実Read（#2586/#2387）、SHOの引用元・文書Save／Reopen（#4317/#4467）、旧新のLegacy Observed Actual／Owner Accepted Desired／Target Observed Actual（#4125）を**別々のClaim**として照合する。REAの静的解析と旧DB/新DBの実観測、Function実行成功とBusiness完了、SHO著者文と自動生成文、Commit/Receiptを取り違えない。
+
+**追加の独立Expected案（REA-ALIGN-01〜04、未実施）**：
+
+| Case | 固定入力・反例 | 必要な判別 |
+| --- | --- | --- |
+| REA-ALIGN-01 | 旧ソースの二つの処理が一つの業務Functionを実装し、別の処理は複数Functionに使用される | Source Node数≠業務Function数。外部候補の多対多対応を保持し、重複Function・確定CRUDを自動生成しない |
+| REA-ALIGN-02 | 同名別IDのData／Function候補、同端点の平行Edge、Source位置が曖昧な関係 | 対応候補と未対応を列挙するが、一件へ後勝ち確定せず、正式Sourceへの適用を停止 |
+| REA-ALIGN-03 | Sourceに現れない手作業承認と、コード上のTask起動／Function成功が同時に観測される | Business Procedure完了や承認済みを推定しない。手作業・業務Ruleの欠落をOwnerレビューに残す |
+| REA-ALIGN-04 | 同名の旧新Queryで件数は一致するが金額差／NULL差がある。別時点に元SourceがA→B→Aと変化 | 独立Expectedで意味差をFAIL／unknownとし、古いEvidence Pin・SHO出典・対応付けを現在資格へ自動復活させない |
+
+**所有・優先順位**：外部受領とR3は#3394、三要素Modeler／原典忠実性は#1124/#1031/#1125、Relation/Keyは#1126、参照移動は#3788、Query/実Providerは#2586/#2387、SHOは#4317/#4467、旧新移行検収は#4125、独立ExpectedとAttemptは#2514/#1180/#1163、現在開示は#4503/#2516で引き受ける。新Parser・Graph Registry・Host・Owner承認エンジンは作らない。本節は**docs-onlyの設計・反証計画であり、REA-ALIGNの実試験、正式Meaning受理、製品E2E、旧新DB適用はNOT RUN**。Studio Desktop実Wails接続→TEIセルフビルド（#1824/#2831）と一Function実Provider Read（#2586）は、この縦断検証を前提条件とせず並行優先する。
+
+<!-- rea-one-function-witness-20261113 -->
+#### 一機能を端から端まで確かめるための検収単位（設計案・未実行）
+
+**検証する問いを先に固定する。** 最初の問いは「この一つのFunctionが、どのDataを、どの条件・時点・権限で取得し、業務手順のどこから利用されるか」とする。検証票に `Question / Required Sources & Dependencies / Observed / Candidate / Accepted / Actual Read / Unknown & Unexplored` を記録する。REAが返したNode数やEdge数を必要証拠の母集団とはしない。問いに必要な業務手順・Function定義・Data/Key/Relation・実消費SQL/Binding・Plugin/外部依存をまず列挙し、Sourceが無い／読めない／部分的／権限で隠れる／動的経路が未知を分ける。全件取得を証明できない場合、「参照なし」「未使用」「Business手順なし」は確定しない（#4527/#3262/#3788）。
+
+**一機能の小さな縦断**：①REAの実Attempt・元Source版・raw digest・Producer/Provider・Observation/有向Relation ID・Coverage/Unselectedを、#4547と#4548の既存Reader/Operationで固定選択する。②対応候補は外部IDとTEI Qualified Refを別列に置き、`0..N対0..N`、対応理由・反例・保留・参照位置を含む**read-onlyレビュー表**として#1124/#1125へ渡す。TaskActionの存在≠Function呼出し、ProcedureのManual Step≠欠けたFunction、同名のData≠同一業務Keyとする。③明示的に受理した項目のみ既存TEI Sourceへ編集Preview→Save→再Readし、差分・診断・逆引き参照を検収する。AIの選択、SHOへの引用挿入、REAの候補生成は正式Sourceの自動更新を許可しない。④Query/Provider実Readと旧新比較は同一のFunction・引数・読取Scope・業務Key/粒度・NULL/Decimal/順序・観測時点を固定し、**旧実測／受理済み期待値／新実測を別試行で比較**する。#2586のmain統合済み#4539は限定された実PG Read→Contextの基底であり、旧実行・通常製品CLI/Studioの同一受領・意味同値性を証明しない。⑤SHOはSourceに束縛した引用と著者文を分け、Save/別Open時の参照・未解決・Source改版を確認する。正式モデル受理、SHO保存、DB Read、実Effect/Receiptの合格を合算しない（#4317/#4467/#4125）。
+
+**独立Expectedの追加候補（REA-HO-01〜05、すべてNOT RUN）**：
+
+| Case | 固定入力と故障 | 期待する停止線・観測 |
+| --- | --- | --- |
+| REA-HO-01 | REAは外部Relation 1本を返すが、必要な別Source・Plugin・動的呼出しを未探索 | その1本の存在だけを観測済みにし、問いへの必要閉包と「参照なし／完了」をunknownに保持 |
+| REA-HO-02 | X-TEAのTaskActionにFunction参照がない手作業、別Actionには呼出し候補だけある | 業務Stepは保持し、実Function起動・承認完了・業務完了を推定しない。原典とTEI独自拡張の差を明示 |
+| REA-HO-03 | 同名別IDの外部Nodeが正式Dataと誤連結される、または候補RelationがSource編集後に古くなる | 既存Qualified Ref/Source revisionを再解決し、曖昧対応・古いPinはPreview/Saveへ昇格させない |
+| REA-HO-04 | 新旧Functionは件数一致だがTenant別Key・NULL/金額・有効時点・ソート同値順位が異なる | 独立ExpectedでFAIL/unknown。Query/Provider選択や生成ログだけでは同値としない |
+| REA-HO-05 | SHOを保存後にSourceが改版、または外部Evidenceは同digestでも現在の開示権限が変化 | 著者文・元引用・Source参照の資格を別に再確認。旧Receipt・候補・Pinから自動再受理／外部送出しない |
+
+<!-- rea-product-locator-verdict-20261113 -->
+#### 正式参照への接続前に防ぐ二つの偽PASS（2026-11-13、実証資格の追補）
+
+**対象の存在と参照の有無は別の問い。** 実mainの`tei source-index -subject-kind ... -subject-id ...`では、改名後の不在Subjectにも`ok:true`・空`references`・exit 0を返す反例（#4577）が実測され、[修正PR #4584](https://github.com/hat47x/tei-platform/pull/4584)で既存`InspectionFromLoad`を使った正規Subject存在確認が提案・実装されている。REA候補からTEIのQualified Refへ対応付けるとき、**まず同一Workspace/Source版におけるCanonical Subjectの一意な存在を確認し、次にそのSubjectに紐づくSource引用・参照関係を検索する**。不在・Unsupported Kind・存在するが参照0・Index取得失敗・partialを別状態としてConsumerへ運び、空配列から存在・不存在・未使用を推論しない。#4584の固定HEADでActionsは8件中7件success・Repository Health 1件failure（本追補の確認時点）、main未統合。修正を現mainの正常経路として先取りせず、Source Index/EditorのOwner #4577/#3788へ検収を戻す。
+
+**Studio三視点のserver成功は外部REAのDesktop入場ではない。** [Draft #4570](https://github.com/hat47x/tei-platform/pull/4570)は共通操作→X-TEA固有Plugin→実選択されたGo Provider→Studio Bridge／server画面までを合成Workspaceで局所実証し、Source位置・`occurrence`・固定Pin・CRUDを保持する。ただし`occurrence`はIdentityではなく、外部REA Node/Relation IDともTEI Qualified Refとも別。#4570の固定HEAD Actionsは11件中9件success・Repository Health/Wails Host 2件failureで、実Windows Desktop・実X-TEA原典対象の適合は未検証。#4548の12 Workflow成功や別HEADの生成Inspector/Desktop #4572/#4587の成功を加算し、「同一のREA Candidateが実Desktopで表示・再選択・再受領された」とは判定しない。R3は`operations.ExternalCandidates`の**実同一Attempt**を通常CLIと独立Consumerで受領し、それぞれのApplication API route／Selected・Invoked・Received／Consumer digest・固定対象・Coverage/Unknownを確認する。三視点Pluginはその後に正式モデルのread-only照合へ接続する。#4548自体は現在open/unmerged。
+
+**REAという名前の区別**：外部逆解析ツールREAと、会計・業務分析法としてのResource–Event–Agent（資源・経済事象・経済主体）は別概念である。外部解析ツールが返す`Agent`や`Relation`を会計上のAgent／Event、TEI業務Actor、実Principal/Grantへ型名一致で変換しない。Resource–Event–Agentを扱う場合も、業務上の意味を検討するための任意Projectionとして、三要素分析法のFunction/Business・Source観測との対応をレビューする。新しいCanonical型・標準DSL・共通承認機構をここで採用しない（#1124/#2386/#3394）。
+
+| 追加反例（設計のみ） | 故障入力 | 必須の判別 |
+| --- | --- | --- |
+| REA-HO-06 | 旧Qualified RefのSource宣言は改名で消えたが`source-index`が空の参照配列で成功する。REA候補の名前は一致する | #4577/#4584の実CLI経路で`SUBJECT_NOT_FOUND`を確認。候補の一件採用・参照0＝未使用・Source更新を拒否。全件Index空とは分ける |
+| REA-HO-07 | REA R2契約CI、三視点server、生成Inspector Desktopがそれぞれ別HEADで成功する一方、三視点Wails/Repository Healthは失敗する | ClaimごとにTested HEAD/Transport/Source/Consumer/受領byteを照合。異なるHEADのPASSを合算せず、外部REA→実Desktop Candidate受領はNOT RUNに維持 |
+
+**採用と検証の優先順位**：#4584のSource Subject存否修正を#3788の通常参照操作へ接続すること、mainに入った#4548のR2を実Consumerへ接続すること、#3394でR3の実独立Consumerを測ることを**並列の小作業**とする。#4570の三視点Pluginは実Wails/原典Sourceの検証を別Owner #1124で進める。保存Evidenceの現在開示は#4503、実Query→Contextは#2586の既存経路で継続し、REA R3や全Modeler完成でDesktopセルフビルドを止めない。REA-HO-06/07の製品縦断試験はこの追補ではNOT RUN。
+
+**実施順と既存Owner**：R2 #4548 main統合済みの型付きOperation→R3 #3394で通常CLI＋独立Consumer受領→#1124/#1125で一件のread-only対応Preview・Ownerによる通常Source編集→#2586/#2387と#2514/#1180で固定Functionの実Read・旧新独立Expected→SHO側の保存/再読取。保存Evidenceの実体と外部開示は#4307/#4503、実行・権限・Effectは#1174、Schema/移行切替は#4125へ委ねる。REA 6.9.0の選択読取・欠落リンク・ページングの版別検収は#3394/#4561に残し、#4257の6.7/6.8合格を継承しない。**ここでは追加のEngine/Registry/正式DSL/承認システムも、Desktopセルフビルドや#2586を止める新Gateも導入しない。**
+
+<!-- rea-r3-delivery-qualification-consolidated-20261113 -->
+#### R3の最小Product Exitと外部Evidence取得の停止線（設計、実E2E未実行）
+
+**最初の製品入口はread-only一件に限定する。** R2に統合した`operations.ExternalCandidates`から同一保存EvidenceのObservation 1件・向き/Relation IDを保持したRelation 1件を選択し、通常`tei` CLIと独立したStudio（または共通APIを呼ぶ別Transport）の二経路で、`operation schema/version・Producer Tool/Version・Evidence ID・Raw digest・申告Source Revision・選択ID・Unselected・Coverage・Unknown`を実受信して照合する。二経路は`selected→invoked→received`をそれぞれ記録し、同一Go関数の出力を二度表示するだけの試験を独立Consumerとしない。必要な証拠の集合を満たさなければ、1+1の成功でも全Graph完全や未使用確定としない。既存REA-R3-01〜06/REA-REF/REA-QCを試験Owner #3394/#2514/#1180へ使い回し、新しいGateは作らない。
+
+**配送境界を先に制約する。** 現R2は`EvidencePath`を受けて`os.ReadFile`する保存済みローカルファイル用のread-only Operationであり、任意の外部呼出し元へそのパスをそのまま公開するAPIではない。Studio/Remote/Harness側からは、Hostが現在のWorkspace Root/許可範囲で解決・検査した固定Evidenceの選択情報だけを受け取り、内部CAS/NAS/S3の実Locatorや秘密Sourceを出力しないことを検証する。保存byteを読み取れたこと、現在閲覧権限、用途別送出許可、実際の送達Receiptは別Claim（#4307/#4503/#2516）。`ExpectedEvidenceID/ExpectedReceivedDigest/ExpectedSourceRevision`は**受領されたEvidenceの照合**であり、元Source現在版・ABA・Workspace帰属・Disclosure/Grantの代わりにならない。API契約の不足は#3419へFit/Gapとして返し、R2の型に未審査の公開必須フィールドを追加しない。
+
+**Tool版の資格は不連続とする。** #4257は実REA 6.7.0単独JSONと6.8.0のJSONL終端を対象にした限定実証。外部REA 6.9.0の選択読取／リンク探索／ページングは新しいT0-06の固定Tool＋Source＋Scopeで、終端・未取得ページ・Relation Identity・Coverage/Unknown・Consumer受領を別に検収する（#3394/#4561）。既存Evidenceを再利用できても、解析版更新や必要なSource閉包・Provider実消費・完全性を自動認定しない。
+
+**到達条件と優先順位**：R2 main統合済み→R3の同一Evidence・独立二Consumer実受領→T1-Bの一機能対応Preview→T2の旧実測／受理済み意味／新実測・SHO Save/Reopen。#4584のSubject存否を誤成功させる問題、#4570の三視点server経路と実Windows Desktopの差、生成Inspector別HEAD成功の非加算は別資格として保持する。TEI Studioセルフビルドと#2586通常Product Provider Readの完了をR3に依存させない。
 
 **検討中の横断追補（DBアクセス・Query/2way SQL）**：対象DataSourceの既存Binding解決、DB別Native SQLの選択規約、SQL編集時の診断と分岐検証、異種DBでの意味同値性を、[DBアクセス・Query選択・2way SQLの最小適合計画](https://github.com/hat47x/tei-platform/issues/2622#issuecomment-6772875802)で小さな実証へ分解する。#2611・#2622・#2387・#2667に既存の責務を残し、新しいCore API・正式DSL構文・実DB対応の採用・完了を意味しない。
 **2026-11-09／Product Queryの物理入力乖離を解消（独立Source Fixture段階）**：[Workbench設計§22](design/DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)と[隔離PG Product Fixture](../examples/data-source-workbench/README.md)に、既存`postgres_seed.sql`の`sales_order`4列と、実`order_entry.recent_orders` SQLが要求する`public.orders`5列＋`:from`の**物理Schema不一致**を反映した。従来F-01〜10を壊さず、専用`recent_orders_product_seed.sql`を別Sourceとして追加し、3行／境界一致2行／後方0行の独立Source-static ExpectedをGoで判別する。**これは実PostgreSQL接続・Provider Invoke成功ではない**。最初の未成立実行辺は、固定Function/Queryの実Consumed SQL+args→Alias/物理Instance/Provider→実Rowset/Function Data Context。Ownerは#2586、実ProductのCLI/Studioは#1251、Schema適用は#2892。main #3540の静的Inspector S2-referenceは実CLI/Wails経路まで前進したが、外部Plugin Build/Grant/2×2実BOMを証明せず、異質JSONLは後続比較とする。新Gate/Host/Query正本なし。
