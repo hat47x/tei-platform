@@ -223,8 +223,9 @@ func TestInvalidWorkspaceModelMapAndLocateKeepValidationSeparateFromNavigation(t
 		},
 		{
 			name:    "missing declared source root only",
+			extra:   "namespace scn\n\ndata X {\n    attribute a type std.text\n}\n",
 			rootGap: true,
-			subject: sourceindex.Subject{Kind: "semantic-data", ID: "scn.rulecandidate"},
+			subject: sourceindex.Subject{Kind: "semantic-data", ID: "scn.x"},
 		},
 	}
 	for _, tc := range cases {
