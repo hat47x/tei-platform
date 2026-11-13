@@ -26,6 +26,9 @@ const mc02Request = `{
   }
 }`
 
+func yes() *bool { v := true; return &v }
+func no() *bool  { v := false; return &v }
+
 func decodeReaggregation(t *testing.T, raw string) ReaggregationInput {
 	t.Helper()
 	var in ReaggregationInput
@@ -47,7 +50,7 @@ func TestReaggregationJSONMeanFromSumAndCount(t *testing.T) {
 func TestReaggregationJSONLostStateAndMissingDeclarations(t *testing.T) {
 	onlyMeans := decodeReaggregation(t, mc02Request)
 	onlyMeans.Components = map[string]ReaggregationComponent{"value": {
-		Anchor: "org", Relation: "dept.score_mean", Key: []string{"dept.id"}, Unit: "point", Complete: true,
+		Anchor: "org", Relation: "dept.score_mean", Key: []string{"dept.id"}, Unit: "point", Complete: yes(),
 		Groups: []Element{line("A", "10"), line("B", "20")},
 	}}
 	report := EvaluateReaggregation(onlyMeans)
@@ -74,7 +77,7 @@ func TestReaggregationJSONLostStateAndMissingDeclarations(t *testing.T) {
 	}
 	page := decodeReaggregation(t, mc02Request)
 	count := page.Components["count"]
-	count.Complete = false
+	count.Complete = no()
 	page.Components["count"] = count
 	if report = EvaluateReaggregation(page); report.Verdict != "ineligible" || report.Code != "INCOMPLETE_SET" {
 		t.Fatalf("report=%+v want INCOMPLETE_SET", report)
@@ -87,8 +90,8 @@ func TestReaggregationJSONRatioAndRepeatedOccurrence(t *testing.T) {
 		Axis: ReaggregationAxis{Name: "department", Kind: "dimension"}, Partition: "disjoint",
 		Time: ReaggregationTime{Kind: "period-flow"},
 		Components: map[string]ReaggregationComponent{
-			"numerator":   {Anchor: "org", Relation: "dept.passed", Key: []string{"dept.id"}, Unit: "attempt", Complete: true, Groups: []Element{line("A", "1"), line("B", "8")}},
-			"denominator": {Anchor: "org", Relation: "dept.attempted", Key: []string{"dept.id"}, Unit: "attempt", Complete: true, Groups: []Element{line("A", "2"), line("B", "10")}},
+			"numerator":   {Anchor: "org", Relation: "dept.passed", Key: []string{"dept.id"}, Unit: "attempt", Complete: yes(), Groups: []Element{line("A", "1"), line("B", "8")}},
+			"denominator": {Anchor: "org", Relation: "dept.attempted", Key: []string{"dept.id"}, Unit: "attempt", Complete: yes(), Groups: []Element{line("A", "2"), line("B", "10")}},
 		},
 	}
 	report := EvaluateReaggregation(ratio)
@@ -102,12 +105,37 @@ func TestReaggregationJSONRatioAndRepeatedOccurrence(t *testing.T) {
 		Axis: ReaggregationAxis{Name: "line", Kind: "dimension"}, Partition: "disjoint",
 		Time: ReaggregationTime{Kind: "period-flow"},
 		Components: map[string]ReaggregationComponent{
-			"sum": {Anchor: "order.H", Relation: "sales.order_lines", Key: []string{"order.id"}, Unit: "JPY", Complete: true,
+			"sum": {Anchor: "order.H", Relation: "sales.order_lines", Key: []string{"order.id"}, Unit: "JPY", Complete: yes(),
 				Groups: []Element{line("L1", "100"), line("L2", "100"), line("L1", "100"), line("L2", "100"), line("L1", "100"), line("L2", "100")}},
 		},
 	}
 	report = EvaluateReaggregation(fanout)
 	if report.Verdict != "ineligible" || report.Code != "FACT_OCCURRENCE_REPEATED" || report.Result != "" {
 		t.Fatalf("report=%+v want FACT_OCCURRENCE_REPEATED", report)
+	}
+}
+
+// An omitted "complete" is unknown (never read), not a definite partial read.
+func TestReaggregationJSONOmittedCompleteStaysUnknown(t *testing.T) {
+	in := decodeReaggregation(t, mc02Request)
+	count := in.Components["count"]
+	count.Complete = nil
+	in.Components["count"] = count
+	report := EvaluateReaggregation(in)
+	if report.Verdict != "unknown" || report.Code != "INPUT_UNAVAILABLE" || report.Exact != "" {
+		t.Fatalf("report=%+v want unknown INPUT_UNAVAILABLE", report)
+	}
+}
+
+// Exponent and fraction literals would be rounded silently by the sum; they
+// are refused as invalid instead.
+func TestReaggregationJSONNonPlainDecimalIsRefused(t *testing.T) {
+	for _, amount := range []string{"1e-5", "1/3", "0x10"} {
+		in := decodeReaggregation(t, mc02Request)
+		in.Components["sum"].Groups[0].Amount = amount
+		report := EvaluateReaggregation(in)
+		if report.Verdict != "unknown" || report.Code != "BINDING_INVALID" || report.Exact != "" {
+			t.Fatalf("amount %q: report=%+v want unknown BINDING_INVALID", amount, report)
+		}
 	}
 }

@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"regexp"
 	"strings"
 
 	"tei/internal/semantic/derivationref"
@@ -192,7 +193,7 @@ func sumIdentified(ref SetRef, policy AggregatePolicy) (derivationref.Input, err
 		seen[row.Identity] = true
 		switch row.Amount.State {
 		case derivationref.Present:
-			value, ok := new(big.Rat).SetString(row.Amount.Decimal)
+			value, ok := parsePlainDecimal(row.Amount.Decimal)
 			if !ok {
 				return derivationref.Input{}, fmt.Errorf("%w: value is not a decimal", ErrInvalidSet)
 			}
@@ -275,6 +276,18 @@ func JoinFanOut(left, right SetRef) (FanOut, error) {
 		return diagnostic, fmt.Errorf("%w: %v", ErrFanOut, diagnostic)
 	}
 	return diagnostic, nil
+}
+
+var plainDecimal = regexp.MustCompile(`^-?[0-9]+(\.[0-9]+)?$`)
+
+// parsePlainDecimal accepts only a plain decimal literal. big.Rat.SetString
+// also takes exponent, fraction and hex forms, whose scale resultScale cannot
+// see; the total would then be rounded silently (#2593 review).
+func parsePlainDecimal(s string) (*big.Rat, bool) {
+	if !plainDecimal.MatchString(s) {
+		return nil, false
+	}
+	return new(big.Rat).SetString(s)
 }
 
 func resultScale(rows []Row) int {

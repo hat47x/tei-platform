@@ -75,6 +75,10 @@
 | 丸めの段階（0.004が1000件） | 渡された値を正確に合成するだけで丸めない（厳密値なら4、丸め済みなら0） | `TestRoundingStageIsNeverChosenHere` |
 | `count` が整数でない、負 | `unknown` | `TestMeanCountMustBeAWholeNumberOfFacts` |
 
+| 指数・分数・16進の数値表記（`1e-5` など） | `unknown`。丸めた値を返さない | `TestNonPlainDecimalIsNeverRoundedIntoAValue` |
+| 件数0のグループに非0の合計 | `ineligible`（`GROUP_STATE_CONTRADICTORY`） | `TestMeanGroupWithSumOverZeroFactsIsContradictory` |
+| 同じRelationを `sum` と `count` に使う、`Key` が異なる | `ineligible` | `TestOneRelationCannotStandForTwoComponents` |
+
 MC-01〜05の期待値は [`plan/fixtures/metric-aggregation/expected.json`](../../plan/fixtures/metric-aggregation/expected.json) に手計算の値として置き、このReference（`TestHandFixedExpectedMatchesSharedFixture`）と同じディレクトリの `verify_sqlite.py` の両方が照合する。どちらの出力もこのファイルの値として使わない。
 
 JSONでの入出力は [`tools/reference-relation-aggregate`](../../tools/reference-relation-aggregate/README.md) の `-mode reaggregate` を使う。
@@ -84,6 +88,12 @@ JSONでの入出力は [`tools/reference-relation-aggregate`](../../tools/refere
 - MC-04の正しい人数3の合成。人物の識別集合が必要で、このReferenceは持たない。
 - 中央値・分位点、時間方向のStockの演算（期末残高、平均残高など）。`unknown` を返す。
 - `Partition` と `Time` の宣言が正しいことの検証。呼び出し側が渡す根拠であり、行の値からは推測しない。
+- 独立レビューで再現したが、法則の意味に関わるため変更せず残す点（Owner判断待ち）:
+  - 分子と分母、`sum` と `count` の単位が互いに適合するか（`USD` と `EUR` など）。`UNIT_UNDECLARED` は空の単位だけを拒否し、換算と次元の整合は D8 #1705。
+  - 負または符号が混在する分母。合計が0のときだけ `ZERO_DENOMINATOR_UNDEFINED`。
+  - `Scope`（宣言）と各集合の `Anchor` の対応。`Anchor` の食い違いだけを `SCOPE_MISMATCH` とする。
+  - 構成要素の `Shape` は `many` と `aggregate` のどちらも受け付ける。合計の算術は同じで、値は変わらない。
+  - 時点Stockの `AsOf` は単一の文字列として比較せず、各集合が同じ時点であることは検査しない。
 - 丸めをどの段階に置くかの宣言と検査。入力が丸め済みかどうかは区別できない（D8 #1705）。
 - グループごとに単位が異なる入力。
 

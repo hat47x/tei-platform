@@ -24,11 +24,13 @@ type ReaggregationTime struct {
 // ReaggregationComponent is one intermediate-state component. Groups reuse
 // Element: id is the group identity, not a fact identity.
 type ReaggregationComponent struct {
-	Anchor   string    `json:"anchor"`
-	Relation string    `json:"relation"`
-	Key      []string  `json:"key"`
-	Unit     string    `json:"unit,omitempty"`
-	Complete bool      `json:"complete"`
+	Anchor   string   `json:"anchor"`
+	Relation string   `json:"relation"`
+	Key      []string `json:"key"`
+	Unit     string   `json:"unit,omitempty"`
+	// Complete is a pointer so that an omitted field stays unknown (never read)
+	// instead of being read as a definite partial retrieval.
+	Complete *bool     `json:"complete,omitempty"`
 	Groups   []Element `json:"groups"`
 }
 
@@ -87,10 +89,13 @@ func EvaluateReaggregation(in ReaggregationInput) ReaggregationReport {
 			RelationID:   component.Relation,
 			Key:          component.Key,
 			Shape:        relationsets.Aggregate,
-			Completeness: relationsets.Partial,
+			Completeness: relationsets.Unfetched,
 		}
-		if component.Complete {
-			set.Completeness = relationsets.Complete
+		if component.Complete != nil {
+			set.Completeness = relationsets.Partial
+			if *component.Complete {
+				set.Completeness = relationsets.Complete
+			}
 		}
 		for _, group := range component.Groups {
 			set.Rows = append(set.Rows, relationsets.Row{Identity: group.ID, Amount: groupAmount(group)})

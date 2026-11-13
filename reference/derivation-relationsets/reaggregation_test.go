@@ -304,7 +304,16 @@ func TestCompletenessAndNullAreNotGuessed(t *testing.T) {
 	empty.Components[ComponentCount] = part("observation", groups("org", "dept.score_count"))
 	wantNoValue(t, Reaggregate(empty), Unknown, CodePolicyUndeclared, GapMissingSemantics)
 	zero := withCount(func(s *SetRef) { s.Rows[0].Amount, s.Rows[1].Amount = amount("0"), amount("0") })
-	wantNoValue(t, Reaggregate(zero), Unknown, CodeZeroDenominator, GapMissingSemantics)
+	// Sums over zero facts contradict each other and are refused first.
+	wantNoValue(t, Reaggregate(zero), Ineligible, CodeGroupStateContradictory, GapConflict)
+	// Zero sums over zero facts are consistent, but a mean of nothing is undefined.
+	allZero := mc02Mean()
+	s, n := allZero.Components[ComponentSum], allZero.Components[ComponentCount]
+	for i := range s.Set.Rows {
+		s.Set.Rows[i].Amount, n.Set.Rows[i].Amount = amount("0"), amount("0")
+	}
+	allZero.Components[ComponentSum], allZero.Components[ComponentCount] = s, n
+	wantNoValue(t, Reaggregate(allZero), Unknown, CodeZeroDenominator, GapMissingSemantics)
 }
 
 func TestLawThatIsNotOwnedIsNotApproximated(t *testing.T) {

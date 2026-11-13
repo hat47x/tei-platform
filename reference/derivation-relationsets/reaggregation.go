@@ -129,30 +129,32 @@ const (
 
 // Finding codes.
 const (
-	CodeOK                     = "OK"
-	CodeLawUndeclared          = "LAW_UNDECLARED"
-	CodeLawNotOwned            = "LAW_NOT_OWNED"
-	CodeIntermediateStateLost  = "INTERMEDIATE_STATE_LOST"
-	CodeFactOccurrenceRepeated = "FACT_OCCURRENCE_REPEATED"
-	CodeIncompleteSet          = "INCOMPLETE_SET"
-	CodeInputUnavailable       = "INPUT_UNAVAILABLE"
-	CodePolicyUndeclared       = "POLICY_UNDECLARED"
-	CodeBindingInvalid         = "BINDING_INVALID"
-	CodeNullPairingUndefined   = "NULL_PAIRING_UNDEFINED"
-	CodeUnitUndeclared         = "UNIT_UNDECLARED"
-	CodeScopeMismatch          = "SCOPE_MISMATCH"
-	CodeComponentGroupMismatch = "COMPONENT_GROUPS_MISMATCH"
-	CodeBaseGrainUndeclared    = "BASE_GRAIN_UNDECLARED"
-	CodeScopeUndeclared        = "SCOPE_UNDECLARED"
-	CodeAxisUndeclared         = "AXIS_UNDECLARED"
-	CodePartitionUndeclared    = "PARTITION_UNDECLARED"
-	CodeGroupsOverlap          = "GROUPS_OVERLAP"
-	CodeTimeUndeclared         = "TIME_SEMANTICS_UNDECLARED"
-	CodeAsOfUndeclared         = "AS_OF_UNDECLARED"
-	CodeStockSummedAcrossTime  = "STOCK_SUMMED_ACROSS_TIME"
-	CodeStockOverTimeNotOwned  = "STOCK_OVER_TIME_NOT_OWNED"
-	CodeCountBasisUndeclared   = "COUNT_BASIS_UNDECLARED"
-	CodeZeroDenominator        = "ZERO_DENOMINATOR_UNDEFINED"
+	CodeOK                      = "OK"
+	CodeLawUndeclared           = "LAW_UNDECLARED"
+	CodeLawNotOwned             = "LAW_NOT_OWNED"
+	CodeIntermediateStateLost   = "INTERMEDIATE_STATE_LOST"
+	CodeFactOccurrenceRepeated  = "FACT_OCCURRENCE_REPEATED"
+	CodeIncompleteSet           = "INCOMPLETE_SET"
+	CodeInputUnavailable        = "INPUT_UNAVAILABLE"
+	CodePolicyUndeclared        = "POLICY_UNDECLARED"
+	CodeBindingInvalid          = "BINDING_INVALID"
+	CodeNullPairingUndefined    = "NULL_PAIRING_UNDEFINED"
+	CodeUnitUndeclared          = "UNIT_UNDECLARED"
+	CodeScopeMismatch           = "SCOPE_MISMATCH"
+	CodeComponentGroupMismatch  = "COMPONENT_GROUPS_MISMATCH"
+	CodeComponentNotDistinct    = "COMPONENT_NOT_DISTINCT"
+	CodeGroupStateContradictory = "GROUP_STATE_CONTRADICTORY"
+	CodeBaseGrainUndeclared     = "BASE_GRAIN_UNDECLARED"
+	CodeScopeUndeclared         = "SCOPE_UNDECLARED"
+	CodeAxisUndeclared          = "AXIS_UNDECLARED"
+	CodePartitionUndeclared     = "PARTITION_UNDECLARED"
+	CodeGroupsOverlap           = "GROUPS_OVERLAP"
+	CodeTimeUndeclared          = "TIME_SEMANTICS_UNDECLARED"
+	CodeAsOfUndeclared          = "AS_OF_UNDECLARED"
+	CodeStockSummedAcrossTime   = "STOCK_SUMMED_ACROSS_TIME"
+	CodeStockOverTimeNotOwned   = "STOCK_OVER_TIME_NOT_OWNED"
+	CodeCountBasisUndeclared    = "COUNT_BASIS_UNDECLARED"
+	CodeZeroDenominator         = "ZERO_DENOMINATOR_UNDEFINED"
 )
 
 // Finding is one reason the claim is not eligible.
@@ -257,8 +259,18 @@ func Reaggregate(c Claim) Report {
 				add(Ineligible, CodeScopeMismatch, GapConflict, "components %s and %s are anchored to different populations", required[0], name)
 			}
 			// Group pairing is only comparable when both sets are identified.
-			if Bind(first) == nil && Bind(other) == nil && !sameGroups(first, other) {
-				add(Ineligible, CodeComponentGroupMismatch, GapConflict, "components %s and %s do not cover the same groups, so their pairing is lost", required[0], name)
+			if Bind(first) == nil && Bind(other) == nil {
+				if !sameGroups(first, other) || !sameKey(first, other) {
+					add(Ineligible, CodeComponentGroupMismatch, GapConflict, "components %s and %s do not cover the same groups under the same key, so their pairing is lost", required[0], name)
+				}
+				if first.RelationID == other.RelationID {
+					add(Ineligible, CodeComponentNotDistinct, GapConflict, "components %s and %s are the same relation %s; one set cannot stand for two intermediate states", required[0], name, first.RelationID)
+				}
+			}
+		}
+		if c.Law == LawMean {
+			if group, ok := contradictoryMeanGroup(c.Components[ComponentSum].Set, c.Components[ComponentCount].Set); ok {
+				add(Ineligible, CodeGroupStateContradictory, GapConflict, "group %s has a non-zero sum over zero facts", group)
 			}
 		}
 	}
@@ -344,12 +356,48 @@ func hasNull(set SetRef) bool {
 	return false
 }
 
+func sameKey(a, b SetRef) bool {
+	if len(a.Key) != len(b.Key) {
+		return false
+	}
+	for i := range a.Key {
+		if a.Key[i] != b.Key[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// contradictoryMeanGroup reports a group whose sum is non-zero although its
+// count is zero. Such a pair cannot come from any set of facts, so composing
+// it would hide a broken intermediate state behind a plausible total.
+func contradictoryMeanGroup(sum, count SetRef) (string, bool) {
+	counts := make(map[string]*big.Rat, len(count.Rows))
+	for _, row := range count.Rows {
+		if row.Amount.State == derivationref.Present {
+			if v, ok := parsePlainDecimal(row.Amount.Decimal); ok {
+				counts[row.Identity] = v
+			}
+		}
+	}
+	for _, row := range sum.Rows {
+		if row.Amount.State != derivationref.Present {
+			continue
+		}
+		s, ok := parsePlainDecimal(row.Amount.Decimal)
+		if n, found := counts[row.Identity]; ok && found && n.Sign() == 0 && s.Sign() != 0 {
+			return row.Identity, true
+		}
+	}
+	return "", false
+}
+
 func countsAreNaturals(set SetRef) bool {
 	for _, row := range set.Rows {
 		if row.Amount.State != derivationref.Present {
 			continue
 		}
-		v, ok := new(big.Rat).SetString(row.Amount.Decimal)
+		v, ok := parsePlainDecimal(row.Amount.Decimal)
 		if !ok || !v.IsInt() || v.Sign() < 0 {
 			return false
 		}
