@@ -400,3 +400,38 @@ DDL Plan→Applyでは、実DB Instance／Provider、Scope、Actual Schema Revis
 **次の順序と既存Owner**：P0(1) **どちらか一方のWorkspaceを明示選択**して専用隔離PGに一致するSchema/Seedを構築・別Readerで観測 → P0(2) 該当Queryの未束縛Input/Executorを修正し、実CLI/Query/Contextの1件の正例＋0件・別Provider・別Instance・型不一致の拒否を同一Attemptで証明 → P0(3) その後に別Workspaceへ拡大。実Function Readは#2586、Workbench/Schemaは#3270、独立Expectedは#2514/#1180、正式Plugin/Build/BOMは#1251/#951/#1016/#3267が所有する。#4202のInspector Entry照合、#3866のM0 Graph、#3843のHook実Call、DSH/SHO/KON/SUI/SEI、全TEI Self-buildを、この最初のread-only DB Queryの新しいHard Dependencyにしない。
 
 **採用・検証上限**：本節はSource/Go経路の静的確認と次の検証計画。`query_route_separation_test.go`はSQLを実行せず、DB/Provider/Functionの実成功、Current Grant、独立Consumer完全受領、Meaning Acceptanceを証明しない。正式実DB Runや#4076の最終CIを取得したときだけ、実行資格を更新する。Raw Evidenceの大容量本体はGit必須とせず、GitにはSource/Artifact参照・digest・独立Expected・状態・Receiptの小さい索引を保持する選択肢を維持する。外部NAS/S3への保管方式は別の保存契約として検討し、未取得/失効/権限変更を成功扱いしない。
+
+
+## 24. REA候補と参照統計を混同しない製品検収（2026-11-13）
+
+### 24.1 変更を反映する範囲と現在地
+
+REAは外部ソースや実行結果を解析してEvidence付きの候補を作る**外部の逆解析ツール**であり、本節は会計上のResource–Event–Agentモデルを指さない。実装上は[REA R1 #4547](https://github.com/hat47x/tei-platform/pull/4547)がmainへ統合され、受領byteのfingerprint、Producer/Source Revision、部分受領・未取得などの状態、外部Observation/Relation候補を読むReaderが存在する。後段の型付きread-only OperationとEvidence Pinの限定検証は[REA R2 #4548](https://github.com/hat47x/tei-platform/pull/4548)で審査中であり、**現mainへの統合完了とは区別**する。元の大型PR #4322は一括マージしない。
+
+既存の三要素分析法のモデルは、Data・Function・Businessの原典準拠表現とTEI独自の汎用モデルを区別する（#1124）。[main #4513](https://github.com/hat47x/tei-platform/pull/4513)のCRUD Data索引、[#4534](https://github.com/hat47x/tei-platform/pull/4534)の構造OKと矛盾要レビューの分離、[#4551](https://github.com/hat47x/tei-platform/pull/4551)の明示CRUD-only・UnusedData修正、[#4524](https://github.com/hat47x/tei-platform/pull/4524)の同Kind重複ID拒否、[#4507](https://github.com/hat47x/tei-platform/pull/4507)のFingerprint純粋化は**限定修正としてmainへ統合済み**。ただし三要素の全Source/Diagram/SHO/Studioで参照が完全に列挙されるという保証ではない。いずれのテスト結果も正式業務Meaningの受理・実DB更新・現在Disclosureの代わりにならない。
+
+### 24.2 参照一覧と「未使用」表示の意味を限定する
+
+参照先・参照元・未使用判定・CRUDセルの一つひとつを、少なくとも**参照元のQualified ID、参照先のQualified ID、Kind、Direction、Relation/Occurrence identity、Source位置・版、宣言/推定の出自、観測範囲**で区別する。元のSource要素と異なるView上のEdge ID（例：Studioの描画用parent edge）やLabel/座標を、正式Relation identityに流用しない。方向の違う辺・同じ二端点の平行辺・同名別IDを黙って縮約しない。
+
+参照件数を表示する場合は「当該Source/Workspace・Snapshot・参照種別・方向・許可されたScopeで**確かめられた数**」に限定する。外部REAの未受理Candidateは別枠に表示し、正式TEIの参照数・三要素CRUD・未使用判定へ無断加算しない。確認数が0でも、動的な参照・未ロードPlugin・非開示・Source/依存集合のpartial・取得不能・未探索・旧Revisionがあれば「参照なし」「未使用確定」とは言わない。全Required Closure/解析範囲と曖昧参照が確認できたときに限り、**その用途と範囲での未使用候補**を表示する。現在のConsumerに許されないSource名・非公開Ref・件数・Locatorを、Unknown表示に偽装して漏らさない（#3262/#2516/#3788）。
+
+R2が返すObservation 1件と有向Relation 1件は**選択された二つの候補**であって、二者が接続していること、全Graphが収集済みであること、正式TEIのBusiness Relation/CRUDであることを意味しない。End-pointとSourceの一意対応が確認できなければ、Graph/CRUD上の意味線を引かず「未対応・要確認」とする。構造ValidationのOKやCRUD表生成成功だけで、矛盾・欠落・Ownerレビューの必要性を消さない。
+
+### 24.3 実装順と独立Expected（仕様候補、未実証）
+
+| Case | 独立の入力・反例 | 必須の観測・停止線 |
+| --- | --- | --- |
+| **REA-CX-01** | 正常のREA Observation 1件＋有向Relation 1件、同端点の平行Edgeと逆向きEdge | Producer ID・Relation ID・向き・出典を保持。Graphの表示用Edge IDと正式TEI Relation IDを別扱い |
+| **REA-CX-02** | 別Kind同名/同ID、同Kind重複、外部Node/Relation ID衝突 | Qualified Identityの誤解決・後勝ち選択なし。修正済みGo単体テストとStudio/CLI Product同値を別検収 |
+| **REA-CX-03** | 確認済み参照数0、未ロードPlugin／部分解析／動的参照あり | 表示は「検索範囲内0件・未確認あり」。未使用確定・一括Rename/Delete許可なし |
+| **REA-CX-04** | 明示CRUDのみ、矛盾CRUD、外部REA推定FKとOwner未受理のRelation | 明示宣言を落とさず、矛盾は要レビュー。推定FKを正式CRUD/Function操作へ自動昇格しない |
+| **REA-CX-05** | Evidence Pin一致だがSource A→B→A、複製Workspace Root、現在Grant/Scope変更 | 受領Pinの一致と現在利用資格を分離。古い関係先への自動付替え・書込み・外部送出なし |
+| **REA-CX-06** | REA未受理RelationをStudio上で選択／AIに渡す | 最初はSource/Subjectの限定Inspect。意味Relation Pinは正式IDがない限りunsupported。開示は#4503の用途別Planへ |
+| **REA-CX-07** | REA 6.9.0の新規Tool Versionを6.8.0の期待で解析／JSONL終端欠落 | Tool版・元raw digest・framingを独立再検査。形式が不確かならpartial/unsupportedとして拒否し、6.8.0の限定PASSを新Versionへ自動継承しない |
+
+**新Versionへの再資格化**：[REA公式v6.9.0リリース](https://github.com/morluto/rea/releases/tag/rea-agents-6.9.0)では解析対象の追加（OpenAPI/GraphQLなど）やEvidenceのページ化・Coverageの強化が公表されている。しかし6.9.0のTEI受領互換性や6.7/6.8との差分が実証されたわけではない。T0-06として、**固定したREA配布版・実行コマンド・合成入力・raw byte・期待Protocol**で、既存6.7/6.8と6.9を別Job・別Expectedで対照する。新Source種を三要素へ一律変換せず、外部Observationの種類とSource/Providerを維持して必要なProfileだけが選択的に取込む。未検証Versionでの完全受領・全Graph・現在性・業務意味は主張しない。
+
+**配賦**：外部REA Receiver/Tool版とR3独立Consumerは#3394・#1158/#3419、三要素CRUD/Modelerは#4472/#4475/#1124、通常Editorの参照移動/未使用表示は#3788、Pin/開示は#4515/#4503、実Storage Readerは#4307、正式Source/SHOは#3346/#4317/#4467へ戻す。次の独立Consumer実受領はCLIと一つの別Consumerを同一受領Attemptで比較し、selected/invoked/received・Scope・欠損と失効を観測する。TEI Studio Desktop実起動/セルフビルド（#1824/#2831）と実Provider Function Read（#2586）は**優先P0として並行**し、R2・REA 6.9再資格化・SHO/Graph全対応を前提としない。追加のHost/Parser/Registry/Meaning承認Engine、外部解析の巨大Raw EvidenceのGit必須保存は設けない。
+
+**資格上限**：本節は既存main・PR・公式リリースの照合にもとづく検収設計であり、REA 6.9実走、REA-CX-01〜07の新規E2E、実Studio操作、実OS/Provider/DB Effect、Owner意味受理は**NOT RUN**。
