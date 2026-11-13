@@ -177,6 +177,11 @@ func wrapFailure(err error, declared *application.Hook) error {
 	if err == nil {
 		return nil
 	}
+	// A business refusal can wrap the failure of an already-invoked effect.
+	// Effect uncertainty overrides both NotSatisfied and on-failure warn.
+	if _, uncertain := uncertainFailure(err); uncertain {
+		return &Error{Code: "HOOK_REJECTED", Message: err.Error(), Cause: err}
+	}
 	if isNotSatisfied(err) {
 		// An unsatisfied hook may name a business outcome. The name is checked
 		// here, where every refusal passes, so an implementation cannot widen
@@ -188,13 +193,8 @@ func wrapFailure(err error, declared *application.Hook) error {
 		}
 		return err
 	}
-	// A warning can be continued only when the failed hook did not leave an
-	// unresolved effect. The called Command/Provider may have committed before
-	// its acknowledgement was lost; continuing here would permit another effect.
 	if declared != nil && declared.Failure == "warn" {
-		if _, uncertain := uncertainFailure(err); !uncertain {
-			return &Warning{Err: err}
-		}
+		return &Warning{Err: err}
 	}
 	return &Error{Code: "HOOK_REJECTED", Message: err.Error(), Cause: err}
 }
