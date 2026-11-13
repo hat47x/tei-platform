@@ -9,35 +9,72 @@ import (
 	"testing"
 
 	"tei/internal/operations"
-	xteathreeview "tei/plugins/xtea-three-view"
+	"tei/internal/workspace"
 )
 
 const testDigest = "sha256:0000000000000000000000000000000000000000000000000000000000000001"
-const testSource = "design/order.xead"
+const testSource = "design/model.src"
 
-// Two separately linked entries with identical answers, and one that reads a
-// Workspace other than the root the Host handed it.
+// answer is a smallest valid three-view answer about root: one data subject
+// read from nothing but the root's own manifest. The adapter is tested with
+// it so that this package needs no real Provider.
+func answer(root string, r operations.ThreeViewRequest) (operations.ThreeViewNavigation, error) {
+	manifest, err := workspace.ObserveManifestIdentity(root)
+	if err != nil {
+		return operations.ThreeViewNavigation{}, err
+	}
+	limits := []string{"test-answer-is-not-a-reading-of-any-source"}
+	return operations.ThreeViewNavigation{
+		SchemaVersion: operations.ThreeViewNavigationSchemaVersion,
+		Effect:        "read-only",
+		Workspace:     &workspace.WorkspaceIdentity{Manifest: manifest},
+		Source: operations.ThreeViewSource{
+			Path: r.SourcePath, Format: "test", ArtifactDigest: testDigest,
+			MappingFingerprint: "map", DerivationRevision: "rev", ProjectionFingerprint: "fp",
+			Coverage: operations.ThreeViewCoverage{
+				Scope: operations.ThreeViewScopeSingleSource, Status: operations.ThreeViewCoverageComplete,
+			},
+		},
+		Subjects: []operations.ThreeViewSubject{{
+			Occurrence: "d", View: operations.ThreeViewData,
+			SourceFact: operations.ThreeViewSourceFact{
+				Kind: "Entity", Locator: "/Entity[1]", SourceIDStatus: operations.ThreeViewSourceIDMissing,
+			},
+			Candidate: operations.ThreeViewCandidate{
+				Nature: operations.ThreeViewNatureStructuralCandidate, AuthorityLimits: limits,
+			},
+			Meaning: operations.ThreeViewMeaning{Status: operations.ThreeViewMeaningNotBound},
+		}},
+		Relations:       []operations.ThreeViewRelation{},
+		CRUD:            []operations.ThreeViewCRUDRow{},
+		AuthorityLimits: limits,
+	}, nil
+}
+
+// Two separately linked entries with identical answers, one that answers
+// about a Workspace other than the root the Host handed it, and one that
+// presents its candidate as an accepted meaning.
 var calls struct{ a, b, foreign int }
 var foreignRoot string
 
 func entryA(root string, r operations.ThreeViewRequest) (operations.ThreeViewNavigation, error) {
 	calls.a++
-	return xteathreeview.Navigate(root, r)
+	return answer(root, r)
 }
 
 func entryB(root string, r operations.ThreeViewRequest) (operations.ThreeViewNavigation, error) {
 	calls.b++
-	return xteathreeview.Navigate(root, r)
+	return answer(root, r)
 }
 
 func entryForeign(_ string, r operations.ThreeViewRequest) (operations.ThreeViewNavigation, error) {
 	calls.foreign++
-	return xteathreeview.Navigate(foreignRoot, r)
+	return answer(foreignRoot, r)
 }
 
 func entryForged(root string, r operations.ThreeViewRequest) (operations.ThreeViewNavigation, error) {
-	value, err := xteathreeview.Navigate(root, r)
-	if err == nil && len(value.Subjects) > 0 {
+	value, err := answer(root, r)
+	if err == nil {
 		value.Subjects[0].Meaning.Status = "accepted"
 	}
 	return value, err
@@ -51,30 +88,11 @@ const (
 	wantEntryForged  = "tei/internal/threeviewadapter.entryForged"
 )
 
-func fixtureRoot(t *testing.T) string {
-	t.Helper()
-	root, err := filepath.Abs(filepath.Join("..", "..", "plugins", "xtea-three-view", "testdata", "workspace"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return root
-}
-
-func copyWorkspace(t *testing.T, name string) string {
+func scratchWorkspace(t *testing.T, name string) string {
 	t.Helper()
 	root := t.TempDir()
-	source, err := os.ReadFile(filepath.Join(fixtureRoot(t), "design", "order.xead"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Mkdir(filepath.Join(root, "design"), 0755); err != nil {
-		t.Fatal(err)
-	}
 	manifest := "workspace: " + name + "\nformatVersion: 1\nsources:\n  - design\n"
 	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte(manifest), 0644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(root, "design", "order.xead"), source, 0644); err != nil {
 		t.Fatal(err)
 	}
 	return root
@@ -99,7 +117,7 @@ func bound(t *testing.T, selected string, inventory []Provider, root string) (*S
 // so only the observed entry tells them apart.
 func TestSelectedBEntersBAlthoughAAnswersIdentically(t *testing.T) {
 	calls = struct{ a, b, foreign int }{}
-	root := fixtureRoot(t)
+	root := scratchWorkspace(t, "alpha")
 	inventory := []Provider{
 		{ID: "three-view-A", Entry: wantEntryA, Navigate: entryA},
 		{ID: "three-view-B", Entry: wantEntryB, Navigate: entryB},
@@ -113,7 +131,7 @@ func TestSelectedBEntersBAlthoughAAnswersIdentically(t *testing.T) {
 	if calls.a != 0 || calls.b != 1 || len(*seenB) != 1 ||
 		(*seenB)[0].SelectedProviderID != "three-view-B" || (*seenB)[0].RegisteredProviderID != "three-view-B" ||
 		(*seenB)[0].ObservedEntry != wantEntryB || !(*seenB)[0].OriginVerified ||
-		(*seenB)[0].Request.SourcePath != testSource {
+		(*seenB)[0].Request.SourcePath != testSource || (*seenB)[0].HostRoot != root {
 		t.Fatalf("B was selected but B was not entered: calls=%+v seen=%+v", calls, *seenB)
 	}
 	serviceA, seenA := bound(t, "three-view-A", inventory, root)
@@ -157,13 +175,16 @@ func TestUnknownOrIncompleteSelectionFailsClosed(t *testing.T) {
 	if host, err := newHost("not-a-digest", "three-view-A", inventory); err == nil || host != nil {
 		t.Fatalf("an invalid host digest was accepted: %v", err)
 	}
+	if host, err := newHost(testDigest, "three-view-A", []Provider{{ID: "three-view-A", Entry: wantEntryA}}); err == nil || host != nil {
+		t.Fatalf("an entry without a function was accepted: %v", err)
+	}
 }
 
 // The Provider answers correctly, but about another Workspace's directory.
 func TestAnswerFromAnotherWorkspaceIsRefused(t *testing.T) {
 	calls = struct{ a, b, foreign int }{}
-	alpha := copyWorkspace(t, "alpha")
-	foreignRoot = copyWorkspace(t, "beta")
+	alpha := scratchWorkspace(t, "alpha")
+	foreignRoot = scratchWorkspace(t, "beta")
 	service, seen := bound(t, "three-view-B",
 		[]Provider{{ID: "three-view-B", Entry: wantEntryForeign, Navigate: entryForeign}}, alpha)
 	value, err := service.Navigate(operations.ThreeViewRequest{SourcePath: testSource})
@@ -182,7 +203,8 @@ func TestAnswerFromAnotherWorkspaceIsRefused(t *testing.T) {
 // cannot present a candidate as an accepted meaning.
 func TestAnswerClaimingAnAcceptedMeaningIsRefused(t *testing.T) {
 	service, seen := bound(t, "three-view-forged",
-		[]Provider{{ID: "three-view-forged", Entry: wantEntryForged, Navigate: entryForged}}, fixtureRoot(t))
+		[]Provider{{ID: "three-view-forged", Entry: wantEntryForged, Navigate: entryForged}},
+		scratchWorkspace(t, "alpha"))
 	value, err := service.Navigate(operations.ThreeViewRequest{SourcePath: testSource})
 	if err == nil || len(value.Subjects) != 0 {
 		t.Fatalf("a forged accepted meaning reached the caller: %+v", value.Subjects)

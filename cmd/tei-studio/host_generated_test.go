@@ -27,7 +27,7 @@ func TestGeneratedGoServicesRunThroughRealHost(t *testing.T) {
 	want := []string{
 		"CatalogWorkspace", "ExecuteCommand", "ExecuteCommandWithPeriods",
 		"ExecuteCommandWithPolicy", "ExecuteCommandWithReferenceStore",
-		"InspectSubject", "ListWorkspaces", "ObserveXead", "OpenShoDocument",
+		"InspectSubject", "ListWorkspaces", "NavigateThreeView", "ObserveXead", "OpenShoDocument",
 		"PlanCommand", "ResumeShoDocument", "ValidateWorkspace",
 		"ViewApplication", "ViewPackage", "ViewPattern",
 	}

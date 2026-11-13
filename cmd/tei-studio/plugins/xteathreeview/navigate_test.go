@@ -147,6 +147,13 @@ func TestThreeViewsToCRUDToSource(t *testing.T) {
 	if value.Source.Path != fixtureSource || !strings.HasPrefix(value.Source.ArtifactDigest, "sha256:") {
 		t.Fatalf("source binding is missing: %+v", value.Source)
 	}
+	// The reading rules are identified by this plugin's revision together with
+	// the reader's, so a change of either makes an earlier projection stale.
+	if Revision != "tei.plugin.xtea-three-view/v0" ||
+		!strings.HasPrefix(value.Source.DerivationRevision, Revision+"+") ||
+		value.Source.MappingFingerprint == "" {
+		t.Fatalf("the projection does not name its reading rules: %+v", value.Source)
+	}
 	if value.Source.Coverage.Status != operations.ThreeViewCoverageComplete {
 		t.Fatalf("the fixture is fully placed, coverage = %+v", value.Source.Coverage)
 	}

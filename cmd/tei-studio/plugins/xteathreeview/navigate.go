@@ -32,7 +32,7 @@ const (
 	ProviderID = "tei.plugin.xtea-three-view"
 	// Entry is the linked symbol of Navigate. A Host compares it with the
 	// function value it is about to call.
-	Entry = "tei/plugins/xtea-three-view.Navigate"
+	Entry = "tei/cmd/tei-studio/plugins/xteathreeview.Navigate"
 	// Revision identifies this plugin's projection rules.
 	Revision = "tei.plugin.xtea-three-view/v0"
 

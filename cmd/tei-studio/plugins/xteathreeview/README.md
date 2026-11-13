@@ -9,12 +9,18 @@ X-TEAの設計Source（`.xead`）一件を読み、三要素分析法のData・F
 | 置き場所 | 持つもの | 持たないもの |
 | --- | --- | --- |
 | このプラグイン | X-TEA固有の読み方：どの構成要素をどの視点に置くか（[`reading-rules.json`](reading-rules.json)）、関係の呼び名、Source上の位置の引き方、投影の組立て | 意味の受理、Providerの選択、Workspaceの許可 |
-| [`internal/xeadsource`](../../internal/xeadsource/) | `.xead`の読取りと、原典に明記された関係・複数の事実から導いた関係の区別（[#950](https://github.com/hat47x/tei-platform/issues/950)、[#1031](https://github.com/hat47x/tei-platform/issues/1031)） | 視点への配置、画面向けの形 |
-| [`internal/operations`の三視点契約](../../internal/operations/three_view.go) | Source形式に依らない結果の型と、Hostが行う整合検査 | X-TEAの語彙、実装 |
-| [`internal/threeviewadapter`](../../internal/threeviewadapter/) | 既存のComposition RegistryによるProviderの選択と、実際に入った関数の観測 | Providerの発見、適合性の認定、権限 |
+| [`internal/xeadsource`](../../../../internal/xeadsource/) | `.xead`の読取りと、原典に明記された関係・複数の事実から導いた関係の区別（[#950](https://github.com/hat47x/tei-platform/issues/950)、[#1031](https://github.com/hat47x/tei-platform/issues/1031)） | 視点への配置、画面向けの形 |
+| [`internal/operations`の三視点契約](../../../../internal/operations/three_view.go) | Source形式に依らない結果の型と、Hostが行う整合検査 | X-TEAの語彙、実装 |
+| [`internal/threeviewadapter`](../../../../internal/threeviewadapter/) | 既存のComposition RegistryによるProviderの選択と、実際に入った関数の観測 | Providerの発見、適合性の認定、権限 |
 | Studio（`internal/studiohost`、`cmd/tei-studio`） | 許可済みWorkspace IDから信頼できるrootを引き、選択済みProviderへ渡す | 読取りの再実装、Providerの指名 |
 
-TEI Coreの意味モデル（`ir.World`）と、既存の固定`CapabilityKind`には何も追加していません。CRUD行は既存の標準投影[`threeelement.GenerateCRUDTable`](../../internal/threeelement/crud.go)で作ります。Studioの入口は既存の`StudioBridge`に一つのメソッドを足しただけで、別のGUI用Backendはありません。
+TEI Coreの意味モデル（`ir.World`）と、既存の固定`CapabilityKind`には何も追加していません。CRUD行は既存の標準投影[`threeelement.GenerateCRUDTable`](../../../../internal/threeelement/crud.go)で作ります。Studioの入口は既存の`StudioBridge`に一つのメソッドを足しただけで、別のGUI用Backendはありません。
+
+### 置き場所の理由
+
+このプラグインは、ルートmoduleの`plugins/`ではなく、Studioのmodule（`tei/cmd/tei-studio`）の中にあります。製品パッケージ（ルートmoduleの`cmd`・`internal`・`plugins`）は、X-TEAの読取り部`internal/xeadsource`が無くてもビルドできなければなりません（[`source_adapter_isolation_test.go`](../../../../tools/repository-architecture-check/source_adapter_isolation_test.go)、[#950](https://github.com/hat47x/tei-platform/issues/950)）。読取り部に依存するこのプラグインをルートmoduleへ置くと、その性質が崩れます。既存の`ObserveXead`の読取りも同じ理由でStudioのmoduleにあります。
+
+`plugins/`配下の独立したGo moduleへ移すには、入れ子moduleを漏れなく検査する仕組みが先に要ります（[#1251](https://github.com/hat47x/tei-platform/issues/1251)）。それまでの配置です。Hostは識別子`tei.plugin.xtea-three-view`で選択するので、移しても選択の指定は変わりません。
 
 ## 区別して返すもの
 
@@ -40,15 +46,15 @@ TEI Coreの意味モデル（`ir.World`）と、既存の固定`CapabilityKind`�
 Goの実行環境で次を実行します。
 
 ```bash
-go test -count=1 ./plugins/xtea-three-view/ ./internal/threeviewadapter/ ./internal/xeadsource/
+go test -count=1 ./internal/threeviewadapter/ ./internal/xeadsource/
 go test -count=1 -run ThreeView ./internal/operations/
-cd cmd/tei-studio && CGO_ENABLED=0 go test -mod=readonly -count=1 -tags server .
+cd cmd/tei-studio && CGO_ENABLED=0 go test -mod=readonly -count=1 -tags server ./...
 node --test cmd/tei-studio/test/three-view-client.test.mjs
 ```
 
 - [`navigate_test.go`](navigate_test.go)：合成Workspaceで、Business→Function→CRUD行→Source位置を同じ`occurrence`でたどる。層の分離、同名別ID、ID重複、ID欠落、部分取得、pinの保持と失効。
-- [`host_test.go`](../../internal/threeviewadapter/host_test.go)：Bを選択したらBの関数へ入る（Aも同じ答えを返す）。BのIDにAのコードを結んだ構成、在庫に無いID、別Workspaceについての答え、受理済みを名乗る答えを拒否する。
-- [`host_three_view_test.go`](../../cmd/tei-studio/host_three_view_test.go)：通常のStudio Host（`newStudioHost`）の`StudioBridge.NavigateThreeView`が、このプラグインの`Navigate`と同じ結果を返す。通常の選択で入った関数のシンボルが`tei/plugins/xtea-three-view.Navigate`であることを、Hostの観測で確かめる。
+- [`host_test.go`](../../../../internal/threeviewadapter/host_test.go)：最小の答えを返す試験用Providerで、Bを選択したらBの関数へ入る（Aも同じ答えを返す）ことを確かめる。BのIDにAのコードを結んだ構成、在庫に無いID、別Workspaceについての答え、受理済みを名乗る答えを拒否する。
+- [`host_three_view_test.go`](../../host_three_view_test.go)：通常のStudio Host（`newStudioHost`）の`StudioBridge.NavigateThreeView`が、このプラグインの`Navigate`と同じ結果を返す。通常の選択で入った関数のシンボルが`tei/cmd/tei-studio/plugins/xteathreeview.Navigate`であることを、Hostの観測で確かめる。
 
 合成Workspaceは[`testdata/workspace`](testdata/workspace/)にあります。この試験のために書いた架空のデータで、Data・Function・Businessが各1件です。参照モデルや利用者のデータは含みません。
 

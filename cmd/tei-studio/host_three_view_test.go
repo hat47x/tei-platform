@@ -10,10 +10,10 @@ import (
 	"reflect"
 	"testing"
 
+	"tei/cmd/tei-studio/plugins/xteathreeview"
 	"tei/internal/operations"
 	"tei/internal/studiohost"
 	"tei/internal/threeviewadapter"
-	xteathreeview "tei/plugins/xtea-three-view"
 )
 
 const studioThreeViewSource = "design/order.xead"
@@ -21,7 +21,7 @@ const studioThreeViewSource = "design/order.xead"
 // Independent expectations, written by hand.
 const (
 	studioWantThreeViewProvider = "tei.plugin.xtea-three-view"
-	studioWantThreeViewEntry    = "tei/plugins/xtea-three-view.Navigate"
+	studioWantThreeViewEntry    = "tei/cmd/tei-studio/plugins/xteathreeview.Navigate"
 	studioWantThreeViewDecoy    = "tei/cmd/tei-studio.studioThreeViewDecoy"
 )
 
@@ -35,7 +35,7 @@ func studioThreeViewDecoy(root string, r operations.ThreeViewRequest) (operation
 
 func studioThreeViewFixture(t *testing.T) string {
 	t.Helper()
-	return filepath.Join("..", "..", "plugins", "xtea-three-view", "testdata", "workspace")
+	return filepath.Join("plugins", "xteathreeview", "testdata", "workspace")
 }
 
 func studioThreeViewTrustedRoot(t *testing.T, root string) string {

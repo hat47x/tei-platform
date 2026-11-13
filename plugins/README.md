@@ -24,7 +24,7 @@ TEIでは、標準機能もできる限り共通の契約を通じて提供し�
 
 ## Studio向けの読取り専用プラグイン
 
-[X-TEA三視点プラグイン](xtea-three-view/README.md)は、X-TEAの設計Source一件をData・Function・Businessの三視点、CRUD、項目参照として読み取り、Studioの既存の入口から呼び出される参照実装です。X-TEA固有の読み方をプラグイン側に置き、Hostは既存のComposition Registryで選択して呼び出します。実DesktopでのGUI受入と実Sourceでの確認は未実施です。
+[X-TEA三視点プラグイン](../cmd/tei-studio/plugins/xteathreeview/README.md)は、X-TEAの設計Source一件をData・Function・Businessの三視点、CRUD、項目参照として読み取り、Studioの既存の入口から呼び出される参照実装です。X-TEA固有の読み方をプラグイン側に置き、Hostは既存のComposition Registryで選択して呼び出します。製品パッケージがX-TEAの読取り部なしでビルドできる状態を保つため、ルートmoduleのこのディレクトリではなくStudioのmodule内に置いています。実DesktopでのGUI受入と実Sourceでの確認は未実施です。
 
 ## 新しいサブプロジェクトの案内
 

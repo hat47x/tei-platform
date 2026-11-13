@@ -1,9 +1,9 @@
 package main
 
 import (
+	"tei/cmd/tei-studio/plugins/xteathreeview"
 	"tei/internal/studiohost"
 	"tei/internal/threeviewadapter"
-	xteathreeview "tei/plugins/xtea-three-view"
 )
 
 // studioThreeViewInventory is the three-view Provider inventory compiled into
