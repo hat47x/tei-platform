@@ -114,6 +114,10 @@ E0/N0/B0、R0b、H0は**並走可能**。R0bでは#4539がmain統合されたた
 
 **Plugin Hook/Lifecycle Graphとの接続（横断#4589、実装Ownerは#4198/#1251）**：X-TEA三視点Plugin #4570や生成Inspector #4572を、StudioのBuild/Consumerへ接続する際に、既存の固定Phase Hookを可変Lifecycle Graphの新しい意味体系へ置き換えない。現行`RunSequence`の未知Phase拒否と`RunReachable`の理由付きskipは異なる。宣言`uses`と実際の`Called`/Capability、`before-*`と`after-*`、`skipped/notEvaluated/warned/refused`と成功、`EffectUnknown`と安全な再試行を混同しない。実DB更新など副作用のあるPluginは既存#1174のReceipt/lookup-firstと#4315のFailureへ委譲し、read-only Inspector/三視点Pluginの局所成功からEffect安全性を推論しない。#4589はdocs-onlyのPRで、Hook/Graph同値の実装やWindows製品試験は**NOT RUN**。#4198のGraph Compiler/HG-01〜09をDesktop B1/B2の新Hard Gateにせず、既存Hook契約を壊さないことを現行実装の検収条件とする。
 
+**B1の追加判定：Plugin Roleと旧依存辺（#4601/#4600、両者は独立Draft）**：Authoring/Generator/Runtime Provider/Presentationは、Pluginを四つの固定型に分類する新Core enumではなく**同一Bundleに複数成立する用途別Role**として扱う。Stage1の生成に必要なGeneratorをStage2実行物へ無条件同梱せず、Stage2が実際に使うProviderは実Consumer・Current Grant・Disclosureを別確認する。Desktop exeを`Plugin` Subjectと偽装して現`BuildIntent`へ押し込まず、既存Build Execution/ArtifactSetに薄いTarget Adapterで接続する。検収は **Role宣言 → selected Recipe → actual invoked Builder → consumed Source/Toolchain → Artifact member → Stage2 actual Consumer** の各列を独立記録し、宣言だけで完全な依存閉包を主張しない。
+
+**B1の負例BD-07〜09（#4600 G49、#4591 main、#4592 Draft）**：モデル改版前には存在し改版後に削除されたBuild依存辺を、改版後のSource Indexだけで「影響なし」と判定しない。Required上流集合とactual Consumedに限定した旧辺比較を使い、(a)消えた旧辺による過少失効、(b)無関係な下流Siblingによる過剰失効、(c)未使用の宣言辺による不要なBuild、(d)別HEADの成功の合算を別々のExpectedとする。#4591のR0-only参照実装がmainへ入ったことは、実R0 Source Graph全体の取得や#4592のR1候補混在判定の受理を意味しない。既存#4583/#2514のExpectedに引き継ぎ、B1の全体Build Closureの成功はまだ主張しない。
+
 **ここから先の最小不足辺**：#4579で「生成Service+生成Workbenchの実Desktop受領」は限定成立、#4572で「一部品のSource→Transform→実使用/局所再入」は限定成立した。次は**同一Build Intent/選択閉包で、Node/esbuildの生成入力、`assets/workbench/main.js`、Go `embed`、nested `cmd/tei-studio`、Wails/Toolchainと選択Pluginを宣言・実消費まで照合し、Stage1のTEI実ProcessをBuild計画の呼出主体にすること**。この一辺の証拠が出るまでStudio全体のSelf-buildを完了扱いしない。新Generator/Host/Index Registryは作らず、既存#2831/#2595のArtifactSet/Builderと#4572の部品生成Runnerを再利用する。
 
 **実装統合の最短パケット（S1-I：#2831/#1824、2026-11-13）**。これは新しいBuild段階ではなく、既存S1/S2/S3の**まだ欠けている辺を一つに絞った引継ぎ**である。
