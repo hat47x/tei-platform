@@ -107,6 +107,17 @@ E0/N0/B0、R0b、H0は**並走可能**。R0bでは#4539がmain統合されたた
 
 **既存の実行入口**：`cmd/tei-studio/main.go`は`//go:embed assets`とWails v3 Service、許可されたWorkspaceへ委譲する`StudioBridge`を持つ。現在の`cmd/tei-studio/go.mod`は**Go 1.26.11、Wails v3.0.0-beta.29**を固定し、`replace tei => ../..`でroot moduleを参照する。`cmd/tei-studio/README.md`に残る**Go 1.26.9**の記述は現行`go.mod`と食い違うため、実際のBuildでは`go.mod`と`go env`を確認する。Wails依存の最新版へ無条件更新せず、まずロック済み版で実証する。
 
+**Wails安定版公開による再評価（2026-11-13、製品配布の前提）**：Wails公式は2026-10-26に[v3.0.0](https://wails.io/blog/wails-v3-released/)、2026-11-01に[安定版v3.1.0](https://github.com/wailsapp/wails/releases/tag/v3.1.0)を公開した。公式[v3.0.0リリースノート](https://github.com/wailsapp/wails/releases/tag/v3.0.0)は**beta.30以前からの更新**を勧めており、Security節は一部のchild-frame境界を継続制約として列挙する。現在のbeta.29はこれより古い。**S0の再現用固定版と、配布する製品で採用すべき依存版を同一視しない**。この段階で脆弱性のStudio実悪用・v3.1.0移行成功を主張するものではない。
+
+| 比較するレーン | 固定条件と手順 | 独立した判定・停止線 |
+| --- | --- | --- |
+| **S0-R：既存版の再現・原因切分け** | mainのnested `go.mod/go.sum`（Go 1.26.11/Wails beta.29）を変更せず、trusted local Workspace/Assetとloopback Server/限定実Desktopのみで`go build -mod=readonly`・既存Bridge操作を実証 | Legacy baselineのPASSのみ。**配布・非信頼HTML/iframe読込み・外部公開の許可を意味しない**。BOMと実Asset/Module/Toolchainを記録 |
+| **S0-U：安定版への適合評価** | 別の隔離checkout/PRでWails **v3.1.0**と対応するCLI/依存Lockを正確に固定し、`go.mod/go.sum`差分、Bridgeサービス名、Frontend Call/Binding、Server/Desktop両Build、Windows WebView2実IPCをS0-Rと同Fixtureで比較。移行に必要なコード・生成Asset変更を明示 | Catalog/Inspectの意味結果、failure/診断、実Window/IPC、既存Loopback/Workspace allowlist、Host/Origin/WebSocket・iframe・外部Navigationの負例を別々にPASS/FAIL。単なるcompile成功では採用しない |
+| **S0-A：製品採用/配布** | S0-Uの互換・Security負例と実OS/AssetSet/依存BOMの検収後に、#1824/#3421 Ownerが採用版を決める。Nightly/`@latest`で非決定的に置換しない | beta.29での再現成功をそのまま正式配布資格にしない。実OS未起動・実IPC未観測・未対応Originが残ればNOT RUN/unsupportedのまま |
+
+**Securityの検証単位**：現在のStudioのHTTP Middlewareが保護する`/wails/runtime`と、Wails本体のWebSocket/stream/静的Asset/child-frameは同じ境界ではない。旧版の起動方法をそのまま公開ネットワークへ広げない。v3.1.0でも公式が示すiframeからのbound-method呼出し等の制約をHost allowlist/表示Source/Navigation設計で避け、**許可外Workspaceや未知Originからの実呼出し0**を実Serverと実Desktopそれぞれで検証する（#2515/#2516/#1824）。
+
+
 1. **同一commitの基準検査**：`reference/tei-studio-workbench`でNode 24以上を使い`npm ci`→`npm test`→`npm run typecheck`→`npm run build`。出力`dist/main.js`・`dist/dependencies.json`・`dist/THIRD_PARTY_NOTICES.txt`の存在とdigestを確認する。これを`cmd/tei-studio/assets`へ統合する場合、検証用隔離checkoutで正しい配置を実証し、原Sourceや他Ownerの生成物を黙って上書きしない。
 2. **Headless/Serverの橋渡し**：nested module `cmd/tei-studio`で`CGO_ENABLED=0 go build -mod=readonly -tags server -o tei-studio-server .`を実行し、明示許可した`../../reference/workspace`を`-workspace`で与え、loopback `127.0.0.1`で起動。実listener→Wails RPC→`StudioBridge.ListWorkspaces/CatalogWorkspace/InspectSubject`→既存`studiohost`への到達を観測する。Asset静的配信や`Call.ByName`名の文字列一致だけではIPC成功としない。`WAILS_SERVER_HOST=0.0.0.0`の拒否や許可外Workspace拒否を負例とする。
 3. **実Desktop OSの検査**：同じnested moduleの`go build -mod=readonly -o tei-studio .`を対象OSの必要なWebView依存が揃った環境で実行し、`./tei-studio -workspace ../../reference/workspace`相当で実Windowを起動。**WindowsネイティブとWSL上のServer検査は別票**。実Window内のCatalog/Inspect、別Workspace/Source改版後の警告と旧応答排除を確認する。DevTools/WebView2 debug portを使う場合はloopback・試験限定とし、外部開示や業務Grantを正当化しない。
