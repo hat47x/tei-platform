@@ -73,9 +73,9 @@ func TestRuleExpectedFixtureCatalogIntegrity(t *testing.T) {
 	// Minimum inventory is a guard against silently dropping a case group,
 	// not evidence that every case is exercised by a Go test.
 	minimum := map[string]int{
-		"same-meaning surfaces":          6,
-		"evaluation distinction":         9,
-		"static diagnostics":             7,
+		"same-meaning surfaces":            6,
+		"evaluation distinction":           9,
+		"static diagnostics":               7,
 		"negative references and presence": 12,
 	}
 	seenCases := map[string]bool{}
