@@ -516,3 +516,62 @@ G-01〜04に必要な入力は最小の公開合成Fixture。G-05/G-06は既存S
 5. **証拠**：TypeScript typecheck/test/build、実Browser・CLI、同一HEADの独立Expected、旧表示のDOM/ARIA/Preview失効をそれぞれ記録。合格しない項目は`NOT RUN / BLOCKED / FAIL`を分ける。
 
 **現状の線引き**：2026-11-13時点、#4508はmainへマージ済み、#4498はDraft。#4515はOpenで、`reference/tei-studio-workbench/main.ts`にはまだ明示Pinがない。したがってこの節は**既存計画と実装境界の整合**であり、Pin UIやSource Applyが実装されたとの主張ではない。
+
+
+## 16. 2026-11-13 Desktopセルフビルド優先下でのPin実証・参照探索・AI連携の収束
+
+> 他チャットのDesktop/セルフビルド、Studio参照探索、Data Workbench、三要素分析法、SHO/TAIの進捗を照合した実装順序の追補。**現行コード・PRの状態を超えて実装済みとは主張しない**。既存§14〜15と#4515の受入条件を置き換えず、実製品に接続するGateを明確化する。
+
+### 16.1 最優先の製品縦断とPinの位置
+
+TEIの最優先は、**TEI Studio Desktopを構築し、TEI自身がその構築を再現できること**。固定対象のShelf、AI文脈共有、Relation精密選択は、この縦断を補助する重要機能であり、Desktop構築を阻む新たなHard Gateにしない。
+
+| Gate | Productでの確認対象 | 受入に含めないもの |
+| --- | --- | --- |
+| **D0 実Desktop読取り** | 実Windows/Wails WebView2→StudioBridge→共通API→現在のWorkspace/Subject/Source結果。生成JSとDesktop取得JSの同一性を確認 | 画面表示だけでPin・Source意味受理・Host効果まで成功したとの主張 |
+| **D1 TEI管理の再構築** | Build Intent→生成Source→Toolchain/Module→バイナリ→Stage1 TEIプロセスがStage2 Desktop Buildを起動し、入力/出力/Receiptを束縛 | 単に外部スクリプトでDesktopがビルドできたことをセルフビルドと呼ぶ |
+| **P0 Qualified Subject Pin** | #4515：実Workbenchの一時Selectionと独立したPin Intentを保存せず保持し、別Node/Focusへ移動しても同じSubjectを実Readerで再解決 | PinだけでSource/Grant/Policyが最新・意味Relationが一意・AIへ送信可能との主張 |
+| **P1 参照探索/編集候補** | Data/Function/Business/CRUD/Sourceを横断し、参照元・参照先・未使用候補の完全性、Source改版、変更案Diffを示す | 探索がpartialなのに参照数0を未使用確定とする、Quick Fixを即Applyする |
+| **P2 SHO/AI引渡し** | 文書Buffer/Source revision、選択意図、用途別Preview、Product再解決、実受領を別票で確認 | SHO保存・AI Transport・実Effect・意味受理を一つの成功フラグにする |
+
+[D0関連 Draft #4579](https://github.com/hat47x/tei-platform/pull/4579) は、生成WorkbenchとGoサービスをWindows Wails Desktopへ接続する実験である。CIで確認された範囲とmainに統合された範囲を分離する。**D0の合格はD1のセルフビルド合格ではない**。[Desktop統合 Draft #4498](https://github.com/hat47x/tei-platform/pull/4498)も別Gateとし、Pinの実装票 #4515 をそのPRの暗黙の前提にしない。
+
+### 16.2 「参照数0」と「固定対象が存在する」を独立して検査する
+
+Studioの参照・被参照一覧とPinの対象選択は同じSource Index/Qualified Subjectを利用するが、判定の意味は異なる。
+
+- **存在**：Source Indexに同名/同位置の要素があるだけでは、Product ReaderがそのSubjectを現在解決できるとは限らない。CatalogとInspectの正負、Workspace/Source/Revisionを照合する。
+- **参照数**：静的探索で0件なら「探索した範囲では0件」。Dynamic Reference、Plugin生成、Native SQL、外部Source、未取得領域を含むとき「未使用確定」は禁止する。
+- **固定**：Pinは対象を再訪する**意図**であり、未解決でも消さない。現在のSubjectの同一性が確認できない場合は`needs-requalification`/ `unknown`と表示し、別Subjectへ推測で付け替えない。
+- **三要素分析法**：Data/Function/Business間の横断参照は、Modeler/CRUDの根拠と区別して表示。Graph表示用Edge IDをSource-backed Relation identityへ昇格しない。
+- **現在性**：既存ResponseScopeは旧Replyの描画を抑えるだけ。HostのSource/Grant変更が観測できない場合は「検査済み」ではなく「現在性未確認」。既表示DOM/ARIAやAI Previewの再資格化は#2516のConsumer境界で行う。
+
+### 16.3 CUI/GUIの同等性を、画面形状ではなくProduct結果で検査する
+
+最初のPinはUI内のLocal Intentでよい。ただし将来のCUI/APIの正式契約は#1158/#3419に従い、GUIが勝手に新ABIを定義しない。最低限の実証は、**同一Workspace/Qualified SubjectをGUIと通常`tei` CLIで独立にInspectし、Subject identity・Source/Revision・Failure classの差を明示する**こと。CLIにない操作をダミーで成功扱いしない。
+
+SHOではDocument/Buffer/原文byte spanとTEI Sourceを別々に再解決する。TAIはActivity/Task、Harness Session、Transport Receipt、Consumer Resultを分離する。Pin Intentを横断共有しても第二のSemantic SSOT、Central Registry、専用Host/Policy Engineは導入しない。
+
+### 16.4 追加の独立Expectedと実装担当
+
+| ID | 正負対照 | Expected / 判定 |
+| --- | --- | --- |
+| PIN-S2-01 | 実Desktopと通常CLIで同じSubjectをInspect | Workspace/Subject/SourceのQualified Identityを対照。表示のみの合成PASSは別票 |
+| PIN-S2-02 | Desktopの別Node/別ビューへ移動後に元Pinへ戻る | Pin Intentは不変。Host Reader再解決が失敗した場合は失効表示し、誤再束縛0 |
+| PIN-S2-03 | Source Indexに同名・同offsetがあるが、実ReaderがSubjectを解決できない | 存在/Pin資格の成功表示0。未解決理由と探索範囲を保持 |
+| PIN-S2-04 | 静的参照数0、Plugin/Dynamic/外部Source探索が未完 | 「未使用確定」0。「確認した範囲では参照0件」とCoverageを表示 |
+| PIN-S2-05 | 生成WorkbenchがWindows Desktopで表示されるがStage2再構築が未実行 | D0とD1を別判定。セルフビルドPASS=0 |
+| PIN-S2-06 | 未保存SHO BufferをAI Previewへ含め、保存Sourceの同offsetへ戻る | Buffer generationと保存Source revisionを別表示。曖昧な再束縛・自動Apply 0 |
+| PIN-S2-07 | Harnessが候補を返し、旧Source改版・Disclosure変更が発生 | Pin保持、候補の適用/再送出はProduct再資格化まで停止。Transport成功≠意味受理 |
+| PIN-S2-08 | StudioのGraphで同一端点の二Relationを描画 | 表示Edge IDだけでRelation instanceの一意Pin成功扱い0 |
+
+**担当境界**：#4515がPIN-S2-02/03の最初の実装、#1824とDesktop OwnerがS2-01/05、#1124/#4472と参照探索OwnerがS2-04/08、SHO/TAIと#2516がS2-06/07を担当する。テストはSource TS/生成Bundle/実WebView2/通常CLI/外部Harnessを**別レイヤーで**記録し、NOT RUN・BLOCKED・FAIL・PASSを区別する。
+
+### 16.5 優先順位
+
+1. DesktopのD0/D1縦断を妨げず、#4515で**Subject 1件のPinを現Workbench Source TypeScriptに実装**する。新しいGlobal SessionやContext Storeを作らない。
+2. 実Windows DesktopでPin/Inspectを検査する前に、現在のSource/Workspace/Readerが一意であることを確かめる。Nodeの合成試験をDesktop製品受入へ転記しない。
+3. 参照探索・CRUD・DB Rowset・SHO Bufferの各Qualified Identityを、既存OwnerのProduct APIに従って追加する。Dynamic参照の未探索はCoverageへ残す。
+4. 最後に限定Preview→明示Share→実Consumer受領→候補Reviewを縦断する。外部Harnessの種類は製品共通の契約上等価に扱い、個別能力差はProfileで表現する。
+
+**現在の状態**：#4508はmain統合済み。#4579/#4498/#4479はDraft、#4515はOpen。§16は実コードの新実装や実Windows/CLI/Harness試験の実施を意味しない。各PRのCI証拠とmainの製品受入は別扱い。
