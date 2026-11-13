@@ -79,6 +79,8 @@ tei-studio -workspace <root> -three-view design/order.xead -pin-occurrence <occu
 
 ## 既知の難所と、分けて進められる作業
 
+各項目は、互いに独立に進められる子Issueへ分けてあります：受理済みMeaning [#4609](https://github.com/hat47x/tei-platform/issues/4609)、項目参照の拡張 [#4610](https://github.com/hat47x/tei-platform/issues/4610)、選択機構の一本化 [#4611](https://github.com/hat47x/tei-platform/issues/4611)、独立サブプロジェクト化と`tei`コマンド [#4612](https://github.com/hat47x/tei-platform/issues/4612)、Workbenchの入口と人による受入 [#4613](https://github.com/hat47x/tei-platform/issues/4613)、pinの保存 [#4614](https://github.com/hat47x/tei-platform/issues/4614)、実Sourceでの照合と`.xeaf` [#4615](https://github.com/hat47x/tei-platform/issues/4615)。
+
 1. **人による画面の受入と、Workbenchからの入口**：機械的なスモーク試験は通っていますが、人が実Desktopで見て受け入れる確認は残っています。Workbench（`/workbench/`）への入口追加は、生成済みバンドルの再構築を伴うため別の変更にします。
 2. **受理済みMeaningの結び付け**：既存の受理経路で受理されたCanonical対象へ、`occurrence`をどう結ぶか。契約のv1で扱います。受理の記録を根拠にし、名前やIDの一致からは結びません。
 3. **項目レベルの参照の拡張**：現在は、キーの構成項目→項目だけです。画面・帳票の項目からテーブル項目への参照は、原典での表現を確かめてから加えます。
