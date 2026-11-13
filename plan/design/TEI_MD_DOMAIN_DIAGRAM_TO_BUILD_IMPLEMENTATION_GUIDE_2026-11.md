@@ -16,6 +16,7 @@
 | `*.tei.md` の実Readerは未接続 | #3030 M2/M3 が主担当。本書は受入照合のみ |
 
 **P0-A のPASSが自動的に保証しないもの**: 新 `*.tei.md` Reader、Execute 実Provider適合、Owner意味受理、実Host Grant。
+
 **2026-11-13 追記（範囲の訂正）**: P0-A が縦断で確認したのは `databases/` の Migration 抽出・生成だけである。旧モードの生成物のQuery・Command・Validationはテンプレートではなく生成器内の固定文字列で、Source のSQLやValidation宣言を変えても生成コードは変わらない（main `4b1a3973` の写しで実測）。また生成物はSQLite埋め込みで、`query` は起動時のPG方言Migrationで失敗する。Source由来の生成が成立しているのは `tools/reference-application-binary` の `-function` モード（browse Pattern 1つ、PostgreSQL、READ ONLY）だけで、[README](../../tools/reference-application-binary/README.md) に範囲と限界を書いた。これは「このSource版のQueryの忠実な実現」までで、業務意味の受理・Environment/Provider束縛・Host Grantは未成立。
 
 ## 1. 全体の道順と判定条件
