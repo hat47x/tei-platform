@@ -192,26 +192,39 @@ func inspect(in input) (report, error) {
 
 	visited := map[string]bool{}
 	lanes := map[string]bool{}
-	queue := append(append([]string(nil), in.Changed...), baseOnlyDependents...)
-	for len(queue) > 0 {
-		id := queue[0]
-		queue = queue[1:]
-		if visited[id] {
-			continue
+	walk := func(queue []string, requiredOnly bool) {
+		for len(queue) > 0 {
+			id := queue[0]
+			queue = queue[1:]
+			if requiredOnly && !seenUpstream[id] {
+				continue
+			}
+			if visited[id] {
+				continue
+			}
+			visited[id] = true
+			n, exists := byID[id]
+			if !exists {
+				missing[id] = true
+				continue
+			}
+			if lane := laneForLayer[n.Layer]; lane != "" {
+				lanes[lane] = true
+			} else {
+				missing[id] = true
+			}
+			for _, dependent := range outgoing[id] {
+				if !requiredOnly || seenUpstream[dependent] {
+					queue = append(queue, dependent)
+				}
+			}
 		}
-		visited[id] = true
-		n, exists := byID[id]
-		if !exists {
-			missing[id] = true
-			continue
-		}
-		if lane := laneForLayer[n.Layer]; lane != "" {
-			lanes[lane] = true
-		} else {
-			missing[id] = true
-		}
-		queue = append(queue, outgoing[id]...)
 	}
+	// Explicit changes retain their ordinary forward-reachability meaning.
+	walk(append([]string(nil), in.Changed...), false)
+	// An R0-only change, unlike an explicit Changed node, is relevant only
+	// to the selected consumer's input closure. Do not chase R1 siblings.
+	walk(baseOnlyDependents, true)
 
 	impacted := map[string]bool{}
 	for id := range visited {
