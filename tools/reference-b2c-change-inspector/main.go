@@ -4,6 +4,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -213,7 +214,20 @@ func inspect(in input) (report, error) {
 }
 
 func run(r io.Reader, w io.Writer) error {
-	dec := json.NewDecoder(io.LimitReader(r, 1<<20))
+	// A bounded, pre-decoding key check prevents later JSON keys from
+	// silently overriding scope/closure/changed/required declarations.
+	const maxInputBytes = 1 << 20
+	data, err := io.ReadAll(io.LimitReader(r, maxInputBytes+1))
+	if err != nil {
+		return err
+	}
+	if len(data) > maxInputBytes {
+		return errors.New("B2C reference input exceeds the 1 MiB limit")
+	}
+	if err := inspectJSONKeys(data); err != nil {
+		return err
+	}
+	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
 	var in input
 	if err := dec.Decode(&in); err != nil {
