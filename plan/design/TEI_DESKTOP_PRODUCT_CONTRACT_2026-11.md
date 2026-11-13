@@ -104,6 +104,20 @@ E0/N0/B0、R0b、H0は**並走可能**。R0bでは#4539がmain統合されたた
 
 **ここから先の最小不足辺**：#4579で「生成Service+生成Workbenchの実Desktop受領」は限定成立、#4572で「一部品のSource→Transform→実使用/局所再入」は限定成立した。次は**同一Build Intent/選択閉包で、Node/esbuildの生成入力、`assets/workbench/main.js`、Go `embed`、nested `cmd/tei-studio`、Wails/Toolchainと選択Pluginを宣言・実消費まで照合し、Stage1のTEI実ProcessをBuild計画の呼出主体にすること**。この一辺の証拠が出るまでStudio全体のSelf-buildを完了扱いしない。新Generator/Host/Index Registryは作らず、既存#2831/#2595のArtifactSet/Builderと#4572の部品生成Runnerを再利用する。
 
+**実装統合の最短パケット（S1-I：#2831/#1824、2026-11-13）**。これは新しいBuild段階ではなく、既存S1/S2/S3の**まだ欠けている辺を一つに絞った引継ぎ**である。
+
+| 順 | 同じ隔離checkoutで行う実作業 |独立Expectedと失敗条件|
+| --- | --- | --- |
+| I0 差分衝突を先に解く | #4572と#4579はともに`cmd/tei-studio/test/desktop_webview_smoke.py`を変更。#4572には`cmd/tei-studio/test/__pycache__/*.pyc`と`tools/reference-studio-part-generator/__pycache__/*.pyc`の追跡差分がある。元PR側で生成cacheを除去し、両検査が残るようfixture/args/assertを再照合 | `git diff --check`、追跡差分にPython bytecode 0、旧版と生成版の偽陽性を両方検出すること。両PRの独立Greenを統合済みと誤称しない |
+| I1 実Target一つに収録 | #4572の`inspection-reader.contract.json`・`builder-sources/inspection-reader-v1.transform.json`→生成`inspection-reader.generated.ts`、#4579の固定PoC B Service/Workbench生成、Node/esbuild、`assets/workbench/main.js`、`//go:embed`、nested Wails Desktop Buildを**同一HEAD／同一Build Profile**で実行 | 生成契約digestと配信JS digestが一致。生成前bundleを埋める負例は、UI描画が正常でもInspector使用確認で落ちる。旧生成物の再使用、異Source同Path、assets更新漏れもFAIL |
+| I2 実WebView2 Consumerの二重条件 | **一つのWindows Desktop exe・Window/IPC/Source revision**で、#4579の`generated-workbench-asset-verified`（生成JS＝WebView2取得JS）と#4572の`data-tei-inspection-reader`（実renderが現契約のdigest・受理回数に一致）を両方確認し、Catalog/Inspect/Validateの同じSource結果を受領 | ordinary Desktop smokeとgenerated Desktop smokeを別のHEADや別のBuildの成功で合算しない。生成部品が**存在するだけ**、またはJSが一致するだけではInspector利用PASSとしない |
+| I3 Buildの宣言と実消費を繋ぐ | #2831の既存Build Intent/Builder/ArtifactSetにNode/esbuild recipe、固定lock/toolchain、Generator Sourceと実Source byte、Wails/Go nested module、依存closureと実Targetを段階的に追加。#4572の`stage_reentry.py`の局所生成器再入を、**TEIが呼び出す実Build Plan**に接続 | 実Stage1 TEI process image→stage2 Build invocation→生成部品/JS/実exe→実WebView2までAttempt/Artifactを結ぶ。Stage0 seedがNode/esbuild/Wails Buildを二度駆動するだけなら全Studio L2/L3は不合格 |
+
+**適用の順序とOwner**：I0は既存PR #4572/#4579の各変更者が解決し、I1/I2は#1824/#3421の同じFixtureで統合する。I3は#2831/#2595が既存Builderを用いて続行する。**I1/I2のCIが合格しても、I3のTEI Build Intent→nested Studio→再入の実行・入力閉包は独立して未完成**。別々のPRのGreenを、共通HEADの再検証なしにマージ済み製品結果へ昇格させない。
+
+**三視点Pluginの不合格を独立に解消（#4570/#1124）**：`plugins/xtea-three-view/navigate.go`が`internal/xeadsource`に直接依存してしまうことで、正規Product GraphのSource Adapter分離検査が実FAIL。Sourceの位置取得は外側Adapter/Providerへ移し、Pluginの読取り専用意味投影と依存逆転を区別する。`host_generated_test.go`の固定公開メソッド数は、実Go Service変更時に**期待する公開APIの完全名集合**から検査し直す。要件を緩和した「カウントだけを16に増やす」対応は不十分。Source-backed occurrenceが欠ければRelation固定や書込みを許可しない。#4570の局所Server UI成功を実Windowsや実XEAD意味受理の証拠としない。
+
+
 **最短の着手順**：まずS0を行い、同時に#2831のSB-0a（`cmd/tei`で`go list`と選択外部moduleの実在を把握）を進める。S0のGo build成功だけでS1の依存閉包やS3の再帰を証明しない。#2831の既存`gobuilder`・Source Closure/Toolchain hash・ArtifactSet/Bindingを使い、`go.mod`・外部module・`go.sum`・実取得bytesとoffline事前供給の差を確認する。外部Moduleが未解決なら成功扱いせず、別のBuilderをStudioへ増設しない。
 
 **負例の最小セット**：①未選択Pluginを追加しただけでStudio Binaryに`init`/blank import/埋込みAssetが混入、②Source bytesは同じだが選択Generator・Toolchain・Wails Asset版が違う、③`go.sum`だけ一致して選択Module実bytesがない、④Stage1生成TEIを**実呼出しせず**Go launcherを二回実行して再帰成功と誤称、⑤S0/S2で同じUI描画でもIPCが実Consumerへ届かない、⑥Stage2のバイナリは起動するがRead Source/Plugin/Scopeが違う。いずれも実Artifact/Process/IPCと独立Expectedで比較し、仮説だけのPASSを認めない。
