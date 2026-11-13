@@ -787,3 +787,52 @@ Snapshotのp1/p2読取が成功しても、Tailの途中Gapで訂正イベント
 5. **P2 / #2604/#2516/#4510**：§23のReader Pin/公開Generation・Current Disclosureと、Studioの問い相対Data/Control/Effect/Evidence投影を接続。計算Outputを再利用できても、現Consumer/業務Ownerの実使用資格を別照合する。
 
 **禁止する設計の混線**：#2600のBuild Skip正本、#2582の反応的Data Context、#2622のProvider能力、#2514の独立Expected、#1180のScenario、#2604の一式公開、#267の意味受理は各Ownerのまま。新Graph Solver、Source Registry、Cache、Evidence/Claim Engine、CDC Runtime、固定Hostは追加しない。§24は**宣言・選択・実観測の既存Graphを比較するread-only設計候補**であり、実Go/CLI/DB差分、Selective性能測定、Studio/Owner受理は **NOT RUN / NOT ACCEPTED**。
+
+## 25. Generation退役とConsumer到達の閉包：Pin・Retention・GCと訂正受理を分ける（2026-11-13、設計候補）
+
+**§24との責務分離**：§24は**依存Graph/Rule/Source/Providerの改版後、どの結果を再計算・再資格化するか**を扱う。対して本節は、§23のG1→G2 Publication以降、**古いG1をどのConsumerが読んでおり、いつ退役・物理回収できるか、G2の業務訂正がどの受取先まで届いたか**を扱う。既存#2604（PublicationとReader）、#2542（外部連携）、#1174（Effect）、#2516（Disclosure）、#2600（Reuse）、#4522（Claim再資格化）がOwner。**第二のLease Registry/Release Coordinator/GC Engine/Publisher/Claim Storeを採用しない**。
+
+### 25.1 「読取終了」「物理回収」「訂正完了」は別Claim
+
+| 問い相対の主張 | 必要な証拠 | その証拠だけで言えないこと |
+| --- | --- | --- |
+| **Reader完読 / 安全な失敗** | 対象ConsumerのPinned Generation・必要Member・実Readの結果・保持期限/失効時拒否 | 他Consumerが同じVersionを読んだ、G2が業務適用された |
+| **G1退役 / Blob回収** | Providerの不変世代・生存参照、Pin/Lease、Retention・実GC操作・削除後Readback | 外部CDN/Recipient/Backupが全て消去済み、全宛先にG2訂正済み |
+| **G2配布 / 適用 / Owner受理** | 受理された用途・期間・**有限Consumer cohort**と、各Read/Import/Effect/業務Owner記録 | 未登録・不特定・Offline Consumerまで訂正済み |
+
+**この三者は一般に互いを含意しない**。G2をBillingがApplied済みでも、G1をArchiveが合法的に歴史読取中のことがある。逆にG1をGCできてもOfflineの宛先がG2をAppliedした証拠ではない。G1が保管されていても現在のGrant/Disclosureは別。
+
+### 25.2 退役の二つの正当化方式を混同しない
+
+- **継続Read保証型**：不変Generation/版付きMember、Readerの実Open同一性、対象のactive Pin/Lease、Member保持とGCの競合制御が必要。新Pin取得とRetire判定の間に未保護区間があれば、旧Readerを無停止完了できると主張しない。Providerが保証できなければunsupported/unknown。
+- **期限後のfail-safe許容型**：Readerとの明示的な契約でRetention期限後の旧Read拒否・別Attempt開始を認めるなら、全Offline Consumerの完了をGCの絶対要件にしない。ただしG1/G2のMemberを混ぜて成功とはせず、必要な期限・現在Grant・参照の検証を要する。継続Read保証と同じ契約として表示しない。
+- **共有Content Blob**：G1のManifestや参照を退役しても、G2が同一SHA256のByteを参照していれば、G2が必要とする実Blobを削除できない。Contentの再利用可能性、世代所属、物理Reachability、現在の開示可否を別資格にする。
+- **外部に残る旧Byte**：OriginのGCやRevocationを確認しても、外部Recipient/CDN/Backupからの物理撤去を証明したことにはならない。配布済みコピーや既読Evidenceの扱いは#2516/#2542の実Target境界で判定。
+- **対象Consumer集合の閉包**：「全員G2済み」を主張するには、Ownerが受理した用途相対のConsumer集合と各宛先の実Read/Effect受理を必要とする。公開Reader一覧に現れないものを不存在へ丸めず、未観測の宛先はunknownとする。
+
+### 25.3 既存実試験を前提にする反例と、まだ未実証の競合
+
+統合済み[#3256](https://github.com/hat47x/tei-platform/pull/3256)の実CLI/別Process Reader試験には、**R1とR2で5 Memberのbyteが同じでも、同Directory上書き後の旧R1 Pinを拒否**する例がある（[#2604実証記録](https://github.com/hat47x/tei-platform/issues/2604#issuecomment-6740694625)）。統合済み[#4240](https://github.com/hat47x/tei-platform/pull/4240)には**R1→R2→R1の中間ABA**、Member Path→物理Open同一性不足の負例がある。これはReadの保証上限の実試験であり、**不変Generation/並走Reader/GCの実現・完全性を証明したものではない**。
+
+| 一因子の競合・変更 | 不適格な主張 / 条件付きの期待 |
+| --- | --- |
+| GCがPin=0を確認→ReaderがG1 Pinを新規取得→GCがG1削除→Reader Read | 一瞬のPin=0で安全GCとしない。ProviderがPin登録/Retireの競合を制御しない限りcontinued-readはunknown |
+| R1→R2→R1、または同Byteの外部MemberへPath差替え | Manifest前後一致・Digest一致から連続世代/同一実Openを推測しない（既存ABA/TOCTOU負例） |
+| G1をRetire、G2も同じ物理Blobを参照 | G2の生存参照があればBlobを保持。G1参照削除を共有Byte削除の根拠にしない |
+| BillingはG2 Applied、ArchiveはG1 Reading、別の宛先はOffline | 全Consumerの訂正済みは不適格。Owner受理のcohortと未観測を示す |
+| G1のDelta baseをGCした後にG1→G2差分のみ届く | Base/旧State/連続Deltaが未資格ならFull G2を再取得、またはunknownへ（§22） |
+| G1 Current Grantが失効したが旧Origin Byte・外部Cacheが残る | 保存Byteから現在Read資格を復活しない。Origin revokeで全外部コピー消去を主張しない |
+
+**独立の合成モデル**：4イベント GC_check、Reader_register、Reader_read、GC_delete で、checkがdeleteより先、registerがreadより先という制約を置くと**6通りの合法順列**がある。そのうち check→register→delete→read の**1通り**が、新Pin登録後にGCが進む危険な競合を示す。Pin取得とRetireの線形化が実Providerで成立するなら、Pin先行ではGCを延期、Retire先行では新Pinを拒否できる。**この列挙はTEIの実OS/FS/Provider試験ではない**。
+
+### 25.4 Owner別の受入順（新Runtimeなし）
+
+1. **P0 / #4410**：固定TSVの純粋Go/CLIを優先。GC/Lease/Reader cohort管理を初回BatchのHard Gateに追加しない。
+2. **P1 / #2604 AP-01/06/09/12、#2514**：統合済み#3256/#4240の実Reader/ABA/TOCTOU試験を再利用し、限定Providerで継続Read保証型かfail-safe期限型の**どちらを提供するか**Owner判断。実Writerと並走する二世代Reader、Pin vs GCの競合、共有Blob参照を独立Expectedで故障注入。第二Readerを実装しない。
+3. **P1 / #4411/#1174/#2542**：Archive/Billingという有限の受取先を用途付きで固定し、G2 Published、Read、Applied/Commit unknown、Owner Acceptedを独立比較。Transport ACKと実Importを混同しない。
+4. **P1 / #2600/#2516/#4522**：同ByteのGeneration再利用、Grant-only変更、旧Source A→B→A、GC後の証拠保持を区別し、false retain / unnecessary invalidation / unknown erasedを計測する。
+5. **P2 / #1124/#4510/#4487**：Studio/TEAの用途相対Data/Effect/Observation Edgeへ、Reader/cohort/Retired/unknownを必要な公開範囲だけ投影。秘密Readerの件数・存在は開示しない。
+
+**比較先**：[Apache Iceberg Snapshot Reference/Retention](https://iceberg.apache.org/docs/latest/branching/) と [Delta Lake VACUUM保持期間](https://docs.delta.io/delta-utility/) は実Readerと旧世代回収を区別する参考。TEIへIceberg/Delta Runtimeや新GC Schedulerを採用する決定ではない。
+
+**証拠上限**：GitHubの既存限定実Reader負例・静的Source照合・独立合成4イベントの順列のみ。新しいTEI Go/CLI、並走Provider、GC/OS原子性、外部Consumer/Import、Current Grant/Owner業務受理、exact-head CIは **NOT RUN / NOT ACCEPTED**。
