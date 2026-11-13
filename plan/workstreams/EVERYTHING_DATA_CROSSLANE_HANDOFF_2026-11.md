@@ -282,6 +282,40 @@ H0/H1と異質領域の要件探索は並行可能。H2/H4の実Effect資格は�
 
 **根拠と資格**：#2619の既存反例、#2389の組織計画、#1125 Procedure、#1174の実PostgreSQL限定実証、#2889のRunner特性試験、Draft #2896のSystem Composition計画を基にした**計画上の補正候補**。この2×2／三領域／DSL比較を同一Product Headで新規実行した証拠はない。**実Tenant/Host/Provider/GUI・Owner正式意味受理、#1119 Gate判定はNOT RUN／NOT ACCEPTED**。新しい基盤の実装・既存ADRの採用は提案しない。
 
+
+#### DSLの前段方式と生成方式を分離した比較・採否（2026-11-13、#4359への引渡し）
+
+**整理した判断**：ドメイン専門家が読む表層と、内部実現方式を分ける。[#4359](https://github.com/hat47x/tei-platform/issues/4359)のA1（Go式AST）／A2（独自構文）／A3（ハイブリッド）は**Frontend候補**。A4として並ぶ「DSL→Goコード生成」はFrontendの対立案でなく、**Lowering後のBackend/Target候補**として再分類する。A2とA3はGo生成と併用できる。生成Goは意味の正本でなく成果物であり、Go ASTの都合で日常DSLにGo固有の宣言・型を露出させない。Goの式Parserを使う場合も明示した式位置に限定し、Source spanの逆写像を検証する。これは正式構文の採用ではない。
+
+| 比較層 | 候補 | 独立して確認すべきこと |
+| --- | --- | --- |
+| 表層 | 現行TEI、規則文、Markdown表、chain、native SQL参照 | 認知順、Source byte/位置、コメント保持、編集差分、通常Saveでのzero-write |
+| Frontend | A1 Go式、A2独自、A3ハイブリッド | 同じ独立Expectedへの型付き変換、構文境界、診断、依存、選択済みLanguage/Operator Pin |
+| 意味・評価 | 既存標準データ構造、Role、Canonical、Operator、TEI read-only/Simulation候補 | NULL/未取得/空集合/部分取得、粒度・単位・精度・時点、Rule/Decisionの評価順序 |
+| Backend/Target | Goコード生成と単一Binary、Java/.NET/WASM等のTarget実現 | 同じ受理済み意味、実Builder入力、Toolchain、生成Artifact、独立ExpectedとSource位置逆写像 |
+
+**観測可能な同値性を段階化**：#988のEQ0（Source occurrence／ID／Role／型／Pin等）、EQ1（値・判定・unknown/errorの区別）、EQ2（短絡・要求Read集合・診断／拒否・不要なProvider呼出）、EQ3（実Grant／Commit／Effect／Receipt）の既存分類を参照する。**EQ1合格はEQ2を含意しない**。例えばScriptでは入力不正で即拒否するのに、変換後の決定表が不要な非公開Fieldを先読みすれば、最終拒否が一致しても同値ではない。物理Read未観測の場合はEQ2のその部分をNOT PROVENとし、Parserの成功から実行許可を推論しない。
+
+**段階的実装・検証の順序**：
+1. **P0（#4361／#2514）**：既存の数量正数・明細番号一意性の2規則を4表層で比較し、既存評価器から独立させたExpected、既知Mutant、一因子負例を固定。説明ノイズ、重複参照、対象→条件→判定→結果の順序、AIが行う局所修正の誤変更・修正範囲・診断位置を測る。AIだけの比較で「専門家可読性を実証」とはしない。
+2. **P1（#4362〜#4367）**：新規構文は既存Semantic Validationへ限定Loweringしてread-only評価。単一parseのSource Anchor、旧Source互換、Source再読取／stale Patch拒否、元の糖衣の保存を優先。実装していないMarkdownやUnicodeを成功扱いしない。
+3. **P2（#4368〜#4371、#988/#2620/#2621）**：Data/Relation/Context、Function/chain/Query、Business/Decisionへ広げる。取得対象・時点・ScopeとCompletenessを宣言し、native SQL/2waySQLの原文byte・展開branchを区別。Predicate、Validation、Decision、Authorization、Write/Effectを同一演算で黙って代替しない。
+4. **P3（#1063/#1121/#1180/#2586/#2831）**：主要業務の一件について、TEI単独の条件・集計・拒否・状態変化のSimulationが可能か独立Expectedで検証し、その後同じ契約からの生成Go実行を比較する。詳細の外部言語委譲は許す。実Binaryのセルフビルドと実Studio Consumerは別の同一Attempt証拠で判断し、P0の合格を昇格しない。
+
+**既存S0とConformanceへの追加候補（新たなテスト正本は作らない）**：
+
+| ID | 一因子の反例 | 期待と停止線 |
+| --- | --- | --- |
+| DSL-X01 | 同じFrontend意味をA2/A3から同じGo Backendへ渡す | 生成差分をMeaning差に昇格せず、Target実出力を独立Expectedと比較 |
+| DSL-X02 | Decisionへの変換で不要なsecret Fieldが先読みされる | 結果一致でもEQ2不一致。権限拡大で回避しない |
+| DSL-X03 | NULL／未取得／部分集合／空集合をすり替える | 未決policyをゼロ・false・空集合で自動補完しない |
+| DSL-X04 | Source byteは同一でRole/Operatorの推移依存Pinのみ変わる | 過去Evidenceを保持し現在の意味／Build資格を再照合 |
+| DSL-X05 | DSLコメントやMarkdown体裁だけを編集・保存 | 非対象byte不変、意味影響／位置再解決／Build省略資格を別判定 |
+| DSL-X06 | TEI Simulationは業務拒否、生成Go Targetは成功扱い | EQ1 FAIL。Goのexit 0を業務成功にしない |
+
+**方式切替の条件**：A3の式境界・Source span・診断安定性が負例に耐えないならA2へ寄せる。A1が専門家の認知順・表層忠実性を損なうなら内部表現に限定する。A4＝生成GoはFrontend方式の勝敗に連動させず、Target個別の正しさと性能で判断する。方式選択時に、同一Fixture・独立Expected・実修正コスト・ビルド時間を比較する。計画とConformance候補の追補であり、今回の新規実行、正式Grammar/Operator/Runtime採用、Owner意味受理、#1119 Gate変更は**NOT RUN／NOT ACCEPTED**。
+
+
 ### 9.6 用途別に定義するDesign Contextの完全性と、テスト提案・表示・実行の資格（2026-11-07、横断追補）
 
 **主張別の完全性は一列の成熟度ではない**：同じSource/World/Functionでも「設計情報を使ってテスト候補を考える」「Providerの取得結果を検証する」「Function内で表現する」「書込みを実行する」は必要な証拠集合が異なる。すべてに実DB/書込みGrantを要求するとテスト設計や文書閲覧が不必要に停止し、逆に「read-only CLIの結果が完全」を全用途の実行資格に流用すると誤った自動化になる。標準データ構造・標準表現型・Function Contextは共通Carrierとして使うが、**Required ObligationとConsumed Evidenceを利用目的／対象Scope／Consumerごとに判定**する（#2619/#2507/#2497）。
