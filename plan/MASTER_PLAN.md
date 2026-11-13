@@ -455,6 +455,25 @@ SQL/NoSQL/ログ等のリバース結果は、**Physical Observation→Structura
 
 **所有・優先順位**：外部受領とR3は#3394、三要素Modeler／原典忠実性は#1124/#1031/#1125、Relation/Keyは#1126、参照移動は#3788、Query/実Providerは#2586/#2387、SHOは#4317/#4467、旧新移行検収は#4125、独立ExpectedとAttemptは#2514/#1180/#1163、現在開示は#4503/#2516で引き受ける。新Parser・Graph Registry・Host・Owner承認エンジンは作らない。本節は**docs-onlyの設計・反証計画であり、REA-ALIGNの実試験、正式Meaning受理、製品E2E、旧新DB適用はNOT RUN**。Studio Desktop実Wails接続→TEIセルフビルド（#1824/#2831）と一Function実Provider Read（#2586）は、この縦断検証を前提条件とせず並行優先する。
 
+<!-- rea-one-function-witness-20261113 -->
+#### 一機能を端から端まで確かめるための検収単位（設計案・未実行）
+
+**検証する問いを先に固定する。** 最初の問いは「この一つのFunctionが、どのDataを、どの条件・時点・権限で取得し、業務手順のどこから利用されるか」とする。検証票に `Question / Required Sources & Dependencies / Observed / Candidate / Accepted / Actual Read / Unknown & Unexplored` を記録する。REAが返したNode数やEdge数を必要証拠の母集団とはしない。問いに必要な業務手順・Function定義・Data/Key/Relation・実消費SQL/Binding・Plugin/外部依存をまず列挙し、Sourceが無い／読めない／部分的／権限で隠れる／動的経路が未知を分ける。全件取得を証明できない場合、「参照なし」「未使用」「Business手順なし」は確定しない（#4527/#3262/#3788）。
+
+**一機能の小さな縦断**：①REAの実Attempt・元Source版・raw digest・Producer/Provider・Observation/有向Relation ID・Coverage/Unselectedを、#4547と#4548の既存Reader/Operationで固定選択する。②対応候補は外部IDとTEI Qualified Refを別列に置き、`0..N対0..N`、対応理由・反例・保留・参照位置を含む**read-onlyレビュー表**として#1124/#1125へ渡す。TaskActionの存在≠Function呼出し、ProcedureのManual Step≠欠けたFunction、同名のData≠同一業務Keyとする。③明示的に受理した項目のみ既存TEI Sourceへ編集Preview→Save→再Readし、差分・診断・逆引き参照を検収する。AIの選択、SHOへの引用挿入、REAの候補生成は正式Sourceの自動更新を許可しない。④Query/Provider実Readと旧新比較は同一のFunction・引数・読取Scope・業務Key/粒度・NULL/Decimal/順序・観測時点を固定し、**旧実測／受理済み期待値／新実測を別試行で比較**する。#2586のmain統合済み#4539は限定された実PG Read→Contextの基底であり、旧実行・通常製品CLI/Studioの同一受領・意味同値性を証明しない。⑤SHOはSourceに束縛した引用と著者文を分け、Save/別Open時の参照・未解決・Source改版を確認する。正式モデル受理、SHO保存、DB Read、実Effect/Receiptの合格を合算しない（#4317/#4467/#4125）。
+
+**独立Expectedの追加候補（REA-HO-01〜05、すべてNOT RUN）**：
+
+| Case | 固定入力と故障 | 期待する停止線・観測 |
+| --- | --- | --- |
+| REA-HO-01 | REAは外部Relation 1本を返すが、必要な別Source・Plugin・動的呼出しを未探索 | その1本の存在だけを観測済みにし、問いへの必要閉包と「参照なし／完了」をunknownに保持 |
+| REA-HO-02 | X-TEAのTaskActionにFunction参照がない手作業、別Actionには呼出し候補だけある | 業務Stepは保持し、実Function起動・承認完了・業務完了を推定しない。原典とTEI独自拡張の差を明示 |
+| REA-HO-03 | 同名別IDの外部Nodeが正式Dataと誤連結される、または候補RelationがSource編集後に古くなる | 既存Qualified Ref/Source revisionを再解決し、曖昧対応・古いPinはPreview/Saveへ昇格させない |
+| REA-HO-04 | 新旧Functionは件数一致だがTenant別Key・NULL/金額・有効時点・ソート同値順位が異なる | 独立ExpectedでFAIL/unknown。Query/Provider選択や生成ログだけでは同値としない |
+| REA-HO-05 | SHOを保存後にSourceが改版、または外部Evidenceは同digestでも現在の開示権限が変化 | 著者文・元引用・Source参照の資格を別に再確認。旧Receipt・候補・Pinから自動再受理／外部送出しない |
+
+**実施順と既存Owner**：R2 #4548のexact-HEAD/full CIとmain採否→R3 #3394で通常CLI＋独立Consumer受領→#1124/#1125で一件のread-only対応Preview・Ownerによる通常Source編集→#2586/#2387と#2514/#1180で固定Functionの実Read・旧新独立Expected→SHO側の保存/再読取。保存Evidenceの実体と外部開示は#4307/#4503、実行・権限・Effectは#1174、Schema/移行切替は#4125へ委ねる。REA 6.9.0の選択読取・欠落リンク・ページングの版別検収は#3394/#4561に残し、#4257の6.7/6.8合格を継承しない。**ここでは追加のEngine/Registry/正式DSL/承認システムも、Desktopセルフビルドや#2586を止める新Gateも導入しない。**
+
 **検討中の横断追補（DBアクセス・Query/2way SQL）**：対象DataSourceの既存Binding解決、DB別Native SQLの選択規約、SQL編集時の診断と分岐検証、異種DBでの意味同値性を、[DBアクセス・Query選択・2way SQLの最小適合計画](https://github.com/hat47x/tei-platform/issues/2622#issuecomment-6772875802)で小さな実証へ分解する。#2611・#2622・#2387・#2667に既存の責務を残し、新しいCore API・正式DSL構文・実DB対応の採用・完了を意味しない。
 **2026-11-09／Product Queryの物理入力乖離を解消（独立Source Fixture段階）**：[Workbench設計§22](design/DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)と[隔離PG Product Fixture](../examples/data-source-workbench/README.md)に、既存`postgres_seed.sql`の`sales_order`4列と、実`order_entry.recent_orders` SQLが要求する`public.orders`5列＋`:from`の**物理Schema不一致**を反映した。従来F-01〜10を壊さず、専用`recent_orders_product_seed.sql`を別Sourceとして追加し、3行／境界一致2行／後方0行の独立Source-static ExpectedをGoで判別する。**これは実PostgreSQL接続・Provider Invoke成功ではない**。最初の未成立実行辺は、固定Function/Queryの実Consumed SQL+args→Alias/物理Instance/Provider→実Rowset/Function Data Context。Ownerは#2586、実ProductのCLI/Studioは#1251、Schema適用は#2892。main #3540の静的Inspector S2-referenceは実CLI/Wails経路まで前進したが、外部Plugin Build/Grant/2×2実BOMを証明せず、異質JSONLは後続比較とする。新Gate/Host/Query正本なし。
 
