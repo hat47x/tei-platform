@@ -948,3 +948,20 @@ H0/H1はStudioセルフビルドの先行必須条件ではない。H3/H4の既�
 **製品計画との接続**：#1251の実Provider/CLI・Studio二Consumer、#1129の実作用、#4198のGraph全Path Obligation、#1174のEffect/Receipt、#1180/#2514の独立Expectedを使用する。#4601のBuild時Role/Stage2同梱範囲は別軸であり、GeneratorがBuild時だけ必要なことと、実行時Hook Providerが同梱・選択・実呼出しされたことを混同しない。最優先#2831のDesktopセルフビルドと#4570のX-TEA read-only Pluginは、HG-10/11の完了を先行条件にしない。
 
 **受入資格**：この節は現行mainの`reach.go`／`calls.go`／`guarded.go`／`rows.go`／`values.go`の静的比較と、別Draft #4602/#4601の担当確認に基づく**設計・試験計画**。HG-10/11/15の新Go試験、実Provider、実DB Commit、実Windows Studioの実行は**NOT RUN**。
+
+
+### 20.8 Failure伝播の追加境界：最初のFailureと内側の実作用
+
+<!-- hook-nested-failure-review-20261113 -->
+
+[Draft #4602](https://github.com/hat47x/tei-platform/pull/4602)はHG-13/14の最小修正を進めているが、`internal/failure.AsFailure`が`errors.As`で**最初のFailure**を返すという既存仕様を前提とする。`uncertainFailure`がその一件だけを参照するため、外側のFailureが`not_retryable/effectUnknown=false`を名乗り、さらに内側のCommandが`lookup_first/effectUnknown=true`を返す連鎖では、内側の実作用情報が見えない可能性がある。
+
+この懸念から**全error chainを無条件走査する新たな共通分類器を導入しない**。先に、実際のProvider→Command→Hookのエラー生成箇所を列挙し、`Hook.Error`／`NotSatisfied`／中間Provider Errorの組合せで次の独立Expectedを追加する。
+
+| Case | 変える要因 | 独立Expected |
+| --- | --- | --- |
+| **HG-17** | 最初のFailureは作用なし、内側のCommandは作用不明 | 実際に到達可能な連鎖なら、外側だけを見て安全な再送・warn継続へ昇格させない |
+| **HG-18** | 中間Failureなし、最内層の作用不明だけを残す | Draft #4602の既存HG-13/14試験と同じ`lookup_first/effectUnknown`を維持 |
+| **HG-19** | 下位も上位も明示的にclean refusal | 過剰に`effectUnknown`へ昇格させず、通常の業務拒否・warn契約を維持 |
+
+#1174のOperation Identity/Receiptを実際の再送判断の根拠とし、#1129の実作用Hookと#1180/#2514の独立Expectedに渡す。外側Failureが実作用を隠す実経路を確認できなければ、一般化を見送り観測のみ残す。**証拠資格：静的レビュー、追加Go試験NOT RUN**。レビュー指摘は[PR #4602のコメント](https://github.com/hat47x/tei-platform/pull/4602#issuecomment-6847369993)。
