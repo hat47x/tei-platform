@@ -412,6 +412,14 @@ SQL/NoSQL/ログ等のリバース結果は、**Physical Observation→Structura
 
 **検収順**：P0は#4472/#4475の正負回帰＋#3788の既存Source Indexから一Subjectの参照元・参照先一覧（Scope/unknown付き）をCLIで確定、P1で#4515のSubject Pinを利用したStudioキーボード移動と独立同値検証、P2でREA Observationと正式参照を並列表示し、SHO/変更影響・モデル統計に接続する。未受理外部Graphの一部取得を「全体把握・全件未使用確定」とは呼ばない。
 
+### REA製品入場の更新と6.9.0再資格化（2026-11-13、#3394）
+
+**統合状況を更新する。** 横断計画[#4508](https://github.com/hat47x/tei-platform/pull/4508)はmain統合済み。外部EvidenceのReceiver、保存した実REA 6.7.0／6.8.0のbyte・digestによる読取り、Observation／Relation／Coverage／Unknownを扱う型付き候補Readerの最小移植[#4547](https://github.com/hat47x/tei-platform/pull/4547)もmainへ統合した。次段[#4548](https://github.com/hat47x/tei-platform/pull/4548)は、共通read-only `operations.ExternalCandidates`、同Kind重複ID・平行Relationの取り違え防止、および明示PinのExpectedEvidenceID／ExpectedReceivedDigest／ExpectedSourceRevisionを選択前に照合する**未統合の独立PR**である。Sourceの現在性、Workspace/Grant、独立CLI・Studio・MCP Consumerの実受領は別資格とする。元[#4322](https://github.com/hat47x/tei-platform/pull/4322)の大量差分を一括受け入れない。
+
+**外部Providerの版差を継続して追う。** REAの[6.9.0公式リリース](https://github.com/morluto/rea/releases/tag/rea-agents-6.9.0)は保存Evidenceの部分取得、欠けたリンクの検出、ページング、解析対象の拡大等を公開した。これはTEIで6.9.0を実行・検証した証拠ではない。既存[#4257](https://github.com/hat47x/tei-platform/pull/4257)の6.7.0単独JSON／6.8.0 JSONL終端の合格を6.9.0の互換性へ流用せず、#3394のT0-06で固定実版のraw byte／元Source版／選択件数と未取得／metadata／終了状態を独立Expectedと照合する。選択取得・ページングは**取得済み部分集合の精度を高める可能性があるが、全Graphの完備性・現在の利用権限を保証しない**。6.9.0の実ツール・Product Consumer検証は未実施。
+
+**既存の参照検索計画を前提に進める。** 直前のREA-REF-01〜07を新しい索引契約として重複実装せず、#4472のCRUD明示定義脱落と索引誤用、#4475の同Kind重複ID・Fingerprint純粋性の回帰をP0とする。その後、#4548の外部候補とTEI正式モデルの参照集合を**別種の結果として並列に観測**し、#3788の通常Editorと#4515のStudio Subject Pinから同Scope・同Revisionの一致／unknownを確認する。外部Relationが観測されたことは業務Relationの受理、参照件数0は全域未使用、選択Pin成功は現在のDisclosure/Grantを意味しない。未実装・未実行のProduct E2E、REA 6.9.0、Owner受理は**NOT RUN**。
+
 **検討中の横断追補（DBアクセス・Query/2way SQL）**：対象DataSourceの既存Binding解決、DB別Native SQLの選択規約、SQL編集時の診断と分岐検証、異種DBでの意味同値性を、[DBアクセス・Query選択・2way SQLの最小適合計画](https://github.com/hat47x/tei-platform/issues/2622#issuecomment-6772875802)で小さな実証へ分解する。#2611・#2622・#2387・#2667に既存の責務を残し、新しいCore API・正式DSL構文・実DB対応の採用・完了を意味しない。
 **2026-11-09／Product Queryの物理入力乖離を解消（独立Source Fixture段階）**：[Workbench設計§22](design/DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)と[隔離PG Product Fixture](../examples/data-source-workbench/README.md)に、既存`postgres_seed.sql`の`sales_order`4列と、実`order_entry.recent_orders` SQLが要求する`public.orders`5列＋`:from`の**物理Schema不一致**を反映した。従来F-01〜10を壊さず、専用`recent_orders_product_seed.sql`を別Sourceとして追加し、3行／境界一致2行／後方0行の独立Source-static ExpectedをGoで判別する。**これは実PostgreSQL接続・Provider Invoke成功ではない**。最初の未成立実行辺は、固定Function/Queryの実Consumed SQL+args→Alias/物理Instance/Provider→実Rowset/Function Data Context。Ownerは#2586、実ProductのCLI/Studioは#1251、Schema適用は#2892。main #3540の静的Inspector S2-referenceは実CLI/Wails経路まで前進したが、外部Plugin Build/Grant/2×2実BOMを証明せず、異質JSONLは後続比較とする。新Gate/Host/Query正本なし。
 
