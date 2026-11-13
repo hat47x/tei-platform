@@ -810,24 +810,24 @@ StudioのMethod（#4570）、固定PinのUI接続（#4597/#4515）、Function→
 
 **固定照合**：main f3b58e7b580f0ecbea1d2feb156f52c2147f63a7／[Draft #4597](https://github.com/hat47x/tei-platform/pull/4597) head 247a6ba6579d8feab618419c100a1e16bb1fe65a／[Draft #4587](https://github.com/hat47x/tei-platform/pull/4587) head 001b40ce40a6cacddfe75a1e06405958962dd9a8。実装は [#4515](https://github.com/hat47x/tei-platform/issues/4515)、独立ExpectedのOwnerは #1180/#2514、UXは[Draft #4605](https://github.com/hat47x/tei-platform/pull/4605)のUX-23とする。本追補は既存仕様の**実コード上の切断点**を示すだけで、新Pin State／Reader／Approval／Hostを定義しない。
 
-現 main の reference/tei-studio-workbench/main.ts の inspect(subject) は、RPCを始める前に selected、title、renderList、editor.setDocument(pending)、relatedGraph→graph.update、graph.setSelectedNode、source-status を**直ちに変更**する。返信後もEditor・source-status・noticeを更新する。したがって「Pin Aを再資格化するため通常inspect(A)を呼ぶ」実装は、利用者が現在Bを編集している場合、**Bの表示・Dirty Bufferの保全に反する**。既存responses.tsのlane/epoch Guardは後着返信の可視化を守るが、開始前に実行したこれらの同期副作用を取り消さない。
+現 main の reference/tei-studio-workbench/main.ts の inspect(subject) は、RPCを始める前に selected、title、renderList、editor.setDocument(pending)、relatedGraph→graph.update、graph.setSelectedNode、source-status を**直ちに変更**する。返信後もEditor・source-status・noticeを更新する。したがって「Pin Aを再資格化するため通常inspect(A)を呼ぶ」実装は、利用者が現在Bを編集している場合、**現行read-only表示Bの選択・Editor/Graphの非干渉に反する**（未保存Dirty Bufferは将来のWriter/Editorで別実証）。既存responses.tsのlane/epoch Guardは後着返信の可視化を守るが、開始前に実行したこれらの同期副作用を取り消さない。
 
 #4597 pin-state.tsのPinIntentは workspaceId／workspaceEpoch／Subject kind+id／generationを保持し、acceptPinObservationは要求のgeneration/Workspace/Subjectを照合する。ただしSource RevisionやCurrent Grantの検証は**呼出元の責任**。#4587が生成した readInspection はSubject・WorldFP・SourceIndexFPとread-only effectを照合するが、Source-only Drift、Workspace Root/Grantの現行性、Audience Disclosure、実操作Authorityは成立させない。また生成Readerの document.documentElement.dataset へのProvenance/Calls記録は「この実Generated Readerが使用された」観測であり、**Pin A／表示Bのどのlaneで呼ばれたかを単独で識別するReceiptではない**。
 
 **最小Consumer配線案（設計、未実装）**：
 1. Pin Aの独立Requestを #4597 の pinRequest で固定し、既存CatalogのInspect eligibilityを確認する。RPCは既存StudioBridge.inspectSubjectを利用する。表示Bのselectedを切り替えたり、通常inspect(A)を経由しない。
 2. 応答を現在のPin Requestにのみ適用する前に、既存readInspectionの検証とworkspaceEpoch／generationの整合を確認する。Source Revision/Manifest Root/Disclosureの現行性が実Readerで立証できなければ、Pin Intentは保持しつつ observationを needs-requalification / unqualified のままにする。「FP一致＝authorized」にはしない。
-3. 成功・拒否・後着のいずれもAのPin表示領域だけを更新する。BのEditor Document/Dirty Buffer/選択/Graph/Graph Note/通常Notice・Undoを変更せず、再確認のためのAI Context送出・Save・Effect 0とする。検証できる場合のみPinカードの限定read-only観測をinspectedにする。
+3. 成功・拒否・後着のいずれもAのPin表示領域だけを更新する。Bの現行read-only Editor Document/選択/Graph/Graph Note/通常Notice・Undo（将来のDirty Bufferは編集可能Editor成立時に追加検証）を変更せず、再確認のためのAI Context送出・Save・Effect 0とする。検証できる場合のみPinカードの限定read-only観測をinspectedにする。
 4. 同じBrowserで生成Readerが呼ばれたことと、**どのPin Requestが受理されたか**は独立観測とし、全体dataset呼出回数だけから「Aを再確認した」と断言しない。
 
 | 既存受入IDへ接続する故障注入 | 独立に観測する期待結果 |
 | --- | --- |
-| UX-23／PIN-S0-01：AをPinしBをInspectしてDirty編集、Aだけ裏再読取 | Bの選択・Editor文字列・Dirty flag・Graph node/edge・Undo・Noticeはbefore/afterで不変。Pinだけ限定資格更新 |
+| UX-23／PIN-S0-01：AをPinしBをInspectして表示・カーソル位置を確定（Dirty編集は未実装）、Aだけ裏再読取 | Bの選択・Editor文字列・Dirty flag・Graph node/edge・Undo・Noticeはbefore/afterで不変。Pinだけ限定資格更新 |
 | PIN-S0-02/03・ESD-73：同Content/同Fingerprintだが別許可WorkspaceRefへ切替、A→B→A、旧A Replyが後着 | generation/Workspace比較で再束縛0。Source再読取・Grantなしでinspected/currentへ復活しない |
 | STQ-02/12・#4514：Source-only変更でWorldFPは同じ、Catalog/ReaderのFPが一致 | FPだけでは現在Sourceを保証しない。変更を観測できればPin再資格化し、通知未実証なら即時検出を主張しない |
 | #4587 / #4583：Generated Readerの使用回数が増え、A/BいずれかのInspectで同じ契約digestを表示 | 使用回数は実Generated Part利用の証拠、Pin Aの正しいqualified reply受理やBの非干渉は別Expectedで判定 |
 
-**合流の物理条件**：#4597の既存Pin状態モジュールは現在 main.ts に未接続。#4587は生成Inspector readerと生成済みBundle/CIを変更し、#4597とは reference/tei-studio-workbench/package.json が重複する。両PRの**既存test scriptを包含**してSource TypeScriptで接合し、generated artifactを正規手順で再生成・byte照合する。新たなPin実UI、Dirty Buffer保全、通常/生成両Windows WebView2は同一headで実行するまで NOT RUN。#4570の独立 /three-view/ との固定対象共有・Human Acceptanceは別[#4613](https://github.com/hat47x/tei-platform/issues/4613)へ委譲する。
+**合流の物理条件**：#4597の既存Pin状態モジュールは現在 main.ts に未接続。#4587は生成Inspector readerと生成済みBundle/CIを変更し、#4597とは reference/tei-studio-workbench/package.json が重複する。両PRの**既存test scriptを包含**してSource TypeScriptで接合し、generated artifactを正規手順で再生成・byte照合する。新たなPin実UI・表示非干渉、将来のDirty Buffer保全、通常/生成両Windows WebView2は同一headで実行するまで NOT RUN。#4570の独立 /three-view/ との固定対象共有・Human Acceptanceは別[#4613](https://github.com/hat47x/tei-platform/issues/4613)へ委譲する。
 
 ### 16.23 B1 の新しい観測結果と、Studio が提供する判定の上限
 
@@ -838,3 +838,22 @@ StudioのMethod（#4570）、固定PinのUI接続（#4597/#4515）、Function→
 **優先順位**：P0は#4583 B1-B→B2実Windows Stage1 TEI→Stage2 Desktop→B3そのexeの実WebView2。並行して#4515（Pinを実Workbench UIへ）、#4613（三視点のWorkbench入口）、#2586（通常Product Consumerへの実Read）を進める。#4570の三要素Method全部、AI協業、Plugin Profile全閉包、実DB書込をP0のHard Gateにしない。B0 CI成功も、Source Editor・Current Grant・Owner Meaning・L2/L3/G4への自動資格移譲にしない。
 
 **本節のEvidence**：既存Source、PR/Issue、exact-head CIの確認および設計文書の更新だけ。新Go/Node/Windows/Browser試験、実Pin UI、実BuildIntent N2→N3、一つの共通ConsumerとOwner意味受理はNOT RUN。実装と実行証拠はそれぞれの既存Ownerに保持する。
+
+### 16.24 2026-11-13 夜：検証NGでも読めるWorkspaceと、実Workbenchが捨てている資格情報
+
+**新main固定**：3b3fa7ccb7b3b01596abaa573f896ece08dabb6c。[merged #4557](https://github.com/hat47x/tei-platform/pull/4557)の実装/試験は同mainへ統合。mainに紐づく16件のCheckはcompleted/success。内部`model_catalog_validation_test.go`の二つの実Workspace反例は、(a)意味属性の未定義TypeRef、(b)manifestに宣言したSource Rootの欠落。両方とも CatalogWorkspace／MapWorkspace／LocateWorkspaceは**read-onlyでナビゲーション可能**な一方、Validationは`ok=false,errorCount=1`で一致し、Mapは`partial-projection`、Locateはquery-data-dependencyを`notDerived`に残す。3操作は**別々にLoad**しているため同一原子的Snapshotの証明ではない。正常公開RelationのMap/Locate対応は別[Draft #4521](https://github.com/hat47x/tei-platform/pull/4521)が所有し、両試験のCI合格を同一Studio Consumer受領に合算しない。
+
+**実Consumerコードで確認した情報落ち**：現在の`internal/operations.ModelCatalog`は`validation`（`ok/errorCount/warningCount`）と`workspace`（Workspace Identity）および`authorityLimits`等を返せるが、`reference/tei-studio-workbench/presentation.ts`の`Catalog`型と`readCatalog()`は`entries/modelRevision/worldFingerprint/sourceIndexFingerprint`だけを返し、これらの資格メタデータを保持しない。画面の`main.ts`は初回Inspectの**後で独立した`validateWorkspace`**を実行し診断表示するため、Validationが未取得の間にもInspectは閲覧できる。この実装はread-only閲覧の許可として合理的だが、初回の「投影を表示しています」を**構造OK・意味Accepted・現在Grant**と読ませてはならない。
+
+**最小Consumer修正候補（既存Owner #1124/#4515に委譲、未実装）**：`readCatalog`で現在Go Producerが届ける`validation`と`workspace`の形・Scopeを検査し、少なくとも「read-onlyで閲覧可能」「Workspace構造OK／NG／未確認」「Source/Grant/Meaning/Effect未認定」を**別軸**で表示できるようにする。後着の詳細`validateWorkspace`は診断本文であり、Catalog内の短いVerdictを勝手に上書き・別Workspaceへ転用しない。Payloadで`validation`が欠落・曖昧なら`unknown/not-evaluated`、ゼロ値を`ok=true`へ補完しない。閲覧できることを理由にAccepted/editable/executableと表示せず、Validation NGを理由に原因調査に必要なread-only Locate/Inspect自体を無条件禁止しない。OwnerのSource/Auth/DisclosureをUIが複製せず、非公開診断/件数はCurrent Disclosureの範囲内だけで扱う。
+
+| 既存Ownerへ渡す反証（新Case ID・別Expected正本なし） | 期待（Consumerでの独立観測。現時点ではNOT RUN） |
+| --- | --- |
+| [#4557](https://github.com/hat47x/tei-platform/pull/4557)の未定義TypeRef／欠落Root → Catalog→Inspect→Validate | Invalidでも同一Scopeでread-onlyのSource手掛かりを見られ、`validation.ok=false`は隠れない。編集/Apply/実行資格=未確認 |
+| #4557の別Load後にSource/Workspaceが変わる、Validateだけが旧返信で後着 | CatalogのValidationは現在の取得元に紐づき、旧返信が新WorkspaceのOKへ昇格しない。Fingerprint一致だけで現在Source Revisionを断定しない |
+| Goから`validation`を除いた旧/不完全Payloadと`ok=false`のPayloadを比較 | 前者はunknownであり後者はNG。欠損をOKとしない。UI表示可とOwner意味受理・現在Grantは独立 |
+| Partial Map／Locateの`notDerived`家族に対して関連Edgeが0本 | `no relation exists`やWriterなしとは結論しない。未導出範囲をユーザーの問いに相対的に示す（STQ-08/21） |
+
+**Editorの実装上限も訂正**：本mainの`reference/tei-studio-editor/editor.ts`は`createReadOnlyTextEditor`であり、**現在のWorkbenchにDirty Bufferや保存可能な編集操作は存在しない**。§16.22〜23の「Pin A再読取はBに干渉しない」の現時点の実証対象はread-only `EditorSnapshot`のdocumentId/version/text/selection、Graph、通常Inspect応答とDOM/ARIAである。Dirty Buffer・Undo/Save保護は[Draft #4538](https://github.com/hat47x/tei-platform/pull/4538)等の編集縦断を実Studioに接続した**後の受入条件**であり、現行機能を装わない。
+
+**開発順**：#4583 B1-B→B2→B3は最優先のまま、#4515 Workbench Pin UI、#4613三視点入口、#2586実Provider Readは並行。#4557の負例を理由にBuildIntentへ新Validator/Gateを追加しない。新Reader、共通Selection Store、Policy、Host、Engineを作らない。本追補は既存Source/Go Test/CI静的照合と文書修正のみ。新Go/Node/Windows/GUI/Grant/Owner意味受理は**NOT RUN**。
