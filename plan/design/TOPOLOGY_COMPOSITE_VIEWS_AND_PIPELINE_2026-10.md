@@ -771,3 +771,37 @@ Source改版・同offset別Subject・Workspace別Manifest、Rule/Method版、Pro
 **順序**：直近の製品価値に関しては、P（Subject Pin）とR（実Function→通常製品Read）は互いの完成待ちにせず並列、W（実Source編集）は既存Referenceの限定条件を保って独立で進める。DS0/DS2のDesktop/Buildレーンも並行。WをRやMeta-Generatorが完了するまで全面停止しないが、実StudioのEdit ApplyはSource/逆写像/Grant/Acceptance未確定なら明示拒否。Role自己記述[#4536](https://github.com/hat47x/tei-platform/issues/4536)、生成器自己記述[#4544](https://github.com/hat47x/tei-platform/issues/4544)は両者のContract Fitを評価する**並列レーン**で、全StudioのHard Dependencyではない。三要素分析法は原典忠実な**選択可能Method**であり、TEI汎用Graph/Source構造の唯一の正本モデルではない。
 
 **資格**：§16.16〜18は新しいコード・GUI・CLI接続やIndependent Scenarioを実行していない設計追補。実Wails Subject Pin、通常`tei` CLI実DB Read、Reference Editの実UI再接続、Role/Generator二用途、Desktop Stage2、Owner意味受理は**NOT RUN／NOT PROVEN**。本節で旧CIを再実行したとは主張しない。新Runtime Host、Policy、DB Executor、Graph/Artifact Store、Runner/Resolver/Registry、第二Validation/Acceptance/Scenarioを設けない。
+
+### 16.19 2026-11-13 夜：生成Inspector／三視点Plugin／固定Pinの実Consumer資格を分ける
+
+**固定main：f3b58e7b580f0ecbea1d2feb156f52c2147f63a7。** §16.16〜18 の設計Gapに対して、同日後半の実コード・PRを次のように反映する。異なるDraft headのGREENを合算した「同一Desktop機能完成」は認めない。ここでいう三視点は三要素分析法の**選択可能なMethod実装**であって、TEI汎用Coreの必須モデルにしない。
+
+| 実在する経路 | 固定した観測結果／資格上限 | 同じ製品で未確認の接続 |
+| --- | --- | --- |
+| **Workbenchの生成Inspector** | [Draft #4587](https://github.com/hat47x/tei-platform/pull/4587) exact head 8480bdcd1dcb27f6333adefcb179d12048b631f6 のWindows 生成版／通常版WebView2、Repository Health・Embed等15 checkは成功。N0生成TS→N2実esbuildが選択した24入力と出力byte→N3 Wails exe→実WebView2の**指定ファイル・実配信**まで同一Jobで観測。[Draft #4572](https://github.com/hat47x/tei-platform/pull/4572)のInspector Reader自体は一つのread-only部品 | 実Toolchain・Required Sourceのread-time全閉包、N0〜N3の正式BuildIntent駆動、Stage1自身のWindows Stage2、Current Grantは未証明。[#4583](https://github.com/hat47x/tei-platform/issues/4583)のB1-B/B2/B3へ |
+| **三視点のStandalone Studio Page** | [Draft #4570](https://github.com/hat47x/tei-platform/pull/4570) head 8d8f1439d260a3ebb0a633c2f2e040ab25b20cc4のexact-head Checkは18件成功。合成SourceのBusiness→Function→CRUD→Sourceを **/three-view/** とStudio Bridge/Headless経由でread-only表示、Windowsの機械的smokeも含む | 既存 **/workbench/** への入口、通常Pinとの対象／現在性共有、人による受入、実X-TEA Source、受理済みMeaningは別。Contract v0はAccepted Meaningを運ばない。[#4613](https://github.com/hat47x/tei-platform/issues/4613)/[#4615](https://github.com/hat47x/tei-platform/issues/4615)へ |
+| **Workbench-local Subject Pin状態** | [Draft #4597](https://github.com/hat47x/tei-platform/pull/4597) head 247a6ba6579d8feab618419c100a1e16bb1fe65a はpin-intent-contract専用2 check成功。他方、build-and-match-embedded-bundleおよびRepository Healthはfailure。純粋なPin/Undo/Workspace ABA/後着状態遷移の証拠 | 現Workbench main.tsの表示・選択・Inspector/Graph・Browser DOMへの配線は未実装。Pin成功と旧JS埋込Bundle不一致を併記し、Desktop受入を保留。[#4515](https://github.com/hat47x/tei-platform/issues/4515)へ |
+
+**二種類のPinを混同しない**：#4570のcaller-supplied fixed targetが同名・再選択後も保持されたことは、#4597のWorkbench-local Pin Intentが同じWorkspaceRef／Kind＋ID・現Source Revision／Grantで資格化されたことを証明しない。特にX-TEA原Sourceの無ID ActionはSource byte offset／同名ラベルから新規Canonical Subject IDへ昇格しない。三視点のOccurrenceもSource内の位置であり、永続Identityではない。Graphの parent:描画IDを意味Relationへ変換しない。#4570の現在の固定Provider import/選択は、[#4601](https://github.com/hat47x/tei-platform/pull/4601)が扱うApplication Profileによる選択済みPluginの物理閉包・未選択Plugin除外の証明でもない。
+
+### 16.20 同一headへの合流を、既存の3観測で最小検収する
+
+**初回の操作は read-only のまま**、許可済み合成Workspaceについて、(1) /workbench/で一Qualified SubjectのInspectと明示Pin、(2)別Subject Bを閲覧中のPin Aの再確認でもBのEditor/Graph/選択とDirty Bufferを変えないこと、(3)必要な場合にのみ /three-view/へ移動しSource backedな別のSubject・Relationを参照、を観測する。現在のProductに(1)〜(3)が同一HEADで接合済みとは主張しない。UIのB非干渉は[Draft #4605](https://github.com/hat47x/tei-platform/pull/4605)の既存UX-23へ、Pin正負例は#4515/PIN-S0-01〜07へ、同一Source/対象の独立Expectedは#1180/#2514へ委譲する。
+
+| 反例の注入／比較 | 失敗させなければならない無根拠Claim | 参照先 |
+| --- | --- | --- |
+| Pin A保持中にBをInspect、旧A Replyを遅延着信、別Workspace A→B→A | Pin IntentとTransient Selection混線、旧Reply再資格化、Bの現在Editor/Graph/Dirty Bufferの意図しない上書き | #4597、#4515、#4605 UX-23 |
+| 同名異Subject、同Offset別Subject、描画上の同一端点に複数意味Relation | Source位置・Graph Edge・Function CRUDをAction固有Effect/編集可能なRelation IDとして自動昇格 | #4570、#4524、#1031、#1124 |
+| Source-only改版／Grant-only失効、旧DOM・ARIAや公開Tool Resultが残存 | 旧表示の継続公開、Digest一致で旧Grant復活、非公開対象の存在・件数の露出 | #4514、#4504、#2516、#1124 |
+| N0 Sourceと生成TSは変わったがN2旧JSまたはN3旧embedを配信 | 生成されたという記録だけで「実Desktopが使った」をPASS | #4587 B0、#4583 B1-A/B |
+| 実Windows生成Desktop B0は成功、BuildIntent未接続、Stage1からのWindows Stage2実再入なし | 全工程のL2/L3、図中以外のBuilder/入力の不存在、セルフビルド完成 | #4583、#2831、#4486 |
+
+**実務上の合流順**：#4587は同一headの生成・実配信の基線である。#4597のPin Stateはmain.ts/UIに未接続で、#4587と **reference/tei-studio-workbench/package.json** に変更パスが重なるため、単純cherry-pickで両方のテストを加算せず、Source TSの依存とtest scriptsを統合して**生成済みBundleを再構築**し、generated/ordinary両WebView2実Consumerを検査する。#4570は別 **/three-view/**/Studio Bridgeと独立Ownerを維持し、#4613がGUI入口／人による受入を追加する際に同じWorkspace・Pin資格・Source Scope/Disclosureを明示照合する。新Common Pin Registry、別Policy、Method専用Core、Host必須化を導入しない。
+
+### 16.21 Desktop自己再構築への接続優先と本追補の限界
+
+**最優先の実装Gapは#4583 B1-B**：N0変換、N2選択Input/Output、N3埋込Desktopという現在実在する**各工程**を、既存Build Execution／ArtifactSet／Builder・BuildIntentの型とActual Invokerでどこまで表現・実行できるか、同一Build Attemptで適合照合する。実行できない工程はunsupported/unknownと明示する。別Runnerや万能Meta-Interpreterを先行しない。成功したB1の後にB2（**WindowsのStage1 TEI実Process**によるStage2 Desktop生成）とB3（そのStage2 exeの実WebView2）を別々に受け入れる。Linuxの局所Generator Stage2再入をWindows Desktop L3に足し合わせない。Build入力閉包と実Browser Consumerを一つのResult Boolへ統合しない。
+
+StudioのMethod（#4570）、固定PinのUI接続（#4597/#4515）、Function→実Provider→通常Consumer（#2586）、可逆Source Writer（#4538）は**並行**し、B1-BのHard Dependencyにしない。特にMethod/プラグイン/表現図面を増やした成果そのものを、ユーザーの認知負荷低下と取り違えない。Source/Graph位置・Unknown説明・誤った不存在判定・操作回数/時間を、同じタスクで汎用InspectとMethod Viewの対照として評価する（#4487/#2514）。
+
+**証拠上限**：#4587/#4570/#4597の結果はそれぞれの固定headと合成/CI条件に限定。今回の追補は既存PR/CI/Sourceの静的照合・設計編集であり、同一headの新三者統合・実OS再入・新Browser試験・実X-TEA Source・正式Meaning/Grant・Owner受理はNOT RUN。CI失敗のPRは拒否理由を区別して保持し、修正前headの成功や他PRの成功を転用しない。
