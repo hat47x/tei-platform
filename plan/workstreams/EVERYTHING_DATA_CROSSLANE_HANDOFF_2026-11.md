@@ -320,6 +320,46 @@ H0/H1と異質領域の要件探索は並行可能。H2/H4の実Effect資格は�
 **方式切替の条件**：A3の式境界・Source span・診断安定性が負例に耐えないならA2へ寄せる。A1が専門家の認知順・表層忠実性を損なうなら内部表現に限定する。A4＝生成GoはFrontend方式の勝敗に連動させず、Target個別の正しさと性能で判断する。方式選択時に、同一Fixture・独立Expected・実修正コスト・ビルド時間を比較する。計画とConformance候補の追補であり、今回の新規実行、正式Grammar/Operator/Runtime採用、Owner意味受理、#1119 Gate変更は**NOT RUN／NOT ACCEPTED**。
 
 
+
+#### DSLの書換え・実データ取得・増分再利用を同じ一機能で判定する（2026-11-13、横断実装パケット）
+
+**追加の論点**：構文A/Bから同じ型付きMeaning候補へLoweringできても、TEI Query・実Provider・Source Writer・Buildの依存が変わらないとは限らない。とくにSQLの非出力列、NOT EXISTSの否定依存、JOINによる粒度の変化、Decision表への変換に伴う先読み、A→B→Aでの旧応答混入がある。構文を読みやすくした成果と、実際の業務処理を変えない保証は分ける。この追補は前段のEQ0〜EQ3を**既存の同一Subject／Scenarioに具体化する実装引渡し**であり、新たな汎用DSL書換えEngine、Role Resolver、Query Planner、Test SSOTは作らない。
+
+**最初に記録する4種類の依存（分類は検証票用。製品共通enumではない）**：
+
+| 依存の種類 | 既存の確認先 | 見落としやすい一因子 |
+| --- | --- | --- |
+| Source/Syntax | #4359 S0〜S6、#2621、#3788 | 同じIDで元のSource occurrence/span/Language Pinが変わる。内容同一の移動でも引用位置は変わる |
+| Meaning/Operator | #988、#2620、#4536、#1121 | 同じID/結果型でも属性Type、Roleのrequired shape、Operator実装の推移Pin、丸めや評価時点が変わる |
+| Information Demand | #2506、#2586、#2387、#2622 | SELECT非出力のWHERE/ORDER BY/結合条件、NOT EXISTSの0件、部分取得、暗黙のProvider先読み、read scope・grainが変わる |
+| Realization/Consumer | #1063、#2600、#2831、#2514、#2516 | 同じソース・値でも生成器、実Builder/toolchain、選択されたSQL、実呼出Provider、実受領Consumer／現在のGrantが変わる |
+
+**同一試行内で確認する比較票**（既存Receipt/Source Index/Scenarioを参照するread-only集約。新Schemaとして採用しない）：`Source occurrence + Revision + surface/Language selection → Lowered typed subject + Role/Operator pin → Function Context required fields/relations/negative dependencies + actual observed Read scope/grain/completeness → selected Realization + actual Provider invocation → Value/diagnostics/EQ2 observed effects → generated Artifact member + consumer-received bytes`。任意の段で情報が取れないときはそこから先の同値Claimを`NOT PROVEN`とし、存在しない専用CLIやTrace APIを仮定しない。どの証拠も一つのexact HEAD/Attemptへ結べなければ、局所結果を合算しない。
+
+**最小の差分シナリオ（既存#4361の二規則と#2586のD1/D2を再使用）**：
+
+| ID | 同じに見える変更・最小反例 | 何を実際に測るか | 誤って主張してはいけないこと |
+| --- | --- | --- | --- |
+| DSL-W01 | `quantity_positive`を旧構文→新`rule`へ書換え、数量がNULL／未取得 | 旧新の型付きValidation、評価OutcomeとSource span・診断の独立対照 | 値一致だけでSource忠実性・実行資格まで同値 |
+| DSL-W02 | `where(quantity > 0)`の順序／位置変更、後段にsecret/unavailable Field | 実際の要求Read Set、短絡時の診断・可視化、権限拒否の差 | 結果が同じなら先読み・Provider呼出も同じ |
+| DSL-W03 | D1の2明細×D2の3行をJOINして集約 | D1単独SUM=200、JOIN単純SUM=600、SUM(DISTINCT amount)=100、Entity数=2、結果Grain/Lineage | SQL結果行を業務Entityに昇格、DISTINCTを万能な重複除去とする |
+| DSL-W04 | `NOT EXISTS`が結果0件→別Sourceに新行追加、またはpartialのまま0件 | 出力されない否定依存、判定母集団・Predicate・Snapshot/Scope、選択候補集合の再解決 | 0件を空の依存集合や現在の不存在保証にする |
+| DSL-W05 | DSL/Source byte不変で属性Type／Role・Operatorの実Pinだけ変更 | 読まれたRequired/Selected/Actual bytesと型、Meaning・Build・Evidenceの再資格 | ID一致またはSemantic候補値一致で全skip |
+| DSL-W06 | 元表層に一箇所Patch、base revisionが古い／参照が移動／同名二候補 | 同一occurrenceのcurrent Range照合、edit候補→適用の区別、曖昧時reject、通常Saveのzero-write | AIが見つけた似た宣言への暗黙書換え |
+| DSL-W07 | 選択A→B→A、旧epochのRead／Build結果が遅着 | 実Invocation epoch・Consumer受領と依存時点、歴史Evidenceの保存／現在の再資格 | 内容が元に戻ったので旧Receipt/Grantも復活 |
+| DSL-W08 | 同一Meaningの生成Goを実行、selected Generator/Providerとactualが違う | 実Go／builder入力・Target Artifact・実loaded Provider・Outputを独立照合 | Target結果一致とexit0だけで正しいProvider/生成物 |
+
+**書換え適格性の実務判定**：最初は`inspect/compare-only`を基本とする。自動変換可能なのは、(a)Source occurrenceがcurrentで一意、(b)修正した範囲が明確、(c)既存の型・Scope・精度・NULL/empty/partial・Operator Pin・Evaluation Policyに対するEQ0/EQ1が確認でき、(d)必要な読取り・評価順序に差がないか、差の許容が契約で明示されている範囲に限定する。逆写像が多対一、または非出力・否定依存を列挙できない場合は`read-only Diff + explicit review`で止める。元Sourceを正規化結果から無断再生成しない。構文単純化だけなら実ProviderのEQ2を必須としないが、`EQ2が成立`とは記録しない。実I/O・SQL最適化・Rule作用順の変更を伴う書換えは実Reader/Effect側で別試行の資格が必要。
+
+**着手順とOwner別成果物**：
+
+1. **S0/S1〜S6に乗せる最初のSyntactic rewrite**：#4361にW01/W06のExpected参照を追加し、2規則の読み・型付きLowering・診断位置・保存前後byte・元表層保持を確認する。新構文が現行mainで未実装なら`NOT IMPLEMENTED`、実行前なら`NOT RUN`と明記する。
+2. **最初のQuery/Decision rewrite**：#2586 HJ-01〜04の既存D1/D2固定ケースへW02〜W04を接合。#988/#2622のOperator/SQL Ownerが`合法な最適化`を決め、#2506がRequired Contextと実Observed Sliceを確認し、#2514は独立Expected／Mutantを提供する。静的Parsed SQLのScope推測を、実DBやGrantの証拠へ昇格させない。
+3. **Editor／増分／セルフビルド**：#3788/#2621にW06、#2600にW05/W07、#2831にW08を渡す。表層の書換えで生成Goの差分・速度を測る場合も、Semantic Revision、Artifact Set、Build skipとEvidence再利用、Consumerの実利用資格を別欄にする。#2831の同一Build Intent／Stage1→Stage2 Desktopを妨げる新しい先行Gateは設けない。
+
+**終了条件**：独立Expected・既知負例と一件のcurrent Source実消費を対応づけ、少なくともW01（構文）、W03（Grain）、W04（否定依存）、W06（編集拒否）の各一件で、期待通りに成立したClaimと`NOT PROVEN/NOT RUN`を明示できること。W02/W05/W07/W08は後段Ownerへの段階引渡し。修正行数・byte diff・誤修正・再生成時間は可能な範囲で実測し、AIのみの採点や未測定の可読性向上率を出さない。現状は**設計追補のみ／DSL-W01〜W08は新規NOT RUN、製品実装・正式意味受理は未実施**。
+
+
 ### 9.6 用途別に定義するDesign Contextの完全性と、テスト提案・表示・実行の資格（2026-11-07、横断追補）
 
 **主張別の完全性は一列の成熟度ではない**：同じSource/World/Functionでも「設計情報を使ってテスト候補を考える」「Providerの取得結果を検証する」「Function内で表現する」「書込みを実行する」は必要な証拠集合が異なる。すべてに実DB/書込みGrantを要求するとテスト設計や文書閲覧が不必要に停止し、逆に「read-only CLIの結果が完全」を全用途の実行資格に流用すると誤った自動化になる。標準データ構造・標準表現型・Function Contextは共通Carrierとして使うが、**Required ObligationとConsumed Evidenceを利用目的／対象Scope／Consumerごとに判定**する（#2619/#2507/#2497）。
