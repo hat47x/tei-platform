@@ -154,6 +154,10 @@ type selfBuildOuterArgs struct {
 	// that the caller spoke, so an explicit false is honoured rather than defaulted.
 	RebuildCheck    bool
 	RebuildCheckSet bool
+	// StateBoundary asks the reproducibility check to run its second build inside
+	// a Linux mount namespace in which only the state and artifact directories are
+	// writable (#4486 S2). It is opt-in: it needs user namespaces and unshare.
+	StateBoundary bool
 	// Strong asks for an attempt that can support the L2-b claim: it implies
 	// -rebuild-check and requires the in-process route (§4.25 P-4, §4.30).
 	Strong bool
@@ -197,6 +201,7 @@ func newSelfBuildOuterFlagSet(parsed *selfBuildOuterArgs) *flag.FlagSet {
 	fs.StringVar(&parsed.IntentResolver, "intent-resolver", "", "exact executable that resolves the declaration into a plan (I-2)")
 	fs.StringVar(&parsed.IntentResolverArg, "intent-resolver-arg", "", "extra arguments for the intent resolver as a JSON array")
 	fs.StringVar(&parsed.ExpectedPlanFingerprint, "expected-plan-fingerprint", "", "planFingerprint the resolved plan must equal")
+	fs.BoolVar(&parsed.StateBoundary, "state-boundary", false, "run the second build inside a Linux mount namespace where only the state and artifact directories are writable (implies -rebuild-check)")
 	fs.BoolVar(&parsed.RebuildCheck, "rebuild-check", false, "build the same plan a second time in fresh state and compare the artifact bytes (§4.21); on by default when -build-catalog is given, and -rebuild-check=false keeps it off (§4.30)")
 	fs.BoolVar(&parsed.Strong, "strong", false, "ask for an attempt that can support the L2-b claim: implies -rebuild-check and requires -build-catalog (§4.30)")
 	fs.StringVar(&parsed.InProcess.CatalogPath, "build-catalog", "", "build catalog JSON the entry resolves against in process (§4.22)")
@@ -617,6 +622,7 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 			parsed.State,
 			evidence.ChildStateDir,
 			parsed.Output,
+			parsed.StateBoundary,
 		)
 		switch reproducibility.State {
 		case reproducibilityMismatched:
