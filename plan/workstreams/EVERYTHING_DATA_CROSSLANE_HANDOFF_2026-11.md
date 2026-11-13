@@ -394,6 +394,47 @@ H0/H1と異質領域の要件探索は並行可能。H2/H4の実Effect資格は�
 **判断を保留する事項**：同時刻イベントの優先規則、循環の評価方式、離散/連続時刻の統合、数値許容誤差や状態Checkpointの形式、Trait公開Schema、新たな自己記述Role構文は各Domain/PluginのRequiredに対して必要になった場合に比較・Owner判断とする。汎用Coreに先取りしない。ここでのケースは設計上の受入候補であり、**新Parser／Goテスト／実Game/Robot/Provider／Simulator／実Generated Target／Owner意味受理はいずれもNOT RUN・NOT ADOPTED**。
 
 
+
+#### DSLの局所書換えと増分再利用を分けて検収する：必要依存・実観測・逆写像（2026-11-13、追加接合）
+
+**問題の切り分け**：DSLを短い表層へ変換しても、同じMeaning候補へLoweringできること（**解釈の一致**）、表示やQueryで同じ値を得ること（**用途・入力を固定した観測の一致**）、元のSourceへ安全に編集を戻せること（**局所逆写像が定義できること**）は別の主張である。さらに一回の成功評価でたまたま参照しなかったデータは、将来の評価や増分再利用にとって無関係とは限らない。Sourceの元byte・Occurrence・Current Revisionを保持する#4364/#4366と、#2497の構造保存写像、#2582の機能データ文脈の反応、#2600の正しい増分省略を、**一つの固定Subjectの別々の判定**として接合する。新たなRewrite Engine、Dependency Resolver、Proof schemaや一般的な全自動Optimizerは採用しない。
+
+**必要な依存と、観測した依存を混同しない**（以下の集合名は比較票の列名であって製品APIではない）：
+
+| 判定対象 | 追跡するもの | それだけでは証明できないこと |
+| --- | --- | --- |
+| **Potential / Required（宣言・解析側）** | 対象Function/Claimの必要入力、条件分岐の制御依存、Queryの結合・否定・順序・集計・選択Predicate、Target/Plugin/Operatorの解決候補、Scopeと探索可能範囲。未知の動的依存はunknown | 記載があるだけで実Data Read・実Provider呼出しが行われた、あるいは依存閉包が完全 |
+| **Observed / Consumed（実行側）** | 同一Attemptで実際に採用した分岐、実Provider、読んだSource/Value/Query、Result Scope/時点/粒度、生成器・Toolchainの実消費byte。取得できないTraceはunknown | 一度実行しなかった分岐は永久に無関係、未読の新規行/新候補が今後も出現しない |
+| **Coverage / Qualification（用途側）** | Requiredに対し解決・未解決・意図して除外した依存の範囲、取得した集合の完全性、negative predicateの対象母集団、Source/Lock/Model Revision、要求するConsumer | 取得行数0＝不存在証明、あるScopeの完全性＝別Scopeの完全性、過去Receipt＝現在のEffect/Grant資格 |
+
+**read-only評価と安全なskipで必要な証拠は異なる**。固定入力・固定選択のread-only結果には、実Observedと必要な入力の取得資格があれば局所Claimを提示できる。変更後の再評価を省略する場合には、当該Claimに影響し得る**Potentialな制御依存・データ依存・否定依存・Provider選択依存**の範囲を固定し、その範囲に対して変更がない（または結果へ影響しないと独立に確認できた）ことを要する。固定の一回の動的Read traceだけでno-impactを返さない。Required集合の取得根拠がunknownなら、そのClaimのskipはunknownとする。一方、対象Claimに無関係と根拠付きで除外できる未取得D2や用途外Pluginまで、すべてのClaimの利用停止に広げない。#4518の問い相対Required/Observed/Resolved/Unresolved/Excludedも参照する。
+
+**局所Source編集の安全条件（#2497/#3788/#4366に引き渡す判定順）**：
+
+1. **操作を特定**：意味IDの改名、表層の整形、値の変更、Relation参照の編集は別操作。構文のLoweringが可能でも、情報を落とすProjection（Graph→Tree、集計表、短縮表示）からの一意な書戻しは保証しない。編集したいフィールドに対し、元のOccurrence/参照先/書換え粒度が一つに特定できない場合はread-only／候補提示。
+2. **元Sourceへ束縛**：選択Language/Operator pin、対象Workspace/Canonical Subject/Occurrence、元byte range、Base revision、未保存Buffer epoch、非対象部分を識別する。意味ID一致、UIラベル一致、同byteの別Sourceだけでは対象を定めない。
+3. **適用直前に再検査**：外部変更、A→B→A、ファイル移動、同名異ID、複数View、未解決参照、部分的な参照一覧、未知のLanguage Pluginを確認。Current Source上で対象を再同定できなければzero-writeで停止。再整形や構文版変換は、利用者が明示したOperationの範囲だけ。
+4. **局所Patch＋再Parse**：書換え後に対応する既存Parserで値とSource spanを再計算し、指定した変更の意味差分・全参照関係・非対象byteの不変性を照合する。全編を正規化したテキストに置き換える手順を既定にしない。明示的な改名は対象参照の閉包が確認できない場合に適用不可。
+5. **証拠の帰属と表示**：編集候補、適用されたSource変更、Accepted Meaning、実行結果、生成物、Owner受理を別々に報告する。途中失敗・部分書込みでは成功と記録せず、既存Source Editの復旧境界へ返す。
+
+**最小の区別可能な試験候補**（既存#4361/#2514/#1180の独立Expectedへ接続。今回のDSL-DPは専用Runnerや正式Schemaではない）：
+
+| ID | 一因子の変更 | 受入／拒否と見落とす依存 |
+| --- | --- | --- |
+| DSL-DP01 | falseの分岐がsecret参照を短絡し、後でflagがtrueになる | 初回の実Read 0は正常でも、flagの変更で再評価が必要。secretの先読みは禁止。PotentialとObservedを両方報告 |
+| DSL-DP02 | D2が部分取得のとき、D1だけの合計とD2依存のJOIN合計を並置 | 独立D1完全ならその局所合計は使用可能。JOIN/NOT EXISTSの完全性はClaim別に拒否。無関係D2を根拠なく全体失効に使わない |
+| DSL-DP03 | NOT EXISTSが0件と出た後、対象Scopeに一致行を追加する | 旧0件の観測では不存在の証人にならない。母集団と述語の負依存により結果再評価／retract |
+| DSL-DP04 | SELECT * / 暗黙列集合 / Provider選択候補が増える | 旧Consumerの明示Read列が同じでも、結果型・列順・解決候補が変わり得る。Schema/Selection閉包が不明ならskip未資格 |
+| DSL-DP05 | Graph/集計の同じ表示セルへ複数の元辺・行が投影される | 値を読めても逆写像は一意でない。更新対象を推定して書き戻さず、候補／read-only |
+| DSL-DP06 | AI/Studioが古いBufferのspanを新しいSourceへ適用する、または別Occurrenceが同じラベル | Source/Buffer revisionと同定を再確認し、stale/ambiguousならzero-write。適用済みと偽らない |
+| DSL-DP07 | 新旧構文が同じMeaningへLoweringされるがコメント・改行コード・字句が異なる | 無操作Saveでは元byte保持。明示整形のみ対象範囲に限定。Sourceの一致をMeaning同値から推定しない |
+| DSL-DP08 | Source・旧Read結果は同じで、Language/Operator pin・Generator/Toolchain・候補Providerが変わる | Meaning／実消費／生成物／現在資格を別判定。BOM/Lockや実Selectionの再資格化なしにskipとしない |
+
+**第一縦断へ収める順序**：S0の正数判定を旧新二表層で固定→S1〜S3で同じMeaningと正しいOccurrence/span→S5でDSL-DP06/07のzero-write/明示Patch→#2497/#3788で局所逆写像の可否を判定。依存のDP01〜04/08は#2582/#2586/#2600/#4518へ検証票を引き渡し、実データ・実生成物が取れる段階で同じSubject/Attemptを使用する。**P0 Studio Desktopセルフビルドは、DSLの汎用依存解析や全Projectionの編集機構を新規Hard Gateとしない**。再利用の正しさが不明なら安全側のフル再計算で進め、速度最適化は後測する。
+
+**状態**：判定順と反例の設計追補のみ。Source Writer/Parser/Plugin/実Query/増分Scheduler/実Generated Targetの新実装・追加試験は**NOT RUN**。新DSL表層構文の正式受理、Owner意味受理、実効果の許可は**NOT ADOPTED**。
+
+
 ### 9.6 用途別に定義するDesign Contextの完全性と、テスト提案・表示・実行の資格（2026-11-07、横断追補）
 
 **主張別の完全性は一列の成熟度ではない**：同じSource/World/Functionでも「設計情報を使ってテスト候補を考える」「Providerの取得結果を検証する」「Function内で表現する」「書込みを実行する」は必要な証拠集合が異なる。すべてに実DB/書込みGrantを要求するとテスト設計や文書閲覧が不必要に停止し、逆に「read-only CLIの結果が完全」を全用途の実行資格に流用すると誤った自動化になる。標準データ構造・標準表現型・Function Contextは共通Carrierとして使うが、**Required ObligationとConsumed Evidenceを利用目的／対象Scope／Consumerごとに判定**する（#2619/#2507/#2497）。
