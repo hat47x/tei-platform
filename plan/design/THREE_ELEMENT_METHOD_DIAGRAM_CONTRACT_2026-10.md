@@ -1344,3 +1344,29 @@ R0bとR0dは並行に進められる。ただしStudio Desktopをセルフビル
 4. **後続拡張**：Data Scriptの保存・Load/Save hook、SmartDB/XF標準機能、複雑なRelation編集、DB Migration、異質Target/Consumer、性能チューニングへ進める。X-TEAの動的Binder性能を再導入せず、生成を基本とする。
 
 **Owner**：#1824 Studio/Wails、#2831 Self-build、#4495 Entry/CLI、#4539/#2586実Read、#4544 Generator、#1124/#950/#1031 X-TEA原典・三視点、#3278 Trait、#1180/#2514 Expected。#1119のG0〜G4既存受入を置換しない。**状態**：段階・テストの設計引渡しのみ。今回のDS-S0〜S4製品E2E、Fableへの実委任、OS起動、再生成Studio実動作、Owner採用は**NOT RUN / NOT ACCEPTED**。
+
+### 32.5 初回Desktop生成部品の選定とSource束縛Function Reference（2026-11-13）
+
+他チャットの#1121生成系、#2586実Read、#1824 Desktop、#2831 Self-buildを、**同一の完了条件にまとめず、製品縦断で受け渡す**。11月13日時点、[Draft #4559](https://github.com/hat47x/tei-platform/pull/4559) は一つのread-only Function（order_entry.recent_orders）を既存Workspace LoaderとDriver ResolverからGo CLIへ生成するB1 Referenceを追加している。提出者はWSL/Go/隔離PostgreSQLでSource変化への感度・決定性・手書きExpected・実行/引数拒否を検証したと報告しているが、**Draft・未統合**であり、本節では試験を独立再実行していない。
+
+**最初に区別する二つの実装対象**：
+
+| 対象 | 最小実装の出発点 | ここでは成立しない主張 |
+| --- | --- | --- |
+| **D-W：Desktop生成部品（P0-A、最優先）** | 既存Studioの読取Operation（例：CatalogまたはLocate）から、選択した一Subjectのqualified identity・Source位置・Coverageを表示する、TEI生成UI/Serviceの最小部品。既存Application API/Bridgeを使い、起動中の実Wails Desktopでユーザー操作→結果受領→画面反映まで確認する | 単なる手書きStudio実装、Webプレビュー、ファイル生成のみ、別のCLIでの実験 |
+| **F-B1：Source束縛Function生成（#4559、独立Reference）** | 既存Loader/Resolver、Query Source、Target Dialect、生成manifest/実Binary/receiptから、read-only PostgreSQL CLI一件を生成し、独立Expectedと実DBで確認。#4539の手配線Readとの限定比較に使う | Wailsの生成部品、Environment/実Provider束縛の同一性、通常製品tei CLI、実Desktop利用、Host Grant、全件取得、Studio自己ビルド |
+| **B-S：TEI Stage1→Stage2（P0-B、並行）** | #2831の既存BuildIntent/Plan/Go Adapter/Source closureで、実Stage1 TEI Processが次の実Buildを起動し、Artifact/Toolchain/実入力を照合 | F-B1のBinary再生成やGo buildを2回実行するだけでのセルフビルド成立 |
+
+**D-Wの最小実行票（最初の高難度委任、#1824 Owner）**：① 現行mainのStudio Desktopを実OSでclean build・実起動し、既存read-only OperationのResultを確認 → ② 一Subjectだけを扱う部品を既存の生成器選抜/Transform方式に沿って生成し、Sourceと選択Generator、生成ファイル、実Buildで消費したファイル、Loaded Desktopバイトの対応を確定 → ③ 同じ実Desktopでユーザーの対象選択からBridge/型付きAPI/Result/画面までを一往復 → ④ 選択Source/Workspaceを切り替え、旧結果を新結果として表示しない負例を実行 → ⑤ 使用した生成部品を取り除いた場合の独立Expectedの失敗で、手書き代替・未importの生成ファイルを検出する。**Component単体と実Desktop Productを別判定**する。初回は書込・外部DB・AIハーネスを不要とし、業務Meaningの新承認を要求しない。
+
+**F-B1の既知の残差と利用条件（#1121/#2586 Owner）**：
+
+- Queryには入力fromの正式宣言がなく、現B1はSQL中の名前付き引数を暫定的に抽出してmanifestにundeclaredと記録する。これは**正式なFunction入力契約の完成ではない**。将来のEntry/生成実行に渡す際はmissing/NULL/unfetched/型を宣言から再資格化する。
+- 対象SQLファイルは現Source Indexの登録対象外で、B1がSQL SHA-256をSourceRevisionに追加する。**Source Indexが閉じた／依存列挙が完全**という証拠にはならない。Sourceの移動・内容A→B→A・生成器改版での再利用可否は#2595/#2600の既存契約に従う。
+- READ ONLYは生成Sourceの静的確認とREAD ONLY Transactionの参照試験であり、**実行時の書込拒否を意図的に試した試験とT10変異生成器の実検出は未実施**（#4559提出時）。セキュリティ/書込許可の根拠としない。
+- #4559のmanifest/receiptと古いBinary拒否は、**生成物の整合性**の限定Reference。実Provider Binding、現在Grant/Disclosure、Runtime Result、Owner意味受理、Host Effectは別資格。D-WへそのままCLI Binaryを埋め込まず、使えるGenerator/Build/Receiptの共通契約だけを比較してから再利用する。
+- #4539はmain統合済みで、専用CLI経由の実Provider Readという比較基準がある。F-B1はEnvironment経由の実行ではないため、**同じ行が返っても同一Execution/Provider/Scopeとは判定しない**。最初の通常tei CLI/Studio read-only実Readは§31 R0b/R0cとして独立継続する。
+
+**既存Expectedへ返す限定反証**（新Scenario正本を作らない）：D-W1 生成部品がファイルに存在するだけで実Desktop未使用、D-W2 手書きコードが同値Resultを返す、D-W3 Workspace A→B後に旧A応答が遅延到着、F-B1-1 Query SQLだけ変更したのに生成Revision/実Binaryが不変、F-B1-2 SQLのundeclared入力を正式型契約と誤認、F-B1-3 stale Binaryのreceiptのみ書換え、F-B1-4 READ ONLY静的検査のみで書込拒否試験を省く、B-S1 外部Launcherによる二回BuildでStage1自身のStage2実行を捏造。#1180/#2514の既存Scenario/Expected、#2831 SB、#4559 B1試験に紐付け、同じテストを各PRで複製しない。
+
+**Ownerと優先順位**：P0-A D-Wは#1824（Desktop Consumer）と#1121/#4544（生成）で最初の一件。F-B1の生成器品質・正式入力/Source Index残差は#4559/#1121、通常製品Readは#2586/#1251、Stage1再入場は#2831が担当。P0-CのX-TEA read-only三視点#1124はD-Wで使えるSubject/Locateがあればその後に接続し、原典互換の範囲を新たに推測しない。**今回のD-W1〜3、F-B1-1〜4、B-S1を新たに製品実試験したわけではない。D-W実OS動作、Source-bound生成のmain統合、全CI、Stage2実自己起動、Owner意味受理はいずれもNOT RUN / NOT PROVEN。**
