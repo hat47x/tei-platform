@@ -722,7 +722,7 @@ WU-11〜14をWU-06〜10の「全部完了待ち」にしない。前段の**必�
 | ORG-CAP-07 | r7のvalidAt=2027-06-15を固定しknownAt=2027-07-01→07-03でMembership=4→3、FTE=3.0→2.4。Rule/Provider/Policy/Scope/known変更時の再利用資格も再評価し、A→B→Aを同一版としない |
 | ORG-CAP-08 | Scenarioの図・SHO説明・AI提案が成功しても、実異動・Case移管・Effect/ACKは発生していない |
 
-**新たな合成反例（[Draft PR #予定](https://github.com/hat47x/tei-platform/pulls) の独立検証対象）**：ORG-CAP-UNIT-01＝未知Scaleまたは金融bpをfixtureのFTE百分の一へ暗黙変換しない。ORG-CAP-UNIT-02＝同一Relation occurrenceのAllocation重複をMapのlast-value-winsで確定しない。ORG-CAP-07b＝knownAtの遡及訂正はD1・全体FTEに影響し、D2の同じcomplete合成Scopeでは再集計値不変。ただし現実のProvider cohort一致は推定しない。ここで扱うNode Referenceは未採用の試験用interpretationで、TEI製品実Query/単位変換/Cacheとは区別する。
+**新たな合成反例（[Draft PR #4564](https://github.com/hat47x/tei-platform/pull/4564) の独立検証対象）**：ORG-CAP-UNIT-01＝未知Scaleまたは金融bpをfixtureのFTE百分の一へ暗黙変換しない。ORG-CAP-UNIT-02＝同一Relation occurrenceのAllocation重複をMapのlast-value-winsで確定しない。ORG-CAP-07b＝knownAtの遡及訂正はD1・全体FTEに影響し、D2の同じcomplete合成Scopeでは再集計値不変。ただし現実のProvider cohort一致は推定しない。ここで扱うNode Referenceは未採用の試験用interpretationで、TEI製品実Query/単位変換/Cacheとは区別する。
 
 **実装順**：#2510にある既存r7の人数/FTE Referenceを再利用し、ORG-CAP-01/02の純粋なQuantity/Graph集計→03/04のread-only Scenario差分→05/06のRule/Scope/partial→07/08の実Consumer/鮮度へ進める。独立Expectedを実装から生成せず、synthetic oracleのPASSを製品経路の合格と呼ばない。#4490のORG-BEH、#4501のCXケースとの重複Expectedは新規作成せず共有する。最初の製品実Read #2586をブロックしない。
 
