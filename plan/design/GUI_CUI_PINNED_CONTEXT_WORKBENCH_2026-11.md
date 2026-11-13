@@ -575,3 +575,67 @@ SHOではDocument/Buffer/原文byte spanとTEI Sourceを別々に再解決する
 4. 最後に限定Preview→明示Share→実Consumer受領→候補Reviewを縦断する。外部Harnessの種類は製品共通の契約上等価に扱い、個別能力差はProfileで表現する。
 
 **現在の状態**：#4508はmain統合済み。#4579/#4498/#4479はDraft、#4515はOpen。§16は実コードの新実装や実Windows/CLI/Harness試験の実施を意味しない。各PRのCI証拠とmainの製品受入は別扱い。
+
+
+## 17. 2026-11-13 生成Inspectorの実使用をPin実装とセルフビルドへ接続する
+
+> 2026-11-13の横断確認。**Desktopの生成Workbench実Consumer、生成Inspectorの実Consumer、Subject Pin、Desktop全体セルフビルドは四つの異なる証拠**であり、成功を横滑りさせない。既存#4515、#1824、#2831、#4572/#4579のOwnerとテスト正本は維持する。
+
+### 17.1 現時点の実装基線と証拠上限
+
+| 実装・PR | 実際に記録された事実 | 本設計で追加すべき接続／非Claim |
+| --- | --- | --- |
+| [#4579](https://github.com/hat47x/tei-platform/pull/4579) | exact HEAD `5b9fb2a5300ac0b2b33476ade753596693c3407e`、Windows Wails WebView2の`generated-desktop-webview2-smoke` CI成功。実WebView2が取得した生成JSのSHA-256は`351bedd94693e80d08baca611625368c05ff59450f27c79c5a6ebc0c6e247d63`、681,264 bytes。Catalog 72件、指定Subject Inspect、Validate error 0/warning 3 | 指定Fixture/Toolchain/PR HEADのread-only Desktop Consumerのみ。Pinの状態保持、全製品のBuild Intent、main統合、全環境の再現を意味しない |
+| [#4572](https://github.com/hat47x/tei-platform/pull/4572) | 契約`inspection-reader.contract.json`→既存transform→`inspection-reader.generated.ts`→esbuild→Go embed→実Desktopで`readInspection`使用。PR記載の局所Node/Go/Windows検証とStage1→Stage2生成器再実行の観測 | **生成した部品が実使用されたこと**を認める。esbuild/Wails/Go embed全体がTEI Build Graphに登録されている、Stage2のGo childがSeed非依存、Pin実装済みとはしない。PR本文ではCI未実行と明記 |
+| [#4548](https://github.com/hat47x/tei-platform/pull/4548) | REA ExternalCandidatesのSource Revision/受領Digest照合を限定Go契約CIで実証。Parent Receiver #4547はmain統合済み | 外部候補のPinに近い意味論の参考。**GUI Subject Pinの再資格化やHost Grantを代行しない**。REAのCandidate/ObservationをTEI Meaning/Studio選択へ自動昇格しない |
+| [#4515](https://github.com/hat47x/tei-platform/issues/4515) | 現行Workbench Subject Pinの実装票がOpen | 本Issueに実コード変更・実Consumer試験がない限りPinは未実装 |
+
+PR本文にある`Pin`や`Source Pin`は、生成時の**入力・版の固定**を指す場合がある。GUI利用者がSubjectを明示的に固定する**Pinned Target**と名称だけで同一視しない。
+
+### 17.2 最小の実装接続：生成Inspectorを再利用し、Pinは別の状態として持つ
+
+```text
+Workbench local:
+  focus/selected Subject ── InspectSubject(workspace,kind,id) ──► Product Reader
+            │                                                 │
+            └─ explicit Pin ─► Pinned Intent                  │
+                                  │                            │
+                                  └─ explicit Reinspect ────────┘
+                                            │
+                                  current observation / unknown
+```
+
+- Pinを作る前に**現在のProduct Readerで一意に解決できるか**を確認する。失敗時もIntentを記録できるUIなら`unqualified`と表示し、現在解決済みと混同しない。
+- `readInspection`の**生成版**と既存`inspectSubject`の契約・返却Subject・Source/Workspace identityを照合する。Generator Sourceを変えずにUIの状態管理を追加できるかを先に検証し、生成物への直接手修正は避ける。
+- Pinは`selected`、Catalog表示用`parent:` Edge、Inspectorの一時Result、AI Task/Session、生成器入力Source Pinとは別。Graphの意味Relation occurrenceは#1124の正式Source-backed Resolverが揃うまで`unsupported`。
+- Studio Desktop/CLIでの**同一Qualified Subject**対照は、生成Inspectorが存在するだけでは成立しない。実ConsumerのRequest/Result、Source Revision/Failure class、生成部品の使用記録を同一Fixtureで照合する。
+
+### 17.3 セルフビルドを過大評価しない四段階の証拠票
+
+| 段階 | 必要な観測 | 未実証なら何と記すか |
+| --- | --- | --- |
+| **B0 生成Source** | 契約・Generator版・Source byte→生成`readInspection` byte、独立Expected | 生成物一致の証拠なし |
+| **B1 実Desktop使用** | 生成部品がesbuild→Go embed→WebView2→StudioBridge経路で実使用、実取得byte/結果を観測 | 表示だけ・埋込みだけでは実使用未証明 |
+| **B2 TEI管理のBuild Graph** | Build IntentがGenerator・esbuild・nested Go module・Wails・embedを入力/成果物/版として束縛し、部分変更で正しく失効 | Stage1が部品だけ生成してもDesktop Build Graphは未完 |
+| **B3 Stage1→Stage2 Desktop再構築** | Stage1 TEIプロセスがStage2 Desktop Buildを起動、同一Source/Toolchain条件と独立Receipt、Seed child依存を明示 | 単体Generatorの再入・外部手動Buildを製品全体セルフビルドと呼ばない |
+
+B0/B1の実装証拠は#4572/#4579の**それぞれのHEAD/環境**に束縛される。二つのPRの成功を合成して、まだ存在しない同一統合HEADのB2/B3 PASSを作らない。
+
+### 17.4 #4515へ渡す追加Expected（既存PIN-S0/S1/S2の実行差分）
+
+| Case | 独立Expected | 先行して使う現実装 |
+| --- | --- | --- |
+| PIN-GEN-01 | 生成`readInspection`を呼ぶSubject AとPin Intent Aが一致。Focus/別Subject BのInspect後もPin A維持 | #4572の生成Reader、#4515のWorkbench state |
+| PIN-GEN-02 | 生成ReaderのSource/Contract Revision変更、旧Async Result後着でPin Aの現在資格を自動復活0 | #4572生成物の失効、既存`responses.ts` |
+| PIN-GEN-03 | 同じ表示名/同offset/同FPの別Workspace A/Bで、旧PinをBへ誤再束縛0 | #4504 Source同一性負例、#4515 |
+| PIN-GEN-04 | 生成JSの実WebView2配信byteとBuild Input一致、Pin画面操作を別途観測。JS一致だけでPin PASSにしない | #4579実Desktop smoke |
+| PIN-GEN-05 | TEI Stage1→Stage2がInspector生成だけ実行しても、esbuild/Wails/nested module未管理ならDesktopセルフビルドPASS=0 | #4572/#2831 |
+| PIN-GEN-06 | 参照数0・Dynamic/Plugin未探索のSubjectをPinしても、未使用確定/現在Grant確認済みと表示0 | #1124参照探索、#2516 Disclosure |
+
+**テストと実装の順序**：#4515の`reference/tei-studio-workbench/main.ts`でPinの局所状態と実Reader照合を実装→Source TypeScriptの型/単体/生成Bundleを検証→#4572の生成Readerを組み込んだ同一HEADで再検証→#4579のWindows WebView2実Consumerへ拡張→#2831のB2/B3 Build Graphへ受入証拠を接続する。途中で複数PRを未統合のまま合成した結果をPASSと報告しない。
+
+**他チャットとの整合**：X-TEA三要素分析法のPlugin化ではSource Adapter隔離と生成Host公開操作数の契約を緩めない。SHO Editor/Document Writerは独立のBuffer/Revision/Save資格を維持する。REA候補の固定Evidence/SourceRevision照合は有用な負例だが、Product/Owner Meaning/Grantの別Authorityを飛び越えない。DSH/Codex/Claude Code等のHarnessは共通Tool/Operation契約を先行し、製品固有Skillの常駐を必須化しない。
+
+**計画反映**：本節は#4479の実装接続規範。#4515がPin UI、#4572が生成Inspector、#4579が実Desktop Consumer、#2831がセルフビルドの実証Owner。mainのMASTER_PLANにはすでに#4515とDesktopセルフビルドの作業領域があるため、並行変更の多い正本へ本節を複製しない。実装結果・CI・独立Expectedは各OwnerのIssue/PRへ追記する。
+
+**状態**：この節はPR本文・局所CI記録の照合と設計接続であり、#4515のPin実装、#4572/#4579のmain統合、B2/B3製品全体セルフビルド、実SHO/TAI Handoffの成功は主張しない。
