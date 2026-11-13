@@ -562,6 +562,8 @@ return {
   connection: document.querySelector('#connection')?.textContent ?? '',
   subjectTitle: document.querySelector('#subject-title')?.textContent ?? '',
   sourceStatus: document.querySelector('#source-status')?.textContent ?? '',
+  inspectionReader: document.documentElement.dataset.teiInspectionReader ?? '',
+  inspectionReaderCalls: Number(document.documentElement.dataset.teiInspectionReaderCalls ?? '0'),
   notice: document.querySelector('#notice')?.textContent ?? '',
   diagnosticSummary: document.querySelector('#diagnostic-summary')?.textContent ?? '',
   editor: editor?.innerText ?? '',
@@ -630,6 +632,24 @@ return {
         if page_state.get("editorEditable") != "false" or page_state.get("graphLabel") != "読取り専用グラフ":
             raise RuntimeError("Workbench source or graph is not marked read-only")
 
+        # The Inspector reader is generated from a contract Source. The part
+        # records the digest of that contract on the document only when it
+        # accepts a projection, so this observes the generated part running in
+        # this WebView, for the contract on disk now, rather than its presence
+        # in the bundle. The digest is recomputed here from the contract bytes.
+        contract_path = Path(__file__).resolve().parents[3] / "reference" / "tei-studio-workbench" / "inspection-reader.contract.json"
+        contract_canonical = json.dumps(json.loads(contract_path.read_text(encoding="utf-8")), separators=(",", ":"), ensure_ascii=False)
+        expected_reader = "sha256:" + hashlib.sha256(contract_canonical.encode("utf-8")).hexdigest()
+        facts["generated_inspection_reader"] = {
+            "expectedContractDigest": expected_reader,
+            "observedContractDigest": page_state.get("inspectionReader"),
+            "acceptedProjectionsAfterInitialInspect": page_state.get("inspectionReaderCalls"),
+        }
+        if page_state.get("inspectionReader") != expected_reader:
+            raise RuntimeError(f"Inspect was not rendered by the Inspector reader generated from the current contract: expected {expected_reader}, observed {page_state.get('inspectionReader')!r}")
+        if not isinstance(page_state.get("inspectionReaderCalls"), int) or page_state["inspectionReaderCalls"] < 1:
+            raise RuntimeError(f"Generated Inspector reader did not record the initial Inspect: {page_state.get('inspectionReaderCalls')!r}")
+
         # Invoke the same registered Host methods through Wails' runtime and compare
         # their values with the actual WebView projection, rather than relying on a mock.
         bridge_script = """
@@ -693,6 +713,10 @@ const [kind, subjectId] = arguments;
             time.sleep(0.2)
         if graph_state.get("subjectTitle") != child.get("id") or json.loads(graph_state.get("editor", "null")) != graph_response.get("value", {}).get("canonical"):
             raise RuntimeError("Graph selection did not render the Host Inspect canonical projection")
+        # A second Inspect must pass through the same generated part again.
+        facts["generated_inspection_reader"]["acceptedProjectionsAfterGraphInspect"] = graph_state.get("inspectionReaderCalls")
+        if graph_state.get("inspectionReader") != expected_reader or graph_state.get("inspectionReaderCalls", 0) <= page_state["inspectionReaderCalls"]:
+            raise RuntimeError(f"Graph Inspect did not pass through the generated Inspector reader: {graph_state.get('inspectionReaderCalls')!r}")
 
         validate_click = """
 const button = document.querySelector('#commands button[data-command-id="validate"]');
