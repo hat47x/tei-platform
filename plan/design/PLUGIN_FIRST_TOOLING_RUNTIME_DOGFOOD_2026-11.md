@@ -921,3 +921,30 @@ H0/H1はStudioセルフビルドの先行必須条件ではない。H3/H4の既�
 **証拠資格**：現在mainのHook・Failure SourceをGitHubで静的読解。上述HG-10〜16のGoテストと本番Provider/実Effect、実Desktop、Graph Compilerはこの追補では**NOT RUN**。コード上の潜在的な順序・二重実行・Failure伝播の懸念を、実行済み事故や検証済み回帰と混同しない。
 
 **HG-13/HG-14の実装状況（11/13追記）**：[Draft PR #4602](https://github.com/hat47x/tei-platform/pull/4602)が、Hook Errorの下位Failure伝播とEffect不明時のwarn継続拒否を局所実装し、RunSequence/RunReachable/RunRowsの回帰試験を追加している。**Draft・未マージ**であり、実DB Commit/二重呼出し（HG-10/11）やDesktop E2Eの合格は主張しない。#3807はCLI失敗符号統合の完了Issueであり、今回の実作用Hookの実装Ownerに置かない。
+
+
+### 20.7 呼出し主体の確定と、実作用を伴うHookの段階的な解禁
+
+<!-- hook-call-ownership-gate-20261113 -->
+
+**設計判断**：`uses`は既存DSLでは「宣言したCapabilityを呼ぶ」という実行上の約束として実装されている（`calls.go`の`RunDeclaredCalls`と`reach.go`の説明）。したがって、既存の意味を無断で「呼出し可能な上限だけ」に変更しない。一方、`Guarded`のようにImplementation自身が`RunWithCaller`から同じCapabilityを呼ぶ構成も存在する。両者を一つのHookに合成する場合、**同じEffectの呼出し主体を一つに定めること**を、TargetへのBinding適格化条件とする。新しいCore enumや独立Runnerは不要であり、まず既存`Runner`の入口と`Declared`の呼出し境界で検証する。
+
+| 実行方式の候補 | 実Callの主体 | 初期の適格範囲 | 不適格とする組合せ |
+| --- | --- | --- | --- |
+| **宣言駆動** | `RunDeclaredCalls`／`RunRowCalls`が`uses`を実行 | pure/read-only、または事前Guardと実作用回数が独立に証明できる単一Command | GuardをImplementationが実行するのに先行Callが起きるもの、同一Capabilityの重複実行 |
+| **実装駆動** | `CallingImplementation.RunWithCaller`が`Declared`経由で呼ぶ | `Guarded`のように判定→Callの順序を局所テストで固定できるもの | 自動`uses`呼出しを併用し、同じEffectが二度到達するもの |
+| **提案値駆動** | `ProducingImplementation`は値を提案し、Hostが別途採否を決める | `ProducesFor`で宣言属性と値を検査するpure/derive | 値の提案をDB Commit済み・外部Effect済みとみなすもの |
+
+**重要な制約**：上表は正式DSL構文やProviderの動的切替方式を採用する決定ではない。既存Hookモデルが呼出し方式を識別できない間は、effectful Targetについて自動呼出しと実装内呼出しの混在を**未適格として止める**。黙って片方の呼出しを省く修正は、既存`uses`の実行保証を壊し得る。全ての`uses`を自動で安全なeffectful Callに変換することもしない。Source上の明示Binding、実行主体、Call/Receiptの同一Attempt対応を確認できる限定ケースから解禁する。
+
+**最初の縦切り（HG-10/11の実施順）**：
+
+1. `Guarded`と記録用Callerを使い、`Run`、`RunReachable`、`RunBeforeChange`、`RunRows`それぞれの実Call回数・順序・引数を**現行の挙動として観測**する。観測値は現行の互換性証拠であり、安全な期待値をそこから逆算しない。独立Expectedは「Guard拒否時は実作用0」「対象行ごとに許された回数を超えない」から作る。
+2. `uses`と`Guarded`を同時に指定した構成、Guard拒否、Caller拒否、途中でACKが失われた構成を一因子ずつ試す。`PhaseReport.Calls`に記録される自動Callと、Implementation内Callを合わせた**境界到達総数**を記録し、Reportだけで回数を証明したことにしない。
+3. 二重CallまたはGuard前Callが観測されたBindingは、effectful Targetでは不適格として扱う。改善案は既存`Declared`・`Runner`の中で「一つの呼出し主体」を守れるか比較する。重複防止をOperation IdentityやIdempotencyだけへ丸投げしない。
+4. HG-13/14は[Draft #4602](https://github.com/hat47x/tei-platform/pull/4602)が局所実装を担当する。Failureの外側分類と`NotSatisfied`のCause、`warn`継続停止の結果は、同PRの最新headで再確認する。HG-10/11が解決したと読み替えない。
+5. HG-15は実Read側の`Required/Loaded/Bound`と行Scopeを結ぶ。取得完全性が不明な場合、0行の`RunRows`がnilを返しても「Rule全件評価済み」にはしない。
+
+**製品計画との接続**：#1251の実Provider/CLI・Studio二Consumer、#1129の実作用、#4198のGraph全Path Obligation、#1174のEffect/Receipt、#1180/#2514の独立Expectedを使用する。#4601のBuild時Role/Stage2同梱範囲は別軸であり、GeneratorがBuild時だけ必要なことと、実行時Hook Providerが同梱・選択・実呼出しされたことを混同しない。最優先#2831のDesktopセルフビルドと#4570のX-TEA read-only Pluginは、HG-10/11の完了を先行条件にしない。
+
+**受入資格**：この節は現行mainの`reach.go`／`calls.go`／`guarded.go`／`rows.go`／`values.go`の静的比較と、別Draft #4602/#4601の担当確認に基づく**設計・試験計画**。HG-10/11/15の新Go試験、実Provider、実DB Commit、実Windows Studioの実行は**NOT RUN**。
