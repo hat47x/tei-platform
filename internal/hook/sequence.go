@@ -188,8 +188,13 @@ func wrapFailure(err error, declared *application.Hook) error {
 		}
 		return err
 	}
+	// A warning can be continued only when the failed hook did not leave an
+	// unresolved effect. The called Command/Provider may have committed before
+	// its acknowledgement was lost; continuing here would permit another effect.
 	if declared != nil && declared.Failure == "warn" {
-		return &Warning{Err: err}
+		if _, uncertain := uncertainFailure(err); !uncertain {
+			return &Warning{Err: err}
+		}
 	}
 	return &Error{Code: "HOOK_REJECTED", Message: err.Error(), Cause: err}
 }
