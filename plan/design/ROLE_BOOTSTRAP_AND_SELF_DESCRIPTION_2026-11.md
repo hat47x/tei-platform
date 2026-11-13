@@ -1424,3 +1424,12 @@ GD-1はexact PR HEADのSource/Command/Responses/Graph Pinと同一fixtureからG
 新しいJobを含む[#4579](https://github.com/hat47x/tei-platform/pull/4579) HEAD `5b9fb2a5300ac0b2b33476ade753596693c3407e`について、2026-11-13のPR Open後に`TEI Studio Wails Desktop WebView smoke`などのGitHub Actionsがqueued/in_progressであることを確認した。**本段階ではCI successは未確認**。正確なWorkflow run／Job step／exact HEAD／生成bundle digest／実WebView2 snapshot／失敗時のlogを取得して検収する。`server`版Green、ordinary Desktop Green、生成版native Desktop Greenは別Claimとする。直接確認できないものはNOT VERIFIEDと表示し、推測したPASSにしない。
 
 **今回の追加は設計§28と実CI Draft PRの新設であり、セルフビルドStage1→Stage2、X-TEA native Desktop実受入、実DBのStudio受領はまだ完了していない。** 既存#1119 G0〜G4／#1180独立Expectedを変更せず、Source/Build/Consumerを連鎖させる最初の狭い実証を優先する。
+### 28.4 2026-11-13 実Windows Generated DesktopのCI観測（PR #4579 exact HEAD）
+
+[TEI Studio Wails Desktop WebView smoke Run #43361607881](https://github.com/hat47x/tei-platform/actions/runs/43361607881) において、[Draft PR #4579](https://github.com/hat47x/tei-platform/pull/4579) HEAD `5b9fb2a5300ac0b2b33476ade753596693c3407e` の**新規 generated-desktop-webview2-smoke Jobは completed/success**。同Runの ordinary `desktop-webview2-smoke` Jobも completed/success。重要なのは、二つのGreenを加算したのではなく、**新Job一件の中で生成Source→native Windows Wails exe→実WebView2を接続して合格した**ことである。
+
+実Jobログで確認した限定証拠：Windows上の固定PoC B／Workbench生成・Pin／Go/TypeScriptの型・テスト・esbuild、`studio_generated`（`server`なし）Desktop exe Build、実WebView2テストがsuccess。`generated-workbench-asset-verified` は `/workbench/main.js` **681,264 bytes、SHA-256 `351bedd94693e80d08baca611625368c05ff59450f27c79c5a6ebc0c6e247d63`**を報告し、生成時SHAと実WebView2から再取得したbyteの一致を確認した。`workbench-catalog-inspect-validate-verified` はCatalog **72件**、初期`sales.order`→`sales.order.order_id` Inspect、検証表示**エラー0・警告3**、実画面パス`/workbench/`を記録。参照Editorはread-only、実WebView2キーボード検査も成功。これらは**このHEAD／固定Workspace／このRunnerの有限な正例**である。
+
+**今回更新できるClaim**：§27のGD-1〜3、§26のDS1について「固定PoC B Generated WorkbenchをWindows Wails実Desktopへ収録し、実WebView2/IPC/Hostから利用できた」ことの限定実証。DS0 ordinary Desktopも同一Runの別Jobで成功。`#4559`のFunction生成や`#4570`の三要素Plugin、DB Provider、Role Interpreter一般化の資格は付随しない。**DS2/GD-4 Build IntentからのTEI駆動BuilderとDS3/L3 Stage1自身によるStage2再入は依然NOT RUN/NOT PROVEN**。Buildに含まれる全依存、OS境界W、全Platform、現在Host Grant・業務Ownerの意味受理も証明しない。
+
+**次の実装引渡し**：#2831は今回の生成Source/Toolchain/Build Target/実Exe digestを`BuildIntent→actual Builder input→Stage1 Process→Stage2 Desktop Artifact`に接続し、Runnerが外部から2回buildする偽L3と区別する。#1824はこの実WebView2 smokeを退行基線として維持し、#4570の三視点Pluginは同じConsumer契約へ接続する際に別途実検収する。新規Registry、Proof Store、E2E Runnerを作らない。
