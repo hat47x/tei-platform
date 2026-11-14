@@ -881,7 +881,7 @@ QX-01〜08は既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)�
 
 [State観測 Draft #4537](https://github.com/hat47x/tei-platform/pull/4537)のeffect-observedはStateへの実書込みを表すが、初回Stateを二回目にコピーするChildの隔離違反を見逃す負例が存在する。declared-onlyでも現l2b.claimedはtrueになり得る。**観測した実Effect・同Byte再現・OS隔離・Seed Trustは別資格**。#4648と#4537はcmd/tei/cli_self_build.go、cli_self_build_outer.go等が競合するため、Ownerが統合順を決めた同一HEADでGo/opt-in実Childの再検収が必要。#4486の隔離と#2831/#1119のToolchain Plan入力化を既定要件として先取りしない。
 
-Studio P0の同一Attemptには、正式non-Plugin Subject→Builder/実Child→実Toolchain Observation（不明ならそのまま）→State Effect/未隔離範囲→N0/N2/N3実Source/Member→Stage1実Process→生成Stage2実Windows Consumerを独立Receiptで繋ぐ。新中央Runner、TEI専用Host、第二Artifact Storeを作らない。
+Studio P0の同一親子Attempt系譜には、正式non-Plugin Subject→Builder/実Child→実Toolchain Observation（不明ならそのまま）→State Effect/未隔離範囲→N0/N2/N3実Source/Member→Stage1実Process→生成Stage2実Windows Consumerを独立Receiptで繋ぐ。新中央Runner、TEI専用Host、第二Artifact Storeを作らない。
 
 ### 26.4 YIC/AI HarnessでのConsumer境界
 
