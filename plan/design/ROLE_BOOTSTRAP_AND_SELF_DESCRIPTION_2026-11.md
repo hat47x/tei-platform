@@ -2,7 +2,7 @@
 
 **状態：横断設計候補／実TEI Core・DSL・Role Resolverへの採用前。** 本計画の設計上の中心は、標準データ構造でRole/Operator/構文Plugin自身を記述可能にしながら、**その自己記述を初めて読むための有限な解釈の根**を明示し、循環と未決、実行資格の区別を機械検査できるようにすること。
 
-**現時点の読み方（2026-11-14）**：第1〜39節は設計判断と過去の試行を記録したものであり、すべてが製品に実装されたわけではない。今回の実装順と、JSON Schemaなどの外部定義を図解・診断へつなぐ具体案は[第40節](#40-2026-11-14-外部の宣言を読みやすく投影し安全に編集するための実装順)にまとめた。最優先は引き続き**TEI Studio Desktop自身によるStage2構築**であり、外部Schema対応や構文自己記述を新たな前提条件にはしない。
+**現時点の読み方（2026-11-14）**：第1〜39節は設計判断と過去の試行を記録したものであり、すべてが製品に実装されたわけではない。JSON Schemaなどの外部定義を図解・診断へつなぐ最初の実装は[第40節](#40-2026-11-14-外部の宣言を読みやすく投影し安全に編集するための実装順)に、業務の意味から説明・図・Mock検証・実行へ展開する際の境界は[第41節](#41-2026-11-14-業務の意味から説明図解実行を展開する自己記述dslの最小実装境界)に整理した。最優先は引き続き**TEI Studio Desktop自身によるStage2構築**であり、外部Schema対応や構文自己記述を新たな前提条件にはしない。
 
 - **横断Owner**：[Everything is Data #2619](https://github.com/hat47x/tei-platform/issues/2619)、[標準構造・意味Role #2620](https://github.com/hat47x/tei-platform/issues/2620)。
 - **実装Owner**：[DSL Language/Operator Plugin #988](https://github.com/hat47x/tei-platform/issues/988)、[Plugin/Service Contract #951](https://github.com/hat47x/tei-platform/issues/951)、既存Semantic Extension Lock／Source/Accepted Meaning。独立のParser Registry・Extension Resolver・実行Hostを新設しない。
