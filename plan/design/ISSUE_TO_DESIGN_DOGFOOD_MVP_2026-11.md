@@ -1239,3 +1239,62 @@ Focus（一時選択）、Pin（対象への意図）、Activity（作業文脈�
 同様に`order_entry.recent_orders`ではRA-0のSource入力型、RA-1のExecutor前拒否、RA-2の実PG Reader、W1〜W3の被覆理由、RA-2P製品`tei` CLIとConsumer受領を階層別にする。Referenceの3/3や構造Preflightを正式Provider実行・公開・現在Grantへ飛び越させない。異質なConsumer側のAudience/Source Revision/Deliveryを検収する場合は[横断受入 Draft #4653](https://github.com/hat47x/tei-platform/pull/4653)と既存#2516へ引渡し、dogfood文書が第二Policy/Consumer正本にならないようにする。
 
 **本節の限界**：実Go Source照合＋新HEADの既存CI観測と、実行Ownerへ渡すDG0/Source診断の設計追補である。今回、新しいGoテスト・Windows E2E・Stage1→Stage2 Desktop・実PostgreSQL Product CLI・Owner意味受理は**NOT RUN**。#4651はdocs-only Draftを維持し、旧HEADの局所実績と新HEADの現在CIを取り違えない。
+
+<!-- tei-studio-20261114-cross-discussion-integration-v1 -->
+### 15.32 Studioの横断設計を「同じ意味への複数の入口」として統合する（2026-11-14）
+
+他の設計レーンで成熟した方針を、Studio固有の第二正本へコピーせず、一つの利用者仕事から観測可能な契約へ引き戻す。StudioはData/Function/Business・関係・処理・Source・文書・試験の**共通Workbench**だが、表示形式やEditorが業務意味のAuthorityを獲得するわけではない。既存CoreのLanguage Plugin→Semantic Model→Source Index→Lowering/Generator→Scenario、共通Application/Operation APIを利用し、Web/Desktop/CLI/MCPの入口差はAdapterに閉じ込める。
+
+| 層 | Studioが行うこと | 原則として行わないこと／既存Owner |
+| --- | --- | --- |
+| **Sourceと構文** | 原文byte・Occurrence・Parser/Language版・Source span・未対応要素を保全し、該当箇所へ復帰する | GUI内第二Parser・自動整形による糖衣原文破壊。言語宣言→Provider選択は#988/#1018、Source読取は#2621/#3262 |
+| **意味と参照** | stable Subject、関係の向き/多重性、Revision、受理済み/候補/不明を区別し表示する | 描画用IDや説明文からMeaning/Authorityを自動承認。#1124/#2495/#2497/#4350 |
+| **Projection** | Tree/Property/Table/Graph/SQL/Markdown/Process Diagramを**同一Sourceの用途別投影**として出す。保存される情報と失われる情報を示す | Projection用の第二Semantic Model、全表現の可逆性という一律保証。#2497/#2500/#4133 |
+| **OperationとTarget** | Preview/Resolve/Admit/Commit/Observeの各境界を元のOperation/Hostに照らし、実Consumer結果を区別する | Editorの「Ready」、AIの採用、Provider選択済みだけで現在Grant・Effect・Commitを証明すること。#4502/#1174/#2516 |
+| **Evidence/Build** | Source→Plan→選択Builder→実Invoker→Artifact→実Consumer→独立Expectedの最初の断線を表示する | UI専用Ledger/Gate、B0/H1成功からのB2/B3推論。#4583/#2831/#1163/#1180/#2514 |
+
+**初回の読み取り契約候補**は「固定Workspace/Subject＋Source occurrence＋Source Revision/World＋意味の受理状態＋表示Projection/粒度/完全性＋変換の損失・未解決＋実Consumer/証拠の所在」。既存Reader・Source Index・Model Map/Inspectorが返す範囲だけを集約表示し、存在しないFieldを新しい公開ABIとして固定しない。例えば同名二Nodeと同端点の複数有向Edgeは、個別Occurrence/方向/属性を読み取れるまでGraph閲覧のみとする。Graphのparent表示EdgeでRelationのCRUDを起動しない（#4515）。
+
+**編集は読み取り表示の逆再生ではない。** ProposalをSource occurrenceと現在Revisionに結び、変更可能なFieldだけSource Patch→Diff→再Parse→再Validate→影響診断→再Inspectへ戻す。Graph→Treeで失った第二親、集計表で失った行粒度、Native SQLで保持した元byte、Markdown/Graphviz/関数チェーンの糖衣書式を勝手に補完・書換えしない。非可逆Projectionはread-only、変更の意味を明示できる場合だけ特定Operationを提示する。未保存Buffer・保存Source・Meaning受理・Build入力・Artifact・実使用Artifactの版も別表示とする。まず#2497/#2500のread-only Referenceを先行させ、広範な双方向Editorを初回Hard Gateにしない。
+
+### 15.33 画面・操作を製品の実Consumer資格へ接続する
+
+Studioの最小画面構成は、左のWorkspace/Subject/Source探索、中央のModeler・DSL・表・Graph・SQL・文書の切替、右のInspector（Identity/Source/Meaning/Evidence/Actions）、下部の診断・Build/Run・Expectedの参照でよい。画面構造は実装候補であり、同じ情報をCUIから観測できることを優先する。巨大なDesigner、独自Text Editor、全文AI Chat、KONの常駐接続は必須にしない。
+
+UI操作では**Focus（一時選択）／Pin（利用者が固定した対象意図）／Activity（作業文脈）／Review（候補の採否）**を独立させる。初回#4515はSubject Pinに限り、同名別Root・Workspace切替・Source A→B→A・後着Reply時に旧対象を自動再束縛せずneeds-requalification/unknownを保持する。IME・Esc・Graph背景クリックでPinを誤解除しない。Source版不明のPinをready/authorizedとしない。AIへ渡すContext Shelfは現在表示を無制限にコピーする場所ではなく、選択したSubject/必要Source/Disclosureだけを渡す準備面とする（#4605/#2516）。
+
+一つのSubjectで次の**同じ仕事**を人間単独とAI補助で比較する：①対象発見、②元Sourceの特定、③意味/依存/不明点を確認、④必要に応じProposalとDiff、⑤診断と実Artifact/受信結果を確認、⑥正しいSourceへ復帰。比較軸は正しい復帰率、不要な操作数、最初の有用Evidenceまでの時間、誤対象への変更数、未確認を成功と表示した回数とする。数値目標は実測Baseline確定後に設定し、AI候補やUIスナップショットを正式受理とはしない。
+
+WailsはDesktop UI/OS Adapterであり業務Hostではない。共通Go Application OperationをCLIとGUIで再利用し、Native WebView2受信を実Consumerとして検収する。Wails exported methodの増加はWeb Server/外部Origin公開面を拡げ得るため、同じmethodを安易に追加しない（#1824/#4627）。外部REA Evidenceのような機微な原文は、Native限定Reader、固定Root、限定Projection、別Consumer資格を先行し、Rendererへ任意FS Pathや内部Storage Locatorを渡さない（#4661）。
+
+### 15.34 自己記述DSL・プロセス図解・専門Toolkitを、Studioの後続能力として収束する
+
+**DSL自己記述**は構文・Semantic Candidate・意味受理・評価/時間・Target実現を分離する。JSON Schema、SQL、Markdown、Graphviz、外部Grammarを「読める構文」として受容することと、TEIの業務意味として受理することは別。既存#988/#1018のLanguage Provider選択とSource provenanceを使い、D0構造定義→D1構文記述→D2意味写像→D3検査→D4生成→D5自己記述、K0 Seed→K5 Realizeの段階でFit/Gapを記録する。新しい正式DSL Grammarや自己コンパイル完了をDG-0〜4の前提にしない。未知・不完全・意味未確定のSourceはbyte保持と構造編集資格を分ける。
+
+**プログラミングモデルの図解**は、Bootstrap/資源初期化→Entry/Trigger→Invocation→Handler/Operator→Result/Effect→Observe/終了・次Eventという概念Projectionとして扱う。常駐HTTP Server、CLI一回実行、Serverless、スケジュール、SaaS Eventを同一の固定「待受ループ」へ押し込まない。イベント発生≠実行権限、Request受領≠Commit、Run終了≠外部効果の確認。処理構造の表示を#4502のEntry/Trigger/Invocation/Run/Effectと#4198のLifecycle Obligationへ接続し、図面や説明文から第二Runner/Host/状態機械を作らない。最初は既存Operation/Generated Goの観測可能な部分のみread-onlyで図示する。
+
+**標準データ構造と専門Toolkit**は意味的な汎化を先行し、Analytics/Window・WBS/PERT/CPM・Solver/DOE・科学/Bioは#4350/#4660でTarget/Provider/ToolkitとしてFit/Gapを判断する。WBS Treeと依存DAG、時系列集合の完全性、Window Frame/NULL、物理量の単位・精度、計算のexact/approximate/unknownを混同しない。Studioは設計書の入力と同じ意味から専門画面・業務アプリを生成できることを長期目標とするが、最初のStudio Self-Buildに分野別Solver実装を混入させない。外部アルゴリズムは契約・Mock・独立Expectedで全体シミュレーションを可能にし、Mock PASSと実Provider受入を区別する。
+
+**SHO/SUI/KONとの関係**：SHOは文書Source・引用・Occurrenceと保存後再解決のConsumer、SUIはカード/Tree/KJ/PERT等の空間Projection、KONは選択可能なDocument/Attachment Providerとする。TEI Meaning RevisionやHost AuthorityをKON・SHO・SUIへ移譲せず、同一SubjectとSourceの保存/再読取/他Consumer受領を別々に検収する。最初のStudio作業はKONなしのローカルWorkspaceで成立すること。
+
+### 15.35 着手順と、既存Issueへ戻す最小の縦断
+
+| 順位・並行関係 | 次の具体的な検収 | 既存Ownerと停止線 |
+| --- | --- | --- |
+| **P0-A（最優先）** | DG0-01〜04でnon-Plugin Studio Subject→実Builder/ArtifactSetを実装し、DG-1/2のN0→N2→N3へ接続。同じ実Stage1がStage2をBuildし、そのStage2を実Windows WebView2で操作 | #4583/#2831/#1824/#1080/#1097。#4587 Windows局所成功や複数HEADの緑をL3へ流用しない |
+| **P0-B（P0-Aと並行）** | 一Subjectを固定してCLIとStudioからcatalog→inspect→Source span→元Sourceを再解決。Focus/Pin/後着Replyを含め同じExpectedとFirst Missing Edgeを記録 | #3262/#4515/#1124/#1180/#2514。Wails GUIの静的スクリーンショットのみで実IPC成功としない |
+| **P0-C（P0-Aと並行）** | order_entry.recent_ordersでSource宣言→型付き入力→実PG Query→通常tei CLI受信へ一往復。Coverage partial/unknownと取得0件を区別 | #2586/#4647/#4496。参考Go/PG成功から製品CLI/Studio更新・実Commitを主張しない |
+| **P1-D（P0-Bの後）** | 同SubjectのDSL/Tree/Table/Graph/Source投影をread-onlyで照合し、Loss/Identity/Multiplicity/編集可否を示す。小さな逆写像一件をDiff→再Parseまで検証 | #2497/#2500/#4350/#4359。非可逆Graphの編集を許可しない |
+| **P1-E（独立Pressure）** | 一FunctionのEntry/Trigger/Run/Effectを観測情報からProcess図に投影し、実行実績のない辺は宣言/候補と表示 | #4502/#4198/#4495。図の構造から起動許可やEffectを推定しない |
+| **P2-F（P0のHard Gateにしない）** | DSL自己記述、SHO引用、SUI空間表示、REA Native二Consumer、Analytics/Planning Toolkit、KON任意Providerを既存共通Source/Operationへ順次接続 | #1018/#4661/#4660ほか。専用Host/Registry/Meaning SSOTや広域GUI先行を避ける |
+
+**生成アプリのDB起動安全性は別の実装停止条件**：#4657が記録したReference生成Binaryの「通常query/command/validate入口で無条件Migration Apply」問題は、Studioの閲覧成功では正当化できない。生成Targetの通常起動は副作用なしのRead-only Preflightを先行し、Applyは現在Grantを備えた明示管理Operationへ分離する。これをDG-0〜4のBuilder契約完成と混同せず、生成BinaryにDB Operationを接続する段階で検収する。
+
+### 15.36 今回の採否と次の反証
+
+**この計画で採用する判断**は、(1) 単一Semantic/Source正本からの複数Projection、(2) 表示/意味受理/編集可否/実行権限の分離、(3) CUI優先で同じApplication Operationを実Wails Consumerへ接続、(4) Lossを明示した最小Source Patch、(5) Processor/Event図はread-only Meaning Projection、(6) Studioセルフビルドと拡張Toolkitの工程分離、である。採用とは設計方針として次の実装に渡す意味で、現行Product実装・Owner業務意味受理の報告ではない。
+
+最初の反証は**同じ固定SubjectをCLIと実Windows Studioで開き、source occurrenceとrevisionへ正しく復帰できるか**、および**同じnon-Plugin StudioをStage1実TEIが再生成しStage2でそのSourceを検査できるか**に絞る。対象の同一性、実消費Byte、実Consumer、独立Expected、失効理由を一Attemptまたは明示因果のある複数Attemptで追跡する。別Workspace同名、Graph多重辺、古いPin、Source欠落、non-PluginをPluginと誤認、生成JS未消費、実Stage1未起動、現在Grant不明を負例にする。計画上の成功条件を実装しないまま「設計完了＝製品完成」と表示しない。
+
+**Evidence ceiling**：今回の追補は他設計Issue・Draftと既存Source/試験記録の読み合わせによる**docs-onlyのStudio統合設計**。新Go/Node/Windows/実PG/Browser/Stage1→Stage2/実Source Patch/GUI/AI検収はNOT RUN、Owner意味受理はNOT ACCEPTED。Stage2 Desktop完成と全CI Greenも主張しない。既存#1119/#1163/#1180/#2514の責務・認可・独立Expectedを保持し、新しい管理正本を作らない。
+
