@@ -265,6 +265,7 @@
 | [`reference-sui-record-projection/`](reference-sui-record-projection/) | SUIの reference envelope から、開示判断つきの record 投影を作る read-only 参照（M3・M4・M5）。本文を運ばず、項目×開示先を present/withheld/unknown/not-applicable で返し、Source状態を宣言のまま使う |
 | [`reference-scope-isolation-matrix/`](reference-scope-isolation-matrix/) | SUI の scope isolation 14経路（ADR-0059 gate 5）を言語非依存の機械可読行列として検査する。経路の網羅・coverage状態・根拠の有無を確かめ、SUI checkout を渡したときは試験名の実在まで照合する（認可の正本ではない） |
 | [`reference-sui-interaction/`](reference-sui-interaction/) | 画面操作とApplication Actionの接続例 |
+| [`reference-trait-fulfillment/`](reference-trait-fulfillment/) | 原子的Traitの実装義務（`manual-required`／`provided`／`advisory`）の履行を、既存のContract・Provider選択・Inspectorの実呼出し観測から判定する読取り専用の参照。未充足と未確認を読込みの完全性で分ける（#3279） |
 | [`reference-transform-runtime-engine/`](reference-transform-runtime-engine/) | 決定的な変換処理の実行例 |
 | [`reference-transform-runtime-engine-build/`](reference-transform-runtime-engine-build/) | 変換実行基盤の構築確認 |
 | [`reference-transform-seed-builder/`](reference-transform-seed-builder/) | 変換用の初期データを組み立てる処理 |
