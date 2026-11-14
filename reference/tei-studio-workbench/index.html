@@ -83,6 +83,21 @@
           <code id="revision">未取得</code>
           <p>この値は参照結果の同定用です。書込みや受理の権限を示しません。</p>
         </details>
+        <section class="pin-panel" aria-labelledby="pin-heading">
+          <h2 id="pin-heading">固定対象</h2>
+          <p class="hint">今見ている要素とは別に、対象を固定して読み取り専用で再確認します。外部AIへの送信や編集は行いません。</p>
+          <div class="pin-controls">
+            <button id="pin-current" type="button">表示中の要素を固定</button>
+            <button id="unpin-current" type="button" disabled>固定を解除</button>
+            <button id="inspect-pinned" type="button" disabled>固定対象を再確認</button>
+          </div>
+          <p id="pin-subject" class="pin-subject">固定対象はありません。</p>
+          <p id="pin-status" role="status">未固定</p>
+          <details class="revision">
+            <summary>固定対象の観測版</summary>
+            <code id="pin-version">未取得</code>
+          </details>
+        </section>
       </aside>
     </main>
     <footer>
