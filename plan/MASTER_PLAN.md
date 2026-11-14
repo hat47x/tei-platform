@@ -168,7 +168,7 @@ Gate C — PAS-04 Evidence — Ready
 - **[新Draft #4634](https://github.com/hat47x/tei-platform/pull/4634)** は、上記二PRの変更Go本体3ファイル・新試験3ファイルを、両者のbase `e888bb8f`と現mainのBlob一致を確認したうえで**同一main-based branchへ集約**。本節更新時点で新HEADのCIは**未完了／NOT RUN相当**であり、元PRの個別CIを統合成功へ昇格しない。先に`internal/buildintent`／`cmd/tei`のGo正負試験、Self-build、Healthと共通CLI実子起動前拒否を当該新HEADで検収する。正常例は実Resolver→選択Builder B→実子B、負例は宣言と不一致のResolver返答、および正しくBを解決して実子Aへすり替えたときの子Call 0/Artifact 0とする。
 
 **P0：一つの実因果経路へ接続する残作業**：
-1. **宣言→選択→起動前拒否の一HEAD検収**：#4634のexact-head CI結果とプラン/子/Artifact Receiptを確認し、選択B/実A・不正Resolverが混入した場合の拒否を実測。Catal​og入力の意味受理、実OS LoaderのTOCTOU、外部Provider/current Grantは別資格。
+1. **宣言→選択→起動前拒否の一HEAD検収**：#4634のexact-head CI結果とプラン/子/Artifact Receiptを確認し、選択B/実A・不正Resolverが混入した場合の拒否を実測。Catalog入力の意味受理、実OS LoaderのTOCTOU、外部Provider/current Grantは別資格。
 2. **H0 N0→N2**：生成Inspector TSの実Producer Role/digest/Source revisionをN2実esbuild selected inputsに接続し、旧TS・別Workspace・未選択Entry・A→B→Aの負例を拒否。成功済みH1の`n2-bundle-producer.json`／`n2-n3-bundle-handoff.json`は既存Evidenceとして再利用し、新Manifest/Runnerを作らない。
 3. **正式な非Plugin Desktop Build**：N1 Compose、N2 Node/esbuild、N3 nested Go/Wailsの実Invoker/argv/入力/Artifact memberを、既存BuildExecution/ArtifactSetとTarget Adapterへ一工程ずつ接続する。CLI/Workflowの直接shell起動成功や`go list`選択報告は、正式BuildIntent実起動・全read-time入力閉包の代用ではない。
 4. **B2→B3**：生成Stage1 TEIの実Process imageがStage2を構築したReceiptと、その**当該Stage2 exe**が実Windows/WebView2で配信するJS・StudioBridge/Inspector受領を照合。Stage0/別Workflow/旧Windowの成功を借用しない。
