@@ -371,6 +371,45 @@ P0-A: #4623の`-bind-resolved-builder`と#4624の宣言-Resolver整合検査を�
 
 **今回の反映はdocs-only**。新Go/Node/Windows/実Provider/Stage2実行、#4623×#4624の同一HEAD統合CI、Owner業務意味受理は実施していない。既存#1180/#2514独立Expectedを用い、新Acceptance Gateを追加しない。
 
+
+### 0.11 第11次横断統合：B1工程間Artifact Handoffの実装境界とDesktop同一Attempt検収（2026-11-14）
+
+本節は§0.10のE1〜E5を**現行実Windows Workflowのファイルと実呼出し位置**へ落とした引継ぎ仕様。既存のEvidence形式、Build Execution/ArtifactSet参照モデル、#4583の独立Expectedを利用し、新Build Manager/第二Manifest/OS Hostを作らない。以下の検証は、旧runと新run／別Draft間の成功を合成しない。
+
+#### 0.11.1 最新の実装・PR状態（前節の履歴を上書きせず追補）
+
+- **[Draft #4587](https://github.com/hat47x/tei-platform/pull/4587) は最新main追従済み**。HEAD `efe1de03c23d7e8bd9271e465fc0b8436f9a993c`で`mergeable=true`。main merge `03679ccd`により共有CLI `selfBuildBoundary/driveSelfBuildIn`と証拠索引を保全。Windows Desktop WorkflowのPR/push pathsに`cmd/tei/**`と`internal/buildintent/**`を追加し、実Builder入口の変更でWindows CIが起動する。**当該HEADの12系統CIは初回確認時点9件success、Windows Wails Desktop WebView smoke・Self-build・Healthの3件がin_progress**。正式新HEAD Windows PASSは未確認。旧Windows成功 [#43450255223](https://github.com/hat47x/tei-platform/actions/runs/43450255223) はpin導入前の履歴に限定。
+- **[Draft #4623](https://github.com/hat47x/tei-platform/pull/4623)** HEAD `f1e219a25976946bcc8a19ef57f5490333ec8a84` は`-bind-resolved-builder`限定実装を含めGitHub Actions **8/8 success**。**[Draft #4624](https://github.com/hat47x/tei-platform/pull/4624)** HEAD `2d403f4996c205514dc57d5fc1237127c6bd994b` は宣言とResolver応答の整合検査が**5/5 success**。#4624のPRにはLinux Go/race・Windows Go/Nodeの局所テスト結果も記録されている。**両PRと#4587は相互に独立したHEAD/Attempt**で、二修正を組み合わせたN0〜N3 Windows実証ではない。
+- #4587のN0実Workflowは依然 `tei self-build -expected-child-digest` **Caller pin**を用い、`-bind-resolved-builder`を用いる正式BuildIntent解決ではない。WorkflowのN1 Compose、N2 Node/esbuild、N3 native WailsはWorkflow直接起動。したがって`qualifiedBuildIntent=false`・`dependencyClosure=unknown`を維持する。
+
+#### 0.11.2 既存Windows実装のArtifact受渡し3件と、根拠の性質
+
+| 受渡し | 現行の具体物と受領元 | 次のB1実装で加える最小の同一Attempt検査 |
+| --- | --- | --- |
+| **H0 N0→N2（Generator/TS）** | `n0-tei-self-build-entry.json` が実TEI子起動／子image／申告生成TS／独立ディスク再読を記録。`reference/tei-studio-workbench/inspection-reader.generated.ts` を実 `main.generated.ts` / esbuild 選択入力に含める。比較Generatorの `n0-inspector-comparison-generator.json` は独立比較であり、主Build receiptではない | Caller/Resolved Builder pinの選択根拠を混同しない。`N0 actual TS digest == N2 expected input digest` と、実esbuildの`metafile.inputs`への当該path選択・build直前/直後の値を同じAttemptで照合。不一致はN2実行前または後段引渡し前に停止 |
+| **H1 N2→N3（bundle/embed）** | `n2-esbuild-metafile.json`の`outputs`には実esbuildが生成した`cmd/tei-studio/assets/workbench/main.js`が1件だけ存在する。`n2-esbuild-selected-sources.json`に実Builderが申告した入力の事後SHA。現Workflowはbundle digestを`TEI_GENERATED_WORKBENCH_BUNDLE_SHA256`へ明示渡し、N3で`go list -deps -tags studio_generated`と`go build -tags studio_generated`を実行 | 成功したN2の**出力Role/physical path/digest**をN3の**入力Role/path/digest**に明示照合。PowerShell別Stepの`$bundleOutput`などプロセス内変数継承に依存しない。N3の`EmbedFiles`に選択されたbundle実ファイルが正しいことを確認し、N2出力A/N3入力BならFAIL（単に同名・同byte長は不可）。CIメタファイルの申告だけを実read-time閉包とはしない |
+| **H2 N3→実Windows Consumer（exe/JS）** | `n3-go-selected-sources.json`にbuild前後のin-repo選択入力ハッシュ、`generated-desktop-exe.sha256`に実exe digest、`b1-stage-input-observation.json`にN0〜N3の選択値・実観測・`qualifiedBuildIntent=false`、WebView2 smokeが実配信JSとBridgeを確認 | Windowsの**実起動したexe image**が当該N3 outputと一致、WebView2実配信JS digestが当該H1 bundle outputと一致、Inspector Bridge応答が当該Window/Workspaceの実応答であること。生成exe A/起動旧exe B、WebView配信旧JS、旧Windowでの結果を拒否。これだけでStage1→Stage2（B2/B3）とはしない |
+
+**記録の最小構造**：上記既存ファイル群を、現`b1-stage-input-observation.json`の`exactHead`・`attempt=run_id-run_attempt`と実Environmentで関連付ける。Artifact roleは`generated-inspector-ts`、`workbench-js-bundle`、`windows-studio-exe`を**提案名**として明示。正式型ではなく、既存`tools/reference-build-execution-binding/main.go`の`BuildExecutionPlan`（Source/Builder/Recipe/Target/Parameters、subject非依存）、`ArtifactMember`（role/format/digest/locator）、`ArtifactSet`の適用候補である。Referenceは`package main`なので直接Product APIへimportしない。Locatorは内容同一性ではなく受渡し先を特定する属性で、**同byte Digest＝同一Builder/Authority/Attemptとはみなさない**。
+
+**限定Planと実Attemptを分離**：BuildExecutionResult fingerprintは同じPlan＋ArtifactSetなら同一になり得る。Windowsの個別CI job、実Process/Child、入出力file、Stage1実Process、Stage2実Process/WindowはそれぞれAttempt/Consumer観測として別保持。Stage0→Stage1とStage1→Stage2の生成byte完全一致を不要とする一方、**使用者の因果関係と生成物の同一性**は必須。
+
+#### 0.11.3 具体的な最初の変更と失敗時の扱い
+
+- **P0-1（最新統合Workflowの健全性）**：#4587 HEAD `efe1de03`のWindows generated/ordinary WebView2・Self-build/Health各Jobの完了判定。失敗したら当該JobのN0/N2/N3証拠ファイルと失敗した最初のStepを確認し、旧HEAD Greenで埋めない。main追従済みの成果を「まだ競合」と記載した§0.9/§0.10は歴史的時点の情報と扱う。
+- **P0-2（Resolver統合）**：#4624のResolver応答整合拒否と#4623の実子起動前拒否を一HEADへ合流し、宣言Source/Provider/Builder B→可換Resolverの誤返答A、または正しく解決B→子実exe Aをそれぞれ**実Child Call 0/Artifact 0**とする。ここではN2/N3成功を要求しない。Catalogからの選択を現在Owner Authorityにしない。
+- **P0-3（H1から実装）**：N2 esbuild実出力Bundle digest／Role→N3 Go `//go:embed`対象の実Path＋digestだけを最初の一辺として接続する。既存metafile・選択Source目録と同じAttempt内で差分チェック。**N2出力とN3選択対象をわざと取り違えた負例**、ESBuild申告出力だけ偽装した負例、PowerShell Step変数未引渡し、Build途中のSource ABA、欠落/unknown外部依存を別Expected。N0/N1の多工程全般化やEditor GUIまで同PRに詰め込まない。
+- **P0-4（H0/H2→B2/B3）**：H0からN0選択Builderの実解決を接続し、次に生成Stage1自身を起動してStage2 Windows Wailsを構築。実Stage2 exe digest→そのStage2実Window／配信JS／IPCを同一因果連鎖で検収。Stage0/Workflow直Go Build・古いStage2 Windowを代理にしない。
+- **失敗と回復**：pre-start mismatchでは子Process/Artifactを生成しない。生成後の不一致/消費後の不一致は**当該Attemptをfailed/partial/unknownに固定**し、古い成功Receiptで今回のAttemptを成功にしない。Builder/OSが既に行った外部副作用は`unknown-effect`として既存Effect/Receipt Ownerへ渡し、自動retry・業務Commitと混同しない。既存Desktopの実行中exeを暗黙置換・上書き・再起動しない。
+
+#### 0.11.4 Studio Workbench / Webへ投影する最小状態
+
+Wails/Desktopと将来のServer/Webで、**Build Previewは同じread-only Operation/Evidence投影**とする。Clientは意図/Focus/Pin、表示順、開閉・Graph layoutのみを保持し、Source Canonical、Builder Selection、Attempt/Artifact、Authorityや受理をClient側で作り直さない。初回の表示は「画面で編集中のBuffer」「実Build対象に選択した保存済みSource」「Resolved Builder」「実起動Child」「N0 TS/N2 Bundle/N3 exeの受渡し」「当該実Window/Consumer」を別欄にし、`not-run / unsupported / unknown / failed / observed`の範囲表示を既存語彙で行う。実Builder/Consumerの証拠未確認を単一Readyに変換しない。
+
+複数Window／将来のServer同時編集では、`Workspace/Source Revision・Buffer Revision・Viewer Window/Request Generation・Build Attempt・Runtime Window`を別の版として扱う。Pin Aの裏Readerが後着しても、B Editor/Graph/Caret/Dirty Bufferを変更しない。Build Preview/AI応答/外部CLIの旧Attemptは表示できても現在Grant/Meaning/Save/Apply許可には昇格しない。ServerではSession/共同編集/認可を別のバックエンド権限境界に置き、Wails WebViewからWeb版へ移す際に第二Build/Source正本を作らない。
+
+**本節の新規作業は文書・計画の差分のみ**。#4587最新CIのWindows E2E成功、#4623×#4624の同一HEAD統合、正式非Plugin BuildExecution API、生成Stage1→Stage2/当該Window、実共同編集/AI/Owner受理を実行・実装したものではない。
+
 ## 1. 位置づけと判断済み前提
 
 - **TEI Studio**はData/Function/Business三視点、Data Context、Source/Meaning、DBクライアント、Plugin、テスト、SHO文書機能への統合Workbench。
