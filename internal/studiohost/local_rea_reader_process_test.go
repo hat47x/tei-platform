@@ -37,10 +37,10 @@ func TestLocalREAReaderActualChildProcessWitness(t *testing.T) {
 		t.Fatal(err)
 	}
 	tests := []struct {
-		name       string
-		mode       string
-		wantOK     bool
-		wantCode   string
+		name     string
+		mode     string
+		wantOK   bool
+		wantCode string
 	}{
 		{name: "selected-invoked-received", mode: "allowed", wantOK: true},
 		{name: "unknown-selector", mode: "unbound", wantCode: "OPERATION_FAILED"},
