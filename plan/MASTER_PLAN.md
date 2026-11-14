@@ -1593,6 +1593,20 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 
 **今回の状態**：計画・補遺の文書更新のみ。組織C1の実Provider/Host/Studio/Plugin/AI E2E、Owner Meaning Acceptanceは未実行・未受理。通常tei CLIの初回実Provider Read **#2586** とStudio Stage1→Stage2セルフビルド **#2831** を独立した最優先課題として維持する。
 
+
+<!-- org-c1-cli-first-plugin-docs-20261114 -->
+### 2026-11-14 組織C1の次の実装を、候補Ruleの実評価とCLI-firstの可読性へ絞る（補遺§25）
+
+**受入と実装の正本**：[組織C1横断受入補遺§25](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)。組織モデリングに新たな機構を増やさず、独立Relation Occurrence/Record Version/実Rowsetを共有する標準意味モデルの製品検収へ進む。main統合済みの[構造・評価・変更対応 #4667](https://github.com/hat47x/tei-platform/pull/4667)、[公開Facet #4677](https://github.com/hat47x/tei-platform/pull/4677)、[CLI-firstセルフビルド #4676](https://github.com/hat47x/tei-platform/pull/4676)、[dogfooding #4680](https://github.com/hat47x/tei-platform/pull/4680)をそれぞれの設計Ownerへ参照する。組織固有の第二Core/Resolver/Policy/Runnerは不要。
+
+- **OI-0 受理前の識別を保全**：Person/Membership/Version/Physical Row/Case/Responsibility、Graph Edge、識別関係と参照関係を区別。渡辺式ER図の左親・右子、複合キー継承と通常FKの線の違いは、元の関係型・キーを保持した用途別投影にする。Mermaid/Markdown等は原文を保持する糖衣形式であり、図の配置が意味を決めない（#2386/#1126/#2497）。
+- **OI-1 最初の実装PR**：既存WU-09/ORG-BEH-04の候補Ruleを0/1/複数/partialの4ケースで実評価し、Source/Rule/Read Cohort/必要集合/完全性を独立Expectedに対してAssert。構造テストPASSだけを候補解決の成功と呼ばない。未採用のPerson Profileや別Sourceのr7とCase C1を暗黙に合成しない（#4490/#2510/#1180）。
+- **OI-2/OI-3**：同一A2旧新履歴とPerson Linkの実DB/Query→Context→独立Consumerを§21〜22の未達のまま別資格で実証。Graph/Tree/TableのSlot別Source逆写像とEdit/Read-only判定を分け、hidden EdgeやAggregateへ書戻さない。内容がA→B→Aに戻ってもOwner Decision・Current Grant・実受領は復活しない（#2586/#2622/#2497/#4515）。
+- **OI-4 文書を共通入口にする**：[Plugin文書探索Owner #4679](https://github.com/hat47x/tei-platform/issues/4679)の公開Contract/Graph/上位Manual/版/Source/開示Scopeを、組織Profileの公開文書で試す。短いTEI Product Skillから**実在するCLIのread-only Discovery**で辿り、必要なManualを遅延取得。未実装plugin docs等を製品コマンドとして書かない。Studioは同じ操作の別Projection、CLI/ローカルServer/遠隔ServerはHostの別Bindingであり、WailsをCLIの必須依存にしない（#4376/#2605/#951）。
+- **OI-5 TEI-nativeの生成実績を別計測**：main統合済みCLI-firstのGraph最小fixture（同Label別Node、並行有向Edge、逆向きEdge）で生成Goの実処理→Plugin Actual Call→Consumerを確かめ、その後に組織の関係Reader/Ruleへ適用。Wrapper-onlyや単純Go委譲をTEI実装率に算入しない。意味実装割合、Build制御、次Stage再利用、手書き重複減少は別指標（#4676/#4680/#2831）。
+
+**資格・優先順位**：§25と本項目はdocs-onlyで、OG/OIの製品試験は未実施。正本は既存#4490/#4501/#2510のExpectedと既存Source/Build/Plugin契約。全TEIの**通常tei CLIの最初の実Provider Read #2586とDesktop Stage1→Stage2 #2831は独立P0**のまま維持し、組織C1の高度機能・プラグイン文書・GUIを新Hard Gateとしない。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
