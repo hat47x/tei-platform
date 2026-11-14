@@ -808,3 +808,102 @@ PCC-01/02/04/05は#4583/#1251の製品経路と合わせて確認するが、**P
 
 **証拠資格**：今回の追加は、ユーザーの最新の自己拡張方針と既存#2620/#2621/#2831/#4583/#943/#1251/#2600の境界を照合した**設計・実装計画**である。実`*.tei.md` Reader、TEI生成Pluginの実Call、再帰的Plugin自己生成、定義量の測定、Studio全体のセルフビルドを今回実施・達成したわけではない。
 
+
+---
+
+<!-- tei-plugin-first-generator-slice-20261114 -->
+## 16. 最小の実生成スライス：図表の変更がPluginの実処理へ届くことを示す
+
+### 16.1 既存計画との役割分担
+
+[#2831](https://github.com/hat47x/tei-platform/issues/2831)／[#4583](https://github.com/hat47x/tei-platform/issues/4583)はTEI／Studioの実BuildとStage1→Stage2を所有する。別レーンの[Draft PR #4676](https://github.com/hat47x/tei-platform/pull/4676)は製品計画としてCLI先行のSB-0〜4を整理している。**本節は重複する全体ロードマップではなく、SB-1〜3に渡す一つのPlugin生成スライスと、生成ロジックの実寄与を区別する受入票**を具体化する。
+
+既存[#2090](https://github.com/hat47x/tei-platform/issues/2090)の手書き拡張点の保全・破壊検出、[#1121](https://github.com/hat47x/tei-platform/issues/1121)の段階的Lowering、[#2621](https://github.com/hat47x/tei-platform/issues/2621)のMarkdown Authoring、[#2497](https://github.com/hat47x/tei-platform/issues/2497)の構造保存、[#2514](https://github.com/hat47x/tei-platform/issues/2514)の独立Expectedを再利用する。新しいParser／Generator framework、Graph Engine、Extension Engine、Runnerは最初から設けない。
+
+### 16.2 固定する小さな入力と、観測したい振る舞い
+
+初回のSource候補は**同じ表示名の二つのNodeと、同じ始点・終点を持つ二本の有向Edge**とする。安定IDはNode `n1`／`n2`、Edge `e1`／`e2`。二つのNodeの表示名はともに`item`とし、二つのEdgeはそれぞれ`n1 → n2`を指す。Graphvizは表示に利用してよいが、ID・向き・多重性の意味を外部Rendererに委ねない。
+
+以下は**製品DSLの正式構文ではなく、Authoring表の説明用Fixture**である。最初の実装者は、現行の受理済み構造から同じ意味へ落とせる記法を確認し、選択したReader／Roleの版を記録する。
+
+| Node ID | 表示名 |
+| --- | --- |
+| n1 | item |
+| n2 | item |
+
+| Edge ID | 始点 | 終点 |
+| --- | --- | --- |
+| e1 | n1 | n2 |
+| e2 | n1 | n2 |
+
+生成する最小の処理は、**Node IDを入力として、そこから出るEdge IDの集合と件数を返すpureな検証／投影処理**とする。GeneratorはEdge ID、向き、Endpointを実装へ反映し、`n1`の出辺が`[e1,e2]`の二件であることを確認できるようにする。返却順序を意味契約で定めない場合、比較は正規化したID集合に対して行い、偶然のMap走査順をExpectedにしない。
+
+| Source変更 | 変化を確認する独立Expected | 変わってはならないもの |
+| --- | --- | --- |
+| **初期状態** | `n1`の出辺IDは`{e1,e2}`、件数2、`n2`の出辺0 | 表示名`item`の重複をNode同一性として畳まない |
+| **e2の向きを反転** | `n1`の出辺は`{e1}`で件数1、`n2`の出辺は`{e2}`で件数1 | `e1`のIdentity、他のRule |
+| **e2を削除** | `n1`の出辺は`{e1}`で件数1、`e2`は対象集合に存在しない | `e1`のIdentity、`n1`／`n2` |
+| **図の座標・説明のみ変更** | 型付き意味と生成された業務処理の結果は不変 | 当該Sourceの原byte変更・表示依存の再生成履歴は別に残す |
+| **Edge IDを重複** | 同一Scope内の安定ID重複を診断し、意味採用／生成の可否を明示 | 後勝ちや暗黙dedupで見かけの正常値を返さない |
+
+これにより、単なる図の生成ではなく、**図と表の意味が処理のロジックへ影響すること**を少数の例で判別できる。手書きGoへ二件という固定値を隠していないことを検査するため、独立Expectedを先に保存してから、Edgeの向きと数をSourceだけで変更する。
+
+### 16.3 生成したロジックと委譲したロジックの境界
+
+検証対象の小さなContractは、**入力Node ID・Graph Revision・出力Edge ID集合と件数・unknown／failureの扱い**まで明示する。Source Parser、入力検査、型付きGraph値の生成、純粋な出辺算出、CLIによる実呼出し、出力の受領を、それぞれ別の「実装上の義務」として記録する。
+
+初回はすべてをTEI生成に移す必要はない。例えばGraphのSource読み込みを既存Go Parserに委ね、型付きGraph値を受けた後の出辺走査・検証をTEI定義から実Goへ生成する形は、**一部自己実装**として計上できる。ただし、生成したGoが既存の`CountOutgoingEdges`相当の手書き処理を一度呼ぶだけであれば、その出辺算出の義務は委譲とする。結果の値が同じでも、実生成ロジックの寄与は一致しない。
+
+手書きの部分は生成物を直接編集せず、既存[#2090](https://github.com/hat47x/tei-platform/issues/2090)の**版付き拡張点**または対象Targetの既存Adapterとして管理する。拡張点に必要な入出力・呼出し順・Effect条件を記録し、再生成しても手書き内容が維持されること、拡張点の契約変更で破壊を検出することを同じFixtureで確認する。TEIが新しい拡張点機構を実装済みだと仮定しない。
+
+「簡素化した」と主張する際は、生成Goのソース行数ではなく、**元の専門家向けSourceから意味を理解して変更するために必要な記述箇所**を比較する。例えばEdgeを一件増やすために、モデル、手書きGo、別設定、テスト期待値を複数箇所同期変更する必要があるかを旧実装とTEI実装で対照する。テストの独立Expectedを修正する必要があることは、意味定義の重複とは別に報告する。
+
+### 16.4 「生成済み」の真偽より、実寄与の連鎖を残す
+
+新しいEvidence正本を作るのではなく、既存Source Index／Semantic／Generator／Artifact／Driverの情報を、**一機能に対するread-only照合表**として横につなぐ。
+
+| 観測対象 | 記録・対応させるもの |
+| --- | --- |
+| 原Source | Workspace Root、管理状態、元byte、occurrenceとspan、モデル／文書Revision |
+| 解釈結果 | Node／Edge ID、Relation、選択Language／Role／Operator、未受理・未取得・曖昧性 |
+| 実生成 | Generator ID／版、選択された意味要素、生成Go内の対応する処理と出力Role／Digest |
+| Build | Build Intent、exact Builder、必要なSource／Toolchain、実消費入力、Artifact Member、Stage／Attempt |
+| 実利用 | 選択Provider、実CallのEntry、実Process／Target、入力Revision、実Output、受領Consumer |
+| 検証 | 独立Expectedの根拠／版、正例・Mutant、Coverage、まだ証明できない範囲 |
+
+すべての列が初回から埋まるわけではない。**どの一辺が未接続なのか**を判別できれば、その段階の成果とする。とくにSourceが存在してもReaderが読み込んでいない状態、Builderが生成したがTargetへ収録されなかった状態、Artifactが収録されたが実Providerが別だった状態を、同じPASSに潰さない。
+
+### 16.5 再生成と部分的な自己実装を、段階ごとに検収する
+
+- **R0 Source読取り**：管理`*.tei.md`が未対応ならLoader/ParserのGapを明記し、明示した旧形式Bridgeでは独立したReference資格に留める。
+- **R1 生成ロジック**：型付きGraphと一因子Source変更から、少なくとも出辺集合の算出処理がTEI由来Goとして生成され、手書き関数の単純Delegateではないことを示す。
+- **R2 実利用**：生成したGoを正規Artifactへ収録し、選択したProvider／Entryから実行し、別ProcessのCLI Consumerで受領する。CLI特有のShortcutだけで業務意味を変えない。
+- **R3 再生成の保全**：同じSourceから再生成した場合、原定義、正規化した出力意味、手書き拡張部分が期待どおり保存されることを調べる。生成器変更と外部Toolchain変更は別Attempt／再資格化。
+- **R4 自己再入**：Stage1実TEIがStage2のBuild Plan解決と既存Builder実行を駆動した場合のみ自己再帰のClaimへ進む。Seedが外から二度Buildした場合はR3までの成果とする。
+- **R5 第二用途**：同じGraph定義をInspector用表示データや独立生成Testへ投影し、専用業務Schemaを増やさずに意味と出典を共有できるかを確認する。
+
+R0〜R3だけでも、図表と生成コードの実際の結合、手書き境界の保全、定義変更への追随という**Pluginによる自己拡張の価値**を示せる。R4／R5はその成果を失わずに進める後続段階である。外部のGraph Library、Go Toolchain、OSなどを全廃して初めてSelf-buildと認めるわけではない。
+
+### 16.6 既存Scenarioへ引き渡す追加の差分：PGL-01〜08
+
+以下は新しいテスト体系ではなく、[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)に対する**最初のPlugin生成スライス固有のassert索引**である。第15章PSB、別レーンのSBX、[#2497](https://github.com/hat47x/tei-platform/issues/2497)の構造保存負例を複製せず、同一Fixtureに不足する検査を足す。
+
+| Case | 条件 | 追加の判定 |
+| --- | --- | --- |
+| **PGL-01** | 同じ表示名の二Nodeを定義する | 表示名ではなくNode IDに束縛した実入力と出力を要求 |
+| **PGL-02** | 同一両端点・同方向の二Edgeを定義する | 実生成処理がID集合`{e1,e2}`を保持し、件数2を返す |
+| **PGL-03** | `e2`の方向のみ変更する | `n1`／`n2`の出辺と生成処理の依存差分が対照どおり |
+| **PGL-04** | 説明やGraphviz座標だけ変更する | 業務生成ロジックの意味は不変。表示Artifact／Source byte変更は区別 |
+| **PGL-05** | SourceとExpectedを固定し、出辺算出だけをGo委譲に差し替える | 結果が同じでも当該義務のTEI自己実装というClaimを撤回 |
+| **PGL-06** | 生成物を手編集し、再生成する | 未許可の直接編集を検出。正規拡張点の外で編集内容を保全・黙殺しない |
+| **PGL-07** | 拡張点の入出力契約を変更し、旧拡張を残す | 既存#2090の適合試験により破壊を検出。旧動作を成功扱いしない |
+| **PGL-08** | Generated Pluginが実CLIへ未収録／収録したが別Providerを実呼出し | R1生成成功とR2実利用失敗を別資格で記録 |
+
+### 16.7 先に着手する実装タスクの境界
+
+[#2621](https://github.com/hat47x/tei-platform/issues/2621)が`*.tei.md`の実Reader／Source span、[#2620](https://github.com/hat47x/tei-platform/issues/2620)が標準構造とRole、[#1121](https://github.com/hat47x/tei-platform/issues/1121)が型付きLowering、[#951](https://github.com/hat47x/tei-platform/issues/951)／[#1251](https://github.com/hat47x/tei-platform/issues/1251)がProvider選択と実呼出し、[#2831](https://github.com/hat47x/tei-platform/issues/2831)が実Build／Stage再入、[#2090](https://github.com/hat47x/tei-platform/issues/2090)が手書き拡張の保全を担当する。**本節だけを根拠に新しい公開CLIコマンド名や文法を決めない**。現行APIが無い部分は、Gapとして既存Ownerへ返す。
+
+初回のDefinition of Doneは、**固定した二Node／二EdgeのSource→実生成処理→実CLI利用が正例・反例で説明でき、委譲と自己実装の差を第三者が再現できること**。そのうえでR4の再入に進む。R0の正規Readerが未対応なら、当該不成立を記録したうえで最小修正へ戻す。今後の計画では「図を描けた」「Goを生成した」「Pluginを実呼出しした」「Stage1がStage2を生成した」を、同じ成功として報告しない。
+
+**状態**：2026-11-14時点の既存Issue・並行PRの設計から導いた初回検証仕様。上記PGLを実Go／CLIで実行した、`*.tei.md`正式Readerを導入した、GeneratorやPluginを新規実装した、またはStage1→Stage2に成功したという主張ではない。
+
