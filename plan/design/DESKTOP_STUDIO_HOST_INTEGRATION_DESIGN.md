@@ -894,3 +894,75 @@ Plugin自身をセルフビルドする際も既存Builder/BuildIntent/Stage1→
 
 **現状・停止線**：mainの\`internal/buildintent/intent.go\`では\`go-command\`／\`go-package\`のRecipe/Source概念はある一方、\`BuildIntent.Validate\`の\`Subject.Kind\`は現状pluginに限定される。#4583の限定N0子Process起動や生成Windows Jobは、正式non-Plugin BuildIntent全閉包、\`*.tei.md\`からの生成、Plugin自体の再帰、Stage2 Desktopの製品合格を立証しない。本節は設計・受入方針のみで、新CLI/MCP実装・Windows Build／Owner意味受理は**NOT RUN**。新Self-build Engine、第二Plugin Registry、独自Host、TEI専用AI実行機構、Go AST依存DSLは導入しない。
 
+---
+
+## 17. 生成Inspectorを使った「定義が振る舞いを担う」最初の較正実験（2026-11-14、設計・実装引渡し）
+
+<!-- tei-desktop-inspector-semantic-mutation-20261114 -->
+
+§16の四評価軸を一般論で終わらせないため、既存の小さな実績を**変更実験の基準対象**として固定する。対象は[Draft #4587](https://github.com/hat47x/tei-platform/pull/4587)（当該固定HEADでの限定実証）に含まれるInspector readerである。既存[Draft #4572](https://github.com/hat47x/tei-platform/pull/4572)のテスト・証拠記録を使い、同じ生成器・Workbench／Wails Consumerへ結果を渡す。新しい検証エンジン・Source形式・Editorの実装を先に要求しない。
+
+### 17.1 実コードにある基準対象と、達成していないこと
+
+| 現在のファイル・経路 | 現在の役割／取得済みの限定Evidence | まだ確かめていない内容 |
+| --- | --- | --- |
+| \`reference/tei-studio-workbench/inspection-reader.contract.json\` | InspectorのField／Effect／Subject／Catalog Snapshot／Failure／Projectionの契約。現Draftの863文字 | \`*.tei.md\` Readerや業務向けDSLとしての受理ではない |
+| \`reference/tei-studio-workbench/builder-sources/inspection-reader-v1.transform.json\` | 既存\`internal/plugin/transform\`の\`deterministic-transform-v1\`でTarget部品を作る正本。現Draftで17,667文字 | 高い記述効率の証明ではない。変換IRが現行契約より大きい |
+| \`tools/reference-studio-part-generator/main.go\` | 契約Source／Transformの実消費、出力byte、Source fingerprint／generator identityを報告 | \`*.tei.md\`の意味Roleを利用したBuilderや、全N0〜N3の正式BuildIntentではない |
+| \`inspection-reader.generated.ts\`／\`presentation.ts\`／\`inspection-reader.generated.test.mjs\` | 生成された\`readInspection\`の実取込み、手書きSeed Oracleとの比較、異Subject／Stale／unknownの期待値。生成TSは現Draftで2,633文字 | 契約が動作のどの範囲を支配しているかの変異試験と、Domain Expertが書ける簡潔さの評価は別 |
+| \`cmd/tei-studio/assets/workbench/main.js\`／実Windows WebView2 | 組込まれたReaderのdigestと実Inspectの使用を観測する既存CI経路。従来版bundleでは期待する生成Reader使用が検出されない | Stage1実TEIが正式non-Plugin BuildIntentからStage2の**全Studio**を生成した証明ではない |
+
+現\`main_test.go\`には\`TestSourceRevisionChangesPartAndIdentity\`と\`TestRejectedSources\`等があり、Nodeテストには16行の正負比較、埋込みbundleには生成済みReaderの実採用試験がある。**これはすでにある資産**であり、同じ試験の単なる複製を今回の追加成果としない。次の仕事は、生成器・Reader・独立Expectedを合わせた**意味変更に対する判別能力**と**変更の作業負担**の比較である。
+
+### 17.2 最初の一巡は「動作の変化」と「拒否」を独立に観測する
+
+初回の実験は既存の\`inspection-reader\`だけを対象に、固定Fixture・固定Toolchain・同じ生成器・同じConsumer経路で行う。現在の契約が認識しているキーだけを使い、試験のために実HostのResponse Schemaを先に書き換えない。
+
+1. **基準を再現する**：Catalog／Inspectの同じ\`kind/id\`・\`worldFingerprint\`・\`sourceIndexFingerprint\`で、Source contract byte、transform byte、生成TS、実bundle、Consumerが参照したReader identityを別記録する。既存Go・Node・実Windows試験がそれぞれ何を見たかを固定する。
+2. **意図した変更を確認する**：隔離Fixtureで、例えば契約の\`failures.stale\`という**意味を持つ拒否結果**を変更する。Transformが生成するTSと、実際にstaleを検出した場合の結果が変わることを試す。変更した契約に対するExpectedは人が独立に判断・記述し、旧Seed Oracleとの機械的一致だけを合格根拠にしない。実製品の公開エラー語彙変更を承認したことにはしない。
+3. **意図しない変更を検出する**：\`response.subjectId\`の\`id\`を既知の別キー\`kind\`へ誤接続した場合、Subject照合に失敗すること、\`projection.missingSourceStatus\`を\`unknown\`から誤って\`indexed\`へ変更した場合、未知を既読込扱いにしない独立Expectedが失敗を検出することを確認する。これはProduction契約を変更する提案ではなく**破壊的変異**である。
+4. **Generator由来の取り違えを拒否する**：契約とTransformの一方だけを改版、旧生成TSを残す、旧bundleをWailsに埋め込む、Selected Builder／actual Childが異なる場合を区別する。Source→生成→bundle→実使用のいずれの辺で発見されたかを記録する。
+5. **同等動作の簡素化を測る**：現行JSON契約＋長いTransform IRと、図表や短い宣言を使う将来のAuthoring案を、同じ正規化された意味構造と独立Expectedに投影して比較する。現\`*.tei.md\` Readerが未束縛の間は、短いMarkdown表を**設計上の入力候補**として扱い、正式TEIとしてParse/Build済みと見せない。
+
+変異が生成byteを変えただけでも、実動作を変えなければ「振る舞いを担った」としない。逆に、実動作が変わっても想定外の既存Goコード・旧bundleを利用したならSource起因を主張しない。正常と破壊的変異の双方が検出できて初めて、限定したField／Ruleについて生成の因果関係を説明できる。
+
+### 17.3 簡潔なDSL・図表案を試すときの扱い
+
+現行の863文字の契約は比較的コンパクトだが、変換Programを入れると手書き定義の総量は大きい。したがって「契約JSONをMarkdown表に置き換えただけ」で簡素化を達成したとはみなさない。**どこへ複雑さが移ったか**を確認する。
+
+初回のAuthoring Pressureは、①Subject/SourceのIdentity、②必要なFieldと型、③受入／拒否条件、④出力Projection、⑤その条件を試す独立Test表を、ドメイン専門家が読める順序で置く。入力の例示表と実行するRule表のRoleも区別する。Diagram（Graphviz等）は\`Catalog → Inspect → Subject判定 → Projection\`という依存・制御の関係を示す**同じ意味構造の一投影**とし、見た目のGraphエッジから実CallやBuilder Authorityを捏造しない。
+
+将来の\`*.tei.md\`の具体的記法は、#2621／#988／#2620が旧\`*.tei\`とのSource位置・Role・Readerの実互換を確認してから選ぶ。図／表／関数チェーンを自動的に全部実行するルールを追加しない。選択された短い定義から既存Transform/Target Loweringへ変換できる場合だけ、現行の手書きTransform Programを削減する。汎用言語へ戻っただけの文法、Go ASTの直接露出、二重のSource正本は棄却する。
+
+### 17.4 「TEI化の進展」を機能単位で記録する
+
+計測表は新しい永続的Registryではなく、既存Evidence／Scenarioへ付ける**設計上の集計形式**とする。母集団は任意のファイル数や行数ではなく、固定Fixtureで確認する**Studioを構成する振る舞い**の集合。最初はInspector readerの一振る舞いを分母1の独立ケースとし、Stage1→Stage2などのBuild到達数と合算しない。
+
+| 項目 | 記録する問い |
+| --- | --- |
+| **意味Owner** | Fieldの選択、判定、Projection、出力／失敗は、TEI定義・固定Go/TS・外部SDKのどれにあるか |
+| **読込と生成** | 実Loader／Role／Transform／Generatorが読み取ったか。実Target Sourceのどの構造に影響するか |
+| **実消費** | 生成TS／Bundle／Wails実受領まで到達したか。別HEAD・別Attemptではないか |
+| **判別能力** | 正常・誤束縛・誤ったunknown昇格・古い成果物の変異を独立Expectedが捕捉するか |
+| **記述の負担** | Authoring Source、Transform定義、生成物、手書き接着コード、重複した契約を別計数する |
+| **変更の負担** | 一件の振る舞いを変える際に修正した**正本ファイル数、行・意味上の単位、必要な再確認、失敗位置**を比較する |
+| **Pluginへの再帰** | 生成した部品が次のGenerator／Plugin Contributionを作るため実際に使われたか。Bootstrapはどこに残るか |
+
+分類は \`delegated\`（意味処理は固定Go/TS）、\`mixed\`（TEI定義が一部の実動作を支配）、\`tei-led\`（対象範囲の主要な型・Rule・ProjectionをTEIから生成）を**報告上の仮区分**として利用できる。ただし新しいCore enumや公開ABIに採用しない。\`mixed\`／\`tei-led\`の判定は利用者レビューと実測の対象範囲を明示し、明確な分母・独立Expectedのない比率を示さない。
+
+改善を主張するときは、同じFixture／Expectedと境界を固定し、**手書きで維持する意味の重複が減ったこと・差分の読みやすさ・変更時の手数の減少**と、実時間／診断品質／ビルド再現性の非退行を併せて記録する。単に短くした結果、ValidationやSource Provenanceが失われたなら改善に数えない。
+
+### 17.5 既存Issueへ引き渡す実施単位と停止条件
+
+| 順序 | 実施内容・担当 | 受入の境界 |
+| --- | --- | --- |
+| **M-0** | #4583／#2831：Draft #4587と#4572の固定HEADで、Inspector生成経路とGo/Node/Windows Consumerの既存Evidenceを再照合 | 既存の成功を新試験として水増ししない。正式non-Plugin BuildIntent・Stage2 Desktopは依然別資格 |
+| **M-1** | #2620／#988／#951／#2514：隔離Fixtureで契約の正常な拒否語彙変更と誤束縛／unknown誤認を独立Expectedで判別 | 契約→生成TS→Consumerの因果連鎖が限定的に成立。Product公開Errorコードの実変更は不要 |
+| **M-2** | #2621／#2497／#1124：同じ検査結果を読める表／Graph／Sourceジャンプとして投影し、Raw/Typed／Role／Source spanを保持 | 短い記法は正式Parserが受理するまでは入力候補。非可逆Diagramの直接保存不可 |
+| **M-3** | #951／#4646／#2831：Generator／Test等のPlugin Contributionの一部を同様に定義→生成→実使用し、次のTEI生成へ用いる | そのPluginの実Contributor／Builder版・Source/Target依存を別記録。Plugin全体の自己記述完成としない |
+| **M-4** | #4583／#1824：non-Plugin Studio正規Build→実Stage1によるStage2構築→当該Windows WebView2で、上記の生成Inspectorが使われるか確認 | 実Stage2 Windows Consumerが確認できるまでB3未成立。M-1/2成功でB2/B3を代替しない |
+
+**停止条件**：既存の\`inspection-reader.contract.json\`／Transformで成立する実験は、現行の固定JSON経路で先行できる。一方、新記法\`*.tei.md\`への移行や新言語Pluginの配布をM-1のHard Gateにしない。現行BuildIntentの\`Subject.Kind=plugin\`限定を、StudioをPluginに偽装して回避しない。定義・生成・Plugin・OS実使用に第二の意味正本／Runner／Hostを設けない。
+
+**今回の追加は設計・実装引渡しのみ**。現行Draft中に存在するテスト・当該固定HEADでの旧実測を再利用した。M-1〜M-4の新変異試験、\`*.tei.md\`正式Reader、構文簡素化の実測、Plugin再帰、Stage2 Desktop製品E2E、Owner意味受理は**NOT RUN**。
+
