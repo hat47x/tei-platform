@@ -1,0 +1,67 @@
+{
+  "schema": "tei-md-graph-independent-expected-candidate/v1",
+  "adoption": "proposal-only",
+  "authority": "existing #1180/#2514 owner acceptance required",
+  "graphDefinition": "Markdown table is the authored definition; Mermaid is a view",
+  "order": "ascending edge ID",
+  "cases": [
+    {
+      "file": "baseline.tei.md",
+      "valid": true,
+      "outgoing": {
+        "n-1": [
+          "e-1",
+          "e-2"
+        ],
+        "n-2": []
+      },
+      "diagramConsistent": true
+    },
+    {
+      "file": "edge-reversed.tei.md",
+      "valid": true,
+      "outgoing": {
+        "n-1": [
+          "e-1"
+        ],
+        "n-2": [
+          "e-2"
+        ]
+      },
+      "diagramConsistent": true
+    },
+    {
+      "file": "layout-only.tei.md",
+      "valid": true,
+      "outgoing": {
+        "n-1": [
+          "e-1",
+          "e-2"
+        ],
+        "n-2": []
+      },
+      "diagramConsistent": true,
+      "meaningEqualTo": "baseline.tei.md"
+    },
+    {
+      "file": "duplicate-edge-id.tei.md",
+      "valid": false,
+      "diagnosticCandidate": "duplicate-edge-id",
+      "noGeneratedGraph": true
+    },
+    {
+      "file": "diagram-stale.tei.md",
+      "valid": true,
+      "outgoing": {
+        "n-1": [
+          "e-1"
+        ],
+        "n-2": [
+          "e-2"
+        ]
+      },
+      "diagramConsistent": false,
+      "policy": "Report stale derived view. Never infer meaning from the stale diagram; do not overwrite either source without an explicit proposal."
+    }
+  ]
+}

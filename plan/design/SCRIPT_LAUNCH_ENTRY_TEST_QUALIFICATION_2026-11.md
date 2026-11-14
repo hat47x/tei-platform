@@ -1198,3 +1198,77 @@ Script Launchの役割は、受理されたFunctionの定義変更、TEIによ�
 完了とするのは、一つの受理済みpure FunctionについてA/Bの両入口を実行し、selected Providerとactual Providerが同じであること、入力・出力の意味とSource/Artifactが一致すること、独立Expectedの正負例が判別できることが**同一HEADの実試験**で確認された範囲だけである。初期CLI先行の意味実装とDesktop製品Stage2は別成果を保持する。
 
 **状態**：本節は現行mainの静的コードInventoryと最小実装引渡し。新Product CLI ABI、公開Entry、実Codegen、実Provider、*.tei.md Reader、Stage2、Windows、実DB Effect、Ownerの意味受理は今回の文書変更ではNOT RUN / NOT ACCEPTED。実コードPRに着手したとき、選択した具体的なMeaningと正負Fixtureを改めて検収する。
+
+<!-- tei-launch-placement-local-server-20261114 -->
+## 26. CLI・Studio従属Server・Pluginの実行配置とSession世代を接続する（2026-11-14）
+
+### 26.1 意味の共通化と配置の選択は別契約とする
+
+2026-11-14のユーザー方針を受け、**ローカルStudio DesktopはClientが従属Serverを子Processとして起動し、IPCで操作する構成を製品設計の基本経路**とする。一方、実装・運用上の採用資格、単一実行ファイルWorker/別Server成果物、IPC方式の選定は実試験で確定する。[ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)と[Studio配置比較 #4635](https://github.com/hat47x/tei-platform/issues/4635)の実測を経て採否を確定する。Script Launchでは、**共通のOperation/Entry/Provider契約を使うことと、Client/Serverを必ず同一Processまたは別Processにすることを分離**する。
+
+CLIの実行をWailsに依存させない。現行Goの共通Application OperationはTransport-neutralのままとし、Goパッケージの依存はAdapter→Operation→既存Ownerへ向ける。プロセス選択はHostの構成条件であり、業務Function DSLにGo main、子Process、HTTP、IPCを露出しない。TEIの共通Execution Serverを独立した業務Hostとして新設せず、Studio子ServerはStudioのSource/Build/Modelサービスの配置形態、外部Targetは既存.NET/Java/Go/WASM等Hostに責務を残す。
+
+| 利用入口 | 起動・配置の原則 | 証明する対象 |
+| --- | --- | --- |
+| ローカルtei CLI | 原則プロセス内で共通Application APIを呼ぶ。軽量読取り・pure評価に常駐Serverを要求しない | 実Provider選択、Source/Contract/Artifact、typed Result、現在の操作資格 |
+| CLIの隔離/共有処理 | 必要なOperationに限り、明示したローカル子Worker/Serverまたは既存接続先へ委譲可能とする。黙ったAuto Spawn/Remote切替をしない | Peer実体、Endpoint専有、Protocol/Plugin世代、委譲先の実Call/Failure |
+| Studio Desktop | ローカル時はWails Native Client→薄いGo IPC Client→従属子Serverを基本経路とする。ClientはWindow/未保存Buffer/Pin/描画即応を保持 | Studio ServerとWindowの独立Process・実IPC・Source/Artifact・対象の資格 |
+| Studio接続型/Web/MCP | 明示TargetのHTTP/IPC/stdio等Adapterから同じApplication API。接続先ごとに権限・開示・現在世代を検査 | 同じ意味結果が同じ受領資格を意味するわけではない |
+
+Studioの既存Wails Native同一Process実装は性能と障害時の対照であり、ローカルDesktopの子Server設計方針を初期値として残す。#4635の配置候補はA（Native一体）、B0（同じDesktop実行ファイルからself-spawn Worker）、B1（別Server Artifact/loopback HTTP）、B2（別Server Artifact/Named PipeまたはUDS）。**配置B0/B1/B2は#4583のセルフビルドB0/B1/B2/B3と別の番号体系**であり、受入票で混同しない。Loopback HTTPとOS IPCの優劣は測定前に決定しない。
+
+### 26.2 子Processを選ぶときに実際に固定する情報
+
+次の情報は既存Host/Build/Plugin/Operationの証拠に対応付け、第二の万能EnvelopeやRegistryを増設しない。
+
+| 時点 | 必要な照合 | 不一致時の扱い |
+| --- | --- | --- |
+| **Spawn** | 起動元Process/実Child image・Digest・argv・Owner、作業ディレクトリと隔離、Endpointの新規生成・専有 | 見つかったポートや同名Processを自分の子と推定せず拒否 |
+| **Handshake** | Client/ServiceのProtocol適合、Application Operation契約版、Server generation/Build Artifact、Host設定したWorkspace/Target | 古いService・互換外Protocolを拒否。UpdateやIn-processへの黙ったfallback禁止 |
+| **Plugin Resolve** | 既存Plugin Lock、Dependency/Contribution、Target/Scope、Server側がロードできたPackage/実Provider Member | Client側にあるManifestや選択名をServerで実Load済みと扱わない |
+| **Prepare/Admit** | 公開Entryと意味版、Source/Subject/expected revision、入力missing/NULL、現在Host Grant、Operation identity/Deadline | Protocol接続済み・Server ReadyでもProvider call0が必要な拒否は残る |
+| **Invoke/Observe** | 実Attempt、selected Providerとactual loaded Provider/bytes、BusinessResult、Effect Receipt、Consumer受領 | ACK/Exit0/HTTP200、PID生存、同値Resultだけで業務成功にしない |
+| **Restart/Upgrade** | 旧世代の処理・Source/Artifact/Plugin lock・Operation/Attempt/Receipt・Client Pinの再照合 | 旧Replyの現在採用、未知Effectの自動再送、旧Grantの復活を禁止 |
+
+Studioの子Serverを再起動するとき、Clientの未保存Buffer・Source Selection・PinはClientに保持してよいが、古いServer Generationの返信を現行Workspaceへ投影しない。進行中のBuildやDB処理は、終了通知と実Effect確定を区別して既存Receipt/独立Readへ渡す。Workerの自動再起動が必要でも、業務Operationの再送Policyとは別である。
+
+### 26.3 Plugin Managerを共有しても、Process内の実在庫は共有しない
+
+共通化するのはPluginのContract、選択規則、依存、Version/Lock、公開Contribution/文書、Target Fitと診断である。同じGoライブラリをCLIとStudio子Serverに組み込むことはできるが、**実ロード済みObject、インメモリCache、認証済みContext、現在Grant、Process固有のProvider実体はProcess間で共有されない**。
+
+Pluginの段階も区別する：Packageの発見・インストール、Contract/Dependencyの解決、Buildへの包含、Server起動時/Operation時のLoad、実Provider Call、Effect/Consumer観測。PluginがEditorに存在するだけではServer Runtimeに搭載済みではない。上位Pluginの公開図解/Skill説明も実行能力や権限ではない。Plugin文書は人間とAIが共に読める共通の短い入口と、依存する上位Contract/公開Manualへの版付き参照を持つが、非公開Sourceや内部Grantは展開しない（#951/#4198）。
+
+同一Build内への静的合成を選ぶPluginは、Packageを変えると実行ファイルを更新する必要がある場合がある。Child方式を選んでも、PluginのHot Reloadや独立Updateが自動で成立するわけではない。初期は選択Lock/実Build ImageとServer Generationの一致を優先し、UpdaterやHot ReloadはVersion互換・Rolling/Drain・Rollback・Artifact署名を独立実証してから採否を決める。旧Plugin世代に紐付く実Attemptを、更新後の新Provider呼出しと混同しない。
+
+### 26.4 敵対的レビュー：便利な構成を既定にしない
+
+| 候補 | 利点 | 棄却または保留すべき条件 |
+| --- | --- | --- |
+| CLIも毎回StudioのWails Serverを起動 | GUIと同じProcess boundaryを使える | CLIにWailsが混入、Cold Start/Memory/配布・更新が重く、Reference用途でも必須なら棄却 |
+| 全CLIが一つの常駐Daemonを共有 | Cold Startを削減し得る | Workspace/Principal/Plugin Lockの衝突、古いServer/Artifact、孤児Process・誤った実行権限の混線を防げないなら採用しない |
+| CLIは常にin-process | 単純・高速・単一Go Binary | 不信任PluginのCrash隔離、長時間Jobの切断・資源回収、別Hostへの委譲が必要なOperationには不足 |
+| Studioの子Serverを基本経路とする | Clientと業務Serviceを分離し、Provider更新や障害の影響を局所化し得る | 実Child IPC・Peer/Version/復旧とNative対照の性能・総Memory・配布を検証するまでは製品実装の合格を宣言しない |
+| 通信失敗時に別経路へ自動切替 | 一見利用継続できる | 対象・Source・Scope・Effectが変わり、二重実行や権限越境が生じ得るため原則禁止 |
+
+Child方式のEndpointはLoopbackに置くだけで安全としない。OS Pipe/UDSでは実Peer/ACL、HTTPではBind Address/Origin/許可範囲・CSRF、共通にChild Image/一回限りの接続情報・世代/Versionを確認する。具体的なIPC形式は実測による#4635の判断とし、Script Launchで新しいwire schemaを確定しない。Wails Rendererから任意のOS PipeやサービスMethodへ直接接続させない。
+
+### 26.5 最小の横断E2Eと優先順位
+
+**全体P0は#2831/#4583のCLI先行TEI意味実装と最終Desktop Stage1→Stage2を維持**し、並行起動P0は#4495のpure公開Entry→Host-selected actual Go Provider→型付きAPIと通常tei CLIである。ローカルChild構成の全面採用やUpdaterをこれらの新しいHard Gateにしない。
+
+最初の配置比較は#4635のRead-only ListWorkspaces/InspectSubject/ValidateWorkspaceを、同じWorkspace/Source/Subject Revisionで直接Go APIと実Child IPCから呼び、成功/失敗・実Content/Source/Provider、子ProcessとClientの対象固定を比べる。次に公開pure Entry一件をIn-process CLIと子Serverで比較し、実Provider/Contract/Resultを一致させ、異なるAttempt/Processとして記録する。MCP/Remoteは別Consumerとして後段へ残す。
+
+既存#4495 EL、#4635のA/B0/B1/B2、#1180/#2514の独立Expectedへ次の反例を引き渡す。新しいScenario正本を作らない。
+
+| 対照 | 不合格条件 |
+| --- | --- |
+| CLIのWails独立 | cmd/teiまたはinternal/operationsのGo依存にWails/HTTP Serverの必須実装が混入 |
+| 古いChild接続 | ChildのPID再利用・Endpoint乗取り・Protocol/Plugin Lock不一致をReadyだけで採用 |
+| Actor/Workspace越境 | CLI引数・Wails JS値がServer側のWorkspace/Grant/Provider選択を決定 |
+| Plugin更新 | Package更新後も旧Image/Load済みProviderを新Versionとして実呼出し |
+| Client復元 | Server再起動後、旧Pin/旧Replyを現在の選択へ結び、古いOutputを採用 |
+| Effect不明 | ChildがCommit後にCrash、Ackなし。新Attemptで無条件再送 |
+| Source-only成功 | *.tei.mdの説明文だけReadし、実Reader/意味生成/Provider実Callを済ませたと表示 |
+| 通信同値の誤判定 | 同じ値を返したがactual Provider BではなくA、Artifact版・Disclosure/Receiptも不一致 |
+
+**Owner**：#1158/ADR-0048が共通APIと入口、#4635/#1824がStudio Child/IPC、#951/#1251がPlugin選択・Load/配布、#4495/#4502がEntry/Provider実呼出し、#2831/#4583がBuilderとセルフビルド、#1129/#1174がEffect/Recovery、#1180/#2514が独立Expectedを所有する。Studio子ServerはTEIの全Targetへ強制しない。ここでの結果は現状確認に基づく実装引渡し案であり、新Child IPC E2E、CLI連携、Performance、Plugin Hot Reload、Server公開安全性、実Provider/DB作用の受理はNOT RUN / NOT ACCEPTED。
