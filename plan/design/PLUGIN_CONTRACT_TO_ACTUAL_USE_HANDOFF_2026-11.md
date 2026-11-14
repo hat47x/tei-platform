@@ -748,3 +748,63 @@ P0-A：既存BuildIntentの`Subject.Kind=plugin`制約に対して、非Plugin S
 §23.4の失敗HEAD後、[REA #4637](https://github.com/hat47x/tei-platform/pull/4637)は整形修正後の**新HEAD f38117dc69b722e14de36a69c3fae6478766d5d4**へ進んだ。旧HEAD f9e355d5のHealth失敗は追加Go testのstruct fieldsにおけるgofmtずれ。新HEADの[Health #43558330965](https://github.com/hat47x/tei-platform/actions/runs/43558330965)・REA専用Jobは照合時点queuedであり、旧12/12成功を新HEADに移さない。
 
 この節は同日の**観測履歴**であり、競合するGoファイルを本PRから書き換えない。修正完了と当該HEADの独立CI成功、Ownerレビューの3つが揃って初めて対応するProduct Claimを更新する。
+
+
+## 24. 2026-11-14：実データ被覆・Toolchain・段階別Contributionの受入結合
+
+### 24.1 最新の3つの独立実装を、同じ意味モデルの異なる辺へ置く
+
+今回の横断成果は、**選択された機能が正しいこと、実際に取得したデータの範囲を正しく述べること、生成した成果物が何に依存したかを正しく述べること**を、それぞれ別の資格とすることで結び付く。
+
+| 実装 | exact HEAD と実CI | 示せること | 示せないこと |
+| --- | --- | --- | --- |
+| [Contribution Reference #4646](https://github.com/hat47x/tei-platform/pull/4646) | `77463edb17642d6400202d0229f33ec69db23b90`、Health/Cache/依存検査 **3/3 completed/success**。本人のGo/race/vet試験と区別 | 意味ID・版・指紋を各段階のContract・Target・Scope・Provider・Artifactへ対応付け、12種の不整合等をReferenceで拒否 | 実Pluginロード、GUI/API/生成Productでの利用、全契約の意味適合、現Grant、配布Trust |
+| [Function Data Context W1〜W3 #4647](https://github.com/hat47x/tei-platform/pull/4647) | `a962a3f6b13c58d93ad740998e5d94728c53e88d`、**7/7 Workflow completed/success**。実PostgreSQL16の詳細はPRで提示されたWSL上の別実測 | native SQL Readの実取得条件をHost/実DB側で観測。RLS/LIMIT/未宣言関係等**見えた制限**を`partial`として運ぶ | 未観測の絞込みがないこと、Native SQLの全母集団`complete`、結果列の由来W4、現在Grant、通常製品tei/Studioでの実呼出し |
+| [Self-build Toolchain観測 #4648](https://github.com/hat47x/tei-platform/pull/4648) | `64fb0f9abdf1a8cf947a844a973eb6d48685623f`、**8/8 Workflow completed/success**。Go 1.26.11/1.27.0の相互試験はPR記載のLinux別実測 | 同じPlanでも使う**コンパイルToolchain**が変われば成果物Byteが異なる。Builder申告＋Entry側の申告File再読取をReportへ保持 | Builderが実際にそのToolchainを起動したこと、Seed Trust/G4、Windows/macOS/arm64での再現、Toolchainの契約上Pin |
+
+**三つの階層を併合しない**。Contributionの選抜が成功しても、実Query被覆や成果物のToolchainを証明しない。PGの実Readに成功しても、`complete`・現在AuthZ・GUIからの受領を推定しない。同一Planで二つのToolchainによる`l2b.claimed=true`が成立しても、Seed TrustやStage1→Stage2 Studioを認定しない。
+
+### 24.2 Queryの取得被覆：`partial`と`unestablished`を別の事実として保存
+
+[W1〜W3 #4647](https://github.com/hat47x/tei-platform/pull/4647)の実コード方針は、PostgreSQLの宣言関係を`ACCESS SHARE`で先にロックし、system identifier、実引数つき`EXPLAIN (VERBOSE)`の関係/Node、関係種別、`row_security_active`を観測する。失敗した追加観測はsavepointで隔離して、本来のRead失敗を上書きしない。Persistence Mappingから実Dataの宣言関係・PKを選ぶが、0件・複数候補なら選ばない。SQL本文から推測しない。
+
+確認される制限は`partial`（例：`limit-in-plan`、`row-security-active`、`relation-not-declared`、`append-or-partitioned`）。何も制限が見えなかった場合も`complete`へ上げず、`unestablished`と`open: native-sql-predicate-not-closed`を維持する。STABLE SQL関数に隠れた述語が、同じPlanの関係・RLS・LIMITには現れない反例を保持。**欠落が観測されないことは、欠落しないことの証拠ではない**。native SQLの`EmptyJustified=true`はここでは許可しない。
+
+`NULL`の保存元の由来・列OID/列番号、Entity粒度を確定するW4は未実装。`nullOrigin=unestablished`を正とし、宣言PKが一意らしいことだけで`stored`/Entity/Full Scopeへ昇格しない。RLSは現在Session Roleで変わり、system identifier・同じQuery text・同じrowsだけではTenantとAuthorityを示さない。取得条件・観測時点・実Recipientをそれぞれ独立Expectedへ残す。
+
+[同一HEADのRA-0/1/2再資格 #4644](https://github.com/hat47x/tei-platform/pull/4644) `b5c23044ebaf8671d73a140da92fc9c4d74edff4` はRA-1 Go／歴史WebとRA-2実PG16の専用CIなど**3/3 Workflow success**。これは旧RA-0と旧RA-1/2を一つの仮統合HEADで試験できた前進であり、**製品Operation→通常tei CLI→実Provider→Function Context二Consumerは未受理**。#4626 base `9eecf2b9`はHealth/歴史Self-build等成功でもBrowser→API実Binary依存除外の`sqlgen`2 symbolが別ゲートでfailure。型付きSourceの受理やPGの7ケースにE1依存ゲートの失敗を混ぜず、#1182の調査を継続する。
+
+**横断Product Exit**：RA-2Rの`reference-browse-read`からRA-2Pへ移行し、既存FunctionContextへW1〜W3の被覆注記を伝える。Readの成功/失敗、観測の成立度、Consumerへの開示とOwnerの正式なMeaning/Source受理を四つの独立判定にする。W4の列由来、構造化Queryでの`complete`採用、MappingのPK型とSeed値の不一致は#2586 Ownerが別に決める。Function Contextを第二Data Authorityにしない。
+
+### 24.3 Go Toolchainを現時点では「Build時に観測した事実」として保持
+
+[#4648](https://github.com/hat47x/tei-platform/pull/4648)のX=Go1.26.11／Y=Go1.27.0相互試験は、駆動役の種をX/Yへ変えても**コンパイルToolchainが同じなら同じArtifact Byte**、Toolchainを変えると**同一PlanでもArtifactが異なる**ことを示した。現`l2b.claimed`の五条件を両方が満たすので、既存のPlan FingerprintとArtifact Revisionは同じ概念ではない。
+
+新しい`toolchainObservation`はbuilder申告の実行ファイルとByte DigestをEntryがもう一度読み直し、`matched`/`mismatched`/`unreported`を出す。**matchedは申告パスのByte一致であり、実OS Execの観測ではない**。`unreported`も現コードではBuild拒否条件でない。BuilderがToolchainを読めず`notObserved`とした場合は、完了したBuildと「コンパイラの特定不可」を別票で残す。周辺Toolchain Source全体のHashが性能へ与える影響も未計測。
+
+採否判断を分割する。(T1) ReportのProvenanceとして現実に消費したToolchainの資格をどう測るか、(T2) BuildPlanへToolchain Pinを**意図として要求するか**、(T3) Generator/Builder/Compiler/OS実Childの依存閉包とFingerprint再使用条件、(T4) Seed Trust/G4を外部の独立系統でどう検証するか。T1のReport実装成功でT2〜T4を受理しない。
+
+P0 Studioの非Plugin Subject連結時は、`selected Builder`と`actual Child image`だけでなく、`actual compiler toolchain`の観測値またはunreported理由をAttempt/ArtifactSetへ紐付けるよう**受入票を拡張**する。ただし現行Planを無断変更しない。異なるToolchainでもArtifact Digest一致を必須化したり、同Digestだから同じMeaning受理として再使用したりしない。#2831/#1119がPlan入力化のOwnerである。
+
+### 24.4 Pluginの段階別Contributionを理想設計ではなくReferenceで選抜検証する
+
+[#4646](https://github.com/hat47x/tei-platform/pull/4646)は既存#951 Referenceに、**共通MeaningのIdentity/Version/Fingerprint**と、Editor/Generator/Runtime/Test等のContribution固有Contract・Package Version・Target・Scope・Provider/Artifactを切り分ける小さな構成検証を追加した。同じMeaningへ異なるPackage版を対応付けられること、曖昧なProviderや明示Wiring、実行Runtime Contributionが無い場合、Editorだけの要求を独立検査する。
+
+ここでの「有効な構成」は**論理候補の計画**であって、実Plugin Providerがロードされたこと、正しいRuntime Binary/Targetへ包含されたこと、実Productで呼ばれたこと、Current Grant/Disclosureが許可したことではない。
+
+次の受入順は、(C1) Meaning/Target/Scope/Contribution契約の**宣言選抜**、(C2) 実BuildIntent/Target Artifactの**実包含**、(C3) 実OS Child/Runtime Providerの**実Binding**、(C4) UI/CLI/APIの異質Consumerへの**実Deliver**、(C5) Owner受理・Current Grant・版変更A→B→Aの再資格、の順。既存#951/#1016/#1251/#2831/#1180に分割し、#4632の理想管理Schemaを新しい必須Coreに先行導入しない。Referenceが12種のMismatchを検出したことだけで実行時Permissionが保証されたとは言わない。
+
+### 24.5 採用する統合ケースと優先順位
+
+| Case | 独立Expectedの実観測と拒否条件 | Owner/優先 |
+| --- | --- | --- |
+| XC-01 Toolchain差分 | 同一Plan/Sourceで異Compiler→Artifact Byte差、Entryの`matched`と実OS Exec同定を別判定。実使われたToolchainが不明なら`unreported`として残す | #2831/#1119、**P0補助** |
+| XC-02 non-Plugin Self-build | 正式Studio Subject→Builder/Toolchain/Child→N0/N2/N3→Stage1が生成したStage2→実Windows WebView2を同一Attemptに束縛。Stage0の既存exe直接起動・Plugin偽装を拒否 | #4583/#2831、**P0本線** |
+| XC-03 SQL Coverage | 実RLS/Limit/別Relationを`partial`、隠れ関数述語を`unestablished/open`。Queryが0件でも`EmptyJustified`へ上げない | #2586/#3509、**P1** |
+| XC-04 RA-2P Product Read | RA-0→1→2Rの仮統合成功から、正式Product `tei` CLI→実Provider→同Context二Consumerを独立受領し、Current Grantを別検証 | #2586/#4495、**P1** |
+| XC-05 Contribution actual use | 同一MeaningのEditor・Generator・Runtimeを独立に選択し、未選択Target混入、選択B実A、旧Artifact/Scopeを検出。実Consumerを確認 | #951/#1016/#1251、**P1/P2** |
+| XC-06 Data provenance and Disclosure | RLSにより見える行・Source存在・Tool metadata・原因ErrorをAudience別に返却直前判定し、実受領Byteで拒否を確認 | #1174/#1178/#3421、**P1/P2** |
+
+**主線変更なし**：P0はTEI Studio Desktopのnon-Plugin正式Build SubjectからStage2 Consumerまで。RA-2P・FunctionContext被覆・REA Host Reader・実HTTP認可とContribution実用検収は並行。外部Release Readback／理想全Plugin Manager／WASM／Web共同編集／Seed Trust G4は、個別Ownerが別の必要性・実Evidenceを示すまでP0を止めない。
+
+**今回の作業範囲**：本書の受入・設計追補のみ（Go/PG/Windowsの新たな試験はNOT RUN）。#4644/#4646/#4647/#4648は**それぞれDraft・未main統合**で、各HEADのCI成功を本書のRuntime/Product E2E合格に移さない。main統合済み[#4645](https://github.com/hat47x/tei-platform/pull/4645)のScript Launch A0〜A4設計は既存Ownerの作業分解として活用し、ここから新Dispatcher/Run Engineを増やさない。
