@@ -118,3 +118,56 @@
 | Studio Stage2/三要素Profileと組織Query接続 | #2831/#1124/#2586 | 異なるQuery/AttemptのPASSを加算 |
 
 **現状資格（2026-11-14照合）**：#4539実受注PG Readと#4551三要素修正、#4532 r7 Node合成はmain統合済みの限定成果。#4567の固定HEAD `f2c7c8d6...` は実使い捨てPG 4 subtests成功をPRが記録するがDraft未統合。#4555/#4585/#4599/#4601/#4579/#4587はDraftで、Stage2 Desktopセルフビルド、同一Membership二版保存・Org C1 Function→Provider→Consumer、現在Host認可、正式Owner意味受理は**NOT RUN/NOT ACCEPTED**。各実行時はHEADと実観測ログを再確認する。
+
+## 10. 実Product境界の具体的な断線と最短受入（2026-11-14横断再照合）
+
+新しいExpected/Engineを定義せず、既存#4490 ORG-BEH-01/02/04、#2510 org-synthetic-r7、#4501 CX、#2586実Read、#1180/#2514の独立Expectedを使い、**実Sourceで確認した未接続の辺**から実証順を固定する。
+
+### 10.1 r7と実PostgreSQL試験は異なる入力である
+
+mainのNative as_of_membership Queryは membership_id / org_unit_id / allocation の3列を出力する。mainに残る known_from >= :known_from、物理テーブル名 organization.membership、valid/known終了時点の欠落はDraft #4567で修正候補となり、同PRは使い捨てPGの4 subtestsを限定実行。ただし #4567 のテストデータはA1〜A9を異なるmembership_idで保存し、A2は一行だけ、A4のknownFromは2027-07-02である。
+
+対してmainの org-synthetic-r7 は、**同じA2の2記録版**（旧版knownTo=2027-07-02、新版knownFrom=2027-07-02・validTo=2027-06-01）と、2027-04-01から既知のA4を持つ。したがって **#4567のPG限定PASSはr7の二版共存、履歴再現、FTE変化、人物数を実証していない**。
+
+| r7照会（validAt=2027-06-15） | Membership集合 | distinct Person | Membership数 | FTE |
+| --- | --- | ---: | ---: | ---: |
+| knownAt=2027-07-01 | A1,A2,A3,A4 | 3 | 4 | 3.0 |
+| knownAt=2027-07-03 | A1,A3,A4 | 3 | 3 | 2.4 |
+
+値は既存Node合成Referenceの**手書きExpected**であり、Product実Rowsetの値ではない。A2に依存するD1のFTEは1.6→1.0、D2は1.4のまま。FTE、Membership count、distinct Personを同一Measureとして扱わない。
+
+**Read Projectionの新しいGAP**：現Query出力の3列からは person_id や各記録版の独立identityが観測できない。Membership行の存在確認は可能でも、Query単独でdistinct Personや同一Occurrenceのどの記録版を読んだかを確定したとは言えない。必要なClaimに応じて、(a)同じRead Cohort/Scopeの型付きMembership→Person関係を追加取得する、または(b)必要な識別列を明示投影して実Row Traceを記録する、を既存Query/Relation契約で比較する。全Queryへの新必須列や第二Context Storeは作らない。
+
+**最小受入の順序**：
+1. 既存#4566/#4567のSQL/Mapping重複と現行Persistence主キーのSourceを突合。履歴版別ID/物理PKの採否は#1126/DB Ownerへ差し戻す。
+2. DB Ownerが選ぶ隔離実装で、r7のA2旧版・新版を**同一DBに共存保存**し、validAt固定、knownAt切替、期間境界・同時に矛盾する二版・取消し・NULLの結果を独立Expectedと比較。別Runで単一A2を入替える試験は版共存の証拠にならない。
+3. 同じ実Read Cohort/ScopeからMembership/Person/FTEを**別Claim**として検査する。person_idが実取得されないなら人数はunknownのままとし、r7の3人をQuery実証済みにしない。
+4. その実Rowsetを既存Function Data Contextと一Consumerへ同Attemptで受領させ、Case責任/候補Rule/現Grant/Effectは段階ごとの別資格にする。
+
+### 10.2 判断候補の使用資格はClaim・時点・実効権限に相対的
+
+- 候補0/1/複数/partialは**検索結果と取得集合の完全性**の組合せ。完全な1人も、現在Host Grant・委任条件・Case revisionが成立しなければ実行許可ではない。
+- A2に対するknownAt変更はA2依存FTE/承認候補へ影響する。一方、独立して完全観測されたD2だけのClaimがA2に依存しなければ scoped-unaffected の可能性を残す。旧辺を含むRequired closureと実Readを確認しない限りunknown。#2582/#4518の既存契約を利用し、無関係なUnknownによる全体失効も、未観測Sourceによる虚偽の無影響も防ぐ。
+- #4616のmain統合済みProduct反例では、Source-root実在性が変わるだけでWorld/Model Fingerprintが同一でもValidation結果は変わった。組織C1のSource Pin/Reader/Build/Evidenceは、Model Revision一致から現在性を推定しない。
+- 代理・承認・責任移管中のEffectが不明となったとき、Hookの内側のeffectUnknown/lookup-firstを通常warnに落とさない。Draft #4602の局所修正を既存#1174/#1129のReceipt/Effect観測へ接続し、照会前の再試行/後続Effectを止める。PRの局所成功を実Host実証へ昇格させない。
+- Case handlingUnitとPerson異動、Subsystem/CUD Owner、通知/ACK、B2C Account/Tenant/Principalは非自動対応。Rule/Case/Policy/Recipient版の変化は、必要Read/現在Grant/開示を用途別に再検査する。
+
+### 10.3 Studio・Plugin・SHOの実使用と選択の区別
+
+- Draft #4579の固定HEADでは生成WorkbenchとGo Serviceの同一Windows Wails/WebView2実行・配信JS digest照合・read-only Catalog/Inspectに限定成功。ただしこれはB0相当で、Stage1 TEI ProcessによるStage2再構築(B2/L3)、r7/Case C1実Consumer、全Provider/全Pluginは未実証。Draft #4587の別HEADの検証を加算しない。
+- Draft #4623のCaller選択Builder実exe SHA事前照合はSelected B/Actual Aの起動前拒否であり、BuildIntent Resolver選択・全依存閉包・OS Loader TOCTOU・Stage2 Desktop実起動を証明しない。#4621/#4601のContract/選択/実Build inclusion/actual Invocation/Effect/Consumer Disclosureの分離を組織C1の生成・読取・再投影へ適用する。
+- #4597のPin stateはWorkspace epoch/Generation/Undo/ABAに対する局所状態。Graph/Inspector実UI・Source revision・Recipient disclosureとの実接続は別。C1の編集はSubject・Workspace・Relation occurrence・値のSource span・Source revision・Selection epochを固定し、最新Source再取得→差分Preview→通常のレビュー/必要なOwner受理→Source Patch/再投影へ進む。非単射Graph→Treeの隠れた第二親や集計結果を自動逆編集しない。
+- DSL/Typed Script Entry（Draft #4599/#4618）からは部分Lowering/未読Rootを完全なWorldと見なさず、明示Function→実Query/Providerの結線と実Command/Effectを別に示す。Source糖衣表現・三要素/REA/SHOの資料/AI候補を第二Meaning正本へ昇格させない。
+- 通常組織Dataを専用秘密扱いしない。保護Fieldが混在する場合のProvider/Count/Export/Tool出力、外部REAのEvidence path/低位Error、SHO/AIへの用途別開示は#2516と外部Observationの担当へ戻し、同一公開Sliceの二世界で漏洩有無を検証する。
+
+### 10.4 優先順位と既存Ownerへの実装引渡し
+
+| 優先 | 最小の次の実行Exit | 再利用するOwner・Expected |
+| --- | --- | --- |
+| P0並列A | #2586 通常tei CLIのFunction→実Provider→Context→一Consumerを同Attemptで実証（最初は受注Query） | #2586/#2506/#2514 |
+| P0並列B | Stage1実Process→実Builder→Stage2 Wails Desktop/WebView2実起動。B0とB2を区別 | #2831/#4583/#4623 |
+| P1-Temporal | r7同一A2の二版共存、同一validAt/異knownAtの実Read、Person/FTEのRequiredと実Rowset照合 | #1126/#4490/#2510/#2586 |
+| P1-Decision | C1のCase rev/Rule rev/候補0/1/複数/unknownと独立Consumerを同Sourceから判別 | #4490/#4501/#1125/#2516 |
+| P2-Effect | 現行Host Grant・代理・Hook Effect・Receipt/ACK・Pin編集・B2C/SHO開示の別資格を検査 | #1174/#1444/#4515/#3509 |
+
+**保留・競合**：#4566/#4567はNative SQL/Mappingを重複修正、#4555/#4585は同じ組織計画§10.12、#4601/#4620などはMASTER_PLANを並行編集。旧branch文書の全文置換や異なるHEADの局所PASS合算は禁止。現行mainとのSource/責務/期待値差分を先に照合し、無損失前方移植で統合する。今回の追補では、新しい実PostgreSQL二版試験・Windows Stage2・Host Effect・Owner業務受理を**実施していない**。
