@@ -141,19 +141,29 @@
     },
     {
       "id": "PDC-04",
-      "variant": "B selects A 2.0.0 but document applies to A 1.0.0",
+      "variant": "B selects A 1.0.0 but receives a guide applicable only to A 2.0.0",
       "expect": {
         "result": "version-mismatch",
-        "useAsCurrentGuide": false
+        "useAsCurrentGuide": false,
+        "selected": "fixture.graph-base@1.0.0",
+        "guideAppliesTo": "fixture.graph-base@2.0.0"
       }
     },
     {
       "id": "PDC-05",
-      "variant": "Only manual prose or Mermaid layout changes",
+      "variant": "Manual prose changes alone OR Mermaid layout changes alone",
       "expect": {
-        "docAndDisplayRecheck": true,
-        "modelMeaningMustChange": false,
-        "goArtifactRebuildRequiredByThisChange": false
+        "manualOnly": {
+          "docRecheck": true,
+          "modelMeaningMustChange": false,
+          "goArtifactRebuildRequiredByThisChange": false
+        },
+        "layoutOnly": {
+          "displayRecheck": true,
+          "modelMeaningMustChange": false,
+          "goArtifactRebuildRequiredByThisChange": false
+        },
+        "sourceRevisionRecheck": true
       }
     },
     {
