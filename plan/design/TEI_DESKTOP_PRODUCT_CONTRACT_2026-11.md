@@ -651,6 +651,55 @@ RとGは同じSource/Operation/Evidenceを辿るが、**Rの成立をGの前提�
 - 実装PRは**一つの断線・一つの独立Expectedの負例**を基本とし、SourceのGuardを外すだけ、Pluginの説明を登録するだけ、UIに成功Badgeを出すだけで製品完成とみなさない。Source byte/位置、選択Frontend・Role、World/Meaning/Artifact revision、実Builder/Provider/Process、Client表示、現在Scope/Disclosureの必要な証拠を、実観測した範囲で提出する。
 - **本節はDocs-only**。追加の正式`*.tei.md` Parser、製品Go/Node/Windows/CLI/Plugin/外部Harness/DB実行、Stage1→Stage2、Owner受理を新たに実証したものではない。
 
+
+### 0.16 第16次横断統合：DesktopのRelease整合性・更新後復旧・実験Mobileを製品受入へ接続（2026-11-15）
+
+**判断の範囲**：Desktopの機能を「Source→Meaning→Artifact→実Consumer」で検収する§0.14〜0.15に、**生成したDesktopを配り、更新後も同じ意味・権限境界で安全に利用できること**を追加する。ただし最優先は引き続き #2831/#4583 の正式非Plugin Build→生成Stage1によるStage2 Windows Desktop構築→そのStage2実WebView2。今回の配布／Updater／Mobileは**製品化レーンの受入契約**であり、B1→B3や正式`*.tei.md` Reader／通常`tei`実Provider呼出しへの新Hard Gateにはしない。
+
+#### 0.16.1 詳細Ownerを増やさず、Desktop製品側の接続点だけを定める
+
+- **詳細の単一担当**：[Backend起動・互換・Updater復旧 #4705](https://github.com/hat47x/tei-platform/pull/4705) の実装契約§22「Wails標準UpdaterとStandalone Release」UP-0〜3、§23「Mobile」M-0〜3、および [#4635](https://github.com/hat47x/tei-platform/issues/4635) の同一Process A／同じexeの自己子Backend B0／別Wails Server B1/B2の方式比較を参照する。ここにUpdater専用Release Engine、Plugin Registry、第二の構成世代Storeや独立Expected正本は設けない。#4705のマスタープラン反映内容と二重に編集しない。
+- **現在の実装事実**：mainの`cmd/tei-studio/go.mod`はGo 1.26.11、Wails `v3.0.0-beta.29`。現`cmd/tei-studio/main.go`はWails `application.New`で同一Process `StudioBridge`をService登録するが、`app.Updater`初期化はない。したがって「上流にUpdaterがある」ことと「現Studioで配布・更新が実証された」ことを区別する。
+- [Wails公式Updater](https://wails.io/guides/updater/) は署名検証・ステージング・単一の実行対象交換を提供する。ZIP/TAR.GZはトップレベル一項目という制約がある。**単一ReleaseにDesktop／Server／Pluginを収録すること**と、Wails標準Updaterだけで独立した複数実行ファイルや設定を原子的に差し替えられることを同一視しない。Windows/macOS/Linuxでのインストール権限、OS Installer／Package Managerとの競合、署名、起動後の互換性は別の実検収が要る。
+
+#### 0.16.2 Desktopの配布形態を実行対象とArtifact閉包で選ぶ
+
+| 形態 | 最初の利用・更新契約 | 採用前に必要な証拠 |
+| --- | --- | --- |
+| **D2 標準Standalone** | Go/Wails単一実行物に共通Application Core・標準Plugin／UI Asset・読み取り専用既定設定を収録。必要時に同じexeのB0子Modeを比較するが必須にしない。Wails標準Updater第一候補 | 生成Stage2の同一実Image/JSとRelease署名／Plugin Lock・設定Schema、更新→再起動後の実Windows Consumer |
+| **D3 別Server同梱** | DesktopとServerの別Imageを**一つのRelease Identity**へ束縛する。Backend・依存Plugin・設定Templateを同梱。更新時はInstaller／Package Manager、または検証した複数Artifact Activationを別に選ぶ | Desktop/Server/PluginのRole・Version・実Byteの一致、混在世代拒否、更新途中の中断、子Process終了、旧Session復旧 |
+| **D1 Remote Desktop** | DesktopはUI/Client側の必要な部品だけ更新。Remote Server/DB/Server PluginはServer Ownerが管理。Remote接続先を更新失敗時にLocalへ黙って切り替えない | Client/ServerのOperation/Wire互換、現在Host Grant/Scope、Server実Pluginと選択Endpointの一致、更新中のProtocol拒否 |
+
+D1/D2/D3の番号・意味は#4705 §22に合わせる。Studio Native/SHO Standalone/生成Desktop TargetのBOMはTargetごとに確定し、**生成時だけのGeneratorを製品Runtimeへ無条件に同梱しない**。同梱Pluginの存在・digest一致は選択済み／実ロード／現在実行許可／実Provider呼出しを自動証明しない。
+
+#### 0.16.3 Release・Operation・Windowの三つの資格を混ぜない
+
+1. **Release資格**：配布物をOS/Arch、署名、Desktop実Image、GUI Asset Revision、（必要なら別）Backend image、Operation/Wire契約、Plugin Lockと実Artifact、既定Config Schema/Templateの**同一Release**として照合。元のBuild Attempt/ArtifactSetから参照できるようにし、手書きの第二Release BOMを正本化しない。
+2. **Operation資格**：起動中のRequest/Invocation/Buildは開始時の実Process Image、Plugin Composition、Source Revision、Target/Providerを既存Attemptへ束縛する。**次のInvocationでは現在Grant・Source・Host対象を再検査**する。新Releaseへ更新しても旧Sessionの業務意味受理・Effect資格を自動継承しない。
+3. **Window資格**：Focus/Pin/Dirty Buffer/IME/Undo/Activityは利用者の編集中の作業であり、Updaterの実行物交換と別。更新前に未保存内容の状態と作業中Operationを可視化し、適切に終了・保留してから切替える。アプリ再起動後に旧Replyを新Windowへ自動適用せず、Pinは現在Source／Catalogで再資格化する。
+4. **利用者領域の分離**：設定TemplateはRelease、実ユーザー設定・Workspace・認証情報・DBはRelease外。旧ConfigのBackup・明示Migration、変更不可なDB Effect、元Releaseへの復元可能範囲を区別し、実行ファイルRollbackで外部EffectもRollbackしたと表示しない。
+
+最初の負例は **Release A→B、旧Backend AのままB UI接続／旧Plugin Artifact、Dirty Source Bと保存Aの混同、更新中のBuild/DB Effect Unknown、更新後A旧ReplyによるPin書換え** を既存UP/BL/DT/PIN/BD/Receipt票で試す。新しいGate IDを増やさない。署名成功だけで再起動後のProvider実呼出しをPASSとしない。
+
+#### 0.16.4 Mobileは共有できる定義と、共有できない実行環境を分ける
+
+[Wails v3公式Status](https://wails.io/status/)ではWindows/macOS/Linuxが安定版のDesktop互換性対象で、Android/iOSは**実験的・保証対象外**。[Mobile](https://wails.io/guides/mobile/)の共通Go・フロントエンド構成は試験に利用できるが、現行beta.29のTEI StudioでMobile実Build・動作が確認されたわけではない。
+
+- **共通**：型付きApplication Operation、Source／Meaning、標準UI宣言モデル、Graph/Tree/Inspector等のread-only Projection、Independent Expected。最初は固定FixtureのCatalog/Inspect/Validateに限る。
+- **Target別**：Android/iOSのToolchain・WebView／OS Bridge・Sandbox File access・Foreground/Background・Touch/IME/アクセシビリティ、Host Scope、Plugin実体、署名／配布／更新。Desktopの自己子Backend、Wails実行ファイルUpdater、動的Native PluginをMobileへ自動継承しない。
+- **正式化**：#4705 §23のM-0公式状況追跡→M-1 Android/iOS実験Build→M-2 Read-only実動作／復帰試験→M-3 **Wails側の各Mobile OS正式互換性保証＋TEI実機・配布・復旧・Plugin・Owner受入**の順。実験Buildで得た成果をDesktop P0の成果として足さない。Mobile対応時期は約束しない。
+
+#### 0.16.5 実装への引継ぎと現在の停止線
+
+| Owner | 最小の実装／受入差分 | 今回は成立しないもの |
+| --- | --- | --- |
+| **#2831/#4583** | B1→B2→B3の実Stage2に、実Image／UI Asset／選択Plugin／Build Attemptの版・role・digestを記録。後続の署名付きReleaseを生成しやすいArtifactSetの**観測可能性**を保つ | Stage2 Windows成功前にUpdater/Installer/MobileをHard Gate化しない |
+| **#1824** | 実Window/Pin/Dirty/進行中Operationを、更新前後にどう扱うか明示。現行Wailsの実Windows Bridge・WebView2の基線を保持 | 更新UIの存在だけで更新・復旧成功としない |
+| **#4705/#4635** | 同一Process A→自己子B0/別Server B1/B2の比較、UP-0/1 first、必要時UP-2/3。実HandlerのOS別Updater/Install検証を担当 | Wails標準UpdaterがD3複数ファイル更新を自動保証するとしない |
+| **#2044/#951/#2589** | 同一Releaseで必要なPlugin選択・Lock・実Artifactの閉包とRuntime資格を検収 | Plugin Inventoryや手動配置を実ロード／権限／実使用と呼ばない |
+
+本節は**Docs-only**の横断判断。現Studioへの`app.Updater`組込み、Go/Wails安定版移行、署名／配布／Updater/Install/Recover、Android/iOS実Build・実機、Stage1→Stage2の新E2Eは**NOT RUN／未受理**。既存の正式P0は変えない。
+
 ## 1. 位置づけと判断済み前提
 
 - **TEI Studio**はData/Function/Business三視点、Data Context、Source/Meaning、DBクライアント、Plugin、テスト、SHO文書機能への統合Workbench。
