@@ -112,3 +112,9 @@ G0・G1は既存Studioセルフビルド B1〜B3 より上位の必須Gateにし
 ## 10. 現時点の結論と主張の限界
 
 本案は、Desktopの子プロセス候補とCLIのWails非依存・ローカル開発を両立できるか検討する。現行P0基線の同一Process方式とADR-0048の既定は変更しない。子BackendとRemote Serverは同じOperation/Plugin契約を使用するが、同一プロセス・同一バイナリ・同一Plugin版を義務付けない。利用する側の実行範囲と権限、Client／Server互換性、Artifactの実バイトを固定する。現行コードの実Local IPC、Remote CLI、Plugin install／enable、署名付きUpdater、三OSのInstaller／自己更新の完成を示す文書ではない。
+
+## 11. 子Backendの実装契約と配布・復旧の受入（2026-11-15）
+
+[Studio Backend起動・互換性・更新復旧の実装契約](STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)に、次の実装境界を切り出す。**現行P0はDesktopのWails＋Go同一Process（A）、将来の局所子Backendは#4635で比較するB0/B1/B2**とし、選定・実装・適合PASSを先取りしない。CLIはWails非依存・ADR-0048のin-process既定を維持したまま、子Backend／Session再利用を実測比較する。
+
+実装契約は、CORE_READYとWORKSPACE_READYの区別、実Peer／Transport／Operation Contract確認、旧Session Reply拒否、Plugin Composition世代固定、Shared AcceptanceのSource競合、Wails Web旧Tab、GitHub ReleaseとPlugin文書、UpdaterのStaging→Drain→物理切替→復旧と外部Effectの非可逆性を明示する。適用／受理／実効Grantは既存Ownerが判断する。新しい第二Resolverや万能Update Registryは作らない。既存#4635/#4702/#1180/#2514を受入担当として維持する。
