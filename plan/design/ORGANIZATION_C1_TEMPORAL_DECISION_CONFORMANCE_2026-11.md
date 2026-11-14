@@ -155,7 +155,7 @@ mainのNative as_of_membership Queryは membership_id / org_unit_id / allocation
 ### 10.3 Studio・Plugin・SHOの実使用と選択の区別
 
 - Draft #4579の固定HEADでは生成WorkbenchとGo Serviceの同一Windows Wails/WebView2実行・配信JS digest照合・read-only Catalog/Inspectに限定成功。ただしこれはB0相当で、Stage1 TEI ProcessによるStage2再構築(B2/L3)、r7/Case C1実Consumer、全Provider/全Pluginは未実証。Draft #4587の別HEADの検証を加算しない。
-- Draft #4623のCaller選択Builder実exe SHA事前照合はSelected B/Actual Aの起動前拒否であり、BuildIntent Resolver選択・全依存閉包・OS Loader TOCTOU・Stage2 Desktop実起動を証明しない。#4621/#4601のContract/選択/実Build inclusion/actual Invocation/Effect/Consumer Disclosureの分離を組織C1の生成・読取・再投影へ適用する。
+- Draft #4623の現HEAD f1e219a… はCaller指定digestの事前照合に加え、限定Plugin BuildPlanでResolveされたBuilder ArtifactDigestと起動前実子exeの照合・不一致拒否を追加した（PR報告では当該HEADのGo/Health CI成功）。ただしCatalog自体はCaller入力であり、非Plugin Desktop/全入力閉包・OS Loader TOCTOU・Stage2 Desktop実起動を証明しない。#4621/#4601のContract/選択/実Build inclusion/actual Invocation/Effect/Consumer Disclosureの分離を組織C1の生成・読取・再投影へ適用する。
 - #4597のPin stateはWorkspace epoch/Generation/Undo/ABAに対する局所状態。Graph/Inspector実UI・Source revision・Recipient disclosureとの実接続は別。C1の編集はSubject・Workspace・Relation occurrence・値のSource span・Source revision・Selection epochを固定し、最新Source再取得→差分Preview→通常のレビュー/必要なOwner受理→Source Patch/再投影へ進む。非単射Graph→Treeの隠れた第二親や集計結果を自動逆編集しない。
 - DSL/Typed Script Entry（Draft #4599/#4618）からは部分Lowering/未読Rootを完全なWorldと見なさず、明示Function→実Query/Providerの結線と実Command/Effectを別に示す。Source糖衣表現・三要素/REA/SHOの資料/AI候補を第二Meaning正本へ昇格させない。
 - 通常組織Dataを専用秘密扱いしない。保護Fieldが混在する場合のProvider/Count/Export/Tool出力、外部REAのEvidence path/低位Error、SHO/AIへの用途別開示は#2516と外部Observationの担当へ戻し、同一公開Sliceの二世界で漏洩有無を検証する。
@@ -234,3 +234,67 @@ ER/CRUD/三要素/SHO/AIでは、Occurrenceの業務同一性、物理Row版、�
 5. 独立P0として#2586通常CLI実Readと#2831 Studio Desktop Stage2は継続し、全DB移行をそのHard Gateへ追加しない。
 
 **本節の実行資格**：設計・未受理。main/既存Issue/既存r7合成fixtureを照合した受入案のみ。SQLite/PGの新Migration、旧新Client共存、履歴不明期間の実データ調査、現在Host Grant/Receipt、Generated App自動適用、Owner正式Meaning、製品Consumer E2Eは **NOT RUN / NOT ACCEPTED**。
+
+
+## 12. 組織改編の公開境界・決裁再評価・協業編集の受入（2026-11-14）
+
+本節は #4490 ORG-BEH-03/04/06、#4501 CX-01〜09、#1129 Table lifecycle、#1174 Effect Fence、#1444 Handoff、#4125 DB cutover、#4515 Source Pin の**既存受入条件を組み立てる**。新しいOrg Workflow Engine / Global Transaction / Team Lock Service / 第二Expected正本は要求しない。既存r7は所属二時点のReferenceであり、**Case C1・辞令・旧新責任・ACK・Host Grantの実事実を含むと偽らない**。それらは別の既存独立Scenarioを使用し、同一Source/Attemptへの結線をProduct Ownerが別検証する。
+
+### 12.1 改編を一つの状態値へ押し込まない
+
+| 観測上の区切り | 必要な根拠 | 次段へ進んでも自動では得られない資格 |
+| --- | --- | --- |
+| Proposed（編集候補） | 対象Occurrence・Source Revision・期待する新しいRelation/期間・作成者 | 正式な業務意味、DDL、実効Grant |
+| Validated（事前検証） | 部分取得の有無、キー/期間/循環、多重度、旧新Rule、Required集合 | 他Providerの現在性、確定更新 |
+| Accepted（業務意味受理） | 業務Ownerが受理した対象・改編意味・有効時点 | DB/Hostへの保存、全Readerへの公開 |
+| Committed（保存効果確認） | 対象Providerの実Transaction/RowVersion/Operation ID/Receipt、失敗時の作用不明区別 | 別DB/外部Hostまで原子的に変更されたこと |
+| Published（読取に利用する版） | 同じ公開範囲に属する新旧Relationを、実Readが一貫して選べる根拠（snapshotまたは対象Source/Providerの公開版） | 旧Case責任の失効、現在Grant、Consumer受信 |
+| Consumed / Handoff acknowledged（受信・引継ぎ） | 用途別Consumerでの受領、業務Task/Case移管に必要な相手方ACKと別のEffect/Receipt | 所属版や承認候補から自動的に業務完了と判断すること |
+
+この区切りは**検証時の観測分類**であり、新しい固定DSL State enumや共通Runtimeを設けない。Publishedというラベルは、必要なReadが一つの一貫した公開状態を示せる場合だけ使用する。単一DB内のTransaction、複数DB間のSaga的手順、外部連携のACKは保証範囲が異なり、異なるProviderの別時刻Readを組み合わせて「全社改編の一斉公開」と呼ばない。
+
+### 12.2 BEH-03の最小交錯・停止条件
+
+対象は架空の改編Directive Xが Membership U/V の期間を更新し、必要ならCase C1のResponsibilityを別操作で変更する**追加の合成シナリオ**とする。r7のA2をDirective Xの事実として書き換えない。既存ORG-BEH-03、CX-01〜03のExpectedへ紐づけ、実装側の結果からExpectedを生成しない。
+
+| 介入/交錯 | 保存・Readの必要な観測 | 正式な成功と誤認してはいけないもの |
+| --- | --- | --- |
+| 更新U成功のあとV失敗（同一DB、同一公開単位を要求） | Transaction/Writerのrollback または公開前の隔離と、独立Readが旧一貫状態であること | Uだけ新/Vだけ旧を正式Published |
+| U/Vを異なるDBへ配置、片方はCommit済み | 各ProviderのReceipt/Scopeと未完状態。原子的公開未保証なら部分完了/保留として可視化 | 共通World ID・Directive IDが同じだけで分散原子性 |
+| 旧Readが進行中に新Source/Ruleが公開 | Read Cohort/版/Predicate/valid/knownとRule revの整合を比較し、強い一貫性要件を満たさなければunknown/再読込 | 古い候補と新しいCase Revisionを混合して現在候補一人 |
+| Commitは成功したがレスポンス/Receipt取得が失われる | Operation IDでlookup-first、別接続ReadとHost Effect/Receiptの対応を再確認 | timeout=rollback、単純再試行=安全 |
+| Cutover中に旧Writer・Queue再送・遅延Consumerが到着 | 旧Writer Fenceと対象版照合、未完Operation/ACK、更新後Provider Snapshotを確認 | 新版公開済だから旧WriterのUPDATEが無害 |
+| D1→D2→D1、値は元通り | Source/Case/Rule/Grant/Selection epochとOperation IDを照合 | 表示値一致・同じハッシュで旧Grantや旧Patchを復活 |
+
+一括辞令の**原子性を要求する範囲**は業務Ownerと対象Provider/DB Ownerが決める。複数のMembershipを一つのDBトランザクションで更新可能な場合と、旧人事System・複数DB・外部通知を跨ぐ場合は別能力。後者は業務上の保留・補償・後続確認を設計し、二相Commitや新Global Txを既定としない。
+
+### 12.3 承認候補・旧新責任・現行Authorityの受渡し
+
+| 旧Case責任に現在の資格 | 新Case責任に現在の資格 | Case C1への決定候補の解釈 |
+| --- | --- | --- |
+| 有効 | 無効 | 旧責任が残る可能性はあるが、引継ぎ成立・旧Grant有効とは推定しない |
+| 無効 | 有効 | 新責任への移管候補。旧通知/ACKが不要かどうかはTask/Business Ruleが決める |
+| 有効 | 有効 | 共同/移行期間中の重複が妥当か、利益相反・排他Rule違反かをOwnerが評価。任意の一人を採用しない |
+| 無効 | 無効 | 未割当て/保留/管理者再解決の候補。partial取得からの「双方無効」は確定できない |
+
+この4象限は**必要なRead Cohortが完全で、旧新関係の意味・Rule・Case版が解決された場合**の業務判断候補である。実ActionではCase Revision、対象Step、Policy/Delegationと現在Principal/Grant epoch、Effect直前のVersion Fenceを必ず別確認する。Ruleが申請時に固定されるか承認実行時に再解決するか、複数人合議・代理・利益相反・空席の扱いは #2386/#1129 の業務Owner判断。組織Personを認証Principalへ黙示変換しない。
+
+**一往復の最小証拠連鎖**：受理済みSource/Meaning → 対象Scopeの実Rowset（validAt/knownAt/Read Cohort）→ 当該Case/Rule Revで導出した候補と不足条件 → Hostの現行Grant照合とAction/Operation ID → Effect Receipt/不明状態 → Handoff ACK → 用途別Consumer実受領。これらは**単一Attempt内で観測できるものと、相関IDで後から取得するものを区別**し、同じWorld hashだけでそれぞれの資格を継承しない。Outbox/Receiptの原子的保証が無い外部Hostでは未確認/部分効果を保持する。
+
+### 12.4 Studio Desktop／Web共同編集でのモデル改編
+
+- **Desktop**：ローカルのGit作業版でSource span/Occurrence/RevisionをPinし、Previewと適切なReviewを経て保存・Git共有。UI上のカーソル選択と保存済Accepted Meaning、DB実Effectは別。Sourceの並行改版に対しては再読込・差分/衝突提示し、古いPinから自動Applyしない。
+- **将来のStudio Web**：チーム開発サーバを共有して同時編集する構想でも、単なる画面ロックやAIハーネスSessionの一致を唯一の排他根拠にしない。Dirty Buffer/保存済Source/受理済Meaning/実Provider Snapshotを区別し、**編集操作が対象とするSource Revisionを条件**にしたConflict検出、ReviewとGit Change-setへの受渡しを最小比較対象とする。技術選択はWeb Studio Ownerに留保。
+- **AI/SHO**：同じC1をTable/Graph/Tree/三要素/文書へ投影しても、表示Edgeや集計値から元Relation/履歴版への逆写像が一意に定まらない場合はread-only。AIの固定対象はSource/Subject/Occurrence/値Span/Selection epoch、SHOの文書著者編集は文書Revisionも保護する。AI提案の保存と業務Accepted、実Grant/Effectは独立。
+- **対象変更・Source移動・ABA**：古いProposalの対象/依存に差分があれば、既存#2582のClaim相対Required Closureと#4515 Pin資格を再確認。変更と無関係なClaimにまで一律再実行を強制しないが、Read/Source根拠なしの「無影響」は許可しない。
+- **外部REA/SUI候補**：Legacy Observed Actual、Owner Accepted Desired、Target Observed Actualを別々のEvidenceとして管理する。REA Resource–Event–Agent分析用のAgent、外部REA解析ツールのNode、実Host Principalを同一視しない。AI/外部Observationが提示した組織変更はCandidateであり、Owner Meaningを自動変更しない。
+
+### 12.5 既存Ownerと次の実証の切り方
+
+1. **B0：構造限定の合格を維持**。現在のDirective・Role/Responsibility・Delegation Go testは構造/非権限化の証拠。BEH-03/04/05の実Behaviorとは呼ばない。新しく全組織一括Txを作ることをP0にしない。
+2. **B1：同一DB内の改編原子性**。既存#4490 BEH-03の手書きExpectedに、U/V更新途中の失敗介入、別Readによる旧一貫版または新一貫版の検証を追加して既存Provider/Transactionで実行。Org C1 as-of二版保存が未実装なら当該Propertyの実DB試験はNot Runと明示し、合成だけを製品成功にしない。
+3. **B2：Case責任と候補のRead-only動的再評価**。#4490 BEH-04/06と#4501 CX-01〜03の既存Case Scenarioへ、旧新責任4象限、0/1/many/partial、Rule/Case Revの前後を結び、Readの独立Expectedを比較。Host現在Grant/Effectは別。
+4. **B3：外部Hostと引継ぎ**。#1174/#1129/#1444へEffect Fence/lookup-first/Receipt/ACK/補償の局所実証を委譲。実Hostが無い場合は保留。#4125のCutoverは旧Writer Fence・DB/Consumerの実Readを別に要求。
+5. **P0は不変更**：#2586通常CLI実Function→Provider→Consumerと#2831/4583のTEI Studio Desktopセルフビルドは並列最優先。B1〜B3の全達成をP0のHard Gateとしない。
+
+**現状資格**：本節は既存mainの3つの組織Go構造テストとIssue契約からの設計・引渡し。実Directive Tx、異DB原子性、Candidate動的解決、Web共同編集、実Host Grant/Effect/ACK、Org C1 E2Eは **NOT RUN / NOT ACCEPTED**。#4623の最新Draftは限定Plugin BuildPlanで選択Builderと実exe起動前照合をCI実証したとのPR記録があるが、これは組織RuntimeやDesktop Stage2の受入ではない。
