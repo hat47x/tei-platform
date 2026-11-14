@@ -166,7 +166,7 @@ func TestCTKWindowCandidateIndependentOracleAgainstSQLite(t *testing.T) {
 				(name == "frame-narrowed.tei.md" && c.MovingPrecedingRows != 1) {
 				t.Fatalf("unexpected moving frame for %s: %d", name, c.MovingPrecedingRows)
 			}
-			wantByID := make(map[string]oracleRow, len(c.Outputs))
+			wantByID := make(map[string]ctkWindowOracleRow, len(c.Outputs))
 			for _, want := range c.Outputs {
 				if want.ObsID == "" {
 					t.Fatal("expected observation with empty ID")
