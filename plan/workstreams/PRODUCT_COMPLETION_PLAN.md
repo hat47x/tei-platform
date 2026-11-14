@@ -759,6 +759,67 @@ CLI/Studio/Harnessは同じQualified Subject/Source Revision/Plugin Lock/Current
 
 **現在の状態**：docs-only設計・実装引渡し。GQ-06a〜f、実BundleのAsset受領、実Browser/Consent/CDN/Studio Pin同期、Owner意味受理は本追補では **NOT RUN / NOT ACCEPTED**。main統合済み§33〜39と#4695を再利用し、PR #4604で並行main変更を無断上書きせず、main統合時の再基底・重複解消を別に確認する。
 
+
+### G49入力側の接続：複数の原資料から構造候補を受理済みモデルへつなぐ（2026年11月14日）
+
+**新しく解く問題**：前段のGQ-01〜06では、実Sourceに存在する型付きNode/Relation/Routeを読み取り、対象選択・Plugin合成・Artifact実現を照合する経路を設計した。しかし実案件の開始点は、三要素分析法に基づく手描き図面の写真、打合せ・口頭説明と文字起こし、CSV/Excel、帳票、DB Schema/SQL、既存画面、運用中のシステムなどに分散する。ここから**直接「確定したアプリケーション構造Graph」を生成するのではなく、根拠を持つStructure Candidateを作り、既存のProposal/Acceptanceを通じてSource/Meaningへ接続する**。Graphに含める範囲を「受理済みで生成対象になる関係」と「まだ読取り・検証中の候補」に区別する。
+
+この入力の多様性は、#1124の統合Modeler・三要素分析法、#267のAI Proposal/Acceptance、#950/#1031の既存Source忠実転記と三視点照合、#2497のProjection/逆写像、#3788の通常編集入口で既に取り扱う。閉じた#915のbrownfield導入研究も参照するが、第二のImporter正本・AI Meaning DB・汎用認識エンジンを新設する指示ではない。三要素分析法の原典を忠実に扱う経路と、TEI独自のより汎用的なGraph/Roleの経路は区別し、前者をすべての分野で必須にしない。
+
+#### 1. 入力チャネルごとに、確かな観測と推論の限界を残す
+
+| 入力 | Sourceから比較的確かに確認できること | **確定できないため候補のまま残すこと** |
+| --- | --- | --- |
+| **手描き図面/写真** | 撮影原版の版・範囲、読み取れる文字、枠/線/矢印、図の相対配置、明示された関係 | 曖昧な矢印の方向、消された線、同名要素の同一性、業務上のCRUD/Effect権限、写真に写らない領域 |
+| **会議発言/文字起こし** | 誰がいつ何を述べたか、明示された要件・例・異論、録音/文字起こしの対応箇所 | 発言が合意済み仕様か、否定・仮定・未来の希望か、話者誤認、非言語のホワイトボード補足 |
+| **CSV/Excel/帳票** | 実際に存在する列・Sheet・ラベル・型候補、値の分布、帳票上の配置と数値例 | 複合業務Key、実DB PK、必須制約、NULL/欠損の一般則、集計の粒度・期間/丸め、裏側の更新処理 |
+| **DB/SQL/コード/既存画面** | 実Schema/制約、SQLの参照、コードの静的Call、画面項目や操作・特定版での観測 | 認可と実際のGrant、全分岐の実行、業務目的、稼働設定・外部サービスの全体像、現状が新要件として望ましいか |
+
+写真や音声を生成AIで解析したときは、出力に**Source ID/Revision、原画像・時刻範囲・ページ/座標等のlocator、抽出方法/版、読み取った事実と推論の区別、未読/不鮮明/競合箇所**を結び付ける。既存プログラムやDBを調査するときは、具体的な稼働版/環境/Provider/現在権限/取得範囲を保持する。AIの高い自己評価や複数AIの意見一致を、元Sourceの完全性やOwnerの受理に昇格させない。原資料の再公開権限・個人情報・顧客秘密の開示は#2516等の現在資格に従う。
+
+#### 2. 一つのモデルの前に、三つの関係を照合する
+
+**Observed/Legacy Actual（現状として観測した関係）・Proposed/Desired（作りたい構造の候補）・Accepted Design（受理済みの仕様）**を別に扱う。さらにビルド後のTarget Actual（生成/配布/実Consumerで実際に観測された構造）は既存GQ-06とProgram Execution Model §33〜39のRealized/Observedへ渡す。既存システムの画面と会議で望まれた画面が同名でも、現状と変更目標を自動合体しない。
+
+- 異なる資料に同じ業務要素の候補がある場合、**Subject Identityの対応を独立候補**として示す。表示名だけでNodeを統合しない。Edgeについても、向き/意味/多重度/時点/Source occurrenceが合わない限り同一関係として確定しない。
+- 複数チャネルの記述が矛盾する場合、最新らしい発言・一枚の図・AIの多数決で上書きしない。たとえば「担当者が承認してから発注する」という会議記録と、「承認前に発注可能」という既存画面の観測は、現状と望ましい仕様の差かもしれない。**両者の根拠と時点を残して問いとして提示する**。
+- 欠落を「存在しない」にしない。写真外の線、議事録から落ちた説明、サンプルCSVにない行、権限不足で見えない既存画面を問合せUniverseのcompleteへ含めない。後段のGraph Selectorのmatched/excluded/undetermined/Universe Closureは、入力チャネルの観測上限を引き継ぐ。
+- 旧Sourceの実装は「現状」の証拠であり、そのまま新しい仕様を構成する義務はない。逆に望ましい仕様の候補が受理されても、既存DB/Hostに実装済みとはならない。
+
+#### 3. Source／意味を二重管理せず、候補を段階的に取り込む
+
+初期の共同作業経路は **原資料保存・取得 → 抽出事実と出典のread-only Inspect → 複数のStructure Candidate/矛盾一覧 → 三視点・Role/RelationとしてPreview → 人間による対象と意味のReview → 既存#267のAcceptanceを通したSource編集 → 再読取り/型付きMeaning照合 → 既存Structure Slice/Selector/Generatorへの接続** とする。
+
+この流れを一つの固定UIウィザードにする必要はない。CLI/MCP/Studio/SHOは同じQualified Subject/Source/RevisionとCandidate IDの型付き操作を別Projectionとして提供する。AIが候補Node/Edgeを生成した時点では、受理済み正本のGraphに紛れ込ませない。受理対象が元のMarkdown/表/DSL・外部資産のどちらに属するか、TEIで意味を所有するか外部のまま参照するかを明示する。元の図表・原文・Native SQLなどの書式や意味を不必要に再整形しない。
+
+画像上の線を選んでも意味Relation occurrenceが一意に定まらない場合、read-only候補比較/Source Jumpに留める。書戻しはQualified Target（Workspace/Source ID/Revision/NodeまたはRelation ID/編集Slot/期待版）と可逆性、情報損失、同時変更検査を満たした部分のみ既存#1124/#2497へ渡す。Source A→B→Aで旧承認や古いAI応答を再適用しない。
+
+#### 4. 最初の独立対照：写真・発言・実データの不一致を一つのFunctionで説明する
+
+既存#2621のGraph/Rule→生成Pluginの小Fixture、#4198の一Function/一Route、#1124の三要素分析法の一枚の図面と接続可能な範囲で、入力側の独立Expected候補を設ける。
+
+| ID | 入力の一因子差 | 独立Expectedで判別すること |
+| --- | --- | --- |
+| **GC-01** | 写真に同名の二Boxと並行二線が描かれている | 同名を統合しない。読み取れる向き/Relationが不確実ならunknown。見た目の二線から安定Edge IDを発行したと偽称しない |
+| **GC-02** | 会議記録に「将来は承認後に実行」とあるが現行画面で承認前の操作を観測 | Desired CandidateとLegacy Actualを分離し、実画面の観測をOwner承認済みの新仕様としない |
+| **GC-03** | CSVサンプルには重複値が無いが、実DBに複合Key/NULL/時点制約がある | データから推定した一意性を業務上の必須保証へ昇格しない。Sourceごとに矛盾/追加根拠を残す |
+| **GC-04** | 画像・議事録の版違い、図の一部欠け、文字起こしの否定語の誤読 | 旧Candidate/Source対応を現在版へ黙って流用せず、改訂差と確認不能を明示 |
+| **GC-05** | 同名Nodeに対するAI候補のEdge方向を反転し、その後Reviewを受理/却下する | 未受理候補は実Generatorへ混入せず、受理されたSource/Meaning変更だけがGQ-01/02とGQ-05/06へ伝播 |
+| **GC-06** | 公開許可なしの議事録・画像に秘密のField/Nodeが含まれる | Studio内部候補が見えても、AI外部Harness・Plugin上位文書・Public Graphへ内容/存在件数/locatorを漏らさない |
+
+まずGC-01/02を**read-onlyの図面・発言Candidateとして二件だけ**検証し、実Source上の一Functionとの対応や不一致を表示する。GC-03は実DB/CSVと独立検査を行う後続、GC-05で初めて受理後のGraph→Generator接続を確認する。写真解析・音声認識を本体Goへ組み込むのではなく、明示選択されたAI/外部Providerの結果を既存候補・開示契約で受ける方法を比較する。外部Provider未選択でも手動で候補/根拠を作れる経路を維持する。
+
+#### 5. 受入の責務とP0の保護
+
+- **入力Source忠実性/旧資産**：#950/#1031（原Sourceの転記/対応範囲）・既存#915研究を参照。写真/会議/表を直接受理済みMeaningへ昇格しない。
+- **候補/意味受理と編集**：#267、#1124、#2497、#3788。三要素分析法の図法の忠実性は[Draft #4694](https://github.com/hat47x/tei-platform/pull/4694)の既存Ownerに返し、TEI独自Graphの意味と区別する。
+- **構造Graph/横断Selector/生成**：#4198/#3509/#2621/#951/#2600の既存AG/GQへ、受理済みSourceからのみ接続する。AI Candidate Graphが描けただけで実生成許可としない。
+- **試験とEvidence**：#1180/#2514へGC-01〜06を独立Expected候補として渡し、第二Scenario正本を設けない。
+
+**優先順位**：Stage1→Stage2 Studio Desktop実セルフビルド（#4583/#2831）と通常製品CLI→実Provider→独立二Consumer（#2586/#1251）を引き続きP0とする。GC-01/02は既存Modeler/Graph read-onlyの低依存研究として並行評価し、画像/音声/CSV等の全チャネル実装、Mermaid形式の正式採用、新Graph Core型、顧客資料の移行をP0のHard Gateにしない。
+
+**資格上限**：本節はチャネル間の意味候補と既存の受理済みGraph/生成器を結ぶ設計・実装引渡しである。写真のAI抽出、音声文字起こし、実CSV/DB照合、Source Apply、実Go/Plugin生成、Studio/Browser/外部Harnessの新E2E、三要素分析法の原典適合・Owner意味受理は今回 **NOT RUN / NOT ACCEPTED**。
+
 ### G49深化：構造Graphの最小実装契約・構成解決・差分更新（2026年11月14日）
 
 **前回計画AG0〜AG5を具体的な実装判断へ進める**。main統合済みの[Program Execution Model §28〜32](https://github.com/hat47x/tei-platform/blob/main/plan/design/PROGRAM_EXECUTION_MODEL_PROJECTIONS_2026-11.md)にはApplication/Process Graph、横断Hook、CLI/Studio/AI Pinが既に整理されているため、ここでは重複する「全体Graphの理想像」ではなく、現行Goの実在する型とのFit/Gap、最初のread-onlyの契約、Selection変更時の増分更新、Targetへの渡し方を固定する。#1120の共通型付き参照契約はClosed/限定完了、#2620の意味Role/自己記述、#4198のLifecycle Graph Generator、#4679のPlugin共通文書契約は採用・実Target適格性が異なる。各Issueが持つ判断をこのG49で代行しない。
