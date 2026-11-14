@@ -686,6 +686,19 @@ tei external-candidates
 
 **最小既存Expectedへの差分**：WCOL-01に「同一raw REA byte・同名Branch/DB alias・異なる実Worktree/Host Source Revision/Provider Instance」の変種を含め、WCOL-02にforce-push/Branch A→B→A/別Window後着の古いPin拒否を加える。WCOL-04ではClientが`workspaceID`・`branch`・`DB alias`・`EvidencePath`を自由に組み合わせても**Hostを迂回したOS Read／別Provider Invoke 0**を要求する。WCOL-05はCurrent Grant/Disclosure/Consumer Receiptが同一でない限り「同じ表示JSON」を同一受領資格としない。別のTest SSOTや認証/Builder/DB ResolverをREAへ増設せず、#1824/#3421/#2586/#4503/#2516/#2514へ配分する。実2Worktree×2DB×2PrincipalのEnd-to-Endと現R3-B Hostの固定Readerは**NOT RUN**。この設計だけでREAのR3-B合格とは呼ばない。
 
+<!-- rea-r3b-local-host-reader-and-placement-gate-20261114 -->
+#### R3-B ローカルHost固定Evidence Readerの実装候補／公開境界（2026-11-14）
+
+**次のコード化した一辺**：[Draft #4637](https://github.com/hat47x/tei-platform/pull/4637)（HEAD `170f9be5907cea4af981582ab4c11c5dafb91e87`、#4630依存、main比較では4ファイル／今回Host固有2ファイル）に、`internal/studiohost/LocalREAReader`を加えた。**Host起動時だけ**選ぶ `WorkspaceID＋Selector→Workspace-relative File／Tool Version／EvidenceID／sha256 Raw Digest／任意SourceRevision` を固定し、閲覧側の`Read(workspaceID, selector, observationID, relationID)`にはRaw Path入力を設けない。以前の設計案からさらに修正し、**Evidence ReadAtを閲覧側に申告させずHost Clockで確定**する。テストでの固定ClockはHostパッケージ内の限定注入であり、外部APIには露出しない。
+
+**既存機構の実利用**：既存 `ReadOnly.workspace()`の許可Root実体照合、`workspace.ReadSource`の正規化/Traversal-resistant rooted read＋通常ファイル/4MiB上限を使い、取得したbyteを#4630の `ExternalCandidatesFromBytes`（R2同一Parser/Receipt）へ渡す。不許可Selector・ファイル取得失敗・R2不完全/曖昧・誤Pinの外部応答は共通`OPERATION_FAILED`で内部Path/Producer診断を出さず、既存`WORKSPACE_NOT_ALLOWED`・`WORKSPACE_ROOT_CHANGED`を残す。Toolの実行ファイルPath/AbsentReasonは投影前に除く。新State Store/第二Parser/権限Resolver/Generic Evidence Registryは作らない。
+
+**検証の最小独立反例**：実Captured REA6.8.0保存byteに対して、(1)Host Workspace固定Selector→一回Read→R2 view/Raw Digest/GraphCoverageと直接byte呼出しの全同値、(2)配列Binding変更による再ターゲット拒否、(3)他Workspace・任意Path文字列・不明Relation、(4)Evidence byte差替え（including同意味に見えるbyte変化）／4MiB超、(5)Root実体置換・symlink Root外脱出、(6)導入時の非正規化・Traversal・重複Selector・不正Pinを同PRのGoテストへ実装候補として固定。Go/Windows/REA専用の**新HEAD CI合否は確認後に独立記録**する。これはR3BY-03の**Local Host byte取得だけ**の分割実装であり、実Wails/Desktop UIからの受領・Source最新版・Grant/Audience・独立Deliveryは未成立。
+
+**他チャットのDesktop Worker方式の横断差分**：[Plugin横断 Draft #4621 §20](https://github.com/hat47x/tei-platform/pull/4621)で、Desktop＝(A)Native Bridge、(B)同一exeの従属Worker＋Windows Named Pipe／Unix UDS、(C)別Wails Serverバイナリ＋loopback HTTP/WSの三候補が性能/障害分離/ACL/Artifact多重性から比較対象となった。REA Readerは**共通型付きOperationを使うローカルHost内の取扱い**であり、A/B/CどのTransportを選んでも `Workspace/Worktree/Current Grant/Requested Audience/Reader Attempt` の相違を消さない。(B)/(C)を採用してもClientへRootや`EvidencePath`を渡す捷径を許さず、別Process上のRequest identity、OS ACL、Crash/timeout、Provider世代、ネットワーク/IPC Disclosureを#1824/#3421の既存Expectedへ渡す。**B/C方式選定とWeb/WASM導入はR3-BやStage1→Stage2 P0のHard Gateではない**。
+
+**R3-B/Cのまだ欠ける辺**：このGo Readerは正式`StudioBridge`／Wails Service／MCP Serverへ未登録であり、ローカル同一Processの`Read`成功を第二Transport Consumerへ加算しない。Reader返却結果は外部Node・Source Range・Raw Digest/Unknownを含み得るため、`#2516`の用途別Current Disclosureが成立するまでWeb/Harnessに送信しない。保存EvidenceのDigest Pinは元Source現在性／A→B→A／Worktree Revision証明ではない。R3-CはローカルCLIと**異なる実Consumer経路**のSelected→Invoked→Received、固定Scope/Identity/独立Receiptを#2514のExpectedで検証し、その後T1-Bに進む。DraftのCI成功や新Host Readerの追加をOwner Meaning Acceptedへ昇格させない。
+
 <!-- rea-wails-server-wasm-delivery-isolation-20261114 -->
 #### R3 Consumerの配置方式・配信隔離：Wails Server／Go WASM候補との整合（2026-11-14・設計のみ）
 
