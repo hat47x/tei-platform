@@ -801,3 +801,13 @@ Harness向けのTEI導入Skillは短くし、**対象の特定→Inspect→Plugi
 全体P0のDesktop Stage1→Stage2と実Provider二入口に、新しいPlugin文書生成器やHarness接続を追加の必須条件として積まない。まず現行Contract/Sourceからread-onlyの共通説明を導出し、Plugin自身のTEI-nativeコード生成が増えた時点でも同じ入口で説明できるかを検証する。
 
 **状態**：設計・受入候補。共通Plugin説明API、上位文書の実合成、Aspect Binding/Target生成、Harnessからの実操作、実Browser計測、Owner受理はNOT RUN / NOT ACCEPTED。
+
+## Studio／CLI Backend配布と再構築の接続（2026-11-15、設計引渡し）
+
+[起動・Plugin・更新の統合設計](STUDIO_CLI_BACKEND_PROCESS_DISTRIBUTION_UPDATE_2026-11.md) §11〜17に従い、**Stage1で利用するBuilder／Generator**、**Stage2 Studio／CLIへ組み込む静的Provider／UI資産**、**Stage2から動的利用する外部Plugin Artifact**を分けてBOMへ投影する。Desktopの親Wails実Image、子Backend実Image、GUI Asset Set、Plugin Composition Lock、Stage2独立Consumerをそれぞれの実バイトで結ぶ。
+
+Studioの子Backend化を理由に、非Plugin DesktopをPlugin Build Subjectへ偽装せず、Studio Stage1→Stage2の正式Build Intent／実Builderの主線を維持する。初回はCLI／MCPで正式`*.tei.md` Reader→意味からGo/TS生成→実Provider呼出し→次世代TEI／Plugin生成を実証し、生成Goへの委譲だけをセルフビルドと数えない。Windows実WebView2によるStage2 GUI資産受領は別の資格として検収する。
+
+Plugin PackageにManual／Example／Skillを含める場合も、説明文書は用途・公開範囲・依存先Versionへ結び付け、生成物と実使用物が一致することを確認する。説明の更新だけで意味受理やRuntime Grantを自動変更しない。InstallerやUpdaterの完成をStage1→Stage2の先行Gateにせず、実行ファイルを別環境へ配置して親→子IPC→実Provider呼出しを確認する最小Distribution試験を独立に行う。
+
+ここに記した実行経路・配布試験は計画候補であり、製品Self-build／実Windows版／Plugin導入・更新の新しいPASSを意味しない。既存#2831/#4583/#951/#1251と#1180/#2514をOwnerとして維持する。
