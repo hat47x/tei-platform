@@ -2429,6 +2429,38 @@ PR #4254 の head `289d3eeb2d5696ed3ac3ca07c11ddcfb946fc541` に対する [Run 4
 - 他ホスト（`darwin`・`arm64`）での値
 - サイズの内訳（どのpackageが何byte寄与するか）
 
+### 4.55 Studioの構築を既存契約へ接続する順序（2026-11-14）
+
+Studioを自分で構築するには、生成Inspectorを組み込めるだけでなく、その生成物をFrontend構築へ渡し、さらにGo/Wailsが同じFrontendを埋め込む必要がある。最後に、新しく構築したDesktopで変更結果を確かめる。この一連の実行を[#4583](https://github.com/hat47x/tei-platform/issues/4583)のB1〜B3で扱う。以下はそのための実装方針案であり、工程の実行成功を示すものではない。
+
+**既存のPlugin用BuildPlanは維持する。** `internal/buildintent`には`go-command`のRecipeがあるが、Subjectの種類は`plugin`に限定され、解決結果にも`plugin.BuildPlan.Plugin`が必要になる。Desktopを扱うために架空のPluginを作ると、製品の識別と実際の構築対象が食い違う。Subjectの種類だけを追加する変更も、この問題を残す。
+
+構築対象に依存しない入力・成果物の表現には、既存の`tools/reference-build-execution-binding`にある`BuildExecutionPlan`、`ArtifactSet`、`BuildExecutionResult`を出発点として使う。これらは現在`package main`内の参照実装であり、製品コードから直接利用できるAPIではない。最初に一工程・一成果物を対象とし、必要な型と純粋な検査処理を共有可能にする変更を検討する。別の同名モデルやResolver、Runnerを並行して作らない。参照実装を製品へ移す際も、既存の正規化・fingerprint・Locatorの扱いを保つ比較試験を先に用意する。
+
+工程をつなぐ最初の対象は、生成TypeScriptをFrontend構築へ渡す区間とする。工程ごとに入力の役割、生成物の役割・形式・digest、選択したBuilderを固定する。出力先のPathはその成果物を取得する場所として扱い、同じPathに置かれたという理由だけで前工程の成果物と認定しない。Frontend bundleをGo/Wailsへ渡す区間も同じ方法で追加する。一般的なGraph Compilerの完成を先行条件にはしない。
+
+| 接続箇所 | 実装時に固定すること | 独立して確かめる反例 |
+| --- | --- | --- |
+| 宣言からBuilder解決 | Contractとmajor、明示ProviderとImplementation、任意のartifact pin | Bを指定したのにAの解決結果を返す |
+| 解決結果から実起動 | 選択したartifact digestと、実際に起動する子実行ファイルのdigest | 正しい選択記録を残して別の子を起動する |
+| 生成からFrontend構築 | 生成TSの役割・digestと、esbuildへ渡した実ファイル | 古いTSを同じ出力先へ残す |
+| FrontendからDesktop構築 | bundleの役割・digestと、埋込み対象の実ファイル | 新bundleを報告し、旧bundleを埋め込む |
+| 構築から利用 | 新Desktopの実ファイルと、そのWebView2が読んだJS・Inspectorの応答 | 新exeの存在だけ確認し、旧プロセスの応答を読む |
+
+実行は試行ごとの出力領域で行い、途中失敗した成果物を次工程や稼働中のStudioへ混ぜない。既存ファイルの無断上書きを拒否し、完了後に成果物一式を照合する。再実行では入力の一部を意図的に変え、その変更が新Desktopの応答まで届くかを検査する。ここまでを満たして初めて、対象とした工程の接続を実証したと記録する。
+
+Callerが与えたpinと実ファイルの照合は[#4623](https://github.com/hat47x/tei-platform/pull/4623)が扱う。これはResolverによる選択そのものとは別の接続である。pinの一致だけではOS Loaderが同じbytesを読んだこと、全入力を捕捉したこと、生成したStage1がStage2を構築したことまでは示さない。各段階の記録は同じ試行へ結び付け、異なるHEADの成功を足し合わせない。
+
+### 4.56 差替え可能なResolverの応答を宣言へ照合する（2026-11-14）
+
+`BuildIntent.Resolve`の各入口はinterfaceであり、Callerは標準Catalog以外の実装も渡せる。標準Catalogが正しく選択することと、共通Resolverが任意の応答を宣言に照らして受理できることは別の性質である。構造上正しいBuildPlanでも、指定したProviderや依存物に対応しているとは限らない。
+
+今回の変更ではSourceのKind・ID、BuilderのContractとmajor・明示Provider・明示Implementation・pin、依存物のKind・ID・互換majorを照合する。pin指定の有無と応答の`Pinned`も一致させる。食い違いがあればReceiptを返さない。Recipe・Targetの対応可否は引き続きBuilder Resolverの責務であり、その能力情報を持たない共通処理が対応を推測することはない。
+
+この照合は差替え部品から返されたデータの取り違えを防ぐためのものである。§4.20で打ち切ったchild側の欄別照合を再開するものではなく、新しい実行権限や意味受理も与えない。Source digestと実際に読んだbytesの一致、選択Builderと実起動した実行ファイルの一致は、それぞれ既存の下流検証に残る。
+
+回帰試験は`internal/buildintent/resolution_binding_test.go`に置く。指定と異なる応答を返す負例に加え、明示Provider・Implementation・pinが一致する場合と、major 0を含む正しい依存物が引き続き解決できる場合も確認する。試験の成功範囲は共通Resolverであり、Studioの全工程やWindows GUIの成功を示すものではない。
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
