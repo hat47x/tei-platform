@@ -1087,3 +1087,37 @@ Mathematica/R等は、既存Algorithmの**意味・入力/出力・境界・テ�
 ドキュメント計画の[#4651](https://github.com/hat47x/tei-platform/pull/4651)は、HEAD d7e59b8bでMarkdown中の不要なバックスラッシュ付きバッククォートがRepository Healthを失敗させた。同PRに書式だけを修正した新HEAD c2cb7209を追加したため、新HEADのCIは別途確認する。Go側の[#4654](https://github.com/hat47x/tei-platform/pull/4654)は新テストのgofmt不一致、[#4655](https://github.com/hat47x/tei-platform/pull/4655)はgofmt不一致と当時の設計文書索引漏れでHealth不合格。索引は後続のmain統合済み#4659で補われたが、各Go PRのformatter修正と新HEADのCIは依然必要である。
 
 本章は実コード／CIと他の設計を突き合わせた**実装順序の整理**である。Source／Go／DB／Windowsの新規テスト、Stage1→Stage2の完成、Ownerによる正式な意味受理を本章自体で行ったわけではない。主計画は既存#4620、dogfoodingの詳細は#4651、Desktop画面仕様は#4650、能力実行と受信の契約はmain統合済み#4652/#4653を参照し、同じ計画を複数ファイルで増殖させない。
+
+### 30.5 実行の意味と利用者の操作を、一つのSourceから説明できるようにする
+
+[共通実行モデルの図解とTarget間移植 #4665](https://github.com/hat47x/tei-platform/pull/4665)と[起動・イベント・処理・応答の意味モデル #4666](https://github.com/hat47x/tei-platform/pull/4666)は、どちらも**設計文書としてmainへ統合済み**である。ここで採用するのは特定の実行ループではなく、次の区別である。
+
+- **Process Lifecycle**：Hostによる起動・準備・停止・再入。長く稼働するServerだけでなく、単発CLI、Desktop、外部Hostも扱う。
+- **Trigger / Invocation**：人のUI操作、CLI、HTTP、Timer等の起動契機と、実際に開始された一件の操作。Triggerの定義やHostのreadyだけでは、その操作が許可・実行・完了したとはいえない。
+- **Function / Operation**：業務上何を読み、何を判断し、何を変えるか。DSL・図・説明文・テストは、同じ意味要素から生成する別々の表示形式とする。
+- **Provider / Effect / Outcome / Response**：選ばれたProviderの実呼出し、外部作用の確定・不明、結果の観測、Consumerへの応答・開示は、それぞれの証拠を持つ。
+
+この区別をStudioの最初の一往復へ適用する。業務DSLと図から生成する説明は、後付けの一般的な文章ではなく、**「どの条件で、誰が、何を読み、何を確定し、結果を誰へ返すか」まで原文に近い形で説明できること**を受入条件にする。図上のNode/Edge・表示座標を意味の正本にせず、Source OccurrenceとMeaning Revisionを保持する。図の編集操作は対象IDと変更差分を示してから保存し、AI候補や曖昧な同名関係を自動受理しない。
+
+外部で実装する関数やサービスは、TEI側でInput/Output/Effect/Failure/Provider Contractを先に定義し、未実装段階ではTODOとMockで**設計上の全体Simulation**を実行できるようにする。ただしMockの成功を実DB Commit、外部通知、権限付与、独立Consumer受領の証明へ移さない。外部Hostが実作用と許可を担い、TEIは必要な型付きOperation・Generator・独立Expectedを提供する。共通Loop・中央Scheduler・第二Runnerを導入しない。
+
+### 30.6 読取りと更新を混ぜないための、二つの縦断検証
+
+**読取り系はQuery／REA**を使う。型付きInputを宣言し、既存Parser/Validatorで拒否条件を確認し、選択Providerで実Readを行い、得た範囲と開示可能な内容をそれぞれ記録して、通常CLIとStudioの異なるConsumerへ渡す。#4644は隔離PostgreSQL参照Readerの成功、#4647はLIMIT・JOIN・RLS・View等を観測できる範囲でpartialと報告する実装である。これらから製品CLIの配線やCurrent Grantを推測しない。特に0行、NULL、隠れた述語、未観測のTable/Sourceは、**全件取得・確定欠損・対象不在**と同義にしない。
+
+**更新系は生成業務アプリケーション**を使う。業務Operationの呼出し時に、意図せずDBのSchemaを変更しないことを先に検証する。[#4662](https://github.com/hat47x/tei-platform/pull/4662)は自動Migrationを業務Operationから切り離す限定コードで、該当HEADの3 Workflowが成功している。一方、明示的なMigrationの適格な実行、PostgreSQL等の各Target、履歴と実Schemaの独立Readは別の受入条件として残る。業務更新でも、Intent→Hostの現在Grant→実Provider/Effect→Operation Identity/Receipt→独立Readを結び、Commit結果が不明なら自動再送ではなく既存Receiptの照会を先に行う。
+
+どちらも結果の見た目が一致するだけでは合格にしない。利用者が選んだSource/Subject、現行Workspace・Role、実Provider、実Consumerに渡された値・Source位置・Error/Trace、必要なAuthorityを確認する。**一回のBuild実行が複数の機能を収録できても、その複数機能がすべて呼ばれたわけではない**。
+
+| 受入候補 | 一因子を変えたときの期待 | 既存担当 |
+| --- | --- | --- |
+| XUP-01 起動と利用 | Studioがreadyでも、未選択・未許可Operationは実Provider Call 0。AI停止時もSource選択・保存・診断・Previewは利用できる | #1824 / #4583 / #1158 |
+| XUP-02 説明と意味 | 同名の異なるSource occurrenceや未受理Relationを図解から選んでも、意味の自動確定・保存はしない。説明から該当Sourceと条件へ戻れる | #988 / #2497 / #1124 |
+| XUP-03 読取り範囲 | LIMIT／RLS／隠れたPredicateで結果が0件でも、完全性を推測せずpartial/unestablishedを維持 | #2586 / #1178 |
+| XUP-04 更新と復旧 | 業務Operation中の暗黙Migrationは拒否。外部CommitのACK喪失では未知を保持し、同一Operation Identityでlookup-first | #4657 / #1129 / #1174 |
+| XUP-05 実Artifact利用 | Stage1のBuild成功と、生成Stage2.exeが正しいAsset/Runtime Providerを読み実Consumerが受領したことを別々に照合 | #4583 / #1097 / #1251 |
+| XUP-06 図とTarget変換 | 同じ意味から図／説明／Go・外部Hostへ展開しても、評価順・NULL・Effect・Target差の不一致を隠さない | #4198 / #1121 / #2514 |
+
+ここでのXUPは**既存#1180/#2514に渡す観測例の参照名**であり、新しいScenario RunnerやCore Schemaではない。順序は§30.3を維持し、まずStudioの非Plugin Build Subject→Stage1→Stage2実WebView2を完成させる。Queryと更新の縦断は並行実証であり、#4665/#4666の共通モデルや[専門Toolkit計画 #4663](https://github.com/hat47x/tei-platform/pull/4663)がmainへ入ったことだけで、新規Generator・科学Provider・実Targetの適格性が成立したとは扱わない。
+
+**この追補の範囲**：main統合済み設計と固定HEAD実装から、既存Ownerへの実装順序と受入負例を統合した。Go/Windows/DB/外部Hostでの新規実行、Sourceの正式意味受理、Studio Stage1→Stage2完了の実証は本追補では実施していない。
