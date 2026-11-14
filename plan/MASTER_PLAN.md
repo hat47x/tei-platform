@@ -244,6 +244,22 @@ Gate C — PAS-04 Evidence — Ready
 
 **判断と優先順**：当面は**Aを実証済み製品基線として保持**し、B/Cを「どこまで同一ソースを共有してもBuild/DBの実行主体と権限が一致するか」の限定Referenceで測る。Builder/DB/AIを別Workerへ送る必要が明確になった際に選択し、IPC方式やWails Serverへの一律統一を先行しない。Childの死亡・再起動・Cutoverは#1223/#1174の既存Generation/Effect、Public Webの認証・配信は#3421/#1043、Build Artifactは#2831/#4583、共通APIはADR-0048/#1158で所有。Windows `os.Process.Kill`は子が生成した孫Processまで自動終了しないため、OS別Process tree監督は実試験を要する。**P0 Stage1→Stage2 Studio Desktop Self-Buildをこの比較待ちにせず、P1以降で方式決定する**。
 
+**段階別Contributionを実使用へつなぐ最小縦断（理想形 #4632 × 既存製品 #4634/#4587）**：新しい[Plugin理想設計Draft #4632](https://github.com/hat47x/tei-platform/pull/4632)は、Packageが意味定義・Studio UI・検査・Generator・Runtime・Testへ**必要なContributionだけ**を供給できる方向を示す。既存の固定`CapabilityKind`やPlugin主体のBuildPlanを理想の上限にしない。一方で、**現行PoCのSource・Plugin Lock・BuildIntent・ArtifactSet・型付きApplication Operationを捨てたり、未受理の新しいContribution ABIをP0へ導入したりしない**。ここで共有するのは段階ごとの実使用証拠の連鎖であり、単一Registry／共通元帳／新しい全体Hard Gateではない。
+
+| 段階と既存Owner | 一つのSubject/Contractについて実測するもの | この段階では認めない資格 |
+| --- | --- | --- |
+| **M: 意味/Source**（#1121/#951） | Source occurrence/byte、Contract・意味版、選択要求とScope | Source解析成功＝StudioへのContribution構成済み |
+| **E: 設計/Studio**（#1251/#1824） | exact選択ProviderとCLI/Studioの実Method/Invocation。専用Editorが無ければ標準の編集・読取り経路を保持 | UI表示成功＝生成成果物へのRuntime同梱・実Grant |
+| **B: Generator/Build**（#4634/#4587/#2831） | 宣言とResolver応答、実Builder child pin、N2生成Member→N3 Go EmbedFiles等のProducer/Consumerを同一Build Attemptで結ぶ | 別HEADの個別成功合算、Generator本体をStage2へ必須同梱、Build成功＝OS read-time全閉包 |
+| **R: Target Runtime/Effect**（#1016/#1174） | 選択Variant/Contractと実Artifact Member、実Entry/Provider、現在Host Grant、必要ならEffect/Receipt | Pluginがinstalled/loaded＝実呼出しまたは実行許可 |
+| **T: 独立検証/開示**（#1180/#2514/#2516） | 同じSubject/Source/Expectedから実Consumerの値・partial/unknown・実送出先を対照 | Test Contribution同梱＝テスト成功、Studio成功＝Stage2 WebView/外部Host受理 |
+
+**最初の実証対象を一件に絞る**：現行mainの静的Reference InspectorによるS2-referenceの通常CLI/Studio実呼出しを**設計時Consumerの既存基線**とし、Build側の[#4634](https://github.com/hat47x/tei-platform/pull/4634)（宣言→Resolver→選択Childの統合Draft）と[#4587](https://github.com/hat47x/tei-platform/pull/4587)（N2→N3実Member引渡し）を段階別に接合する。これらはまだ**同一Plugin/Subjectの一Attempt横断ではなく**、新[#4634] HEAD `653d0d9`のActionsは確認時点でSelf-build/Health等`in_progress`だった。別々の実績を全Contributionが成立した一事例へ昇格させない。最初のProduct縦断は、選択した一ContractのSource/Provider、実生成Entry、actual Consumerが**同一Target・同一Attempt**にJoinするところまでで止める。認証・DB・組織・テストを全て提供する理想形の完成を前提にしない。
+
+**独立Expectedへの反証（CIV-01〜08、今回新規NOT RUN）**：CIV-01 StudioでB選択・RuntimeでA実Invoke（結果同値でも不合格）。CIV-02 Studio専用Editor/診断だけ導入したとき、非選択TargetのRuntimeへ不要Asset/権限を混入させない。CIV-03 Headless Runtime専用Contributionでも標準Studio編集やCLI読取りを不当に拒否しない。CIV-04 Generator-only ProviderはStage1で実使用し、Stage2でGenerator実行体が不要なら同梱しないが、生成Artifactは実消費する。CIV-05 意味Contract同版でもPackage/Variant/Entryが異なりLock/Role不一致なら実選択を取り違えない。CIV-06 Plugin更新と旧Window/Source/Build Artifactの版ずれ、A→B→A後の旧Evidence復活を拒否。CIV-07 Pluginのdisable/removeでSourceを自動削除せず、未対応断片のLossless保存を無根拠に主張しない。CIV-08 Test/Fixture Contributionが本番Targetへ不要なら除外し、独立Expectedは実装側が自己生成した結果へすり替えない。
+
+**理想形への採否**：[#4632](https://github.com/hat47x/tei-platform/pull/4632)の`Package/Contract/Contribution/Variant/Artifact/Configuration/Resolution`は比較用の概念であって、現行API・保存SchemaやABIの承認ではない。まず`read-only Inspector→Generator選択→実Target受領`の実不足辺を収集し、現行#951/#1016/#1080/#1097で表せないものだけを**増分拡張・Adapter・置換の三案**で比較する。管理のCatalog/Store/設定適用・再起動・Source保持は#2044/#4378、現在Grant・Effectは#1174に保持。理想Plugin標準化の作業はP1候補、**P0非Plugin Desktop BuildExecution/Stage1→Stage2を妨げない**。
+
 **現在の実行順と引渡し**：
 
 1. **P0-Buildを最優先**：#4583/#2831でN2 esbuild→N3 Go embed→非Plugin Desktop Buildへの一辺を、既存BuildIntent/BuildExecution/ArtifactSetに接続。次にStage1実Process→Stage2実Windows Desktop→Stage2自身の実Consumer。Graph Compiler・Plugin管理S3・X-TEA原典完全移植を初回Hard Gateにしない。
