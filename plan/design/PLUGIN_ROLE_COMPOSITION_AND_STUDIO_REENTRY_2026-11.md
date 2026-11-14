@@ -1169,4 +1169,20 @@ CLI／Studio／Harnessから返される後着応答は、**現在の選択対�
 **今回の受入資格**：現行Goコード／テストとReference READMEの確認、および実装順・負例の設計のみ。この文書更新により新規Goテストを走らせたり、新しいPlugin Doc Reader・製品Generator・実Providerを動かしたわけではない。
 
 
+### 21.10 PDC-0独立Fixtureを先に固定する
+
+<!-- tei-20261115-plugin-doc-one-doc-candidate-fixture -->
+
+第21.9節の「一Plugin・一Doc」に対し、[PDC-0 #4701](https://github.com/hat47x/tei-platform/issues/4701)が要求したA/B最小入力を、[testdata/plugin-doc-reference/](../../testdata/plugin-doc-reference/README.md)に**採用前の合成Fixture**として追加した。
+
+- 公開Manual一件（`public-manual.md`）と非公開Manual一件（`internal-manual.md`）の元byteを固定する。公開文書には既存`tei commands`と`plugin-inventory`の発見手順だけを書き、合成Plugin `fixture.graph-base` が既に製品に登録済みと主張しない。
+- `independent-expected.candidate.json`にA `fixture.graph-base@1.0.0`、B `fixture.graph-extension@1.0.0` の直接依存一辺、Aの公開Doc・非公開Docの帰属候補、版不一致、部分取得、B→C再公開拒否、選択B/実Aの不一致、Lock未提示によるexact版不明を、採用前の期待値として固定する。**これは製品Manifest、正式なGrant設定、Document API Schemaではない**。
+- Graphの意味定義は新設せず、既存の [6件のMarkdown Graph/Rule Fixture](../../testdata/tei-md-graph/README.md)に対する参照を保持する。同ラベルの二Node、同端点の二Edgeは既存入力の値を利用する。PDC-02で要求する関係の意味Roleは候補JSONの`occurrenceRole`に注記しただけで、元Graph表がRoleを正式に受理しているわけではない。
+- 合成JSONにある`visibility`や`sourceRefStatus`は検査の入力・結果候補であり、実Workspaceに認可を設定した事実ではない。非公開Refの拒否時に本文・Source位置・内部ID・件数を外部Consumerへ漏らさないことは、独立Expectedの検収条件とする。Fixture自体がGitHubで見えることと、TEI Productでの非公開ポリシーは別に扱う。
+
+このFixtureを使って最初に検査すべきなのは、**(1)選択済みA exact版とDoc版をそろえること、(2)明示Doc参照なしの同名推定を拒否すること、(3)非公開Docと再公開を拒否すること、(4)文書だけの変更と意味変更を区別すること**である。S0では候補JSONを製品の`plugin.tei`として読み込まず、正式`*.tei.md` Readerが未接続であることも保持する。
+
+次の#4714実装はこのSourceを**入力用の独立Fixture**として使い、`plugin-inventory`の実World選択と公開DocのSource-backed Product Readの差分を証明する。独立Expectedの採否は既存#1180/#2514へ戻す。Fixtureを作成したことをもって、実Plugin Inventoryに合成A/Bが登録された、Doc/GrantがProductで受理された、read-only APIやRuntime Providerが動いたとは主張しない。
+
+
 **資格**：第20・21章は、現行mainの第15〜18章を維持しながら、生成プラグインの一機能とPlugin説明の利用時適合を切り出した**設計・検収案**である。正式 *.tei.md Reader、新Generator、実Plugin E2E、Plugin Help API、実AI Harness、Owner受理を今回実装・実測したわけではない。
