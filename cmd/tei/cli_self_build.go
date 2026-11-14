@@ -67,6 +67,9 @@ type selfBuildEntryEvidence struct {
 	// ChildIsolation is the builder's report that it built from a staged tree.
 	// Recorded as a statement about the run, not as a condition of the claim.
 	ChildIsolation *selfBuildChildIsolation `json:"childIsolation,omitempty"`
+	// ChildToolchain is the Go toolchain the builder says it ran. The plan does
+	// not name one; the outer shape re-reads the executable to compare.
+	ChildToolchain *selfBuildChildToolchain `json:"childToolchain,omitempty"`
 	// ChildLock is the child's own validated plan-to-artifact lock (§4.11),
 	// copied verbatim. The entry checks it against the file rather than
 	// treating it as proof.
@@ -294,6 +297,8 @@ func driveSelfBuildIn(childPath string, childArgs []string, artifactPath, claime
 		// forms and checks it itself, the entry no longer assembles the binding
 		// from two separate self-reports.
 		BuildArtifactLock *childSelfLock `json:"buildArtifactLock"`
+		// The toolchain the builder ran, when it is a Go builder that reports one.
+		Toolchain *selfBuildChildToolchain `json:"toolchain"`
 	}
 	if err := json.Unmarshal([]byte(stdout), &child); err != nil {
 		appendSelfBuildFailure(&evidence, "child output is not one JSON object: "+err.Error())
@@ -306,6 +311,7 @@ func driveSelfBuildIn(childPath string, childArgs []string, artifactPath, claime
 	evidence.ChildPlanFingerprint = child.PlanFingerprint
 	evidence.ChildStateDir = child.StateDir
 	evidence.ChildDefinitionDigest = child.DefinitionDigest
+	evidence.ChildToolchain = child.Toolchain
 	if child.IsolatedTree != nil {
 		evidence.ChildIsolation = &selfBuildChildIsolation{
 			Root:        child.IsolatedTree.Root,

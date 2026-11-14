@@ -2479,6 +2479,7 @@ PR #4254 の head `289d3eeb2d5696ed3ac3ca07c11ddcfb946fc541` に対する [Run 4
 - ~~`builder.contract`・`compatibleMajor`の照合~~ → **§4.19で実装済み**（対応規則はresolverに既にあり、`BuilderContractVersion`として一箇所に定義した）
 - ~~`secretRequirements`の照合~~ → **§4.20でS-1（childで照合しない）に決定**。保証が増えないため、childの入力契約も`plugin.BuildPlan`も広げない
 - `-self-digest`の取得方法（実行ファイル自身のdigestをどう自己参照するか）
+- **toolchainを計画の入力にするか**。`-go`はchildの引数で、計画にも五条件にも現れない。同じ計画を別のtoolchainでビルドすると別のバイトになり、どちらも`l2b.claimed`が立つ（[実測](../evidence/TEI_GO_SELF_BUILD_SEED_REACH_2026-11-13.md)）。現在はbuilderの申告とentryの読み直しを`toolchainObservation`に**記録するだけ**である
 - 出力のschemaVersionと、既存`tei.cli.*`との命名一貫性
 - Seed Trustの扱い（stage0のGoは外部seed。TEI自身によるGoコンパイラのself-hostingではない）
 

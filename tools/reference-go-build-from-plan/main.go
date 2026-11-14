@@ -64,6 +64,10 @@ type report struct {
 	// DependencyCoverage answers "does the plan cover what the build compiles?".
 	DependencyCoverage *dependencyCoverage `json:"dependencyCoverage,omitempty"`
 
+	// Toolchain is the Go toolchain this process ran. The plan does not name it,
+	// so this is what tells apart two builds of one plan with different toolchains.
+	Toolchain *toolchainReport `json:"toolchain,omitempty"`
+
 	BuildCommand []string `json:"buildCommand"`
 	BuildOK      bool     `json:"buildSucceeded"`
 	BuildError   string   `json:"buildError,omitempty"`
@@ -261,6 +265,7 @@ func run(args []string, out io.Writer) error {
 		return emit(out, rep)
 	}
 
+	rep.Toolchain = observeToolchain(goExe)
 	rep.BuildCommand = []string{goExe, "build", "-trimpath", "-buildvcs=false", "-mod=readonly", "-o", *artifactOut, plan.Recipe.Entrypoint}
 
 	var buildErr error
