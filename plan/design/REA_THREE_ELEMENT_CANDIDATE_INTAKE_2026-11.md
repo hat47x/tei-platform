@@ -290,7 +290,7 @@ Observationは`data-element`候補へ、有向Relationは`cross-reference`候補
 
 | 確認 | 正例・負例 | 最初の完成条件・担当 |
 | --- | --- | --- |
-| **J-01 二入口の入力適合・受領帰属** | Capturedに基づくBOM付き派生RawはR2のみ受理、BOMなしの基底Rawは両入口で受理、基底RawにBOM付き派生RawのDigestをPinするとR2拒否 | 二つの実受領RawのDigestを区別。semantic_graph選択1本とapplication graph候補群の外部IDを混同せず、共通Evidence IDからRelation同一性を作らない（#3394/#2514） |
+| **J-01 二入口の入力適合・受領帰属** | 実保存RawはUTF-16LE/BOM、外部候補入口は元Byteを受理。三要素intakeは明示変換したUTF-8 JSONを受理し、UTF-16LE原本は拒否。原本Digestで変換後ByteをPinするとR2拒否 | 原本と変換後の二つの実受領Digestを区別。semantic_graph選択1本とapplication graph候補群の外部IDを混同せず、共通Evidence IDからRelation同一性を作らない（#3394/#2514） |
 | **J-02 Relation identityと意味損失** | 同名異ID、同端点同種の二辺、片方の向きのみ反転、外部ID再採番 | Candidate/Preview/GraphそれぞれのIDを保存できる範囲とLossを記録。編集先が曖昧なら拒否（#1124/#1120/#2497） |
 | **J-03 問い相対の不完全性** | Graph completeでもFunction/Business unsupported、未取得Plugin、手作業、動的参照 | Dataの陽性構造だけを回答し、Function全体の未使用・更新なし・削除可能を出さない（#3394/#3262） |
 | **J-04 Native Product受領** | 通常CLIの実Resultと、Windows Wails Service→JSの独立実Value/Recipient、Server公開面 | Host内Readerやテスト用子OS Processだけでは合格にしない。公開範囲とCurrent Grantを別試験（#4661/#2516） |
@@ -306,7 +306,7 @@ Observationは`data-element`候補へ、有向Relationは`cross-reference`候補
 <!-- rea-j01-dual-graph-bom-contract-20261114 -->
 ### 10.6 J-01の試験を実入力契約に合わせて修正する：BOM、二種類のGraph、Tool版
 
-**固定Capturedと現行Readerの照合結果・CIによる訂正**：internal/externalanalysis/testdata/rea-6.8.0/analysis.jsonはok/data/metaを持つ保存済みREA出力。ただし**このファイルが常にBOM付きであるという先の記述は誤り**であった。PR exact HEADのRepository Healthログでは、Linux checkoutで読み取ったFixtureにBOMがなく、従来のJ-01テストは当該前提で失敗した。修正版ではFixtureを取得したByteからBOMの有無を除いた基底を用意し、試験用にBOM付き派生Rawを**明示的に構成**する。externalanalysis.ReceiveはBOM付きも読める一方、reacandidate.DecodeAttemptEvidenceは先頭のjson.UnmarshalでBOM付きJSONを拒否する。**この二つは別Raw/Digest**であり、基底のRawを外部Producerの新しい納品として再解釈したり、派生RawのReceiptを元のReceiptと同一視したりしない。Tool VersionとProvider Versionも別軸に保持する。
+**固定Capturedと現行Readerの照合結果・二回のCI失敗からの訂正**：internal/externalanalysis/testdata/rea-6.8.0/analysis.json は、既存の `TestReceiveRealSavedEvidence` が **UTF-16LE/BOM** と取得Byte Digestを検証している実保存出力である。コネクタ経由でテキストとして閲覧するとUTF-8に復号された内容が見えるため、以前は元ファイルのバイト列までUTF-8/BOMだと誤認した。最初のJ-01試験は「UTF-8 BOMが先頭にある」との不正確な主張で失敗し、次の試験は実UTF-16LE入力の前にUTF-8 BOMを付けたため R2 が拒否した。いずれも今回追加したテストの誤り。修正版は**保存された原本Byteを変更せず** `externalanalysis.Receive` に渡すとともに、テスト内でUTF-16LEコード単位をUTF-8 JSONに**明示的に復号した別ファイル**を `reacandidate.DecodeAttemptEvidence` へ渡す。後者は現行 `json.Unmarshal` の入力契約であり、元のUTF-16LE/BOMを受理しない。原本Digestと変換後Digestは異なり、同じEvidence IDでも同一受領・同一Tool実行としない。Tool Package Version 6.8.0とEvidence Provider Version 1も別軸に保持する。
 
 **二つのGraphは別観測面**である。operations.ExternalCandidates→externalanalysis.ReadCandidatesはnormalized_result.semantic_graphのnodes/relations/evidence_contextsを読む。実Capturedの選択対象はjsrg_node_*とjsrg_relation_*である。三要素intakeのDecodeAttemptEvidence/GenerateCandidatesはnormalized_result.graph（schema=JavaScriptApplicationGraph）のnodes/edges/observationsを読んで候補を作り、こちらはjag_node_*／jag_edge_*である。reacandidateがsemantic_graphから直接取り込むのはCoverage/Unknown等の資格情報であり、R2のsemantic relation IDを正式三要素CrossReferenceへそのまま渡しているわけではない。**同一Evidence IDは両Graph内の個々の関係の同一性証明ではない**。対応するSource位置が偶然一致しても一対一MappingはOwner/契約側で別に確認する。
 
@@ -314,12 +314,12 @@ Observationは`data-element`候補へ、有向Relationは`cross-reference`候補
 
 | J-01の局所ケース | 期待する結果 | 誤って認めない資格 |
 | --- | --- | --- |
-| **J-01a BOM付き派生Raw** | external-candidatesはsemantic graphの指定IDを取得し、**実際に構成したBOM付きRaw Digest**を返す。three-element rea-intakeは現在のJSON入力契約では入力を拒否 | 入力契約の違いを、グラフ解析失敗や業務Meaning欠落の証拠にしない |
-| **J-01b BOMなし基底Raw** | 外部Evidence IDとProvider宣言は保ったまま、R2での**実取得Raw DigestがBOM付き派生Rawとは異なり**、rea-intakeはapplication graph候補とOwner pendingのReviewを返す | 両Readerが同じRawを消費した、またはsemantic_graphとgraphでNode/Relation IDが等しい、とは言わない |
-| **J-01c BOM付きDigestでBOMなし版をPin** | R2はstaleを返す。Evidence IDとSourceRevisionが同じでも旧Digestのまま通らない | 「意味上は同じだからByte Pinも有効」としない |
+| **J-01a 元Captured（UTF-16LE/BOM）** | external-candidatesはsemantic graphの選択IDと**元保存ByteのDigest**を返す。three-element rea-intakeは元UTF-16LE JSONを入力形式不一致で拒否 | 入力契約の違いを、グラフ解析失敗や業務Meaning欠落の証拠にしない |
+| **J-01b UTF-8派生JSON** | 外部Evidence ID・Provider宣言を保ったままR2の**実取得Raw Digestが元UTF-16LEとは異なり**、rea-intakeはapplication graph候補とOwner pendingのReviewを返す | 両Readerが同じRawを消費した、またはsemantic_graphとgraphでNode/Relation IDが等しい、とは言わない |
+| **J-01c 元UTF-16LE DigestでUTF-8をPin** | R2はstaleを返す。Evidence IDとSourceRevisionが同じでも旧Digestのまま通らない | 「意味上は同じだからByte Pinも有効」としない |
 | **J-01d Graphごとの未観測** | semantic_graphのCoverage/Unknownと、application graphの候補/三要素Coverageは別に表示。Function/Businessがunsupportedなら未知を維持 | 局所GraphのcompleteからWriter不在・未使用・削除可能とは結論しない |
 
-**今回の小さい実装**：cmd/tei/cli_rea_dual_entry_contract_test.go にJ-01a〜cの回帰テストを追加した。当初のBOM前提・gofmt差分による[旧HEADのCI失敗](https://github.com/hat47x/tei-platform/actions/runs/43611236185)を確認して修正した。二つの実CLIの**Commandハンドラを同じGo Test内から別々に呼ぶHeadless契約テスト**であり、実行ファイルを二度起動するJ-01の製品受入や、Native Studioという第二Product Consumerには数えない。既存のcli_external_candidates_test.goが担う実Binaryの入口試験とも区別する。J-01dの全問Closure、Graph間のSource-backed対応付け、J-02の並行Edge個別逆参照は後続の独立Expectedで検証する。
+**今回の小さい実装**：cmd/tei/cli_rea_dual_entry_contract_test.go にJ-01a〜cの回帰テストを追加した。旧HEADの[一度目のCI失敗](https://github.com/hat47x/tei-platform/actions/runs/43611236185)（gofmt・BOM誤認）と[二度目の失敗](https://github.com/hat47x/tei-platform/actions/runs/43613437654)（実UTF-16LEへ誤ったUTF-8 BOMを付加）を受け、元Byte保持＋UTF-8派生の契約へ修正した。二つの実CLIの**Commandハンドラを同じGo Test内から別々に呼ぶHeadless契約テスト**であり、実行ファイルを二度起動するJ-01の製品受入や、Native Studioという第二Product Consumerには数えない。既存のcli_external_candidates_test.goが担う実Binaryの入口試験とも区別する。J-01dの全問Closure、Graph間のSource-backed対応付け、J-02の並行Edge個別逆参照は後続の独立Expectedで検証する。
 
 **状態**：この節は実ソースと保存済みCapturedを静的に検査した判断および新規回帰テストの説明。新テストの成功はCIのexact HEADまたは手元の同一Toolchain実行で別途確認する。OwnerのMeaning受理、Sourceへの正式書込み、Native Wails JS受領、旧新の実挙動比較は未実施。
 
