@@ -430,7 +430,7 @@ Studio・SUI・CLIからAIハーネスへ設計対象を渡す際は、表示中
 
 ### 記法の試作から製品実装へ渡す範囲
 
-別途検証されている「標準データ構造＋Role＋Operator」の書き方では、字下げした定義、Markdownの表、関係を表す矢印、説明の本文を同じ意味に対応付ける構想がある。しかし、試作に使われた記法や`tei.notation/0`は**現行製品の採用済み文法ではない**。実装するReaderをそのままPython試作から移植したり、数理用の独立Parserを追加したりしない。
+別途検証されている「標準データ構造＋Role＋Operator」の書き方では、字下げした定義、Markdownの表、関係を表す矢印、説明の本文を同じ意味に対応付ける構想がある。しかし、試作に使われた記法は**現行製品の採用済み文法ではない**。実装するReaderをそのままPython試作から移植したり、数理用の独立Parserを追加したりしない。
 
 最初に判定するのは、既存Languageと標準構造が、表・式・対象ID・原文位置の対応をどこまで扱えるかである。正式Readerが未完成ならC1を未実証としたまま、必要な最小のGapを[#988](https://github.com/hat47x/tei-platform/issues/988)、[#2619](https://github.com/hat47x/tei-platform/issues/2619)、[#2620](https://github.com/hat47x/tei-platform/issues/2620)、[#2621](https://github.com/hat47x/tei-platform/issues/2621)へ渡す。意味受理済み入力を仮定した限定生成試験はC2候補にできるが、**C1からつながる製品一往復**としては別途検収が必要になる。
 
