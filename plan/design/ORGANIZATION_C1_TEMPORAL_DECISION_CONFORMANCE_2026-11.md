@@ -563,7 +563,7 @@ main `internal/database/persistence/model.go` の `Mapping.RelationStorage []Rel
 | 比較する候補 | 明示すべきSemantic関係 | 採用前に検証する物理対応・限界 |
 | --- | --- | --- |
 | **Direct attribute** | Membership.personId→Person.personIdなど、属性・Relation・Key/CardinalityをOwnerが受理 | ColumnMappingの型・NULL・FK/期間・History版と実Providerの一致。現Sourceでは未実装 |
-| **Relation-backed support** | Source側Person等からMembership等への型付きRelationとSourceAttribute/Targetの方向を明示 | RelationStorageMappingの物理補助列が意味を損なわず丸められるか。IRのGo JSON可否は検証候補であり、DSL Parser/Query/Generator/SQL/Providerの実成立を別確認 |
+| **Relation-backed support** | Source側Person等からMembership等への型付きRelationとSourceAttribute/Targetの方向を明示 | 既存DSL Parser→Loader→World Validation→Physical Desired/Migrationには汎用実装があり、組織C1の具体的Relation/方向・SQL/実Rowsetへの適用は未実証。IR JSON往復だけでC1の適合を保証しない |
 | **Employment/Affiliation pathway** | Memberと雇用/在籍の受理済みLinkを追加 | Personへの既存Relationが存在しても、その逆方向/Source ID/個人の同定Ruleがない限り取得しない |
 
 **非採用**：Mappingの物理support columnをBusiness IdentityやSemantic Attributeに自動昇格しない。表にperson_id列が見えるだけでPersonを同定しない。RelationStorageという形をすべてのMembership実装へ義務化しない。既存#1126のRelation/Business KeyとPKの分離、#2622のProvider capability、#2611の二DB Alias競合をそのまま使う。
@@ -574,7 +574,7 @@ main `internal/database/persistence/model.go` の `Mapping.RelationStorage []Rel
 
 - 以前の4件が実Sourceの欠落とr7を追跡するのに対し、5件目は**未受理の仮Candidate**を使ったGo構造のSerialization Test。Product Sourceに追加したと主張しない。
 - **Go型・JSONの候補成功 ≠ DSLで宣言できること ≠ Query/SQL Providerの一致 ≠ 業務上のPerson Link受理**。現実のProduct Read/Effect/Current Grant/Consumer ACKに昇格しない。
-- 既存#4633 HEAD b529791fの4テスト成功（Health #43548199759）は**過去の固定HEAD**の合格として保持。5テストを含む新HEADではCI/Healthを再確認するまでPASS未確定。古いHEADの合格を新しいコード変更後へ流用しない。
+- 4件版HEAD b529791fのHealth #43548199759、5件版HEAD 509296692343786d96906faabe1defdb17a0ad68の[Health #43549877695](https://github.com/hat47x/tei-platform/actions/runs/43549877695) はそれぞれ完了・success。後者の実ログで全Go test、tei/internal/operations、gofmt、vetがPASS。6件目を加えたHEAD efa4a8fcのCI/Healthは改めて判定し、旧結果を新HEADに転用しない。
 
 ### 17.3 最短の独立受入を先に固定
 
@@ -584,3 +584,39 @@ main `internal/database/persistence/model.go` の `Mapping.RelationStorage []Rel
 4. **Consumer/Authority Owner (#4501/#1174/#3421)**：Case C1/Viewer/HeadlessへPerson結果を伝えることと、実Hostでの業務判断・公開・引継ぎを別検証。ローカルDesktop/Gitと共有Wails ServerのAuthorityを自動継承しない。
 
 **現時点の資格**：新IR候補テストコードは#4633に実装したが、その新HEADのGo/Health完了は別途照合する。実Person-link Source、RelationStorageのTEI DSL Loader/SQL生成/実DB readback、業務Owner採用は**NOT RUN / NOT ACCEPTED**。#2586通常CLI実Provider Readと#2831/#4583 Studio Desktop Stage1→Stage2 Self-buildは引き続き独立P0。
+
+
+## 18. Relation Storage既存実装への接合とC1限定テストの実証（2026-11-14）
+
+### 18.1 「IRしかない」という前提を訂正し、汎用実装を再利用する
+
+旧PR履歴と現在のsource codeを確認した。既にmainへマージされた #246〜#252 と #257 は、**RelationStorageMappingの型、局所/World Validation、Desired Physical Schema、独立authoring Parser、Workspace Loader/Source provenance、Contract Query SQL realization、SchemaDiff→PostgreSQL Migration SQL**を段階的に実装した。現mainの例：
+
+| 現mainの既存機構 | C1で追加検証すべき差分 |
+| --- | --- |
+| `internal/workspace/relation_storage_loader.go`：`databases/<db>/relation-storage/*.tei` の独立sourceを読込み、**明示Mapping ID**だけで合流し、別Source identityを保持 | PersonをsourceとするRelationのID/方向・Mapping Targetが一致し、他のDB Aliasや同名Sourceに誤結合しない |
+| `internal/validation/persistence_relation_storage.go`：Relation存在/target Semantic Data一致/source Attributeのowner一致を検査 | Person→Membershipを採る場合、SourceAttributeがorganization.person.person_idに属し、target=organization.membershipであること。Membership.membership_idの誤参照を拒否 |
+| `internal/database/persistence/realize.go`：通常Columnとは別にsupport columnをDesiredへ追加 | 当該人物support列が明示Type/Nullableで生成され、既存Membershipの単独PKに**自動参加しない**こと |
+| 既存#257のSchemaDiff/Migration Conformance | 単なるsupport列ADDと、A2二版の履歴保存用PK変更・既存Current Writer Fenceを別のMigration受入にする |
+| 既存#251/#252の受注明細/Query統合Reference | Order→OrderLineのkeyless Relation成功を、Person→Membership/歴史A2二版の意味・実Read成功へ横滑りさせない |
+
+**現在地の注意**：#251/#252のPR履歴では `reference/workspace/databases/sales-core/relation-storage/order-lines.tei` と対応SQLが存在した。しかし最新mainの同Pathを今回直接取得した際にはNot Foundとなった。したがって過去の統合PRの記録と、**現行Checkoutで同じReference Fileが引き続き配置されているという実事実**を分離し、後者は再配置/削除のSource readback後にだけ主張する。Loader/Validator/RealizeDesiredの現実装はmainに存在することを確認済み。旧PR時点の実PostgreSQL本番接続成功まで意味を拡張しない。
+
+### 18.2 第6のGoテスト：実組織Worldを複製し、Production ValidatorとDesired投影へ通す
+
+[実Go Draft #4633](https://github.com/hat47x/tei-platform/pull/4633) に `TestOrgC1CandidatePersonRelationStorageValidatesAndRealizesOffline` を追加。既存の `reference/org-staged-axis` を `workspace.Load` で読込み、テスト内部だけで次を構成する：
+
+1. Personというsource Dataに、Membershipをtargetとする**keyless Relation候補**を明示（Person→Membership）。Personの `person_id` をSourceAttributeとし、Membership Mappingの `person_support_id` support columnへ対応する。
+2. `validation.ValidatePersistenceRelationStorageMappings` のProduction codeを実行し、正しい方向・ownerでは診断0であることを確認。
+3. `persistence.RealizeDesired` とPostgreSQLの実Provider PolicyでオフラインDesiredを作り、support columnが通常attributeとは別に現れ、Required/Ordinalが保たれ、Membership単独PKも変更されず、FKも無断追加されないことを確認。
+4. SourceAttributeを誤ってMembership自身の属性へ変え、既存Validatorが `PERSISTENCE_RELATION_STORAGE_SOURCE_ATTRIBUTE_PARENT_MISMATCH` として拒否することを確認。
+
+このテストは**本物の組織Workspaceを入力に使った独立した候補IR/Validation/Desiredの限定Go実証**であり、採用済みSourceを変更しない。人物が属する先のRelationをPerson→Membershipと表現するのは、現実のMembership→Person取得操作・Context grain・履歴の2版共存を成立させたこととは異なる。反対向きの直接Key Relationも引き続き選択肢。
+
+**採用の停止線**：直接Relation/RelationStorageどちらを採用するにしても、#2386/#1126の業務意味受理、実Source DSL/Queryとの完全一致、#4125の既存データ移行・バックフィル・旧Writer Fence、#4490/#2586の実Rowset/Person/FTE/Consumer Readを別に確認する。特に履歴不足の旧DBへ `person_support_id NOT NULL` を即時ADDしてよいとは限らない。旧行のPerson source coverageが無い場合はNULL/unknownを保持し、Expand→source-proven Backfill→Validateの後にのみRequired/Contract候補を検討する。原典にない過去のPerson LinkやknownFromを生成しない。
+
+### 18.3 検証済み・実行中の区別を変更ごとに保存
+
+- **5件版の固定HEAD 509296692...**：[Health #43549877695](https://github.com/hat47x/tei-platform/actions/runs/43549877695) completed/success。実ログで `go test -count=1 -timeout 60m ./...` PASS、`tei/internal/operations` PASS（1.737s）、gofmt/vet PASSを確認。これはSource欠落4件とIR/JSON候補1件のテストだけ。
+- **6件版の新HEAD efa4a8fc0dcc3d2ecdc6971c48910c16e16ce2d9**：Production Validator/Desired追加後の新実行。Health [#43553971231](https://github.com/hat47x/tei-platform/actions/runs/43553971231) の結果で判定し、ジョブログの完全性・同一HEADを再確認するまでsuccessとしない。
+- **本節が未実施のもの**：C1用Person Relation source fileの正式Authoring、DBの実Migration/Backfill、A2旧新二版保存、actual PG as-of、Read Context/Consumer、現在Grant/Effect、Web複数Principal/Workspace、Owner Acceptance。#2586通常CLI実Read、#2831 Studio Stage2 Self-buildを独立P0に維持する。
