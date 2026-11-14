@@ -176,20 +176,27 @@ function setFindings(findings: Finding[] | null) {
 function renderPin() {
   const intent = pinState.intent;
   const eligible = selected !== null && inspectEligibility(catalogSnapshot, selected).ok;
+  const pinnedEligible = intent !== null &&
+    inspectEligibility(catalogSnapshot, intent.subject).ok;
   element<HTMLButtonElement>("pin-current").disabled =
     disposed || !client || !workspace.value || !eligible;
   element<HTMLButtonElement>("unpin-current").disabled = !intent;
+  // Requalification is an explicit read, not an automatic revival of old evidence.
+  // Allow it after an A→B→A workspace switch only in the original workspace.
   element<HTMLButtonElement>("inspect-pinned").disabled =
     !intent || disposed || !client || intent.workspaceId !== workspace.value ||
-    intent.workspaceEpoch !== workspaceEpoch;
+    !pinnedEligible;
   element("pin-subject").textContent = intent
     ? `${intent.subject.kind} · ${intent.subject.id}（${intent.workspaceId}）`
     : "固定対象はありません。";
   let status = "未固定";
   if (intent) {
-    if (intent.workspaceId !== workspace.value ||
-        intent.workspaceEpoch !== workspaceEpoch) {
-      status = "固定時点の作業領域と異なります。再固定が必要です。";
+    if (intent.workspaceId !== workspace.value) {
+      status = "別の作業領域で固定した対象です。元の作業領域に戻ると再確認できます。";
+    } else if (!pinnedEligible) {
+      status = "固定対象が現在の一覧に見つからないか、一意に確定できません。";
+    } else if (intent.workspaceEpoch !== workspaceEpoch) {
+      status = "作業領域を再読込しました。以前の観測は無効です。再確認してください。";
     } else if (pinState.observation.state === "inspected") {
       status = "読取り済み。現在の開示・操作権限は未確認です。";
     } else if (pinState.observation.state === "needs-requalification") {
@@ -501,6 +508,16 @@ element("unpin-current").addEventListener("click", () => {
   renderPin();
 });
 element("inspect-pinned").addEventListener("click", () => {
+  const intent = pinState.intent;
+  if (!intent || !client || disposed || intent.workspaceId !== workspace.value ||
+      !inspectEligibility(catalogSnapshot, intent.subject).ok)
+    return;
+  if (intent.workspaceEpoch !== workspaceEpoch) {
+    // The user explicitly rebinds the *same* pinned Subject to the current
+    // workspace generation; this never restores an old Reader observation.
+    pinState = pinSubject(pinState, workspace.value, workspaceEpoch, intent.subject);
+    pinnedVersion = null;
+  }
   void refreshPinnedSubject();
 });
 renderPin();
