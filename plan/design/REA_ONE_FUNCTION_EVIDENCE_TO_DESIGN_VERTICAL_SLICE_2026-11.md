@@ -27,7 +27,7 @@ AのNode IDをBのFunction IDへ名前だけで結ばない。Aに業務Function
 | 段階 | 一巡で確認するもの | 主な担当 | 進むための条件 |
 | --- | --- | --- | --- |
 | **A0 外部観測** | 解析器Version・Source申告・実Byte・Node/Relation・元Source locator・Unknown・未選択数 | #3394、既存R2 | 対象VersionとProducer Deliveryを検証できる |
-| **A1 実Consumer受領** | 通常CLIとNative Wails/WebView2の別Invocation、Host固定Selector・許可済みByte取得・用途別公開Slice | #4661、Draft #4625/#4630/#4637 | 独立した製品Consumerの実受領。試験用子Processを第二Consumerに数えない |
+| **A1 実Consumer受領** | 通常CLIとNative Wails/WebView2の別Invocation、Host固定Selector・許可済みByte取得・用途別公開Slice | #4661、#4625/#4630/#4637（2026-11-14 main統合済み） | 独立した製品Consumerの実受領。試験用子Processを第二Consumerに数えない |
 | **A2 一問の根拠付き回答** | 外部IDからSource Chainへ戻る操作、QuestionのRequired/Consumed、正・否定・Unknownの区分、0..N対応候補 | #1124/#4487/#3262 | 不完全な観測を示し、全称・不存在の断定を拒否できる |
 | **A3 Owner意味受理** | 対象Source Slot・版・Qualified Ref・業務Rule・影響・Ownerの明示採用 | #267/#2497/#1124 | 編集先の一意性、現在版、正式な判断。閲覧だけでは採用不可 |
 | **A4 記述・生成** | 同じAccepted Sourceからの図・業務説明・テスト・コード・SHO文書、保存・再読取・生成入力の一致 | DSL/Method/Generator/SHOの既存Owner | Sourceと意味・ToolchainとArtifact・実Consumerをそれぞれ照合 |
@@ -45,7 +45,7 @@ Graphが局所的にcompleteでもFunction/BusinessのCoverageがunsupportedな�
 
 ## 5. CLI、Studio、AI、SUI、SHOの接続
 
-**CLI・MCP**はHeadlessの検証入口とする。REAの通常CLIコマンドは現時点でDraft #4625の提案であり、mainの正式製品機能と呼ばない。Local CLIが受け取る任意ファイルPathを、そのままNative/Remoteの引数にしない。Native側はHostが固定したWorkspaceとSelectorからBounded Byteを取得し、既存R2の型付き投影を再利用する。外部Web/Agentへの送出はCurrent GrantとDisclosureの実受理を待つ。
+**CLI・MCP**はHeadlessの検証入口とする。REAの通常CLI `tei external-candidates` は#4625によってmain統合済み。ただしローカルPathを許容する入口であり、Native/Remoteへその引数契約を持ち込まない。Local CLIが受け取る任意ファイルPathを、そのままNative/Remoteの引数にしない。Native側はHostが固定したWorkspaceとSelectorからBounded Byteを取得し、既存R2の型付き投影を再利用する。外部Web/Agentへの送出はCurrent GrantとDisclosureの実受理を待つ。
 
 **Studio**では、候補の列挙→元Sourceへ移動→関係Chainと未知の確認→比較→編集候補Previewの順に扱う。Focus、固定Selection/Pin、Dirty Buffer、Source改訂、Graphの描画Epochを同一視しない。View Bを閲覧中にPin Aの回答が後着しても、Bの編集状態へ適用しない。描画Edgeからの逆写像が曖昧ならread-onlyに留める。
 
@@ -122,4 +122,61 @@ Plugin AがContractで公開したGraph/Rule/図解FacetをPlugin Bが再利用�
 
 EvidenceにないBusiness Ruleを付加する、unsupportedを不存在にする、Digest一致からGrantやMeaningを認定する、曖昧なGraphからSource変更する、旧Static Codeを実Invocationと呼ぶ、Mockを実Commitと呼ぶ、別Fixture/別PRの成功を一つに束ねる場合には、当該資格を停止して各Ownerへ戻す。
 
-**現況**：R2のReadはmain統合済み。R3-A/Bは個別Draftで、R3-CのNative独立受領、V0-B/Cの新しいHeadless試験、Owner受理、SHO実Save/Reopen、旧新の実同値性は未実行。この文書も設計と実装分割の引渡しであり、新しいGo/Node/Windows/DB試験を実施していない。
+**現況（2026-11-15確認）**：R1 #4547、R2 #4548、R3-A #4625、R3-B #4630/#4637はmain統合済み。R3-CのNative Wails JSによる第二Product Consumer独立受領、V0-B/Cの新しいHeadless実行、Owner意味受理、SHO実Save/Reopen、旧L/D/T実照合は未受入。個別PRのCI成功と統合mainでの製品縦断成功を区別する。この文書も設計と実装分割の引渡しであり、新しいGo/Node/Windows/DB試験を実施していない。
+
+## 9. 2026-11-15横断収束：R3-A/B統合後の不足辺と三要素取り込み
+
+### 9.1 実装済みの線と、まだ接続されていない線
+
+2026-11-14の統合PR [#4683](https://github.com/hat47x/tei-platform/pull/4683)を確認すると、外部Evidence受領R1 [#4547](https://github.com/hat47x/tei-platform/pull/4547)、型付きread-only R2 [#4548](https://github.com/hat47x/tei-platform/pull/4548)、ローカル実CLI R3-A [#4625](https://github.com/hat47x/tei-platform/pull/4625)、byte-only R2入口 [#4630](https://github.com/hat47x/tei-platform/pull/4630)、Host固定Selector/Root/bounded read [#4637](https://github.com/hat47x/tei-platform/pull/4637)はmain統合済みである。
+
+次の製品不足辺は、[R3-C #4661](https://github.com/hat47x/tei-platform/issues/4661)の**Native Wails Service経由で実Windows WebView2 JSが候補を受領すること**。通常CLI子Processの成功や、GoからReaderを二度呼び出した結果はNative第二Consumerの証拠にしない。Hostの固定Workspace/Selectorから取得したbyteだけを既存R2へ渡し、RendererへEvidencePath、CAS/NAS/S3 locator、任意Path、Principal自己申告を渡さない。Native入口追加後に `-tags server` の実Service/Routeへ露出しないことと、公開Reply/DOM/ARIA/ConsoleがPrivate情報の有無で区別できないことも独立に検証する。
+
+すでにmainへ入ったR3-A/Bを再実装するPRは起こさない。#4661を実際のNative登録・独立受領・開示境界へ限定し、Owner Meaning、正式Source編集、SHO Writer、実DB移行は別の検収とする。
+
+### 9.2 原本・観測・対応付け・正式意味を段階別に扱う
+
+| 層 | 何を保持するか | 許されない短絡 |
+| --- | --- | --- |
+| **原本／Producer Evidence** | Raw byte、文字コード、Tool/Protocol版、取得Attempt、Source locator/Revision、Coverage/Unknown、元のbyte digest | 変換後JSONのdigestを元Rawの同一性に代えること |
+| **構造観測** | Observation Node ID、方向付きRelation occurrence ID、端点・種類・StructuralFacts、Producer Source範囲 | 同名Node統合、配列位置・Graph描画Edge IDを正式Relation IDとみなすこと |
+| **対応付け候補** | Data/Function/Businessへの根拠付きMapping、出典、複数候補、欠落・矛盾、Question別Required/Consumed | 観測されたDataだけでFunction/Businessの不存在や網羅性を確定すること |
+| **Owner受理済みTEI Source** | 確定した業務意味、対象Qualified Refと版、Rule、操作の効果、受理記録 | AIの説明、REA結果、候補のPreviewを業務仕様・実行許可へ昇格すること |
+| **生成／Target実測** | Generator/Artifact/実Provider、Source closure、実行・Consumer Receipt、旧L/期待D/新Tの独立Expected | 生成成功を実使用成功、静的SQL一致を旧新Runtime同値とみなすこと |
+
+REA 6.8.0の保存済みUTF-16LE/BOM入力からUTF-8の取込み用派生を作る場合、**元Rawと派生は別byte provenance**として追跡する。[三要素取り込みDraft #4693](https://github.com/hat47x/tei-platform/pull/4693)のJ-03bは、Captured Evidenceに対してData=supported、Function/Business=unsupportedとOwner pendingを確認する設計・回帰である。これは外部REAが三要素全体を解析した証拠ではない。#4693の最新HEAD CI、Native Consumer、Owner受理、実Effectは別途確認する。
+
+### 9.3 Relation同一性と再解析の扱い
+
+三要素Modeler、Graph/Plugin、Source編集で共通に使う公開合成例は、同表示名のNode `n1,n2`、並行する有向Relation `e1,e2`、Task→Action→Function→IOTable→Data、手作業M、未取得Uとする。Captured REAの実観測と、この合成Chainの意味を混ぜない。
+
+- **J-02h〜j**：同じ構造・Source Spanの並行Relationが再採番された場合、ソート順による対応は暫定表示だけ。1対2、2対1、2対2のRelation occurrenceの継続性を確定せず、Source-backed対応が得られるまで編集は止める。
+- **J-02k〜m**：Candidate ID/Source Digestが同じでも、`ObservedKind/State/Authority/Coverage`等の外部観測事実が変われば `observed-facts-changed` 等で再評価を促す。新Statusを未知のConsumerが`unchanged`へ黙って丸めない。
+- **構造上の損失**：外部Relation ID、TEIのMeaning Relation occurrence、画面の描画Edge、物理DBキーは別の識別子。往復が不可能ならread-only＋Source navigateへ退き、Map/Editorに一意な編集対象があるかのように見せない。
+
+上記の差分検知は[Draft #4693](https://github.com/hat47x/tei-platform/pull/4693)と[Modeler #1124](https://github.com/hat47x/tei-platform/issues/1124)、[Graph #1120](https://github.com/hat47x/tei-platform/issues/1120)の責務を再利用する。正式な第二Graph RegistryやREA専用Canonicalを作らない。旧Statusを読むCLI/Studio/SHO/他Consumerの未知値扱いも受入へ追加する。
+
+### 9.4 三要素の受入は「見つかったもの」ではなく「問いと必要な根拠」で決める
+
+三要素分析法の**データモデル・機能モデル・業務モデル**を忠実に扱い、Task/Action Tree、I/O表、CRUD/逆引き、業務フロー、Subsystemの関連を省略しない。REAの静的参照は候補に留め、`Task→Data`の短縮表示から隠されたFunctionやWrite Effectを生成しない。
+
+1. **P（観測）**：観測したSource断片、SQL/Call/画面、Relation、取得Attempt、未取得範囲を提示する。
+2. **J（対応付け）**：各観測がData/Function/Businessの何に対応するか、0/1/複数・不明と根拠を提示する。業務上のRole・完了条件は候補である。
+3. **Q（問いに対する充足）**：問いごとにRequired Source/Relationと実Consumedを照合する。「FがDに参照する」の陽性証拠と、「Dはどこからも参照されない」という否定・全称の完全性証明を別にする。Data部分がcompleteでもFunction/Businessがunsupportedなら「存在しない」と答えない。
+
+意味受理を経た後に限り、受理済み`*.tei.md`や標準表現から図・説明・独立Expected・Code Generatorへ接続する。複雑な業務条件はBRMS風のRule/Operatorを標準表現に重ねるが、REAを別BRMS/Rule Engineにしない。
+
+### 9.5 最小検収順と製品優先順位
+
+| 順位 | Owner・対象 | 次の確定条件 |
+| --- | --- | --- |
+| **独立P0継続** | [#4583](https://github.com/hat47x/tei-platform/issues/4583)/[#2831](https://github.com/hat47x/tei-platform/issues/2831)：Studio Stage1→Stage2実セルフビルド、[#2586](https://github.com/hat47x/tei-platform/issues/2586)：通常tei実PG Query→Function Context | 正式Build/実Consumerと実Provider/Rowsetをそれぞれ独立に実証。REA R3-Cや三要素全量解析をHard Gateにしない |
+| **REA-R3-C** | [#4661](https://github.com/hat47x/tei-platform/issues/4661) | 同一Captured Producer Evidenceに対し、実CLIとWindows Native Wails JSが別Invocation/Receive。Host Selector/公開面/後着応答の負例に合格 |
+| **V0-B→V0-C** | [#1124](https://github.com/hat47x/tei-platform/issues/1124)、[#4693](https://github.com/hat47x/tei-platform/pull/4693)、[#2514](https://github.com/hat47x/tei-platform/issues/2514) | 合成T/A/F/I/Dと外部Capturedを区別したまま、関係ID・再解析差分・P/J/Q・説明の根拠をread-onlyで検証 |
+| **V2** | Owner/Source Acceptance、SHOのSave/Reopen | Qualified Ref/Source Revision/複合Identity・受理済みMeaningからのみSourceへ適用。再読取・再投影で一致 |
+| **V3** | 旧実測L／Owner期待D／新Target実測T | 一Functionだけを同じ粒度・時点・Scope・Null/欠損・実Effect/Receiptで照合。静的解析だけのLやMockのTは合格にしない |
+| **後続の自己適用** | TEI-native Plugin/GeneratorとCLI-first Dogfooding | REA→受理済みGraph/Rule→実Go生成→実CLI受領を段階別に実証。単なるGo delegateを自己実装に数えず、定義の簡素化・変更箇所・再検証範囲を測る |
+
+各試験で **tested HEAD、Producer/Reader/Consumer Attempt、Source/Tool/Generator版、Expected、実Result、未受理範囲** を分けて記録する。既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#2514](https://github.com/hat47x/tei-platform/issues/2514)のExpectedと既存Ownerへ分配し、新しいREA専用Runner/Gate/Host/意味正本は設けない。
+
+**この追補の証拠上限**：GitHubの統合状態・既存Source/PR/Issueの静的照合に基づく計画更新。新たなGo/Windows/PG・SHO・Source編集試験を実行した結果ではない。統合mainの更新後実E2E、#4693最新HEAD CI、R3-C Product受領、正式Owner意味受理は未検収。
