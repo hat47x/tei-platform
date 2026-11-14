@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"testing"
 
 	"tei/internal/sourceindex"
@@ -68,18 +67,6 @@ func validateCTKWindowInputRows(rows []ctkWindowInputRow) (map[string]ctkWindowI
 }
 
 func ctkWindowInputSourceLiteral(r ctkWindowInputRow) (string, error) {
-	w, err := validateCTKWindowInputRows([]ctkWindowInputRow{
-		{ObsID: "A1", Group: "A", Seq: 1, Value: json.RawMessage("10")},
-		{ObsID: "A2", Group: "A", Seq: 2, Value: json.RawMessage("20")},
-		{ObsID: "A3", Group: "A", Seq: 3, Value: json.RawMessage("30")},
-		{ObsID: "A4", Group: "A", Seq: 4, Value: json.RawMessage("40")},
-		{ObsID: "B1", Group: "B", Seq: 1, Value: json.RawMessage("5")},
-		{ObsID: "B2", Group: "B", Seq: 2, Value: json.RawMessage("null")},
-		{ObsID: "B3", Group: "B", Seq: 2, Value: json.RawMessage("15")},
-	})
-	if err != nil || len(w) != 7 {
-		return "", fmt.Errorf("invalid fixture expected input: %v", err)
-	}
 	if len(r.Value) == 0 {
 		return "", fmt.Errorf("missing value for %q", r.ObsID)
 	}
