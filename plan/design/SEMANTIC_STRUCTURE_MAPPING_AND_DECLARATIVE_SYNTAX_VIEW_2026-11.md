@@ -1555,16 +1555,16 @@ Format Version、Language Plugin版、Role Contract版、Operator版、生成器
 
 以下は既存SM-01〜90からの追加**候補**であり、正式なExpected Storeを作らない。
 
-| ID | 固定した一因子の差 | 独立Expectedへ渡す検査 |
-| --- | --- | --- |
-| SM-91 | 同一Markdownを説明として参照するか、明示Reader／Role付きSourceとして選択するか | 内容同一でも前者はDefinitionを作らず、後者だけ候補を返す |
-| SM-92 | 選択Reader／Roleだけを別版へ変更 | Source byte不変でも解釈資格・依存が再検証され、旧Meaningを無条件承継しない |
-| SM-93 | Graph表のNodeラベルとMermaid表示名を同じにし、意味IDを二つ用意 | IDを併合せず表示／意味の対応を明示する |
-| SM-94 | Key対応未確定のERを正常描画できる | 表示可能とPK継承・DDL生成適格性を別判定 |
-| SM-95 | 同一Tableを二つのSubsystem図で`CRUD`／`R`と表示 | Table同一性・View相対の利用区分・Function実Effectを分離 |
-| SM-96 | FunctionのRelation pathを変えず、図面だけ接続線追加 | 未指定のField取得・Provider Call・権限拡大を発生させない |
-| SM-97 | 同一生成ArtifactへNode IDを変更して呼び出す | バイナリ不変・入力依存の結果と不正入力拒否を確認。製品CLI実績と混同しない |
-| SM-98 | 同じSourceでLanguage／Generator／Toolchainの版のみ変更 | World／Meaning／Artifact／Evidence再利用と実Consumerの再資格を用途別に判定 |
+| ID | 固定した一因子の差 | 独立Expectedへ渡す検査 | 担当 |
+| --- | --- | --- | --- |
+| SM-91 | 同一Markdownを説明として参照するか、明示Reader／Role付きSourceとして選択するか | 内容同一でも前者はDefinitionを作らず、後者だけ候補を返す  #2621／#1018 |
+| SM-92 | 選択Reader／Roleだけを別版へ変更 | Source byte不変でも解釈資格・依存が再検証され、旧Meaningを無条件承継しない  #988／#2620 |
+| SM-93 | Graph表のNodeラベルとMermaid表示名を同じにし、意味IDを二つ用意 | IDを併合せず表示／意味の対応を明示する  #2497／#2621 |
+| SM-94 | Key対応未確定のERを正常描画できる | 表示可能とPK継承・DDL生成適格性を別判定  #1126／#1124 |
+| SM-95 | 同一Tableを二つのSubsystem図で`CRUD`／`R`と表示 | Table同一性・View相対の利用区分・Function実Effectを分離  #3250／#1124 |
+| SM-96 | FunctionのRelation pathを変えず、図面だけ接続線追加 | 未指定のField取得・Provider Call・権限拡大を発生させない  #2622／#2586 |
+| SM-97 | 同一生成ArtifactへNode IDを変更して呼び出す | バイナリ不変・入力依存の結果と不正入力拒否を確認。製品CLI実績と混同しない  #1251／#1180 |
+| SM-98 | 同じSourceでLanguage／Generator／Toolchainの版のみ変更 | World／Meaning／Artifact／Evidence再利用と実Consumerの再資格を用途別に判定  #2595／#2600 |
 
 **直近で閉じる一辺**はA-1／S0の、実`workspace.Load`が選択した`*.tei.md`の元byteから、限定Graph/Rule ReaderのSource span／Role付き候補までを**正式に束縛すること**。この段階では実Providerや自己再構築に成功したとは報告しない。次に同じ意味→実Generator→選択Plugin／通常CLI→独立Consumer→Studio Stage2の各辺を順に検収する。
 
