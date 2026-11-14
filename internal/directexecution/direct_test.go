@@ -75,3 +75,17 @@ func TestUnpinnedDigestIsNotVerified(t *testing.T) {
 		t.Fatalf("unexpected output claim: %+v", e.ActualOutputVerified)
 	}
 }
+
+func TestRelativeOutputIsReadFromWorkDir(t *testing.T) {
+	opts := workerOptions(t, "write")
+	opts.WorkDir = t.TempDir()
+	opts.OutputPath = "result.json"
+	opts.Env = append(opts.Env, "TEI_DIRECT_TEST_OUTPUT=result.json")
+	e, err := directexecution.Run(opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if e.ActualOutputVerified.OutputPath != filepath.Join(opts.WorkDir, "result.json") {
+		t.Fatalf("output path = %q", e.ActualOutputVerified.OutputPath)
+	}
+}
