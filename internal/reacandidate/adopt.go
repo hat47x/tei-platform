@@ -218,13 +218,13 @@ type CandidateComparisonEntry struct {
 
 // Comparison statuses.
 const (
-	ComparisonUnchanged           = "unchanged"
-	ComparisonAdded               = "added"
-	ComparisonRemoved             = "removed"
-	ComparisonRevisionChanged     = "revision-changed"
-	ComparisonSameBytesNewAttempt = "same-current-bytes-different-attempt"
-	ComparisonObservedFactsChanged  = "observed-facts-changed"
-	ComparisonRenumbered          = "external-identity-renumbered"
+	ComparisonUnchanged            = "unchanged"
+	ComparisonAdded                = "added"
+	ComparisonRemoved              = "removed"
+	ComparisonRevisionChanged      = "revision-changed"
+	ComparisonSameBytesNewAttempt  = "same-current-bytes-different-attempt"
+	ComparisonObservedFactsChanged = "observed-facts-changed"
+	ComparisonRenumbered           = "external-identity-renumbered"
 )
 
 // ComparisonAuthorityLimits states what a comparison does not establish.
