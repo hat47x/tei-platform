@@ -2269,3 +2269,82 @@ TEI DSLの構文定義を通常のデータとして保持し、図や入力支�
 **実装の切り分け**：P0は①#4583 Stage1→Stage2の実Build、②既存CapabilityのL1/L2/L3診断の復旧と一結線。P1は③JSON Schema V0/V1/V2の限定read-only UX、④実Provider/独立Consumer、⑤一意に戻せる編集V3。P2は⑥Language Grammarの自己記述、⑦数理・科学Toolkit等への広げ方。外部JSON Schema対応、AI協業、独自Syntax PluginをStudioセルフビルドの新Hard Gateにしない。
 
 **状態**：本節は現行GitHubのSource/Issue/PR、実CI、協業UX Draftの設計を反映した**計画更新**。JSON Schema製品Reader/図解、逆編集、Grammarコンパイル、Go/Node/Windowsの新規E2E、正式Owner意味受理、Stage2再構築は本節の作業では**未実施**。
+
+<!-- tei-self-description-execution-projection-20261114 -->
+## 41. 2026-11-14 業務の意味から説明・図解・実行を展開する：自己記述DSLの最小実装境界
+
+### 41.1 今回の結論：実行方法ではなく「何が起きるか」を表す
+
+第40節では、外部SchemaやDSLの構文を、原文に戻れるTree・属性表・図・診断へ投影する方針を定めた。次に、業務の手順や実行の流れも同じ方式で扱えるようにする。
+
+2026-11-14に**mainへ統合された設計**である[実行モデルの図解・Target移植 #4665](https://github.com/hat47x/tei-platform/pull/4665)と[Process/Trigger/Operation意味整理 #4666](https://github.com/hat47x/tei-platform/pull/4666)は、TEI独自のEvent LoopやHostを必要としない、実行環境に依存しない意味の分離を提案している。ここではその成果を**DSLの自己記述・図解・文章化の適用条件**に絞って取り込む。mainへの文書統合を、正式DSL文法・共通Runtime・Target間の動作同値の受理とはしない。
+
+区別する最小の意味は次のとおり。
+
+| 概念 | 利用者に説明したいこと | 別物として保持するもの |
+| --- | --- | --- |
+| **Lifecycle** | アプリケーションやHostは、いつ準備・待機・停止・復旧するか | 一件のInvocation、起動要求を発した利用者 |
+| **Trigger** | 何が処理開始のきっかけになるか | Eventの宣言と実際の到来、公開Entryと呼出許可 |
+| **Entry・Invocation** | どの操作へ、どの対象・入力・版・期限で依頼するか | 対象発見、Hostの現在Grant、実行Attempt |
+| **Operation・State** | 業務上どの条件を検査し、どの値・状態候補を求めるか | 実Providerの選抜、実入力取得、DB Commit |
+| **Effect・Outcome** | 何が保存・通知・更新され、業務上どう判定されたか | 要求された作用、作用の確認Receipt、不確実な作用 |
+| **Response・Observation** | 呼出元や利用者に何が返り、何を独立に確認できたか | HTTP/CLIの返答、永続化、配送、Recipientの実受領 |
+
+例えば「受注を確定する」という業務操作を、HTTP要求・画面操作・CLIのいずれからでも起動できる。異なるのはTrigger、Host、公開Entry、応答方式であって、共有すべき業務意味そのものではない。ただし二つの入口が同じFunction IDを示しただけで、**実際に同じProvider・権限・Input/Effectを使った**とは認めない。
+
+### 41.2 説明文・図解・テストは同じ意味に戻れるようにする
+
+設計書を生成する際は、Data・Function・Businessの業務記述から、読者に自然な日本語として伝えられる文章を作る。説明のためだけに実行順、業務上の条件、通知の時点を補わない。元の記述に不足があれば、文章へ仮定を紛れ込ませず、**確認すべき条件**として明示する。
+
+| 投影先 | 主な問い | 必要なSource参照と検査 |
+| --- | --- | --- |
+| **業務手順の説明** | 誰が何を、どの条件で行うのか | Accepted MeaningのSubject／版、条件／例外、当該文の出典Occurrence |
+| **処理フロー・状態図** | どこで分岐し、どの状態へ移るのか | Typed GraphのNode/Edge identity、方向、多重度、Guard、未知の依存、図上での損失 |
+| **イベント・相互作用図** | どの契機で呼び出され、誰に返るのか | Triggerの発生、Entry、Invocation/Attempt、Responseの受領者を別Identityで保持 |
+| **Data・Effect図** | 何を読み、どの保存・通知を要求するのか | Required/実Read、Effect要求/Commit/Receipt、Access ScopeとDisclosure |
+| **実行Trace・検査票** | 何が実際に起き、何がまだ不明か | Source・Selected実装・Attempt・Result・独立Expected・Consumer受領 |
+
+見た目だけの差異（Graph配置、折畳み、ラベル、表示順序）を、業務意味の改版や再Buildの理由にしない。説明文・図・Markdown・Graphvizを編集する場合も、**元のSource位置と意味対象が一意に解決できる部分だけ**既存Writerへ変更候補を渡す。生成した日本語説明が自然でも、Sourceに存在しない条件を逆書込みしてはならない。実行Traceを設計上の正常フローと混同しない。
+
+この観点は[協業UX Draft #4605](https://github.com/hat47x/tei-platform/pull/4605)のUX-PIN/UX-DIAG/UX-READと共通である。閲覧中のBを保ったまま固定対象Aを裏で再確認する場合、BのFocus・Graph・Dirty Bufferは変えない。AIが説明や修正候補を返す場合も、限定したSource／Meaning／Scopeを明示し、古い応答や未保存編集を自動適用しない。
+
+### 41.3 TODO・Mockで通した設計と、実Providerが動いた製品を分ける
+
+外部処理の正式実装がまだない時点でも、業務手順・Input/Output・例外・許されるEffectの契約はTEIに記述できるようにする。設計の初期段階では、その契約に基づく**TODO／Mock**と独立したテストパターンを使って全体をシミュレーションすることは有効である。
+
+ただし、Mockの応答は**実DB保存・通知・外部API・権限の確認結果ではない**。また、Mockが期待値を自分自身から作ると、誤った意味・順序・境界を検出できない。受注確定例の最小受入を次のように分ける。
+
+| 段階 | 最初に確かめる内容 | 合格としない内容 |
+| --- | --- | --- |
+| **S0 Meaning／設計** | 受注確定の条件、入力型、業務結果、必要な外部機能と不変条件を既存DSL/Roleで記述し、文・図・テスト対象へ参照できる | 実DB更新、通知送信、業務上のOwner受理 |
+| **S1 Mock Simulation** | 固定入力・独立Expectedで、正常・Guard拒否・Provider未接続・Timeoutを判別 | Mock正常応答から実Effectの成功を主張する |
+| **S2 実Entry／実Provider** | 公開済みの通常製品入口、Host選択Providerと実Called Go実装、現在のGrant、実Inputの読取・型を同一Attemptで照合 | 選択の申告やreadDemandだけで物理Read／許可を証明する |
+| **S3 実Effect／受領** | Commit/外部通知の実Receipt、再読取、Recipientへの配送と未確認の作用を区別 | ACK喪失・部分応答を自動成功、または安全な再実行可能とする |
+| **S4 異質Target** | 同じ受理済み業務意味をCLI／Desktop／Webなどで比較し、Target Binding/Hostの差を明示 | 同じ図や戻り値だけで並行性・実行順・権限・Target同値を認定する |
+
+これらのS0〜S4は**この節での説明用の検収順**であり、既存Self-buildのS0〜S5やStudio B0/B1/B2/B3の新しい名称ではない。正式な実行・権限・副作用の判断は[#4495](https://github.com/hat47x/tei-platform/issues/4495)、[#1158](https://github.com/hat47x/tei-platform/issues/1158)、[#1129](https://github.com/hat47x/tei-platform/issues/1129)、[#1174](https://github.com/hat47x/tei-platform/issues/1174)、独立Expectedは[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#2514](https://github.com/hat47x/tei-platform/issues/2514)に委ねる。新しいWorkflow Runner/Approval Engine/業務Hostは設けない。
+
+### 41.4 最初の実証は「一つの受注操作」を三つの見方で比べる
+
+最初から汎用Lifecycle Graph CompilerやSchedulerを作らない。既存の一Function／一Trigger／一つのread-only説明を題材に、次だけを実施する。
+
+1. **意味の読み取り**：実Sourceに存在する業務操作・型付きEntry・Guard・必要なData/Effectを、既存Reader/Role/型付きGraphへ読み、対象ID・Source位置・不明点を保持する。SourceにないTriggerやEffectは作らない。
+2. **図と文章の照合**：処理説明・Event/Call図・Data/Effect表の各表示が同じ意味Subjectへ戻ることを検査する。GraphのLayoutだけ変えても意味Revision・実Build入力を変更しない。複数Edgeが同じ両端を持っても、Edge identityと業務上の関係を落とさない。
+3. **契約に基づく限定Mock**：未接続のDB／通知はTODOに残し、固定された独立ExpectedとMockで、Guard拒否、Effect未確認、Response喪失、重複Triggerを判別する。**この実験は設計の検証であり、製品の実Effect/実Consumer資格ではない**。
+4. **製品入口との接続判定**：既存[#4495](https://github.com/hat47x/tei-platform/issues/4495)/[#2586](https://github.com/hat47x/tei-platform/issues/2586)が実Entry・Provider・Reader/Receiptを取得した段階で、Mockを一つずつ実実装へ置き換えて再試験する。実装のないまま図と文章の見た目だけを完成扱いしない。
+
+代表的な反証は、[PX-01〜12](https://github.com/hat47x/tei-platform/blob/main/plan/design/PROGRAM_EXECUTION_MODEL_PROJECTIONS_2026-11.md)および[Lifecycle設計](https://github.com/hat47x/tei-platform/blob/main/plan/design/PROCESS_LIFECYCLE_TRIGGER_OPERATION_SEMANTICS_2026-11.md)をそのまま索引とする。優先するのは**Event到来≠実行許可**、**同じ結果≠同じRead/Effect**、**Commit前通知／ACK喪失**、**Source改版後の古い図／古いAI応答**、**図Layout変更≠意味改版**の五対照。新たなCase番号や第二のFixture正本は作らない。
+
+### 41.5 P0を変えずに計画へ反映する
+
+**P0-A Studio Desktop**：[#4583](https://github.com/hat47x/tei-platform/issues/4583)/#2831のnon-Plugin BuildExecution→実N0/N2/N3→実Stage1がStage2 Windows Desktopを生成→当該Stage2を実WebView2で使用する経路を最優先する。[#4587](https://github.com/hat47x/tei-platform/pull/4587)現HEAD `9b58533df8764a74c578d478d8c6ee92a382642e`の12/12 Workflow成功は**B0の生成/通常Windows Consumer**の資格であり、Stage1→Stage2の完成ではない。
+
+**P0-B 既存DSL診断**：[#4654](https://github.com/hat47x/tei-platform/pull/4654)/[#4655](https://github.com/hat47x/tei-platform/pull/4655)は現HEADとも8 Workflow中7 success・Health 1 failure。実ログで確認した`gofmt`不一致、#4655の設計索引欠落を各Ownerが修正し、同一新HEADの正式Healthを再実行する。その後、Source位置に戻るSyntax/Workspace診断とRuntime Adapter call0を小さく結ぶ。外部Schemaや今回の図解の実装を、その修復に先行させない。
+
+**P0-C 通常Entry／実Provider**：[#4495](https://github.com/hat47x/tei-platform/issues/4495)/[#2586](https://github.com/hat47x/tei-platform/issues/2586)の通常`tei` CLI→選択した実Go Provider/実Read→Function Context→独立Consumerを並行P0として継続する。モック、Reference PG、別HEADの個別成功を一つの製品E2Eに足さない。
+
+**P1 表現と検証**：第40節V0〜V2の固定JSON Schema閲覧・原文位置へのジャンプと、本節の一Function/Triggerのread-only説明・図・Mock比較を、同じSource-backed UI技術として利用する。実装基準は**まずデータを正しく読めること、次に意味と表現の差を示せること**。JSON Schema/科学Toolkit/汎用文法対応をDesktop Stage2のHard Gateにしない。
+
+**P2 高度な自己記述と移植**：Grammar自体の自己記述、異言語Target、状態機械の統一、数理・統計・WBS等専門Toolkitは、既存Role/Operator/Providerと受理済み意味の実比較で段階的に採否を決める。数式/単位・精度、Event順序、Effectの独立Expectedを各Ownerが所有し、図解の成功を科学計算やTarget実行の正しさへ昇格させない。
+
+**状態**：本節はmainに統合済みの[#4665](https://github.com/hat47x/tei-platform/pull/4665)/[#4666](https://github.com/hat47x/tei-platform/pull/4666)、協業UX Draft、既存DSL/Buildの実CIを踏まえた**docs-only計画追補**。新規Go/Node/Windows/DB/Runtime/Mock E2E、Graph Compiler、公式Grammarの採用、Owner意味受理、Stage2 Desktopセルフビルド実行は**NOT RUN / NOT ACCEPTED**。運用上の正本は既存`MASTER_PLAN`と各Owner Issueであり、この章は横断参照と最小実装順を示す。
