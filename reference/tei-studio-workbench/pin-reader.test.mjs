@@ -93,3 +93,17 @@ test("PIN-PRODUCT-06: a same-name Subject in a changed Catalog is not the pinned
   }
   assert.equal(catalogIdentity(null), null);
 });
+
+test("PIN-PRODUCT-07: blank revision is unknown, not a qualified Catalog identity", async () => {
+  for (const key of ["modelRevision", "worldFingerprint", "sourceIndexFingerprint"]) {
+    for (const missing of ["", "  "]) {
+      const unknown = { ...catalog, [key]: missing };
+      const client = clientWith({ ok: true, value: inspection });
+      assert.equal(catalogIdentity(unknown), null);
+      await assert.rejects(readPinnedSubject(client, request, unknown),
+        /CATALOG_IDENTITY_UNAVAILABLE/);
+      assert.equal(client.calls.length, 0);
+    }
+  }
+  assert.ok(catalogIdentity(catalog));
+});
