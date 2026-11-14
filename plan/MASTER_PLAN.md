@@ -649,6 +649,31 @@ tei external-candidates
 
 **R3-C後の最初の業務受入**は「旧ソフトのあるFunctionの参照Dataは何か」という問いに限定する。外部REA EvidenceのNode/有向Edge候補を、X-TEAのFunction宣言・Query SQL・TEI Data/Function/BusinessのQualified Refへ**0..N対0..Nのレビュー候補**として結ぶ。Sourceにない手作業、QueryのJOIN増幅、未確認のDB/Plugin、三要素別unsupportedを別に表示し、TEA-Q41/Q43とREA-ALIGN-01〜04で誤昇格を検査する。Ownerの明示承認後だけ通常`*.tei.md`をPreview→Save→再Readし、SHO出典再解決と旧実測L／Owner期待D／新実測Tをそれぞれ別試験にする。**今回の追補はdocs-onlyで、Native第二Consumer接続・実Delivery・Owner Meaning・新旧同値はNOT RUN**。Desktopセルフビルド#1824/#2831と実Provider Read#2586のP0をブロックしない。
 
+<!-- rea-question-evidence-native-product-slice-20261114 -->
+#### REA R3-Cを三要素・協業UX・実Providerへ接続する際の最小証拠契約（2026-11-14、横断成熟判断・Product E2Eは未実施）
+
+**実装着手先**：具体的な第二Consumer実装と試験を [#4661](https://github.com/hat47x/tei-platform/issues/4661) に切り出し、R3全体のOwner [#3394](https://github.com/hat47x/tei-platform/issues/3394) に従属させる。別のREAランタイムや承認基盤を作るためではない。現mainの実コードでは `cmd/tei-studio/main.go` が `application.NewService(&StudioBridge{host: host})` を登録し、`assets/client.mjs` の `createReadOnlyClient` が `main.StudioBridge.*` を呼ぶ。`StudioBridge`にはCommand実行とSHO外部子Processの公開メソッドもある。[#4627](https://github.com/hat47x/tei-platform/pull/4627)の`-tags server` Inventory（Draft）は**静的method set・サービス登録の監査であって、実Wails route/現認可のPASSではない**。したがって、Native-only限定Serviceの登録範囲を実Build tagと生成JS、Windows実Wails受信で確定し、既存Bridgeのexported methodを安易に増やさない。現在の`LocalREAReader`はGo内部のHost Readerであって、まだ実Native Consumerではない。
+
+**横断する主張をP/J/Qの3段階と製品受領に分離する**（既存三要素 [#4487](https://github.com/hat47x/tei-platform/pull/4487)／必要閉包 #3262／独立Expected #2514 の用語を再利用し、新たな正式Schemaや第三のProof正本は作らない）：
+
+| 判断段階 | 具体的な問いと必要証拠 | 失敗時に主張してはならないこと |
+| --- | --- | --- |
+| **P：局所受領** | 固定したREA Producer EvidenceにObservation 1件＋`RelationID`・方向を持つEdge 1件が存在。受領raw digest、Producer Tool/版、Source宣言Revision、`Coverage/Unknowns/Unselected`と実Reader Attemptを保存 | 解析対象に含まれなかったFunction/Business/Manualの不存在、実DB Rowset、正式TEI Meaning |
+| **J：異質な証拠の対応** | 外部Node/Edge ↔ X-TEA Source Occurrence ↔ TEI Qualified Ref／関係のSource Revisionを**多対多候補**として出典・粒度・未解決を保持。Target PGの実Readは別Provider/Instance/Attemptで示す | 名前・Digest・表示上のGraph形・同じタイムスタンプだけによる同一Function確定、旧新同値 |
+| **Q：問いに必要な閉包** | 「使われているか／安全に削除できるか／業務手順が完了したか」に応じた`Required(Q)`と、実際に読んだ`Consumed(Q)`、未知のPlugin/動的呼出し/他Source/手作業/許可Scopeを比較 | 一件の陽性観測から全Graph完全、参照0から未使用確定、未探索から不存在確定 |
+| **実Product受領** | 通常`tei` CLIの実プロセスと別のNative Wails WebView JSが、それぞれ固定証拠を`selected→invoked→received`した受領版／Result／Consumer Context | テスト用Go子Process、Reader関数2回、別HEADのgreen、同JSON表示から二製品受領・現Grantの成立 |
+
+**否定命題に必要な証拠の非対称性**：適格な一件の陽性Witnessは「そのScope/Attemptで見つかった」を支持するが、「無い」「全て」「安全に削除可能」はその問いに必要なSource/Relation/手作業/動的依存の閉包を要する。一つの反例は全称を否定できても、少数の正常例では全称を証明しない。REA `GraphCoverage=complete`も**Producerが調べた集合の局所状態**であり、Data/Function/Businessそれぞれの独立支持範囲とは別。外部Graph completeかつData支持あり・Function/Business unsupportedの組合せで、画面に「F/B=0件」や「不存在確定」を描けばTEA-Q41失敗。Legacy側のFunction宣言と`order_entry.recent_orders`等のTarget PG実Read結果が似ていても、Legacy actual L、Owner Accepted Desired D、Target actual Tの独立証拠がないならTEA-Q43失敗。意図的なDの業務変更に対してL≠Tを一律FAILにも、一律同値にも扱わない。
+
+**三軸は正本を増やさない**：Data／Function／BusinessはTEI三視点、論理要件／物理制約／実装は問い相対の評価観点、L／D／Tは旧実観測・正式受理・新実観測の資格区分。それぞれを直積にした27個のCanonicalモデルを設けず、既存Data/Relation/Function/Source/Receiptへの用途別Projectionとする。REA Node/Edge、物理FK/SQL、Function-level C/R/U/D、Business Action・手作業Effect、Host Principal/Grantは**型名が同じでも別の意味**として保持する。専門家に読めるTEI Business DSLから業務手順説明をほぼ直接生成する構想は、Ownerが受理した業務条件・手作業・例外・TODO外部部品と模擬契約を根拠にする。外部逆解析が出したフロー候補を正式な業務手順として自然文生成・保存しない（#1031/#1125/#1127/#4502）。
+
+**StudioとAIの協業に渡す最小情報**（[#4605](https://github.com/hat47x/tei-platform/pull/4605)のUX-PIN/UX-DIAG、[#4650](https://github.com/hat47x/tei-platform/pull/4650)の「生成する一巡／使う一巡」、#4515）：
+- **Locate→Observe→Pin→Review→Propose→Preview→明示Acceptance→Save/ReRead** のうち、R3-CはObserve/Pinのread-onlyまで。Focus、固定Pin、未保存Buffer、保存済Source、Accepted Meaning、生成Build、実行済み結果を別状態にする。Pin Aを裏再確認中に閲覧中BのEditor/Graph/Dirtyを変更しない。
+- Native UIでの説明は「何を見たか／何が未探索か／何には使えないか」を先に示す。Source位置・Raw Evidence・非公開名前/件数は**受信者の許可Projectionへ選別してから**JS/DOM/ARIA/Loggerへ送る。AI外部Harnessへの転送権限をread-only Host Readerから推測しない。削除/Apply/正式TEI Source Patchは別のOwnerとSource slot一意性・現在版を要求する。
+- 同じQuestionでもCLI/Native/SHO/AIは表示媒体が違う。Consumer間で照合するのはOutput文字列の同一ではなく、固定対象、Producer/Consumed Source、QualifierとVersion、Unknown/Disclosure、実受領内容。SHOへは既存Writerの引用OccurrenceとDocument Save/Reopenを別に検収する。
+
+**最初の統合実例と非阻害順序**：①#4625/#4630/#4637の個別CI/Ownerレビュー・積層整理、②[#4661](https://github.com/hat47x/tei-platform/issues/4661)でCLI/Nativeの二実Consumer受領、③#1124/#1126/TEA-Q41のData/Function/Business多対多read-only Review、④一件の正式Source Owner受理・`*.tei.md` Preview→Save/ReRead、⑤#2586/#4638のTarget PG実Readと別のLegacy実測/Owner Expected照合（TEA-Q43）、⑥SHO保存文書の独立Readback。この順序は**上流の全機能完成を直列に待つ意味ではない**。Studio self-build #4583/#2831、通常製品Function実Read #2586は先行P0として並走する。REA 6.9.0のT0-06再資格・現在Grant/2 Principal・Query全件Coverage・SHO正式Writer・旧新Actual意味同値は別Expected、現時点ではNOT RUN。
+
 <!-- rea-desktop-web-branch-session-evidence-handoff-20261114 -->
 #### Studio Desktop／将来Web版の協業境界をREA Candidate Reviewへ接続（2026-11-14／構想整合・未実装）
 
