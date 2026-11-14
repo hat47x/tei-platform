@@ -134,6 +134,24 @@ TEIのセルフビルドは、最終的にはTEI Studio Desktopを含むTEI開�
 
 最初から大きなDSL処理系を作らず、既存Markdown・表・Graphviz・標準データ構造・Language／Operator／Target Generatorの機能をできるだけ使う。図の座標や説明文を実行意味の第二正本にはしない。外部で実装する部品はTEI側に型付きInput／Output／Effect／Failure／Provider契約とTODO／Mockを持たせるが、Mock成功と実Provider成功は区別する。Coreに新しい共通Runner、第二Resolver、専用Hostを増やさない。
 
+### 最初の実装PRを、一つのGraph／Ruleから始める
+
+S0〜S4を一度に実装しない。**最初のPRはS0のReaderとS1の実装ロジック生成を最小単位**とし、選択したPluginの実呼出し（S2）、そのPluginを用いる次Stage再構築（S3）、定義変更からの再生成（S4）は、同じFixtureを引き継いで別の証拠で判定する。
+
+最初に固定する例は、**同じ表示名を持つNode `n-1` と `n-2`、`n-1 → n-2`のEdge `e-1` と `e-2`、Edge IDの重複を拒否する検査規則**である。表またはGraphvizは入力の糖衣として使えるが、Role／Identity／向き／多重性／規則のうち実装上意味を持つ部分を、実Readerがどこから取得したか追跡する。架空のTEI構文はここでは定めない。
+
+| 固定する対照 | 独立Expectedと合格の上限 |
+| --- | --- |
+| 元の定義：Nodeは2件、同じ向きの別ID Edgeは2件 | 生成処理でNode IDを区別し、両Edgeを保持した検査／参照結果を返す。**Node名や端点だけで重複排除しない**。書き出しただけの静的JSONではなく、定義から生成した検証／選択ロジックが動いたことを確認する |
+| `e-2`の向きだけを逆にする | 実生成コードの該当判断・実Plugin出力が変わり、正方向のEdgeは1件、逆方向は1件になる。外部の固定Go処理へ全部委譲していれば不合格 |
+| `e-2`のIDを`e-1`と重複させる | Reader／Validator／生成された規則の担当境界を明示したうえで、実行前または実検査時に不適格を報告する。誤ったGraphを「Edge 1件」として黙って正規化しない |
+| Graphvizの配置や文書説明だけを変える | Source byte／表示の変更は残す。意味上のGraphと生成すべきロジックが同じなら、その範囲を不要に再Buildしない。ただしCache／Evidenceの再利用資格は別に判定する |
+| Stage1が生成したPluginを次Stageの実Buildへ渡す | Stage1実Process ID／Input closure／選択Builder／生成Artifact／Stage2での実Plugin Callを照合する。**Seedが二回Buildしただけでは達成としない** |
+
+**実装担当へ渡す受入票**：最初に「Edge同一性の保持」「重複IDの拒否」「方向別の抽出」など対象の機能上の義務を固定する。義務ごとに、(a) TEIのどのSource/Ruleが実装を規定したか、(b) 生成したGoのどこが挙動を担うか、(c) 外部Goが担当する境界、(d) 実Builderが読み込んだByteとArtifact、(e) 選択Pluginの実Callと独立Expected、(f) 定義変更前後の手修正・重複記述・再検証作業を記録する。**未観測の項目は未達とし、比率の分母を試験後に縮めない**。
+
+最初のプルリクエストで`*.tei.md`が正式にLoadできなければ、結果をunsupportedと明示し、#2621/#4359の**既存Reader/Source索引を通る最小対応**だけを追加する。旧`*.tei`や手動変換を使うReference経路は分けて記録する。文法全体、Studio GUI、汎用Graph Compiler、DB Provider、独立Hostを初回の完成条件に加えない。
+
 ### 「TEIで実装できた範囲」と「定義を簡素化できたか」を測る
 
 | 観測 | 記録方法 | 成功とみなさない例 |
