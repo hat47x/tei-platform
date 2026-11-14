@@ -260,3 +260,81 @@ State Machine、Rule、Decision Table、Reactive Flow、Dataflow、Stream、Batc
 **進行順**：最初は一つの受理済みpure Functionと既存Entry/Triggerのread-only投影、次に同FunctionのGo CLI／Studio実Provider呼出しの対照、続いて「pure節抽出」と「Commit後通知の分割拒否」を比較する。異質なTarget間の生成・状態機械・対話UI・書込図編集は、観測された不足を解消する段階まで後ろに置く。実行前のモデル適合と実Targetの呼出し、独立Expected、Host Effect、Consumer受領は異なる資格のままとする。
 
 現時点でPX-13〜22の実試験、異言語移植、Graph Writer、全Target適合、Owner意味受理は **NOT RUN / NOT ACCEPTED**。静的設計文書の変更から、製品機能の成立を主張しない。
+
+## 16. 図から行う変換を分類する
+
+プログラムを図にすると、Nodeの移動、関数の切り出し、実行先の変更が似た操作に見える。しかし、保存すべき意味と確認する証拠は異なる。Studioでは見た目を揃えるよりも、**何が変更され、どこまでを再検証する必要があるか**を示す。
+
+| 変換の種類 | 例 | 判断の基準 |
+| --- | --- | --- |
+| 表示の変更 | Nodeの配置、折畳み、表示色の変更 | Meaning/Execution Planを変えない。省略した情報やSourceへの参照を保持 |
+| 記述形式の変更 | Markdown表・式・DSL糖衣の往復 | Source occurrence・非対象byte、Role/Operator、意味への対応を保持 |
+| 構造の組替え | 純粋計算の関数抽出、処理の共通化 | 型・依存・評価順・例外・状態・Effect・Authorityの境界を保つ |
+| 実行先の移行 | Go CLI→HTTP、Go→Java/.NET、同期→Queue | Model of Computation、Provider/Host能力、時間・順序・再送・Consumer受領を検証 |
+| 仕様そのものの改訂 | 丸め方、通知時点、例外方針の変更 | 旧版との同等性を強制せず、影響を示してOwnerが新しいMeaningを受理 |
+
+同等性の主張には、比較する入力と環境、観測対象の値・状態・時間・副作用・開示範囲を必ず添える。同じ金額を返しても、余分な顧客情報を読み取る実装は「値について一致する」に留まり、Read Footprintや情報開示まで同等とはいえない。
+
+契約を保った組替え、契約の条件を強める変更、許容する動作を増やす変更、意図的な仕様変更は別の判断である。たとえば再送を禁止して安全性を高める変更も、既存Consumerにとって必ずしも後方互換とは限らない。旧契約との関係と影響対象を明示したうえで、適切なOwnerと独立Expectedによって採否を決める。
+
+この分類は新しいCore enumや承認Engineではない。既存Source Change Proposal・Meaning Acceptance・Lowering・Conformanceで、変換の種類に応じた検査を選ぶための指針である。
+
+## 17. 安全に切り出せる処理の境界
+
+型付きGraph上で処理領域を選択したとき、まず境界を横切る関係を**読取り専用**で列挙する。既存のSource/Dependency索引とFunction Contractから求められる範囲を使い、別のSlice Engineを前提としない。
+
+| 境界を横切るもの | 切り出す前に確認すること |
+| --- | --- |
+| 値とデータ | Typed Input/Output、NULL・欠損・未取得、単位・精度、Multiplicity、複合識別子 |
+| 呼出しと制御 | Guard、例外、戻り先、短絡評価、動的参照、再入 |
+| 時間と順序 | Event因果、Deadline、Snapshot・業務評価時点、並列実行、遅延応答 |
+| 状態の所有 | Function局所、Invocation、Session、Process、業務レコード、外部Providerのどこに状態が属するか |
+| 権限と開示 | 公開Entry、必要Capability、対象Scope、現在Grant、実ConsumerへのDisclosure |
+| 効果と復旧 | 実Read、更新候補、Commit、通知、ACK、取消、再送、補償 |
+| SourceとBuild | 元のSubject/Source occurrence、Role/Operator/Provider/Generator Pin、実Artifactと現在資格 |
+
+図形の囲みを独立Functionに変換してよいのは、必要な境界契約を説明できるときだけである。未探索のCall、反射、別Providerでの暗黙Read、未取得の外部状態があれば、曖昧さを示して自動適用を保留する。
+
+たとえば受注処理の金額計算は純粋Functionとして切り出せる可能性がある。一方、注文確定と通知を別Taskへ分割するには、Commit後配送、Outbox、ACK喪失、再送の扱いを確認する必要がある。単に同じ応答値を返すだけでは安全な分割と判断できない。
+
+X-TEA由来のSmartDB/Data Script/XF系を扱う場合は、原典に基づくFunction・Dataの対応、業務キーと物理PK、更新フック、実Providerの作用を確認する。同じ名前のFunctionへ推測で結び直さない。Graph上で選んだ領域の内側・境界・外側をStudioのGraph/Table/Treeから相互参照し、必要な情報が欠けている場合はread-onlyを維持する。
+
+## 18. メタ変換後の再検証を局所化する
+
+あらゆる変更で全処理を再実行するのではなく、変更された意味と実現の層に応じて必要な確認を選ぶ。ただし、結果値や入力byteが同じことだけを理由に、過去の検証結果を無条件に再利用しない。
+
+| 変更 | 再検証の中心 | 誤って省略してはならないこと |
+| --- | --- | --- |
+| 図の表示設定 | Projectionと固定Subjectへの参照 | 図の変更をMeaning変更とみなさない |
+| コメント・表記だけ | Source byte・occurrenceと説明・文書受領 | Source RevisionとMeaning Revisionの混同 |
+| 処理抽出・依存変更 | 入出力閉包、評価順、例外、独立Expected、利用側 | 動的依存・実Read・Effectの調査 |
+| Role/Operator/Plugin更新 | 受理したContract、実Impl Pin、選択Provider、Conformance | 同名・同version・同値だけでの資格再利用 |
+| Generator・Target更新 | Target Capability、実Artifact bytes、実ロード先、Consumer | Build成功を実Consumer適合へ昇格 |
+| Trigger・Host・時間規則変更 | 入場条件、順序、再入、Deadline、Grant、Receipt | 発火・ACK・exit 0を業務完了とみなすこと |
+| DB・外部Provider変更 | Queryとbind、Read Footprint、取得範囲、Commit、独立Observation | 合成データ・部分取得を完全な実状態の証拠にすること |
+
+World Fingerprint、Model Revision、Artifact Revision、Evidenceの現在資格は別の指標とする。SourceがA→B→Aと戻っても、途中でOperator・Plugin・Host Grant・Consumerの条件が変わっていれば、古いEvidenceをそのまま有効とはできない。Artifact再利用、Build省略、Evidence再利用も別の判断である。
+
+これは新しいBuild管理機構の提案ではない。#2600/#2831のBuild・Bundle、#2620/#988のRole・Operator、#951/#1251のPlugin、#1124のSource編集、#2586/#2514の実Read・独立Expectedへ、それぞれ必要な再確認を引き渡す。
+
+## 19. 最初の縦断実証と反例
+
+最初は、実在するSourceとMeaning IDを確認できる**一つの純粋Function**を選ぶ。「数量2×単価300＝600」は説明用の独立Expected候補であり、現行order_entryの特定Functionがこの契約で受理済みだと主張しない。着手時は#4495の実Subjectと入口を照合し、対応がなければその不足を記録する。
+
+このFunctionについて、Source→型付きGraphのread-only投影→抽出候補のInput/Output/Dependency→変換前後の独立Expected→実Go/CLIと別Consumerの実Provider呼出しを順に比較する。図が描けたことではなく、**分割した場合に何が失われるかを見つけられること**を最初の受入とする。
+
+次にCommit後通知を含む処理を選び、値が一致しても安全に分割できない反例を確認する。異言語移行・Serverless・本格的なGraph逆編集は、この小さな二例から必要な意味RoleやTarget能力の不足が分かった段階で評価する。
+
+| ID | 故障注入・比較 | 不合格条件 | Owner |
+| --- | --- | --- | --- |
+| PX-23 | 図形は同じだが一つの辺をData依存からControl依存へ変更 | 図の見た目だけで意味不変と判定 | #4198/#1124 |
+| PX-24 | 純粋計算の抽出後にNULL・丸め・短絡評価が変わる | 代表値600だけで同等と判定 | #988/#2514 |
+| PX-25 | 外部Providerの暗黙Readを含む処理をpureとして抽出 | 未確認のRead Footprintを無視 | #2586/#1129 |
+| PX-26 | HTTP起動からQueueへ移行し二重配送 | 再送・順序・応答時点の差を互換扱い | #4497/#4502/#1121 |
+| PX-27 | SourceがA→B→Aへ戻る間にProvider/Grantが変わる | 古いEvidenceを現在資格の確認なしに再利用 | #2600/#2831/#2514 |
+| PX-28 | 処理分割でCommit後通知をCommit前に移す | Result値の一致だけで安全と判定 | #1129/#1174 |
+| PX-29 | Ownerが新しい丸め規則を明示的に採用する | 意図した仕様変更を無条件に不合格、または無承認で同等とする | #2620/#2514 |
+
+PX-23〜29は#4198 R0〜R4と#2514/#1180の既存Scenarioへ引き渡す候補であり、第二のテスト正本や新Gateを作らない。主線は引き続き、#4583/#2831のStage1→Stage2 Studio Desktopセルフビルドと#4495の実Entry→実Providerである。
+
+**状態：設計・受入条件の追補。上記反例の実行、Go/Windows/DB/異言語での新しいE2E試験、Ownerによる意味受理はNOT RUN / NOT ACCEPTED。**
