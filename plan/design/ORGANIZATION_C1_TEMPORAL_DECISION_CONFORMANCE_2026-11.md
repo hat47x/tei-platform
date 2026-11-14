@@ -310,7 +310,7 @@ ER/CRUD/三要素/SHO/AIでは、Occurrenceの業務同一性、物理Row版、�
 | --- | --- | --- |
 | 合成意味: reference/org-semantic-views/source-fixture.json | r7 A1〜A4、Person P1/P2/P3、A2の旧新版2行、Allocation basisPoints、valid/known | 原典はテスト用でありTEI正式SemanticでもProvider Rowsetでもない |
 | 型付きSemantic: reference/org-staged-axis/semantic/organization-axes/model.tei | MembershipId・OrgUnitId・allocation・validFrom/To・knownFrom/To、OrgUnitへのunit Relation | **Membership.personId と Personへの明示Relationがない**。IDだけ似た別Relationへ黙示結合できない |
-| Persistence: reference/org-staged-axis/databases/org-store/persistence/membership.tei | public.org_memberships・membership_id単独PK・org_unit_id・allocation・valid_from/known_from | person_id・記録版行Identityと保存/閲覧の区別。Draft #4567でvalid_to/known_toは追加候補だがPKとperson_idは未解決 |
+| Persistence: reference/org-staged-axis/databases/org-store/persistence/membership.tei | public.org_memberships・membership_id単独PK・org_unit_id・allocation・valid_from/known_from | Personの実Linkは未Mapping（直接のperson_id属性／既存RelationStorageによる物理support columnを別候補として比較）。記録版行Identity/旧新保存も不足。Draft #4567のvalid_to/known_to追加ではPK/人物Linkは未解決 |
 | Native Query: reference/org-staged-axis/applications/org-axes-view/queries/as_of_membership.tei | membership_id/org_unit_id/allocationの3列、3入力。mainにはknown述語等のGAP | Person key・記録版の出所・Query Row Grain・Read Cohortの実Witness。Draft #4567の半開述語修正と区別 |
 | Reference Context: verify-context.mjs / verify-acquisition.mjs / verify-rule-footprint.mjs / verify-query-dependencies.mjs | r7同じSource/Scenarioから人物関係・Provider Route差・Requiredと取得/公開の違いを合成検証 | Sourceが実Typed Query→DB Provider→Function Context→一Consumerへ渡ったProduct Attempt |
 
@@ -332,8 +332,8 @@ ER/CRUD/三要素/SHO/AIでは、Occurrenceの業務同一性、物理Row版、�
 
 ### 13.3 Productへの最短昇格を「Source→Model→DB→Query→Context」で定義
 
-1. **Meaning/Key Fit**（#2386/#1126）：r7の Membership.person を正式TEI Sourceで表現する候補として、Membership.personId と organization.Person.personId のRelation key、安定Occurrence IDを比較する。業務Profileごとの任意属性は無条件のCore必須にしない。追加できない場合は未対応と明記する。Person/Principal/Account/Tenantへの無許可昇格はしない。
-2. **Physical Fit**（#1126/#2622）：同Relationの person_id 列がどのDB/Schema/Providerで保存・取得されるかを確認。独立record_version_id 等の物理履歴Keyは既存§2/§11のDB Owner方式選択に委ねる。Current-onlyの旧Reader/Writerとas-of History Readerを区別する。
+1. **Meaning/Key Fit**（#2386/#1126）：r7の Membership.person の正式表現は、Membership.personId＋Personへの直接Relation、またはPerson/Employmentをsourceとする型付きRelation＋RelationStorage等の候補を比較し、Source側Relationの方向/Key/Cardinality・Personの同定根拠をOwner受理する。前者を全Profileの必須属性にせず、属性追加無しの後者もIR上の候補とするが、製品DSL/Providerが実際に実現する資格は別試験。Person/Principal/Account/Tenantへの無許可昇格はしない。
+2. **Physical Fit**（#1126/#2622）：採用したRelationの人物対応を、通常ColumnMappingか既存Persistence IRのRelationStorageMapping／SourceAttribute→database-owned support column等でどう保存・取得するかを比較。いずれも実DSL Parser・Validator・SQL Generator・Providerの受入を別途必要とし、IR JSON往復だけで製品実装とはしない。record_version_id等の履歴Keyは§2/§11のDB Owner方式選択に委ね、旧Current Reader/WriterとHistory Readerを区別する。
 3. **Query Fit**（#2387/#2586）：Native Queryに必要なPerson linkと版根拠を明示し、実SQLのどのRowがどのMembership Record Versionを選択したか、実Statement/Params/SourceとDataSource Aliasを照合。表示用Queryには過剰な個人データや物理version列の開示を強制せず、Provider Trace/Typed Contextに必要情報を保持可能かを比較。
 4. **Context Fit**（#2506/#2624）：r7のD1/D2/全社は別Scope。ResultのRelation occurrence・Person key・allocation・valid/known・Provider Snapshot・read completeness・Required/Consumedを同一Read Cohortで評価。D1のcompleteだけで全世界distinct Person=3を断定しない。Queryableでも未取得ならnot-established。
 5. **Consumer Fit**（#2497/#2507/#2516）：一実AttemptからTable/Graph/SHO/Headless等の目的別受信を検査。非表示FieldもQueryのfilter/join/Ruleで実取得され得る。取得と開示を別に追跡し、保護対象Fieldがある場合のみ対象Provider/Recipientで制御する。
@@ -381,7 +381,7 @@ mainの `organization.Membership` は `orgUnitId` 等を持つが Person Key/Rel
 
 | Profileにおける候補 | 向くScenario | 受理前に解決すること |
 | --- | --- | --- |
-| **M-P：Member Personの直接Relation**（Membership.personId→Person.personId、既存typed keyのパターン） | 従業員・個人の所属を保持するS1/S2/r7 | 原Sourceに人物Linkが存在するか、Cardinality/欠損/有効期間が定義できるか。全Organization ProfileにPersonを必須としない |
+| **M-P：Member Personの直接Relation**（Membership.personId→Person.personIdは実装候補の一つ） | 従業員・個人の所属を保持するS1/S2/r7 | 原SourceとCardinality/有効期間に加え、PersonをMembership属性で保存するか、Source側RelationとRelationStorageの物理support columnで扱うかを選ぶ。全ProfileでpersonId属性を必須としない |
 | **M-E：Employment/Affiliation経由の型付きRelation** | 出向・複数法人など雇用／在籍を別正本で管理するS2/S4 | Membership→Employment/Affiliationの**キーと経路**が別途必要。同じPersonに複数雇用があるとき、自動で一件を選ばない |
 | **M-X：Member Subjectを別Domain Dataへ束縛** | チーム・法人・組織間参加など人物以外がMemberの場合 | Person人数のClaimへそのまま使用できない。既存Data/Relation表現で十分か、別Profile/Ruleの採否を先に比較 |
 
@@ -550,3 +550,37 @@ M-Pを最初の小Reference候補にするのはよいが、**所属という語
 **設計／コードの受入境界**：#4622がdocs-onlyの計画Draft、#4633が1ファイル追加のコードDraft。既存Closed/Unmerged #2632の多Alias候補特性は新mainでは実装済みと扱わない。#4566/#4567のNative SQL修正は別Draft・未merge。これらのSource/CI結果を、実際に同じProduct Attemptへ統合しないまま「組織C1のE2E PASS」としない。
 
 **直近の最小実装**は #2386/#1126で直接Person・雇用経由・非Personの意味Profileを選ぶことに限定し、採用Profileの具体Source RelationとRead Witnessを先に作る。DB履歴/別Aliasの安全診断は既存Ownerの別実装とする。固定されたProduct Meaningを人事・勤務・承認の現在権限と自動同一視せず、通常CLIの実Provider ReadとStudio Stage2セルフビルドのP0を独立維持する。
+
+
+## 17. 属性を増やさないPerson Relation保存候補と、Go検証の資格上限（2026-11-14）
+
+### 17.1 新しく見つかった既存基盤と二方式の比較
+
+main `internal/database/persistence/model.go` の `Mapping.RelationStorage []RelationStorageMapping` は、Source側Relation IDと `RelationStorageComponentMapping{SourceAttribute, Column, Storage, Nullability}` を分離する。コードコメントは**target Semantic Dataへ新属性を増やさず、関係Source Data上の属性をtarget物理表のsupport columnへ保存**する設計であることを明記する。
+
+従って §13/§14の「Person Linkを明示する」という要件は維持しつつ、**Membership.personId属性と同名DB列を必須とする前提は撤回**する。現mainの `organization.Membership` にPersonへの型付き経路がない事実と、IRに物理的RelationStorage候補の表現能力がある事実は両立する。
+
+| 比較する候補 | 明示すべきSemantic関係 | 採用前に検証する物理対応・限界 |
+| --- | --- | --- |
+| **Direct attribute** | Membership.personId→Person.personIdなど、属性・Relation・Key/CardinalityをOwnerが受理 | ColumnMappingの型・NULL・FK/期間・History版と実Providerの一致。現Sourceでは未実装 |
+| **Relation-backed support** | Source側Person等からMembership等への型付きRelationとSourceAttribute/Targetの方向を明示 | RelationStorageMappingの物理補助列が意味を損なわず丸められるか。IRのGo JSON可否は検証候補であり、DSL Parser/Query/Generator/SQL/Providerの実成立を別確認 |
+| **Employment/Affiliation pathway** | Memberと雇用/在籍の受理済みLinkを追加 | Personへの既存Relationが存在しても、その逆方向/Source ID/個人の同定Ruleがない限り取得しない |
+
+**非採用**：Mappingの物理support columnをBusiness IdentityやSemantic Attributeに自動昇格しない。表にperson_id列が見えるだけでPersonを同定しない。RelationStorageという形をすべてのMembership実装へ義務化しない。既存#1126のRelation/Business KeyとPKの分離、#2622のProvider capability、#2611の二DB Alias競合をそのまま使う。
+
+### 17.2 コードGAPテストを実装変更に強くする
+
+[実Go Draft #4633](https://github.com/hat47x/tei-platform/pull/4633) に**5つ目の孤立したGoテスト**を追加し、仮の `RelationStorageMapping` をJSONで往復させ、Membershipの通常ColumnにPerson Attributeを導入せずRelation ID/SourceAttribute/物理support Columnを保持できる**IR構造上の可能性だけ**を特徴付ける。また既存の実Persistence GAPテストには `mapping.RelationStorage` の検査を追加し、将来のsupport mapping実装を単に「person_id通常Columnがない」理由で見落とさないようにした。
+
+- 以前の4件が実Sourceの欠落とr7を追跡するのに対し、5件目は**未受理の仮Candidate**を使ったGo構造のSerialization Test。Product Sourceに追加したと主張しない。
+- **Go型・JSONの候補成功 ≠ DSLで宣言できること ≠ Query/SQL Providerの一致 ≠ 業務上のPerson Link受理**。現実のProduct Read/Effect/Current Grant/Consumer ACKに昇格しない。
+- 既存#4633 HEAD b529791fの4テスト成功（Health #43548199759）は**過去の固定HEAD**の合格として保持。5テストを含む新HEADではCI/Healthを再確認するまでPASS未確定。古いHEADの合格を新しいコード変更後へ流用しない。
+
+### 17.3 最短の独立受入を先に固定
+
+1. **意味Owner (#2386/#1126)**：M-P/M-E/M-XのProfileと、属性直持ち/RelationStorageが表せるSource側Relationの向き、欠損/兼務/履歴期間、同一Person Linkの独立Expectedを選択。これは無条件のDSL/Core追加承認でない。
+2. **Parser/Mapping Owner (#1126/#2622)**：選んだ一方式について実TEI Source→Loader→Typed IR→Persistence→SQL/Query Readを一つの最小Referenceで追跡。RelationStorageの場合はGo JSONだけでなく、実Source Parser/Validation/Generatorに同じ意味が残ることを確認する。データ分離が成立しない場合は採用を撤回する。
+3. **Product DB/Read Owner (#4490/#2586)**：同一A2旧/新版の実DB共存、同一Read CohortのPerson3・Membership4→3・FTE3.0→2.4を既存r7独立Expectedで検査。SQL semantics/NULL/timezone/物理Key/完全性/alias bindingを分離し、旧Current Writer cutoverは#4125へ。
+4. **Consumer/Authority Owner (#4501/#1174/#3421)**：Case C1/Viewer/HeadlessへPerson結果を伝えることと、実Hostでの業務判断・公開・引継ぎを別検証。ローカルDesktop/Gitと共有Wails ServerのAuthorityを自動継承しない。
+
+**現時点の資格**：新IR候補テストコードは#4633に実装したが、その新HEADのGo/Health完了は別途照合する。実Person-link Source、RelationStorageのTEI DSL Loader/SQL生成/実DB readback、業務Owner採用は**NOT RUN / NOT ACCEPTED**。#2586通常CLI実Provider Readと#2831/#4583 Studio Desktop Stage1→Stage2 Self-buildは引き続き独立P0。
