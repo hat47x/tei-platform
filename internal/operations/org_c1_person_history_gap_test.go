@@ -389,6 +389,74 @@ func TestOrgC1CandidatePersonRelationStorageLoadsFromTEIDSL(t *testing.T) {
 		len(table.ForeignKeys) != 0 {
 		t.Fatalf("candidate must not silently resolve historical PK or generate FK: %+v", table)
 	}
+	// The normal authoring/loader path must reject physically plausible but
+	// semantically invalid variants. These are actual .tei sources in the
+	// isolated copy, not in-memory-only mutations or fabricated parser outcomes.
+	for _, tc := range []struct {
+		name          string
+		source        string
+		wantCode      string
+		wantLoadError string
+	}{
+		{
+			name:     "source attribute belongs to Membership instead of Person",
+			source:   strings.Replace(storageSource, "organization.person.person_id ->", "organization.membership.membership_id ->", 1),
+			wantCode: "PERSISTENCE_RELATION_STORAGE_SOURCE_ATTRIBUTE_PARENT_MISMATCH",
+		},
+		{
+			name:     "relation target is Person instead of Membership",
+			source:   strings.Replace(storageSource, relationID, "organization.employment.person", 1),
+			wantCode: "PERSISTENCE_RELATION_STORAGE_TARGET_MISMATCH",
+		},
+		{
+			name:     "unknown semantic relation",
+			source:   strings.Replace(storageSource, relationID, "organization.person.unknown", 1),
+			wantCode: "UNKNOWN_PERSISTENCE_RELATION_STORAGE_RELATION",
+		},
+		{
+			name:          "missing explicitly named persistence mapping",
+			source:        strings.Replace(storageSource, "relation-storage org_store.membership", "relation-storage org_store.missing", 1),
+			wantLoadError: "where Relation Storage is merged, is not found",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := os.WriteFile(storagePath, []byte(tc.source), 0o644); err != nil {
+				t.Fatalf("write isolated invalid Relation Storage DSL: %v", err)
+			}
+			wrong, err := workspace.Load(root)
+			if tc.wantLoadError != "" {
+				if err == nil || !strings.Contains(err.Error(), tc.wantLoadError) {
+					t.Fatalf("invalid target Mapping must fail at Source Loader: expected %q got %v", tc.wantLoadError, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("world-level invalidity should produce typed diagnostics after successful load: %v", err)
+			}
+			count := 0
+			for _, diagnostic := range validation.ValidatePersistenceRelationStorageMappings(wrong.World) {
+				if diagnostic.Code == tc.wantCode {
+					count++
+				}
+			}
+			if count != 1 {
+				t.Fatalf("expected exactly one typed diagnostic %s, got %d", tc.wantCode, count)
+			}
+		})
+	}
+	if err := os.WriteFile(storagePath, []byte(storageSource), 0o644); err != nil {
+		t.Fatalf("restore isolated valid Relation Storage DSL before duplicate test: %v", err)
+	}
+	t.Run("duplicate source identity must not merge twice", func(t *testing.T) {
+		secondPath := filepath.Join(filepath.Dir(storagePath), "duplicate-person-membership.tei")
+		if err := os.WriteFile(secondPath, []byte(storageSource), 0o644); err != nil {
+			t.Fatalf("create duplicate isolated authoring source: %v", err)
+		}
+		_, err := workspace.Load(root)
+		if err == nil || !strings.Contains(err.Error(), "already defined") {
+			t.Fatalf("duplicate Relation Storage Source identity must be rejected, got %v", err)
+		}
+	})
 	// A Person -> Membership physical support link does not automatically
 	// implement inverse Membership -> Person traversal or r7 temporal claims.
 }
