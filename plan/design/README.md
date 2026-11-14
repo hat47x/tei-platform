@@ -106,6 +106,7 @@
 | [`EVALUATION_CONTEXT_DETERMINISM_2026-10.md`](EVALUATION_CONTEXT_DETERMINISM_2026-10.md) | データ導出の評価文脈の明示入力と決定的な再評価の設計整理（[GitHub #1720](https://github.com/hat47x/tei-platform/issues/1720)、採用前） |
 | [`TEMPORAL_MEANING_DISTINCTION_2026-10.md`](TEMPORAL_MEANING_DISTINCTION_2026-10.md) | 導出値の時間意味(過去時点の再計算・規則の版・確定した保存値)を区別する提案（[GitHub #1727](https://github.com/hat47x/tei-platform/issues/1727)） |
 | [`DESKTOP_STUDIO_HOST_INTEGRATION_DESIGN.md`](DESKTOP_STUDIO_HOST_INTEGRATION_DESIGN.md) | Desktop Studio Hostの操作・状態・資源の境界の設計候補。実機の起動と操作の検証は未実施 |
+| [`TEI_DESKTOP_PRODUCT_CONTRACT_2026-11.md`](TEI_DESKTOP_PRODUCT_CONTRACT_2026-11.md) | Studio Desktopの共通API・Source/Meaning/Grantの境界と段階的実OS検収／セルフビルド計画（[#1824](https://github.com/hat47x/tei-platform/issues/1824)・[#2831](https://github.com/hat47x/tei-platform/issues/2831)、Draft・製品未受入） |
 | [`DSL_OPERATOR_PLUGIN_COMPOSITION_DESIGN.md`](DSL_OPERATOR_PLUGIN_COMPOSITION_DESIGN.md) | DSLの言語プラグインと演算子の合成についての設計候補 |
 | [`THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md`](THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md) | 三要素分析の意味拡張／方法論・図法／図面投影・配置・編集候補を分離し、既存Studio・Source受理・旧資産Adapterへ接続する設計候補（#1124/#1125/#1126、未採用） |
 | [`EXAMPLE_ER_SLIDE_M1_2026-10.md`](EXAMPLE_ER_SLIDE_M1_2026-10.md) | 具体例からER図のスライドへつなぐ参照実装（M1）の候補 |
