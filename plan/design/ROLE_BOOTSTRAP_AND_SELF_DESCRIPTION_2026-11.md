@@ -2682,3 +2682,72 @@ R0〜R4はこの節での**検収の見通し**であり、[製品計画 #4676](
 **引渡し先**：Documentation Surfaceと依存参照は[#4679](https://github.com/hat47x/tei-platform/issues/4679)、Source/Roleは#2621/#988/#2620、Pluginの選択・再公開は#951/#1016、Graph逆写像は#2497、実生成は[#4544](https://github.com/hat47x/tei-platform/issues/4544)/#1121、CLI実呼出しは#1251、Disclosureは#2516、Skill比較は#2605/#2509、独立Expectedは#1180/#2514。最終製品のStage1→Stage2 Windows Desktopは#4583/#2831を最優先とし、この小実証を新しいHard Gateにしない。
 
 **現時点の受理上限**：mainの#4683/#4684の各14/14 GitHub Workflow成功とReference生成Binaryの通常Migration呼出し修正は実装進捗として記録する。しかし、A/B文書階層の実CLI取得、Graph由来の生成Plugin実Call、短いSkillの改善、Studio文書ナビゲーション、Stage2 Desktopはこの追補による新実証ではない。**本節は設計・受入手順の更新であり、新しいGo/Windows/CLI/AI実行試験やOwnerの正式意味受理を実施したものではない。**
+
+
+<!-- tei-self-description-executable-contract-20261115 -->
+## 45. 2026-11-15 自己記述を「読める仕様」から「再構築できる実装」へ接続する最小契約（計画・実証待ち）
+
+### 45.1 新たに固定する判断：自己記述の五つの到達点は同一ではない
+
+本節は第1〜44節の設計を置き換えず、`44のGraph→Rule→生成Pluginの実証を、TEI DSL自身の自己記述／自己拡張／自己生成／CLI再入へ接続するための**実装順と合否**を明確にする。Studio Desktop Stage1→Stage2（#2831/#4583）と通常`tei` CLIからの実Provider Read（#2586）のP0は変更しない。新たな汎用Interpreter、Parser Registry、Semantic正本、Build Runner、Host、横断Gateは追加しない。
+
+- **D1 記述可能**：Language/Role/Operator/PluginのRequired Shape、契約版、依存、診断を既存標準データ構造で記せる。記述可能でもParserが採用したことにはならない。
+- **D2 解釈可能**：B0の有限Seedと既存Selection/Extension Lockで実Providerを固定し、元SourceとAnchorを保持したTyped Candidateを得られる。自己申告の`trusted`／`pure`から意味受理や権限を作らない。
+- **D3 拡張可能**：同じ固定入口で明示したLanguage/Role/Operatorを追加・交換できる。Loader未接続を`Reference Plugin PASS`で代用しない。
+- **D4 生成可能**：TEIのRuleから、実際の業務判断／検証分岐を担うGo等の実装を生成し、Pluginとして実呼出しする。Go Wrapperから既存手書きロジックへの委譲だけを生成成果に数えない。
+- **D5 再構築可能**：Stage1のTEI生成物がStage2のTEI CLI/Plugin、最後にStudio Desktopを再生成し、独立Consumerが結果を受領する。Go二度BuildやファイルCopyだけではD5を満たさない。
+
+### 45.2 有限Seed B0〜B4を保ち、自己記述の実行範囲を増やす
+
+| 段階 | 既存基盤に残す固定責務 | TEI記述に移せる候補／必須証拠 |
+| --- | --- | --- |
+| **B0 Seed** | 原Source byte、Workspace manifest、最小Value/Record/Sequence/Ref、有限なReaderとExtension Lockへの入口 | Seedの依存を列挙し、自己記述を読むために自己記述を先に実行するeager閉路を拒否。Seedの縮小は目標でも、ゼロにはしない |
+| **B1 Selection** | 現行Plugin resolverとexact ID/version/implementation・推移Pin照合 | Language・Role・OperatorのDescriptorを**データとしてinspect**する。未選択／競合／不一致は利用不可 |
+| **B2 Parse/Source** | Reader境界、元の表・DOT・式・DSL Source、byte span/occurrence/fingerprint、未対応時の明示診断 | `*.tei.md`を正式入口へ繋ぐ際はRead→Parse→Source Indexを同じSourceで証明。現行の`TEI_MD_PARSER_UNBOUND`を無断回避しない |
+| **B3 Meaning** | 既存Type/Relation/Validation/Role/OperatorとOwner受理、独立Expected | descriptorのRequired Shape・依存・Effect・Trait義務を**既存意味構造へ**写し、Raw/Typed/Accepted/current-qualificationを分離 |
+| **B4 Realization** | 既存Lowering/Generator/Build/Host/Consumer境界 | Type/Rule/Graphから生成した実コードをPlugin／CLIへ結合。Toolchain・Generator・出力Artifactと実Consumerの証拠を固定 |
+
+B0を自己記述の例外として秘匿するのではなく、**実装されている最小Kernelとして公開・検査**する。B0がB3の受理規則を自称して循環的に正当化することも、B3のDescriptorがB1のProvider選択を勝手に変更することも認めない。遅延参照（deferred）によるモデル上の循環は、解釈の完了に先立って必要なeager依存の循環と別に扱う。
+
+### 45.3 Descriptorは一つの意味正本ではなく、既存契約の検査可能なViewにする
+
+最初に表示・検査するDescriptorは、**既存標準データ構造から投影するread-only View**とし、新Core Schemaや第二Registryを設けない。少なくとも次を別々に辿れることを要件にする。
+
+1. **定義の所在**：Source path/occurrence、原byte/span、Revision、Canonical ID。表・式・Graphvizの糖衣は保存時に保持し、同一labelのGraph Nodeや並行Edgeを勝手に併合しない。
+2. **契約**：Language/Role/OperatorのID＋contract version、Required Shape、input/output型・多重度・粒度、NULL/欠損/未取得/空集合/部分取得、精度・単位・順序、Effect、Trait obligations、診断。未決事項を暗黙の既定値で埋めない。
+3. **実装の選択**：実Interpreter/Generatorのimplementation fingerprint、推移依存、Target適合、Selection/Lock。Descriptorの説明文・同名・同versionだけでProviderの同一性を推定しない。
+4. **意味の資格**：Raw authoring→Typed candidate→Accepted Meaning→用途別の実行資格・現在のGrant／Disclosure。Roleを読めたことは受理・実行・公開のいずれの許可でもない。
+5. **実現と観測**：Source/World/Model/Artifactの版、Build Attempt、生成GoのうちTEIが生成した実判断部分、実Consumer入力・結果・独立Expected・Receipt（Effectを扱う場合のみ）。
+
+`Source同一性`、`意味同値性`、`振る舞い同値性`、`生成物のbyte同一性`、`現在の利用資格`は異なる判定である。環境依存の非決定的なBinary byte一致を自己再構築の唯一の合格条件とせず、Toolchain等を固定できる場合だけbyte比較を追加する。SourceのA→B→Aや同byteの移動でも現在資格は再点検する。
+
+### 45.4 初回の同一Fixtureは既存の「二Node・二Edge」Graphと第二Validationに限定
+
+第44節と`testdata/tei-md-graph/`にある同じGraphを再利用する。同名だが異なるIDの二Node`n-1`/`n-2`、二つの異なるEdge`e-1`/`e-2`を区別し、出辺ID集合と出辺数を判定するRuleをTEI Sourceから生成する。`e-2`の向きだけを反転したとき、**Graph表示ではなく生成された処理の実結果**が変わることを独立Expectedで検証する。正確なfixture IDと値は既存テストSourceを先に読み直して確定する（本節の記号は説明用）。
+
+第二のValidationは型・NULL/欠損・ゼロ・境界値・decimal/単位を持つ別の意味を対象にし、Graph専用のGeneratorが偶然成功しただけで一般化を主張しない。Native SQLを用いる場合はSQL原文の正本性を保つ。別の言語構文で表現した同じ意味の比較では、型・Role・Operator pin・評価結果（NotSatisfiedとerrorの違い）・診断とSource位置まで見る。
+
+**最初の重要な負例**：必須Sourceがmanagedだが未Read、Parser対応外、Role重複、実Provider Pin不一致、eager循環、未決NULL/丸め、Edge ID重複、見た目だけの変更、出辺反転、Source移動/ABA、Formatterの非対象byte変更、生成Goへの単純Delegate、旧Plugin/文書Cacheの再利用、Stage1で生成したものをStage2自身が実消費していない、という各条件。これらは既存#1180/#2514の独立Expectedへ対応付け、第二のFixture正本や自動採用Oracleを増やさない。
+
+### 45.5 実装順・担当と停止線
+
+| 優先 | 差分を最小化した実装 | 主な担当と合格範囲 | 未成立なら停止すること |
+| --- | --- | --- | --- |
+| **P0-A** | 現行`tei`の実コマンド・現行`.tei`のLoader/Source Indexを一つのAttemptで再確認。`*.tei.md`は正式Readerが無ければunsupportedと記録 | #1018/#988/#2621/#2823。Source Read・Language Selection・アンカーの実入口 | 合成Parser PASSをProduct Markdown Reader成立とみなさない |
+| **P0-B** | 既存GraphのTEI SourceからTyped CandidateとRole/Operator exact Pinを得る。Source値・出典・Graph identityが一対一で辿れるか確かめる | #2620/#988/#4359/#2497。Raw→Typedの限定縦断 | Candidateの存在をAccepted Meaning・Writer権限に昇格させない |
+| **P1** | 出辺処理をTEI RuleからGo Pluginへ生成し、通常CLIから実Call。反転・重複・不在・非対象変更を同じExpectedで比較 | #1121/#4544/#951/#1251。生成された判断ロジック＋Plugin実Consumer | Wrapper/手書きの既定分岐は自己生成率に算入しない |
+| **P2** | PluginのRequired Shape／診断／実現に関する限定部分を`*.tei.md`で記述し、そのPlugin自体のGeneratorをTEI側へ移す | #2620/#988/#951/#1121。実装義務ごとのTEI生成／委譲／手書き／未実装の分類と差分 | Descriptor自己申告だけで実Interpreter再生成を認めない |
+| **P3** | Stage1`tei`→Stage2`tei`の再入、その後に正式Studio Desktop Stage1→Stage2→Windows Wails/WebView2実受領を別々に記録 | #2831/#4583/#1824。各Stageの正確なSource/Pin/Toolchain/Artifact/Consumer | CLI再構築成功からDesktop再構築成功を推定しない |
+
+P0-A/BとP1の実行はStudio GUIやMCP Serverの完成を待たない。CLIで先に検証し、MCP/Studioは同じApplication Operation・Source/Meaning/Current資格を別入口から利用する。特定Target/Platformの内部実装（Go AST、Wails等）は利用者DSLの表面文法へ露出させない。
+
+### 45.6 成果の定量比較とOwner判断
+
+実装・Definitionの簡素化は、Plugin数、生成コード行数、Greenテスト数ではなく、**同一の独立Expectedを守るために維持する手書き意味処理、重複契約、Source定義、変更波及、修正・Review費用**で比較する。比較Baselineと測定対象のSource revision・Toolchain・Target・実Consumerを固定し、改善していない項目も示す。
+
+初回の解釈と実装方式は#4359の構文候補比較を使う。専門家の認知順（対象→条件→判定→結果）、少ない記述ノイズ、元Source維持を優先し、Go式ASTは明示した式位置の**内部実装候補**に限る。DSL→Go生成はFrontend候補と対立する文法方式ではなく、型付き意味が成立した後のTarget実現である。`formatVersion`の新番号、完全Grammar、Graph汎用Core型、Role Interpreter全面刷新はこの計画の採用事項に含めない。
+
+**合格の報告形式**は、`(実Source／Read範囲／Reader・Language/Role/Operator Pin／Typed/Accepted Meaning／Generator・Toolchain／Attempt／実Artifact／実Consumer／独立Expected・Actual／未成立Claim)`の一行を最小単位とする。試験が未実行なら`NOT RUN`、能力が未接続なら`UNSUPPORTED`、現在資格が足りなければ`UNQUALIFIED`と記す。
+
+**状態（2026-11-15）**：本節はGitHub既存Issue・設計資料と他領域の判断を結んだ**計画追補のみ**。新Parser/Role Interpreter、正式`*.tei.md` Reader、Rule由来Plugin実生成、TEI→TEI再入、Studio Desktop Stage2、独立Expected実行、Owner意味受理はこの追補で**NOT RUN / NOT PROVEN**。`#1119`の既存GateとDesktop P0を変更しない。
+
