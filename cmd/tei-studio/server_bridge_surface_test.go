@@ -167,12 +167,12 @@ func main() {
 	_ = application.Options{Services: []application.Service{application.NewService(&StudioBridge{})}}
 }`
 	mutants := map[string]string{
-		"extra service": strings.Replace(good, "application.NewService(&StudioBridge{})}}", "application.NewService(&StudioBridge{}), application.NewService(&OtherBridge{})}}", 1),
+		"extra service":       strings.Replace(good, "application.NewService(&StudioBridge{})}}", "application.NewService(&StudioBridge{}), application.NewService(&OtherBridge{})}}", 1),
 		"second StudioBridge": strings.Replace(good, "application.NewService(&StudioBridge{})}}", "application.NewService(&StudioBridge{}), application.NewService(&StudioBridge{})}}", 1),
-		"opaque variable": strings.Replace(good, "Services: []application.Service{application.NewService(&StudioBridge{})}", "Services: registeredServices", 1),
-		"empty list": strings.Replace(good, "application.NewService(&StudioBridge{})", "", 1),
-		"other bridge": strings.Replace(good, "&StudioBridge{}", "&OtherBridge{}", 1),
-		"missing Services": strings.Replace(good, "Services: []application.Service{application.NewService(&StudioBridge{})}", "", 1),
+		"opaque variable":     strings.Replace(good, "Services: []application.Service{application.NewService(&StudioBridge{})}", "Services: registeredServices", 1),
+		"empty list":          strings.Replace(good, "application.NewService(&StudioBridge{})", "", 1),
+		"other bridge":        strings.Replace(good, "&StudioBridge{}", "&OtherBridge{}", 1),
+		"missing Services":    strings.Replace(good, "Services: []application.Service{application.NewService(&StudioBridge{})}", "", 1),
 	}
 	parse := func(name, src string) (int, int, int) {
 		t.Helper()
