@@ -33,22 +33,31 @@ func TestDiagnosticSpan(t *testing.T) {
 	}
 }
 
-func TestOpaqueNodeRoundTrip(t *testing.T) {
-	// Opaque nodes are preserved in the IR but ignored by the flat SQL generator.
-	// The generator falls back to the remaining known nodes.
+func TestOpaqueNodeRetainsSourceButRefusesLossyRegeneration(t *testing.T) {
+	// The Opaque IR node retains the original SQL for review, even when
+	// other nodes could produce a syntactically valid but incomplete SELECT.
+	// Refusing regeneration is required: the source cannot be reconstructed
+	// faithfully by silently dropping custom_func().
+	const originalSQL = "SELECT * FROM custom_func()"
+	opaque := &Opaque{NodeID: "node:1", SQL: originalSQL, Reason: "unsupported function"}
 	q := &StandardQuery{
 		Nodes: []Node{
 			&Scan{ID: "node:0", Source: "dual", SourceKind: "table"},
-			&Opaque{NodeID: "node:1", SQL: "SELECT * FROM custom_func()", Reason: "unsupported function"},
+			opaque,
 		},
 		Root: "node:0",
 	}
-	sql, diags := StandardToSQL(q)
-	if sql != "SELECT * FROM dual" {
-		t.Fatalf("unexpected generated SQL: %s", sql)
+	if opaque.SQL != originalSQL {
+		t.Fatalf("opaque native SQL changed: got %q, want %q", opaque.SQL, originalSQL)
 	}
-	// Opaque nodes do not currently emit generation diagnostics in the flat path.
-	_ = diags
+	sql, diags := StandardToSQL(q)
+	if sql != "" {
+		t.Fatalf("opaque node silently disappeared from regenerated SQL: %q", sql)
+	}
+	if len(diags) != 1 || diags[0].Code != "OPAQUE_QUERY_UNSUPPORTED" ||
+		diags[0].Severity != SeverityUnsupported {
+		t.Fatalf("expected fail-closed opaque diagnostic, got %#v", diags)
+	}
 }
 
 // The two empty-input refusals are reachable, so they are named here: a code
