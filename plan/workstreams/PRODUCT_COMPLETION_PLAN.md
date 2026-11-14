@@ -10,6 +10,20 @@
 
 受注では確定した値、公開では利用側から読める版、外部連携では相手側で観測した状態を確認する。受付、コード生成、単体試験、参照実装の成功は、それぞれ確認した範囲として保持する。案件の必須条件を満たした結果と結び付けてから成立に数える。
 
+### 統合後、次の実装で確かめること（2026年11月14日）
+
+[横断統合 #4683](https://github.com/hat47x/tei-platform/pull/4683)と[実対象の回帰試験統合 #4684](https://github.com/hat47x/tei-platform/pull/4684)によって、以前の計画・一部の生成コード・安全性試験はmainに入りました。ただし、**統合できたコード、通常の製品入口から動いた機能、実際に利用先が受け取った結果**は別々の成果です。以前のDraftの状態をそのまま現在の実装状況として読まないため、直近の着手先を以下に固定します。
+
+| 優先順位と着手先 | 最初に通す実装・検証 | 合格と呼ぶ前に残すもの |
+| --- | --- | --- |
+| **全体P0：Studioの実セルフビルド**（#2831／#4583） | 非PluginのStudio Build Subjectを既存BuildExecution／ArtifactSetへ結び、**Stage1の実ProcessがStage2 Desktopを生成**し、そのStage2をWindows WebView2で起動する | [Windows部品試験 #4587](https://github.com/hat47x/tei-platform/pull/4587)の成功だけではStage2再構築とみなさない。実Child、Builder、Toolchain、生成物のByteと受領先を同一の試行で照合 |
+| **並行P0：通常製品入口の実Read**（#2586／#1251） | RA-0／1／2RのReference結果を入口の基線とし、RA-2Pで通常`tei`→選択Provider／実DB／SQL・型付き引数→Function Data Contextを実行。RA-3でTableとAggregate等の異なる二Consumerへ渡す | [RA-0 Draft #4626](https://github.com/hat47x/tei-platform/pull/4626)のE1 `sqlgen`依存拒否（#1182）を残し、参照PGの成功やContextの`partial`を実Consumer・全件取得の成功に読み替えない |
+| **CLI先行の小実証：TEI自身による生成**（#2621／#951／#2831） | 既存の[CLI先行計画 #4676](https://github.com/hat47x/tei-platform/pull/4676)を使い、同名Node二つ・別IDの多重有向EdgeとRuleを、Sourceから**実際の判定ロジック**へ生成。向き変更／ID重複／レイアウトのみの変更を対照にする | `*.tei.md`の正式Readerが未対応なら`unsupported`。Goへの委譲だけを自己実装と数えない。選択Pluginの実Call、生成コードの由来、固定した義務の分母、再生成・保守負荷を別記録 |
+| **P1：Plugin説明と公開モデルの探索**（[#4679](https://github.com/hat47x/tei-platform/issues/4679)／#951） | 上位A・利用側Bの二Pluginを固定し、Aが公開したContract／Graph／Manual索引へ、Bのread-only Inspectから正しい版で辿る。短いProduct Skillは既存の実コマンドの発見方法だけを案内 | 非公開文書・図・上位依存の存在情報を漏らさない。閲覧可を再公開可・実行可へ昇格させない。新Docs Registry／未実装CLIコマンドを前提にしない |
+| **P1：横断Concernと専門計算の適合**（#4198／#3509／#4660） | main統合済みの[Application Graph設計 #4681](https://github.com/hat47x/tei-platform/pull/4681)では、まず一つのRoute／Entryに対するread-only適用表を作る。計算側は[SQLite Window実DB試験 #4670](https://github.com/hat47x/tei-platform/pull/4670)を基線に、必要な入力範囲とProvider能力を調べる | 計測の挿入・同意・二重発火、外部Solver、NoSQLでの同等性、通常CLIの実計算・Consumer受領は未検証。新Aspect Weaverや第二Query Engineを導入しない |
+
+最初の各PRには、**既存のSourceと対象版、具体的な正例・反例、実行された入口・Builder／Provider、独立Expected、確認できたConsumer、未検証の範囲**を短い一枚の引渡しとして残す。Ownerの意味受理、現在のHost Grant、外部Effect、実DB Migrationは別資格とし、推測による補完はしない。図面・Markdown表・Graphvizは標準データへの可読な表現として使い、表示上の変更を意味や実行権限へ昇格させない。
+
 ## 不足を戻す担当
 
 各担当Issueには以下の範囲に属するG項目の作業と正負の受入条件を引き渡す。実装・実行結果はそのIssueと既存のEvidenceに記録する。
@@ -213,11 +227,11 @@ A〜Dは新たな検査Engineの階層ではなく、既存Parser・Validator・
 
 ### 読取りとSchema変更を切り離す
 
-[生成アプリの修正Draft #4662](https://github.com/hat47x/tei-platform/pull/4662)では、生成された`query`／`command`／`validate`が、起動時にMigrationを暗黙適用する既存経路が見つかった。**照会を実行しただけでDBを初期化・更新しない**ことを、製品入口の安全条件とする。
+[main統合済みの生成アプリ修正 #4662](https://github.com/hat47x/tei-platform/pull/4662)では、生成された`query`／`command`／`validate`が、起動時にMigrationを暗黙適用する既存経路が見つかった。**照会を実行しただけでDBを初期化・更新しない**ことを、製品入口の安全条件とする。
 
 `query`は既存DBを読取り専用で開き、`validate`はDBなしで構造を検査できるようにする。変更が必要な`command`もMigrationの暗黙実行とは分離し、DB作成・Schema変更は別の明示Operationと権限・Receiptに委ねる。存在しないSQLite DB、Memory DSN、別Schema、Migration履歴不整合を「暗黙に作り直して成功」としてはいけない。特に**通常`tei`のPostgreSQL実Read（RA-2P）と生成SQLiteアプリの修正（RB0）は別Target**であり、一方の試験成功をもう一方へ適用しない。
 
-#4662はDraftであり、修正HEAD `095c5a11`は [Repository Health #43576908564](https://github.com/hat47x/tei-platform/actions/runs/43576908564)・Cache・既知脆弱性確認の**3/3 Workflow成功**を確認済みで、正規のGo vet／Go testを含む。ただし本番Schema・History・外部Provider・明示Migrationの適格性は証明されていない。Source Revisionをファイル名や仮のDigestで代用する問題も、[#2600](https://github.com/hat47x/tei-platform/issues/2600)の所有範囲として残す。#4234/#4125のDB移行計画と#2586のProduct Read計画を、同じ手順で安全性を評価できるよう接続する。
+#4662は[統合PR #4683](https://github.com/hat47x/tei-platform/pull/4683)を通じてmainへ反映済み。修正元HEAD `095c5a11`は [Repository Health #43576908564](https://github.com/hat47x/tei-platform/actions/runs/43576908564)・Cache・既知脆弱性確認の**3/3 Workflow成功**を確認済みで、正規のGo vet／Go testを含む。ただし本番Schema・History・外部Provider・明示Migrationの適格性は証明されていない。Source Revisionをファイル名や仮のDigestで代用する問題も、[#2600](https://github.com/hat47x/tei-platform/issues/2600)の所有範囲として残す。#4234/#4125のDB移行計画と#2586のProduct Read計画を、同じ手順で安全性を評価できるよう接続する。
 
 **判別の最短ループ（次の実装単位を固定）**：RA-1の**限定Go/歴史Web回帰の同一HEAD成功は取得済み**。修復済みRA-0のHealth/Historyと、#4644仮統合HEADのRA-1 Go・RA-2R実PG7ケース**3/3 CI成功は取得済み**。現在の別Owner障害はE1の`sqlgen`依存#1182のみであり、D1製品として次に不足するのはRA-2Pの正式CLI→実接続→Contextへの実呼出。続く**RA-2P**は、`実選択Query/Inputs→型付きactual Parameters→Environment内の実選択Provider→実Consumed SQL byte/実Rowset→Context Result Slice`を**通常製品Operationの同一Attempt**で観測する。選択A→実Call Aを正例、**選択A→実Call B**・Source/SQL別版を負例とし、SQL Placeholder全閉包・Snapshot/Current Grant・Coverageは実証範囲を超えて昇格させない。次にRA-3通常`tei`と独立Consumerへ進める。**RA-0/RA-1局所PASSをD1製品合格と表示しない**。D1.2 Measure、D2編集、D3 Effect、REA/SHO/SUI、Web共同編集は既存Ownerが並行するが、この最初の実ReadにHard Dependencyを増やさない。RA-1〜3・E1修正・実Web Grantの新試験は本計画変更では**NOT RUN**。
 
@@ -346,10 +360,10 @@ A〜Dは新たな検査Engineの階層ではなく、既存Parser・Validator・
 
 | 対象と設計上の位置付け | 最初に既存試験へ渡す反例・受入条件 | 担当と実装順 |
 | --- | --- | --- |
-| **構造と宣言的構文**：[設計Draft #4667](https://github.com/hat47x/tei-platform/pull/4667)はGraph／Tree／Tableの意味対応、JSON Schema、Language Plugin、Studio表示の検討段階。 | **SM-01／02**：同名Node・多重有向Edge・複数親をTreeへ表示できても、失ったEdge identityを推定して書き戻さない。**SM-06／07／08**：`oneOf`、再帰`$ref`、共有参照の制約と取得範囲を保持できなければread-onlyに退避する。外部Schemaの読み取り、JSONインスタンスの入力、DB Migrationは別操作。 | #2495/#2497/#988/#2620/#1124。まずHeadless表示とSource位置・独立Expectedを比較し、必要になった編集だけPatch→Preview→再解析へ進める。Grammar IR／新Parser基盤の採用は保留。 |
+| **構造と宣言的構文**：[main統合済みの設計 #4667](https://github.com/hat47x/tei-platform/pull/4667)はGraph／Tree／Tableの意味対応、JSON Schema、Language Plugin、Studio表示の**実装前の検討**。 | **SM-01／02**：同名Node・多重有向Edge・複数親をTreeへ表示できても、失ったEdge identityを推定して書き戻さない。**SM-06／07／08**：`oneOf`、再帰`$ref`、共有参照の制約と取得範囲を保持できなければread-onlyに退避する。外部Schemaの読み取り、JSONインスタンスの入力、DB Migrationは別操作。 | #2495/#2497/#988/#2620/#1124。まずHeadless表示とSource位置・独立Expectedを比較し、必要になった編集だけPatch→Preview→再解析へ進める。Grammar IR／新Parser基盤の採用は保留。 |
 | **処理と図解**：[実行モデル #4665](https://github.com/hat47x/tei-platform/pull/4665)、[Lifecycle #4666](https://github.com/hat47x/tei-platform/pull/4666)、[実行規則の整理 #4668](https://github.com/hat47x/tei-platform/pull/4668)はmainに設計を統合済み。 | 同じFunctionでも**受理したDefinition／選択したEffective Plan／実際のObserved Trace／図面Projection**は別に比較する。**PX-13／14／15**：多重Edgeの誤結合、Provider AとBの取違え、常駐Webと単発CLIの実行規則の違いを判別する。処理切出しでは型、依存、評価順、時刻、Effect、Grant、実受領を欠かさない。 | #4198/#4193/#4502/#1121/#2514。Headlessの意味・分岐確認を先行し、Mock成功を実DB Commitや通知配達に格上げしない。中央Dispatcher／Graph Compiler／独自Hostは増やさない。 |
-| **公開FunctionとPlugin**：[Script Launch Draft #4669](https://github.com/hat47x/tei-platform/pull/4669)と[Plugin構成 #4671](https://github.com/hat47x/tei-platform/pull/4671)は実行・配布の追加検証候補。 | 公開Entry→選択Capability／Provider→実呼出し→Resultを、Source解析成功と区別する。Studio／Generator／Runtime／TestのContributionが同じMeaningを指していても、実Packageロード・Builderの実使用・現在Grantは別証拠。RoleだけでEffect／Actionを実行許可しない。 | #4495/#951/#1016/#1180。既存Resolver／Language Pluginを使い、実Provider・受領者の確認を先に行う。P0にPlugin配布全方式や新ABIを要求しない。 |
-| **専門ツールキット**：[数理・統計・計画・科学の設計 #4663](https://github.com/hat47x/tei-platform/pull/4663)はmainに統合済み。[具体化Draft #4670](https://github.com/hat47x/tei-platform/pull/4670)は未採用。 | WBSの包含関係とPERTの先行関係を区別する。Window集計は粒度・順序・NULL・欠測を、Solverや科学計算は単位・精度・収束条件・独立Expectedを対象ごとに照合する。設計文書中の計算例をR／Mathematica／外部Solverの実行証拠とはしない。 | #4660/#2495/#2544/#2586。Window→WBS／CPM→Solver／DOEの小例を並行評価し、正式なOperator／Provider採用は実測後に判断する。 |
+| **公開FunctionとPlugin**：[Script Launchの設計Draft #4669](https://github.com/hat47x/tei-platform/pull/4669)は未統合。[Plugin構成設計 #4671](https://github.com/hat47x/tei-platform/pull/4671)はmain統合済みで、両者の実行・配布の製品検証はこれから。 | 公開Entry→選択Capability／Provider→実呼出し→Resultを、Source解析成功と区別する。Studio／Generator／Runtime／TestのContributionが同じMeaningを指していても、実Packageロード・Builderの実使用・現在Grantは別証拠。RoleだけでEffect／Actionを実行許可しない。 | #4495/#951/#1016/#1180。既存Resolver／Language Pluginを使い、実Provider・受領者の確認を先に行う。P0にPlugin配布全方式や新ABIを要求しない。 |
+| **専門ツールキット**：[数理・統計・計画・科学の設計 #4663](https://github.com/hat47x/tei-platform/pull/4663)はmainに統合済み。[SQLiteの限定実DB回帰 #4670](https://github.com/hat47x/tei-platform/pull/4670)はmain統合済み。ただしTEI製品Query・NoSQL・実Consumerへの横断は未実証。 | WBSの包含関係とPERTの先行関係を区別する。Window集計は粒度・順序・NULL・欠測を、Solverや科学計算は単位・精度・収束条件・独立Expectedを対象ごとに照合する。設計文書中の計算例をR／Mathematica／外部Solverの実行証拠とはしない。 | #4660/#2495/#2544/#2586。Window→WBS／CPM→Solver／DOEの小例を並行評価し、正式なOperator／Provider採用は実測後に判断する。 |
 
 **意味保存を三つに分けて検証する**：[#4667](https://github.com/hat47x/tei-platform/pull/4667)の新しい設計判断を、別のCore enumにはせず、既存のProjection・Query・編集契約の検査条件として使う。
 
@@ -367,7 +381,7 @@ A〜Dは新たな検査Engineの階層ではなく、既存Parser・Validator・
 
 **処理の切出し・Target移行は上記と異なる検証**である。[main統合済み#4673](https://github.com/hat47x/tei-platform/pull/4673)のPX-23〜29を#4198／#2514へ引き渡す。表示上の辺の置換を制御依存の変更と混同しない。純粋計算の抽出でも、暗黙Read、NULL・丸め・短絡評価、時刻、現在Grant、Generator／Toolchain、実行先の能力とConsumerの受領まで必要な閉包を確かめる。注文確定と通知を分割する場合は、Commit前後、ACK不明、重複配送の差が残るため、同じResult値だけで互換とは判断しない。**World Fingerprint／Model Revision／Artifact Revision、Build省略／Artifact再利用／Evidence再利用も別の判断**として保つ。
 
-**RDBとNoSQLにまたがる統計のFit／Gap**は、[設計Draft #4670](https://github.com/hat47x/tei-platform/pull/4670)のCTK-01／04／06を#2387／#2586／#3270へ渡す。四観測のWindow平均（10、15、20、30）、JOIN後の明細金額の過剰集計、全件取得できないDocumentへの黙ったローカル計算を、それぞれ異なる反例にする。Providerが保証する順序・Window・入力範囲・NULL／missing・費用・開示を確認し、能力が足りないときは理由を示して不適格にする。**このFit／Gapや専門ツールキットの実装を、StudioセルフビルドP0の新しい先行条件にはしない**。
+**RDBとNoSQLにまたがる統計のFit／Gap**は、[SQLiteの限定実DB回帰をmainへ統合した #4670](https://github.com/hat47x/tei-platform/pull/4670)のCTK-01／04／06を#2387／#2586／#3270へ渡す。四観測のWindow平均（10、15、20、30）、JOIN後の明細金額の過剰集計、全件取得できないDocumentへの黙ったローカル計算を、それぞれ異なる反例にする。Providerが保証する順序・Window・入力範囲・NULL／missing・費用・開示を確認し、能力が足りないときは理由を示して不適格にする。**このFit／Gapや専門ツールキットの実装を、StudioセルフビルドP0の新しい先行条件にはしない**。
 
 **Studioへの引渡し**：どのViewからでも、同じ対象のSource位置・Revision・意味Role・未解決の制約へ戻れることを重視する。図の座標や描画用Edge IDを正式な意味IDにしない。人間とAIの編集候補は共通の型付き対象選択と差分確認を経るが、AIの提案を意味受理や現在の実行権限に昇格させない。未対応のDialect、部分取得、曖昧な逆変換では、読める情報だけを表示し、安全な編集は保留する。
 
@@ -491,6 +505,24 @@ SBX-01：図のレイアウト変更では意味が変わらず、関係の向�
 **CLI先行はDesktopセルフビルドの最終目標を撤回するものではない。** 最初の検証をCLIで軽量化しつつ、[#2831](https://github.com/hat47x/tei-platform/issues/2831)・[#4583](https://github.com/hat47x/tei-platform/issues/4583)のBuildExecution／ArtifactSet／親子Attemptを共通化する。現行BuildIntentの`Subject.Kind=plugin`制約は[#1080](https://github.com/hat47x/tei-platform/issues/1080)・[#1097](https://github.com/hat47x/tei-platform/issues/1097)で非Plugin Build Subjectの不足として扱う。Plugin選択・段階別Contributionは[#951](https://github.com/hat47x/tei-platform/issues/951)・[#1251](https://github.com/hat47x/tei-platform/issues/1251)、自己記述Languageと糖衣形式は[#988](https://github.com/hat47x/tei-platform/issues/988)・[#1018](https://github.com/hat47x/tei-platform/issues/1018)の責務とする。
 
 CLI／MCP／Studioは同じ型付きApplication Operationを異なる入口から使うものであり、入口の共通化はHost認可や実効果の証拠を省く理由にならない。Runtimeで使わないGenerator／Editor専用Pluginは、必要のない生成成果物に無条件同梱しない。本節は実装順と測定方法の合意案であり、TEIが生成したGoによるCLI／Plugin再構築、定義の簡素化、Stage1→Stage2製品成功を**実証済みとはしない**。
+
+### 一つの変更を、生成・実行・再検証まで追跡する
+
+SB-1/SB-2で導入するGraph/Ruleの固定例について、**初回から変更前後を同じ独立Expectedで比較**する。最初の実装PRは新しい汎用Graph Compilerや増分Cacheを要求しないが、将来#2600で正しい再利用を行うため、何が変わったかと、どの工程を実行したかを取り違えず記録する。詳細な契約は[実行モデル§37〜39](../design/PROGRAM_EXECUTION_MODEL_PROJECTIONS_2026-11.md)に集約する。
+
+| 比較する入力 | 最初に見る意味・生成の差 | 実行・再利用上の停止条件 |
+| --- | --- | --- |
+| 基準：同名Node二件・別IDの同向Edge二本 | 出辺ID・件数の計算とID重複の拒否が、TEIのRuleから生成される | 固定JSONや外部Goへの丸投げは自己生成実装として扱わない |
+| `e-2`の方向だけ反転 | `n-1`からの出辺が二本→一本、`n-2`から零本→一本 | Graph表示だけ更新して実Go処理・実Provider結果が旧状態なら不合格 |
+| `e-2`を重複IDへ変更 | 一意性違反をReader/Validator/生成規則の適切な位置で拒否 | 同名や同端点を理由にEdgeを黙って統合しない |
+| 図の配置・注釈だけ変更 | 意味上の計算は不変、Source/表示の変更は追跡 | Raw Source再確認を省略したと偽らず、無関係な下流再Buildだけを省略可能か検査 |
+| Provider/Builderの選択やSourceのA→B→A | 結果が同じでも選択先・実消費byte・現在資格が変化し得る | 旧ArtifactやReceiptを現在の実Provider使用・Owner受理へ自動昇格しない |
+
+記録の最小単位は**一つのSubject、固定したSourceとRole、選択Provider/Generator、Build Attempt、実Artifact、実Consumer**である。未接続ならその境界を明示する。各工程でParser/意味解決/生成/Go Build/Plugin実行に費やした時間、実行を省略した理由、未観測の入力も残す。Source/Meaning/Artifactの三種のRevisionを一つのFingerprintへまとめない。
+
+初回の実Go生成は、意味処理の実装部分と手書きの補助Goを分けて検証し、生成定義から出辺IDの判定が実際に変わることを確かめる。通常`tei` CLIと独立Consumerの実Call、Stage1 CLIによるStage2 CLI再入、正式Studio DesktopのStage1→Stage2は、**異なる到達点として順番に実証**する。部分的な成功を足して全体成功と呼ばない。
+
+この比較はSBX-01〜06と#1180/#2514、#2595の実消費Source、#2600の再利用、#4495/#1251の製品Provider、#2831/#4583の実セルフビルドの担当へ引き渡す。新たなScenario正本やRuntimeは設けない。**状態：実証手順の追補。新Go生成・増分skip・実CLI再入・正式Desktop再入の合格は未確認。**
 
 ## プロセス・イベント・応答を共通の意味から説明する（設計候補）
 

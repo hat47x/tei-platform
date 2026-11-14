@@ -576,3 +576,125 @@ Graphの問いには、対象となるアプリケーション・Profile・Targe
 **優先順位**：P0は引き続き#4583/#2831のStudio Stage1→Stage2 Desktop実セルフビルドと#4495/#1251の実Entry→実Provider二入口。P1として、現在の一Function/Entryと一Routeを使ってApplication Graphのread-only照合とCLI/Studioの同一Subject確認を行う。P2で一つの任意計測を実Targetへ差分生成し、Consent・重複・欠落の負例を確認する。P3で必須監査Hookや複数Target・複数Harnessの相違を広げる。B2Cの高度な計測・Experiment/Commerceは#3509へ戻す。
 
 この追補は新Graph Compiler、Aspect Weaver、常駐Harness、中央Pin Store、独立Plugin文書Registryを導入する判断ではない。**現在の資格は設計・受入条件の提案であり、PX-48〜58、実Browser送出、実計測、全Target生成、Harness実連携の新試験およびOwner意味受理はNOT RUN / NOT ACCEPTED。**
+
+## 33. 構造Graphの成立範囲を対象相対で確定する
+
+Graphを利用して「このRouteには計測が適用されている」「このEntryから実Providerを呼べる」と判断するとき、まず**何を対象に、どこまで調査できているか**を明示する。全Workspaceの完全なGraphを先に要求するのではなく、選択されたApplication Profile、Target/Variant、配備環境、Source/Meaningの版、Consumerと問いを固定する。回答の成立範囲は、この問いに対して評価する。
+
+| 見る範囲 | 分かること | 混同してはならないこと |
+| --- | --- | --- |
+| **定義済み** | Source/Accepted MeaningにあるRoute、Entry、Operation、Relationと適用条件 | 定義が存在することと公開・選択済みであること |
+| **構成で選択済み** | Profile/Target、Contract/Provider、Guard、Plugin Facetと必要な依存集合 | 選択されたことと実Artifactへの収録・実行資格 |
+| **実現済み** | 実Builderが消費した入力、生成ArtifactのMember、実Loader/Invokerへの対応 | Artifactが存在することと実Consumerが使用したこと |
+| **実際に観測済み** | 対象Attemptで起きたCall/Read/Effect、Browser/CLI/Studioの受領 | 一度観測されなかったことと、あらゆる経路で起きないこと |
+
+これらは同じGraphの異なる見方であり、単純な集合の包含関係ではない。たとえば選択されたGuardがInvocationを拒否した場合、実Provider Callが0回でも正しい。定義されたOptional HookがTargetで不要な場合、Artifactにないことが正しい場合もある。逆に、未選択Pluginの実装が不要なBinaryに収録されていれば、選択資格と物理同梱は不一致である。**予想する呼出し回数・適用範囲は、Guard、条件、Target能力、現在Grantとともに判定する**。
+
+「全件」「存在しない」を主張できるのは、対象のSource/Registry/Route集合が問いに対して閉じており、動的登録・外部Provider・未選択Variant・未読Sourceなどの必要な依存を確認できた場合だけである。静的Graphが部分取得なら、あるNode/Edgeが見つからないことは unknown であって0件ではない。実Traceがない場合も、単なる未実行、観測不足、Guardによる不実行を区別する。
+
+対象の完全性、Meaningの確定、Build閉包、実Callの観測、現在Disclosureはそれぞれ別の資格とする。この整理は既存#4198 R0〜R4、#2600の実消費入力、#951のComposition、#2586の実Readを**一つの閲覧面で照合するため**のもので、第二のGraph Storeや新しいEvidence正本を作るものではない。
+
+## 34. 宣言と実現の差を説明する照合表
+
+最初のread-only機能は、Graphを巨大な一枚絵として完成させるのではなく、**固定した一つのSubjectについて、設計上必要な関係と観測できた実現を並べる**。行は型付きNode/Relation occurrenceの参照を保ち、画面上のNode名や単なる文字列パスを比較キーにしない。
+
+| 照合すること | 正常と判定できる例 | 差分・不明として残す例 |
+| --- | --- | --- |
+| 対象と版 | Qualified Subject、Workspace/Source Revision、Target/Profileを固定 | 同名別Subject、A→B→A、同Revisionを申告する別Provider |
+| 関係の意味 | Data/Control/Call/Authority/EffectのEdge Roleと多重度が保持 | 同端点の二Edgeを一本に集約、描画用Edge IDを意味参照へ昇格 |
+| 選択と依存 | Contract/Providerと必要Source閉包をexactに解決 | 表示上は選択済みだが、別Providerが実Call-siteに残る |
+| 成果物 | 実Build Attempt、入力byte、Generator、Artifact Memberと実ロード先を結合 | 生成ファイルがあるだけで実LoadやTarget適合を宣言 |
+| 実行と受領 | 実Consumerで該当Artifact/Providerを呼び、対応するOutput/Failureを観測 | 旧AttemptのTrace、別Consumerの結果、ACKを業務完了として流用 |
+| 未確定と権限 | 部分取得、未観測、unsupported、permission-deniedを区別し開示を再確認 | Secretや未許可FacetをGraphが見えるから送出 |
+
+相違を発見したら、（a）宣言と選択の不一致、（b）構成とBuildの不一致、（c）Buildと実行の不一致、（d）結果とConsumer受領の不一致、（e）現在のAuthority・Disclosureの不一致、に分類して既存Ownerへ戻す。**一つの不一致から別の層の故障を推測で確定しない**。特に実Readの0件・部分取得、Hookのskipped・not evaluated、Effect unknownはそれぞれの意味を保持する。
+
+同じ設計上のSubjectについて、CLI/JSON、StudioのTable/Graph、Harnessの短い説明が一致しているかを、同一の出典・版・Coverageで比べる。表示形式による省略がある場合はそれを記録し、表示が一致しただけで実Callの一致と扱わない。これまでの§23の照合票に必要な列を追加するだけで、専用の新しいデータベースやStatus enumは採用しない。
+
+## 35. CLI・Studio・Harnessの対象引渡しに必要な三つの閉包
+
+TEIの設計要素をAIへ渡す際は、**指示の範囲、対象の範囲、実行能力の範囲**を分離する。これらを混ぜてしまうと、選択した図の説明を頼んだだけでSourceを書き換えたり、別Workspaceの同名Functionを操作したりする危険がある。
+
+| 閉包 | 含めるもの | 含めてはならないもの |
+| --- | --- | --- |
+| **Instruction** | この作業で求める目的、許される読取り・変更案、必要な独立検証と返答形式 | Skill文書から自動的に認可・承認を得たという仮定 |
+| **Subject** | Workspaceの識別、Source occurrenceとRevision、Qualified Subject ID、必要なNode/Edge、選択したView/Contextの粒度 | 描画ラベル・座標・一時選択を意味IDとすること |
+| **Capability** | 現在Hostが認めるInspect/Proposal/Apply/Build/Invokeの操作範囲、必要Contract/Provider、開示先 | 外部Harnessの自己申告Role、旧SessionのGrant、Graph上に見えるだけの実行権限 |
+
+これらは新しい三種類の永続Tokenや中央Pin Storeを設計するという意味ではない。既存のSubject Pin、Typed Application API、Source/Role、Plugin Capability、Host Authorityを**受け渡すときの確認項目**である。CLI・Studio・MCP・外部Harnessで利用可能な操作はそれぞれ異なるため、短いTEI Skillを共通の操作案内として利用しても、実Tool・現在権限・実Consumerを同じとみなさない。
+
+最初の引渡しはread-onlyに限り、固定SubjectのInspect結果とPluginの公開説明を、必要なScopeへ絞って渡す。更新Proposalは元のSource/Revisionへ束縛し、Apply直前に再照合する。A→B→A、Workspace切替、旧非同期Reply到着、公開Facetの撤回時には、旧資格を自動的に復活させない。Graphの描画用Edgeを選択しても、意味Relation IDと対応付けられるまではRelation編集不可とする。
+
+Markdown優先の *.tei.md は本文・インデント付きリスト・表・図・式の原文を保持し、必要な箇所だけTEIの意味Roleへ解決する。ファイル名やコードフェンスがあることを正式Readerの実装証拠にしない。Readerが未接続なら unsupported のまま止め、AIの手変換やGoへの委譲で製品の読込み成功を偽装しない。Generatorが実際に理解した表・図の規則と、手書きGoへ委ねた処理は自己生成範囲の評価で別に数える。
+
+## 36. 最初の一枚の照合票と実装への引渡し
+
+多数の反例を個別の新システムとして作るのではなく、**既存Scenarioと一つの固定Fixtureの比較票**へ整理する。最初の題材は、現在存在が確認できる一つのpure/read-only Function/Entryと、そのFunctionを利用するPlugin・実Providerの範囲とする。B2C全Route、全Plugin、全Targetを同時に完成させない。
+
+第一段の実証では、次の一巡だけを要求する。
+
+1. 実Sourceと受理済みMeaningが参照できるか、または何が未結合かを記録する。*.tei.md Readerがないときは、未対応と明示する。
+2. Definition/Selected/Realized/Observedの四つの見方で、同じSubjectとTyped RelationをCLI/JSONへread-onlyで投影し、Source参照・版・Coverage・不明を揃える。
+3. 選択Provider Bと実Call Aの取り違え、同名Node/多重辺の消失、未観測=不存在、表示だけの変更による過剰Build失効を、既存PX-01〜58・EL・PPC・SBXの該当独立Expectedで比較する。
+4. 実Buildと実Providerの検証は既存#4495/#1251/#2600の資格へ引き渡す。局所Headlessの成功をStudio Stage1→Stage2へ加算しない。
+5. Studio PinとHarnessへの受渡しは最初はread-onlyの同一Subjectの説明に限定し、実開示・Proposal Apply・Relation編集はそれぞれのOwnerの後続検証に残す。
+
+最初の完了条件は「Graphが描けた」ことではなく、**一つのSubjectについて各段階の一致・不一致・未確認を、別々の証拠とSourceへ逆追跡できること**である。特に、同じ型付き関係の意味解釈、実Builderが消費したbyte、実Providerの呼出し、二つのConsumerの受領を、別試行のCI成功を足し合わせず説明できる必要がある。
+
+担当を増やさないため、Graph inventoryは#4198、構造・往復は#2497/#1124、Source/Roleは#2620/#4536、Product Entry/Providerは#4495/#1251、Build/Evidenceは#2600/#2831、現在開示とUI Pinは#2516/#4515、Independent Expectedは#1180/#2514、Markdown Readerとセルフビルドは#988/#1018/#2831と既存作業計画へ引き渡す。
+
+**優先順位は維持する。** 全体P0は正式Studio Desktop Stage1→Stage2と実Windows Consumer、並行P0は通常CLI・別Consumerからの実Entry→実Provider。今回のGraph照合と三閉包のread-only引渡しは、P0に割り込ませない小さなHeadless検証として進める。正式Graph Schema、万能App Graph Compiler、常駐Harness Runtime、新Source/Evidence Store、新Hard Gateは導入しない。
+
+**状態**：設計と受入条件の追補。四層照合の製品実装、同一SubjectでのCLI/Studio/Harness実往復、*.tei.md正式Reader、Go/Windows/E2E、Owner意味受理はNOT RUN / NOT ACCEPTED。
+
+## 37. 一つのGraph変更を実生成物まで追う
+
+ここまでの構造Graphと四層照合を、**変更前後にどこまで同じ成果を再利用できるか**という具体的な問いに接続する。実証対象は、[製品完成計画のSB-0〜4](../workstreams/PRODUCT_COMPLETION_PLAN.md)で固定した小さなGraph/Ruleに統一する。新しいGraph Compiler、Build Cache、変更影響Engine、試験正本は作らない。
+
+同じ表示名を持つNode `n-1`、`n-2`と、初期状態では両方とも `n-1 → n-2` を指す別IDのEdge `e-1`、`e-2`を使う。このGraphから、Nodeごとの出辺ID集合・件数を返す処理と、Edge IDの一意性を検査する処理をTEI定義から実Goへ生成することを候補とする。**固定JSONを書き出すだけ、手書きGoの参照関数を呼ぶだけでは、意味のあるCodegenとして受理しない。**
+
+| 一因子だけ変える操作 | 意味・実装への影響 | 再利用・再確認の扱い |
+| --- | --- | --- |
+| 初期状態 | `n-1`の出辺は `e-1,e-2` の2本、`n-2`は0本。同じ表示名でも別Node | 基準となるSource/Meaning、生成コード、Builder実入力、実Provider/Consumerと独立Expectedを別々に採取 |
+| `e-2`の方向だけ反転 | `n-1`の出辺は `e-1`、`n-2`は `e-2`。Data/Control Relationの向きが意味上変化 | 関係を解釈するRule/生成処理/必要Artifactと実Consumerを再確認。表示だけの再配置と判定しない |
+| `e-2`のIDを`e-1`に変更 | 一意性制約違反 | Reader/Validator/Generated Validationの責務を明示して拒否。1本に黙って統合した結果を成功にしない |
+| Graphvizの位置や図の装飾だけ変更 | Node/Edgeの意味Identity、向き、多重度、計算規則は不変 | Raw Source/表示の差を保持。解析・索引等の実読Source再評価が必要でも、意味上の生成コードが不変なら下流の無関係な再Buildを省略できるかを調べる |
+| 注釈・説明文だけ変更 | 説明と出典位置の再確認が必要。業務計算の意味は必ずしも変わらない | 文書/Source位置の資格と計算/Artifact資格を分ける。Raw byte変化を無視した「Source不変」宣言はしない |
+| Plugin/Generatorの選択A→B | Ruleが同じでも、実際にどの実装が処理したかが変わる | 選択・Build閉包・実Call・Conformanceを別試行で確認。数値結果の一致では実B使用を証明しない |
+| Source/BindingのA→B→A | 最終byte・表示内容が旧状態へ戻ることがある | 内容の再利用可能性と、過去の意味受理・Provider資格・実Consumer証拠の復活を分離。途中の版と実際の読み込みを追う |
+| 対象集合にRoute/Pluginを追加または除去 | Selectorの選択集合や「不在」を前提とした関係が変わる | 選択対象の導出条件・空集合・負の依存も再評価。旧集合に対する完全性を新集合へ移さない |
+
+ここでの重要な区別は、**Raw Sourceを再読・再解析する必要があるか**、**意味モデルを再受理すべきか**、**生成物を再Buildすべきか**、**旧Artifact/Evidenceを再利用できるか**、**現在のHost/Consumerへ適用できるか**の五つである。たとえばレイアウト変更でも、Builderが元Markdown全体を実消費するなら、その入力が変わった事実は残す。Parserが意味不変を確認したことを根拠に、独立した下流工程を省略できるか判定する。変更ファイルの拡張子や同名Ruleだけで安全なskipを決めない。
+
+## 38. 変更影響の境界を既存Build・Evidenceへ引き渡す
+
+影響調査では「どのNodeへ矢印が届くか」だけでなく、**どの契約に対するどの種類の依存か**を確認する。Source occurrence、意味RoleとTyped Relation、選択Predicate、Plugin/Generator/Toolchain Pin、Target/Variant、実Builderが読んだ入力と実Artifact Member、実Consumerが使用したものをそれぞれ既存の参照で結ぶ。
+
+- **意味上の影響**：Edgeの向き・多重度・Rule・NULL/単位・精度などの変更が、Function/Operationの結果や前提に及ぶ範囲。Graphの見た目は意味依存と混同しない。
+- **構成上の影響**：Providerや公開Facet、Required Trait、選択Predicate、Target能力が変わったために必要な依存集合が増減する範囲。**以前に依存がなかったこと**を示す選択条件も検査対象にする。
+- **物理Buildへの影響**：実消費Source byte、Generator/Builder/Toolchain、Target、Artifact Setの全必要Member。宣言された依存だけでなく実Buildの入力を照合し、不明なら再利用資格をunknownとする。
+- **Evidenceへの影響**：Fixture・独立Expected・測定Environment・Attempt・観測Consumerが変わり、以前の証拠をどの主張へ利用できなくなるか。Artifact byteの一致だけで再受理しない。
+- **現在資格への影響**：Owner意味受理、公開/再公開条件、Host Grant、Provider Trust、Consent、Disclosureが変わり、成果物が同byteでも現在の実行や送出を認められなくなる範囲。
+
+World Fingerprint／Model Revision／Artifact Revisionは用途ごとに保持し、「Sourceが同じ→Artifactが使える→Evidenceも有効→実行許可もある」という連鎖を自動成立させない。とくに#2595のGo `manifest.Source`と実Build入力の食違い、Scriptの検査前後D1→実Read D2→D1というABAは、Source/Buildの境界を検証する既存負例として参照する。検査時点のDigestが一致しても、実実行で読んだbyteが不明なら、再利用・適合の断定を止める。
+
+この範囲は#2595のSource実消費、#2600の増分BuildとEvidence、#943/#2831のBuild Execution/ArtifactSet、#951/#3267の選択Composition、#2514の独立Expectedへ引き渡す。別のChange Graph Storeや第二のImpact Resolverを設けない。実測する再評価の費用も、**Parser・意味解決・生成・外部Builder・Consumer検証**で分け、局所化を主張する場合は省いた工程と増えた管理コストを併記する。
+
+## 39. 実装担当が最初に返す検証票
+
+最初の実装PRは、既存SB-0〜4のうち**一つのReader/Source→意味Rule→生成Go→独立Expected**を動かすことを対象にする。現時点で`*.tei.md`の正式ReaderやGraphの汎用生成器が稼働していると仮定せず、最初に実Repoの入口を確認し、未接続なら`unsupported`と既存Ownerの不足契約を明示する。Headless Referenceの成功と通常`tei` CLIの製品経路も別扱いにする。
+
+| 実装PRで提出する証拠 | 必要な最低内容 |
+| --- | --- |
+| **入力と意味** | Source occurrence/原byte、対応するNode/Edge/Rule、受理済みMeaningの参照または未受理・未対応の明示 |
+| **生成** | 実Generatorが読んだSource/Role、出力したGoのうち意味処理を実装した箇所、手書き/外部Goへの委譲部分 |
+| **差分** | 基準・`e-2`反転・ID重複拒否・レイアウトのみ変更を同Fixture/独立Expectedで比較 |
+| **実Build** | 選択Builder/実子Process、実消費入力/Toolchain、出力Artifactの版・Digest、必要Member |
+| **実使用** | 選択Plugin/Providerと実Call先、通常CLIと独立Consumerの受領、FailureとCurrent Grantの確認可能範囲 |
+| **局所再検証** | 何を再解析し、どの下流だけ再生成・再検査したか。skip理由、unknown、実時間、余計な失効・見落とし |
+
+**段階的な合格表現**を徹底する。Reader/意味候補だけなら「Source対応の限定実証」、生成Goが独立Expectedと一致したなら「意味あるCodegenの局所実証」、通常CLIと実ProviderのCallまで揃えば「製品Entryの限定検証」、Stage1実Processが次StageのBuildを発行し実Consumerまで届いて初めて「該当Targetのセルフビルド」とする。別のHEADや別Attemptの局所成功を足し合わせない。Stage2 Desktop/Windows WebView2は#4583/#2831の正式資格を維持する。
+
+最初の負例は既存SBX-01〜06、PX-23〜29、PX-36/PX-44〜46などを使い、PX-59以降の番号は増やさず、#1180/#2514の該当Independent Expectedへ差分を追加する。**新たなテスト正本・万能Trace Envelope・一律のHard Gateは作らない。**
+
+**状態**：本節は実装担当へ渡す照合条件・測定方針である。生成Go・Provider実呼出し・CLI再入・Studio Stage1→Stage2の新しい実行結果、増分skipの正当性・速度改善、Owner意味受理はまだ主張しない。
