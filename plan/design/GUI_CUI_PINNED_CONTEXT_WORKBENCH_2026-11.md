@@ -879,3 +879,16 @@ P0/P1がPASSしてもP2〜P5をPASSにしない。P2の解消は**現在の正�
 **採否**：専用Pin契約は現HEADでPASS。**PR全体は受入未完了**でありDraftを維持する。embedded bundleの差異は実生成物の入力/byteを比較してOwnerが解消し、健全性確認FAILはログを別途調査する。生成JSを手で修正しない。
 
 **実装の次の一手**：#4515でPin UI配線を行う際、`pin-state.ts`の純粋関数を利用し、`responses.run("pinned-inspection")`のReader結果を`readInspection`で検査した後に限りObservationへ反映する。通常`inspection` laneのEditor/Graphを触らない。これを同一HEADで検証してから#4572/#4579との統合へ進む。
+
+
+## 25. 2026-11-14 PR #4597の健全性失敗を原因別に修正
+
+#4597旧HEAD `247a6ba6579d8feab618419c100a1e16bb1fe65a` の[repository-health #43394212159](https://github.com/hat47x/tei-platform/actions/runs/43394212159) のJob `repository-health`実ログを調査。失敗したのはPin状態遷移テストではなく、追加Workflow `studio-pin-state-contract.yml` がリポジトリの静的Workflow契約に反していたためだった。
+
+具体的な失敗は、`test_every_automatic_workflow_declares_concurrency`（top-level concurrency欠如）、`test_every_checkout_drops_persisted_credentials`（Checkoutの`persist-credentials: false`欠如）、`test_every_workflow_pins_actions_and_bounds_jobs`（ActionsのSHA固定とtimeout等の規約違反）。これらを**同じPR #4597**で修正した。
+
+**修正HEAD `f4f849f63544f514fe05306b934864e3507bed1a`**：`permissions: contents: read`、PR限定cancel付きtop-level concurrency、`ubuntu-24.04`、`timeout-minutes: 10`、Checkout/Setup Nodeの既存規約準拠SHA、`persist-credentials: false`、PR head SHA checkoutを設定。追加の共通CI基盤は作らず、既存のWorkflow設計と同じ規約に揃えた。
+
+**検収の区別**：旧HEADのPin専用CI successは旧HEADの証拠として保持。新HEADのWorkflow修正はコミット済みだが、**新HEADのrepository-health/Pin専用CI再実行は未確認**。再実行の成功を推測してPASSへ昇格させない。独立のembedded bundle不一致は引き続きFAILであり、今回のWorkflow修正では解消していない。
+
+**次のゲート**：新HEADの`repository-health`（静的契約）と`Studio Pin intent state contract`（7件・型検査）を確認し、embedded bundleのSource/生成器/埋込みbyte差分を別Issueで解消する。#4515の実Pin UI・#4572生成Reader・#4579実Desktopは同一HEADで統合試験する。
