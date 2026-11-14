@@ -640,7 +640,7 @@ tei external-candidates
 | **Selection/Review** | Focus（瞬間選択）と固定Pin、read-only Mapping候補 | Session別Focus/Pin、BranchごとのCandidate Review/競合 | 別Session操作による固定対象・未採用Candidateの暗黙置換 |
 | **Acceptance/Delivery** | Owner DecisionとSource patchの明示適用、独立Readback | Ownerによる通常Source変更・Revision/権限再確認、用途別Disclosure | Git push/Server ACK/AI同意を承認・実DB Effectと同義化 |
 
-**R3-Bを実装する場合のClient要求境界**：Browser/Sessionは任意`EvidencePath`や内部CAS/NAS/S3 locatorを渡さず、**Host管理Evidence selector＋外部Node/Relation ID**だけを提示する。Server側の実解決は、その時点の `Workspace/Branch(適用時)/SourceRevision/Reader Attempt/Current Grant/Audience/Disclosure` を改めて照合し、許可済みbyteを固定取得して既存R2のReceive/投影ロジックへ渡す。Branch名やSession IDだけではSecurity Principal/Owner Authorityにならない。Web未実装時は、固定Workspaceの既存MCP read-only ConsumerまたはDesktop Bridgeで第二Consumerを検収できる（#3394/#4503/#2516）。`ReadAt`、Producer申告Revision、受領Pin一致だけで現在Source・適用可能性を認定しない。
+**R3-Bを実装する場合のClient要求境界**：Browser/Sessionは任意`EvidencePath`や内部CAS/NAS/S3 locatorを渡さず、**Host管理Evidence selector＋外部Node/Relation ID**だけを提示する。Server側はRequestごとに信頼済みHost認証文脈から `Principal/Tenant/Workspace/Branch/Current Grant/Audience/Disclosure` を確定し、選択した `Evidence/SourceRevision/Reader Attempt` と照合して許可済みbyteを固定取得し、既存R2のReceive/投影ロジックへ渡す。**Clientが申告するPrincipal・Tenant・Branch・Plugin ID・AI提案はAuthorityではなく、Webの認証失敗をDesktopのローカルno-authへfallbackしない**。Branch名やSession IDだけではSecurity Principal/Owner Authorityにならない。Web未実装時は、固定Workspaceの既存MCP read-only ConsumerまたはDesktop Bridgeで第二Consumerを検収できる（#3394/#4503/#2516）。`ReadAt`、Producer申告Revision、受領Pin一致だけで現在Source・適用可能性を認定しない。
 
 **同時編集・遅延応答におけるClaim Ceiling**：REAの解析Candidateは保存済みSnapshotの観測であって、共同編集中のDirty Bufferを自動解析した結果ではない。保存済Source R10に束縛したCandidateを表示中に、(a)Branch A→B切替、(b)R11への共同保存、(c)Session XのPin保持中にYが別Nodeを編集、(d)元Source R10のA→B→A、(e)Grant/Disclosure失効、(f)R10解析応答が後着した場合、**Pin intentを履歴として保持しても現在Qualificationは別に再確認し、旧Replyを新表示/Source Patchへ採用しない**。旧DOM/ARIA/キャッシュ/AI payloadに非公開Sourceが残る問題はPin単体の成功とは分け、#1124/#4515/#2516の失効条件へ戻す。共同BufferのCRDT/操作ログがあっても、TEI意味単位のPatch（Qualified Ref・Occurrence・Slot・Effect）には通常Revision precondition/Source再取得とOwnerレビューを要求する。
 
@@ -650,6 +650,8 @@ tei external-candidates
 - **WCOL-03**: 同Branch内の二人が同名別IDまたは平行Relationを同時にReview。表示FocusやCRDTの変更順で最後の一件を正式意味へ後勝ち受理しない。多対多・unresolvedとOwner Decisionを保持。
 - **WCOL-04**: Browserが`../`や内部Pathを送る／許可済みSelectorを別Branchで再利用。Hostが入力を拒否し、Error/DOM/ARIA/件数から非公開RootやEvidenceの存在を漏らさない。#3394 SEC-01〜04と#4503 EC-01〜05を再利用。
 - **WCOL-05**: Desktopの同一EvidenceとWebの同一表示JSONが一致するが、ConsumerのSource Scope/Revision/Audience・Delivery Attemptが異なる。表示同値だけで同一Current Grant、旧新Source結合、Owner Meaning/実Effect/全閉包とは判断しない。
+
+**既存試験との照合**：WCOL-01/04は#1824のWeb 2 Workspace×2 Principal×2 Provider／SWP-01/02/07と#2516のPrivate二世界、WCOL-02/03は#1824 SWP-03/05・#4515 PIN-S0・#1124のSource/Grant stale、WCOL-05は#3419異質Consumerと#1163 Evidence Packetへ対応する。**WCOL番号は横断追跡用の参照名であり、別Harnessや第二Expected正本を増設しない**。Web HostのPlugin Inventory≠Workspace Composition≠現在Grantは#1824/#951/#1016/#3421のOwnerが検収する。
 
 **導入段階／Owner**：まずR3-A通常ローカルCLI #4625 のexact-head合否を確定→R3-Bは既存の固定Workspace MCPまたはDesktopで安全な第二Consumer一経路だけを成立→R3-C独立Producer Evidence/別Consumer Invocationを検収→T1-BでSourceに戻るread-only候補レビューを一本通す。その後、Web共同編集への`Branch/Session/Source Snapshot/Pin`資格確認を#1824/#1124/#4515のStudio Ownerで検討する。共同編集のCRDT・Git運用・マルチユーザAuthorityをR3-Bの新必須Provider/新Host/新Policyへ押し込まない。Source Patchは#2497/#2500、Owner Decisionは#267、Current Grantは#2516、Evidence取得は#4503。Web製品実装、共同編集負例、R3-B/C、実Grant/Owner受理は**NOT RUN／NOT ACCEPTED**。
 
