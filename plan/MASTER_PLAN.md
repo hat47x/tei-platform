@@ -160,6 +160,18 @@ Gate C — PAS-04 Evidence — Ready
 
 ### Studio Desktopセルフビルドを最優先にする現行の実証順（2026-11-13）
 
+#### 2026-11-14 第11次更新：最新main追従DesktopとN2→N3 Artifact実受渡しを先行
+
+**現状（exact HEADで独立検証）**：[Windows統合Draft #4587](https://github.com/hat47x/tei-platform/pull/4587) HEAD `efe1de03c23d7e8bd9271e465fc0b8436f9a993c`はmain merge `03679ccd`後の`mergeable=true`。実CI pathに`cmd/tei/**`と`internal/buildintent/**`を含め、CLI/Resolverが変化したらDesktop Windows CIが実行される。**確認時点の12 CIは9 success・3 in_progress**（Windows WebView・Self-build・Healthは未完了）。旧Windows CI #43450255223のPASSを新HEADへ流用しない。[共有CLI Draft #4623](https://github.com/hat47x/tei-platform/pull/4623) HEAD `f1e219a`のBuildIntent→実子pre-start pinは**8/8 success**、[Resolver整合 Draft #4624](https://github.com/hat47x/tei-platform/pull/4624) HEAD `2d403f49`は**5/5 success**。**三つは別HEAD・Draft・未マージ**で、単一Desktop E2E資格ではない。
+
+**新P0順序（既存Issue/Scenario/Build機構の範囲）**：
+1. **P0-1 本統合HEADのWindows CI受入**：#4587のgenerated/ordinary Desktop、実WebView2/Bridge、Health/Self-buildの完了を同一HEADで判定。以前のmain競合は解消済みなので旧競合解消タスクは再要求しない。ただし#4587内N0はWorkflow Caller pin、N1〜N3はWorkflow直接実行であり、正式`BuildIntent`による全工程Buildではない。
+2. **P0-2 Builder/Resolver同一HEAD**：#4623`-bind-resolved-builder`と#4624の宣言/Resolver応答整合拒否を同一HEADへまとめ、Intent→Resolved Plan→実子image/argv→Artifactを一Attemptで正負検証。正しいBuilder Bを選んだのに実子A、またはResolverが宣言と異なるAを返すときは子Call 0/Artifact 0。両PR個別Greenの合算は禁止。Catalog Authority/Meaning/現在Grantは独立。
+3. **P0-3 最初の非Plugin Artifact辺はN2→N3**：実`n2-esbuild-metafile.json`の唯一の`cmd/tei-studio/assets/workbench/main.js`出力Role/digestを、実`go list -tags studio_generated`の`EmbedFiles`選択＋N3 Go build前後のbundle実byteと結ぶ。N2出力A/N3 embed B、同byte長の別bundle、PowerShell Step間変数消失、実行後に古いJSへ差替えを独立Expectedで拒否する。次にN0 Inspector TS→N2選択Source、N3 exe→実Windows配信JSへ拡張。現在の`b1-stage-input-observation.json`等の**既存Evidenceを拡張**し、新独自Manifest/Build Engineを作らない。`tools/reference-build-execution-binding/main.go`の`BuildExecutionPlan/ArtifactMember/ArtifactSet`は参照`package main`であるため製品APIへの直接importは不採用。非Plugin Desktop Targetは既存#1080/#1097担当との薄いAdapterとして設計。
+4. **P0-4 Stage再入と実Consumer**：生成Stage1 TEIの実ProcessがStage2 Windows Desktopを構築した履歴（選択Intent/Builder/実invoker/Output exe）と、**そのStage2実exe**のWindow・WebView2配信JS/Bridgeの消費を別検収。Stage0/CI代理Go buildや旧Windowは不合格。OS Loader TOCTOU、Node/Go外部依存read-time全閉包、Runtime Provider Grantはunknownを維持。
+
+**並行Studio/Web実装**：AI OFFのPin A裏再確認でFocus B/Editor/Graph/Dirty Buffer維持、保存済みCanonical Sourceの明示Build、実Build/Artifact/Consumer Receiptのread-only Preview、旧exeの暗黙置換禁止。Wails Desktopと将来のWeb Serverで同一Operation/Evidenceを使い、UI側のFocus/Pin/Viewer世代とHost Source/Build/Authorityを別寿命とする。X-TEA三要素・SHO/SUI・Plugin Profile/DB・AI Harnessは並行するが、P0セルフビルドへ新Hard Gateを増やさない。具体的File/Role/負例、H0 N0→N2・H1 N2→N3・H2 N3→実Consumerは[Desktop製品契約 Draft #4498 §0.11](https://github.com/hat47x/tei-platform/blob/docs/desktop-product-contract-20261112/plan/design/TEI_DESKTOP_PRODUCT_CONTRACT_2026-11.md)へ一本化。**今回の改訂はDocs-only。新Go/Node/Windows実行・Stage1→Stage2再構築・Owner意味受理/本番統合は実施なし。**
+
 #### 2026-11-14 最新差分：Resolver応答の宣言適合とResolved Builderの実行前束縛
 
 - **実装更新A：選択Plan→実子**。[Draft #4623](https://github.com/hat47x/tei-platform/pull/4623) **exact HEAD `f1e219a25976946bcc8a19ef57f5490333ec8a84`**は、`tei self-build -bind-resolved-builder`を明示したとき、同じTEIプロセスがCaller指定のBuild CatalogとSourceから解決した`ResolvedBuildReceipt.Plan.Builder.ArtifactDigest`を実Child画像の起動前SHA照合へ渡す。Selected B/Actual Aは`SELF_BUILD_BUILDER_SELECTION_MISMATCH`で拒否し、PlanReceiptを保全、ChildRunとArtifactを作らない。**当該HEADの8系統GitHub Actionsはすべてcompleted/success**。ただしCaller指定Catalogの意味/Authority、BuilderのOS Loader実read瞬間、Node/esbuild/Go/Wails多工程とStage1→Stage2は別資格。PRはDraft/未統合。
