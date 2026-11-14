@@ -854,6 +854,35 @@ tei external-candidates
 
 **順序と資格**：①#4625/#4630/#4637の各HEAD・積層差分・Ownerレビュー、②#4661のNative限定導線と二Product Consumer実受領、③一Functionのread-only対応Review・明示的なSource保存、④SHO実Save/Reopen、⑤L/D/Tの独立実測比較、と区切る。#4637 HEAD 9b8f5ca9b50d34040cfa0682f026f4fc29090f01 はRepository Healthを含め**12/12 Workflow completed/success**を再照合した。ただしDraft／main未統合で、R3-C、Current Principal/Grant、Owner Meaning、SHO Writerや旧新実測は未成立。Studio DesktopのStage1→Stage2セルフビルド（#4583/#2831）と通常CLIからの実PG Provider Read（#2586）はREAのHard Gateにしない。新Host/Authority/Parser/Receipt Engineを設けず、既存Operation・Host・Test Ownerを再利用する。
 
+
+<!-- rea-meaning-preservation-question-lifecycle-20261114 -->
+#### 逆解析から業務モデルへ進む際の意味保存と、処理の再構成（2026-11-14／横断計画の追加判断）
+
+**今回確定する設計判断**：REAの役割は、旧システムにある構造・参照・処理候補を、出典と未解決事項を残してTEIの標準データ構造へ渡すところまでとする。正式な業務意味の受理、現在の実行権限、DB更新や通知の成功は、逆解析結果からは確定しない。すでにmainへ統合された[起動・イベント・処理・応答の意味設計](design/PROCESS_LIFECYCLE_TRIGGER_OPERATION_SEMANTICS_2026-11.md)（#4666）へは、まず**観測候補**として接続する。共通Event Loop、TEI独自Host、第二のParser/Registry/Meaning Storeを追加しない。
+
+**関係を保ったまま意味を照合する。** 標準データ構造へのProjectionでは、少なくとも「元のIdentityと参照先／関係の型と向き／多重性／順序／有効時刻・観測時刻／NULL・欠損・未取得／粒度・単位／Source・導出規則・Coverage」を用途別に点検する。すべてを全型の必須Fieldにするのではなく、**元Sourceに存在する意味特性と、問いに必要な特性**を照合する。Propertyが不明なら不明のまま残し、変換で失われる特性はLoss/Diagnosticとして示す。表示専用Occurrence/Edge IDと外部REA Relation ID、TEI正式Qualified Refは別Identityであり、Graphや表の表示が一致しても意味上の同一性を推定しない。Source-backedな投影に新しい説明文や業務Actorを追加する場合は、元出典で確認できた範囲とAI推論部分を分ける。これは標準データ様式・自己記述DSLの共通Semantic Contract（#2497/#4619）を使う**検証対象**であり、REA専用の固定Schemaを採用する決定ではない。
+
+**三要素分析の結び方**：X-TEAの Task→Action→Function→IOTable→Table のような参照連鎖は、元の要素ID・向き・関係種別・出典を保ったまま追跡する。画面上でTask→Dataへ短縮して表示しても、途中のFunction/IOと導出Ruleの出所を失わない。Function-levelのC/R/U/D、Action固有の作用、Business上の手作業・責任・完了条件は異なる。参照線があるだけで、Taskが当該Tableへ書き込む、Actionが成功した、Businessが完了した、という命題へ変換しない。GraphのSemantic Edge／Derived Edge／Presentation Edgeも区別し、編集時の逆写像は**対象Slotと元Source版の一意性**が証明できる範囲だけに許す。曖昧なEdgeや複数候補はread-onlyのReviewを続け、最初の一致先へ自動採用しない（#1124/#1125/#1126/#4487/#2497）。
+
+**起動・実行の二つの異なる観測**：REAのEvidenceを取得するCLI/Studioの一件のReadは、実際に観測可能なTEI側Invocationである。一方、旧コードにあるHTTP Handler、Timer、Event Listener、TaskやState遷移は、まず**旧システムについて推定されたTrigger/Function/Effectの候補**であり、実RuntimeのInvocationではない。受理の際は、①契機と公開Entry、②入力・Guard・State、③Function/Rule、④Provider/外部部品、⑤EffectとOutcome、⑥Response/Recipient、の関係を順に確かめる。Process Lifecycle（ready等）と一件のInvocation成功は別。外部部品は契約/TODO/Mockでシミュレーションできても、実DB Commitや通知配送のReceiptとは区別する。文書や説明文は**受理された業務条件から**規則的に生成し、静的逆解析候補だけから確定した運用手順を作らない（#1158/#4495/#4666/#1125）。
+
+**問いに必要な証拠の量を先に決める。** 「Function FがData Dを参照する」という局所の陽性主張には、当該Source/Relation/Attemptの実受領が支えになる。一方、「Fは他のDataを使わない」「Dは未使用だから消せる」「Businessが完了した」という否定・全称・効果に関する主張には、問い別にRequired SourceとConsumed Source、静的/動的参照、未ロードPlugin、SQL生成、RLS/LIMIT、手作業、外部Effect、部分取得や非開示を照合する必要がある。取得できなかった資料・非公開の参照・Coverageがpartialである範囲は、0件や不存在へ縮約しない。実Providerが返したRowsetの件数・値が一致しても、粒度・JOIN fanout・NULL/欠損・順序・時点・権限の差を見落とさない（#3262/#2586/#4487）。
+
+**使う一巡と生成する一巡の連携**：REA Candidate Reviewは、Studioの「Workspaceを開く→固定Subject/Sourceを観測→Pin→根拠を確認→Preview→明示受理」の**使う一巡**に置く。構造候補の受理前後で、Dirty Buffer、保存済Source、Git/World Revision、Semantic Set、生成Artifact、実際に使われたArtifactを混ぜない。正式採用後に生成を要求する場合も、Builderの選択→実Input→Artifact→Stage1/Stage2→Windows実Consumerを別の資格として評価する。REAが読めたことをDesktopセルフビルドや生成UI実使用の代替証拠にしない（#4583/#2831/#4650/#4651）。
+
+**追加するExpected観点（既存のExpected/Ownerに追記し、新しい試験正本を設けない）**：
+
+| 検証 | 入力・反例 | 必須の判断・既存Owner |
+| --- | --- | --- |
+| **REA-XP-07 関係の意味保存** | 同名異ID、平行有向Edge、逆向き・複数端点、途中Function/IOを省いた短縮線 | 元の関係Chain/Rule/Sourceへ復帰可能。表示線からCUD・Effectを創作しない。#1124/#4487/#2497 |
+| **REA-XP-08 不完全観測と否定命題** | Graph completeだがFunction/Business unsupported、未取得ページ、動的SQL、RLS/LIMIT、手作業 | Required(Q)の閉包を満たさなければ「不存在・未使用・削除可」にしない。#3262/#3394/#2586 |
+| **REA-XP-09 旧Triggerと実Invocation** | 静的Handler発見、Timer未配備、Mock成功、Commit後通知ACK不明、受付済みで実処理未実行 | 観測候補・Trigger宣言・実Invoker・Effect・Outcome/Deliveryを別証拠とする。#1158/#4495/#4666 |
+| **REA-XP-10 編集・生成の版境界** | 同一表示に別Source、A→B→A、Graph描画Edge→意味編集、Pin A再確認中の閲覧B、生成と実使用Artifact不一致 | Slot/Source版/Ownerが一意でない編集を拒否。別対象のDirty Bufferを変更せず、生成・実使用は別Receipt。#4515/#2497/#4583 |
+
+**実装順序の再整理**：R3-A/BのDraft別HEAD技術合格と既存Parser/Hostの統合を先に整え、#4661でCLIとNative Studioの実Consumer受領を確かめる。REA-XP-07/08のHeadless意味保存・Source closure負例は**R3-Cと並行して**準備できるが、その成功を正式Meaning受理へ昇格しない。続いて「旧Function一件が参照するData」を問うReviewで、元Task/Action/Function/IO/TableのChainとTEI三要素対応を照合し、Ownerの明示選択後のみ通常Sourceへ反映する。その後にSHO実Save/ReopenおよびL（Legacy実測）/D（Owner期待）/T（Target実測）を独立に比較する。Studioの非Plugin Stage1→Stage2実Windowsセルフビルドと通常tei CLI→実Provider→Function Context→独立Consumerは引き続き**製品P0**であり、REA R3や三要素の全面整備をHard Gateへ加えない。
+
+**この節の資格**：既存の各設計・実装・CIの確認から得た計画上の判断であり、REA-XP-07〜10、旧Targetの実Trigger、Native第二Consumer、Owner Meaning、旧新Function同値を新たに実行したものではない。主計画Draftはmain未統合のままレビューする。
+
 **検討中の横断追補（DBアクセス・Query/2way SQL）**：対象DataSourceの既存Binding解決、DB別Native SQLの選択規約、SQL編集時の診断と分岐検証、異種DBでの意味同値性を、[DBアクセス・Query選択・2way SQLの最小適合計画](https://github.com/hat47x/tei-platform/issues/2622#issuecomment-6772875802)で小さな実証へ分解する。#2611・#2622・#2387・#2667に既存の責務を残し、新しいCore API・正式DSL構文・実DB対応の採用・完了を意味しない。
 **2026-11-09／Product Queryの物理入力乖離を解消（独立Source Fixture段階）**：[Workbench設計§22](design/DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)と[隔離PG Product Fixture](../examples/data-source-workbench/README.md)に、既存`postgres_seed.sql`の`sales_order`4列と、実`order_entry.recent_orders` SQLが要求する`public.orders`5列＋`:from`の**物理Schema不一致**を反映した。従来F-01〜10を壊さず、専用`recent_orders_product_seed.sql`を別Sourceとして追加し、3行／境界一致2行／後方0行の独立Source-static ExpectedをGoで判別する。**これは実PostgreSQL接続・Provider Invoke成功ではない**。最初の未成立実行辺は、固定Function/Queryの実Consumed SQL+args→Alias/物理Instance/Provider→実Rowset/Function Data Context。Ownerは#2586、実ProductのCLI/Studioは#1251、Schema適用は#2892。main #3540の静的Inspector S2-referenceは実CLI/Wails経路まで前進したが、外部Plugin Build/Grant/2×2実BOMを証明せず、異質JSONLは後続比較とする。新Gate/Host/Query正本なし。
 
