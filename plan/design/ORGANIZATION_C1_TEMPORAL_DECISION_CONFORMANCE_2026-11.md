@@ -1171,3 +1171,68 @@ Mermaid、Graphviz、Markdown表、SQLは標準Meaningの用途別表現であ�
 OIは**この補遺の作業順索引**であり、ORG-BEH/CX、既存Scenario/Expected、IssueのOwnerを置き換える正式な新IDではない。最初の実装PRは**OI-1の小さな正負試験**を優先するが、Owner選択前のCase→Person経路を仮に受理したふりはしない。必要なら公開合成Sourceだけを使う純粋Rule Fixtureとして切り出し、Productの実Org Provider受入と区別する。
 
 **停止条件**：人物とAccount/Principalの黙示同定、r7とC1の仮結合、完全性のない候補否定、所属からCase責任やTenant Grantの自動導出、hidden Edgeの破壊、歴史からCurrent Grantの継承、plugin文書を第二Authorityにすること、未実装CLIのSkill例示、WailsをCLIの必須依存にすること、Go Wrapper-onlyをセルフビルド完了とすること。この§25は**docs-only**であり、追加のGo/DB/CLI/Plugin/Host/WindowsのProduct Run、Owner Meaning Acceptanceは未実施である。
+
+
+## 26. OI-1の最小実装契約：RoleAssignmentとResponsibilityから候補集合を実評価する（2026-11-14）
+
+> **位置付け：実装担当へ渡す受入仕様。現時点では新コード・実試験・Owner受理なし。** §25の「OI-1を最初の小PRにする」は、#4490が先行指定している**ORG-BEH-01/02（二時点の結果差分・非出力依存と取得完全性）**を上書きしない。OI-1は独立Syntheticの純粋Rule評価を並行試作できるが、実Providerを用いるProduct候補解決の正式受入はBEH-01/02相当の必要Read・Coverage証拠が揃ってから行う。一般製品P0（#2586/#2831）へ新Hard Gateを設けない。
+
+### 26.1 実Sourceにあるものと、まだないもの
+
+現行mainの `reference/org-staged-axis/semantic/organization-axes/model.tei` には、`RoleAssignment(roleAssignmentId,personId,roleId)` と `Responsibility(responsibilityId,subjectPersonId,objectOrgUnitId)` が、Person/Role/OrgUnitへの型付きRelationとともにある。一方、このSourceには「どのRoleがどのDuty/Caseの承認者か」「複数候補の選任手順」「C1→Responsibility」や、Case C1の正式な取扱/権限Ruleが入っていない。現行 `internal/operations/org_staged_approval_candidate_test.go` の `TestOrgStagedApprovalCandidateSeparation` は、これらのDataが存在し、それだけでCapability/EffectRule/RunPlanやHost権限が出ないことを実際に検査するが、**候補の実Rule評価や候補集合の完全性は検査していない**。
+
+したがって第一の試験は「C1を承認できる人物の決定」ではなく、**明示的に与えた合成条件（対象OrgUnitと要求Role）を満たすPerson候補を、実際に取得した関係の突合で求める**read-only試験に限定する。条件はテストFixtureにおける候補Ruleであり、一般の業務で『部門責任者＝承認者』と正式採用されたことを示さない。C1の取扱・承認が必要になれば#2386の意味OwnerがCase→責任/職位/役割の参照Pathと業務判断規則を受理する。
+
+### 26.2 純粋候補解決の入出力と検収境界
+
+**入力（既存Data/Queryから組み立てるテスト用Projection、製品新APIではない）**：
+- 要求Scope：OrgUnit D1、要求Role R1（**合成値**）、参照すべきPerson・RoleAssignment・ResponsibilityのSource/Relation、必要に応じたvalidAt/knownAt。現SourceのRoleAssignment/Responsibilityに二時点フィールドがないなら、最初は**時点を偽装せず単一確定Snapshot**として検査する。
+- 対象Read Set：少なくとも対応するRoleAssignmentのpersonId/roleId、ResponsibilityのsubjectPersonId/objectOrgUnitIdと各Occurrence ID、Person同定用のKey、Required Scope/Filter/Joinと欠測/非出力依存。複数Provider/非同一Read Cohortでは一体の完全取得を仮定しない。
+- Provenance：Source位置・World/Meaning/Rule版、実Readerのidentity、実際に読んだRelation Occurrence、必要時のphysical mapping、Read Scope/Cohort/Completeness。テスト用Mapを合成Readerへ渡したときは「synthetic/reference」と表示し、実DB資格へ昇格しない。
+
+**出力**：Candidate Person集合（重複除去単位はPerson ID）、各候補を支えるRoleAssignment/Responsibilityの**独立したOccurrence/Path集合**、完全性の判定根拠、候補を決められない場合の不足・衝突理由、適用したRule版。集合の分類は既存§23のcomplete-none/one/many/incomplete-or-unknownを**用途別表示**として再利用する。新しい標準CandidateResultや認可エンジンを追加しない。
+
+**意味上の候補条件（合成Rule）**：同じPersonに対し、RoleAssignmentのroleId=R1と、ResponsibilityのobjectOrgUnitId=D1が**独立に確認できる**こと。RoleAssignmentとResponsibilityを同じOccurrenceとみなさない。Person同定や複数Sourceの結合が未確定ならCandidateはunresolvedとする。共同承認/単独決裁/自己承認は別のBusiness RuleとHost資格に残す。
+
+### 26.3 手書き独立Expectedへ引き渡す最小正負表
+
+この表は**新しいExpected Storeではなく、既存#4490 ORG-BEH-04／#1180/#2514に追記するケース仕様**である。実Readerの戻り値から期待値を自動生成しない。対象PersonとRole/責任関係は合成Fixture専用で、r7のP2とCase C1を無断で結合しない。
+
+| 対照 | 入力の差 | 独立Expected | 失敗させる実装 |
+| --- | --- | --- | --- |
+| **CR-00** | D1,R1に一致する関係なし。必要Readすべてcomplete | complete-none。0件である根拠Scope/Read Setを持つ | 0行だけでcompleteを確定 |
+| **CR-01** | P1にR1の割当とD1へのResponsibility各1件、read complete | complete-one、P1、2つの独立Relation Occurrenceの根拠を返す | ID一致・Source/Ruleなしで候補表示 |
+| **CR-02** | P2にもR1割当とD1へのResponsibilityを追加、read complete | complete-many、P1/P2、合議や一人選択は未決定 | 最初の1行だけを唯一候補とする |
+| **CR-03** | 実際に可視の行はCR-01と同じだが、RLS/Limit/欠測等で必要Readがpartial/unestablished | incomplete-or-unknown、表示可能なP1を保持しても唯一とは判断しない | visible P1一件をcomplete-one、visible 0行をcomplete-noneとする |
+| **CR-04** | P1へ異なるRoleAssignment/Responsibility Pathを二経路追加 | CandidateはP1一人。根拠Path/Occurrenceは複数保持 | JOIN行数で人物を二重計上、Pathを消去 |
+| **CR-05** | RoleAssignmentのPerson LinkまたはResponsibilityの対象Unitが未解決 | unresolved、欠ける出典とRequired Readを提示 | 同名Person/Unitに黙示join、別Providerを無言選択 |
+| **CR-06** | CR-01のCandidate P1は維持。別Hostの実行Grantが期限切れ／不存在 | Candidateのread-only結果は変えず、実Actionは資格なしとして停止 | Candidateがあるので承認実行も許可 |
+| **CR-07** | Case C1への受理済Relation/Ruleなし | C1の承認者は未確定。D1向け合成候補と区別 | D1のPerson候補をC1承認者と宣言 |
+| **CR-08** | Source上に時点条件を定義していないのに、validAt/knownAtだけ渡す | as-ofの完全解決を主張せず、unsupported/unknownを提示 | 暗黙の現在値を歴史時点結果として表示 |
+
+**変異・対照の最小単位**：CR-01→02では候補集合が1→2、CR-01→03では**可視行が同じでも結論資格だけがone→unknown**、CR-01→04ではPathは増えるがdistinct Personは1、CR-01→06ではCandidateは同じだが実行資格だけが異なる。これは元データの正常例の再列挙ではなく、誤った実装と正しい実装を分けるための独立Expected設計である。
+
+### 26.4 実装PRは「実機構の呼出し」をテストで証明する
+
+既存 `TestOrgStagedApprovalCandidateSeparation` は維持する。追加する小PRでは、既存Data/Relation Reader・Query・Rule/Functionへの**実到達**を調べ、対応する実機構がないなら「新Rule Engineを仮作成する」前にFit/Gapへ戻す。無関係なGo配列だけでCR-00〜04を計算するreference oracleは**独立Expected検証に限定**し、TEI製品の候補解決とは呼ばない。実実装が接続できたら、同じExpectedを製品Reader/Ruleへ向けて実行する。
+
+- テストはSource/Reader/Ruleの参照・Filter・Join（Person ID/Occurrence ID）、必須Read/非出力依存、complete/partial、CandidateとProvenanceのObservedをassertし、未使いの`analysis`変数や単なる`SELECT 1`を実Analyzer成功に数えない。
+- CR-00/03の0件・唯一性には**必要Read集合が完全**といえる独立根拠を要する。Providerからその根拠が来ない場合は、completeケースのfixture結果を合成として扱い、実Provider Product合格を止める。
+- 失敗時は、Ruleの適用不可、Person/Unit関係欠落、Provider未取得/partial、Current Grantの拒否、Host Effect unknownを別の原因として返す。認証PrincipalとPersonの対応もOwnerの明示Bindingなしに補完しない。
+- 実Runの固定HEAD、テスト名、実際に通ったReader/Rule/Query/API、Independent ExpectedとObserved、Source/Provider/Read Cohort、skip有無を記録する。Source/World/Rule/Plugin版が変われば必要ReadやRuleの依存閉包について再資格化する。
+
+### 26.5 他チャットの最新成果との役割分担
+
+- **Application Graph**：[main統合済み #4681](https://github.com/hat47x/tei-platform/pull/4681)のApp/Route/Entry/Function/Provider/Artifact Graphを、候補Query/Ruleのナビゲーションと出典説明にのみ利用する。Graph完成を実Reader/Host Effectに昇格しない。
+- **Plugin文書**：[main統合済み #4681](https://github.com/hat47x/tei-platform/pull/4681)と[#4679](https://github.com/hat47x/tei-platform/issues/4679)、[後継Draft #4689](https://github.com/hat47x/tei-platform/pull/4689)の公開Facet・契約版・上位Doc・短いSkillを、CR-01の根拠Relation/Ruleの説明に接続する。ただし文書を第二の判断Ruleや認可正本にしない。Draft #4678の同名設計を再追加しない。
+- **CLIとDesktopの配置**：[Script Launch Draft #4688](https://github.com/hat47x/tei-platform/pull/4688)と[共通Backend Draft #4690](https://github.com/hat47x/tei-platform/pull/4690)に従い、通常CLIのin-process経路をWails非依存に保ち、Desktopは子Server/IPCを基本構成候補とする。同じSource/Rule/Actual Readerの観測を使うが、Pluginの実LoadとHost権限はプロセスごとに再確認する。後者の実IPCはまだ製品検証されていない。
+- **TEI-native生成**：[main統合 #4676/#4680](https://github.com/hat47x/tei-platform/pull/4680)の独立Graph Fixture・実生成Go・CLI Actual Callで標準のGraph/Rule能力を先に実証し、組織候補Ruleへ再利用する。Go関数で全部計算してTEIはDelegateだけの場合は自己生成の実装率へ算入しない。
+
+### 26.6 実装順の再調整と停止線
+
+1. **A：BEH-01/02** — #4490の既存順序を維持し、時点・非出力依存・必要Readの取得と完全性を先に実検査。ここで実Providerが未接続なら実Product候補の資格も未達のままとする。
+2. **B：OI-1/BEH-04のread-only最小実験** — CR-00/01/02/03を同じSource/Rule版で切替え、Source→実Reader→Rule→Candidateを実行。まずReference、必要Readの実Providerが接続された段階で同じExpectedをProductへ移植する。
+3. **C：Identity/Pathと判断の負例** — CR-04/05/07/08、C1正式意味・異時点の不足を別Ownerへ戻す。候補RuleのReference成功をC1 Case承認の採用にしない。
+4. **D：実行・複数Consumer** — CR-06とCase Handoffは#1174/#2499/#1444の実Host/Receipt/ACKが揃う段階へ引き渡す。CLI／Studio／Skill経路はSource/Read/Plugin版を照合するが、各受領を別実測する。
+
+**停止線**：Sourceにない承認Rule・Case関係を捏造、RoleAssignmentだけからGrantを発行、partialをnone/oneへ縮約、Record Version・Relation Occurrenceと表示Edgeを混同、同名Personの自動同定、新Core/Workflow/Authorization/Plugin文書Registry/第二Expectedを追加、または本節のDocs PASSを実Product/Owner受理へ昇格すること。この節自体は文書・引渡し計画のみで新しい実試験はNOT RUN。
