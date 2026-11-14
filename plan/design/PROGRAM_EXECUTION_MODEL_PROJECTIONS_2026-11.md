@@ -697,6 +697,8 @@ World Fingerprint／Model Revision／Artifact Revisionは用途ごとに保持�
 
 **同一生成Binaryの入力別実使用**：固定した6件のGraph/Rule候補を利用したReference生成Goでは、初期の全Node出力に加えて、Callerから指定したNode IDについて出辺／入辺の計算結果を返す。同じ生成Binaryに7通りの入力を与え、実Outputと未知・明示空Nodeの拒否、Binary SHA-256の不変を確認することを**限定したRuntime Call Witness**として扱う。ただし、これを既存TEIのFunction Entry/Provider実呼出しやCLI・Studio二Consumerの成立証拠には使わない。業務意味の受理、Source選択、実Artifactの配備、Hostが選択したProviderとのIdentity照合は引き続き別の実装・受入である。固定出力を書き出すだけのReferenceと、入力に応じた生成ロジックが動くReferenceは区別するが、Referenceの出力が正しくても製品資格は昇格しない。
 
+**Source Indexの既存機能へ接続する最小の証拠**：Graph／Rule限定ReaderのNode・Edge・Rule候補を、既存`sourceindex.NewArtifact`の元Source fingerprintと`RangeFromOffsets`のbyte位置へ照合し、元Sourceの説明だけを変えた場合にも古いArtifactの検証を拒否するGo回帰を追加した。これは正式なSource Indexへの意味Reference登録やLanguage Plugin選択、実Build消費を意味しない。`*.tei.md`の物理形式判定が`md`であっても、Parser／Meaningを自動選択しない。製品接合の次の一手は、**選択されたSource Reader→実Loader→元byteと型付きRole→受理済みMeaning**の順に各境界を証明し、Graph/Ruleの参照生成結果を業務意味として自動昇格させないこと。詳細は[Go回帰と資格境界](../../reference/tei-md-graph-reader/README.md)を参照する。
+
 **段階的な合格表現**を徹底する。Reader/意味候補だけなら「Source対応の限定実証」、生成Goが独立Expectedと一致したなら「意味あるCodegenの局所実証」、通常CLIと実ProviderのCallまで揃えば「製品Entryの限定検証」、Stage1実Processが次StageのBuildを発行し実Consumerまで届いて初めて「該当Targetのセルフビルド」とする。別のHEADや別Attemptの局所成功を足し合わせない。Stage2 Desktop/Windows WebView2は#4583/#2831の正式資格を維持する。
 
 最初の負例は既存SBX-01〜06、PX-23〜29、PX-36/PX-44〜46などを使い、PX-59以降の番号は増やさず、#1180/#2514の該当Independent Expectedへ差分を追加する。**新たなテスト正本・万能Trace Envelope・一律のHard Gateは作らない。**
