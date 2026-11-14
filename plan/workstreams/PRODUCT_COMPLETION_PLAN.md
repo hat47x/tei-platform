@@ -660,6 +660,68 @@ S0〜S3は**B2Cプラグイン内の成熟度の記録**であり、TEI Studio D
 
 **優先度**：AG0/AG1の小さなread-only研究・局所実装は既存作業と並走可。ただし全体製品P0はStudio Desktop Stage1→Stage2実Windowsセルフビルド（#2831/#4583）、並行P0は通常TEI製品入口→実Provider→同一Contextの独立二Consumer（#2586）のまま。AG2〜AG5をこれらの先行Hard Dependencyとしない。**本節は設計・計画の提案で、Graph基盤製品化・実Generator/Browser/Provider試験・Owner意味受理は NOT RUN / NOT ACCEPTED**。
 
+
+### G49深化：構造Graphの最小実装契約・構成解決・差分更新（2026年11月14日）
+
+**前回計画AG0〜AG5を具体的な実装判断へ進める**。main統合済みの[Program Execution Model §28〜32](https://github.com/hat47x/tei-platform/blob/main/plan/design/PROGRAM_EXECUTION_MODEL_PROJECTIONS_2026-11.md)にはApplication/Process Graph、横断Hook、CLI/Studio/AI Pinが既に整理されているため、ここでは重複する「全体Graphの理想像」ではなく、現行Goの実在する型とのFit/Gap、最初のread-onlyの契約、Selection変更時の増分更新、Targetへの渡し方を固定する。#1120の共通型付き参照契約はClosed/限定完了、#2620の意味Role/自己記述、#4198のLifecycle Graph Generator、#4679のPlugin共通文書契約は採用・実Target適格性が異なる。各Issueが持つ判断をこのG49で代行しない。
+
+#### 1. 正本は入力Source、Graphは用途相対の構造索引、選択後のEffective Planは別成果
+
+**Authoritative Source / accepted Meaning → qualified Structure Slice → selection/binding → selected Composition（Effective Plan）→ Target Lowering / Build → observed Consumer**を、一個のGraph Entityや状態フラグに畳まない。複数の形式（Markdown、DSL、図表、依存Plugin公開Facet、Native Frontendのbuild manifest等）から同じSubject/Relationへの対応を候補化できるが、外部Buildから取得したRoute列挙やAI推定は、元のTEI意味受理を代行しない。ProjectやWorkspace全体の完全索引が未構築でも、一つのFunction、Route、Plugin、Targetに限定したSliceだけを操作できる。
+
+**現行コードに基づく実在Gap**：mainの [internal/modelref/model.go](https://github.com/hat47x/tei-platform/blob/main/internal/modelref/model.go) にある候補Graphは、Node Key（Scope/Subject）、Ref、Evidence、Node、Edge（From/To/Relation/Evidence）、ResolverとRelation Ruleを持つ。一方、このEdge型自体には**独立した永続Edge ID、関係occurrence ID、Hook phase、時間・多重性・開示境界**が無く、Scope/Subject・同端点/同Relationの並行辺をGraph→Tree→GraphやPlugin合成で安全に同定できる保証はない。これは既存の全てのTEIのRelation実装が欠けているという意味ではなく、**この具体的な共通Graph候補をApp全体の正本と見なすのは早い**というFit/Gapである。#1120で成立済みのtyped identityを再利用し、まずSource由来のRelation occurrenceをread-only側で別参照として保持できるか確かめる。元Sourceが安定Relation IDを持たない場合の派生一時IDはsnapshot内専用とし、Source書戻しやPlugin公開ABIの安定識別子と偽らない。Core Edgeへの追加は負例が再現した後に既存Ownerで判断する。
+
+#### 2. 最小のread-only Structure Slice（正式な公開Schemaではない）
+
+一つの対象固定・読み取り応答に次を対応付けられるか検証する。巨大な共通EnvelopeやGraph Storageを新設する要求ではなく、既存API/GraphのRole/Factsとして既に取得できるものを対照する。
+
+| 属性群 | 明確にしたい事実 |
+| --- | --- |
+| **問合せ境界** | Workspace、root Subject/Scope、Source/Meaning Revision、Composition Profile/選択Plugin Lock、Target、Graph種別、Selection epoch |
+| **構造** | 型付きNode（stable Subject Ref）、Edge（関係種別・向き・多重性・可能なとき個別Relation occurrence Ref）、Owner、Source location、公開されたPlugin Facet Ref |
+| **可視性と完全性** | 選んだUniverse/required Roots、loaded/parsed/qualified/visibleの区別、complete/partial/unknown/unsupported、動的参照、未選択Plugin、閲覧不可の範囲 |
+| **根拠の種類** | Source宣言、解決済みMeaning、静的導出、外部Manifest/実観測、AI Candidate。互いに自動昇格しない |
+| **実効構成と行先** | 別票のSelector式・matched/excluded/undetermined集合、Contract/Provider/Hook/Target能力、生成Plan/Artifactと独立Consumer Evidence |
+
+個別の非公開Node/Source path/件数/hashを、部分取得や権限拒否の診断として漏らさない。Dependencyが未観測のとき「対象ゼロ」や「影響なし」にせず、問合せ条件から要求される閉包と既知の不足を表示する。動的Routeについては、TEI定義によるdeclared Route、独自Web Frameworkのexport manifestによるobserved build Route、実Browserで到達できたRoute、現在のHost/公開権限で見えるRouteを**異なる集合**とする。Native H0が選択されていればGraph取得・TEI JSをRuntimeの必須条件にしない。
+
+#### 3. Selectorを小さな制限付き関係問合せとして始める
+
+初回は「型/Role条件による絞込み」「特定の型付き包含/参照Edgeを限定深さでたどる」「明示除外」「Target/Environment/Profileの判定」「可視Scopeとの積」だけを扱う。例は「Site S配下の公開Page、ただしCheckout/Privateの意味Roleを持つPageを除外」。これを**Source文字列のパスglobや自然言語ラベルだけ**へ落とさない。汎用のGraph Query言語、任意関数実行、閉包を終端なく探索する再帰条件は初回不要。選択に関与するNode・Edge・Universeの資格を記録し、未列挙部分はundeterminedとして残す。
+
+重要な負例は**現在は対象外でも、将来対象になり得る要素**を変えた場合である。「全公開Page」へのSelectorは、現在選ばれている三Pageだけでなく、Page registry/Route source/公開属性にも依存する。非公開Routeが公開Routeに変更された、または新規公開Routeが追加されたときに、旧Matched集合だけを逆引きして再生成対象なしと誤判断しない。この**非一致要素を含むUniverse/Selector依存**を既存#2582/#2600の変更影響へ渡し、かつ無関係Plugin追加では不必要に全アプリを失効させない。Source A→B→A、Partial→Complete、Plugin公開Facet削除、旧Build Cacheと現在Grantの相違を別々に扱う。
+
+#### 4. Graph Patchを無制限の構造改変にしない
+
+横断的な拡張は、公開済みSlotに対する**型付きBindingの追加・取消・条件付適用**を先行の変換単位とする。実FunctionのControl Flowを任意に付け替えるGraph editは、必要なSource変更・意味受理・Guard/Effect fenceを別検証してから行う。Overlayにより親Pluginの受理済みMeaningを書換えず、親が明示公開したFacetだけ合成する。#4679のPlugin Documentation Surfaceから公開Slotの目的、入力、対応Target、禁則、文書/図の参照を探索できるが、説明文書が新しいContract/Grant/Authorityを発行することはない。
+
+**適用順は既存Compositionの入力として明示**する。Model/Structureの解決→Selector評価→必須Obligation/Hook位相の検証→既存ResolverでProviderを選択→Target Lowering→Build→実Host/Browser観測。これは独立Aspect Weaver/Runnerの実行順を定義するものではない。任意AnalyticsはTargetの未対応Slotならunsupported/適用除外として扱えるが、必須認可・監査・Effect Guardは「任意Hook不在と同じ失敗処理」にしてはならない。データ送出、Consent/Disclosure、業務CommitとReceiptをGraphの単なる接続から実行済みにしない。
+
+#### 5. CLI・Desktop・Serverへの実装境界（他チャットの最新構成と照合）
+
+基盤の**Source/Role/Graph Selector/Composition/DiagnosticはWails非依存の共通Go Backend/Application API**に置き、CLI・Desktop・Harnessから同じ型付き読取り操作を利用する。最新の構成検討では、DesktopはWailsがローカルBackendを子プロセス起動してIPCで接続し、CLIは（a）単発ローカル、（b）必要なPlugin隔離時に同一Backendの短命子プロセス、（c）明示Remote利用の三形態を想定している。ただし現行のStudio Windows実証には旧Wails同一プロセス構成の限定成功もあり、**child Server構成は最新の設計意図であって、現在の製品実装済み事実ではない**。移行をAG0の先行条件にしない。
+
+CLIからGraph Sliceを得る時点で、Wails Moduleを import しない。子プロセス/Remoteの場合は既存共通OperationをTransport/Session/Workspace/Source Revision/Composition Lock/公開Scopeで束縛し、Graph結果の版と部分取得状態を一致させる。RemoteはServer側の現在のPlugin/Grant/Sourceが正本であり、CLIが持つ前回SelectionやローカルPlugin名で再束縛しない。Plugin解決や文書探索のためにGraph専用の常駐Server/第二Resolverを作らない。外部.NET/Java Hostは生成されたContract/Adapterを利用でき、TEI独自Server/Browser JSは必須でない。実際の同値性と起動寿命・IPC断線/Remote権限は後段の独立実試験とする。
+
+#### 6. 最初の縦断実装は三つの対照だけ
+
+| 小さな対照 | 入力・選択・生成 | 不合格の判別 |
+| --- | --- | --- |
+| **AG-F1：関係Identity** | 一Functionと一Route・一Pluginを固定し、同名Nodeと同端点の多重有向EdgeをSource→read-only Graph→CLI表/Graphへ投影 | 表示では一本に統合、Sourceへの逆参照が曖昧、Graphの一時IDを永続Relation IDとして使用 |
+| **AG-F2：Selectorと差分更新** | Siteに公開Page3件・非公開2件、さらに動的/未ロード1件。公開Pageが一つ追加、Plugin A公開Facetが一部縮小 | old matched集合のみ再評価して新Page適用漏れ、unknownをcomplete扱い、秘密件数をDiagnosticへ漏出、無関係Pluginまで全再Build |
+| **AG-F3：既存Builderへつなぐ** | 選択済み一Target/一任意Hookに対し、同じSourceからGraph Selectorなしの手動設定とGraph Selector経由のAdapterを生成・比較。Native H0も対照にする | Scriptの存在のみで実発火/Provider受理を宣言、H0にTEI Runtimeを混入、Graphの変更で手書きGo委譲だけが増加、生成Planと実消費Artifact不一致 |
+
+AG-F1/2はまずread-onlyのHeadless CLI/JSON/Fixture。AG-F3で、**グラフを導入しない最小の対象列挙・設定方式とも同条件比較**し、初期実装費・差分検知・漏れ/重複診断・追加DSL量・ビルド時間・Artifact差分を測る。グラフ方式が小例で追加の安全性・再利用性を示せず、ほとんどを手書きで指定するなら正式基盤化を急がず見直す。正式Scenarioは既存#1180/#2514へ返し、第二のテストOwner/Hard Gateを増やさない。
+
+#### 7. 開発の優先順位と統合注意
+
+- **P0の維持**：#2831/#4583のStudio Stage1→Stage2実Build/Windows WebView2と、#2586/#4495の通常TEI製品入口→実Provider→同一Contextの二Consumer。#4541/#4619は現時点でmainへ統合済みだが、その統合成果をGraph基盤の完成へ流用しない。
+- **P1・低依存**：AG-F1（実Source/Edgeの事実）とAG-F2（Selector/Universe）を既存#1120/#2620/#4198/#2497・#4518/#2582へFit/Gapとして引渡す。新Graph型の公開や新DSL導入より先に、現行Go型でどこが不足するかを再現する。
+- **P2**：AG-F3が実Builderの単一Targetで成立した後に、#3509のAX-01〜08/B2C Plug-inへの適用を拡大。#4679 Plugin説明/上位文書をGraph Inspectの参照面として接続し、CLI/Studio/AIを同じContextで比較する。
+- **main統合時の注意**：この変更は既存Draft PR #4604のBranch内の計画であり、先行してmainへ統合された#4619/#4541およびProgram Execution Model §28〜32の変更と**mainとの差分を再照合したうえで**、重複節や古い優先順位を整理する。並行レーンの作業をこのBranchから無断で置き換えない。
+
+**証拠上限**：今回の実コード確認は静的な型/計画のFit/Gap、GitHub計画の更新のみ。AG-F1〜3の新Go/CLI/Builder/Browser/IPC/Windows/Remote/実Provider試験、正式Graph Schema/DSL/Hook採用、Owner意味受理は **NOT RUN / NOT ACCEPTED**。
+
 ### G49追補：アプリケーショングラフに対する横断的拡張（2026年11月14日）
 
 **目的**：B2C/一般Webで必要となるアクセス解析・広告・RUM/障害監視・監査・共通セキュリティなどを、全Page/Route/Operationに同じコードを繰り返すのではなく、**型付きアプリケーション/プロセスGraphを対象に選択規則と拡張点を宣言**する方式で扱う。従来AOPの動的Proxy/メソッド横取りを前提とせず、既存[#4198](https://github.com/hat47x/tei-platform/issues/4198) Lifecycle Graph、[#3503](https://github.com/hat47x/tei-platform/issues/3503) Interaction、[#3278](https://github.com/hat47x/tei-platform/issues/3278) Trait/Hook Slot、[#951](https://github.com/hat47x/tei-platform/issues/951) Contract/Provider、[#2090](https://github.com/hat47x/tei-platform/issues/2090)生成拡張点、[#1121](https://github.com/hat47x/tei-platform/issues/1121) Target Loweringで表現できる範囲を先に検査する。
