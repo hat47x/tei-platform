@@ -2,6 +2,16 @@ import { inspectEligibility, readInspection } from "./presentation.ts";
 import type { Catalog } from "./presentation.ts";
 import type { PinRequest } from "./pin-state.ts";
 
+/** Conservative identity for a pinned Catalog snapshot.
+ * Matching fingerprints do not grant access or prove Source/Root authority.
+ */
+export function catalogIdentity(catalog: Catalog | null): string | null {
+  if (!catalog) return null;
+  return JSON.stringify([
+    catalog.modelRevision, catalog.worldFingerprint, catalog.sourceIndexFingerprint,
+  ]);
+}
+
 /** The same read-only Product operation used by the selected Inspector. */
 type Reply =
   | { ok: true; value: unknown }
