@@ -152,3 +152,111 @@ Target適合表では、Java/.NETの常駐Web Service、Go/Wails Desktop、単�
 - **#4583/#2831**：Source→Build Intent→Builder実行→Artifact→Stage2 Desktop→実Windows Consumerの現在の最優先経路を維持する。図解構想を理由にセルフビルドへ別Runtimeを追加しない。
 
 この設計案の統合は実装や採用の完了ではない。次の判断は、#4198 R0のread-only実証と#4495/#4583の独立した製品検収で得られる不足点を見て、既存Ownerが行う。
+
+## 10. 定義・実効計画・実行記録・図面を区別する
+
+前節までの「共通Graph」は、一つの巨大な実行フローをすべての画面で共有する意味ではない。少なくとも、次の四つを別の投影として扱う。
+
+| 区分 | 何を表すか | 変更と合格の判断 |
+| --- | --- | --- |
+| 意味の定義（Definition） | Sourceに記述され受理されたFunction、Entry、条件、状態、Event、必要CapabilityやEffectの契約 | Accepted Meaning、Source/Operator/Role revisionが基準。未受理の解析結果はCandidate |
+| 構成済み実行計画（Effective Plan） | 選択済みPlugin、Provider、Target、追加Guard/Hook、実行順制約と実装上のObligation | 対象と選択規則を固定した導出物。生成できても実際のロードや呼出しは未証明 |
+| 実行の記録（Observed Trace） | 実際に読み込み、入場を許可され、呼び出され、どこまで応答・確定・受領されたか | Operation/Attempt、実Provider、実Read、Receipt、Consumer観測で判定。未観測の辺を実経路にしない |
+| 表示・操作用の図面（Projection） | Graph/Tree/Table/Sequence/Timing/State/説明文のレイアウトと操作位置 | 正本への参照を持つView。座標・色・表示順の変更は意味変更ではない |
+
+DefinitionからEffective Planへは既存Composition/Loweringで導出し、Effective PlanからObserved Traceへの対応は実行時の識別子で照合する。Observed TraceがDefinitionの意味を自動更新することはない。AIが実行履歴から推測した依存関係も、受理前はCandidateである。
+
+同じ二つのNode間でも、制御フロー、データ依存、時刻上の先行関係、Effectの因果、権限上の要求、Source出典、実行観測は異なる辺である。型付き辺には、必要な範囲で関係種別、方向、Multiplicity、固有のEdge identity、条件・時点、Source locatorと探索Coverageを持たせる。表示のための線IDを意味上のEdge identityへ流用しない。同じ名称のNodeが二つ存在し、多重有向辺がある例で参照・投影を先に確かめる。
+
+## 11. 実行規則（Model of Computation）の適用範囲
+
+Bootstrap→待機→Event→処理→応答という説明は有用だが、それを万能の逐次フローとして仕様化すると移植時に意味が失われる。**何がいつ評価され、どこまでの順序や状態が保証されるか**は、プログラム構造とは独立した実行規則として、必要なSubjectに適用範囲つきで表す。
+
+| 対象例 | 主な実行規則 | Hostに委ねる部分・保留条件 |
+| --- | --- | --- |
+| 常駐HTTP Service | Request単位のInvocation、同時実行、Response/Abort、Session等の必要Context | Listener、Thread/Task管理、接続停止。並列度や順序を推測しない |
+| CLI単発実行 | Process入口、引数・標準入出力、終了コード、実行単位のResource | Process起動とOS権限。終了コード0とEffect確定を区別 |
+| Serverless | Host側の初期化・再利用、Invocation単位のContextと期限 | Instance再利用・同時実行・配送はPlatform依存。常駐Loopを生成しない |
+| Desktop/GUI | UI Event、非同期処理、描画スレッドとの境界、画面State | GUI DispatcherとOS/Wails/WebView。古い非同期応答を現Selectionへ混ぜない |
+| Schedule/Queue/Batch | 発火、配送、対象集合、遅延、重複、再送、Checkpoint | Scheduler/Broker/Workerは既存Host/Provider。発火時刻と業務評価時点は別 |
+| Stream/科学計算/Simulation | Window、Tick、サンプリング、遅着、計算順、単位・精度 | 既存Operator/Toolkitの適合条件。一般時間EngineやSolverをCoreへ追加しない |
+| MCP/VUI/AI Web Chat | Typed Operation、部分入力、明示確認、割込み、Tool受領 | Interaction Profile固有の表現を分離。部分的Tool argsを実行指示へ昇格しない |
+
+最小検査項目は、（1）起動・評価の契機、（2）状態の所有単位、（3）必要な順序／並列性、（4）時間・Deadline・業務評価時点、（5）失敗・取消・再送、（6）結果・作用の確定点、（7）Targetが満たす能力、の七つである。すべてのSubjectに七項目の巨大Envelopeを保存させるのではなく、移植や実行に必要な項目のみ既存Role/Trait/Target契約で明示する。不明な保証はunknown、適用先で実現できない保証はunsupportedとして残す。
+
+State Machine、Rule、Decision Table、Reactive Flow、Dataflow、Stream、Batchを単一の実行順へ押し込まない。単純なIF/Ruleで十分なDomainに状態機械を強制せず、#4193の異質Domain比較で導入価値を判断する。
+
+## 12. 処理を切り出すときの境界契約
+
+プログラムを「機能の単位」に切り出す作業を、型付きGraphの部分領域を抽出する操作として説明できるようにする。ただし、Graph上の切り出し線を引いただけでは独立したFunctionにはならない。境界の外から参照する値、制御、状態、権限、時刻、作用を契約として閉じられることが必要である。
+
+| 切り出し後に必要な契約 | 確認する内容 |
+| --- | --- |
+| 入力・出力 | Typed Ref、Presence/NULL/未取得、単位・精度・丸め、多重度、例外・結果の区分 |
+| 依存の閉包 | 呼出すFunction/Rule/Operator、読込Relation・Field・Scope、動的参照、選択ProviderとVersion |
+| 制御と時間 | Guard、短絡評価、Evaluation Order、並列実行、再入、Snapshotの評価時点、Deadline |
+| 状態・Effect | Read Footprint、候補変更、Commit/通知などの位相、Operation ID・再送・補償 |
+| 公開・権限 | Entryの公開面、必要Capabilityと実Host Grant、Scope、開示条件、Target適合 |
+| 証拠 | Source/Meaning/Artifact revision、独立Expected、実Call、Receipt、Consumer Observation |
+
+例：受注の「入力確認→金額計算→注文確定→通知」という表示からは、金額計算が独立pure Functionへ切り出せる可能性を検討できる。しかし注文確定と通知を別Taskへ分けるには、DB Commit後の通知であること、Outbox等の実配送方式、ACK不明時の再送規則が契約として必要になる。これらを失う変換は「構造化成功」ではなくGapまたは拒否である。旧X-TEA Sourceから受注Functionの対応が確定していなければ、名称の類似だけで新しいFunction IDへ接続しない。
+
+変換の扱いは次の三段階にとどめる。
+
+- **read-only抽出**：Sourceと静的依存の候補を図・表・説明へ投影する。未知の反射・動的Call・外部Effectは未解決として残す。
+- **安全条件つき提案**：純粋計算など閉包が説明できる部分について、抽出先のInput/Output/Dependencyを提示し、対象Revisionに結び付けたChange Proposalを作る。Sourceの糖衣表現と非対象Byteを保存する。
+- **実装・実行への反映**：既存Acceptance後にBuilder/Generatorへ渡し、各Targetの出力、実Provider・実Consumer・必要なEffectを別々に検収する。
+
+宣言されたpure Traitと実際に作用しないことは別である。例としてCLIの計算はpureでも、Hostがログやファイルを生成する場合があるため、Function内の作用とHostの作用を混同しない。
+
+## 13. 言語間移行とメタ変換の同等性
+
+「同じ値を返した」というだけでは、異言語移植の合格条件にならない。対象の用途に必要な同等性を、段階的かつ別々に説明する。
+
+| 比較する面 | 同等性を損なう例 | 検証・証拠 |
+| --- | --- | --- |
+| 構造と型 | 異なるSubjectへ名前で再束縛、NULLとmissingを統合、複合キー・順序・多重辺が欠落 | Source/Meaning ID、型とRefの照合 |
+| 計算と評価 | Decimalの丸め、単位、短絡評価、NULL伝播、評価順が変化 | 固定入力、独立Expected、Mutation |
+| 時間と制御 | 同期処理を非同期化して順序喪失、再入やDeadlineが異なる | Trigger/Attempt/Timing Trace、Target Capability |
+| 状態と作用 | 出力値は同じでもRead Footprintが広い、通知がCommit前、効果不明を失敗扱い | 実Read、Effect Receipt、独立Observation |
+| 権限と開示 | Sourceからの要求をGrantに昇格、移植先で秘密を余分に取得・返却 | 現在Host Grant/Disclosureと実Provider Call |
+| 配布・受領 | 生成Artifactは最新でもConsumerは旧版を起動 | Build/Artifact/Loaded Bytes/Consumerの照合 |
+
+同等性の主張には、対象Function/Target、入力集合、実行規則、検査した作用と観測範囲を添える。部分的に一致した範囲から、未検証の対象全体や別Targetへ同等性を拡張しない。
+
+変換器の入力と出力も既存の資格を分けて扱う。旧言語のSource解析結果は**候補**、受理済みMeaningは**仕様**、Target-neutral planは**構成済み実現候補**、生成Artifactは**物理成果物**、実行Traceは**観測**である。Targetが必要な保証を表せない場合は、暗黙のFallbackではなく、既存#1121/#951/#3278のConformance上のGapとして返す。
+
+必要に応じ、既存の標準Record/Sequence/Relation/Graph/Expressionに意味Roleを付けることで、言語専用ASTの内部構造を業務DSLへ露出せずに済む。構文定義とParser、意味解釈、Model of Computation、Target実現は別の契約とし、自己記述の有限Bootstrapとexact Pinは#2620/#4359の評価に従う。Goのstruct/func等をDSL必須要素にしない。
+
+## 14. Studioでの表示と編集体験
+
+初期版は新しいGraph Editorを作らず、既存のInspector／型付きReference／Source索引から、選んだFunctionまたはEntryを中心に表示する。
+
+- **全体から局所へ**：アプリケーション→Entry→Function→処理節→Rule/Fieldへ粒度を変えても、同じMeaning IDとSource位置へ戻れる。画面ごとに別の編集正本を持たない。
+- **見たい関係を切り替える**：制御、入力と出力、状態、時間、Effect、Authority、実呼出しを重ね合わせず切り替え可能にする。Graph/Table/Tree/Traceの相互参照と表示Lossを示す。
+- **確実な対象指定**：現在のFocusとは独立したPinned Selectionに、Subject/Source/Revision/Scopeを保持する。古い結果・曖昧ID・権限失効時は表示を残しても、書込み・実起動・AI送出を保留する。
+- **説明文への展開**：受理済みの業務意味と処理の型付き辺から、認知順に沿った説明文、Graphviz、Markdown表、テスト対象一覧を導出する。AIによる補足は候補として区別する。
+- **編集の帰着先**：図面でNode/Edgeを変更した場合は、編集可能なSource occurrenceを確定できるものだけProposal化する。対応できないProjectionはread-onlyとし、元のMarkdown/DSLなどの非対象Byteを不必要に整形しない。
+
+三要素分析法については、業務フロー・機能階層・データモデル・CRUD・クロスレファレンスなどの原典に忠実な再現を先に検証する。この汎用プログラムGraphは**TEI独自の追加投影**であり、業務モデルを自動Workflowへ、機能モデルを関数計算へ黙って置換しない。
+
+## 15. 次の小さな実証と既存計画への引渡し
+
+今回の追補は独立のRunner／Parser／Graph Compiler／Statechart Engine／Schedulerを実装する許可ではない。まずP0のStudio Stage1→Stage2セルフビルド（#4583/#2831）と、製品Entry→実Providerの二入口（#4495/#4502）を維持する。以下は#4198 R0〜R4、#4193、#2514の既存検証へ渡す**追加の反例候補**であり、新Gateや第二Scenario正本を作らない。
+
+| ID | 最小の対照 | 確認すること | 既存Owner |
+| --- | --- | --- | --- |
+| PX-13 | 同じ表示位置に二つの同名Node、同じ端点間に二つの有向辺 | Graph identity／辺種別／方向／多重度をSourceまで追跡。曖昧なら書込拒否 | #2620/#1124/#4198 |
+| PX-14 | 定義Graphは同一、Provider A/BとHookだけ差替え | Effective Plan差と実選択／実呼出しを分け、Guard/Effectを迂回不可 | #951/#4198/#2514 |
+| PX-15 | 同じControl Flowを常駐HTTPと単発CLIへ投影 | Host待機の有無ではなくEntry/Function/Resultの必要な意味を比較 | #4502/#1121 |
+| PX-16 | pure計算を関数へ抽出し、別Targetへ生成 | Input closure、演算・丸め、元Source、独立Expected、実Consumerを照合 | #988/#1121/#2514 |
+| PX-17 | Commitと通知の間で処理節を分割 | Effect位相・Outbox・ACK不明・再送条件の喪失を検知し自動分割を拒否 | #1129/#1174 |
+| PX-18 | 同じ入力値で依存Function・Provider実装だけ変化 | 構文・値が同じでもPin/Build/Evidence再利用を再判定 | #2620/#2600/#2831 |
+| PX-19 | ServerlessのInstance再利用と二重Invocation | 初期化回数やProcess状態を業務一回実行とみなさない | #4497/#4502 |
+| PX-20 | GUIで旧選択の非同期応答が新選択へ到着 | Pinned Subject・Revision・Disclosureの不一致を表示し誤反映しない | #1124/#4515 |
+| PX-21 | 同じGraphから図だけ並べ替え、説明文だけ変更 | Layout変更は意味・実行を変えない。説明変更は必要な文書再確認を別判定 | #1124/#2600 |
+| PX-22 | 値は一致するが実ProviderのRead範囲が部分的 | 値の成功をSource/Read Closure/Consumer完全性へ拡大しない | #2586/#2514 |
+
+**進行順**：最初は一つの受理済みpure Functionと既存Entry/Triggerのread-only投影、次に同FunctionのGo CLI／Studio実Provider呼出しの対照、続いて「pure節抽出」と「Commit後通知の分割拒否」を比較する。異質なTarget間の生成・状態機械・対話UI・書込図編集は、観測された不足を解消する段階まで後ろに置く。実行前のモデル適合と実Targetの呼出し、独立Expected、Host Effect、Consumer受領は異なる資格のままとする。
+
+現時点でPX-13〜22の実試験、異言語移植、Graph Writer、全Target適合、Owner意味受理は **NOT RUN / NOT ACCEPTED**。静的設計文書の変更から、製品機能の成立を主張しない。
