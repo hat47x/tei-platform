@@ -1,8 +1,9 @@
 # 可変長・可変文字集合の内容導出ID：共通契約案（2026-11）
 
-- **文書の性格**: 設計案と隔離Reference実験の記録・製品未採用。既存ID移行の決定や本番の意味的受理を含まない。試験実績は対応するDraft PRのexact headに限る。
+- **文書の性格**：設計候補とReference実装の記録。製品標準の採用、既存IDの移行、実Target保存、Ownerによる意味受理は含まない。各試験結果は、確認したコミットと実行環境に限って扱う。
 - **作業の正本**: [#2814](https://github.com/hat47x/tei-platform/issues/2814)（受入条件・進捗）。
-- **確認基準**: `main` commit `1f9f7d5d1876a0d0c420568bdf06becd96923b21`（2026-11-04 JST）。同時点の現行Referenceを変更しない。
+- **初期調査の基準**：`1f9f7d5d1876a0d0c420568bdf06becd96923b21`（2026-11-04）。これは過去の固定版であり、現在のmainではない。
+- **統合状況（2026-11-15確認）**：[PR #2815](https://github.com/hat47x/tei-platform/pull/2815) は2026-11-10 15:24 UTCにマージ済み。確認mainは`5a3f8895f0bbd1cf6302d75f8c64e6bb3ddeb1c3`。Referenceの統合と製品採用は別である。Issue #2814はOpenのまま。
 - **関連する採用済み境界**: [#1120](https://github.com/hat47x/tei-platform/issues/1120)（論理ID・型付き参照）、[#1595](https://github.com/hat47x/tei-platform/issues/1595)（Canonical Capability ID）、[#2094](https://github.com/hat47x/tei-platform/issues/2094)（派生名の衝突検出）、[全体構成](../../docs/architecture.md)、[管理名前空間案](PLUGIN_NAMESPACE_AND_OPTIONAL_COMPOSITION_2026-10.md)。
 - **既存の責務**: [#951](https://github.com/hat47x/tei-platform/issues/951)（Plugin/Contract identity）、[#943](https://github.com/hat47x/tei-platform/issues/943)（Artifact/Build/Lock）。これらの第二のAuthority・Resolver・Lockを作らない。
 - **非主張**: 既存SHA-256やDigestが置換済み、新方式が採用済み、テスト/CI/Provider/Studioが成功済み、短縮IDが暗号学的完全性や権限を証明する、とは主張しない。
@@ -297,8 +298,8 @@ flowchart TD
 
 | 順 | Gap／最小証拠 | 現行主担当との関係 |
 | --- | --- | --- |
-| P0 | Scheme／Generator／Target Snapshotの局所不変条件（重複した旧割当を含む）をGo・Node・TypeScript Goldenと負例で固定 | #2814 Draft内Reference。独立Output Oracleを維持 |
-| P0 | Source Identity/Revision/Scopeと実Consumerが**同一Attempt**で読んだbyte列を結び付ける。HR-P0-01〜08（§9.11）を負例として限定し、A→B→A・別Workspace同Manifest・異Scope・宣言/実Tool消費不一致を別契約で追跡 | #2814はCaller `ReadClaim`と既存Source IndexのPath/Fingerprint/ModelRevision局所照合のみ実装。**実Reader同一Attempt／全Consumed Closure／Workspace physical Root／Owner受理は未実証**。#1017/#1124/#2595/#1163とDraft #3321/#3327/#3492を再利用し、第二Reader/Consumerを増やさない |
+| P0 | Scheme／Generator／Target Snapshotの局所不変条件（重複した旧割当を含む）をGo・Node・TypeScript Goldenと負例で固定 | #2815でReferenceはmain統合済み。ただし現mainの製品利用資格や実Target受入は未実証。独立Output Oracleを維持 |
+| P0 | Source Identity/Revision/Scopeと実Consumerが**同一Attempt**で読んだbyte列を結び付ける。HR-P0-01〜08（§9.11）を負例として限定し、A→B→A・別Workspace同Manifest・異Scope・宣言/実Tool消費不一致を別契約で追跡 | #2814はCaller `ReadClaim`と既存Source IndexのPath/Fingerprint/ModelRevision局所照合のみ実装。**実Reader同一Attempt／全Consumed Closure／Workspace physical Root／Owner受理は未実証**。#1017/#1124/#2595/#1163と、統合済みの限定実証PR #3321/#3327/#3492を再利用し、第二Reader/Consumerを増やさない |
 | P1 | Target Providerの現行Collation・既存割当・競合と実物理一意制約を検証、Owner Authorityと独立readbackを分ける | #2094を利用しW3を独立Gateへ。SQLite単一接続の合成試験を一般化しない |
 | P1 | Script-first Studio／Headless Scenarioの同Scheme・同結果を投影し、TypeScriptの実Providerを独立検査 | #2619/#1124/#1180。表示の成否をSource Acceptanceへ昇格しない |
 | P2 | バッチ・セルフビルド・Registry・公開物での必要性とコスト／効果を実測してから標準Plugin/Schemaを採否判断 | #943/#951/#2016。Coreに必須機能を導入しない |
@@ -471,9 +472,9 @@ flowchart TD
 
 ### 9.11 P0実Consumer接合のEvidence境界と反証Gate（2026-11-09）
 
-2026-11-08〜09時点で確認した[Direct CLI Trace Draft #3321](https://github.com/hat47x/tei-platform/pull/3321)、
-[Studio Workspace ABA Draft #3327](https://github.com/hat47x/tei-platform/pull/3327)、
-[三視点実Relation Source Draft #3492](https://github.com/hat47x/tei-platform/pull/3492)、
+2026-11-08〜09時点で確認した[Direct CLI Traceの統合済みPR #3321](https://github.com/hat47x/tei-platform/pull/3321)、
+[Studio Workspace ABAの統合済みPR #3327](https://github.com/hat47x/tei-platform/pull/3327)、
+[三視点実Relation Sourceの統合済みPR #3492](https://github.com/hat47x/tei-platform/pull/3492)、
 [実Generator消費Source #2595](https://github.com/hat47x/tei-platform/issues/2595)、
 [統合qualification #1163](https://github.com/hat47x/tei-platform/issues/1163)を踏まえる。これらは**別Ownerの実装・資格**であり、本Hash ID Referenceが代替実装・採用するものではない。
 
@@ -542,3 +543,43 @@ flowchart TD
 - 現行Disclosureが`withheld`なら、図表上の未表示を「不存在」としない。
 
 この設計はHash IDを標準型付きPipeline上の**派生Node**として表示するためのもの。実線は既存Referenceが実行する比較、破線は別Ownerが保有するEvidence取得／Acceptanceとする。実Target登録・権限・Source Reader・第二BOM/RegistryをこのPRへ追加しない。P0は#2595/#1163の実消費Closure/同一Attemptへの再利用、P1はTarget Ownerの実一意・独立readback、P2は対象案件の実必要性を測定したPlugin/ETL/Self-build適用の順とする。
+
+
+### 9.14 同じ生成結果を再利用できることと、現在も使ってよいことを分ける（2026-11-15、設計候補）
+
+[実入力の消費証拠 #2595](https://github.com/hat47x/tei-platform/issues/2595)、[一版の縦断検証 #1163](https://github.com/hat47x/tei-platform/issues/1163)、[増分再利用 #2600](https://github.com/hat47x/tei-platform/issues/2600)、[独立検証基準 #2514](https://github.com/hat47x/tei-platform/issues/2514)、[セルフビルド #2831](https://github.com/hat47x/tei-platform/issues/2831)を照合した。結果の再現性と、現在のConsumerがその結果を利用できる資格は別々に判定する。
+
+Sourceのバイト列と`HashIdScheme`が同じなら、参照実装の`Derive`は同じ文字列を返す。しかし、同じ文字列が得られるだけでは、過去の生成器が今も選ばれること、実Toolが同じ入力を使ったこと、Targetでその名前を確保できること、現在の権限で表示・利用できることは分からない。
+
+**必要な依存と、実際に使われた依存を区別する。** TEIの標準Record／Relation／Graphへの対応を考える場合も、次の5つは独立した関係として扱う。これらは既存契約を参照するための分類であり、新Core型や第二の依存Graphを採用する提案ではない。
+
+| 関係 | 確認する内容 | 不足しているときの扱い |
+| --- | --- | --- |
+| Required | 当該用途・Scope・規則で必要なSource、Scheme、Provider、Target制約 | 必要範囲が閉じていなければ、全件適合を主張しない |
+| Selected | 実際に選ばれた生成器・Provider・規則・Target | 宣言と選択結果が一致したとは推定しない |
+| Consumed | そのAttemptでToolやConsumerが実際に使用したSource全件と実行物 | 申告されたHashとModelRevisionだけでは代用しない |
+| Qualified | 独立した期待値、現行Policy、開示範囲、Owner受理による利用資格 | 局所テストの成功を現在の製品受理と扱わない |
+| Reverse | 変更したSource／規則／Targetが影響するConsumerと、その逆依存 | 依存が不明な範囲は不明とし、無関係なConsumerまで一律失効させない |
+
+#### 生成結果と利用資格を分ける反例
+
+| 変更 | 生成した文字列について言えること | 再確認が必要なこと |
+| --- | --- | --- |
+| Source A→B→A。最終バイト列とModelRevisionは元に戻る | 同じSchemeで再計算したIDは元と一致し得る | Sourceの現在性、Read Attempt、生成器の選択、現在Grant。過去の受理資格は自動復活しない |
+| Sourceは不変で、GeneratorまたはSelection Ruleだけ変更 | SourceのHashだけでは生成器の実同一性を区別できない | 選択・起動した実行物、Consumed Closure、成果物と独立Expected |
+| SourceとSchemeは不変で、Targetの照合規則や予約名だけ変更 | 候補IDの文字列は変わらなくてもよい | 新しいTarget Profile、現行割当、一意制約、保存資格。自動改名はしない |
+| 関係のないPluginやSourceだけ変更 | 依存外であると確認できれば、再導出を省略できる候補となる | 選択規則・暗黙import／初期化・実消費辺が変わっていない証拠 |
+| 画面の表示順だけ変更 | 文字列を生成する意味上の入力は変わらない | 旧表示・旧応答を現在のScopeやGrantで利用できるか |
+| 一部のSourceや非公開参照が未観測 | 観測済みの局所一致は保持できる | 全件の存在・不存在、必要依存の閉包、開示できる根拠。欠落を「存在しない」にしない |
+
+この表から機械的に`再計算する／しない`を一括決定しない。少なくとも「IDの再導出が必要か」「過去の証拠を再確認する必要があるか」「Target名の現在の適格性が変わったか」を分ける。どの変更がどのConsumerに影響するかは、実際の依存関係と用途別の必要範囲で決める。既存#2600の増分再利用判定と#2514の独立検証基準を利用し、本Referenceに新しいCache／Qualification Engineを作らない。
+
+#### 次の実証計画と停止条件
+
+P0では、既存Readerが取得したSource集合と、実Toolが同一Attemptで消費した集合の一致を先に確認する。Source名・内容Hash・ModelRevisionが一致するだけのケースに加え、同じSourceへ戻るABA、別Workspaceの同一Manifest、生成器の選択変更、部分的にしか観測していないSource集合を負例とする。
+
+P1ではTarget Ownerの現在の照合規則、Reserved名、既存割当、一意制約と独立readbackを検証する。Caller宣言の`CollisionRiskUpperBound`が予算内でも、実Targetでの一意登録が保証されたとは判断しない。
+
+P2ではセルフビルド、ETL／MFT、Plugin公開において、この方式の利用箇所を限定して比較する。Stage1の生成物をStage2が実際に使ったか、出力ファイル名と内容Digest・配送Receiptが区別されているかを確認する。製品横断で全IDを置き換えることは成功条件にしない。
+
+**現時点で未実証**：実Reader→実Consumerの同一Attempt、全Source Closureの資格、実Targetの原子的登録、Plugin合成の現在資格、Ownerの意味受理。#2815がmainに統合されたことは、これらの受入完了を意味しない。
