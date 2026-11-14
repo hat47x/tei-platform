@@ -369,3 +369,66 @@ Draft #4621 §16で整理したStudio Webの **2 Workspace × 2 Principal × 2 P
 | A4 Host/Collaborative | 現在Grant/Effect/ACKとWeb/AI Source CAS・二Principal、二Providerの受領を別Attemptで照合 | 実行者同一視、AI提示/ACKのみ、OS/Server権限の黙示継承を停止。#1174/#4515/#3421 |
 
 **新規実装や新Runtimeの採用は本節では行わない**。現main、既存r7 Reference、Draft PRを突合した設計・受入条件のみ。実TEI Person Relation Writer、履歴型PG、実Query→Context→Consumer、Web二Session、IdP、Host/ACK、Owner Meaning Acceptanceは **NOT RUN / NOT ACCEPTED**。
+
+
+## 14. Person結合のMeaning採否・複数DB Alias競合・並行PRの統合順（2026-11-14）
+
+### 14.1 Person参照を追加することと、人物を確定同定することを区別
+
+mainの `organization.Membership` は `orgUnitId` 等を持つが Person Key/Relation が無い。対照的に `organization.Employment` と `organization.Affiliation` にはそれぞれ personId と person Relation が既にある。しかし、Employment/Affiliationを辿ってMemberのPersonを**自動同定してよいという業務Rule**は宣言されておらず、EmploymentからPersonへ辿れることはMembershipからPersonへ辿れることの証拠にならない。
+
+**意味Ownerへ差し戻す候補**（公開Core Kind・新汎用Member supertypeを提案しない）：
+
+| Profileにおける候補 | 向くScenario | 受理前に解決すること |
+| --- | --- | --- |
+| **M-P：Member Personの直接Relation**（Membership.personId→Person.personId、既存typed keyのパターン） | 従業員・個人の所属を保持するS1/S2/r7 | 原Sourceに人物Linkが存在するか、Cardinality/欠損/有効期間が定義できるか。全Organization ProfileにPersonを必須としない |
+| **M-E：Employment/Affiliation経由の型付きRelation** | 出向・複数法人など雇用／在籍を別正本で管理するS2/S4 | Membership→Employment/Affiliationの**キーと経路**が別途必要。同じPersonに複数雇用があるとき、自動で一件を選ばない |
+| **M-X：Member Subjectを別Domain Dataへ束縛** | チーム・法人・組織間参加など人物以外がMemberの場合 | Person人数のClaimへそのまま使用できない。既存Data/Relation表現で十分か、別Profile/Ruleの採否を先に比較 |
+
+M-Pを最初の小Reference候補にするのはよいが、**所属という語が現れる全モデルをPerson参照必須にする理由にはならない**。どの型を採るかより、既存Source/Person ID/Relation occurrenceの根拠を同じReadと結び付けられるかを優先する。
+
+**曖昧なIdentityの扱い**：
+- 外部HR/IdP/ERPの `sourceSystem + externalId + sourceRevision` と、TEIで業務上同一と受理されたPerson IDは別。Name/Email/同名同日/部署名ではPersonを確定しない。ID対応が1対0/1/複数、権限不足、部分取込のとき、未解決のまま保留する。
+- `membershipId` は業務Occurrence、recordVersionIdは記録の版、physical row IDはDB固有。遡及訂正でPerson参照が変化した場合、「過去の誤同定の訂正」か「実際の別人への所属移転」かを業務Ownerが判定する。後者を同一Occurrenceへ無断統合しない。
+- 入力Snapshotが部分的である場合、見つからないPersonを退職/所属取消扱いしない。Reference r7にはそのSource範囲でPerson Linkがあるが、Product実ProviderのIdentity照合を代替しない。
+- 本務/兼務、Employment、Membership、RoleAssignment、Case Responsibilityは別Relation/意味。人物Linkの追加でCurrent Principal/Account/Tenantや承認権限を導出しない。
+
+### 14.2 複数Persistenceの潜在衝突を現行Operation実装で確認
+
+**mainコード読取**：`internal/operations/surface.go` の `deriveApplicationOperations` はAlias名をsortした後、各Alias配下のPersistenceを走査し、`operationID(app, kind, semanticData)` を利用する。`emitOperation` は `seen[operation.ID]` があれば後続候補を捨てる。この箇所はmapping/DB/aliasの同一性を比較せず、`OperationSurface.Conflicts` に異Mapping衝突を記録していない。
+
+これは現行組織Profileに**直ちに実データ誤更新が発生したという証拠ではない**。しかし#2611 PM-01〜06に明記された多DBの再現条件で、旧Current・新Historyの移行時や二Providerの生成CRUDを無条件に合格とできない。
+
+| 再利用する#2611受入 | 組織C1における具体条件 | 必要なOutcome／反例 |
+| --- | --- | --- |
+| PM-01 重複Aliasの正例 | 同一DB/同一MappingをRead/Write Aliasから参照 | 一つのOperationを安全に重複排除でき、従来の正例を維持 |
+| PM-02 異DB・異Mapping | legacy-current と history-provider が同一 organization.membership に束縛 | 一つのOperation IDだけで一方を暗黙採用せず、実Target選択/同値関係を未解決とする |
+| PM-03 読取と更新の差 | archive/historical Readerとlive Writerを同じ業務Dataに関連づけ | 読取のas-of/Scopeとwriteの対象PK/Provider/Grantを別契約で選択 |
+| PM-04 Alias名称/順序変更 | historyのAliasが名前順で旧Currentより前になる | SourceのAlias改名だけでwrite対象が逆転する実行経路を許さない |
+| PM-05 Mapping Basisの不足 | PK/Table/Mapping IDは同じでもperson_idやversion column/NULL制約が変わる | Basis同一から互換性を推測せず、実Input/ColumnMapping/World/Planを再資格化 |
+| PM-06 Current vs History | 同じBusiness IDだが期間/Row grain/Record Scopeが異なる | 現行1件Readerを過去全版Readerとして使わず、全件countとas-of件数を別Claim |
+
+**実装への引渡し**：#2611/#1127の既存Operation Surfaceで、(a)完全に同じ実対象か、(b)解決済みの読み/書き別Bindingか、(c)異Mapping競合でunresolvedかを、既存Source/Mapping/Provider契約の根拠を持って診断する。既存 `Conflicts` / Gapの利用可否を先に調べ、新しいResolver/Registryや組織専用CRUDを設けない。読取Query選択やHostでの実Targetは#2586/#2622/#1174の別資格であり、Surface内に更新許可を埋め込まない。
+
+### 14.3 まず1つの反証可能な「人物同定×別DB」を設ける
+
+#4490 ORG-BEH-01/02、#2611 PM-02/04/06、#2386 S4を**別々の独立Expectedのまま**使い、同じ組織C1のScenario/Attemptに関係する識別を対応付ける。新しい統一Expected Storeは作らない。
+
+1. **P-A 成立するPerson Link**：r7でA1→P1、A2/A3→P2、A4→P3を固定。Productに同じ意味が受理され、Person Read Traceがあるときのみdistinct Person=3を要求（Readが全対象Scopeでcompleteであることが必要）。
+2. **P-B 意味同定の反例**：P2と別人P2bが表示名だけ同じ、またはHR SourceのPerson外部IDが曖昧。Person数の結論はunresolvedであって、Personを統合した3人や重複した4人へ確定させない。
+3. **P-C DB Bindingの反例**：Current DBとHistory DBにA2が見えるが、片側の実Target/Mappingが異なる。Operation IDとDisplay Labelが同一でも、順序に応じた片側採用を正常扱いしない。
+4. **P-D read-cohortの反例**：r7 replica と primary のラベル `s7` が一致してもknownAtが異なる。各取得結果のScope/valid/known/Provider Snapshotを揃える独立Witnessが無ければD1 FTEを合算しない。
+5. **P-E History/Write境界**：現行行を旧Writerが上書き可能な状態で新Historyの公開を完了扱いしない。Commit不明、旧Writer Fenceなし、Receipt照会未実施はG4 cutoverへ昇格させない。
+
+**初回の小PRのExit**：OwnerがM-P/M-E/M-XとIdentity Sourceを判断した後で、最小の型付きPerson Link（採用するProfileに限る）＋物理Mapping＋実Readの独立小PRへ切り出す。#4566/#4567の二時点Query修正は重複するため差分比較を先行する。#2586通常CLIの受注Query Readと#2831 Studio Desktop Self-buildは、これらの組織固有課題を前提としない独立P0を維持。
+
+### 14.4 実際に競合している計画Draftの無損失統合手順
+
+**source readbackで確認**：現mainの `ORGANIZATION_STAGED_MODELING_PLAN_2026-11.md` は §10.11.4 までで §10.12 がない。一方、開いているDraft **#4555** は §10.12 に「Studio Desktopと組織C1の最短実装境界」（D0〜D4、D2-SB負例）を追加し、**#4585** も同じ §10.12 に「所属とPlugin・B2C・外部Hostの六Scope」を追加している。双方を単純な後勝ちでmerge/全文置換すると、一方の受入条件を失う危険がある。
+
+- **提案する前方統合順**：#4555の節を §10.12（DesktopとD2-SB）に、#4585の節を **§10.13（六ScopeとHeadless）** に保持する。どちらを先にmergeする場合も、後着側は新mainへrebaseし、節番号と節内参照だけを調整する。既存の§10.11本文は保持。
+- **§10.13の内容は縮退させない**：Distribution/Authoring/Composition/Organization/Runtime/Disclosureの個別Scope、r7にないTenant/Account/Case C1をScenario overlayとして分離する規則、B2C Headless、CURRENT Grant、Disclosureの二世界負例とO0〜O4を残す。§10.12のD0/D1/D2/D3/D4、D2-SBの各反例・実Windows+Builder Stage2の資格も残す。
+- **本PR #4622の扱い**：Stage Planの §0 に**別設計補遺への参照リンクだけ**追加してあり、#4555/#4585の§10.12本文を置換していない。補遺§5/§6/§10〜14は横断の受入索引であり、両PRの独立した元計画全文の代替にならない。各PRの採用・merge順はそれぞれのOwner判断。
+- **MASTER_PLAN競合**：#4555/#4585/#4620/#4621/#4622が同一計画を並行編集するため、最新mainの各独立節とリンクを集合として照合して、追補節・受入票・証拠限界を失わずforward-portする。形式的な同名節の重複、旧HEADのDraft局所CIを新main成功に合算しない。
+
+**状態**：組織Meaning/物理PK/Provider Binding/見込Person Identityに関する設計・受入案のみ。本節では新Go/SQL/Node/DB/Generated CRUD、実DB Alias競合試験、Web同時編集・実Host権限/Effect、Owner Meaning Acceptanceを **NOT RUN / NOT ACCEPTED**。PRの重複箇所は上記の衝突事実を確認したが、#4555/#4585本文の自動統合は実施せず、Owner間調整を要する。
