@@ -58,21 +58,21 @@ func TestServerBridgeExportedMethodInventoryRequiresReview(t *testing.T) {
 	// "reference command" is still an exported method even when its current
 	// implementation only writes to an in-memory reference store.
 	expected := map[string]string{
-		"ListWorkspaces":                  "read projection",
-		"CatalogWorkspace":               "read projection",
-		"ValidateWorkspace":              "read projection",
-		"InspectSubject":                 "read projection",
-		"ObserveXead":                    "bounded source read",
-		"ViewPattern":                    "read projection",
-		"ViewApplication":                "read projection",
-		"ViewPackage":                    "read projection",
-		"PlanCommand":                    "command plan",
-		"ExecuteCommand":                 "reference command",
-		"ExecuteCommandWithPeriods":      "reference command",
-		"ExecuteCommandWithPolicy":       "reference command",
+		"ListWorkspaces":                   "read projection",
+		"CatalogWorkspace":                 "read projection",
+		"ValidateWorkspace":                "read projection",
+		"InspectSubject":                   "read projection",
+		"ObserveXead":                      "bounded source read",
+		"ViewPattern":                      "read projection",
+		"ViewApplication":                  "read projection",
+		"ViewPackage":                      "read projection",
+		"PlanCommand":                      "command plan",
+		"ExecuteCommand":                   "reference command",
+		"ExecuteCommandWithPeriods":        "reference command",
+		"ExecuteCommandWithPolicy":         "reference command",
 		"ExecuteCommandWithReferenceStore": "reference command with memory effect",
-		"OpenShoDocument":                 "external child process / file path",
-		"ResumeShoDocument":               "external child process / file path",
+		"OpenShoDocument":                  "external child process / file path",
+		"ResumeShoDocument":                "external child process / file path",
 	}
 	found := map[string]bool{}
 	for _, decl := range file.Decls {
