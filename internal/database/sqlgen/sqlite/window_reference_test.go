@@ -5,9 +5,8 @@ import (
 	"database/sql"
 	"testing"
 
-	sqlgen "tei/internal/database/sqlgen"
-
 	_ "modernc.org/sqlite"
+	sqlgen "tei/internal/database/sqlgen"
 )
 
 // CTK-01/03/10: this is a narrow SQLite adapter and database execution test.
@@ -31,10 +30,10 @@ func TestCTKWindowSQLiteGeneratedSQL(t *testing.T) {
 	defer rows.Close()
 
 	expected := []struct {
-		group, id     string
-		sequence      int64
-		value         int64
-		valueIsPresent bool
+		group, id                         string
+		sequence                          int64
+		value                             int64
+		valueIsPresent                    bool
 		moving, runningRows, runningRange float64
 	}{
 		{"A", "A1", 1, 10, true, 10, 10, 10},
