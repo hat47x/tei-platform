@@ -37,6 +37,7 @@ type localREAKey struct {
 type LocalREAReader struct {
 	host     *ReadOnly
 	bindings map[localREAKey]LocalREABinding
+	clock    func() time.Time
 }
 
 const localREAReadLimitBytes int64 = 4 << 20
@@ -45,7 +46,7 @@ func NewLocalREAReader(host *ReadOnly, configured []LocalREABinding) (*LocalREAR
 	if host == nil || len(configured) == 0 {
 		return nil, errors.New("local REA reader needs an existing Host and bindings")
 	}
-	reader := &LocalREAReader{host: host, bindings: make(map[localREAKey]LocalREABinding, len(configured))}
+	reader := &LocalREAReader{host: host, bindings: make(map[localREAKey]LocalREABinding, len(configured)), clock: time.Now}
 	for _, binding := range configured {
 		if binding.WorkspaceID == "" || binding.Selector == "" || strings.TrimSpace(binding.Selector) != binding.Selector ||
 			binding.File == "" || strings.TrimSpace(binding.Version) == "" ||
@@ -94,7 +95,7 @@ type LocalREAReadResponse struct {
 // path. Root identity, traversal and bounded file reads reuse Studio's
 // existing Workspace guards. This does not prove current Grant, source closure
 // or external delivery; no remote transport is connected here.
-func (r *LocalREAReader) Read(workspaceID, selector, observationID, relationID string, at time.Time) LocalREAReadResponse {
+func (r *LocalREAReader) Read(workspaceID, selector, observationID, relationID string) LocalREAReadResponse {
 	if r == nil || r.host == nil {
 		return LocalREAReadResponse{Failure: localREAReadFailure()}
 	}
@@ -123,7 +124,7 @@ func (r *LocalREAReader) Read(workspaceID, selector, observationID, relationID s
 		ExpectedReceivedDigest: binding.Digest,
 		ExpectedSourceRevision: binding.Revision,
 		Tool:                   tool,
-	}, raw, at)
+	}, raw, r.clock())
 	if err != nil {
 		// R2 selection errors include external IDs and producer diagnostics.
 		// Do not forward those details from a Host read boundary.
