@@ -1450,5 +1450,7 @@ NPSは#2831/#4583/#1180/#2514への**受入候補**であり、独立Scenario正
 - **Desktopプロセス**：最初の製品実証は現行の同一Wails Process経路と既存Host Operationを基準にする。別子Backend/Updaterの採用は#4697/#4705等の独立比較とし、N1〜N4の新Hard Gateにはしない。
 - **二つのP0**：非Plugin Studio Stage1→Stage2 Windows WebView2と、通常製品`tei`→実Provider→独立Consumer実Readを並行して進める。Context/AI連携やPlugin Docはその前提条件にしない。
 
+**実コードに固定した拒否基線**：`internal/buildintent/nonplugin_gap_test.go`に、`subject.kind=command`／`definitionSource.kind=go-package`／`recipe.kind=go-command`／`outputKind=runtime-artifact`のStudio用Intentを実`ParseIntent`へ渡し、現行の「command Subjectは非対応」という明示拒否を確認するGoテストを追加した。これはNPS-01の**現状の再現**であり、非Pluginの受理・Builder実行やStage2生成の成功ではない。将来の正式実装では、このテストを現在の拒否の固定として放置せず、typed Subject/Artifactの受理・選択Builderとの一致・実Stage2成果物の独立Expectedへ更新する。CI実行結果は当該exact HEADで別途照合する。
+
 **実装Ownerと現状**：#4583/#2831がBuild Subject／BuildExecution／Stage1再入、#1097/#1101等がBuilder／依存契約、#988/#2621が正式Source Reader、#4515がPin GUI、#3262がContext、#1180/#2514がExpected。今回は実コード／他チャットの論点を照合した設計・検収計画の更新であり、**非Plugin BuildPlan・新Stage1→Stage2実験・Windows実機・Ownerの意味受理は未実装／未検証**。正式な製品Hostや公開ABIをここで追加決定しない。
 
