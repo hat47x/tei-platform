@@ -400,3 +400,10 @@ Language/Operator/Generator/Data/Presentationという役割と、native Go / se
 **Desktop Build主線の新しいEvidence**：[Studio統合Draft #4587](https://github.com/hat47x/tei-platform/pull/4587) exact HEAD 0fcb7b6265d7dfc5b5e93017e5c99e296eb13134 で、[Windows WebView2 Run #43542664470](https://github.com/hat47x/tei-platform/actions/runs/43542664470)を含む**12 Workflowがcompleted/success**。N2 esbuild実生成JS→N3 Go EmbedFiles選択memberを同一Attemptの実Disk byte hashでBuild前後照合し、改変コピーの負例を拒否した限定H1成功。Compiler read-timeの実byte捕捉・完全Toolchain closure・Productの非Plugin ArtifactSet・Stage1生成TEI→Stage2 Desktop・Owner受理は別資格で、旧HEADのCIと合算しない。
 
 **停止線**：#4627はDraft、実Server公開・認証・Go/WASM/Browser/二Principalの新E2Eは今回NOT RUN。P0 #4583 B1-B/C→B2/B3を維持し、WSP-02a・02bを並行P1、WASM pure ProjectionはP2の比較とする。
+
+
+### 17.7 #4627 exact HEAD の限定Go/Server/Browser CI実績
+
+[Draft #4627](https://github.com/hat47x/tei-platform/pull/4627) HEAD 9491bf9e081bf98f39056d0a4142c2764c31289d の[Wails Host Workflow #43544229895](https://github.com/hat47x/tei-platform/actions/runs/43544229895)はcompleted/success。server-build Job ID 132291601976の実ログから、**CGO_ENABLED=0 go test -mod=readonly -count=1 -tags server . → ok tei/cmd/tei-studio** を確認した。新しいBridge公開面Inventory Testはこのserver tag付きGo Testに含まれる。Wails Server build/loopback RPCと、実Chromiumの二BrowserContexts・後着Catalogを分離する試験も同Job成功。同HEADの[Desktop WebView smoke #43544229876](https://github.com/hat47x/tei-platform/actions/runs/43544229876)、[Cache #43544229829](https://github.com/hat47x/tei-platform/actions/runs/43544229829)も成功。
+
+**判定範囲を縮めず、拡げすぎない**：このPassは既存Source/Go Method Inventoryが意図した分類から漂流していないこと、現Loopback Browserの表示が旧応答で混じらないことの限定確認である。Web shared serverの別認証Principal・別Workspace実Grant、JS Method Binder全経路、WebSocketの機微payload分離、外部インターネット到達・Tool送出の拒否を確認していない。独立WSP-02b/03はNOT RUN。上記HEADの全Workflow完了状況は継続的に変わるため、この時点の確認では全Repository Health/依存検査まで合格と宣言しない。新実装の本番採用とOwner受理もなし。
