@@ -816,3 +816,76 @@ C1でも、人物と所属の意味定義が一致しているだけで、別DB 
 **最小の編集受入**は、表示対象のIdentity、実Relation/Occurrence、Source位置・Revision、選択時点、変更した項目が、一意に元Sourceへ対応することである。集計表や多重関係を省略したツリーなど、その対応が定まらないViewは、まずread-onlyとする。Studioの選択を保持したままSourceが改訂された場合は、旧表示からの自動適用ではなく、対象再解決と競合検査を求める。
 
 これらは既存r7による**合成モデルの投影・編集安全性の受入条件**であり、現行の製品SourceにMembership→Personの正式Relationが存在することや、Studioで逆編集できることの証拠ではない。実Query／Providerと独立Consumerの検収は§21.2、業務上の移管は§21.5へ戻す。
+
+
+## 22. C1最小縦断：業務意味から実保存・実集計・複数表示までを一つのSource系列で通す（2026-11-14）
+
+### 22.1 受入の単位は「組織図が描けた」ではなく、元の意味を失わない一巡
+
+最初に閉じる対象は、既存 \`org-synthetic-r7\` の Person P1〜P3、Membership A1〜A4、所属先 D1/D2、A2 の遡及訂正という**一つの小さな業務世界**に限定する。別々のfixtureを組み合わせて成功と数えない。次の六つを同一Source Revisionと、時点・Providerを明示したAttemptで追跡する。
+
+1. **Meaning**：Person・OrgUnit・Membershipの独立Identity、A2/A3が同じP2に対応する根拠、所属の関係方向・Key・配賦単位、訂正の原因と業務上の期間をSourceから読める。
+2. **Storage**：同一A2 Occurrenceに対する訂正前・訂正後のRecord Versionが、同一の隔離PostgreSQLに物理的に共存する。Occurrence ID、Version ID、Physical PKを混同しない。
+3. **Read**：同じvalidAt=2027-06-15に対しknownAt=2027-07-01/2027-07-03の二照会を、同じProvider契約の実SQL/paramsで実行し、選択したVersion、Person ID、AllocationとRead Cohortを記録する。
+4. **Meaning-preserving result**：独立r7 Expectedの Membership 4→3、distinct Person 3→3、FTE 3.0→2.4、部署別の所属集合と小計に一致する。数値一致に加え、同一人物P2のA2/A3が別Occurrenceであることを示す。
+5. **Consumer**：少なくともQuery→Function Context→一つの独立Consumerまでを実受領で確認する。別の表示Consumerを追加する場合、同一Read Cohortか明示的に別Cohortかを記録し、CLI標準出力だけを「二Consumer成功」と数えない。
+6. **Projection**：組織ツリー・グラフ・所属表・二時点表を同じ意味モデルから導出し、P2の多重表示、A2/A3の別Identity、A2の旧新版、hidden edge、Source span/revisionを保持する。非単射な集計行と省略ツリーはread-onlyにする。
+
+**一連の実測が揃うまで、DSLがGo処理へdelegateしているだけの実装を「組織モデルで業務が実現した」とは評価しない。** Goで業務上のPerson対応・有効期間・配賦ロジックを別に手書きして期待値に合わせる方式は、Product化ではなく不足機構を切り分ける試験用Adapterとして明示する。
+
+### 22.2 保存方式の比較契約と更新の境界
+
+以下の列は**受入に必要な意味情報の例**であり、確定したTEI DSL構文、必須物理テーブル、既存DBの実Schemaではない。
+
+| 種類 | 受入で保持する情報 | 主な負例 |
+| --- | --- | --- |
+| Membership Occurrence | 安定したA2、Person P2、OrgUnit D1との関係 | Person、Membership、表示Edgeを同一IDと誤認 |
+| Record Version | 旧版・新版の別ID、known区間、valid区間、訂正原因 | A2を単独PKにして旧版を上書き、同一時点に矛盾二版を採用 |
+| Physical Row | Provider、表・列、実PK、書込結果、read witness | offline DDLと実DBを同一と推定 |
+| Source/Mapping | Relationの方向、Source span/revision、version/Personの列対応 | nullable列だけ追加し人物同定済みと扱う |
+| Acquisition | SQL/params、snapshot/cohort、coverage、scope、NULL・欠測 | RLS/LIMITのSubtotalを全体値に昇格 |
+
+比較候補は§2.1の三方式を維持する。まずDB Ownerが**一方式を試験用に選ぶ**のであって、組織専用の共通履歴Engineや全Dataへの二時点必須化は先行させない。
+
+今回の試験は物理行に二版があるだけでは合格としない。A2旧版を選ぶknownAtではMembership集計にA2を含み、新版を選ぶknownAtでは同じvalidAtにA2を含めないことを実Queryで確かめる。同一(validAt, knownAt)に矛盾する二版が出る場合、暗黙のORDER BY/LIMIT 1で片方を選ばず、制約違反として停止する。別Occurrenceの兼務A2/A3は矛盾として扱わない。
+
+過去の記録を訂正した事実から既存Caseの責任移管を推論しない。Personの転属、CaseのHandling Unit、承認候補、現在Grant、Host Effect、通知、受信、ACKは§21.5の別契約とする。
+
+### 22.3 独立Expectedで検査する正例・負例
+
+| 試験 | 観測するExpected／停止条件 |
+| --- | --- |
+| P1 二時点の正例 | validAt=2027-06-15、knownAt=2027-07-01でMembership A1/A2/A3/A4・人物3・FTE3.0。実RowsetにPerson IDとRecord Version証拠がある |
+| P2 訂正後の正例 | 同じvalidAt、knownAt=2027-07-03でMembership A1/A3/A4・人物3・FTE2.4。A2旧記録が物理的には残っている |
+| N1 Identity | P2のA2/A3を別人物として数える、あるいはA2新旧を別所属として同時計上したら失敗 |
+| N2 物理版 | 旧版が上書き、二版が別DBにしかない、version/Person IDがResultから追えない場合は未資格 |
+| N3 Coverage | RLS/LIMIT/未解析条件でpartialまたはunestablishedなら、たとえ数値がr7と一致しても全体人数・FTEは未資格 |
+| N4 Consumer | QueryやCLIログは成功しても、独立Consumerが未受領、別Revision/別Cohortを受領、または未認可のRecipientへ渡したならProduct Exitを主張しない |
+| N5 表示・編集 | ツリーでP2の兼務を落とす、グラフで複数辺を併合、表の集計セルを一意なSourceとして逆編集、Source A→B→A後に旧PinでApplyしたら停止 |
+| N6 Effect | 完全な候補集合でもHost現在GrantがなければAction不可。Commit不明で旧Receiptを流用した再試行、通知成功をACKとみなす場合は失敗 |
+
+各試験の独立Expectedの出典は既存#2510/#4490/#4501を用いる。新しいOracle/Scenario Storeは作らない。Product ActualはGit HEAD、Source/Mapping Rev、DB/Provider、実SQL/params、Cohort、Consumer Receipt、必要ならHost Receiptを**同一Attemptの実測として**残す。別HEAD・別DB・別WorkflowのPASSを一件の成功へ合算しない。
+
+### 22.4 図表・DSL・コード生成と、Pluginのセルフビルド可能域
+
+同じPerson/Membership/OrgUnit Relationから、①as-of照会の依存関係、②関係グラフ、③所属表・組織ツリー、④Query/Reader/表示Adapterの必要なコード生成を段階的に導出する。各段階で「TEI Sourceに書かれている業務意味」「Generator/Pluginが共通化した処理」「Target固有の手書き処理」を分類する。
+
+生成の有効性は出力量でなく、**業務意味の二重記述が減ること**と、変更が既存のSource/Rule/Query/Projectionを通じて正しく伝播することで検証する。受入メトリクスは次の通り。
+
+- **業務意味重複数**：Person対応、所属の時点条件、FTE計算、兼務の重複除去について、Source以外に同じ意味の手書き判定が何か所あるか。Goへの単純な委譲箇所を「TEI実現率」に含めない。
+- **モデル差分の伝播率**：A2訂正やP2兼務の変化を一度Sourceへ反映したとき、DSL検査、実Query、Expected、表示と生成物へ正しく波及するか。どの段階で手動修正が必要かを列挙する。
+- **構造保持率**：Source側のPerson/Occurrence/Version/RelationのID、多重性、時点、方向、根拠が各投影へ受け継がれた割合。重要属性が失われた表示にはloss reportを付す。
+- **Plugin再利用率**：同じ型付きGraph/Temporal/Query/Projectionの契約を、組織以外のデータにも使えるか。組織専用の二つ目のResolver/Engineを作らない。
+- **自己記述・自己生成の範囲**：Generator/Plugin自身の仕様・テスト・生成可能部分を \`*.tei.md\` で表現し、TEIが再生成できる部分と手書きのBootstrap/Target境界を分けて数える。割合だけでなく、段階ごとに手書き部分がなぜ残るかを記録する。
+
+図・表・Markdown・Queryは標準意味モデルの複数表現として扱う。新しいDSL文法や図法の採用が必要な箇所は別Ownerへ差し戻し、C1一巡のために独自の固定組織Kindを設けない。Plugin方式もGo単一バイナリと外部Host生成の既定を崩さず、静的組込み/生成コード/外部プロセスの方式選定を各境界の要件に委ねる。
+
+### 22.5 着手順・受入票・P0との関係
+
+- **C1-0 Read-only契約固定**：#2386がM-P/M-E/M-Xの一Profile、人物関係の向き・Key・Sourceを採否。DB Ownerが既存のPK/Mapping/Readerの実状を再確認する。
+- **C1-1 物理版共存**：隔離PGにA2新旧を同時保存。Source由来のPerson Link・Version ID・PK、独立Expectedで旧新の選択を試す。DDL候補だけでは停止。
+- **C1-2 Query→Consumer**：通常\`tei\` CLIの実Provider read入口を利用し、同じSource/DB/Attemptで人数・FTEとContextを導出、独立Consumer受領まで確認する。
+- **C1-3 Loss-aware投影**：Read-onlyのTree/Graph/Table/Temporalを同一Sourceから出す。初めはSource位置へのNavigationと差分Previewのみとし、逆編集は一意同定・CASが成立する項目に限定。
+- **C1-4 生成・自己記述の削減試験**：上記のための手書きGo/SQL/表示Adapterと生成された箇所を比較し、TEIに移せた業務意味と依存が縮小した箇所を記録。Pluginの自己生成は独立の証拠で扱う。
+
+この順番は**組織C1固有の受入計画**であり、#2586 通常CLI初回実Provider Readと #2831 Studio Stage1→Stage2セルフビルドへの新しいHard Gateではない。Ownerが業務意味を採用していない場合は試験Sourceを「候補」と表示し、Technical PASSをOwner Acceptanceへ昇格しない。§21で整理した既存のAction/Grant/Evidence契約をそのまま利用し、新しいRuntime、専用Host、第二Policy/Expectedは作らない。
