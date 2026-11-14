@@ -244,3 +244,60 @@ Observationは`data-element`候補へ、有向Relationは`cross-reference`候補
 - Owner受理、Shared Acceptance接続、SHO、移行実証、生成コード
 - `cmd/tei`全体：`go test ./cmd/tei/ -count=1 -timeout 3000s` が **PASS（672.3秒）**。coverage修正後も通る
 - CIの全項目。`bounded-design-context`の1件はPR #4316でpassを確認したが、他のworkflowは未確認
+
+
+<!-- rea-two-intakes-merged-main-question-review-20261114 -->
+## 10. main統合後の再整理：観測と意味候補を二重に実装しない（2026-11-14）
+
+### 10.1 新しい実装基線と残った空白
+
+2026-11-14のmainでは、統合PR [#4683](https://github.com/hat47x/tei-platform/pull/4683)を通じて、[#4625](https://github.com/hat47x/tei-platform/pull/4625)（通常tei CLIの外部候補選択）、[#4630](https://github.com/hat47x/tei-platform/pull/4630)（Host管理Byteを受け取るR2投影）、[#4637](https://github.com/hat47x/tei-platform/pull/4637)（ローカルWorkspaceの固定SelectorからEvidenceを読むHost Reader）がmainへ統合された。旧Draftでこれらを「未統合」と記した説明は、当時の履歴であり、**現在の実装状態を表さない**。
+
+ただし、この事実が示すのは、ローカルCLIとGo Host内のread-only入口が存在することまでである。LocalREAReaderはNative Wails Serviceとしての登録やWindows WebView2 JSからの受領を実証しておらず、外部Web/Agentへの現在Grant・公開資格を与えない。保存されたREAのNodeとRelationから業務Functionや実Effectの意味が正式採用されたわけでもない。現在の製品上の不足は [#4661](https://github.com/hat47x/tei-platform/issues/4661) の**第二Product Consumer実受領**、この文書の**意味候補の根拠付きReview**、既存Shared Acceptanceによる**意味受理とSource反映**、実Provider/旧新Targetによる**作用の確認**である。
+
+### 10.2 二つの既存CLI入口の役割を混ぜない
+
+| 既存入口・コード | 実際の責務 | 組合せる際の制限 |
+| --- | --- | --- |
+| **tei external-candidates** → operations.ExternalCandidates / ExternalCandidatesFromBytes | 保存済みREAのRawを検証し、指定した外部Observationと有向Relationを**各1件選択**。Evidence ID、実取得Raw digest、申告SourceRevision、Coverage/Unknown/Unselectedを戻す | 選んだ1本のRelationを、全Graph、全Function依存、Sourceの現在性、正式Meaningとしない |
+| **tei three-element rea-intake** → reacandidate.DecodeAttemptEvidence / GenerateCandidates / BindCandidates / PreviewAdoption / BuildReviewPacket | 外部の一AttemptからData候補・cross-reference候補を作る。必要ならWorkspaceでSource照合し、read-only Preview・差分・ReviewPacketを生成。Owner受理は常にpending | ReviewPacketは保存できてもCanonicalへの書込みやShared Acceptanceにはならない。PreviewをSource編集許可にしない |
+| **LocalREAReader** → Host固定Workspace/Selector・bounded Read→R2のByte投影 | 任意Client Pathを受けず、Hostが選んだ一つのEvidenceをローカルで安全に読む | Wails JSへの実配信、Server未露出、現在の開示資格、他Workspace権限は別の製品受入 |
+
+二入口には**異なる目的と異なる解析単位**がある。R2のExternalCandidateViewは選択済みのObservation 1件とRelation 1件の投影であり、reacandidate.GenerateCandidatesが求める一Attempt全体のGraphではない。これをそのまま正式な一Functionの解析済みGraphとして渡してはならない。逆に、三要素ReviewPacketの候補集合をR2のProducer ReceiptやNative Hostの安全なByte取得の代わりにしてはならない。
+
+両者を結ぶ最初の実証は、新しい変換器ではなく、**同じ公開可能な保存済みRawを、二入口がそれぞれ実際に読んだことを照合する受入テスト**とする。各入口のInput Raw digest、Producer Evidence ID、申告Source revision、外部Node/Relation ID、向き、Schema/Tool版を比べ、一方にない情報は「一致」ではなくunavailable/unsupportedと記録する。二回の別CLI実行を同一原子的Attemptにしてはならない。現在のSourceを別途読み直す場合も、旧解析時にそのByteが実消費された証明にはしない。
+
+### 10.3 関係の識別は、既存の型ごとに保存できる範囲が異なる
+
+現行mainのSourceを静的に照合すると、**reacandidate.StructureCandidate**はCandidateID、ExternalOccurrenceID、ExternalIdentity、From/To、SourceRevision、MeaningLossを別々に持つ。**threeelement.CrossReference**にはIDがあり、採用前PreviewではCandidateIDをそのIDとして使う。これは**Previewの対応を示すための一時的なID**であって、外部IDから正式なBusiness Relation IDを採用済みとする意味ではない。ReviewPacketはAcceptedMeaning=false、OwnerDecision=pendingを維持する。
+
+一方、**modelref.Edge**はFrom/To/Relation/Evidenceを持つが独立したEdge IDを持たず、**operations.ModelMapLink**にも外部Relation occurrenceを置く欄がない。reacandidateのCarrierAuditは、外部Edge ID・Observation ID・一部Source Spanが既存read-only型へそのまま載らない事実を既にFit/Gapとして報告する。新しい「関係ID不足検出器」を作り直す必要はない。
+
+したがって、Source-backedな二つの同端点・同種Relationを保持しているかどうかは、**それぞれの層の受入を分けて**評価する。reacandidateの候補一覧で個別IDが残ること、threeelementのPreviewで候補IDを区別すること、modelrefのEdgeが別図・別編集操作で個別のSource occurrenceへ戻れることは、同じ成功ではない。表示順序・配列添字・同名ラベル・Graph描画Edge IDを正式RelationのIdentityに読み替えない。対応が一意でない個別Relation編集はread-onlyで停止する。
+
+### 10.4 Headlessで先に検証する最小の一Functionの問い
+
+一Functionの問いを**「旧Function Fが読み書きするDataと、そう判断した出典は何か」**に固定する。ただしREA 6.8.0の実JavaScript解析ではDataがsupportedでFunction/Businessがunsupportedと報告された限定ケースがある。そこにTask/Action/Function/IOTableの全連鎖を実観測したと付け足さない。
+
+そこで検証入力を二系統に分ける。
+
+- **実Capturedの系統**：既存REA 6.8.0の保存Rawを使い、R2のObservation/Relation受領と三要素intakeのCandidate/ReviewPacketを**別々に実検証**する。RawとEvidenceの帰属、未知・未選択・partial、同名別ID、再採番・Digest変更を比べる。少数の選択を全件取得へ昇格しない。
+- **公開合成の系統**：Task→Action→Function→IOTable→Data、Functionを参照しない手作業、同名Function 2件、並行有向Relation 2本、未取得Source 1件を小さく用意する。既存[#4678](https://github.com/hat47x/tei-platform/pull/4678)のPlugin実証が扱う同名Node n1/n2・平行Edge e1/e2と**最小Graphの対照を共有**してもよい。これは実Capturedの旧システムを観測した証拠ではない。
+
+初回V0-BのHeadless実装PRは、既存Candidate/CarrierAudit/ThreeElementCoverage/ReviewPacketを再利用し、(1)外部Relation IDとSource occurrenceに戻れる箇所、(2)modelref/図面でLossになる箇所、(3)全Sourceで未使用・CUDなしと断定できない理由、(4)現在は編集不可である理由、を**一問のread-only回答**として返せるかを検証する。新しい意味正本・Graph Parser・独立Expected Storeは導入しない。Adapterや出力Schemaの変更が本当に必要になったときだけ、既存#1120/#1124/#2497のOwnerへ限定提案する。
+
+### 10.5 具体的な不足試験と作業順序
+
+| 確認 | 正例・負例 | 最初の完成条件・担当 |
+| --- | --- | --- |
+| **J-01 二入口のRaw整合** | 同じ保存Raw/別Raw、Producer申告が同じでも取得Byteが変化、選択1本だけ | Inputの実Byte・Receipt・Coverageを出典別に比較。R2の選択済みPartial Viewを全Graphにしない（#3394/#2514） |
+| **J-02 Relation identityと意味損失** | 同名異ID、同端点同種の二辺、片方の向きのみ反転、外部ID再採番 | Candidate/Preview/GraphそれぞれのIDを保存できる範囲とLossを記録。編集先が曖昧なら拒否（#1124/#1120/#2497） |
+| **J-03 問い相対の不完全性** | Graph completeでもFunction/Business unsupported、未取得Plugin、手作業、動的参照 | Dataの陽性構造だけを回答し、Function全体の未使用・更新なし・削除可能を出さない（#3394/#3262） |
+| **J-04 Native Product受領** | 通常CLIの実Resultと、Windows Wails Service→JSの独立実Value/Recipient、Server公開面 | Host内Readerやテスト用子OS Processだけでは合格にしない。公開範囲とCurrent Grantを別試験（#4661/#2516） |
+| **J-05 受理・保存・旧新実測** | Ownerが選んだQualified Source Slotの変更Preview、版A→B→A、SHO Save/Reopen、Legacy L/期待D/Target T | 明示受理後のSource保存・再読取と実Provider/Effect/Consumerを別々に確認（#267/#2497/#2586/#1180） |
+
+**実装順**：現行mainの既存契約・固定実例でJ-01/J-02の差を記録→J-03の一Function説明をHeadlessで試す→並行して#4661でJ-04の実Native受領を検収→正式MeaningとSource操作が可能な対象に限りJ-05へ進む。Plugin/DSLのセルフビルドはJ-02で受理済みのGraph/Ruleを使って**実Goロジックと通常CLI呼出しが生成されたか**を別の受入に置く。関係を閲覧できたことも、外部REA候補を受理したことも、Goの既存処理へ委譲しただけの生成物も、TEI-native自己構築の成功としない。
+
+**完了判定と残作業**：J-01〜03はHeadlessの限定受入、J-04は実Native独立Consumer、J-05はOwner受理・Source保存・実Provider/Target/SHOを含む別Owner受入。これらを別PR・別Attemptの成功から寄せ集めずに段階的に繋ぐ。非Plugin Studio DesktopのStage1→Stage2実Windowsセルフビルド（#4583/#2831）、通常tei CLIによる実PG Read→Function Context→独立Consumer（#2586）は引き続き**製品P0**であり、J-04/J-05を新たな着手前提に追加しない。
+
+**この§10の状態**：mainへ統合された実コードと既存設計の**静的照合・実装/Expectedの引渡し**。J-01〜05を新たに実Go/Windows/DB/SHOで通したものでも、正式Meaning/Plugin自己構築のOwner受理でもない。実装済みの旧局所試験と統合後の新しい縦断成功を混同しない。

@@ -464,21 +464,27 @@ TEIのセルフビルドは、最終的にはTEI Studio Desktopを含むTEI開�
 | **SB-3 CLI再入とPlugin自己構築** | SeedがStage1 CLIを生成し、その**Stage1実Process**がStage2 CLIを生成する。同じ仕組みで少なくとも一つのPluginをTEIから生成してCLIへ組み込み、実呼出しする | 親子Build Attempt、実Child・Toolchain・入力Byte・成果物・Entry／実Consumerの関係。Stage0が別々に二回Buildしたものを自己再構築と数えない |
 | **SB-4 Studioへ展開** | 検証済みSource／Operation／PluginをStudioと生成Windows Desktopから使用する | 同じ意味と各Targetの実Artifact／実Consumerを照合。WebView2のB0成功をStage1→Stage2の自己再構築へ自動昇格しない |
 
-最初から大きなDSL処理系を作らず、既存Markdown・表・Graphviz・標準データ構造・Language／Operator／Target Generatorの機能をできるだけ使う。図の座標や説明文を実行意味の第二正本にはしない。外部で実装する部品はTEI側に型付きInput／Output／Effect／Failure／Provider契約とTODO／Mockを持たせるが、Mock成功と実Provider成功は区別する。Coreに新しい共通Runner、第二Resolver、専用Hostを増やさない。
+最初から大きなDSL処理系を作らず、既存Markdown・Markdown表・Mermaid（必要に応じてGraphviz）・標準データ構造・Language／Operator／Target Generatorの機能をできるだけ使う。図の座標や説明文を実行意味の第二正本にはしない。外部で実装する部品はTEI側に型付きInput／Output／Effect／Failure／Provider契約とTODO／Mockを持たせるが、Mock成功と実Provider成功は区別する。Coreに新しい共通Runner、第二Resolver、専用Hostを増やさない。
 
 ### 最初の実装PRを、一つのGraph／Ruleから始める
 
 S0〜S4を一度に実装しない。**最初のPRはS0のReaderとS1の実装ロジック生成を最小単位**とし、選択したPluginの実呼出し（S2）、そのPluginを用いる次Stage再構築（S3）、定義変更からの再生成（S4）は、同じFixtureを引き継いで別の証拠で判定する。
 
-最初に固定する例は、**同じ表示名を持つNode `n-1` と `n-2`、`n-1 → n-2`のEdge `e-1` と `e-2`、Edge IDの重複を拒否する検査規則**である。表またはGraphvizは入力の糖衣として使えるが、Role／Identity／向き／多重性／規則のうち実装上意味を持つ部分を、実Readerがどこから取得したか追跡する。架空のTEI構文はここでは定めない。
+最初に固定する例は、**同じ表示名を持つNode `n-1` と `n-2`、`n-1 → n-2`のEdge `e-1` と `e-2`、Edge IDの重複を拒否する検査規則**である。初期のAuthoringでは**Markdown表を関係の定義元とし、MermaidをGitHubでも読める導出図**とする。Graphviz等の別表層は後続の対応範囲とし、Role／Identity／向き／多重性／規則のうち実装上意味を持つ部分を、実Readerがどこから取得したか追跡する。架空のTEI構文はここでは定めない。
 
 | 固定する対照 | 独立Expectedと合格の上限 |
 | --- | --- |
 | 元の定義：Nodeは2件、同じ向きの別ID Edgeは2件 | 生成処理でNode IDを区別し、両Edgeを保持した検査／参照結果を返す。**Node名や端点だけで重複排除しない**。書き出しただけの静的JSONではなく、定義から生成した検証／選択ロジックが動いたことを確認する |
 | `e-2`の向きだけを逆にする | 実生成コードの該当判断・実Plugin出力が変わり、正方向のEdgeは1件、逆方向は1件になる。外部の固定Go処理へ全部委譲していれば不合格 |
 | `e-2`のIDを`e-1`と重複させる | Reader／Validator／生成された規則の担当境界を明示したうえで、実行前または実検査時に不適格を報告する。誤ったGraphを「Edge 1件」として黙って正規化しない |
-| Graphvizの配置や文書説明だけを変える | Source byte／表示の変更は残す。意味上のGraphと生成すべきロジックが同じなら、その範囲を不要に再Buildしない。ただしCache／Evidenceの再利用資格は別に判定する |
+| Mermaidの配置や文書説明だけを変える | Source byte／表示の変更は残す。意味上のGraphと生成すべきロジックが同じなら、その範囲を不要に再Buildしない。ただしCache／Evidenceの再利用資格は別に判定する |
 | Stage1が生成したPluginを次Stageの実Buildへ渡す | Stage1実Process ID／Input closure／選択Builder／生成Artifact／Stage2での実Plugin Callを照合する。**Seedが二回Buildしただけでは達成としない** |
+
+**限定的なGraph／Rule→Go生成実証**：[reference/tei-md-graph-reader](../../reference/tei-md-graph-reader/README.md) では、6入力のMarkdown表からNode/Edgeと明示したRule候補を読み、元byte位置と重複IDを検査する。生成器はRuleの「起点／終点」を実Goの条件式へ展開し、**別Processでコンパイル・実行した結果**を独立Expected候補と比較する。Edge反転とRule条件変更は生成Goが変わり、MermaidのLR/TB変更だけなら生成Goが一致する。ただし、これは**製品外のReferenceコード生成**であって、受理済みTEI Meaningに基づく製品Generator、選択済みPlugin/Providerの実Call、通常CLI Consumerを証明しない。正式`*.tei.md` Reader・Language Plugin/Role/Owner意味受理は未接続で、現行`TEI_MD_PARSER_UNBOUND`を維持する。
+
+**同じ生成成果物への実行時要求（限定検証）**：前記Referenceの生成Goに、従来の全件JSONに加え`-node`で一Nodeを選ぶ入力を追加した。有効な各Fixtureを一度だけコンパイルし、**同一BinaryのSHA-256を固定したまま**全件・二Node・未知Node・明示空ID二方式・余分な引数の7通りを実行する。選択Nodeの結果は独立Expectedと照合し、未知Node、明示空ID、余分な引数は非ゼロ終了で拒否する。**Node指定なしの全件取得**と、空文字列を指定した要求の区別を保つ。これはS1の**実行時入力に応じた生成処理の局所証拠**であり、製品`tei` CLIが実Providerを選択・呼出したS2の証拠、Stage1によるStage2再BuildのS3の証拠には加算しない。次のP0は既存#4495/#1251/#951の**同じ選択Providerを実CLIと別Consumerで呼ぶ経路**であり、新しいRunnerや独立Hostは設けない。
+
+**固定した入力と期待結果**：[testdata/tei-md-graph](../../testdata/tei-md-graph/README.md)に、基準、`e-2`反転、Mermaidのレイアウト変更、Edge ID重複、表と導出図の不一致に、規則の起点→終点切替を加えた**6例**を通常の`*.tei.md`で置き、Graph出辺と生成コードの実行結果の期待値を別の`independent-expected.candidate.json`に記録した。これらは**既存#1180/#2514に採用を引き渡す候補**であり、`*.tei.md`を実Loaderが読めるという意味ではない。管理Source Rootの未対応Guard `TEI_MD_PARSER_UNBOUND`はReaderが正式に接続されるまで維持する。最初の技術課題は、選択した表・Fenceの元byte位置を保存し、Role／意味IDに結び付けること。MermaidのN1/N2やEdgeラベルを実Relation IDへ黙って昇格させない。
 
 **実装担当へ渡す受入票**：最初に「Edge同一性の保持」「重複IDの拒否」「方向別の抽出」など対象の機能上の義務を固定する。義務ごとに、(a) TEIのどのSource/Ruleが実装を規定したか、(b) 生成したGoのどこが挙動を担うか、(c) 外部Goが担当する境界、(d) 実Builderが読み込んだByteとArtifact、(e) 選択Pluginの実Callと独立Expected、(f) 定義変更前後の手修正・重複記述・再検証作業を記録する。**未観測の項目は未達とし、比率の分母を試験後に縮めない**。
 
@@ -505,6 +511,24 @@ SBX-01：図のレイアウト変更では意味が変わらず、関係の向�
 **CLI先行はDesktopセルフビルドの最終目標を撤回するものではない。** 最初の検証をCLIで軽量化しつつ、[#2831](https://github.com/hat47x/tei-platform/issues/2831)・[#4583](https://github.com/hat47x/tei-platform/issues/4583)のBuildExecution／ArtifactSet／親子Attemptを共通化する。現行BuildIntentの`Subject.Kind=plugin`制約は[#1080](https://github.com/hat47x/tei-platform/issues/1080)・[#1097](https://github.com/hat47x/tei-platform/issues/1097)で非Plugin Build Subjectの不足として扱う。Plugin選択・段階別Contributionは[#951](https://github.com/hat47x/tei-platform/issues/951)・[#1251](https://github.com/hat47x/tei-platform/issues/1251)、自己記述Languageと糖衣形式は[#988](https://github.com/hat47x/tei-platform/issues/988)・[#1018](https://github.com/hat47x/tei-platform/issues/1018)の責務とする。
 
 CLI／MCP／Studioは同じ型付きApplication Operationを異なる入口から使うものであり、入口の共通化はHost認可や実効果の証拠を省く理由にならない。Runtimeで使わないGenerator／Editor専用Pluginは、必要のない生成成果物に無条件同梱しない。本節は実装順と測定方法の合意案であり、TEIが生成したGoによるCLI／Plugin再構築、定義の簡素化、Stage1→Stage2製品成功を**実証済みとはしない**。
+
+### 一つの変更を、生成・実行・再検証まで追跡する
+
+SB-1/SB-2で導入するGraph/Ruleの固定例について、**初回から変更前後を同じ独立Expectedで比較**する。最初の実装PRは新しい汎用Graph Compilerや増分Cacheを要求しないが、将来#2600で正しい再利用を行うため、何が変わったかと、どの工程を実行したかを取り違えず記録する。詳細な契約は[実行モデル§37〜39](../design/PROGRAM_EXECUTION_MODEL_PROJECTIONS_2026-11.md)に集約する。
+
+| 比較する入力 | 最初に見る意味・生成の差 | 実行・再利用上の停止条件 |
+| --- | --- | --- |
+| 基準：同名Node二件・別IDの同向Edge二本 | 出辺ID・件数の計算とID重複の拒否が、TEIのRuleから生成される | 固定JSONや外部Goへの丸投げは自己生成実装として扱わない |
+| `e-2`の方向だけ反転 | `n-1`からの出辺が二本→一本、`n-2`から零本→一本 | Graph表示だけ更新して実Go処理・実Provider結果が旧状態なら不合格 |
+| `e-2`を重複IDへ変更 | 一意性違反をReader/Validator/生成規則の適切な位置で拒否 | 同名や同端点を理由にEdgeを黙って統合しない |
+| 図の配置・注釈だけ変更 | 意味上の計算は不変、Source/表示の変更は追跡 | Raw Source再確認を省略したと偽らず、無関係な下流再Buildだけを省略可能か検査 |
+| Provider/Builderの選択やSourceのA→B→A | 結果が同じでも選択先・実消費byte・現在資格が変化し得る | 旧ArtifactやReceiptを現在の実Provider使用・Owner受理へ自動昇格しない |
+
+記録の最小単位は**一つのSubject、固定したSourceとRole、選択Provider/Generator、Build Attempt、実Artifact、実Consumer**である。未接続ならその境界を明示する。各工程でParser/意味解決/生成/Go Build/Plugin実行に費やした時間、実行を省略した理由、未観測の入力も残す。Source/Meaning/Artifactの三種のRevisionを一つのFingerprintへまとめない。
+
+初回の実Go生成は、意味処理の実装部分と手書きの補助Goを分けて検証し、生成定義から出辺IDの判定が実際に変わることを確かめる。通常`tei` CLIと独立Consumerの実Call、Stage1 CLIによるStage2 CLI再入、正式Studio DesktopのStage1→Stage2は、**異なる到達点として順番に実証**する。部分的な成功を足して全体成功と呼ばない。
+
+この比較はSBX-01〜06と#1180/#2514、#2595の実消費Source、#2600の再利用、#4495/#1251の製品Provider、#2831/#4583の実セルフビルドの担当へ引き渡す。新たなScenario正本やRuntimeは設けない。**状態：実証手順の追補。新Go生成・増分skip・実CLI再入・正式Desktop再入の合格は未確認。**
 
 ## プロセス・イベント・応答を共通の意味から説明する（設計候補）
 
