@@ -436,9 +436,9 @@ Wails依存を外したGo Service/合成Adapterの試験と、実WebView起動�
 
 | 対象 | 既存の限定実績 | Desktop製品として未成立の点 |
 | --- | --- | --- |
-| 実Windows生成版（#4583／[Draft #4587](https://github.com/hat47x/tei-platform/pull/4587)） | exact HEAD \`357345d7\`のWindows Workflowは**生成版Job成功**。N0→N2選択、N2→N3埋込み、生成版のWindows WebView2受領が報告された | 同じWorkflowの**通常版JobはPowerShellのOSVersion取得15秒タイムアウトで失敗**。全Workflowの成功でも、正式BuildIntent選択でも、Stage1→Stage2再入でもない |
-| 選択Builder（[Draft #4634](https://github.com/hat47x/tei-platform/pull/4634)） | exact HEAD \`7d6a1238\`において8/8 Workflow成功。宣言→Resolver整合拒否と起動前Child digest照合を同じCheckoutで検証 | 対象は主にPlugin BuildPlan。**non-Plugin Studio Subject→全N0/N1/N2/N3→ArtifactSet**の正式実行、OS Loader読取時点の全bytes、Stage1→Stage2は未受理 |
-| 公開面監査（[Draft #4627](https://github.com/hat47x/tei-platform/pull/4627)） | exact HEAD \`b9cf5447\`、5/5 Workflow成功。登録Serviceと15公開Methodの静的Inventory | 実HTTP/WSの認証済みPrincipal、Workspace Grant、Event Audience隔離・SHO/Commandの公開拒否は未証明。Wails Serverは現状loopback PoC |
+| 実Windows生成版（#4583／[Draft #4587](https://github.com/hat47x/tei-platform/pull/4587)） | exact HEAD `357345d7`のWindows Workflowは**生成版Job成功**。N0→N2選択、N2→N3埋込み、生成版のWindows WebView2受領が報告された | 同じWorkflowの**通常版JobはPowerShellのOSVersion取得15秒タイムアウトで失敗**。全Workflowの成功でも、正式BuildIntent選択でも、Stage1→Stage2再入でもない |
+| 選択Builder（[Draft #4634](https://github.com/hat47x/tei-platform/pull/4634)） | exact HEAD `7d6a1238`において8/8 Workflow成功。宣言→Resolver整合拒否と起動前Child digest照合を同じCheckoutで検証 | 対象は主にPlugin BuildPlan。**non-Plugin Studio Subject→全N0/N1/N2/N3→ArtifactSet**の正式実行、OS Loader読取時点の全bytes、Stage1→Stage2は未受理 |
+| 公開面監査（[Draft #4627](https://github.com/hat47x/tei-platform/pull/4627)） | exact HEAD `b9cf5447`、5/5 Workflow成功。登録Serviceと15公開Methodの静的Inventory | 実HTTP/WSの認証済みPrincipal、Workspace Grant、Event Audience隔離・SHO/Commandの公開拒否は未証明。Wails Serverは現状loopback PoC |
 | 外観（[Draft #4628](https://github.com/hat47x/tei-platform/pull/4628)） | Node/Chromiumで明暗・OS追従・密度・表示状態保持等の限定試験が報告された | 変更HEADごとの全CI、実Windows WebView2のIME・読み上げ・全アクセシビリティ・生成業務フォームの製品受入は別 |
 | REA bounded read（[Draft #4637](https://github.com/hat47x/tei-platform/pull/4637)） | 従前HEADでは12/12 Workflow成功。Host固定Selector→bounded bytes→既存R2 read-only投影の限定Go実装 | **新たなHEADの結果を旧HEADから継承しない**。Studio Bridge/Web/AI Consumer、現在Grant・Audience・Source A→B→Aの正式Product受入は未実施 |
 | Script Launch（[main統合 #4636](https://github.com/hat47x/tei-platform/pull/4636)） | 不正なInput/Effect宣言をGo Adapter呼出し前に拒否する限定実装が統合済み | 実Providerの選択・Current Grant・業務Effect/Receipt・通常CLI/Studio製品入口が受入済みという意味ではない |
@@ -451,7 +451,7 @@ Wails依存を外したGo Service/合成Adapterの試験と、実WebView起動�
 | --- | --- | --- | --- |
 | **A：同一Process** | 現行Wails Bridge | Wails GUIとApplication Operationが同一Goプロセス。標準一exe | **P0基準** |
 | **B0：同一exe従属Worker** | Wails Bridge→親Go | 同じexeをWorker modeで自己起動。親→子のNamed Pipe/UDS等は別設計 | **P1比較** |
-| **B1：別Wails Server** | Browser/Frontend→HTTP/WS | \`-tags server\`等で構築した**別Artifact**。同一exe配布は未証明 | **P1比較** |
+| **B1：別Wails Server** | Browser/Frontend→HTTP/WS | `-tags server`等で構築した**別Artifact**。同一exe配布は未証明 | **P1比較** |
 | **B2：別Server/Worker＋Local IPC** | Wails Bridge→親Goまたは限定Local UI | 別Worker/ServerとNamed Pipe/UDSを用いる。OS process/loader/ACLに別責務 | **P1比較** |
 
 JS↔Wailsの既存Service Bindingと、Go親↔子のOS IPCを混同しない。B0でWebViewがNamed Pipeを直接開くことは前提としない。Wails Custom Transportは必要時の比較対象であって、B0の実装に必須ではない。
@@ -462,13 +462,13 @@ B0/B2の検討ではOSのACL・peer identity・接続元Session・実行File Dig
 
 UIで保持する**Focus、Pin、Editor Dirty Buffer、Undo/IME、Panel/Window Session、Theme/密度**はPresentation Stateである。Source Revision／Provider Raw Revision／Model Acceptance／Plugin Settings Version／Build Artifact／Execution Request・Receiptとは別のものとして扱う。新たな一括状態表は作らず、既存OperationとHostから取得できる識別子を、当該UI応答の照合に使う。
 
-- **Markdown/SHO**：通常の\`*.md\`の原文保存はDocument Writerの責務。管理対象\`*.tei.md\`のTEI意味SourceとしてのLoader/Parser bindingは#2621/#3030の受入が必要。未束縛Parserを黙って通さず、独立した非管理Draft保存は可能にする。SHOから編集できてもAccepted Meaningの変更とはしない。
+- **Markdown/SHO**：通常の`*.md`の原文保存はDocument Writerの責務。管理対象`*.tei.md`のTEI意味SourceとしてのLoader/Parser bindingは#2621/#3030の受入が必要。未束縛Parserを黙って通さず、独立した非管理Draft保存は可能にする。SHOから編集できてもAccepted Meaningの変更とはしない。
 - **三視点と図面**：Text/Structure/Graphは同じSourceへの投影。Graphレイアウト、Fold、Pin、外観CSSをSourceの意味変更にしない。多重辺・向き・関係ID・粒度の不足をCatalogの8ノード程度のnavigation表示から補完しない。#1124/#4611/#4612へ引渡す。
 - **外観と機能**：#4628のTheme/密度はHost/Plugin設定やBuild Profileから独立したローカルPreference。Theme変更でEditor remount、Dirty Buffer消失、追加のHost/Provider呼出しを起こさない。Light/Dark/System、幅390/1024/1440、倍率・IME・キーボード・読み上げで別検収する。
 - **生成/ビルド**：Preview ReadyやSource digest一致を、正式Builder選択・Build適格性・実Artifact Consumer受領に昇格させない。#4641のGenerator Contract、#1080/#1097のBuild Execution/ArtifactSetへ接続。仮のPlugin Subjectでnon-Plugin Studio Buildを偽装しない。
-- **Plugin管理**：宣言、導入可能性、有効設定、構成選択、実Build包含、実Invoke、現在Grant、Source保持を独立表示する。Inventory→Plan→Apply。実設定源が未確定なら\`notModelled\`を維持し、設定変更とRuntimeの開始/停止、データ削除を自動同一視しない（#4376〜#4380/#2550）。
+- **Plugin管理**：宣言、導入可能性、有効設定、構成選択、実Build包含、実Invoke、現在Grant、Source保持を独立表示する。Inventory→Plan→Apply。実設定源が未確定なら`notModelled`を維持し、設定変更とRuntimeの開始/停止、データ削除を自動同一視しない（#4376〜#4380/#2550）。
 - **外部Evidence/DB/AI**：raw OS PathをWails/Web/MCPへ一般公開せず、Host固定Workspace/Resource Selector→bounded bytes→既存Operation。Read時の資格と画面・AI・WSへのDelivery/Disclosureを分ける。DB結果0件と未読取／partial／権限遮蔽を区別し、DB移行・非同期Effectの完了は実Commit/Receipt/独立Readで検証する。
-- **Command**：参照実行の\`mode=reference, committed=true\`を外部DBへのCommitと表示しない。接続断、timeout、cancel、Worker crashは実業務Effectの失敗証明ではない。既存Request/Receiptをlookup-firstで照合し、unknownのまま再Submitしない。
+- **Command**：参照実行の`mode=reference, committed=true`を外部DBへのCommitと表示しない。接続断、timeout、cancel、Worker crashは実業務Effectの失敗証明ではない。既存Request/Receiptをlookup-firstで照合し、unknownのまま再Submitしない。
 
 ### 11.4 UI後着・Process境界の必須負例（既存#1180/#2514へ接続）
 
@@ -476,7 +476,7 @@ UIで保持する**Focus、Pin、Editor Dirty Buffer、Undo/IME、Panel/Window S
 | --- | --- | --- |
 | **DH-01 現行Source** | W-AのInspectを送信→W-Bへ変更、同名IDで異なるSourceを選択 | AのReplyは現DOM/ARIA/AIへ不採用。Aの実Operationの有無は別票 |
 | **DH-02 ABA/Window** | 同じWorkspaceでA→B→A、Panel close/open、別Window、Plugin A→B→A | byteや文字列一致だけで旧Replyを再受理しない。現Scope/Epochに束縛されないOutputはstale |
-| **DH-03 Edit/SHO** | 未保存\`*.tei.md\`＋外部Writerの競合、通常\`*.md\`、生成物read-only | Dirty内容喪失0、Sourceの無断書戻し0、意味受理・Artifact書換え0。Parser未束縛を意味成功にしない |
+| **DH-03 Edit/SHO** | 未保存`*.tei.md`＋外部Writerの競合、通常`*.md`、生成物read-only | Dirty内容喪失0、Sourceの無断書戻し0、意味受理・Artifact書換え0。Parser未束縛を意味成功にしない |
 | **DH-04 Worker/Effect** | 正常、子crash、親crash、切断、timeoutの同Request／実Provider | Process/transport failureとEffect unknownを区別。自動再Submit 0、Lookup/独立Readが得られた範囲だけ確定 |
 | **DH-05 Public Surface** | 2 Workspace×2 Principal×2 Tabでread/plan/SHO/command methodとWS Eventを調査 | Method Inventory PASSだけでPublic Web安全扱いにしない。未認可実HTTP拒否、Audienceへの機密Event誤配送0、local no-auth fallback 0 |
 | **DH-06 Build再入** | non-Plugin Studio正式Subject、N0→N1→N2→N3、Stage1 Process、Stage2 exe、WebView2受領 | selected Builder/actual Child、入力bytes、artifact、Stage1実再入・Stage2実GUIを**同一Build Attempt**で結線。CI外の生成を隠さない |
