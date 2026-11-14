@@ -91,3 +91,30 @@ func TestSelfBuildSelectedChildPinRefusesMismatchBeforeRunning(t *testing.T) {
 		}
 	})
 }
+
+// A boundary launcher does not override the selected child identity. If the
+// child image differs, even a configured launcher must never be started.
+func TestSelfBuildPinnedBoundaryLauncherRefusesBeforeExecution(t *testing.T) {
+	dir := t.TempDir()
+	selected := buildSelfBuildChild(t, dir)
+	pin, err := digestOfFile(selected)
+	if err != nil {
+		t.Fatal(err)
+	}
+	actual := filepath.Join(dir, "unexpected-child")
+	if err := os.WriteFile(actual, []byte("not the selected child"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	artifact := filepath.Join(dir, "no-boundary-artifact")
+	boundary := &selfBuildBoundary{
+		Name:     "must-not-start",
+		Launcher: []string{filepath.Join(dir, "missing-launcher")},
+	}
+	_, err = driveSelfBuildIn(actual, nil, artifact, "", boundary, pin)
+	if err == nil || !strings.Contains(err.Error(), "selected child builder digest mismatch") {
+		t.Fatalf("boundary launcher was allowed to bypass child pin: %v", err)
+	}
+	if _, err := os.Stat(artifact); !os.IsNotExist(err) {
+		t.Fatalf("pin mismatch wrote output through boundary: %v", err)
+	}
+}
