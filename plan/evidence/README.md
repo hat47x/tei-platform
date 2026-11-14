@@ -1,4 +1,4 @@
-﻿# 受入条件と検証根拠
+# 受入条件と検証根拠
 
 要求が受け入れシナリオや検証根拠にどう結び付くかを整理する文書を置きます。要求そのものは[`requirements/`](../../requirements/README.md)、段階判定の記録と実行手順は[`gate/`](../gate/README.md)、現在の実装状況は[`docs/status.md`](../../docs/status.md)を参照してください。
 
@@ -459,9 +459,9 @@
 - [閉じ括弧の後ろに書いた「ブロック内専用の項目」が所属を名指しする](TEI_DOGFOODING_ROUND74_BLOCK_PLACEMENT_2026-11-11/README.md)（#4169のA案5件目。bind/resource/column等を閉じ括弧の後ろに書くと、どのブロックに入るかを言う。最初の探査はファイル名が誤りで3回とも読まれず、第72ラウンドで入れた警告がその誤りを教えた）
 - [構文エラーで止まった実行をテキスト出力も「不完全」と言う](TEI_DOGFOODING_ROUND75_INCOMPLETE_TEXT_2026-11-11/README.md)（#4178。2ファイルを壊すと最初の1件しか出ない仕様は変わらないが、JSONはincompleteを出しテキストは黙っていた非対称を解消。意味の診断は完全な答えなので不完全と表示しない区別を試験で固定）
 - [mainの赤い3テストを緑にする](TEI_DOGFOODING_ROUND76_MAIN_GREEN_2026-11-11/README.md)（20の未テスト診断コードは到達可能性を確かめる試験を追加、死んだリンクは文書が履歴に無いことを認めて名前をコード表記で残す、13のスキーマ識別子は実際にコマンドを走らせて応答から読む。plan-checkの3テストが緑。あわせてmainの台帳から消えていた第72〜75ラウンドの節と索引を復元）
-
 - [DSH外部Harness H2/H3 比較試験（2026-11-11、TEI #2509 / TAI #168 / SK-02）](DSH_H2_H3_COMPARISON_2026-11-11/)
 - [MCPサーバーを5つ繋ぐとハンドシェイク20件・Tool 32個になり、増え方は線形のまま（2026-11-11、#2515 H6-E2）](DSH_MCP_FIVE_SERVERS_2026-11-11/)
+- [コンテナとuidによる読取り隔離：4 Slotを別uid・mode 700に置き、DSH実Toolから他SlotとReviewer資料が全件`Permission denied`（2026-11-11、#2515 / TAI #168 G0。Mockを相手にした事前検査で、実Providerへの送出とH2/H3の比較Sessionは未実施）](DSH_G0_CONTAINER_ISOLATION_2026-11-11/)
 - [Studio の binding 欠落で、ビューと Command 操作が到達できていなかった件（2026-11-11）](STUDIO_BRIDGE_MISSING_METHODS_2026-11.md)
 - [「成果物と違うdigestを申告する」は、ディスクとの比較で止まる（追認）](TEI_GO_SELF_BUILD_ARTIFACT_DIGEST_STOPS_2026-11-11.md)
 - [セルフビルド実現の計画～設計の完了記録](TEI_GO_SELF_BUILD_REALIZATION_COMPLETE_2026-11-11.md)
@@ -475,3 +475,15 @@
 - [未統合機能の孤児テストがrepository-healthを常時赤にする](TEI_DOGFOODING_ROUND78_REA_EVIDENCE_ORPHAN_2026-11-12/README.md)（rea-evidenceを要求する2試験がmainに在り、実装は未統合ブランチ（157コミット遅れ）にのみ存在。依存のinternal/externalanalysis 1,202行もmainに無い。スタブは採らない（動くように見せるため）。起票 #4455。plan-checkは第76〜77ラウンドで緑）
 - [能力種別の語彙は、一覧と定数が食い違い得る](CAPABILITY_KIND_VOCABULARY_2026-11-11/README.md)（CapabilityKindは閉じた7値で、#951の対象。語彙はconstブロックとCapabilityKinds一覧の2箇所に書かれ、Valid()は一覧を読むが、両者が同じ集合であることを確かめる仕組みが無かった。一覧に定数が無い要素を足すと試験が失敗することを実測。RuntimeKindも同じ形なのでまとめて固定。定数だけを足す方向は件数が同じままなら通るため、別の確認が必要）#951の判断材料
 - [条件2と条件3の「止まる」側2行も、実測で追認した](TEI_GO_SELF_BUILD_STOP_TABLE_MEASURED_2026-11-11.md)（§4.37の表の残り2行を実測。childが`intentBytesDigest`を偽ると**`the builder read different declaration bytes than the entry held`**で停止し、`planFingerprint`を偽ると**条件3と条件4が同時に崩れる**。**entryが見る側の4行がすべて実測済みになった。** #2831）
+- [「同じバイトを二回出さない」は、条件5のバイト比較で止まる](TEI_GO_SELF_BUILD_REPRODUCTION_MISMATCH_SCOPE_2026-11-13.md)（§4.37の表でentry側の最後の未測定行を実測。二回目のbuildで1バイト追記し**追記後のdigestを申告**させると、`artifactReproducibility.state=mismatched`・**`the two builds of the same plan produced different artifact bytes`**で停止した。**申告はディスクと一致したままなので、止めたのはバイト比較そのもの。** #2831）
+- [計画と違うdefinitionを読むと、childは成果物を作る前に止まる](TEI_GO_SELF_BUILD_CHILD_DEFINITION_STOP_2026-11-13.md)（§4.37の表で最後の未測定行を実測。childを直接駆動し、1行追記した別definitionでは**exit 1・成果物なし**で両方のdigestを名指しして停止した。計画がdigestを持たない場合は**計画の検証が先に止め、childの比較分岐には到達しない**。**entry経由では計画とsourceが同時に導出されるため、この食い違いは発生しない。** #2831）
+- [catalogはbuilderのdigestを持っているが、entryは`-child`と比べていない](TEI_GO_SELF_BUILD_BUILDER_SUBSTITUTION_2026-11-13.md)（§4.37の条件5「builder同一性」をプロキシなしで測った。catalogの`artifactDigest`は実builderのsha256と一致するのに、**別の実バイナリを`-child`へ渡すとexit 0・`claimed=true`**になった。**比べる材料はentryの手元に両方あるが、比較していない。** #2831）
+- [`-strong`は観測を何も増やさない](TEI_GO_SELF_BUILD_STRONG_REDUNDANCY_2026-11-13.md)（§4.34の未決に事実側から材料を足した。catalog 3点セットを名指しした**素・`-rebuild-check`・`-strong`の3構成で観測が完全一致**し、`implied`も空。**flagの固有の効果はcatalog 3点セットが無いときの拒否だけ**で、§4.34が「別flagは要らない」と判断した根拠は観測の側から支持される。**表明としての価値は未決。** #2831）
+- [条件5のstate分離にentry側の事後検査を足した（S1）と、その限界](TEI_GO_SELF_BUILD_STATE_SEPARATION_POSTHOC_2026-11-13.md)（#4486のS1・S3を実装。1つのstateを共有しディレクトリを作らないchildは**`unperformed`・`claimed=false`**へ落ちるようになった（実装前は`claimed=true`）。**渡したパスに空ディレクトリを作るchildは今も通る**ので、`entry-post-hoc`は`host-boundary`より弱いと`basis`と`scope`で明示し、試験で固定した。** #2831）
+- [state分離の「host-boundary」は、この環境で実際に張れる（S2の実現可能性）](TEI_GO_SELF_BUILD_STATE_BOUNDARY_FEASIBILITY_2026-11-13.md)（#4486のS2を実装する前の実測。`unshare -rm`内で`mount -o remount,bind,ro /`が成功し、許可ディレクトリだけ`remount,bind,rw`で戻すと**同梱childは通り、境界外の書込は落ちた**。**組込みの障害も特定**：`driveSelfBuild`は起動した実行物のdigestを記録するため、`unshare`を起動するとbuilder同一性が壊れる。** #2831）
+
+- [「state分離」は、childの申告と文字列が一致するかである](TEI_GO_SELF_BUILD_STATE_SEPARATION_SCOPE_2026-11-11.md)（§4.37が条件5で「stateの分離」を確かめるとしている点を実測。childが二回とも**同じstate**を使い、渡された値をそのまま申告する構成で、`firstStateDir`と`secondStateDir`は違うまま**`l2b.claimed=true`**になった。**検査は文字列比較であり、実際に別のstateを使ったことではない。** #2831）
+- [閉じ括弧の後ろに書いた「ブロック内専用の項目」が所属を名指しする](TEI_DOGFOODING_ROUND74_BLOCK_PLACEMENT_2026-11-11/README.md)（#4169のA案5件目。bind/resource/column等を閉じ括弧の後ろに書くと、どのブロックに入るかを言う。最初の探査はファイル名が誤りで3回とも読まれず、第72ラウンドで入れた警告がその誤りを教えた）
+
+- [「成果物と違うdigestを申告する」は、ディスクとの比較で止まる](TEI_GO_SELF_BUILD_ARTIFACT_DIGEST_STOPS_2026-11-11.md)（§4.37の条件5で、entryが自分で確かめる側を実測。childが書いた成果物と違う`artifactDigest`を申告すると**exit 1・`ok:false`・`claimed:false`**になった。**直近2周で測った「止まらない」2件と対になり、表の非対称が実測に基づくことを示す。** #2831）
+- [CLI が解決の拒否理由を、prose の外へ出せるようになった](CLI_RESOLVE_REASON_2026-11-11/README.md)（#4245でresolverが返すcodeに呼出し元が0件だったので、cliFailureへresolveReason（omitempty）を足し、plugin-resolveとplugin-runtime-planの両地点が同じhelperを通るようにした。CodeとMessageとINVALID_PLUGIN_LOCKの扱いは変えない。理由が無いときはJSONに欄が出ないことを試験で固定した。tei commandsの広告と連鎖の出力は変えていない）

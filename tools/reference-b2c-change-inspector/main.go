@@ -4,6 +4,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -34,6 +35,7 @@ type input struct {
 	DeclaredScopeClosed bool     `json:"declaredScopeClosed"`
 	Nodes               []node   `json:"nodes"`
 	Edges               []edge   `json:"edges"`
+	BaseOnlyEdges       []edge   `json:"baseOnlyEdges,omitempty"`
 	Changed             []string `json:"changed"`
 	Required            []string `json:"required"`
 	Unobserved          []string `json:"unobserved"`
@@ -76,8 +78,8 @@ func inspect(in input) (report, error) {
 	if in.Scope == "" || in.BaseRevision == "" || in.CandidateRevision == "" {
 		return report{}, errors.New("scope and both revisions are required")
 	}
-	if len(in.Changed) == 0 {
-		return report{}, errors.New("explicit changed subjects are required")
+	if len(in.Changed) == 0 && len(in.BaseOnlyEdges) == 0 {
+		return report{}, errors.New("explicit changed subjects or base-only edges are required")
 	}
 	byID := make(map[string]node, len(in.Nodes))
 	for _, n := range in.Nodes {
@@ -108,10 +110,12 @@ func inspect(in input) (report, error) {
 			missing[id] = true
 		}
 	}
+	candidateEdges := map[edge]bool{}
 	for _, e := range in.Edges {
 		if e.From == "" || e.To == "" {
 			return report{}, errors.New("edge endpoints must not be empty")
 		}
+		candidateEdges[e] = true
 		outgoing[e.From] = append(outgoing[e.From], e.To)
 		incoming[e.To] = append(incoming[e.To], e.From)
 		// Unknown edge endpoints matter if they touch the explicitly
@@ -127,6 +131,27 @@ func inspect(in input) (report, error) {
 				missing[e.From] = true
 			}
 		}
+	}
+	// The candidate graph alone cannot retain an edge removed since R0.
+	// Explicitly declared base-only edges seed their former dependents as
+	// changed, without inventing baseline Source or diff provenance.
+	baseOnlyDependents := []string{}
+	seenBaseOnly := map[edge]bool{}
+	for _, e := range in.BaseOnlyEdges {
+		if strings.TrimSpace(e.From) == "" || strings.TrimSpace(e.To) == "" {
+			return report{}, errors.New("base-only edge endpoints must not be empty")
+		}
+		if candidateEdges[e] {
+			return report{}, fmt.Errorf("base-only edge %q -> %q also occurs in candidate", e.From, e.To)
+		}
+		if seenBaseOnly[e] {
+			return report{}, fmt.Errorf("duplicate base-only edge %q -> %q", e.From, e.To)
+		}
+		seenBaseOnly[e] = true
+		if _, exists := byID[e.From]; !exists {
+			missing[e.From] = true
+		}
+		baseOnlyDependents = append(baseOnlyDependents, e.To)
 	}
 	for _, id := range in.Unobserved {
 		if strings.TrimSpace(id) == "" {
@@ -160,7 +185,7 @@ func inspect(in input) (report, error) {
 
 	visited := map[string]bool{}
 	lanes := map[string]bool{}
-	queue := append([]string(nil), in.Changed...)
+	queue := append(append([]string(nil), in.Changed...), baseOnlyDependents...)
 	for len(queue) > 0 {
 		id := queue[0]
 		queue = queue[1:]
@@ -213,7 +238,20 @@ func inspect(in input) (report, error) {
 }
 
 func run(r io.Reader, w io.Writer) error {
-	dec := json.NewDecoder(io.LimitReader(r, 1<<20))
+	// A bounded, pre-decoding key check prevents later JSON keys from
+	// silently overriding scope/closure/changed/required declarations.
+	const maxInputBytes = 1 << 20
+	data, err := io.ReadAll(io.LimitReader(r, maxInputBytes+1))
+	if err != nil {
+		return err
+	}
+	if len(data) > maxInputBytes {
+		return errors.New("B2C reference input exceeds the 1 MiB limit")
+	}
+	if err := inspectJSONKeys(data); err != nil {
+		return err
+	}
+	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
 	var in input
 	if err := dec.Decode(&in); err != nil {
