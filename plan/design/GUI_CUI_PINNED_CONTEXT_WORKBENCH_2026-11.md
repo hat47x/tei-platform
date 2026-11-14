@@ -974,3 +974,16 @@ P0/P1がPASSしてもP2〜P5をPASSにしない。P2の解消は**現在の正�
 **検証境界**：このテストは`createResponseScope`と`pin-state`を合成した非同期順序の検証であり、`main.ts`の実UI配線、実ReaderのSource/Revision、Windows WebView2の操作試験ではない。追加後HEADのCIは**結果未確認**。旧HEADの専用CI/Repository health成功を新HEADへ転用しない。embedded bundle byte比較のFAILも未解消。
 
 **次段階**：新HEADのCI確認後、#4515で`main.ts`の実Pin UIに同じlane/Intent検査を配線し、UIからBを表示したままAの再確認を実行するE2Eを追加する。
+
+
+## 29. 2026-11-14 Pin 11件のCIと横断Plan Index失敗の原因分離
+
+#4597 HEAD `a9c91e56eecdb6b588064188490fc3de950c1744`について[Pin専用CI #43574298419](https://github.com/hat47x/tei-platform/actions/runs/43574298419)は**completed/success**。新規`responses.pin.test.mjs`を含む専用契約のCI成功を確認した。これによりPin純粋状態7件＋独立lane4件のテスト実行ゲートは同HEADで通過した。ただし実GUI/Reader統合ではない。
+
+同HEADの[repository-health #43574298349](https://github.com/hat47x/tei-platform/actions/runs/43574298349)は**completed/failure**。実ログを追跡すると`go test -count=1 -timeout 60m ./...`の`tools/repository-plan-check/TestPlanReadmesMentionEveryEntry`が、`plan/design/CONSUMER_QUALIFIED_CROSS_LANE_ACCEPTANCE_2026-11-14.md`の`plan/design/README.md`未掲載を指摘した。Pin専用CIの失敗ではない。現在の`main`では当該READMEにファイル名が記載されていることを別途確認したが、**PRの当該CI HEADで修正済みとは扱わない**。PR baseの更新・統合時にIndex差分を再検査する。
+
+同HEADの[embedded bundle #43574298492](https://github.com/hat47x/tei-platform/actions/runs/43574298492)は**completed/failure**を継続。これもPin契約CI成功からは解消できない。
+
+**受入票**：P0（Pin純粋状態＋lane契約）= PASS at `a9c91e56`、P1（全体repository-health）= FAIL（Plan Index）、P2（生成Bundle byte一致）= FAIL、P3（Workbench Pin UI）= NOT IMPLEMENTED、P4（実Windows Pin E2E）= NOT RUN。いずれも別の証拠で更新する。
+
+**修正優先順位**：先にPR baseと`plan/design/README.md`の差分を同期し、全体健全性を再試験する。並行して生成Bundleの差分原因を検証する。UIへの接続は#4515のOwnerで進めるが、単体PASSを全体PASSとして扱わない。関連PRの成果物を安易に上書きしない。
