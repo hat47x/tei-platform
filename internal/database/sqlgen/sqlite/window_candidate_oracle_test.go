@@ -45,11 +45,11 @@ type ctkWindowOracleCase struct {
 
 func checkCTKWindowCaseClosure(cases []ctkWindowOracleCase) error {
 	required := map[string]bool{
-		"baseline.tei.md": true,
-		"frame-narrowed.tei.md": true,
-		"layout-only.tei.md": true,
+		"baseline.tei.md":                 true,
+		"frame-narrowed.tei.md":           true,
+		"layout-only.tei.md":              true,
 		"duplicate-observation-id.tei.md": true,
-		"derived-view-stale.tei.md": true,
+		"derived-view-stale.tei.md":       true,
 	}
 	if len(cases) != len(required) {
 		return fmt.Errorf("incomplete Window candidate closure: got %d cases, want %d", len(cases), len(required))
