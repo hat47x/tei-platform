@@ -1390,3 +1390,61 @@ Mermaid直接Authoringは[main統合 #4697](https://github.com/hat47x/tei-platfo
 OCIは**補遺の検査観点ラベルに過ぎず、新規Scenario／第二Expectedを増やさない**。最初は公開合成SourceのOCI-1/2/4でCandidate→read-only表示の一往復を確認し、OCI-5/6で外部EvidenceやMarkdown/MermaidのReader適格性を既存Ownerに引き渡す。OCI-3/7/8の保存・受理・実行は実機構と権限の検収後に行う。
 
 **優先順位・資格**：通常`tei` CLIの最初の実Provider Read #2586、non-Plugin StudioのStage1→Stage2 #2831/#4583を製品P0として先行させる。組織入力チャネルの完成・REA外部Parserの拡張・Mermaid Writer・StudioのGUI保存を新Hard Gateにしない。§28は設計と実装引渡しのみであり、実白板解析／音声／CSV Import、正規`*.tei.md` Reader、AI/SHO/Studio独立受領、正式Meaning/DB Commit、実Provider/Host E2Eはいずれも未実行・未受理。
+
+
+## 29. 候補判断を決定表で説明し、実Reader・実生成Goで検証する（2026-11-15）
+
+> **適用範囲：§26 CR-00〜08と§27 ORXを、TEI既存のRule/Function/Sourceへつなぐ実装用受入仕様。** [BRMS統合設計PR #4723](https://github.com/hat47x/tei-platform/pull/4723)のDecision Table、重複/未網羅診断、説明・依存・生成を組織固有の使用例として利用する。このPRは現時点で未マージの設計候補であり、製品機能として採用済みとは扱わない。第2のRule Engine/Decision Store/認可Runtime/DSL Parserは追加しない。
+
+### 29.1 「関係を取得できた」と「業務上の判断ができる」を別票にする
+
+仮の要求は「部門D1に関する役割R1を持つ人物候補を求める」とする。現SourceにはRoleAssignment→Person/Role、Responsibility→Person/OrgUnitが存在するが、**その人がCase C1を承認するという正式Meaning**、Role/Responsibilityの期間、Role AssignmentのScope、Case→Duty/Responsibilityは**存在しない**。このため、次の表は候補を導く**限定合成Ruleの説明**であり、Owner採用前の権限・業務判断を確定する定義ではない。
+
+| Rule ID（説明用） | RoleAssignmentでR1を確認 | ResponsibilityでD1を確認 | Person同定・必要Readの資格 | 読取専用の扱い |
+| --- | --- | --- | --- | --- |
+| OR-D01 | 同じPに存在 | 同じPに存在 | complete、結合Keyが解決済み | Pを候補に含め、双方のOccurrence Pathを残す |
+| OR-D02 | なし | あってもよい | complete、検索範囲が確定 | Pを候補に含めない |
+| OR-D03 | あってもよい | なし | complete、検索範囲が確定 | Pを候補に含めない |
+| OR-D04 | 一部だけ判明 | 一部だけ判明 | 必要Readがpartial/unestablished | 可視Pの候補表示は可能でも**不在・唯一・全件を確定しない** |
+| OR-D05 | 同名で見つかる | 同名で見つかる | Source Key/Person Link未解決 | `unresolved`。名称から同一人物としない |
+
+**この表は、D01〜D05をそのままTEIのunique-hit決定表として実行できると主張するものではない。** 「あってもよい」という条件は意図的に重なる場合があり、complete-one/none/manyは単一行の一致結果ではなく、Relation集合を結合したあと**対象Personごとに**求まる。先にRaw Read/Key Join/ScopeとCompletenessを解決し、その事実を入力とする純粋な決定処理としてLoweringする。行重複や例外を順序で勝手に処理せず、採用するHit Policy、No Matchの意味、Field Type/NULL、入力粒度を明示できなければ表を実行定義にしない。
+
+最初に確認する型付きRuleは、完全に取得できた**合成関係集合**からPerson単位の候補集合とOccurrence Pathを得る**read-only導出**である。必要Readが不完全なら結果を確定せず、未取得という事実と足りないRequired Setを持ち越す。候補数が0件でも、全件性を示せなければ`complete-none`を返さない。
+
+### 29.2 判断に必要な入力集合と説明を、結果列以外からも求める
+
+最低限、対象OrgUnit/Role、RoleAssignment/Responsibility両側のPerson ID・Relation Occurrence ID・参照先Key、Person Keyの解決状況、Read Scope/Cohort、Source/Meaning/Rule版が**独立した必要情報**となる。RoleAssignment/Responsibilityの存在を確認するWHERE/EXISTSは、出力のPerson IDに現れなくても判断の意味と結果件数を変えられる。条件の否定（該当なし）は、必要集合がcompleteであるときだけ意味を持つ。
+
+現行`internal/functioncontext/functioncontext.go`の`From`は、Cursorの`FullyRead=true`と別に、Native SQLの取得範囲を`CoverageUnestablished`とし、`EmptyJustified=false`を維持する。**結果を最後まで読み取ったことと、意思決定に必要な母集団が完全であることは異なる。** 実QueryからPerson P1が1行返っただけでは「唯一の承認候補」と宣言できない。RLS/limit/Join脱落/別Provider/未解決Person対応は、画面上の行数で検出できない。
+
+説明は「P1が候補になった根拠」だけでなく「P2を候補外とした理由」「判定不能なPersonの有無」「比較したRule行・Source span・版・必要Read・完全性」を必要な開示範囲で示す。非候補者全員の詳細を公開してよいという意味ではない。Rule/表/AI説明に同一ScopeのCurrent Grantを付与することも禁止する。
+
+### 29.3 競合・未網羅・版差を、組織C1固有の反例にする
+
+| 参照ラベル | 固定する変更／反例 | 独立Expectedと製品資格 |
+| --- | --- | --- |
+| **ODR-1** | P1はR1とD1双方のOccurrenceを持ち、P2はR1だけを持つ。全Required Readがcomplete | Candidate P1、P2除外理由と両Pathを説明。ただし**Case C1承認者は未確定** |
+| **ODR-2** | P2にもD1責任が追加された。両候補の条件が等しい | Candidate二人。任意のfirst/priorityで一人を自動選任しない |
+| **ODR-3** | ODR-1と同じ表示行だが、Responsibility Readがpartial/unestablished | 単独候補確定を拒否し、必要Read不足を表示。Cursor FullyReadのみではcompleteにしない |
+| **ODR-4** | Roleの条件を二つの表行が同時に満たす（unique指定） | 両行ID/Source spanを提示して競合診断。表の順番で選択しない |
+| **ODR-5** | 条件に一致しない未知Role、NULL、missing、失効Known、0件を入力 | 未評価・NULL・No Match・完全なnone・型不適合を区別する。default許可はしない |
+| **ODR-6** | 人物P1に同じRoleの二つのAssignment Occurrenceがある | Person候補は一人、根拠Pathは二つ。Joinの行数で2人としない |
+| **ODR-7** | Role Ruleのしきい／対象OrgUnit/適用時点を変える | Queryの非出力依存/必要Reader/Rule・Generator・Consumerのどこが失効したかを示す。Source A→B→Aで旧Artifact/Decisionを無条件再利用しない |
+| **ODR-8** | P1候補とRule一致を得たがCurrent Grant失効、またはCase C1正式Linkなし | Read-only候補は保持。HostのActual EffectとCase承認は拒否／未決、Receiptは独立 |
+| **ODR-9** | Markdown表のRule/Relationの意味行を変更し、Mermaidのレイアウトだけも別に変更 | 意味行は実生成Go分岐・独立Expectedを変え、レイアウトだけでは変えない。Go Delegate-onlyは不合格 |
+| **ODR-10** | CLI読取、Studio表示、AI説明で一つのSource/Rule/Contextを使う | 同じMeaning版を参照しつつ、各Consumerの実受領・開示範囲・Source Pin一致は別に検収 |
+
+ODRは**既存#4490 ORG-BEH-04、#1180/#2514、BRMS #4723のT1〜T8、Graph Fixture #4709への引渡し用参照名**であり、新しいExpected SSOT・Schema・Engineを定義するものではない。Case C1とr7を実データとして一つに結合する受入ではない。
+
+### 29.4 最初の実コード変更を、入力が変わるとGoの判断が変わる一点に絞る
+
+1. **S0（現行資格）**：mainのWorkspace Loader/Source Index、現行RoleAssignment/Responsibility、Function Context（`CoverageUnestablished`）と[限定Markdown Reader #4722](https://github.com/hat47x/tei-platform/pull/4722)を固定。#4722はGraph表のbyte span／多重Edge等を読める**read-only Reference**であり、正式`*.tei.md` Reader・Rule/Generatorを実装済みにしない。
+2. **S1（最初のGo PR候補）**：既存BRMS/DSL/Operator Owner #988/#1637、Source Reader #2621/#3030が採用した**狭いIF/RuleまたはMarkdown表の一条件**を、実型付き式→実Go判断分岐へLoweringする。まず合成Rowset/Person Keyの明示値でODR-1/2/4/5を比較し、表のRule行や条件を変更すると実生成ロジックと結果が変わることを確認。製品Reader未実装なら当該入力は`unsupported`とし、暫定手書きGoはReferenceにしか数えない。
+3. **S2（実Readの接続）**：BEH-01/02の必要ReadとCoverage、実Provider→Function Contextの境界を確認してから同じRuleを接続。ODR-3の**見かけ上1人でも未確定**を最重要負例として実行し、結果とObserved/Expectedを同じAttemptで比較する。Native SQLのcursor終端だけを独立Read完了へ昇格させない。
+4. **S3（実Product Consumer）**：通常`tei` CLI・独立ConsumerでSource/Rule/Plugin Artifactと結果/理由を実受領する。Studio/AI/SHOはSource Pin・開示・実受領を独立に確認。Capability/Host Grant/Effectは別Ownerの実契約へ渡す。
+5. **S4（汎化と自己生成）**：同じ条件の表から別のDomainのIF/Constraintへ展開し、TEI生成／外部Delegate／手書きGo／未対応の義務分母と、定義簡素化を同じ独立Expectedで評価する。CLI Stage1→Stage2とDesktop Stage2の受入を混同しない。
+
+**優先度**：製品主線のStudio Stage1→Stage2（#2831/#4583）および通常`tei` CLI実Provider/独立Consumer（#2586/#4495）がP0。BRMS本体の横断採否は[#4723](https://github.com/hat47x/tei-platform/pull/4723)で進行中の設計候補、TEI-native Graph/Rule生成は#2621/#951/#1121のCLI-first実証。組織Ruleは**第二の実用例**とし、P0を妨げる新Hard Gateを設けない。
+
+**停止条件／証拠上限**：本節はドキュメントのみ。正式Decision Table Schema・hit policy・Rule Language・Reader/Generator・実組織Provider/CLI・Host Effect・Owner意味受理は実装済みと主張しない。Caseに不存在な承認規則、Rule/RoleからのGrant、Nullable/Partialの無言でのfalse化、Page図面からの業務意味決定、DecisionだけでのDB Commitを禁止する。 
