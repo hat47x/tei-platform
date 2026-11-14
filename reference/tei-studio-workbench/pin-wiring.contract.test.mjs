@@ -26,7 +26,11 @@ test("PIN-WIRING-01: pinned reader uses the existing Host reader in its own resp
 });
 
 test("PIN-WIRING-02: background Pin cannot directly repaint the current selected view", () => {
-  const source = bodyBetween("async function refreshPinnedSubject() {", "\nfunction renderList() {");
+  // A background reply also calls renderPin(); guard that indirect path.
+  const source = [
+    bodyBetween("function renderPin() {", "\nasync function refreshPinnedSubject() {"),
+    bodyBetween("async function refreshPinnedSubject() {", "\nfunction renderList() {"),
+  ].join("\n");
   const forbidden = [
     /\binspect\s*\(/,
     /\bselected\s*=/,
@@ -34,6 +38,9 @@ test("PIN-WIRING-02: background Pin cannot directly repaint the current selected
     /\bgraph\s*\./,
     /\bnotice\s*\./,
     /\btitle\s*\./,
+    /\bsetFindings\s*\(/,
+    /\brenderList\s*\(/,
+    /\bpanel\s*\./,
     /element(?:<[^>]+>)?\(["'](?:editor|graph|notice|subject-title|source-status|graph-note)["']\)/,
   ];
   for (const pattern of forbidden)
