@@ -536,7 +536,7 @@ Window候補5件はSHA-256で元ファイルと結び付いているが、**候�
 
 さらに、実表のA3だけを30から300へ更新し、**生成済みSQLを変更せず再実行**する。直前三行のA3平均が20から110へ変わることを確かめ、入力が変わったのに以前の結果を返す経路を検出する。これは入力→実DB→生成SQL→観測結果の限定C0試験であり、受理されたTEIの`*.tei.md`定義から実行したという意味ではない。候補JSONの手入力を受理済み意味に昇格させず、正式Readerや既存Query／Provider契約を迂回しない。
 
-[Graph／Ruleの候補構造指紋 #4758](https://github.com/hat47x/tei-platform/pull/4758)はレビュー中で、Raw Source・構造上の意味候補・生成Binaryの指紋を区別しようとしている。Windowに第二の指紋体系を増やさず、今後は正式Readerで選択した表Cell・意味Revision・実生成入力・Artifact・実Consumerの対応を既存Source Index／Build契約で検証する。入力変更後に生成SQLが同じでも、**実DBデータ版と実行結果の証拠は同じではない**。古い計算結果を現在の結果として再利用しない。
+[Graph／Ruleの候補構造指紋 #4758](https://github.com/hat47x/tei-platform/pull/4758)はmainに統合された。限定Referenceの生成バイナリが構造候補の指紋を応答できるようになり、**Raw SourceのSHA-256・候補構造の指紋・実BinaryのSHA-256は別の値と資格**であることを実証した。ただし正式Reader・Owner受理・現在の実行許可はこれだけでは成立しない。Windowに第二の指紋体系を増やさず、今後は正式Readerで選択した表Cell・意味Revision・実生成入力・Artifact・実Consumerの対応を既存Source Index／Build契約で検証する。入力変更後に生成SQLが同じでも、**実DBデータ版と実行結果の証拠は同じではない**。古い計算結果を現在の結果として再利用しない。
 
 また[入れ子Opaqueの拒否修正 #4755](https://github.com/hat47x/tei-platform/pull/4755)はレビュー中である。標準QueryがWindowを意味表現できないままNative SQLの一部を取り落とす経路は引き続き拒否する。今回のテストで扱う既存SQLite方言のWindow直接生成を、標準QueryのWindow対応やNative SQLの実行許可として受理しない。
 
