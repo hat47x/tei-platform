@@ -3,12 +3,13 @@ package teimdreader
 import (
 	"bytes"
 	"crypto/sha256"
-	"runtime"
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 )
