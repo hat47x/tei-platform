@@ -1243,3 +1243,48 @@ M0/M1で一Relationの照合を成立させたら、[#1031](https://github.com/h
 **最初に実装/検収すべきものはTEA-Q41とQ43の二件だけ**。Q41は既存REA `BuildReviewPacket.ThreeElement`を読み出すConsumerがunsupportedの二面を「不存在」へ変えないか、公開合成の既存Fixtureで確認する。Q43は一つのFunctionに限定し、旧宣言と実Target Readの対応を**Ownerが受理したMappingとは分けて**照合する。新REA Reader・TEA正本・検証エンジン・業務実行Runnerを作らない。X-TEA実Source T1-B、`.xeaf`、Studio Consumer、実PG通常CLI結線と旧新Actual比較の順序は各Owner #4615/#3394/#2586/#2514に委ね、相互のHard prerequisiteにしない。
 
 **反証の停止線**：`data=supported`を「正式なData Business Identity」と扱う、REAが`function=unsupported`であるのをFunction 0件と描画、X-TEA Business Actionを実作業完了と記す、あるいはPG実Readがあるというだけで旧X-TEA Functionが同じものだと宣言するなら、この異種Joinは不合格。Owner Accepted、Current Disclosure、外部実AttemptのSource closureと実Business executionは**未証明**。本§39は設計の横断接続で、新Go/Node/Windows/E2E試験とOwner採用は**NOT RUN / NOT ACCEPTED**。
+
+## 40. 原典準拠のMethod検収と、構造不変でも変わる検証資格（2026-11-14、採用前）
+
+### 40.1 原典が要求する「システム観」とTEI汎用構造を対応付ける
+
+三要素分析法の[原典講座前編](https://atmarkit.itmedia.co.jp/fbiz/cbuild/complete/doa/01/01.html)と[後編のサブシステム／CRUD説明](https://www.itmedia.co.jp/im/articles/0605/09/news085_2.html)を再確認。三つのアスペクトは**データ構成・機能構成・業務構成**。論理要件と物理制約のせめぎ合いの上に実装が成立する見方であって、Data/Function/Businessの型が存在するだけでは原典の再現に達しない。原典では業務上の利用者・取引先という社会的文脈、テーブルと機能のサブシステム内凝集・越境CUDの抑制、複数の図面を用いた反復が重要である。既存[#1124](https://github.com/hat47x/tei-platform/issues/1124)のDG-01〜06と[Method Diagram Contract §14](THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)を**原典忠実性の主たる実装Owner／九観点の既存設計**とし、本節は不足している判定資格と独立Expectedだけを追加する。九つの新Canonical Kind、新しい万能Method Schemaは作らない。
+
+| 原典の成果物・働き | TEIで使い得る現在の接点 | 原典忠実性を主張するための不足／停止線 |
+| --- | --- | --- |
+| Data：Dataモデル、Key、関係、必要ならInstanceの例示 | `threeelement.DataElement/DataRelation`、`ModelMap/Locate`、X-TEA `.xead`の`Table/TableField/TableKey`読取 | Key/Relationの種類・多重性・項目参照と原典図法、Source逆引き、受理Meaningの独立照合が必要。関係が描画できても業務Identity/FDとは限らない |
+| Function：Function階層、画面/入出力、DataとのCRUD／逆引き | `threeelement.FunctionElement`、明示CRUD/Function Operation、`xteathreeview`の`IOTable` | Function×Data宣言、業務Action固有操作、実Provider I/O/Effectを区別する。原典の機能階層/画面操作はgeneric Functionへの黙った置換をしない |
+| Business：業務フロー（イベント付きDFD）、職務・Action Tree、Actor/Handoff | `BusinessElement/Activity`、X-TEAの`Task/TaskAction/TaskFunctionIO`のSource Fact／構造候補、組織Role/Case | 図面のイベント・順序・例外・人手・担当を忠実に表せるかは未検証。Business nodeの存在は実施できる要員、業務遂行、権限、Owner受理を保証しない |
+| サブシステム／横断CRUD、相互参照と変更影響 | #3250の分割候補、#4472のCRUD整理、#1124のDG-01〜06 | Declaration occurrence→Qualified Direct CUD→Owner責任→実Effectの各段階を昇格させず、越境0・最適化成功を局所図表から結論しない |
+| 図上操作・原典Authoring／逆写像 | `Source Navigate`、Studio Inspector、Preview/Shared Acceptance、SHOの図表・文書候補 | 表示可能、意味が保たれる、Sourceへ可逆編集可能、実Modelerと同じ操作の各主張を別の独立Expectedで検査。単なるノード/エッジ数の一致で同等としない |
+
+**採用候補となる判定の単位**は、原典固定版の特定「図面・表示・操作」×対象Source/原典Meaning×TEI実Consumerの組合せ。各単位に①出典/実行版、②保持した要素・Relation・Rule/順序/多重性、③失った意味と未対応、④Navigation/操作、⑤編集・再投影資格、⑥独立Expected/実行Attemptを記録し、`observed / partially-supported / unsupported / not-examined`を**検収票の語彙**として説明する。これは新しいProduct enumや真偽判定Engineの要求ではない。各図の原典同等性とTEI固有の便利機能を別欄とし、一般Graph/Workflow/AI/ETL対応を原典忠実性の代替証拠にしない。利用許諾未確認の旧設計モデルや本文を公開Fixtureに流用しない（#941/#4615）。
+
+### 40.2 Source Rootだけの変更で判定が変わる実証を、TEAのView資格へ適用
+
+2026-11-14確認mainの[merged #4616](https://github.com/hat47x/tei-platform/pull/4616) `TestModelViewRootAvailabilityChangesValidationWithoutStructuralDrift` は、宣言済み未知Root `future` の**欠落→空ディレクトリ実在**だけを変更した二時点の独立Loadを比較する。`Catalog/Map/Locate/Validate`のValidationは `OK=false,error=1,warning=0` → `OK=true,error=0,warning=1`。一方、Semantic Source bytes、World/SourceIndex Fingerprint、ModelRevision、Workspace Identity、Map Links、対象Subjectは不変である（同PR exact head `80bf7420334d57f42c871eb7a071ec21fdda7ec5` のCI成功）。**一つのSource Rootの有無に関する限定的なGo実証**であり、全Root/Imported Source/Plugin/Runtimeや同一atomic snapshotの証明ではない。
+
+これを三要素Methodへ伝播するとき、**図面の構造とValidationのVerdictは別の鮮度軸**で扱うべきことが具体的に示された。TEAのSource-backed Data/Function/Business Relationを全件再生成するかは実装の最適化問題であり、Rootの欠落が解消しても図面上の意味Relationや受理済み業務規則が変化したと推論しない。他方、Diagram内容のFingerprint、Source Index FP、Workspace IDだけを鍵にした旧`validation.ok`の無条件再利用も許さない。必要Rootの現在性を再確認できない場合は、Consumerが持つ判定を`unknown/not-revalidated`として説明する。これは最新の実際のRoot状態を常時検知できるという意味ではなく、Watcherや新しいGlobal Epochを提案するものでもない。
+
+| 変更したもの | 図面・意味の局所比較 | 失効／再検証すべき資格 |
+| --- | --- | --- |
+| 未解釈Rootが欠落→実在、意味Source/FP不変（#4616実証） | 同Source/同RuleのMap LinkとSubject構造は局所的に保たれる | Source Root Validation verdictは再検証。古いWorkbenchのOK/NG表示をFPだけで現在値と扱わない |
+| `.xead`のbytesやSourcePath/Workspace変更 | Source Fact/Occurrence、関係位置、Pin originを比較し直す | Rule・Source binding・Pin資格、旧Navigate/Inspect Replyの採用可否 |
+| Method Reading Rule/Notationのみ変更 | Notation/LayoutだけならAccepted Meaningは不変。Rule意味変更は候補として分離 | DerivationRule/Projection FP、Semantic Rule変更時の既存Owner Acceptance |
+| 業務Meaning Decision/Owner版のみ変更 | Legacy Source Factを改変しない | Accepted Mappingの適用資格、L→DとD→Tの現在対応 |
+| Current Grant/Disclosureだけ変更 | Source digestを意味改版と偽装しない | **公開Sliceを再資格化**し、非公開件数や診断を漏らさない。以前の公開可能性を再利用しない |
+| 実Builder/Provider/EffectのAttemptだけ変更 | 三視点構造と原典Meaningを自動変更しない | Target実消費・Stage2 artifact/Provider Call・結果のAttempt資格（#4583/#2586） |
+
+上述の失効は一律の「図を全部クリア」でも「内容FP一致だから全資格維持」でもない。**変わった根拠が支持していたClaimだけを再資格化する**ことが、図表の透明性と認知負荷の軽減を両立させる方針。実WorkbenchでSource Root変更を検知する方法、`readCatalog`が現Go `validation/workspace`を捨てる問題、後着Validate Reply/Pinの現在性は既存[#1124の引継ぎ](https://github.com/hat47x/tei-platform/issues/1124#issuecomment-6855470232)と[Studio設計Draft #4510 §16.24](https://github.com/hat47x/tei-platform/pull/4510)のOwnerに保持する。TEA側でPresenter、Policy Engine、Cache、Watcherを再実装しない。
+
+### 40.3 原典忠実性・現在性・操作適格性を分離する追加Expected
+
+| ID | 一因子だけ変える独立対照 | 期待される判定／受入先 |
+| --- | --- | --- |
+| **TEA-Q47** | 一つのSemantic SourceとMap Graphは不変、Root `future`欠落→実在（#4616既存fixture） | 図面のRelation/Subjectは不変でもValidationだけNG→warning付きOK。WorkbenchがRoot再読取なしに旧判定を現在OK/NGとして固定しない（#1124/#4510、実UI未検収） |
+| **TEA-Q48** | X-TEAのTask→Action→Function→IOTable→Table経路を図で示し、同じエッジ集合をgeneric Graphへ単純投影 | 端点だけでなく、業務Action/Function-declared CRUD、参照出典・順序/未解決、図法上の関係を識別。Action固有Effectや実業務遂行を捏造しない（#1031/#4615） |
+| **TEA-Q49** | 原典のFunction階層・Data参照・Business TaskActionが同一表示名を含む | 三つの観点それぞれのKind・Occurrence・元図面へのNavigateを保持。名前一致だけで同一Subject/Role/編集対象に束縛しない（#1124 DG-01〜03） |
+| **TEA-Q50** | Source/意味Ruleは同じ、Renderer/Notationだけ差替え；次に意味Ruleを変える | 第1ケースはAccepted Semantic/Decisionが不変。第2はProposal→既存Shared Acceptanceなしに意味更新しない（#267/#1124） |
+| **TEA-Q51** | 原典対応の一つの照合タスクをGeneric InspectとMethod Viewの両方で実施 | 正答率／誤った不存在断定／Source到達／操作回数・所要時間を同じFixtureで比較。Method Viewの認知負荷低下を根拠なく主張しない（#2514、UX Owner） |
+
+**順序と撤回線**：P0はTEA-Q47の既存Go Witnessを引き継いだ**Workbench Consumerの根拠保持**と、Q48の**合成一経路**での原典図法の情報欠落表。次はX-TEA実Sourceの公開可能な集計比較（#4615）とQ49の操作性へ。Q50は意味Rule/Acceptance、Q51は実UIが使える後に実施し、どれもDesktop Self-build #4583 B1-B→B2→B3、実Function Read #2586のHard Gateにしない。現`/three-view/`は合成fixture向けread-only Draftであり、人の実GUI受入、原典全図面/九観点の忠実性、現Grant、編集、業務実行はNOT RUN/NOT ACCEPTED。新Method Host、強制ワークフロー、新Source truth store、業務意味のAI自動承認は導入しない。
