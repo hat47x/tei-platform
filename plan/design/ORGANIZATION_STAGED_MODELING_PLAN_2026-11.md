@@ -672,6 +672,8 @@ WU-11〜14をWU-06〜10の「全部完了待ち」にしない。前段の**必�
 
 数量は value/unit/basis/grain/validAt/knownAt/source/coverage を検査する。単位変換可能であっても、Basis（例：月間予定工数と実績工数、予算と実支出）が異なれば無条件に合算しない。未取得・NULL・非開示・0を区別する。配賦合計が1を超えるか否かは雇用形態・用途によるため、Coreが一律に拒否せずOwner Ruleに委ねる。
 
+**数量名と倍率の負例（2026-11-13、#1705/#2495/#2593）**：既存r7 fixtureの `allocations[].basisPoints` は歴史的な**保存フィールド名**であり、金融で一般的なbasis point（1 bp=0.01%）として正規化してはならない。r7の合成期待では **raw 100=1.0 FTE／raw 60=0.6 FTE** と明示する。これはfixture固有の `fte-hundredths` 換算であって、正式TEI Unit宣言でも実企業のFTE定義でもない。何も宣言がないConsumerがraw値を汎用bpとして解釈して結果を出すことは**不合格**。Unit/Scale/Basisが未確認なら `unknown` または `unsupported` とし、同じ整数100でも「金融bp→比率100/10000」「このfixtureのFTE百分の一→FTE100/100」を別変換として判別する。**既存source-fixture.jsonのフィールドを一括Rename/100倍移行しない**。実データ受入側の型付き換算・Decimal精度/丸めは#1705、Measure粒度/再集計は#2593、複数facetの意味は#2495に返す。外部の単位定義は [Investor.gov](https://www.investor.gov/introduction-investing/investing-basics/glossary/basis-point) を参照。
+
 #### 10.8.2 既存Source fixtureを正本とする：P1/P2/P3とD1/D2
 
 **出典を明示**：mainの `reference/org-semantic-views/source-fixture.json`（`org-synthetic-r7`、blob `d66f29505389f2096e9b825ba4f5e2d799d607d4`）および `scenario-fixture.json`。baselineは `validAt=2027-06-15`、`knownAt=2027-07-01`。P1→D1のA1=100 basisPoints、P2→D1のA2=60、P2→D2のA3=40、P3→D2のA4=100。100 basisPoints=1 FTEという**この合成Fixture内の換算基準**を使う。前稿の「P1がD1 0.6/D2 0.4、P2がD1 1.0、全体2人/3所属/2 FTE」は当該fixtureに存在しない仮例だったため**撤回**し、第二Source/独立Fixtureを作らず修正する。
@@ -719,6 +721,8 @@ WU-11〜14をWU-06〜10の「全部完了待ち」にしない。前段の**必�
 | ORG-CAP-06 | Skillが一致しても失効資格・自己承認・別Tenant/Grantなしなら実承認不可。候補がpartialなら確定選任不可 |
 | ORG-CAP-07 | r7のvalidAt=2027-06-15を固定しknownAt=2027-07-01→07-03でMembership=4→3、FTE=3.0→2.4。Rule/Provider/Policy/Scope/known変更時の再利用資格も再評価し、A→B→Aを同一版としない |
 | ORG-CAP-08 | Scenarioの図・SHO説明・AI提案が成功しても、実異動・Case移管・Effect/ACKは発生していない |
+
+**新たな合成反例（[Draft PR #4564](https://github.com/hat47x/tei-platform/pull/4564) の独立検証対象）**：ORG-CAP-UNIT-01＝未知Scaleまたは金融bpをfixtureのFTE百分の一へ暗黙変換しない。ORG-CAP-UNIT-02＝同一Relation occurrenceのAllocation重複をMapのlast-value-winsで確定しない。ORG-CAP-07b＝knownAtの遡及訂正はD1・全体FTEに影響し、D2の同じcomplete合成Scopeでは再集計値不変。ただし現実のProvider cohort一致は推定しない。ここで扱うNode Referenceは未採用の試験用interpretationで、TEI製品実Query/単位変換/Cacheとは区別する。
 
 **実装順**：#2510にある既存r7の人数/FTE Referenceを再利用し、ORG-CAP-01/02の純粋なQuantity/Graph集計→03/04のread-only Scenario差分→05/06のRule/Scope/partial→07/08の実Consumer/鮮度へ進める。独立Expectedを実装から生成せず、synthetic oracleのPASSを製品経路の合格と呼ばない。#4490のORG-BEH、#4501のCXケースとの重複Expectedは新規作成せず共有する。最初の製品実Read #2586をブロックしない。
 
