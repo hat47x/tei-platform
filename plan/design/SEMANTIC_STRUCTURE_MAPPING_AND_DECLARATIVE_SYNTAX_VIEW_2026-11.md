@@ -603,3 +603,111 @@ B2Cサイト全体のアクセス計測、監査、リクエストの相関ID、
 AG-0〜AG-4は**Studioセルフビルドと通常CLIの実Readという全体P0の新たな前提条件にしない**。既存の構造・型付き参照・Projection・CLI Inspectで実現できる範囲に留める。新しいUniversal App Graph Store、Graph Compiler、Aspect Engine、文書Registry、別のAI Skill Runtimeを先に導入しない。
 
 **停止条件**：対象Universeが不明なのに「全Pageに適用済み」、Pluginの文書が存在するだけで「実Capability利用可」、合成図から「元関係を完全復元」、上位の説明を見たことで「現在のGrantあり」と主張する実装は、用途に応じて不適格／未検証へ戻す。
+
+## 27. `*.tei.md`をMarkdownとして自然に読めるAuthoring Sourceにする（2026-11-14追加）
+
+**設計基準**：TEIの専用ツールを開かなくても、通常のMarkdownビューアー、特にGitHub上で、文書の目的・構造・主要な関係・処理の流れが理解できることを、構文の採否条件に加える。文書の可読性を確保するためにTEI独自の行内記号を多数付けたり、意味のある情報を不可視のHTMLコメントだけに隠したりしない。
+
+この要件は「任意のMarkdownのすべてをTEIが実行可能な定義として解釈できる」という意味ではない。**GitHub等で読めること／TEIが型付きSourceとして読み取れること／TEI Studioから安全に編集できること**を独立の到達段階とする。
+
+現行の[#4370 Markdown Authoring S9](https://github.com/hat47x/tei-platform/issues/4370)では、`workspace/tei_md_source_guard.go`が管理Root内の`*.tei.md`を`TEI_MD_PARSER_UNBOUND`で停止させる基線と、Markdown Container Reader／表Cell span／Fence byte対応が未実装であることを区別している。移行計画[#3030](https://github.com/hat47x/tei-platform/pull/3030)と、Authoring Owner [#2621](https://github.com/hat47x/tei-platform/issues/2621)が判断する。**ファイル名を`*.tei.md`へ変えるだけでTEI製品が意味を読めるようになったとはしない**。本書は文体・構文の優先順位と、その受入基準を具体化する。
+
+### 27.1 記述の選び方
+
+| 人が表現したいこと | まず使う記法 | TEI側で必要な解釈・境界 |
+| --- | --- | --- |
+| 目的・背景・処理の説明 | Markdownの見出し、段落、箇条書き | 説明文と受理済み業務規則を区別。本文を自動でExecutable Roleへ昇格しない |
+| 対象・項目・規則・テスト | GFM Markdown表 | 一意のID、列の役割、Source Cell span、Reference／Roleの明示解決。表の形だけで宣言としない |
+| Graph・Flow・状態図 | GitHub対応のMermaidコードFence | 型付きNode/Edge/Relation/時点の保存範囲と、何が表示上の情報だけかを判定 |
+| 数量・式・集計 | Markdown内の数式、表、短い説明 | Operator・単位・精度・入力Scopeは別途意味束縛。数式の見かけから演算を自動確定しない |
+| Markdownだけでは読みにくい式・DSL | `tei`等の言語識別付きコードFence | Language Pluginに明示Binding。GitHubではコードとして読み、未受理はそのまま保持 |
+| Mermaidにない表現 | 属性表、専門的なSource Fence、必要ならDOT | それ自体はGitHubで図として描画されるとは限らないため、説明・表・Mermaid導出図等の読取経路を添える |
+
+GitHubは`mermaid` fenced code blockをGitHub上のMarkdownで描画する。参照：[GitHub Docs: Creating diagrams](https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/creating-diagrams)。ただし、GitHubの実際のMermaid版によって利用可能な構文が違う。Mermaidは新しい版でEdge ID付与`e1@-->`等を提供する（[Mermaid Flowchart](https://mermaid.js.org/syntax/flowchart)）が、**GitHubの現行Rendererがその拡張を受け付けることを確認するまでは必須構文にしない**。
+
+TEI固有のRoleやParser選択が必要なら、文書の見出し・表／Fenceの役割・Profileなど、通常Markdownとして読める手掛かりを使う。必要になったときだけ小さな明示Metadataを追加する。表題に`モデル`と書いたこと、`mermaid`や`tei`のFenceがあることだけで意味受理・実行を許可しない。引用中／例示中／通常の`*.md`も自動的な管理対象にしない。
+
+## 28. 複雑なGraphはMermaidと型付き定義を役割分担させる
+
+Mermaidで読みやすい図が作れたとしても、Graphの業務上の同一性・複数Relation・有効期間・属性・完全性を、それだけで表現できるとは限らない。**Mermaidを優先するのは「GitHubで読める表現」としてであって、Mermaidの全構文をTEIの意味定義へ自動昇格させるためではない**。
+
+### 28.1 まず二つのAuthoringモードを区別する
+
+- **図面をSourceとして扱う限定モード**：Flowchartの安全なサブセットに限り、Node ID／Edge ID／有向関係が十分に識別でき、必要なRole・Source位置・依存解決が明示される場合だけ、そのMermaid Fenceを型付き候補へ変換する。未対応のSyntax／Featureを黙って削らない。最初から任意の`classDiagram`・`stateDiagram`を実行意味にしない。
+- **モデル定義から図を導出するモード**：多重辺、時点、業務Role、辺属性、同名Node等の情報が図だけでは不足する場合、**Markdown表または既存の型付きSourceを意味上の唯一の定義元**とし、Mermaidは読取り用の導出図にする。図の変更を直接確定せず、元定義へのChange Proposal／Source Jumpへ戻す。
+
+二つのモードの混在や既存Fileの自動移行はOwner判断とする。初期の最小実証では後者を既定とし、Graphの読み取りやすさと意味の安全性を先に証明する。
+
+### 28.2 GitHubでそのまま読める`*.tei.md`の例（**未採用・Parser未対応の説明用サンプル**）
+
+次の文書は、そのまま通常のMarkdownとして成立する。関係の**定義は表**、Mermaidはその関係から導出した**表示図**とする。図のID・ラベルは読みやすさと追跡のために載せるが、辺の追加／削除や業務上のRoleの確定は、表の定義を変更して既存Ownerの検証を通す。
+
+````markdown
+# 担当者と部門の関係
+
+P01は営業部に所属し、商品企画部を兼務しています。
+営業部での代理業務は、所属とは別の関係として記録します。
+
+## 関係の定義
+
+| ID | 起点 | 関係 | 終点 | 有効開始日 |
+| --- | --- | --- | --- | --- |
+| R01 | P01 | 所属 | D01 | 2026-04-01 |
+| R02 | P01 | 代理 | D01 | 2026-06-01 |
+| R03 | P01 | 兼務 | D02 | 2026-07-01 |
+
+## 関係図（上表から導出した表示）
+
+```mermaid
+flowchart LR
+    P01["担当者"] -->|R01 所属| D01["営業部"]
+    P01 -->|R02 代理| D01
+    P01 -->|R03 兼務| D02["商品企画部"]
+```
+
+図ではR01とR02が同じ二点を結びますが、別々の関係です。
+表示図だけを編集して関係を確定することはしません。
+````
+
+この例で試すのは**GitHub上で読めること**と、将来的なReaderの受入条件である。現在のTEI LoaderがこのMarkdown表を正式Relationに解釈できるとは主張しない。
+
+### 28.3 Graphの同一性とGitHub上の互換性
+
+- Stable Node IDとEdge／Relation IDは、表示ラベルやMermaidの一時的な配置番号とは別。同名Node、同じ端点間の並行Edge、方向、Attribute、Timeを検査し、出典の未取得を「不存在」としない。
+- 図へ落とせない属性は、**元の表または型付きSourceに残す**。Mermaidの単純な矢印や補助ラベルを唯一の意味証拠としない。複合Projectionの情報損失は#2497／#4122の既存契約で説明する。
+- GitHubとStudio双方で表示した図を比較する場合、図形の座標や並びの完全一致を条件にしない。Node／Edgeの識別と必要なRelationを照合する。版差で描画に失敗したら図面の表示不適合であり、業務意味が無効化されたことにはしない。
+- 標準的な`flowchart`を最初の対応対象にする。`sequenceDiagram`・`stateDiagram-v2`・`erDiagram`等は、Mermaidの図型を見た目だけでTEIの実行意味に対応させず、Role／Loss／Source mappingを一つずつ比較する。
+- DOTの高度なLayoutや属性記述を排除しないが、GitHubのMarkdown上ではDOTのCode Fenceは通常図として描画されない。必要ならMermaidへの導出を別途行い、元のDOTを無断で書き換えない。
+
+## 29. Source保持・編集と、説明用コードの誤解釈を防ぐ
+
+Markdownを構文的に扱えることと、Markdownの全要素が実行できることは別である。管理対象の`*.tei.md`内でも、**例示／引用／受理済み定義／導出した図／独立Expected**の用途を区別する。未対応のFenceやMermaid構文はOpaque Sourceとして保持する。自動で既知の別構文へ変換したり、テキストを一から再整形したりしない。
+
+TEI Studioからの編集は、原文のbyte範囲とSyntax Plugin版、正確なSubject／Relation ID、選択したSlot／操作、Source Revision、必要なAuthorityを確認する。既存のPreview→Resolve→Admit→Commit→Observeへ候補を戻し、元の改行、表の空白、注記、関係ないMermaidコードを不必要に変更しない。
+
+**導出Mermaidと元の表の二重編集**は避ける。表が変更された場合、図との不一致を診断し、明示的な「図の再生成」操作の候補を出す。通常の保存で自動更新しないことを既定とし、生成したMermaidに手動変更が混じった場合は上書きせず、差分を提示する。図の再生成時も元表が意味上の唯一の定義である。図の手動編集内容を意味の変更として取り込むには、別途Source-backed Proposalを必要とする。
+
+Markdownの適格性を検証する際は、**GitHubなどの標準的なRendererで読めること**と、**TEI独自の文法・意味検査が通ること**を分ける。Mermaidが描けたからといってSourceの意味が受理されたわけではない。逆にMermaid Rendererが特定機能を解釈できなくても、元の表や文章を読める場合は、受理済み意味を誤って破棄しない。
+
+## 30. 段階計画と既存Expectedへの引渡し
+
+この変更は[#4370](https://github.com/hat47x/tei-platform/issues/4370)／[#2621](https://github.com/hat47x/tei-platform/issues/2621)（Markdown Authoring）、[#3030](https://github.com/hat47x/tei-platform/pull/3030)（`*.tei.md`移行）、[#988](https://github.com/hat47x/tei-platform/issues/988)（Language Plugin）、[#2497](https://github.com/hat47x/tei-platform/issues/2497)（意味保存）、[#1124](https://github.com/hat47x/tei-platform/issues/1124)（Studio）への**設計上の受入差分**である。既存のTM／S9／SF等の試験正本を再定義せず、以下の反例を対応先へ割り当てる。
+
+| ID | 入力・変化 | 独立に期待する結果 | 担当 |
+| --- | --- | --- | --- |
+| SM-43 | `*.tei.md`をTEIなしでGitHub上に表示 | 見出し・説明・定義表・Mermaid図を読める。図非対応環境でも表から意味の概略が分かる | #2621／#3030 |
+| SM-44 | 同じ端点間の異なるR01／R02 | 並行Edgeを同一視せず、関係IDとRole／時点を保持 | #2497／#4370 |
+| SM-45 | Mermaidラベルと配置だけを変更 | 表定義を業務意味の正本として保持し、図を明示的に再生成／比較 | #2621／#2497 |
+| SM-46 | 図のみ編集して新しい業務Edgeを追加 | 図から自動Acceptせず、定義表への候補編集として扱う | #1124／#2497 |
+| SM-47 | Mermaid専用の新機能がGitHubのRendererで非対応 | 表／文章を保全し、描画未対応を業務意味の破損と混同しない | #988／#2621 |
+| SM-48 | Mermaidの未知属性・無効なSyntax | 未対応情報を捨てず、Opaque／診断とし、自動書戻ししない | #988／#4370 |
+| SM-49 | 説明用`tei` Fence、引用内の図、通常`*.md` | 実行宣言やManaged Sourceへ勝手に取り込まない | #2621／#3030 |
+| SM-50 | CRLF／BOM／日本語／表中の`|`／複数Fence | Cell／Fenceの正確なbyte spanを保持。対応不能なら編集を拒否 | #2621／#1124 |
+| SM-51 | 原文No-op保存、表の一箇所のみ変更 | No-op byte不変、明示Patchは最小範囲、Mermaidは通常Saveで再整形しない | #2621／#2497 |
+| SM-52 | テストケース表を説明用表へ複製 | Header一致や表形状だけで独立Expectedへ採用しない | #2514／#2621 |
+
+**実施順**：MD-0としてGitHub表示を前提にした短いAuthoring Profileと可搬なMermaidサブセットを#2621/#4370でレビューする。MD-1で管理対象`*.tei.md`のSource検出・Fence／表のbyte spanを既存#3030 Reader移行に合わせて検証し、説明用Markdownを実行宣言へ誤解釈しない。MD-2でGraphの型付き表からMermaidを導出・比較し、複数辺と編集拒否をHeadlessで確認する。MD-3で一意のCell/Slotだけを局所編集して元書式を保持し、変更後の図との整合を再検査する。MD-4で通常GitHub表示、Studio、AI/CLIの三つの閲覧経路を、同一Sourceと独立Expectedで照合する。
+
+**優先順位と停止線**：MD-0／MD-1は`*.tei.md`移行の設計・Reader適格性に従属する。MD-2〜MD-4は製品P0の新Hard Gateではない。TEI Studio Stage1→Stage2の実セルフビルドと通常`tei` CLI→実Provider→独立Consumerを優先する。任意のMermaid Parser対応や新Grammar IR、Markdown全ファイル自動正規化、Graph Compiler、図の双方向編集エンジンは先に採用しない。
+
+本追補は**設計案のみ**。GitHub Rendererでの本サンプルの実描画、`*.tei.md`の製品Reader、Studioの実編集、Go/Windows/Consumerの実行、Ownerによる正式構文採用は今回未実施。
