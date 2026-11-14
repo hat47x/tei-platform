@@ -587,3 +587,58 @@ WCL-01は既存UIテストの再利用を優先。WCL-02〜07は、Go直接API�
 - **B/G/L合流 #4583/#4544**：Stage2に必要なRuntime Providerの包含・実Callを別に検収。Generatorがbuild時に必要なことを理由にStage2へ同梱しない（#4601）。B0／BuilderPin GreenでDesktop Product FunctionをPASSにしない。
 
 **状態**：この§14はmain Source、Issue、Draft #4623と公式公開ドキュメントの静的照合による**設計・検収更新**。新しいGo Product Function/Wails Server public deployment/Go WASM同値・性能/実CLI・Stage2 Functionの実走は**NOT RUN**。本節は正式CLI/Entry JSON/Go WASMモジュール仕様、Wails Server公開認可方式、Owner Meaning Acceptanceの採用ではない。既存PR #4618はDraftのまま。
+
+## 15. 実PostgreSQL Readを再利用した最短Product接合とCLI衝突回避（2026-11-14）
+
+前節§13は最初の**pure** Functionについて、現Reference WorkspaceのCanonical CapabilityとGeneratorのreference-local計算契約を区別した。並行する#2586（単一Function Data Context）では、別の重要な実装が既に**main統合**済みである。ここを「まだ実Providerが存在しない」と扱うと再実装と実装順位の誤りを生む。main `e888bb8f21367b721f0984953530da9627e2634d`で現コードを再確認した。
+
+### 15.1 成立済みのReadと、未成立の公開Entryを分ける
+
+[merged PR #4539](https://github.com/hat47x/tei-platform/pull/4539)は`order_entry.recent_orders`で既存のBrowse Pattern→Query→Environment上の一意なDB instance→実PostgreSQL Executor→Rowset→`functioncontext.Context`→**専用参照CLI**（`tools/reference-browse-read`）を通し、使い捨てPG16で実行した。現mainの主なSourceは次の通り。
+
+| 既存Source／契約 | 実際にあるもの | Productに追加で必要なもの |
+| --- | --- | --- |
+| `reference/workspace/applications/order-entry/patterns/recent-orders.tei` | `pattern ... browse { data sales.order; query order_entry.recent_orders }` | **Browse Pattern ID≠公開Function Entry ID**。Function/Entryとして公開するならOwner Meaning/Composition/Target/Accessの別判定 |
+| `reference/workspace/applications/order-entry/queries/recent_orders.tei` | logical datasource `sales`、PostgreSQL native SQL、5列mapping | `:from`は既存Queryの`input`宣言にない。参照ツールの明示typed flagだけで正式Function input schemaを補完しない |
+| `internal/driver/browse_query_environment.go` | Environment/Definition/Provider/Instance/Registryを照合し、欠落・不一致ならExecutor call0。Executorへ渡したQuery.Sourceのdigestを記録 | Hostが選んだ**実Connectionと申告Instanceの同一性はhost-asserted**。Executor自己申告・Query bytes digestだけでTrusted Connection/Grant・全Source Revisionを認定しない |
+| `internal/functioncontext/functioncontext.go` | 1実ReadのRowset/Result Contextを一時投影。NULL・mapped column・raw duplicate・time rendering・受領に必要なUnknownを区別 | `sourceRevision=unknown`、`coverage=unestablished`、`emptyJustified=false`、結合Identity推測なし。0行/RLS不可視を「業務集合が空」と断定せず、Outputの開示と鮮度は別 |
+| `tools/reference-browse-read/main.go` | `-confirm-isolated`で使い捨てDBを確認、DSNは命名された環境変数から参照、明示`name=type:value`、結果をJSONで取得する参照Consumer | **通常の`cmd/tei`製品CLIでない**。これを`internal/operations`からimportしない（`operations/dependency_test.go`は`tei/tools/`等の逆依存を禁止）。接続やCredentialをCallerの任意申告に依存させない |
+
+**判定を二レーンに固定**：
+- **L-P（pure Function Product Entry、#4495）**：§13のA0 Owner受理/明示公開→A1 Product Operation＋実Go Provider→A2通常`tei` subprocess。Generatorの`sales.line-amount`（reference-local）やD8 syntheticだけでProduct合格にしない。L-RのPG read結果でL-Pのpure証明を代替しない。
+- **L-R（実Read Function Data Context、#2586）**：すでに成立したPG read／Env binding／Contextへ、必要なInput Meaning/Target/Current Grant、**通常製品Consumer**、独立Native/Studio Consumerを順次足す。DB readという外部作用はpure Functionと別。L-PのA0/A1/A2をL-Rに重複実装しない。Function Context名があっても`Query/Pattern`を未受理の公開Entryへ昇格しない。
+
+### 15.2 L-Rに残る実装を四つの小さな接合に分ける
+
+| 作業単位 | 既存Owner、最小の作業、完了条件 |
+| --- | --- |
+| **LR-A Meaning/Input** | #2586/#2506/#2387。既存Queryの`:from`の型・必須性・NULL・時点・Targetでの意味を、Owner受理済みContractへ束縛する。参照ツールの`declaredByQuery=false`をOutputから消して適合偽装しない。Source occurrence・実Source byte・Query revisionの現在性が不明ならunknown |
+| **LR-B Typed Product Read** | #2586/#3422/#951。現在Host ContextでEnvironment/DB providerと実実行先を選択、実PG rowset→既存`functioncontext.From`へ流す薄いOperation Adapter。Reference CLIで使われる`tools/internal/postgresdb`に逆依存せず既存Runtime ProviderへFit。DB接続同一性がhost-assertedならその資格上限を残す |
+| **LR-C 実Consumer** | #2586/#3420/#3421。通常`tei` CLI subprocessと独立Desktop Native/Studio Consumerで、同じQuery/Environment/Subjectと一実ReadのOutput/Failureを受領。**異なる読み取りAttemptはDB Snapshot/visible rowset同値を無条件に期待しない**。独立Consumerへ同じContext/同じfixed fixtureを配信した場合と、両ConsumerがそれぞれDB実Readした場合を別試験として表示 |
+| **LR-D Current Authority/Disclosure** | #3422/#1174/#2516/#3421。HostでPrincipal/Workspace/Scope/Grant/Query access、Result column/row disclosureを入場時と送出時に別検証。Origin/Session/ブラウザーevent購読範囲を強制し、Session違いの応答や全接続broadcastによる漏洩を拒否。Read-only＝全行取得/全件可視/公開Web認可済みではない |
+
+LR-A〜Dは全直列Hard Gateではない。LR-Aの受理待ち中は、LR-Bの合成Fixtureで`Environment mismatch call0`等の配線/拒否を検査可能。ただし未受理Contextと実DB read／Owner受理済み公開Entryの結果を違うHEAD/Attemptから足してQ2にしない。Stage2 Studioセルフビルドは最優先で並走させる。
+
+### 15.3 製品CLIの改修は並行Draft #4625と同一変更面を共有する
+
+[Draft #4625](https://github.com/hat47x/tei-platform/pull/4625)はREA Evidenceの**保存済みローカルファイル読取**を、mainの既存`operations.ExternalCandidates`へ薄くつなぐ`tei external-candidates`入口を実装中。現在の差分は`cmd/tei/main.go`、`cli_commands.go`、`cli_contract.go`と専用Go testを変更する。**Script LaunchのA2/LR-Cも同じCLI横断ファイルを変更する**ため、二つのDraftに同じHelp/Catalog/dispatch変更を別々に重複実装しない。
+
+- 適用順は`main最新HEAD→既存PR #4625の適格性・統合状態確認→A2/LR-Cの最新基底で再設計→既存CLIのAST dispatch/help/catalog/subprocess回帰＋各入口の正負テスト`。#4625のmergeをL-P/L-Rの**技術的なHard Gateにしない**。必要なら別Branchで専用Adapter部分のみ先行し、重なるCLIファイルの統合は単一Ownerで実施する。
+- #4625の`-evidence-path`は**ローカル・保存済みEvidence専用**。任意PathをRemote Studio/MCP/Webへ運べる先例にしない。L-RのDB接続・DSNもBrowserやCLIの未検証Principalが自由に指定できるProvider/Permissionへ昇格しない。REAファイル読取、PG Query読取、pure FunctionのDomain適合・対象Scopeはそれぞれ異なる。
+- CLIが報告する`ok`、exit0、JSON Envelopeだけで選択済みProviderのactual entry、型付きResult body、Host Scope、DB visibility/coverageを証明しない。既存`TestAcceptedCommandsMatchDispatch`・`TestUnknownCommandRejectionIgnoresFlags`を維持し、CLI拡張に必要なHelp/JSON/Failure Code・禁じたFlagを別途検査。
+
+### 15.4 複数Consumerの独立Expected／最初に止める負例
+
+| 受入ID | 一因子の変更と必要判定 | Owner |
+| --- | --- | --- |
+| **SLR-01** | 同じQuery/Pattern/SourceでもEnvironmentのDB instance/Providerが不一致→**Executor実Call0**。Registry/申告Providerだけで実接続先が証明済みとしない | #2586 |
+| **SLR-02** | `:from` typed runtime値はあるがQuery入力宣言が無い→**Function Entry input受理は未成立**。不足宣言を自動推論しない | #2586/#2506 |
+| **SLR-03** | 0行／RLSで2/3件だけ可視／mask view NULL／Duplicate Row→結果を取得できても`coverage=unestablished`、`emptyJustified=false`とNullOrigin不明を保持 | #2586/#1127/#2514 |
+| **SLR-04** | Product CLIの実ProcessとStudio実IPC。前者がReferenceで直接計算/Read、後者が別Providerを呼ぶ→同一Contract/Selection／Actual Callに不整合ならFAIL。Result同値だけで不可 | #4495/#3421/#1251 |
+| **SLR-05** | Local-only `-evidence-path`を別Workspace/別SessionからRemote引数として送信→Hostが任意Pathを読まず拒否。内部Path/DSN/Failure messageの開示0 | #3421/#3394/#2516 |
+| **SLR-06** | Web ServerでPrincipal A/Workspace Aの`Rowset/Result`通知が、B/別Tabへbroadcast配信される→秘密Payload受領0。Tab IDは現在Principal/Workspace Grantではない | #3421/#4515 |
+| **SLR-07** | Source A→B→Aで同bytesの再読込や、同一Queryの別DB結果がたまたま一致→旧Host Grant/Source Revisionや別AttemptのIdentityを自動再利用しない | #2600/#2586/#3422 |
+
+**再利用する本来の正本**：#1180/#2514の独立Expected、#1158/ADR-0048の共通Application API、#2586のFunction Data Context、#951のProvider Selection、#1174のEffect/Grant、#3421のWeb Host、#4583のStage2 Build。新Reader/SQL Engine/Runner/Provider Registry/Doc Schema/Test SSOT/認可Coreを設けない。
+
+**証拠上限（2026-11-14）**：PR #4539はmain統合済みで既存PG16 readとReference CLIの実験を報告。#4625はDraftで通常`tei`のREAローカルReadのみ候補。新規のL-P公開Function Product CLI、L-Rの通常`tei`製品PG Read、二Consumer/Host Grant/多利用者Web/Stage2実Product Functionは**この追補ではNOT RUN**。A0のOwner Acceptance、LR-Aの入力Contract、LR-DのWeb認可・開示は未受理／未実証のまま残す。
