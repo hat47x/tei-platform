@@ -1657,3 +1657,91 @@ Language/Role InterpreterやApplication APIはWails window/HTTP route/MCP tool�
 **P2** #4544/#2600の生成器自己記述と増分再生成、#1124/SHO/SUI/AI Harnessへの複数Consumer投影・限定編集。いずれもP0 Desktop Self-buildの新Hard Dependencyにしない。
 
 **状態**：本節は現Sourceと他チャット議論の整合を記述したDraft設計更新。新Product Grammar/Language Adapter、ローカル従属Server、IPC比較、実Windows/Go検証、Stage2、正式Owner Meaning AcceptanceはNOT RUN/NOT ADOPTED。#1119既存G0〜G4や独立Expected正本を変更しない。
+
+<!-- tei-self-description-obligations-20261114 -->
+## 33. 2026-11-14 DSL自己記述の次の接合：評価意味・Trait義務・検証義務・製品入口（設計・NOT RUN）
+
+### 33.1 Grammar自己記述を「実行意味の自己承認」と混同しない
+
+この節は、第31〜32節の固定Language/Role/実Parser/Host分離に、他チャットで進んだ[#4599](https://github.com/hat47x/tei-platform/pull/4599)（構文・振る舞い・Model of Computation・Source逆写像）、[#3278](https://github.com/hat47x/tei-platform/issues/3278)/[#3279](https://github.com/hat47x/tei-platform/issues/3279)（原子的Trait/実装義務）、[#4361](https://github.com/hat47x/tei-platform/issues/4361)（独立Expected）、[#2514](https://github.com/hat47x/tei-platform/issues/2514)（Claim別Conformance）、[#4515](https://github.com/hat47x/tei-platform/issues/4515)（Studio Subject Pin）を接続する。**新しいCore Meta Schema／Trait Resolver／Oracle Generator／State Engine／Build Runnerは設けない。**
+
+| 自己記述で参照する対象 | 既存構造へ接続する内容 | 表現できたことから主張してはならないこと |
+| --- | --- | --- |
+| Source/Grammar | Language exact selection、syntax occurrence、quoted/UTF-8/span、糖衣表現と元byte、Role適用 | Sourceを描画できた＝実Parserが解釈した、またはMeaning受理された |
+| Structural Meaning | Subject、Type/Facet、Identity、Relation多重性、Data Context、Rule/Operator契約 | Shape同一＝意味同値、非単射Projectionの安全な逆編集 |
+| **Evaluation/Time** | 純粋計算と評価順序/短絡、NULL/欠損/未取得、State transition、Event order、時点・期間、deferred/eager依存 | 宣言したRuleだけで実実行順・取得の不存在・外部Effectを保証した |
+| **Trait Obligation** | Atomic Trait Definition → Requirement/Binding → method（provided/generated/manual-required/external）→ Fulfillment → Conformance | Traitラベル＝機能提供済み、Provider自己申告＝Target合格、Conformance＝Host Grant |
+| Test/Proof Obligation | Claim/Subject/Requirement/Source・版/独立Expectedの参照/実RunnerとObservation | 定義から自動生成したExpected＝独立Oracle、予定したテスト＝実行済み証拠 |
+| Realization/Consumer | 選択済みPlugin/Generator/Builder、Target Profile、実消費Input/ArtifactSet、CLI/Studio/SHO | 実装候補・Artifact bytes一致＝現在実行/開示資格やセルフビルドG4 |
+
+ここでの**Evaluation/Time**は領域ごとに必要なModel of Computationを区別するための*記述上の分類*であり、TEI Coreに共通Scheduler/State Machineを設置する提案ではない。業務Function、イベント駆動UI、ゲーム・ロボティクス等の異質Domainでも、構文面の糖衣ではなく**選択した評価契約**が同値性を規定する。
+
+### 33.2 「必要なテストを導出する」ことと「正解値を作る」ことを分離
+
+自己記述されたType/Role/Operator/Trait/Targetから、検査が必要な項目を列挙することは有用。ただし、期待する結果まで実装候補から自動生成すると同じ誤りを共有してしまう。既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#2514](https://github.com/hat47x/tei-platform/issues/2514)のScenario/独立Expectedを唯一の正本とする。
+
+**最小検収票（新共有Schemaではない）**：次の項目を既存記録への参照として一行ずつ結ぶ。
+
+- **Target**：固定Workspace/Subject/Role/Source occurrence/Meaning Revision（同一IDでも別Workspace・旧Sourceなら別対象）
+- **Obligation**：必要Source/Scope/Completeness、型・Facet・Evaluation/Time・Trait要求・未選択Provider、対象Target/Consumer
+- **Independent Expected**：事前に定めた基準と根拠、正負・既知Mutant、必要Caseの集合、未実装/unknownの扱い
+- **Execution**：実Parser/Interpreter/Provider/Generator/Builder/Consumer、exact Implementation/Toolchain/Attempt/actual consumed bytes
+- **Assessment**：各Caseのtested/untested/unsupported/failed/stale、Claimへの充足、Observed Result、Owner Meaning Acceptance/Current Authorityの別判定
+
+Rule宣言から`quantity > 0`の正常系・ゼロ・負・NULL等の**検査論点**を列挙できても、採用すべき丸め・NULL・時刻・空集合意味を自動決定してはならない。未決事項は`unresolved`としてOwnerの既存レビューへ送る。手動で定められた独立Expectedと既知Mutantで判別力が成立した部分だけ資格の根拠とする。
+
+### 33.3 直近Product入口は局所Parser候補を「完全World」にしない
+
+[#4405](https://github.com/hat47x/tei-platform/pull/4405)には、低ノイズ`rule`の限定Parser/Lowering、既存`semantic.Validation`とEvaluatorによるGoテスト、Source Anchorと局所Formatterの実装候補がある。**PRは未merge**、`workspace.Load`の正式Language選択と通常Source保存/Studio編集は未接続。[#4607](https://github.com/hat47x/tei-platform/pull/4607)は#4405依存の積上げDraftで、独立Expected目録/Case数の差を検査する方向。旧HEADのGo PASSから積上げHEADの合格を推定しない。
+
+**最初の製品受入は一つの既存Validation Ruleに限定する**：
+
+1. **S0 Coverage**：[#4361](https://github.com/hat47x/tei-platform/issues/4361)のSF-A〜D／EX-01〜09等の独立Expectedと、実Go TestがどのCaseを実際に読んだかの台帳を突合する。未消費のExpectedを`PASS`と集計しない。SF-DはRule identity未宣言なので、`check ... with std.op.positive@1`からRule IDを暗黙生成せず`NOT ESTABLISHED`。
+2. **S1 Product Boundary**：新`rule`のParseが構文候補を部分生成しても、Workspaceに重複ID/欠落Source/未知pin/部分Loweringがあれば**完全なWorldとして受理・公開しない**。診断・元SourceはDraftとして残してよい。旧新ファイル間の重複IDは順序で選択しない。#4359/#988/#1018の所有境界。
+3. **S2 Evaluation**：量が正かのような純粋Validationを固定Evaluatorで評価し、`satisfied/not-satisfied/error/unknown`、完全空集合/未取得、短絡・潜在Requiredと実Read Footprintを分離。実Provider Readがない試験を実取得/非取得の証拠としない。#988 EQ0〜EQ3を再利用。
+4. **S3 Source Fidelity**：正常な局所Formatter候補があっても通常Save Writerではない。base Revision/選択Occurrence/元Syntax/非対象byte/Role anchorを照合してPreview Diff→明示Apply→独立Reloadする。no-opはzero-write。曖昧・stale・非可逆Projectionはread-only/Review。
+5. **S4 Independent Consumers**：同じAccepted RuleをCLI InspectとStudio Inspector/SHOから参照し、`Subject Pin`/Current Disclosure/遅着拒否、実Reader/Consumerの差を記録。Studio側表示だけではOwner Meaning変更の資格を得ない。
+
+S0〜S4は新たなCritical-Path Gateではなく、#4359/#4361/#4515/#2514の既存工程の**実装可能な最初の範囲**。#4536の`fx.rate` Role S0と#4583のDesktop B1-B→B2→B3は引き続き並走する。
+
+### 33.4 Trait・時間規則とCompiler/Generatorの接続条件
+
+Trait Definitionからの**実装義務は拘束力を持つ**。例えば`manual-required`のmemberが欠ければ`unfulfilled`、対応Providerがなく読めていなければ`unknown/not-loaded`、宣言された実装があっても未検証なら`provided-but-unverified`、Targetの独立試験が成立して初めてそのScopeの`conformance-observed`。開発時FulfillmentはRuntime Host Grant/業務受理と別。
+
+複数Traitの合成順は、要求集合の合成として順序非依存を基本とするが、**副作用のあるOperator/Hookの実行順を勝手に可換とみなさない**。Trait A+Bを同一Targetへ実現するとき、要求するFunction/Plugin/Implementation/ABI/Target/Effectの互換性を別に確認し、競合は#3278/#3279/#951へ返す。
+
+時間・イベント系のDSLを自己記述する場合も、正しさは`same terminal value`のみではない。State変更の因果、Event順序、重複と再送、異周期のCheckpoint、NULL・decimal roundingの位相、HostでCommitした後のReceipt/Unknownを必要に応じてClaimへ含める。モデルごとのModel of Computationを明示し、純粋なFunctionやValidatorに共通のEvent Runtimeを強制しない。実Provider/Host/Targetの効果資格は#1129/#1174/#1121、Generator選抜は#4544へ委譲。
+
+### 33.5 追加する反証と期待Claim（提案・今回新規NOT RUN）
+
+| Case | 一つの変更・故障 | 合格の判別条件 |
+| --- | --- | --- |
+| SD-O01 | Ruleの表層を変え、結果/IDは同じだがOperator/NULL policyを変更 | 構文同値と評価意味同値は別。IDや値一致だけではPASS不可 |
+| SD-O02 | S0 JSONにExpected Case追加、Go Testはまだ未消費 | Required Test件数/Consumed件数を分けて未検証を明示 |
+| SD-O03 | SF-D表層にRule identityを宣言しない | 名前・行順・位置から補完せずMeaning ID同値を未確立とする |
+| SD-O04 | 新`rule`候補が一部有効でも、同Workspaceに旧構文同IDと不正Ruleが混在 | Diagnostic保持可、World完全受理/Build/Consumer公開は禁止 |
+| SD-O05 | 同じResultでも短絡が異なりsecret/別Providerを先読みする | Valueのみ一致、Evaluation/Read/Disclosure一致を主張しない |
+| SD-O06 | Trait`manual-required`が宣言され実装1 member欠落、またはProvider未ロード | unfulfilled/unknown。注記に縮退させず誤PASSを拒否 |
+| SD-O07 | Traitの実装は`generated`、Generator実装だけ変更・旧Artifact再利用 | Semantic同一でもArtifact/Evidence再資格を別に判定 |
+| SD-O08 | 同じ状態最終値、Event順/重複/Checkpoint/時点が異なる | 選択したModel of Computationに応じた独立Expectedが必要 |
+| SD-O09 | 原Sourceの同じ`role` optionがWriter未対応、UIだけ編集可能 | UI Draft/PreviewとMeaning変更を区別し、zero-writeで停止 |
+| SD-O10 | 一つのSource RevisionをStudio/AIで非同期表示中にScope/Grantのみ失効 | Pin intentは保持、旧表示/AI disclosureの現在資格は別判定 |
+| SD-O11 | 選択されたGenerator Bに対して実BuilderはA/古いBundleを消費 | Typed MeaningやテストPASSとは別にBuild/Consumerの不一致をFAIL |
+| SD-O12 | テスト義務をAIが自動列挙し、Expectedも同じ候補から作る | 検証義務の提案は許可、独立Oracleの資格は不成立 |
+
+**これらは既存のEX/DTQ/DSL-I/TR/TC/BD/PINケースの対応表であり、新しいFixtureの第二正本ではない。** 重複するCaseは新しいテストを書かず既存#1180/#2514へ参照付けする。実装時の完了条件は、反例が本当に実Reader/Executorのどの境界まで到達したかを毎Caseで明示すること。
+
+### 33.6 既存計画へ組み込む順序とPR境界
+
+| 優先 | 最小差分の単位 | 受入／担当 |
+| --- | --- | --- |
+| **P0（DSL局所）** | #4361のExpected／Case目録と実Go消費を同一固定HEADで照合。SF-D未ID・NULL/empty/missing/unknown・重複を検査 | #4359/#4361/#2514、既存#4405/#4607を再利用。新Parser/第二Expectedを作らない |
+| **P0（Role）** | #4536の`fx.rate`同一Source/Required/Role/Domain Reader S0 | #2620/#988。新汎用Role InterpreterはGap確認まで作らない |
+| **P0（Studio Build）** | #4583 B1-B→B2→B3。non-Plugin Desktop実Builder/Stage2実Process/実Windows Consumerを同一Attemptで接合 | #2831/#1824。DSL新構文/新Traitを先行Hard Gateにしない |
+| **P1** | 新Rule Product入口のfail-closed、Source局所Patch/no-op、Studio固定対象/後着を一Ruleで検証 | #4359/#4366/#1124/#4515/#2497、実適用・Meaning受理を別判定 |
+| **P1（Trait）** | #3279原子Traitの`manual-required`/`generated`で実装義務・Target独立Conformanceを一Provider/一Consumerへ | #951/#3278/#3279、既存#1180/#2514。新Trait Registryなし |
+| **P2** | 状態遷移/イベント系の異質Domain、生成AI/Test Obligation自動提案、複数Target/Provider・増分影響比較 | #4599/#4193/#4544/#2600。新Core Scheduler/Host/Validatorなし |
+
+**合格の上限**：構造を読めた・構文候補を得た・意味が評価できた・Traitが履行された・独立Expectedを実消費した・OwnerがMeaningを受理した・生成物が実Consumerで使用された、をそれぞれ別Claimとして保持する。`#4405の局所GoテストPASS`を`Workspace新DSL正式採用`に、`#3279の計画`を`Trait Runtime製品化`に、`#4583 B0/N0`を`Stage2 Self-build完了`に読み替えない。
+
+**状態**：#4541の既存設計への追補・関連Issueの引継ぎのみ。新Go/CLI/Node/Windows/DB実走、Trait Fulfillment実装、Source Writer、Product新Rule Workspace、Owner意味受理、Stage2/G4は今回NOT RUN / NOT ADOPTED。
