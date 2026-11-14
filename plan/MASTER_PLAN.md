@@ -1578,6 +1578,21 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 - **他チャットの横断差分**：DSL自己記述/Source編集、三要素明示CRUD-onlyのmain修正 #4551、Studio/Stage2セルフビルド、Plugin六ScopeとB2C Headless、AI固定対象/SHO再投影、#2582の問い相対Required影響、#2516 Disclosure、#2600 Build/Evidence資格を同一C1の**別々のWitness**へ対応付ける。通常組織Dataへ一律ACLを追加しない。
 - **優先・競合処理**：#2586 通常CLI実Provider Readと#1824/#2831 Stage2セルフビルドを独立P0で維持。組織段階計画§10.12へ並行追記するDraft #4555（Desktop）と#4585（六Scope）は、片方の全文上書きや暗黙優先で扱わず前方統合・節番号整理を検討する。#4566/#4567も実Queryの重複変更を無条件に両方採用しない。現補遺はdocs-onlyで新実試験/Owner受理はNOT RUN。
 
+
+
+<!-- org-c1-crosslane-graph-plugin-integration-20261114 -->
+### 2026-11-14 横断追補：組織C1を標準グラフ・実行モデル・Plugin公開契約の検証対象にする（補遺§24）
+
+[組織C1横断受入補遺 §24](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)に、他チャットの成熟した設計を**既存Meaning/Graph/Query/Plugin/Hostへ差分統合**した。新しいCore/Compiler/第二Expected/専用Hostは設けない。
+
+- **四つを分ける**：Person/Membership/Caseの業務関係Graph、Rule/Providerを選んだ実効Plan、actual SQL/Read Cohort/Receiptを含むObserved Trace、Studio/SHOのTree/Graph/Table/説明図。main統合済み[実行モデル #4668](https://github.com/hat47x/tei-platform/pull/4668)と[起動モデル #4666](https://github.com/hat47x/tei-platform/pull/4666)へ接続し、図面だけで実Actionを主張しない。
+- **構造／評価／変更の意味保存を別検証**：P2のA2/A3兼務とA2旧新Record Version、同名Node・多重Edge・hidden parent、r7の人物3→3／Membership4→3／FTE3.0→2.4、NULL/partial/NOT EXISTS、Source Pin/ABA/非単射Viewの逆編集拒否を、既存#2497/#4490/#4501の独立Expectedへ割り当てる。Draft #4667の新文法・Semantic Engineは未採用。
+- **Plugin横断拡張は公開契約だけを参照**：上位Pluginが公開した意味Graph/Hookを版・ID・Target・Scopeで選択し、衝突・順序・除外条件を検査する。Composition成功からLoad/Grant/Effectへ昇格しない。最初はC1 read-only候補のProvenance説明という非Effect Hook一箇所。B2Cの計測等も同じ設計を応用するが、同意前送出や一律Web Runtime強制は認めない（#951/#2516、Draft #4646）。
+- **REAの二義を分離**：Resource–Event–Agentは業務分析レンズ、Reverse Engineer AnythingはSource付きの解析候補生成手段。Agent≠Person≠Principal、解析候補≠Owner受理。三要素分析法/SHO/SUI/AI固定対象は各OwnerのProjection/Disclosure/再資格化を使用し、Source/Rule変更時に旧提案を自動Applyしない。
+- **次の実装単位はOG-0→OG-5**：C1の四グラフとSource対照→Headless候補0/1/複数/partialの実Rule評価→Person/履歴の実Provider Read→Loss-aware投影と公開Plugin Hook→Host責任移管/Receipt/ACK→定義・生成・Plugin自己記述の重複削減実測。OGは組織の補助順であり、DB移行のG0〜G5や全体P0の新Gateではない。
+
+**今回の状態**：計画・補遺の文書更新のみ。組織C1の実Provider/Host/Studio/Plugin/AI E2E、Owner Meaning Acceptanceは未実行・未受理。通常tei CLIの初回実Provider Read **#2586** とStudio Stage1→Stage2セルフビルド **#2831** を独立した最優先課題として維持する。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
