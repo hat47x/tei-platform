@@ -997,3 +997,51 @@ Mathematica/R等は、既存Algorithmの**意味・入力/出力・境界・テ�
 **採用・実装順**：P0は#4583/#2831のStudio self-buildと#1251のread-only Provider結線を維持。先行A/Bは**P1/P2の比較Reference**として#2495/#4350/#951/#2586へ引渡す。統計・Solver・Symbolic・物理・Bioは、A/BでContract/Source/計算/表示・配布の適合範囲が見えた後に分野ごとの小さな独立Expectedで評価する。
 
 **状態**：分野別Toolkitの研究候補・実装比較票の追加のみ。A/Bの実Algorithm・Studio UI・Plugin/CLI実呼出し・性能測定・市場採否、Owner意味受理は**NOT RUN／NOT ACCEPTED**。
+
+---
+
+<!-- tei-nonplugin-build-subject-codefit-20261114 -->
+## 29. 2026-11-14：非Plugin Studio Build Subjectを正しく通す最小差分（実コード照合）
+
+### 29.1 不足はRecipeではなくBuildの主語と出力Bindingにある
+
+現行mainの実コードを照合した。**内部のBuild IntentはすでにGo Commandをある程度表現できるが、Studioという非Plugin成果物の正式な構築計画にはなっていない**。実装済み・不足・禁止する近道を区別する。
+
+| コード上の事実 | 現在の意味 | P0で残る実装不足 |
+| --- | --- | --- |
+| internal/buildintent/intent.go のRecipeKindCommand＝go-command、definitionのSource kind＝go-package | Go PackageをBuild対象Sourceとして宣言し、Plugin文法をParseせずInput由来のFingerprintを作る経路がある | Recipeの存在だけでは非Plugin Build Subjectとして認定できない |
+| 同BuildIntent.Validate は subject.Kind＝plugin のみを受理 | Studioを正式SubjectとするIntentは現状で拒否 | 許可Kindだけの変更では足りない |
+| internal/buildintent/resolve.go の最終出力は plugin.BuildPlan{Plugin: ..., PluginDefinitionFingerprint: ...} | go-commandでもPlugin専用の出力型へ格納する | StudioのIdentityをPlugin IDに偽装しない構築主体とOutput Bindingが必要 |
+| internal/plugin/build.go のBuildPlan/LockedBuild/BuildArtifactLock はPlugin Identityを主語にする | 一つのPlugin artifact向けの既存契約として正しい | Studio実exe、Builder本体、複数Pluginを収録する一成果物を、Pluginごとの独立Buildとして数えない |
+| #4634 の宣言照合・Builder起動前Pin、#4587 のN0→N2→N3と実Windows B0 | それぞれ局所の選択・実消費／実Consumerを確認する | 同じ正式Build Execution/ArtifactSetとStage1→Stage2の親子系譜で再実行する |
+
+ここで**Subject（何を構築するか）・Execution（何を実行したか）・Binding（得た成果物が何を提供するか）**を区別する。例えば一つのStage2 exeがInspectorと別のStudio用Runtime Contributionを内蔵していても、物理Buildを二回実行したとは記録しない。Plugin側のBuildPlanは既存用途に保持し、非Plugin向けの共通部分は[#1080](https://github.com/hat47x/tei-platform/issues/1080)／[#1097](https://github.com/hat47x/tei-platform/issues/1097)の境界を使う。大規模な型Union、Plugin IDの空値扱い、架空Plugin定義の作成を採用しない。
+
+### 29.2 最初の薄い実装順
+
+**NB-0 現状をCharacterization**：Plugin BuildIntentの既存正常・拒否テストを維持し、非Plugin Subjectが現在はunsupportedであること、go-commandが生成するPlugin専用Planの名前と実意味にずれがあることを固定する。Current WorldのSource ID、Raw Byte、Builder/Target・実Dependencyの閉包が検収可能かを確認する。既存PluginのOutputを壊さない。
+
+**NB-1 共通Build Executionへの写像**：既存Source/Builder/Recipe/Dependency/Target/Parameterのうち共通部分だけを既存BuildExecution/ArtifactSetへ渡し、構築主体をPluginではないStudio製品として明示する。Build PlanとBuilderの「意図」と、実Child Processのimage/argv/実消費Inputを別Receiptで受け取る。共通Portが不足する場合のみ最小の型付きAdapterを追加し、受入・認可・実OS起動をPlan型の構造合格で偽装しない。
+
+**NB-2 多工程の実消費を収録**：N0 Inspectorの生成TS→N2の実esbuild selected input→N3の実Go Embed member、通常/生成版それぞれのWails Desktop Buildを、工程ごとの出力Role・Target・nested Module・Toolchain観測（またはUnknown理由）とともに既存ArtifactSetへ登録する。実行していないGo/Node/Wails工程を単一Builderの申告だけで実行済みとしない。実Compiler read-time closureが未観測ならpartialを維持する。
+
+**NB-3 再入と受領**：生成したStage1 TEIの**実プロセス**がStudio Stage2をBuildし、そのStage2.exe自身が選択済みInspector Providerを呼び、Windows WebView2が同じSource/Targetからの資産と結果を使用する。Stage0のCIから両exeを別々に生成して後から同Digestとしただけなら不合格。Stage1/子Builder/Stage2/Consumerの親子Attemptと入出力を結び、全工程に同じAttempt IDを強制しない。
+
+**NB-4 後続のPlugin構成へ戻す**：Inspector→三要素分析法のモデルの二Providerで、選抜Bの実Stage2収録・実Callを検査する。必要PluginはRuntimeへ残し、Builder/Generator-onlyの実行体は必須でなければ同梱しない。required/not-required案件別Profileの物理非収録はP1。固定Bundleの成功を案件別Composition完了と扱わない。
+
+### 29.3 コード改修の受入・拒否例と統合順
+
+| ID | 実際の入力・変異 | 必須の判定 |
+| --- | --- | --- |
+| NBX-01 | 既存Plugin Subject/Plugin定義/BuildPlanの正常Fixture | 出力・fingerprint/Lockを従来通り維持（後方互換） |
+| NBX-02 | Studio非Plugin Subject＋go-package/go-command | Plugin定義や架空Plugin IDなしにBuild主体・Target・出力が表現できる。未実装段階は明示unsupported |
+| NBX-03 | Studio Subjectをpluginに偽装／go-package FingerprintをPluginDefinitionFingerprintへ黙って転用 | 意味上の主語の不一致を拒否。Plugin用LockにStudioを登録しない |
+| NBX-04 | 同一Build Executionが複数Plugin/Contributionを一つのexeへ収録 | Buildは実行一回、Logical Bindingは複数。出力の曖昧・不足は別エラー |
+| NBX-05 | 選択Builder B/実Child A、またはN2/N3で別HEAD/旧JSを消費 | 起動前Pin・工程別selected input/byteのいずれかが不一致なら拒否 |
+| NBX-06 | Stage1がStage2をBuildせず、既存Stage2を直接起動 | 実親子ReceiptがないためB2/B3不適合。B0 Windows Job成功を継承しない |
+| NBX-07 | Go/Node/Wails/OS/Tag・Toolchain差で成果物byteが変化 | 実Input/観測区分に従い再資格化。Planで未PinのCompilerを勝手に現Plan違反としない |
+| NBX-08 | Consumerが旧exe/旧ProviderだがResult JSONは同じ | 実exe/Entry/Source/受領を照合して拒否。Result等価を実利用の代理にしない |
+
+**担当と実装順**：#1080（共通Build provenance／Subject）、#1097（ExecutionとLogical Binding）、#4583/#2831（Studio多工程・再入）、#1251（実Provider/CLI/Studio）がそれぞれ既存Owner。最初の実コードPRはNB-0/1の最小範囲とし、NB-2/3のWindows系はそれに積み重ねて同じ成果物の実Consumerで検証する。各Expectedは[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#2514](https://github.com/hat47x/tei-platform/issues/2514)へ渡す。第一の成功例はread-only Inspectorとし、Effectful Lifecycle、Web多利用者、分野別ToolkitをSelf-build P0へ新たに抱き込まない。
+
+**今回の範囲**：実Goコード・型/ABI/Build Engine・新実行テストは変更していない。NBX-01〜08は実装前の独立Expected候補。現mainのコードFit/Gapに基づく設計・Owner引渡しであり、Stage1→Stage2 Desktopの完全実証・正式Owner受理はNOT RUN／NOT ACCEPTED。
