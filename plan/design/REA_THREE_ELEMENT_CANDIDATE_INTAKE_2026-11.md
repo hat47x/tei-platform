@@ -322,3 +322,27 @@ Observationは`data-element`候補へ、有向Relationは`cross-reference`候補
 **今回の小さい実装**：cmd/tei/cli_rea_dual_entry_contract_test.go にJ-01a〜cの回帰テストを追加した。二つの実CLIの**Commandハンドラを同じGo Test内から別々に呼ぶHeadless契約テスト**であり、実行ファイルを二度起動するJ-01の製品受入や、Native Studioという第二Product Consumerには数えない。既存のcli_external_candidates_test.goが担う実Binaryの入口試験とも区別する。J-01dの全問Closure、Graph間のSource-backed対応付け、J-02の並行Edge個別逆参照は後続の独立Expectedで検証する。
 
 **状態**：この節は実ソースと保存済みCapturedを静的に検査した判断および新規回帰テストの説明。新テストの成功はCIのexact HEADまたは手元の同一Toolchain実行で別途確認する。OwnerのMeaning受理、Sourceへの正式書込み、Native Wails JS受領、旧新の実挙動比較は未実施。
+
+<!-- rea-j02-preview-identity-carrier-witness-20261114 -->
+### 10.7 J-02の最小実証：関係候補を個別識別し、Source編集資格の不足を示す
+
+J-01で明らかになったsemantic_graphとapplication graphの違いを保つ。**外部解析のRelation、三要素Candidate、Preview上のCrossReference、TEIの正式Meaning Relationは、たとえ同じSourceに由来しても別の資格**である。
+
+現行mainのreacandidate.GenerateCandidatesは、外部Edge IDを含むCandidateIDを作り、同端点・同ラベルの並行Relationを区別できる。PreviewAdoptionはそのCandidateIDを仮のthreeelement.CrossReference.IDとして保持する。一方、CarrierAuditは、ModelMapLink等のread-only型へ外部Relation occurrence IDを移す欄がないことを**external-edge-identity**のGapとして報告する。したがって「Graphの全階層でEdge IDが失われる」わけではない。**Candidate/Previewでは各辺を保持できるが、正式Meaningや編集対象へ安全に逆写像する資格は別**である。
+
+[新規Go回帰テスト](../../cmd/tei/cli_rea_parallel_relation_review_test.go)では公開合成reaIntakeFixtureに同端点・同ラベルのEdge二本を置き、既存three-element rea-intakeのCommand handler経由で次を確認する。
+
+| ケース | 正例・負例の期待 | 成立しない資格 |
+| --- | --- | --- |
+| **J-02a 二つのOccurrence** | 外部Edge ID、CandidateID、SourceRevisionを各々保持。parallel-relation/same-endpoints-same-labelを報告 | 正式業務Relationとしての採用 |
+| **J-02b ReviewとPreview** | 二つのCandidateIDが仮CrossReference IDとして残り、AcceptedMeaning=false/Owner pending | Source編集や業務意味受理 |
+| **J-02c Carrier Fit/Gap** | 外部Edge ID二件が下流型に直接移送できないGapとして表示 | modelref/ModelMap/図面/SHOでの完全な往復 |
+| **J-02d Producer ID重複** | 同じEdge IDを二本宣言したらEDGE_IDENTITY_DUPLICATEで拒否 | 配列順やラベルから一方を暗黙選択・削除 |
+
+本テストは既存Unitの同名Node・平行Edge・Previewを、CLIのReviewPacketまで繋ぐ**局所Go試験**。本物のtei実Binary二プロセス、Native Wails/JS第二Product Consumer、Source書換えや実DB Effectの合格ではない。新しいReader/Parser/Meaning Store/Approval Engineは作らない。
+
+**別レーンとの接続**：main統合済み[実行モデル§37〜39／PR #4703](PROGRAM_EXECUTION_MODEL_PROJECTIONS_2026-11.md)の同名Node・同向多重Edge・方向反転・Layout-onlyの例を、合成Graphの比較軸として共有する。ただし#4703は設計票で、実Go Generatorの成功ではない。REA CandidateのReadとOwner受理済みTEI Graph/RuleからのCodegen、実Provider Call、Consumer実受領を別々に判定する。Go既存関数への単純delegateはTEI-native実装に数えない。
+
+**残るJ-02e/f**：Source-backedな異Graph間Relation対応を一意に立証できるか、e2だけ反転・e1だけ削除した場合にSource版・旧Pin・後着Previewを拒否できるか。正式Source編集の一意性・Owner Meaning・Current Grantは#1120/#1124/#2497/#2514の既存Ownerへ返し、資格がなければread-onlyで停止させる。Graph completeでもFunction/Business unsupportedなら業務全体の否定・未使用判断をしない。
+
+**検証資格**：この節の反映とGoテストSourceの作成は、当該新テストの実Go/CI成功を意味しない。exact HEADでの実行合否は別途確認する。Studio Stage1→Stage2と通常tei実PG Readという製品P0は維持する。
