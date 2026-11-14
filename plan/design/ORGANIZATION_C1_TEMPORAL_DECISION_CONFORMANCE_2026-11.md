@@ -734,4 +734,11 @@ ALTER TABLE "public"."org_memberships" ADD COLUMN "person_support_id" pg_catalog
 
 最短の次作業は、Ownerが採用したM-P/M-E/M-Xの**一Profile**について、正式なRelation（source/target方向・Key）→実保存されたPerson対応→実QueryのPerson射影→同じRead Cohort・Periodでの人数/FTE→独立Context/Consumer受領、という単一の証拠系列を通すこと。履歴版`record_version_id`等の物理PK、旧Writer移行、Source/Current Grantはそれぞれ別Owner。配布生成物のToolchain観測[Draft #4648](https://github.com/hat47x/tei-platform/pull/4648)はTarget成果物のbyte差・Builder申告の観測であり、C1の業務MeaningやSource→実DBの完全性には昇格しない。
 
-**実行資格**：7テスト＋5拒否サブケースの旧HEADは[Health #43558325121](https://github.com/hat47x/tei-platform/actions/runs/43558325121)で成功。今回追加したDDL差分テストの新HEAD `65b8348780dc92ad19bcc1e5a8ca9a0311f2e216`は[Health #43572108581](https://github.com/hat47x/tei-platform/actions/runs/43572108581)で**独立に結果確認するまでPASS未確定**。本節は新DDLの実接続／PG実行／Owner採用を報告するものではない。通常CLI実Provider Read #2586 とStudio Stage2セルフビルド #2831 は独立P0のまま維持する。
+**実行資格**：7テスト＋5拒否サブケースの旧HEADは[Health #43558325121](https://github.com/hat47x/tei-platform/actions/runs/43558325121)で成功。追加したDDL差分テストの最初のHEAD `65b8348780dc92ad19bcc1e5a8ca9a0311f2e216`には**コンパイルエラー**があり、[Studio Source Loop #43572108566](https://github.com/hat47x/tei-platform/actions/runs/43572108566)が失敗、[Health #43572108581](https://github.com/hat47x/tei-platform/actions/runs/43572108581)は後続修正によりcancelled。修正HEAD `85f657002f8b9f05dfd119a72565e583985b8494`の[Health #43572492328](https://github.com/hat47x/tei-platform/actions/runs/43572492328)を**新たな独立Run**として検証するまではPASS未確定。本節は新DDLの実接続／PG実行／Owner採用を報告するものではない。通常CLI実Provider Read #2586 とStudio Stage2セルフビルド #2831 は独立P0のまま維持する。
+
+
+### 20.4 DDL試験の失敗を固定HEADで再資格化する
+
+- **原因確認**：最初のDDL候補HEAD `65b83487` の[Studio Source Loop Run #43572108566](https://github.com/hat47x/tei-platform/actions/runs/43572108566)で、追加Goテスト内の文字列`before`（一時DSL Sourceの置換前テキスト）と、同名にしたPhysical Baseline変数が衝突し、`no new variables on left side of :=`／文字列を`physical.SchemaSnapshot`へ代入できないGoコンパイル失敗を実ログで確認。この失敗は新Testのコードに由来し、Studio本体の検証不合格とは断定しない。
+- **修正**：[PR #4633](https://github.com/hat47x/tei-platform/pull/4633) の新HEAD `85f657002f8b9f05dfd119a72565e583985b8494` ではPhysical Baseline変数だけを`physicalBefore`へ変更し、既存のSemantic DSLの`before`文字列は保持。`schemadiff.Compare(desired, physicalBefore)`に固定。新しい機構やOwner意味変更なし。
+- **CIの資格**：誤コードのHEAD `65b83487`はPASSではなく、[Health #43572108581](https://github.com/hat47x/tei-platform/actions/runs/43572108581)もcancelled。修正後の[Health #43572492328](https://github.com/hat47x/tei-platform/actions/runs/43572492328)の全Go/gofmt/vetを同HEADで完了確認するまでは追加SchemaDiff testを`NOT VERIFIED`に維持。旧HEAD `2c155383`の正常/負例7＋5成功は当該旧HEAD限定で失効しない。
