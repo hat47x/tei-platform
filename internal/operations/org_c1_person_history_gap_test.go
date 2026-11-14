@@ -2,8 +2,11 @@ package operations
 
 import (
 	"encoding/json"
+	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"tei/internal/database/persistence"
@@ -30,6 +33,13 @@ func TestOrgC1CurrentMembershipDoesNotHavePersonLink(t *testing.T) {
 	otherPersonLinks := map[string]bool{}
 	for _, ns := range loaded.World.Semantics {
 		for _, data := range ns.Data {
+			// Check incoming relations as well: a Person -> Membership
+			// authoring would close the gap without adding personId to Membership.
+			for _, rel := range data.Relations {
+				if data.ID != "organization.membership" && rel.Target == "organization.membership" {
+					t.Fatalf("incoming Membership relation is now present; qualify its business direction/key: source=%s relation=%s", data.ID, rel.ID)
+				}
+			}
 			switch string(data.ID) {
 			case "organization.person":
 				personExists = true
@@ -244,6 +254,143 @@ func TestOrgC1CandidatePersonRelationStorageValidatesAndRealizesOffline(t *testi
 	// This validates only the *hypothetical* IR and desired schema. It does
 	// not load a Person-Membership .tei relation-storage authoring file, read
 	// actual PostgreSQL rows, ensure bitemporal co-storage, or accept meaning.
+}
+
+// The candidate exists only in an isolated copy of the real org-staged-axis
+// Workspace. This exercises the *actual .tei authoring* parser, pinned loader,
+// source provenance, validator, and offline Postgres realization, not just
+// a Go struct or JSON roundtrip. It is not an Owner-accepted model.
+func TestOrgC1CandidatePersonRelationStorageLoadsFromTEIDSL(t *testing.T) {
+	source := filepath.Join("..", "..", "reference", "org-staged-axis")
+	root := t.TempDir()
+	if err := filepath.WalkDir(source, func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		relative, err := filepath.Rel(source, path)
+		if err != nil {
+			return err
+		}
+		if relative == "." {
+			return nil
+		}
+		target := filepath.Join(root, relative)
+		if entry.IsDir() {
+			return os.MkdirAll(target, 0o755)
+		}
+		if !entry.Type().IsRegular() {
+			return fmt.Errorf("non-regular workspace source %s", path)
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(target, data, 0o644)
+	}); err != nil {
+		t.Fatalf("copy real organization Workspace to isolated test root: %v", err)
+	}
+
+	semanticPath := filepath.Join(root, "semantic", "organization-axes", "model.tei")
+	original, err := os.ReadFile(semanticPath)
+	if err != nil {
+		t.Fatalf("load copied Person source: %v", err)
+	}
+	before := "data Person {\n    attribute personId type organization.person_id\n}\n"
+	after := "data Person {\n    attribute personId type organization.person_id\n\n    relation membershipsCandidate to organization.membership many\n}\n"
+	if strings.Count(string(original), before) != 1 {
+		t.Fatal("Person source changed; review temporary candidate insertion against current Semantic")
+	}
+	if err := os.WriteFile(semanticPath, []byte(strings.Replace(string(original), before, after, 1)), 0o644); err != nil {
+		t.Fatalf("write temporary Person relation authoring: %v", err)
+	}
+	relativeStorage := filepath.Join("databases", "org-store", "relation-storage", "person-membership.tei")
+	storagePath := filepath.Join(root, relativeStorage)
+	if err := os.MkdirAll(filepath.Dir(storagePath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Nullable is a test hypothesis: unknown historical persons cannot be
+	// silently backfilled or turned into required rows by adding this Source.
+	storageSource := "relation-storage org_store.membership {\n" +
+		"    relation organization.person.memberships_candidate\n" +
+		"    component organization.person.person_id -> person_support_id storage varchar optional\n" +
+		"}\n"
+	if err := os.WriteFile(storagePath, []byte(storageSource), 0o644); err != nil {
+		t.Fatalf("write temporary Relation Storage DSL: %v", err)
+	}
+
+	loaded, err := workspace.Load(root)
+	if err != nil {
+		t.Fatalf("actual TEI DSL Parser/Workspace Loader rejected candidate authoring: %v", err)
+	}
+	const relationID = "organization.person.memberships_candidate"
+	var membership *persistence.Mapping
+	seenPersonRelation := false
+	for _, ns := range loaded.World.Semantics {
+		for _, data := range ns.Data {
+			if data.ID == "organization.person" {
+				for _, relation := range data.Relations {
+					if relation.ID == relationID && relation.Target == "organization.membership" &&
+						relation.Cardinality == semantic.CardinalityMany && len(relation.Keys) == 0 {
+						seenPersonRelation = true
+					}
+				}
+			}
+			if data.ID == "organization.membership" {
+				for _, attribute := range data.Attributes {
+					if attribute.ID == "organization.membership.person_id" {
+						t.Fatal("temporary relation changed Membership Semantic attributes")
+					}
+				}
+			}
+		}
+	}
+	for i := range loaded.World.Persistence {
+		if loaded.World.Persistence[i].ID == "org_store.membership" {
+			membership = &loaded.World.Persistence[i]
+		}
+	}
+	if !seenPersonRelation || membership == nil {
+		t.Fatalf("temporary DSL Relation/target mapping missing: relation=%v mapping=%v", seenPersonRelation, membership != nil)
+	}
+	relationStorage, ok := membership.RelationStorageByRelation(relationID)
+	if !ok || len(relationStorage.Components) != 1 {
+		t.Fatalf("temporary Relation Storage not loaded into explicit mapping: %+v", membership.RelationStorage)
+	}
+	component := relationStorage.Components[0]
+	if component.SourceAttribute != "organization.person.person_id" ||
+		component.Column != "person_support_id" ||
+		component.Storage != persistence.StorageVarchar ||
+		component.Nullability != persistence.Optional {
+		t.Fatalf("source/physical contract drifted during real DSL load: %+v", component)
+	}
+	sourceKey := "persistence-relation-storage:org_store.membership/" + relationID
+	if loc, ok := loaded.Sources[sourceKey]; !ok ||
+		loc.File != filepath.ToSlash(relativeStorage) {
+		t.Fatalf("actual Source Index lost Relation Storage provenance: key=%q location=%+v present=%v", sourceKey, loc, ok)
+	}
+	if diagnostics := validation.ValidatePersistenceRelationStorageMappings(loaded.World); len(diagnostics) != 0 {
+		t.Fatalf("candidate Relation Storage is not world-valid: %+v", diagnostics)
+	}
+	desired, err := persistence.RealizeDesired(
+		[]persistence.Mapping{*membership}, "org_store", postgres.RealizationPolicy{},
+	)
+	if err != nil {
+		t.Fatalf("offline desired schema with parsed Relation Storage: %v", err)
+	}
+	table, ok := desired.Table("public.org_memberships")
+	if !ok {
+		t.Fatalf("parsed candidate lost org_memberships: %+v", desired.Tables)
+	}
+	col, ok := table.Column("person_support_id")
+	if !ok || !col.Nullable || col.Ordinal != len(membership.Columns)+1 {
+		t.Fatalf("parsed optional support column not realized independently: %+v", table.Columns)
+	}
+	if len(table.PrimaryKey) != 1 || table.PrimaryKey[0] != "membership_id" ||
+		len(table.ForeignKeys) != 0 {
+		t.Fatalf("candidate must not silently resolve historical PK or generate FK: %+v", table)
+	}
+	// A Person -> Membership physical support link does not automatically
+	// implement inverse Membership -> Person traversal or r7 temporal claims.
 }
 
 func TestOrgC1CurrentAsOfQueryDoesNotYieldPersonIdentity(t *testing.T) {
