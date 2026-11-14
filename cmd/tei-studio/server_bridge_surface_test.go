@@ -81,7 +81,6 @@ func TestServerBridgeExportedMethodInventoryRequiresReview(t *testing.T) {
 	t.Logf("NOT PUBLIC-QUALIFIED: loopback Wails Server currently registers privileged/non-read surfaces: %s", strings.Join(elevated, ", "))
 }
 
-
 // studioServicesFromOptions inspects the Services member actually supplied to
 // application.Options. Scanning NewService calls anywhere in main.go alone
 // would miss a dynamically replaced list or an additional direct Service.
