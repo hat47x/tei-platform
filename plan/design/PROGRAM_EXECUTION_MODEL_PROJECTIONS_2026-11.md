@@ -420,3 +420,75 @@ Go、Java、.NET、Web、Wails Desktop、CLI、Serverless等へ移すとき、�
 **実装・検証順**：P0のStage1→Stage2 Desktop実セルフビルド（#4583/#2831）と実Entry→実Provider二入口（#4495）を妨げない範囲で、#4198 R0の一Functionを対象とした照合表を作る。次に関係の投影損失（PX-30/31）とpure Functionの独立Expected、続いてSQL/Providerの粒度・取得範囲（PX-33/34）を比較する。最後に、二つのTargetを使う場合だけ実呼出し・Consumer受領へ進む。これらを全体P0の新必須Gateとはしない。
 
 **状態：設計・反例候補の統合。照合表の製品実装、PX-30〜37の試験、SQL/NoSQL実Provider、異言語Target、Owner意味受理はNOT RUN / NOT ACCEPTED。**
+
+## 24. 依存Pluginが公開する図解と情報の継承
+
+Pluginを組み合わせてアプリケーションを構築するとき、依存先が持つ型付きGraph、計算モデル、状態遷移図、データ関係図、入出力契約、診断や説明を、利用側が改めて書き起こすべきではない。**依存先が契約で公開した情報を、元の意味・出典・適用範囲を保って再利用できること**を要件とする。Graphの表示画像だけでなく、必要な範囲でSourceへ戻れる型付きの関係も対象とする。
+
+ここでいう継承は、GoやJavaのクラス継承とは異なる。Pluginの**依存・契約の参照・公開済みProjectionの合成**によって、利用側の説明や図面に必要な情報を取り込むことである。依存しただけで内部Source、非公開Relation、実行権限、HostのGrant、Effectの権限、再配布権を獲得するわけではない。
+
+| 公開するもの | 利用側で認める使い方 | 必ず残す境界 |
+| --- | --- | --- |
+| 型付き意味の一部 | PublicなNode/Edge/Role、Functionの入力・出力や必要条件を参照し、利用側のGraphへ接続 | 公開された粒度・版・Subject ID、元のOwner受理、表現できない属性 |
+| Diagram/Tree/TableのView | 共通Lifecycle図・状態図・Relation図の公開Facetを利用側で表示、集約、重ね合わせ | 元の表示由来、Viewの情報損失、利用側が加えた装飾・差分 |
+| Contract/Obligation | 依存するFunction/Providerに必要なGuard、Trait、Effect制約を確認 | 必須条件をPresentationの編集で削除しない。追加条件と上位契約を識別 |
+| 診断・説明・テスト参照 | Pluginが公開した診断規則、文書説明、独立Expectedへの参照を再利用 | 試験の成功は使用先での成功とは限らない。秘密Fixtureや非開示Evidenceを渡さない |
+| 生成器・実現条件 | 適格なGenerator/Target能力・Build依存を構成時に参照 | 見えることとGeneratorが選択・実行されること、実Providerが利用されることは別 |
+
+公開Facetには、元のContract/Plugin/Subject・実内容と版、元のSource/Meaningとの対応、公開対象（Consumer、Scope、用途）、許された表示・派生・再公開、必要な情報損失表示を結び付ける。これは**既存Contract/Provider・Role・Projection・Source provenanceの組合せ**として評価し、汎用の新しいPlugin継承クラスや別Registryを作らない。公開Contractが曖昧な場合は、読み取れる情報だけを候補として示し、再公開・書戻し・生成を認めない。
+
+依存が二段以上の場合も、推移的に何でも公開できるわけではない。例えば、共通Lifecycleを公開するPlugin A、Aに依存する業務Plugin B、Bの図を利用するUI Plugin Cがあるとき、CがAの図を再利用するには、Aの許容条件とBの明示的な参照・再公開契約の双方を満たす必要がある。BがAの非公開情報を内部で使っていても、Cへ漏らしてはならない。二つの異なる上位Pluginから同じ名前のNodeを取り込んだ場合も、表示名で合体させず、Stable Ref・Contract・版で関係を解決する。
+
+## 25. 継承した図面の合成と変更の扱い
+
+図面を合成するときの基本は、**依存先から公開された部分を固定した参照として配置し、利用側の追加情報を別の差分として重ねる**ことである。図面全体をコピーして新しい意味正本にするのではなく、契約で許された表示・参照・拡張だけを行う。
+
+- **由来の区別**：依存先から受け取ったNode/Edge、利用側が追加したNode/Edge、単に表示上作った集約Nodeを区別する。同名Node、多重辺、向き、Relation属性は維持する。
+- **決定的な合成**：依存先のContract/Role/Plugin・選択Providerを固定し、複数親・複数Facetの競合を表示・診断する。導入順や偶然のファイル列挙順で、優先する意味・Guard・表示内容を決めない。
+- **Obligationの保持**：上位Pluginが公開する必須GuardやEffect fenceを、子のGraph Patchや図面編集で迂回できない。Overrideを許す場合も、Contractが指定する拡張点・対象・条件に限定し、現在のHost Authorityを再確認する。
+- **編集と書戻し**：依存先の意味Nodeを直接編集せず、必要なら依存先Ownerの変更Proposalへ送る。利用側の差分は利用側Sourceへ反映する。表示上の配置変更はView Metadataに閉じる。
+- **変更の伝播**：依存先の公開Contract/Facet内容・再公開条件が変わった場合は、実際に選択・消費されたFacetと必要な下流だけ再評価する。図の色だけ変わった場合、Functionの意味や実Builderを過剰失効させない。
+- **非公開化と古いView**：依存先の公開が失効・縮小した場合、過去の説明の履歴と現在閲覧できる情報を区別する。古いCacheやAIの要約から失効したSource/秘密Relationを再開示しない。
+
+一つのGraph上にControl Flow、Data Flow、Authority、Effect、Traceを表示できるとしても、それらの型付き辺は互いに置換できない。**上位Pluginの図面が見えることは、下位Pluginによる実行・検証・再配布の許可ではない**。実行の資格は既存のComposition、Build/Artifact、Host/ProviderとConsumerで別々に判定する。
+
+受入の最初の比較では、同じFunctionを表す（a）上位Plugin単独の公開View、（b）依存Pluginが局所差分を合成したView、（c）CLI/JSONのread-only表を用い、Stable ID・公開範囲・Relation identity・情報損失が一致することを確認する。StudioやSHOでの見た目の一致は、この検査が済んだ後に扱う。
+
+## 26. TEI自身とPluginのセルフビルドへ接続する
+
+図解は説明だけで終わらせず、**受理済みの型付き意味をもとに、コード生成・検証・Targetへの実現を進めるための入力**とする。もっとも、Graphの表示座標やAIが推測した辺から実行コードを生成するのではない。標準データ構造、意味Role/Operator、Sourceとその契約、必要なObligationを既存Lowering・Builderへ渡す。
+
+初期段階の実証はStudioを必須としない。生成AI・開発者が利用しやすい**通常TEI CLI／MCPから、Markdownと図表を含むTEI定義を解決し、意味上の計算・検証・変換処理を実際に生成する**ことを先に試せる。MCPはCLI/APIに対応する薄い入口の一つであって、別のBuilder/Hostではない。Studio DesktopのStage1→Stage2再構築は引き続き全体P0の製品出口として維持し、Headlessの局所成功をDesktop完成に算入しない。
+
+| 順序 | 小さな実証 | 合格に必要な差 |
+| --- | --- | --- |
+| **H0 構造を読み解く** | 既存の一つのTEI Function/Plugin定義にあるMarkdown表・関係図・SourceをCLIからread-only照合 | 図表が単なる説明ではなく、対象IDと意味Roleを持ち、元のSourceへ戻れる |
+| **H1 意味のある生成** | 受理済みの一計算・Rule・Validationを標準構造で定義し、Go実装または検証器を生成 | 出力の意味が図表/DSLから導かれる。TEI定義が未解釈のGoを単に呼び出すだけでは合格にしない |
+| **H2 Pluginにも適用** | 一つのLanguage/Operator/GeneratorまたはValidation Pluginの処理節をTEI定義から生成 | Plugin自身で生成した部分、従来の手書きGo部分、外部Providerに委ねる部分を識別 |
+| **H3 再帰的に再構築** | 既存BuildIntent/Builderで生成したTEI/Pluginが、同じ受理済み定義から次段の実Artifactを再生成 | 実Process・実消費入力・生成物・必要な独立Expectedと実Consumerを別々に照合 |
+| **H4 Desktop製品出口** | #2831/#4583の正式Studio Stage1→Stage2、生成Wails/WebView2での実利用 | H0〜H3の局所合格を足し算せず、同一Build Intentと実Consumerの証拠で判定 |
+
+H1/H2の最初の題材は、図表・式から直接計算内容を確かめられる純粋Function、または必要条件を列挙できるValidationとする。作用を持つHook/DB Commitの生成は、実Provider・Authority・Receiptと独立Expectedの検証が整うまで後段に置く。
+
+進歩を測る際は、単純な生成行数やDSLの行数だけでは判断しない。**（1）受理済みTEI定義から生成できたFunction/Operationの割合、（2）Plugin自身のうちTEIから生成された意味処理の範囲、（3）手書きで重複していた規則・分岐・Schema対応の削減、（4）異Targetへ移した際の手修正と不一致、（5）実再生成時間と失効範囲**を同じFixtureと版で記録する。初期は基準値を観測し、実測前に恣意的な達成率を完了条件としない。
+
+この経路で、TEI定義の表記を簡潔にしていく際も、意味をGoの委譲先へ押し戻して「DSLが短くなった」と評価しない。必要な業務語彙・依存・Effect・例外・テストをどの層が所有するかを明示し、型付きモデルから再生成できる範囲が実際に増えたかを確認する。
+
+## 27. 継承・セルフビルドの反例候補
+
+以下は#4198/#951/#2497/#2620/#2831/#2514など既存Ownerへ渡す候補であり、新しいScenario正本を作らない。
+
+| ID | 故障・対照 | 拒否または区別すること | 既存Owner |
+| --- | --- | --- | --- |
+| **PX-38** | AがBへ図を公開、BはCへの再公開を許していない | Cの閲覧・Artifact生成・AIへの送出で推移的漏出を拒否 | #951/#2497/#2516 |
+| **PX-39** | 上位Graphの同名Node・多重Edgeを二Pluginから合成 | 表示名でIDを統合せず、関係種別と依存元を保持 | #2620/#4198 |
+| **PX-40** | 下位PluginのPatchが上位必須Guardを表示上除外 | 図面の除外で実Obligation/Host Grantを迂回しない | #4198/#1174 |
+| **PX-41** | 上位Pluginの公開Facetの版だけ変更し、依存Pluginの旧Viewを使用 | 旧Facetの再使用資格を再確認し、Scope失効・旧情報の再開示を拒否 | #951/#2600/#2516 |
+| **PX-42** | Plugin A/Bの登録順を反転し、重複Facetを合成 | 読込順で勝者を選ばず、明示解決か衝突診断 | #951/#1016 |
+| **PX-43** | Viewのレイアウトだけを変更、Function/Generator Inputは同じ | 意味を変えず、無関係なBuild/Evidenceを失効しない | #2497/#2600 |
+| **PX-44** | TEI定義でGo実装の呼出し先だけを指定し、生成コードの意味はGo側に残る | 「図表とDSLによる実質的なセルフビルド」とは判定しない | #2620/#2831 |
+| **PX-45** | PluginをTEIから一部生成したが、手書き規則を別Pluginへ移しただけ | 自己生成の範囲・重複削減・独立Expectedを別測定 | #2831/#1121 |
+| **PX-46** | TEI CLIで一部品の再生成に成功、StudioのStage2は旧Artifact | Headless局所再帰と正式Desktop実Consumer受領を混同しない | #2831/#4583 |
+| **PX-47** | 親Pluginはread-only図を公開、子PluginがそのNodeを編集して保存 | 編集先が親Sourceでなければ不正書戻し。局所Overlayなら別Sourceへ保存 | #1124/#2497 |
+
+**本追補の扱い**：現行Repositoryの設計を結ぶ契約・実証順であり、正式な公開Facet Schema、推移継承の実装、Plugin側Generator、TEI自身の新しいセルフビルド成功、正式な意味受理を主張しない。PX-38〜47の実試験はNOT RUN / NOT ACCEPTED。既存Stage2 Desktopと実Entry→実Providerの製品検収を置き換えない。

@@ -703,3 +703,65 @@ PCC-01/02/04/05は#4583/#1251の製品経路と合わせて確認するが、**P
 
 **今回の資格**：現行の設計・Issue・他チャットの判断を統合した実装順と検証条件。正式なPlugin Manifest／ABI、汎用Graph Compiler、動的Loader、実Wasm Component、外部Hostの隔離保証、自己記述DSLの正式採用、実Windows Stage2／実DB更新／Owner意味受理を達成したものではない。
 
+## 15. 依存先が公開する図解を契約に従って再利用する（2026-11-14横断統合）
+
+Pluginは自らのFunction/Modelを実装するだけでなく、利用側がその意味を理解・検証・表示するための図解・型付きRelation・説明・診断を**選択的に公開**できるようにする。依存関係の上位にあるPluginの情報も、途中のPluginが再公開を許可された範囲で継承的に利用できることを要件とする。基本設計と検証の詳細は[プログラム実行モデルの§24〜27](PROGRAM_EXECUTION_MODEL_PROJECTIONS_2026-11.md)に接続する。
+
+この「継承」は実装言語のクラス継承でも、Pluginフォルダの全内容をコピーすることでもない。既存#951のContract/Provider・#2620の意味Role・#2497のProjection・#1016/#3267のexact Compositionと、#1124のSource参照をつなぐ**公開済み情報の合成**である。
+
+### 15.1 契約で区別する権利と情報の範囲
+
+| 契約で区別する事項 | 判断すること | 不正な昇格 |
+| --- | --- | --- |
+| 公開対象 | 具体的な型付きNode/Edge、Role、Diagram Facet、必須Obligation、説明、診断、テスト参照のうち何を公開したか | 表示Facetを公開しただけで元の全Source・秘密Fixtureも公開したとみなす |
+| 受け手と用途 | Plugin/Consumer、Scope、Target、read-only表示、派生図の生成、再公開、編集提案などの許される用途 | 内部閲覧可から任意の外部AI/SHO配布可へ拡大 |
+| 版と出典 | 公開元Plugin/Contract/Subject ID、Facet内容の版とdigest、Source/Meaningとの関係、依存の選択経路 | 同じ名前・同じ画像・同じversion文字列なら資格が同じと判断 |
+| 合成条件 | 複数親の重複と競合、再公開可能な依存辺、許されたPatch/Overlay、保持すべきObligation | 登録順で上書き、Guard非表示で義務消失、同名Nodeの無断統合 |
+| 機密と更新 | 非公開属性の除去、現在Disclosure、公開縮小・撤回と古いCache/説明の扱い | 一度見えた図から現在の秘密情報を再送出 |
+| 実現資格 | 必要なProvider/Generator/Artifact/Consumerへの選択と適合、現在Grant | 図の閲覧・継承だけでPluginの実呼出しと外部Effectを許可 |
+
+既定では**直接公開されたFacetのread-only再利用**から始める。依存Bが上位Aの公開図を表示できても、Bの利用側CへAの図を自動再公開する権利は生じない。必要ならA側の再公開条件とB側の明示的なexportを両方解決する。参照に必要な契約情報が取得できない場合は、継承を確定させずunresolved/permission-denied等の既存診断として扱う。
+
+外部Pluginや研究Toolkit由来の図解・説明には、利用許諾・配布範囲・出所も必要に応じて添える。公開されたMetadataが自由な複製ライセンスを意味するわけではない。実プラグイン実装の配布資格と、図面の再利用・外部送出資格は別とする。
+
+### 15.2 上位図を使った差分合成の実例（契約候補）
+
+次の三層の例は仮想的なSubjectであり、実在するPluginの正式IDや実受理Contractではない。
+
+- **共通Lifecycle Plugin A**：Entry→Admit→Invoke→Observeの意味上の辺と、Authority/Effectの必須条件を、許可した範囲で公開する。
+- **業務Plugin B**：Aの公開Facetを固定参照し、受注検証・受注確定・通知など業務固有のNode/Edgeを自分のSourceで追加する。AのGuardを削除・迂回することはできない。
+- **Studio/文書Plugin C**：Bが明示的に再公開したFacetだけを使って図・表・説明文を導出する。CからBへの局所的な表示変更はView Metadataに、業務変更はOwnerのSource Change Proposalへ戻す。
+
+この例では、合成済みの一枚の図面があっても、**意味の由来はA/B、Viewの構成はC、実行資格は選択Host/Provider**と区別する。BのSourceをCが所有することも、AのEffect権限がCへ伝搬することもない。A/BのFacetが新しい版になったときは、影響するNode/Edge/Consumerだけ再投影し、必要がある場合に限りBuild/Conformanceを再確認する。
+
+### 15.3 実装先と優先順
+
+- **既存Resolver/Compositionを使う**：Contractが公開するFacetと利用側の要求を#951/#1016で解決し、依存の選択結果・再公開範囲を確定する。第二のPlugin RegistryやScope解決器を作らない。
+- **既存の標準データへ載せる**：Value/Record/Relation/GraphとRoleを用い、Source ID/Revision、Edge identity・多重度、Presentation Metadata、未表現情報を分離する。専用の継承Graph型を初期導入しない。
+- **CLI/JSONで先に表示する**：上位Facet＋局所Overlayと、公開しなかった情報・未解決の依存を、read-onlyの照合表で比較する。実Studio Graph Editorや書込み連携は後続。
+- **必要なときにだけTargetへ渡す**：公開Facetの参照と、実Builder/Generatorが消費する入力を分ける。Studio表示のみのFacet更新で全Go binaryを無条件に作り直さない。
+- **対象側のAuthorityは別に判断する**：Hook/Guard、DB更新、AI Tool、外部Host実行、開示の現在資格を、上位図の可視性から推論しない。
+
+独立Expectedは同一のA/B/C依存構成で、（a）公開Facetを継承できる、（b）非公開AttributeはCへ届かない、（c）Bからの再公開なしではAの図がCへ出ない、（d）上位Obligationを子Patchで消せない、（e）Facetの表示だけの変更で意味Buildを過剰失効しない、の五つを比較する。これは[PX-38〜43・PX-47](PROGRAM_EXECUTION_MODEL_PROJECTIONS_2026-11.md)の既存Issue向け提案と同一のFixtureを使い、別テスト正本を作らない。
+
+**採用判断を保留するもの**：公開Facetの正式Schema、権限表現、複数親の優先規則、実Targetでの具体的な再公開・配布方法。上述のContract解決と負例が先に成立するかを見て、既存Ownerが決める。
+
+## 16. Plugin自身をTEIで生成する比率を高める（2026-11-14横断統合）
+
+最初にStudioが完成している必要はない。実TEI CLI／MCPから、Markdownの表・図解とDSLで表された意味を解決して、**Pluginの一部を実際に生成できるか**を先に確かめる。完成したPluginを単にGoへ委譲するだけでは、TEIの表現力やセルフビルドの進展は測れない。プラグインの自己構築は、既存#2831/#943/#2620/#1121/#951のBuild/Role/Providerと共通の経路で段階的に進める。
+
+| 小さな到達点 | 必要な成果 | 合格としない例 |
+| --- | --- | --- |
+| **P-A Plugin意味の可視化** | 一PluginのFunction・依存・公開Facetを、Source-backedな表/Graph/説明へ投影 | 図が描けたが元Subject/Relationへ戻れない |
+| **P-B TEI定義から実コード生成** | 計算/Validation/Ruleの少なくとも一処理を、TEI表・式・図の受理済み意味から実Go生成し独立Expectedで照合 | Go Sourceのファイル名と呼出し先をDSLに書いただけ |
+| **P-C Plugin内のTEI生成範囲拡大** | 同じPluginで生成部分と手書きProvider/Target Adapterを区別し、依存と再生成条件を確認 | 手書き規則を隠れた別Go処理へ移しただけ |
+| **P-D Pluginの再構築** | TEI/Pluginの実Builderで次世代Plugin Artifactを生成し、実Load/Call/Consumerまで確認 | テスト環境が生成ファイルだけ出した／別Headの証拠を合算 |
+| **P-E Desktop全体へ接続** | 上記実証済み部品を使い、正式なStage1→Stage2 Studio Desktopと実Windows受領へ接続 | 局所Pluginの成功をDesktop全体セルフビルドと呼ぶ |
+
+運用順としては**P-A→P-BをHeadlessで先行可能**とし、P-C/P-Dを段階的に増やす。現在の製品出口としてのDesktop Stage1→Stage2（#2831/#4583）は最優先のまま維持し、Headlessの小実証を理由に完成条件を変更しない。MCPは共通APIの薄い入口であり、専用のAI実行Hostや別Builderは作らない。
+
+成果を測るときは、生成Goの行数よりも、**意味処理のうち実際にTEIの図表・DSLから導出された割合、手書き業務・検証規則の削減、同じ意味定義のTarget・文書・テストへの再利用、Plugin自身の自己生成範囲、変更から実Consumer確認までの時間**を区別する。最初に固定版の基準値を測り、測定前から高い割合を約束しない。単純にGoの呼出し先を増やしてTEIファイルを短くすることは改善とは扱わない。
+
+初回は公開Facetを持つ**一つのpure Function/Validation Plugin**を題材に、契約付きの継承図→受理済み意味→Go生成→実Provider→CLI/独立Consumerを一つの版に束縛する。後続で別Pluginが同じFacetを使う構成を追加し、上位の契約変更時に生成物とViewのどちらを再生成するかを分けて検証する。この順序なら、Pluginの表現能力を実装で確かめながら、TEI定義そのものを段階的に簡潔にできる。
+
+**状態**：設計・計画。上位公開Facetの実継承、TEI-native Plugin実生成、P-A〜P-Eの実行、正式なPlugin Manifest/ABI、全Windows Stage2、Owner意味受理は **NOT RUN / NOT ACCEPTED**。関係する反例は共通のPX-38〜47として引き渡し、別の試験正本を増やさない。
