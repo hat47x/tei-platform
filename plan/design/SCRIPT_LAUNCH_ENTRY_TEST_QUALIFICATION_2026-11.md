@@ -718,12 +718,13 @@ LR-A〜Dは全直列Hard Gateではない。LR-Aの受理待ち中は、LR-Bの�
 | 並行レーン | 実装・対象HEADの確認結果 | Product資格と次の不足 |
 | --- | --- | --- |
 | **L-P：Go Function** | [merged #4629](https://github.com/hat47x/tei-platform/pull/4629) と [merged #4636](https://github.com/hat47x/tei-platform/pull/4636)。Result、Input名/型参照、Effect種類/対象Dataの構造不備とnil Contextを呼出し前に拒否。#4636は9/9 CI成功、main 18470e69に統合 | 実入力値の型・NULL／公開Entry／Meaning Ownerのpure受理／現在Host Grant／選択Go Providerのactual call／通常製品CLIは別検収。**Effectが未宣言でもpureとは限らない** |
-| **L-R0（RA-0）：Query入力Source** | [Draft #4626](https://github.com/hat47x/tei-platform/pull/4626) は recent_orders に from/std.datetime を宣言。HEAD 4f238139のCIは **14/17成功、3失敗**。実ログでは旧Frozen WorktreeのParserがinput句を拒否し、旧World Fixtureも現Sourceと不一致。Browser→JSON APIには未想定のsqlgen symbol 2件 | 現Sourceの型宣言は未統合。歴史FixtureをScratch内で旧byteへ戻すことと、現Sourceを新たに受理することを分ける。Parser版の整合、旧Evidence再現、Web/API実バイナリのimport graphを各Ownerで解決し、拒否テストを緩めない |
+| **L-R0（RA-0）：Query入力Source** | [Draft #4626](https://github.com/hat47x/tei-platform/pull/4626)の旧HEAD 94876821では16/18成功。Repository Healthの未使用reflect importとBrowser→JSON APIのsqlgen symbol混入を区別。新HEAD [9eecf2b9](https://github.com/hat47x/tei-platform/commit/9eecf2b932345861b1b5d28c22c2191fb164e5eb)では前者を修正し、**新しいCIで再検証中** | 現Source改訂はDraft/main未統合。旧Source/歴史Worldは隔離Fixtureで再現し、最新HEADの実Go testとBrowser実バイナリ依存除外を別に判定。旧HEAD失敗や成功を新HEADへ継承しない |
 | **L-R1（RA-1）：実Executor前の型検査** | [積上げDraft #4631](https://github.com/hat47x/tei-platform/pull/4631) は#4626をbaseとし、std.datetimeのGo time.Time値に限定してmissing/extra/NULL/不正型をExecutor呼出し前に拒否。HEAD 02af8339の専用CIは **2/2成功** | RA-0のSource変更と旧Fixture/E1失敗が未受理のため、単独main統合しない。限定Go試験の結果を実PostgreSQLや通常tei CLIの実証へ広げない |
 | **L-R2（RA-2）：隔離PostgreSQLの実Read** | [積上げDraft #4638](https://github.com/hat47x/tei-platform/pull/4638)、HEAD 0ce3a52fの[実CI #43553849861](https://github.com/hat47x/tei-platform/actions/runs/43553849861)で **実PostgreSQL 16・親＋7ケースすべて成功**。二つの空DB、別Reader/RLS、手書きExpectedと独立Read、境界・0行・NULL・欠落列・JOIN・Source改版を検査。SKIPを成功と誤認しない | **参照CLI限定**。#4626→#4631に積み上げ、main未統合。正式製品tei CLI、Native二Consumer、Host現在Grant、対象集合の完全性、Owner意味受理はNOT RUN |
 | **Builder実選択** | [Draft #4634](https://github.com/hat47x/tei-platform/pull/4634) は宣言対Resolverと選択Builder対実Child Digestを同一main基点HEAD 7d6a1238に統合。対象CI **8/8成功** | まだDraft。非Plugin DesktopのBuildExecution/ArtifactSet、実消費入力の閉包、Stage1がStage2を生成・再入する同一Attemptは未成立 |
 | **Wails公開面** | [Draft #4627](https://github.com/hat47x/tei-platform/pull/4627) は実Service登録と15個の公開Go MethodをAST/reflectで棚卸し。HEAD b9cf5447のActions **5/5成功** | Commandや外部Childの入口も含む。127.0.0.1限定Reference Serverを多利用者Webに公開してよい証拠ではなく、Principal／Workspace／Tabごとの認可・結果開示は未検証 |
 | **Studio生成Desktopと通常Desktop** | [Draft #4587](https://github.com/hat47x/tei-platform/pull/4587) の最新HEAD 357345d7はActions **11/12成功・1失敗**。同じWorkflowの生成Desktop WebView2 Jobは成功し、生成bundle・実WebView2・キーボード/XEAD読取り・正常終了を観測。一方、通常Desktop JobはOS版取得のPowerShellが15秒でtimeout（[Run #43554075677](https://github.com/hat47x/tei-platform/actions/runs/43554075677)） | 失敗は通常Desktop側の事前環境診断であり、生成Desktop成功を否定する結果ではない。ただしWorkflow全体のPASS・Stage1→Stage2自己再構築の同一Attempt・Webの現在認可は未成立。PowerShell環境障害を別切り分けして再試験 |
+| **REA Studio HostローカルEvidence** | [積上げDraft #4637](https://github.com/hat47x/tei-platform/pull/4637)はHost起動時のEvidence Selector/Workspace相対Path/Digestでbyte-only R2投影へ渡す。旧HEAD f9e355d5は11/12成功、gofmt不一致でHealth失敗。修正HEAD f38117dcのCIは再実行中 | #4630のbyte-only Operationを先行受理する。Studio Bridge/Web/MCP公開、Current Grant、複数Principal開示、A→B→A現在性は別資格 |
 | **Plugin Releaseの独立受領** | [merged #4617](https://github.com/hat47x/tei-platform/pull/4617)、main 37209145は、test-only loopback HTTPで署名済みReleaseを別Node Processが受け取り、署名・2 Memberの実bytesを照合（正常1＋拒否9、専用CI success） | 実GitHub Releasesの配布、実Publisherの現在Trust、Contract/Provider Conformance、実Runtimeロード／Function EntryとHost Grantを保証しない。配布証明を実Go Function Providerの資格へ昇格しない |
 
 **履歴と実行時の照合単位**：旧Sourceの再現、現在Sourceの型付き受理、Hostが選んだProvider/DB/Builder、実際のCall/Read/Child、受け手が観測した結果は同じ一枚の合格票にまとめない。比較の際には既存のAttempt／Source Revision／選択したIdentity・Artifact Digest／Current Authority Revision／独立Expectedを参照し、いずれかの証拠が欠ければそのClaimだけを未成立として残す。この照合項目は検収観点であり、新しい正本Schemaや共通Run Storeを意味しない。
@@ -737,3 +738,36 @@ LR-A〜Dは全直列Hard Gateではない。LR-Aの受理待ち中は、LR-Bの�
 **実装順への反映**：#4495はOwnerが純粋と受理したFunctionと明示公開Entryを一件固定し、L-P1の実選択Go Adapter→実Call、L-P2の通常製品CLIへ進む。受理前でも未公開Entry・Selected B／Actual A・失効Grantの呼出し0回は合成負例で先行検証できる。#2586はRA-0の旧Parser・歴史World／Web import graphの失敗を解消し、RA-1の限定Go検査とRA-2の実PG参照証拠を**同じ適格Source／実行Attempt**として再検収する。次に通常tei CLIとNative二Consumer・現在Grantを別検収する。#4583のStudioセルフビルドは最優先を維持し、#4587の生成Desktop成功と通常Desktopの事前PowerShell timeoutを分けて修正・再試験する。#4634のBuilder限定成功をStage2へ加算しない。
 
 **この節の証拠上限**：#4629/#4636とRegistry E1-C #4617はmain実装済みだが、それぞれ異なる限定Contractの試験である。#4626/#4631/#4638/#4634/#4627/#4587は対象HEADでの結果があってもDraft・未統合。実PostgreSQL参照Readerの7ケース成功、生成Desktop WebView2 Job成功、Plugin Releaseの署名・実Byte一致から、公開Function Product Q2、通常tei CLI／独立二Consumer、現在Host Grant、多利用者Web、Studio Stage2の完成を導かない。
+
+## 18. 製品Function起動の実装接合点と受入順（2026-11-14）
+
+### 18.1 既存Go APIから見える不足
+
+| 既存契約 | 実装済みの役割 | Product Function起動で未接続の役割 |
+| --- | --- | --- |
+| `internal/semantic/capabilityinvoke.Invoke` | Input/Result/Effectの**宣言構造**を呼出し前に検査し、Adapter呼出し後のResult Mode/Outcomeを照合（#4629/#4636 main） | 意味受理済み公開Entryの選択、実入力値Type/NULL、実Providerの選択・同一性、現在Host Grant、Output Bodyの受理 |
+| `internal/command.Invoker.Invoke` | Command Plan、実入力、明示Authorizer/Executor、Effect/Persistence unknownを扱う。Authorizer欠落なら拒否 | Command Patternをpure Function Entryと同一視できない。`ReferenceAuthorizer`は意図的な全許可のReferenceであり、実Host Grantではない。Command Resultは汎用pure Outputの代替ではない |
+| `internal/servicehost.SelectedServiceCarrierInvoker` | Host generation leaseとService routeの固定、選択Contract/Artifactと実Plugin Runtime Serviceの結線 | Service CarrierのJSON/Process契約から、pure Go CapabilityのOwner意味/公開Entry/Output型/現在Grantが自動的に得られるわけではない |
+| `cmd/tei`／Studio Bridge | 既存のCLI・IPC・Command/Readの入口 | 公開pure Function Entryの同じ型付きOperationを実Go ProviderへDispatchし、通常CLIと独立Consumerで実Resultを確認する経路 |
+
+**実装判断**：この3つのInvokerを統合する新Engineは作らない。既存Composition/Hostが現在資格で選択した公開EntryとGo Adapterを、現行`capabilityinvoke.Invoke`へ渡す**一辺**を実装する。正式Entryの型・公開表現は#951/#3422のOwnerが受理するまで定義しない。
+
+### 18.2 レビュー可能な最小実装・独立Expected
+
+| 段階 | 実装担当と停止条件 | 必須の実観測 |
+| --- | --- | --- |
+| **A0 Entry受理** | #4495/#951。pure FunctionのSource occurrence、Ownerが受理したMeaning・Contract/Output Typeと公開Target/Entryが不明なら**Product実行を許さない** | 受理版と公開Entryが一致。未受理中のSynthetic Fixtureは参考構造試験に限定 |
+| **A1 Host Admission** | #3422/#1016。Entry非公開、現在Grant失効、Workspace/Target/Source版違い、Inputのmissing/NULL/type不適合は**Adapter呼出し0** | HostがPrincipal/Scope/selected Provider/Artifactを現在時点で確立。外部Requestのrole/allowed文字列はGrantではない |
+| **A2 selected Go Provider** | #4495/#1251。Selected Bと実Aの取り違え（結果bytes同値でも）を**呼出し前**に拒否 | Selected Bの実ロードmember・digestとactual BのCall Witnessを同一Attemptに固定。A呼出し0・B呼出し1の正負対照を別取得 |
+| **A3 実Result／通常CLI** | #4495/#1158。exit 0、応答Body欠落、通信切断、Effect unknownをBusinessVerifiedに昇格しない | 型付きAPIと**通常製品`tei` subprocess**の各実行で、同じ正式Entry/Providerと実Result Body/NULL/Failureを独立検証。Studioは別Consumer |
+| **A4 Desktop／外部Host** | #4583/#2390。Builder Pin／署名付き配布／生成WebView2局所成功は製品Entry受理ではない | Stage1→Stage2の実生成・自己再入、外部Hostのloaded member・Target・Disclosureをそれぞれ実証 |
+
+**直近のGo差分**：A0の受理を待つ間はA1/A2の未公開Entry・Selected B→Actual A・失効Grantを合成fixtureで**実呼出し0**として先行実装できる。ただしsynthetic Hostの成功を正式Entry/Grantに流用せず、新たなRegistry/Permission Engine/Runnerは追加しない。入力値とResultの正式受入もA0で採択された型を用いる。
+
+### 18.3 QueryとStudioの並行検証（別Contract）
+
+- **RA-0 → RA-1 → RA-2R → RA-2P → RA-3**：RA-2Rは[実PostgreSQL16の7ケースCI](https://github.com/hat47x/tei-platform/actions/runs/43553849861)でReference Readerが成功。RA-2Pは**製品の同一Operation**から、実選択Provider/SQL/Rowset/Function Contextを同じAttemptで照合する未成立の工程。RA-3は通常`tei` CLIと独立Consumer、現在Grant/開示の受入。Source/歴史Fixture/E1が残るRA-0の新HEADを再資格せず、旧RA-1/RA-2成功を現在Sourceへ合算しない。
+- **Builder／Windows**：[#4634](https://github.com/hat47x/tei-platform/pull/4634)の同一HEAD 8/8成功は選択Builder/実Childの限定検査。[#4587](https://github.com/hat47x/tei-platform/pull/4587)は生成Desktop WebView2 Jobが成功、通常Desktop JobはPowerShell OS情報取得15秒timeoutで全体FAIL。これらをStage1→Stage2完全自己再構築へ合算しない。
+- **REA／配布**：#4637はローカルHost Reader、merged #4617は署名付きHTTP ReleaseとMember byteの独立Node検証。どちらも公開FunctionのOwner意味・Host Grant・外部Runtimeでの実Callを証明しない。
+
+**現状**：A0の正式公開Entry、A1の実Host現在Grant、A2の選択済みGo Providerの製品実呼出し、A3通常CLIと独立Consumer、A4 Stage1→Stage2の製品検収は**NOT RUN**。§17の局所Go前検査・実PG Reference・生成WebView2はそれぞれの限定資格として維持する。
