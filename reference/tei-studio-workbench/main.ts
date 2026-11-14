@@ -4,7 +4,7 @@ import { mountReadonlyGraph } from "../tei-studio-graph/graph.ts";
 import { mountCommandPanel } from "../tei-studio-command/command.ts";
 import { createReadOnlyClient } from "../../cmd/tei-studio/assets/client.mjs";
 import { createResponseScope } from "./responses.ts";
-import { readPinnedSubject } from "./pin-reader.ts";
+import { readPinnedSubject, catalogIdentity } from "./pin-reader.ts";
 import {
   initialPinState, pinSubject, unpinSubject, invalidatePin,
   pinRequest, acceptPinObservation,
@@ -51,11 +51,6 @@ let pinState = initialPinState(), pinnedVersion: string | null = null;
 // Remembers the Catalog that originally identified the pinned Subject.
 // Equality is conservative evidence against silent retargeting, not a Grant.
 let pinnedCatalogIdentity: string | null = null;
-const catalogIdentity = (catalog: Catalog | null) => catalog
-  ? JSON.stringify([
-      catalog.modelRevision, catalog.worldFingerprint, catalog.sourceIndexFingerprint,
-    ])
-  : null;
 const pinnedCatalogMatches = () => pinnedCatalogIdentity !== null &&
   pinnedCatalogIdentity === catalogIdentity(catalogSnapshot);
 let commandContext = 0;
