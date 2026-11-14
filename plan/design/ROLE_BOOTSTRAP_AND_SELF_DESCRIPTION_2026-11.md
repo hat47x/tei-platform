@@ -1510,3 +1510,72 @@ main `cmd/tei/cli_self_build_inprocess.go` は実Build Catalog raw/digest/root�
 **次の独立負例**：生成契約のみ変更してN2の旧assetを流用／npm lockまたはnested moduleだけ変更してN3を再利用／N1 Go servicesの旧版とN0新Inspectorを混在／CI RunnerがN3を直接BuildしてStage1実Processは非参加／二回Buildのstateが宣言外共有、を一因子ごとに分離する。Expectedの正本は#1180/#2514、Build Ownerは#2831、Desktop実Consumer Ownerは#1824、B0〜B3接合は#4583。新DSL・Host・Meta Interpreter・第二CI Runnerなし。
 
 **本節の状態**：#4587 exact HEADのWindows native Job二本成功は実証済み。B1 Build Catalog/Intent実合成、B2 Stage1→Stage2 Desktop、B3 Stage2実WebView2、正式Meaning/Owner受理は **NOT RUN / NOT PROVEN**。PR #4541は設計Draft、PR #4587もDraft／main未merge。
+
+<!-- tei-self-description-language-contract-20261114 -->
+## 31. 2026-11-14 横断統合：DSL文法・意味・Studio・実Buildの自己記述を一つの受渡し計画へ（設計のみ）
+
+### 31.1 定義データが自己解釈・自己実行を保証しない
+
+対象Ownerは #2620/#4536（Role自己記述）、#988/#1018/#4359（Language・構文）、#4544（Generator）、#2497（写像損失）、#1124/#1824（Studio）、#2831/#4583（自己構築）、#1180/#2514（独立Expected）。新Core Schema、Registry、Meta Interpreter、Host、Gate、Scenarioの第二正本は追加しない。第23節のD0〜D4もそのまま維持する。
+
+自己記述の最小対象を既存のRecord/Relation/Ref/Rule/Expressionで表現できるか、次の4分類でFit/Gap評価する。**分類名は設計上の観測項目であり、新たな正式API名ではない**。
+
+| 対象 | 宣言で表す内容 | 宣言以外に必要な成立証拠 |
+| --- | --- | --- |
+| Source/Surface | Language ID/版/root、token・quote・comment・identifier、元UTF-8 byte位置、糖衣表現 | 実選択されたParser/Source Reader。Grammarをデータとして読めるだけではParse成功ではない |
+| Semantic Binding | syntax occurrence→既存Semantic/Role/Rule/Operatorへの対応、型・Facet・NULL・Scope・Required、正確なSelection・推移pin | 実Validator/Interpreter、独立Required Closure、独立Expected、Owner意味受理。候補自身の`required=[]`や`pure`は資格ではない |
+| Projection/Editing | CLI/Studio/SHO/SUIへの形、Identity・多重性・順序・Source span、損失・可逆性 | 実Consumer read、固定Subject、revision、書戻し対象一意性、Preview/Review/再読取。read-onlyと編集可能を区別 |
+| Generator/Conformance | Target、Generation Intent、選択済みGenerator、実Builder、生成Artifact、独立Known Mutant | 実選択と実Process・実消費byte・ArtifactSet・実Consumerの対応。Generator自称合格はBuild/Host資格ではない |
+
+**自己記述の停止線**：`Descriptorを記述できる`≠`そのDescriptorに従う実Parserが選択・起動された`≠`正しいMeaning`≠`Owner accepted`≠`実Build/実Hostで利用できた`。K0〜K6の有限Seedを保ち、新版候補を旧版固定Interpreterで解釈できる場合だけ差分評価する。旧版にない構文は`unsupported`として新Parser実装・独立比較へ渡し、自己申告によるLanguage更新・fallbackを認めない。
+
+### 31.2 一本の製品経路にするが、独立レーンを強制直列化しない
+
+| 順 | 最小接続・実証 | Scope・Owner |
+| --- | --- | --- |
+| **L0** | 実`fx.rate`の同一Source・Subject・Revisionで、Roleあり/なしと行値、実Loader/Parsed/Anchor/Required/Selected/Domain Readerを突合 | #4536 P0a/b/c。`currencyrate`のドメイン固有成功は汎用Role Interpreter合格ではない |
+| **L1** | 異質な既存`semantic.Validation`（例`sales.order_line.quantity_positive`）を第二Subjectとして同じ必要閉包/意味観測票へ | #4536 P1-A/#988。Go専用コード二つを並べただけでは汎用化と呼ばない |
+| **L2** | 従来`validation ... positive`と提案`rule ...: ... is positive`、Markdown表を既存SemanticへLower。Source byte/spanは各表現で保持、意味同値は独立Expectedで比較 | #4359 S0→S1→S2→S3/#2621。提案`rule`は未採用、`*.tei.md`を黙ってparseしない。専門家用DSLへGo `struct/func/import`を露出しない |
+| **L3** | 同一MeaningをCUI/Studio Inspector/SHOへ投影、fixed subject/Revision・構造損失・Current Disclosureを検査。no-op保存はbyte不変 | #2497/#1124/#2621。read-only Inspectorの成功はWritable Source span・意味受理ではない |
+| **L4** | Accepted Meaningから実選択Generator→generated Inspector→BuildIntent/実Builder→Windows Wails/WebView2 Consumerまでの一Attemptを照合 | #4544/#2831/#4583/#1824。Role/Grammar自己記述の完了をDesktop B1/B2/B3の新Hard Gateにしない |
+
+**今の実装優先順位**：#4583のB1-B→B2→B3（実Studio Desktop Self-build）を第一実装線に置き、#4536 S0の実接合と#4359のS0構文比較を並走。標準Meta Grammar/汎用Generator AI設計は、この二経路の不足契約が具体化してから。#1119 P0/G0〜G4のGateは変更しない。
+
+### 31.3 2026-11-14 時点の現物・Claim ceiling
+
+- #2638/#2639/#2898/#2860/#3028はmainにmerge済み。ただし限定synthetic/Reference/Go試験を一体のRole自己解釈合格へ合算しない。
+- #4587の固定Source・同一exact HEAD Windows CIでは生成Inspectorと生成Workbenchの実WebView2消費（B0）が限定実証された（第30節）。
+- #4583の2026-11-14記録では、実TEI `self-build -child`からN0 Generatorを起動し、実disk再読取したTSと実Child報告のdigestを比較した限定PASSがある。またN2 esbuildで選択されたrepo入力24件、N3 Goの選択303件、native WebView2まで一Job内で観測された。しかし`qualifiedBuildIntent=false`、全外部依存閉包/OS強制はunknownであり、N1〜N3はCI Workflowが実Invokerである。
+- #4623の旧HEADはCaller指定Child digestの事前pinに関する8/8 CI成功。新HEAD `-bind-resolved-builder`の変更と最新CI結果、non-Plugin Desktop PlanとStage1→Stage2実再入は**別確認**。古いHEADのGreenを新実装・Windows・L3へ移さない。
+- 現行名は`tei.workspace.yaml`、`.tei`、`std.*`等を維持。#4371のLanguage宣言Schemaや#4359のDSL新構文は未採用。
+
+### 31.4 独立反例（仮ID。実装・追加実行はすべてNOT RUN）
+
+| ID | 一因子だけ変更 | 独立Expected／停止線 |
+| --- | --- | --- |
+| SD-L01 | 表層別で値が等しく、NULL/Operator pinのみ異なる | 意味同値と断定せず、Evaluation契約の差を報告 |
+| SD-L02 | Grammar descriptor同じで実Parser A→B／選択B・実呼出A | 宣言≠選択≠実消費。Identity/推移pin違反はFAIL |
+| SD-L03 | 純粋なRule糖衣に副作用を付与 | 構文から実行権限へ昇格させず拒否 |
+| SD-L04 | BOM/CRLF/quoted Role/Role重複 | 正確なSource byte anchor。同属性重複は第二Role位置で拒否、引用は非宣言 |
+| SD-L05 | 同Label二Node・多重有向辺をTree/Graph表示 | 視覚的辺≠意味上のEdge ID。非可逆投影の自動書戻し不可 |
+| SD-L06 | Required Root一件未読込、候補は`required=[]` | 独立Required閉包不成立。Role absentの判定不可 |
+| SD-L07 | Source A→B→AまたはGenerator/Toolchainのみ更新 | Source/Meaning/World/Artifact/Reviewを別Revision/再資格化 |
+| SD-L08 | Draft保存成功だがRole値Writable span・base revision不明 | 原文保全≠Accepted Meaning変更。read-only/Reviewへ停止 |
+| SD-L09 | 新Inspector契約に旧bundleをembed | 実WebView2 readback byte/生成Artifact/Contract不一致で拒否 |
+| SD-L10 | CIが二回BuildしStage1実ProcessがDesktop Builderを呼ばない、またはnon-Plugin DesktopをPluginと偽装 | B2/L3は不成立。N0限定成功はそのまま保持 |
+| SD-L11 | Semantic Roleと業務ActorとHost Principalが同名 | 互いの業務担当・実Grantの根拠にならない |
+| SD-L12 | 完全な0件とpartial/hidden/unavailableの0件 | 不存在/完全性を推論せずunknown/unsupported |
+
+Expected/Mutantは#1180/#2514の**既存正本へ差分として**渡す。`structural/semantic/consumer/builder`の各Claimの独立観測列を既存Evidenceに結び、実Provider Read/OSアクセス/Current Grantの未観測部分はunknownとして残す。
+
+### 31.5 Studio実装方式・将来SaaSへの制約
+
+Go単一バイナリ＋Wails/WebViewをDesktop実装基準とする。ReactはDSL自己記述から必然的に決まらない。標準Record/Relation/Tree/Graphの意味Projectionと実Rendererを分離し、Web Components/Lit等Web標準寄りの構成と比較できるようにする（フレームワーク採用・全面移行は未決）。生成AIのコード生成効率より、専門家の認知順・低ノイズな日常DSLを優先する。
+
+SaaS将来対応では複数Git branch・DB alias・Workspace/session・Build attemptを区別し、現在のHost/Providerの認証認可、資源所有・隔離をRuntime/Execution境界に置く。Source Meaning/Build Intent/Rendererに固定のローカルPath・現在のPrincipalを意味正本として埋め込まない。現Desktop一Workspaceの成功を複数ユーザーSaaSの隔離成功へ昇格しない。KON/SUI/SHO連携も新たなTEI固有Hostや第二Policy Engineを前提にしない。
+
+### 31.6 引継ぎ・判定
+
+P0-A #4536は実`fx.rate`の最初の未成立EdgeだけをGo/Workspace現物で判別する。P0-B #2831/#4583は同一Build IntentのN0〜N3 actual Builder/actual Consumer接合へ進める。P1 #4359/#988は旧Validationを使う低ノイズ構文のS0比較（Ownerの構文採用を待つ）、#4544は既存`line-amount`とG1→G3→G2を並走。P2 #2497/#1124/#2621は損失を表明できる投影とRev付きSource Patch候補を後続実証する。新しい横断Issue・Validator/Resolver/Hostは起こさない。
+
+**達成資格を個別報告**：記述Dataとしてinspect可／実Parser・Role解釈／独立意味Expected／Source/Consumer往復／Generator実選択とBuilder実消費／Stage1→Stage2 Studio artifactとWindows実受領。各段階の同一Source/HEAD/Attemptを結ばない限り上位資格へ昇格しない。ここに記した新SD-L試験、正式Grammar/Role ABI、Product一体Run、Owner意味受理、B2/B3は**NOT RUN / NOT ADOPTED**。
