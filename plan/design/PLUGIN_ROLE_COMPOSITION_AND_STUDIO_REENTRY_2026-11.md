@@ -1065,6 +1065,14 @@ Ruleの「起点 = 対象ノード」と「終点 = 対象ノード」は、限�
 
 **文書自体の変更と意味の変更を分けて検査する。** 説明文だけの変更では文書索引と掲載例の現在性を再検査するが、Graph/Ruleが同じであると検証できた生成Goを理由なく再Buildしない。Ruleの起点条件を終点条件へ変更したら、意味上の生成処理と期待値の更新を要する。MermaidのLR/TB変更だけなら、表示Artifactを再確認してもRule由来のGoが変わらないことを検査する。いずれもSourceのA→B→Aで古いOwner受理・Doc開示・Evidence資格を無条件に復活させない。
 
+#### Source Indexで実証されたことと、Plugin文書に不足すること
+
+main統合済み[PR #4742](https://github.com/hat47x/tei-platform/pull/4742)では、`reference/tei-md-graph-reader/sourceindex_bridge_test.go`が、Node／Edge／Ruleの元byte位置を既存`sourceindex.NewArtifact`・`RangeFromOffsets`・`Index.Validate`で照合する。有効5入力のSource fingerprintは原byteに結び付いており、文末へ説明を追記しただけでも、**古いSource Index Artifactを現行Sourceとして受理しない**。前回の§21.7が求めるSource出典の一部について、独立した新Resolverを作らず既存APIを使えることが確認された。
+
+ただし、`*.tei.md`の物理Formatは現在`md`であり、**Source Indexに載ったことはLanguage Plugin選択や業務Meaningの受理ではない**。このSource Index回帰はDoc参照をPluginへ帰属させる機能も、Pluginの現在版・公開資格を検査する機能も提供しない。したがって初回Plugin文書の受入票は、`(a)`同一Workspace/Source Revisionでの原byteとSpan、`(b)`選択済みPlugin/Contract版とDocumentの明示Binding、`(c)`要求者ごとの現在Disclosure、`(d)`実Consumerによるread-only取得、を**別々に観測**する。
+
+負例では、説明だけの追記後に`(a)`の古いArtifactを拒否しつつ、Graph/Ruleの意味が不変なら無関係なGo生成を再実行しない。`(b)`〜`(d)`が未取得のときは、元byte一致だけで公開文書を返さない。これを既存PHD-01/03/05/06/08へ割り当て、別のSource Indexや文書Registryは追加しない。正式なReader接続の工程順は[製品完成計画 #4730](https://github.com/hat47x/tei-platform/pull/4730)と[#2621](https://github.com/hat47x/tei-platform/issues/2621)へ委ねる。
+
 #### 次のGo実装を受け入れる順序
 
 最初の**実製品側**の変更は、[#4376](https://github.com/hat47x/tei-platform/issues/4376)で取得する選択Pluginと、[#2621](https://github.com/hat47x/tei-platform/issues/2621)で管理・選択したSource上の**公開Document一件**を型付きread-only結果に結び付けることに絞る。Source Reader/Source Indexの元byteと文書参照の適合を確認できないときは、`unsupported`／`partial`／`permission-denied`等の実際の不足を残し、単なる`not-found`や空集合へ読み替えない。合成のA→B参照は正式なDisclosure証拠ではない。
