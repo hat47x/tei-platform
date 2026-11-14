@@ -321,6 +321,53 @@ func TestCompareCandidateSetsUniqueEdgeRenumberingNoParallelAmbiguity(t *testing
 	}
 }
 
+// A one-to-many or many-to-one key match cannot name the individual
+// occurrence that continued, even if the remaining candidate is unique.
+func TestCompareCandidateSetsAsymmetricParallelKeyRemainsUnverified(t *testing.T) {
+	fixture := func(ids ...string) evidenceFixture {
+		f := defaultEvidence()
+		original := f.edges[0]
+		f.edges = nil
+		for _, id := range ids {
+			edge := original
+			edge.id = id
+			f.edges = append(f.edges, edge)
+		}
+		return f
+	}
+	for _, tc := range []struct {
+		name    string
+		before  []string
+		after   []string
+		added   int
+		removed int
+	}{
+		{name: "one-to-two", before: []string{"old-1"}, after: []string{"new-1", "new-2"}, added: 1},
+		{name: "two-to-one", before: []string{"old-1", "old-2"}, after: []string{"new-1"}, removed: 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			before := mustGenerate(t, fixture(tc.before...))
+			current := fixture(tc.after...)
+			current.evidenceID = "ev-asymmetric-" + tc.name
+			after := mustGenerate(t, current)
+			comparison := CompareCandidateSets(before, after)
+			statuses := map[string]int{}
+			for _, entry := range comparison.Entries {
+				statuses[entry.Status]++
+				if entry.Status != ComparisonRenumbered {
+					continue
+				}
+				if !hasString(entry.Notes, "structural-key-multiple-occurrences-cannot-identify-individual-relation") ||
+					!hasString(entry.Notes, "source-backed-occurrence-mapping-is-required-before-edit") {
+					t.Fatalf("asymmetric structural key was treated as a unique relation: %+v", entry)
+				}
+			}
+			if statuses[ComparisonRenumbered] != 1 || statuses[ComparisonAdded] != tc.added || statuses[ComparisonRemoved] != tc.removed {
+				t.Fatalf("unexpected asymmetric matching statuses: %+v; entries=%+v", statuses, comparison.Entries)
+			}
+		})
+	}
+}
 // Added and removed candidates are reported without a structural match.
 func TestCompareCandidateSetsAddedAndRemoved(t *testing.T) {
 	first := mustGenerate(t, defaultEvidence())
