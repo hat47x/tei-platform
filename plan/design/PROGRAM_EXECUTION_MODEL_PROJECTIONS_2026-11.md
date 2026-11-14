@@ -492,3 +492,87 @@ H1/H2の最初の題材は、図表・式から直接計算内容を確かめら
 | **PX-47** | 親Pluginはread-only図を公開、子PluginがそのNodeを編集して保存 | 編集先が親Sourceでなければ不正書戻し。局所Overlayなら別Sourceへ保存 | #1124/#2497 |
 
 **本追補の扱い**：現行Repositoryの設計を結ぶ契約・実証順であり、正式な公開Facet Schema、推移継承の実装、Plugin側Generator、TEI自身の新しいセルフビルド成功、正式な意味受理を主張しない。PX-38〜47の実試験はNOT RUN / NOT ACCEPTED。既存Stage2 Desktopと実Entry→実Providerの製品検収を置き換えない。
+
+## 28. アプリケーション構造Graphの適用範囲
+
+従来の実行モデルを、Functionの内部フローだけでなく、アプリケーション全体の見通しを得るために使う。画面、Route、UI Section、公開Entry、Function、業務Operation、Trigger、Data Source、Plugin、Host、Target、生成Artifact、Consumerを、必要な意味Roleと型付きRelationで関連付ける。ただし、**すべてを同じ種類のNodeや一本の実行順序に押し込まない**。
+
+- **構造上の関係**：AppがRouteを含む、SectionがOperationを利用する、EntryがFunctionを公開する、PluginがContractを実装する、TargetがArtifactを収録する、など。
+- **振る舞い上の関係**：EventがEntryを起動する、Functionが別のFunctionを呼ぶ、Guardが実行を制約する、Providerが実Read/Effectを起こす、Consumerが結果を受け取る、など。
+- **導出・観測上の関係**：SourceからModelを導出した、BuilderがArtifactを生成した、あるAttemptでProviderを呼んだ、ある画面の操作を実Browserで観測した、など。
+
+NodeとEdgeの意味Identity、Source occurrence、受理済みMeaning、実Composition、実Trace、図面上の表示は前節までの区別を保つ。特定のRouteがFunctionを呼ぶという静的対応が分かっても、そのRouteが全利用者・全配備形態で存在するとは限らない。登録済みのRoute一覧、実際に生成されたRoute、実Consumerが到達したRoute、現在の権限で公開されるRouteを別の集合として扱う。
+
+Graphの問いには、対象となるアプリケーション・Profile・Target・版、対象集合の導出根拠、取得範囲（complete/partial/unknown）、未解決・動的参照を添える。**部分的なGraphから「全ページ」「全操作」の適用を保証しない**。Graphの索引化はread-onlyの選択・説明から始め、正式なGraph CompilerやRuntime Interpreterを最初から作らない。
+
+この全体Graphは三要素分析法の業務フロー、機能モデル、データモデルを置き換えない。原典の表・ER・CRUD・職務・業務フローは元の意味と表示方法を保ち、その上にTEI独自のApplication/Target/Executionの関連を別Projectionとして重ねる。
+
+## 29. 横断的な関心事を既存Lifecycleへ結び付ける
+
+アクセス解析、監査、診断ログ、性能計測、認証補助、操作履歴などは、画面やFunctionごとに同じ実装を書き込むより、**適用対象と差し込む場所を宣言し、必要なTargetへ展開する**ほうが保守しやすい。この仕組みはアスペクト指向的な拡張として設計するが、新しい独立のWeaver、実行Host、権限エンジンを必須としない。既存#4198のLifecycle Template/Obligation/Plugin差分、#3503のInteraction、#951のProvider、#1121のLowering、#2090の生成器Hookを使う。
+
+適用Bindingを評価する際の最小の問いを次のように分ける。
+
+| 問い | 設計上の扱い |
+| --- | --- |
+| **どこに** | Route/Section/Entry/Operationなどの型付きSubject集合を選ぶ。対象ID・Role・Profile・Target・版・include/exclude条件を明示 |
+| **いつ** | Page生成時、表示前後、操作受付前、Admission前後、Provider実呼出し前後、Commit後、Delivery後など、既存Ownerが定義した位相を指定。単なる図の並び順は実行位相ではない |
+| **何をするか** | 既存Contract/Providerが提供する観測・Validation・通知などのOperationと、その入力Closure/Effect/必要Capability |
+| **どこで実現するか** | Client/Server/Edge/Build-time/CLIなどのTarget能力に適合する生成・取付け方式。Native FrontendでTEI共通DOMや必須Runtimeを強制しない |
+| **競合したら** | 必須Guardと任意計測の区別、明示した順序制約、単一実呼出し主体、同じEventの二重観測、Provider不在時の診断とFallback禁止 |
+| **何を検証するか** | 展開後の対象集合、実Artifact/Script、実Host/Browser Call、同意・開示・Read Scope、重複/欠落/実Consumer受領 |
+
+例えば公開Webアプリ全体の計測では、「ページ全体」を文字列のワイルドカードで宣言するだけでは不十分である。SSR/Client/Edge/Native Routeで実現可能な取付け箇所を分け、Consent、Purpose、送信先、公開情報と私的情報、性能影響、配備Variant、対象範囲を評価する。AdSense型の広告配信と利用行動のAnalyticsは目的・Provider・取得データが異なるため、同一の計測契約として暗黙にまとめない。
+
+ユーザーの同意が必要な計測は、Build時にScriptを収録しても、**実送信できる資格を意味しない**。現在のConsent/Host Policy/Scopeに従って送出前に検査する。未同意の場合に計測だけを抑止できても、業務Operationを止めてよいかは別のContract判断である。逆に監査などの必須Obligationを任意計測と同様に黙って無効化してはいけない。Clientで実行されたJavaScriptのCallを、Serverで権威ある業務Commitが成立した証拠にもしない。
+
+図の上で対象Functionを選べることは、実装側にHookを置けることの証拠ではない。Targetに適切な位相がなければunsupportedとし、勝手に「処理前後らしい場所」へ差し込まない。既存Hookの宣言usesと実Calledの区別、Guard先行、Effect unknown時のlookup-firstも維持する。
+
+## 30. 横断適用をGraphからTargetへ渡すときの順序
+
+初期は一つの選択済みProfileに対し、**read-onlyの適用候補一覧**を生成する。これは適用が済んだという証明ではなく、どの対象へどの追加処理を実現できるかを可視化するための資料である。
+
+1. **対象を確定**：受理済みのApp/Route/Operationに対する構造GraphとCoverageを解決。名前の一致やAI推定から新しいSource Targetを作らない。
+2. **契約を合成**：対象に必要なObligation、公開されたPlugin Facet、選択済みProvider、Hookの位相・順序を、既存Compositionへ渡す。A→B→Cの再公開や秘密属性は別途確認。
+3. **実現条件を判定**：TargetのBrowser/Server/CLI等の能力と、生成時だけ必要なGenerator/実行時に必要なProviderを分離。対応しないNative UIに無条件のラッパーを付けない。
+4. **生成・構築**：既存Builder/Target Generatorが必要箇所だけAdapter/Instrumentationを生成する。生成出力の実消費byte、実Artifactへの収録、選択対象のVersionを記録。
+5. **実行・観測**：既存Host/Provider/Consumerで実Call、現在AuthorityとEffect/Read範囲を確認。AnalyticsではAssignment/Exposure/送信/受領/業務Outcomeを別事実として残す。
+6. **変更時の再評価**：Route追加、Plugin Facet更新、Consent条件変更、Builder変更、レイアウトのみ変更を区別し、必要なGraph閉包・生成物・Consumerだけ再検証する。
+
+これらは独立した六段階実行Pipelineの新設ではない。既存Source→Meaning→Composition→Lowering→Build→Runtime/Consumerのどこで検査するかを示す概念上の順序である。
+
+最初に比較するのは、（a）一つのRouteに対する任意のread-only計測、（b）そのRouteを追加・除外した場合の対象集合と生成物の差、（c）Consent未成立・二重イベント・Provider不在の負例である。次に、監査のように守るべき条件を持つHookを比較し、任意計測と同じ失敗処理を適用できないことを確かめる。B2C専用のPlugin群、Commerce本番Provider、全ページNative Browser検証は#3509の後続課題とし、Studio Self-Buildの先行条件にしない。
+
+## 31. CLI・Studio・AIハーネスで同じ設計要素を扱う
+
+アプリケーションGraphは、開発者と生成AIが対象の周辺構造を調べる際にも利用する。**固定した対象を起点に必要な関係だけ取得する**ことを基本とし、巨大な全体GraphやSource一式を毎回AIへ渡さない。
+
+- **対象の固定**：CLIからのSubject指定とStudioで明示PinしたSubjectは、Workspace、Qualified Identity、Source/Meaning Revision、対象Scopeを持つ。同じ表示Label・Graph座標・描画用Edge IDを識別子にしない。Relationの意味IDが未確定ならRelation Pinをunsupportedとする。
+- **周辺の調査**：選択したFunctionから公開Entry、呼出先、データ依存、適用されたHook、生成Target、実Traceの可用範囲を辿る。未解決、部分取得、非公開を空集合に置換しない。
+- **Pluginの説明**：各Pluginは、用途、提供Contract/Role、必要条件、依存する上位Plugin、公開Facet、代表的なCLI/GUI操作、診断・検証の参照先を共通の説明方式で発見可能にする。継承する説明は元版・公開範囲を示し、非公開本文を複製しない。
+- **AIへの入口**：Harness側の短いSkillにはTEIの基本概念と、対象の検索・Inspect・説明参照・検証・Proposal作成の道筋のみ載せる。詳細は実CLI/API/Studioで現在のContract/Plugin説明から確認する。Skill文面やAI判断をAuthorityや実Provider選択の正本にしない。
+- **書込みと実行の境界**：AIが作る変更案はSource occurrence/Revisionに束縛したProposalとし、実Apply、Builder、実Entry/Provider呼出し、Host Grantを別検査にする。選択対象が変わった、Sourceが更新された、現在の開示が不明な場合は古い提案を黙って再適用しない。
+
+初期はCLIのread-only Inspect/JSONと、既存Studio Inspectorを同じSubjectに向けて比較する。#4515のWorkbench-local Pinを全Harness共通の永続Storeとみなさず、必要なときだけ明示的な固定対象の受渡しを行う。個人情報・秘密情報の表示、外部Harnessへの送出、実Tool呼出しは#2516/#951の現在資格に従う。YICで複数Harnessを利用する場合も、DSH/Claude Code/Codexごとの第二Operation意味正本を作らない。
+
+## 32. 横断適用とAI連携の反例・優先順
+
+既存#4198 R0〜R4、#3509、#951/#1016、#1124/#4515、#1180/#2514のOwnerへ、次の反例を追加候補として渡す。正式Scenarioの第二正本は作らない。
+
+| ID | 条件・故障注入 | 拒否・区別すること | Owner |
+| --- | --- | --- | --- |
+| **PX-48** | Route一覧がpartialだが全ページ計測と表示 | 未調査Routeを含む完全適用を宣言しない | #4198/#3509 |
+| **PX-49** | Native Frontendの一RouteはTEI UIを使わない | Browser Wrapperや常時TEI Runtimeを強制しない | #3509/#1121 |
+| **PX-50** | 同意未成立で計測ScriptがArtifactへ収録済み | 実送出0。収録成功を送信資格にしない | #3509/#2516 |
+| **PX-51** | SSR/Client二経路で同じExposureを観測 | Assignment/Exposure/送信/受領を分離し二重計上を検出 | #3509/#2514 |
+| **PX-52** | 子Pluginの図面Patchが上位の必須Guardを削除 | 適用Graphの表示と実Host Obligationが乖離してもGuardを迂回しない | #4198/#1174 |
+| **PX-53** | Provider不在で任意計測が失敗、業務処理は成功 | 計測欠落を明示し、業務成功を計測成功・監査成功へ拡張しない | #951/#3509 |
+| **PX-54** | Route変更ではなく表示色だけ変更 | Meaning/Builder/計測の無関係な再検証を省略 | #2600/#2497 |
+| **PX-55** | 描画用EdgeをAIが選択し、対象Operationを変更 | Relation Identity未確定なら実変更拒否 | #4515/#1124 |
+| **PX-56** | 親Pluginの説明が非公開化した後、Harnessが旧Cacheから引用 | 現在Disclosureに反する取得・送出を拒否 | #951/#2516 |
+| **PX-57** | Skillだけが新Versionを説明するが実CLI/Pluginは旧版 | 文書・Skillの申告で現在Provider/Contractを再束縛しない | #951/#2620 |
+| **PX-58** | 同一SubjectのCLI InspectとStudio Inspectで異なるSource/Meaning Revision | 見た目が同じでも異版として表示し、同一変更案を無検証で適用しない | #4515/#1124/#2514 |
+
+**優先順位**：P0は引き続き#4583/#2831のStudio Stage1→Stage2 Desktop実セルフビルドと#4495/#1251の実Entry→実Provider二入口。P1として、現在の一Function/Entryと一Routeを使ってApplication Graphのread-only照合とCLI/Studioの同一Subject確認を行う。P2で一つの任意計測を実Targetへ差分生成し、Consent・重複・欠落の負例を確認する。P3で必須監査Hookや複数Target・複数Harnessの相違を広げる。B2Cの高度な計測・Experiment/Commerceは#3509へ戻す。
+
+この追補は新Graph Compiler、Aspect Weaver、常駐Harness、中央Pin Store、独立Plugin文書Registryを導入する判断ではない。**現在の資格は設計・受入条件の提案であり、PX-48〜58、実Browser送出、実計測、全Target生成、Harness実連携の新試験およびOwner意味受理はNOT RUN / NOT ACCEPTED。**
