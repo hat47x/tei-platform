@@ -254,23 +254,7 @@ World Fingerprint／Model Revision／Artifact Revisionと、Experiment Plan／Ru
 
 反証の例：Source A→B→Aで旧計算結果を現在のものとして再利用する、同じ値域の別Facet演算を自動選択する、WBS親子を先行関係と扱う、NULLをゼロに変える、Window順序を省く、近似解を最適性証明とみなす、グラフ表示から元データへの可逆編集を偽装する、試験用Mockの成功を実Providerと実際の利用先の成功として扱う。いずれも不合格とする。
 
-## 13. 外部資料（仕様調査の入口）
-
-- [Wolfram Language：Equation Solving](https://reference.wolfram.com/language/guide/EquationSolving)
-- [R CRAN Task View：Experimental Design](https://cran.r-project.org/web/views/ExperimentalDesign.html)
-- [OR-Tools：Scheduling（CP-SAT）](https://github.com/google/or-tools/blob/stable/ortools/sat/docs/scheduling.md)
-- [PostgreSQL：Window Functions](https://www.postgresql.org/docs/current/tutorial-window.html)
-- [Modelica Language Specification](https://specification.modelica.org/)
-- [FMI Standard](https://fmi-standard.org/)
-- [SBML](https://sbml.org/) / [SBGN](https://sbgn.github.io/)
-
-外部資料は参考資料であり、TEIの意味仕様や対応済み機能の証明ではない。各実装で必要なアルゴリズム・規格・版・ライセンスは、採用時に再照合する。
-
-## 14. 確認できたことと未実証のこと
-
-この文書は、2026年11月14日時点の既存Issue・設計資料・作業中のPRと、分野横断の検討を踏まえた**設計・検証計画**である。新しいGo・R・Python・Windows・SQL・科学計算の実行、独立した数値照合、専門家レビュー、市場調査は行っていない。既存の限定的な試験や設計例だけを根拠に、数値計算やSolver、実験計画法、専門ツールキットが製品として完成したとは判断しない。採否は既存OwnerのIssue/ADR/実Evidenceに戻す。
-
-## 15. 計算の共通性を判断する基準
+## 13. 計算の共通性を判断する基準
 
 数理・統計・計画・科学分野を一つの基盤へ収める際に、共通化すべきものは「同じ見た目の構文」ではない。利用者が定義する値、条件、関係、計算の要求を、意味を失わずに保持し、どの実装を選んでも契約の違いが分かることである。TEIの標準DSLは、専門家が理解しやすい記述を優先する。数式や関数名を大量に予約語として追加する方針は採らない。
 
@@ -293,7 +277,7 @@ World Fingerprint／Model Revision／Artifact Revisionと、Experiment Plan／Ru
 
 変換が一方向にしか成立しない場合は、その範囲を明示する。既存の数学・科学言語をTEIへ無条件に完全変換したとみなさず、原文のまま保持する経路も正規の選択肢とする。標準表現型に収まらないことと、計算ができないことは別の問題として扱う。
 
-## 16. 設計・計算・実行・受理を分ける
+## 14. 設計・計算・実行・受理を分ける
 
 実験計画、最適化、性能比較、帳票の集計結果には、計算前の設計、選択された実装、実際に渡した入力、得られた結果、用途に応じた採否判断がある。これらの対応を、既存のSource、Operation、Build、実行Attempt、Evidenceと結び付ける。
 
@@ -312,7 +296,7 @@ World Fingerprint／Model Revision／Artifact Revisionと、Experiment Plan／Ru
 
 この扱いは、TEI Studioのビルド性能比較にも共通する。生成された成果物が同じでも、測定対象のWorkload、Cache状態、実際の実行経路が違えば、改善の証拠としては不足する。逆に、実測が改善していてもSourceの意味が変わった場合は同等な最適化として受理しない。
 
-## 17. Studioと生成アプリケーションが共有する編集の仕組み
+## 15. Studioと生成アプリケーションが共有する編集の仕組み
 
 TEI Studioは、設計文書の構造を読むだけの専用IDEにしない。Schema、Markdown、表、グラフ、数式、SQLなどのSourceを解釈できる範囲でモデルに対応付け、ツリー、図、Inspector、入力支援、診断、差分へ投影する。この仕組みを、専門ツールキットを組み込んだアプリケーションにも利用できるようにする。
 
@@ -330,29 +314,29 @@ TEI Studioは、設計文書の構造を読むだけの専用IDEにしない。S
 
 **優先順**は、既存[#2831](https://github.com/hat47x/tei-platform/issues/2831)/[#4583](https://github.com/hat47x/tei-platform/issues/4583)のStudio Desktop実セルフビルドを全体P0、Schemaの読み取り専用表示・原文への移動を並行する小規模な設計検証、編集・再投影およびDSL自己記述を後続の検証とする。現行のBuilder、通常CLI、Wails実Consumerの完了条件を変更しない。
 
-## 18. 最初の三つの薄い縦断実証
+## 16. 最初の三つの薄い縦断実証
 
 全分野の機能を先に実装せず、現在の契約で表せる範囲を最小の事例で確かめる。ここでは、既存のTA-01〜09を**実装可能な順序と差分の条件**へ落とす。新しいScenario体系は作らず、既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#2514](https://github.com/hat47x/tei-platform/issues/2514)へ引き渡す。
 
-### 18.1 ウィンドウ集計：まず小さなQueryから始める
+### 16.1 ウィンドウ集計：まず小さなQueryから始める
 
 四つの値10、20、30、40を一意な順序で扱い、現在行と直前二行の平均10、15、20、30を独立した期待結果とする。次にNULL、同順位、Partition、空集合、取得範囲の部分性を加え、結果の意味が変わる条件を確認する。
 
 最初に確認するのは、既存のQueryとSQL方言の契約が、必要な\`WINDOW\`構成要素や実行条件を運べるかである。\`WINDOW\`句を生成できることは、任意のウィンドウ関数やフレーム・データ型に対応した証拠ではない。実際のDBを読む段階では、既存[#2387](https://github.com/hat47x/tei-platform/issues/2387)/[#2586](https://github.com/hat47x/tei-platform/issues/2586)の実Read、取得範囲、独立Consumer受領の条件を使う。Studioと一般分析アプリで同じ値を表示するだけでなく、どのSource・入力・Providerの結果かをたどれるようにする。
 
-### 18.2 工程計画：階層と依存を混同しない
+### 16.2 工程計画：階層と依存を混同しない
 
 WBSの親子関係と作業の先行・後続関係を別の構造として保持する。A=2、B=3、C=4、D=2という小さな作業群で、A→B、A→C、B→D、C→Dを設定した場合、資源制約のない最短完了時点は8であり、A→C→Dがクリティカルパスとなる。同じBとCに排他的な一つの資源を割り当てれば最短11になる。
 
 実装では、データ構造を表示すること、CPMを計算すること、資源を考慮して予定を決めること、実績を保存することを別々に検証する。暦の休日や時刻帯の意味は、時間単位だけの例を通した後に追加する。TEIの開発計画と一般案件のWBSで同じ編集・計算契約を共有できるかを確かめるが、Studio用のProject Managerを先に必須としない。
 
-### 18.3 Solverと実験計画法：計算契約の差を確認する
+### 16.3 Solverと実験計画法：計算契約の差を確認する
 
 Solverでは、値域・制約・目的を先に定め、実Providerの\`feasible\`、\`optimal\`、\`infeasible\`、\`unknown\`などの結果を区別する。最適解が返る場合と、最適性が証明された場合は別の主張である。実験計画法では、二要因・各二水準・二反復で四条件・八試行を定義し、実行順、乱数種、脱落、観測値を保持する。
 
 両者は同じ「条件と結果」を扱うが、Solverは目的に沿って候補を探索し、実験計画法は条件の影響を調べるための実験を構成する。通常の条件列挙を実験計画法として受理しない。最初は外部部品の入出力契約とMockによるシミュレーションを認め、実Providerでの計算、独立検証、専門家による解釈を後段で確認する。
 
-## 19. 専門ツールキットを製品として判断する条件
+## 17. 専門ツールキットを製品として判断する条件
 
 専門ツールキットの価値は、その分野の利用者が課題をどこまで解決できるかで判断する。数式処理、生命科学、物理シミュレーションなどは、汎用性が高いものだけを残すのではなく、専門的な能力を深く提供する選択肢を保持する。
 
@@ -362,7 +346,7 @@ Toolkitの構成は、既存のPackage、Contract、Provider、Generator、表�
 
 **採用の判断は二つ**に分ける。汎用基盤へ取り込むかは既存Core/DSL/標準データ・OperatorのOwnerが、専門ツールキットとして提供するかは対象分野の用途・利用者・必要な機能を根拠に検討する。後者の判断を前者の採用と取り違えない。
 
-## 20. 既存計画への具体的な引渡し
+## 18. 既存計画への具体的な引渡し
 
 | 優先順 | 次に作るもの | 主な既存Owner／接続先 | 受入の条件 |
 | --- | --- | --- | --- |
@@ -376,3 +360,19 @@ Toolkitの構成は、既存のPackage、Contract、Provider、Generator、表�
 この表は、既存Ownerへの**受入候補の引渡し**であり、各Issueの優先順位や完了条件を直接変更するものではない。新たな横断Gate、第二の設計正本、共通計算Runtime、中央Evidence Storeを作らない。現行の実装・CI・Consumer受領や専門家による意味の採否は、各担当の記録によって別途確認する。
 
 **この追補の状態**：設計と実証条件を具体化した段階。Window・Solver・実験計画法・専門ツールキットの実装、生成アプリケーションでの利用、利用者による製品評価は未実施である。
+
+## 19. 外部資料（仕様調査の入口）
+
+- [Wolfram Language：Equation Solving](https://reference.wolfram.com/language/guide/EquationSolving)
+- [R CRAN Task View：Experimental Design](https://cran.r-project.org/web/views/ExperimentalDesign.html)
+- [OR-Tools：Scheduling（CP-SAT）](https://github.com/google/or-tools/blob/stable/ortools/sat/docs/scheduling.md)
+- [PostgreSQL：Window Functions](https://www.postgresql.org/docs/current/tutorial-window.html)
+- [Modelica Language Specification](https://specification.modelica.org/)
+- [FMI Standard](https://fmi-standard.org/)
+- [SBML](https://sbml.org/) / [SBGN](https://sbgn.github.io/)
+
+外部資料は参考資料であり、TEIの意味仕様や対応済み機能の証明ではない。各実装で必要なアルゴリズム・規格・版・ライセンスは、採用時に再照合する。
+
+## 20. 確認できたことと未実証のこと
+
+この文書は、2026年11月14日時点の既存Issue・設計資料・作業中のPRと、分野横断の検討を踏まえた**設計・検証計画**である。新しいGo・R・Python・Windows・SQL・科学計算の実行、独立した数値照合、専門家レビュー、市場調査は行っていない。既存の限定的な試験や設計例だけを根拠に、数値計算やSolver、実験計画法、専門ツールキットが製品として完成したとは判断しない。採否は既存OwnerのIssue/ADR/実Evidenceに戻す。
