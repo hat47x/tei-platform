@@ -34,8 +34,8 @@ func TestDiagnosticSpan(t *testing.T) {
 }
 
 func TestOpaqueNodeRoundTrip(t *testing.T) {
-	// Opaque nodes are preserved in the IR but ignored by the flat SQL generator.
-	// The generator falls back to the remaining known nodes.
+	// Opaque native SQL may be kept for inspection, but cannot be silently
+	// discarded while regenerating a different, apparently valid SQL query.
 	q := &StandardQuery{
 		Nodes: []Node{
 			&Scan{ID: "node:0", Source: "dual", SourceKind: "table"},
@@ -44,11 +44,12 @@ func TestOpaqueNodeRoundTrip(t *testing.T) {
 		Root: "node:0",
 	}
 	sql, diags := StandardToSQL(q)
-	if sql != "SELECT * FROM dual" {
-		t.Fatalf("unexpected generated SQL: %s", sql)
+	if sql != "" {
+		t.Fatalf("opaque SQL was silently dropped: %q", sql)
 	}
-	// Opaque nodes do not currently emit generation diagnostics in the flat path.
-	_ = diags
+	if len(diags) != 1 || diags[0].Code != "OPAQUE_QUERY_UNSUPPORTED" || diags[0].Severity != SeverityUnsupported {
+		t.Fatalf("opaque SQL must be rejected with an unsupported diagnostic: %+v", diags)
+	}
 }
 
 // The two empty-input refusals are reachable, so they are named here: a code
