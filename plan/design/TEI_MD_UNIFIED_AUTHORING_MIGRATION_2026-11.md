@@ -178,9 +178,9 @@ SHO Editorだけで書き始め、SUIによる発想の展開を必要に応じ�
 
 ### 10.1 既存実装と確認された証拠の上限
 
-[Draft #3031](https://github.com/hat47x/tei-platform/pull/3031) は `internal/workspace/loader.go` が管理対象として列挙した `*.tei.md` を、現在のTEI Parserへ束縛できない状態で **`TEI_MD_PARSER_UNBOUND`** と明示して拒否する防御。対象には semantic/query/persistence/plugin/bundle/release が含まれ、大文字の末尾 `.MD` も拒否する。旧 `*.tei` と通常 `README.md` は引き続きLoaderで扱い、宣言されていないSource Root外の `*.tei.md` はWorkspaceへ入らない。
+[#3031](https://github.com/hat47x/tei-platform/pull/3031) に由来する現行mainの実装は `internal/workspace/loader.go` が管理対象として列挙した `*.tei.md` を、現在のTEI Parserへ束縛できない状態で **`TEI_MD_PARSER_UNBOUND`** と明示して拒否する防御。対象には semantic/query/persistence/plugin/bundle/release が含まれ、大文字の末尾 `.MD` も拒否する。旧 `*.tei` と通常 `README.md` は引き続きLoaderで扱い、宣言されていないSource Root外の `*.tei.md` はWorkspaceへ入らない。
 
-**実CI証拠**：#3031 exact PR HEAD `63953ccb5c12ead26ec1268e7c0afdba4eff66ae` の [parser-boundary probe](https://github.com/hat47x/tei-platform/actions/runs/42217379093) と [Repository Health](https://github.com/hat47x/tei-platform/actions/runs/42217378867) は completed/success（同HEADで他の関連Workflowもsuccess）。旧HEADのgofmt失敗と区別。この証拠が示すのは**明示拒否・旧形式/通常Markdownの限定回帰**まで。Draftでありmain未統合。実 `*.tei.md` Markdown AST、Role解釈、Parser選択、Source span、Build/Host/Consumer、Owner Meaning Acceptanceは**未実装・未実証**。
+**実CI証拠**：#3031 exact PR HEAD `63953ccb5c12ead26ec1268e7c0afdba4eff66ae` の [parser-boundary probe](https://github.com/hat47x/tei-platform/actions/runs/42217379093) と [Repository Health](https://github.com/hat47x/tei-platform/actions/runs/42217378867) は completed/success（同HEADで他の関連Workflowもsuccess）。旧HEADのgofmt失敗と区別。現在mainのGuard実Sourceでも同じ拒否経路を確認したが、この照合自体は新HEADのGo試験ではない。この証拠が示すのは**明示拒否・旧形式/通常Markdownの限定回帰**まで。Guardは現在mainに存在する。一方、実 `*.tei.md` Markdown AST、Role解釈、Parser選択、Source span、Build/Host/Consumer、Owner Meaning Acceptanceは**未実装・未実証**。
 
 ### 10.2 fail-closed のまま書き続けられる体験を確保する
 
@@ -194,7 +194,7 @@ SHO Editorだけで書き始め、SUIによる発想の展開を必要に応じ�
 
 | 観点 | 入力と独立Expected | 現在の状態 |
 | --- | --- | --- |
-| **拒否の負例** | 新形式だけが宣言Rootに存在し、Parserが未束縛 → `TEI_MD_PARSER_UNBOUND`、成功/0件扱い不可 | #3031 の限定 Go/CI 対照が成立（Draft） |
+| **拒否の負例** | 新形式だけが宣言Rootに存在し、Parserが未束縛 → `TEI_MD_PARSER_UNBOUND`、成功/0件扱い不可 | #3031限定Go/CI対照が成立し、Guardは現mainにも存在する（正式Readerは未実証） |
 | **旧形式の正例** | 旧 `model.tei`＋普通の `README.md` → 従来Semanticが実読込、例外なし | #3031 限定 Go/CI 対照が成立（Draft） |
 | **Root境界の正例** | 宣言外の草稿 `drafts/order.tei.md` があっても、宣言Rootの旧Sourceを読む | #3031 限定 Go/CI 対照が成立（Draft） |
 | **作業中の競合** | Source Root内の新形式草稿で現在はLoadを停止。将来はRaw Draft保存と必須Source検証を明示分離 | 現状拒否のみ確認／UIと選択契約はNOT RUN |
@@ -208,3 +208,96 @@ SHO Editorだけで書き始め、SUIによる発想の展開を必要に応じ�
 §9の受理済み`total`と未受理`discount`という一文書例を、**Source Root内でGuardに拒否される段階**と**Readerが実対応して部分Occurrenceを観測する将来段階**に分ける。Guardで拒否した場合は、過去のlegacy解析結果やSource Indexのキャッシュを「新形式を読めた」ことの代用品にしない。将来、一部の`total`だけ構文上読めても、必要なRole/Operator/Function依存とOwner Decisionの現在適用を別照合し、`discount`の未取得・保留・壊れたFenceを0件または承認済みへ縮約しない。実行・Buildが必要なClaimはそのClaimのRequired closureが満たされるまで保留する。
 
 この区別により、**過剰な一括失効（執筆不能）**と、**不完全Readerの誤成功（業務・意味誤認）**を同時に避ける。製品実装・移行完了・Owner受理の主張ではない。
+
+
+<!-- tei-md-reader-20261114-product-admission-seam-v1 -->
+### 10.5 次の実装は「管理ファイルの検出」から「元Sourceを実際に解釈する」までを分割する
+
+2026-11-14のmain実Goを照合すると、workspace.LoadはまずscanManagedFilesで宣言Root内を走査し、その直後にrejectUnboundTEIMarkdownSources(managedFiles)を呼んでいる。この検査は、管理Rootに一つでもTEI MarkdownファイルがあればDomain Loaderへ進む前に明示拒否する。一方、現在のloadSemanticsは従来形式のSourceを読み、syntax.NewParser(...).ParseSemanticFile()へ渡す。ManagedFile.ReadByLoaderは「実Loaderが読み込んだか」を示す独立項目であり、「Managedの一覧に現れた」「Meaningとして解釈できた」と同じではない。
+
+最初の修正でGuardを単純に削除すると、読まれていない新形式をvalidate成功として隠す危険が戻る。そこで、正式なファイル形式移行を一度に行わず、**明示選択した一つの宣言領域**を既存Language/Parserへ結ぶ最小の読取経路から始める。
+
+| 段階 | 既存コード・責務 | 新たに確認する事実と停止条件 |
+| --- | --- | --- |
+| **MR-0 Guardの維持** | workspaceのManagedFiles走査、tei_md_source_guard.go、既存Guard試験 | Reader未束縛の管理Root内Sourceは拒否、Root外Draftと旧形式の実Readは引続き正常。削除・無音無視に変更しない |
+| **MR-1 Markdown容器** | #2621/#988のAuthoring/Language選択、現行Source Root | 元ファイルのraw bytesから**選択済みの宣言領域だけ**を抽出する。本文、説明、例示、引用は自動宣言にしない。選択方式・文法が未決なら候補のまま |
+| **MR-2 実Parseと元位置** | internal/syntaxのParser/Position、Workspace Source SnapshotとSource Index | 抽出した同じバイト列を既存Semantic Parserへ渡し、結果と診断を**元Markdownのbyte span**へ対応付ける。BOM/CRLF/複数Fence/引用・インデントで対応が不明なら拒否し、別時点のDisk再読取で補わない |
+| **MR-3 LoaderとBuildの実消費** | workspace.Load、ReadByLoader、Source Contribution、#2600 Build Source | 明示選択された1件の実読込と元Source位置を固定し、必要に応じてSource Index/Build Inputで実消費を別観測。全Rootの新形式を勝手に解釈せず、同一Subjectの旧新二重定義を自動解決しない |
+
+MR-1/2は、まず**読取り専用で対象をSemantic一例に絞ったGo回帰**として切り出してよい。この時点で正式な全Domain Workspace Loaderへ入れたと主張しない。TEI用のMarkdown Fenceは第一候補だが、実在する標準Grammarだと決めつけない。選択するLanguage/Version/Roleの契約を#2621/#2620/#988で検討し、専用の第二Syntax Engineを設けない。
+
+### 10.6 既存TM/AUケースと一つの独立Expectedを共有する
+
+別のScenario正本は作らず、既存TM-02/03/04/05/08/13/14およびAU-01/02/07と、#1180/#2514の独立Expectedに次の実装時assertを対応付ける。
+
+| 対照 | 読取り・意味・実行に期待する区別 |
+| --- | --- |
+| **MR-X1** Parser未束縛の管理Root内Source | TEI_MD_PARSER_UNBOUND。0定義／正常なvalidateとして扱わない |
+| **MR-X2** Root外の途中Draft＋管理Root内の旧Source | Raw Draftは保存可能、旧Sourceの実Readは正常。DraftをMeaning/Buildに追加しない |
+| **MR-X3** 選択した宣言領域＋説明・引用・例示 | 選択部分のみParserに渡る。表示やMarkdownとしての正しさを意味受理にしない |
+| **MR-X4** BOM/CRLF、日本語、複数Fence、引用・インデント | Parserの診断とSource Indexは元Markdownの正確なbyte spanへ戻る。不明な対応を行番号の単純加算で推定しない |
+| **MR-X5** 旧形式と新形式が同じ意味IDを宣言 | 先勝ち/後勝ちと暗黙mergeは禁止。選択・移行・受理Decisionの境界を別に記録 |
+| **MR-X6** 説明文・図の配置のみ変更 | Raw Revisionとspanの再定位は必要。意味の同一性とBuild/Reviewerの現在性は依存ごとに判定 |
+| **MR-X7** 意味領域／Operator版変更、A→B→A | 関係するMeaning/Artifact/Decisionを再照合。同byte復帰で過去の現在資格は自動復活しない |
+| **MR-X8** 1宣言が読めたが別のRequired Sourceは不明 | managed、read、parsed、interpreted、actually consumedを別表示。局所PASSから全Dependency完備やOwner受理を推測しない |
+
+第一PRではMR-1/2の**元Byte→選択宣言→既存Parser→元Source位置**だけを新規に検証する。MR-3の正式Workspace選択、GraphからのGo処理生成、Plugin実Call、Stage1からStage2への再構築、StudioのSource編集は次の独立PRへ分ける。Layoutだけの変更とGraphの辺方向変更による実Go生成差は、dogfooding計画§15.38/§15.44とPlugin側の固定Fixtureを再利用する。
+
+### 10.7 Owner・製品計画との合流と現在の上限
+
+#3030/#2621はMarkdown原文と抽出領域、#988/#1018はLanguage/Parser/版、#2620はRole、#2823は実Loader Coverage、#2514/#1180は独立Expected、#2600/#2831は実Builder入力とArtifactを担当する。**最初に作るべき実装PRはReader＋byte-spanの最小Go修正**であり、拡張子の変更、汎用Graph Parser、第二Registry、Hostを作ることではない。
+
+Plugin生成の最初の利用先はdogfooding計画にある「同じ表示名の別Nodeと、同端点の別IDを持つ有向多重Edgeから、出辺IDと件数の実Go処理を生成する」一例とする。生成したGoを手書き処理のWrapperとして使うだけでは自己実装率へ計上しない。同じ原文/意味からのPlugin説明のRead-only参照は#4679/現Plugin文書計画へ渡し、Reader完成の必須条件にはしない。正式Studio Stage1→Stage2と通常TEI CLIからの実Provider読取は引き続き並行P0である。
+
+**証拠の上限**：本追補はmainの実Go Sourceを静的に照合し、既存のGuard限定試験・他計画を実装順に統合したdocs-onlyの設計更新である。新たなReader、Graph Generator、実CLI/Windows/PG試験、Owner意味受理は今回NOT RUN。Guardの現在main上の存在と、TEI Markdownが正式Readerで実利用可能なことは別の主張である。
+
+<!-- tei-md-native-markdown-graph-fixture-20261114-v1 -->
+### 10.8 Markdown本来の記述力を優先し、既存DSLの埋込みを唯一の完成形にしない
+
+TEIの新しいAuthoring Sourceは、専門家が普段使うMarkdownの文章・表・インデントリスト・図を保ったまま、明示された部分だけを標準データ構造に対応付けることを目指す。§10.5の「既存DSLを含む一領域を取り出す」MR-1/2は**Source spanと既存Parserの接続を最初に確認する実験**であり、将来の正式構文をコードFence中心に固定する決定ではない。Goのstruct/funcや型引数を新DSLへ露出させず、ドメインの認知順に沿う記述を評価する。
+
+| Authoring表現 | 対応を検討する標準意味 | 実Readerに求める最低条件・注意点 |
+| --- | --- | --- |
+| **通常のMarkdown表** | 型付きデータ表、Node/Edgeの関係、Rule／テストパターン表 | 列の意味・型・ID・NULL/空集合・重複の解釈を明示Role/契約で決める。表を見つけただけで全行を業務定義として登録しない |
+| **インデントリスト** | Tree/Outline、親子・所属候補 | インデントと表示順を保持。Treeの所属とGraphの任意Edgeを混同しない。再帰的な意味付けが曖昧なら候補で停止 |
+| **MermaidのER図・シーケンス図** | 型付き関係・プロセス／時系列の意味候補 | **直接記述したSource**として利用可能な経路を検討する。Edge ID、多重性、向き、参加者、時刻・Roleが表現できない場合はlossy/部分候補と明記し、図から無断確定しない |
+| **CSV等のリンクされた別ファイル** | 大量表データ・外部データセット | Markdownの参照箇所と実リンク先byte/Revision、取得Scope、粒度、改版を束縛する。未取得行を0件や全件充足に変換しない |
+| **既存DSLのMarkdown内Fence** | 現行Lexer/Parserへ直接渡せる明示TEI領域 | 初期MR-1/2の**互換ブリッジ**。Parserが実際に解釈した領域と元Byte Spanを検証し、他のMarkdown表現が既に読めると誤報しない |
+| **Graphviz、文章、関数チェーン等** | 同じ標準意味の表示・糖衣、または明示宣言候補 | 原記法を保存する。意味データ、図の配置、コード生成、Writerの適格性を分け、導出Viewを黙って第二Source正本にしない |
+
+渡辺式ER図などの業務上の慣習は、型付き関係を保ったうえで表示・自動配置の規則に反映する。親を左、子を右へ置くといった表示上の約束から、Cardinality、キー継承、Owner判断を無条件に推論しない。Mermaidは**Sourceとして直接書く場合**と、同じMeaningから**再生成した図**の場合を区別し、両方あるときはどちらを編集正本とするかSelectionで決める。非可逆の逆変換はDiff/候補提示に留める（#2497/#4198/#2620）。
+
+### 10.9 同じGraph Fixtureで、Markdown表現から実生成へ進める
+
+初回はmain採用済み[Graph固定Fixture](../../testdata/tei-md-graph/README.md)（#4709）を入力正本候補として再利用する。**基準は表示名が同じ別IDの2 Nodeと、同じ向き・同じ端点を持つ別ID Edge 2本（e-1/e-2）**であり、n-1の出辺は2件、n-2は0件である。別ファイルの`edge-reversed.tei.md`ではe-2を反転し、両Nodeの出辺が各1件になる。以前の設計文にあった「同方向2本＋逆方向1本」の**3辺構成はこの固定Fixtureに存在しない**ため、初回の期待結果へ混入させない。追加の第3辺が必要なら別の明示Caseと独立Expectedの採用判断を要する。現在の[独立Expected JSON](../../testdata/tei-md-graph/independent-expected.candidate.json)は`proposal-only`であり、正式Owner採用済みの検収Oracleとは呼ばない。「出辺ID集合と件数を求める」pure Operationの実Go生成へ進む際、新しいExpected正本やGraph Compilerを作らない。
+
+最初に比較するのは、(A) 明示Roleを持つMarkdown表、(B) 同じMeaningを表すインデントリストまたはMermaid、(C) 既存DSLを含むFenceである。**Aを専門家向けの優先候補、Cを現行Parserへの最低限の互換経路**として同じ一機能で評価する。Bのうち同一端点の多重Edge IDをLossなく表現できないものは、Viewerまたは部分候補に留め、実Go生成用Sourceとしての無条件採用をしない。表の列名、Roleの書式、Mermaidからの同一性付与は未採用の構文候補であり、この節では正式Grammarにしない。
+
+| 比較する変更 | Source→Meaningへの期待 | Generator／Consumerで独立して検査すること |
+| --- | --- | --- |
+| Markdownの文章・コメント・図の配置だけ変更 | File Revision/Spanは更新するが、必要Meaningと依存が同一なら意味差なしの候補 | 旧Build skipが可能かは閉包で判定。UI再描画だけを再生成成功と呼ばない |
+| Markdown表のEdge ID/向き／Rule変更 | Sourceの選択範囲、Relationの向き・多重性、必要生成入力が変わる | 生成Goの**実処理**が変わり、CLIでの実Call結果も独立Expectedに追従する |
+| Mermaidを直接編集、または別SourceからMermaidを再生成 | 編集対象がAuthoritativeな場合のみMeaning更新候補。導出図の見た目だけなら意味不変 | GraphのID/向き/多重性欠落を保持できないときはlossy診断。元のSourceや元意味を黙って上書きしない |
+| CSVのリンク先変更・部分取得・A→B→A | 外部Source Revision/取得時点/Scope/読み取った範囲を別記録 | 未取得を空集合とみなさない。Build/Evidenceの再利用とConsumerの現在資格を別判定 |
+
+一機能の実装完了の条件は、「Markdownが見えた」「Source Indexにある」「Goを生成した」ではなく、**明示Source→Parser/Role→Meaning→実Go処理→選択Plugin→実Provider Call→通常CLI受領**の同一対象/Revision/Attempt照合である。後続のStage1 TEIによるStage2再構築とStudio WebView2使用は別の上位資格。Graph Pluginの詳細とPlugin文書は#4689/#4691/#4679へ渡し、Reader側でPlugin Runtimeを再実装しない。
+
+### 10.10 Plugin文書・CLI／Studioへの引渡しは、Sourceと契約の現在版で結ぶ
+
+Graph Pluginの出辺Operationが利用可能になったら、同じSource/Roleと**実選択されたPlugin Contract・Provider・Artifact**を起点として、人間とAIが仕様・利用例・依存先・制約を辿れるか確認する。既存の`plugin-lock`／`plugin-resolve`／`plugin-inventory`など、現行CLIで確認できる入口を最初に再利用する。**未実装の`plugin docs`コマンドを存在するAPIとしてSkillや手順書へ書かない。** 詳細マニュアルは契約に結び付けて参照し、短いProduct Skillは「対象選択→Inspect→説明参照→独立Expected→実行資格」という導線だけを担当する。上位Pluginの文書に辿れることと、内部SourceやHost権限を得ることは別である。
+
+CLIの最初の実行基線は、ADR-0048のWails非依存・ローカルin-process Application Operationを保持する。Studioを子Backend＋IPCへ分ける設計目標、CLIの任意の子Process/Session/Remoteは#4690/#4697/#4702/#4705の別Ownerで比較し、**Markdown Readerや初回Graph Plugin生成に常駐Serverを要求しない**。後続で配置を変えても、同じSource/Contract/選択Provider/Actual Call/Consumer結果の意味を保ち、現在のGrant・Plugin Lock・Server世代・Effect未確定を混同しない。
+
+**更新の資格**：§10.8〜10.10は、他チャットの自然なMarkdown/図表を重視する方針と、main採用済みのCLI-first／Graph/Role/Source/Plugin各計画を既存のReader移行設計へ接続したもの。今回はGo Reader/Generator・Plugin文書取得API・CLI/Studio子Server・Owner受理の新実装やE2E試験を行っていない。各工程の合格は現在の実Source・独立Expected・実Consumerで別途証明する。
+
+
+<!-- tei-md-graph-fixture-guard-alignment-20261114 -->
+### 10.11 実Fixtureと未束縛Readerの固定負例を一致させる（2026-11-14）
+
+初回Graphの記述を、現在mainに存在する[固定Fixture](../../testdata/tei-md-graph/README.md)と[独立Expected候補](../../testdata/tei-md-graph/independent-expected.candidate.json)に合わせる。5ファイルは`baseline`、`edge-reversed`、`layout-only`、`duplicate-edge-id`、`diagram-stale`であり、**表が正本候補、Mermaidが導出表示**という採用前の区分を保持する。MermaidのLR/TB変更は表示差であって意味の出辺差ではなく、図が古いときも定義表の向きを図から上書きしない。Nodeの表示名は両方「対象」だがIDはn-1/n-2であり、同端点EdgeはID別に保持する。正式Readerでは、表の役割と出典位置を選択できること、重複IDを一辺に黙って縮約しないことを検証する。
+
+本計画の最初の**実Go回帰**は、[PR #4713](https://github.com/hat47x/tei-platform/pull/4713)が追加した固定5ファイルを現行Workspace Loaderへ入力するテストである。管理Rootに配置した`*.tei.md`は引続き`TEI_MD_PARSER_UNBOUND`でSource位置付き拒否、管理Root外のMarkdown草稿は旧`*.tei`実読込みを妨げない。これは正式Readerが表・Mermaidを理解した証拠ではなく、**未対応が無音成功へ退化しない**という限定的な負例／正例である。PRのGo/CI結果とmain統合資格は別途判定し、未完了の時点でPASSや製品意味受理に昇格させない。
+
+次にMR-1/2で、まずこの`baseline.tei.md`の定義表の**選択されたByte範囲／セル位置とRole**を読み取り、固定Node/Edge IDの出典と独立Expected候補へ対応付ける。Parser／Roleが正式未採用なら`unsupported`を返し、必要に応じて既存DSL FenceによるSource Span試験を技術的先行条件として切り分ける。原文表のReaderと既存DSLを埋め込む互換Readerを**混同しない**。その後にGraph Meaning→Go実生成→Plugin実Build/Actual Call→通常CLI Consumerを順に検証し、Stage1からStage2への再入およびStudio Windowsは各自の上位資格を保つ。
+
+既存の#4709／#1180／#2514がFixture／Expected採用の担当であり、#3030／#2621／#988／#2620がLanguage・Reader／Roleの担当である。将来Readerが正式導入された際には、#4713の固定「未束縛拒否」テストを、**選択Parserがある場合の正例と無い場合の拒否**へ改訂する。テストを黙って削除して0件成功としない。
