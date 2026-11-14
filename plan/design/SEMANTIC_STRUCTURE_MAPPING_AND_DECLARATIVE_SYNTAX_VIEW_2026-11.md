@@ -797,7 +797,7 @@ erDiagram
 1. Mermaid SourceからEntityの安定ID、属性、PK／FK／UK、関係、Source出現順とRelationの種類を、対応済みの範囲だけ読み取る。同じ名前が異なるScopeのEntityを自動併合しない。
 2. **配置用の親→子辺**を抽出する。確認済みの識別関係に加え、業務モデルが「親から子への参照」と認めた非識別FK関係も含む。横位置を支配しない一般の相互参照や自己参照は、意味上の辺としては表示しても配置の依存にはしない。どの辺を配置用と判定したかは説明可能にする。
 3. 配置用GraphがDAGで、必要な親方向が決まる範囲では、根を第0列、子を親より一列以上右へ置く。初期候補は、各Entityの列を`column(v)=0`（親なし）、`1+max(column(p))`（配置上の親あり）として決める。複数親なら最も右側の親よりさらに右へ置き、**子の箱の左側に複数の接続線**を引く。
-4. 同じ列のEntityは**MermaidのEntity初出順（関係文中の登場を含む）**を第一の縦方向順序として並べる。列幅はその列の名称・項目の必要幅から決定し、各箱の高さと間隔を反映して重ならないように積む。親から子への線は、箱の左右に接続する。複数親・交差・線種の違いを表示で失わせない。
+4. 同じ列のEntityは、**独立したEntity宣言行がある場合はそのSource順を優先**し、未宣言のEntityは初出順（関係文中の登場を含む）で補う。独立宣言がない既存図では従来の初出順を利用する。すべての表示対象の独立宣言が揃った状態を、並び順の明示性が高いものとして区別する。列幅はその列の名称・項目の必要幅から決定し、各箱の高さと間隔を反映して重ならないように積む。親から子への線は箱の左右に接続し、複数親・交差・線種を失わせない。
 5. 同一Source／解釈済みモデル／Reader／Layout Profile（文字計測・余白・線間隔・アルゴリズム版を含む）で、列・同列順・生成座標・接続を再現できることを検証する。GitHub等のMermaidの出力座標や別フォントのPixel一致は要求しない。
 6. 循環した親子関係、親方向不明、意味的に矛盾するPK継承、必要なSourceの未読込があれば黙って配置用Edgeを落とさず、診断と限定的なread-only Viewへ退避する。単なる名称順のfallbackで意味が確定したふりをしない。
 
@@ -829,7 +829,7 @@ erDiagram
 
 ### 33.4 GUI移動からMermaid編集へ戻す条件
 
-上下ドラッグで**同じ列のエンティティを並べ替える**場合に限り、Mermaid Sourceの出現順の局所修正を候補にできる。ただし、最初の出現が関係文だけにある場合や、Entity定義より先にRelation内で参照される場合、Entity宣言の位置変更だけでは初出順が変わらない。Sourceの関係文を並べ替えるとコメント・関係・意味が変わり得る。明示的なEntity宣言の並替えなど、安全なSource範囲が確定したときだけPreview→再Parse→Source差分→独立再Readを通す。
+上下ドラッグで**同じ列のエンティティを並べ替える**場合、Mermaidの独立Entity宣言が存在すれば、まず**その宣言の相対順だけを変える**局所Patch候補を検討する。属性ブロックやRelation文まで移動することを既定にしない。独立宣言がない場合は、現在の初出順に沿って表示できても、その順序を安全に書き戻せるとは限らない。すべての表示対象について独立Entity宣言を追加する候補を明示し、その追加がMermaidとTEIの双方で意味を変えないと検証できた場合に限ってPreview→再Parse→Source差分→独立再Readを通す。Relation文・コメントを無条件で並べ替えない。
 
 親から子を左側へドラッグする、関係線を識別から非識別へ切り替える、親を付け替える、PKの継承元を変えることは**単なる配置変更でない可能性がある**。意味変更かView専用移動かを操作別に明示し、後者ならView専用Hint候補とする。HintをMermaidの標準属性や業務Modelへ無理に混ぜない。縦横の自由配置・線ルーティングなどは、初期はStudio限定の一時Previewでよい。
 
@@ -846,11 +846,11 @@ erDiagram
 | SM-55 | Mermaid`erDiagram`のKey／Cardinalityを直接記述 | Supportedな範囲だけ型付き候補とし、未記述制約を推測しない | #4370／#2497 |
 | SM-56 | Mermaid`sequenceDiagram`に二つのメッセージ | 表示の時間順と実Function Call・Observed Traceを区別 | #4198／#4370 |
 | SM-57 | 親A→子B→孫Cを同じSourceから二度描画 | 同一Source・Layout Profileで左→右の列、箱・接続の位置を再現 | #1124／#2497 |
-| SM-58 | 同じ列の兄弟EntityのMermaid初出順を入替え、Relationは同じ | 同列の上下順だけが変わり得る。親子の左右、キーと業務意味は不変 | #2621／#2497 |
+| SM-58 | 同じ列の兄弟Entityの独立宣言順を入替え、Relationは同じ | 同列の上下順だけを変更。親子の左右、キーと業務意味は不変 | #2621／#2497 |
 | SM-59 | 同じSourceをGitHub／Studioで描画 | Entity／Relation意味が揃えば良く、図の物理座標の一致を強制しない | #1124／#2497 |
 | SM-60 | 同列のEntityをGUIで上下にドラッグ、Source Patchが一意 | 関係・キー意味を保つ局所並替え候補をPreview→再Parseし、非対象byteを保持 | #1124／#2621 |
 | SM-61 | GUIで左へ自由移動、Mermaidに可搬な座標情報なし | 親子／FK／PKを勝手に変更せず、一時Viewか将来の明示Hint候補として扱う | #1124／#2497 |
-| SM-62 | ER関係宣言だけで同名・再出現Entityが混在 | IDと親子列、同列初出順を判定し、勝手に同名を併合・重複生成しない | #4370／#2497 |
+| SM-62 | ER関係宣言だけで同名・再出現Entityが混在 | IDと親子列を維持し、独立宣言がなければ初出順へ退避。勝手に同名を併合・重複生成しない | #4370／#2497 |
 | SM-63 | CUSTOMER→ORDERは非識別FK参照、ORDER→ORDER_LINEは識別PK継承 | CUSTOMER／ORDER／ORDER_LINEは左→右の親子列。参照線と継承線の種類、ORDERの独立PK、ORDER_LINEの複合PKを保持 | #2497／#1124 |
 | SM-64 | 一つの子に異なる親二つがあり、それぞれ識別／非識別の関係を持つ | 子を両親より右へ置き、左辺へ複数の関連線を接続。識別／非識別を混同しない | #1124／#2497 |
 | SM-65 | 子のFKだけ変更、PKの継承関係は不変 | FK参照線は変わり得るが、識別線と親由来のPKを自動書換えしない | #1126／#2497 |
@@ -860,7 +860,16 @@ erDiagram
 | SM-69 | 一般FK参照で親子配置の方向が不明 | 関係を描けても配置親とは自動確定せず、意味・View不足を明示 | #4370／#2497 |
 | SM-70 | Key注釈`PK, FK`があるが参照元親Keyが未解決 | Mermaid属性だけで完全なPK継承を受理せず、Source／Relation対応を要求する | #1126／#4370 |
 
-**既存MD系列の更新**：MD-0は入れ子リスト・Markdown表／CSV・Mermaid ER／SequenceのAuthoring Profile、MD-1はSource ReaderとFence／Cell／リンク位置、MD-2は**Mermaid直接Sourceと導出Mermaidの双方**を限定検証し、渡辺式の親子関係→左から右の列、同列での初出順→上下配置、識別／非識別の描き分け、多親・複合PK・項目表示をHeadlessで照合する。MD-3は唯一のSource Slotの限定Patchに加え、**同列で意味を変えないEntity上下並替えのPreview／Source保存**を検討し、横方向の自由配置はHint検討に留める。MD-4はStudio／GitHub／AI・CLIの異質Consumerを同一意味モデルの用途別Viewとして比較する。新しいMD-5やHard Gateは追加しない。
+| SM-71 | 同じER Entity独立宣言順のままRelation行だけ入替え | 渡辺式の同列上下順は不変。Relationの意味とIDも不変 | #2621／#1124 |
+| SM-72 | 独立Entity宣言を逆順にし、Relationと属性は元どおり | 同列上下の配置だけを変更。親子列・Key・関係は不変 | #1124／#2497 |
+| SM-73 | 一部Entityに独立宣言がなく、複数FileにSourceが分散 | 明示順と補助初出順を区別。全体の並び・安全な書戻しを無条件に確定しない | #4370／#2621 |
+| SM-74 | GUIで同列Entityを移動、SourceはRelation文のみ | 関係文を無条件に並べ替えず、独立宣言追加を提案できるか判定。不適格ならreadonly | #1124／#2621 |
+| SM-75 | 独立宣言順だけ変更、Buildや別Viewが同じSourceを参照 | Source差分を認識しつつMeaning差分とArtifact再利用／Evidence資格を別判定 | #2497／#943 |
+| SM-76 | 親子Key変更後、Function Context・CRUD・業務モデルが未読込 | 関連モデルの影響なしと判定せず、対象集合の未完了を表示して書戻し資格を制限 | #1124／#1143 |
+| SM-77 | Mermaid上のPK, FK注釈は同じで、物理PKと論理候補キーが異なる | 業務Key、DB制約、Modeler下線の意味を混同しない | #1126／#950 |
+| SM-78 | Mermaid直接ER図とData正本の派生Mermaidが同じ形で並ぶ | どちらのSourceがAuthoritativeかを明示し、外観の一致だけで二つの編集元を作らない | #2621／#2497 |
+
+**既存MD系列の更新**：MD-0は入れ子リスト・Markdown表／CSV・Mermaid ER／SequenceのAuthoring Profile、MD-1はSource ReaderとFence／Cell／リンク位置、MD-2は**Mermaid直接Sourceと導出Mermaidの双方**を限定検証し、渡辺式の親子関係→左から右の列、同列での独立宣言順（未宣言は初出順）→上下配置、識別／非識別の描き分け、多親・複合PK・項目表示をHeadlessで照合する。MD-3は唯一のSource Slotの限定Patchに加え、**同列で意味を変えないEntity上下並替えのPreview／Source保存**を検討し、横方向の自由配置はHint検討に留める。MD-4はStudio／GitHub／AI・CLIの異質Consumerを同一意味モデルの用途別Viewとして比較する。新しいMD-5やHard Gateは追加しない。
 
 新Parser／Writer／Layout Engineを先に建てず、既存Source Index・Language Plugin・Projection・Studio Change Proposalを再利用する。**P0のStudio Stage1→Stage2実セルフビルドと、通常CLI→実Provider→独立Consumerの検証は不変**。今回の追補は設計と検証計画のみであり、Mermaidの製品Reader・渡辺式の実Layout・Studio GUIドラッグ編集・GitHub上の実レンダリング・Ownerによる正式構文採用を行ったとは主張しない。
 
@@ -897,7 +906,7 @@ X-TEA Modelerの元構造には`REFFER`／`FAMILY`／`SUBTYPE`等のRelation区�
 
 ER図のEntityを上から並べる場合、次のSource要因に注意する。
 
-- Mermaidの単独Entity行・属性ブロック・Relation宣言は、どれもEntityの「最初の登場」を変え得る。**属性ブロックの行順だけ変更しても、それ以前のRelation文に現れるEntityの初出順は変わらない**。
+- Mermaidの単独Entity行・属性ブロック・Relation宣言は、どれもEntityの「最初の登場」を変え得る。**しかし、独立Entity宣言行がある場合、その相対順を表示順の第一候補とする**。属性ブロックの並べ替えやRelation文の並べ替えは、独立宣言順を変えるための操作ではない。
 - GUIからEntityを上下に並べ替えるときは、どのSource範囲が並び順を支配するかを特定し、その範囲を動かしてもRelationと属性の意味が変わらない場合のみ局所Patchを作る。単にSource上の文字列を置換したり、Source全体を再整形したりしない。
 - 同一File内の先行出現で完全順序が得られる場合に限って確定配置する。分割したFileの組合せで順序が未定義なら、Readerやファイルシステムの偶然の列挙順に頼らず、明示したSource順／Profileの受理が必要。並びが未確定でもデータの意味が失われたとは扱わない。
 - 無変更で保存したときは元Markdownのbyte一致。実際に並びを編集するときも、コメント、Mermaid属性、行末、コードFence等の非対象部分を保持し、変更後に別Readで同じ意味を検査する。
@@ -918,4 +927,62 @@ ER図のEntityを上から並べる場合、次のSource要因に注意する。
 **実装の最短順**：まず既存`*.tei.md`移行のReader入口に照合し、`TEI_MD_PARSER_UNBOUND`を通過できると偽らずに、固定Mermaid Fixtureを既存Sourceに対応付けられるか確認する。次に型付きEntity／Relation／Keyの**read-only投影**と、同版SourceでのHeadless配置・独立Expectedを実行する。その後、一意のEntity Slotに限定したGUI選択→Preview→Source Patch→再Parseを試し、通常製品のModeler／Studio実Consumerへ接続する。Mermaid Reader未実装の時点で合成Fixtureを検査しても、それを実製品の正式Reader資格へ読み替えない。
 
 この系列は#1124／#1126／#2497に引き渡す**P1相当の製品価値検証**とし、#2831の**Stage1→Stage2セルフビルド**と#2586の**通常CLI→実Provider→独立Consumer**を新しい前提でブロックしない。Source-faithfulなModeler転写は、製品Stage2の合否とも別に評価する。追加のGraph Compiler、Mermaid専用Meaning Store、Editor Writer、独自Renderer Hostは今回採用しない。
+
+
+
+## 37. Mermaid内の独立Entity宣言で渡辺式Viewの縦順を安定化する（2026-11-14横断整理）
+
+Mermaidの`erDiagram`は**Entity名だけの宣言**を認めている。[Mermaid公式ER図のEntities and Relationships](https://mermaid.js.org/syntax/entityRelationshipDiagram)でも、関係を持たないEntityを単独で記述できる。そこでTEI Studioでは、意味関係の記述順に表示順が過度に引きずられないよう、**独立したEntity宣言行の順序をViewの優先的な並び順**とする。
+
+```mermaid
+erDiagram
+    CUSTOMER
+    ORDER
+    ORDER_LINE
+
+    CUSTOMER ||..o{ ORDER : places
+    ORDER ||--|{ ORDER_LINE : contains
+
+    CUSTOMER {
+        string CUSTOMER_ID PK
+    }
+    ORDER {
+        string ORDER_ID PK
+        string CUSTOMER_ID FK
+    }
+    ORDER_LINE {
+        string ORDER_ID PK, FK
+        int SEQNO PK
+    }
+```
+
+**選択した表示対象・Scope・解釈済みParent→Childが同じときの配置規則**は以下とする。第一に親子関係から左右列を決め、第二に**同列で独立宣言があるEntity同士のSource順**を使う。独立宣言のないEntityは、残りの位置に初出順で並べる。宣言の有無やSource順だけで新しい親子関係やキーの継承を導かない。全Entityに独立宣言がある場合は表示順が明示的と分かるようにし、部分宣言なら未宣言Entityに依存する並びの弱さを説明する。
+
+独立Entity宣言の移動は、Mermaidの関係定義や属性の意味を変えないことが確認できる範囲で、**表示順だけの編集候補**となる。逆に、複数Sourceから合成した図、元Sourceが部分取得である図、異なるScopeの同名Entity、Parser未対応の新Mermaid構文では、勝手に全体の順序や編集資格を確定しない。
+
+GitHubでは記述順にかかわらず、選択されたMermaid Rendererがレイアウトする。TEI Studioの渡辺式の「親は左・子は右・同列は上下」という配置とPixel位置を一致させる要件は置かない。**独立宣言順を採用するのはTEIのView規則であり、GitHubの図形配置を制御するMermaid標準機能だと主張しない**。
+
+## 38. 三要素分析法・変更影響・Build資格への接続
+
+渡辺式ER図の価値は、図面単独で完結しない。既存[#1124](https://github.com/hat47x/tei-platform/issues/1124)が対象とする**三要素分析法のデータモデル・機能モデル・業務モデル**を、同じ受理済みSubjectへ辿れることが重要である。旧Modelerの見た目だけでなく、関連する機能の入出力・CRUD、業務作業・イベント、サブシステム別のER/CRUD、逆引きクロスレファレンスで不整合を見つけ、元Sourceを直して再投影する経路へ渡す。対応先は#1124/#1125/#1126/#1127/#1132/#1143/#1803/#3250などの既存Ownerとし、ここで新しい三モデル正本を構築しない。
+
+| 変更の種類 | Data/Function/BusinessとBuildの扱い | Source編集 |
+| --- | --- | --- |
+| **渡辺式Viewの独立Entity宣言だけを並べ替え** | Source bytesと表示配置は変わるが、Data／Key／Relationの意味変化は原則なし。ただしWorld Fingerprint等の失効・Build再利用資格は実Build契約で再評価 | 並び順を支配する一意の宣言範囲にだけPatch候補 |
+| **Entity／Field名・キー・親子Relationを変更** | DataとそのFunction Context、CRUD、設計書、SQL生成、業務モデルの依存を既存Change Impactで調べる。影響対象が未取得なら「影響なし」としない | 名前文字列の一括置換はしない。型付き参照、Scope、依存Revisionを使う |
+| **Mermaid上の識別線・`PK, FK`注釈だけを変更** | 表層図としては再解釈するが、業務識別子・物理PK・親Key→子Key対応を即確定しない。元の受理済みData Modelと不一致なら候補のまま停止 | 原意味とのDiffと受理Ownerの判断を要求 |
+| **元X-TEAの未解決`FAMILY`／`REFFER`等を取込み** | 観測した旧構造・転写候補・受理済み意味・生成物を別資格として保持。旧Sourceの意味やLegacy IDを静かにTEI Meaningへ昇格させない | Source-faithful Adapterと既存Acceptanceに委譲 |
+| **Functionの利用項目だけ変わる** | 元のData Relationが同じでもFunctionが取得するField／Scope／grainは明示Contextに従う。ER図を変更したことで未宣言のDB Fetchを増やさない | Function-owned定義を独立のSourceとして扱う |
+
+変更を評価するときは**Source byte差分／Meaning差分／View配置差分／生成Artifact差分／実Consumer観測**を同じ判定にまとめない。表示だけ変わったためSource hashが変わった場合でも、旧BundleやEvidenceを自動再受理するわけではない。逆に、Meaning差分がゼロと確認できれば、同じDataの全Functionを無条件に再生成する必要があると決めつけない。World Fingerprint、Model Revision、Artifact Revisionと、その用途別の再利用資格を既存Build Ownerへ引き渡す。
+
+### 38.1 GUIから原文へ戻す最初の一巡
+
+**表示・選択**：Studioが渡辺式ViewでFieldまたはRelationを選ぶ際は、Entity名／ラベル／座標でなく、Qualified Subject ID、具体的Relation／Field occurrence、現在Source Revision、採用されたLanguage Pluginと公開範囲を用いてSourceへ戻る。Mermaid由来の場合はFence内のbyte spanと、直接Sourceか派生Viewかを区別する。
+
+**候補・差分**：独立宣言の並べ替えで十分な場合はView専用Patch、キーの変更ならDataの意味変更提案として異なる経路へ送る。同じ見た目のドラッグでも、親子列越え・関係線の型変更・同列順変更は別Operation。Source改訂、Plugin版、Disclosure、同名要素の複数候補があれば静かに書き換えない。
+
+**適用・再検証**：既存のSource-aware Preview→Resolve→Admit→Commit→Observeを通し、更新後の別Readで、非対象byte・Entity／Relation identity・Key mapping・同列順・必要な影響先を照合する。ここで言う`Commit`は正式なSource編集が成立した場合の話であり、単にGUIが動いたことやMermaidを描画できたことではない。Source Writer/Host権限を図の編集資格から自動発行しない。
+
+**実装引渡しの順序**：[#3030](https://github.com/hat47x/tei-platform/pull/3030)の`*.tei.md`入口がまだ`TEI_MD_PARSER_UNBOUND`で拒否される現状では、Readerを実際に接続する前に製品E2Eの成功を主張しない。まずMermaid ERの限定Readerと既存Data/Key/Relationへのread-only投影、次に#1124のViewerで列・同列順の独立Expected、次いで安全な宣言順Patch、最後にFunction/CRUD/Businessモデルとの相互参照・実Studio Consumerへ進む。#2831のStudio Stage1→Stage2実セルフビルドと#2586の通常CLI→実Provider→独立Consumerの優先度は維持する。
 
