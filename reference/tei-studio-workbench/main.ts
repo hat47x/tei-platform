@@ -241,7 +241,7 @@ async function refreshPinnedSubject() {
   await responses.run("pinned-inspection",
     () => readPinnedSubject(client!, request, catalog),
     (view) => {
-      if (catalogSnapshot !== catalog) {
+      if (catalogSnapshot !== catalog || !pinnedCatalogMatches()) {
         pinState = acceptPinObservation(pinState, request, { state: "needs-requalification" });
         renderPin();
         return;
@@ -253,8 +253,11 @@ async function refreshPinnedSubject() {
       renderPin();
     },
     (error) => {
-      const state = error instanceof Error && error.message === "STALE_MODEL_PROJECTION"
-        ? "needs-requalification" : "unavailable";
+      const reason = error instanceof Error ? error.message : "OPERATION_FAILED";
+      const mustRequalify = catalogSnapshot !== catalog || !pinnedCatalogMatches() ||
+        ["STALE_MODEL_PROJECTION", "INVALID_INSPECTION_RESPONSE",
+         "SUBJECT_AMBIGUOUS", "SUBJECT_NOT_FOUND"].includes(reason);
+      const state = mustRequalify ? "needs-requalification" : "unavailable";
       pinState = acceptPinObservation(pinState, request, { state });
       renderPin();
     });
