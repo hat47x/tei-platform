@@ -95,3 +95,44 @@ exec /home/hat47x/qemuprobe/qemu-aarch64-static /tmp/l2b-arm64/bin/child "$@"
 - child 起動がラッパー経由（`binfmt_misc` 無しの環境では、これが arm64 連鎖を走らせる唯一の方法）
 - フィクスチャが一時ディレクトリにあり、リポジトリから再現できない
 - G4は `UNQUALIFIED` のまま。
+
+## 2026-11-13 の再確認（`main` `059b96fc3`）
+
+**条件5の表を全行実測した後、同じ `run.sh amd64` が今の `main` でも同じ結論を出すかを確かめました。**
+
+| 項目 | 値 |
+| --- | --- |
+| `ok` | **`true`** |
+| **`l2b.claimed`** | **`true`** |
+| `l2b.unmet` | **`null`**（空） |
+| `artifactReproducibility` | **`reproduced`** |
+| `qualified` | **`false`** |
+| `catalogDigest` | `sha256:1ba0cbd2…` |
+| `planFingerprint` | `3d44ab8a…` |
+| `artifactDigest` | `sha256:e2e098b4…` |
+
+**`catalogDigest`・`planFingerprint`・`artifactDigest` は本記録の表とも `raw/` とも一致しません。** 記録済みのとおり、これらの値はコミットに依存します。**一致したのは「Claimが立ち、`unmet`が空で、再現が成立する」という結論の側です。**
+
+`qualified` が `false` のままである点も変わりません（§7の`darwin`が未観測）。
+
+### 両アーキテクチャでの再確認
+
+同じ `run.sh` を2アーキテクチャで実行しました（`QEMU=/home/hat47x/qemuprobe/qemu-aarch64-static`）。
+
+| 項目 | amd64 | arm64（qemu） |
+| --- | --- | --- |
+| `ok` | **`true`** | **`true`** |
+| **`l2b.claimed`** | **`true`** | **`true`** |
+| `l2b.unmet` | **`null`** | **`null`** |
+| `artifactReproducibility` | **`reproduced`** | **`reproduced`** |
+| `qualified` | **`false`** | **`false`** |
+| `catalogDigest` | `sha256:1ba0cbd2…` | `sha256:6189107b…` |
+| `planFingerprint` | `3d44ab8a…` | `301c80d8…` |
+| `artifactDigest` | `sha256:e2e098b4…` | `sha256:256c3bb3…` |
+| `intentFingerprint` | `0909a60d…` | **`0909a60d…`（一致）** |
+| `sourceClosure` | `034ca748…` | **`034ca748…`（一致）** |
+
+**`intentFingerprint` と `sourceClosure` は両アーキテクチャで一致しました。** `catalogDigest`・`planFingerprint`・`artifactDigest` は一致しません（builderのバイナリが違うため。**Claimはアーキテクチャ間の成果物一致を要求していません**）。
+
+**`qualified` は両方とも `false`** です（`darwin` 未観測）。
+

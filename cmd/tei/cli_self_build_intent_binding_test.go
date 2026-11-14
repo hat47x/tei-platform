@@ -98,6 +98,12 @@ func main() {
 		}
 	}
 	if state != "" {
+		// Reporting a state directory claims it was used; the entry checks it exists
+		// (#4486 S1), so the fixture creates it as the bundled child does.
+		if err := os.MkdirAll(state, 0o755); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
 		fmt.Printf("{\"schemaVersion\":\"tei.reference.go-build-with-supply/v0\",\"artifactDigest\":%q,\"intentBytesDigest\":%q,\"intentFingerprint\":%q,\"planFingerprint\":%q,\"stateDir\":%q}\n", digest, intentDigest, intentFP, planFP, state)
 		return
 	}

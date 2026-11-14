@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -54,11 +55,42 @@ type selfBuildReproducibility struct {
 	// is that the two runs did not share state.
 	FirstStateDir  string `json:"firstStateDir,omitempty"`
 	SecondStateDir string `json:"secondStateDir,omitempty"`
+	// StateSeparation names what the separation rests on, so a reader can tell a
+	// child's statement apart from something the entry itself looked at. The
+	// claim is unchanged by this field; only its basis becomes visible.
+	StateSeparation *selfBuildStateSeparation `json:"stateSeparation,omitempty"`
 	// OnDiskDigest is the artifact this attempt left in place, re-read after the
 	// second build so a later overwrite would be visible.
 	OnDiskDigest string `json:"onDiskDigest,omitempty"`
 	Boundary     string `json:"boundary"`
 }
+
+// The three bases §4.37 can name for state separation. Only the first two are
+// produced here: host-boundary needs the Linux namespace launch (#4486's S2),
+// which this build does not do, so the entry never reports it.
+const (
+	stateSeparationChildStatement = "child-statement"
+	stateSeparationEntryPostHoc   = "entry-post-hoc"
+	stateSeparationHostBoundary   = "host-boundary"
+)
+
+// selfBuildStateSeparation records which basis the separation check reached.
+//
+// The claim's meaning is unchanged: two runs that shared state are still caught
+// the same way they were. What changes is that a reader can see whether the entry
+// looked at the file system or only at what the child said, because a child's
+// statement and an entry-side check are not the same evidence (#4486).
+type selfBuildStateSeparation struct {
+	Basis string `json:"basis"`
+	// Scope names exactly what was checked, so "entry-post-hoc" is not read as
+	// "the write was prevented". Preventing it needs the host boundary.
+	Scope string `json:"scope,omitempty"`
+}
+
+const (
+	stateSeparationChildStatementScope = "the state directory the child reported is the one this entry passed"
+	stateSeparationPostHocScope        = "the second build created the state directory this entry passed, and the listing of the first build's state directory was unchanged across the second build"
+)
 
 // withArtifactAndState returns the child argv with the values of -artifact-out and
 // -state replaced. The outer shape appended both itself, so the second run can
@@ -125,6 +157,13 @@ func checkArtifactReproducibility(
 		return unperformed(err.Error())
 	}
 
+	// The listing is taken before the second build so a write into the first run's
+	// state shows up as a difference, not as an untested possibility.
+	firstListingBefore, err := listStateDirEntries(firstStateDir)
+	if err != nil {
+		return unperformed("the first build's state directory could not be listed: " + err.Error())
+	}
+
 	evidence, err := driveSelfBuild(childPath, args, secondOutput, "")
 	if err != nil {
 		return unperformed("the second build could not be started: " + err.Error())
@@ -139,6 +178,10 @@ func checkArtifactReproducibility(
 	record.SecondChildDigest = evidence.Invoked.ExecutableDigest
 	record.FirstStateDir = firstStateDir
 	record.SecondStateDir = secondState
+	record.StateSeparation = &selfBuildStateSeparation{
+		Basis: stateSeparationChildStatement,
+		Scope: stateSeparationChildStatementScope,
+	}
 
 	// "In separate state" is the reason two runs count as independent. The entry
 	// passes a fresh -state to the second run; the child reports which it used, so
@@ -149,6 +192,30 @@ func checkArtifactReproducibility(
 	}
 	if reason := reproducibilityStateVerdict(secondState, evidence.ChildStateDir); reason != "" {
 		return unperformed(reason)
+	}
+
+	// What the child said is not the only thing the entry can see. It passed a
+	// directory the second build should have created, and it can look at the first
+	// run's directory before and after. Both are entry-side facts, so a child that
+	// reports the right path while writing elsewhere no longer passes unnoticed.
+	//
+	// This does not show the write was prevented: a child that creates an empty
+	// directory at the passed path still satisfies it (#4486 measured exactly
+	// that). "entry-post-hoc" is therefore weaker than "host-boundary", and the
+	// scope string says which of the two ran.
+	firstListingAfter, err := listStateDirEntries(firstStateDir)
+	if err != nil {
+		return unperformed("the first build's state directory could not be listed: " + err.Error())
+	}
+	if reason := stateSeparationListingVerdict(firstListingBefore, firstListingAfter); reason != "" {
+		return unperformed(reason)
+	}
+	if reason := stateSeparationSecondDirVerdict(secondState); reason != "" {
+		return unperformed(reason)
+	}
+	record.StateSeparation = &selfBuildStateSeparation{
+		Basis: stateSeparationEntryPostHoc,
+		Scope: stateSeparationPostHocScope,
 	}
 
 	// The claim is about one builder. If the executable changed between the two
@@ -216,6 +283,57 @@ func reproducibilityStateVerdict(passed, reported string) string {
 	}
 	if filepath.Clean(passed) != filepath.Clean(reported) {
 		return "the child used a different state directory than the one this entry passed"
+	}
+	return ""
+}
+
+// listStateDirEntries returns the sorted names in a state directory. A directory
+// that does not exist is reported as empty rather than as an error: a child that
+// ignores -state never creates it, and that has to reach the verdict as "nothing
+// was written", not as a reason the check could not run.
+func listStateDirEntries(path string) ([]string, error) {
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	names := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		names = append(names, entry.Name())
+	}
+	sort.Strings(names)
+	return names, nil
+}
+
+// stateSeparationListingVerdict reports why an unchanged first-run state listing
+// cannot be shown, or "" when it can. A second build that writes into the first
+// run's state made the two runs share state, whatever each one reported.
+func stateSeparationListingVerdict(before, after []string) string {
+	if len(before) != len(after) {
+		return "the second build changed the first build's state directory, so the two runs were not separate"
+	}
+	for i := range before {
+		if before[i] != after[i] {
+			return "the second build changed the first build's state directory, so the two runs were not separate"
+		}
+	}
+	return ""
+}
+
+// stateSeparationSecondDirVerdict reports why the second run's state directory
+// cannot be taken as evidence, or "" when it can. The entry passed a fresh path;
+// a run that never created it wrote its state somewhere else.
+func stateSeparationSecondDirVerdict(secondState string) string {
+	if strings.TrimSpace(secondState) == "" {
+		return "no state directory was passed for the second build, so its separation is not shown"
+	}
+	if _, err := os.Stat(secondState); err != nil {
+		if os.IsNotExist(err) {
+			return "the second build did not create the state directory this entry passed, so it wrote its state somewhere else"
+		}
+		return "the second build's state directory could not be inspected: " + err.Error()
 	}
 	return ""
 }

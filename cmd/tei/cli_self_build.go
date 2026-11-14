@@ -150,7 +150,29 @@ func runSelfBuildCommand(args []string, out io.Writer) (int, error) {
 // driveSelfBuild starts the child with the exact argv, records the invoker and
 // the invoked separately, then re-reads the artifact from disk instead of
 // trusting the child's own digest field.
+// selfBuildBoundary describes an OS-level wrapper the entry starts the child inside,
+// rather than starting the child directly. The launcher is what exec runs; the child is
+// still the executable the caller named, and its digest is still what gets recorded, so a
+// boundary does not change which builder the claim is about.
+type selfBuildBoundary struct {
+	// Name labels the wrapper in the entry evidence.
+	Name string
+	// Launcher is the program and its own arguments. The child path and its arguments
+	// are appended, so a launcher ending in "sh" "-c" <script> "sh" receives the child
+	// as $1 and can exec it once the boundary is set up.
+	Launcher []string
+	// Env holds extra environment entries for the launcher.
+	Env []string
+}
+
+// driveSelfBuild starts the child directly, with no wrapper.
 func driveSelfBuild(childPath string, childArgs []string, artifactPath, claimedSelf string) (selfBuildEntryEvidence, error) {
+	return driveSelfBuildIn(childPath, childArgs, artifactPath, claimedSelf, nil)
+}
+
+// driveSelfBuildIn starts the child, optionally inside a boundary launcher. Only the
+// process image and the argv change; the recorded builder is still childPath.
+func driveSelfBuildIn(childPath string, childArgs []string, artifactPath, claimedSelf string, boundary *selfBuildBoundary) (selfBuildEntryEvidence, error) {
 	exactChild, err := filepath.Abs(childPath)
 	if err != nil {
 		return selfBuildEntryEvidence{}, err
@@ -201,7 +223,24 @@ func driveSelfBuild(childPath string, childArgs []string, artifactPath, claimedS
 		return selfBuildEntryEvidence{}, fmt.Errorf("artifact path already exists; self-build does not overwrite: %s", artifactPath)
 	}
 
-	cmd := exec.Command(exactChild, childArgs...)
+	// argv always begins with the program actually started, so the recorded argv is a
+	// runnable command line and not a truncated one. exec.Command receives argv[1:], so
+	// building argv by appending and then slicing it keeps the two in step.
+	argv := append([]string{exactChild}, childArgs...)
+	if boundary != nil {
+		if len(boundary.Launcher) == 0 {
+			return selfBuildEntryEvidence{}, fmt.Errorf("boundary %q has no launcher", boundary.Name)
+		}
+		if strings.TrimSpace(boundary.Launcher[0]) == "" {
+			return selfBuildEntryEvidence{}, fmt.Errorf("boundary %q names an empty launcher program", boundary.Name)
+		}
+		argv = append(append([]string{}, boundary.Launcher...), exactChild)
+		argv = append(argv, childArgs...)
+	}
+	cmd := exec.Command(argv[0], argv[1:]...)
+	if boundary != nil && len(boundary.Env) > 0 {
+		cmd.Env = append(os.Environ(), boundary.Env...)
+	}
 	var stdoutBuf, stderrBuf strings.Builder
 	cmd.Stdout = &stdoutBuf
 	cmd.Stderr = &stderrBuf
@@ -223,7 +262,7 @@ func driveSelfBuild(childPath string, childArgs []string, artifactPath, claimedS
 	evidence.Invoked = selfBuildInvoked{
 		Executable:       exactChild,
 		ExecutableDigest: childDigest,
-		Argv:             append([]string{exactChild}, childArgs...),
+		Argv:             argv,
 		PID:              pid,
 		ExitCode:         exitCode,
 		StdoutDigest:     digestOfBytes([]byte(stdout)),

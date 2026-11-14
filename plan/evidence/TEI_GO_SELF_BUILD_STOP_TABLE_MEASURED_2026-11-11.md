@@ -32,9 +32,9 @@ child をラッパーにし、**報告JSONの1欄だけ**を壊しました。
 | 同じバイトを二回出さない | [止まる](TEI_GO_SELF_BUILD_REPRODUCTION_MISMATCH_SCOPE_2026-11-13.md)（`the two builds of the same plan produced different artifact bytes`） |
 | 二回の間に実行物を差し替える | [止まる／プロキシでは止まらない](TEI_GO_SELF_BUILD_CHILD_IDENTITY_SCOPE_2026-11-10.md) |
 | `-state`を無視して同じstateで二回buildする | [申告が正しければ止まらない](TEI_GO_SELF_BUILD_STATE_SEPARATION_SCOPE_2026-11-11.md) |
-| 計画と違うdefinitionを読んでbuildする | 未測定（child側の停止。§4.36） |
+| 計画と違うdefinitionを読んでbuildする | [止まる（child側。entryからは観測できない）](TEI_GO_SELF_BUILD_CHILD_DEFINITION_STOP_2026-11-13.md) |
 
-**「止まる」と書かれた行のうち、entry が見る側の4行はすべて実測済みになりました。** 残る1行は child 側の停止（§4.36）で、entry の検査ではありません。
+**「止まる」と書かれた行のうち、entry が見る側の4行はすべて実測済みになりました。** 7行のうち2行は child 側の停止で、entry からは「childが止まった」ことだけが見えます。
 
 ## 何を言っていないか
 

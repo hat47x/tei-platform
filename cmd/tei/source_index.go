@@ -84,12 +84,15 @@ func buildSourceIndexInspection(root, subjectKind, subjectID string) (any, strin
 		return view, resultModeIndex, nil
 	}
 
-	// Reuse the index built for this invocation, rather than reloading the
-	// Workspace and potentially mixing two different source snapshots.
-	subjects, err := operations.TraceSubjectSourcesFromIndex(index, sourceindex.Subject{Kind: kind, ID: id})
+	// A Source Index trace alone is not proof that a Canonical Subject exists:
+	// an unknown subject returns zero references. Reuse the existing canonical
+	// inspection on this SAME Load and Index before returning a successful
+	// subject view. Do not infer existence from paths or reference count.
+	inspection, err := operations.InspectionFromLoad(result, index, sourceindex.Subject{Kind: kind, ID: id})
 	if err != nil {
-		return nil, "", &sourceIndexStageError{Stage: sourceIndexStageBuild, Err: err}
+		return nil, "", err
 	}
+	subjects := inspection.Sources
 	// A subject with no Source references leaves References nil; write [] so
 	// both modes answer an empty list the same way (#3456).
 	if subjects.References == nil {
