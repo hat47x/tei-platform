@@ -808,3 +808,52 @@ P0 Studioの非Plugin Subject連結時は、`selected Builder`と`actual Child i
 **主線変更なし**：P0はTEI Studio Desktopのnon-Plugin正式Build SubjectからStage2 Consumerまで。RA-2P・FunctionContext被覆・REA Host Reader・実HTTP認可とContribution実用検収は並行。外部Release Readback／理想全Plugin Manager／WASM／Web共同編集／Seed Trust G4は、個別Ownerが別の必要性・実Evidenceを示すまでP0を止めない。
 
 **今回の作業範囲**：本書の受入・設計追補のみ（Go/PG/Windowsの新たな試験はNOT RUN）。#4644/#4646/#4647/#4648は**それぞれDraft・未main統合**で、各HEADのCI成功を本書のRuntime/Product E2E合格に移さない。main統合済み[#4645](https://github.com/hat47x/tei-platform/pull/4645)のScript Launch A0〜A4設計は既存Ownerの作業分解として活用し、ここから新Dispatcher/Run Engineを増やさない。
+
+---
+
+<!-- plugin-product-exit-attempt-lineage-20261114 -->
+## 25. 一つの製品実行に結ぶ最小検収：Attemptの系譜と役割別の実証
+
+本章は§21〜24、[役割別合成の設計 #4601](https://github.com/hat47x/tei-platform/pull/4601)、[段階別Contribution Reference #4646](https://github.com/hat47x/tei-platform/pull/4646)を、**実装の順序と独立Expectedに必要な観測**へ絞って接合する。新しいPlugin認定エンジン、Runtime、第二Resolver、第二Scenario正本を作らない。最初は実DBや公開Webを伴わないread-only Inspectorを使用し、三要素分析法のモデルは後続の異質Provider例とする。
+
+### 25.1 「同一Attempt」の意味を厳密化する
+
+「Stage1→Stage2を同一Attemptで検証」と略記する場合、全Processが一つのAttempt IDを共有するという意味ではない。Stage1、N0/N2/N3の各Builder、Stage2の実Process、WebView2の実Consumerには**それぞれの実行・読取時点**がある。検収するのは、**同じSource/Target/選択を出発点とした親子AttemptとArtifactの入出力が途切れずに結び付いていること**である。別HEAD・別Jobの成功の加算、事後のDigest一致による実呼出しの推定を認めない。
+
+既存BuildExecution／ArtifactSet／Receipt／Operation／Consumer観測を次の読取り専用の票へ投影する。列は正式な新API・Schemaの提案ではない。
+
+| 接続 | 必要な観測 | 失格または未証明 |
+| --- | --- | --- |
+| Q0 意図→選択 | HEAD、保存済みSourceのbyte／Workspace snapshot、Profile/Target、Contract/Scope、Provider/Builder選択epoch | Dirty Bufferと保存済みSourceの混同。Catalog掲載だけで選択済みとしない |
+| Q1 選択→実Builder | Resolver結果、Builder Artifact Pin、起動前のChild image byte、実起動主体/引数、Compiler Toolchainの実観測または未観測理由 | Caller Pin／Toolchain自己申告のみでOS実Execを証明しない（#4634/#4648） |
+| Q2 生成→次段の実消費 | N0生成TS→N2 selected input、N2 JS→N3 selected embed、role/path/digest、nested Go依存/OS/tags | CIコピー成功をCompiler read-time Source閉包と呼ばない（#4587） |
+| Q3 Stage1→Stage2 | Stage1 TEI実Processから発行されたBuilder実行、子ArtifactSet、Stage2 exe image、親子Receipt | RunnerがStage0 seedから別々に二回Buildしただけなら再入未成立 |
+| Q4 Stage2→実Operation | **生成されたStage2 exe自身**のHost selected ID・実Entry・typed Result/Failure、失効時の拒否 | 静的symbolだけで実Provider、Grant、適合性を保証しない（#1251） |
+| Q5 Operation→Consumer | 実Windows WebView2/StudioBridgeの受領、画面が使用したSource/Subject、配信Assetと実Method Call | 旧JS、別exe、server版でStage2の実Consumerを代用しない |
+
+### 25.2 必要なものの欠落と不要なものの混入を分ける
+
+P0は**固定Inspector Bが必要なStudio構成一つ**でQ0〜Q5を閉じる。必須ProviderがStage2から欠落すれば不適合。一方、Stage1だけで使うGeneratorはStage2に同梱されなくてよい。案件別Profileの「required / not-required」で未選択Provider Cの物理除外まで検査するのはP1とし（#4601/#1016）、固定参照構成の成功から案件別生成済みと推定しない。
+
+| Case | 差分・故障注入 | 独立Expected／担当 |
+| --- | --- | --- |
+| QX-01 | Selected BなのにActual Aが同じJSONを返す | Entry/Binding/epochの不一致を拒否。結果一致で相殺しない（#951/#1251） |
+| QX-02 | N0/N2は現版、N3が旧Embedまたは異なるRoleを収録 | selected inputと実埋込み/配信byteの不一致でQ2/Q5不適合（#4583/#1824） |
+| QX-03 | 非Plugin Studio Subjectを架空Pluginに偽装、またはNode/esbuildをBuild Intent外で起動 | Q0/Q1/Q3未成立。未対応はunsupportedを保持（#1080/#1097/#4583） |
+| QX-04 | Stage1のBuilderは適合するがStage2は旧exe、または実InspectorがBuiltinへfallback | 実Stage2 image・実Provider・実受領に基づいて拒否（#2831/#1251） |
+| QX-05 | 同じPlan/SourceでCompilerを変更しArtifact byteが変化 | Toolchain申告・再読取・OS Exec・Artifact Revisionを別記。旧資格を再利用しない（#2831/#2600） |
+| QX-06 | Source A→B→A、または未保存Buffer Bの表示中に保存済みAをBuild | Source byte／選択epoch／Attemptを再照合。古いPin・Evidenceを復活させない（#1016/#2582/#2044） |
+| QX-07 | ProviderのReadはpartial/RLSなのに画面は全件と解釈 | 実Read成功、取得被覆、現在Grant、開示を別判定（#2586/#2516/#1174） |
+| QX-08 | Stage1専用GeneratorはStage2に不在だが生成物は実使用／必須InspectorはStage2に不在 | 前者は正当な除外、後者は不適合。Build-timeとRuntimeのRequired閉包を分ける（#3278/#3267） |
+
+QX-01〜08は既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)へ渡す**未実行のシナリオ候補**。独立Expectedの新しい保管場所やRunnerではない。実装順はQ0/Q1のGo→Q2の生成と実消費→Q3 Stage1実再入→Q4/Q5 Stage2 Windows実Consumer。DB、Wails公開Web、REA外部Evidence、YIC Harness、外部Release、WASM、全Lifecycle GraphをDesktop P0の新Hard Gateとしない。
+
+### 25.3 採用・留保・引渡し
+
+1. Completedと宣言できるのは、対象範囲のQ0〜Q5実観測、独立Expected、親子Attempt系譜と必要な負例がそろった場合だけ。未観測・未対応を「問題なし」にせず、partial／unknown／unsupportedを区別する。
+2. #4634のBuilder pin、#4587の生成資産、#4648のToolchain、#4646のContributionは**別HEAD・別Subjectの限定Evidence**として保持。同じ実製品経路で再実行する前に一つの製品資格へ合算しない。
+3. 別Host・別Principalへの配備では現在Grant/Resource/Audienceを独立検証。ローカルStudioのno-authやread-only成功を共有Web／外部Harnessへ転用しない。
+4. P0＝非Plugin Studio Subject・実Builder→Stage1→Stage2→Windows実受領、およびInspectorの実Product配線。P1＝三要素分析法のモデルとrequired/not-required Profile別静的Composition。実DB/共有Web/AI連携/配布は既存Ownerの別資格。
+5. 共通化は必要な既存Contractの不足部分に限定し、万能Host・第二Build Runtime・第二Resolver・新Managerを実装しない。
+
+**状態**：本節は設計書のみ。QX-01〜08の新Go/Windows/Stage2試験、正式なOwnerによる意味受理はNOT RUN／NOT ACCEPTED。
