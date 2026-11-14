@@ -741,3 +741,74 @@ UIの状態は以下を別表示する。
 
 **実施状態**：本節は既存Issueおよび実Source構造に整合させた設計追補。新Graph UI、Markdown Parser、Source保存、可逆編集、実Windows WebView2、CLI↔Studio E2E、Owner意味受理は**NOT RUN**。実績として扱うには別途exact HEAD／実Consumer／独立Expectedが必要。
 
+---
+
+## 15. Desktopの起動・終了・再開を、保存済みの事実と画面の記憶に分ける（2026-11-14、設計・受入追補）
+
+<!-- tei-desktop-lifecycle-recovery-witness-20261114 -->
+
+§3.2の復旧原則、§8〜9のWindow/Component寿命、§13のBuffer・Source・Effect分離を、実Wails/Desktopで確かめられる**操作の時間軸**に接続する。最初の製品はGo＋Wails/WebViewの同一プロセス方式Aを基準とし、B0子Worker／B1 Server／B2別Workerはその比較対象に留める。プロセス管理・Draft復旧・副作用確定の新しい共通Engineを構築する提案ではない。
+
+### 15.1 現行コードで確認したことと、まだ保証できないこと
+
+現行mainの\`reference/tei-studio-workbench/main.ts\`では、\`pagehide\`時に\`disposed=true\`、\`responses.dispose()\`、Workspace／Inspect世代の更新、Command Panel／Graph／Editorの破棄を行う。この処理は**旧画面で後着Replyを採用しないためのUI側後始末**である。保存済みDraftの復元、実Go Operationの停止、既に送信されたEffectの取消し、Window再起動後のHost権限再取得までは保証しない。
+
+現行のWorkbench Editorは\`createReadOnlyTextEditor\`を利用し、Wails Bridgeに汎用\`SaveSource\`入口はない。したがって、現行read-only StudioにDirty Draft保存や終了確認が実装済みとは表示しない。外部SHO CLIへの\`OpenShoDocument/ResumeShoDocument\`も、StudioのEditor Session保存やTEI意味受理の代替ではない。Wails \`Run()\`の終了コード、\`pagehide\`発火、ユーザーがWindowを閉じた事実を相互に同一視しない。
+
+### 15.2 四つの寿命と、終了・再開時に持ち越す資格
+
+| 対象 | 寿命／Owner | 終了・再開時の判断 |
+| --- | --- | --- |
+| **画面の記憶**（タブ、Focus、未保存Buffer、Pin Intent、Panel状態） | Window／UI Session。現行の\`responseScope\`は当該画面のReply順序だけを管理 | 再起動で消える可能性がある。復元できても対象の現在資格・意味受理・Host Grantは復元されない |
+| **保存済み原文**（TEI Source／SHO Document／許可されたDraft） | 各Source/Document Writerが管理。保存前にRoot・基準byteを確認 | 再起動後は実Sourceを再Read。Draftが存在するなら出所／機密区分／基準版を確認して候補表示し、自動適用・自動Acceptしない |
+| **実行中のOperation**（CLI／Builder／Provider／外部SHO） | 既存Application Operationと実Host／Process／Effect Owner | Window消滅・Reload・Cancel UIと実処理停止を区別。実行が続いたか、終了したか、結果不明かは既存Attempt／Receipt／Provider観測で判断 |
+| **配布された実物**（Go exe、埋込みJS、Wails Runtime、Plugin選択） | BuildIntent／ArtifactSet、配布先OS、実Loader | Window再生成で別版Assetを読んだ可能性がある。実Consumerが用いたbyte／版とSource/Builderの選択を別票で確認。旧版の表示記憶を新版の証明にしない |
+
+「画面を復元できる」は「元の編集対象を現在も操作できる」と異なる。「実行できた」は「画面で結果を受け取れた」と異なる。説明文・通知・ログは、この区別に従って出す。
+
+### 15.3 起動・終了・再開の操作順
+
+**起動**：実exe/OS/Wails Runtimeと埋込みAssetを観測 → Hostが許可したWorkspace Rootを確定 → 現在のSourceを再読込 → WindowとWebViewを接続 → Catalog/Inspectの実Replyを画面に表示する。Workspaceの記憶や前回のPinは、Hostが現在のSource／開示資格を確認する前に「再接続済み」と見せない。複数Window・二重起動を許可するかは実要件が生じてから選定し、ローカルUIだけの排他をSource書換えの排他保証に使わない。
+
+**通常終了**：読み取り専用の現段階では既存\`pagehide\` cleanupで登録解除・破棄を確認する。書込みEditorを実装した後は、未保存Bufferの有無、保存可能なDraftの状態、実行中Operationをそれぞれ表示し、可能な範囲で保存／中止／終了継続の選択を明示する。OS強制終了やクラッシュでは確認ダイアログもcleanupも必ず実行できるとは限らない。したがって\`pagehide\`に永続保存や重要な効果の取消しを依存させない。
+
+**再開**：実Sourceと現在のWorkspace Rootを再解決 → 安全に保管されたDraftがあれば**復元候補**として別表示 → 旧BufferとSourceの差分・版競合を確認 → 必要なら明示的にReview/Apply。Pin Intentは復元してもよいが、新たにInspectしてSource／Grantを確認できるまで現在適格化しない。旧Preview・AI提案・Build成功・Provider成功を画面キャッシュから復活させない。
+
+**通信断・応答喪失**：UI側の取消しや\`responses.dispose()\`は**描画への採用停止**であって、Hostの実行取消しではない。すでに送出されたEffectの状況はOperation Identityを用いて既存Receiptをlookup-firstで確認し、\`unknown\`なら自動再Submitしない。参照系の安全な再取得と、書込みを伴う操作の再試行を同じ挙動にしない（#1174／#1129）。
+
+### 15.4 保存しないもの／独立して確認するもの
+
+初期実装では、永続化対象をむやみに増やさない。画面配置・Theme・Pinの**選択意図**などはUI設定の候補になり得るが、Credential／Grant／Source本文を無条件に永続化しない。Draft保存が未実装なら、それを明示する。セキュアな保存先・所有者・削除／再開仕様が確認できるまでは、便宜的な平文自動保存を導入しない。
+
+保存済みDraftを復元できても、外部SHOの保存・TEI Source Loaderの受理・意味のOwner受理・Source Index・Builder入力の実消費・実DB Effectを自動的に成立させない。AI OFFでも、実装済みの参照・原文操作を利用できることを優先する。Plugin／Runtime／UI Kitを更新した場合も、旧画面に残っていたFunction名／Provider選択を実装済みのまま復元せず、現在の選択事実と適合を再照合する。
+
+### 15.5 性能と障害耐性は一つの「Desktopは高速」という数字にしない
+
+最初の測定は、同じ公開合成Workspace・Source Revision・OS環境・起動方法を使い、**起動 → Catalog/Inspect → UI表示**までの区間を分ける。
+
+| 測る区間 | 記録するもの | 誤って主張しないこと |
+| --- | --- | --- |
+| OSによる実exe起動 → Go Host初期化 | cold/warm、OS/Arch/Process、Go・Wails版、RSS/CPU | 「画面を使える状態になった」とは別 |
+| WebView2起動 → 実Bridge接続 | 実Asset digest、WebView2版、Wails RPCの開始/終了 | HTML配信200を操作成功へ代用しない |
+| Source Index／Host Inspect → WebView表示 | Required/Loaded/Partial、実Response・到達時刻、DOM/ARIA表示、p50/p95 | UI表示の速さをSource完全性／Disclosureへ代用しない |
+| Input → Feedback／診断／再投影 | キー入力・IME確定、巨大モデルの再描画、メモリ伸長 | チャート表示成功を意味のEditor適用・保存成功へ代用しない |
+| Window Close／再開・異常終了後 | Resource／Handler解放、旧Reply採用数、実Source再Read、未確定Operationの照会 | Window消滅をEffect取消し、復帰を前回状態の権限維持としない |
+
+p50/p95/p99の採用や仮想化／遅延読込は、まず実測で遅い区間を特定してから選ぶ。画面上のモデル件数／図形数、Source Indexの構築、Provider Read、描画を切り分け、早い段階で一律の性能閾値や第二Indexを固定しない。A方式とB0/B1/B2の比較は、同じOperation・実Consumer／障害条件で行い、通信方式の違いに意味実装を重複させない。
+
+### 15.6 製品受入への引渡し（既存DS/DT/UX・Scenarioを使用）
+
+| 受入補助ID | 操作と一因子反例 | 観測するExpected／責任分界 |
+| --- | --- | --- |
+| **DL-01 実起動** | 許可Workspaceで実exe起動 → 実Window/WebView2 → Host Catalog/Inspect | 画面に実Replyを受領。静的Asset閲覧・Go直呼びだけでは不合格。#1824 |
+| **DL-02 画面破棄** | Inspectを開始 → \`pagehide\`／Windowを閉じる → 旧Reply到着 | 旧画面への採用0。Host Command取消し・Source変更は推定しない。#1824／#4515 |
+| **DL-03 再開と同名Workspace** | AでPin／Draft候補 → 閉じる → 同名IDの別Root Bで再起動 | 元AをBへ自動束縛0。Draftを自動Apply/Acceptせず、現在Grant不明はunknown。#4515／#2621／#2516 |
+| **DL-04 強制終了** | 未保存Bufferを含む将来の書込みEditorを強制終了 | \`pagehide\`や確認ダイアログを必須前提としない。復旧対象の有無を正確に表示。保存未実装なら保証しない。#1124／#2621 |
+| **DL-05 作用の不明状態** | 実行送信直後に応答喪失、Window／Worker終了 → 再開 | 同一OperationのReceipt照会が先。unknownから自動重複Submit 0。#1174／#1129 |
+| **DL-06 Asset版変更** | 起動中のUI Kit/Plugin/生成Assetを更新し再起動 | 実消費Asset／選択Pluginを別記録。旧Preview/Pin/Grantを自動昇格しない。#1824／#2831／#4583 |
+| **DL-07 OS・性能区間** | cold/warm、通常終了・強制終了、IME入力、要素多数／少数 | Host／Bridge／Index／描画の各時間・RSS/CPUを分けて観測。しきい値は測定後に決める。#1824／#2391 |
+
+**最短順**：まず既存のread-only WorkbenchでDL-01/02を実Windows Window＋Source-backed Hostとつなぎ、現行cleanupの資格を実測する。DL-03〜06は書込みEditor／Draft／実Effectが実装される段階で、それぞれのOwnerに引き継ぐ。DL-07は方式Aの基準値を取り、Worker/Serverを採用する根拠が生じたときに比較を拡張する。P0の正式non-Plugin BuildIntent→Stage1→Stage2／当該Windows WebView2実使用を新しい復旧基盤の完成待ちにしない。
+
+**実施状態**：現行コードの静的読取と既存Issueの責務を照合した**設計追補**である。新たな実Windows起動／強制終了／復旧／機密Draft保管／Performance E2E・Owner受理は**NOT RUN**。DL番号は第二のScenario正本ではなく#1180／#2514・既存DS/DTへの引渡し用である。
+
