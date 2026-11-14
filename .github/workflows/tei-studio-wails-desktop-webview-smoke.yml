@@ -160,6 +160,15 @@ jobs:
           python cmd/tei-studio/test/desktop_webview_smoke.py $env:STUDIO_DESKTOP_EXE $env:STUDIO_SMOKE_EVIDENCE_DIR
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      # A second launch of the same executable on the synthetic three-view
+      # Workspace. It runs after the Workbench smoke has closed its window.
+      - name: Open the three-view page in the Desktop WebView2 window
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python cmd/tei-studio/test/desktop_three_view_smoke.py $env:STUDIO_DESKTOP_EXE (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'three-view')
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Upload WebView2 Workbench observations
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

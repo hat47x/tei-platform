@@ -25,8 +25,10 @@ func TestStudioBridgeRegistersEveryClientMethod(t *testing.T) {
 	}
 
 	names := map[string]bool{}
-	{
-		body, err := os.ReadFile(filepath.Join(root, "assets", "client.mjs"))
+	// The three-view page has its own port module, so that adding it does not
+	// change client.mjs, which the generated Workbench bundle embeds.
+	for _, port := range []string{"client.mjs", filepath.Join("three-view", "client.mjs")} {
+		body, err := os.ReadFile(filepath.Join(root, "assets", port))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -84,6 +86,6 @@ func TestStudioBridgeRegistersEveryClientMethod(t *testing.T) {
 		if _, exempt := goFacingOnly[name]; exempt {
 			continue
 		}
-		t.Errorf("main.StudioBridge.%s is registered but assets/client.mjs never names it", name)
+		t.Errorf("main.StudioBridge.%s is registered but no assets port module names it", name)
 	}
 }

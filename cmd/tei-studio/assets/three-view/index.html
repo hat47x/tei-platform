@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TEI Studio — 三視点（読取り専用）</title>
+  <style>
+    :root{font-family:system-ui,sans-serif;color-scheme:light dark}
+    body{max-width:1100px;margin:2rem auto;padding:0 1rem}
+    .controls{display:flex;gap:.65rem;align-items:center;flex-wrap:wrap;margin:1rem 0}
+    select,input,button{font:inherit;padding:.45rem}
+    button{cursor:pointer}
+    .views{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}
+    .views section,.panel{border:1px solid #8886;border-radius:.5rem;padding:.75rem}
+    .views ul{list-style:none;margin:0;padding:0}
+    .views li{margin:.3rem 0}
+    .views button{width:100%;text-align:left}
+    .views button[aria-pressed="true"]{outline:2px solid currentColor}
+    .nested{margin-left:1rem}
+    .panel{margin-top:1rem}
+    table{border-collapse:collapse;width:100%;margin:.5rem 0}
+    th,td{text-align:left;border:1px solid #8886;padding:.35rem;overflow-wrap:anywhere}
+    .note{font-size:.9rem;opacity:.8}
+    #state{min-height:1.5rem}
+  </style>
+</head>
+<body>
+  <h1>三視点（読取り専用）</h1>
+  <p class="note">X-TEA設計Sourceを、Hostが選択した三視点Pluginで読み取った投影です。編集・保存・受理・実行はありません。各要素の「候補」はPluginの読みであり、受理済みの意味ではありません。</p>
+  <div class="controls">
+    <label for="workspace">Workspace</label>
+    <select id="workspace" aria-label="Workspace"></select>
+    <label for="source-path">Source</label>
+    <input id="source-path" value="design/order.xead" autocomplete="off" size="28">
+    <button id="navigate" disabled>読み取る</button>
+  </div>
+  <p id="state" role="status"></p>
+  <p id="coverage" class="note"></p>
+  <div class="views">
+    <section aria-labelledby="h-data"><h2 id="h-data">Data</h2><ul id="view-data"></ul></section>
+    <section aria-labelledby="h-function"><h2 id="h-function">Function</h2><ul id="view-function"></ul></section>
+    <section aria-labelledby="h-business"><h2 id="h-business">Business</h2><ul id="view-business"></ul></section>
+  </div>
+  <div class="panel" aria-labelledby="h-pin">
+    <h2 id="h-pin">固定した対象</h2>
+    <p id="pin-state">固定していません。</p>
+    <button id="pin" disabled>選択中の対象を固定</button>
+    <button id="unpin" disabled>固定を解除</button>
+  </div>
+  <div class="panel" aria-labelledby="h-focus">
+    <h2 id="h-focus">選択中の対象</h2>
+    <div id="focus"><p class="note">対象を選択してください。</p></div>
+  </div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

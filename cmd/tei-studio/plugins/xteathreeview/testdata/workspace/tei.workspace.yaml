@@ -1,0 +1,4 @@
+workspace: xtea_three_view_synthetic
+formatVersion: 1
+sources:
+  - design

@@ -1,0 +1,17 @@
+<System FormatVersion="1.2" Name="Synthetic three-view sample">
+  <Table ID="T-ORDER" Name="Order">
+    <TableField ID="FLD-ORDER-NO" Name="OrderNo"/>
+    <TableField ID="FLD-ORDER-DATE" Name="OrderDate"/>
+    <TableKey ID="KEY-ORDER-PK" Type="PK">
+      <TableKeyField FieldID="FLD-ORDER-NO" SortKey="1"/>
+    </TableKey>
+  </Table>
+  <Function ID="FN-ORDER-ENTRY" Name="Order entry">
+    <IOTable ID="IO-ORDER" TableID="T-ORDER" OpC="+" OpR="+"/>
+  </Function>
+  <Task ID="TASK-RECEIVE" Name="Receive order">
+    <TaskAction ID="" Name="Enter the order">
+      <TaskFunctionIO FunctionID="FN-ORDER-ENTRY" IOID="0"/>
+    </TaskAction>
+  </Task>
+</System>

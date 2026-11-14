@@ -132,7 +132,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          CGO_ENABLED=0 go test -mod=readonly -count=1 -tags server .
+          CGO_ENABLED=0 go test -mod=readonly -count=1 -tags server ./...
 
       - name: JS Bridgeの試験
         shell: bash
