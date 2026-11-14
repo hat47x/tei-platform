@@ -20,9 +20,9 @@
 
 ## 同じ生成Binaryへの実行時Query
 
-生成Goの`main`は、引数を付けない場合に従来どおり全NodeとEdge IDの一覧をJSONで返す。`-node n-1`または`-node n-2`を与えると、そのNodeの結果だけを返す。**存在しないNode IDや余分な位置引数は、空配列や全件への暗黙Fallbackとせず、非ゼロ終了で拒否する。**
+生成Goの`main`は、引数を付けない場合に従来どおり全NodeとEdge IDの一覧をJSONで返す。`-node n-1`または`-node n-2`を与えると、そのNodeの結果だけを返す。**存在しないNode ID、明示した空のNode ID、余分な位置引数は、空配列や全件への暗黙Fallbackとせず、非ゼロ終了で拒否する。** Node指定を省略した全件取得と、`-node ""`／`-node=`の明示空文字列は区別する。
 
-`rule_test.go`では、固定済みの有効な各Source候補から生成したGoを**一度だけ`go build`**し、その同一Binaryに5通り（全件・Node二件・未知Node・余分な引数）の要求を送る。Node別出力と全件出力を既存の独立Expected候補と照合し、呼出し前後の**実BinaryのSHA-256が不変**であることを確認する。これはCallerの入力で振る舞いが変わる最小の証拠であり、Source変更による再生成や固定JSONの書出しとは分けて扱う。
+`rule_test.go`では、固定済みの有効な各Source候補から生成したGoを**一度だけ`go build`**し、その同一Binaryに7通り（全件・Node二件・未知Node・明示空ID二方式・余分な引数）の要求を送る。Node別出力と全件出力を既存の独立Expected候補と照合し、呼出し前後の**実BinaryのSHA-256が不変**であることを確認する。これはCallerの入力で振る舞いが変わる最小の証拠であり、Source変更による再生成や固定JSONの書出しとは分けて扱う。
 
 ここでの`-node`は**生成したReferenceプログラムの検証用引数**であって、製品`tei` CLIの公開Command名、Function Entry、Host選択済みProvider、Application APIの正式Contractではない。同じBinaryへの複数回の実行と、異なる製品Consumerが同じProviderを呼び出したことは別の資格である。次段では、受理済みMeaning/Source Revision、契約と選択Provider、実Builder/Artifact、実CLI/独立Consumerの呼出しを既存#4495/#1251/#951/#2600に従って一貫して照合する。
 
