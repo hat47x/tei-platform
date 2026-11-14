@@ -534,6 +534,62 @@ D1以前の評価は代表操作「Subject Catalog→明示Pin A→B編集→A�
 
 **今回の反映はdocs-only**。複数Git worktreeと複数DBの操作、公開Serverの認証/隔離、React/Lit比較、WASM実測、正式Stage1→Stage2 Self-build、Owner承認は実行・受理していない。
 
+
+### 0.14 第14次横断統合：Desktopの共通Backend・日常操作・TEI-native自己構築を一本の製品契約へ（2026-11-15）
+
+この節は§0.6〜0.13とADR-0048を置き換えない。Studio固有の新Host/Runner/Registry/認可Core/第二Source正本/新Test Gateを作らず、既存の #1824（Desktop）、#3421（共通API/Host Adapter）、#4515（対象Pin）、#2831/#4583（セルフビルド）、#1180/#2514（独立Expected）、#4495（公開Entry/実Provider）に実装・検収を割り付ける。
+
+#### 0.14.1 現在の主線と受入資格
+
+1. **製品Desktopの最優先**は、既存Windows native Wails＋生成Inspectorの同一HEAD局所検証を保ち、非Plugin Desktopの正式Build Subject/BuildExecution/ArtifactSetを既存Build経路へ接続し、生成Stage1の実TEI Process自身がStage2 Windows Desktopを構築し、**そのStage2成果物**をWebView2で実利用する #2831/#4583 B1→B2→B3。別HEAD・別Attemptの成功を加算しない。
+2. [#4587](https://github.com/hat47x/tei-platform/pull/4587) exact HEAD `9b58533df8764a74c578d478d8c6ee92a382642e` で、生成版・通常版のWindows WebView2 JobがともにsuccessとPR本文に報告されている。H0/H1の局所Artifact Handoffと実Windows Consumerの証拠を保持する一方、**non-Plugin BuildIntentの全工程、Stage1→Stage2 Desktop、Stage2自身の実WebView2は未受入**。[#4623](https://github.com/hat47x/tei-platform/pull/4623) はPlugin主体のResolver-selected Builder→実Child起動前pinの限定CI、[#4624](https://github.com/hat47x/tei-platform/pull/4624) は宣言/Resolver返答の不一致拒否の限定実装であり、Desktopの資格へ転用しない。いずれもDraftである。
+3. **TEI-native自己構築は独立した並行P0**。[#4720](https://github.com/hat47x/tei-platform/pull/4720)の方針どおり、CLIで`*.tei.md`の図表・Ruleが実判断ロジックを生成し、生成Pluginが次世代で実利用され、手書き・重複定義が減ることを検査する。Goへの単純委譲、生成行数、Build Green、GUI完成を自己構築の代理にしない。Desktop再構築が初回CLI-native実証の前提でも、CLI-native生成がB1→B3を自動成立させるわけでもない。
+4. **Script/Entry実起動は別の並行P0**。[#4495](https://github.com/hat47x/tei-platform/issues/4495)／[#4702](https://github.com/hat47x/tei-platform/pull/4702)のSL-1a〜cを採用し、型付きEntry→現在Grant→選択Providerの実呼出しを通常`tei` CLI別OS Processまで検収する。生成Referenceの成功を実Hostの呼出しや業務完了に昇格させない。
+5. 本節で新しいGo/Node/Windows/DB/Plugin/CLI試験は実行していない。各既存PRのCI報告はその**exact HEAD/Attemptに限定**し、Owner正式受理・main統合・製品全体のPASSを主張しない。
+
+#### 0.14.2 共通Application APIとBackendの配置
+
+- ADR-0048の方向 **CLI・MCP・Web・Desktop Adapter → 共通の型付きOperation → 既存Semantic/Source/Plugin/Execution Owner** を維持する。共通化は同じ中央Processを要求せず、UI/Transport/OSの事情を意味モデルへ逆流させない。まず既存`internal/operations`のcatalog/inspect/trace/validateを利用し、別の万能Dispatcher/巨大Envelopeを先に設けない。
+- **現行基線**は通常CLIのGo in-process呼出しと、StudioのWails native同一Process Bridge。CLIにWails依存やローカルHTTPサーバーを持ち込まない。子Backend化は対象操作・実測に基づく**並行比較**であり、#4583 B1→B3の新Hard Gateにしない。
+- **子Backendの検証候補**は、必要な場合に同一Go executableの明示subcommand/子Processを起動し、型付きOperationをIPCに投影する構成。起動時の実image/argv、protocol version、Workspace/root allowlist、Child Session、Request ID/期限、Effect不明、再起動時の照合を観測する。stdin/stdoutを使う場合はmessage framingとlog分離を明示する。これは未採用の検証候補であり、同一UIDの子ProcessをOS強制sandboxや新Authorityと呼ばない。
+- CLIは**Local（既定）／Remote（明示接続先）**を分ける。Hybridは後続の明示選択に限り、remote通信断で黙ってlocalへ切替えない。CLIが同一executableの短命子Backendを利用する方式も比較できるが、通常CLIのDirect Operationを置き換えるかは起動/往復/失敗時の実測で判断する。Harnessはセッション再利用を検討してよいが、それを常駐TEI Hostの必須化としない。
+- 起動のUI表示は **Shell初期化 → Core呼出し可能 → Workspace/Source/選択Plugin解決 → Workspace利用可能** と段階化する。例示`CORE_READY`/`WORKSPACE_READY`は**既存事実を示す画面Projection**であり、新しいCanonical State enumではない。Core可用性≠個別Workspace、Plugin、Grant、業務Effectの資格。未解決Pluginを別Providerへ自動fallbackしない。
+- **寿命を分ける**：Desktop Window／Backend Session／Workspace selection／Editor buffer／Operation Attempt／Build Attempt／実行中Artifact。Window再表示やBackend再起動が、旧Request・旧Build・旧Grantを復活させない。Write/Effectの通信断は成功・Rollback・再送可能のどれとも自動判断せず、既存Receipt/Recoveryへ委譲する。
+
+#### 0.14.3 Desktopの操作面：対象を固定してSourceへ戻れること
+
+1. **Viewer Selection**：Focus、Tab、Pane、Diagram Selection、Caret/IME、Dirty Buffer、比較表示をWorkbenchが所有。**Pinned Target**はFocusと独立し、AI/編集/ビルド対象を明示する。
+2. **Host-resolved Context**：Workspace/root、worktree、Source occurrence/Canonical Subject、Source Revision・World/Model fingerprint、Environment/DB instance、Provider/Target、現在Scope/Grantは既存Ownerが解決する。UIのBranch名やDB alias、Graph上のlabel・Relation IDは実対象/権限を確定しない。
+3. **Frozen Operation/Build Attempt**：開始時に実Source bytes、Build/Entry/Plugin Contract、Builder/Provider、実Process/argv、Artifact role/byte、実Consumerと結果を既存Receipt/Evidenceへ束縛する。ただし開始時固定だけでread-time全依存閉包・完了時Grant・Effectの独立観測を証明しない。
+4. A→B→A、別Window後着、別Workspace同名ID、未保存Buffer、外部Editor保存、Git force-push、DB alias差替えを既存PIN/DT/ED/SCX試験で拒否確認。**古いAの応答は元のActivity/Attemptに保存してよいが、現在BのEditor/DOM/ARIA、Pin/Grant/Build Previewを上書きしない**。
+5. 画面は左Workspace・中央Editor/Graph/Table/Document/SQL/Processの用途別Projection・右Inspector（Identity/Source/Meaning/Evidence/Action）・下Activity/Diagnostic/Buildを基本とする。Markdown/Graphviz/関数チェーン等の糖衣表現は元表現を保存し、表示・解析・生成は標準構造に接続。書戻しはSource上の明示Patch→Diff→再Parse/再検証で成立した形式から有効化し、表示図の座標や形式差を勝手にCanonical Meaningへ取り込まない。
+6. AI/Harness・SHO・SUIは同じSubject/Operation/Source参照・Proposal/Review/Receiptを引き継ぐ。ただし各製品の編集体験、Source受理、開示、Host GrantはそれぞれのOwnerに残す。AI候補、Selection、byte一致をOwner受理/実行許可に昇格させない。初回Dogfoodは**AI OFFでもSource発見→原典復帰→Inspect/Validate→Build Evidenceが完結する**ことを基準にする。
+
+#### 0.14.4 PluginとWeb公開境界
+
+- PluginはLanguage、Operator Contract/Provider、Data Provider、Target Generator、およびUI Contributionを既存の契約・Lock/ArtifactSet・Capabilityへ接続する。**Pluginの発見→選択→実ロード→実呼出し→Consumer利用**を別々に観測する。UI Contributionの登録や生成TSの存在だけでPluginが実動作したと扱わない。Plugin自身のTEI-native生成比率は#4720で継続評価する。
+- Studio Native、SHO standalone、生成Desktop TargetはUI部品を共有できても、公開Operation、権限、Plugin BOM、更新・配布を無条件に共有しない。外部業務Host（.NET/Java等）の意味/認可/実行をStudio内蔵TEI Hostで置き換えない。
+- 現`StudioBridge`にはCommand/SHO等の作用系Exportもある。**Wails Serverで同一Serviceを公衆Webへ丸ごと公開しない**。最初のWeb試作はread-only操作を明示したFacade/Adapterに限定し、実Method/WS到達、Host Session、Actor、Workspace、現在Grant、Origin/CSRF/CORS/Disclosure、通信断を別検収する。Wails Service method inventoryの限定PASSは、外部Web公開の安全性ではない。
+- 現Workbenchのplain TypeScript＋CodeMirror＋esbuildを性能・操作の基線とする。React/Lit/Go-WASMをP0の必須移行にしない。IME・Pin・ARIA・Graph/Editor・bundle・再生成・実WebView2を同じFixtureで実測し、優位な部分だけ変更する。Wails betaから安定版への移行は互換/セキュリティ受入の独立レーンで、既存実Windows試験の版を無断変更しない。
+
+#### 0.14.5 実装順・負例・引継ぎ
+
+| 並行レーン | 次の最小作業 | 完了条件と担当 |
+| --- | --- | --- |
+| **P0 Desktop Build（主線）** | #4583/#2831でnon-Plugin Build Subject→N0生成Inspector→N2選択esbuild Input→N3 Go embed/実Wails exeのBuilder/Artifact roleと実Invokerを一Attemptに接続し、Stage1実TEI→Stage2 Windows→当該Stage2実WebView2へ | #4587のH0/H1局所CIを保持。非PluginをPluginへ偽装せず、Declared/Observed/Enforcedとread-time unknownを分ける。#1180/#2514の独立Expected |
+| **P0 CLI-native/Entry（並行）** | #4720のGraph/Rule→生成Go判断→生成Plugin実Consumer→次世代TEI再生成、#4495の公開Entry→実Provider→通常CLI別Process | 実意味差分・拒否分岐・Plugin実利用、手書き/重複定義・変更負担を測定。Mock/Go delegateは合格としない |
+| **P0 Desktop UX/API（並行・非阻害）** | #1824/#3421/#4515で同じ固定Workspaceの`inspect`/`validate`を直接Operation・既存Wails Bridge・実Windowで比較し、Subject A→B後着/Dirty/Pinを実試験。必要なら短命子Backend版を別Attemptで比較 | 既存ADR-0048 T01〜T13の該当項とPIN/DT票を再利用。直接API・CLI/MCP・実Wails/IPC・子Backendの**各資格を独立記録**。新番号やServer必須化なし |
+| **P1 開発体験・Plugin/UI** | Source原文へ戻るInspector、Patch→Diff→Validation、Plugin UI Contribution、SHO/SUI/Harness handoff | 保存できる表現とread-only表示を区別。AI OFF/未解決Source/旧Reply/Undo/IME/ARIAを検証 |
+| **P2 Web/複数対象** | §0.13 D1二Worktree×二DB read-only→D2限定Web Host→D3共有SaaS | 別Principal/Workspace/DB/Artifact越境拒否。P0 Desktop Buildの先行条件にしない |
+
+**既存受入票への追補のみ**：旧応答が新Focus/Pinへ採用される、Source A→B→Aで旧資格が復活する、保存済みAとDirty Bを混同する、選択Builder/Provider Bと実Invoker Aが違う、N2のJSとN3実embedが違う、子Backend切断後にWriteを自動再送する、Wails Serverで作用系Methodを公開する、Generated TS/Pluginの存在だけで実利用をPASSにする、を拒否する。新しい独立Test SSOTを作らない。
+
+**性能・再現性の観測**：起動（Window/Go Core/必要Pluginを分離）、初回と温WarmのCatalog/Inspect/Validate、IME/CaretのBackend非依存性、Direct/IPCの往復と子起動、増分Build、Stage2実Consumerの受領、CPU/メモリ、Source変更後の診断までを、同一Fixture・同一Machine/Toolchain/Source Revision・exact binary digestで対照。初期値を測る前に恣意的な性能閾値を正式Gate化しない。
+
+**Owner判断へ戻す事項**：子Backendの標準採用条件、Studio/Web/SHO間の公開UI Contribution境界、実更新・Plugin配布のAuthority、書込みProjectionの可逆性条件、性能SLOは実測後に決める。いずれもB1→B3・CLI-native生成の現在P0を止める理由にはしない。
+
+**本追補の資格**：Docs-onlyの設計・計画への接続であり、製品Go/Node/Windows/CLI/Plugin/Web/DBの新実行・独立Expectedの新PASS・Owner正式受理ではない。
+
 ## 1. 位置づけと判断済み前提
 
 - **TEI Studio**はData/Function/Business三視点、Data Context、Source/Meaning、DBクライアント、Plugin、テスト、SHO文書機能への統合Workbench。
