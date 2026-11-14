@@ -857,3 +857,49 @@ QX-01〜08は既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)�
 5. 共通化は必要な既存Contractの不足部分に限定し、万能Host・第二Build Runtime・第二Resolver・新Managerを実装しない。
 
 **状態**：本節は設計書のみ。QX-01〜08の新Go/Windows/Stage2試験、正式なOwnerによる意味受理はNOT RUN／NOT ACCEPTED。
+
+
+## 25. 2026-11-14：Query生成CLIと正式Sourceの接続、取得範囲・Build実体・外部Harnessの受入
+
+### 25.1 「Sourceを使った」の内訳を揃える
+
+[生成read-only CLI Draft #4559](https://github.com/hat47x/tei-platform/pull/4559)では、browsegenが既存Workspace/Driverでrecent_ordersのSQL Sourceを読み、PostgreSQL向けCLIとmanifest/binary digestを結ぶ。Target不適合を生成前に拒否し、未生成要素を理由付きで列挙する。ただし当該DraftのSourceではfrom入力が**未宣言**で、manifestはinputDeclaration=undeclared、生成CLIの入力は文字列引数である。
+
+[RA-0 Source #4626](https://github.com/hat47x/tei-platform/pull/4626)の現在Sourceはinput from std.datetimeを宣言し、[RA-1 #4631](https://github.com/hat47x/tei-platform/pull/4631)は実Executor前にGo time.Timeを検証する。[統合CI Draft #4644](https://github.com/hat47x/tei-platform/pull/4644) HEAD b5c23044ebaf8671d73a140da92fc9c4d74edff4 はRA-1 Go／歴史Web／RA-2使い捨て実PostgreSQL16を同じ仮統合HEADで試験し、**3/3 Workflow success**。これも通常tei CLI・Product Provider・二Consumerの受理ではない。
+
+したがって**#4559の未宣言Sourceによる生成成功を、#4626の型付きCurrent Sourceから生成したアプリの成功に読み替えない**。次の小さな縦断試験は、(1)実Source ID/Revision/raw bytesとSQL Member・補助.sql digest、(2)input from/std.datetimeのTypeとTarget Adapter変換、(3)実Generator→Binary/manifest digests、(4)正しいGo time.Timeでの実Provider Callと不正入力Call 0、(5)同じ使い捨てDBに対する独立Expected、(6)生成CLIと通常tei CLIそれぞれの実Invocation/Receiptを別票で結ぶ。第二Source Parser・第二Function Runnerは追加しない。
+
+### 25.2 SQLのRead成功・必要範囲・開示資格を直交させる
+
+[FunctionContext Draft #4647](https://github.com/hat47x/tei-platform/pull/4647) HEAD a962a3f6b13c58d93ad740998e5d94728c53e88d は**7/7 Workflow success**。native SQLではRLS/LIMIT/未宣言Relation等の可視の制限をpartial、制限が見つからなくてもunestablishedとopen（native-sql-predicate-not-closed）を維持し、complete/EmptyJustified=trueを決して出さない。STABLE SQL Function内に隠れた条件は独立負例となる。
+
+次を別々に判定する：**値の正しさ**（同じSource/DSN/Role/Snapshotと独立Read）、**範囲の正しさ**（RLS・関係・WHERE・粒度・未取得・欠損の閉包）、**開示の正しさ**（現在Actor/WorkspaceへのRow/Column/Source/Error・Tool情報の実送信Byte）。結果が0行でも存在しないとは自動推論しない。必要集合の定義、構造化Queryのcomplete採否、W4列由来・主キー型の扱いは#2586 Ownerが別決定する。
+
+### 25.3 ToolchainとState Observationも再現・隔離の証明ではない
+
+[Toolchain Draft #4648](https://github.com/hat47x/tei-platform/pull/4648) HEAD 64fb0f9abdf1a8cf947a844a973eb6d48685623f は**8/8 Workflow success**。Builderが申告したGo実行ファイルをEntryが再読しmatched/mismatched/unreportedを記録するが、matchedはOSがそのCompilerを実起動した証拠ではない。Toolchainは現Build Planの正式Pinでもなく、同じPlanでも別Compilerによる別Artifact Byteとl2b.claimed=trueが両立する。
+
+[State観測 Draft #4537](https://github.com/hat47x/tei-platform/pull/4537)のeffect-observedはStateへの実書込みを表すが、初回Stateを二回目にコピーするChildの隔離違反を見逃す負例が存在する。declared-onlyでも現l2b.claimedはtrueになり得る。**観測した実Effect・同Byte再現・OS隔離・Seed Trustは別資格**。#4648と#4537はcmd/tei/cli_self_build.go、cli_self_build_outer.go等が競合するため、Ownerが統合順を決めた同一HEADでGo/opt-in実Childの再検収が必要。#4486の隔離と#2831/#1119のToolchain Plan入力化を既定要件として先取りしない。
+
+Studio P0の同一Attemptには、正式non-Plugin Subject→Builder/実Child→実Toolchain Observation（不明ならそのまま）→State Effect/未隔離範囲→N0/N2/N3実Source/Member→Stage1実Process→生成Stage2実Windows Consumerを独立Receiptで繋ぐ。新中央Runner、TEI専用Host、第二Artifact Storeを作らない。
+
+### 25.4 YIC/AI HarnessでのConsumer境界
+
+YIC Harness/SkillでTEIの候補や実結果を扱う場合も、Tool起動成功、TEI Hostの現在Grant、ReadしたSource/DBの取得範囲、送出したResult/Error/Source位置、外部Agentが実受領した内容、Owner正式意味受理を**別Witness**にする。YIC SessionをTEIの第二Host/認可/Source正本にしない。Source RevisionまたはCurrent Grantが変わったら、同じDigestの古いPreviewやAI Candidateを別Actorへ自動転用しない。
+
+### 25.5 次の実装・統合Case（NX-01〜08）
+
+| Case | 負例と停止線 | 正本Owner |
+| --- | --- | --- |
+| NX-01 Source World | undeclared :from生成CLIをtyped Current Query成功と称する→Source Revision/宣言が異なる限り拒否 | #1121/#2586 |
+| NX-02 入力境界 | fromへ欠損・整数・NULL/曖昧な文字列→Type Adapterの明示契約がなければExecutor Call 0 | #4559/#4631/#4495 |
+| NX-03 偽complete | hidden STABLE Function predicateやRLSを見落とす→native SQLはpartialまたはunestablishedを維持 | #2586/#4647 |
+| NX-04 Reply失効 | Read後/返却前にGrant失効→実Receiver Byteに秘密Row/Source/Errorを出さない | #1174/#1178/#3421 |
+| NX-05 Compiler偽装 | Builderが申告A、実起動B→matchedだけではactual compiler資格にならない | #2831/#1119 |
+| NX-06 State偽隔離 | 初回Stateを二回目へコピー→effect-observedだけで隔離PASSにしない | #4486/#4537 |
+| NX-07 構成と実用 | Referenceで選択B、Targetで旧A Runtime/Asset使用→選択/包含/実Call/受領を別検証 | #951/#1016/#1251 |
+| NX-08 Harness情報漏洩 | 未許可AI ToolへProducer Error/Evidence位置を送出→現在Audienceと実送信Byteで拒否 | #2515/#1178/#3394 |
+
+**実施順**：RA-0のE1 API Binaryリンク閉包失敗は#1182で原因を切り分け、#4644の修復済み型付きSourceで再検収した後、#4559のGenerated CLIを同じSource/型で作り直す試験へ進む。RA-2P Product CLI/RA-3二Consumerは#2586の既存実装経路で別受理。Buildは#4648と#4537の同一HEAD再検収を行いながら、#4583のnon-Plugin Studio→Stage2を先行する。#4646のContribution Referenceは計画選抜の補助であり、実Plugin ABI/Current Grantを意味しない。
+
+[Script Launch計画 #4649](https://github.com/hat47x/tei-platform/pull/4649)は**main merged**。これはA0〜A4/Query/Buildの設計・Owner分割であり新Product入口実装ではない。**本節はDocs-only。新Go/PG/Windows/AI Consumerの実試験、正式Source/Meaning受理とPR MergeはNOT RUN。**
