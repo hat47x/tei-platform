@@ -68,3 +68,20 @@ test("PIN-WIRING-03: explicit buttons are wired and have exactly one correspondi
 
 // These source-level wiring checks are regression guards, not DOM, Native Host,
 // current disclosure, Windows WebView2, or end-to-end Harness evidence.
+
+
+test("PIN-WIRING-04: workspace return permits explicit rebind, not automatic old observation acceptance", () => {
+  const render = bodyBetween("function renderPin() {", "\nasync function refreshPinnedSubject() {");
+  const click = bodyBetween('element("inspect-pinned").addEventListener("click", () => {',
+    '\nrenderPin();\nsearch.addEventListener("input", renderList);');
+  const workspaceLoad = bodyBetween("async function loadWorkspace() {",
+    "\nconst panel = mountCommandPanel(");
+  assert.match(render, /intent\.workspaceId !== workspace\.value/);
+  assert.match(render, /!pinnedEligible/);
+  assert.match(render, /intent\.workspaceEpoch !== workspaceEpoch/);
+  assert.match(click, /inspectEligibility\(catalogSnapshot, intent\.subject\)\.ok/);
+  assert.match(click, /pinSubject\(pinState, workspace\.value, workspaceEpoch, intent\.subject\)/);
+  assert.match(click, /refreshPinnedSubject\(\)/);
+  assert.match(workspaceLoad, /pinState = invalidatePin\(pinState\)/);
+  assert.doesNotMatch(workspaceLoad, /pinSubject\(pinState/);
+});
