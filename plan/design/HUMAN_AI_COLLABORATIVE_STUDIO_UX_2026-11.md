@@ -551,3 +551,47 @@ Git作業版、DB接続先、Workspace、Principal/Grant、Plugin/Builder選択�
 **最優先P0はnon-Plugin Studio Build Subject→実Builder→Stage1→Stage2 Desktop実WebView2（#4583/#2831）のまま**。UX-PIN R0はそれと並走できる最初のUI一件。UI技術や新Server配置・CRDT・複数AIの自動マージ・正式共通Pin/Context ABIは未決、初回実装のHard Gateに追加しない。
 
 **今回の変更はdocs-only**。#4597の実コード・#4655のDraft Go修正と#4653のmain設計を出典として参照し、現行Workbenchがread-onlyであることを明記した。今回の新しいNode/Go/Browser/Windows/DB/Harness実行、Pin GUI導入、Row Edit実Effect、Owner Meaning AcceptanceはNOT RUN / NOT ACCEPTED。
+
+## 32. 宣言的Schema・自己記述DSLを、人間とAIが共有する操作可能な投影へ
+
+2026-11-14の[DSL構文・自己記述 #4359](https://github.com/hat47x/tei-platform/issues/4359)、[Language Plugin E2 #1018](https://github.com/hat47x/tei-platform/issues/1018)、[Role自己記述 #4536](https://github.com/hat47x/tei-platform/issues/4536)、[投影と逆写像 #2497](https://github.com/hat47x/tei-platform/issues/2497)、[UI構成キット #997](https://github.com/hat47x/tei-platform/issues/997)を、Studio協業UXに接続する。JSON Schemaなどの外部宣言、標準データ構造、DSLの表層構文は、専門家が読める**全体図・階層表・属性カード・制約一覧・原文**へ選択的に投影できることを目標とする。ただし、表示を改善するために、外部SchemaやGraphの意味をTEIが黙って作り替えない。
+
+### 32.1 一つの正本から複数の説明形へ
+
+| 層 | 主たる責務 | Studio/AIがしてよいこと・してはいけないこと |
+| --- | --- | --- |
+| 原文と構文 | 元byte・Encoding・Source Revision・Locationと、明示選択したLanguage/Parser版・実実装 | JSON Schemaの $defs/$ref、oneOf、追加Keyword、未知拡張を保持。未知参照を無音で消去・自動Fetchしない |
+| 標準構造と意味候補 | Parser/Readerの構文結果、型・Relation・Facet、Qualified Subject、検査済み範囲 | Parse成功を意味受理と呼ばず、標準Structureへ写せない要素はloss/unsupportedとして残す |
+| 投影と操作候補 | #2497の保存条件と損失、#997のRenderer/Action Offer、#1124の三要素Modeler | Tree・Table・Graph・Property・Rawを切替。表示名、描画Edge、JSON Pointer相当位置だけから意味対象を確定しない |
+| 適用と結果 | 既存Source Writer、Meaning Acceptance、Build/Host/Provider、独立Consumer | 編集案は対象/元版/差分/必要依存を添えた候補。保存・意味受理・実使用・外部Effect/Receiptは別操作 |
+
+**データが先、表示は投影**の構成とする。構文定義自体もLanguage Plugin候補として宣言できる方向を評価するが、有限Bootstrapを無視した「新Parserが自分自身を採用した」という自己証明を禁止する。固定Seed→Language pin/実装選択→Parse/Lowering→Workspace/Meaning再検証→実Consumerの順序は#1018/#4536/#4599がOwnerであり、本節では第二Parser/文法Registryや新共通UI ABIを定義しない。
+
+### 32.2 情報の見せ方と、戻れる編集
+
+- **標準ビュー**：左側の全体Tree/Graphで位置・参照関係、中央のReader/Editorで自然な表記、右側Inspectorで制約・実Source位置、下部の診断/Previewを参照できる。Panel配置は固定仕様ではなく、同じSource-backed navigationの候補である。用語と説明はRole/意味のQualifierに従い、Goのstruct/func等を業務DSLへ露出しない。
+- **多すぎる記述の扱い**：通常は業務上の意味・必須条件・参照先を示し、$ref解決経路、依存Closure、Source span、Facet、Operator、Plugin版、未解決/開示資格は必要時のInspector・ジャンプ・Tooltip・Keyboardで開く。折畳みで隠した情報を未取得・不存在と誤表示しない。
+- **Schema表示の忠実性**：入れ子/$ref循環、条件付きoneOf/anyOf、配列、追加Keyword、同名別Occurrenceを、一意と断定できる部分だけ視覚化する。外部参照の実Reader/Source取得・Disclosureが不明な場合、候補やリンクを確定Meaning・実取得として表示しない。
+- **読み取りと書込みの分離**：初期ビューはread-only。逆写像可能と検証された一項目だけ既存typed Change→Preview→Source Diff→条件付きWriter→独立再Readへ進める。Raw保存で未知Annotation、BOM/CRLF、改行・順序・コメント等の元表記を理由なく変えない。非可逆Graph/集計表やSource anchor曖昧時は編集を停止し、原文編集または候補Reviewへ戻す。
+- **AIとの対称性**：AIには画面を撮っただけの断片でなく、現在許可されたQualified Subject、Source/Parser版、検査済みRead Scopeと投影loss、実位置を既存限定Handoffで渡す。AI提案と人間編集のどちらも、同じSource差分/Meaning差分・独立Expectedへ戻し、AIの説明からHost許可を生成しない。
+
+標準JSON Schemaの表示適合と、TEI自身による任意DSL構文の拡張・実行資格は**別の達成段階**とする。ANTLR/Tree-sitter/PEG系等の構文ライブラリを比較する場合も、Target対応、決定論、Byte span、Error recovery、版Pin、Source writerでの往復適格性を先に計測し、単に文法ファイルをコンパイルできたことから正式DSL採用を導かない。特定ParserやReact/Litの選定は本節では行わない。
+
+### 32.3 最小の二Consumer受入と負例（既存Expectedへの引渡し）
+
+| ID | 一つの軸だけ変える反例 | 独立Expected・誤認防止 | Owner |
+| --- | --- | --- | --- |
+| SX-01 | JSON Schemaで入れ子/参照/$defs/oneOf/未知Keywordを組み合わせる | Rawとqualified位置へ往復できる部分のみNavigate可能。未知意味を補完せずloss/unsupported | #2497/#997 |
+| SX-02 | 同名フィールド・別Source、参照循環、同端点の意味Relation二件 | 名前・描画Edge・表示順を対象IDへ昇格しない。曖昧箇所への書込0 | #1120/#1124 |
+| SX-03 | Parserは成功、Workspace必要Role/Operatorまたは参照先実装が未選択 | 「構文上読める」と「意味/実現できる」を別表示し、採用済みWorldを捏造しない | #1018/#4536 |
+| SX-04 | 編集対象のSourceをR0→R1→R0、または人間のDirty BufferとAI案が競合 | 古いanchor/非可逆Viewから自動Patch0。現在版への独立再解決・Reviewが必要 | #2497/#2621 |
+| SX-05 | 投影した制約の一部が非公開/未取得、Tooltip・ARIA・AI Contextに反映 | 非公開の存在や件数を露出させず、許可範囲でpartial/unknownを扱う | #2516/#3262 |
+| SX-06 | 既存Languageと同IDの別Parser版、選択前の自己記述Parser | 明示pinと有限Bootstrapで止め、Loaderが旧構文へ黙ってFallbackしない | #988/#1018/#4367 |
+| SX-07 | 同一SourceからStudioとCLI/将来Webへ別のビューを表示 | Target/Scope/意味対象・lossが一致し、UIの成功だけでWriter/Host/開示PASSにしない | #997/#1158 |
+| SX-08 | Tooltip/Graph/Keyboard移動中に旧Source診断と後着AI Reply | 現在の選択やFocus/Pinを壊さず、古い診断を現行資格として採用しない | #1824/#4515 |
+
+**着手は既存三票に吸収する。** UX-PIN＝SX-02/SX-08の現在対象・Focus非干渉、UX-DIAG＝SX-01/SX-03/SX-05/SX-06の一つの公開合成Schemaのread-only説明・診断・Sourceジャンプ、UX-READ＝SX-07の取得範囲・二Consumer資格。SX-04の逆編集は#2497/#1124の後続であり、新しい第四のHard Gateや独立Scenario正本は作らない。最初は固定JSON Schemaと現行の選択済Source Reader/Workbenchでどこまで実現できるかをFit/Gapとして記録し、任意Schema・任意DSLの自作プラグインは必要なLanguage/Projection契約が通った後に段階評価する。
+
+**計画上の効用**：TEI Studio自身の編集支援に加え、専門Toolkit（数理・統計・WBS/PERT・科学表現等、[Draft #4663](https://github.com/hat47x/tei-platform/pull/4663)）へ同じ「読みやすい投影＋原文参照＋条件付き編集」の仕組みを再利用できるか検討する。ただし各分野の数量・精度・単位・多重度・数値正しさは専門Operator/Toolkit側の独立Expectedが必要で、共通Rendererの合格から領域内計算の適合へ昇格しない。
+
+**状態（2026-11-14）**：本節は既存Issue/PRとチャット議論に基づく設計・受入計画の追加のみ。JSON Schema実Reader/Renderer、任意文法コンパイル、IDE画面、逆編集、CLI/Studio二Consumer、Node/Go/Windows試験、独立Expected実行・Owner意味受理は**NOT RUN / NOT ACCEPTED**。non-Plugin Studio Stage1→Stage2セルフビルドのP0優先は不変。
