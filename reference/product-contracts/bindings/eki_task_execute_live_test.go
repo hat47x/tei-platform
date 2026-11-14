@@ -11,9 +11,12 @@ import (
 )
 
 // TestLiveEKITaskExecuteHTTP runs the T1 EKI Native path against a live
-// eki-control. It is skipped unless EKI_CONTROL_URL and EKI_CONTROL_TOKEN
-// are set.
+// eki-control and submits a task. It requires TEI_EKI_LIVE_WRITE=1 as well as
+// EKI_CONTROL_URL and EKI_CONTROL_TOKEN.
 func TestLiveEKITaskExecuteHTTP(t *testing.T) {
+	if os.Getenv("TEI_EKI_LIVE_WRITE") != "1" {
+		t.Skip("live submission requires TEI_EKI_LIVE_WRITE=1")
+	}
 	baseURL := os.Getenv("EKI_CONTROL_URL")
 	token := os.Getenv("EKI_CONTROL_TOKEN")
 	if baseURL == "" || token == "" {
@@ -22,7 +25,7 @@ func TestLiveEKITaskExecuteHTTP(t *testing.T) {
 	request := map[string]any{
 		"schema": "eki.task-request/v1",
 		"executor": map[string]any{
-			"id":                "tei-pure-compute",
+			"id":                 "tei-pure-compute",
 			"version_constraint": "^1",
 		},
 		"inputs": []map[string]any{
@@ -38,8 +41,8 @@ func TestLiveEKITaskExecuteHTTP(t *testing.T) {
 			},
 		},
 		"resources": map[string]any{
-			"cpu_millis":       1000,
-			"memory_bytes":     1073741824,
+			"cpu_millis":        1000,
+			"memory_bytes":      1073741824,
 			"wall_time_seconds": 60,
 			"output_bytes_max":  1048576,
 			"network_bytes_max": 0,
@@ -52,8 +55,8 @@ func TestLiveEKITaskExecuteHTTP(t *testing.T) {
 			"max_attempts":   2,
 			"effect_mode":    "none",
 		},
-		"deadline":   time.Now().Add(5 * time.Minute).UTC().Format(time.RFC3339),
-		"priority":   "normal",
+		"deadline":       time.Now().Add(5 * time.Minute).UTC().Format(time.RFC3339),
+		"priority":       "normal",
 		"result_profile": "default",
 	}
 	binding := EKITaskExecute{
@@ -79,6 +82,9 @@ func TestLiveEKITaskExecuteHTTP(t *testing.T) {
 // rejected by admission. It is skipped unless EKI_CONTROL_URL and
 // EKI_CONTROL_TOKEN are set.
 func TestLiveEKITaskExecuteInsufficientAuthority(t *testing.T) {
+	if os.Getenv("TEI_EKI_LIVE_WRITE") != "1" {
+		t.Skip("live submission requires TEI_EKI_LIVE_WRITE=1")
+	}
 	baseURL := os.Getenv("EKI_CONTROL_URL")
 	token := os.Getenv("EKI_CONTROL_TOKEN")
 	if baseURL == "" || token == "" {
@@ -87,7 +93,7 @@ func TestLiveEKITaskExecuteInsufficientAuthority(t *testing.T) {
 	request := map[string]any{
 		"schema": "eki.task-request/v1",
 		"executor": map[string]any{
-			"id":                "unknown-executor",
+			"id":                 "unknown-executor",
 			"version_constraint": "^1",
 		},
 		"inputs": []map[string]any{},
@@ -111,8 +117,8 @@ func TestLiveEKITaskExecuteInsufficientAuthority(t *testing.T) {
 			"max_attempts":   2,
 			"effect_mode":    "none",
 		},
-		"deadline":   time.Now().Add(5 * time.Minute).UTC().Format(time.RFC3339),
-		"priority":   "normal",
+		"deadline":       time.Now().Add(5 * time.Minute).UTC().Format(time.RFC3339),
+		"priority":       "normal",
 		"result_profile": "default",
 	}
 	binding := EKITaskExecute{
