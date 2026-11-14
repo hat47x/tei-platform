@@ -1,6 +1,7 @@
 package reacandidate
 
 import (
+	"reflect"
 	"sort"
 	"strings"
 
@@ -222,6 +223,7 @@ const (
 	ComparisonRemoved             = "removed"
 	ComparisonRevisionChanged     = "revision-changed"
 	ComparisonSameBytesNewAttempt = "same-current-bytes-different-attempt"
+	ComparisonObservedFactsChanged  = "observed-facts-changed"
 	ComparisonRenumbered          = "external-identity-renumbered"
 )
 
@@ -234,6 +236,7 @@ func ComparisonAuthorityLimits() []string {
 		"revision-change-requires-fresh-owner-review",
 		"external-identity-renumbering-requires-fresh-owner-review",
 		"structural-key-is-a-review-hint-not-an-identity-proof",
+		"unchanged-candidate-id-and-current-bytes-do-not-prove-unchanged-external-facts",
 		"comparison-does-not-accept-or-write",
 	}
 }
@@ -401,6 +404,17 @@ func comparePair(before, after StructureCandidate, beforeAttempt, afterAttempt s
 			"the-current-bytes-are-identical-in-a-different-attempt",
 			"identical-current-bytes-are-not-evidence-that-nothing-changed-in-between",
 			"no-prior-review-grant-or-acceptance-is-revived")
+	}
+	// An unchanged CandidateID and source digest do not imply the external
+	// observation has the same contents: a later provider/tool version may
+	// reinterpret identical bytes, and an attempt ID may have been reused.
+	if !reflect.DeepEqual(before.Facts, after.Facts) {
+		entry.Notes = append(entry.Notes,
+			"observed-structural-facts-changed-under-reused-candidate-id",
+			"source-backed-re-evaluation-is-required-before-meaning-or-edit")
+		if sameBytes {
+			entry.Status = ComparisonObservedFactsChanged
+		}
 	}
 	return entry
 }
