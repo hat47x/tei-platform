@@ -381,6 +381,22 @@ jobs:
             if (-not (Test-Path -LiteralPath $p)) { throw "Missing generated input: $p" }
           }
           $digest = (Get-FileHash -LiteralPath $bundle -Algorithm SHA256).Hash.ToLowerInvariant()
+          # N2's output contract is a concrete byte sequence, not merely a
+          # later name-based post-build observation. Record it before N3 starts
+          # so the Go embed selection can refuse a changed or stale bundle.
+          $n2Producer = @{
+            schemaVersion = 'tei.reference.studio-n2-output/v0'
+            role = 'workbench.bundle'
+            format = 'text/javascript'
+            path = $bundle
+            digest = "sha256:$digest"
+            bytes = [long](Get-Item -LiteralPath $bundle).Length
+            producerSelection = 'esbuild metafile: n2-esbuild-metafile.json'
+            exactHead = $env:CANDIDATE_HEAD_SHA
+            attempt = "${{ github.run_id }}-${{ github.run_attempt }}"
+          }
+          $n2Producer | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n2-bundle-producer.json') -Encoding utf8
+          Write-Host "N2-producer-bundle-recorded sha256:$digest"
           "TEI_GENERATED_WORKBENCH_BUNDLE_SHA256=$digest" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           foreach ($p in @($bundle, $source, $goService, 'tools/reference-studio-static-composition/fixture.json')) {
             $hash = (Get-FileHash -LiteralPath $p -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -429,6 +445,55 @@ jobs:
             if (-not $selectedGoFiles.ContainsKey($required)) { throw "N3 Go build did not select required source/embed: $required" }
           }
           if ($selectedGoFiles.Count -eq 0) { throw 'N3 go list selected no in-repository files' }
+          # N2 producer output -> N3 selected Go embed is a role-bound
+          # handoff. Check before Go execution, not only after the Desktop exe
+          # exists. This still does not prove the OS read-time byte closure.
+          $producerPath = Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n2-bundle-producer.json'
+          if (-not (Test-Path -LiteralPath $producerPath -PathType Leaf)) { throw 'N2 bundle producer receipt missing before N3' }
+          $producer = Get-Content -LiteralPath $producerPath -Raw | ConvertFrom-Json
+          $selectedEmbed = $selectedGoFiles['cmd/tei-studio/assets/workbench/main.js'].before
+          $embedPath = Join-Path $env:GITHUB_WORKSPACE 'cmd/tei-studio/assets/workbench/main.js'
+          $embedBytes = [long](Get-Item -LiteralPath $embedPath).Length
+          $currentHead = (git rev-parse HEAD).Trim()
+          if ($producer.schemaVersion -ne 'tei.reference.studio-n2-output/v0' -or
+              $producer.role -ne 'workbench.bundle' -or $producer.path -ne 'cmd/tei-studio/assets/workbench/main.js' -or
+              $producer.format -ne 'text/javascript' -or $producer.exactHead -ne $currentHead -or
+              $producer.attempt -ne "${{ github.run_id }}-${{ github.run_attempt }}" -or
+              [long]$producer.bytes -ne $embedBytes) { throw 'N2 producer contract does not match this N3 attempt and Go embed member' }
+          $checkHandoff = {
+            param([string]$producedDigest, [string]$selectedDigest)
+            if ($producedDigest -cne $selectedDigest) { throw 'N2-N3 bundle handoff digest mismatch before N3 Go build' }
+          }
+          & $checkHandoff $producer.digest "sha256:$selectedEmbed"
+          # Negative control on an isolated copy of the actual N2 bundle:
+          # one additional byte must be rejected by the SAME checker. Never
+          # change the actual Go embed source in this negative experiment.
+          $tamperedCopy = Join-Path $env:RUNNER_TEMP ('tei-n2-n3-tampered-' + [guid]::NewGuid().ToString('N') + '.js')
+          Copy-Item -LiteralPath $embedPath -Destination $tamperedCopy
+          [IO.File]::AppendAllText($tamperedCopy, '// tampered handoff negative')
+          $tamperedHash = (Get-FileHash -LiteralPath $tamperedCopy -Algorithm SHA256).Hash.ToLowerInvariant()
+          $negativeRejected = $false
+          try { & $checkHandoff $producer.digest "sha256:$tamperedHash" }
+          catch {
+            if ($_.Exception.Message -notmatch 'N2-N3 bundle handoff digest mismatch') { throw }
+            $negativeRejected = $true
+          }
+          if (-not $negativeRejected) { throw 'A changed N2 bundle passed the N3 handoff check' }
+          $n2N3Handoff = @{
+            schemaVersion = 'tei.reference.studio-bundle-handoff/v0'
+            role = 'workbench.bundle'
+            producerReceipt = 'n2-bundle-producer.json'
+            producerDigest = $producer.digest
+            consumer = 'cmd/tei-studio go list -tags studio_generated / .EmbedFiles'
+            consumerSelectedPath = 'cmd/tei-studio/assets/workbench/main.js'
+            digestBeforeGoBuild = "sha256:$selectedEmbed"
+            selectedByGoList = $true
+            changedByteNegativeRejected = $negativeRejected
+            readTimeClosureProved = $false
+            exactHead = $currentHead
+            attempt = $producer.attempt
+          }
+          Write-Host "N2-N3-embed-handoff-verified-before-go-build sha256:$selectedEmbed"
           go build -mod=readonly -tags studio_generated -o $env:STUDIO_DESKTOP_EXE .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if (-not (Test-Path -LiteralPath $env:STUDIO_DESKTOP_EXE)) { throw 'Generated Desktop executable not created' }
@@ -444,6 +509,10 @@ jobs:
             }
           )
           $goSelectionManifest | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n3-go-selected-sources.json') -Encoding utf8
+          $postEmbed = (Get-FileHash -LiteralPath $embedPath -Algorithm SHA256).Hash.ToLowerInvariant()
+          & $checkHandoff $producer.digest "sha256:$postEmbed"
+          $n2N3Handoff.digestAfterGoBuild = "sha256:$postEmbed"
+          $n2N3Handoff | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n2-n3-bundle-handoff.json') -Encoding utf8
           Write-Host "N3-go-selected-in-repo-inputs-recorded count=$($goSelectionManifest.Count)"
           (Get-FileHash -LiteralPath $env:STUDIO_DESKTOP_EXE -Algorithm SHA256).Hash.ToLowerInvariant() |
             Add-Content -Path (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'generated-desktop-exe.sha256') -Encoding utf8
@@ -505,6 +574,7 @@ jobs:
               workbenchBundleSha256 = $bundle
               esbuildSelectedSources = 'n2-esbuild-selected-sources.json'
               esbuildSelectedCount = $metaObservedSources.Count
+              producerArtifactReceipt = 'n2-bundle-producer.json'
               esbuildOutput = 'cmd/tei-studio/assets/workbench/main.js'
               selectionBasis = 'esbuild-metafile/post-build-file-hash'
               invoker = 'workflow:node/esbuild'
@@ -520,6 +590,10 @@ jobs:
               buildTags = 'studio_generated'
               goSelectedSources = 'n3-go-selected-sources.json'
               goSelectedInRepoCount = $goSelectionManifest.Count
+              bundleHandoffReceipt = 'n2-n3-bundle-handoff.json'
+              changedBundleNegativeRejected = $n2N3Handoff.changedByteNegativeRejected
+              bundleDigestMatchedBeforeGoBuild = $true
+              bundleDigestMatchedAfterGoBuild = $true
               goSelectionBasis = 'go-list-with-matching-build-tags/pre-post-hash'
               invoker = 'workflow:go build (not a Stage1 TEI binary)'
             }
