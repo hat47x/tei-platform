@@ -10,6 +10,7 @@
 
 関連文書は次のとおりです。
 
+- [Studioの人間・生成AI協業UXと実装順](design/HUMAN_AI_COLLABORATIVE_STUDIO_UX_2026-11.md)：**現行のTEI Sourceを一つのQualified SubjectとしてCLI／Workbenchで再確認→背景Pinの非干渉（PIN-R0）→限定Contextを外部AIへ渡し元対象に戻す**というread-onlyの一巡を先に検証する。main統合済みMarkdown Graph/Rule固定5例（#4709）は正式Reader未実装のため候補・Guard拒否を維持し、Reader→意味→生成Go→実Consumerを別資格で進める。図面写真・発話・CSV／Excel・SQLからのモデル抽出も候補レビューを共通入口にする。UX-PIN／UX-DIAG／UX-READの3票で#4515/#1824、#2621/#1124、#2586/#3262へ引き渡し、#2497の逆写像、#2516のDisclosure、TAI #648の外部Handoffに従う。**Studio Desktopの非Plugin Stage1→Stage2実再構築（#2831/#4583）と通常CLIの実Provider・独立ConsumerがP0**。子Backend/IPC・正式Markdown Reader・AI自動編集は追加Hard Gateにしない。現状は設計計画で、新機能E2E・Owner意味受理は未実施。
 - [Studio／CLI／WebのBackend子プロセス・Plugin管理・配布更新の統合設計](design/STUDIO_CLI_BACKEND_PROCESS_DISTRIBUTION_UPDATE_2026-11.md)：現行Desktop P0は同一Process方式Aを基準とし、将来候補としてWails親からローカル子BackendへのIPC接続を比較する。CLIはWails非依存の共通Backendを直接／自己子起動／再利用Sessionで比較する。WebはServer配信Clientと認証済みAPIを分離し、遠隔CLIはServer側のPlugin構成を使用する。G0〜G6は既存#1158/#1824/#2044/#2589/#2831/#4583の実装Ownerに接続し、**CLI子起動の既定化・共有Daemon・Updater製品採用は実測とOwner判断待ち**とする。Studio Stage1→Stage2セルフビルドのP0を変更しない。
 
 <!-- rea-two-intakes-current-main-20261114 -->

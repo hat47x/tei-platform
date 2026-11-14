@@ -29,6 +29,7 @@
 
 | 文書 | 対象 |
 | --- | --- |
+| [`HUMAN_AI_COLLABORATIVE_STUDIO_UX_2026-11.md`](HUMAN_AI_COLLABORATIVE_STUDIO_UX_2026-11.md) | Studioの人間・生成AI協業UX。対象固定と背景Inspectの非干渉、診断・Sourceへの復帰、Markdown表／Mermaidの実Fixtureからの段階実証、限定AI引継ぎ、条件付き編集をUX-PIN／UX-DIAG／UX-READへ集約（#1824/#4515/#1124/#4583。設計・受入計画） |
 | [`SEMANTIC_STRUCTURE_MAPPING_AND_DECLARATIVE_SYNTAX_VIEW_2026-11.md`](SEMANTIC_STRUCTURE_MAPPING_AND_DECLARATIVE_SYNTAX_VIEW_2026-11.md) | 標準データ構造の意味特性・構造間変換、JSON Schemaの図解、DSL構文・View定義、Source編集の可逆性と段階的な検証計画（#2495/#2497/#988/#2620/#1124。横断設計・未採用） |
 | [`PROCESS_LIFECYCLE_TRIGGER_OPERATION_SEMANTICS_2026-11.md`](PROCESS_LIFECYCLE_TRIGGER_OPERATION_SEMANTICS_2026-11.md) | Trigger・Invocation・State／Effect・Outcome／Responseを共通の意味から図・DSL・Mock・Targetへつなぐ検討。既存Application API／Script LaunchのOwnerへ返す |
 | [`CROSS_DOMAIN_MATH_STATISTICS_PLANNING_TOOLKITS_2026-11.md`](CROSS_DOMAIN_MATH_STATISTICS_PLANNING_TOOLKITS_2026-11.md) | 数理・統計、ウィンドウ集計、工程計画、Solver・実験計画法、物理系・生命科学を、既存のDSL・標準表現型・Operator・Providerと照合し、Studioと一般アプリケーションで検証する計画（[#4660](https://github.com/hat47x/tei-platform/issues/4660)、評価待ち） |
