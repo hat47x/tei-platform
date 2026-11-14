@@ -395,7 +395,7 @@ Goを生成した後の受入では、[Draft #4748](https://github.com/hat47x/te
 <!-- tei-md-s0p-main-merged-admission-and-crossstream-20261115 -->
 **S0-P統合後の製品実装への引渡し**：#4751の試験では、ManifestのRoot選択とPinned Sourceの読取り、Raw Byte Fingerprintの一致をテスト専用経路で確認した。次のS0-Aでは、テストで二度読取り直すのでなく、現行`Workspace.Load`の**同一Attempt・同一Snapshot**から、実際に選択されたFrontendとRoleに元byte列を渡す。一つの`*.tei.md`について、Source Root・選択Version／Role・実Reader Read・Node/Edge/RuleのCell Span・`ManagedFile.ReadByLoader`・Source IndexのOccurrenceを対応付ける。原文を見つけたこと、Indexを作れたこと、受理した意味、Builderが使用したことは別に検証する。
 
-**他領域との接続を実装の優先順位へ反映する**：生成器設計の[PR #4748](https://github.com/hat47x/tei-platform/pull/4748)が扱う「TEIの判断ロジックを生成したこと」と「既存Goへの単純委譲」、また「生成物の存在」と「後続Builderによる実byte読取り」は、S1以降の合格条件に残す。[Opaque SQLの入れ子拒否 #4752](https://github.com/hat47x/tei-platform/pull/4752)と同様に、Markdownの未対応・部分取得・意味欠落を空の正常なモデルへ変えない。[数理入力の精度確認 #4754](https://github.com/hat47x/tei-platform/pull/4754)が扱うNULL、2^53超の整数、指数表記は、正式な型付きReaderの共通検査項目として#2621/#988へ引き渡す。ただしGraphの最初のS0-Aに全てのSQL・数理構文を実装する先行条件は追加しない。
+**他領域との接続を実装の優先順位へ反映する**：生成器設計の[PR #4748](https://github.com/hat47x/tei-platform/pull/4748)が扱う「TEIの判断ロジックを生成したこと」と「既存Goへの単純委譲」、また「生成物の存在」と「後続Builderによる実byte読取り」は、S1以降の合格条件に残す。[入れ子Opaque SQL拒否の後継PR #4755](https://github.com/hat47x/tei-platform/pull/4755)（旧#4752は未マージでclosed）と同様に、Markdownの未対応・部分取得・意味欠落を空の正常なモデルへ変えない。[main統合済みの数理入力精度試験 #4754](https://github.com/hat47x/tei-platform/pull/4754)が扱うNULL、2^53超の整数、指数表記は、正式な型付きReaderの共通検査項目として#2621/#988へ引き渡す。ただしGraphの最初のS0-Aに全てのSQL・数理構文を実装する先行条件は追加しない。
 
 <!-- tei-md-candidate-shape-three-digests-20261115 -->
 ### 10.16 元Source・生成に使った候補構造・実Binaryを別の根拠として照合する
