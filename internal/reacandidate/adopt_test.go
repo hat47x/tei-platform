@@ -368,6 +368,7 @@ func TestCompareCandidateSetsAsymmetricParallelKeyRemainsUnverified(t *testing.T
 		})
 	}
 }
+
 // Added and removed candidates are reported without a structural match.
 func TestCompareCandidateSetsAddedAndRemoved(t *testing.T) {
 	first := mustGenerate(t, defaultEvidence())
