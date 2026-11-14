@@ -1584,3 +1584,54 @@ version-pinned BuildIntent / Source revision
 この協業シナリオとStage2のBuild/Provider検証は**別のAttempt/別の資格**であり、相互の成功を合算しない。実装順は B1の実消費観測 → Pin非干渉の実Workbench接続 → B2/B3の実Stage2 → Optional Provider実呼出し。CLIの実PostgreSQL Read (#2586/#1251) は並行して進め、Desktop完成を待つHard Dependencyとしない。
 
 **検証状況**：本追補は既存GitHub Issue/PRのレビュー内容の計画反映のみ。新しいGo/Node/Windows/PostgreSQL実行はNOT RUN。既存Draftの最新HEAD CIを本追補で追試したものではなく、B1〜B3、全体G4、Ownerによる意味受理は未資格。
+
+---
+
+<!-- tei-cp-20261114-crosslane-third-pass -->
+## 2026-11-14 第3次横断収束：自己再構築の連鎖、自己記述DSL、汎用Operatorへの展開
+
+この節は2026-11-14の他チャットで成熟した合流条件を整理したものである。前節までのP0-A/B/CとOwnerを維持し、**Studio自己再構築の最短経路を阻害しない**。研究・科学計算・REA・高度組織モデルを独立の製品Coreへ先取りしない。
+
+### 1. 自己再構築は「一つのAttempt」ではなく親子の実行・成果物連鎖
+
+Stage1 TEIがStage2を構築する際、Stage1 Build Attemptと、子Builder Process、生成Artifact、Stage2 Desktop起動、Wails BridgeからのProvider呼出しは異なるAttempt/Processになり得る。したがって、前節の「同じAttempt」は**各工程の入力/出力照合の単位**と読み、全工程に単一Attempt IDを強制しない。
+
+受入は次の親子連鎖で行う。
+
+| 段階 | 実証する境界 | 不合格・保留の代表例 |
+| --- | --- | --- |
+| Q0 | Source/Revision/選択Target/BuildIntent/ArtifactSetの対応 | Desktop exeをPlugin Subjectとして偽装 |
+| Q1 | 選択Builderと実起動image/argv/toolchainの一致 | 選択B・実行A、外部CIだけの成功 |
+| Q2 | Inspector TS→JS bundle→Go embedの宣言Inputと実消費範囲 | 後読digestだけ、未宣言import、A→B→A |
+| Q3 | **実Stage1 TEI**がStage2生成・構築を起動し、そのArtifactを識別 | 別HEAD、旧exe、単独Go buildの合算 |
+| Q4 | **当該Stage2 exe**が選択済みRuntime Providerを実呼出し | 静的importだけ、未選択Provider混入 |
+| Q5 | 当該Stage2のWindows WebView2/IPCを実受領 | 起動だけ、別Window/旧Bridge応答 |
+
+各辺は親Attempt ID、子Process/Attempt、Artifact digest、Source World、実Consumerの受領結果を既存Evidence/Build票へ接続する。旧exeの安全な配置切替は#1824/#3267で別検収。Q0〜Q5の全合格を既存B1〜B3/G4へ対応させるが、新しいゲート体系・Build Managerは作らない。Ownerは#2831/#4583。
+
+### 2. DSL自己記述は「宣言・意味・実装・検証」を分離
+
+DSLを最初から新文法で拡張せず、既存のRecord/Sequence/Reference/Graph等の標準データ、Parser、Semantic Model、Language Plugin、Operator Contract、Target Generatorを利用する。最小Seedからの自己記述を、K0 Seed→K1固定Subject/Source Pin→K2実Parser→K3既存Semantic→K4独立ExpectedとOwnerの意味受理→K5実Generator/Builder/Provider/Consumerの順に接続する。
+
+- Source occurrence、意味定義のidentity/revision、実装Contribution、生成物を別々に識別し、同名ラベルや表示位置から同一性を推定しない。
+- Trait/Operatorの**宣言**、実装Provider/Generatorの**提供**、選択したTargetにおける**履行**を別資格とする。定義から検証義務を導出してよいが、正解Expectedそのものを実装から自動生成して同一根拠で合格にしない。
+- 未解決参照、重複identity、必要な意味要素の部分Loweringは、World/生成物を成功扱いしない。Source、意味、pre-dispatch、Entry/Hostの診断を区別する。
+- Go/CLI/Desktop IPC/Local HTTPは同一Source/Meaning Revisionの同一Operationに対するTarget別Adapterとし、結果と差異を比較する。新たなTEI独自Host、第二Parser、第二Registryを導入しない。
+
+最初の実装対象はStudio自身の定義・生成・検証であり、一般業務アプリへの展開可能性をその過程で実証する。Ownerは既存DSL自己記述/統合Issue群。
+
+### 3. 汎用Operatorを先にし、研究・科学計算は段階的なDomain Plugin
+
+Mathematica/R由来の統計・科学計算、WBS/PERT、Window関数、熱力学/システム、バイオサイエンス可視化、REA/組織履歴は候補領域とするが、**研究専用DSLや専用Studioを先に作らない**。まず既存標準型・標準Query・Graph/時系列/表・式/制約で表現できるか確認する。
+
+汎用Operatorの候補はGenerate/Vary/Evaluate/Solve/Optimize/Aggregate/Window/Visualize。型・単位/精度・Null/欠損・時間条件・多重度・副作用有無・決定性・計算量/資源制約・Source provenanceを契約化し、実装はProvider、Target適合はGenerator、専門語彙とUIはDomain Pluginに分ける。名称や分類は検討候補であり、現時点でCore API採用を意味しない。
+
+初期dogfoodingではStudioの生成・高速ビルド、独立Expectedを用いるテスト生成/探索、DB集計、スケジュール可視化のうち**既存Operationに自然に適合する小例**を選ぶ。数値結果、AI提案、Ownerの業務意味受理は別扱いとする。専用Domain Pluginの製品化は最小例の性能・正しさ・需要を確認してから判断する。
+
+### 4. 横断の保留・失敗の意味を共通化
+
+DBのRead成功と全範囲取得の完全性、PinのローカルgenerationとSource/Grantの現在資格、HookのGuard判定と実Effect/Receipt、REAのObservationと正式業務受理、AI HarnessのInvocation成功とTEIの意味受理を、それぞれ独立主張とする。UNKNOWN/partial/unavailable/NOT RUNをPASSへ繰り上げない。Source→Meaning→Build/Runtime→Consumerの間で失効を伝播させるが、再検証の範囲は変化した依存に限定する。
+
+**優先順位**：P0はQ0〜Q5の実連鎖と、CLI/Studioの実Provider Readの二つの薄い縦切り。P1はDSL自己記述のK0〜K5、Pin非干渉とGUI/AI共通Operation、Plugin履行とHook/Receipt。P2は汎用Operatorの小例を通じた研究/REA/科学計算のDomain Plugin候補評価。P1/P2の設計完了をP0のHard Dependencyにしない。
+
+**証拠の上限**：本節は既存議論の計画反映であり、コード・Windows・DBの新実行、最新HEADのCI追試、Ownerによる意味受理を行っていない。#4606はDraftであり、mainへの統合を意味しない。
