@@ -1204,3 +1204,62 @@ Python標準ライブラリのDecimalを使い、R1の二つのChunk p1=(2,200),
 5. **P2 #1124/#4510/#4487**：Studio/TEAのData/Control/Effect/Observationへ、Attempt/Source Range/Aggregate Cut・Unknownの証拠だけを相対的に投影。秘密のRow/Reader/Group存在を現在Disclosureなしで表示しない。
 
 **停止線**：本節は合成Decimal演算の反例と静的Source/Issue照合による設計候補。新Go/CLI/実Filesystem Kill・実PG/外部Provider/実Consumer/Current Grant・Owner受理、exact-head CIは **NOT RUN / NOT ACCEPTED**。第二Recovery Runtime/State Store、TEI共通Scheduler/Host、独自DSL、別Oracleを作らない。
+
+## 33. Batch完了と業務解消は別：失敗許容Envelopeの時間・運用容量を検収する（2026-11-14、設計候補）
+
+**他チャットからの差分**：[サブシステム#3250 Failure Acceptance Envelope](https://github.com/hat47x/tei-platform/issues/3250#issuecomment-6870568084) は、K（強い約束）/L（失敗許容）/S（受付と確定の分離）を、**禁じる状態Safety、期限付き進行Progress、回復責任・運用Capacity**に分けた。§30は業務上の約束を選ぶ条件、§31は締め・再開時の旧Run/Period資格失効、§32はCheckpointの処理済み入力Cutと集計状態の一致を扱う。本節は別のGap――**Run Completed/Checkpoint Saved/Generation Publishedが、個々の注文の期限付き解消を意味しない**――を#1130/#4411・#2542・#1174・#2514へ受入項目として渡す。第二の業務SLO正本、Temporal DSL、Scheduler、補償Engineは追加しない。
+
+### 33.1 業務上の約束とBatch実行を別の時点・証拠で保持
+
+| 分離すべき事実 | 既存Source・Observationから必要な証拠 | 禁止する意味昇格 |
+| --- | --- | --- |
+| **Promise / 起算点** | Ownerが受理した業務State、約束の相手/対象、Received・Confirmed・Fulfilledの意味、対象Period/Time basisと現在のSource版 | Batch Run Start/Change Event Timeが顧客向け期限の自動的な起算点 |
+| **Safety** | 禁止状態、注文・引当・在庫全体の制約、Reservation TTLと履行までの有効期間、対象集合の閉包、権威あるOwner側State | 個別Reserve ACK、0件の部分Read、少ない失敗率から全注文が安全 |
+| **Decision milestone** | Pending/ReceivedからT_decide内にConfirmed/Cancelled/Escalated等、契約で許された状態へ到達した実観測 | Escalatedに到達しただけで業務がResolved。期限未受理なのに「期限内成功」 |
+| **Resolution milestone** | Escalated/未処理をT_resolve内に最終解消する義務、Ownerによる適用/通知/返金・手作業完了の実Readback | 外部Import ACK、通知要求送信、Batch Completedで解決済み |
+| **Run / Publication / Downstream** | Attempt・Source Cut/Gap・Checkpoint Cut・Output Generation・独立Consumer Pin/Read・実Effect/Receiptを別観測 | Saved OffsetやPublished Artifactから業務Effect、または全Consumerへ到達済み |
+| **Capacity / Backlog** | 母集団・期間、案件年齢、到着負荷/相関障害、実対応量、営業時間・引継ぎ、担当能力と未観測を区別 | 平均対応率や平均手作業工数からピーク時の期限制約を自動保証 |
+
+期限T_decide/T_resolve、暦・時間帯・停止条件・Promise対象が未受理なら**unknown**。Kでは即時禁止状態を「失敗率予算」に換算しない。L/Sでも許可したPendingが永遠に続くとは解釈せず、Owner受理済みの進行・回復義務を別確認する。Business Error、技術的な確定失敗、**Commit Unknown**を一種類に丸めない。業務Owner未受理のK→L/S案はAccepted Kの適否を変更しない。
+
+直列の処理経路が唯一の解消手段だと仮定する場合、受付からのSource観測遅延、実行待機、計算、配信、Owner適用、必要な確認までの**各上限と合計**を、受理済み期限と比較する。上限未観測、複数Sourceの整合Cut不明、外部Recipient未受領、Clock起点のずれがあれば「期限保証」は不適格。合計が期限内でも障害分岐・Resource容量・対象Universe/現在Grantを検証しなければ、全ケースの保証へ昇格させない。
+
+### 33.2 平均処理能力が足りても期限を守れない有限反例
+
+**独立の合成算術**：各スロット開始時に単位工数1の未解消案件が到着し、スロット内の最大対応Capacityは2件と仮定。期末Backlogは B(next)=max(0,B(now)+Arrivals-Capacity)（案件の個別期限/優先順位はこの式に含めない）。
+
+| スロット | 新しい要対応件数 | 対応能力 | 期末未解消（Expected） |
+| --- | ---: | ---: | ---: |
+| 1 | 1 | 2 | **0** |
+| 2 | 1 | 2 | **0** |
+| 3 | 5 | 2 | **3** |
+| 4 | 1 | 2 | **2** |
+| 5以降（毎回） | 2 | 2 | **2のまま** |
+
+最初の4スロットの平均到着は(1+1+5+1)/4=**2件/スロット**で、対応能力の平均2件に等しい。それでも一度集中到着した未解消2件は、後続の到着=能力なら**消えない**。ゆえに「平均到着数≦平均能力」「全Batch Run成功」「平均手作業工数が少ない」は、個々のAcceptedなT_decide/T_resolveの保証ではない。これは実業務の失敗率、能力、期限を推定した結果ではなく、[#3250 SP-FE06](https://github.com/hat47x/tei-platform/issues/3250#issuecomment-6870568084)に付帯する有限・手計算Expectedである。個々の期限、Escalated後の別Queue、再試行で増える作業、相関障害を評価するには別の実観測が要る。
+
+### 33.3 既存Expectedへの一因子接続
+
+| 一因子の説明用Trace | Expected / 拒否する偽成功 |
+| --- | --- |
+| Received、まだReservationなし、Status=Pending | Accepted PromiseがPendingを許す場合だけSafety違反とせず、**期限付き進行は未証明**（SP-FE01/02） |
+| Run Completed→Published G2、外部RecipientのRead/Applyは未観測 | Pure Batchの局所成功のみ。**Business Resolved / Applied within deadlineはunknown**（§23/28） |
+| Received→Escalated、後続解決は未観測 | EscalationがT_decideの許容到達点なら中間到達の候補。T_resolveをPASSへ丸めない |
+| 予約ACK後にTTL失効→旧ACKでConfirmed | 確定時点にValid ReservationがなければSafety不適格（SP-FE04）。過去成功の現在資格を流用しない |
+| Reserve Timeout/ACK-loss後、Batchが同Operationを盲目的再配送 | **Commit Unknown**、Receipt Lookup first。二重引当/自動取消を安全としない（SP-FE03、#1174/#2564） |
+| 在庫1で2注文の個別Success、全Reservationを未読 | 全体安全性はunknown。全対象でActive Reservationが2と実確認されれば数量不変条件違反（SP-FE05） |
+| Period Open rev1で受付、Closed rev2→Open rev3後に旧Runが再開 | §31の旧Admit/Checkpoint失効。**業務受付の期限起算点を勝手にrev3へリセットしない** |
+| 作業Queueに未解消2件あるが最後のBatchは全件Completed | Run完了と業務解消を別表示し、期限超過/運用能力を別評価（SP-FE06） |
+| 公開対象のPending/未解消件数が0だがRLS/未取得・非開示が残る | 公開質問のUniverse/Disclosure Closureなしに全域「未解消0件」としない（SP-FE07/09） |
+
+**証拠の上限**：有限TraceのSafety違反は検出できるが、短いTraceを通過しただけで全時点Safetyや期限付きLivenessを保証しない。同じAccepted SourceからData（在庫/引当）・Function（Command/Effect）・Business（約束/例外/対応Owner）を関連付け、AudienceのPublic Slice内で先にProjectionを構成する。Privateの未解消件数・故障率・非公開担当を公開カード・順位・件数・digest・AI文脈で漏らさない。
+
+### 33.4 受入順・実装責務・停止線
+
+1. **P0 / #4410**：最初の副作用なしTSV二入口、独立Expected、失敗時の未公開を優先。業務Deadlineや補償Runnerを初回Hard Gateに追加しない。
+2. **P1 / #3250 SP-FE01〜09・#1125・#2514**：既存K/L/Sの小さなread-only合成Caseに、Safety/Decision milestone/Resolution milestone/Capacityを別列で付帯。T_decide/T_resolveはOwner受理前はunknownとし、仮の数値は合成例としてのみ扱う。新Fixture/Scenario正本なし。
+3. **P1 / #1130/#4411/#2542/#1174/#2564**：Run Completed→Generation Published→Recipient Read→Owner Applied→業務解消の**次の未証明一辺**だけを順に実証。Commit Unknownや外部Recipient/Current Authorityを別Attemptの独立Readbackで検証する。
+4. **P1 / #4397/#4389、§31**：Period Open→Closed→Openの旧Run無効化と、再開後のPending年齢/期限・Applied版を別々に照合。Period State再開で受理済み業務期限が自動再設定されると扱わない。
+5. **P2 / #2600/#1124/#4510/#4522/#2831**：Studio/TEAは問い相対のSafety/進行/未証明・非公開境界を投影。Self-buildのStage1/Stage2成功から実業務解消を推論しない。
+
+**停止線**：#3250が要件の選択と失敗許容の判断資料、#267が正式意味受理、#1174が実Effect、#1130がBatch実証を所有。本節の資格は**既存Issue/PR静的照合と有限Backlog算術だけ**。新TEI Go/CLI/実PG/Runtime/Recipient/運用能力・障害回復の実測、業務Ownerの期限/予算受理、Current Grant、exact-head CIは **NOT RUN / NOT ACCEPTED**。新Core時刻型/Temporal DSL/Recovery/SLO Engine、第二Oracle/Receipt Store、必須Hostなし。
