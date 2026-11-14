@@ -1,6 +1,7 @@
 package operations
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"path/filepath"
 	"reflect"
@@ -206,18 +207,22 @@ func orgPositiveSyntheticContext(t *testing.T, values [][]any, dataID string, co
 		{Raw: columns[1], Attribute: core.CanonicalID(dataID + "." + columns[1])},
 		{Raw: columns[2], Attribute: core.CanonicalID(dataID + "." + columns[2])},
 	}
+	// These are distinct mock Query sources, not evidence of a shared read
+	// snapshot. Their digests are local test inputs, not accepted Source pins.
+	syntheticQueryID := core.CanonicalID("org_axes_view.synthetic_" + dataID)
+	sourceDigest := fmt.Sprintf("%x", sha256.Sum256([]byte("synthetic-query-source:" + dataID)))
 	execution := driver.BrowseQueryEnvironmentExecution{
 		Environment: "development",
 		Instance: environment.DatabaseInstance{
 			ID: "org-synthetic.dev", Definition: "org_store", Provider: environment.ProviderPostgres,
 		},
-		QuerySourceSHA256: "synthetic-query-source-sha",
+		QuerySourceSHA256: sourceDigest,
 		Execution: driver.BrowseQueryExecution{
 			Resolution: driver.PatternResolution{
 				Application: application.Application{ID: "org_axes_view"},
-				Pattern:     application.Pattern{ID: "org_axes_view.candidate_reference"},
+				Pattern:     application.Pattern{ID: syntheticQueryID},
 				Query: &query.EmbeddedSQL{
-					ID: "org_axes_view.candidate_reference", Dialect: environment.ProviderPostgres,
+					ID: syntheticQueryID, Dialect: environment.ProviderPostgres,
 				},
 				Datasource: &application.DatabaseRequirement{
 					Alias: "org_read", TargetDatabase: "org_store",
@@ -351,6 +356,10 @@ func TestOrgStagedPositiveCandidateActualFunctionContextCoverage(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			roleContext := orgPositiveSyntheticNativeContext(t, tc.roleRows)
 			dutyContext := orgPositiveSyntheticResponsibilityContext(t, tc.dutyRows)
+				if roleContext.Source.QuerySourceSHA256 == dutyContext.Source.QuerySourceSHA256 ||
+				roleContext.Function.Query == dutyContext.Function.Query {
+				t.Fatal("independent synthetic Query sources were wrongly conflated")
+			}
 			for _, read := range []struct {
 				ctx functioncontext.Context
 				n   int
