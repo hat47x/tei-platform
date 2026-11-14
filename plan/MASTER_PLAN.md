@@ -1766,6 +1766,19 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 
 **受入上限**：本項と§27は設計・担当引渡しのみ。正式Person/Occupancy/Case Link、actual PG二時点版、実候補Reader/Rule、Plugin/Studio/Host Product E2E、Owner Meaningは**NOT RUN / NOT ACCEPTED**。参照PRのmain統合は製品実証の成功を意味しない。
 
+
+<!-- org-c1-crosschannel-three-aspect-candidate-20261115 -->
+### 2026-11-15 組織モデルの実務入力を、三要素分析法とAI候補の受理経路へ接続する（補遺§28）
+
+[組織C1横断受入補遺§28](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)に、**白板写真、会議の文字起こし、CSV/Excel、帳票、既存画面・DB、REA等の外部解析、Markdown/Mermaid直接Source**を、入力ごとにRaw/出典位置・取得Scope/版を保つ**Candidate入口**として整理した。組織専用OCR/Transcript Engine、別Meaning正本、第二Runnerを作らず、既存Source/三視点Data・Function・Business/候補Review/Shared Acceptanceに接続する。
+
+- **意味の同定（#2386/#1120/#1126、#4490）**：例として白板の「D1の部門長→案件C1」、会議の「P2異動・引継ぎ協議」、CSVの「P2二行」は同じSource/Person/Relationを指すと証明されていない。候補としてSourceと対応付け、Person/Occupancy/Role/Duty/Caseの正式なKey/時点/Rule/Grantが不明なら`unresolved`として停止。歴史を語る発言の収録時刻を`knownAt`に流用しない。
+- **Source表現（#2621/#4370/#2497、#4704/#4709）**：`*.tei.md`は通常Markdownでも読めることを要件とする。階層はインデントリスト、関係/規則はMarkdown表、直接表現可能な図はMermaid ER/Sequence、外部データは版付きCSV参照。Mermaid/渡辺式の多重性・識別/非識別・Source spanを保全。main統合#4709のGraph Fixtureは正式Reader/Go生成の完了ではなく、現在の`TEI_MD_PARSER_UNBOUND`を維持する。
+- **外部候補（#3394、Draft #4693）**：REAのResource–Event–Agentという業務意味とReverse Engineer Anythingという解析チャネルを区別。R2の一Observation/Relation、reacandidateのAttempt全体、Semantic GraphとApplication Graphの異なるID、Raw BOM/Digest差、Candidate IDと正式Relation IDを混同しない。出典付きRelation同定だけを候補化する。
+- **一往復の検収（#3262/#2516/#4515/#1124、#1180/#2514）**：公開合成Worldと一Raw資料→抽出Candidate→同名・多重・時点・partialの照合→CLI/Studio/SHO/AIの**read-only根拠付き表示**までを最小Consumerとする。Owner採否・Source Patch、実Query/生成Go/Plugin Call、Host Grant/Effectは後続の**独立した資格**。OCI-1〜8を既存ORG-BEH/CX、REA J、SM、TM/MDのExpectedへ割当て、新Scenario正本を増設しない。
+
+**実施順・主線**：①#4490 BEH-01/02の実Read完全性→②§26 CR・§27 ORXの対象解決→③OCI-1/2/4の公開合成Candidate照合→④既存#4693/#4704/#4709による外部解析・自然Markdown Readerの適格性→⑤Owner採否/Source/実Consumer。通常`tei` CLI実Provider Read #2586とStudio Stage1→Stage2 #2831を独立P0として先行。**本追補はdocs-only**。画像・会議・CSVの実AI解析、正式`*.tei.md` Reader、実Go生成、実Provider/Host/Windows E2E、業務Ownerの意味受理は未実施。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
