@@ -70,6 +70,44 @@ Graphが局所的にcompleteでもFunction/BusinessのCoverageがunsupportedな�
 
 各試験では、何を主張するか、独立した期待値、Required Source、実消費したSource、Attempt、受領者、欠落・矛盾、合格の上限を残す。負例を正しく拒否したことと、製品の実機検証が未実行であることを区別する。別PRの成功・別Fixture・後から読んだSourceを同一のProduct Attemptへ合算しない。
 
+
+<!-- rea-v0b-identity-fidelity-plugin-share-20261114 -->
+### 6.1 V0-Bの初回実装で検出する「関係ID」の不足
+
+2026-11-14の実コード照合では、mainの **internal/modelref/model.go** にKey（Scope/Subject）、Ref、Node、Edge（From/To/Relation/Evidence）、Graph、Validate/Resolveがある。一方、**modelref.Edgeに独立したEdge IDはない**。同端点・同Relationの辺を配列で複数持てることと、各辺を安定して識別し、別の図/表/試験/編集対象へ往復できることは異なる。
+
+既存のStudio Graphには描画用GraphEdge IDがあり、REAの保存Evidenceにも外部Relation IDがある。しかし、**描画Edge ID、外部解析Relation ID、正式な意味Relation ID、Source上のRelation occurrence、派生図のConnection IDは別Identity**である。どれか一つを別のIdentityとして無条件に流用しない。実装を始める前に、型と出典でどの情報を保持でき、どこがLossになるかを実験して明示する。必要なら#1120/#1124/#2497へ最小Contract変更を返すが、第二Graph/Parserや新しい全用途Schemaは採用しない。
+
+[Plugin自己構築の具体例 #4675](https://github.com/hat47x/tei-platform/issues/4675)で検討中の、表示名がともにitemのNode **n1,n2**、同じ端点を持つ有向Edge **e1,e2**を、REA V0-Bの**公開合成Graph部分として共有**する。これに別の関係群としてTask T→Action A→Function F→IOTable I→Data D、手作業M、未取得Uを加える。合成Graphが外部REA Captured Evidenceと同じ旧システムを観測したものだとは主張しない。#4675のFixtureは実ファイル作成前の設計候補なので、現時点では実テストがあると扱わない。
+
+| 変化を加える場所 | 独立Expectedで確かめること |
+| --- | --- |
+| n1とn2の表示名が同じ | Label一致でNodeを統合せず、Scope/Kind/IDを優先する |
+| 同端点・同種類のe1/e2 | 辺の本数だけでなく、各Source occurrence/Relation IDへ個別に戻れるか調べる。戻れなければ**忠実度不足**として表示する |
+| e2だけの向き反転・e1だけの削除 | 変更した辺と無関係な辺を区別する。個別Identityが不足するうちはread-onlyに留め、曖昧な編集を許さない |
+| Graph上の配置だけ変更 | 意味、Codegen入力、元Sourceは不変。Layout-onlyで意味Buildや全証拠を過剰失効しない |
+| Task→Dataの短縮表示 | T/A/F/I/Dの元Chain、方向、出典、導出Ruleへ戻れる。手作業と未知Sourceを省略や0件にしない |
+| 旧Projectionが後から到着 | 現在のSource版/Consumer Snapshotと一致しなければ、別ViewのFocus/Pin/Dirty Bufferに混入させない |
+
+**初回の着手順**：現行modelrefのNode/Edge/Evidence/Rule/Validateと既存Source Indexを固定Fixtureで確認する→独立Expectedと実結果の差をFit/Gapへ記録する→Relation occurrenceと出典を明示したread-only Projectionで保持可能性を検証する→必要最小限の型/Method契約変更を既存Ownerへ依頼する。配列添字、図の線番号、ラベル、Source Pathだけでは意味Relationの永続IDにならない。**不足を検出して編集を停止できたことも正しい試験結果**として扱う。
+
+### 6.2 関係の理解と、TEI定義からの実処理生成を別資格にする
+
+V0-Bは、読み取った関係のIdentity・意味・出典を失わず閲覧・説明できるかを検証する。#4675のPluginセルフビルドは、**受理済みで一意に識別できるGraph関係**から「Node n1の出辺Relation ID集合と件数」を実Goへ生成し、通常CLIから呼び出せるかを検証する。同じFixtureとExpected観点を使っても、REA側のRead合格だけで実Codegen合格にせず、Codegen合格だけで外部REA観測を正式Meaningともしない。
+
+Plugin AがContractで公開したGraph/Rule/図解FacetをPlugin Bが再利用する際は、公開Scope・Contract版・必要な依存閉包・受理されたMeaning Ruleを確認する。**A→Bの参照許可は、B→Consumer Cへの自動再公開権限を含まない。** BのOverlayによってAの必須Guardを消したことにもできない。これはmainに統合済み[Plugin合成設計 #4671](https://github.com/hat47x/tei-platform/pull/4671)および#4675の責務を再利用し、REA側に別の権限Engineを設けない。
+
+実生成では、e2の反転・削除が生成された出辺演算の結果へ実際に反映されること、Graphの配置変更だけでは意味Buildが変わらないことを確認する。TEIのSource/Ruleが実処理を決めず、Goの既存関数へdelegateするだけならSelf-build成果とは数えない。PluginのR0正規Source Read→R1実Go生成→R2 CLI実受領→R3生成物保全→R4 Stage1実再入→R5第二Consumerという別の実装順は#4675に保持する。最初のV0-BへR1以降をHard Gateとして加えない。
+
+### 6.3 PRの完了範囲を具体的に固定する
+
+最初のV0-Bの小PRが対象とするのは、**公開合成FixtureのNode/Relation/出典、元Chainへ戻れる範囲、同名異IDと平行辺の区別、未取得を未知のまま保つこと、識別できない辺のSource編集を止めること**。試験は#1180/#2514の既存Expectedを使い、Question・実消費Source/Rule・Observed/Unknown・個別Relation追跡可否・Loss・不合格理由を記録する。仮に現行modelrefだけではRelation identityの往復ができなければ、対象を減らして成功とせず、欠落を既存OwnerへのFit/Gapとして提示する。
+
+初回PRでのNative REA実受領、正式Source変更、Pluginの実Go生成、実DB Effect、Desktop Stage2は**別資格**。初期セルフビルドはCLI/MCP先行でよく、Studio Desktop全体の実Windowsセルフビルドという製品P0は維持する。
+
+**この節は実コード構造と別レーンの現行計画を照合して作成した設計・試験引渡しであり、V0-BやPluginの新しいGo試験、Sourceの往復、実生成・実Consumer受領を実行したものではない。**
+
+
 ## 7. TEI自身の自己適用とDSL簡素化を測る
 
 次段階では、TEIの外部Evidence Operation→CLI/Host/Studioの実装を解析対象とし、設計・Source・コード生成・試験の対応を確認する。そのGo Sourceを即座に正式な業務DSLと扱うのではなく、選んだ契約のうち標準データ構造、図表、Function/Operator、Method/Generator Pluginで表現できる部分をTEIのSourceへ移し替える。
