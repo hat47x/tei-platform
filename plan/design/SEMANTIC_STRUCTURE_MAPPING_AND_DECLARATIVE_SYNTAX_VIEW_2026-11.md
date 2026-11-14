@@ -744,6 +744,108 @@ Markdownの適格性を検証する際は、**GitHubなどの標準的なRendere
 
 ここでは人間向けの**相対リンク**と、TEIが必要なときに解決する**型付きSubject／Relation参照**を区別する。リンク先への移動だけでCSVの内容が自動的にMeaningへ採用されたり、独立Expectedとなったりしない。CSVの列型、NULL／空欄、文字コード、引用付き改行、行のIdentity、データの完全性・Providerを明示的に検査する。行番号をStable IDとして扱わない。分割したSource間の依存・循環・未読込・権限不足も既存Source Index／Dependencyの診断に委ねる。サイズ別の一律行数しきい値は導入せず、閲覧・レビュー・差分の扱いやすさで選ぶ。
 
+
+### 31.1 通常のMarkdownを、選択した範囲だけ宣言として読む（2026-11-15構文検討）
+
+**Markdownを読むことと、その記述をTEIの定義として採用することは別**である。`*.tei.md`を人がGitHubで開けば、見出し・文章・箇条書き・表・Mermaid・相対リンクから内容を理解できる。一方、TEIが意味候補を作るのは、**Workspaceで対象SourceとLanguage Plugin／文書Profileが選択され、該当する定義の役割と範囲が特定できたときだけ**とする。見出しの名前だけで意味Roleを推測しない。
+
+| 普通のMarkdownでの表現 | 構文として扱う候補 | 意味を推測してはいけない点 |
+| --- | --- | --- |
+| 見出し・本文 | 文章・節の所属。必要ならSource範囲をRoleへ紐付ける | `## 規則`という見出しだけで、配下を全て実行可能なRuleにしない |
+| インデント付きリスト | 選択済みの領域だけで包含・階層を表す | リスト順を実行順・依存・Grant継承にしない |
+| GFMの表 | 選択済みの役割・列契約に従い、行を属性／規則／関係／Expected候補へ変換 | 表の存在だけで「正本」を決めない。列名の類似・表示順からIDを捏造しない |
+| `mermaid`のER／Sequence／Flow | 当該図型の対応済み構文・Role・Stable ID・Scopeを満たす部分だけ型付き候補へ | Mermaid描画成功だけでPK継承、業務Effect、完全なGraph同一性を受理しない |
+| `tei`等のコードFence | 選択されたLanguageと固定版に適合する明示的な宣言 | 説明用・引用・例示Fenceを無条件にWorkspace Sourceへ取り込まない |
+| MarkdownのCSV・SQL・別`*.tei.md`への相対リンク | 人間向けの参照と、明示したSource Bindingを別に解決 | リンクを張るだけでCSV Import、SQL実行、依存閉包の完了、Expected受理とはしない |
+
+文書の表示名・表の行位置・Mermaidの図形IDと、意味上のQualified ID、Sourceのbyte span／occurrenceを分ける。`source path + heading slug`だけを永続的なSubject IDにせず、明示IDと現在Source Revision／選択済みParser版を用いて再解決する。同じ表層が説明と宣言の両方に使えるため、**選択されていない範囲は読めても実行しない**ことを既定とする。
+
+### 31.2 小さな一文書で、データ・規則・独立期待値を隣接させる
+
+以下は**構文候補の比較用Markdown例であり、現行製品Readerが受理する形式ではない**。既存の[#4359](https://github.com/hat47x/tei-platform/issues/4359)／[#4361](https://github.com/hat47x/tei-platform/issues/4361)の同一課題（数量の正数判定）を、自然な文書と一緒に書く。日本語の見出し・説明は表示文であり、実際のSubjectやPredicateのIDは英数字で記す。
+
+````markdown
+# 受注明細の定義
+
+受注明細の数量は、0より大きい値とする。
+定義と確認例をこの文書にまとめる。
+
+## 定義対象
+
+| Role | ID |
+| --- | --- |
+| Data | sales.order_line |
+
+## 項目
+
+| ID | Type | Required |
+| --- | --- | --- |
+| sales.order_line.quantity | std.decimal | yes |
+| sales.order_line.line_number | std.integer | yes |
+
+## 規則
+
+| ID | Subject | Predicate |
+| --- | --- | --- |
+| sales.order_line.quantity_positive | sales.order_line.quantity | positive |
+
+## 確認例（独立した期待値）
+
+| Case | Quantity | Expected | 根拠 |
+| --- | --- | --- | --- |
+| positive_quantity | 2 | satisfied | 2は正の値 |
+| zero_quantity | 0 | not-satisfied | 0は正の値ではない |
+| negative_quantity | -1 | not-satisfied | -1は正の値ではない |
+````
+
+この例では、表の`Role`や`Predicate`等は**将来選択する文書Profileが解釈する候補列名**であって、正式な新構文や新Core Schemaではない。`positive`は、既存`semantic.Validation`の`positive`へ対応し得る範囲だけを試す。`yes`、表型の型名、値の読み方、単位／丸め、表のRole適用は、それぞれ既存言語契約に照合できない限り未対応とする。Markdownの自然言語文を自動でConstraintにしない。
+
+期待値はこの`positive`の意味に基づく**独立の契約候補**であり、実装結果から生成しない。NULL・未取得・不完全な集合については、`error`／`unverified`／`not-satisfied`を混同せず、当該Scopeと明示Policyに基づく別の試験にする。表をCSVへ分離する場合も、各Case／RuleのIDと版、原Sourceへの相対参照、Expectedの独立性を保つ。
+
+### 31.3 Markdownだけで足りない箇所を短い宣言で補う
+
+次は[#4359](https://github.com/hat47x/tei-platform/issues/4359)の`S1〜S6`で検討中の**低ノイズな`rule`候補**。これを、Goの`func`・`struct`や型パラメータを使う文法へ寄せる必要はない。
+
+```tei
+rule sales.order_line.quantity_positive:
+  sales.order_line.quantity is positive
+```
+
+既存`.tei`の`validation ... positive { attribute ... }`と比較し、**Rule ID・対象Attribute・既存Validation Kind・評価結果の区分が一致する範囲**だけを構文糖衣として認める。新旧両方を同一Subjectの定義元として同時登録しない。同一IDが重複すれば先勝ち／後勝ちではなく診断する。`check ... with std.op.positive@1`は[#4361](https://github.com/hat47x/tei-platform/issues/4361)の比較候補だが、そのままではRule IDが明示されておらず、Operator pinも正式な製品契約とは限らないため、同値を自動主張しない。
+
+高度な式やChainは、**宣言の対象・入力・出力・条件・結果を読める順序で表現し、実際の演算の意味は選択済みOperator契約へ委ねる**。`quantity * unit_price`という記述から金額の単位・桁数・丸め・NULL処理を推測しない。`|>`は現状参照用の解析候補であり、製品Parserの実装済み演算子ではない。
+
+SQLは[#4369](https://github.com/hat47x/tei-platform/issues/4369)のとおりNative SQL原文を正本として保持し、TEIはDataSource／方言／入力／結果の明示Bindingを扱う。2waySQLの場合もtemplateの元byteと実選択Branchを区別する。**TEI Query→SQLの生成、Native SQLの意味解析、SQL→TEIの逆変換は別資格**であり、単なるリンクや糖衣構文を可逆性の証拠にしない。
+
+### 31.4 同じ意味を複数の表層で重複定義しない
+
+Mermaidを直接定義元にできる場合でも、**文書全体を一つの「Mermaid正本」と扱うとは限らない**。どの意味をどのSourceが所有するかを、**Claim／Facetごとに区別**して曖昧な重複を避ける。例えばER図のEntity・端点・多重度をMermaidが担い、そこにない親Key→子Keyの対応を型付き関係表が担う設計は可能である。ただし同じRelation IDとScopeを相互に結べて、両方に矛盾する値がないことを前提とする。図の端点だけからキー継承を復元しない。
+
+| 意味の対象 | 定義元候補 | 二重定義を防ぐ条件 |
+| --- | --- | --- |
+| 項目ID・型・必須性 | Markdown項目表、既存`data`宣言 | 同じSubjectの同じ属性を両方から独立採用しない |
+| 規則の対象と判定 | Markdown規則表、短い`rule` | 同一Rule IDに複数のAuthoritative Sourceを与えない |
+| Entity／Relationの端点・多重度 | Mermaid ER、型付きRelation定義 | 対応するStable Relation ID・向き・Sourceを照合 |
+| 親Key→子Keyの項目対応 | Key Mapping表・型付きSource | Mermaidが表現できない情報を、暗黙に補完しない |
+| 表示用の順序・座標 | Mermaid記述順、Studio Layout Profile／将来のView Hint | 表示変更をData／Function／Businessの意味変更へ昇格しない |
+| 期待する評価結果 | Test／Scenarioと独立Expected | Parser／Evaluator／生成Targetの実測値をExpectedとして複写しない |
+
+独立の文書／CSV／SQLに分けた場合、人がクリックする相対リンクと、TEIが解決するRequired Source／型付き依存関係を別に管理する。パスの移動やSourceのA→B→A、Plugin・Operatorの版変更があれば用途別に再資格化する。欠けた参照、未読込、部分集合、未知のMermaid構文を**空集合・関係なし・正常な初期値**として扱わない。
+
+### 31.5 実装順は既存のDSL・Markdown Ownerへ戻す
+
+本節の提案を新しいGrammar／Role Engine／Parser Registryの第二正本にしない。実装・受入順は次のように既存Ownerへ引き渡す。
+
+| 段階 | 最小の実証 | 引渡し先 |
+| --- | --- | --- |
+| **D0 表層比較・独立Expected** | 旧`validation`、短い`rule`、Markdown表、Operator候補で同じRule ID・正常／0／負／NULL／未取得／重複を比較。独立Oracle・実装互換・Policyの出典を区別 | #4359／#4361／#2514 |
+| **D1 狭い新Rule構文** | 既存Lexer／`semantic.Validation`へ限定Lowering。元Sourceと診断のbyte位置を一回のParseで保持、旧構文は維持 | #4362〜#4365／#988 |
+| **D2 `*.tei.md` Reader** | 明示選択したSourceだけMarkdownを構造読取し、選択済みの宣言領域・表Cell／Fenceを既存Parser／Roleへ渡す。`TEI_MD_PARSER_UNBOUND`の誤成功防止を維持 | #2621／#4370／#3030／#1018 |
+| **D3 文法版・保存・別表層** | `formatVersion`とLanguage／Operator pinを区別。無変更Saveはbyte一致、Formatterは明示操作。Tree／Graph／Mermaid／CSV／SQLは用途別にread-only→限定Writeを判定 | #4366〜#4371／#2497 |
+| **D4 実消費・自己拡張** | 同じReaderからSource Index→独立Expected→生成器／Pluginへ実入力を渡し、型付きRule・Relationから実Go生成、Plugin自身のTEI化・定義量の変化を実測。CLI／MCPから開始し、次にStudio Stage2で消費を確認 | #2620／#4536／#4544／#2831／#4583／#1251 |
+
+**採用判断の基準**：比較対象は記述文字数の短さだけでなく、業務専門家が対象→条件→結果を追えるか、曖昧な意味を省略していないか、原文を再現可能か、同じ入力で独立Expectedを満たすか、生成と実Consumerの一致を確認できるかとする。可読性の優劣は利用者評価前に数値的な実証済みと主張しない。D0〜D4は実装前の引渡し順であり、今回のParser実装やStudio画面完成を意味しない。既存P0の**Studio Stage1→Stage2実セルフビルド**および**通常の`tei` CLI→実Provider→独立Consumer**の優先度は変えない。
+
 ## 32. Mermaidを直接記述するER図・シーケンス図
 
 §28では、複雑なGraphについて型付き表からMermaidを導出する例を優先した。ただし、これを**全Mermaidを読み取り専用にする規則とはしない**。Mermaid自身が対象用途に必要な意味を表せるなら、ER図`erDiagram`、シーケンス図`sequenceDiagram`等を**直接のAuthoring Source候補**として認める。GitHub上で図を読める利点をそのまま生かす。
