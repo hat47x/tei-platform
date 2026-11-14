@@ -642,3 +642,28 @@ LR-A〜Dは全直列Hard Gateではない。LR-Aの受理待ち中は、LR-Bの�
 **再利用する本来の正本**：#1180/#2514の独立Expected、#1158/ADR-0048の共通Application API、#2586のFunction Data Context、#951のProvider Selection、#1174のEffect/Grant、#3421のWeb Host、#4583のStage2 Build。新Reader/SQL Engine/Runner/Provider Registry/Doc Schema/Test SSOT/認可Coreを設けない。
 
 **証拠上限（2026-11-14）**：PR #4539はmain統合済みで既存PG16 readとReference CLIの実験を報告。#4625はDraftで通常`tei`のREAローカルReadのみ候補。新規のL-P公開Function Product CLI、L-Rの通常`tei`製品PG Read、二Consumer/Host Grant/多利用者Web/Stage2実Product Functionは**この追補ではNOT RUN**。A0のOwner Acceptance、LR-Aの入力Contract、LR-DのWeb認可・開示は未受理／未実証のまま残す。
+
+## 16. 起動前Result契約のFail-Closed：実コード差分をP0-A1へ引き渡す（2026-11-14）
+
+前節§13〜15はP0のA0（Meaning/Entry）とA1（型付きOperation/Provider）とA2（通常製品CLI）を並列の検証レーンへ分けた。今回、A1の中で**Ownerの受理待ちなしに変更でき、しかも潜在的なEffect前に必要な境界**を実コードへ実装した。
+
+### 16.1 現行mainで見つかった欠落と最小修正
+
+main `e888bb8f...` の `internal/semantic/capabilityinvoke/invocation.go` は、実Adapterを先に呼び、その後で `ValidateBusinessResult` を実行する。元コードは出力契約のないCapabilityを拒否するが、**拒否前にAdapterへ到達する**。またOutputとnamed Outcomesの矛盾は、Output分岐の優先により結果検査から見逃せる。これは*不正なContractがEffectful Providerへ伝わらない*というP0の前提に反する。公開Entry/現在Grant/Business Meaningの検査をここで実装する必要はない。
+
+[実装Draft PR #4629](https://github.com/hat47x/tei-platform/pull/4629) は既存 `capabilityinvoke.Invoke` に `validateResultContract` を**Adapter実呼出し前**へ配置し、直接 `ValidateBusinessResult` の利用でも同じ検査を行う。拒否するのは空Capability identity、Resultなし、single Output＋named Outcomesの両立、Outcome name/payload型参照欠落、duplicate outcome名。これらを一件ずつ壊したSynthetic testでAdapter call0を検証する。すでに正しいnamed Outcome／single Output／pre-dispatch cancellationは既存testで保護する。
+
+**あえて固定しない条件**：`BusinessResult.Payload==nil`を汎用的に禁止しない（Nullable/未取得／Missingの業務意味はAccepted Type/Target/Adapter側）。Outcome中の`Payload`の値shapeやInputの型／単位・Owner意味、Entry公開、Provider選択、Host Grantを`validateResultContract`が判断したとみなさない。これらはA0/A1後段とEL-01/04/08/12に残す。
+
+### 16.2 出来たことの合否票は「構造検査」と「製品実行」を分ける
+
+| チェック | 新実装で主張できること | 未達のまま残ること |
+| --- | --- | --- |
+| **RC-01 malformed declaration** | 上記6種類の不正result contractで`Invoke`が`Adapter.Invoke`へ入らないことをGo testで判定可能 | 未公開Entryでもcall0となるEL-01の全体判定 |
+| **RC-02 standalone validation** | `ValidateBusinessResult`単独でも矛盾するResult契約を拒否 | Accepted Meaning/Nullable Output/Output値構造の判定 |
+| **RC-03 unaffected paths** | Authenticated/Denied、single Output、Context cancelなど既存局所契約の非退行 | 実Go selected Providerのactual linked member、Host Current Grant/Effect |
+| **RC-04 build/consumer** | コードは`internal/semantic/capabilityinvoke` 2ファイルだけ。新CLI・新Provider・新Registryはなし | L-P正式Function/実`tei` CLI subprocess／Studio IPC／Web/WASM／Stage2 Product Function |
+
+本実装は**A1内の部分実装**であってA0 Owner受理やEL-01公開Entry資格を代替せず、L-RのPostgreSQL Readや#4623/#4624のBuildIntent Validatorとも結合しない。#4625のCLIファイルとは非重複。実装・試験・結果は[Draft #4629](https://github.com/hat47x/tei-platform/pull/4629)へ記録し、§16には到達範囲のみ反映する。
+
+**確認状態（当初）**：Goの2ファイルをmain起点の隔離BranchへcommitしてPR #4629を作成。PRのCI開始を観測済みだが、**この文書追補だけを理由にexact HEAD Go test合格とは記載しない**。CIの合否は#4629の当該headとリンク先により別途判定する。Original #4618はdocs-only Draftのまま維持。
