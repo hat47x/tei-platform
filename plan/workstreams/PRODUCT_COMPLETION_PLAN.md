@@ -159,7 +159,7 @@ B1a-I/Pの二段受入を維持しつつ、独自Frontendを「TEIが制約し�
 
 **Readと更新の境界**：同じ注文が3行返った事実、`:from`の時刻、ProviderのSessionを、全顧客の母集団・本人所有・現在Read Grant・注文確定Effectには読み替えない。非公開合成Readの単一Contextを、必要なAudience/用途の投影を通してからNative Consumerへ渡す。動的依存/Dirty保持/Source A→B→A、二Consumer・二Provider snapshotのCoherenceは移植したG08〜G13データ様式節の#2582/#2597/#1708へ委譲し、B2C用Reactive Engine/中央Snapshot Coordinatorを作らない。
 
-**資格**：今回確認したのはmain Sourceと設計契約であり、RA-0〜3のSource改修・Go Product入口・実PG/CLI/Native/Hostテストは**NOT RUN**。Owner Meaning受理・新DSL構文や日時Canonical Typeの採用は未決。Studio Desktopセルフビルド#2831/#4583が全体P0で、R-Aは並行P0。
+**資格更新（2026-11-14実コードの独立提案）**：RA-0のSource宣言・Parser/Resolver確認は、新しい[Draft PR #4626](https://github.com/hat47x/tei-platform/pull/4626)（HEAD `1b12c833`）で**既存構文 `input from std.datetime` を採用する提案として実装し、Source-static Go/参照PG条件付き試験の期待値を更新**した。`std.datetime`は既存`sales.order.ordered_at`の型、`input <name> <type>`は既存`ParseQueryAuthoring`が受理する構文であり、**新DSL/新Core型ではない**。ただしDraft未main・exact HEAD CI未確定で、参照PG試験は専用環境変数なしではNOT RUN。**RA-1（実Executor呼出前の欠落/型不一致/未知キー/NULL拒否）は未実装**であり、Query入力が宣言済みでも未検査値が実SQLへ到達し得る。RA-2（実PG契約のProduct資格）、RA-3（通常`tei`/独立Native Consumer）、B1a-P（現在Read Grant/Host）はいずれも未実施。この計画ファイルを更新したこと自体は実装受入ではない。Studio Desktopセルフビルド#2831/#4583が全体P0で、R-Aは並行P0。
 
 **計画統合状況**：同一計画ファイルを変更する並行[PR #4600](https://github.com/hat47x/tei-platform/pull/4600)の「問い相対旧依存辺N16/N17」「Studio Windows B0とBuildIntentギャップ」の二行を、本Draftにも**内容を欠落させず**取り込んだ。双方はまだ別Branch/未mainであり、#4600の採否・閉鎖、mainへの実マージ、競合解消を代行したものではない。新実行試験・Owner Meaning受理はNOT RUN。
 
