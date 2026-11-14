@@ -812,3 +812,85 @@ p50/p95/p99の採用や仮想化／遅延読込は、まず実測で遅い区間
 
 **実施状態**：現行コードの静的読取と既存Issueの責務を照合した**設計追補**である。新たな実Windows起動／強制終了／復旧／機密Draft保管／Performance E2E・Owner受理は**NOT RUN**。DL番号は第二のScenario正本ではなく#1180／#2514・既存DS/DTへの引渡し用である。
 
+---
+
+## 16. CLIから育てる実質的セルフビルドとDesktopへの展開（2026-11-14、設計・受入追補）
+
+<!-- tei-desktop-substantive-selfbuild-cli-first-20261114 -->
+
+他チャットで整理した「Studio GUIは初期のセルフビルドの入口として必須ではない」「\`*.tei.md\`がGoコードを単に呼び分けるだけではTEIによる実装とは言い難い」「Plugin自身も可能な範囲でTEI定義から再構築する」「導入が進むほど定義を簡潔にできるか検証する」という目標を、既存#2831／#4583／#2620／#2621／#988／#951の作業へ接続する。Studioの製品目標を取り下げるのではなく、**CLIでの反復が最短で進む工程と、実Windows Desktopでしか立証できない工程を区別する**。
+
+### 16.1 「自分をビルドできる」と「自分の実装を記述できる」は別の軸
+
+| 軸 | 検証したいこと | 合格を推測してはいけない証拠 |
+| --- | --- | --- |
+| **Build再入** | TEIが選択したBuildIntent／実BuilderからStage1を構築し、実Stage1 ProcessがStage2の実生成を指示する | CIが\`go build\`やshellを二回呼んだだけ、Stage1/2のdigestが一致しただけ |
+| **定義による実装** | 業務・UI・Operation・検証・生成の少なくとも一つの**実際の振る舞い**がTEIで解釈されたSourceから生成される | \`*.tei.md\`がGo関数名だけを指す、任意Goコードを文字列のまま埋め込む、生成器が外部の固定Sourceを丸写しする |
+| **Plugin自身の再構築** | Language／Operator／Generator／UI／Test等のPlugin Contributionについて、どの部分がTEI定義から生成され、どの部分がBootstrap/外部Adapterか実物で説明できる | Pluginがカタログに登録された、PluginのBuildだけTEIから起動した、Editor向けContributionがあるだけ |
+| **定義の簡素化** | 同等以上の振る舞いと独立Expectedを維持しながら、手書き実装・重複した設定・認知上の記述負担を段階的に減らせる | 見かけの行数だけ短い、契約や条件を暗黙のGo側に押し込めただけ |
+
+これらを一つの「セルフビルド達成率」に足し合わせない。最初の実Stage2 Desktop成功は**製品への到達**を示すが、それだけでStudio全部の意味がTEIから生成されているとはいえない。他方、CLI上で\`*.tei.md\`から一つの意味ある部品を生成できても、製品のWindows Wails/WebView2で実使用された証拠にはならない。
+
+### 16.2 初期の開発はCLI主導とし、MCP／Studioは同じ操作を利用する
+
+基本経路は **定義Source → 既存Loader／Role／Meaning解決 → BuildIntent／Plan → Generator → Go/TS等のTarget Source → 実Builder → 独立テスト／実Consumer** とする。操作の最初のConsumerはTEI CLIでよい。生成AIや外部HarnessはCLIを直接利用して構わず、MCP接続が利用できるときは既存の型付きOperationへ対応付ける。MCP専用の第二Build Engineや認可経路は作らない。
+
+Source形式については、現行の\`*.tei.md\`が正式TEI Readerとして無条件に読み込めるわけではない（#2621のLoader/Parser負例）。そのため、**形式が先行した段階**と**実Loaderが正しく受領する段階**を別の検収票にする。既存\`*.tei\`／Contract／Transformから局所生成を先行することはできるが、それを「\`*.tei.md\`から実生成した」と表示しない。管理対象\`*.tei.md\`が正式なBuild入力になるのは、Reader選択、Source Span、Role/Meaning、実Builder消費、変換の根拠を確認してからとする。
+
+GUIはその後、CLIのResult／Source Position／Build Evidenceを同じ型付きOperationで投影する。UIの図解や入力支援は実作業を短縮するための機能であり、CLIでの実構築や独立Expectedの代わりではない。
+
+### 16.3 意味あるTEI実装かを反証する最小の検査
+
+「TEIで実装した」と数える最初の対象は、大規模なStudio全体ではなく、**既存Studioに実際に使われる一部品**とする。候補はInspectの表示に用いるProjection、型付きOperationへの入力束縛、Source-backedなGraph／Property表示、生成器の一つの決定論的Transform、またはPluginが提供する構造的検証である。既存の\`inspection-reader\`生成Referenceは再利用可能だが、現時点ではContract JSON／Transformと実TS生成の限定証拠であり、\`*.tei.md\`の意味実装そのものとは別に扱う。
+
+1. **独立した振る舞いの仕様**：定義で表したルール・型・関係・入力／出力・エラー・未対応を、実装コードから写さないExpectedとして固定する。
+2. **生成差分の実証**：TEI Sourceの意味ある一要素を変更すると、既存Generatorが生成した該当Go/TS等の構造・実動作が意図どおり変化する。コメントやファイル名だけの差分では不十分。
+3. **誤実装の拒否**：TEI側から必須条件を削る／参照先を入れ替える／関係の多重度を変える等の反例を与え、独立Expectedが失敗を検出する。固定Go実装へ丸投げしていると検査で露見する構成とする。
+4. **実消費の確認**：生成ファイルの存在だけでなく、実Builderがそれを取り込み、CLIまたは実Studio Consumerが生成した振る舞いを使ったことを確認する。旧生成物を混入させる負例を含める。
+5. **簡素化の確認**：機能・Expectedを維持して次の定義へ書き直し、手書きSource、同一意味の重複、変更箇所、非局所的な説明の必要性がどう変わったかを比較する。短縮だけを目標にしない。
+
+Goの既存RuntimeやWailsのOS結合を使うこと自体は失敗ではない。**何をTEIが記述・生成し、何を外部Adapterが責任を持って提供するか**が明瞭で、その境界が検査できればよい。GoをDSLへ露出させず、言語依存の機能はTarget Generator／Provider側へ配置する。
+
+### 16.4 Pluginも段階別のContributionでセルフビルド範囲を増やす
+
+Pluginは一つのPackageで全段階を同時に満たすとは限らない。#4646のReferenceに従い、Language/Operator意味定義、Studio/Editor、Generator、Target Runtime、Test／独立Expectedを**それぞれの実Sourceと生成物**に対応付ける。
+
+| Plugin領域 | 最初のTEI化候補 | 外部実装として残してよいもの |
+| --- | --- | --- |
+| Language／Operator | Role/Shape、契約、演算の型・制約・診断定義 | 最小Bootstrap Reader、必須の低位Parser／実性能Kernel |
+| Generator | 入出力の対応、Template選択、Source→Targetの構造的変換・テスト | Go/TS compiler、Target固有のEmitter／ツールチェーン |
+| Studio UI | Panel/Operation Binding、Property/Graph表示の宣言と生成 | WebView2／Wails／ブラウザ描画、IME／OSイベント |
+| Data／Effect Provider | 必須Context、Capability、Validation、Read/Writeの契約 | RDB Driver、OS Secret、実Tx/外部APIの副作用 |
+| Test／検証 | Scenario、独立Expected、生成器負例、Source Trace | 信頼済みTest Runner、実OS／DB Fixture |
+
+**Pluginのセルフビルド比率**は、単なるファイル数でなく、代表的な**振る舞い単位**ごとに「TEI定義で仕様を記述／生成まで到達／独立Expectedで実検証／実Consumerで使用」を別列にし、対象となる全機能の分母と未分類を示す。必要に応じてコード量や生成物byteも補助指標として記録するが、それらだけで品質を判定しない。正確な基準率や目標割合は実測前に固定しない。bootstrap核を残す場合は、そこへ何を委譲しているか明示する。
+
+Plugin自身をセルフビルドする際も既存Builder/BuildIntent/Stage1→Stage2を使用する。TEI Compiler全体をいきなり自己記述する無限再帰を要求せず、実用的な最小seedとその信頼境界を維持しながらTEI定義が担う領域を広げる。
+
+### 16.5 受入順は「CLIで定義実装を検証」から「生成Desktopの実利用」へ
+
+| 作業束／Owner | 実行する一巡 | 合格条件・残すべき上限 |
+| --- | --- | --- |
+| **SB-CLI（P0並行） #2831／#2620／#2621** | 既存TEI CLIが、実Loaderで読んだSourceから非Pluginの一Build Subjectを選択し、Generator/Builderを実起動 | CLIの実行、selected/actual source、Artifact/Result。形式が未受理なら\`*.tei.md\`実装済みと呼ばない |
+| **SB-MEAN（並行） #1124／#988／#951** | 意味を持つ一つの定義を変更→実Go/TS生成変更→独立Expected／Consumer結果が変化 | Goへの単純delegateと区別できる負例、旧生成物拒否、Source位置／意味Diff |
+| **SB-PLUG（段階） #951／#4646／#2831** | 最小Plugin Contributionの一部をTEIから生成し、そのPluginを利用して次の定義・部品を生成 | bootstrapとTEI生成範囲を区別し、生成器・Plugin実物の版・依存・呼出し証拠を保持 |
+| **SB-DESK（既存P0到達条件） #4583／#1824** | non-Plugin正式BuildIntent→N0/N2/N3→実Stage1 Process→Stage2 Wails/Windows→当該WebView2 | 既存B1-B/C・B2・B3の同一Attempt条件。CLI/Pluginの局所PASSをDesktop完成へ転記しない |
+| **SB-SIMPLIFY（継続評価） #2621／#2497／#1180** | 同じ動作・独立Expectedの下でScript／図表／表・生成コード境界を次版へ改善 | 定義の読みやすさ・修正箇所・重複・手書き実装量と動作の非退行を対で確認 |
+
+\`SB-CLI\`と\`SB-MEAN\`は**Studio GUIが未完成でも進める**。既存#2831／#4583が担う\`SB-DESK\`の製品到達条件を取り消すのではなく、そこに「TEI定義による実装」がどれだけ含まれるか別票で説明できるようにする。各作業のOwnerが別であれば並行可能であり、新しい一括Hard Gateを追加しない。
+
+### 16.6 最初の独立負例（既存#1180／#2514へ引渡し）
+
+| 受入候補 | 失敗を露見させる入力 | 期待結果 |
+| --- | --- | --- |
+| **SSB-01** | \`*.tei.md\`未束縛でCLIが既存Go Generatorを起動 | Go Generator起動の事実は記録できるが、\`*.tei.md\`読取・意味受理・TEI実装のPASSにしない |
+| **SSB-02** | TEIの演算条件だけを変更。固定Go delegateのまま生成Byte・振る舞い不変 | 定義→生成→動作の因果連鎖を未成立と判定。単なる起動ラッパーを実質セルフビルドへ数えない |
+| **SSB-03** | TEI定義の型・Relation多重度・Validationを破壊 | 独立Expectedが失敗または明示拒否を検出。旧生成物や未関係の固定Go実装で偶然PASSさせない |
+| **SSB-04** | PluginはStudio Contributionのみ生成済みでGenerator／Runtime側の実物が不足 | Stageごとの不足・未資格を維持。Plugin全体をTEIセルフビルド済みと表示しない |
+| **SSB-05** | 旧Compiler/Plugin版で生成したArtifactが新Targetで使用される | Selected/Actual/Consumed版差を検出し、現在のPlugin機能完成・受理へ自動昇格しない |
+| **SSB-06** | DSLを短縮する代わりにRuleをGo側へ移し、生成成果物・動作は同じ | LOC減少だけで改善としない。暗黙移管した意味／独立Expected／変更時の編集箇所を明示 |
+| **SSB-07** | CI ShellがStage1を用いずStage2を外側から生成しWindowsだけ成功 | Stage2 Desktopの実使用は限定観測として残すが、Stage1→Stage2の真の再入はFAIL/NOT RUN |
+| **SSB-08** | 違うWorkspace／Source RevisionでGo/TS生成・Test／Desktopを合成 | 同一Subject/Source/Attempt/実Consumerの資格を失効させ、別HEAD成功を足さない |
+
+**現状・停止線**：mainの\`internal/buildintent/intent.go\`では\`go-command\`／\`go-package\`のRecipe/Source概念はある一方、\`BuildIntent.Validate\`の\`Subject.Kind\`は現状pluginに限定される。#4583の限定N0子Process起動や生成Windows Jobは、正式non-Plugin BuildIntent全閉包、\`*.tei.md\`からの生成、Plugin自体の再帰、Stage2 Desktopの製品合格を立証しない。本節は設計・受入方針のみで、新CLI/MCP実装・Windows Build／Owner意味受理は**NOT RUN**。新Self-build Engine、第二Plugin Registry、独自Host、TEI専用AI実行機構、Go AST依存DSLは導入しない。
+
