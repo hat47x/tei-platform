@@ -260,7 +260,7 @@ func TestBrowseReadAgainstDisposablePostgreSQL(t *testing.T) {
 		if len(c.Parameters) != 1 || c.Parameters[0].Name != "from" || c.Parameters[0].DeclaredByQuery {
 			t.Fatalf("the undeclared :from must be reported as undeclared: %+v", c.Parameters)
 		}
-		if c.Coverage.Status != "unestablished" || c.Coverage.EmptyJustified || c.Coverage.Visibility != "unobserved" || c.Grain.Identity != "undeclared" {
+		if c.Coverage.Status != "unestablished" || c.Coverage.EmptyJustified || c.Coverage.Visibility != "rls-inactive" || c.Grain.Identity != "undeclared" {
 			t.Fatalf("claims raised above the ceiling: %+v %+v", c.Coverage, c.Grain)
 		}
 	})
@@ -412,8 +412,9 @@ func TestBrowseReadAgainstDisposablePostgreSQL(t *testing.T) {
 		if err := db.QueryRow(`SELECT count(*) FROM public.order_lines`).Scan(&joined); err != nil || joined != 3 {
 			t.Fatalf("independent line count=%d (%v)", joined, err)
 		}
-		if after.Context.Coverage.Status != "unestablished" {
-			t.Fatal("coverage raised")
+		// The joined plan reads a relation the Workspace does not declare: a seen restriction.
+		if after.Context.Coverage.Status != "partial" {
+			t.Fatalf("coverage=%s, want partial", after.Context.Coverage.Status)
 		}
 	})
 
@@ -441,8 +442,8 @@ func TestBrowseReadAgainstDisposablePostgreSQL(t *testing.T) {
 		if n := len(independentRead(t, db, time.Date(2026, 11, 7, 9, 0, 0, 0, time.UTC))); n != 3 {
 			t.Fatalf("the owner sees %d rows, want 3", n)
 		}
-		if r.Context.Connection.User != "tei_browse_reader" || r.Context.Coverage.Visibility != "unobserved" ||
-			r.Context.Coverage.Status != "unestablished" || r.Context.Coverage.EmptyJustified {
+		if r.Context.Connection.User != "tei_browse_reader" || r.Context.Coverage.Visibility != "rls-active" ||
+			r.Context.Coverage.Status != "partial" || r.Context.Coverage.EmptyJustified {
 			t.Fatalf("a partial visible set was presented as more: %+v %+v", r.Context.Connection, r.Context.Coverage)
 		}
 		mustExec(t, db, `ALTER TABLE public.orders DISABLE ROW LEVEL SECURITY; REVOKE SELECT ON public.orders FROM tei_browse_reader;

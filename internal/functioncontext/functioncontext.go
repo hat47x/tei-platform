@@ -65,6 +65,11 @@ type Input struct {
 	Execution  driver.BrowseQueryEnvironmentExecution
 	Connection ConnectionObservation
 	Parameters []ParameterShape
+	// Declared is what the Workspace declares about where the Data is stored. The zero value
+	// has no status and is treated as "none".
+	Declared driver.DeclaredBrowseRelations
+	// Acquisition is nil when the read was not observed. Then nothing is lowered or raised.
+	Acquisition *AcquisitionObservation
 }
 
 type Cell struct {
@@ -119,13 +124,28 @@ type Context struct {
 		// Key is the Owner-declared candidate key of the Data, if any. It is never inferred.
 		Key               []core.CanonicalID `json:"key,omitempty"`
 		ExactDuplicateRow int                `json:"exactDuplicateRows"`
+		// Scan is observed from the plan: one relation read once, or several/joined.
+		Scan string `json:"scan"`
+		// DeclaredKey: are the Workspace's primary key attributes present in the result and
+		// unique among the rows read. It is not an entity-grain claim (see Acquisition).
+		DeclaredKey string `json:"declaredKey"`
 	} `json:"grain"`
 	Coverage struct {
+		// Status is partial only when a restriction was SEEN. It is never complete.
 		Status         semantic.Coverage `json:"status"`
 		EmptyJustified bool              `json:"emptyJustified"`
 		Pagination     string            `json:"pagination"`
 		Visibility     string            `json:"visibility"`
+		// Reasons: the restrictions seen (why Status is partial). Open: the conditions that
+		// stay unclosed even then, so complete is unavailable.
+		Reasons []string `json:"reasons,omitempty"`
+		Open    []string `json:"open"`
 	} `json:"coverage"`
+	Acquisition struct {
+		Observed    bool                           `json:"observed"`
+		Declared    driver.DeclaredBrowseRelations `json:"declaredRelations"`
+		Observation *AcquisitionObservation        `json:"observation,omitempty"`
+	} `json:"acquisition"`
 	Currency   string `json:"currency"`
 	TimeFormat string `json:"timeRendering"`
 	Disclosure struct {
@@ -207,10 +227,18 @@ func From(in Input) (Context, error) {
 			c.Grain.Key = append([]core.CanonicalID(nil), res.Data.CandidateKeys[0].Attributes...)
 		}
 	}
-	c.Coverage.Status = semantic.CoverageUnestablished
+	coverage, reasons, open, visibility, scan := assess(in.Declared, in.Acquisition)
+	c.Coverage.Status = coverage
 	c.Coverage.EmptyJustified = false
 	c.Coverage.Pagination = NotDeclared
-	c.Coverage.Visibility = NotObserved
+	c.Coverage.Visibility = visibility
+	c.Coverage.Reasons = reasons
+	c.Coverage.Open = open
+	c.Grain.Scan = scan
+	c.Grain.DeclaredKey = declaredKey(in.Declared, c.Columns, c.Rows)
+	c.Acquisition.Observed = in.Acquisition != nil
+	c.Acquisition.Declared = in.Declared
+	c.Acquisition.Observation = in.Acquisition
 	c.Currency = NotEvaluated
 	c.TimeFormat = TimeRendering
 	c.Disclosure.Columns = len(c.Columns)
