@@ -7,9 +7,13 @@ import type { PinRequest } from "./pin-state.ts";
  */
 export function catalogIdentity(catalog: Catalog | null): string | null {
   if (!catalog) return null;
-  return JSON.stringify([
+  const revisions = [
     catalog.modelRevision, catalog.worldFingerprint, catalog.sourceIndexFingerprint,
-  ]);
+  ];
+  // A missing revision is not evidence that two Catalogs identify the same source.
+  if (!revisions.every((value) => typeof value === "string" && value.trim().length > 0))
+    return null;
+  return JSON.stringify(revisions);
 }
 
 /** The same read-only Product operation used by the selected Inspector. */
@@ -31,6 +35,9 @@ export async function readPinnedSubject(
   request: PinRequest,
   catalog: Catalog,
 ): Promise<{ version: string }> {
+  // The ordinary Catalog presenter accepts empty strings for display, but a
+  // Pin must not treat unknown/blank revisions as evidence of continuity.
+  if (catalogIdentity(catalog) === null) throw Error("CATALOG_IDENTITY_UNAVAILABLE");
   const eligibility = inspectEligibility(catalog, request.subject);
   if (!eligibility.ok) throw Error(eligibility.reason);
   const reply = await client.inspectSubject(
