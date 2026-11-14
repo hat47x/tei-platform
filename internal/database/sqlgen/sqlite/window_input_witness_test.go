@@ -167,6 +167,13 @@ func TestCTKWindowInputRowWitnessRejectsMissingNullAndDuplicate(t *testing.T) {
 		t.Fatalf("missing source observation %s", id)
 		return nil
 	}
+	largeExact, err := validateCTKWindowInputRows(mutate("A3", json.RawMessage("9007199254740993")))
+	if err != nil {
+		t.Fatalf("exact integer beyond float64 precision was rejected: %v", err)
+	}
+	if got := largeExact["A3"].Value; !got.Valid || got.Int64 != 9007199254740993 {
+		t.Fatalf("exact integer precision was lost in the candidate decoder: %+v", got)
+	}
 	for _, scenario := range []struct {
 		name string
 		rows []ctkWindowInputRow
@@ -175,6 +182,7 @@ func TestCTKWindowInputRowWitnessRejectsMissingNullAndDuplicate(t *testing.T) {
 		{"B2 null changed to numeric zero", mutate("B2", json.RawMessage("0"))},
 		{"A3 nonnull changed to null", mutate("A3", json.RawMessage("null"))},
 		{"inexact fractional value", mutate("A3", json.RawMessage("3.5"))},
+		{"exponential notation not accepted as exact integer", mutate("A3", json.RawMessage("1e2"))},
 		{"removed input row", oracle.InputObservations[:6]},
 		{"duplicate input row", append(append([]ctkWindowInputRow(nil), oracle.InputObservations...), oracle.InputObservations[0])},
 	} {
