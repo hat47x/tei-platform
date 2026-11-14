@@ -995,6 +995,8 @@ external LLM
 
 ## 現在の優先順
 
+**2026-11-12／アウフヘーベン担当#3・保証境界の統合**：[横断検収記録](design/CROSS_CUTTING_ACCEPTANCE_BOUNDARIES_2026-11-12.md)で、Source原文→Accepted Meaning、Plugin選択→実Invoke、実Read→Consumer、Entry/Trigger→Effect、変更影響→選択的再検証を一つの反証表に接続する。これらは一括PASSにせず、既存#1119のP0-R（#2586）、P0-T（#1251）、P0-H（#2509/#2515）を独立維持する。次段の三要素分析法（データモデル・機能モデル・業務モデル）/CRUD/SHOの意味保持（#1124、Draft #3263/#4479）、Script Launch（#4495/#4497/#4502）、組織C1（#4501、Draft #4500）、変更後BOM再資格（#2600/#3267）を既存Ownerへつなぐ。**設計のみ・追加実験NOT RUN**。正式X-TEA整合、Owner意味受理、実DB/Host/外部Consumer合格、全体G4を主張しない。
+
 
 **2026-11-11／実ReadとPlugin選択の現在の最短不足を再確定**：main [#3862](https://github.com/hat47x/tei-platform/pull/3862)で`reference/workspace`の`public.orders`用隔離Seedと3/2/0件の独立Expected、main [#3866](https://github.com/hat47x/tei-platform/pull/3866)で型付きM0 Model Mapの局所Source照合が成立した。一方[Draft #4076](https://github.com/hat47x/tei-platform/pull/4076)は**別Workspace** `examples/xtea-lowcode`の`sales.order`／`status,operator,page-size,offset`をEnvironment→Database instance→実SQL Executor→Function Data Context→CLI `view -execute`へ結線中。両方とも`order_entry.recent_orders`のIDだが**SQL/物理Relation/パラメータ/Fixture/Expectedが別**で、同じ成功票を共有しない。さらに`reference/workspace`側SQLの`:from`は現Query宣言に`input from`がなく、実Binder/型契約未成立。これを[Workbench §23](design/DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)と[独立Source-static回帰](../examples/data-source-workbench/query_route_separation_test.go)へ固定した。
 
