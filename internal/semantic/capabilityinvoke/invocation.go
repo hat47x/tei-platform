@@ -51,6 +51,12 @@ func Invoke(ctx context.Context, capability semantic.Capability, adapter Adapter
 		return BusinessResult{}, err
 	}
 
+	// Reject a malformed result contract before calling a potentially effectful
+	// Adapter. This is a structural check, not Entry publication or Host admission.
+	if err := validateResultContract(capability); err != nil {
+		return BusinessResult{}, err
+	}
+
 	result, err := adapter.Invoke(ctx, capability.ID, input)
 	if err != nil {
 		return BusinessResult{}, fmt.Errorf("running capability %s did not complete: %w", capability.ID, err)
@@ -65,6 +71,9 @@ func Invoke(ctx context.Context, capability semantic.Capability, adapter Adapter
 // 一致していることだけを確認する。Payloadの具体的な値表現や型変換はAdapter側の責務とし、
 // Driverより先に汎用的な業務データ値モデルを固定しない。
 func ValidateBusinessResult(capability semantic.Capability, result BusinessResult) error {
+	if err := validateResultContract(capability); err != nil {
+		return err
+	}
 	if result.Capability != capability.ID {
 		return fmt.Errorf("the result of running capability %s claims a different Capability %s", capability.ID, result.Capability)
 	}
@@ -98,4 +107,33 @@ func ValidateBusinessResult(capability semantic.Capability, result BusinessResul
 		}
 	}
 	return fmt.Errorf("capability %s does not define outcome %q", capability.ID, result.Outcome)
+}
+
+// validateResultContract checks only the shape of an invocation's declared
+// result. A valid shape does not mean its business meaning was accepted, its
+// Entry published, or its execution authorized by the current Host.
+func validateResultContract(capability semantic.Capability) error {
+	if capability.ID == "" {
+		return fmt.Errorf("capability identity is missing")
+	}
+	if capability.Output != "" {
+		if len(capability.Outcomes) != 0 {
+			return fmt.Errorf("capability %s declares both a single output and named outcomes", capability.ID)
+		}
+		return nil
+	}
+	if len(capability.Outcomes) == 0 {
+		return fmt.Errorf("capability %s has no result contract defined", capability.ID)
+	}
+	seen := make(map[core.LocalName]bool, len(capability.Outcomes))
+	for _, outcome := range capability.Outcomes {
+		if outcome.Name == "" || outcome.Payload == "" {
+			return fmt.Errorf("capability %s declares an incomplete named outcome", capability.ID)
+		}
+		if seen[outcome.Name] {
+			return fmt.Errorf("capability %s declares duplicate outcome %q", capability.ID, outcome.Name)
+		}
+		seen[outcome.Name] = true
+	}
+	return nil
 }
