@@ -374,6 +374,8 @@ J-01で明らかになったsemantic_graphとapplication graphの違いを保つ
 
 追加の局所Go回帰`TestREAIntakeCompleteGraphDoesNotProveFunctionOrBusiness`は、公開合成`reaIntakeFixture`を実`three-element rea-intake`のCommand handlerへ渡し、Graphが`qualification=complete`でもData=supported／Function=unsupported／Business=unsupported／Owner pendingとなること、各unsupported行に追加で必要なEvidenceの記載が残ることを検証する。**これは実旧システムでのFunction/DB観測試験ではない**。
 
+**追加のCaptured対照（J-03b）**：Go回帰`TestREADualEntryCapturedInputAndIdentityBoundaries`でも、保存済みREA 6.8.0の元UTF-16LE Rawから作ったUTF-8派生入力について、`threeElementCoverage`のData=supported／Function=unsupported／Business=unsupported、各unsupportedの`wouldNeed`とOwner pendingが保持されることを追加で検証する。合成GraphのJ-03aと実CapturedのJ-03bは区別し、対象が実際の業務Function Fであると誤認しない。これによって**外部解析からData-shapedな構造は得られても、実Functionや実DB Effectの観測は不足する**という境界を実Capturedで試せる。一方、`semantic_graph`と`graph`のRelation間の一意な対応、Source-backedな業務Functionの読み書き、正式Owner受理は未確認のままである。
+
 次の製品受入では、このレビュー行をStudioで一Functionの質問を選んだ際に、PinしたQualified SubjectとCurrent Workspace、SourceのActual Attempt、未知・不支持項目、Disclosure資格を含む独立Expectedとして提示する。ただしStudio UIやAI説明の成立はこのHeadless試験からは主張しない。回答の説明文はGraph→DSLから直訳可能な受理済み業務意味だけで構成し、外部静的解析で見えないWriteを補わない。旧Actual／Desired／TEI Target Actualは別々の実測とする。
 
 本節はJ-01/J-02に続く**問相対の停止線**であり、新しいBRMS、特別なREA Adapter、専用UI Hostを作る要件ではない。まず既存CLIから見える確定／未知を区別し、Functionの全体意味・Source編集・Studio実受領・Pluginによる実Go生成は後続の別資格とする。
