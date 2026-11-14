@@ -19,6 +19,11 @@ on:
       - "reference/tei-studio-workbench/pin-state.test.mjs"
       - "reference/tei-studio-workbench/responses.pin.test.mjs"
       - "reference/tei-studio-workbench/package.json"
+      - "reference/tei-studio-workbench/pin-inspection.ts"
+      - "reference/tei-studio-workbench/pin-inspection.test.mjs"
+      - "reference/tei-studio-workbench/main.ts"
+      - "reference/tei-studio-workbench/index.html"
+      - "reference/tei-studio-workbench/style.css"
       - ".github/workflows/studio-pin-state-contract.yml"
 
 permissions:
