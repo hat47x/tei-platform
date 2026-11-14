@@ -290,3 +290,27 @@ func TestBrowseQueryInEnvironmentRejectsLegacyUndeclaredArguments(t *testing.T) 
 		t.Fatalf("untyped Environment input should never invoke Provider: err=%v calls=%d", err, exec.calls)
 	}
 }
+
+func TestBrowseQueryInEnvironmentRejectsInvalidTypedValues(t *testing.T) {
+	cases := []struct {
+		name   string
+		params map[string]any
+	}{
+		{"missing", nil},
+		{"timestamp as string", map[string]any{"from": "2026-11-07T09:00:00Z"}},
+		{"timestamp as integer", map[string]any{"from": int64(42)}},
+		{"explicit NULL", map[string]any{"from": nil}},
+		{"extra name", map[string]any{"from": time.Date(2026, 11, 7, 9, 0, 0, 0, time.UTC), "status": "accepted"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			exec := &countingBrowseExecutor{}
+			registry := mapFor(browseEnvDev, browseInst, exec)
+			got, err := driver.NewResolver(referenceWorld(t)).ExecuteBrowseQueryInEnvironment(
+				context.Background(), browseEnvDev, browseApp, browsePat, registry, tc.params)
+			if err == nil || exec.calls != 0 || got.QuerySourceSHA256 != "" {
+				t.Fatalf("invalid typed input reached Environment Executor or returned evidence: err=%v calls=%d got=%+v", err, exec.calls, got)
+			}
+		})
+	}
+}
