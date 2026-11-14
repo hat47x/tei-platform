@@ -585,7 +585,9 @@ main `internal/database/persistence/model.go` の `Mapping.RelationStorage []Rel
 3. **Product DB/Read Owner (#4490/#2586)**：同一A2旧/新版の実DB共存、同一Read CohortのPerson3・Membership4→3・FTE3.0→2.4を既存r7独立Expectedで検査。SQL semantics/NULL/timezone/物理Key/完全性/alias bindingを分離し、旧Current Writer cutoverは#4125へ。
 4. **Consumer/Authority Owner (#4501/#1174/#3421)**：Case C1/Viewer/HeadlessへPerson結果を伝えることと、実Hostでの業務判断・公開・引継ぎを別検証。ローカルDesktop/Gitと共有Wails ServerのAuthorityを自動継承しない。
 
-**現時点の資格**：新IR候補テストコードは#4633に実装したが、その新HEADのGo/Health完了は別途照合する。実Person-link Source、RelationStorageのTEI DSL Loader/SQL生成/実DB readback、業務Owner採用は**NOT RUN / NOT ACCEPTED**。#2586通常CLI実Provider Readと#2831/#4583 Studio Desktop Stage1→Stage2 Self-buildは引き続き独立P0。
+**実装時に欠かせない点**：Relation Storageの補助列を生成できても、その列へ**どのPerson IDを、どのMembershipの記録版に、どのSourceを根拠として書くか**は決まらない。例えばr7のP2にはA2とA3があり、A2には既知時点の異なる二つの記録版がある。実書込の受入では、人物ID・所属Occurrence・記録版・時点と保存先の対応を同一Attemptで追い、実Readで各版を再現する。既存データでPersonとの対応が不明なら、IDを推測して補完しない。補助列の追加、実データの移行、Queryの読取、Consumerの受領は別の検証とする。
+
+**現時点の検証状況**：[#4633](https://github.com/hat47x/tei-platform/pull/4633)の固定HEAD `85f657002f8b9f05dfd119a72565e583985b8494`では、実Workspaceの一時コピーを使ったTEI DSLの読込・Relation検証・オフラインSchemaDiff/DDL生成について[Repository Health #43572492328](https://github.com/hat47x/tei-platform/actions/runs/43572492328)が成功済み。ただし、正式なPerson Linkの採用、実DBの人物ID書込・二時点履歴、SQL Rowset、独立Consumer受領は**未実証・未受理**である。#2586通常CLI実Provider Readと#2831/#4583 Studio Desktop Stage1→Stage2セルフビルドは、引き続き独立した最優先課題として扱う。
 
 
 ## 18. Relation Storage既存実装への接合とC1限定テストの実証（2026-11-14）
