@@ -311,6 +311,17 @@ func CompareCandidateSets(before, after CandidateSet) CandidateSetComparison {
 			entry.Notes = append(entry.Notes,
 				"same-structure-with-a-new-external-identity",
 				"a-renumbered-candidate-requires-fresh-owner-review")
+			// The structural fallback deliberately ignores producer IDs. A pair
+			// with changed endpoints might be benign renumbering, a reversal,
+			// or an unprovable collision. It cannot authorize relation editing.
+			if candidate.Kind == CandidateKindCrossReference &&
+				previous.Facts.Direction != nil && candidate.Facts.Direction != nil &&
+				(previous.Facts.Direction.FromExternalID != candidate.Facts.Direction.FromExternalID ||
+					previous.Facts.Direction.ToExternalID != candidate.Facts.Direction.ToExternalID) {
+				entry.Notes = append(entry.Notes,
+					"relation-endpoint-mapping-is-unverified",
+					"source-backed-endpoint-mapping-is-required-before-edit")
+			}
 		} else {
 			entry.Status = ComparisonAdded
 		}
