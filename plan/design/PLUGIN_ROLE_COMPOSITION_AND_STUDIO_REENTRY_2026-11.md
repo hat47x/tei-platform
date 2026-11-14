@@ -765,3 +765,73 @@ Pluginは自らのFunction/Modelを実装するだけでなく、利用側がそ
 初回は公開Facetを持つ**一つのpure Function/Validation Plugin**を題材に、契約付きの継承図→受理済み意味→Go生成→実Provider→CLI/独立Consumerを一つの版に束縛する。後続で別Pluginが同じFacetを使う構成を追加し、上位の契約変更時に生成物とViewのどちらを再生成するかを分けて検証する。この順序なら、Pluginの表現能力を実装で確かめながら、TEI定義そのものを段階的に簡潔にできる。
 
 **状態**：設計・計画。上位公開Facetの実継承、TEI-native Plugin実生成、P-A〜P-Eの実行、正式なPlugin Manifest/ABI、全Windows Stage2、Owner意味受理は **NOT RUN / NOT ACCEPTED**。関係する反例は共通のPX-38〜47として引き渡し、別の試験正本を増やさない。
+
+---
+
+<!-- tei-plugin-aspect-graph-and-graph-generator-slice-20261114 -->
+## 17. 公開された構造を選んで横断機能を合成する（2026-11-14追補）
+
+### 17.1 図解の継承から「適用対象の選択」へ進む
+
+第15章は依存先Pluginが契約で公開したDiagram／Graph／Obligationを、出典と版を保って参照・再公開する境界を定めた。本章では、その**公開された型付き構造を使って、複数の画面や処理に共通する機能を選択・挿入できるか**を検討する。
+
+具体例はB2Cサイトのページ閲覧計測である。個別ページへ同じ計測コードを貼り付ける代わりに、「対象となる公開ページ」と「閲覧が確定した時点」を宣言して、選択されたTargetへ処理を合成する。ここで対象となるのは一般的なアクセス計測であり、特定の広告事業者のScriptをCoreへ固定することではない。SEO、監査、翻訳、UIの補助機能、業務横断Validationなどにも展開可能かは、同じ契約で比較する。
+
+**アスペクト指向の専用言語や常駐Interceptorを先に作らない。** 既存[#4198](https://github.com/hat47x/tei-platform/issues/4198)のLifecycle Graph、[#1016](https://github.com/hat47x/tei-platform/issues/1016)のApplication Composition、[#951](https://github.com/hat47x/tei-platform/issues/951)のProvider選択、[#1121](https://github.com/hat47x/tei-platform/issues/1121)のTarget Lowering、[#1129](https://github.com/hat47x/tei-platform/issues/1129)／[#1174](https://github.com/hat47x/tei-platform/issues/1174)の実作用・権限を、それぞれ正本として用いる。Pluginに新しく要求するのは、既存標準Graphと契約を参照する**適用対象・適用時点・実現内容・制約の宣言**に限る。
+
+### 17.2 何を選び、どの段階へつなぐか
+
+| 関心事の要素 | 最小の意味・責務 | 既存の情報への束縛 |
+| --- | --- | --- |
+| **対象選択** | 明示的に公開されたPage／Route／Operation／Lifecycle Nodeのうち、Role・範囲・契約版が一致する集合を選ぶ | #2620 Role、#4198の型付きGraph。未公開Nodeを探索・推測しない |
+| **適用時点** | `page.generated`／`navigation.committed`／`operation.beforeValidation`等、当該Targetが提供する型付き節目を指定する | Event／Triggerと実Invocationを混同しない。節目名は採用前の説明用候補 |
+| **実現内容** | 生成時のAdapter差込み、read-only Observation、または既存Contractに束縛したHook Providerの呼出し | #951で実Providerを選び、#1121でTargetを決定。任意のJS／Goを無検査実行しない |
+| **前提・禁止** | 必須Guard、Consent／Scope、Effect分類、Target非対応時の扱い、重複実行・順序の条件 | #1129/#1174の現在判断と、上位Pluginが公開したObligationを弱めない |
+| **合成・競合** | 複数Concernのbefore/after、排他、重複、必要能力を検査。競合時は診断 | 既存CompositionとGraph依存辺。登録順による無言の勝者決定をしない |
+| **証拠** | 選択対象集合、除外理由、Adapter／Artifact、実観測、開示・実作用、実Consumerを個別に残す | #1180/#2514のExpected、#943/#2600のArtifactと実消費 |
+
+この表は**採用済みの新Schemaではなく、既存Contractに対して検証する最小要件**である。Node IDやEdge IDは、Graphの表示座標と別に固定する。同名のPageや、同じ両端点のEdgeが存在しても、選択対象が曖昧にならないことを必要条件とする。
+
+### 17.3 B2Cページ計測で最初に検証する具体例
+
+初回のApplication Graphには、公開ページ `home`／`catalog`、認証後ページ `account`、管理画面 `admin` を持たせる。計測Concernは公開ページ用Profileを選び、**`home`と`catalog`のみを意図的に選択**する。実装者は、その選択に使ったRoleと公開Facetを固定する。`account`や`admin`は名前やURLの類似から追加しない。
+
+- **Build側**：選択対象2件と必要な表示／Script AdapterをTargetごとに決定する。Generatorの収録とRuntimeの計測処理を分離し、未選択ページの生成物に計測機能が紛れ込まないか確認する。
+- **Runtime側**：画面HTMLの生成、初回表示、Client側Navigation、再描画、送信処理を別の節目とする。**閲覧確定に対応する実イベントを一度処理したか**を観測し、SSRとhydrationで同じNavigationを二重計上しない。SPAに非対応なら非対応と表示する。
+- **Consent／Privacy**：当該環境の適切なConsentと現在の開示・処理条件をRuntimeで確認する。拒否・未取得時に計測送出をしない。後から撤回された場合は将来の送出を止め、過去データの削除を実装なしに保証しない。機微なURL・Principal・Session情報は計測Payloadへ自動混入させない。
+- **Business Outcome**：任意の計測Providerが障害を起こしても業務Operationまで失敗扱いにするかは契約で明示し、通常の任意計測は業務結果と別に観測する。一方、**必須監査や確定時Guardを任意計測と同じbest-effortへ格下げしない**。
+- **外部Provider**：計測SDK・広告Script等が必要なら対象TargetのProvider／Host側で配布、CSP、契約、データ処理、ライセンスの可否を判定する。DSLが特定外部SDKを暗黙ロードしない。
+
+別のread-only Concernとして、`operation.beforeValidation`へ説明用の検証Observerを追加し、Pageの閲覧計測と**同じ構造選択・合成原則で扱える範囲**を比べる。ただし、Business Ruleに必要なValidationの結果と単なるObserverの存在を同一視しない。
+
+### 17.4 上位公開Facetの継承と、横断処理の適用許可は別
+
+上位Aが公開したLifecycle Graphの一部を、下位Bがread-onlyで参照できるとしても、BがAの**非公開の実行節目へ処理を差し込む権利**は生じない。Bが派生図を作ること、対象の候補を列挙すること、実行時にObserverを追加すること、Cへ再公開することは、それぞれ別資格として扱う。
+
+Aの公開Facetに必要なGuardやEffect順序が含まれる場合、BのPatchによってそれらを削除・後回し・迂回できない。Graphの一部が非公開、未取得、partial、版不一致、またはTargetで表現不能の場合、見えているGraphだけを「完全な対象集合」とみなさない。必要な対象選択が確定しないときは、黙って全ページ・全Operationへ適用せず、候補・不足情報・拒否理由をread-onlyで示す。
+
+Graphの編集やConcernの追加を、現在実行中のProcessへ無審査で反映しない。**定義の採用、生成ArtifactのBuild、Runtimeでの資格、実際の実行Attempt**を別々に照合する。
+
+### 17.5 CLIから検証し、生成時に決められることを優先する
+
+初回はCLI／既存Inspectによって、選択前のGraph、公開条件、選択されたNode集合、Concernの合成順、対象外の理由、必要Builder/Providerを**read-onlyに比較**する。その後、生成物への静的合成を一件実施する。Runtimeで任意のGraphを毎回解釈する新Engineは先行実装しない。
+
+適用位置の追跡は `Source occurrence → accepted Graph Node/Edge → selected Join Point → resolved Provider/Adapter → target Artifact Member → actual Runtime Event/Consumer` までを目的とし、各辺の実証資格を個別に示す。上位Facetの版変更や撤回で、直接関係する選択／Build／開示だけを失効させ、無関係Pluginを一律再生成しない。
+
+### 17.6 横断Concernの独立Expected候補：PAX-01〜08
+
+既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)のScenarioへ追加する**差分assertの索引**とする。第15章のPX、既存PCX/PCC、#4198のGraph負例を複製しない。
+
+| Case | 一因子変更／反例 | 追加で判定すること |
+| --- | --- | --- |
+| **PAX-01** | 公開Page `catalog`を追加／除外 | 対象の正確な増減。名前による自動拡大と未選択Pageへの混入を拒否 |
+| **PAX-02** | AのGraphはBへ公開、BからCへの再公開は不許可 | Cへ図・Hook ID・選択対象を漏らさない。表示可を実行可にしない |
+| **PAX-03** | SSR初回表示後にhydration、次いでSPA内遷移 | 同一閲覧の二重観測を拒否し、別の実遷移は独立に観測 |
+| **PAX-04** | Consentが拒否／未取得／撤回後へ変化 | それぞれ送出を止め、過去データ消去の偽保証をしない |
+| **PAX-05** | 必須監査と任意計測のProviderがそれぞれ失敗 | 必須Guardの実行資格を保持。計測失敗を業務成功・失敗へ無条件に伝播させない |
+| **PAX-06** | 2 Concernが同じJoin Pointへ競合順序または重複適用 | 登録順勝ちを拒否し、明示順・重複・排他を診断 |
+| **PAX-07** | 上位Facetを撤回、Source A→B→A | 旧Cache/選択/現在開示を自動復活させず、無関係部分のBuildを維持 |
+| **PAX-08** | Graphには存在するが未公開・partial・Target非対応のPage | 未取得を不存在扱いせず、推測適用や全件の成功表示を拒否 |
+
+**到達点**：Graph上の選択候補をread-onlyで説明できること、静的に必要なTarget Adapterを一つ正しく合成できること、実Navigation／Providerと送出の有無を独立確認できること。P0のStudio Stage1→Stage2と#1251の実Provider入口へ追加Hard Gateを設けない。正式Graph拡張文法、汎用AOPランタイム、実計測SDK・Cookie Banner／Privacy同意機構、全Targetの実現は未採用・未実証とする。
+
