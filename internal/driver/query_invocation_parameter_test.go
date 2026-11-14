@@ -91,9 +91,6 @@ func TestBrowseQueryRefusesDuplicateAndUnqualifiedInputDeclarations(t *testing.T
 		{"undeclared runtime type contract", func(q *query.EmbeddedSQL) {
 			q.Inputs[0].Type = "std.money"
 		}, "unsupported runtime binding"},
-		{"no input declaration", func(q *query.EmbeddedSQL) {
-			q.Inputs = nil
-		}, "undeclared input from"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -121,5 +118,35 @@ func TestBrowseQueryRefusesDuplicateAndUnqualifiedInputDeclarations(t *testing.T
 				t.Fatalf("expected %q before executor; got err=%v calls=%d", tc.wantErr, err, calls)
 			}
 		})
+	}
+}
+
+// An old synthetic Query can still be replayed in the generic reference
+// executor to verify historical behavior. This must never be counted as a
+// qualified typed Product Read; the Environment path refuses the same input.
+func TestBrowseQueryHistoricalNoInputsIsNotTypedQualification(t *testing.T) {
+	w := referenceWorld(t)
+	for i := range w.Queries {
+		if w.Queries[i].ID == "order_entry.recent_orders" {
+			w.Queries[i].Inputs = nil
+		}
+	}
+	calls := 0
+	executor := browseQueryExecutorFunc(func(_ context.Context, q query.EmbeddedSQL, _ application.DatabaseRequirement, _ map[string]any) (driver.BrowseQueryResult, error) {
+		calls++
+		if len(q.Inputs) != 0 {
+			t.Fatalf("historical fixture unexpectedly gained typed input: %+v", q.Inputs)
+		}
+		return driver.BrowseQueryResult{
+			Raw: queryresult.RawResult{
+				Columns: []string{"order_id", "customer_id", "ordered_at", "status", "total_amount"},
+				Rows:    [][]any{},
+			},
+		}, nil
+	})
+	out, err := driver.NewResolver(w).ExecuteBrowseQuery(context.Background(), "order_entry", "order_entry.recent_orders", executor,
+		map[string]any{"from": time.Date(2026, 11, 7, 10, 5, 0, 0, time.UTC)})
+	if err != nil || calls != 1 || out.Resolution.Query == nil || len(out.Resolution.Query.Inputs) != 0 {
+		t.Fatalf("legacy fixture should replay without claiming typed input: err=%v calls=%d", err, calls)
 	}
 }
