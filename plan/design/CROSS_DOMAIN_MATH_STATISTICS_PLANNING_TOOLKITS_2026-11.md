@@ -359,9 +359,29 @@ Toolkitの構成は、既存のPackage、Contract、Provider、Generator、表�
 | 並行する編集検証 | 固定JSON Schemaの読み取り専用表示とSource位置への移動 | [#2497](https://github.com/hat47x/tei-platform/issues/2497)、[#2620](https://github.com/hat47x/tei-platform/issues/2620)、[#1124](https://github.com/hat47x/tei-platform/issues/1124) | 原文の保持、安定した対象選択、編集不能な写像を明示 |
 | 後続の専門実証 | Solver/DOE、物理系・生命科学の連携 | [#951](https://github.com/hat47x/tei-platform/issues/951)、[#1016](https://github.com/hat47x/tei-platform/issues/1016)、[#3791](https://github.com/hat47x/tei-platform/issues/3791) | 専門的な意味、計算品質、外部Provider、配布条件を確認 |
 
+### CLI/MCPから始める、意味のあるセルフビルド
+
+別途進めているTEI本体のセルフビルド設計では、初期段階からStudioのGUIを必要とはしない。むしろ、CLI/MCPから `*.tei.md` の設計要素を読み、受理済みの意味を使ってコードを生成し、その生成結果をテストする経路を先に確立する。数理・統計ツールキットは、この方式が実際に効果を持つかを測る小さな題材になる。
+
+現時点で実行済みなのは、既存GoのSQLite方言生成器を使ったWindow計算の限定テストである。CTEやSQLをGoテスト内の文字列に記述したことを、TEI自身による計算定義や生成器のセルフビルドとは数えない。以後は次の違いを検証する。
+
+| 段階 | 計算・生成の担当 | 必須となる観測 | 現状 |
+| --- | --- | --- | --- |
+| C0：既存機能の参照 | 固定Fixtureと既存SQL方言生成器 | 生成SQL、実SQLite行、独立Expected | SQLite方言CIは限定合格 |
+| C1：TEI定義の実消費 | `*.tei.md` の型付き要素から既存の意味・Operatorへ結ぶ | Source位置・Revision・適用条件、生成物に届く変更、拒否すべき未対応 | 未実証 |
+| C2：TEIからのコード生成 | 受理された計算の定義をGo等のTargetへ変換 | Native SQL文字列の委譲だけでなく、構造・規則を用いた生成差分と独立テスト | 未実証 |
+| C3：生成Pluginの自己適用 | Generator／Operator／検証Pluginの実装可能部分をTEI定義から生成 | Plugin自身の生成・ビルド・次回利用、Targetの版と適合 | 未実証 |
+| C4：実利用先での受領 | 通常CLI／MCP経路、続いてStudio・一般アプリ | 実選択、実Call、生成Artifact、Consumer受領・開示条件 | 未実証 |
+
+C1からC4は新しい製品Gateを追加する名称ではなく、既存[#988](https://github.com/hat47x/tei-platform/issues/988)、[#1121](https://github.com/hat47x/tei-platform/issues/1121)、[#2600](https://github.com/hat47x/tei-platform/issues/2600)、[#2831](https://github.com/hat47x/tei-platform/issues/2831)等の計画に対する**用途別の検査段階**である。C0の成功をC1以降へ流用しない。また、C1の最初のReaderが未接続であれば、正規の受理済みReaderを使ったものとして報告せず、欠けている経路を明示する。
+
+TEI化の進捗は単純なファイル数や生成コード行数で判断しない。**計算の業務・数学的意味、入力・出力・例外、生成規則のうち、どこまでを`*.tei.md`から再生成できるか**を機能単位で記録する。外部Go関数への単純な委譲、一般のライブラリ呼出し、TEIが意味を保って生成した計算コードを区別する。定義の簡潔さも、隠れたGoコードを増やして達成したものと混同せず、同じ意味・期待結果を保った改訂前後で比較する。
+
+Studio・SUI・CLIからAIハーネスへ設計対象を渡す際は、表示中の文字列やGraphの座標ではなく、**選択したSubject、Source occurrenceとRevision、必要な関係・依存、現在の利用資格**を特定する。提案した編集を自動承認とみなさず、既存のSource-backed Patchと受理手順に戻す。この情報は既存の選択・参照・Providerの契約を使用し、専用のハーネスABIや意味権限を新設しない。
+
 この表は、既存Ownerへの**受入候補の引渡し**であり、各Issueの優先順位や完了条件を直接変更するものではない。新たな横断Gate、第二の設計正本、共通計算Runtime、中央Evidence Storeを作らない。現行の実装・CI・Consumer受領や専門家による意味の採否は、各担当の記録によって別途確認する。
 
-**この追補の状態**：設計と実証条件を具体化した段階。Window・Solver・実験計画法・専門ツールキットの実装、生成アプリケーションでの利用、利用者による製品評価は未実施である。
+**この追補の状態**：設計と実証条件を具体化した段階。Windowについては既存SQLite方言の限定的な生成・実行テストを追加し、対象コミットのCIで確認した。TEI定義からの計算生成、Solver・実験計画法・専門ツールキットの実装、生成アプリケーションでの利用、利用者による製品評価は未実施である。
 
 ## 19. RDB・NoSQL・ログから計算するときに保持する意味
 
@@ -446,7 +466,7 @@ ORDER BY grp, seq, obs_id;
 
 最初の試験では、A1〜A4・B1〜B3の全七行を独立した表の期待値と照合する。次の試験では、外側の表示件数を三行に制限してもA3の移動平均が20のままであることと、Window計算前の入力からA1を除外するとA3が25になることを対比する。これにより、表示範囲と必要な計算入力の違いを、実際のSQL生成器に対して検証する。
 
-**資格**：2026-11-14にGoテストのSourceをPRへ追加した。CIによるそのコミットのGo試験結果を確認するまでは、実行済み・合格とは記さない。Providerの実選択、通常の製品`tei` CLI、各種DBでの同等性、Studio/非Studioの実Consumer受領は今回のテストに含まない。将来の正式なQuery→Providerへの接続は既存[#2387](https://github.com/hat47x/tei-platform/issues/2387)/[#2586](https://github.com/hat47x/tei-platform/issues/2586)の縦断検証で判断する。
+**資格**：2026-11-14にGo回帰テストを追加した。コミット `d16168c643ad117d49a435a348c43b1a941a62c0` について、[SQL Dialect Plugin CI](https://github.com/hat47x/tei-platform/actions/runs/43587503926)の `sqlgen-test` が成功し、[Repository Health](https://github.com/hat47x/tei-platform/actions/runs/43587503897)も完了・成功した。これは**当該コミットのSQLite方言の生成・実DB試験**の資格であり、現在の全DB・全TargetやTEI自身のDSL/Queryの意味保存を証明するものではない。Providerの実選択、通常の製品`tei` CLI、各種DBでの同等性、Studio/非Studioの実Consumer受領は今回のテストに含まない。将来の正式なQuery→Providerへの接続は既存[#2387](https://github.com/hat47x/tei-platform/issues/2387)/[#2586](https://github.com/hat47x/tei-platform/issues/2586)の縦断検証で判断する。
 
 ### Query変換の適合を説明するための判定語彙
 
@@ -503,7 +523,7 @@ WBS・PERT・CPMで扱う予定は、作業の開始・終了を計画するた�
 
 Solver・実験計画法は、同じ計算契約・観測・受理の分離を使う後続事例とする。Rや科学計算の外部Providerについても、型、精度、実行方法、ライセンスと成果物の配布条件を、対応Targetごとに確かめる。StudioのDB Workbenchや図表示の完成を計算の第一歩の前提にはせず、Headlessの限定実証から必要なUIとTargetへ広げる。
 
-**現在の状態**：本節は既存のRDB・NoSQL・Query・実行モデル設計を、数学・統計ツールキットの条件として読み替えた計画である。SQLite方言のCTE／名前付きWindowを実行する限定的なGo回帰テストのSourceを追加したが、CI合格と全体機能の受理は別に確認する。RDBとDocumentの計算同等性、外部データソースの完全性、専門Provider、実Consumerの受領を新たに検証したものではない。
+**現在の状態**：本節は既存のRDB・NoSQL・Query・実行モデル設計を、数学・統計ツールキットの条件として読み替えた計画である。SQLite方言のCTE／名前付きWindowを実行する限定的なGo回帰テストを追加し、上記HEADのCI成功を確認した。ただし全体機能の受理とセルフビルド適合は別に確認する。RDBとDocumentの計算同等性、外部データソースの完全性、専門Provider、実Consumerの受領を新たに検証したものではない。
 
 ## 23. 外部資料（仕様調査の入口）
 
