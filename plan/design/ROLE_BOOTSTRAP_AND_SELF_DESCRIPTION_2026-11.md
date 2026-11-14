@@ -1579,3 +1579,81 @@ SaaS将来対応では複数Git branch・DB alias・Workspace/session・Build at
 P0-A #4536は実`fx.rate`の最初の未成立EdgeだけをGo/Workspace現物で判別する。P0-B #2831/#4583は同一Build IntentのN0〜N3 actual Builder/actual Consumer接合へ進める。P1 #4359/#988は旧Validationを使う低ノイズ構文のS0比較（Ownerの構文採用を待つ）、#4544は既存`line-amount`とG1→G3→G2を並走。P2 #2497/#1124/#2621は損失を表明できる投影とRev付きSource Patch候補を後続実証する。新しい横断Issue・Validator/Resolver/Hostは起こさない。
 
 **達成資格を個別報告**：記述Dataとしてinspect可／実Parser・Role解釈／独立意味Expected／Source/Consumer往復／Generator実選択とBuilder実消費／Stage1→Stage2 Studio artifactとWindows実受領。各段階の同一Source/HEAD/Attemptを結ばない限り上位資格へ昇格しない。ここに記した新SD-L試験、正式Grammar/Role ABI、Product一体Run、Owner意味受理、B2/B3は**NOT RUN / NOT ADOPTED**。
+
+<!-- tei-self-description-grammar-transport-20261114 -->
+## 32. 2026-11-14 言語自己記述の有限核とStudio実行配置の分離（横断設計・未実装）
+
+### 32.1 追加する設計原則：言語意味はTransport・プロセス配置から独立
+
+他チャットのStudio DesktopとServerの分離、ローカル従属プロセス、将来SaaS、AI Harness、専門家可読DSL、増分Buildを、#2620/#4536/#988/#1018/#3421/#1824/#4583の既存Ownerへ接続する。既存[ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)の依存方向を維持し、新しいTEI Hostや第二Resolver/Registryを作らない。
+
+| 境界 | 固定する意味上の契約 | 配置・実現によって変わるもの |
+| --- | --- | --- |
+| Authoring | Source byte/occurrence/Revision、Language、Role、Token/span、独立Required | Editor、Markdown/Graphviz/表、File/Remote Source reader |
+| Semantic | Canonical Subject、型/Facet/Operator、Meaning、診断、共通Operation | CLI/IPC/HTTP/MCPの呼出し形態 |
+| Realization | PinされたGenerator/Provider/Builder、Target、Source closure、Artifact | 実BuilderのProcess、Toolchain/OS、local/remote環境 |
+| Authority | Host確定Workspace/Principal/Scope、現在Grant、Disclosure/Effect | 本地Desktop、従属Local Server、共有Web/SaaSの隔離と認証 |
+
+Language/Role InterpreterやApplication APIはWails window/HTTP route/MCP tool名に依存しない。DesktopのGo単一バイナリ配布は既定のまま。UIを薄くしてローカル従属ServerへBuild/Git/DBを置く案は**候補**であり、正式採用していない。同じ型付きRequest/Result/Failureをin-process・Wails IPC・Windows named pipe/Unix domain socket・loopback HTTP・remote HTTPで比較し、HTTPより速い等の未測定の保証は置かない。Transport失敗≠Operation失敗≠Owner受理≠Effect不確定。
+
+### 32.2 自己記述Grammarの最小Kernel：説明データと実Parserの切断
+
+現mainの`reference/dsl-language-plugin/selection.go`は`Selection{LanguageID, ContractVersion, ContractFingerprint, ImplementationID, ImplementationFingerprint}`という**既受理exact pinを要求するReference**。`ParseSelected`が返すのはCandidateであって意味受理ではない。`internal/workspace/loader.go`はManifest bytesのIdentity、`ManagedFile.ReadByLoader`、Load時Source snapshotを持つが、現Productのdomain rootは固定dispatchされる。**データ記述されたGrammarを、実製品が選択したParserで読む経路は未確認**であり、#988/#1018のFit/Gapとする。
+
+有限核の最小責務（新ABI/実装Packageの宣言ではない）：
+
+1. **K0 Seed**：固定された旧Parser/Reader・基本Value/Record/Sequence/Ref・source bytes。信頼はDescriptorから取得しない。
+2. **K1 Select**：Workspace/Language/Operatorの契約版と実Implementation/推移依存をexact pin。不在・曖昧・変更時は拒否。
+3. **K2 Parse**：実Parserを呼び、Source byte anchor/診断/構文候補を返す。Grammarにはtoken/quote/comment、choice/sequence/repeat、Ref、priority/associativity、Unicode識別子Policy等を**データとして表現する可能性**があるが、実Parser未対応なら`unsupported`。曖昧・無限/無進行再帰・資源上限を黙って解決しない。
+4. **K3 Interpret**：候補を既存Semantic/Role/Operatorへ結ぶ。意味解釈のEager dependency cycleを拒否、deferred Graph/Tree Refの循環は別扱い。NULL・missing・unavailable・partial・complete emptyを区別。
+5. **K4 Qualify**：独立Required/Expected、実Selected/Consumed、Owner通常Reviewを照合。`required=[]`や`trusted`/`pure`の自己申告を資格にしない。
+6. **K5 Realize/Observe**：既存#1063/#4544 Generator・#2595実Build入力・#2831実Artifact/Consumer・外部Hostへ渡す。Grammar自己記述≠自己生成≠自己Build。
+
+改版では旧Interpreterが解釈可能なN+1候補だけを旧版固定で評価し、独立Expected・Review・Lock更新を経て新Parserへ切替。旧版が読めない新構文は別実装と独立比較を要求。A→B→Aで旧受理を自動復活させない。Load時Source読取は、Importや外部Providerを含む完全なatomic snapshotを意味しない。
+
+### 32.3 Claimを同一試行で追跡し、増分の過不足を判定する
+
+| 観測 | 最小Evidence列 | 禁止する昇格 |
+| --- | --- | --- |
+| Required/Declared | 独立Required Root、manifest byte ID、Source occurrence、Role/Grammar 宣言 | managed=parsed、自己申告 required=[]=完全集合 |
+| Selected/Actual | Language/Operator契約・実Parser exact pin、推移Lock、実Parser入力・byte anchor | インストール済み=選択済み、選択済み=実消費 |
+| Typed/Accepted | Semantic ID/Type/Facet/NULL、独立Expected/known mutant、Owner Acceptance、Revision | 同じ値/同じRole名=意味同値、CI Green=Owner受理 |
+| Build/Consumer | Current Disclosure、実Builder image/argv/Target、actual input/Artifact、実WebView2/Host | Build Intent存在=実Build、2回Build=Stage1再入、旧Grant=現在Grant |
+
+#2600のIncrementalではSource移動・内容変更・A→B→A、Operator/Parser/Generator pin更新、beforeから削除されたDependency edge、未選択Plugin、非出力Predicateを一因子ずつ比較する。Meaning再評価、Artifact再生成、Evidence再受入、Current Grant再検査を同一Cache Hitで代用しない。false reuseと不要な過剰失効を別に測る。
+
+### 32.4 Studio・AI Harness・安全なWeb公開の受渡し
+
+- Studio/CLI/SHO/SUI/AIには同じ受理済みMeaningから、損失を明示したread-only投影を渡す。Source編集は#2497/#2621/#1124の対象一意性・Writable span・base revision・Preview/Review/独立Reloadを満たす範囲のみ。Graph多重辺のUI表示から元Edge IDを推定しない。
+- AI HarnessのSkill/Tool候補は`選択済み契約→実Operation API`に基づき生成する。使用可能なToolの提示はCurrent Grantや実呼出し資格ではなく、非公開Source/Expectedを勝手にLLMへ開示しない。個々のHarnessへ第二のSemantic Interpreterを実装しない。
+- 現`cmd/tei-studio/main.go`の`StudioBridge`には`ExecuteCommand*`やSHO操作も登録され、local serverは127.0.0.1のPoCに限定。#4627のexported-method inventoryは公開面の差分検査であって認証・認可・開示の実保証ではない。#3421/#1043/#1824のHostに適切な実Policy/Resource隔離を委譲し、現Bridgeをそのまま共有Webへ公開しない。
+- 開発サーバーのBuild/Git/DB/AI処理ではworkspace/branch/db alias/session/attempt/Principalの結合を**実Host/Execution**に置く。DSLの意味へOS raw Pathや認証情報を埋め込まない。Remoteから切断した際にlocal Builder/Providerへ黙ってfallbackしない。
+
+### 32.5 追加の反証Case（既存#1180/#2514へ委譲、全件NOT RUN）
+
+| ID | 一因子の差 | 独立に判別すること |
+| --- | --- | --- |
+| SD-T01 | 同Pin Source、Parser Providerロード順を反転 | pin一致実装だけを選択、重複は曖昧拒否 |
+| SD-T02 | Grammar descriptorを定義、新`rule`未実装 | `unsupported`。黙ったGo/旧Parser fallbackなし |
+| SD-T03 | 意味Eager依存A→B→Aとdeferred Graph Ref A↔B | 前者拒否、後者Refとして保持 |
+| SD-T04 | Parser/Grammar改版、Source byte同じ／A→B→A | Old Acceptance/Review/Artifactの現在資格を自動復活しない |
+| SD-T05 | 旧DSLと糖衣構文の値だけ一致、NULL/短絡Read footprint相違 | Value同値≠Evaluation同値。実Provider I/O未観測はunknown |
+| SD-T06 | Direct Go/CLI/IPC/loopback HTTPを同Source・Revision・Host方針で比較 | 共通Failure/診断/Meaning同値を比較。未実装TransportはNOT RUN |
+| SD-T07 | IPC/HTTP失敗、Provider側のCommit成否不明 | Timeout=RollbackではなくEffect unknown、無条件再送拒否 |
+| SD-T08 | 15 exported Wails Bridge methodsをWeb公開 | Method inventory合格≠公開/認可/情報開示の資格 |
+| SD-T09 | 未選択PluginやPrivate RoleをAI Skill候補に含める | Discovery・Current Disclosure・Grantを分離 |
+| SD-T10 | Source以外のGrammar pinまたは削除依存辺だけ変更 | 正しい局所再評価と過剰失効を独立Expectedで測る |
+| SD-T11 | Local server死活/Workspace ID/DB aliasが変化し旧UI返信が後着 | 新Sessionへ旧結果を表示せず、Resource ownershipを検査 |
+| SD-T12 | Stage1はN0部品生成のみ、CI RunnerがN2/N3を起動 | #4583のN0限定成功は保持、B2/G4の自己再入は不成立 |
+
+### 32.6 反映した優先順位と停止線
+
+**P0-A** #4536の`fx.rate`同一Source・Revision実観測と、#988/#1018におけるReference Language Selection→製品Workspace固定LoaderのGap。新Meta Schema/Parser ABIは先行採用しない。
+
+**P0-B** #2831/#4583のnon-Plugin Desktop BuildIntent/Builder→N0/N2/N3実工程→Stage1自身がStage2を構築→Windows WebView2受領。#4623/#4624の別PR/HEADの局所試験を一体PASSとみなさない。
+
+**P1** #4359/#2621で旧Validationと低ノイズな構文・Markdown/GraphvizのSource-faithfulness/専門家読解/独立Expected、#3421/#1824でDirect/IPC/local HTTPの共通操作・p50/p95・プロセス死活・Web公開面を別検証。数値性能目標は測定後に決定。
+
+**P2** #4544/#2600の生成器自己記述と増分再生成、#1124/SHO/SUI/AI Harnessへの複数Consumer投影・限定編集。いずれもP0 Desktop Self-buildの新Hard Dependencyにしない。
+
+**状態**：本節は現Sourceと他チャット議論の整合を記述したDraft設計更新。新Product Grammar/Language Adapter、ローカル従属Server、IPC比較、実Windows/Go検証、Stage2、正式Owner Meaning AcceptanceはNOT RUN/NOT ADOPTED。#1119既存G0〜G4や独立Expected正本を変更しない。
