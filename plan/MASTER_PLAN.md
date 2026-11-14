@@ -735,6 +735,8 @@ tei external-candidates
 | **Desktop H0/H1 [#4587](https://github.com/hat47x/tei-platform/pull/4587)** | HEAD `357345d7`のWindows生成版JobはN0→N2→N3と実WebView2成功 | 同じWorkflowの通常版はPowerShell OS probe 15秒timeoutで失敗。11/12成功を全件合格へ繰り上げず、非Plugin完全Self-buildとも混同しない |
 | **Registry配布 [#4640](https://github.com/hat47x/tei-platform/pull/4640)・Generator [#4641](https://github.com/hat47x/tei-platform/pull/4641)** | 外部Release Assetの実readback・Redirect/署名/Trustと、Builder成果物の実Consumer資格を設計Candidateとして明確化（両者docs-only Draft） | Release外部実Asset/Current Trust、Generator実Artifact consumerとも未実証。REA同様に「Digest一致≠取得元/公開可否/実受領」を分けるが、新共通Evidence Engineは作らない |
 
+**最新mainへの重複回避**：[Script Launch横断文書 #4642](https://github.com/hat47x/tei-platform/pull/4642)は2026-11-14に**main merged**（merge `1995f87e596ec77b2c05c4adeef288445cc91bb9`）。RA-2の実PG7ケース、生成Windows Desktopの部分PASS、署名付きReleaseのloopback Reference（merged #4617）を、既存Script Launch計画へ出典・適格性ごとに反映している。**REA専用の主計画では、この統合済み文書の本文を複製せず、異質Consumer受領の判断境界だけを接続する**。実GitHub Release外部取得／通常Product Query／非Plugin Stage2セルフビルドを、新たに成立したClaimと誤読しない。
+
 **実装上の採用指針**：Product共有は既存Operation／Host Boundary／既存Receipt/Expectedの束縛規則に限る。REA Host Readerは`#4503`、Disclosureと匿名/他Principal二世界は`#2516/#3421`、Source/Workspace RevisionとOwner Meaningは`#1124`、独立Consumer/FailureのExpectedは`#2514`へ引き渡す。Current Grantも実OS/Network送出も未搭載のままR3-C/共有Web適格と認定しない。Desktop Self-build・実PG ReadのP0はREAの子Process試験でブロックしない。
 
 <!-- rea-wails-server-wasm-delivery-isolation-20261114 -->
