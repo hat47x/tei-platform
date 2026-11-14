@@ -443,7 +443,7 @@ PR #4705の旧HEAD `7375ab6b`では、[Repository Health](https://github.com/hat
 Desktopの更新は、独自にダウンロード・署名検証・実行ファイル差し替え処理を作るのではなく、**Wails v3標準の `app.Updater` を第一候補**とする。製品としては、必要なローカルBackend、標準Plugin、起動に必要な設定テンプレートも同じ**Release単位**で届ける。ただし「同じReleaseに属する」と「Wails標準Updaterだけで任意の複数ファイルを同時に切り替えられる」は異なる。ここを混同しない。
 
 - **確認済みの上流仕様**：[Wails v3 Updater公式ガイド](https://wails.io/guides/updater/)（更新元Provider、署名、ステージング、実行ファイルの置換、イベント／画面）、[Wails Update Manifest](https://v3.wails.io/ja/reference/update-manifest/)（静的HTTPS配信にも対応）。
-- **現在のTEI実装**：`cmd/tei-studio/go.mod`は `github.com/wailsapp/wails/v3 v3.0.0-beta.29`、`main.go`には現時点で `app.Updater` 初期化がない。上流の安定版v3.0.0以降に移行可能だが、そのUpgradeとWindows/macOS/Linuxの実検証が必要である。API／Helper／パッケージングの現行依存版での動作を未確認のまま「組込み済み」としない。
+- **現在のTEI実装**：`cmd/tei-studio/go.mod`は `github.com/wailsapp/wails/v3 v3.0.0-beta.29`、`main.go`には現時点で `app.Updater` 初期化がない。上流の最新安定版は2026-11-01公開のv3.1.0（2026-11-15確認）であり、#1824のS0-Uで当該安定版への移行とWindows/macOS/Linuxの実検証が必要である。v3.2.0-nightlyは検証用の別候補であり、配布版へ自動採用しない。API／Helper／パッケージングの現行依存版での動作を未確認のまま「組込み済み」としない。
 - **Wailsの交換単位**：公式ガイドのUpdater v1は基本的に単一の実行対象を差し替える。ZIP/TAR.GZはトップレベル1項目、macOSの `.app` 全体の交換は明示的に扱う。複数の独立した `.exe`、Pluginディレクトリ、ユーザー設定を列挙して同期的に交換する機構を、標準Updaterの機能とはみなさない。MSI/DMG/PKG自体をUpdaterが直接インストールできるとも想定しない。
 - **更新可能性の制約**：Wailsは実行対象の隣に更新用ステージングを作るため、書込み禁止のインストール場所やOS／パッケージマネージャ管理下での自己更新は別の検収が必要。WindowsのProgram Filesや複数利用者環境で、利用者権限の自己更新を暗黙に成功扱いしない。
 
@@ -501,9 +501,23 @@ Release Identity / Signature / OS・Arch
 
 UP-0/1を第一検証候補とし、UP-2/3はD3を採用する場合に実施する。ただし、**UP-0〜3は全体P0のStudio Stage1→Stage2／通常`tei`実Provider呼出しへの新Hard Gateではない**。Wails標準UpdaterとInstallerの選定・移行は#1824、子Backendは#4635、Plugin Lock／配布は#2044／#951／#2589、実Effect／DB Migrationは既存の各Ownerに委ねる。ここでは設計と受入だけを定め、実UpdaterやOSパッケージ試験のPASSを主張しない。
 
+### 22.5 Wails v3.1.0／Wake評価を既存の着手順に接続する（2026-11-15）
+
+Wailsは2026-11-01に[安定版v3.1.0](https://wails.io/changelog/)を公開した。追加された**Wake（`wails.yaml`によるビルド・同梱CLI／Serverの定義・パッケージ作成・署名）は実験的**であり、Updaterの単一対象の交換とは別機能である。[Wailsの解説](https://wails.io/blog/wails-v3-1-released/)／[Wake仕様](https://v3.wails.io/experimental/yaml-builds/)を根拠に次のように扱う。
+
+| 既存担当と優先順位 | 最小変更・実行観測 | 合格と取り違えないこと |
+| --- | --- | --- |
+| **#1824 S0-R → S0-U：安定版移行** | まず現行beta.29・Go 1.26.11の実Windows Desktop／Server BuildとWorkbench生成Assetを固定。隔離したPRでWails v3.1.0と対応する`@wailsio/runtime`／生成Bindingsを揃え、同じSource-backed Catalog/Inspectの実Bridgeを再検証 | `go.mod`の版番号だけの変更、Go Service直接呼出しだけでStable移行PASSにしない |
+| **#1824／#2831／#4583：D2初回配布** | Standalone単一ImageにUI Asset、標準Plugin、読み取り専用の既定設定を固定し、実Windowsでオフライン起動・実Read・Stage1→Stage2への入力閉包を独立確認 | Wails Updater／OS Installer試験をStudioの自己構築成功の代わりにしない |
+| **#1824／#2044：D3のWake試験** | `WAILS_EXP_USE_WAKE=1`を明示した**隔離PoC**で、既存Taskfileを残し、`wails3 build --plan --json`のOS/Arch・実行物・Build flags・CGO・Plugin Closureを比較。`binaries`または`--skip-build`でDesktopと別Serverの実Byteを収める能力を検査 | Wakeは`wails.yaml`有効化によってTaskfile経路を切り替える**片道の移行**を伴う。実績が揃うまで既存Buildを置き換えない。Wakeの同梱・署名はWails Updaterによる複数実行物の原子的切替保証ではない |
+| **#1824：UP-0／UP-1** | 公開鍵と実Artifact署名、Update Check/Verify/Stage/Restart、非書込み可能Path、旧Server／Plugin Lock混在、失敗時の復旧を実OSで独立Expectedに照合 | Installer管理領域の自己更新、DB Migrationの逆行、外部Effectの補償をUpgraderの実行成功に含めない |
+| **M-0〜M-2：Mobileの探索** | v3.1.0固定でAndroid/iOSの適用可能なRead-only Wails Bridgeを対象別に試す。共有するのは業務意味とSource/Operation契約であって、Binaryではない | Mobile実験BuildのPASSをDesktop配布／Mobile正式サポートに算入しない |
+
+**配布時の資格**は、実Release Identity、Wails/Go/Frontend Toolchainと必要なBuild Environment、Target OS/Arch、Desktop/Backend実Image、生成Asset digest、選択Pluginの実Artifact、既定設定Schemaを既存ArtifactSet／Bundle／Plugin Lockに束縛して検証する。TEIの新しいPackage Manager／第二の生成・意味Engineは作らない。Wake導入をP0の新しいHard Gateにせず、既存#1824で比較結果と採否を記録する。
+
 ## 23. Wails Mobileの実験的ビルドと正式サポート待機（2026-11-15）
 
-Wails v3.0.0は**Windows／macOS／LinuxのDesktopについて正式な互換性契約**を提供する一方、**Android／iOSは実験的機能であり正式サポート対象外**である。[公式Roadmap](https://wails.io/status/)／[Mobile Overview](https://wails.io/guides/mobile/)／[iOS](https://wails.io/guides/mobile/ios/)／[Android](https://wails.io/guides/mobile/android/)を根拠に、TEI StudioのMobileを「ビルド可能性の試験対象」と「製品として保証する対象」に分ける。Wailsの公開状況が変わるまでMobile版を正式な納品・互換性・セキュリティ更新の対象へ自動追加しない。
+Wails v3.1.0（2026-11-01公開）時点で、**Windows／macOS／LinuxのDesktopは正式な互換性保証対象**だが、**Android／iOSは実験的機能であり正式サポート対象外**である。[公式Roadmap](https://wails.io/status/)／[Mobile Overview](https://wails.io/guides/mobile/)／[iOS](https://wails.io/guides/mobile/ios/)／[Android](https://wails.io/guides/mobile/android/)を根拠に、TEI StudioのMobileを「ビルド可能性の試験対象」と「製品として保証する対象」に分ける。Wailsの公開状況が変わるまでMobile版を正式な納品・互換性・セキュリティ更新の対象へ自動追加しない。
 
 ### 23.1 DesktopとMobileで共有する範囲
 
@@ -534,3 +548,9 @@ Remote接続Mobileは将来の別の配置候補だが、接続先・認証・�
 Wails側の「Mobileが実験的」の表記に変化がない限り、M-0〜2はオプションの探索・回帰試験であり、M-3は待機する。正式サポート時期を独自に約束しない。現在の全体P0は**実WindowsのStudio Stage1→Stage2**と、通常`tei`の実Provider／異質Consumerであり、Mobile BuildやWailsのMobile安定化を新Hard Gateにしない。
 
 **検証状態**：公式文書と現行TEI依存の静的照合のみ。TEI StudioのAndroid／iOSビルド、Simulator／実機試験、Mobile配布、Mobile Plugin実行、Owner製品採用はNOT RUN。
+
+### 23.4 モバイルでのビルド条件と共通ソースの検査
+
+Wails公式の[Mobile Overview](https://wails.io/guides/mobile/)に従い、**`GOOS=ios`では`darwin`、`GOOS=android`では`linux`のBuild条件も成立する**点を検査する。Desktop専用処理を`//go:build darwin`または`//go:build linux`だけで選ばない。必要に応じ`darwin && !ios`、`linux && !android`などで区分し、OSごとのProcess起動・Installer・Wails Updater・Filesystem権限・動的Native PluginがMobileへ紛れ込まないようにする。
+
+Mobile実験Buildの最初の期待値は、同じ`*.tei.md`／既存`*.tei`のうち正式に受理されたRead-only Operationを、Desktopとは異なるPackage/Host上で呼び出せる範囲に限定する。**共通Sourceをビルドしただけで業務意味の受理やMobile Plugin実行資格は得られない**。iOS/Android双方のビルド結果、実Device/Simulator、Source Snapshot、表示・診断を別々の証拠として記録する。

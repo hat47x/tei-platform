@@ -130,3 +130,11 @@ DesktopにはWails v3の `app.Updater` を優先利用する。ただしTEI Stud
 [Wails v3公式Roadmap](https://wails.io/status/)ではDesktop（Windows／macOS／Linux）は安定版の互換性保証対象だが、AndroidとiOSは実験的機能のままである。Desktopと同一のGo／Web SourceからMobileへBuild可能なWailsの機能を利用して、**TEI Studioでも将来のビルド・起動・Read-only操作を選択的に試験**する。ただし現在のTEI Studioはbeta.29依存で、実Mobile試験の合格は未確認。AndroidはSDK/NDK、iOSはmacOS＋Xcodeの独立した環境で検証する。
 
 MobileではDesktop用の自己子Backend、Wails実行ファイル置換Updater、動的Native Pluginを当然使えるとは扱わない。Application Operation／意味モデルは共通にし、OS Adapter／Screen Projection／Package／更新権限をTarget別に分ける。**Wails公式が各Mobile OSを安定サポートに含め、TEI自身が実機・配布・更新・復旧の受入を通すまでは正式な製品サポートを開始しない**。詳細とM-0〜3は[実装契約§23](STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)。Desktop Stage1→Stage2のP0を変更しない。
+
+## 14. Wails v3.1.0安定版への移行とWakeの実験的評価（2026-11-15）
+
+Wailsの2026-11-01公開の最新安定版は**v3.1.0**。現TEI Studioはv3.0.0-beta.29のため、[#1824](https://github.com/hat47x/tei-platform/issues/1824)が既に管理するS0-R（現行再現）→S0-U（安定版移行）を基準とする。Go／Wails／`@wailsio/runtime`／生成Bindings／Workbench埋込みBundleを同一ビルド証拠で照合する。
+
+v3.1.0の**Wakeは実験的**だが、`wails.yaml`の`binaries`でDesktopに付属CLI／Serverを定義でき、OS別配布・署名や`--skip-build`による生成済みBinaryの利用を比較できる。既存TaskfileからWakeへの変更は経路切替を伴うため、まず隔離したPoCと`--plan --json`の比較に限る。Wakeで複数Artifactを同梱できても、Wails標準Updaterで複数実行物を原子的に交換できるわけではない。正式採用と更新方式の選定は既存Ownerが判断する。
+
+MobileはAndroid/iOSが実験的な間、正式サポートを待機する。特に`ios`が`darwin`、`android`が`linux`のビルド条件を引き継ぐため、Desktop専用Goファイルを誤ってMobileへ含めない検証を設ける。詳細は[実装契約§22.5・§23.4](STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)。Studio Stage1→Stage2／通常CLI実ProviderのP0は不変。
