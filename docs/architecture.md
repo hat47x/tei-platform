@@ -371,6 +371,46 @@ CRUDマトリクス、業務の流れ、関係図などはこの検査に役立�
 
 詳細は[業務システム設計](business-system-design.md)とRQ-025 / RQ-026を参照してください。
 
+## 問いに相対的な構成・実行・証拠の閉包（横断設計候補）
+
+TEIの共通性は、共通の常駐Hostや万能のWorkflow Engineを全成果物に強制することではなく、**意味・型付きContract・構成の選択・実行の観測・再資格化の対応を追跡できること**にある。「Everything is Data」は意味や構造を記述・合成する方針、「Everything is Plugin」は必要な機能の実現を差し替える方針であり、両者を同一のCore型階層にしない。独自Host非必須は[ADR-0043](../plan/adr/0043-target-native-artifacts-without-tei-host.md)、標準構造/Roleは[#2620](https://github.com/hat47x/tei-platform/issues/2620)、Plugin契約と案件構成は[#951](https://github.com/hat47x/tei-platform/issues/951) / [#1016](https://github.com/hat47x/tei-platform/issues/1016)を正本とする。
+
+「完全」「存在しない」「更新できる」「実行した」などの主張は、対象の**問い・用途・対象Scope・Revision・Consumer・時点・検証対象の保証**を伴わなければ成立しない。システム全体に一つの「閉包済み」フラグを置かない。以下は既存契約・Evidenceを読み取って照合する論理列であり、新たなProduct enum / Registry / Resolver / Test SSOTではない。
+
+| 観点 | 必要な区別 | 誤って主張しないこと |
+| --- | --- | --- |
+| 意味上の必要閉包（Required） | 問いを判定するSubject、Relation path、型/Role/Trait、正負の依存（NOT EXISTS等）、Read Scope、Snapshot、必要なSource | 表示された行・辺だけから必要な入力を全て知ったこと |
+| 実装選択・履行（Selected/Fulfilled） | Contractと選択Provider/Instance、実Artifact/Version/Target、Trait義務と履行方法、利用条件 | Contract宣言・選択・BOM収録だけで実Providerを呼べたこと |
+| 実消費・実行（Consumed/Observed） | 実際に使ったInput byte、Process/Tool/Provider、実Operation、失敗・未観測・外部Effect | 宣言Graphと出力が同じだけで「図の外の処理が無い」こと |
+| 利用資格（Qualified for use） | Evidenceが対象Attempt、Target、ArtifactSet、Source closure、Scope、Disclosure、現在Grantに適用可能か | 過去のPASS・表示中のenabled・同名IDから現在の実行権限や業務完了を推定すること |
+| 逆方向の操作（Reverse/Action） | Projectionの情報損失、元Subject/Occurrenceの一意性、意図したOperation、Owner受理とEffect/独立Readback | 表・図・Chartが描けることから安全にSource/DBへ書き戻せること |
+
+実行・表示のグラフは、少なくとも**宣言（Declared）→選択とLoweringで解決した計画（Resolved）→実際に観測できた操作（Observed）**を区別する。隠れたpre/post-hook、未計測の子プロセス、動的Provider呼出し、未開示Scopeがあれば、観測できない部分を「存在しない」と扱わない。閉包や不在の保証には、そのClaimに必要な入力/出力/副作用が網羅され、対象の実行境界で強制または独立に観測できる根拠が要る。子プロセスが申告したstate pathと呼出し元のpathが一致しただけでは、物理的なstate分離を証明しない（[#2831](https://github.com/hat47x/tei-platform/issues/2831)）。
+
+必要依存の閉包と実消費入力の閉包は異なる。結果値やArtifact digestが一致しても、未観測の入力・否定依存・別Snapshot・Toolchain・Provider/Policy更新を捨ててよいとは限らない。逆に、無関係な変更を全体失効と決めつけず、根拠のある非影響を限定的に認める。再利用・再検証の判断は[#2600](https://github.com/hat47x/tei-platform/issues/2600) / [#4191](https://github.com/hat47x/tei-platform/issues/4191)、構造変換の損失は[#2497](https://github.com/hat47x/tei-platform/issues/2497)、用途相対の開示は[#2516](https://github.com/hat47x/tei-platform/issues/2516)の既存Ownerへ委譲する。
+
+この原則は特定のUIに依存しない。最初の独立Consumerを次のように比較する。
+
+- **TEIセルフビルド**：[#2831](https://github.com/hat47x/tei-platform/issues/2831)で、宣言Graphと実Go builder/子プロセス/入出力/ArtifactSetの一致、および未宣言工程・自己申告依存の負例を確認する。Stage0 seed・Stage1/2一致は別Claim。
+- **ETL/Batch**：[#1130](https://github.com/hat47x/tei-platform/issues/1130)で、InputCut/Checkpoint/再開の範囲、partial取得と重複/訂正、実送出と相手側Consumed/Business Acceptedを分離する。Checkpointの存在は一意な再処理や業務完了を証明しない。
+- **Studio・TEA・サブシステム分割**：[#1124](https://github.com/hat47x/tei-platform/issues/1124) / [#2497](https://github.com/hat47x/tei-platform/issues/2497) / [#3250](https://github.com/hat47x/tei-platform/issues/3250)で、表示可能・問いに答えられる・変更操作可能を別の主張とする。CRUDやER図の不足/未取得を「越境更新ゼロ」としない。分割後に役割が変われば名称も再評価するが、図上の改名だけで業務意味は変更しない。
+
+**受入方針（計画、今回実行なし）**：read-onlyの一FunctionでRequired/Selected/Consumed/Qualifiedの各根拠を同一Source・Artifact・Attemptで突合し、(1) 選択Providerと実呼出Providerの不一致、(2) 未宣言Build入力・Graph外工程、(3) partial/hiddenな否定依存、(4) Source/Provider/Target変更後の古いEvidence再利用、を既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#2514](https://github.com/hat47x/tei-platform/issues/2514)の独立Expectedへ返す。局所Reference PASSをProduct/Production、現在認可、Ownerの業務意味受理へ昇格しない。新たな全体Hard Gateや新Engineは作らず、既存Issueの優先順位を利用する。
+
+### 未確定な主張から「次に検証すべき一辺」を示す
+
+人間・Studio・生成AIが共有すべき成果は、全Architectureについて単一のPASS/FAILを付けることではなく、**問いに必要な証拠をどこまで得ており、次の最小の未証明接続がどこか**を追えることにある。既存のSource Index、Typed Operation、Plugin Lock、Artifact、実Consumer観測、Scenario/Independent Expectedを読み取り専用で照合する。比較票の論理列は、(a) 問い/Subject/Scopeと要求する保証、(b) すでに成立した限定Witness（版・Attempt・観測者付き）、(c) 未証明または反証された接続、(d) 既存担当と次の独立検証、(e) 現在資格・失効条件。新しい永続Claim Registry/Verifier/Coordinatorは作らない。
+
+| 問いと現在の証拠上限 | 次に必要な、他の成立から推論できない一辺 | 既存Owner |
+| --- | --- | --- |
+| 実PostgreSQL Read→Function Data Contextは限定Referenceで接続済み。通常TEI製品CLIやStudioでも同一Read結果を消費したか | 選択したFunction/Query/Providerの**実製品Entry→実Invocation→Context受領**。次にWails/Workbenchの実Consumerまで同一Source・対象・Attemptを追跡。Reference CLIの成功は製品入口へ転用しない | [#2586](https://github.com/hat47x/tei-platform/issues/2586)、[#4495](https://github.com/hat47x/tei-platform/issues/4495)、[#1124](https://github.com/hat47x/tei-platform/issues/1124) |
+| TEI Studio DesktopをTEI自身が再構築したか | 実OSのWails/Targetとnested moduleのBuilder入力を別々に照合し、**Stage1で生成したTEI実ProcessがStage2 Buildを起動した因果証拠**を取得。外部Go Build二回やStage1/2 Digest一致では不可 | [#2831](https://github.com/hat47x/tei-platform/issues/2831)、[自己記述/Studio設計Draft #4541](https://github.com/hat47x/tei-platform/pull/4541) |
+| CRUD表でサブシステム境界を越える更新が0件と表示されたか | 直接CUDの参照Scope・被覆、Owner委譲後の実効Writer/Effect、未観測の手作業・外部処理を区別。表示された0は未知のWriter不在を証明しない | [#3250](https://github.com/hat47x/tei-platform/issues/3250) |
+
+「不明」の原因を**Source/依存情報不足、構成選択未決、Product実呼出の未接続、独立観測未実施、現在の権限・開示による拒否**に区別する。拒否や不明を成功・不存在へ丸めず、秘匿対象の存在や件数そのものを未許可Consumerへ明かさない。次の検証候補は必要な上流辺から選び、既に十分な局所Witnessを無関係な変更だけで全失効させない。候補の優先順位づけとOwnerへの引渡しは既存Issue/計画内で行い、第二Planner・新Hard Gateを設けない。
+
+この原則の評価は、**誤った成立宣言、必要な再検証の見落とし、不必要な全件再検証、次の不足辺までの到達手数**を独立に測る。現在は判断の設計候補であり、新しい実CLI/Wails/PG/Stage2/業務Target試験はこの節では未実施。詳細なClaim資格化と変更時のretain/recheck/unknownは[横断設計Draft #4522](https://github.com/hat47x/tei-platform/pull/4522)、Studio表示・操作の判断は[Draft #4510](https://github.com/hat47x/tei-platform/pull/4510)の既存担当へ委譲する。
+
 ## 権限判定における意味の境界
 
 認証、組織、認可を、一つの固定された組織スキーマにまとめません。
