@@ -256,7 +256,7 @@ CLI／MCP／外部Harnessへ選択Subjectを渡す場合は、Qualified Subject�
 | --- | --- | --- |
 | `cmd/tei/cli_inprocess_parity_test.go` | CLI／共通Operation／Studio Hostの一部の直接意味比較が実装されている | 実IPC、実Wails Consumer、全Operation同値 |
 | `cmd/tei-studio/main.go` | WailsのServiceを同一ProcessのGo Hostへ登録する経路がある | 子Backend常用、共有WebのMulti-Tenant対応 |
-| [#4710](https://github.com/hat47x/tei-platform/pull/4710) Direct実行の別PR | 子Processの出力Byte、失敗、Digestに関する実装・試験を進めている | Studio BackendのIPC、業務Effectの成功、Source/Toolchainの完全固定 |
+| [#4710](https://github.com/hat47x/tei-platform/pull/4710) Direct実行の別PR | 子Processの出力Byte、失敗、Digestの実装・試験がmainに統合済み | Studio BackendのIPC、業務Effectの成功、Source/Toolchainの完全固定 |
 | [#4704](https://github.com/hat47x/tei-platform/pull/4704) Markdown Reader | 正式`*.tei.md` Readerに必要な段階と負例が整理された | 現行Loaderが管理下の`*.tei.md`を正式に受理・解釈すること |
 | [#4708](https://github.com/hat47x/tei-platform/pull/4708) Plugin文書 | Inventory→公開Manual SourceRefの最初の接続差分が特定された | 製品CLIの`plugin docs`／完全なInstall/Enableが実装済みであること |
 | [#4702](https://github.com/hat47x/tei-platform/pull/4702) Script Launch | actual Provider→通常CLIへの最初の実装票がある | Product実Call／Effect・二Consumerが新たに実証されたこと |
@@ -280,7 +280,7 @@ CLI／MCP／外部Harnessへ選択Subjectを渡す場合は、Qualified Subject�
 | 既存の実装・受入 | 現在の到達点 | 子Backend計画との接合 | 新しいPASSの上限 |
 | --- | --- | --- | --- |
 | #4709/#4722のMarkdown Graph固定Fixture／限定Reader | 元Source byte/spanとNode/Edge IDを持つ参照候補を読める | 同じFixtureを、将来の実Operation/Providerの回帰で再利用 | 正式`*.tei.md` Loader／意味受理ではない |
-| [#4729](https://github.com/hat47x/tei-platform/pull/4729)のGraph/Rule→Go→独立Consumer | mainに限定ReferenceのGraph/Rule条件→Go制御分岐の生成・別Processでの実行が統合済み。旧Graph専用PR #4728の状態は別管理 | Edge反転とRuleの条件変更が実Go／Consumerへ伝播し、layout-onlyでは意味を維持する証拠を再利用 | 製品Target Generator、正式Markdown Loader、Plugin実Provider呼出し、Studio Stage2ではない |
+| [#4729](https://github.com/hat47x/tei-platform/pull/4729)のGraph/Rule→Go→独立Consumer | mainに限定ReferenceのGraph/Rule条件→Go制御分岐の生成・別Processでの実行が統合済み。旧Graph専用PR #4728は重複を避けて未マージのままclose済み | Edge反転とRuleの条件変更が実Go／Consumerへ伝播し、layout-onlyでは意味を維持する証拠を再利用 | 製品Target Generator、正式Markdown Loader、Plugin実Provider呼出し、Studio Stage2ではない |
 | #4712のcapabilityinvoke実Adapter境界 | Dispatch前call0／Dispatch後call1と結果契約不正・取消を区別する局所回帰がmain統合済み | 子ProcessでACKが消えても「未Dispatch」へ戻さない | 外部Effect不在・安全Retryの証明ではない |
 | [#4702](https://github.com/hat47x/tei-platform/pull/4702)のSL-1a/b/c | 公開pure Entry→型付きAPI→選択済み実Go Provider→通常tei別Processの計画 | Provider選択Identityと実Invoke、通常CLIの到達と、IPCの独立証拠を合流させる | 実Product EntryとOwner意味受理は未実証 |
 | #2831/#4583のStudio Stage1→Stage2 | 独立BuildIntent／実Builder／実Windows WebView2 Consumerを必要とする既存P0 | 将来Stage2が子Backendを用いる場合は、親／子双方の実ImageとGUI Assetを別に計測 | 子IPCの局所成功で製品Self-build PASSとしない |
@@ -424,6 +424,6 @@ Stage1がStage2を構築する場合は、親・子の実Process階層だけで�
 
 ### 21.3 最新CIで確認した不具合と責務
 
-PR #4705のHEAD `966afa77`では、Cache Full／IncrementalはSUCCESSだが、[Repository Health](https://github.com/hat47x/tei-platform/actions/runs/43638793220) はFAIL。実ログの失敗は`reference/tei-md-graph-reader/rule_test.go`のgofmt差、`internal/query/standard/TestOpaqueNodeRoundTrip`の旧期待値、`TestExportedStringConstantsHaveATestOrAnEntry`の定数登録である。**#4705のDocs差分をGo修正へ拡張せず**、[#4736](https://github.com/hat47x/tei-platform/pull/4736)が担当する実コード・試験の是正を待って、対象HEADのCIを再評価する。旧HEADのHealth SUCCESSを今回のHEADへ転用しない。
+PR #4705のHEAD `966afa77`では、Cache Full／IncrementalはSUCCESSだが、[Repository Health](https://github.com/hat47x/tei-platform/actions/runs/43638793220) はFAIL。実ログの失敗は`reference/tei-md-graph-reader/rule_test.go`のgofmt差、`internal/query/standard/TestOpaqueNodeRoundTrip`の旧期待値、`TestExportedStringConstantsHaveATestOrAnEntry`の定数登録である。**#4705のDocs差分をGo修正へ拡張しない**。旧修正PR [#4736](https://github.com/hat47x/tei-platform/pull/4736) は未マージで終了し、現在のmainでは[#4741](https://github.com/hat47x/tei-platform/pull/4741)・[#4742](https://github.com/hat47x/tei-platform/pull/4742)・[#4711](https://github.com/hat47x/tei-platform/pull/4711)などの統合によって、旧Opaque期待値、整形差分、診断定数一覧が更新されている。これは現在mainのコード状態の確認であり、当PRのexact HEADでのCI合格は更新後の実ジョブで判定する。
 
 この節により、CLI direct→子Backend→Wailsと、Reader→Meaning→生成Provider→Consumerという二つの実証列を、再生成／再実行の判断として結び付ける。ただし、両列の先行Hard Gateや新しいHost／Runner／Resolver／失効の正本を増やさない。

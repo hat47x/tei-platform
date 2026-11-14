@@ -975,4 +975,67 @@ Plugin BがAに依存し、CがBを利用する場合、BからAの公開Facet�
 
 **実装順**は、H0一Pluginの概要とContract版の照合→H1直接依存する上位公開文書の参照→H2CLI/Studio/Harnessで同じSubjectへの読取り→H3菱形依存と版変更の検証、で十分である。#4515のWorkbench Subject Pin、#2605のProduct Skill、#951のProvider、#1016のComposition、#2516のDisclosureをそれぞれ再利用する。Pluginごとのヘルプ生成器・文書Registry・独自Skill Loaderを新製品Coreとして先行実装しない。
 
+
+### 21.5 実在するCLIを起点に、Plugin説明の最初の不足を一件だけ閉じる
+
+<!-- tei-plugin-help-cli-h0-real-inventory-20261114 -->
+
+ここまでの設計では、Pluginをどう説明し、上位文書をどう辿るべきかが整理された。次に必要なのは説明の項目を増やすことではなく、**現行の製品CLIから何が取得できるかを測り、最初の不足する結合を実装すること**である。
+
+2026-11-14時点のmainの`cmd/tei/cli_contract.go`を再確認したところ、限定的なread-only Discovery `tei.cli.discovery/v0`には、`plugin-lock`、`plugin-resolve`、`plugin-runtime-plan`、`plugin-inventory`、`model catalog`、`inspect`、`trace`、`source-index`、`knowledge-context`が存在する。一方、`plugin docs`や`plugin dependencies`というPluginマニュアル専用コマンドは**このDiscoveryの公開項目にはない**。Discovery自体が全Capability・全CLIの完全な一覧ではないため、これだけを理由にシステム内の文書アクセス機能が全面的に存在しないとは断定しない。
+
+実装担当は最初に、**同じ実CLIバイナリと同じWorkspace**で`commands`からread-only入口を発見し、選択済みPluginについて`plugin-lock`／`plugin-resolve`／`plugin-inventory`を突合する。`plugin-inventory`は現行Discoveryに`-environment`必須、`-plugin-lock`、`-plugin`、`-diagnose`を任意として載せているが、**文書索引が返ることまでは保証していない**。既存APIがPlugin ID・選択版・Contract・公開Facet・Doc参照のどこまでを返すかを、実応答とSource位置で記録する。空欄や未公開項目を自動的に「依存なし／マニュアルなし」と推定しない。
+
+| 段階 | 既存機能を使う最小作業 | 不足があれば返すOwner／到達上限 |
+| --- | --- | --- |
+| **H0 現行入口の観測** | `commands`／`version -json`と実バイナリを固定。Pluginを`plugin-lock`／`plugin-resolve`／`plugin-inventory`で特定。Snapshot/Workspace/Environment/Target/Plugin選択を区別 | #951／#1016／#4376。Discoveryは候補の列挙であり、実Call/Grantの保証ではない |
+| **H1 一つの文書参照** | 上位Aと利用側Bを同一Resolved Lockへ束縛。Aの公開説明またはGraph FacetのSource位置／ID／版を**既存Sourceのread-only投影**から得られるか調べる | #4679／#2620／#2621／#2497。既存APIにDoc Indexが無ければ、必要な最小Fieldと既存操作の責務を明示してunsupported |
+| **H2 手順の実在性** | 文書が示すCLI入口・Flagを実Command Discoveryと比較し、例を実行するならread-onlyに限定して実argv／exit／bodyを残す | #2605／#1155。説明の文字列一致やExit 0だけでは業務意味・結果受理を保証しない |
+| **H3 Pluginと生成実装の結合** | 第20章のGraph生成Pluginを対象に、同一Source／Contract／Generator／Artifact／選択Providerと、概要・上位Doc参照を対応付ける | #2831／#1251／#943。モデルを説明できても実生成・実呼出しは別資格 |
+| **H4 複数Consumer／別Process** | 同一選択Subjectと結果をCLI direct、Studio、外部Harnessで比較。CLI child Backend／Session再利用は独立した実装・実測後にのみ追加 | #4515／#2605／#2509、Backend設計PR #4690。CLIへWailsや常駐Backendを強制しない |
+
+H1はPlugin二件A／Bの**直接依存一辺だけ**を対象とし、上位説明をBが参照できることと、BからCへの再公開・Runtime Hook権限を分ける。H0/H1が不足している段階で、マニュアルだけを手作業で複製したり、Skillに未実装のコマンド例を書き足したりしない。必要な最小のread-only投影の型・取得条件が決まったら、#4679と既存Application APIのOwnerが判断する。最初からDocument Registry／新Resolver／Doc専用Runtimeを立てない。
+
+**一回の検証で残す対応表**は、`Workspace + Source Revision / exact Plugin Lock + Contract Fingerprint / selected Provider + Target / documented Entry + actual CLI Discovery / public Doc or Graph Reference + Source Span / current Disclosure / read-only Output + Actual Consumer / Independent Expected + NOT RUN`の各列とする。列を横に並べただけで同一Attemptの実消費を実証したとは言わず、実行前の型付きSelection、Sourceの実読取り、実Callが各々成立したかを区別する。説明文・Skill本文を入手できることは現在のSource受理・実行許可・外部送出資格ではない。
+
+**最初の否定試験**は、(a) Bが参照するAのVersionと提示Docがずれる、(b) Manual内のコマンド名・Flagが現行Discoveryと一致しない、(c) AがBへ公開した文書をBがCへ無許可で再公開する、(d) `plugin-inventory`の情報が一部欠けた状態を完全な依存集合として返す、(e) 文書の本文だけを変えて無関係なGo成果物まで再Buildする、の五つとする。**PHD-01/02/03/05/06**の既存Expectedに割り当て、テスト番号や正本は増やさない。
+
+このH0→H2で必要な実CLI情報が取得できれば、H3では第20章の最初の生成Pluginを同じDocument Surfaceで説明できるかを測る。その後にH4のStudio／Harnessへ進む。Pluginを説明するためだけにDesktopの完成を待つ必要はなく、**正式Studio Stage1→Stage2（#2831/#4583）と実Provider二入口（#1251/#4495）のP0に新Hard Gateを積まない**。
+
+**今回の資格**：現行CLI Discoveryと既存Issue／設計から作成した、最初の実装に向けた調査票と受入順序。実CLIバイナリの起動・`plugin-inventory`の実応答取得、Plugin Doc索引・Help API・実E2E実装、Studio/Harness比較、Owner受理は、この文書更新では未実施。
+
+
+
+### 21.6 最初の実装差分：Plugin Inventoryと公開文書のSourceを結び付ける
+
+<!-- tei-20261115-plugin-source-manual-concrete-bridge -->
+
+[PR #4709](https://github.com/hat47x/tei-platform/pull/4709)で、`testdata/tei-md-graph/`に五つのMarkdown表＋MermaidのGraph入力と`independent-expected.candidate.json`がmainへ入った。ここにある`n-1`／`n-2`、`e-1`／`e-2`は意味IDであり、Mermaidの`N1`／`N2`は表示上のIDである。**このFixtureを第20章の実生成検証と第21章のPlugin文書検証で共用する**。定義表はSource、Mermaidは導出表示、Expectedは独立した採用前候補という区分を維持する。
+
+最初のPlugin文書の試験では、上位Plugin AがこのGraphの**公開可能な説明文書への参照**を持ち、利用側Plugin BがAを直接要求するケースを加える。ただし既存Fixture自体はPlugin A/Bの製品定義・公開許可・マニュアル索引を提供していない。A/Bの契約や参照は**別途固定する合成の試験入力**であり、`baseline.tei.md`を置いただけでPluginへの帰属・現在Disclosure・正式Reader受理を得たことにはしない。正式なDocument ReferenceのAuthoring契約は[#4679](https://github.com/hat47x/tei-platform/issues/4679)／[#2621](https://github.com/hat47x/tei-platform/issues/2621)のOwner判断とする。
+
+#### 現在のGo実装で埋める最初の一辺
+
+| 実コード | 確認できた役割 | 未接続の部分 |
+| --- | --- | --- |
+| `cmd/tei/cli_plugin_inventory.go` | 実WorkspaceとLockを読み、`managementWorld`からPlugins/Bundles/Environmentsを`management.Derive`へ渡す。選択Pluginの一件詳細を既存Reportから投影 | 管理Sourceにある説明文書への参照・解決・現在開示を行わない |
+| `internal/plugin/management/inventory.go` | `Row`はPlugin ID/Version、選択・解決、Lock、Role/Capability、直接依存`Requires`、理由・Evidenceを区別 | Document ID、公開文書Ref、元Sourceのspan、文書版は`Row`にない |
+| `cmd/tei/cli_contract.go` | `plugin-inventory`／`plugin-lock`／`plugin-resolve`等が限定read-only Discoveryにある | `plugin docs`はこの一覧にない。現行CLIで使用可能と説明しない |
+
+**最小のGo実装PR**は、まず実CLIの`plugin-inventory -environment ... -plugin ...`によって選択PluginのIdentityを固定し、管理済み文書Source一件について`Plugin ID・Version・選択Lock・Document Source/Revision/Span・必要な公開範囲`の対応を**既存Workspace Reader／Source Index・共通Application APIに沿ったread-only操作**で照合することを対象とする。Doc参照の正式な受理契約がまだ無ければ、合成Reference Mappingと製品のSource-backed取得を区別し、後者を成功と偽らない。
+
+`management.Derive`へSource Readerを取り込まず、`plugin.Definition`の新Public属性や新CLIコマンドもここだけでは確定しない。現行InventoryとSource参照をつなぐ型付きOperationに足りない最小のFieldを特定し、[#4376](https://github.com/hat47x/tei-platform/issues/4376)／[#951](https://github.com/hat47x/tei-platform/issues/951)／[#1158](https://github.com/hat47x/tei-platform/issues/1158)へ返す。一覧への本文の全投入、文書専用Registry、Pluginの勝手なProvider選択はしない。
+
+#### 最初の検収とその次
+
+1. **CLI基線**：同一実バイナリ／Workspace／Environment／Lockで`commands`、`plugin-inventory`の一覧・一件詳細・診断を実行し、Resultの各Fieldと`unknown/not-modelled`を確認する。
+2. **文書一件の照合**：Plugin Aの公開文書のSource、版、管理状態、現在開示を読み、Bの直接依存との適合を判定する。同名別版、未読込、permission-denied、partialは「文書なし」と区別する。
+3. **文書内CLI例の適合**：Manual記載の操作名・Flagを`commands`の実Discoveryと比較し、read-onlyの表示であってもwriteFlagsとShell連結の作用を確認する。短いProduct Skillの固定版は変更しない。
+4. **実生成Pluginとの合流**：第20章のGraph→Go生成と、A/Bの公開文書が同じSourceを参照することを確認する。生成したGo、Artifactへの収録、選択Providerの実呼出し、独立Consumerの結果はそれぞれ別資格。
+5. **Studio／Harness／子Backend**：1〜4の実CLI証拠が得られてから既存Application APIの別Consumerとして評価する。CLIにWailsや常駐子Serverを必須化しない。
+
+既存PHD-01/02/03/05/06/08と第20章のPGFを同じSourceセットに対する**別のassert**として利用する。文書の本文だけを直した場合に実Goの意味まで再生成しないこと、Graphの定義表を直した場合に生成物・説明の参照版が適切に失効すること、Source A→B→Aで旧開示・旧Evidenceを復活させないことを比較する。試験の正本は[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)に維持し、FixtureのExpected JSONは採用前候補のままとする。
+
+**受入上限**：最初はCLI実呼出しで、選択Pluginと一文書の対応・版・可読性を示せることまで。Graphの正式`*.tei.md` Reader・Go生成・Provider実利用・Pluginマニュアル一般公開・Studio/Harness・Owner意味受理の完了を代用しない。全体P0はStudio Stage1→Stage2（#2831/#4583）、並行P0は実Entry／Provider（#4495/#1251）。Plugin文書をその新Hard Gateにしない。
+
 **資格**：第20・21章は、現行mainの第15〜18章を維持しながら、生成プラグインの一機能とPlugin説明の利用時適合を切り出した**設計・検収案**である。正式 *.tei.md Reader、新Generator、実Plugin E2E、Plugin Help API、実AI Harness、Owner受理を今回実装・実測したわけではない。

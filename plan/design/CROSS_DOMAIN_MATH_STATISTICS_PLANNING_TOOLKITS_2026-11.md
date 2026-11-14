@@ -393,6 +393,38 @@ TEI化の進捗は単純なファイル数や生成コード行数で判断し�
 Studio・SUI・CLIからAIハーネスへ設計対象を渡す際は、表示中の文字列やGraphの座標ではなく、**選択したSubject、Source occurrenceとRevision、必要な関係・依存、現在の利用資格**を特定する。提案した編集を自動承認とみなさず、既存のSource-backed Patchと受理手順に戻す。この情報は既存の選択・参照・Providerの契約を使用し、専用のハーネスABIや意味権限を新設しない。
 
 
+### 既存の生成器Referenceと、数理Toolkitの未接続部分を照合する
+
+TEIには、**受理済みValidationからGoの実装を生成して独立Expectedで選抜する**Reference経路がすでにある。[生成器作成の標準方式](AI_GENERATOR_AUTHORING_STANDARD_2026-11.md)と[`reference-generator-selection`の実装・Fixture](../../tools/reference-generator-selection/README.md)を、数理Toolkitの生成器検討より先に参照する。
+
+このReferenceの最小題材は`sales.order_line.quantity_positive`であり、受理済みWorkspaceのValidation（kind `positive`）を契約で固定する。生成器Sourceは`deterministic-transform-v1`、実評価器は`internal/plugin/transform`、Target成果物はGoの検証プログラムである。独立Expectedは[契約](../../tools/reference-generator-selection/testdata/validation-positive/contract.json)と[Fixture](../../tools/reference-generator-selection/testdata/validation-positive/fixtures.json)から参照でき、正値・ゼロ・負値・高精度小数と、missing／null／type-mismatchを区別する。誤った生成器が同じFixtureで不合格になることまでReferenceの設計対象としている。
+
+**現在の実装が示す範囲を過大評価しない。** このGeneratorは受理済みValidationを入力とするが、`*.tei.md`に書かれた表・式を直接解釈しない。現在のValidation生成対象は`positive`に限定され、`AVG`、`PARTITION BY`、`ROWS`、`RANGE`からSQLを作る実装ではない。既存のSQLite方言テストは逆に、型付き`SelectOptions`からSQLを生成・実行できるが、受理済みTEI定義からその`SelectOptions`を構成する経路を証明していない。**この二つの成功を足してC1／C2達成とはしない。**
+
+| 既存の実装・検証 | すでに担っている役割 | 数理Toolkitへ進む前に足りないもの |
+| --- | --- | --- |
+| `validation-positive`の生成器選抜 | Workspace上のValidation契約→Transform Source→Go成果物→独立Expected | Markdown Reader、数理Windowの意味、Query/SQL Targetへの適格な入力生成 |
+| SQLiteのWindow回帰（`window_reference_test.go`／`window_frame_change_test.go`） | `SelectOptions`→SQLite方言SQL→実DB→全七行の独立Expected | `*.tei.md`→受理済みWindow意味→`SelectOptions`、実ProviderのScopeと通常製品Consumer |
+| CLI先行セルフビルドのGraph／Rule固定題材 | 二つの同名Node・別IDの多重Edgeと向きを保った生成・Plugin再利用の計画 | 正式Reader→実生成Go→実Plugin Call→次Stage再入の実装・検証 |
+
+### 先に通す一往復と、後から広げる実証を区別する
+
+全体のセルフビルドで最初に実装するのは、既存[製品完成計画](../workstreams/PRODUCT_COMPLETION_PLAN.md)が固定した**Graph／Ruleからの実Go生成**である。Node `n-1`／`n-2`は表示名が同じ、Edge `e-1`／`e-2`は別ID・同方向とし、向き変更・ID重複・レイアウトだけの変更を比較する。これはGraph／Ruleによる実装生成を最短で実証するための題材であり、数理ToolkitのWindowをその前提に追加しない。
+
+数理Toolkitは**次の用途別の実証**として、Graph／Ruleで確認した正式Reader、Source/Meaning Revisionの追跡、生成器の実選択、独立Expectedの検証を再利用する。その際、次の順に既存Ownerへ引き渡す。
+
+| 引渡し順 | 実装担当に確認する具体的な一件 | 未成立の場合に示す診断・証拠 |
+| --- | --- | --- |
+| 1. Sourceと意味 | `*.tei.md`の七行観測表とWindow定義を、明示的Profile／Role／Operatorに束縛し、行ID・NULL・Source occurrenceを保持する | 対応する正式Reader／Roleがない場合は`unsupported`。説明文から勝手に意味を推定しない（#988/#2620/#2621） |
+| 2. 計算条件の検査 | Partition＝系列、Order＝順序と観測ID、Frame＝直前二行と現在行、AVGのNULL処理を、型付き意味として検査する | 同順位の順序が一意でない、欠損とnullの区別が失われる、計算前の入力範囲が閉じない場合は`unverified`または不適合（#2495/#2387） |
+| 3. 生成器とTarget | 受理したWindow条件から、既存のSQL方言Generatorへ渡す`SelectOptions`を生成し、SQLiteで実行する | Native SQL文字列をSourceから丸ごと委譲した場合はC2未達。Generator Source・版・Target入力byteを追跡（#1121/#2016/#2595） |
+| 4. 二つの変化の比較 | Frame＝直前二行→直前一行の変更ではA3が20→25、A4が30→35。説明文だけの変更では計算結果を維持する | 定義変更がTargetへ届かない、あるいは表示変更だけで意味が変わった場合は失格（#2514/#2600） |
+| 5. 実利用への接続 | CLIの正式Entry→選択Provider→実SQLite Read→独立Expected→Consumer受領を同一Attemptに結ぶ | SQL Adapterの単体成功、Mockの結果、同一数値だけでは、正式CLI／Provider／Consumerの合格としない（#1251/#2586） |
+
+生成器の評価では、**受理済み意味、Generator Source、実行Generator、Target成果物、独立Expected、実Builder／Consumerの観測**を互いに置き換えない。生成器は`positive`用Referenceを無理にWindow対応へ拡張せず、既存の生成器候補・選抜・Provenanceの仕組みを再利用可能な範囲で使う。型付きWindow入力の生成が現行の契約では不可能なら、`unsupported`と必要な最小Gapを返す。新しい汎用Generator DSL、独立Test Runner、数理専用Hostを最初の解決策にしない。
+
+**独立Expectedの自己生成を禁止する。** 生成器が出したGoやSQLの結果を、そのまま期待値ファイルへ転記して正しさを主張しない。Fixtureは候補選抜より前に固定し、生成器を変更しても同じ正例・負例で比較する。Goにすべてを委譲した場合は、実装できた機能の分母から除かず「外部委譲」として残す。プラグインの次Stage実利用や、定義が簡潔になったかどうかは、既存セルフビルドOwnerが別に測定する。
+
 ### CLI・Studio・リモートで同じ計算契約を使う条件
 
 他の設計で検討しているCLI／Desktop／Serverの構成は、数理Toolkitでも実行場所と受入資格の違いとして現れる。**共通化するのはApplication Operationの意味・入力・結果の契約であり、HTTPやWails、子プロセスそのものではない。** この節は既存[#1158](https://github.com/hat47x/tei-platform/issues/1158)（Application API）、[#951](https://github.com/hat47x/tei-platform/issues/951)（Provider選択）、[#1251](https://github.com/hat47x/tei-platform/issues/1251)（CLI/Studioの実利用）、[#2586](https://github.com/hat47x/tei-platform/issues/2586)（実Read）などの担当へ渡す検証条件であり、別のBackend APIやHostを新設する提案ではない。
@@ -401,11 +433,11 @@ Studio・SUI・CLIからAIハーネスへ設計対象を渡す際は、表示中
 | --- | --- | --- |
 | ローカルCLI（直接利用） | Go単一バイナリのWails非依存Backend | 通信Serverを必須にしない。現在の型・Contract・実Providerに到達したか |
 | ローカルCLI（分離が必要な場合） | 明示的に起動・選択したローカルBackend子プロセス | 同一APIの要求・応答、IPC相手・版・プロセス帰属、実Callを確認する |
-| Desktop Studio | WailsはClient側。ローカルBackend子プロセスとIPCで接続 | GUIで選んだSubjectとBackendのSource・構成・現在資格が一致するか |
+| Desktop Studio | **現行の実装基線**はNative同一プロセス。ローカルBackend子プロセス／IPCは将来の分離候補 | 現行経路の実Consumerと、将来の子BackendのHandshake・版・権限を別の資格で検収する |
 | リモートCLI／Client | 接続先ServerのBackend | Server側のProvider構成・権限・実データ範囲を正本とする。ClientのローカルPluginやCacheを勝手に代用しない |
 | MCP／AIハーネス | 明示されたCLIまたはBackend経路 | 引き渡したSubjectと開示許可を再確認し、説明やSkill文書だけから実行を許可しない |
 
-初回の計算実証でローカルCLIをHTTP待受け必須にしない。Desktop側はUIの都合でWailsを使っても、CLI／Backendの実装はWailsに依存しない。ローカル子プロセスを使う必要があるなら、既存の起動・通信・終了管理の責務へ渡す。**単純な一回の計算のために専用の科学Serverや常駐Processを先に必須化しない。**
+初回の計算実証でローカルCLIをHTTP待受け必須にしない。Desktop側はUIの都合でWailsを使っても、CLI／Backendの実装はWailsに依存しない。現行DesktopのNative同一プロセス経路と、将来の子Backend／IPC分離案は混同しない。後者の採否・起動・互換性・回復は[検討中のPR #4705](https://github.com/hat47x/tei-platform/pull/4705)と既存のBackend Ownerに委ねる。**単純な一回の計算のために専用の科学Serverや常駐Processを先に必須化しない。**
 
 実行要求を渡す前に、最低限、対象のSubject／Source・Meaning Revision、要求するOperator ContractとProfile、対象Target、実行Backendの識別情報、選択したProviderと版・構成、利用主体とRead Scopeを照合する。ClientとBackendの互換性を確かめるHandshakeや構成Digestは**既存のContract／Compositionの表現で実装可能かを先に確認する候補**であり、この計画から新しい通信Schemaや必須ABIを確定しない。
 
@@ -449,6 +481,62 @@ PluginやCLI／Backendの更新は、選択中のContract／構成と、更新�
 2. **意味を変えない変更**：計算に影響しない説明文や表示配置だけを変更する。Sourceの版が変わった事実は残しつつ、計算の意味・出力結果は同じであること。ビルドの省略やArtifact再利用の可否は、既存のWorld／Model／Artifactと依存条件で別に判断する。
 
 いずれも、編集前後のSource、意味Revision、生成結果、実入力、実Call、独立Expectedを混同しない。表の再表示やPythonによる記法試作の成功を、Go本体の正式Reader・通常CLI・MCP・生成アプリの合格へ引き継がない。
+
+### WindowもMarkdownの固定入力と独立Expected候補から始める
+
+[Graph／Ruleの固定入力](../../testdata/tei-md-graph/README.md)に続き、数理側にも[Windowの固定入力5件](../../testdata/tei-md-window/README.md)と[独立Expected候補](../../testdata/tei-md-window/independent-expected.candidate.json)を追加する。どちらも**Markdown表を定義元とし、派生図・派生した表示を意味の正本として上書きしない**方針で統一する。
+
+| 入力候補 | 意味上の差 | 対応する既存CTK |
+| --- | --- | --- |
+| 基準 | 七行とB2のNULL・B2/B3同順位。三種類のWindow結果を固定 | 01／03／10 |
+| Frame変更 | movingを直前三行から直前二行へ。A3=20→25、A4=30→35、B3=10→15 | 14 |
+| 表示のみ変更 | 説明段落のみ変更。計算の意味と結果は同じ | 15 |
+| 観測ID重複 | A3を異なる値で二回記述。勝手に一行へ統合せず拒否する | 13 |
+| 古い派生結果 | Frame変更後も旧movingを表示。定義元へ逆反映せず、不一致を報告 | 17 |
+
+Expected JSONの`adoption=proposal-only`は、既存#1180/#2514による受理を待つ状態であり、新たなScenario正本や製品Schemaではない。GraphとWindowのそれぞれに専用Parserを追加しない。まず両分野の表Cell／Source位置とRoleを正式Readerに引き渡し、意味を保てる範囲を比較する。
+
+既存SQLite方言の回帰はC0に限定される。新しい`window_candidate_oracle_test.go`は候補JSONの基準・Frame変更を読み込み、`SelectOptions`で生成したSQLを実DBで照合するが、**Markdown本文を解釈しない**。候補ファイルの存在や結果一致は、C1の正式ReaderやC2のTEI定義由来生成の合格を意味しない。
+
+### 固定Expectedと実Sourceの組を崩さない
+
+[Windowの固定入力](../../testdata/tei-md-window/README.md)には各`*.tei.md`の**元バイト列のSHA-256**を追加し、`window_candidate_oracle_test.go`で五つのSourceすべてを照合する。これまでは候補JSONに示したMarkdownファイルの存在確認だけだったため、入力中のA3値やFrameが変わっても固定SQLとExpectedの比較だけでは検知できない問題が残っていた。
+
+新しい照合では、定義元の観測値を書き換えた場合も、派生する説明・表示だけを編集した場合も、古い`sourceSHA256`を持つ候補との組を`STALE_SOURCE_CLOSURE`として拒否する。**一致が示すのはSourceバイトの同一性であって、意味の受理や計算の正しさではない**。説明だけの変更でもSourceのRevisionが変わる。意味が変わらないと判断して下流Artifactを再利用できるかは、既存のWorld／Model／Artifact、依存閉包、現在のOwner判断と別に照合する。
+
+[Graphのread-only参照Reader #4722](https://github.com/hat47x/tei-platform/pull/4722)では、限定的なMarkdown表からNode／Edge候補と元byte spanを取り出すGo実装がmainに入った。**GraphのReferenceが読めることと、正式なWorkspace Readerが受理済みであることは別**である。まず既存のSource選択・元byte位置・診断を共有できるようにし、Window用の新しい独立Parserや汎用数式Readerを追加しない。
+
+次のReader／Loweringの縦断では、固定Sourceのバイト同一性に加え、(1) 実際に選択された観測表・計算条件のCell位置、(2) Role／Operatorの受理、(3) Frame・Partition・Order・NULLの型付き意味、(4) 生成器が実消費した入力、(5) SQLite実結果と独立Expectedを順番に観測する。**Sourceのハッシュを更新するだけでExpectedの再受理や再生成を済ませたとはみなさない**。既存[#2595](https://github.com/hat47x/tei-platform/issues/2595)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)へ引き渡し、第二のReceipt／意味正本を増やさない。
+
+### 期待値のSourceだけでなく、検証すべき負例の集合も固定する
+
+Window候補5件はSHA-256で元ファイルと結び付いているが、**候補の一部をJSONから削除しても基準計算のテストだけは成功し得る**。そこで、`window_candidate_oracle_test.go`に5件の候補ファイル名・必須件数・期待状態の閉包検査を追加する。重複IDの拒否候補を消す、`valid`へ変更する、古い派生表示を一致扱いする変更はそれぞれ拒否する。数理計算の数値一致と、検証の対象・負例が残っていることを区別する。
+
+[Graph／RuleのSource Index実連携 #4742](https://github.com/hat47x/tei-platform/pull/4742)に合わせ、Windowの全5入力でも`sourceindex.NewArtifact`／`Index.Validate`／`RangeFromOffsets`を使う実Go回帰を追加する。既存の`sourceSHA256`と同じ元バイトを指すこと、B2の明示NULLを含む既知の文字列の元byte span、説明追記による古いSource Indexの失効を確認する。**これはSource位置と原本の整合検査であり、B2のCellを正式Readerが意味として選択した証拠ではない。**
+
+この閉包は**独立Expected候補のテスト上の固定条件**であり、正式な意味受理や新しいScenario正本ではない。現在の検証で成立するのはSource byteと期待値候補の組、既存SQLite方言が生成するSQL、実DBの結果までである。負例に対して製品Readerが正確なSource位置で診断を返せたことや、Markdown表から意味を生成できたことではない。
+
+また、[Graph／Ruleの生成バイナリ実引数試験 #4733](https://github.com/hat47x/tei-platform/pull/4733)は、同じ生成Go Binaryへ別々のNode IDを渡し、結果の違いと未知・空IDの拒否を検証する**局所的な実行例**である。Windowを次の応用へ広げるときも、入力変化に対する実結果と独立Expectedを確認するが、製品のFunction Entry／Provider／CLIの実Callには自動昇格させない。
+
+[MarkdownのFence境界修正候補 #4725](https://github.com/hat47x/tei-platform/pull/4725)は未統合のDraftであり、GraphとRuleの例示領域を定義に誤認しないための負例を扱う。これは統計表・KaTeX式・Graphviz／Mermaidが共存する文書でも必要な境界である。Readerの正式採用時は、バッククォートとチルダのFence、開始長・終了長、インデントコード、未閉領域、BOM／CRLF、元byte spanを検証し、**表示や例示に現れた数式・計算条件を実行可能な定義へ勝手に変えない**。KaTeXは表示、TEIが意味・演算・検証を担う方針を維持し、専門Parserや第二の数式正本を追加しない。
+
+### 正式Readerが未接続である現状から、最小の実読取りへ進む
+
+2026-11-14時点の`internal/workspace/loader.go`は、管理Sourceを走査したあと、`rejectUnboundTEIMarkdownSources`で管理対象の`*.tei.md`を**`TEI_MD_PARSER_UNBOUND`として明示拒否**する。現在の`loadSemantics`が呼ぶ`syntax.NewParser(...).ParseSemanticFile()`は従来形式のParserであり、Markdownの表・フェンス・本文のRoleを実際に解釈した証拠ではない。`ManagedFile`の列挙、`ReadByLoader`の真偽、Parserでの解釈、意味の受理、Buildでの実消費はそれぞれ別の事実である。
+
+この拒否は不備を隠さないための安全策である。Guardを削除して、管理対象に入っただけの`*.tei.md`を「読めた」とする対応は採用しない。実装順は既存の[Markdown移行計画](TEI_MD_UNIFIED_AUTHORING_MIGRATION_2026-11.md)のMR-0〜3、および検討中の[Reader最小実装PR #4704](https://github.com/hat47x/tei-platform/pull/4704)へ合わせる。#4704は**レビュー中の設計であり、Readerの実装完了ではない**。
+
+| 検証する段階 | 最初に通す内容 | 数理Windowに適用する際の限界 |
+| --- | --- | --- |
+| MR-0：現行の明示拒否 | Workspaceに管理された`*.tei.md`で、Readerが未束縛なら`TEI_MD_PARSER_UNBOUND`。旧`*.tei`と普通の`README.md`は従来どおり扱う | Window表もこの時点ではMeaningとして読めない。C1は未達 |
+| MR-1：選択した宣言領域 | Markdown容器の元byte列から、選択した宣言領域を抽出する。引用・説明・例示の表は意味に昇格しない | 最初は従来文法のコード領域を候補にできるが、**通常のMarkdown表を読めるわけではない** |
+| MR-2：既存Parserと元位置 | 抽出した実byte列を既存Parserへ渡し、Source occurrenceと診断を元Markdownのbyte spanに戻す | CRLF、BOM、日本語、複数Fence、同名の別領域で位置を推測しない。式やWindow Roleは別に資格化 |
+| MR-3：正式Loader／実消費 | 明示選択した領域の実読込・Source Index・Build入力を照合する | 構文が読めても、WindowのPartition／Order／Frame／NULLを受理してSQLを生成できたとは限らない |
+| 数理用途への拡張 | Markdown表の識別子・値・欠測、Windowの演算・範囲を既存の型・Role・Operatorへ束縛する | この範囲はMR-3の当然の結果ではない。Source→意味→Target生成→実Providerの各資格を別に検収 |
+
+最後の段階を新しい汎用Authoring Gateや別のParserにしない。最初は**一つの宣言領域の元byte→既存Parser→元Source位置**を通し、Markdown表全体の意味解釈は、その読み取り能力を前提に対象を明示選択する。単純なFence抽出でTEI内部へ貼った旧DSLと、普通の表から型付きWindow意味を作れたことを混同しない。
+
+CTK-13とCTK-17の反例は、既存Reader計画のMR-X1（未束縛拒否）、MR-X3（選択領域と説明の区別）、MR-X4（元byte span）、MR-X5（旧新同ID競合）、MR-X8（Required Source未取得）へ対応付ける。新たなExpectedの正本を作らず、`internal/workspace/tei_md_source_guard_test.go`の既存負例を第一の回帰基線に使う。数理Window側の七行Expectedは、Readerが本当に解釈したSubjectと同じSource Revisionへ結び付いた場合だけ後段に渡す。
 
 ### 記法の試作から製品実装へ渡す範囲
 
@@ -549,9 +637,19 @@ ORDER BY grp, seq, obs_id;
 
 ### 計算条件を変えた場合の回帰検査
 
-CTK-14の次の一歩として、既存SQLite方言の`SelectOptions`内でWindowの`ROWS BETWEEN 2 PRECEDING`を`ROWS BETWEEN 1 PRECEDING`に置き換え、生成SQLを実SQLiteで実行する`window_frame_change_test.go`を追加する。全七行を照合し、A3は20→25、A4は30→35、B3は10→15に変化する一方、変更していない二種類の累積Windowは元の結果を保つことを期待する。
+CTK-14の回帰として、既存SQLite方言の`SelectOptions`内でWindowの`ROWS BETWEEN 2 PRECEDING`を`ROWS BETWEEN 1 PRECEDING`に置き換え、生成SQLを実SQLiteで実行する`window_frame_change_test.go`を既に追加した。全七行を照合し、A3は20→25、A4は30→35、B3は10→15に変化する一方、変更していない二種類の累積Windowは元の結果を保つことを期待する。
 
-これは**SQL方言生成器におけるC0の意味差分テスト**である。正式な`*.tei.md`を読み込んでいないため、C1のReader成功やC2のTEI由来Go生成を示すものではない。新テストのGo CI結果は当該コミットに対して個別に確かめる。
+これは**SQL方言生成器におけるC0の意味差分テスト**である。正式な`*.tei.md`を読み込んでいないため、C1のReader成功やC2のTEI由来Go生成を示すものではない。既存のFrame変更と候補JSONを使ったSQL方言テストは、それぞれの対象コミットのSQL Dialect Plugin CIで成功している。Source byteのSHA-256照合を加えた今回の試験は、変更後の対象コミットで別に確認する。
+
+### Window未対応の標準Query変換では、SQLを失わず明示拒否する
+
+[Graph／Ruleの局所Go生成実証 #4729](https://github.com/hat47x/tei-platform/pull/4729)は、選択したMarkdown規則表から`if`の実条件を生成し、別のGo Processで独立Expectedへ照合する段階までmainへ入った。これは**実際に定義が生成コードの挙動を変えた**限定的なReferenceであり、正式WorkspaceのMeaning・Target Generator・Plugin実Call・Stage1→Stage2の受理ではない。Windowもこの実証の条件（Source同一性／明示規則／実行生成物／独立Expected）を再利用するが、Graph専用の意味やReaderを数理表へ流用したことにはしない。
+
+他方、`internal/query/standard/model.go`の`StandardQuery`には、Windowの`PARTITION`・`ORDER`・`ROWS`／`RANGE`を保持する正式Nodeがない。既存SQLite方言の`SelectOptions.Window`は文字列でSQLを生成できても、**Native SQL→StandardQuery→Target SQLの意味的な往復**を保証しない。特に、`WINDOW`などの未解釈トークンをParserが残したまま成功扱いしたり、`Opaque`をGeneratorが読み飛ばして別の`SELECT`を出したりしてはならない。
+
+今回の最小実装は、SQL全文を構造化できない場合は**元SQLを`Opaque`に保存し、診断を返す**という既存の契約を確実にする。具体的には、`ParseSQLToStandard`が単一の末尾セミコロンを除き、消費していないSQLトークンを検出して失敗とする。`StandardToSQL`は`Opaque`を別の不完全SQLとして再生成せず、`OPAQUE_QUERY_UNSUPPORTED`で拒否する。CTE内に`Opaque`がある場合も、空のCTE本文を含むSQLを返さない。
+
+この修正の回帰は、名前付きWindow、`OVER`を含む式、未対応のロック句、二番目のSQL文、単一SELECT末尾のセミコロン、CTEの中にある未対応Queryを固定する。さらに、**実際のSQLite `Dialect.Select`が生成した名前付きWindow SQL**を`ParseSQLToStandard`へ入力し、元SQL全体を`Opaque`に保持して`StandardToSQL`が拒否することを確認する。**拒否はWindow対応そのものではない**。元SQLを保持することとNativeで実行する許可は別であり、Owner／Provider／Scopeの確認なしに`Opaque.SQL`をそのまま実行しない。正式なWindow意味NodeやQuery Loweringを導入するかは既存[#2387](https://github.com/hat47x/tei-platform/issues/2387)／[#2586](https://github.com/hat47x/tei-platform/issues/2586)に委ね、無理に`StandardQuery`の型を先行拡張しない。
 
 ### Query変換の適合を説明するための判定語彙
 
@@ -599,7 +697,7 @@ WBS・PERT・CPMで扱う予定は、作業の開始・終了を計画するた�
 | CTK-08 | 二つのProviderで数値が一致しても、Snapshot時点・実入力・Scope・許可が異なるなら同一条件の再現と扱わない | #2582／#2600／#2514 |
 | CTK-09 | 分析・Window・科学計算の読取り操作が、DB未初期化を理由に暗黙のDDLやMigrationを実行しない | #4234／#4657／#3270 |
 | CTK-10 | B2のNULL、同順位のB3を含む参照SQLで、ROWS 2 PRECEDING／累積ROWS／累積RANGEの値を取り違えない | #2387／#2514 |
-| CTK-11 | SQL/Query/Native演算の変換を、意味一致／条件付き／Native保持／非対応／未検証として説明し、未確認を同義としない | #2387／#951／#2497 |
+| CTK-11 | SQL／Query／Nativeの往復でWindowなど未対応の意味を落とさない。消費していないSQLは元文字列をOpaqueに保持して診断し、OpaqueやそのCTEから誤ったSQLを再生成しない。単一末尾セミコロンを誤拒否しない | #2387／#951／#2497／#2514 |
 | CTK-12 | SUI上のカード・島・配置をWBSの先行関係へ自動昇格させず、独立した作業IDとDAGを保持する | #2495／#2497／#3791 |
 | CTK-13 | 普通のMarkdown表の行ID・列・空欄／NULL／未取得を、Sourceの位置と版を保持して対応付ける。対応するRoleが未受理なら意味化を拒否する | #988／#2619／#2620／#2621 |
 | CTK-14 | ROWS範囲を直前三行から直前二行へ受理済みで変更すると、生成物が変わりA3=25、A4=35となる。Native SQL文字列の単なる委譲では合格にしない | #1121／#2387／#2514 |
@@ -635,4 +733,4 @@ Solver・実験計画法は、同じ計算契約・観測・受理の分離を�
 
 ## 24. 確認できたことと未実証のこと
 
-この文書は、2026年11月14日時点の既存Issue・設計資料と分野横断の検討を踏まえた**設計・検証計画**である。SQLite方言のCTE・Windowによる限定的なGo回帰テストは[PR #4670](https://github.com/hat47x/tei-platform/pull/4670)でmainへ統合され、対象HEADのSQL Dialect Plugin CIが成功した。一方、この成果は正式な`*.tei.md`の読取り・意味受理、TEI自身のコード生成、通常CLI/MCPの実利用、NoSQLや科学計算Providerとの同等性を保証しない。今回のMarkdown表や数値・単位・Backend選択の反例は**設計候補・独立Expected**であり、新しいGo／R／Python／Windows／科学計算の実行、専門家レビュー、市場調査を行ったわけではない。数値計算やSolver、実験計画法、専門Toolkitが製品として完成したとは判断せず、採否は既存OwnerのIssue／ADR／実Evidenceへ戻す。
+この文書は、2026年11月14日時点の既存Issue・設計資料と分野横断の検討を踏まえた**設計・検証計画**である。SQLite方言のCTE・Windowによる限定的なGo回帰テストは[PR #4670](https://github.com/hat47x/tei-platform/pull/4670)でmainへ統合され、対象HEADのSQL Dialect Plugin CIが成功した。また、生成器選抜には受理済み`positive` ValidationからGo成果物を作るReference実装がある。ただし、現在の`*.tei.md` Workspace読込はReader未束縛を明示拒否しており、これら既存Referenceは数理Windowの意味受理、正式Reader、TEI自身のコード生成、通常CLI/MCPの実利用、NoSQLや科学計算Providerとの同等性を保証しない。今回のMarkdown表や数値・単位・Backend選択の反例は**設計候補・独立Expected**であり、新しいGo／R／Python／Windows／科学計算の実行、専門家レビュー、市場調査を行ったわけではない。数値計算やSolver、実験計画法、専門Toolkitが製品として完成したとは判断せず、採否は既存OwnerのIssue／ADR／実Evidenceへ戻す。

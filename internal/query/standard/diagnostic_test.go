@@ -1,6 +1,7 @@
 package standard
 
 import (
+	"encoding/json"
 	"testing"
 )
 
@@ -33,22 +34,31 @@ func TestDiagnosticSpan(t *testing.T) {
 	}
 }
 
-func TestOpaqueNodeRoundTrip(t *testing.T) {
-	// Opaque nodes are preserved in the IR but ignored by the flat SQL generator.
-	// The generator falls back to the remaining known nodes.
+func TestOpaqueNodeRetainsSourceButRefusesLossyRegeneration(t *testing.T) {
+	// The Opaque IR node retains the original SQL for review, even when
+	// other nodes could produce a syntactically valid but incomplete SELECT.
+	// Refusing regeneration is required: the source cannot be reconstructed
+	// faithfully by silently dropping custom_func().
+	const originalSQL = "SELECT * FROM custom_func()"
+	opaque := &Opaque{NodeID: "node:1", SQL: originalSQL, Reason: "unsupported function"}
 	q := &StandardQuery{
 		Nodes: []Node{
 			&Scan{ID: "node:0", Source: "dual", SourceKind: "table"},
-			&Opaque{NodeID: "node:1", SQL: "SELECT * FROM custom_func()", Reason: "unsupported function"},
+			opaque,
 		},
 		Root: "node:0",
 	}
-	sql, diags := StandardToSQL(q)
-	if sql != "SELECT * FROM dual" {
-		t.Fatalf("unexpected generated SQL: %s", sql)
+	if opaque.SQL != originalSQL {
+		t.Fatalf("opaque native SQL changed: got %q, want %q", opaque.SQL, originalSQL)
 	}
-	// Opaque nodes do not currently emit generation diagnostics in the flat path.
-	_ = diags
+	sql, diags := StandardToSQL(q)
+	if sql != "" {
+		t.Fatalf("opaque node silently disappeared from regenerated SQL: %q", sql)
+	}
+	if len(diags) != 1 || diags[0].Code != "OPAQUE_QUERY_UNSUPPORTED" ||
+		diags[0].Severity != SeverityUnsupported {
+		t.Fatalf("expected fail-closed opaque diagnostic, got %#v", diags)
+	}
 }
 
 // The two empty-input refusals are reachable, so they are named here: a code
@@ -64,5 +74,41 @@ func TestEmptyInputRefusalsNameTheirCodes(t *testing.T) {
 		t.Fatal("nil query produced no refusal")
 	} else if diags[0].Code != "EMPTY_QUERY" {
 		t.Fatalf("nil query code = %q, want EMPTY_QUERY", diags[0].Code)
+	}
+}
+
+// Severity is the closed vocabulary a diagnostic carries. A reader decides
+// whether a finding blocks lowering from it, so an unsupported construct has to
+// be distinguishable from an error rather than collapse into one value.
+func TestSeverityVocabulary(t *testing.T) {
+	severities := []Severity{SeverityError, SeverityWarning, SeverityUnsupported}
+	want := []string{"error", "warning", "unsupported"}
+	if len(severities) != len(want) {
+		t.Fatalf("a severity was dropped: %d values, want %d", len(severities), len(want))
+	}
+	seen := map[string]bool{}
+	for i, severity := range severities {
+		if string(severity) != want[i] {
+			t.Fatalf("severities[%d]=%q want %q", i, severity, want[i])
+		}
+		if seen[string(severity)] {
+			t.Fatalf("severity %q is declared twice", severity)
+		}
+		seen[string(severity)] = true
+	}
+
+	// A diagnostic built with SeverityUnsupported keeps that value through the
+	// JSON round trip, which is where a consumer reads it.
+	d := Diagnostic{Code: "UNSUPPORTED_CONSTRUCT", Message: "unsupported", Severity: SeverityUnsupported}
+	raw, err := json.Marshal(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded Diagnostic
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if decoded.Severity != SeverityUnsupported {
+		t.Fatalf("round-trip severity = %q, want %q", decoded.Severity, SeverityUnsupported)
 	}
 }
