@@ -265,7 +265,7 @@ Observationは`data-element`候補へ、有向Relationは`cross-reference`候補
 
 二入口には**異なる目的と異なる解析単位**がある。R2のExternalCandidateViewは選択済みのObservation 1件とRelation 1件の投影であり、reacandidate.GenerateCandidatesが求める一Attempt全体のGraphではない。これをそのまま正式な一Functionの解析済みGraphとして渡してはならない。逆に、三要素ReviewPacketの候補集合をR2のProducer ReceiptやNative Hostの安全なByte取得の代わりにしてはならない。
 
-両者を結ぶ最初の実証は、新しい変換器ではなく、**同じ公開可能な保存済みRawを、二入口がそれぞれ実際に読んだことを照合する受入テスト**とする。各入口のInput Raw digest、Producer Evidence ID、申告Source revision、外部Node/Relation ID、向き、Schema/Tool版を比べ、一方にない情報は「一致」ではなくunavailable/unsupportedと記録する。二回の別CLI実行を同一原子的Attemptにしてはならない。現在のSourceを別途読み直す場合も、旧解析時にそのByteが実消費された証明にはしない。
+両者の最初の実証では、新しい変換器を作るのではなく、**同じ外部解析の保存成果物について、それぞれの入力契約と実消費Byteを別々に確認する**。R2はsemantic_graphから選んだObservationとRelationを返し、rea-intakeはapplication graphの全体から候補を作るため、二つのGraph IDやNode/Relation IDが一致するとは仮定しない。元Rawをそのまま共有できるかは入力形式による。Rawを正規化した場合は変更前後のDigestを分け、Evidence IDが同じでも同一Byte受領・同一Invocationとしない。Producer Tool版、Evidence内Provider版、申告Source revision、Coverageの対象を別々に比較する。一方にない情報は一致ではなくunavailable/unsupportedとして記録する。現在のSourceの再読取も旧解析時の実消費証明にはしない。
 
 ### 10.3 関係の識別は、既存の型ごとに保存できる範囲が異なる
 
@@ -301,3 +301,24 @@ Observationは`data-element`候補へ、有向Relationは`cross-reference`候補
 **完了判定と残作業**：J-01〜03はHeadlessの限定受入、J-04は実Native独立Consumer、J-05はOwner受理・Source保存・実Provider/Target/SHOを含む別Owner受入。これらを別PR・別Attemptの成功から寄せ集めずに段階的に繋ぐ。非Plugin Studio DesktopのStage1→Stage2実Windowsセルフビルド（#4583/#2831）、通常tei CLIによる実PG Read→Function Context→独立Consumer（#2586）は引き続き**製品P0**であり、J-04/J-05を新たな着手前提に追加しない。
 
 **この§10の状態**：mainへ統合された実コードと既存設計の**静的照合・実装/Expectedの引渡し**。J-01〜05を新たに実Go/Windows/DB/SHOで通したものでも、正式Meaning/Plugin自己構築のOwner受理でもない。実装済みの旧局所試験と統合後の新しい縦断成功を混同しない。
+
+
+<!-- rea-j01-dual-graph-bom-contract-20261114 -->
+### 10.6 J-01の試験を実入力契約に合わせて修正する：BOM、二種類のGraph、Tool版
+
+**固定Capturedと現行Readerの照合結果**：internal/externalanalysis/testdata/rea-6.8.0/analysis.json（外部REA 6.8.0が生成した保存済み出力）はUTF-8 BOM付きの、ok/data/metaを持つJSON文書。現在の**externalanalysis.Receive**はエンコーディングを解釈してからEvidenceを検証する。一方、**reacandidate.DecodeAttemptEvidence**は最初にGoのjson.Unmarshalを使うため、このRawのBOMをそのまま受理しない。BOM除去後は一つのJSON envelopeとして検査できるが、Byte列は異なりRaw Digestも変わる。正規化済みのByteを「外部Producerが当初納品したRaw」として保存し直したり、加工後のReceiptを元のReceiptと同一視したりしない。
+
+**二つのGraphは別観測面**である。operations.ExternalCandidates→externalanalysis.ReadCandidatesはnormalized_result.semantic_graphのnodes/relations/evidence_contextsを読む。実Capturedの選択対象はjsrg_node_*とjsrg_relation_*である。三要素intakeのDecodeAttemptEvidence/GenerateCandidatesはnormalized_result.graph（schema=JavaScriptApplicationGraph）のnodes/edges/observationsを読んで候補を作り、こちらはjag_node_*／jag_edge_*である。reacandidateがsemantic_graphから直接取り込むのはCoverage/Unknown等の資格情報であり、R2のsemantic relation IDを正式三要素CrossReferenceへそのまま渡しているわけではない。**同一Evidence IDは両Graph内の個々の関係の同一性証明ではない**。対応するSource位置が偶然一致しても一対一MappingはOwner/契約側で別に確認する。
+
+さらに、CLI引数で指定する**ToolVersion=6.8.0**と、CapturedのEvidence中の**provider.version=1**は異なる軸。数値の不一致を版エラーにしない代わりに、実行した外部ツールのPackage版と、Evidenceが宣言するProvider版を混同して検証済みとしてもいけない。
+
+| J-01の局所ケース | 期待する結果 | 誤って認めない資格 |
+| --- | --- | --- |
+| **J-01a 原Captured（BOM付き）** | external-candidatesはsemantic graphの指定IDを取得し、**元Raw Digest**を返す。three-element rea-intakeは現在のJSON入力契約では入力を拒否 | 入力契約の違いを、グラフ解析失敗や業務Meaning欠落の証拠にしない |
+| **J-01b BOM除去コピー** | 外部Evidence IDとProvider宣言は保ったまま、R2の**取得Raw Digestが変化**し、rea-intakeはapplication graph候補とOwner pendingのReviewを返す | 両Readerが同じRawを消費した、またはsemantic_graphとgraphでNode/Relation IDが等しい、とは言わない |
+| **J-01c 加工前DigestでコピーをPin** | R2はstaleを返す。Evidence IDとSourceRevisionが同じでも旧Digestのまま通らない | 「意味上は同じだからByte Pinも有効」としない |
+| **J-01d Graphごとの未観測** | semantic_graphのCoverage/Unknownと、application graphの候補/三要素Coverageは別に表示。Function/Businessがunsupportedなら未知を維持 | 局所GraphのcompleteからWriter不在・未使用・削除可能とは結論しない |
+
+**今回の小さい実装**：cmd/tei/cli_rea_dual_entry_contract_test.go にJ-01a〜cの回帰テストを追加した。二つの実CLIの**Commandハンドラを同じGo Test内から別々に呼ぶHeadless契約テスト**であり、実行ファイルを二度起動するJ-01の製品受入や、Native Studioという第二Product Consumerには数えない。既存のcli_external_candidates_test.goが担う実Binaryの入口試験とも区別する。J-01dの全問Closure、Graph間のSource-backed対応付け、J-02の並行Edge個別逆参照は後続の独立Expectedで検証する。
+
+**状態**：この節は実ソースと保存済みCapturedを静的に検査した判断および新規回帰テストの説明。新テストの成功はCIのexact HEADまたは手元の同一Toolchain実行で別途確認する。OwnerのMeaning受理、Sourceへの正式書込み、Native Wails JS受領、旧新の実挙動比較は未実施。
