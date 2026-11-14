@@ -154,9 +154,9 @@ func TestREAIntakeParallelRelationsStayUnacceptedInPreview(t *testing.T) {
 	}
 }
 
- // The external application graph can be complete for *its own* extraction
- // scope without witnessing a business Function, CRUD effect, or Owner meaning.
- // This is synthetic CLI coverage, not an observation of an actual operation.
+// The external application graph can be complete for *its own* extraction
+// scope without witnessing a business Function, CRUD effect, or Owner meaning.
+// This is synthetic CLI coverage, not an observation of an actual operation.
 func TestREAIntakeCompleteGraphDoesNotProveFunctionOrBusiness(t *testing.T) {
 	root := t.TempDir()
 	evidencePath := filepath.Join(root, "analysis.json")
