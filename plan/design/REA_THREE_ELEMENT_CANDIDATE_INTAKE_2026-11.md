@@ -290,7 +290,7 @@ Observationは`data-element`候補へ、有向Relationは`cross-reference`候補
 
 | 確認 | 正例・負例 | 最初の完成条件・担当 |
 | --- | --- | --- |
-| **J-01 二入口のRaw整合** | 同じ保存Raw/別Raw、Producer申告が同じでも取得Byteが変化、選択1本だけ | Inputの実Byte・Receipt・Coverageを出典別に比較。R2の選択済みPartial Viewを全Graphにしない（#3394/#2514） |
+| **J-01 二入口の入力適合・受領帰属** | 元Captured BOM付きRawはR2のみ受理、BOM除去コピーは両入口で受理、コピーに元DigestをPinするとR2拒否 | 元Rawと加工後RawのDigestを区別。semantic_graph選択1本とapplication graph候補群の外部IDを混同せず、共通Evidence IDからRelation同一性を作らない（#3394/#2514） |
 | **J-02 Relation identityと意味損失** | 同名異ID、同端点同種の二辺、片方の向きのみ反転、外部ID再採番 | Candidate/Preview/GraphそれぞれのIDを保存できる範囲とLossを記録。編集先が曖昧なら拒否（#1124/#1120/#2497） |
 | **J-03 問い相対の不完全性** | Graph completeでもFunction/Business unsupported、未取得Plugin、手作業、動的参照 | Dataの陽性構造だけを回答し、Function全体の未使用・更新なし・削除可能を出さない（#3394/#3262） |
 | **J-04 Native Product受領** | 通常CLIの実Resultと、Windows Wails Service→JSの独立実Value/Recipient、Server公開面 | Host内Readerやテスト用子OS Processだけでは合格にしない。公開範囲とCurrent Grantを別試験（#4661/#2516） |
