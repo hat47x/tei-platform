@@ -1447,4 +1447,64 @@ ODRは**既存#4490 ORG-BEH-04、#1180/#2514、BRMS #4723のT1〜T8、Graph Fixt
 
 **優先度**：製品主線のStudio Stage1→Stage2（#2831/#4583）および通常`tei` CLI実Provider/独立Consumer（#2586/#4495）がP0。BRMS本体の横断採否は[#4723](https://github.com/hat47x/tei-platform/pull/4723)で進行中の設計候補、TEI-native Graph/Rule生成は#2621/#951/#1121のCLI-first実証。組織Ruleは**第二の実用例**とし、P0を妨げる新Hard Gateを設けない。
 
-**停止条件／証拠上限**：本節はドキュメントのみ。正式Decision Table Schema・hit policy・Rule Language・Reader/Generator・実組織Provider/CLI・Host Effect・Owner意味受理は実装済みと主張しない。Caseに不存在な承認規則、Rule/RoleからのGrant、Nullable/Partialの無言でのfalse化、Page図面からの業務意味決定、DecisionだけでのDB Commitを禁止する。 
+**停止条件／証拠上限**：本節はドキュメントのみ。正式Decision Table Schema・hit policy・Rule Language・Reader/Generator・実組織Provider/CLI・Host Effect・Owner意味受理は実装済みと主張しない。Caseに不存在な承認規則、Rule/RoleからのGrant、Nullable/Partialの無言でのfalse化、Page図面からの業務意味決定、DecisionだけでのDB Commitを禁止する。
+
+
+## 30. 候補判断の確定範囲を「確認できた人物」と「全件性」に分ける（2026-11-15）
+
+> **今回の結論**：§26/§29の「不完全Readでは唯一／ゼロ件を確定しない」を、**何が肯定できて何が未確定なのか**まで精密化する。現行`functioncontext.From`は`Rowset.FullyRead`と`CoverageUnestablished`を別管理し、[main統合 #4729](https://github.com/hat47x/tei-platform/pull/4729)はMarkdown Graph/Rule候補の一条件を**Goの実分岐へ生成して別プロセスで実行**できるReference段階に達した。これは意味のある新実績だが、組織C1の二Relation Join/実Provider/必要Read閉包/Current Grantが完成したことを示さない。本節は設計と実装引渡しであり、新コードや製品実行は行っていない。
+
+### 30.1 候補に関する主張は、一つの4値Enumでは足りない
+
+合成D1/R1のread-only規則で「PがR1のRoleAssignmentを持ち、D1へのResponsibilityを持つ」と言える根拠は、**同じ正式Person IDへ結合できる二つのRelation Occurrence**にある。必要なReadが部分的でも、各Occurrenceの存在・同定・時点・Scopeが真正と確認できれば「P1に正の一致経路を観測した」とは言える。一方、取得した集合全体が部分的なら「P1だけである」とは言えない。
+
+- **Observed positive paths**：確認できたPerson IDごとに、RoleAssignment/ResponsibilityのOccurrence ID、Source位置・版、Role/OrgUnit Key、実Row/QueryとRead Cohortを保持する。独立した複数Pathを一人のPersonへ集約しても、経路と版を捨てない。単なる同名はpositive pathに含めない。
+- **Universe/Required Read closure**：その要求Ruleに必要な集合と、WHERE/EXISTS/NOT EXISTS、期間、Scope、RLS、Limit、別Providerの未取得・Snapshot一貫性・Person同定までが**すべて閉じた**と確認できるかを別に判定する。必須情報を記述できない場合も`unestablished`であり、ゼロ件を完全としない。
+- **Rule qualification**：存在を要する正条件だけならObserved Pathは成立し得るが、**不存在を要する例外条件、自己承認禁止、失効、例外Role、Case関連**が追加されれば、関連する否定条件のRead閉包なしに「正式な適格者」とは言えない。業務上の意味Ownerが未採用の規則を「適格条件」として推定しない。
+- **Action qualification**：上記すべてが確定してもCurrent Host GrantとCase Revision/実Effect/Receipt/ACKは独立。Candidate集合と承認実行を一体のGo関数・Permission結果へ縮約しない。
+
+**§26のcomplete-none/one/many/incomplete-or-unknownは画面・Scenario向けの結果分類**として維持するが、実装の説明には「確定した正の経路と候補者集合」「必要集合の完全性」「判断できる主張の種類」を分けて提示する。新しい製品共通Result型やRule Engineを採用する提案ではない。
+
+### 30.2 同じObservedを持つ2軸の判定表
+
+以下は**合成の正条件のみ、Person IDと各正のPathが妥当**な場合のExpectedである。役割・責任を確認できていない場合、そもそも正の候補へ数えない。列中の`complete`は**必要Source/Relationship/時点/Scope/Read Cohortが独立に十分と認められた場合**を指す。現行Native SQL Cursorの読了だけでは満たさない。
+
+| 観測された正のPerson数 | Required Readがcomplete | Required Readがpartial／unestablished |
+| --- | --- | --- |
+| **0人** | **0人と確定可能**。検索Scopeと否定条件を含むRead証拠が必要 | **0件に見えるだけ**。候補なしを宣言できない |
+| **1人** | **唯一の候補と確定可能**（採用済みRuleの範囲内） | **P1の正の経路だけ確認**。唯一性・全件性は不明 |
+| **2人以上** | **複数候補と全件集合が確定可能**。業務RuleがuniqueならConflictを報告 | **少なくとも複数の正の経路を確認**。唯一候補という主張は**既に反証できる**が、全候補の人数と集合は不明 |
+
+**非対称性**：部分取得で2人が確認できた場合、これから追加で観測する候補が増えることはあっても、既に確認済みの異なるPerson IDが同一だったことにはならない（本人同定に異論がない場合）。したがって「唯一候補ではない」は言えても、「候補はこの2人だけ」は言えない。0人/1人から唯一性や不存在を肯定することはできない。RLS等によって同じPersonと見えた別Identityが後から解決し直される場合は、前提のPerson同定が失われるため上の推論自体をやり直す。
+
+また、正の経路が見えても**後から不適格条件が判明し得るRule**では、候補の正当性は単調に増加しない。肯定の単調性が成り立つのは、固定された明示的な正条件と、その証明済みSource/Identity/時点の範囲内に限る。一般の業務適格性・認可へ拡大しない。
+
+### 30.3 現行機構を使う最初の小PRの境界を、実ファイルと断線箇所で指定する
+
+**既存の実績を再利用し、組織専用Coreを作らない。**
+
+| 既存機構・固定証拠 | 既にできること | 次のPRで実際に接続・検証すること |
+| --- | --- | --- |
+| [#4729](https://github.com/hat47x/tei-platform/pull/4729) `reference/tei-md-graph-reader/rule.go` と `rule_test.go` | 限定Markdown表→Source byte spanを保つGraphRule→`e.from/e.to == nodeID`の**実Go条件分岐**→別`go run`→独立Expected。BOM/CRLF、逆辺、layout-only等 | Readerの一般化を先に行わない。組織のRelation/Ruleを適用するなら**正条件のPerson同定・二関係Joinが未対応**と明記し、ReferenceのGraph一辺処理をCandidate判断と偽称しない |
+| `internal/operations/org_staged_approval_candidate_test.go` | RoleAssignment/Responsibilityの実Source存在と、構造からのHost権限・副作用非導出 | まず§26/§29の合成Ruleと必要Relation/Person/ReadのGapを同一Sourceでassert。構造Presence PASSをRule実評価とは呼ばない |
+| `internal/functioncontext/functioncontext.go` と既存`TestCoverageCeilingDoesNotMoveWithTheRowset` | 実Browse Query投影でCursor終端と母集団全件性を明確に分離。0/1/多行でも`CoverageUnestablished`／`EmptyJustified=false` | 追加のConsumer向け断言禁止：**0/1/2人の観測集合に対する上の判定表**を、独立Expectedと実Coverageから検証。単なる関数のテスト再掲では合格にしない |
+| `internal/query/derived_qx27_nonvalue_dependency_test.go` | WHERE/EXISTSの**出力値へのLineageに現れない必要Field/Relation**が実Go IRへ残ることを限定確認 | 必要Read閉包の候補と価値Lineageを区別。Native SQL解析が完全・権限上全件取得済みと暗黙に宣言しない |
+| `reference/org-semantic-views/scenario-fixture.json` のr7／[#4567](https://github.com/hat47x/tei-platform/pull/4567)の限定実PG案 | r7の合成人数/配賦/時点Expected、Native as-of実PG限定結果（当該Draftの固定HEAD） | 組織Person Link、A2旧新物理版の同一DB保持、実Query→Function Context→独立Consumerが未接続のままなので**Product全件資格**は別PRとし、C1 Caseと合成r7のSourceを混ぜない |
+
+**実コードPRの候補順は二つだけ**：
+1. **PR-A：確定できる主張の境界**。既存#4490 BEH-01/02の実時点・非出力依存に並行し、同じ合成D1/R1/Source IDでCR-00〜04／ODR-1〜3の**正の経路・distinct Person・必要Read/Coverageの状態**を検証。Expectedは#1180/#2514が管理する既存Scenarioへ追加し、Go側でExpectedを生成しない。実Rule/ReaderのMechanism CalledとSourceが追えなければ`Reference-only`に留める。
+2. **PR-B：Ruleの実生成と実Consumer**。上のRead/Key/Rule版が固定された一条件だけを、既存#4729のGraph/Rule実Go生成経路から**より一般的な型付き関係の正条件へ橋渡しできるかFit/Gap検証**。実装できた場合に初めて別プロセスGoの結果・変更前後のSource byte span・Independent Expected・通常製品CLIの実受領を各々記録。正式`*.tei.md` Loaderは#2621/#3030の選択・実受理を待ち、手書きGo Relation JoinをTEI生成済みロジックへ計上しない。
+
+この二PRは提案上の最小分割であり、**既存#4490の正式順序（BEH-01/02が先）と、製品P0 #2586/#2831を変更しない**。Source名、Rule、Identity、時点、Scope、Read completeness、Generator/Plugin/Target版、実ProcessとConsumer、独立Expected ID、Evidence SHAを同一試験の束縛項目として記録する。実Go Referenceの成功を実組織Provider・正式Reader・Host認可の成功に拡大しない。
+
+### 30.4 継続検証で必要な変異と停止線
+
+既存CR/ODRの番号を増やす代わりに、以下の**メタモルフィックな対照**を重ねる。
+
+- **可視集合を固定しCoverageだけcomplete→partialへ変更**：正のP1 Pathは消えないが「唯一・全件」の主張だけ消える。現行`Function Context`だけでcompleteへ上げる実装は失格。
+- **partialの正のP2 Pathを追加**：1人→少なくとも2人で唯一性の否定は可能になる。ただし完全な候補集合にはならない。複数Pathの同Personを追加しても人数は増えない。
+- **関係の否定例外（`NOT EXISTS`等）を後から追加**：正の二関係Pathが残っても「業務適格」とは主張できなくなり、必要Read集合を更新。出力値のLineage・Row Countに差が出ない変更も影響として検出する。
+- **Graph Layoutだけ変更／Relationの向き・ID変更**：Layoutだけは実生成Ruleの意味結果に影響させず、Relationの意味変更は生成GoとExpectedの差分で検出。Source byte不変とMeaning不変を同一視しない。
+- **Case C1・Host Grant/Principal・旧Receiptを追加**：別Source・別Authorityの未受理関係はCandidateの正の経路へ暗黙結合しない。見つかった正の候補だけでCurrent Grant、EffectやACKを発行しない。
+
+**停止線**：partialをnone/uniqueへ昇格、複数観測だけで全件と断言、否定条件の未取得をfalse扱い、RoleAssignmentだけで承認適格・Host Grant発行、r7とC1の無断Person対応、Graph Referenceの一辺Go生成を正式な組織Decision Engine完成とすること。§30は既存設計の実装計画補正であり、製品用Goの新実装・CI/Provider/Host/Owner受理は**NOT RUN**。
