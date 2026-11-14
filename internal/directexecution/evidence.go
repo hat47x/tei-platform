@@ -30,55 +30,56 @@ type Evidence struct {
 
 // ExecutionRequestAccepted records acceptance of the execution request.
 type ExecutionRequestAccepted struct {
-	Accepted        bool   `json:"accepted"`
-	RequestID       string `json:"request_id,omitempty"`
+	Accepted         bool   `json:"accepted"`
+	RequestID        string `json:"request_id,omitempty"`
 	AcceptedAtMillis int64  `json:"accepted_at_millis,omitempty"`
-	Authority       string `json:"authority,omitempty"`
+	Authority        string `json:"authority,omitempty"`
 }
 
 // WorkerExecuted records that the worker actually ran.
 type WorkerExecuted struct {
-	Executed        bool   `json:"executed"`
-	WorkerID        string `json:"worker_id,omitempty"`
-	StartMillis     int64  `json:"start_millis,omitempty"`
-	EndMillis       int64  `json:"end_millis,omitempty"`
-	ExitCode        int    `json:"exit_code,omitempty"`
-	ProcessID       int    `json:"process_id,omitempty"`
+	Executed    bool   `json:"executed"`
+	WorkerID    string `json:"worker_id,omitempty"`
+	StartMillis int64  `json:"start_millis,omitempty"`
+	EndMillis   int64  `json:"end_millis,omitempty"`
+	ExitCode    int    `json:"exit_code,omitempty"`
+	ProcessID   int    `json:"process_id,omitempty"`
 }
 
 // ResultMetadataObtained records that result metadata was obtained.
 type ResultMetadataObtained struct {
-	Obtained        bool   `json:"obtained"`
-	ResultID        string `json:"result_id,omitempty"`
-	OutputDigest    string `json:"output_digest,omitempty"`
+	Obtained         bool   `json:"obtained"`
+	ResultID         string `json:"result_id,omitempty"`
+	OutputDigest     string `json:"output_digest,omitempty"`
 	ObtainedAtMillis int64  `json:"obtained_at_millis,omitempty"`
-	Authority       string `json:"authority,omitempty"`
+	Authority        string `json:"authority,omitempty"`
 }
 
-// ActualOutputVerified records independent verification of the actual output.
+// ActualOutputVerified records file bytes read and, when supplied, comparison
+// to the caller-supplied digest. It does not establish output provenance.
 type ActualOutputVerified struct {
-	Verified        bool   `json:"verified"`
-	OutputPath      string `json:"output_path,omitempty"`
-	SizeBytes       int64  `json:"size_bytes,omitempty"`
-	SHA256Hex       string `json:"sha256_hex,omitempty"`
+	Verified         bool   `json:"verified"`
+	OutputPath       string `json:"output_path,omitempty"`
+	SizeBytes        int64  `json:"size_bytes,omitempty"`
+	SHA256Hex        string `json:"sha256_hex,omitempty"`
 	VerifiedAtMillis int64  `json:"verified_at_millis,omitempty"`
-	Verifier        string `json:"verifier,omitempty"`
+	Verifier         string `json:"verifier,omitempty"`
 }
 
 // ExecutionEligibility records whether execution was eligible.
 type ExecutionEligibility struct {
-	Eligible            bool `json:"eligible"`
-	LeaseValid          bool `json:"lease_valid,omitempty"`
-	WithinDeadline      bool `json:"within_deadline,omitempty"`
-	RecoveryPossible    bool `json:"recovery_possible,omitempty"`
+	Eligible         bool `json:"eligible"`
+	LeaseValid       bool `json:"lease_valid,omitempty"`
+	WithinDeadline   bool `json:"within_deadline,omitempty"`
+	RecoveryPossible bool `json:"recovery_possible,omitempty"`
 }
 
 // PlacementAuthority records whether placement authority was granted.
 type PlacementAuthority struct {
-	Granted            bool   `json:"granted"`
-	PlacementID        string `json:"placement_id,omitempty"`
-	Authority          string `json:"authority,omitempty"`
-	GrantedAtMillis    int64  `json:"granted_at_millis,omitempty"`
+	Granted         bool   `json:"granted"`
+	PlacementID     string `json:"placement_id,omitempty"`
+	Authority       string `json:"authority,omitempty"`
+	GrantedAtMillis int64  `json:"granted_at_millis,omitempty"`
 }
 
 // NegativeTestCase represents a negative test case for execution.

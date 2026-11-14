@@ -1,81 +1,62 @@
 package directexecution
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
+	"fmt"
 	"os"
 	"os/exec"
-	"runtime"
+	"path/filepath"
 	"time"
 )
 
-// Run executes the pure computation locally and returns Evidence.
+// Run executes a local command and records only observations made here.
+// A previously existing output is refused. This is not an OS-level fence:
+// another process may still change the path while the command runs.
 func Run(opts Options) (Evidence, error) {
-	start := time.Now()
-	nowMillis := start.UnixMilli()
-
-	cmd := exec.Command(opts.Command, opts.Args...)
-	cmd.Dir = opts.WorkDir
-	cmd.Env = opts.Env
-	cmd.Stdin = opts.Stdin
-
-	stdout, stderr, exitCode, cmdErr := runCommand(cmd)
-
+	if opts.Command == "" || opts.OutputPath == "" {
+		return Evidence{}, errors.New("command and output path are required")
+	}
 	outputPath := opts.OutputPath
+	if !filepath.IsAbs(outputPath) && opts.WorkDir != "" {
+		outputPath = filepath.Join(opts.WorkDir, outputPath)
+	}
+	if _, err := os.Lstat(outputPath); err == nil {
+		return Evidence{}, errors.New("output path already exists")
+	} else if !os.IsNotExist(err) {
+		return Evidence{}, fmt.Errorf("inspect output path: %w", err)
+	}
+	start := time.Now()
+	cmd := exec.Command(opts.Command, opts.Args...)
+	cmd.Dir, cmd.Env, cmd.Stdin = opts.WorkDir, opts.Env, opts.Stdin
+	if err := cmd.Run(); err != nil {
+		return Evidence{}, fmt.Errorf("direct execution failed: %w", err)
+	}
 	outputBytes, err := os.ReadFile(outputPath)
 	if err != nil {
-		return Evidence{}, err
+		return Evidence{}, fmt.Errorf("read output: %w", err)
 	}
-
-	evidence := Evidence{
-		Schema: EvidenceSchema,
-		ExecutionRequestAccepted: ExecutionRequestAccepted{
-			Accepted:         true,
-			RequestID:        "direct-local",
-			AcceptedAtMillis: nowMillis,
-			Authority:        "direct-execution",
-		},
-		WorkerExecuted: WorkerExecuted{
-			Executed:     exitCode == 0 && cmdErr == nil,
-			WorkerID:     "local-" + runtime.GOOS + "-" + runtime.GOARCH,
-			StartMillis:  nowMillis,
-			EndMillis:    time.Now().UnixMilli(),
-			ExitCode:     exitCode,
-			ProcessID:    os.Getpid(),
-		},
-		ActualOutputVerified: ActualOutputVerified{
-			Verified:         true,
-			OutputPath:       outputPath,
-			SizeBytes:        int64(len(outputBytes)),
-			VerifiedAtMillis: time.Now().UnixMilli(),
-			Verifier:         "direct-sha256",
-		},
-		ExecutionEligibility: ExecutionEligibility{
-			Eligible:         true,
-			LeaseValid:       true,
-			WithinDeadline:   true,
-			RecoveryPossible: true,
-		},
-		PlacementAuthority: PlacementAuthority{
-			Granted:         true,
-			PlacementID:     "direct-placement",
-			Authority:       "os-scheduler",
-			GrantedAtMillis: nowMillis,
-		},
-	}
-
-	_ = stdout
-	_ = stderr
-	_ = cmdErr
-
-	return evidence, nil
-}
-
-func runCommand(cmd *exec.Cmd) (stdout, stderr string, exitCode int, err error) {
-	stdoutBuf, err := cmd.Output()
-	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			return string(stdoutBuf), string(exitErr.Stderr), exitErr.ExitCode(), err
+	digest := sha256.Sum256(outputBytes)
+	digestHex := hex.EncodeToString(digest[:])
+	verified := false
+	if opts.ExpectedSHA256 != "" {
+		if opts.ExpectedSHA256 != digestHex {
+			return Evidence{}, errors.New("output digest does not match expected SHA-256")
 		}
-		return string(stdoutBuf), "", 0, err
+		verified = true
 	}
-	return string(stdoutBuf), "", 0, nil
+	output := ActualOutputVerified{Verified: verified, OutputPath: outputPath,
+		SizeBytes: int64(len(outputBytes)), SHA256Hex: digestHex}
+	if verified {
+		output.VerifiedAtMillis = time.Now().UnixMilli()
+		output.Verifier = "caller-expected-sha256"
+	}
+	return Evidence{
+		Schema:                   EvidenceSchema,
+		ExecutionRequestAccepted: ExecutionRequestAccepted{Accepted: true, AcceptedAtMillis: start.UnixMilli()},
+		WorkerExecuted: WorkerExecuted{Executed: true, StartMillis: start.UnixMilli(),
+			EndMillis: time.Now().UnixMilli(), ExitCode: cmd.ProcessState.ExitCode(), ProcessID: cmd.Process.Pid},
+		ActualOutputVerified: output,
+	}, nil
 }

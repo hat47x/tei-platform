@@ -1,90 +1,77 @@
 package directexecution_test
 
 import (
-	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"tei/internal/directexecution"
 )
 
-func buildTestBinary(t *testing.T, dir string) string {
+func TestDirectWorker(t *testing.T) {
+	if os.Getenv("TEI_DIRECT_TEST_WORKER") != "1" {
+		return
+	}
+	switch os.Getenv("TEI_DIRECT_TEST_MODE") {
+	case "fail":
+		_ = os.WriteFile(os.Getenv("TEI_DIRECT_TEST_OUTPUT"), []byte("partial"), 0600)
+		os.Exit(7)
+	case "no-output":
+		os.Exit(0)
+	}
+	if err := os.WriteFile(os.Getenv("TEI_DIRECT_TEST_OUTPUT"), []byte(`{"result":"ok"}`), 0600); err != nil {
+		os.Exit(8)
+	}
+	os.Exit(0)
+}
+
+func workerOptions(t *testing.T, mode string) directexecution.Options {
 	t.Helper()
-	src := filepath.Join(dir, "main.go")
-	if err := os.WriteFile(src, []byte("package main\nimport \"fmt\"\nfunc main() { fmt.Println(\"hello\") }\n"), 0o644); err != nil {
-		t.Fatalf("write src: %v", err)
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
 	}
-	bin := filepath.Join(dir, "test-bin")
-	if runtime.GOOS == "windows" {
-		bin += ".exe"
-	}
-	cmd := exec.Command("go", "build", "-o", bin, src)
-	cmd.Dir = t.TempDir()
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("go build: %v: %s", err, out)
-	}
-	return bin
+	output := filepath.Join(t.TempDir(), "output.json")
+	return directexecution.Options{Command: exe, Args: []string{"-test.run=^TestDirectWorker$"},
+		OutputPath: output, Env: append(os.Environ(), "TEI_DIRECT_TEST_WORKER=1", "TEI_DIRECT_TEST_MODE="+mode, "TEI_DIRECT_TEST_OUTPUT="+output)}
 }
 
 func TestDirectExecutionProducesEvidence(t *testing.T) {
-	input := filepath.Join(t.TempDir(), "input.txt")
-	if err := os.WriteFile(input, []byte("hello-world"), 0o644); err != nil {
-		t.Fatalf("write input: %v", err)
-	}
-
-	outputDir := t.TempDir()
-	outputPath := filepath.Join(outputDir, "output.json")
-	if err := os.WriteFile(outputPath, []byte(`{"result":"ok"}`), 0o644); err != nil {
-		t.Fatalf("write output: %v", err)
-	}
-
-	binary := buildTestBinary(t, t.TempDir())
-	evidence, err := directexecution.Run(directexecution.Options{
-		Command:        binary,
-		Args:           []string{},
-		InputPath:      input,
-		OutputPath:     outputPath,
-		Stdin:          bytes.NewReader(nil),
-		FunctionID:     "pure-compute-v1",
-		SourceRevision: "test-rev",
-		Toolchain:      "go1.25.0",
-	})
+	opts := workerOptions(t, "write")
+	sum := sha256.Sum256([]byte(`{"result":"ok"}`))
+	opts.ExpectedSHA256 = hex.EncodeToString(sum[:])
+	evidence, err := directexecution.Run(opts)
 	if err != nil {
-		t.Fatalf("Run: %v", err)
+		t.Fatal(err)
 	}
-
-	if evidence.Schema != directexecution.EvidenceSchema {
-		t.Errorf("Schema = %q, want %q", evidence.Schema, directexecution.EvidenceSchema)
+	if evidence.Schema != directexecution.EvidenceSchema || !evidence.ExecutionRequestAccepted.Accepted || !evidence.WorkerExecuted.Executed {
+		t.Fatalf("missing execution observation: %+v", evidence)
 	}
-	if !evidence.ExecutionRequestAccepted.Accepted {
-		t.Error("ExecutionRequestAccepted.Accepted = false")
+	if !evidence.ActualOutputVerified.Verified || evidence.ActualOutputVerified.SHA256Hex != opts.ExpectedSHA256 {
+		t.Fatalf("digest not verified: %+v", evidence.ActualOutputVerified)
 	}
-	if !evidence.WorkerExecuted.Executed {
-		t.Error("WorkerExecuted.Executed = false")
+	if evidence.ExecutionEligibility.Eligible || evidence.PlacementAuthority.Granted || evidence.ResultMetadataObtained.Obtained {
+		t.Fatal("unobserved authority, eligibility, or metadata was asserted")
 	}
-	if !evidence.ActualOutputVerified.Verified {
-		t.Error("ActualOutputVerified.Verified = false")
-	}
-	if evidence.ExecutionEligibility.Eligible != true {
-		t.Error("ExecutionEligibility.Eligible = false")
-	}
-	if evidence.PlacementAuthority.Granted != true {
-		t.Error("PlacementAuthority.Granted = false")
-	}
-
 	encoded, err := json.Marshal(evidence)
 	if err != nil {
-		t.Fatalf("json.Marshal: %v", err)
+		t.Fatal(err)
 	}
 	var decoded directexecution.Evidence
-	if err := json.Unmarshal(encoded, &decoded); err != nil {
-		t.Fatalf("json.Unmarshal: %v", err)
+	if err := json.Unmarshal(encoded, &decoded); err != nil || decoded.Schema != evidence.Schema {
+		t.Fatalf("JSON round trip: %v", err)
 	}
-	if decoded.Schema != evidence.Schema {
-		t.Error("Evidence is not stable across JSON round-trip")
+}
+
+func TestUnpinnedDigestIsNotVerified(t *testing.T) {
+	e, err := directexecution.Run(workerOptions(t, "write"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if e.ActualOutputVerified.Verified || e.ActualOutputVerified.SHA256Hex == "" {
+		t.Fatalf("unexpected output claim: %+v", e.ActualOutputVerified)
 	}
 }
