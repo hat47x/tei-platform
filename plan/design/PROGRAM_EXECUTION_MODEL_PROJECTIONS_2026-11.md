@@ -152,3 +152,26 @@ Target適合表では、Java/.NETの常駐Web Service、Go/Wails Desktop、単�
 - **#4583/#2831**：Source→Build Intent→Builder実行→Artifact→Stage2 Desktop→実Windows Consumerの現在の最優先経路を維持する。図解構想を理由にセルフビルドへ別Runtimeを追加しない。
 
 この設計案の統合は実装や採用の完了ではない。次の判断は、#4198 R0のread-only実証と#4495/#4583の独立した製品検収で得られる不足点を見て、既存Ownerが行う。
+
+<!-- tei-program-execution-binding-20261114 -->
+## 10. 起動契機と実行形態を直交させる：Execution Bindingの最小検証（2026-11-14）
+
+Script Launchの検証計画§21は、Functionを公開Entryから実Hostへ接続する際の資格を扱う。この文書では、図解とTarget間移植のために、その関係を**一つの循環状態機械ではなく、複数の寿命と意味Roleの関係**として表す。
+
+| 別々に扱う寿命 | 主な実体 | 図解で誤認しやすいこと |
+| --- | --- | --- |
+| Deployment / Process | Bundle、実ロード物、Host、Ready、停止 | Ready＝公開Entryが現在実行可能 |
+| Trigger / Invocation / Attempt | 起動規則と発生事実、型付きEntry、準備済み要求、実試行 | 発火＝業務実行、プロセス再起動＝業務再送 |
+| Business Operation / Effect / Delivery | 対象業務の作用、Commit、Receipt、結果送達と開示 | exit 0やACK＝永続作用と受信が確定 |
+
+起動契機（手動・CLI・HTTP・時刻・Event・Data Hook）は、実行配置（one-shot・既存Hostのevent-serving・delegated）と直交する。例えばTimerからone-shot CLIを起動しても、手動CLIからRemote Hostへ委譲しても、同じ業務契約の異なるBindingであり、新しいFunctionの意味を作るわけではない。
+
+Lifecycle図には、「許可を判断した時点」「現在の権限を照会するHost」「実Provider／Artifact」「外部EffectのOwner」「応答を受領したConsumer」を表示可能な参照として持たせる。ただし未取得・秘匿・観測不能はunknownとして表現し、図中の色、線、Ready表示を権限や成功の証拠にしない。図の保存はSource/Revisionを指すChange Proposalであり、Build済みArtifactを自動更新しない。
+
+### 最初の比較と採否
+
+#4495のpure Function一件で、直接APIと通常tei CLIの同じEntryが同じMeaning/入力/結果へ到達することを最初に観測する。次に実Studio/Wails Hostへ同じFunctionを載せ、Process InstanceとInvocationが一対一でない場合のTrace、実選択Provider、Consumerで実使用したArtifactを比較する。ここまでは構造・値・呼出しの検証であり、書込みの冪等性やBusiness Commitの検収ではない。
+
+Targetに必要な期限、型、Current Grant、Effect fence、Event順序を表現する能力がない場合は、図上で不足を明記し、unsupported/not-representableで止める。Go／Java／.NET／Webへ構文だけ移した結果を意味保存の完成とは扱わない。
+
+**実装順は変更しない**。Stage1→Stage2セルフビルドが全体P0、#4495の実Entry/Go Provider/CLIが並行P0。次に#4198のread-only Graph/Trace、#4497の非同期Trigger、#1129/#1174の実Effectを比較する。新Graph Compiler、常駐Server、標準DSL Schemaの採用はこの設計だけから決定しない。新規の実Target間E2EおよびOwner受理はNOT RUN。
