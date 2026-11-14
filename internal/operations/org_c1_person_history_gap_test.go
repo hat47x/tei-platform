@@ -1,0 +1,167 @@
+package operations
+
+import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"tei/internal/semantic"
+	"tei/internal/workspace"
+)
+
+// These tests characterize the current product gap, not the accepted shape of
+// a future Organization profile. When a Person link or version storage is
+// implemented, replace the corresponding gap assertion with its positive,
+// independently reviewed conformance test instead of preserving the gap.
+func TestOrgC1CurrentMembershipDoesNotHavePersonLink(t *testing.T) {
+	root := filepath.Join("..", "..", "reference", "org-staged-axis")
+	loaded, err := workspace.Load(root)
+	if err != nil {
+		t.Fatalf("load real org-staged-axis workspace: %v", err)
+	}
+
+	var membership semantic.Data
+	foundMembership := false
+	personExists := false
+	otherPersonLinks := map[string]bool{}
+	for _, ns := range loaded.World.Semantics {
+		for _, data := range ns.Data {
+			switch string(data.ID) {
+			case "organization.person":
+				personExists = true
+			case "organization.membership":
+				membership = data
+				foundMembership = true
+			case "organization.employment", "organization.affiliation":
+				for _, rel := range data.Relations {
+					if rel.Target == "organization.person" {
+						otherPersonLinks[string(data.ID)] = true
+					}
+				}
+			}
+		}
+	}
+	if !foundMembership || !personExists {
+		t.Fatalf("expected Membership and Person in the loaded world: membership=%v person=%v", foundMembership, personExists)
+	}
+	if !otherPersonLinks["organization.employment"] || !otherPersonLinks["organization.affiliation"] {
+		t.Fatalf("positive control: Employment and Affiliation must explicitly link Person: %+v", otherPersonLinks)
+	}
+	for _, attr := range membership.Attributes {
+		if attr.ID == "organization.membership.person_id" {
+			t.Fatal("the direct Person attribute is now present; replace this gap characterization with positive conformance")
+		}
+	}
+	for _, rel := range membership.Relations {
+		if rel.Target == "organization.person" || rel.Target == "organization.employment" || rel.Target == "organization.affiliation" {
+			t.Fatalf("Membership now has a potential Person path; qualify its keys before claiming the gap: %+v", rel)
+		}
+	}
+	// A Person link on another Data does not imply an executable Membership
+	// relation traversal, much less a current Principal or Host Grant.
+	t.Log("GAP CONFIRMED: real typed Membership has no Person path; other Data's links cannot be inferred")
+}
+
+func TestOrgC1CurrentPersistenceCannotCoStoreTwoVersionsByMembershipPK(t *testing.T) {
+	root := filepath.Join("..", "..", "reference", "org-staged-axis")
+	loaded, err := workspace.Load(root)
+	if err != nil {
+		t.Fatalf("load real org-staged-axis workspace: %v", err)
+	}
+	found := false
+	for _, mapping := range loaded.World.Persistence {
+		if mapping.SemanticData != "organization.membership" {
+			continue
+		}
+		found = true
+		if mapping.Table != "public.org_memberships" {
+			t.Fatalf("unexpected Membership table; review version storage evidence: %q", mapping.Table)
+		}
+		if len(mapping.PrimaryKey) != 1 || mapping.PrimaryKey[0] != "organization.membership.membership_id" {
+			t.Fatalf("version/physical key scheme changed; replace this gap test with version co-storage conformance: %+v", mapping.PrimaryKey)
+		}
+		for _, column := range mapping.Columns {
+			if column.Attribute == "organization.membership.person_id" {
+				t.Fatal("Person column now exists; update the Product Read qualification test")
+			}
+		}
+	}
+	if !found {
+		t.Fatal("actual Membership persistence mapping was not loaded")
+	}
+	// With membership_id alone as PK, A2-old and A2-new from r7 cannot
+	// simultaneously occupy distinct rows in this one physical table.
+	t.Log("GAP CONFIRMED: Membership is stored under an occurrence-only physical PK")
+}
+
+func TestOrgC1CurrentAsOfQueryDoesNotYieldPersonIdentity(t *testing.T) {
+	root := filepath.Join("..", "..", "reference", "org-staged-axis")
+	loaded, err := workspace.Load(root)
+	if err != nil {
+		t.Fatalf("load real org-staged-axis workspace: %v", err)
+	}
+	found := false
+	for _, query := range loaded.World.Queries {
+		if query.ID != "org_axes_view.as_of_membership" {
+			continue
+		}
+		found = true
+		if len(query.ResultColumns) != 3 {
+			t.Fatalf("query result contract changed; review Person/version provenance: %+v", query.ResultColumns)
+		}
+		for _, result := range query.ResultColumns {
+			if result.Attribute == "organization.membership.person_id" {
+				t.Fatal("Person projection now exists; replace this negative test with full read provenance conformance")
+			}
+		}
+	}
+	if !found {
+		t.Fatal("real org_axes_view.as_of_membership query not loaded")
+	}
+	// Membership row count alone cannot prove distinct Person count or
+	// which known-time record version produced a row.
+	t.Log("GAP CONFIRMED: actual as-of result does not identify a Person or historical record version")
+}
+
+func TestOrgC1SyntheticOracleHasTwoA2VersionsAndSharedP2(t *testing.T) {
+	path := filepath.Join("..", "..", "reference", "org-semantic-views", "source-fixture.json")
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read existing independent r7 fixture: %v", err)
+	}
+	var fixture struct {
+		SourceRevision string   `json:"sourceRevision"`
+		Persons        []string `json:"persons"`
+		Versions       []struct {
+			ID        string  `json:"id"`
+			Person    string  `json:"person"`
+			KnownFrom string  `json:"knownFrom"`
+			KnownTo   *string `json:"knownTo"`
+		} `json:"membershipVersions"`
+	}
+	if err := json.Unmarshal(raw, &fixture); err != nil {
+		t.Fatalf("decode existing r7 source: %v", err)
+	}
+	if fixture.SourceRevision != "org-synthetic-r7" || len(fixture.Persons) != 3 || len(fixture.Versions) != 5 {
+		t.Fatalf("fixture changed; qualify against the independent r7 Expected: revision=%q persons=%d versions=%d",
+			fixture.SourceRevision, len(fixture.Persons), len(fixture.Versions))
+	}
+	var a2Old, a2New, a3 bool
+	for _, v := range fixture.Versions {
+		switch {
+		case v.ID == "A2" && v.Person == "P2" && v.KnownFrom == "2027-04-01" && v.KnownTo != nil && *v.KnownTo == "2027-07-02":
+			a2Old = true
+		case v.ID == "A2" && v.Person == "P2" && v.KnownFrom == "2027-07-02" && v.KnownTo == nil:
+			a2New = true
+		case v.ID == "A3" && v.Person == "P2":
+			a3 = true
+		}
+	}
+	if !a2Old || !a2New || !a3 {
+		t.Fatalf("independent r7 counterexample no longer has A2 two known versions and A3 sharing P2: old=%v new=%v a3=%v",
+			a2Old, a2New, a3)
+	}
+	// This is Source/Expected evidence, not an actual TEI Query, DB version
+	// co-storage, an observed complete Person lookup, or Owner acceptance.
+}
