@@ -24,6 +24,26 @@
 
 最初の各PRには、**既存のSourceと対象版、具体的な正例・反例、実行された入口・Builder／Provider、独立Expected、確認できたConsumer、未検証の範囲**を短い一枚の引渡しとして残す。Ownerの意味受理、現在のHost Grant、外部Effect、実DB Migrationは別資格とし、推測による補完はしない。図面・Markdown表・Graphvizは標準データへの可読な表現として使い、表示上の変更を意味や実行権限へ昇格させない。
 
+### Desktopの目標構成と、CLI・AIへの対象引渡しを分ける（2026年11月15日）
+
+Desktopは、**Wails側を画面とOS連携に限定し、ローカルBackendを子プロセスとして起動してIPCで結ぶ構成を目標**とする。ただし、[ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)と現在の実装に基づく**同一プロセス経路は、既存のP0試験の基線**として保つ。目標構成が決まったこと、正式ADRが改訂されたこと、Windowsで子Backendが実際に動いたことは別である。[main統合済みのBackend構成設計 #4697](https://github.com/hat47x/tei-platform/pull/4697)を踏まえ、子Backendへの移行は#1158/#1824の既存Ownerが実行の証拠で判断する。**Stage1→Stage2の正式セルフビルドに、新しいIPC完了を先行するHard Gateとして加えない。**
+
+同じApplication Operationを使うCLIは、Wailsや常駐HTTP Serverを必要条件にしない。現行のプロセス内呼出し、短命の自己子Backend、明示的な再利用Sessionは、同一Fixtureで意味・失敗結果を比べ、起動時間、p95、メモリ、障害隔離を実測して選ぶ。版確認・help・復旧は子Backendが起動しなくても使えるようにする。Remote接続では接続先Serverの選択済みPluginと権限を正本にし、切断時の暗黙Local切替や結果不明のEffectの自動再送を行わない。これらは**物理的な配置の比較**であり、CLI用の第二Resolver・新しいTEI専用Hostを作る理由にしない。
+
+Studioで選択した設計要素をCLI／AIハーネスへ渡すときは、対象の**Subject ID、Source occurrenceとRevision、意味Role、用途・必要Scope、選択した操作候補**を現在のWorkspaceで解決し直す。最初は一つの公開可能なSubjectをread-onlyでInspectし、CLIとStudioが同じ元Sourceへ戻れるか確かめる。その後、許された範囲でPluginの[公開文書・上位依存 #4679](https://github.com/hat47x/tei-platform/issues/4679)へ辿り、AIの返答は**変更提案と差分**として戻す。古いSelection、Graphの描画座標、Pluginの説明文、AIの返答を現在のWriter権限やHost Grantとみなさない。
+
+初期の拒否試験は、①別Workspaceの同名Subject、②Source A→B→Aで旧Pinを再利用、③非公開Plugin説明の存在漏洩、④Desktop親子間の相手確認失敗、⑤Backendの実Providerと選択Lockの不一致、⑥通信断後の外部Effect不明を空の成功／無条件再試行に変える、の六つを既存#1180/#2514に渡す。**目標構成の図、試作IPCの成功、CLIの同値結果、実Windows Stage2の受領**は、それぞれ別の検収として記録する。
+
+**対象の同一性、実行経路、AI提案からの復帰を三つの検収に分ける**。最初の実コードPRはAのread-only対象照合に絞り、BのIPC実証とCの提案・再確認を一つの巨大なBackend移行PRへまとめない。
+
+| 実装単位 | 対象と必要な実行証拠 | 停止条件 |
+| --- | --- | --- |
+| **A：選択したSubjectの同一性を確かめる**（#4515／#1158） | 現在の`tei commands`で発見できる読取り操作と`StudioBridge.InspectSubject`／`studiohost`から、**同じ公開Subjectを同じWorkspace・Source Revisionで再解決**。実CLI・実StudioそれぞれのResult/Failure・Source位置・読取り資格を照合する。 | 描画用Relation ID、同名表示名、以前のAI Replyで対象を特定しない。未知・非公開・staleは区別し、Writer権限を生成しない。現行CLI／Studioの実受領がなければ参照試験として記録する。 |
+| **B：Backendを別プロセスにした差を確かめる**（#1158／#1824／#4635） | **Aと同じ型付き操作**を直接経路と短命の自己子Backend経路で実行し、実exe/Build Identity、IPC Peer、Handshake、Session、Request/Result/Failure、実子終了を観測する。WindowsのWails親経路は別の実機資格として検収する。 | Childの偽Peer、起動失敗・クラッシュ・遅延Reply、選択Pluginと実Callの不一致を正常結果にしない。単なるJSON一致やWebView2プロセスの観測では、接続先の確認・実画面の受領・Stage2自己再構築を証明しない。[Windows Smokeの失敗例](https://github.com/hat47x/tei-platform/actions/runs/43638937739)のようにremote debugging endpointへ接続できなければ、Driverによる画面操作は未検証と記録する。 |
+| **C：AIへの限定的な変更提案と復帰**（#4515／#1158／#267） | **Aで固定したSubject・Source occurrence/Revision・Disclosure**を現在の共通Operation経由で必要最小限の情報だけ提供する。AIが返した差分はProposalとして保持し、元Sourceと現在Revisionを再読取りして人が確認する。 | AIの回答を直接Sourceへ書き込まない。Workspace切替・Source A→B→A・Scope縮小・後着ReplyがあればProposalの旧Pinを拒否し、Owner Meaning受理・Writer Grant・外部Effectを勝手に付与しない。 |
+
+**CLI先行のGraph／Rule自己生成**はA/B/Cと独立して進める。[main統合済みの明示Rule→生成Go実行 #4729](https://github.com/hat47x/tei-platform/pull/4729)は、6例の限定的な参照Reader／条件分岐生成／別Goプロセス実行までを示す。ただし製品Workspace／Language Plugin／Source Indexと選択済みPluginの実Callは未接続であり、[製品Reader実装計画 #4724](https://github.com/hat47x/tei-platform/pull/4724)および[#4704](https://github.com/hat47x/tei-platform/pull/4704)のOwnerが担当する。実Goを生成できたという事実を正式なTEI Meaning受理・Plugin実行・製品CLI受領へ昇格させない。[同一生成Binaryへの実行時入力 #4733](https://github.com/hat47x/tei-platform/pull/4733)は、固定入力と異なるNode要求での実Go結果・SHA一致を検査する限定Referenceであり、実製品`tei` CLIや選択Providerの呼出し証拠にはならない。Studioの対象引渡し、子Backend、Stage2再構築と、CLIのReference生成は別Attemptで検証する。
+
 ## 不足を戻す担当
 
 各担当Issueには以下の範囲に属するG項目の作業と正負の受入条件を引き渡す。実装・実行結果はそのIssueと既存のEvidenceに記録する。
