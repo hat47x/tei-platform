@@ -222,6 +222,8 @@ jobs:
           # generated Stage1 TEI constructing the Stage2 Desktop.
           go test -count=1 ./tools/reference-studio-part-generator
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          go test -count=1 ./cmd/tei -run '^TestSelfBuildSelectedChildPinRefusesMismatchBeforeRunning$'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $contract = 'reference/tei-studio-workbench/inspection-reader.contract.json'
           $transform = 'reference/tei-studio-workbench/builder-sources/inspection-reader-v1.transform.json'
           $consumedSource = 'reference/tei-studio-workbench/inspection-reader.generated.ts'
@@ -235,19 +237,21 @@ jobs:
           $childArgs = @('-contract', $contract, '-transform', $transform, '-artifact-out', $generated)
           $childArgsPath = Join-Path $env:RUNNER_TEMP ('tei-n0-argv-' + [guid]::NewGuid().ToString('N') + '.json')
           ConvertTo-Json -InputObject $childArgs -Compress | Set-Content -LiteralPath $childArgsPath -Encoding utf8
-          $entryLines = & $teiExe self-build -child $generatorExe -child-arg-file $childArgsPath -artifact $generated
+          $generatorHash = (Get-FileHash -LiteralPath $generatorExe -Algorithm SHA256).Hash.ToLowerInvariant()
+          $selectedBuilderPin = "sha256:$generatorHash"
+          $entryLines = & $teiExe self-build -child $generatorExe -expected-child-digest $selectedBuilderPin -child-arg-file $childArgsPath -artifact $generated
           if ($LASTEXITCODE -ne 0) { throw 'TEI self-build CLI did not complete its N0 observation' }
           $entryJson = $entryLines | Out-String
           $entry = $entryJson | ConvertFrom-Json
           if ($entry.schemaVersion -ne 'tei.cli.self-build-entry/v0' -or $entry.childSchema -ne 'tei.reference.studio-part-generator/v0' -or -not $entry.artifactCrossCheckMatched -or
-              $entry.invoked.exitCode -ne 0 -or $entry.l3Claimed) { throw 'TEI N0 process invocation or artifact cross-check failed' }
+              -not $entry.childPinChecked -or -not $entry.childPinMatched -or $entry.selectedChildDigest -ne $selectedBuilderPin -or
+              $entry.invoked.exitCode -ne 0 -or $entry.l3Claimed) { throw 'TEI N0 selected builder pin, invocation or artifact cross-check failed' }
           $expectedArgv = @($generatorExe) + $childArgs
           if ($entry.invoked.argv.Count -ne $expectedArgv.Count) { throw 'TEI invoked different N0 argument count' }
           for ($i = 0; $i -lt $expectedArgv.Count; $i++) {
             if ([string]$entry.invoked.argv[$i] -cne [string]$expectedArgv[$i]) { throw "TEI invoked different N0 argv[$i]" }
           }
           $invokerHash = (Get-FileHash -LiteralPath $teiExe -Algorithm SHA256).Hash.ToLowerInvariant()
-          $generatorHash = (Get-FileHash -LiteralPath $generatorExe -Algorithm SHA256).Hash.ToLowerInvariant()
           if ($entry.invokerDigest -ne "sha256:$invokerHash") { throw 'TEI N0 invoker image digest mismatch' }
           if ($entry.invoked.executableDigest -ne "sha256:$generatorHash") { throw 'TEI N0 generator image digest mismatch' }
           if (-not (Test-Path -LiteralPath $generated)) { throw 'TEI N0 child did not create a part artifact' }
@@ -256,6 +260,23 @@ jobs:
               $entry.artifactCrossCheckedDigest -ne "sha256:$actual") { throw 'TEI N0 child report differs from the generated part bytes' }
           $entryJson | Set-Content -LiteralPath (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n0-tei-self-build-entry.json') -Encoding utf8
           Write-Host "N0-tei-process-invoked-generator sha256:$actual"
+          # Selected B / actual A is refused by TEI itself before the child
+          # runs, not merely discovered after its artifact has been written.
+          $wrongPinOutput = Join-Path $env:RUNNER_TEMP ('tei-n0-refused-' + [guid]::NewGuid().ToString('N') + '.ts')
+          $wrongPinArgsPath = Join-Path $env:RUNNER_TEMP ('tei-n0-refused-argv-' + [guid]::NewGuid().ToString('N') + '.json')
+          $wrongPinArgs = @('-contract', $contract, '-transform', $transform, '-artifact-out', $wrongPinOutput)
+          ConvertTo-Json -InputObject $wrongPinArgs -Compress | Set-Content -LiteralPath $wrongPinArgsPath -Encoding utf8
+          $wrongPin = 'sha256:' + ('0' * 64)
+          $priorPreference = $ErrorActionPreference
+          $ErrorActionPreference = 'Continue'
+          $wrongPinResult = & $teiExe self-build -child $generatorExe -expected-child-digest $wrongPin -child-arg-file $wrongPinArgsPath -artifact $wrongPinOutput 2>&1
+          $wrongPinExit = $LASTEXITCODE
+          $ErrorActionPreference = $priorPreference
+          if ($wrongPinExit -eq 0 -or (($wrongPinResult | Out-String) -notmatch 'selected child builder digest mismatch')) {
+            throw 'N0 mismatched selected builder was not refused before execution'
+          }
+          if (Test-Path -LiteralPath $wrongPinOutput) { throw 'N0 mismatched selected builder caused an artifact write' }
+          Write-Host 'N0-selected-builder-pin-negative-refused-before-child-start'
           # A duplicate exact output is a negative test. It must not overwrite
           # the file the actual TEI-invoked child produced.
           $priorPreference = $ErrorActionPreference
@@ -459,6 +480,10 @@ jobs:
               source = 'tei self-build primitive child: reference-studio-part-generator (not BuildIntent)'
               teiInvokerDigest = $n0TeiEntry.invokerDigest
               actualGeneratorDigest = $n0TeiEntry.invoked.executableDigest
+              selectedBuilderDigest = $n0TeiEntry.selectedChildDigest
+              selectedBuilderPinChecked = $n0TeiEntry.childPinChecked
+              selectedBuilderPinMatched = $n0TeiEntry.childPinMatched
+              selectionBasis = 'explicit workflow pin/TEI pre-start byte digest'
               processEntryReceipt = 'n0-tei-self-build-entry.json'
               invocationCrossChecked = $n0TeiEntry.artifactCrossCheckMatched
               stage1GeneratedTeiInvoker = $false
