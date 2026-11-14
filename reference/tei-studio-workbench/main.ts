@@ -4,6 +4,8 @@ import { mountReadonlyGraph } from "../tei-studio-graph/graph.ts";
 import { mountCommandPanel } from "../tei-studio-command/command.ts";
 import { createReadOnlyClient } from "../../cmd/tei-studio/assets/client.mjs";
 import { createResponseScope } from "./responses.ts";
+import { createPinInspection } from "./pin-inspection.ts";
+import type { PinState } from "./pin-state.ts";
 import { handleXeadPathKeydown } from "./keyboard.ts";
 import {
   readCatalog,
@@ -42,6 +44,15 @@ let workspaceEpoch = 0,
   inspectionEpoch = 0,
   disposed = false;
 const responses = createResponseScope();
+const pinReader = createPinInspection(
+  responses,
+  (id, kind, subject) => {
+    if (!client) throw Error("HOST_NOT_CONNECTED");
+    return client.inspectSubject(id, kind, subject);
+  },
+  () => catalogSnapshot,
+  (state) => renderPin(state),
+);
 let commandContext = 0;
 const editor = createReadOnlyTextEditor(element("editor"), codeMirrorRenderer, {
   id: "empty",
@@ -165,6 +176,37 @@ function setFindings(findings: Finding[] | null) {
   element("diagnostic-summary").textContent = summary.text;
   return summary;
 }
+function renderPin(state: PinState) {
+  const intent = state.intent;
+  const pinSubject = element<HTMLElement>("pin-subject");
+  const pinStatus = element<HTMLElement>("pin-status");
+  const pinCurrent = element<HTMLButtonElement>("pin-current");
+  const pinCheck = element<HTMLButtonElement>("pin-check");
+  const pinRelease = element<HTMLButtonElement>("pin-release");
+  pinCurrent.disabled = disposed || !selected || !workspace.value || !client ||
+    !inspectEligibility(catalogSnapshot, selected).ok;
+  pinCheck.disabled = disposed || !intent || !client ||
+    workspace.value !== intent.workspaceId || !catalogSnapshot;
+  pinRelease.disabled = disposed || !intent;
+  if (!intent) {
+    pinSubject.textContent = "固定なし";
+    pinStatus.textContent = "選択したモデルを明示的に固定できます。";
+    return;
+  }
+  pinSubject.textContent =
+    `${intent.subject.kind} · ${intent.subject.id}（作業領域：${intent.workspaceId}）`;
+  if (workspace.value !== intent.workspaceId) {
+    pinStatus.textContent = "別の作業領域を表示しています。固定した対象は変更されていません。";
+    return;
+  }
+  const descriptions: Record<PinState["observation"]["state"], string> = {
+    unqualified: "固定した対象の出典は未確認です。",
+    inspected: "Inspector応答と一覧の版を照合しました。現在の権限・送信許可は未確認です。",
+    "needs-requalification": "再確認が必要です。以前の読取結果は現在の資格を示しません。",
+    unavailable: "Inspectorで再確認できませんでした。外部への送信・実行はできません。",
+  };
+  pinStatus.textContent = descriptions[state.observation.state];
+}
 function renderList() {
   const query = search.value.trim().toLocaleLowerCase();
   const matches = entries.filter((e) =>
@@ -195,6 +237,7 @@ function renderList() {
     return button;
   });
   list.replaceChildren(...nodes);
+  renderPin(pinReader.current());
   if (!nodes.length) {
     const empty = document.createElement("p");
     empty.textContent = "該当する要素はありません。";
@@ -296,6 +339,7 @@ async function loadWorkspace() {
   const context = ++workspaceEpoch,
     id = workspace.value;
   responses.reset();
+  pinReader.invalidate();
   element("xead-result").replaceChildren();
   element("xead-status").textContent = "未取得";
   commandContext = panel.beginContext();
@@ -392,6 +436,17 @@ const panel = mountCommandPanel(element("commands"), {
     }
   },
 });
+element("pin-current").addEventListener("click", () => {
+  const subject = selected;
+  if (!subject || !client || !workspace.value || disposed) return;
+  void pinReader.pin(workspace.value, workspaceEpoch, subject).catch(showFailure);
+});
+element("pin-check").addEventListener("click", () => {
+  if (disposed) return;
+  void pinReader.recheck(workspace.value, workspaceEpoch).catch(showFailure);
+});
+element("pin-release").addEventListener("click", () => pinReader.release());
+renderPin(pinReader.current());
 workspace.addEventListener("change", () => {
   search.value = "";
   void loadWorkspace().catch(showFailure);
