@@ -124,7 +124,7 @@ var selfParsedFlagNames = map[string]struct {
 	required []string
 	optional []string
 }{
-	"external-candidates":     {[]string{"evidence-path", "tool-version", "observation-id", "relation-id"}, []string{"expected-evidence-id", "expected-received-digest", "expected-source-revision"}},
+	"external-candidates":      {[]string{"evidence-path", "tool-version", "observation-id", "relation-id"}, []string{"expected-evidence-id", "expected-received-digest", "expected-source-revision"}},
 	"model catalog":            {[]string{"workspace"}, []string{"namespace"}},
 	"model locate":             {[]string{"workspace", "subject-kind", "subject-id"}, []string{"limit"}},
 	"model overview":           {[]string{"workspace"}, []string{"limit"}},
