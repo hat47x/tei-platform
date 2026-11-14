@@ -26,6 +26,16 @@
 
 ここでの`-node`は**生成したReferenceプログラムの検証用引数**であって、製品`tei` CLIの公開Command名、Function Entry、Host選択済みProvider、Application APIの正式Contractではない。同じBinaryへの複数回の実行と、異なる製品Consumerが同じProviderを呼び出したことは別の資格である。次段では、受理済みMeaning/Source Revision、契約と選択Provider、実Builder/Artifact、実CLI/独立Consumerの呼出しを既存#4495/#1251/#951/#2600に従って一貫して照合する。
 
+## 候補の構造指紋と、原文・Artifactの別資格
+
+`CandidateShapeFingerprint`は、このReference Generatorが利用する**Node ID集合、Edge ID／起点／終点、Rule ID／起点・終点条件**を正規化したJSONからSHA-256を計算する。NodeやEdgeの表中の並び、表示名、Markdown装飾、Mermaidの配置・表示、Sourceのbyte位置は含めない。値には`tei-md-graph-reference/shape-v1`という固定の区分を加え、後日の生成規則変更で同じ識別子を流用しない。
+
+生成されたReference Binaryは`-candidate-shape`でこの候補指紋を一行出力する。既存`-node`の検索結果や引数なしの全件JSONは変えない。`-candidate-shape`と`-node`の同時指定は不正な要求として拒否する。固定したFixtureでは、基準とレイアウトのみ変更した例は同じ指紋、Edge反転とRule切替は異なる指紋、表とMermaidの不一致例は表の構造に従った指紋となる。
+
+**三つの指紋は用途が違う**。Source IndexのSHA-256は*元Markdownの実byte*、この構造指紋は*Referenceが解釈した候補の構造*、実Binary SHA-256は*実際にBuildしたArtifact*の識別子である。候補指紋が一致してもSourceの同一性・Readerの正当性・Ownerによる意味受理・選択Provider・現在の権限・実Consumer受領は証明できない。逆に説明やレイアウトだけの編集はSource SHA-256を変えるが、同じ処理を再生成すべきと自動判断する根拠ではない。A→B→Aで同じ内容に戻っても、過去の受理・実行資格は自動復活しない。
+
+この指紋と照会引数は**限定Referenceにだけ存在する**。正式なTEI Providerの公開コマンド、Bundle証拠、Semantic RevisionやArtifact Revisionの新しい正本として採用しない。今後は既存#2600/#951/#4495の実消費・選択・実呼出しと照合し、必要な情報だけを製品契約へ取り込む。
+
 ## 実行
 
 ルートモジュールから`go test ./reference/tei-md-graph-reader`を実行する。テストは、生成実装から独立に保存した`testdata/tei-md-graph/independent-expected.candidate.json`に照合する。元byte位置、レイアウトのみの変更、引用・Fence、未知端点、重複Section、未対応表、表示IDの未解決を負例に含む。
