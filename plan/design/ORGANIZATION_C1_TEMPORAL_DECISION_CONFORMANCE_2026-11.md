@@ -1224,7 +1224,7 @@ OIは**この補遺の作業順索引**であり、ORG-BEH/CX、既存Scenario/E
 ### 26.5 他チャットの最新成果との役割分担
 
 - **Application Graph**：[main統合済み #4681](https://github.com/hat47x/tei-platform/pull/4681)のApp/Route/Entry/Function/Provider/Artifact Graphを、候補Query/Ruleのナビゲーションと出典説明にのみ利用する。Graph完成を実Reader/Host Effectに昇格しない。
-- **Plugin文書**：[main統合済み #4681](https://github.com/hat47x/tei-platform/pull/4681)と[#4679](https://github.com/hat47x/tei-platform/issues/4679)、[後継Draft #4689](https://github.com/hat47x/tei-platform/pull/4689)の公開Facet・契約版・上位Doc・短いSkillを、CR-01の根拠Relation/Ruleの説明に接続する。ただし文書を第二の判断Ruleや認可正本にしない。Draft #4678の同名設計を再追加しない。
+- **Plugin文書**：[main統合済み #4681](https://github.com/hat47x/tei-platform/pull/4681)と[#4679](https://github.com/hat47x/tei-platform/issues/4679)、[main統合済みのPlugin生成・文書設計 #4689](https://github.com/hat47x/tei-platform/pull/4689)の公開Facet・契約版・上位Doc・短いSkillを、CR-01の根拠Relation/Ruleの説明に接続する。ただし文書を第二の判断Ruleや認可正本にしない。Draft #4678の同名設計を再追加しない。
 - **CLIとDesktopの配置**：[Script Launch Draft #4688](https://github.com/hat47x/tei-platform/pull/4688)と[共通Backend Draft #4690](https://github.com/hat47x/tei-platform/pull/4690)に従い、通常CLIのin-process経路をWails非依存に保ち、Desktopは子Server/IPCを基本構成候補とする。同じSource/Rule/Actual Readerの観測を使うが、Pluginの実LoadとHost権限はプロセスごとに再確認する。後者の実IPCはまだ製品検証されていない。
 - **TEI-native生成**：[main統合 #4676/#4680](https://github.com/hat47x/tei-platform/pull/4680)の独立Graph Fixture・実生成Go・CLI Actual Callで標準のGraph/Rule能力を先に実証し、組織候補Ruleへ再利用する。Go関数で全部計算してTEIはDelegateだけの場合は自己生成の実装率へ算入しない。
 
