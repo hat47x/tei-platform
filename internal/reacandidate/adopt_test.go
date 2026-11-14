@@ -144,8 +144,8 @@ func TestCompareCandidateSetsSameBytesDifferentAttempt(t *testing.T) {
 func TestCompareCandidateSetsSameBytesChangedObservedRelation(t *testing.T) {
 	before := mustGenerate(t, defaultEvidence())
 	for _, tc := range []struct {
-		name       string
-		attemptID  string
+		name      string
+		attemptID string
 	}{
 		{name: "new-attempt", attemptID: "ev-observation-corrected"},
 		{name: "reused-attempt-id", attemptID: "ev-minimal-1"},
