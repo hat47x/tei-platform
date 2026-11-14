@@ -832,7 +832,7 @@ Harness向けのTEI導入Skillは短くし、**対象の特定→Inspect→Plugi
 - 多親・ダイヤモンドで同一参照は一つにまとめ、異なる版や意味の衝突は診断する。循環は停止し、発見順・ロード順から勝手な優先順位を作らない。
 - 上位由来と下位固有の説明・モデル拡張差分を並べて見せる。下位の説明から上位の原文を黙って変更しない。引き継げるのは契約で公開したFacetとExtension Pointのみ。
 - 公開文書を段階取得するときは、\`Plugin+Contract+Source/Doc revision+Consumer scope\`に束縛し、ページ継続・end marker/欠落を検査する。Page間でSource/Grantが変わったら単一の完全な結果としない。禁止されたSourceについては本文・識別子・件数・Digest・存在自体を不正に漏らさない。
-- 読取りの結果は \`available / not-found / not-loaded / partial / stale / unsupported / permission-denied / unknown\` 等の意味を区別する。どの状态を実際に表現できるかは既存APIの型とのGapとして記録し、今回の設計だけで全状態の製品実装を宣言しない。
+- 読取りの結果は \`available / not-found / not-loaded / partial / stale / unsupported / permission-denied / unknown\` 等の意味を区別する。どの状態を実際に表現できるかは既存APIの型とのGapとして記録し、今回の設計だけで全状態の製品実装を宣言しない。
 
 ### 19.4 設計要素の固定選択からHarnessへ渡す情報
 
