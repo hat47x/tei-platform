@@ -136,7 +136,7 @@ mainのNative as_of_membership Queryは membership_id / org_unit_id / allocation
 
 値は既存Node合成Referenceの**手書きExpected**であり、Product実Rowsetの値ではない。A2に依存するD1のFTEは1.6→1.0、D2は1.4のまま。FTE、Membership count、distinct Personを同一Measureとして扱わない。
 
-**Read Projectionの新しいGAP**：現Query出力の3列からは person_id や各記録版の独立identityが観測できない。Membership行の存在確認は可能でも、Query単独でdistinct Personや同一Occurrenceのどの記録版を読んだかを確定したとは言えない。必要なClaimに応じて、(a)同じRead Cohort/Scopeの型付きMembership→Person関係を追加取得する、または(b)必要な識別列を明示投影して実Row Traceを記録する、を既存Query/Relation契約で比較する。全Queryへの新必須列や第二Context Storeは作らない。
+**SemanticとRead Projectionの二重GAP（main実Sourceで再確認）**：現Query出力の3列からは person_id と記録版Identityが観測できない。さらに現在の organization.Membership の型付きSemantic宣言そのものにも personId 属性・PersonへのRelationがない。従って (a)「既存型付きMembership→Person Relationを追加取得する」経路は**現mainでは未成立**であり、Relation/Keyを業務Ownerが受け入れてから物理Mapping・同じRead Cohortの実取得を確認する必要がある。(b) Queryに必要な人物識別・記録版の実Witnessを明示する経路も、Source/DB側に対応する根拠を追加する必要がある。どちらも曖昧な名前/表示から人物IDを推測せず、全Queryに新必須列や第二Context Storeを課さない。
 
 **最小受入の順序**：
 1. 既存#4566/#4567のSQL/Mapping重複と現行Persistence主キーのSourceを突合。履歴版別ID/物理PKの採否は#1126/DB Ownerへ差し戻す。
@@ -298,3 +298,74 @@ ER/CRUD/三要素/SHO/AIでは、Occurrenceの業務同一性、物理Row版、�
 5. **P0は不変更**：#2586通常CLI実Function→Provider→Consumerと#2831/4583のTEI Studio Desktopセルフビルドは並列最優先。B1〜B3の全達成をP0のHard Gateとしない。
 
 **現状資格**：本節は既存mainの3つの組織Go構造テストとIssue契約からの設計・引渡し。実Directive Tx、異DB原子性、Candidate動的解決、Web共同編集、実Host Grant/Effect/ACK、Org C1 E2Eは **NOT RUN / NOT ACCEPTED**。#4623の最新Draftは限定Plugin BuildPlanで選択Builderと実exe起動前照合をCI実証したとのPR記録があるが、これは組織RuntimeやDesktop Stage2の受入ではない。
+
+
+## 13. r7合成意味から型付きMembership・実Providerへ移す最小の意味契約（2026-11-14実Source照合）
+
+### 13.1 実Sourceを横断して特定した3つの不足
+
+本節の根拠は、**main実ファイルの読取**と既存r7の独立Expected。独立Referenceの計算成功を製品の実Query/Providerの合格に転用しない。
+
+| 層と現行ファイル | 実際にあるもの | 同一r7の人物数/履歴を検証するための不足 |
+| --- | --- | --- |
+| 合成意味: reference/org-semantic-views/source-fixture.json | r7 A1〜A4、Person P1/P2/P3、A2の旧新版2行、Allocation basisPoints、valid/known | 原典はテスト用でありTEI正式SemanticでもProvider Rowsetでもない |
+| 型付きSemantic: reference/org-staged-axis/semantic/organization-axes/model.tei | MembershipId・OrgUnitId・allocation・validFrom/To・knownFrom/To、OrgUnitへのunit Relation | **Membership.personId と Personへの明示Relationがない**。IDだけ似た別Relationへ黙示結合できない |
+| Persistence: reference/org-staged-axis/databases/org-store/persistence/membership.tei | public.org_memberships・membership_id単独PK・org_unit_id・allocation・valid_from/known_from | person_id・記録版行Identityと保存/閲覧の区別。Draft #4567でvalid_to/known_toは追加候補だがPKとperson_idは未解決 |
+| Native Query: reference/org-staged-axis/applications/org-axes-view/queries/as_of_membership.tei | membership_id/org_unit_id/allocationの3列、3入力。mainにはknown述語等のGAP | Person key・記録版の出所・Query Row Grain・Read Cohortの実Witness。Draft #4567の半開述語修正と区別 |
+| Reference Context: verify-context.mjs / verify-acquisition.mjs / verify-rule-footprint.mjs / verify-query-dependencies.mjs | r7同じSource/Scenarioから人物関係・Provider Route差・Requiredと取得/公開の違いを合成検証 | Sourceが実Typed Query→DB Provider→Function Context→一Consumerへ渡ったProduct Attempt |
+
+**修正する誤前提**：以前の補遺で想定した「型付きMembership→Personの追加取得」は、現mainの org-staged-axis ではまだ利用できない。SourceにPersonが別Dataとして存在することと、MembershipからPersonへ取得可能なRelation/Keyがあることは別。Source r7のA2.person=P2を、ProductのQuery結果3列だけから後付けで推定しない。
+
+### 13.2 押さえるべき粒度と単位（r7の固定Expected）
+
+| same validAt=2027-06-15 | knownAt=2027-07-01 | knownAt=2027-07-03 | 実装時に必要な識別 |
+| --- | --- | --- | --- |
+| Membership occurrence集合 | A1/A2/A3/A4 | A1/A3/A4 | stable Membership ID + record versionの選択理由 |
+| distinct Person全体 | P1/P2/P3 = 3人 | P1/P2/P3 = 3人 | 実Person key。A2とA3のP2を二人にしない |
+| D1 Membership数・配賦 | 2、160 / 100 = 1.6 FTE | 1、100 / 100 = 1.0 FTE | 当該Departmentの完全なRead Scope、配賦単位 |
+| D2 Membership数・配賦 | 2、140 / 100 = 1.4 FTE | 2、140 / 100 = 1.4 FTE | D1の訂正をD2の無関係Claimへ無条件伝播しない |
+| 全体Allocated FTE | 300 / 100 = 3.0 | 240 / 100 = 2.4 | JOIN fanout回避、relation occurrence単位の合計 |
+
+**単位の注意**：r7のフィールド名 basisPoints はfixture固有であり、ここでは **100 = 1.0 FTE** と定義されている。実org-staged-axisの allocation は std.decimal / PG numeric。100→1.00、60→0.60等の変換は**明示したMappingと独立テスト**がなければ成立しない。財務上一般的なBasis Point定義をこのfixtureへ無断適用しない。Nullable allocationがある場合、0と欠落/NULLを同一視しない。
+
+時間精度にも異なる前提がある：r7は日付文字列、実Persistenceは datetime-tz。validAt/knownAtとSQL bindのzone/精度/半開境界が一致することをProvider Ownerが確認する。同じ表示日でもOffset違いで版が変化する可能性を隠さない。
+
+### 13.3 Productへの最短昇格を「Source→Model→DB→Query→Context」で定義
+
+1. **Meaning/Key Fit**（#2386/#1126）：r7の Membership.person を正式TEI Sourceで表現する候補として、Membership.personId と organization.Person.personId のRelation key、安定Occurrence IDを比較する。業務Profileごとの任意属性は無条件のCore必須にしない。追加できない場合は未対応と明記する。Person/Principal/Account/Tenantへの無許可昇格はしない。
+2. **Physical Fit**（#1126/#2622）：同Relationの person_id 列がどのDB/Schema/Providerで保存・取得されるかを確認。独立record_version_id 等の物理履歴Keyは既存§2/§11のDB Owner方式選択に委ねる。Current-onlyの旧Reader/Writerとas-of History Readerを区別する。
+3. **Query Fit**（#2387/#2586）：Native Queryに必要なPerson linkと版根拠を明示し、実SQLのどのRowがどのMembership Record Versionを選択したか、実Statement/Params/SourceとDataSource Aliasを照合。表示用Queryには過剰な個人データや物理version列の開示を強制せず、Provider Trace/Typed Contextに必要情報を保持可能かを比較。
+4. **Context Fit**（#2506/#2624）：r7のD1/D2/全社は別Scope。ResultのRelation occurrence・Person key・allocation・valid/known・Provider Snapshot・read completeness・Required/Consumedを同一Read Cohortで評価。D1のcompleteだけで全世界distinct Person=3を断定しない。Queryableでも未取得ならnot-established。
+5. **Consumer Fit**（#2497/#2507/#2516）：一実AttemptからTable/Graph/SHO/Headless等の目的別受信を検査。非表示FieldもQueryのfilter/join/Ruleで実取得され得る。取得と開示を別に追跡し、保護対象Fieldがある場合のみ対象Provider/Recipientで制御する。
+6. **Decision/Effect Fit**（#4490/#4501/#1174）：C1候補のRule/Case versionとMembership Readを照合。ただしPersonのMappingが増えただけで承認権限・Case責任・Host Grantが成立するとはしない。
+
+上記は**設計上の適格性の順序**であり、すべてがP0のHard Gateという意味ではない。最初の通常CLI実Provider Readは受注Queryの縦断を優先、r7人物/履歴の再現はその後の組織P1。新しいSQL Resolver・Graph Query Engine・Temporal Runtime・第二Sourceを作らない。
+
+### 13.4 同じsnapshot文字列でもRead Cohortは異なる
+
+既存 scenario-fixture.json は replica / primary の二経路を持ち、両方のsynthetic snapshot文字列は s7 だが、knownAtとProvider/Mappingが異なる。verify-acquisition.mjs と verify-rule-footprint.mjs は、**D1がreplicaでA1/A2、primaryでA1だけ**となる合成反例を既に所有する。
+
+従って、単なるSnapshot名・Semantic Subject・Source Revision一致によるContext混合は禁止。必要に応じて selected DataSource Alias、actual DB/Provider + version、Route ID、valid/known cut、Observed Read Cohort、Mapping Revision、Completenessを同じClaimのRequirementへ含める。完全な一致Witnessのない二Providerの集計を同一C1 Decisionの証拠へ合算しない。純粋r7計算の2経路に実RLS/DB isolation/current Grantがあると主張しない。
+
+**最初の反証を固定する**：replica knownAt=2027-07-01のD1 2件/1.6 FTEとprimary knownAt=2027-07-03のD1 1件/1.0 FTEを、いずれもsnapshot=s7という理由で混ぜない。実Productでは両Sourceを使い分けるBusiness Rule/Consistency Guaranteeの有無が未観測ならunknownを保持する。完全に取得したD2だけの独立Claimは、RequiredにA2が含まれない条件を実確認できるなら局所再利用を検討できる。
+
+### 13.5 Web Studioの共同編集はHost Scopeを跨いで移植しない
+
+Draft #4621 §16で整理したStudio Webの **2 Workspace × 2 Principal × 2 Provider** 読取比較と、一Source二SessionのCAS/旧Preview拒否を、C1の編集対象Identity・Source Revision/Selection Epoch・実Providerに適用する。
+
+- DesktopのローカルWails/Go + Git共有、Webの長寿命共有Server、外部Host/Consumerは**異なるHost Scope**。同じ見た目のC1を開いていても、選択中のWorkspace/実Principal/Source Rev/Provider Bindingが違えば一つのActionに合算しない。
+- Webで一ユーザーが同じSourceを再読込したり一つのAI Harness Sessionを共有しても、別Principal/Tenantの現在権限は自動継承しない。local no-auth状態をWeb Serverの認可fallbackにしない。
+- 同じSource spanの別Sessionによる編集でCASが失敗した場合、古いPreview/AI結果を黙示的に上書きせず差分を再提示。どのField/Relationが意味保存で書き戻せるかは#2497/#1124の判断であり、物理DB PKをUI/Graphの表示行IDへ固定しない。
+- 公開先のSHO/AI/CLI/外部Toolへは目的別Disclosureの実Result/Recipientが必要。Serverに届いた事実は特定Consumerが受領・理解・権限付与された証拠ではない。WebのIdP/HA・実HTTP・CAS E2Eは未検証。
+
+### 13.6 受入切り出しと追跡先（既存Expectedを再利用）
+
+| 実行順 | 既存の検証と新しい合格判断 | 失敗時の停止と担当 |
+| --- | --- | --- |
+| A0 Source Fit/Gap | 現main型付きMembershipにはPerson Relationが無いと明記し、OwnerにMeaning+Key案を返す | 既存の合成r7人物数をProduct Query成功と呼ばない。#2386/#1126 |
+| A1 Persistence/Query Fit | r7のA2二版・person_id・version rowと保存・Query Mappingを一貫検査。#4567のvalid/known述語修正は別候補 | Query 3列、PK単独、人物結合無しを放置して人数合格にしない。#1126/#2622/#4490 |
+| A2 Context/Scope Fit | 既存r7のPerson3・Membership4→3・FTE3.0→2.4とD1/D2別Claimを、実Read/Required/Completenessと比較 | s7の別Route・旧knownAtと新knownAtの合算は拒否。#2586/#2506/#2510 |
+| A3 Org C1/Consumer | 対象Case/Rule/ResponsibilityのSourceを別に受理し、候補0/1/many/unknown、Viewer/SHO/Headless受領を検証 | r7自体にCase/Current Grant/Effectがあると見なさない。#4490/#4501/#2516 |
+| A4 Host/Collaborative | 現在Grant/Effect/ACKとWeb/AI Source CAS・二Principal、二Providerの受領を別Attemptで照合 | 実行者同一視、AI提示/ACKのみ、OS/Server権限の黙示継承を停止。#1174/#4515/#3421 |
+
+**新規実装や新Runtimeの採用は本節では行わない**。現main、既存r7 Reference、Draft PRを突合した設計・受入条件のみ。実TEI Person Relation Writer、履歴型PG、実Query→Context→Consumer、Web二Session、IdP、Host/ACK、Owner Meaning Acceptanceは **NOT RUN / NOT ACCEPTED**。
