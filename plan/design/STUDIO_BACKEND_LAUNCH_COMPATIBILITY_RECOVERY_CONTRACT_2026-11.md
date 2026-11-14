@@ -280,7 +280,7 @@ CLI／MCP／外部Harnessへ選択Subjectを渡す場合は、Qualified Subject�
 | 既存の実装・受入 | 現在の到達点 | 子Backend計画との接合 | 新しいPASSの上限 |
 | --- | --- | --- | --- |
 | #4709/#4722のMarkdown Graph固定Fixture／限定Reader | 元Source byte/spanとNode/Edge IDを持つ参照候補を読める | 同じFixtureを、将来の実Operation/Providerの回帰で再利用 | 正式`*.tei.md` Loader／意味受理ではない |
-| [#4728](https://github.com/hat47x/tei-platform/pull/4728)のGraph→Go→独立Consumer | Referenceで実Go生成・Consumer実行を行うPR。main統合・製品資格は別 | SourceのEdge向き変更が生成GoとConsumerに反映され、layout-only変更が意味不変であることを追跡 | 製品Target Generator、Plugin実Provider呼出し、Studio Stage2ではない |
+| [#4729](https://github.com/hat47x/tei-platform/pull/4729)のGraph/Rule→Go→独立Consumer | mainに限定ReferenceのGraph/Rule条件→Go制御分岐の生成・別Processでの実行が統合済み。旧Graph専用PR #4728の状態は別管理 | Edge反転とRuleの条件変更が実Go／Consumerへ伝播し、layout-onlyでは意味を維持する証拠を再利用 | 製品Target Generator、正式Markdown Loader、Plugin実Provider呼出し、Studio Stage2ではない |
 | #4712のcapabilityinvoke実Adapter境界 | Dispatch前call0／Dispatch後call1と結果契約不正・取消を区別する局所回帰がmain統合済み | 子ProcessでACKが消えても「未Dispatch」へ戻さない | 外部Effect不在・安全Retryの証明ではない |
 | [#4702](https://github.com/hat47x/tei-platform/pull/4702)のSL-1a/b/c | 公開pure Entry→型付きAPI→選択済み実Go Provider→通常tei別Processの計画 | Provider選択Identityと実Invoke、通常CLIの到達と、IPCの独立証拠を合流させる | 実Product EntryとOwner意味受理は未実証 |
 | #2831/#4583のStudio Stage1→Stage2 | 独立BuildIntent／実Builder／実Windows WebView2 Consumerを必要とする既存P0 | 将来Stage2が子Backendを用いる場合は、親／子双方の実ImageとGUI Assetを別に計測 | 子IPCの局所成功で製品Self-build PASSとしない |
@@ -341,6 +341,56 @@ Source byte/span + Workspace / Subject / Revision
 
 ### 19.2 文書・CIの完了条件
 
-設計文書は`plan/design/README.md`の索引に追加し、`tools/repository-plan-check`の文書一覧検査を通す。PR #4705の先行HEAD `fa17bef8`では、`TestPlanReadmesMentionEveryEntry`が本ファイルの索引欠落でFAILし、全体Health CIが失敗した（Cache検証のみSUCCESS）。本PRブランチで索引漏れを修正したが、**新HEADのCI結果は別途確認する**。旧HEADのPASS、別PRのGo実行結果、提案段階のExpectedを今回の新しい合格として記録しない。
+設計文書は`plan/design/README.md`の索引に追加し、`tools/repository-plan-check`の文書一覧検査を通す。PR #4705の先行HEAD `fa17bef8`では、`TestPlanReadmesMentionEveryEntry`が本ファイルの索引欠落でFAILし、全体Health CIが失敗した（Cache検証のみSUCCESS）。索引漏れを修正した後のHEAD `80ac4f86`では、[Repository Health CI](https://github.com/hat47x/tei-platform/actions/runs/43629359234) とCache Full vs Incrementalの両方がSUCCESSである。**この成功は`80ac4f86`に限定**され、以後の追補HEADについての再検証は別に必要。別PRのGo実行結果、提案段階のExpectedを今回の新しい製品合格として記録しない。
 
 最終的に、子Backendの採用要否は#4635のOwnerが、CLI既定変更はADR-0048のOwnerが、Plugin管理／Updaterと実行資格は各Plugin/Host Ownerが決める。段階導入の目的はStudio Stage1→Stage2とProduct実Provider実行を早めることにあり、子Backend／Installer／共有Serverを新しい先行Hard Gateにはしない。
+
+
+## 20. 実装の接続順を一本化する（2026-11-15、#4729／#4730／#4702との照合）
+
+他Workstreamで進んだGraph/Ruleの参照Go生成を、子Backend先行の新開発へ引き戻さない。ここで統一するのは「一件のMeaning／Operationを、どこから呼び出したか」と「その意味が正式Reader・生成Providerから来たか」の証拠の結び付け方である。**読取り経路を縦に通す試験と、意味生成の製品化は並行可能**とする。
+
+| 既存の取組・優先 | 次の実装で一つだけ確定すること | 成立を主張できる範囲 | 引渡し先 |
+| --- | --- | --- | --- |
+| **S0：製品Reader（独立P0候補）** | 選択された `*.tei.md` の元Byte・Span・Roleを既存Workspace Loader／Source Indexへ接続し、未選択Sourceを拒否 | 正式に選択したFrontendを製品側が実読取したこと。Ownerが意味を受理したことではない | #4730／#2621／#988／#4704 |
+| **S1：意味からGoへ（S0後）** | Accepted Meaning／Ruleの変更が実生成Goの判断へ伝播し、独立Consumerの結果を変える | 生成ロジックの実使用。Reference `go run`のみなら製品生成PASSにはしない | #4729の参照結果、#2600／#2831 |
+| **SL-1：実Product Entry（並行P0）** | 一つのOwner受理pure Functionを、選択済みactual Go Providerへ型付きAPI→通常`tei` CLIから実呼出しする | 当該Entry／Provider／CLIの実到達。call0/1とEffect資格は別 | #4702／#4495／#951／#1251 |
+| **PR-B：CLI自己子Backend（並行比較）** | 既存`*.tei` Fixtureを用い、read-only `inspect`一往復でDirectとChildの意味・Failure一致を実証 | 実IPCと子ProcessのRead限定資格。正式`*.tei.md`や実Product Providerを必要条件にしない | #4635／#1158／#1180 |
+| **PR-C：Desktop子Backend（PR-Bの後）** | Wails Native Bridge→Go IPC→実子Process→同じRead Operationを実Windowsで呼び出す | Windows GUI／IPC資格。Studio Stage1→Stage2自己構築とは別 | #4635／#1824 |
+| **SB-3/4：CLI／Studio再入（全体P0を維持）** | Stage1の実ProcessからStage2を生成、次世代CLI/Pluginの実CallとWindows WebView2を別票で確認 | 製品自己構築の資格。Builder申告・BOMのみでは不可 | #2831／#4583 |
+
+### 20.1 Source Indexと業務意味の境界
+
+最新の[製品Reader引渡しPR #4730](https://github.com/hat47x/tei-platform/pull/4730)が指摘するように、一般のPath拡張子判定では `*.tei.md` の最終拡張子は `md` になる。**Source Indexにファイルが載ったことと、TEI Frontendが選択・Parseされて意味Sourceとして使用されたことを区別**する。Source Index側のRoleも、業務上のMeaning Roleを自動的に決める資格ではない。
+
+限定ReferenceのGraph／Ruleを製品へ引き上げる前には、選択したFrontend、元Sourceのbyte-span、Ruleの条件、実ParserのProviderと版、Reader診断、後段Buildへ渡した入力を追跡する。現行Workspace Loaderが `TEI_MD_PARSER_UNBOUND` を返す場合、未接続のMarkdownを成功した製品Sourceとして扱わない。
+
+また、[Fence拒否の修正PR #4725](https://github.com/hat47x/tei-platform/pull/4725)は、チルダ／長いCode Fence／インデント付き例示から偽の定義が読まれる問題をGraph/Ruleの限定Referenceで扱う。修正PRが未統合の間は、現在の参照Readerへ任意のMarkdownを安全に渡せると主張しない。正式製品Readerの負例は#2621の既存受入へ引き渡す。
+
+### 20.2 一つの実行票に記録するもの
+
+複数の工程を一度に「成功」にまとめず、利用者やHarnessが辿る一つの実行票には、最初から別の資格欄を置く。
+
+| 資格 | 必須の実観測 | 欠けたとき |
+| --- | --- | --- |
+| Source read | Frontend、実Source Byte／Span、Source/Reader Revision | `not-consumed` |
+| Meaning accepted | 業務対象・Role／Rule・受理OwnerとVersion | `proposal-only` |
+| Generated artifact | Generator/Toolchain実Version、Consumed Byte Closure、実Output Digest | `not-generated` |
+| Provider invocation | selected Plugin/Lockとactual Provider、call count、現在Grant | `not-invoked`／`unverified` |
+| Transport execution | Direct／Child／Wails、実Process Epoch、Protocol、Actual Operation、Result/Failure | `transport-unverified` |
+| Independent consumer | 実CLI／Studio／別Host、独立Expectedと照合 | `consumer-not-verified` |
+| Self-build reentry | Stage1実Process→Stage2実Build、実Child／生成Artifact／Consumer | `reentry-not-verified` |
+
+上記の文字列は受入票の**説明語彙案**であり、現行JSON Schemaへの新しいenum追加ではない。既存のWorld/Model/Artifact RevisionとAttempt/Receiptを参照し、第二のEvidence Registryを新設しない。DirectとChildが同じJSONを返してもProvider実呼出しを証明しない。生成Goが独立Consumerで動いても正式Readerの実消費を証明しない。
+
+### 20.3 ユーザーから見える診断
+
+CLIやStudioには「Backendが使える」という単一Booleanを返さず、次のどこで成立しなかったかを区別して表示する。例：Backend自体の起動失敗、Source未束縛、Provider未選択、Provider実体／Grant不一致、IPC timeout、結果が不明な外部Effect、実行成功だがConsumer未検証。
+
+ただし、診断の意味は既存OperationのFailure／Plugin managementのReason Codeから投影し、新しい画面固有Policyを作らない。Studioがオフラインでも`CORE_READY`としてSource／Plugin構成を診断できることと、当該Workspaceの実Operationが利用できることは別に表示する。
+
+### 20.4 次のコードPRで守る停止条件
+
+初回の子Backendでは読取り一操作のみを実行し、DB書込み／外部Effectを新しく公開しない。CLI通常経路の互換JSON・exitを保持し、`internal/operations`へWails・HTTP・CLI依存を入れない。製品`*.tei.md` Loaderを使ったと主張する場合は、選択Readerが実際に元byteを消費した証拠を必須にする。
+
+**優先順位は変更しない**。全体P0のStudio Stage1→Stage2と、並行P0の通常`tei`→actual Product Provider／異質Consumerを進め、PR-B／PR-C／Plugin Updaterは比較・拡張の独立縦切りとする。
