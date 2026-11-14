@@ -1127,4 +1127,46 @@ CLI／Studio／Harnessから返される後着応答は、**現在の選択対�
 **現状**：本節はソースコードの静的確認と他チャットの計画を基にした実装受入の具体化であり、Source-backed Plugin Docの実Go読取り・Snapshot原子性・正式Markdown Reader/Go生成・AI Harness/Hostでの実動作・Owner意味受理は未実施。
 
 
+### 21.9 製品の最初の読取り接続と、生成Referenceの資格を分けて検収する
+
+<!-- tei-20261115-plugin-doc-reference-consumer-evidence-gap -->
+
+第21.6〜21.8節で示した「一Plugin・一公開文書」について、既存Goの**実際にある読み取り機能**と、未接続のDoc参照・正式Markdown Reader・実生成Pluginを取り違えないため、実装担当が作業を始められる最小の引渡しを定める。
+
+#### 実装済みのもの・まだないもの
+
+- `cmd/tei/cli_plugin_inventory.go` の `pluginInventoryJSON` は `loadWorldWithIdentity` と `management.Derive` により、選択Pluginを実Workspace/Environment/Lockで報告する。既存Goの `cmd/tei/cli_plugin_inventory_test.go` に `TestPluginInventoryEnvelopeAndModes` があり、配布予定CLIの実Binaryをテスト内でBuildして一覧・一件詳細・診断と失敗コードを確認する。**これを新たなDoc参照の成功と混同しない**。
+- `internal/plugin/management/inventory.go` の `Row.Requires` は `Plugin` と `CompatibleMajor`。上位Aの実選択版、契約適合、文書版は別途Resolver/Lockで確認する。`LockPinned` の未提供値と、`NotModelled` に表された未知を欠落=偽や成功へ変換しない。
+- `internal/workspace/source_index.go` の `BuildSourceIndexFromLoad` はLoad時の管理ファイルの保存byteを使い、関係のない再Readでbyteをすり替えない。ただし**複数ファイルの原子的Snapshot、宣言されたimportの実拘束、Manifestの完全束縛は保証しない**。Doc A、Plugin Lock、選択Worldが同じ一貫した時点の入力であったという主張は、別の境界で必要な確認が終わるまで保留する。
+- `cmd/tei/source_index.go` の既存Subject参照は、Source Reference 0件から不存在を推定せず、同じLoadに対する `operations.InspectionFromLoad` でCanonical Subjectの存在・対象を検査する。ただし現状の「Doc ref / Plugin所有／公開Facet」は、Canonical Subject照合だけで自動的に導出されない。
+- `reference/tei-md-graph-reader` は、`testdata/tei-md-graph`の**6つのGraph/Rule Fixture**から、限定Reader・Go生成・別Processでの生成Binary実行を既に実装している。Graphの意味ID、同端点の多重辺、Rule切替、Layoutのみ変更、元byte Span、生成Binaryへ複数のQueryを送り同一Digestを保つ検査がある。ただしこの実証は**Reference限定**であり、製品Workspace Loader／正式Language Plugin／Source Index／Builder／選択Provider／外部Consumerへ実接続したものではない。これを「実生成0件」と過小評価せず、製品実証の代わりにも用いない。
+
+この区別を踏まえ、H0の最初の成功は**既存BinaryのInventory正常系**、H1の未実装差分は**明示されたPlugin→公開Doc Source参照**である。最初からInventoryのRowにSource ReaderやMarkdown全文を加えて二重のDocument Storeとしない。
+
+#### 同じ入力を使いながら、二つの実証に分ける
+
+| 実証 | 固定Input | 確認するOutput | 現状の資格 |
+| --- | --- | --- | --- |
+| **A: 公開説明の取得** | 実Workspace、Environment、Plugin ID、必要なLock、Plugin A→B直接依存と公開Doc一件の**明示Mapping**、Source/Revision/開示 | 実InventoryとDoc Refの一致、適用版、文書の取得完全性、必要時のCLI Discoveryとread-only Result | ProductのInventoryは存在。**Doc Source束縛は未実装／実検収待ち** |
+| **B: 意味モデルからの生成** | 既存6件の`*.tei.md` Graph/Rule Fixtureと採用前のIndependent Expected | 型付き関係/Rule候補と生成Go・独立Queryの判別結果、Layoutだけの変更と意味変更の区別 | 限定Referenceで生成・実行のTestあり。**正式Reader／製品Generatorへの接続待ち** |
+| **C: 製品としての一貫性** | Aで得た公開Model/Docと、受理されたBの意味定義、Build/選択Provider/Target/実Consumer | 同じSource/Contract/Revisionを使った生成Artifactと実Consumer結果。文書から説明できる対象の一致 | **未達**。AまたはB単独の成功で代用しない |
+
+最初に必要なのはAを成立させる最小のGo差分であり、BのReferenceを作り直すことではない。Aが成立してからCの単一Fixture合流を第20章/#4720へ渡す。AのためにStudio完成や新しい常駐Backendを要求せず、Bのために独立のGo Graph正本を増やさない。
+
+#### 実装担当の開始手順と反証条件
+
+1. **既存回帰の観測**：`go test ./cmd/tei -run '^TestPluginInventoryEnvelopeAndModes$' -count=1`、`go test ./reference/tei-md-graph-reader -count=1`を、実行したHEAD／Go Toolchain／OS付きで別の観測として保存する。実行していない場合はNOT RUNと記録する。過去CIのGreenを現在HEADの受入へ流用しない。
+2. **H1の最小契約差分**：A→Bの直接依存一辺、Aの公開Doc一件、そのOwner/Role/Source位置/対象Contract/版/現在Disclosureの対応を、現行Sourceの何に置くかを検討する。製品Source Roleがない場合は試験Mappingを**候補**として隔離し、正式なDocument Contract受理まで`unsupported`を保持する。
+3. **ReferenceとProductを同じ期待値で比較**：ノード/Relationの元ID、Source byte span/表示図、独立ExpectedをAの公開Graphと対応づける。ただし当該Graphは現在正式`*.tei.md` Reader未束縛であるため、Referenceのテスト成功をProduct Workspace Load受理へ昇格させない。
+4. **失敗を区別する**：不明Plugin、直接依存不適合、同名別Doc、Lock無しで版曖昧、Source未ロード、Doc旧版、途中切断、開示拒否、対象Subject不存在、Doc本文のみ変更、Graph意味変更の少なくとも一件ずつを、PHD-01/02/03/05/06/08と#2514の独立Expectedへ配分する。Metadata/Source/Permissionのどの段階で落ちたかを返す。
+5. **Source世代の反証**：Load時保存byteが同じでも、Manifest/Import/Lockの世代、または現在のDisclosureが一致するとは限らない。未確認の場合、現在有効な「完全Doc参照」として外部AIへ送らず、Scope/Version/Reasonを示す。A→B→Aでも過去の受領やGrantを復活させない。
+6. **実Consumer資格の分離**：Doc Read成功、Model Meaning受理、Go Build、Provider Resolve、実Invoke、実Effect/Readback、Owner意味受理を独立に記録する。これらを一枚の票に表示しても、同一Attemptで実消費されたとみなさない。
+
+**合格を宣言できる上限**は、実CLIから選択Pluginを固定し、明示された一件の公開DocをSource/版/開示を保って取得し、対応する契約と利用例に関するread-onlyの検証結果を返すこと。Aが現行コードで未実装なら、正確な不足と着手可能な小Patchを特定したところを設計成果とし、製品機能の実装成功とはしない。
+
+**責務と優先順位**：公開契約・Doc束縛は#4679、最初のFixtureは#4701、最初のCLI read-only一往復は#4714、既存Inventoryは#4376、Source/Readerは#2621/#4704、生成・セルフビルドは第20章/#4720、判別テストは#1180/#2514。これらのOwnerを変更せず、Studio Stage1→Stage2（#2831/#4583）と実Provider二入口（#1251/#4495）を優先する。新たなPlugin Registry、Docs用Parser、Source Snapshot Engine、Go Host、Scenario Runnerは作らない。
+
+**今回の受入資格**：現行Goコード／テストとReference READMEの確認、および実装順・負例の設計のみ。この文書更新により新規Goテストを走らせたり、新しいPlugin Doc Reader・製品Generator・実Providerを動かしたわけではない。
+
+
 **資格**：第20・21章は、現行mainの第15〜18章を維持しながら、生成プラグインの一機能とPlugin説明の利用時適合を切り出した**設計・検収案**である。正式 *.tei.md Reader、新Generator、実Plugin E2E、Plugin Help API、実AI Harness、Owner受理を今回実装・実測したわけではない。
