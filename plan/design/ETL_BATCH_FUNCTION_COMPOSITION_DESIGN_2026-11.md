@@ -1149,3 +1149,58 @@ Instrumented boundaryが部分的なら、**「観測できた範囲のGraph整�
 - **P2 / #1124/#4510/#4522**：Accepted Period/Revision、Plan/Commit Attempt、実Reader/Effectと未証明Edgeを問い・Disclosureに相対化して投影する。図上にないWriter/秘密情報を不存在としない。
 
 **停止線**：本節は既存Source/Issueの静的照合と単一SQLite DBの局所条件付きUPDATEの検算。新TEI Go/CLI・実PostgreSQL/Period実Provider／二Process、MFT/外部Effect、Current Grant、業務Owner受理、exact-head CIは **NOT RUN / NOT ACCEPTED**。新PeriodRevision Core型、Period/Recovery Engine、Saga/Distributed Tx、Hostの採用は提案しない。
+
+## 32. Checkpointと途中集計の同一Cut：位置だけの再開で二重計上・欠落を起こさない（2026-11-14、設計候補）
+
+**新たに区別するGap**：既存§9.2/#4411はrunKey、Plan/Source/入力digest、出力世代、旧Attemptと新OwnerのFencingを再開資格に含む。§22.4はCheckpoint位置と一式Publicationの非原子性を扱う。本節ではさらに、**同じSource版・同じRunでも、処理済み位置と途中計算状態が違うCutを表していると、純粋なSUMですら誤る**ことを具体化する。新しいCheckpoint Store、Chunk Engine、二つ目のFailure分類、専用Job Schedulerは導入しない。**P0 #4410はまず副作用のない全件再計算を優先**する。
+
+### 32.1 二つの保存順序はいずれも誤集計を作り得る
+
+業務期D、同じ数量単位/JPYで顧客AのR1に含まれるFactを、p1 = 数量2・200円、p2 = 数量3・600円とする（§18.4のA=5個/800円と同じ）。仮にSource pin/Rule/Decimalは固定済み、Filter済み、外部Effectなし、同一Runの未公開内部集計を逐次処理するとする。正しいFinalは数量5/800円。
+
+| Crash位置 / 復旧に残った状態 | 再開がしてしまうこと | 結果 / Expected |
+| --- | --- | --- |
+| **集計状態p1=2/200だけ耐久化**、offsetは0のまま | p1を再読込して加算し、さらにp2も加算 | **7個/1,000円：Duplicate**。Checkpoint位置を信じた再開を拒否 |
+| **offset=p1処理済だけ耐久化**、集計は0/0のまま | p2のみ処理してp1を飛ばす | **3個/600円：Omission**。Checkpoint位置を信じた再開を拒否 |
+| 集計状態2/200とoffset=p1が**同じ処理済みPrefixを表す**有資格の境界 | p2だけ処理 | **5個/800円**。再開を認め得る（他の§9.2条件も必要） |
+| 中途状態を捨て、R1/Ruleを同一pinで先頭から純粋再計算 | p1＋p2を新Attemptで計算 | **5個/800円**。P0の安全な基線（同じSourceを再取得できることが前提） |
+
+**核心**：offsetと集計値を別々に書くなら、先書き順を逆転するだけでは解決しない。たとえばCheckpointへ両者のdigestを並べるだけでも、二つの値が**同じ処理済みSource Prefixの真正な計算結果**であると証明できるわけではない。実Providerによる同一Cutの原子的保存、もしくは実際に照合可能な不変Stage Snapshotへの条件付き参照など、選択したTargetで達成できる方式をOwnerが検証する必要がある。
+
+### 32.2 「同じ処理済みPrefix」を何で限定するか
+
+限定した各Aggregate Stateは、**処理済みSource範囲とGroupの寄与が一対一に対応**し、以下を満たす場合のみ再利用候補となる。
+
+| 資格軸 | 必要な証拠 | 見せかけの一致で不足する点 |
+| --- | --- | --- |
+| **Input/Cut** | Source Identity/Revision、業務Cut、pinされたByte/型、Partition/offset・Range、対象GroupとFact identityの重複・欠落検査 | 行数だけ、同じoffset、同じFile nameでは同一Fact集合を保証しない |
+| **Meaning/Accumulator** | Plan/Function/Rule/Rate/Decimal版、Filter/Convert、Group Key/単位・丸め、集計Operatorの合成可能性 | 純粋SUMの加法性だけでは旧寄与の重複、負値/訂正/DELETEへのretractabilityを保証しない（§21/22） |
+| **Durable Stage Cut** | processedPrefixとAggregate Stateが同一有資格Source Prefixを表す、Stage Memberの内容/digest・保存完了、欠落/破損時の拒否 | Progress Recordだけの成功や、集計Valueだけの一致から整合したCheckpointとは言えない |
+| **Run/Attempt/Fence** | runKey、同じAccepted Meaning、旧Attemptの観測、現在Owner、旧Writerの実効的な書込み拒否、出力Generationの未公開/公開状態 | RunLog resume判定や別Host再起動だけではSource/Race/外部Effectの安全を示さない |
+| **Downstream** | 一式Publication/Reader、業務適用/外部Effectの現在状態を別観測（§23/25/27/31） | 未公開Stageの復旧可能性を、PublishedやConsumer Appliedへ昇格しない |
+
+有限Prefixについての期待等式（比較票であり新Core Claim型ではない）：
+
+  AggregatedState(Cut=k) = Aggregate(Filter(Convert(ExactlyOnce Facts from pinned input [0,k))))
+
+これは**同一入力と意味のもとでの参照計算規則**。ソース変更や業務期訂正後は新Run/Restatementを評価し、単にoffsetが一致するから旧Accumulatorを採用しない。複数Sourceなら整合Vector、Group移動や暗黙Refへの依存があれば必要集合閉包も別資格。AVGならSUMとCOUNTの組、COUNT DISTINCTなら正確な集合条件等、Operator lawを[#2593](https://github.com/hat47x/tei-platform/issues/2593)/[#3279](https://github.com/hat47x/tei-platform/issues/3279)へ渡す。
+
+### 32.3 過大な再開Engineを作らないための復旧判断
+
+- **P0のPure Batch**：入力のpin/版・独立Expectedが固定できるなら、中途Stageを破棄し最初から再計算する。古い途中ファイルを公開領域へ紛れ込ませず、新AttemptのEvidenceを別に持つ。完全再計算したBodyのdigest一致は、再開状態の有資格性とは別。
+- **後続のW7最適化**：Prefix単位Resumeを採るなら、入力Source cut・処理済みRange/Fact重複なし・Accumulator Cut・Rule/Operator・Run/Attempt/Fenceを**一組で検証**。どれか未確認ならResume不適格とし、純粋ならClean Restart、現Source再取得不可なら明示Unknown/Abort。
+- **Output stage/Publication間**：Stage状態保存成功でもReleaseがPublishedとは言えない。逆に公開成功後のCheckpoint失敗で同Generationを二重公開しない。既存#2604の実Member/Reader、#4411/#1174のEffect分離へ戻す。
+- **外部Effectの場合**：内部純粋段階を安全にやり直せても、後続Import/API/Messageを無条件に再送しない。Effect unknownはReceipt Lookup first、Current GrantとOwner判断。実際のOperation/Receiptが異なるなら新しいAttemptに無断付替えない。
+- **障害の判別**：Progressだけ進んだ/Accumulatorだけ進んだ/Stage byte破損/Source改版/旧Writer残留/公開後Crashを**別の独立Expected**で評価し、Source、Stage、Release、Effect、Consumerを一つのsuccessfulにしない。
+
+### 32.4 独立算術検算・受入順
+
+Python標準ライブラリのDecimalを使い、R1の二つのChunk p1=(2,200), p2=(3,600)を固定した。実行したローカル純粋合成検算は、Clean Restart=5/800、**State-first crash→Resume=7/1000**、**Offset-first crash→Resume=3/600**、**Consistent CutからResume=5/800**。Assertionで4条件を照合した。**実Go/TEI Reader、Checkpointer、Filesystem crash/durability、DB Tx、実RunLog/Owner Fencingの試験ではない**。この数値は設計用独立Expectedであり、実装から期待値を生成しない。
+
+1. **P0 #4410 W1/W2/W3/W5**：Source/Rate/Meaning版固定のPure TSVフル処理、二入口の決定的Body/独立Expected、失敗時の公開領域部分Memberなしを優先。Chunk/Resume実装・第二Checkpoint Storeを必須化しない。
+2. **P1 #4411 W6/W7・#2514**：既存N-03/04/05/06に上記二方向Crashの独立Expectedを加え、runlog.Decide/OwnsやStage/Effectの責務を再利用。必要なSource/State Cutが未証明ならResumeを拒否する負例を先行し、実Targetの対応後にClean/Resume結果を比較。
+3. **P1 #2593/#3279/#2622/#2600**：AggregateのCommutativity/Associativity/Contribution identity、Group・単位/丸め、Source Read/Required/Observed、Full vs Selectiveの同一Cutを照合。演算が数学的にmergeableなだけで永続再開が安全とは言わない。
+4. **P1 #2604/#1174/#2564/#2542**：途中Stage、Publication、実Consumer/Import、Commit Unknown・Receiptをそれぞれ別の実Reader/Provider試験へ引渡し、既存Ownerの実装を重複しない。
+5. **P2 #1124/#4510/#4487**：Studio/TEAのData/Control/Effect/Observationへ、Attempt/Source Range/Aggregate Cut・Unknownの証拠だけを相対的に投影。秘密のRow/Reader/Group存在を現在Disclosureなしで表示しない。
+
+**停止線**：本節は合成Decimal演算の反例と静的Source/Issue照合による設計候補。新Go/CLI/実Filesystem Kill・実PG/外部Provider/実Consumer/Current Grant・Owner受理、exact-head CIは **NOT RUN / NOT ACCEPTED**。第二Recovery Runtime/State Store、TEI共通Scheduler/Host、独自DSL、別Oracleを作らない。
