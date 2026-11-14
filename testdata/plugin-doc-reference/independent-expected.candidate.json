@@ -41,7 +41,8 @@
     "diagramIDsNotSemanticIDs": [
       "N1",
       "N2"
-    ]
+    ],
+    "sourceDigest": "sha256:e79a2ba8dee35f7a46301ac301c0f417ca54b2ae56a7a97d6ec8cc417d89b603"
   },
   "plugins": {
     "A": {
@@ -78,14 +79,16 @@
       "contract": "graph-read/v1",
       "path": "testdata/plugin-doc-reference/public-manual.md",
       "visibility": "allowed-in-candidate-for-B",
-      "sourceRefStatus": "candidate-unbound"
+      "sourceRefStatus": "candidate-unbound",
+      "sourceDigest": "sha256:362be3b5be8dd20c29e6e5da7eabacae8b53f60797779aadafdfd50ebd643f20"
     },
     "private": {
       "id": "fixture.graph-base.internal",
       "owner": "fixture.graph-base@1.0.0",
       "path": "testdata/plugin-doc-reference/internal-manual.md",
       "visibility": "denied-to-B-and-C",
-      "sourceRefStatus": "candidate-unbound"
+      "sourceRefStatus": "candidate-unbound",
+      "sourceDigest": "sha256:b03a9644f3d848e40b70f439ea92e1a1802a1714a83a447feb19faa6fbe76034"
     }
   },
   "cases": [
