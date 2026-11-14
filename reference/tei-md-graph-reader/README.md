@@ -14,7 +14,17 @@
 
 ルートモジュールから`go test ./reference/tei-md-graph-reader`を実行する。テストは、生成実装から独立に保存した`testdata/tei-md-graph/independent-expected.candidate.json`に照合する。元byte位置、レイアウトのみの変更、引用・Fence、未知端点、重複Section、未対応表、表示IDの未解決を負例に含む。
 
-このテストが成功しても、**`*.tei.md`の製品Readerが使えることにはならない**。現行`internal/workspace/tei_md_source_guard.go`の`TEI_MD_PARSER_UNBOUND`は維持する。ここではWorkspace ManifestのSource選択、Language Plugin/Roleの承認、Source Index、実Builder入力、TEIが生成したGo、実Plugin/CLI Consumerを接続していない。
+このテストが成功しても、**`*.tei.md`の製品Readerが使えることにはならない**。現行`internal/workspace/tei_md_source_guard.go`の`TEI_MD_PARSER_UNBOUND`は維持する。ここではWorkspace ManifestのSource選択、Language Plugin/Roleの承認、Source Index、実Builder入力、正式TEIが生成したGo、実Plugin/CLI Consumerを接続していない。限定ReferenceのGo生成・独立Go Consumerは上記の別資格で扱う。
+
+## 参照Graphから生成したGoを実行する限定試験
+
+`GenerateOutgoingGo`は`ParseCandidate`で読んだNode/Edgeを入力に、出辺IDを返す`Outgoing`と件数を返す`OutgoingCount`を含む**実行可能なGoソース**を生成する。出辺の判定は生成関数の`switch`内にあり、手書きGoのGraph評価関数へ委譲しない。並び順は固定Fixtureの独立Expectedと同じEdge ID昇順とする。
+
+`generate_test.go`では、生成ソースと独立Consumerを一時Go moduleへ書き出し、**実際の`go run .`で呼び出した結果**を`testdata/tei-md-graph/independent-expected.candidate.json`と照合する。基準・辺反転・配置のみ変更・古い表示図の各有効入力を比較し、重複Edge IDはReaderで拒否する。配置だけの変更では生成Goのbyte列が不変、辺反転では変化し、表とMermaidが不一致なら表の定義を優先する。生成処理は元のEdge ID／起点／終点Cellのbyte位置を参照用`Origins`として別返却し、描画位置変更を生成ロジックに混入させない。
+
+実行にはGoが必要で、外部Networkや特定のHostを要求しない。`GOWORK=off`と`GOTOOLCHAIN=local`を使った一時moduleで検査し、生成物が偶然Readerの`Outgoing()`を呼んで同じ結果を返すだけの実装にはしない。
+
+これは**限定Reference Graph→Go→独立Consumer**の実証である。正式`*.tei.md` Reader、採用済みRole/Business Meaning、Target Generator、BuildIntent／選択Providerの実Artifact、通常製品CLI、PluginによるSelf-buildは未接続である。新しいCompiler Core、第二Resolver、Runtime Hostや正式Expected正本を追加しない。
 
 ## 次の製品実装へ引き渡すこと
 
