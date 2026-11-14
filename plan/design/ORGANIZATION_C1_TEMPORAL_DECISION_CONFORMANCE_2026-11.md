@@ -1535,14 +1535,14 @@ ODRは**既存#4490 ORG-BEH-04、#1180/#2514、BRMS #4723のT1〜T8、Graph Fixt
 
 ### 31.1 何を確かめれば「同じ候補集合」と呼べるか
 
-§30.5 / [コードDraft #4737](https://github.com/hat47x/tei-platform/pull/4737)では、RoleAssignmentとResponsibilityの行を**それぞれ実\`functioncontext.From\`に投影**できるところまで進んだ。しかし入力は合成であり、二つのQuery ID・Source Digestがあることは、両者が**同じ業務時点・同じDB Snapshot・同じ取得対象**である証拠にはならない。次はテスト用の\`test-fixture-cohort\`を製品資格へ持ち込まず、実Providerが確認できる最小の一往復に限定する。
+§30.5 / [コードDraft #4737](https://github.com/hat47x/tei-platform/pull/4737)では、RoleAssignmentとResponsibilityの行を**それぞれ実`functioncontext.From`に投影**できるところまで進んだ。しかし入力は合成であり、二つのQuery ID・Source Digestがあることは、両者が**同じ業務時点・同じDB Snapshot・同じ取得対象**である証拠にはならない。次はテスト用の`test-fixture-cohort`を製品資格へ持ち込まず、実Providerが確認できる最小の一往復に限定する。
 
 候補判断の前に、既存のSource/Query/Provider/Function Context/Attemptの証拠を次の観点で突合する。新しい組織専用Envelope、Snapshot Store、Rule Engineは作らない。
 
 1. **意味と同定**：両Sourceの正式なPerson Key、Relation Occurrence、Role/OrgUnit、適用Scopeと採用されたMappingが一致すること。同名・画面Label・取得順から人物を推定しない。正式SourceにないCase C1→Person/Responsibilityの接続は行わない。
-2. **時点の一致**：\`validAt\`、\`knownAt\`、必要な発効・失効条件をQueryごとに保持し、両方の業務判断に適合する時点であることを示す。r7のA2旧新版の実DB共存が未成立の間、二時点人物一覧を実証済みとはしない。
+2. **時点の一致**：`validAt`、`knownAt`、必要な発効・失効条件をQueryごとに保持し、両方の業務判断に適合する時点であることを示す。r7のA2旧新版の実DB共存が未成立の間、二時点人物一覧を実証済みとはしない。
 3. **観測集合の整合**：実Provider/Database Instance、Read Snapshotまたはそれに相当する同一性の根拠、Query/params、行Scope、RLS/Limit/Partition、Rowset取得状況を照合する。**同じ接続先・同じTransaction名・両Cursor終端だけでは同一Snapshotや全件性を推認しない**。単一Queryで両Relationを取得する方式も比較対象とし、二Query方式との意味同値を独立Expectedで試す。
-4. **必要Readの閉包**：正のRelation二本だけでなく、Ruleが参照する否定例外、委任、役割の有効性、非出力依存など、採用したRuleのRequired Setを用途相対に閉じる。\`Rowset.FullyRead\`と\`CoverageUnestablished\`を同一視せず、未取得・部分取得・読取拒否はそれぞれ未確定として残す。
+4. **必要Readの閉包**：正のRelation二本だけでなく、Ruleが参照する否定例外、委任、役割の有効性、非出力依存など、採用したRuleのRequired Setを用途相対に閉じる。`Rowset.FullyRead`と`CoverageUnestablished`を同一視せず、未取得・部分取得・読取拒否はそれぞれ未確定として残す。
 5. **結果と実行資格の分離**：確認済みの正のPath（下限証拠）、業務適格な候補集合の全件性、Case責任、現在Principal/Grant、Effect/Receipt/ACKは別々に判定する。完全な一人候補が得られても、承認・代理操作・送信はHostの現在資格とCase Revisionがなければ実行しない。
 
 この契約の重要な性質は**単調な正の証拠と、閉じた集合を要する否定の証明を区別する**ことにある。部分Readでも、Person Keyと正のRelationを確認できればそのPathを記録できる。異なる二人の正のPathが揃えば「正の一致が一人しかいない」は否定できる。ただし、否定例外や適格性を決める条件が未取得なら、二人が**業務上の承認適格者**だとは言えない。可視行だけで候補0/唯一/全数を宣言しない。
@@ -1562,16 +1562,16 @@ ODRは**既存#4490 ORG-BEH-04、#1180/#2514、BRMS #4723のT1〜T8、Graph Fixt
 | OCC-09 | r7同一validAtのknownAtを07-01→07-03へ変更 | 4→3所属、3→3人、3.0→2.4 FTEを独立に照合。Case C1と自動結合しない |
 | OCC-10 | Case移管、旧Grant、後着Response、D1→D2→D1 | 旧Revision/Receiptから再承認・再実行をしない |
 
-OCCは**既存#4490 ORG-BEH-01/02/04、#4501 CX、#1180/#2514の検査観点の索引**であり、新しいExpected ID体系・Scenario正本ではない。Providerの完全性を立証できないケースは、想定値が1人でも\`unknown\`を期待する。
+OCCは**既存#4490 ORG-BEH-01/02/04、#4501 CX、#1180/#2514の検査観点の索引**であり、新しいExpected ID体系・Scenario正本ではない。Providerの完全性を立証できないケースは、想定値が1人でも`unknown`を期待する。
 
 ### 31.3 実装順とOwner
 
 - **OCP-0：コードDraftの資格確定**。#4737の最新固定HEADで局所Go Test・全体CIを分けて確認。既存の合成二Contextは正経路・NULL・CoverageのReference証拠に限定する。失敗したHEADの結果を後続へ持ち越さない。
 - **OCP-1：BEH-01/02を先行**（#4490）。正式なPerson Link/履歴版、as-of条件、非出力依存、必要ReadとCoverageを選定する。現SourceのMembership→Person、Occupancy→Person、RoleAssignment/ResponsibilityのTemporal Gapは#2386 Ownerの採否を待ち、仮の結合を正式Sourceへ書き込まない。
-- **OCP-2：実Read Cohortを一つ実証**（#2586/#4495/#4490）。実Provider/SQLの一往復で、Source→選択Query→params/Rowset→\`functioncontext.From\`→独立read-only Consumerを同じAttemptに記録する。単一Query構成と二Query同一Snapshot構成を比較し、証拠のない方式は\`unestablished\`のまま停止する。
+- **OCP-2：実Read Cohortを一つ実証**（#2586/#4495/#4490）。実Provider/SQLの一往復で、Source→選択Query→params/Rowset→`functioncontext.From`→独立read-only Consumerを同じAttemptに記録する。単一Query構成と二Query同一Snapshot構成を比較し、証拠のない方式は`unestablished`のまま停止する。
 - **OCP-3：生成側の同値**（#2621/#1121/#4729/#4733、#4723）。採用済みのRelation/RuleだけをTEI-native Sourceから型付き条件・Go分岐へつなぎ、Rule変更・Relationの向き変更で生成Codeと結果が変わり、レイアウト変更だけなら意味が変わらないことを検査する。単なるGo Delegateは達成に含めない。
 - **OCP-4：Case/Host/表示へ段階送達**（#4501/#1174/#2516/#1124）。同じ受理された判断結果をCLI・Studio/SHOのread-only投影と照合してから、Case Revision、Current Grant、Effect、ACKを各Ownerの別ゲートで検証する。複数画面で同じ候補を表示できても実行資格を与えない。
 
 **完了条件**：一つの選択済み業務Sourceに対し、二つのRelationの人物同定・時点・取得範囲・否定依存が説明でき、OCC-01〜10で「観測事実」「全件候補判断」「現在の実行資格」を混同しないこと。実データReadが未成立なら、その原因と不足証拠を同一Attemptに残して停止する。
 
-**資格と優先順位**：ここで追加したのは設計・検査計画だけ。PR #4737の合成Function Context実装は実Provider/同一Snapshot/受理Rule/Host Effectの証拠ではない。今回の新Go/PG/CLI/Windows/Studio/Host試験とOwner Meaning Acceptanceは**NOT RUN / NOT ACCEPTED**。全体P0の通常製品\`tei\` CLI初回実Provider Read #2586とStudio Stage1→Stage2セルフビルド #2831は独立維持し、組織C1を新しいHard Gateにしない。
+**資格と優先順位**：ここで追加したのは設計・検査計画だけ。PR #4737の合成Function Context実装は実Provider/同一Snapshot/受理Rule/Host Effectの証拠ではない。今回の新Go/PG/CLI/Windows/Studio/Host試験とOwner Meaning Acceptanceは**NOT RUN / NOT ACCEPTED**。全体P0の通常製品`tei` CLI初回実Provider Read #2586とStudio Stage1→Stage2セルフビルド #2831は独立維持し、組織C1を新しいHard Gateにしない。
