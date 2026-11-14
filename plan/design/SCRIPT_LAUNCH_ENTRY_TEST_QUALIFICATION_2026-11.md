@@ -699,4 +699,14 @@ LR-A〜Dは全直列Hard Gateではない。LR-Aの受理待ち中は、LR-Bの�
 - **EP-05**：CLIとStudioで同じSnapshotや表示値が得られても、片方はReference executor/別Provider→Product二入口資格FAIL。
 - **EP-06**：Source/Build/Entryは同bytesへA→B→Aで戻っても、Owner meaning acceptance・現在Grant・Runtime loaded member・Consumer disclosureを旧資格から自動復活させない。
 
+### 17.1 実行前宣言検査をInput/Effectへ拡張（2026-11-14）
+
+[main統合済み #4629](https://github.com/hat47x/tei-platform/pull/4629)の`validateResultContract`はResultの構造不正をAdapter呼出し前に拒否する。一方、`semantic.Capability.Inputs`の同名重複・必須Name/Type参照欠落、`Effect`の不明Kind/対象Data欠落も、**実Adapterへ一切到達させずに検出できる宣言の不備**である。これらは意味・権限・実データへ触れずに検査可能であり、既存APIの負例を増やすのが最短。
+
+[実装候補Draft PR #4636](https://github.com/hat47x/tei-platform/pull/4636)では、`capabilityinvoke.Invoke`へ`validateInvocationDeclaration`を追加し、既存Result検査＋上記Input/Effectの構造検査をProvider呼出し前にまとめる。nil Contextはpanicでなくfail-closed。新たなEntry、Provider選択、認可、Runner、Result Engineは増やさない。
+
+独立Expectedは **IC-01** Input Name欠落、**IC-02** Type欠落、**IC-03** 同名Input、**IC-04** Unknown Effect Kind、**IC-05** Effect Data欠落、**IC-06** nil Contextの全件でGo Adapter呼出し0。既存`ValidateBusinessResult`の責務はResult Mode契約に限定したまま。型参照の非空を確認しても、現在Sourceで解決したType・単位・NULL・入力値の適合や、Output bodyを保証しない。`Effect == nil`は**安全なpureであることの証明ではなく、Effect意図未宣言**。公開Entry/Meaning Owner/Host Current Grant/Selected B→Actual A/Effect ReceiptはEP-01〜06の既存Ownerに残す。
+
+この作業は#4495の**構造前検査の局所強化**であり、L-P0/L-P1/L-P2の実製品資格と新しいHard Gateを同一視しない。PR #4636はCode＋Go回帰＋本節に限定し、正式な受理・main統合・CI成功の有無はPR exact HEADで別判定する。
+
 **着手依存**：EP-01/02のSynthetic typed Adapter検証はA0のOwner意味受理と並走可能。正式公開/実GrantのPASSと合算しない。EP-05/Stage2のWebViewは実Go L-P1/P2の確定後に合流するが、TEI Studio自己再構築#4583の最優先実装をブロックしない。**現状**：この節は#4629 merged実績と他レーンの現実装を根拠とした次工程の設計。ProductのEntry/Provider/CLI/Web/Stage2 E2Eは**NOT RUN**。
