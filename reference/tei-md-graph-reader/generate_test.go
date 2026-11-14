@@ -27,7 +27,7 @@ func runGeneratedOutgoing(t *testing.T, src []byte) executedOutgoing {
 	files := map[string][]byte{
 		"go.mod": []byte("module tei-graph-fixture\n\ngo 1.23\n"),
 		"outgoinggraph/generated.go": src,
-		"main.go": []byte("package main\n\nimport (\n\t\"encoding/json\"\n\t\"os\"\n\tgraph \"tei-graph-fixture/outgoinggraph\"\n)\n\nfunc main() {\n\tresult := struct {\n\t\tOutgoing map[string][]string `json:"outgoing"`\n\t\tCounts map[string]int `json:"counts"`\n\t\tUnknownIsNil bool `json:"unknownIsNil"`\n\t}{\n\t\tOutgoing: map[string][]string{\"n-1\": graph.Outgoing(\"n-1\"), \"n-2\": graph.Outgoing(\"n-2\")},\n\t\tCounts: map[string]int{\"n-1\": graph.OutgoingCount(\"n-1\"), \"n-2\": graph.OutgoingCount(\"n-2\")},\n\t\tUnknownIsNil: graph.Outgoing(\"absent\") == nil,\n\t}\n\tif err := json.NewEncoder(os.Stdout).Encode(result); err != nil { panic(err) }\n}\n"),
+		"main.go": []byte("package main\n\nimport (\n\t\"encoding/json\"\n\t\"os\"\n\tgraph \"tei-graph-fixture/outgoinggraph\"\n)\n\nfunc main() {\n\tresult := map[string]any{\n\t\t\"outgoing\": map[string][]string{\"n-1\": graph.Outgoing(\"n-1\"), \"n-2\": graph.Outgoing(\"n-2\")},\n\t\t\"counts\": map[string]int{\"n-1\": graph.OutgoingCount(\"n-1\"), \"n-2\": graph.OutgoingCount(\"n-2\")},\n\t\t\"unknownIsNil\": graph.Outgoing(\"absent\") == nil,\n\t}\n\tif err := json.NewEncoder(os.Stdout).Encode(result); err != nil { panic(err) }\n}\n"),
 	}
 	for name, contents := range files {
 		if err := os.WriteFile(filepath.Join(dir, filepath.FromSlash(name)), contents, 0644); err != nil {
