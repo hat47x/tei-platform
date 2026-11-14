@@ -3,17 +3,11 @@ name: Studio Pin intent state contract
 on:
   pull_request:
     paths:
-      - "reference/tei-studio-workbench/pin-state.ts"
-      - "reference/tei-studio-workbench/pin-state.test.mjs"
-      - "reference/tei-studio-workbench/responses.pin.test.mjs"
-      - "reference/tei-studio-workbench/package.json"
+      - "reference/tei-studio-workbench/**"
       - ".github/workflows/studio-pin-state-contract.yml"
   push:
     paths:
-      - "reference/tei-studio-workbench/pin-state.ts"
-      - "reference/tei-studio-workbench/pin-state.test.mjs"
-      - "reference/tei-studio-workbench/responses.pin.test.mjs"
-      - "reference/tei-studio-workbench/package.json"
+      - "reference/tei-studio-workbench/**"
       - ".github/workflows/studio-pin-state-contract.yml"
 
 permissions:
@@ -41,7 +35,9 @@ jobs:
           cache: npm
           cache-dependency-path: reference/tei-studio-workbench/package-lock.json
       - run: npm ci
-      - name: Run isolated Pin intent state negatives
-        run: node --test pin-state.test.mjs responses.pin.test.mjs
+      - name: Run complete Workbench tests, including real Pin Reader and UI wiring guards
+        run: npm test
       - name: Typecheck current Workbench source
         run: npm run typecheck
+      - name: Build Workbench bundle from current source
+        run: npm run build
