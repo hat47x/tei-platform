@@ -311,6 +311,11 @@ Gate C — PAS-04 Evidence — Ready
 
 **証拠の上限**：本節はmainの現行Hook/Buildソース、既存IssueとDraft #4570/#4572/#4589/#4601/#4602を突合した設計・検収の引渡しであり、新Go試験、実DB作用、全Lifecycle Graph、Stage2実Desktop、Owner意味受理を実施・完了したものではない。既存のP0優先順を変更せず、ドラフト成果とmain統合済み成果を混同しない。
 
+<!-- tei-plugin-build-runtime-crosspoint-20261114 -->
+**2026-11-14横断更新：Buildの系譜とRuntimeの現在資格を分ける**。[Plugin契約→実使用の統合設計Draft #4643 §27](https://github.com/hat47x/tei-platform/blob/docs/plugin-product-exit-main-rebase-20261114/plan/design/PLUGIN_CONTRACT_TO_ACTUAL_USE_HANDOFF_2026-11.md)で、Q0〜Q5（Source/選択→実Builder→N0/N2/N3の実消費→Stage1からStage2→生成exeの実Provider→実Consumer）と、T0〜T4（Preview→Resolve→Admit→Invoke/Commit→Observe）の接点を整理した。**Buildで得たArtifactの資格を、実行時の現在Grant・必要Guard・Effect/Receipt・開示許可へ自動昇格させない**。Stage1/Builder/Stage2/WebView2は一つのAttempt IDではなく親子Attemptと実成果物でつなぐ。CXP-01〜08は既存#1180/#2514のExpected候補で、新しい中央検証機構は作らない。P0は#4583/#2831のnon-Plugin Desktop Buildと#1251のInspector実Providerを維持し、Plugin管理・effectful Hook・共有Webの全面完成は先行条件にしない。
+
+**実績の現在位置**：[Hook互換設計 #4589](https://github.com/hat47x/tei-platform/pull/4589)と[実Consumerの横断受入計画 #4653](https://github.com/hat47x/tei-platform/pull/4653)はmainへ統合済み。[生成Desktop #4587](https://github.com/hat47x/tei-platform/pull/4587)のHEAD `9b58533d`では[Windows #43572235468](https://github.com/hat47x/tei-platform/actions/runs/43572235468)で通常版・生成版の両WebView2 Jobがsuccessとなり、旧HEAD `357345d7`のOS情報取得Timeoutは過去の失敗として残す。ただしPRはDraftでB0限定、正式なStage1→Stage2 Desktop Self-buildは未成立。DSLのSource/Workspace診断[#4654](https://github.com/hat47x/tei-platform/pull/4654)/[#4655](https://github.com/hat47x/tei-platform/pull/4655)はDraft、main統合済みCapability宣言preflight #4629/#4636とは別の検収層。今回の追加は計画のみで、新Go/Windows/実DB試験・Owner意味受理は実施していない。
+
 ## 現在の判定段階と引継ぎ
 
 ### 判定段階A：アプリケーションの意味を実行・検証環境へ渡せる
