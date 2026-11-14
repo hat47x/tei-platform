@@ -643,9 +643,11 @@ Desktopは現時点の**同一Wails Process方式Aを実装検査の基線**と�
 
 | 既存の票 | 次の最小実装と独立Expected | Owner・依存 |
 | --- | --- | --- |
-| **UX-PIN（先行）** | 現main.tsに一件Pinと専用背景Readerを結線。B表示を変えずにAのHost-backed読取りを成功/失敗/後着で検査。Unpin→再Pin、Workspace A→B→A、描画Edge誤束縛を拒否。Source TS→生成JS→埋込byte→Windows WebView2は同一HEADで各々検査 | #4515/#1824、Draft #4597 |
+| **UX-PIN（先行）** | Draft #4597で一件Pin・背景Reader・明示再確認をSource実装済み。次は同HEADのNode 24全標準テスト・型検査・正規Build、生成JS／埋込byteの一致、実Wails/WebView2でのB表示非干渉を独立検収する。Workspace A→B→A、旧Reply・改版・不明版・同ID別Originを拒否し、実Host/Source資格とPin世代を混同しない | #4515/#1824、Draft #4597 |
 | **UX-DIAG（並行）** | 現行Sourceでは診断→実Source位置→再検証を測定。固定Graph資料はGuard拒否とReader選択の後続を区別し、配置のみ／Edge反転／重複ID／古い図を一因子で判別 | #2621/#1018/#1124/#2497、main #4709、Draft #4704/#4713 |
 | **UX-READ（実Provider資格後）** | 通常tei→実Provider→独立Consumerの取得条件・未取得を、StudioとAIに同じ確定度で渡す。0件は不存在でなく、Rowset選択は書込み対象の実一意Rowではない | #2586/#3262/#2516/#4496、#1180/#2514 |
+
+**Pinの現状（2026年11月15日）**：#4597のSourceには、固定時のCatalog版を保守的に保持し、同Workspaceへの復帰後もModel Revision／World Fingerprint／Source Index Fingerprintのいずれかが変われば旧Pinでの再確認を拒否する処理がある。さらに**版情報が空または空白だけの場合も資格未取得としてPinとHost読取を拒否**する（[実Reader修正](https://github.com/hat47x/tei-platform/commit/0ee142519b829513fa730a681d9ac89db803df8e)、[実UI修正](https://github.com/hat47x/tei-platform/commit/bafedd1b532495b4f995bbfb56bda2a92a7000bd)）。この確認はRoot/Source由来、利用者の権限、外部開示の証明ではなく、現在のCatalog型にRootの正規参照元識別子がないため同一Originの積極的認定をしない。Product ReaderのFake Host・版不一致テストとWorkbench配線回帰は現Sourceを使った隔離V8実行で各7/7期待一致だが、正式Node24/npm・生成Asset・実Windows Host・AI往復の検収は未完了である。Pinの現行Source実装を「mainに統合済み」とは扱わず、UXの受入票にはHead・Attempt・実Consumerの資格を分けて残す。
 
 外部Adapterを実際に呼んだ後のエラー・取消を「呼出し前の拒否」と同一視しない（[Draft #4712](https://github.com/hat47x/tei-platform/pull/4712)）。送信結果が不明な外部Effectを盲目的に再試行せず、既存#1174の照会とReceiptの資格へ戻す。
 
