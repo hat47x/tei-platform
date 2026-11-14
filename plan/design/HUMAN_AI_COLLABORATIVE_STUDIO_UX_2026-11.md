@@ -423,3 +423,64 @@ SHOのWriterはRaw文書とOccurrenceの責務を持ち、TEIのMeaning/Source�
 - 選択したProvider/Generatorと実際に使ったProvider/Builder/Artifactの対応は[#1251](https://github.com/hat47x/tei-platform/issues/1251)／[Draft #4621](https://github.com/hat47x/tei-platform/pull/4621)の責務を維持する。選択UIの表示から実利用へ自動昇格しない。
 
 **本追補はGitHub Source/Issue/PRの静的照合と設計文書更新のみ。** 新規Node/Go/Windows/DB/外部Harness E2E、Current Grant、正式API/Renderer採用、Ownerの業務意味受理はNOT RUN / NOT ACCEPTED。#4583のDesktopセルフビルドP0を変更せず、#4515のUX-23/41を並行して実装する。
+
+
+## 25. 2026-11-14 第5次横断統合：Studioを「生成する一巡」と「使う一巡」
+
+[Desktop統合 Draft #4650](https://github.com/hat47x/tei-platform/pull/4650)と[dogfooding再基準化 Draft #4651](https://github.com/hat47x/tei-platform/pull/4651)を、§17のDirty/Saved/Build/Runningの版区分に接続する。**異なる一巡の成功を合算して製品完成としない。**
+
+| 一巡 | 工程と最小の完了条件 | 不成立時に許す主張 |
+| --- | --- | --- |
+| **G：Studioを生成する** | non-Plugin Studio Build Subject→選択Builder/実Invoker→TS/Go・Node/esbuild→Embed/Wails→**実Stage1 TEI**→Stage2 Windows Desktop→そのStage2のWebView2実Consumer。宣言/実消費/Process/Artifact/実Windowが同じBuild lineageで接続 | 生成部品・通常/生成Desktopの局所成功に限定。Stage1なしの外部Launcher二回BuildをG4としない |
+| **U：Studioを使う** | Workspace→Catalog/Inspect→明示Pin→三要素モデル/診断/必要Read→typed Proposal/Preview→独立Expected→条件付きSource Save/既存Acceptance→再読取。同じ実Consumerで対象・出典・版を保持 | Pin/Source/Scope/Grant/独立Readが不明なら候補に留め、編集・実Effectの完成へ昇格しない |
+
+Gは[#4583](https://github.com/hat47x/tei-platform/issues/4583)・[#2831](https://github.com/hat47x/tei-platform/issues/2831)の**製品P0**、Uは[#4515](https://github.com/hat47x/tei-platform/issues/4515)のPinned Observationを並行する最初のUX実装とする。UのAIなしread-only一巡はG4完了を待たずに試せるが、**生成Studioで実際に使えた**と主張するには実Artifact→配信JS→WebViewを別に確認する。
+
+### Windows検証の最新訂正
+
+[Desktop Draft #4587](https://github.com/hat47x/tei-platform/pull/4587)の修正後exact HEAD `9b58533df8764a74c578d478d8c6ee92a382642e`について、[Windows Workflow #43572235468](https://github.com/hat47x/tei-platform/actions/runs/43572235468)は**completed/success**、通常Desktopと生成Desktopの**両WebView2 Jobが成功**した。§24に記した旧HEAD `357345d7`の通常版PowerShell OS情報取得timeoutは歴史的な別Attemptの失敗であり、現HEADの通常版が未検証という表現へ引き継がない。確認時点では全12 Workflow中のHealth/Self-buildはなお実行中だったため、12/12 Greenとは主張しない。
+
+この局所成功は、Stage1 TEIが正式non-Plugin BuildIntentを実行してStage2 Windows Studio exe全体を生成・使用したというGの完了とは異なる。[Builder Draft #4634](https://github.com/hat47x/tei-platform/pull/4634)・[Toolchain Draft #4648](https://github.com/hat47x/tei-platform/pull/4648)の別HEADを合算しない。
+
+## 26. Source診断から修正・再検証へ：人間とAIに共通の作業体験
+
+[DSL四層診断計画 #4652](https://github.com/hat47x/tei-platform/pull/4652)と[Source/実行前拒否試験 #4654](https://github.com/hat47x/tei-platform/pull/4654)をStudioの診断一覧、Sourceジャンプ、AI修正候補に接続する。**診断の種類をすべて「DSLエラー」へまとめず、実際に検査した層を示す。** 新Validator、第二Parser、承認Engineは設けない。
+
+| 層 | Studio/AIが共通に保持する説明と操作 | 証拠上の停止線 |
+| --- | --- | --- |
+| L1 Source/Parse | Parserが検出した構文位置、Raw span、Sourceへのジャンプ | Source位置を持たないRuntimeエラーに架空spanを作らない |
+| L2 Workspace/Meaning | Type/ID/Relation/Function/Business/Ruleの整合と必須依存、検査したSource・未取得範囲 | Parse成功や診断0件だけで意味受理・完全性を宣言しない |
+| L3 Pre-dispatch | Input/Output/Outcome・Effect宣言の不整合、実Adapter呼出し前の拒否 | Adapter call=0を独立に確認。L1/L3合格をL2合格へ自動昇格しない |
+| L4 Product Entry/Host | 公開Entry、実選択Provider、現在Grant、実InvocationとReceipt/Unknown Effect | Preflight PASSを公開・実呼出し・業務Effectへ昇格しない |
+
+診断一覧は「対象」「層」「Error/Warning/Unknown/未検査」「実Source位置と再確認の必要性」「次にできる操作」を表示する。ドメイン専門家には業務上の意味、開発者には契約・依存とRaw span、AIには同じ型付き診断と既存コマンドを提供する。ただし**異なる利用主体へ同じ証拠を異なる資格として説明しない**。
+
+例えば同名Inputは、現DSLが構文上Parseできても、Workspace全体の意味検査には未接続の可能性がある。L3では既存のCapability構造検査がAdapter呼出し前に拒否する。AIのQuick Fix後は、現在のQualified Subject/Raw Source/Revisionを照合し、修正Source→再Parse→再Workspace診断→Pre-dispatch→必要ならEntry/Hostを**実行した範囲だけ**表示する。ACD-01〜04の負例を再利用し、業務意味のOwner受理や正式公開Entryを自動生成しない。
+
+### 診断の操作性と開発速度
+
+入力直後の診断→Preview→Sourceの再投影→Build→実画面の各レイテンシを別々に測定する。どの操作がEditorのIME/UndoやGraph閲覧を止めたか、部分再計算・古いReply・誤対象表示があったかも記録する。Source/Meaning/Adapter/Hostの各段階を一つの“高速”指標に畳まない。Build・Cache・診断の既存Ownerを再利用し、新Build EngineやUI専用Semantic Cacheを作らない。
+
+## 27. 46のUX観点を、実行可能な3つの作業票に集約する
+
+UX-01〜46は設計検討の観点であり、**件数を製品実装率・独立試験Coverageへ換算しない**。新しい受入ケースを次々に増やすのではなく、次の三つを既存#1180/#2514のScenarioと独立Expectedへ割り付ける。
+
+| 作業票 | 最初の正例 | 必須の負例 | Owner |
+| --- | --- | --- | --- |
+| **UX-PIN** | BのEditor/Graph/Dirtyを維持しながらPin Aを裏でInspectし、A欄のみ更新。AI OFFでも利用可能 | Unpin→再Pin後の旧Reply、Workspace A→B→A、Graph描画Edge IDの誤束縛、Bのカーソル/IME破壊 | #4515/#1824、Draft #4597 |
+| **UX-DIAG** | DSL Source上の矛盾を一覧→実位置→人/AIの修正候補→再検証へつなぐ | 架空のSource span、L1通過をL2/L3通過と偽装、拒否なのにAdapter call>0、Dirty Bufferの無断保存 | #4359/#4495/#1124、Draft #4652/#4654 |
+| **UX-READ** | 実Query結果を取得対象・読取条件・被覆・出典付きで提示し、AIも同じ確定度で説明 | 0件→不存在、RLS/LIMIT→全件集計、Git作業版とDB接続の混同、古いTool Replyの再利用、Current Grantの誤継承 | #2586/#3262/#2516、Draft #4644/#4647 |
+
+**検査は三つに分ける**：①同一HEADのHeadless/純粋契約、②実Product CLI/Workbenchでの同一意味の観測、③必要な実Windows WebView2と外部Harness/異Actorの受領。別HEADの試験成功・Producerの自己申告を同一Attemptへ合算せず、実Toolの受領完了とIndependent Expectedを照合する。
+
+実装優先順は①**UX-PINの最小UI結線**、②DSL Source→Workspace診断のFit/Gapが得られた後のUX-DIAG、③Product `tei` CLI→実Provider→Function Contextに到達した後のUX-READ。UI/Diffの試作を先にすることは可能だが、正式Product実Readの結果として表示しない。外部AI、SHO、SUIは各票の最初のHard Gateに含めず、AIなしH0を同じTaskの対照とする。
+
+## 28. 外部製品・環境を横断するときの保存責務と採否
+
+SUIのCard/Canvas、SHOのRaw Markdown/Occurrence、TEIのAccepted Model/Source、Data Workbenchの実DB行、Plugin Contribution、生成ArtifactとRunning Windowは、相互参照できても**別々の正本とWriter**を持つ。対象をPinして移動できることは、別のEditorやDBへ無条件で書き込めることを意味しない。SHOに保存した文書からTEIの現在Subjectを再解決する際も、Handoff Payloadの受領、TEI Readerの実再束縛、Owner Meaning Acceptance、実Tool Receiptを区別する。
+
+Git作業版、DB接続先、Workspace、Principal/Grant、Plugin/Builder選択は独立した軸である。Gitを旧Commitへ戻しても実DBへのCommitや外部Effectが取り消されたわけではない。対象とRow値が同じでも、別DB/時点/Actorから旧Preview/条件付き更新を引き継がない。Environment/Binding・既存Source Writer/DB Provider/Receiptを再利用し、新DB Resolver、単一汎用状態表、協業専用承認Engineを設けない。
+
+**今回成熟した採用対象**：二つの一巡の別検収、DSL四層の診断投影、三つの実行票への収束、Source/DB/Actor/Plugin/Buildの版・権限の区別。正式Activity JSON、共通Pin ABI、React/LitやWorker配置、WASM担当、複数AIの自動マージ、YIC専用Harnessの状態永続化は現時点では未決とする。
+
+**実証状況**：今回の§25〜28は、2026-11-14の他チャット・現行GitHub Issue/PRを照合したdocs-onlyの設計・受入計画。新しいGo/Node/Windows/DB/AI試験、Product実Provider呼出し、Source Save、Owner意味受理、正式Schema採用、Studio Stage1→Stage2新一体Runは**NOT RUN / NOT ACCEPTED**である。
