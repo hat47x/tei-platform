@@ -1074,7 +1074,7 @@ main統合済み[PR #4742](https://github.com/hat47x/tei-platform/pull/4742)で�
 
 #### 正式Readerへ進むS0の判定を横取りしない
 
-並行する[PR #4745](https://github.com/hat47x/tei-platform/pull/4745)は、実WorkspaceのManifest管理RootとPinned Source原文を、Loaderが依然として`TEI_MD_PARSER_UNBOUND`で拒否する状態のまま照合する**予備試験**である。本節のManual/Plugin SourceRefは、その試験が成功しただけでは公開済み・選択済みにならない。検証する順序は次のとおりとする。
+先行[PR #4745](https://github.com/hat47x/tei-platform/pull/4745)（未マージ）の成果を最新mainへ引き継いだ[PR #4751](https://github.com/hat47x/tei-platform/pull/4751)は、実WorkspaceのManifest管理RootとPinned Source原文を、Loaderが依然として`TEI_MD_PARSER_UNBOUND`で拒否する状態のまま照合する**未統合の予備試験**である。本節のManual/Plugin SourceRefは、その試験が成功しただけでは公開済み・選択済みにならない。検証する順序は次のとおりとする。
 
 - **S0-a Source選択**：Manifest管理Root、物理Scan、Pinned Raw Byte、Source Index Fingerprint／Spanと、未管理`drafts/`の隔離を同一Workspaceで比較する。Reference Readerが自らファイルを探して選ぶのではない。
 - **S0-b Reader／Roleの正式選択**：受理されたLanguage Providerと対応Roleを既存Loaderへ束縛する。未宣言・未選択の`*.tei.md`は黙って読むことなく拒否し、旧`*.tei`経路も壊さない。
