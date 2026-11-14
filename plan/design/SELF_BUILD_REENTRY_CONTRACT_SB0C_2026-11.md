@@ -1578,6 +1578,8 @@ in-processを既定にするには、**entryがcatalogを自分で選ぶ**必要
 >
 > **どちらを正とするかは本記録では決めない。** 実装を消すのは意味の変更であり、決定を書き換えるのは本節の持ち主の判断である。**読む人は、この節の決定と `-h` の両方が存在することを知ったうえで扱う。**文書側は[docs/plugins.md](../../docs/plugins.md)に実装済みの挙動として書いた。
 
+> **`-strong`が観測を増やすかは実測した**（[記録](../evidence/TEI_GO_SELF_BUILD_STRONG_REDUNDANCY_2026-11-13.md)）。catalog 3点セットを名指しした3構成（素・`-rebuild-check`・`-strong`）で**観測が完全に一致し**、`-strong`の`implied`も空だった。**flagの固有の効果は、catalog 3点セットが無いときの拒否だけである。**表明としての価値は未決のまま残す。
+
 ### 4.37 L2-bの五条件は、何を確かめ、何を信じているか（2026-11-09）
 
 §4.23の述語は五条件の同時成立を要求する。本節は、**各条件がどこまで検査で、どこからが自己申告か**を一か所にまとめる。
@@ -1605,7 +1607,7 @@ in-processを既定にするには、**entryがcatalogを自分で選ぶ**必要
 | 成果物と違うdigestを申告する | 条件4（ディスクとの比較）で不一致 |
 | 同じバイトを二回出さない | 条件5で不一致 |
 | 二回の間に実行物を差し替える | 条件5の**builder同一性**（**`-child`に名指ししたファイルのbyte**。そのファイルが別の実行物を起動するプロキシだと、背後での差し替えは止まらない——[実測](../evidence/TEI_GO_SELF_BUILD_CHILD_IDENTITY_SCOPE_2026-11-10.md)） |
-| `-state`を無視して同じstateで二回buildする | 条件5の**state分離**——ただし**止まるのは、childが実際と違う値を申告した場合だけ**。渡された値をそのまま申告する child が裏で同じstateを使うと**止まらない**（[実測](../evidence/TEI_GO_SELF_BUILD_STATE_SEPARATION_SCOPE_2026-11-11.md)。下の「検査で止められないもの」3と対になる）。**止めはしないが、entryが自分で見た結果を`stateObservation`に出す**（§4.55） |
+| `-state`を無視して同じstateで二回buildする | 条件5の**state分離**——childが実際と違う値を申告すれば止まり、そうでなくても**entryが事後に**「2回目が渡したstateを作ったか」「1回目のstateの一覧が変わっていないか」を見る（`entry-post-hoc`。**渡したパスに空ディレクトリを作るchildは通る**——[実測](../evidence/TEI_GO_SELF_BUILD_STATE_SEPARATION_POSTHOC_2026-11-13.md)。下の「検査で止められないもの」3と対になる）。**空ディレクトリを作るだけのchildを含め、各回が渡したstateへファイルを残したかは`stateObservation`に出す**（§4.55） |
 | **計画と違うdefinitionを読んでbuildする** | childが**成果物を作る前に停止**（§4.36） |
 
 #### 検査で止められないもの（信じている部分）
@@ -2429,7 +2431,7 @@ PR #4254 の head `289d3eeb2d5696ed3ac3ca07c11ddcfb946fc541` に対する [Run 4
 
 ### 4.55 entryは、渡したstateを自分で見る（2026-11-12）
 
-§4.37は、条件5の「state分離」が**childの申告との文字列一致**であると限定した（[実測](../evidence/TEI_GO_SELF_BUILD_STATE_SEPARATION_SCOPE_2026-11-11.md)）。本節は、**entryがchildに聞かずに見られるもの**を記録へ足したことを書く。**五条件と`l2b.claimed`の式は変えていない。** 式を変えるかは§4.37の持ち主の判断である。
+§4.37は、条件5の「state分離」が**childの申告との文字列一致**であると限定し（[実測](../evidence/TEI_GO_SELF_BUILD_STATE_SEPARATION_SCOPE_2026-11-11.md)）、[#4486](https://github.com/hat47x/tei-platform/issues/4486)のS1がentryの事後検査（`stateSeparation.basis = entry-post-hoc`: 2回目が渡したstateを作ったか、1回目のstateの一覧が変わっていないか）を判定へ入れた。その検査は、**渡したパスに空ディレクトリを作るだけのchildを通す**（[実測](../evidence/TEI_GO_SELF_BUILD_STATE_SEPARATION_POSTHOC_2026-11-13.md)）。本節は、その先を**記録として**足す: 各回が渡したstateへ実際にファイルを残したかを、entryがchildに聞かずに数える。**本節は判定を変えない。** `stateSeparation`が判定の根拠、`stateObservation`はその横に出す観測である。
 
 #### なぜ足すか
 
@@ -2453,8 +2455,9 @@ PR #4254 の head `289d3eeb2d5696ed3ac3ca07c11ddcfb946fc541` に対する [Run 4
 | childの振る舞い | 既存の判定 | `stateObservation.kind` |
 | --- | --- | --- |
 | 渡されたstateを使う（同梱のGo builder） | `reproduced` | `effect-observed` |
-| 二回とも別の共有ディレクトリを使い、渡された値を申告する（[#4299](https://github.com/hat47x/tei-platform/pull/4299)の構成） | `reproduced`（バイト一致） | **`declared-only`**。findingsに両方の回を名指し |
-| stateへ何も書かない（plugin packageのchild、既存の試験用child） | `reproduced` | `declared-only`。**拒否しない** |
+| 二回とも別の共有ディレクトリを使い、渡された値を申告する（[#4299](https://github.com/hat47x/tei-platform/pull/4299)の構成） | **`unperformed`**（#4486 S1: 2回目が渡したstateを作っていない） | `declared-only`。findingsに「申告したディレクトリが存在しない」 |
+| 上と同じだが、**渡されたパスに空ディレクトリだけ作る** | `reproduced`（バイト一致。`entry-post-hoc`を通る） | **`declared-only`**。findingsに両方の回を名指し（新しいファイルが無い） |
+| stateへ何も書かない（ディレクトリは作る。plugin packageのchild、既存の試験用child） | `reproduced` | `declared-only`。**拒否しない** |
 | 一回目のstateを二回目のディレクトリへ**コピー**してから使う | `reproduced` | **`effect-observed`（見逃す）** |
 
 **最後の行が限界である。** entryはOSの境界を張らないので、渡したディレクトリの外への書込みも、もう一方の回のstateの読取りも見ていない。`effect-observed`は「stateを共有しなかった」を意味しない。この限界は試験（`TestStateObservationCannotSeeStateCopiedBetweenRuns`）で固定し、`notObserved`と`boundary`に毎回出す。
@@ -2521,8 +2524,7 @@ PR #4254 の head `289d3eeb2d5696ed3ac3ca07c11ddcfb946fc541` に対する [Run 4
 - `-self-digest`の取得方法（実行ファイル自身のdigestをどう自己参照するか）
 - 出力のschemaVersionと、既存`tei.cli.*`との命名一貫性
 - Seed Trustの扱い（stage0のGoは外部seed。TEI自身によるGoコンパイラのself-hostingではない）
-- 条件5に`stateObservation.kind`を入れるか（§4.55。現在は記録だけで、`declared-only`でも`l2b.claimed`は立つ）
-- 二回のbuildの間にOSの境界を張るか、張るならlinux以外で何を求めるか（§4.55）
+- 条件5に`stateObservation.kind`を入れるか（§4.55。現在は記録だけで、空ディレクトリを作るchildは`declared-only`でも`l2b.claimed`が立つ）
 - [#4114](https://github.com/hat47x/tei-platform/pull/4114)のbuilder照合を`main`へ戻すか（「取り込み済み」として閉じられたが、`main`に無い）
 
 ## 7. この文書の終了条件

@@ -51,8 +51,13 @@ func main() {
 	}
 	time.Sleep(150 * time.Millisecond)
 	used := state
+	if mode != "share" {
+		// Honouring -state starts with creating it; the entry checks that (#4486 S1).
+		_ = os.MkdirAll(state, 0o755)
+	}
 	switch mode {
-	case "share":
+	case "share", "share-mkdir":
+		// share-mkdir creates the passed directory and leaves it empty.
 		used = shared
 	case "copy":
 		if raw, err := os.ReadFile(prev); err == nil && string(raw) != state {
@@ -193,28 +198,45 @@ func TestStateObservationSeesAChildThatUsesTheStateItWasPassed(t *testing.T) {
 }
 
 // The negative case PR #4299 measured: both runs keep their cache in one shared
-// directory and report the passed value. The artifact bytes agree, so the existing
-// verdict still says reproduced — that is the property of the check, pinned here
-// rather than changed. What changes is that the entry no longer has only the
-// child's word: it saw that neither passed directory was used.
-func TestStateObservationDoesNotAcceptAReportThatHidesSharedState(t *testing.T) {
+// directory and report the passed value. #4486 S1 stops it, because the second run
+// never created the directory it was passed. The observation is still recorded,
+// and names the contradiction with the child's report.
+func TestStateObservationIsRecordedWhenSharedStateIsStopped(t *testing.T) {
 	dir := t.TempDir()
 	shared := filepath.Join(dir, "shared")
 	report := runStateObservation(t, dir, buildStateObservationChild(t, dir), []string{"-mode", "share", "-shared", shared})
 
 	reproduction := report.ArtifactReproducibility
+	if reproduction.State != reproducibilityUnperformed {
+		t.Fatalf("shared state with no directory at the passed path was not stopped: %+v", reproduction)
+	}
+	observation := reproduction.StateObservation
+	if observation.Kind != stateObservationDeclaredOnly || !findingsContain(observation, "does not exist after the run") {
+		t.Fatalf("kind = %q, findings = %v", observation.Kind, observation.Findings)
+	}
+}
+
+// The construction #4486 measured as passing the post-hoc check: the child creates
+// an empty directory at the passed path and keeps its cache in one shared
+// directory. The artifact bytes agree and the verdict is still reproduced — that
+// is the property of the check, pinned here rather than changed. What this
+// observation adds is that the entry counted the files: neither passed directory
+// holds anything, so the separation is not summarised as observed.
+func TestStateObservationDoesNotAcceptAnEmptyDirectoryAsUse(t *testing.T) {
+	dir := t.TempDir()
+	shared := filepath.Join(dir, "shared")
+	report := runStateObservation(t, dir, buildStateObservationChild(t, dir), []string{"-mode", "share-mkdir", "-shared", shared})
+
+	reproduction := report.ArtifactReproducibility
 	if reproduction.State != reproducibilityReproduced || reproduction.FirstArtifactDigest != reproduction.SecondArtifactDigest {
-		t.Fatalf("the fixture is meant to agree byte for byte: %+v", reproduction)
+		t.Fatalf("the fixture is meant to pass the post-hoc check and agree byte for byte: %+v", reproduction)
 	}
 	observation := reproduction.StateObservation
 	if observation.Kind != stateObservationDeclaredOnly {
-		t.Fatalf("shared state behind a matching report was summarised as %q", observation.Kind)
+		t.Fatalf("shared state behind an empty directory was summarised as %q", observation.Kind)
 	}
-	if !findingsContain(observation, "the first run") || !findingsContain(observation, "the second run") {
+	if !findingsContain(observation, "the first run left no new file") || !findingsContain(observation, "the second run left no new file") {
 		t.Fatalf("the findings do not name both runs: %v", observation.Findings)
-	}
-	if !findingsContain(observation, "does not exist after the run") {
-		t.Fatalf("the contradiction with the child's report is not named: %v", observation.Findings)
 	}
 	if _, err := os.Stat(filepath.Join(shared, "cache", "object")); err != nil {
 		t.Fatalf("the fixture did not actually share state: %v", err)
@@ -345,8 +367,9 @@ func TestAssessStateObservationNamesEachReason(t *testing.T) {
 }
 
 // stateSharingWrapperSource wraps a real builder. It moves -state to one shared
-// directory and writes the passed value back into the builder's report, which is
-// the construction PR #4299 measured.
+// directory, leaves an empty directory at the passed path, and writes the passed
+// value back into the builder's report: PR #4299's construction, in the form that
+// passes #4486 S1's post-hoc check.
 const stateSharingWrapperSource = `package main
 
 import (
@@ -362,6 +385,7 @@ func main() {
 	for i := 0; i+1 < len(args); i++ {
 		if args[i] == "-state" {
 			passed = args[i+1]
+			_ = os.MkdirAll(passed, 0o755)
 			args[i+1] = os.Getenv("TEI_TEST_SHARED_STATE")
 		}
 	}
@@ -503,7 +527,7 @@ func TestStateObservationOnARealGoBuild(t *testing.T) {
 		t.Logf("first: %d files, %d bytes; second: %d files, %d bytes", observation.First.FilesAfter, observation.First.BytesAfter, observation.Second.FilesAfter, observation.Second.BytesAfter)
 	})
 
-	t.Run("shared state behind a matching report is not summarised as observed", func(t *testing.T) {
+	t.Run("shared state behind an empty directory is not summarised as observed", func(t *testing.T) {
 		shared := filepath.Join(t.TempDir(), "shared")
 		report := run(t, wrapper, shared)
 		reproduction := report.ArtifactReproducibility

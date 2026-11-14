@@ -10,6 +10,7 @@ import (
 	"tei/internal/core"
 	"tei/internal/dependency"
 	"tei/internal/knowledgecontext"
+	"tei/internal/operations"
 	"tei/internal/plugin"
 	pluginruntime "tei/internal/plugin/runtime"
 	"tei/internal/validation"
@@ -38,6 +39,23 @@ type cliResultEnvelope struct {
 type cliFailure struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
+	// ResolveReason is the resolver's own classification (plugin.ResolveCode)
+	// when the failure came from plugin resolution. It is narrower than Code and
+	// lets a caller tell a dependency cycle from a missing plugin without
+	// matching the message text. Omitted when the failure did not come from the
+	// resolver, including INVALID_PLUGIN_LOCK.
+	ResolveReason string `json:"resolveReason,omitempty"`
+}
+
+// pluginResolveFailure builds the failure for a resolver refusal. The CLI code
+// keeps its meaning (PLUGIN_RESOLVE_FAILED or INVALID_PLUGIN_LOCK); the
+// resolver's own code rides alongside as a narrower classification.
+func pluginResolveFailure(code string, cause error) *cliFailure {
+	return &cliFailure{
+		Code:          code,
+		Message:       cause.Error(),
+		ResolveReason: plugin.ResolveCode(cause),
+	}
 }
 
 const (
@@ -214,6 +232,17 @@ func sourceIndexJSON(out io.Writer, workspacePath, worldPath, subjectKind, subje
 	}
 	inspection, mode, err := buildSourceIndexInspection(workspacePath, subjectKind, subjectID)
 	if err != nil {
+		// Match inspect/trace's canonical identity failures: absence or
+		// ambiguity is a failed subject lookup (exit 1), not a successful
+		// empty Source Index nor a generic index-build error.
+		var subjectError *operations.InspectionError
+		if errors.As(err, &subjectError) {
+			exitCode := 2
+			if subjectError.Code == operations.InspectionNotFound || subjectError.Code == operations.InspectionAmbiguous {
+				exitCode = 1
+			}
+			return emitResult(out, resultFailure("source-index", subjectError.Code, err), exitCode)
+		}
 		var stage *sourceIndexStageError
 		code := resultCodeSourceIndexFailed
 		if errors.As(err, &stage) && stage.Stage == sourceIndexStageLoad {
@@ -252,6 +281,9 @@ func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environ
 		fail := func(code, message string) {
 			detail.SelectionError = &cliFailure{Code: code, Message: message}
 		}
+		failResolve := func(code string, cause error) {
+			detail.SelectionError = pluginResolveFailure(code, cause)
+		}
 		id, idErr := core.ParseCanonicalID(environmentID)
 		if environmentID == "" {
 			fail(resultCodeInvalidArgument, "plugin-resolve requires -environment")
@@ -277,9 +309,12 @@ func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environ
 				// Same rule as plugin-runtime-plan: an unusable lock is an input
 				// failure with INVALID_PLUGIN_LOCK, not a resolve outcome (#3184).
 				if plugin.IsInvalidLock(resolveErr) {
+					// An unusable lock is an input failure, not a resolve
+					// outcome, so it keeps INVALID_PLUGIN_LOCK and carries no
+					// resolve reason (#3184).
 					fail(resultCodeInvalidPluginLock, resolveErr.Error())
 				} else {
-					fail(resultCodePluginResolveFailed, resolveErr.Error())
+					failResolve(resultCodePluginResolveFailed, resolveErr)
 				}
 			} else if detail.SelectionError == nil {
 				detail.Candidates = &resolved
@@ -341,7 +376,10 @@ func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environ
 				if plugin.IsLockMismatch(err) {
 					return emitResult(out, resultFailure(command, resultCodeInvalidPluginLock, err), 2)
 				}
-				return emitResult(out, resultFailure(command, resultCodePluginResolveFailed, err), 2)
+				return emitResult(out, cliResultEnvelope{
+					SchemaVersion: resultSchemaVersion(command),
+					Error:         pluginResolveFailure(resultCodePluginResolveFailed, err),
+				}, 2)
 			}
 			return emitResult(out, resultEnvelopeWithWorkspace(command, "", r, identity), 0)
 		}

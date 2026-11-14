@@ -137,3 +137,124 @@ func TestFixedFixtureMatchesIndependentExpected(t *testing.T) {
 		t.Fatalf("fixture != independent expected\nactual: %s\nexpected: %s", out.String(), string(expected))
 	}
 }
+
+func TestUnrelatedUnknownDoesNotInvalidateQuestion(t *testing.T) {
+	v := sample()
+	// These nodes and the malformed edge are outside the explicitly
+	// required universe and outside all paths from the changed subject.
+	v.Nodes = append(v.Nodes,
+		node{ID: "unrelated.native", Layer: "unknown"},
+		node{ID: "unrelated.page", Layer: "presentation"},
+	)
+	v.Edges = []edge{{From: "external.unseen", To: "unrelated.native"}}
+	r, err := inspect(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Coverage != "declared-closed-only" ||
+		r.Disposition != "no-known-critical-impact-within-declared-scope" ||
+		len(r.Unresolved) != 0 || strings.Join(r.Impacted, ",") != "pdp.banner" {
+		t.Fatalf("unrelated unknown over-invalidated the requested change: %+v", r)
+	}
+	// The bounded report still cannot grant release or world-wide safety.
+	if !strings.Contains(strings.Join(r.AuthorityLimits, ","), "unverified-claims") {
+		t.Fatalf("missing closure claim limit: %+v", r)
+	}
+}
+
+func TestRequiredUnknownEndpointPreventsFalseNoImpact(t *testing.T) {
+	for _, edges := range [][]edge{
+		{{From: "pdp.offer-rule", To: "unresolved.price"}},
+		{{From: "unresolved.price", To: "pdp.offer-rule"}},
+	} {
+		v := sample()
+		v.Edges = edges
+		r, err := inspect(v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if r.Coverage != "partial-or-unverified" ||
+			r.Disposition != "incomplete-scope-needs-review" ||
+			strings.Join(r.Unresolved, ",") != "unresolved.price" {
+			t.Fatalf("required unresolved dependency was omitted: %+v", r)
+		}
+	}
+}
+
+func TestClosedClaimWithoutRequiredUniverseIsNotComplete(t *testing.T) {
+	v := sample()
+	v.Required = nil
+	r, err := inspect(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Coverage != "partial-or-unverified" ||
+		r.Disposition != "incomplete-scope-needs-review" {
+		t.Fatalf("empty required universe certified closure: %+v", r)
+	}
+	v.Required = []string{""}
+	if _, err := inspect(v); err == nil {
+		t.Fatal("empty required ID accepted")
+	}
+}
+
+func TestKnownBusinessImpactRetainsUnknownCoverage(t *testing.T) {
+	v := sample()
+	v.Edges = []edge{
+		{From: "pdp.banner", To: "pdp.offer-rule"},
+		{From: "pdp.offer-rule", To: "dynamic.price-rule"},
+	}
+	r, err := inspect(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Coverage != "partial-or-unverified" ||
+		r.Disposition != "known-interaction-business-or-release-impact" ||
+		strings.Join(r.Lanes, ",") != "C0,C3" ||
+		strings.Join(r.Unresolved, ",") != "dynamic.price-rule" {
+		t.Fatalf("known impact and unknown closure were conflated: %+v", r)
+	}
+}
+
+func TestRequiredConsumerIndirectUpstreamGapIsNotClosed(t *testing.T) {
+	v := sample()
+	v.Required = []string{"pdp.consent"}
+	v.Nodes = append(v.Nodes,
+		node{ID: "native.adapter", Layer: "interaction"},
+		node{ID: "native.provider", Layer: "business"},
+		node{ID: "native.sibling", Layer: "presentation"},
+	)
+	v.Edges = []edge{
+		{From: "unknown.sql", To: "native.provider"},
+		{From: "native.provider", To: "native.adapter"},
+		{From: "native.adapter", To: "pdp.consent"},
+		{From: "native.adapter", To: "native.provider"}, // cycle
+		{From: "native.provider", To: "native.sibling"},
+		{From: "native.sibling", To: "unknown.sibling"},
+	}
+	got, err := inspect(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The changed content is disconnected. The question's required
+	// consumer still has a known two-hop route to the missing Provider.
+	if got.Coverage != "partial-or-unverified" ||
+		got.Disposition != "incomplete-scope-needs-review" ||
+		!reflect.DeepEqual(got.Unresolved, []string{"unknown.sql"}) ||
+		!reflect.DeepEqual(got.Lanes, []string{"C0"}) {
+		t.Fatalf("indirect required dependency was called closed or unrelated sibling was included: %+v", got)
+	}
+
+	// Drop only the upstream gap. The downstream sibling's missing
+	// dependency is not part of this Required consumer's input closure.
+	v.Edges = v.Edges[1:]
+	got, err = inspect(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Coverage != "declared-closed-only" ||
+		got.Disposition != "no-known-critical-impact-within-declared-scope" ||
+		len(got.Unresolved) != 0 {
+		t.Fatalf("unrelated downstream sibling over-invalidated the question: %+v", got)
+	}
+}

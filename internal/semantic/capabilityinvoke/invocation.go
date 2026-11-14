@@ -44,10 +44,19 @@ func Invoke(ctx context.Context, capability semantic.Capability, adapter Adapter
 	if adapter == nil {
 		return BusinessResult{}, fmt.Errorf("no Adapter is specified to run capability %s", capability.ID)
 	}
+	if ctx == nil {
+		return BusinessResult{}, fmt.Errorf("no context is specified to run capability %s", capability.ID)
+	}
 
 	// A request cancelled before dispatch must not reach an effectful Adapter.
 	// Cancellation after dispatch cannot by itself establish non-commit.
 	if err := ctx.Err(); err != nil {
+		return BusinessResult{}, err
+	}
+
+	// Reject malformed input/result/effect declarations before invoking a
+	// potentially effectful Adapter. Values and authorization are Host-owned.
+	if err := validateInvocationDeclaration(capability); err != nil {
 		return BusinessResult{}, err
 	}
 
@@ -65,6 +74,9 @@ func Invoke(ctx context.Context, capability semantic.Capability, adapter Adapter
 // 一致していることだけを確認する。Payloadの具体的な値表現や型変換はAdapter側の責務とし、
 // Driverより先に汎用的な業務データ値モデルを固定しない。
 func ValidateBusinessResult(capability semantic.Capability, result BusinessResult) error {
+	if err := validateResultContract(capability); err != nil {
+		return err
+	}
 	if result.Capability != capability.ID {
 		return fmt.Errorf("the result of running capability %s claims a different Capability %s", capability.ID, result.Capability)
 	}
@@ -98,4 +110,56 @@ func ValidateBusinessResult(capability semantic.Capability, result BusinessResul
 		}
 	}
 	return fmt.Errorf("capability %s does not define outcome %q", capability.ID, result.Outcome)
+}
+
+// validateResultContract checks only the shape of an invocation's declared
+// result. A valid shape does not mean its business meaning was accepted, its
+// Entry published, or its execution authorized by the current Host.
+func validateResultContract(capability semantic.Capability) error {
+	if capability.ID == "" {
+		return fmt.Errorf("capability identity is missing")
+	}
+	if capability.Output != "" {
+		if len(capability.Outcomes) != 0 {
+			return fmt.Errorf("capability %s declares both a single output and named outcomes", capability.ID)
+		}
+		return nil
+	}
+	if len(capability.Outcomes) == 0 {
+		return fmt.Errorf("capability %s has no result contract defined", capability.ID)
+	}
+	seen := make(map[core.LocalName]bool, len(capability.Outcomes))
+	for _, outcome := range capability.Outcomes {
+		if outcome.Name == "" || outcome.Payload == "" {
+			return fmt.Errorf("capability %s declares an incomplete named outcome", capability.ID)
+		}
+		if seen[outcome.Name] {
+			return fmt.Errorf("capability %s declares duplicate outcome %q", capability.ID, outcome.Name)
+		}
+		seen[outcome.Name] = true
+	}
+	return nil
+}
+
+// validateInvocationDeclaration checks the portions of a Capability declaration
+// that can be decided without resolving input values, published Entry, or a
+// Host-selected Provider. An Effect declaration is intent, not a commit proof.
+func validateInvocationDeclaration(capability semantic.Capability) error {
+	if err := validateResultContract(capability); err != nil {
+		return err
+	}
+	seen := make(map[core.LocalName]bool, len(capability.Inputs))
+	for _, input := range capability.Inputs {
+		if input.Name == "" || input.Type == "" {
+			return fmt.Errorf("capability %s declares an incomplete input", capability.ID)
+		}
+		if seen[input.Name] {
+			return fmt.Errorf("capability %s declares duplicate input %q", capability.ID, input.Name)
+		}
+		seen[input.Name] = true
+	}
+	if capability.Effect != nil && (!capability.Effect.Kind.Valid() || capability.Effect.Data == "") {
+		return fmt.Errorf("capability %s declares an incomplete or unsupported data effect", capability.ID)
+	}
+	return nil
 }

@@ -1,0 +1,154 @@
+{
+  "h2-a": {
+    "requests": 12,
+    "tool_use": 10,
+    "tool_result": 10,
+    "paired": true,
+    "topKeys": "model,stream,messages,max_tokens,thinking,output_config,system,tools,dsh_session_log,dsh_plugin_packages",
+    "g2_catalog": {
+      "direct_bytes": 13190,
+      "direct_sha": "3b7d69763be1161e",
+      "result_bytes": 13190,
+      "result_sha": "3b7d69763be1161e",
+      "identical": true,
+      "identical_trim": true,
+      "parses": true
+    },
+    "skill_tool": {
+      "err": true,
+      "bytes": 64,
+      "sha": "5f999db68c9cb5d7",
+      "head": "Error: skill \"yi-tei-modeling\" is unknown or no longer available"
+    },
+    "denied": {
+      "rc_lines": "rc[h3-a/lane]=1 rc[h3-a/root]=2 rc[h3-a/skill]=1 rc[h3-b/lane]=1 rc[h3-b/root]=2 rc[h3-b/skill]=1 rc[h2-b/lane]=1 rc[h2-b/root]=2 rc[h2-b/skill]=1 rc[reviewer]=1",
+      "permission_denied": 10
+    },
+    "read_reviewer": "Error: EACCES: permission denied, realpath '/reviewer/expected.txt'",
+    "read_other_skill": "Error: EACCES: permission denied, realpath '/others/h3-a/root/.agents/skills/yi-tei-modeling/SKILL.md'",
+    "grep_others": "Error: grep search failed (exit 2): rg: /others/h3-b: Permission denied (os error 13) | rg: /others/h2-b: Permission denie",
+    "log_canaries": {
+      "found": {},
+      "zstdFiles": 0
+    },
+    "home_canaries": {
+      "found": {},
+      "zstdFiles": 1
+    },
+    "home_files": 8
+  },
+  "h3-a": {
+    "requests": 12,
+    "tool_use": 10,
+    "tool_result": 10,
+    "paired": true,
+    "topKeys": "model,stream,messages,max_tokens,thinking,output_config,system,tools,dsh_session_log,dsh_plugin_packages",
+    "g2_catalog": {
+      "direct_bytes": 13190,
+      "direct_sha": "3b7d69763be1161e",
+      "result_bytes": 13190,
+      "result_sha": "3b7d69763be1161e",
+      "identical": true,
+      "identical_trim": true,
+      "parses": true
+    },
+    "skill_tool": {
+      "err": false,
+      "bytes": 5431,
+      "sha": "bd3158445e8801b8",
+      "head": "<skill_content name=\"yi-tei-modeling\"> <skill_resources> Base director"
+    },
+    "denied": {
+      "rc_lines": "rc[h2-a/lane]=1 rc[h2-a/root]=2 rc[h2-a/skill]=1 rc[h3-b/lane]=1 rc[h3-b/root]=2 rc[h3-b/skill]=1 rc[h2-b/lane]=1 rc[h2-b/root]=2 rc[h2-b/skill]=1 rc[reviewer]=1",
+      "permission_denied": 10
+    },
+    "read_reviewer": "Error: EACCES: permission denied, realpath '/reviewer/expected.txt'",
+    "read_other_skill": "Error: EACCES: permission denied, realpath '/others/h3-b/root/.agents/skills/yi-tei-modeling/SKILL.md'",
+    "grep_others": "Error: grep search failed (exit 2): rg: /others/h3-b: Permission denied (os error 13) | rg: /others/h2-b: Permission denie",
+    "log_canaries": {
+      "found": {},
+      "zstdFiles": 0
+    },
+    "home_canaries": {
+      "found": {},
+      "zstdFiles": 1
+    },
+    "home_files": 8
+  },
+  "h3-b": {
+    "requests": 12,
+    "tool_use": 10,
+    "tool_result": 10,
+    "paired": true,
+    "topKeys": "model,stream,messages,max_tokens,thinking,output_config,system,tools,dsh_session_log,dsh_plugin_packages",
+    "g2_catalog": {
+      "direct_bytes": 13190,
+      "direct_sha": "3b7d69763be1161e",
+      "result_bytes": 13190,
+      "result_sha": "3b7d69763be1161e",
+      "identical": true,
+      "identical_trim": true,
+      "parses": true
+    },
+    "skill_tool": {
+      "err": false,
+      "bytes": 5431,
+      "sha": "bd3158445e8801b8",
+      "head": "<skill_content name=\"yi-tei-modeling\"> <skill_resources> Base director"
+    },
+    "denied": {
+      "rc_lines": "rc[h2-a/lane]=1 rc[h2-a/root]=2 rc[h2-a/skill]=1 rc[h3-a/lane]=1 rc[h3-a/root]=2 rc[h3-a/skill]=1 rc[h2-b/lane]=1 rc[h2-b/root]=2 rc[h2-b/skill]=1 rc[reviewer]=1",
+      "permission_denied": 10
+    },
+    "read_reviewer": "Error: EACCES: permission denied, realpath '/reviewer/expected.txt'",
+    "read_other_skill": "Error: EACCES: permission denied, realpath '/others/h3-a/root/.agents/skills/yi-tei-modeling/SKILL.md'",
+    "grep_others": "Error: grep search failed (exit 2): rg: /others/h2-b: Permission denied (os error 13) | rg: /others/h2-a: Permission denie",
+    "log_canaries": {
+      "found": {},
+      "zstdFiles": 0
+    },
+    "home_canaries": {
+      "found": {},
+      "zstdFiles": 1
+    },
+    "home_files": 8
+  },
+  "h2-b": {
+    "requests": 12,
+    "tool_use": 10,
+    "tool_result": 10,
+    "paired": true,
+    "topKeys": "model,stream,messages,max_tokens,thinking,output_config,system,tools,dsh_session_log,dsh_plugin_packages",
+    "g2_catalog": {
+      "direct_bytes": 13190,
+      "direct_sha": "3b7d69763be1161e",
+      "result_bytes": 13190,
+      "result_sha": "3b7d69763be1161e",
+      "identical": true,
+      "identical_trim": true,
+      "parses": true
+    },
+    "skill_tool": {
+      "err": true,
+      "bytes": 64,
+      "sha": "5f999db68c9cb5d7",
+      "head": "Error: skill \"yi-tei-modeling\" is unknown or no longer available"
+    },
+    "denied": {
+      "rc_lines": "rc[h2-a/lane]=1 rc[h2-a/root]=2 rc[h2-a/skill]=1 rc[h3-a/lane]=1 rc[h3-a/root]=2 rc[h3-a/skill]=1 rc[h3-b/lane]=1 rc[h3-b/root]=2 rc[h3-b/skill]=1 rc[reviewer]=1",
+      "permission_denied": 10
+    },
+    "read_reviewer": "Error: EACCES: permission denied, realpath '/reviewer/expected.txt'",
+    "read_other_skill": "Error: EACCES: permission denied, realpath '/others/h3-a/root/.agents/skills/yi-tei-modeling/SKILL.md'",
+    "grep_others": "Error: grep search failed (exit 2): rg: /others/h3-b: Permission denied (os error 13) | rg: /others/h2-a: Permission denie",
+    "log_canaries": {
+      "found": {},
+      "zstdFiles": 0
+    },
+    "home_canaries": {
+      "found": {},
+      "zstdFiles": 1
+    },
+    "home_files": 8
+  }
+}

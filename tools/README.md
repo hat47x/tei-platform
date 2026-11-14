@@ -27,6 +27,7 @@
 | [`check-public-boundary/`](check-public-boundary/) | 追跡ファイルに、非公開資料の名前・所在のマーカーが入っていないかを検査する（#2342 / #2436） |
 | [`repositoryqualification/`](repositoryqualification/) | リポジトリ検証条件の共通処理 |
 | [`reference-ai-tuning-observation/`](reference-ai-tuning-observation/) | AI性能チューニング用の設計/観測/統計/Provider/開示/受領の**合成入力のみ**を照合する試験用Consumer。実Provider/業務意味/実性能は未証明（#3271/#3262、設計文書 §9〜10）。 |
+| [`reference-browse-read/`](reference-browse-read/) | 一つのbrowse Patternを、Environment束縛を経て、明示確認した使い捨てPostgreSQLの読取専用トランザクションで実行し、Function Data ContextをJSONで返す参照入口（`tei` CLIではない）。束縛はhost申告、被覆は常に`unestablished`、RLS・マスクされたNULLは判別不能のまま。実PG試験は`TEI_BROWSE_READ_PG_*`が揃ったときだけ実行し、未設定はNOT RUN（[#2586](https://github.com/hat47x/tei-platform/issues/2586)） |
 | [`reference-cli-trace-benchmark/`](reference-cli-trace-benchmark/) | 合成Workspaceによるtraceの処理段別の時間・メモリ計測と出力不変の確認 |
 | [`reference-mcp-readonly-adapter/`](reference-mcp-readonly-adapter/) | 既存の読み取り操作（model catalog・inspect・trace・validate）をMCPのtoolとして公開する参照Adapter。Workspaceは起動時に固定し、CLIと同じ `internal/operations` を呼ぶ（#3400） |
 | [`reference-change-packet/`](reference-change-packet/) | 変更範囲・危険度・検証・停止条件をJSONで宣言し、範囲確認と検証実行・証拠記録を行う参照（#2017） |
