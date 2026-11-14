@@ -4,6 +4,7 @@ package plugindocreference
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -26,7 +27,7 @@ type candidatePlugin struct {
 	SelectedBaseCandidate, ReferenceMode, Reexport, BaseManualReexport string
 }
 type candidateDocument struct {
-	ID, Owner, Contract, Path, Visibility, SourceRefStatus string
+	ID, Owner, Contract, Path, Visibility, SourceRefStatus, SourceDigest string
 }
 type candidateRelation struct {
 	ID, From, To, OccurrenceRole, RoleAdoption string
@@ -39,7 +40,7 @@ type candidateFixture struct {
 	Schema, Adoption, Authority string
 	ProductsNotClaimed          []string
 	Graph                       struct {
-		Source                   string
+		Source, SourceDigest     string
 		SemanticIDs              struct{ Nodes, DirectedRelations []string }
 		IdenticalNodeLabels      bool
 		ParallelRelations        []candidateRelation
@@ -68,6 +69,10 @@ func safeSourcePath(s string) bool {
 	return s != "" && !strings.ContainsAny(s, "\\:") &&
 		path.Clean(s) == s && strings.HasPrefix(s, "testdata/") &&
 		!strings.Contains(s, "../")
+}
+
+func fixtureDigest(source []byte) string {
+	return fmt.Sprintf("sha256:%x", sha256.Sum256(source))
 }
 
 // auditFixture only checks consistency of *candidate* input and expectations.
@@ -119,6 +124,11 @@ func auditFixture(f candidateFixture) []string {
 	}
 	if !safeSourcePath(pub.Path) || !safeSourcePath(priv.Path) || !safeSourcePath(f.Graph.Source) || pub.Path == priv.Path {
 		add("invalid or aliased candidate source paths")
+	}
+	for _, digest := range []string{pub.SourceDigest, priv.SourceDigest, f.Graph.SourceDigest} {
+		if !strings.HasPrefix(digest, "sha256:") || len(digest) != 71 {
+			add("missing SHA-256 source-byte pin")
+		}
 	}
 	if !f.Graph.IdenticalNodeLabels || len(f.Graph.SemanticIDs.Nodes) != 2 || len(f.Graph.SemanticIDs.DirectedRelations) != 2 || len(f.Graph.ParallelRelations) != 2 {
 		add("two-node two-relation pressure fixture missing")
@@ -180,6 +190,9 @@ func TestCandidateFixtureLinksToRealGraphAndManualBytes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if fixtureDigest(source) != f.Graph.SourceDigest {
+		t.Fatal("candidate graph source bytes drifted from pinned digest")
+	}
 	got, err := graphreader.ParseCandidate(source)
 	if err != nil {
 		t.Fatalf("existing reference reader could not read graph: %v", err)
@@ -215,6 +228,9 @@ func TestCandidateFixtureLinksToRealGraphAndManualBytes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if fixtureDigest(pub) != f.Documents.Public.SourceDigest || fixtureDigest(priv) != f.Documents.Private.SourceDigest {
+		t.Fatal("candidate manual source bytes drifted from pinned digests")
+	}
 	if len(pub) == 0 || len(priv) == 0 || bytes.Equal(pub, priv) ||
 		!bytes.Contains(pub, []byte("tei commands")) || !bytes.Contains(pub, []byte("baseline.tei.md")) ||
 		bytes.Contains(pub, priv) {
@@ -237,6 +253,7 @@ func TestCandidateFixtureMutationsAreRejected(t *testing.T) {
 		{"private-made-public", func(f *candidateFixture) { f.Documents.Private.Visibility = "allowed-in-candidate-for-B" }},
 		{"false-source-acceptance", func(f *candidateFixture) { f.Documents.Public.SourceRefStatus = "accepted" }},
 		{"traversal", func(f *candidateFixture) { f.Documents.Public.Path = "../private.md" }},
+		{"missing-byte-pin", func(f *candidateFixture) { f.Documents.Public.SourceDigest = "" }},
 		{"conflated-relations", func(f *candidateFixture) { f.Graph.ParallelRelations[1].ID = "e-1" }},
 		{"candidate-role-promoted", func(f *candidateFixture) { f.Graph.ParallelRelations[0].RoleAdoption = "accepted" }},
 		{"lost-private-refusal", func(f *candidateFixture) {
