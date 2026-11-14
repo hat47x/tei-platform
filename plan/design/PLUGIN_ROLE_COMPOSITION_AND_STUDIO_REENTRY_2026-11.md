@@ -1096,4 +1096,39 @@ main統合済み[PR #4742](https://github.com/hat47x/tei-platform/pull/4742)で�
 
 **検収資格の境界**：#4729/#4733は限定Referenceでの実Go生成・実Binary・独立Expectedを示す。現行製品の`*.tei.md` Loaderは`TEI_MD_PARSER_UNBOUND`で拒否しており、公開Manualの型付き製品取得、Plugin A/Bの正式開示、製品Target Generatorと通常CLI、Studioの自己再構築は未実証である。第21.7節はそれらを結ぶ**実装順と既存Expectedの適用先**を具体化したもので、Go製品機能を追加した記録ではない。
 
+### 21.8 PDC-0の実CI結果から、公開文書一件の製品Readへ移る
+
+<!-- tei-plugin-pdc0-green-to-product-read-20261115 -->
+
+**最初の実装で閉じるのは、「選択されたPluginについて、その版に対応する公開文書を実Sourceから一件だけ取得できるか」という不足である。** Graph/Ruleの限定Go生成、Source Index、Manifest管理Rootの予備検証、公開Manualの合成Fixture監査は、それぞれ実証済みの範囲を持つが、これだけでこの不足は閉じない。
+
+#### 合成Fixtureの実証結果と資格上限
+
+[PDC-0の後継Draft #4757](https://github.com/hat47x/tei-platform/pull/4757) は、最新mainのGraphに追加された明示Rule表を含む原byteで固定し直した、A/B/C合成Plugin・公開／非公開Manual・13件の採用前Expected候補を持つ。既存 `ParseCandidate`／`ParseRuleCandidate` と実Source byte/Span、Graph・両ManualのSHA-256、14種類の合成変異を照合する **Reference Go試験** を追加した。
+
+#4757の対象HEAD `d9219cf051918786290f167d1201bb3c46d90eca` では、[Repository Health実行 #43649576594](https://github.com/hat47x/tei-platform/actions/runs/43649576594) が成功し、ログに `ok tei/reference/plugin-doc-reference`、`PASS gofmt -l . is empty`、`PASS go vet ./...`、`PASS go test -count=1 -timeout 60m ./...` が残った。Cache Full/Incremental検証 #43649576625、既知脆弱性チェック #43649576602 も成功した。**この結果を「PDC-0候補Fixture監査のGo実行成功」と呼ぶ**。独立ExpectedのOwner正式受理や、実WorkspaceでのA/B選択・Product文書読取・開示拒否は含まれない。新HEAD・main統合時には試行を再確認する。
+
+旧[Draft #4726](https://github.com/hat47x/tei-platform/pull/4726)では、更新前のGraph SourceのSHA-256を固定していたため、並行mainで追加されたRule表と食い違い、実CIがFAILした。元バイトの変化を機械的に「説明だけの変更」へ分類しない。*Source byte*の不一致をまず検出し、その後に定義表・Rule・表示・Manualのどこが変化したかを意味別に判定してから再利用を決める。Source Pinの値が新しくなっても、以前の開示許可・意味受理・実行Receiptは自動的に復活しない。
+
+#### PDC-1の最初のGo差分
+
+| 順序 | 現行製品の利用点と追加する最小の接続 | 初回の合格範囲 |
+| --- | --- | --- |
+| D1-0 選択を確定 | 実 `tei commands` と `plugin-inventory`（Workspace、Environment、必要なLock）で**実選択済み**Plugin ID/Version/Requires/Resolverを取得する | 検証用JSONのA/Bを「製品で選択済み」とは扱わない。CompatibleMajorだけから上位の厳密版を選ばない |
+| D1-1 Doc帰属を照合 | 選択Pluginから**明示的に帰属付けられた**公開Doc一件のID、適用Contract版、管理Sourceへの参照を解決する。正式な帰属契約が無ければ未対応として返す | 同名・同ディレクトリ・Source Index参照0件だけから文書帰属や不存在を推論しない |
+| D1-2 元Sourceを取得 | 既存Workspace管理Root、Source Index、Source byteの読取り経路を利用し、文書の元byte、位置、版、取得状態を比較する | `BuildSourceIndexFromLoad`の保存byteは、Manifest/Imports/Lock/Disclosureを含む原子的な全ファイルSnapshotの証明ではない |
+| D1-3 公開資格を確認 | 文書参照と現在Audience/Disclosureを**Owner境界で**検査し、許可された必要範囲だけを返す | Fixtureの`visibility`は正式Grantではない。許可不明・途中切断なら本文と非公開Metadataを送らない |
+| D1-4 使用例を検証 | 本文中のCLI/Operationを実 `tei commands`／既存read-only Operationと照合して返す | Reference生成バイナリの`-node`は製品`tei`のFlagではない。例示コマンドをHostへ無断実行しない |
+
+**最初の製品テストを置く場所**は、#4714が所有する実CLI／Application Operationの経路である。#4757の合成FixtureをSourceと期待値の対照に利用しても、正式なDocument grammar、第二Resolver、Document Registry、AI専用Readerや新Hostは作らない。通常のMarkdownマニュアル一件のread-only取得には、業務意味用の正式`*.tei.md` Reader完成を先行条件にしない。一方、同ManualからリンクしたGraph/Ruleの**意味受理・生成**には正式Reader/Meaning/Targetの検証を要求する。
+
+D1の独立負例は、(1)未選択Plugin、(2)同名別Doc、(3)CompatibleMajorのみでexact版不明、(4)旧版Manual、(5)非公開Doc/再公開、(6)Source変更・A→B→A、(7)partial reply/後着応答、(8)文書内にだけある未実装Commandである。PDC-0 JSONの期待値をそのまま実製品の認可結果とするのではなく、**実Productの同一Attemptで観測できた範囲**を#1180/#2514に渡す。
+
+#### 計画上の状態と優先順位
+
+**PDC-0**：固定Source・候補Expectedと、#4757の当該HEADでのGo Fixture監査は **CI PASS**。正式なOwner独立Expected受理、実開示制御は未達。**PDC-1**：Doc帰属・Source/Contract/現在Disclosureの製品read-only一往復は **未実装／未実測**。PDC-1の実装に向けた入力品質確認ができた段階であり、両者を同じ「完了」にまとめない。
+
+実装Ownerは[#4701](https://github.com/hat47x/tei-platform/issues/4701)（候補Fixture）、[#4714](https://github.com/hat47x/tei-platform/issues/4714)（最初の製品一件Read）、[#4679](https://github.com/hat47x/tei-platform/issues/4679)（共通公開Doc契約）、[#2621](https://github.com/hat47x/tei-platform/issues/2621)（業務意味Reader）、[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)（独立検証）を維持する。製品の最優先は引き続きStudio Stage1→Stage2（#2831/#4583）と通常CLI→実Provider→独立Consumer（#1251/#4495）であり、このPDC-1を新しいP0 Hard Gateにはしない。
+
+
 **資格**：第20・21章は、現行mainの第15〜18章を維持しながら、生成プラグインの一機能とPlugin説明の利用時適合を切り出した**設計・検収案**である。正式 *.tei.md Reader、新Generator、実Plugin E2E、Plugin Help API、実AI Harness、Owner受理を今回実装・実測したわけではない。
