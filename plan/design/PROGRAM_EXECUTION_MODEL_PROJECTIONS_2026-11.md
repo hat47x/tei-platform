@@ -93,7 +93,25 @@ Webアプリケーションでは「基盤の起動→受信待機→要求の�
 
 Target適合表では、Java/.NETの常駐Web Service、Go/Wails Desktop、単発CLI、Serverless、Batch/Message Consumerを例示できるが、**すべてに常駐Event Loopを生成することはしない**。Hostが所有するライフサイクル、TEIに表せる制約、Providerに委ねる保証、未表現の保証を区別する。
 
-## 6. 検証すべき反例（既存Scenarioへの引渡し候補）
+## 6. セクション化・メタプログラミングの適用条件
+
+ここでいうセクション化には、コードの見出し・ファイル・関数を整理する**表層的な分割**と、独立した入力・出力・Effect契約を持つ**意味上の処理単位への分解**がある。見た目の区切りが同じでも、並行実行、再送、例外、Transaction境界をまたぐと意味は変わり得る。TEIが自動変換の対象にできるのは、必要な依存と制約を説明できる範囲だけである。
+
+例えば受注確定処理を「入力の検証→金額計算→受注確定→確認通知」と分割する場合、金額計算は純粋Functionとして抽出できる可能性が高い。一方、受注確定と通知を独立の非同期処理へ分離するには、Commit後通知、Outbox、再送、重複防止、Effect unknownの契約が必要になる。単に四つのNodeへ分けたことは、それらの保証ではない。
+
+分割・抽出・再配置・Target変更を行うメタ変換は、次の情報を失わないことを要求する。
+
+1. **対象と由来**：意味Subject/Revision、Source occurrence、静的・動的参照の探索範囲。未解析の反射呼出し・外部Callはunknownとして残す。
+2. **境界の明示**：型・多重度、missing/NULL/未取得、読み取り範囲、Outputと例外、必要なContext/Grant、Provider/Target要件を抽出後のInterfaceへ移す。
+3. **観測可能な振る舞い**：Guard、評価順、精度と丸め、状態更新、Eventの因果・順序、Transactionの開始/確定、外部Effectの時点を保つ。効果を持つ処理を純粋と推測しない。
+4. **変換責務の分離**：Source→Canonical Meaningの抽出はCandidate、Accepted Meaning→TargetのLoweringはGenerator、実Artifact→実Consumerは検収とする。変換器自身の「一致」判定をOwner受理にしない。
+5. **差分の局所性**：型付きGraph PatchとDependency/Build差分を使い、表示Layoutの変更で意味やコードを再生成しない。A→B→A、Plugin/Operator版変更、非対象依存追加での旧Evidence再利用は別に判定する。
+
+この方式なら、既存コードをFunction/Procedure/Effect単位へ切り出して共通部品を生成するだけでなく、Graphから呼出し順やUI/APIの公開面を導出し、言語別Generatorの選択やテスト生成に使える。ただし、Graphからの変換を一般に可逆と仮定しない。**変換前後の型付き入出力、必要な副作用、独立Expected、実呼出し先、Consumerの観測結果**を比較し、不足した保証はGapとして残す。
+
+最初の比較は、同一pure Functionの「元コードの実行／意味モデルのシミュレーション／Go Targetの実起動」とする。次に副作用を伴うFunctionを選び、結果値が同じでも実ReadやEffectが異なる負例を入れる。二つの検証を分けることで、単なる構文移植と意味を保存したメタ変換の違いを判別できる。
+
+## 7. 検証すべき反例（既存Scenarioへの引渡し候補）
 
 | ID | 比較・故障注入 | 不合格を検出する要点 | Owner |
 | --- | --- | --- | --- |
@@ -112,7 +130,7 @@ Target適合表では、Java/.NETの常駐Web Service、Go/Wails Desktop、単�
 
 独立Expectedと合成Fixtureの結果は区別する。未実行の反例をPASSとは表示しない。状態図・表の見た目の一致だけでは、実時刻・実DB・実Deviceの動作が正しいことを保証しない。
 
-## 7. 実装計画と優先順
+## 8. 実装計画と優先順
 
 **P0：既存の製品縦断を先に成立させる。** #4495の実Entry→型付きInvocation→実Providerの二入口と、#4583/#2831のStudio Desktop Stage1→Stage2自己再構築を優先する。今回の図解仕様やGraph Compiler完成を、これらの新しい必須Gateにしない。
 
@@ -124,7 +142,7 @@ Target適合表では、Java/.NETの常駐Web Service、Go/Wails Desktop、単�
 
 採否の停止線は、第二Host/Runner/Resolverが必要になる、現在Grantを迂回する、図からAuthoritative Sourceへ戻れない、Plugin登録順で意味が変わる、異質Target間の不足を隠す、未実行なのに製品合格を主張する、のいずれかである。
 
-## 8. 各担当への引渡し
+## 9. 各担当への引渡し
 
 - **#4198**：共通Lifecycle/Control/Effect Graphの最小Roleと、Graph Template + Obligation + Plugin差分が既存標準Graphに収まるかを評価する。正式Schema/Graph Compilerの採用は保留。
 - **#4502/#4495/#4497**：公開EntryとTriggerを実Invocationへ接続し、実Call・入場資格・再入・配送結果を検収する。新SchedulerやScript Runnerを作らない。
