@@ -319,15 +319,12 @@ def main() -> int:
         print(f"{event}: {json.dumps(values, ensure_ascii=False, sort_keys=True)}", flush=True)
 
     try:
-        facts["os_version"] = subprocess.run(
-            ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", "[System.Environment]::OSVersion.VersionString"],
-            check=True,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=15,
-        ).stdout.strip()
+        # OS metadata must not gate the WebView2 smoke on a second PowerShell
+        # process. On overloaded Windows runners that process may time out
+        # before the Desktop itself is launched.
+        os_version = sys.getwindowsversion()
+        facts["os_version"] = f"{os_version.major}.{os_version.minor}.{os_version.build}"
+        facts["os_version_source"] = "python.sys.getwindowsversion"
         facts["python_version"] = sys.version
         facts["go_version"] = subprocess.run(["go", "version"], check=True, capture_output=True, text=True, timeout=15).stdout.strip()
         facts["checkout_sha"] = subprocess.run(["git", "rev-parse", "HEAD"], check=True, capture_output=True, text=True, timeout=15).stdout.strip()
