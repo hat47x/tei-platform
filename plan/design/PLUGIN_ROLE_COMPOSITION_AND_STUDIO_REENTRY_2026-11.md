@@ -999,3 +999,67 @@ TEI Pluginには静的Go組込み、別Process、外部Hostからの利用など
 PDC-09〜16を新しいScenario Engineへ登録するのではなく、PDC-0のFixture・#2514独立Expected・#1180 Scenario・#2605/#2509のHarness評価へ適切に配分する。D0/D1の最小受入は **「現在の対象Pluginを固定し、許可された公開Doc/Graphへ出典・版を保って辿り、Doc誤版・未ロード・非公開の負例を拒否できる」** こと。三軸すべての実Runtime/外部Harness効果を初期read-onlyのHard Gateにしない。
 
 **現状**：本節は他チャットで進んだProduct/Harnessの指示・対象・能力の分離と、Pluginの外部Manual・配布・実発見の責務接続を設計したもの。正式なPlugin Doc QueryやPlugin Packager、次版Skillの実Load、現行Host/Owner資格を確定したものではない。
+
+
+### 19.16 Plugin利用案内を設計・実行・観測の段階へ結び付ける
+
+Pluginの説明は、単に「機能とコマンドを掲載する」だけでなく、**対象の調査→提案・差分→契約適合の確認→受理済み変更の反映→実Consumerでの観測**のうち、どこまでを支援するのか分かることを共通要求とする。既存のTEI CUI/Studio/SHOでのPreview→Resolve→Admit→Commit→Observe（仮の認知順）を利用者向けの自然な説明へ投影し、これを新しいRuntime State Machineや実行許可へ変換しない。
+
+| 利用段階 | Plugin説明から辿る対象 | 実際の資格・既存Owner |
+| --- | --- | --- |
+| 対象を調べる | Plugin概要、公開Capability、上位依存、公開Graph/Rule、現在の対象ID・Source、必要なManual | #4376/#3262/#951。Doc参照可とProvider実行可は別 |
+| 変更案を作る | 公開Extension Point、入力と出力、変更するSubject/Relation、現在のLock、候補Graph Patch、変更前後の図解 | #2497/#4198/#2621。図の編集=意味の受理ではない |
+| 適合性を調べる | Contract/Invariant、Atomic Trait履行、独立Expected/Scenario、Scope/Target互換 | #3279/#2514/#1180。局所Validationと業務意味受理は別 |
+| 変更を反映する | 変更対象のSource/Role、明示的なWriter/Provider、現在のAuthority、変更計画と差分 | #267/#1158/#1174等。ManualやSkillに記載があるだけでは実行しない |
+| 結果を確かめる | 生成Artifact/Build Receipt、selected→actual Provider、実ConsumerのRead/Invoke、Effect/Observation/未知状態 | #2831/#1251/#3267。CLI exit0やコード生成PASSだけで業務完了としない |
+
+**標準の説明の単位**は、Pluginそのものの概要と、公開Capabilityまたは拡張点に結び付く小さな「利用手順」である。利用手順は、目的、対象となる公開Subject/Contract、前提条件、最短例、結果の確認方法、失敗時の判断、次に参照するManual/Sourceを分けて持つ。ただし正式な `Procedure` / `Guide` SchemaはPDC実証後に決定し、既存Script/Process/Scenario DSLを説明書のために再定義しない。手書きの説明と、型付きContract/実Scenarioから導出した機械的参照は別の正本のまま関連付ける。
+
+「まず使い方を読む」入口ではread-onlyの範囲を維持し、ModelのOwner受理・コード生成・Host/DB作用を勝手に開始しない。操作段階の遷移はPluginの特殊な文書記法を実行するのではなく、既存の共通Application Operationと対象Hostの権限契約が担う。
+
+### 19.17 初回利用の具体例：受注管理から信用審査のPluginへ
+
+仮の上位Plugin `std.order` が受注確定前の公開Lifecycle/GraphとExtension Pointを提供し、下位Plugin `sales.credit` が信用審査を追加する場合を、**説明・モデル・合成・検証の一続き**として試す。
+
+1. 利用者またはHarnessが「受注確定の前に信用審査を入れたい」と指定する。最初に固定すべきものは対象Workspace・受注Model ID・現在のSource/Plugin版・用途。自然文だけで編集箇所を確定しない。
+2. 実CLI DiscoveryとPlugin解決結果から、`sales.credit` と `std.order` の公開Contract/依存Lockを特定する。Plugin名を推測で検索しても、最終的な使用対象はResolverで確認できたものに限る。未実装のDocs専用CLI名は実在すると主張しない。
+3. 下位の短いOverview→上位の公開受注処理Graph→公開Extension Pointの順に必要な情報だけ読む。上位の非公開Hook・内部Source・第三者向け再公開できないManualは取得しない。返却した図は型付きモデルのProjectionであり、表示edge IDはRelation occurrence IDの代わりにならない。
+4. 「信用審査」を追加するGraph Patchの候補を作り、元の受注確定処理、Rule、拒否/再試行/外部副作用、テストScenarioの変更が必要かを確認する。BがAの定義を全文コピーすることなく、公開された拡張点への差分として示す。
+5. 公開Contractとの型・制約・Scope適合を検証し、独立Expectedとモデル受理を経る。コード生成/実行は別段階とし、生成物と実Provider呼出しに到達した範囲までしか「成功」としない。
+6. 結果として、利用者には「どの上位機能を利用し、どこを拡張し、何が変わり、何が検証済みか」を短い説明と図・Source・Scenarioの参照で返す。生成AIには同一Refを機械可読で返す。変更・実Target未実行ならそのまま残す。
+
+この例を実Pluginの存在・実CLI操作・現在の業務Sourceとして捏造せず、最初はPDC-0の公開合成Fixtureを用い、段階的に実Consumerへ接続する。
+
+### 19.18 利用手順そのものの品質検証
+
+Doc索引やManual本文が存在するだけでは、「正しい使い方を説明できる」資格は成立しない。**説明が参照する実Contract/Example/Scenario/Operationを固定版で照合できること**を、文書Lint・Product Skill評価へ段階的に組み込む。
+
+| ID | 独立反例 | 期待結果 |
+| --- | --- | --- |
+| PDC-17 | Manualのサンプルが存在しないCLI名を呼ぶ | CLI Discoveryと食い違いを検出し、現行の実手順として提示しない |
+| PDC-18 | Exampleが公開Extension Pointではなく非公開Hookを利用 | 意味/公開境界の不適合を示す。実行・再公開なし |
+| PDC-19 | 手順の対象が別Workspace/旧Subject Revision | 対象不一致を示し、元のGraphに暗黙Writeしない |
+| PDC-20 | Contractは有効だが実生成/Target Providerが未接続 | 説明とモデル適合は局所扱い、実Build/Invoke成功の主張なし |
+| PDC-21 | Manualの結果説明は「成功」だがScenarioはSkipped/Unknown、Consumer Receipt未受領 | 実観測の不足を明示し、説明の成否から業務Outcomeを推定しない |
+| PDC-22 | 上位Contractのみ更新、下位Manual例は旧版のまま | 適用版不一致として失効。Document byteが変わらなくても現在の手順資格を再判定 |
+| PDC-23 | 説明文だけ修正、Model/Generator/Target入力に変更なし | 文書の再表示・リンク照合に限定し、意味/Artifactの不必要な再受理をしない |
+| PDC-24 | Plugin利用案内からAIがSourceを読むだけのタスクで外部Uploadを要求 | 公開/read-only/外部送出の境界を分け、未許可Egressを拒否 |
+
+D0ではPDC-00〜08の正負例をまず満たし、**D1のCLI接続ではPDC-17と19、D2の継承・改訂ではPDC-18/22/23、D3のSkill/HarnessではPDC-21/24、D4の実生成ConsumerではPDC-20/21** を採用可否の判断へ割り当てる。独立Expectedの策定・較正は#2514、Scenarioの正本は#1180、実Product/外部Harness評価は#2605/#2509が担当。新しい「ドキュメント実行テストエンジン」は作らない。
+
+**最小受入は一往復の局所実証**：ある固定Plugin/Contractを選択→公開Doc/上位Modelを読み、例がどの公開Operation/Extension Pointを使うか確認→未対応や古い例を検出→実行可能な既存read-only Operationで独立結果を確認。この縦切りをCLIで先行し、Studio/SHOの固定対象UIから同じ論理結果に到達できるかは後続。対象モデル/契約のVersion・Sourceの照合、Tool Replyの完全受領、実Provider経由の資格は各別票とする。
+
+### 19.19 Product SkillとPlugin Manualの文書量を決める基準
+
+Product Skillを短くすること自体ではなく、**初回の作業開始に必要な情報量と、必要な詳細へたどり着く確実性**を設計指標にする。Skill本文にはTEIの基本概念、実CLI発見、Model/Plugin/Subjectの対象固定、検証/Sourceの読み方、必要時の公開Manualを探す方法だけを置く。
+
+詳細の所有先は次の通り。
+
+- TEI一般のCLI/操作規則・Source/Revision/Diagnosticの解釈 → TEI Product Skillの必要時参照資料（`references/`）。現実のCommand仕様は実CLI Discoveryと共通Application Operationを正とする。
+- 業務・Target・専門機能の詳しい使い方、図解、故障対処、公開Extension Pointの利用例 → 当該Pluginが所有するManual/Topicと公開モデルRef。Skill用に複製した「全Plugin一覧」を永続の正本にしない。
+- 配布・導入・互換性・版・署名/Artifact・実権限 → 既存のComposition Lock、#2589のRelease情報、#3267の組合せ資格、実HostのAuthorityから導出。説明文はこれらへの案内とする。
+- GUIでの選択、Preview、Sourceへ戻す編集候補の位置 → Studio/SHOの固定対象Refと元のAuthoring Source。PanelやMarkdown見出しの表示順を永続Subject Identityとして扱わない。
+
+今後、特定の複雑な専門作業に独立したPlugin Skillを追加する場合も、**同じ公開Doc/Model/Operationを参照する薄いワークフロー説明**に限定し、元Pluginの定義・Manualを二重所有しない。利用前の長文説明一括取得より、短いSkill→対象特定→必要Topic/モデル取得を既定案とし、Tool-onlyとの比較で利用価値を検証する（#2605/#2509）。
+
+**現状と優先順位**：第19.16〜19.19節は、既存の「参照できる」要件を「説明に従って利用・検証できる」要件へ具体化する設計・受入案である。PDC-0 (#4701) の初期作業範囲は増やさず、実Plugin Inventory/CLIの接続ができた段階で一往復の読取り手順を実試験する。#2831/#4583のStudio実セルフビルドと#1251の実Provider二入口が全体P0であることを変更せず、実Doc Query/Guide Schema/Writer/Host動作がすでに存在するとは主張しない。
