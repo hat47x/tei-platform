@@ -2,7 +2,7 @@
 
 **状態：横断設計候補／実TEI Core・DSL・Role Resolverへの採用前。** 本計画の設計上の中心は、標準データ構造でRole/Operator/構文Plugin自身を記述可能にしながら、**その自己記述を初めて読むための有限な解釈の根**を明示し、循環と未決、実行資格の区別を機械検査できるようにすること。
 
-**現時点の読み方（2026-11-14）**：第1〜39節は設計判断と過去の試行を記録したものであり、すべてが製品に実装されたわけではない。JSON Schemaなどの外部定義を図解・診断へつなぐ最初の実装は[第40節](#40-2026-11-14-外部の宣言を読みやすく投影し安全に編集するための実装順)に、業務の意味から説明・図・Mock検証・実行へ展開する際の境界は[第41節](#41-2026-11-14-業務の意味から説明図解実行を展開する自己記述dslの最小実装境界)に整理した。最優先は引き続き**TEI Studio Desktop自身によるStage2構築**であり、外部Schema対応や構文自己記述を新たな前提条件にはしない。
+**現時点の読み方（2026-11-14）**：第1〜39節は設計判断と過去の試行を記録したものであり、すべてが製品に実装されたわけではない。JSON Schemaなどの外部定義を図解・診断へつなぐ最初の実装は[第40節](#40-2026-11-14-外部の宣言を読みやすく投影し安全に編集するための実装順)に、業務の意味から説明・図・Mock検証・実行へ展開する際の境界は[第41節](#41-2026-11-14-業務の意味から説明図解実行を展開する自己記述dslの最小実装境界)に整理した。さらに、[第42節](#42-2026-11-14-意味を保つ対応付けを最初の小さな実装と受入へ収束する)ではGraph／TreeとJSON Schemaの対応付けを、一つの試験へ落とす方法と担当境界を定めた。最優先は引き続き**TEI Studio Desktop自身によるStage2構築**であり、外部Schema対応や構文自己記述を新たな前提条件にはしない。
 
 - **横断Owner**：[Everything is Data #2619](https://github.com/hat47x/tei-platform/issues/2619)、[標準構造・意味Role #2620](https://github.com/hat47x/tei-platform/issues/2620)。
 - **実装Owner**：[DSL Language/Operator Plugin #988](https://github.com/hat47x/tei-platform/issues/988)、[Plugin/Service Contract #951](https://github.com/hat47x/tei-platform/issues/951)、既存Semantic Extension Lock／Source/Accepted Meaning。独立のParser Registry・Extension Resolver・実行Hostを新設しない。
@@ -2348,3 +2348,70 @@ TEI DSLの構文定義を通常のデータとして保持し、図や入力支�
 **P2 高度な自己記述と移植**：Grammar自体の自己記述、異言語Target、状態機械の統一、数理・統計・WBS等専門Toolkitは、既存Role/Operator/Providerと受理済み意味の実比較で段階的に採否を決める。数式/単位・精度、Event順序、Effectの独立Expectedを各Ownerが所有し、図解の成功を科学計算やTarget実行の正しさへ昇格させない。
 
 **状態**：本節はmainに統合済みの[#4665](https://github.com/hat47x/tei-platform/pull/4665)/[#4666](https://github.com/hat47x/tei-platform/pull/4666)、協業UX Draft、既存DSL/Buildの実CIを踏まえた**docs-only計画追補**。新規Go/Node/Windows/DB/Runtime/Mock E2E、Graph Compiler、公式Grammarの採用、Owner意味受理、Stage2 Desktopセルフビルド実行は**NOT RUN / NOT ACCEPTED**。運用上の正本は既存`MASTER_PLAN`と各Owner Issueであり、この章は横断参照と最小実装順を示す。
+
+<!-- tei-self-description-projection-qualification-slice-20261114 -->
+## 42. 2026-11-14 意味を保つ対応付けを、最初の小さな実装と受入へ収束する
+
+### 42.1 表示の便利さと、意味の保存は別に判断する
+
+前節までに、外部Schemaからの構造表示、原文位置へのジャンプ、業務プロセスの説明・図解と実行の資格を整理した。この構想を実装する際に残る核心は、**一つの構造を別の形へ見せたとき、どの意味が保持され、どの情報が落ちたか**を利用者と開発者が判断できることにある。
+
+[標準構造の意味的対応付け Draft #4667](https://github.com/hat47x/tei-platform/pull/4667)は、Identity／Relation／Collection／Presence／Quantity／Time／Scope／Authorityを、すべての対象に押し付ける新しい型階層ではなく、**必要な操作の前提条件**として比較する方式を提案している。ここでは[#2495](https://github.com/hat47x/tei-platform/issues/2495)の標準構造・Facet、[#2544](https://github.com/hat47x/tei-platform/issues/2544)のLaw、[#2497](https://github.com/hat47x/tei-platform/issues/2497)のProjection、[#2620](https://github.com/hat47x/tei-platform/issues/2620)の意味Roleをそのまま使い、実装に必要な対応だけを確かめる。
+
+次の三つは同じ「一致」ではない。
+
+| 比較するもの | 確認できること | そこから言えないこと |
+| --- | --- | --- |
+| **原文の一致** | Raw byte、Source位置・版、選択Readerを特定できる | 同じ業務意味である、現在受理済みである |
+| **指定した観測についての一致** | 指定したNode/Edge/属性/順序などを二つのViewで同じ対象として追跡できる | 省略した属性・制約を復元できる、すべての編集が可逆である |
+| **意味・実行の適合** | Ownerに受理されたMeaningと、対象Operator・Target・実Consumerについて個別に検証できる | ほかのTargetや時点でも自動的に有効である |
+
+「同じDataからTreeもGraphも作れる」という主張は、**各Viewで何を観測できるか**と切り離せない。表現間の変換は、埋め込み・部分射影・集約・近似・意味解釈を区別する。例えばTreeにNode/Edgeの元IDを付けて表示できても、共有Node・複数親・循環や多重Edgeを編集結果から元どおり復元できるとは限らない。画面上の「編集できそうな形」を、Writerが対応できる証拠にしない。
+
+### 42.2 最初の実装は、特定のGraphとSchemaで二段階に分ける
+
+**第一段階：既存のGraph／Tree読取**。同じラベルを持つ二Node、同じSource/Targetを結ぶ二つの有向Edge、Edge固有の属性、別の親からの参照を含む、**一つの小さな固定Graph**を使う。既存Reader/構造・IDで元データを確認し、Tree/Propertyへread-only投影する。各表示に元Node/Edge identityと取得Scopeを結び、表示しきれない辺・属性・共有関係を明示する。Treeで描けたことは「Graphの全情報を保って編集できる」ことの証拠ではない。循環・孤立Nodeはこの同じ固定題材の限定変種で比較する。
+
+**第二段階：固定JSON Schemaの説明**。第40節V0〜V2と[#4667](https://github.com/hat47x/tei-platform/pull/4667)の構造特性を、**明示した一つのDialect**へ限定して使う。`$schema`・`$id`・`$defs`／`$ref`、`oneOf`と`anyOf`の相違、条件付き制約、`default`などの注釈、未知Keywordを構文・制約・表示注釈として区別する。`$dynamicRef`などの評価環境依存機能を既存Readerが扱えない場合は、実装済みと装わず`unsupported`または未評価として扱う。
+
+JSON Schemaは**JSONの値が満たす条件を記述する言語**である。Schemaの`properties`をRecordの全項目が実在すると読み替えたり、`default`を自動保存すべき入力値とみなしたりしない。`oneOf`は指定された候補のうち**一つだけ**が成立する制約で、`anyOf`と同じ「選べる候補一覧」にはできない。`unevaluatedProperties`等の適否が不明なら、構造だけを読んだ状態に留める。
+
+まずHeadlessのSource位置・構造・診断を照合し、その後必要な部分だけをStudioとCLIの実Consumerへ表示する。存在しないSchema Readerを作ったことにして、GUI実装を先に進めない。新Parser/Grammar IR/Renderer Registryの必要性は、既存[#988](https://github.com/hat47x/tei-platform/issues/988)／#1018のReader/Language Pluginで対応できない具体的な差が見つかった場合に限って検討する。
+
+### 42.3 逆編集の適否を、表示結果ではなく変更対象で決める
+
+Studioで一項目の変更を提案する際は、次を別々に扱う。
+
+- **現在の対象**：Qualified Subject、元のSource occurrence／Revision、どのVersion・Language実装で読んだか。
+- **投影の条件**：元のNode／Edge／属性／Schema Keywordと表示先の対応、落ちた情報、共有参照、取得範囲。
+- **変更の条件**：当該操作で対象が一意か、既存Writerがその変化を表せるか、未保存Bufferや後着AI候補と競合しないか。
+- **保存後の確認**：Preview→差分→元Revision確認→既存Writer→独立再Read。意味受理、DB更新、Host Grantや実Target利用は別資格。
+
+初期実装で確認するのは**read-onlyの対象ジャンプと、一意な項目だけの局所Patch候補**まで。GraphをTreeへ射影して多重辺・共有参照が落ちた場合、共有`$ref`の先を複数画面が使う場合、SourceがR0→R1→R0と戻った場合は、自動保存せず対象選択と現在版の再確認に戻る。Designerが「原文に戻れる」と表示しても、未対応のSource Writerがあれば保存操作は`unsupported`のままにする。
+
+これは[協業UX Draft #4605](https://github.com/hat47x/tei-platform/pull/4605)のUX-PIN／UX-DIAG／UX-READへ吸収し、新しい第四のUXフローや承認機構を作るものではない。自然文・Graph・Property・原文のどこから操作しても、同じ対象に戻れることを重視する。
+
+### 42.4 一つの検証票で区別する五つの状態
+
+[#4667](https://github.com/hat47x/tei-platform/pull/4667)のSM-01〜14、[#4605](https://github.com/hat47x/tei-platform/pull/4605)のSX-01〜08と既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#2514](https://github.com/hat47x/tei-platform/issues/2514)を、**新Fixtureの第二正本を作らず**次の限定試験として結び付ける。
+
+| 証明したい状態 | 固定入力と一因子差 | 独立Expectedで確かめること |
+| --- | --- | --- |
+| **Read** | 同名Node／並行有向Edge／別親を持つGraph | Readerが二Node・二Edge・各IDと関係属性を区別し、未取得は空と扱わない |
+| **Project** | 同じGraphからProperty/Treeへ変換 | 戻れる位置と消失情報を明示し、read-only表示は許容する |
+| **Diagnose** | Schemaの`oneOf`／`anyOf`、未知Keyword、未解決`$ref` | 取り込んだ構文・適用可能な制約・未評価を区別し、存在しないSource位置を作らない |
+| **Propose** | 一意な単一Keyword対、共有`$ref`先・古いRevision | 前者だけ条件付きPatch候補、後者は曖昧／staleとして自動書込0 |
+| **Consume** | 同じSubjectをCLIとStudioへ投影 | 各実Consumerが受領したことを独立に確認。見た目一致だけでMeaning・Grant・Writer・Buildを受理しない |
+
+記録する最小限の情報は`Subject/Source Revision、選択Reader、Projection/Target、Scope、preserved/omitted、独立Expectedの根拠、実Consumer/Attempt`とする。既存EvidenceとScenarioの**適用先を明確にする記録欄**であって、新しいCore構造、Version Registry、万能Projection Engineは不要である。どの項目を実際に観測できたかを示し、未観測欄は`unknown`とする。
+
+### 42.5 最新の進捗と、実装の優先順位
+
+- **設計上の進展**：[構造対応付け #4667](https://github.com/hat47x/tei-platform/pull/4667) HEAD `d5039dd048fb552f4462b6ebc12d1709d22d0e21`はDraft/未mergeで、確認時のGitHub Actionsは**1 success／1 in_progress**。SM-01〜14とS0〜S5は受入計画であって、実試験の合格ではない。[実行モデル追補 #4668](https://github.com/hat47x/tei-platform/pull/4668)はmainへ統合されたdocs-only設計であり、Target移植の実機検証を示さない。
+- **近接する設計**：[数理・計画Toolkit #4670](https://github.com/hat47x/tei-platform/pull/4670)は、移動平均→WBS/CPM→Solver/DOEの独立Expectedの順と、Schema→Source位置→限定編集のStudio実証を提案するDraft。これらを**Rendererができたから数値的にも正しい**と扱わない。[Plugin Role/Stage #4671](https://github.com/hat47x/tei-platform/pull/4671)は同一Meaningに対する段階別Contribution/Source往復を整理した新Draftで、確認時**1 success／1 in_progress**。Editorで読めることとRuntime/Stage2へ必要なContributionが提供されたことを分離する。
+- **P0は変更しない**：[#4587](https://github.com/hat47x/tei-platform/pull/4587) HEAD `9b58533df8764a74c578d478d8c6ee92a382642e`の12/12 Workflow成功は生成・通常DesktopのB0実績に限定する。正式な非Plugin Build Intent→Stage1がStage2を生成→そのStage2がWindows WebView2で実行される検証は[#4583](https://github.com/hat47x/tei-platform/issues/4583)/#2831の最優先。通常製品CLI→選択した実Provider→独立Consumerも[#4495](https://github.com/hat47x/tei-platform/issues/4495)/#2586の並行P0とする。Capability Sourceの検査[#4654](https://github.com/hat47x/tei-platform/pull/4654)/[#4655](https://github.com/hat47x/tei-platform/pull/4655)は各現HEAD**7/8 CI success、Health failure**（Go整形、#4655は設計索引も不足）を修正後に再検収する。
+- **P1の最短実装**：#2497/#2514による**一GraphのRead→二View→loss診断**を先に通し、次に#988/#2620/#1124で固定DialectのJSON Schema V0〜V2を試す。逆編集・宣言的View・Grammar自身の自己定義は、必要なSource同一性とWriter可否が実証されてから個別に判断する。
+
+**実装判断の基準**は、同じ表示結果を作れたことではない。**意味を保持する条件を説明でき、失われた情報を隠さず、戻せない編集を停止できること**である。これを一つの小さな試験で確認し、足りない契約だけを既存Ownerが補う。
+
+**状態**：本節は直近の他チャット・Issue・GitHub PR/Actionsの読取りによる**docs-only計画の追補**。SM/SXの新しい実試験、Graph/Schema ReaderやGUIの追加、Go/Windows/Provider/DBの実行、Owner意味受理、Stage2の新セルフビルドは行っていない。正式なMeaning Schema/Grammar IR/Plugin ABIの採用をここで宣言しない。
