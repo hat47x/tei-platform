@@ -170,6 +170,26 @@ Gate C — PAS-04 Evidence — Ready
 
 **検収票の分離**：生成したSource、実Builder入力、生成したArtifact、Stage1実Process、Stage2実呼出し、実Desktop WebViewでの使用、外部Provider/Consumerの受領を別欄に記録する。各段階に対応した実失敗・Source改版・未取得/partial・同名別Workspace・旧bundleの負例を独立Expectedで確認する（#1180/#2514）。**今回の計画追補は実装・GUI・CLI・Stage2の新たな製品E2Eを実行したものではない**。
 
+### 横断Pluginの契約適格性をStudio主線へ合流させる（2026-11-14、設計・検収計画）
+
+**採用済み方針と未採用の方式を分ける**。ADR-0032/0033/0043/0048に沿い、共通の型付きApplication Operationを維持し、`Contract/Role → exact Provider Selection → Build/Load Inclusion → actual Invocation → Host Authority/Effect → Consumer`を一つの「Pluginが使えた」に畳まない。Source Adapter（authoring）、Operator/Rule、Target Generator（build）、Runtime Data Provider、Presentation/Interactionは**用途別Role**であり、Package境界やCore固定enumではない。同じBundleが複数Roleを持ってよいが、Stage1で使ったGeneratorをStage2へ自動同梱せず、Stage2で必要なProviderの実組込みを省略しない。契約正本・選択・配布/実Artifact・実行時Grantは、それぞれ既存#951/#1016/#943/#3267/#1174の責務に置く。
+
+**Graph/Hookの最小Obligation**：#4198のLifecycle Graphは標準データ構造・型付きRoleからの候補であり、Source/Graph Patch/Diagram Layoutを別に扱う（#2495/#2497/#2620/#4350）。PluginがGuard/Validation/分岐を追加しても、実作用Pathでは「必要Readと取得Scopeの完備 → 必須Guard/Target/Current Grant → 単一Call主体 → 実Call Outcome → Effect/Receipt」の依存関係を保持する。Graph上の支配関係だけでHostのCommit時認可や原子性を証明しない。Transform後の再検証、Plugin無効化による必須Guard欠落、選択世代変更・A→B→A、同名別Source/Workspace、Graph layout-only変更を区別し、適格性を再判定する。現行`uses`の「呼ぶ約束」を権限上限へ無断変更せず、effectful Bindingで自動CallとImplementation内Callが混在し実行主体・回数を定められない場合は適格化しない。
+
+**既存Hookの追加反証（新Runnerを作らない）**：#1129/#4198のHG-10〜23を既存#1180/#2514の独立Expectedで検査する。HG-20（A拒否後のB実Call=0を要するeffectful構成）、HG-21（row必須read欠落時の実Call=0）、HG-22（Caller到達後の失敗と未呼出しの区別）、HG-23（前行作用・後行拒否とTx/Receiptの区別）を、現行挙動のCharacterizationと安全Expectedで別票にする。`CallOutcome.Called`／`RowCallOutcome.Called`や終了コードだけから実作用を推測しない。純粋/read-onlyの複数診断まで一律fail-fastへ改変しない。作用不明のFailure伝播はDraft #4602の限定担当を維持し、Receipt照会・独立Read・再送判断は#1174へ委譲する。
+
+**横断再資格の識別**：同一Attemptで`Source occurrence/revision`、`World Fingerprint`、`Model Revision`、`Artifact Revision`、要求Contract/Scope、選択Providerと実Artifact member/actual entry、Host current Grant/Target、Effect/Receipt、Consumer受領を**必要な範囲だけ**Joinする。byte一致は生成器の意味受理でも実Consumer使用でもない。Read-onlyでは不要なEffect証拠を要求しない。非公開/未取得/partial/complete-empty、時間付き組織Grant、B2Cの独自UI、AI/音声の候補Eventを同じ成功/許可へ昇格しない。AIのInspect→Preview→Review→Accept→再投影は既存のOwner受理とSource復帰を通し、業務Operationを新設しない（#1124/#3503/#3509/#2516）。
+
+**現在の実行順と引渡し**：
+
+1. **P0-Buildを最優先**：#4583/#2831でN2 esbuild→N3 Go embed→非Plugin Desktop Buildへの一辺を、既存BuildIntent/BuildExecution/ArtifactSetに接続。次にStage1実Process→Stage2実Windows Desktop→Stage2自身の実Consumer。Graph Compiler・Plugin管理S3・X-TEA原典完全移植を初回Hard Gateにしない。
+2. **P0-Safetyを並行**：#1129でHG-20/21/22を既存Recording Callerと行Scope Fixtureで特性化し、独立安全Expectedとの差を記録。HG-23の実PG/外部Effectは#1174の物理確定境界へ分離する。
+3. **P1-Selected→Actual**：#1251/#951/#1016と#4611/#4612でInspector/三要素分析法のモデルを扱うPluginの共通Seamを比較し、CLI/Studioの二Consumer×Provider A/Bで、同値JSONでもB選択→A実呼出しを拒否する。固定参照Host内の静的importと案件Profileでの不要Plugin非収録は別資格。
+4. **P2-Graph R0/R1**：#4198でBase+Patchのread-only二例、必須Guardを迂回する負例、Plugin無効化の効果、行・Call停止の契約を評価。実Graph Generator全面実装/実Voiceは採否保留。
+5. **P3-異質Consumer**：#3503/#3509のVUI/AI Chat/B2C、#2044の管理有効化・更新、#2586の実Read、SHO/SUI/KON/外部Harnessは各Ownerにより必要なContractと受領・権限を個別実証する。別Host、第二意味正本、第二Resolver/Registry、汎用Transaction Coordinatorは作らない。
+
+**証拠の上限**：本節はmainの現行Hook/Buildソース、既存IssueとDraft #4570/#4572/#4589/#4601/#4602を突合した設計・検収の引渡しであり、新Go試験、実DB作用、全Lifecycle Graph、Stage2実Desktop、Owner意味受理を実施・完了したものではない。既存のP0優先順を変更せず、ドラフト成果とmain統合済み成果を混同しない。
+
 ## 現在の判定段階と引継ぎ
 
 ### 判定段階A：アプリケーションの意味を実行・検証環境へ渡せる
