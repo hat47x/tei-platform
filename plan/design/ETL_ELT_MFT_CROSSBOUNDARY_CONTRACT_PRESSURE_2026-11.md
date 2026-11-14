@@ -652,6 +652,21 @@ HULFT-HUB Ver.3公式マニュアル第20版（2025-12-01）は、蓄積を使�
 
 **実行状態と証拠の限界**：本節はmainの4つのGo Source/既存UnitとIssue/PRの**静的照合・設計追補**。追加の実CLI/Goテスト、実PG・MFT・二Worker競合、同一AttemptのReceipt連結、実業務Owner受理は**NOT RUN**。[#4240の専用CLI #42933670806](https://github.com/hat47x/tei-platform/actions/runs/42933670806)はsuccessだが、同HEADの[Repository Health #42933670781](https://github.com/hat47x/tei-platform/actions/runs/42933670781)はfailure（`TestParallelClaim`/ `TestToolsReadmeMentionsEveryEntry`、本節のコードと別）であり、全体成功へ読み替えない。新しい本PRのCI合否は別途確認する。
 
+### 16.2.1 異なるClose／Correction能力が共存する期間の再開
+
+**2026-11-11 main `2202baa96e5e845c996da62c8f8df27e00d45c43` の新しいFit/Gap（修正提案）**：main統合済み[PR #4357](https://github.com/hat47x/tei-platform/pull/4357)は`periods -advance`の再開に`CheckReopenRequirement`を追加し、`correction via Y`の検査を導入した。ただし同じ経路では先に`CheckCloseRequirement`を**全遷移に対して**実行している。その関数は`close-requires X`が存在すると`from/to`に関係なく`ranCapability == X`を要求するため、**XとYが異なる合法な宣言**では`closed→open`に対してXとYを同時に満たす必要が生じ、単一`-close-capability`では到達できない。
+
+| 遷移 | 必要なCapability | 修正候補と独立Expected |
+| --- | --- | --- |
+| `open→closing` | 宣言されたClose X | `CheckCloseRequirement(X)`を適用。Yのみでは拒否、Xでは許可 |
+| `closing→closed` | 宣言されたClose X | 従来どおり同じCloseを要求（ただし実Receiptは依然Caller申告と別） |
+| `closed→open` | 宣言されたCorrection Y | **Close Xの照合を適用せず**`CheckReopenRequirement(Y)`だけが当該遷移の能力を判定。Xのみなら拒否、Yなら許可 |
+| 無宣言／別遷移 | Sourceに無いDefault能力を創作しない | 既存`NextState`と宣言の適用範囲を維持。相互に条件を足して再開不能にしない |
+
+**修正の最小単位**：新Period DSL/State Engine/Runnerを作らず、既存`CheckCloseRequirement`を`open→closing`と`closing→closed`に限り、既存`CheckReopenRequirement`の`closed→open`条件は維持する。既存`period_requirement_test.go`へ同一PeriodにX/Yが共存する負例と2つのClose遷移の回帰を追加。**この試験の成功＝IDの適用範囲が改善**した資格であり、`-close-capability`のCaller申告から実訂正Capabilityの実行・Owner Grant・Receipt・再Open時の業務副作用が証明されたわけではない。
+
+**他担当との重複回避**：[Draft #4389](https://github.com/hat47x/tei-platform/pull/4389)は`cmd/tei`のState保存後のHandler Error＋Readbackを実Workspaceで検査しており、今回の`internal/operations`の遷移ごとの能力選択とは別Owner境界。§16.4の試験内容を重複実装せず、同一Period Dの最終受入では`Close/Correction宣言→Caller ID→State Readback→独立Effect/Owner Receipt`を別列に扱う。実MFT、File/Import、実DB修正、二Worker CASは引き続きNOT RUN。
+
 ### 16.3 非0終了後の期間状態書込み：ErrorとEffect Unknownを分離
 
 **追加のSource-static条件付き反例（実CLI試験はNOT RUN）**：`runPeriodsCommand`は `-advance` の有効性・`close-requires`のID一致を確認後、**`periodstate.Writer.Write`で期間状態を保存してから** `operations.CheckPeriods(surface, states)`を評価し、拒否されるOperationがあればJSONを出力した後、`fmt.Errorf("%d operation(s) are refused by the period state", ...)`でエラーを返す。したがって「対象Periodに拒否対象Operationが存在し、`-advance`で新Stateを保存後にCheckPeriodsが非空となる」条件では、**非0 exit / CLI Errorでも状態Fileの更新が既に成功している経路**がSource上にある。これは実行の失敗と永続状態が変わらなかったことの**同値でなさ**を示す。実対象Workspace/Go CLIでの到達・File/FS耐久性は未実測。
