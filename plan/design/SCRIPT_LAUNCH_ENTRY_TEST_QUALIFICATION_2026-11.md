@@ -472,6 +472,14 @@ main `e888bb8f...` で`reference/workspace/semantic`配下の6つの`*.tei` Sour
 
 **合否に用いる最小対照**：未公開Functionのcall 0（EL-01）、`line-amount`が`reference-local`のままなら`published`に昇格しない、`Effect`フィールドのnilだけでpureとは宣言しない、`security.authorize`の名前付き業務OutcomeとHost Admissionを混同しない。独立Expectedの正本は#1180/#2514、Function/Entry公開のOwnerは#2502/#4495に維持する。
 
+#### D8の実装資産とProduct起動の分界（#1705・#1637）
+
+さらに`reference/derivation-typed-arithmetic`（#1705はclosed）には、型・単位・通貨を照合して既存`internal/semantic/derivationref.Multiply`による厳密10進演算へ接続し、`RoundExact`で最終結果のみhalf-up/half-even・precisionを検査する**合成Reference**がある。既存testには`2×300=600.00`、`1×1.005`のhalf-up/half-even分岐、kg対piece、JPY/USD、NULLと未取得、精度超過が含まれる。新たな算術Engine・通貨Registry・小数点ライブラリをP0で作らないための重要な再利用資産となる。
+
+ただし`reference/derivation-typed-arithmetic/README.md`は「Canonical仕様、受理済Operator、本番通貨処理ではない」と明記している。`RoundExact`等は**referenceパッケージの検証対象**であり、製品のruntimeがreference fixtureをimportして本番Provider資格を得る構成にはしない。Product Providerの実装では、既存D1の意味契約と`derivationref.Multiply`をFit/Gap検討し、decimal scale/通貨・単位・NULL/OutputのルールはOwnerのAccepted Meaning/既存Operator/Target Contractへ束縛する。参照testのPASSは、業務意味の受理・Operator登録・Stage2実Provider/実CLI結果の検収には昇格しない。
+
+**実装に有効な二経路**：A0のOwner受理を進めながら、A1の技術的な配線・Adapterの局所検査は明示的なsynthetic/reference-only Fixtureで並行してよい。ただし前者の受理済みEntryと後者の合成結果を別Subject/Contract/Attemptのまま足し算してProduct Q2としない。Product合格には、受理済み同一Contract・選択Provider・実Go/CLI起動・出力観測を一つに結ぶ必要がある。
+
 ### 13.2 実コード・既存テストから確定できる境界
 
 | 実装／Fixture | 現在確認できること | Product Q2に必要な最小delta |
@@ -486,7 +494,7 @@ main `e888bb8f...` で`reference/workspace/semantic`配下の6つの`*.tei` Sour
 
 **PR-A0：意味と公開対象の確定（#4495／#2502／Meaning Owner）**。上記13.1の実Capability棚卸しから、**Ownerが受理したpure意味・必要Read/Effectの分類・Output型・NULL/丸め/単位・Target適合**を一件確定する。候補が`reference-local`だけならそれをIssueへ報告し、Meaningの通常レビュー/受理とEntryの明示公開を別々に確認するまで`published`へ進めない。出典Source occurrence／Contract revisionと、選択済みCompositionの明示Entry公開（非公開時call=0）を局所Testで確かめる。UI Function Catalog/静的`command`と混同しない。
 
-**PR-A1：共通Product Operationと実Go Provider（#4495／#951／#1251／#3422）**。既存`Capability`と`capabilityinvoke`のResult modeを利用し、Hostが構成したTrusted Contextと現在Selectionから選択したGo実装へDispatchする。typed Inputの欠落/明示NULL/未取得を失わず検証し、実Outputは値・型・presenceをMeaningの必要条件に従って照合する。A/Bが同じ`600.00 JPY`を返しても、B選択/A実Callを外側WitnessでFAILにする。全Target共通Runner、第二Provider Registry、汎用`Result any`の無検査透過は採らない。
+**PR-A1：共通Product Operationと実Go Provider（#4495／#951／#1251／#3422）**。既存`Capability`と`capabilityinvoke`のResult modeを利用し、Hostが構成したTrusted Contextと現在Selectionから選択したGo実装へDispatchする。計算を実装する場合は既存D1の`derivationref.Multiply`と#1705の型付きD8 Referenceを再利用可能な足場として評価し、**reference-only実装のimport/テスト成功だけで採用済みOperator・製品Providerだと主張しない**。typed Inputの欠落/明示NULL/未取得を失わず検証し、実Outputは値・型・presenceをMeaningの必要条件に従って照合する。A/Bが同じ`600.00 JPY`を返しても、B選択/A実Callを外側WitnessでFAILにする。全Target共通Runner、第二Provider Registry、汎用`Result any`の無検査透過は採らない。
 
 **PR-A2：実製品CLI二入口（#4495／#3422）**。採用済みの正式CLI起動面を`acceptedCommands`／main Dispatch／Help／既存コマンド回帰と一緒に接続。CLIがProduct Operationへ直接変換し、ReferenceExecutorや別独自計算実装を経由しないことを検証。`go build`した**別プロセスの実`tei`**のbinary/argv/exit/Result bodyと、**そのプロセス内のProvider境界**に由来する実Call Evidenceを確認する。Go API内のcounterやCLIの`provider=B`自己申告だけで入口同値を主張しない。Transport formatと契約上のResultを復号後に比較し、既存CLI JSON v0の無断変更を避ける。
 
