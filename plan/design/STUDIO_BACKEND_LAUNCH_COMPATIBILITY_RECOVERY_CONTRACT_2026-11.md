@@ -401,12 +401,12 @@ main統合済み[#4733](https://github.com/hat47x/tei-platform/pull/4733)では�
 
 | 変更内容 | 実際に必要な処理 | 新しく確認する証拠 | 禁止する誤判定 |
 | --- | --- | --- | --- |
-| CallerがNode IDを`n-1`から`n-2`へ変更 | **同じ実Artifactを再実行**。Invocation/Resultは新しいAttempt | 実Image Digest不変、argv／入力の実Byte、実Result、独立Expected | 入力変更だけでSource／Generatorが変わったとする |
+| 呼出側がNode IDを`n-1`から`n-2`へ変更 | **同じ実Artifactを再実行**。Invocation/Resultは新しいAttempt | 実Image Digest不変、argv／入力の実Byte、実Result、独立Expected | 入力変更だけでSource／Generatorが変わったとする |
 | Node/Edgeの向きやRule条件を変更 | Source/Meaningの再検証後、依存するGo生成・Buildを再評価 | 変更したSource span、Rule、生成Go／Artifact、出力の差 | 旧Artifactの同じ応答を現在の意味に流用 |
 | Mermaidの配置・説明だけ変更 | Source変更を記録。意味が不変と確認できた範囲のみ生成の省略を検討 | Source Revision、Meaning Revision、独立な再利用受理 | 意味不変なのでSourceの再確認も不要とする |
-| Plugin Artifact／Generator Toolchainを更新 | 実Build／Plugin Lockと契約の互換性を再評価。旧Invocationは開始時の実Artifactに固定 | Toolchain実Version・引数・環境、Artifact Digest、実選択Provider | 同じ版名・同じResultで実Image同一とする |
+| Plugin成果物／生成器のToolchainを更新 | 実Build／Plugin Lockと契約の互換性を再評価。旧Invocationは開始時の実Artifactに固定 | Toolchain実Version・引数・環境、Artifact Digest、実選択Provider | 同じ版名・同じResultで実Image同一とする |
 | Current Grantを撤回、Remote接続先を変更 | 新Invocationの認可・選択先を再検査。単なるGrant更新は原則再コンパイル理由ではない | Host-issued Scope、現在Grant、接続先、実Attempt | 旧Lock／Client情報をAuthorityにする |
-| SourceがA→B→Aへ戻る | Raw Byteが一致しても現在Revision／受理とWorld Fingerprintを照合 | Source取得時点、World／Model／Artifactの独立Revision | Digest一致のみで旧Evidenceを無条件再利用 |
+| SourceがA→B→Aと変更される | Raw Byteが一致しても現在Revision／受理とWorld Fingerprintを照合 | Source取得時点、World／Model／Artifactの独立Revision | Digest一致のみで旧Evidenceを無条件再利用 |
 
 この表は既存のWorld Fingerprint、Model Revision、Artifact Revision、Operation/Attempt、Plugin Lock、現在Grantを参照する。第二の失効管理器は作らない。まず`reference/tei-md-graph-reader`の既存独立Expectedを、**生成済みBinaryの実行時入力**と**定義／Rule変更後の生成物**の違いを調べるテストへ再利用する。製品CLI／Plugin/Studioで同じ意味処理が成立するかは別Gateで検収する。
 
