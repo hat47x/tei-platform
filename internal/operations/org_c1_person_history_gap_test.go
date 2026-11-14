@@ -7,7 +7,9 @@ import (
 	"testing"
 
 	"tei/internal/database/persistence"
+	"tei/internal/database/providers/postgres"
 	"tei/internal/semantic"
+	"tei/internal/validation"
 	"tei/internal/workspace"
 )
 
@@ -145,6 +147,103 @@ func TestOrgC1RelationStorageIRCanRepresentSupportColumnWithoutPersonAttribute(t
 		restored.RelationStorage[0].Components[0].Column != "person_support_id" {
 		t.Fatalf("candidate relation support identity was not preserved: %+v", restored.RelationStorage)
 	}
+}
+
+// This pressure test uses the REAL organization Workspace and the existing
+// production validation/desired-schema code. It mutates only a local loaded
+// World, never the accepted .tei Source, database, or Owner meaning.
+// The new Person -> Membership keyless relation is just a candidate, not a
+// commitment to Person as the only possible member type.
+func TestOrgC1CandidatePersonRelationStorageValidatesAndRealizesOffline(t *testing.T) {
+	root := filepath.Join("..", "..", "reference", "org-staged-axis")
+	loaded, err := workspace.Load(root)
+	if err != nil {
+		t.Fatalf("load org-staged-axis: %v", err)
+	}
+	world := loaded.World
+	personNamespace, personData, mappingIndex := -1, -1, -1
+	for i := range world.Semantics {
+		for j := range world.Semantics[i].Data {
+			if world.Semantics[i].Data[j].ID == "organization.person" {
+				personNamespace, personData = i, j
+			}
+		}
+	}
+	for i := range world.Persistence {
+		if world.Persistence[i].SemanticData == "organization.membership" {
+			mappingIndex = i
+		}
+	}
+	if personNamespace < 0 || mappingIndex < 0 {
+		t.Fatalf("person/membership mapping missing: namespace=%d mapping=%d", personNamespace, mappingIndex)
+	}
+
+	relation := semantic.Relation{
+		ID:          "organization.person.memberships_candidate",
+		Symbol:      "membershipsCandidate",
+		Target:      "organization.membership",
+		Cardinality: semantic.CardinalityMany,
+	}
+	person := &world.Semantics[personNamespace].Data[personData]
+	person.Relations = append(person.Relations, relation)
+	mapping := &world.Persistence[mappingIndex]
+	mapping.RelationStorage = append(mapping.RelationStorage, persistence.RelationStorageMapping{
+		Relation: relation.ID,
+		Components: []persistence.RelationStorageComponentMapping{{
+			SourceAttribute: "organization.person.person_id",
+			Column:          "person_support_id",
+			Storage:         persistence.StorageVarchar,
+			Nullability:     persistence.Required,
+		}},
+	})
+
+	if diagnostics := validation.ValidatePersistenceRelationStorageMappings(world); len(diagnostics) != 0 {
+		t.Fatalf("candidate source->target relation storage rejected by real validator: %+v", diagnostics)
+	}
+	desired, err := persistence.RealizeDesired(
+		[]persistence.Mapping{*mapping}, "org_store", postgres.RealizationPolicy{},
+	)
+	if err != nil {
+		t.Fatalf("real offline PostgreSQL schema realization rejected the candidate: %v", err)
+	}
+	table, ok := desired.Table("public.org_memberships")
+	if !ok {
+		t.Fatalf("candidate mapping did not realize org_memberships table: %+v", desired.Tables)
+	}
+	support, ok := table.Column("person_support_id")
+	if !ok || support.Nullable || support.Ordinal != len(mapping.Columns)+1 {
+		t.Fatalf("Relation Storage support column not realized as a required physical column: %+v", table.Columns)
+	}
+	if len(table.PrimaryKey) != 1 || table.PrimaryKey[0] != "membership_id" {
+		t.Fatalf("candidate must not silently change history PK: %+v", table.PrimaryKey)
+	}
+	if len(table.ForeignKeys) != 0 {
+		t.Fatalf("candidate must not infer a physical FK from business Relation: %+v", table.ForeignKeys)
+	}
+	for _, column := range mapping.Columns {
+		if column.Attribute == "organization.membership.person_id" {
+			t.Fatal("candidate incorrectly added a Person attribute to Membership")
+		}
+	}
+
+	// Counterexample: source component actually belongs to Membership, not
+	// the Person data that declares this Relation. The existing validator
+	// must reject the misdirected physical join.
+	mapping.RelationStorage[0].Components[0].SourceAttribute = "organization.membership.membership_id"
+	diagnostics := validation.ValidatePersistenceRelationStorageMappings(world)
+	found := false
+	for _, diagnostic := range diagnostics {
+		if diagnostic.Code == "PERSISTENCE_RELATION_STORAGE_SOURCE_ATTRIBUTE_PARENT_MISMATCH" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("source/target attribute confusion was not rejected: %+v", diagnostics)
+	}
+
+	// This validates only the *hypothetical* IR and desired schema. It does
+	// not load a Person-Membership .tei relation-storage authoring file, read
+	// actual PostgreSQL rows, ensure bitemporal co-storage, or accept meaning.
 }
 
 func TestOrgC1CurrentAsOfQueryDoesNotYieldPersonIdentity(t *testing.T) {
