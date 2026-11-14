@@ -33,6 +33,7 @@ func selectedReadOnlyFlagError(out io.Writer, command string, err error) (int, e
 // keeps the two in agreement. `model catalog` is not listed here because it
 // parses its own arguments instead of the shared FlagSet.
 var selectedReadOnlyFlagAllowlist = map[string][]string{
+	"external-candidates": {"evidence-path", "tool-version", "observation-id", "relation-id", "expected-evidence-id", "expected-received-digest", "expected-source-revision"},
 	"inspect": {"workspace", "subject-kind", "subject-id"},
 	"view":    {"workspace", "application", "pattern", "package", "format", "command", "input", "execute", "reference-store", "period-state", "allow-capability", "operation-log", "lifecycle-state", "lifecycle-command", "lifecycle-owner", "lifecycle-generation"},
 	"trace": {
