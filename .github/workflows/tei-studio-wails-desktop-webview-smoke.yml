@@ -317,6 +317,24 @@ jobs:
           Copy-Item -LiteralPath $generated -Destination $consumedSource -Force
           $installed = (Get-FileHash -LiteralPath $consumedSource -Algorithm SHA256).Hash.ToLowerInvariant()
           if ($installed -ne $actual) { throw 'N0 generated part was not installed as the Workbench input' }
+
+          # The TEI-invoked N0 part is the producer for N2's selected TS input.
+          # This receipt is a bounded byte/role/attempt observation, not an
+          # authoritative BuildIntent graph or proof of esbuild read-time bytes.
+          $n0N2Producer = @{
+            schemaVersion = 'tei.reference.studio-n0-n2-producer/v0'
+            role = 'inspector.reader.source'
+            format = 'text/typescript'
+            path = $consumedSource
+            digest = "sha256:$installed"
+            bytes = [long](Get-Item -LiteralPath $consumedSource).Length
+            invokerReceipt = 'n0-tei-self-build-entry.json'
+            comparisonReceipt = 'n0-inspector-comparison-generator.json'
+            exactHead = $env:CANDIDATE_HEAD_SHA
+            attempt = '${{ github.run_id }}-${{ github.run_attempt }}'
+          }
+          $n0N2Producer | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n0-n2-inspector-producer.json') -Encoding utf8
+          Write-Host "N0-N2-inspector-producer-recorded sha256:$installed"
           $reportJson | Set-Content -Path (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n0-inspector-comparison-generator.json') -Encoding utf8
           foreach ($pair in @("N0.contract=$contractHash", "N0.transform=$transformHash", "N0.output=$actual", "N0.workbenchInput=$consumed")) {
             $pair | Add-Content -Path (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'generation-provenance.txt') -Encoding utf8
@@ -343,6 +361,27 @@ jobs:
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             npm run typecheck
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+            # Verify N0's actual artifact on disk immediately before the real
+            # N2 esbuild invocation. Selection is checked from its metafile
+            # afterwards; the two observations do not prove read-time capture.
+            $n0N2ReceiptPath = Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n0-n2-inspector-producer.json'
+            if (-not (Test-Path -LiteralPath $n0N2ReceiptPath -PathType Leaf)) { throw 'N0 source producer receipt missing before N2' }
+            $n0N2Producer = Get-Content -LiteralPath $n0N2ReceiptPath -Raw | ConvertFrom-Json
+            $expectedInspectorPath = 'reference/tei-studio-workbench/inspection-reader.generated.ts'
+            if ($n0N2Producer.schemaVersion -cne 'tei.reference.studio-n0-n2-producer/v0' -or
+                $n0N2Producer.role -cne 'inspector.reader.source' -or $n0N2Producer.format -cne 'text/typescript' -or
+                $n0N2Producer.path -cne $expectedInspectorPath -or
+                $n0N2Producer.invokerReceipt -cne 'n0-tei-self-build-entry.json' -or
+                $n0N2Producer.exactHead -cne $env:CANDIDATE_HEAD_SHA -or
+                $n0N2Producer.attempt -cne '${{ github.run_id }}-${{ github.run_attempt }}') {
+              throw 'N0 source producer role/path/HEAD/attempt does not match this N2 invocation'
+            }
+            $n0N2BeforeHash = (Get-FileHash -LiteralPath 'inspection-reader.generated.ts' -Algorithm SHA256).Hash.ToLowerInvariant()
+            $n0N2BeforeBytes = [long](Get-Item -LiteralPath 'inspection-reader.generated.ts').Length
+            if ($n0N2Producer.digest -cne "sha256:$n0N2BeforeHash" -or [long]$n0N2Producer.bytes -ne $n0N2BeforeBytes) {
+              throw 'N0 generated Inspector bytes changed before N2 esbuild'
+            }
             # esbuild's metafile is emitted by the very build that produces the
             # Desktop bundle, not by a second dry-run resolver.
             node --input-type=module -e 'import { build } from "esbuild"; import { resolve } from "node:path"; import { writeFileSync } from "node:fs"; const result = await build({ absWorkingDir: process.cwd(), entryPoints: ["main.generated.ts"], outfile: resolve(process.cwd(), "../../cmd/tei-studio/assets/workbench/main.js"), bundle: true, format: "esm", platform: "browser", target: "es2022", metafile: true, nodePaths: [resolve(process.cwd(), "node_modules")] }); writeFileSync(resolve(process.env.STUDIO_SMOKE_EVIDENCE_DIR, "n2-esbuild-metafile.json"), JSON.stringify(result.metafile, null, 2));'
@@ -373,6 +412,73 @@ jobs:
             $metaObservedSources += @{ path = $inputPath; selectedByEsbuild = $true; digestAfterBuild = "sha256:$hash" }
           }
           $metaObservedSources | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n2-esbuild-selected-sources.json') -Encoding utf8
+
+          # The same N2 esbuild process selected this specific TS source.
+          # Join its real selection with N0's producer receipt on a single
+          # role, physical member, digest, exact HEAD, and run attempt.
+          $n2InspectorSelected = @($metaObservedSources | Where-Object { $_.path -ceq 'inspection-reader.generated.ts' })
+          if ($n2InspectorSelected.Count -ne 1) { throw 'N2 did not select exactly one N0 Inspector source input' }
+          $n0N2AfterDigest = [string]$n2InspectorSelected[0].digestAfterBuild
+          $n0N2AfterBytes = [long](Get-Item -LiteralPath 'reference/tei-studio-workbench/inspection-reader.generated.ts').Length
+          if ($n0N2AfterBytes -ne $n0N2BeforeBytes -or $n0N2AfterDigest -cne "sha256:$n0N2BeforeHash") {
+            throw 'N0-N2 Inspector input changed during N2 esbuild'
+          }
+          $checkN0N2 = {
+            param([string]$role, [string]$path, [string]$digest)
+            if ($role -cne 'inspector.reader.source' -or $path -cne 'reference/tei-studio-workbench/inspection-reader.generated.ts') {
+              throw 'N0-N2 Inspector source role/path mismatch'
+            }
+            if ($digest -cne $n0N2AfterDigest) { throw 'N0-N2 Inspector source digest mismatch' }
+          }
+          & $checkN0N2 $n0N2Producer.role $n0N2Producer.path $n0N2Producer.digest
+          # Negative controls: changed bytes of an isolated copy, and a fake
+          # role/path with the original bytes. Neither alters the actual input.
+          $changedInspectorCopy = Join-Path $env:RUNNER_TEMP ('tei-n0-n2-modified-' + [guid]::NewGuid().ToString('N') + '.ts')
+          Copy-Item -LiteralPath 'reference/tei-studio-workbench/inspection-reader.generated.ts' -Destination $changedInspectorCopy
+          Add-Content -LiteralPath $changedInspectorCopy -Value '// N0-N2 negative control'
+          $changedInspectorHash = (Get-FileHash -LiteralPath $changedInspectorCopy -Algorithm SHA256).Hash.ToLowerInvariant()
+          $changedBytesRejected = $false
+          try { & $checkN0N2 $n0N2Producer.role $n0N2Producer.path "sha256:$changedInspectorHash" }
+          catch {
+            if ($_.Exception.Message -notmatch 'N0-N2 Inspector source digest mismatch') { throw }
+            $changedBytesRejected = $true
+          }
+          if (-not $changedBytesRejected) { throw 'N0-N2 changed Inspector copy unexpectedly passed' }
+          $changedRoleRejected = $false
+          try { & $checkN0N2 'other.role' $n0N2Producer.path $n0N2Producer.digest }
+          catch {
+            if ($_.Exception.Message -notmatch 'N0-N2 Inspector source role/path mismatch') { throw }
+            $changedRoleRejected = $true
+          }
+          $changedPathRejected = $false
+          try { & $checkN0N2 $n0N2Producer.role 'other/inspection-reader.generated.ts' $n0N2Producer.digest }
+          catch {
+            if ($_.Exception.Message -notmatch 'N0-N2 Inspector source role/path mismatch') { throw }
+            $changedPathRejected = $true
+          }
+          if (-not $changedRoleRejected -or -not $changedPathRejected) { throw 'N0-N2 false role/path with valid bytes unexpectedly passed' }
+          $n0N2Handoff = @{
+            schemaVersion = 'tei.reference.studio-n0-n2-handoff/v0'
+            role = $n0N2Producer.role
+            format = $n0N2Producer.format
+            path = $n0N2Producer.path
+            producerReceipt = 'n0-n2-inspector-producer.json'
+            invokerReceipt = $n0N2Producer.invokerReceipt
+            esbuildSelectionReceipt = 'n2-esbuild-metafile.json'
+            selectedByEsbuild = $true
+            digestBeforeEsbuild = "sha256:$n0N2BeforeHash"
+            digestAfterEsbuild = $n0N2AfterDigest
+            bytesBeforeEsbuild = $n0N2BeforeBytes
+            bytesAfterEsbuild = $n0N2AfterBytes
+            changedCopyNegativeRejected = $changedBytesRejected
+            changedRoleNegativeRejected = $changedRoleRejected
+            changedPathNegativeRejected = $changedPathRejected
+            readTimeClosureProved = $false
+            exactHead = $n0N2Producer.exactHead
+            attempt = $n0N2Producer.attempt
+          }
+          $n0N2Handoff | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n0-n2-inspector-handoff.json') -Encoding utf8
+          Write-Host "N0-N2-selected-inspector-handoff-verified sha256:$n0N2BeforeHash"
           Write-Host "N2-esbuild-selected-inputs-recorded count=$($selected.Count)"
           $bundle = 'cmd/tei-studio/assets/workbench/main.js'
           $source = 'reference/tei-studio-workbench/main.generated.ts'
@@ -529,6 +635,17 @@ jobs:
           $n0Report = Get-Content -LiteralPath (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n0-inspector-comparison-generator.json') -Raw | ConvertFrom-Json
           $n0TeiEntry = Get-Content -LiteralPath (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n0-tei-self-build-entry.json') -Raw | ConvertFrom-Json
           $n0Part = & $namedHash 'reference/tei-studio-workbench/inspection-reader.generated.ts'
+
+          $n0N2Receipt = Get-Content -LiteralPath (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n0-n2-inspector-handoff.json') -Raw | ConvertFrom-Json
+          if ($n0N2Receipt.schemaVersion -cne 'tei.reference.studio-n0-n2-handoff/v0' -or
+              -not $n0N2Receipt.selectedByEsbuild -or -not $n0N2Receipt.changedCopyNegativeRejected -or
+              -not $n0N2Receipt.changedRoleNegativeRejected -or -not $n0N2Receipt.changedPathNegativeRejected -or
+              $n0N2Receipt.readTimeClosureProved -or $n0N2Receipt.digestAfterEsbuild -cne "sha256:$n0Part" -or
+              $n0N2Receipt.exactHead -cne $env:CANDIDATE_HEAD_SHA -or
+              $n0N2Receipt.attempt -cne '${{ github.run_id }}-${{ github.run_attempt }}') {
+            throw 'N0-N2 esbuild selected Inspector handoff is not valid for this N3 attempt'
+          }
+          $n2SelectedSources = @(Get-Content -LiteralPath (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n2-esbuild-selected-sources.json') -Raw | ConvertFrom-Json)
           if (-not $n0TeiEntry.artifactCrossCheckMatched -or $n0TeiEntry.artifactCrossCheckedDigest -ne "sha256:$n0Part") { throw 'TEI-invoked N0 artifact changed before N3' }
           if ($n0Report.artifactDigest -ne "sha256:$n0Part") { throw 'N0 part was changed after regeneration' }
           $bundle = & $namedHash 'cmd/tei-studio/assets/workbench/main.js'
@@ -557,6 +674,7 @@ jobs:
               selectedBuilderPinChecked = $n0TeiEntry.childPinChecked
               selectedBuilderPinMatched = $n0TeiEntry.childPinMatched
               selectionBasis = 'explicit workflow pin/TEI pre-start byte digest'
+              n2SourceProducerReceipt = 'n0-n2-inspector-producer.json'
               processEntryReceipt = 'n0-tei-self-build-entry.json'
               invocationCrossChecked = $n0TeiEntry.artifactCrossCheckMatched
               stage1GeneratedTeiInvoker = $false
@@ -572,7 +690,11 @@ jobs:
               generatedMainInputSha256 = & $namedHash 'reference/tei-studio-workbench/main.generated.ts'
               packageLockSha256 = & $namedHash 'reference/tei-studio-workbench/package-lock.json'
               workbenchBundleSha256 = $bundle
+              n0N2HandoffReceipt = 'n0-n2-inspector-handoff.json'
+              n0N2RoleMatched = $true
+              n0N2ChangedCopyRejected = $n0N2Receipt.changedCopyNegativeRejected
               esbuildSelectedSources = 'n2-esbuild-selected-sources.json'
+              esbuildSelectedCount = $n2SelectedSources.Count
               esbuildSelectedCount = $metaObservedSources.Count
               producerArtifactReceipt = 'n2-bundle-producer.json'
               esbuildOutput = 'cmd/tei-studio/assets/workbench/main.js'
