@@ -112,3 +112,167 @@ G0・G1は既存Studioセルフビルド B1〜B3 より上位の必須Gateにし
 ## 10. 現時点の結論と主張の限界
 
 本案は、Desktopの子プロセス方針とCLIのWails非依存・ローカル開発を両立させる。子BackendとRemote Serverは同じOperation/Plugin契約を使用するが、同一プロセス・同一バイナリ・同一Plugin版を義務付けない。利用する側の実行範囲と権限、Client／Server互換性、Artifactの実バイトを固定する。現行コードの実Local IPC、Remote CLI、Plugin install／enable、署名付きUpdater、三OSのInstaller／自己更新の完成を示す文書ではない。
+## 11. 実行配置Profileと同一性の設計（2026-11-15追補）
+
+### 11.1 「同じServer」の四つの意味
+
+DesktopとCLIで「同じServer」を使うという要求を、次の四つに分ける。
+
+| 共有するもの | 推奨 | 理由 |
+| --- | --- | --- |
+| Application APIの意味と型 | **必須** | 結果・Failure・作用・権限が入口ごとに分岐しない |
+| BackendのGo実装とPlugin解決コード | **必須** | Wailsに依存しない共通Ownerを再利用する |
+| Backendの実行バイナリ | **任意** | CLIとDesktopは別のビルド／配布周期を持つ |
+| Backendの稼働プロセス・Session | **初期は非共有** | Workspace、Grant、実行世代、障害を暗黙に共有しない |
+
+「子Serverを呼ぶ」ことをHTTP必須や常駐Daemon必須へ読み替えない。DesktopのWailsはOSウィンドウ・ViewとBackend IPCに限定し、Shared WebはClient配信と認証・Sessionを担う。CLIは同じOperationを、ローカルDirect・自己子Backend・明示Remote接続で利用できる。
+
+### 11.2 配置Profileと配布成果物
+
+| Profile | 起動物 | UI資産 | Backend | Plugin実体 |
+| --- | --- | --- | --- | --- |
+| Desktop Local | Wails版Studio単一exe（第一候補） | 当該exeに埋込み | 同exeの子モード | 静的組込みまたは検証済み外部Artifact |
+| CLI Local | Wails非依存のtei単一exe | 不要 | 直接または同exeの子モード | 同上。命令実装をCLI引数解析へ入れない |
+| Web Shared | 配備したServer版exe／Container | 同Server配備世代が配信 | 認証付きApplication API | Serverの選択済み構成 |
+| CLI Remote | ローカルtei | 不要 | 共有Web/API Server | **Server側のみ**。同版のローカルPluginを要求しない |
+| Generated Application | Target固有の成果物 | Target別 | .NET／Java／Web等の外部Host | 生成物が宣言したContractに応じて構成 |
+
+Desktopの親と子を自己実行ファイルから起動できても、実行時に参照した正確なイメージByteを再読確認する必要がある。親のパス文字列やVCS宣言値だけで同一Artifactを証明しない。
+
+### 11.3 既存Identityを目的別に使う
+
+実行ファイルのBuild Identity、Client Asset SetのDigest、Plugin Composition Lock、RuntimeのProvider/Artifact、Workspace/Source/Model Revision、Deployment Generation、Invocation Attemptを混同しない。これらの**参照関係を持つ投影**として、起動時に次を記録する。
+
+- 実際に起動した親／子のImage DigestとBuild Identity。Build宣言は署名やSource closureの証拠とは別。
+- ServerとClientが採用したTransport／Operation ContractのID・版・fingerprint。
+- 選択済みPlugin Lock／提供Capability、実際にロードしたEntry／Artifact／Current Grantの照合結果。
+- 対象Workspaceと検証済みSource snapshot、操作時点のModel Revision。画面のBuffer Generationとは別。
+- Dispatch元（CLI／Desktop／Web／Harness）、Request／Attempt、実行したBackend Sessionと配備世代。
+
+新しい万能Lock／Model Revision／Artifact Registryを作らず、#951・#943・#1105・#1174・#2586・#3267の情報を必要範囲で相互参照する。Bootstrap投影を新しい意味の正本として永続化しない。
+
+## 12. 起動Contract：Bootstrap・構成確定・利用開始の区分
+
+### 12.1 Studioの起動と二段階Ready
+
+起動順は次のようにする。
+
+\`\`\`text
+OS launch → signed executable / embedded fallback UI
+ → local Backend spawn (Wailsは親のみ)
+ → peer / image / transport handshake
+ → verified local configuration + pinned core Plugin closure
+ → CORE_READY（設定、Plugin inventory、診断、復旧が可能）
+ → selected Workspace / Source / Plugin composition
+ → selected Provider / permission and capability preflight
+ → WORKSPACE_READY（選択範囲で機能を広告）
+ → on-demand invocation / UI contribution activation
+\`\`\`
+
+- CORE_READYの成立を全Pluginの正常起動と取り違えない。必須Coreが破損した場合はRead-only診断・復旧画面を別の組込み経路で表示する。
+- 起動時に未確認のRemote Registryから自動的に最新版を取得して実行しない。インストール済みの検証済み構成から起動し、更新確認は非同期または明示操作とする。
+- Workspaceが不正でもSource編集・診断を可能な範囲で残す。Plugin管理のenable/installは現行実装で未モデルであるため、画面上で提供済みと偽らない。
+- Providerが欠けるときは機能ごとのmissing／unsupported／permission-deniedを返し、Studio全体を無条件で起動失敗としない。
+- UIの有効化はGUI Contributionの有無だけでなく、現在のOperation ContractとBackend提供可否の両方から導出する。
+
+### 12.2 Local CLIとSessionの起動
+
+Local CLIは親がargv／出力／exitを所有し、子のstdoutをprotocol専用にする。構造化Request/Resultの上限、起動期限、取消通知、stderrの秘密情報開示制約を定義する。
+
+\`\`\`text
+tei command
+ → identify local/explicit remote target
+ → parse argv / preserve existing JSON v0 and exit contract
+ → [bootstrap-only: direct]
+    or [selected backend route: direct / one-shot child / reused session]
+ → handshake / capability preflight / actual invoke
+ → typed Outcome + backend identity + attempt
+ → adapter renders stdout/stderr/exit
+\`\`\`
+
+一対一の短命子ではstdio、長命の明示SessionではOS固有の保護されたIPCを比較する。どの経路でも同じApplication Operationから出力を導出し、CLI版ごとにProvider選択・Validation意味を実装し直さない。
+
+Backend Sessionは「再利用可能な計算環境」であって、受理済みSourceの正本やGrantの永続保管先ではない。再接続時は現在のWorkspace snapshot・Lock・権限を再評価する。明示Remote失敗時にLocalへ切り替えず、効果が不明な命令を自動再送しない。
+
+### 12.3 子プロセスの信頼と寿命
+
+状態は Spawned→Handshake→CoreReady→WorkspaceReady→Draining→Exited。Timeout／Crash／PeerMismatch／ProtocolMismatch／PluginUnavailableを区別する。IPC接続者確認はOSのアクセス制御、親子で受け渡す一回限りのChannel／Handle等を組み合わせて検証し、nonceや\`--internal-backend\`フラグ単独を認証とみなさない。子ProcessのOS権限が親と同じなら、それだけではPluginをsandbox化したことにならない。Workspaceを変更する操作は既存Source/Acceptance Ownerに委譲する。
+
+## 13. Server配信ClientとPlugin GUIの構成世代
+
+WebではServerが**対応するClient HTML／JS／CSS**を配信する。単に最新版のUIを常に表示するのではなく、一つのDeployment Generationに結び付くClient Asset Set・利用するOperation Contract・選択されたGUI ContributionのDigestを確認する。
+
+- \`index.html\`等の入口は適切に再検証し、ハッシュ付きAssetは不変として配信する。
+- ブラウザーに残る旧TabやService Worker／Cacheからの旧Assetを考慮し、接続・操作時に互換性を確認する。未対応なら新しいUIの再読込みを明示要求する。
+- 途中でPlugin UIが更新されても、表示中のSessionへ新旧Moduleを黙って混合しない。動的GUI資産をLoadする場合、Artifact Digest・対象Deployment・Permissionを検査する。
+- 宣言的GUIを原則とし、第三者JSをStudio同一Originで自由実行させない。隔離方式が未実証のGUI実装は公開範囲を制限する。
+- Wails v3 Server BuildはHTTP資産配信・Service Binding・WebSocketを提供する。ただしServerイベントはブラウザー間Broadcastとなる経路があるため、共有Webのユーザー・Workspace秘密情報を単純なEmitで配信しない。HTTP、Runtime RPC、WebSocket、イベント・Streaming各経路を独立に認証／認可検証する。Wails Server BuildだけでMulti-Tenant安全性を保証しない。
+
+## 14. Plugin配布・文書・Skillを同じReleaseへ結び付ける
+
+Pluginの発見はRegistry、取得はGitHub Releases／OCI／Private Store、実行資格はConsumerのContract・Trust・Authorityが判断する。公開ページの説明や検証PASS、GitHubの所有権だけで実行許可へ昇格させない。
+
+Plugin Manifest／Release Descriptorは、役割（Language／Operator／Data／Generator／UI等）、Contract、Target、依存、実Artifact、必要権限、説明文書、Manual、Example、短いSkill入口を、それぞれの正確なVersion／公開範囲へ結び付ける。外部文書URLは可変Locatorであり、取得時のRevision／Digest／権限を別に検査する。文書だけを改訂した場合と実行コードを更新した場合の再受理範囲を分ける。
+
+- 人向けのPlugin Explorerと、CLI/MCP/Harnessが取得する機械可読な説明は同じ契約から投影する。
+- 依存する上位Pluginの文書へ移動できるが、非公開の内部図面・秘密情報・実行Grantを文書継承で引き継がない。
+- Selection ContextはWorkspace／Qualified Subject／Source位置／Revision／Scope／選択epochを固定して提供する。Harnessへ渡すのは現在の対象を参照する情報であり、AuthorityやSource書込み許可ではない。
+- PluginのSource定義、利用時のContract、説明文書、Build成果物を矛盾する第二正本として手作業で管理しない。TEI自身のセルフビルドで生成・照合する対象とする。
+
+## 15. Updaterの具体的な切替Contract
+
+UpdaterはWails固有APIではなく、**更新候補の発見・検証・計画と、OS上の物理的な切替**を分けた機能である。Wails v3のUpdaterはDesktopの物理切替に利用可能だが、CLIにWailsをimportさせず、Package Managerが所有するインストールはその管理経路で更新する。
+
+\`\`\`text
+Discover → Plan → Fetch to immutable staging
+ → actual-byte / signature / current-trust verification
+ → compatible Backend + UI + Plugin Closure simulation
+ → Quiesce or leave long-running Job under durable owner
+ → apply through platform-owned installer/update helper
+ → restart and verify new image / session / contract
+ → Commit active generation or restore previous generation
+\`\`\`
+
+- 本体、同梱UI資産、静的組込みPlugin、外部Pluginは更新単位が異なる。実際に必要な閉包についてだけ同時更新する。
+- Stagingが成功しても現在稼働中の世代を変更しない。新Sessionへ切り替えたことと、旧Session／外部Effectが終了したことを分ける。
+- 同一配備中のPlugin Updateでは、選択済み構成世代を凍結し、新しい命令だけを新世代へ向ける。外部Effectの途中を新Providerへ再Dispatchしない。
+- 更新後Health成功は、旧ユーザーSessionの継続、旧JobのEffect成功、Source移行の可逆性を証明しない。
+- 不可逆なDB Schema変更・データ変換をバイナリのRollbackとして扱わない。事前のMigration互換性とOwner判断が必要。
+- CLIの自己更新は原則明示操作。CI／Harness実行中に自動更新しない。Plugin Manager自体が不調でも最小のBootstrapと検証済み旧版へアクセスできる経路を残す。
+
+更新結果のReceiptでは本体Image／Asset Set／Plugin Closure／Active Generation／旧版保全／失敗理由を区別する。新しい「全更新成功」のBooleanだけを正本にしない。
+
+## 16. セルフビルドへ接続する実装順と検収
+
+この起動・更新の仕組みを先行する新基盤プロジェクトへ膨らませない。最優先はCLI/MCPから\`*.tei.md\`を正式Readerで読み、図表・Rule等の意味を使って実Go／Pluginを生成・実利用し、Stage1→Stage2のStudio Desktopを再構築すること。
+
+| 既存主線との接続 | この設計で最低限確認するもの |
+| --- | --- |
+| Y1 Reader／意味Source | 正式\`*.tei.md\` Readerを使う。暫定変換やGoへの単純委譲を成果に数えない |
+| Plugin主導生成 | 選択されたGenerator／Builder、実消費Source、生成Go/TS/JS、Bundle参照を区別 |
+| CLI Stage1→Stage2 | Stage1の実行ImageがBuilder childを起動し、次世代CLI／Pluginを実生成・呼出し |
+| Studio Stage1→Stage2 | 非Plugin Desktopを正式Build Subjectとして扱い、実N0→N3生成工程からWindows Wails/WebView2の実受領へ結ぶ |
+| Plugin管理 | Plugin宣言→選択→BOM包含→実Provider Entry→結果／権限を追跡。install／enable未モデルなら未モデルと表示 |
+| 初回Distribution縦切り | 生成した対象exeをInstallerなしでも別環境へ置き、親→子IPC→実Plugin利用を独立に再現。その後Installer／Updaterを扱う |
+
+Studio Stage1→Stage2と通常CLI→実Providerを優先し、Installer・Remote Web・共有Daemon・Marketplace UIの完成を先行依存としない。
+
+## 17. 追加の敵対的テストと停止条件（未実施）
+
+| ID | 入力・障害 | 必須の判定 |
+| --- | --- | --- |
+| EX-15 | 親と子の実Image Digestが異なる／PATHが偽装される | Handshake前に拒否。Image名や自己申告で一致としない |
+| EX-16 | CORE_READYでPlugin初期化失敗 | Plugin診断は維持、要求未成立のCapabilityは広告しない |
+| EX-17 | 子を正常終了したが旧Jobは実DB Commit Unknown | 再Dispatchしない。Receipt照合とCurrent Authorityが必要 |
+| EX-18 | Remote CLIにローカルの別Plugin Lockを指定 | Serverの選択構成を置換しない。明示した要求との不適合を診断 |
+| EX-19 | Studio旧TabとServer新Deploymentの混在 | 非互換操作を拒否しClientの再読み込みを要求 |
+| EX-20 | Browser A向けの秘密EventをBrowser Bが受信 | 機密イベントを配信しない、Event経路自体を隔離／拒否 |
+| EX-21 | Plugin codeは同じだが文書参照先・権限・版が変わる | 文書の現在性／Disclosureを再評価、Code再受理への誤昇格をしない |
+| EX-22 | Generator Buildは成功したがStage2 exeが旧UIを埋め込んでいる | 実Stage2／実配信AssetのDigest差として拒否 |
+| EX-23 | Package Manager管理のCLIを自己Updaterが上書き | 管理主体の不一致で停止。正式な管理経路へ戻す |
+| EX-24 | 同一ユーザーのStudioとCLIが別Sessionから同じSourceへAccept | 保存時のRevision／実Byte競合で拒否 |
+| EX-25 | \`*.tei.md\`をGoに単純delegateしGUI/Pluginだけ動く | セルフビルドの意味・生成割合・定義簡素化の達成に数えない |
+| EX-26 | 新Plugin Release公開中に必須Artifactが欠損 | Published／Installed／Activeへ昇格しない |
+| EX-27 | Clientに渡したSelection handleが古い・別Workspaceを指す | Preview／再選択を要求し、Harnessの暗黙書込みを拒否 |
+
+EX-15〜27は独立Expectedの候補でありPASSではない。#1180/#2514へ検収を委譲する。Ownerに判断を残すのはCLI子Backend既定化、Plugin UIの隔離方式、共有WebのWails Server採用、OSごとのUpdater管理主体。**実装の優先度はStage1→Stage2と実Providerの主線を最優先として維持する**。
