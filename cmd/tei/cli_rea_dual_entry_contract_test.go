@@ -5,11 +5,11 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"unicode/utf16"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"unicode/utf16"
 )
 
 // The two existing read-only commands consume different graph projections from
