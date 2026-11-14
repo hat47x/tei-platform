@@ -536,6 +536,199 @@ def source_currency_slice(docs: dict[str, dict]) -> tuple[dict, list[str], list[
     }, sorted(set(blockers)), unknowns
 
 
+
+def selected_subject_source_slice(docs: dict[str, dict]) -> tuple[dict, list[str]]:
+    """D0: pin one *selected* Subject to its definition in two CLI projections.
+
+    Independent of the broader Function/Rule closure. In particular a
+    successful inspect response and matching global fingerprints cannot
+    prove that the inspected definition reference/Source artifact is the
+    one used by the Source Index. This is a bounded CLI Consumer check,
+    not a Host grant, cross-workspace identity, or an external AI receipt.
+    """
+    failures: list[str] = []
+    entries = docs.get("catalog", {}).get("result", {}).get("entries", [])
+    if not isinstance(entries, list):
+        entries = []
+    matches = [x for x in entries if isinstance(x, dict) and x.get("subject") == TARGET]
+    catalog_state = ("matched" if len(matches) == 1
+                     and matches[0].get("ambiguous") is not True
+                     and matches[0].get("sourceStatus") == "indexed"
+                     else "unqualified")
+    if catalog_state != "matched":
+        failures.append("selected-subject-catalog:unqualified")
+
+    inspection = docs.get("inspect", {}).get("result", {})
+    if not isinstance(inspection, dict):
+        inspection = {}
+    inspected_state = ("matched" if inspection.get("subject") == TARGET
+                       and inspection.get("sourceStatus") == "indexed"
+                       else "unqualified")
+    if inspected_state != "matched":
+        failures.append("selected-subject-inspect:unqualified")
+
+    subject_mode = docs.get("source-index", {}).get("mode")
+    full_mode = docs.get("source-index-all", {}).get("mode")
+    if subject_mode != "subject" or full_mode != "index":
+        failures.append("selected-subject-index:wrong-mode")
+
+    source = inspection.get("sources", {})
+    source = source if isinstance(source, dict) else {}
+    index = docs.get("source-index-all", {}).get("result", {})
+    index = index if isinstance(index, dict) else {}
+    selected_refs = source.get("references", [])
+    all_refs = index.get("references", [])
+    selected_artifacts = source.get("artifacts", [])
+    all_artifacts = index.get("artifacts", [])
+    shapes_ok = all(isinstance(x, list) for x in
+                    (selected_refs, all_refs, selected_artifacts, all_artifacts))
+    if not shapes_ok:
+        failures.append("selected-subject-source:invalid-shape")
+    selected_refs = selected_refs if isinstance(selected_refs, list) else []
+    all_refs = all_refs if isinstance(all_refs, list) else []
+    selected_artifacts = selected_artifacts if isinstance(selected_artifacts, list) else []
+    all_artifacts = all_artifacts if isinstance(all_artifacts, list) else []
+
+    def primary_refs(refs):
+        return [x for x in refs if isinstance(x, dict) and x.get("subject") == TARGET]
+
+    current_refs, indexed_refs = primary_refs(selected_refs), primary_refs(all_refs)
+    ref_ok = (len(current_refs) == len(indexed_refs) == 1
+              and current_refs[0] == indexed_refs[0]
+              and current_refs[0].get("role") == "definition"
+              and current_refs[0].get("artifactPath") == REQUIRED_SOURCE)
+    if not ref_ok:
+        failures.append("selected-subject-definition:missing-or-conflicting")
+
+    def source_artifacts(items):
+        return [x for x in items if isinstance(x, dict)
+                and x.get("path") == REQUIRED_SOURCE]
+
+    current_artifacts = source_artifacts(selected_artifacts)
+    indexed_artifacts = source_artifacts(all_artifacts)
+    artifact_ok = (len(current_artifacts) == len(indexed_artifacts) == 1
+                   and current_artifacts[0] == indexed_artifacts[0]
+                   and isinstance(current_artifacts[0].get("fingerprint"), str)
+                   and current_artifacts[0]["fingerprint"].startswith("sha256:"))
+    if not artifact_ok:
+        failures.append("selected-subject-source-artifact:missing-or-conflicting")
+
+    return {
+        "scope": "one selected public Reference Subject; definition anchor only",
+        "subject": TARGET,
+        "source": REQUIRED_SOURCE,
+        "catalog": catalog_state,
+        "inspect": inspected_state,
+        "sourceIndexModes": "matched" if subject_mode == "subject"
+                            and full_mode == "index" else "unqualified",
+        "definition": "same-indexed-reference" if ref_ok else "unqualified",
+        "artifact": "same-indexed-artifact" if artifact_ok else "unqualified",
+        "status": "bounded-present" if not failures else "blocked",
+        "externalConsumerDelivery": "not-observed",
+        "sourceRoleAndMeaningAcceptance": "not-qualified",
+        "currentHostGrant": "not-observed",
+    }, sorted(set(failures))
+
+
+
+
+def selected_task_required_packet(
+        docs: dict[str, dict], source_state: str,
+        selected: dict, validation: dict, focused: dict, function: dict
+) -> tuple[dict, list[str]]:
+    """D0.2: localize five independently fixed obligations around one Subject.
+
+    Reuse earlier bounded witnesses. Do not recompute Parser/Meaning, infer
+    missing obligations from Catalog, or call the five-item set a complete
+    business Function closure. Relation definition Source has not previously
+    been checked by focused_structure_slice, so verify that edge here.
+    """
+    failures: list[str] = []
+    required = []
+
+    def item(label: str, subject: dict, observed: bool, reason: str) -> None:
+        required.append({
+            "role": label, "subject": subject,
+            "status": "bounded-observed" if observed else "not-qualified",
+        })
+        if not observed:
+            failures.append("selected-required-" + label + ":" + reason)
+
+    item("data", TARGET,
+         selected.get("status") == "bounded-present"
+         and source_state == "read-by-loader",
+         "definition-or-loader")
+
+    catalog = docs.get("catalog", {}).get("result", {})
+    entries = catalog.get("entries", []) if isinstance(catalog, dict) else []
+    entries = entries if isinstance(entries, list) else []
+    relation_entries = [e for e in entries
+                        if isinstance(e, dict) and e.get("subject") == FOCUS_RELATION]
+    relation = relation_entries[0] if len(relation_entries) == 1 else {}
+    all_index = docs.get("source-index-all", {}).get("result", {})
+    index_refs = all_index.get("references", []) if isinstance(all_index, dict) else []
+    index_refs = index_refs if isinstance(index_refs, list) else []
+    relation_refs = [ref for ref in index_refs
+                     if isinstance(ref, dict) and ref.get("subject") == FOCUS_RELATION]
+    # Exact target fixed independently of Catalog and of the inspected
+    # positive Rule: its attribute belongs to sales.order_line.
+    relation_ok = (focused.get("relationState") == "matched"
+                   and relation.get("detail") == "sales.order_line"
+                   and relation.get("sourceStatus") == "indexed"
+                   and len(relation_refs) == 1
+                   and relation_refs[0].get("role") == "definition"
+                   and relation_refs[0].get("artifactPath") == REQUIRED_SOURCE)
+    item("relation", FOCUS_RELATION, relation_ok,
+         "target-or-definition-anchor")
+
+    rules = validation.get("rules", [])
+    rules = rules if isinstance(rules, list) else []
+    wanted_rule = [x for x in rules
+                   if isinstance(x, dict) and x.get("subject") == FOCUS_RULE]
+    rule_ok = (validation.get("sourceRead") == "loaded"
+               and len(wanted_rule) == 1
+               and wanted_rule[0].get("catalog") == "canonical-catalogued"
+               and wanted_rule[0].get("definitionReference") == "definition-indexed"
+               and focused.get("canonical") == "matched"
+               and focused.get("definitionReference") == "same-definition-reference"
+               and focused.get("sourceArtifact") == "same-indexed-artifact")
+    item("rule", FOCUS_RULE, rule_ok, "canonical-or-definition-anchor")
+
+    capability = function.get("capabilitySource", {})
+    cap_ok = (isinstance(capability, dict)
+              and capability.get("catalog") == "cataloged"
+              and capability.get("source") == "loaded"
+              and capability.get("definition") == "same-indexed-definition"
+              and function.get("signature") == "matched")
+    item("capability", FUNCTION_SUBJECT, cap_ok, "definition-or-signature")
+
+    application = function.get("applicationSource", {})
+    app_ok = (isinstance(application, dict)
+              and application.get("catalog") == "cataloged"
+              and application.get("source") == "loaded"
+              and application.get("definition") == "same-indexed-definition"
+              and function.get("namespaceAndValidationUses") == "matched"
+              and function.get("databaseRequirement") == "declared-only")
+    item("application", APPLICATION_SUBJECT, app_ok,
+         "definition-or-uses-or-db-declaration")
+
+    return {
+        "scope": "fixed-public-reference:one selected Data and four named obligations",
+        "selectedSubject": TARGET,
+        "required": required,
+        "requiredCount": len(required),
+        "boundedObservedCount": sum(x["status"] == "bounded-observed" for x in required),
+        "status": "bounded-observed" if not failures else "not-qualified",
+        # Five independent witnesses cannot establish an exhaustive closure.
+        "requiredSetExhaustive": False,
+        "sourceRoleAndMeaningAccepted": False,
+        "actualFunctionProviderRead": "not-observed",
+        "currentDisclosureAndConsumerDelivery": "not-observed",
+        "testGenerationQualified": False,
+    }, sorted(set(failures))
+
+
+
 def assess(docs: dict[str, dict], failures: list[str] | None = None) -> dict:
     """Fail closed; 'partial' is a measured narrow slice, not full readiness."""
     blockers = list(failures or [])
@@ -620,6 +813,8 @@ def assess(docs: dict[str, dict], failures: list[str] | None = None) -> dict:
     diagnostics = val.get("diagnostics")
     diagnostic_count = len(diagnostics) if isinstance(diagnostics, list) else None
 
+    selected_slice, selected_blockers = selected_subject_source_slice(docs)
+    blockers.extend(selected_blockers)
     rule_slice, rule_blockers = required_validation_slice(docs)
     focus_slice, focus_blockers = focused_structure_slice(docs)
     function_slice, function_blockers = bounded_function_slice(docs)
@@ -627,6 +822,9 @@ def assess(docs: dict[str, dict], failures: list[str] | None = None) -> dict:
     blockers.extend(rule_blockers)
     blockers.extend(focus_blockers)
     currency_slice, currency_blockers, unknowns = source_currency_slice(docs)
+    selected_packet, selected_packet_blockers = selected_task_required_packet(
+        docs, source_state, selected_slice, rule_slice, focus_slice, function_slice)
+    blockers.extend(selected_packet_blockers)
     blockers.extend(currency_blockers)
     blockers = sorted(set(blockers))
     # 'unknown' is its own verdict: the required evidence was not observable.
@@ -645,6 +843,8 @@ def assess(docs: dict[str, dict], failures: list[str] | None = None) -> dict:
         "issue": "hat47x/tei-platform#3262",
         "subject": TARGET,
         "requiredSource": REQUIRED_SOURCE,
+        "selectedSubjectSource": selected_slice,
+        "selectedTaskRequired": selected_packet,
         "requiredValidationSlice": rule_slice,
         "focusedStructureSlice": focus_slice,
         "boundedFunctionSlice": function_slice,
@@ -669,6 +869,192 @@ def assess(docs: dict[str, dict], failures: list[str] | None = None) -> dict:
         "missingClaims": MISSING_CLAIMS,
         "blockers": blockers,
     }
+
+
+
+def selected_subject_source_selftest(docs: dict[str, dict], baseline: dict) -> dict[str, str]:
+    """Check selected Subject identity despite individually successful CLI replies.
+
+    The expected rejection and its reason are fixed here, rather than
+    derived from the implementation's verdict. All cases keep World and
+    Source Index fingerprints unchanged.
+    """
+    if (baseline["selectedSubjectSource"]["status"] != "bounded-present"
+            or baseline["selectedSubjectSource"]["definition"] != "same-indexed-reference"
+            or baseline["selectedSubjectSource"]["artifact"] != "same-indexed-artifact"):
+        raise AssertionError("selected Subject Source binding missing from real CLI baseline")
+
+    controls: dict[str, str] = {}
+
+    def check(name: str, mutate, reason: str) -> None:
+        changed = copy.deepcopy(docs)
+        mutate(changed)
+        actual = assess(changed)
+        if (actual["selectedSubjectSource"]["status"] != "blocked"
+                or actual["boundedReference"] != "blocked"
+                or actual["qualifiedTestGeneration"] is not False
+                or not any(reason in s for s in actual["blockers"])):
+            raise AssertionError(f"{name}: unsafe selected Subject admission {actual}")
+        controls[name] = "rejected"
+
+    def catalog_not_indexed(d):
+        entry = next(e for e in d["catalog"]["result"]["entries"] if e.get("subject") == TARGET)
+        entry["sourceStatus"] = "not-indexed"
+
+    check("D0-target-catalog-status-drift", catalog_not_indexed,
+          "selected-subject-catalog:unqualified")
+
+    def inspect_not_indexed(d):
+        d["inspect"]["result"]["sourceStatus"] = "not-indexed"
+
+    check("D0-target-inspect-status-drift", inspect_not_indexed,
+          "selected-subject-inspect:unqualified")
+
+    def wrong_mode(d):
+        d["source-index"]["mode"] = "index"
+
+    check("D0-target-query-wrong-mode", wrong_mode,
+          "selected-subject-index:wrong-mode")
+
+    def wrong_definition(d):
+        for ref in d["inspect"]["result"]["sources"]["references"]:
+            if ref.get("subject") == TARGET:
+                ref["role"] = "uses"
+
+    check("D0-target-definition-role-drift", wrong_definition,
+          "selected-subject-definition:missing-or-conflicting")
+
+    def different_path(d):
+        for ref in d["inspect"]["result"]["sources"]["references"]:
+            if ref.get("subject") == TARGET:
+                ref["artifactPath"] = "semantic/unrelated.tei"
+
+    check("D0-target-definition-path-drift", different_path,
+          "selected-subject-definition:missing-or-conflicting")
+
+    def duplicate_indexed_ref(d):
+        idx = d["source-index-all"]["result"]["references"]
+        ref = next(x for x in idx if x.get("subject") == TARGET)
+        idx.append(copy.deepcopy(ref))
+
+    check("D0-target-duplicate-definition", duplicate_indexed_ref,
+          "selected-subject-definition:missing-or-conflicting")
+
+    def artifact_bytes_diverge(d):
+        for art in d["inspect"]["result"]["sources"]["artifacts"]:
+            if art.get("path") == REQUIRED_SOURCE:
+                art["fingerprint"] = "sha256:" + "0" * 64
+
+    check("D0-target-artifact-revision-drift", artifact_bytes_diverge,
+          "selected-subject-source-artifact:missing-or-conflicting")
+
+    def missing_index_artifact(d):
+        d["source-index-all"]["result"]["artifacts"] = [
+            a for a in d["source-index-all"]["result"]["artifacts"]
+            if a.get("path") != REQUIRED_SOURCE
+        ]
+
+    check("D0-target-index-artifact-missing", missing_index_artifact,
+          "selected-subject-source-artifact:missing-or-conflicting")
+
+    return controls
+
+
+
+
+def selected_task_required_selftest(docs: dict[str, dict], baseline: dict) -> dict[str, str]:
+    """An independent five-obligation oracle and localized negative controls."""
+    expected = [
+        ("data", TARGET),
+        ("relation", FOCUS_RELATION),
+        ("rule", FOCUS_RULE),
+        ("capability", FUNCTION_SUBJECT),
+        ("application", APPLICATION_SUBJECT),
+    ]
+    packet = baseline["selectedTaskRequired"]
+    if (packet["status"] != "bounded-observed"
+            or packet["requiredSetExhaustive"] is not False
+            or packet["testGenerationQualified"] is not False
+            or [(x["role"], x["subject"]) for x in packet["required"]] != expected
+            or packet["boundedObservedCount"] != len(expected)):
+        raise AssertionError("D0.2 independent Required list not observed")
+    controls: dict[str, str] = {}
+
+    def check(name: str, change, missing_role: str, reason: str) -> None:
+        mutant = copy.deepcopy(docs)
+        change(mutant)
+        result = assess(mutant)
+        got = result["selectedTaskRequired"]
+        statuses = {x["role"]: x["status"] for x in got["required"]}
+        if (got["status"] != "not-qualified"
+                or result["boundedReference"] != "blocked"
+                or result["qualifiedTestGeneration"] is not False
+                or statuses.get(missing_role) != "not-qualified"
+                or not any(reason in x for x in result["blockers"])):
+            raise AssertionError(f"{name}: Required not rejected/localized {got} {result['blockers']}")
+        if any(statuses[role] != "bounded-observed" for role, _ in expected
+               if role != missing_role):
+            raise AssertionError(f"{name}: unrelated bounded obligations lost {statuses}")
+        controls[name] = "localized-rejection"
+
+    def relation_target(d):
+        entry = next(e for e in d["catalog"]["result"]["entries"]
+                     if e.get("subject") == FOCUS_RELATION)
+        entry["detail"] = "sales.unrelated"
+
+    check("D02-relation-target-mismatch", relation_target, "relation",
+          "selected-required-relation:target-or-definition-anchor")
+
+    def relation_role(d):
+        ref = next(r for r in d["source-index-all"]["result"]["references"]
+                   if r.get("subject") == FOCUS_RELATION)
+        ref["role"] = "uses"
+
+    check("D02-relation-ref-role-drift", relation_role, "relation",
+          "selected-required-relation:target-or-definition-anchor")
+
+    def duplicate_relation_ref(d):
+        refs = d["source-index-all"]["result"]["references"]
+        ref = next(r for r in refs if r.get("subject") == FOCUS_RELATION)
+        refs.append(copy.deepcopy(ref))
+
+    check("D02-relation-ref-duplicate", duplicate_relation_ref, "relation",
+          "selected-required-relation:target-or-definition-anchor")
+
+    def required_rule_kind(d):
+        d["inspect-validation"]["result"]["canonical"]["kind"] = "relation-unique"
+
+    check("D02-required-rule-kind-drift", required_rule_kind, "rule",
+          "selected-required-rule:canonical-or-definition-anchor")
+
+    def function_signature(d):
+        d["inspect-capability"]["result"]["canonical"]["output"] = "sales.other"
+
+    check("D02-function-signature-drift", function_signature, "capability",
+          "selected-required-capability:definition-or-signature")
+
+    def application_uses(d):
+        d["inspect-application"]["result"]["canonical"]["semanticUses"] = []
+
+    check("D02-application-uses-drift", application_uses, "application",
+          "selected-required-application:definition-or-uses-or-db-declaration")
+
+    # A non-required catalog entry must not silently expand the independent
+    # obligation set or change the five bounded findings.
+    extra = copy.deepcopy(docs)
+    extra["catalog"]["result"]["entries"].append({
+        "subject": {"kind": "semantic-type", "id": "unrelated.optional"},
+        "parent": {"kind": "semantic", "id": "unrelated"},
+        "sourceStatus": "not-indexed", "prelude": True,
+    })
+    result = assess(extra)
+    if (result["selectedTaskRequired"] != packet
+            or result["boundedReference"] != baseline["boundedReference"]
+            or result["qualifiedTestGeneration"] is not False):
+        raise AssertionError("D02-unrelated-context-mutated fixed Required scope")
+    controls["D02-unrelated-subject-does-not-expand-required"] = "scope-unchanged"
+    return controls
+
 
 
 def selftest(docs: dict[str, dict], baseline: dict) -> dict[str, str]:
@@ -1174,6 +1560,8 @@ def main() -> None:
     controls = selftest(docs, baseline)
     report = dict(baseline)
     report["syntheticControls"] = controls
+    report["selectedSubjectControls"] = selected_subject_source_selftest(docs, baseline)
+    report["selectedTaskRequiredControls"] = selected_task_required_selftest(docs, baseline)
     report["additionalManifestControls"] = manifest_selftest(docs)
     report["requiredValidationControls"] = required_validation_selftest(docs, baseline)
     report["focusedStructureControls"] = focused_structure_selftest(docs, baseline)
@@ -1185,6 +1573,8 @@ def main() -> None:
     args.out.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"PASS: bounded Design Context {baseline['boundedReference']}; "
           f"{len(controls)} base controls + {len(report['additionalManifestControls'])} manifest "
+          f"+ {len(report['selectedSubjectControls'])} selected-Subject anchor controls "
+          f"+ {len(report['selectedTaskRequiredControls'])} selected-task Required controls "
           f"+ {len(report['transportByteControls'])} byte-reply rejection controls "
           f"+ {len(report['requiredValidationControls'])} bounded Rule-slice checks "
           f"+ {len(report['focusedStructureControls'])} Rule/Relation Canonical checks "
