@@ -297,6 +297,27 @@ B1a-I/Pの二段受入を維持しつつ、独自Frontendを「TEIが制約し�
 
 **今回の資格**：設計・受入順序の統合のみ。#2582/#2597のRC/ESケースは未実装・未実行の計画であり、実PG二Consumer、Headless selective refresh、実Web/WASM、実多Context Tx/Owner意味受理の新試験は**NOT RUN**。新DSL/Core/正式Reactive APIを本追補で採用しない。
 
+### D1.2 測定値の意味・集計軸・再集計の条件付き適格性（2026-11-14追補）
+
+静的なDecimal/NUMERIC型・`SUM/AVG/COUNT`名・Chart値一致だけでは、**Measure×集計軸×粒度×時点×対象集合×演算法則**の合成適格性を決められない。既存[#2593](https://github.com/hat47x/tei-platform/issues/2593)がMeasure/再集計の意味的Pressure、[#2544](https://github.com/hat47x/tei-platform/issues/2544)が演算Law束縛、[#1705](https://github.com/hat47x/tei-platform/issues/1705)がQuantity/Decimal/Unit/丸め、[#1706](https://github.com/hat47x/tei-platform/issues/1706)がRelation集合・fanout、[#2498](https://github.com/hat47x/tei-platform/issues/2498)が異Targetの実Consumer転写、[#2582](https://github.com/hat47x/tei-platform/issues/2582)が変化後の再評価を所有する。新Metric DSL/BI Engine/Query Optimizer/第二Measure Registry/独立Expected正本を導入しない。
+
+**実装基線と資格上限**：[Draft PR #4423](https://github.com/hat47x/tei-platform/pull/4423) は、既存`reference/derivation-relationsets`の集約済み入力を従来`Sum`で再加算する誤成功を拒否し、read-only `Reaggregate(Claim)` で`eligible/ineligible/unknown`を説明する候補実装。PR記載の局所Go/SQLite検査・期待値・独立レビューは**限定Referenceの成果**であり、PR未統合、実SQL生成・実Provider集計・本番Consumer/Owner意味受理は別資格。特に宣言された`Partition`、`Scope`、`AsOf`の真偽や、構成要素の単位整合・丸めの由来を**実元Factから独立に検証しない**ので、`eligible`は「呼び手の宣言が成立する範囲での局所結果」であり、製品の集計保証ではない。
+
+| 既存MCケース／独立Expected | 正当な合成・元Factの条件 | 偽PASSを許さない条件 |
+| --- | --- | --- |
+| **MC-02 平均** | A:2件×平均10＋B:8件×平均20 → (20+160)/10=**18**。sum/countの対応と被覆が必要 | 平均10と20から単純平均15。局所平均しか残らない場合は中間状態欠落 |
+| **MC-03 比率** | A:1/2、B:8/10 → 9/12=**0.75**。分子・分母・対象集合の対応を確認 | 50%と80%の単純平均65%、分母ゼロ、分子分母の対象範囲不一致 |
+| **MC-04 重複除去** | A={U1,U2}、B={U2,U3} → 全体**3人**。元Fact識別または適格な distinct 状態を要求 | 部門別2+2=4人、`SUM(DISTINCT amount)`で同額の別業務Factを消す |
+| **MC-05 時点残高** | 同日A110+B190=**300**。時点と対象範囲を保持 | 日付を跨ぐ300+300=600を「現在残高」扱い。呼び手のAsOf宣言だけで元行の同時点保証を偽装 |
+| **MC-06 取得・NULL・丸め** | 完全な0行／NULL／未取得／partialを区別。0.004×1000は厳密和4と、先に小数2桁丸め済なら0を区別 | 未取得をゼロ、部分AVGを全体AVG、ScaleなしJSON float64再解釈、先丸めと最終丸めを黙って混合 |
+| **MC-10 異種Consumer** | 同じMeasure Contract/Observerの結果をGo/SQL/Java・Table/Chart等へ渡し、decimal lexeme/scale、Result Scope/Versionと実受領を対照 | JSON Parse/可視数値一致、集計器単体PASSを外部Provider/Business Meaningの同値とする |
+
+**D1の合格判定を不必要に拡大しない**：まず既存#2586 `order_entry.recent_orders` の限定実PG Read→同一Context→TableとAggregate Consumer受領を成立させる（D1）。次の**D1.2（独立後続の試験単位であり新公開Gateではない）**で、#2593 MC-02/03/04/05の元Fact・明示Scope・演算法則と局所Resultを対照し、Provider側計算とConsumer側計算を実測する。#4423のReferenceは判別用の足場とし、`eligible`を最終製品適合へ自動昇格させない。Quantityの精度/単位・丸めフェーズは#1705、Query演算・JOIN重複は#2387/#1706、異Target転写は#2498/#2077、Provider別Snapshotは#1708と各Ownerで資格判定する。Measureの結果行を元Entityとして編集しない（#2500/#2497）。
+
+**再評価の接続**：#2582の局所失効で`D1-only sum`が維持可能でも、平均の`count`、比率の`denominator`、distinctの共通Person ID、残高の`AsOf`、丸めRule等が変われば合法な再集計条件が変わる。再評価の必要集合には可視値だけでなく**Measure Lawと中間状態の出典**を含め、異なるSource/Rule/Provider版や非単調な入力変化を「値一致なので影響なし」としない。未知または開示できない入力から、許容されない精度・母集団の数値を捏造しない。
+
+**今回の資格**：#4423の既存限定試験とは別に、この追補に伴うGo/SQLite/PG/Java/Wasm/実二Consumer試験・Owner受理は**NOT RUN**。P0実ReadとTEI StudioセルフビルドをMetric BIの全機能実装でブロックしない。正式Measure型・SQL書換え・Core拡張は反例と異種Consumerを検証してから既存Owner/ADRで判断する。
+
 ## 案件の一巡で追加した七つの作業
 
 申請、現場保守、公開、外部連携、設備監視、予約・制御の模擬実行を[製品設計](../design/PRODUCT_COMPLETION_DESIGN.md#案件の一巡から標準構成の不足を補う)で具体化した。以下の作業は既存G項目の読取り・外部作用・出典追跡へ接続し、案件に必要な入出力と寿命を補う。
