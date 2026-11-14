@@ -1523,6 +1523,8 @@ ODRは**既存#4490 ORG-BEH-04、#1180/#2514、BRMS #4723のT1〜T8、Graph Fixt
 
 **実装の次段**：PR #4737の同一HEAD CIでSource/IR RelationKey、合成Positive Join、実`functioncontext.From`の0/1/2行・NULLを通した`TestOrgStagedPositiveCandidateActualFunctionContextCoverage`とNULL同定拒否の実PASSを検証し、成功した場合も「実Source＋合成Context/Consumerの限定PASS」にとどめる。その後、#4490 BEH-01/02の実時点・非出力依存・Read取得の実証を先行し、実Query→Function Context→独立Consumerで同じExpected/Attemptを照合する。最終的なRuleの実Codegenは#4729/#4733のGraph/Rule生成Referenceから別途接続する。
 
+**Source Pinに関する次の橋渡し**：[main統合済みGraph/Ruleの管理Source原文・Index照合 #4751](https://github.com/hat47x/tei-platform/pull/4751)は、管理Rootから実ReaderのSource byte/span・Source Index同一性・変更後の旧Artifact失効を**Markdown Graph Reference**として実検査した。これを組織C1のReader/Rule出所への再利用候補とする。ただし、実`org-staged-axis`のRelation、二つの合成Query Digest、Function ContextのSourceRevision=`unknown`を**自動的に同一のAccepted Source Pinへ束縛できるわけではない**。次のProduct試験では、`Source/World/Rule/Query/Provider Mapping/Read Cohort/Consumer`をそれぞれ証拠として照合し、Source Indexが存在するだけでMeaning Acceptanceや実Read完全性へ昇格させない。
+
 **CIの実証上限と失敗の帰属**：初回HEAD `99341c5d`の[Health #43639067283](https://github.com/hat47x/tei-platform/actions/runs/43639067283)は**failure**。追加Goと当時のmainのGraph Ruleファイルのgofmt、別領域のSQL/定数検査で失敗。後続HEAD `61513ae2`の[Health #43641147796](https://github.com/hat47x/tei-platform/actions/runs/43641147796)も**failure**。追加Goと当時のmainのSQLite Windowテストのgofmt、別領域の定数検査で失敗した。各ログにおいて`go vet`は成功し、`go test ./...`の失敗を**組織候補の回帰テスト自体の不合格とは断定しない**。以後、追加ファイルの整形と新mainの取り込みを進めているが、**これらの古いHEADの成否を最新HEADへ引き継がない**。
 
 **現時点**：PR #4737はDraft／未マージ。Go 1.26実CIの新HEAD完了前にPASSは主張しない。本追記もドキュメント更新であり、Owner Meaning受理と製品E2Eには進んでいない。
