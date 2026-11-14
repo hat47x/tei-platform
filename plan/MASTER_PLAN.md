@@ -10,6 +10,8 @@
 
 関連文書は次のとおりです。
 
+- **TEIセルフビルドの継続評価（2026-11-15追補）**：[製品完成計画のCLI・Plugin自己構築節](workstreams/PRODUCT_COMPLETION_PLAN.md)に、図表・Ruleから実判断ロジックを生成できる範囲、Plugin自身のTEI由来実装、Stage1→Stage2の実再入、定義と手書きGoの保守負担を**同一の実装義務と独立Expectedで改訂前後比較する方法**を追加する。最初はCLIでGraph実生成→Plugin実Call、次に型/NULLを含むValidation、Generator自身のTEI化を試す。MCP/Studioは共通Operationから展開し、Windows Desktop Stage2のP0（#2831/#4583）は維持する。新Host/Builder/Registry/独立Expectedは増やさない。**設計・検収計画であり、新たなE2E達成宣言ではない。**
+
 - [Studio／CLI／WebのBackend子プロセス・Plugin管理・配布更新の統合設計](design/STUDIO_CLI_BACKEND_PROCESS_DISTRIBUTION_UPDATE_2026-11.md)：現行Desktop P0は同一Process方式Aを基準とし、将来候補としてWails親からローカル子BackendへのIPC接続を比較する。CLIはWails非依存の共通Backendを直接／自己子起動／再利用Sessionで比較する。WebはServer配信Clientと認証済みAPIを分離し、遠隔CLIはServer側のPlugin構成を使用する。G0〜G6は既存#1158/#1824/#2044/#2589/#2831/#4583の実装Ownerに接続し、**CLI子起動の既定化・共有Daemon・Updater製品採用は実測とOwner判断待ち**とする。Studio Stage1→Stage2セルフビルドのP0を変更しない。
 
 <!-- rea-two-intakes-current-main-20261114 -->
