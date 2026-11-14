@@ -85,3 +85,22 @@ test("PIN-WIRING-04: workspace return permits explicit rebind, not automatic old
   assert.match(workspaceLoad, /pinState = invalidatePin\(pinState\)/);
   assert.doesNotMatch(workspaceLoad, /pinSubject\(pinState/);
 });
+
+test("PIN-WIRING-05: a changed Catalog cannot silently rebind an old Subject Pin", () => {
+  const render = bodyBetween("function renderPin() {", "\nasync function refreshPinnedSubject() {");
+  const refresh = bodyBetween("async function refreshPinnedSubject() {", "\nfunction renderList() {");
+  const pinClick = bodyBetween('element("pin-current").addEventListener("click", () => {',
+    '\nelement("unpin-current").addEventListener("click", () => {');
+  const unpinClick = bodyBetween('element("unpin-current").addEventListener("click", () => {',
+    '\nelement("inspect-pinned").addEventListener("click", () => {');
+  const recheck = bodyBetween('element("inspect-pinned").addEventListener("click", () => {',
+    '\nrenderPin();\nsearch.addEventListener("input", renderList);');
+  assert.match(main, /import \{ readPinnedSubject, catalogIdentity \} from "\.\/pin-reader\.ts"/);
+  assert.match(main, /pinnedCatalogIdentity === catalogIdentity\(catalogSnapshot\)/);
+  assert.match(render, /pinnedCatalogMatches\(\)/);
+  assert.match(render, /固定後にモデルの版が変わりました/);
+  assert.match(refresh, /!pinnedCatalogMatches\(\)/);
+  assert.match(pinClick, /pinnedCatalogIdentity = catalogIdentity\(catalogSnapshot\)/);
+  assert.match(unpinClick, /pinnedCatalogIdentity = null/);
+  assert.match(recheck, /!pinnedCatalogMatches\(\)/);
+});
