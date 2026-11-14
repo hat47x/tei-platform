@@ -10,6 +10,14 @@
 | `duplicate-observation-id.tei.md` | A3を別の値で重複記述 | IDの重複を黙って統合せず、意味受理前に拒否する |
 | `derived-view-stale.tei.md` | narrowedの定義に対し旧movingの派生表を表示 | 定義元を表示結果で上書きせず、不一致を診断する |
 
+## SourceとExpectedの対応を固定する
+
+`independent-expected.candidate.json`の各ケースに、**対応する`*.tei.md`の元UTF-8バイト列のSHA-256**を`sourceSHA256`として記録した。SQL生成器のGo回帰テストは、期待値を読む前に全5件のSourceの実バイト列を照合する。Sourceが変更された場合は、数値結果が偶然一致していても`STALE_SOURCE_CLOSURE`として停止する。
+
+これは正式Readerに代わるものではない。ハッシュは**Sourceが同じかどうか**を示すだけで、どのMarkdown表が意味として選択されたか、NULLやFrameが正しく解釈されたか、意味変更か表示変更か、Ownerが受理したかを判定しない。表示のみの変更でもraw byteのSHA-256は変わるため、Sourceの再確認は必要となる。意味が同じことを確認できた範囲でのBuild／Artifact再利用は、既存のWorld／Model／Artifact Revisionと現在の資格で別に判定する。
+
+Sourceを修正する場合、ハッシュの再計算は必要だが**ハッシュだけ自動更新して合格扱いにしない**。定義と派生表示の意味差、Independent Expectedの正しさ、対象Role／Operator、変更を受理するOwnerの判断を確認し、変更と再確認の記録を残す。JSONの`adoption=proposal-only`は保持し、数理Toolkit専用のScenario SSOTや製品Schemaへ昇格しない。
+
 ## 既存の実証との接続
 
 `internal/database/sqlgen/sqlite/window_reference_test.go`と`window_frame_change_test.go`では、既存`SelectOptions`から生成したSQLite SQLを実DBで評価している。固定された七行の入力と期待値の照合は**C0／SQL方言**の検証である。今回追加するテストも、このJSONの基準・変更例を使ったC0の照合にとどまる。

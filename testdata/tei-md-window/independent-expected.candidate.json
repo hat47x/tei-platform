@@ -51,7 +51,8 @@
           "cumulative_rows": 10,
           "cumulative_range": 10
         }
-      ]
+      ],
+      "sourceSHA256": "ff24acb4158aad466fd6b1a0768dc2c0687cfc2b13d5b2e55576388c7cea2282"
     },
     {
       "file": "frame-narrowed.tei.md",
@@ -100,26 +101,30 @@
           "cumulative_rows": 10,
           "cumulative_range": 10
         }
-      ]
+      ],
+      "sourceSHA256": "b780a14f925efed657d9edeba30f24dc6f2966652953872963e21b1c524fabc5"
     },
     {
       "file": "layout-only.tei.md",
       "valid": true,
       "meaningEqualTo": "baseline.tei.md",
-      "notes": "Markdown presentation change; byte/revision changes without Window meaning change"
+      "notes": "Markdown presentation change; byte/revision changes without Window meaning change",
+      "sourceSHA256": "d784710eb6c10720a8701670fe17504830f8fd60a09a894ea30b2f7d6eacb0d3"
     },
     {
       "file": "duplicate-observation-id.tei.md",
       "valid": false,
       "diagnosticCandidate": "duplicate-observation-id",
-      "noGeneratedQuery": true
+      "noGeneratedQuery": true,
+      "sourceSHA256": "5ba6eb9e2dc9c598053e95c99d98bc6463e875f914b75bee1c58df401dd34812"
     },
     {
       "file": "derived-view-stale.tei.md",
       "valid": true,
       "meaningEqualTo": "frame-narrowed.tei.md",
       "derivedViewConsistent": false,
-      "notes": "A3/A4/B3 displayed previous moving values 20/30/10 although authoritative frame=1 requires 25/35/15"
+      "notes": "A3/A4/B3 displayed previous moving values 20/30/10 although authoritative frame=1 requires 25/35/15",
+      "sourceSHA256": "105fb00afa1a306fe45fb367712d606d766ac4c0250ac746917f69201a1f9f73"
     }
   ]
 }
