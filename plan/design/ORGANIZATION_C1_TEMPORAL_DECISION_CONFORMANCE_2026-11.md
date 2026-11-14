@@ -689,7 +689,7 @@ sourceの `optional` は「過去の人物対応が不明な旧行で強制NOT N
 | Relation Storage合流先を存在しないorg_store Mappingに差替え | Source Loaderが**未解決Mappingを拒否**（既存IDから推測しない） |
 | 同じMapping/Relation Identityを二つのAuthoringファイルに宣言 | Source Loaderが**二重定義を拒否**（後勝ちで採用しない） |
 
-成功側は従来通り、Person→Membershipのkeyless Source、Nullable support column、Source Index、offline Desiredを確認する。**この新HEAD `2c155383d525b022a4ba0f317192351c4eb0b92a` の[Repository Health #43558325121](https://github.com/hat47x/tei-platform/actions/runs/43558325121)は独立Runとして判定する**。古い7件版成功は負例追加版の成功ではない。ここで数えるのはトップレベルGoテスト7件、追加の負例サブケース5件であり、12個の独立Product E2Eではない。
+成功側は従来通り、Person→Membershipのkeyless Source、Nullable support column、Source Index、offline Desiredを確認する。**固定HEAD `2c155383d525b022a4ba0f317192351c4eb0b92a` の[Repository Health #43558325121](https://github.com/hat47x/tei-platform/actions/runs/43558325121)はcompleted/success**。実ジョブログで全Goテスト、`tei/internal/operations`、gofmt、vetのPASSを確認した。旧HEADの合否と混ぜず、本HEADだけの限定技術証拠とする。ここで数えるのはトップレベルGoテスト7件、追加の負例サブケース5件であり、12個の独立Product E2Eではない。
 
 **他チャットの実受入との接続**：[#4619](https://github.com/hat47x/tei-platform/pull/4619)のProduct D1/QJPAは、実Sourceを選ぶ→型付きBinding→選択Providerと実Call→Rowset/Context→独立Recipientの受領を別Claimにする。[#4638](https://github.com/hat47x/tei-platform/pull/4638)の実PostgreSQL16参照Queryは固定HEAD `0ce3a52f` で7サブテスト成功したが、入口は `tools/reference-browse-read` であり、C1の `org_axes_view.as_of_membership`、Product `tei` CLI、人物3人／FTE集計、二Consumerは証明しない。[#4637](https://github.com/hat47x/tei-platform/pull/4637)の限定Host Readerは**別SourceのREA候補を安全に受けるローカルHost境界**であり、C1人物Identityや共有WebのCurrent Principal/Grantを保証しない。
 
@@ -697,3 +697,41 @@ sourceの `optional` は「過去の人物対応が不明な旧行で強制NOT N
 
 第7テストの一時WorkspaceはOwner採用されたProduct Sourceの代替ではない。現在の単独membership_id PK、欠けたas-of Person射影、履歴Backfillの不確定性は引き続き未解決。Studio Desktop Stage2セルフビルドと通常CLIの実Provider Readは独立P0を維持する。
 
+
+
+## 20. 本物のRelation Storage Sourceから安全なExpand候補を出す試験と取得被覆の停止線（2026-11-14）
+
+### 20.1 G1 Expandは「物理形状の差分」と「既存DBへ適用できる資格」を区別
+
+[Go Draft #4633](https://github.com/hat47x/tei-platform/pull/4633)に、既存第7テストで実TEI DSLをロードした後の**オフラインSchemaDiff→PostgreSQL DDLレンダリング**を追加した。テスト内で、同じ型付きOrg Persistence Mappingから一時的なRelation Storageを除いたSource由来Baselineと、追加後のDesired Physical Schemaを、既存`schemadiff.Compare`で比較する。手書きの`physical.SchemaSnapshot`を現在の実DBと偽って扱わない。
+
+期待する差分は**1件だけ**であり、既存`membership_id`単独PK、FK、通常のSemantic属性を変えない。
+
+```sql
+ALTER TABLE "public"."org_memberships" ADD COLUMN "person_support_id" pg_catalog.varchar;
+```
+
+このSQLは**Nullableな補助列の追加候補**であり、既存Migration Rendererによる文字列出力を検査するだけで、実DatabaseへのDDL実行、旧行のPerson ID補完、列同定のAuthority、履歴版PK改訂は行わない。必須列`NOT NULL`への昇格やHistory Writer切替は、既存[#4125](https://github.com/hat47x/tei-platform/issues/4125)のExpand/Source-proven Backfill/Validate/Writer Fence/Contractの段階別Owner判断を要する。旧行の欠測を推論で埋めない。
+
+**区別する3つの版・資格**：①現mainのorg-staged-axisは正式Person Linkなし・PK単独で、②テスト内の一時SourceはPerson→Membership keyless Relation/optional supportを持つが正式未受理で、③実DatabaseのIntrospection／移行履歴は未取得。①→②から生成した差分は③の現状を証明せず、最新mainに載っていないDraft #4566/#4567のSQL修正も暗黙に取り込まない。
+
+### 20.2 他チャットのFunction Data Context「partial」と、組織人数・FTEの閉包
+
+[Draft #4647](https://github.com/hat47x/tei-platform/pull/4647) HEAD `a962a3f6`は、実PostgreSQL観測W1〜W3でRLS、LIMIT、宣言外JOIN、View/Partitionなど**見えた制限**を`coverage=partial`で運び、Native SQL本文外の述語（SQL関数等）があるため、制限未観測でも`unestablished`と`native-sql-predicate-not-closed`を維持する。固定HEADのWorkflow 7/7 completed/successは確認できたが、同PRはDraft／main未統合、製品`tei`の通常CLI/Current Grantとは別資格。W4列の由来は未実装であり、`NULL`を`stored`と断定したり粒度`entity`を主張したりしない。
+
+| C1のRead/Measure用途 | 制限を観測した`partial` | 制限不明の`unestablished` | 独立Expectedに対する正式な全体Claim |
+| --- | --- | --- | --- |
+| Membership件数 | 見えた行だけの局所件数として範囲・理由とともに提示 | 見えた行だけの観測値、完全性不明 | 全体件数の合格不可 |
+| distinct Person | Person Link・source identity・兼務A2/A3の同一人物性が未成立なら算定不可 | 同上。0行を「0人」や非所属の証拠にしない | 同一validAt/knownAt・Provider/Reader Scope・完全性を確認後のみ |
+| allocation FTE | 見えた行の合計は**表示範囲のSubtotal**、全組織の3.0/2.4と比較不可 | 集計母集団が未確定であれば未資格 | r7の合成Expectedと実Product Rowsetが**同じCohort**で閉じた後のみ |
+| Case承認・移管 | `partial`を候補0件や不可判定へ縮約しない | Authority/Rule/Grant・SourceRevisionを別照会 | 現在Grant/Host Effect/Receipt/Consumer ACKを別票で検証 |
+
+重要なのは、`partial`が**何行欠けたかを示す数値ではない**こと、`unestablished`が`complete`の反対証明でもなく**未確立**であること。既存r7の「3 Person、4→3 Membership、3.0→2.4 FTE」はあくまで合成Oracleであり、現mainの実QueryにはPerson射影も履歴版PKも未実装。Native SQL経路で見えている行がOracleと偶然一致しても、Product全体の完全性を立証しない。
+
+### 20.3 P0の入口を変更せず、次の製品検査を絞る
+
+横断の[RA-0/1/2仮統合 #4644](https://github.com/hat47x/tei-platform/pull/4644) HEAD `b5c23044`は3/3の局所CIがsuccess。ただし参照Executorと通常`tei`の製品Provider Readは異なる。元RA-0側のE1/API依存境界の未達は新PRの成功で免責されない。[生成Read-only Function #4559](https://github.com/hat47x/tei-platform/pull/4559)は`recent_orders`専用の実生成・実PG局所成果であり、C1のPerson Relationを含むQueryや二Consumerへ自動流用しない。
+
+最短の次作業は、Ownerが採用したM-P/M-E/M-Xの**一Profile**について、正式なRelation（source/target方向・Key）→実保存されたPerson対応→実QueryのPerson射影→同じRead Cohort・Periodでの人数/FTE→独立Context/Consumer受領、という単一の証拠系列を通すこと。履歴版`record_version_id`等の物理PK、旧Writer移行、Source/Current Grantはそれぞれ別Owner。配布生成物のToolchain観測[Draft #4648](https://github.com/hat47x/tei-platform/pull/4648)はTarget成果物のbyte差・Builder申告の観測であり、C1の業務MeaningやSource→実DBの完全性には昇格しない。
+
+**実行資格**：7テスト＋5拒否サブケースの旧HEADは[Health #43558325121](https://github.com/hat47x/tei-platform/actions/runs/43558325121)で成功。今回追加したDDL差分テストの新HEAD `65b8348780dc92ad19bcc1e5a8ca9a0311f2e216`は[Health #43572108581](https://github.com/hat47x/tei-platform/actions/runs/43572108581)で**独立に結果確認するまでPASS未確定**。本節は新DDLの実接続／PG実行／Owner採用を報告するものではない。通常CLI実Provider Read #2586 とStudio Stage2セルフビルド #2831 は独立P0のまま維持する。
