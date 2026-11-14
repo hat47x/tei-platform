@@ -6,6 +6,8 @@ on:
     paths:
       - .github/workflows/tei-studio-wails-desktop-webview-smoke.yml
       - cmd/tei-studio/**
+      - cmd/tei/**
+      - internal/buildintent/**
       - go.mod
       - go.sum
       # Exact Go production import closure from cmd/tei-studio, studiohost, operations and xeadsource.
@@ -45,6 +47,8 @@ on:
     paths:
       - .github/workflows/tei-studio-wails-desktop-webview-smoke.yml
       - cmd/tei-studio/**
+      - cmd/tei/**
+      - internal/buildintent/**
       - go.mod
       - go.sum
       # Exact Go production import closure from cmd/tei-studio, studiohost, operations and xeadsource.
