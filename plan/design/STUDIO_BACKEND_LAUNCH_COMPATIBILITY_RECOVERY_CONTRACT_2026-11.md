@@ -272,3 +272,75 @@ CLI／MCP／外部Harnessへ選択Subjectを渡す場合は、Qualified Subject�
 最初に合格を主張できるのは「指定したread-only一Operationが、実子Backend経由で既存Direct経路と意味同値であり、起動・Peer・失敗・結果が観測された」範囲までとする。正式Stage2 StudioのWindows実Consumer、実Provider、Plugin更新、Updaterの資格へ拡大しない。
 
 **実装優先順位**：PR-A（既存Direct parity）→PR-B（明示CLI自己子）→PR-C（Wails子Backend一往復）。ただし#2831/#4583のStudio Stage1→Stage2セルフビルドと#4495の通常CLI→actual Providerは、これらの完了待ちにしない。
+
+## 17. 製品主線と子Backend検証の接合点（2026-11-15、Graph実生成／Provider受入との照合）
+
+**子Backend試験で何を観測したか**と、**TEIが業務意味から何を生成・実行したか**は別の問いである。両者を同じ実行記録で追跡できるようにするが、片方のPASSをもう片方の資格へ昇格させない。
+
+| 既存の実装・受入 | 現在の到達点 | 子Backend計画との接合 | 新しいPASSの上限 |
+| --- | --- | --- | --- |
+| #4709/#4722のMarkdown Graph固定Fixture／限定Reader | 元Source byte/spanとNode/Edge IDを持つ参照候補を読める | 同じFixtureを、将来の実Operation/Providerの回帰で再利用 | 正式`*.tei.md` Loader／意味受理ではない |
+| [#4728](https://github.com/hat47x/tei-platform/pull/4728)のGraph→Go→独立Consumer | Referenceで実Go生成・Consumer実行を行うPR。main統合・製品資格は別 | SourceのEdge向き変更が生成GoとConsumerに反映され、layout-only変更が意味不変であることを追跡 | 製品Target Generator、Plugin実Provider呼出し、Studio Stage2ではない |
+| #4712のcapabilityinvoke実Adapter境界 | Dispatch前call0／Dispatch後call1と結果契約不正・取消を区別する局所回帰がmain統合済み | 子ProcessでACKが消えても「未Dispatch」へ戻さない | 外部Effect不在・安全Retryの証明ではない |
+| [#4702](https://github.com/hat47x/tei-platform/pull/4702)のSL-1a/b/c | 公開pure Entry→型付きAPI→選択済み実Go Provider→通常tei別Processの計画 | Provider選択Identityと実Invoke、通常CLIの到達と、IPCの独立証拠を合流させる | 実Product EntryとOwner意味受理は未実証 |
+| #2831/#4583のStudio Stage1→Stage2 | 独立BuildIntent／実Builder／実Windows WebView2 Consumerを必要とする既存P0 | 将来Stage2が子Backendを用いる場合は、親／子双方の実ImageとGUI Assetを別に計測 | 子IPCの局所成功で製品Self-build PASSとしない |
+
+Graphを使う最初の技術例では、**同名Node二つ・多重有向Edge・Edge反転・layout-only・Mermaid表示差異**を区別する。同じモデル上での小変更から実Goの動作へつながることが重要だが、参照実装の`go run`を通常`tei`のPlugin実Callと呼ばない。また、`*.tei.md`が正式Loaderの管理下で未束縛として拒否される間は、参照Readerの成功を正式なSource受理に転用しない。
+
+セルフビルドの改善指標は、生成Goの行数やPlugin数だけではなく、**各振る舞いがTEIの図表・Ruleから生成されたのか、既存Go部品に委譲したのか、手書きで残ったのか**を、機能単位で比較する。Plugin自身をTEIから構築する比率と、保守する定義体の簡素化も別に計測し、旧Generator／旧Sourceが混在した結果を達成としない（#4720、#4718、#1180/#2514）。
+
+## 18. PR-Bの実子Backendを実装する際の具体的な境界
+
+既存の`operations.InspectSubject`等を、通信のために別の意味Engineへ移し替えない。PR-Bで新たに必要になるのは、**明示的なDispatch経路、親子通信、結果の対応付け、子の終了管理**である。
+
+### 18.1 起動と通信の最小Contract
+
+- 親は明示的な試験指定時のみ現在の実行ファイルから子を起動する。通常CLIのコマンド体系・JSON v0・exit・stderrは維持する。子の動作モードはGUI/Wails起動やWorkspaceの外部書込みより前に選別する。
+- 子の通信は一対一・有限サイズとし、Transport用のRequest ID、Operation ID/Contract、Workspace指定、Deadline、Cancel、Response/Failureを扱う。ただし業務Request EnvelopeやExecution Receiptの第二正本を作らない。親子共通のTransport表現を既存の型付きOperationへ変換する薄いAdapterにとどめる。
+- コマンド実行結果がJSONである場合は、子から利用者向けJSONを出力させず、親が従来のCLI Result投影を行う。子側の診断ログをProtocol用stdoutへ混入させない。サイズ超過・部分Frame・EOF・不明なOperation・Protocol不一致を実Failureにする。
+- 子ProcessのPeer確認は、引数とPIDだけに頼らない。親が作成した一回限りのPipe/Handle等のOS資源とProcess起動事実を照合する。Process Exit Code、Timeout、実起動Path、実Image Digestを観測項目へ加えるが、Digestの取得方法が実Imageと一致しないOSでは`unverified`として扱う。
+- 子が正常にReplyしなかった場合は、読取りであっても古いReplyを後続Sessionへ流用しない。副作用を持つ操作はこのPRでは公開しない。将来のEffectでは#4712が固定したcall0/call1とReceipt照合を使い、ACK喪失を安全Retry許可へ読み替えない。
+
+最初の受入Fixtureは、**現在の製品Loaderで実際に読める既存Workspace**から選ぶ。Reference Graphの未受理Markdownを直接渡して「製品BackendがReaderを通した」と偽装しない。新しいSource Readerの追加も、このPR-Bの前提条件にはしない。
+
+### 18.2 PR-BからPR-Cへの引渡しを明文化する
+
+PR-Bは、実`tei`親Process→実`tei`子Processのread-only一操作について、既存Directと同じ意味結果、実Child ID、Handshake、故障時Failureを報告するだけとする。
+
+PR-Cでは、`cmd/tei-studio` nested ModuleのWails Native起動経路と、子Backend経路を同じRead-only Operationで比較する。実Windows WebView2、`StudioBridge`、Go IPC Adapter、実子Image、表示した対象とRevisionをそれぞれ観測する。**CLIの成功だけでWindows GUIの出来上がりを主張しない。**
+
+StudioのClientはIME、Focus、未保存Buffer、選択Pin、Layoutを維持し、子Processの再起動で現在の編集状態を上書きしない。GUIからBackendへ引き渡すのは現在のSelection/Qualified Subjectの参照であり、保存権限やAIへのDisclosure Grantではない。
+
+## 19. 実行票の必須証拠・方式採否・継続的検証
+
+既存の#1180/#2514を独立ExpectedのOwnerとして利用する。ここで新しいScenario ID体系や永続Registryは設けない。PR-A〜Cの各受入票は、最小限次の関係を同じAttempt内で再構成できなければならない。
+
+```text
+Source byte/span + Workspace / Subject / Revision
+  → Parsed / Accepted Meaning (別資格)
+  → Operation Contract + Entry / Capability + Host Scope
+  → Resolved Plugin + selected Provider / locked Artifact
+  → Actual invoked Provider + call count + Attempt / Session Epoch
+  → Result / Failure + Effect observation (if applicable)
+  → CLI / Wails Consumer + Independent Expected
+  → Claim: Direct | Child IPC | GUI Bridge | Product Provider | Self-build
+```
+
+同じJSONや業務値が返っても、選択したProvider BではなくAが呼ばれた場合はProvider実行の受入に使わない。Childの実Processが見つかっても、対象Source・契約・Actual Providerが未確認なら製品実行資格にはならない。反対に、正式ReaderやPluginが未完成の状態でも、**read-only一操作のIPC同値性**だけは限定して実証できる。
+
+### 19.1 性能・分離方式の採否表
+
+| 採用判断 | 実測が必要な項目 | 保留すべき条件 |
+| --- | --- | --- |
+| CLI direct既定→自己子既定 | Cold start、短命コマンド頻度、p50/p95/p99、合計RSS、JSON/exit互換、障害回復 | 性能測定なし・既存Script互換破壊 |
+| Studio Native A→B0/B1/B2 | 編集中の体感応答、IME/Focus/Buffer、実WebView2、Pipe/HTTPの攻撃面、親子故障、更新時のImage不一致 | 未保存内容の欠落・旧Reply採用・実Wails証拠なし |
+| Session再利用・共有Daemon | 一Process当たりのWorkspace/Grant隔離、連続操作、Source競合、Child孤児化とOwner | 利用需要が不明・暗黙のWorkspace共有 |
+| 外部Plugin／Updater | Release Byte、Lock/Composition、実Provider、旧Session Drain、現在Trust、OS管理主体、Plugin Data Migration | 状態がnotModelled・Effect Unknown・Rollback意味が不明 |
+
+性能の具体的な許容値は実測と製品Ownerの要求を根拠に決める。ベンチマーク上の平均値の改善だけで、プロセス分離や共有Serverの採用を決定しない。
+
+### 19.2 文書・CIの完了条件
+
+設計文書は`plan/design/README.md`の索引に追加し、`tools/repository-plan-check`の文書一覧検査を通す。PR #4705の先行HEAD `fa17bef8`では、`TestPlanReadmesMentionEveryEntry`が本ファイルの索引欠落でFAILし、全体Health CIが失敗した（Cache検証のみSUCCESS）。本PRブランチで索引漏れを修正したが、**新HEADのCI結果は別途確認する**。旧HEADのPASS、別PRのGo実行結果、提案段階のExpectedを今回の新しい合格として記録しない。
+
+最終的に、子Backendの採用要否は#4635のOwnerが、CLI既定変更はADR-0048のOwnerが、Plugin管理／Updaterと実行資格は各Plugin/Host Ownerが決める。段階導入の目的はStudio Stage1→Stage2とProduct実Provider実行を早めることにあり、子Backend／Installer／共有Serverを新しい先行Hard Gateにはしない。
