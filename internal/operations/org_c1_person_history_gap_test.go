@@ -396,13 +396,13 @@ func TestOrgC1CandidatePersonRelationStorageLoadsFromTEIDSL(t *testing.T) {
 	// unchanged occurrence-only PK nor old rows gain invented Person history.
 	baselineMapping := *membership
 	baselineMapping.RelationStorage = nil
-	before, err := persistence.RealizeDesired(
+	physicalBefore, err := persistence.RealizeDesired(
 		[]persistence.Mapping{baselineMapping}, "org_store", postgres.RealizationPolicy{},
 	)
 	if err != nil {
 		t.Fatalf("realize the existing Source-derived physical baseline: %v", err)
 	}
-	changeSet, err := schemadiff.Compare(desired, before)
+	changeSet, err := schemadiff.Compare(desired, physicalBefore)
 	if err != nil {
 		t.Fatalf("diff candidate vs. previous offline physical shape: %v", err)
 	}
