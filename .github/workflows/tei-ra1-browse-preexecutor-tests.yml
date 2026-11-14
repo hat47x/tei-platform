@@ -25,6 +25,20 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
+          fetch-depth: 0
+      - name: Verify exact PR merge-to-head relation and clean checkout
+        shell: bash
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          [[ "$GITHUB_REF" =~ ^refs/pull/[0-9]+/merge$ ]]
+          read -r merge base head extra < <(git rev-list --parents -n 1 HEAD)
+          test -z "${extra:-}"
+          test "$merge" = "$GITHUB_SHA"
+          test "$head" = "$PR_HEAD_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
       - name: Set up Go from module
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
