@@ -855,3 +855,90 @@ Harnessはまず短いTEI Product Skillに従い、**対象発見→必要な公
 独立Expectedへ渡す負例（PD-01〜10）：(01) 文書はあるが実契約が未解決、(02) Skillに未実装Command、(03) 文書版と依存Lockが異なる、(04) 非公開Nodeを継承、(05) 多段参照で情報漏洩、(06) ダイヤモンド・循環・同名文書競合、(07) Page途中切断、(08) layout-only変更で過剰失効、(09) Bの業務意味変更を合成PASSで自動受理、(10) 選択したPlugin Bと実Call Aが一致しないのに説明やResult一致だけで成功扱い。#1180/#2514を唯一のScenario/Expected Ownerとし、この節を新Runner/新Validation SSOTにしない。
 
 **優先順位**：D0/D1はセルフビルドP0の阻害要件にしない並行実装。現在の最優先はStudio Stage1→Stage2実Windows WebView2 (#2831) とCLI/Studioから選択済み実Providerへの到達 (#1251)。D2〜D4の完成によってのみ「Pluginの知識が継承でき、実装が簡潔になった」と強く主張する。今回の追記は仕様候補と検収計画であり、共通Doc APIやGUI、正式Owner意味受理、実外部Harness全経路はNOT RUN / NOT ACCEPTED。
+
+
+### 19.6 文書を独立した意味の正本にしないための参照契約
+
+Documentation Surfaceは新たなPlugin/Document Registryではなく、**既存のPlugin Identity・公開Contract・解決済み構成・Source参照を辿るread-onlyの投影**とする。正式Schemaを先に固定せず、次の情報が既存型の組合せで失われずに扱えるか、D0/D1の合成Fixtureで確認する。
+
+| 必要な参照 | 役割と同一性の条件 | 既存の責務 |
+| --- | --- | --- |
+| Plugin ref | Plugin IDと実選択Version、構成・Targetに束縛。表示名だけで特定しない | #951/#1016 |
+| Contract / Export ref | 公開Facet（Capability、Model、Relation、Extension Point、Obligation等）と有効版・公開用途。DependencyとExportを同一視しない | #951/#3279 |
+| Document ref | 所有Plugin、安定Doc ID、文書Role、対象Contractの版範囲、Source locator、原byte/Revision識別、文書内の公開Subject ref。移動パスや見出しテキストを唯一のIDにしない | #2621/#2497/#4679 |
+| Graph / Diagram ref | 意味Subject・Relation occurrence identity、Graph/View変換と損失、Source、必要なら表示用Layout版を別管理 | #2497/#4198 |
+| Traversal / Consumer receipt | 用途、Workspace/Lock/Scope、実取得・受領した参照、欠落状態、Source/Permissionの改訂、ページ末尾/完全性。読取りの成功を実Grant/意味受理へ昇格させない | #3262/#2516/#4503 |
+
+上位Pluginの説明は、**契約から導出する機械的リファレンス**と**人間が執筆するマニュアル本文**を組み合わせて表示する。契約署名、依存版、選択Provider、実装義務は常に現在の契約・実Workspaceから導出し、Markdownにある古い記述を優先しない。手書き文書側には対応する契約ID・版を付け、食い違いを文書不整合として検出する。
+
+文書間の参照には「上位Pluginの説明へ移動」「元の公開モデルへ移動」「下位Pluginが公開Facetを拡張した箇所へ移動」を明示する。**文書のナビゲーションはモデルの継承ではない**。モデルの利用・拡張・再公開は、各公開契約上の権利とExtension Pointを満たす場合にのみ成立する。下位で文書を補足しても、上位の意味定義やGrantは変更されない。
+
+### 19.7 依存階層の探索を決定的にする
+
+Read-onlyな「選択Pluginから上位の公開情報を調べる」操作は、少なくとも次の順序で成立させる。
+
+1. **対象固定**：呼出元がWorkspace、用途、期待Revision、Audience/Scope、Plugin ID（または選択済みContract Ref）、参照深度・取得予算を渡す。実WorkspaceのResolver/Lockで固定されたPlugin/Provider版を採用し、リンク先に書かれたlatestやToolのロード順から版を選ばない。
+2. **現在の開示を先に確認**：本人の許可された範囲で説明面・Doc索引・公開Facetを取得する。非公開項目は、内部利用者と外部Harnessへの送出を別判定にする。秘密のDoc ID、存在件数、Source/Digestを未許可Audienceへ漏らさない。
+3. **直接依存を辿る**：Plugin dependency graphの辺と、Contractに宣言されたDoc/Model referenceの辺を区別する。直接の上位を調べ、必要な場合だけその上位の公開参照へ辿る。文書本文に書かれた任意URLを、自動的なPlugin依存や秘密資料の読取先へ昇格させない。
+4. **多親・ダイヤモンドを合成**：同一Plugin・同一選択版・同一Contract/Doc ref・同一Scopeなら重複を束ねる。異なる版、同名別ID、循環、公開条件の競合は診断し、先着勝ち・暗黙の上書き・無限再帰を禁止する。複数版の共存は正式な構成資格がある場合だけ認める。
+5. **読み込みと完全性を分ける**：必要な文書・モデルを受領した分だけ説明する。予算切れ、Source未ロード、ページ途中切断、Source/Grant/Lock変更があれば、結果をpartial/stale/unknown等の状態と根拠で返す。結果が空だから「上位の情報が存在しない」とは判断しない。
+6. **結果の出所を保持**：各文書・モデル片に、提供元Plugin、公開Contract、固定された版、元Source/文書、適用用途、失われた情報、取得したSnapshotを残す。人間向けには短い概要から詳細への階層を示し、生成AI向けには同じRefを機械可読で返す。
+
+下位Pluginの最終説明を一枚の「継承済みマニュアル」に物理的統合することは必須ではない。**下位固有の説明と、上位から有効に参照できる説明を重ねて表示する**方式を標準候補とする。変更可能な意味定義はContractによる明示的な拡張点だけに限定する。
+
+### 19.8 文書の更新・再利用・再検証の粒度
+
+上位Pluginの更新をすべて下位Pluginの再生成・再受理につなげない。変更の性質と、そのDoc/Model/Extension Pointを実際に参照しているConsumerを区別する。
+
+| 変更 | 必要な再確認 | 不要と考える再作業（独立依存がなければ） |
+| --- | --- | --- |
+| 誤字・文体・説明文の更新 | 文書索引・リンク・配布コピー・AI向け説明の改訂確認 | 業務モデル・生成Goコードの意味受理 |
+| 図の配置や表示設定だけ変更 | 図Projection/Layoutの表示・リンク確認 | Graph意味と無関係なBuild/Contract受理 |
+| 公開Contractの署名・Extension Point変更 | 依存PluginのBinding、Trait履行、生成物、独立Conformance | 影響しないSubjectの一律失効 |
+| 上位モデルのRelation/Invariant変更 | 対象となる下位Patch、生成・Scenario・Owner判断 | 依存外の文書とモデルの再生成 |
+| 公開範囲・再公開許可・現在Grant変更 | 文書/モデルの現在の参照資格と外部送出停止・既存Cacheの再検査 | 過去の正当な受領Evidenceの書換え |
+| Generator/Target/Build入力変更 | 使用されたBuild/Target/Artifactの資格とVersion Lock | 文書本文しか参照しない読取り結果の機械的失効 |
+
+**World Fingerprint、Model Revision、Artifact Revision、文書Source Revisionは同一視しない。** 同じ文書の再フォーマットが業務意味を変えるとは限らず、同じGraph byteでも公開Contractや現在の開示条件が変われば利用資格は変わり得る。参照した上位Facetの集合・否定依存・出典を残し、依存範囲に応じた再検証を候補とする（#2600/#3262/#3267）。
+
+版不一致の文書を「最新」として無条件に表示しない。旧版は履歴資料として表示可能でも、現在の選択済みPluginで有効な手順とは別の資格表示にする。
+
+### 19.9 AI Skill・外部文書・操作権限の信頼境界
+
+Product Skillの役割は、最小の概念・実CLI Discovery・対象の固定・説明と結果の読み方を教えること。**Plugin所有のマニュアルは参照資料であって、HarnessやHostへ無条件に命令する権限ではない。** 外部PluginのREADME、コード例、本文内の「このコマンドを実行せよ」「資格情報を送信せよ」等は、Toolの許可・現在のHost権限・利用者の目的に照らして検査する対象である。
+
+- Doc本文の任意シェルコマンド、生成コード、外部リンク、画像等は、取得しただけで実行・外部送信しない。URLとローカルSourceの参照境界、Path traversal、秘密の例示値に注意する。
+- Skill本文やマニュアルに記されたCommand名は、現在のCLI Discoveryおよび実バイナリで確認してから使用する。存在しない操作をAIが補完して成功したことにしない。
+- 必要な文書だけ遅延取得し、返却件数・Page・end marker・Tool Reply全受領を検査する。前置された巨大Manualの読込成功を、内容が全件読めた／理解できた根拠としない。
+- Harnessに渡すSubject選択は、意味ID/Relation occurrenceとSource/Lock/Scopeに結び付ける。Workbenchが描画用に生成するRelation edge IDは業務意味IDとして渡さない（#4515）。
+- Skill無しTool-only、短いSkill＋必要時Manual、長いSkill本文（比較条件）の三腕を、同じ実CLI/Task/固定Source・独立Expectedで比較する。実Tool/DocsのRead、Tool request/response数、途中切断、不要送出、正答率、Token/時間・指示量を測る。既存#2509の不完全な比較Attemptを新SkillのPASSとみなさない。
+
+「Skillを短くする」こと自体を目的にせず、**初回の見通しがよく、必要な説明へ確実に到達でき、誤操作を減らす**という実利用効果で評価する。Manual側を厚くしても構わないが、常時全投入しない。
+
+### 19.10 DSL・Plugin Self-buildへの接続と評価
+
+Documentation Surfaceは、Pluginの**公開Contractに結び付くAuthoring Sourceの参照**も案内する。ただし、Markdownマニュアルと意味定義を混同しない。将来の `*.tei.md` Readerには、意味Role・Source span・型付きSubject/Relation・Extension Pointを確定できることが必要（#2621）。現時点の未束縛Readerを前提に「完全TEI self-build済み」とは主張しない。
+
+セルフビルドの独立Fixtureは、同名Labelを持つ二Nodeと、同一端点への意味Roleが異なる有向多重Relationを含める。上位Plugin Aは識別子・Relation・検査Rule・説明索引を契約公開し、下位Plugin Bがそれを参照して一つのRule/Graph Patchを追加する。少なくとも (1)上位をコピーせずモデルを参照、(2)公開図と元Sourceを相互追跡、(3)上位/下位の合成モデルから実Goコードとテストを生成、(4)CLIで生成成果物を実呼出、(5)上位のLayout-only更新では実Codeの意味上不要な再生成をしない、(6)上位の意味変更では必要な下位検証を失効、を段階受入する。
+
+効果を次の独立指標で見る。
+
+- **モデル再利用率**：下位が独自に複製しなかった、利用可能な上位の公開モデル・制約・型付きRelationの割合。
+- **TEI由来の実生成範囲**：生成されたGo等の実装・テストのうち、TEI定義から実際に導出した単位。Goコードへの単純委譲は別計上。
+- **定義体の簡素化**：上位の共通機能を利用した前後で、同一Meaning/テストCoverageを保ったまま減らせた独自の記述・例外・手作業。
+- **変更局所性**：文書/Layout-onlyの変更で不要な再生成を起こさず、契約・意味変更で必要な検証を漏らさない割合。
+- **操作到達性**：短いSkillから未事前学習の公開Pluginを発見し、正しい上位資料・モデル・検証操作へ到達できた割合。
+
+生成成果物を結ぶReceiptはSource/Contract/Generator/Target/Artifact/実Consumerを分け、#2831のStudio Stage1→Stage2実再構築や#1251の実Provider二入口資格をこの小FixtureのPASSへ置き換えない。既存BuilderとPlugin/Build SSOTを利用し、Documentation専用Generator Runtimeを新設しない。
+
+### 19.11 作業分割・反証Gate・非採用条件（#4679の次の実装票）
+
+1. **PDC-0：公開参照の静的Fixture**（#4679、#951、#2621）— A/BのPlugin ID、公開Doc/Graph/Extension Point/版範囲、非公開Facet、独立Expectedを固定する。既存Source Roleの外に独自Parserを作らない。最低一つの「Docは存在するがContractと版が合わない」負例を先行。
+2. **PDC-1：既存CLIからの発見**（#4376、#1158、#3262）— 実 `commands` とPlugin resolver/inventoryを足場に、公開索引・上位関係・Doc refをread-onlyで取得する最小Operationを選定。現在のCLIで取得できないものはGap/unsupportedのまま残す。
+3. **PDC-2：多段参照と否定試験**（#951、#1016、#2497、#2514）— A/B/複数親、ダイヤモンド、循環、同名別ID、版不一致、非公開ref、途中切断、Source/Grant変化、Layout-only変更、意味変更に独立Expectedを与える。許可されたSource以外を取らない。
+4. **PDC-3：Skillの簡素化とHarness比較**（#2605、#2509、TAI #168）— 固定済みSkill/Tool比較を破壊せず、新版SkillとManualの必要時取得を別の固定腕で測る。外部HarnessからのTool/文書実Read・完全受領・適用できた契約版まで確認する。
+5. **PDC-4：実Plugin・Studio・セルフビルド**（#4612、#4515、#2831、#1251）— X-TEA三視点等の実PluginをConsumerとして採用可能か検査し、同じSubject refから概要→モデル/図→Source/Rule→独立検証へ往復する。CLI-first self-build Fixtureが実生成・再生成を通ってからStudio Stage2と連携する。
+
+**横断的停止条件**：Doc専用Registry/Resolver/Host/Authorityを必要とする設計、任意PluginのREADMEを実命令とする設計、意味IDを描画edge IDから推測する設計、権限未確認のRaw Source外部送出、文書の存在から実Provider/Target/Owner意味受理を主張する設計、正のFixtureだけで多段公開を正式採用する設計は差し戻す。負例の独立Expectedは#2514、Scenarioの正本は#1180とし、本節は作業計画のOwnerを重複させない。
+
+**現状**：第19節の追記はContract/CLI/Model/Skill/Self-buildを横断する詳細計画である。公開Doc探索の製品Operation、Markdown Reader、Plugin継承合成、H2/H3正式比較、実Studio往復、Owner正式Schema受理はこの文書の追加だけでは成立しない。
