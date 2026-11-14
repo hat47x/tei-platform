@@ -78,6 +78,9 @@ func runExternalCandidatesCommand(argv []string, out io.Writer) (int, error) {
 	if err := validateRepeatableArguments("external-candidates", argv); err != nil {
 		return fail("INVALID_ARGUMENT", err.Error(), 2)
 	}
+	if err := validateNoEmptyStringArguments(fs, "external-candidates"); err != nil {
+		return fail("INVALID_ARGUMENT", err.Error(), 2)
+	}
 	for _, required := range []struct{ name, value string }{
 		{"evidence-path", args.evidencePath},
 		{"tool-version", args.toolVersion},
