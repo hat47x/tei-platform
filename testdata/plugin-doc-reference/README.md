@@ -23,3 +23,13 @@ JSON内の `occurrenceRole` はPDC-02の「関係の異なる意味Role」を試
 ## 検証の状態
 
 候補データが固定された段階であって、Goテスト・実CLI読取り・Source/Permission/Lockの同一Snapshot、Owner意味受理は**NOT RUN/NOT QUALIFIED**。JSONの比較基準を製品出力から再計算してはいけません。
+
+## 候補Fixtureの自動監査（Reference限定）
+
+[Go監査テスト](../../reference/plugin-doc-reference/README.md)では、候補JSONの直接依存・文書帰属・非公開指定・期待ケースIDを確認したうえで、既存の限定Graph Readerを呼び出し、元のMarkdown表から読み取ったNode/Relation IDとSource byte位置を候補と突き合わせる。さらに12種類の意図的な改変を与え、不整合を検出できるか確認する。
+
+```sh
+go test ./reference/plugin-doc-reference -count=1
+```
+
+このテストは独立Expected候補の**整合性監査**であり、ProductがPermission Deniedを返すことや、実`plugin-inventory`で合成A/Bを解決できることの実証ではない。正式な意味受理・OwnerによるExpected採用・実CLI文書取得の合格判定は別途行う。新規テストをコミットしたことだけで「テストPASS」とはしない。
