@@ -95,13 +95,12 @@ const inspection = {
   sourceStatus: "indexed",
 };
 
-test("PIN-READER-01: Product Inspector qualifies pinned A but cannot change viewed B", async () => {
+test("PIN-READER-01: read-only Product projection qualifies the original Pin", async () => {
   const scope = createResponseScope();
   let pin = pinSubject(initialPinState(), "workspace-a", 1, A);
   const request = pinRequest(pin);
   assert.ok(request);
   assert.equal(inspectEligibility(catalog, request.subject).ok, true);
-  const viewed = { subject: B, text: "B stays visible", graph: "B graph", notice: "B notice" };
   let observedVersion = null;
   const accepted = await scope.run("pinned-inspection", async () => inspection,
     reply => {
@@ -112,9 +111,6 @@ test("PIN-READER-01: Product Inspector qualifies pinned A but cannot change view
   assert.equal(accepted, true);
   assert.equal(pin.observation.state, "inspected");
   assert.equal(observedVersion, "world-v1:source-v1");
-  assert.deepEqual(viewed, {
-    subject: B, text: "B stays visible", graph: "B graph", notice: "B notice",
-  });
 });
 
 test("PIN-READER-02: wrong Subject or stale Source is not a qualified Pin observation", async () => {
