@@ -500,3 +500,37 @@ Release Identity / Signature / OS・Arch
 | **UP-3：更新と復旧** | 更新途中Crash、旧Session、Plugin互換不一致、設定Schema変更、管理者権限不足、Effect Unknownをそれぞれ独立Expectedで検査 | 外部DBの自動逆行・Effect補償の合格にはならない |
 
 UP-0/1を第一検証候補とし、UP-2/3はD3を採用する場合に実施する。ただし、**UP-0〜3は全体P0のStudio Stage1→Stage2／通常`tei`実Provider呼出しへの新Hard Gateではない**。Wails標準UpdaterとInstallerの選定・移行は#1824、子Backendは#4635、Plugin Lock／配布は#2044／#951／#2589、実Effect／DB Migrationは既存の各Ownerに委ねる。ここでは設計と受入だけを定め、実UpdaterやOSパッケージ試験のPASSを主張しない。
+
+## 23. Wails Mobileの実験的ビルドと正式サポート待機（2026-11-15）
+
+Wails v3.0.0は**Windows／macOS／LinuxのDesktopについて正式な互換性契約**を提供する一方、**Android／iOSは実験的機能であり正式サポート対象外**である。[公式Roadmap](https://wails.io/status/)／[Mobile Overview](https://wails.io/guides/mobile/)／[iOS](https://wails.io/guides/mobile/ios/)／[Android](https://wails.io/guides/mobile/android/)を根拠に、TEI StudioのMobileを「ビルド可能性の試験対象」と「製品として保証する対象」に分ける。Wailsの公開状況が変わるまでMobile版を正式な納品・互換性・セキュリティ更新の対象へ自動追加しない。
+
+### 23.1 DesktopとMobileで共有する範囲
+
+Wails側では同じGoコードとWebフロントエンドをモバイル向けにビルドできる。iOSはWKWebView＋Xcode、AndroidはAndroid WebView＋GoのAndroid向け共有ライブラリ／NDKを利用する。これは**Wails側の一般的な対応**であり、現在のTEI Studio `cmd/tei-studio`（v3.0.0-beta.29）がiOS/AndroidでBuild・起動済みという主張ではない。
+
+- **共有する正本**：Domain Meaning、型付きApplication Operation／Contract、Reader・Source provenance、Pluginの論理役割、Go生成元、UIの宣言的モデル、独立ExpectedをDesktopと共通にする。Mobile専用の意味Engineや二重のHostを作らない。
+- **分けるAdapter**：WebView／OS API、File Picker、Workspaceの許可済み読取り、アプリのライフサイクル、Touch／Safe Area、IME／アクセシビリティ、公開・更新の仕組みはTarget別に持つ。既存の`StudioBridge`を無制限にMobileへ公開せず、利用可能なRead Operationだけを宣言的Capabilityとして提供する。
+- **最初の機能範囲**：内包したRead-only Fixtureの一覧・参照・検査結果表示など、サーバ依存・外部Effectのない小さな動作から始める。編集・大容量Graph・任意Filesystem／Process制御・Plugin導入・Builder再入は後続評価とする。
+- **画面の方針**：Desktop画面を小さく表示するだけで同等の操作性があると判断しない。狭い画面・縦横切替・タッチ入力に適したLayout／ナビゲーションは同じ意味モデルから生成する別Projectionとし、保存されたモデルの意味・同一性は変えない。
+
+### 23.2 子Backend・Updater・PluginのMobile境界
+
+前節§22の**D2 Desktop単一実行ファイル／B0自己子Backend**は、Mobileの既定配置にはしない。MobileではGoのServiceをWailsのアプリ内に置く構成を最初の実験対象とし、子Processの起動、ローカルDaemon、Pipe/UDS、外部Server Binaryの同梱を当然可能とみなさない。WailsにDesktop向けUpdaterがあっても、MobileのAPK／AAB・iOSアプリの配布／更新へ同じ実行ファイル置換を適用しない。Mobileの配布主体と署名・権限・ストアポリシーは独立に評価する。
+
+Pluginは「論理定義を共有できること」と「その実装をMobileでロード・実行できること」を分ける。**静的に組み込む標準Plugin**、Read-onlyの文書／設定、Mobile対応のGo変換だけを最初に評価し、端末上での動的なNative実行コードのダウンロード・ロード・差替え、OS外のServer配信を成立済みとはしない。DesktopのPlugin Lock／同一Version名だけでMobileの現在の実行資格を与えず、Targetと実Artifact／Host Scopeを照合する。
+
+Remote接続Mobileは将来の別の配置候補だが、接続先・認証・オフライン時の機能差・Disclosureを明示する。Remote接続によってサーバの実Pluginや設定をMobileパッケージへコピーする義務は生じない。
+
+### 23.3 検証の段階と正式サポートへの移行条件
+
+| 段階 | 具体的な受入 | 成功として数えないもの |
+| --- | --- | --- |
+| **M-0：追跡・調査** | Wails公式Status／Release／Mobile APIの変更を追跡し、現行TEI依存との差分・制約を記録 | Wailsの一般的なデモ成功をTEI Studio製品合格とする |
+| **M-1：実験的Build** | Wails安定版へ移行済みの候補BranchからAndroidエミュレーターでBuild／起動。iOSはmacOS＋Xcode Simulatorを使い、同じRead-only OperationとUIを確認 | Android成功をiOS成功とする／Desktopセルフビルド資格に加算する |
+| **M-2：機能・寿命の実測** | Touch／IME／Safe Area、Foreground↔Background復帰、Root／Source／Grant、Memory・起動・診断、Remote拒否をMobile上で実測 | エミュレーターの表示だけで実機・オフライン・セキュリティを保証する |
+| **M-3：正式サポート判断** | **Wails側が各Mobile OSを正式な互換性保証対象に追加**し、TEIで当該OSのBuild・実機・配布／署名・更新／復旧・Plugin／設定・アクセシビリティの受入を完了したときに、Ownerが製品対象へ昇格する | Wails v3 Desktop安定版の存在、Mobile試験BuildのPASSだけで正式採用する |
+
+Wails側の「Mobileが実験的」の表記に変化がない限り、M-0〜2はオプションの探索・回帰試験であり、M-3は待機する。正式サポート時期を独自に約束しない。現在の全体P0は**実WindowsのStudio Stage1→Stage2**と、通常`tei`の実Provider／異質Consumerであり、Mobile BuildやWailsのMobile安定化を新Hard Gateにしない。
+
+**検証状態**：公式文書と現行TEI依存の静的照合のみ。TEI StudioのAndroid／iOSビルド、Simulator／実機試験、Mobile配布、Mobile Plugin実行、Owner製品採用はNOT RUN。

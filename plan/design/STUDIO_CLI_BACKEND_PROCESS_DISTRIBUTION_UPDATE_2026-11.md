@@ -124,3 +124,9 @@ G0・G1は既存Studioセルフビルド B1〜B3 より上位の必須Gateにし
 DesktopにはWails v3の `app.Updater` を優先利用する。ただしTEI Studioの現依存はv3.0.0-beta.29で、Updaterの製品組込みと選定安定版での実OS検証は未実施。公式Updaterが扱うのは原則**一つの実行対象の交換**であり、同一ZIPにDesktop/独立Server/Plugin/ユーザー設定を並べれば自動的に一括切替されるわけではない。
 
 配布はD1 Remote接続Desktop（Clientのみ更新）、D2 Standalone単一Binary（Go Backend／標準Plugin／既定設定Templateを内包）、D3 Standalone別Server同梱（同一Releaseだが複数Artifact活性化はInstaller等で別検証）に分ける。**最初はD2を第一候補**とし、D3は明示的な別Serverの需要とOS配布・Rollback条件を満たす場合に採用する。Plugin実体／Release Lock・設定Schema・User Override／Secret・DB Migrationを分ける詳細は[実装契約§22](STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)に委ねる。UIや本体の更新が外部Server／DBの更新権限を持つことにはしない。
+
+## 13. Wails Mobileは実験的Buildのみ先行し正式サポートを待つ（2026-11-15）
+
+[Wails v3公式Roadmap](https://wails.io/status/)ではDesktop（Windows／macOS／Linux）は安定版の互換性保証対象だが、AndroidとiOSは実験的機能のままである。Desktopと同一のGo／Web SourceからMobileへBuild可能なWailsの機能を利用して、**TEI Studioでも将来のビルド・起動・Read-only操作を選択的に試験**する。ただし現在のTEI Studioはbeta.29依存で、実Mobile試験の合格は未確認。AndroidはSDK/NDK、iOSはmacOS＋Xcodeの独立した環境で検証する。
+
+MobileではDesktop用の自己子Backend、Wails実行ファイル置換Updater、動的Native Pluginを当然使えるとは扱わない。Application Operation／意味モデルは共通にし、OS Adapter／Screen Projection／Package／更新権限をTarget別に分ける。**Wails公式が各Mobile OSを安定サポートに含め、TEI自身が実機・配布・更新・復旧の受入を通すまでは正式な製品サポートを開始しない**。詳細とM-0〜3は[実装契約§23](STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)。Desktop Stage1→Stage2のP0を変更しない。
