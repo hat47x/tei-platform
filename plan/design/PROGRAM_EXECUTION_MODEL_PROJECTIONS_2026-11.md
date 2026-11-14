@@ -701,6 +701,8 @@ World Fingerprint／Model Revision／Artifact Revisionは用途ごとに保持�
 
 **Manifest選択と原文の結合を試す限定圧力テスト**：[test-only Workspace preflight](../../internal/workspace/tei_md_selected_source_pressure_test.go) では、宣言済み`semantic` Rootと未宣言`drafts`を分け、既存`Load`が未束縛`*.tei.md`を拒否することを先に確認する。別途、同じPinned RootでManifest→管理ファイル列挙→原文byte→限定Reference Reader→Source Indexの範囲を照合し、原文変更後は旧Indexを失効させる。ただしこの読取りは**テスト内で明示した候補の事前検査**であり、`Load`の製品読取り・Profile/Role選択・Meaning受理を接続したものではない。S0の次の本実装は、実`Workspace.Load`と型付きの選択済みFrontendを同じAttemptで結び、選択しなかった候補や未対応構文を拒否し、受理したSourceだけをSource Index/Buildへ渡すところまでを最小範囲とする。#2621/#988/#3030と進行中の#4704/#4730の検収へ引き渡し、ここから新たな独立Loaderを派生させない。Go試験が正式に通るまでは実証済みとしない。
 
+**生成前候補と生成後Artifactを取り違えない**：限定Graph／Rule Referenceでは、Node・Edge・Rule条件の正規化構造だけから`CandidateShapeFingerprint`を導き、生成Binary自身の`-candidate-shape`照会値と比較する。原文Source Indexのbyte Fingerprint、Reference候補指紋、実BuildしたBinary SHA-256を別列で扱う。レイアウト変更は候補指紋不変、Edge反転・Rule条件切替は異なる指紋となる一方、A→B→AやProvider切替では同byte・同候補指紋でも過去の受理・実行資格を復活させない。候補指紋は**Referenceの観測用データ**であり、Canonical Meaning／Model Revision／正式Bundle Authorityの新しい正本ではない。正式Source/Provider/Consumerへの接続は既存#2600/#951/#4495/#1251のOwnerへ引き渡す。
+
 **段階的な合格表現**を徹底する。Reader/意味候補だけなら「Source対応の限定実証」、生成Goが独立Expectedと一致したなら「意味あるCodegenの局所実証」、通常CLIと実ProviderのCallまで揃えば「製品Entryの限定検証」、Stage1実Processが次StageのBuildを発行し実Consumerまで届いて初めて「該当Targetのセルフビルド」とする。別のHEADや別Attemptの局所成功を足し合わせない。Stage2 Desktop/Windows WebView2は#4583/#2831の正式資格を維持する。
 
 最初の負例は既存SBX-01〜06、PX-23〜29、PX-36/PX-44〜46などを使い、PX-59以降の番号は増やさず、#1180/#2514の該当Independent Expectedへ差分を追加する。**新たなテスト正本・万能Trace Envelope・一律のHard Gateは作らない。**
