@@ -346,3 +346,22 @@ J-01で明らかになったsemantic_graphとapplication graphの違いを保つ
 **残るJ-02e/f**：Source-backedな異Graph間Relation対応を一意に立証できるか、e2だけ反転・e1だけ削除した場合にSource版・旧Pin・後着Previewを拒否できるか。正式Source編集の一意性・Owner Meaning・Current Grantは#1120/#1124/#2497/#2514の既存Ownerへ返し、資格がなければread-onlyで停止させる。Graph completeでもFunction/Business unsupportedなら業務全体の否定・未使用判断をしない。
 
 **検証資格**：この節の反映とGoテストSourceの作成は、当該新テストの実Go/CI成功を意味しない。exact HEADでの実行合否は別途確認する。Studio Stage1→Stage2と通常tei実PG Readという製品P0は維持する。
+
+<!-- rea-j02-renumber-direction-qualification-20261114 -->
+### 10.8 Relationの向きと「再採番らしさ」を分離して扱う
+
+既存の `reacandidate.CompareCandidateSets` は、まずCandidateIDで同一候補を比較し、IDが違う候補をSource位置等の `structuralKey` で仮対応させる。このキーには外部Nodeの端点ID・方向を含まない。したがって、Sourceが同じと申告され、ラベルも同じである二Relationが、単なるIDの再採番なのか、実際に向きが逆転したのか、キー一致だけでは確定できない。**構造キーによる一致は編集権限や意味の同一性を与えない**。従来から `ComparisonRenumbered` は再レビューを必要としていたが、なぜ再確認が必要なのかを区別できることが重要になる。
+
+今回、既存 `internal/reacandidate/adopt.go` の比較票に小さな補助情報を追加した。構造キーが一致しても `Direction.FromExternalID` または `ToExternalID` が異なるRelation候補には、`relation-endpoint-mapping-is-unverified` および `source-backed-endpoint-mapping-is-required-before-edit` を追記する。**既存のComparisonRenumberedという分類を自動的に「方向反転確定」に変更するものではない。** 真のNode再採番でも外部端点IDは変わりうるため、差異の意味を決めるにはSource-backedな対応表とOwnerの判断が必要となる。
+
+| J-02の比較 | 表示する根拠と判断 | 停止線 |
+| --- | --- | --- |
+| **J-02e：同じ端点とRelation、Edge IDだけ変更** | 同じSource-backed候補を再採番として提示できる範囲を示す。ただし新Attemptの受理は継承しない | 前回のOwner承認・Grantは自動復活しない |
+| **J-02f：端点が異なるRelation、同じSource位置・ラベル** | 構造キーが同じでも外部端点の対応を未検証と明示し、各端点の出典・方向とCurrent Sourceを要求する | 名前・配列順・Source位置だけで個別のRelationを編集しない |
+| **J-02g：Source A→B→A、後着Preview/Pin** | 現在Byteが同じでも途中のRevisionとCaller Snapshot/Grantを別に扱う | Source再受理と旧Consumer Receiptの再利用を自動化しない |
+
+検証Sourceとして `TestCompareCandidateSetsReversedEdgeNeedsEndpointMapping` を既存 `internal/reacandidate/adopt_test.go` に追加し、端点を交換したEdgeが構造キーの仮対応を受けた場合に上記二つの注意が必ず残るかを見る。既存の再採番正例は維持する。**この小修正は比較結果に反証可能な注意を付けるだけ**で、異なるGraph間の正式Relation ID対応、Sourceへの安全なPatch、Studio Pin/Dirty Bufferの実制御、Graph Ruleからの実Codegen、Source A→B→Aの一連の実Source取得を実装したわけではない。
+
+他チャットの成果は、ModelerのER/業務フローでのSource-faithful編集契約（#4694）、StudioのPin/Focus→CLI/AIへのContext引渡し（#4696）、実行モデルGraph変更の局所再検証票（main統合済み#4703）に分けて接続する。読取Candidateと編集可能なMeaning／Graphの昇格は、既存Owner #1120/#1124/#2497/#2514 への限定引渡しとし、新たな承認EngineやGraph正本は設けない。製品P0であるStudio Stage1→Stage2と通常CLI実PG Readの順序は変えない。
+
+**状態**：ComparatorとGo負例のSource追加、設計への反映。正式な試験成功は当該exact HEADのCIが完了してから判定する。J-02gとNative/Source Save-ReRead/Owner意味受理はNOT RUN。
