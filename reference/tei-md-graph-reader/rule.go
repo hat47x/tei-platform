@@ -132,10 +132,15 @@ func GenerateGo(c RuleCandidate) ([]byte, error) {
 	}
 	sort.Strings(nodes)
 	sort.Slice(edges, func(i, j int) bool { return edges[i].ID < edges[j].ID })
+	candidateShape, err := CandidateShapeFingerprint(c)
+	if err != nil {
+		return nil, fmt.Errorf("candidate structure: %w", err)
+	}
 	var b strings.Builder
 	b.WriteString("// Code generated from a restricted Markdown Graph/Rule *candidate*. DO NOT EDIT.\n")
 	b.WriteString("package main\n\nimport (\"encoding/json\"; \"flag\"; \"fmt\"; \"os\"; \"sort\")\n")
 	b.WriteString("type edge struct { id, from, to string }\n")
+	b.WriteString("const candidateShapeDigest = " + strconv.Quote(candidateShape) + "\n")
 	b.WriteString("var nodes = []string{")
 	for _, n := range nodes {
 		b.WriteString(strconv.Quote(n))
@@ -160,12 +165,16 @@ func GenerateGo(c RuleCandidate) ([]byte, error) {
 	b.WriteString(" { ids = append(ids,e.id) }\n }\n sort.Strings(ids)\n return ids\n}\n")
 	b.WriteString("func main() {\n")
 	b.WriteString("nodeID := flag.String(\"node\", \"\", \"node ID to query; omit to inspect all\")\n")
+	b.WriteString("shapeMode := flag.Bool(\"candidate-shape\", false, \"print reference candidate structure fingerprint\")\n")
 	b.WriteString("flag.Parse()\n")
 	b.WriteString("if flag.NArg() != 0 { fmt.Fprintln(os.Stderr, \"unexpected positional arguments\"); os.Exit(2) }\n")
 	b.WriteString("answer := map[string][]string{}\n")
 	b.WriteString("selected := false\n")
 	b.WriteString("flag.Visit(func(f *flag.Flag) { if f.Name == \"node\" { selected = true } })\n")
 	b.WriteString("if selected && *nodeID == \"\" { fmt.Fprintln(os.Stderr, \"empty node ID\"); os.Exit(2) }\n")
+	b.WriteString("if *shapeMode {\n")
+	b.WriteString("if selected { fmt.Fprintln(os.Stderr, \"candidate-shape conflicts with node selection\"); os.Exit(2) }\n")
+	b.WriteString("fmt.Fprintln(os.Stdout, candidateShapeDigest)\nreturn\n}\n")
 	b.WriteString("if !selected {\n")
 	b.WriteString("for _, n := range nodes { answer[n] = NodeEdgeIDs(n) }\n")
 	b.WriteString("} else {\n")
