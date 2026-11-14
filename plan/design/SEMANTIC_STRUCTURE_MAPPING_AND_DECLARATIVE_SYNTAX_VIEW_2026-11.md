@@ -211,7 +211,7 @@ S1〜S5は**P0の先行Gateにしない**。S0で既存契約だけで十分と�
 
 一般の双方向変換（Lens）の考え方は、#2497の編集契約を検査する際に役立つ。ただし「Lensを新しい本番抽象として採用する」という意味ではない。
 
-読み取りViewを \`get(S)\`、Viewの更新候補を原文へ反映する操作を \`put(S,V)\` と書く。
+読み取りViewを `get(S)`、Viewの更新候補を原文へ反映する操作を `put(S,V)` と書く。
 
 - **Get–Put**：何も変えなかったViewを戻しても、意味上の更新は起こらない。Markdownなどの原文保存では無関係なbyteも変更しない。
 - **Put–Get**：許容されたView変更をSourceへ反映して再解析すると、その変更が指定のScopeで再び観測できる。
@@ -221,7 +221,7 @@ S1〜S5は**P0の先行Gateにしない**。S0で既存契約だけで十分と�
 
 ### 12.1 Studioでの更新経路
 
-\`\`\`text
+```text
 固定されたSubject + Source Occurrence + Revision
         → UIが返す型付き編集Intent
         → Preview：元byteと提案Patch、関係する別Viewへの影響
@@ -229,7 +229,7 @@ S1〜S5は**P0の先行Gateにしない**。S0で既存契約だけで十分と�
         → Admit：既存Owner／権限／競合条件で採否を判断
         → Commit：許されたSource Patchまたは別途許されたDB更新
         → Observe：独立した再読取りでSource／View／必要な実結果を確認
-\`\`\`
+```
 
 この手順は既存の編集・実行Ownerへ渡す**説明上の接続**であり、共通Commit Engineを新設しない。Sourceへの書戻しとDBへのCommitは別の取引であり、一方の成功を他方の成功と見なさない。
 
@@ -237,7 +237,7 @@ S1〜S5は**P0の先行Gateにしない**。S0で既存契約だけで十分と�
 
 ## 13. 情報の有無を表す状態を、構造的な空集合へ畳まない
 
-Graphに表示する辺が0本、SQLのRowsetが0行、JSON Schemaの\`required\`が空、という事実は、いずれも「業務上その関係・制約・事象が存在しない」ことの証明とは限らない。
+Graphに表示する辺が0本、SQLのRowsetが0行、JSON Schemaの`required`が空、という事実は、いずれも「業務上その関係・制約・事象が存在しない」ことの証明とは限らない。
 
 | 受け取った状態 | 成立する主張の例 | 成立しない主張の例 |
 | --- | --- | --- |
@@ -247,7 +247,7 @@ Graphに表示する辺が0本、SQLのRowsetが0行、JSON Schemaの\`required\
 | Schemaの未宣言属性 | その定義箇所に宣言が見当たらない | 実データに存在しない／禁止されている |
 | 非開示のSubject | このConsumerにはその情報を提示できない | 「非公開のものが存在する」と表示してよい |
 
-たとえば\`enabled(order.submit) = not exists approval.pending\`は、許された範囲に実際の未承認行が1件見つかれば否定できる場合がある。一方、空の返却だけで肯定するには、対象母集団、条件、Snapshot、取得完全性、Providerの制限が必要になる。これは#2582／#2516／#2497の既存境界を再利用する。
+たとえば`enabled(order.submit) = not exists approval.pending`は、許された範囲に実際の未承認行が1件見つかれば否定できる場合がある。一方、空の返却だけで肯定するには、対象母集団、条件、Snapshot、取得完全性、Providerの制限が必要になる。これは#2582／#2516／#2497の既存境界を再利用する。
 
 新しい未知値の万能enumを作るのではなく、既存のPresence・Coverage・Disclosure・Freshnessの根拠を組み合わせ、**各Consumerが言ってよいことの上限**を明示する。非開示の有無を診断メッセージや補完候補数で漏らさない。
 
@@ -255,12 +255,12 @@ Graphに表示する辺が0本、SQLのRowsetが0行、JSON Schemaの\`required\
 
 ### 14.1 外部Schemaの構造表示：JSON Schema → Studio
 
-最初は読取専用に限定する。固定したJSON Schema Sourceについて、Dialect、Source occurrence、参照範囲、型・\`required\`・条件付き制約・注釈を識別し、項目ツリー／制約詳細／原文ジャンプへ投影する。
+最初は読取専用に限定する。固定したJSON Schema Sourceについて、Dialect、Source occurrence、参照範囲、型・`required`・条件付き制約・注釈を識別し、項目ツリー／制約詳細／原文ジャンプへ投影する。
 
 **合格条件候補**：
 - 同じSourceとPlugin Pinで、Headlessの読み取り結果・診断・Sourceジャンプ先が再現される。
-- \`oneOf\`と\`anyOf\`、\`allOf\`と継承、\`default\`と値の確定、未対応Vocabularyと成功を混同しない。
-- \`$ref\`の共有先・循環・未解決、外部取得のpartial/unavailableを画面から見分けられる。ただし開示不可情報は漏らさない。
+- `oneOf`と`anyOf`、`allOf`と継承、`default`と値の確定、未対応Vocabularyと成功を混同しない。
+- `$ref`の共有先・循環・未解決、外部取得のpartial/unavailableを画面から見分けられる。ただし開示不可情報は漏らさない。
 - 複合制約を表に展開しきれなくても、制約自体は保持し、Viewが表現した範囲だけを明示する。
 - 元のSchemaを編集・保存する前の段階では、Sourceを一切書き換えない。
 
@@ -270,7 +270,7 @@ Graphに表示する辺が0本、SQLのRowsetが0行、JSON Schemaの\`required\
 
 ### 14.2 実Queryの構造投影：PostgreSQL Read → Table／Aggregate
 
-#2586の製品Read資格を得た後のConsumer検証として、既存の\`order_entry\`受注読取り等を題材に、**同一の実RowsetからTableと集計Viewを別々に派生**する。実PG読取りそのものはこの設計文書が所有せず、既存Ownerの資格を参照する。
+#2586の製品Read資格を得た後のConsumer検証として、既存の`order_entry`受注読取り等を題材に、**同一の実RowsetからTableと集計Viewを別々に派生**する。実PG読取りそのものはこの設計文書が所有せず、既存Ownerの資格を参照する。
 
 **合格条件候補**：
 - Query、引数、Subjectと実Provider、Snapshot、必要なField、粒度、NULL、Row ID、Row Count、制約・取得限界を同一Attemptから照合できる。
@@ -293,7 +293,7 @@ Graphに表示する辺が0本、SQLのRowsetが0行、JSON Schemaの\`required\
 
 ## 15. 自己記述・差分・Build再利用の境界
 
-GrammarやRoleの自己定義は、[Role Bootstrap設計](ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md)の有限Seedから始める。\`formatVersion\`、Language／Parserの版、Role／Operatorの版、Generator／Toolchain、Source Revisionを区別する。文法の自己記述が読めること、生成されたParserが動くこと、TEI自身を再ビルドできることは三つの別成果である。
+GrammarやRoleの自己定義は、[Role Bootstrap設計](ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md)の有限Seedから始める。`formatVersion`、Language／Parserの版、Role／Operatorの版、Generator／Toolchain、Source Revisionを区別する。文法の自己記述が読めること、生成されたParserが動くこと、TEI自身を再ビルドできることは三つの別成果である。
 
 区別して扱う変更例：
 
@@ -498,12 +498,12 @@ S0では新しい実装を始める前に、既存の成果を正確に再利用
 
 - **S0 Fit/Gap**：#2497／#4122の合成写像と#951の貢献別公開で必要な情報が揃うか確認。重複契約を作らない。
 - **S1 Headless**：SM-26／27を既存Referenceの延長として検証。失われた辺、Source occurrence、局所編集の三つを独立判定する。
-- **S2 Schema表示**：JSON Schemaの共有\`$ref\`や複合制約を、上位の型付きSliceが公開できるか評価する。まずread-only。
+- **S2 Schema表示**：JSON Schemaの共有`$ref`や複合制約を、上位の型付きSliceが公開できるか評価する。まずread-only。
 - **S3 限定編集**：一意SlotのSource-backed Patchのみ実行し、合成後の不明なSource位置で止める。
 - **S4 Plugin公開View**：上位が図だけを公開する例と、意味Descriptorまで開示する例を下位の同一Generic Studioで比較。正式な意味採用・開示・Authorityは別。
 - **S5 DSL自己記述／生成**：そのViewと型付き契約をTEI Sourceから実際に説明・再生成できるかを確認。Go処理への単純delegateや、図が飾りであるだけの構成をセルフビルド成果とは数えない。
 
-**全体P0は不変**：非Plugin Studio Desktop Stage1→Stage2の実再構築と、通常\`tei\` CLI→実選択Provider→独立Consumerの実受領を優先する。初期のHeadless合成／公開Viewは並行実証であり、新たなHard Gateではない。
+**全体P0は不変**：非Plugin Studio Desktop Stage1→Stage2の実再構築と、通常`tei` CLI→実選択Provider→独立Consumerの実受領を優先する。初期のHeadless合成／公開Viewは並行実証であり、新たなHard Gateではない。
 
 **採否と記録先**：本書はPRレビュー用のFit/Gap整理にとどめる。合成写像の正式判断は#2497／#4122、Plugin開示は#951、Source編集は#1124、受理は各Owner／Issue／ADRを正本とする。日付入り設計文書を意味受理や要件の第二正本としない。
 
