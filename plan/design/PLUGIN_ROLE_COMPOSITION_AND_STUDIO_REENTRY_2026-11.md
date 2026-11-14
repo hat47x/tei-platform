@@ -1074,13 +1074,17 @@ main統合済み[PR #4742](https://github.com/hat47x/tei-platform/pull/4742)で�
 
 #### 正式Readerへ進むS0の判定を横取りしない
 
-先行[PR #4745](https://github.com/hat47x/tei-platform/pull/4745)（未マージ）の成果を最新mainへ引き継いだ[PR #4751](https://github.com/hat47x/tei-platform/pull/4751)は、実WorkspaceのManifest管理RootとPinned Source原文を、Loaderが依然として`TEI_MD_PARSER_UNBOUND`で拒否する状態のまま照合する**未統合の予備試験**である。本節のManual/Plugin SourceRefは、その試験が成功しただけでは公開済み・選択済みにならない。検証する順序は次のとおりとする。
+先行[PR #4745](https://github.com/hat47x/tei-platform/pull/4745)（未マージ）の成果を引き継いだ[PR #4751](https://github.com/hat47x/tei-platform/pull/4751)は**mainへ統合済み**である。`internal/workspace/tei_md_selected_source_pressure_test.go`が、Manifestの`semantic`管理Root、同じPinned `os.Root`からの原文取得、宣言外`drafts/`の隔離、既存Source Indexでのバイト照合と原文変更後の旧Artifact拒否を、実一時Workspaceで検証する。ただしこれは**S0-P（test-only preflight）**であり、製品`Load`は引き続き`TEI_MD_PARSER_UNBOUND`で拒否している。本節のManual/Plugin SourceRefは、その試験が成功しただけでは公開済み・選択済みにならない。検証する順序は次のとおりとする。
 
-- **S0-a Source選択**：Manifest管理Root、物理Scan、Pinned Raw Byte、Source Index Fingerprint／Spanと、未管理`drafts/`の隔離を同一Workspaceで比較する。Reference Readerが自らファイルを探して選ぶのではない。
-- **S0-b Reader／Roleの正式選択**：受理されたLanguage Providerと対応Roleを既存Loaderへ束縛する。未宣言・未選択の`*.tei.md`は黙って読むことなく拒否し、旧`*.tei`経路も壊さない。
+- **S0-a Source選択（実証済み範囲：test-only）**：main #4751の試験はManifest管理Root、物理Scan、Pinned Raw Byte、Source Index Fingerprint／Spanと未管理`drafts/`の隔離を同一Workspaceで比較した。**次の製品受入は、実`Load`がその選択・Pinned byteを正式Frontendへ渡した同一Attemptの証拠**である。Reference Readerが自分でファイルを探した結果を代用しない。
+- **S0-b Reader／Roleの正式選択（次の製品Go変更）**：既存Loaderに、明示的に選択されたLanguage Provider/対応Roleだけが、S0-aで固定した同じSource byteを消費する経路を接続する。選択・Pin・Provider資格のどれかが欠ける場合は既存の拒否を維持し、旧`*.tei`の実読取りと管理Root外草稿の隔離を回帰で守る。文法・新たなRole識別子をこの計画だけで採用しない。
 - **S0-c 意味と消費**：選択Sourceから受理されたMeaningへ進み、初めてProduct GeneratorとBuildの実Consumed Inputを照合する。Referenceの`go build`や`-node`成功を製品S0-cの合格に数えない。
 
-この順序は[PR #4704](https://github.com/hat47x/tei-platform/pull/4704)／[PR #4730](https://github.com/hat47x/tei-platform/pull/4730)のReader Ownerと同一の作業列として扱い、Plugin Documentationのための第二のLoader／Resolver／検証Runnerを追加しない。S0-aは試験準備・観測、S0-b/cは製品接合と区別し、いずれも現在のPlugin DisclosureやManualの正式DocRefを認めたことにはならない。
+この順序は[PR #4704](https://github.com/hat47x/tei-platform/pull/4704)／[PR #4730](https://github.com/hat47x/tei-platform/pull/4730)のReader Ownerと同一の作業列として扱い、Plugin Documentationのための第二のLoader／Resolver／検証Runnerを追加しない。**S0-Pはmainにある予備試験、S0-Aは未実証の正式Loader読取り、S0-b/cは未受理の製品接合**と明確に区別し、Source Indexが`md`形式を記録できることをLanguage Roleの受理とみなさない。
+
+**Pluginマニュアルのread-only取得は、業務`*.tei.md`の意味Parser完成を必須前提にしない。** 公開許可のある通常の管理Markdownを、選択済みPlugin/Contract版へ結び付けるDoc SourceRefの照合は#4679で並行できる。ただし`Source Index`の存在や管理Root内の`README.md`を、Pluginの帰属・開示許可に自動変換しない。一件の文書を正式に返す場合は、明示Doc参照、現在の版・開示、実Consumerを個別に確認する。意味Parser未対応と文書へのアクセス拒否は異なる失敗として返す。
+
+**最初の製品PRの検収票**は `(1)`同一Manifest/Source Revisionにおける実Loaderが読んだRaw byteとPinned Root、`(2)`選択Frontend/Roleの資格と拒否、`(3)`そのRaw byteのSource Index/Span、`(4)`旧`.tei`と未管理草稿の非退行、`(5)`正式Meaningと実Builder/Artifact/ProviderはNOT RUN、の五欄とする。`(1)`〜`(4)`が正負の実試験で揃うまでは、単に#4751のReference候補を呼び出せるだけでProduct S0-Aが成立したとしない。新しい合格番号や第二のScenario Storeは作らない。
 
 #### 次のGo実装を受け入れる順序
 
