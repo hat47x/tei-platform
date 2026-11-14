@@ -564,6 +564,25 @@ S0-Aで最初に提示すべき**独立した正負**は、同一Source Snapshot
 
 **P0/P1の扱い**：本件は#2621/#988/#4704の正式Reader・Source Index接合を進めるP1の小縦断として扱う。全体P0のStudio Stage1→Stage2実Windows再構築（#2831/#4583）と、通常`tei`から実Provider→独立二Consumer（#2586/#1251）を遅らせる新Hard Gateを作らない。S0-Pの参考実装をそのまま製品の第二Loader/第二Registryに発展させず、S0-Aの差だけ既存のWorkspace契約へ移す。GC/GQの既存Expected・受入Ownerを再利用する。
 
+#### 原文・候補構造・生成物の三つの同一性を別々に扱う（main #4758）
+
+[main統合済みのGo実装 #4758](https://github.com/hat47x/tei-platform/pull/4758)では、Node ID集合、Edge ID・起点・終点、明示Rule ID・`from/to`条件を正規化し、`tei-md-graph-reference/shape-v1`という**限定Reference専用のドメイン**に結び付けたSHA-256を計算する`CandidateShapeFingerprint`が加わった。生成Goにはその候補指紋が埋め込まれ、同じ参照Binaryに`-candidate-shape`を渡して照会できる。`-node`との同時指定は拒否し、既存のNode別実行は維持する。#4758のexact HEADはRepository Healthと増分検証に成功した。これを一般的なTEI Meaning Fingerprintや製品CLIの新Commandに昇格させない。
+
+| 同一性と目的 | 何を変えると変化するか | 一致しても成立しない資格 |
+| --- | --- | --- |
+| **Raw Source／Source Index Artifact** | 原文のMarkdown説明、BOM・改行・図の配置を含む**byte差** | パース成功、業務意味同値、Owner Acceptance |
+| **Reference Candidate Shape** | この限定実装ではNode ID、Edge ID／向き、Rule ID／条件 | Sourceの現在性、任意Domainの意味同値、Selected Language/Operator/Provider、正式Model Revision |
+| **Generated Go／Binary byte** | 実Generator/Toolchain/Build入力・出力に依存する実ファイルの変化 | どの実Source/意味受理から作成したか、次Builderや実Consumerが選択・使用したか |
+| **現在の意味・実行資格** | Subject/受理済みRole、Source/World/Model・Artifact Revision、Plugin/Host Grant、Disclosure、実Target/Consumerの状態 | 一つのハッシュには包含されない。既存Authority・Build Evidenceで個別に確認 |
+
+**限定的な構造同値と元Source失効の衝突を実負例にする**：[Go回帰Draft #4759](https://github.com/hat47x/tei-platform/pull/4759)は既存`sourceindex_bridge_test.go`へ、(a)基準と`layout-only`、(b)原文説明だけの追記は**Source fingerprintが変わるがCandidate Shapeは同じ**、(c)Edge方向／Rule条件の変更は両方変わる、を追加する。いずれも**旧Source Indexは失効**し、新byteで作るIndexだけを検証できることを期待する。このPRは未マージの候補試験であり、正式Readerや通常CLIを実行したとは記載しない。
+
+**差分Buildの判断を二段階に分ける**：最初に実消費Raw Sourceと現在のSelection/Role/Owner資格を検証し、続いて生成器が実際に使う**受理済み意味・Rule・Plugin/Target依存閉包**が不変かを調べる。Referenceの候補構造指紋は、後者の局所的な補助観測にはなり得るが、**それだけでGo再生成のskip、Artifact／Evidenceの再利用、A→B→A後のGrant復活を許可しない**。逆にMarkdownの表示や説明だけが変わったときに、実生成ロジックまで常に作り直す必要があるかは既存[#2600](https://github.com/hat47x/tei-platform/issues/2600)の実消費入力と計測で判定する。
+
+この考え方はGraph以外のDeclarative DSLにも適用する。ただし、業務のラベル、数量・単位、NULLと欠損、時間・対象Scopeなどが**意味に関係するDomain**では、#4758の限定指紋の除外項目を流用しない。既存[#4359](https://github.com/hat47x/tei-platform/issues/4359)／[宣言的構文の統合Draft #4756](https://github.com/hat47x/tei-platform/pull/4756)のOwnerが各表層と受理済み意味を明示し、Markdown/Graphviz/Mermaid/数式/Native SQLの意味上の選択と表示変更を分離する。新しい万能構造Fingerprint、意味正本、再利用判定器をこのために設けない。
+
+**Plugin・Studioへの引渡し**：[mainのPlugin Manual計画 #4750](https://github.com/hat47x/tei-platform/pull/4750)はReference `-node`と製品`tei`のコマンドを別資格とし、[Plugin公開文書のA/B Fixture PR #4757](https://github.com/hat47x/tei-platform/pull/4757)は公開範囲・版・Sourceを検査する限定候補である。文書や構造指紋の一致からPluginの選択・Build同梱・Load・Invoke・現在Disclosureを推測しない。Studio編集では元byte・Source位置の再解決を先に行い、Graph図のレイアウトと実Relation IDを混同しない。次の正式Reader S0-A／Product Generator S1／Plugin S2／Artifact GQ-06／Studio Stage2の**既存段階とP0順**を維持する。
+
 #### 次の製品実装PRで確定すること
 
 1. **明示されたFrontendの選択**：Workspaceの正規化済みSource path、Root、選択済みLanguage/Role Profile、選択Plugin/契約版、実Source byte/Revisionをそろえる。拡張子だけで「実行可能な意味定義」を認定しない。`internal/sourceindex/model.go`の`NewArtifact`は現状`path.Ext`で形式を得るため、`*.tei.md`のArtifact Formatは一般`md`と同じになる。これは**現在のSource Indexの書式分類**であり、選択FrontendやTEI宣言資格の証拠ではない。Formatフィールドを無断で変更して従来Consumerを壊すより、まず選択条件を別の既存契約から明示して負例で比較する。
