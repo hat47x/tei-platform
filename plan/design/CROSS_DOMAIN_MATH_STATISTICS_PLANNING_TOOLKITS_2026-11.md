@@ -440,6 +440,14 @@ ORDER BY grp, seq, obs_id;
 
 実行に移すときは、独立した期待値、固定FixtureのRevision、実Provider/DBとSQL、読み取った範囲・権限・順序、実際の出力、Consumerの受領を別々に記録する。DB接続、閲覧、テスト結果の表示を一つの「PASS」にまとめない。これらは既存のScenario/Expectedに引き渡す入力であり、第二のTest Runnerを作るものではない。
 
+### 既存SQL生成器を通す最小回帰テスト
+
+上記の参照SQLだけでなく、既存のSQLite方言生成器 `internal/database/sqlgen/sqlite` の `SelectOptions` を使ったGo回帰テスト `internal/database/sqlgen/sqlite/window_reference_test.go` を追加した。固定CTEと名前付きWindow定義を使い、生成されたSQLを実SQLiteへ渡す。**SQL Generatorの出力からDB実行結果までを確認する試験**であり、TEI DSL/Queryの意味モデル全体がWindowに対応した証拠ではない。
+
+最初の試験では、A1〜A4・B1〜B3の全七行を独立した表の期待値と照合する。次の試験では、外側の表示件数を三行に制限してもA3の移動平均が20のままであることと、Window計算前の入力からA1を除外するとA3が25になることを対比する。これにより、表示範囲と必要な計算入力の違いを、実際のSQL生成器に対して検証する。
+
+**資格**：2026-11-14にGoテストのSourceをPRへ追加した。CIによるそのコミットのGo試験結果を確認するまでは、実行済み・合格とは記さない。Providerの実選択、通常の製品`tei` CLI、各種DBでの同等性、Studio/非Studioの実Consumer受領は今回のテストに含まない。将来の正式なQuery→Providerへの接続は既存[#2387](https://github.com/hat47x/tei-platform/issues/2387)/[#2586](https://github.com/hat47x/tei-platform/issues/2586)の縦断検証で判断する。
+
 ### Query変換の適合を説明するための判定語彙
 
 SQLとTEI Query、NoSQLのNative Pipeline等を相互に扱うときは、次の区別をレビュー票に残す。この分類は**設計上の記録語彙の候補**であって、新しいCore enumや正式なSQL AST/IRの採用を宣言するものではない。
@@ -495,7 +503,7 @@ WBS・PERT・CPMで扱う予定は、作業の開始・終了を計画するた�
 
 Solver・実験計画法は、同じ計算契約・観測・受理の分離を使う後続事例とする。Rや科学計算の外部Providerについても、型、精度、実行方法、ライセンスと成果物の配布条件を、対応Targetごとに確かめる。StudioのDB Workbenchや図表示の完成を計算の第一歩の前提にはせず、Headlessの限定実証から必要なUIとTargetへ広げる。
 
-**現在の状態**：本節は既存のRDB・NoSQL・Query・実行モデル設計を、数学・統計ツールキットの条件として読み替えた計画である。RDBとDocumentの計算同等性、外部データソースの完全性、専門Provider、実Consumerの受領を新たに検証したものではない。
+**現在の状態**：本節は既存のRDB・NoSQL・Query・実行モデル設計を、数学・統計ツールキットの条件として読み替えた計画である。SQLite方言のCTE／名前付きWindowを実行する限定的なGo回帰テストのSourceを追加したが、CI合格と全体機能の受理は別に確認する。RDBとDocumentの計算同等性、外部データソースの完全性、専門Provider、実Consumerの受領を新たに検証したものではない。
 
 ## 23. 外部資料（仕様調査の入口）
 
