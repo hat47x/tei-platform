@@ -626,6 +626,33 @@ tei external-candidates
 
 **実行順と報告**：#4625はR3-Aの局所PRとしてactual CI、コマンドcatalog/usage/繰り返しFlag/異常系を先に検査し、失敗があればそのDraft内で修正。R3-B/CとTEA-Q41/Q43は#3394/#4487/#1124の既存実Consumerへ引渡す。#4619 D1の実Provider/異質ConsumerとTEI Studio Desktop Stage1→Stage2セルフビルド#1824/#2831は、#4625のマージやR3-BをHard dependencyにしない。今回のこの節は**docs-only、main未統合**。PR #4625の実装結果を受理・動作済みと宣言せず、exact HEAD CIとOwner Reviewで別途判断する。新Core/Host/Parser/Registry/Policy/Validation Engineや第二Canonicalは増やさない。
 
+<!-- rea-desktop-web-branch-session-evidence-handoff-20261114 -->
+#### Studio Desktop／将来Web版の協業境界をREA Candidate Reviewへ接続（2026-11-14／構想整合・未実装）
+
+**同一UI・異なるSource所有形態。** TEI Studio Desktopは開発者のローカルWorkspaceを編集しGitHub等で結果を共有、将来のStudio Webは単一（必要ならHA）開発サーバ上のチーム同時編集を想定する。共用対象はTypeScript Workbenchの表示・選択・レビューと既存型付きTEI Operation／Application Serviceの契約。Desktop=Wails/Local filesystem/ローカルGit、Web=Server Workspace/認証済みWeb Transport/共同編集Sessionとして分ける。Wails DesktopのBridgeそのもの、OS filesystem、Git repository stateや認可済みSessionをWebへコピーしない。**Wails/Go単一バイナリによるDesktopセルフビルド最優先**、Web共同編集は後続設計であり、R3実Consumer成功の前提にしない（#1824/#2831/#3419/#1251）。
+
+**REAの表示を伴う状態を4層に分離する（実装Schema案ではなくreview観点）**：
+
+| 層 | Desktop | Web共同編集 | 越境させないもの |
+| --- | --- | --- | --- |
+| **Evidence/Source版** | ローカル保存Evidenceと固定元Source/Workspace | Server保存EvidenceとBranchごとのSource/Manifest・許可Root | 同digest・同名・同pathを跨ぐ暗黙の資格継承 |
+| **Working edit** | Dirty Bufferと保存済ファイル・Git差分 | 同Branchの共同編集Buffer（CRDT候補）と永続Source版 | CRDT収束、保存やGit commitだけでOwner Meaning受理 |
+| **Selection/Review** | Focus（瞬間選択）と固定Pin、read-only Mapping候補 | Session別Focus/Pin、BranchごとのCandidate Review/競合 | 別Session操作による固定対象・未採用Candidateの暗黙置換 |
+| **Acceptance/Delivery** | Owner DecisionとSource patchの明示適用、独立Readback | Ownerによる通常Source変更・Revision/権限再確認、用途別Disclosure | Git push/Server ACK/AI同意を承認・実DB Effectと同義化 |
+
+**R3-Bを実装する場合のClient要求境界**：Browser/Sessionは任意`EvidencePath`や内部CAS/NAS/S3 locatorを渡さず、**Host管理Evidence selector＋外部Node/Relation ID**だけを提示する。Server側の実解決は、その時点の `Workspace/Branch(適用時)/SourceRevision/Reader Attempt/Current Grant/Audience/Disclosure` を改めて照合し、許可済みbyteを固定取得して既存R2のReceive/投影ロジックへ渡す。Branch名やSession IDだけではSecurity Principal/Owner Authorityにならない。Web未実装時は、固定Workspaceの既存MCP read-only ConsumerまたはDesktop Bridgeで第二Consumerを検収できる（#3394/#4503/#2516）。`ReadAt`、Producer申告Revision、受領Pin一致だけで現在Source・適用可能性を認定しない。
+
+**同時編集・遅延応答におけるClaim Ceiling**：REAの解析Candidateは保存済みSnapshotの観測であって、共同編集中のDirty Bufferを自動解析した結果ではない。保存済Source R10に束縛したCandidateを表示中に、(a)Branch A→B切替、(b)R11への共同保存、(c)Session XのPin保持中にYが別Nodeを編集、(d)元Source R10のA→B→A、(e)Grant/Disclosure失効、(f)R10解析応答が後着した場合、**Pin intentを履歴として保持しても現在Qualificationは別に再確認し、旧Replyを新表示/Source Patchへ採用しない**。旧DOM/ARIA/キャッシュ/AI payloadに非公開Sourceが残る問題はPin単体の成功とは分け、#1124/#4515/#2516の失効条件へ戻す。共同BufferのCRDT/操作ログがあっても、TEI意味単位のPatch（Qualified Ref・Occurrence・Slot・Effect）には通常Revision precondition/Source再取得とOwnerレビューを要求する。
+
+**最小の協業Expected（REA-WCOL-01〜05、既存#1180/#2514へ引渡す設計票、NOT RUN）**：
+- **WCOL-01**: 同じraw Evidence digestを別Workspace/Branchで指す二Session。片方の許可済みSource RevisionとGrantだけでは、もう片方をQualifiedにせず、非公開存在を返答差に混入しない。
+- **WCOL-02**: Session Aのread-only REA Pin中にSession Bが共同Bufferを変更、さらにSourceへ保存。Dirty Buffer／保存済Source／Producer申告Source版を別に示し、古いCandidateをSource Patchへ暗黙適用しない。
+- **WCOL-03**: 同Branch内の二人が同名別IDまたは平行Relationを同時にReview。表示FocusやCRDTの変更順で最後の一件を正式意味へ後勝ち受理しない。多対多・unresolvedとOwner Decisionを保持。
+- **WCOL-04**: Browserが`../`や内部Pathを送る／許可済みSelectorを別Branchで再利用。Hostが入力を拒否し、Error/DOM/ARIA/件数から非公開RootやEvidenceの存在を漏らさない。#3394 SEC-01〜04と#4503 EC-01〜05を再利用。
+- **WCOL-05**: Desktopの同一EvidenceとWebの同一表示JSONが一致するが、ConsumerのSource Scope/Revision/Audience・Delivery Attemptが異なる。表示同値だけで同一Current Grant、旧新Source結合、Owner Meaning/実Effect/全閉包とは判断しない。
+
+**導入段階／Owner**：まずR3-A通常ローカルCLI #4625 のexact-head合否を確定→R3-Bは既存の固定Workspace MCPまたはDesktopで安全な第二Consumer一経路だけを成立→R3-C独立Producer Evidence/別Consumer Invocationを検収→T1-BでSourceに戻るread-only候補レビューを一本通す。その後、Web共同編集への`Branch/Session/Source Snapshot/Pin`資格確認を#1824/#1124/#4515のStudio Ownerで検討する。共同編集のCRDT・Git運用・マルチユーザAuthorityをR3-Bの新必須Provider/新Host/新Policyへ押し込まない。Source Patchは#2497/#2500、Owner Decisionは#267、Current Grantは#2516、Evidence取得は#4503。Web製品実装、共同編集負例、R3-B/C、実Grant/Owner受理は**NOT RUN／NOT ACCEPTED**。
+
 **到達条件と優先順位**：R2 main統合済み→R3の同一Evidence・独立二Consumer実受領→T1-Bの一機能対応Preview→T2の旧実測／受理済み意味／新実測・SHO Save/Reopen。修正済み#4584のSubject存否判別を各Consumerで利用できるか、#4570の三視点server経路と実Windows Desktopの差、生成Inspector別HEAD成功の非加算は別資格として保持する。TEI Studioセルフビルドと#2586通常Product Provider Readの完了をR3に依存させない。
 
 **検討中の横断追補（DBアクセス・Query/2way SQL）**：対象DataSourceの既存Binding解決、DB別Native SQLの選択規約、SQL編集時の診断と分岐検証、異種DBでの意味同値性を、[DBアクセス・Query選択・2way SQLの最小適合計画](https://github.com/hat47x/tei-platform/issues/2622#issuecomment-6772875802)で小さな実証へ分解する。#2611・#2622・#2387・#2667に既存の責務を残し、新しいCore API・正式DSL構文・実DB対応の採用・完了を意味しない。
