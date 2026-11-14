@@ -933,7 +933,7 @@ Documentation Surfaceは、Pluginの**公開Contractに結び付くAuthoring Sou
 
 ### 19.11 作業分割・反証Gate・非採用条件（#4679の次の実装票）
 
-1. **PDC-0：公開参照の静的Fixture**（#4679、#951、#2621）— A/BのPlugin ID、公開Doc/Graph/Extension Point/版範囲、非公開Facet、独立Expectedを固定する。既存Source Roleの外に独自Parserを作らない。最低一つの「Docは存在するがContractと版が合わない」負例を先行。
+1. **PDC-0：公開参照の静的Fixture**（実装票 [#4701](https://github.com/hat47x/tei-platform/issues/4701)、#4679、#951、#2621）— A/BのPlugin ID、公開Doc/Graph/Extension Point/版範囲、非公開Facet、独立Expectedを固定する。既存Source Roleの外に独自Parserを作らない。最低一つの「Docは存在するがContractと版が合わない」負例を先行。
 2. **PDC-1：既存CLIからの発見**（#4376、#1158、#3262）— 実 `commands` とPlugin resolver/inventoryを足場に、公開索引・上位関係・Doc refをread-onlyで取得する最小Operationを選定。現在のCLIで取得できないものはGap/unsupportedのまま残す。
 3. **PDC-2：多段参照と否定試験**（#951、#1016、#2497、#2514）— A/B/複数親、ダイヤモンド、循環、同名別ID、版不一致、非公開ref、途中切断、Source/Grant変化、Layout-only変更、意味変更に独立Expectedを与える。許可されたSource以外を取らない。
 4. **PDC-3：Skillの簡素化とHarness比較**（#2605、#2509、TAI #168）— 固定済みSkill/Tool比較を破壊せず、新版SkillとManualの必要時取得を別の固定腕で測る。外部HarnessからのTool/文書実Read・完全受領・適用できた契約版まで確認する。
