@@ -144,7 +144,7 @@ World Fingerprint／Model Revision／Artifact Revisionと、Experiment Plan／Ru
 | `9007199254740993` | 整数としての正確な値を保持する必要があるなら、IEEE 754 binary64への暗黙変換を許さない | 丸めた値を元の整数と同一視すること |
 | `10 mm + 20 ms` | 長さと時間は次元が違うため、加算できないと診断する | 同じ数値型というだけで加算すること |
 | `-1 degC` | 絶対温度・温度差・単位変換と述語の前提を区別する | 摂氏の符号をそのまま熱力学温度の正負とみなすこと |
-| `sqrt(x²) = |x|` | 実数`x`の条件を付けて判断する | 定義域を指定せず、記号の変形を普遍的な証明とすること |
+| `sqrt(x²) = abs(x)` | 実数`x`の条件を付けて判断する | 定義域を指定せず、記号の変形を普遍的な証明とすること |
 
 これらは**意味・型の受入を判別するための独立した期待条件**であり、現時点でTEIの数式Reader／実Operator／科学計算Providerに合格したテストではない。組み込みOperatorの増設より前に、既存の型・Facet・Source・Operator契約で表せるかを確認する。
 
@@ -602,4 +602,4 @@ Solver・実験計画法は、同じ計算契約・観測・受理の分離を�
 
 ## 24. 確認できたことと未実証のこと
 
-この文書は、2026年11月14日時点の既存Issue・設計資料と分野横断の検討を踏まえた**設計・検証計画**である。SQLite方言のCTE・Windowによる限定的なGo回帰テストは[PR #4670](https://github.com/hat47x/tei-platform/pull/4670)でmainへ統合され、対象HEADのSQL Dialect Plugin CIが成功した。一方、この成果は正式な${tick}*.tei.md${tick}の読取り・意味受理、TEI自身のコード生成、通常CLI/MCPの実利用、NoSQLや科学計算Providerとの同等性を保証しない。今回のMarkdown表や数値・単位の反例は**設計候補・独立Expected**であり、新しいGo／R／Python／Windows／科学計算の実行、専門家レビュー、市場調査を行ったわけではない。数値計算やSolver、実験計画法、専門Toolkitが製品として完成したとは判断せず、採否は既存OwnerのIssue／ADR／実Evidenceへ戻す。
+この文書は、2026年11月14日時点の既存Issue・設計資料と分野横断の検討を踏まえた**設計・検証計画**である。SQLite方言のCTE・Windowによる限定的なGo回帰テストは[PR #4670](https://github.com/hat47x/tei-platform/pull/4670)でmainへ統合され、対象HEADのSQL Dialect Plugin CIが成功した。一方、この成果は正式な`*.tei.md`の読取り・意味受理、TEI自身のコード生成、通常CLI/MCPの実利用、NoSQLや科学計算Providerとの同等性を保証しない。今回のMarkdown表や数値・単位の反例は**設計候補・独立Expected**であり、新しいGo／R／Python／Windows／科学計算の実行、専門家レビュー、市場調査を行ったわけではない。数値計算やSolver、実験計画法、専門Toolkitが製品として完成したとは判断せず、採否は既存OwnerのIssue／ADR／実Evidenceへ戻す。
