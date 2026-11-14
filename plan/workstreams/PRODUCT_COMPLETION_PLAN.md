@@ -703,6 +703,62 @@ GQ-01/02でGraphの意味処理を実際に生成できることを確認した�
 
 **証拠上限**：mainの#4695は製品計画の更新、#4691/#4685は別途Draftの設計候補。GQ-01〜05の実Go/Plugin A/B生成・実CLI・Browser・外部送出・Current Grant・Owner意味受理は本更新では **NOT RUN / NOT ACCEPTED**。PR #4604のmain統合時には、既にmainへ取り込まれた計画との競合と重複を再照合する。
 
+
+### G49実効適用の照合：構造Graphから生成物への適用漏れを検出する（2026年11月14日）
+
+**今回の差分**：main統合済み[実行モデル§33〜39](https://github.com/hat47x/tei-platform/blob/main/plan/design/PROGRAM_EXECUTION_MODEL_PROJECTIONS_2026-11.md)がDefinition/Selected/Realized/Observedの区別、一Graphからの意味あるGo生成、Source変更後のBuild/Evidence失効を既に受入設計へ接続した。重複するGraph Engineや試験を作らず、#3509 B2Cと#4198 Lifecycle側に固有の残差、すなわち**「対象Selectorに一致したRoute/Operationが、選択TargetのどのArtifact/拡張点に実現されたか」「そもそも必要な対象全域が列挙されていたか」**を同一Fixtureで照合する。Graph上で適用候補が全件一致したという事実は、Generatorが全件を物理実装したという事実とは異なる。
+
+#### 1. 適用の三段階とTarget別の結果を対応付ける
+
+- **意図した対象（Selection）**：対象Universe、Source/Meaning/Plugin/Target/Release Variantの版、Role/Relation Predicate、包含/除外、matched/excluded/undetermined、完全性の根拠。Native Frameworkや外部CMSの動的Routeを調査できなければ宣言済みTEI Sourceの限定完了に留める。
+- **実現対象（Realization）**：Selectorが選んだ一つひとつのSubjectと、Contractに公開されたHook/Placement/Entry Slot、選択Provider/Generator、Lowering結果、実Builderが消費したTarget成果物Memberを結ぶ。Selectorに一致しても、Target能力不足・未生成・Tree shakingで脱落・依存Module非収録なら「適用済み」と数えない。
+- **実際の作用（Observation）**：実Browser/CLI/ServerでのNavigation/Operation Attempt、第三者送信、Provider実呼出し、必要ならConsumer側の受領。適用コードがArtifactに収録されたことは、実際に一度実行されたことや同意/Host Grantが成立したことと異なる。Guardにより意図どおり0回となる場合もある。
+
+この三段階は、既存Build Plan/Artifact Memberと独立Expected/Traceを読む**照合View**であり、Application全体の新Ledger DB、第二Runtime、独立Telemetryの新設ではない。必要な出典参照が無い層はunsupported/unknownとし、前段の成功で補わない。
+
+#### 2. 「適用漏れ」の判断を、対象・位相・Targetに相対化する
+
+同じPageへの適用でも、(a) Document headで一文書一回だけ組込むAsset、(b) SSR/Hydration/SPA遷移のうち確定したNavigationに一回発火する解析Event、(c) Section内のPlacementに対応する広告Slotは**異なる適用単位**である。これらを一律「PageにJSあり」で合格にしない。Contractごとに、選択Subject、Slot種別、対象Target/Variant、任意/必須、生成回数、実行Eventの一意性キー・重複許容範囲を定義できるか検査する。Sourceの同じPageが二つの配備Variantへ生成されるなら、一つのSubject→複数Artifactは適格であり、逆に二つの生成箇所が一度のNavigationで二送信を起こすなら不適格である。
+
+概念上、Targetの対応が判明した各選択Bindingは、**「必要な生成Slotが対応するArtifact Memberに実現した」または「契約上許された非実現理由（Target未対応/明示Opt-out等）がある」**のいずれかを説明できなければならない。RequiredなSecurity/Audit/Effect義務の非実現をOptional Analyticsと同じ警告・黙示除外へ格下げしない。逆に、未選択PluginのSlotを自動組込みしている場合は過剰適用として別に検出する。Host側にのみ義務が成立するものはBrowser Artifactの不存在だけで失敗にせず、検証対象SlotをContractで固定する。
+
+#### 3. 一つのSourceから生成物・配布Variantまでたどる
+
+初期の一Route/一Plugin実証では、既存Build/Evidenceから以下の対応を取れるか確認する。新しい永続Schemaの採用ではなく、実行前後のread-only検証票でよい。
+
+| 照合する関係 | 独立に確認する証拠 | 誤った合格判定 |
+| --- | --- | --- |
+| Source/Meaning → Selector | 元のSubject/Relation occurrence、Role Predicate、Universe/Closure、Plugin Lock | matchedの件数が期待どおりなら全Route完備だと宣言 |
+| Selector → Composition | 具体的なSlotの位相、必須条件、Provider/Generatorの選択版、重複・競合理由 | Pluginが選択済みならTargetへの適用済みと宣言 |
+| Composition → Artifact | Target能力、生成実行、実消費Source bytes、生成MemberとそのDigest、除外/非対応理由 | Outputファイルの存在だけでBundle収録と宣言 |
+| Artifact → Delivery | 配布Release/Variantの識別、実提供されたBundle/Asset、旧Release/CDN/Service Workerの可能な範囲 | 新Build成功だけで現利用者の配布物を更新済みと宣言 |
+| Delivery → Observation | 対象Navigation/Invocation/Attempt、現在Consent/Grant、実Event/Provider Callと受領 | Scriptが読込まれた・HTTP ACKが来たことを業務Outcomeや完全計測と宣言 |
+
+ClientでのConsent失効後の送信禁止は現在のCMP/Hostで判断し、静的Graphや旧Build Evidenceから実利用者のConsentを推測しない。対象Releaseを特定できなければ「現配備全体への適用」を保留する。**Source→生成Bundle→配布Release→実Browser**の閉包と、Source→Function→Provider→実Consumerの閉包は別の縦断証拠である。別Attemptの一部合格を足し合わせない。
+
+#### 4. 一因子変更の対照を追加する（既存GQ-01〜05の拡張）
+
+| Case | 一つだけ変える条件 | 独立Expectedで拒否すること |
+| --- | --- | --- |
+| **GQ-06a** | Route追加により、意図対象が公開3→4へ増えるが、生成器の展開対象は旧3件 | Selector一致4件をもって生成完了。欠けた一つのSlotを見逃す |
+| **GQ-06b** | 生成Assetは存在するが、実Bundleで参照されない/Tree shakingで除かれた | 生成ファイルの存在を配備Artifactの実現として扱う |
+| **GQ-06c** | SSRとHydration/SPAの二経路で同一Navigation Eventを送出 | Source上の一Bindingをもって実送信も一回と推論 |
+| **GQ-06d** | Target/Variantを変え、Native H0は拡張なし、H2だけ任意計測あり | Nativeへ必須TEI Browser Runtime/JSを組み込む、H0に適用欠落と誤判定 |
+| **GQ-06e** | Buildが新しくても実Browser/CDNは旧Releaseを受領 | 新Artifact完成を現配備での適用成功と表示 |
+| **GQ-06f** | StudioでPinned Subject Aの旧Inspect応答が遅れて到着し、表示選択はBに変更 | 古いAのGraph/文書/SlotをBへ誤束縛、または自動でApplyを実行（#4515） |
+
+GQ-06は新しいScenario正本ではなく、#4198 R0〜R4・#3509 AX-01〜08・#2514/#1180の既存Fixtureへ**一件ずつ追加する受入候補**である。最初はGQ-06a/bを一TargetのBuild内照合で検証し、SSR/SPA・実Release・実Browserのc/eはB2C後続に置く。Graph/Selector方式と明示的Route列挙方式を同Targetで比較し、適用漏れ発見、誤検知、Build/Bundle差、実手修正を測る。
+
+#### 5. DSL/Studio/CLIの記述負担を増やさない
+
+業務専門家やPlugin実装者が扱う入力は通常のMarkdown/インデントリスト・表を基本にし、Mermaid/Graphvizは必要な図の直接記述とPresentationに使う。巨大なNode/Edge登録表、数式化したPointcutやGo構文をDSLへ強制しない。型付きIDやRelation occurrenceを明示するのは、同名・多重辺・編集対象を区別する必要がある箇所に限定する。Source/Readerが解釈したRoleと出典からread-only Graphを導出する。正式Reader未対応なら「候補Sourceの抽出」と表示し、Parser未対応の意味をAIが補って受理済みと扱わない。
+
+CLI/Studio/Harnessは同じQualified Subject/Source Revision/Plugin Lock/Current Disclosureに基づくread-only照合Viewを利用し、Studioの一時Pin・遅延Replyが実選択やOwner受理へ影響するのを防ぐ。グラフに載ったからという理由でGo/Wails/外部.NET/Java Hostへ常駐TEI Serverを強制しない。
+
+**順序・Owner**：まず既存のGraph/Rule→意味あるPlugin生成（#2620/#2621/#951、main§37〜39）と同じFixtureでGQ-06a/bの実Source/Selected/Artifact Member照合を行い、独立Expectedへ渡す。その後#3509/Native Frontendでc/d/e、#4515でfを評価する。全体P0のStudio Stage1→Stage2実Windowsセルフビルド（#4583/#2831）、並行P0の通常TEI製品CLI→実Provider→二Consumer（#2586/#1251）は維持。第二Weaver/Graph Compiler/Registry/Runtime/新Hard Gateを設けない。
+
+**現在の状態**：docs-only設計・実装引渡し。GQ-06a〜f、実BundleのAsset受領、実Browser/Consent/CDN/Studio Pin同期、Owner意味受理は本追補では **NOT RUN / NOT ACCEPTED**。main統合済み§33〜39と#4695を再利用し、PR #4604で並行main変更を無断上書きせず、main統合時の再基底・重複解消を別に確認する。
+
 ### G49深化：構造Graphの最小実装契約・構成解決・差分更新（2026年11月14日）
 
 **前回計画AG0〜AG5を具体的な実装判断へ進める**。main統合済みの[Program Execution Model §28〜32](https://github.com/hat47x/tei-platform/blob/main/plan/design/PROGRAM_EXECUTION_MODEL_PROJECTIONS_2026-11.md)にはApplication/Process Graph、横断Hook、CLI/Studio/AI Pinが既に整理されているため、ここでは重複する「全体Graphの理想像」ではなく、現行Goの実在する型とのFit/Gap、最初のread-onlyの契約、Selection変更時の増分更新、Targetへの渡し方を固定する。#1120の共通型付き参照契約はClosed/限定完了、#2620の意味Role/自己記述、#4198のLifecycle Graph Generator、#4679のPlugin共通文書契約は採用・実Target適格性が異なる。各Issueが持つ判断をこのG49で代行しない。
