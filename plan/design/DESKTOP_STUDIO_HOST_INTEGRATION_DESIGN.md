@@ -1131,3 +1131,193 @@ AIが参照するPlugin/Operatorの利用法は、#951のContract/依存とPlugi
 **最小実装順**：C0 現在のCLIで一SubjectのCatalog／Inspect／Source/Reader／Required Coverageを照合 → C1 UIローカルの明示Subject Pin（#4515、read-only）とSourceへ戻る操作 → C2 用途別Contextを同じOperationからCLI／MCP／Harnessへ投影して送出・受領・開示を分離 → C3 AI Proposalを既存Preview／Reviewと接続。**C0はStudio GUI不在でも可能で、C1〜C3をnon-Plugin Stage1→Stage2 Desktop製品P0の前提にしない**。
 
 **状態**：この節は現行main Workbench/CLI Bridgeと既存Issueの静的照合に基づく設計案。新Subject Pin、Harness Context API／MCP Tool、実LLM送信、Disclosure E2E、Source Patch Apply、Owner受理は**NOT RUN**。read-only `inspect`等が既存することは、CLIとStudioの同一Consumer資格やAIへの送出許可の証明ではない。
+
+---
+
+## 20. Subject引渡しの三つの閉包と段階的受領（2026-11-15、実装契約候補）
+
+<!-- tei-desktop-three-closures-handoff-20261115 -->
+
+§19のC0〜C3に、他チャットのSkill・Harness統合検討と旧GUI仕様の選択対象契約（Qualified Target Ref／Selection Intention）を接続する。問題は「選択したデータをJSONにできるか」ではなく、**対象が正しく解決され、参照するInstructionが実際に読め、選択したCapabilityを正しいProvider／Hostで使えるか**である。ここでは公開API/永続Schemaを採用せず、現行CLIの実Commandと既存Ownerを用いた検収単位を示す。
+
+### 20.1 三つの閉包を一つの「ready」に潰さない
+
+| 閉包 | 何を揃えるか | 未成立時の扱い |
+| --- | --- | --- |
+| **Subject / Information** | Workspace・Root、Subject kind/ID、Source locator/span、Raw/Buffer/Meaning revision、Role、Occurrence/Relation、必要な依存とScope、Requiredの読込・解析・解決・返却 | 対象の一致・完全性を主張しない。表示可能な範囲は限定read-onlyとし、Proposalの自動Apply／実行へ進めない |
+| **Instruction / Documentation** | 指定したPlugin/Operator/Skillの説明、適用条件、依存先マニュアル、Contractの意味・版、参照した具体的資料位置、読み取り結果と欠落 | 説明が読めなければ未確認として扱う。Skill名、Package登録、READMEの存在だけで「手順を実装済み」としない |
+| **Capability / Authority** | 用途に必要なOperation、正式Provider/Builder選択、実呼出し可能性、Target/Host Grant、Effect、外部ConsumerへのDisclosure、実Invoke/結果受領 | 選択・Static Catalog・MCP Tool annotationを権限や実Provider呼出しに昇格しない。欠ける場合は実行せず説明／Previewへ留める |
+
+三閉包は**互いに独立**している。Instructionが完備していてもSubjectが古い場合、正しい操作説明が得られても対象の復元・実行は不可。Subjectが確定しても外部開示が拒否ならAIに原文・識別子を送らない。実Providerが呼べても新しいSkillを実読込したとはいえない。いずれも「合格」を一つのBooleanへ圧縮しない。
+
+### 20.2 Selection IntentionとQualified Target Refの境界
+
+選択操作の内部表現は**候補として**、次の二層に分ける。
+
+- **Selection Intention**：利用者の指定したSubject集合、選択順序、用途、必要なら検索Predicateや明示Include/Excludeを保持するローカル意図。最初の実装は**一つの明示Subject kind/idのみ**でよく、複数要素・集合演算・選択履歴をP0に必須化しない。
+- **Qualified Target Ref**：既存Product Readerが実際に確認したWorkspace/Root、Sourceの原文位置とbyte/版、Subjectの型付きIdentity、Role、Occurrence/Relation ID（確定できる場合のみ）、必要なScope・Meaning Revision。Source Positionが取れない・Roleが未束縛・Readerが未対応なら**欠落を明示する限定Ref**とする。
+
+Qualified Refは新しいSource正本ではなく、既存Source Index／Operation／Decisionが持つ情報の**用途別投影**である。生ファイルPathやSource offsetのみからTargetを再確定せず、異なるWorkspaceの同名・同hashやA→B→Aの再出現でも旧資格を黙って復元しない。許可を示すTokenとして利用せず、ConsumerごとにHostの現在Grantを確認する。表示用Graph Edge・長文テキストの引用先・SHOのSource Anchorは、意味IDの確定前には**候補参照**のまま保持する。
+
+Studioの選択状態を外部Processへ直接共有するのではなく、**Selection Intentの読取専用参照と必要なSnapshot条件**を渡し、受け手が既存Operationを通じて解決し直すことを初期基線とする。CLIもMCPも明示的なWorkspace/Subject指定を持つため、Wails WindowのSessionやFocusを再利用する必要はない。Windowを閉じても外部Effectの取消しや権限の継続を推論しない。
+
+### 20.3 現行CLIの実入口に基づくC0の最低限
+
+2026-11-14時点のmainの commandCatalog には、読取系として model catalog、model locate、workspace-files、inspect、trace、source-index、knowledge-context、validate、requirements、plugin-lock が登録されている。**新しいcontext-handoff/selectionコマンドの存在は仮定しない。** 少なくとも次を調査・試験の順序にする。
+
+| 既存Command | 調べる事実 | そのCommandだけでは成立しない事実 |
+| --- | --- | --- |
+| **model catalog / model locate** | 対象候補と位置の発見 | 一意な意味受理、Current Grant、外部Disclosure |
+| **workspace-files** | Manifest上の管理Sourceと現在の参照範囲 | Loaderが全Sourceを実読込したこと |
+| **inspect** | 型付きSubjectに対するProduct Readerの実応答、失敗とRevision | 必須情報がすべてロードされたこと、外部送信権限 |
+| **source-index / trace** | Source位置や参照方向と既知のScope | 空集合がSubject不存在を保証すること、必要依存の完全閉包 |
+| **knowledge-context** | 指定Subjectの文脈候補とdisclosureモードの出力 | 対外送出先の現在GrantやTool完全受領を自動保証すること |
+| **validate / requirements** | 必要な設計条件と診断 | 個々のDomain設計の意味・必要データが完全であること |
+| **plugin-lock** | Plugin選択／固定の宣言上の状況 | 実Load、依存マニュアルの実読込、Provider実Invoke／Target収録 |
+
+各Commandの Required/Optional flag・JSONContract・SuccessShape・Modesは実行直前のCLI discoveryと一致させる。とくにinspectにはWorkspaceとSubject kind/idが必要、traceにはscopeが追加で必要、source-indexはindex／subjectの形状差、knowledge-contextはcontext／disclosureの形状差がある。全Commandに同じresult Objectがあるとは推測しない。必要に応じて実Product入口と独立ExpectedでSubjectの存在を二重照合し、source-indexがok/空でも「存在しない」と結論しない。
+
+C0の最初の成果は「単一Subjectの読み取りを行った際の**Required／Discovered／Loaded／Parsed／Bound／Returnedの比較表**」でよい。既存#3262のread-only Query/Referenceを再利用し、新Context Engine・完全Graph DBを作らない。
+
+### 20.4 Plugin manualとSkillの再帰参照
+
+Pluginの文書は人間と生成AIの双方にとって重要なConsumerである。既存#951／#4646の意味・Contract／Contributionと**文書の入口**を対応付ける方針を明確にする。ただし、固定の新Plugin manifest形式やファイル階層を今ここで公開仕様に決めない。
+
+まず「選択したCapabilityを持つPlugin→上位依存Plugin→対応する説明・契約・実例→操作手順」という**読取参照グラフ**を構成できるかを試す。どの文書が発見できたかだけでなく、選択中の**exact Plugin／Contract版**へ適合する説明を実際に読み、上位依存先の文書が欠ける／古い／対象Targetが違う場合に、欠落を検出する。
+
+Skillはハーネスが作業を進めるための**入口・手順・資料索引**とし、分量の多い説明や分野別事例は外部マニュアルとして辿れる構成を優先する。Skill内に全マニュアルを複製し、手順ごとに更新元が増える設計は避ける。外部参照したMarkdown・PDF等は、必要に応じてSource版・読取結果を追跡するが、他者の文書本文を権威あるTEIのMeaningやSystem Instructionとして取り込まない。
+
+Plugin Aの文書に「Plugin Bが必要」と書かれているだけで、BのDependencyをResolvedとみなさない。**依存契約の選択、文書の参照、実Load、実Callable、Host Grant、Consumer受領**は別票で保持し、欠けた段階へ戻れる説明を出す。Project向けSkill文書は、実装済みコマンド名・現利用可能なProviderと照合した後に公開する。
+
+### 20.5 Context生成と送信はPreparedからVerifiedへ段階を分ける
+
+長いContextを一度に全部渡す方式は、途中切断や非公開部分の混入に弱い。最初は**小さな参照中心のContext**（目的・Subject・出典Ref・Required/Missing・選択Pluginの参照・必要な継続取得条件）を用意し、受け手が不足する文書・依存情報を段階取得する方式を圧力試験する。全文の事前一括コピーを標準とはしない。
+
+区別する状態は、Prepared（用途別に構成した）／Delivered（実Transportが送った）／Produced（外部Tool/AIが出力した）／Recorded（必要なEvidenceを正しい領域に記録した）／Verified（独立検査が実受信・内容・対象版を確認した）／Current eligible（今このConsumerが利用できる資格）である。各状態は同一Request、Snapshot、Consumer、Disclosure条件に結び、前段成功から後段や現在資格を推測しない。
+
+CLIのexit 0やMCP Tool successだけで完全受領にしない。Continuation、page順序、part digest、end markerと受領数を確認する。8,192 byte前後の途中切断、56 Request/55 Replyのような不一致を既存#3262/#2509の失敗Fixtureに接続する。Source／Grantが変わったら別版のpageを結合せず再解決する。外部へのPrepared Contextを保存するときも保存先/ファイルACL・読取主体・削除/期限を既存#2516/#2017側で確認し、既定のローカルファイル保存を「隔離済み」と呼ばない。
+
+通信断と応答未受領は、**再送可能なread-only取得**と**重複作用の危険がある実Operation**で扱いを分ける。変更系は既存Operation identity／Effect Receiptのlookup-firstを守り、ACK不明を根拠に自動再Invokeしない。
+
+### 20.6 小さな一巡と独立負例
+
+最初の公開合成FixtureはWorkspace Wの一Subject A、必要なRelation 2本、説明Plugin Pと依存マニュアルQ一件とする。これをC0の実CLIだけで調べ、必要情報が揃うケースと、意図的に不足させるケースを比較する。Studio Pinはその後、同じSubject指定を使って検証すればよい。
+
+| Case候補 | 故障注入・対照 | 独立Expected |
+| --- | --- | --- |
+| **SCH2-01** | Workspace/Subjectは同じでもSource Root・原文Revisionが違う | Intentを保持しつつQualified Refはstale/unresolved。元Pinから現在Grantへ自動昇格0 |
+| **SCH2-02** | 同Labelの別Node・同端点の複数Relation、描画Edgeだけ選択 | Occurrence ID不明のRelationはunsupported。表示LabelやEdge IDを正式意味IDへ写像しない |
+| **SCH2-03** | Source-Indexが空でInspectはSubject不明／曖昧 | 空を不存在証拠としない。独立InspectとRequired Coverageで欠損を説明 |
+| **SCH2-04** | Plugin Pの文書は発見、依存Q文書の版だけ不一致 | Instruction closure未成立。契約/Package選択や実Loadを自動的に成功としない |
+| **SCH2-05** | Providerは選択済み、実Child／OS/Targetで違うPackageを実Load | Capability/Actualの不一致。文書の存在やPlugin Lockだけで実使用PASSにしない |
+| **SCH2-06** | Read-only CLI取得成功だがHarness SinkにRaw出典送出不可 | Subject取得と外部Disclosureを別判定。対象ID・件数・本文の漏えいなし |
+| **SCH2-07** | 途中切断、Continuation欠落、Source/Grantがpage間で変化 | Verified/complete不可。混合Snapshotの結合なし |
+| **SCH2-08** | 構成済みContextを別Workspace/Consumerが再利用 | Preparedの履歴は残すが、Current eligibleの再確認なしに利用・送出不可 |
+| **SCH2-09** | 旧Sourceに対するAI Patchを承認なしで適用しようとする | Proposalとして保持し、既存Review/Accept/Source再読込みまで保存/Effect0 |
+| **SCH2-10** | ACKを失ったEffect操作に同じIntentを再送する | Lookup-first、実Effect/Receipt不明の状態を保持し、無条件二重Invoke0 |
+
+**実装順**：D0 現CLIで単一SubjectのScope相対Coverageと正負対照 → D1 Plugin Pの説明と依存Qの読取・版照合 → D2 上記ContextをStudio/CLI/外部Consumerへ投影する同一性・Disclosure／完全受領検査 → D3 変更Proposalと実Operation/Receiptを別証拠にする。D0は§19のC0を具体化した最優先の実装小片。D1はPlugin文書Ownerの並行作業。D2/D3は実送信先とHost資格が揃った後でのみ試す。
+
+**Owner**：Subject Pin・UIは#4515/#1824、Required Coverageは#3262、用途相対Disclosure/Contextは#2516/#1178、CLI/IPC/MCPの同一Operationは#1158、Plugin/依存・文書は#951/#4646、Skillの実Consumerは#2605/#2509、Source/Roleは#2621/#988、独立Expectedは#1180/#2514、実Effectは#1174。新Identity Store／Context Builder／Skill Registry／Harness Runner／Hostを重複実装しない。
+
+**停止線**：本節は**実装と検証の候補契約**であり、新しい公開Schema・CLIコマンド・MCP Tool・永続Pin・Server構成の採用ではない。旧Draft #4696の§19が示すC0〜C3と、製品P0であるnon-Plugin Studio Stage1→Stage2→実Windows WebView2を変更しない。D0〜D3の新しい実CLI/Plugin文書ロード/外部送信/Owner受理は**NOT RUN**。現CLIのカタログ構造と既存Issue/過去の限定試験の静的照合にとどまる。
+
+---
+
+## 21. CLIの実Source照合をD0へ接続する最小実装（2026-11-15、Reference実装）
+
+<!-- tei-desktop-selected-subject-d0-consumer-20261115 -->
+
+§20のD0を設計案だけに留めないため、main統合済みの既存tools/reference-issue-test-ability/context_gate.py（#3262のread-only試験用Consumer）へ、**一つの明示SubjectのSource定義照合**を追加した。新CLIコマンド、Studio Host、Source Reader、独自Context Engineを作らず、既存CLIが出力した13種類の応答を再利用する。
+
+### 21.1 実装した限定照合
+
+新関数selected_subject_source_sliceは、独立に固定された公開Fixtureの semantic-data / sales.order に対して、次の点を照合する。
+
+1. model catalogの対象は一意で、曖昧でなく、sourceStatusがindexedか。
+2. inspectの対象kind/idとsourceStatusは一致するか。
+3. source-indexの応答modeがsubject、source-index-allのmodeがindexか。
+4. Inspectorのsources.referencesと全Source Indexの対象Referenceは一件で一致し、roleがdefinition、artifactPathがsemantic/sales/order.teiか。
+5. Inspectorと全Source Indexが返したSource Artifactは一件で一致し、fingerprintにsha256:接頭辞があるか。
+
+結果を既存readinessのselectedSubjectSource欄へ追加する。Sourceの不一致を見つけた場合は既存blockersへ反映し、限定資格も誤って成功させない。これは**一つの定義Anchorを双方が同じものとして報告したという限定的な一致**であり、原文byteの暗号学的再検証、業務全体の依存完全性、外部Provider Sourceの現在性、Host Grant、AIへのDisclosure、Meaningの受理とは異なる。従来のboundedReference=partialやqualifiedTestGeneration=falseを全体合格へ昇格させない。
+
+### 21.2 独立負例
+
+既存JSON応答のCopyに破壊的変異を与えるselected_subject_source_selftestを追加した。実Workspace・業務Sourceは変更しない。
+
+| Case | 合成変異 | 必須の拒否理由 |
+| --- | --- | --- |
+| D0-01 | Catalogの対象をnot-indexedへ変更 | Catalog対象の現在一致を保証できない |
+| D0-02 | Inspectorの対象をnot-indexedへ変更 | Inspect対象の現在一致を保証できない |
+| D0-03 | Subject別Source Indexのmodeをindexへ変更 | 指定対象を照会した形状の一致が失われる |
+| D0-04 | Inspectorの定義Referenceのroleをusesへ変更 | 定義への参照ではなくなった |
+| D0-05 | Inspectorの定義ReferenceのartifactPathを別Fileへ変更 | Source定義の所在が一致しない |
+| D0-06 | 全Source Indexで定義Referenceを二重登録 | 定義Anchorの一意性を失う |
+| D0-07 | InspectorのSource Artifact fingerprintを別値へ変更 | Source IndexとArtifactが一致しない |
+| D0-08 | 全Source Indexから対象Artifactを欠落させる | Sourceの裏付けがなくなる |
+
+各変異ではWorld／Source Indexの指紋を変えず、**同一Fingerprintのまま別のSourceを指す場合を検出できるか**を検査する。旧Rule／Function／Source Currency検査は再実装せず、選択した通常Data Subjectの定義Anchorを新しい照合対象とした。
+
+### 21.3 引渡しと停止線
+
+**D0.1：CLI基線**。変更後の同一HEADで、実tei CLIから得られた13種類のReplyを既存Context Gateへ入力し、限定partialおよび8件の拒否を再確認する。成功した場合でも、主張できるのは「一Subject／一Source Anchorのread-only照合」までとする。
+
+**D0.2：必要な設計情報の確認**。sales.orderのFunction／Rule／Relationに必要なRequired集合を別途固定し、既存bounded Sliceに含まれるものと不足を比較する。実Provider Read、正式Markdown Reader、PluginマニュアルQ、MCP／外部Harnessへの実受領は別の検証のままにする。
+
+多Subject、同名別Workspace、Graph Relation occurrence、Pin UIは#4515/#1124へ、外部Tool受領は#2509/#3262へ、Plugin文書の版照合は#951へ引き渡す。新Selection API／第二Context Storeは作らない。
+
+**実測の限定結果（2026-11-14T15:55Z）**：[read-only dogfood CI Run #43612681535](https://github.com/hat47x/tei-platform/actions/runs/43612681535)はコード変更のexact HEAD `78dbf5e7bf244b6f0ae330c4435ceb592b117fe7`でcompleted/success。実CLIから取得した13種類のReplyを既存Context Gateに与え、ログで「8 selected-Subject anchor controls」を含む正負検査がPASSし、`bounded Design Context partial`、`test generation qualification withheld`を確認した。元の7 base＋2 manifest＋7 transport byte＋8 Rule＋8 Rule/Relation＋10 Function＋8 Source currencyの検査も同一JobでPASS。**新検査の合格は一SubjectのSource Anchorを既存CLI応答間で照合したことに限り、原文の現在byte実再取得や全Required Closureではない。**
+
+**残る未検収**：新実Windows、Plugin説明と依存Manualの実Load、実CLI→Studio/MCP/Harnessの同一Context受領、Sinkの現在Disclosure、Owner意味受理、正式non-Plugin Stage1→Stage2 Desktopは別。GitHub Actions Runの成功を公開Product Context Queryの資格へ拡張しない。製品P0に新Hard Gateを追加しない。
+
+---
+
+## 22. D0.2：一つのDataに必要なRelation・Rule・Capability・Applicationの限定検証（2026-11-15、Reference実装）
+
+<!-- tei-desktop-d02-five-obligations-20261115 -->
+
+§21で確認した単一Subjectの定義Anchorだけでは、AIやStudioがそのDataを扱うときに必要な隣接設計情報が揃ったとは言えない。そこで既存のread-only試験用Consumerに、**独立に固定した五つの必要項目と、既存CLIが観測した事実を照合する小さな検証票**を追加した。新しいLoader／意味解析器／Graph Compiler／Context APIを設けない。
+
+### 22.1 固定した最小の必要項目
+
+公開ReferenceのData `sales.order`を対象とし、次の五つを**検査側が独立に指定**する。Catalogから見えた項目を全部「必要」とする方式ではない。
+
+| 必要項目 | 固定した対象 | 実照合の根拠 |
+| --- | --- | --- |
+| Data | `semantic-data / sales.order` | Catalog／Inspect／Source Indexで一致した定義Anchor、Loader実読込 |
+| Relation | `semantic-relation / sales.order.lines` | Dataとの親子対応に加え、`sales.order_line`を指す対象と、Source Index上の唯一のdefinition Reference |
+| Rule | `semantic-validation / sales.order_line.line_number_positive` | 検査済みRuleのCanonical属性・種別、Definition Reference、Source Artifact、Rule Source読込 |
+| Capability | `semantic-capability / sales.order.submit` | Catalog／Inspect／Source一致、`order: sales.order`入力と`sales.order`出力の宣言 |
+| Application | `application / order_entry` | Catalog／Inspect／Source一致、`sales` Namespace/Validation参照、DB要求の宣言 |
+
+この五項目は、Referenceで選んだ設計要素に**明示された限定Required集合**であり、Functionの全依存、Ruleの実評価、Query／SQL、隠れた負の条件、Imported Provider Source、実Invokeや現行Grantの完全な閉包ではない。すべて照合できても結果は「五件の限定観測」にとどめ、全Context Complete／テスト生成受理へ昇格させない。
+
+### 22.2 今回追加した処理の分担
+
+`tools/reference-issue-test-ability/context_gate.py`に`selected_task_required_packet`を追加した。§21の`selectedSubjectSource`と既存のRule／Relation／Functionそれぞれの限定検証結果を**再利用して読み取り票へまとめる**。新規性は、これまでCatalogの親子関係だけで照合していた`sales.order.lines`について、`detail=sales.order_line`と、全Source Index内で対象Relationの`role=definition`、`artifactPath=semantic/sales/order.tei`が一件であることを追加確認する点にある。
+
+結果は既存のreadinessレポートに`selectedTaskRequired`として追加し、項目ごとの`bounded-observed`／`not-qualified`、`requiredCount`、`boundedObservedCount`、不足した項目の`selected-required-...`診断を示す。検査に使ったSourceを改造せず、既存CLI JSONの実返答を読み取るだけとする。Scope外の項目まで「不足」や「不存在」に数えない。
+
+### 22.3 独立負例と非干渉の対照
+
+同じPython Consumerの`selected_task_required_selftest`で、受領済み応答を一時的に変異させ、**対象項目だけが失格し、無関係の四項目は限定観測のまま残ること**を確認する。
+
+| Case | 故障注入 | Expected |
+| --- | --- | --- |
+| D02-01 | Relationの`detail`を別Dataへ変更 | Relationのみ資格未成立 |
+| D02-02 | RelationのIndex Referenceを`uses`へ変更 | Relation定義の一意性を失い拒否 |
+| D02-03 | Relation Definition Referenceを重複 | Relation定義の曖昧さを拒否 |
+| D02-04 | RuleのCanonical種別を変更 | Ruleのみ資格未成立 |
+| D02-05 | Capabilityの出力型を変更 | Capabilityの宣言整合が未成立 |
+| D02-06 | Applicationの利用Namespaceを削除 | Applicationの宣言整合が未成立 |
+| D02-07 | 必要集合に含まれないCatalog要素を追加 | 五項目の判定・必要件数を増やさない |
+
+既存§21のD0-01〜08は、単一SubjectのSource Anchorに関する負例として引き続き維持する。D02の正負は**Pythonの合成変異試験**であり、実業務Sourceを編集・ビルドした試験や、MCP/外部AIへの実送信ではない。
+
+### 22.4 実行結果の資格と次段階
+
+初回実コードは[Draft #4696](https://github.com/hat47x/tei-platform/pull/4696)の`tools/reference-issue-test-ability/context_gate.py`に登録した。**現在のCI／実CLI結果は対象HEADで別確認する**。成功しても五つの宣言／Source AnchorがReference内で観測されたことに限る。未確認のParser Role、Sourceの同時Snapshot、実Provider、Query実Read、Grant／Disclosure、外部Harness受領、意味Owner受理は未資格のまま残す。
+
+次段階は、(a)同一HEADで実13 CLI Reply→D0.2の結果と7対照を確認する、(b)Studioの明示Subject Pinから同じ`Workspace＋kind/id`を既存Host Inspectへ渡してもFocus/Dirtyを乱さないことを検証する、(c)必要に応じて`*.tei.md`の正式Reader／Rule・Relation意味受理と、実Function Provider/二Consumerへ進む。**非Plugin Stage1→Stage2→Windows実WebView2の製品P0には、新たなHard Gateを追加しない**。
+
