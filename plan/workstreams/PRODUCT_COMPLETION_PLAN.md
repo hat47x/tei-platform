@@ -493,6 +493,9 @@ S0〜S4を一度に実装しない。**固定6入力に対するGraph/RuleのGo�
 
 **検証済みの範囲を更新する**：[main #4709](https://github.com/hat47x/tei-platform/pull/4709)のGraph/Rule固定6入力、[main #4722](https://github.com/hat47x/tei-platform/pull/4722)の元byte位置付きReaderに加え、[main #4729](https://github.com/hat47x/tei-platform/pull/4729)で**明示的なMarkdown規則表→実Go条件分岐生成→別Go Process実行→独立Expected候補との比較**が成立した。Edgeの方向、Ruleの「起点／終点」切替では生成Goの処理と結果が変わり、Mermaidの配置変更では意味上の生成Goが変わらない。これはReferenceの実成果だが、規則表の日本語見出しは正式な日本語DSLの採用ではない。製品の`internal/workspace/loader.go`は引き続き未選択`*.tei.md`を`TEI_MD_PARSER_UNBOUND`で拒否しており、**製品Meaning/Target Generator/Plugin/通常CLI/Studioへの接続は別作業**である。
 
+<!-- tei-product-generated-rule-ci-admission-20261115 -->
+**局所実証のCIと製品計画の現在性（2026-11-15）**：[#4729](https://github.com/hat47x/tei-platform/pull/4729)はexact HEADで3/3 Workflow成功し、明示Graph/Rule→条件付きGo生成→別Process実行というReferenceの局所資格を持つ。[#4733](https://github.com/hat47x/tei-platform/pull/4733)はmainへ統合されたものの、当該exact HEADのRepository Healthは**失敗**（Graph生成テストのgofmtずれ、Queryの旧Opaque期待、語彙一覧の古い項目）。したがって「main統合済み」「生成Binaryが実行時入力を受けた限定試験」「Repository Healthの全体成功」を一つの合格とは記録しない。別件の[#4731](https://github.com/hat47x/tei-platform/pull/4731)はWindow等の未対応SQLをOpaqueで保持し再生成を拒否する実修正がmain統合済みで、SQL Dialect Plugin CIは成功したが、当該HEADのRepository Healthは同じ旧テスト二件で失敗した。安全な拒否挙動を元へ戻すのではなく、[#4736](https://github.com/hat47x/tei-platform/pull/4736)が**旧テスト期待・語彙TODO・gofmtのみ**を修正する独立PRを提出中。**#4736自身のexact HEAD CIとmain統合を確認するまで全体修復済みとはしない**。製品Source/Role/Meaning/実Plugin/Stage2の未接続はこのCI修正とは独立の不足である。
+
 #### 定義変更と実行時入力を別々に検証する（#4733反映）
 
 [main統合済み#4733](https://github.com/hat47x/tei-platform/pull/4733)は、#4729のGraph/Rule→実Go生成をもう一段進めた。**一度だけビルドした同じ生成Binary**に実行時Node IDを渡し、Nodeごとの出辺/入辺結果を独立Expected候補で確認する。引数なしは全Nodeの出力、既知NodeはそのNodeの結果、未知Node・明示空ID・余分な位置引数は非ゼロ終了として区別し、試行前後のBinary SHA-256が変わらないことを検査している。これは「生成したコードに実行時入力が効く」限定的な実証であり、製品Function InvocationやPlugin実Call、業務上の認可を示すものではない。
