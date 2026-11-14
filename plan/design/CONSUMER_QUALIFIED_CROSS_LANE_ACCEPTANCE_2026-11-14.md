@@ -15,10 +15,10 @@ TEIでは、設計文書からモデルを読み、FunctionとProviderを選び�
 
 例は「会員が自分の受注履歴を、指定日時以降で検索する」とする。B2Cの専用Hostを新設する必要はなく、既存の型付きQuery、Function Data Context、共通Operation、TargetごとのFrontendを利用する。
 
-1. **Definition**：固定したSource内にQueryの対象、必須引数 \`from\` と \`std.datetime\` 型、返す行の意味を記述する。SQLのプレースホルダーが存在するだけでは型宣言済みと判断しない。
+1. **Definition**：固定したSource内にQueryの対象、必須引数 `from` と `std.datetime` 型、返す行の意味を記述する。SQLのプレースホルダーが存在するだけでは型宣言済みと判断しない。
 2. **Binding**：Workspace・Environment・実Database Instance・Provider・Query・引数を、呼び出す直前の対象へ対応付ける。読取り用の参照Toolが通ったことを製品CLIの実接続へ転用しない。
 3. **Authority**：現在の主体が匿名利用者、ゲスト、会員、運用者、分析主体のどれであるかを識別し、Operationと対象のRead Scopeを評価する。公開可能なAPI名と実行権限は別である。
-4. **Execution**：通常の \`tei\` CLIまたは製品Operationが、選ばれた実Providerを呼んだことを記録する。呼出し先は選択名ではなく、実行されたProvider・接続先・試行で確かめる。
+4. **Execution**：通常の `tei` CLIまたは製品Operationが、選ばれた実Providerを呼んだことを記録する。呼出し先は選択名ではなく、実行されたProvider・接続先・試行で確かめる。
 5. **Acquisition**：Rowsetが返った場合にも、取得できた範囲、行・列の由来、RLSやLIMIT等の制限、未取得を残す。Native SQLの行の完全性を推測しない。
 6. **Delivery**：GUI、CLI、B2C Frontend、独立したConsumerが、認可された情報だけを実際に受け取り、対象ID・日時条件・結果本文を保持したことを確認する。画面が応答しただけでは内容の正しさが確定しない。
 7. **Acceptance**：独立したExpectedと、正例・負例の実観測を比較する。業務的な意味の受理や外部作用の許可は、担当OwnerとHost側が別に判断する。
@@ -43,7 +43,7 @@ TEIでは、設計文書からモデルを読み、FunctionとProviderを選び�
 
 ### Coverageは「見えた制限」と「完全性の証明」を分ける
 
-[#4647](https://github.com/hat47x/tei-platform/pull/4647)のW1〜W3 Draftでは、隔離PG16でRLS、LIMIT、JOIN、View等の観測から\`partial\`と理由を返す参照経路を検証した。反面、Native SQLの関数による暗黙の絞込みは、計画中の関係やLIMITに現れない場合がある。このため、計画上の制限が見つからないだけで\`complete\`や「本当に0件」を宣言しない。列の由来を追うW4やCurrent Grantも別の課題である。
+[#4647](https://github.com/hat47x/tei-platform/pull/4647)のW1〜W3 Draftでは、隔離PG16でRLS、LIMIT、JOIN、View等の観測から`partial`と理由を返す参照経路を検証した。反面、Native SQLの関数による暗黙の絞込みは、計画中の関係やLIMITに現れない場合がある。このため、計画上の制限が見つからないだけで`complete`や「本当に0件」を宣言しない。列の由来を追うW4やCurrent Grantも別の課題である。
 
 Coverageは、**観測できた事実を保守的に説明するもの**であって、開示を許可する能力ではない。RLSで隠された行の存在を、表示件数や診断から漏らさない条件も別に検査する。
 
@@ -70,9 +70,9 @@ Coverageは、**観測できた事実を保守的に説明するもの**であ�
 
 | Case | 故障条件 | 必須の結果 |
 | --- | --- | --- |
-| CL-01 | \`:from\`はSQLにあるがQueryのInput宣言がない | 製品公開を拒否し、型を推測しない |
-| CL-02 | Input宣言は\`std.datetime\`だが文字列・NULL・未知名が送られる | Executorを呼び出さず診断する |
-| CL-03 | RLS／LIMIT／関数が結果を制限しているがConsumerが0件を取得 | 全件不存在や\`complete\`を主張しない |
+| CL-01 | `:from`はSQLにあるがQueryのInput宣言がない | 製品公開を拒否し、型を推測しない |
+| CL-02 | Input宣言は`std.datetime`だが文字列・NULL・未知名が送られる | Executorを呼び出さず診断する |
+| CL-03 | RLS／LIMIT／関数が結果を制限しているがConsumerが0件を取得 | 全件不存在や`complete`を主張しない |
 | CL-04 | 会員Aの結果・Cacheを会員Bの操作で参照する | Audience・現在のGrantを再評価し、不正開示しない |
 | CL-05 | 同名の組織MembershipがあるがOccurrence ID・履歴版が異なる | 異なる履歴を一つの現所属へ統合しない |
 | CL-06 | 外部EvidenceがA→B→Aと変化し、過去のDigestへ戻る | 現在のByte一致だけで履歴現在性を主張しない |
