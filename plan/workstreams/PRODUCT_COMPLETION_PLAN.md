@@ -498,6 +498,40 @@ S0〜S4を一度に実装しない。**最初のPRはS0のReaderとS1の実装�
 
 初期段階に恣意的な百分率目標は置かない。**まず一機能で、TEI定義の変更が実行結果へ反映され、手書きGoの増加なしに正負の独立Expectedが通ること**を証明する。次に性質の異なるPluginへ拡大し、同じ基準で比率と保守量の変化を測る。数値だけを良くするために機能分割や委譲箇所を変更しない。
 
+### セルフビルドの進歩を、実装範囲と保守負担の両面で判定する（2026年11月15日）
+
+既存SB-0〜4とGraph/Ruleの固定Fixtureを、**継続的なドッグフーディングの測定手順**へつなぐ。[自己記述とコード生成の第44節](../design/ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md)、[Pluginの役割・生成・実利用設計](../design/PLUGIN_ROLE_COMPOSITION_AND_STUDIO_REENTRY_2026-11.md)を再利用し、新しい工程表、Runtime、Registry、独立Expected正本は追加しない。
+
+**判断の基準**：Go単一バイナリや既存Go部品の再利用は妨げない。ただし「TEIに記述したどの条件が、生成した実装のどの判断を決めたか」を説明できなければ、TEI主導の実装とは数えない。Goの呼出し契約の自動生成と、判断・検証ロジック自体の生成を区別する。
+
+#### 同じ一機能について、改訂前後に残す記録
+
+| 記録面 | 固定・比較する内容 | 改善と数えない条件 |
+| --- | --- | --- |
+| **機能上の義務** | Node/Edge同一性、向き、多重性、出辺選択、ID重複拒否を固定したIndependent Expected。第二例では型・NULL・境界値を持つRule | 成功しやすい義務だけを後から分母に残す、機能を小分けにして率を水増しする |
+| **TEIによる実装** | 義務IDごとに①TEI由来の意味ロジック生成、②TEIから外部実装へ委譲、③手書き実装のみ、④未実装を分類。実生成箇所はSource occurrence・Role/Operator・Generator版へ戻れるようにする | Wrapper生成のみ、固定JSONの出力、手書きGo側の条件を直して結果を合わせる |
+| **Plugin自身の自己構築** | Descriptor、実装ロジック、Validator/Generator、Build依存、実Provider呼出しを**別々の対象**として観測し、TEI由来の生成処理が実行された義務を記録 | Pluginを梱包できただけで、内部のOperatorやGeneratorまでTEI化できたと宣言する |
+| **実際に消費された成果物** | Source/Meaning/Artifact Revision、Build Intent、Builder/Toolchain、入力閉包、生成Go Digest、Stage1/Stage2の実Invoker、選択Pluginの実Call、Consumerを各段階で固定 | 同じ値やCI Greenから実Builder入力、実Plugin利用、Stage1再入を推定する |
+| **保守負担** | 保守する定義、重複Rule/契約、補助Goの手修正、例外設定、修正が必要な箇所、独立検収までの作業、AIへ渡す文脈と再質問を前後比較 | DSLの行数だけ減らし、隠れたGo分岐や暗黙の既定値、Promptへ複雑さを移す |
+| **可読性・再利用性** | 業務専門家が図・表から入力→条件→結果を追えるか、CLIと第二Consumerで同じ意味を再利用でき、Sourceへ局所的に戻して変更できるか | 短くても難解な独自記号が増え、結局生成Goを読まないと判断できない |
+
+**比率**：最初は固定した義務を一件ずつ列挙し、「TEI定義から判断ロジックを生成し、実Consumerの独立Expectedまで通った義務数／固定した義務総数」を示す。委譲、手書き、未実装の件数と分母を併記し、事後に義務の重みを変えない。Pluginでも実行された**実装義務**を単位とし、Plugin数・生成ファイル数・Go行数で代用しない。新規機能で分母が増えたときは、既存範囲の改善と新規範囲の拡大を別に報告する。実測前に恣意的な目標比率は設けない。
+
+**簡素化**は一つの得点にまとめない。少なくとも手書きGoの変更箇所、意味の重複、変更対象のSource/設定数、独立検収に要した実作業を別に記録し、未計測は`unknown`とする。NULL/欠損・順序・Effect/Failureが変化したものを同じ機能の簡素化とみなさない。生成AIを使った比較は、課題・Harness・利用モデル等の条件差と、Token/費用・再試行の実測を分けて示す。
+
+#### 最初の二回の改訂実験
+
+1. **Graphからの実ロジック生成**。既存`testdata/tei-md-graph`で、同名二Nodeと別IDの多重有向Edgeから出辺の判断ロジックを生成する。`e-2`の反転、ID重複、配置のみ変更について、`*.tei.md`の最小修正→Source/意味診断→生成差分→実Builder入力→Plugin実Call→独立Expectedを一続きで照合する。正規Readerが未対応なら`TEI_MD_PARSER_UNBOUND`／`unsupported`を維持し、手変換したJSONを正式成功にしない。
+2. **性質の異なるValidation**。既存Validation/Generator Referenceから、数量の正値など、**型・NULL・ゼロ・境界値**を含む処理を同じ方式で生成する。Graph専用の特別処理で終わっていないかを、Role/Generator/Pluginの再利用範囲と、追加で必要となった手書きGoの実測で判断する。丸め・欠損・型不適合の扱いを推測で埋めない。
+
+両例の生成が通った後で、**Plugin自身のGenerator/Validatorの一部分**をTEI定義へ移す。Descriptor生成だけ、実ロジックの生成、Generator自身のTEI由来実装、Stage1の実CLIがStage2へPluginを渡して使ったことは別に記録する。実装順は「Reader不足の最小解消→Graph実ロジック生成→CLI実Plugin Call→第二Rule→GeneratorのTEI化→Stage1実Process再入」。既存#943/#951/#1121/#1251/#2620/#2831へ引き渡し、Studio GUIやMCP Serverを初回の前提にしない。**正式Windows Desktop Stage2（#4583）は並行する最上位の製品出口として維持する**。
+
+生成AIによる開発は、`tei commands`で**実在する操作**を確かめ、対象Subject/Revisionを固定し、Source差分を提案・検証して、既存Build/Provider/Scenarioを動かす。MCPは同じ型付きOperationの別の入口とし、SkillやPluginマニュアルに未実装Commandや古いPlugin版を現在の操作として書かない。生成AIの提案、Build成功、Host Grant、Owner意味受理は別資格である。
+
+**各改訂の報告**は、同一Subjectについて「義務の固定分母と生成／委譲／手書き／未実装の内訳」「Source→生成コード→Builder→実Call→Consumer」「変更前後の手修正・重複・確認作業」「Stage別の成立・未成立」「次にTEI側へ移せる処理」を一枚にまとめる。既存#1180/#2514のIndependent Expectedへ戻し、成功と負例を併記する。各改訂でこの記録を更新できることを、TEIがTEIの開発を段階的に改善しているかの継続判定とする。
+
+**資格**：比較方法と次の実装順の追補であり、Graph/Validationの製品Go生成、実Plugin呼出し、Generatorの自己構築、CLI Stage1→Stage2、定義削減、Studio Stage2の新実測ではない。
+
 ### 既存Expectedへ引き渡す負例
 
 SBX-01：図のレイアウト変更では意味が変わらず、関係の向きや多重度を変更すれば生成内容・結果が正しく変わる。SBX-02：TEIの表の条件を変えてもGoの固定処理しか動かない場合は「委譲のみ」として失格。SBX-03：生成GoのDigestが一致しても、Builderが別Sourceや未選択Pluginを実消費すれば失格。SBX-04：Stage0が別々に二つのBinaryをBuildしただけではStage1→Stage2再入不適格。SBX-05：Plugin A→B→Aの後に旧Binding／Grant／Receiptが自動復活すれば失格。SBX-06：定義を短くした結果、NULL／欠損／評価順／Effect・Failureが変われば不適格。これらは[#1180](https://github.com/hat47x/tei-platform/issues/1180)・[#2514](https://github.com/hat47x/tei-platform/issues/2514)の既存Independent Expectedへ渡し、新しいScenario正本は作らない。
