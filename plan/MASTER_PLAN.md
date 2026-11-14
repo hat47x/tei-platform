@@ -655,6 +655,28 @@ tei external-candidates
 
 **導入段階／Owner**：まずR3-A通常ローカルCLI #4625 のexact-head合否を確定→R3-Bは既存の固定Workspace MCPまたはDesktopで安全な第二Consumer一経路だけを成立→R3-C独立Producer Evidence/別Consumer Invocationを検収→T1-BでSourceに戻るread-only候補レビューを一本通す。その後、Web共同編集への`Branch/Session/Source Snapshot/Pin`資格確認を#1824/#1124/#4515のStudio Ownerで検討する。共同編集のCRDT・Git運用・マルチユーザAuthorityをR3-Bの新必須Provider/新Host/新Policyへ押し込まない。Source Patchは#2497/#2500、Owner Decisionは#267、Current Grantは#2516、Evidence取得は#4503。Web製品実装、共同編集負例、R3-B/C、実Grant/Owner受理は**NOT RUN／NOT ACCEPTED**。
 
+<!-- rea-r3b-byte-only-product-seam-20261114 -->
+#### R3-B準備：Hostが取得したbyteと、R2投影Operationの責務を切り分ける（2026-11-14）
+
+**実装への最小投資**：[R3-B前段の独立Draft PR #4630](https://github.com/hat47x/tei-platform/pull/4630)（main起点、HEAD `1ad749fc0eaacc195dd28ea88a97bd44d9581050`、未統合）で、既存`internal/operations/external_candidates.go`に`ExternalCandidatesFromBytes(request, raw, at)`の**byte-only入口**を新設した。従来の`ExternalCandidates`はローカルPath/Version/IDの入力確認→同Pathを一度`os.ReadFile`→Pathを消したRequestと実byteを同一R2投影へ渡す薄い入口となる。R2の`externalanalysis.Receive`／`ReadCandidates`／Evidence ID/raw digest/申告SourceRevision／選択Node＋Directed Relation／Coverage/Unknowns/Unselected/AuthorityLimitsは**第二Parserを作らず共用**する。byte-only入口に`EvidencePath`が付いていれば`EXTERNAL_CANDIDATE_INVALID_REQUEST`で拒否する（FromBytesはファイルを取得せず、Policy/Grantも判定しない）。これを**Host管理の読取り結果を受け渡すための接続面**とし、R3-B完了と呼ばない。
+
+**具体的な再利用先**：現main `internal/studiohost/observe_xead.go` の `ReadOnly.ObserveXead`には、(1)Host固定Workspace IDから許可Root取得、(2)相対Path正規化／用途の拡張子チェック、(3)`workspace.ReadSource`のbounded read、(4)Parser側にはファイル能力を渡さずbyteだけ渡す、(5)失敗文言をHost側で限定する既存先例がある。これはREAを今すぐ`ObserveXead`へ混在させる意味ではなく、R3-Bの**取得境界・負例設計の参照**である。`ExternalCandidatesFromBytes`にはCurrent Grant/Source現在性/Disclosure/Storage deliveryの資格がないので、R3-B実Consumerはその前後を既存Host/CAPI #3419/#4503/#2516で引き受ける。HTTP・Wails Serverへ`-evidence-path`やRoot実pathを渡すAPIを作らない。
+
+**より具体的なStudio Web公開停止線**：[Wails Server Bridge inventory実装Draft #4627](https://github.com/hat47x/tei-platform/pull/4627)（HEAD `9491bf9e`、exact HEADでWails Host/Windows WebView/Health等5 Workflow successful）では、現`application.NewService(&StudioBridge{host: host})`が現在15公開methodを持ち、Command実行やSHO子プロセス入口も含むことを実コードの反射/ASTで検知するテストが成功した。**5 Workflow PASSは15 methodのinventory成功であり、Public Webへ一括露出可能な安全性ではない**。R3-Bは既存のread-only Host入口または専用限定Facadeのみを使用し、Wails Server PoCのローカル`127.0.0.1`制限、将来の認証/Workspace/WS配送隔離を混同しない。Wails ServerでのR3新Operationの公開は#3421/#1043の別途レビューを要求する。
+
+**Producer→Consumer byte受渡しの既存証拠との整合**：[Windows Desktop生成連鎖Draft #4587](https://github.com/hat47x/tei-platform/pull/4587)はHEAD `0fcb7b62`の同一Windows AttemptでN2 bundleとN3 Go Embed対象の前後SHAを独立照合し、変造コピーを拒否した（Windows生成版/通常版Job成功）。この**受渡し確認の手順**はREAにも適用可能だが、別WorkflowのN2/N3成功をREAのStore→Consumer受領、Original Source closure/Current Grantへ移してはならない。
+
+**R3-B→Cの最小検収境界（独立Expectedは#2514/#1180、別Harnessを作らない）**：
+
+| 票 | 実装・検査入力 | 必須Expected／資格上限 |
+| --- | --- | --- |
+| **R3BY-01** | 同一Captured 6.8.0 REA byte、ローカルFile版と`FromBytes`版 | 型付きView/ReceivedDigest/GraphCoverage/Unknown/Unselectedが完全一致。これだけでは第二ConsumerのInvocationでない |
+| **R3BY-02** | byte-only入口への任意Path、誤Pin、Producer未申告Version、不正byte | Pathは取得に使われず拒否、誤Pinはstale、不正byteはunusable。ローカルCLIだけがPathを受ける |
+| **R3BY-03** | Hostの許可Workspace IDと固定Evidence Selector、Root外・symlink・改版・許可対象なし | Root/Revision/Grant不適格時に投影/外部送達0。内部absolute path・存在/件数を公開Error/DOM/ARIAへ漏らさない。**Host実経路は未接続** |
+| **R3BY-04** | 同一Producer受領byteをCLIとHost側の二つの実Invocationで受領 | 各Consumerの選択、実取得byte digest、受領時刻、許可Audience/Scope、完全Replyが独立に残る。同一JSONを二度読むだけは不合格。**R3-C未実装** |
+
+**現実の到達順**：#4625 R3-Aの最新HEAD `24863bd6`（前HEADはRepository Healthの`gofmt`だけFAIL、修正済／新HEAD CI評価中）と、#4630 byte-only Operationの**各自のexact HEAD Go/REA/Health**を独立に検収する。#4630はRoot/Host Consumer実装でもWeb公開でもない。次に既存Host許可Rootからのbounded固定byte取得（Storage/Grant/Disclosureを別票）→実Studio Bridgeか固定Workspace MCPの限定Reader一経路→R3-Cの別Consumer受領、の順とする。TEA-Q41/Q43とT1-B Source差分レビューは並走可能だが、Desktop self-build #4583と実PG D1 #2586をブロックしない。新`ExternalCandidatesFromBytes`を第二Meaning/Source正本、Generic Reader Registry、Authority engineへ昇格させない。**この計画追補はdocs-only Draft。PR #4630の新Go/CI PASS、R3-B Host実Read、R3-C、正式Grant/Owner Meaningは未確認・未受理**。
+
 <!-- rea-wails-server-wasm-delivery-isolation-20261114 -->
 #### R3 Consumerの配置方式・配信隔離：Wails Server／Go WASM候補との整合（2026-11-14・設計のみ）
 
