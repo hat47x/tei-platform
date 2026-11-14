@@ -742,19 +742,23 @@ tei external-candidates
 **実装上の採用指針**：Product共有は既存Operation／Host Boundary／既存Receipt/Expectedの束縛規則に限る。REA Host Readerは`#4503`、Disclosureと匿名/他Principal二世界は`#2516/#3421`、Source/Workspace RevisionとOwner Meaningは`#1124`、独立Consumer/FailureのExpectedは`#2514`へ引き渡す。Current Grantも実OS/Network送出も未搭載のままR3-C/共有Web適格と認定しない。Desktop Self-build・実PG ReadのP0はREAの子Process試験でブロックしない。
 
 <!-- rea-r3b-multiroot-identity-not-authorization-20261114 -->
-#### R3-B 2つのWorkspace Rootの実バイト同一性・局所失効検証（2026-11-14）
+#### R3-B 2つのWorkspace Rootのバイト列・局所失効・Producer契約の独立検証（2026-11-14）
 
-**差分実装**：[Draft #4637](https://github.com/hat47x/tei-platform/pull/4637)に`internal/studiohost/local_rea_multiroot_test.go`（新HEAD `0d961098ca61781d0db7ccfa2b10dc06b4dde0d4`）を追加した。既存`ReadOnly`の**2つの実Host許可Root**を使う。6.8.0のCaptured REA JSONを一方は原byte、もう一方は末尾改行を付加した異なるbyteにし、Producer宣言のEvidence ID、Source Revision、Node ID、有向Relation IDは同一に保ったまま、それぞれ異なる`Raw sha256`をHost Bindingへ固定する。同名の`Selector`は**Workspace IDと組**にして解決し、2 Rootそれぞれで正しい保存byteが選択されるかを検証する。さらに2 Rootの内容を互いに入れ替えたとき、Producer IDが同一でも**旧Raw Pinのまま投影を許さない**。片方のRootを実体置換した場合は、そのRootだけを`WORKSPACE_ROOT_CHANGED`で拒否し、もう片方の正常read-only取得は維持する。これらは**新しいGoテスト（CI結果は新HEADで独立確認）**であり、新Resolver・Plugin・Policy/Storeを増やさない。
+**実装の到達点**：[Draft #4637](https://github.com/hat47x/tei-platform/pull/4637)に`internal/studiohost/local_rea_multiroot_test.go`を追加し、既存`ReadOnly`が許可した**2つの実Root**にCaptured REA 6.8.0の**同一Byte列**を保存する。両Rootは同じProducer Evidence ID・申告SourceRevision・Node ID・有向Relation ID・Raw Digestを持ち、`(WorkspaceID, Selector)`だけが別のHost固定対象を指す。両方のローカル正常Readを保ち、一方のRootだけが改変/置換されたときに**もう一方のRootへ選択・失敗を伝播させない**ことを受入対象とする。
 
-| 状況 | 実行・期待値 | 言えないこと |
+**初回CIで試験の前提を訂正した**：最初の新HEAD `0d961098ca61781d0db7ccfa2b10dc06b4dde0d4`では、一方のJSONの末尾に改行を追加したうえでHost BindingのRaw Digestも更新し、「別byteでも正常Read可能」と試験で仮定していた。しかし[Wails Host #43571483812](https://github.com/hat47x/tei-platform/actions/runs/43571483812)の**実`studiohost` Go test**は、そのRootだけ`OPERATION_FAILED`となり、同試験がFAILした。これは**テスト用の改変されたProducer deliveryを正常Evidenceだと扱う誤ったExpected**であり、既存R2受領の契約を緩和する理由にならない。旧HEADのWorkflowは9件success・1件failure（別途完了2件）、全件成功ではない。
+
+**修正版の2 Root正負例**：更新HEAD `9b8f5ca9b50d34040cfa0682f026f4fc29090f01`では(1)2 RootともCaptured原byteで正常Read、(2)Root Bのみ末尾改行を加えた際は**固定Host Pin不一致で拒否**、(3)改変後DigestへHost Bindingを再設定しても**R2の保存Producer deliveryを未検証byteとして拒否**、(4)Root Aは影響されず正常Read、(5)Root Bへ原byteを戻すとローカルread-only再取得は可能だがA→B→Aの中間Source変更・Grant失効は証明しない、(6)Root Aのディレクトリ実体を入れ替えたらAのみ`WORKSPACE_ROOT_CHANGED`、Bは正常、をGoテストにした。**最新HEADのCIは新Attemptで別に検証する**。この試験はSource/Grantの真正性や外部製品受領を検証するものではない。
+
+| 保護対象 | 局所Go Expected | 別途Ownerが必要なEvidence |
 | --- | --- | --- |
-| 同じProducer ID・Relation/Source宣言、異なる2 Rootの保存byte | 各`(WorkspaceID, Selector)`で異なるRaw Digestを照合し、**正しいRootからの局所byte**だけを受け入れる | Producer Evidence ID・外部Source Revision・同名Nodeは**実Worktree同一性**を証明しない |
-| 別Rootの保存byteを相互入替 | ID/Nodeが一致しても各Rootの固定Raw Pinで両方拒否。生Errorや秘密識別子をConsumerに渡さない | Pinを再設定してよいOwner判断、Source A→B→Aの履歴は検証していない |
-| Root Aだけ実体置換、Root Bは継続 | Aを失効拒否、Bの正常read-only受信は維持し、別RootへSelectorを付け替えない | 別Principal/Current Grant/DB Providerの認可・失効独立性は保証しない |
+| 同じExternal ID/Raw byteの2 Host Root | `(WorkspaceID, Selector)`固定の正常Readを双方で保持 | 異なるGit Worktreeの実Commit・Model/Source Revision／Principal Current Grant |
+| Root BだけのByte改変、別Raw DigestへのBinding再設定 | 元Pinで失効拒否。再Pinでも**不正Producer deliveryを正常へ昇格させない**。Root Aは継続 | REAの新しい正規Producer再実行、Target Source closure、Owner Meaning、時間的A→B→A判定 |
+| Root A実体置換／Root B不変 | Aのみ拒否、Bの取得可能性とSelector対象を維持 | OS File Openの競合、Web/IPC Recipientごとの現在Disclosureと実送出 |
 
-**他チャットの扱いへ接続**：Studio/SaaSの多Worktree/Branch・多DB aliasでは、**画面に表示したBranch/alias、Hostの実Root/Git Commit/Source版・物理DB Instance/Principal、実Operator/Reader Attempt**が別。REAの2 Rootテストはこのうち**既存Host固定Rootとsaved-byte identity**だけを実測するもので、別Git Worktree/2 DB/2 Principalの実受理、Sourceへの時間的紐付け、現在Grantを実行したことにはならない。#4503/#2516/#3421の既存Expectedへ、同名Selector/同Producer IDを含む多Worktree反証と、正例の正常読取り維持を加える。#2514では実受信Process/Target Audienceは別途採取する。現在のSource/Grant/Disclosureを確認しないまま、Host ReaderのRaw結果を共有Webへ配送する経路を追加しない。
+**他チャットの多Context設計との結合**：Studioの表示Branch・DB alias、Host実Worktree/Git Commit/Source Revision/DB Instance/Principal、実Operation/Consumer Attemptを同じIdentityにしない。特に**同一Evidence ID＋同一Raw Digestでも、2 Rootが同じSource/Grantであるとは限らない**。REAの今回のGo試験は許可Rootの実Readだけを扱い、2 Worktree×2 DB×2 Principalの実検証は未実施。#4503/#2516/#3421へ2 Root＋現在Grant／用途別送出の負例を渡し、#2514に独立Consumer Receivedを残す。新Host／Registry／Parser／Authority Engineは導入しない。
 
-**全体優先順位**：Desktop Stage1→Stage2（#4583/#2831）と通常`tei`の実PostgreSQL Read（#2586）をP0として維持。REAの2 Root保護試験はR3-B局所検収であり、Plugin選定／Registry公開／DSL標準Data Schema／本番Web AuthZへ新しいHard Dependencyを作らない。
+**P0を変更しない**：Studio Desktop Stage1→Stage2（#4583/#2831）と通常`tei`実PostgreSQL Read（#2586）を優先し、REAの局所同一性試験が追加Hard Gateとならないようにする。
 
 <!-- rea-wails-server-wasm-delivery-isolation-20261114 -->
 #### R3 Consumerの配置方式・配信隔離：Wails Server／Go WASM候補との整合（2026-11-14・設計のみ）
