@@ -594,6 +594,38 @@ SQL/NoSQL/ログ等のリバース結果は、**Physical Observation→Structura
 
 **受入の分担と優先度**：R3-A/Cの実Call/二Consumer受領は#3394/#3419、Remote Host固定取得と情報境界は#4503/#2516、原典/三要素支持範囲・UI表示は#4487/#1124/#4613/#4615、旧新Meaning/Target移行は#4191/#2586/#4125、独立Expectedは#2514/#1180。**最優先P0**のTEI Studioセルフビルド#1824/#2831と実Function Provider Read#2586をR3-Jや9観点の完成でブロックしない。#4487/#4570は未統合Draftであり現main実装済みとはしない。この節は**docs-only**で、新Go/Studio/Windows/PG、REA 6.9.0、二Consumer受領、現Grant/外部開示、旧新移行・Owner Meaningの新しい検証は**NOT RUN／NOT ACCEPTED**。
 
+<!-- rea-r3a-product-branch-and-d0d3-20261114 -->
+#### R3-A通常CLIの実装Draftと、データ様式D0〜D3への非阻害接合（2026-11-14）
+
+**Product上の新しい事実はDraft実装に限定する。** [R3-A実CLI Draft #4625](https://github.com/hat47x/tei-platform/pull/4625) を現mainから独立ブランチとして起票。通常`tei external-candidates`へmain R2 `operations.ExternalCandidates`を結線し、`cmd/tei/cli_external_candidates.go`、実子プロセス検証`cli_external_candidates_test.go`、`main.go` dispatch、`cli_commands.go`、`cli_contract.go`の計5ファイルを変更した。**この実装はPR #4625 Draft上だけ**であり、mainの実行可能コマンドではない。保存されたREA 6.8.0 capture fixtureのObservation 1件＋有向Relation 1件を、Evidence ID / raw digest / producer declared Source Revision / Graph coverage / Unknown / Unselected / AuthorityLimitsを落とさず受領する正負試験を用意した。新Go試験・actual Process/CI合格は確認されるまでNOT RUN／NOT PROVEN。
+
+**R3-AのCLI契約候補（実装Draftのexact shape。第二Consumer用APIではない）**：
+```text
+tei external-candidates
+  -evidence-path <saved-local-file>
+  -tool-version <producer-declared-version>
+  -observation-id <external-node-id>
+  -relation-id <external-directed-edge-id>
+  [-expected-evidence-id <id>]
+  [-expected-received-digest <sha256>]
+  [-expected-source-revision <producer-declared-revision>]
+```
+出力は`tei.cli.external-candidates/v0`の`schemaVersion/ok/result/error` Envelope（成功exit 0、引数/Local File Error exit 2、型付き受領・選択失敗exit 1）。ResultはR2の`tei.operations.external-candidates/v0`そのもの。既存Toolは実起動せず、`exec.LookPath("rea")`は読取環境での存在だけを観測する。CLIがローカルPathを許すことは**Remoteで任意Pathを受ける権限ではない**。R3-BではHost管理のEvidence selector→許可済み固定byteの取得→同じ投影ロジックの再利用という別の受入を維持する。実Source現在性、現在Grant/Disclosure、Producer解析AttemptとCLI Invocationの同一性はCLI Receiptからは導かない。
+
+**同一Producer Evidence／別Consumer Invocationの評価（R3-C）**：受領raw digestが等しい二Consumerでも、受け取り時刻・Scope・Storage取得・開示・実Invocationは別。比較の構成要素はProducer ID/Tool/Source Revision、Storage read-back実byte、各ConsumerのSelected/Invoked/Received/版と返答、Audience別の許可済み公開Slice、Unknown/未選択。Digest一致・JSON見た目一致・片方のProcess stdoutを二回読むことはR3-C合格ではない。Private Sourceの件数・Hidden原因が公開応答/Errorを変えれば不適格（#2516）。R3-Aの公開コマンドはローカル用途、R3-Bの固定取得が成立するまでStudio/Remoteへ露出しない。
+
+**他チャットの標準データ様式D0〜D3（[Draft #4619](https://github.com/hat47x/tei-platform/pull/4619)）との接続**：
+| 段階 | REAと三要素への適用／独立Expected | 誤った昇格を拒否する境界 |
+| --- | --- | --- |
+| **D0 表現・構造の判別力** | Graph node/edge Identity・有向/平行辺・Source provenance・unknown、`Data/Function/Business`別support、同名異対象。Question Qの必要Slot（外部Relation ID/向き・TEI Qualified Ref）を保つ | 同一表示名・Source span・描画Edge IDや0件から正式Meaning、全域不存在、編集可能を推論しない |
+| **D1 実Readと二Consumer** | 既存#2586の実PG `Function→Query→Provider→Rowset`と、Table/集計など同一Context/epochの二Consumerを独立受領。REA候補と旧X-TEA Function宣言は別Producerのまま比較 | REA R3成功やTable/集計同件数を、新旧意味同値・旧Actual・DB Update成功としない。JOIN fanout、NULL/欠損、小数は区別する |
+| **D2 設計Source変更** | T1-BでREA多対多候補→TEI Sourceの明示Owner Review、Source版と逆写像Slot・参照切れを確認してPatch→再読取・再投影。Studio/CLI/AIのIntent同値を照合 | Graph全体がlossyでも局所Node editを全拒否する必要はないが、Relation ID不明・集計逆配分・未固定Slotはread-only。DB DDL/Effectは別 |
+| **D3 実業務Operation** | T2でL旧実Observed／D受理済みDesired／T新実Observedと、実Host/Provider/Current Grant/Tx/Receipt/独立Readback・Recoveryを分けて検収 | D2 Source Patch成功や生成Artifact byte一致、Batch exit、ACKをDB Commit/承認/移行Cutover成功へ昇格しない |
+
+**逆編集の必要条件を最小化する。** 形式的には、用途Qについて投影Pが同じ表示を返す二つの元Source状態x,yで、操作対象または必要な効果が異なるなら、`P(x)=P(y)`だけから対象を決める編集Intentは作れない。単一Slotへの原Source復帰には、固定Workspace/Source Revision/Qualified Ref/元Occurrenceと対象Slotの一意性・影響集合・Owner権限が必要。Graph全体の表示がlossyであっても、この局所条件を満たす箇所だけ編集候補を提示できる。ProjectionのLoss・可逆性の一般則は#2497、実Source Patchは#2500/#1126、実DB/Effectは#4125/#1174の既存Ownerに委ねる。
+
+**実行順と報告**：#4625はR3-Aの局所PRとしてactual CI、コマンドcatalog/usage/繰り返しFlag/異常系を先に検査し、失敗があればそのDraft内で修正。R3-B/CとTEA-Q41/Q43は#3394/#4487/#1124の既存実Consumerへ引渡す。#4619 D1の実Provider/異質ConsumerとTEI Studio Desktop Stage1→Stage2セルフビルド#1824/#2831は、#4625のマージやR3-BをHard dependencyにしない。今回のこの節は**docs-only、main未統合**。PR #4625の実装結果を受理・動作済みと宣言せず、exact HEAD CIとOwner Reviewで別途判断する。新Core/Host/Parser/Registry/Policy/Validation Engineや第二Canonicalは増やさない。
+
 **到達条件と優先順位**：R2 main統合済み→R3の同一Evidence・独立二Consumer実受領→T1-Bの一機能対応Preview→T2の旧実測／受理済み意味／新実測・SHO Save/Reopen。修正済み#4584のSubject存否判別を各Consumerで利用できるか、#4570の三視点server経路と実Windows Desktopの差、生成Inspector別HEAD成功の非加算は別資格として保持する。TEI Studioセルフビルドと#2586通常Product Provider Readの完了をR3に依存させない。
 
 **検討中の横断追補（DBアクセス・Query/2way SQL）**：対象DataSourceの既存Binding解決、DB別Native SQLの選択規約、SQL編集時の診断と分岐検証、異種DBでの意味同値性を、[DBアクセス・Query選択・2way SQLの最小適合計画](https://github.com/hat47x/tei-platform/issues/2622#issuecomment-6772875802)で小さな実証へ分解する。#2611・#2622・#2387・#2667に既存の責務を残し、新しいCore API・正式DSL構文・実DB対応の採用・完了を意味しない。
