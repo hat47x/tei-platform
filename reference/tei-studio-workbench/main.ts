@@ -48,6 +48,16 @@ let workspaceEpoch = 0,
   disposed = false;
 const responses = createResponseScope();
 let pinState = initialPinState(), pinnedVersion: string | null = null;
+// Remembers the Catalog that originally identified the pinned Subject.
+// Equality is conservative evidence against silent retargeting, not a Grant.
+let pinnedCatalogIdentity: string | null = null;
+const catalogIdentity = (catalog: Catalog | null) => catalog
+  ? JSON.stringify([
+      catalog.modelRevision, catalog.worldFingerprint, catalog.sourceIndexFingerprint,
+    ])
+  : null;
+const pinnedCatalogMatches = () => pinnedCatalogIdentity !== null &&
+  pinnedCatalogIdentity === catalogIdentity(catalogSnapshot);
 let commandContext = 0;
 const editor = createReadOnlyTextEditor(element("editor"), codeMirrorRenderer, {
   id: "empty",
@@ -177,6 +187,7 @@ function renderPin() {
   const intent = pinState.intent;
   const eligible = selected !== null && inspectEligibility(catalogSnapshot, selected).ok;
   const pinnedEligible = intent !== null &&
+    pinnedCatalogMatches() &&
     inspectEligibility(catalogSnapshot, intent.subject).ok;
   element<HTMLButtonElement>("pin-current").disabled =
     disposed || !client || !workspace.value || !eligible;
@@ -193,6 +204,10 @@ function renderPin() {
   if (intent) {
     if (intent.workspaceId !== workspace.value) {
       status = "別の作業領域で固定した対象です。元の作業領域に戻ると再確認できます。";
+    } else if (!catalogSnapshot) {
+      status = "作業領域のモデル一覧を読み込み中です。";
+    } else if (!pinnedCatalogMatches()) {
+      status = "固定後にモデルの版が変わりました。現在の要素を改めて固定してください。";
     } else if (!pinnedEligible) {
       status = "固定対象が現在の一覧に見つからないか、一意に確定できません。";
     } else if (intent.workspaceEpoch !== workspaceEpoch) {
@@ -222,6 +237,7 @@ async function refreshPinnedSubject() {
   if (!request || !catalog || !client || disposed ||
       request.workspaceId !== workspace.value ||
       request.workspaceEpoch !== workspaceEpoch ||
+      !pinnedCatalogMatches() ||
       !inspectEligibility(catalog, request.subject).ok) {
     renderPin();
     return;
@@ -493,10 +509,12 @@ element("xead-path").addEventListener("keydown", (event) => {
   handleXeadPathKeydown(event, () => void observeXead());
 });
 element("pin-current").addEventListener("click", () => {
-  if (!selected || !workspace.value || !inspectEligibility(catalogSnapshot, selected).ok)
+  if (!selected || !workspace.value || !catalogSnapshot ||
+      !inspectEligibility(catalogSnapshot, selected).ok)
     return;
   responses.invalidate("pinned-inspection");
   pinState = pinSubject(pinState, workspace.value, workspaceEpoch, selected);
+  pinnedCatalogIdentity = catalogIdentity(catalogSnapshot);
   pinnedVersion = null;
   renderPin();
   void refreshPinnedSubject();
@@ -504,12 +522,14 @@ element("pin-current").addEventListener("click", () => {
 element("unpin-current").addEventListener("click", () => {
   responses.invalidate("pinned-inspection");
   pinState = unpinSubject(pinState);
+  pinnedCatalogIdentity = null;
   pinnedVersion = null;
   renderPin();
 });
 element("inspect-pinned").addEventListener("click", () => {
   const intent = pinState.intent;
   if (!intent || !client || disposed || intent.workspaceId !== workspace.value ||
+      !pinnedCatalogMatches() ||
       !inspectEligibility(catalogSnapshot, intent.subject).ok)
     return;
   if (intent.workspaceEpoch !== workspaceEpoch) {
