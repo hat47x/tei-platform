@@ -24,6 +24,8 @@ Sourceを修正する場合、ハッシュの再計算は必要だが**ハッシ
 
 `window_candidate_oracle_test.go`では、5件のファイル名と件数、各入力の期待状態、正例7行の結果、`layout-only`が基準と同じ意味であること、重複IDが生成拒否候補であること、古い派生表示が不整合であることを**Fixtureの閉包**として固定する。対応する`*.tei.md`の追加・削除も検出する。3つの負例（ケースを削除、重複IDを有効化、古い表示を一致扱い）を用意し、いずれも閉包検査が拒否することを確かめる。
 
+また、`window_sourceindex_bridge_test.go`で、既存Graph／Ruleと同じ`internal/sourceindex`のArtifact・Range・Validateを用い、5入力の元SHA-256と、明示NULL行を含む既知のバイト範囲を照合する。説明文の追記だけで古いSource Indexが失効する負例も確認する。ただし、文字列の位置が正しいことと、その文字列を正式なWindow観測として意味受理することは別である。
+
 **これは期待結果候補の分類が勝手に変わっていないことの検査**であり、重複IDや派生表示を正式Readerで検出できたことではない。将来のReader検査では、Sourceのbyte位置と、選択した定義表、表示・例示だけの領域の違いも確認する。Code FenceやKaTeXの数式表示を、明示されていない業務規則へ昇格させない。これらは既存Language／Operator担当への受入条件であって、数理Toolkit専用Parserを先に作る条件にはしない。
 
 ## 既存の実証との接続
