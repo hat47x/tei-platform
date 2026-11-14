@@ -665,3 +665,79 @@ B0同一exe子Worker、B1別Server、B2別Server/Workerはこの同じOperation�
 
 **現状**：Bridge／Workbench実コードと既存Issueを照合して設計を補ったものであり、本節の新たなWindows／IME／実Web認可／OS保存／Stage2／Host Effect試験は **NOT RUN**。文書の更新やPR CIの成功を製品受理として扱わない。
 
+---
+
+## 14. 標準データ構造からSourceへ戻れるDesktop投影と編集（2026-11-14、設計・受入追補）
+
+<!-- tei-desktop-source-projection-roundtrip-20261114 -->
+
+§13で分離したBuffer／Source／Meaning／Build／Effectを、実際のStudio画面で使えるようにするための追補。自己記述RoleとDSL構文拡張（#2620／#988）、Markdown Authoring（#2621）、意味を保つ投影と逆写像（#2497）、統合Modeler（#1124）、Design Contextの取得範囲（#3262）、Graphの意味Identity（#1120／#1126）を横断する。**新しい画面用意味モデルやParserを設けるのではなく、既存の意味構造を読める表現と安全な編集操作へつなぐ。**
+
+### 14.1 画面を「意味の正本」にせず、対象の同一性を保つ
+
+TEI Studioでは、同じ定義をSource／Property／Table／Tree／Graph／式／設計図として見せられることを目指す。ただし、各画面の行番号、図形の描画キー、ラベル、配置座標、表の列順は**意味上のIdentityではない**。少なくとも次の関係を維持する。
+
+- **対象**：Workspaceと\`kind/id\`、必要なScope・Source/Meaning Revision、Sourceに戻れる場合の実Locator。表示用の別名や人間向け見出しから自動生成した仮IDは、その対象の正本にならない。
+- **関係**：source／targetのNode Identityと、関係そのもののOccurrence Identity・向き・多重性・属性を区別する。同じ端点に同じ名前の関係が二本ある場合、Graph描画のために一つへ縮約しない。
+- **出所と取得範囲**：どのSourceを実際に読み、どのRole／Plugin／Operatorで解釈し、対象のうち何が未読込・partial・unknownなのかを保持する。Sourceの記述位置が移動してもIdentityを文字位置へ置き換えない。
+- **投影の性質**：並び順、NULL、時点、有効期間、単位、粒度、集約、多対多関係など、その表示で失う情報を明示できるようにする。損失のある投影から自動的に元データを編集できるとは扱わない。
+
+現行Workbenchの\`relatedGraph()\`が生成する\`parent:\` edge IDは表示専用であり、正式Relation occurrence IDが得られるまでRelation Pin・Relation編集は**unsupported**とする。NodeのInspectができても、異なる意味関係の編集を許可する根拠にはならない。
+
+### 14.2 構文・意味Role・表示を三つの独立した層として扱う
+
+| 層 | Desktopに必要な機能 | 未成立時に許さないこと |
+| --- | --- | --- |
+| **原文と構文** | Markdown表・式・Graphviz等の糖衣表現や独立DSLを原文のまま保持し、実際に選ばれたLanguage Plugin／Parser、位置、診断へ結び付ける | 見た目が表／コードブロックという理由だけで意味を決めたり実行したりしない |
+| **標準構造と意味Role** | 共通のRecord／Sequence／Relation／Graph／Expression等をRole・Operator・型・適用条件に解決。Role重複・未定義・Source競合を既存Validatorへ渡す | Role付与＝Owner受理、Parser選択＝実Provider起動許可、構造一致＝意味一致とはみなさない |
+| **表示と操作** | 一つの意味対象を複数の表示に投影し、選択・Sourceへ移動・診断・変更候補を結ぶ。表示方式は用途に応じて選択できる | 投影結果／視覚的な操作を第二Canonicalや第二Authorityにしない |
+
+この分離によって、JSON Schema等の機械向け定義も、利用者には図・表・説明・入力支援として提示できる。画面には必要な項目を先に出し、詳細な制約・型／出典・未解決の依存をジャンプやツールチップで参照する。ただし、**人間向けの簡潔な表示を作るために必要な契約を省略するのではない**。DSLの本文にGoの\`struct\`／\`func\`等の実装形を露出させない。
+
+Studio標準Rendererが知らないRoleやPluginでも、原文表示・一般的な表/Tree/Graph投影・Source位置・既存診断は可能な範囲で提供し、不足している専用意味表示を隠して成功扱いにしない。Reader未束縛の管理対象\`*.tei.md\`を、ただのMarkdownとして開けたことをTEI Source受理と表示しない。
+
+### 14.3 「表示できる」と「その表示から編集できる」は別の能力
+
+最初の段階では、どの表示もread-onlyで使えることを優先する。編集操作は、**対象Identity、現在のSource Revision、一意な元位置、表示からSourceへ戻る写像、必要な入力制約**が確認できた範囲に限る。
+
+- **編集可能候補**：元の定義に一意に対応するProperty値やTableセルなど。編集前に差分と対象Sourceを提示し、適用直前に基準Revisionを再確認する。
+- **表示専用**：集計表、部分Query、Graph→Tree、複数のSourceを併合した一覧、複数の実Relationを一つに見せた図、現時点で意味IDがない描画Edge。ユーザーが編集したい場合は、元Sourceへ移動するか、明示的に編集可能な対象を選び直す。
+- **説明と入力支援**：補完、候補、AI修正案、Diagramのレイアウト変更は、実Sourceの変更と区別する。表示位置だけの変更は意味変更ではない。逆に、構造が変わったときにSourceとMeaningの変化を可視化する。
+
+Sourceへの反映は、**Preview → Sourceとの差分 → 明示Apply → 実保存 → 別Readerで再取得 → Validate／再投影**を基本とする。編集前の表示と再投影後のMeaningが一致するかは、#2497のGetPut／PutGet等の保存法則を必要な箇所に限って利用する。法則の一般的成立を宣言するのではなく、適用できない表示を編集不可として扱う。No-opの編集では、Markdownの本文・コメント・コードフェンス・行末・BOM・糖衣表記の元byteを不必要に変えない。Sourceが同名で差替わった場合やA→B→Aのとき、ハッシュや位置の偶然の再一致だけで旧編集資格を復活させない。
+
+### 14.4 発見からSource・診断へ戻る操作を一つの経路にする
+
+最初のユーザー操作を、**対象の検索／選択 → 定義と関連構造の表示 → 正本Sourceへ移動 → 診断または変更候補の確認**とする。これをCLIの\`catalog/inspect/trace/source-index/validate\`等の既存Operationと対応付け、Studioだけが独自の意味Resolverを持つ構成にしない。
+
+UIの状態は以下を別表示する。
+
+1. **見つけた対象**：現在のWorkspaceで一意に解決できたか、候補・曖昧・not-foundか。
+2. **読めたSource**：どの位置・Revisionを実際に取得したか。取得していないものを「存在しない」と表示しない。
+3. **意味上の関係**：その投影で保持したIdentity・向き・多重性と、未解決・省略した関係の範囲。
+4. **編集資格**：read-only／可逆な候補／適用前再照合が必要／unsupported。
+5. **検証結果**：Source Parse、Meaning、実Consumer、Owner Acceptanceのどれを確認した結果か。
+
+この5区分は新しい公開Status Enumの提案ではない。現在存在するResponse／Source Status／既存診断の組合せを、人間が誤読しにくい形で表示するための**UI設計上の区分**である。対象内の参照数0、SQL取得行0、Graph表示辺0を、Workspace／Requirement全体の完全な不存在へ昇格しない。未取得の必要集合や権限で見えない情報については、#2516のDisclosureも確認する。
+
+### 14.5 初回Fixtureと実装順（他のP0を阻害しない）
+
+公開可能な一つの合成Workspaceを用い、同じSubject・Source RevisionをCUIとStudioで照合する。現行\`relatedGraph\`のNode-only選択と、正式なRelation編集が未実装である事実を前提にする。
+
+| 独立Expected候補 | 入力／操作 | 必要な結果 |
+| --- | --- | --- |
+| **SPV-01 対象同一性** | 同じ表示名のNode A/BをGraphと一覧に表示して別々にInspect | 表示名だけで合体せず、Source-backedの\`kind/id\`／Workspaceを正しく保つ。誤ジャンプ0 |
+| **SPV-02 多重辺** | A→Bに異なる意味Relation E1/E2、逆向きB→Aを用意 | 正式Occurrence Identity／向きが観測できないうちは描画Edgeを編集・Pin不可とし、関係省略を「無関係」と推定しない |
+| **SPV-03 Roleの曖昧さ** | 同形のMarkdown表を説明・Function・Testに配置し、Role/Parser未選択も作る | 既存Sourceで確証できるRoleのみ提示。不明なら候補／診断に留め、誤った自動実行0 |
+| **SPV-04 原文保持** | BOM/CRLF/コメント/Graphvizを含むSourceでNo-opと単一セル修正 | No-opは元byte不変。編集許可がある箇所のみ局所Patchし、別Readerで再Parse／再投影を照合。未対応なら安全に拒否 |
+| **SPV-05 非可逆View** | 多対多GraphをTree、複数行を集計表へ投影し、その表示から保存要求 | 表示に現れない親／行／重複を暗黙削除せず、直接書戻し0。元対象へのNavigateは可能な範囲で維持 |
+| **SPV-06 現在性** | 同じID・spanでSource A→B→A、Workspace切替、旧Inspect後着 | 旧資格自動復活0。Pin Intentと現在の表示資格を別表示、旧Replyの採用0 |
+| **SPV-07 不完全な取得** | Scope外依存、未読込Role、取得0件、partial Graph | 「見えている範囲の0件」を未使用／不存在／全部読取済みへ変換しない。非公開部分の存在・件数・pathを漏らさない |
+| **SPV-08 Consumer分離** | 同じSubjectをCLI／StudioのTable・Graph・Source表示で観測 | Identity／Meaning／根拠は比較可能。CLI成功をUI操作・OS WebView2・保存成功・実EffectのPASSにしない |
+
+**順序**：P0セルフビルド（#4583/#2831）と並行して、(A)既存Source-backed Catalog/Inspectを使う**read-only Sourceジャンプ**、(B)同名Node＋多重辺の表示と未対応操作の明示、(C)Roleを付けたProperty/Table/Treeの汎用表示、(D)可逆な一つのセル編集と保存前後の独立再読込、(E)SHO／AI／Graph意味Relation／Plugin拡張へ進める。A/Bの検証結果を待たずにP0を止めない。編集逆写像や全Graph表示のための別Parser・別Meaning／Writer／UI Editor Coreは作らない。
+
+**Owner**：#1124（表示とユーザー操作）、#2497（投影・編集逆写像の保存法則）、#2621（Markdown／Source Writer）、#2620/#988（Role・Language Plugin）、#3262（Required／取得範囲）、#4515（Pinと現在性）、#1180/#2514（独立Expected）、#2516（開示）、#1824（実Workbench）、#2831/#4583（P0 Build）。新しいSPV番号は**本設計書内の引渡し用**であり、Scenario／テスト定義の第二正本ではない。
+
+**実施状態**：本節は既存Issueおよび実Source構造に整合させた設計追補。新Graph UI、Markdown Parser、Source保存、可逆編集、実Windows WebView2、CLI↔Studio E2E、Owner意味受理は**NOT RUN**。実績として扱うには別途exact HEAD／実Consumer／独立Expectedが必要。
+
