@@ -18,6 +18,14 @@
 
 これはあくまで**参照実装に限定した処理生成の実証**である。正式なTEIのRule/Operator受理、製品のBuilder/Provider、既存CLIの実Consumer、自己再構築は接続していない。コード生成が可能になったことを、`*.tei.md`の正式Reader完成やTEI製品のセルフビルド成功へ昇格させない。
 
+## 同じ生成Binaryへの実行時Query
+
+生成Goの`main`は、引数を付けない場合に従来どおり全NodeとEdge IDの一覧をJSONで返す。`-node n-1`または`-node n-2`を与えると、そのNodeの結果だけを返す。**存在しないNode IDや余分な位置引数は、空配列や全件への暗黙Fallbackとせず、非ゼロ終了で拒否する。**
+
+`rule_test.go`では、固定済みの有効な各Source候補から生成したGoを**一度だけ`go build`**し、その同一Binaryに5通り（全件・Node二件・未知Node・余分な引数）の要求を送る。Node別出力と全件出力を既存の独立Expected候補と照合し、呼出し前後の**実BinaryのSHA-256が不変**であることを確認する。これはCallerの入力で振る舞いが変わる最小の証拠であり、Source変更による再生成や固定JSONの書出しとは分けて扱う。
+
+ここでの`-node`は**生成したReferenceプログラムの検証用引数**であって、製品`tei` CLIの公開Command名、Function Entry、Host選択済みProvider、Application APIの正式Contractではない。同じBinaryへの複数回の実行と、異なる製品Consumerが同じProviderを呼び出したことは別の資格である。次段では、受理済みMeaning/Source Revision、契約と選択Provider、実Builder/Artifact、実CLI/独立Consumerの呼出しを既存#4495/#1251/#951/#2600に従って一貫して照合する。
+
 ## 実行
 
 ルートモジュールから`go test ./reference/tei-md-graph-reader`を実行する。テストは、生成実装から独立に保存した`testdata/tei-md-graph/independent-expected.candidate.json`に照合する。元byte位置、レイアウトのみの変更、引用・Fence、未知端点、重複Section、未対応表、表示IDの未解決を負例に含む。
