@@ -180,6 +180,20 @@ Gate C — PAS-04 Evidence — Ready
 
 **横断再資格の識別**：同一Attemptで`Source occurrence/revision`、`World Fingerprint`、`Model Revision`、`Artifact Revision`、要求Contract/Scope、選択Providerと実Artifact member/actual entry、Host current Grant/Target、Effect/Receipt、Consumer受領を**必要な範囲だけ**Joinする。byte一致は生成器の意味受理でも実Consumer使用でもない。Read-onlyでは不要なEffect証拠を要求しない。非公開/未取得/partial/complete-empty、時間付き組織Grant、B2Cの独自UI、AI/音声の候補Eventを同じ成功/許可へ昇格しない。AIのInspect→Preview→Review→Accept→再投影は既存のOwner受理とSource復帰を通し、業務Operationを新設しない（#1124/#3503/#3509/#2516）。
 
+**Plugin更新・無効化の交差契約（管理・Build・実行世代の分離）**：#2044/#4378のInventory/Plan/設定適用、#1016/#951のSelection、#943/#2600の実Build closure、#1223のGeneration/drain、#1174のCommit時Grantを**異なる状態と時点**として接続する。設定変更が受理されても、旧Go Binaryの`import/init/embed`は消えず、旧in-flight呼出しが終了したことや新Targetが稼働したことも証明しない。既定の静的Go/Studioでは必要な再Build・新Process起動・実Consumerを確認し、実行世代の無停止交換は選択された長寿命Targetだけで別途実証する。旧世代の既存呼出しは#1223の保持/drain候補に従うが、**現在Grantが失効しているのに旧世代で新しい実Effectを許すことはない**。切替中にCommit結果が不明なら#1174の同一OperationID＋RequestHashによるreceipt lookupを優先し、Provider世代やOperationIDを変えた無条件再送を禁止する。Source保持・設定の原子的適用は永続DB効果のRollbackでもない。
+
+**変更影響を問う5つの独立対照（#1180/#2514の既存Expectedを使用、未実行）**：
+
+| 変更 | 再Build／成果物 | 構成・Runtime・Consumerの再資格 |
+| --- | --- | --- |
+| 未選択Pluginの追加、実選択も実消費Closureも不変 | 関係Artifactの再Build省略候補。ただしGoの静的import/init/間接依存を独立照合 | 実選択不変を確認。無関係Consumerまで全面失効させない |
+| 必須Guardを供給するProviderを無効化 | 新Binaryの構築要否はTarget別。旧Artifact内のByteを消したと主張しない | 変更後Lifecycleの必須Obligation欠落ならeffectful新規Invoke拒否 |
+| 同じ実装A→B→A／Source移動（内容同一） | byte再利用可否は実入力ClosureとBuild条件で判定 | 古い選択Epoch／Source occurrence／Grant／Consumer証拠は自動復活させない |
+| 旧世代が処理中に新世代へ切替、途中でAuthority失効 | 静的再起動と長寿命Targetのdrainを混同しない | 新Invoke・旧in-flight・各Effect直前の現在Grantを別検証。Commit unknownはlookup-first |
+| Graphの配置だけを変更し意味Node/Edge/Sourceが不変 | 意味Buildの不要再生成を避ける | 表示の実Consumerだけを必要に応じて再確認し、実作用契約は不必要に失効させない |
+
+上表は#2600の選択的再資格化／旧依存辺・集合・否定依存、#2044のSource非破壊管理、#1223のTarget条件付きGenerationへ引き渡す**比較票**であり、共通の新状態Store・Cutover Engine・万能Hot Reloadの採用ではない。実際のRequired/Consumed Closureがunknown/partialなら「影響なし」と認定しない。最上位P0は引き続き#4583のStudio実Builder接続であり、この切替設計を先行Hard Gateにしない。
+
 **現在の実行順と引渡し**：
 
 1. **P0-Buildを最優先**：#4583/#2831でN2 esbuild→N3 Go embed→非Plugin Desktop Buildへの一辺を、既存BuildIntent/BuildExecution/ArtifactSetに接続。次にStage1実Process→Stage2実Windows Desktop→Stage2自身の実Consumer。Graph Compiler・Plugin管理S3・X-TEA原典完全移植を初回Hard Gateにしない。
