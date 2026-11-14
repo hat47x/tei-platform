@@ -12,6 +12,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"tei/internal/buildintent"
 )
 
 // selfBuildEntrySchema is this entry's own output shape. It is deliberately not
@@ -43,6 +45,10 @@ type selfBuildEntryEvidence struct {
 	ChildArtifact  string           `json:"childArtifactDigest,omitempty"`
 	CrossChecked   string           `json:"artifactCrossCheckedDigest,omitempty"`
 	CrossCheckOK   bool             `json:"artifactCrossCheckMatched"`
+	// This pin is specified before execution, not inferred from its output.
+	SelectedChildDigest string `json:"selectedChildDigest,omitempty"`
+	ChildPinChecked      bool   `json:"childPinChecked"`
+	ChildPinMatched      bool   `json:"childPinMatched"`
 	ClaimedInvoker string           `json:"claimedInvokerDigest,omitempty"`
 	ClaimChecked   bool             `json:"invokerClaimChecked"`
 	ClaimMatched   bool             `json:"invokerClaimMatched"`
@@ -99,6 +105,7 @@ func runSelfBuildCommand(args []string, out io.Writer) (int, error) {
 	childArgFile := fs.String("child-arg-file", "", "JSON array of child arguments in a file")
 	artifact := fs.String("artifact", "", "path the child writes its artifact to (cross-checked from disk)")
 	claimedSelf := fs.String("claimed-self", "", "digest this binary claims about itself; compared with the running image")
+	expectedChildDigest := fs.String("expected-child-digest", "", "exact sha256 digest of the selected child image; refuse before execution on mismatch")
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			printHelp(out, fs, "self-build")
@@ -129,7 +136,10 @@ func runSelfBuildCommand(args []string, out io.Writer) (int, error) {
 		return 2, fmt.Errorf("INVALID_ARGUMENT: -child-arg is not a JSON array of strings: %w", err)
 	}
 
-	evidence, err := driveSelfBuild(*child, childArgs, *artifact, *claimedSelf)
+	if *expectedChildDigest != "" && !buildintent.SHA256Digest.MatchString(*expectedChildDigest) {
+		return 2, errors.New("INVALID_ARGUMENT: -expected-child-digest must use sha256:<64 lowercase hex>")
+	}
+	evidence, err := driveSelfBuild(*child, childArgs, *artifact, *claimedSelf, *expectedChildDigest)
 	if err != nil {
 		return 1, err
 	}
@@ -147,7 +157,18 @@ func runSelfBuildCommand(args []string, out io.Writer) (int, error) {
 // driveSelfBuild starts the child with the exact argv, records the invoker and
 // the invoked separately, then re-reads the artifact from disk instead of
 // trusting the child's own digest field.
-func driveSelfBuild(childPath string, childArgs []string, artifactPath, claimedSelf string) (selfBuildEntryEvidence, error) {
+func driveSelfBuild(childPath string, childArgs []string, artifactPath, claimedSelf string, expectedChildDigest ...string) (selfBuildEntryEvidence, error) {
+	// Optional for existing callers. This pin is not a resolved BuildIntent.
+	if len(expectedChildDigest) > 1 {
+		return selfBuildEntryEvidence{}, errors.New("self-build supports only one expected child digest")
+	}
+	selectedDigest := ""
+	if len(expectedChildDigest) == 1 {
+		selectedDigest = expectedChildDigest[0]
+	}
+	if selectedDigest != "" && !buildintent.SHA256Digest.MatchString(selectedDigest) {
+		return selfBuildEntryEvidence{}, errors.New("expected child digest must use sha256:<64 lowercase hex>")
+	}
 	exactChild, err := filepath.Abs(childPath)
 	if err != nil {
 		return selfBuildEntryEvidence{}, err
@@ -163,11 +184,21 @@ func driveSelfBuild(childPath string, childArgs []string, artifactPath, claimedS
 	if err != nil {
 		return selfBuildEntryEvidence{}, err
 	}
+	// Selected B / Actual A must stop before the child can have side effects.
+	// This is not OS-loader pinning: the executable may change after this read.
+	if selectedDigest != "" && selectedDigest != childDigest {
+		return selfBuildEntryEvidence{}, fmt.Errorf("selected child builder digest mismatch: expected %s, actual %s; child not started", selectedDigest, childDigest)
+	}
 
 	evidence := selfBuildEntryEvidence{
 		SchemaVersion: selfBuildEntrySchema,
 		Nature:        "one driven child process; this entry does not build in-process",
 		Boundary:      selfBuildEntryBoundary,
+	}
+	if selectedDigest != "" {
+		evidence.SelectedChildDigest = selectedDigest
+		evidence.ChildPinChecked = true
+		evidence.ChildPinMatched = true
 	}
 
 	selfPath, err := os.Executable()
