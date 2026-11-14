@@ -1,0 +1,111 @@
+name: TEI three-view real CLI to independent Node Catalog reference
+
+# Actual Go CLI read -> independent Node presentation for PUBLIC temp fixture only.
+# No actual Studio browser, Source Owner Acceptance, current Disclosure or Target.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - 'reference/tei-three-element-method/**'
+      - 'cmd/tei/**'
+      - 'internal/operations/**'
+      - 'internal/workspace/**'
+      - 'internal/sourceindex/**'
+      - 'internal/validation/**'
+      - 'internal/syntax/**'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/tei-tea-real-cli-node-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'reference/tei-three-element-method/**'
+      - 'cmd/tei/**'
+      - 'internal/operations/**'
+      - 'internal/workspace/**'
+      - 'internal/sourceindex/**'
+      - 'internal/validation/**'
+      - 'internal/syntax/**'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/tei-tea-real-cli-node-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tea-real-cli-node-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  real-cli-node:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      TARGET_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      GOENV: off
+      GOWORK: off
+      GOTOOLCHAIN: local
+      TEI_EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact candidate HEAD
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Setup Go from current main-owned go.mod
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Pin independent Node runtime
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22.16.0
+          check-latest: false
+
+      - name: Verify exact HEAD and Source blobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          printf 'tea-real-head=%s\n' "$TARGET_SHA"
+          go version
+          node --version
+          for file in \
+            reference/tei-three-element-method/public-slice.mjs \
+            reference/tei-three-element-method/catalog-validation.mjs \
+            reference/tei-three-element-method/real-cli-catalog.test.mjs \
+            internal/operations/model_catalog.go; do
+            test -f "$file"
+            printf 'blob=%s file=%s\n' "$(git hash-object "$file")" "$file"
+          done
+
+      - name: Run existing real Workspace Go separation regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test ./internal/operations \
+            -run '^TestUnsoundWorkspaceCatalogInspectAndTraceKeepValidationDistinct$' \
+            -count=1 -timeout=10m
+
+      - name: Build actual CLI and run separate Node Consumer
+        shell: bash
+        run: |
+          set -euo pipefail
+          go build -o "$RUNNER_TEMP/tei-real-cli" ./cmd/tei
+          TEI_CLI_BINARY="$RUNNER_TEMP/tei-real-cli" node --test \
+            reference/tei-three-element-method/real-cli-catalog.test.mjs
+
+      - name: Verify no source writes to checkout
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
