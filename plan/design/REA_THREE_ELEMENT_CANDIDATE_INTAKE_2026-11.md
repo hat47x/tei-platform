@@ -302,7 +302,6 @@ Observationは`data-element`候補へ、有向Relationは`cross-reference`候補
 
 **この§10の状態**：mainへ統合された実コードと既存設計の**静的照合・実装/Expectedの引渡し**。J-01〜05を新たに実Go/Windows/DB/SHOで通したものでも、正式Meaning/Plugin自己構築のOwner受理でもない。実装済みの旧局所試験と統合後の新しい縦断成功を混同しない。
 
-
 <!-- rea-j01-dual-graph-bom-contract-20261114 -->
 ### 10.6 J-01の試験を実入力契約に合わせて修正する：BOM、二種類のGraph、Tool版
 
