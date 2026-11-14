@@ -19,7 +19,7 @@ func TestWorkspaceGraphTEIMarkdownFixturesFailClosed(t *testing.T) {
 	}
 	var candidate struct {
 		Adoption string `json:"adoption"`
-		Cases []struct {
+		Cases    []struct {
 			File string `json:"file"`
 		} `json:"cases"`
 	}
