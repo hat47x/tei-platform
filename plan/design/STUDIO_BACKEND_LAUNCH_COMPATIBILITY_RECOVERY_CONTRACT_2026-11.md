@@ -365,6 +365,12 @@ Source byte/span + Workspace / Subject / Revision
 
 限定ReferenceのGraph／Ruleを製品へ引き上げる前には、選択したFrontend、元Sourceのbyte-span、Ruleの条件、実ParserのProviderと版、Reader診断、後段Buildへ渡した入力を追跡する。現行Workspace Loaderが `TEI_MD_PARSER_UNBOUND` を返す場合、未接続のMarkdownを成功した製品Sourceとして扱わない。
 
+**S0-P（実装済みの事前検査）**：main統合済みの[PR #4751](https://github.com/hat47x/tei-platform/pull/4751)は、実Manifestの管理Root、Pinned `os.Root`で取得したSourceの元Byte、管理Root外の`drafts/`の非混入、既存Source IndexのByte/Spanと旧Artifact拒否を`internal/workspace`のGo試験でつないだ。ここでも`Workspace.Load`は`TEI_MD_PARSER_UNBOUND`で拒否し、**正式Parserの選択、意味Sourceへの受理、Target生成は行っていない**。
+
+**次に着手するS0-A（製品Readerの最小実装）**：既存`Workspace.Load`が選択したFrontendへ、同じPinned Rootから実際に読み取ったRaw byteとSource位置を渡し、既存のSource Index／Reader診断へ連結する。一つの選択Sourceと現行`*.tei`互換だけを対象とし、未選択・未対応・不正Fence・Revision不一致は曖昧な成功へ変換しない。正式なLanguage Role／業務Meaning／Owner受理を、この一段階の合格条件にしない。受入票とOwnerは[#4730](https://github.com/hat47x/tei-platform/pull/4730)・#2621／#988に従う。
+
+なお、通常のPlugin公開マニュアル一件をSource-backedで読取り、選択済みPlugin／Contract版／現在の開示資格へ結び付ける[PR #4750](https://github.com/hat47x/tei-platform/pull/4750)の作業には、**業務`*.tei.md`の意味Parser完成を先行条件としない**。同じSource Indexを用いても、Pluginの帰属やDisclosureをRaw byte登録だけから推定しない。
+
 また、[Fence拒否の修正PR #4725](https://github.com/hat47x/tei-platform/pull/4725)は、チルダ／長いCode Fence／インデント付き例示から偽の定義が読まれる問題をGraph/Ruleの限定Referenceで扱う。修正PRが未統合の間は、現在の参照Readerへ任意のMarkdownを安全に渡せると主張しない。正式製品Readerの負例は#2621の既存受入へ引き渡す。
 
 ### 20.2 一つの実行票に記録するもの
@@ -391,9 +397,11 @@ CLIやStudioには「Backendが使える」という単一Booleanを返さず、
 
 ### 20.4 次のコードPRで守る停止条件
 
-初回の子Backendでは読取り一操作のみを実行し、DB書込み／外部Effectを新しく公開しない。CLI通常経路の互換JSON・exitを保持し、`internal/operations`へWails・HTTP・CLI依存を入れない。製品`*.tei.md` Loaderを使ったと主張する場合は、選択Readerが実際に元byteを消費した証拠を必須にする。
+**製品Reader S0-A（#4730／#2621）**は、S0-Pで確認できたManifest・Pinned Root・既存Source Indexを、選択Frontendによる実Reader消費まで接続する。選択元のByteとReaderが消費したByte／Spanの一致、`*.tei`互換、管理Root外の非混入、未束縛Frontendの拒否、旧Source Indexの失効を正負一組で検収する。Reference Readerの直接呼出しだけではS0-A合格としない。新しいParser正本、Plugin Registry、実行Hostは追加しない。
 
-**優先順位は変更しない**。全体P0のStudio Stage1→Stage2と、並行P0の通常`tei`→actual Product Provider／異質Consumerを進め、PR-B／PR-C／Plugin Updaterは比較・拡張の独立縦切りとする。
+**CLI子Backend PR-B（#4635／#1158）**は、既存の正式`*.tei` Workspaceで`inspect`の読取り一操作だけを試す。Direct経路と実子Processの意味・Failure同値、親子の実Identity、有限Frame、Timeout／Crash／旧Reply拒否、stdout・exit互換を観測する。DB書込み／外部Effectや未完成Markdown Loaderを、この試験の対象に含めない。`internal/operations`にはWails・HTTP・CLI依存を追加しない。
+
+どちらのPRでも独立Expectedを使い、実際に越えた境界だけを報告する。**全体P0のStudio Stage1→Stage2と、並行P0の通常`tei`→actual Product Provider／異質Consumerは変更しない**。PR-CとPlugin Updaterは後続の独立検収とする。
 
 ## 21. 再生成と再実行の境界を一つの実例で固定する（2026-11-15）
 
@@ -422,8 +430,10 @@ Stage1がStage2を構築する場合は、親・子の実Process階層だけで�
 
 並行する#4730の製品Reader S0と#4702のactual Provider／通常`tei` CLIは別PRとして進める。後続で同じGraph/Ruleを実Provider経由で呼び出せた場合、生成された意味、選択Provider、実Provider、入力とResult、Independent Consumerを結合する。**同一Processと子Processで同じJSONが返ることだけではPlugin実行・Stage2セルフビルドは合格しない。**
 
-### 21.3 最新CIで確認した不具合と責務
+### 21.3 実行済みCIと現行HEADの区別
 
-PR #4705のHEAD `966afa77`では、Cache Full／IncrementalはSUCCESSだが、[Repository Health](https://github.com/hat47x/tei-platform/actions/runs/43638793220) はFAIL。実ログの失敗は`reference/tei-md-graph-reader/rule_test.go`のgofmt差、`internal/query/standard/TestOpaqueNodeRoundTrip`の旧期待値、`TestExportedStringConstantsHaveATestOrAnEntry`の定数登録である。**#4705のDocs差分をGo修正へ拡張しない**。旧修正PR [#4736](https://github.com/hat47x/tei-platform/pull/4736) は未マージで終了し、現在のmainでは[#4741](https://github.com/hat47x/tei-platform/pull/4741)・[#4742](https://github.com/hat47x/tei-platform/pull/4742)・[#4711](https://github.com/hat47x/tei-platform/pull/4711)などの統合によって、旧Opaque期待値、整形差分、診断定数一覧が更新されている。これは現在mainのコード状態の確認であり、当PRのexact HEADでのCI合格は更新後の実ジョブで判定する。
+PR #4705の旧HEAD `7375ab6b`では、[Repository Health](https://github.com/hat47x/tei-platform/actions/runs/43644211064) の全Goテストと`go vet`はPASSしたが、`internal/database/sqlgen/sqlite/window_candidate_oracle_test.go`の`gofmt`差によりJob全体はFAILだった。Cache Full／Incremental検証はSUCCESS。旧HEADを「全体CI成功」と記録しない。
 
-この節により、CLI direct→子Backend→Wailsと、Reader→Meaning→生成Provider→Consumerという二つの実証列を、再生成／再実行の判断として結び付ける。ただし、両列の先行Hard Gateや新しいHost／Runner／Resolver／失効の正本を増やさない。
+その後mainに統合された[#4749](https://github.com/hat47x/tei-platform/pull/4749)はSQLite側の整形修正を含み、Source選択のS0-P試験[#4751](https://github.com/hat47x/tei-platform/pull/4751)も統合された。これらの修正と実証を本Docs PRの基線へ取り込む。ただし、**最新統合HEADでCIを再実行した結果が確認できるまで本PRの合格を主張しない**。正式Loader、実Provider、Child IPC、Windows Stage2の実行資格も別のまま保持する。
+
+設計の変更対象をDocsへ限定し、GoのCI不具合を別の旧修正PRから重複して取り込まない。CLI direct→Child→Wailsの通信検証と、Reader→Meaning→生成Provider→Consumerの業務意味検証は、異なる独立Expectedで判定する。
