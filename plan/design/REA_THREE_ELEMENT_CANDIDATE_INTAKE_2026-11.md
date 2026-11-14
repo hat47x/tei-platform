@@ -398,3 +398,22 @@ J-02の負例を広げ、**Source位置・Relation種別・端点が同じで、
 **他チャットとの統合**：三要素ModelerのSource-faithfulなER・業務フロー（#4694）、StudioのPin／Focusと人間・AIのProposal/Review（#4696/#4721）、Graph/Rule固定FixtureのByte位置付き読取（main統合済み#4709/#4722）と**同一の生成Goバイナリへ実行時Node IDを渡す実証（main統合済み#4733）**、Plugin自己構築の計測（#4720）、ビジネス判断の意味・Effect分離（#4723）へ、関係対応の**候補・曖昧さ・正式受理を分ける受入条件**として渡す。#4733は実行時のNode選択で生成物の出力が変わる局所実証であり、REAの未受理候補を正式なGraph/Rule入力として受け付けた証拠ではない。複数媒体の写真・会議・CSV（#4716）でも、同じ文言・位置・図形が一意な業務Relationを意味するとは限らず、媒体固有の原本Occurrenceを失わない。いずれも関連Draftの設計を本PRへ重複移植しない。
 
 **実証限界**：本節の二件は再解析を合成した局所Go回帰であり、外部REAを二度実行したProducer上の再採番観測でも、StudioのSource Patchでもない。Graphからの実Go生成、実Windows第二Product Consumer、実DB Read/Write、Ownerの意味受理はそれぞれ別の検収。元の製品P0であるStage1→Stage2セルフビルドと通常tei CLIの実Provider呼出しに新しい着手条件を増やさない。
+
+<!-- rea-j02-observation-facts-drift-20261114 -->
+### 10.11 同じCandidate ID・Source Digestでも観測されたRelationの事実が変わる場合
+
+個別のRelationを一意に対応付けられても、**そのRelationについて外部解析器が報告する事実まで不変とは限らない**。現行`candidateID`は種別、外部Occurrence/Identity、From/Toを基に導出し、Relationラベル、観測State、Authority、CoverageをIdentityへ含めない。したがって、同じ外部Edge ID・端点・Sourceの申告Digestでも、再解析後に`imports`から`requires`へラベルが変われば、Candidate IDだけを比較した「unchanged」は誤解を招く。解析器の版・抽出範囲・解釈規則の違いなどが原因となり得るが、この局所比較だけで原因を確定しない。
+
+**限定実装**：`internal/reacandidate/adopt.go`の`comparePair`で`StructuralFacts`の全フィールドを比較し、差があれば`observed-structural-facts-changed-under-reused-candidate-id`と`source-backed-re-evaluation-is-required-before-meaning-or-edit`をNoteへ追加。Source Path/Digestが同じ場合は新しい読み取り専用分類`observed-facts-changed`（Go定数`ComparisonObservedFactsChanged`）とする。Source側の申告Digestも変わった場合は既存`revision-changed`を優先し、差があった事実を追加Noteとして残す。`Attempt ID`が同じで再利用されても無条件にunchangedと判定しない。
+
+| 検証 | Expected | 引き続き未保証の資格 |
+| --- | --- | --- |
+| **J-02k：同一ID・同一Source、別Attemptでラベル変更** | `observed-facts-changed`と再確認のNoteを返す | Sourceに紐付く正式Meaning/旧Grantの自動継続 |
+| **J-02l：Attempt IDまで再利用されてラベル変更** | 同じAttempt名の再利用によって変化を隠さない | 再利用されたIDを原本同一性や正常なProducer履歴とみなすこと |
+| **J-02m：Source Digest変更と観測事実変更が同時発生** | `revision-changed`と観測事実差分のNoteを両立 | 一つの原因と決めつけて他方の再検証を省くこと |
+
+J-02k/lのGo回帰`TestCompareCandidateSetsSameBytesChangedObservedRelation`を`internal/reacandidate/adopt_test.go`に追加した。**新しい`observed-facts-changed`はReviewPacketの比較結果に現れる状態語彙である**。既存の表示・受信者がこの状態を扱うかはConsumer契約で別途確認し、未知状態をunchangedへ黙って丸めない。新たなMeaning承認Engine、Writer、Source正本は作らない。J-02mとReader間の実Source-backedな比較、Studioの後着Pin・実Patchは後続の別試験とする。
+
+他チャットにおける「同じ図やコードが再生成されたか」と「同じ意味が受理できるか」の分離を、この比較にも適用する。Graph/Rule→Go実バイナリの生成実証（main統合済み#4733）でも、入力Graphの同一性、生成規則の版、出力、独立Expectedを別々に観測する。REAの外部観測の変更を、受理済みGraph／Ruleが改訂されたという証明には使わない。
+
+**状態**：ここで追加した比較分類とGo回帰は新HEADのCI確認待ち。Graph→TEI正規Reader、実Provider、Native Studio JS受領、正式Owner意味受理、Source Save/ReReadは未実施。
