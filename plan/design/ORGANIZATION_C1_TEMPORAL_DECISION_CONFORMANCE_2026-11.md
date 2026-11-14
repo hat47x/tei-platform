@@ -1508,3 +1508,18 @@ ODRは**既存#4490 ORG-BEH-04、#1180/#2514、BRMS #4723のT1〜T8、Graph Fixt
 - **Case C1・Host Grant/Principal・旧Receiptを追加**：別Source・別Authorityの未受理関係はCandidateの正の経路へ暗黙結合しない。見つかった正の候補だけでCurrent Grant、EffectやACKを発行しない。
 
 **停止線**：partialをnone/uniqueへ昇格、複数観測だけで全件と断言、否定条件の未取得をfalse扱い、RoleAssignmentだけで承認適格・Host Grant発行、r7とC1の無断Person対応、Graph Referenceの一辺Go生成を正式な組織Decision Engine完成とすること。§30は既存設計の実装計画補正であり、製品用Goの新実装・CI/Provider/Host/Owner受理は**NOT RUN**。
+
+
+<!-- org-candidate-go-actual-shape-20261115 -->
+### 30.5 最初のGo回帰をDraftとして着手した実証範囲（2026-11-15）
+
+[コードDraft PR #4737](https://github.com/hat47x/tei-platform/pull/4737)で、`internal/operations/org_staged_candidate_positive_witness_test.go`を追加し、**文書の想定のみだった§26/§30の最小正例・反例を実Goテストの対象へ移した**。追加先は既存`operations`のテストで、第二のProduct Engine/Parser/Expected Storeや既存Sourceの変更はない。
+
+- **正式Sourceの実読込**：`workspace.Load("reference/org-staged-axis")`から、RoleAssignment→Person/RoleおよびResponsibility→Person/OrgUnitのTarget/RelationKeyを実IR上で照合する。現SourceにCase C1のData/Rule/権限が存在すると想定しない。
+- **合成Positive Join**：固定R1/D1条件でPerson IDが同一の二Relation Occurrenceだけを候補経路とし、異Person IDのラベル一致、欠損Person ID、重複/別Path、異なるRead Cohortを区別する。取得範囲が`partial`でも確認済み正経路は残し、可視0/1人を全件・唯一へ昇格しない。異なる2人の確かな正経路は唯一性の反証に限って利用する。
+- **独立Expectedの位置**：Goテストの静的リテラル期待値10ケース（実装結果から生成しない）を暫定とする。正式Expected/Conformanceの採否は既存#1180/#2514へ返す。テストだけの`closed`は明示的なSynthetic Closed World前提で、Product Native SQL Cursorの読了や`functioncontext.From`の`CoverageUnestablished`から取得しない。
+- **資格の限界**：テスト内の合成Joinは**実Product Candidate Ruleや実Providerに接続されていない**。このコード追加で証明できるのは実Parser/Relation Keyと、テスト用Positive Join/二軸Expectedの判別力まで。Case C1の正式Duty/否定条件/valid/known、Host Grant、実Effect/Receipt/ACK、通常`tei` CLI/Studio/SHOの受領、TEIからのGo生成は未実証。
+
+**実装の次段**：PR #4737の同一HEAD CIで`TestOrgStagedPositiveCandidateRelationKeysFromRealWorkspace`／`TestOrgStagedPositiveCandidatePartialIsNotComplete`の実PASSを検証し、成功した場合も「Source/合成回帰のPASS」に限定する。その後、#4490 BEH-01/02の実時点・非出力依存・Read取得の実証を先行し、実Query→Function Context→独立Consumerで同じExpected/Attemptを照合する。最終的なRuleの実Codegenは#4729/#4733のGraph/Rule生成Referenceから別途接続する。
+
+**現時点**：PR #4737はDraft／未マージ。Go 1.26実CIの新HEAD完了前にPASSは主張しない。本追記もドキュメント更新であり、Owner Meaning受理と製品E2Eには進んでいない。
