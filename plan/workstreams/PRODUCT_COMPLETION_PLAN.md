@@ -124,6 +124,24 @@ B1a-I/Pの二段受入を維持しつつ、独自Frontendを「TEIが制約し�
 
 **評価と作業順**：B1a-I（#2586）を先に実Provider/同一Context/独立Native受領で成立させ、H1-A〜Cは選択して採用したTarget/Pluginに限り局所追加する。B1a-Pの現在Read Grant/W0W1は独立した公開資格、B2の実験はAssignment/Exposure/Consent/Outcomeを別に試す。#2018では同じ変更シナリオをH0 Nativeのみ・H1選択Contract・H2選択Experiment Adapterに適用し、正しい結果・Build/更新時間・JS/通信/Cache・レビュー工数と実費を比較する。H1/H2の自動採用・売上向上を事前に主張しない。新配布Host・Builder/Policy/Graph Engine・Analytics/Identity台帳・Test SSOTを設けない。**この節は既存DraftとReferenceを横断した受入設計であり、新規B2C実行・製品採用はNOT RUN**。
 
+<!-- b2c-b1ai-first-missing-edge-20261114 -->
+### G49実装引渡し：B1a-Iの最初の欠落辺を一つずつ埋める（2026-11-14）
+
+**先に未成立の一辺を特定する。** main [#4539](https://github.com/hat47x/tei-platform/pull/4539)のEnvironment→実PG Read→Function Data Contextと、main [#4540](https://github.com/hat47x/tei-platform/pull/4540)の申告Native Field→Source occurrenceは**別の契約・別Attempt**。製品CLI未結線、Query `:from`の`declaredByQuery=false`、Product Function/Query/Resultの正式対応、二Receiverの実受領という欠落を、変更前の固定Workspace/Source/Contract版で区別する。すべてを一PRで修正することを要件にしない。
+
+| 実装Slice（既存Owner） | 最初に固定する最小の実成果と独立負例 | 合格上限・次への引渡し |
+| --- | --- | --- |
+| **R-A 型付きProduct Read Operation**（#2586/#2506/#2622） | 既存Sourceの`order_entry.recent_orders`と実SQL/`:from`の**宣言・型・Runtime value**を照合し、実Provider選択→実Invoke→一つのFunction Contextの行/列/Scope/PresenceをProduct経路で観測。必要なQuery `input`宣言がなければOwnerへ不足箇所を戻し、暗黙の文字列paramで適合扱いしない。別SQL/別DB・RLS role・Provider A/B取り違えを負例にする | **このSliceだけの局所Product Read**。実ContextであってもCurrent Grant、全母集団、Native受領、正式Business Entry公開は未合格 |
+| **R-B 製品CLIへの薄い接続**（#2586/#3422/#1251） | R-Aと**同じProduct Operation**を、通常`tei`実バイナリの子プロセスから呼び、Source/contract/実Provider/Context/CLI exit・stdoutを区別してReadback。正式VerbやWireはCLI Owner判断後に決める。未知Verb/未公開対象/不正入力は副作用・秘密stdoutなしで失敗とする | [Draft #4625](https://github.com/hat47x/tei-platform/pull/4625)は既存`operations.ExternalCandidates`をRead-only CLIへ薄く投影した**別領域の参考実装**。ローカルREA Evidence PathやTool Present、実Process成功をB2C PG Read/現在認可の証拠へ流用しない |
+| **R-C 同一Contextから独立Receiverへ**（#2586/#2497/#2516/#3509） | **一度だけ**実Query→Contextを生成し、同じResult/Context identity・epoch・Source/Query/Provider版の許可Projectionを標準表示Aと独立Native read-only表示Bへ配送。受領側プロセスが双方でAttribute ID、セルのvalue/NULL/missing/withheld、行数・grain・Scope/partial/unsupportedを確認する。別々にPGを2回読んで同じ数値を得る方式やPublisher receiptだけでは不可 | Aだけ成功・Bへの配送途中切断・旧Context混入・内部`Connection.User/Database/Instance`のWire漏えい・`COUNT`や`SUM`の未宣言精度/NULLを独立Expectedで拒否。Context ID一致だけでは同一原子的DB SnapshotもGrant受理も保証しない |
+| **R-D B1a-Pを別票で資格化**（#1043/#1656/#2516/#1174） | 公開Hostが検証した現在Principal↔Customer/Order、Read Grant、Audience/用途別Projection、Private Cache partitionと失効を確認。注文値同一でGrantだけ失効したW0/W1、別Customerの注文増減、旧Client/ReleaseのCacheを負例にする | R-A〜CがPASSでも非公開合成Readerの資格のみ。自動的なBrowser公開、Guest Link、Checkout Effect、Consent/Exposure/CVRは未合格 |
+
+**選択・配布の横断Witness**：今後H1契約を選択した案件では、[Draft #4624](https://github.com/hat47x/tei-platform/pull/4624)のBuildIntent宣言⇄Resolver整合と、[Draft #4623](https://github.com/hat47x/tei-platform/pull/4623)の**実ResolveしたBuilder digest⇄起動前Child image**を別々に照合する。2026-11-14確認時点で、#4623 exact HEAD `f1e219a`はGitHub Actions 8件すべてsuccess、#4624 exact HEAD `2d403f4`は取得できた5件すべてsuccess。ただし**どちらもDraft・未main、Plugin主体の限定BuildPlan／非Plugin Studio全工程は未受入**。Builder一致は成果物のメンバー実同梱・実配信・Runtime受領でもない。[Draft #4617](https://github.com/hat47x/tei-platform/pull/4617)のtest-only HTTP署名Release/Node Consumer検証とも、同じB2C実Releaseだと合算しない。H0 Native単独にはこれらを必須化しない。
+
+**用途と写像の交差検収**：並行[Draft #4619](https://github.com/hat47x/tei-platform/pull/4619)のD0〜D3、P/J/Q（局所観測・異種Evidence Join・問い相対閉包）を、このR-Cでは**読み取る側の必要条件**として参照する。表・集計・Graphで同じ表示が成立しても、JOIN fanout/重複投影、同Label別Identity、non-injective Map、非表示列や否定条件のUnknownを消さない。表示・閲覧適格性、Slot局所編集候補、現在Writer/Effect Grantは別。#4619のG08等の原文は**同一ファイルを編集する別Draft**に残し、このG49節はB2C実受領への引渡しだけを所有する。採用時は両方の最新main差分を照合し、内容を欠落・二重化しない。
+
+**最小の証拠票と停止条件**：既存#1180/#2514/#1163で`Exact HEAD / Workspace・Source・Function・Query Revision / typed-input declared? / selected→invoked Provider・DB Session / actual Rowset+Context ID・epoch・Scope・Coverage / A,B各Consumer delivered・received Body / allowed Projection・Grant qualification / independent Expected / PASS|FAIL|NOT RUN|UNSUPPORTED|UNKNOWN`を別列管理する。Consumerへ送らない内部接続・個人情報や非公開Source ID/件数/ダイジェストをGitHub/外部Harnessへ必須送信しない。最初に不足した辺を修正し、局所成功を次Sliceの成功へ昇格させない。**この節自体はdocs-only、R-A〜Dの新実行とOwner意味受理はNOT RUN**。
+
 **計画統合状況**：同一計画ファイルを変更する並行[PR #4600](https://github.com/hat47x/tei-platform/pull/4600)の「問い相対旧依存辺N16/N17」「Studio Windows B0とBuildIntentギャップ」の二行を、本Draftにも**内容を欠落させず**取り込んだ。双方はまだ別Branch/未mainであり、#4600の採否・閉鎖、mainへの実マージ、競合解消を代行したものではない。新実行試験・Owner Meaning受理はNOT RUN。
 
 ## 最新の作業単位へ接続する
