@@ -4,6 +4,10 @@ import { mountReadonlyGraph } from "../tei-studio-graph/graph.ts";
 import { mountCommandPanel } from "../tei-studio-command/command.ts";
 import { createReadOnlyClient } from "../../cmd/tei-studio/assets/client.mjs";
 import { createResponseScope } from "./responses.ts";
+import {
+  initialPinState, pinSubject, unpinSubject, invalidatePin,
+  pinRequest, acceptPinObservation,
+} from "./pin-state.ts";
 import { handleXeadPathKeydown } from "./keyboard.ts";
 import {
   readCatalog,
@@ -42,6 +46,7 @@ let workspaceEpoch = 0,
   inspectionEpoch = 0,
   disposed = false;
 const responses = createResponseScope();
+let pinState = initialPinState(), pinnedVersion: string | null = null;
 let commandContext = 0;
 const editor = createReadOnlyTextEditor(element("editor"), codeMirrorRenderer, {
   id: "empty",
@@ -165,6 +170,78 @@ function setFindings(findings: Finding[] | null) {
   element("diagnostic-summary").textContent = summary.text;
   return summary;
 }
+
+/** A Pin is a local reading intent, not a Host Grant or an external disclosure. */
+function renderPin() {
+  const intent = pinState.intent;
+  const eligible = selected !== null && inspectEligibility(catalogSnapshot, selected).ok;
+  element<HTMLButtonElement>("pin-current").disabled =
+    disposed || !client || !workspace.value || !eligible;
+  element<HTMLButtonElement>("unpin-current").disabled = !intent;
+  element<HTMLButtonElement>("inspect-pinned").disabled =
+    !intent || disposed || !client || intent.workspaceId !== workspace.value ||
+    intent.workspaceEpoch !== workspaceEpoch;
+  element("pin-subject").textContent = intent
+    ? `${intent.subject.kind} · ${intent.subject.id}（${intent.workspaceId}）`
+    : "固定対象はありません。";
+  let status = "未固定";
+  if (intent) {
+    if (intent.workspaceId !== workspace.value ||
+        intent.workspaceEpoch !== workspaceEpoch) {
+      status = "固定時点の作業領域と異なります。再固定が必要です。";
+    } else if (pinState.observation.state === "inspected") {
+      status = "読取り済み。現在の開示・操作権限は未確認です。";
+    } else if (pinState.observation.state === "needs-requalification") {
+      status = "対象の再確認が必要です。";
+    } else if (pinState.observation.state === "unavailable") {
+      status = "対象を読み取れませんでした。";
+    } else {
+      status = "固定しました。読取り結果は未確認です。";
+    }
+  }
+  element("pin-status").textContent = status;
+  element("pin-version").textContent = pinnedVersion ?? "未取得";
+}
+
+async function refreshPinnedSubject() {
+  // The selection lane changes the Editor, Graph and Notice. Never call inspect()
+  // here: the pinned lane must not alter what the user is currently viewing.
+  responses.invalidate("pinned-inspection");
+  pinState = invalidatePin(pinState);
+  pinnedVersion = null;
+  const request = pinRequest(pinState);
+  const catalog = catalogSnapshot;
+  if (!request || !catalog || !client || disposed ||
+      request.workspaceId !== workspace.value ||
+      request.workspaceEpoch !== workspaceEpoch ||
+      !inspectEligibility(catalog, request.subject).ok) {
+    renderPin();
+    return;
+  }
+  renderPin();
+  await responses.run("pinned-inspection",
+    () => client!.inspectSubject(request.workspaceId, request.subject.kind, request.subject.id),
+    (reply) => {
+      if (catalogSnapshot !== catalog) {
+        pinState = acceptPinObservation(pinState, request, { state: "needs-requalification" });
+        renderPin();
+        return;
+      }
+      const view = readInspection(unwrap(reply), request.subject, catalog);
+      const updated = acceptPinObservation(pinState, request, { state: "inspected" });
+      if (updated === pinState) return;
+      pinState = updated;
+      pinnedVersion = view.version;
+      renderPin();
+    },
+    (error) => {
+      const state = error instanceof Error && error.message === "STALE_MODEL_PROJECTION"
+        ? "needs-requalification" : "unavailable";
+      pinState = acceptPinObservation(pinState, request, { state });
+      renderPin();
+    });
+}
+
 function renderList() {
   const query = search.value.trim().toLocaleLowerCase();
   const matches = entries.filter((e) =>
@@ -200,6 +277,7 @@ function renderList() {
     empty.textContent = "該当する要素はありません。";
     list.append(empty);
   }
+  renderPin();
 }
 async function inspect(subject: Subject) {
   if (!client || !workspace.value || disposed) return;
@@ -296,6 +374,8 @@ async function loadWorkspace() {
   const context = ++workspaceEpoch,
     id = workspace.value;
   responses.reset();
+  pinState = invalidatePin(pinState);
+  pinnedVersion = null;
   element("xead-result").replaceChildren();
   element("xead-status").textContent = "未取得";
   commandContext = panel.beginContext();
@@ -405,6 +485,25 @@ element("observe-xead").addEventListener("click", () => void observeXead());
 element("xead-path").addEventListener("keydown", (event) => {
   handleXeadPathKeydown(event, () => void observeXead());
 });
+element("pin-current").addEventListener("click", () => {
+  if (!selected || !workspace.value || !inspectEligibility(catalogSnapshot, selected).ok)
+    return;
+  responses.invalidate("pinned-inspection");
+  pinState = pinSubject(pinState, workspace.value, workspaceEpoch, selected);
+  pinnedVersion = null;
+  renderPin();
+  void refreshPinnedSubject();
+});
+element("unpin-current").addEventListener("click", () => {
+  responses.invalidate("pinned-inspection");
+  pinState = unpinSubject(pinState);
+  pinnedVersion = null;
+  renderPin();
+});
+element("inspect-pinned").addEventListener("click", () => {
+  void refreshPinnedSubject();
+});
+renderPin();
 search.addEventListener("input", renderList);
 element("validate").addEventListener(
   "click",
