@@ -493,6 +493,24 @@ S0〜S4を一度に実装しない。**固定6入力に対するGraph/RuleのGo�
 
 **検証済みの範囲を更新する**：[main #4709](https://github.com/hat47x/tei-platform/pull/4709)のGraph/Rule固定6入力、[main #4722](https://github.com/hat47x/tei-platform/pull/4722)の元byte位置付きReaderに加え、[main #4729](https://github.com/hat47x/tei-platform/pull/4729)で**明示的なMarkdown規則表→実Go条件分岐生成→別Go Process実行→独立Expected候補との比較**が成立した。Edgeの方向、Ruleの「起点／終点」切替では生成Goの処理と結果が変わり、Mermaidの配置変更では意味上の生成Goが変わらない。これはReferenceの実成果だが、規則表の日本語見出しは正式な日本語DSLの採用ではない。製品の`internal/workspace/loader.go`は引き続き未選択`*.tei.md`を`TEI_MD_PARSER_UNBOUND`で拒否しており、**製品Meaning/Target Generator/Plugin/通常CLI/Studioへの接続は別作業**である。
 
+#### 定義変更と実行時入力を別々に検証する（#4733反映）
+
+[main統合済み#4733](https://github.com/hat47x/tei-platform/pull/4733)は、#4729のGraph/Rule→実Go生成をもう一段進めた。**一度だけビルドした同じ生成Binary**に実行時Node IDを渡し、Nodeごとの出辺/入辺結果を独立Expected候補で確認する。引数なしは全Nodeの出力、既知NodeはそのNodeの結果、未知Node・明示空ID・余分な位置引数は非ゼロ終了として区別し、試行前後のBinary SHA-256が変わらないことを検査している。これは「生成したコードに実行時入力が効く」限定的な実証であり、製品Function InvocationやPlugin実Call、業務上の認可を示すものではない。
+
+ここで**Sourceを変更すること**と**生成済みFunctionへ入力を渡すこと**を混同しない。前者はSource/Meaning/Generator/Artifactの再検証資格、後者は実Invokeの型・値・結果・失敗の資格として扱う。最初の実装PRでは既存Fixtureに次の直交比較を追加できるよう、検証票を残す。
+
+| 一つだけ変更するもの | 生成と実行の期待 | 不適格な省略・推論 |
+| --- | --- | --- |
+| **GraphのEdge方向／Rule条件** | 受理済みMeaningの変更なら生成処理に反映し、再生成Goと独立Expectedの差を確認 | 以前のBinaryで結果が出たから新Sourceにも適合すると推測 |
+| **実行時Node ID** | 同一Binary・同一Source/Meaningのまま、選択したNodeの結果を返す | Node選択のたびにコード再生成・再ビルドする、入力を固定JSONへ置き換える |
+| **Node IDの省略／明示空／未知／既知だがEdge 0本** | 省略＝契約で定めた全件、明示空・未知＝失敗、既知で該当Edge 0本＝正常空配列を別扱い | 入力誤りを正常0件に変換、無指定を空文字指定として扱う |
+| **Mermaidの表示配置のみ** | 元Sourceの変更は記録しつつ、意味不変なら生成Goは同byteであることを比較 | Source再確認をせず旧Evidenceを無条件再利用、図のラベルを意味IDへ昇格 |
+| **選択Plugin/Target/Host/Consumer** | 同じRuleでも選択・同梱・Load・Invoke・現在Grant・実Consumerを別証拠で検査 | 参照BinaryのSHA-256不変や出力一致を実Providerの呼出し証拠にする |
+
+**Readerの負例もGraphとRuleを一緒に扱う。** [Draft #4725](https://github.com/hat47x/tei-platform/pull/4725)は、限定ReferenceのGraph表だけでなく、**Rule表の抽出にも共通のFence判定を利用する修正と負例**を提案している。バッククォート/チルダ、長いFence、インデントコードの例示表を実Ruleとして取得しないこと、未閉鎖Fenceを成功にしないことを、両方の表で同じ元byteを使って検証する。このPRはまだDraftであり、修正済みの正式製品Markdown Readerと主張しない。将来の製品Frontend接続時も、この区別を保持して既存#2621/#988/#4704の受入へ引き渡す。
+
+**今後の引渡し**：#4733によって「Caller入力が生成Goの実際の判断を変える」部分はReferenceで確認できた。したがって次の製品コードPRではこのReferenceを再発明せず、**明示的に選択した`*.tei.md`の実Read→元byte/span→既存Source Index/Role候補**の断点を先に解消する。正式Meaning・Operator/Rule適合、Product GeneratorへのLowering、Plugin A/Bの実選択・呼出しは別PR・別Attemptで証拠を取る。試験IDと採否は#1180/#2514のIndependent Expectedに従い、第二のExpected正本を作らない。
+
 #### 次の製品実装PRで確定すること
 
 1. **明示されたFrontendの選択**：Workspaceの正規化済みSource path、Root、選択済みLanguage/Role Profile、選択Plugin/契約版、実Source byte/Revisionをそろえる。拡張子だけで「実行可能な意味定義」を認定しない。`internal/sourceindex/model.go`の`NewArtifact`は現状`path.Ext`で形式を得るため、`*.tei.md`のArtifact Formatは一般`md`と同じになる。これは**現在のSource Indexの書式分類**であり、選択FrontendやTEI宣言資格の証拠ではない。Formatフィールドを無断で変更して従来Consumerを壊すより、まず選択条件を別の既存契約から明示して負例で比較する。
