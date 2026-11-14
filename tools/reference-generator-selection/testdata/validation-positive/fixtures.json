@@ -1,0 +1,82 @@
+{
+  "schema": "tei.reference.generator-fixture/v0",
+  "contractId": "sales.order_line.quantity_positive",
+  "contractVersion": "1",
+  "cases": [
+    {
+      "id": "positive-one",
+      "input": {"quantity": "1"},
+      "want": {"state": "satisfied"}
+    },
+    {
+      "id": "positive-0.01",
+      "input": {"quantity": "0.01"},
+      "want": {"state": "satisfied"}
+    },
+    {
+      "id": "positive-30-digit-integer",
+      "input": {"quantity": "100000000000000000000000000001"},
+      "want": {"state": "satisfied"}
+    },
+    {
+      "id": "positive-400-zeros-then-1",
+      "input": {"quantity": "0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"},
+      "want": {"state": "satisfied"}
+    },
+    {
+      "id": "zero",
+      "input": {"quantity": "0"},
+      "want": {"state": "not-satisfied"}
+    },
+    {
+      "id": "negative-zero",
+      "input": {"quantity": "-0"},
+      "want": {"state": "not-satisfied"}
+    },
+    {
+      "id": "zero-scale-2",
+      "input": {"quantity": "0.00"},
+      "want": {"state": "not-satisfied"}
+    },
+    {
+      "id": "minus-one",
+      "input": {"quantity": "-1"},
+      "want": {"state": "not-satisfied"}
+    },
+    {
+      "id": "minus-0.01",
+      "input": {"quantity": "-0.01"},
+      "want": {"state": "not-satisfied"}
+    },
+    {
+      "id": "missing",
+      "input": {},
+      "want": {"state": "unevaluable", "code": "missing"}
+    },
+    {
+      "id": "null",
+      "input": {"quantity": null},
+      "want": {"state": "unevaluable", "code": "null"}
+    },
+    {
+      "id": "type-mismatch-text",
+      "input": {"quantity": "abc"},
+      "want": {"state": "unevaluable", "code": "type-mismatch"}
+    },
+    {
+      "id": "type-mismatch-empty-string",
+      "input": {"quantity": ""},
+      "want": {"state": "unevaluable", "code": "type-mismatch"}
+    },
+    {
+      "id": "type-mismatch-bool",
+      "input": {"quantity": true},
+      "want": {"state": "unevaluable", "code": "type-mismatch"}
+    },
+    {
+      "id": "type-mismatch-array",
+      "input": {"quantity": []},
+      "want": {"state": "unevaluable", "code": "type-mismatch"}
+    }
+  ]
+}

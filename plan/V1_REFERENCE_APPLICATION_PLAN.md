@@ -34,6 +34,18 @@
 - データベースが管理する関係の保存
 - 入力元と意味の正本との追跡関係
 
+## 生成アプリケーションのDB適合性と安全な移行（2026-11-14、段階計画）
+
+参照アプリケーションは`sales_core`（更新を伴う業務DB）と`master_data`（外部の読取対象）を宣言しますが、生成単一バイナリが両者の実Instance・Provider・管理責任を正しく選べることは、現時点では受入済みではありません。
+
+現行mainの`tools/reference-application-binary/templates/main.go.tmpl`は、通常の`query`／`command`／`validate`から`applyMigrations`を無条件に呼び出していました。`migrations.go.tmpl`は全WorkspaceのSchema SQLのみを逐次実行し、参照定義のPostgreSQL SQLをSQLite固定接続へ渡す不一致もあります。こうした動作を第1版の正式なDB移行方式には採用しません。
+
+[Issue #4657](https://github.com/hat47x/tei-platform/issues/4657) の最初の修正では、**通常業務操作の暗黙DDL／DB作成を止める**ことに範囲を限定します。生成後のバイナリをGitなし・別Processで実行し、未存在SQLiteファイルの不作成、既存DBでのQuery／Command、DB非依存Validation、Schema不変、Provider不一致の移行SQLが実行されないことを確認します。安全な接続を検証できても、DB Release全体の互換性・History完全性・現在Grantは証明されません。
+
+その後、[#4234](https://github.com/hat47x/tei-platform/issues/4234)のRB0診断を完成させ、RB1として隔離SQLiteへの**明示Init/Upgrade**を一変更だけ適用します。Versioned Migration定義、schema／data／verifyの必要Step、履歴と実Schema、別Connectionの独立Readを照合します。RB2の複数DB部分確定、RB3のPostgreSQL／旧新Client共存、旧Writer停止・Owner Cutoverは、[#4125](https://github.com/hat47x/tei-platform/issues/4125)のG0〜G5と[#2555](https://github.com/hat47x/tei-platform/issues/2555)へ順次引き渡します。元形式SQLはSourceに保ち、選択ProviderのSQL実現・Tool Historyを派生／実観測として別評価します。Gitの作業版とDBの実状態も同一視しません。
+
+新Migration Engine／Runtime Host／Evidence正本は増設せず、既存Provider、History、Application Operation、Build Bundleを再利用します。**この節は受入条件と実装順を示す計画です。Issue #4657の候補Go差分と独立Go／SQLite試験の検収結果、製品全経路での適合、Owner受理を先取りしません。**
+
 ## 第1版の業務シナリオ
 
 ```text

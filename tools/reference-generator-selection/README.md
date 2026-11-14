@@ -336,3 +336,25 @@ reconcileは候補をビルド・実行・選抜しません。再生成した�
 ## 文字列投影（reference-local）
 
 契約に`projection`がある場合、`rounding`は不要です。`identity`は入力をそのまま、`normalize`は前後の空白を除いて投影します。比較結果は`state`と`text`を使い、`missing`・`empty`（`state=present`で空）・`unresolved`を区別します。既存のmoney契約は`projection`を持たず、従来どおり`rounding`が必要です。
+
+## Validation契約とTransform Sourceによる生成（reference-local）
+
+契約に`validation`（`id`・`kind`・`input`）がある場合、`rounding`と`projection`は置けず、入力は1つだけです。`validation.id`は読み込んだ受理済みWorldに存在し、kindと対象Attributeが契約の入力と一致する必要があります。AIが提案しただけの、またはWorldにないValidationは契約検証で拒否します。現在の生成対象は`positive`だけです。`output`は状態文字列を運ぶだけで、Validationの結果型を新しく決めるものではありません。
+
+結果は既存の`Result{state, code}`を使い、`satisfied`・`not-satisfied`・`unevaluable`を区別します。`unevaluable`の`code`は`missing`・`null`・`type-mismatch`で、`validationeval.Evaluate`が`NotSatisfied`ではなくerrorを返す場面に対応します。既存のtext契約の`missing`・`unresolved`とは状態名が異なります。入力は`input`のkey（`quantity`）に10進文字列で渡し、JSON numberは意味が未確定のためfixtureに含めません。
+
+`testdata/validation-positive/`で、次の4つを分けて確かめます。
+
+- **Generator Source**: `generator/*.transform.json`。`deterministic-transform-v1`のTransform Sourceです。正しい`go-positive`と、`>= 0`・null/missingのsatisfied化・float64・type-mismatchのnot-satisfied化という4つの誤りを持つmutantがあります。
+- **executing generator**: `transform.Evaluate`。受理済みValidation（`id`・`kind`・`attribute`と契約の入力key）を入力に、Goソース文字列を出力します。Sourceはkindが`positive`以外なら評価に失敗します。
+- **Target artifact**: 評価結果のGoソース。`GenerateFromTransformSource`が`main.go`と`candidate.json`として書き、既存の`Select`が通常の候補と同じ手順で選抜します。
+- **independent Expected**: `fixtures.json`。手で書いた期待値で、生成器・評価器・候補からは作りません。
+
+Generator Sourceのdigestは、`Lineage`ではなく`Generation`の`promptDigest`（Sourceを`generator.transform.json`として同梱）に記録します。`Lineage`の検証はGo製の生成器を再実行する作りで、Transform Sourceを受け入れられないためです。`Select`は同梱ファイルをdigestで確認します。Sourceから`main.go`が再現できるかは`VerifyTransformCandidate`が再評価して確認しますが、`Select`は呼びません。
+
+証明していないこと:
+
+- 実Target・実Hostでの実行。`Select`の合格はfixtureの範囲への適合であり、実行の権限を与えません（conformance ≠ execution authority）。
+- `positive`以外のkind。`relation-unique`は契約の段階で拒否します。
+- JSON numberの入力、`1/2`や指数表記を含む10進構文の定義。これらは意味が未確定で、fixtureにありません。
+- Generator Sourceを書いたのがAIであることの確認や、そのSourceの受理。

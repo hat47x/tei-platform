@@ -667,3 +667,94 @@ DSH採用順は**既存Skillの直接利用→標準Skill機構→明確な不�
 | **HQ-49** | H3でSkill本文は実読込、独立回答品質は不改善 | Product Skill Loadと採用価値・正式比較資格を別判定。TAI #488/#422 |
 
 **成熟度の区別**：SEI #770の局所34件は合成Methodの限定PASS。TAI既存Tool/Skill Readは歴史的な技術Witness。HQ-42〜49の**新しい実験、CSW B0/B1/B2、比較適格H2/H3四Session、実OS/全Egress拒否、実Provider負の証明、Owner意味受理はNOT RUN**。AI発見→業務採用の新中央認可、第二Query/Method Engine、別Harness Runner/Hostは作らない。
+
+
+---
+
+<!-- harness-activity-control-delivery-effect-20261112 -->
+## 15. 2026-11-12：Activity Control／Delivery／Business Effect／Decisionの完了条件を独立化
+
+### 15.1 他製品の進捗を横断契約へ還元する
+
+11月9日以降のTAI Activity、SEI再開、SHO保存・Readback、YI共有Session、TEI Plugin/Providerの議論から、`Activity completed`という単一Booleanは不十分と判断する。次の**4つの観測面**を分離し、TEI/TAI/SEIの既存API・Receipt・Source参照に投影する。新しい中央Activity Store／Lease Engine／Permission Engineは作らない。
+
+| 面 | 実際に確認すべき事実 | 成功しても保証しないこと |
+| --- | --- | --- |
+| **Control** | Activity/Attempt identity、Lease/Fence、割付、終了理由、Retry適格性 | Tool Replyの完全受信、業務副作用、判断受理 |
+| **Delivery** | Tool Request→実argv/プロセス→stdout/stderr→Tool Reply終端→Harness Consumer実受領、Egressと開示 | 業務Operationの成功、Sourceの鮮度、Effect |
+| **Business Operation** | 型付きFunction/Operation、実Provider Read/Write、Rowset/Effect、Host認可、冪等性・実Receipt | Ownerによる意味受理、AI推薦の正当性 |
+| **Decision** | SEI Recommendation、根拠Source/Revision、Question/Unknown/Conflict、Owner受理・再開 | Tool Deliveryや業務Effectの成立 |
+
+`Attempt exit=0`、`Decision=allow`、`CLI stdout received`、`Plugin selected`は互いの代替証拠ではない。再実行時はControlの新Attemptと業務Operationの冪等性キーを混同しない。実Effect後にReplyが欠落した場合、単純再実行せず、既存Host/Providerの実Receiptを照合してから再試行可否を判断する。
+
+### 15.2 初回の縦切りを二本に分ける
+
+**P0-D（業務データ経路）**：`order_entry.recent_orders`の実Function→Query/SQL→Provider→実Rowset→Mapper→Data Context→Consumerを**同一Attempt**で追跡し、独立Expected（行集合・順序・NULL・Predicate・粒度・取得完了）と対照する。既存`sales.order.submit`の13 CLI Reply／42 Consumer Controlsは別FunctionのD局所Witnessであり、このP0-Dの成功に流用しない。実DB/Provider/Consumerのどこで未到達かを段階別に表示する。
+
+**P0-T/A（Harness配送・開示）**：一つのread-only Tool Requestを外部Harnessから実CLIへ送信し、実プロセス・完全Reply・Consumer実受領・現在Grant/Disclosure・OS禁止Read拒否を独立に記録する。H2最初の比較適格Sessionが成立するまで、四Sessionの統計的比較やSkill増分価値を成功と主張しない。P0-DとP0-T/Aは並列に進め、互いの完成をHard dependencyにしない。
+
+**P1-H3（保存・再開）**：SEIのSource Index参照→Recommendation保存→resume再読取は局所の実装・観測範囲を確認し、`Question/Unknown/Conflict`の保存と独自Methodの判断改善を別資格にする。SHOのテスト用実ファイル書込み／別Open再読取が成立しても、正式Editor保存・競合・耐久性の証拠ではない。KONは後続保存先候補であり、最初のH2/H3の必須基盤にしない。
+
+### 15.3 Plugin／Session／UI選択の同一性
+
+- `Declared → Selected → Loaded → Invoked → Source Consumed → Delivered → Accepted`を**必要なClaimに応じた観測段階**として扱う。全部を常に直列必須ゲートにしない。実Inspector/HTTP Host/Source Importの局所証拠は、正式CLI/Studio Provider Invoke、実Host認可、Source消費の独立証拠へ自動昇格させない。
+- TEI Modeler/SHO/SUI/CSWの選択対象は、行番号や表示名ではなく**qualified identity + Source Revision + selection epoch**としてHarness Sessionへ渡す。UI上で選択解除が起きても、明示的に固定した対象は維持し、ユーザーの再選択／失効／権限変更でのみ更新する。AIへ渡す前にCurrent Disclosureを再検査する。
+- Session共有は、製品別のMeaning・Grant・編集正本を一つのHarness内部Stateへ移管することではない。各製品の既存型付きOperation/APIとEvidence参照を通して再解決し、古いSession Raw/Tool Replyが新しいModel Inputへ混入する反例を試験する。
+- `RQ-036`のModel MapとVerified BOMの採番衝突は**別契約**として維持し、Owner判断まで統合しない。新たな中央BOM/Registryを作らない。
+
+### 15.4 実行可能な負例（HA-50〜57）
+
+| ID | 一条件だけ変更する反証 | 判定 |
+| --- | --- | --- |
+| **HA-50** | Control Attempt終了後にTool Reply終端だけ欠落 | Control完了≠Delivery完了。H2不合格 |
+| **HA-51** | Provider Effect成立後にReplyが失われ、Harnessが再試行 | 実Receipt/冪等性確認なしの二重Effectを拒否 |
+| **HA-52** | `recent_orders`の非表示Predicateのみ変更し、表示Rowsetは同じ | 独立Expected/Query Source RevisionでD再資格化 |
+| **HA-53** | `submit`の13/42だけ成功し`recent_orders`実Provider未到達 | P0-Dは未成立のまま |
+| **HA-54** | Plugin Selected=BだがInvoked=A、またはSource Consumedが旧Revision | 実Invoke/消費Sourceで失格 |
+| **HA-55** | UIの固定選択を視覚的に解除し、別対象をクリック | 明示解除なしでHarness対象が変わらない |
+| **HA-56** | Session Resume後にSource/Grantが失効し、旧RawがModel Inputへ再出現 | 再解決/Disclosure失敗として拒否 |
+| **HA-57** | SEI Decisionのみ保存しQuestion/Unknown/Conflictが欠落 | H3未解決継続は不合格、Recommendation保存成功とは別 |
+
+**受入順**：HA-50/51はTAI #168／TEI #2509/#2515、HA-52/53はTEI #2586/#3262、HA-54はPlugin #1251/#951、HA-55/56はModeler/SHO/TAI Session、HA-57はSEI既存Reader/WriterのOwnerへ渡す。独立Expected、実Tool/Provider/Host/Consumerの観測がない限りPASSとしない。
+
+**今回の資格**：§15は既存議論の責務分離と受入票の追加。HA-50〜57、`recent_orders`同一Attempt E2E、比較適格H2四Session、正式Editor/Session固定選択、実Effect後Reply欠落の再実行、Owner意味受理は**NOT RUN**。新中央Host/Registry/Runner/Activity Engineを要求しない。
+
+
+---
+
+<!-- harness-claim-transition-evidence-20261113 -->
+## 16. 2026-11-13：完了状態の「昇格」を明示的に禁止する実装順
+
+### 16.1 4つの完了条件を同一フラグへ畳み込まない
+
+§15のControl/Delivery/Business Operation/Decisionは、相互に代入可能な状態ではない。各Consumerが必要とするClaimを宣言し、そのClaimに対応する**観測者・実対象・版・範囲・否定条件**を既存のResult/Receipt/Contextへ紐付ける。実装上の独立Storeや汎用Evidence Engineは要求しない。
+
+| Claim | 最小の独立Witness | Claimを無効化する変更 |
+| --- | --- | --- |
+| Control finished | Attempt ID・実終了理由・Fence/Leaseの現在値 | 再試行でAttempt変更、Lease失効 |
+| Tool delivered | Request/Reply対応、最終part/終端、Consumer受信側の観測 | 途中切断、part欠落、旧Session Raw混入 |
+| Operation effected | Function/Provider実Invoke、Host認可、実Effect/Receipt | Provider切替、対象行/Transaction変更、Receipt未取得 |
+| Decision accepted | 対象Meaning・Owner・受理範囲・根拠Source Revision | Source/Required/Grant変更、Owner受理撤回 |
+
+特に`Tool delivered=true`を`Operation effected=true`へ昇格させない。Read-only FunctionではEffectの代わりに、**取得対象・Query Predicate・Rowset Extent/Completeness・Consumer実受領**を観測する。書込みのEffect後Reply喪失では、業務冪等性キーとControl Attempt IDを別に記録し、Receipt未確認なら自動再試行を止める。
+
+### 16.2 最初に実装する縦切りを具体的な試験契約にする
+
+**Slice A（H2 read-only）**：同一Taskで`Tool Request → argv → 実CLI stdout/stderr → Tool Reply end → Harness Consumer input`を記録する。許可Sourceの取得と、禁止Sourceへの実OS Read拒否を対照し、現在のDisclosureをConsumer直前に再評価する。単なるCLI exit=0やTool送信側ログだけでは合格しない。
+
+**Slice B（TEI Data Context）**：`order_entry.recent_orders`について`Function → Query/SQL → Provider → Rowset → Mapper → Data Context → Consumer`を一つのAttemptで追跡する。Expectedは実行経路から独立して定義し、Predicate変更・重複行・TOP1・NULL・0件/未取得・部分集合を区別する。最初のSlice AのHard dependencyにはしない。
+
+**Slice C（保存・再開）**：SEI RecommendationのSource/RevisionとQuestion/Unknown/Conflictの保存・再読取を別々に検証する。SHOの保存/再開もSource Identity・実ファイル位置・現在Grantを再解決し、旧Raw再利用を失格にする。KONや新中央Session Storeは必須としない。
+
+### 16.3 統合前の検収票（HB-58〜63）
+
+| ID | 最小の負例 | 必須観測・Owner |
+| --- | --- | --- |
+| **HB-58** | Tool最終partが欠落するがCLI exit=0 | Consumer受信側終端不在→Delivery未完了。TAI #168/TEI #2509 |
+| **HB-59** | Effect成功後Reply喪失、別Attemptが同じOperationを再試行 | 既存Receipt/冪等性で二重Effect防止。TEI Host/Provider Owner |
+| **HB-60** | Read-only Rowsetは同じで非表示Predicateだけ変更 | Query Source/Expected再検証。TEI #2586/#3262 |
+| **HB-61** | Selected Provider B、Invoked Provider A | Selectedの一致だけではOperation資格なし。TEI #951/#1251 |
+| **HB-62** | Source revision一致、Current Grantだけ失効 | Consumer直前のDisclosure拒否。TEI #2515/TAI #168 |
+| **HB-63** | Decision保存済み、Unknownだけ保存されない | Decision成功と未解決継続を分離。SEI Owner |
+
+**実装ゲート**：Slice Aの実Consumer受領を最初のH2の合格条件に据える。Slice Bは並列に実証し、Slice CはP1。HB-58〜63は設計上の反証票であり、**実行・PASS未確認**。既存mainのCLI/Plugin/Context/Cache CI成功を、実外部H2・実Provider E2E・SEI再開・Owner受理へ転用しない。追加のRunner、Registry、Proof Store、Permission Engineは作らない。

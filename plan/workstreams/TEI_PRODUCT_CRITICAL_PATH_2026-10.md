@@ -1515,3 +1515,169 @@ version-pinned BuildIntent / Source revision
 **最短の担当・blocker線**：**B0＝#1の稼働環境・branch/固定HEAD/進捗返信が不明** → **B1＝実CLI A/J→同じWorkbench Initial/List→RPC Recorder 0/1の同一Attempt Evidenceが無い** → **B2＝#4/#8独立反証・PR2実イベント** → **B3＝PR3旧Graph DOM拒否**。これらは**Studio直接レーン**。#3117のBootstrap、#3327の局所ABA、#2833 W1/W2のM3合成表示、#2391 E0〜E3は**独立並列**（各成果をM0→M1 PASSに加算しない）。#3/#9のidleと#6 systemErrorは**作業調整リスク**だが、具体的な未実行結果が確定するまでは新たな技術的FAILとは扱わない。
 
 **確認の性質**：GitHub現行main/Issue/PR/CLI・Workbench関連ソースとexact-HEAD CI status、既存ロードマップのみを照合。**今回Go/Node/Browser/WebView2/実PG/外部Tool/Disclosureの新規実行なし**。#1/#3/#9/#6の各チャットの内部環境は直接観測していないため、依頼者報告とGitHubで確認できた事実を区別。正式Owner意味/Authority/実Effectsの採用を変更せず、**第二Host/Policy/Scenario/Rendererを新設しない**。
+
+---
+
+<!-- tei-cp-cross-chat-convergence-20261113 -->
+## 2026-11-13 横断収束：Studio自己再構築を中心にした作業順と検収
+
+**位置づけ**：他チャットのDSL、Plugin、X-TEA移管、DB、GUI/CUI、生成AI協業、テストの検討を、既存Issue間の合流条件として整理する。新しい契約・実行基盤・Gate・意味受理の仕組みを採用するものではない。G0〜G4と各Ownerは従来どおりとし、[Desktop Self-build #4583](https://github.com/hat47x/tei-platform/issues/4583)、[Plugin役割分離 Draft #4601](https://github.com/hat47x/tei-platform/pull/4601)、[Hook設計 #4589](https://github.com/hat47x/tei-platform/pull/4589)などの個別仕様を複写しない。
+
+### 優先順位と並行作業
+
+1. **P0-A／本線：Studio Desktopの自己再構築**（#2831／#4583／#1824）。N0 Inspector生成、N1 Go/TS生成、N2 Node/esbuild/embed、N3 nested Go/Wails Windows exeの各工程で、宣言されたBuild Intentと実際に消費したSource、実Invoker、生成物を照合する。既存Build Execution/ArtifactSetを使い、Desktop exeをPlugin Subjectと偽装しない。Stage1のTEI実ProcessがStage2 Desktopを作ったこと、そのStage2を実WebView2が使用したことを別々に確認する。
+2. **P0-B／並行：PluginとX-TEA由来の三要素分析法モデル**（#1251／#951／#1016／#1124）。通常Studioと生成Studioで、選択したProvider、実Link・実呼出し、成果物への同梱、未選択Providerの非混入を検証する。Build時GeneratorとRuntime Providerは別の役割とする。[Draft #4570](https://github.com/hat47x/tei-platform/pull/4570)のread-only三要素Pluginを初例とし、実X-TEA原典、Modeler編集、DB更新は後続の独立受入に置く。
+3. **P0-C／並行：人間と生成AIの協業**（#3262／#4515／#1120／#1124／#1180／#2514）。GUI/CUIは同じ型付きOperationとread-only設計Queryの異なる入口とする。Subjectの論理Identity、Source内の出現位置、Revision、固定選択、表示Projection、取得できた範囲を混同しない。AIの提案はSourceへ戻して通常の開発レビュー、Validation、再投影で扱う。形式的な多重承認は増やさない。OKF等で文書を根拠として参照可能にしても、推測を業務意味へ自動昇格させない。
+4. **P1／合流後の拡張**（#4359／#2620／#2586／#3270／#1129／#1174／#4198／#2600）。DSL糖衣・自己記述、実Provider Read、DB方言とMigration、Hook・Receipt、可変Lifecycle、増分再利用は、それぞれ既存契約の小さな縦断例で検証する。全機能の完成をP0-Aの前提としない。
+
+### 共通の反証条件
+
+| 境界 | 検収する実物 | 合格としない例 | Owner |
+| --- | --- | --- | --- |
+| Build → Desktop | N0〜N3の実入力・実Builder・Artifact、Stage1→Stage2、実WebView2 | 別HEADのGreen合算、Plan外esbuild、Stage0による代行生成、古いJS | #4583／#2831／#1824 |
+| Plugin → 実Studio | 選択・実呼出し・実収録、通常版／生成版の両方 | B選択でA呼出し、未選択Provider混入、静的画面のみ | #1251／#951／#1016 |
+| 人間／AI → Source | Required情報・対象Identity・Revision・pinの再解決 | 参照0件を対象不存在と誤認、重複IDを勝手に接続、A→B→Aで旧選択を再利用 | #3262／#4515／#1120 |
+| X-TEA → TEI | 三要素分析法の原典忠実性、宣言CRUDと業務Actionの粒度差、手作業 | Function-level CRUDを業務実作用と断定、汎用Graphへ勝手に意味を追加 | #950／#1031／#1124／#1132 |
+| Hook → Effect | Guardの前後、実Call回数、Commit不明・Receipt・独立Read | Guard拒否前の副作用、二重Call、lookup-first消失 | #1129／#1174／#4198／#2514 |
+| Provider → Consumer | Source、selected/actual Provider、Rowset、Result、完全受領 | SQL生成だけで実Readを主張、0行と未取得を混同、途中切断をcomplete | #2586／#2509／#2515 |
+
+検収票ではSource/HEAD、必要な入力の閉包、実Invoker、Artifact、実Consumer、独立Expectedを分けて記録する。Stage1とStage2は別の実行でも、因果参照と対象の版を追跡できること。PASS、FAIL、UNKNOWN、NOT RUN、unsupportedを混同しない。生成器やSourceが変わったときも、確認できた依存範囲だけを再検証し、無関係な対象まで自動失効させない。
+
+### 現在の証拠と最短の次工程
+
+[Draft #4587](https://github.com/hat47x/tei-platform/pull/4587)の固定HEAD 708ca27e、[Windows CI #43385876034](https://github.com/hat47x/tei-platform/actions/runs/43385876034)では、N0 Inspectorの実再生成、使用TSのbyte一致、通常版・生成版WebView2 Jobの成功を限定的に確認できる。ただし、**N0〜N3の全工程をTEI Build Intentが駆動したB1、Stage1実TEIによるStage2 Desktopの構築B2、そのStage2自身の実Consumer B3は未成立**。別のPR HEADへCI成功を継承しない。
+
+着手順は #4583 B1（実入力閉包）→ B2（Stage1→Stage2）→ B3（実WebView2 Consumer）。その後に非Builtin Providerの通常／生成Studio両系統、固定対象の再解決、三要素モデルの実原典適合を段階的に合流する。並行担当は独立Expectedと負例を先に準備してよい。ここで行ったのは既存GitHub記録の静的整理のみ。新Go/Node/Windows/DB試験とOwner意味受理は行っておらず、製品全体G4は未資格。
+---
+
+<!-- tei-cp-crosschat-second-pass-20261113 -->
+## 2026-11-13 第2次横断レビュー：実消費の証拠、Pin非干渉、Providerの実同梱
+
+前節のP0-A/B/Cの優先順位を変えず、他チャットの実コードレビューから具体化した**最初の失敗例と実装順**を補う。新しいBuild Manager、Source Registry、承認Engine、Hostを作らない。各担当Issueで受入を管理し、この節は接合点だけを扱う。
+
+### A. Build入力：事後ハッシュと実際の消費を区別する
+
+[#4583](https://github.com/hat47x/tei-platform/issues/4583)のB1-Bで、[Draft #4587](https://github.com/hat47x/tei-platform/pull/4587)の `b1-stage-input-observation.json` は、ビルド後に指定ファイルを再読取した目録であり、esbuildやGo Builderがそのbyteを実際に消費した証明ではないと確認された。現状の `qualifiedBuildIntent=false`、`dependencyClosure=unknown` を維持する。
+
+最初の一本は **N0生成Inspector TS → N2 esbuild → N3 Go embed** に限定する。各工程の直前に入力・Toolchain・実Invokerを固定し、出力と次工程の入力を同じAttemptに対応づける。工程後の変更も照合するが、pre/post一致だけでTOCTOUやA→B→Aが解消したとは扱わない。実消費の完全な証拠が必要な場合は不変SnapshotやOS読取境界の実証を別資格とする。
+
+独立Expectedは、(1)esbuild直前のTS差替え、(2)Go build直前のJS/Go差替え、(3)ビルド後差替えによる事後目録の偽装、(4)未宣言の推移的import、(5)選択Builder Bと実Invoker Aの不一致。実験できない境界はunsupported/UNKNOWNと記録する。Desktop exeをPlugin Subjectと偽装せず、既存Execution→ArtifactSet→Subject Bindingの適合から始める。Ownerは#4583/#2831、増分失効は#2600。
+
+### B. Pin再確認：画面のInspectと独立した読取経路
+
+[#4515](https://github.com/hat47x/tei-platform/issues/4515)で確認された現行 `inspect(subject)` は、応答と同時にselected/Editor/Graph/Noticeを更新する。Pin Aの資格再確認に同じ入口を用いると、利用者がBを閲覧中でもAへ表示が戻る。**Pinの再確認は画面選択を変更しない**ことを受入条件にする。
+
+既存 `client.inspectSubject`/`readInspection` を再利用し、`pinned-inspection` laneでPin Observationだけを更新する。Pin/Unpin/Undo/Workspace切替でローカル世代を更新し、応答はlaneの最新性、captured generation/epoch、qualified Subjectの一致で採用する。同じSubjectをUnpin→再PinしたA→Aでも旧応答を拒否する。ローカル世代はSource Revision/Grant/Disclosureの現在性を証明しないため、製品側の再資格化を別に行う。
+
+[Draft #4597](https://github.com/hat47x/tei-platform/pull/4597)はPinの純粋状態遷移に限定される。最初に既存responsesテスト、次にPin状態テスト、最後に実WorkbenchでEditor/Graph非干渉と生成Inspector使用を検証する。Pin状態テストだけでDesktop/Source/Grantの受入へ昇格させない。Ownerは#4515/#1824。
+
+### C. Plugin構成：選択と実収録を両方向から確認する
+
+[#4583のX-TEA横断引渡し](https://github.com/hat47x/tei-platform/issues/4583)と[Draft #4601](https://github.com/hat47x/tei-platform/pull/4601)に従い、Build-time GeneratorとStage2 Runtime Providerを区別する。最初の非Builtin例は[Draft #4570](https://github.com/hat47x/tei-platform/pull/4570)の読取り専用三要素モデルとする。
+
+必要なProviderが**選択されたのにStage2から欠落**した場合と、**未選択なのにimport/init/embedから混入**した場合を対で検査する。Build Profile、依存Go Source、nested Studio module/tags、実Wails Artifact、実Bridge呼出しを同じ選択に結び付ける。通常Studioの静的importやB0/N0のWebView2成功だけでは、生成Stage2がX-TEA Providerを実行したことにはならない。X-TEA全Function・実原典・SHO/KON/他Targetはこの最小試験の前提にしない。Ownerは#1251/#951/#1016/#1124、Stage2への結合は#4583。
+
+### D. 最小の協業・dogfoodingシナリオ
+
+開発者と生成AIがCLI/CUIでSubjectを特定し、Source位置と参照・被参照を確認する。Studioでは人間がBを表示したままAをPinし、AIがAの根拠を再確認してもBの表示を変更しない。AIの提案はSourceに戻し、通常のレビュー、Validation、再読込、再Projectionで確認する。参照0件・対象不存在・partial/unavailableを区別する。OKFによる文書管理は根拠の可用性を高める手段であり、業務意味の自動承認にはしない。
+
+この協業シナリオとStage2のBuild/Provider検証は**別のAttempt/別の資格**であり、相互の成功を合算しない。実装順は B1の実消費観測 → Pin非干渉の実Workbench接続 → B2/B3の実Stage2 → Optional Provider実呼出し。CLIの実PostgreSQL Read (#2586/#1251) は並行して進め、Desktop完成を待つHard Dependencyとしない。
+
+**検証状況**：本追補は既存GitHub Issue/PRのレビュー内容の計画反映のみ。新しいGo/Node/Windows/PostgreSQL実行はNOT RUN。既存Draftの最新HEAD CIを本追補で追試したものではなく、B1〜B3、全体G4、Ownerによる意味受理は未資格。
+
+---
+
+<!-- tei-cp-20261114-crosslane-third-pass -->
+## 2026-11-14 第3次横断収束：自己再構築の連鎖、自己記述DSL、汎用Operatorへの展開
+
+この節は2026-11-14の他チャットで成熟した合流条件を整理したものである。前節までのP0-A/B/CとOwnerを維持し、**Studio自己再構築の最短経路を阻害しない**。研究・科学計算・REA・高度組織モデルを独立の製品Coreへ先取りしない。
+
+### 1. 自己再構築は「一つのAttempt」ではなく親子の実行・成果物連鎖
+
+Stage1 TEIがStage2を構築する際、Stage1 Build Attemptと、子Builder Process、生成Artifact、Stage2 Desktop起動、Wails BridgeからのProvider呼出しは異なるAttempt/Processになり得る。したがって、前節の「同じAttempt」は**各工程の入力/出力照合の単位**と読み、全工程に単一Attempt IDを強制しない。
+
+受入は次の親子連鎖で行う。
+
+| 段階 | 実証する境界 | 不合格・保留の代表例 |
+| --- | --- | --- |
+| Q0 | Source/Revision/選択Target/BuildIntent/ArtifactSetの対応 | Desktop exeをPlugin Subjectとして偽装 |
+| Q1 | 選択Builderと実起動image/argv/toolchainの一致 | 選択B・実行A、外部CIだけの成功 |
+| Q2 | Inspector TS→JS bundle→Go embedの宣言Inputと実消費範囲 | 後読digestだけ、未宣言import、A→B→A |
+| Q3 | **実Stage1 TEI**がStage2生成・構築を起動し、そのArtifactを識別 | 別HEAD、旧exe、単独Go buildの合算 |
+| Q4 | **当該Stage2 exe**が選択済みRuntime Providerを実呼出し | 静的importだけ、未選択Provider混入 |
+| Q5 | 当該Stage2のWindows WebView2/IPCを実受領 | 起動だけ、別Window/旧Bridge応答 |
+
+各辺は親Attempt ID、子Process/Attempt、Artifact digest、Source World、実Consumerの受領結果を既存Evidence/Build票へ接続する。旧exeの安全な配置切替は#1824/#3267で別検収。Q0〜Q5の全合格を既存B1〜B3/G4へ対応させるが、新しいゲート体系・Build Managerは作らない。Ownerは#2831/#4583。
+
+### 2. DSL自己記述は「宣言・意味・実装・検証」を分離
+
+DSLを最初から新文法で拡張せず、既存のRecord/Sequence/Reference/Graph等の標準データ、Parser、Semantic Model、Language Plugin、Operator Contract、Target Generatorを利用する。最小Seedからの自己記述を、K0 Seed→K1固定Subject/Source Pin→K2実Parser→K3既存Semantic→K4独立ExpectedとOwnerの意味受理→K5実Generator/Builder/Provider/Consumerの順に接続する。
+
+- Source occurrence、意味定義のidentity/revision、実装Contribution、生成物を別々に識別し、同名ラベルや表示位置から同一性を推定しない。
+- Trait/Operatorの**宣言**、実装Provider/Generatorの**提供**、選択したTargetにおける**履行**を別資格とする。定義から検証義務を導出してよいが、正解Expectedそのものを実装から自動生成して同一根拠で合格にしない。
+- 未解決参照、重複identity、必要な意味要素の部分Loweringは、World/生成物を成功扱いしない。Source、意味、pre-dispatch、Entry/Hostの診断を区別する。
+- Go/CLI/Desktop IPC/Local HTTPは同一Source/Meaning Revisionの同一Operationに対するTarget別Adapterとし、結果と差異を比較する。新たなTEI独自Host、第二Parser、第二Registryを導入しない。
+
+最初の実装対象はStudio自身の定義・生成・検証であり、一般業務アプリへの展開可能性をその過程で実証する。Ownerは既存DSL自己記述/統合Issue群。
+
+### 3. 汎用Operatorを先にし、研究・科学計算は段階的なDomain Plugin
+
+Mathematica/R由来の統計・科学計算、WBS/PERT、Window関数、熱力学/システム、バイオサイエンス可視化、REA/組織履歴は候補領域とするが、**研究専用DSLや専用Studioを先に作らない**。まず既存標準型・標準Query・Graph/時系列/表・式/制約で表現できるか確認する。
+
+汎用Operatorの候補はGenerate/Vary/Evaluate/Solve/Optimize/Aggregate/Window/Visualize。型・単位/精度・Null/欠損・時間条件・多重度・副作用有無・決定性・計算量/資源制約・Source provenanceを契約化し、実装はProvider、Target適合はGenerator、専門語彙とUIはDomain Pluginに分ける。名称や分類は検討候補であり、現時点でCore API採用を意味しない。
+
+初期dogfoodingではStudioの生成・高速ビルド、独立Expectedを用いるテスト生成/探索、DB集計、スケジュール可視化のうち**既存Operationに自然に適合する小例**を選ぶ。数値結果、AI提案、Ownerの業務意味受理は別扱いとする。専用Domain Pluginの製品化は最小例の性能・正しさ・需要を確認してから判断する。
+
+### 4. 横断の保留・失敗の意味を共通化
+
+DBのRead成功と全範囲取得の完全性、PinのローカルgenerationとSource/Grantの現在資格、HookのGuard判定と実Effect/Receipt、REAのObservationと正式業務受理、AI HarnessのInvocation成功とTEIの意味受理を、それぞれ独立主張とする。UNKNOWN/partial/unavailable/NOT RUNをPASSへ繰り上げない。Source→Meaning→Build/Runtime→Consumerの間で失効を伝播させるが、再検証の範囲は変化した依存に限定する。
+
+**優先順位**：P0はQ0〜Q5の実連鎖と、CLI/Studioの実Provider Readの二つの薄い縦切り。P1はDSL自己記述のK0〜K5、Pin非干渉とGUI/AI共通Operation、Plugin履行とHook/Receipt。P2は汎用Operatorの小例を通じた研究/REA/科学計算のDomain Plugin候補評価。P1/P2の設計完了をP0のHard Dependencyにしない。
+
+**証拠の上限**：本節は既存議論の計画反映であり、コード・Windows・DBの新実行、最新HEADのCI追試、Ownerによる意味受理を行っていない。#4606はDraftであり、mainへの統合を意味しない。
+
+---
+
+<!-- tei-cp-20261114-fourth-pass-real-evidence -->
+## 2026-11-14 第4次横断収束：最新実装資格と最短統合順の修正
+
+本節は前節のQ0〜Q5、K0〜K5を**既存の検収補助表現**として維持し、2026-11-14に進展した実コード/CIと設計Draftの資格を照合する。Q/Kは新しい正式Gate、Core enum、Runtime状態を意味しない。
+
+### 1. 現時点の実装事実と残る不足を分離する
+
+| 領域 | GitHubで確認したPRの状態・主張 | 製品として未実証の境界 |
+| --- | --- | --- |
+| Builder child identity | [#4623](https://github.com/hat47x/tei-platform/pull/4623)はDraft。選択した子Builderのexpected digestと実子exe digestを**起動前**に照合し、Selected B/Actual Aを実行前に拒否するコード・試験を追加した | PR統合、同一HEAD実CI再確認、非Plugin StudioのBuildIntent/BuildPlan接続、全入力の実消費 |
+| Build/Plugin composition | [#4643](https://github.com/hat47x/tei-platform/pull/4643)はDraft。旧#4621の衝突を解消するためmain追従した設計統合候補。本文は#4634 exact HEADの8/8 CI成功を報告 | Plugin主体のResolver/Builderの限定成功をDesktop正式SubjectやStage2実呼出しへ拡張できない |
+| Studio dogfooding | [#4651](https://github.com/hat47x/tei-platform/pull/4651)はDraft。#4587 exact HEADのWindows smoke 1失敗/12中11成功を明示し、MVP一往復を再構成 | 旧HEADの限定PASSを現在HEADの全Windows成功へ読み替えない |
+| DSL診断 | [#4652](https://github.com/hat47x/tei-platform/pull/4652)は**merged**。Source構文/Workspace意味/実行前拒否/公開Host選択の四層受入を設計へ反映 | 設計PRのmergeだけで新Validatorや実Adapter call=0試験が完成したとは扱わない |
+| 実DB/データ様式 | [#4619](https://github.com/hat47x/tei-platform/pull/4619)はDraft。本文で#4644のRA-1/RA-2R実PG限定Read（3/3 CI）と、#4626の依存監査sqlgen失敗を別事象として報告 | 製品CLI→実Provider→二Consumer→取得範囲の独立確認、Write/Effect/Receipt |
+
+PR本文が報告するCI件数・HEADは**各PRの報告値**であり、本節の編集者が当該CIログを再実行・独立監査した結果ではない。main統合済みとDraftを混同しない。
+
+### 2. P0の最初の実装をDG-0へ絞る
+
+現行`BuildIntent.Validate`/Plugin BuildPlanはPlugin Subjectを前提とする一方、`go-command`/`go-package` Recipeや子Builder照合の部品は存在する。したがって最初の実装は **DG-0：非Plugin Studioを正式なBuild Subjectとして既存BuildExecution/ArtifactSetに結線**することとする。Studioを架空Pluginに変換せず、既存のPlugin経路は退行させない。
+
+受入順は、(a)非Plugin StudioのTarget/SubjectとBuildIntent妥当性、(b)選択Builderの起動前照合、(c)生成Inspector TS・esbuild・Go embedの宣言/実入力照合、(d)実Stage1→Stage2構築、(e)当該Stage2 Windows WebView2/IPC受領。Plugin Runtime Provider実呼出しはその上の独立資格とし、Desktopの最小セルフビルド成功のHard Dependencyにしない。
+
+### 3. 版・権限・取得範囲を実Consumerまで保持する
+
+**編集Buffer → 保存Source → Build入力 → Builder実入力 → Artifact → 実使用Artifact**はそれぞれ異なる版/identityを持つ。保存成功、生成成功、起動成功、受領成功を一つの成功に潰さない。Pin再確認はEditor/Graphの選択状態を変更せず、古い応答、IME編集中のBuffer、A→B→Aの再資格化を分ける。
+
+QueryはSource/型付きInput/Provider/取得Rowset/Function Data Context/Consumerを分離し、LIMIT/RLS等で取得範囲が不明なら`partial`/`unestablished`を保持する。空集合とSource不存在を混同せず、取得完全性が不明な結果から「対象が存在しない」と断定しない。
+
+Plugin状態は**宣言／導入可能／有効設定／Composition／Build包含／Runtime実利用／Authority・Effect／データ保持**を別観測とする。HookのPreview→Resolve→Admit→Commit→Observeは同一実作用の単なる別名ではなく、Guard前作用、再送、Receipt不在を独立に検査する。AI HarnessやSHOへ渡すのは確定したSubject/Source/Revision/Grant/Disclosureであり、候補の意味受理を暗黙に昇格させない。
+
+### 4. 最初の独立Expected（追加案）
+
+- **DG0-NP-01**：PluginではないStudio Subjectを既存BuildIntentへ渡し、Plugin偽装なしにTarget解決とArtifactSetへの対応を確認する。未対応なら明示FAIL/unsupported。
+- **DG0-NP-02**：Selected Builder B/Actual Aで実子起動・副作用がゼロ。#4623のprimitive単体と製品BuildIntent経路を別検収。
+- **DG0-NP-03**：実Stage1が作ったStage2と実Windowsで開いたexeのdigest/Source Worldが一致。旧exe/別HEADは拒否。
+- **DG0-NP-04**：Windows smoke失敗を他の11 job成功で覆わない。修正後は同一HEADで該当Jobを再試験。
+- **DB-COV-01**：LIMIT/RLS等で被覆不明の結果は`complete`に昇格せず、二Consumerへ同じ取得範囲情報を伝達。
+- **DSL-ACD-01**：同名InputまたはOutput/Outcome矛盾をSource診断とWorkspace意味診断で対応づけ、実Adapter呼出し0を独立に確認。
+
+最初のIssue Ownerは#4583/#2831（DG-0）、#4515（Pin）、#4359/#4495（DSL）、#1251/#2586（DB）、#1180/#2514（独立Expected）を再利用する。新たな横断承認Gate・Host・Registry・Build Engineは増設しない。
+
+**実行状況**：本追補は設計・計画のみ。新Go/Node/Windows/PostgreSQL実行NOT RUN。#4606はDraft、main未統合。新規に取得したPR状態とPR本文のCI報告を区別して記載した。
