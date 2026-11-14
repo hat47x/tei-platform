@@ -444,6 +444,6 @@ LRBラベルは独立Expected正本ではなく、既存#1180/#2514へ渡す横�
 
 [Draft #4627](https://github.com/hat47x/tei-platform/pull/4627)の新HEAD f2f49a7c9732b3f88e8dc21c75cbdcc1084c0b70 は、新Service登録を単にソース全体のNewService呼出し数で数えるのではなく、**実application.Options.Servicesの設定表現**をASTで検査する変更を追加。未分類Service追加・同Bridge重複・未知Service・空一覧・動的変数一覧・Services欠落の6合成Mutationを検出する負例を追加。ExecuteCommandWithPolicyのClient allowed配列はHost Grantではないことを分類に明記した。静的登録試験であり、Wails実Binder/HTTP/WSや将来の動的登録の全閉包を証明しない。
 
-**この新HEADのGitHub CIは起動を確認した段階**。旧HEAD 9491bf9eのGo/Browser successを新Mutation testのPASSに転用しない。Wails Host Workflowとnested module server Go testのexact HEAD logを確認してから限定PASSとする。
+**新HEAD f2f49a7c9732b3f88e8dc21c75cbdcc1084c0b70の実CIを確認**：[Wails Host #43545456013](https://github.com/hat47x/tei-platform/actions/runs/43545456013) completed/success。server-build Job 132295613443の実ログで CGO_ENABLED=0 go test -mod=readonly -count=1 -tags server . → ok tei/cmd/tei-studio 0.680s を確認。6 Mutation negativeを含む新Server Go試験はこの成功したスイートへ収録されている。同HEADのDesktop WebView smoke #43545456086、Cache、依存検査もcompleted/success。Repository Health #43545455990はこの照合時点ではin_progressであり、全Workflow合格や本番Web公開資格とはしない。旧HEAD 9491bf9eの成功と取り違えず、実Browser二Context表示分離≠別PrincipalのCurrent Grant/WS配信分離という資格上限を維持する。
 
 **未実行**：LRBの実Web/SHO/REA/認可/AI送出、PR横断BuildとStage1→Stage2再入、Owner意味受理。本章は既存PlanのOwner分離と実受入条件へ引渡す設計成果。
