@@ -1383,3 +1383,72 @@ PDCは既存#4515のPIN-R0／#3262のD0、#1180/#2514のScenario/Independent Exp
 **次の接続は独立した二経路とする。** G0は既存#988/#2621へ、元byte・Role・Subject occurrenceを持つ正式Reader選択の検収（候補から採用済みMeaningへの段差）。G1は#4544/#2831へ、選択済みOperator／Generator・実Builder Input・実Artifact・実CLI Consumerを同じSource/Attemptでつなぐ検収。Pin/GUI側#4515は、正式Qualified Subjectを解決できるまではSource候補を「候補」として提示するだけにする。これらを一度に必須化せず、現行の非Plugin Studio Stage1→Stage2 Windows実機P0を保つ。
 
 **状態**：mainの限定Go Reader・生成Go・独立Expectedテストコードを静的に確認。現在の本節で新たにGoテストを実行したわけではなく、正式Reader／製品Codegen／Desktop Pin→Graph候補の実Consumer接合は未検収。
+
+---
+
+## 24. 非Plugin Studio Build Subjectの受理境界と実再構築の最短経路（2026-11-15、P0実装引渡し）
+
+<!-- tei-desktop-nonplugin-buildsubject-real-stage2-20261115 -->
+
+§16〜18の「Goへの委譲だけではセルフビルドにならない」という条件と、§21〜23のCLI／Studioの出典照合を、全体P0（#2831/#4583）へ戻す。今回のコード照合から、**非Pluginを正式Build対象として認識する前段の欠落**が明確になった。Pin/AI ContextとGraph Rule Referenceを先に増設しても、この欠落を越えなければStudio Stage1→Stage2は成立しない。
+
+### 24.1 現行コードで確認した不整合
+
+| Sourceで確認した事実 | 現在成立すること | 成立しないこと |
+| --- | --- | --- |
+| `internal/buildintent/intent.go`はRecipe `go-command`、定義Source `go-package`を判別する | コマンドBuildのSource種類とRecipe由来のFingerprintを表す要素がある | `BuildIntent.Validate()`はSubject.Kindを現在`plugin`に限定。非Plugin Subjectの宣言受理が成立しない |
+| `internal/buildintent/resolve.go`には`go-command`時、Plugin定義Parserの代わりにSource identityを使う分岐がある | Go Package側を入力とする限定的なPlan導出を行える | 導出先は`plugin.BuildPlan`で、`Plugin`と`PluginDefinitionFingerprint`を使う。結果をそのままStudioの非Plugin製品資格へ昇格できない |
+| `internal/plugin/build.go`の`BuildPlan`／`LockedBuild`はPluginに紐づく型である | Plugin用BuildPlan・ArtifactLockの既存実装を再利用できる | `Plugin`欄にStudio Commandを入れるだけでは型付きSubjectの区別が消え、ロックやConsumerの監査で誤った種類になる |
+| `tools/reference-studio-part-generator`と#4587の限定実Windows生成Inspector | Source-backed Transformから実TS・JS／Wails実WebView2という**部分的な縦断**は存在する | これらの工程が同一BuildExecutionに束縛され、**Stage1のTEI実ProcessがStage2を生成した**というEvidenceはない |
+| `reference/tei-md-graph-reader`の限定Graph/Rule→Go生成 | 表のEdge反転・Rule変更が実Goの結果を変える。見かけだけの図生成ではない | 正式`*.tei.md` Loader／Language Role／Build Source解決・実製品Generatorには未接続 |
+
+したがって「`go-command`があるからnon-Plugin BuildIntentは実装済み」「`Plugin`欄へStudio IDを入れれば同等」という判定は**不適格**とする。新しい`subject.kind`を文字列で許可しただけでも未完成である。
+
+### 24.2 最初に必要なのはSubjectを区別した薄い接合
+
+最初の対象は`TEI Studio Desktop`一つに固定する。**Domain固有の大きなBuild DSL、Graph Compiler、第二Resolverは新設しない**。既存の`BuildIntent`、Source Resolver／Builder Resolver、BuildExecution／ArtifactSet、ArtifactLock／Receiptの実Contractを比較し、非Pluginをどの範囲で通せるかを**typed Subject境界の最小差分**として決める。
+
+選択肢を二つに絞る。
+
+- **案A：共通Build Planの型付きSubjectへ一般化**。Plugin／Command／生成アプリ等を識別する`subject.kind/id/version`を一つのBuild計画へ持たせ、Plugin固有Plan／Lockは明示Adapterとして残す。ただし既存Plugin BuildPlanの公開JSON／Fingerprint互換、Lock、Runtime Consumerへの影響を先に調べる。広範な型変更が必要ならP0で先行しない。
+- **案B：既存BuildExecutionに非Plugin Subjectの薄い経路を足す**。共通Source／Builder／Dependency／Artifactの照合は再利用し、Plugin専用Planへの偽装を拒否する。対象はStudio一件、Builder一件、生成物一件から始め、既存型とArtifact Lockを改造せずに実行の観測票を作れる場合はこちらを優先する。単なる外部Launcherのshell成功に留まるならL2資格は保留する。
+
+**選定ゲート**：実Source closureから同じBuilder契約へ入り、非Plugin Subject identityとBuildPlan/Artifact Identityが一致すること、実Invoked Child・出力Digestを独立に照合できること。A/B双方ともそれがない場合は`unsupported`で停止する。現時点でどちらかを製品標準として採用しない。単一のプログラム名をPluginに偽装する迂回は採用しない。
+
+### 24.3 Stage1→Stage2の一試行を五区間に分ける
+
+| 区間 | 必須の実Observation | 独立に否定する反例 |
+| --- | --- | --- |
+| **N0：定義と生成Input** | 正式に選択されたStudio Build Subject、Source/Revision、InspectorのContract＋Transform、生成器の版と実TS | 観測されていない`*.tei.md`を正式Loader入力と呼ぶ／Go delegateだけで意味生成と呼ぶ |
+| **N1：Build計画とInvoked Builder** | typed Subject、選択Builder contract・actual implementation／digest、Toolchain、実Child argv／Attempt | Selected B／Actual A、構文上`go-command`でも実Builder未呼出し、別AttemptのReceipt混入 |
+| **N2：Frontendと埋込Asset** | Node 24、esbuildの実入力集合・lock、生成JSのbyte digest、Go embedに**実際に入った同じJS** | JSが古い、Generator Source以外を手修正、embedだけ別HEAD、依存が欠けたのに出力成功扱い |
+| **N3：Stage1によるStage2 Build** | Stage1 TEIの実Image digest・Process identityがStage2のBuild Requestを起動し、Go/Wails/nested moduleを指定し実Stage2 Artifact digestが得られる | 外部Go Launcherが二回buildしただけ、同byteでもStage1はStage2をInvokeしていない、Plan外Step |
+| **N4：独立Consumer** | Stage2のWindows exeを起動し、実WebView2→Wails IPC→Source-backed Inspectorを受領した証拠 | ブラウザー/Serverだけ、別HEADのWindows結果、Source/Target/Outputの同一性なし |
+
+**最小実装単位**はN1の**非Plugin Build Subject受入・選択Builderの実一致**とする。ただし生成変換が入力のMeaning/Ruleに依存している実例を一件残し、単なる静的AssetコピーをStudioセルフビルド率へ計上しない。Stage1を使ったStage2の実再入はN3として独立し、N0/N2の単体成功や生成Goの実行結果から推測しない。
+
+### 24.4 既存テストへ渡す契約上の負例
+
+| Case | 一因子の改変 | 必ず検出すること |
+| --- | --- | --- |
+| **NPS-01** | Subjectが`command`だが受け手がPlugin BuildPlanのみ対応 | `unsupported`。Plugin用Identity/DefinitionFingerprintへの黙った書換え0 |
+| **NPS-02** | `plugin` Subject＋`go-command` Recipe＋`go-package`定義 | 論理SubjectとPlan実体の区別を保持。Plugin成果物としての偽資格を拒否 |
+| **NPS-03** | 正式Loader未受理の`*.tei.md`がBuild Sourceに混入 | Source候補とAccepted Build Inputを区別。Reader未束縛を成功扱いしない |
+| **NPS-04** | 同Source byte・別Builder版／別Execution Attempt | Artifactの再利用とBuilder資格／意味受理を独立照合 |
+| **NPS-05** | Node/esbuild Bundleは一致するがEmbed元は古い | Stage2 JS実消費と生成JSのbyte不一致を拒否 |
+| **NPS-06** | Stage2を外部Launcherが実行し、Stage1は未起動 | N3再入はFAIL。L1/L2の限定成果は残す |
+| **NPS-07** | Edge反転／Rule条件改訂とMermaid配置変更 | 前二者は実Goの振る舞いに反映、配置だけでは意味不変。Reference結果を製品受理と混同しない |
+| **NPS-08** | 正式StudioのInspectorをPin A／Focus Bで確認 | 実WebView2の選択・Focus非干渉は別Consumer。CLI／Pinの限定PASSをStage2の資格に足さない |
+
+NPSは#2831/#4583/#1180/#2514への**受入候補**であり、独立Scenario正本を増やさない。最初の実赤試験は**NPS-01/02を現在のIntent→Plan境界で再現**すること。誤ってコマンドをPluginへ混ぜないための否定テストを置いてから、最小のtyped Subject接合を進める。
+
+### 24.5 横断議論を実装優先に収束する
+
+- **CLI先行**：`*.tei.md`のGraph/Ruleから限定Goを生成し別Processで独立Expectedと比較する既存Referenceを、正式Role／Build Source／実Builderへ接続する順序は#988/#2621/#2831に任せる。Studio GUI完成を入口の前提にしない。
+- **Plugin自身のセルフビルド**：Pluginの説明・依存文書・Trait・Sourceから生成器がどの工程を担ったかを測り、純手書きコードからTEI定義へ移る割合・定義の簡素化を継続評価する。ただし非Plugin StudioをPluginに見せかけて割合を水増ししない。
+- **PinとDesign Context**：#4597 Pinの現在性、§21〜23のCLIでの限定Required／Source出典照合は、Build時のSource選択を安全に説明する補助証拠とする。Pin状態やread-onlyの結果はBuilderの現在Authority、実行許可、Build完成を与えない。
+- **Desktopプロセス**：最初の製品実証は現行の同一Wails Process経路と既存Host Operationを基準にする。別子Backend/Updaterの採用は#4697/#4705等の独立比較とし、N1〜N4の新Hard Gateにはしない。
+- **二つのP0**：非Plugin Studio Stage1→Stage2 Windows WebView2と、通常製品`tei`→実Provider→独立Consumer実Readを並行して進める。Context/AI連携やPlugin Docはその前提条件にしない。
+
+**実装Ownerと現状**：#4583/#2831がBuild Subject／BuildExecution／Stage1再入、#1097/#1101等がBuilder／依存契約、#988/#2621が正式Source Reader、#4515がPin GUI、#3262がContext、#1180/#2514がExpected。今回は実コード／他チャットの論点を照合した設計・検収計画の更新であり、**非Plugin BuildPlan・新Stage1→Stage2実験・Windows実機・Ownerの意味受理は未実装／未検証**。正式な製品Hostや公開ABIをここで追加決定しない。
+
