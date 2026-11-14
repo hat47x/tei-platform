@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"unicode/utf16"
 	"os"
 	"path/filepath"
 	"strings"
@@ -20,16 +21,24 @@ func TestREADualEntryCapturedInputAndIdentityBoundaries(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Construct both framing variants explicitly. The repository fixture is
-	// not required to preserve the original producer\u0027s BOM byte-for-byte.
-	bom := []byte{0xef, 0xbb, 0xbf}
-	plain := bytes.TrimPrefix(raw, bom)
-	withBOMBytes := append(append([]byte(nil), bom...), plain...)
+	// REA 6.8.0's captured output is UTF-16LE with a BOM. Preserve the
+	// original raw bytes and derive a separate UTF-8 JSON input for intake.
+	if !bytes.HasPrefix(raw, []byte{0xff, 0xfe}) || len(raw)%2 != 0 {
+		t.Fatal("captured fixture is not the recorded UTF-16LE BOM delivery")
+	}
+	units := make([]uint16, 0, (len(raw)-2)/2)
+	for i := 2; i < len(raw); i += 2 {
+		units = append(units, uint16(raw[i])|uint16(raw[i+1])<<8)
+	}
+	utf8JSON := []byte(string(utf16.Decode(units)))
+	if !json.Valid(utf8JSON) {
+		t.Fatal("transcoded REA fixture is not a single valid JSON document")
+	}
 
 	dir := t.TempDir()
-	bomPath := filepath.Join(dir, "bom-analysis.json")
-	plainPath := filepath.Join(dir, "plain-analysis.json")
-	for path, data := range map[string][]byte{bomPath: withBOMBytes, plainPath: plain} {
+	originalPath := filepath.Join(dir, "original-utf16le.json")
+	utf8Path := filepath.Join(dir, "derived-utf8.json")
+	for path, data := range map[string][]byte{originalPath: raw, utf8Path: utf8JSON} {
 		if err := os.WriteFile(path, data, 0o600); err != nil {
 			t.Fatal(err)
 		}
@@ -96,48 +105,47 @@ func TestREADualEntryCapturedInputAndIdentityBoundaries(t *testing.T) {
 		return fmt.Sprintf("sha256:%x", sum)
 	}
 
-	// The semantic-graph selector accepts BOM-prefixed captured content.
-	exit, withBOM := external(bomPath, "")
-	if exit != 0 || !withBOM.OK || withBOM.Result == nil {
-		t.Fatalf("R2 refused captured bytes: exit=%d reply=%+v", exit, withBOM)
+	// The semantic-graph selector accepts the captured UTF-16LE delivery.
+	exit, original := external(originalPath, "")
+	if exit != 0 || !original.OK || original.Result == nil {
+		t.Fatalf("R2 refused captured UTF-16LE bytes: exit=%d error=%+v", exit, original.Error)
 	}
-	if withBOM.Result.Attempt.ReceivedDigest != digest(withBOMBytes) ||
-		withBOM.Result.Relation == nil ||
-		withBOM.Result.Relation.RelationID != semanticRelationID ||
-		withBOM.Result.Observation == nil ||
-		withBOM.Result.Observation.NodeID != semanticNodeID {
-		t.Fatalf("R2 lost its raw digest or semantic-graph selector: %+v", withBOM.Result)
+	if original.Result.Attempt.ReceivedDigest != digest(raw) ||
+		original.Result.Relation == nil ||
+		original.Result.Relation.RelationID != semanticRelationID ||
+		original.Result.Observation == nil ||
+		original.Result.Observation.NodeID != semanticNodeID {
+		t.Fatalf("R2 lost its raw digest or semantic-graph selector: %+v", original.Result)
 	}
 
-	// The intake currently requires a single BOM-free JSON envelope; it must
-	// reject the raw bytes rather than silently claim a compatible input.
-	exit, rejected := intake(bomPath)
+	// The triad intake currently requires UTF-8 JSON, not the raw UTF-16LE.
+	exit, rejected := intake(originalPath)
 	if exit != 2 || rejected.OK || rejected.Error == nil ||
 		rejected.Error.Code != "EVIDENCE_INVALID_JSON" {
-		t.Fatalf("intake unexpectedly accepted BOM bytes: exit=%d reply=%+v", exit, rejected)
+		t.Fatalf("intake unexpectedly accepted UTF-16LE bytes: exit=%d reply=%+v", exit, rejected)
 	}
 
-	// A BOM-free copy is a different raw delivery, despite the same producer
-	// Evidence identity. The two commands still inspect *different graphs*.
-	exit, withoutBOM := external(plainPath, "")
-	if exit != 0 || !withoutBOM.OK || withoutBOM.Result == nil {
-		t.Fatalf("R2 refused normalized bytes: exit=%d reply=%+v", exit, withoutBOM)
+	// Both Readers can inspect the explicit UTF-8 *copy*, but its raw digest
+	// differs from the original. The two Readers inspect different graphs.
+	exit, derived := external(utf8Path, "")
+	if exit != 0 || !derived.OK || derived.Result == nil {
+		t.Fatalf("R2 refused transcoded UTF-8 bytes: exit=%d error=%+v", exit, derived.Error)
 	}
-	if withoutBOM.Result.Attempt.ReceivedDigest != digest(plain) ||
-		withoutBOM.Result.Attempt.ReceivedDigest == withBOM.Result.Attempt.ReceivedDigest ||
-		withoutBOM.Result.Attempt.EvidenceID != withBOM.Result.Attempt.EvidenceID {
-		t.Fatalf("BOM normalization lost raw identity distinction: bom=%+v plain=%+v",
-			withBOM.Result.Attempt, withoutBOM.Result.Attempt)
+	if derived.Result.Attempt.ReceivedDigest != digest(utf8JSON) ||
+		derived.Result.Attempt.ReceivedDigest == original.Result.Attempt.ReceivedDigest ||
+		derived.Result.Attempt.EvidenceID != original.Result.Attempt.EvidenceID {
+		t.Fatalf("transcoding conflated raw identities: original=%+v derived=%+v",
+			original.Result.Attempt, derived.Result.Attempt)
 	}
-	exit, review := intake(plainPath)
+	exit, review := intake(utf8Path)
 	if exit != 0 || !review.OK || review.Error != nil {
-		t.Fatalf("intake refused BOM-free captured JSON: exit=%d reply=%+v", exit, review)
+		t.Fatalf("intake refused derived UTF-8 JSON: exit=%d reply=%+v", exit, review)
 	}
-	if review.Result.Attempt.EvidenceID != withBOM.Result.Attempt.EvidenceID ||
+	if review.Result.Attempt.EvidenceID != original.Result.Attempt.EvidenceID ||
 		review.Result.Attempt.Provider.Version != "1" ||
-		withBOM.Result.Attempt.Provider.Version != "1" {
+		original.Result.Attempt.Provider.Version != "1" {
 		t.Fatalf("producer Evidence or provider version drift: R2=%+v intake=%+v",
-			withBOM.Result.Attempt, review.Result.Attempt)
+			original.Result.Attempt, review.Result.Attempt)
 	}
 	if review.Result.AcceptedMeaning || review.Result.OwnerDecision != "pending" {
 		t.Fatalf("a read-only intake is not Owner acceptance: %+v", review.Result)
@@ -160,9 +168,8 @@ func TestREADualEntryCapturedInputAndIdentityBoundaries(t *testing.T) {
 		t.Fatal("the captured application graph produced no relation candidates")
 	}
 
-	// Pinning the pre-normalization raw digest must not authorize the modified
-	// bytes as if both CLI invocations consumed the same byte sequence.
-	exit, stale := external(plainPath, withBOM.Result.Attempt.ReceivedDigest)
+	// Pinning the original UTF-16LE raw digest cannot authorize UTF-8 bytes.
+	exit, stale := external(utf8Path, original.Result.Attempt.ReceivedDigest)
 	if exit != 1 || stale.OK || stale.Error == nil ||
 		stale.Error.Code != "EXTERNAL_CANDIDATE_STALE" {
 		t.Fatalf("changed raw digest was not refused: exit=%d reply=%+v", exit, stale)
