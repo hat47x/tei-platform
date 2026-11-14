@@ -718,6 +718,25 @@ tei external-candidates
 
 **並行案件との資格区別**：[Wails Server Method/Services Inventory Draft #4627](https://github.com/hat47x/tei-platform/pull/4627) HEAD b9cf5447は**5/5 Workflow successful**だが、実HTTP/WS認可を保証しない。[Desktop Builder Resolve＋Child起動前Pin Draft #4634](https://github.com/hat47x/tei-platform/pull/4634) HEAD 653d0d9aは**8/8 Workflow successful**だが、Stage1→Stage2実成果物やREA受領を保証しない。[標準データ様式 Draft #4619](https://github.com/hat47x/tei-platform/pull/4619)で検討する実Query入力・ProviderとRA-0/RA-1/RA-2は独立P0であり、REAの二Consumer完了を待たない。いずれもDraft・未merge。別HEADのPASSを合算してR3-C/Source Migration/Owner Meaningを完了扱いにしない。
 
+<!-- rea-r3b-process-witness-cross-lane-receipt-20261114 -->
+#### R3-B実Process Witnessと、Query/Builder/Registryに共通するConsumer証拠の切り分け（2026-11-14）
+
+**R3-B技術試験をさらに一段進める**：既存[Host Reader Draft #4637](https://github.com/hat47x/tei-platform/pull/4637)へ、実Captured REA6.8.0を用いるテスト専用の**別OS子Process**を起動し、その子が`LocalREAReader.Read`から実取得したEvidence ID／Raw Digest／Node ID／有向Relation ID／Host ReadAtをプロセスID付きの最小JSON受領票として親Testへ返す`local_rea_reader_process_test.go`を新設（新HEAD `f9e355d5ccdc96bf4a25ff939fca444a18de1942`）。同じ実子入口で、未登録Selector・任意Path文字列を装ったSelector・他Workspace・Evidence改変では非公開Evidence ID/Digest/Node/Source PathをError/Replyへ載せない負例を加えた。**この子Processはテストハーネスであり、製品Studio/Wails/MCPの独立Consumerでも認証済み配送でもない**。親Testの別Process起動とChild Receivedを実証できても、R3-C ExitにはCLIと実Product第二Consumerの独立Selected→Invoked→Received／Audience/Current Grantが別途必要。
+
+**exact HEAD評価に関する原則**：#4637の旧HEAD `170f9be5`は12/12 Workflow成功／Repository Healthで全GoテストPASS。しかしChild実Process試験の追加で新HEADへ変わったので**新HEADのCIは再評価待ち**。旧成功を新コードのPASSに移さない。#4625 CLIと#4630 Byte Operationの既存別HEAD成功も、新Childが同一Delivery chainを検証した事実にはならない。
+
+**他チャットから共通化できるのは合格数ではなく「証拠を渡す順序」**。Producer／Selector／実Input／実Invoker／実Result／Recipientの各段階を、対象の異なる案件でも分けて扱う。
+
+| 他レーンの実根拠 | 既に検証済みの限定Claim | REAにも必要で、まだ別途検証するもの |
+| --- | --- | --- |
+| **実DB Browse RA-2 [#4638](https://github.com/hat47x/tei-platform/pull/4638)** | 使い捨てPG16の参照用Readerで7ケース実行、Run #43553849861成功。3/2/1/0行、Source変更/重複JOIN、RLS/NULL/権限等を独立Go/DB Expectedで照合 | 通常`tei`実Operation・独立Native/Studio二Consumer受領は未証明。REAのEvidence ID一致も実Source現在性の代替にならない |
+| **Capability Input/Effect [merged #4636](https://github.com/hat47x/tei-platform/pull/4636)** | 不正Input/Effect宣言をAdapter/Provider実Call前に拒否する契約がmainへ統合された | REAについてはReader Selector/Source/Grant/Disclosureを別判定する。Input preflight合格を実Source・Current Grant・Meaning受理へ昇格させない |
+| **Build Resolve＋実Child Pin [#4634](https://github.com/hat47x/tei-platform/pull/4634)** | 最新HEAD `7d6a1238`で8/8 Workflow success。選択されたBuilder契約と実Child起動前digestを照合 | 同一Attemptの非Plugin生成Stage1→Stage2実WebViewと、そのConsumer受領は未達。選抜/バイト一致だけでは実Product配置資格にならない |
+| **Desktop H0/H1 [#4587](https://github.com/hat47x/tei-platform/pull/4587)** | HEAD `357345d7`のWindows生成版JobはN0→N2→N3と実WebView2成功 | 同じWorkflowの通常版はPowerShell OS probe 15秒timeoutで失敗。11/12成功を全件合格へ繰り上げず、非Plugin完全Self-buildとも混同しない |
+| **Registry配布 [#4640](https://github.com/hat47x/tei-platform/pull/4640)・Generator [#4641](https://github.com/hat47x/tei-platform/pull/4641)** | 外部Release Assetの実readback・Redirect/署名/Trustと、Builder成果物の実Consumer資格を設計Candidateとして明確化（両者docs-only Draft） | Release外部実Asset/Current Trust、Generator実Artifact consumerとも未実証。REA同様に「Digest一致≠取得元/公開可否/実受領」を分けるが、新共通Evidence Engineは作らない |
+
+**実装上の採用指針**：Product共有は既存Operation／Host Boundary／既存Receipt/Expectedの束縛規則に限る。REA Host Readerは`#4503`、Disclosureと匿名/他Principal二世界は`#2516/#3421`、Source/Workspace RevisionとOwner Meaningは`#1124`、独立Consumer/FailureのExpectedは`#2514`へ引き渡す。Current Grantも実OS/Network送出も未搭載のままR3-C/共有Web適格と認定しない。Desktop Self-build・実PG ReadのP0はREAの子Process試験でブロックしない。
+
 <!-- rea-wails-server-wasm-delivery-isolation-20261114 -->
 #### R3 Consumerの配置方式・配信隔離：Wails Server／Go WASM候補との整合（2026-11-14・設計のみ）
 
