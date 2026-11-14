@@ -864,3 +864,24 @@ StudioのMethod（#4570）、固定PinのUI接続（#4597/#4515）、Function→
 **Editorの実装上限も訂正**：本mainの`reference/tei-studio-editor/editor.ts`は`createReadOnlyTextEditor`であり、**現在のWorkbenchにDirty Bufferや保存可能な編集操作は存在しない**。§16.22〜23の「Pin A再読取はBに干渉しない」の現時点の実証対象はread-only `EditorSnapshot`のdocumentId/version/text/selection、Graph、通常Inspect応答とDOM/ARIAである。Dirty Buffer・Undo/Save保護は[Draft #4538](https://github.com/hat47x/tei-platform/pull/4538)等の編集縦断を実Studioに接続した**後の受入条件**であり、現行機能を装わない。
 
 **開発順**：#4583 B1-B→B2→B3は最優先のまま、#4515 Workbench Pin UI、#4613三視点入口、#2586実Provider Readは並行。#4557の負例を理由にBuildIntentへ新Validator/Gateを追加しない。新Reader、共通Selection Store、Policy、Host、Engineを作らない。本追補は既存Source/Go Test/CI静的照合と文書修正のみ。新Go/Node/Windows/GUI/Grant/Owner意味受理は**NOT RUN**。
+
+### 16.25 2026-11-14：実N0/N2/N3を非PluginのBuild Executionへ対応付ける最小の型境界
+
+**実SourceでのFit**（main `e051895b03bfbd7b4a08d30aa3193465b9ab1bd0`）：製品`internal/buildintent/intent.go::BuildIntent.Validate`は現在`subject.kind=plugin`だけを受理する。`go-command` Recipeと`go-package`定義Sourceがあっても非Plugin Desktop主体を自動受理しない。`internal/buildintent/resolve.go`は`plugin.BuildPlan`（Plugin identity付き）を導出する。一方、`tools/reference-build-execution-binding/main.go`の`BuildExecutionPlan{Sources,Builder,Recipe,OutputContract,Target,Dependencies}`、`ArtifactSet{Members[Role,Format,Digest,Locator]}`、`BuildExecutionResult{ExecutionPlanFingerprint,ArtifactSetFingerprint}`は**Plugin identityと独立**している。ただし`package main`のReferenceであり、正式Product Contract／実Invokerではない。Desktop exeを偽Pluginにせず、この既存形のどの部分を製品型へ引き上げるかだけを#1080/#1097/#2831/#4583のOwnerが選ぶ。
+
+| 実工程とOutput Role（候補、正式ID未採用） | 既存モデルへ対応できる観測 | 残るGap |
+| --- | --- | --- |
+| N0→N2：生成Inspector TS `inspector.reader.source` | N0実Childと生成TS byteを`ArtifactMember`として固定。N2の`BuildExecutionPlan.Sources`と実metafile選択inputをdigest比較 | primitive `tei self-build -child`は正式Resolverが選んだN0 Builderではない。esbuildのread-time全閉包は不明 |
+| N2→N3：Workbench JS `workbench.bundle` | N2 Producer Role/digest/lengthとN3のGo `EmbedFiles`実選択、Go Build前後byteを同一Windows Attemptで比較（#4587 H1） | N2実Builderが製品BuildIntentで起動されず、Node/Go Toolchain外部依存は閉じていない |
+| N3→exe：Windows Wails実行ファイル（Roleは今後定義） | `BuildExecutionPlan`のBuilder/Target/RecipeとExe `ArtifactSet`／実Processを対応付け可能 | 現`plugin.BuildPlan`に非Plugin Desktop Subjectはなく、Stage0 Workflow Builderは生成Stage1ではない |
+| 生成Stage1→Stage2→B3 | Stage1の実image/argvとStage2 exe digest、当該Stage2自身が配信するJS/Inspectorを別Receiptで照合 | Stage2 Artifact存在だけではB2/B3は成立せず、CI Launcherによる二重BuildもStage1再入でない |
+
+**型の実際の不足**：Reference `tools/reference-build-execution-binding/graph.go::BuildGraphInputBinding`が検証するInput Kindは現在`builder`と`dependency`の2種類だけ。N0 TS Output Member→N2 Source InputやN2 JS Output Member→N3 Embed Inputを表す**source-member role対応の直接Edgeは存在しない**。`BuildExecutionPlan.Sources`に正しいbyteを記録できても、それだけで「Graph上の工程間受渡しを検証済み」とは呼べない。実Version付き`BuildDependency`として適切に扱える場合のみ既存dependency edgeのFitを試し、無理な場合は**unsupportedな辺を図と受入票へ明示**する。実需要が示されるまで新DSL/Runner/共通Graph変換を設けない。
+
+**Result identityとAttempt Evidenceも分離**：Reference `BuildExecutionResult`は同じPlan／ArtifactSetなら異なる実行でも同一fingerprintとなる。これをCI runや実Builder Invocationを識別するAttempt IDとして転用しない。外部Observationには実Invoker image/argv、Source/選択member pre/post digest、OS/Toolchain、Actual Artifact、WebView2 Consumer、時点とrun IDを別に保持する。
+
+**2026-11-14 exact-head状況**：[統合Builder Draft #4634](https://github.com/hat47x/tei-platform/pull/4634) head `7d6a1238`は**11 checks completed/success**。宣言→Resolver整合・実Child起動前pinはPlugin主体に限定。[Desktop H0/H1 Draft #4587](https://github.com/hat47x/tei-platform/pull/4587) head `357345d7`は[Windows run #43554075677](https://github.com/hat47x/tei-platform/actions/runs/43554075677)で生成Desktop Job成功・通常Desktop Job**失敗**。後者は`desktop_webview_smoke.py`のOSVersion取得外部PowerShellが15秒Timeoutし、UI試験未到達。ログの原因位置と安全な取得経路への変更候補を[PR #4587のOwnerへ報告](https://github.com/hat47x/tei-platform/pull/4587#issuecomment-6871564183)済み。通常Jobは製品欠陥確定でも単なる環境問題確定でもなく、修正後の同一HEADで生成/通常両Jobを再検収する。
+
+**P0の次の一辺**：`workbench.bundle`一つから、正式宣言→実N2 Invoker→出力ArtifactSet→N3実Embed Readerの同一Attempt照合を既存Product実行契約に接続し、非Plugin適格化に必要なAdapterだけを選ぶ。Reference `BuildGraph`丸ごとのProduct移植・新Host/Runner・Plugin Subject偽装はしない。その後B2（生成Stage1自身がStage2 Wailsを構築）、B3（そのStage2の実WebView2）を独立検収。Pin UI、三視点、実Provider Read、Web/IPC/WASMは並行。
+
+**本節は設計のみ**：既存Source/PR/CI/失敗ログの照合とOwnerへの引渡しは実施。新しい非Plugin Product Builder、Graph Edge、新Windows実行、Stage2、Owner受理は**NOT RUN／未証明**。
