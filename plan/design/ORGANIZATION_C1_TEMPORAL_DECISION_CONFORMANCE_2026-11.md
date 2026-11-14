@@ -628,15 +628,20 @@ main `internal/database/persistence/model.go` の `Mapping.RelationStorage []Rel
 
 [コードDraft #4633](https://github.com/hat47x/tei-platform/pull/4633) に第7のGoテスト `TestOrgC1CandidatePersonRelationStorageLoadsFromTEIDSL` を追加した。実 `reference/org-staged-axis` Workspace全体を**テストの一時ディレクトリ**へ複製し、複製内に限ってPersonの型付きRelationと `databases/org-store/relation-storage/person-membership.tei` を追加する。元のリポジトリのOrg Semantic/Persistence/Query、既存Expected、正式Source Revisionは変更しない。
 
-候補は実際のTEI DSLとして、次の関係と物理保存を別のSourceで宣言する。
+候補は実際のTEI DSLとして、次の**二つの別Source**に宣言する。以下はいずれもテスト中の一時コピーであり、正式な採用済みSourceには追加しない。
+
+一時的に編集するSemantic Sourceの該当部分：
 
 ```tei
-# 一時的な候補：本体の採用済みSourceには追加しない
 data Person {
     attribute personId type organization.person_id
     relation membershipsCandidate to organization.membership many
 }
+```
 
+新しく配置するRelation Storageの一時Source：
+
+```tei
 relation-storage org_store.membership {
     relation organization.person.memberships_candidate
     component organization.person.person_id -> person_support_id storage varchar optional
