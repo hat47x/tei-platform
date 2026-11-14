@@ -1821,7 +1821,7 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 
 
 <!-- org-go-witness-qualification-20261115 -->
-**2026-11-15 §30の初回コード実験へ着手**：[Go Test Draft #4737](https://github.com/hat47x/tei-platform/pull/4737)で既存`internal/operations`に2つのトップレベル回帰（実Workspace LoaderのRoleAssignment/Responsibility RelationKey、合成D1/R1の0/1/複数・partial・Read Cohort・Person Occurrenceの10独立リテラルExpected）を追加。[補遺§30.5](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)へ実ファイル/受入上限を記録した。実装は**テスト限定の正の証拠/全件性Probe**で、正式C1承認Rule/Reader/実PG/Function Context/Host GrantやTEI-native Go生成ではない。CIは新HEADの結果だけを根拠にする。
+**2026-11-15 §30の初回コード実験へ着手**：[Go Test Draft #4737](https://github.com/hat47x/tei-platform/pull/4737)で既存`internal/operations`に実Workspace LoaderのRoleAssignment/Responsibility RelationKey、合成D1/R1の0/1/複数・partial・Read Cohort・Person Occurrenceの10独立リテラルExpectedを追加。さらに合成BrowseQueryのRoleAssignment行を**実`functioncontext.From`へ通して、Contextの各値とNULLをテスト用Consumerで検査**する。[補遺§30.5](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)へ実ファイル/受入上限を記録した。実装は**テスト限定の正の証拠/全件性Probeと実Function Context投影**であり、正式C1承認Rule/Reader/実PG Provider・二Relationの実Context Join・Host GrantやTEI-native Go生成ではない。初期HEAD `99341c5d`の[Repository Health #43639067283](https://github.com/hat47x/tei-platform/actions/runs/43639067283)は、追加Goファイルと当時のmainのgofmt不一致、別領域のQuery/定数Coverage試験で**失敗**。追加ファイルの整形と最新mainへの追随後も、CIは必ず新HEADで再判定する。
 
 **次の差分**：#4490 BEH-01/02の実二時点/非出力依存・Read cohort/Completenessを先行させ、今回のGo Probeの判別力を実Query→Function Context→実Consumerへ接続する。Graph/Rule→Go分岐のmain統合 #4729、同一Generated BinaryのCaller入力 #4733は有効な別Reference成果だが、組織の二Relation Join/Case Ruleを生成済みとはしない。P0 #2586/#2831、Expected Owner #1180/#2514、Meaning Owner #2386の優先順位と境界を維持する。
 
