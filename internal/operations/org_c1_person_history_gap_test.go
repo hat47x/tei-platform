@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"tei/internal/database/persistence"
 	"tei/internal/semantic"
 	"tei/internal/workspace"
 )
@@ -86,6 +87,11 @@ func TestOrgC1CurrentPersistenceCannotCoStoreTwoVersionsByMembershipPK(t *testin
 				t.Fatal("Person column now exists; update the Product Read qualification test")
 			}
 		}
+		// RelationStorage can carry database-owned support columns without a
+		// Person attribute on Membership. Do not assume only Columns matter.
+		if len(mapping.RelationStorage) != 0 {
+			t.Fatalf("relation storage is now present; qualify its source relation and physical binding: %+v", mapping.RelationStorage)
+		}
 	}
 	if !found {
 		t.Fatal("actual Membership persistence mapping was not loaded")
@@ -93,6 +99,52 @@ func TestOrgC1CurrentPersistenceCannotCoStoreTwoVersionsByMembershipPK(t *testin
 	// With membership_id alone as PK, A2-old and A2-new from r7 cannot
 	// simultaneously occupy distinct rows in this one physical table.
 	t.Log("GAP CONFIRMED: Membership is stored under an occurrence-only physical PK")
+}
+
+// This is an isolated IR capability check, not an accepted Person-Membership
+// business link, DSL parsing proof, actual SQL mapping, or Provider call.
+// A typed Relation may use a database-owned support column without introducing
+// organization.membership.person_id as a Semantic attribute.
+func TestOrgC1RelationStorageIRCanRepresentSupportColumnWithoutPersonAttribute(t *testing.T) {
+	candidate := persistence.Mapping{
+		ID:           "org_store.membership_person_candidate",
+		Database:     "org_store",
+		SemanticData: "organization.membership",
+		Table:        "public.org_memberships_candidate",
+		Columns: []persistence.ColumnMapping{
+			{Attribute: "organization.membership.membership_id", Column: "membership_id"},
+		},
+		RelationStorage: []persistence.RelationStorageMapping{
+			{
+				Relation: "organization.person.memberships_candidate",
+				Components: []persistence.RelationStorageComponentMapping{
+					{
+						SourceAttribute: "organization.person.person_id",
+						Column:          "person_support_id",
+					},
+				},
+			},
+		},
+	}
+	raw, err := json.Marshal(candidate)
+	if err != nil {
+		t.Fatalf("marshal candidate relation storage: %v", err)
+	}
+	var restored persistence.Mapping
+	if err := json.Unmarshal(raw, &restored); err != nil {
+		t.Fatalf("unmarshal candidate relation storage: %v", err)
+	}
+	if len(restored.Columns) != 1 ||
+		restored.Columns[0].Attribute != "organization.membership.membership_id" {
+		t.Fatalf("candidate must not add an implicit Membership Person attribute: %+v", restored.Columns)
+	}
+	if len(restored.RelationStorage) != 1 ||
+		restored.RelationStorage[0].Relation != "organization.person.memberships_candidate" ||
+		len(restored.RelationStorage[0].Components) != 1 ||
+		restored.RelationStorage[0].Components[0].SourceAttribute != "organization.person.person_id" ||
+		restored.RelationStorage[0].Components[0].Column != "person_support_id" {
+		t.Fatalf("candidate relation support identity was not preserved: %+v", restored.RelationStorage)
+	}
 }
 
 func TestOrgC1CurrentAsOfQueryDoesNotYieldPersonIdentity(t *testing.T) {
