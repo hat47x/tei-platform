@@ -858,3 +858,18 @@ ACD-02〜04については、**ParseできることをもってValidatorも受�
 重要なのは、**AのParse成功をBのWorkspace意味検証済みとしない**こと。新Goテストは`validation.Validate`や通常`workspace.Load`のSource位置付き診断をまだ実行しない。Bの最初の着手は、ACD-02/03が既存Workspace Validatorでどの診断を出すかの実測と、修理後のWorkspace正例である。Dの公開Entry・実Provider/Host Grant/Consumerも未接続。Staticなpreflightは、他チャットで整理した**Preview→Resolve→Admit→Commit→Observe**のうち実行前の拒否にしか相当せず、実Dispatch/Commit/外部Outcome・現在Disclosureを証明しない。
 
 **状態**：PR #4654のGoテストSource追加を確認。CIの結果・main統合・B/D層の実証は本節更新時点で未確認。実行結果はPRのexact HEADとActions IDを確認してからこの記述を更新する。
+
+### 20.5 Workspace入力診断の実装候補と、Consumer受領までの差分（2026-11-14）
+
+[DSL Source→Runtime境界のDraft #4654](https://github.com/hat47x/tei-platform/pull/4654)は、実SourceをParseしたCapabilityで同名Input・混在Result・重複OutcomeをAdapter前に拒否するGoテストを追加した。ただし、HEAD `a7a9aec8`のActionsは**7/8成功・Health失敗**で、実ログの原因は`internal/syntax/capability_authoring_preflight_boundary_test.go`の`gofmt`不一致。Workspace Validationを試験したものではない。
+
+[Workspace入力診断のDraft #4655](https://github.com/hat47x/tei-platform/pull/4655)は、既存`validation.Validate`に同名Capability Input／名前欠落の診断を接続し、実Source→Parser→Canonical World→Validator→実Adapter呼出し前拒否を1つの固定Sourceから対照した。HEAD `3261d172`のActionsは**7/8成功・Health失敗**。実ログに`internal/validation/capability_input_parity_test.go`の`gofmt`不一致と、#4653で追加した[Consumer横断受入設計](CONSUMER_QUALIFIED_CROSS_LANE_ACCEPTANCE_2026-11-14.md)を`plan/design/README.md`が索引化していない問題が出た。**いずれもmainへの実コード統合・Go全体Health合格には未達**。
+
+| 検収層 | 独立に必要な証拠 | Owner／現在の状態 |
+| --- | --- | --- |
+| **A：Source** | 実Parserの字句位置と受理・拒否。未知Effectは原Source位置から拒否、同名InputはParseできても意味受理へ進まない | #4359／#4654（Draft、整形修正とHealth再試験が必要） |
+| **B：Workspace** | Source由来のCapability Subjectと既存Validation Diagnostic。名前重複の診断を修正後正例と比較。Source位置がなければ座標を捏造しない | #4359／#4655（Draft、整形と計画索引の修正後、同一HEADでGo Health再試験） |
+| **C：実行前** | 無効なCanonicalのAdapter call=0、修正後call=1。ただしInput実値Type/NULLと現在Grantは別 | #4495（#4629/#4636の限定実装はmain） |
+| **D：製品EntryとConsumer** | Ownerが受理し公開したEntry、Host-selected actual Provider/Artifact、Current Grant、通常`tei` CLI／別Consumerの実Result受領とDisclosure | #4495/#3422、[Consumer横断受入設計](CONSUMER_QUALIFIED_CROSS_LANE_ACCEPTANCE_2026-11-14.md)；**NOT RUN** |
+
+**実装引渡し**：まず索引と2つの`gofmt`失敗を修正し、各Go PRのexact HEADでRepository Healthを再実行する。A/B/Cを同一Sourceで追う試験が成功しても、Dを自動PASSにしない。#4653のConsumer設計は**Delivery/Acceptanceの判定を横断して読むための設計**であり、新しいAuthority、Meaning Owner、Runner、Conformance採否の正本ではない。次に公開EntryとHost-selected実Go Providerを結び、通常製品`tei` CLIで結果を受領する不足辺を実装する。
