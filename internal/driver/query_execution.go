@@ -100,6 +100,13 @@ func (r Resolver) ExecuteBrowseQuery(
 // Other semantic types stay unsupported until their own type-specific contract
 // has an independently verified runtime binding. No parameter value is logged.
 func validateBrowseQueryParameters(q query.EmbeddedSQL, parameters map[string]any) error {
+	// The unqualified legacy synthetic Browse route remains compatible with
+	// historical Source fixtures. The actual Environment-bound Provider path
+	// rejects undeclared input values separately; only a declared Query gets
+	// typed-input qualification here.
+	if len(q.Inputs) == 0 {
+		return nil
+	}
 	declared := make(map[string]core.CanonicalID, len(q.Inputs))
 	for _, in := range q.Inputs {
 		name := string(in.Name)
