@@ -1,8 +1,8 @@
 package buildintent
 
 import (
-    "strings"
-    "testing"
+	"strings"
+	"testing"
 )
 
 // The non-Plugin Studio Build Subject is NOT yet supported. This executable
@@ -11,7 +11,7 @@ import (
 // Replace this assertion with acceptance + a Stage1->Stage2 integration test
 // only when the product owner has approved that complete binding.
 func TestNonPluginCommandBuildIntentRequiresTypedSubjectPlan(t *testing.T) {
-    const command = `{
+	const command = `{
         "formatVersion": 1,
         "subject": {
             "kind": "command",
@@ -34,9 +34,9 @@ func TestNonPluginCommandBuildIntentRequiresTypedSubjectPlan(t *testing.T) {
         },
         "outputKind": "runtime-artifact",
         "target": "host/windows/amd64"
-    }`
-    if _, err := ParseIntent([]byte(command)); err == nil ||
-        !strings.Contains(err.Error(), `subject kind "command" is not supported`) {
-        t.Fatalf("non-Plugin command must not silently pass through the Plugin-only plan: %v", err)
-    }
+	}`
+	if _, err := ParseIntent([]byte(command)); err == nil ||
+		!strings.Contains(err.Error(), `subject kind "command" is not supported`) {
+		t.Fatalf("non-Plugin command must not silently pass through the Plugin-only plan: %v", err)
+	}
 }
