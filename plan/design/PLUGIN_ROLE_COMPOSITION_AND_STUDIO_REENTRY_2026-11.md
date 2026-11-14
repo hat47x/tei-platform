@@ -1191,9 +1191,9 @@ CLI／Studio／Harnessから返される後着応答は、**現在の選択対�
 
 [PDC-0 #4701](https://github.com/hat47x/tei-platform/issues/4701)の合成A/Bデータに対して、[reference/plugin-doc-reference/](../../reference/plugin-doc-reference/README.md)に**Fixture監査だけを行うGoテスト**を追加した。新しいPlugin Reader/Resolver/文書Registry/認可エンジンではなく、既存Graph Readerと固定元Sourceを再利用する。
 
-`TestCandidateFixtureLinksToRealGraphAndManualBytes`は、(1)候補JSONが`proposal-only`であり、A/B/C直接依存・契約/公開/再公開・Case IDが整合していること、(2)`reference/tei-md-graph-reader.ParseCandidate`に元`baseline.tei.md` byteを渡したときに同ラベルの二Node、同端点の二Relationの意味IDとbyte spanが候補と一致すること、(3)公開・非公開Manualの実ファイルが別で、公開Manualが非公開本文を複製していないことを調べる。
+`TestCandidateFixtureLinksToRealGraphAndManualBytes`は、(1)候補JSONが`proposal-only`であり、A/B/C直接依存・契約/公開/再公開・Case IDが整合していること、(2)`reference/tei-md-graph-reader.ParseCandidate`に元`baseline.tei.md` byteを渡したときに同ラベルの二Node、同端点の二Relationの意味IDとbyte spanが候補と一致すること、(3)公開・非公開Manualの実ファイルが別で、元Graph・両ManualのSHA-256が候補の固定値と一致し、公開Manualが非公開本文を複製していないことを調べる。
 
-`TestCandidateFixtureMutationsAreRejected`は、Aの版、Bの依存、候補Lock、再公開、非公開指定、Source参照の候補資格、Path traversal、Relation ID合流、Roleの無断受理、非公開Metadataの返却Expected、ケース欠落、実製品機能の無断「合格」主張について**12種の合成改変**を与え、候補Fixtureの整合性監査が失敗を検出するか確認する。JSON上の`permission-denied`という期待結果は、実ProductのDisclosure/Authorization拒否を起動した結果ではない。
+`TestCandidateFixtureMutationsAreRejected`は、Aの版、Bの依存、候補Lock、再公開、非公開指定、Source参照の候補資格、固定Source digest欠落、Path traversal、Relation ID合流、Roleの無断受理、非公開Metadataの返却Expected、ケース欠落、実製品機能の無断「合格」主張について**13種の合成改変**を与え、候補Fixtureの整合性監査が失敗を検出するか確認する。JSON上の`permission-denied`という期待結果は、実ProductのDisclosure/Authorization拒否を起動した結果ではない。
 
 実行コマンドは`go test ./reference/plugin-doc-reference -count=1`。既存のGraph生成Reference（`go test ./reference/tei-md-graph-reader`）、既存Inventory CLIテスト（`TestPluginInventoryEnvelopeAndModes`）とは**別の検査**である。成果を記録する際は実Commit、Go Toolchain/OS、テスト実行のOutputとScopeをそれぞれ保存し、実行していない検査をPASSにしない。
 
