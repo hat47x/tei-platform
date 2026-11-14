@@ -873,3 +873,91 @@ ACD-02〜04については、**ParseできることをもってValidatorも受�
 | **D：製品EntryとConsumer** | Ownerが受理し公開したEntry、Host-selected actual Provider/Artifact、Current Grant、通常`tei` CLI／別Consumerの実Result受領とDisclosure | #4495/#3422、[Consumer横断受入設計](CONSUMER_QUALIFIED_CROSS_LANE_ACCEPTANCE_2026-11-14.md)；**NOT RUN** |
 
 **実装引渡し**：まず索引と2つの`gofmt`失敗を修正し、各Go PRのexact HEADでRepository Healthを再実行する。A/B/Cを同一Sourceで追う試験が成功しても、Dを自動PASSにしない。#4653のConsumer設計は**Delivery/Acceptanceの判定を横断して読むための設計**であり、新しいAuthority、Meaning Owner、Runner、Conformance採否の正本ではない。次に公開EntryとHost-selected実Go Providerを結び、通常製品`tei` CLIで結果を受領する不足辺を実装する。
+
+<!-- tei-scriptlaunch-crosslane-binding-20261114 -->
+## 21. 起動時のBindingと利用者への結果到達を一つの契約として検証する（2026-11-14 横断統合）
+
+### 21.1 今回確定する設計上の整理
+
+スクリプトを起動するとは、単にSourceやFunction名を指定することではない。受理された業務Functionを公開Entryへ結び、そのEntryを起動契機、対象、実行環境、現在の権限、結果の受領先に適合させることである。
+
+この関係は、自己記述DSL、標準データ構造、Target Generator、横断Plugin、Studio、AI Harnessに共通する。ただし**新たな万能Invocation Envelope、Script Runner、Scheduler、認可エンジン、状態保存テーブルを作る根拠にはしない**。既存Application API（ADR-0048）、Capability/Provider、Composition/Lock、Build、実Host、Effect Ownerの契約を接合する。
+
+以下の三つの役割は混ぜない。
+
+| 役割 | 何を定義するか | それだけでは保証しないこと |
+| --- | --- | --- |
+| Function / Accepted Meaning | 入出力の意味、必要なData Context、業務規則、許容するEffect、Owner | 公開Entry・実行場所・現在の実行許可 |
+| Entry / Trigger Binding | 何を誰に公開し、どの契機をどの入力へ写すか。Source/意味/契約の対象版 | 実Hostが受け付けたこと、実Provider呼出し、Commit |
+| Execution Binding / Result Projection | 対象Targetで選択されたProvider/Artifact、現在のHost条件、結果の返却・開示方法 | 処理の意味の第二正本、他Targetでの自動的な適合 |
+
+EntryはFunctionの一覧をそのまま公開したものではない。Table lifecycle hook、内部Script、AI候補Macro、未受理のGraph Patchは、参照可能であっても公開Entryではない。Script/DSLの糖衣構文、GraphのLayout、生成されたGo関数名から業務上の公開範囲を逆算しない。
+
+### 21.2 起動時に固定するもの、開始直前に再評価するもの
+
+Prepared Invocationでは、少なくともEntryと契約の版、Qualified Subject、実行対象と版、入力値と欠損状態、Source/意味の参照、Trigger occurrence（該当時）、Operation identity、期限と業務期間、選択Target・Provider/Artifactへの必要な参照を照合する。正確な保存形は既存のTyped OperationとTarget Adapterを先に棚卸しして決める。
+
+一方、実Hostが確認したPrincipal、現在のScope/Grant、実ロード済みArtifactのバイト列、Resource admission、Disclosure policyを、外部のactor/role/scope文字列、Sourceの宣言、生成AIの提案から作り出してはならない。
+
+| 判断時点 | 確認すること | 失敗時の扱い |
+| --- | --- | --- |
+| Authoring | Parserの構文位置、Workspace参照、意味型、Input/Result/Effect宣言 | A/B層の診断。補完で有効な公開Entryにしない |
+| Prepare | Accepted MeaningとEntry、Contract/Source/Target revision、必要Inputの形、選択Composition | stale、unresolved、unsupportedを区別。別名・最新バージョンへの無断再束縛をしない |
+| Admit | Hostの現在Grant、対象の現在性、Provider/Artifact実在、Deadline、必要な入力閉包 | Provider call 0で拒否または明示Policyに従う保留。Ready表示は権限ではない |
+| Invoke / Commit | Hostが実選択したProviderを呼ぶ。書込み直前の資格とEffect fenceは既存Ownerが検査 | 選択B・実呼出AならResult一致でもFAIL。ACK不明はEffect unknown |
+| Observe / Deliver | 実Result、DB/外部Receipt、独立再読取、応答、開示、外部Consumerの受領 | 取得・表示・通知の部分成功をBusiness Verifiedへ昇格しない |
+
+Source→Workspace→Runtime preflight→製品Entry/Host/Providerという§20のA/B/C/D層は維持する。これはProcess LifecycleのBootstrap/Readyとは別の軸であり、D層はA/B/Cの成功だけでは合格にならない。
+
+### 21.3 起動方法と実行場所は独立した選択軸
+
+Manual、UI、CLI、API/MCP、AI Harness、Schedule、Event、Data Hookは**起動の契機**である。一方、one-shot、既存Hostのevent-serving、外部へのdelegated executionは**処理の配置・受付方法**である。両者を一対一の種類として定義しない。CLIから既存Remote Hostへ委譲する場合も、Timerがone-shot Jobを起動する場合もある。
+
+Host/TargetごとのFitでは、型付きInput（missing／明示NULL／unfetchedを含む）、Result/Outcome、期限、対象版、現在のGrant、取消、再送、必要なEffect/Receipt/Disclosureの表現可否を、必須と任意に分ける。必要能力を運べなければunsupported / not-representableとし、引数の省略、別Providerや別Hostへの黙ったfallback、意味を変える同期化・非同期化をしない。
+
+DSLが自己記述されても、このTarget適合とRuntime実能力は別の検収である。Goのmain、Wails IPC、Java/.NET Host固有の構文やScheduler設定は、業務専門家向けDSLの必須記述へ露出させず、選択済みTarget Generator／Host Adapterで実現する。Graph/Markdownは意味Role付きの標準データ構造からの用途別Projectionとする。
+
+### 21.4 時間、入力の完備性、再開の同一性
+
+予定された発火、実配送、起動入場、業務上の基準日時、データが揃った時点、Commit、結果を閲覧した時点は異なる。同じUTCでも組織の有効期間、営業日締め、Time Zone/DST、RLSやAudienceが異なれば、許される処理は変わる。
+
+ScheduleやEventの発火だけで入力集合の完備性を確定しない。必要Partition/Watermark、Snapshot、Readerの取得範囲、未取得／権限制限／部分取得は、対象Functionの契約とData Ownerの独立根拠で評価する。Closure不明なら明示Trigger Policyに従って保留・再検査・拒否を選び、空集合や0行を「全件存在しない」と扱わない。
+
+再開も同一ではない。旧Snapshotに対する同一Runの継続、訂正差分の新Run、既公開結果の再確定を分ける。RunKeyやCheckpointの存在だけで、外部Effectの再実行資格を得られるわけではない。Commit後のACK喪失時は、既存Provider/DB Receiptや独立Readで同一Operationを照合し、証明できなければ再送を停止する。
+
+### 21.5 ResultとConsumer受領を分離する
+
+結果は一つの成功フラグにまとめない。少なくとも transport/起動の受付、実Attempt、業務上のOutcome、永続的Effect、応答や成果物の到達、現在のDisclosureを別のClaimとして検収する。OS exit 0、HTTP 200/202、Job ticket、画面への描画、外部Toolの呼出し完了は、それぞれ別段階の事実である。
+
+特にB2Cでは、Guest／本人／運用者／分析用途で同じFunctionやQueryを再利用しても、Row/Columnの開示、Cache、対象の版、本人性は共通にしない。AI Harnessへの結果送出では、Toolの完全受領、Source固定、用途別の開示、実Hostの権限を確認し、Raw Secretや未開示行をEvidenceへ転記しない。Studioは固定Selection／版／未保存Bufferを持ち、非同期の旧応答が現行対象の結果として表示されることを拒否する。
+
+SHOやSUIの図・文書、StudioのLifecycle図、外部Reportは同じOperation/SourceへのProjectionを持てるが、表示用の結合やAIによる意味候補がDB更新対象、公開Entry、Grantを決定してはならない。
+
+### 21.6 既存Scenarioへ渡す一因子負例
+
+ここに新しいScenario正本を設けず、#4495 EL、#4497 TR、#4198 R、#2514の独立Expected、およびConsumer横断設計のCLケースへ次の変形を引き渡す。
+
+| 変形 | 独立に観測する不合格条件 | Owner |
+| --- | --- | --- |
+| pure FunctionのAPI/CLI同値 | 値は600で一致しても、選択Provider Bに対して実Aを呼ぶ／実CLIはReferenceだけを返す | #4495、#3422 |
+| Source/言語/Operatorの版変更 | Source A→B→AやPlugin改版の後に旧Entry/Artifact/Grantを現在資格として使用 | #988、#943、#1251、#4495 |
+| ReadyとEntryの違い | Wails/Web HostがReadyでも、非公開Functionや失効Grantから実Providerへ到達 | #4495、#1824 |
+| TriggerとInput Closureの違い | 定時発火は成立するが必要Partitionが未取得なのに業務結果を確定 | #4497、#1130、#2586 |
+| 同じOperationの再送 | Commit直後ACK喪失→プロセス再起動→旧Checkpointから二重更新 | #1174、#1129、#4411 |
+| 同じRowset・異Audience | 会員Aに公開したデータまたはCacheを会員Bへそのまま開示 | #3509、#2586 |
+| AI/Studioの旧応答 | 編集Buffer・Source・Selectionの版が変わった後、過去の結果を現在の検証成功として表示 | #1124、#3422 |
+| Buildと実Consumerの差 | Stage1が新Artifactを生成しても、Stage2は旧Bundleや別Providerを実使用 | #4583、#2831、#1251 |
+
+各ケースは対象Source/Subject/Meaning・実Provider・実Loaded bytes・入力・実Host資格・独立Expected・実Consumer結果を別欄で照合する。再送、書込み、B2C開示をpure read-onlyのP0へ一度に持ち込まない。
+
+### 21.7 最短実装順と担当
+
+**全体P0はStudioセルフビルドを維持する。** #4583/#2831は非Plugin StudioのBuild Subject、実Builder/Toolchain/Artifact、Stage1→Stage2による再構築、Windows WebView2/IPCでの実受領を同じ世代で照合する。Script Launchの新GraphやExecution Profileを、この検収の追加Hard Gateにしない。
+
+**並行P0は#4495の公開pure Entryである。** 既存Capability/Typed Application APIを棚卸しし、Owner受理済み一FunctionをEntryへ公開する。Host-selected actual Go Providerを直接APIから呼び、通常tei CLI実プロセスでも同じEntry・対象・版・意味結果を確認する。構造上は正常でも実Providerの選択と呼出しが異なる負例を先に用意する。#4654/#4655のA/B/C構造検査が資格を得ても、D層の製品実Callの代わりにはならない。
+
+**後続P1は一つの実Readから実Consumerへ到達する。** #2586のRA-2P/RA-3、Audience別の開示・部分取得、#3422の別入口、#4198のread-only Graph/Traceへ拡張する。図解は正本Sourceへの位置とRepresentation Lossを保持し、書込み編集機能は後回しとする。
+
+**後続P2はTrigger・復旧・外部委譲である。** #4497/#1130の時刻・Event・Input Closure、#1129/#1174のEffect/Receipt、#4194のEKI能力Fitを各Ownerで検証する。新しいHost、Scheduler、Registry、独自ハーネスを採用する判断はこの段階から自動導出しない。
+
+今回の内容は**設計の成熟差分を実装・検収計画へ接続したもの**であり、正式DSL/API Schema、実Provider D層、Stage2、実Scheduler、実DB Commit、外部Harness、Owner意味受理の達成を宣言しない。個々のPASSはexact Source・Artifact・Toolchain・Consumerと、対応する実試行に限定する。
