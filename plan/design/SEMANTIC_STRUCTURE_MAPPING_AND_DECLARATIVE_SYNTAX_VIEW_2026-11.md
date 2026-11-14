@@ -986,3 +986,89 @@ GitHubでは記述順にかかわらず、選択されたMermaid Rendererがレ�
 
 **実装引渡しの順序**：[#3030](https://github.com/hat47x/tei-platform/pull/3030)の`*.tei.md`入口がまだ`TEI_MD_PARSER_UNBOUND`で拒否される現状では、Readerを実際に接続する前に製品E2Eの成功を主張しない。まずMermaid ERの限定Readerと既存Data/Key/Relationへのread-only投影、次に#1124のViewerで列・同列順の独立Expected、次いで安全な宣言順Patch、最後にFunction/CRUD/Businessモデルとの相互参照・実Studio Consumerへ進む。#2831のStudio Stage1→Stage2実セルフビルドと#2586の通常CLI→実Provider→独立Consumerの優先度は維持する。
 
+
+
+## 39. 実図面を基準に三要素分析法の表示資格を再検討する（2026-11-15、ユーザー提供図面）
+
+従来の§33〜38は、Mermaidの一般ER図と説明用の注文モデルを出発点にしていた。**実際のX-TEA Modelerの図面を見ずに、渡辺式／三要素分析法の忠実な表示を実装できたと判断しない**。ユーザーから提供された以下の画像を直接目視した。ただし、元の`.xead` Sourceと同版のModeler help本文は、今回の作業環境では直接照合できていない。**画像で見える事実、図記号の意味の仮説、原データ・helpによる確定待ちを区別**する。
+
+| 参照画像（このRepositoryに再配布しない） | SHA-256（出典照合用） | 寸法 | 図から確認した事実 |
+| --- | --- | --- | --- |
+| ユーザー提供業務フロー図 | `fc6a3ab201f989381edb0f5381b948601c53879a1fdb1cde5e6a1ed837791e99` | 814×667 | システム境界、担当者／外部相手、番号付き楕円の処理、星形の契機、台帳、帳票・文書、現物に関係する場所、ラベル付きの流れ |
+| ユーザー提供仕入れデータモデル図 | `50d14b5eb266cffd708972301cf52acc858a56782805d5292a9f46a60dbddc05` | 1172×510 | 左側の番号・表名・表ID・`CRUD`等と、右側のカンマ区切り項目、キー下線・括弧・波括弧、複数の連結線 |
+| ユーザー提供在庫データモデル図 | `fea882bf223353167cf8be1fcd8b54c8df123fe67f0bf9660b4892d0bec1811f` | 1229×622 | 同じ形式の箱・曲線接続、複合キーを持つ表、`CRUD`と`R`、他の図にも出現する表 |
+
+図そのもの、モデル本文、help本文の転載は**行わない**。ライセンス・公開条件が未確定なReference Modelは[#941](https://github.com/hat47x/tei-platform/issues/941)の境界を守り、ここでは画像のdigest、一般化できる表示条件、TEI独自の検証案のみ保存する。出典画像のHashは、ソースやモデルの真正性、当該`.xead`と同じ版であること、画像が完全な定義を示すことを保証しない。
+
+### 39.1 重要な反証
+
+- **業務フロー図 ≠ Mermaidの通常Flowchart ≠ 業務モデルそのもの**。画像には情報だけでなく紙の帳票、現物・受入場所、台帳、外部主体、人の担当、発生契機が含まれる。Star形を単なる装飾、物の置き場をDB、業務処理を実行可能Functionと決めつけない。三要素分析法の業務モデル（職務・作業・Action Tree／業務マニュアル）との関係は別に追跡する。
+- **渡辺式データモデル図 ≠ Mermaid ER図の配置だけの変更**。図の一行は表のID・表名・サブシステム利用区分・項目一覧・複数の書式装飾を一緒に見せ、折れ曲がる複数の関連線を左端へ接続する。Mermaidの標準ERは構造の可搬な記述・Fallbackには向くが、この表示の忠実な再現を自動的には保証しない。
+- **同じ表が複数サブシステム図に登場する**。ある明細表には、図の片方で`CRUD`、もう片方で`R`が表示されている。これは**表の共通Identity**と**サブシステムに相対的な利用区分**を別に扱うための正例である。ただし、表示文字は個々のFunctionの更新実績、Roleに認可された実行権限、DBの実CUD効果の証拠ではない。
+- **左右位置を単純な識別関係の深さだけで決めると不足する**。画面上には識別子を引き継ぐ可能性がある関係、単なる参照、複数親、同列の位置合わせ、線の迂回が同時に存在する。§33の`1+max(column(parent))`は初期配置の一候補であり、旧Modelerとの図面適合に合格した規則ではない。
+- **キー下線・`{...}`・`(...)`は描画事実である**。括弧内が導出か仮想か、括弧の組が二次識別子のどの種類か、線端記号が`FAMILY`／`REFFER`／`SUBTYPE`のどれに対応するかは、モデル定義とhelpを読まずに確定しない。
+
+## 40. 業務フロー図は「業務・人・物・文書・データの流れ」を一緒に見せるView
+
+モデル上は既存の[#1125](https://github.com/hat47x/tei-platform/issues/1125)のBusiness/DFD、[#1124](https://github.com/hat47x/tei-platform/issues/1124)の三視点、[#1031](https://github.com/hat47x/tei-platform/issues/1031)のSource cross-referenceを再利用する。図形そのものを新たなCore Subject列挙に固定しない。
+
+| 画像で区別される表示要素 | Sourceから必要な確認 | 不適切な短絡 |
+| --- | --- | --- |
+| システム境界 | 対象システム／サブシステム、図のScope | 囲みの内部すべてを同一トランザクションへ統合 |
+| 楕円の処理・処理番号・担当者 | Source上の処理、業務作業、責任主体、Functionへの明示リンク | 処理番号＝Function ID、すべてを自動実行可能 |
+| 星形の契機・吹出し | イベント／通知／周期等の原定義、起動の責任者・条件 | 「随時」をタイマーや自動Jobとして生成 |
+| 台帳・文書・納品物・置き場 | データ記録、紙／電子文書、物理対象、所在・保管をそれぞれ確認 | すべてをRDB TableまたはAPIへ変換 |
+| 方向線と名称 | 何がどこからどこへ渡されるか、物・帳票・データ・依頼の区別 | 線が引かれているだけでDB更新／Function Call／Effect成立とみなす |
+| 社外担当者・相手組織 | 外部主体と人間の役割、受渡し、管理境界 | 業務上のActor名を認証Principal／Grantへ自動転写 |
+
+図のプロセスは、業務フローの一要素として扱い、**Task／TaskAction／Function／IOTableと１対１であるとは仮定しない**。実モデルで`TaskAction→TaskFunctionIO→Function→IOTable`がSourceから追跡できるときだけ、その経路を提示する。外部への注文書、納品書、銀行への依頼などは、情報だけでなく人による授受・実際の効果を伴うため、宣言／期待／観測を区別する。
+
+FallbackとしてMermaid`flowchart`を生成することは可能だが、**元の形状、紙・現物の種別、色、矢印の意味、境界をどこまで保存したか**をLoss票に示す。Studioでは必要なMethod View表現を個別Rendererで実現してよく、Mermaidに完全な逆変換性や同じ配置を要求しない。
+
+## 41. データモデル図は「共通表＋サブシステム利用＋キー／関係」の合成View
+
+§33〜37の渡辺式表示を、ユーザー提供の二図に合わせて具体化する。
+
+1. **共通Entity**：同一Sourceで確認できたTable IDを共通Data/Entityの候補とし、Subsystemへの所属／利用を別のRelationとして付ける。別の図へ登場したTableを新しいData Entityへ無条件に複製しない。画像の文字列一致だけで異なるRevision間の正式同一性を確定しない。
+2. **Subsystem相対CRUD**：表示の`CRUD`／`R`はその図における**利用・分類のSource Fact**として保持する。実際のFunction単位IOTable操作、Business Actionへの帰属、現在の権限、DBへの実Effectをそれぞれ別資格とする。重複する図の同じ表で利用区分が異なることは矛盾とは限らない。
+3. **箱の情報量**：番号、Source Table ID、表名、画面の利用区分、項目の順序、キーの下線、`{...}`、`(...)`、省略記号を区別する。画面の「…」をSourceの末尾や属性の不存在としない。表の表示上の番号はIdentityでなくViewの索引である。
+4. **Relationの表示**：同じ親からの複数の接続、多親、曲線や折り返しを保持し、子の箱の左側に到達させる。どの線が識別／非識別／サブタイプで、キー項目にどう結び付くかは`.xead`のRelation constructとhelpで検証する。線端記号と色から自動確定しない。
+5. **配置の品質**：親を左、子を右、同じ階層の表示上の左右位置を合わせ、同列の上下順を定義できることは最低条件。初期の最長深さレイアウトだけでは元の図の線の折り返し、箱の長さ、サブシステム別の並びを必ずしも再現しない。**配置順の決定性と、旧図面に対する見やすさ／忠実さは別の受入**とする。
+6. **Key/Derivedと実DB**：論理的識別、物理PK/FK、二次識別子、導出項目・仮想項目、見出し明細の関数従属性は#1126に戻して判定する。図に見える下線等があっても、Modelerの説明／本体のKey定義を確認するまでは自動DDL生成を認めない。
+
+図型の整合例は、**同じ論理表が別Subsystemで読取り専用と作成更新対象の双方に現れる**ケースと、**複数表から一つの表へ関係線が集中する**ケースを最初のPressure Corpusとして選ぶ。前者は#3250/#1132のSubsystem CRUDと越境CUD検証、後者は#1126/#2497のRelation多重性とPK継承検証に渡す。
+
+## 42. 原Modeler定義・helpとの突合順と製品実装の引渡し
+
+今回の画像は「何を描くか」を教えてくれるが、「元のSourceにどう定義されているか」「どう解釈するか」は確定しない。既存の[#950](https://github.com/hat47x/tei-platform/issues/950)／[#1031](https://github.com/hat47x/tei-platform/issues/1031)／[#1124](https://github.com/hat47x/tei-platform/issues/1124)／[#4615](https://github.com/hat47x/tei-platform/issues/4615)のOwnerへ次を引き渡す。
+
+| 段階 | 確認するもの | 到達条件 |
+| --- | --- | --- |
+| **V-0 画像Evidence** | 提供3枚のHash／寸法、確認した記号・境界・同表の再登場、未確定点 | 原本文や画像を公開Repoに転載せず、画面観測と意味推定を分離 |
+| **V-1 Source/help照合** | 同一モデル・版の`.xead`、Table／KeyField／Relation／Subsystem利用、Task／Action／Function、Modelerのhelp記号説明 | Relation Type・線端・色／`CRUD`の定義・Figureへの紐付けを原典位置付きで確定／未解決として記録 |
+| **V-2 Headless意味投影** | Source Fact→型付き構造候補→受理済みMeaningの区別、二つのSubsystem View、業務フローView | 欠損・重複・Partialの範囲を保持。意味が足りなければread-only／未確定表示 |
+| **V-3 Studio閲覧** | 同じ版のSourceに対する図面の選択・Modeler／Function／Businessと相互参照、Subtype・Relation線、属性表示 | 実Studio ConsumerでSource位置・Field／Relation／Taskへの遷移を観測 |
+| **V-4 編集の一巡** | 同列並替えと、Key／Relationの意味変更を分けたPreview・Source Patch・再Read・影響確認 | 変更適格性・権限・Owner受理を再確認。未確認のRelationを生成・上書きしない |
+
+当面の既存実装として[PR #4570](https://github.com/hat47x/tei-platform/pull/4570)の**X-TEA三視点読取り専用Plugin**がある。プラグインの`reading-rules.json`は`Table`、`TableField`、`TableKey`、`Function`、`IOTable`、`Task`、`TaskAction`、`TaskFunctionIO`等をSource Factとして分類し、`occurrence`・`coverage`・`unresolved`を返す。しかしREADME上は**合成Workspaceによる試験であり、今回の実Modeler Source・help・二Subsystem・図形レイアウトは未受入**。PRのhead上の合格をmainや旧Sourceへの適合へ拡張しない。#4615の実Source照合を、この画像に対応するモデルを検証する最短経路の候補とする。
+
+原`.xead`・helpの**実物を確認できない限り**、下線、二次識別子、仮想／導出、Relation先端記号、図の青／黒、Subsystem利用区分の**意味の確定は保留**する。Mermaidの直接Authoringを万能とせず、図面ごとに「Source→意味→Mermaid（GitHub fallback）／Studio固有View」のLossを説明する。三要素分析法の他の図（機能展開・画面モデル、アクションツリー、CRUD・クロスリファレンス、Instance／Slide等）は、help・原Sourceを見てから独立Fixtureを足す。今回未添付の図面については、一般知識から完全性を宣言しない。
+
+### 42.1 独立Expectedへ渡すケース（未実行）
+
+| ID | 入力・変化 | 期待する結果 | 担当 |
+| --- | --- | --- | --- |
+| SM-79 | 業務フロー図に星形の契機・担当者・書面・置場 | 記号・実体の種別を区別し、全てをFunction・DB・Timerへ変換しない | #1125／#1124 |
+| SM-80 | 処理の番号・担当者表記とFunction定義が同名 | Sourceに明記された対応だけ結び、Process＝Functionと推定しない | #1031／#1124 |
+| SM-81 | 現物と帳票の二種の流れをMermaidへFallback | どの意味が図で失われたかをLossとして表示し、無損失を主張しない | #2497／#1125 |
+| SM-82 | 同じTableが二つのSubsystemで`CRUD`と`R` | Table Identityを重複させず、View相対の利用区分を区別。Functionの実Effectへ昇格させない | #3250／#1132 |
+| SM-83 | 画像の色・線端・下線・`{...}`・`(...)` | 原`.xead`／helpの根拠がない意味は未確定とし、見た目だけでKey／Derivedを受理しない | #950／#1126 |
+| SM-84 | 一つの子へ複数線が入るER図 | 多重RelationのIdentityと方向を保ち、子の左辺への接続を表示する | #1124／#2497 |
+| SM-85 | サブシステムの異なるER図で同表の項目が省略される | `...`を属性不在とせず、Source完全性と表示省略を区別 | #1124／#2497 |
+| SM-86 | 図の番号、Source Table ID、Source occurrence、Semantic Subjectが混在 | 表示順・旧ID・Source位置・受理済みIdentityを誤同一視しない | #950／#1124 |
+| SM-87 | Mermaidの通常ERを渡辺式と呼んで出力する | 線種／キー／ラベル位置／Subsystem利用／連結を失う場合は不適格またはLoss付きFallback | #2497／#1124 |
+| SM-88 | 画像のSource Revisionと開いた`.xead`が一致未確認 | 同一モデルだと推測して「原典一致PASS」を出さない | #941／#4615 |
+| SM-89 | X-TEA三視点Pluginの合成WorkspaceでCRUD行を表示 | 限定PASSを実モデル図への忠実性・Owner意味受理に加算しない | #4615／#1124 |
+| SM-90 | ERのKeyや関係を変更し、業務フロー・Function・DDLの影響を照合 | 元Sourceと既存Cross-view依存を辿り、未読込／非開示を「影響なし」と判定しない | #1031／#1126 |
+
+**優先順位**：V-0は画像の観測として実施済み（正式意味受理ではない）。V-1は原Source/helpへのアクセスを確認して実施する未完了事項。V-2以降は既存X-TEA三視点Plugin・Modelerの検証課題へ渡す。**新しいP0 Hard Gateは増やさず、Stage1→Stage2実セルフビルドと通常`tei` CLI→実Provider→独立Consumerを優先**する。
