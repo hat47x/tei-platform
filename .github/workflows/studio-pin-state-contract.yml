@@ -5,12 +5,14 @@ on:
     paths:
       - "reference/tei-studio-workbench/pin-state.ts"
       - "reference/tei-studio-workbench/pin-state.test.mjs"
+      - "reference/tei-studio-workbench/responses.pin.test.mjs"
       - "reference/tei-studio-workbench/package.json"
       - ".github/workflows/studio-pin-state-contract.yml"
   push:
     paths:
       - "reference/tei-studio-workbench/pin-state.ts"
       - "reference/tei-studio-workbench/pin-state.test.mjs"
+      - "reference/tei-studio-workbench/responses.pin.test.mjs"
       - "reference/tei-studio-workbench/package.json"
       - ".github/workflows/studio-pin-state-contract.yml"
 
@@ -40,6 +42,6 @@ jobs:
           cache-dependency-path: reference/tei-studio-workbench/package-lock.json
       - run: npm ci
       - name: Run isolated Pin intent state negatives
-        run: node --test pin-state.test.mjs
+        run: node --test pin-state.test.mjs responses.pin.test.mjs
       - name: Typecheck current Workbench source
         run: npm run typecheck
