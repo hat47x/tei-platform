@@ -1082,4 +1082,49 @@ CLI／Studio／Harnessから返される後着応答は、**現在の選択対�
 **資格上限**：本追補は現行mainの実コード、統合済みGraph Fixture、既存の他領域計画との突合せに基づく設計と作業引渡しである。文書一件のSource-backed実Read、更新・切戻しの製品実装、外部Harness実受領、生成Plugin/Target実行、正式意味受理は、この文書の更新だけでは成立しない。
 
 
+
+### 21.8 説明・モデル・生成物を同じ対象で検証する
+
+<!-- tei-plugin-guidance-model-claim-receipt-20261115 -->
+
+第21.6〜21.7節の最初の**「一Plugin・一文書」**を実装しやすくするため、取得した文書を「正しい意味・実装・操作の証明」へ過剰に昇格させない**主張と根拠の対応**を追加する。ここでの「主張」は新しいCanonicalやEvidence Storeではなく、既存Operationの結果を利用者・Harnessへどう説明するかという受入上の分類である。
+
+| 利用者に説明できる主張 | 必要な実証・参照先 | この段階では言えないこと |
+| --- | --- | --- |
+| このPluginが選択・解決された | 実CLI `plugin-inventory`、Environment、Plugin ID/Version、Resolver、Lock、実Workspace | Providerの実起動、Runtime Grant |
+| この文書は当該Pluginの説明候補である | 管理対象SourceのDocument ID/Role/byte位置・版とPluginへの**明示的な**参照。単なる同名・同フォルダは不可 | 文書の業務意味受理、公開許可、現在性 |
+| 現在の選択契約に適用できる文書を読めた | 実選択Contract版・対象Docの適用版、読取りSourceのSnapshot、現在Audience/Disclosure、受領完全性 | 文書に書かれた操作の実CLI存在や実行許可 |
+| 説明が公開モデルに対応する | 公開Subject/Relation occurrence/Extension PointへのRefと元Source/意味Role、Graph Projectionの保存・損失、正式Readerの実受理 | 図の表示ラベルからの意味復元、`*.tei.md`未束縛Sourceの自動受理 |
+| 使用例が現在の操作に対応する | 実CLI Discovery／型付きApplication OperationのID・要求/結果/Effect、独立Scenario/Expected | Exampleに書かれた成功文からの実Provider/Owner受理 |
+| 実生成・実動作を確認した | Source→モデル受理→Generator/Artifact/Lock→selected/actual Provider→実Consumer Resultの各Attempt/Receipt | 説明文書の一致だけによるGo生成成功や業務効果 |
+
+**既存のコードで確認した具体的な境界**：`internal/plugin/management/inventory.go` の `management.Row` は `PluginID/Version/Requires/Resolved/LockPinned` 等を返すが、文書SourceRef/Spanを保持しない。特に `Requires` の `CompatibleMajor` は上位Pluginの*正確な選択版*ではなく、実選択版を示すにはResolver/Lockを合わせて参照する必要がある。また `LockPinned == nil` は「未提供・不明」であり、`false`や「固定済み」と同一視しない。現在のSource-backed Document Referenceが無い場合は既存Operationからの段階的取得・Gapを示し、Plugin IDだけからManual pathや公開権限を推定しない。
+
+#### 最初の実Go差分は読取り連結の一箇所に限定する
+
+1. **Identityを取得**：既存`plugin-inventory`の実Resultをそのまま利用してPlugin/Environment/Resolver/Lockを固定する。追加処理がPluginを再解決したり、便宜的に別Providerを選んだりしない。
+2. **Document参照を再解決**：既存の管理対象Sourceから、当該Pluginへ明示的に束縛された公開Doc一件について、Source/Doc ID・Role・対象Contract/Version・byte位置・受領状態を取得する。正式なDocument Authoring/Source Readerが未対応なら`unsupported`とし、Fixture上の参照表の一致を製品Doc取得PASSにしない。Inventoryの`management.Derive`へSource ReaderやMarkdown本文を持ち込まない。
+3. **現在性とDisclosureを照合**：Plugin選択/Lock・Source/Document版・Audienceの少なくとも三つの照合結果を別々に返す。実Workspaceが途中で変化するなら、単一Snapshotでの取得ができたことを確認するか、結果をstale/partialにする。結果の前後だけが同じHashでも、Source A→B→Aの間に変更が無かったとは証明できない。
+4. **使い方を検証**：文書の使用例が示すOperation/Flag/Subjectを、同じ実`tei`バイナリの`commands`と既存read-only操作へ結び付ける。外部URLやPluginのREADMEにある命令を、そのままShell/Hostへ実行しない。公開Contractと文書の適合の説明を、Host実行許可や外部送出許可と混同しない。
+5. **限定Receiptを残す**：`World/Source revision・Plugin/Contract/Lock・Document Ref/Source revision・取得/Disclosure・実CLI/Consumer/response status・独立Expected`を既存Evidence/Scenarioの参照で結び付ける。列を揃えたことだけで一つのAtomic Attemptを実証したとせず、各Readが実際にどのInput世代を消費したかを別記する。
+
+この受入によって、将来のStudioでは「Plugin概要→上位の公開Graph→Extension Point→Source/Rule→Test」の各項目から同じ参照を辿れる。ただし**現在のDoc取得と正式Markdown Meaning Readerを混ぜない**。他チャットの[Markdown-first Authoring Draft #4719](https://github.com/hat47x/tei-platform/pull/4719)は説明・観測・提案・人による受理を分離し、[BRMS設計 #4723](https://github.com/hat47x/tei-platform/pull/4723)の決定表・Rule説明は実Rule ID・適用条件・独立Expectedへの案内として扱う。説明表やAIの解釈候補を新しい実行可能Rule正本にしない。
+
+#### 変更に対する独立判別と引渡し
+
+新しいTest EngineやExpected IDは追加せず、既存PHD-01/02/03/05/06/08・#1180/#2514へ少なくとも以下の**一因子差分**を渡す。
+
+- **同名の別文書**：公開Doc IDまたはPlugin/Contractが異なる。Document path/見出しだけの一致から選択しない。
+- **Bの要求はCompatibleMajorのみ**：Lock無し／複数適合候補のときに、任意のA版のマニュアルを現在適用版と断定しない。
+- **Sourceは読めるが意味Reader未束縛**：説明用Markdownとして参照可能でも、`TEI_MD_PARSER_UNBOUND`の意味受理拒否を取り除かない。
+- **GraphのLayoutだけ変更**：図の表示や文書Version確認は必要でも、型付き意味と無関係なGo成果物を再生成しない。定義表のRelation ID/向き/Ruleを変更した場合には意味・生成・使用例の参照を再検証する。
+- **文書だけ旧版／契約だけ新版**：同一Sourceに置かれていても適合を自動推定しない。上位Contract変更後の下位Extension Pointが未適合なら、生成Pluginの結果を現行有効としない。
+- **Doc取得途中の版・Audience切替**：部分受領と現在の開示不可を分けて示し、Tool Reply欠落を「文書なし」や「説明完了」としない。
+- **選択Plugin B・実Provider A**：説明取得と実行Identityが別であることを独立に検出。Docs成功を#1251の実Provider二入口の合格に流用しない。
+
+**段階判断**：#4701は公開A/B・Refの正負Fixture、#4714は実CLIから一文書一Readの縦切り、#4376は既存Inventory、#4679はDoc SurfaceのOwner。正式`*.tei.md` Readerは#2621/#4704、Graph→実Go生成とPlugin自己構築の実測は第20章・[#4720](https://github.com/hat47x/tei-platform/pull/4720)等へ戻す。まず「公開された説明を正しく特定できる」を合格させ、次に「参照するモデルを実受理・生成できる」を検証する。**説明・図・Skillの成功を後者へ横滑りさせない。** Studio Stage1→Stage2 (#2831/#4583) と通常CLIの実Provider呼出し (#1251/#4495) のP0には新Hard Gateを追加しない。
+
+**現状**：本節はソースコードの静的確認と他チャットの計画を基にした実装受入の具体化であり、Source-backed Plugin Docの実Go読取り・Snapshot原子性・正式Markdown Reader/Go生成・AI Harness/Hostでの実動作・Owner意味受理は未実施。
+
+
 **資格**：第20・21章は、現行mainの第15〜18章を維持しながら、生成プラグインの一機能とPlugin説明の利用時適合を切り出した**設計・検収案**である。正式 *.tei.md Reader、新Generator、実Plugin E2E、Plugin Help API、実AI Harness、Owner受理を今回実装・実測したわけではない。
