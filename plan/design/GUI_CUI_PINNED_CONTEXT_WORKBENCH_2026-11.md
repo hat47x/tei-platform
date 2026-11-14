@@ -923,3 +923,36 @@ P0/P1がPASSしてもP2〜P5をPASSにしない。P2の解消は**現在の正�
 4. **P4/P5**：#4572生成Reader＋#4579 Windows WebView2を同一HEADで検証し、#2831のBuild Graph/Stage2セルフビルドは別途実証する。
 
 **今回の変更は計画への観測反映であり、Bundle差異を解消したというClaimではない。**
+
+
+## 27. 2026-11-14 修正後HEADのCI確定とPin UI接続の最小契約
+
+#4597 HEAD `f4f849f63544f514fe05306b934864e3507bed1a`の[repository-health #43572042669](https://github.com/hat47x/tei-platform/actions/runs/43572042669)は、前節の確認時には実行中だったが、今回の再照合で**completed/success**を確認した。同HEADの[Pin専用CI #43572042693](https://github.com/hat47x/tei-platform/actions/runs/43572042693)もcompleted/success。一方、[embedded bundle #43572042636](https://github.com/hat47x/tei-platform/actions/runs/43572042636)は引き続きcompleted/failure。したがって**静的Workflow規約違反は解消されたが、生成Bundle整合は未解決**という2つの結論を分離する。
+
+### 27.1 現行WorkbenchのUI責務と最小差分
+
+現行`main.ts`には`selected`、`workspaceEpoch`、`catalogSnapshot`、`responses.run("inspection")`があり、`inspect(subject)`は選択・Editor・Graph・Source Status・Noticeをまとめて変更する。Pinの再確認をこの関数で代用すると、Aを固定しBを閲覧中にAを再確認しただけでBの画面がAへ移動する。
+
+最小の実装境界は次のとおり。
+
+- **Pinボタン**：現在の`selected`を対象に`inspectEligibility(catalogSnapshot, selected)`で一意性・利用可能性を確認し、`pinSubject`でIntentを記録。選択の変更は行わない。
+- **固定対象欄**：`index.html`のInspector側に`pin-subject`、`unpin-subject`、`reinspect-pin`、`pin-status`を設ける。固定対象のKind/ID/WorkspaceとObservationを読み取り専用で表示し、現在の選択対象と区別する。未固定時の再確認ボタンは無効。
+- **固定対象の再確認**：`responses.run("pinned-inspection", () => client.inspectSubject(...))`を使用。応答は`readInspection(unwrap(reply), capturedSubject, capturedCatalog)`で検査したうえで、`acceptPinObservation`に渡す。通常の`inspect`、Editor、Graph、Source Status、Noticeは触らない。
+- **Unpin/Undo/Workspace切替**：`responses.invalidate("pinned-inspection")`を明示的に呼び、generationを進める。Undoは対象Intentのみ復元し、Observationは`unqualified`に戻す。Workspace切替は既存`responses.reset()`と整合させ、旧WorkspaceのIntentを現在のWorkspaceの同名Subjectに自動移植しない。
+- **Catalog再読込**：Pin対象の資格は自動継承せず`needs-requalification`へ移す。Source/Model Revisionの一致が検査できないとき、UIは「検査済み」を表示しない。
+- **例外**：固定対象のReader失敗はPin欄にのみ反映し、選択中BのEditor/Graphを消さない。HostのReaderを二重実装せず、既存の`client.inspectSubject`だけを利用する。
+
+### 27.2 受入負例と順序
+
+| ID | 操作 | Expected |
+| --- | --- | --- |
+| PIN-UI-01 | AをPin、BをInspect、Aを再確認 | Editor/Graph/Source StatusはBのまま、Pin欄のみAのObservationを更新 |
+| PIN-UI-02 | AをPin、再確認開始、Unpin、旧応答到着 | Pin欄は未固定。旧応答反映0 |
+| PIN-UI-03 | AをPin、再確認開始、Workspace Bへ切替 | 旧Workspaceの結果採用0、Bの同名Subjectへ自動固定0 |
+| PIN-UI-04 | Aの再確認が`STALE_MODEL_PROJECTION` | Pin欄だけ`needs-requalification`、通常Editorの破棄0 |
+| PIN-UI-05 | AのCatalogがambiguous/unavailable | Pin開始拒否。Host Inspect呼出0 |
+| PIN-UI-06 | Pin/Unpin/Undoを連続し旧応答到着 | 現Intent generation以外の結果反映0 |
+
+**進行条件**：#4597のP0/静的CI PASSは採用できる。ただしP2のBundle不一致を保持したまま「実Desktop完成」とは言わない。UI実装は#4515の局所Ownerが担当し、生成JSは正規Build Recipeで再生成する。#4572生成Reader・#4579実WebView2・#2831セルフビルドは統合HEADで別途検収する。
+
+**状態**：本節は現行`main.ts`/`index.html`の実コードと現HEAD CIに基づく**具体的実装仕様**。PIN-UI-01〜06はExpectedを定義した段階で、実装・試験は未実施。
