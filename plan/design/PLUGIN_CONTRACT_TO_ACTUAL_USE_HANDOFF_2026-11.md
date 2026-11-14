@@ -385,3 +385,18 @@ Language/Operator/Generator/Data/Presentationという役割と、native Go / se
 **P3（共有Webと異Target）**：#3421/#1223の多Principal/Generation、#1861のWIT比較、#259の第二生成Application Targetを独立に評価。全PluginのBrowser WASM化や無停止更新を当然視しない。
 
 **検証上限**：公式ドキュメントと現mainの静的照合のみ。新Wails serverの公開認証、WASM build/runtime、実Browser/二Principal、Wails版更新、Owner受理はNOT RUN / NOT ACCEPTED。
+
+
+### 17.6 Wails Server公開面の実コード監査・限定Goテスト（2026-11-14）
+
+**mainの実物**：現 cmd/tei-studio/main.go は application.NewService(&StudioBridge{host: host}) を一つ登録しServer/Desktopで共用する。StudioBridgeのexported Go methodは**15件**であり、Workspace read/projection 8件、Command plan 1件、reference ExecuteCommand系4件、SHO external processのOpen/Resume 2件に分類できる。現在のService全体を「read-onlyだから全Methodをpublicに公開可能」と評価しない。Wails Serverの既存Origin/Host middlewareは主に /wails/runtime に限定され、/wails/events 等全経路への認証・Principal単位の認可を意味しない（現 cmd/tei-studio/README.md）。本PoCはloopback Listenerなので外部侵入・漏洩を実証したわけではない。
+
+**公式仕様の追加確認**：[Wails Server Build](https://wails.io/guides/server-build/) の2026-11-13版は、/wails/runtimeのOrigin制約がある一方、curl等のOriginを送らない非Browser要求は他条件を満たせば処理されることを明記。Loopback Host checkもportまでは比較しない。したがって**Origin検査のみをPrincipal認証や現在Grantとして使わない**。Eventの全接続Browser向けbroadcastは仕様上の配送範囲であり、現Studioに機微イベント漏洩が発生した証拠ではない。
+
+**実装候補を新規作成**：[独立Draft PR #4627](https://github.com/hat47x/tei-platform/pull/4627)は、最新mainから分けたcmd/tei-studio/server_bridge_surface_test.go一件（server build tag）。実main.go内のWails NewService登録をASTで照合し、reflect.TypeOf(&StudioBridge{})で実Go exported method set（別ファイル・埋込み昇格を含む）を列挙する。未分類のMethod、追加されたService、既知Method消失はレビューを要求してテストFail。**テストPassはpublic Web公開の安全性や実Binder/HTTP route・WS隔離を証明しない**。既知の非read/外部IO入口を NOT PUBLIC-QUALIFIED とログ出力する棚卸しであり、現Server/Desktopの実動作・Provider/意味・Authorityは変更しない。root go test ./... はnested Go moduleを対象外にするため、cd cmd/tei-studio && go test -tags server -run TestServerBridgeExportedMethodInventoryRequiresReview をexact HEADで実行し、PR/CIで独立検収する。
+
+**WSP-02の分割**：WSP-02aは#4627のGo method/Service登録一覧の静的評価。WSP-02bは#1824/#3421の実Wails Server経由で正規・匿名・別Principal・異Workspace・Originなしの要求と実HTTP/WSを送る独立Expected。共有Web版候補ではread-onlyの実到達だけを許し、Command/SHO/外部Pathの無許可到達を拒否する。Wails専用read-only facadeと認証済み薄いHTTP Adapterの差は、実Service名・JS binding・Source/Host Context/ブラウザ受信で比較してから決める。新第二Business Operation正本・第二Resolverは不要。
+
+**Desktop Build主線の新しいEvidence**：[Studio統合Draft #4587](https://github.com/hat47x/tei-platform/pull/4587) exact HEAD 0fcb7b6265d7dfc5b5e93017e5c99e296eb13134 で、[Windows WebView2 Run #43542664470](https://github.com/hat47x/tei-platform/actions/runs/43542664470)を含む**12 Workflowがcompleted/success**。N2 esbuild実生成JS→N3 Go EmbedFiles選択memberを同一Attemptの実Disk byte hashでBuild前後照合し、改変コピーの負例を拒否した限定H1成功。Compiler read-timeの実byte捕捉・完全Toolchain closure・Productの非Plugin ArtifactSet・Stage1生成TEI→Stage2 Desktop・Owner受理は別資格で、旧HEADのCIと合算しない。
+
+**停止線**：#4627はDraft、実Server公開・認証・Go/WASM/Browser/二Principalの新E2Eは今回NOT RUN。P0 #4583 B1-B/C→B2/B3を維持し、WSP-02a・02bを並行P1、WASM pure ProjectionはP2の比較とする。
