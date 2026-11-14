@@ -2127,3 +2127,63 @@ M/P/R/Tは**既存のSource/Contract/BuildExecution/Evidenceへの検収の観�
 **次に新しい設計節を増やす前の受入ライン**：上記P0のいずれか一つについて、既存Ownerの実Source/実コード/独立Expectedを同一HEAD・同一Attemptで試験し、`declared / selected / actual invoked / actual read-or-produced / verified / consumer received`のうち本当に観測された欄だけをPASSにする。Source Writer、Role Interpreter、Builder、Provider/Host/Registryを新設して迂回しない。独立Expectedの第二正本、新Hard Gateを作らない。
 
 **状態**：本節は既存PRの変更内容と該当exact HEADのActions結果を照合した**docs-only統合・実装引継ぎ**。#4646 3/3、#4647 7/7、#4648 8/8、#4644 3/3の各限定CI成功を同一製品E2Eに合算しない。正式Studio Stage1→Stage2、Source新Rule/Markdown正式Reader、W4実Consumer、RA-2P/RA-3 Product CLI二Consumer、Owner意味受理、新Go/PG/Windows実行は本更新で**NOT RUN / NOT ACCEPTED**。
+
+<!-- tei-self-description-four-layer-compiler-diagnostic-20261114 -->
+## 39. 2026-11-14 自己記述DSLの第一製品診断：四層の拒否位置と独立Expectedを実装する（設計・実装引渡し）
+
+### 39.1 P0の次の小実装：同一の不正Capabilityを「読めた／意味を決めた／起動を止めた／公開可能」に混同しない
+
+第31〜38節の自己記述契約に、[#4652](https://github.com/hat47x/tei-platform/pull/4652)のDSL診断／Capability実行前拒否の四層、[#4653](https://github.com/hat47x/tei-platform/pull/4653)の実Consumerまでの横断検収を接続する。対象は、**既存Grammarで表現できる一つのCapability宣言**。新`rule`構文、`*.tei.md` Reader、第二のParser/Validatorを先に正式採用しない。
+
+現行mainの`internal/semantic/capabilityinvoke/invocation.go`には`validateInvocationDeclaration`があり、`validateResultContract`の結果整合、およびInput名・型参照・Effect宣言の構造を、`adapter.Invoke`へ進む前に検査する。この実装には、実Sourceのbyte span、全Workspace参照解決、現在Host Grant、公開Entry、Provider真正性、値／NULL／業務意味受理は含まれない。この**できることとできないこと**をStudio/CLI/AIへ同じ診断として投影する。
+
+| 層 | 正本・実行入口 | 受入条件 | 意図的に断定しないこと |
+| --- | --- | --- | --- |
+| **L1 Authoring Syntax** | 現Source byte→既存Language Plugin/Parser→既存Anchor/diagnostic | Sourceに実在する異常の位置を示す。byte span・Occurrence・Workspace Revisionを保持。未読込Source、旧Frozen Source、`*.tei.md`未結線はfail-closed | Syntax Parse成功＝Semantic受理。SourceのないRuntime errorへ偽のspanを合成 |
+| **L2 Workspace Semantic** | 実`workspace.Load`/`validation.Validate`、Canonical identity/TypeRef/Relation/Source Index | ID重複、未解決TypeRef、異なるScopeや正本の不足を、当時のWorkspace実入力と照合。局所の無関係Subjectは閲覧継続 | 全Workspace valid＝実Entry公開、Required完全取得、Current Grant |
+| **L3 Pre-dispatch** | main`capabilityinvoke.Invoke`の宣言静的検査→実Adapter | Input名重複、Input名／型欠落、Output/Outcome両立不備、Effect形式不正、nil contextを**実Adapter call=0**で停止。すでに検出する既存Validatorがある場合は重複実装しない | 宣言`Effect=nil`を業務pureと認定。実Adapter呼出結果やProvider／DBの意味適合 |
+| **L4 Product Admission** | 公開Entry/Host選択Provider/現在Principal・Grant・Target・Source Revision | 通常製品入口から選択された実Providerへ呼び出す前に、現在のHost/Source/Artifact/Scopeを再評価。未公開／失効／選択B→実Aならcall0 | L1〜L3 PASSが公開許可やEffect/Commit Receipt。通常CLIや外部Consumerが実受領したという推論 |
+
+**責務の接合**：L1/L2は[#4359](https://github.com/hat47x/tei-platform/issues/4359)/[#4361](https://github.com/hat47x/tei-platform/issues/4361)、L3はmain統合済み[#4629](https://github.com/hat47x/tei-platform/pull/4629)/[#4636](https://github.com/hat47x/tei-platform/pull/4636)と[#4495](https://github.com/hat47x/tei-platform/issues/4495)、L4は[#3422](https://github.com/hat47x/tei-platform/issues/3422)/#4495/#1174が所有。四層の結果を取りまとめるための独自判定器は作らない。Source診断とGo Runtime errorは対象/Source Revision/Scopeが合うときだけ連結し、後者にない位置を創作しない。
+
+### 39.2 既存の反証を「誤りの起きる場所」で分割する
+
+新しい独立Expectedの第二正本を作らず、[#4652](https://github.com/hat47x/tei-platform/pull/4652)のACD-01〜08、#2514の較正、#1180のScenarioへ参照を追加する。実装最初のケースは、既存Sourceで到達できる**ACD-02／ACD-03**を優先する。
+
+| 組み合わせ | 意図した一因子差 | 必ず確認すること |
+| --- | --- | --- |
+| **ACD-02/03** | 宣言内Input名重複、ResultのOutput/Outcome不正併記 | L1で実spanを保持できる範囲とL2の既存検出Fit/Gapを実測。L3では宣言不備→`adapter.Invoke` call0を実試験し、他層のPASSを代用しない |
+| **ACD-05** | 形式は正しいがTypeRef参照先がない | L1 Parse成功は許すがL2で要素と解決対象の不一致を検出。L3の単純な`type != ""`のみで意味的TypeRef存在を捏造しない |
+| **ACD-06** | Effect欄が省略された | 静的に不正でないことと、業務pure/Runtime無作用/Host side effect未発生を分ける。業務pureの推定なし |
+| **ACD-07/08** | SourceにないCanonical ID、改版前後で同IDの別内容 | L1は存在しないSource spanを捏造しない。Current/Frozen/Revisionsを固定し、旧診断や旧Pinned Subjectが現在の別Meaningへ自動移行しない |
+| **Owner／Host対照** | 上記の構造的な宣言は正常だが、Entry未公開または現在Grant失効 | L1/L2/L3がPASSでもL4は拒否し、Providerの実呼出しは0。`pure`と認可を混同しない |
+
+**実証可能な最小PR**：同じSource byte/Subjectについて`ParseSelected/Workspace Validate/Capability Pre-dispatch`が既存APIでどう扱われるかを、既存Go testに局所追加して比較する。既存L1/L2診断がない場合はその空欄を`unsupported/unbound`と記録し、Runtime文字列へ架空のspan/diagnostic codeを付け足さない。新規Grammar採用やSource Writerを先行条件にしない。
+
+### 39.3 実RunnerでExpectedが誤っていた事例を使い、独立検証を強くする
+
+[#4637](https://github.com/hat47x/tei-platform/pull/4637)のHost-owned REA実Readerでは、**同じProducer Evidence IDを二つのRootで扱う試験**が追加された。初回Expectedは「Root Bの改変Rawに合わせてBinding digestを変更すれば正常Candidateを返せる」だったが、実Go testは`OPERATION_FAILED`を返した。**Raw digestが合っても、正規Producer deliveryが証明されない**ためであり、Provider/Reader側の制約を緩めてExpectedへ合わせるのは誤り。修正版ではA/Bの両Rootを未改変同一Rawで正常化し、その後の改変Bは負例へ分離。BのDigestを更新しても改変後のProducer deliveryを受理しない。
+
+この事例をDSL自己記述にも適用する：**テストから独立したExpected**は「固定JSONが存在する」ことと同義ではない。前提に反するExpectedは修正し、その一因子差と観測を履歴として残す。Source/byte一致、Producer/Parser申告、Role名、Candidate generated resultを**それ自身の正解**として自己採点しない。READ→Project→Deliverの各境界に独立根拠がなければUnknown/Unacceptedを維持。L1のByte spanとL3のAdapter call0も、それぞれの独立対照を持つ。
+
+新REA実Readerの**現PR HEAD`9b8f5ca9b50d34040cfa0682f026f4fc29090f01`**では、Actions取得時点で**12 Workflow中11 success／1 in_progress（Health）**。別Process Readerや二Rootテストの限定成功も、Studio/Wails/MCP/AI Recipientへの正式配送・Current Principal/Grant/Disclosureを証明しない。#4503/#2516への既存引渡しを維持する。
+
+### 39.4 最新Studio CIの回復を正確に反映し、P0を前へ進める
+
+[#4587](https://github.com/hat47x/tei-platform/pull/4587)の旧HEAD`357345d7`では、Windows通常Desktop JobでOS情報取得のPowerShellが15秒Timeoutとなったが、生成Desktop Jobは成功していた。新HEAD`9b58533df8764a74c578d478d8c6ee92a382642e`はOS版記録だけをPython`sys.getwindowsversion()`へ変更して外部PowerShell実行への依存を除いた。対象[Windows Workflow #43572235468](https://github.com/hat47x/tei-platform/actions/runs/43572235468)の**generated-desktop-webview2-smokeとdesktop-webview2-smokeの両Jobがcompleted/success**であることを直接確認した。新HEAD全12 Workflowは取得時点**9 success／3 in_progress**であり、全体12/12 PASSとは書かない。
+
+この局所修正でWindows**B0/H0/H1のCI再検証範囲**は改善したが、Non-Plugin`BuildExecution/ArtifactSet`で`N0→N2→N3`を実起動し、**Stage1 TEI image自身がStage2 Studio Windows exeをBuild→そのStage2 exeでWebView2を受領**するP0/B2/B3は別。テスト前のOS診断プロセスが不要な単なるPreflightにならないことは製品品質上の改善だが、実Builder/Artifact/Toolchainの完全閉包に読み替えない。
+
+### 39.5 次の着手・担当・計画への組込み
+
+| 優先／Owner | 最小の着手単位 | 合格と不合格の境界 |
+| --- | --- | --- |
+| **P0 #4359/#4361＋#4495** | 旧Capability SourceのACD-02/03についてL1/2/3の既存Go入口を実比較。現mainの`validateInvocationDeclaration`とSource/Workspace Validatorを再利用 | Runtime`adapter.Invoke`を0で停止するが、Sourceにないspanを作らない。L4公開・Grant/実Providerを別試験 |
+| **P0 #2831/#4583** | #4587新Windows両Job successを基線に、選択されたNon-Plugin Build Intentの`N0→N2→N3`と実Stage1→Stage2を結線 | 同HEADの実Stage2 Windows WebView2到達だけをB2/B3申請。新Windows両Job successをStage2自己構築とは呼ばない |
+| **P1 #2514/#1180** | ACD-01〜08を既存Expected/Scenarioへ接続し、改版・Source不在・TypeRef未解決・Effect未宣言の一因子反証を保持 | Invalid Expectedに合わせてReader/Interpreterを弱めない。旧Source/未取得をCurrent Positiveへ昇格させない |
+| **P1 #4503/#2516** | REA二Root・子Processの実ReadからCurrent Principal/Workspace/Recipient別Disclosureまで段階検証 | Test Child ReceiptとProducer Delivery/Current Grant/外部Consumer受領を別に評価し、許可前のWeb/MCP公開は行わない |
+| **P1 #4653/#2620** | 新Consumer横断計画を**正本追加ではなく既存Ownerへ戻す参照索引**として利用し、Definition/Binding/Authority/Execution/Acquisition/Delivery/Acceptanceの各既存Receipt位置を対応付ける | 専用Universal Validator/新Proof Engineを作らない。どこが未観測か分かるようにする |
+
+**本節で成熟した判断**：DSLの自己記述を「定義できた」「文法的に正しい」「実行宣言を静的に検査できた」「実Providerを呼べた」「権限を得た」に分け、それぞれ既存の実コードと独立Expectedを使う。新しく実装する必要があるのは**同一Subjectと同一RevisionでのL1/L2/L3比較という小さな接続試験**であり、新Meta Schemaや「すべてを知る」診断器ではない。
+
+**状態**：`39はGitHub現mainの実コード、Draft #4652/#4653、既存Actions・REA反例に基づく**Docs-only追加**。今回新しいGo/Windows/E2E・Parser/Studio/Child testを実行したものではない。#4587新HEAD両Windows Job成功も全Workflow/正式Stage2/Owner Meaning受理を証明しない。
