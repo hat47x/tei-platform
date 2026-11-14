@@ -53,8 +53,8 @@ type selfBuildEntryEvidence struct {
 	Boundary       string           `json:"claimBoundary"`
 	// Selected pin is specified before execution, not inferred from output.
 	SelectedChildDigest string `json:"selectedChildDigest,omitempty"`
-	ChildPinChecked      bool   `json:"childPinChecked"`
-	ChildPinMatched      bool   `json:"childPinMatched"`
+	ChildPinChecked     bool   `json:"childPinChecked"`
+	ChildPinMatched     bool   `json:"childPinMatched"`
 	// The child's own report about the declaration it read (§4.8). They are
 	// copied from the child's JSON and never compared by the primitive form;
 	// the outer shape does the comparison.
