@@ -3,6 +3,8 @@ package driver
 import (
 	"context"
 	"fmt"
+	"sort"
+	"time"
 
 	"tei/internal/application"
 	"tei/internal/core"
@@ -70,6 +72,12 @@ func (r Resolver) ExecuteBrowseQuery(
 		return BrowseQueryExecution{}, fmt.Errorf("browse Pattern %sを実行するQuery Executorが指定されていません", resolved.Pattern.ID)
 	}
 
+	// A resolved Query is not an invocation permission: reject missing, undeclared or
+	// unsupported typed inputs before any provider can be called.
+	if err := validateBrowseQueryParameters(*resolved.Query, parameters); err != nil {
+		return BrowseQueryExecution{}, err
+	}
+
 	result, err := executor.ExecuteBrowseQuery(ctx, *resolved.Query, *resolved.Datasource, parameters)
 	if err != nil {
 		return BrowseQueryExecution{}, fmt.Errorf("browse Pattern %sのQuery %sをDatasource %sで実行できませんでした: %w", resolved.Pattern.ID, resolved.Query.ID, resolved.Datasource.Alias, err)
@@ -80,6 +88,68 @@ func (r Resolver) ExecuteBrowseQuery(
 	}
 	result.Mapped = mapped
 	return BrowseQueryExecution{Resolution: resolved, Result: result}, nil
+}
+
+// validateBrowseQueryParameters checks only the runtime representations for which
+// this Browse path has an explicit mapping. An input's domain type declaration is
+// not authority to infer a Go value or coerce a string to a timestamp.
+//
+// In particular, std.datetime is a time.Time supplied by the caller. NULL,
+// absent values and undeclared names are not silently interpreted as defaults.
+// The current Query/Input model does not declare optional or nullable inputs.
+// Other semantic types stay unsupported until their own type-specific contract
+// has an independently verified runtime binding. No parameter value is logged.
+func validateBrowseQueryParameters(q query.EmbeddedSQL, parameters map[string]any) error {
+	// The unqualified legacy synthetic Browse route remains compatible with
+	// historical Source fixtures. The actual Environment-bound Provider path
+	// rejects undeclared input values separately; only a declared Query gets
+	// typed-input qualification here.
+	if len(q.Inputs) == 0 {
+		return nil
+	}
+	declared := make(map[string]core.CanonicalID, len(q.Inputs))
+	for _, in := range q.Inputs {
+		name := string(in.Name)
+		if name == "" || in.Type == "" {
+			return fmt.Errorf("Query %s has an incomplete input declaration", q.ID)
+		}
+		if _, exists := declared[name]; exists {
+			return fmt.Errorf("Query %s declares input %s more than once", q.ID, name)
+		}
+		declared[name] = in.Type
+	}
+
+	// Sort map keys so diagnostics are stable across Go map iterations.
+	keys := make([]string, 0, len(parameters))
+	for name := range parameters {
+		keys = append(keys, name)
+	}
+	sort.Strings(keys)
+	for _, name := range keys {
+		if _, ok := declared[name]; !ok {
+			return fmt.Errorf("Query %s received undeclared input %s", q.ID, name)
+		}
+	}
+
+	for _, in := range q.Inputs {
+		name := string(in.Name)
+		value, present := parameters[name]
+		if !present {
+			return fmt.Errorf("Query %s requires input %s", q.ID, name)
+		}
+		if value == nil {
+			return fmt.Errorf("Query %s input %s is NULL without a nullable declaration", q.ID, name)
+		}
+		switch in.Type {
+		case "std.datetime":
+			if _, ok := value.(time.Time); !ok {
+				return fmt.Errorf("Query %s input %s requires std.datetime (time.Time)", q.ID, name)
+			}
+		default:
+			return fmt.Errorf("Query %s input %s has unsupported runtime binding for type %s", q.ID, name, in.Type)
+		}
+	}
+	return nil
 }
 
 // RelationQueryResultは、Executorが観測したraw resultと、Canonical Relation Queryの明示mappingを
