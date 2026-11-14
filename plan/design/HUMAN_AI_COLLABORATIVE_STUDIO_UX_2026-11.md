@@ -1,7 +1,7 @@
 # TEI Studioの人間・生成AI協業UX：共通操作と作業引継ぎの設計
 
 - 状態：**実装前の横断設計・受入計画**。利用者の要求と既存契約から成熟した方針を統合したもので、新規製品API・正式Schema・意味受理を宣言するものではない。
-- 更新日：2026-11-13（JST）
+- 更新日：2026-11-14（JST）
 - 優先順位：**TEI Studio Desktopの実動作と、TEI自身によるStudio Desktopセルフビルドを最優先**とする。協業UXの検討はこれを妨げず、read-onlyから段階的に進める。
 - 主な既存担当：[#1824 Studio](https://github.com/hat47x/tei-platform/issues/1824)、[#1124 Modeler](https://github.com/hat47x/tei-platform/issues/1124)、[#4515 Subject Pin](https://github.com/hat47x/tei-platform/issues/4515)、[#1158 共通Operation](https://github.com/hat47x/tei-platform/issues/1158)、[#1251 Plugin実呼出し](https://github.com/hat47x/tei-platform/issues/1251)、[#2831 セルフビルド](https://github.com/hat47x/tei-platform/issues/2831)、[#4583 Desktop Build Intent](https://github.com/hat47x/tei-platform/issues/4583)。
 - 接続先：[固定対象・高度ContextのDraft #4479](https://github.com/hat47x/tei-platform/pull/4479)、[#2509 外部AI Harness](https://github.com/hat47x/tei-platform/issues/2509)、[#2516 開示](https://github.com/hat47x/tei-platform/issues/2516)、[#2497 投影・逆写像](https://github.com/hat47x/tei-platform/issues/2497)、[#1180 Scenario](https://github.com/hat47x/tei-platform/issues/1180)、[#2514 独立Expected](https://github.com/hat47x/tei-platform/issues/2514)、[#4496 Data Workbench](https://github.com/hat47x/tei-platform/issues/4496)、[#3503 Interaction Flow](https://github.com/hat47x/tei-platform/issues/3503)、[SHO Composer #19](https://github.com/hat47x/sho-composer/issues/19)。
@@ -324,3 +324,102 @@ UX-26〜28のDirty Buffer→Review→条件付きSaveと、UX-31〜32のBuild/Co
 - **この追補は文書のみ**。追加UX-23〜34、実WorkbenchのPinned Observation、Dirty Buffer競合、実AI Handoff、実Builder/Stage2、Current Disclosureの新規試験は**NOT RUN**。
 - #4597の純粋Pin試験と生成Bundle不一致は別の事実として保持する。正しいUI結果の説明だけでは、exact HEADのNode/Windows/Consumer資格を代替しない。
 - 新しい正式Schema、協業専用Task Store、Approval Engine、Host/Writer/Renderer、Harness Runner、実行時AI必須化は提案しない。
+
+
+## 20. 2026-11-14 横断統合：DesktopとWebで共通にする協業UX
+
+本節は[Studio #1824](https://github.com/hat47x/tei-platform/issues/1824)、[横断Plugin計画 Draft #4620](https://github.com/hat47x/tei-platform/pull/4620)、[非Plugin Build Subjectの検討 Draft #4621](https://github.com/hat47x/tei-platform/pull/4621)を、§16〜19の作業体験へ接続する。
+
+**共通化するのはUIフレームワークや画面そのものではなく、対象・Operation・検査結果・復帰先の意味である。** 当面はGo単一バイナリ・Wails/WebView Desktopを製品P0とする。一方、Editor/Graph/Inspectorや生成成果物の契約にはWails Native専用の呼出しを混入させず、必要に応じてWebからも同じ型付きApplication Operationを使えるようにする。Reactを前提とせず、Lit/Web Components等も比較候補だが、現行TypeScript Workbenchの一気通貫実証に先んじて全体移行は決めない。
+
+| 意味を共有する操作 | Desktop / Webで独立に判断すること |
+| --- | --- |
+| Catalog→Inspect、三要素図の全体→個別→参照元/先 | Window/Tab、URL、履歴、Graph/Editorの配置と入力方法 |
+| Focusと固定Pin、現在資格、Dirty Buffer、候補Review | ローカル状態の保持方法、他Window/Browserとの同期、復旧 |
+| 型付きOperation、Source条件付き変更、検証・結果語彙 | Wails Bridge／将来のHTTP/API transport、実Provider/Host認可 |
+| Current Actor/Principal、Workspace Scopeと開示対象 | 非認証ローカルDesktopと認証された複数利用者Webの境界 |
+| 生成Source→実Builder入力→Artifact→実Consumer | Wails exeとWeb配布、実WebView2、公開・署名、利用中の世代 |
+
+プロセス構成はA＝同一Wails Processを基線にする。B0＝同じexeから起動するWorker＋local IPC、B1＝別Wails Server exe＋loopback HTTP/WS、B2＝別Server/Worker exe＋Named Pipe/UDSは、性能・OS ACL・起動復旧・通信負荷・Actor/Effectを**実測比較する後続案**である。全案を同じWails RPCと呼ばず、新Worker/Serverを初回P0の必須依存にしない。
+
+同じSubjectの説明がDesktopとWebで一致しても、**ローカルRoot許可をWeb Principalへ継承しない**。画面の選択・PinやAIの要求がHost Grantを発生させるわけではなく、外部Harnessは第三のActorとして実際のDisclosure・Tool受領を別に検収する。GUI・CLIの結果にはQualified Identity、Source/Revision、問い合わせ範囲、観測済み・未取得・不明を保持する。
+
+## 21. 実DBの取得範囲を、人間とAIの説明へ正しく反映する
+
+[FunctionContext Draft #4647](https://github.com/hat47x/tei-platform/pull/4647)では、PostgreSQLから実際に観測できたRelation/RLS/Limit等を用いて、取得可能範囲が制限されていることを部分的に検出するW1〜W3のコードと試験が追加された。Native SQLの隠れた依存、W4結果列由来、正式Product CLI・Studio・外部AIへの受渡し、現在のGrantは未資格である。局所実証をStudioの実装済み表示と扱わない。
+
+**利用者に示す結論は、取得した行数と取得の完全性を分ける。** 画面に適した表示例は次のとおりで、製品の確定文言ではない。
+
+| 観測結果 | 表示すべき内容 | 避ける表現 |
+| --- | --- | --- |
+| Readerが0件を返したが、必要集合の被覆は不明 | 「今回の取得結果は0件です。対象全体については未確認です」 | 「該当データは存在しません」 |
+| RLSやLimitによる制限を観測 | 「確認できた範囲に制限があります」 | 「全件を確認済み」「非公開の行が何件ある」 |
+| Native SQLの必要Read-set/負の依存を閉じられない | 「参照元・対象範囲は一部未確認です」 | 「依存0件」「母集団の集計結果」 |
+| Source byteは同じだが意味・開示・取得時点が変化 | 「参照条件の再確認が必要です」 | 「最新版で検証済み」 |
+| 独立Requiredの一部を実取得し未取得が残る | 「指定範囲で確認済み／未確認項目あり」 | 「設計全体が完成・検証済み」 |
+
+AIにも同じ到達限界を型付き・構造化テキストで渡し、未取得・隠れたQuery依存を0や不存在へ変換しない。表示やCLI/Toolのメタデータ、ARIA、ログを通じた**非公開Sourceの存在・件数・理由の漏えい**は#2516の二世界試験で検出する。低権限の画面には許可された情報だけを投影し、内部の拒否理由をそのまま表示しない。
+
+AIへのContextは問いに相対する必要Source、出典位置、取得済みScope、必要な未解決項目の範囲に限る。固定PinがあるだけでSource全文・Raw Evidence・他Workspaceの会話履歴を自動送信しない。#3262のDesign Context、#2516のDisclosure、#2509の実Tool受領を既存Ownerとし、新Context Engineを加えない。
+
+## 22. 協業の状態表示を既存の実操作へ結び付ける
+
+§18の「対象／変更／確認したこと／次にできること」を利用者が行動できる状態へ落とし込む。会話の長さやAIの完了宣言ではなく、**元対象・元Source・Dirty Buffer・実観測・候補・現在の受理資格**を分けて表示する。
+
+| 現在の状況 | 次に利用者ができること | 自動実行しないこと |
+| --- | --- | --- |
+| Pin Aが残り、現在のSource資格は不明 | 許可範囲でAだけを再Inspect、Aを開く、Unpin | 別Subjectへの再束縛、AI送信、Source変更 |
+| Bを閲覧中にPin Aの再確認が失敗 | Bの編集を継続し、Aの原因を別表示 | BのEditor/Graph/Dirty Bufferを消去・移動 |
+| AI案はSaved R0基準、人間には未保存R1がある | 差分を比較し、案を候補のまま保持 | 未保存Bufferの破棄、無音Apply/Save/Build |
+| AI A案を採用後、AI Bが旧R0の提案を返した | B案を現Revisionへ照合し、衝突と依存を確認 | R1への自動Rebase・無音マージ |
+| DBの実Readはpartial | 範囲限定で確認、追加調査、結論保留 | 全件調査済み、対象不存在、合計値確定の宣言 |
+| Builderが旧R0、UIで閲覧中はR1 | 実Consumed byte/Artifact/実Consumerを確認して再Build | 「現在起動中のStudio更新済み」宣言・無断置換 |
+
+SHOのWriterはRaw文書とOccurrenceの責務を持ち、TEIのMeaning/Source改版は既存のModeler・Writer/Acceptanceが担当する。SUIのCard/Graphからの候補、REAのExternal Candidate、Data WorkbenchのDB行も、Pinで相互参照できることと同じSave/Commitが許されることを区別する。外部AI・文書に含まれる命令は実操作の追加権限にならない。
+
+## 23. 最小実装パケット：Pin Aの裏InspectがBの作業を変えない
+
+11月14日にGitHubの現main実Sourceと[Pin状態のDraft #4597](https://github.com/hat47x/tei-platform/pull/4597)を照合した。
+
+| 接合点 | 既存の事実 | 次の最小変更 |
+| --- | --- | --- |
+| `reference/tei-studio-workbench/main.ts` | 通常の`inspect(subject)`が`selected`、Editor、Graph、Noticeを更新する | Pin対象を確認する処理をForeground更新から分離する。B閲覧中のAの結果はAのPin欄だけへ |
+| `reference/tei-studio-workbench/responses.ts` | 独立lane/epochで旧UI応答の採用を防ぐ。Host認可や実Cancelは提供しない | Pin専用laneを使い、Unpin/再Pin、Workspace切替、Disposeで旧結果を不採用にする |
+| Draft #4597の`pin-state.ts` | Workspace、Subject、generationに基づく純粋なPin/Unpin/Undo/Invalidate。限定テストあり | UIの操作・実Product Reader・表示との接続。PinのgenerationとSource/Grant資格を混同しない |
+| `internal/studiohost/readonly.go` | allowlisted Root→既存Product Inspectへのread-only入口 | 二つのInspectが並行してもWorkspace/Subject/Hostの既存判定を共通利用する |
+| `reference/tei-studio-workbench/package.json` | 現mainの既存Node tests、型チェック、生成経路 | Pinの純粋状態テストとWorkbenchのDOM/UI契約を統合HEADで確認する |
+| 生成JS・埋込JS・Windows WebView2 | 実Consumerへ届けるにはビルド経路が必要 | Source→esbuild→Embed→実Windows Window/IPCで別assert。局所テストPASSだけで製品完了としない |
+
+**着手順**：U2-a＝#4597のPin状態を実Workbenchへ最小結線 → U2-b＝Bを表示したままPin Aの正常/失効/後着/失敗を同じUI Consumerで試す → U2-c＝Source TypeScriptと配信Bundle/Embed byteの一致 → U2-d＝Windows WebView2の実画面とキーボード/IME/支援技術。まず公開合成Source一件のみを使い、AI送信・Relation Pin・複数Actor編集は次段に残す。
+
+現時点の#4597には純粋状態遷移の実装があるが、通常Workbenchへの結線はなく、過去のHEADではNodeテスト・型チェック・ビルドPASSと埋込Bundle byte不一致FAILが併存した。Bundle差異の原因を推測で確定せず、同一HEADの実Consumerで再検査する。
+
+最優先のDesktopセルフビルドは独立に[#4583](https://github.com/hat47x/tei-platform/issues/4583)のnon-Plugin Studio Build Subject／B1 Builder入力・実呼出し／B2 Stage1実TEI→Stage2／B3 Stage2実WebView2の順とする。Studioを仮Pluginとして扱って形式的にBuildIntentを通したり、外部LauncherのBuildをStage1再入と呼んだりしない。[Toolchain観測 Draft #4648](https://github.com/hat47x/tei-platform/pull/4648)の`matched`は実CompilerのPlanへの正式Pin・Seed Trustを意味しない。
+
+## 24. 11月14日の追加独立Expected（UX-35〜46）
+
+以下は既存#1180/#2514のScenarioへ渡す**反例候補**であり、新しいSuiteや製品Hard Gateではない。過去のUX-01〜34を置き換えない。
+
+| Case | 入力・故障 | 独立Expected | 既存Owner |
+| --- | --- | --- | --- |
+| UX-35 | 同じSubjectをDesktopとWebの異なる入口からInspect | Qualified対象・Source/Scope/取得状態の意味が一致。Actor/Grantは別 | #1824/#1158 |
+| UX-36 | Editor部品がWails Bridgeの存在を必須とする | 表示/操作の共通部品は特定Desktop Transportを前提にしない | #1824/#997 |
+| UX-37 | Local Desktopで許可されたRootを別Web Principalが指定 | DesktopのRoot/GrantをWebへ無音継承0 | #2516/#1824 |
+| UX-38 | Reader結果0件、Native SQLの閉包はunknown | 全対象不存在の宣言0。戻り行数と被覆を別表示 | #2586/#3262 |
+| UX-39 | RLS/Limit等の一部制限だけ観測 | 見えた制限だけpartial、秘密の存在/件数の漏えい0 | #2586/#2516 |
+| UX-40 | AIがVisible Sumを全母集団の合計として提示 | 取得Scopeの値と未取得/不明を区別 | #2593/#2514 |
+| UX-41 | B閲覧中のPin A refresh成功/失敗 | BのEditor/Graph/Dirty/Focus不変。AのObservationのみ更新 | #4515/#1824 |
+| UX-42 | Pin純粋状態試験PASS、生成JS/実Windowは旧版 | UI製品受入は未成立。配信Bundle・Embed・Consumerを別検査 | #4597/#1824 |
+| UX-43 | AI案R0、人間のDirty R1、別AgentのR0案 | Source条件付き競合を示し、無音Apply/Save/Build 0 | #1124/#2621 |
+| UX-44 | StudioをPlugin Subjectに偽装してBuildする | non-Plugin Studio Buildの実Product経路を要求。擬似成功は不適格 | #4583/#2831 |
+| UX-45 | 同じPlan、異なるGo toolchainでArtifact byte差 | Toolchain観測、Plan Pin、実Exec、Seed Trustを分離 | #2831 |
+| UX-46 | 生成Windows Job成功、通常版Job失敗、Stage2未実行 | Job別表示。Workflow全PASS・セルフビルド完成と表示しない | #4583/#1824 |
+
+### 今回確認した資格の上限
+
+- [Desktop Draft #4587](https://github.com/hat47x/tei-platform/pull/4587)の11月14日観測では、生成DesktopのWebView2 Job成功と、通常DesktopのOS-version PowerShell timeoutによるWorkflow failureが併存する。これは当該HEADのJob別観測であり、Stage1→Stage2の実再入は未受理。
+- [FunctionContext Draft #4647](https://github.com/hat47x/tei-platform/pull/4647)はW1〜W3の限定実PG観測で、Native SQL全依存・W4列由来・Product CLI・Studio/AI Consumerは別資格。
+- [Toolchain Draft #4648](https://github.com/hat47x/tei-platform/pull/4648)の同Plan/異Go版の成果物比較は、どのCompilerでBuildしたかの限定的な観測。BuildIntentへの正式Toolchain Pinや実OS隔離の実証ではない。
+- 選択したProvider/Generatorと実際に使ったProvider/Builder/Artifactの対応は[#1251](https://github.com/hat47x/tei-platform/issues/1251)／[Draft #4621](https://github.com/hat47x/tei-platform/pull/4621)の責務を維持する。選択UIの表示から実利用へ自動昇格しない。
+
+**本追補はGitHub Source/Issue/PRの静的照合と設計文書更新のみ。** 新規Node/Go/Windows/DB/外部Harness E2E、Current Grant、正式API/Renderer採用、Ownerの業務意味受理はNOT RUN / NOT ACCEPTED。#4583のDesktopセルフビルドP0を変更せず、#4515のUX-23/41を並行して実装する。
