@@ -316,6 +316,9 @@ Gate C — PAS-04 Evidence — Ready
 
 **実績の現在位置**：[Hook互換設計 #4589](https://github.com/hat47x/tei-platform/pull/4589)と[実Consumerの横断受入計画 #4653](https://github.com/hat47x/tei-platform/pull/4653)はmainへ統合済み。[生成Desktop #4587](https://github.com/hat47x/tei-platform/pull/4587)のHEAD `9b58533d`では[Windows #43572235468](https://github.com/hat47x/tei-platform/actions/runs/43572235468)で通常版・生成版の両WebView2 Jobがsuccessとなり、旧HEAD `357345d7`のOS情報取得Timeoutは過去の失敗として残す。ただしPRはDraftでB0限定、正式なStage1→Stage2 Desktop Self-buildは未成立。DSLのSource/Workspace診断[#4654](https://github.com/hat47x/tei-platform/pull/4654)/[#4655](https://github.com/hat47x/tei-platform/pull/4655)はDraft、main統合済みCapability宣言preflight #4629/#4636とは別の検収層。今回の追加は計画のみで、新Go/Windows/実DB試験・Owner意味受理は実施していない。
 
+<!-- tei-domain-toolkit-candidates-20261114 -->
+**専門分野への展開はPlugin-firstの価値検証と位置付ける**。[統合設計Draft #4643 §28](https://github.com/hat47x/tei-platform/blob/docs/plugin-product-exit-main-rebase-20261114/plan/design/PLUGIN_CONTRACT_TO_ACTUAL_USE_HANDOFF_2026-11.md)では、Mathematica/R由来の数理・統計演算、SQL Window/Reporting、WBS/PERT/CPM、Solver、物理系、Systems Biologyを**専門Toolkit候補**として整理した。PluginはContractを提供する技術単位、ToolkitはStudio Editor・Operator・Generator・Renderer・Test等を組み合わせる製品単位とする。Coreへ専門別enumを増やさず、まずAnalytics/Reporting（Window/NULL/粒度・Read被覆）とProject Planning（WBSのDAG/暦/クリティカルパス）を**P1/P2の独立Reference候補**として#4350/#2495/#951/#2586へ引き渡す。R/Mathematica等の既存実装の複製・再配布は利用条件を確認してから判断する。需要・市場優位・実性能・分野別AlgorithmやGUIは未実証であり、これらを#4583のStudioセルフビルドP0へ追加しない。
+
 ## 現在の判定段階と引継ぎ
 
 ### 判定段階A：アプリケーションの意味を実行・検証環境へ渡せる
