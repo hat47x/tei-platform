@@ -96,13 +96,16 @@ func TestRecentOrdersSameIDHasTwoDistinctSourceAndParameterContracts(t *testing.
 	// Source-static SQL-parameter discovery is only a mismatch detector,
 	// NOT a SQL parser, runtime parameter Binder, or actual DB observation.
 	//
-	// The reference SQL currently requires :from, but its .tei declaration
-	// has no input clause for it. Record this as an explicit unresolved
-	// qualification. Changing the declaration must update this Expected.
+	// The reference SQL requires :from and current Source explicitly declares
+	// std.datetime. A formerly missing input is now a separate typed contract.
+	// This source-only check does not prove actual Provider parameter binding.
 	// XTEA main currently has only :status. Draft #4076 adds operator and
 	// page controls; this main test must not require an unmerged draft.
-	if missing := undeclaredNativeSQLInputs(referenceSQL, referenceDecl); !reflect.DeepEqual(missing, []string{"from"}) {
-		t.Fatalf("reference recent_orders input gap changed: got %v want [from]; review R0 qualification", missing)
+	if missing := undeclaredNativeSQLInputs(referenceSQL, referenceDecl); len(missing) != 0 {
+		t.Fatalf("reference recent_orders now declares :from; unexpected missing inputs: %v", missing)
+	}
+	if !strings.Contains(referenceDecl, "input from std.datetime") {
+		t.Fatal("reference recent_orders typed input :from was lost")
 	}
 	if missing := undeclaredNativeSQLInputs(xteaSQL, xteaDecl); len(missing) != 0 {
 		t.Fatalf("xtea recent_orders SQL requires undeclared parameters: %v", missing)
