@@ -942,3 +942,60 @@ Documentation Surfaceは、Pluginの**公開Contractに結び付くAuthoring Sou
 **横断的停止条件**：Doc専用Registry/Resolver/Host/Authorityを必要とする設計、任意PluginのREADMEを実命令とする設計、意味IDを描画edge IDから推測する設計、権限未確認のRaw Source外部送出、文書の存在から実Provider/Target/Owner意味受理を主張する設計、正のFixtureだけで多段公開を正式採用する設計は差し戻す。負例の独立Expectedは#2514、Scenarioの正本は#1180とし、本節は作業計画のOwnerを重複させない。
 
 **現状**：第19節の追記はContract/CLI/Model/Skill/Self-buildを横断する詳細計画である。公開Doc探索の製品Operation、Markdown Reader、Plugin継承合成、H2/H3正式比較、実Studio往復、Owner正式Schema受理はこの文書の追加だけでは成立しない。
+
+
+### 19.12 指示・対象・能力の三つの確認をPlugin利用に接続する
+
+TAIのProduct Skill必要時起動・Pinned Target・Handoff受入設計（[TAI #629](https://github.com/hat47x/tai-pleroma/issues/629)、[TAI #633](https://github.com/hat47x/tai-pleroma/issues/633)）を、TEIの**Instruction / Subject / Capabilityの三つの確認**へ対応させる。ただし新しい中央の「三閉包Engine」や第四のAuthorityは作らず、既存の各Ownerが返す根拠の対応表として扱う。
+
+| 確認軸 | Plugin利用時に確認する最小情報 | 不足したときの扱い |
+| --- | --- | --- |
+| Instruction | 実際に読み込まれたTEI Product Skillの版・本文、当該タスクに必要な手順、実CLIが公開した操作、参照したManualの実取得/完全性 | 操作手順の未確認。安全なDiscoveryへ戻す。Skillに書かれた未実装Commandを推測して呼ばない |
+| Subject | 利用者が指定したWorkspace/Source/Subject kind+stable ID、Relation occurrence ID、必要なModel/Rule/依存、Root/Revision/Scope、ambiguous/partial/unloaded | 対象を再特定する。図の座標や描画edge IDだけで意味対象を固定しない |
+| Capability | 実選択Plugin/Contract/Provider/Target、Capabilityの実登録・必要Trait、実Provider Binding、Host Grant、EffectとEvidenceの区別 | 説明の存在やResolver PASSを実Invocation/Effectへ昇格させない。未確認なら読取り・計画へ縮退 |
+
+この表は「すべてが揃うまで文書も読めない」という硬いGateではない。**読取り専用の調査では、確認済みの情報だけを返し、不足・切断・未許可を明示する**。変更、生成、配備、外部送出、DB/Host作用に進むときは、そのOperationと現在のAudience/Hostに実際に必要な資格を各Ownerの契約で判定する。単一のglobal boolean `ready` を作らない。
+
+外部Harnessへ渡すContextは上記三軸の小さな参照集合と未解決欄で構成し、Plugin全件のDoc/DSLを常時投入しない。TAI横断Skillは複数Productの作業調整が実際に必要になった場合にのみ選択し、TEI単独調査ではProduct SkillまたはTool-onlyを維持する。Handoff v1、Subject Pin、Product-local Resolver、実Harness Sessionを別責務とする（#4515/#4503/#2605）。
+
+### 19.13 マニュアルを「調べる」「試す」「検証する」に接続する
+
+Plugin所有のManualは、詳しい説明を任意量持てる。一方、共通の索引では、長大な全文を返すのではなく**必要なTopic/Doc/Model/Exampleへ案内する**。論理的なDocument Topic（正式Schema未採用）には、安定ID、所有Plugin/固定Contract版、Role、短いタイトルと概要、Sourceと版、対象となる公開Subject/Operation/Extension Point、上位の公開参照、Audience/Disclosure、本文取得先、利用条件を結び付ける。Markdown内の見出し文字列だけを長期のTopic IDにしない。
+
+利用者・AIが「どう使うか」を尋ねた場合、同じOperationから次の段階を選べるようにする。
+
+1. **overview** — 何ができるか、現在のTarget/版で何が未対応かを短く説明。Plugin実選択や実行資格が未確認ならそのまま表示する。
+2. **explain / reference** — その説明に結び付く公開Contract、型付きModel、Rule、元のMarkdown、上位Plugin由来のFacetを遡及可能なRefで示す。
+3. **how-to / example** — 前提条件、利用対象、入力、期待する結果、失敗時の診断、必要なEffect/Grantを区別した小さい例を示す。単なるコードフェンスやシェル記述を、実行が受理されたScenarioへ昇格させない。
+4. **validate / evidence** — 明示されたScenario/独立Expectedに紐付く実行・結果を確認。説明文の「テスト済み」は、実Plugin/Host/Targetの現在資格の代わりにならない。
+5. **related / inherited** — 下位Plugin固有の説明と、許可された上位Facet/Doc/Graphの適用版・出典を説明。上位のRaw Sourceへ自由に辿る権限は付与しない。
+
+**入口の具体化**：インストール済みの `tei` バイナリがある環境は、その実行物で `commands` と `version -json` など現行のDiscoveryを確認する。TEI Source checkoutを使い、必要なGo toolchainが揃うときに限って `go run ./cmd/tei` を代替入口とする。配布済みバイナリにGo開発環境やTEI Repo checkoutを要求しない。Skill文書に探索用 `go run` が書かれていても、Harnessの実バイナリや実Commandを別途固定する。これは既存#2605 Skillの**次版で測る改善候補**であり、H2/H3固定比較の途中で書換えない。
+
+文書はデータであり、未信頼PluginのManualが命じる追加のshell起動、秘密の外部送信、OS設定変更をTool/Hostへ無条件に伝えない。操作例の`effect=read-only`はPlugin Contractや本番Sourceを外部モデルへ送信してよい資格を意味しない。Tool応答は本文取得成功、版一致、文書単位の完全受領、正しい対象に結び付いたかを分けて照合する。
+
+### 19.14 配布物とドキュメントの利用資格を切り離す
+
+TEI Pluginには静的Go組込み、別Process、外部Hostからの利用など複数の配布形態がある。Documentation Surfaceは**実行方式に依存しない論理契約**とし、文書の表示にPlugin本体の起動を原則要求しない。Pluginの説明は実Runtimeが不在でも「参照資料」として閲覧できるが、そのことを「利用可能」と表示しない。
+
+- **配布単位と文書単位**：Plugin ID、Contract/Model版、Manualの対応版、Doc参照のRevision、選択TargetのArtifact/Lockを明示。静的Go単一バイナリへ全文Manual埋込みを標準条件にはしない。オフラインBundleを採る場合も固定版に基づく文書キャッシュとして扱う。
+- **Releaseに関する責務**：公開Pluginの名前/Release/Artifact/第三者Conformanceは#2589。配布された文書と実使用Artifactのbyte・検証資格は別であり、Docs専用Release正本を増やさない。旧版Manualの読取りは許可され得るが、現在有効な使い方と明示的に分ける。
+- **変更とキャッシュ**：Doc本文だけの更新、Contract/Graph/Generator更新、公開許可や現在のGrant変更を別に検出する。古いCacheに公開済み文書が残っていても現在の開示を優先し、古い実例で別版のPluginを操作しない。
+- **移行と互換性**：Manualの手順が旧版にしか適用されないなら、その適用範囲・後継Doc・移行Pathを宣言可能にする。ただし互換性を単純なVersion番号比較で推定せず、Contract/Extension Point/Targetの実適合へ戻す。
+
+### 19.15 追加の受入ケースと最小Gate
+
+| ID | 独立負例または対照 | 不変条件 |
+| --- | --- | --- |
+| PDC-09 | Go無し・Source checkout無し、配布済み`tei`バイナリだけ利用可能 | Skillが`go run`前提で停止せず、実バイナリDiscoveryから始められる（次版Skillの改善要件） |
+| PDC-10 | Doc/Skillは完全だが対象Subjectがold/missing/ambiguous | Instruction成立とSubject未資格を別表示。古いDiagram Nodeを現行Targetとして実操作しない |
+| PDC-11 | Doc/Modelが正しいがProvider未選択・実呼出し未確認 | Capability不足を隠さず、説明閲覧・調査は続けても実Effect成功を主張しない |
+| PDC-12 | Manualに外部送信/OSコマンドの命令文が混入 | 参照内容を実Hostへの命令とせず、許可されない作用・Raw送出0 |
+| PDC-13 | Topic索引に概要はあるが本文取得はpartial / Tool Reply途中切断 | 読んだ範囲の局所説明だけを返し、manual full read/全件理解を主張しない |
+| PDC-14 | A→B→AでSource/文書内容が復帰、途中でContract/Grant変更 | 単純な最終byte一致を継続した同一資格へ昇格させず、現在の参照資格を再判定 |
+| PDC-15 | 旧版Docは配布済み、現行Pluginは別版 | 履歴閲覧と現行手順を区別し、版不一致の操作例を現在の実装へ自動適用しない |
+| PDC-16 | Tool-only／短いProduct Skill＋遅延Manual／長文Skill全文 | 同じTask・実CLI・固定Source・Audience・独立Expectedで誤操作/正答/必要Token/完全Replyを比較。Skillの有無で対象と権限を変更しない |
+
+PDC-09〜16を新しいScenario Engineへ登録するのではなく、PDC-0のFixture・#2514独立Expected・#1180 Scenario・#2605/#2509のHarness評価へ適切に配分する。D0/D1の最小受入は **「現在の対象Pluginを固定し、許可された公開Doc/Graphへ出典・版を保って辿り、Doc誤版・未ロード・非公開の負例を拒否できる」** こと。三軸すべての実Runtime/外部Harness効果を初期read-onlyのHard Gateにしない。
+
+**現状**：本節は他チャットで進んだProduct/Harnessの指示・対象・能力の分離と、Pluginの外部Manual・配布・実発見の責務接続を設計したもの。正式なPlugin Doc QueryやPlugin Packager、次版Skillの実Load、現行Host/Owner資格を確定したものではない。
