@@ -314,6 +314,40 @@ h1 {
   margin-top: 8px;
   overflow-wrap: anywhere;
 }
+
+.pin-panel {
+  margin-top: 22px;
+  padding: 14px 0 16px;
+  border-top: 1px solid #dce4e5;
+  border-bottom: 1px solid #dce4e5;
+}
+.pin-panel h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+.pin-panel .hint {
+  color: #617a81;
+  font-size: 12px;
+}
+.pin-subject {
+  font-size: 12px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.pin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.pin-actions button {
+  font-size: 12px;
+  padding: 6px 8px;
+}
+.pin-actions button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
 .revision {
   margin-top: 24px;
   border-top: 1px solid #dce4e5;
