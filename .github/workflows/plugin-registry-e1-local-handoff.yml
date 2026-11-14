@@ -73,11 +73,11 @@ jobs:
           node --version
           node --test verify.test.mjs
 
-      - name: Test existing CAS P/readback and separate-process Consumer C
+      - name: Test existing CAS and HTTP loopback P to separate-process Consumer C
         shell: bash
         run: |
           set -euo pipefail
-          go test -count=1 -v ./tools/reference-build-artifact-store -run '^(TestRegistryE1ConsumerSubprocess|TestRegistryE1PublisherAndConsumerDifferentProcesses)$'
+          go test -count=1 -v ./tools/reference-build-artifact-store -run '^(TestRegistryE1ConsumerSubprocess|TestRegistryE1PublisherAndConsumerDifferentProcesses|TestRegistryE1HTTPConsumerChild|TestRegistryE1HTTPTransportToSeparateProcess)$'
 
       - name: Confirm source checkout remains unchanged
         shell: bash

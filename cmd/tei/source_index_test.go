@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
 	"path/filepath"
 	"testing"
 
+	"tei/internal/operations"
 	"tei/internal/sourceindex"
 )
 
@@ -64,40 +67,41 @@ func TestSourceIndexWritesEmptyListsAsArrays(t *testing.T) {
 	}
 }
 
-// The subject mode must write [] too when the subject has no references.
-func TestSourceIndexSubjectViewWritesEmptyReferencesAsArray(t *testing.T) {
-	raw, mode, err := buildSourceIndexInspection(
-		filepath.Join(testRepositoryRoot(t), "reference", "workspace"),
-		"not-a-kind", "nothing")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if mode != resultModeSubject {
-		t.Fatalf("mode=%q", mode)
-	}
-	view, ok := raw.(sourceIndexSubjectValue)
-	if !ok {
-		t.Fatalf("inspection type=%T", raw)
-	}
-	if len(view.References) != 0 {
-		t.Fatalf("subject unexpectedly has references: %#v", view.References)
-	}
-	if view.Workspace == nil || view.Workspace.Name == "" {
-		t.Fatalf("subject projection lost the Workspace identity: %+v", view)
-	}
-	encoded, err := json.Marshal(view)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var body struct {
-		Artifacts  []any `json:"artifacts"`
-		References []any `json:"references"`
-	}
-	if err := json.Unmarshal(encoded, &body); err != nil {
-		t.Fatal(err)
-	}
-	if body.References == nil || body.Artifacts == nil {
-		t.Fatalf("an empty list was written as null: %s", encoded)
+// Subject mode may only claim success after the canonical declaration exists.
+// A source-index trace returning [] alone is not proof of nonexistence or an
+// authorized empty result. Whole-index [] normalization is tested separately.
+func TestSourceIndexRejectsMissingOrUnsupportedCanonicalSubject(t *testing.T) {
+	root := filepath.Join(testRepositoryRoot(t), "reference", "workspace")
+	for _, tc := range []struct {
+		name, kind, id, wantCode string
+		wantExit                 int
+	}{
+		{"renamed-validation", "semantic-validation", "sales.order_line.line_number_positive_not_found", "SUBJECT_NOT_FOUND", 1},
+		{"unsupported-kind", "not-a-kind", "nothing", "UNSUPPORTED_SUBJECT_KIND", 2},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			raw, _, err := buildSourceIndexInspection(root, tc.kind, tc.id)
+			if err == nil || raw != nil {
+				t.Fatalf("missing canonical subject returned success: %#v, %v", raw, err)
+			}
+			var typed *operations.InspectionError
+			if !errors.As(err, &typed) || typed.Code != tc.wantCode {
+				t.Fatalf("canonical failure=%v, want %s", err, tc.wantCode)
+			}
+			var out bytes.Buffer
+			code, err := sourceIndexJSON(&out, root, "", tc.kind, tc.id, 0)
+			if err != nil || code != tc.wantExit {
+				t.Fatalf("source-index exit=%d err=%v, want %d", code, err, tc.wantExit)
+			}
+			var envelope cliResultEnvelope
+			if err := json.Unmarshal(out.Bytes(), &envelope); err != nil {
+				t.Fatal(err)
+			}
+			if envelope.OK || envelope.Result != nil || envelope.Error == nil ||
+				envelope.Error.Code != tc.wantCode {
+				t.Fatalf("missing subject was represented as successful lookup: %s", out.String())
+			}
+		})
 	}
 }
 
