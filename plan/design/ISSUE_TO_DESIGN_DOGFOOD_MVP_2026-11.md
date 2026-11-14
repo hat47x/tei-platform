@@ -1182,3 +1182,60 @@ Focus（一時選択）、Pin（対象への意図）、Activity（作業文脈�
 - **依存の増殖を防ぐ**：X-TEA/REA、SHO、KON、B2C、実Releaseの外部Readback、全Target配布、全OS Sandboxing、Studioの外観Themeや全AI Harnessの完成を初回セルフビルドのHard Gateに追加しない。必要な成熟要件はそれぞれのOwner/別Claimへ渡す。
 
 **本§15.23〜15.27の資格**：新規Go/Node/Windows/PG/OS isolation/Agent試験を実行した報告ではない。既存PRとexact HEADのCI、機能Ownerの現行記録から、dogfooding計画の現在の境界・独立Expected・最短着手順を再基準化した**docs-only提案**である。B1非Plugin全工程、Stage1→Stage2 Desktop、Stage2実WebView2、通常\`tei\` CLI実PG、Studio実Pin/現在Grant、Owner意味受理は本追補では**NOT RUN/UNQUALIFIED**。
+
+
+<!-- tei-dogfood-20261114-dg0-codefit-qualification-v1 -->
+### 15.28 最新のWindows検収：外部OS Probeと製品操作を切り分ける（2026-11-14）
+
+[Desktop Draft #4587](https://github.com/hat47x/tei-platform/pull/4587)の旧HEAD \`357345d7\`では**12 Workflow中11成功／Windows Workflow 1失敗**だった。ただし失敗は通常版JobのGUI操作前にあるPowerShellのOS Version文字列取得での15秒Timeoutであり、生成版Windows WebView2 Jobは成功していた。これを「通常版GUIが不正」とも「全WebView2成功」とも判定しない。
+
+新修正HEAD [\`9b58533df8764a74c578d478d8c6ee92a382642e\`](https://github.com/hat47x/tei-platform/commit/9b58533df8764a74c578d478d8c6ee92a382642e)は、**OS版の診断取得だけ**を外部PowerShellからPython \`sys.getwindowsversion()\`へ置換。2026-11-14の照合時点でこのHEADの\`TEI Studio Wails Desktop WebView smoke\` Workflowは**completed/success**、全12 Workflowは**10成功／2 in_progress**。実Windows GUI/WebView2 Workflow成功は当該新HEADの限定PASSだが、全CI Greenではなく、Builder・Stage1→Stage2 Desktop・G4までの昇格を意味しない。新HEADの未完了CIは完了後に再確認する。
+
+**dogfoodingの判断**：診断用子ProcessのTimeoutは「必要な観測が完了しなかった」という試験Attempt失敗を示す。製品GUI動作の故障とは区別する一方、GUI成功を推測で補完してはならない。修正の影響をOS Probeのみに局所化し、既存Inspectorの動作、生成JS digest、Bridge/IPC、実exe、WebView2の検収条件が保持されたかを確認する。OS記録もEvidenceの実取得方法を示すが、Build ToolchainやSource完全閉包の証明にはならない。次の実装優先はCIが完全Greenになること自体ではなく、#4583のnon-Plugin DG-0→DG-4である。
+
+### 15.29 DG-0を実Go型に即して再定義する：RecipeはGo Command対応でも、SubjectはまだPlugin
+
+現mainの実コード（2026-11-14）に対し、**「go-commandが無いからStudioを構築できない」という古い説明は採らない**。代わりに次の表の通り、受け入れ済みの部分と未成立の意味束縛を分離する。
+
+| 実Sourceと確認点 | 現在利用できる機能 | DG-0に残る具体的な断線 |
+| --- | --- | --- |
+| \`internal/buildintent/intent.go\` の\`RecipeKindCommand="go-command"\`、\`sourceKindCommandDefinition="go-package"\`、\`validateDefinitionSourceKind\` | Command recipeではPlugin宣言の代わりにGo Packageを**定義Source**として指定でき、別種の定義Sourceは拒否できる | \`BuildIntent.Validate\`は\`Subject.Kind != "plugin"\`を拒否する。Command recipeが読めることはStudioの正式な\`command\`/non-Plugin Subject受理ではない |
+| \`internal/buildintent/resolve.go\` の\`RecipeKindCommand\`分岐 | Command定義Fingerprintを実\`definitionSource\`のBuildSourceから導出し、Plugin構文Parseを避ける | 最終的な\`plugin.BuildPlan\`は依然\`Plugin: plugin.Identity{ID,Version}\`と\`PluginDefinitionFingerprint\`へ埋め込む。RecipeとSubjectの意味を分離していない |
+| \`internal/buildintent/catalog.go\` | Callerが指定したRootのファイルをPath/byteで解決し、Source ClosureをFingerprint化できる | この解決対象が実Builderの全Read、Node/esbuild transitive dependency、Wails embedの必要Sourceを網羅するとは限らない |
+| \`cmd/tei/cli_self_build_outer.go\`と#4634 | Intent/Plan/実Builder Childの限定照合、選択Builderの起動前Pinと結果Receiptを保持 | その\`-child\`がN0/N2/N3の正式non-Plugin Studio Builderとして選択・実駆動されること、Stage1の実TEI再入は別 |
+| \`tools/reference-build-execution-binding/main.go\` | Referenceの\`BuildExecutionPlan\`は**Plugin Identityを含まず**、\`BuildExecutionResult\`/ArtifactSet/Plugin・RuntimeEngine・Builder固有Bindingを分離 | \`package main\`のReference形をそのまま製品\`internal\`へimportできない。非Plugin StudioのSubject Bindingを製品にどう適合させるかはOwner判断が要る |
+
+**採るべき実装判断の順序**：
+
+1. **まず受理すべきSubjectを選ぶ**：\`Studio Desktop executable\`はPluginそのものではなくTarget成果物。既存の\`go-command\` recipeの定義Source \`go-package\`、Target、OutputKindは再利用する。Command用\`BuildIntent.Subject\`とその意味を運ぶBuildExecution/ArtifactSetの接点に不足する最小差分を、#4583/#2831/#1080/#1097のOwnerが一件として定義する。
+2. **強制検証と後方互換を分ける**：\`Subject.Kind="plugin"\`のままCommandを擬装してもDG-0合格とはせず、Plugin受入は現行契約と負例を維持。Command対象にPlugin定義を読ませない。新Graph Engine、第二Builder Catalog、総称DSL/ABI刷新は不要。
+3. **真正の実行と配布へつなぐ**：成立したnon-Plugin BuildPlan/ExecutionのOutput Roleを、N0の生成TS／N2のesbuild選択TSとJS／N3のEmbed memberとWindows exe／Stage1→Stage2実Processへ、各実ArtifactとInvokerで接続する。Bindingが成立してもその時点で\`qualified=false\`を維持する。
+
+これによりDG-0は「BuildIntentにcommandという語を入れる」ではなく、**Pluginの意味IDを捏造せず、実Builderが実GoパッケージからTarget exeを構築し、型付きの成果物Bindingまで到達する**という小さな製品縦断になる。
+
+### 15.30 DG-0の最小反証群：正しいGo Command定義と誤ったSubjectを区別する
+
+既存#1180 Scenario・#2514独立Expectedに、次の**実装着手前の検収候補**を引き渡す。現時点ではテストを作成・実行していない。失敗理由はSource不適格／Subject未対応／Builder違い／Artifact違いを混ぜず、それぞれの境界で表す。
+
+| Case | 問い相対の入力差分 | 期待結果と検証対象 |
+| --- | --- | --- |
+| **DG0-01** | \`Recipe.Kind="go-command"\`、\`DefinitionSource.Kind="go-package"\`、\`Subject.Kind="plugin"\` | 現行ReferenceのCommand分岐が動く可能性はあるが、**non-Plugin Studio Buildの合格とは判定しない**。実際の\`Validate/Resolve\`結果とPlugin意味ID混入を別記 |
+| **DG0-02** | 明示したnon-Plugin Command Subject、同じGo PackageとRecipe | **現行\`BuildIntent.Validate\`では未対応として拒否**。Ownerが追加する最小差分の正例は、Command版に限ってTyped BuildExecution＋ArtifactSetへ到達すること |
+| **DG0-03** | \`go-command\`に\`plugin-definition\` Source、またはPlugin Recipeに誤って\`go-package\` Source | \`validateDefinitionSourceKind\`が誤定義Sourceを拒否。実行後のReceiptだけで定義Sourceを遡及的に補わない |
+| **DG0-04** | Builder Bを指定し、実Child image Aへ切替 | #4634の起動前pinと既存独立Expectedで**Effect/子起動前に拒否**。Digest照合のみからOS Loader read-time一致を宣言しない |
+| **DG0-05** | N0→N2のTSを別role/path/HEAD/Attemptへ差替え | #4587 H0のSelector/Metafile/Roleを再利用し、N2実入力の一致と誤選択拒否を観測。N2が変更内容を消費したかはDF-C02へ |
+| **DG0-06** | N2のNode lock/esbuild依存かN3のnested module/Embed JSを変える | 必須入力を実Observed Closureへ残し、必要な再Buildを省略しない。完全な暗黙依存の不存在はEnforced境界なしに主張しない |
+| **DG0-07** | Stage0外部Launcherが二回ビルドしStage1実TEIを起動しない | Stage2 Artifactのbyte一致や\`l2b.claimed=true\`ではL3不合格。Stage1 image/argv→Stage2 actual builder呼出しを別検査 |
+| **DG0-08** | 異なるToolchainで同じPlanを生成 | #4648の差分実測を利用し、異Byteを直ちに破損とは断定しない。\`namedByPlan=false\`ならPin未決として表示し、Seed Trust/Current Qualifiedを自動付与しない |
+
+最初のコード化は**DG0-01〜04（Subject・Builder）**だけで十分。DG0-05〜08はH0/H1、N2/N3、L3と対応する元のIssueへ渡す。機能実装の成功判定を新しい独立LedgerやGateに複製せず、既存#1163 Evidence Packetに固定HEAD/World/Source→実Invoker/Artifact→独立Expected/最初の断線を記録する。
+
+### 15.31 Source診断から実利用までの四層をdogfoodingに適用する
+
+[Authoring/Capability横断 Draft #4652](https://github.com/hat47x/tei-platform/pull/4652)と、main統合済み#4629/#4636の構造Preflightを、SELF-R/SELF-Dの**失敗時にどこまで説明できたか**の評価へ接続する。四層は(1) Source Parserとbyte span、(2) Workspace Meaning整合、(3) Adapter実行前のCapability宣言拒否、(4) Product Entry/Hostでの現在利用資格である。
+
+例えばInput名重複やOutput/Outcome混在では、構文Parseだけを「定義受入」とせず、可能なら元Source位置へ戻る診断を出す。その後、既存\`capabilityinvoke\`の拒否が**Adapter call=0**を保証したか、Product Entryはそもそも公開・現在Grantを持つかを別々に評価する。Source spanが無い実行時の診断から架空のSource位置を作らない。Effectの未宣言をpureと推認しない。
+
+同様に\`order_entry.recent_orders\`ではRA-0のSource入力型、RA-1のExecutor前拒否、RA-2の実PG Reader、W1〜W3の被覆理由、RA-2P製品\`tei\` CLIとConsumer受領を階層別にする。Referenceの3/3や構造Preflightを正式Provider実行・公開・現在Grantへ飛び越させない。異質なConsumer側のAudience/Source Revision/Deliveryを検収する場合は[横断受入 Draft #4653](https://github.com/hat47x/tei-platform/pull/4653)と既存#2516へ引渡し、dogfood文書が第二Policy/Consumer正本にならないようにする。
+
+**本節の限界**：実Go Source照合＋新HEADの既存CI観測と、実行Ownerへ渡すDG0/Source診断の設計追補である。今回、新しいGoテスト・Windows E2E・Stage1→Stage2 Desktop・実PostgreSQL Product CLI・Owner意味受理は**NOT RUN**。#4651はdocs-only Draftを維持し、旧HEADの局所実績と新HEADの現在CIを取り違えない。
