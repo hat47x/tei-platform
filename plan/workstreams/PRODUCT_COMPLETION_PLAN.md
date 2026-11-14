@@ -661,6 +661,48 @@ S0〜S3は**B2Cプラグイン内の成熟度の記録**であり、TEI Studio D
 **優先度**：AG0/AG1の小さなread-only研究・局所実装は既存作業と並走可。ただし全体製品P0はStudio Desktop Stage1→Stage2実Windowsセルフビルド（#2831/#4583）、並行P0は通常TEI製品入口→実Provider→同一Contextの独立二Consumer（#2586）のまま。AG2〜AG5をこれらの先行Hard Dependencyとしない。**本節は設計・計画の提案で、Graph基盤製品化・実Generator/Browser/Provider試験・Owner意味受理は NOT RUN / NOT ACCEPTED**。
 
 
+
+### G49再統合：Graph Selectorの完全性・Plugin自己生成・増分適用を同一Fixtureで検証する（2026年11月14日）
+
+**判断の更新**：main統合済み[製品計画更新 #4695](https://github.com/hat47x/tei-platform/pull/4695)が直近の小実証に掲げた、同名別IDの二Node・多重有向Edge・Ruleから実際の判定ロジックを生成する[CLI先行計画 #4676](https://github.com/hat47x/tei-platform/pull/4676)を、Application Structure Graphの最初の検証にも利用する。構造Graphだけの第二Fixture・Parser・Compiler・Pluginを作らない。[自己記述Draft #4691](https://github.com/hat47x/tei-platform/pull/4691)にある公開Plugin A→生成Plugin Bの固定Contract、公開Graph/Manual、出辺集合の計算を共通題材とし、B2CのRoute/Page選択はその後の一段の拡張とする。自己生成、構造読取り、Plugin文書は同じ実Source/Version/Independent Expectedを参照するが、各試験の合格資格を合算しない。
+
+#### 1. 全件選択には一致集合だけでなく、選択Universeの閉包が要る
+
+Selectorのread-only結果は、少なくとも次を分ける。
+
+- **matched**：現在の問合せ条件が満たされると確かめられた対象
+- **excluded**：問合せ条件を評価し、条件不成立または明示除外と判定できた対象
+- **undetermined**：評価に必要な情報・公開Scope・動的Route等が足りず、成立/不成立を判定できない範囲
+- **universe / coverage**：どのRoot・Source・Plugin・Profile・Target・Revisionを実際に調べたか、要求された全域を閉じられたか
+
+この四つを同じ空配列やtrue/falseにまとめない。「公開Pageすべて」と指定しても、TEIの宣言済みRouteを完全に列挙できただけで、外部Frameworkの動的Route、CMS、旧CDN Release、現在のHost公開Policyを含む本番サイト全体への適用完了とはならない。未ロード/未観測/非公開のSourceは「対象なし」ではない。非公開Nodeの識別子・件数・秘密Source path・fingerprintを診断文・Tool Reply・時間差から漏らさない（#2516）。必須の対象適用で必要な閉包が証明できない場合は不適合または要確認とし、任意の観測で限定範囲に適用できても「全ページ」を保証しない。
+
+#### 2. 増分更新では、非一致の候補とUniverseの変化も依存に含む
+
+既に一致した公開Page3件だけを逆参照する実装では、非公開Pageのpublic化、新Route追加、親Pluginの公開Facet追加を検出できない。Selectorの実行には、**対象集合を構成するRoot/Relation/Role条件、Predicate版、選択Plugin/Lock、Profile/Target、探索したUniverseの境界**を依存として付随させる必要がある。現在excludedの要素、後からUniverseへ入る要素も再評価を発火させる。一方、未選択Pluginや無関係なDiagram表示の変更では過剰に全ProjectをBuildしない。
+
+更新の判定は (a) Source/Meaningの変更、(b) Graph/Selector membership変更、(c) 実Composition/Provider/Targetの変化、(d) Artifact再生成が必要か、(e) 生成済みArtifactを実Consumerが利用したか、(f) Evidence再資格化のみ必要か、を分ける。A→B→AのSource内容復帰を、間に変化したProvider・Authority・World/Consumer証拠の復活とは扱わない。ここでの依存記録は既存#2582/#2600/#943の検証に渡す要件であり、専用Cache/Build Engineや第二World fingerprintの新設ではない。
+
+#### 3. 最初の同一Fixtureを使った受入候補（既存Scenario正本へ渡す）
+
+| 受入ID | 最小題材と独立Expected | 合格扱いしてはいけない状態 |
+| --- | --- | --- |
+| **GQ-01** | Plugin Aの同名別ID二Node＋複数有向EdgeをSourceから読み取り、向き・関係出現・出典・版を保持。CLIの表/Graphで見た目とは別にEdgeの区別がつく | 同名だから合体、同端点Edgeの混同、安定Relation IDが無いのに書戻しを認める |
+| **GQ-02** | Aの固定公開Contract/Graph/RuleからBの出辺判定ロジックを実生成し、選択Plugin実Callと独立Expectedを比較。Edge反転・同一ID衝突・Rule変更を負例にする | 図はあるが意味が手書きGoへの委譲だけ、生成物未消費、選択Plugin以外の実呼出し |
+| **GQ-03** | 小Route Fixtureで公開3・非公開2・動的/未ロード1。公開Page追加、非公開から公開への変更、上位公開Facet縮小を選択結果へ反映 | 過去のmatched集合だけを参照した適用漏れ、partialをcomplete、非公開情報の漏出 |
+| **GQ-04** | 一Route/Entryの任意観測Hookを既存Composition/ProviderへBindingし、二Pluginが同じSlotに登録する負例を比較 | 読込順の偶然で二重発火、必須Guard/Effect fenceを任意の観測Pluginが回避、未対応Targetを適用済み |
+| **GQ-05** | Route追加、Edge反転、未選択Plugin追加、layout-only変更を別々に与え、再計算対象・生成Artifact byte・実Consumer受領を対照 | 旧Bundle利用、無関係全Build、H0 Nativeへ必須TEI JS追加、生成Scriptの存在のみで実送信成功と認定 |
+
+横断Aspectの適用は「Graphに対する無制限な書換え」ではなく、**契約が公開する対象とHook Slotへの型付きBinding**を優先する。Hook位相・先後関係・多重適用・必須Obligationは既存#951/#1016/#3278で解決し、登録順に依存しない。認可・監査上の必須条件やEffect fenceを任意Observerの無効化に連動して取り除かない。Asset組込み、Browser上のイベント発火、第三者への送信、Provider受理、業務Result/Effectは各々別資格である。
+
+#### 4. 性能・保守費用も同条件で比較する
+
+GQ-01/02でGraphの意味処理を実際に生成できることを確認した後、GQ-03/05では**Graph Selectorと、対象Routeを明示列挙する単純方式**を同じFixture・変更・Targetで比較する。観測項目は（1）TEI定義から導出できた意味規則の範囲、（2）適用漏れ・重複・契約欠落を拒否した数、（3）手書き残差と追加DSL量、（4）変更影響・再生成Artifact数、（5）時間/メモリ/Browser JS・HTTP、（6）CLI/Studio/AIへの説明に必要なSource/Plugin/Version情報。実測前に目標達成率を置かない。小例の段階で追加の安全性・重複削減・将来の自己生成への寄与が認められなければ、Graphを限定read-only索引に戻し、明示的なBinding方式を維持する。
+
+**優先順位・責務**：GQ-01/02は現mainのCLI先行Graph→生成Plugin（#2621/#951）と同じFixture/担当で進め、#4679のPlugin公開文書/上位依存D0もこのA/Bを再利用。GQ-03/04は#4198/#3509のP1対象選択表、GQ-05は#2600/#2831と#2514/#1180へ戻す。最優先のStudio Stage1→Stage2（#4583/#2831）と並行の通常TEI製品CLI実Provider→同一Context二Consumer（#2586/#1251）は変えない。新Graph Interpreter、Graph DB、Aspect Weaver、第二Parser/Resolver、独立Scenario正本、全域Graph完成を先行Hard Gateとする案は採用しない。
+
+**証拠上限**：mainの#4695は製品計画の更新、#4691/#4685は別途Draftの設計候補。GQ-01〜05の実Go/Plugin A/B生成・実CLI・Browser・外部送出・Current Grant・Owner意味受理は本更新では **NOT RUN / NOT ACCEPTED**。PR #4604のmain統合時には、既にmainへ取り込まれた計画との競合と重複を再照合する。
+
 ### G49深化：構造Graphの最小実装契約・構成解決・差分更新（2026年11月14日）
 
 **前回計画AG0〜AG5を具体的な実装判断へ進める**。main統合済みの[Program Execution Model §28〜32](https://github.com/hat47x/tei-platform/blob/main/plan/design/PROGRAM_EXECUTION_MODEL_PROJECTIONS_2026-11.md)にはApplication/Process Graph、横断Hook、CLI/Studio/AI Pinが既に整理されているため、ここでは重複する「全体Graphの理想像」ではなく、現行Goの実在する型とのFit/Gap、最初のread-onlyの契約、Selection変更時の増分更新、Targetへの渡し方を固定する。#1120の共通型付き参照契約はClosed/限定完了、#2620の意味Role/自己記述、#4198のLifecycle Graph Generator、#4679のPlugin共通文書契約は採用・実Target適格性が異なる。各Issueが持つ判断をこのG49で代行しない。
