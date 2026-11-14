@@ -672,7 +672,28 @@ sourceの `optional` は「過去の人物対応が不明な旧行で強制NOT N
 ### 19.3 現状と次の最小実証
 
 - **固定HEAD efa4a8fc**（6件版）：[Repository Health #43553971231](https://github.com/hat47x/tei-platform/actions/runs/43553971231) completed/success。実ログで `go test -count=1 -timeout 60m ./...`、`tei/internal/operations`、gofmt、vetのPASSを確認。**本物のOrg Sourceを元にしたGo候補IR/Validator/Desired検査**としてのみ認定。
-- **新HEAD b124a5fe**（7件版）：実DSL複製とLoader/SourceIndexを使う新テスト追加。新[Repository Health #43556769631](https://github.com/hat47x/tei-platform/actions/runs/43556769631) を確認してからGo PASS/FAILを判定する。旧6件版PASSは新版の合格ではない。
+- **固定HEAD b124a5fe**（7件版）：実DSL複製→Loader/Source Index→World Validator→PostgreSQL offline Desiredを検査した[Repository Health #43556769631](https://github.com/hat47x/tei-platform/actions/runs/43556769631)が**completed/success**。これは同HEADの限定技術検証に限り、実業務Meaning・Query/PG Person Readの資格に昇格しない。
 - **次の独立P1**：#2386/#1126がProfile/Personリンクと向きを選んだ場合に限り、正式SourceでのRelation、Schema差分/実Provider Person Read、r7のA2二版/knownAtの独立Expectedを、別の最小差分で接続する。Case C1/Current Grant/Effect/Host ACKは後段。通常CLIの最初の実Provider Read、Studio Desktop Stage2セルフビルドを**独立P0**のまま維持する。
 
 **実施範囲**：この節とコードPRはAuthoring候補・Parser/Loader・Source Index・Validation・offline Desiredを検査するだけであり、DB変更、実Query結果、過去人物の推論、Owner意味採用、外部Host実行は未実施。
+
+### 19.4 実DSL負例とQuery／独立Consumerへの停止線（2026-11-14追加）
+
+第7テストはPositiveのDSL読込で成功していたが、「Relation Storage DSLから実Query結果を計算できること」や「誤ったRelation sourceが失敗に分類されること」はまだ証明していなかった。後者だけを既存Validator/Loaderに接続し、**新Runner・新Expectedファイルを作らず**、一時Workspaceに対する5つの失敗注入を同一テストのサブケースとして追加した（[Draft #4633](https://github.com/hat47x/tei-platform/pull/4633)）。
+
+| 一時Sourceに注入する反例 | 通常のTEI処理に期待する拒否・観測点 |
+| --- | --- |
+| Person→Membership Relationで、SourceAttributeをMembershipの属性へ誤変更 | World Validatorの `PERSISTENCE_RELATION_STORAGE_SOURCE_ATTRIBUTE_PARENT_MISMATCH` |
+| Relation Storageから、targetがPersonの既存Employment.person Relationを参照 | World Validatorの `PERSISTENCE_RELATION_STORAGE_TARGET_MISMATCH` |
+| 存在しないSemantic Relation IDへ差替え | World Validatorの `UNKNOWN_PERSISTENCE_RELATION_STORAGE_RELATION` |
+| Relation Storage合流先を存在しないorg_store Mappingに差替え | Source Loaderが**未解決Mappingを拒否**（既存IDから推測しない） |
+| 同じMapping/Relation Identityを二つのAuthoringファイルに宣言 | Source Loaderが**二重定義を拒否**（後勝ちで採用しない） |
+
+成功側は従来通り、Person→Membershipのkeyless Source、Nullable support column、Source Index、offline Desiredを確認する。**この新HEAD `2c155383d525b022a4ba0f317192351c4eb0b92a` の[Repository Health #43558325121](https://github.com/hat47x/tei-platform/actions/runs/43558325121)は独立Runとして判定する**。古い7件版成功は負例追加版の成功ではない。ここで数えるのはトップレベルGoテスト7件、追加の負例サブケース5件であり、12個の独立Product E2Eではない。
+
+**他チャットの実受入との接続**：[#4619](https://github.com/hat47x/tei-platform/pull/4619)のProduct D1/QJPAは、実Sourceを選ぶ→型付きBinding→選択Providerと実Call→Rowset/Context→独立Recipientの受領を別Claimにする。[#4638](https://github.com/hat47x/tei-platform/pull/4638)の実PostgreSQL16参照Queryは固定HEAD `0ce3a52f` で7サブテスト成功したが、入口は `tools/reference-browse-read` であり、C1の `org_axes_view.as_of_membership`、Product `tei` CLI、人物3人／FTE集計、二Consumerは証明しない。[#4637](https://github.com/hat47x/tei-platform/pull/4637)の限定Host Readerは**別SourceのREA候補を安全に受けるローカルHost境界**であり、C1人物Identityや共有WebのCurrent Principal/Grantを保証しない。
+
+このため、組織C1の次の**Positive Product Test**では別証拠として、(1)正式受理されたPerson→Membership又はMembership→PersonのRelation SourceとCase Profile、(2)同一A2の旧新履歴版が物理DBで共存できるPK/Version ID、(3)actual queryでのknownAt/validAtとPerson IDのread witness、(4)独立Expectedと同一Read Cohortの人数/FTE、(5)Function/CLI/二Consumerの実受領を順に閉じる。Source Spanが一致しても物理列への写像・Queryの実消費・Recipient受領を推測せず、別Principal／外部Host公開は別Ownerの現在権限・Disclosure検査に委譲する。
+
+第7テストの一時WorkspaceはOwner採用されたProduct Sourceの代替ではない。現在の単独membership_id PK、欠けたas-of Person射影、履歴Backfillの不確定性は引き続き未解決。Studio Desktop Stage2セルフビルドと通常CLIの実Provider Readは独立P0を維持する。
+
