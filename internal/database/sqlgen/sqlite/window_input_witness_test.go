@@ -91,7 +91,7 @@ func TestCTKWindowInputObservationByteWitnesses(t *testing.T) {
 	}
 	var oracle struct {
 		InputObservations []ctkWindowInputRow `json:"inputObservations"`
-		Cases []struct {
+		Cases             []struct {
 			File string `json:"file"`
 		} `json:"cases"`
 	}
