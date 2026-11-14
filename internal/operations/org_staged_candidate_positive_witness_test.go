@@ -6,6 +6,12 @@ import (
 	"sort"
 	"testing"
 
+	"tei/internal/application"
+	"tei/internal/driver"
+	"tei/internal/driver/queryresult"
+	"tei/internal/environment"
+	"tei/internal/functioncontext"
+	"tei/internal/query"
 	"tei/internal/semantic"
 	"tei/internal/workspace"
 )
@@ -167,6 +173,107 @@ func TestOrgStagedPositiveCandidatePartialIsNotComplete(t *testing.T) {
 			got := orgPositiveWitnessProbe(tc.roles, tc.duties, tc.roleRead, tc.dutyRead)
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Fatalf("observed: %#v; independent expected: %#v", got, tc.want)
+			}
+		})
+	}
+}
+
+
+// This uses the actual Product Function Context projector, but the query result
+// is deliberately synthesized in process. It does not perform a Provider read.
+func orgPositiveSyntheticNativeContext(t *testing.T, values [][]any) functioncontext.Context {
+	t.Helper()
+	cols := []queryresult.Column{
+		{Raw: "person_id", Attribute: "organization.role_assignment.person_id"},
+		{Raw: "role_id", Attribute: "organization.role_assignment.role_id"},
+	}
+	execution := driver.BrowseQueryEnvironmentExecution{
+		Environment: "development",
+		Instance: environment.DatabaseInstance{
+			ID: "org-synthetic.dev", Definition: "org_store", Provider: environment.ProviderPostgres,
+		},
+		QuerySourceSHA256: "synthetic-query-source-sha",
+		Execution: driver.BrowseQueryExecution{
+			Resolution: driver.PatternResolution{
+				Application: application.Application{ID: "org_axes_view"},
+				Pattern: application.Pattern{ID: "org_axes_view.candidate_reference"},
+				Query: &query.EmbeddedSQL{
+					ID: "org_axes_view.candidate_reference", Dialect: environment.ProviderPostgres,
+				},
+				Datasource: &application.DatabaseRequirement{
+					Alias: "org_read", TargetDatabase: "org_store",
+				},
+				Data: &semantic.Data{ID: "organization.role_assignment"},
+			},
+			Result: driver.BrowseQueryResult{
+				Raw: queryresult.RawResult{
+					Columns: []string{"person_id", "role_id"}, Rows: values,
+				},
+				Mapped: queryresult.MappedResult{
+					Columns: cols, Rows: values,
+				},
+			},
+		},
+	}
+	ctx, err := functioncontext.From(functioncontext.Input{Execution: execution})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return ctx
+}
+
+// The native Context from a completed cursor cannot independently establish
+// that the RoleAssignment and Responsibility universes are complete. A Product
+// Consumer must not copy the fixture's closed-world flag into its own claim.
+func TestOrgStagedPositiveCandidateActualFunctionContextCoverage(t *testing.T) {
+	roles := []orgPositiveRole{
+		{id: "RA1", person: "P1", role: "R1"},
+		{id: "RA2", person: "P2", role: "R1"},
+	}
+	duties := []orgPositiveDuty{
+		{id: "RS1", person: "P1", unit: "D1"},
+		{id: "RS2", person: "P2", unit: "D1"},
+	}
+	for _, tc := range []struct {
+		name string
+		rawRows [][]any
+		roles []orgPositiveRole
+		duties []orgPositiveDuty
+		expectedClaim string
+		expectedNotUnique bool
+	}{
+		{
+			name: "zero native rows", rawRows: [][]any{}, roles: nil, duties: nil,
+			expectedClaim: "partial-none",
+		},
+		{
+			name: "one native row", rawRows: [][]any{{"P1", "R1"}},
+			roles: roles[:1], duties: duties[:1], expectedClaim: "partial-one",
+		},
+		{
+			name: "two native rows", rawRows: [][]any{{"P1", "R1"}, {"P2", "R1"}},
+			roles: roles, duties: duties, expectedClaim: "partial-many", expectedNotUnique: true,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			context := orgPositiveSyntheticNativeContext(t, tc.rawRows)
+			if context.Rowset.RowCount != len(tc.rawRows) || !context.Rowset.FullyRead {
+				t.Fatalf("actual Function Context rowset: %+v", context.Rowset)
+			}
+			if context.Coverage.Status != semantic.CoverageUnestablished ||
+				context.Coverage.EmptyJustified {
+				t.Fatalf("cursor EOF incorrectly established relation coverage: %+v", context.Coverage)
+			}
+			// This is a conservative test adapter, not a reusable Product Rule.
+			// Cohort identity here is supplied by the fixture, not Function Context.
+			read := orgPositiveRead{
+				cohort: "synthetic-s1",
+				closed: context.Coverage.Status == semantic.CoverageComplete,
+				cursorFullyRead: context.Rowset.FullyRead,
+			}
+			got := orgPositiveWitnessProbe(tc.roles, tc.duties, read, read)
+			if got.claim != tc.expectedClaim || got.notUnique != tc.expectedNotUnique {
+				t.Fatalf("native Context overqualified observed candidate: %+v", got)
 			}
 		})
 	}
