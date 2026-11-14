@@ -711,3 +711,97 @@ Markdownの適格性を検証する際は、**GitHubなどの標準的なRendere
 **優先順位と停止線**：MD-0／MD-1は`*.tei.md`移行の設計・Reader適格性に従属する。MD-2〜MD-4は製品P0の新Hard Gateではない。TEI Studio Stage1→Stage2の実セルフビルドと通常`tei` CLI→実Provider→独立Consumerを優先する。任意のMermaid Parser対応や新Grammar IR、Markdown全ファイル自動正規化、Graph Compiler、図の双方向編集エンジンは先に採用しない。
 
 本追補は**設計案のみ**。GitHub Rendererでの本サンプルの実描画、`*.tei.md`の製品Reader、Studioの実編集、Go/Windows/Consumerの実行、Ownerによる正式構文採用は今回未実施。
+
+
+## 31. Markdown標準記法を基本にしたファイルの構成（2026-11-14横断追補）
+
+これまでの§27〜30の基準を、具体的なAuthoring選択に落とす。`*.tei.md`は**専用DSLを隠したMarkdownではなく、人間がMarkdownとして自然に読めるモデル文書**である。階層は入れ子リスト、小規模な表はGFM Markdown表、行数や列数が多いデータはCSV／TSVへの相対リンク、章・領域が大きければ`*.tei.md`を分割する。定義や例のためだけに独自ブロック構文を増やさない。
+
+| 対象 | 基本書式 | 分割の判断 |
+| --- | --- | --- |
+| Tree／機能階層／WBSの包含 | インデントした通常のMarkdownリスト | 階層単位を別の文書へ |
+| 少数行の属性・ルール・Case | Markdownテーブル | 巨大な行集合や幅広いデータはCSV／TSVへ |
+| 業務説明と仕様 | Markdownの見出しと本文 | 章・機能・Ownerごとにファイル化 |
+| ER／シーケンス／フロー | Mermaidの標準コードFence | 図ごとに区切り、必要に応じ別文書へ |
+| 表せない高度な意味・演算 | 既存Language PluginのDSL・型付きSource | 近接ファイルへの明示参照 |
+
+例：Markdownの次の入れ子リストは、**見出しが指定した機能の包含**を候補として読める。ただし、リストの子が親に従属することは、子Functionをその順番で実行することや現在Grantが継承されることを意味しない。
+
+````markdown
+## 受注管理の機能構成
+
+- 受注受付（`sales.order.receive`）
+  - 入力検査（`sales.order.validate`）
+  - 受付登録（`sales.order.record`）
+- 受注確定（`sales.order.submit`）
+
+詳細： [受注確定](./functions/order-submit.tei.md)
+
+## テストデータ
+
+行数が多いデータは [受注ケース](./cases/order-cases.csv) を参照する。
+````
+
+ここでは人間向けの**相対リンク**と、TEIが必要なときに解決する**型付きSubject／Relation参照**を区別する。リンク先への移動だけでCSVの内容が自動的にMeaningへ採用されたり、独立Expectedとなったりしない。CSVの列型、NULL／空欄、文字コード、引用付き改行、行のIdentity、データの完全性・Providerを明示的に検査する。行番号をStable IDとして扱わない。分割したSource間の依存・循環・未読込・権限不足も既存Source Index／Dependencyの診断に委ねる。サイズ別の一律行数しきい値は導入せず、閲覧・レビュー・差分の扱いやすさで選ぶ。
+
+## 32. Mermaidを直接記述するER図・シーケンス図
+
+§28では、複雑なGraphについて型付き表からMermaidを導出する例を優先した。ただし、これを**全Mermaidを読み取り専用にする規則とはしない**。Mermaid自身が対象用途に必要な意味を表せるなら、ER図`erDiagram`、シーケンス図`sequenceDiagram`等を**直接のAuthoring Source候補**として認める。GitHub上で図を読める利点をそのまま生かす。
+
+- **ER図**：エンティティ、属性、PK/FK等のキー注釈、関係と多重度をMermaidに書く。TEIで実際に業務Identity／候補キー／物理PK／関数従属性を採用するには、対応する意味とSource位置の解釈が別途必要。Mermaidに書かれていない制約を推測しない。
+- **シーケンス図**：参加者、メッセージ、順序、分岐等をMermaidに書く。メッセージが実際のFunction／Operation Callか、例示・期待動作・観測TraceかをRoleと文書用途で区別する。図を描画できたことは実Callや業務Effectの証拠ではない。
+- **フローチャート等**：既存#4198のLifecycle Graphと比較できる範囲で使用。すべてのMermaid図型をTEIのExecutable Graphへ自動変換しない。
+
+MermaidのSourceを唯一の定義元にできる場合、同じ意味をMarkdown表へ無条件に複製しない。逆に、時点・多重Edgeの安定ID・業務Roleなど、Mermaidの記述では足りない情報がある場合は**別の型付きSourceを明示的に定義元**とし、Mermaidを導出Viewにする。どちらを正本とするかは**図ごとに明示**し、同じ意味上の関係が競合する二つの編集元を作らない。
+
+**表示配置と意味の分離**：Mermaidの`erDiagram`には`direction TB`等の方向指定があるが、GitHub／Mermaidのレイアウトエンジンが、Source記述順と厳密に同じ図形座標へ配置するとは保証しない。GitHubでの描画は、GitHubが採用するMermaidの規則に従う。ER図の公式資料：[Mermaid ER diagram](https://mermaid.js.org/syntax/entityRelationshipDiagram)、[Sequence diagram](https://mermaid.js.org/syntax/sequenceDiagram)。新しいMermaidのレイアウト指定やER subgraph等は、GitHub側の実対応を確認してから必要最小限だけ利用する。
+
+## 33. 渡辺式データモデルの初期配置はMermaidの記述順から決定する
+
+渡辺式データモデルは、同じData Modelの**一つの表示方式**としてTEI Studioに提供する。専用の業務Data正本や新しいGraph Storeを作らない。初期の表示では、座標情報や独自の配置規則ファイルを要求せず、**Mermaidの記述順を上から下への並び順へ変換する**。
+
+### 33.1 最初の最小アルゴリズム（実装前候補）
+
+1. 対象の`mermaid` FenceをSource byte範囲付きで読み取る。Language Pluginが対応する`erDiagram`と同一性を確定したEntityだけを対象にする。
+2. **各EntityがSource内で最初に登場する位置**を比較し、先に登場したものから上→下へ並べる。同じEntityへの後続参照では新しい箱を作らない。明示的なEntity定義が存在する場合も、初回登場位置を原則にする。これにより関係宣言だけのEntityを消さない。
+3. 初期実装は**単一の縦列**を基本とする。確定した表示順を`E1,E2,...,En`とし、`x_i=x_0`、`y_1=y_0`、`y_(i+1)=y_i+h_i+gap`のように上から積む。箱の高さ`h_i`や文字幅は、同じStudio Layout Profile／Font metrics／版で決定し、配置結果を再現できる条件を限定する。
+4. Relationの線・方向・多重度は既存型付きGraphの意味を維持して描画する。線の引き回しで交差があっても、初期はEntityの縦方向の順序を勝手に変更しない。循環・多重辺は並び順決定の理由にしない。
+5. 順序比較や必要なSourceが曖昧な場合は、自動で名前順やHash順へ変えるのではなく、曖昧さを明示し、そのViewの`unsupported`／read-onlyを許容する。別FileからのGraph合成は参照順を確定できた範囲だけに限定し、全体順序の暗黙推測をしない。
+
+**決定論的に一意**なのは、指定したSource／Reader／Layout Profile／表示対象が同じ場合の**TEI Studioの順序と配置結果**である。GitHubのMermaid図が同じ座標になることや、Mermaid描画エンジンの版を跨いでPixel位置が一定であることは要求しない。表示順を意味上の親子・依存・時系列の順序へ誤って昇格させない。
+
+### 33.2 Studioで配置を動かしてMermaidへ反映する経路
+
+将来のGUI編集は歓迎するが、「配置移動」の意味を操作別に分ける。
+
+| GUI上の操作 | 最初の実現候補 | Sourceへの反映 |
+| --- | --- | --- |
+| 上下の順序入替え | 同じMermaid内でEntityの初出順を変更する候補 | 対応するEntity宣言／Source範囲が一意で、コメント・関係・Roleが保たれる場合だけ局所Patch。Preview／再Parse／別Readで検証 |
+| 位置だけの微調整 | Studio上の表示調整 | 通常Mermaidが直接の`x/y`位置を保証しない場合は、無理にSourceの意味記述を変更しない。保存可能なHintは後続に検討 |
+| Relation線の曲げ方 | 表示上の編集候補 | Relationの向き・多重度・Identityとは分離。安全な記法が無ければStudio限定の一時表示 |
+| Node／Edgeの追加・削除 | 型付きModel Change Proposal | 意味変更として既存#2497／#1124の受理境界へ渡し、移動操作からの自動適用はしない |
+
+**重要な制約**：Mermaidの文の記述順を変更してもGitHub上の描画位置が移動どおりになる保証はない。渡辺式Viewの順序入替えの保存を、GitHub描画の完全制御と呼ばない。また、ER図に関係の宣言しかない場合、Sourceの行順を動かすだけでEntityの並びを独立に指定できるとは限らない。安全なSource Patchが不可能なら、初期GUIはread-only／一時プレビューに留める。
+
+将来、上下順だけでない自由配置が本当に必要になった場合は、**View専用のヒントを意味契約と独立に保存する方式**（原文内の明示注釈か近接ファイル等）を検討する。現時点では固定の座標Schemaや専用ファイル拡張子、全Mermaidを修復するWriterを採用しない。Layout hintの有無でSourceの業務意味／実コード生成が変わらないことを検収する。
+
+## 34. 検証ケースと工程への引渡し
+
+次は既存の[#2621](https://github.com/hat47x/tei-platform/issues/2621)／[#4370](https://github.com/hat47x/tei-platform/issues/4370)／[#2497](https://github.com/hat47x/tei-platform/issues/2497)／[#1124](https://github.com/hat47x/tei-platform/issues/1124)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)へ渡す**独立Expected候補（今回未実行）**とする。SM-43〜52のMarkdown/Mermaid可読性を継続し、重複するTest SSOTは作らない。
+
+| ID | 入力・変化 | 期待する結果 | 担当 |
+| --- | --- | --- | --- |
+| SM-53 | 二層のMarkdownリスト。親子を入れ替える | 包含・順序を必要に応じて区別。Functionの実行順や権限を推測しない | #2621／#2497 |
+| SM-54 | CSVを相対リンクして参照。行を追加・並替えする | Stable IDと行位置を分離し、リンクを自動Import／Acceptとしない | #2621／#3270 |
+| SM-55 | Mermaid`erDiagram`のKey／Cardinalityを直接記述 | Supportedな範囲だけ型付き候補とし、未記述制約を推測しない | #4370／#2497 |
+| SM-56 | Mermaid`sequenceDiagram`に二つのメッセージ | 表示の時間順と実Function Call・Observed Traceを区別 | #4198／#4370 |
+| SM-57 | ER Entityの登場順A,B,Cで渡辺式Viewを二度生成 | 同一Source・Layout Profileなら縦配置順・座標は決定論的に再現 | #1124／#2497 |
+| SM-58 | Mermaidの記述順を入れ替える。業務Relationは同じ | Studio渡辺式Viewの縦順は変化可。業務Meaningは不変のまま | #2621／#2497 |
+| SM-59 | 同じSourceをGitHub／Studioで描画 | Entity／Relation意味が揃えば良く、図の物理座標の一致を強制しない | #1124／#2497 |
+| SM-60 | GUIでEntityを上下にドラッグし、Source Patchが一意 | 意味を保つ並替え候補をPreview→再Parseし、非対象byteを保持 | #1124／#2621 |
+| SM-61 | GUIで横方向に自由移動。Mermaidに可搬な位置表記なし | 勝手に意味関係や記述順へ変換せず、一時Viewか明示Hint候補として扱う | #1124／#2497 |
+| SM-62 | ER関係宣言のみで複数Entityが出現、同名／再出現が混在 | 初出順の規則を再現し、IDを合併・重複生成しない。曖昧なら診断 | #4370／#2497 |
+
+**既存MD系列の更新**：MD-0は入れ子リスト・Markdown表／CSV・Mermaid ER／SequenceのAuthoring Profile、MD-1はSource ReaderとFence／Cell／リンク位置、MD-2は**Mermaid直接Sourceと導出Mermaidの双方**を限定検証し、渡辺式の初出順→縦配置をHeadlessで照合する。MD-3は唯一のSource Slotの限定Patchに加え、**意味を変えないEntity並替えのPreview／Source保存**を検討する。MD-4はStudio／GitHub／AI・CLIの異質Consumerを同一意味モデルの用途別Viewとして比較する。新しいMD-5やHard Gateは追加しない。
+
+新Parser／Writer／Layout Engineを先に建てず、既存Source Index・Language Plugin・Projection・Studio Change Proposalを再利用する。**P0のStudio Stage1→Stage2実セルフビルドと、通常CLI→実Provider→独立Consumerの検証は不変**。今回の追補は設計と検証計画のみであり、Mermaidの製品Reader・渡辺式の実Layout・Studio GUIドラッグ編集・GitHub上の実レンダリング・Ownerによる正式構文採用を行ったとは主張しない。
