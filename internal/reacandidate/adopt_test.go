@@ -229,6 +229,33 @@ func TestCompareCandidateSetsExternalIdentityRenumbering(t *testing.T) {
 	}
 }
 
+// Structural fallback may pair a reversed edge as a possible external-ID
+// renumbering. That comparison is only a review hint: it must explicitly
+// identify the unverified endpoints, not quietly qualify Source editing.
+func TestCompareCandidateSetsReversedEdgeNeedsEndpointMapping(t *testing.T) {
+	before := mustGenerate(t, defaultEvidence())
+	reversed := defaultEvidence()
+	reversed.evidenceID = "ev-reversed-edge"
+	reversed.edges[0].from, reversed.edges[0].to = reversed.edges[0].to, reversed.edges[0].from
+	after := mustGenerate(t, reversed)
+	comparison := CompareCandidateSets(before, after)
+	var paired int
+	for _, entry := range comparison.Entries {
+		if entry.Status != ComparisonRenumbered {
+			continue
+		}
+		paired++
+		if !hasString(entry.Notes, "relation-endpoint-mapping-is-unverified") ||
+			!hasString(entry.Notes, "source-backed-endpoint-mapping-is-required-before-edit") ||
+			!hasString(entry.Notes, "a-renumbered-candidate-requires-fresh-owner-review") {
+			t.Fatalf("reversed edge received an unqualified renumber claim: %+v", entry)
+		}
+	}
+	if paired != 1 {
+		t.Fatalf("reversed edge pairing = %d, want one qualified review hint: %+v", paired, comparison.Entries)
+	}
+}
+
 // Added and removed candidates are reported without a structural match.
 func TestCompareCandidateSetsAddedAndRemoved(t *testing.T) {
 	first := mustGenerate(t, defaultEvidence())
