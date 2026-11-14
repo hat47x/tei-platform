@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 
 const main = readFileSync(new URL("./main.ts", import.meta.url), "utf8");
 const markup = readFileSync(new URL("./index.html", import.meta.url), "utf8");
+const productReader = readFileSync(new URL("./pin-reader.ts", import.meta.url), "utf8");
 
 function bodyBetween(start, end) {
   const first = main.indexOf(start);
@@ -18,9 +19,10 @@ function bodyBetween(start, end) {
 test("PIN-WIRING-01: pinned reader uses the existing Host reader in its own response lane", () => {
   const source = bodyBetween("async function refreshPinnedSubject() {", "\nfunction renderList() {");
   assert.match(source, /responses\.run\("pinned-inspection"/);
-  assert.match(source, /client!\.inspectSubject\(/);
-  assert.match(source, /inspectEligibility\(catalog, request\.subject\)/);
-  assert.match(source, /readInspection\(unwrap\(reply\), request\.subject, catalog\)/);
+  assert.match(source, /readPinnedSubject\(client!, request, catalog\)/);
+  assert.match(productReader, /client\.inspectSubject\(/);
+  assert.match(productReader, /inspectEligibility\(catalog, request\.subject\)/);
+  assert.match(productReader, /readInspection\(reply\.value, request\.subject, catalog\)/);
   assert.match(source, /acceptPinObservation\(/);
   assert.match(source, /pinRequest\(pinState\)/);
 });
@@ -31,6 +33,8 @@ test("PIN-WIRING-02: background Pin cannot directly repaint the current selected
     bodyBetween("function renderPin() {", "\nasync function refreshPinnedSubject() {"),
     bodyBetween("async function refreshPinnedSubject() {", "\nfunction renderList() {"),
   ].join("\n");
+  assert.doesNotMatch(productReader, /\b(?:document|window)\./);
+  assert.doesNotMatch(productReader, /\belement\s*\(/);
   const forbidden = [
     /\binspect\s*\(/,
     /\bselected\s*=/,
