@@ -229,7 +229,7 @@ func TestGeneratedBinaryRuntimeNodeQuery(t *testing.T) {
 			// Missing -node and explicitly empty -node are distinct:
 			// only the former permits the full-graph projection.
 			for _, request := range []struct {
-				args []string
+				args    []string
 				message string
 			}{
 				{[]string{"-node", "missing-node"}, "unknown node"},
