@@ -1102,6 +1102,69 @@ NULL、未取得、非開示、入力の完全性が不明な場合の判定は�
 
 A-0は現`main`に**局所的な参照実装として存在**する。A-1〜A-4を完了したとはみなさない。[#4359](https://github.com/hat47x/tei-platform/issues/4359)／[#2621](https://github.com/hat47x/tei-platform/issues/2621)／[#1018](https://github.com/hat47x/tei-platform/issues/1018)／[#4536](https://github.com/hat47x/tei-platform/issues/4536)／[#4544](https://github.com/hat47x/tei-platform/issues/4544)／[#2831](https://github.com/hat47x/tei-platform/issues/2831)／[#4583](https://github.com/hat47x/tei-platform/issues/4583)にそのまま引き渡し、新しいParser Registry・第二のMeaning Store・Rule Runtime・Studio Hostを作らない。P0の実Studioセルフビルドと通常製品CLI→実Provider／独立Consumerは優先維持する。
 
+### 31.20 宣言的構文の適用は、文書の見た目でなく選択とRoleで決める（2026-11-15横断追補）
+
+現在の`reference/tei-md-graph-reader`は、固定された`## ノードの定義`／`## 関係の定義`／`## 算定規則の定義`だけを候補Readerとして扱う。これは小さなFixtureで正負両方を確認するための**Reference上の制限**であり、TEI標準の見出し名称、日本語DSL、すべてのMarkdownを意味へ変換する規則ではない。
+
+製品化に当たり、次の**二段階の選択**を、既存#1018のWorkspace／Language Plugin選択と#2621のRole Source Bindingに配置する。
+
+1. **どのSourceを読むか**：Workspaceで管理しているFile／Revision／Language・Reader implementation pin／適用範囲を解決する。`*.tei.md`という拡張子やファイルの存在だけで宣言元にはしない。選択Readerがなければ、既存`TEI_MD_PARSER_UNBOUND`を失わせない。
+2. **選択Sourceのどの部分を、どのRoleで読むか**：文書Profileまたは明示したBindingが、表／Fence／リスト／Mermaidの具体的範囲を指す。指定がない説明文、引用、テスト例、合成AIの候補表を暗黙のDefinitionにしない。Roleの衝突、同一IDに対する二つの正本、対応していない構文は診断する。
+
+Sourceから取り出す`Node`／`Edge`／`Rule`の**意味ID、使用するOperator、Relation方向／多重性、Source byte span**は分離して扱う。Graph参照例では表がAuthoritative Sourceであり、Mermaidは明示した表示用ID対応から生成した派生図。一方、ER／Sequence等のMermaidがSourceになる場合は**図型ごとに対応意味と欠損を個別に受理**する。図の配置やラベルのみを理由にID・Key mapping・実行条件を再解釈しない。
+
+**初回の構文試験は新しいDSL Keywordを追加せず**、既存6 Fixtureの表に対し「選択した範囲は解釈／引用や未選択範囲は非解釈」の二世界を作る。SourceのBOM／CRLF、同名Node、同端点多重Edge、閉じていないFenceやインデントコード、Markdown表の未対応Escape、同じRule IDの重複を負例にする。既存#4704のMR系列を製品Readerの入口とし、参照Readerを第二の正式Parserに格上げしない。
+
+### 31.21 同じ生成物へ異なる入力を渡すことと、Sourceから再生成することを区別する
+
+現`main`の`reference/tei-md-graph-reader/rule_test.go`には`TestGeneratedBinaryRuntimeNodeQuery`があり、各有効Fixtureの生成Goを**一度だけ`go build`**し、同じ生成バイナリへ全件要求と二つのNode ID、拒否される入力を渡している。明示した空ID・未知ID・余分な位置引数は非ゼロ終了し、バイナリのSHA-256が実行前後で変わらないことも検査する。
+
+これは重要だが、**Referenceプログラムの`-node`引数を製品`tei` CLIの公開APIや選択済みProviderとみなさない**。次の五つの差分を独立に説明する。
+
+| 入力・変更の種類 | 影響を受ける範囲 | 検証する境界 |
+| --- | --- | --- |
+| **実行時Node IDの変更** | 同じArtifact上のOperation InputとResult | 生成バイナリは同一。入力に依存する結果、未知・空・余分な引数の拒否 |
+| **Ruleの起点→終点の変更** | Source／Meaning／生成Goの条件式・独立Expected | 新Sourceを再Parseし、Meaningと生成Artifactの差を照合。旧Artifactのそのままの使い回しはしない |
+| **Edgeの向きを反転** | Graphの意味、Ruleによる結果、Generatorの入力 | 表を正本とするFixtureでは派生Mermaidと一致させる。古い図が残っても表の意味を上書きしない |
+| **MermaidのLR→TB等、表示だけ変更** | Source bytesとView配置 | Meaningが変わらないことは個別に照合。Source／Worldの版変更があってもArtifact再利用・Evidence再資格化を自動許可しない |
+| **Language／Operator／Generator／Target・実Provider版の変更** | 選択資格、意味／成果物再現性、実Consumer | 同じSource hashでも実利用版・Capabilities・Build Intentを再確認。旧Receiptを新資格へ継承しない |
+
+**実装計画の引渡し**は、Source digest／選択Reader・Role／Accepted Meaning／GeneratorとTarget／Build Artifact／Operation Input／Provider・Grant／Result・独立Observationを**一つのAttemptとして辿れること**を求める。§31.12のEvidence段階と、World Fingerprint／Model Revision／Artifact Revisionの用途別比較を接続するが、ここで新しいUniversal HashやHostを定義しない。
+
+### 31.22 多経路AIモデル化は「資料の候補」と「宣言的Source編集」の接点で評価する
+
+ホワイトボード写真、会議録、Excel／CSV、帳票、画面、既存SQLをAIが解析する場合でも、単に美しいTEI図面を出せることを合格基準にしない。**観測に戻れること、必要な意味が欠けたまま残せること、確定すべき一つのClaimだけを選んで正式なAuthoring Sourceへ戻せること**を評価する。
+
+最初のFixtureは「発注―入荷のRelation一件」。画像は二つの箱と不明瞭な接続、会議録は発注と入荷の関連を肯定しつつ多重度を確定しない発言、CSVはある発注番号に複数行が見えるが部分標本という構成とする。観測できた事項、AIの提案、採用候補、未解決のKey mapping／CardinalityをMarkdown表として並べても、Mermaidの見た目が整っただけで業務上のFKやFunctionの操作へ変換しない。
+
+**この一件で実証する操作を固定する**：原資料の限定選択→媒体別位置の確認→AI候補と反例→Source-bound Draftへの最小Patch候補→Source Revisionを固定したPreview→既存受理境界→独立Consumerで再読取。資料の開示条件や古いSelectorに問題がある場合は、編集より前に不成立とする。Studio／CLI／MCP／Harnessは対象とOperationを共有できる範囲で利用するが、Workspace全体の暗黙開示や、AIによる暗黙の業務受理を要求しない。
+
+画像由来の図形と同名Entity、会議の「現在」「将来」「仮に」「〜ではない」、CSVの欠落・重複・先頭ゼロ・型推測、帳票の計算欄、画面から見えないDB Effectを混同した例を、既存#3394／#1124／#2621／#2497の負例へ引き渡す。**候補の重複説明を独立Evidenceとして数えない。**
+
+### 31.23 自然さ・再利用・セルフビルドの検収票を最小化する
+
+構文選択を「短く書けるか」だけで測らない。業務専門家が対象・条件・例外・結果の順に読めるか、Markdownの素の表示で意味が追えるか、Sourceを触らずStudioとCLIで同じSubjectへ戻れるかを比較する。一方で複雑な機械的なProvenanceを本文へ毎回露出させない。
+
+既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)／[#2831](https://github.com/hat47x/tei-platform/issues/2831)へ渡す検収は**各作業につき次の五つだけを必須比較票候補**とする（既存のテスト体系を置換する意味ではない）。
+
+| 観点 | 最初に比べるもの |
+| --- | --- |
+| **意味の同一性** | 旧`.tei`、Markdown表、Mermaid／短いRuleで、どのClaimが同じでどこが未対応か |
+| **原文と編集資格** | 元byte・選択Source・Role、局所Patchの対象、無変更Saveでのbyte一致、拒否される未選択範囲 |
+| **実行の二種類の変化** | Source変更→再生成で実ロジックが変わること／同じArtifactに入力を変えて結果だけが変わること |
+| **実Consumerとの接合** | 正式Reader→受理済み意味→既存Generator／Plugin→通常`tei` CLI→別Consumerで受領の証拠 |
+| **自己実装の伸び** | 手書きGoのDelegateだけでない生成ロジック・構造・制約・Plugin自身のTEI化、定義量／編集負担の差、Stage1→Stage2実再生成 |
+
+**受入対象を限定し、失敗時に何が未成立かを正しく報告できること**を優先する。参照ReaderのGoテスト成功と、製品Reader、Builder、Provider、Studioでの成立を一つのPASSにまとめない。
+
+### 31.24 優先順位と並行PRの整合
+
+正式`*.tei.md` Reader／Source Indexへの接合は[#2621](https://github.com/hat47x/tei-platform/issues/2621)・[#1018](https://github.com/hat47x/tei-platform/issues/1018)・[PR #4704](https://github.com/hat47x/tei-platform/pull/4704)の既存Ownerに渡す。Graph/Ruleの限定Referenceと同じBinaryへの入力別実行はmainの`reference/tei-md-graph-reader`を再利用し、新しいParser／Graph Compiler／Rule Engineを作らない。
+
+全体P0の**Studio Stage1→Stage2セルフビルド**と、**通常`tei` CLI→実Provider→独立Consumer**は維持する。複雑なAI画像解析、BRMS Hit Policy全般、X-TEA全図面の完全再現、Studioの自由配置編集は別の製品価値検証として並行可能だが、A-1正式Readerを実装するための必須前提にはしない。
+
+本書の§33〜36と並行の[PR #4694](https://github.com/hat47x/tei-platform/pull/4694)の§37〜42は、渡辺式／三要素分析法の原典忠実性という**別の受入軸**である。同じFileを編集するDraftの先行・後続順を統合前に確定し、§31のAuthoring改善で§33以降の既存Modeler検証を削除したり、Source fidelityを弱めたりしない。**PR順序やmain差分の比較だけで意味受理・回帰試験完了を宣言しない**。
+
 ## 32. Mermaidを直接記述するER図・シーケンス図
 
 §28では、複雑なGraphについて型付き表からMermaidを導出する例を優先した。ただし、これを**全Mermaidを読み取り専用にする規則とはしない**。Mermaid自身が対象用途に必要な意味を表せるなら、ER図`erDiagram`、シーケンス図`sequenceDiagram`等を**直接のAuthoring Source候補**として認める。GitHub上で図を読める利点をそのまま生かす。
