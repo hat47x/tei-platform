@@ -133,6 +133,24 @@ Providerは明示した選択とpinを優先し、指定がなければProfile�
 
 試験用FixtureやStudioのEditorを、配布アプリケーションへ無条件に含めない。共通の定義から必要な部分を段階別に選ぶ。データを表示するUI、APIから呼ぶ操作、DBで実行する更新、試験で確認する結果が同じ意味要素へ対応することを検証する。
 
+## 分野別ツールキットの探索を二つの利用先へ分ける（2026-11-14、候補評価）
+
+標準的な業務アプリケーションの生産性に加え、特定分野の計算・表現を使いやすくすることも拡張方針の候補とする。ただし、**TEIで開発・生成するアプリケーションに組み込む機能**と、**TEI Studio自体で設計・分析・表示する機能**は同じPackageに収録できても、Contribution・依存・実行環境・受入を分ける。Studioだけで動く計算や描画を、生成Targetの実装済み機能とは呼ばない。専門家用ツールを作るためにStudioが必ずその分野の実行環境を内蔵する必要もない。
+
+| 候補領域 | Studioでの用途 | 生成アプリケーションでの用途 | 先に確かめる意味・負例／既存Owner |
+| --- | --- | --- | --- |
+| 統計・科学計算（R/Mathematica等を参考にする） | 計算式、分布、推定法、誤差・可視化の選択と検算 | 選んだTargetへ純粋計算Operatorや利用するライブラリとのAdapterを生成 | 原実装の出典・許諾、算法/版、数値精度・丸め、欠測・種、独立Expected。同一数値でも単位/仮定が異なれば非同値。#2495/#2544/#2501 |
+| WBS・PERT・スケジュール | 作業依存DAG、Calendar、制約、Critical Pathと遅延要因の編集・比較 | 工程計画・進捗/変更影響・期間計算・Gantt等の型付き表示 | Cycle、稼働日、複数開始条件、未確定所要時間、Resource制約を無視した最短日程を実受入にしない。#3791/#4133/#2507 |
+| レポート・集計・SQL Window | Query、集計軸・粒度、期間窓、Chart/Tableの構成と試行 | DB方言別SQL/分析処理・帳票/Window Functionを生成 | ROWS/RANGEと順序、JOIN fanout、RLS/Limit、Stock/Flow、AVG再集計、NULL/partialを区別。#2593/#2387/#2586 |
+| 熱力学・動的システム・数理論理 | 系・境界、変数、次元、拘束・保存則・解法を記述し実測と対照 | Solver/数値積分/制約検査のTarget実装または明示外部Provider呼出し | 温度点と温度差、保存則違反、単位不整合、発散/収束、境界・初期条件未設定を正常計算へ変えない。#2495/#2544/#3791 |
+| バイオサイエンスと高度可視化 | 生体データの座標/階層/時点・ネットワーク/多次元Viewと解析候補の検討 | 対象業務に必要な分析/探索・可視化の選択的Target生成 | 塩基位置・参照版・観測個体の同一性、欠測、データ利用権限と精度、表示の投影損失を保持。#2501/#2497/#3827 |
+
+**共通の入口**は、標準Data/Function/Query/Relation/時系列・単位等の既存意味Contractへ、領域固有のOperator/描画/Targetを段階別Contributionとして接続すること。Expression表層（数式、Markdown、Graphviz、WBS等）の編集形式を保持しても、意味・入力型・演算の公理・Targetでの実精度は別に検証する。RやMathematicaのライブラリ・定義を参考にする場合、公開仕様/実行結果の比較と、コード/データ/教材の著作権・使用許諾を分離し、無許諾のソース移植を前提にしない。外部Rプロセスを全Targetに必須化せず、純粋Operator、Target用ライブラリ、必要時のみ明示Providerの三案を比較する。
+
+**評価の入口は領域ごとに一件だけ**：公開可能な合成Fixtureと専門家が独立に固定する正例・反例で、(1) Core/標準Pluginで表現できる意味、(2) 領域固有の不足、(3) Studioで実選択・編集/Previewできた範囲、(4) 選択Targetで実生成/InvokeしたProvider・値・誤差、(5) 別Consumerの実受領、(6) 必要な許可/Source・使用条件と実行費用を別票に記録する。さらに、手書き実装と比較した設計・修正時間、生成物容量、実行時間、必要な手修正・検証工数を測定する。名称の人気、アルゴリズムの豊富さ、参考ImplementationのテストPASSだけで「キラーコンテンツ」や生産性改善を認定しない。
+
+**最初の小さな圧力試験候補**は、WBS/PERTのDAGとCalendar・Critical Path、および期間Window集計とMeasureの再集計とする。Studioの既存図/表/Timeline、TEI Query、#2593の既存反例を使い、全方言・Resource leveling・複雑な科学Solverまで最初に実装しない。科学/統計、熱力学、バイオサイエンスは#3791/#2501へ候補と反例を供給し、明確な案件需要・独立Expected・適用Targetが得られた順に縦断実証する。各分野の探索は**P1以降の選択的な並行検討**であり、#4583の非Plugin Studio Stage1→Stage2と#2586の実Product ReadのP0を置き換えない。新Core型、Solver Host、万能可視化Engine、専用Registry/Runnerをここで採用しない。
+
 ## 参照する既存製品の考え方
 
 [VS Code](https://code.visualstudio.com/api/get-started/extension-anatomy)は宣言するContributionと起動する実装を分ける。[Theia](https://theia-ide.org/docs/extensions/)は構築時に組み込む拡張と、実行時に追加する拡張等を分けている。[Backstage](https://backstage.io/docs/frontend-system/architecture/extensions/)は拡張の入出力と接続先を型付きで構成する。[Gradle](https://docs.gradle.org/current/userguide/plugin_basics.html)はプラグインから構築のTaskや設定を提供する。TEIはこれらを比較材料とし、設計の意味からStudio・Build・実行へ連続する契約を定める。各製品のAPIをそのままTEIの正本にはしない。
