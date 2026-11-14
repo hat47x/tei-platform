@@ -835,3 +835,64 @@ Graphの編集やConcernの追加を、現在実行中のProcessへ無審査で�
 
 **到達点**：Graph上の選択候補をread-onlyで説明できること、静的に必要なTarget Adapterを一つ正しく合成できること、実Navigation／Providerと送出の有無を独立確認できること。P0のStudio Stage1→Stage2と#1251の実Provider入口へ追加Hard Gateを設けない。正式Graph拡張文法、汎用AOPランタイム、実計測SDK・Cookie Banner／Privacy同意機構、全Targetの実現は未採用・未実証とする。
 
+---
+
+<!-- tei-plugin-first-real-generation-slice-20261114 -->
+## 18. 一つの図表から本当に動くPluginを生成する最小実証
+
+### 18.1 第16章の計画を、独立した一機能の作業に絞る
+
+第16章のP-A〜P-Eと並行[製品計画PR #4676](https://github.com/hat47x/tei-platform/pull/4676)のSB-0〜4は、Plugin自己生成とTEI／Studio再構築の**進行順**である。本章は新しいロードマップではなく、**どの図表を変え、どの生成処理が変わり、どこまで実Callできたら合格か**を一件のPluginで決定する。旧[PR #4675](https://github.com/hat47x/tei-platform/pull/4675)の実験案を、mainへ統合済みの第15・16章と重複しないよう移したものでもある。
+
+最初のFixtureは、表示名が同じ `item` のNode `n1`／`n2` と、どちらも `n1→n2` を向く別IDのEdge `e1`／`e2` を持つ。Graphの正本は安定Node／Edge ID・Endpoint・向き・多重性であり、Graphvizの座標や線の形ではない。対応する**出辺ID集合を返すpure Function**を、説明図ではなく意味上の定義から実Go等へ生成する。
+
+| 定義の変化 | 独立Expected | 同時に確認する意味 |
+| --- | --- | --- |
+| 初期 `e1,e2` | `n1`の出辺は`{e1,e2}`、件数2 | `n1,n2`は同じ表示名でも別Node。2本は同じEndpointでも別Edge |
+| `e2`の向きを逆転 | `n1`は`{e1}`、`n2`は`{e2}` | 実装の出辺算出がEdge方向に依存する |
+| `e2`を削除 | `n1`は`{e1}`、件数1 | Edge `e1`とNode IDは不変 |
+| 図の位置・注記だけ変更 | 計算結果と意味版の必要箇所は不変 | 原Source／描画は変更され得る。依存しない生成Goを過剰失効させない |
+| 同一ScopeにEdge IDを重複宣言 | 曖昧な意味候補として診断 | 上書き・dedupで正常な出辺集合にしない |
+
+返すIDの順序は意味上必須としない場合、独立Expectedでは**ID集合と件数**を検査する。GoのMap走査順を規則と誤認しない。入力Source、生成された実処理のどの分岐・関係参照が当該Edgeに由来するかを説明できるようにする。
+
+### 18.2 Goへの委譲と、TEIが処理を生成したことを区別する
+
+初期のSource Reader、Graph構造、Target Builderを既存Goが提供することは許容する。一方、生成Goが手書き`OutgoingEdges`に処理を丸投げするなら、そのFunctionの**処理義務はTEIが実装したとは数えない**。Graphの型付き構造を元に出辺を列挙・検証する実コードが生成され、Sourceの一因子変更が実Call結果へ届いた場合に限って、当該義務のTEI由来実装として報告する。
+
+生成物を直接修正せず、手書きExtensionが必要なら既存[#2090](https://github.com/hat47x/tei-platform/issues/2090)の版付き拡張点を使う。再生成によるExtension保全と、基底の型／順序変更による不適合検出を既存fixtureへ追加する。固定済みのSource／Expectedに合わせて手書きGo条件を都合よく直した結果を「TEIモデルが挙動を決めた」と判定しない。
+
+**定義の簡素化は別に測る。** Edge一件の意味変更を、新旧方式でどのSource／Graph／Go／Adapter／設定へ修正したかを比較し、独立Expectedの更新は意味の重複した手書き実装と分けて数える。生成コードの行数削減や定義ファイル短縮だけでは成功にしない。分母は対象のFunction／Validation／Plugin Roleを変更前に固定し、未対応・外部実装を消さずに残す。
+
+### 18.3 実行段階を6つに分ける
+
+| 段階 | 検収したい範囲 | 未成立時の扱い |
+| --- | --- | --- |
+| **R0 Source** | 管理`*.tei.md`の実Reader、occurrence/span、Graph Role、必要Sourceの版 | 現行Loader未対応ならunsupported。旧`*.tei`からの橋渡しはReferenceとして別表示 |
+| **R1 Codegen** | 受理済み意味→出辺を計算する実ロジック→生成Goの出力Role／digest | 単なる委譲WrapperとGraphviz描画だけなら不合格 |
+| **R2 Actual use** | exact Builder、Artifact Member、選択Provider→実Entry→実CLI Consumer | Artifact存在とActual Callを分離。選択B・実Aを拒否 |
+| **R3 Regeneration** | 同一Sourceの再生成、手書き拡張点保全、Version／Toolchain差異 | 生成ファイル直接編集や別Sourceを隠さない |
+| **R4 Recursion** | Stage1実TEI ProcessがStage2のBuild Plan解決と実Builderを駆動 | Stage0外部Launcherの二度実行だけなら未成立 |
+| **R5 Second use** | 同じGraph定義をInspect／Test／説明等、別の実Consumerへ投影 | RendererのGraphだけを意味の第二正本にしない |
+
+最初に**R0→R1→R2**を実証し、その後にR3〜R5へ進む。全体Studio Stage1→Stage2の製品受入をこの一件で代用しない。Evidenceは既存Source Index、Semantic、Build Execution、ArtifactSet、#1180/#2514 Scenario、実Callのread-only照合とし、第二Evidence Storeや専用Runnerを作らない。
+
+### 18.4 既存Scenarioへの不足assert：PGL-01〜08
+
+この8件は新しい試験正本ではなく、旧PR #4675のGraph実生成スライスに由来する**最初の実装依存の差分検査**である。既存PX／PSBでは分類上の違いを確認し、本項では生成処理内の具体的な出辺結果を確認する。
+
+| Case | 比較する条件 | 追加で確認すること |
+| --- | --- | --- |
+| **PGL-01** | 同じ表示名のNode `n1,n2` | 名前の一致でEntity IDを混同しない |
+| **PGL-02** | 同一端点のEdge `e1,e2` | 生成した出辺IDの実結果が`{e1,e2}`、件数2 |
+| **PGL-03** | `e2`の方向だけを反転 | 両Nodeの出辺IDが予測どおり変化 |
+| **PGL-04** | 描画座標・注記だけ変更 | 意味処理と生成結果を不必要に変えない |
+| **PGL-05** | 実生成ロジックを手書きGo呼出しに置換 | 実結果が同じでも自己実装Claimを撤回 |
+| **PGL-06** | 生成物へ直接手編集し再生成 | #2090の既存契約と照合して変更を検出 |
+| **PGL-07** | 拡張点の型／呼出し条件を変更 | 旧拡張を黙って使わず不適合を診断 |
+| **PGL-08** | 生成物は存在するがArtifact未収録／実別Provider | R1合格とR2失敗を別の資格として記録 |
+
+**最初の完了条件**は、手書きGoへ全委譲していない一つの出辺Functionについて、同一Fixtureと固定Expectedで「Source→生成Go→実Artifact→実CLI結果」の正例・反例を説明できること。正規Readerが未接続なら、まずその不足を既存[#2621](https://github.com/hat47x/tei-platform/issues/2621)／[#4359](https://github.com/hat47x/tei-platform/issues/4359)へ返し、仮の文法受理を捏造しない。Plugin Providerは#951/#1251、生成・再入は#1121/#2831、Extensionは#2090がOwnerであり、いずれも本章で新しく作り直さない。
+
+**証拠資格**：設計・独立Expected候補。実`*.tei.md`Reader、Graph処理Generator、Plugin Actual Call、セルフビルドStage1→Stage2、横断ConcernのRuntime SDKはこの章では実装・検証していない。
+
