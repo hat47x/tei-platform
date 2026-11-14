@@ -98,9 +98,10 @@ func checkCTKWindowCaseClosure(cases []ctkWindowOracleCase) error {
 // C0 evidence, not acceptance of a *.tei.md Reader or Query/Provider chain.
 func TestCTKWindowCandidateIndependentOracleAgainstSQLite(t *testing.T) {
 	var oracle struct {
-		Schema   string                `json:"schema"`
-		Adoption string                `json:"adoption"`
-		Cases    []ctkWindowOracleCase `json:"cases"`
+		Schema            string                `json:"schema"`
+		Adoption          string                `json:"adoption"`
+		InputObservations []ctkWindowInputRow   `json:"inputObservations"`
+		Cases             []ctkWindowOracleCase `json:"cases"`
 	}
 	fixturePath := filepath.Join("..", "..", "..", "..", "testdata", "tei-md-window", "independent-expected.candidate.json")
 	raw, err := os.ReadFile(fixturePath)
@@ -110,12 +111,16 @@ func TestCTKWindowCandidateIndependentOracleAgainstSQLite(t *testing.T) {
 	if err := json.Unmarshal(raw, &oracle); err != nil {
 		t.Fatalf("decode independent oracle: %v", err)
 	}
-	if oracle.Schema != "tei-ctk-window-independent-expected-candidate/v1" ||
+	if oracle.Schema != "tei-ctk-window-independent-expected-candidate/v2" ||
 		oracle.Adoption != "proposal-only" {
 		t.Fatalf("unexpected oracle identity or adoption: %q, %q", oracle.Schema, oracle.Adoption)
 	}
 	if err := checkCTKWindowCaseClosure(oracle.Cases); err != nil {
 		t.Fatalf("INCOMPLETE_CANDIDATE_CLOSURE: %v", err)
+	}
+	inputByID, err := validateCTKWindowInputRows(oracle.InputObservations)
+	if err != nil {
+		t.Fatalf("INVALID_INPUT_OBSERVATIONS: %v", err)
 	}
 	// A new *.tei.md Source must not appear without an explicit independent
 	// candidate entry. This is a fixture integrity check, not a Markdown parse.
@@ -215,8 +220,10 @@ func TestCTKWindowCandidateIndependentOracleAgainstSQLite(t *testing.T) {
 						id, moving, runningRows, runningRange,
 						want.Moving, want.CumulativeRows, want.CumulativeRange)
 				}
-				if group == "" || seq == 0 || value.Valid != (id != "B2") {
-					t.Errorf("source value/identity changed for %s: group=%s seq=%d value=%+v", id, group, seq, value)
+				input, ok := inputByID[id]
+				if !ok || group != input.Group || seq != input.Seq || value != input.Value {
+					t.Errorf("SQL source row %s = (group=%q, seq=%d, value=%+v), independently pinned input (found=%v, %+v)",
+						id, group, seq, value, ok, input)
 				}
 			}
 			if err := rows.Err(); err != nil {
