@@ -1635,3 +1635,49 @@ DBのRead成功と全範囲取得の完全性、PinのローカルgenerationとS
 **優先順位**：P0はQ0〜Q5の実連鎖と、CLI/Studioの実Provider Readの二つの薄い縦切り。P1はDSL自己記述のK0〜K5、Pin非干渉とGUI/AI共通Operation、Plugin履行とHook/Receipt。P2は汎用Operatorの小例を通じた研究/REA/科学計算のDomain Plugin候補評価。P1/P2の設計完了をP0のHard Dependencyにしない。
 
 **証拠の上限**：本節は既存議論の計画反映であり、コード・Windows・DBの新実行、最新HEADのCI追試、Ownerによる意味受理を行っていない。#4606はDraftであり、mainへの統合を意味しない。
+
+---
+
+<!-- tei-cp-20261114-fourth-pass-real-evidence -->
+## 2026-11-14 第4次横断収束：最新実装資格と最短統合順の修正
+
+本節は前節のQ0〜Q5、K0〜K5を**既存の検収補助表現**として維持し、2026-11-14に進展した実コード/CIと設計Draftの資格を照合する。Q/Kは新しい正式Gate、Core enum、Runtime状態を意味しない。
+
+### 1. 現時点の実装事実と残る不足を分離する
+
+| 領域 | GitHubで確認したPRの状態・主張 | 製品として未実証の境界 |
+| --- | --- | --- |
+| Builder child identity | [#4623](https://github.com/hat47x/tei-platform/pull/4623)はDraft。選択した子Builderのexpected digestと実子exe digestを**起動前**に照合し、Selected B/Actual Aを実行前に拒否するコード・試験を追加した | PR統合、同一HEAD実CI再確認、非Plugin StudioのBuildIntent/BuildPlan接続、全入力の実消費 |
+| Build/Plugin composition | [#4643](https://github.com/hat47x/tei-platform/pull/4643)はDraft。旧#4621の衝突を解消するためmain追従した設計統合候補。本文は#4634 exact HEADの8/8 CI成功を報告 | Plugin主体のResolver/Builderの限定成功をDesktop正式SubjectやStage2実呼出しへ拡張できない |
+| Studio dogfooding | [#4651](https://github.com/hat47x/tei-platform/pull/4651)はDraft。#4587 exact HEADのWindows smoke 1失敗/12中11成功を明示し、MVP一往復を再構成 | 旧HEADの限定PASSを現在HEADの全Windows成功へ読み替えない |
+| DSL診断 | [#4652](https://github.com/hat47x/tei-platform/pull/4652)は**merged**。Source構文/Workspace意味/実行前拒否/公開Host選択の四層受入を設計へ反映 | 設計PRのmergeだけで新Validatorや実Adapter call=0試験が完成したとは扱わない |
+| 実DB/データ様式 | [#4619](https://github.com/hat47x/tei-platform/pull/4619)はDraft。本文で#4644のRA-1/RA-2R実PG限定Read（3/3 CI）と、#4626の依存監査sqlgen失敗を別事象として報告 | 製品CLI→実Provider→二Consumer→取得範囲の独立確認、Write/Effect/Receipt |
+
+PR本文が報告するCI件数・HEADは**各PRの報告値**であり、本節の編集者が当該CIログを再実行・独立監査した結果ではない。main統合済みとDraftを混同しない。
+
+### 2. P0の最初の実装をDG-0へ絞る
+
+現行`BuildIntent.Validate`/Plugin BuildPlanはPlugin Subjectを前提とする一方、`go-command`/`go-package` Recipeや子Builder照合の部品は存在する。したがって最初の実装は **DG-0：非Plugin Studioを正式なBuild Subjectとして既存BuildExecution/ArtifactSetに結線**することとする。Studioを架空Pluginに変換せず、既存のPlugin経路は退行させない。
+
+受入順は、(a)非Plugin StudioのTarget/SubjectとBuildIntent妥当性、(b)選択Builderの起動前照合、(c)生成Inspector TS・esbuild・Go embedの宣言/実入力照合、(d)実Stage1→Stage2構築、(e)当該Stage2 Windows WebView2/IPC受領。Plugin Runtime Provider実呼出しはその上の独立資格とし、Desktopの最小セルフビルド成功のHard Dependencyにしない。
+
+### 3. 版・権限・取得範囲を実Consumerまで保持する
+
+**編集Buffer → 保存Source → Build入力 → Builder実入力 → Artifact → 実使用Artifact**はそれぞれ異なる版/identityを持つ。保存成功、生成成功、起動成功、受領成功を一つの成功に潰さない。Pin再確認はEditor/Graphの選択状態を変更せず、古い応答、IME編集中のBuffer、A→B→Aの再資格化を分ける。
+
+QueryはSource/型付きInput/Provider/取得Rowset/Function Data Context/Consumerを分離し、LIMIT/RLS等で取得範囲が不明なら`partial`/`unestablished`を保持する。空集合とSource不存在を混同せず、取得完全性が不明な結果から「対象が存在しない」と断定しない。
+
+Plugin状態は**宣言／導入可能／有効設定／Composition／Build包含／Runtime実利用／Authority・Effect／データ保持**を別観測とする。HookのPreview→Resolve→Admit→Commit→Observeは同一実作用の単なる別名ではなく、Guard前作用、再送、Receipt不在を独立に検査する。AI HarnessやSHOへ渡すのは確定したSubject/Source/Revision/Grant/Disclosureであり、候補の意味受理を暗黙に昇格させない。
+
+### 4. 最初の独立Expected（追加案）
+
+- **DG0-NP-01**：PluginではないStudio Subjectを既存BuildIntentへ渡し、Plugin偽装なしにTarget解決とArtifactSetへの対応を確認する。未対応なら明示FAIL/unsupported。
+- **DG0-NP-02**：Selected Builder B/Actual Aで実子起動・副作用がゼロ。#4623のprimitive単体と製品BuildIntent経路を別検収。
+- **DG0-NP-03**：実Stage1が作ったStage2と実Windowsで開いたexeのdigest/Source Worldが一致。旧exe/別HEADは拒否。
+- **DG0-NP-04**：Windows smoke失敗を他の11 job成功で覆わない。修正後は同一HEADで該当Jobを再試験。
+- **DB-COV-01**：LIMIT/RLS等で被覆不明の結果は`complete`に昇格せず、二Consumerへ同じ取得範囲情報を伝達。
+- **DSL-ACD-01**：同名InputまたはOutput/Outcome矛盾をSource診断とWorkspace意味診断で対応づけ、実Adapter呼出し0を独立に確認。
+
+最初のIssue Ownerは#4583/#2831（DG-0）、#4515（Pin）、#4359/#4495（DSL）、#1251/#2586（DB）、#1180/#2514（独立Expected）を再利用する。新たな横断承認Gate・Host・Registry・Build Engineは増設しない。
+
+**実行状況**：本追補は設計・計画のみ。新Go/Node/Windows/PostgreSQL実行NOT RUN。#4606はDraft、main未統合。新規に取得したPR状態とPR本文のCI報告を区別して記載した。
