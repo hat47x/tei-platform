@@ -5,6 +5,7 @@ import sys
 from urllib.parse import urljoin, urlparse
 
 from playwright.sync_api import sync_playwright
+from appearance_browser_smoke import smoke_appearance
 
 
 def runtime_call(request):
@@ -408,6 +409,7 @@ def main() -> None:
             smoke_workbench(browser, base_url)
         finally:
             browser.close()
+    smoke_appearance(base_url)
 
 
 if __name__ == "__main__":

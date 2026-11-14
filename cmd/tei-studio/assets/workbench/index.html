@@ -4,6 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>TEI Studio — 読み取り専用ワークベンチ</title>
+    <script src="./appearance.js"></script>
+    <link rel="stylesheet" href="./theme.css" />
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
@@ -16,6 +18,19 @@
         </div>
       </div>
       <div class="header-actions">
+        <label class="appearance-control">外観
+          <select id="appearance-theme">
+            <option value="system">システムに合わせる</option>
+            <option value="light">ライト</option>
+            <option value="dark">ダーク</option>
+          </select>
+        </label>
+        <label class="appearance-control">表示密度
+          <select id="appearance-density">
+            <option value="comfortable">標準</option>
+            <option value="compact">コンパクト</option>
+          </select>
+        </label>
         <span class="readonly">読み取り専用</span
         ><span id="connection" role="status">接続中</span
         ><button id="validate" class="primary">作業領域を検証</button>

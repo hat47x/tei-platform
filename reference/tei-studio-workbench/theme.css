@@ -1,0 +1,66 @@
+/* Studio appearance tokens v1. App styles may override these public variables.
+ * They change presentation only; operation and model state remain in the UI.
+ */
+@layer tei.tokens {
+  :root {
+    color-scheme: light;
+    --tei-font: system-ui, -apple-system, "Segoe UI", "Yu Gothic UI", sans-serif;
+    --tei-font-size: 14px;
+    --tei-bg: #f4f6f6;
+    --tei-surface: #ffffff;
+    --tei-panel: #eef3f3;
+    --tei-panel-secondary: #f8fafa;
+    --tei-soft: #f4f8f8;
+    --tei-hover: #e3ecec;
+    --tei-highlight: #e8f1f1;
+    --tei-canvas: #fbfcfc;
+    --tei-gutter: #f0f5f5;
+    --tei-text: #1c353b;
+    --tei-muted: #526b73;
+    --tei-accent: #176675;
+    --tei-on-accent: #ffffff;
+    --tei-focus: #007c91;
+    --tei-border: #c0ced1;
+    --tei-control-border: #80989d;
+    --tei-selected-border: #3e8290;
+    --tei-graph: #2f6570;
+    --tei-success: #176f54;
+    --tei-warning-bg: #fff8e9;
+    --tei-warning-border: #c8a651;
+    --tei-danger: #a13333;
+    --tei-shadow: 0 2px 5px #12343c06;
+    --tei-radius: 6px;
+    --tei-control-padding: 9px;
+    --tei-item-padding: 11px;
+  }
+  :root[data-tei-theme="dark"] {
+    color-scheme: dark;
+    --tei-bg: #171d23;
+    --tei-surface: #202830;
+    --tei-panel: #1b2229;
+    --tei-panel-secondary: #1d252d;
+    --tei-soft: #28323b;
+    --tei-hover: #303d47;
+    --tei-highlight: #2b3c45;
+    --tei-canvas: #1c242b;
+    --tei-gutter: #252f38;
+    --tei-text: #e6edf1;
+    --tei-muted: #b0c0c9;
+    --tei-accent: #8cd3df;
+    --tei-on-accent: #102e36;
+    --tei-focus: #90dfed;
+    --tei-border: #526570;
+    --tei-control-border: #8297a3;
+    --tei-selected-border: #8cd3df;
+    --tei-graph: #a7d9e0;
+    --tei-success: #8ed7b4;
+    --tei-warning-bg: #40351f;
+    --tei-warning-border: #ac9150;
+    --tei-danger: #ffb1ab;
+    --tei-shadow: none;
+  }
+  :root[data-tei-density="compact"] {
+    --tei-control-padding: 6px;
+    --tei-item-padding: 7px;
+  }
+}

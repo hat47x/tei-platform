@@ -1,12 +1,8 @@
 :root {
-  font-family:
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    sans-serif;
-  color: #1c353b;
-  background: #f4f6f6;
-  font-size: 14px;
+  font-family: var(--tei-font);
+  color: var(--tei-text);
+  background: var(--tei-bg);
+  font-size: var(--tei-font-size);
   line-height: 1.5;
 }
 * {
@@ -27,14 +23,15 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 [tabindex]:focus-visible {
-  outline: 3px solid #268a9b;
+  outline: 3px solid var(--tei-focus);
   outline-offset: 2px;
 }
 .topbar {
-  height: 86px;
-  padding: 0 28px;
-  background: white;
-  border-bottom: 1px solid #dce4e5;
+  min-height: 86px;
+  flex-wrap: wrap;
+  padding: 14px 28px;
+  background: var(--tei-surface);
+  border-bottom: 1px solid var(--tei-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -46,50 +43,51 @@ select:focus-visible,
   gap: 12px;
 }
 .brand-mark {
-  background: #176675;
-  color: white;
-  border-radius: 12px;
+  background: var(--tei-accent);
+  color: var(--tei-on-accent);
+  border-radius: var(--tei-radius);
   width: 44px;
   height: 44px;
   display: grid;
   place-items: center;
-  font-size: 25px;
+  font-size: 1.785714rem;
 }
 .brand strong {
-  font-size: 21px;
+  font-size: 1.5rem;
   letter-spacing: -0.5px;
 }
 .brand small {
   display: block;
-  color: #5a7278;
-  font-size: 11px;
+  color: var(--tei-muted);
+  font-size: 0.857143rem;
   margin-top: 2px;
 }
 .header-actions {
   display: flex;
   align-items: center;
   gap: 18px;
-  font-size: 12px;
+  font-size: 0.857143rem;
 }
 .readonly,
 .tag {
-  border: 1px solid #d5e2e2;
-  background: #f4f8f8;
-  color: #45646b;
-  border-radius: 5px;
+  border: 1px solid var(--tei-border);
+  background: var(--tei-soft);
+  color: var(--tei-muted);
+  border-radius: var(--tei-radius);
   padding: 4px 8px;
-  font-size: 11px;
+  font-size: 0.857143rem;
 }
 .primary {
   border: 0;
-  background: #176675;
-  color: #fff;
+  font-size: 1rem;
+  background: var(--tei-accent);
+  color: var(--tei-on-accent);
   padding: 10px 17px;
-  border-radius: 7px;
+  border-radius: var(--tei-radius);
   font-weight: 600;
 }
 #connection[data-state="ready"] {
-  color: #176675;
+  color: var(--tei-accent);
 }
 .workbench {
   display: grid;
@@ -98,24 +96,24 @@ select:focus-visible,
 }
 .sidebar {
   padding: 23px 16px;
-  background: #eef3f3;
-  border-right: 1px solid #dce4e5;
+  background: var(--tei-panel);
+  border-right: 1px solid var(--tei-border);
   min-width: 0;
 }
 .eyebrow {
-  font-size: 11px;
+  font-size: 0.857143rem;
   font-weight: 700;
   letter-spacing: 0.08em;
-  color: #617a81;
+  color: var(--tei-muted);
   margin: 0 0 8px;
 }
 select,
 input {
-  border: 1px solid #cbd9db;
-  border-radius: 6px;
-  padding: 9px;
+  border: 1px solid var(--tei-control-border);
+  border-radius: var(--tei-radius);
+  padding: var(--tei-control-padding);
   color: inherit;
-  background: white;
+  background: var(--tei-surface);
   width: 100%;
 }
 .sidebar-title {
@@ -125,11 +123,11 @@ input {
   margin: 24px 0 12px;
 }
 .sidebar-title span {
-  font-size: 11px;
-  color: #617a81;
+  font-size: 0.857143rem;
+  color: var(--tei-muted);
 }
 h2 {
-  font-size: 14px;
+  font-size: var(--tei-font-size);
   margin: 0;
 }
 #subjects {
@@ -143,36 +141,36 @@ h2 {
   background: transparent;
   color: inherit;
   text-align: left;
-  padding: 11px 9px;
-  border-radius: 6px;
+  padding: var(--tei-item-padding) 9px;
+  border-radius: var(--tei-radius);
   width: 100%;
   margin: 3px 0;
 }
 .subject:hover {
-  background: #e3ecec;
+  background: var(--tei-hover);
 }
 .subject[aria-pressed="true"] {
-  background: #fff;
-  border-color: #b7d5d9;
-  box-shadow: 0 2px 5px #12343c06;
+  background: var(--tei-surface);
+  border-color: var(--tei-selected-border);
+  box-shadow: var(--tei-shadow);
 }
 .subject span {
   display: block;
   font-weight: 600;
-  font-size: 12px;
+  font-size: 0.857143rem;
   overflow-wrap: anywhere;
 }
 .subject small {
   display: block;
-  font-size: 10px;
-  color: #637d84;
+  font-size: 0.857143rem;
+  color: var(--tei-muted);
   margin-top: 5px;
   overflow-wrap: anywhere;
 }
 .center {
   min-width: 0;
   padding: 26px;
-  background: #fff;
+  background: var(--tei-surface);
 }
 .section-head {
   display: flex;
@@ -181,35 +179,35 @@ h2 {
   gap: 15px;
 }
 h1 {
-  font-size: 23px;
+  font-size: 1.642857rem;
   letter-spacing: -0.4px;
   overflow-wrap: anywhere;
   margin: 0;
 }
 .hint {
-  font-size: 11px;
-  color: #627b82;
+  font-size: 0.857143rem;
+  color: var(--tei-muted);
   margin: 12px 0 18px;
 }
 .editor {
-  border: 1px solid #dce4e5;
-  border-radius: 8px;
+  border: 1px solid var(--tei-border);
+  border-radius: var(--tei-radius);
   overflow: hidden;
-  background: #fbfcfc;
+  background: var(--tei-canvas);
 }
 .cm-editor {
   height: 350px;
 }
 .cm-scroller {
   font-family: ui-monospace, Consolas, monospace;
-  font-size: 12px;
+  font-size: 0.857143rem;
   line-height: 1.8;
 }
 .cm-content {
   padding: 17px 10px !important;
 }
 .cm-gutters {
-  background: #f0f5f5 !important;
+  background: var(--tei-gutter) !important;
   border: 0 !important;
 }
 .graph-head {
@@ -221,20 +219,20 @@ h1 {
 .graph {
   min-width: 0;
   max-width: 100%;
-  border: 1px solid #dce4e5;
-  border-radius: 8px;
+  border: 1px solid var(--tei-border);
+  border-radius: var(--tei-radius);
   padding: 12px;
-  background: #fbfcfc;
+  background: var(--tei-canvas);
 }
 .graph svg {
-  color: #2f6570;
+  color: var(--tei-graph);
 }
 .graph [data-selected="true"] text {
   font-weight: 700;
 }
 .xead-view {
   margin-top: 30px;
-  border-top: 1px solid #dce4e5;
+  border-top: 1px solid var(--tei-border);
   padding-top: 18px;
 }
 .xead-controls {
@@ -242,9 +240,9 @@ h1 {
   gap: 8px;
 }
 .xead-controls button {
-  border: 1px solid #b7c9cc;
-  border-radius: 6px;
-  background: #fff;
+  border: 1px solid var(--tei-control-border);
+  border-radius: var(--tei-radius);
+  background: var(--tei-surface);
   color: inherit;
   padding: 8px 14px;
 }
@@ -253,30 +251,30 @@ h1 {
   gap: 12px;
 }
 .xead-table {
-  border: 1px solid #dce4e5;
-  border-radius: 7px;
+  border: 1px solid var(--tei-border);
+  border-radius: var(--tei-radius);
   padding: 12px;
   overflow-wrap: anywhere;
 }
 .xead-table h3 {
   margin: 0 0 8px;
-  font-size: 13px;
+  font-size: 0.928571rem;
 }
 .xead-table ul, .xead-diagnostics {
   margin: 0;
   padding-left: 22px;
-  font-size: 11px;
+  font-size: 0.857143rem;
 }
 .inspector {
-  background: #f8fafa;
-  border-left: 1px solid #dce4e5;
+  background: var(--tei-panel-secondary);
+  border-left: 1px solid var(--tei-border);
   padding: 26px 18px;
   min-width: 0;
 }
 .summary {
-  font-size: 12px;
-  background: #e8f1f1;
-  border-radius: 6px;
+  font-size: 0.857143rem;
+  background: var(--tei-highlight);
+  border-radius: var(--tei-radius);
   padding: 12px;
   margin: 18px 0;
 }
@@ -292,34 +290,34 @@ h1 {
   display: block;
   width: 100%;
   text-align: left;
-  background: white;
-  border: 1px solid #d7e1e3;
-  border-radius: 6px;
-  padding: 11px 10px;
+  background: var(--tei-surface);
+  border: 1px solid var(--tei-control-border);
+  border-radius: var(--tei-radius);
+  padding: var(--tei-item-padding) 10px;
   color: inherit;
   margin-bottom: 6px;
-  font-size: 12px;
+  font-size: 0.857143rem;
 }
 .tei-command-panel [role="status"] {
-  font-size: 12px;
-  color: #1b6872;
+  font-size: 0.857143rem;
+  color: var(--tei-accent);
 }
 .tei-command-panel [aria-label="診断一覧"] li {
-  font-size: 11px;
+  font-size: 0.857143rem;
   line-height: 1.7;
   padding: 12px;
-  background: #fff8e9;
-  border: 1px solid #f0dfb4;
-  border-radius: 6px;
+  background: var(--tei-warning-bg);
+  border: 1px solid var(--tei-warning-border);
+  border-radius: var(--tei-radius);
   margin-top: 8px;
   overflow-wrap: anywhere;
 }
 .revision {
   margin-top: 24px;
-  border-top: 1px solid #dce4e5;
+  border-top: 1px solid var(--tei-border);
   padding-top: 16px;
-  font-size: 11px;
-  color: #627b82;
+  font-size: 0.857143rem;
+  color: var(--tei-muted);
 }
 .revision code {
   display: block;
@@ -328,14 +326,14 @@ h1 {
 }
 footer {
   min-height: 44px;
-  border-top: 1px solid #dce4e5;
+  border-top: 1px solid var(--tei-border);
   display: flex;
   align-items: center;
   gap: 9px;
   padding: 8px 22px;
-  background: #fff;
-  font-size: 11px;
-  color: #617a81;
+  background: var(--tei-surface);
+  font-size: 0.857143rem;
+  color: var(--tei-muted);
 }
 footer p {
   margin: 0;
@@ -344,11 +342,11 @@ footer p {
 .live-dot {
   height: 7px;
   width: 7px;
-  background: #358b7d;
+  background: var(--tei-success);
   border-radius: 50%;
 }
 #notice[data-state="error"] {
-  color: #a13333;
+  color: var(--tei-danger);
 }
 .sr-only {
   position: absolute;
@@ -363,7 +361,7 @@ footer p {
   }
   .inspector {
     grid-column: 1/-1;
-    border-top: 1px solid #dce4e5;
+    border-top: 1px solid var(--tei-border);
     display: block;
   }
   .header-actions {
@@ -389,7 +387,7 @@ footer p {
   }
   .sidebar {
     border-right: 0;
-    border-bottom: 1px solid #dce4e5;
+    border-bottom: 1px solid var(--tei-border);
   }
   .sidebar-title {
     margin-top: 16px;
@@ -411,3 +409,33 @@ footer p {
     display: none;
   }
 }
+
+/* Appearance is independent of model selection and operation state. */
+.appearance-control {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.857143rem;
+  color: var(--tei-muted);
+}
+.appearance-control select {
+  width: auto;
+  max-width: 100%;
+  padding: 5px 7px;
+}
+.header-actions { flex-wrap: wrap; }
+button, input, select { min-height: 32px; }
+button:disabled { cursor: not-allowed; opacity: .65; }
+.graph text { fill: currentColor; }
+.cm-editor, .cm-content { color: var(--tei-text); }
+.cm-gutters { color: var(--tei-muted) !important; }
+.cm-editor .cm-selectionBackground { background: var(--tei-highlight) !important; }
+@media (forced-colors: active) {
+  button:focus-visible, input:focus-visible, select:focus-visible,
+  [tabindex]:focus-visible { outline-color: Highlight; }
+  .subject[aria-pressed="true"] { border: 2px solid Highlight; }
+}
+
+.xead-controls input { min-width: 0; flex: 1; }
+.xead-controls button { flex: none; white-space: nowrap; }
+.header-actions { max-width: 100%; }

@@ -72,3 +72,5 @@ const normalizedMainJS = mainJS.replace(/\/\*\*[\s\S]*?\*\//g, (comment) =>
 if (normalizedMainJS !== mainJS) await writeFile(mainPath, normalizedMainJS);
 await copyFile(resolve(here, "index.html"), resolve(here, "dist/index.html"));
 await copyFile(resolve(here, "style.css"), resolve(here, "dist/style.css"));
+await copyFile(resolve(here, "theme.css"), resolve(here, "dist/theme.css"));
+await copyFile(resolve(here, "appearance.js"), resolve(here, "dist/appearance.js"));

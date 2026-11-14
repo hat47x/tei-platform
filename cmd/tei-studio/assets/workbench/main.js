@@ -18640,7 +18640,15 @@ var names = Object.freeze({
   catalog: "main.StudioBridge.CatalogWorkspace",
   validate: "main.StudioBridge.ValidateWorkspace",
   inspect: "main.StudioBridge.InspectSubject",
-  observeXead: "main.StudioBridge.ObserveXead"
+  observeXead: "main.StudioBridge.ObserveXead",
+  viewPattern: "main.StudioBridge.ViewPattern",
+  viewApplication: "main.StudioBridge.ViewApplication",
+  viewPackage: "main.StudioBridge.ViewPackage",
+  planCommand: "main.StudioBridge.PlanCommand",
+  executeCommand: "main.StudioBridge.ExecuteCommand",
+  executeCommandWithPeriods: "main.StudioBridge.ExecuteCommandWithPeriods",
+  executeCommandWithPolicy: "main.StudioBridge.ExecuteCommandWithPolicy",
+  executeCommandWithReferenceStore: "main.StudioBridge.ExecuteCommandWithReferenceStore"
 });
 function createReadOnlyClient(callByName) {
   if (typeof callByName !== "function") throw new TypeError("callByName must be a function");
@@ -18660,7 +18668,15 @@ function createReadOnlyClient(callByName) {
     catalogWorkspace: (workspaceID, namespace = "") => call("catalog", workspaceID, namespace),
     validateWorkspace: (workspaceID) => call("validate", workspaceID),
     inspectSubject: (workspaceID, kind, subjectID) => call("inspect", workspaceID, kind, subjectID),
-    observeXead: (workspaceID, relativePath) => call("observeXead", workspaceID, relativePath)
+    observeXead: (workspaceID, relativePath) => call("observeXead", workspaceID, relativePath),
+    viewPattern: (workspaceID, applicationID, patternID) => call("viewPattern", workspaceID, applicationID, patternID),
+    viewApplication: (workspaceID, applicationID) => call("viewApplication", workspaceID, applicationID),
+    viewPackage: (workspaceID, applicationID, packageID) => call("viewPackage", workspaceID, applicationID, packageID),
+    planCommand: (workspaceID, applicationID, patternID, capabilityID, inputs) => call("planCommand", workspaceID, applicationID, patternID, capabilityID, inputs),
+    executeCommand: (workspaceID, applicationID, patternID, capabilityID, inputs) => call("executeCommand", workspaceID, applicationID, patternID, capabilityID, inputs),
+    executeCommandWithPeriods: (workspaceID, applicationID, patternID, capabilityID, inputs, periods) => call("executeCommandWithPeriods", workspaceID, applicationID, patternID, capabilityID, inputs, periods),
+    executeCommandWithPolicy: (workspaceID, applicationID, patternID, capabilityID, inputs, periods, allowed) => call("executeCommandWithPolicy", workspaceID, applicationID, patternID, capabilityID, inputs, periods, allowed),
+    executeCommandWithReferenceStore: (workspaceID, applicationID, patternID, capabilityID, inputs, periods, allowed) => call("executeCommandWithReferenceStore", workspaceID, applicationID, patternID, capabilityID, inputs, periods, allowed)
   });
 }
 
