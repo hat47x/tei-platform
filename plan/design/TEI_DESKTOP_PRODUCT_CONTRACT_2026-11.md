@@ -331,6 +331,46 @@ X-TEA「三要素分析法のモデル」は[Draft #4570](https://github.com/hat
 
 **今回の成果は文書・計画への差分反映のみ**。#4623の当該CI成功はGitHub既存証拠であり、本節が新Go/Windows実装テスト、#4587のpin統合Windows PASS、完全セルフビルド、Owner受理を行ったものではない。
 
+
+### 0.10 第10次横断統合：宣言から実Builder・Artifact・Desktop Consumerへの接続契約（2026-11-14）
+
+本節は11月14日に進んだ**二つの実Go修正の独立した資格**を、Desktop向け次の具体的実装・検収へ接続する。§0.9の「Resolver選択→実子Pinは未接続」という記述は、以下の`-bind-resolved-builder` opt-in経路に限り更新する。これまでのB0/B1-Aの実Windows経路や、非Plugin Desktop全工程、Owner受理へ遡及的に拡大しない。
+
+#### 0.10.1 現在の実コード・独立証拠
+
+| 層 | 当該コードと実証 | 当該層が保証しないこと |
+| --- | --- | --- |
+| **宣言→解決** | [Draft #4624](https://github.com/hat47x/tei-platform/pull/4624) HEAD `2d403f4996c205514dc57d5fc1237127c6bd994b` は`internal/buildintent/resolve.go`で可換Resolverの返すSource kind/ID、Builder contract/major/明示provider・implementation・artifact pinとPinned、Dependency kind/ID/majorを宣言と照合。不一致なら`ResolvedBuildReceipt`を返さない。PRがLinux Go/race/self-build回帰成功を報告。GitHub Actionsは本節の確認時点で実行中のため全CI成功は未確認 | 実Source byte読取/正規Source currentness、Recipe/Targetの意味受理、Catalog Authority/Grant、実Invoker、N2/N3実消費 |
+| **解決→実子起動** | [Draft #4623](https://github.com/hat47x/tei-platform/pull/4623) HEAD `f1e219a25976946bcc8a19ef57f5490333ec8a84` は既存`cmd/tei/cli_self_build_outer.go`へ明示`-bind-resolved-builder`を追加。`-build-catalog/-build-catalog-digest/-build-source-root`のin-process Resolver結果から`ResolvedBuildReceipt.Plan.Builder.ArtifactDigest`を取り、`driveSelfBuild`の実子image SHA照合へ渡す。Selected B/Actual Aなら`SELF_BUILD_BUILDER_SELECTION_MISMATCH`、子未起動・Artifact不作成、PlanReceipt保持。**当該HEADのPR Actionsは8/8 completed/success**。 | Build Catalogが正しい・許可されたこと、異IDだが同じbyteの意味的一意性、OS Loader TOCTOU、Desktop全N0〜N3正式Build、Stage1/Stage2 |
+| **実工程→Desktop Consumer** | [Draft #4587](https://github.com/hat47x/tei-platform/pull/4587) 旧exact HEAD `24bfaed8`で、実TEI CLI→N0 Generator→N2 esbuild→N3 Go/Wails→WebView2をWindows限定PASS（[CI #43450255223](https://github.com/hat47x/tei-platform/actions/runs/43450255223)）。 | 新Builder pin／Resolver整合性チェックと同一HEADのWindows検収。N1〜N3の正式TEI Build Intent駆動、生成Stage1→Stage2、そのStage2実Consumer |
+
+**別PRの同時成功は統合E2Eの証拠にならない**。#4623と#4624はともに当時のmainを基点とする別Draft。#4587は古いmainとの統合競合があり、#4623の共有CLI変更と重複する。適用順・競合解消を実レビューで決め、正しく合流した**新しい単一HEAD**で再検証する。旧HEADの成功はその履歴として保持する。
+
+#### 0.10.2 受渡し最小単位：5つの接続と別々の失敗領域
+
+| 接続 | 成立する最小検証 | 失敗時の上限と責務 |
+| --- | --- | --- |
+| **E1 Intent→Resolved Plan** | 宣言Subject/Source/Builder/DependencyとResolved Receiptの一致。拒否はReceipt発行前。Catalog digest・Source revisionを別票保持 | 返答の構造一致だけで宣言と一致しないときはFAIL。#4624/#2831。解釈・受理/現在Grantは別 |
+| **E2 Resolved Builder→実Invoker** | 同一AttemptのPlan FP・選択Builder ID/Contract/Digest→actual child image/argv→実行前のpin成功。B選択・A実子はchild/Artifact 0 | #4623/#4583。Callerが供給したCatalogのAuthorityは未資格。digest一致だけで全Builder意味/実行権限を証明しない |
+| **E3 N0→N2 JS Artifact** | TEI生成Inspector TSをN2の実入力として引渡し、esbuild実Invoker、選択入力目録、実bundle/Role/Digestを照合。旧TSの混入を負例化 | #4583/#2831。N2がCI Shell直起動ならB1全BuildIntentは未達。metafile≠read-time完全閉包 |
+| **E4 N2→N3 Native Artifact** | N2実bundleをN3がembed対象として選択・消費したこと、nested Studio module・build tag・go list選択入力・実exeを同じAttemptで照合 | #4583/#1824。N2出力A/N3読取BはFAIL。外部SDK/Go Module Cache/TOCTOU未取得ならClosure unknown |
+| **E5 Stage1→Stage2→WebView2** | 生成Stage1 TEI自身の実Process image/argvがStage2 Buildを起動し、生成された**同一Stage2 exe**で実Window、実配信JS、StudioBridge/Inspector受領を確認 | #2831/#4583/#1824。Stage0やWorkflow代理生成・旧exe利用はB2/B3不可。配布/現在Window切替は別操作 |
+
+**Artifact/Failure手続**：各Eの結果を既存Build Attempt/Evidence/ArtifactSetに結び、`declared / resolved / actual / consumer`の差分と`PASS / FAIL / UNKNOWN / NOT RUN`を持つ既存Receiptへ戻す。新しい独自Bundle Manifest/Provenance DB/Build Engineは設けない。生成途中失敗なら完成済みの旧Studioは別Versionのまま動作可能とし、失敗したAttempt/Effect unknownを成功に書換えない。Source A→B→A、依存削除、実Toolchain変更、別Windowの後着があれば、byte一致で現在資格を自動復活させない。
+
+#### 0.10.3 横断Workbench・Plugin・Harnessの接続は受領を別にする
+
+- **Desktop画面**：AI OFFのread-only Inspector/Navigate/Pinを独立に進める。Build Previewは同じIntent/Resolved Receipt/実Attemptへのリンクと現在版の差を示し、Dirty Buffer・保存済みSource・Accepted Meaning・Builder実入力・生成Stage2・実Windowを別表示。ビルド開始時の実Sourceは明示選択した保存済みCanonical Sourceであり、暗黙Save/受理/ビルドをしない。
+- **三要素分析法・Plugin**：Stage1のBuild-only GeneratorをStage2に強制同梱しない。Stage2 Runtime Providerは必要Roleの選択→実Link/Artifact Inclusion→実Invoke→独立Consumer受領が別必要。Draft #4570の合成X-TEA Windowsスモークを、Profile適合や原典Meaning受理へ昇格しない。
+- **外部Harness/SHO/SUI**：同一Qualified Subject/Source occurrence/Revision/Scopeを引き渡すが、実Tool受領と現在Grant/Disclosure/Owner Acceptanceは受領側で再資格化する。図表描画ID・AI文章・保存済みMarkdown Working Copyをビルド正本/意味正本にしない。
+- **UX負例**：Pin Aを裏で再Inspectする間、B Editor/Graph/Dirty Bufferを不変にする。実Source R1に対する古いAI/Pin/Build Receiptは候補・履歴であり、Apply/Build/外部送出権限にならない。Headerの一つの「完了」表示に各資格をまとめない。
+
+#### 0.10.4 次の実装・統合判断
+
+P0-A: #4623の`-bind-resolved-builder`と#4624の宣言-Resolver整合検査を各々コードレビュー/CI確認し、共有CLI・Resolverを最新mainで競合なく統合する。**両PRの結合は未検証**。P0-B: E3/E4をまず一つの非Plugin Desktop Artifact辺で既存BuildExecution/ArtifactSetへ接続し、実N2/N3起動をTEI実Processへ移す。P0-C: 生成Stage1→Stage2 Desktop、当該Stage2 Windows WebView2を独立検収する。UIのPin実配線、実Function Provider、三要素Plugin、SHO/AI協業は非阻害の並行作業に置く。
+
+**今回の反映はdocs-only**。新Go/Node/Windows/実Provider/Stage2実行、#4623×#4624の同一HEAD統合CI、Owner業務意味受理は実施していない。既存#1180/#2514独立Expectedを用い、新Acceptance Gateを追加しない。
+
 ## 1. 位置づけと判断済み前提
 
 - **TEI Studio**はData/Function/Business三視点、Data Context、Source/Meaning、DBクライアント、Plugin、テスト、SHO文書機能への統合Workbench。
