@@ -354,3 +354,51 @@ R0の限定Refで成立した「Mermaid配置だけの変更では生成Go byte�
 前回の「D1のGo生成は未実装」という一括した言い方は不正確となった。**限定ReferenceのGraph＋一行Rule→実Go生成→別Process実行はmainに存在する**。一方、一般決定表のUnique検査、正式Markdown Language Plugin、受理済みRule Meaning、製品Generator／Go Provider、CLI／Consumer、Studio Self-buildへの接続は未実装または未受理である。
 
 本稿§22〜27の作業内容は、既存の開発計画・Ownerへ加える接続案であって、製品機能の採用・意味受理・新しい全体Gateの導入ではない。Referenceでできたこと、正式Sourceへつないだこと、生成Artifactを使用したこと、製品Consumerが受領したことを、同じ「対応済み」にまとめない。
+
+
+## 29. 直近の実装提案との役割分担：S0を重複させない（2026-11-15）
+
+[PR #4745](https://github.com/hat47x/tei-platform/pull/4745) は、Managed Rootを宣言した一時Workspaceに固定Graph／RuleのMarkdownを置き、既存のManifest解析・Pinned Root・Read・Source Indexと照合する**テスト専用のS0予備検証**である。実Loaderの `TEI_MD_PARSER_UNBOUND` はそのまま拒否し、Sourceの追記後には古いIndexのFingerprintが不一致になることを検査する。実際の製品Frontend選択やLanguage／業務Meaning Roleの受理を行ったものではない。
+
+[PR #4730](https://github.com/hat47x/tei-platform/pull/4730) は製品完成計画でS0→S1→S2を担当する。[PR #4704](https://github.com/hat47x/tei-platform/pull/4704) は正式Markdown Readerの境界を担当する。[PR #4725](https://github.com/hat47x/tei-platform/pull/4725) は限定Readerが長いFence／チルダFence／インデントコード／裸Pipeを誤解釈する負例を扱う。いずれも独立したPRの審査・CI・Owner検収が必要であり、この文書に同内容のReaderやテストを複製しない。
+
+BRMS側の次の作業は、S0の合格後に**固定したRule IDと元条件セルのSource spanを既存の型付きOperator／Function意味へ結び付ける一件**とする。Source Indexの `Role`（原文の位置・参照上の役割）と業務的なMeaning Role（判断の意味）は別に扱う。接尾辞 `*.tei.md`、元byteが一致すること、Referenceに条件が存在することだけを根拠に、後者が採用されたとは判断しない。
+
+[PR #4748](https://github.com/hat47x/tei-platform/pull/4748) はGeneratorの契約上、**生成したGo／TypeScript等が実際に後続のBuild Sourceとして読み取られたか**と、生成物が手書きGoに処理を委譲しただけでないかを区別する。BRMSのRule変更→生成されたif式→実Build Artifact→実Consumerの対応も、既存のGenerator／Build Evidenceを利用して測る。既存BuildGraphEdgeの名前だけで「生成Sourceが実利用された」とは推測せず、第二Build Runnerや別のRule Generatorを追加しない。
+
+| BRMS側で確認する最小例 | 必要な根拠 | 正常に見えても不合格となる例 |
+| --- | --- | --- |
+| 固定のRule条件「起点→終点」を変更 | 同一元Source・意味参照・実生成Goの比較 | Reference Generatorだけ変わり、製品Builderの入力は旧版 |
+| 呼出しNodeを変更 | 同じBinary Digest、異なる引数とResult | 入力変更のたびにGoを再生成して結果を固定 |
+| Markdownの図・文章だけを変更 | 意味ID・Dependency Closureの比較と元byteの改訂記録 | byte一致を意味の再受理と混同、説明変更を無視して古いProvenanceを流用 |
+| Rule表をFence・引用・未選択Rootに置く | 明示Scope、Parser選択、原文位置、拒否理由 | サンプル中の表を有効な業務ルールへ昇格 |
+| 条件に必要なRelationの一部が未取得 | Read Footprintと実ProviderのClaim Closure | 取得できた結果が0件というだけでNo Matchと確定 |
+
+実装の順は「Manifest上の候補を読めた」→「選択Frontendで正式に意味を構成した」→「実Generatorがその意味を使った」→「製品Consumerが実Artifactを使用した」であり、どれも前段の成功だけでは認定しない。次の実装PRにこの五つの例を一括必須とするのではなく、各Ownerが該当段階の独立Expectedへ戻す。
+
+## 30. 最初のUnique決定表に必要な、検証できる判断条件
+
+Hit PolicyをUniqueとしたときは、**値が一つ返ったこと**と、**一致する規則が厳密に一つだと確かめたこと**を区別する。Ruleの定義が正しいか（静的検査）、現在の入力で判定できるか（動的検査）、その判定を操作の許可に使ってよいか（Host資格）も別である。
+
+| 入力・Ruleの状態 | 判断上の結論 | 留保・反例 |
+| --- | --- | --- |
+| すべての入力が揃い、一行だけ成立、他の行はすべて不成立 | Matched。選択したRule IDと理由を示せる | 作用がCommitされたことは意味しない |
+| 二行が成立し、両行の出力値も同じ | Unique違反のConflict | 同じ値なので任意の一行でよいとはしない |
+| 一行が成立するが、他行の条件を決めるFieldが未取得 | Insufficient Input | 他行も成立する可能性がある。Uniqueを確定しない |
+| 必要な入力が揃い、どの行も不成立 | No Match | Decision契約が拒否・未設定などへどう写すかは別に宣言 |
+| すべての入力を取得し、既知の範囲で不足なく検査した | その明示Domain内での網羅・競合を検証 | Domain外や未知のTenant／時点へ証明を拡大しない |
+| 取得可能範囲にRLS・LIMIT・部分取得がある | Claim Closureが足りなければ判断未確定 | 0行を全母集団における不存在へ昇格しない |
+| Ruleが適用される時点／Operator版が未確定 | Unresolved Meaning | 現行版・行順・既定TZを推測で補完しない |
+
+有限な区分・十進数の閉／開区間から開始し、OverlapとGapには具体的な反例の入力を出す。静的に証明できなければ「未証明」と表示し、検査した入力集合で重複が見つからなかったことを「全域で競合なし」と書かない。最初の実装では、この範囲に限定する方が万能推論よりも実際の検収が容易である。
+
+DMNは参考規格とし、現行正式版は[OMG DMN 1.6](https://www.omg.org/spec/DMN/1.6)、1.7は[Beta](https://www.omg.org/spec/DMN/1.7/Beta1)である。ただし、今回のUnique・Gap・Overlapの限定検証はDMNへの完全準拠、FEELの包括的な型変換、DMN XMLの入出力を採用する根拠にはしない。
+
+## 31. この設計から次の作業へ渡すもの
+
+1. **S0のOwner**：PR #4745のManifest／Pinned Source試験とPR #4704の正式Reader接続を比較し、「Readできた」と「解釈できた」の差を明示する。重複Parserを作らない。
+2. **意味と生成のOwner**：固定Rule条件のSource span・選択済みMeaning・Operator・実Build Sourceと生成Goのifを結ぶ一件を検収する。Generator契約はPR #4748の主張と突き合わせる。
+3. **Rule AnalysisのOwner**：既存#988／#1637／#1180／#2514に、一枚のUnique決定表に対する「同じ値の二重一致」「一行成立＋別行判定不能」「真のNo Match」「適用範囲限定」の反例を渡す。
+4. **製品CLI／セルフビルドのOwner**：通常tei CLI→実選択Provider→独立Consumerと、Plugin自身のTEI生成範囲の増大を別に検収する。S0テストやReferenceのGo子Process成功を製品完成の証拠にしない。
+
+**採用境界**：本節の他PRは確認時点の進行中候補であり、正式意味・Rule API・公開CLI・新しいRule Result Enumを採用済みにするものではない。判断を説明する出力は既存Operation／Source／Evidenceから生成する投影として扱い、第二の正本にしない。全体P0、Go単一バイナリ、外部Hostへの成果物配置、Studio Stage1→Stage2という基本方針は変更しない。
