@@ -138,8 +138,7 @@ func TestExternalCandidatesR3AActualCLIProcess(t *testing.T) {
 		cmd = exec.Command(binary, "commands")
 		out, err := cmd.Output()
 		if err != nil || !bytes.Contains(out, []byte(`"name":"external-candidates"`)) {
-			t.Fatalf("read-only discovery did not advertise the executable entry: %v
-%s", err, out)
+			t.Fatalf("read-only discovery did not advertise the executable entry: %v\n%s", err, out)
 		}
 	})
 }
