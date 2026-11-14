@@ -24,6 +24,25 @@
 
 最初の各PRには、**既存のSourceと対象版、具体的な正例・反例、実行された入口・Builder／Provider、独立Expected、確認できたConsumer、未検証の範囲**を短い一枚の引渡しとして残す。Ownerの意味受理、現在のHost Grant、外部Effect、実DB Migrationは別資格とし、推測による補完はしない。図面・Markdown表・Graphvizは標準データへの可読な表現として使い、表示上の変更を意味や実行権限へ昇格させない。
 
+### Desktopの目標構成と、CLI・AIへの対象引渡しを分ける（2026年11月15日）
+
+Desktopは、**Wails側を画面とOS連携に限定し、ローカルBackendを子プロセスとして起動してIPCで結ぶ構成を目標**とする。ただし、[ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)と現在の実装に基づく**同一プロセス経路は、既存のP0試験の基線**として保つ。目標構成が決まったこと、正式ADRが改訂されたこと、Windowsで子Backendが実際に動いたことは別である。[main統合済みのBackend構成設計 #4697](https://github.com/hat47x/tei-platform/pull/4697)を踏まえ、子Backendへの移行は#1158/#1824の既存Ownerが実行の証拠で判断する。**Stage1→Stage2の正式セルフビルドに、新しいIPC完了を先行するHard Gateとして加えない。**
+
+同じApplication Operationを使うCLIは、Wailsや常駐HTTP Serverを必要条件にしない。現行のプロセス内呼出し、短命の自己子Backend、明示的な再利用Sessionは、同一Fixtureで意味・失敗結果を比べ、起動時間、p95、メモリ、障害隔離を実測して選ぶ。版確認・help・復旧は子Backendが起動しなくても使えるようにする。Remote接続では接続先Serverの選択済みPluginと権限を正本にし、切断時の暗黙Local切替や結果不明のEffectの自動再送を行わない。これらは**物理的な配置の比較**であり、CLI用の第二Resolver・新しいTEI専用Hostを作る理由にしない。
+
+Studioで選択した設計要素をCLI／AIハーネスへ渡すときは、対象の**Subject ID、Source occurrenceとRevision、意味Role、用途・必要Scope、選択した操作候補**を現在のWorkspaceで解決し直す。最初は一つの公開可能なSubjectをread-onlyでInspectし、CLIとStudioが同じ元Sourceへ戻れるか確かめる。その後、許された範囲でPluginの[公開文書・上位依存 #4679](https://github.com/hat47x/tei-platform/issues/4679)へ辿り、AIの返答は**変更提案と差分**として戻す。古いSelection、Graphの描画座標、Pluginの説明文、AIの返答を現在のWriter権限やHost Grantとみなさない。
+
+初期の拒否試験は、①別Workspaceの同名Subject、②Source A→B→Aで旧Pinを再利用、③非公開Plugin説明の存在漏洩、④Desktop親子間の相手確認失敗、⑤Backendの実Providerと選択Lockの不一致、⑥通信断後の外部Effect不明を空の成功／無条件再試行に変える、の六つを既存#1180/#2514に渡す。**目標構成の図、試作IPCの成功、CLIの同値結果、実Windows Stage2の受領**は、それぞれ別の検収として記録する。
+
+**最初の実装を二つの小さな変更に分ける**。別々の試験対象を、一つの巨大なBackend移行PRにはまとめない。
+
+| 実装単位 | 対象と必要な実行証拠 | 停止条件 |
+| --- | --- | --- |
+| **A：選択したSubjectの同一性を確かめる**（#4515／#1158） | 現在の`tei commands`で発見できる読取り操作と`StudioBridge.InspectSubject`／`studiohost`から、**同じ公開Subjectを同じWorkspace・Source Revisionで再解決**。実CLI・実StudioそれぞれのResult/Failure・Source位置・読取り資格を照合する。 | 描画用Relation ID、同名表示名、以前のAI Replyで対象を特定しない。未知・非公開・staleは区別し、Writer権限を生成しない。現行CLI／Studioの実受領がなければ参照試験として記録する。 |
+| **B：Backendを別プロセスにした差を確かめる**（#1158／#1824／#4635） | **Aと同じ型付き操作**を直接経路と短命の自己子Backend経路で実行し、実exe/Build Identity、IPC Peer、Handshake、Session、Request/Result/Failure、実子終了を観測する。WindowsのWails親経路は別の実機資格として検収する。 | Childの偽Peer、起動失敗・クラッシュ・遅延Reply、選択Pluginと実Callの不一致を正常結果にしない。単なるJSON一致では相手認証・実Windows受領・Stage2自己再構築を証明しない。 |
+
+**CLI先行のGraph／Rule自己生成**はこのA/Bから独立して進める。[main統合済みの変更追跡 #4703](https://github.com/hat47x/tei-platform/pull/4703)の一因子変更と、[main統合済みの限定Go参照Reader #4722](https://github.com/hat47x/tei-platform/pull/4722)の実byte／Span検証を基線に、[製品Reader接続Draft #4704](https://github.com/hat47x/tei-platform/pull/4704)でWorkspace／Language Plugin／Source Indexへの実消費を検証する。製品Reader未対応なら`unsupported`、Graphの生成ロジックが手書きGoに丸投げなら「TEIで実装した」としない。同じFixed Expectedと同じSubject/Revisionを追跡するが、CLIのGraph生成成功をDesktopのIPC/Stage2成功へ合算しない。
+
 ## 不足を戻す担当
 
 各担当Issueには以下の範囲に属するG項目の作業と正負の受入条件を引き渡す。実装・実行結果はそのIssueと既存のEvidenceに記録する。
@@ -468,7 +487,7 @@ TEIのセルフビルドは、最終的にはTEI Studio Desktopを含むTEI開�
 
 ### 最初の実装PRを、一つのGraph／Ruleから始める
 
-S0〜S4を一度に実装しない。**最初のPRはS0のReaderとS1の実装ロジック生成を最小単位**とし、選択したPluginの実呼出し（S2）、そのPluginを用いる次Stage再構築（S3）、定義変更からの再生成（S4）は、同じFixtureを引き継いで別の証拠で判定する。
+S0〜S4を一度に実装しない。**S0の読取り専用参照実装は[PR #4722](https://github.com/hat47x/tei-platform/pull/4722)でmainに入った**。二つのMarkdown表からNode／Edge候補を読み、原文byte位置・同名Node・多重Edge・重複ID拒否・Mermaidとの差を5つの固定入力とGo試験で確かめている。**次のコードPRは製品側のS0接続に限定**し、Workspaceが明示選択した`*.tei.md`の実byte／Source Revision／Reader・Roleの選択／Source Indexへの対応を確認する。`TEI_MD_PARSER_UNBOUND`を一律に解除したり、参照Readerの成功を意味受理に置き換えたりしない。その後、S1の出辺判定・重複ID拒否を担うGoコードの実生成、S2の選択Plugin実呼出し、S3のStage1実Processからの次Stage再構築、S4の定義変更と再生成へ別々に進む。
 
 最初に固定する例は、**同じ表示名を持つNode `n-1` と `n-2`、`n-1 → n-2`のEdge `e-1` と `e-2`、Edge IDの重複を拒否する検査規則**である。初期のAuthoringでは**Markdown表を関係の定義元とし、MermaidをGitHubでも読める導出図**とする。Graphviz等の別表層は後続の対応範囲とし、Role／Identity／向き／多重性／規則のうち実装上意味を持つ部分を、実Readerがどこから取得したか追跡する。架空のTEI構文はここでは定めない。
 
@@ -477,6 +496,7 @@ S0〜S4を一度に実装しない。**最初のPRはS0のReaderとS1の実装�
 | 元の定義：Nodeは2件、同じ向きの別ID Edgeは2件 | 生成処理でNode IDを区別し、両Edgeを保持した検査／参照結果を返す。**Node名や端点だけで重複排除しない**。書き出しただけの静的JSONではなく、定義から生成した検証／選択ロジックが動いたことを確認する |
 | `e-2`の向きだけを逆にする | 実生成コードの該当判断・実Plugin出力が変わり、正方向のEdgeは1件、逆方向は1件になる。外部の固定Go処理へ全部委譲していれば不合格 |
 | `e-2`のIDを`e-1`と重複させる | Reader／Validator／生成された規則の担当境界を明示したうえで、実行前または実検査時に不適格を報告する。誤ったGraphを「Edge 1件」として黙って正規化しない |
+| 表では`e-2`を逆向きにし、Mermaidは旧向きのままにする | **この固定例ではMarkdown表が定義元**。導出図の不一致を報告するが、旧図によって表を上書きしない。将来Mermaidを定義元とする場合は、別途明示したLanguage Plugin／RoleとSourceで検収する |
 | Mermaidの配置や文書説明だけを変える | Source byte／表示の変更は残す。意味上のGraphと生成すべきロジックが同じなら、その範囲を不要に再Buildしない。ただしCache／Evidenceの再利用資格は別に判定する |
 | Stage1が生成したPluginを次Stageの実Buildへ渡す | Stage1実Process ID／Input closure／選択Builder／生成Artifact／Stage2での実Plugin Callを照合する。**Seedが二回Buildしただけでは達成としない** |
 
