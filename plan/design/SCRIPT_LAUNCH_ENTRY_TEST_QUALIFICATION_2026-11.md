@@ -666,4 +666,14 @@ main `e888bb8f...` の `internal/semantic/capabilityinvoke/invocation.go` は、
 
 本実装は**A1内の部分実装**であってA0 Owner受理やEL-01公開Entry資格を代替せず、L-RのPostgreSQL Readや#4623/#4624のBuildIntent Validatorとも結合しない。#4625のCLIファイルとは非重複。実装・試験・結果は[Draft #4629](https://github.com/hat47x/tei-platform/pull/4629)へ記録し、§16には到達範囲のみ反映する。
 
+### 16.3 BuildIntentの実装と共有するのは三段の検証順序
+
+別レーンの[Draft #4624](https://github.com/hat47x/tei-platform/pull/4624)は、BuildIntent Resolverが宣言と違うSource/Builder/依存物を返す誤受理を、**Resolver受理段階**で拒否するGo実装修正を提出している。一方[Draft #4623](https://github.com/hat47x/tei-platform/pull/4623)は選択Builder digestと実Child imageを**起動前**に照合する。Script Launchで同じ仕組みを新Resolver/Runnerとして取り込むのではなく、次の順序を**独立Owner間の観測様式**として共有する。
+
+1. **構造のpreflight**（#4629）：Result契約の矛盾・欠落があればAdapter call0。これはSourceの受理やEntryの公開を意味しない。
+2. **選択・現在資格**（#951/#1016/#3422）：公開Entry、Owner受理、入力版、選択Provider/Artifact、Host Current Grantを実Dispatch直前に固定・照合。B selected→A actualを拒否。#4624のBuilder契約チェックをFunction資格と混同しない。
+3. **実Invoke・実Result・開示**（#4495/#1174）：実CallのProvider witness、結果Payload/NULL/型、実Effect（ある場合だけ）、独立Consumerを観測。Providerが不正Resultを返す時点で副作用が起きている可能性があり、結果検証失敗をRollbackと主張しない。
+
+この三段は共通のAPI/Receipt/Independent Expectedの**比較視点**であって、Product Build、Function、DB Providerへ万能実行Engineを要求しない。CLIやStudioの表示だけでどれか一段を省略しない。
+
 **確認状態（当初）**：Goの2ファイルをmain起点の隔離BranchへcommitしてPR #4629を作成。PRのCI開始を観測済みだが、**この文書追補だけを理由にexact HEAD Go test合格とは記載しない**。CIの合否は#4629の当該headとリンク先により別途判定する。Original #4618はdocs-only Draftのまま維持。
