@@ -10,6 +10,8 @@
 
 関連文書は次のとおりです。
 
+- [ビジネスルール分析と決定表の自然な統合](design/BRMS_DECISION_ANALYSIS_INTEGRATION_2026-11.md)：BRMSの条件評価を独立Engineで重複実装せず、既存Data ScriptのIF／Derivation／Validation／Operator／Effect Rule／型付き意味モデルにDecision Analysis（競合・網羅性・依存・説明・変更影響）を追加する設計候補。最初はuniqueのMarkdown表と既存IFを同じ意味へlowerし、通常tei CLIで意味のあるGo分岐を生成してSource行・独立Expectedと照合する。DMN 1.6は参照し、RETE・Rule Server・動的Rule Packは具体的要件が出るまで標準採用しない。#988/#1637/#1129/#1180/#2495/#2831/#4495の既存Ownerへ接続し、**新しいHard Gateは加えず、Studio Stage1→Stage2と製品実Provider・独立ConsumerのP0を維持する**。文書は未採用の検証計画であり、正式意味受理・実Target同値は未確認。
+
 - [Studio／CLI／WebのBackend子プロセス・Plugin管理・配布更新の統合設計](design/STUDIO_CLI_BACKEND_PROCESS_DISTRIBUTION_UPDATE_2026-11.md)：現行Desktop P0は同一Process方式Aを基準とし、将来候補としてWails親からローカル子BackendへのIPC接続を比較する。CLIはWails非依存の共通Backendを直接／自己子起動／再利用Sessionで比較する。WebはServer配信Clientと認証済みAPIを分離し、遠隔CLIはServer側のPlugin構成を使用する。G0〜G6は既存#1158/#1824/#2044/#2589/#2831/#4583の実装Ownerに接続し、**CLI子起動の既定化・共有Daemon・Updater製品採用は実測とOwner判断待ち**とする。Studio Stage1→Stage2セルフビルドのP0を変更しない。
 
 <!-- rea-two-intakes-current-main-20261114 -->
