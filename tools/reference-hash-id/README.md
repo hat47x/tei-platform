@@ -1,6 +1,6 @@
 # 内容導出IDの最小参照実装（#2814）
 
-**状態**: 実験的なGo/TypeScript参照実装（TypeScriptの暗号計算は外部Adapterへ委譲）。採用済み標準APIではなく、Core ID/Artifact Digest/署名/実行権限には結線しない。
+**状態（2026-11-15確認）**：Go／TypeScriptの参照実装は[PR #2815](https://github.com/hat47x/tei-platform/pull/2815)でmainに統合済み。ただし実験的な実装であり、製品標準としては未採用。TypeScriptの暗号計算は外部Adapterへ委譲する。Core ID、Artifact Digest、署名、実行権限には接続しない。
 
 設計: [可変長・可変文字集合の内容導出ID](../../plan/design/HASH_DERIVED_ID_SCHEME_DESIGN_2026-11.md)。
 
@@ -11,13 +11,21 @@
 - `encodedDigest`: SHA-256（256bit固定）、SHAKE256/cSHAKE256（8の倍数の8〜4096bit）。Base16（小文字）、RFC4648 Base32（小文字・paddingなし）、Base64url（paddingなし）、および任意の印字可能ASCII集合の符号なし整数による固定幅radix表現をサポートする。表現形式だけ変更してもバイナリDigestは不変。
 - `exactCharacters`: SHAKE256/cSHAKE256のXOF、2〜94種の重複しない印字可能ASCII文字、1〜1024文字。アルファベットの順序と長さはXOF入力に束縛する。単位はASCII文字（1byte）。Digestの可逆表現ではない。
 - frameは各項目のUTF-8 byte長をuint64 big-endianで付与する。ドメイン名 `tei.hashid.frame.v1` とcSHAKE customization `tei.hashid.cshake256.v1` を使用。
-- `CollisionProbability` / `CheckCollisionBudget` は独立・一様出力を仮定した誕生日近似を返す。実衝突の検出・DB永続化の一意性保証ではない。
+- `CollisionProbability` は独立・一様出力を仮定した誕生日近似を返す。`CollisionRiskUpperBound` はその仮定のもとでの保守的な上界を返し、`CheckCollisionBudget` は上界を使ってCaller宣言の予算への適合を検査する。いずれも実Targetの照合規則・現在の割当・DB保存の一意性を保証しない。
 
 ## 他レーンとの設計統合（採用前）
 
 [設計第9節](../../plan/design/HASH_DERIVED_ID_SCHEME_DESIGN_2026-11.md#9-他レーンとの統合設計2026-11-06採用済み境界と候補を区別) では、Everything is Data／Script-first Source／Plugin／生成器／ETL／Plugin self-buildとの対応を整理した。重要なのは、`HashIdScheme` を型付き宣言データ、`Derive` を明示的な変換、`HashIdText` を非権威的な派生値、`TargetProfile`と`BindingsSnapshot` を別入力とすることである。
 
 Source Reader・Accepted revision・実Generatorで消費したbyte列・Targetの原子的保存は**このReferenceの外側**。グラフへ未接続の操作を隠して実装済みとみなさない。標準プラグイン（`tei.std.hashId.*`）への採用は候補段階で、既存Capabilityの正本ID、公開RegistryのFingerprint、署名/Artifact Digestを置換しない。
+
+## 同じIDを再現できても、以前の受理結果は再利用できるとは限らない
+
+[設計第9.14節](../../plan/design/HASH_DERIVED_ID_SCHEME_DESIGN_2026-11.md#914-同じ生成結果を再利用できることと現在も使ってよいことを分ける2026-11-15設計候補) に、生成結果の再利用と現在の利用資格を分けた反例を整理した。
+
+SourceがA→B→Aと戻り、同じIDが得られても、古いRead Attemptや現在の権限が有効とは限らない。また、生成結果が同じでもTargetの予約名・照合規則が変われば、物理名として使えない場合がある。一方、実際の依存関係に含まれないSourceだけが変わったなら、すべてを再計算する必要があるとは限らない。
+
+このReferenceはSource IndexとCaller申告の局所的な整合を確認する。実Readerが読み取った全Source集合、実Toolが消費した入力、Target Providerの一意登録をまとめて検証するものではない。増分再利用の判定は#2600、実消費Sourceは#2595、独立検証基準は#2514、Targetでの保存はTarget Ownerの契約を利用する。新しい依存Graphや受理エンジンはここには追加しない。
 
 ## Schemeの機械可読な固定形式（PoC v1）
 
