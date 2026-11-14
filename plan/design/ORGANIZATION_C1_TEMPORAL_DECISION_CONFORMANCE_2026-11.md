@@ -517,3 +517,21 @@ M-Pを最初の小Reference候補にするのはよいが、**所属という語
 4つの検査は**現状の欠落を表明する特性テスト**であり、開発が進み欠落が解消されたら対応する「不在をassertする検査」を**独立Expectedに基づく正例Product Conformanceへ置換**する。GAP合格を製品実装完了と表示しない。新CI exact HEADでのGo実行結果とGofmt/Repository Healthは、検証済みのRunごとに記録し、未完了の間はpassとは記載しない。
 
 **次のP1実装の引渡し**：#2386/#1126がM-P/M-E/M-XとRelationKeyの採否を判断し、#1126/#2622が実DB保存版、#4490/#2586がProduct Query→Context→Consumerの独立Expectedを検証する。#2611の異Alias競合は既存#2632の特性とProduct Ownerの採否を参照し、現#4633へ取り込まない。Org C1 Host/Effect/ACKは後段。#2586通常CLI P0と#2831 Studio Stage2 self-build P0は独立して維持する。
+
+
+### 16.1 他レーンから取り込む限定的な製品事実（2026-11-14）
+
+現mainへmerge済みの[Script Launch #4629](https://github.com/hat47x/tei-platform/pull/4629)（squash 76b4d29a）では、Capabilityの**不正なResult宣言をAdapter呼出し前に拒否する構造Preflight**が実装された。これは組織モデルの `organization.approve_membership_change` のようなCapability候補の「宣言整合性」には再利用可能な検査境界だが、**そのCapabilityが現行HostにBinding/選択/認可され、本人の承認行為を実行できる証拠ではない**。C1での実行資格は次の4つを別々に記録する。
+
+| 証明する対象 | 現在確認した到達点 | C1で実証していないもの |
+| --- | --- | --- |
+| CapabilityのInput/Resultの構造整合 | #4629 mainのGo Preflight・Adapter call0の局所成功 | Owner Meaning、Ruleの実候補、Business Key/Person Link、実Host Grant |
+| どのProvider/DB/Mappingが選ばれたか | #2611の複数Alias課題、Closed/Unmerged #2632に特性テスト7件 | #4633で実Provider Route/Write Targetを確定したという証拠 |
+| Providerの実Callと帰結 | #4567の別Draft・限定PG as-of Read、#4539の受注実PG Read | 組織C1 as-of版共存・ケース承認・実Effect/Receipt |
+| 消費者へ実際に何を返したか | r7 synthetic Context/Disclosure、#2516別Owner | C1のOwner受理済み通知/ACK・Purpose別実受領 |
+
+将来のStudio Webについては[Wails Server公開メソッドInventory Draft #4627](https://github.com/hat47x/tei-platform/pull/4627) が **Goの公開面を固定し、不意のService/Method追加を検出する局所テスト**を実装中。これはWails Serverの認証済みPrincipal×Workspace×DB Providerの実分離、WS BroadcastのAudience隔離、SHO/AIへの安全なData Disclosureを証明しない。#4621 §17〜19/#3421の実Host Scope受入へ委譲し、組織モデルに新しいAuthZやWails Serverの固定依存を追加しない。
+
+**PR #4633の検収上の注意**：このCode PRは単独の新規Go testファイル4件で、既存モデルとr7の欠落を検出するもの。exact HEAD `b529791f452231f06e16d6419b0f80cace12d6fb` のCIは完了したWorkflowだけを局所成功に数え、**Repository Health内の `go test` 合格はそのジョブ/ログが完了するまで未確定**とする。別のWebView smoke、Action Surface CLI、Self-build、既存Postgres Workflow成功を新しい4テストのPASSに流用しない。#4633はmainの既存Go testと競合しない別ファイルを追加し、OwnerのMeaning/PK決定に先行した製品Schema変更をしない。
+
+**コード化の次の停止線**：#4633が静的GAPを検出した後、意味OwnerのM-P/M-E/M-X選択、既存#2611のAlias conflict treatment、#4566/#4567の二時点SQL/Mapping修正差分を受理できる状態になってから、同一DB A2二版保存・実Rowset/Person/FTE・Current Grantを別々の小PRで実証する。read-onlyの通常CLI実ReadとStudio Stage2 self-buildはこの判断をHard Gateにしない。
