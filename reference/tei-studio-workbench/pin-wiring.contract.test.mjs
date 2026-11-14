@@ -115,3 +115,16 @@ test("PIN-WIRING-06: reply acceptance checks drift and distinguishes stale proje
   assert.match(reader, /const state = mustRequalify \? "needs-requalification" : "unavailable"/);
   assert.match(reader, /acceptPinObservation\(pinState, request, \{ state \}\)/);
 });
+
+test("PIN-WIRING-07: unknown Catalog identity disables Pin and never revives stale observation", () => {
+  const render = bodyBetween("function renderPin() {", "\nasync function refreshPinnedSubject() {");
+  const click = bodyBetween('element("pin-current").addEventListener("click", () => {',
+    '\nelement("unpin-current").addEventListener("click", () => {');
+  const background = bodyBetween("async function refreshPinnedSubject() {", "\nfunction renderList() {");
+  assert.match(productReader, /typeof value === "string" && value\.trim\(\)\.length > 0/);
+  assert.match(productReader, /CATALOG_IDENTITY_UNAVAILABLE/);
+  assert.match(render, /catalogIdentity\(catalogSnapshot\) !== null/);
+  assert.match(render, /モデルの版が未取得か/);
+  assert.match(click, /catalogIdentity\(catalogSnapshot\) === null/);
+  assert.match(background, /"CATALOG_IDENTITY_UNAVAILABLE"/);
+});
