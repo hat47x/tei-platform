@@ -40,6 +40,7 @@ go run ./tools/reference-go-build-from-plan \
  "planFingerprint":"...","intentBytesDigest":"sha256:...",
  "sources":[{"kind":"go-package","locator":"tools/...","plannedDigest":"sha256:...","actualDigest":"sha256:...","matched":true}],
  "artifactDigest":"sha256:...","stateDir":"...",
+ "toolchain":{"goExecutable":"/.../bin/go","goExecutableDigest":"sha256:...","goRoot":"/...","closureDigest":"sha256:..."},
  "buildArtifactLock":{"planFingerprint":"...","artifactDigest":"sha256:...","lockFingerprint":"sha256:...","validated":true},
  "buildSucceeded":true}
 ```

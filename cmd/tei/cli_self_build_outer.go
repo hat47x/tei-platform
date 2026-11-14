@@ -74,6 +74,10 @@ type selfBuildOuterEvidence struct {
 	// still say false, because no single observation is the claim; this record
 	// answers whether all of them hold together and names every one that did not.
 	L2B *selfBuildL2BClaim `json:"l2b,omitempty"`
+	// ToolchainObservation is the builder's statement of the Go toolchain it ran,
+	// beside this entry's own reading of that executable. The plan does not name
+	// a toolchain, so this is a record, not a condition.
+	ToolchainObservation *selfBuildToolchainObservation `json:"toolchainObservation,omitempty"`
 	// Strong records what -strong changed, so the second build is attributable to
 	// the flag rather than to a caller who asked for it directly.
 	Strong *selfBuildStrong `json:"strong,omitempty"`
@@ -506,10 +510,14 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 		childArgs = append(childArgs, "-supply", parsed.Supply)
 	}
 	childArgs = append(childArgs, "-artifact-out", parsed.Output, "-state", parsed.State)
+	// §4.55: read the state directory before and after the first run, so the
+	// reproduction record can say what this entry saw rather than what it was told.
+	firstState := stateDirBefore(parsed.State)
 	evidence, err := driveSelfBuild(parsed.Child, childArgs, parsed.Output, "")
 	if err != nil {
 		return 1, err
 	}
+	firstState = stateDirAfter(firstState)
 	report.ChildRun = &evidence
 	// §4.8: read the child's own report of what it read. Only a matching
 	// declaration digest plus matching fingerprints make the check performed;
@@ -617,6 +625,7 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 			parsed.State,
 			evidence.ChildStateDir,
 			parsed.Output,
+			firstState,
 		)
 		switch reproducibility.State {
 		case reproducibilityMismatched:
@@ -627,6 +636,7 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 	}
 	report.ArtifactReproducibility = &reproducibility
 	report.ChildIsolation = readChildIsolation(evidence.ChildIsolation)
+	report.ToolchainObservation = observeChildToolchain(evidence.ChildToolchain)
 	report.OK = evidence.CrossCheckOK && evidence.FailureCause == ""
 	if !report.OK {
 		report.Error = &cliFailure{Code: "SELF_BUILD_CHILD_FAILED", Message: evidence.FailureCause}

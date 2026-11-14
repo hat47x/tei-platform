@@ -29,6 +29,10 @@ type selfBuildInvoked struct {
 	PID              int      `json:"pid,omitempty"`
 	ExitCode         int      `json:"exitCode"`
 	StdoutDigest     string   `json:"stdoutDigest"`
+	// ProcessImage is the image the started process was running when this entry
+	// looked (SB-C0 §4.55). ExecutableDigest describes the named file; this
+	// describes what the OS ran.
+	ProcessImage *selfBuildProcessImage `json:"processImage,omitempty"`
 }
 
 // selfBuildEntryEvidence is one driven attempt. Every field is a separate
@@ -67,6 +71,9 @@ type selfBuildEntryEvidence struct {
 	// ChildIsolation is the builder's report that it built from a staged tree.
 	// Recorded as a statement about the run, not as a condition of the claim.
 	ChildIsolation *selfBuildChildIsolation `json:"childIsolation,omitempty"`
+	// ChildToolchain is the Go toolchain the builder says it ran. The plan does
+	// not name one; the outer shape re-reads the executable to compare.
+	ChildToolchain *selfBuildChildToolchain `json:"childToolchain,omitempty"`
 	// ChildLock is the child's own validated plan-to-artifact lock (§4.11),
 	// copied verbatim. The entry checks it against the file rather than
 	// treating it as proof.
@@ -245,6 +252,7 @@ func driveSelfBuildIn(childPath string, childArgs []string, artifactPath, claime
 		return selfBuildEntryEvidence{}, fmt.Errorf("start child: %w", err)
 	}
 	pid := cmd.Process.Pid
+	processImage := observeProcessImage(pid, exactChild)
 	runErr := cmd.Wait()
 
 	exitCode := 0
@@ -263,6 +271,7 @@ func driveSelfBuildIn(childPath string, childArgs []string, artifactPath, claime
 		PID:              pid,
 		ExitCode:         exitCode,
 		StdoutDigest:     digestOfBytes([]byte(stdout)),
+		ProcessImage:     processImage,
 	}
 
 	if exitCode != 0 {
@@ -294,6 +303,8 @@ func driveSelfBuildIn(childPath string, childArgs []string, artifactPath, claime
 		// forms and checks it itself, the entry no longer assembles the binding
 		// from two separate self-reports.
 		BuildArtifactLock *childSelfLock `json:"buildArtifactLock"`
+		// The toolchain the builder ran, when it is a Go builder that reports one.
+		Toolchain *selfBuildChildToolchain `json:"toolchain"`
 	}
 	if err := json.Unmarshal([]byte(stdout), &child); err != nil {
 		appendSelfBuildFailure(&evidence, "child output is not one JSON object: "+err.Error())
@@ -306,6 +317,7 @@ func driveSelfBuildIn(childPath string, childArgs []string, artifactPath, claime
 	evidence.ChildPlanFingerprint = child.PlanFingerprint
 	evidence.ChildStateDir = child.StateDir
 	evidence.ChildDefinitionDigest = child.DefinitionDigest
+	evidence.ChildToolchain = child.Toolchain
 	if child.IsolatedTree != nil {
 		evidence.ChildIsolation = &selfBuildChildIsolation{
 			Root:        child.IsolatedTree.Root,

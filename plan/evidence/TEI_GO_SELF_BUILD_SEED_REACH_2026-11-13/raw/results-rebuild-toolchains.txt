@@ -1,0 +1,14 @@
+
+== rebuild go1.26.11 from source with go1.27.0 as bootstrap (CGO_ENABLED unset)
+make.bash exit=0 seconds=214
+rebuilt module zip     = 9d05482fd9a014e7807a0dd78dd09787b1af2975a9b60e68af0668aab7794418
+distributed module zip = e1edb778de0aa08c8e827f5a873b35a46afe680fb241482c531725b2355e470d  (go.sum-style hash recorded at download: h1:KyINmJ/FQdKRmDYGuTAAXkumyeR2DyUlSNHZj7XaLFg=)
+moduleZipEqual=false
+toolBinaries equal=10 different=0
+
+== rebuild go1.27.0 from source with go1.26.11 as bootstrap (CGO_ENABLED unset)
+make.bash exit=0 seconds=227
+rebuilt module zip     = 100b22061132397bf4f2f1709f9f36217d6ab87b8bf8ef38078ff37b381296a3
+distributed module zip = ce4a7364345051434fe65c8ae3804ddde5826d7776bfca3fa72868f1ce79c79c  (go.sum-style hash recorded at download: h1:fVts2HjYwzBWrJtkf1B9HRDAuCZcZLexWI6ZX6Ls/IU=)
+moduleZipEqual=false
+toolBinaries equal=10 different=0
