@@ -68,7 +68,7 @@ toolchain モジュールに含まれるソースから、もう一方の種を�
 - 一回目の実行では10本中9本が不一致でした。**原因は実験側の設定**で、環境に `CGO_ENABLED=0` を置いたために、作り直した `go` の既定値が `CGO_ENABLED='0'`（配布物は `'1'`）になっていました。設定を外した二回目が上の表です。一回目の記録は `raw/results.txt` に残しています。
 - **これは Go の配布物についての外部の検証であり、TEI の生成物ではありません。**
 
-## 3. toolchain を記録へ出す（`main` `c6bf44634a83d67a6fcefc1f12cd44f90374dabb` ＋ 本変更）
+## 3. toolchain を記録へ出す（`main` `3723d43e24e1d4ee251da1cb24da791c23849c2c` ＋ 本変更）
 
 上の3行目（同じ計画・別の toolchain）は、変更前の報告では見分けられませんでした。toolchain が現れるのは child の argv だけだからです。本変更は**記録を足すだけ**で、計画の契約も五条件も変えていません。
 
@@ -80,7 +80,25 @@ toolchain モジュールに含まれるソースから、もう一方の種を�
 
 `matched` は「申告されたパスのファイルが、申告されたバイトである」ことで、builder がそれを実行したことではありません。toolchain を報告しない child（Go 以外の builder、既存の試験用 child）は `unreported` になり、拒否されません。
 
-TEST_RESULTS
+同じ計画・二つの toolchain の対を試験として残しました（`TestSamePlanBuiltByTwoToolchainsIsToldApartOnlyByTheRecord`。`TEI_SELF_BUILD_FULL_CHAIN=1` と `TEI_SELF_BUILD_SECOND_GO=<二つ目の go>` の opt-in、`linux/amd64`、67.4秒）。対象は既存の `cmd/tei/testdata/l2b-go-command` です。
+
+| toolchain | 計画の fingerprint | `l2b.claimed` | `toolchainObservation.state` | 成果物の digest |
+| --- | --- | --- | --- | --- |
+| go1.26.11 | `sha256:9b877e5e…` | `true` | `matched` | `sha256:b3b54142…` |
+| go1.27.0 | `sha256:9b877e5e…`（同じ） | `true` | `matched` | `sha256:fc29a6d0…` |
+
+**この試験は現在の契約を固定するものです。** 計画が toolchain を名指すようになれば、二つ目のビルドは起動前に止まるべきで、期待値はその判断と一緒に変えます。
+
+| 検証 | 結果 |
+| --- | --- |
+| `go test ./cmd/tei -count=1`（既定、opt-in なし） | PASS（187.6秒） |
+| `go test ./tools/reference-go-build-from-plan -count=1` | PASS（57.0秒） |
+| 上の opt-in の試験 | PASS（67.4秒） |
+| `gofmt -l cmd/tei tools/reference-go-build-from-plan` | 出力なし |
+| `go vet`（linux、`GOOS=windows`、`GOOS=darwin`） | 指摘なし |
+| `TestPlanReadmesMentionEveryEntry` | PASS |
+
+既存の試験ファイルは変更していません。
 
 ## 言えること・言えないこと
 

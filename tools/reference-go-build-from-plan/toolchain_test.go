@@ -18,7 +18,7 @@ func fakeGoRoot(t *testing.T, version string) string {
 		name = "go.exe"
 	}
 	for path, body := range map[string]string{
-		"VERSION": version + "\n",
+		"VERSION":                  version + "\n",
 		filepath.Join("bin", name): "go command bytes of " + version,
 		filepath.Join("pkg", "tool", runtime.GOOS+"_"+runtime.GOARCH, "compile"): "compiler bytes of " + version,
 		filepath.Join("src", "runtime", "x.go"):                                  "package runtime\n",
