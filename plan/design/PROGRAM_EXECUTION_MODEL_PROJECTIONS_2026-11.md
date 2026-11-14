@@ -695,7 +695,7 @@ World Fingerprint／Model Revision／Artifact Revisionは用途ごとに保持�
 | **実使用** | 選択Plugin/Providerと実Call先、通常CLIと独立Consumerの受領、FailureとCurrent Grantの確認可能範囲 |
 | **局所再検証** | 何を再解析し、どの下流だけ再生成・再検査したか。skip理由、unknown、実時間、余計な失効・見落とし |
 
-**同一生成Binaryの入力別実使用**：固定した6件のGraph/Rule候補を利用したReference生成Goでは、初期の全Node出力に加えて、Callerから指定したNode IDについて出辺／入辺の計算結果を返す。同じ生成Binaryに7通りの入力を与え、実Outputと未知・明示空Nodeの拒否、Binary SHA-256の不変を確認することを**限定したRuntime Call Witness**として扱う。ただし、これを既存TEIのFunction Entry/Provider実呼出しやCLI・Studio二Consumerの成立証拠には使わない。業務意味の受理、Source選択、実Artifactの配備、Hostが選択したProviderとのIdentity照合は引き続き別の実装・受入である。固定出力を書き出すだけのReferenceと、入力に応じた生成ロジックが動くReferenceは区別するが、Referenceの出力が正しくても製品資格は昇格しない。
+**同一生成Binaryの入力別実使用**：固定した6件のGraph/Rule候補を利用したReference生成Goでは、初期の全Node出力に加えて、Callerから指定したNode IDについて出辺／入辺の計算結果を返す。同じ生成Binaryに9通りの入力を与え、実Output、未知・明示空Nodeと指紋照会の競合拒否、候補指紋の一致、Binary SHA-256の不変を確認することを**限定したRuntime Call Witness**として扱う。ただし、これを既存TEIのFunction Entry/Provider実呼出しやCLI・Studio二Consumerの成立証拠には使わない。業務意味の受理、Source選択、実Artifactの配備、Hostが選択したProviderとのIdentity照合は引き続き別の実装・受入である。固定出力を書き出すだけのReferenceと、入力に応じた生成ロジックが動くReferenceは区別するが、Referenceの出力が正しくても製品資格は昇格しない。
 
 **Source Indexの既存機能へ接続する最小の証拠**：Graph／Rule限定ReaderのNode・Edge・Rule候補を、既存`sourceindex.NewArtifact`の元Source fingerprintと`RangeFromOffsets`のbyte位置へ照合し、元Sourceの説明だけを変えた場合にも古いArtifactの検証を拒否するGo回帰を追加した。これは正式なSource Indexへの意味Reference登録やLanguage Plugin選択、実Build消費を意味しない。`*.tei.md`の物理形式判定が`md`であっても、Parser／Meaningを自動選択しない。製品接合の次の一手は、**選択されたSource Reader→実Loader→元byteと型付きRole→受理済みMeaning**の順に各境界を証明し、Graph/Ruleの参照生成結果を業務意味として自動昇格させないこと。詳細は[Go回帰と資格境界](../../reference/tei-md-graph-reader/README.md)を参照する。
 
