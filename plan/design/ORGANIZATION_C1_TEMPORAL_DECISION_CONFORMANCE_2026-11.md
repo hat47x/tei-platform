@@ -171,3 +171,66 @@ mainのNative as_of_membership Queryは membership_id / org_unit_id / allocation
 | P2-Effect | 現行Host Grant・代理・Hook Effect・Receipt/ACK・Pin編集・B2C/SHO開示の別資格を検査 | #1174/#1444/#4515/#3509 |
 
 **保留・競合**：#4566/#4567はNative SQL/Mappingを重複修正、#4555/#4585は同じ組織計画§10.12、#4601/#4620などはMASTER_PLANを並行編集。旧branch文書の全文置換や異なるHEADの局所PASS合算は禁止。現行mainとのSource/責務/期待値差分を先に照合し、無損失前方移植で統合する。今回の追補では、新しい実PostgreSQL二版試験・Windows Stage2・Host Effect・Owner業務受理を**実施していない**。
+
+
+## 11. 履歴保存の導入と既存DB移行を別の受入として接合する（2026-11-14）
+
+### 11.1 組織C1の「最初の実Read」と「既存データの安全移行」を分離
+
+現行mainのPersistenceは public.org_memberships、主キーは organization.membership.membership_id 単独。mainのQueryとDraft #4567の修正版との違い、およびr7旧/新版A2が同時保存できない点は§10参照。本節の新しい論点は、**同じ業務Occurrenceを複数物理版で保存する設計へ、既存利用者と既存DBをどう移すか**である。
+
+- **新規隔離Referenceの受入**：DB Ownerが承認した候補（独立record_version_id/row_id、Occurrence＋版の複合キー、Current＋History等）でA2旧版と新版の共存・二時点照会が可能かを証明。ここでは既存利用者の移行完了と主張しない。
+- **既存DBの変更受入**：同じ業務IDを読んでいた旧Reader/Writer、Generated App、CLI、Provider、SQL Dialect、Schema Mapping、データ保持・監査を変更前後で確認する。主キー差替え/列追加のMigration成功や単一新ReaderのPASSだけでは十分でない。
+- **通常CLI/Studioの最初の実ReadとDesktopセルフビルドは独立P0**。この段階的移行全体を実Read P0やStage2 P0の完了条件へ追加しない。最初のr7実DB二時点試験は隔離DBでよく、既存本番DBへの移行と混同しない。
+- リリース計画は既存 internal/database/migration と releaseplan.Phase を用いる。#4125のG0〜G5は**未採用の検収観点**であり、TEI Coreの新Gate、新Migration Engine、第二Release権威を採用するものではない。実行時の自動DDL適用も本書では採用しない。
+
+### 11.2 履歴の「分かっている範囲」を捏造しない
+
+r7は合成SourceにA2の旧/新版が両方あるため、二時点Expectedを明示できる。しかし既存実DBにMembership A2の現行行が1件しかなければ、旧版が過去に存在したか、何度改訂されたか、そのknownFrom/knownToがいつだったかを**現在行から逆算できない**。
+
+| Input/移行状況 | 言えること | 言えないこと・必要な保留 |
+| --- | --- | --- |
+| 出典付き旧/新版と確かなvalid/known境界が残る | 当該Sourceが証明する期間範囲の履歴として移す候補 | それ以外の期間の完全履歴、別Providerの事実 |
+| 現行行のみ・古い監査記録なし | 観測された現行Snapshotと採取時刻・出典を固定できる | 移行前のknownAt履歴を完全再構成、0行を当時の不存在と断定 |
+| データ移行のため新record_version_idを採番 | 物理行Identityを明示的に作成可能 | 採番IDが業務Occurrenceや過去のOwner意味を保証するという推論 |
+| 旧Readerが一つの現行行を見るため互換Projectionを提供 | 指定された現行版のRead形状を維持できる可能性 | 全過去版・現在権限・旧Writerの更新動作が同等という推論 |
+| 後日Source/CDC/監査の遅延到着で過去記録が見つかる | Provenance付き追加Candidateと再検証の根拠 | 過去の確定Receiptや既承認判断の無断改変 |
+
+歴史的不明期間は「既知の0件」ではなく **not-established/unknown** として保持する。既存契約で状態を表せない場合はそのGAPをOwnerへ返し、架空のknownFromや現在Dateを原歴史の開始日として設定しない。現行Snapshotを新しい観測時点で登録する場合も、**観測開始時点からのKnown範囲**であることを明示し、過去事実への遡及認定は別Owner判断とする。
+
+### 11.3 既存移行Phaseに渡すC1の具体的受入（新しいGateは発行しない）
+
+| 既存#4125の検収観点 | 組織C1で必要な独立観測 | 停止条件・担当 |
+| --- | --- | --- |
+| G0 Baseline | 旧PK/業務ID、A2含む実Rowsetと期間Coverage、全Reader/Writer・直接SQL/Batch、現Schema/Provider、Source/Rule、手書きr7 Expected | 未観測Writer/不明な旧履歴を既知完全と扱わない。#1126/#2386/#4125 |
+| G1 Expand | 旧Readerを壊さず新version Identity/列/物理表・必要Index/互換Projectionを導入。別接続でSchemaと旧Read/Writeを再観測 | 旧Clientが複数版を重複表示、旧Writerが版を黙示上書きするならCutoverへ進まない。#2622/DB Owner |
+| G2 Backfill | 出典のある版のみ移行。移行済みCurrentと保持可能なHistoryを別照合、Key対応・nullable end・時間精度/zone、Checkpoint/途中失敗・再開 | 不明の過去版を生成、同名行/UUID変換でBusiness IDを再定義、Commit Unknownの無条件再試行。#1126/#1174 |
+| G3 Validate | r7二版を同じ隔離DBへ保存し、validAt固定・異knownAtのRowset/Person/Membership/FTEを検証。旧新Reader/Writer互換、重複期間・NULL・部分Scope、独立Provider Read | 単に行数一致/DDL success、別DB・別Snapshotの集計成功、旧Reader/Writer未試験は保留。#4490/#2586/#2510 |
+| G4 Cutover | 書込Owner・Writer Fence、旧新Alias、現在Grant、未完Attempt/CDC・Handoff、Commit→Receipt照会→別接続Read、実Consumer受信 | 二重正本、遅延旧Writer、ACKのみ、Policy失効、作用不明は切替完了にしない。#4125/#1174/#4501 |
+| G5 Contract | 旧構造/互換Viewの参照者全件と観測窓、履歴Retention/監査要件、旧Writer退役、最終Schema/Rowsetを独立確認 | 履歴消失、旧Batch未観測、保持Owner未受理、旧Source/書戻し経路残存は削除を保留。#4125/#4234 |
+
+上表は検証マトリクスであり、実行時に常に6つのGateを強制する製品仕様ではない。PostgreSQLのDDL/制約、SQLiteの表再構成/ロック、非トランザクション操作、旧新マッピング・生成Targetごとの制限はDB Ownerが個別に評価し、全Providerで同じ原子性・排他制約が保証されると仮定しない。
+
+### 11.4 訂正の原子性と旧新Reader/Writerの反証
+
+- **単一Occurrenceの訂正**：旧記録版のknownTo閉鎖と新記録版の追加が1つの公開単位になることを検証。複数行更新の途中失敗やリトライで、あるknownAtに旧新が同時適格・両方欠落になる状態を、正式確定済みとして公開しない。複数Providerに跨る原子性は別資格。
+- **同時に有効なMembershipが複数ある正例**と、**同じOccurrenceに同一validAt/knownAtで矛盾する二版が選ばれる負例**を分離。異なるOccurrence同士を重複として削除しない。版間重複をLast Write Winsで黙示確定しない。
+- **過去版を含む新表への旧SQL直結**は重複行を返し得る。Current-only Reader/互換Viewを置くかはSource/QueryとConsumerのRequiredに応じて選ぶ。旧Reader向けと履歴as-of Reader向けは別の実Query契約とし、互換Viewを置いた事実を旧Writerの安全性の証明にしない。
+- **書込みの切替**では旧Writerを退役・Fenceしたか、旧Writerを既存機構で安全に新履歴へ反映できるかを観測する。存在しないCDC・Hook・DB Triggerを既実装のものとして書かない。旧Writerが当初の1行をUPDATEして訂正履歴を消せる構成なら、G4の互換性は未達。
+- **結果の一致**は粒度ごとに比較。旧現行行のcount、新履歴全行のcount、as-of active Membership count、distinct Person、Allocated FTEは互換性検収で同一数値を要求しない。#2586でQuery/Read ScopeとEntity Grainの根拠をそれぞれ必要とする。
+- **日付とタイムゾーン**：r7は日付文字列、Persistenceはdatetime-tzである。日境界の変換規則とQuery bindのzoneをOwner/Provider側で固定し、日付一致でも異なるOffset・精度のas-ofが同義になると推定しない。
+
+### 11.5 Generated App・StudioとMigrationを混同しない
+
+#4234は生成AppがSQLite等のmigrationを読み込めないProduct Gapを指摘する。しかし「アプリが起動できる」「Migration SQLが置かれている」「自動で適用された」「互換性と意味が受理された」は異なる。最初に **起動時のActual Schema確認→必要なMigrationの診断→明示した既存Upgrade経路→独立接続で再確認** を比較し、無条件の自動破壊的DDLを先行採用しない。生成Appの同梱/適用方式は#4234/#4125/#2831のOwner判断とし、TEI Studioのセルフビルドとは別の製品資格として追跡する。
+
+ER/CRUD/三要素/SHO/AIでは、Occurrenceの業務同一性、物理Row版、投影上の表示行、選択中のSource値Spanを異なるIdentityとして保持。移行でDB PKが変わってもPerson/Membershipの業務IDを勝手に付替えず、読取Scope不完全時の「参照0件」を削除候補に昇格しない。Graph/Treeのlossy描画・集計上の1セルから物理履歴版を推測して書き戻さない。
+
+**最小実行順・Owner引渡し**：
+1. #4490/#1126：r7旧/新版A2・同一DB二版、期間の重複/NULL、独立Rowsetと現在のQuery/Physical PK GAPを最小に確認。
+2. #4125/#4234：新規隔離DBだけで成功した後、旧Reader/Writerを含むExpand→Backfill→Validateの小さな互換性試験を既存Release/Migrationで計画。履歴の原出典を確認できない期間はunknown。
+3. #2586/#2506：同じas-of/Provider Snapshotに属するPerson/Membership/FTE各Claim→Function Context→一Consumer。別Snapshot/別Queryの数値一致を一Attemptに合算しない。
+4. #4501/#1174：Case責任、Rule候補、Current Grant、Hook Effect/Receipt/HandoffとSourceの因果を別々に確認。段階間の正式Cutover/Contractは業務/運用Owner採否。
+5. 独立P0として#2586通常CLI実Readと#2831 Studio Desktop Stage2は継続し、全DB移行をそのHard Gateへ追加しない。
+
+**本節の実行資格**：設計・未受理。main/既存Issue/既存r7合成fixtureを照合した受入案のみ。SQLite/PGの新Migration、旧新Client共存、履歴不明期間の実データ調査、現在Host Grant/Receipt、Generated App自動適用、Owner正式Meaning、製品Consumer E2Eは **NOT RUN / NOT ACCEPTED**。
