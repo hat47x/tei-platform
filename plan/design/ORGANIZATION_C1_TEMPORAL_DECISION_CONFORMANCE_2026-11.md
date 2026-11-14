@@ -1312,3 +1312,81 @@ OrgUnitのsupervisorとmatrixParentは異なる関係であり、二つが同じ
 ORXは新しい正式Scenario IDではなく、**既存Expected／担当Ownerへ割り当てる参照ラベル**に限定する。CR-00〜08で最小の候補解決が成立した後、まずORX-1〜3でRelation Pathの欠落と時点境界を検査し、続いてORX-4〜6で改編と責任の非連動、最後にORX-7〜8で増分再資格化・図面の意味保存を検証する。個別試験で扱うCase・Person・Tenant・ProviderのSourceが異なる場合、同じAttemptだったように合算しない。
 
 **不採用／停止条件**：未採用のPerson/Occupancy/Case Relationを自動生成、職位・上司・配賦率を承認・委任の法的根拠とみなす、組織変更からCase移管やHost Grantを発行、Sourceにない二時点を補う、グラフの親子線を一律PK継承にする、図面を実際のResult/Effectに昇格、Repo外の新Workflow/Policy/Expected Engineを先に導入する。正式Meaning/API/DB更新は各Ownerが採否し、本§27のdocs-only更新ではGo/SQL/Provider/Windows/Host試験・Owner Meaning Acceptanceを実行したとは主張しない。
+
+
+## 28. 複数入力から得た組織関係候補を、三要素分析法とSourceへつなぐ（2026-11-15）
+
+> **位置付け**：別チャットで成熟した「三要素分析法・REA・自然なMarkdown/Mermaid・AI支援の入力チャネル」を、組織C1の**読取専用Candidate→人による意味採否**へ接続する受入計画。新しいTEI専用OCR、会議認識エンジン、Ontology Core、Meaning Store、Source以外の第二Authorityは採用しない。本節のケースは設計案であり、製品入力・AI推論・Owner採否・保存・実Providerの実験は未実施。
+
+### 28.1 入力チャネルごとに証拠の種類を認め、意味モデルは共通にする
+
+業務上の要件定義では、完成したER図だけでなく、顧客と一緒に描いた**三要素分析法のホワイトボード写真**、口頭・会議の文字起こし、CSV/Excel/帳票、既存業務画面・システム、REA等の外部解析、設計書が混在する。最初からTEI専用構文の入力を要求せず、それぞれを**観測されたRaw資料とそこから抽出した候補**に分けて扱う。
+
+| 入力チャネル | 最初に得られる事実と出典位置 | 組織モデルへ渡すものと留保 |
+| --- | --- | --- |
+| 白板写真／手描き図 | 画像、領域座標、撮影時刻、図中の文字・線の推定 | Data/Function/Businessの要素・関係候補。線の向きや同名記号に不確実性があれば未解決 |
+| 会議・音声の文字起こし | 発話区間、発話者を明示できる範囲、記録の版 | 「D1が申請を扱う」「部門長が承認」等の**主張**。役割・責任・実Grantの確定事実へ直接昇格しない |
+| CSV/Excel・帳票 | 実ファイル、表・列・行・Sheet、値・単位、集計粒度、欠損、抽出条件 | Person/OrgUnit/Membership/期間の**データ候補**。列名一致だけでPK・業務キー・人物同定を採用しない |
+| 既存画面・旧モデル・SQL/API | ViewやQuery/Codeの保存版、対象DB/環境、当該実行の観測範囲 | 画面操作・Query・参照Relationの候補。表示内容から更新可能性、非表示依存、業務権限を推定しない |
+| REA／外部解析 | Raw Payload・Producer/Tool版・Raw Digest、Semantic Graph/Application Graph等の区別 | Node/Relation/Function/Businessの独立Candidate。外部の同名IDや異なるGraphのEdge IDを自動同一視しない |
+| 既存 `*.tei.md`／Mermaid／Markdown | 原文byte・span・版・糖衣形式、表の行/セル、明示Link | 直接Authoring可能な部分だけ既存Reader/Language/Meaningへ。未対応は`unsupported`、引用文や説明図を実行定義にしない |
+
+**生の根拠は置換しない**。画像・音声・CSV等は原始資料として保存先とアクセス資格を管理し、候補にSource Ref／領域・行・発話区間／Version／Producer／実取得Scopeを付ける。外部の記録時刻が不明ならTEIの`knownAt`へ転用しない。機械的に得られたDataが業務意味としてAcceptedされたか、実DBへ保存されたか、実HostでEffectを発生させたかは別である。
+
+### 28.2 三要素分析法を「図法」ではなく業務意味の照合の足場にする
+
+組織を例にすると、**Data**はPerson、OrgUnit、Membership、Position、RoleAssignment、Responsibility、Caseとその識別・関係・期間を指す。**Function**は所属一覧、異動登録、担当者候補照会、承認・移管、FTE集計などの操作である。**Business**は、誰が何をいつ何の目的で扱い、どの判断・移管・確認を必要とするかという業務ルール・出来事・責任である。
+
+入力がどのチャネルであっても、抽出結果をこの三視点へ**候補として配置**し、視点をまたぐ関係を出典付きで示す。「D1の部門長がC1を承認」と書かれているだけでは、Position/Occupancy→Person、対象Duty/Case C1、現在のHost Grantは確定しない。DataとFunctionをもつ図面だけでBusiness上の責任や承認を決めない。
+
+REAの二つの意味も区別する。**Resource–Event–Agent**は業務現象の整理に使う意味的な視点、**Reverse Engineer Anything**は外部資料の取得・候補抽出チャネルである。後者の解析結果はSourceとMeaningの採否を省略できない。[REA三要素候補 Draft #4693](https://github.com/hat47x/tei-platform/pull/4693)で扱うR2の「選択Observation＋Relation」とreacandidateの「一Attempt全体のCandidate/ReviewPacket」は範囲が異なり、外部の`semantic_graph`と`graph`のIDも一致を仮定しない。Candidate IDを実際の受理済みRelation Occurrence IDと同一視しない。
+
+### 28.3 「同じものだ」という推測こそ、実務では検証が必要
+
+三つの入力チャネルから、以下のような**説明用の未受理Candidate**が得られたとする。
+
+- 白板では、部門D1の「部門長」に案件C1の確認線がつながる。
+- 会議発言では「P2は来月D2へ異動し、C1の引継ぎは改めて協議する」と述べられた。
+- CSVでは、P2に対応しそうな名称とD1/D2の所属行が複数見つかる。
+
+この情報だけでは、**部門長のPerson ID、実際の異動日、D1とD2のSource identity、P2の複数所属Occurrence、C1の正式責任者、引継ぎ承認の有無**が定まらない。画像・会議・CSVが同じラベルを持っていても、「一致した候補」と「受理済みの同一業務対象」は別である。
+
+Candidateの照合では**一致しそうな主体・Relation・期間・Dutyごと**に根拠を並べ、支持／反証／出典の欠落／異なる時点・Scope／相互矛盾を可視化する。採否は既存Candidate Review/Shared Acceptance/Owner判断に返し、新しい組織固有の承認ワークフローを実装しない。正しいSource IDがなければ、D1の同名部署や人物名による自動JOINを禁止する。実情報がなく「わからない」と表明できることを正例に含める。
+
+### 28.4 Markdown・Mermaidで読める業務定義と、実際に解釈される意味を分ける
+
+`*.tei.md`は、TEI専用Readerがなくても**普通のMarkdown文書として人間に理解できること**を表層の採否条件にする。組織階層の説明はインデント付きリスト、関係やRuleの候補はMarkdown表、図はMermaid `erDiagram`／`flowchart`／`sequenceDiagram`等、件数の多い実データはCSVや別ファイルへの明示参照を優先する。難しい表現のみ明示`tei`領域へ逃がし、Go構文を業務用DSLに露出しない。
+
+Mermaid直接Authoringは[main統合 #4697](https://github.com/hat47x/tei-platform/pull/4697)および[専用追補Draft #4694](https://github.com/hat47x/tei-platform/pull/4694)の図型別・Key/FD/親子関係の保存条件に従う。渡辺式Modelerの親左・子右、複数親、識別／非識別線、Entity宣言順による列内上下順、元Sourceのコメント・spanを保持する。説明用Mermaidと直接のMeaning Sourceを混ぜず、図から失われるEdge IDやVersionは明示的にloss/unknownとする。
+
+**現時点の製品実装に関する停止線**：mainの`*.tei.md` LoaderはGuard `TEI_MD_PARSER_UNBOUND` を持ち、通常Markdown表やMermaidを業務DSLとして正式解釈できるという証拠はない。初回は[#4704](https://github.com/hat47x/tei-platform/pull/4704)のMR-0〜3（拒否境界→限定raw span→既存Parser→正式Loader/Index）と[main統合 #4709](https://github.com/hat47x/tei-platform/pull/4709)の同Label別Node・多重有向Edge・layout-only・stale図面の独立Fixtureを利用し、正規Reader・Go生成・Plugin実Callを各別資格とする。新しいMarkdown Parser/Registryを組織機能側に作らない。
+
+### 28.5 一つのSource系列で人間・AIが候補を修正する最小の往復
+
+初期の製品縦断は**読取専用の候補確認**に絞り、承認・DB Commit・Host Effectを付けない。これをStudio GUI完成前にCLI/Headlessから検証できるようにする。
+
+1. **取得**：一つの公開合成World（例：org-staged-axisの実Source、r7の独立Expectedは別Sourceと記載）と一つの入力資料を固定する。Raw/Revision、Actor/Producer、抽出Scope、必要なSource片を記録する。資料自体が提供されていない段階では画像や音声を実処理したとみなさない。
+2. **Candidate抽出**：既存のREA三要素／Authoring Source/Graph Candidate経路でData/Function/Businessの候補と元参照を出す。自動採用・Current Grant付与・実Rowset取込はしない。
+3. **同定／照合**：OrgUnit/Person/Position/Role/Responsibility/CaseのID、関係の向き・多重度・valid/known・出典Scopeを比較。参照やMeaningが不十分なら`candidate`／`unresolved`等の既存結果で止め、曖昧なJOINをしない。
+4. **共通の表示**：CLI／Studio／SHO／AIが**同じ受理済みSource版・出典位置・候補Revision・開示Scope**から読み取り、Tree/Graph/Table/文章の差をLoss Report付きで表示。未保存GUI Buffer、Selection、旧AI ReplyはAccepted Sourceとは独立。
+5. **Owner採否／Source反映**：利用者が一つのCandidateの採否を明示し、許された場合だけ受理済みModelへの一意なPatch/Preview/再読取を検査。元のRawや他のMeaningを上書きしない。これは後続の別実装Gateで、初回read-only成功に含めない。
+6. **用途別実証**：受理済みの関係・RuleがQueryや生成Goの**実処理**を変え、通常Product CLI→実Provider→Consumerが結果を受領するところまで別Attemptで検証。Goラッパーへの丸投げ、文書表示だけ、Fixture一致だけではTEI-native実装としない。
+
+**Context/Disclosure**：初回は資料・候補・必要なDependent Sourceを読み取れる権限と、AI/SHOに外部送信してよい開示資格を分離する。保護対象は個人属性・Tenant・業務上の秘密など用途に応じて決め、通常の部門・人数を一律に秘匿しない。接続されていないEvidence、permission-denied、partial/unavailable/stale/unknownを単に空集合や「候補なし」にしない。
+
+### 28.6 新たに試す正負ケースとOwnerへの引渡し
+
+| 参照ラベル | 独立Expectedへ渡す検査 | 主担当／既存受入先 |
+| --- | --- | --- |
+| **OCI-1** | 同名D1が別のSource/Versionに存在。画像ラベル・CSV列名だけでは同一OrgUnitと確定しない | #2386/#1120/#1126、#1180 |
+| **OCI-2** | 白板に部門長→C1の線があっても、Person・Occupancy・Duty/Caseの正式Relationがないと承認者はunresolved | #4490 BEH-04、§26 CR-07 |
+| **OCI-3** | 会議の「異動する」とDirective/DB実Commit済みを区別。knownAtを収録/録音時刻から補わない | #4490 BEH-03/06、#4501 |
+| **OCI-4** | CSVにP2が二行あってもMembership A2/A3を人物IDの単一行へ集約しない。partialな抽出で全件候補を確定しない | #2510 r7、#4490 BEH-01/02、§27 ORX-1 |
+| **OCI-5** | REA semantic_graphとgraphの同名/同形ID、BOM差・別Raw Digestを同じ受理済みRelationへ変換しない | #3394/#1120、Draft #4693 J-01/02 |
+| **OCI-6** | Mermaidの配置だけ変更してもMeaning/生成Ruleは変わらない。関係の向き/ID・Keyを変更したときは再解釈・独立Expected照合 | #2497/#2621、main #4709 |
+| **OCI-7** | 未保存Buffer/旧AI Replyや異版Pluginマニュアルに基づく候補を、最新Sourceへ無検査でPatch/承認しない | #4515/#3262/#2516/#4679 |
+| **OCI-8** | 同じ候補の「構造表示PASS」と「Owner受理」「実Provider読取」「Host Grant/Effect」を異なる資格として示す | #4490/#4501/#2586/#2514 |
+
+OCIは**補遺の検査観点ラベルに過ぎず、新規Scenario／第二Expectedを増やさない**。最初は公開合成SourceのOCI-1/2/4でCandidate→read-only表示の一往復を確認し、OCI-5/6で外部EvidenceやMarkdown/MermaidのReader適格性を既存Ownerに引き渡す。OCI-3/7/8の保存・受理・実行は実機構と権限の検収後に行う。
+
+**優先順位・資格**：通常`tei` CLIの最初の実Provider Read #2586、non-Plugin StudioのStage1→Stage2 #2831/#4583を製品P0として先行させる。組織入力チャネルの完成・REA外部Parserの拡張・Mermaid Writer・StudioのGUI保存を新Hard Gateにしない。§28は設計と実装引渡しのみであり、実白板解析／音声／CSV Import、正規`*.tei.md` Reader、AI/SHO/Studio独立受領、正式Meaning/DB Commit、実Provider/Host E2Eはいずれも未実行・未受理。
