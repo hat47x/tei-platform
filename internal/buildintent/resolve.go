@@ -136,6 +136,9 @@ func Resolve(intent BuildIntent, ctx ResolutionContext) (ResolvedBuildReceipt, e
 		if err != nil {
 			return ResolvedBuildReceipt{}, fmt.Errorf("resolve source %q: %w", s.ID, err)
 		}
+		if resolved.Source.Kind != s.Kind || resolved.Source.ID != s.ID {
+			return ResolvedBuildReceipt{}, fmt.Errorf("resolved source %q identity does not match requested kind %q and id %q", s.ID, s.Kind, s.ID)
+		}
 		sources = append(sources, resolved.Source)
 		if s.ID == n.Subject.DefinitionSource {
 			// A command build is defined by the package it compiles, which may be a
@@ -196,12 +199,34 @@ func Resolve(intent BuildIntent, ctx ResolutionContext) (ResolvedBuildReceipt, e
 	if err != nil {
 		return ResolvedBuildReceipt{}, fmt.Errorf("resolve builder: %w", err)
 	}
+	// Ports may be supplied by callers. Structural BuildPlan validation cannot
+	// establish that their answers satisfy the original declaration.
+	if builder.Identity.ContractVersion != BuilderContractVersion(n.Builder.Contract, n.Builder.CompatibleMajor) {
+		return ResolvedBuildReceipt{}, fmt.Errorf("resolved builder contract does not match requested contract")
+	}
+	if provider := n.Builder.Provider; provider != nil {
+		if builder.Identity.ID != provider.Plugin {
+			return ResolvedBuildReceipt{}, fmt.Errorf("resolved builder provider does not match requested provider")
+		}
+		if provider.Implementation != "" && builder.Implementation != provider.Implementation {
+			return ResolvedBuildReceipt{}, fmt.Errorf("resolved builder implementation does not match requested implementation")
+		}
+	}
+	if pin := n.Builder.Pin; pin != nil && builder.Identity.ArtifactDigest != pin.ArtifactDigest {
+		return ResolvedBuildReceipt{}, fmt.Errorf("resolved builder artifact does not match requested pin")
+	}
+	if builder.Pinned != (n.Builder.Pin != nil) {
+		return ResolvedBuildReceipt{}, fmt.Errorf("resolved builder pinned status does not match requested pin")
+	}
 
 	dependencies := make([]plugin.BuildDependency, 0, len(n.Dependencies))
 	for _, requirement := range n.Dependencies {
 		resolved, err := ctx.Dependencies.Resolve(requirement)
 		if err != nil {
 			return ResolvedBuildReceipt{}, fmt.Errorf("resolve build dependency %s/%s: %w", requirement.Kind, requirement.ID, err)
+		}
+		if resolved.Kind != requirement.Kind || resolved.ID != requirement.ID || !plugin.CompatibleMajor(resolved.Version, requirement.CompatibleMajor) {
+			return ResolvedBuildReceipt{}, fmt.Errorf("resolved build dependency does not match requested %s/%s major %d", requirement.Kind, requirement.ID, requirement.CompatibleMajor)
 		}
 		dependencies = append(dependencies, resolved)
 	}

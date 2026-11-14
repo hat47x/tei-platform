@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 
+	"tei/internal/buildintent"
 	"tei/internal/validation"
 	"tei/internal/workspace"
 )
@@ -160,6 +161,10 @@ type selfBuildOuterArgs struct {
 	// InProcess selects deriving the plan in this process from a caller-named
 	// build catalog (§4.22 step 2). It is mutually exclusive with IntentResolver.
 	InProcess selfBuildInProcessArgs
+	// BindResolvedBuilder connects the Builder selected by the in-process
+	// BuildIntent resolver to the exact child image before it starts.
+	// Opt-in preserves the legacy observation-only path.
+	BindResolvedBuilder bool
 }
 
 // looksLikeOuterShape reports whether the caller used any §4 flag. A caller that
@@ -171,7 +176,7 @@ func looksLikeOuterShape(args []string) bool {
 			name = arg[:index]
 		}
 		switch name {
-		case "-workspace", "-intent", "-intent-file", "-supply", "-state", "-output", "-rebuild-check",
+		case "-workspace", "-intent", "-intent-file", "-supply", "-state", "-output", "-rebuild-check", "-bind-resolved-builder",
 			"-build-catalog", "-build-catalog-digest", "-build-source-root":
 			return true
 		}
@@ -191,6 +196,7 @@ func newSelfBuildOuterFlagSet(parsed *selfBuildOuterArgs) *flag.FlagSet {
 	fs.StringVar(&parsed.State, "state", "", "isolated state directory for this attempt (required)")
 	fs.StringVar(&parsed.Output, "output", "", "artifact path written by the child (no-clobber)")
 	fs.StringVar(&parsed.Child, "child", "", "exact child executable (required; never resolved from PATH)")
+	fs.BoolVar(&parsed.BindResolvedBuilder, "bind-resolved-builder", false, "require the in-process resolved BuildPlan Builder artifact digest to match the child image before starting it")
 	fs.StringVar(&parsed.ChildArgs, "child-arg", "", "extra child arguments as a JSON array of strings")
 	fs.StringVar(&parsed.SupplyVerifier, "supply-verifier", "", "exact executable that classifies the supply (SB-0b)")
 	fs.StringVar(&parsed.SupplyVerifierArg, "supply-verifier-arg", "", "extra arguments for the supply verifier as a JSON array")
@@ -257,6 +263,9 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 		return 2, fmt.Errorf("INVALID_ARGUMENT: %w", strongErr)
 	}
 	parsed.RebuildCheck = rebuildCheck
+	if parsed.BindResolvedBuilder && !parsed.InProcess.requested() {
+		return 2, errors.New("INVALID_ARGUMENT: -bind-resolved-builder requires -build-catalog, -build-catalog-digest and -build-source-root")
+	}
 	if parsed.InProcess.requested() && strings.TrimSpace(parsed.IntentResolver) != "" {
 		// §4.16 warned that two derivation routes writing the same record make its
 		// meaning depend on the route. One attempt gets one derivation.
@@ -502,12 +511,40 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 			UnperformedReason: "-intent names a logical ID only; -intent-file is required to bind the declaration bytes",
 		}
 	}
+	// Only the in-process resolver's plan can supply a selected Builder pin
+	// in this mode. A caller-supplied catalog is still an observed selection
+	// context, not authority or Owner acceptance. Legacy runs remain unchanged.
+	selectedBuilderDigest := ""
+	if parsed.BindResolvedBuilder {
+		if report.PlanReceipt == nil || report.PlanReceipt.State != intentResolutionResolved {
+			return 2, errors.New("INVALID_ARGUMENT: resolved BuildPlan is required to bind the selected builder")
+		}
+		var resolved buildintent.ResolvedBuildReceipt
+		if err := json.Unmarshal([]byte(report.PlanReceipt.ReceiptJSON), &resolved); err != nil {
+			return 2, fmt.Errorf("INVALID_ARGUMENT: cannot decode the in-process BuildPlan receipt: %w", err)
+		}
+		if resolved.PlanFingerprint != report.PlanReceipt.PlanFingerprint ||
+			resolved.Plan.Builder.ArtifactDigest == "" ||
+			!buildintent.SHA256Digest.MatchString(resolved.Plan.Builder.ArtifactDigest) {
+			return 2, errors.New("INVALID_ARGUMENT: in-process BuildPlan has no consistent selected builder digest")
+		}
+		selectedBuilderDigest = resolved.Plan.Builder.ArtifactDigest
+	}
 	if parsed.Supply != "" {
 		childArgs = append(childArgs, "-supply", parsed.Supply)
 	}
 	childArgs = append(childArgs, "-artifact-out", parsed.Output, "-state", parsed.State)
-	evidence, err := driveSelfBuild(parsed.Child, childArgs, parsed.Output, "")
+	evidence, err := driveSelfBuild(parsed.Child, childArgs, parsed.Output, "", selectedBuilderDigest)
 	if err != nil {
+		if parsed.BindResolvedBuilder && strings.Contains(err.Error(), "selected child builder digest mismatch") {
+			// Preserve the resolved-plan evidence on refusal; no child process
+			// exists and no artifact is permitted to have been written.
+			report.Error = &cliFailure{Code: "SELF_BUILD_BUILDER_SELECTION_MISMATCH", Message: err.Error()}
+			if encodeErr := encodeIndented(out, report); encodeErr != nil {
+				return 1, encodeErr
+			}
+			return 1, nil
+		}
 		return 1, err
 	}
 	report.ChildRun = &evidence
