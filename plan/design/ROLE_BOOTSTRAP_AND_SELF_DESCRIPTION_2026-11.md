@@ -1989,3 +1989,75 @@ WIT-A〜Hは既存各Caseの**横断索引**であり、第二のFixture/テス�
 **実装責務**：この設計文書は既存Ownerへの依存条件を明文化するだけ。Registry/Meta Interpreter/Host/Policy/Oracle/Scenario Engineの新設、Plugin偽装、Ownerレビューの新階層を作らない。
 
 **状態**：第36節はGitHub固定PR/実Actions/一件のWindows失敗Jobログに基づく**docs-only計画追補**。今回新たなGo・Node・Windows・PostgreSQL実行や実Provider統合テストは行っていない。PR #4587の現HEAD 11/12と#4634の現HEAD 8/8、#4637 12/12、#4638専用1/1を**別の証拠範囲**として保持。正式Source Role/Grammar Owner意味受理、MainでのStudio自己構築、外部Host現在開示・効果資格は未完了。
+
+<!-- tei-self-description-current-frozen-20261114 -->
+## 37. 2026-11-14 Current／Frozenの版別自己記述とReader実行主体の資格を分離する（横断設計・限定CI観測）
+
+### 37.1 問題設定：同じQuery IDを現在のSourceと歴史Snapshotの双方で使うとき
+
+第31〜36節の「Source byte／Meaning／Selected Implementation／実Reader／実Consumerの分離」に、[#4626](https://github.com/hat47x/tei-platform/pull/4626) RA-0の実際の赤緑を接続する。実`reference/workspace/applications/order-entry/queries/recent_orders.tei`で`input from std.datetime`を追加し、同じ`order_entry.recent_orders`でも**現在のSourceと旧固定Sourceでは意味契約とReader能力が異なる**ことがCIで顕在化した。
+
+- **Current World**：現在選ばれたWorkspace/Manifest/Source/Parser/Operator/Query/Owner資格を、現在のGoldensと独立Expectedで検査する。旧Goldenを現在のQueryへ当てない。`input from std.datetime`がSourceに存在し`:from`が明示宣言済みであることを、実`workspace.Load`・Query shapeと照合する。
+- **Frozen Historical World**：歴史受入に必要な当時のRaw Source byte・旧Manifest・旧Parser/Runner/期待値を、**固定commit/Raw SHAに束縛した隔離Workspace**でのみ扱う。現在のSourceを破壊・書戻ししない。旧Runnerが新Grammarを読めないことを、新Grammarの製品不適格と短絡しない。
+- **Requalification**：いずれかのWorldで`PASS`しても、他方のSource受理、現Provider実呼出、現在Owner Meaning、Current Host Grant、生成Target/Artifact/Runtime、Stage2に自動昇格させない。Fingerprint一致はA→B→Aの途中変化や元Attemptの実読取・Grant/Generator版を再生しない。
+
+**実観測（#4626）**：初期のSource変更で歴史R0 Revisionと新Query Source Revisionが不一致になり、Old Runnerが新`input`文法を読めず停止。後続HEAD `94876821f784d5fa9f71b15a05ac4156221b2bc8`ではCurrent `reference/world.json`・Current Query/FP期待値と、固定旧commit `e888bb8f…`／旧Query raw SHA`a7c1c4f6…`を使うFrozen Worktreeを分離する変更を追加。歴史Scratchに変更するパスは旧Manifest 2件＋旧Query Source 1件の計3件と固定。**これは現在のProduct Meaning Acceptanceではなく、Current/Frozenを混ぜないための実装修正**。
+
+### 37.2 Source解釈・操作・Receiptの「三つの時点」を明記（新時計Engineは作らない）
+
+| 時点の種類 | 束縛する対象 | 資格と停止線 |
+| --- | --- | --- |
+| **Definition Epoch** | World/Model/Source Revision、選択Format/Language/Parser/Role/Query、Required Root/Import、独立Expectedの版 | 同じID・Sourceに見える`from`・型付きValueの一致だけではSemantic同値／選択Reader適格性にならない |
+| **Execution Attempt** | 実Reader/Builder/Provider/Host Process identity、Source実読取Byte・Input Scope・actual selected deps、Output/Receipt、独立試験 | Fixed historical byteへ後から戻しても、以前のAttemptがそのbyteを消費した証明にはならない。別HEAD/別Attemptの成功を合算しない |
+| **Current Consumer/Grant Epoch** | 実Consumer、Principal/Workspace/Worktree、Audience/Disclosure、現在Source・Permission、Response/Effect Receipt | Read成功・Test子ProcessのReceived＝製品Studio/SHO/AI Recipientへ現時点で開示許可されていること、ではない |
+
+これは第34節T0〜T4の**操作中の確認時点**と、第36節D/S/I/R/V/Cの**観測分類**に追加する**履歴と現在の比較キー**であって、新Core型・Clock/Version Registry・Approval Workflowではない。文書／Scenario／既存Evidence Packetが保持する値だけを参照し、観測されないEpochは`unknown`で停止する。
+
+### 37.3 本当に成熟した現HEADの成果／未確定結果を区別
+
+| Subject／PRの実HEAD | 検査した事実 | 合格資格の上限 |
+| --- | --- | --- |
+| **RA-0 [#4626](https://github.com/hat47x/tei-platform/pull/4626)** `94876821f784d5fa9f71b15a05ac4156221b2bc8` | 18 Workflowの取得時点で**16 success／1 failure／1 in_progress**。失敗はBrowser→JSON API専用Binaryの`tei/internal/database/sqlgen` 2 symbol依存検出（[#1182](https://github.com/hat47x/tei-platform/issues/1182)）。Current/Frozen分離修正後のHealth/Self-build結果も対象HEADで追跡 | RA-0新Query Sourceの試験と歴史Runner再現の限定修正。実APIリンク依存失敗は未解消。RA-1/#4631やRA-2/#4638の旧base成功は新RA-0同一checkout PASSではない |
+| **REA Local Reader [#4637](https://github.com/hat47x/tei-platform/pull/4637)** `f9e355d5ccdc96bf4a25ff939fca444a18de1942` | 新Test子OS Processを追加したHEADは取得時点で**12 Workflow中11 success／1 in_progress**。旧HEAD `170f9be5`の12/12 successを引き継がない | Host管理Selector／Workspace-relative Path、最大4MiB Raw byteのLocal Reader、Childが固定Binding→実Read→型付き投影→親へReceiptを返す**テスト専用Process**。製品Studio外部Consumer、Disclosure権限、Current Principal認可は未実証 |
+| **Builder統合 [#4634](https://github.com/hat47x/tei-platform/pull/4634)** `7d6a1238e6efbd83fb2bd4cfda9667c181567920` | **8/8 PR Workflow completed/success** | Plugin主体BuildIntent宣言・Resolver・実Child起動前Pinの限定成功。非Plugin N0/N2/N3、実Stage1→Stage2 Windows Wailsは別 |
+| **Generator設計 [#4641](https://github.com/hat47x/tei-platform/pull/4641)** `1abbc17635cc75d9db0e209684d3b91d427d2b38` | **2/2 Workflow completed/success**、設計MarkdownのみのDraft | 生成器選抜→Builder→Artifact→Consumerと論理/物理Graphの受入設計。Go実装／正式Target資格は未証明 |
+| **Script Launch/Evidence計画 [#4642](https://github.com/hat47x/tei-platform/pull/4642)** `74a60495dfb5fabe6c5b9a700772fb051d1cf705` | **mainへmergedのdocs-only PR**。RA-2 PG、Windows生成/通常Job、署名付きRelease実HTTP検査の別資格を既存Script Launch文書へ反映 | docsのmain採用は新Product Function・実PGの通常CLI二Consumer・Stage2実構築・権限受理と同義ではない |
+
+最新情報を古い`36`の既存HEAD実績で上書きしない。`#4637`旧12/12成功と**新11成功＋1未完了**、`#4626`18中1実失敗、`#4634`現8/8、`#4641`現2/2は**異なるSource/実行資格**として同一段落内でも識別する。時間経過でCIが変わるため、検証者は再度exact HEAD/Run/Attemptを確認する。
+
+### 37.4 言語・Role・AI Skillを履歴の再生権限で混同しない
+
+第35節の`fx.rate` Role S0と既存`semantic.Validation`の二Subjectに、Current/Frozen対応を**必要な場合にだけ**追加する。`*.tei.md` Readerや汎用Meta Interpreterの採用、全Roleに歴史Runnerを要求することはP0の前提ではない。
+
+- **Role/Grammar**：現在Sourceの`Option anchor／Required closure`を実Readerへ束縛する。歴史Writer/Parserで当時Sourceを再解析する場合は旧選択Language pin・旧Script/Operator・raw byteを別に保持。Sourceを旧Formatに戻しただけで現在のSource indexやOwner受理を返さない。
+- **Generator/Builder**：ToolchainやBuild Catalogが新しい現在版へ進んだ場合、歴史Artifactを再利用できることと現在Stage2を生成できることを分離。#4641 GCXと#4583 BDを流用し、選択Builderと実Go/Node/esbuild/OS Loaderの読取閉包を段階別に確認する。
+- **Agent Skill／Harness**：他チャットの横断成果を**Instruction/Package（何ができると記述したか）／Subject/Information（どのSource/Evidenceへアクセスできるか）／Capability/Authority（当該Operationを今のHostが許可したか）**の三閉包として参照する。Skill/AIの説明は契約候補・操作候補であり、旧Sourceにアクセスできること、現在のSubject全体が利用可能であること、外部API実Call・開示・実Effectが許可済みであることを自認させない。既存[#4503](https://github.com/hat47x/tei-platform/issues/4503)、[#2516](https://github.com/hat47x/tei-platform/issues/2516)、[#3422](https://github.com/hat47x/tei-platform/issues/3422)の権限・送出・受領を再利用し、独自Agent/Skill Runtime、秘密情報のGitHub/外部送信を新設しない。
+
+**REA Processの具体例**：#4637では選択Pathを呼出ユーザーから受けず、Hostだけが固定Selector→相対Path/Raw DigestをBindし、呼出にPath/ReadAtを渡さない。別OSテスト子Processに限定したReceiptでも「実Readerが子で動いた」証拠にはなるが、Product StudioBridge/Web/AI RecipientへのDisclosure・独立Delivery・Current Grantの証拠ではない。現在のAPIへ安易に公開しない。
+
+### 37.5 最小反証セット（既存SSOTの組み合わせ、第二Fixtureなし）
+
+| CW-ID | 比較する一因子差 | Independent Expectedと停止点 | 引渡し |
+| --- | --- | --- | --- |
+| **CW-01** | 同Query ID、旧Sourceの未宣言`:from` vs現在`input from std.datetime` | Current Readerは現Query shape、Frozen Runnerは旧Raw/旧Manifestのみで再現。旧解析成功→現Meaning受理を推定しない | #4626/#4536/#4359 |
+| **CW-02** | Frozen旧Queryのraw byteは同値だがParser/Runner選択が変化 | 読み手のPin不一致は要再資格。固定byteだけで互換性合格としない | #988/#4367/#2514 |
+| **CW-03** | Current Sourceは改版済みだが旧Golden/Source FPのみ流用 | 期待値を現在のSourceに強引に合わせるのではなく、Current GoldenとFrozen独立Expectedを別で検証 | #4626/#2600/#1180 |
+| **CW-04** | 別の未利用QueryをCurrent Worldへ追加／削除 | 過剰な全体失効と不足したRequired/Negative依存失効を別計測 | #3262/#2600 |
+| **CW-05** | Browser API Binaryに想定外`sqlgen` Symbolが混入 | Linked Go実依存監査は失敗を保持。型付きQuery Source変更が原因と確証する前にallowlist緩和／CI SKIPしない | #1182/#4626 |
+| **CW-06** | Host Raw EvidenceのA→B→A変更、同Selector/最終Digestに復帰 | Old Read AttemptのReceiptを現在へ復活させず、Root/Revision/Reader Attemptの独立観測が必要 | #4637/#4503/#2514 |
+| **CW-07** | REA Child Processに正しいReceiptがあるがCurrent Principal/Recipientは別 | テストProcessの成功はProduct Client受領/Disclosureではない。開示不明なら外部送出0 | #4637/#2516/#1824 |
+| **CW-08** | Build selected/actual Childが正しくても、N2実memberかStage1→Stage2が未観測 | #4634の8/8を#4587 Windows成功と合算してSelf-build B2/B3 PASSにしない | #4583/#4641/#2514 |
+
+### 37.6 計画へ落とす実装順序：現行・歴史・実Reader・Consumerを別入口で狭く検証
+
+**P0-A Current/Frozen Reference（#4626/#1182/#2514）**：既存`recent_orders`を一対のSource例として、現行Query Source/Goldensと歴史旧commit/旧Manifest/旧Runnerを実byteで分離。現在のWorkspace/Referenceの手直しを旧Runnerだけのために行わない。まず現HEAD #4626のHealth/Self-build完了結果と`sqlgen`失敗を固定し、真のリンク元と変更影響を特定。対応する最新RAFT検証を独立Expectedへ戻す。P0新Meta version Engineは不要。
+
+**P0-B DSL/Role（#4536/#4405/#4607/#4608）**：`fx.rate`一実SourceでRole/Required/Reader要求、次に既存Validationの第二Subjectを、現在選択されたParser/OperatorとSource Indexへ接続。Rule新構文/Markdown/新Converterの製品採用は独立。歴史Queryの失敗をDSL汎用Parserの再実装要件としない。
+
+**P0-C Desktop（#4583/#2831/#4634/#4587）**：Plugin主体の実Builder Pin統合8/8を利用して、非PluginのN0 TS→N2 esbuild→N3 Wails Embedを`BuildExecution/ArtifactSet`の実Invokeへ接続。Stage1がStage2を構築し、当該Stage2 Windows WebView2で実入力/出力を検証するまでSelf-build L3/G4は未達。既存の通常Desktop PowerShell OSVersion Timeoutと生成Desktop Job成功は別Caseのまま。
+
+**P1-D Evidence Reader（#4637/#4503/#2516）**：Host-owned Selectorによる実byte ReadとTest子Process証拠を、実Product Studio/CLI/SHOの適格Consumerへ渡す前にWorkspace/Principal/Grant/DisclosureとReceiptを照合する。Current/T0〜T4を必ず別確認。Child起動成功を外部Recipient許可にしない。
+
+**P1-E Product Read（#4626→#4631→#4638→#2586）**：RA-0 typed Query Source、RA-1 Executor前Input Guard、RA-2 disposable PG16、RA-3通常Product CLI→Function Context→Standard/Native二Consumerを、各PRが現行Source基線へ積上がるたびに**同一checkout/同一Attempt**で再確認。実Provider Selector/actual Instance、Native SQL方言/NULL/JOIN/Scope/Grantと、CUI/Studio受領は別資格。
+
+**状態**：この節は、他チャット・現行Issue/PR・GitHub Actionsの直接取得に基づく設計Draft更新。新Go/Windows/PG/子Process試験を本節で実施したわけではなく、Source形式、Semantic Role、History復元、AI Skill実行権限、Studio Public Web、Stage2 Self-buildの**正式採用／Owner意味受理は未実施**。主計画は#4583 Desktop P0を維持し、History Runner修正とHost Reader/Skill正規化を新Hard Gateにしない。
