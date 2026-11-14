@@ -194,6 +194,18 @@ func TestGeneratedBinaryRuntimeNodeQuery(t *testing.T) {
 				t.Fatal(err)
 			}
 			artifactDigest := sha256.Sum256(before)
+			shape, err := CandidateShapeFingerprint(candidate)
+			if err != nil {
+				t.Fatal(err)
+			}
+			shapeCall := exec.Command(binaryFile, "-candidate-shape")
+			shapeOut, err := shapeCall.Output()
+			if err != nil {
+				t.Fatalf("candidate structure request: %v", err)
+			}
+			if string(shapeOut) != shape+"\n" {
+				t.Fatalf("actual binary candidate shape %q, expected %q", shapeOut, shape)
+			}
 			// Keep the existing no-argument output contract on the same binary.
 			fullCall := exec.Command(binaryFile)
 			fullOut, err := fullCall.Output()
@@ -235,6 +247,7 @@ func TestGeneratedBinaryRuntimeNodeQuery(t *testing.T) {
 				{[]string{"-node", ""}, "empty node ID"},
 				{[]string{"-node="}, "empty node ID"},
 				{[]string{"unexpected"}, "unexpected positional arguments"},
+				{[]string{"-candidate-shape", "-node", "n-1"}, "candidate-shape conflicts with node selection"},
 			} {
 				call := exec.Command(binaryFile, request.args...)
 				out, err := call.CombinedOutput()
@@ -253,7 +266,7 @@ func TestGeneratedBinaryRuntimeNodeQuery(t *testing.T) {
 			if sha256.Sum256(after) != artifactDigest {
 				t.Fatal("compiled artifact changed between independent calls")
 			}
-			t.Logf("compiled reference binary SHA-256=%x (7 runtime invocations, one build)", artifactDigest)
+			t.Logf("compiled reference binary SHA-256=%x (9 runtime invocations, one build)", artifactDigest)
 		})
 	}
 }

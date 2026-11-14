@@ -1010,7 +1010,7 @@ H1はPlugin二件A／Bの**直接依存一辺だけ**を対象とし、上位説
 
 <!-- tei-20261115-plugin-source-manual-concrete-bridge -->
 
-[PR #4709](https://github.com/hat47x/tei-platform/pull/4709)で、`testdata/tei-md-graph/`に五つのMarkdown表＋MermaidのGraph入力と`independent-expected.candidate.json`がmainへ入った。ここにある`n-1`／`n-2`、`e-1`／`e-2`は意味IDであり、Mermaidの`N1`／`N2`は表示上のIDである。**このFixtureを第20章の実生成検証と第21章のPlugin文書検証で共用する**。定義表はSource、Mermaidは導出表示、Expectedは独立した採用前候補という区分を維持する。
+[PR #4709](https://github.com/hat47x/tei-platform/pull/4709)でMarkdown表＋MermaidのGraph入力と独立Expected候補がmainに入り、[PR #4729](https://github.com/hat47x/tei-platform/pull/4729)で明示的なRule表と第6の入力（`rule-by-target.tei.md`）が追加された。ここにある`n-1`／`n-2`、`e-1`／`e-2`は意味IDであり、Mermaidの`N1`／`N2`は表示上のIDである。**このFixtureを第20章の実生成検証と第21章のPlugin文書検証で共用する**。定義表はSource、Mermaidは導出表示、Expectedは独立した採用前候補という区分を維持する。
 
 最初のPlugin文書の試験では、上位Plugin AがこのGraphの**公開可能な説明文書への参照**を持ち、利用側Plugin BがAを直接要求するケースを加える。ただし既存Fixture自体はPlugin A/Bの製品定義・公開許可・マニュアル索引を提供していない。A/Bの契約や参照は**別途固定する合成の試験入力**であり、`baseline.tei.md`を置いただけでPluginへの帰属・現在Disclosure・正式Reader受理を得たことにはしない。正式なDocument ReferenceのAuthoring契約は[#4679](https://github.com/hat47x/tei-platform/issues/4679)／[#2621](https://github.com/hat47x/tei-platform/issues/2621)のOwner判断とする。
 
@@ -1037,5 +1037,63 @@ H1はPlugin二件A／Bの**直接依存一辺だけ**を対象とし、上位説
 既存PHD-01/02/03/05/06/08と第20章のPGFを同じSourceセットに対する**別のassert**として利用する。文書の本文だけを直した場合に実Goの意味まで再生成しないこと、Graphの定義表を直した場合に生成物・説明の参照版が適切に失効すること、Source A→B→Aで旧開示・旧Evidenceを復活させないことを比較する。試験の正本は[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)に維持し、FixtureのExpected JSONは採用前候補のままとする。
 
 **受入上限**：最初はCLI実呼出しで、選択Pluginと一文書の対応・版・可読性を示せることまで。Graphの正式`*.tei.md` Reader・Go生成・Provider実利用・Pluginマニュアル一般公開・Studio/Harness・Owner意味受理の完了を代用しない。全体P0はStudio Stage1→Stage2（#2831/#4583）、並行P0は実Entry／Provider（#4495/#1251）。Plugin文書をその新Hard Gateにしない。
+
+### 21.7 実行可能な使用例を、Pluginの契約・説明・Source変更へ結び付ける
+
+<!-- tei-20261115-plugin-help-runtime-rule-crosscheck -->
+
+第21.6節で特定した文書SourceRefの不足については、**実行できる使用例を説明書に置くこと**と、**実際に選択されたPluginの使用例として有効であること**を別々に検査する。mainに入った[Rule付きGo参照実装 #4729](https://github.com/hat47x/tei-platform/pull/4729)と[同一生成バイナリへのNode指定 #4733](https://github.com/hat47x/tei-platform/pull/4733)を、最初の試験の基線とする。
+
+#### 共通Fixtureを再利用する
+
+`testdata/tei-md-graph/`は現在**6入力**を持つ。Graph定義元はMarkdownのNode/Edge表、Rule定義元は一行の明示的な規則表、Mermaidはその表示、`independent-expected.candidate.json`は生成器と独立した期待値候補である。
+
+Ruleの「起点 = 対象ノード」と「終点 = 対象ノード」は、限定参照Readerが`from`／`to`へ解釈し、Goの`e.from == nodeID`／`e.to == nodeID`という**異なる判断処理**に変換している。Node ID・Edge IDとRuleの元byte位置はReference側で保持される。表示用Mermaidの向きや配置は、Rule選択や業務意味の受理を代行しない。
+
+生成物の使用例では、単に`go run`で全件を出すだけでなく、[#4733](https://github.com/hat47x/tei-platform/pull/4733)で確認された**同一生成バイナリ**への`-node n-1`、`-node n-2`、未知Node、明示空ID、余分な引数の拒否を使う。これにより、手書きGoへの委譲でも、出力を固定JSONで作るだけでもない最小の処理を比較できる。ただしこの`-node`は**限定Referenceの生成プログラムの引数**であり、製品`tei`コマンドに同じ引数が実装されたことを意味しない。
+
+#### Manualの使用例を検証する最小照合票
+
+| 照合する事実 | 初回の確認方法 | 不一致の扱い |
+| --- | --- | --- |
+| **対象と版** | `plugin-inventory`の選択Plugin ID/Version、環境、Lockと公開DocのPlugin/Contract Pinを対応付ける | 選択Providerと例の対象が異なれば現行の実利用例にしない |
+| **定義と出典** | 明示選択されたSourceのRevision、Graph/Ruleの元byteとSpan、Doc IDとDoc Revisionを保持 | 同名ファイルや同じ表示ラベルだけでは対応を確定しない |
+| **使用例の入口** | Referenceの`go run`／生成Binaryと製品`tei commands`を区別し、実argv・引数・作用を照合 | 未実装の`plugin docs`やReference固有Flagを製品コマンドとして案内しない |
+| **実挙動とExpected** | 同じ生成BinaryへのNode別要求・拒否を実Processで観測し、独立Expected候補と比べる | Reference合格をProduct Provider／Build受理にしない |
+| **公開資格** | 上位Aから下位BへのDoc参照と、その利用時点のDisclosureを別に検査 | 閲覧可能から第三者再公開・実行Grantへ昇格させない |
+
+**文書自体の変更と意味の変更を分けて検査する。** 説明文だけの変更では文書索引と掲載例の現在性を再検査するが、Graph/Ruleが同じであると検証できた生成Goを理由なく再Buildしない。Ruleの起点条件を終点条件へ変更したら、意味上の生成処理と期待値の更新を要する。MermaidのLR/TB変更だけなら、表示Artifactを再確認してもRule由来のGoが変わらないことを検査する。いずれもSourceのA→B→Aで古いOwner受理・Doc開示・Evidence資格を無条件に復活させない。
+
+#### Source Indexで実証されたことと、Plugin文書に不足すること
+
+main統合済み[PR #4742](https://github.com/hat47x/tei-platform/pull/4742)では、`reference/tei-md-graph-reader/sourceindex_bridge_test.go`が、Node／Edge／Ruleの元byte位置を既存`sourceindex.NewArtifact`・`RangeFromOffsets`・`Index.Validate`で照合する。有効5入力のSource fingerprintは原byteに結び付いており、文末へ説明を追記しただけでも、**古いSource Index Artifactを現行Sourceとして受理しない**。前回の§21.7が求めるSource出典の一部について、独立した新Resolverを作らず既存APIを使えることが確認された。
+
+ただし、`*.tei.md`の物理Formatは現在`md`であり、**Source Indexに載ったことはLanguage Plugin選択や業務Meaningの受理ではない**。このSource Index回帰はDoc参照をPluginへ帰属させる機能も、Pluginの現在版・公開資格を検査する機能も提供しない。したがって初回Plugin文書の受入票は、`(a)`同一Workspace/Source Revisionでの原byteとSpan、`(b)`選択済みPlugin/Contract版とDocumentの明示Binding、`(c)`要求者ごとの現在Disclosure、`(d)`実Consumerによるread-only取得、を**別々に観測**する。
+
+負例では、説明だけの追記後に`(a)`の古いArtifactを拒否しつつ、Graph/Ruleの意味が不変なら無関係なGo生成を再実行しない。`(b)`〜`(d)`が未取得のときは、元byte一致だけで公開文書を返さない。これを既存PHD-01/03/05/06/08へ割り当て、別のSource Indexや文書Registryは追加しない。正式なReader接続の工程順は[製品完成計画 #4730](https://github.com/hat47x/tei-platform/pull/4730)と[#2621](https://github.com/hat47x/tei-platform/issues/2621)へ委ねる。
+
+#### 正式Readerへ進むS0の判定を横取りしない
+
+先行[PR #4745](https://github.com/hat47x/tei-platform/pull/4745)（未マージ）の成果を引き継いだ[PR #4751](https://github.com/hat47x/tei-platform/pull/4751)は**mainへ統合済み**である。`internal/workspace/tei_md_selected_source_pressure_test.go`が、Manifestの`semantic`管理Root、同じPinned `os.Root`からの原文取得、宣言外`drafts/`の隔離、既存Source Indexでのバイト照合と原文変更後の旧Artifact拒否を、実一時Workspaceで検証する。ただしこれは**S0-P（test-only preflight）**であり、製品`Load`は引き続き`TEI_MD_PARSER_UNBOUND`で拒否している。本節のManual/Plugin SourceRefは、その試験が成功しただけでは公開済み・選択済みにならない。検証する順序は次のとおりとする。
+
+- **S0-a Source選択（実証済み範囲：test-only）**：main #4751の試験はManifest管理Root、物理Scan、Pinned Raw Byte、Source Index Fingerprint／Spanと未管理`drafts/`の隔離を同一Workspaceで比較した。**次の製品受入は、実`Load`がその選択・Pinned byteを正式Frontendへ渡した同一Attemptの証拠**である。Reference Readerが自分でファイルを探した結果を代用しない。
+- **S0-b Reader／Roleの正式選択（次の製品Go変更）**：既存Loaderに、明示的に選択されたLanguage Provider/対応Roleだけが、S0-aで固定した同じSource byteを消費する経路を接続する。選択・Pin・Provider資格のどれかが欠ける場合は既存の拒否を維持し、旧`*.tei`の実読取りと管理Root外草稿の隔離を回帰で守る。文法・新たなRole識別子をこの計画だけで採用しない。
+- **S0-c 意味と消費**：選択Sourceから受理されたMeaningへ進み、初めてProduct GeneratorとBuildの実Consumed Inputを照合する。Referenceの`go build`や`-node`成功を製品S0-cの合格に数えない。
+
+この順序は[PR #4704](https://github.com/hat47x/tei-platform/pull/4704)／[PR #4730](https://github.com/hat47x/tei-platform/pull/4730)のReader Ownerと同一の作業列として扱い、Plugin Documentationのための第二のLoader／Resolver／検証Runnerを追加しない。**S0-Pはmainにある予備試験、S0-Aは未実証の正式Loader読取り、S0-b/cは未受理の製品接合**と明確に区別し、Source Indexが`md`形式を記録できることをLanguage Roleの受理とみなさない。
+
+**Pluginマニュアルのread-only取得は、業務`*.tei.md`の意味Parser完成を必須前提にしない。** 公開許可のある通常の管理Markdownを、選択済みPlugin/Contract版へ結び付けるDoc SourceRefの照合は#4679で並行できる。ただし`Source Index`の存在や管理Root内の`README.md`を、Pluginの帰属・開示許可に自動変換しない。一件の文書を正式に返す場合は、明示Doc参照、現在の版・開示、実Consumerを個別に確認する。意味Parser未対応と文書へのアクセス拒否は異なる失敗として返す。
+
+**最初の製品PRの検収票**は `(1)`同一Manifest/Source Revisionにおける実Loaderが読んだRaw byteとPinned Root、`(2)`選択Frontend/Roleの資格と拒否、`(3)`そのRaw byteのSource Index/Span、`(4)`旧`.tei`と未管理草稿の非退行、`(5)`正式Meaningと実Builder/Artifact/ProviderはNOT RUN、の五欄とする。`(1)`〜`(4)`が正負の実試験で揃うまでは、単に#4751のReference候補を呼び出せるだけでProduct S0-Aが成立したとしない。新しい合格番号や第二のScenario Storeは作らない。
+
+#### 次のGo実装を受け入れる順序
+
+最初の**実製品側**の変更は、[#4376](https://github.com/hat47x/tei-platform/issues/4376)で取得する選択Pluginと、[#2621](https://github.com/hat47x/tei-platform/issues/2621)で管理・選択したSource上の**公開Document一件**を型付きread-only結果に結び付けることに絞る。Source Reader/Source Indexの元byteと文書参照の適合を確認できないときは、`unsupported`／`partial`／`permission-denied`等の実際の不足を残し、単なる`not-found`や空集合へ読み替えない。合成のA→B参照は正式なDisclosure証拠ではない。
+
+その後に、公開されたManualの操作例を既存CLI Discoveryへ照合し、`*.tei.md`の正式なRole/Reader→選択されたTarget Generator→Artifact→実Provider／通常`tei` CLIという別の経路へ進む。**Reader・Go生成・CLI使用例がすべて同じSourceを指すことだけでは、Builderが実際にそのSourceを消費したことや、Ownerが意味を受理したことにはならない。** 選択したProviderの実呼出しと独立Consumerの結果まで別の欄で検収する。
+
+最初は既存PHD-01（版違い）、PHD-02（存在しないコマンド）、PHD-03（再公開拒否）、PHD-05（未取得・部分取得）、PHD-06（説明のみ変更）、PHD-08（旧Revisionの再採用）に、mainの6入力／Rule切替／Node別要求を**固定差分**として対応付ける。新しいScenario正本やDocument Registryは作らない。全体P0のStudio Stage1→Stage2と、並行P0の実Provider経路は変えない。
+
+**検収資格の境界**：#4729/#4733は限定Referenceでの実Go生成・実Binary・独立Expectedを示す。現行製品の`*.tei.md` Loaderは`TEI_MD_PARSER_UNBOUND`で拒否しており、公開Manualの型付き製品取得、Plugin A/Bの正式開示、製品Target Generatorと通常CLI、Studioの自己再構築は未実証である。第21.7節はそれらを結ぶ**実装順と既存Expectedの適用先**を具体化したもので、Go製品機能を追加した記録ではない。
 
 **資格**：第20・21章は、現行mainの第15〜18章を維持しながら、生成プラグインの一機能とPlugin説明の利用時適合を切り出した**設計・検収案**である。正式 *.tei.md Reader、新Generator、実Plugin E2E、Plugin Help API、実AI Harness、Owner受理を今回実装・実測したわけではない。
