@@ -253,3 +253,104 @@ A→B→AとSourceが戻っても、World Fingerprint／Model Revision／Artifac
 ## 21. 正本と検証状態
 
 本稿の§12〜20は、他領域の既存設計を接続した**未採用の横断設計・未実行の検証計画**である。Rule／Decisionに関する正式なSemantic Role、DSL Grammar、共通API、公開Result Enum、生成Go実動作、SQL・Java同値、Studio編集、Owner意味受理を主張しない。各種の意味・権限・業務効果の判断は、そのSourceとOwnerの既存ADR・Issueを正本とする。
+
+
+## 22. 実装の再出発点：mainに存在するGraph／Rule→Go参照実証を活用する
+
+2026-11-15時点の現行mainを読み直すと、BRMS周辺の議論で先行実証とみなすべき対象が明確になった。今後は**存在しない新しいParser／Rule Engineを最初から作る計画**ではなく、既存の実コードを限定的な比較基準に固定して、正式なTEI意味・製品経路へ持ち上げる計画とする。
+
+| 確認対象 | mainに存在すること | 現在まだ主張できないこと |
+| --- | --- | --- |
+| 参照Reader | reference/tei-md-graph-reader/graph.goが限定的なNode／Edge表を読み、重複・曖昧参照・原文位置を検査する（PR #4722統合） | 正式なMarkdown Language Plugin、一般Graph文法 |
+| 参照Rule | rule.goが「算定規則の定義」の一行を読み、起点・終点条件を厳格に選択する（PR #4729統合） | 一般の決定表、複数Rule、Unique／Anyの本格的Hit Policy |
+| 条件分岐のGo生成 | GenerateGoが実際のe.from／e.to判定を生成し、Go子Processで結果を検証する | 型付きAccepted Meaningからの正式Target Generatorによる実生成 |
+| 同じ生成Binaryの動作 | rule_test.goがビルド済みBinaryのSHA-256不変を確かめつつNode IDを変えて複数回呼ぶ | 製品tei CLIのFunction Entry／選択Provider／独立Consumer |
+| Source位置の照合 | sourceindex_bridge_test.goでRangeFromOffsetsと元byteのFingerprintを照合する | Source IndexへのSemantic Role／Rule意味Referenceの正式登録 |
+| 未接続を明示する境界 | internal/workspace/tei_md_source_guard.goにTEI_MD_PARSER_UNBOUNDの拒否が残る | Workspaceが明示選択した*.tei.mdを製品として読めること |
+
+実証対象の固定例はtestdata/tei-md-graph/baseline.tei.md等の6入力。表示名が同じNode二つ（n-1／n-2）、同じ端点を持つ二つのEdge（e-1／e-2）、辺の反転、Ruleの起点→終点切替、表示図だけの変更を区別する。期待値はindependent-expected.candidate.jsonで**提案用**と明示され、#1180／#2514で正式な独立Expectedを受理した証拠にはならない。
+
+Source Index橋渡し試験の合格は「元byte位置の共有」を示すだけである。NewArtifactは*.tei.mdを現時点では一般のmdとして分類し、接尾辞からRoleを確定しない。Workspace選択・Language Plugin／Role・受理済みMeaning・製品Generator・実Provider・独立Consumerへの接続が次の本当の欠落部分である。
+
+既存の[Graph Reader参照実装](../../reference/tei-md-graph-reader/README.md)、[固定6入力](../../testdata/tei-md-graph/README.md)、[正式Reader接続検討PR #4704](https://github.com/hat47x/tei-platform/pull/4704)、[製品完成計画](../workstreams/PRODUCT_COMPLETION_PLAN.md)を参照する。PR #4704は検討中であり、採用済み製品Readerとはみなさない。
+
+## 23. D1を二つの資格に分解する：限定Referenceと製品への接続
+
+前節までの「D1で決定表→Go」という記述は、現在の参照成果と未達の製品要求を一つの達成表示にまとめないため、次のように分けて運用する。これは新しい全体Gateではなく、既存#2621／#988／#1180／#2514／#4495の受入票を並べる**検査順序**である。
+
+| 縦断点 | 最小の実装差分 | 合格証拠 | 非Claim・棄却条件 |
+| --- | --- | --- | --- |
+| R0：限定Reference | 一行RuleとGraph候補から実Go制御を生成 | 既存テスト：Rule／Edge変更でGoのif／結果が変化。表示だけならGo不変 | 汎用決定表や正式Meaning／製品Go生成の成立ではない |
+| R1：Workspace選択 | Workspaceが明示選択した*.tei.mdとLanguage／Role／Provider選択を束縛 | 対象Source byte・Role・選択理由・固定版を同じ試行で提示。未知Roleは拒否 | 拡張子のみで受理、TEI_MD_PARSER_UNBOUNDの無差別解除 |
+| R2：Meaning参照 | 限定Reader候補を既存Role・Typed Expression・Graph Relationへ位置付きで対応させる | n-1／n-2、e-1／e-2の別IdentityとRule条件・対象Scopeを保存 | 表の自然文、Graph表示ID、行順から新しいMeaningを推測 |
+| R3：生成物を実消費 | 製品Generatorが選択済みMeaning・Operator契約・Toolchainを実消費しGoを生成する | 元Ruleの変更→実Builder入力→生成条件→ビルドされたArtifactを同一Attemptで照合 | 別のReference Generatorの成功を製品Buildへ転用 |
+| R4：実製品入口 | 公開Function Entry・通常tei CLIと独立Consumerが同じ実選択Providerへ到達 | 実ロードArtifact／実Call／型付き結果を独立Expectedと比較 | CLI見かけの成功、Mock、ReferenceExecutorの結果で代替 |
+| R5：セルフビルド | Plugin自身のRule／Graph・Operator部分をTEIによって再生成する | Stage1→Stage2の実ビルドと生成意味部分の増加・手書きGo委譲部分の減少を観測 | 偽再入、静的Goデリゲートだけの増加 |
+
+最初の次PRはR1〜R2の**一Subjectだけを確実につなぐ**ことを優先する。R3以降は既存Generator・Product CLI・Plugin受入Ownerと統合し、独立Runtime／Rule Registry／新しい公開CLIコマンドを先に作らない。R5をStudio全体のセルフビルドの代替証拠にしない。
+
+参考：R0の条件切替は技術的なIF生成が可能なことを示すが、まだ一般的なUnique決定表の競合・網羅性を検証してはいない。この区別を設計文書と計画で一貫させる。
+
+## 24. 最初のDecision Analysisは有限で説明可能な領域に限定する
+
+R1〜R3と並行して準備する次のBRMS固有の意味実装は、**有限な区分と区間条件を持つ小さなUnique決定表**とする。最初から推論エンジン・全FEEL式・SMT・RETEを実装しない。
+
+例えば会員区分がstandard／premiumの二値、購入額が0以上のJPY十進数である場合、決定表の三行は、(1)standardで金額が10000未満、(2)standardで10000以上、(3)premiumですべての非負金額、とする。出力は順に0%／5%／10%。ここにstandardかつ5000以上の重複行を加えれば、UniqueのOverlapとなる。
+
+この例が検証する対象は、条件の抽象構文、型・単位、範囲、Scope、一致方針、No Match、Rule ID・元byte位置、生成Goの振る舞いに限る。上記の日本語表現を汎用パーサーが読めることはまだ要求しない。既存型付きExpressionへ手で明示Bindした限定Fixtureから始め、Source側の一般化は必要なLossが確認されてから行う。
+
+| 解析 | 提示する証拠 | 限定すべき主張 |
+| --- | --- | --- |
+| Overlap | 条件の交差に属する具体的な入力例と双方のRule ID | サンプリング一致は網羅的な競合検出ではない |
+| Gap | 明示した入力Domain内で未選択となる具体的な入力例 | 無限・未知Domainでは未証明 |
+| Shadow／Redundant | 到達不能の条件・包含関係と、同一結果の冗長条件を分ける | 一致結果が同じだけで行削除を許さない |
+| Explain | 当該入力でなぜ選択されたか、他行の排除が証明できるか | 成立した一行だけでUnique確定とはいえない |
+| Invariant | 行順・Markdown配置のみの変更では意味／生成結果が不変 | Firstを採る判断では行順は意味に含まれる |
+
+「完全な網羅証明」「未検査」「検査した範囲では反例なし」を区別する。未取得入力が別の行を成立させ得るなら、先に一致した一行があってもUnique判定は未確定とする。否定条件・0件条件については、Read Footprintが要求を示すだけでClaim Closureの証拠にはならない。
+
+## 25. 競合の二種類と、解消の進め方
+
+ルールの「競合」を単なる機械的なエラーとだけ捉えず、次を区別する。
+
+1. **意味の定義として許せない競合**：Unique決定表の重複、型矛盾、循環、同じ業務Subjectへの不整合なBinding。これはSource上の反例として報告し、暗黙の行順・優先順位で実行しない。
+2. **業務上の論点としての競合**：組織間の例外、価格政策・安全・納期の優先、異なる関係者の判断基準の相違。Business／SUIで論点や解決候補として整理できるが、その議論をRule実行の自動裁定と同一視しない。
+
+後者では、生成AI・SUIのKJ法・SEIのOntology／文化的文脈による探索も許容する。**一律に人間の判断待ちにしない**。現在受理済みの業務規則と十分なEvidenceから一意に導出できる解決なら、既存の決定的な評価・検証経路で自動処理できる。一方、新しい価値判断・新規の優先順位・権限変更が必要なら、Ownerの既存受理経路を通す。AIの提案だけで実行資格を獲得しない。
+
+この区別により、BRMSのRule ConflictとSUIのDecision Tensionが相互補完できる。ただし新しいDecision Repository／承認サーバーを生やさず、元Source・Issue・Review・Candidateの既存の管理方法を再利用する。
+
+## 26. 変更影響・理由・Target同値の厳密な境界
+
+R0の限定Refで成立した「Mermaid配置だけの変更では生成Go byteが不変」と、製品全体で必要な「Source・Rule・Operator・Builder・Plugin・Consumerが同じ資格で結ばれる」は別の検証である。
+
+変更分類を次のように扱う。
+
+- Source byteのみの変更：元PositionやEvidence再検査の必要性がある。意味・Artifactまで常に失効させるわけではない。
+- Rule条件・Relation方向／多重性・時点・Scopeの変更：受理済みMeaningと下流Function／Test／説明を再照合する。
+- Generator／Toolchain／Plugin版の変更：Meaningが変わらなくてもBuildの同等性を別に検査する。
+- SQL／NoSQL Dataの変更・取得範囲縮小：生成コードが不変でも判断に必要な入力が揃ったとは限らない。
+- Host Grant／Audienceの変更：過去の判断結果が同じでも、現在の操作・開示資格は再確認する。
+
+同じモデルをGoとSQLへ展開する場合、両Targetで真偽の扱い・NULL・Decimal／単位・Collation・集合の重複・順序・期間・Read Closureが等しいことを個別の反例で確認する。実装の最適化によるSQL pushdownが追加のRead／Effect権限を作らないことも確認する。Referenceの一致はこの同値性の証明に含めない。
+
+## 27. 次の実装と計画への具体的引渡し
+
+| 実装差分 | 最初の対象／証拠 | 担当する既存Owner |
+| --- | --- | --- |
+| 1. 正式Source接続の最小一件 | 既存Graph／Rule六入力からbaseline一件を選び、明示選択→Source Index→Role→Meaning参照まで | #2621／#988／#3030／#2495 |
+| 2. Target生成での実消費 | Rule条件とEdge向きの変更が実Go分岐・生成物・独立Expectedへ伝わる | #1121／#1180／#2514／#2600 |
+| 3. 一枚のUnique決定表 | 2区分×金額区間のOverlap／Gap／No Match／入力不足を反例付き検査 | #988／#1637／#1180／#2514 |
+| 4. Product Function／実Provider | 公開pure Function Entry→実Go Provider→通常製品tei CLI→独立Consumer | #4495／#4502／#2586 |
+| 5. Ruleと組織・REAの結合 | 実Relation Key・partialと0/1/複数候補を区別し、Rule意味受理と現行Grantは別 | #2506／#3394／#4490 |
+| 6. TEI-native PluginとStudio | 手書きDelegateの縮小、Stage1→Stage2、Rule行・生成分岐・説明への同一Subject追跡 | #2831／#4583／#1124 |
+
+実組織の正のRelation候補・partialの10例については[PR #4737](https://github.com/hat47x/tei-platform/pull/4737)にテスト候補がある。ただし検証対象は合成Rowsetであり、承認業務Ruleの受理や実DBの取得完全性を証明しない。BRMS側でこのFixtureを無断に「承認ルールが動いた」証拠へ昇格させない。
+
+まず**1件の実Sourceを正式に解釈し、既存の型付き意味と実Generatorへ橋渡しする**ことが次の価値の高い差分である。決定表の行数やRuleの機能一覧を増やすより、現行製品へ到達した範囲を広げる。対応するSource・実Builder入力・生成Goの分岐・独立Expectedが確認できない場合には、その段階は未達と記録する。
+
+## 28. 現時点で更新する判断と未受理事項
+
+前回の「D1のGo生成は未実装」という一括した言い方は不正確となった。**限定ReferenceのGraph＋一行Rule→実Go生成→別Process実行はmainに存在する**。一方、一般決定表のUnique検査、正式Markdown Language Plugin、受理済みRule Meaning、製品Generator／Go Provider、CLI／Consumer、Studio Self-buildへの接続は未実装または未受理である。
+
+本稿§22〜27の作業内容は、既存の開発計画・Ownerへ加える接続案であって、製品機能の採用・意味受理・新しい全体Gateの導入ではない。Referenceでできたこと、正式Sourceへつないだこと、生成Artifactを使用したこと、製品Consumerが受領したことを、同じ「対応済み」にまとめない。
