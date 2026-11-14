@@ -104,3 +104,14 @@ test("PIN-WIRING-05: a changed Catalog cannot silently rebind an old Subject Pin
   assert.match(unpinClick, /pinnedCatalogIdentity = null/);
   assert.match(recheck, /!pinnedCatalogMatches\(\)/);
 });
+
+test("PIN-WIRING-06: reply acceptance checks drift and distinguishes stale projections from Host denial", () => {
+  const reader = bodyBetween("async function refreshPinnedSubject() {", "\nfunction renderList() {");
+  assert.match(reader, /catalogSnapshot !== catalog \|\| !pinnedCatalogMatches\(\)/);
+  assert.match(reader, /"STALE_MODEL_PROJECTION"/);
+  assert.match(reader, /"INVALID_INSPECTION_RESPONSE"/);
+  assert.match(reader, /"SUBJECT_AMBIGUOUS"/);
+  assert.match(reader, /"SUBJECT_NOT_FOUND"/);
+  assert.match(reader, /const state = mustRequalify \? "needs-requalification" : "unavailable"/);
+  assert.match(reader, /acceptPinObservation\(pinState, request, \{ state \}\)/);
+});
