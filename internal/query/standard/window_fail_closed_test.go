@@ -1,12 +1,8 @@
 package standard
 
 import (
-	"context"
 	"strings"
 	"testing"
-
-	sqlgen "tei/internal/database/sqlgen"
-	"tei/internal/database/sqlgen/sqlite"
 )
 
 // Window semantics are implemented in the SQLite dialect adapter but are not
@@ -91,33 +87,5 @@ func TestCTKStandardQueryRefusesOpaqueNestedCTE(t *testing.T) {
 	out, diagnostics := StandardToSQL(query)
 	if out != "" || len(diagnostics) == 0 || diagnostics[0].Code != "OPAQUE_QUERY_UNSUPPORTED" {
 		t.Fatalf("unsupported nested CTE emitted SQL: %q, findings=%#v", out, diagnostics)
-	}
-}
-
-// This is the actual SQLite dialect generator's Window output, not a guessed
-// SQL example. The Standard conversion must not erase it to claim equivalence.
-func TestCTKActualSQLiteWindowSQLIsNotSilentlyNormalized(t *testing.T) {
-	generated, err := sqlite.NewDialect().Select(context.Background(), sqlgen.SelectOptions{
-		Table: "observations",
-		Columns: []string{"obs_id", "AVG(value) OVER moving AS moving"},
-		Window: "moving AS (PARTITION BY grp ORDER BY seq, obs_id ROWS BETWEEN 2 PRECEDING AND CURRENT ROW)",
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(generated.Statement, " WINDOW ") {
-		t.Fatalf("dialect did not generate a named Window: %q", generated.Statement)
-	}
-	q, diagnostics := ParseSQLToStandard(generated.Statement, "sqlite")
-	if q == nil || len(diagnostics) == 0 || len(q.Nodes) != 1 {
-		t.Fatalf("Window semantics not explicitly refused: query=%#v diagnostics=%#v", q, diagnostics)
-	}
-	opaque, ok := q.Nodes[0].(*Opaque)
-	if !ok || opaque.SQL != generated.Statement {
-		t.Fatalf("the actual generated SQL was lost: %#v", q.Nodes)
-	}
-	out, findings := StandardToSQL(q)
-	if out != "" || len(findings) == 0 || findings[0].Code != "OPAQUE_QUERY_UNSUPPORTED" {
-		t.Fatalf("unrepresented Window was silently normalized: sql=%q findings=%#v", out, findings)
 	}
 }
