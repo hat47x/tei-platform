@@ -1168,7 +1168,7 @@ Mermaid、Graphviz、Markdown表、SQLは標準Meaningの用途別表現であ�
 | **OI-4** | 組織Plugin公開Model/上位Manual索引→短いSkill→実CLI読取り | 解決済みPlugin/Doc版・公開範囲・親依存とSourceの取得、未実装CLI拒否 | #4679/#4376/#2605/#951 |
 | **OI-5** | 標準Graphから生成した実Go Rule/PluginをCLIで呼び、組織用途へ段階展開 | 意味生成・実Builder/Plugin Call・Consumer・手書き削減を別計測。Studio最終出口は独立 | #4676/#4680/#2831/#951 |
 
-OIは**この補遺の作業順索引**であり、ORG-BEH/CX、既存Scenario/Expected、IssueのOwnerを置き換える正式な新IDではない。最初の実装PRは**OI-1の小さな正負試験**を優先するが、Owner選択前のCase→Person経路を仮に受理したふりはしない。必要なら公開合成Sourceだけを使う純粋Rule Fixtureとして切り出し、Productの実Org Provider受入と区別する。
+OIは**この補遺の作業順索引**であり、ORG-BEH/CX、既存Scenario/Expected、IssueのOwnerを置き換える正式な新IDではない。OI-1は候補解決の次の小さな正負試験として絞る。ただし、#4490が先行指定したBEH-01/02の時点・非出力依存・取得完全性の実検査を飛ばさない。Owner選択前のCase→Person経路を正式な関係として扱わず、公開合成Sourceによる純粋Rule Fixtureと実Providerを用いる製品受入も区別する。
 
 **停止条件**：人物とAccount/Principalの黙示同定、r7とC1の仮結合、完全性のない候補否定、所属からCase責任やTenant Grantの自動導出、hidden Edgeの破壊、歴史からCurrent Grantの継承、plugin文書を第二Authorityにすること、未実装CLIのSkill例示、WailsをCLIの必須依存にすること、Go Wrapper-onlyをセルフビルド完了とすること。この§25は**docs-only**であり、追加のGo/DB/CLI/Plugin/Host/WindowsのProduct Run、Owner Meaning Acceptanceは未実施である。
 
