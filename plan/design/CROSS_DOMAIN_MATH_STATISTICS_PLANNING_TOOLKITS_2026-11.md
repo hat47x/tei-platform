@@ -512,6 +512,8 @@ Expected JSONの`adoption=proposal-only`は、既存#1180/#2514による受理�
 
 Window候補5件はSHA-256で元ファイルと結び付いているが、**候補の一部をJSONから削除しても基準計算のテストだけは成功し得る**。そこで、`window_candidate_oracle_test.go`に5件の候補ファイル名・必須件数・期待状態の閉包検査を追加する。重複IDの拒否候補を消す、`valid`へ変更する、古い派生表示を一致扱いする変更はそれぞれ拒否する。数理計算の数値一致と、検証の対象・負例が残っていることを区別する。
 
+[Graph／RuleのSource Index実連携 #4742](https://github.com/hat47x/tei-platform/pull/4742)に合わせ、Windowの全5入力でも`sourceindex.NewArtifact`／`Index.Validate`／`RangeFromOffsets`を使う実Go回帰を追加する。既存の`sourceSHA256`と同じ元バイトを指すこと、B2の明示NULLを含む既知の文字列の元byte span、説明追記による古いSource Indexの失効を確認する。**これはSource位置と原本の整合検査であり、B2のCellを正式Readerが意味として選択した証拠ではない。**
+
 この閉包は**独立Expected候補のテスト上の固定条件**であり、正式な意味受理や新しいScenario正本ではない。現在の検証で成立するのはSource byteと期待値候補の組、既存SQLite方言が生成するSQL、実DBの結果までである。負例に対して製品Readerが正確なSource位置で診断を返せたことや、Markdown表から意味を生成できたことではない。
 
 また、[Graph／Ruleの生成バイナリ実引数試験 #4733](https://github.com/hat47x/tei-platform/pull/4733)は、同じ生成Go Binaryへ別々のNode IDを渡し、結果の違いと未知・空IDの拒否を検証する**局所的な実行例**である。Windowを次の応用へ広げるときも、入力変化に対する実結果と独立Expectedを確認するが、製品のFunction Entry／Provider／CLIの実Callには自動昇格させない。
