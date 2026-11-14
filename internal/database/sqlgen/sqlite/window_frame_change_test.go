@@ -15,9 +15,9 @@ func TestCTKWindowFrameChangeAltersGeneratedSQLiteResult(t *testing.T) {
 	const narrowedFrame = "ROWS BETWEEN 1 PRECEDING AND CURRENT ROW"
 
 	cases := []struct {
-		name    string
-		narrow  bool
-		moving  map[string]float64
+		name   string
+		narrow bool
+		moving map[string]float64
 	}{
 		{
 			name:   "current and two preceding rows",
@@ -81,7 +81,7 @@ func TestCTKWindowFrameChangeAltersGeneratedSQLiteResult(t *testing.T) {
 					t.Fatalf("unknown or duplicated observation %q", id)
 				}
 				seen[id] = true
-				if group == "" || seq == 0 || (id == "B2") != !value.Valid {
+				if group == "" || seq == 0 || value.Valid != (id != "B2") {
 					t.Errorf("observation %s changed identity or NULL semantics: group=%q seq=%d value=%+v", id, group, seq, value)
 				}
 				if moving != wantMoving {
