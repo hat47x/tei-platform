@@ -1049,3 +1049,57 @@ Instrumented boundaryが部分的なら、**「観測できた範囲のGraph整�
 5. **P2/#2604/#1124/#4510**：実Artifact Generation/ReaderからOwner側Applied Scope/Conflict/UnknownへEvidence Edgeを結ぶ。秘密Source・Reader・Writerを公開図で漏らさない。
 
 **検証上限**：GitHubのIssue/既存限定参照実装・公開SQL仕様の静的照合と、独立SQLite単一接続の局所更新検算まで。新TEI Go/CLI・実PostgreSQL/複数Process・Full Replace/外部Import・Current Grant・Owner意味受理・exact-head CIは**NOT RUN / NOT ACCEPTED**。新Canonical Write Mode/Proof Engine/Hostを追加しない。
+
+## 30. 要件選択を跨ぐETL/Batchの使用資格：即時不変条件・保留許容・補償の境界（2026-11-14、設計候補）
+
+**他レーンの新たなInput**：[#3250のRequirement Pressure](https://github.com/hat47x/tei-platform/issues/3250#issuecomment-6855362290) と [Minimal Conflict Witness・K/L/S案](https://github.com/hat47x/tei-platform/issues/3250#issuecomment-6855706071) は、受注と在庫の論理分割を、越境Direct CUDの最小化だけでなく**「いつ、誰に、何を保証するか」「失敗をどこまで許容するか」という要件選択**に戻して検討する方針を示した。§27はGeneration/受理済み訂正順序、§29は適用Write/Read/Invariant Footprintに着目している。本節は**Batch/ETLがその不変条件を実際の使用目的で侵害しないか**を追加する。第二Requirement/Scenario/Business Acceptance正本や専用Saga/Tx Engineは作らず、#3250の判断資料を#1130/#2542へ用途相対で受け渡す。
+
+### 30.1 要件を選ぶ前に分割案を合格扱いしない
+
+固定した同一Owner/業務対象/Source revisionで、合成例の即時不変条件を「OrderがConfirmedなら、各Commit後の観測可能な状態において有効なReservationが存在する」とする。注文の受付はConfirmedとは限らない。
+
+| 業務の選択肢（#3250のK/L/S、いずれも未受理の説明用候補） | Batch/越境Functionへ必要な条件 | 残すべきTrade-offと未証明 |
+| --- | --- | --- |
+| **K: 強い約束を維持** | Confirmedへの確定とReservationを、実Targetで保証された一つの整合性境界に置く。Owner側の統合Command・同一Tx責務を第一候補とする | 同じSubsystem名だけで原子性は成立しない。論理上複数Subsystemでも同じ実Txに閉じる設計は可能性として残すが、実Provider保証が必要。別RunのETLファイル搬送で即時原子性を代用しない |
+| **L: 引当不成功を業務的に許容** | Accepted Orderの未引当・失敗・取消等の業務状態、失敗種別、最大保留期限、通知・返金・代替・手作業Ownerと、再試行/重複/不明Effectの処理を受理する | 技術的な結合が減っても顧客体験・運用・資金拘束・照会負担は増え得る。Eventualと書くだけでは期限内解消・補償完遂を保証しない |
+| **S: 受付と確定の時点を変更** | Received/Pendingを許し、Reservationが有資格に成立した後だけConfirmedに移る。Pendingから拒否/取消/期限切れの終端を定義する | 非同期Command/Batchがあっても、Confirm直前の引当失効・期限切れ・ACK-loss・並行二重引当への保護が必要。状態追加はAtomicityの実証ではない |
+
+**適用順は「要件衝突の説明→業務Ownerが変更案を受理→受理済みMeaning/Versionに対して分割候補を再評価→実Target/Effectを検証」**。AIや分割OptimizerがKを勝手にL/Sへ緩和しない。KとL/SはBusiness obligationそのものが違い、Cross-Write Countや単一Pareto Scoreを同条件の構造最適化改善として比較しない。強い要件を維持する候補では、分割を見送ることも適格な結論とする。K/L/Sを新Core enumに固定しない。
+
+### 30.2 ETLのOutput作成と業務Commandへの使用を分類する
+
+| ETL/Batchの使用位置 | 成立し得る限定Claim | 追加で要求すべき境界 |
+| --- | --- | --- |
+| **Read-only集計・過去帳票の生成** | 固定Cutと独立Expectedに相対するPure Result/Artifact | Input Closure、Rule/Time、Partial/Final、Generation一式公開。これだけではOrder/Reservationの業務Commitを起こさない |
+| **注文・在庫の非正本Projection/Catalog更新** | 投影/検索対象だけがR1→R2へ進んだ | Projectionの鮮度・Consumerが利用した世代、現在Disclosure。Projectionの最新値を、確定直前の在庫の権威ある引当証拠へ昇格しない |
+| **Ownerに委譲するCommand/Import** | Owner側Operationへの送信と受信/実Commit/Readbackが別々に観測された | Authority、Source/Request Hash、Operation ID、Expected prior state、Provider Commit/Receipt、現行Grant。越境Direct CUD=0でも、委譲先の実Effect・不変条件は残る |
+| **Restatement・遅着Delta・補償Batch** | 新しいSource Cut/Accepted supersessionに対する再計算結果 | 旧Generation適用拒否、Scope内のRead/Write/Invariant footprint、既受理状態との因果、通知/補償/再送とOwnerの期限。過去G1の配送成功から現行G2の適用を推測しない |
+| **External Trigger/Worker/MFT・不透明Plugin** | 宣言/Selected/Transport ACKなど観測した段階まで | 未追跡のWriter/Trigger、外部Recipientの状態、独立Readback、現行Disclosure。図表に見えない処理を不存在と断定せずunknownで残す |
+
+**論理分割は物理配置ではない**。同一DBを用いる複数論理Subsystemと、別DBの一Subsystemも概念上は区別する。TEIの標準Graph/typed Port・Operation/Provider/既存Pluginから比較し、特定の分散Tx、Saga、Host、専用Workflow/CDCエンジンを先行採用しない。
+
+### 30.3 最小の独立Expected（#3250 SP-N01〜N09と#1130 N/EFへ対応付ける候補）
+
+| 一因子の合成Trace | 確認すべきExpected / 偽成功の拒否 |
+| --- | --- |
+| Confirmed Order Commit → Inventory Reserve不成功。別Subsystemの越境Direct CUDは0 | **Kなら不変条件違反**。構造の越境Writeゼロ・Transportが成功したことから合格にしない |
+| Inventory Reservation成功 → Confirmed Order Commit失敗 | 孤立Reservation・解放/TTLとOwnerを未解決で残す。「順序を逆にすれば無条件安全」としない |
+| Received/PendingをCommit → Reserve成功 → 実状態照会 → Confirmed（S候補） | 当該合成Traceでは確認前のConfirmedを避けられるが、並行更新・Lease/TTL・Target Commitを実証するまで製品安全性はunknown |
+| Pending → Reserve技術Timeout/ACK-loss、Provider Commitは不明 | **unknown Effect**。業務的欠品・確実な予約失敗・二重再送許可に縮約しない。Operation/Receipt/独立Readbackへ |
+| L候補でPendingのまま期限超過し、Cancel/通知/Refundが実行されない | 「失敗を許容する」という宣言だけでは合格しない。業務Ownerが受理した期限・手動復旧・未終端を別に検証 |
+| G1売上集計の作成/公開成功だが、同値を用いて即時Inventory確保済みと表示 | Artifactの公開から現在在庫引当のEffectを推測しない。利用用途に必要なFreshness/Authoritative Ownerを照合 |
+| G2に訂正した後、外部Batchが古いG1でOwner Importを再送 | 期待旧版/Operation/Scopeが不適格なら拒否・照会。配送・計算再実行の成功を業務適用成功にしない（§27/29） |
+| OwnerがK→Lへ要件緩和を**提案**、未受理のまま分割/ETLを選択 | 旧Kへの要求不適合を維持。承認前にAccepted Rule/Batch/Grant/Studioへ自動反映しない |
+| OwnerがLを**正式受理**し、新たな通知/補償義務が増える | 新Meaning/Scope/Source CutでRequired/Selected/Consumed/Effectを再評価。旧K版と新L版の数値Scoreを同一問題として比較しない |
+
+最小反例は、特定の順序・故障・観測範囲についての**設計上のWitness**であり、全分散Targetでの不可能性証明や正式な業務要件受理ではない。複数Sourceの整合Cut（§18/20）、旧GenerationのPublication/Reader/GC（§23/25）、外部EffectのCommitted/Unknown（§27）、実行Graph（§28）を一つの成功判定へ押し込まない。
+
+### 30.4 優先順・Owner境界・検証資格
+
+1. **P0 / #4410**：Pure TSVの最小Go＋CLI二入口と固定Expectedを完了させる。K/L/Sの実業務Command・別DB・Compensationを初期Gateへ追加しない。
+2. **P1 / #3250/#1125/#1127/#267/#2514**：既存SP-N01〜N09のK/L/S合成Trace・業務例外・Source逆引き・未受理をread-only説明として接続。個別の要件衝突に対し最小の問い/不足Evidenceを示し、Ownerが採用した変更だけを新Sourceへ反映。Subsystem候補のAccepted Direct CUDと実Effectは別資格。
+3. **P1 / #1130/#4411/#2542/#1174/#2564**：ETL Import/Command/遅着Correctionについて、必要なAccepted Meaning、Source Cut、Business State/Deadline、Expected prior state、Operation/Receipt/独立Readbackを別観測。Timeout・ACK-loss・partial Applyはunknown/partialのまま照会に戻す。
+4. **P1 / #2593/#2600/#2622/#3279**：R0→R1で業務契約が変更された場合の依存改版・実Read・Full/Selectiveの比較を「同じR1の意味で」実施。見かけ上の同byte・同数値で現在の業務約束を再利用しない。
+5. **P2 / #1124/#4510/#2831**：同じSource由来の問い相対図表にBusiness Promise→Data Invariant→Function/Effect→Batch/Generation→Failure Witness→Owner Decisionを投影。観測範囲外のCommand/秘密情報を欠落ゼロとして可視化せず、実Studio/Builder/Targetで別検証する。
+
+**停止線と現状**：#3250が分割候補/Requirement Pressure/Owner判断先を所有し、#267が正式意味受理、#1174が実Effect、#1130がBatchの縦断受入を所有する。本節は既存Issue/PRの静的照合による**ETL側の要件・停止条件・独立Expectedの引渡し**である。新たなProduct Go/CLI/実PostgreSQL/Command・別Subsystemの実Tx、障害回復、Owner受理、exact-head CIは **NOT RUN / NOT ACCEPTED**。新Core K/L/S型、第二Oracle/Scenario SSOT、分散Tx/Saga Coordinator、必須Hostは追加しない。
