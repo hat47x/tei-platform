@@ -1,0 +1,54 @@
+name: Studio Pin intent state contract
+
+on:
+  pull_request:
+    paths:
+      - "reference/tei-studio-workbench/pin-state.ts"
+      - "reference/tei-studio-workbench/pin-state.test.mjs"
+      - "reference/tei-studio-workbench/responses.pin.test.mjs"
+      - "reference/tei-studio-workbench/package.json"
+      - "reference/tei-studio-workbench/pin-inspection.ts"
+      - "reference/tei-studio-workbench/pin-inspection.test.mjs"
+      - "reference/tei-studio-workbench/main.ts"
+      - "reference/tei-studio-workbench/index.html"
+      - "reference/tei-studio-workbench/style.css"
+      - ".github/workflows/studio-pin-state-contract.yml"
+  push:
+    paths:
+      - "reference/tei-studio-workbench/pin-state.ts"
+      - "reference/tei-studio-workbench/pin-state.test.mjs"
+      - "reference/tei-studio-workbench/responses.pin.test.mjs"
+      - "reference/tei-studio-workbench/package.json"
+      - ".github/workflows/studio-pin-state-contract.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: studio-pin-state-contract-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  pin-intent-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: reference/tei-studio-workbench
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: reference/tei-studio-workbench/package-lock.json
+      - run: npm ci
+      - name: Run isolated Pin intent state negatives
+        run: node --test pin-state.test.mjs responses.pin.test.mjs pin-inspection.test.mjs
+      - name: Typecheck current Workbench source
+        run: npm run typecheck
+      - name: Build real Workbench bundle
+        run: npm run build
