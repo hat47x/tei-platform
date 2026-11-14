@@ -1819,6 +1819,12 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 
 **受入上限**：§30は設計と引渡し。main統合#4729でSource byte span付きGraph Ruleの実Go条件生成と別Go Processの限定実績はあるが、正式Loader・組織候補Join・実Org PG/Consumer/Host・Owner意味受理は本PRで**NOT RUN/NOT ACCEPTED**。通常製品CLI実Provider Read #2586とStudio Stage1→Stage2 #2831のP0は不変。
 
+
+<!-- org-go-witness-qualification-20261115 -->
+**2026-11-15 §30の初回コード実験へ着手**：[Go Test Draft #4737](https://github.com/hat47x/tei-platform/pull/4737)で既存`internal/operations`に2つのトップレベル回帰（実Workspace LoaderのRoleAssignment/Responsibility RelationKey、合成D1/R1の0/1/複数・partial・Read Cohort・Person Occurrenceの10独立リテラルExpected）を追加。[補遺§30.5](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)へ実ファイル/受入上限を記録した。実装は**テスト限定の正の証拠/全件性Probe**で、正式C1承認Rule/Reader/実PG/Function Context/Host GrantやTEI-native Go生成ではない。CIは新HEADの結果だけを根拠にする。
+
+**次の差分**：#4490 BEH-01/02の実二時点/非出力依存・Read cohort/Completenessを先行させ、今回のGo Probeの判別力を実Query→Function Context→実Consumerへ接続する。Graph/Rule→Go分岐のmain統合 #4729、同一Generated BinaryのCaller入力 #4733は有効な別Reference成果だが、組織の二Relation Join/Case Ruleを生成済みとはしない。P0 #2586/#2831、Expected Owner #1180/#2514、Meaning Owner #2386の優先順位と境界を維持する。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
