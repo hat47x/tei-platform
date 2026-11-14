@@ -178,8 +178,6 @@ func main() {
 	reaExpectedSourceRevision := fs.String("expected-source-revision", "", "rea-evidence: analyzed-source revision the receipt must match")
 	reaRequestOut := fs.String("request-out", "", "rea-evidence: write the derived view request here")
 	reaToolPath := fs.String("tool-path", "", "rea-evidence: explicit external tool path; otherwise PATH is probed")
-	reaObservationID := fs.String("observation-id", "", "rea-evidence: external observation identity to project (with -relation-id)")
-	reaRelationID := fs.String("relation-id", "", "rea-evidence: external relation identity to project (with -observation-id)")
 	jsonValidation := fs.Bool("json", false, "machine-readable JSON for validate -workspace")
 	pluginDiagnostic := fs.Bool("diagnostic-candidates", false, "show unvalidated plugin candidates; never authorizes execution")
 	subjectKind := fs.String("subject-kind", "", "Source Index subject kind")
@@ -273,6 +271,25 @@ func main() {
 	if errors.Is(parseErr, flag.ErrHelp) {
 		printHelp(os.Stdout, fs, command)
 		return
+	}
+
+	// rea-evidence reads one saved external analysis output without loading a workspace.
+	if command == "rea-evidence" {
+		code, err := reaEvidenceJSON(os.Stdout, reaEvidenceOuterArgs{
+			evidencePath:        *reaEvidencePath,
+			viewPath:            *reaViewPath,
+			requestPath:         *reaRequestPath,
+			providerVersion:     *reaProviderVersion,
+			expectedEvidenceID:  *reaExpectedEvidenceID,
+			expectedFingerprint: *reaExpectedFingerprint,
+			expectedSourceRev:   *reaExpectedSourceRevision,
+			requestOut:          *reaRequestOut,
+			toolPath:            *reaToolPath,
+		}, fs.NArg())
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		os.Exit(code)
 	}
 
 	// dbcheck needs neither a workspace nor a world: it reports whether a
@@ -470,28 +487,6 @@ func main() {
 		}
 		return
 	}
-	if command == "rea-evidence" {
-		code, err := reaEvidenceJSON(os.Stdout, reaEvidenceOuterArgs{
-			evidencePath:        *reaEvidencePath,
-			viewPath:            *reaViewPath,
-			requestPath:         *reaRequestPath,
-			providerVersion:     *reaProviderVersion,
-			expectedEvidenceID:  *reaExpectedEvidenceID,
-			expectedFingerprint: *reaExpectedFingerprint,
-			expectedSourceRev:   *reaExpectedSourceRevision,
-			requestOut:          *reaRequestOut,
-			toolPath:            *reaToolPath,
-			observationID:       *reaObservationID,
-			relationID:          *reaRelationID,
-		}, fs.NArg())
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-		}
-		if code != 0 {
-			os.Exit(code)
-		}
-		return
-	}
 	if command == "world" {
 		// #2354: world keeps its pre-envelope shape — one bare ir.World JSON
 		// on stdout, stderr text and exit 2 on argument/load failure — because
@@ -651,7 +646,7 @@ func main() {
 		writeJSON(d)
 		return
 	}
-	if command != "dbcheck" && (*worldPath == "") == (*workspacePath == "") {
+	if command != "dbcheck" && command != "rea-evidence" && (*worldPath == "") == (*workspacePath == "") {
 		fmt.Fprintln(os.Stderr, "exactly one of -workspace or -world is required")
 		os.Exit(2)
 	}
