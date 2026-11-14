@@ -422,3 +422,10 @@ Wails依存を外したGo Service/合成Adapterの試験と、実WebView起動�
 **関連する別系統の進展**：[Draft #3492](https://github.com/hat47x/tei-platform/pull/3492)の三視点Graph/CRUD、[Draft #3496](https://github.com/hat47x/tei-platform/pull/3496)のREA外部Evidence、[Draft #3491](https://github.com/hat47x/tei-platform/pull/3491)のUI整数精度、[Draft #3497](https://github.com/hat47x/tei-platform/pull/3497)のMigration履歴Unknownは、Desktopに接続し得るが、現D1 Inspectorの受入を拡張・合格させる根拠ではない。Data/Function/Businessの意味受理、外部Observation、表示値と型付きAction引数、DB Apply履歴を別のSource/Effect資格として維持する。
 
 **実測状態**：#3381最新HEAD 5cdd3b9、#3371最新HEAD e5510f4の各Actionsは確認時queued/pendingが多く、**exact-head Go/Health全PASSは未確認**。#3371のWebView smoke単独SUCCESSは、D1-R2の実Provider呼出し成功ではない。#3378の既存Direct parity試験もSelected Providerを通さない。ここでは計画Markdownだけを更新し、実Go/Windows/DB/REA/Graph/Owner受理はNOT RUN。
+
+
+## 子Backend・CLI・Web・Plugin更新への接続（2026-11-14、設計候補）
+
+[Studio/CLI Backend・Plugin・配布更新の統合設計](STUDIO_CLI_BACKEND_PROCESS_DISTRIBUTION_UPDATE_2026-11.md)を併読する。DesktopではWails/WebView親とローカルBackend子プロセスをIPCで接続する方向を前提とし、BackendのApplication Operation/Plugin解決とWails依存を分離する。CLIにも同じBackend実装の自己子起動を候補として与えるが、全CLI操作を別プロセス必須とする判断は実測・Owner受理待ちである。Wails Server Buildは共有Web Client資産配信の選択肢であり、認証付きBackend/APIと同一視しない。
+
+起動・Handshake・Plugin構成世代固定・停止・本体／Plugin更新・復旧は上記統合設計のG0〜G6へ接続する。現行PoCやWails/WebViewの既存試験は、実IPC子BackendやRemote CLI、OS Updaterの実証ではない。StudioのStage1→Stage2自己再構築を最優先とする既存計画は変更しない。
