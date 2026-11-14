@@ -693,11 +693,30 @@ tei external-candidates
 
 **既存機構の実利用**：既存 `ReadOnly.workspace()`の許可Root実体照合、`workspace.ReadSource`の正規化/Traversal-resistant rooted read＋通常ファイル/4MiB上限を使い、取得したbyteを#4630の `ExternalCandidatesFromBytes`（R2同一Parser/Receipt）へ渡す。不許可Selector・ファイル取得失敗・R2不完全/曖昧・誤Pinの外部応答は共通`OPERATION_FAILED`で内部Path/Producer診断を出さず、既存`WORKSPACE_NOT_ALLOWED`・`WORKSPACE_ROOT_CHANGED`を残す。Toolの実行ファイルPath/AbsentReasonは投影前に除く。新State Store/第二Parser/権限Resolver/Generic Evidence Registryは作らない。
 
-**検証の最小独立反例**：実Captured REA6.8.0保存byteに対して、(1)Host Workspace固定Selector→一回Read→R2 view/Raw Digest/GraphCoverageと直接byte呼出しの全同値、(2)配列Binding変更による再ターゲット拒否、(3)他Workspace・任意Path文字列・不明Relation、(4)Evidence byte差替え（including同意味に見えるbyte変化）／4MiB超、(5)Root実体置換・symlink Root外脱出、(6)導入時の非正規化・Traversal・重複Selector・不正Pinを同PRのGoテストへ実装候補として固定。Go/Windows/REA専用の**新HEAD CI合否は確認後に独立記録**する。これはR3BY-03の**Local Host byte取得だけ**の分割実装であり、実Wails/Desktop UIからの受領・Source最新版・Grant/Audience・独立Deliveryは未成立。
+**検証の最小独立反例**：実Captured REA6.8.0保存byteに対して、(1)Host Workspace固定Selector→一回Read→R2 view/Raw Digest/GraphCoverageと直接byte呼出しの全同値、(2)配列Binding変更による再ターゲット拒否、(3)他Workspace・任意Path文字列・不明Relation、(4)Evidence byte差替え（including同意味に見えるbyte変化）／4MiB超、(5)Root実体置換・symlink Root外脱出、(6)導入時の非正規化・Traversal・重複Selector・不正Pinを同PRのGoテストへ実装候補として固定。**新HEAD 170f9be5907cea4af981582ab4c11c5dafb91e87は12/12 Workflow completed/success**。[Repository Health #43549738182](https://github.com/hat47x/tei-platform/actions/runs/43549738182)の実ログでgofmt、全Goテスト、tei/internal/studiohostの成功を確認した。REA契約 #43549738160、Wails Host #43549738139、Windows WebView #43549738327、Self-build #43549738332も同HEAD success。これはR3BY-03の**Local Host byte取得だけ**の技術CI合格であり、実Wails/Desktop UIからのREA受領・Source最新版・Grant/Audience・独立Deliveryは未成立。
 
 **他チャットのDesktop Worker方式の横断差分**：[Plugin横断 Draft #4621 §20](https://github.com/hat47x/tei-platform/pull/4621)で、Desktop＝(A)Native Bridge、(B)同一exeの従属Worker＋Windows Named Pipe／Unix UDS、(C)別Wails Serverバイナリ＋loopback HTTP/WSの三候補が性能/障害分離/ACL/Artifact多重性から比較対象となった。REA Readerは**共通型付きOperationを使うローカルHost内の取扱い**であり、A/B/CどのTransportを選んでも `Workspace/Worktree/Current Grant/Requested Audience/Reader Attempt` の相違を消さない。(B)/(C)を採用してもClientへRootや`EvidencePath`を渡す捷径を許さず、別Process上のRequest identity、OS ACL、Crash/timeout、Provider世代、ネットワーク/IPC Disclosureを#1824/#3421の既存Expectedへ渡す。**B/C方式選定とWeb/WASM導入はR3-BやStage1→Stage2 P0のHard Gateではない**。
 
 **R3-B/Cのまだ欠ける辺**：このGo Readerは正式`StudioBridge`／Wails Service／MCP Serverへ未登録であり、ローカル同一Processの`Read`成功を第二Transport Consumerへ加算しない。Reader返却結果は外部Node・Source Range・Raw Digest/Unknownを含み得るため、`#2516`の用途別Current Disclosureが成立するまでWeb/Harnessに送信しない。保存EvidenceのDigest Pinは元Source現在性／A→B→A／Worktree Revision証明ではない。R3-CはローカルCLIと**異なる実Consumer経路**のSelected→Invoked→Received、固定Scope/Identity/独立Receiptを#2514のExpectedで検証し、その後T1-Bに進む。DraftのCI成功や新Host Readerの追加をOwner Meaning Acceptedへ昇格させない。
+
+<!-- rea-r3b-independently-received-evidence-contract-20261114 -->
+#### R3-BからR3-Cへの受領資格：Readerが動いたことと別Consumerに届いたことを分ける（2026-11-14）
+
+**技術的に確認した範囲**：REA R3-A通常CLI [#4625](https://github.com/hat47x/tei-platform/pull/4625)、R2 byte-only Operation [#4630](https://github.com/hat47x/tei-platform/pull/4630)、Local Host bounded Reader [#4637](https://github.com/hat47x/tei-platform/pull/4637)は、それぞれ別HEADで技術CIが合格している。ReaderがGoプロセス内で実ファイルを取得し、R2 Viewを返すことは、別Process／Wails／MCP Consumerが実呼出し・実受信したこととは別のClaim。#4637のLocalREAReadResponseには別Consumer受信完了の独立ReceiptやPrincipal/Current Grantはない。**単一Functionの二度呼出しや同じJSONの再表示をR3-C成功とは数えない**。
+
+**R3-Cへ引き渡す最小受領票（#2514/#1180の既存Expectedを使い、新しいReceipt正本を増設しない）**：
+
+| 境界 | 観測すべき入力・結果 | 誤昇格させないもの |
+| --- | --- | --- |
+| 固定Selection | Host設定のWorkspace ID、Selector、Evidence ID、Raw Digest、Observation ID＋有向Relation ID。Client Path/内部Object LocatorはSelectorに使わない | Viewer Pin／同名SourceはHost Grantではない |
+| 実Source・Scope | Root実体、Worktree/Git Commit・Source Revision・現在Grant・Principal・Audience、Read直前の版/可視範囲。#4637が現時点で実証するのは固定Rootと保存Evidence Pinのみ | Producer申告Revision／Raw Digestから元Source現在性を推定しない |
+| Reader Attempt | 実Invocation、Host取得時刻、実byte長/digest、R2型付き結果、Unknown/Coverage、拒否/部分/失効。#4637のReadAtはHost Clock所有 | Reader実行と別Consumer受領は異なる。Tool PresentはHost宣言でありREA最新実行証明でない |
+| Disclosure／配送 | 目的・Audience・許可Field/Subject/Public Slice、実送出byteと受信相手、拒否時OS/Network送達0、二Private World対照 | R2 ViewのLocation/Unknown/件数/digestを無審査でWeb/Agentへ送らない |
+| 独立Consumer Receipt | CLIの実子Processと、別のHost/Studio/MCP実Invocationの両側で、Selected/Invoked/Received、Scope・時刻・実Response・欠落/Timeoutを独立記録 | 同一hash、同一JSON、内部関数呼出しだけで二Consumerとしない |
+
+**独立負例**：他Principalへ同Selectorを渡す、別Worktreeの同名Branch/DB aliasへ切り替える、Source A→B→A・Grant失効・別Tab後着、Selected Provider A→Invoked B、Wails Server broadcastを無権限Audienceが受信、内部absolute Pathや非公開Evidenceの存在/Count/Digestが公開結果に現れる。正例の許可read-only Operationを壊さず、拒否時の実Provider/OS ReadとPrivate Deliveryが0であることを別検収する。現ReaderのWorkspace Root保護は、共有Webでの本人認証・現在Grant・Private Sliceの代用品でない。Ownerは#4503/#2516/#3421、実OS/外部送出は#2515、独立Expectedは#2514とし、REA専用Host／第二Parser／第二Authorityは作らない。
+
+**並行案件との資格区別**：[Wails Server Method/Services Inventory Draft #4627](https://github.com/hat47x/tei-platform/pull/4627) HEAD b9cf5447は**5/5 Workflow successful**だが、実HTTP/WS認可を保証しない。[Desktop Builder Resolve＋Child起動前Pin Draft #4634](https://github.com/hat47x/tei-platform/pull/4634) HEAD 653d0d9aは**8/8 Workflow successful**だが、Stage1→Stage2実成果物やREA受領を保証しない。[標準データ様式 Draft #4619](https://github.com/hat47x/tei-platform/pull/4619)で検討する実Query入力・ProviderとRA-0/RA-1/RA-2は独立P0であり、REAの二Consumer完了を待たない。いずれもDraft・未merge。別HEADのPASSを合算してR3-C/Source Migration/Owner Meaningを完了扱いにしない。
 
 <!-- rea-wails-server-wasm-delivery-isolation-20261114 -->
 #### R3 Consumerの配置方式・配信隔離：Wails Server／Go WASM候補との整合（2026-11-14・設計のみ）
