@@ -226,17 +226,25 @@ func TestGeneratedBinaryRuntimeNodeQuery(t *testing.T) {
 					t.Fatalf("node %q: actual=%#v, independent expected=%#v", node, actual, want)
 				}
 			}
-			// Unknown targets and positional arguments do not silently return
-			// an empty result or fall back to inspecting every node.
-			for _, args := range [][]string{{"-node", "missing-node"}, {"unexpected"}} {
-				call := exec.Command(binaryFile, args...)
+			// Missing -node and explicitly empty -node are distinct:
+			// only the former permits the full-graph projection.
+			for _, request := range []struct {
+				args []string
+				message string
+			}{
+				{[]string{"-node", "missing-node"}, "unknown node"},
+				{[]string{"-node", ""}, "empty node ID"},
+				{[]string{"-node="}, "empty node ID"},
+				{[]string{"unexpected"}, "unexpected positional arguments"},
+			} {
+				call := exec.Command(binaryFile, request.args...)
 				out, err := call.CombinedOutput()
 				var exitErr *exec.ExitError
 				if !errors.As(err, &exitErr) || exitErr.ExitCode() != 2 {
-					t.Fatalf("args %q: expected exit 2, got %v; output=%s", args, err, out)
+					t.Fatalf("args %q: expected exit 2, got %v; output=%s", request.args, err, out)
 				}
-				if len(out) == 0 {
-					t.Fatalf("args %q: must report an error", args)
+				if !strings.Contains(string(out), request.message) {
+					t.Fatalf("args %q: expected %q diagnostic, got %q", request.args, request.message, out)
 				}
 			}
 			after, err := os.ReadFile(binaryFile)
@@ -246,7 +254,7 @@ func TestGeneratedBinaryRuntimeNodeQuery(t *testing.T) {
 			if sha256.Sum256(after) != artifactDigest {
 				t.Fatal("compiled artifact changed between independent calls")
 			}
-			t.Logf("compiled reference binary SHA-256=%x (5 runtime invocations, one build)", artifactDigest)
+			t.Logf("compiled reference binary SHA-256=%x (7 runtime invocations, one build)", artifactDigest)
 		})
 	}
 }
