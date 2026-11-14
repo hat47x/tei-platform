@@ -407,3 +407,43 @@ Language/Operator/Generator/Data/Presentationという役割と、native Go / se
 [Draft #4627](https://github.com/hat47x/tei-platform/pull/4627) HEAD 9491bf9e081bf98f39056d0a4142c2764c31289d の[Wails Host Workflow #43544229895](https://github.com/hat47x/tei-platform/actions/runs/43544229895)はcompleted/success。server-build Job ID 132291601976の実ログから、**CGO_ENABLED=0 go test -mod=readonly -count=1 -tags server . → ok tei/cmd/tei-studio** を確認した。新しいBridge公開面Inventory Testはこのserver tag付きGo Testに含まれる。Wails Server build/loopback RPCと、実Chromiumの二BrowserContexts・後着Catalogを分離する試験も同Job成功。同HEADの[Desktop WebView smoke #43544229876](https://github.com/hat47x/tei-platform/actions/runs/43544229876)、[Cache #43544229829](https://github.com/hat47x/tei-platform/actions/runs/43544229829)も成功。
 
 **判定範囲を縮めず、拡げすぎない**：このPassは既存Source/Go Method Inventoryが意図した分類から漂流していないこと、現Loopback Browserの表示が旧応答で混じらないことの限定確認である。Web shared serverの別認証Principal・別Workspace実Grant、JS Method Binder全経路、WebSocketの機微payload分離、外部インターネット到達・Tool送出の拒否を確認していない。独立WSP-02b/03はNOT RUN。上記HEADの全Workflow完了状況は継続的に変わるため、この時点の確認では全Repository Health/依存検査まで合格と宣言しない。新実装の本番採用とOwner受理もなし。
+
+## 18. 2026-11-14：ローカルPathをWeb権限に変換しない／独立Build資格を接続する
+
+### 18.1 他チャットと実コードの交差：SHO・REAのローカルPath
+
+[REAローカルCLI Draft #4625](https://github.com/hat47x/tei-platform/pull/4625)は、保存済みEvidenceの受領を既存operations.ExternalCandidatesから読むread-only入口を作った。evidence-pathは**local CLIの入力Path**であり、ReadFailedの内部Pathが外部Disclosure可能であると保証しない。exact HEAD d2175d97e11b6a6f9bc6b390ddae98c519a576fe は9 Workflowのうち8 success、[Repository Health #43543262432](https://github.com/hat47x/tei-platform/actions/runs/43543262432) failure。全体の受理資格を成功とはしない。
+
+現mainのWails StudioBridge.OpenShoDocument(draftPath,documentPath)／ResumeShoDocument(documentPath)は、Host設定のSHO_DOC_COMMANDで外部子プロセスへ中継する。現在loopback-onlyなので「外部から任意Pathへ侵入可能」という実証ではないが、このMethodをそのままpublic multiuser Webへ公開してよい理由にもならない。
+
+**共通化するのは意味Operationであり生File Pathの信頼ではない。** Local CLI/OS Hostの明示Pathと、Browser/MCP/AIが送る未信頼Pathを区別する。WebではHostの認証済みPrincipal＋Workspace/Resource IDから正規Resourceと現在Grantを解決し、許可したread-only Operationへ渡す。Browserが指定したraw Pathを直接OS read／SHO processへ渡さず、Remote Clientの失敗時にLocal権限へ黙ってfallbackしない。Source/Trace/Error・Pathの存在・DigestもDisclosure対象になり得る。受領後の返却/AI送出時点のAudienceを再検査する。第二Meaning Resolver/Authority/汎用File Serverを増やさない。
+
+| 参照Case | 仕込み・拒否または受入条件 | Owner |
+| --- | --- | --- |
+| LRB-01 Raw Path | BrowserがWorkspace外／別WorkspaceのPathを渡す。OS読取・SHO子プロセス実Callは0、秘密PathはResponseに現れない | #3421/#1824/#1002 |
+| LRB-02 REA Resource | local Evidence Pathの成功と、RemoteのPath拒否・Host受理済みResource IDのread-only成功を分離する | #3394/#3421 |
+| LRB-03 Disclosure失効 | 取得中にPrincipalの開示資格を撤回。読取済Byteと実送出を分け、未許可Audienceへ新送出しない | #1174/#1178/#2515 |
+| LRB-04 Error/Existence | not-found、permission-denied、partialを区別し、Raw Evidence/内部絶対PathをBrowser/AI Errorへ漏らさない | #1158/#1178 |
+| LRB-05 Cross-Workspace | 同名Resourceや同Digestでも別Workspace/ActorのCache/Resultを流用して開示しない | #1016/#951/#1178 |
+| LRB-06 SHO Child | Host設定があってもClient Pathで無承認子起動しない。Receipt successを業務完了に昇格しない | #1824/#3394/#1174 |
+| LRB-07 Plugin世代 | Preview後無効化/A→B→Aでも旧Session/Provider結果から現在Grantを復活させない | #4378/#1223/#1174 |
+
+LRBラベルは独立Expected正本ではなく、既存#1180/#2514へ渡す横断比較用。Wails実HTTPに対するWSP-02b（read-only正例＋Command/SHO/Raw Path拒否）を先に実施し、REA/SHOの実Resource bindingはその後に別Consumerで検査する。WebのIdP/HAをStudio DesktopのP0へ持ち込まない。
+
+### 18.2 BuildIntent三層の独立した証拠
+
+| Draft | 最新exact HEADと確認したCI | 証明した限定事項／未証明事項 |
+| --- | --- | --- |
+| [#4624](https://github.com/hat47x/tei-platform/pull/4624) | 2d403f4996c205514dc57d5fc1237127c6bd994b：5/5 Workflow success、[Health #43540612927](https://github.com/hat47x/tei-platform/actions/runs/43540612927) | Resolver応答が宣言Source/Builder/Dependencyと異なれば拒否。実Child起動は別 |
+| [#4623](https://github.com/hat47x/tei-platform/pull/4623) | f1e219a25976946bcc8a19ef57f5490333ec8a84：8/8 success、[Health #43539856799](https://github.com/hat47x/tei-platform/actions/runs/43539856799) | 同一Attemptのselected Builder digest→起動前のChild digest照合。Loader read-timeは別 |
+| [#4587](https://github.com/hat47x/tei-platform/pull/4587) | 0fcb7b6265d7dfc5b5e93017e5c99e296eb13134：12/12 success、[Windows #43542664470](https://github.com/hat47x/tei-platform/actions/runs/43542664470) | N2生成JS→N3 EmbedFiles selected memberの前後byte/改変コピー負例。非Plugin Desktop BuildIntent/Stage1→Stage2は別 |
+
+これら3 PRは**別HEAD・別Attempt・別Subject**であり、合算してend-to-end成功としない。#4583主線は一つの実Attemptで宣言→Resolver→Builder起動前pin→N2 Produced→N3 selected/consumed→Stage2 Windows Consumerを既存BuildExecution/ArtifactSetへ束縛する。Desktop exeをPluginへ偽装しない。新Registry/Runner/Hostは作らない。
+
+### 18.3 Go公開面監査テストのMutation強化
+
+[Draft #4627](https://github.com/hat47x/tei-platform/pull/4627)の新HEAD f2f49a7c9732b3f88e8dc21c75cbdcc1084c0b70 は、新Service登録を単にソース全体のNewService呼出し数で数えるのではなく、**実application.Options.Servicesの設定表現**をASTで検査する変更を追加。未分類Service追加・同Bridge重複・未知Service・空一覧・動的変数一覧・Services欠落の6合成Mutationを検出する負例を追加。ExecuteCommandWithPolicyのClient allowed配列はHost Grantではないことを分類に明記した。静的登録試験であり、Wails実Binder/HTTP/WSや将来の動的登録の全閉包を証明しない。
+
+**この新HEADのGitHub CIは起動を確認した段階**。旧HEAD 9491bf9eのGo/Browser successを新Mutation testのPASSに転用しない。Wails Host Workflowとnested module server Go testのexact HEAD logを確認してから限定PASSとする。
+
+**未実行**：LRBの実Web/SHO/REA/認可/AI送出、PR横断BuildとStage1→Stage2再入、Owner意味受理。本章は既存PlanのOwner分離と実受入条件へ引渡す設計成果。
