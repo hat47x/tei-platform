@@ -24,9 +24,10 @@ func TestServerBridgeExportedMethodInventoryRequiresReview(t *testing.T) {
 	}
 
 	registered := 0
+	unreviewed := 0
 	ast.Inspect(file, func(node ast.Node) bool {
 		call, ok := node.(*ast.CallExpr)
-		if !ok || len(call.Args) != 1 {
+		if !ok {
 			return true
 		}
 		sel, ok := call.Fun.(*ast.SelectorExpr)
@@ -37,22 +38,21 @@ func TestServerBridgeExportedMethodInventoryRequiresReview(t *testing.T) {
 		if !ok || pkg.Name != "application" {
 			return true
 		}
-		addr, ok := call.Args[0].(*ast.UnaryExpr)
-		if !ok || addr.Op != token.AND {
-			return true
+		if len(call.Args) == 1 {
+			if addr, ok := call.Args[0].(*ast.UnaryExpr); ok && addr.Op == token.AND {
+				if value, ok := addr.X.(*ast.CompositeLit); ok {
+					if typ, ok := value.Type.(*ast.Ident); ok && typ.Name == "StudioBridge" {
+						registered++
+						return true
+					}
+				}
+			}
 		}
-		value, ok := addr.X.(*ast.CompositeLit)
-		if !ok {
-			return true
-		}
-		typ, ok := value.Type.(*ast.Ident)
-		if ok && typ.Name == "StudioBridge" {
-			registered++
-		}
+		unreviewed++
 		return true
 	})
-	if registered != 1 {
-		t.Fatalf("server build must explicitly review its registered Wails service: StudioBridge registrations=%d", registered)
+	if registered != 1 || unreviewed != 0 {
+		t.Fatalf("Wails Server service registration changed; review all exported surfaces: StudioBridge=%d unreviewed=%d", registered, unreviewed)
 	}
 
 	// The labels are audit classifications, NOT grants. In particular,
