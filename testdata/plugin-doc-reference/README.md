@@ -26,7 +26,7 @@ JSON内の `occurrenceRole` はPDC-02の「関係の異なる意味Role」を試
 
 ## 候補Fixtureの自動監査（Reference限定）
 
-[Go監査テスト](../../reference/plugin-doc-reference/README.md)では、候補JSONの直接依存・文書帰属・非公開指定・期待ケースIDを確認したうえで、既存の限定Graph Readerを呼び出し、元のMarkdown表から読み取ったNode/Relation IDとSource byte位置を候補と突き合わせる。さらに12種類の意図的な改変を与え、不整合を検出できるか確認する。
+[Go監査テスト](../../reference/plugin-doc-reference/README.md)では、候補JSONの直接依存・文書帰属・非公開指定・期待ケースIDを確認したうえで、既存の限定Graph Readerを呼び出し、元のMarkdown表から読み取ったNode/Relation IDとSource byte位置、Graph／公開・非公開ManualのSHA-256を候補と突き合わせる。さらに13種類の意図的な改変を与え、不整合を検出できるか確認する。
 
 ```sh
 go test ./reference/plugin-doc-reference -count=1
