@@ -528,6 +528,18 @@ Window候補5件はSHA-256で元ファイルと結び付いているが、**候�
 
 [Manifest管理RootとPinned SourceのS0予備試験 #4751](https://github.com/hat47x/tei-platform/pull/4751)はmainに統合済みである。実Workspaceの管理Root選択、宣言外draftの隔離、Pinned Rootの元byte、Source Indexの失効をテスト内で検証したが、正式な`Workspace.Load`は依然として`TEI_MD_PARSER_UNBOUND`を返す。Window側で第二のWorkspace Loaderを作らず、#2621/#988の既存Ownerが正式Readerを接続した後に、**同じPinned Sourceから選択した表Cell→型付き観測→計算定義→生成SQL→実Provider→独立Expected**を一つの試行として追う。複数HEADの局所CIを寄せ集めて、製品の一貫生成が完了したとは扱わない。
 
+### 独立した入力候補を実SQLiteへ束縛し、同じ生成SQLで入力変更を確かめる
+
+[Window入力候補v2](../../testdata/tei-md-window/independent-expected.candidate.json)では、七行の観測値と三つのWindow結果がそれぞれ固定された。しかし既存のSQLite回帰は、入力側のCTEに`VALUES`を直接書き込んでおり、**固定した入力候補を実DBへ渡したこと自体**は検証していなかった。
+
+新しい`internal/database/sqlgen/sqlite/window_bound_input_test.go`では、候補JSONの七行を既存の`validateCTKWindowInputRows`で検査し、`obs_id`を主キーとする実SQLite表へプレースホルダーを使って挿入する。B2は数値のゼロではなくSQL NULLとして渡す。既存`SelectOptions`のWindow演算・`OrderBy`を再利用して、今度は**実表を読み込むSQLを生成**し、元の独立Expectedと七行すべてを照合する。直前三行／直前二行の二条件を同じ入力で比べる。
+
+さらに、実表のA3だけを30から300へ更新し、**生成済みSQLを変更せず再実行**する。直前三行のA3平均が20から110へ変わることを確かめ、入力が変わったのに以前の結果を返す経路を検出する。これは入力→実DB→生成SQL→観測結果の限定C0試験であり、受理されたTEIの`*.tei.md`定義から実行したという意味ではない。候補JSONの手入力を受理済み意味に昇格させず、正式Readerや既存Query／Provider契約を迂回しない。
+
+[Graph／Ruleの候補構造指紋 #4758](https://github.com/hat47x/tei-platform/pull/4758)はレビュー中で、Raw Source・構造上の意味候補・生成Binaryの指紋を区別しようとしている。Windowに第二の指紋体系を増やさず、今後は正式Readerで選択した表Cell・意味Revision・実生成入力・Artifact・実Consumerの対応を既存Source Index／Build契約で検証する。入力変更後に生成SQLが同じでも、**実DBデータ版と実行結果の証拠は同じではない**。古い計算結果を現在の結果として再利用しない。
+
+また[入れ子Opaqueの拒否修正 #4755](https://github.com/hat47x/tei-platform/pull/4755)はレビュー中である。標準QueryがWindowを意味表現できないままNative SQLの一部を取り落とす経路は引き続き拒否する。今回のテストで扱う既存SQLite方言のWindow直接生成を、標準QueryのWindow対応やNative SQLの実行許可として受理しない。
+
 ### 正式Readerが未接続である現状から、最小の実読取りへ進む
 
 2026-11-14時点の`internal/workspace/loader.go`は、管理Sourceを走査したあと、`rejectUnboundTEIMarkdownSources`で管理対象の`*.tei.md`を**`TEI_MD_PARSER_UNBOUND`として明示拒否**する。現在の`loadSemantics`が呼ぶ`syntax.NewParser(...).ParseSemanticFile()`は従来形式のParserであり、Markdownの表・フェンス・本文のRoleを実際に解釈した証拠ではない。`ManagedFile`の列挙、`ReadByLoader`の真偽、Parserでの解釈、意味の受理、Buildでの実消費はそれぞれ別の事実である。
