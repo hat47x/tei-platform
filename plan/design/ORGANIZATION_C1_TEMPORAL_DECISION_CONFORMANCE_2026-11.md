@@ -2,6 +2,8 @@
 
 > 状態：**設計・採用前**。この文書の作成は製品実装、独立Expected実行、Owner意味受理、Host認可を意味しない。主計画は [ORGANIZATION_STAGED_MODELING_PLAN_2026-11.md](ORGANIZATION_STAGED_MODELING_PLAN_2026-11.md)、意味Ownerは #2386。既存の #4490 ORG-BEH、#4501 CX、#2510 org-synthetic-r7 を再利用し、第二のScenario/Expected正本・組織専用Runtimeを作らない。
 
+> **現在の到達点**：組織Sourceの一時コピーから人物との関係候補をDSLで読み込み、整合性を検査し、追加列のDDLを生成するところまではGoテストで確認しました。ただし、人物との正式な対応、同一所属の複数記録版を実DBに共存させる保存、人物数・FTEの実集計、独立Consumerの受領は未検証です。直近の実装順は§21、個別の判断は§2〜20を参照してください。
+
 ## 1. この補遺で成熟させる判断
 
 - 組織の基本型は既存の Data・Relation・Key・Rule・Query・Persistence・OperationSurface へ束縛する。通常の部門/所属/人数に専用ACLやTenant境界を追加しない。保護すべき特定Field、別Tenant/HostのRead、外部Consumer開示と実Action認可は別に検証する。
@@ -788,3 +790,11 @@ C1でも、人物と所属の意味定義が一致しているだけで、別DB 
 検出すべき反例は、記録時点の取り違え、同じ人物の二所属、A2の旧版消失、RLSによる取得不足、異なるSource Revisionを受け取ったConsumerである。いずれも既存Scenario/独立Expectedへ帰属させ、第二の履歴Engine、Resolver、認可基盤を作らない。
 
 **到達点**：PR #4633のDSL／Validator／offline DDLは固定HEADで技術検証済み。人物同定・二時点履歴の実DB保存・complete Rowset・通常CLIと独立Consumerの受領・Owner意味採用は未実証である。
+
+### 21.5 所属の訂正と、ケースの引継ぎを起動することは別である
+
+[main統合済みの起動・イベント・処理・応答設計 #4666](https://github.com/hat47x/tei-platform/pull/4666)を、組織C1の責任移管へ対応付ける。共通化するのは待受けループではなく、**どの契機でどの契約を起動し、何を読み、何を変え、結果をどう確かめたか**という意味である。組織専用DispatcherやStateMachineは設けない。
+
+人物P2の所属A2が遡及訂正されても、それは所属記録の変更であり、ケースC1の責任移管が完了したという事実ではない。移管には、訂正Sourceの版と既知時点、移管RuleとCase Revision、候補集合の完全性、現在のHost Grant、実際のAction、Effect Receipt、必要な相手のACKを別々に確認する。候補を表示できたことと、移管Operationの実行を許可したことも区別する。
+
+既存のORG-BEH・CX・Effectの反例には、同じ人物数を返す訂正前後、訂正イベントの重複配送、候補表示後のCaseやGrantの改版、Commit結果不明での再試行、通知は送ったがACKがない場合を割り当てる。いずれも自動移管を認めず、結果不明時はOperation IDとReceiptを照会する。有効時点（validAt）、記録時点（knownAt）、Ruleの評価時点、Effectの試行・確定時点を一つの時刻とみなさない。これにより、**過去の所属を説明する照会**と、**現在移管してよいかの判断**を、同じ業務モデルから別々の操作として扱える。

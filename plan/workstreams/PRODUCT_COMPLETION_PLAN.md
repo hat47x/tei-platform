@@ -108,6 +108,22 @@ P1では最初の申請に必要な基本添付・検索・通知・認証を選
 
 最初のFixtureは物流の由来とGISの座標変換という既存の分野横断計画も併用する。台帳、医療情報連携、設備、科学、映像、編集、教育・組織、申請、イベント、学習データは #3791・#2501 の事例として継続する。学習データでは同じ対象の学習・評価への混入、同名ファイルの改版、非公開行の混入を反例にする。分野の意味と受入判断を専門の担当へ戻し、共通形式に合わせるために意味を落とさない。
 
+## 最新の横断検証を実Consumerの受入へ接続する（2026年11月14日）
+
+局所的な試験が増えても、同じ要求を通常の製品入口から実行し、必要な情報を権限に応じた利用先へ届けたことは、別に確かめる必要がある。Queryの隔離PostgreSQL参照試験、取得範囲の限定観測、BuildのToolchain観測、外部Evidenceの読取り、Pluginの段階別Contribution、B2Cと組織の二時点照会を一つの成功として扱わない。
+
+新しい検査Engineや独立した期待値の正本を追加するのではなく、各担当の試験へ共通の照合観点を渡す。対象Sourceと意味の版、実Provider・実Child、Contextの取得範囲、現在権限、最終Consumerの受領、独立Expectedを段階ごとに確認する。製品のP0は、**StudioのStage1→Stage2実Windowsセルフビルド**と、**通常CLI→実Read→独立Consumer**の二本を維持する。B2Cの本人確認、組織履歴、外部REA、Pluginの実使用は各Ownerの後続資格として進め、未確認の部分を完成扱いしない。
+
+詳しい境界、10件の負例、Owner別の次の検収は[Sourceから実Consumerへの横断受入設計](../design/CONSUMER_QUALIFIED_CROSS_LANE_ACCEPTANCE_2026-11-14.md)に整理した。以下の「進行の記録」では、その観点を既存IssueのAttemptと結果へ結び付ける。
+
+## プロセス・イベント・応答を共通の意味から説明する（設計候補）
+
+Webの要求、CLIの起動、タイマー、Message、画面操作には、それぞれ異なるHost・起動方式がある。ここで標準化を検討するのは一つのイベントループではなく、**Trigger→型付きInvocation→Function/Rule→State/Effect→Outcome→Response／Consumer受領**という意味の対応である。長寿命Processの起動・停止と、一件の処理の成功・失敗も混同しない。
+
+初期の受入は、受注受付の説明用Fixtureを使い、HTTP/CLIの二入口が同じ意味Operationへ至るかをHeadlessで照合する。期限の境界、現在Grant、DB Commit後の通知結果不明、重複・逆順Event、未実装のTimer Providerを負例にする。外部部品はContractとTODOを先に記述し、既存Driver ScenarioのMockと独立Expectedで基本設計からシミュレーションする。ただし、Mockの成功は実DBやBrokerの実行証拠にならない。
+
+詳細は[Lifecycle・Trigger・Operationの共通意味設計](../design/PROCESS_LIFECYCLE_TRIGGER_OPERATION_SEMANTICS_2026-11.md)を参照する。Ownerは[共通Application API #1158](https://github.com/hat47x/tei-platform/issues/1158)、[Script Launch #4495](https://github.com/hat47x/tei-platform/issues/4495)等の既存Issueに分け、新Runtime・Dispatcher・Schedulerを前提にしない。**現行P0のStudio Stage1→Stage2と通常CLIの実Readには、新しい先行依存を追加しない。**
+
 ## 進行の記録と完了条件
 
 各G項目には、対象と版、既存の足場、次の作業、独立した正例・反例、依存、担当Issue、得た結果または未実施の理由を残す。状態は定義済み、実装候補、局所試験、通常入口での実行、利用側確認、案件受入を用途に応じて記す。Issueをclosedにしただけで、別の組合せや実行先が成立したと扱わない。
