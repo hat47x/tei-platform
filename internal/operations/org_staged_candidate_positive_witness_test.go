@@ -178,7 +178,6 @@ func TestOrgStagedPositiveCandidatePartialIsNotComplete(t *testing.T) {
 	}
 }
 
-
 // This uses the actual Product Function Context projector, but the query result
 // is deliberately synthesized in process. It does not perform a Provider read.
 func orgPositiveSyntheticNativeContext(t *testing.T, values [][]any) functioncontext.Context {
@@ -196,7 +195,7 @@ func orgPositiveSyntheticNativeContext(t *testing.T, values [][]any) functioncon
 		Execution: driver.BrowseQueryExecution{
 			Resolution: driver.PatternResolution{
 				Application: application.Application{ID: "org_axes_view"},
-				Pattern: application.Pattern{ID: "org_axes_view.candidate_reference"},
+				Pattern:     application.Pattern{ID: "org_axes_view.candidate_reference"},
 				Query: &query.EmbeddedSQL{
 					ID: "org_axes_view.candidate_reference", Dialect: environment.ProviderPostgres,
 				},
@@ -235,11 +234,11 @@ func TestOrgStagedPositiveCandidateActualFunctionContextCoverage(t *testing.T) {
 		{id: "RS2", person: "P2", unit: "D1"},
 	}
 	for _, tc := range []struct {
-		name string
-		rawRows [][]any
-		roles []orgPositiveRole
-		duties []orgPositiveDuty
-		expectedClaim string
+		name              string
+		rawRows           [][]any
+		roles             []orgPositiveRole
+		duties            []orgPositiveDuty
+		expectedClaim     string
 		expectedNotUnique bool
 	}{
 		{
@@ -267,8 +266,8 @@ func TestOrgStagedPositiveCandidateActualFunctionContextCoverage(t *testing.T) {
 			// This is a conservative test adapter, not a reusable Product Rule.
 			// Cohort identity here is supplied by the fixture, not Function Context.
 			read := orgPositiveRead{
-				cohort: "synthetic-s1",
-				closed: context.Coverage.Status == semantic.CoverageComplete,
+				cohort:          "synthetic-s1",
+				closed:          context.Coverage.Status == semantic.CoverageComplete,
 				cursorFullyRead: context.Rowset.FullyRead,
 			}
 			got := orgPositiveWitnessProbe(tc.roles, tc.duties, read, read)
