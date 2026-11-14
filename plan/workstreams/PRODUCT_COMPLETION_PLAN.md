@@ -539,9 +539,9 @@ S0〜S4を一度に実装しない。**固定6入力に対するGraph/RuleのGo�
 
 #### S0予備検証と正式Reader接続を分け、生成物の実消費までつなぐ（2026年11月15日）
 
-[PR #4745](https://github.com/hat47x/tei-platform/pull/4745)では、Graph/Rule限定Readerと既存Source Indexの直接照合（main #4742）から一歩進め、**実Manifestの宣言Root、Pinned Workspace Root、管理ファイル一覧、原文byte、候補RuleのSpan**を既存APIで読み合わせる**テスト専用のS0予備検証**を提出した。指定された`semantic/model.tei.md`は管理対象、Root宣言外の`drafts/not-declared.tei.md`は非対象とし、`Workspace.Load`が未選択Frontendに`TEI_MD_PARSER_UNBOUND`を返すことを先に検査する。ついでテストコードが既存のPinned Readを明示呼出し、元のSource Indexと一致すること、原文変更後に古いIndexが失効することを照合する。**これは`Load`の内部から選択済みMarkdown Readerが呼ばれた証拠ではない**。
+[旧PR #4745](https://github.com/hat47x/tei-platform/pull/4745)から[後継PR #4751](https://github.com/hat47x/tei-platform/pull/4751)へ引き継いだS0予備試験では、Graph/Rule限定Readerと既存Source Indexの直接照合（main #4742）から一歩進め、**実Manifestの宣言Root、Pinned Workspace Root、管理ファイル一覧、原文byte、候補RuleのSpan**を既存APIで読み合わせる**テスト専用のS0予備検証**を提出した。指定された`semantic/model.tei.md`は管理対象、Root宣言外の`drafts/not-declared.tei.md`は非対象とし、`Workspace.Load`が未選択Frontendに`TEI_MD_PARSER_UNBOUND`を返すことを先に検査する。ついでテストコードが既存のPinned Readを明示呼出し、元のSource Indexと一致すること、原文変更後に古いIndexが失効することを照合する。**これは`Load`の内部から選択済みMarkdown Readerが呼ばれた証拠ではない**。
 
-[PR #4745のexact HEAD健全性ログ](https://github.com/hat47x/tei-platform/actions/runs/43641434912)（`9e9a128c78c5a7913cedbfc309779c282caabb93`）では、`go test ./...`中の`internal/workspace`は成功したが、Repository Health全体は**失敗**した。確認できた原因は`internal/database/sqlgen/sqlite/window_candidate_oracle_test.go`の`gofmt`ずれと、`tools/repository-plan-check`の`SeverityUnsupported`既検査語彙が旧TODO一覧に残ることである。前者はGraph/Readerとは別の変更Owner、後者も既存[#4449](https://github.com/hat47x/tei-platform/pull/4449)等の担当で整合する。独立WorkflowのPASSを全体PASSと記録せず、かつこれらを理由に未受理MarkdownをLoaderへ通す暫定回避を行わない。PR #4745は未マージなのでmain実装済みとは記さない。
+[PR #4745のexact HEAD健全性ログ](https://github.com/hat47x/tei-platform/actions/runs/43641434912)（`9e9a128c78c5a7913cedbfc309779c282caabb93`）では、`go test ./...`中の`internal/workspace`は成功したが、Repository Health全体は**失敗**した。確認できた原因は`internal/database/sqlgen/sqlite/window_candidate_oracle_test.go`の`gofmt`ずれと、`tools/repository-plan-check`の`SeverityUnsupported`既検査語彙が旧TODO一覧に残ることである。前者はGraph/Readerとは別の変更Owner、後者も既存[#4449](https://github.com/hat47x/tei-platform/pull/4449)等の担当で整合する。独立WorkflowのPASSを全体PASSと記録せず、かつこれらを理由に未受理MarkdownをLoaderへ通す暫定回避を行わない。旧PR #4745はmain進行に伴い**未マージでクローズ**され、同じ2ファイルの内容を最新mainへ再適用した**#4751が現在の検収先**である。#4751自身のexact HEAD CI成功・main統合までは、main実装済みと記録しない。
 
 **次の実装は三つの資格を別々に満たす**。初回にすべてを一PRへ詰め込まない。
 
@@ -554,7 +554,7 @@ S0〜S4を一度に実装しない。**固定6入力に対するGraph/RuleのGo�
 
 S0-Aで最初に提示すべき**独立した正負**は、同一Source Snapshotからの1選択・1Reader・1Artifact整合、未選択Frontend・Root外ファイル・未対応構文・旧`*.tei`への退行・原文変更後の旧証拠再利用・暗黙のReader fallback拒否である。Rootを固定して読んだことは、複数Sourceの**原子的Snapshotを保証するわけではない**ため、取得したbyteと検証に使った版が一致する範囲だけをClaimとする。Owner意味受理前のGraph/Rule候補IDはSource Indexの正式Subjectへ勝手に登録しない。
 
-この順序を守れば、Pluginの説明文書や使用例の資格も整理できる。[Plugin公開文書Draft #4735](https://github.com/hat47x/tei-platform/pull/4735)の`-node`例は、現状では**限定Reference Binary向け**であり、通常の`tei` CLIで呼べる公開Operationではない。将来A PluginのManual/ContractをB Pluginが参照する場合、Source/Doc/Contract/Plugin版の一致、現在のDisclosure、実選択・実Builder消費・実Invocationを分けて検収する。公開文書を読めることを、Pluginが同梱されたことや実行できる資格とみなさない。
+この順序を守れば、Pluginの説明文書や使用例の資格も整理できる。[Plugin公開文書の後継PR #4750](https://github.com/hat47x/tei-platform/pull/4750)の`-node`例は、現状では**限定Reference Binary向け**であり、通常の`tei` CLIで呼べる公開Operationではない。将来A PluginのManual/ContractをB Pluginが参照する場合、Source/Doc/Contract/Plugin版の一致、現在のDisclosure、実選択・実Builder消費・実Invocationを分けて検収する。公開文書を読めることを、Pluginが同梱されたことや実行できる資格とみなさない。
 
 **P0/P1の扱い**：本件は#2621/#988/#4704の正式Reader・Source Index接合を進めるP1の小縦断として扱う。全体P0のStudio Stage1→Stage2実Windows再構築（#2831/#4583）と、通常`tei`から実Provider→独立二Consumer（#2586/#1251）を遅らせる新Hard Gateを作らない。S0-Pの参考実装をそのまま製品の第二Loader/第二Registryに発展させず、S0-Aの差だけ既存のWorkspace契約へ移す。GC/GQの既存Expected・受入Ownerを再利用する。
 
