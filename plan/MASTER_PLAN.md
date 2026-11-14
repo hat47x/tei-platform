@@ -160,6 +160,19 @@ Gate C — PAS-04 Evidence — Ready
 
 ### Studio Desktopセルフビルドを最優先にする現行の実証順（2026-11-13）
 
+
+**2026-11-14現在の優先・受入更新**（以下の2026-11-13基線より新しい現況）：詳細なDesktop Host／編集状態／実行方式／独立検収は[Desktop Studio Host統合設計 §11](design/DESKTOP_STUDIO_HOST_INTEGRATION_DESIGN.md#11-desktop製品統合の現行判断と実測引継ぎ2026-11-14)に一本化する。
+
+- **P0-A 実Desktop受領**：現行Wails同一Goプロセス（方式A）を基準に、Windows実WebView2→Wails RPC→\`studiohost\`→Source-backed Catalog/Inspectと、Workspace切替・ABA・後着を独立観測（#1824/#3421）。[Draft #4587](https://github.com/hat47x/tei-platform/pull/4587)の\`357345d7\`では**生成版JobのN0→N2→N3→実WebView2受領は成功**した一方、通常版JobがPowerShellのOSVersion取得15秒timeoutで失敗し、全Workflowは11/12。旧HEADのPASSを現HEADへ引継がない。
+- **P0-B 正式non-Plugin Build実行**：[Draft #4634](https://github.com/hat47x/tei-platform/pull/4634)の\`7d6a1238\`はBuilder宣言→Resolver→実Child起動前pinを**同HEADで8/8 CI成功**。ただし主対象はPlugin BuildPlan。Studioを仮Pluginにせず、#1080/#1097/#2831/#4583でnon-PluginのBuildIntent/BuildExecution/ArtifactSetとN0/N1/N2/N3の選択input・実Invokerを**同一Attempt**へ結ぶ。
+- **P0-C 真の再入**：生成Stage1 TEI実ProcessがStage2 Studio Buildを駆動し、当該Stage2のWindows WebView2で実操作を受領するまでB2/B3未受理。別PR／別Process／別Attemptの成果を足さない。
+- **P1 Desktop能力と配置比較**：既存Wails Bridge同一Process（A）、同exe従属Worker（B0）、別Wails Server＋HTTP/WS（B1）、別Server/Worker＋Named Pipe/UDS（B2）を比較。性能・OS ACL・peer・crash・復旧・配布・Audienceを実測して選び、B系をP0のHard Gateにしない。#4627の静的15 Method監査5/5 CIは**Public Web認証・WS開示の証明ではない**。#4628の外観試験は実Windows IME/読み上げと別検収。
+- **共通UI/Plugin/Source**：\`*.tei.md\`のDraft保存・Parser／Meaning受理（#2621）、Focus/Pin/Dirty・Source再Read、SHO Writer、Plugin Inventory→Plan→Apply（#4376〜#4380）、REA Host固定bounded read（#4637）、実Grant/Disclosure/Effect Receiptを分離。#4636のmain統合済みInput/Effect宣言preflightはProduct実Provider完了ではない。第二Host/Resolver/Policy/Scenarioを作らない。
+
+**上限**：この2026-11-14追補自体は計画のみ。主計画より下の2026-11-13の個別PR状態は履歴として残す。新規Go/Windows/DB/OS IPC試験、生成Stage1→Stage2、Owner採用判断は実施していない。
+
+
+
 **最上位の製品目標は、TEI Studio Desktopを実OS上で構築・利用し、TEI自身が次のStudioを再構築すること**。この目的に対し、最初から新しいDSL/汎用Interpreter/独立Build Hostや全機能のX-TEA・B2C実装を要求しない。既存Wails、Workspace/Source Index、標準BuildIntent/Builder、型付きOperation/Providerを使い、以下の証拠を段階的に接続する。段階の記述は新しい全体Hard Gateではない。
 
 1. **実Desktopへの生成部品接続**：[Draft PR #4572](https://github.com/hat47x/tei-platform/pull/4572)で、TEI契約Source→既存の決定論Transform→Inspector reader（TypeScript）→esbuild bundle→Go `//go:embed`→**実Windows WebView2 Desktopでの利用**を局所実測。生成前bundleを使った負例とSource digestの対照も報告され、PR exact-headのHealth/Workbench Embed/Windows WebView Smoke等は成功。ただし**Draft・main未統合**であり、実Wails表示に成功したこととStudio全体のTEI自己生成は別資格。
