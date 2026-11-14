@@ -356,7 +356,7 @@ func TestOrgStagedPositiveCandidateActualFunctionContextCoverage(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			roleContext := orgPositiveSyntheticNativeContext(t, tc.roleRows)
 			dutyContext := orgPositiveSyntheticResponsibilityContext(t, tc.dutyRows)
-				if roleContext.Source.QuerySourceSHA256 == dutyContext.Source.QuerySourceSHA256 ||
+			if roleContext.Source.QuerySourceSHA256 == dutyContext.Source.QuerySourceSHA256 ||
 				roleContext.Function.Query == dutyContext.Function.Query {
 				t.Fatal("independent synthetic Query sources were wrongly conflated")
 			}
