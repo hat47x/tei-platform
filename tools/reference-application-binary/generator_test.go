@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"tei/tools/reference-application-binary/internal/appgen"
 	_ "modernc.org/sqlite"
+	"tei/tools/reference-application-binary/internal/appgen"
 )
 
 func TestExtractOrderEntryModel(t *testing.T) {
