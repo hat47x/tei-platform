@@ -1047,7 +1047,7 @@ Doc索引やManual本文が存在するだけでは、「正しい使い方を�
 
 D0ではPDC-00〜08の正負例をまず満たし、**D1のCLI接続ではPDC-17と19、D2の継承・改訂ではPDC-18/22/23、D3のSkill/HarnessではPDC-21/24、D4の実生成ConsumerではPDC-20/21** を採用可否の判断へ割り当てる。独立Expectedの策定・較正は#2514、Scenarioの正本は#1180、実Product/外部Harness評価は#2605/#2509が担当。新しい「ドキュメント実行テストエンジン」は作らない。
 
-**最小受入は一往復の局所実証**：ある固定Plugin/Contractを選択→公開Doc/上位Modelを読み、例がどの公開Operation/Extension Pointを使うか確認→未対応や古い例を検出→実行可能な既存read-only Operationで独立結果を確認。この縦切りをCLIで先行し、Studio/SHOの固定対象UIから同じ論理結果に到達できるかは後続。対象モデル/契約のVersion・Sourceの照合、Tool Replyの完全受領、実Provider経由の資格は各別票とする。
+**最小受入は一往復の局所実証**（実装引渡し [PDC-1 #4714](https://github.com/hat47x/tei-platform/issues/4714)）：ある固定Plugin/Contractを選択→公開Doc/上位Modelを読み、例がどの公開Operation/Extension Pointを使うか確認→未対応や古い例を検出→実行可能な既存read-only Operationで独立結果を確認。この縦切りをCLIで先行し、Studio/SHOの固定対象UIから同じ論理結果に到達できるかは後続。対象モデル/契約のVersion・Sourceの照合、Tool Replyの完全受領、実Provider経由の資格は各別票とする。
 
 ### 19.19 Product SkillとPlugin Manualの文書量を決める基準
 
