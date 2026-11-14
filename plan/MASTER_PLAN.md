@@ -230,6 +230,20 @@ Gate C — PAS-04 Evidence — Ready
 
 **着手順・Scope**：P0は[#4587](https://github.com/hat47x/tei-platform/pull/4587) exact HEAD `0fcb7b6` のWindows同一Attempt **12 Workflow success**（N2 JS bundle→N3 `EmbedFiles`選択・Go Build前後SHA一致、改変コピー拒否、実WebView2）を限定H1として記録し、正式非Plugin BuildExecution/ArtifactSetとStage1→Stage2は未成立のまま最優先。並行P1は[#4627](https://github.com/hat47x/tei-platform/pull/4627) exact HEAD `9491bf9` のserver-tagged Go公開面Inventory・loopback BrowserContexts限定CI successを踏まえ、**実Provider 2構成×DB Instance 2接続×Workspace/Checkout 2**のread-onlyの一件へ絞る。まずDesktop/Headlessで観測し、認証付きWeb・複数DB Read/Write・Git Worktree/共同編集/HAは独立の後続資格。UIはWeb標準寄りの候補含め既存WorkBenchを計測して比較し、React/Lit/WASMを本Plugin契約から固定しない。新DB Manager/多Branch Coordinator/汎用Web Hostを初回Hard Gateにしない。
 
+**Desktop従属Worker／ローカル通信の選択契約（#1824/#1158/#1223、方式未採用）**：他チャットで提示された「DesktopではローカルWails Serverを従属Processとし、WebとGo側の開発・Build・DBロジックを共通化する」案を、採用決定ではなく**三方式の比較対象**にする。Wails v3 DesktopのJS↔Go native Bridgeはプロセス内、`server` build tagのWails ServerはHTTP/WS経由の**別Buildモード**である。後者をDesktopの従属Processにする場合は、原則として別Server Binaryと起動・通信・保守が要る。「同じGo Sourceを再利用できる」ことと「単一配布Binary」「通信方式以外すべて同一」「Pluginを実ロードしたProcessが同じ」は同義でない。Workerの業務処理と実Target Hostは分離し、Studioの開発用Hostを生成アプリに持ち込まない。
+
+| 比較案 | 通信・配布 | 識別すべき代償／採否 |
+| --- | --- | --- |
+| **A 現行 Desktop in-process** | Wails native Bridge→既存`studiohost`／共通Go Operation。単一exe既定 | 最小Hop・性能基線。Build/DBの重い処理によるUI応答、Crash隔離、権限最小化の実測が必要 |
+| **B Desktop＋同一exeの別モードWorker** | Desktop exeを明示Worker引数でself-spawnし、ローカルIPC（Windows Named Pipe／Unix Domain Socket候補）へ薄いBridgeで転送。**Wails Serverモードとは別候補** | 単一配布Artifact可能性とWorker専用Go起動経路を検証。追加Hop、Child監督・OS ACL・適用Operation/Service露出を要する |
+| **C Desktop＋Wails `server` tag従属Process** | Wails Desktop exe＋Wails Server build exe（別Artifact）、loopback HTTP/WS。共通Operationは同じGo package | Web側とのTransport/Service共用候補だが、二Binaryのdigest/互換性、Service公開面、起動・終了・Securityを独立検証。ブラウザEvent broadcastは機密不可 |
+ 
+**局所通信選定（未測定）**：Windows Named Pipe／Unix Domain Socketなどのstream IPCはloopback HTTPよりプロトコル処理を小さくできる可能性があるが、Wails native Bridgeより自動的に高速とは言えない。loopback HTTP keep-alive／WebSocketも持続接続・progress配信ができ、「密な通信」はsocketの名前ではなく多重化・backpressure・非同期通知・serialization・UI thread負荷の実装次第。まず既存Aを基線に、`Catalog/Inspect`の小RPC、数千診断、大きなread-only Projection、Build progress/Cancelを同一Fixture・同OSで比較。p50/p95/p99、cold startup、payload byte、CPU/heap、UI frame delay、消費電力と復旧時間を観測し、**実測前に一方式を高速と断定しない**。
+
+**Process/Plugin境界の独立Expected（LPC-01〜08、今回NOT RUN）**：LPC-01 Desktop→Worker開始でOwner/Executable digest・Service契約版・許可Workspace/Source epochと実Processを照合、偽Process／旧Version拒否。LPC-02 IPC endpoint takeover／別OS user／別WorkspaceのアクセスをOS権限（Windows pipe DACL/Logon SID、Unix socket directory permission等）とHost Scopeで拒否し、Childへraw Client Path/Grantを転送しない。LPC-03 Worker未ready/途中Crash／Parent強制終了／多重起動／orphanを観測し、再接続前に前Generationと開放Resourceを検査。LPC-04 read-only要求は再取得可能性を明示する一方、DB/Build等の**作用結果不明**は`OperationID/RequestHash/Receipt`をlookup-firstし、Connection切断やCancelだけで重複実行しない。LPC-05 Build/DB Plugin A→B選択・Artifact/Runtime Generationの変更前後に、実Workerへ渡ったexact Provider/Targetと現在Grantを照合。LPC-06 Progress/Trace/AI Tool EventをClient Session/Workspace/Audience別に配送し、遅延・逆順・Partial／UnknownでもDOM/WS機密を越境させない。LPC-07 A/B/Cのread-only型付き結果・Failure意味一致とUX latency/throughput、Binary配布数/Cold Startを同一環境で比較。LPC-08 Option Cの二Binary（またはBのself-spawn image）が`BuildExecution/ArtifactSet`の**実生成・実Child利用**に一致することを検査し、別HEAD CIの寄せ集めを合格にしない。
+
+**判断と優先順**：当面は**Aを実証済み製品基線として保持**し、B/Cを「どこまで同一ソースを共有してもBuild/DBの実行主体と権限が一致するか」の限定Referenceで測る。Builder/DB/AIを別Workerへ送る必要が明確になった際に選択し、IPC方式やWails Serverへの一律統一を先行しない。Childの死亡・再起動・Cutoverは#1223/#1174の既存Generation/Effect、Public Webの認証・配信は#3421/#1043、Build Artifactは#2831/#4583、共通APIはADR-0048/#1158で所有。Windows `os.Process.Kill`は子が生成した孫Processまで自動終了しないため、OS別Process tree監督は実試験を要する。**P0 Stage1→Stage2 Studio Desktop Self-Buildをこの比較待ちにせず、P1以降で方式決定する**。
+
 **現在の実行順と引渡し**：
 
 1. **P0-Buildを最優先**：#4583/#2831でN2 esbuild→N3 Go embed→非Plugin Desktop Buildへの一辺を、既存BuildIntent/BuildExecution/ArtifactSetに接続。次にStage1実Process→Stage2実Windows Desktop→Stage2自身の実Consumer。Graph Compiler・Plugin管理S3・X-TEA原典完全移植を初回Hard Gateにしない。
