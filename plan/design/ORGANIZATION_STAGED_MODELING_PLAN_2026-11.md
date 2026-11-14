@@ -6,6 +6,7 @@
 - **状態: 設計・未受理**。本計画の採用、および後述する各作業単位の実施は、Issue の作業条件として扱う。新しい公開契約（Data/Relation/Validation の新kind、CLI/MCP 契約）、業務意味の正式受理、認可境界の変更は **Owner 判断** とし、本計画は決定しない。
 - 本計画が作るもの: 5段階の基本設計、標準データモデル上の具体（Identity・Relation・Cardinality・Time・Validation・Query・表示形式）、独立Expected、14個の作業単位とその対象ファイル・既存API・入力・出力・受入テスト・依存・完了条件・停止条件。
 - 本計画が作らないもの: 巨大な固定組織Schema、独立した認可基盤（第二Policy Engine）、専用Workflow Engine（BPMN/DMN/CMMN ランタイム）、組織専用のCore Kind、`Person/Account/Tenant/Principal` の単一超型、第二の Scenario/Expected 正本、組織Dataへの一律のアクセス制御・匿名化・OS隔離。
+- **横断受入補遺（2026-11-14、採用前）**：[組織C1二時点保存・判断候補・Consumer接合](ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)。#4567の実PG Query限定成功と履歴版共存GAP、#4555/#4585の並行§10.12差分、DSL/三要素/Studioセルフビルド/六Scope/Headless/Disclosureを既存#4490 ORG-BEH・#4501 CXに**新Expected正本なし**で接合する。各Draftの現HEADと実行資格は統合時に再照合する。
 
 ## 1. 基準
 
