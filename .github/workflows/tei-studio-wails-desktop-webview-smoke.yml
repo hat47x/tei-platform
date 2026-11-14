@@ -36,6 +36,8 @@ on:
       - internal/workspace/**
       - internal/xeadsource/**
       - reference/workspace/**
+      - reference/tei-studio-*/**
+      - tools/reference-studio-static-composition/**
   pull_request:
     branches: [main]
     types: [opened, reopened, synchronize, ready_for_review]
@@ -72,6 +74,8 @@ on:
       - internal/workspace/**
       - internal/xeadsource/**
       - reference/workspace/**
+      - reference/tei-studio-*/**
+      - tools/reference-studio-static-composition/**
   workflow_dispatch:
 
 permissions:
@@ -166,5 +170,109 @@ jobs:
         with:
           name: tei-studio-desktop-workbench-webview2-smoke-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ github.workspace }}/tei-studio-desktop-webview2-smoke/**
+          retention-days: 7
+          if-no-files-found: warn
+
+  generated-desktop-webview2-smoke:
+    # Same PoC B generated Workbench as the Linux server job, but exercised
+    # through the actual native Windows Wails WebView2 process (#1824, #2831).
+    runs-on: windows-2022
+    timeout-minutes: 45
+    env:
+      GOTOOLCHAIN: local
+      GOWORK: off
+      CANDIDATE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+      # The existing WebDriver's preexisting-process check uses this exact image name.
+      STUDIO_DESKTOP_EXE: ${{ github.workspace }}\tei-studio-desktop-webview-smoke.exe
+      STUDIO_SMOKE_EVIDENCE_DIR: ${{ github.workspace }}\tei-studio-generated-desktop-webview2-smoke
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Pin Go 1.26.11
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version: '1.26.11'
+          check-latest: false
+          cache: false
+      - name: Pin Node 24 for the existing generated Workbench
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          check-latest: false
+      - name: Prepare generated-Desktop evidence
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force -Path $env:STUDIO_SMOKE_EVIDENCE_DIR | Out-Null
+          $actual = (git rev-parse HEAD).Trim()
+          if ($actual -ne $env:CANDIDATE_HEAD_SHA) { throw 'Checkout differs from the exact candidate HEAD' }
+          "candidate=$actual" | Set-Content -Path (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'generation-provenance.txt') -Encoding utf8
+      - name: Generate and pin PoC B services and current Workbench
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          go test -count=1 ./tools/reference-studio-static-composition
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          go run ./tools/reference-studio-static-composition -fixture tools/reference-studio-static-composition/fixture.json -out internal/studiohost/staticservices
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node tools/reference-studio-static-composition/compose-ui.mjs tools/reference-studio-static-composition/fixture.json tools/reference-studio-static-composition/generated
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node tools/reference-studio-static-composition/connect-workbench.mjs reference/tei-studio-workbench/main.ts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Push-Location reference/tei-studio-workbench
+          try {
+            npm ci
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            npm test
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            npm run typecheck
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            node --input-type=module -e 'import { build } from "esbuild"; import { resolve } from "node:path"; await build({ absWorkingDir: process.cwd(), entryPoints: ["main.generated.ts"], outfile: resolve(process.cwd(), "../../cmd/tei-studio/assets/workbench/main.js"), bundle: true, format: "esm", platform: "browser", target: "es2022", nodePaths: [resolve(process.cwd(), "node_modules")] });'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally { Pop-Location }
+          $bundle = 'cmd/tei-studio/assets/workbench/main.js'
+          $source = 'reference/tei-studio-workbench/main.generated.ts'
+          $goService = 'internal/studiohost/staticservices/services.generated.go'
+          foreach ($p in @($bundle, $source, $goService)) {
+            if (-not (Test-Path -LiteralPath $p)) { throw "Missing generated input: $p" }
+          }
+          $digest = (Get-FileHash -LiteralPath $bundle -Algorithm SHA256).Hash.ToLowerInvariant()
+          "TEI_GENERATED_WORKBENCH_BUNDLE_SHA256=$digest" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          foreach ($p in @($bundle, $source, $goService, 'tools/reference-studio-static-composition/fixture.json')) {
+            $hash = (Get-FileHash -LiteralPath $p -Algorithm SHA256).Hash.ToLowerInvariant()
+            "${p}=$hash" | Add-Content -Path (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'generation-provenance.txt') -Encoding utf8
+          }
+      - name: Build generated native Wails Desktop (not server mode)
+        shell: pwsh
+        working-directory: cmd/tei-studio
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ((go version) -notmatch 'go1\.26\.11') { throw 'Go 1.26.11 is required' }
+          go mod tidy
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git diff --exit-code -- go.mod go.sum
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          go build -mod=readonly -tags studio_generated -o $env:STUDIO_DESKTOP_EXE .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not (Test-Path -LiteralPath $env:STUDIO_DESKTOP_EXE)) { throw 'Generated Desktop executable not created' }
+          (Get-FileHash -LiteralPath $env:STUDIO_DESKTOP_EXE -Algorithm SHA256).Hash.ToLowerInvariant() |
+            Add-Content -Path (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'generated-desktop-exe.sha256') -Encoding utf8
+      - name: Verify generated bundle served by the native WebView2 and real StudioBridge
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (-not $env:TEI_GENERATED_WORKBENCH_BUNDLE_SHA256) { throw 'Generated bundle digest missing' }
+          python cmd/tei-studio/test/desktop_webview_smoke.py $env:STUDIO_DESKTOP_EXE $env:STUDIO_SMOKE_EVIDENCE_DIR
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Upload generated Desktop WebView2 observations
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tei-studio-generated-desktop-webview2-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ github.workspace }}/tei-studio-generated-desktop-webview2-smoke/**
           retention-days: 7
           if-no-files-found: warn
