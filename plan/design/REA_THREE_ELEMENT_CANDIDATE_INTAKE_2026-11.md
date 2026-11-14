@@ -379,3 +379,22 @@ J-01で明らかになったsemantic_graphとapplication graphの違いを保つ
 次の製品受入では、このレビュー行をStudioで一Functionの質問を選んだ際に、PinしたQualified SubjectとCurrent Workspace、SourceのActual Attempt、未知・不支持項目、Disclosure資格を含む独立Expectedとして提示する。ただしStudio UIやAI説明の成立はこのHeadless試験からは主張しない。回答の説明文はGraph→DSLから直訳可能な受理済み業務意味だけで構成し、外部静的解析で見えないWriteを補わない。旧Actual／Desired／TEI Target Actualは別々の実測とする。
 
 本節はJ-01/J-02に続く**問相対の停止線**であり、新しいBRMS、特別なREA Adapter、専用UI Hostを作る要件ではない。まず既存CLIから見える確定／未知を区別し、Functionの全体意味・Source編集・Studio実受領・Pluginによる実Go生成は後続の別資格とする。
+
+<!-- rea-j02-parallel-structural-key-ambiguity-20261114 -->
+### 10.10 再解析で複数のRelationが再採番された場合の曖昧さを保持する
+
+J-02の負例を広げ、**Source位置・Relation種別・端点が同じで、外部Edge IDだけがそれぞれ変わった二つの関係**を扱う。この場合、既存の`CompareCandidateSets`は`structuralKey`を使って旧候補と新候補を再対応する。候補集合を一定の順序に並べれば結果は決定論的になるが、**その並びが個々の関係の同一性を証明するわけではない**。同じ位置に記録された二辺を一対一に復元するには、Sourceに裏付けられた個別Occurrenceと意味・時点の対応が必要である。
+
+本変更では、既存の`ComparisonRenumbered`を維持しつつ、再採番候補の構造キーが旧側または新側で複数回出現する場合、比較票に`structural-key-multiple-occurrences-cannot-identify-individual-relation`と`source-backed-occurrence-mapping-is-required-before-edit`を付ける。新しいResult Schemaや承認APIは増やさない。以前のJ-02fと同様に**推定一致を正式Relation IdentityやSourceへの編集資格へ昇格させない**。単独Relationの再採番には複数対応の注意を付けず、従来どおり新しいOwner Reviewを要求する。
+
+| 事例 | 比較結果で保証する範囲 | 保証しない範囲 |
+| --- | --- | --- |
+| **J-02h：二本の並行Relationが同時に再採番** | 旧・新とも独立した候補IDを維持し、構造キーによる対応が複数で未確定と報告 | 並び順で旧e1→新e1、旧e2→新e2と確定すること |
+| **J-02i：一意なRelationだけ再採番** | 再採番候補として提示し、Ownerの再レビュー要件を維持 | 同じByte・同じ外部構造から業務意味の継続性や旧Grantを自動継承すること |
+| **J-02j：Sourceの一部変更／Graph上の一辺だけ反転** | Source Revision／端点・向き／Candidate比較のどこが一致しなくなったかを別票で説明 | Graphの表示順だけを使って旧RelationへのPatchを成立させること |
+
+追加試験`TestCompareCandidateSetsParallelRenumberingRequiresOccurrenceMapping`と`TestCompareCandidateSetsUniqueEdgeRenumberingNoParallelAmbiguity`は既存`internal/reacandidate/adopt_test.go`に置いた。コード修正は`internal/reacandidate/adopt.go`の構造キーによる再対応部分に限る。各候補の読取位置や初回Previewの構築は変更しない。
+
+**他チャットとの統合**：三要素ModelerのSource-faithfulなER・業務フロー（#4694）、StudioのPin／Focusと人間・AIのProposal/Review（#4696/#4721）、Graph/Rule固定Fixtureの読取と実生成（main統合済み#4709/#4722）、Plugin自己構築の計測（#4720）、ビジネス判断の意味・Effect分離（#4723）へ、関係対応の**候補・曖昧さ・正式受理を分ける受入条件**として渡す。複数媒体の写真・会議・CSV（#4716）でも、同じ文言・位置・図形が一意な業務Relationを意味するとは限らず、媒体固有の原本Occurrenceを失わない。いずれも関連Draftの設計を本PRへ重複移植しない。
+
+**実証限界**：本節の二件は再解析を合成した局所Go回帰であり、外部REAを二度実行したProducer上の再採番観測でも、StudioのSource Patchでもない。Graphからの実Go生成、実Windows第二Product Consumer、実DB Read/Write、Ownerの意味受理はそれぞれ別の検収。元の製品P0であるStage1→Stage2セルフビルドと通常tei CLIの実Provider呼出しに新しい着手条件を増やさない。
