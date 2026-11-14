@@ -1793,6 +1793,19 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 
 **実施順・主線**：①#4490 BEH-01/02の実Read完全性→②§26 CR・§27 ORXの対象解決→③OCI-1/2/4の公開合成Candidate照合→④既存#4693/#4704/#4709による外部解析・自然Markdown Readerの適格性→⑤Owner採否/Source/実Consumer。通常`tei` CLI実Provider Read #2586とStudio Stage1→Stage2 #2831を独立P0として先行。**本追補はdocs-only**。画像・会議・CSVの実AI解析、正式`*.tei.md` Reader、実Go生成、実Provider/Host/Windows E2E、業務Ownerの意味受理は未実施。
 
+
+<!-- org-c1-brms-actual-coverage-20261115 -->
+### 2026-11-15 組織C1の候補判断を決定表・Rule生成・実Read完全性へ接続する（補遺§29）
+
+[組織C1横断受入補遺§29](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)に、[BRMS決定表・説明・依存分析の提案PR #4723](https://github.com/hat47x/tei-platform/pull/4723)を、**現実の組織判断に適用する最初の小ケース**として受入仕様化した。BRMSは本日時点で**設計候補・PR未統合**であり、組織専用Engineや正式Decision Table Schemaは採用しない。
+
+- **モデルとRule**：合成D1/R1に対し、RoleAssignment(Person/Role)とResponsibility(Person/OrgUnit)が同じPerson IDを指す場合に限って候補とする。Role/Duty/Case/valid/knownの正式意味、Current Grantは別。Rule表OR-D01〜05は**説明用**であり、表示表の単純unique-hitや行順で人物・権限を決定しない。対象Person単位の結合・distinct Person・Relation Occurrence Path・No Matchと複数候補を区別する。
+- **実Readerの限界と優先反例**：現`internal/functioncontext/functioncontext.go`は`Rowset.FullyRead=true`と`CoverageUnestablished`/`EmptyJustified=false`を同時に保持する。可視1件でも必要Readがpartial/unestablishedなら「唯一」を判定しない。非出力依存、RLS/Limit/Join/Scopeを必要集合へ含める。最重要反例はODR-3＝同じP1可視行でcomplete-oneとunknownの分離。
+- **実Codegenへの引渡し**：main統合済み[限定Markdown Graph Reader #4722](https://github.com/hat47x/tei-platform/pull/4722)はSource byte-spanと多重Edgeのread-only Referenceのみ。正式`*.tei.md` Loader/Rule/Go生成が未実装のため、採用済みRuleの狭いIF/表一条件をSource→Typed Operator→実Go分岐→通常CLI→独立Expectedへ通すS1〜S4で段階検証。Go Delegate-onlyはTEI実装に数えず、表/Rule変更と生成結果の関係を実証する。
+- **Ownerと試験**：#4490のBEH-01/02（時点・非出力依存・取得完全性）を先に検収し、CR-00〜08とODR-1〜10の合成判断／競合／NULL/欠測／RoleとGrant分離を既存#1180/#2514へ追加する。BRMS一般分析の採否は#988/#1637/#1129/PR #4723、Source/Generator #2621/#1121/#951、実Provider/FunctionContext #2586/#4495。新Expected Storeや横断Gateは作らない。
+
+**P0不変**：Studio Stage1→Stage2 #2831/#4583と通常製品CLI実Provider Read #2586/#1251を優先し、組織決定表の実装をBlockerにしない。**本項はDocs-only**。実Rowset/Rule、生成Go、CLI、Plugin、Host/Windows、Owner採用はNOT RUN/NOT ACCEPTED。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
