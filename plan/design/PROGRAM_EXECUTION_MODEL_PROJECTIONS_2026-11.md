@@ -699,6 +699,8 @@ World Fingerprint／Model Revision／Artifact Revisionは用途ごとに保持�
 
 **Source Indexの既存機能へ接続する最小の証拠**：Graph／Rule限定ReaderのNode・Edge・Rule候補を、既存`sourceindex.NewArtifact`の元Source fingerprintと`RangeFromOffsets`のbyte位置へ照合し、元Sourceの説明だけを変えた場合にも古いArtifactの検証を拒否するGo回帰を追加した。これは正式なSource Indexへの意味Reference登録やLanguage Plugin選択、実Build消費を意味しない。`*.tei.md`の物理形式判定が`md`であっても、Parser／Meaningを自動選択しない。製品接合の次の一手は、**選択されたSource Reader→実Loader→元byteと型付きRole→受理済みMeaning**の順に各境界を証明し、Graph/Ruleの参照生成結果を業務意味として自動昇格させないこと。詳細は[Go回帰と資格境界](../../reference/tei-md-graph-reader/README.md)を参照する。
 
+**Manifest選択と原文の結合を試す限定圧力テスト**：[test-only Workspace preflight](../../internal/workspace/tei_md_selected_source_pressure_test.go) では、宣言済み`semantic` Rootと未宣言`drafts`を分け、既存`Load`が未束縛`*.tei.md`を拒否することを先に確認する。別途、同じPinned RootでManifest→管理ファイル列挙→原文byte→限定Reference Reader→Source Indexの範囲を照合し、原文変更後は旧Indexを失効させる。ただしこの読取りは**テスト内で明示した候補の事前検査**であり、`Load`の製品読取り・Profile/Role選択・Meaning受理を接続したものではない。S0の次の本実装は、実`Workspace.Load`と型付きの選択済みFrontendを同じAttemptで結び、選択しなかった候補や未対応構文を拒否し、受理したSourceだけをSource Index/Buildへ渡すところまでを最小範囲とする。#2621/#988/#3030と進行中の#4704/#4730の検収へ引き渡し、ここから新たな独立Loaderを派生させない。Go試験が正式に通るまでは実証済みとしない。
+
 **段階的な合格表現**を徹底する。Reader/意味候補だけなら「Source対応の限定実証」、生成Goが独立Expectedと一致したなら「意味あるCodegenの局所実証」、通常CLIと実ProviderのCallまで揃えば「製品Entryの限定検証」、Stage1実Processが次StageのBuildを発行し実Consumerまで届いて初めて「該当Targetのセルフビルド」とする。別のHEADや別Attemptの局所成功を足し合わせない。Stage2 Desktop/Windows WebView2は#4583/#2831の正式資格を維持する。
 
 最初の負例は既存SBX-01〜06、PX-23〜29、PX-36/PX-44〜46などを使い、PX-59以降の番号は増やさず、#1180/#2514の該当Independent Expectedへ差分を追加する。**新たなテスト正本・万能Trace Envelope・一律のHard Gateは作らない。**
