@@ -116,6 +116,46 @@ P1では最初の申請に必要な基本添付・検索・通知・認証を選
 
 詳しい境界、10件の負例、Owner別の次の検収は[Sourceから実Consumerへの横断受入設計](../design/CONSUMER_QUALIFIED_CROSS_LANE_ACCEPTANCE_2026-11-14.md)に整理した。以下の「進行の記録」では、その観点を既存IssueのAttemptと結果へ結び付ける。
 
+## CLIを起点とするTEIセルフビルドとPluginの段階的な自己構築（2026年11月14日）
+
+TEIのセルフビルドは、最終的にはTEI Studio Desktopを含むTEI開発基盤自身をTEIで構築することを目指す。ただし**最初の実証にStudioの画面は必要ない**。既存のTEI CLIを起点として、TEIの定義から次の世代のCLIと小さなPluginを生成し、生成されたCLI自身が同じ仕事を続けられるかを先に確かめる。MCPは同じ型付き操作へ接続する別の入口として利用できるが、MCP Serverの完成をセルフビルドの必須条件にはしない。DesktopのStage1→Stage2と実WebView2は、このHeadlessな実証で得た証拠を引き継いで後から接続する。
+
+**Goで書いた既存関数を呼び出すだけの`*.tei.md`は、セルフビルドの成功例とは数えない。** TEI定義に書いた条件や関係が、図表を含む意味モデルとして読まれ、実Goコードや設定へ生成され、成果物の振る舞いを変えることが必要である。手書きGoは当面のSeed、Target依存部品、複雑な計算の実装として許容し、TEIが担う部分と委譲する部分を明示する。Plugin自身についても同じ基準で実装範囲を広げ、定義を簡素化できたかを継続的に確かめる。
+
+### 最初に通す五つの工程
+
+| 工程 | 行うこと | 検収すること |
+| --- | --- | --- |
+| **SB-0 固定Seed** | 現行Go製TEI CLIを起点として、Source、Target、Builder、依存の版と入力を固定 | 既存Plugin Buildの正常・拒否テストを維持。非PluginのCLI／Studioを架空Plugin IDへ押し込まない |
+| **SB-1 意味のある定義** | 一つのread-only Inspectorまたは純粋変換Pluginを選び、`*.tei.md`に処理・関係の**図**と、入力・出力・分岐・制約の**表または構造化宣言**を置く | 図のNode／Edge、表の項目、Source occurrence、意味候補、受理済み意味を対応付ける。未実装の正式DSL文法を捏造しない |
+| **SB-2 実コード生成** | 同じ定義から必要なGoコードと契約情報を生成し、実CLIで読み・検査・実行する。TEI側の条件を変更したとき実際の生成内容・結果が変わる一例を作る | 実コンパイル入力と生成SourceのRole／Digest、選択したProviderの実Call、独立Expected。委譲用ラッパーだけなら未達 |
+| **SB-3 CLI再入とPlugin自己構築** | SeedがStage1 CLIを生成し、その**Stage1実Process**がStage2 CLIを生成する。同じ仕組みで少なくとも一つのPluginをTEIから生成してCLIへ組み込み、実呼出しする | 親子Build Attempt、実Child・Toolchain・入力Byte・成果物・Entry／実Consumerの関係。Stage0が別々に二回Buildしたものを自己再構築と数えない |
+| **SB-4 Studioへ展開** | 検証済みSource／Operation／PluginをStudioと生成Windows Desktopから使用する | 同じ意味と各Targetの実Artifact／実Consumerを照合。WebView2のB0成功をStage1→Stage2の自己再構築へ自動昇格しない |
+
+最初から大きなDSL処理系を作らず、既存Markdown・表・Graphviz・標準データ構造・Language／Operator／Target Generatorの機能をできるだけ使う。図の座標や説明文を実行意味の第二正本にはしない。外部で実装する部品はTEI側に型付きInput／Output／Effect／Failure／Provider契約とTODO／Mockを持たせるが、Mock成功と実Provider成功は区別する。Coreに新しい共通Runner、第二Resolver、専用Hostを増やさない。
+
+### 「TEIで実装できた範囲」と「定義を簡素化できたか」を測る
+
+| 観測 | 記録方法 | 成功とみなさない例 |
+| --- | --- | --- |
+| **意味実装の内訳** | 最初に機能・分岐・検証規則の対象集合を固定し、①TEI定義からの生成、②TEIから外部Goへ委譲、③手書きGoのみ、④未対応に分類する。PluginについてもRole・Targetを分けて分母と未対応を残す | 一行の委譲コードを生成しただけでFunction全体をTEI実装済みと数える |
+| **生成物の実消費** | Source／Model Revision、Generator／Toolchain版、出力Role／Digest、実Child／Builder、実Entry／受信結果を連結する | ファイルの存在や同じJSON結果だけで、選択・コンパイル・実使用が証明できたとする |
+| **定義の簡素化** | 同じ独立Expectedで、保守するTEI定義、補助Go、重複設定、例外指定、手修正、意味理解のための行き来を改訂前後で比較する | 行数が減っても隠れたGo条件や暗黙の既定値へ意味を移しただけの場合 |
+| **変更への耐性** | 一つの表行／有向関係／Plugin契約を変え、生成差分→再Build→独立Expected→実Consumerを検証する | 旧Artifactの再利用、同名別Subject、A→B→Aの旧Evidenceを現在適格とする |
+| **Pluginの自己構築割合** | 先に列挙したPlugin機能集合を対象に、TEIが生成して実呼出しまで確認できた機能数と、外部実装へ委譲した機能数を併記し、改訂ごとに比較する | Packageを一つ生成したので、内部の全OperatorとProviderが自己構築されたと数える |
+
+初期段階に恣意的な百分率目標は置かない。**まず一機能で、TEI定義の変更が実行結果へ反映され、手書きGoの増加なしに正負の独立Expectedが通ること**を証明する。次に性質の異なるPluginへ拡大し、同じ基準で比率と保守量の変化を測る。数値だけを良くするために機能分割や委譲箇所を変更しない。
+
+### 既存Expectedへ引き渡す負例
+
+SBX-01：図のレイアウト変更では意味が変わらず、関係の向きや多重度を変更すれば生成内容・結果が正しく変わる。SBX-02：TEIの表の条件を変えてもGoの固定処理しか動かない場合は「委譲のみ」として失格。SBX-03：生成GoのDigestが一致しても、Builderが別Sourceや未選択Pluginを実消費すれば失格。SBX-04：Stage0が別々に二つのBinaryをBuildしただけではStage1→Stage2再入不適格。SBX-05：Plugin A→B→Aの後に旧Binding／Grant／Receiptが自動復活すれば失格。SBX-06：定義を短くした結果、NULL／欠損／評価順／Effect・Failureが変われば不適格。これらは[#1180](https://github.com/hat47x/tei-platform/issues/1180)・[#2514](https://github.com/hat47x/tei-platform/issues/2514)の既存Independent Expectedへ渡し、新しいScenario正本は作らない。
+
+### 既存計画との関係
+
+**CLI先行はDesktopセルフビルドの最終目標を撤回するものではない。** 最初の検証をCLIで軽量化しつつ、[#2831](https://github.com/hat47x/tei-platform/issues/2831)・[#4583](https://github.com/hat47x/tei-platform/issues/4583)のBuildExecution／ArtifactSet／親子Attemptを共通化する。現行BuildIntentの`Subject.Kind=plugin`制約は[#1080](https://github.com/hat47x/tei-platform/issues/1080)・[#1097](https://github.com/hat47x/tei-platform/issues/1097)で非Plugin Build Subjectの不足として扱う。Plugin選択・段階別Contributionは[#951](https://github.com/hat47x/tei-platform/issues/951)・[#1251](https://github.com/hat47x/tei-platform/issues/1251)、自己記述Languageと糖衣形式は[#988](https://github.com/hat47x/tei-platform/issues/988)・[#1018](https://github.com/hat47x/tei-platform/issues/1018)の責務とする。
+
+CLI／MCP／Studioは同じ型付きApplication Operationを異なる入口から使うものであり、入口の共通化はHost認可や実効果の証拠を省く理由にならない。Runtimeで使わないGenerator／Editor専用Pluginは、必要のない生成成果物に無条件同梱しない。本節は実装順と測定方法の合意案であり、TEIが生成したGoによるCLI／Plugin再構築、定義の簡素化、Stage1→Stage2製品成功を**実証済みとはしない**。
+
 ## プロセス・イベント・応答を共通の意味から説明する（設計候補）
 
 Webの要求、CLIの起動、タイマー、Message、画面操作には、それぞれ異なるHost・起動方式がある。ここで標準化を検討するのは一つのイベントループではなく、**Trigger→型付きInvocation→Function/Rule→State/Effect→Outcome→Response／Consumer受領**という意味の対応である。長寿命Processの起動・停止と、一件の処理の成功・失敗も混同しない。
