@@ -211,3 +211,64 @@ Installerの製品化に先行して、TEIが生成した本体と必要なPlugi
 初期状態で検証済みのBootstrapとPluginをOfflineでも起動できるようにする。更新途中のCrashやRegistryへの接続不能時も、既存の旧構成から診断を行えることを確認する。Plugin ManagerのInstall／Enableが未モデルの段階で完成済みの更新UIを広告しない。
 
 追加の停止条件：第二Resolverの設置、既存CLI JSON／exit互換の無断破壊、WailsへのCore逆依存、Remote Pathの暗黙転送、Plugin版の暗黙選択、Effect Unknownの自動再送、実Stage2 Consumer未確認でのSelf-build達成宣言。
+
+## 13. 自己子起動を可能にする実装境界（2026-11-15、現行コード再照合）
+
+この節はB0（同一exeの別Process）を実装する場合に必要な**変更箇所の候補**を示す。B0の採用を決めるものではない。最初の実装はCLIの明示的なread-only試験経路に限定する。
+
+### 13.1 Go ModuleとWails起動の境界
+
+現行の`cmd/tei-studio/go.mod`はルートとは別のGo Moduleで、`tei`を`../..`へreplaceし、Wails v3を利用している。`cmd/tei-studio/main.go`は通常のflag解析後に`studiohost`を組み立て、WailsのServiceを登録して`app.Run()`を呼ぶ。現行コードには子Backend専用の独立した起動入口はない。`-tags server`の経路も、127.0.0.1に限定した既存PoCであり、Remote共有Serverの認証・隔離実装ではない。
+
+実装時の候補は次のように分離する。
+
+- **ルートGo Module**：Application OperationとBackend実体、型付きResult/Failure、Plugin Resolver／Runtimeを所有する。Wails／Windows UIへ逆依存しない。既存`internal/operations/dependency_test.go`を回帰試験とする。
+- **CLIのmain**：argvと互換出力／exitを所有し、実験的な子Backend入口への切替を行う。通常コマンドを無断で別Processに変更しない。
+- **Studio nested moduleのmain**：Native UI初期化**より前**に子モードを選別できる構造へする。GUI通常起動と子Backend起動の依存・初期化順を明示する。Wails／Go Backendが同じexeにリンクされることと、子モードがGUIを初期化することは同義ではない。
+- **Windows向けビルド**：GUIサブシステムの実行物から子を起動した際の標準入出力、Pipe Handle継承、引数、終了処理を実Windowsで確認する。stdioが利用できると推測で固定せず、専用Pipe／Named Pipeを比較する。
+- **更新中の自己実行**：更新によって親・子が別の実Imageへ切り替わる可能性を考慮し、起動対象の固定と実Peer検証、実起動Imageの証拠を別に記録する。子が自己申告したVersion／親が読んだPath文字列だけで同一Byteを証明しない。
+
+これらは最小のBootstrap・Process Adapter上の責務であり、新しいStudio専用Parser、Plugin Resolver、業務Hostを増やす理由にはならない。
+
+### 13.2 一つのRead操作だけを公開する
+
+最初の子Backendは`inspect`または`validate`一件と、Protocol/Health/Shutdownの必要最小の制御だけを公開する。既存Operationを呼び出すので、Sourceの意味解釈や失敗の分類をIPC側で再実装しない。子Backend専用の動的プラグインargvを追加せず、コマンドDiscoveryに存在しない名前を正式製品機能と広告しない。
+
+Transportの都合で要求・応答にCorrelation IDを付す場合も、Operationの業務Identity／Effect Receiptと混同しない。Requestが届いたがResponseが失われたことと、業務作用が無かったことは異なる。子の正常終了も、業務Commitの完了証明ではない。
+
+## 14. Studioの即応状態とAIへの対象引渡し
+
+子Backend採用の判断では、RPCの平均所要時間だけでなく、**操作中の編集感覚が変わらないこと**を確認する。入力中のIME合成状態、CodeMirrorの未保存Buffer、Focus／Selection／Undo、暫定的な図面配置はClientで保持する。文字入力を一打ごとに子Backendへ送信し、応答待ちで編集状態を決定する設計を既定にしない。
+
+保存済みSourceやAccepted Model RevisionをBackendが所有し、ClientのDirty Bufferは未受理の編集案として扱う。Preview、Validate、Buildは、その要求に用いたSource snapshot／Buffer Generation／Selection Epochを明示して実行する。結果が後着したときは、要求時と現在の表示対象を照合してから採用する。
+
+現行のPin状態遷移の[PR #4597](https://github.com/hat47x/tei-platform/pull/4597)は、Pin/Unpin/Undo/ABAの局所的な実装と試験であり、実UI／Reader／Source Revision／Grant／外部Harness送出まで成立したものではない。実装でこの局所テストをWebView/AI連携済みとみなさない。
+
+CLI／MCP／外部Harnessへ選択Subjectを渡す場合は、Qualified Subject、元Source occurrence、Workspace、Revision、Selection Epoch、開示可能範囲を使い、受信側が現在の対象へ再解決する。StudioのPinが存在するという事実は、Pluginの実行許可、Sourceの保存権限、外部AIへの秘密情報送信資格を意味しない。別Workspaceの同名SubjectやA→B→Aで古い照会結果を現在の選択へ昇格させない。
+
+これらは#4515/#4597、#4698、#2516／#2514の既存Ownerへつなぎ、新たなSelection正本や専用Harnessを設けない。
+
+## 15. 既存実証と未実装の機能を混同しない
+
+周辺PRの成果を本件の実Backend試験と混ぜないため、最初の受入表に次の事実を固定する。
+
+| 実装・設計の起点 | 現時点で主張できること | 主張しないこと |
+| --- | --- | --- |
+| `cmd/tei/cli_inprocess_parity_test.go` | CLI／共通Operation／Studio Hostの一部の直接意味比較が実装されている | 実IPC、実Wails Consumer、全Operation同値 |
+| `cmd/tei-studio/main.go` | WailsのServiceを同一ProcessのGo Hostへ登録する経路がある | 子Backend常用、共有WebのMulti-Tenant対応 |
+| [#4710](https://github.com/hat47x/tei-platform/pull/4710) Direct実行の別PR | 子Processの出力Byte、失敗、Digestに関する実装・試験を進めている | Studio BackendのIPC、業務Effectの成功、Source/Toolchainの完全固定 |
+| [#4704](https://github.com/hat47x/tei-platform/pull/4704) Markdown Reader | 正式`*.tei.md` Readerに必要な段階と負例が整理された | 現行Loaderが管理下の`*.tei.md`を正式に受理・解釈すること |
+| [#4708](https://github.com/hat47x/tei-platform/pull/4708) Plugin文書 | Inventory→公開Manual SourceRefの最初の接続差分が特定された | 製品CLIの`plugin docs`／完全なInstall/Enableが実装済みであること |
+| [#4702](https://github.com/hat47x/tei-platform/pull/4702) Script Launch | actual Provider→通常CLIへの最初の実装票がある | Product実Call／Effect・二Consumerが新たに実証されたこと |
+
+特に最初のIPC試験は、現行の正式Workspace Readerで実際に処理できる既存Fixtureを使う。正式Readerが未完成の`*.tei.md`を、そのまま成功済みの意味Sourceとして渡さない。正式Readerとセルフビルドの主線は独立して進め、それぞれのSource／Build／実Consumer証拠を再結合する。
+
+## 16. 方式比較の採否票と初回合格の上限
+
+#4635の方式比較では、A=現行Native同一Process、B0=自己exe子Process、B1=loopback HTTP/WS、B2=Named Pipe/UDSを混同せず、一つの契約を持つ異なるTransportとして測る。B0は起動物の方式、B1/B2は通信形式なので、組合せ自体は実装選択であり排他的な分類とは限らない。
+
+同じHardware／Workspace／Operation／Plugin構成で、Cold Start、Core Readyまで、最初のUI表示まで、100回の短いOperation、MB級のModel/Graph、長時間Buildの通知、p50/p95/p99、親子合計のPeak RSS／CPU、Cancel／Crash／再接続を比較する。ベンチマーク値だけでなく、Source版、操作契約、実Process／Image、実Clientを揃える。閾値は実測より先に根拠なく決めない。
+
+最初に合格を主張できるのは「指定したread-only一Operationが、実子Backend経由で既存Direct経路と意味同値であり、起動・Peer・失敗・結果が観測された」範囲までとする。正式Stage2 StudioのWindows実Consumer、実Provider、Plugin更新、Updaterの資格へ拡大しない。
+
+**実装優先順位**：PR-A（既存Direct parity）→PR-B（明示CLI自己子）→PR-C（Wails子Backend一往復）。ただし#2831/#4583のStudio Stage1→Stage2セルフビルドと#4495の通常CLI→actual Providerは、これらの完了待ちにしない。
