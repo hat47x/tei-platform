@@ -655,6 +655,17 @@ tei external-candidates
 
 **導入段階／Owner**：まずR3-A通常ローカルCLI #4625 のexact-head合否を確定→R3-Bは既存の固定Workspace MCPまたはDesktopで安全な第二Consumer一経路だけを成立→R3-C独立Producer Evidence/別Consumer Invocationを検収→T1-BでSourceに戻るread-only候補レビューを一本通す。その後、Web共同編集への`Branch/Session/Source Snapshot/Pin`資格確認を#1824/#1124/#4515のStudio Ownerで検討する。共同編集のCRDT・Git運用・マルチユーザAuthorityをR3-Bの新必須Provider/新Host/新Policyへ押し込まない。Source Patchは#2497/#2500、Owner Decisionは#267、Current Grantは#2516、Evidence取得は#4503。Web製品実装、共同編集負例、R3-B/C、実Grant/Owner受理は**NOT RUN／NOT ACCEPTED**。
 
+<!-- rea-wails-server-wasm-delivery-isolation-20261114 -->
+#### R3 Consumerの配置方式・配信隔離：Wails Server／Go WASM候補との整合（2026-11-14・設計のみ）
+
+**他レーンの設計差分をR3へ過剰実装せず引き渡す**：[Plugin横断Draft #4621 §17](https://github.com/hat47x/tei-platform/pull/4621)では、Studio Webの実行形態としてWails v3 Server Buildを候補へ追加し、GoのBrowser WASMは純粋なread-only Projectionだけに限定して比較すると整理した。**R3-Bの最短経路は従来どおり既存固定Workspace Desktop BridgeまたはMCPの一方**であり、Server/WASM実装やWebでの2 Principal実HTTPを新しい受入Hard Gateへ加えない。Wails DesktopのBridge公開methodをそのままnetwork-exposedにせず、Host別Transportの入力・出力・Audienceの検査を#3421/#1043/#2516で再使用する。
+
+**Wails Serverイベントの非開示境界**：Serverの通常Event broadcastが複数接続Browserへ送られ得ることと、Principal/Workspaceごとに閲覧許可されることは別。REA候補/Source span/Unknown/件数/Raw digest/内部Store locatorをEventに無条件同報しない。二Workspace×二Principal×二Tabで、公開側の受領bytes・DOM/ARIA・発行Event/下流Tool replyを確認し、他AudienceのCandidate/存在情報が一文字も混入しないことを、#3421のWSP-02/03、#2516二世界・#4503 EC-05へ引き渡す。Origin制限/localhost/Browser IDだけではGrant、Workspace認可、Recipient delivery証拠にならない。これらをR3の局所read-only CLI結果には帰属させない。
+
+**Go WASM配置候補の制限**：R2の解析・Candidate Projectionを将来Browser WASMへ載せる選択は、同一固定・公開許可済みbytesからnativeと一致するread-only表示を作れる場合だけ比較可能。WASM側の計算結果はOwner Meaning、Source closure、Actual Host Provider/Grant、Source Patch、Raw Evidence取得権限を獲得しない。比較する場合、native↔WASMのNode/Parallel Relation/Unknown/NULL・欠落・Unicodeと出力順、toolchain/wasm_exec.jsとJS bridge版、初回load・メモリ・Workerの性能、明示Request前の通信とPrivate bytes受領0を独立観測する。利点がなければ不採用。**WASMを選んでもR2 Operation／Evidence／権限Resolverの第二正本は作らない**。
+
+**既存検収への対応（新試験Harnessなし）**：WSP-02/03は#3421/#1824、Disclosureは#2516、Evidence固定選択は#4503、Native/WASM同値と性能は#4621/#1251、REA実Readerは#3394がOwner。Web実Event/実WASM/実HTTP/外部配信、Studio BrowserでのREA新受領、正式方式採用は**NOT RUN／NOT ACCEPTED**。R3-A #4625 のGo CLIでのlocal Evidence Read成功をWeb共有Server・WASMの資格へ昇格させない。
+
 **到達条件と優先順位**：R2 main統合済み→R3の同一Evidence・独立二Consumer実受領→T1-Bの一機能対応Preview→T2の旧実測／受理済み意味／新実測・SHO Save/Reopen。修正済み#4584のSubject存否判別を各Consumerで利用できるか、#4570の三視点server経路と実Windows Desktopの差、生成Inspector別HEAD成功の非加算は別資格として保持する。TEI Studioセルフビルドと#2586通常Product Provider Readの完了をR3に依存させない。
 
 **検討中の横断追補（DBアクセス・Query/2way SQL）**：対象DataSourceの既存Binding解決、DB別Native SQLの選択規約、SQL編集時の診断と分岐検証、異種DBでの意味同値性を、[DBアクセス・Query選択・2way SQLの最小適合計画](https://github.com/hat47x/tei-platform/issues/2622#issuecomment-6772875802)で小さな実証へ分解する。#2611・#2622・#2387・#2667に既存の責務を残し、新しいCore API・正式DSL構文・実DB対応の採用・完了を意味しない。
