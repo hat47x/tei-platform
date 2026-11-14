@@ -1551,6 +1551,12 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 
 **採否**：新規Source/Rule/公的契約や業務責任の解釈はOwnerの意味受理が必要。本追補はdocs-onlyであり、実Org Provider/Host・SHO/HarnessとのOrg C1 E2E・Owner意味受理は **NOT RUN**。
 
+## 2026-11-13 組織二時点Queryの実ソース不整合と検証順序（#2386／#2510／#4490）
+
+[Draft #4567](https://github.com/hat47x/tei-platform/pull/4567) は `reference/org-staged-axis` の既存Native Queryを修正する限定変更。従来SQLは `known_from >= :known_from`（既存r7合成Expectedと逆）、`valid_to`／`known_to`の無条件省略、物理Mapping `public.org_memberships` と参照表の不一致があった。半開区間の**当該試験用仮定**で `valid/known` それぞれの上下端を照合し、Persistenceに両終了列を対応させる。テストは、①製品Go Loader/Query→PostgreSQL Parameter Binder/Result Mapper（SQL Driverはinstrumented double）、②明示された使い捨てDBのみopt-inする実PG WHERE検証に分ける。CIと現物DB PASSはHEAD確定後別途確認。
+
+**未受入の核心**：物理PKが `membership_id` 単独のため、r7のA2のように同じMembership IDに対する過去の把握と遡及訂正を**複数版として同一Tableへ保持できない**。これは単なるSQL WHEREの修正では解決しない。組織のMeaning ID・物理版キー・履歴保存・Source/TEI観測時点・負例を#2386/#2510／既存DB/Provider Ownerで比較し、最小の案を採用後に同一Provider/Function Contextで実証する。暫定の複合PK変更、新Temporal Engine、0行=不存在、所属→Case責任/Grant/Effectの昇格は禁止。通常`tei` CLIからの実Read #2586を優先し、組織の拡張試験は並列で進める。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
