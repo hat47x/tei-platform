@@ -1016,7 +1016,7 @@ Case責任の切替は単独責任の例で、旧責任と新責任の有効性�
 
 ### 24.2 標準データ構造の意味保存は三種類に分けて検査する
 
-[意味的対応付けDraft #4667](https://github.com/hat47x/tei-platform/pull/4667)の構造・評価・変更の同値性を、採用前の観測条件として使う。新しい文法や第二Semantic Engineを先に入れず、既存Meaning／Facet／Law／Trait／Projectionと照合する。
+[main統合済みの意味的対応付け設計 #4667](https://github.com/hat47x/tei-platform/pull/4667)の構造・評価・変更の同値性を、採用前の観測条件として使う。新しい文法や第二Semantic Engineを先に入れず、既存Meaning／Facet／Law／Trait／Projectionと照合する。
 
 | 検査 | 保持するもの | 反例 |
 | --- | --- | --- |
@@ -1078,3 +1078,96 @@ GX-1〜7は**補遺内の観測ラベル**であり、新たなExpected ID・Sce
 OG-0〜5は本節の作業順ラベルで、既存のDB移行G0〜G5とは別である。**初回Product Read #2586とDesktopセルフビルド #2831をOGの完成待ちにしない。** 新DSL文法、Graph Compiler、組織専用Host/Workflow/Policy、全Dataの履歴表、全Plugin共通の強制Hook Runtime、Graph集計の自動逆編集はこの段階では採用しない。
 
 **今回の証拠範囲**：§24は既存Issue/PRを参照したdocs-only計画であり、Go、PostgreSQL、Windows、Host、AI/SHO、実Pluginの新試験を行ったという意味ではない。Draft #4667/#4646/#4633の限定証拠や参照Fixtureの成功を組織C1の製品受入へ昇格しない。
+
+
+## 25. 業務上の関係を実際に解決し、CLI・Studio・Plugin文書まで同じ根拠で辿る（2026-11-14）
+
+> **採用前の実装計画／新規製品検証は未実施。** 前節までの高度組織モデルを、図面・説明文の増加で終わらせず、既存Source/Query/Provider/Driverから検証できる一件の読み取りと、その後の変更・実行境界へ接続する。全TEIの最優先課題は通常tei CLI実Provider Read（#2586）とStudio Stage1→Stage2（#2831）のまま。組織C1は後続ドメインの検証圧力であり新しいHard Gateではない。
+
+### 25.1 組織の基本表現は「関係を主役にする」。識別・参照・配置を混ぜない
+
+業務上の主体であるPerson、OrgUnit、LegalEntity、Position、Caseはそれぞれ識別する。PersonとOrgUnitを結ぶMembershipは**独立した業務上の関係発生（Occurrence）**であり、Personの所属先を単一属性に押し込まない。同一人物の二所属A2/A3、所属A2の旧新版、Physical RowのPK、Graph上のEdge ID、Studioの描画Node IDは別々に追跡する。
+
+業務モデルと論理DBモデルは対応付けるが、物理的なPK継承関係と、FK参照関係を図上で混同しない。渡辺式ER図を採る場合は、親を左、子を右に配置し、複合PKへ親キーを継承する識別関係と、独立したキーを持つ参照関係を**異なる線種・記号**で示す。MembershipのBusiness Occurrence IDが独立しているからといって、それをPK継承型の親子関係だと固定しない。多重親や異なる軸は元のグラフを保持し、単一親ツリーへ収まらない関係は隠れたEdgeとして明示する。図上の配置は意味の正本ではない。
+
+次のMermaidは**説明用のProjection例**であり、正式なTEI DSL文法、Watanabe式ER図そのもの、現在のSource/DB実装ではない。
+
+~~~mermaid
+flowchart LR
+  P2["Person P2"] --> A2["Membership A2"]
+  P2 --> A3["Membership A3"]
+  A2 --> D1["OrgUnit D1"]
+  A3 --> D2["OrgUnit D2"]
+  A2 -. "旧記録版" .-> V1["Version old"]
+  A2 -. "新記録版" .-> V2["Version new"]
+~~~
+
+Mermaid、Graphviz、Markdown表、SQLは標準Meaningの用途別表現であり、どの糖衣形式をSourceとして保存したかは保持する。自動整形で原文の意味・表記を黙って上書きしない。元要素を特定できない集計・縮約図はread-onlyにする。
+
+### 25.2 最初に実際に評価するのは「関係の完全性が確認された候補解決」
+
+これまでの構造GoテストにはMembership/RoleAssignment/Responsibilityの**宣言が存在すること**を確かめるものがある。一方、ORG-BEH-04/WU-09が要する、同一Sourceから候補0件・1件・複数件・不完全を**実Rule/Readerの結果として区別する試験**は別である。最初の実装を以下に絞る。
+
+| 入口 | 必須の実入力・出力 | 未達なら出す結果 |
+| --- | --- | --- |
+| **意味とProfile** | Ownerが選んだM-P/M-E/M-XのPerson/Subject同定経路、Case→Responsibility/Holderの明示関係。r7とCase C1は別Source | 対応未採用・未接続。P2をC1承認者と推定しない |
+| **照会** | validAt/knownAt、Rule/Case revision、Relationの方向・軸、Actual SQL/params、Provider/DB Alias、Required Read Set | Source/Mappings/実Providerが欠けるならunverified。テスト用SQL/Mockと区別 |
+| **集合の評価** | Occurrence ID、Person ID、Record Version、重複除去キー、対象ScopeとRead Cohort/Completeness | 0行≠不存在、1行≠唯一。partial/unestablishedは候補確定へ進めない |
+| **業務判断** | 完全集合からnone/one/many、Ruleの適用理由、同一人物へ至る複数Path | 複数候補を自動Errorや単独決裁へ固定しない |
+| **利用者への受領** | CLI／Studio／外部Consumerが受領したSource/Rule/Result版と用途。表示Loss Reportを含む | CLI標準出力、Preview、別Attemptの成功を実Consumer受領へ昇格しない |
+
+まず合成Referenceで純粋な判断結果を反転させる独立Expectedを固定し、既存Driverで実評価する。次に#2586の製品実Read入口へ組織Queryをつなぐ。Personの正式Relation、同一A2の履歴版共存・実Rowset、二Consumer受領は§21〜22と同じ未証明事項として保持する。完全性を証明できないQueryやProviderでは、見えた範囲の候補提示は可能でも**否定の確定**や実承認はしない。
+
+### 25.3 変更できるのは、投影全体でなく「元Sourceへ戻れる操作の単位」
+
+[main統合済みの意味的対応付け計画 #4667](https://github.com/hat47x/tei-platform/pull/4667)が示す**Slot・Claimごとの検査**を採用する。Tree全体が情報を失う投影でも、独立したPersonの名称や一意なOrgUnit属性は、元Source occurrenceと属性Span/Revision、版条件が定まれば、**限定Patchの候補**にできる。一方、隠れた所属Edgeの削除、集計FTEの値からの配賦再構築、複数経路の曖昧なドラッグ移動はRead-onlyのままとする。
+
+| UI/DSL操作 | 最初の資格 |
+| --- | --- |
+| Personの一意な属性を表示・Sourceへ移動 | Read-onlyでSource Refを維持。変更は別のPatch/Preview/CAS |
+| P2の二つの所属の片方を選択 | 選択するMembership Occurrence A2/A3と時点/版を明示。選択だけで変更しない |
+| ツリー配置の並び順・座標変更 | layout-only。Meaning・実Query・Generated Logicを改訂しない |
+| Membership/Caseの責任の変更 | 業務上のIntent、Case/Source revision、Owner Meaning、現在Grant/Effectの各資格を別審査 |
+| 集計人数・FTEセルを変更 | 元Occurenceへの一意な逆写像がなく、直接更新不可 |
+| Source A→B→Aから再Apply | 内容同一の純粋な候補表示が再利用可能でも、旧Owner判断・Current Grant・実Effect/Consumer受領を復活させない |
+
+ここでの「逆編集できる」は**現在の実DBへ無条件に書き込める**という意味ではない。UIでPatch候補を作れることと、Host/DBで実Commitできることを分ける。
+
+### 25.4 組織Pluginの利用説明を、短いSkillから上位契約まで辿る
+
+[Plugin共通ドキュメント契約Issue #4679](https://github.com/hat47x/tei-platform/issues/4679)を**組織Pluginの採用前実証例**として使う。人間とAIは同じ公開モデル・操作・文書索引を参照する。詳細マニュアルを短いProduct Skillに全文重複せず、必要な部分だけ遅延参照する。
+
+初回に用意する最小の説明面は、(a)組織Profileと目的、(b)公開Person/Membership/Responsibilityの契約ID・版・制約、(c)最短read-only照会例、(d)適用するRelation/Ruleと失敗理由、(e)上位Graph/Query/Temporal/Providerの直接依存、(f)Model/図の公開Ref・Source位置・文書索引、(g)未対応／Current Grantは別であること、である。機械的に確定した署名・Source・Scopeは契約から導出し、マニュアルへ第二の正本として重複しない。
+
+**探索の負例**：上位Pluginの非公開Relationを見せる、A 2.0依存にA 1.0の文書を提示する、曖昧な複数親や循環を黙ってwinner採用する、permission-deniedを空集合として表示する、Plugin資料の閲覧を実LoadやGrantとみなす。Source/Scope/Depth/取得完備性を保持し、秘匿対象の存在・件数・IDを迂回開示しない。
+
+初期の実験は既存のread-only Inventory/Source Index（#4376/#2605）の**実在コマンドだけをDiscoveryして利用**する。将来のplugin docs相当のCLI名は仕様候補に留め、未実装のものをSkillの実行例として記載しない。CLIとStudioは同じ型付き操作の別Projectionとし、第二のDocs Registry/Resolverは作らない。外部HarnessはDSHを代表例としても、Codex/Claude Code等と同じSource・Task・実CLI・開示Scopeで比較する。
+
+### 25.5 CLI/Server/Studioの実行構成には、組織固有の認可境界を足さない
+
+組織モデルのReader、Query、Rule、Pluginは、**WailsやDesktop UIへの依存なしにGoの既存共通実装と選択Providerから使える**ことを最初の前提とする。ローカルDesktopがServerを子プロセスとして起動しIPCで接続する案、CLIが必要時に同様のローカルServerを呼ぶ案、遠隔Serverを呼ぶ案は、**既存契約に対する複数の実行構成候補**である。CLIを必ず子Server起動に固定したり、組織専用Serverを作ったりしない。
+
+同一Workspace/Source/Meaning/Plugin Lockを入力にしても、**プロセスの選択・Providerの実Load・実ReaderのCohort・呼出し主体・Host Current Grant・Consumer送達先**はそれぞれ別資格である。CLIの実行がローカルというだけでDesktopセッションの実権限は継承しない。PluginがStudioにだけ読み込まれていても、CLIのExecutionへ同じPluginがLoadedとは推定しない。読み取り専用のモデル検査では不要な認可重装備を課さず、書込み・外部送達の境界で既存Host/Disclosure Contractを用いる。
+
+### 25.6 TEI-nativeな自己生成へつなぐ際の、最も小さな組織モデル
+
+[main統合済みのCLI-first計画 #4676](https://github.com/hat47x/tei-platform/pull/4676)と[dogfooding計画 #4680](https://github.com/hat47x/tei-platform/pull/4680)が定めた「同名別Node・同端点の並行Edge・逆向きEdge」の**Graph最小fixture**を、組織C1のPerson→Membership→OrgUnitへ移る前の標準構造試験として再利用する。**実GoのGraph走査・Edge ID集合・件数がTEI意味から生成されたこと**を検査し、手書きGoへDelegateするWrapper-onlyを不合格とする。
+
+このGraphの正例が成立しても、組織Profile、二時点のProvider Read、Ruleによる候補導出、Case移管、Desktop Stage2を自動合格にしない。逆に、組織モデルの複雑さをGraph Generatorの最初のP0条件へ持ち込まない。
+
+受入記録では四つを区別する。①TEI Sourceから意味あるロジックが生成された義務の割合、②実際にTEIが駆動したBuild工程、③Generator/Plugin自身が次Stageで再利用された範囲、④独立Expectedを維持したまま減った手書き判断・重複定義・変更箇所。生成Goの行数やSourceバイト一致はこれらの代替にならない。
+
+### 25.7 既存Ownerへ渡す最短の作業順（新Runner・第二Expectedなし）
+
+| 順 | 具体的な一件 | 実Observedの要求 | 既存の帰属 |
+| --- | --- | --- | --- |
+| **OI-0** | Person/Membership/Version/Case/HolderのSource対照表、関係軸と識別関係・参照関係の図を固定 | r7とCase C1の別Source、未採用Person Profileを未接続のまま示す | #2386/#1126/#2497 |
+| **OI-1** | WU-09の候補Ruleを、complete-none/one/many/partialの4ケースで実評価 | 実Rule/ReaderのObservedと独立Expected。構造の有無テストだけなら未合格 | #4490/#2510/#1180 |
+| **OI-2** | A2二版・Person Link・実Query/Read Cohort→Function Context→独立Consumer | 同一DB/Attempt/Sourceで版と関係とFTEを観測、partialと完全を区別 | #2586/#2622/#4501 |
+| **OI-3** | Studio/CLIのSlot別Source NavigationとLoss-aware Table/Tree/Graph | 属性編集可能性、hidden Edgeと集計の書戻し拒否、Source revision ABA | #1124/#2497/#4515 |
+| **OI-4** | 組織Plugin公開Model/上位Manual索引→短いSkill→実CLI読取り | 解決済みPlugin/Doc版・公開範囲・親依存とSourceの取得、未実装CLI拒否 | #4679/#4376/#2605/#951 |
+| **OI-5** | 標準Graphから生成した実Go Rule/PluginをCLIで呼び、組織用途へ段階展開 | 意味生成・実Builder/Plugin Call・Consumer・手書き削減を別計測。Studio最終出口は独立 | #4676/#4680/#2831/#951 |
+
+OIは**この補遺の作業順索引**であり、ORG-BEH/CX、既存Scenario/Expected、IssueのOwnerを置き換える正式な新IDではない。最初の実装PRは**OI-1の小さな正負試験**を優先するが、Owner選択前のCase→Person経路を仮に受理したふりはしない。必要なら公開合成Sourceだけを使う純粋Rule Fixtureとして切り出し、Productの実Org Provider受入と区別する。
+
+**停止条件**：人物とAccount/Principalの黙示同定、r7とC1の仮結合、完全性のない候補否定、所属からCase責任やTenant Grantの自動導出、hidden Edgeの破壊、歴史からCurrent Grantの継承、plugin文書を第二Authorityにすること、未実装CLIのSkill例示、WailsをCLIの必須依存にすること、Go Wrapper-onlyをセルフビルド完了とすること。この§25は**docs-only**であり、追加のGo/DB/CLI/Plugin/Host/WindowsのProduct Run、Owner Meaning Acceptanceは未実施である。
