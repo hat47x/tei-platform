@@ -44,6 +44,9 @@ func Invoke(ctx context.Context, capability semantic.Capability, adapter Adapter
 	if adapter == nil {
 		return BusinessResult{}, fmt.Errorf("no Adapter is specified to run capability %s", capability.ID)
 	}
+	if ctx == nil {
+		return BusinessResult{}, fmt.Errorf("no context is specified to run capability %s", capability.ID)
+	}
 
 	// A request cancelled before dispatch must not reach an effectful Adapter.
 	// Cancellation after dispatch cannot by itself establish non-commit.
@@ -51,9 +54,9 @@ func Invoke(ctx context.Context, capability semantic.Capability, adapter Adapter
 		return BusinessResult{}, err
 	}
 
-	// Reject a malformed result contract before calling a potentially effectful
-	// Adapter. This is a structural check, not Entry publication or Host admission.
-	if err := validateResultContract(capability); err != nil {
+	// Reject malformed input/result/effect declarations before invoking a
+	// potentially effectful Adapter. Values and authorization are Host-owned.
+	if err := validateInvocationDeclaration(capability); err != nil {
 		return BusinessResult{}, err
 	}
 
@@ -134,6 +137,29 @@ func validateResultContract(capability semantic.Capability) error {
 			return fmt.Errorf("capability %s declares duplicate outcome %q", capability.ID, outcome.Name)
 		}
 		seen[outcome.Name] = true
+	}
+	return nil
+}
+
+// validateInvocationDeclaration checks the portions of a Capability declaration
+// that can be decided without resolving input values, published Entry, or a
+// Host-selected Provider. An Effect declaration is intent, not a commit proof.
+func validateInvocationDeclaration(capability semantic.Capability) error {
+	if err := validateResultContract(capability); err != nil {
+		return err
+	}
+	seen := make(map[core.LocalName]bool, len(capability.Inputs))
+	for _, input := range capability.Inputs {
+		if input.Name == "" || input.Type == "" {
+			return fmt.Errorf("capability %s declares an incomplete input", capability.ID)
+		}
+		if seen[input.Name] {
+			return fmt.Errorf("capability %s declares duplicate input %q", capability.ID, input.Name)
+		}
+		seen[input.Name] = true
+	}
+	if capability.Effect != nil && (!capability.Effect.Kind.Valid() || capability.Effect.Data == "") {
+		return fmt.Errorf("capability %s declares an incomplete or unsupported data effect", capability.ID)
 	}
 	return nil
 }
