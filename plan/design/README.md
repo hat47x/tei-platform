@@ -190,6 +190,7 @@
 | [`TEI_STUDIO_SHO_EMBEDDING_FORM_2026-11.md`](TEI_STUDIO_SHO_EMBEDDING_FORM_2026-11.md) | TEI Studio から SHO 文書編集部品を利用する形態の実測と決定（子プロセス起動を維持）・失敗分類6種・未測定（配布・Linux/macOS）（代行決定済み） |
 | [`DOCUMENT_DRAFT_CITATION_AND_OCCURRENCE_ID_2026-11.md`](DOCUMENT_DRAFT_CITATION_AND_OCCURRENCE_ID_2026-11.md) | Draft 引用の解決（`recorded-not-resolved` のまま）と Occurrence ID の永続性（snapshot-local のまま）の代行決定と根拠・撤回条件 |
 | [`TEI_MD_READ_SIDE_DESIGN_2026-11.md`](TEI_MD_READ_SIDE_DESIGN_2026-11.md) | SHO 保存物（`*.tei.md`）の TEI 側読み取り設計。読み取り側が答えるべき4つ（R-01〜04）・Parser完了後も変えない境界・Parser 入出力契約。実装は Parser（#3346）完了後（設計のみ） |
+| [`AI_GENERATOR_AUTHORING_STANDARD_2026-11.md`](AI_GENERATOR_AUTHORING_STANDARD_2026-11.md) | 生成AIがコードジェネレータを作るときの標準方式の設計案（未採用）。Transform Source・外部Generator・Generator Definitionの3方式の比較、共通の最小契約、停止条件、決定性と生成AI過程の分離、メタ生成の境界、検証手順。最小実証は[`tools/reference-generator-selection/`](../../tools/reference-generator-selection/README.md)の`validation`契約（[#4553](https://github.com/hat47x/tei-platform/issues/4553)） |
 
 ## 関連する参照事例と評価
 
