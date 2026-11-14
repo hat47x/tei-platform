@@ -2,6 +2,12 @@
 
 > 状態：設計統合／実装受入案。新しい正式ABI・Schema・Gate・Owner判断ではない。今回の作業は文書のみであり、新しいGo／Windows／実DB試験は実施していない。
 
+**現時点の判断（2026年11月14日）**：Studioの通常版と生成版は、同じ修正HEADでWindows WebView2の試験を通過した。しかし、Studio自身が正式な非Plugin構築対象としてStage2を再生成したことまでは証明できていない。最優先は、この間に残る実行経路を既存のBuildExecutionとArtifactSetへつなぐことである。
+
+Queryは型付き入力・実行前拒否・隔離PostgreSQLでの参照読取りを同じ積上げHEADで検証できた。取得範囲の判定は、実際に観測できる制限までに留める。DSLの編集時診断、REAの製品利用者への受渡し、生成アプリのDB更新は、Source・権限・副作用を別々に確認する。個別試験の合格を全製品の完成には読み替えない。
+
+実装・受入の順序は本書§29〜30を優先して参照する。過去HEADのCIや途中の失敗は検証履歴として残し、現在の判断と混同しない。
+
 ## 1. 目的と適用上限
 
 TEIのEverything is Pluginを「全機能を動的ロードする」ことと解釈しない。TEIにとって必要なのは、契約が意味を保ったまま異なる実装・Target・Hostに渡り、選択したものが実際に生成・呼出し・効果確認されたかを追跡できること。標準配布はGo単一バイナリであり、業務アプリは外部Hostへ配置する。TEI専用の常駐Host、第二Resolver、第二Authority、第二Scenario／Expected正本は作らない。
@@ -1045,3 +1051,39 @@ Mathematica/R等は、既存Algorithmの**意味・入力/出力・境界・テ�
 **担当と実装順**：#1080（共通Build provenance／Subject）、#1097（ExecutionとLogical Binding）、#4583/#2831（Studio多工程・再入）、#1251（実Provider/CLI/Studio）がそれぞれ既存Owner。最初の実コードPRはNB-0/1の最小範囲とし、NB-2/3のWindows系はそれに積み重ねて同じ成果物の実Consumerで検証する。各Expectedは[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#2514](https://github.com/hat47x/tei-platform/issues/2514)へ渡す。第一の成功例はread-only Inspectorとし、Effectful Lifecycle、Web多利用者、分野別ToolkitをSelf-build P0へ新たに抱き込まない。
 
 **今回の範囲**：実Goコード・型/ABI/Build Engine・新実行テストは変更していない。NBX-01〜08は実装前の独立Expected候補。現mainのコードFit/Gapに基づく設計・Owner引渡しであり、Stage1→Stage2 Desktopの完全実証・正式Owner受理はNOT RUN／NOT ACCEPTED。
+
+## 30. 今回の統合判断：使えるところまで一つの流れで確かめる
+
+### 30.1 Studioで最初に完成させる操作
+
+利用者がWorkspace内のSourceを選び、定義と依存関係を確認し、Buildを実行して生成Desktopを開き、Inspectorで結果と診断・Evidenceを確認する。この一往復を、AIを停止した状態でも成立させる。ここでの中心は、画面を作ることだけではなく、**利用者が指定した対象と、実際に構築・表示された対象が一致していること**である。
+
+編集上のFocus、明示的に固定したPin、未保存Buffer、保存済Source、Buildに使ったSource、生成Artifact、実WebViewが読んだArtifactは別の状態として扱う。Workspace・Qualified Subject・Source Revision・Buffer Generation・Request Sequence・Build Attempt・Artifact Revisionを確認できる範囲で対応付け、古い非同期応答や選択変更前の結果で現在の画面を上書きしない。未保存の内容を保存済Sourceとして受理せず、古いPinを現在のSourceへ勝手に付け替えない。これらの画面・検証責務は既存Studio担当（#4515、#4583、#4650）へ戻す。
+
+### 30.2 すでに通った検証と、これから通す製品上の境界
+
+| 対象 | 確認済みの範囲 | 次の作業 |
+| --- | --- | --- |
+| Windows Desktop（#4587） | HEAD 9b58533dで12 Workflowすべて成功。通常版と生成版の実WebView2試験も成功 | §29の非Plugin Build Subjectを正式なBuildExecutionへ通し、Stage1がStage2を実際に生成・起動した親子関係と実Consumerを検証する |
+| Builder／Toolchain（#4634、#4648） | #4634は8/8、#4648は8/8。Builder選択前の照合と、Go toolchainの申告・再読取りを個別に検査 | 申告したGo実行ファイルのDigest一致と、OSが実際にそれを起動した事実を区別。ToolchainがPlanに未指定なら、異なる版を事後的なPlan違反と断定しない |
+| Query（#4644、#4647） | #4644は3/3。修復済みSourceで型付き入力・Executor前拒否・隔離PG16の親＋7ケースが成功。#4647は7/7 | 通常製品のtei CLIから実Providerを呼び、二つの異なるConsumerによる受領を検証。LIMIT／JOIN／RLSや隠れた述語があるとき、取得結果を「完全」としない |
+| DSLとCapability（#4652、#4654、#4655） | #4652の四層設計はmainへ統合済み。実SourceからAdapter前の拒否、Workspace全体の重複Input診断は別Draft | Parserに実Source位置がある場合はその位置を示す。Workspace診断と実Adapter呼出し前のCall 0を照合し、修理後の正例も確かめる。#4654/#4655のHealth不合格は未修正のまま合格扱いしない |
+| REAと外部受渡し（#4630、#4637） | 固定Selectorによる上限付き読取り、型付き候補への投影、テスト用の別OS子Processまで実装 | 認証済みWorkspaceと現在GrantをHostで確認し、開示可能な内容だけを実Studio／別TransportのConsumerへ返して受領を検証。テスト子Processを製品Consumerと数えない |
+| 生成アプリのDB更新（#4662） | 自動Migrationを業務操作から分離する狭い修正Draftは3/3 CI成功 | 業務Operationは勝手にSchemaを変更しない。Migrationは明示された別操作とし、対象DBの状態・権限・事前条件・EffectとReceiptを分けて検査する |
+| 段階別Plugin（#4646） | 3/3 CI成功。意味定義にStudio／Build／Runtime／TestのContributionを対応付けるReference | 収録された機能と実行された機能、Workspaceで必要な機能と不要な機能を別々に検証。ReferenceのRole選択を本番Loaderや製品ABIへ直結しない |
+
+### 30.3 作業を増やさずに前へ進む順序
+
+**第一段階はDesktopセルフビルド**。§29のNB-0/1から開始し、既存のPlugin Buildが壊れないことを確認しながら、Studioを正式な非Plugin Subjectとして表す。次にNB-2/3でN0生成Source、esbuildの実選択入力、Goへの実埋込み、Stage1から生成されたStage2と実Windows表示を、親子のBuild AttemptとArtifactの対応で確かめる。同じAttempt IDをすべてのProcessへ無理に付けるのではなく、親・子と入出力の関係を追跡する。
+
+**第二段階は、読取り結果を実際に利用できる入口へ届けること**。Queryの参照DB試験は#2586の通常製品入口へ、REAの内部Readは#3394の実Studio Consumerへ接続する。結果が0件でも、必要な母集団をすべて見たことにはならない。現在の利用権限・取得範囲・結果の開示・意味受理は別に判断する。AI Harnessも同じ規則に従い、AIに渡したという事実を意味受理や実Effectの代わりに使わない。
+
+**第三段階でStudioの扱いやすさとPluginの広がりを確かめる**。編集時の診断をSource位置へ結び、Studioの表示設定を意味状態やPlugin有効化と分離する。専門Toolkit（Analytics／Planningなど）は既存の型付きOperationとStudio／CLIの二Consumerで小さく比較する。全専門機能や別Host方式をDesktop P0の必須条件にしない。
+
+この順序は新しい中央Runner、第二Resolver、第二Source/意味正本、中央AuthZ Gatewayを設ける指示ではない。既存BuildExecution・ArtifactSet・Operation・Host・Independent Expectedを使い、責任者が判断できるよう検証結果を示す。§29のNBX、既存#1180/#2514のExpected、#4653でmain統合済みのConsumer受入契約に対応付ける。
+
+### 30.4 未完了のCIを先に解消する
+
+ドキュメント計画の[#4651](https://github.com/hat47x/tei-platform/pull/4651)は、HEAD d7e59b8bでMarkdown中の不要なバックスラッシュ付きバッククォートがRepository Healthを失敗させた。同PRに書式だけを修正した新HEAD c2cb7209を追加したため、新HEADのCIは別途確認する。Go側の[#4654](https://github.com/hat47x/tei-platform/pull/4654)は新テストのgofmt不一致、[#4655](https://github.com/hat47x/tei-platform/pull/4655)はgofmt不一致と当時の設計文書索引漏れでHealth不合格。索引は後続のmain統合済み#4659で補われたが、各Go PRのformatter修正と新HEADのCIは依然必要である。
+
+本章は実コード／CIと他の設計を突き合わせた**実装順序の整理**である。Source／Go／DB／Windowsの新規テスト、Stage1→Stage2の完成、Ownerによる正式な意味受理を本章自体で行ったわけではない。主計画は既存#4620、dogfoodingの詳細は#4651、Desktop画面仕様は#4650、能力実行と受信の契約はmain統合済み#4652/#4653を参照し、同じ計画を複数ファイルで増殖させない。
