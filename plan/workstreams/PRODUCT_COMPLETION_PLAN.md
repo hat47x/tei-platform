@@ -568,6 +568,53 @@ P1では最初の申請に必要な基本添付・検索・通知・認証を選
 
 詳しい境界、10件の負例、Owner別の次の検収は[Sourceから実Consumerへの横断受入設計](../design/CONSUMER_QUALIFIED_CROSS_LANE_ACCEPTANCE_2026-11-14.md)に整理した。以下の「進行の記録」では、その観点を既存IssueのAttemptと結果へ結び付ける。
 
+## G49：高度B2CをTEIの共通モデル・生成基盤・プラグイン実証へつなぐ（2026年11月14日）
+
+**位置付け**：B2Cの高いUI自由度を守りながら、図表を含む `*.tei.md` の意味定義、型付きFunction/Operation、外部Provider、生成Target、Independent Expectedを一つの案件で使えるか検証する。TEIをCommerce Engine、Identity基盤、Web Host、Analyticsの第二正本にはしない。H0（完全Native）、H1（任意の契約・Build-time生成）、H2（さらに任意のExperiment/計測Adapter）を常に比較可能にする。B2C固有の機構を先にCore化するのでなく、既存[#3509](https://github.com/hat47x/tei-platform/issues/3509)の検証結果を各Ownerへ返す。
+
+### 顧客体験と業務の事実を結び付ける
+
+一つの購入・予約導線を、**画面に見えたもの、利用者が意図したこと、業務上確定したこと、後から測定できたこと**に分けて記述する。図は説明資料だけでなく、既存の型付きGraph/Role、Operation Contract、Generator、Scenarioへ結び付く入力候補とする。ただし、図上の結線だけで実Providerの呼出しや公開権限を証明しない。
+
+| 観点 | 共通モデルに残す内容 | 別に検収する事実 |
+| --- | --- | --- |
+| Experience/Journey | Route・Touchpoint・Variant・表示したOffer・Actionの意味と出典 | 実DOM/SSR/Client/Edgeでの表示、Exposure、操作、アクセシビリティ、性能 |
+| Actor/組織 | Guest、会員本人、Customer、販売主体、組織Roleの**異なるIdentityと関係** | 現在Session・Customer Link・Order所有範囲・Host Grant。組織の所属履歴は本人の現在注文閲覧権限を自動的に与えない |
+| REA/取引 | Resource、経済Event、Agentと、Quote→Cart→Order/Paymentの業務関係 | AnalyticsのクリックEventは経済Eventでない。金額・税・在庫・確定時刻・Receiptは権威あるCommerce側で検証 |
+| Source/データ | 属性ID、粒度、型/単位、業務キー、Snapshot/取得範囲、valid/effective/observed time | 0件・NULL・非開示・partial・索引遅延を区別。現時点のGrantと過去の取引事実を混同しない |
+| Build/配信 | 選択したTrait/Provider/Generator、World/Model/Artifact Revision、Release/Cache依存 | 実Child・実生成byte・配信先・Consumer受領。A→B→Aや旧Clientの残存をbyte一致・Rollback成功だけで免責しない |
+
+### RDB・NoSQL・外部サービスを置換せず使い分ける
+
+最初の実Readは既存[#2586](https://github.com/hat47x/tei-platform/issues/2586)の型付き`recent_orders/:from`・実PostgreSQLを維持する。B1a-IのRA-2P（通常`tei`入口から選択済みProvider/SQL/Role/Params/Rowset/Function Context）→RA-3（同じContextを標準A・独立Native Bが受領）を先に通す。これをB1a-Pの実会員向け開示・Host認可に自動昇格しない。
+
+後段では同じ顧客体験に、CMS/PIM等のDocument API、商品検索Index、画像/動画のObject Storeを必要なものだけ加える。Providerごとに**読取りの整合性、列挙の完全性、再取得期限、ページ継続、書込み権限、索引遅延**を宣言・観測し、異なるStoreの結果を無条件で同一Snapshotや分散Transactionに見せない。検索候補が0件でも商品不存在と断定せず、CMSに載ったOfferを現在の販売確定価格とみなさない。Native SQL/Document Queryの能力差は既存Query/Providerの適合表で表し、B2C専用の万能Query Engineを導入しない。
+
+### 最初に育てるプラグインとセルフビルドの評価
+
+最初の実装候補は**Contract-aware Journey/Change Inspector（read-only）**と、既存Flag・Analytics・Commerce等への**任意Adapter**に絞る。業務定義・関係図・検査条件・生成規則をTEIで記述できる部分から段階的に移し、外部SDK、通信、認証、決済などの固有実装はProvider境界に残す。プラグインも原則としてTEIによる定義・生成を増やすが、Goコードを`*.tei.md`から単にdelegateしただけでは到達と認めない。
+
+| 段階 | 実証する成果 | 不成立を示す条件 |
+| --- | --- | --- |
+| S0：外部実装接続 | 手書きNative実装と既存Contractの関係・独立Expectedを固定 | Mockだけ、Provider申告だけ、Source/Target対応が追えない |
+| S1：意味を持つTEI定義 | Journey/Operation/Rule/Source関係図の一部から検証またはTargetの実Artifactを生成 | 図は説明だけ、生成後に業務意味を手修正しないと動かない |
+| S2：Pluginの部分自己生成 | 選択Trait/Operator/Generatorの定義に基づく複数の実Artifactと正負試験を再生成 | 生Goへ無条件丸投げ、生成後の手修正を前提とする、Plugin未選択時にも必須依存が残る |
+| S3：自己生成範囲の拡大 | 先行版のTEI/Generatorで次版Pluginを再生成し、独立Target Consumerで同じ意味・振舞いを検収 | 自己申告の生成成功、旧World/Toolchainからの資格流用、歴史Fixtureを現行意味受理へ転用 |
+
+S0〜S3は**B2Cプラグイン内の成熟度の記録**であり、TEI Studio Desktop Stage1→Stage2全体のセルフビルド合格条件を置換しない。追跡する値は、（a）TEI定義から実際に導出できた業務規則/図表/テスト/Targetの対象集合、（b）手書き差し込みと再生成後の手修正、（c）独立Expectedの検出力、（d）変更時の影響・再生成・レビュー時間である。コード行数の単純な比率だけでシンプル化を判定しない。選択されないPluginを含まないH0経路も正式に維持する（#3278/#951/#1016/#1121/#2831）。
+
+### B1a以降の追加するべき正負対照
+
+既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#2514](https://github.com/hat47x/tei-platform/issues/2514)のScenario正本に、#3509のBC-01〜54から該当Expectedを選んでつなぐ。新しいB2C専用Test Runner・資格Enumは増やさない。
+
+1. **独立Nativeの実利用**：同じ型付きReadと許可ProjectionをH0/H1で利用し、Mandatory TEI Browser JS/DOM/Router/追加Gatewayが0であることを実Artifactから確認する。実Provider/通信の費用は別に測る。
+2. **組織・REA・時刻**：表示した旧価格・過去の注文・現在のCustomer Link/Grantを別時点で照合する。Guest→会員、所属変更、返金・取消、旧Sessionから、他人の注文や非開示の件数を漏らさない。
+3. **異種Source**：実PGのOrderとDocument/PIMの説明・検索Indexの候補を結ぶとき、更新遅延、partial、ページ欠落、同名異ID、非同期Indexer停止を注入する。分散Snapshotの未保証を隠さない。
+4. **生成と変更**：`*.tei.md`の意味規則変更、Creativeだけの変更、Plugin版変更、A→B→A、未選択H2撤去をそれぞれ実Artifact/Current World/Impactから評価する。独自Frontendの手修正を再生成で破壊せず、不要なMeaning再受理も増やさない。
+5. **取引・実験**：Quote→Cart→Commitの現在検証、ACK喪失時のlookup-first、Receipt/独立Readと、Assignment/Exposure/Consent/欠測/CVRを別票とする。AI評価や画面クリックPASSから購入確定や収益増を主張しない。
+
+**順序と停止線**：直近は既存P0のStudio実Windows Stage1→Stage2セルフビルド（#2831/#4583）と、並行するRA-2P→RA-3の実Read/二Consumer（#2586）だけを優先する。B1a-Pの実公開Grant、B1bの隔離Commerce Effect、B2の実験/Consent、B3のH0/H1/H2同条件比較、B4の予約/SubscriptionとPlugin採否は各Ownerの後続資格である。今回は計画文書の整理であり、追加の実PG・Native Browser・公開Host・実決済・Field実験・Plugin自己再生成を**実行したものではない**。検証未了のClaimは独立して残し、#3509へ結果を返す。
+
 ## 進行の記録と完了条件
 
 各G項目には、対象と版、既存の足場、次の作業、独立した正例・反例、依存、担当Issue、得た結果または未実施の理由を残す。状態は定義済み、実装候補、局所試験、通常入口での実行、利用側確認、案件受入を用途に応じて記す。Issueをclosedにしただけで、別の組合せや実行先が成立したと扱わない。
