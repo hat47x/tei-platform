@@ -597,7 +597,7 @@ SQL/NoSQL/ログ等のリバース結果は、**Physical Observation→Structura
 <!-- rea-r3a-product-branch-and-d0d3-20261114 -->
 #### R3-A通常CLIの実装Draftと、データ様式D0〜D3への非阻害接合（2026-11-14）
 
-**Product上の新しい事実はDraft実装に限定する。** [R3-A実CLI Draft #4625](https://github.com/hat47x/tei-platform/pull/4625) を現mainから独立ブランチとして起票。通常`tei external-candidates`へmain R2 `operations.ExternalCandidates`を結線し、`cmd/tei/cli_external_candidates.go`、実子プロセス検証`cli_external_candidates_test.go`、`main.go` dispatch、`cli_commands.go`、`cli_contract.go`の計5ファイルを変更した。**この実装はPR #4625 Draft上だけ**であり、mainの実行可能コマンドではない。保存されたREA 6.8.0 capture fixtureのObservation 1件＋有向Relation 1件を、Evidence ID / raw digest / producer declared Source Revision / Graph coverage / Unknown / Unselected / AuthorityLimitsを落とさず受領する正負試験を用意した。新Go試験・actual Process/CI合格は確認されるまでNOT RUN／NOT PROVEN。
+**Product上の新しい事実はDraft実装に限定する。** [R3-A実CLI Draft #4625](https://github.com/hat47x/tei-platform/pull/4625) を現mainから独立ブランチとして起票。通常`tei external-candidates`へmain R2 `operations.ExternalCandidates`を結線し、`cmd/tei/cli_external_candidates.go`、実子プロセス検証`cli_external_candidates_test.go`、`main.go` dispatch、`cli_commands.go`、`cli_contract.go`、`cli_flag_contract.go`（受理フラグ/空Pin拒否）、`plan/design/CLI_JSON_OUTPUT_CONTRACT_2026-10.md`（契約一覧）の**計7ファイル**を変更した。旧HEAD `aa86e15e` のRepository Healthは`gofmt`差分・フラグ一覧・文書一覧不足でFAILし、最新Draft側で修正した。**この実装はPR #4625 Draft上だけ**であり、mainの実行可能コマンドではない。保存されたREA 6.8.0 capture fixtureのObservation 1件＋有向Relation 1件を、Evidence ID / raw digest / producer declared Source Revision / Graph coverage / Unknown / Unselected / AuthorityLimitsを落とさず受領する正負試験を用意した。新Go試験・actual Process/CI合格は確認されるまでNOT RUN／NOT PROVEN。
 
 **R3-AのCLI契約候補（実装Draftのexact shape。第二Consumer用APIではない）**：
 ```text
