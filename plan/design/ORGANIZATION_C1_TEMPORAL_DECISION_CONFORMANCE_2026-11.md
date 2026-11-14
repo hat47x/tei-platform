@@ -997,3 +997,84 @@ Case責任の切替は単独責任の例で、旧責任と新責任の有効性�
 停止条件は、(a) Caseとr7のSourceを根拠なく合成、(b) 候補から現在Grantを発行、(c) incompleteを否定・唯一へ縮約、(d) 非単射Viewからの逆編集、(e) 実HostなしでEffect完了を主張、(f) 新Core/専用Workflow/第二Policy/Expected Engineを作ること。公開契約の追加・業務Ruleの採否が必要なら#2386、実効果の資格は#1174へ戻す。
 
 **全体P0との関係**：#2586の通常CLI初回実Provider Read、#2831のStudio Stage1→Stage2セルフビルドを本節の完成待ちにしない。現在は**実装を定義した設計段階**であり、候補/代理/C1 Handoffの新Product E2E・Owner Meaning Acceptanceは未実行・未受理である。
+
+
+## 24. 組織グラフと実行グラフを、標準意味・Plugin・Studioへ接続する（2026-11-14）
+
+> **状態：設計・Owner未受理、新Product試験は未実施。** この節は§22の最小縦断、§23の責任→候補→実行資格を、他レーンの成熟した検討へ結び付ける補遺である。新Core、組織専用のGraph/Workflow/Authorization Engine、第二Scenario/Expected正本を作らない。通常tei CLIの実Provider Read（#2586）とStage1→Stage2セルフビルド（#2831）は独立P0のまま維持する。
+
+### 24.1 組織の意味、処理の計画、実行記録、図面は別の対象である
+
+| 区分 | C1での代表例 | 混同しないもの |
+| --- | --- | --- |
+| **業務関係グラフ** | 人物P2と所属A2/A3、部門D1/D2。別SourceのCase C1とResponsibility | Person／Membership occurrence／Record Version／表示Edge、r7とCaseのSource |
+| **実効計画グラフ** | Caseを読む→Ruleと関係を解決→判断候補を返す。選択したQuery/Provider/Hook | Meaning Definitionと、今回実際に選択された実Invoker |
+| **実行記録** | actual SQL/params、Rowset、Read Cohort、Consumer受領、必要ならHost Effect/Receipt/ACK | 実行予定のフロー図、Mock、別Attemptの結果 |
+| **表示・編集用グラフ** | Studio/SHOの組織Tree、Graph、Table、二時点表、業務フロー | 図形、座標、集計セル、hidden edgeを元Sourceの実体とみなすこと |
+
+これは[main統合済み #4668](https://github.com/hat47x/tei-platform/pull/4668)のDefinition／Effective Plan／Observed Trace／ProjectionをC1へ対応付けるものであり、新しい汎用Graph Compilerを意味しない。起動・応答には[main統合済み #4666](https://github.com/hat47x/tei-platform/pull/4666)のLifecycle／Trigger／Invocation／Outcome／Deliveryを再利用する。所属が訂正された事実からCase移管Triggerや実Writeを自動生成しない。
+
+### 24.2 標準データ構造の意味保存は三種類に分けて検査する
+
+[意味的対応付けDraft #4667](https://github.com/hat47x/tei-platform/pull/4667)の構造・評価・変更の同値性を、採用前の観測条件として使う。新しい文法や第二Semantic Engineを先に入れず、既存Meaning／Facet／Law／Trait／Projectionと照合する。
+
+| 検査 | 保持するもの | 反例 |
+| --- | --- | --- |
+| **構造** | Person・Membership occurrence・Record Version・Row、Edge ID、向き・型・多重性・Source位置と版 | P2のA2/A3を1所属へ併合、同名別Personを同一視、同じ端点の並行Edgeを消去 |
+| **評価** | validAt/knownAt/observedAt、粒度・単位、bag/set、NULL/欠測、JOIN増幅、非出力依存、取得の完全性 | r7のPerson 3→3だけを見てMembership 4→3・FTE 3.0→2.4を見落とす。partial結果からNOT EXISTSを真にする |
+| **変更** | 対象Source occurrence/span/revision、局所差分、選択epoch、CAS、実Provider/Host資格 | Treeのhidden edge、集計行、複数経路から元関係を推測して書戻し、A→B→Aで旧Pinを再利用 |
+
+TreeやRACI表は用途別のProjectionであり、表現を単純化した結果として失う情報を明示する。情報を失った投影はまずread-onlyとする。Get–Put／Put–Get等の性質は一意対応が成立する限定Patchの検査候補に留め、描画やMarkdown整形をSource変更の権限としない。図面、説明文章、生成コードの一致をそのまま業務意味の受理に昇格しない。
+
+### 24.3 公開された上位Pluginのグラフから、横断的な関心事を組み込む
+
+上位Pluginが契約として公開した意味Node/Relation/Process Step/Hook Pointは、下位Pluginから**公開版・ID・Target・Scopeを明示して参照**できる設計候補とする。内部グラフや実装都合のNodeを暗黙継承させない。Meaning Pinと段階別Contributionについては[既存Plugin Reference Draft #4646](https://github.com/hat47x/tei-platform/pull/4646)を参照し、組織専用Resolverを新設しない。
+
+- **適用対象**：公開Meaning ElementのID/Role、Process Node/Operation、包含・除外、Source/Plugin版から選ぶ。名称一致や画面全体の見た目では決めない。候補が曖昧なら停止する。
+- **合成**：PluginのDistribution、Authoring、Composition、Organization、Runtime、Disclosureを分け、実Target、Provider/Generatorの選択、Hook順序・重複・依存競合を検査する。Declared≠Selected≠Loaded≠Authorized≠Effectを維持する。
+- **処理段階**：候補取得前のread-only説明、Validation、Commit前のGuard、Commit後の通知は異なる作用境界である。Hookが公開されていることから、外部Hostの原子的Commitや相手ACKは推論しない。
+- **B2C等の横断要素**：計測、同意管理、監査ログなどを、公開されたアプリ/実行グラフの対象選択→Generator/Hook束縛として比較する。全ページ計測の暗黙許可や、Person/Account/Principal/Tenant/REA Agentの同一視は認めない。標準RendererやTEI独自Web RuntimeをHeadless Consumerに強制しない。
+- **最初の実験**：C1のread-only候補照会に、必要Relationの出典・時点・Read Completenessの説明を付ける非Effect Hookを一箇所だけ試す。実Case更新や代理Actionは、Host側の現在Grant/Effect Fenceを別途検証してから接続する。
+
+### 24.4 三要素分析法、REA、SUI/SHO、AI Harnessとの対応
+
+三要素分析法は既存組織段階計画§10.7を優先する。DataにPerson/Membership/Case/Responsibility、FunctionにRead/候補解決/Case変更、Businessに承認・引継ぎ規則を置き、同じSourceを三要素へ投影する。ただし三要素の図を作ったことは、Function/Hostの実行を意味しない。
+
+**REAという名称は二義を明示する。** Resource–Event–Agentは業務資源・事象・関与主体を読む分析レンズであり、そのAgentをPersonやHost Principalへ自動同定しない。一方、Reverse Engineer Anythingは既存プログラム・文書・DBから出典付きのモデル候補を抽出する手段であり、抽出候補をOwnerが受理するまで正式Relation/Ruleへ昇格しない。
+
+SUI/KJ配置上の近接は所属関係の証明ではない。SHO文書やAI生成の図はSource付きの用途別Consumer投影であり、選択固定→Preview→Ownerの判断→再投影を経由する。Source/Rule/Policy/Recipientや選択対象が変化した場合、後着のAI提案、著者編集との競合、A→B→Aを再資格化し、旧Pinの自動Applyを拒否する。
+
+### 24.5 二つのWorldを黙って合成しないC1縦断
+
+第一のSourceはorg-synthetic-r7のP2兼務・A2旧新版・人数/FTEであり、第二のSourceはCase C1のhandlingUnit/Responsibility/Handoffである。両者に業務Ownerが採用したCase→OrgUnit→Role/Position/Personの関係がなければ、「候補未接続」を明示する。P2兼務からC1の責任者=P2というExpectedを捏造しない。
+
+受理された明示Linkがある場合にのみ、①業務Relation Graph、②候補解決のEffective Plan、③実Query/ConsumerのObserved Trace、④Graph/Tree/Table/SHOへのProjectionを、Source/Case/Rule/Plugin版とRead Cohortを明示して照合する。同じCase ID・同じ人物数・同じWorld Fingerprintだけでは一つのAttemptに結合できない。
+
+### 24.6 既存受入票へ割り当てる追加観測（GXは本節内のラベル）
+
+| 観測 | 既存Owner/Expected | 正例・停止条件 |
+| --- | --- | --- |
+| GX-1 意味と実行グラフ | #4490 ORG-BEH-06/07、#4501 CX-04〜06、#4668 | Relation/Plan/Trace/Viewを別版で区別。処理図だけから実Invocation/Effectを主張しない |
+| GX-2 構造と投影 | #2497、#4501 CX-04〜06、#4667 SM候補 | 多重辺・hidden parent・Person/Occurrence/Versionを保持。集計・欠損Treeから逆編集しない |
+| GX-3 評価の同値 | #2510 r7、#4490 ORG-BEH-01/02、#2586 | 実SQL/Params/Rowset/Cohort/Completeを確認。partial、NULL、JOIN fanout、NOT EXISTSの意味差を拒否 |
+| GX-4 公開Plugin契約 | #951/#4646、#4501 CX-17 | 非公開辺参照・Plugin版違い・重複Hook・競合する実Target/Scopeを合成停止。配布からGrantを生成しない |
+| GX-5 責任と起動 | #4490 ORG-BEH-03/04/06、#4501 CX-01〜03、#4666 | A2訂正≠C1移管。明示Trigger/Case改版/Receipt/ACKを分ける |
+| GX-6 知識・AI編集 | #4501 CX-07〜12、#4515/#2516 | Source/Selection ABA、異Cohort、保護Fieldの公開二世界、遅延回答/保存競合で誤適用を拒否 |
+| GX-7 TEI生成の実効 | #2831/#2600、既存§22.4 | Source側へ移せた業務意味、重複手書き削減、実Generator/Plugin利用、Stage2起動、独立Consumer受領を別々に測る |
+
+GX-1〜7は**補遺内の観測ラベル**であり、新たなExpected ID・Scenario Store・Runnerではない。既存Driver/独立Expectedへ割り当て、Expected SourceとActual Mechanism、Git exact HEAD、受領先、Owner Meaning Acceptanceを別列にする。
+
+### 24.7 実装順と停止線
+
+| 順序 | 最小の成果 | 製品資格の上限 |
+| --- | --- | --- |
+| **OG-0：意味の対照** | C1のRelation/Process/Trace/ViewのID、Source、時間、被覆、投影損失を一つの対応表に整理 | 読取専用の設計・ギャップ分析 |
+| **OG-1：Headlessの候補実評価** | 既存WU-09/BEH-04で候補0/1/複数/partialと根拠Pathを実Rule/ReaderでAssert | 構造の存在検査は合格にしない。実Grantなし |
+| **OG-2：実Providerの縦断** | §22のPerson Link・A2二版共存→実SQL→Read Cohort→Context→独立Consumer | Product read-onlyの資格。別HostでのActionは未受理 |
+| **OG-3：Plugin/表示** | 公開Graphに限定した非Effect Hook、Tree/Graph/TableのLoss Report、Studio/SHOのSource-backed Preview | Pluginの実Loaded/契約・Consumer受領を別証拠化 |
+| **OG-4：実業務効果** | 明示Case移管、現在Grant/Effect Fence、Receipt/ACKを既存Hostへ接続 | Hostの実資格がなければNOT PROVEN |
+| **OG-5：自己生成** | DSL/Diagram/Generator/Pluginの二重記述削減を計測し、TEIで生成する範囲を段階拡大 | Builder実選択・Stage2起動・実Target利用を独立に検証 |
+
+OG-0〜5は本節の作業順ラベルで、既存のDB移行G0〜G5とは別である。**初回Product Read #2586とDesktopセルフビルド #2831をOGの完成待ちにしない。** 新DSL文法、Graph Compiler、組織専用Host/Workflow/Policy、全Dataの履歴表、全Plugin共通の強制Hook Runtime、Graph集計の自動逆編集はこの段階では採用しない。
+
+**今回の証拠範囲**：§24は既存Issue/PRを参照したdocs-only計画であり、Go、PostgreSQL、Windows、Host、AI/SHO、実Pluginの新試験を行ったという意味ではない。Draft #4667/#4646/#4633の限定証拠や参照Fixtureの成功を組織C1の製品受入へ昇格しない。
