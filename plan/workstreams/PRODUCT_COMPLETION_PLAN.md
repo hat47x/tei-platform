@@ -575,7 +575,7 @@ S0-Aで最初に提示すべき**独立した正負**は、同一Source Snapshot
 | **Generated Go／Binary byte** | 実Generator/Toolchain/Build入力・出力に依存する実ファイルの変化 | どの実Source/意味受理から作成したか、次Builderや実Consumerが選択・使用したか |
 | **現在の意味・実行資格** | Subject/受理済みRole、Source/World/Model・Artifact Revision、Plugin/Host Grant、Disclosure、実Target/Consumerの状態 | 一つのハッシュには包含されない。既存Authority・Build Evidenceで個別に確認 |
 
-**限定的な構造同値と元Source失効の衝突を実負例にする**：[Go回帰Draft #4759](https://github.com/hat47x/tei-platform/pull/4759)は既存`sourceindex_bridge_test.go`へ、(a)基準と`layout-only`、(b)原文説明だけの追記は**Source fingerprintが変わるがCandidate Shapeは同じ**、(c)Edge方向／Rule条件の変更は両方変わる、を追加する。いずれも**旧Source Indexは失効**し、新byteで作るIndexだけを検証できることを期待する。このPRは未マージの候補試験であり、正式Readerや通常CLIを実行したとは記載しない。
+**限定的な構造同値と元Source失効の衝突を実負例にする**：[Go回帰Draft #4759](https://github.com/hat47x/tei-platform/pull/4759)は既存`sourceindex_bridge_test.go`へ、(a)基準と`layout-only`、(b)原文説明だけの追記は**Source fingerprintが変わるがCandidate Shapeは同じ**、(c)Edge方向／Rule条件の変更は両方変わる、を追加する。さらに各入力から生成する**Goソースの実byte**も比較し、候補構造が同じ場合は生成Goが一致し、Edge・Ruleを変えた場合には生成Goも変化することを要求する。いずれも**旧Source Indexは失効**し、新byteで作るIndexだけを検証できることを期待する。このPRは未マージの候補試験であり、正式Readerや通常CLIを実行したとは記載しない。
 
 **差分Buildの判断を二段階に分ける**：最初に実消費Raw Sourceと現在のSelection/Role/Owner資格を検証し、続いて生成器が実際に使う**受理済み意味・Rule・Plugin/Target依存閉包**が不変かを調べる。Referenceの候補構造指紋は、後者の局所的な補助観測にはなり得るが、**それだけでGo再生成のskip、Artifact／Evidenceの再利用、A→B→A後のGrant復活を許可しない**。逆にMarkdownの表示や説明だけが変わったときに、実生成ロジックまで常に作り直す必要があるかは既存[#2600](https://github.com/hat47x/tei-platform/issues/2600)の実消費入力と計測で判定する。
 
