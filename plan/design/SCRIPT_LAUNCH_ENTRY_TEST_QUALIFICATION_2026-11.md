@@ -771,3 +771,42 @@ LR-A〜Dは全直列Hard Gateではない。LR-Aの受理待ち中は、LR-Bの�
 - **REA／配布**：#4637はローカルHost Reader、merged #4617は署名付きHTTP ReleaseとMember byteの独立Node検証。どちらも公開FunctionのOwner意味・Host Grant・外部Runtimeでの実Callを証明しない。
 
 **現状**：A0の正式公開Entry、A1の実Host現在Grant、A2の選択済みGo Providerの製品実呼出し、A3通常CLIと独立Consumer、A4 Stage1→Stage2の製品検収は**NOT RUN**。§17の局所Go前検査・実PG Reference・生成WebView2はそれぞれの限定資格として維持する。
+
+## 19. 型付き実Read・生成Function・自己再構築の証拠を接続する（2026-11-14）
+
+### 19.1 現在の実装に基づく判断
+
+Script LaunchのA0〜A4と実ReadのRA-0〜RA-3の間には、新しいEngineではなく**製品Operationに渡す入力・取得条件・生成実体・実際の使用先の証拠**が不足している。他チャットで進んだ次のPRを、現在の実行範囲ごとに照合した。
+
+| 実装候補と対象HEAD | 確認できた成果 | その成果で認定できないこと |
+| --- | --- | --- |
+| [RA-0 #4626](https://github.com/hat47x/tei-platform/pull/4626) `9eecf2b9`、[同一SourceでのRA-0/1/2再検収 #4644](https://github.com/hat47x/tei-platform/pull/4644) `b5c23044` | RA-0はActions **17/18成功**（Healthと歴史Self-buildはPASS、Browser→JSON APIの`sqlgen`混入検査のみFAIL）。#4644は仮統合HEADの**専用3/3成功**、うち実PostgreSQL16親＋7ケース非SKIP・全PASS。typed `std.datetime`に対する`time.Time`、不正入力のExecutor呼出し0を再試験 | RA-0はmain未統合・E1失敗あり。#4644はRA-0 branchをbaseとした統合検証用Draftであり、通常製品`tei` CLI／正式Product Provider／独立二Consumer／現在Grantを検査していない |
+| [Function Data Contextの取得観測 #4647](https://github.com/hat47x/tei-platform/pull/4647) `a962a3f6` | Go CI **7/7成功**。既存の取得Contextに、宣言関係のロック、実SQL plan・RLS・LIMIT・JOIN等の観測を加える。観測された制限は`partial`、未確認の完全性は`unestablished`。ローカルの隔離PG16試験でも両者を対照 | Native SQLは述語が閉じないため**`complete`と`emptyJustified=true`を出さない**。実列の出典（W4）、NULLの保存元、業務実体単位、正式HostのDB Instanceと接続の同一性、Source現在性、現在Grantは未実証 |
+| [Source束縛のRead-only Function生成 #4559](https://github.com/hat47x/tei-platform/pull/4559) `e328f223` | CI **3/3成功**。既存Workspace Loader/Resolverから`recent_orders`のGo CLIを生成し、Source SQL・生成Manifest・Binary SHAを結ぶ。対象外Pattern等の省略を記載、QueryのTarget方言違い・古いBinaryを拒否。ローカルの隔離PG16で3/2/0行等を確認 | 起点の古いSourceでは`:from`が**未宣言**で、GeneratorがSQL placeholderを発見して`inputDeclaration=undeclared`のまま実行可能にする。生成CLIの入力は`--from=<文字列>`で、RA-1の`time.Time`型付き境界とは異なる。**製品型付きEntry／通常`tei` CLI／Host Grant／READ ONLY実拒否試験**ではない |
+| [自己再構築のToolchain観測 #4648](https://github.com/hat47x/tei-platform/pull/4648) `64fb0f9a` | CI **8/8成功**。同じBuild計画をgo1.26.11/1.27.0でコンパイルし、結果のBinary byteが異なることを実測。実行ファイルの申告DigestとEntry自身の再読取を`matched/mismatched/unreported`で区別 | Build計画はGo toolchainをまだ入力として名指さない。`matched`はファイルのbyte照合であり、**そのGoを実Childが起動した証拠ではない**。同じPlan hashによる成果物再利用・Seed Trust/Stage2資格は未成立 |
+| [自己再構築のState観測 #4537](https://github.com/hat47x/tei-platform/pull/4537) `cb7faf8d` | CI **8/8成功**。二つのStateディレクトリに実際のファイルが作られたかと、ChildのProcess ImageをEntryが観測。空ディレクトリだけの偽分離を`declared-only`に分類 | 観測だけではStateのコピー・外部読取りを排除できず、`effect-observed`もOS隔離の証明ではない。現行`l2b.claimed`の判定は変わらず、Stage1→Stage2の自己再構築も別 |
+
+**共通の原則**：Sourceに型付き入力があること、SQLが実行できること、Rowsetが最後まで読めたこと、生成ArtifactのDigestが一致すること、Entryの入力先ディレクトリにファイルが存在することを、互いの資格に読み替えない。これらは別々の事実であり、同じAttemptのSource版・Host選択・実使用・Consumer受領がつながって初めて上位のClaimを検収する。
+
+### 19.2 製品へ取り込む順序と責務
+
+1. **Sourceを最初にそろえる（#2586/#1182）**：RA-0の明示`input from std.datetime`、旧Frozen Sourceの独立再現、`sqlgen`の実APIバイナリ混入を別々に検収する。#4644の仮統合結果が3/3でもE1失敗を無視してmainへ単独採用しない。生成器#4559をこのCurrent Sourceへ合わせた後、`inputDeclaration=declared`とSQL placeholder集合が一致しない限り**製品Functionを公開しない**。
+2. **値をProviderに渡す直前の型境界を統一する（#3422/#2586）**：RA-1の`time.Time`を受けるGo Executorと、#4559で生成したCLIの文字列引数を別契約として扱う。型変換をどの入口で行うかを既存Typed Operation側で決め、実値・明示NULL・missing・unknown fieldの違いを保持し、Host/DB呼出し前の負例にする。生成CLIに独自のBusiness Grant/新Dispatcherを追加しない。
+3. **実Readの不完全さを受領先まで残す（#2586/#2514）**：#4647の`coverage.status`、`reasons`、`open`、`rowset.fullyRead`、`nullOrigin`を、RA-2P Product Operation/RA-3 CLI・独立Consumerが欠損なく受け取る。行が0、カーソルを最後まで読んだ、RLSがinactive、宣言済み主キーが観測行内で一意のいずれも、全件取得・不存在・Entity粒度・保存NULLの証明にしない。W4の列由来観測は別Ownerの未実装課題に残す。
+4. **実生成物の同一性とBuild入力を閉じる（#2831/#4544）**：#4648の別Toolchain同一Plan→異Binaryを、World/Model/Artifactの各Revisionと区別する。正式なBuildIntentでToolchainを入力として名指すかはOwner判断を先行し、名指すなら選択した実Go実行ファイルのDigest・実Child起動・生成物を同一Attemptで照合する。#4537のState観測は弱い証拠として保持し、OS分離・再入・実Stage2実行を別に検査する。
+5. **最終的に製品Entryで接続する（#4495）**：選択されOwnerが受理したpure Function Entryと、Sourceから生成したread-only Query Functionは同一概念ではない。両方ともHostが選択した実Provider／Artifact、現在Grant、契約Input/Result、通常製品`tei` CLIの実Callと独立Consumerを必要とする。どちらの参照CLIの成功も製品Entry公開の代用にしない。
+
+### 19.3 新しい失敗注入・受入条件（既存Scenario/独立Expectedへ渡す）
+
+| Case | 故障の入れ方 | 必須の拒否・観測 |
+| --- | --- | --- |
+| **FH-01** | `recent_orders`のSQLに`:from`があるが、QueryでInput未宣言 | Reference Generatorは`undeclared`を明示。製品公開は拒否。SQL placeholderから型を推測して通さない |
+| **FH-02** | `std.datetime`に文字列・明示NULL・未知Inputを渡す | Host実Executor呼出し0。CLI文字列の受信成功をGo型適合と見なさない |
+| **FH-03** | RLS・LIMIT・JOINで同じQueryが0行／部分行を返す | 実観測があるときは`partial`と理由を維持。独立Consumerが0行を不存在・全件取得と表示しない |
+| **FH-04** | Plan上の関係・RLS・Limitが正常でも、Native SQL関数が行を絞る | `unestablished`と`native-sql-predicate-not-closed`を残し、`complete`を拒否 |
+| **FH-05** | FunctionのOutputにNULLがあるが実列由来は未観測 | `nullOrigin=unestablished`。masking view等の可能性を保存NULLへ置き換えない |
+| **FH-06** | 同じBuild計画を別Go Toolchainで再実行し異なるArtifact byteを得る | 事実上の入力差とArtifact Revisionの違いを開示。Plan Digest一致を生成物再利用資格にしない |
+| **FH-07** | ChildがStateディレクトリを作るだけで他の場所を利用する | `declared-only`と未観測範囲を報告。バイト一致やexit 0から隔離・セルフビルド合格を推論しない |
+| **FH-08** | 生成BinaryのDigest一致、だがHost選択Provider=B／実Call=A | 実Call前に拒否。Binary照合・署名・モデル構造の成功をProvider同一性や現在Grantに代えない |
+
+**採否と現在の状態**：§19は他チャットの限定Go/DB/CLI/Build試験を正確に引き継ぐ作業計画であり、各PRは指定HEADでのCIが成功していてもDraft・未統合。A0〜A4、RA-2P/RA-3、完全性`complete`、実Stage2、公開Host Grantは、**この追補によって実装・受理されたことにはならない**。既存#4495/#2586/#2831/#1182/#2514へ返し、新しい検査正本や汎用Runnerを作らない。
