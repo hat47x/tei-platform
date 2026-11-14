@@ -506,6 +506,24 @@ SBX-01：図のレイアウト変更では意味が変わらず、関係の向�
 
 CLI／MCP／Studioは同じ型付きApplication Operationを異なる入口から使うものであり、入口の共通化はHost認可や実効果の証拠を省く理由にならない。Runtimeで使わないGenerator／Editor専用Pluginは、必要のない生成成果物に無条件同梱しない。本節は実装順と測定方法の合意案であり、TEIが生成したGoによるCLI／Plugin再構築、定義の簡素化、Stage1→Stage2製品成功を**実証済みとはしない**。
 
+### 一つの変更を、生成・実行・再検証まで追跡する
+
+SB-1/SB-2で導入するGraph/Ruleの固定例について、**初回から変更前後を同じ独立Expectedで比較**する。最初の実装PRは新しい汎用Graph Compilerや増分Cacheを要求しないが、将来#2600で正しい再利用を行うため、何が変わったかと、どの工程を実行したかを取り違えず記録する。詳細な契約は[実行モデル§37〜39](../design/PROGRAM_EXECUTION_MODEL_PROJECTIONS_2026-11.md)に集約する。
+
+| 比較する入力 | 最初に見る意味・生成の差 | 実行・再利用上の停止条件 |
+| --- | --- | --- |
+| 基準：同名Node二件・別IDの同向Edge二本 | 出辺ID・件数の計算とID重複の拒否が、TEIのRuleから生成される | 固定JSONや外部Goへの丸投げは自己生成実装として扱わない |
+| `e-2`の方向だけ反転 | `n-1`からの出辺が二本→一本、`n-2`から零本→一本 | Graph表示だけ更新して実Go処理・実Provider結果が旧状態なら不合格 |
+| `e-2`を重複IDへ変更 | 一意性違反をReader/Validator/生成規則の適切な位置で拒否 | 同名や同端点を理由にEdgeを黙って統合しない |
+| 図の配置・注釈だけ変更 | 意味上の計算は不変、Source/表示の変更は追跡 | Raw Source再確認を省略したと偽らず、無関係な下流再Buildだけを省略可能か検査 |
+| Provider/Builderの選択やSourceのA→B→A | 結果が同じでも選択先・実消費byte・現在資格が変化し得る | 旧ArtifactやReceiptを現在の実Provider使用・Owner受理へ自動昇格しない |
+
+記録の最小単位は**一つのSubject、固定したSourceとRole、選択Provider/Generator、Build Attempt、実Artifact、実Consumer**である。未接続ならその境界を明示する。各工程でParser/意味解決/生成/Go Build/Plugin実行に費やした時間、実行を省略した理由、未観測の入力も残す。Source/Meaning/Artifactの三種のRevisionを一つのFingerprintへまとめない。
+
+初回の実Go生成は、意味処理の実装部分と手書きの補助Goを分けて検証し、生成定義から出辺IDの判定が実際に変わることを確かめる。通常`tei` CLIと独立Consumerの実Call、Stage1 CLIによるStage2 CLI再入、正式Studio DesktopのStage1→Stage2は、**異なる到達点として順番に実証**する。部分的な成功を足して全体成功と呼ばない。
+
+この比較はSBX-01〜06と#1180/#2514、#2595の実消費Source、#2600の再利用、#4495/#1251の製品Provider、#2831/#4583の実セルフビルドの担当へ引き渡す。新たなScenario正本やRuntimeは設けない。**状態：実証手順の追補。新Go生成・増分skip・実CLI再入・正式Desktop再入の合格は未確認。**
+
 ## プロセス・イベント・応答を共通の意味から説明する（設計候補）
 
 Webの要求、CLIの起動、タイマー、Message、画面操作には、それぞれ異なるHost・起動方式がある。ここで標準化を検討するのは一つのイベントループではなく、**Trigger→型付きInvocation→Function/Rule→State/Effect→Outcome→Response／Consumer受領**という意味の対応である。長寿命Processの起動・停止と、一件の処理の成功・失敗も混同しない。
