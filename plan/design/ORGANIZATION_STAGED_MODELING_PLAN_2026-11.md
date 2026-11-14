@@ -929,3 +929,21 @@ WU-11〜14をWU-06〜10の「全部完了待ち」にしない。前段の**必�
 **Guard・Effect**：異動・委任・承認・Case引継ぎなど業務操作では、必要な条件（Required）、現在満たされた条件（Supplied）、不足条件（Missing）を既存Rule/HostのPreflightで比較する。条件未確認は許可扱いにしない。開始前の現在Grant、対象・Rule/Source/Provider版、Action Intent、Attempt/Operation ID、外部Effect/Receipt、ACKを分離し、レスポンス喪失後の無条件再実行や過去の承認資格流用を禁止する。業務完了・コミット不明時の扱いは#1129/#1174等の既存Ownerに委ね、組織専用Guard/Workflow/Authorization Runtimeは作らない。
 
 **最短受入と停止条件**：①r7の配賦/時点切替とCase C1移管の非連動を既存Expectedで確かめる、②同Subsystem ID/異責務・異ID/同責務候補の反例を既存#3250のRead-only比較と突き合わせる、③変更前後のCUD/Ownerを#4472の正しい索引と独立Expectedで照合し、未知依存ならunknown、④実Handoff/Grant/ACKは別Provider/Host試験に留保。図やSourceの一致、SHO説明、AI提案、CLIのPreview成功だけで実Effectを主張しない。実Org→Subsystem/Host接続の新しい実装・試験は**NOT RUN**。
+
+
+#### 10.11.5 二時点QueryのSQLと実履歴保存は、別々に合格させる（2026-11-13レビュー）
+
+**見つかった不整合**：既存 `reference/org-staged-axis` の `org_axes_view.as_of_membership` は、`known_from >= :known_from` と逆向きに比較し、valid/knownの終了時点を見ず、Persistenceの物理表 `public.org_memberships` ではなく `organization.membership` をFROMに用いていた。Goの既存WU-07テストは入力名の存在だけを見ており、`SELECT 1` のダミー値を置いて実SQLを検証しなかった。そのGo PASSを二時点で正しいとの判断に使わない。
+
+**最小修正候補**：`valid_at` と `known_at` を明示し、各軸の `from <= at AND (to IS NULL OR at < to)` を別々に適用する。Persistenceに両終了境界のMappingを追加し、物理表名を整合させる。SQLの半開期間とNULL=無期限は**このfixtureの前提**であり、すべての組織履歴や時間型の自動採用規則ではない。Native Loader/SQL文字列点検を現行Go testへ接続するが、これは依然として**構造試験**であって実SQL実行ではない（本修正は新PRにまとめる）。
+
+**重要な未解決**：Persistenceの`membership_id`単独PKでは、同一Membership occurrenceに複数の既知版を同時保存できない。上流が「当時知っていた」と主張する時間と、TEIが実際に観測・記録した時間も混同できない。履歴が必要な領域だけ、既存DB/Providerの能力に応じた行版識別子/複合Key/履歴参照方式を選び、1件・2件の同一occurrence版、遡及訂正、失効、A→B→Aと同版Read Cohortを独立Expectedで検証する。全組織Dataを二時点化したり、新専用Temporal Engineを導入したりしない。
+
+| 段階 | 実証対象 | 完了と扱わないもの | 既存Owner |
+| --- | --- | --- | --- |
+| T0: 構造整合 | SQLの2軸、列Mapping、Native Loaderが許容すること | 有効期間・把握期間のDB実行結果 | WU-06/07、#4490 |
+| T1: 実保存 | 版行を失わず保存・取得できるテーブル/Provider、PK・履歴方式 | 1行PKに上書き保存するだけの履歴 | #2586/#2506/#2622、DB/Schema Owner |
+| T2: 二時点観測 | 同じvalidAtでknownAtを変えA2有効→無効、独立Expected対照、partial/NULL/permission deniedを区別 | r7のNode合成PASSからの製品PASS自動昇格 | #2510/#4490、#2586 |
+| T3: Consumerと業務 | 同一C1/同一CohortでTable/Graph/SHO/Studio、Case責任/Grant/Effect別判定 | 表示が一致しただけの業務承認・実行 | #4501/#2516/#1174 |
+
+**順序**：T0の正確性修正は今すぐ実施でき、#2586の受注Query→実Provider読取をブロックしない。T1/T2では固定された独立Expectedと実SQL/ProviderのObservedを照合する。T2未達で組織as-ofの完成を主張せず、T3は確認済みQuery/Readの能力から段階的に接続する。
