@@ -9,9 +9,9 @@ issue: "https://github.com/hat47x/tei-platform/issues/4660"
 
 ## 1. 目的と結論
 
-TEIの価値を、(a) 受注・管理・分析などのアプリケーションを高い生産性で設計・生成することと、(b) TEI Studio自身を知的な設計・編集・分析環境として利用し、同じモデルからStudio以外のアプリケーションへ展開できること、の両面から検証する。
+本計画は、業務アプリケーションの設計・生成を効率化することと、TEI Studio自身を設計・編集・分析のために活用することを、共通の設計基盤の二つの用途として扱う。Studioの設計文書を、業務システムや研究支援アプリケーションの開発にも自然に展開できるかを検証する。
 
-Mathematica（Wolfram Language）やRに見られる数理・統計の体系、Window処理、Solver・実験計画法（DOE）、WBS・PERT・CPM、動的な系、生命科学の反応ネットワークや専門可視化は、有力な適用対象である。ただし、各製品の言語や独自形式をTEIの標準DSLへ移植することを目的にはしない。表現・数学的意味・実現手段・UIを分け、既存のTEI標準契約を先に使う。
+Mathematica（Wolfram Language）やRが扱う数理・統計の体系、ウィンドウ集計、Solver・実験計画法（DOE）、WBS・PERT・CPM、物理システムの時間発展、生命科学の反応ネットワークや可視化を、具体的な検証対象とする。ただし、各製品の言語や独自形式をTEIの標準DSLへ移植することを目的にはしない。表現・数学的意味・実現手段・UIを分け、既存のTEI標準契約を先に使う。
 
 **提案の核**：汎用基盤の拡張基準と、専門ツールキットの製品価値の基準を区別する。Coreには意味の共通性・長期安定性を求める。一方、専門ツールキットは汎用性を無理に要求せず、特定領域の実務を一巡できる完成度で評価する。独立した専門市場の需要検証も許容し、Studioセルフビルドの全体P0を損なわない並行レーンとして扱う。
 
@@ -73,7 +73,7 @@ Go単一バイナリをTEI本体の標準とし、StudioではWails Native/Serve
 | 階層・依存グラフ・期間 | Studio自身の実装WBS、開発進捗 | 案件計画、生産・研究スケジュール |
 | 数式・系・反応ネットワーク | 専門ツールキットを載せたモデル編集 | 工学・生命科学の生成アプリ |
 
-**受入に必要な一往復**：Authoring Source → accepted Semantic → Operator Contract／Provider選択 → 生成された実Artifact → 実Call／結果 → Studioと非Studioそれぞれの実際の利用先 → 独立Expected。Studioの表示が通っただけでは、対象アプリの実行や生成完了を主張しない。
+**受入に必要な一往復**：Authoring Source → accepted Semantic → Operator Contract／Provider選択 → 生成された実Artifact → 実Call／結果 → Studioと一般アプリケーションそれぞれの実際の利用先 → 独立Expected。Studioの表示が通っただけでは、対象アプリの実行や生成完了を主張しない。
 
 ## 6. 設計文書を生成アプリケーションへつなぐ契約
 
@@ -268,5 +268,5 @@ World Fingerprint／Model Revision／Artifact Revisionと、Experiment Plan／Ru
 
 ## 14. 確認できたことと未実証のこと
 
-この文書は、2026年11月14日時点の既存Issue・設計資料・作業中のPRと、分野横断の検討を踏まえた**設計・検証計画**である。新しいGo・R・Python・Windows・SQL・科学計算の実行、独立した数値照合、専門家レビュー、市場調査は行っていない。既存の局所試験、生成器・Provider宣言、設計例から、製品としての科学計算・Solver・DOE・Toolkit完成を主張しない。採否は既存OwnerのIssue/ADR/実Evidenceに戻す。
+この文書は、2026年11月14日時点の既存Issue・設計資料・作業中のPRと、分野横断の検討を踏まえた**設計・検証計画**である。新しいGo・R・Python・Windows・SQL・科学計算の実行、独立した数値照合、専門家レビュー、市場調査は行っていない。既存の限定的な試験や設計例だけを根拠に、数値計算やSolver、実験計画法、専門ツールキットが製品として完成したとは判断しない。採否は既存OwnerのIssue/ADR/実Evidenceに戻す。
 
