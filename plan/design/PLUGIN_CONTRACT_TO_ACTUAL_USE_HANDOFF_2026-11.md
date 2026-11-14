@@ -903,3 +903,56 @@ YIC Harness/SkillでTEIの候補や実結果を扱う場合も、Tool起動成�
 **実施順**：RA-0のE1 API Binaryリンク閉包失敗は#1182で原因を切り分け、#4644の修復済み型付きSourceで再検収した後、#4559のGenerated CLIを同じSource/型で作り直す試験へ進む。RA-2P Product CLI/RA-3二Consumerは#2586の既存実装経路で別受理。Buildは#4648と#4537の同一HEAD再検収を行いながら、#4583のnon-Plugin Studio→Stage2を先行する。#4646のContribution Referenceは計画選抜の補助であり、実Plugin ABI/Current Grantを意味しない。
 
 [Script Launch計画 #4649](https://github.com/hat47x/tei-platform/pull/4649)は**main merged**。これはA0〜A4/Query/Buildの設計・Owner分割であり新Product入口実装ではない。**本節はDocs-only。新Go/PG/Windows/AI Consumerの実試験、正式Source/Meaning受理とPR MergeはNOT RUN。**
+
+---
+
+<!-- plugin-build-runtime-qualification-crosspoint-20261114 -->
+## 27. 2026-11-14：Build資格と実行Lifecycleを直交させる接点契約
+
+### 27.1 本章の判断と現行実績
+
+**実行できるArtifactを構築したことと、そのArtifactが現在の対象・権限・作用条件でOperationを実行してよいことは別**である。ただし別々の「Plugin認定エンジン」を作るのではなく、既存Composition/BuildExecution/ArtifactSet/Operation/Hook/Failure/Receiptの**接合箇所**を確定する。
+
+- main統合済み[Hook/Lifecycle互換設計 #4589](https://github.com/hat47x/tei-platform/pull/4589)は、uses宣言／実Call／Guard順序／Outcomeを区別し、HG-10/11/15/17〜19などを既存Expectedへ渡す。これをeffectful Graph Compiler完成・実DB Commit済みと扱わない。作用不明Failureの局所修正[Draft #4602](https://github.com/hat47x/tei-platform/pull/4602)は別実装。
+- main統合済みCapability宣言preflight #4629/#4636は不正Result/Input/Effect宣言を**Adapter起動前**に止めるが、Source位置・Workspace全体の意味・現在Grant・実Provider同一性を認定しない。[DSL設計 #4652](https://github.com/hat47x/tei-platform/pull/4652)、[Source/Runtime対照 #4654](https://github.com/hat47x/tei-platform/pull/4654)、[Workspace重複Input診断 #4655](https://github.com/hat47x/tei-platform/pull/4655)は段階を分けて検証中。Draft実装をmain資格に繰り上げない。
+- main統合済み[実Consumer横断受入設計 #4653](https://github.com/hat47x/tei-platform/pull/4653)はDefinition→Binding→Authority→Execution→Acquisition→Delivery→Acceptanceの別根拠を要求する。受領したことと業務意味受理を同一視しない。
+- [生成Desktop Draft #4587](https://github.com/hat47x/tei-platform/pull/4587) exact HEAD `9b58533df8764a74c578d478d8c6ee92a382642e`の[Windows #43572235468](https://github.com/hat47x/tei-platform/actions/runs/43572235468)はordinary/generated両WebView2 Jobがcompleted/success。これは同HEADのB0実Desktop Consumer資格であり、**Stage1がBuildIntentに従いStage2 Desktopを生成したB2/B3の資格ではない**。これらは別観測として扱う。
+
+### 27.2 Build Q0〜Q5と実行T0〜T4の関係
+
+§25のQ0〜Q5は、製品を**構築し、実Artifactが使用されるまで**の系譜である。対して、既存Lifecycleの段階的な受入は、製品OperationごとにT0 Preview→T1 Resolve→T2 Admit→T3 Invoke/Commit→T4 Observeの順で考える。**このT0〜T4は比較・検収上の局所ラベルであって、現行正式Lifecycle Graphの新Schema・全Operationが持つ固定状態列ではない**。
+
+| 接点 | Build側で渡す事実 | Runtime側で改めて確かめること |
+| --- | --- | --- |
+| Q0/Q1 → T1 | 契約/Providerの選択、Profile、Source/Builder/Toolchainの版と解決時点 | 実Workspace・Source revision・選択epochが現在Requestと一致し、変更後のA→B→Aを旧承認へ戻さない |
+| Q2/Q3 → T2 | 生成済Artifactの必要Member、Build閉包の資格と欠落・unknown、実Stage2 image | HostのInventory/Contract/Scope・現在Principal/Resource Grant・実Bindingを呼出し直前に検証。Build PASSをGrantへ昇格しない |
+| Q4 → T3 | 実exeに束縛されたProvider Entryと実Invokerの観測 | Preflight/Guard通過後の実Call数・主体・Input/Effect境界・Operation Identity。Selected B/Actual Aや二重Callを失格 |
+| Q5 → T4 | WebView2/CLI等の実受信Byte/Result・Error・Source Pin | 観測できた実効果・Receipt・Read coverageと、受領先Audienceに許可された開示を区別。ACK喪失やpartialを成功に変換しない |
+
+read-only OperationではT3の**Invoke**を記録し、DB Commitがないのに「Commit成功」のReceiptを作らない。実作用のあるOperationではT3 Commitが不確定ならT4 Observe／既存Operation Identityで照会し、異なるIDでの自動再実行を避ける。T0 Previewは保存済SourceとDirty Bufferを別に扱い、認可・意味受理・実入力の確定ではない。
+
+### 27.3 Plugin管理と安全な世代切替を「選択解除＝削除」としない
+
+同一Server/BinaryでPlugin Providerが利用可能でも、個々のWorkspaceで選択・有効・認可されているとは限らない。管理の read-only Inventory→Plan→Apply は既存[#4376](https://github.com/hat47x/tei-platform/issues/4376)〜[#4378](https://github.com/hat47x/tei-platform/issues/4378)の責務とし、次の状態を**独立した射影**として扱う。
+
+- Sourceの宣言と保持、配布Artifactの入手・署名の根拠、実Artifactに含まれること、Workspace/ProfileのSelection、設定の有効世代、in-flight Request/Host lease、現在Grant、元データの保存・削除は別。
+- ProviderのA→B→A切替で、IDやDigestが再び一致しても旧世代のBinding/Grant/Consumer受領を自動復活させない。古いRequestの結果はScope/epoch/Attemptで失効または明示再評価する。
+- Disable/Unselect/Physical exclusion/Uninstall/Delete Dataを別Operationとし、Pluginの停止・撤去が保存済みのSource/Dataを黙って削除する動作を標準にしない。
+- 外部Host、共有Web、MCP、YIC Harnessへ渡す場合も、TEIの選択結果は権限移譲そのものではない。配布元のArtifact真正性と、受信者へのSource/Result/Errorの現在開示許可は独立に確認する。
+
+### 27.4 独立Expectedへ引き渡す最小対照（CXP-01〜08）
+
+| Case | 一因子差と期待される拒否・受入 | 担当 |
+| --- | --- | --- |
+| CXP-01 | Bを選択し同ResultのAが実Callされたら、Build Memberが揃っていても拒否。実Entry witnessを必要とする | #1251/#951 |
+| CXP-02 | Build時のGrant/Previewは有効、呼出し直前には撤回。Q0〜Q3 PASSでもT2でCall 0、秘密Resultを返さない | #1016/#1174/#3421 |
+| CXP-03 | `uses`自動呼出しとGuard内Callを同じeffectful Capabilityへ重複接続。Guard拒否は実作用0、許されたCall数を超えれば失格 | #1129/#4198 |
+| CXP-04 | 外側はclean拒否、内側は作用不明のFailure。Commit済みと断定せず`lookup_first`等の実契約を維持し、無条件再送を避ける | #1174/#1129 |
+| CXP-05 | DSLの重複InputはSource/Workspaceの診断とAdapter前Call 0で別観測。Parser位置をRuntimeから捏造しない | #4359/#4495 |
+| CXP-06 | 生成版/通常版の片方が旧JS・旧Providerを用いる。Stage2実exeのMethod CallとConsumer Byteを別に検証 | #4583/#1824 |
+| CXP-07 | Plugin disableまたはA→B→A後、旧Sessionが旧Bindingで受信／元Dataが自動削除される。前者は失効、後者は拒否 | #4378/#1016/#2044 |
+| CXP-08 | 実Readが0行またはpartial/RLSなのに全母集団・権限済みとしてWeb/AIへ送出。実取得範囲とAudienceを別判定 | #2586/#1178/#2516 |
+
+**採用順**：P0は#4583のnon-Plugin Studio Build→Stage1→Stage2と#1251のread-only実Provider/実Consumerを変えない。CXP-01/05/06を既存P0の対照に用い、CXP-02/03/04/07/08は各OwnerのP1以降で実作用・多Host・管理/開示を検証する。全Graph/Plugin Manager/Web/DBの完成をDesktopセルフビルドのHard Gateにしない。Expected保管先は既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#2514](https://github.com/hat47x/tei-platform/issues/2514)であり、新Runner/Schema/権限正本を増やさない。
+
+**範囲**：本章は他チャットとGitHub実装・CIを照合した設計更新のみ。CXP-01〜08の新Go/Windows/DB/HTTP試験、正式Product E2E、Owner意味受理は**NOT RUN／NOT ACCEPTED**。
