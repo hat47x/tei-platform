@@ -1,6 +1,6 @@
 # Script・Function起動の製品検証：最初の一機能と直接テスト
 
-- **状態**：実装前設計・作業引渡し。正式なDSL／CLI ABI／API Schemaを新たに採用するものではない。製品実行、実Provider、OS副作用、実DB、外部Consumerの新規試験は未実施。
+- **状態**：横断設計・実装引渡し。CapabilityのInput／Result／Effect宣言の構造検査はGo実装としてmain統合済み（#4629／#4636）。正式なDSL／CLI ABI／API Schemaは新たに採用していない。公開Entryから実Providerを呼ぶ製品E2E、実DB・外部Consumerの資格は別検収。
 - **目的**：Scriptを保存・公開できること、実Providerを呼んだこと、業務効果が確認されたことを別々に検収する。そのための最初の製品実装を、既存Go単一バイナリと共通アプリケーションAPIに絞る。
 - **実装と受入の正本**：[Script Launch #4502](https://github.com/hat47x/tei-platform/issues/4502)、[P0実装 #4495](https://github.com/hat47x/tei-platform/issues/4495)、[Trigger #4497](https://github.com/hat47x/tei-platform/issues/4497)、[Script/Macro製品 #2502](https://github.com/hat47x/tei-platform/issues/2502)。本書は横断した実装順と証拠の読み方を示す。独立Expected・Scenario・試験実行器の新しい正本は作らない。
 - **既存判断**：[共通アプリケーションAPI ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)、[Target固有成果物 ADR-0043](../adr/0043-target-native-artifacts-without-tei-host.md)、[認証非内蔵 ADR-0044](../adr/0044-authentication-not-a-core-concern.md)。
@@ -703,10 +703,32 @@ LR-A〜Dは全直列Hard Gateではない。LR-Aの受理待ち中は、LR-Bの�
 
 [main統合済み #4629](https://github.com/hat47x/tei-platform/pull/4629)の`validateResultContract`はResultの構造不正をAdapter呼出し前に拒否する。一方、`semantic.Capability.Inputs`の同名重複・必須Name/Type参照欠落、`Effect`の不明Kind/対象Data欠落も、**実Adapterへ一切到達させずに検出できる宣言の不備**である。これらは意味・権限・実データへ触れずに検査可能であり、既存APIの負例を増やすのが最短。
 
-[実装候補Draft PR #4636](https://github.com/hat47x/tei-platform/pull/4636)では、`capabilityinvoke.Invoke`へ`validateInvocationDeclaration`を追加し、既存Result検査＋上記Input/Effectの構造検査をProvider呼出し前にまとめる。nil Contextはpanicでなくfail-closed。新たなEntry、Provider選択、認可、Runner、Result Engineは増やさない。
+[main統合済みPR #4636](https://github.com/hat47x/tei-platform/pull/4636)では、`capabilityinvoke.Invoke`へ`validateInvocationDeclaration`を追加し、既存Result検査＋上記Input/Effectの構造検査をProvider呼出し前にまとめる。nil Contextはpanicでなくfail-closed。新たなEntry、Provider選択、認可、Runner、Result Engineは増やさない。
 
 独立Expectedは **IC-01** Input Name欠落、**IC-02** Type欠落、**IC-03** 同名Input、**IC-04** Unknown Effect Kind、**IC-05** Effect Data欠落、**IC-06** nil Contextの全件でGo Adapter呼出し0。既存`ValidateBusinessResult`の責務はResult Mode契約に限定したまま。型参照の非空を確認しても、現在Sourceで解決したType・単位・NULL・入力値の適合や、Output bodyを保証しない。`Effect == nil`は**安全なpureであることの証明ではなく、Effect意図未宣言**。公開Entry/Meaning Owner/Host Current Grant/Selected B→Actual A/Effect ReceiptはEP-01〜06の既存Ownerに残す。
 
-この作業は#4495の**構造前検査の局所強化**であり、L-P0/L-P1/L-P2の実製品資格と新しいHard Gateを同一視しない。PR #4636はCode＋Go回帰＋本節に限定し、正式な受理・main統合・CI成功の有無はPR exact HEADで別判定する。
+この作業は#4495の**構造前検査の局所強化**であり、L-P0/L-P1/L-P2の実製品資格と新しいHard Gateを同一視しない。PR #4636はGoコード・回帰試験・本節の3ファイルを変更し、exact HEAD da807abc65d560134e9a6aa4c4f7b8d92d3b2fef のGitHub Actions **9/9成功**を照合して、[squash commit 18470e69](https://github.com/hat47x/tei-platform/commit/18470e69d2755b29ce55285ff847305e2e3e420d)でmainへ統合済み。これは宣言構造と呼出し0回の局所検証であり、意味・公開・実Provider／Host Grantを受理した証拠ではない。
 
 **着手依存**：EP-01/02のSynthetic typed Adapter検証はA0のOwner意味受理と並走可能。正式公開/実GrantのPASSと合算しない。EP-05/Stage2のWebViewは実Go L-P1/P2の確定後に合流するが、TEI Studio自己再構築#4583の最優先実装をブロックしない。**現状**：この節は#4629 merged実績と他レーンの現実装を根拠とした次工程の設計。ProductのEntry/Provider/CLI/Web/Stage2 E2Eは**NOT RUN**。
+
+### 17.2 実Query Read・BuildIntent・Wailsの検証状況をScript Launchへ接続（2026-11-14）
+
+§17.1までに成立したのは、**構造上不正なCapabilityをGo Adapterへ渡さない**という局所的な保証である。他チャットの実装を同じHEADごとに再確認すると、Query Read、Builder選択、Wails Serverでも「宣言→実選択→実呼出し」の照合が進んでいる。ただし、検証が成立する範囲はそれぞれ異なる。
+
+| 並行レーン | 実装・対象HEADの確認結果 | Product資格と次の不足 |
+| --- | --- | --- |
+| **L-P：Go Function** | [merged #4629](https://github.com/hat47x/tei-platform/pull/4629) と [merged #4636](https://github.com/hat47x/tei-platform/pull/4636)。Result、Input名/型参照、Effect種類/対象Dataの構造不備とnil Contextを呼出し前に拒否。#4636は9/9 CI成功、main 18470e69に統合 | 実入力値の型・NULL／公開Entry／Meaning Ownerのpure受理／現在Host Grant／選択Go Providerのactual call／通常製品CLIは別検収。**Effectが未宣言でもpureとは限らない** |
+| **L-R0：Query Input Source** | [Draft #4626](https://github.com/hat47x/tei-platform/pull/4626) は recent_ordersの from を std.datetime と宣言。HEAD 4f238139はActions **14/17成功・3失敗**。歴史R0 FixtureはScratch側だけ元byteへ戻して過去受理の再現性を維持 | Sourceの変更は未統合。Browser→JSON APIでsqlgen symbol混入の検査失敗、Repository Health、セルフビルド失敗を残し、既存E1 Ownerに分離。旧Sourceの資格を新Sourceへ継承しない |
+| **L-R1：実Executor前の型検査** | [積上げDraft #4631](https://github.com/hat47x/tei-platform/pull/4631) は#4626をbaseとし、宣言済みstd.datetimeにGo time.Timeを要求。missing/extra/NULL/不正型を実Executor呼出し前に拒否。HEAD 02af8339の限定Actionsは**2/2成功** | #4626の先行検収が必要。2件の成功はPG16実Read、通常tei CLI、二Consumer／現在Grantの成功ではない。未宣言Queryを動かす旧Reference経路はtyped Productとして受理しない |
+| **Builder実選択** | [Draft #4634](https://github.com/hat47x/tei-platform/pull/4634) は宣言とResolverの適合、選択Builderと実Child Digestの検査を同一main基点HEAD 653d0d9aに集約。Actions **8/8成功** | まだDraft。非Plugin Desktop BuildExecution／ArtifactSet、N0〜N3の実消費、生成Stage1→Stage2のWindows WebView2は未実証 |
+| **Wails公開面** | [Draft #4627](https://github.com/hat47x/tei-platform/pull/4627) は実Service登録と15個の公開Go MethodをAST/reflectで棚卸し。HEAD b9cf5447のActions **5/5成功** | Commandや外部Childの入口も含む。127.0.0.1限定Reference Serverを多利用者Webに公開してよい証拠ではなく、Principal／Workspace／Tabごとの認可・結果開示は未検証 |
+
+この対応から、次の三原則を既存Owner間の引渡し条件にする。
+
+1. **構造検査の再利用は、意味受理の再利用ではない**。L-PのCapability宣言拒否とL-RのQuery実引数拒否は、同じ失敗を防ぐ考え方を持つが、Source・Input・Provider/Executorが異なる。片方の実行結果を他方の合格票へ加算しない。
+2. **選択と実使用を同じAttemptで観測する**。Go Functionでは公開Entry／現在Grant／selected Providerとactual Adapterを、QueryではQuery byte／typed Params／実DBとRowsetを、BuildではBuilder／Child image／生成Artifactを別々に照合する。新しい共通Runner／Resolver／Registryは設けない。
+3. **Consumerの受領と開示を独立させる**。通常のtei CLI、Studio、Web/IPCの受領を段階的に検収する。UIで古い応答を隠す操作はHost側の取消・Rollbackではなく、Wailsのallowed配列やPinも現在Grantではない。
+
+**実装順への反映**：#4495はOwner受理済みpure Entryを見つけたうえで、L-P1の実選択Go Adapter→実Call、L-P2通常CLIへ進む。未受理中も合成fixtureでSelected B／Actual A・未公開Entryの呼出し0を検証可能。#2586は#4626のSource変更／歴史Fixture／E1失敗を解消してから#4631を再検収し、実PG16と独立Consumerへ進む。#4583のStudio Desktopセルフビルド最優先は維持し、#4634のBuilder限定成功をStage2の成功と見なさない。
+
+**この節の証拠上限**：#4629/#4636はmain実装済み。#4626/#4631/#4634/#4627は指定HEADでのCI結果があってもDraft・未統合であり、公開Function Product Q2／実PG二入口／多利用者Web／Windows Stage2の完成を示さない。
