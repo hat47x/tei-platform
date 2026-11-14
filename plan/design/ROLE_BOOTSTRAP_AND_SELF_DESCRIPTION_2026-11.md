@@ -1745,3 +1745,94 @@ Trait Definitionからの**実装義務は拘束力を持つ**。例えば`manua
 **合格の上限**：構造を読めた・構文候補を得た・意味が評価できた・Traitが履行された・独立Expectedを実消費した・OwnerがMeaningを受理した・生成物が実Consumerで使用された、をそれぞれ別Claimとして保持する。`#4405の局所GoテストPASS`を`Workspace新DSL正式採用`に、`#3279の計画`を`Trait Runtime製品化`に、`#4583 B0/N0`を`Stage2 Self-build完了`に読み替えない。
 
 **状態**：#4541の既存設計への追補・関連Issueの引継ぎのみ。新Go/CLI/Node/Windows/DB実走、Trait Fulfillment実装、Source Writer、Product新Rule Workspace、Owner意味受理、Stage2/G4は今回NOT RUN / NOT ADOPTED。
+
+<!-- tei-self-description-change-qualification-20261114 -->
+## 34. 2026-11-14 自己記述DSLの版互換・安全な編集・DBとStudioの時点資格を接続（計画／NOT RUN）
+
+### 34.1 今回の差分：構文が読めることと、変更できることの間の「時点」を明示
+
+第31〜33節の有限Bootstrap／Role／Trait／独立Expectedに対し、Studio/Web・AI Harness、SHO/SUI文書、DB Workbench、Native SQL、データ/スキーマ移行、Desktopセルフビルドから受け取る**変更時の再資格化**を接合する。既存[#4367](https://github.com/hat47x/tei-platform/issues/4367)形式互換、[#4366](https://github.com/hat47x/tei-platform/issues/4366)zero-write、[#2497](https://github.com/hat47x/tei-platform/issues/2497)Projection逆写像、[#4515](https://github.com/hat47x/tei-platform/issues/4515)Subject Pin、[#4496](https://github.com/hat47x/tei-platform/issues/4496)Data Workbench、[#2514](https://github.com/hat47x/tei-platform/issues/2514)Expected、[#1163](https://github.com/hat47x/tei-platform/issues/1163)Evidenceに引き渡す。**新しいSource Writer／Transaction Coordinator／Policy Engine／Migration Engineを作らない**。
+
+- **形式可読**：選択済みParserが旧/新表層を読めること。
+- **意味互換**：同じSubject/Role/Operator/型/NULL・空集合/評価時点/Scopeのもとで、独立Expectedから意味の保持が判定できること。
+- **変更可能**：一意なWritable Source occurrenceまたはDBの実行可能な対象Key+Versionを持ち、競合・損失・権限を実操作に束縛できること。
+- **現在利用可**：対象・Parser/Provider/Generator/Hostの現在の資格が実Consumer時点で成立すること。
+
+これらは直線的な単一`PASS`ではない。同じ意味を読めても元Sourceへの安全な逆写像が不明ならread-only。局所編集成功でも出力Artifactの現行資格、現在の開示資格やCommit結果を自動承認しない。
+
+### 34.2 形式版と意味契約の直交性（版選定はOwner判断を維持）
+
+実`internal/formatversion/formatversion.go`は、Definition formatを中央表現`Document/Element/Attribute`へDecode/Encodeする既存境界で、属性の`Absent/Empty/Value`を区別し、同一版変換identity、要素単位の損失診断、未知版の全体拒否を要求する。これらの**Source形式上の三値**は、SQLの`NULL`／未取得／非開示と同じ分類ではない。異なる意味領域を同じenumへ安易に統合しない。
+
+[#4367](https://github.com/hat47x/tei-platform/issues/4367)の候補C1（Workspace formatVersionを明示更新）/C2（Language Contract pinで新構文を選択）は**未決定**。C3（版未宣言の自動併存）は黙った再解釈のため推奨されない。**本節ではC1/C2を選ばない**。どちらでも必要な互換確認：
+
+| 軸 | 固定・比較内容 | 禁止する推論 |
+| --- | --- | --- |
+| 形式版 | Workspace formatVersion、内包Semantic header、Codec、旧new構文の受理条件 | Format一致＝同じLanguage実装／新`rule`を旧版で自動解釈 |
+| Language pin | Parser契約・実Implementation・選択経路・Toolchainと選択時Source | 先頭で見つかったPlugin／latest Parserが適格 |
+| 意味版 | Semantic Role/Operator/Facet/Requirements、NULL/decimal/grain/Time、独立Expected | 同じSource byte/Subject ID/Value＝Meaning同値 |
+| Projection版 | Markdown/Graph/Tree/SHO/StudioのReader、lossとinvertibility、原文EOL/BOM | 見た目の一致＝Raw byte一致、非単射View＝更新対象一意 |
+| Realization | Target/Generator/Builder、実Artifact/実Input、Host/Provider ABI | 以前のArtifact PASS＝現在のRunner/Grant資格 |
+
+現mainでは`workspace.Load`のmanifest/実読取byteが区別され、`*.tei.md`管理rootの正式Parserは未束縛なら拒否される。SHOでMarkdown草稿を保存できることと、Product意味Sourceとして`*.tei.md`を採用できることは別。旧版のSource→新Codecの変換は、原文損失/Element単位の診断と**明示操作**なしに自動上書きしない。異なる版のSemantic Parse成功を「自動Migrated」と呼ばない。
+
+### 34.3 変更操作は五つの観測点で検収（新State Machine/APIではない）
+
+Studio／AIがSourceまたはDB Rowの編集候補を作るとき、次の**同一Operation Attemptに対する監査・検収ポイント**を既存Operation/SourceIndex/Host/Effect Receiptに参照付けする。これは共通Application APIに巨大な共通Envelopeや新Coordinatorを追加する仕様ではない。
+
+| 時点 | Source変更の場合 | DB/Provider作用の場合 | 観測しない限り昇格できない資格 |
+| --- | --- | --- | --- |
+| **T0 Preview** | 元Source byte/occurrence/selected Subject/base revision、差分・非対象byte、原糖衣保持 | Native SQL/Rowset/Selection、実Row identity・row-version・Pending Changes、Query/Read Scope | 表示だけで「編集対象が一意」としない |
+| **T1 Resolve** | 現Workspace/Manifest/Language pin・対象Occurrence/Source span・Read/Requiredを再解決 | 実Provider/DB alias/Instance、Query/dialect/Bind/Selected Key+Version、Grantの出所 | CandidateのProvider名・UI label・SQL row番号をIdentityにしない |
+| **T2 Admit** | Apply直前にbase byte/RevisionのCAS、Meaning/Rule/独立Expected、対象範囲とWritable判定 | Effect直前のCurrent Grant/Scope/Row version/Schema drift/Operation id/再送条件 | T0時点の成功・旧GrantでApplyを許可しない |
+| **T3 Commit** | 実際に書いたSource byte/identity・Conflict/no-op zero-write・書込み後Revision、途中失敗 | Providerの実Commit/拒否/部分効果/operation identity、Receiptと不確定状態 | API応答`OK`や通信成功＝持続確定とはしない |
+| **T4 Observe** | 独立再読取→Parse/Source Index/Meaningと差分の照合、Studio/SHO/SUIの受領 | 独立Row Read/履歴Provenance/Consumer receipt、実公開Policy/見える範囲 | 旧キャッシュやClient表示だけで実保存・更新完了としない |
+
+Source editとDB Updateの**物理Atomicity/rollback保証はProvider/FSの実能力次第**であり、五時点に区切るだけでは保証されない。部分失敗/response lostなら`effect unknown`を保持し、同じOperation Identityで既存の適格Receipt Lookup/独立Readを優先。無条件Retryを認めない。Source/DB両方を変える操作のall-or-nothingは別の製品要件で、共通のTransaction Managerをここに導入しない。
+
+### 34.4 Source/Subject/RowとAI文脈のIdentityを混同しない
+
+- **Source**：Stable Semantic ID、実Source occurrence（file/span/raw byte）、Workspace manifest Identity、Source Revision、読み込まれたRoot/Plugin/Import closureは別。`source-index`のTrace参照0件やDisplay labelから不存在・対象一意を主張しない。選択Intentは`#4515`のSubject Pinに保持できても**Current Grant・Source/Meaningの現在性**は自動復元しない。
+- **Row/DB**：業務membership identity、業務Key、実Physical PK、record-version、query Selection、DB Instance/Aliasを混同しない。実Read後のJOIN/aggregate/virtual Key/partial Rowsetは表示できても安全な逆Update対象とは限らず、User/AIがSQL表示セルを指しただけでDML適用しない。Source意味モデルとDB schema/historyを別記録する。
+- **AI/SHO/SUI**：Editor selection/SHO span/SUI Card/Graph描画edgeは**参照意図**であって自動的なSource writable identityではない。Graph同ラベル多重辺、説明文の同文字列別Occurrence、SHO/Markdown OS間CRLF変換を情報損失として検査。Candidateが元Source/Roleを一意に逆写像できなければPreviewとread-onlyで停止。許可を失った場合は既描画DOM/ARIA・AI payload/Tool ContextもCurrent Disclosureと別に再検査する。
+- **時間的有効性**：`reference/tei-studio-workbench/responses.ts`の`responseScope`は**UI返信順序**を管理するのみであり、Source/Grant/Policyの変更検知・古いDOM消去・Host authorizationではない。T0〜T4のSource/Grantの更新観測がない場合、即時失効を保証せず`unknown`とする。観測された失効後に旧Replyを新ContentとしてPublishすることは拒否する。
+
+### 34.5 Native SQL・型付きQueryの限定成果と次の接合
+
+[#4496](https://github.com/hat47x/tei-platform/issues/4496)のNative SQL→選択→保留差分→単一Row CAS→実再読取を既存Ownerとして維持。Native SQLはDB方言・NULL・JOIN多重度・order・Provider Read Scopeを含み、TEI標準Query候補への変換を**自動意味同値の保証**としない。複雑集計をNativeに残す選択を許容し、DB clientとしてのStudioの実用性を阻害しない。
+
+現[#4631](https://github.com/hat47x/tei-platform/pull/4631)の積上げDraftは、宣言済みBrowse Queryの`std.datetime`に限る厳格な型検査を既存共通Executor到達前で実行し、欠損/型違い/NULL等を拒否する限定RA-1。PR記載の同一HEAD専用Go Workflow成功は**型付き入力前置検査**の資格であり、隔離PostgreSQLからのactual Row Read、Provider/Native二Consumer、実DB履歴・更新資格、Owner意味受理の成功とは別。今後のS0実Read→S1固定Selection→S2 Pending Delta→S3単一Row CAS/Receipt→S4 Studio/CLI/Harnessの受領は#4496/#2586/#2500/#1174へ渡し、DSL Meta Parser完了をHard Gateにしない。
+
+Migration/Historyでは、**履歴がSource/旧DBに存在することと新Targetに再現したこと**、業務IDとrecord-version、schemaの過去状態/現状態、old Reader/Writer互換を分離。欠けた過去を便宜上生成しない。`History unknown`や`DDL drift`はApply直前に停止。移行は実隔離DBの独立Readerでold/new as-ofを照合できた範囲のみ限定PASSとする。
+
+### 34.6 独立反例（SD-C01〜12：既存OwnerのCaseへ参照対応、新テスト未実行）
+
+| Case | 変更・故障の一因子 | 独立Expected／停止線 |
+| --- | --- | --- |
+| SD-C01 | 同Source/VersionだがLanguage pin/実Parser A→B、またはOperator ABI変更 | 形式Reader PASSと意味同値・実Parser選択の資格を分離 |
+| SD-C02 | 旧Validationと新Rule同ID、どちらか一方だけ旧Version | 重複・Unsupportedを拒否、先勝ち/後勝ち・自動改版なし |
+| SD-C03 | Format Codecが`Absent`と`Empty`を潰す、または`NULL`へ無根拠対応 | Element損失診断。Source presenceとDB NULLは別 |
+| SD-C04 | 空のno-op Saveや別OriginのLF→CRLF/BOM変換 | byte不変・zero-write、明示Patch以外のformatter side effectを拒否 |
+| SD-C05 | Source A→B→Aで同span/IDへ遅着AI Patch | base version/byte/manifest/Pinを照合。旧Intentを暗黙再資格化しない |
+| SD-C06 | Graph/SHO/KJ Viewが異なるSource occurrenceを同Labelに潰す | non-injective逆写像の自動Applyはunsupported/read-only |
+| SD-C07 | Query Resultの行番号は同じだが実DB alias/PK/row versionが変化 | Preview→Admit時にRow CAS/Resourceを再解決、別対象へretarget禁止 |
+| SD-C08 | JOIN/aggregate/partial/hidden Rowsetから一つのセル編集を要求 | 閲覧可と更新可能を分離、完全集合や実Key未確認ではDMLなし |
+| SD-C09 | Snapshot一致でもGrant/Schema/Provider ImplementationがT2直前に失効 | Preview PASSからApply許可を推定せず拒否/unknown |
+| SD-C10 | Commit後HTTP/IPC Reply紛失、Rowは実更新済みか不明 | 無条件再送せずOperation idとReceipt Lookup/独立Readで再確認 |
+| SD-C11 | Source/Meaningは一致、旧履歴Sourceなしで新DB Historyを補填しようとする | 「過去不明」を維持。業務IDと履歴版を分けてas-of確認 |
+| SD-C12 | Stage1生成成功後にLanguage/Generator/Builder pinか実N2 dependency変更 | Source/Meaning資格とArtifact/実Consumer再Build資格を独立失効。B2/G4偽PASS拒否 |
+
+既存#4366 F、#4367 C、#2497 MP、#4515 PIN、#4496 WCE、#2514 Q、#2600 DI、#4583 BDを対応させる。新Test Runner・Case SSOT・全体Permission Engineは作らない。未実行/実Consumer未到達のケースは`NOT RUN`/`unknown`。
+
+### 34.7 計画に組み込む優先順・実装判断
+
+| 優先 | 成熟した受入条件の引渡し | Owner |
+| --- | --- | --- |
+| **P0主線** | non-Plugin Desktop Build B1-B/C→Stage1実Builder→Stage2→Windows実WebView2受領。実Source/Builder/Artifact/Headが一つのAttemptでつながるか | #2831/#4583、既存#1119 Gate。不必要なDSL移行を新Hard Gateにしない |
+| **P0並走** | 旧Rule/新RuleのS0独立Expected・Case消費、旧/新FormatとLanguage pinの**版未採用の互換性票**、Sourceの無変更Save zero-writeと失敗原子性 | #4361/#4366/#4367/#4359/#2514。既存#4405/#4607を再利用 |
+| **P0並走** | `fx.rate` Role S0でSource/Role/必要Reader/実消費の同一Subject束縛 | #4536/#2620/#988 |
+| **P1** | Read-only Subject PinとStudio/SHO/AI/Graph投影のSource/Grant失効、T0〜T4の条件付きPatch/独立再Parse | #4515/#1124/#2497/#2621/#2516。安全な単一Occurrenceが先 |
+| **P1** | Typed Query`std.datetime`の既存限定検査を、実Provider Row Read→Key/Version Pin→一行CAS/Receipt/独立Readへ接続 | #4631/#4496/#2586/#2500/#1174。実DB入場は別 |
+| **P2** | DSL/Grammar改版×Target Generator×History migration×Incrementalの正しい再資格化・元Reader/Writer互換、SaaS multi-Workspace/DB隔離 | #2600/#4544/#2497/#2892/#4125。Source/DB履歴を捏造しない |
+
+**今回の事実／資格**：Sourceの現Go `formatversion`中央変換・`workspace.Load`実Reader・`responses.ts`表示順序、既存#4366/#4367/#4496の計画、#4631の限定Go実装報告を照合して本Draftを更新する。現Productの新`rule`/`*.tei.md`全体導入、Source Writer/Studio条件付き実Apply、Native SQL→実DB Write/History Migration、Stage2 Desktop、Current Host Grantの新E2Eは本節では**NOT RUN/NOT ADOPTED**。現行契約を超えるMigration/Schema/Execution権限はOwner判断まで付与しない。
