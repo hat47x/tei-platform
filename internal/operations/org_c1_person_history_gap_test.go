@@ -11,6 +11,7 @@ import (
 
 	"tei/internal/database/persistence"
 	"tei/internal/database/providers/postgres"
+	"tei/internal/database/schemadiff"
 	"tei/internal/semantic"
 	"tei/internal/validation"
 	"tei/internal/workspace"
@@ -389,6 +390,41 @@ func TestOrgC1CandidatePersonRelationStorageLoadsFromTEIDSL(t *testing.T) {
 		len(table.ForeignKeys) != 0 {
 		t.Fatalf("candidate must not silently resolve historical PK or generate FK: %+v", table)
 	}
+	// Compare against the same Source-derived Mapping without the candidate
+	// support column. This is an OFFLINE baseline, not an observed live DB.
+	// A safe Expand candidate adds exactly one nullable column; neither the
+	// unchanged occurrence-only PK nor old rows gain invented Person history.
+	baselineMapping := *membership
+	baselineMapping.RelationStorage = nil
+	before, err := persistence.RealizeDesired(
+		[]persistence.Mapping{baselineMapping}, "org_store", postgres.RealizationPolicy{},
+	)
+	if err != nil {
+		t.Fatalf("realize the existing Source-derived physical baseline: %v", err)
+	}
+	changeSet, err := schemadiff.Compare(desired, before)
+	if err != nil {
+		t.Fatalf("diff candidate vs. previous offline physical shape: %v", err)
+	}
+	if len(changeSet.Changes) != 1 {
+		t.Fatalf("optional Person link must only add one support column: %+v", changeSet.Changes)
+	}
+	change := changeSet.Changes[0]
+	if change.Kind != schemadiff.AddColumn || change.Table != "public.org_memberships" ||
+		change.Column == nil || change.Column.Name != "person_support_id" ||
+		change.Column.PhysicalType != "pg_catalog.varchar" || !change.Column.Nullable {
+		t.Fatalf("offline schema diff must add only a nullable varchar support column: %+v", change)
+	}
+	statements, err := postgres.RenderMigrationSQL(changeSet)
+	if err != nil {
+		t.Fatalf("render offline PostgreSQL Expand candidate: %v", err)
+	}
+	const wantExpand = `ALTER TABLE "public"."org_memberships" ADD COLUMN "person_support_id" pg_catalog.varchar;`
+	if len(statements) != 1 || statements[0] != wantExpand {
+		t.Fatalf("expected non-destructive nullable support-column Expand, got: %+v", statements)
+	}
+	// This generated DDL has NOT been run or compared to introspected Actual.
+	// Known-time record versioning and safe backfill remain separate decisions.
 	// The normal authoring/loader path must reject physically plausible but
 	// semantically invalid variants. These are actual .tei sources in the
 	// isolated copy, not in-memory-only mutations or fabricated parser outcomes.
