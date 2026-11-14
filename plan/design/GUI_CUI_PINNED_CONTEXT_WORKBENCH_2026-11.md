@@ -892,3 +892,34 @@ P0/P1がPASSしてもP2〜P5をPASSにしない。P2の解消は**現在の正�
 **検収の区別**：旧HEADのPin専用CI successは旧HEADの証拠として保持。新HEADのWorkflow修正はコミット済みだが、**新HEADのrepository-health/Pin専用CI再実行は未確認**。再実行の成功を推測してPASSへ昇格させない。独立のembedded bundle不一致は引き続きFAILであり、今回のWorkflow修正では解消していない。
 
 **次のゲート**：新HEADの`repository-health`（静的契約）と`Studio Pin intent state contract`（7件・型検査）を確認し、embedded bundleのSource/生成器/埋込みbyte差分を別Issueで解消する。#4515の実Pin UI・#4572生成Reader・#4579実Desktopは同一HEADで統合試験する。
+
+
+## 26. 2026-11-14 Pin契約の現HEAD CIとBundle再現性の修復手順
+
+#4597 HEAD `f4f849f63544f514fe05306b934864e3507bed1a`のGitHub Actionsを照合した。
+
+| Gate | Workflow Run | 観測 |
+| --- | --- | --- |
+| Pin局所契約 | [43572042693](https://github.com/hat47x/tei-platform/actions/runs/43572042693) | **completed/success** |
+| Workbench embedded bundle | [43572042636](https://github.com/hat47x/tei-platform/actions/runs/43572042636) | **completed/failure**。失敗Stepは`Compare build output with Wails embedded files` |
+| Cache Full vs Incremental | 43572042656 | completed/success。Pin/Bundleの代用不可 |
+| Studio independent consumer | 43572042642 | completed/success。Pin UIの代用不可 |
+| Wails PoC A Host | 43572042696 | completed/success。Pin実Desktopの代用不可 |
+| Repository health | 43572042669 | **確認時in_progress**。先行する静的規約修正のPASSは未確定 |
+
+### 26.1 Source→Bundle→Desktopの整合を実際のRecipeで扱う
+
+現行`reference/tei-studio-workbench/build.mjs`は`main.ts`をesbuildで`dist/main.js`へbundleし、同時に`dependencies.json`、`THIRD_PARTY_NOTICES.txt`、`index.html`、`style.css`を生成する。CI `tei-studio-workbench-embed-ci.yml`はNode `24.21.0`、`npm ci`、`npm test`、`npm run typecheck`、`npm run build`後、**4ファイル**を`cmd/tei-studio/assets/workbench/`とbyte比較し、埋込み側に`dependencies.json`が無いことも確認する。
+
+したがって`main.js`だけを手修正して一致させるのは不可。差分の原因を、Source/lockfile/esbuild/ビルドRecipe/出力ファイルのどこにあるか切り分ける。診断時には**同一HEAD**の4ファイルそれぞれのSHA256、byte長、最初の差分位置、`dependencies.json`に記録された入力、Node/npm/esbuild版、`git status`を収集する。差分にSourceの機密情報がある場合、ログへ本文を出さずhashと位置に限定する。
+
+修正は**Source・lockfile・Recipeの正本**を確認した後に、生成手順で4ファイルを一括同期し、同一HEADで再ビルドして`cmp`を再実行する。生成物を直接編集した場合、TEIのWorld/Artifact Revisionの受理証拠にはならない。#4572の生成Reader、#4579の実Desktop Consumerが別Draft HEADにあるため、単独PRの成功を統合HEADの成功と混同しない。
+
+### 26.2 次の実装ゲート
+
+1. **P0/P1**：#4597の現HEAD専用Pin契約PASSは採用可能。Repository healthは完了を待って別票で確認。
+2. **P2**：Workbench Source→dist→Desktop embeddedの4ファイルbyte一致。失敗のままDesktop統合受入へ進めない。
+3. **P3**：#4515の`main.ts`へPin/Unpin/再確認を接続。既存`responses.run("inspection")`を再確認へ流用せず、独立laneと`pinGeneration`で旧応答を排除する。
+4. **P4/P5**：#4572生成Reader＋#4579 Windows WebView2を同一HEADで検証し、#2831のBuild Graph/Stage2セルフビルドは別途実証する。
+
+**今回の変更は計画への観測反映であり、Bundle差異を解消したというClaimではない。**
