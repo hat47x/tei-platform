@@ -521,3 +521,69 @@ main `e888bb8f...` で`reference/workspace/semantic`配下の6つの`*.tei` Sour
 - **X-TEA/SHO/SUI/AI**：Data Script/Hookの内部実行を公開Entryへ無条件昇格せず、Modeler/Composer/Canvasからの呼出しは現在Disclosure/Host Contextを経た共通Product Operationへ接続する。公開・受理・実行をAIやUI Pinだけで付与しない。
 
 **現時点の資格**：この§13はmain`e888bb8f...`の個別Sourceと既存Reference契約を静的に照合した計画・反例の追補。PR #4618はDraft、§13による新Go Test、Product CLI、Provider/Host/DB/EKI実行、Stage2 Desktop Function起動はすべて**NOT RUN**。正式CLI構文・公開Entry schema・Canonical line-amount意味採用は**未決**。新Run Engine、Permission Issuer、第二正本を追加しない。
+
+## 14. Studio Web/Desktop・Go WASMとの起動境界：共有するのは契約、権限と実CallはHostへ（2026-11-14）
+
+2026-11-14のStudio Web版・Desktop版、Go WASM共通状態管理、YIC Harness/TAI Activity、Plugin/BuildIntentを巡る他レーンの設計を、現行main Sourceの実情に照合した追補。**Web/Desktopを別の業務実行実装に分けない**一方、UI race suppressionと認可・実Runを混同しない。本節は既存#4495/#3422/#4515/#4583/#2502への引渡しであり、Script Launch P0-LにWeb完成・WASM導入・全Harness統合の新Hard Gateを置かない。
+
+### 14.1 実在するStudio境界と公開Webの安全性を区別
+
+- `reference/tei-studio-workbench/main.ts`は共通TypeScript Workbenchを組み、`cmd/tei-studio/assets/client.mjs`の`createReadOnlyClient`というHost-neutralな呼出しPortを利用する。PortがWailsの`main.StudioBridge.*`を呼ぶという事実は、同一のProduct Operation/Current Grantが検証済みであることを意味しない。
+- `cmd/tei-studio/main.go`はWails v3 `StudioBridge`を公開し、`ServerOptions.Host="127.0.0.1"`を使う。さらに`WAILS_SERVER_HOST`が未設定または**厳密に`127.0.0.1`**でなければ起動を拒否する。READMEのServer Build手順は**単一利用者・ローカル参照PoC**。一般公開Webに必要な実Session/Workspace分離・AuthN/Z・Origin/CSRF/Disclosureの証拠ではない。
+- 現行`StudioBridge`と`assets/client.mjs`には`ExecuteCommand`／`ExecuteCommandWithPolicy`／`ExecuteCommandWithReferenceStore`という参照Commandの実行入口もある。Host実装`internal/studiohost/command.go`の`CommandRunValue`はReference結果で、`ReferenceAuthorizer`および`MemoryUnitOfWork`等による`persisted=false/durability=none`を明示する。**`ReadOnly`というHost型名や`createReadOnlyClient`という名前から「全methodに無作用／本番権限あり」を推論しない**。Caller指定`allowed`をHostの現在Grantに昇格させない。
+- Wails v3の公式Server Buildは`server`タグのGo HTTPサーバーとしてService Bindingを使える一方、Desktop固有Window/Tray/Native Dialogは使えない。Web/Nativeで**共有可能なのはService/API契約とWorkbenchのUI Source**、固有なのはProcess/Transport/OS permission/Sessionと判断する（公式: https://v3.wails.io/guides/server-build/）。Server Buildを採る場合も既存ループバックPoCを無検証に`0.0.0.0`で公開しない。
+
+### 14.2 共通にする契約と、共有しない実行状態
+
+| 層／対象 | 共通にできる・既存Owner | 共通化してはいけないもの |
+| --- | --- | --- |
+| **Workbench UI** | Entry候補、Source/Subject Pin、入力Form、Preview・実行意思・結果/Failureの投影。TypeScriptのPort/Adapter | UI選択や`ready`、過去のPreview、AI提案によるPermission/Meaningの採用 |
+| **Pure Model/Projection** | Goの小さな純粋関数の`input/contract/revision/output/failure`、同じFixture/Expected。Go/WASMへの限定コンパイル候補 | Browserに付与するHost Grant、DB/Secret、永続Store、Provider Runtime全体。Go`internal/operations`のTransport-free依存試験に`syscall/js`/Wailsを注入しない |
+| **Product Application Operation** | 一件の公開Entryに対する型付きInput、Contract期待版、Source/Target、意味Outcome、Failure。#4495/#3422 | CLI/Studio/Web/WASM別々の意味判定、ReferenceExecutorを無告知Productへfallbackする経路 |
+| **Host/Runtime** | 選択済みProvider・Artifact・現在Scope/Grant/Resource・同一Attemptの実Call Evidence。既存Contract/Plugin/Permission owner | JS Callerが申告した`actor/role/allowed`を権限正本にする経路、Browser local cacheのSnapshotをDispatch資格にする経路 |
+| **Activity/Session/Run** | Goal/TAI ActivityとProduct Operation/Attemptの相互参照、失敗/不明/取消/観測の判定票 | Harness Session ID、Browser Tab ID、Task ACK、Transport成功をCommit/Result body/Effect観測に昇格させること |
+
+**Go WASMは現段階では候補**。すでにHost側にある型付きOperationや`semantic/capabilityinvoke`をBrowserへ丸ごと移す義務はない。最初はSource未変更のread-only検証／projection／差分計算から、(a) Go native/Server、(b) browser Go/WASM、(c)現TypeScriptという同じ合成Fixtureを比較し、**初期ロードbyte・初回表示・warm再評価・メモリ・結果同値・未知状態・依存サイズ／ビルド再現性**を実測して採否を決める。Go公式WebAssembly案内は`GOOS=js GOARCH=wasm`とRuntime支援JSのGoバージョン整合を必要とする（https://go.dev/wiki/WebAssembly）。パフォーマンス優位を未測定の前提にしない。WebAssembly EngineやWASI外部HostをScript Launchの新しい標準Hostとして追加しない。
+
+### 14.3 応答の世代管理は取消／再送の保証ではない
+
+`reference/tei-studio-workbench/responses.ts`の`createResponseScope`は`context` epoch・lane sequence・disposeで**旧成功／旧失敗を描画しない**。既存`responses.workspace-switch.test.mjs`はWorkspace A→B→A・同Subjectでも旧A応答を描画しない対照を含む。**ここにはHost側Context取消、実Providerの停止、すでに生じたEffectのRollback、OperationIDの冪等制御がない**。UIが`run("inspection")`を無効化してもProductの`Run`を取消したと見なさない。
+
+公開Entryの遷移では、共通APIが以下を区別して返す／再照会可能にすることを既存ownerに要求する。新共通`Run`テーブルを要求する意味ではない。
+
+1. **Preview**：Version/Subject/Capability/Provider候補の検査結果。`executionPermission=false`を基本とし、現在Grant/公開状態はAdmitで再解決。
+2. **Admit/Start**：Host実Contextから対象・現在Grant・選択Provider/Artifactを取得／再検査。Workspace/Entry/Source/Grant/Target driftなら実Providerへ0回呼出しの拒否。クライアントのPin/Clock/Role文字列では判断しない。
+3. **Dispatched**：実Providerへ渡されたことと処理結果の確定は別。Reader/Callerがcancel・timeout・通信断になった場合、開始済みEffectがないとは断定しない。
+4. **Observed/Disclosed**：Result payload、Failure、実Artifact/Provider witness、Commit/Effect（あるときだけ）を既存Observerで確認し、現在のDisclosureを再確認して表示・配信する。Task ACK、CLI exit 0、WebSocket更新だけでBusinessVerifiedにしない。
+5. **Resume**：YIC/外部Harness Session/TAI Activityが再開しても、保存Goal・Task Delivery・Product Operationは別Identity。過去のPrepared Invocationや古いGrant、前セッションが作ったProposalを**無審査Dispatchしない**。protected effectが不明なら既存OwnerのReceipt照会／人間判断へ渡す（#1130/#1174）。黙ったlocal fallbackは禁止。
+
+### 14.4 必要な圧力試験は既存Ownerに配分する（新Test SSOTを作らない）
+
+| ID | 独立Expected（実行できたものだけPASS） | 最初のOwner |
+| --- | --- | --- |
+| **WCL-01** | A→B→A切替の旧Success/FailureはUI描画0。**旧Host処理が取消済みというClaimはしない** | #4515／既存responses tests |
+| **WCL-02** | Preview時Grant有効→Dispatch直前失効。Go共通OperationでProvider call0。Desktop/Server/WASMのUIは拒否を同じ意味で投影 | #4495 EL-07／#3422 T08 |
+| **WCL-03** | 別Session/別Workspaceの同名Entry／同じWorld FP。Remote Callerの`actor/allowed/workspaceID`で横断不可。未公開・未許可Originで実Host call0 | #3422 T08/T12／#4515 |
+| **WCL-04** | StudioのReference `ExecuteCommand`が`committed=true`を返しても`persisted=false/durability=none`のまま。Product/DB writeのPASSへ昇格不可 | #1251／#4495／#1174 |
+| **WCL-05** | Go/WASM側Previewが`ready`、Host側Source/Operator/Entry/Artifact版はstale。Hostは再検査し拒否、Browser cache/Previewで昇格しない | #3422／#4495／#2600 |
+| **WCL-06** | 実Product CLI→Desktop IPC→Web Serverは同じContract/Owner/Providerを呼ぶ。各入口の実Transport・実Context／Call Siteを個別に採取。HTTP/BrowserやWebView未実行ならNOT RUN | #1158/#3421/#4495 |
+| **WCL-07** | Dispatch後にWebSocket/Tab/外部Harness Session切断。UI suppressだけで二重再送せず、Outcome/Effect unknownは既存Receiptを照会 | #1130/#1174/#3422 |
+| **WCL-08** | Stage1 BuildIntent選択Builderと実子Digest一致でも、**Stage2 Runtime Provider/Entry収録と実起動は未実証**。Generated Desktopの実Consumerから別Witnessを採る | #4583／#2831／#4495 |
+
+WCL-01は既存UIテストの再利用を優先。WCL-02〜07は、Go直接API／実CLI→Desktop IPC→Web Serverと段階を踏み、WASM導入を前提にしない。既存#1180/#2514で独立Expectedを維持し、製品E2Eとsynthetic Referenceを混ぜない。
+
+### 14.5 BuildIntentの進展をScript Launchへ「原則」としてのみ反映
+
+2026-11-14時点のDraft [#4623](https://github.com/hat47x/tei-platform/pull/4623) HEAD `f1e219a25976946bcc8a19ef57f5490333ec8a84` では、`tei self-build -bind-resolved-builder`が既存`BuildIntent.Resolve`で選んだBuilder digestを、実Child executableの**起動前SHA照合**に結び、Selected B／Actual Aの負例を拒否する限定経路を実装。PR説明では当該HEADのCI 8系統成功と報告されている。ただし**Draft未merge、Plugin主体のBuildPlan、Caller供給CatalogのMeaning/Authorityは未証明**で、OS LoaderのTOCTOUとN0〜N3の実BuildIntent駆動、Stage1→Stage2 Desktopは依然未成立。
+
+**Script Launchに移すのは、Resolve選択→実Caller/Provider→実Resultの同一Attemptでの照合パターンだけ**。BuildIntent Builder DigestをそのままFunction Entryの実行資格やHost Grantへ使い回さない。静的Go Providerには動的Loadのイベントを求めず、Artifact linked memberとHost-owned actual call witnessで独立検査する。Plugin/BuilderとFunction/Entry/Resultの実装を単一万能Runnerに統合しない。
+
+### 14.6 段階採用・検収と現在の証拠上限
+
+- **L0/P0 #4495**：先行§13のA0（意味受理・公開）→A1（typed Operation／実Go Provider）→A2（実CLI subprocess）。Wails/Web/WASMなしで成立可能。Host Current Grant・Effectは別資格を維持。
+- **Workbench先行 #4515/#1824**：現行read-only UI/Pin/response epochに、候補Entry/Failure/Resultの**read-only Projection**を必要分だけ追加。保存・承認・実Dispatchボタンを本節だけで増やさない。
+- **Desktop/Web接続 #1158/#3421/#3422**：既存Go Product Operationを共通Wails Bridge Portに接続する。Web Serverは当面loopback PoCとし、一般公開・マルチテナントは別AuthN/Z・Origin/Session分離と実Browser実行を検収してから判断。WebとDesktopのUI間で重複したビジネスロジックを置かない。
+- **WASM選抜（候補）**：小さなpure Client Projectionの同一Fixture／Target／Operation shape／browser実測を比較して採否を決める。Go WASM clientがHost Runtime/Permissionを代替する案は採らない。
+- **B/G/L合流 #4583/#4544**：Stage2に必要なRuntime Providerの包含・実Callを別に検収。Generatorがbuild時に必要なことを理由にStage2へ同梱しない（#4601）。B0／BuilderPin GreenでDesktop Product FunctionをPASSにしない。
+
+**状態**：この§14はmain Source、Issue、Draft #4623と公式公開ドキュメントの静的照合による**設計・検収更新**。新しいGo Product Function/Wails Server public deployment/Go WASM同値・性能/実CLI・Stage2 Functionの実走は**NOT RUN**。本節は正式CLI/Entry JSON/Go WASMモジュール仕様、Wails Server公開認可方式、Owner Meaning Acceptanceの採用ではない。既存PR #4618はDraftのまま。
