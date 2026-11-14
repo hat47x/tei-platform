@@ -503,3 +503,91 @@ IPC microbenchmarkの低遅延だけでB方式を採用しない。Process分離
 | **P2+** | #3421／#2391／#1251 | 共有WebのActor/WS分離、任意外部UI制御の本番物理除去、pure Go/WASM Projection比較 |
 
 **文書のみの追補**であり、ここに列挙した実Windows試験、四方式の比較、最新HEADのCI、non-Plugin全Build、Stage1→Stage2、Owner受理を新たに実施したものではない。#4583のP0順位、ADR-0048のTransport分離、Studioと生成業務Desktop Targetの別資格を維持する。
+
+
+---
+
+## 12. 同一Sourceから「編集・実データ・生成・実画面」へつなぐ最小製品一巡（2026-11-14）
+
+<!-- tei-desktop-vertical-witness-20261114 -->
+
+§11の方式選択・検収票に、[MVP Dogfood Draft #4651](https://github.com/hat47x/tei-platform/pull/4651)のDG-0〜4、[Subject Pin #4515](https://github.com/hat47x/tei-platform/issues/4515)、[Function実Query #2586](https://github.com/hat47x/tei-platform/issues/2586)、[Toolchain実観測 #4648](https://github.com/hat47x/tei-platform/pull/4648)、[段階別Plugin Contribution #4646](https://github.com/hat47x/tei-platform/pull/4646)、[DSL診断四層 Draft #4652](https://github.com/hat47x/tei-platform/pull/4652)を接続する。**実装する機能の数ではなく、使用したSource／Builder／Provider／結果が実際にどこまで届いたか**を優先して検証する。
+
+### 12.1 二つの一巡を分け、同じSourceで接続する
+
+| 一巡 | 操作の流れ | 最初の受入・非受入 |
+| --- | --- | --- |
+| **製品を作る一巡** | 受理済みSource／選択済みGenerator → 正式non-Plugin Studio BuildIntent → N0/N1/N2/N3実Invoker → Stage1実Process → Stage2 Artifact → **当該Stage2実Windows WebView2** | P0最優先。各工程のselected inputとactual read / artifact / actual Consumerを記録。単なるBuilderの事前pinと、OS loaderが読んだ全byteは別 |
+| **製品を使う一巡** | Workspace Open → Source-backed Catalog/Inspect → Subject Pin（明示操作）→ 診断・参照探索 → 必要な場合だけData Context実Read → 候補Preview／独立Expected → 人間による受理／適格なInvoke | Pinと参照は読み取りの独立lane。DB・Authoring・AI協業をStage1→Stage2の追加Hard Gateにしない。Pinの実装未接続なら既存Inspectのまま正確に未対応と示す |
+
+両者は、同じSubject・SourceRevision／Provider Revision・Workspaceに紐づく**既存Operationの観測**で結ぶ。新しい「製品の正本」や中央Evidence DBは作らない。Document Writerの保存、TEI Meaning Acceptance、Build Artifact、Host Effect、Consumer DeliveryはそれぞれのOwnerが保持する。
+
+### 12.2 Subject Pinは「参照意図」であり、現在のSource資格でもAI送出権限でもない
+
+[Issue #4515](https://github.com/hat47x/tei-platform/issues/4515)の現在のWorkbenchでは、`selected: Subject | null`の一時選択とUI応答世代制御が存在するが、**明示Pin/Unpin・Task Shelfは未実装**。したがって、画面に選択されたものを「固定済み」「実Sourceに再束縛済み」と呼ばない。
+
+第一実装は**SubjectのWorkspace/kind/idを明示的に固定**するread-only UIのみとし、既存`readInspection`／`InspectSubject`を再利用する。FocusやGraph選択の変化でPin Intentを変更しない。Source/Workspace/Providerが変化したらIntentを残して再適格化を要求する。権限／Source現在性の情報が無ければunknownとする。Undoによって戻るのはローカルPin Intentだけであり、Source Acceptanceや以前のGrantは復帰させない。
+
+**描画用Relation edge `parent:${subjectKey(child)}`を正式Relation occurrence IDへ昇格しない。** 多重辺・向き・意味属性・Source identityに対応したRelation Pinは#1124/#4472の後続とし、現時点ではunsupportedと明示する。GraphでNodeが選べることはRelation編集資格の証明ではない。
+
+### 12.3 実データの表示は「取得できた結果」と「業務上の完全な対象集合」を分ける
+
+[main #4539](https://github.com/hat47x/tei-platform/pull/4539)の実PostgreSQL→限定Reference Function Data Contextと、[統合Draft #4644](https://github.com/hat47x/tei-platform/pull/4644)のRA-0/1/2実PG参照Readは、**通常製品CLI／Studio実Consumerの合格ではない**。[Draft #4647](https://github.com/hat47x/tei-platform/pull/4647)は、RLS/Limit/関係不一致等の観測できた制限を`partial`で運ぶ候補であり、native SQLの閉包不確定なら`complete`／`EmptyJustified=true`を主張しない。NULL由来と粒度がunestablishedなら、StudioでEntity完全性や業務0件を推定しない。
+
+最初のDesktop Data Panelでは、**実取得行、取得対象・Snapshot/Scope、unknown/partialの根拠、現在の開示資格**を別表示する。0件は観測したRowsetの状態であって、必要集合の不存在やAction成功ではない。実PGを見せられない状態なら、合成Fixtureの結果と明示し、Product実Readのように表示しない。
+
+### 12.4 Source診断とCapability実行前拒否は四層で検収する
+
+[Draft #4652](https://github.com/hat47x/tei-platform/pull/4652)の責務を、Desktop表示へ次のように接続する。
+
+1. **Source**：原文の構文、複合拡張子`*.tei.md`のLoader/Parser選択、実読取byte／位置。未読込Sourceへ架空のSource Spanを付けない。
+2. **Meaning**：Workspace全体での対象解決、Role/Type/Relation/Effect契約。Source Parse成功を意味受理にしない。
+3. **Pre-dispatch**：main統合済み#4629/#4636のResult/Input/Effect構造拒否。Adapter呼出し0と、Providerの意味・権限の未受理を区別する。
+4. **Entry/Host**：公開された製品Operation/Entry、Hostが選択したProviderの実呼出し、現在GrantとEffect/Receipt。前段の静的成功からEntry公開済みを推定しない。
+
+StudioのProblems Panelには上記の**発生層と、実Source位置が存在する範囲**を表示する。エラー行へのJump/Quick Fixは実Sourceが一意に再解決できた場合のみ提示し、AIがSourceを推測して自動修正・自動Acceptしない。
+
+### 12.5 Pluginを「一つのPackageが全段階で同じ実物」という前提から外す
+
+[Draft #4646](https://github.com/hat47x/tei-platform/pull/4646)で、意味定義／Studio／Generator／Target Runtime／Testの段階ごとにContributionを対応付けるReferenceが作られた。これは将来案であり、Studio Productの正式Plugin Manager/APIに直ちに採用しない。
+
+Desktopではまず**段階別の選択事実を一覧表示できること**を設計要件とする。StudioのInspectionだけ提供するPluginを選んだからといって、生成RuntimeにもPackageが組み込まれたとは扱わない。Editor-only、Runtime未提供、同一意味IDで版が異なる、Target/Scope不一致、宣言のみで実Builderが未選択、といった状態は候補・不足・未受理として区別する。実管理操作Inventory→Plan→Applyは既存#4376〜#4380、正式Provider Invocationは#951/#1251がOwnerである。
+
+### 12.6 Go Toolchainの実同一性はBuilder/Artifactの資格と別票にする
+
+[Draft #4648](https://github.com/hat47x/tei-platform/pull/4648)では、Goの駆動役の種と実コンパイルtoolchainを変えても`l2b.claimed=true`になり得て、生成byteはコンパイルに使ったtoolchainへ依存することをLinux/amd64で観測している。このReferenceを**Windows Desktopの同一入力・同一Artifactの保証へ昇格しない**。
+
+Desktop Buildの報告では、観測できたGo実Toolchain版・digest、Node/esbuild/Wails版、module root/replace、Build Tag、生成JSと埋込みbyte、親子Image digest、実Stage1/Stage2 Processを既存Receipt/Evidenceへ分けて結び付ける。Go toolchain digestを正式Build Planの必要入力に採用するか、Seed Trustをどう受理するかは#2831/#1119のOwner判断であり、本節で新Ruleを採用しない。
+
+### 12.7 AI協業は実Sourceの再解決後に限定し、AI OFFで同じ基本操作を成立させる
+
+AIハーネスは「現在のPinはどのWorkspace・Subjectか」「何が実Sourceから読まれ、何が未取得か」「どのOperationを要求できるか」を、**Hostが現在開示できる範囲の投影**として受け取る。既存CLI/CUIの型付きOperationへ接続し、UIでの見かけのPinを強い権限にしない。Source/Grantが不確実な状態では、候補の文面・独立Expectedの下書きに留め、無人Accept/Invokeをしない。
+
+一方、AI OFFでもWorkspace Open→Source編集/保存→Validate/Inspect→Preview→独立Test→生成が動くことを成立条件とする。SHO/Plugin/DBが未接続・offの場合でも原文編集の最低限の機能を維持する。AIの提案履歴はAccepted Sourceや実行結果の正本ではない。
+
+### 12.8 最短実装順と実機で初めて判定できること
+
+| 順 | 既存Owner／作業 | 最小Exit／停止線 |
+| --- | --- | --- |
+| **DT-0（P0）** | #4583/#2831、#1080/#1097 | 正式non-Plugin Build Subjectの選択→実Builder→N0/N2/N3→ArtifactSetの同一Attempt。名称だけのRecipe追加やCI script直呼びなら未合格 |
+| **DT-1（P0）** | #4583/#1824 | 生成Stage1実Process→Stage2 Desktop生成→そのStage2のWindows WebView2実受領。旧配布bundle・別Attempt結果は不合格 |
+| **DT-2（非阻害）** | #4515/#1824 | Node Subject Pinの明示Pin/Unpin、Focus独立、Workspace/Source/ABA失効、旧応答拒否。Relation Pinはunsupported |
+| **DT-3（非阻害）** | #2621/#1124/SHO担当 | 管理外Markdown Draftの保存・競合維持と、TEI意味Source受理の別資格。同じEditor Coreを共有し第二Parserなし |
+| **DT-4（非阻害）** | #2586/#1251/#2516 | 実PG Readの製品CLI/Studio別Consumer受領、partial/unknown/0件の非誤表示、Grant/DisclosureとEntry/Provider actual use |
+| **DT-5（P1）** | #1824/#3421/#2391 | A/B0/B1/B2比較、実HTTP Actor/WS Audience、GUI操作の外部制御、Productionビルドで専用計装の物理除去 |
+
+これらは**新たな一括Hard Gateではない**。最初にDT-0/1を実装する一方、DT-2/3/4は互いの準備を待たず独立実証できる。DG-0〜4（#4651）はDogfood全体の既存索引であり、DT番号はDesktop担当間の読み替えに限る。既存Scenario/Independent Expected/Receiptの第二正本を作らない。
+
+### 12.9 最初の横断負例（単一公開合成Workspaceで実施）
+
+| 対照操作 | 独立Expected |
+| --- | --- |
+| Workspace AでOrderをPin→Workspace Bへ移動→同じOrder IDをInspect→AのReply後着 | Pin IntentをBへ自動再束縛しない。旧AのDOM/ARIAへの採用0、Host Source/Grantが未確認ならunknown |
+| Orderの二つの異なるRelationを同じ端点で描画→`parent:`のedgeクリック | 正式Relation Pin 0。描画Nodeへの一時Focusと意味Relationの選択を混同しない |
+| PostgreSQLのnative Queryが0件、RLS/Limitでpartial、結果列のNULL由来が未確定 | 行数0の観測は可、`complete`／`EmptyJustified=true`／entity grain／stored NULLの表示0 |
+| `*.tei.md`をSHOで保存→未束縛TEI Parserへ渡す→AIが変更提案 | Markdown原文は保持。Meaning受理0、実Provider/Build実行0、Source位置がない診断へ偽spanを生成0 |
+| PluginのStudio Contributionのみ選択→RuntimeなしでGenerateを要求 | Inspector可能性と生成Target必要Contribution欠落を区別。選択していないRuntimeを実包含したと表示0 |
+| Toolchain X/Y、選択Builder B／実Child A、Bundle旧版 | 段階ごとのactual bytes/Toolchain/Builderを明示し、不一致なら当該Artifact／Consumer資格FAIL。先行段階の成功は消さない |
+| Worker/Transport timeout後にAIが再実行要求 | 既存Request/Receipt lookup-first。確認不能はEffect unknown、無条件の再Submit 0 |
+
+**実施状態**：本節は既存PR・Issue・実測記録の設計上の統合であり、DT-0〜5の新しい実Build・Windows GUI・実PG Product Consumer・AI送出/受理試験を行っていない。採用済み正本、各Ownerと独立Expectedの境界を維持する。
