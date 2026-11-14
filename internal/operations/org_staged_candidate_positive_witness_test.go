@@ -27,10 +27,10 @@ type orgPositiveRead struct {
 	cursorFullyRead bool // Intentionally insufficient to assert closed.
 }
 type orgPositiveEvidence struct {
-	persons       []string
-	paths         []string
-	claim         string
-	notUnique     bool
+	persons   []string
+	paths     []string
+	claim     string
+	notUnique bool
 }
 
 // orgPositiveWitnessProbe computes only observed positive paths. It does not
