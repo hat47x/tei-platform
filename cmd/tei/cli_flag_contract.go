@@ -65,6 +65,7 @@ var selectedReadOnlyFlagAllowlist = map[string][]string{
 	"plugin-resolve":      {"workspace", "world", "environment", "plugin-lock", "diagnostic-candidates"},
 	"plugin-runtime-plan": {"workspace", "world", "environment", "plugin-lock"},
 	"plugin-inventory":    {"workspace", "world", "environment", "plugin-lock", "plugin", "diagnose"},
+	"plugin-plan":         {"workspace", "world", "environment", "plugin-lock", "target-lock", "plan-action", "plan-plugin"},
 	// three-element is deliberately absent: it parses its own FlagSet (and its
 	// diff subcommand a second one) before the shared set is built, so
 	// validateSelectedReadOnlyFlags is never called for it. Listing it here
@@ -90,6 +91,7 @@ var repeatableFlags = map[string]map[string]bool{
 	"plugin-resolve":                         {},
 	"plugin-runtime-plan":                    {},
 	"plugin-inventory":                       {},
+	"plugin-plan":                            {},
 	"knowledge-qualify":                      {},
 	"knowledge-review-plan":                  {},
 	"knowledge-review-handoff":               {},
@@ -260,6 +262,10 @@ var emptyStringGuardedFlags = map[string]map[string]bool{
 	},
 	"plugin-inventory": {
 		"workspace": true, "environment": true, "plugin-lock": true, "plugin": true,
+	},
+	"plugin-plan": {
+		"workspace": true, "environment": true, "plugin-lock": true,
+		"target-lock": true, "plan-action": true, "plan-plugin": true,
 	},
 	// three-element reads its own FlagSet, so this guard never runs for it. It
 	// reports its own required-argument error instead.

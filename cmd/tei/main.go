@@ -238,6 +238,9 @@ func main() {
 	pluginLockPath := fs.String("plugin-lock", "", "resolved TEI plugin lock JSON")
 	pluginInventoryID := fs.String("plugin", "", "plugin-inventory: report this plugin in detail")
 	pluginInventoryDiagnose := fs.Bool("diagnose", false, "plugin-inventory: report only rows that carry a reason code")
+	pluginPlanAction := fs.String("plan-action", "", "plugin-plan: disable-plugin, remove-plugin, delete-data, convert-data, or update-plugin")
+	pluginPlanTargetLock := fs.String("target-lock", "", "plugin-plan: the plugin lock after an update")
+	pluginPlanID := fs.String("plan-plugin", "", "plugin-plan: the plugin to plan")
 	targetPluginLockPath := fs.String("target-plugin-lock", "", "plugin lock for a new recovery run; defaults to -plugin-lock")
 	runID := fs.String("run-id", "", "durable deployment run ID")
 	attemptPath := fs.String("attempt", "", "deployment executor result JSON")
@@ -470,6 +473,16 @@ func main() {
 	}
 	if command == "plugin-inventory" {
 		code, err := pluginInventoryJSON(os.Stdout, *workspacePath, *worldPath, *environmentID, *pluginLockPath, *pluginInventoryID, *pluginInventoryDiagnose, fs.NArg())
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		if code != 0 {
+			os.Exit(code)
+		}
+		return
+	}
+	if command == "plugin-plan" {
+		code, err := pluginPlanJSON(os.Stdout, *workspacePath, *worldPath, *environmentID, *pluginLockPath, *pluginPlanTargetLock, *pluginPlanAction, *pluginPlanID, fs.NArg())
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		}

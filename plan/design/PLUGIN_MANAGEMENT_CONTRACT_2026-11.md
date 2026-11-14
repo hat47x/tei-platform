@@ -2,7 +2,7 @@
 
 - **役割**：TEIの「Everything is Plugin」方針に対するプラグイン管理の管理契約（語彙・状態の分離・診断）を、複数のIssueにまたがってまとめる機能設計。
 - **正本との関係**：作業・受入・進捗は [GitHub #2044](https://github.com/hat47x/tei-platform/issues/2044) とその子Issue。要求は `requirements/TEI_PRODUCT_REQUIREMENTS.md`。この文書は設計本文だけを持ち、状態の正本ではない。
-- **状態**：実装前設計＋S1の実装済み範囲（[#4376](https://github.com/hat47x/tei-platform/issues/4376)）。S2〜S5は未実装であり、この文書へ節を追記する。
+- **状態**：S1（[#4376](https://github.com/hat47x/tei-platform/issues/4376)）とS2（[#4377](https://github.com/hat47x/tei-platform/issues/4377)）の実装済み範囲＋S3〜S5の実装前設計。S3以降はこの文書へ節を追記する。
 - **根拠**：`origin/main` `d58363e1328f25e81923542423bb65c7844989d9`（2026-11-11）時点のコード、`tools/reference-studio-plugin-inventory`・`-disable`・`-data-lifecycle` の3参照実装、#2044の子Issue。
 - **主張しないこと**：この文書の語彙・分類は受理・権限・実行許可ではない。実画面・利用者価値・実Invocation・現在Grant・実Effect・Owner受理は別の資格である。
 
@@ -111,7 +111,63 @@ go run ./cmd/tei plugin-inventory -workspace reference/workspace -environment pr
 
 `reference/workspace` の `development` はlock無しで8行（`runtime-unverified`・`grant-unverified`）、lockありで `planBuilt=true` と `runtimeBoundary` が埋まる。`production` は `editor.database_workbench` が `unsupported` となる。
 
-## 8. 未実装（S2以降）
+## 8. 管理操作の計画（S2、[#4377](https://github.com/hat47x/tei-platform/issues/4377)）
+
+計画は**提案**であり、適用ではない。CLIは \plugin-plan\（\mode=plan\）で、適用のflagを持たない。
+
+### 8.1 4操作を独立させる
+
+\disable-plugin\・\
+emove-plugin\・\delete-data\・\convert-data\・\update-plugin\ を別の \ction\ 値として扱う。1つのflagで兼用しない。
+
+- \disable-plugin\ と \
+emove-plugin\ は Source を書かない（\sourcesPreserved=true\）。データも消さない（\dataPreserved=true\）。
+- \
+emove-plugin\ は、そのプラグインを必須依存とする選択済みプラグインがある間は **拒否** する（\still-required\）。候補集合を出して「一緒に消す」とは提案しない。
+- \delete-data\ と \convert-data\ は、承認と復旧手順が確立していないため **常に拒否** し（\
+equires-owner-approval\・\
+ecovery-path-not-established\）、\unattendedUnsafe\ に列挙する（[#4380](https://github.com/hat47x/tei-platform/issues/4380)）。
+- \update-plugin\ は \-target-lock\ を必須とし、無ければ \	arget-lock-required\ で拒否する。現在と目標の lock を \ersion\／\contract\／\rtifact\／\uild\／\dded\／\
+emoved\ に分けて返し、同じlockなら \
+o-change\ で拒否する。
+
+### 8.2 必須依存の候補展開
+
+\
+equires plugin\ の推移閉包を逆にたどり、対象を必須依存とするプラグインを候補に加える。
+
+- A→B→C で B を無効化 → 候補は A+B。C と無関係なプラグインは \unchanged\ に残す。
+- C を無効化 → 候補は A+B+C（B は C を要求し、A は B を要求する）。推移を1段で止めない。
+- 追加候補がある場合は \confirmationRequired=true\。**確定が無ければ適用しない。** 計画そのものは何も変更しない。
+- 任意依存は製品に宣言が無いため \optionalDependencyNotModelled=true\ とし、\optionalFeaturesLost\ は空にする。任意依存として扱わない。
+
+### 8.3 差分・影響・再生成／再起動
+
+- \update-plugin\ の差分は、2つの lock の \LockedPlugin\（version・fingerprint・artifactDigest・buildPlanFingerprint）の比較で出す。**artifact の変化だけから build の変化を推定しない**（buildPlanFingerprint が変わった時だけ \uild\）。
+- \
+estartRequired\ は静的な単一 binary が設定変更をその場で反映できないことを示す。\
+egenerationRequired\ は Build 入力が変わる操作（remove・update）で示す。**ホット適用済みとは表示しない。**
+
+### 8.4 計画の鮮度
+
+計画は \snapshot\（宣言指紋・環境指紋・lock指紋・設定版・走査状態）と \digest\ を持つ。適用側は適用直前に同じ snapshot を再検査し、1つでも違えば **何も変えず** 拒否する。計画が改変されていれば \digest\ の不一致で拒否する。**Git HEAD の一致だけを根拠にしない。**
+
+### 8.5 計画が与えないもの
+
+\uthorityLimits\ に「計画は許可を与えない」「候補集合は宣言済みの必須依存だけから導出する」「任意依存は未モデル」「restartRequired は静的Targetの限界」「データ削除・変換は #4380 まで無人実行しない」を列挙する。
+
+### 8.6 検証（2026-11-12、S1統合前の積み上げ）
+
+\\\	ext
+go test ./internal/plugin/management/ -count=1        ok（計画の負例19件を含む）
+go test ./cmd/tei -run 'PluginPlan|PluginInventory|Contract|Commands|Flag|Catalog|Discovery' -count=1   ok
+go run ./cmd/tei plugin-plan -workspace reference/workspace -environment development -plan-action disable-plugin -plan-plugin tei.editor.intelligence.sql
+  → 候補1件・unchanged 7件・refused=false・confirmationRequired=false・restartRequired=[runtime]・digest
+go run ./cmd/tei plugin-plan ... -plan-action delete-data -plan-plugin tei.database.postgres
+  → refused=true（requires-owner-approval・recovery-path-not-established）・unattendedUnsafe に delete-data
+\\\
+
+## 9. 未実装（S3以降）
 
 - 管理操作の**計画**（候補展開・差分・影響・再生成／再起動の必要性）は [#4377](https://github.com/hat47x/tei-platform/issues/4377)。
 - 設定源・`settingsVersion`・Source保持・監査・原子性の確定は [#4378](https://github.com/hat47x/tei-platform/issues/4378)。これが無い限り「有効設定」は `notModelled` のままである。
@@ -119,7 +175,7 @@ go run ./cmd/tei plugin-inventory -workspace reference/workspace -environment pr
 - 不可逆操作（データ削除・変換・外部リソース解放）は [#4380](https://github.com/hat47x/tei-platform/issues/4380)／#2553。Owner判断が揃うまで実行しない。
 - 実 `.tei` の未知属性・未知子要素は現行パーサが読み込みを拒否する。バイト保持を主張できるのは #1920 の版寛容リーダー以降である。
 
-## 9. 第二の基盤を作らない
+## 10. 第二の基盤を作らない
 
 - 解決は `plugin.Catalog.ResolveEnvironment`／`ResolveEnvironmentWithLock` を1回だけ使う。管理側は解決順・候補・fallbackを持たない。
 - 実行境界は `pluginruntime.BuildPlan` の結果を写す。管理側で境界を決めない。

@@ -107,6 +107,7 @@ func commandCatalog() cliCommandCatalog {
 		{Name: "plugin-resolve", Effect: "read-only", Required: []string{"exactly one of -workspace or -world", "-environment"}, Optional: []string{"-plugin-lock", "-diagnostic-candidates"}, Output: "json", SchemaVersion: "tei.cli.plugin-resolve/v0", JSONContract: "enveloped", Modes: []string{"", "unvalidated-candidates"}},
 		{Name: "plugin-runtime-plan", Effect: "read-only", Required: []string{"exactly one of -workspace or -world", "-environment", "-plugin-lock"}, Output: "json", SchemaVersion: "tei.cli.plugin-runtime-plan/v0", JSONContract: "enveloped"},
 		{Name: "plugin-inventory", Effect: "read-only", Required: []string{"exactly one of -workspace or -world", "-environment"}, Optional: []string{"-plugin-lock", "-plugin", "-diagnose"}, Output: "json", SchemaVersion: "tei.cli.plugin-inventory/v0", JSONContract: "enveloped", Modes: []string{"", "detail", "diagnose"}},
+		{Name: "plugin-plan", Effect: "read-only", Required: []string{"exactly one of -workspace or -world", "-environment", "-plan-action", "-plan-plugin"}, Optional: []string{"-plugin-lock", "-target-lock"}, Output: "json", SchemaVersion: "tei.cli.plugin-plan/v0", JSONContract: "enveloped", Modes: []string{"plan"}},
 	}
 	fillFlagNameSets(commands)
 	return cliCommandCatalog{
