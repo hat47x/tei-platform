@@ -180,7 +180,8 @@ function setFindings(findings: Finding[] | null) {
 /** A Pin is a local reading intent, not a Host Grant or an external disclosure. */
 function renderPin() {
   const intent = pinState.intent;
-  const eligible = selected !== null && inspectEligibility(catalogSnapshot, selected).ok;
+  const eligible = selected !== null && catalogIdentity(catalogSnapshot) !== null &&
+    inspectEligibility(catalogSnapshot, selected).ok;
   const pinnedEligible = intent !== null &&
     pinnedCatalogMatches() &&
     inspectEligibility(catalogSnapshot, intent.subject).ok;
@@ -202,7 +203,7 @@ function renderPin() {
     } else if (!catalogSnapshot) {
       status = "作業領域のモデル一覧を読み込み中です。";
     } else if (!pinnedCatalogMatches()) {
-      status = "固定後にモデルの版が変わりました。現在の要素を改めて固定してください。";
+      status = "モデルの版が未取得か、固定後に変わりました。現在の要素を改めて固定してください。";
     } else if (!pinnedEligible) {
       status = "固定対象が現在の一覧に見つからないか、一意に確定できません。";
     } else if (intent.workspaceEpoch !== workspaceEpoch) {
@@ -256,7 +257,8 @@ async function refreshPinnedSubject() {
       const reason = error instanceof Error ? error.message : "OPERATION_FAILED";
       const mustRequalify = catalogSnapshot !== catalog || !pinnedCatalogMatches() ||
         ["STALE_MODEL_PROJECTION", "INVALID_INSPECTION_RESPONSE",
-         "SUBJECT_AMBIGUOUS", "SUBJECT_NOT_FOUND"].includes(reason);
+         "SUBJECT_AMBIGUOUS", "SUBJECT_NOT_FOUND",
+         "CATALOG_IDENTITY_UNAVAILABLE"].includes(reason);
       const state = mustRequalify ? "needs-requalification" : "unavailable";
       pinState = acceptPinObservation(pinState, request, { state });
       renderPin();
@@ -508,6 +510,7 @@ element("xead-path").addEventListener("keydown", (event) => {
 });
 element("pin-current").addEventListener("click", () => {
   if (!selected || !workspace.value || !catalogSnapshot ||
+      catalogIdentity(catalogSnapshot) === null ||
       !inspectEligibility(catalogSnapshot, selected).ok)
     return;
   responses.invalidate("pinned-inspection");
