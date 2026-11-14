@@ -114,3 +114,142 @@ D1はセルフビルドに有益な**第二の意味あるコード生成例**�
 ## 11. 採用前に残す論点
 
 表のInput/Outputと既存OperatorへのBind、列名の多言語表示、No MatchとErrorの契約、導出DecisionのID・出所保持、IF→表の可逆性、Target別生成の同値範囲、顧客固有の有効期間、実Provider Readの鮮度、AI候補の意味受理は未確定。設計候補の記載やReference試験だけで製品対応・Owner受理とはしない。
+
+
+## 12. 他領域との整合：Ruleを新しい中心概念にしない
+
+他の設計領域との照合から、ここでいう「業務ルール」は一種類の実行オブジェクトではなく、業務上の意味に対する問いの切り口と捉える。「割引率の選択」「売上金額の導出」「締め済み伝票の更新禁止」「組織上の承認条件」「在庫引当ての起動条件」は、見かけ上はすべてルールでも、意味を所有する場所と正本は異なる。
+
+| 連携する領域 | 再利用する意味と責任 | 今回追加する価値 |
+| --- | --- | --- |
+| Everything is Data／標準構造 | Scalar・Table・Graph・Temporal等、RoleとOperator、Identity・Multiplicity・Presence | IFと表とグラフの意味の保存・照合 |
+| DSL自己記述／Markdown | 少数条件はIF、多条件はMarkdown表、大表はCSV／TSV | 表の列の型付きBinding、行IDから原文への逆追跡 |
+| Function Data Context／DB | 明示したRead FootprintとClaim Closure、実Providerの取得範囲 | 判定に必要なReadの十分性と部分取得の診断 |
+| REA／三要素・Business | Resource／Event／Agent、責任・行為・物理的結果 | 判断とBusiness Action、事実の観測を混同しない |
+| 組織モデリング | 組織関係・役割・委譲・時点、保護情報 | ルールの適用範囲と委任期間を検証 |
+| Lifecycle／Effect | Guard、Capability、Effect・Receipt・補償 | 条件成立と業務効果の確定を分離 |
+| Studio／SHO／Harness | 固定Subject・Source span・受理済み意味・局所Patch | 説明文・図・表・生成コードの根拠対応 |
+| Build／Self-build | World／Model／Artifact Revision、Operator・Generator・Plugin版 | 意味変更と表示変更の再検証範囲を区別 |
+
+各領域の意味上の正本は既存文書に維持し、本稿はRule Registryや別の汎用保存表を設けない。
+
+関連文書：[明示Function Data Mapping](EXPLICIT_FUNCTION_DATA_MAPPING_AND_STANDARD_ROLES_2026-11.md)、[REA候補取込](REA_THREE_ELEMENT_CANDIDATE_INTAKE_2026-11.md)、[プログラム実行モデル](PROGRAM_EXECUTION_MODEL_PROJECTIONS_2026-11.md)、[組織データ保護](ORGANIZATION_DATA_PROTECTION_BOUNDARY_2026-11.md)、[期間状態](PERIOD_STATE_SEMANTICS_DESIGN_2026-11.md)、[横断Consumer受入](CONSUMER_QUALIFIED_CROSS_LANE_ACCEPTANCE_2026-11-14.md)。
+
+## 13. 判断の最小意味契約：問いと入力の資格を固定する
+
+決定表を解析するには行と列だけでは足りない。以下は既存定義から参照で組み立てる検収票の観点であり、新Canonical Schemaの定義ではない。
+
+| 観点 | 検収する内容 | 不合格例 |
+| --- | --- | --- |
+| Decision Subject | 誰の何の判断か、Function／Business上の正確なIdentity | 同名の別判断を同一化 |
+| Input | FieldのSemantic Ref、型・単位、Relation Path、粒度 | 注文金額と明細金額を同一視 |
+| Scope | 組織・顧客・Tenant・対象集合・期間と前提 | 部門限定ルールを全社に適用 |
+| Time | 業務適用日、参照時点、記録時刻、適用Rule版 | 現行ルールで確定済み過去案件を暗黙再評価 |
+| Condition | 型付きOperator、NULL・欠損・短絡の意味 | SQL UNKNOWNを無言でfalseに変換 |
+| Selection | Unique等、No Match、競合・例外の意味 | 行順による暗黙の優先 |
+| Output | 型付き判断値と結果の意味。Effectは含めない | 承認可を保存済みと記録 |
+| Provenance | Rule ID、元Source位置、Operator／Generator版 | 表の並べ替えで業務意味IDを変える |
+| Data Completeness | 必要なField・Relation・時点と実取得範囲 | 一部取得を全件として不存在判定 |
+
+意味の正本がIFならMarkdown表は導出View、Markdown表が正式Sourceなら生成IFは導出物とする。IFと表の二重編集を許さない。Mermaidの配置・表示順も優先順位ではない。まず既存の型付きExpressionとFunction/Data参照だけでどこまで意味を保てるか実証し、失情報が示されるまで新IRやGrammarを追加しない。
+
+## 14. 評価結果と判断不能を混同しない
+
+Decisionの評価では、値が確定した場合と決められなかった理由を分離する。以下は説明とテストの区分であり、全システム共通の永続Enumではない。
+
+| 状況 | 判明したこと | 禁止する推測 |
+| --- | --- | --- |
+| Matched | 必要な入力が充足し、結果が確定 | Grant・Commitの成立 |
+| No Match | 必要な範囲が揃い、該当規則なしと判明 | false・NULL・拒否への暗黙変換 |
+| Conflict | Uniqueで複数行一致 | 行番号や取得順による裁定 |
+| Insufficient Input | 欠損・未取得・非開示・partial等で未確定 | 該当なしと断定 |
+| Invalid Input | 型・単位・精度・制約の違反 | 空文字・ゼロへの補正 |
+| Unresolved Meaning | Source・Operator・時点・適用範囲が未確定 | 推測で正式Codegen |
+| Evaluation Error | 計算／Providerのエラー | 正常な業務拒否と同一視 |
+
+入力の明示NULL、missing、未取得、not found、空集合、partial、permission deniedも別々に保持する。
+
+短絡評価では、ある入力が未取得でも別条件から結果が確定する場合には不要なReadを強要しない。ただしUniqueで一行が一致しただけでは、他行の一致可能性が残っている場合に確定とはしない。重複や否定・不存在を含むルールでは、Read Footprintを宣言した事実とClaim Closureが成立した証拠を区別する。RLS／LIMIT／SQL方言／精度／Collation／時点の差がある場合、Query pushdownとGo評価が同値だと仮定しない。
+
+## 15. 適用範囲と例外の意味
+
+BRMSに固有の実務価値として、例外規則と一般規則の重なりを検査する。
+
+- 全社規則と特定事業所の規則が双方一致する場合、適用範囲が狭いというだけで例外を自動優先しない。優先関係が業務意味として明示・受理されている場合に限る。
+- 上位組織への所属と、下位組織のルールを変更する権限は別物。組織図から承認権限や委任を推測しない。
+- 適用対象が異なる場合は重複する条件式でも競合ではない。同一対象に重なる場合でも、Hit Policyによる一致処理と業務上の例外を区別する。
+- 規則の改訂が例外を失効させる場合は変更影響として表示し、別OwnerのSourceを書き換えない。
+
+D1の実装対象はUniqueだけに限定する。複雑な例外優先は候補解析までとし、先に数値salienceやルール順で裁定する一般Engineを作らない。
+
+## 16. REA・組織・時点を伴う業務例
+
+### 16.1 組織上の承認額
+
+担当者の所属、委任期間、決裁上限、通貨、申請時点から承認可否を判断できる。ただし「承認可」は業務上の判断値であり、当該担当者の現在のHost Grant、承認操作の実行、外部Effect Receiptを代替しない。組織の異動前後、委任期間外、異なるTenantの反例を用意する。
+
+### 16.2 税率・会計期間
+
+旧年度の注文に適用した税率と今日の再見積りに使う税率は、参照したRule版、有効日、記録時刻、対象会計期間が違うことがある。確定済み伝票の値を現行ルールで自動書換えしない。税額の端数、負数、単位・通貨の演算は標準Operatorの契約が持ち、Target固有の丸めを決定表へ隠さない。
+
+### 16.3 REA・三要素の判断
+
+販売契約が成立すること、販売というEventが実際に起きたこと、在庫Resourceが更新されたこと、業務として完了を受理したことは異なる。現場のホワイトボード写真・会議・CSV・既存帳票から見つかった関係とルールは、原資料に紐付いたCandidateとしてレビューし、正式なData／Function／Business／三要素Relationへ暗黙昇格しない。
+
+## 17. Studio・AIとの共同編集
+
+各種資料から判断の条件・対象・結果・例外・時点を抽出し、出典位置と改訂版を保存する。AIが不足を補った部分は提案と明示する。既存IF・Validation・Derivation・Lifecycle・Effectへ対応づけたうえで、現行Shared Acceptance経路に従って正本へ変更を反映する。
+
+Studioは独立のBRMS管理画面を先に作らない。通常の設計要素を選択し、その周辺に「規則」「適用例」「競合・漏れ」「判断理由」「影響する機能・テスト」を表示するContext Viewとして始める。CLI・AI Harnessには固定Subject、Source occurrence、Rule ID、依存範囲、現在Revisionを伝える。
+
+編集する場合は一意のSource Slotを確認し、Markdown表の行移動・見出し翻訳・Graphのレイアウト変更を意味変更へ自動昇格させない。文章による説明は受理済みDSL・表の内容からほぼ直訳できる程度に、入力・条件・結果が業務水準で記述されていることを目標とする。SHOに設計書を出力する場合も候補と受理済みSourceの区別を維持する。
+
+## 18. 判断根拠と変更差分を最小限に保持する
+
+設計時にはSource span、Rule／Function ID、依存するOperatorの契約版、条件の集合関係を保持する。試験時には独立Expected、実際に必要だったRead-set、選択・非選択の理由、生成Artifactを照合する。実行時の診断は必要に応じて選択的に記録し、保護対象Fieldの値を無条件にログへ残さない。
+
+次の変更を区別する。
+
+| 変更の種類 | 原則として再評価する範囲 |
+| --- | --- |
+| 表の書式・配置だけ | Source位置・Viewの整合。意味は維持され得る |
+| 条件・値域・適用対象 | 意味・判断結果・下流Function・Test |
+| Data取得元・実取得範囲 | Claim Closure・取得品質・判断可能性 |
+| Rule有効期間・Operator意味版 | 時点別評価・受理済み契約・生成物 |
+| Generator／Toolchain版 | 意味同じでもArtifact再Buildと検収が必要な場合 |
+| Host Grant／Consumer | 現在権限と開示資格。過去の意味受理は権限を与えない |
+
+A→B→AとSourceが戻っても、World Fingerprint／Model Revision／Artifact Revision、現在Grant、過去Evidenceの資格を同一化しない。Graphの同名Node、多重有向Edge、論理Relation ID、描画IDを区別する。Edge反転は意味変更、配置変更は原則として表示変更である。
+
+## 19. 段階的検証に追加する反例
+
+以下のX01〜X10は、既存T1〜T8を補う未実行のExpected候補である。独立Expectedと試験実行結果の正本は#1180／#2514等へ戻す。
+
+| ID | 対象 | 独立Expected／負例 |
+| --- | --- | --- |
+| X01 | IFとMarkdown表の投影 | Scope・NULL・Hit Policy・出力の意味が一致。二重正本を作らない |
+| X02 | 閾値を9999から10000へ変更 | 実Go生成分岐と結果が対応して変わる。既存Go関数への単純委譲では不合格 |
+| X03 | 重複行／Gapを追加 | Conflictは両Source行、Gapは具体的な入力反例を示す。証明不能は未証明 |
+| X04 | 部分取得・RLS・NULL・No Match | 真の該当なしと情報不足を区別。空集合から全母集団の不存在を証明しない |
+| X05 | 所属・委任・時点の変更 | 業務判断と現在Host Grantの区別。Decision=trueだけでは更新なし |
+| X06 | 旧版ルールによる過去案件の再現 | Rule版・適用日・入力Data・Artifactを固定して比較。過去記録を上書きしない |
+| X07 | 行順・Graphの辺・レイアウト変更 | Uniqueは行順で意味不変。Relationの向き・ID・多重性は保存する |
+| X08 | Source／Operator／Generatorの差替え | 意味評価・Build再利用・Evidence・現在Grantを別に判定 |
+| X09 | 写真／ExcelからAIが例外を追加 | Candidateは原資料に紐付け、受理前に正式生成物へ混入させない |
+| X10 | CLI／Plugin／Provider／Consumer | 実生成コード・実Provider・独立Consumerを別段階で検収。Mock成功の転用禁止 |
+
+## 20. 実装順序と撤回条件
+
+- **D0**：現行Data Script IF／Validation／Derivation／Effect Rule／Operator／Queryの意味と未実装を棚卸し。別のRule ParserやRule Engineを作らない。
+- **D1**：小さなMarkdown表またはIFから既存の型付き意味へ接続し、実Goの条件分岐を生成して通常のCLIで実行する。T1〜T4とX01〜X04、競合行のSource位置を検証する。単なるGo Delegateは不合格。
+- **D2**：既存Source Index・Graph・Revisionで依存・理由・差分・入力充足を示す。X05〜X08を用い、証明可能と未証明を分ける。
+- **D3**：Studio・SHO・Harnessから同じ意味へ到達し、読取専用投影から一意Slotの局所Patchへ進む。X09〜X10を追加する。
+- **D4**：具体的な要求と実測が得られた場合のみ、事業部別Rule Pack、有効期間付き動的評価、DMN連携、SQL pushdown、RETE／Phreak・外部Policy Providerを比較する。
+
+決定表を導入しても既存IFより不透明になる、型付きOperatorに意味が降りない、Sourceと生成Artifactが追えない、IFと表の二重正本を避けられない場合は、その抽象を一度撤回して既存の表現に戻す。必要な意味のLossが具体化した範囲だけ再設計する。
+
+全体P0であるTEI CLIからの意味あるGo生成、PluginのTEI-native生成範囲の拡大、Studio Stage1→Stage2セルフビルド、通常製品CLI→実Provider→独立Consumerを維持する。新しいHard Gate／Host／Rule Server／中央結果保存表は先行採用しない。
+
+## 21. 正本と検証状態
+
+本稿の§12〜20は、他領域の既存設計を接続した**未採用の横断設計・未実行の検証計画**である。Rule／Decisionに関する正式なSemantic Role、DSL Grammar、共通API、公開Result Enum、生成Go実動作、SQL・Java同値、Studio編集、Owner意味受理を主張しない。各種の意味・権限・業務効果の判断は、そのSourceとOwnerの既存ADR・Issueを正本とする。
