@@ -264,6 +264,8 @@ Graphに表示する辺が0本、SQLのRowsetが0行、JSON Schemaの\`required\
 - 複合制約を表に展開しきれなくても、制約自体は保持し、Viewが表現した範囲だけを明示する。
 - 元のSchemaを編集・保存する前の段階では、Sourceを一切書き換えない。
 
+**仕様に基づく詳細条件**：最初の固定DialectはJSON Schema Draft 2020-12を比較候補とする。同版では`prefixItems`／`items`の配列制約、`$dynamicRef`／`$dynamicAnchor`の実行時の動的Scope、`format-annotation`と`format-assertion`のVocabulary差を、単純な静的フィールド表へ丸めない。特に`$dynamicRef`の解決先は、原文で示された参照URIだけでは十分に確定しない場合がある。出典：[JSON Schema Draft 2020-12](https://json-schema.org/draft/2020-12)、[Core specification](https://json-schema.org/draft/2020-12/json-schema-core)。
+
 **導入を急がない機能**：任意のDialectの完全な検証、すべての制約の自動フォーム変換、双方向Schema Migration、文法生成器の一般化。まず固定Dialect・有限Fixtureで不適合を説明できることを優先する。
 
 ### 14.2 実Queryの構造投影：PostgreSQL Read → Table／Aggregate
