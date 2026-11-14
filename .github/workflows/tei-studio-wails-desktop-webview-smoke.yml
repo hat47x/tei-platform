@@ -695,7 +695,6 @@ jobs:
               n0N2ChangedCopyRejected = $n0N2Receipt.changedCopyNegativeRejected
               esbuildSelectedSources = 'n2-esbuild-selected-sources.json'
               esbuildSelectedCount = $n2SelectedSources.Count
-              esbuildSelectedCount = $metaObservedSources.Count
               producerArtifactReceipt = 'n2-bundle-producer.json'
               esbuildOutput = 'cmd/tei-studio/assets/workbench/main.js'
               selectionBasis = 'esbuild-metafile/post-build-file-hash'
