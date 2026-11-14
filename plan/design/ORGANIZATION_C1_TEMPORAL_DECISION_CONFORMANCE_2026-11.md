@@ -620,3 +620,54 @@ main `internal/database/persistence/model.go` の `Mapping.RelationStorage []Rel
 - **5件版の固定HEAD 509296692...**：[Health #43549877695](https://github.com/hat47x/tei-platform/actions/runs/43549877695) completed/success。実ログで `go test -count=1 -timeout 60m ./...` PASS、`tei/internal/operations` PASS（1.737s）、gofmt/vet PASSを確認。これはSource欠落4件とIR/JSON候補1件のテストだけ。
 - **6件版の新HEAD efa4a8fc0dcc3d2ecdc6971c48910c16e16ce2d9**：Production Validator/Desired追加後の新実行。Health [#43553971231](https://github.com/hat47x/tei-platform/actions/runs/43553971231) の結果で判定し、ジョブログの完全性・同一HEADを再確認するまでsuccessとしない。
 - **本節が未実施のもの**：C1用Person Relation source fileの正式Authoring、DBの実Migration/Backfill、A2旧新二版保存、actual PG as-of、Read Context/Consumer、現在Grant/Effect、Web複数Principal/Workspace、Owner Acceptance。#2586通常CLI実Read、#2831 Studio Stage2 Self-buildを独立P0に維持する。
+
+
+## 19. 実TEI DSLからC1候補のRelation Storageを読む最小検査とSource版資格（2026-11-14）
+
+### 19.1 実TEI DSL／Source Index経路へ限定的に前進
+
+[コードDraft #4633](https://github.com/hat47x/tei-platform/pull/4633) に第7のGoテスト `TestOrgC1CandidatePersonRelationStorageLoadsFromTEIDSL` を追加した。実 `reference/org-staged-axis` Workspace全体を**テストの一時ディレクトリ**へ複製し、複製内に限ってPersonの型付きRelationと `databases/org-store/relation-storage/person-membership.tei` を追加する。元のリポジトリのOrg Semantic/Persistence/Query、既存Expected、正式Source Revisionは変更しない。
+
+候補は実際のTEI DSLとして、次の関係と物理保存を別のSourceで宣言する。
+
+```tei
+# 一時的な候補：本体の採用済みSourceには追加しない
+data Person {
+    attribute personId type organization.person_id
+    relation membershipsCandidate to organization.membership many
+}
+
+relation-storage org_store.membership {
+    relation organization.person.memberships_candidate
+    component organization.person.person_id -> person_support_id storage varchar optional
+}
+```
+
+独立していた4→5→6件の実証を、以下へ進める。
+
+| 検証の段階 | 第7テストの具体的な検査 | この段階で言えないこと |
+| --- | --- | --- |
+| 一時DSL Source | 実SourceのPerson宣言へ候補Relationを追記、別の `relation-storage` ファイルを配置。元Sourceは不変 | OwnerがRelationの業務意味・方向を採用したとは言えない |
+| Workspace Loader | `workspace.Load` がその二つの実DSL宣言を型付きWorldに読込み、既存Persistence Mapping `org_store.membership` に明示合流 | Person検索と所属集計の実Consumerを自動生成したことにはならない |
+| Source Index | `persistence-relation-storage:org_store.membership/organization.person.memberships_candidate` が作成元ファイルへ解決 | Semantic Relationと物理列のSource同一性が人物の本人確認を代替するわけではない |
+| Validation | `ValidatePersistenceRelationStorageMappings` によって関係方向・source Person ID/target Membershipの整合を検証 | 未受理のIdentity merge、Case current Grantは証明できない |
+| PostgreSQL offline desired | Nullableの `person_support_id` が通常Semantic列と別に投影され、PKは単独membership_idのまま、FKは自動追加されない | A2二版を同一DBへ保存できる／実SQLへ人物をjoinできるとは言えない |
+| 現状GAPの負例 | 既存の実main Characterizationは、**Membershipへの他Dataからのincoming Relation**も検知し、不在assertを漫然と残さない | 今回の候補を正式Sourceへ書き戻したことにはならない |
+
+sourceの `optional` は「過去の人物対応が不明な旧行で強制NOT NULLの失敗を起こさない」という**検査上の仮説**であり、業務OwnerがNullableを採用済みという意味ではない。Source indexの記録・DSL解釈成功・Physical Desired成功は、それぞれの正本からのRead witnessとして独立に観測する。
+
+### 19.2 別レーンの成熟成果との整合
+
+- **DSLの段階的受入（Draft [#4599](https://github.com/hat47x/tei-platform/pull/4599)）**：同DraftのG0〜G4に沿い、構文候補を読み込めたことと、完全World、実Query/Provider、Sourceへの安全な編集/再投影を混同しない。現行Parser/Workspaceに**既存の文法がある**ため、新しい構文案を増やさない。Person Relationの型付きMeaning採用は別のOwner決定。
+- **REA/三要素の実受領（Draft [#4603](https://github.com/hat47x/tei-platform/pull/4603)、R3-A [#4625](https://github.com/hat47x/tei-platform/pull/4625)）**：候補Data/Relationを実Sourceにできることと、外部Evidenceからの候補・独立Consumer受領・業務意味の確定を別票とする。REA候補ReaderはPersonの本人照合でも自動承認でもない。
+- **Studio編集と公開境界（#3421 / Draft [#4627](https://github.com/hat47x/tei-platform/pull/4627)）**：テストの一時DSLに付くSource ID/PathをStudio本番Workspaceへ転用しない。Source Revision、Workspace、選択epoch、実Host Principal/Provider、Consumer受領は別。Preview上でRelationが見えても逆編集の無条件許可を与えない。
+- **歴史移行（#4125）**：Nullable support列を作れることと、旧Current-only WriterがHistory Writerに切替済みであることは別。人物Sourceのない過去行を推定補完しない。単独PKはA2旧新二版共存のまま未解決であり、ColumnADDだけでG4 Cutoverや全面再利用を受理しない。
+- **ビルド・Evidence（#2514/#2600）**：Source A→B→A、Relationの追加/削除・Source/Mapping revision、列Nullable変更で検証対象が変わる。旧HEADのGo/CI成功を新HEADへ転載せず、Source Index/生成物/実Providerを別に資格化する。
+
+### 19.3 現状と次の最小実証
+
+- **固定HEAD efa4a8fc**（6件版）：[Repository Health #43553971231](https://github.com/hat47x/tei-platform/actions/runs/43553971231) completed/success。実ログで `go test -count=1 -timeout 60m ./...`、`tei/internal/operations`、gofmt、vetのPASSを確認。**本物のOrg Sourceを元にしたGo候補IR/Validator/Desired検査**としてのみ認定。
+- **新HEAD b124a5fe**（7件版）：実DSL複製とLoader/SourceIndexを使う新テスト追加。新[Repository Health #43556769631](https://github.com/hat47x/tei-platform/actions/runs/43556769631) を確認してからGo PASS/FAILを判定する。旧6件版PASSは新版の合格ではない。
+- **次の独立P1**：#2386/#1126がProfile/Personリンクと向きを選んだ場合に限り、正式SourceでのRelation、Schema差分/実Provider Person Read、r7のA2二版/knownAtの独立Expectedを、別の最小差分で接続する。Case C1/Current Grant/Effect/Host ACKは後段。通常CLIの最初の実Provider Read、Studio Desktop Stage2セルフビルドを**独立P0**のまま維持する。
+
+**実施範囲**：この節とコードPRはAuthoring候補・Parser/Loader・Source Index・Validation・offline Desiredを検査するだけであり、DB変更、実Query結果、過去人物の推論、Owner意味採用、外部Host実行は未実施。
