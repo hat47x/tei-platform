@@ -432,3 +432,72 @@ M-Pを最初の小Reference候補にするのはよいが、**所属という語
 - **MASTER_PLAN競合**：#4555/#4585/#4620/#4621/#4622が同一計画を並行編集するため、最新mainの各独立節とリンクを集合として照合して、追補節・受入票・証拠限界を失わずforward-portする。形式的な同名節の重複、旧HEADのDraft局所CIを新main成功に合算しない。
 
 **状態**：組織Meaning/物理PK/Provider Binding/見込Person Identityに関する設計・受入案のみ。本節では新Go/SQL/Node/DB/Generated CRUD、実DB Alias競合試験、Web同時編集・実Host権限/Effect、Owner Meaning Acceptanceを **NOT RUN / NOT ACCEPTED**。PRの重複箇所は上記の衝突事実を確認したが、#4555/#4585本文の自動統合は実施せず、Owner間調整を要する。
+
+## 15. 組織C1の最小検収票：独立Expected・実行Coverage・局所再資格化（2026-11-14）
+
+### 15.1 技術的なPASSと、主張のVerifiedを別に保つ
+
+他レーンの[#2514]独立Conformance/TQC（検証基準の品質と適用範囲）、[#1180]Driver Scenario／実行0件・SKIP偽PASS、[#2600]旧依存辺を含む増分再資格化を、組織固有の**既存**ORG-BEH-01〜07、#2611 PM-01〜06、#4501 CXへ接続する。各Referenceの期待は実装/生成結果から生成しない。新しいScenario SSOT、第二Qualification Engine、組織専用Runnerは作らない。
+
+次の二軸を証拠票上で分離する。
+
+- **Case実行状況**：not-selected / selected-not-started / started-not-completed / completed / skipped / unsupported（#1180の検収分類）。実行されなかったCaseは「失敗0件」の分子にも「合格した必須Case」にも加えない。
+- **観測結果と利用資格**：pass / fail / inconclusive / unknown と、#2514の Verified / Failed / Incomplete / Not Executed / Stale / Not Applicable を区別。後者は正式な公開enumを指定するものではなく、Required/Source/Scope/Expected/Version/Consumerを照合するための**検査票の語彙**。局所PASSはRequired Claimの独立Expected・Coverage・実際の対象・当該HEADが揃うまでVerifiedにしない。
+
+**空の成功を拒む**：Go testの0件実行、PostgreSQL opt-inのSKIP、r7のNode合成のみ、構造Go testのみ、未ロードのModel/未取得のProviderを、製品BEH/PM/CX合格へ昇格しない。実E2Eを要求するCaseについてCIの緑・テスト0失敗でもRequired memberの母集団と実行数、SKIP理由を併記する。対象Runが別HEADの場合はそれぞれの資格上限を維持する。
+
+### 15.2 最初の実証に必要な9つの対照（新しいExpected IDを発行しない）
+
+| 既存Expectedを使う組織C1圧力 | 意図的に混ぜる／壊す入力（Mutant） | 独立Expectedによる区別 | 主担当 |
+| --- | --- | --- | --- |
+| ORG-BEH-01/PM-06 二時点保存 | 同じA2の旧版を上書きし、knownAtだけ変えて実行。別DBへの入れ替えで版共存を偽装 | 同一DBに旧/新版が同時保存されていなければHistory Co-storageは未資格。実Readが両方の既知時点を再現 | #1126/#4490/#4567 |
+| ORG-BEH-02 Personと粒度 | 人物P2のA2/A3を別人として数える、Person Link無しで件数だけr7の期待に一致させる | 全ScopeのPerson Linkとcomplete Cohortが無ければDistinct Person Claimはunresolved。r7の3人は合成Expectedであり実Provider証明ではない | #2386/#2506/#2586 |
+| PM-01/02/04 Current/History Binding | 同じOperation IDに旧新2 Mapping、Alias名称順を逆転する | 真に同じ実Target/Mappingのみ重複排除可。異なるWrite候補は選択根拠無しに実行可能としない | #2611/#2622 |
+| ORG-BEH-02 Read Cohort | Replica/Primaryが同じs7表示、knownAtが2027-07-01/03 | D1は1.6/1.0 FTEと別結果。Scope/時点/Providerが異なるRowsetを一つの完成したClaimへ合算しない | #2506/#2611 |
+| ORG-BEH-04/06/CX-01〜03 Case権限 | Membershipだけ変更しCase Rev/Rule Revは旧、旧新Grantの有無を変える | 候補0/1/複数/partial・Case責任・Current Grantは別結論。双方無効という断定はRequired未閉包なら不可 | #4490/#4501/#1174 |
+| ORG-BEH-03/TO-05 Commit Unknown | 複数Membership更新途中でタイムアウト・ACK喪失、返信上は失敗 | 当該Operation IDのEffectはunknown。lookup-first/Receiptと独立Reader確認前に非冪等な再Submitを許可しない | #1129/#1174 |
+| TO-01/02/03 実行Coverage | PG接続無しでtest skipped、0 tests、旧Suiteのみ全PASS | 局所PASSと全Claim未資格を分ける。必須Test/Target/HEAD/実行母集団の不足を保持 | #1180/#2514 |
+| DI-01/02/03 依存削除とProvider変更 | A2→Personの旧辺が削除される、Aliasだけ変わる、Query同IDでWHERE/期間が変わる | 変更前後のRequired閉包と実消費を比較。旧Evidenceの誤再利用を拒み、関係ないD2独立Claimを根拠なく失効させない | #2582/#2600 |
+| CX-07〜12/TO-06 Pin/外部受領 | Source/Selection ABA、外部SHO/AIが一部しか受領しない、非公開Fieldのみ変更する二世界 | 保存/Host結果とConsumer受領・Allowed Disclosureを別資格にし、非単射Graphからの逆編集・情報漏洩を拒否 | #4501/#4515/#2516 |
+
+これらは**既存Scenarioに付帯する故障注入と検収条件**であり、実行されていないケースの新しい通し番号や独立Expectedファイルを創設しない。「r7に存在しないCase/Grant/Hostデータ」は独立Scenario overlayとして明記し、r7 Source自身にあると偽らない。
+
+### 15.3 同一Attempt内で観測する5段階と資格上限
+
+| 検査段階 | 最小で観測するもの | ここまでで言ってよいこと／言ってはいけないこと |
+| --- | --- | --- |
+| **S0 Source/Scenario** | Accepted Source ID/Revision・Person Link/Occurrence/Record Version・固定独立Expected・Required/Target | 入力と期待の所在を特定。Source一致=実Rowset正しい、ではない |
+| **S1 Typed Meaning/Projection** | DSL Data/Relation/Key・Query候補とMapping・書式/Scope/粒度・Source Span、未解決の関係 | 意味的な入力候補と静的診断。構造Go PASS=動的候補・実Provider成功、ではない |
+| **S2 Actual Provider/Query** | 選択したDB Alias/Mapping/SQLと**実呼出した**DB/Statement/params、返った行・期間・completeness、実Provider Instance | 実Readが限定範囲で確認できた。Person/Historyの欠けた列を補った、ではない |
+| **S3 Function/Consumer** | Result Slice/Required/Grain・実Contextと外部Consumerの受領したResult/epoch/Disclosure | 用途別の局所Claimだけが検証可能。送信=受信、表示=実行資格、ではない |
+| **S4 Write/Effect/Receipt** | Host Current Grant/Action Resource Rev、Operation ID、実Commit/Receipt/lookupとHandoff ACK | 対象Host/Providerの観測可能範囲に限りEffectを判定。read-only testで書込資格を付与しない |
+
+**必須ではない段階を明示**：初回read-onlyの#2586 P0はS0〜S3でよい。S4を通していないからS0〜S3の局所PASSを失敗としない一方、承認/引継ぎ完了はClaimしない。#2831 Studio Stage2セルフビルドは別Product/Builder/実DesktopのS0〜S3相当であり、組織C1の実DB/Host成功へ合算しない。
+
+**同一Attemptである条件**：Invocationの実Child/Provider/Sourceを観測したものを一致させる。別CI Runのノード合成、別PG Snapshot、別Windows Head、別Target Consumerからの局所緑を寄せ集めない。外部Effectは遅れて独立照会する場合があるため、同一Operation/Attemptの因果識別を残すのであって、同一時刻の一括完了を仮定しない。
+
+### 15.4 変更後の局所再資格化を、誤再利用と過剰失効の両側から検査
+
+対象Case/Claim Cを再利用できるのは、今回の問いに対する Required/Consumed のSource、Provider、Query・Rule、期間/Scope/Recipient/Current Grantが十分に対応し、変更前後の依存（**削除された辺を含む**）で非影響が説明できる場合だけである。
+
+| Changeの対照 | 維持可能な局所Claim | 再検証・保留するClaim |
+| --- | --- | --- |
+| D1のA2訂正・同じvalidAtでknownAt進行 | D2が独立した完全読取でA2に依存しないと証明できる場合のD2 FTE | D1 Member/FTE、A2依存承認、Global Person CountはRequiredと実Read再照合。人数の値が同じでも資格は別 |
+| OrgUnitの表示ラベルだけを変更、業務ID/Relation/Rule不変 | Source/実Rowset等の根拠が揃うMembership数・配賦Claim | ラベルを表示するConsumer再投影やSource使用先、必要な開示再判定 |
+| Person Linkを追加/削除、又は旧Membership→Person依存を削除 | Person非依存の完全な組織単位別Membership Countは維持候補 | distinct Person、Person-based Rule、Source edit対象。旧辺を捨てて「依存なし」にしない |
+| 同じSemantic IDのSQLを別Alias/Mappingへ選択変更 | Providerを使わない純粋受理済みMeaningは維持候補 | 実SQL/params/Rowset・current completeness/Grant/Consumer、旧Alias Write先 |
+| A→B→AでSource値/表示が元通り、Plugin/Rule/Recipient/Version変更 | 変更と無関係が証明された用途限定Claim | 旧Pin/Operation/Effect Receipt/Evidence・検証基準の適用資格を現行と同一視しない |
+
+この表は**再利用候補の判定方法**であり、未観測のDependencyやRead Scopeを自動無影響へ丸める仕様ではない。#2600がClean/Incrementalの同一Source/Targetで false reuse（必要再検証の未実施）とfalse invalidation（不要な再検証）を独立計数する。実測時間短縮の前に、検査結果の正しさを満たす。
+
+### 15.5 着手順と今回「決めたこと／まだ決めないこと」
+
+**直近の三つの小作業（段階間の未達を隠さない）**：
+
+1. **R0（read-only・即着手可）**：現mainとDraft #4566/#4567のTyped Membership/Person、Persistence、SQL、OperationSurface・同一Alias/異Aliasを、上の9対照の「実装済・静的確認・参照のみ・未実行」に分類する。#2514の既存検査票へRequired/Actual Execution/Expected/Exact HEADを付ける。Missing Person Linkを黙ってProduct PASSにしない。
+2. **R1（Owner選択後）**：#2386/#1126がPerson RelationのM-P/M-E/M-X選択を受けたProfileで、#4490の最小同一DB二版Readと#2611 PM-01/02/04のAlias衝突診断を別々の小実装・独立Expectedで実証。片方の成功を他方の合格へ流用しない。#4566/#4567重複修正のMerge差分調整を先行する。
+3. **R2（Product接続）**：#2586通常CLIの実Provider→Function Data Context→独立Consumerを最初のRead-only縦断とし、組織r7への適用はR1意味/物理整合後の別実行。#2831 Stage1→Stage2実Desktopセルフビルドは完全並列P0。C1のHost Effect/ACKは#1174/#1444が独立Owner。
+
+**採否境界**：採用済み（再利用する）＝既存Typed Semantic/Operations/Driver/Provider/Conformance基盤と既存r7・PM/CX/ORG-BEHの対象。今回の設計で採用しない＝単一Person必須Core、Org専用Operation/Temporal Runtime、第二Scenario/Expected/Qualification Store、第二Migration/Release Gate、独自Host、万能Web共同編集Engine。未決＝Person RelationのProfile別意味・物理Version PK・修復/過去Retention・DB跨ぎCutover/Writer Fence・現在GrantとCase引継ぎRule。P0の範囲を変えない。
+
+**本節の成果資格**：現Issue/PR/mainファイルの静的再照合と受入設計。9対照の新Test、製品Pg/CLI/Windows/Host実行、独立TQC判定器実装、Owner Meaning Acceptanceはいずれも**NOT RUN / NOT ACCEPTED**。
