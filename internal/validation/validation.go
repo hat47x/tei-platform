@@ -100,6 +100,7 @@ func Validate(w ir.World) []Diagnostic {
 	out = append(out, validateQueryInputs(w)...)
 	out = append(out, validateSemanticBusinessValidations(w)...)
 	out = append(out, validateSemanticBusinessRules(w)...)
+	out = append(out, validateCapabilityInputs(w)...)
 	out = append(out, validateCapabilityOutcomes(w)...)
 	out = append(out, validateCapabilityDataEffects(w)...)
 	out = append(out, validateSemanticCalendars(w)...)
