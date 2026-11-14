@@ -40,6 +40,69 @@
 | one Relationに2件一致 | 多重度違反 | `TestD9OptionalOneCardinalityViolation` |
 | 同一業務識別の重複 | fan-outとして拒否 | `TestD9DuplicateBusinessIdentityIsFanOut` |
 
+## 集約済み結果の再集計適合（#2593）
+
+**状態: 合成Fixtureの読取り専用Reference。Measureの正本、Metric DSL、Query Optimizer、BI Engineではない。**
+
+`Sum` は `aggregate`（集約済み）の集合を受け付けない。集約済みの行をもう一度集約してよいかは、その行を作った演算の法則で決まり、`SetRef` はそれを持たないためである。集約済みの入力は、宣言付きの `Reaggregate(Claim)` を通す。判定は数値型や表示値の一致を見ず、宣言された次の情報だけを使う。
+
+| 宣言 | 内容 | 欠けたとき |
+| --- | --- | --- |
+| `Law` | `sum` / `mean` / `ratio` | `unknown`（演算名や型から推測しない） |
+| `Components` | 法則が要求する中間状態。`mean` は `sum` と `count`、`ratio` は `numerator` と `denominator`。各要素は既存の `SetRef`（行の `Identity` はグループの識別）と単位 | `ineligible`（`INTERMEDIATE_STATE_LOST`） |
+| `BaseGrain` / `Scope` | 元Fact 1件の識別単位、結果を主張する対象集合 | `unknown` |
+| `Axis` | 畳み込む軸と種別（`dimension` / `time`） | `unknown` |
+| `Partition` | グループが元Factを重複なく分割するか（`disjoint` / `overlapping`） | 未宣言は `unknown`、`overlapping` は `ineligible` |
+| `Time` | `period-flow` / `point-stock` と `AsOf` | 未宣言は `unknown` |
+| `Policy` | 既存の `AggregatePolicy`。`mean` では `sum` と `count` が共有するNULLの扱いとして必須 | `unknown` |
+
+判定は三値である。`eligible` は宣言された入力が法則に対して十分であること、`ineligible` は宣言された内容から再集計が成立しないと分かること、`unknown` は宣言が足りないことを表す。`ineligible` と `unknown` は値を返さない。理由の分類は、操作面の導出（`internal/operations`）が使う `missing-input` / `missing-semantics` / `conflict` / `out-of-scope` と同じ語を使い、別の語彙を作らない。
+
+結果は丸めない。`Exact` に有理数（`3/4`、`18`）を返し、有限小数で表せるときだけ `Result` に小数を入れる。丸めと単位換算は D8 #1705 が所有する。
+
+| 例（期待値は元Factからの手計算で固定） | 期待 | 試験 |
+| --- | --- | --- |
+| MC-02 A: 2件・合計20、B: 8件・合計160 | `eligible`、18 | `TestMC02MeanIsRecomposedFromSumAndCount` |
+| MC-02 局所平均10と20だけが残っている | `ineligible`。15も30も返さない | `TestMC02MeanOfMeansIsNotAdoptedWhenStateIsLost` |
+| MC-03 A: 1/2、B: 8/10 | `eligible`、3/4（0.75） | `TestMC03RatioIsRecomposedFromNumeratorAndDenominator` |
+| MC-03 局所比率だけ、または分子と分母の対応が崩れている | `ineligible` | `TestMC03MeanOfRatiosIsNotAdoptedWhenStateIsLost` |
+| MC-01 別の明細が同じ金額100 | 200（金額で重複除去しない） | `TestMC01JoinOccurrenceIsNotASecondFact` |
+| MC-01 JOINで同じ明細が3回出現／先集約した合計を再JOIN | `ineligible`。600も100も返さない | 同上、`TestMC01PreAggregatedTotalRejoinedIsNotSummedAgain` |
+| MC-04 部門別人数2と2、兼務者あり | `ineligible`（4を全体人数にしない） | `TestMC04GroupCountsAreNotAddedWhenGroupsOverlap` |
+| MC-05 同じ日の口座残高110と190／日別残高300と300 | 300／`ineligible` | `TestMC05StockIsCombinedAtOnePointNotAcrossTime` |
+| Scope・粒度・軸・分割・時間・単位・NULL方針・完全性の欠落 | `unknown`（部分取得は `ineligible`） | `TestMissingDeclarationsStayUnknown`、`TestCompletenessAndNullAreNotGuessed` |
+| MC-06 行なし／NULLのみ／部分取得／未取得 | 四つを別の状態として扱い、宣言なしに0へ寄せない | `TestMC06EmptyNullPartialAndUnfetchedStayDistinct` |
+| 丸めの段階（0.004が1000件） | 渡された値を正確に合成するだけで丸めない（厳密値なら4、丸め済みなら0） | `TestRoundingStageIsNeverChosenHere` |
+| `count` が整数でない、負 | `unknown` | `TestMeanCountMustBeAWholeNumberOfFacts` |
+
+| 指数・分数・16進の数値表記（`1e-5` など） | `unknown`。丸めた値を返さない | `TestNonPlainDecimalIsNeverRoundedIntoAValue` |
+| 件数0のグループに非0の合計 | `ineligible`（`GROUP_STATE_CONTRADICTORY`） | `TestMeanGroupWithSumOverZeroFactsIsContradictory` |
+| 同じRelationを `sum` と `count` に使う、`Key` が異なる | `ineligible` | `TestOneRelationCannotStandForTwoComponents` |
+
+MC-01〜05の期待値は [`plan/fixtures/metric-aggregation/expected.json`](../../plan/fixtures/metric-aggregation/expected.json) に手計算の値として置き、このReference（`TestHandFixedExpectedMatchesSharedFixture`）と同じディレクトリの `verify_sqlite.py` の両方が照合する。どちらの出力もこのファイルの値として使わない。
+
+### 再集計の適合に含めないと決めた検査
+
+独立レビューで「受理してよいのか」と指摘された次の5点は、検査を足さない。再集計が意味を保つかどうかは、構成要素が加法的に合成できるかで決まり、次の点はその条件に関わらないか、ここでは確かめようがないためである。
+
+| 点 | 判断 | 理由 |
+| --- | --- | --- |
+| 構成要素どうしの単位（`USD` と `EUR`、点と件数） | 一致を要求しない。結果の `Unit` に、宣言された単位を約分も換算もせず `分子/分母` の形で返す | 合計の比は、単位が違っても合成として成立する（1件あたりの金額など）。単位の異なる比が業務上意味を持つかは D8 #1705 とOwnerが決める。黙って無次元の数として返さないことだけをここで守る |
+| 負の分母、符号が混在する分母 | 受理する。合計が0のときだけ `unknown` | 加法性は符号に依存しない。各グループの分子と分母が加法的であれば、合計どうしの比は全体の比と一致する。符号の業務上の妥当性はMeasureの定義側の問題である |
+| `Scope` と各集合の `Anchor` の対応 | 照合しない | `Anchor` は集合が属する親の実体、`Scope` は絞り込みや対象者の範囲で、別の情報である。`Scope` は `Partition` や `Time` と同じく、全構成要素に対する呼び出し側の一つの宣言として扱う。自由な文字列どうしを照合すれば推測になる |
+| 構成要素の `Shape` が `many` | 受理する | 元Factの集合は、1グループが1件の分割である。MC-01はこの形で元の明細を渡す |
+| 時点Stockの `AsOf` が各行で一致するか | 検査しない | `SetRef` の行は時点を持たない。`AsOf` は全行に対する一つの宣言であり、行ごとの時点の照合は時点を持つ入力（D4/D12）が必要になる |
+
+JSONでの入出力は [`tools/reference-relation-aggregate`](../../tools/reference-relation-aggregate/README.md) の `-mode reaggregate` を使う。
+
+この判定が示すのは、合成入力について宣言が法則に対して十分かどうかだけである。実SQLの生成、実Providerの計算結果、Hostの認可、Ownerによる業務意味の受理は別に確認する。次は扱わない。
+
+- MC-04の正しい人数3の合成。人物の識別集合が必要で、このReferenceは持たない。
+- 中央値・分位点、時間方向のStockの演算（期末残高、平均残高など）。`unknown` を返す。
+- `Partition`、`Scope`、`Time` の宣言が正しいことの検証。呼び出し側が渡す根拠であり、行の値からは推測しない。
+- 丸めをどの段階に置くかの宣言と検査。入力が丸め済みかどうかは区別できない（D8 #1705）。
+- グループごとに単位が異なる入力。
+
 ## 焦点試験
 
 ```sh

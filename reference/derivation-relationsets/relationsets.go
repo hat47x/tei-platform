@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"regexp"
 	"strings"
 
 	"tei/internal/semantic/derivationref"
@@ -154,11 +155,25 @@ func AsScalar(ref SetRef) (derivationref.Input, error) {
 	}
 }
 
-// Sum reduces a Many/Aggregate set to one value. An incomplete or unfetched
-// set is rejected rather than summed as if it were the whole collection, and a
+// Sum reduces a Many set to one value. An incomplete or unfetched set is
+// rejected rather than summed as if it were the whole collection, and a
 // duplicate business identity is treated as a join fan-out, not a genuine
 // second row.
+//
+// An Aggregate set (already reduced rows) is rejected here: whether reduced
+// rows may be reduced again depends on the law that produced them (a mean, a
+// ratio or a point-in-time balance is not summable), which a SetRef does not
+// carry. Such input must go through Reaggregate with a declared claim (#2593).
 func Sum(ref SetRef, policy AggregatePolicy) (derivationref.Input, error) {
+	if ref.Shape == Aggregate {
+		return derivationref.Input{}, fmt.Errorf("%w: an already reduced result needs a declared reaggregation law", ErrShape)
+	}
+	return sumIdentified(ref, policy)
+}
+
+// sumIdentified adds the amounts of one complete, identified Many/Aggregate
+// set. It checks the set, not the meaning of adding its rows; callers own that.
+func sumIdentified(ref SetRef, policy AggregatePolicy) (derivationref.Input, error) {
 	if err := Bind(ref); err != nil {
 		return derivationref.Input{}, err
 	}
@@ -178,7 +193,7 @@ func Sum(ref SetRef, policy AggregatePolicy) (derivationref.Input, error) {
 		seen[row.Identity] = true
 		switch row.Amount.State {
 		case derivationref.Present:
-			value, ok := new(big.Rat).SetString(row.Amount.Decimal)
+			value, ok := parsePlainDecimal(row.Amount.Decimal)
 			if !ok {
 				return derivationref.Input{}, fmt.Errorf("%w: value is not a decimal", ErrInvalidSet)
 			}
@@ -261,6 +276,18 @@ func JoinFanOut(left, right SetRef) (FanOut, error) {
 		return diagnostic, fmt.Errorf("%w: %v", ErrFanOut, diagnostic)
 	}
 	return diagnostic, nil
+}
+
+var plainDecimal = regexp.MustCompile(`^-?[0-9]+(\.[0-9]+)?$`)
+
+// parsePlainDecimal accepts only a plain decimal literal. big.Rat.SetString
+// also takes exponent, fraction and hex forms, whose scale resultScale cannot
+// see; the total would then be rounded silently (#2593 review).
+func parsePlainDecimal(s string) (*big.Rat, bool) {
+	if !plainDecimal.MatchString(s) {
+		return nil, false
+	}
+	return new(big.Rat).SetString(s)
 }
 
 func resultScale(rows []Row) int {

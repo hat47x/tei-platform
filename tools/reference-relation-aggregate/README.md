@@ -74,6 +74,44 @@ go run ./tools/reference-relation-aggregate/cmd/tei-relation-aggregate -input re
 
 `joinFanOut`を明示する代わりに、別の many Relation を`otherElements`で渡せます。クロス結合の行数から fan-out を検出し、業務合計は`elements`の distinct 和のままです。
 
+## 再集計適合の判定（#2593）
+
+`-mode reaggregate` は、集約済みの結果をもう一度集約してよいかを判定します。判定そのものは [`reference/derivation-relationsets`](../../reference/derivation-relationsets/README.md) の `Reaggregate` が行い、本ツールはJSONの変換だけを担います（`reaggregate.go`）。宣言の意味、三値の判定、理由の分類はそちらのREADMEを参照してください。
+
+```sh
+go run ./tools/reference-relation-aggregate/cmd/tei-relation-aggregate -mode reaggregate -input claim.json
+```
+
+```json
+{
+  "law": "mean",
+  "baseGrain": "synthetic.observation",
+  "scope": "all departments",
+  "axis": { "name": "department", "kind": "dimension" },
+  "partition": "disjoint",
+  "time": { "kind": "period-flow" },
+  "nullPolicy": "propagate",
+  "components": {
+    "sum": {
+      "anchor": "org", "relation": "dept.score_sum", "key": ["dept.id"], "unit": "point", "complete": true,
+      "groups": [
+        { "id": "A", "state": "present", "amount": "20" },
+        { "id": "B", "state": "present", "amount": "160" }
+      ]
+    },
+    "count": {
+      "anchor": "org", "relation": "dept.score_count", "key": ["dept.id"], "unit": "observation", "complete": true,
+      "groups": [
+        { "id": "A", "state": "present", "amount": "2" },
+        { "id": "B", "state": "present", "amount": "8" }
+      ]
+    }
+  }
+}
+```
+
+この入力の結果は `verdict=eligible`、`exact=18` です。`components` を局所平均だけ（`value`）にすると `verdict=ineligible`、`code=INTERMEDIATE_STATE_LOST` になり、値は返りません。省略した宣言は未宣言のまま扱い、既定値で補いません。`groups` の `id` はグループの識別であり、`complete=false` は部分取得として扱います。`input-unavailable` と `execution-failed` はどちらも入力未取得として渡します。
+
 ## 限界
 
 - 合成入力に対する静的な判定です。実Provider、外部DB、SQL方言での意味同等性の証拠ではありません。
