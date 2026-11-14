@@ -51,19 +51,28 @@ func EvaluateCandidates(candidates []Candidate) ([]CandidateReport, error) {
 		return nil, fmt.Errorf("no candidates to evaluate")
 	}
 	pareto := ParetoFront(candidates)
+	if len(pareto) == 0 {
+		return nil, fmt.Errorf("no feasible candidates to evaluate")
+	}
 	paretoRank := map[string]*int{}
-	for i, c := range pareto {
-		r := i + 1
+	for _, c := range pareto {
+		// Every non-dominated candidate belongs to the same first front.
+		// Secondary Pareto layers are not computed; leave those ranks unset.
+		r := 1
 		paretoRank[c.ID] = &r
 	}
 
 	reports := make([]CandidateReport, 0, len(candidates))
 	for _, c := range candidates {
 		ev := c.Evaluation
+		cohesionBasisPoints := int64(0)
+		if ev.TotalWeight > 0 {
+			cohesionBasisPoints = int64(float64(ev.InternalWeight) * 10000 / float64(ev.TotalWeight))
+		}
 		axes := []BreakdownAxis{
 			{Name: "cross_boundary_write_count", Value: int64(ev.CrossWriteCount), Weight: 0, Direction: "minimize", Unit: "occurrence", Notes: "C/U/D occurrences across subsystem boundary"},
 			{Name: "cross_boundary_write_weight", Value: ev.CrossWriteWeight, Weight: 0, Direction: "minimize", Unit: "weight", Notes: "caller-declared positive weight"},
-			{Name: "internal_cohesion", Value: int64(float64(ev.InternalWeight*10000) / float64(ev.TotalWeight+1)), Weight: 0, Direction: "maximize", Unit: "basis-points", Notes: "internal weight / total weight"},
+			{Name: "internal_cohesion", Value: cohesionBasisPoints, Weight: 0, Direction: "maximize", Unit: "basis-points", Notes: "internal weight / total weight"},
 			{Name: "cross_boundary_read_count", Value: int64(ev.CrossReadCount), Weight: 0, Direction: "minimize", Unit: "occurrence", Notes: "read occurrences across boundary"},
 			{Name: "change_impact_reach", Value: 0, Weight: 0, Direction: "minimize", Unit: "function-count", Notes: "placeholder; callers may plug AnalyzeImpact reach"},
 			{Name: "team_comprehensibility", Value: 0, Weight: 0, Direction: "maximize", Unit: "caller-score", Notes: "caller-declared coefficient only"},

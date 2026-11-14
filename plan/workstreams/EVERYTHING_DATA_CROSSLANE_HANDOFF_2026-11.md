@@ -282,6 +282,275 @@ H0/H1と異質領域の要件探索は並行可能。H2/H4の実Effect資格は�
 
 **根拠と資格**：#2619の既存反例、#2389の組織計画、#1125 Procedure、#1174の実PostgreSQL限定実証、#2889のRunner特性試験、Draft #2896のSystem Composition計画を基にした**計画上の補正候補**。この2×2／三領域／DSL比較を同一Product Headで新規実行した証拠はない。**実Tenant/Host/Provider/GUI・Owner正式意味受理、#1119 Gate判定はNOT RUN／NOT ACCEPTED**。新しい基盤の実装・既存ADRの採用は提案しない。
 
+
+#### DSLの前段方式と生成方式を分離した比較・採否（2026-11-13、#4359への引渡し）
+
+**整理した判断**：ドメイン専門家が読む表層と、内部実現方式を分ける。[#4359](https://github.com/hat47x/tei-platform/issues/4359)のA1（Go式AST）／A2（独自構文）／A3（ハイブリッド）は**Frontend候補**。A4として並ぶ「DSL→Goコード生成」はFrontendの対立案でなく、**Lowering後のBackend/Target候補**として再分類する。A2とA3はGo生成と併用できる。生成Goは意味の正本でなく成果物であり、Go ASTの都合で日常DSLにGo固有の宣言・型を露出させない。Goの式Parserを使う場合も明示した式位置に限定し、Source spanの逆写像を検証する。これは正式構文の採用ではない。
+
+| 比較層 | 候補 | 独立して確認すべきこと |
+| --- | --- | --- |
+| 表層 | 現行TEI、規則文、Markdown表、chain、native SQL参照 | 認知順、Source byte/位置、コメント保持、編集差分、通常Saveでのzero-write |
+| Frontend | A1 Go式、A2独自、A3ハイブリッド | 同じ独立Expectedへの型付き変換、構文境界、診断、依存、選択済みLanguage/Operator Pin |
+| 意味・評価 | 既存標準データ構造、Role、Canonical、Operator、TEI read-only/Simulation候補 | NULL/未取得/空集合/部分取得、粒度・単位・精度・時点、Rule/Decisionの評価順序 |
+| Backend/Target | Goコード生成と単一Binary、Java/.NET/WASM等のTarget実現 | 同じ受理済み意味、実Builder入力、Toolchain、生成Artifact、独立ExpectedとSource位置逆写像 |
+
+**観測可能な同値性を段階化**：#988のEQ0（Source occurrence／ID／Role／型／Pin等）、EQ1（値・判定・unknown/errorの区別）、EQ2（短絡・要求Read集合・診断／拒否・不要なProvider呼出）、EQ3（実Grant／Commit／Effect／Receipt）の既存分類を参照する。**EQ1合格はEQ2を含意しない**。例えばScriptでは入力不正で即拒否するのに、変換後の決定表が不要な非公開Fieldを先読みすれば、最終拒否が一致しても同値ではない。物理Read未観測の場合はEQ2のその部分をNOT PROVENとし、Parserの成功から実行許可を推論しない。
+
+**段階的実装・検証の順序**：
+1. **P0（#4361／#2514）**：既存の数量正数・明細番号一意性の2規則を4表層で比較し、既存評価器から独立させたExpected、既知Mutant、一因子負例を固定。説明ノイズ、重複参照、対象→条件→判定→結果の順序、AIが行う局所修正の誤変更・修正範囲・診断位置を測る。AIだけの比較で「専門家可読性を実証」とはしない。
+2. **P1（#4362〜#4367）**：新規構文は既存Semantic Validationへ限定Loweringしてread-only評価。単一parseのSource Anchor、旧Source互換、Source再読取／stale Patch拒否、元の糖衣の保存を優先。実装していないMarkdownやUnicodeを成功扱いしない。
+3. **P2（#4368〜#4371、#988/#2620/#2621）**：Data/Relation/Context、Function/chain/Query、Business/Decisionへ広げる。取得対象・時点・ScopeとCompletenessを宣言し、native SQL/2waySQLの原文byte・展開branchを区別。Predicate、Validation、Decision、Authorization、Write/Effectを同一演算で黙って代替しない。
+4. **P3（#1063/#1121/#1180/#2586/#2831）**：主要業務の一件について、TEI単独の条件・集計・拒否・状態変化のSimulationが可能か独立Expectedで検証し、その後同じ契約からの生成Go実行を比較する。詳細の外部言語委譲は許す。実Binaryのセルフビルドと実Studio Consumerは別の同一Attempt証拠で判断し、P0の合格を昇格しない。
+
+**既存S0とConformanceへの追加候補（新たなテスト正本は作らない）**：
+
+| ID | 一因子の反例 | 期待と停止線 |
+| --- | --- | --- |
+| DSL-X01 | 同じFrontend意味をA2/A3から同じGo Backendへ渡す | 生成差分をMeaning差に昇格せず、Target実出力を独立Expectedと比較 |
+| DSL-X02 | Decisionへの変換で不要なsecret Fieldが先読みされる | 結果一致でもEQ2不一致。権限拡大で回避しない |
+| DSL-X03 | NULL／未取得／部分集合／空集合をすり替える | 未決policyをゼロ・false・空集合で自動補完しない |
+| DSL-X04 | Source byteは同一でRole/Operatorの推移依存Pinのみ変わる | 過去Evidenceを保持し現在の意味／Build資格を再照合 |
+| DSL-X05 | DSLコメントやMarkdown体裁だけを編集・保存 | 非対象byte不変、意味影響／位置再解決／Build省略資格を別判定 |
+| DSL-X06 | TEI Simulationは業務拒否、生成Go Targetは成功扱い | EQ1 FAIL。Goのexit 0を業務成功にしない |
+| DSL-X07 | SF-Dの短いOperator呼出しにRule IDが存在しない | subject＋OperatorからRule IDを推測しない。ID/Scopeを明示するか、その表層はEQ0比較対象外と記録 |
+| DSL-X08 | SF-BのRelation経由属性名が既存Canonical Attributeと異なる | 属性Path→意味属性のMappingを明示し、暗黙に別IDへ読み替えない。曖昧・未定義は拒否 |
+
+**S0対照票に残す重要な前提差**：#4361のSF-Dは簡略例のままだと論理Rule IDを記さない一方、SF-A/B/CのExpectedはValidation IDの同一性を要求している。論理IDを自動合成して4表層がEQ0で同値と主張してはならない。また#4359の改善規則文でRelation経由の「sales.order.lines.line_number」と既存意味属性「sales.order_line.line_number」の対応は、型と名前が似ているだけでは同一と確定しない。まず明示Mappingか未対応診断とし、自然な表層を優先しつつResolverに業務意味を推測させない。独立Expectedは既存Evaluatorの出力や実装コメントを唯一の根拠とせず、受理済み契約・数学的境界・個別業務Scenario等、**被検証実装とは別の根拠**を最初に固定する。評価器コードはそのExpectedとの比較対象である。
+
+**方式切替の条件**：A3の式境界・Source span・診断安定性が負例に耐えないならA2へ寄せる。A1が専門家の認知順・表層忠実性を損なうなら内部表現に限定する。A4＝生成GoはFrontend方式の勝敗に連動させず、Target個別の正しさと性能で判断する。方式選択時に、同一Fixture・独立Expected・実修正コスト・ビルド時間を比較する。計画とConformance候補の追補であり、今回の新規実行、正式Grammar/Operator/Runtime採用、Owner意味受理、#1119 Gate変更は**NOT RUN／NOT ACCEPTED**。
+
+
+
+#### DSLの書換え・実データ取得・増分再利用を同じ一機能で判定する（2026-11-13、横断実装パケット）
+
+**追加の論点**：構文A/Bから同じ型付きMeaning候補へLoweringできても、TEI Query・実Provider・Source Writer・Buildの依存が変わらないとは限らない。とくにSQLの非出力列、NOT EXISTSの否定依存、JOINによる粒度の変化、Decision表への変換に伴う先読み、A→B→Aでの旧応答混入がある。構文を読みやすくした成果と、実際の業務処理を変えない保証は分ける。この追補は前段のEQ0〜EQ3を**既存の同一Subject／Scenarioに具体化する実装引渡し**であり、新たな汎用DSL書換えEngine、Role Resolver、Query Planner、Test SSOTは作らない。
+
+**最初に記録する4種類の依存（分類は検証票用。製品共通enumではない）**：
+
+| 依存の種類 | 既存の確認先 | 見落としやすい一因子 |
+| --- | --- | --- |
+| Source/Syntax | #4359 S0〜S6、#2621、#3788 | 同じIDで元のSource occurrence/span/Language Pinが変わる。内容同一の移動でも引用位置は変わる |
+| Meaning/Operator | #988、#2620、#4536、#1121 | 同じID/結果型でも属性Type、Roleのrequired shape、Operator実装の推移Pin、丸めや評価時点が変わる |
+| Information Demand | #2506、#2586、#2387、#2622 | SELECT非出力のWHERE/ORDER BY/結合条件、NOT EXISTSの0件、部分取得、暗黙のProvider先読み、read scope・grainが変わる |
+| Realization/Consumer | #1063、#2600、#2831、#2514、#2516 | 同じソース・値でも生成器、実Builder/toolchain、選択されたSQL、実呼出Provider、実受領Consumer／現在のGrantが変わる |
+
+**同一試行内で確認する比較票**（既存Receipt/Source Index/Scenarioを参照するread-only集約。新Schemaとして採用しない）：`Source occurrence + Revision + surface/Language selection → Lowered typed subject + Role/Operator pin → Function Context required fields/relations/negative dependencies + actual observed Read scope/grain/completeness → selected Realization + actual Provider invocation → Value/diagnostics/EQ2 observed effects → generated Artifact member + consumer-received bytes`。任意の段で情報が取れないときはそこから先の同値Claimを`NOT PROVEN`とし、存在しない専用CLIやTrace APIを仮定しない。どの証拠も一つのexact HEAD/Attemptへ結べなければ、局所結果を合算しない。
+
+**最小の差分シナリオ（既存#4361の二規則と#2586のD1/D2を再使用）**：
+
+| ID | 同じに見える変更・最小反例 | 何を実際に測るか | 誤って主張してはいけないこと |
+| --- | --- | --- | --- |
+| DSL-W01 | `quantity_positive`を旧構文→新`rule`へ書換え、数量がNULL／未取得 | 旧新の型付きValidation、評価OutcomeとSource span・診断の独立対照 | 値一致だけでSource忠実性・実行資格まで同値 |
+| DSL-W02 | `where(quantity > 0)`の順序／位置変更、後段にsecret/unavailable Field | 実際の要求Read Set、短絡時の診断・可視化、権限拒否の差 | 結果が同じなら先読み・Provider呼出も同じ |
+| DSL-W03 | D1の2明細×D2の3行をJOINして集約 | D1単独SUM=200、JOIN単純SUM=600、SUM(DISTINCT amount)=100、Entity数=2、結果Grain/Lineage | SQL結果行を業務Entityに昇格、DISTINCTを万能な重複除去とする |
+| DSL-W04 | `NOT EXISTS`が結果0件→別Sourceに新行追加、またはpartialのまま0件 | 出力されない否定依存、判定母集団・Predicate・Snapshot/Scope、選択候補集合の再解決 | 0件を空の依存集合や現在の不存在保証にする |
+| DSL-W05 | DSL/Source byte不変で属性Type／Role・Operatorの実Pinだけ変更 | 読まれたRequired/Selected/Actual bytesと型、Meaning・Build・Evidenceの再資格 | ID一致またはSemantic候補値一致で全skip |
+| DSL-W06 | 元表層に一箇所Patch、base revisionが古い／参照が移動／同名二候補 | 同一occurrenceのcurrent Range照合、edit候補→適用の区別、曖昧時reject、通常Saveのzero-write | AIが見つけた似た宣言への暗黙書換え |
+| DSL-W07 | 選択A→B→A、旧epochのRead／Build結果が遅着 | 実Invocation epoch・Consumer受領と依存時点、歴史Evidenceの保存／現在の再資格 | 内容が元に戻ったので旧Receipt/Grantも復活 |
+| DSL-W08 | 同一Meaningの生成Goを実行、selected Generator/Providerとactualが違う | 実Go／builder入力・Target Artifact・実loaded Provider・Outputを独立照合 | Target結果一致とexit0だけで正しいProvider/生成物 |
+
+**書換え適格性の実務判定**：最初は`inspect/compare-only`を基本とする。自動変換可能なのは、(a)Source occurrenceがcurrentで一意、(b)修正した範囲が明確、(c)既存の型・Scope・精度・NULL/empty/partial・Operator Pin・Evaluation Policyに対するEQ0/EQ1が確認でき、(d)必要な読取り・評価順序に差がないか、差の許容が契約で明示されている範囲に限定する。逆写像が多対一、または非出力・否定依存を列挙できない場合は`read-only Diff + explicit review`で止める。元Sourceを正規化結果から無断再生成しない。構文単純化だけなら実ProviderのEQ2を必須としないが、`EQ2が成立`とは記録しない。実I/O・SQL最適化・Rule作用順の変更を伴う書換えは実Reader/Effect側で別試行の資格が必要。
+
+**着手順とOwner別成果物**：
+
+1. **S0/S1〜S6に乗せる最初のSyntactic rewrite**：#4361にW01/W06のExpected参照を追加し、2規則の読み・型付きLowering・診断位置・保存前後byte・元表層保持を確認する。新構文が現行mainで未実装なら`NOT IMPLEMENTED`、実行前なら`NOT RUN`と明記する。
+2. **最初のQuery/Decision rewrite**：#2586 HJ-01〜04の既存D1/D2固定ケースへW02〜W04を接合。#988/#2622のOperator/SQL Ownerが`合法な最適化`を決め、#2506がRequired Contextと実Observed Sliceを確認し、#2514は独立Expected／Mutantを提供する。静的Parsed SQLのScope推測を、実DBやGrantの証拠へ昇格させない。
+3. **Editor／増分／セルフビルド**：#3788/#2621にW06、#2600にW05/W07、#2831にW08を渡す。表層の書換えで生成Goの差分・速度を測る場合も、Semantic Revision、Artifact Set、Build skipとEvidence再利用、Consumerの実利用資格を別欄にする。#2831の同一Build Intent／Stage1→Stage2 Desktopを妨げる新しい先行Gateは設けない。
+
+**終了条件**：独立Expected・既知負例と一件のcurrent Source実消費を対応づけ、少なくともW01（構文）、W03（Grain）、W04（否定依存）、W06（編集拒否）の各一件で、期待通りに成立したClaimと`NOT PROVEN/NOT RUN`を明示できること。W02/W05/W07/W08は後段Ownerへの段階引渡し。修正行数・byte diff・誤修正・再生成時間は可能な範囲で実測し、AIのみの採点や未測定の可読性向上率を出さない。現状は**設計追補のみ／DSL-W01〜W08は新規NOT RUN、製品実装・正式意味受理は未実施**。
+
+
+
+#### DSLの振る舞い・時間・Traitを、表層構文から切り離して検証する（2026-11-13、他レーン統合）
+
+**追加の判断**：業務規則、Query、Decision、手作業、イベント処理、シミュレーションを、短いDSLの同じ文型へ押し込まない。必要な区別は (1) 構造と参照、(2) 振る舞いの意味、(3) 評価・時間進行の規則（Model of Computation）、(4) Targetでの実現方法。これらは検証時に独立させる**設計上の観点**であって、新しいCore enum／DSLキーワード／共通Simulatorを追加する決定ではない。第一縦断の正数・一意性Validationには不要な時間・状態契約を課さず、時間や状態に依存するSubjectにのみ明示した実装契約を要求する。
+
+| Subjectの例 | 意味と評価の必要条件（候補） | 自動的に同値としないもの | 主な既存Owner |
+| --- | --- | --- | --- |
+| 純粋な数値計算・Validation | 演算子・型・精度・丸め・NULL/未取得方針と評価Scope | 同じGo数値型／同じ最終値だけの一致 | #988、#1063、#4361〜#4367 |
+| Query・関係集約 | 業務Identity、粒度、Snapshot、必要全件性、非出力列を含む要求依存 | Rowset 0件と不存在、JOIN行とEntity、SELECT列だけの依存 | #2506、#2586、#2387 |
+| 状態遷移・業務Command | 初期状態、Guard、遷移順、同時発生時の規則、失敗・再試行、観測可能なEffect | 最終状態が同じなら操作順や途中の外部効果も同じ | #1129、#1130、#4502、#1174 |
+| イベント／周期処理 | Event identity、時点・順序、遅着/重複、周期・タイムゾーン／時刻系、取消・再開 | 異周期の暗黙補間、時刻一致だけの順序確定、取消＝Rollback | #1063、#1130、#1180、#2514 |
+| Graph・動的シミュレーション | 参照辺と評価依存を区別。遅延／同時更新／積分ステップ／誤差許容／保存・再開が必要なら明示 | 循環するGraphの表現＝eager評価閉路の許可、別Targetの最終スナップショット一致＝軌跡一致 | #2495、#2620、#1063、#1121 |
+
+**原子的Traitとの接合**：[#3279](https://github.com/hat47x/tei-platform/issues/3279)／[#3278](https://github.com/hat47x/tei-platform/issues/3278)の方針を再利用する。構造を説明するRole、型やFacet、実装義務を課すAtomic Trait、実際の実装MethodとFulfillment、実Targetの観測、Host Grantを区別する。たとえば「チェックポイントから再開可能」を必要なTraitとして宣言したなら、単なる注記ではなく、選択Targetにおける具体的な保存・復帰操作と独立検証を要求する。手動実装必須の部分が未履行なら対象Compositionで unfulfilled、実装が存在しても試験未実施なら provided-but-unverified と説明し、既存Validator/Resolverの責務に渡す。未読込の必須Trait・競合Traitは「要求なし」や暗黙の標準実装にしない。Role宣言や trusted/pure の文字列によって現在のAuthorityを付与しない。これによりEverything is Pluginを守り、構文Parserにドメイン実装要件を組み込まない。
+
+**数値リテラルとSource忠実性**：Go式ASTを部分利用する候補A3でも、数字をGoの既定浮動小数点値として先に解釈し、金額・数量の意味を暗黙決定しない。原表層の数字の字句、単位・精度、選択した意味型、Operator版を区別し、Targetでは十進演算等の適格な実装へ明示Loweringする。表面上の 1.00 と 1 の同値は型・精度Facetの条件付きで判定する。小数点形式、指数表記、負値、丸め箇所をParserが推測して補正しない。要求のない桁数や税区分を便宜的に決定しない。数値一致だけでread-only評価、Java/Go出力、実Providerへの適合を一括PASSとしない。
+
+**他Domainで誤って同値化しないための反例**（既存#2514/#1180の独立Expected／試験記録へ渡す候補であり、新しいRunnerや正本ではない）：
+
+| ID | 一因子を変える対照 | 独立して検証すべき点・停止線 |
+| --- | --- | --- |
+| DSL-B01 | 金額候補を十進の 0.1 + 0.2 からGoの浮動小数点演算へ置換 | 独立に固定した十進Expectedと演算時点・丸めの区別。数値型選択と精度規則が未受理なら同値はNOT PROVEN |
+| DSL-B02 | 同じ最終状態だが2イベントの順序を入れ替える | 実Guard評価・中間状態・副作用の要求と観測列を比較。Stateだけの一致でイベント順序・Effect同値と言わない |
+| DSL-B03 | 遅着した同一Event／再送Operationと、異なる新Event | identity・時点・重複判定・取消/再開資格を区別。二度実行して同じ結果なら冪等と推定しない |
+| DSL-B04 | Graphに循環参照があるが遅延評価、対照はeagerなA→B→A依存 | 参照循環は表現として保持し、未許可のeager評価閉路を診断。自動固定点Solverを導入しない |
+| DSL-B05 | 異なる周期のSubjectを接続し途中状態から再開 | 時点換算・補間・イベント順序・状態Checkpoint／復帰の既存契約の有無を判定。未定義ならunsupported／NOT PROVEN。ゲーム/ロボティクス等の非業務Domainでも検証するが、実Godot/物理EngineをDSL P0の先行条件にしない |
+| DSL-B06 | 必須Traitのmanual-required未実装／generated対象なし／Provider未読込 | #3279のFulfillment／Required閉包に沿ってunfulfilled/unknownを判定。表層Roleがあるだけで受理・実Target対応にしない |
+| DSL-B07 | 同じSemantic/SourceからSimulation候補と生成Go Targetへ展開 | 同じ固定Expectedに加え必要な観測面（時点・診断・要求Read・中間状態）と実Target Artifact/実Consumerを別資格とする。Simulationの局所PASSで実Effect/セルフビルドは合格しない |
+
+**検証と導入の優先順位**：まず既存のS0〜S6でpure/read-onlyの2規則を通し、DSL-B01はS7/S8の型・式候補を評価する際の負例とする。続いて既存#1129/#4502の一状態遷移を、観測するEvent/Guard/Effectの範囲を決めてread-only比較する。DSL-B02/B03は現在のWriter・Receipt資格と切り離し、実副作用を観測する段階は#1174に委譲。DSL-B04/B05は非業務DomainのPressure Corpusと#1063へ引渡し、具体的なModel of Computationが必要になった時点でDomain Plugin／Target Contractで解決できるか判定する。DSL-B06を#3279、DSL-B07を#2831/#2514へ引渡す。P0のStudio Desktopセルフビルドには新DSL文法・Simulation/物理Engine・Trait汎用Interpreterを追加のHard Gateとしない。
+
+**判断を保留する事項**：同時刻イベントの優先規則、循環の評価方式、離散/連続時刻の統合、数値許容誤差や状態Checkpointの形式、Trait公開Schema、新たな自己記述Role構文は各Domain/PluginのRequiredに対して必要になった場合に比較・Owner判断とする。汎用Coreに先取りしない。ここでのケースは設計上の受入候補であり、**新Parser／Goテスト／実Game/Robot/Provider／Simulator／実Generated Target／Owner意味受理はいずれもNOT RUN・NOT ADOPTED**。
+
+
+
+#### DSLの局所書換えと増分再利用を分けて検収する：必要依存・実観測・逆写像（2026-11-13、追加接合）
+
+**問題の切り分け**：DSLを短い表層へ変換しても、同じMeaning候補へLoweringできること（**解釈の一致**）、表示やQueryで同じ値を得ること（**用途・入力を固定した観測の一致**）、元のSourceへ安全に編集を戻せること（**局所逆写像が定義できること**）は別の主張である。さらに一回の成功評価でたまたま参照しなかったデータは、将来の評価や増分再利用にとって無関係とは限らない。Sourceの元byte・Occurrence・Current Revisionを保持する#4364/#4366と、#2497の構造保存写像、#2582の機能データ文脈の反応、#2600の正しい増分省略を、**一つの固定Subjectの別々の判定**として接合する。新たなRewrite Engine、Dependency Resolver、Proof schemaや一般的な全自動Optimizerは採用しない。
+
+**現時点の実装境界（再確認）**：S5担当の[PR #4405](https://github.com/hat47x/tei-platform/pull/4405)（open、未merge）には、`FormatRuleAuthoring`による局所構文の整形候補、再Parseした意味不変の確認、コメント／未解決参照の拒否、片方向Previewと局所テストがある。一方で**通常Save/Writerへの接続と、実Editor経由のzero-write保証はまだない**（#4366の実装者コメント）。この既存実装を破棄して新Formatterを作らず、既存の拒否結果・再ParseをS5の足場として評価する。PR #4405内のローカル成功と、PR #4599で予定したStudio/CLI通常入口の検証を区別する。
+
+**必要な依存と、観測した依存を混同しない**（以下の集合名は比較票の列名であって製品APIではない）：
+
+| 判定対象 | 追跡するもの | それだけでは証明できないこと |
+| --- | --- | --- |
+| **Potential / Required（宣言・解析側）** | 対象Function/Claimの必要入力、条件分岐の制御依存、Queryの結合・否定・順序・集計・選択Predicate、Target/Plugin/Operatorの解決候補、Scopeと探索可能範囲。未知の動的依存はunknown | 記載があるだけで実Data Read・実Provider呼出しが行われた、あるいは依存閉包が完全 |
+| **Observed / Consumed（実行側）** | 同一Attemptで実際に採用した分岐、実Provider、読んだSource/Value/Query、Result Scope/時点/粒度、生成器・Toolchainの実消費byte。取得できないTraceはunknown | 一度実行しなかった分岐は永久に無関係、未読の新規行/新候補が今後も出現しない |
+| **Coverage / Qualification（用途側）** | Requiredに対し解決・未解決・意図して除外した依存の範囲、取得した集合の完全性、negative predicateの対象母集団、Source/Lock/Model Revision、要求するConsumer | 取得行数0＝不存在証明、あるScopeの完全性＝別Scopeの完全性、過去Receipt＝現在のEffect/Grant資格 |
+
+**read-only評価と安全なskipで必要な証拠は異なる**。固定入力・固定選択のread-only結果には、実Observedと必要な入力の取得資格があれば局所Claimを提示できる。変更後の再評価を省略する場合には、当該Claimに影響し得る**Potentialな制御依存・データ依存・否定依存・Provider選択依存**の範囲を固定し、その範囲に対して変更がない（または結果へ影響しないと独立に確認できた）ことを要する。固定の一回の動的Read traceだけでno-impactを返さない。Required集合の取得根拠がunknownなら、そのClaimのskipはunknownとする。一方、対象Claimに無関係と根拠付きで除外できる未取得D2や用途外Pluginまで、すべてのClaimの利用停止に広げない。#4518の問い相対Required/Observed/Resolved/Unresolved/Excludedも参照する。
+
+**局所Source編集の安全条件（#2497/#3788/#4366に引き渡す判定順）**：
+
+1. **操作を特定**：意味IDの改名、表層の整形、値の変更、Relation参照の編集は別操作。構文のLoweringが可能でも、情報を落とすProjection（Graph→Tree、集計表、短縮表示）からの一意な書戻しは保証しない。編集したいフィールドに対し、元のOccurrence/参照先/書換え粒度が一つに特定できない場合はread-only／候補提示。
+2. **元Sourceへ束縛**：選択Language/Operator pin、対象Workspace/Canonical Subject/Occurrence、元byte range、Base revision、未保存Buffer epoch、非対象部分を識別する。意味ID一致、UIラベル一致、同byteの別Sourceだけでは対象を定めない。
+3. **適用直前に再検査**：外部変更、A→B→A、ファイル移動、同名異ID、複数View、未解決参照、部分的な参照一覧、未知のLanguage Pluginを確認。Current Source上で対象を再同定できなければzero-writeで停止。再整形や構文版変換は、利用者が明示したOperationの範囲だけ。
+4. **局所Patch＋再Parse**：書換え後に対応する既存Parserで値とSource spanを再計算し、指定した変更の意味差分・全参照関係・非対象byteの不変性を照合する。全編を正規化したテキストに置き換える手順を既定にしない。明示的な改名は対象参照の閉包が確認できない場合に適用不可。
+5. **証拠の帰属と表示**：編集候補、適用されたSource変更、Accepted Meaning、実行結果、生成物、Owner受理を別々に報告する。途中失敗・部分書込みでは成功と記録せず、既存Source Editの復旧境界へ返す。
+
+**最小の区別可能な試験候補**（既存#4361/#2514/#1180の独立Expectedへ接続。今回のDSL-DPは専用Runnerや正式Schemaではない）：
+
+| ID | 一因子の変更 | 受入／拒否と見落とす依存 |
+| --- | --- | --- |
+| DSL-DP01 | 短絡を定めたOperatorで、falseの分岐がsecret参照を短絡し、後でflagがtrueになる | 初回の実Read 0は正常でも、flagの変更で再評価が必要。secretの先読みは禁止。PotentialとObservedを両方報告 |
+| DSL-DP02 | D2が部分取得のとき、D1だけの合計とD2依存のJOIN合計を並置 | 独立D1完全ならその局所合計は使用可能。JOIN/NOT EXISTSの完全性はClaim別に拒否。無関係D2を根拠なく全体失効に使わない |
+| DSL-DP03 | NOT EXISTSが0件と出た後、対象Scopeに一致行を追加する | Scope/Snapshot全件が確認できる0件はその時点の不存在判定に使えても、以後の新規行追加で失効する。負依存により再評価／retract |
+| DSL-DP04 | SELECT * の基底Schemaに列を一つ追加 | 旧Consumerの明示Read列が同じでも、結果型・列順が変わり得る。Schema/出力集合が不明ならskip未資格 |
+| DSL-DP05 | Graph/集計の同じ表示セルへ複数の元辺・行が投影される | 値を読めても逆写像は一意でない。更新対象を推定して書き戻さず、候補／read-only |
+| DSL-DP06 | AI/Studioが古いBufferのspanを新しいSourceへ適用する、または別Occurrenceが同じラベル | Source/Buffer revisionと同定を再確認し、stale/ambiguousならzero-write。適用済みと偽らない |
+| DSL-DP07 | 新旧構文が同じMeaningへLoweringされるがコメント・改行コード・字句が異なる | 無操作Saveでは元byte保持。明示整形のみ対象範囲に限定。Sourceの一致をMeaning同値から推定しない |
+| DSL-DP08 | Source・旧Read結果は同じで、Language/Operator pin・Generator/Toolchain・候補Providerが変わる | Meaning／実消費／生成物／現在資格を別判定。BOM/Lockや実Selectionの再資格化なしにskipとしない |
+
+**第一縦断へ収める順序**：S0の正数判定を旧新二表層で固定→S1〜S3で同じMeaningと正しいOccurrence/span→S5でDSL-DP06/07のzero-write/明示Patch→#2497/#3788で局所逆写像の可否を判定。依存のDP01〜04/08は#2582/#2586/#2600/#4518へ検証票を引き渡し、実データ・実生成物が取れる段階で同じSubject/Attemptを使用する。**P0 Studio Desktopセルフビルドは、DSLの汎用依存解析や全Projectionの編集機構を新規Hard Gateとしない**。再利用の正しさが不明なら安全側のフル再計算で進め、速度最適化は後測する。
+
+**状態**：判定順と反例の設計追補のみ。Source Writer/Parser/Plugin/実Query/増分Scheduler/実Generated Targetの新実装・追加試験は**NOT RUN**。新DSL表層構文の正式受理、Owner意味受理、実効果の許可は**NOT ADOPTED**。
+
+
+
+#### DSL候補を製品Workspaceへ昇格させる際の境界と失敗原子性（2026-11-13、実PR再照合）
+
+**実装境界の更新**：[PR #4405](https://github.com/hat47x/tei-platform/pull/4405) は ParseRuleAuthoringFile、RuleNamespace、Anchor、FormatRuleAuthoring、既存Validator/Evaluator向けの試験を実装した **open・未mergeの独立Parser第一縦断**。PR本文には限定Go build/vet/testと既存Workspaceのvalidate実行結果がある。しかし、この結果は新しいruleが**通常のWorkspace読込で選択・受理された証明ではない**。
+
+特に実Codeの RuleNamespace(file) は、正常な宣言の semantic.Validation を返しつつ、無効な宣言の RuleConversionIssue を同時に返せる。候補を保持して全エラーを出すのは適切だが、**製品Loaderがissuesを無視して有効な宣言だけ採用すると、不完全なWorldを完全と誤認する**。候補解析・診断の部分成功と、Product Worldへの採用・SourceAcceptanceを区別し、既存のValidation境界でfail-closedに扱う。候補API自体の変更はこの提案に含めず、**接続側の採用条件**とする。
+
+[Draft #4607](https://github.com/hat47x/tei-platform/pull/4607) は #4405の実装ブランチをbaseとした**積上げ差分**（S0 Expected JSON・比較票・Go契約テストの3ファイル）。34ケースの目録と意味Expectedの根拠区分は補正されたが、当該PR本文はGo/CI **未実行**と明記する。#4405の限定テスト成功を#4607の新テストPASSへ流用しない。#4607は親#4405を取り込んだ同一HEADで再確認し、mainへの独立並行マージを予定しない。
+
+**最短の製品導入順**（[#4367](https://github.com/hat47x/tei-platform/issues/4367)とLanguage Ownerの採否を優先。C1＝formatVersion 3は未採用の候補）：
+
+| 段階 | 具体的な受入条件 | 成功時にも未証明のもの |
+| --- | --- | --- |
+| G0 候補 | #4405のParser→候補Lowering→既存Validator/Evaluatorを、#4607の独立Expectedと同じ実HEADで確認 | 通常Workspaceの新rule受理・実Provider・Editor保存 |
+| G1 選択入口 | Workspace formatVersionと選択Language pinからParserを一意決定。旧v1/v2を不変とし、未選択・未知pin・黙ったfallbackを拒否 | Ownerの業務意味受理、現在の実行Grant |
+| G2 Product World | 全SourceでParse/Lowering issuesと同ID衝突を検査。**問題のある必須宣言を除外した一部のWorldを成功として公開しない**。診断用の部分Candidateは保持可 | Editor Writer・生成Go・Build完了 |
+| G3 Source Index/Save | 選択された同じSource occurrenceのbyte span・Base Revisionを保持。明示Formatterとno-op Save／局所Patchを分離し、staleならzero-write | Studio実受領、生成Artifact |
+| G4 Target/Consumer | 既存Build IntentにLanguage/Operator/Generator/Target版を結び、実Builder/Artifact/Consumerの到達範囲を照合 | Read-only評価やSimulationから実Effect／Owner受理への昇格 |
+
+**区別可能な反例の追加候補**（既存#4361〜#4367と#2514のExpected／テスト記録を再利用し、第二Runnerを作らない）：
+
+| ID | 一因子の変更 | 判定 |
+| --- | --- | --- |
+| DSL-I01 | 同じSourceに正常ruleと未解決属性ruleを共存させる | RuleNamespaceの部分Candidate＋issuesは診断可能。しかし問題ruleを欠落のまま完全Worldとして公開しない |
+| DSL-I02 | 旧validationと新ruleを**別Source**に宣言し同じCanonical IDを与える | 個別Parseが成功してもWorkspace全域で重複拒否。先勝ち・ファイル順で解消しない |
+| DSL-I03 | v1/v2の新rule、選択した新形式候補、未知Language pinを比較 | 版／Pinから選ばれた入口のみ使用。未採用v3や tei.md を暗黙有効化しない |
+| DSL-I04 | 同値ruleを別ファイルへ移動し、CRLF/BOMとBuffer改版を挟む | 意味ID維持とSource occurrence/span更新を区別。古いrangeへの書戻しはzero-write |
+| DSL-I05 | Formatterがファイル全体の文字列を返すがStudioの対象は単一宣言 | Formatter成功は局所Writer完成を意味しない。明示操作では対象外byte不変、無操作Saveは実書込0 |
+| DSL-I06 | #4405と#4607の別HEAD試験結果を組み合わせる | 1つの組合せ上で再実行。独立Expected目録、Goテスト、実Product実行を別資格として記録 |
+
+**既存Ownerへの受渡し**：G0は#4361/#4362/#4363/#4365と#4405/#4607。G1は#4367/#988/#1018。G2は#4363/#4364と既存workspace Validator/SourceAcceptance。G3は#4366/#3788。G4は#2600/#2831/#2514。設計候補や部分試験から他Ownerの完了を推定しない。
+
+**セルフビルド優先の停止線**：現行の受理済みDSLでStudio Desktopを構築できるなら、新ruleのG1〜G3完成を新たなHard Gateとしない。ただし新ruleを通常製品入口で利用可能にするときは、G1/G2の選択と失敗原子性を先に検証する。**今回は設計追補のみ。G0〜G4の新通し試験、#4607のGo/CI、Writer/実Product/Studio、正式文法採否はNOT RUN・NOT ADOPTED。**
+
+
+
+#### DSL編集候補の採用と実行結果の世代混同を防ぐ：Previewから独立再読取まで（2026-11-14、製品引渡し）
+
+**新しい接合点**：[#4359](https://github.com/hat47x/tei-platform/issues/4359)の新表層構文を「解析できた」から「Studioと外部Consumerで現在のモデルとして使用できる」へ進める際、**Sourceの編集候補／採用済み定義／実行済み結果／配信時の資格を一つの成功状態にしない**。#4361〜#4367の構文第一縦断、#3788の編集入口、#2586の実PostgreSQL限定読取、#2600の増分Build、#2831のStudioセルフビルドが**異なる時点・別の試行**で部分的に成功していても、積み合わせてProduct E2E合格にしない。ここでいう「世代」はレビュー用の区分であり、新Core Epoch Registry、製品共通Transaction Engine、第二Acceptance Serviceは追加しない。
+
+| 別々に固定する境界 | 必須の記録・識別 | 禁止する短絡 |
+| --- | --- | --- |
+| **Definition epoch**（採用対象の定義） | Source集合とRevision/byte、Workspace、Language選択pin、Operator/Role/Contractの有効版、全必須宣言・参照閉包、World/Model fingerprint | 同じ意味ID・一部成功Parse・Source hash再一致だけで現行Worldを更新 |
+| **Edit/Buffer epoch**（未保存候補） | 元Occurrence、対象値のbyte span、Base Revision、編集中Buffer版、明示Operation、変更外byte | 古いspanから現在のSourceへ推測Patch、Formatterの出力＝保存済みの扱い |
+| **Execution Attempt**（実評価） | 参照したDefinition、選択/実呼出Provider、Query/SQL byteとbind、Snapshot/Scope/Grain/Completeness、観測Read/Effect、Resultの版・状態 | 旧Attemptの遅着結果を新Definitionの成功と表示、別AttemptのReceiptを合成 |
+| **Build/Artifact epoch**（生成実現） | 選択されたGenerator/Target/実Toolchain、実消費入力の閉包、ArtifactSet、実Consumerが受け取ったmember | Source値一致でBuild実行・配布・採用済みと推定 |
+| **Consumer/Grant epoch**（使用時点） | 利用者/Consumer・用途・Disclosure/Effect Policy・現在Grantと、配信時の実条件 | 過去のResult/キャッシュ/Permissionを現在の開示・操作の許可に昇格 |
+
+**編集から製品採用までの操作境界**（#3788/#2497の既存Source Edit責務を使う。製品API名や既存実装の存在は主張しない）：
+
+1. **Preview**：保存前Sourceを変更せず、新旧候補と対象Occurrence/byte span、要求される参照・未解決、想定Meaning差分を表示する。Candidate Worldは診断に利用できるが**現在のProduct Worldではない**。Parserが有効なruleとIssueを同時返却したとき、一部のruleだけを黙って製品へ公開しない。
+2. **Resolve**：対象のLanguage/Operator/Role pinとSource/Refを既存Resolverで一意確定する。Potential/Requiredの入力依存とObservedを区別する。未知の必須依存、同名別Source、未読込Language、重複Canonical IDなら「適用不能／不明」を可視化する。
+3. **Admit**：既存Product World検証とSource Writerの局所逆写像条件を両方確認する。構文として適合しても、非単射ProjectionやTarget未対応は勝手に書戻さない。**Product利用可能性の判定は業務Ownerの意味受理やHost権限付与ではない**。必要な所有者承認／言語形式選択が未確定ならread-onlyのままにする。
+4. **Commit**：編集対象の現在SourceとBase Revision/Buffer epochを再照合した上で、既存Writerが実行可能な最小Patchだけを適用。no-op Saveは書込み0。ファイル間Renameのように既存手段が原子性を保証しないOperationは自動完了としない。失敗時は既存復旧・診断へ返し、**一部書込み成功を全体成功と表示しない**。
+5. **Observe**：書込み後の権威Sourceを**独立に再読取**し、実byte・Occurrence・版、再Parse/全Source参照と期待した意味差分、既存消費経路を照合する。CAS成功だけでは完全な採用完了ではない。独立再読取ができない/一致しないときは「現在Model更新成功」を主張せず、要照合・再診断とする。既存Worldの結果は必要に応じ**旧版・履歴**として区別し、現在の実Effect/開示に使わない。
+
+**実行と公開のFence**：Studioの編集後に旧Attemptの応答が遅着した場合、その結果は**旧Definitionに結びつく歴史的な観測**として保持可能だが、新SourceのCurrent Inspector/Claimに無条件で反映しない。新Current用に必要なReadは新DefinitionのAttemptで再評価し、実Provider/Query/Completenessを観測する。配信・Operation直前のCurrent Grant／Consumer用途は別途再確認する。Source CommitのCASとDBのSnapshotは別機構であり、同じ時刻だったというだけで単一の分散Transactionを主張しない。実Action/Commitは#1174のOwnerを通す。現在の構成で「現在世代」と証明できないときは、再評価・再Buildを選ぶか、現在Claimを保留する。旧Evidenceは消さない。
+
+**最小の独立対照**（既存#4361/#2514/#1180のScenario/Expectedと#3788の編集テストへ渡す。新Runnerなし）：
+
+| ID | 一因子の差分 | 正しい判定 |
+| --- | --- | --- |
+| DSL-E01 | 1 Sourceに適合ruleと属性未解決ruleを置く | 診断用部分Candidateは可。問題ruleを欠いたProduct Worldへ自動採用しない（既存DSL-I01の製品試行） |
+| DSL-E02 | A定義で実Read開始→Bへ編集中改版→Aの応答が遅着 | AのResult/Read traceはA Attemptへ束縛。BのCurrent Inspector/Meaning PASSとして上書きしない |
+| DSL-E03 | CAS成功後、独立Readerから想定外byte/Source移動/参照断絶を観測 | 「Commit試行成功」と「現行定義採用」を分離。再読取不一致なら採用保留、復旧診断 |
+| DSL-E04 | A→B→Aでbyteが再一致、古いBuffer spanを適用 | Base Revision/Occurrenceが旧世代ならzero-write。Source hash一致だけでCAS/Source mappingの再資格化をしない |
+| DSL-E05 | Query結果の取得後、Consumerへの配信前にGrantを失う | 歴史的なRead証拠は保持。現在の開示を拒否し、秘匿件数・値・Source位置を漏らさない |
+| DSL-E06 | Definitionが選んだProviderと実呼出先・SQLが不一致 | 選択の宣言と実Readを別に示し、同一Attemptの受入を拒否／NOT PROVEN |
+| DSL-E07 | 複数SourceへのRename中に2件目の書込みが失敗 | 原子性が未実装なら自動適用を許可せずPreview/候補へ留める。部分成功を完全な採用としない |
+| DSL-E08 | 明示整形なしの保存後、生成Targetの再利用を実施 | Sourceの無操作は書込み0。Build/ArtifactのskipはRequired閉包とactual Toolchain/Consumer資格で**別々に**判定 |
+
+**実装順と既存実証の基線**：G0=#4405とstacked #4607/#4608を**同一HEAD**で検証。G1/G2=#4367/#4359でformatVersion・Language pin選択→全Worldのfail-closed導入。G3=#4364/#4366/#3788で最小Patch・no-op・独立再Read。G4=#2586（mainへ統合済みの限定PostgreSQL Read #4539）から実Provider/Consumer同一Attemptの read-only 受領へ、#2600で入力閉包と増分skipへ進める。#2831は現在のDSLでのStudio Desktopセルフビルドを優先し、この新編集プロトコルを**Studio P0の追加Hard Gateにしない**。一方、Productで新rule編集を公開するなら、G1〜G3とE01〜E04の実試験を別途必須にする。
+
+**状態（2026-11-14）**：上記は現行実装差分と他レーンの受入方針から導いた**設計・受入候補**。この追補で新しいGo製品コード・Studio編集・実Query E2E・Consumer配信・CAS Writer・実二世代試験を実装／実行したわけではない。G0〜G4の同一HEAD一括PASS、Owner正式採用、実Host Grant成功は**NOT PROVEN / NOT RUN**。
+
+
+#### Language Pluginを自己更新するときの有限Bootstrapと構文世代の移行契約（2026-11-14、E2／Self-build接合）
+
+**未接続の問題**：DSLがLanguage Plugin自身や解釈契約を通常データとして記述できても、**その記述を最初に解釈する機構は、更新対象自身を信頼して選んではならない**。さらに「新旧表層が同じ業務MeaningへLoweringする」ことと「古いSourceを将来も同じ意味で再現できる」こと、「生成されたTEIが自身を再構築できる」ことは独立。ここでは[#4536](https://github.com/hat47x/tei-platform/issues/4536)の有限Bootstrap、[#1018](https://github.com/hat47x/tei-platform/issues/1018)のWorkspace→Language E2、[#4359](https://github.com/hat47x/tei-platform/issues/4359) S6、[#988](https://github.com/hat47x/tei-platform/issues/988)のexact Operator pin、[#2831](https://github.com/hat47x/tei-platform/issues/2831)のSelf-buildを一つの**段階的な検証順**に接続する。新たな自己解釈Kernel、専用Host、第二Parser Registry／第二Meaning正本の設置は決定しない。
+
+**現行コードから確認できる出発点**：mainの`internal/workspace/loader.go`は既知rootを個別に振り分け、Semanticでは`syntax.NewParser(...).ParseSemanticFile()`を直接呼ぶ。Semanticの`formatVersion`は1/2のみ受理し、Workspace版との不一致を拒む。未知rootは現状forward-compatibleな在庫として扱えるが、**在庫＝解析・Meaning受理ではない**。`internal/formatversion/formatversion.go`は既存のCentral経由Codec変換境界であり、Language Plugin版の選択規則そのものではない。`reference/dsl-language-plugin/self_description_workspace_boundary_test.go`は実Workspaceを読む局所試験を持つが、同ファイルのLanguage identityはtest-onlyラベルであり、製品で実Pinを選び実装が提供された証拠ではない。これらの差を埋めずに「自己記述DSLを正式採用」と表示しない。
+
+**循環させない最小の起動順**（概念上の処理段階であり、新製品APIではない）：
+
+| 順 | 読み取るもの・使用する契約 | ここで許してはいけない推論 |
+| --- | --- | --- |
+| **B0 固定Seed** | 既存の受理済みWorkspace/Manifest形式と、Seedが解釈可能な既存Lock/Source情報から**選択要求**を収集。既存Loaderの読める範囲を超えるLanguage記述はまだ実行しない | 未解釈の同Workspace DSL payloadを使って、先に自分のParser・Plugin版・権限を選ぶ |
+| **B1 選択の確定** | #1018/#951の既存Contract/Provider解決で、Language ID・Contract版・Implementation identity/fingerprint・Source root/suffix・必要Capabilityを固定。候補不在/競合/Pin不一致は停止 | 名前一致の別Provider、暗黙最新版、未登録default、任意の未知rootを勝手に採用 |
+| **B2 限定ParseとLowering** | 選択したParserで該当Sourceだけを読み、span/診断付きのtyped候補を既存Semantic/Source Indexへ渡す。参照循環はread-only表現とeager評価を区別 | Parse成功・Role宣言・Plugin自身の宣言＝Canonical Meaningの受理や実Effect |
+| **B3 Workspace採用** | 全必須SourceのParse/Lowering/参照・同ID重複・Operator契約と独立Expectedを確認した場合に限り、既存のProduct World/Acceptance責務へ進む。部分Candidateは診断用として保持可 | 一件の失敗を除外したWorld、未解釈Source、あいまいなLanguage versionを完全Worldとして公開 |
+| **B4 実Target／Self-build** | 受理対象とBuild Intent、選択Generator/Toolchain、実生成Artifact/Consumerを照合し、Stage1の実生成TEIがStage2構築を指示した事実を独立に測る | 同じSourceの再Parse、同じStage2 output byte、別HEADの局所PASSだけで全Studio Self-build/意味正当性を主張 |
+
+**版は一本の整数にまとめない**： (a) Workspace/Semanticの`formatVersion`、(b) Language Contract version、(c)実Parser Implementation pin、(d)Operator/Role契約とそのImplementation、(e)Format Codecの入力・出力版、(f)生成Target/Toolchainは別に記録する。#4367の**C1=formatVersion 3**と**C2=Language Contract版で選択**はOwnerの未決選択肢であり、C1・C2を同時有効にする仕様を推測しない。どちらでも現行v1/v2 SourceとそのWriterは既定で変えず、`*.tei.md`の未束縛Readerを勝手に起動しない。将来の移行は既存#1920 Codecへ依頼し、出典byte/spanとloss/diagnosticsを残す。変更が不可逆・意味不明ならPreview/unsupportedとする。
+
+**自己更新と履歴再現**：新ParserのSourceとその選択宣言は**旧Seedから解釈可能な固定情報**に結び、候補Languageを検証した後でのみ次のWorkspaceへ採用する。Languageが自分自身の解釈資格を生成してその結果で同じ試行をPASSにする自己証明は不可。旧定義の歴史的再現は、旧Source・旧manifest/lock・解釈器実体と必要Operator版・独立Expectedの残存・利用資格を別々に確認する。現在の最新版だけで旧Sourceを読み直した結果を旧実行の再現と呼ばない。保存されていない旧実装を復元可能だと約束せず、再現不能なら`not-retained/unverifiable`で報告する。SourceのA→B→Aやファイル移動では、値/byteの一致とOccurrence/Revision・選択履歴の一致を分ける。
+
+**独立反例**（#4361/#2514/#1180のScenario/Expectedを再利用するための候補。第二のRunnerなし）：
+
+| ID | 一因子だけ変える試行 | 期待する判定 |
+| --- | --- | --- |
+| DSL-LB01 | Parser更新を記述するSourceが、その更新Parserでしか読めず固定Seedが解釈できない | 宣言自体をB0で実行しない。unsupported／待機。自己解釈で循環を突破しない |
+| DSL-LB02 | 同じLanguage ID/Contract版だが実Parser Implementation fingerprintだけ違う | B1のexact pin不一致で拒否。旧Parserを別実装へ黙って置換しない |
+| DSL-LB03 | 旧formatVersion 1/2を新ruleへ自動再解釈しようとする | 旧構文の既存意味は不変。新構文は未選択なら拒否し、移行は明示Preview |
+| DSL-LB04 | 同じRule IDの旧validationと新ruleを複数Sourceに併存 | 個別Parse成功でもWorkspace全域重複を拒否。Sourceのロード順で採用しない |
+| DSL-LB05 | Source rootをLanguage-boundと明示したがProvider未導入。対照は宣言なし未知root | 明示したrootは失敗／未解析。宣言なし未知rootの在庫は解析済みと扱わない |
+| DSL-LB06 | Role/Operator定義を候補として読めるが、Required Shape・Implementation pinまたは独立Expectedが欠ける | Read-only inspect可でもMeaning/Effect/Target採用は不成立。#4536に未結合の辺を記録 |
+| DSL-LB07 | 同じ旧Sourceを新Parserだけで再実行。旧Parser binary/Lockは残っていない | 現行解釈の局所試験は可能でも歴史的再現を証明しない。旧版証拠の残存状態を別表示 |
+| DSL-LB08 | Stage1/2の出力が見かけ上同じだが、Stage2生成の実起動はStage0 Seedに委ねた | #2831/#4583の実Process/Build Intent/Artifact連鎖を満たさず、全体Self-build未成立 |
+
+**最短実装順・停止線**：まず#4361/#4405と積上げ#4607/#4608で、既存SemanticへのLoweringとSource位置・Read demandを**同一HEAD**で検収（B2の前段）。続いて#1018 E2／#4367 S6がB0/B1（選択宣言の起点・版/pin・拒否）を実Product入口で証明した後、#4536/#2620が一RoleのB2/B3を照合。#2831/#4583は非Plugin Studioの既存Build Intentを主線としてB4を実証する。**汎用自己ホスト文法、全Language/Roleの自己解釈、DSL migration engine、歴史Parser archive、セルフビルド以外のRuntime HostはStudio P0の追加Hard Gateにしない**。未知はunknown/unsupportedとして停止し、業務Meaningや許可を推測しない。
+
+**状態**：本節は設計判断・実装Ownerへの受入引渡し。新E2 Product dispatch、FormatVersion 3採用、自己Parser実起動、別版の歴史再現、Stage1→Stage2の全Studio Self-build、上記LB試験、Owner受理は**NOT RUN／NOT ADOPTED**。
+
+
 ### 9.6 用途別に定義するDesign Contextの完全性と、テスト提案・表示・実行の資格（2026-11-07、横断追補）
 
 **主張別の完全性は一列の成熟度ではない**：同じSource/World/Functionでも「設計情報を使ってテスト候補を考える」「Providerの取得結果を検証する」「Function内で表現する」「書込みを実行する」は必要な証拠集合が異なる。すべてに実DB/書込みGrantを要求するとテスト設計や文書閲覧が不必要に停止し、逆に「read-only CLIの結果が完全」を全用途の実行資格に流用すると誤った自動化になる。標準データ構造・標準表現型・Function Contextは共通Carrierとして使うが、**Required ObligationとConsumed Evidenceを利用目的／対象Scope／Consumerごとに判定**する（#2619/#2507/#2497）。

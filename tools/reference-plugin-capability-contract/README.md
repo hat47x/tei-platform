@@ -18,6 +18,18 @@ productionの`internal/plugin.CapabilityKind`をすぐに変更せず、Plugin�
 
 これはproduction APIではありません。Referenceが成立した後に、既存`CapabilityKind`を標準contract/profileへどう移すかをADR候補として判断します。
 
+## 同じ設計を段階別の提供物へ結び付ける試作
+
+[Contribution構成の試作](contribution_plan.go)では、同じ設計上の意味を、Studio、生成器、実行時、テストの提供物へ対応付けます。各段階で必要なAPIは異なるため、共通の意味を指すID・版・指紋と、段階固有のContractを分けます。例えば、セッションの意味定義を2.0.0に固定していても、実行用Packageの配布版を4.2.0とする構成を表せます。全てのPackageを同じ版にそろえる必要はありません。
+
+入力には、必要な提供物のSlot、意味の固定値、対象環境、既存のAuthority Scope、Contractの固定値、任意の明示wiringを渡します。対象環境と意味の一致する候補を既存の`resolveCapability`へ渡し、Provider選択と適合証拠の照合を再利用します。別のResolverや実行Hostは追加しません。返す計画はSlot順にそろえ、いずれかが不足した場合は部分的な計画を成功として返しません。外部状態は変更しません。
+
+Slotは構成内の接続先を区別する参照用の名前です。製品の最終的な拡張点の型ではありません。また、処理段階とAuthority Scopeは別の概念です。この試験がテスト用の提供物へ`target-local`を指定していても、全てのテストをそのScopeへ固定する仕様にはしません。
+
+[構成試験](contribution_plan_test.go)では、四段階の正常な構成、候補と要求の列挙順を変えても同じ結果になること、曖昧な候補と明示wiring、Editorだけの要求、実行用の提供物を持たない構成を確かめます。古い意味の版、別の意味ID、同じID・版で異なる意味の指紋、対象環境違い、Scope違い、Contractの変更、適合証拠の欠落、誤Provider、成果物の変更、Slot重複、固定値の不足、不正な版という12種類の不整合も検査します。
+
+ここで使う認証に似た名前と適合証拠は合成データです。IDや指紋の照合は、宣言した意味どおりに実装が振る舞うことを証明しません。Artifactのbytes、署名、実行権限、実UI、認証やDBの動作は未検証です。Targetも文字列の完全一致に限り、OS・ABI・Wasm・Browser等の適合判定は実装していません。要求されたSlotが全てそろうことは確認しますが、その要求自体が製品機能を網羅しているかは判定しません。Profileから必要なContributionを導出する仕組み、依存の型と順序、永続Lock、更新・切戻しは後続設計です。
+
 ## 実Source Adapter consumer
 
 resolverの成立だけでなく、選ばれたCapabilityから実際のread-only readerを呼ぶ縦の経路もReference化しています。
