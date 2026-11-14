@@ -535,3 +535,18 @@ M-Pを最初の小Reference候補にするのはよいが、**所属という語
 **PR #4633の検収上の注意**：このCode PRは単独の新規Go testファイル4件で、既存モデルとr7の欠落を検出するもの。exact HEAD `b529791f452231f06e16d6419b0f80cace12d6fb` のCIは完了したWorkflowだけを局所成功に数え、**Repository Health内の `go test` 合格はそのジョブ/ログが完了するまで未確定**とする。別のWebView smoke、Action Surface CLI、Self-build、既存Postgres Workflow成功を新しい4テストのPASSに流用しない。#4633はmainの既存Go testと競合しない別ファイルを追加し、OwnerのMeaning/PK決定に先行した製品Schema変更をしない。
 
 **コード化の次の停止線**：#4633が静的GAPを検出した後、意味OwnerのM-P/M-E/M-X選択、既存#2611のAlias conflict treatment、#4566/#4567の二時点SQL/Mapping修正差分を受理できる状態になってから、同一DB A2二版保存・実Rowset/Person/FTE・Current Grantを別々の小PRで実証する。read-onlyの通常CLI実ReadとStudio Stage2 self-buildはこの判断をHard Gateにしない。
+
+
+### 16.2 実行済みGo特性テストの固定HEAD検収（2026-11-14）
+
+**新しい実行証拠**：[Draft #4633](https://github.com/hat47x/tei-platform/pull/4633) 固定HEAD b529791f452231f06e16d6419b0f80cace12d6fb について、[GitHub Actions Repository Health #43548199759](https://github.com/hat47x/tei-platform/actions/runs/43548199759) が completed/success。実ジョブログで Go全件テスト（go test -count=1 -timeout 60m ./...）PASS、tei/internal/operations 2.435s PASS、gofmt -l . と go vet ./... PASS。4つの TestOrgC1... はskip無し、同packageの通常のGo全件testが合格している。
+
+この成功は**本物のWorkspace Loader/IR/Query Mappingと現mainの欠落**を特性化できる証拠であり、r7のPerson Link/履歴Versionの**製品機能が成立したという意味ではない**。同HEADのStudio Wails、Action Surface、セルフビルド、PostgreSQL各Workflow successは別Claim。既存r7の合成Sourceと実DBを混同しない。
+
+| 完了したR0 | 依然未実行の次段R1/R2 |
+| --- | --- |
+| 4 Go特性テスト、実Workspaceロード、r7 Source検査、full Go/gofmt/vet/Repository Healthのexact-head実成功 | M-P/M-E/M-X Owner採否、Person Link＋Physical Mapping、A2二版の同一DB実保存、正しいas-of実Rowset、実Function Context/Consumer、Host Grant/Case Effect、Owner Acceptance |
+
+**設計／コードの受入境界**：#4622がdocs-onlyの計画Draft、#4633が1ファイル追加のコードDraft。既存Closed/Unmerged #2632の多Alias候補特性は新mainでは実装済みと扱わない。#4566/#4567のNative SQL修正は別Draft・未merge。これらのSource/CI結果を、実際に同じProduct Attemptへ統合しないまま「組織C1のE2E PASS」としない。
+
+**直近の最小実装**は #2386/#1126で直接Person・雇用経由・非Personの意味Profileを選ぶことに限定し、採用Profileの具体Source RelationとRead Witnessを先に作る。DB履歴/別Aliasの安全診断は既存Ownerの別実装とする。固定されたProduct Meaningを人事・勤務・承認の現在権限と自動同一視せず、通常CLIの実Provider ReadとStudio Stage2セルフビルドのP0を独立維持する。
