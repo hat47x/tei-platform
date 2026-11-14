@@ -212,6 +212,10 @@ Gate C — PAS-04 Evidence — Ready
 
 **最小比較ケース（既存#1180/#2514 Expected、今回NOT RUN）**：WPC-01 同じWorkspace/ProviderのCLI↔Desktop read-only型付き結果とactual entryを照合。WPC-02 同名別Workspace／Tenantの後着Web Replyを誤表示・開示しない。WPC-03 Source v1を同時読取→Aがv2を受理→Bの古いPreviewによる保存/Acceptを拒否（失敗側のSource不変）。WPC-04 Plugin無効化前後のSource raw bytes/未対応断片/管理設定を別観測し、自動変換・自動削除を禁止。WPC-05 AI Harnessからの古いPinを新Sourceへ自動束縛せず、提案再ReviewとHost Grantを別検査する。WPC-02〜05はWeb/管理製品の未成立を**受入予定として記すのみ**。実装Ownerは#1824（UI/Host）、#1158（Operation）、#1529（競合）、#2044/#4378（設定・Source保持）、#1016/#951（選択）、#2516（開示）であり、新しい共通Server/Resolver/Authority/編集正本を作らない。P0 Desktop Build #4583とは並行設計扱いとし、Web同時編集実装を新Hard Gateにしない。
 
+**Web/WASMを同一Plugin Hostとしない受入線（#1824/#3421、詳細はDraft #4621 §17）**：現mainの`cmd/tei-studio/main.go`は`127.0.0.1`限定Server PoCで、同じ`StudioBridge`にread-only一覧と`ExecuteCommandWithPolicy(..., allowed []string)`／`ExecuteCommandWithReferenceStore`／`OpenShoDocument(draftPath, documentPath)`等の別性質の公開メソッド候補が混在する。`internal/studiohost/readonly.go`もブラウザー別Principalを持たない。**これを共有Webへそのまま公開しない**。#3421のWeb Hostはまず認証済みPrincipal/Workspace/Audienceに対してread-only共通Operationだけを明示列挙し、clientの`allowed`やパスを権限・実行対象として信用しない。サービスメソッドの公開在庫とイベント受信者を実HTTP/WebSocketで検証し、一般broadcastを機密Source/Trace/Provider/AI結果の配送に流用しない。Wails Server利用可否はこの境界の実検査後に判断し、Desktop実IPC成功を多利用者Webの適格性へ転用しない。
+
+**Go/WASMは実行場所の選択肢であり権限Roleではない**：共通Go契約のID・Source/型付き結果は共有、UIのFocus/IME/Dirty Buffer/TabはTypeScript、HostによるProvider実選択・Current Grant・Commit/ReceiptはDesktop/Webそれぞれの信頼境界に残す。Browser Go/WASMは**配信許可済みデータのpure/read-only Projectionを一例だけ**native Go／TSと同Fixtureで結果・NULL/partial・Bundle bytes・起動/再計算遅延・Worker負荷を測ってから採否を決める。未配信・非開示SourceをWASM側から独自取得せず、local Preview成功をOwner受理や実行Grantへ昇格させない。#4621のWSP-01〜08と#1180/#2514を再利用し、Web多利用者・WASMの実検収を#4583 Desktopセルフビルドの新Hard Gateにはしない。**本節は設計・静的Source照合であり、実Server公開・Browser二利用者・WASM負荷試験はNOT RUN**。
+
 **現在の実行順と引渡し**：
 
 1. **P0-Buildを最優先**：#4583/#2831でN2 esbuild→N3 Go embed→非Plugin Desktop Buildへの一辺を、既存BuildIntent/BuildExecution/ArtifactSetに接続。次にStage1実Process→Stage2実Windows Desktop→Stage2自身の実Consumer。Graph Compiler・Plugin管理S3・X-TEA原典完全移植を初回Hard Gateにしない。
