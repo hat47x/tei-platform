@@ -571,3 +571,65 @@ Go/WailsのUIをDesktopとWebで共有できても、通信Protocol以外の差�
 - [Studio Appearance #4628](https://github.com/hat47x/tei-platform/pull/4628)、[RA-1 stacked #4631](https://github.com/hat47x/tei-platform/pull/4631)、[Plugin理想設計 #4632](https://github.com/hat47x/tei-platform/pull/4632)はいずれもDraftであり、設計案・局所Go/Browser試験を全Target受理や正式PoC置換へ昇格させない。RA-1はRA-0 #4626の先行受理後に合流可否を判定する。
 
 **変更範囲**：本書の追加のみ。#4632と#4620が編集する plan/MASTER_PLAN.md、#4632の理想設計原本、#4587の実Windows Buildなど他Ownerの並行ファイルは編集しない。理想設計は選択肢として保持し、#951/#1016/#1158で今使える操作をP0に接続する。Go/IPC/OS Process/P99比較・共有Web認証・Studio→Generated App新DB E2E・Owner受理は本節でNOT RUN。
+
+
+## 21. 2026-11-14：分散した合格を製品の一往復へ接続する統合順序
+
+### 21.1 「個別技術の検証成功」から「実際の使用」までの段階
+
+同日並行開発の各PRは、実装の一部を同一HEADで試験する水準へ達した。ここからは、**実行段階の境界を越えた実際の消費・現在権限・依存PRの統合順序**を独立した受入票にして、成功数の合算や「登録済み＝実利用済み」という判断を避ける。
+
+| 現在の成果 | 最新の確認結果 | 次に必要な製品上の接続 |
+| --- | --- | --- |
+| [Wails Server Inventory #4627](https://github.com/hat47x/tei-platform/pull/4627) | HEAD b9cf5447bcd3881aec06d97e4f3060f7de80b331 の**5/5 Workflow completed/success**。前2 HEADのgofmt失敗を解消。現Service登録と15公開Methodの静的監査、6 Mutation Case | WSP-02b/03：実Wails HTTP/WS、正規/匿名/別Principal/別Workspace/異AudienceのReceiver別拒否。現loopbackをpublic Web適格としない |
+| [Self-build合流 #4634](https://github.com/hat47x/tei-platform/pull/4634) | HEAD 653d0d9a1d0125631aec4379550d2bce20364207 の**8/8 Workflow completed/success**。宣言↔Resolver一致＋選択Builder↔prestart Child digestを同一main-based HEADで検証 | Product非Plugin DesktopのBuildExecution/ArtifactSet、N0〜N3・Stage1生成→Stage2 Windows Consumerまで**同一Attempt**で接続。別PR #4587のN2→N3 Byte結果を自動合算しない |
+| [REA local CLI #4625](https://github.com/hat47x/tei-platform/pull/4625) → [byte-only #4630](https://github.com/hat47x/tei-platform/pull/4630) → [Host selector #4637](https://github.com/hat47x/tei-platform/pull/4637) | #4625は9/9、#4630は12/12（Windowsは再実行Attempt 2で成功）、#4637 HEAD 170f9be5907cea4af981582ab4c11c5dafb91e87 は**12/12 success**。Host固定Selector→4MiB bounded Source read→同R2 ProjectionのGo実装 | #4630を先に統合、#4637の重複byte-only差分を除いた新HEADで再検収。Studio実Consumer/Delivery Receipt、現在Principal/Grant/Disclosure、別Consumerを独立検証 |
+| [Capability Result Preflight #4629](https://github.com/hat47x/tei-platform/pull/4629) → [Input/Effect Preflight #4636](https://github.com/hat47x/tei-platform/pull/4636) | #4629はmainへ**merged**、Result不正6例のAdapter call0。#4636 HEAD da807abc65d560134e9a6aa4c4f7b8d92d3b2fef は**9/9 Workflow success**、不正Input宣言/Effect宣言・nil contextをGo Adapter call前に拒否 | L-P0受理済み公開Entry→L-P1 Host選択の実Provider Go call→L-P2 CLI subprocess。実入力値、Nullable、Current Grant、実Effect receiptは未受理 |
+| [RA-0 Query Source #4626](https://github.com/hat47x/tei-platform/pull/4626) → [RA-1 Driver #4631](https://github.com/hat47x/tei-platform/pull/4631) | #4631 HEAD 02af8339e3a08665f3db69173ebc1bedea4c7967 の**stacked 専用Go Workflow #43548961899 success**。datetime不適合時Executor call0を実検証 | #4626 Sourceの先行受理、実隔離PG、Target/通常tei CLI二Consumer、Current Grantを別資格にする。E1 symbol除外失敗は新Source型と原因を混同しない |
+
+これらの「success」は、各PRの提示した正負Fixtureで対象コードが動いたという限定評価。**Draft/未mergeであればmain採用ではない。** Test Runnerで確認したGo/Browser/Windowsの対象と、実際の業務Consumerが同じかを別途示す。
+
+### 21.2 REAで初めて成立したHostへの具体的な接続と残る境界
+
+[PR #4637](https://github.com/hat47x/tei-platform/pull/4637)の実コードを読むと、Trusted Hostが起動時に固定する LocalREABinding は Workspace ID、Selector、正規化済み相対File、Tool Version、Evidence ID、Raw SHA-256、任意Source Revisionからなる。実Callerは `Read(workspaceID, selector, observationID, relationID)` を呼び、**任意Path/Root/ReadAtを指定できない**。
+
+Readerは既存ReadOnly.workspace()のRoot実体照合を行い、workspace.ReadSourceで4MiB上限付きのByteを一度取得して、既存ExternalCandidatesFromBytesへ渡す。異Workspace、未知Selector、過大・変更Raw、Root差替え、symlink脱出、古いPinを拒否するGoテストを持つ。失敗時は低位Pathや秘密Relation名を出さず共通OPERATION_FAILEDとし、成功時もTool.ResolvedPath/AbsentReasonを空にしてからProjectionする。
+
+**残る差を消さない**：このReaderはstudiohost内のローカルGo APIで、Wails Bridge/HTTP/MCPへ登録していない。成功ViewそのものにはEvidence ID/Raw Digest/Source range・Producer Coverage等が含まれ得る。よってLocal内部メタ情報の簡易除去に成功しても、認証済み実Actor・現Workspace Grant・ConsumerごとのDisclosureは未成立。A→B→AのSource/Permission変更の中間履歴は同SHA pinだけで捕捉できず、#1124/#4503のSource/Reader epochと現AuthZを用いる。
+
+**次のR3-B最短Product Slice**：
+1. 既存Hostの固定Workspace/Resource Selectorを、ClientはPathでなくSelector IDとして要求。HostがRoot/Source/Byte/Grant現在性を検査する。
+2. 既存read-only Typed Operationで同ByteのCandidateを投影。Raw ReceiptとAnalysisのUnselected/Unknownは失わず、成功をMeaning Acceptanceへ格上げしない。
+3. 外部送出直前にAudience別の開示可能Fieldを再判定し、Result/Failure/WS/AI Sinkの実送信ByteとDelivery Receiptを検証。
+4. 異質の第二Consumerで**独立のInvocationと受領**を確認。CLI・Hostが同一内部関数を呼ぶだけでは二Consumer適格性の完全な証明ではない。
+
+これらをREAの独立Expectedへ渡し、Web一般公開・R3-C・Owner意味受理を別ゲートとする。PluginコードをLoaderへ登録しただけで業務Sourceを変更してよい権限は生じない。
+
+### 21.3 BuildとStudio Hostの成果を正しい順で統合する
+
+- #4634は#4623と#4624のGo変更を一main-based HEADへ集約した候補である。元2本をそれぞれmergeしてから#4634をさらに適用するのではなく、**#4634を統合単位としてOwnerが差分・受理基準を確認**し、元PRは参照履歴として扱う。別PR #4587が生成WorkbenchのN2→N3 Byte handoffと実Windows WebViewを持つため、これらを同じBuild Attempt/NonPlugin Subject/Targetへ接続する次実装を#4583で担当する。
+- #4627は5/5 CI成功により、**静的Service Inventoryガードとしてレビュー可能**になった。Web公開を許可する入口ではない。Wails Serverで明示したread-only Facadeの実Endpoint/Actor/Workspaceと、Event broadcastのAudienceによる拒否は#3421で別資格を取得する。
+- #4636は#4629のmain統合済みResult検査を再利用する。Capability Input/Effect宣言の構造不備をAdapter Call=0で止める局所防御は前進。実入力値の型/NULL/時間条件やAuthorityが未確定でも一般Result検査を厳しくしすぎない。L-P0→L-P1→L-P2の一往復を既存Script Launch #4495/Plan #4618へ委譲する。
+- Studio外観設定 #4628のPreferenceはClient UI状態として維持し、#4378のPlugin Configuration/Workspace Lockと混同しない。理想Contribution #4632を現PoCの実Loaderへ自動昇格せず、既存解決・実Call・Artifact/Targetをもとに移行案を比較する。
+
+### 21.4 追加する統合受入Case（新独立Runnerではない）
+
+| Case | 実際に拒否/保存する観測 | Owner |
+| --- | --- | --- |
+| HND-01 Source→Build Identity | 宣言と異なるResolver返答/選択B実Aを子呼出し前に拒否し、正常時は実ChildとReceiptを記録。同一HEADだけでは非Plugin Desktop完了としない | #4583/#2831 |
+| HND-02 Stage2 Consumer | 実N2 Bundle→Go Embed選択member→実Stage2生成exe→そのexeのWindows WebView実受領を同一AttemptのArtifactSetで追跡 | #4583/#1824 |
+| HND-03 Host Bounded Evidence | CallerのPath/ReadAt指定不可、Host固定Selectorの実Raw digest/4MiB限界/Root差替え/Unknownと失敗分類を実観測 | #3394/#4503 |
+| HND-04 Disclosure at Delivery | Reader成功後、別Actor/Workspace/AI SinkにTool Path/Source range/存在情報を渡さないことをReceiver実Byteで検証 | #1178/#2515/#3421 |
+| HND-05 Capability Preflight vs Use | 不正Input/Effect/Result宣言はAdapter Call0。正規Owner公開Entry/選択Providerを実Callし、EffectUnknownを成功にしない | #4495/#1174 |
+| HND-06 Query/Evidence Revision | 歴史R0/旧REA Evidenceと現在Source/Query Input・Provider Revisionを混同せず、A→B→Aおよび同名異対象の再資格を要求 | #1124/#2586/#3394 |
+| HND-07 Scope/Contribution | Studio Editor、選択Target Generator、実Provider、Runtime Asset、Test Fixtureを別Artifactで観測し、未選択Pluginの本番混入を拒否 | #951/#1016/#4632 |
+
+**P0は非Plugin Studio Desktopの完全セルフビルドが主線**。REAのHost接続、Script Launch Preflight、Web Service Static Inventoryは並行する限定検収であり、P0へ新しい必須依存を追加しない。生成アプリ/Studio双方を統一する理想Plugin設計は引き続き比較案である。
+
+### 21.5 PR統合の明確な前提と新CIの扱い
+
+依存の順序：**#4630 → #4637**（#4637はmain比較の差分に#4630由来2ファイルを含むため、前者統合後に再base/差分削減、新HEADで再検収）、**#4626 → #4631**（Source型宣言先行、積上げGo Test合格と実PGは別）、**#4629 merged → #4636 review**、**#4623/#4624 → #4634を一統合単位としてレビュー**、**#4627は独立して限定static guardをレビュー**。これはmerge実行指示ではなく、重複導入・古い基準との照合漏れを避ける受入順序。
+
+観測の履歴を保持：#4630のWindows SmokeはAttempt 1で環境Timeout・Attempt 2成功。#4627の初期HEADはgofmt不一致でHealth失敗・修正HEAD b9cf5447で5/5成功。失敗履歴を消して初回から成功したとは記述しない。PR更新でHEADが変わった場合、前HEADの成功を新HEADへ流用しない。
+
+**資格上限**：この章は各GitHub PRの現HEAD/CI実績と実コード・既存Ownerの受入条件を照合した実装引渡しであり、当章追加による新Go Test・実Web AuthZ/WS/OS IPC/実DB・Stage1→Stage2 Build・Owner正式受理はNOT RUN。並行PRが編集するMASTER_PLAN.md/理想設計原本を重複変更しない。
