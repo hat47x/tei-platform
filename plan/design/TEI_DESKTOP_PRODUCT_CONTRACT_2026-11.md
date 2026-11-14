@@ -291,6 +291,46 @@ StudioはSourceの調査・編集・Buildを同じ画面から扱えるが、**�
 
 **受入と証拠**：各Claimはexact HEAD、OS/Toolchain/Build tag、Source/Build/Artifact/Windowの識別、実Process/argv、独立Expected、実Consumer/Receipt、未取得依存、PASS/FAIL/NOT RUN/UNKNOWNの別列を残す。Receipt配送・Store登録・Owner業務意味受理はByte生成と別資格。今回の§0.8は**設計文書への反映のみ**で、新Go/Node/実Windows/Provider/OS強制試験やOwner正式受理を行ったものではない。
 
+
+### 0.9 第9次横断統合：Resolver選択Builderから実Invokerへ（2026-11-14）
+
+本節は§0.8後に現れた**共有CLI実装の前進とDesktop統合PRの競合**を反映する差分。製品型・Builder・OS Host・AuthZ/Acceptance・Scenario SSOTは既存契約を使用し、完成済みと推測しない。
+
+#### 0.9.1 固定HEADの新しい事実と上限
+
+- [Draft #4623](https://github.com/hat47x/tei-platform/pull/4623) HEAD `929fcf857cd0f6a792a69fb23cadfb5eccc05e90` は最新main起点の共有CLI変更2ファイル。既存`cmd/tei/cli_self_build.go`に任意`-expected-child-digest`を追加し、`driveSelfBuildIn`が子実exeをSHA-256で読んだ後、`exec.Command`/境界Launcher起動の**前**に期待値と比較して不一致なら拒否する。Receiptの`selectedChildDigest`、`childPinChecked`、`childPinMatched`は当該primitiveの照合を記録する。形式不正、Selected B/Actual A、Launcherが不一致時に起動されないこと、pin一致時でも子の虚偽Artifact申告を拒否する独立負例を追加。**当該HEADに紐づく8系統のPR Actionsはcompleted/success**（セルフビルド実証・Healthを含む）。ただしDraft・未マージ、正式Owner採用・実Windows Desktop E2Eではない。
+- [Draft #4587](https://github.com/hat47x/tei-platform/pull/4587) の最新統合HEADでは、#4623と同じ共有CLI 2ファイルに重複変更がある。前回実Windows成功HEAD `24bfaed8` はpin導入**前**。最新pin追加HEADのWindows Actions結果は未取得、mainとのmerge conflictも報告されている。**#4623の8件成功と#4587の旧Windows Greenを合算しない**。
+- このpinはCallerが渡した実行ファイルの内容期待値であって、Build Catalog/Intentの選択資格ではない。ハッシュ読取後からOS Loaderによる実起動までのTOCTOU/ABA、OS境界による強制隔離、N2/Go/Node/Module cacheの完全入力閉包、Artifactの意味受理、Stage1再入は未証明。
+
+#### 0.9.2 次のB1-Bを「どの宣言から実起動するか」に限定
+
+現実の接続点：`internal/buildintent.Resolve`の`ResolvedBuildReceipt.Plan.Builder.ArtifactDigest`は、既存Catalog/BuilderResolverから導出した**選択側のbyte identity**。一方、`cmd/tei/cli_self_build_outer.go`の現行実子起動は`driveSelfBuild(parsed.Child, childArgs, parsed.Output, "")`であり、計画由来Pinを渡していない。#4623の`driveSelfBuildIn`は任意Pinを受けて実子file digestと比較できる。**この間の選択→実Invokerの根拠連結が最初の不足辺**。
+
+1. **B1-B0 版固定と所有境界**：#4623のmain起点共通CLI変更を正として回帰確認し、#4587から重複CLI差分を解消してWindows実CIを新しい単一HEADで再実行する。#4623の完了と#4587の再構築を別Attemptで追跡し、片方の旧結果から他方を資格化しない。既存OS境界Launcher、no-clobber、artifact digest独立照合を消さない。
+2. **B1-B1 選択根拠→実行前Pin**：既存in-process Build Catalog/Intentを用いる**対応可能なRecipeの一工程**に限り、resolved PlanのBuilder ID/Contract/ArtifactDigest、Plan fingerprint、actual child path/image/argvを一Attemptへ記録する。CLI側の任意Caller pinとの不一致・未指定を無音で補わず、Planからのpinと実Digestの同一性を起動前に照合。対応しない非Plugin/Desktop工程は`unsupported`で明示し、Plugin Subjectを偽装したPlanやShell直起動からL2を主張しない。
+3. **B1-B2 N2/N3受渡し**：TEI契約Source→N0生成Part→N2実esbuild→N3 Go embedの役割を、既存Build Execution/ArtifactSetに適合する最小Adapterで接続する。N2 `metafile`のselected inputs、生成bundle digest、N3 `go list`と実exe/readback、nested module/tag/toolchainを区別して保存。Step間のPowerShell変数や後採取SHAだけを実依存・read-time証明としない。Build Graphが未対応なら`dependencyClosure=unknown`のまま。
+4. **B2/B3の独立受入**：**生成されたStage1 TEI実プロセス**がStage2 native Windows exeをBuildした実Invocationを確認した後、その**同じStage2 exe**のWindow/WebView2/IPC/生成Inspector実使用を照合する。Stage0 Launcher/Workflow代理Build、旧exe・旧JS、別HEAD/AttemptのCI成功は不採用。実行中旧Studioを自動上書きしない。
+
+#### 0.9.3 反例を増やすのではなく既存票に実装配置する
+
+| 既存担当票に渡す反例 | 固定するIndependent Expected | 所有 |
+| --- | --- | --- |
+| CatalogがBuilder B、Caller/実子はA | **起動前拒否**。子/Launcherの実行・生成Artifact 0。PinをCallerが偽装してもPlan選択に昇格しない | #2831/#4583、#1180/#2514 |
+| CLI primitive pinあり、BuildIntent未実行 | 一工程の選択ファイル照合は成立可。B1全BuildIntent/L2/L3・Stage2は未実証のまま | #2831/#4583 |
+| ResolverがBと決定後、pathの実byteがAへ変わる／A→B→A | 実開始前照合で観測できた不一致は拒否。検査後の不可観測TOCTOUや旧Attemptの現在性はunknownであり、全面保証へ昇格しない | #2595/#4583/#2514 |
+| #4623 Green、#4587旧Windows Greenを統合成功に流用 | exact HEAD/Target/Attempt別に判定。最新統合Windows Jobを実行するまで新pin付きDesktop E2EはNOT RUN | #1824/#4583 |
+| N2の選択JS A、N3のembedが別JS B | 実Artifact roleと実Consumer入力の不一致でFAIL。単なるbyte数・メタファイル記載だけでPASSにしない | #4583/#2831 |
+| 生成Stage2成功、旧WindowでInspector成功 | Stage2 Window/Process/配信JS未確認ならB3不合格。実行中旧Studioは維持 | #1824/#4583/#3267 |
+| Pin Aの裏観測中にB編集中、A旧Reply後着 | AのPin観測だけ更新、B Editor/Graph/Dirty Buffer/Caretを不変に保つ。Source/GrantはHost再資格化 | #4515/#1824 |
+
+#### 0.9.4 Desktop日常利用との合流・未採用条件
+
+Desktopの初回Build Previewは**既存Operation/Receiptのread-only投影**。表示は「保存済みSourceの選択」「Plan Builderの選択根拠」「実Invokerの検査」「Artifactの生成」「Stage2実Consumer」を別行にし、Declared/Observed/Enforcedと未観測の理由を閲覧可能にする。Pinの意図、Source/Meaning、現在Grant/Disclosure、Builder pinは**異なる資格**であり、単一`ready`へ畳まない。実Providerや実DB Effectは別担当の受入。
+
+X-TEA「三要素分析法のモデル」は[Draft #4570](https://github.com/hat47x/tei-platform/pull/4570)の**合成Workspace実Windows WebView2スモーク**まで到達しているが、実X-TEA原典Source、正式Provider Profile、実Stage2 Desktop収録は別検証。SHO共通Document Core、AI協業Pin、実DB Read、静的Plugin Profileの厳密な物理除外、Linux/macOSや配布署名は独立並行レーンとし、B1-B→B2→B3の新Hard Gateにしない。
+
+**今回の成果は文書・計画への差分反映のみ**。#4623の当該CI成功はGitHub既存証拠であり、本節が新Go/Windows実装テスト、#4587のpin統合Windows PASS、完全セルフビルド、Owner受理を行ったものではない。
+
 ## 1. 位置づけと判断済み前提
 
 - **TEI Studio**はData/Function/Business三視点、Data Context、Source/Meaning、DBクライアント、Plugin、テスト、SHO文書機能への統合Workbench。
