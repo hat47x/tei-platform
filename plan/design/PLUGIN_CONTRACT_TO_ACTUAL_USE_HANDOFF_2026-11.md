@@ -739,3 +739,12 @@ P0-A：既存BuildIntentの`Subject.Kind=plugin`制約に対して、非Plugin S
 並行P1：REA Host Reader/Consumer、Wails公開面の実HTTP/WS Current Grant、Query RA-0の衛生・Binary依存失敗の修正。P2：RA-2から正式Product Provider/通常CLI二Consumerへの接続と実Release Asset公開→別Consumer取得。理想段階別Contribution、生成器論理/物理Graph最適化の汎用化、Web共有配備は未受理の設計比較に留める。
 
 **本章の追加はDocs-only**。ここに記載した既存CIは各PRの実行結果であり、本書の追記による新Go/PG/Windows/HTTP/OS子Process実験、コード修正、Owner正式意味受理は行っていない。
+
+
+### 23.6 並行担当による修正HEADへの追随（履歴を上書きしない）
+
+§23.3の失敗HEAD後、[RA-0 #4626](https://github.com/hat47x/tei-platform/pull/4626)は**新HEAD 9eecf2b932345861b1b5d28c22c2191fb164e5eb**へ更新された。前HEADのunused reflectは修正対象として扱い、新HEADの[Health #43558268996](https://github.com/hat47x/tei-platform/actions/runs/43558268996)は照合時点in_progress。いっぽうBrowser→APIの[実依存Workflow #43558269132](https://github.com/hat47x/tei-platform/actions/runs/43558269132)は**新HEADでもcompleted/failure**。Byte Source型宣言と別のE1実API Link Closureとして#1182 Ownerの判定が必要。未修正依存を許容することでGreenにしない。
+
+§23.4の失敗HEAD後、[REA #4637](https://github.com/hat47x/tei-platform/pull/4637)は整形修正後の**新HEAD f38117dc69b722e14de36a69c3fae6478766d5d4**へ進んだ。旧HEAD f9e355d5のHealth失敗は追加Go testのstruct fieldsにおけるgofmtずれ。新HEADの[Health #43558330965](https://github.com/hat47x/tei-platform/actions/runs/43558330965)・REA専用Jobは照合時点queuedであり、旧12/12成功を新HEADに移さない。
+
+この節は同日の**観測履歴**であり、競合するGoファイルを本PRから書き換えない。修正完了と当該HEADの独立CI成功、Ownerレビューの3つが揃って初めて対応するProduct Claimを更新する。
