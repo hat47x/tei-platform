@@ -236,6 +236,30 @@ B1a-I/Pの二段受入を維持しつつ、独自Frontendを「TEIが制約し�
 
 **計画統合状況**：同一計画ファイルを変更する並行[PR #4600](https://github.com/hat47x/tei-platform/pull/4600)の「問い相対旧依存辺N16/N17」「Studio Windows B0とBuildIntentギャップ」の二行を、本Draftにも**内容を欠落させず**取り込んだ。双方はまだ別Branch/未mainであり、#4600の採否・閉鎖、mainへの実マージ、競合解消を代行したものではない。新実行試験・Owner Meaning受理はNOT RUN。
 
+<!-- g49-b1ap-trust-scope-matrix-20261114 -->
+## G49 B1a-P：B2Cの本人・公開・計測を別資格として検収する（2026-11-14）
+
+**位置づけ**：B1a-IのRA-0〜RA-2Rは、[統合Draft #4644](https://github.com/hat47x/tei-platform/pull/4644)の限定同一checkoutでGo引数拒否・参照PostgreSQL 7ケースが成功したにすぎない。現在の製品入口RA-2P、同じContextの独立二Consumer受領RA-3、実公開HostでのB1a-Pは**未成立**。公開資格を得るために新しいTEI Host・Identity台帳・専用Frontend SDK/Runtimeを設けない。実Hostが既存の認証・認可責務を持ち、TEIの型付きOperationとProviderは業務意味・データ取得・結果構造を共有する。
+
+| 利用場面 | 必要な本人・対象資格 | 開示と操作の境界 | 最小の独立反例 |
+| --- | --- | --- | --- |
+| **匿名の商品閲覧** | 認証主体を要求しないPublic Scope。公開済み商品・価格の「版」と有効期間は区別する | Publicに分類されたField/Artifactだけ。個人価格、会員在庫予約、運用情報は混入させない | Public CacheへPrivate Projectionを保存、旧公開版だけが残る |
+| **ゲストのカート** | 一時Session/所有証拠。認証済み顧客や組織Membershipへ自動昇格しない | 仮CartはOrder確定でもPayment受領でもない。Session回復・紐付け時は別の実Host判定 | 別Guest Sessionから同じCart IDを読める／ログイン時に他人のCartへ誤結合 |
+| **本人の注文履歴** | 実Hostで検証した現在Principalと、対象Customer/Orderとの権威ある対応、閲覧時点の現在Grant。期間入力`:from`は絞り込みであって認可ではない | Row Scope＋Field/Column Projection＋用途に沿う説明を独立判定。実DBのRLS/Maskは有効な防御層だが、Customer本人の資格そのものではない | 同じ注文値・同じ`:from`でW0許可→W1失効、他人の注文ID、RLSが0件を返すが全件0と誤認 |
+| **運用者・サポート** | 別の運用者Principal、用途・対象・必要な現在権限。一般利用者としてのGrantやOrg Membershipを流用しない | 特権閲覧・訂正・代理操作を混在させず、利用目的と監査を実Hostの契約で判定 | 会員向けPublic/Private Cacheへ運用者の補助列・件数・診断を返す |
+| **分析・実験計測** | Consent/目的/有効版を実計測時点で検査。Experiment Allocation IDを本人Customer IDと同一視しない | Assignment・実Exposure・Action Intent・業務Effect・Outcomeを別証拠とする。Consentなし・取得不能を非購入に変換しない | 未同意Event送出、露出のない割当をCVへ計上、母集団/欠測を落としたCVR改善主張 |
+
+**B1a-Pの最小実行順**（R-Dの内部受入手順であり、RA-2P/RA-3の前提Gateにはしない）：
+
+1. **P-A Host identity / audience**：既存Hostで受領したPrincipal・Session/Guest・Audienceの出所を確認。Frontendの自己申告Header、Query、DOM選択、旧Cookieだけでは現在の業務本人としない。匿名Publicはその旨を明示する。
+2. **P-B Subject link / Grant**：Customer↔Orderの実関係と操作用途・時点・Scopeを突合。照合不能、permission denied、旧Grant、部分Sourceはunknown/deniedを区別して拒否または限定返却とする。公開向けResponseの許可判定は実返却直前に再確認する。
+3. **P-C Actual projection / delivery**：選択Query/Providerだけでなく実SQL/DB Role/実Rowset、Row/Column/Relation/COUNT/SUM/診断Metaの実開示、Serializer/HTTP Response、Cache・旧Clientまで**同一Attempt**で検査。内部DSN、Source Root、秘匿列名、件数などがError/Timing/Cacheから推知できる経路を否定対照に含める。
+4. **P-D Revocation / independent readback**：W0閲覧成功→W1 Grant失効、別Principal、旧CDN/Browser Cache、別Tab、Client再送で再試行。実Hostの現在認可と独立受領を確認し、保存済み旧証拠やResult byte一致で権限を復活させない。強い全層原子公開は暗黙の必須要件にせず、残存旧配信を検出・遮断・説明する。
+
+**公開資格票**は `Principal source / customer link / purpose / current Grant / row scope / column projection / actual receiver / response version / cache audience / revocation check / independent Expected / Owner acceptance` を列として持つ。原データが0件、Field NULL、RLSによる部分集合、列Mask、データSource欠落では`empty`と`complete`を同一視せず、取得範囲と不明理由を記録する。既存[#2506](https://github.com/hat47x/tei-platform/issues/2506) Context、[#1656](https://github.com/hat47x/tei-platform/issues/1656)/[#2516](https://github.com/hat47x/tei-platform/issues/2516)開示、[#1043](https://github.com/hat47x/tei-platform/issues/1043)/[#3412](https://github.com/hat47x/tei-platform/issues/3412)本人/Session、[#3271](https://github.com/hat47x/tei-platform/issues/3271)/[#2604](https://github.com/hat47x/tei-platform/issues/2604)失効、[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#2514](https://github.com/hat47x/tei-platform/issues/2514)独立Expectedへ委譲する。
+
+**先行順位を維持**：全体P0はStudio Desktop Stage1→Stage2セルフビルド[#2831](https://github.com/hat47x/tei-platform/issues/2831)/[#4583](https://github.com/hat47x/tei-platform/issues/4583)。並行P0は[#2586](https://github.com/hat47x/tei-platform/issues/2586) RA-2P通常`tei` Product Read→RA-3二Consumer。B1a-Pはその**外部公開への追加資格**。B1b Cart/Order/Payment副作用、B2 Variant/Experiment、B3 H0/H1/H2の費用・性能比較、B4予約/Subscriptionへの拡張を初回ReadのHard Gateにしない。成功資格はSource宣言、局所Go、参照PG、製品CLI、Native、公開Host、Business Effect、実験効果で別々に記録。本文は設計・受入計画であり、実公開認証・Commerce・Browser E2E・CVR実証を行った意味ではない。
+
 ## 最新の作業単位へ接続する
 
 2026年11月11日のmain `9d31f82486b2eac42791f4f3bc5cd588d69cb4fc`と関連Issueを照合した。以下は着手先の更新であり、Issueの起票・限定Reference・候補Parserを製品の完成へ数えない。以後の進捗は各Issueと[実装状況](../../docs/status.md)から再取得する。
