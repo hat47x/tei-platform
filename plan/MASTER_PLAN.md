@@ -1555,6 +1555,7 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 ## 2026-11-14 組織C1の二時点保存・責任候補・Consumer接合を最短実証へ渡す（#2386/#4490/#4501）
 
 **受入補遺**：[ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)（設計・未受理）。既存のORG-BEH/CX/org-synthetic-r7を再利用し、第二Expected/Scenario・組織専用Workflow/Policy/Temporal Runtimeを作らない。
+- **11/14の実Source再照合（補遺§10）**：Draft #4567の実PG9件はr7のA2二版共存とは別fixture。Native Queryの出力3列にperson_idがなく、distinct Personや履歴Record Versionの正しい同定をQuery単独では証明できない。#1126/#4490で物理版識別、#2586で必要Relation/Person Read Cohort、#4501でCase責任/候補の局所Claimを検証する。#4616のmain Source-root Validation drift、#4579 Windows生成Workbench B0、#4597 Pin局所、#4623 Builder事前SHA、#4602 Hook作用不明はいずれも個別資格とし、Stage2/Host実Effect完了に合算しない。
 
 - **実Query vs 履歴保存**：Draft #4567の固定HEADでは `as_of_membership` valid/known半開区間・物理Mapping・使い捨てPG限定Readが成功したが、現行 `membership_id` 単独PKは同一Occurrenceの複数known版共存を妨げる。まず#4566/#4567の重複を照合してから、#1126/DB Ownerの物理版識別案で両版保存→同一validAt/異knownAt→実Rowset/Read Cohort/完全性→r7独立Expectedの縦断を行う。SQL WHERE成功だけをBEH-01全体合格としない。
 - **判断候補の確定性**：0/1/複数/partialの観測結果と必要Readの完全性・Rule/Case rev・Current Host Grantを分離。異動≠Case責任移管≠Subsystem Owner、通知≠ACK、旧Receipt/GrantのABA復活禁止を維持する。
