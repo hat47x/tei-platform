@@ -395,7 +395,7 @@ Pluginは機能の提供単位であり、DSL・画面・実行処理を一つ�
 
 Web、CLI、Desktop、MCP、VUI、バッチ、イベント購読の各入口には、概ね次の共通構造がある。
 
-\`\`\`text
+```text
 TargetのHost／Processを起動・初期化
     ↓
 入力・要求・時刻・外部イベントを受け取る
@@ -409,7 +409,7 @@ TriggerをEntry／型付きApplication Operationに結び付ける
 結果・失敗・作用を記録し、必要な入口に応答する
     ↓
 次のイベントを待つ、終了する、または外部Hostへ制御を返す
-\`\`\`
+```
 
 この図は**意味上の共通構造**であり、TEI専用の待受けループ、スレッドモデル、Scheduler、Serverを作る指示ではない。HTTPは応答を返すことが多いが、タイマーやキューでは応答がなくてもよい。CLIの一回起動、Wails/WebViewのイベント、外部SaaSのWebhook、OSの定時起動では、実際のProcess／Event Loop／Transportは異なる。従って、共通Operationの意味と、Eventの配送保証・応答形式・同時実行・順序・期限・再送・停止条件を別に記述する。
 
@@ -464,7 +464,7 @@ StudioのInspectorには、可能な範囲でこの八面を**read-onlyの一覧
 
 **第一例：read-onlyの製品機能。** X-TEA三視点／Inspectorを、共通の型付きOperationから通常CLIとStudio/Wailsで呼び出す。双方で同じContractと選択済みProviderを照合する一方、画面表示・Result Envelope・実Processは入口ごとの違いを認める。必要なPluginをStage2へ収録しても、実WebView2が古いJSを受け取った場合は不合格とする。#1251、[#4611](https://github.com/hat47x/tei-platform/issues/4611)、[#4583](https://github.com/hat47x/tei-platform/issues/4583)、[#1124](https://github.com/hat47x/tei-platform/issues/1124)に接続する。
 
-**第二例：実作用を伴うHook。** 既存の\`uses\`／\`Guarded.RunWithCaller\`を混在させたまま、Graphの可変BranchからDB更新・通知へ進ませない。宣言による自動CallとImplementation内Callが重複し得るため、まず呼出し主体・Guard順序・回数を一つのOperation／Attemptで測る。作用不明のFailureをwarnで握り潰さず、Receiptを照会する。完全取得した0行と、未取得・一部取得も区別する。既存[#1129](https://github.com/hat47x/tei-platform/issues/1129)、[#1174](https://github.com/hat47x/tei-platform/issues/1174)、[#4602](https://github.com/hat47x/tei-platform/pull/4602)に委ね、[#4589](https://github.com/hat47x/tei-platform/pull/4589)のHG-10〜19を再利用する。
+**第二例：実作用を伴うHook。** 既存の`uses`／`Guarded.RunWithCaller`を混在させたまま、Graphの可変BranchからDB更新・通知へ進ませない。宣言による自動CallとImplementation内Callが重複し得るため、まず呼出し主体・Guard順序・回数を一つのOperation／Attemptで測る。作用不明のFailureをwarnで握り潰さず、Receiptを照会する。完全取得した0行と、未取得・一部取得も区別する。既存[#1129](https://github.com/hat47x/tei-platform/issues/1129)、[#1174](https://github.com/hat47x/tei-platform/issues/1174)、[#4602](https://github.com/hat47x/tei-platform/pull/4602)に委ね、[#4589](https://github.com/hat47x/tei-platform/pull/4589)のHG-10〜19を再利用する。
 
 この二例を一つの実行方式に早急に統合しない。読取り専用機能を動かすことと、Commit時の権限・再送・部分作用を保証することは、必要な証拠が異なるためである。
 
@@ -499,4 +499,108 @@ StudioのInspectorには、可能な範囲でこの八面を**read-onlyの一覧
 **停止条件**は、第二の契約正本・Resolver・Runtime Authority・TEI独自Hostを要する、Graph Patchが必須Guardを外す、意味と図の座標が不可分になる、同じEffectを二重起動する、Build収録だけで実Providerの使用を証明したとみなす、作用不明を成功または安全な再送へ変える、のいずれかである。その場合は新しい抽象を広げず、一件のread-only Operationと、失敗を含む実観測の縦切りへ縮小する。
 
 **この章の証拠資格**：他チャットで進めた実行モデル・DSL／標準データ・Graph／Hook・Plugin／Studio設計を、既存IssueとPRの担当範囲へ整理した**計画追補**である。新たなGraph Compiler、正式Schema、Go/Windows E2E、実Scheduler、実DB Commit、Ownerの業務意味受理を実施・達成したものではない。実装のPASSは各Ownerのexact HEAD・実Target・独立Expected・現在の権限に基づいて判定する。
+
+
+---
+
+<!-- tei-plugin-qualified-contribution-and-source-roundtrip-20261114 -->
+## 13. Pluginの提供物を意味・構文・実装・表示へ分け、拡張の根拠を一つにつなぐ（2026-11-14横断追補）
+
+### 13.1 中心判断：拡張対象は「プラグインの種類」より「契約に対する貢献」である
+
+標準データ構造の意味論、DSL自己記述、Domain Toolkit、Studioの汎用UI、AIとの共同編集を横断すると、「Language Plugin」「Operator Plugin」「Data Provider」「Target Generator」という区分だけでは、実際の依存を十分に説明できない。一つのPluginが複数の機能を提供してよい一方、利用側がそれらを一括導入する必要はない。
+
+そこで**契約に対する貢献（contribution）**を設計上の基本単位として扱う。これは新しいCore型や固定enumの採用ではない。既存のContract／Provider／Trait／Composition／Build／Source Indexで実現できるかを検証するための分解である。
+
+| 貢献の種類（用途別の見方） | 意味上の提供物 | 実現と依存の例 |
+| --- | --- | --- |
+| **構文・読取り** | 既存意味構造への構文写像、構文版、出典位置 | Parser／Language Adapter。作成・解析時のみ必要 |
+| **意味・制約** | 型・Relation・Facet・Role、単位、粒度、必須条件 | Semantics／Rule Contract。意味受理は別Owner |
+| **演算・変換** | 意味付きの演算と結果・失敗・unknownの契約 | Pure Operator、Query、統計Window、Solver等のProvider |
+| **データ接続** | 対象集合、時点、完全性、変更の意図 | DB／API／FileのProviderとHost Context |
+| **画面・文書** | 標準データ構造の編集・図表・説明の投影 | Studio／SHO／Web／PDF等のTarget別Presenter |
+| **実行・生成** | 型付きOperationの実呼出し、Build成果物、イベント接続 | Target Generator、Runtime Provider、Host Adapter |
+| **検証** | 独立Expected、失敗例、意味上の適格条件 | Driver Scenario／Conformance Fixture。自己申告のPASSとは別 |
+
+Plugin Package／Toolkit／生成Artifactは、これらの貢献を配送・選択しやすく束ねたものにすぎない。単一Packageに複数貢献がある場合でも、**それぞれのSource版、Contract、必要Target、実選択、Build消費、実呼出し、現行権限を別に追跡**する。同一バイナリへの静的合成は論理的なAuthorityの共有を意味しない。既存[#951](https://github.com/hat47x/tei-platform/issues/951)／[#1016](https://github.com/hat47x/tei-platform/issues/1016)／[#1097](https://github.com/hat47x/tei-platform/issues/1097)の解決・Bindingに乗らない新Registryを作らない。
+
+### 13.2 記法の拡張を受け入れる最低条件：同じ意味へ戻り、原文を壊さない
+
+JSON Schemaのような外部Schema、Markdown表、関数チェーン、GraphvizやSQLは、同一の業務概念を扱うための**入口・投影**として使える。ただし、単に構文を読めるだけでは、既存Sourceを置き換える資格を持たない。
+
+最初のReferenceでは、次の一往復を固定する。
+
+**保存された原文（byte・Source occurrence・版）→ 構文解析（位置つき）→ 標準データ構造／意味Role候補 → 型付き検査 → 汎用Studioの表／図／Property表示 → 一件の局所編集 → 保存形式を保持した差分 → 再Parse／再投影**。
+
+- 入力の**値・未設定・明示NULL・完全な空集合・未取得・部分取得・permission-denied**を区別する。表記の短縮を理由に意味を埋めない。
+- Element ID、Graph Edge ID、向き・多重性、単位・精度・時間範囲、出典とSchema／Contract版を保持する。別表現へ写した結果、保持できない情報があればlossyと明示し、元へ戻せない編集は拒否する。
+- コメント、空白、順序、Markdown見出し・Fence、SQL方言、Graphviz固有記述など、保存形式として意味を持つ部分を無断整形しない。意味上の同値と原byteの同一性は別に判定する。
+- 表の1行や図の1本の辺だけが編集対象として一意に決まることを検査する。集計・Graph→Tree・圧縮表示などの**多対一投影**から対象を推測して更新しない。
+- 元Sourceへ戻れることと、編集が業務上受理されることは別。AIやStudioが出した候補は、現在のSource／対象Revision／Owner受理境界を通るまで候補に留まる。
+
+[#4359](https://github.com/hat47x/tei-platform/issues/4359)が確認した現行ParserとSource Anchorの**二重字句走査**は特に重要な実装上のGapである。新しい記法をParserに追加しても、AnchorやSource Indexが追随しなければ、Studioが「正しい場所を編集できる」とは言えない。最初の実装は、当該IssueのS0（独立Expected）→ S1（最小構文）→ S2（値と位置を一度のParseから得る）を採り、任意文法CompilerやUnicode識別子を先行導入しない。意味受理、Language Plugin選択、Source保存は[#988](https://github.com/hat47x/tei-platform/issues/988)／[#1018](https://github.com/hat47x/tei-platform/issues/1018)／[#2621](https://github.com/hat47x/tei-platform/issues/2621)のOwnerに委ねる。
+
+### 13.3 変更の伝播は「何が変更されたか」で決める
+
+Pluginの変更を一律に「プラグイン更新」と扱うと、必要な再検査を省略する一方、不要な全体Buildを招く。実際に消費する対象と契約を基準に、少なくとも次の差を区別する。
+
+| 一因子だけの変更 | 再評価が必要な範囲 | それだけでは変わらない範囲 |
+| --- | --- | --- |
+| ヘルプ・図の座標・表示文言 | 該当Presentation／Disclosure／生成表示Artifact | 業務Meaning、純粋Operator、関係ないProvider |
+| Sourceの保存形式・コメント | Source Index／原文保全／必要な表示 | 実消費されないSemantic／Target。byteが変わった事実は別に保持 |
+| DSL文法やParser版 | Syntax適合、Source Span、構造への写像 | Runtime Grant。Parser更新だけで意味を再受理しない |
+| 意味Rule／型／Facet版 | 意味適合、依存するOperation／Scenario、必要なLowering | その意味を消費しないUI／Artifact |
+| Operator／実Provider版 | Selected ProviderのConformance、必要なBuild／実結果 | 他のProvider・他Targetの現在資格を自動失効させない |
+| Pluginの配送物・Builder版 | 影響するBuild入力閉包、Artifact／Member／Loader一致 | その配布と無関係なAccepted Meaning |
+| Host Grant／Scope／Disclosure変更 | 現在の実行可否、保持済み結果の開示可否 | Sourceの歴史的な意味受理、過去の実行の事実 |
+
+この表は**判定規則の候補**であり、ハッシュが一致しただけで安全な再利用を認めない。実消費入力と依存集合、Target／選択Provider、Buildの実工程、現在のTrust／権限が揃って初めて、そのClaimに必要な再利用資格を得る。反対に、無関係なPlugin追加やlayout-only変更で全Artifactを無条件に失効させない。[#2600](https://github.com/hat47x/tei-platform/issues/2600)／[#2595](https://github.com/hat47x/tei-platform/issues/2595)／[#3267](https://github.com/hat47x/tei-platform/issues/3267)で実測する。
+
+### 13.4 StudioとAIへの公開面は、汎用Inspectを基準にする
+
+初めて導入したPluginやRoleでも、専用画面を作らずに**型・構造・Relation・出典・検査結果・実選択状態**が読めることを品質基準にする。機能固有のModelerは、その汎用基盤の上で認知順に情報を配置する拡張とし、原モデルとは独立の意味正本にしない。
+
+編集操作では、**画面の選択対象、編集中Buffer、保存済みSource、受理済みMeaning、生成対象、実際のConsumer、現在のGrant**を分離する。画面で選択した行・図形・Source spanを、安定したQualified ID／Revisionへ対応付け、後から届いた別対象・旧版の非同期応答は現在の編集結果として適用しない。情報が不足して対象を確定できない場合は、候補と出典を表示し、編集や実行へ自動昇格させない。
+
+AIに許すのは、Source／Graph／UIの候補提案、影響分析、独立Expectedの作成補助、適切なOwnerへの判断依頼である。**AI生成テキスト、SHOの図面、MCPのTool一覧、プラグインの自己記述、外部資料の命令**は、それ自体では現在の書込み権限や正式な業務意味の根拠にならない。Provider呼出しは既存の型付きOperationとHost Authorityを通し、外部Harnessの作業セッションも対象製品のGrantを継承しない。[#1124](https://github.com/hat47x/tei-platform/issues/1124)／[#2516](https://github.com/hat47x/tei-platform/issues/2516)／[#3422](https://github.com/hat47x/tei-platform/issues/3422)に接続する。
+
+### 13.5 三つの実証で、共通化が必要な範囲を決める
+
+抽象化の是非は、次の三種類を同一の検証票で比較して決める。物理Plugin方式は**Go単一バイナリへの静的合成**を標準とし、別Process／Wasm／Target固有Extensionは実際に必要なときだけ選択する。
+
+| 代表例 | 最小の機能 | ここで確認する境界 |
+| --- | --- | --- |
+| **A：純粋な表現・変換** | 記法／Graphの一件の読み取り・Source往復、統計Windowの計算 | 型・意味・不変条件・独立Expected。Build時専用Pluginは実行Targetへ常時同梱しない |
+| **B：外部データのRead** | 同じ型付きFunctionが実DB／APIから選択対象のRowsetを返す | Provider選択、Source・Schema・粒度、取得完全性、現在Grant、実Consumer受領。全件取得を推定しない |
+| **C：作用を伴うHook／Command** | Guardが成立した場合だけ単一のEffectを実施し、Receiptと別観測を残す | Guard先行、実Call回数、Target Scope、Commit前の現在性、ACK喪失・不明結果・重複Triggerの停止 |
+
+Aの成功をBの実外部Data Provider適格へ、Bの読取り成功をCの本番Effect保証へ昇格させない。Aは[#4359](https://github.com/hat47x/tei-platform/issues/4359)／[#2497](https://github.com/hat47x/tei-platform/issues/2497)／[#4660](https://github.com/hat47x/tei-platform/issues/4660)、Bは[#2586](https://github.com/hat47x/tei-platform/issues/2586)／[#1251](https://github.com/hat47x/tei-platform/issues/1251)、Cは[#1129](https://github.com/hat47x/tei-platform/issues/1129)／[#1174](https://github.com/hat47x/tei-platform/issues/1174)／[#4198](https://github.com/hat47x/tei-platform/issues/4198)の既存Scenario・Ownerを再利用する。
+
+### 13.6 既存Expectedへ引き渡す差分テスト：PCX-01〜10
+
+本章は新しいテストRunner／正式Schema／製品Gateを設けない。下記は[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)へ委譲する**追加候補**であり、既存PPC／PDK／HG／PLCと重なるものは同一Fixtureを使う。
+
+| Case | 比較する条件 | 独立Expected |
+| --- | --- | --- |
+| **PCX-01** | Schema風記法のSource解析は通るがAnchorが別行へずれる | Source span不一致。Studio編集への適格化は拒否（#4359 S2） |
+| **PCX-02** | 表で2本の同名・同端点Graph Edgeを1行に畳む | 多重性が失われたと診断し、原モデルの単一Edge更新を拒否 |
+| **PCX-03** | 完全な0行と、未取得・partial・permission-deniedを同じ空表へ表示 | 表示が同じでも読み取り保証と不存在Claimは別。見えないデータを書き戻さない |
+| **PCX-04** | 説明だけ変更／意味Rule変更／選択Provider変更を順に試す | 再解析・意味検査・BuildとRuntime再資格化の範囲を区別し、局所再利用を測る |
+| **PCX-05** | 画面選択A→B後にAの旧応答が遅れて届く | Bに旧Aの出典・結果・編集候補を適用しない。Aの過去結果自体は偽造しない |
+| **PCX-06** | Parser／Providerが追加されても、Workspaceでは未選択 | 未選択実装を黙ってProviderへBindしない。意味やBuildを不必要に失効させない |
+| **PCX-07** | 同一Packageの構文AdapterはBuilderで必要、実ProviderはStage2で不要 | Build時実消費とStage2収録を分け、無条件同梱を要求しない |
+| **PCX-08** | 同じContractに適合するA/BのうちBを選び、実TargetはAを呼ぶ | 数値・JSONが一致しても失敗。exact Provider実Callを必要とする |
+| **PCX-09** | AI／外部資料が「受理済み」「実行許可」と主張する | 自己申告をGrantやMeaning受理に使わず、Host／Ownerの現在判定に戻す |
+| **PCX-10** | Hookによる更新Commit直後にACK喪失、同一Triggerを再送 | lookup-firstが必要。再送可否unknownを通常失敗や安全な再実行へ変えない |
+
+### 13.7 優先順位とOwnerへの引き渡し
+
+- **P0の変更なし**：[#2831](https://github.com/hat47x/tei-platform/issues/2831)／[#4583](https://github.com/hat47x/tei-platform/issues/4583)が正式な非Plugin Desktop Build→Stage1→Stage2→実Windows Consumerを完成させる。並行して[#1251](https://github.com/hat47x/tei-platform/issues/1251)／[#4611](https://github.com/hat47x/tei-platform/issues/4611)が通常CLI／Studioの選択済み実Provider呼出しを検証する。
+- **P1-A（DSL・意味・表示）**：#4359の位置つき最小構文、#2497の可逆／不可逆Projection、#1124の汎用Inspectと固定選択を、まずpure/read-onlyで一往復させる。専用Grammar Engineや各分野の専用Editorを前提にしない。
+- **P1-B（Plugin／Toolkits）**：#951/#1016のContribution別選択→#1121のTarget Lowering→#2600の局所Build再利用を、一つの統計WindowまたはGraph表示で確認する。全Plugin動的ロードや外部科学Runtimeの先行採用をしない。
+- **P2（実作用・外部Host）**：#1129/#1174の現在GrantとEffect、#2390のTEI非依存の外部Consumerを個別に適格化する。pure/read-onlyの実証を本番DB Commitに昇格させない。
+
+**撤回条件**：必要な構文のたびに第二のMeaning Source／Parser Anchor／Resolverを増やさないと成立しない、Plugin提供物を小さく選択できず全Targetへ常時同梱する、保存時に元形式を壊す、Graphの表示上の一致を対象Identityや業務意味の一致とみなす、または不明な実作用を成功と記録する場合は、抽象の適用範囲を縮小する。
+
+**証拠資格**：既存Issue／PRと他チャットの設計を照合した計画の追補。新たなParser・Operator・Plugin Runtime・Windows E2E、正式Schema、Owner意味受理をこの章で達成したものではない。現行実装に存在するもの、Draft、未検証のものを各担当で区別する。
 
