@@ -240,3 +240,18 @@ PM-C01〜08は本設計のCross-caseラベルであり、新Scenario/Expected正
 **次の最小引渡し**：P0 Studio Self-build #4583とInspector selected-entry #4611/#4612はそのまま最優先。並行で#4376のread-only inventoryを実Workspace/Lock/CLIで一件成立させ、#4377の非破壊plan、#4378の設定源採用判断を順に行う。#4378の設定源が未決定のままApply/disable UIを製品化しない。
 
 **今回の資格上限**：既存Issue/PR/sourceの静的照合と設計受入案。新Go/Windows UI/外部Resource操作、実Generation cutover、Plugin Manager製品E2E、Owner採用・意味受理は NOT RUN / NOT ACCEPTED。
+
+
+## 15. 2026-11-14：Resolved Builder Pinの現HEAD検収と次に切る差分
+
+§12は起点時点の不足として保持する。現時点では[Draft #4623](https://github.com/hat47x/tei-platform/pull/4623) exact HEAD f1e219a25976946bcc8a19ef57f5490333ec8a84 で **opt-inのin-process BuildIntent resolver→実Childの起動前Digest束縛**が実装候補として追加された。実コードでは bind-resolved-builder を要求するとBuild Catalog/digest/Source Rootが必須となり、ResolvedBuildReceipt の PlanFingerprintとBuilder ArtifactDigestを照合して既存driveSelfBuildのpinへ渡す。不一致は子・成果物を作らず SELF_BUILD_BUILDER_SELECTION_MISMATCH のErrorとして報告する。回帰テストにはcatalog選択→実childの正例、選択B/実Aの拒否、Catalog無しの拒否が含まれる。
+
+[このHEADの8 Workflow](https://github.com/hat47x/tei-platform/pull/4623)は2026-11-14に全件completed/successと確認済み（うち[Repository Health #43539856799](https://github.com/hat47x/tei-platform/actions/runs/43539856799)、[TEI Self-build #43539856841](https://github.com/hat47x/tei-platform/actions/runs/43539856841)）。したがって**§12 S1→S2の「Resolver選択digestをpinへ接続する」という限定Gapは、#4623 Draft上のopt-in Go経路で前進した**。#4623未マージであり、同HEADの正式Desktop/Wails CI、OS Loader TOCTOU、Product非Plugin Build Intent、N2/N3のBuildExecution/ArtifactSet接続、B2/B3、Owner受理は別の未検証条件である。
+
+次に分割する小差分：
+1. **Product Buildの一成果物**：Plugin Subject以外のDesktop executableとN2 JavaScript Bundleを、既存BuildExecution/ArtifactSetで正しいSubject/Roleとし、Resolver pin→actual Builder→Produced/Consumed digestを同一Attemptで記録する。#4583/#2831担当。
+2. **実Invokerの証拠範囲**：Child file hash照合の後でpathから起動するTOCTOU、外部Toolchainの未観測、現在Authority、Source A→B→AのRead-time漂流をunknownとして返す。prestart successが完全Closureと表示されないことを確認。#2600/#1174担当。
+3. **失敗の型付き投影**：現#4623差分は実Child pin不一致をエラーテキストの部分一致で識別して公開Failure Codeへ変換する経路を持つ。実装レビューでは可能なら既存共通Failure/typed sentinelへの適合を検査し、異なるOS Errorや同文言の別FailureをBuilder identity mismatchに誤分類しないことを独立負例にする。新Failure基盤は追加しない。#4623/#4315担当。
+4. **実Windows再検収**：#4587は現時点でDraft・mainとの競合があり、旧HEADのWindows PASSは最新#4623の実Desktop N0 pin適用のPASSを保証しない。統合済み候補HEADでordinary/generated両Jobを再実行後、B2/B3を独立に判定する。#4583/#1824担当。
+
+今後の計画更新は、#4620がMASTER_PLAN上位主線、#4621が本Cross-case詳細、#4583がBuild実装受入、#4376～#4380がManager実装受入を所有する分離を守る。
