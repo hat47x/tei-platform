@@ -1825,6 +1825,18 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 
 **次の差分**：#4490 BEH-01/02の実二時点/非出力依存・Read cohort/Completenessを先行させ、今回のGo Probeの判別力を実Query→Function Context→実Consumerへ接続する。Graph/Rule→Go分岐のmain統合 #4729、同一Generated BinaryのCaller入力 #4733、管理Markdown Source byte/spanとIndexの整合・変更失効 #4751は有効な**それぞれ異なるReference成果**。次はそれらのSource/Rule/Artifact証拠を組織の二Query/Function Contextへ実際に束縛する。いずれも現段階で、組織の正式二Relation Join・実Provider Read cohort/Case Ruleを生成・検収済みとはしない。P0 #2586/#2831、Expected Owner #1180/#2514、Meaning Owner #2386の優先順位と境界を維持する。
 
+<!-- org-cohort-proof-plan-20261115 -->
+### 2026-11-15 組織C1：二Contextの同一性・必要Readを実Providerで証明する（受入補遺§31）
+
+[組織C1補遺§31](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)で、実\`functioncontext.From\`を二回通す[Go Draft #4737](https://github.com/hat47x/tei-platform/pull/4737)から製品の候補判断へ進む際の**未証明の接続点**を固定する。二QueryのSource DigestやCursor読了は、同一validAt/knownAt、同一Read Snapshot、Scope/RLS/Limit、必要な否定依存のRead完了を意味しない。**正のPerson Pathが観測された事実、全件候補としての判断、Case責任・Host Current Grantは別資格**である。
+
+- **最小実装順 OCP-0〜4**：#4737の最新HEADで合成Go回帰資格を確定→#4490のBEH-01/02（二時点・非出力依存・Coverage）→#2586/#4495の選択実Provider/SQL/Function Context/独立Consumerを一つのAttemptで照合→既存TEI-native Graph Rule Go生成 #4729/#4733の正式組織Relation/RuleへのFit/Gap→#4501/#1174のCase Revision・現在Grant・Effectと#2516/#1124の閲覧投影へ別ゲートで送達。単一Query方式と二Query同一Snapshot方式を比較し、根拠のないCohort同定は\`unestablished\`として残す。
+- **OCC-01〜10の負例**：complete 0/1とpartial 0/1、partialでも異人物の確認済み正Path、同Person複数Occurrence、NULL Person Key、Snapshot/時点/Scopeのズレ、RLS/Limit/否定依存未取得、r7のknownAt差、Case移管/ABA/旧Grantを既存#4490/#4501/#1180/#2514の独立Expectedへ配置する。新しいScenario/Expected正本は作らない。
+- **明示的な未達**：現在のRoleAssignment/Responsibilityの実Product Contextは**合成入力**、\`test-fixture-cohort\`は試験仮定。実組織Provider/同一Read Cohort、正式Person/Case意味受理、二時点DB共存、正式\`*.tei.md\` Reader→生成Go→通常CLI、Host Effect、Studio/SHO一巡は別実証。Source Index #4751を両Queryの受理済みSource Pinに自動昇格しない。
+- **Owner/禁止事項**：組織意味の採否は#2386、Rule/Readは#4490、Product Providerは#2586/#4495、生成は#2621/#1121、Case/Effectは#4501/#1174、Expectedは#1180/#2514。組織専用Core/Resolver/Rule Runtime/Host/二重Evidence基盤は増設しない。
+
+**P0維持**：通常製品\`tei\` CLIの実Provider Read #2586とStudio Stage1→Stage2セルフビルド #2831を優先。§31は**計画文書のみ**で、新Go/PG/Windows/Host/CLI/Studio E2E、Owner Meaning AcceptanceはNOT RUN/NOT ACCEPTED。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
