@@ -637,7 +637,7 @@ CTK-14の回帰として、既存SQLite方言の`SelectOptions`内でWindowの`R
 
 今回の最小実装は、SQL全文を構造化できない場合は**元SQLを`Opaque`に保存し、診断を返す**という既存の契約を確実にする。具体的には、`ParseSQLToStandard`が単一の末尾セミコロンを除き、消費していないSQLトークンを検出して失敗とする。`StandardToSQL`は`Opaque`を別の不完全SQLとして再生成せず、`OPAQUE_QUERY_UNSUPPORTED`で拒否する。CTE内に`Opaque`がある場合も、空のCTE本文を含むSQLを返さない。
 
-この修正の回帰は、名前付きWindow、`OVER`を含む式、未対応のロック句、二番目のSQL文、単一SELECT末尾のセミコロン、CTEの中にある未対応Queryを固定する。**拒否はWindow対応そのものではない**。元SQLを保持することとNativeで実行する許可は別であり、Owner／Provider／Scopeの確認なしに`Opaque.SQL`をそのまま実行しない。正式なWindow意味NodeやQuery Loweringを導入するかは既存[#2387](https://github.com/hat47x/tei-platform/issues/2387)／[#2586](https://github.com/hat47x/tei-platform/issues/2586)に委ね、無理に`StandardQuery`の型を先行拡張しない。
+この修正の回帰は、名前付きWindow、`OVER`を含む式、未対応のロック句、二番目のSQL文、単一SELECT末尾のセミコロン、CTEの中にある未対応Queryを固定する。さらに、**実際のSQLite `Dialect.Select`が生成した名前付きWindow SQL**を`ParseSQLToStandard`へ入力し、元SQL全体を`Opaque`に保持して`StandardToSQL`が拒否することを確認する。**拒否はWindow対応そのものではない**。元SQLを保持することとNativeで実行する許可は別であり、Owner／Provider／Scopeの確認なしに`Opaque.SQL`をそのまま実行しない。正式なWindow意味NodeやQuery Loweringを導入するかは既存[#2387](https://github.com/hat47x/tei-platform/issues/2387)／[#2586](https://github.com/hat47x/tei-platform/issues/2586)に委ね、無理に`StandardQuery`の型を先行拡張しない。
 
 ### Query変換の適合を説明するための判定語彙
 
