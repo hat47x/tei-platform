@@ -765,3 +765,39 @@ Pluginは自らのFunction/Modelを実装するだけでなく、利用側がそ
 初回は公開Facetを持つ**一つのpure Function/Validation Plugin**を題材に、契約付きの継承図→受理済み意味→Go生成→実Provider→CLI/独立Consumerを一つの版に束縛する。後続で別Pluginが同じFacetを使う構成を追加し、上位の契約変更時に生成物とViewのどちらを再生成するかを分けて検証する。この順序なら、Pluginの表現能力を実装で確かめながら、TEI定義そのものを段階的に簡潔にできる。
 
 **状態**：設計・計画。上位公開Facetの実継承、TEI-native Plugin実生成、P-A〜P-Eの実行、正式なPlugin Manifest/ABI、全Windows Stage2、Owner意味受理は **NOT RUN / NOT ACCEPTED**。関係する反例は共通のPX-38〜47として引き渡し、別の試験正本を増やさない。
+
+## 17. Application GraphをPlugin拡張点の対象選択に使う（2026-11-14横断統合）
+
+アプリケーション全体の画面・Route・Entry・Operation・Function・Provider・Build Artifactの関係を既存の意味Roleと型付きRelationで表示すれば、計測・監査・診断などの横断機能をどこへ適用するか、設計者が確認しやすくなる。基本契約は[実行モデル§28〜30](PROGRAM_EXECUTION_MODEL_PROJECTIONS_2026-11.md)へ集約し、このPlugin計画では**何を選択・生成・実呼出しするか**だけを扱う。
+
+- **Extension Pointを先に解決する**：対象はGraph上の任意座標やラベルではなく、Role/Subject ID、対象ProfileとTarget、既存Lifecycleの位相、適用条件で確定する。新しいPluginが既存Guardを任意の名前のHookで迂回することは認めない。
+- **ApplicabilityとCompositionを分ける**：Graphによる対象選択は候補であり、#1016/#951が現在のContract・ProviderとCapabilityをexactに解決して初めて構成済みのPlanになる。未選択PluginをBuildやRuntimeへ暗黙混入させない。
+- **生成と実利用を分ける**：Browser向けのScript、Server側Interceptor、CLI診断、Build時のコード差し込みは異なる実現方式である。#1121/#2090へ渡す。実Artifactへの収録・実Load・実Call・Consent・Host Grant・独立Consumer受領は別に判定する。
+- **安全と失敗時の扱いを分ける**：任意の計測が失敗した場合の欠測診断と、業務更新に必須の監査Guardが失敗した場合の拒否は同じではない。Hookの呼出し主体、Guard先行、重複・結果不明は#1129/#1174の既存検証に従う。
+- **対象外の製品を尊重する**：完全NativeなB2C画面やHeadless APIでは、TEI共通UI/Router/JavaScriptの常時介在を要求しない。Adapterが不要なRouteも適法な対象として扱い、#3509の非拘束原則を維持する。
+
+第一例は、一つのRouteと一つのEntryに対し、read-onlyの対象適用表を出す。次に任意のログ・計測用PluginのSource-backedな一点拡張を、生成Targetで実使用・欠測観測する。最後にGuard必須の監査Hookへ拡張し、任意計測との失敗意味の違いを比較する。アスペクト用の第二Runtime/Weaverや専用中央Registryは作らない。
+
+## 18. Plugin説明を共通入口から階層的に参照する
+
+Pluginの利用者が人間でも生成AIでも、用途や正しい使い方を個別の暗黙知に頼らず確認できることを要件とする。**Pluginは実Contractと版に対応した説明を発見でき、依存先・上位Pluginの公開説明も、許された範囲で辿れる**ようにする。説明の管理は既存Plugin/Contract・Source/文書Provenanceへつなぎ、文書だけの別Registry、Skill独自の契約正本を作らない。
+
+初期の共通説明の内容は、長文を強制するのではなく、必要な項目を同じ順序で調べられることを重視する。
+
+| 最初に知りたいこと | 最小の説明内容と確認先 |
+| --- | --- |
+| 何を提供するか | Plugin/Contractの識別子・版、できること、用途、Role、公開Operationと依存能力 |
+| どう始めるか | CLI/Studio/APIからの検査入口、小さなread-only例、入力とResultの形、代表的な診断 |
+| どこまで使えるか | Provider/Target/Profileの適合、必要Grant/Effect、選択済みか実組込み済みか、未対応条件 |
+| 何に依存するか | 直接依存と上位の公開Facet、Version/Pin、必要な再公開許可、循環・競合時の診断 |
+| 何を参照するか | 原Source/意味Role、公式・Plugin文書、詳細契約、独立Expected、実検証の根拠と現在資格 |
+
+説明の階層を辿る際は、Aに依存するBの説明を読むことと、Aの内部Source・秘密設定・非公開APIを取得することを区別する。Bが公開可能なAの説明を参照する場合も、元Plugin/Versionと公開・再公開範囲を維持する。文書の古いCacheが残っていても、現在の開示許可に反する内容をAI Harnessへ渡さない。
+
+Harness向けのTEI導入Skillは短くし、**対象の特定→Inspect→Plugin/契約の説明→提案→独立Expected→実行資格の確認**という道筋を示す。詳細なDSL文法、Plugin全件の一覧、複雑なCLI引数一覧をSkillへ埋め込まない。必要な詳細をCLI/GUIの現行情報から辿れるようにする。
+
+最初に受入を検討するのは、（a）一つのPluginから概要と詳細を参照できる、（b）依存する上位Pluginの公開説明へ正しい版で辿れる、（c）非公開Facetにアクセスできない、（d）公開APIと実選択Providerが一致しない場合に旧説明で成功を偽装しない、（e）CLIとStudioとHarnessが同じSubject/Revisionを使って同じ情報境界を説明できる、の五つである。これらは[PX-55〜58](PROGRAM_EXECUTION_MODEL_PROJECTIONS_2026-11.md)および#1180/#2514の既存Scenarioへ渡す候補とする。
+
+全体P0のDesktop Stage1→Stage2と実Provider二入口に、新しいPlugin文書生成器やHarness接続を追加の必須条件として積まない。まず現行Contract/Sourceからread-onlyの共通説明を導出し、Plugin自身のTEI-nativeコード生成が増えた時点でも同じ入口で説明できるかを検証する。
+
+**状態**：設計・受入候補。共通Plugin説明API、上位文書の実合成、Aspect Binding/Target生成、Harnessからの実操作、実Browser計測、Owner受理はNOT RUN / NOT ACCEPTED。
