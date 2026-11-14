@@ -130,3 +130,54 @@ CB番号はこの文書の参照ラベルであり、新しいTest Runner、Sche
 本書は#4601（Plugin RoleとStudio再入、Draft）、#4593（MASTER_PLAN B1追補、Draft）、#4589（Hook/Lifecycle、Open）に重複する大きな仕様を追加しない。これらが同時に触るMASTER_PLAN.mdやPLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.mdを今回のPRから直接変更せず、各Issue・PRへの参照を通じて統合する。
 
 2026-11-14の静的参照：mainのプラグイン固定CapabilityKind、Inspector Hostの選択済み関数・symbol観測と実行file digest、#4570のOpen/Draft、#4583のB0/B1-A限定・B1-B/C/B2/B3未成立を確認した。**この文書の新Go／Node／実Windows／実DB実験と独立検収はNOT RUN**。本書をmain統合しない限り製品計画の正式採用ではなく、採用には既存Ownerのレビューと実証が必要である。
+
+
+## 12. 2026-11-14：Builder Pinから正式Build選択への不足一辺（P0-B1）
+
+### 12.1 前回以降に確認できた実装・検証
+
+- [Draft #4587](https://github.com/hat47x/tei-platform/pull/4587) HEAD 24bfaed8／[Windows CI #43450255223](https://github.com/hat47x/tei-platform/actions/runs/43450255223)は、実TEI CLIのprimitive self-buildからN0 Generatorの別プロセスを起動し、親子image digest・子argv・exit・独立再読した生成TS digestを照合。生成TSをN2 esbuild→N3 Go embed→生成Wails/WebView2へ渡した同一HEADの限定成功。これはStage1生成TEIの再入や正式Builder選択ではない。
+- [独立Draft #4623](https://github.com/hat47x/tei-platform/pull/4623) exact HEAD 929fcf857cd0f6a792a69fb23cadfb5eccc05e90 は、既存CLI self-build primitiveに任意の expected-child-digest と起動前の実子ファイルhash照合、selectedChildDigest／childPinChecked／childPinMatchedというReceipt項目を追加。Selected B/Actual A、形式不正、Boundary Launcherを迂回させない負例、pin一致でも虚偽Artifact digestは不合格、のGoテストを保持する。[Repository Health #43537292191](https://github.com/hat47x/tei-platform/actions/runs/43537292191)など同HEADの**8 Workflowがcompleted/success**を確認した。
+- このpinは**Caller supplied**であってBuildIntent Resolver／Builder Catalog由来ではない。実行前にhashしたパスがOS Loaderで開かれる間のTOCTOU/ABAも保証しない。#4623はOpen/Draftのまま。別HEADの成功を#4587のWindows pin検証へ合算しない。
+
+### 12.2 不足一辺を細分化した実使用の6段階
+
+以下は**既存BuildIntent／Builder／ArtifactSet／Receiptの観測Projection**であり、新しいBuild Schema・第二Runner・第二Authorityの提案ではない。
+
+| 段階 | 確認すべき事実 | 境界／Owner |
+| --- | --- | --- |
+| S0 Build Subject/Intent | 対象がPluginか非Plugin Desktopか、どの成果物Roleが必要か | #2831/#4583。DesktopをPlugin identityとして偽装しない |
+| S1 Resolved Builder | 既存Resolver/Catalogが選択したexact Builder identity、digest、Target、Generation、利用Contract | #2831/#951。Caller pinとは別資格 |
+| S2 Prestart Child | 実childファイルhashとS1由来pinを起動前に照合し不一致ではChildもLauncherも0回 | #4623。OS Loaderまでのbyte保証は別 |
+| S3 Actual Invoker | Hostが実起動したProcess image/argv、Toolchain、適用した環境制限、終了結果 | #4583/#1370。exit 0だけでConformanceを証明しない |
+| S4 Produced Artifact | 実Disk上のTS/JS/exeのbyte hash、宣言したOutput Role、失敗時残存・no-clobber | #943/#2831。Child自己申告だけでは不足 |
+| S5 Actual Consumer | N0 TS→N2 esbuild→N3 Go embed→Stage2 Windows exe→WebView2が同一因果Attemptの成果物を実使用 | #4583/#1824。別CI成功の寄せ集めは不可 |
+
+S1とS2の一致、S4とS5の一致は、それぞれ**該当する辺の限定証拠**。OS Loaderの実byte、Read-timeの全依存閉包、OS強制W、Current Grant、Owner意味受理を自動付与しない。Resultの一致のみで実Builder、実Link、Consumerを代替しない。
+
+### 12.3 次の最小実装・判定
+
+1. #4623の共通CLI pin検査を独立したexact HEADで保全し、**既存BuildIntent Resolverが解決したBuilderIdentity.ArtifactDigest**をcaller pinへ渡す薄い接続を一件だけ実装する。子PathやDigestをOperationの入力から自由に付け替えない。Builder選択とRuntime Provider選択は別の目的なので同じAPIへ強制統合しない。
+2. S1/S2/S3を同一Attemptで照合し、選択B・実起動Aなら同一Outputでも拒否。pin一致をOS Loaderにロードされたbytesの証明と呼ばない。将来のTOCTOU低減は、不変Artifact Store、Host/OSの実ファイル拘束、実Process image観測で可能な範囲を個別検証する。
+3. 一成果物だけを**非PluginのBuild Execution／ArtifactSet**として受け渡す。現BuildIntentのSubject制限だけを緩め、Desktopをplugin.BuildPlanのPlugin欄へ詰める回避策は採らない。
+4. N2出力のrole/digestとN3で実EmbedしたJSを実Byteで照合。go listで選択された303件とesbuildで選択された24件は**選択報告**であり、Go/Node/SDK/Cacheの全依存と実Read-time byte閉包は未保証。
+5. B1-B/Cが成立してから、**生成Stage1自身**の実ProcessがStage2 Desktop Buildを駆動するB2、**そのStage2実exe**のWindows WebView2受領B3を別々に検証。CI Shellが二回Buildを呼んだだけでB2にしない。
+
+### 12.4 独立Expectedは既存Issueに集約する
+
+- [#4583 BD-13](https://github.com/hat47x/tei-platform/issues/4583)：CallerがBをpinしChild Bが起動してもResolverはAを選択している場合、pin-local PASSをS1→S2のPASSへ昇格しない。
+- [#4583 BD-10](https://github.com/hat47x/tei-platform/issues/4583)：Source A→B→Aで前後Hash一致、Read-time閉包はunknown。
+- [#4583 BD-11](https://github.com/hat47x/tei-platform/issues/4583)：N2生成JS AとN3実Embed JS Bの相違はProducer/Consumer不一致でFAIL。
+- [#4583 BD-12](https://github.com/hat47x/tei-platform/issues/4583)：N3をCI Shellが直接起動したなら、exe実生成・WebView2成功でもB2は未実施。
+- [#4623の既存Go負例](https://github.com/hat47x/tei-platform/pull/4623)：Child pin不一致ではBoundary Launcher起動もArtifact生成も0。pin一致でもChildがArtifact digestを偽る場合はCross-check失敗。
+- #951/#2600の既存資格：Contract/Target/Source/Toolchain/Grantの変更を必要範囲で再検証し、無関係の未選択Plugin追加・更新では選択済みClosureを過剰失効させない。
+
+## 13. Script Launch／Hook／AI Harnessとの意味境界
+
+[Script Launch Draft #4618](https://github.com/hat47x/tei-platform/pull/4618)のPrepare→Admit→Invoke→ObserveはS0〜S5と**宣言・選択・実呼出し・結果観測の分離原則だけを共有**する。Script RunnerとBuilderを単一Runtime/Claimへ統合しない。Functionの意味受理、Entry公開、現在Grant、実Providerの呼出しとResult値のNULL／欠損／未取得も別資格である。
+
+[Hook Draft #4602](https://github.com/hat47x/tei-platform/pull/4602)は作用不明／lookup-firstがHook.Error等で消え、warnによって後続作用が進む問題に対する局所修正候補。Guard-before-use、二重Called、部分Rowset、実DB receiptなどは#1129/#4198/#1174が引き続き検証する。N0 pure Generator起動の成功を、effectful Hookの安全性へ流用しない。
+
+DSH、Codex、Claude Code、Studio AIは設計・Code・Builder候補を提案できるが、Resolverの正式選択、Hostの起動前検証、Ownerの意味受理を肩代わりしない。Harness変更で実行資格が黙って変わらないよう、Plan提案と現在のAuthority、実使用Artifactを別に観測する。
+
+**今回の追補の資格上限**：既存PRとCIの現在状態の確認、設計文書への引渡しのみ。新たなGo/Node/Windows/実DB試験、B1-B/Cの実BuildIntent接続、B2/B3 Desktop再入、Owner受理はNOT RUN / NOT ACCEPTED。
