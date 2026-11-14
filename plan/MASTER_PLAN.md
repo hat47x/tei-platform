@@ -173,6 +173,8 @@ Gate C — PAS-04 Evidence — Ready
 
 **Desktop操作・編集・公開境界の追加統合（2026-11-14）**：[Desktop Host設計 §13](design/DESKTOP_STUDIO_HOST_INTEGRATION_DESIGN.md#13-desktopの操作境界を編集認可実消費まで通す2026-11-14設計受入追補)で、現行Wails Bridgeの15メソッドを参照・Plan・Invoke・外部SHO連携に分類した。**登録済みメソッド＝Web／AIへ公開可能**とは扱わず、共有Webは参照系の明示allowlistから検収する。Editor Dirty Buffer、保存済みSource byte、Meaning受理、Builderが実読込した入力、Stage2 WebView2が実消費したArtifact、Host Effect／Receiptをそれぞれ別資格にする。現在のBridgeに一般的なSource保存APIが実装済みとはしない。Pin Aの裏Inspect中に閲覧中BのDirty/Graph/Selectionが変わらないこと、旧Reply・Workspace ABA・Source競合・外部プロセスの誤公開・実行timeout後の二重作用を既存#1180/#2514のExpected候補へ接続する。Ownerは#1824/#4515（画面・応答）、#1158/#3421/#2516（操作・Web開示）、#1124/#2621（編集／Source）、#1174/#1251（Effect）、#2831/#4583（セルフビルド）。これらの後続検収をP0 Stage1→Stage2の新しい一括Hard Gateにしない。**実装・実機試験・Owner受理は未実施**。
 
+**Sourceと複数の表示の往復（2026-11-14追加）**：[Desktop Host設計 §14](design/DESKTOP_STUDIO_HOST_INTEGRATION_DESIGN.md#14-標準データ構造からsourceへ戻れるdesktop投影と編集2026-11-14設計受入追補)に、自己記述Role／Markdown・DSL構文／Property・Table・Tree・Graphの関係と、表示からSourceへ戻れる編集資格を整理した。**同じラベルの別Node、同一端点の多重Relation、Graph→Treeや集計などの非可逆な表示、部分取得・未読込Roleを黙って単一の意味対象へ縮約しない**。意味Relation occurrence IDが未確認の描画EdgeはPin・編集不可とする。最初は既存Catalog/Inspect→read-only Sourceジャンプと同一Subjectの複数表示を実証し、可逆な局所編集はPreview→Patch→保存→実Source再読込→再投影で別受入。No-opでは元Markdown/CRLF/BOM/糖衣形式のbyte保持を目指す。SPV-01〜08は#1124/#2497/#2621/#2620/#988/#4515/#3262の既存Ownerと#1180/#2514のExpectedへ引渡す。Go要素をDSLへ露出させず、第二Canonical／Parser／Writer／テストRunnerを作らない。これらは**セルフビルドP0の追加Hard Gateではなく**、新しい実GUI／Source編集試験・Owner意味受理はNOT RUN。
+
 **上限**：この2026-11-14追補自体は計画のみ。主計画より下の2026-11-13の個別PR状態は履歴として残す。新規Go/Windows/DB/OS IPC試験、生成Stage1→Stage2、Owner採用判断は実施していない。
 
 
