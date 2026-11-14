@@ -889,3 +889,111 @@ C1でも、人物と所属の意味定義が一致しているだけで、別DB 
 - **C1-4 生成・自己記述の削減試験**：上記のための手書きGo/SQL/表示Adapterと生成された箇所を比較し、TEIに移せた業務意味と依存が縮小した箇所を記録。Pluginの自己生成は独立の証拠で扱う。
 
 この順番は**組織C1固有の受入計画**であり、#2586 通常CLI初回実Provider Readと #2831 Studio Stage1→Stage2セルフビルドへの新しいHard Gateではない。Ownerが業務意味を採用していない場合は試験Sourceを「候補」と表示し、Technical PASSをOwner Acceptanceへ昇格しない。§21で整理した既存のAction/Grant/Evidence契約をそのまま利用し、新しいRuntime、専用Host、第二Policy/Expectedは作らない。
+
+
+## 23. 責任の解決と実行資格をつなぐ最小契約（2026-11-14）
+
+### 23.1 何を一つのモデルとして扱い、何を別資格にするか
+
+組織上の所属・役職・役割・委任を、案件の責任や現在の実行許可へ直結させない。組織の型付きRelationは、**業務上の候補を導く根拠**として利用する。責任の所在はCase/業務Scopeに関する別のData/Relationで表し、実Actionは既存Hostの現在AuthorityとEffect Fenceへ委譲する。
+
+| 層 | 意味上の主体・対象 | 導出するもの | ここから導出しないもの |
+| --- | --- | --- | --- |
+| 組織上の事実 | Person、OrgUnit、Membership、Position、Occupancy、Employment等 | 誰がどこにどう関わるか、時点付きRelation Path | Case担当、Person=Principal、外部Tenant Grant |
+| 業務上の責任 | Case、Duty、責任保持先（Person/Position/OrgUnit/業務Role等）、期間・Scope | 何について誰・どの組織が責任を負うか | 当該人物の現在の操作許可 |
+| 判断候補 | 受理済Rule、Case revision、時点・Read Scope、上記Relation | 候補集合、候補ごとの由来、完全性と未解決理由 | Candidate=選任者、Candidate=Grant |
+| 実行資格 | 実操作者のverified principal、対象Capability/Action/Resource、現行Grant/Policy/対象版 | Hostが現時点で当該実行を許せるか | Commitが完了したという事実 |
+| 業務効果・引継ぎ | Operation ID、Effect/Receipt、受領/ACK、Case新revision | 実行が何を変え、相手が何を受けたか | 過去の所属訂正だけによる移管完了 |
+
+ここでの「責任保持先」は可変的な業務対象への参照であり、Person/Account/Tenant/Principalを統一する新Coreスーパー型ではない。RACI、単独責任・共同責任・合議などは用途別Projection/Rule候補であって、全案件への固定enum/必須カラムではない。
+
+**Sourceの境界**：\`org-synthetic-r7\` は人物・所属・二時点FTEの独立Expectedである。Case C1のhandlingUnit/Responsibility/Handoffに関する合成Sourceとは、暗黙に同じ保存Worldとはみなさない。両者を一つのProduct Attemptで組み合わせる場合、採用されたCase→OrgUnit関係・出典・モデル版・DB Cohortを明示してから照合する。人物P2の兼務を根拠なくC1の責任者と認定しない。
+
+### 23.2 候補解決は型付き関係の読み取りであり、権限の推定ではない
+
+以下は**宣言済み業務意味を既存Data/Relation/Query/Ruleへ束縛するための契約例**であり、新しいTEI DSL構文や製品APIの採用案ではない。
+
+1. 対象Case、要求Duty/Action、責任決定の基準時点、Rule版を選ぶ。申請時に固定するか承認実行時に再解決するかは業務Ownerが決める。
+2. Case→handlingUnitまたは明示Responsibility→Holderを、Source revisionと業務上の有効期間付きで読む。既存の組織Relation（Position→Occupancy、OrgUnit→Membership等）を**Ruleが指定した方向と軸だけ**たどる。階層親子・兼務・法人連結を無条件に推移させない。
+3. Relation occurrenceのIdentity、参照した版、Query/RuleのRequired Read Set、Provider/Reader/Scope、validAt/knownAt、observedAt/cohortを保持し、結果をdistinct Person候補へ投影する場合も採用したdedupe keyを示す。
+4. 0件・1件・複数件に加え、実Readの完全性を確認する。NOT EXISTS、除外条件、代理の取消し判定など**不存在を根拠とする分岐**は、対象範囲の取得完了の根拠なしに真として扱わない。
+5. 候補一覧の提示、担当者の選択、Host Grantによる実行許可、Effectの確定を**別の操作**として扱う。未選択の候補や古いUI Pinを実実行対象へ流用しない。
+
+UI/検収の分類案：
+
+| 観測 | 表示・次の判断 | 実Actionへ短絡しない理由 |
+| --- | --- | --- |
+| complete-none | 有効な候補なし。業務Ownerが定めた例外経路/未割当てへ | 「候補なし」から管理者権限を暗黙発行しない |
+| complete-one | 候補1件と根拠Pathを提示 | 候補が唯一でもHost Current Grantが別に必要 |
+| complete-many | 候補全件とRule/責任の重なりを提示 | 合議・共同責任・優先順位などの採否はRuleに依存 |
+| incomplete-or-unknown | 見えた候補と不足範囲・原因を示し決定保留 | 0件・1件を全体の不存在・唯一に昇格できない |
+
+上表は表示・受入用の分類であり、第二の標準Result型や認可Engineを要求しない。候補を取得できたという事実が機密Fieldの開示を許すわけでもない。ProviderとRecipientの開示範囲を既存のDisclosure契約で区別する。
+
+### 23.3 委任と代理を、責任を変えずに扱う
+
+代理行為は「本人へ成り代わる認証」ではなく、**実操作者・被代理者・委任された業務範囲・現在のGrantを分けて記録する操作**を基本とする。
+
+- 代理閲覧、代理Action、緊急昇格は別の権限条件を要する。緊急昇格の許容条件は業務Owner/Host Ownerへ差し戻す。
+- Delegationでは委任者・受任者・権限の出所・対象Action/Resource/Tenant・有効期限・取消版・必要承認を照合する。再委任は明示された許可がない限り不可とし、連鎖・循環・利益相反を検証する。
+- 委任関係が有効であることと、当該Principalに現在のHost Grantがあることは別。対象すり替え、Tenant違い、自己承認、Grant失効は実行境界で拒否する。
+- 代理者が承認しても、実行Receiptには**実操作者の同一性と誰のためのActionか**を区別して残す。委任の記録を過去の確定Receiptの書換え理由にしない。
+
+### 23.4 Caseの責任移管は、異動・候補変化・通知とは独立したChangeである
+
+P2のMembership A2が遡及訂正されたことや、C1の候補者が変わったことから、C1のhandlingUnitやResponsibilityが変更されたとは推定しない。移管を開始するには、既存Trigger/Procedureから**明示されたCase変更の業務要件**、期待Case revision、対象Duty/Scope、移管Rule、必要な受領条件を確定させる。
+
+Case責任の切替は単独責任の例で、旧責任と新責任の有効性を次の4象限として**観測**する。これは固定StateMachineの採用ではない。
+
+| 旧責任 | 新責任 | 単独責任の用途での解釈 |
+| --- | --- | --- |
+| 有効 | 無効 | 旧担当が責任を持つ状態。引継ぎ準備中でも新担当の実責任は未確定 |
+| 有効 | 有効 | 二重責任の衝突候補。共同責任を許すRuleがあれば別解釈 |
+| 無効 | 有効 | 新担当が責任を持つ状態。ただし必要な受領ACKや外部完了は別途検証 |
+| 無効 | 無効 | 無担当・保留の候補。自動的に「移管完了」にしない |
+
+通知の送信、受信、業務上のACK、Caseの責任確定、Host Effect Receiptは独立の観測とする。承認・移管を実行するときは、Rule/Case/Responsibility revisionとCurrent Grant/Policy epochを直前まで検証し、対応可能なProviderでは実Commitと同じ原子的境界に入れる。外部APIなどで原子的保証がない場合はその限界をContractへ記録し、Commit不明ではOperation ID/Receipt照会を先に行う。
+
+**ABAの負例**：C1の取扱先がD1→D2→D1と戻っても、元のCase revision、Candidate Selection epoch、Grant、Effect Receipt、ACKを復活させない。表示ラベルの一致と、同じ実行資格は別である。
+
+### 23.5 組織の変更をどの範囲へ伝播させるか
+
+影響分析では、変更されたRelation occurrence/Record Versionから、その関係を**実際に依存として読んだ**Query/Rule/Projection/Consumerへたどる。全ての組織データ変更が全案件の再判断を要するわけではない。
+
+| 変更 | 再評価する対象の例 | 無条件に変更しないもの |
+| --- | --- | --- |
+| A2のknown版訂正 | A2を読む二時点Query、D1所属/FTE、RuleがA2を要するCandidate | C1 handlingUnit、外部Host Grant、既存Receipt |
+| Occupancyの交代 | 当該Positionの候補Ruleと表示 | PersonのMembership、別Positionの責任 |
+| C1のResponsibility改版 | C1の候補・引継ぎ・Case表示 | Personの人事記録、全Case |
+| Delegationの取消し | その委任に依拠する代理Action候補とHost現在判断 | 過去の確定Effect |
+| ProviderのRLS/Scope変更 | 取得被覆に依存する人数、候補集合、否定条件 | 完全性が独立に証明された無関係のClaim |
+
+**影響なし（scoped-unaffected）**とするには、対象Claimに必要な依存集合と観測範囲が十分であることを示す。非出力依存、NOT EXISTS、動的Rule、未知Plugin、取得範囲の変化があるときは、単純な「参照なし」ではなくunknownを返す。Source/Rule/Policy/RecipientがA→B→Aとなる場合も、見た目が元どおりという理由で旧証拠を再利用しない。
+
+### 23.6 既存Expectedへ割り当てる次の小さな実装・検証
+
+新しいORG Scenario正本は作らず、#4490 ORG-BEH-04/05/06、#4501 CX-01〜03、#2510の既存Expected/Driverに次の比較を割り当てる。
+
+| 最小検査 | 正例 | 反例・止める地点 |
+| --- | --- | --- |
+| R0 責任の出典 | Case→Responsibility→HolderがSource/版付きで一意に追跡できる | MembershipやPositionだけからCase責任を自動確定 |
+| R1 候補の結果集合 | complete-none/one/manyをRuleごとに区別し、複数候補の根拠Pathを残す | 不完全な0行を候補なし、partialな1行を唯一と判断 |
+| R2 兼務と時点 | 同一Personを候補表示では重複排除しても、根拠A2/A3は両方保持 | Personを二重計上、旧版を誤選択、歴史Grantを現在Grant扱い |
+| R3 委任 | 対象・期限・本人/代理者・scopeを別々に検証する | 他Tenant、期限切れ、取消し、自己承認、委任循環を許す |
+| R4 責任切替 | 明示的Case revisionと移管Ruleでのみ引継ぎを評価する | 異動だけでCase更新、通知をACKと判断、旧/新双方無効を完了扱い |
+| R5 実行境界 | Host Current Grant・対象版・Effect/Receiptを別に検査する | Candidate成功をAction成功に昇格、Commit不明を無条件再試行 |
+| R6 影響と再表示 | 変更したSource依存だけを再評価し、Tree/Graph/Tableの同一性を保持 | hidden edge削除、Source/Case/GrantのABA再利用、未完全Readの影響なし判定 |
+
+**検収票の最小列**：Case ID/Case revision、Duty/Scope、Holderの関係Occurrence、Source URL/span/revision、validAt/knownAt/observedAt、Rule revision、Required vs Actual Read footprintとcohort/coverage、候補集合と選択根拠、実Principal/Grant epoch、Effect/Receipt/ACK、Consumer/Purpose/Recipient、独立Expected、Actual mechanism、Git exact HEAD、Owner acceptance。これは既存Evidenceの**用途別表示**であり第二Storeの新設ではない。
+
+実装順は次の通り。
+
+1. **純粋な候補解決を一件実行**：現行WU-09の構造検査を拡張し、同じ合成Sourceで候補0/1/複数/不完全のObservedを独立Expectedへ比較。最初は実Grantを要求せず、既存関係ReaderとRuleのFit/Gapを記録。
+2. **代理の負例を実評価**：現行WU-10のscenario存在確認だけでなく、対象・期限・取消し・自己承認・Tenant違いについて実Rule/Policyのどこまで検査したかを別々にAssert。
+3. **Case変更とHandoffを独立検証**：#4501のCX-01〜03を流用し、組織異動だけではCase責任が変わらず、移管には明示Changeと必要ACKがあることを観測。
+4. **製品への接続**：#2586の通常CLI→Provider→Context→Consumerの受入を再利用した後、組織Queryを接続。現在Grant/Effect Fenceの統合は#1174/#2499のOwnerと実Hostの別資格。
+5. **表示・生成の収束**：同じ責任RelationとCandidate Traceから、Studio/SHOの説明図・候補表・手順・必要Targetコードを導出し、業務Ruleの手書き重複が減ったかを§22.4の測定票へ記録。
+
+停止条件は、(a) Caseとr7のSourceを根拠なく合成、(b) 候補から現在Grantを発行、(c) incompleteを否定・唯一へ縮約、(d) 非単射Viewからの逆編集、(e) 実HostなしでEffect完了を主張、(f) 新Core/専用Workflow/第二Policy/Expected Engineを作ること。公開契約の追加・業務Ruleの採否が必要なら#2386、実効果の資格は#1174へ戻す。
+
+**全体P0との関係**：#2586の通常CLI初回実Provider Read、#2831のStudio Stage1→Stage2セルフビルドを本節の完成待ちにしない。現在は**実装を定義した設計段階**であり、候補/代理/C1 Handoffの新Product E2E・Owner Meaning Acceptanceは未実行・未受理である。
