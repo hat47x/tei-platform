@@ -276,8 +276,18 @@ func CompareCandidateSets(before, after CandidateSet) CandidateSetComparison {
 		key := structuralKey(candidate)
 		beforeByKey[key] = append(beforeByKey[key], candidate.CandidateID)
 	}
+	beforeKeyCounts := map[string]int{}
 	for key := range beforeByKey {
 		sort.Strings(beforeByKey[key])
+		beforeKeyCounts[key] = len(beforeByKey[key])
+	}
+	// The structural fallback can be non-injective. Count both sides before
+	// consuming any positional pairing so the review exposes that ambiguity.
+	afterKeyCounts := map[string]int{}
+	for _, candidate := range after.Candidates {
+		if _, matched := beforeByID[candidate.CandidateID]; !matched {
+			afterKeyCounts[structuralKey(candidate)]++
+		}
 	}
 	pairings := map[string]string{} // after candidate id -> before candidate id
 	for _, candidate := range after.Candidates {
@@ -311,6 +321,14 @@ func CompareCandidateSets(before, after CandidateSet) CandidateSetComparison {
 			entry.Notes = append(entry.Notes,
 				"same-structure-with-a-new-external-identity",
 				"a-renumbered-candidate-requires-fresh-owner-review")
+			// A deterministic choice among repeated structural matches is not
+			// evidence of individual relation continuity, even with equal spans.
+			if candidate.Kind == CandidateKindCrossReference &&
+				(beforeKeyCounts[entry.StructuralKey] > 1 || afterKeyCounts[entry.StructuralKey] > 1) {
+				entry.Notes = append(entry.Notes,
+					"structural-key-multiple-occurrences-cannot-identify-individual-relation",
+					"source-backed-occurrence-mapping-is-required-before-edit")
+			}
 			// The structural fallback deliberately ignores producer IDs. A pair
 			// with changed endpoints might be benign renumbering, a reversal,
 			// or an unprovable collision. It cannot authorize relation editing.
