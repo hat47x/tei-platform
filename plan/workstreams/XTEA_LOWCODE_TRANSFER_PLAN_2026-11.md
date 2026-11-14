@@ -396,7 +396,8 @@ WP10 統合と引継ぎ
 | プロセスを跨ぐ結末の検査 | 確認済み | 付録C.5、`internal/command`・`cmd/tei`、[確認記録](../evidence/XTEA_LOWCODE_OUTCOME_CROSS_PROCESS_2026-11.md) |
 | `uses`呼出しの効果の補償 | 不要と確認 | 付録C.5、`internal/hook`・`internal/command`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_USES_COMPENSATION_2026-11.md) |
 | Studio経路での`after-*`拒否時の取り消し | 実装（参照・既定経路は未到達） | 付録C.5、`internal/studiohost`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_AFTER_CHANGE_STUDIO_REVERT_2026-11.md) |
-| `after-*`へ到達するStudio配線 | 実装（参照・UI未呼出し） | 付録C.5、`internal/studiohost`・`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_AFTER_CHANGE_STUDIO_2026-11.md) |
+| 規則Pluginの発見・束縛・版の契約 | 未決（設計文書がD2採用時に決める。境界と差込み口は実装済み） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_RULE_PLUGIN_CONTRACT_2026-11.md) |
+| `after-*`へ到達するStudio配線 | 実装（参照・UIからは任意指定で呼ぶ） | 付録C.5、`internal/studiohost`・`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_AFTER_CHANGE_STUDIO_2026-11.md) |
 | 実行時の値変換 | 不要と確認 | 付録C.5、`internal/validation`、[確認記録](../evidence/XTEA_LOWCODE_VALUE_CONVERSION_2026-11.md)（受理条件が同一の下位原始型を要求するため、変換を要する組は通らない） |
 | 行単位のフックの実行（`RunRows`・`applyReachableRows`） | 実装（参照） | 付録C.5、`internal/hook`（二つの行経路が併存し`uses`の扱いが違う。`Runner.Rows`を設定するホストは未実装）、[確認記録](../evidence/XTEA_LOWCODE_HOOK_ROW_REACHABILITY_2026-11.md) |
 | フックの位相の重複宣言の拒否 | 実装 | 付録C.5、`internal/validation` |

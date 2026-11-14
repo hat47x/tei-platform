@@ -466,6 +466,7 @@
 - [「成果物と違うdigestを申告する」は、ディスクとの比較で止まる（追認）](TEI_GO_SELF_BUILD_ARTIFACT_DIGEST_STOPS_2026-11-11.md)
 - [セルフビルド実現の計画～設計の完了記録](TEI_GO_SELF_BUILD_REALIZATION_COMPLETE_2026-11-11.md)
 - [「state分離」は、childの申告と文字列が一致するかである](TEI_GO_SELF_BUILD_STATE_SEPARATION_SCOPE_2026-11-11.md)
+- [規則Pluginの契約と束縛の現状（2026-11-11）](XTEA_LOWCODE_RULE_PLUGIN_CONTRACT_2026-11.md)
 - [Studio の UI から `after-*` 経路へ到達する配線の確認（2026-11-11）](XTEA_LOWCODE_HOOK_AFTER_CHANGE_STUDIO_UI_2026-11.md)
 - [閉塞拒否と訂正能力の矛盾の宣言段階での報告の確認（2026-11）](XTEA_LOWCODE_PERIOD_CLOSURE_CONFLICT_2026-11.md)
 - [再開（closed→open）に訂正能力を要求する確認（2026-11）](XTEA_LOWCODE_PERIOD_REOPEN_CORRECTION_2026-11.md)
