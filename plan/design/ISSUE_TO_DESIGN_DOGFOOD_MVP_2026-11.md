@@ -1369,3 +1369,64 @@ WailsはDesktop UI/OS Adapterであり業務Hostではない。共通Go Applicat
 **実行順**は「CLI-firstの小Graph Pluginで**意味のある生成と実呼出し**を一つ確認」→「Stage1 TEIによる同Plugin/CLIの次Stage再生成」→「既存BuildExecution/ArtifactSetでnon-Plugin Studioを正式選択」→「Stage2 Desktopと実Windows Consumer」とする。既存Desktop側DG-0〜DG-4は並行して前進させるので、Graph Pluginの全汎化をStudioの追加Hard Gateにはしない。Product ReadとAIなしSource復帰は独立した並行P0を維持する。
 
 **資格の上限**：この節は既存PR/実Source/同HEAD CIを照合し、dogfooding計画を現在のCLI-first方針と一致させる**docs-onlyの設計採用**。本追補では新`*.tei.md` Reader、生成Graph Go Plugin、実CLI Plugin Consumer、Stage1→Stage2 Plugin/CLI、Stage1→Stage2 Desktop、実PG Product CLI、外部Harness Effect、Owner意味受理を**実装・実行していない**。新しいRunner/Host/Registry、第二Meaning正本、別Scenario/Independent Expectedを作らない。
+
+
+<!-- tei-dogfood-20261114-integration-review-executable-slice -->
+### 15.42 main統合後の計画基準：局所CIの成功より、独立レビューの未解決を優先する
+
+本節以降は、§15.1〜15.41の検討と11月14日夕方のmain統合後の状態を区別するための**現在の作業基準**である。[統合PR #4683](https://github.com/hat47x/tei-platform/pull/4683)は37件の履歴と本dogfooding計画（旧#4680）をmainへ取り込み、[後続PR #4684](https://github.com/hat47x/tei-platform/pull/4684)は別の5件のテスト・修正を統合した。#4684の統合前HEADでは21 checks成功の記録がある。ただし、それだけで新しいSource Reader、TEI-native Plugin、実Provider、Studio Stage2の製品受入が成立したとはみなさない。
+
+**統合レビューで除外された三つの実装差分は、計画上も未解決に戻す。**
+
+| 対象 | 独立レビューが指摘した具体的な問題 | 既存Ownerに返す検収 |
+| --- | --- | --- |
+| **#4634 Builder pin** | 再現性比較の**2回目のChild起動**へ選択Builderのpinが伝わらない。前段の実行前SHA一致が成功していても、次の実起動に同じ制約が適用されたことにはならない | #2831/#4583で強い再Buildを含む**全Child起動**に選択Builder/Artifact Pinを渡し、2回目だけ別Childへの置換・不一致を**子Process起動前に拒否**する負例。修正後の同HEADで再検査する |
+| **#4647 Function Context被覆** | 取得できなかったRelationを「RLSが無効」と扱う分岐がある。**観測不能**から**制限なし**を推論すると、部分取得の証拠を誤る | #2586でRelation/カタログ/EXPLAIN/権限に失敗したときは`unknown/unestablished`として保全。既存の`partial`と実Queryの結果を混同せず、未取得Relationでも`complete`/空集合の正当化を禁止する |
+| **#4538 Source-backed編集** | Sourceの変更後に記録処理が失敗したとき、変更がない場合の拒否と同じ扱いになる | #2497/#4515で「未変更」「変更後の記録失敗」「反映済みだが現在性不明」を区別し、復旧と再照合を必要とする。DGの前提ではなくSELF-S/編集の別Owner課題 |
+
+従来の#4634の8/8や#4647の局所PG試験が事実だったことは取り消さないが、**mainに適用できる安全な全経路の合格証拠ではない**。旧§15.23〜15.41のPR状態・進行中CIはその時点の履歴。新しい統合HEAD、変更後の実Child起動、実Query、実Consumerの受入は別Attemptで判定する。Builderの問題を黙って無効化したり、Function Contextの観測失敗をWarnだけで通してはならない。
+
+### 15.43 最初に解消するReader断線：管理対象と実際に読めるSourceを区別する
+
+[既存実装 #3031](https://github.com/hat47x/tei-platform/pull/3031)の`internal/workspace/tei_md_source_guard.go`をmainの実Sourceで確認した。現在の`rejectUnboundTEIMarkdownSources(managed []ManagedFile)`は、管理Rootで見つかった`*.tei.md`に対し`TEI_MD_PARSER_UNBOUND`を返す**暫定の明示拒否**であり、Markdownの意味を読み込むParserではない。従来`*.tei`と通常`README.md`、管理Root外の未完成Draftは別の正例として回帰試験に存在する。
+
+したがって§15.38のGraph Fixtureを管理Rootへ置いても、**現行Loaderでそのまま実生成できるとは仮定しない**。最初の実装は[移行設計 #3030](https://github.com/hat47x/tei-platform/pull/3030)と#2621/#988/#1018/#2620の既存担当に、次の最短段階で渡す。
+
+| 順序 | 実際に閉じる一辺 | 正例／拒否 |
+| --- | --- | --- |
+| **MD-0** | 既存GuardとRoot/Selectionの実動作を固定する | 未束縛`*.tei.md`は明示拒否、管理外Draftは通常Markdownのまま保持、旧`*.tei`の既存Consumerは維持。ファイル検出や`validate ok`を意味受理にしない |
+| **MD-1** | 管理Rootで**明示選択された1件**の`*.tei.md`を既存Language/Loader経路の選択Parserへ結ぶ | Parser/Format版/Roleが不明なら`TEI_MD_PARSER_UNBOUND`相当で停止。全Markdownを無条件にTEI DSLと解釈しない |
+| **MD-2** | 原文byte、Fence/表/GraphのSource span、型付きMeaning/Relation IDを対応付ける | 同じ表示Labelでも別Node/Edgeを保持し、Markdownでの説明・例示を実行用宣言へ勝手に昇格しない。CRLF/BOM・位置移動・旧新同Subject衝突を無視しない |
+| **MD-3** | **選択された**意味要素を既存Source Index/Operation/Generatorの入力へ渡す | 必須Role/構造が欠けた場合は`unsupported`／診断。Sourceが管理下に存在するだけで`actual build consumed`としない |
+
+**最初のコードPRの範囲**はMD-0の固定回帰を保持し、MD-1/2で選択1件を「原文→Parser→既存Meaning/Source位置」まで実通過させること。Graphの出辺Go生成、正式Plugin実Build、GUI、Writer、全旧形式移行は**別PR**にする。新しい並列Parser/Metadata Registryを急造せず、既存Source/Languageの選択・バージョンに差分を集中させる。正式なMarkdown Containerの構文はOwner判断が必要であり、この計画が未採用のFence/表構文を製品Grammarとして確定しない。
+
+### 15.44 Graph Pluginの生成を、一つの意味変更と実Callで反証する
+
+Readerが1件通った次のPRで、§15.38の固定Fixture（同Labelの別Node、同端点の多重Edgeと逆方向Edge）から、出辺ID集合と件数の**実Go実装**を生成する。最初は純粋・read-onlyで、Data Provider/DB/外部File更新は不要。既存[Plugin生成案 #4678](https://github.com/hat47x/tei-platform/pull/4678)のR0〜R5を実装作業へ引き渡し、Graph専用の第二Compiler/Runtime/受入票を増設しない。
+
+実装を分割する基準は「一つのPRでどの因果辺を新しく実証するか」である。
+
+| PRスライス | 新しく実証する対象 | 独立Expectedと失敗注入 |
+| --- | --- | --- |
+| **G-1 Reader** | `*.tei.md`原文→型付きNode/Edge ID/Role→Source位置（MD-1/2） | label重複、多重Edge、逆向き、未選択Sourceの混入、曖昧な表を拒否 |
+| **G-2 Generator** | 正規化済みGraph Meaning＋Rule→Go実処理（出辺ID/件数）の生成→同じMeaningを反映したテスト | A→Bの2 EdgeとB→Aの1 Edgeを保持。**レイアウトだけ変更**は意味/結果不変、E2の向き変更は生成処理の結果も変わる。固定文字列を吐くだけのGeneratorを拒否 |
+| **G-3 Build/CLI** | 選択Builderによる生成Goの実Build→Artifact pin→選択Plugin Providerの**実呼出し**→通常CLI Consumer | Sourceは正しくても古いGo/別Pluginが実行される、Pluginが選ばれるだけで実Callなし、成功Mockで代用する場合は未合格 |
+| **G-4 再入** | Stage1 TEIの実ProcessがG-2/3を次Stageとして再実行し、生成Stage2を実CLIで呼ぶ | Stage0 Launcherが二度Build、2回目のBuilder pin欠落、別Attemptの同byteを因果と偽称したら不合格 |
+| **G-5 Studioへ合流** | 既存のDG-0〜4／B1〜3に再利用し、Stage2 Desktop exeの実WebView2を別途検収 | G-4 CLIが成功してもDesktop完了とはしない |
+
+**生成・委譲の判定**は、Graphの向き・ID・多重性を扱う処理がTEI Meaning/Ruleから実コード化されているかで行う。Goへの単純委譲、定数JSONの埋込み、コード上の表面だけが変化した例は「処理生成を実証した」とは認めない。定義が短くなっても、必要なMeaning義務をGoの手書きへ移したら自己実装率を増やさない。Plugin説明や公開Facetを再利用する際は、図面やContractの閲覧とCurrent Grant/実Provider/秘密の開示を分離する（#4677/#4681）。
+
+### 15.45 実装の優先順と、統合レビュー後の受入上限
+
+**同時に完成させる必要はない。** 最初の二本は(1) #2621/#988/#3030のMD-1/2、(2) #2831/#4583のBuilder再現性2回目Pinとnon-Plugin Subjectの実型接続とし、両者を独立したOwnerのPRへ分割する。Readerが通ればG-2→G-3→G-4を進め、Desktop側は既存#4587のH0/H1とDG-0〜4を別の実Windows Consumerまで進める。さらに#2586のFunction Context「未観測≠制限なし」修正と通常`tei` CLIの実PG Readは**並行P0**として保つ。
+
+| 今回の成果を渡す先 | 必要な次の実試験 | 今回行っていないこと |
+| --- | --- | --- |
+| **#2621/#988/#3030** | Reader選抜・Source span/Role、未束縛Guardの正負回帰 | `*.tei.md`正式Readerの実装・採用 |
+| **#4678/#1121/#951** | 一Graph→生成Goの意味変化、実Plugin Build/Call/CLI実Consumer | 新Graph Plugin/Generatorの製品実生成 |
+| **#2831/#4583/#1119** | 全Child（再現性2回目も）へのpin、non-Plugin Build Subject、Stage1実Process→Stage2→Windows Consumer | 自己再構築L3/Studio B2/B3 |
+| **#2586/#4647/#1251** | 未取得Relationのunknown保持、型付き実PG Read→通常製品CLI→独立Consumer | Function Contextの完備性、RA-2P、二Consumer適格 |
+| **#2497/#4515/#1180/#2514** | 編集済みだが記録失敗したEffect、独立Expected、A→B→Aでの再資格 | Source Writerの全回復・Owner意味受理 |
+
+**今回の採用範囲**：#4683/#4684のmain統合実績と独立レビューの未解決三件、mainの`*.tei.md`拒否Guard、既存のCLI-first/Graph/Plugin/DG計画を**実装順へ並べ直したdocs-onlyの計画更新**。新Go/Node/Windows/実PG、Graphコード生成、CLI Stage1→Stage2、Studio Stage2、Readerの新たな実装・実試験、正式Owner受理は**NOT RUN / NOT ACCEPTED**。修正済み・main統合済み・製品実Consumer資格を混同せず、既存#1163 Evidence Packet／#1180 Scenario／#2514 Independent Expectedの正本を一つずつ利用する。
