@@ -1,6 +1,7 @@
 package standard
 
 import (
+	"encoding/json"
 	"testing"
 )
 
@@ -64,5 +65,41 @@ func TestEmptyInputRefusalsNameTheirCodes(t *testing.T) {
 		t.Fatal("nil query produced no refusal")
 	} else if diags[0].Code != "EMPTY_QUERY" {
 		t.Fatalf("nil query code = %q, want EMPTY_QUERY", diags[0].Code)
+	}
+}
+
+// Severity is the closed vocabulary a diagnostic carries. A reader decides
+// whether a finding blocks lowering from it, so an unsupported construct has to
+// be distinguishable from an error rather than collapse into one value.
+func TestSeverityVocabulary(t *testing.T) {
+	severities := []Severity{SeverityError, SeverityWarning, SeverityUnsupported}
+	want := []string{"error", "warning", "unsupported"}
+	if len(severities) != len(want) {
+		t.Fatalf("a severity was dropped: %d values, want %d", len(severities), len(want))
+	}
+	seen := map[string]bool{}
+	for i, severity := range severities {
+		if string(severity) != want[i] {
+			t.Fatalf("severities[%d]=%q want %q", i, severity, want[i])
+		}
+		if seen[string(severity)] {
+			t.Fatalf("severity %q is declared twice", severity)
+		}
+		seen[string(severity)] = true
+	}
+
+	// A diagnostic built with SeverityUnsupported keeps that value through the
+	// JSON round trip, which is where a consumer reads it.
+	d := Diagnostic{Code: "UNSUPPORTED_CONSTRUCT", Message: "unsupported", Severity: SeverityUnsupported}
+	raw, err := json.Marshal(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded Diagnostic
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if decoded.Severity != SeverityUnsupported {
+		t.Fatalf("round-trip severity = %q, want %q", decoded.Severity, SeverityUnsupported)
 	}
 }
