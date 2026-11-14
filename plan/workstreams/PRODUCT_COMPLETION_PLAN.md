@@ -190,11 +190,23 @@ B1a-I/Pの二段受入を維持しつつ、独自Frontendを「TEIが制約し�
 
 | 受入対象と資格 | 今回の実観測 | なお未成立の条件（既存Owner） |
 | --- | --- | --- |
-| **RA-0** Source宣言 | [#4626](https://github.com/hat47x/tei-platform/pull/4626)で`input from std.datetime`を明示し、Loader/Resolverに渡るコード候補。RA-0 exact HEADの17 CIのうち3つ（Repository Health/セルフビルド/Browser実API依存）がfailureで、**main採用不可のまま** | Current World/GoldenとFrozen Historyの区別、Self-build歴史Runner版、API `sqlgen`実依存の原因別修正。旧WorldのSnapshotを文字列置換で昇格しない |
+| **RA-0** Source宣言 | [#4626](https://github.com/hat47x/tei-platform/pull/4626)は新HEAD `94876821`に更新。`input from std.datetime`、現Golden WorldのQuery.Inputs、測定したFingerprint、旧R0 Snapshotと歴史Runnerのbyteピンを**別々の根拠で修正した実コード候補**。旧HEAD `4f238139`の17 CI中3 failureは履歴結果 | 新HEADの[全体CI](https://github.com/hat47x/tei-platform/pull/4626/checks)で`Go all/History/Self-build`を再検証。`sqlgen`のAPI実リンク問題は別Owner #1182の原因調査を維持。Source内容や旧世界の意味受理、main採用をCI未確認で宣言しない |
 | **RA-1** Go typed preinvoke | [#4631](https://github.com/hat47x/tei-platform/pull/4631) HEAD `02af8339`で[Go回帰CI #43548961899](https://github.com/hat47x/tei-platform/actions/runs/43548961899) completed/success。Gate Bの欠落`:from`をScenarioの`time.Time`入力に直し、防護を緩めなかった | 実Environment-bound Product入口の毎回適用、全型/NULL契約、旧R0のuntyped ReferenceをProduct Readerへ通さない。最新main/RA-0更新後は**積上げ差分を再検証** |
 | **RA-2 実PG参照** | [#4638](https://github.com/hat47x/tei-platform/pull/4638)は2 DB／RLS／Source変更・JOIN重複／0行／NULL／列権限／時刻境界を一つの隔離PG Attemptで観測。全7 Case success | **正式Product `tei` CLIから実Operation→実Provider→Context**のSame Attemptと、選択Provider A／実Call B負例、実Consumed SourceとSession Scope/epochの記録は未成立。参照CLIのpassをProduct E2Eへ昇格しない |
 | **RA-3/本件R-C** 実受領 | 参照Contextは実読取の結果だが、Receiver間の同一Context deliveryには未接続 | **同一Context ID・epochを持つ標準Display A＋独立Native Bの各受領Body**、Source/Scope/NULL/partial/projection、Expected独立照合。AggregateはD1.2の別受入 |
 | **B1a-P** Current Grant | 参照DB Read・RLS Roleの結果は確認できたが、Public Principal/Customer所有のAuthorityではない | Host current Grant、Audience Projection、失効W0/W1、Cache隔離とRelease/旧Clientの別票 |
+
+<!-- b2c-ra0-current-golden-historical-byte-pin-20261114 -->
+**RA-0 Source改訂をCurrent/Historyに分離した修正候補（2026-11-14）**：[Draft #4626](https://github.com/hat47x/tei-platform/pull/4626) HEAD `94876821f784d5fa9f71b15a05ac4156221b2bc8`で、旧HEADの[Repository Health #43544373270](https://github.com/hat47x/tei-platform/actions/runs/43544373270)および[セルフビルド #43544373386](https://github.com/hat47x/tei-platform/actions/runs/43544373386)で実際に失敗した契約を4ファイルで修正した。
+
+| 修正箇所 | 観測済みの旧失敗→修正の意味 | 実装後の受入停止線 |
+| --- | --- | --- |
+| `examples/data-source-workbench/query_route_separation_test.go` | SQL `:from`は宣言なしという旧Expectedが、実Loader宣言後にも`want [from]`として残っていた。新Sourceには`input from std.datetime`を要求し、未宣言入力集合は空へ更新 | SQL字面の静的検知は実PG Parameter Binderの証明ではない。XTEA別Workspaceの`:status`をこのQueryへ混入しない |
+| `reference/world.json` | Canonical current Worldの`order_entry.recent_orders`に`inputs:[{name:from,type:std.datetime}]`が欠け、`workspace.Load`とのWorld同一性でFAIL | 旧受理Worldを新Sourceと同一扱いしない。新Goldenは変更後Current Worldに限定 |
+| `internal/workspace/load_listing_fingerprint_test.go` | 旧Fingerpint `61ebb5ca...`に対しGo実CIで`435b687e...`を観測。値の来歴とCurrent World意味改訂を注記し、測定済み新値を固定 | この文字列の更新単体はOwner意味受理や過去のSource履歴保証にならない。最新HEAD Loadを実Testで再検証 |
+| `tools/reference-plugin-self-build/historical_runner_parity_e2e_test.go` | 旧RunnerのLoaderは新しい`input`行を解析できず実セルフビルドでFAIL。Frozen Worktreeだけに**実git commit `e888bb8f...`の旧Query raw bytes**を戻す。SHA-256 `a7c1c4f6...`と新Sourceとの差を独立検査し、Frozen Diffは旧Manifest 2件＋旧Query 1件の3パス限定 | **現WorkspaceのQueryから宣言を消さない**。旧RunnerがFrozen版を通過しても、現Worldの新Queryを受理したことにはしない |
+
+**再検査**：[#4626最新HEADのCI](https://github.com/hat47x/tei-platform/pull/4626/checks)は18系統のWorkflowが起動。実Health/History PASS、全Workflow PASSは結果を取得するまで**NOT VERIFIED**。別[Browser→JSON API実経路](https://github.com/hat47x/tei-platform/actions/runs/43544373457)の旧HEAD失敗はAPIの`tei/internal/database/sqlgen`2シンボル検出（Browser byte自体の走査成功）で、RA-0による因果は不明。#1182に別の実依存調査を残し、許可リストを黙って拡張しない。新RA-0 HEADの合格を確認したあとRA-1 #4631・RA-2 #4638の**積上げbaseが更新された事実**を明記して新Checkoutで再検証する。旧HEADのRA-1 Go成功、RA-2実PG 7/7成功を新baseのPASSとして再利用しない。
 
 **次に実装する一本の最短経路**：#2586 Ownerが`RA-0 main適格化→RA-1 exact base再検証`を先に行い、RA-2参照PGで既に観測した同じQuery/Input/Resultを**正式Product Operation→通常`tei` CLI（同一Subprocess）→実Context→Receiver A/B**へ接続する。Providerは既存Environment/Registryを選択し、Actual Executor/SQL bytes/Session/Rowsetと独立Expectedが同一Attemptで照合できる場合に限りD1 Productの限定受理を検討する。新Host・第二Resolver・暗黙SQL Placeholder推論・新Measure Engine・関数型DSLの表面露出はしない。RA-2のPG Fixtureから再利用するのは**試験手順と観測上限**であって、Reference入口自体を本番Runnerへ名前変更しない。
 
