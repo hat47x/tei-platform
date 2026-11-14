@@ -501,3 +501,19 @@ M-Pを最初の小Reference候補にするのはよいが、**所属という語
 **採否境界**：採用済み（再利用する）＝既存Typed Semantic/Operations/Driver/Provider/Conformance基盤と既存r7・PM/CX/ORG-BEHの対象。今回の設計で採用しない＝単一Person必須Core、Org専用Operation/Temporal Runtime、第二Scenario/Expected/Qualification Store、第二Migration/Release Gate、独自Host、万能Web共同編集Engine。未決＝Person RelationのProfile別意味・物理Version PK・修復/過去Retention・DB跨ぎCutover/Writer Fence・現在GrantとCase引継ぎRule。P0の範囲を変えない。
 
 **本節の成果資格**：現Issue/PR/mainファイルの静的再照合と受入設計。9対照の新Test、製品Pg/CLI/Windows/Host実行、独立TQC判定器実装、Owner Meaning Acceptanceはいずれも**NOT RUN / NOT ACCEPTED**。
+
+
+## 16. 最初の実Go GAP特性テストへの引渡し（2026-11-14）
+
+§15のR0「実Sourceに対する検証状況の棚卸し」を、**別の小さなCode Draft [#4633](https://github.com/hat47x/tei-platform/pull/4633)** に切り出した。組織意味/DDL/Query/OperationSurface/Providerの変更を含まないGoテストのみのPRであり、#4622は引き続き横断設計・追跡Planを所有する。**既存PR #2632** は#2611の7つの多Mapping Characterizationを既に実装していた（Closed・Unmerged）ため、#4633ではその再実装をしない。
+
+| #4633に実際に作成した検査 | mainの実Source・独立Expectedに対する検査 | 成功で主張できる上限 |
+| --- | --- | --- |
+| CurrentMembershipDoesNotHavePersonLink | Workspace Loaderでorganization.Membershipを読込み、Person/Employment/AffiliationへのRelationが無い一方、Employment/Affiliation→Personの正例は存在すると確認 | 現mainのSemantic欠落を実Goテストで特徴付ける。M-P/M-E/M-XのOwner意味採用ではない |
+| CurrentPersistenceCannotCoStoreTwoVersionsByMembershipPK | 現Mappingのpublic.org_memberships、membershipId単独PK、Person mapping列不在 | 同一A2旧新両版の保存が現Mappingでは未対応と示す。実PG保存/移行ではない |
+| CurrentAsOfQueryDoesNotYieldPersonIdentity | 本物のorg_axes_view.as_of_membership QueryのResultColumnsが3列でPersonを射影していない | Query単独からdistinct Personを証明できない現状を再現。実SQLのRowset成功ではない |
+| SyntheticOracleHasTwoA2VersionsAndSharedP2 | 既存r7 Source JSONでA2旧版/新版、P2がA2/A3両方に属することを固定 | 既存Source/OracleとGAPを結ぶ。別Expectedの創設・Node Referenceの代替ではない |
+
+4つの検査は**現状の欠落を表明する特性テスト**であり、開発が進み欠落が解消されたら対応する「不在をassertする検査」を**独立Expectedに基づく正例Product Conformanceへ置換**する。GAP合格を製品実装完了と表示しない。新CI exact HEADでのGo実行結果とGofmt/Repository Healthは、検証済みのRunごとに記録し、未完了の間はpassとは記載しない。
+
+**次のP1実装の引渡し**：#2386/#1126がM-P/M-E/M-XとRelationKeyの採否を判断し、#1126/#2622が実DB保存版、#4490/#2586がProduct Query→Context→Consumerの独立Expectedを検証する。#2611の異Alias競合は既存#2632の特性とProduct Ownerの採否を参照し、現#4633へ取り込まない。Org C1 Host/Effect/ACKは後段。#2586通常CLI P0と#2831 Studio Stage2 self-build P0は独立して維持する。
