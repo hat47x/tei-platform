@@ -721,9 +721,9 @@ tei external-candidates
 <!-- rea-r3b-process-witness-cross-lane-receipt-20261114 -->
 #### R3-B実Process Witnessと、Query/Builder/Registryに共通するConsumer証拠の切り分け（2026-11-14）
 
-**R3-B技術試験をさらに一段進める**：既存[Host Reader Draft #4637](https://github.com/hat47x/tei-platform/pull/4637)へ、実Captured REA6.8.0を用いるテスト専用の**別OS子Process**を起動し、その子が`LocalREAReader.Read`から実取得したEvidence ID／Raw Digest／Node ID／有向Relation ID／Host ReadAtをプロセスID付きの最小JSON受領票として親Testへ返す`local_rea_reader_process_test.go`を新設（追加試験HEAD `f9e355d5ccdc96bf4a25ff939fca444a18de1942`は11/12 Workflow success・Repository Healthのみ`gofmt`失敗、整形修正HEAD `f38117dc69b722e14de36a69c3fae6478766d5d4`でCI再検収中）。同じ実子入口で、未登録Selector・任意Path文字列を装ったSelector・他Workspace・Evidence改変では非公開Evidence ID/Digest/Node/Source PathをError/Replyへ載せない負例を加えた。**この子Processはテストハーネスであり、製品Studio/Wails/MCPの独立Consumerでも認証済み配送でもない**。親Testの別Process起動とChild Receivedを実証できても、R3-C ExitにはCLIと実Product第二Consumerの独立Selected→Invoked→Received／Audience/Current Grantが別途必要。
+**R3-B技術試験をさらに一段進める**：既存[Host Reader Draft #4637](https://github.com/hat47x/tei-platform/pull/4637)へ、実Captured REA6.8.0を用いるテスト専用の**別OS子Process**を起動し、その子が`LocalREAReader.Read`から実取得したEvidence ID／Raw Digest／Node ID／有向Relation ID／Host ReadAtをプロセスID付きの最小JSON受領票として親Testへ返す`local_rea_reader_process_test.go`を新設（追加試験HEAD `f9e355d5ccdc96bf4a25ff939fca444a18de1942`は11/12 Workflow success・Repository Healthのみ`gofmt`失敗、整形修正HEAD `f38117dc69b722e14de36a69c3fae6478766d5d4`は[Repository Health #43558330965](https://github.com/hat47x/tei-platform/actions/runs/43558330965)を含め12/12 Workflow completed/success）。同じ実子入口で、未登録Selector・任意Path文字列を装ったSelector・他Workspace・Evidence改変では非公開Evidence ID/Digest/Node/Source PathをError/Replyへ載せない負例を加えた。**この子Processはテストハーネスであり、製品Studio/Wails/MCPの独立Consumerでも認証済み配送でもない**。親Testの別Process起動とChild Receivedを実証できても、R3-C ExitにはCLIと実Product第二Consumerの独立Selected→Invoked→Received／Audience/Current Grantが別途必要。
 
-**exact HEAD評価に関する原則**：#4637の旧HEAD `170f9be5`は12/12 Workflow成功／Repository Healthで全GoテストPASS。Child実Process試験HEAD `f9e355d5`は[Repository Health #43556801954](https://github.com/hat47x/tei-platform/actions/runs/43556801954)の実ログで、**全Go testはPASSしたが、新規`local_rea_reader_process_test.go`の`gofmt`だけFAIL**。他11 Workflowは成功。整形修正HEAD `f38117dc`は別HEADの再検収中であり、旧HEAD 12/12／11/12の成功を修正後のPASSに移さない。#4625 CLIと#4630 Byte Operationの既存別HEAD成功も、新Childが同一Delivery chainを検証した事実にはならない。
+**exact HEAD評価に関する原則**：#4637の旧HEAD `170f9be5`は12/12 Workflow成功／Repository Healthで全GoテストPASS。Child実Process試験HEAD `f9e355d5`は[Repository Health #43556801954](https://github.com/hat47x/tei-platform/actions/runs/43556801954)の実ログで、**全Go testはPASSしたが、新規`local_rea_reader_process_test.go`の`gofmt`だけFAIL**。他11 Workflowは成功。整形修正HEAD `f38117dc`は、そのHEAD自身の12/12 Workflow completed/successで独立に検収した。**次の二Root隔離試験を加えたHEAD `0d961098ca61781d0db7ccfa2b10dc06b4dde0d4`は再度別のCI評価を要する**ため、旧HEADの成功を最新HEADの結果に転記しない。#4625 CLIと#4630 Byte Operationの既存別HEAD成功も、新Childが同一Delivery chainを検証した事実にはならない。
 
 **他チャットから共通化できるのは合格数ではなく「証拠を渡す順序」**。Producer／Selector／実Input／実Invoker／実Result／Recipientの各段階を、対象の異なる案件でも分けて扱う。
 
@@ -740,6 +740,21 @@ tei external-candidates
 **製品次段の最小API／受入順序**：Local Host Readerは現在`Read(workspaceID, selector, observationID, relationID)`のみで、`StudioBridge`へ未登録・Reader Attempt/Recipient/Grantを公開Resultへ追加していない。まず#4503のHost設定とSource/Worktree版・同一Evidence Byte、#2516のAudience相対Field開示、#3421の現在Principal/Grant／実HTTP/WS配送隔離を**現行Hostで**判定する。次に認可済みRead-only Operationだけを型付きWeb/Native Consumerへ渡し、受信側の実Bytes・識別子・時刻/Scopeを別に採取する。失敗時にOS Read/Child Process/Network送達0となる負例を検査し、最後に#4625の実CLI Processと独立Consumerの一致／相違を#2514へ送る。**この公開前Gateを省略して#4637の生R2 ExternalCandidateViewをHTTP/外部Harnessに流さない。** これは新Policy Engineや二番目のHostを採用する計画ではない。
 
 **実装上の採用指針**：Product共有は既存Operation／Host Boundary／既存Receipt/Expectedの束縛規則に限る。REA Host Readerは`#4503`、Disclosureと匿名/他Principal二世界は`#2516/#3421`、Source/Workspace RevisionとOwner Meaningは`#1124`、独立Consumer/FailureのExpectedは`#2514`へ引き渡す。Current Grantも実OS/Network送出も未搭載のままR3-C/共有Web適格と認定しない。Desktop Self-build・実PG ReadのP0はREAの子Process試験でブロックしない。
+
+<!-- rea-r3b-multiroot-identity-not-authorization-20261114 -->
+#### R3-B 2つのWorkspace Rootの実バイト同一性・局所失効検証（2026-11-14）
+
+**差分実装**：[Draft #4637](https://github.com/hat47x/tei-platform/pull/4637)に`internal/studiohost/local_rea_multiroot_test.go`（新HEAD `0d961098ca61781d0db7ccfa2b10dc06b4dde0d4`）を追加した。既存`ReadOnly`の**2つの実Host許可Root**を使う。6.8.0のCaptured REA JSONを一方は原byte、もう一方は末尾改行を付加した異なるbyteにし、Producer宣言のEvidence ID、Source Revision、Node ID、有向Relation IDは同一に保ったまま、それぞれ異なる`Raw sha256`をHost Bindingへ固定する。同名の`Selector`は**Workspace IDと組**にして解決し、2 Rootそれぞれで正しい保存byteが選択されるかを検証する。さらに2 Rootの内容を互いに入れ替えたとき、Producer IDが同一でも**旧Raw Pinのまま投影を許さない**。片方のRootを実体置換した場合は、そのRootだけを`WORKSPACE_ROOT_CHANGED`で拒否し、もう片方の正常read-only取得は維持する。これらは**新しいGoテスト（CI結果は新HEADで独立確認）**であり、新Resolver・Plugin・Policy/Storeを増やさない。
+
+| 状況 | 実行・期待値 | 言えないこと |
+| --- | --- | --- |
+| 同じProducer ID・Relation/Source宣言、異なる2 Rootの保存byte | 各`(WorkspaceID, Selector)`で異なるRaw Digestを照合し、**正しいRootからの局所byte**だけを受け入れる | Producer Evidence ID・外部Source Revision・同名Nodeは**実Worktree同一性**を証明しない |
+| 別Rootの保存byteを相互入替 | ID/Nodeが一致しても各Rootの固定Raw Pinで両方拒否。生Errorや秘密識別子をConsumerに渡さない | Pinを再設定してよいOwner判断、Source A→B→Aの履歴は検証していない |
+| Root Aだけ実体置換、Root Bは継続 | Aを失効拒否、Bの正常read-only受信は維持し、別RootへSelectorを付け替えない | 別Principal/Current Grant/DB Providerの認可・失効独立性は保証しない |
+
+**他チャットの扱いへ接続**：Studio/SaaSの多Worktree/Branch・多DB aliasでは、**画面に表示したBranch/alias、Hostの実Root/Git Commit/Source版・物理DB Instance/Principal、実Operator/Reader Attempt**が別。REAの2 Rootテストはこのうち**既存Host固定Rootとsaved-byte identity**だけを実測するもので、別Git Worktree/2 DB/2 Principalの実受理、Sourceへの時間的紐付け、現在Grantを実行したことにはならない。#4503/#2516/#3421の既存Expectedへ、同名Selector/同Producer IDを含む多Worktree反証と、正例の正常読取り維持を加える。#2514では実受信Process/Target Audienceは別途採取する。現在のSource/Grant/Disclosureを確認しないまま、Host ReaderのRaw結果を共有Webへ配送する経路を追加しない。
+
+**全体優先順位**：Desktop Stage1→Stage2（#4583/#2831）と通常`tei`の実PostgreSQL Read（#2586）をP0として維持。REAの2 Root保護試験はR3-B局所検収であり、Plugin選定／Registry公開／DSL標準Data Schema／本番Web AuthZへ新しいHard Dependencyを作らない。
 
 <!-- rea-wails-server-wasm-delivery-isolation-20261114 -->
 #### R3 Consumerの配置方式・配信隔離：Wails Server／Go WASM候補との整合（2026-11-14・設計のみ）
