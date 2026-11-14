@@ -137,8 +137,22 @@ func TestExternalCandidatesR3AActualCLIProcess(t *testing.T) {
 		}
 		cmd = exec.Command(binary, "commands")
 		out, err := cmd.Output()
-		if err != nil || !bytes.Contains(out, []byte(`"name":"external-candidates"`)) {
-			t.Fatalf("read-only discovery did not advertise the executable entry: %v\n%s", err, out)
+		if err != nil {
+			t.Fatalf("read-only discovery command: %v", err)
+		}
+		var catalog cliCommandCatalog
+		if err := json.Unmarshal(out, &catalog); err != nil {
+			t.Fatalf("read-only discovery is not JSON: %v\n%s", err, out)
+		}
+		found := false
+		for _, entry := range catalog.Commands {
+			if entry.Name == "external-candidates" && entry.JSONContract == "enveloped" &&
+				entry.SchemaVersion == "tei.cli.external-candidates/v0" {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("read-only discovery omitted external-candidates: %s", out)
 		}
 	})
 }
