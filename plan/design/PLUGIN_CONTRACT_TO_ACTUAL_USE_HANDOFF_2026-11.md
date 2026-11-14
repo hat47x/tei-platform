@@ -325,3 +325,63 @@ SWP-01〜08は**既存#1180/#2514のExpectedへ引き渡す参照名**であり�
 **P3（選択した長寿命Targetのみ）**：#1223/#1174のGeneration切替/drain/failover（SWP-04/08）、#2515のAgent送出境界（SWP-06）の実Server/OS強制を確認。HA構成・IdP方式・Storage実装を現時点で採用済みとしない。
 
 **検証上限**：Studio Webの共有サーバ・同時編集・実認証・HA・Web版Plugin Managerは今回実装していない。本節は既存実装・Issue/議論の設計統合のみ。単一Serverの二Principal実HTTPテストもNOT RUN。採用判断は各Ownerの実測・独立Expected・正式レビュー後。
+
+
+## 17. 2026-11-14：Wails ServerとClient-side Go/WASMの役割分離（#1824 / #1158 / #3421）
+
+### 17.1 確認した現在の実装と公式仕様
+
+- 現行mainの cmd/tei-studio/go.mod はGo 1.26.11・Wails v3.0.0-beta.29。window_server.goはserver build tagの差分であり、cmd/tei-studio/README.mdは**127.0.0.1限定の参照PoC**を明記。Serverでビルドできることは共有開発サーバへの本番公開・認証済みWeb版の完成を示さない。
+- cmd/tei-studio/main.go のWails StudioBridgeはread-onlyのWorkspace操作に加え、ExecuteCommand系、OpenShoDocument/ResumeShoDocument、参照Storeへの操作などを公開メソッドとして持つ。**Desktopのserviceをそのままpublic Serverへ公開しない**。public web用には契約・認可が検証されたread-only facadeを最小限列挙する方式を比較し、第二Business Operation正本は作らない。
+- internal/operations/dependency_test.goはWails、network、syscall/jsへの逆依存を禁止。Browser Go/WASM候補の追加でも、このHost中立の既存保証を維持する。
+- Wails公式（https://wails.io/guides/server-build/ 、2026-11-13更新）ではserver tagで同じGo Service binding/Web frontendがheadless HTTPサーバとして動く。**TEI Studio Web版にWails Serverを現実の比較候補として採用**し、別HTTP Frameworkを自動採用しない。ただし本番Web Authority/同時編集/HAをWailsが自動提供するわけではない。
+- 公式Server文書の標準イベントは**全接続ブラウザへWebSocket broadcast**し、event.Senderはbrowser-Nという接続識別子。**browser-N≠Principal≠Workspace≠Audience**。Source、Trace、Provider結果、AI Task/Promptなどを無条件にEventへ載せない。一般通知は非機密、対象を持つ結果はHostで認証済みAudience/Scopeを確認した応答・個別配信経路を必要とする。
+- Wails ServerのOrigin/Host/loopback制限は確認できるが、それだけでユーザー認証やWorkspace認可を証明しない。Webでは既存#1043/#3421のTLS/Origin/CSRF/Cookie/Session/Resource/Rate/Request sizeの実強制を別に試験する。
+- Go公式（https://go.dev/wiki/WebAssembly）ではブラウザGo/WASMはGOOS=js GOARCH=wasmと同一Go系統のwasm_exec.jsを使う。WASI実行（wasip1）や外部Host/WIT Plugin ABI（#1861）は別用途であり、一つのWASM実行契約へ自動統合しない。
+
+### 17.2 共通化する五層と保持する境界
+
+| 層 | Desktop Wails | Web Wails Server | Browserの任意Go/WASM |
+| --- | --- | --- | --- |
+| Source/Meaning/Contract | TEI正本・既存受理 | Workspace別Source/意味・同じContract | Hostが明示的に公開したread-only投影／未確定診断 |
+| Pure Computation | Go native | 共通Go native | 純粋・決定的で移植できる部分集合だけ候補 |
+| Application Operation | Hostが確認した型付きGo Operation | 認証・Workspace確認後に同じOperation | Result投影だけ。独自Resolver・Commit・Authorityなし |
+| Transport/Host | local Wails IPC/OS root制限 | Wails HTTP/WSとHost認証・現Grant | Browser memory/Worker・明示した安全なメッセージ |
+| Presentation/Session | TS CodeMirror、Focus、Dirty、Pin | 同じTS UI、tab/session競合 | 重い純粋Projectionは検証候補。DOM/IME/FocusはTSが既定 |
+
+「状態・コンテキスト管理」のうち、**Semantic ContextのID/意味/Source occurrence/Result shape**は共通Go契約で扱える。一方、Client View Context（DOM/Focus/IME/Scroll/Dirty Buffer/Tab/Selection epoch）はTS Presentationに置き、Authority/Grant、実Provider Selection、Commit対象をBrowser/WASMに委譲しない。WASMのPreviewはHostの受理結果・実Read・実Grantへ昇格しない。
+
+### 17.3 Plugin RoleとExecution Placementを直交させる
+
+Language/Operator/Generator/Data/Presentationという役割と、native Go / server Go / browser Go-WASM / process / external Targetという配置を分ける。WASM追加を理由にCore固定CapabilityKind、第二Plugin Resolver、常駐Hostを増設しない。**Browserに配信されたWASMは計算用Artifactであり、ロード成功・Digest一致だけでProviderの業務実行権限や認可を得ない**。
+
+最初の移植対象は、一つのSource-backed read-only projectionの純粋な部分（Inspector/三視点のOccurrence表示変換または既存Context Preview）だけとする。WASMへ全Application Operations・任意Native Provider・DB Provider・現在Grantを移植しない。TSで簡単に解ける小さなローカル状態は残し、Go native⇄WASMの意味忠実度と性能・再利用価値を測って採否を決める。
+
+比較尺度：初回配信byteとload latency、再利用時の応答／heap、JS/WASM境界のmarshalling、WorkerでEditor main threadを阻害しないか、必要なwasm_exec.jsの一致、Browser/OSごとの欠損・partial・stale・Null/Emptyの保全、Build/Assetの増分再利用、不要Profileへの物理非包含。**同じGoで書けるから高速になるという主張はしない**。WASM欠如時はpure Previewをunsupported/Host read-only経路へ明示的に切替える候補を評価するが、権限拒否・Source不整合・Commit失敗にlocal fallbackしない。
+
+### 17.4 横断受入候補（既存#1180/#2514のExpectedへ）
+
+| Case | 検査と拒否条件 | 主なOwner |
+| --- | --- | --- |
+| WSP-01 Server Reference | 既存127.0.0.1 Wails Server実起動、CLI/Desktop/Serverの同一read-only OperationのSubject/Source/Failure対照。外部bind不可のPoCを維持 | #1824/#3421 |
+| WSP-02 Service Surface | Wails実公開methodを棚卸しし、public Shared ServerでSHO Path・Command系に意図せぬ匿名／別Actor到達があれば拒否 | #1824/#1043 |
+| WSP-03 Event Broadcast | 2 Workspace×2 Principal×2 Tabで全WS受信byteを比較し、他WorkspaceのSource/Prompt/Trace/Resultを許可無しに受け取らない。browser-NをPrincipal扱いしない | #3421/#1178/#2515 |
+| WSP-04 Native/WASM | 一つのpure projectionをGo nativeとブラウザjs/wasmで比較。Subject/Occurrence/Span、missing/null/empty、partial/stale、集合順・精度・失敗分類を保全 | #1824/#1158/#2497 |
+| WSP-05 Wasm Build Evidence | Go Toolchain＋wasm_exec.js＋main.wasm＋N2 JS Bundle＋実Browser読み込みByteを各digestで固定。未選択Profileへ不要Asset/Initを含めない | #2831/#2600/#3267 |
+| WSP-06 Dirty/Authority Drift | WASM旧Preview後にSource/Grant/Provider Generationを変更。Browser側計算一致でもHost Applyで拒否・再Reviewを要求 | #1124/#1529/#1174 |
+| WSP-07 Cost Comparison | 同Fixture/DeviceでTS/native/WASMの起動・描画応答・memory/配布sizeを測定。優位性がなければWASM導入保留 | #1824/#2018 |
+| WSP-08 Product Scope | Studio Wails Server/Go-WASMの成功を生成業務Web App、第二Application Target #259、Stage2 Desktop #4583の成功へ流用しない | #259/#4583 |
+
+これらWSPラベルは新Runner/Expected正本ではなく既存fixtureへ紐付ける比較票。
+
+### 17.5 段階的実装順と停止線
+
+**P0維持**：Studio Desktop #4583の正式BuildIntent→N2/N3→Stage1/Stage2/実Windows Consumerと、#4611/#4612のHost selected Provider観測。Wasm、Web共有IdP、Stateの全面Go化をHard Gateに加えない。
+
+**P1（Wails Web共通PoC）**：#1824/#3421で現127.0.0.1 Serverのread-only実RPCとService Surface/Event隔離を検査し、Wails Server継続か独立の薄いHTTP Transportが必要かを実差分から判断。外部公開・複数Principal本番資格は与えない。
+
+**P2（選択的WASM）**：#1824/#1158/#2497でGo nativeとBrowser JS/WASMを一pure projectionだけ比較、#2831/#2600へ実Artifact closureを渡す。性能/Bundle/意味上の利点がない場合はTS/nativeを継続する。
+
+**P3（共有Webと異Target）**：#3421/#1223の多Principal/Generation、#1861のWIT比較、#259の第二生成Application Targetを独立に評価。全PluginのBrowser WASM化や無停止更新を当然視しない。
+
+**検証上限**：公式ドキュメントと現mainの静的照合のみ。新Wails serverの公開認証、WASM build/runtime、実Browser/二Principal、Wails版更新、Owner受理はNOT RUN / NOT ACCEPTED。
