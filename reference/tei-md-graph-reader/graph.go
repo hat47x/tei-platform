@@ -121,6 +121,58 @@ func isSeparator(cells []cell) bool {
 	return len(cells) > 0
 }
 
+// markdownCodeFence tracks only the fenced-code exclusion boundary; it does
+// not interpret Markdown or select a TEI Language/Role. Markdown fence markers
+// may be backticks or tildes, and a closing run must match the marker and be at
+// least as long as the opening run.
+type markdownCodeFence struct {
+	marker byte
+	width  int
+	opened Span
+}
+
+func markdownFenceRun(raw string) (byte, int, string) {
+	indent := 0
+	for indent < len(raw) && raw[indent] == ' ' {
+		indent++
+	}
+	if indent > 3 || indent >= len(raw) {
+		return 0, 0, ""
+	}
+	marker := raw[indent]
+	if marker != '`' && marker != '~' {
+		return 0, 0, ""
+	}
+	width := 0
+	for indent+width < len(raw) && raw[indent+width] == marker {
+		width++
+	}
+	if width < 3 {
+		return 0, 0, ""
+	}
+	return marker, width, raw[indent+width:]
+}
+
+func (f *markdownCodeFence) skip(ln textLine) bool {
+	raw := ln.text
+	if ln.number == 1 {
+		raw = strings.TrimPrefix(raw, "\ufeff")
+	}
+	marker, width, rest := markdownFenceRun(raw)
+	if f.width > 0 {
+		if marker == f.marker && width >= f.width && strings.TrimSpace(rest) == "" {
+			f.width = 0
+		}
+		return true
+	}
+	if width < 3 {
+		return false
+	}
+	f.marker, f.width = marker, width
+	f.opened = Span{Start: ln.start, End: ln.start + len(ln.text), Line: ln.number}
+	return true
+}
+
 // ParseCandidate only interprets the two explicitly named tables in the
 // fixed fixture profile. It never admits meaning, selects Providers, or
 // changes the Workspace's TEI_MD_PARSER_UNBOUND rejection.
@@ -139,7 +191,7 @@ func ParseCandidate(source []byte) (Candidate, error) {
 	seen := [3]bool{}
 	nodeIDs := map[string]struct{}{}
 	edgeIDs := map[string]struct{}{}
-	fence := false
+	var fence markdownCodeFence
 	for _, ln := range sourceLines(source) {
 		trim := strings.TrimSpace(ln.text)
 		if ln.number == 1 {
@@ -148,13 +200,15 @@ func ParseCandidate(source []byte) (Candidate, error) {
 		if strings.HasPrefix(trim, "> ") || trim == ">" {
 			continue
 		}
-		if strings.HasPrefix(trim, "```") {
-			// A fenced block is presentation, never an executable definition.
-			fence = !fence
+		if fence.skip(ln) {
+			// Fenced examples are never candidate declarations. A closing
+			// fence cannot silently resume the previous table section.
 			mode = none
 			continue
 		}
-		if fence {
+		if strings.HasPrefix(ln.text, "    ") || strings.HasPrefix(ln.text, "\t") {
+			// Markdown indented code is presentation, not a heading/table.
+			mode = none
 			continue
 		}
 		if strings.HasPrefix(trim, "#") {
@@ -221,6 +275,9 @@ func ParseCandidate(source []byte) (Candidate, error) {
 			edgeIDs[id] = struct{}{}
 			out.Edges = append(out.Edges, Edge{ID: id, From: cells[1].value, To: cells[2].value, IDSource: cells[0].span, FromSource: cells[1].span, ToSource: cells[2].span})
 		}
+	}
+	if fence.width > 0 {
+		return Candidate{}, &Diagnostic{Code: "UNTERMINATED_FENCE", At: fence.opened, Detail: "Markdown example fence is not closed"}
 	}
 	for _, mode := range []int{nodes, edges} {
 		if !seen[mode] || rows[mode] < 3 {
