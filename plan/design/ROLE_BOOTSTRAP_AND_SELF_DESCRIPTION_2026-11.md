@@ -2347,6 +2347,60 @@ TEI DSLの構文定義を通常のデータとして保持し、図や入力支�
 
 **P2 高度な自己記述と移植**：Grammar自体の自己記述、異言語Target、状態機械の統一、数理・統計・WBS等専門Toolkitは、既存Role/Operator/Providerと受理済み意味の実比較で段階的に採否を決める。数式/単位・精度、Event順序、Effectの独立Expectedを各Ownerが所有し、図解の成功を科学計算やTarget実行の正しさへ昇格させない。
 
+<!-- tei-self-description-generated-readonly-effect-20261114 -->
+### 41.6 「読むだけ」の定義を、生成アプリケーションの実行前後でも守る
+
+自己記述DSLが「データを読む」「検証する」と説明したOperationについて、**生成された実行ファイルが予期しないデータ変更を起こさないこと**は、構文や意味の正しさとは別に確認する必要がある。
+
+この問題は想定上の危険ではない。2026-11-14のmainで実Sourceを確認すると、`tools/reference-application-binary/templates/main.go.tmpl`では`query`、`command`、`validate`が共通で`sql.Open("sqlite", cfg.DSN)`→`Ping`→**`applyMigrations`**を経てから個々の処理へ進む。`migrations.go.tmpl`は生成されたMigrationの`SchemaSQL`を`db.ExecContext`で順次実行する。現在の実装は、問合せや検証の入口からもDDL等へ到達し得る構造である。
+
+一方、`generator_test.go`の既存二試験は`public.`を含むPostgreSQL方言のMigrationに対し`Skip`する。`internal/appgen/model.go`の`ctx.Databases = world.Databases`／`ctx.Migrations = world.Migrations`は対象ApplicationのRequired DBへ絞っていない。`config.go.tmpl`の`TEI_ENVIRONMENT`は値として保持するが接続は`TEI_DSN`による一つのSQLite DBである。これは**Reference生成器の現状**であり、すべてのTEI製品Targetで同じ挙動が確認されたという意味ではない。詳細なSourceと修正対象は既存[生成Binary RB0 #4657](https://github.com/hat47x/tei-platform/issues/4657)／[Migration #4234](https://github.com/hat47x/tei-platform/issues/4234)が所有する。
+
+この実例から、意味と生成物の契約を次のように接続する。
+
+| 確認する境界 | 必要な区別 | 最初の到達条件 |
+| --- | --- | --- |
+| **DSL・意味** | Query/Validationの業務上の目的、宣言Effect、許されたRead Scope | SourceにEffectが書かれていないことだけで実行が無作用だとは認定しない |
+| **Generator・Target** | 選択Application/Environment/Providerと、生成Entry/依存Migration/実Target方言 | 読取・検証の通常入口から暗黙Applyへの経路を除き、PostgreSQL SQLをSQLiteへ無条件に渡さない |
+| **実行前の入場** | 必要なSchema/Historyの読取り、現在Grant、未初期化／不一致／未確認 | 適合しなければ`not-initialized`／`unknown`／`unsupported`で停止し、自動修復しない |
+| **実行中の効果** | Query実Provider、接続モード、DBが実際に行ったDDL/DML/更新と結果 | 「Migrationを呼ばなかった」は一つの必要条件。SQL内関数等の作用まで否定するには別の制約／実観測が必要 |
+| **成果物と利用先** | 実Generated Binary、Toolchain、Source Revision、Consumer Attemptと独立再読取 | Generator成功や`exit 0`だけで、無変更・現在資格・Consumer受領としない |
+
+**最初のI0修正**は、通常の`query/command/validate`から暗黙のMigration Applyを取り除き、既存SQLiteを壊さず、未存在ファイルを必要以上に作らないことである。`validate`がDBを必要としない場合は接続そのものを省く。必要なDBをまだ初期化していなければ、暗黙に初期化せず理由を返す。明示的なSchema管理Operationの適合、Version/History、方言・複数DB選択、GrantとRollback/Receiptは#4234の後続で検収する。**「読取処理である」という宣言から、任意SQLの副作用が完全にないと推論することはしない。**
+
+既存[RBM反証 #4657](https://github.com/hat47x/tei-platform/issues/4657)を、Source定義→Generator→実Binaryという一つの検証線に使う。
+
+- **未存在SQLiteの通常Query**：別Processで生成Binaryを起動し、実DBファイル作成0、Migration Apply 0、DDL 0で`not-initialized`等の失敗を受領する。`Ping`やConnection初期化による副作用も含めて確認する。
+- **既存SQLiteのQuery／DB不要Validation**：二度呼んでもMigration由来DDL/DML 0、Schema/行/Historyの実Read差分なし。接続が必要ないValidationではDB接続0を確認する。
+- **Provider・Dialect・対象DBの違い**：`sql postgres`をSQLiteへ渡さず、無関係な別ApplicationのMigrationを選択しない。必要Target/Scopeが確定できなければ`unknown/unsupported`とする。
+- **テストの実効性**：`public.`による`Skip`をMigration合格として数えない。別のSQLite適合Fixtureで生成した実バイナリを**非SKIPで起動**し、前後のSchema・データを独立に比較する。予期せぬ変更を検出するため、生成器自身が出したResultを正解の唯一の根拠にしない。
+
+**Source／Artifactの現在資格も混同しない。** 現`model.go`の`sourceRevision`はRoot直下のエントリ名から作る簡易的な値で、ファイル内容の変化を証明するFingerprintではない。また`internal/appgen/generator.go`は必要な`BuildArtifactDigest`がない場合に`sha256:PLACEHOLDER`を入れる。この値を実生成Binaryの真正なdigestと呼ばない。実Artifact DigestはBuild完了後の外部Receipt/Manifestへ記録し、World/Model/Artifactの再利用・失効は[#2600](https://github.com/hat47x/tei-platform/issues/2600)の判断に戻す。自分のバイナリに自分の最終Hashを埋めることを自己記述の必須条件にはしない。
+
+### 41.7 処理の抽出・移植でも、実際の契約を保てる範囲だけ変換する
+
+同日mainへ統合された[実行モデルの契約保存変換 #4673](https://github.com/hat47x/tei-platform/pull/4673)は、第41節の図解を**実際のリファクタリングへ適用する際の境界**を具体化した。図の一部分をFunctionとして切り出すとき、見た目のまとまりだけでは独立した業務処理にならない。
+
+まず変換の性質を分ける。
+
+| 変換 | 最初に確認すること | 必ず残す条件 |
+| --- | --- | --- |
+| **表示だけを変える** | Tree/Graph/Layout/説明文の表示差分 | Source/意味Revisionと実Buildを不要に変更しない |
+| **糖衣構文を変える** | 変更前後のSource位置、解釈Parser・Role・Required | 同じ構造候補でも原文同一・Owner意味受理と同一視しない |
+| **処理単位を切り出す** | 境界を横切る型付き値、Read依存、例外、評価順、時点、状態所有 | Context/Grant/Transaction/Effectの必要部分が欠けたら実変換しない |
+| **別Targetへ移す** | Targetが要求順序・精度・NULL・Effect/復旧を満たせるか | 実CallとConsumer受領を別々に確認し、同値Resultのみで合格にしない |
+| **意図的に仕様を変える** | 変更理由・新Expected・Ownerの判断 | 従来の意味保存変換と偽らず、意味の受理からやり直す |
+
+具体例は、受注確定の処理図から「受注情報を読む→検証する」部分を抽出してread-only Functionへ移す場合である。抽出前後で同じ受注データが返っても、**生成Binaryが先にMigration DDLを発行するなら実効果は同じではない**。Read Scope、必要なEntry/Grant、DB Connection/Transaction、実作用、Response/Receiptを比較する。Codeの一部やDiagramが移動しただけではBuild/Provider/Effectの旧資格を引き継がない。
+
+変換後の再検証も一律ではない。Layoutのみなら表示とSource-back navigation、型・意味を変えたら関係するMeaning/Operator、TargetやBuilderを変えたら実ArtifactとConsumer、Execution境界を変えたら実Provider/Effect/Receiptをそれぞれ確認する。ただしSourceや実ProviderのA→B→Aを、旧Attemptの証拠の復活としない。対象と依存の把握が`partial`なら、その範囲でのみ再利用候補を示す。
+
+初期の実装試験は**同じpure Functionを小さく切り出す一例**と、**戻り値が同じでも前段MigrationやProvider Readが異なる負例一例**に絞る。既存[#4673](https://github.com/hat47x/tei-platform/pull/4673)のPX-23〜29を[#4198](https://github.com/hat47x/tei-platform/issues/4198)/[#2514](https://github.com/hat47x/tei-platform/issues/2514)へ参照し、新しいGraph Compiler、Migration Engine、第二のExpected正本は作らない。
+
+**計画への割当**：生成Binaryの通常起動の安全性は#4657の**I0**として先に修正・実検証し、明示Migration管理は#4234に残す。DSLのSource→実行前拒否と通常Product Providerの検収は#4359/#4495/#2586、再Build・Artifactは#2831/#2600、Graph変換と表示は#4198/#2497を維持する。全体で最優先の**TEI Studio非Plugin Stage1→Stage2 Windows Desktopセルフビルド**は変えず、新しいフローチャート／汎用文法が完成するまでP0を止めない。
+
+**状態**：第41.6・41.7節はmainの実Source、#4657の既存計画、main統合済み#4673を照合した**文書による引継ぎ**である。現行Referenceの暗黙Migration Callはコード上確認したが、今回そのGoコードを修正したり、実Generated Binary／SQLite／PostgreSQL／Windows／E2Eを新たに実行したわけではない。I0のPASS、全SQL read-only、安全なMigration適用、Owner意味受理、正式な製品Entry/Consumerは**未確認／未受理**。
+
 **状態**：本節はmainに統合済みの[#4665](https://github.com/hat47x/tei-platform/pull/4665)/[#4666](https://github.com/hat47x/tei-platform/pull/4666)、協業UX Draft、既存DSL/Buildの実CIを踏まえた**docs-only計画追補**。新規Go/Node/Windows/DB/Runtime/Mock E2E、Graph Compiler、公式Grammarの採用、Owner意味受理、Stage2 Desktopセルフビルド実行は**NOT RUN / NOT ACCEPTED**。運用上の正本は既存`MASTER_PLAN`と各Owner Issueであり、この章は横断参照と最小実装順を示す。
 
 <!-- tei-self-description-projection-qualification-slice-20261114 -->
