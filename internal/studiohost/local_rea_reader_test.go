@@ -54,10 +54,11 @@ func TestLocalREAHostBoundReaderProjectsTheExactCapturedEvidence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	reader.clock = func() time.Time { return localREAReadAt }
 	// Changing a caller's configuration after construction must not retarget
 	// a Host-pinned selector.
 	binding.File = "other.json"
-	result := reader.Read("workspace-1", "review-one", localREANodeID, localREARelationID, localREAReadAt)
+	result := reader.Read("workspace-1", "review-one", localREANodeID, localREARelationID)
 	if !result.OK || result.Failure != nil || result.Value == nil {
 		t.Fatalf("Host Evidence read failed: %+v", result.Failure)
 	}
@@ -92,15 +93,15 @@ func TestLocalREAHostBoundReaderDoesNotAcceptUnboundResources(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	unknown := reader.Read("workspace-1", "../analysis.json", localREANodeID, localREARelationID, localREAReadAt)
+	unknown := reader.Read("workspace-1", "../analysis.json", localREANodeID, localREARelationID)
 	if unknown.OK || unknown.Failure == nil || unknown.Failure.Code != "OPERATION_FAILED" {
 		t.Fatalf("caller-selected path reached Host: %+v", unknown)
 	}
-	otherWorkspace := reader.Read("workspace-2", "review-one", localREANodeID, localREARelationID, localREAReadAt)
+	otherWorkspace := reader.Read("workspace-2", "review-one", localREANodeID, localREARelationID)
 	if otherWorkspace.OK || otherWorkspace.Failure == nil || otherWorkspace.Failure.Code != "WORKSPACE_NOT_ALLOWED" {
 		t.Fatalf("cross-workspace selection succeeded: %+v", otherWorkspace)
 	}
-	wrongRelation := reader.Read("workspace-1", "review-one", localREANodeID, "private_relation_secret", localREAReadAt)
+	wrongRelation := reader.Read("workspace-1", "review-one", localREANodeID, "private_relation_secret")
 	if wrongRelation.OK || wrongRelation.Failure == nil || wrongRelation.Failure.Code != "OPERATION_FAILED" ||
 		strings.Contains(wrongRelation.Failure.Message, "private_relation_secret") {
 		t.Fatalf("R2 error leaked external identities: %+v", wrongRelation)
@@ -118,7 +119,7 @@ func TestLocalREAHostBoundReaderRejectsMutationAndOversize(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(root, "analysis.json"), changed, 0600); err != nil {
 			t.Fatal(err)
 		}
-		got := reader.Read("workspace-1", "review-one", localREANodeID, localREARelationID, localREAReadAt)
+		got := reader.Read("workspace-1", "review-one", localREANodeID, localREARelationID)
 		if got.OK || got.Value != nil || got.Failure == nil || got.Failure.Code != "OPERATION_FAILED" ||
 			strings.Contains(got.Failure.Message, "private") {
 			t.Fatalf("modified/oversized evidence projected or leaked: %+v", got)
@@ -141,7 +142,7 @@ func TestLocalREAHostBoundReaderRejectsRootReplacementAndSymlinkEscape(t *testin
 		t.Fatal(err)
 	}
 	replaceWorkspaceRoot(t, root, replacement)
-	changed := reader.Read("workspace-1", "fixed", localREANodeID, localREARelationID, localREAReadAt)
+	changed := reader.Read("workspace-1", "fixed", localREANodeID, localREARelationID)
 	if changed.OK || changed.Failure == nil || changed.Failure.Code != "WORKSPACE_ROOT_CHANGED" {
 		t.Fatalf("Host followed changed root: %+v", changed)
 	}
@@ -159,7 +160,7 @@ func TestLocalREAHostBoundReaderRejectsRootReplacementAndSymlinkEscape(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	escaped := reader2.Read("workspace-1", "review-one", localREANodeID, localREARelationID, localREAReadAt)
+	escaped := reader2.Read("workspace-1", "review-one", localREANodeID, localREARelationID)
 	if escaped.OK || escaped.Value != nil || escaped.Failure == nil || escaped.Failure.Code != "OPERATION_FAILED" {
 		t.Fatalf("Host followed escaping symlink: %+v", escaped)
 	}
