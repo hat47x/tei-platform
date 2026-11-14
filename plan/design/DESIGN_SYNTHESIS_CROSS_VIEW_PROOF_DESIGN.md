@@ -946,4 +946,3 @@ CSW/SUIのKJ法的なCard/Islandの集合をTEI Relationへ投影するときは
 **Fixture**：同一親Taskの下に、非空IDなし・同名・同FunctionのAction A/Bを置き、Bを固定選択したままA/Bの間へXを挿入。Sourceの版とSpanが変化した際、Bの誤選択・誤書戻しを防ぎ、元形式とTEI形式の情報損失を報告する。Source-faithful #950、read-only cross-view #1031、Modeler #1124、Projection逆写像 #2497、成果物 #1803、独立Expected #2514の既存Ownerで扱う。**Source tokenをそのまま永久の業務Identityに昇格させず、新Core ID型も先行追加しない**。
 
 **資格**：固定版Sourceの既存観測と設計上の負例。X-TEA実GUI・元XML編集往復・TEI Studio E2EはNOT RUN。
-

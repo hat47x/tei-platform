@@ -1296,7 +1296,7 @@ OKF等の文書管理、SHO文書、Git/NAS/S3等の外部Evidence保管は出�
 **完了の停止線**：#4536の実Go接合は局所P0の完了、#4359は表層と意味変換、#1251/#2586は実Provider/Read、#2831は実TEI再入をそれぞれ独立審査する。旧#1119 G0〜G4に新しい全件必須Gateを追加しない。今回のESD/SD-S0の拡張Caseの新規実装・実行、Product Role Descriptor Interpreter、Studio/SHO、Current Grant、実Target/セルフビルド資格は **NOT RUN / NOT PROVEN**。
 ## 25. 2026-11-13 横断深化：自己記述と生成AIによる生成器生成を接続する
 
-本節は§23のD0〜D4を置き換えず、標準データに記述した意味から**生成器を選択・合成・必要なら生成AIで拡張する**際の最小契約を補う。実装責務は [#4544](https://github.com/hat47x/tei-platform/issues/4544)（G1/G3）、[#1063](https://github.com/hat47x/tei-platform/issues/1063)（生成時DSL）、[#2016](https://github.com/hat47x/tei-platform/issues/2016)（既存生成器選抜Reference）、[#2595](https://github.com/hat47x/tei-platform/issues/2595)（検査／実消費Source）、[#951](https://github.com/hat47x/tei-platform/issues/951)（Plugin実選択）、[#2514](https://github.com/hat47x/tei-platform/issues/2514)（独立検証）に維持する。§23のRole自己解釈 #4536 と平行に進め、双方の完了を互いのP0のHard Dependencyにしない。
+本節は§24のD0〜D4を置き換えず、標準データに記述した意味から**生成器を選択・合成・必要なら生成AIで拡張する**際の最小契約を補う。実装責務は [#4544](https://github.com/hat47x/tei-platform/issues/4544)（G1/G3）、[#1063](https://github.com/hat47x/tei-platform/issues/1063)（生成時DSL）、[#2016](https://github.com/hat47x/tei-platform/issues/2016)（既存生成器選抜Reference）、[#2595](https://github.com/hat47x/tei-platform/issues/2595)（検査／実消費Source）、[#951](https://github.com/hat47x/tei-platform/issues/951)（Plugin実選択）、[#2514](https://github.com/hat47x/tei-platform/issues/2514)（独立検証）に維持する。§24のRole自己解釈 #4536 と平行に進め、双方の完了を互いのP0のHard Dependencyにしない。
 
 ### 25.1 既存実装を先に使い、未接続の意味だけを検証する
 
@@ -1336,11 +1336,11 @@ OKF等の文書管理、SHO文書、Git/NAS/S3等の外部Evidence保管は出�
 
 具体的な引渡しは、#4544（G1/G3候補選抜）、#2595（実Build input closure）、#1121（Target-neutral Lowering）、#943/#1370（Artifact/実行同一性）、#2600（増分再資格化）、#2831（TEI全体セルフビルド）。最初の実証はCLI/headlessを先行し、Studio/SHO/Web/EKIなどの完成を必須にしない。TEIの通常Go単一バイナリ配布と、必要に応じた外部Java/.NET/WASM Targetの方針を維持する。
 
-**Evidence：本§24は設計書への追補のみ。** 現行mainの参照生成器READMEと#2016/#2595/#1063等を静的に照合した。GG-01〜10の新規Go/Target/AI候補試験、Descriptor→Generatorの製品縦断、再生成の実Artifact、正式Owner意味受理は **NOT RUN / NOT PROVEN**。既存#1119のG0〜G4を変更しない。
+**Evidence：本§25は設計書への追補のみ。** 現行mainの参照生成器READMEと#2016/#2595/#1063等を静的に照合した。GG-01〜10の新規Go/Target/AI候補試験、Descriptor→Generatorの製品縦断、再生成の実Artifact、正式Owner意味受理は **NOT RUN / NOT PROVEN**。既存#1119のG0〜G4を変更しない。
 
 ## 26. 2026-11-13 製品縦断への収束：自己記述・生成器・Function起動・セルフビルドを結ぶ
 
-§23のD0〜D4、§24のG1→G3→G2は、**成立を区別するための段階**であり、それぞれに別の製品エンジンを設ける意味ではない。Studio・Function起動・データ様式・AI Harness・Self-Buildの議論を踏まえると、最上位の製品目標は**TEI Studio Desktopを構築し、その実成果物をTEI自身の定義・実行経路で再構築できること**である。実Functionの起動は製品機能を先に検証する独立レーンであり、Desktopセルフビルドそのものではない。GUIが完成するまで製品CLI/共通APIの実証を止めない。
+§24のD0〜D4、§25のG1→G3→G2は、**成立を区別するための段階**であり、それぞれに別の製品エンジンを設ける意味ではない。Studio・Function起動・データ様式・AI Harness・Self-Buildの議論を踏まえると、最上位の製品目標は**TEI Studio Desktopを構築し、その実成果物をTEI自身の定義・実行経路で再構築できること**である。実Functionの起動は製品機能を先に検証する独立レーンであり、Desktopセルフビルドそのものではない。GUIが完成するまで製品CLI/共通APIの実証を止めない。
 
 本節は既存の[#4495](https://github.com/hat47x/tei-platform/issues/4495)（Function→Entry→実Invoke）、[#4536](https://github.com/hat47x/tei-platform/issues/4536)（Role読取）、[#4544](https://github.com/hat47x/tei-platform/issues/4544)（Generator構成・Conformance）、[#2831](https://github.com/hat47x/tei-platform/issues/2831)（全体Self-Build）を**別Ownerのまま接続**する。新Coordinator、第二Resolver/Registry/Host、新しいG0〜G4 Gateは作らない。
 
@@ -1400,7 +1400,7 @@ SJ-01/02はP1-Jで優先、SJ-03/04は#2600/#2595、SJ-05は#2831、SJ-06/07は#
 
 ### 27.1 製品の目的と、各レーンの優先度を補正する
 
-**製品全体の第一目標は、TEI Studio Desktopの実構築と、TEI自身によるDesktop再構築である。** §25のFunction起動 #4495 は、稼働システムとの接合を確かめるFunctionレーン内の先行実証である。Role自己解釈 #4536、Generator選抜 #4544、DesktopのWails利用 #1824、全体Self-Build #2831を一つの新しい完了Gateにはせず、既存実装を接続しながら並行して進める。X-TEA三要素/Modeler/Data ScriptのDesktop Plugin移管は第二の製品柱だが、最初のSelf-BuildのHard Dependencyにはしない。
+**製品全体の第一目標は、TEI Studio Desktopの実構築と、TEI自身によるDesktop再構築である。** §26のFunction起動 #4495 は、稼働システムとの接合を確かめるFunctionレーン内の先行実証である。Role自己解釈 #4536、Generator選抜 #4544、DesktopのWails利用 #1824、全体Self-Build #2831を一つの新しい完了Gateにはせず、既存実装を接続しながら並行して進める。X-TEA三要素/Modeler/Data ScriptのDesktop Plugin移管は第二の製品柱だが、最初のSelf-BuildのHard Dependencyにはしない。
 
 2026-11-13のmainでは cmd/tei-studio/go.mod は独立Go module（go 1.26.11、Wails v3.0.0-beta.29、root TEIへのreplace）。cmd/tei-studio/main.go の StudioBridge は既存 studiohost.ReadOnly のList/Catalog/Validate/Inspect等へ委譲する。**BridgeやrootのGoテストの存在を、実Desktopバイナリ、WebView、モデル駆動生成の合格と読み替えない。** 実OS向けTarget、選択済みnested moduleのgo.mod/go.sum、Wails/Node/Go依存と実成果物を別に確認する（#1251/#1824）。
 
@@ -1505,7 +1505,7 @@ X-TEAは参照元の歴史的名称として必要な範囲で使い、新規実
 **今回の確認範囲：GitHub mainの既存2 Workflows、Workbench pin/adaptor、Studio Go embed/Bridge、Build Intent outer、他Issue/PRの静的読取と設計追補。** GD-1〜4の新規実Windows Wails Build／WebView2/生成Desktop/Stage2実行、Go/Node CI実行、Ownerの意味受理は **NOT RUN / NOT PROVEN**。#1119 G0〜G4変更なし。
 ## 29. 2026-11-13 最初の実装PR：生成Workbenchを実Windows Wails Desktopで使用する
 
-### 29.1 §27の設計から実装への接続
+### 29.1 §28の設計から実装への接続
 
 第27節GD-1〜3を、[#4579 Draft](https://github.com/hat47x/tei-platform/pull/4579)（`ci/generated-wails-desktop-webview2-20261113`）で具体化した。**従来のordinary Windows WebView2 Jobは残し**、同じWorkflowに独立の`generated-desktop-webview2-smoke` Jobを追加している。このJobは#1824に既存のPoC B `reference-studio-static-composition`／`compose-ui.mjs`／`connect-workbench.mjs`と、既存`desktop_webview_smoke.py`を呼ぶため、新しい生成器・Desktop Host・WebDriver/Runnerを実装しない。
 
@@ -1527,14 +1527,14 @@ GD-1はexact PR HEADのSource/Command/Responses/Graph Pinと同一fixtureからG
 
 新しいJobを含む[#4579](https://github.com/hat47x/tei-platform/pull/4579) HEAD `5b9fb2a5300ac0b2b33476ade753596693c3407e`について、2026-11-13のPR Open後に`TEI Studio Wails Desktop WebView smoke`などのGitHub Actionsがqueued/in_progressであることを確認した。**本段階ではCI successは未確認**。正確なWorkflow run／Job step／exact HEAD／生成bundle digest／実WebView2 snapshot／失敗時のlogを取得して検収する。`server`版Green、ordinary Desktop Green、生成版native Desktop Greenは別Claimとする。直接確認できないものはNOT VERIFIEDと表示し、推測したPASSにしない。
 
-**今回の追加は設計§28と実CI Draft PRの新設であり、セルフビルドStage1→Stage2、X-TEA native Desktop実受入、実DBのStudio受領はまだ完了していない。** 既存#1119 G0〜G4／#1180独立Expectedを変更せず、Source/Build/Consumerを連鎖させる最初の狭い実証を優先する。
+**今回の追加は設計§29と実CI Draft PRの新設であり、セルフビルドStage1→Stage2、X-TEA native Desktop実受入、実DBのStudio受領はまだ完了していない。** 既存#1119 G0〜G4／#1180独立Expectedを変更せず、Source/Build/Consumerを連鎖させる最初の狭い実証を優先する。
 ### 29.4 2026-11-13 実Windows Generated DesktopのCI観測（PR #4579 exact HEAD）
 
 [TEI Studio Wails Desktop WebView smoke Run #43361607881](https://github.com/hat47x/tei-platform/actions/runs/43361607881) において、[Draft PR #4579](https://github.com/hat47x/tei-platform/pull/4579) HEAD `5b9fb2a5300ac0b2b33476ade753596693c3407e` の**新規 generated-desktop-webview2-smoke Jobは completed/success**。同Runの ordinary `desktop-webview2-smoke` Jobも completed/success。重要なのは、二つのGreenを加算したのではなく、**新Job一件の中で生成Source→native Windows Wails exe→実WebView2を接続して合格した**ことである。
 
 実Jobログで確認した限定証拠：Windows上の固定PoC B／Workbench生成・Pin／Go/TypeScriptの型・テスト・esbuild、`studio_generated`（`server`なし）Desktop exe Build、実WebView2テストがsuccess。`generated-workbench-asset-verified` は `/workbench/main.js` **681,264 bytes、SHA-256 `351bedd94693e80d08baca611625368c05ff59450f27c79c5a6ebc0c6e247d63`**を報告し、生成時SHAと実WebView2から再取得したbyteの一致を確認した。`workbench-catalog-inspect-validate-verified` はCatalog **72件**、初期`sales.order`→`sales.order.order_id` Inspect、検証表示**エラー0・警告3**、実画面パス`/workbench/`を記録。参照Editorはread-only、実WebView2キーボード検査も成功。これらは**このHEAD／固定Workspace／このRunnerの有限な正例**である。
 
-**今回更新できるClaim**：§27のGD-1〜3、§26のDS1について「固定PoC B Generated WorkbenchをWindows Wails実Desktopへ収録し、実WebView2/IPC/Hostから利用できた」ことの限定実証。DS0 ordinary Desktopも同一Runの別Jobで成功。`#4559`のFunction生成や`#4570`の三要素Plugin、DB Provider、Role Interpreter一般化の資格は付随しない。**DS2/GD-4 Build IntentからのTEI駆動BuilderとDS3/L3 Stage1自身によるStage2再入は依然NOT RUN/NOT PROVEN**。Buildに含まれる全依存、OS境界W、全Platform、現在Host Grant・業務Ownerの意味受理も証明しない。
+**今回更新できるClaim**：§28のGD-1〜3、§27のDS1について「固定PoC B Generated WorkbenchをWindows Wails実Desktopへ収録し、実WebView2/IPC/Hostから利用できた」ことの限定実証。DS0 ordinary Desktopも同一Runの別Jobで成功。`#4559`のFunction生成や`#4570`の三要素Plugin、DB Provider、Role Interpreter一般化の資格は付随しない。**DS2/GD-4 Build IntentからのTEI駆動BuilderとDS3/L3 Stage1自身によるStage2再入は依然NOT RUN/NOT PROVEN**。Buildに含まれる全依存、OS境界W、全Platform、現在Host Grant・業務Ownerの意味受理も証明しない。
 
 **次の実装引渡し**：#2831は今回の生成Source/Toolchain/Build Target/実Exe digestを`BuildIntent→actual Builder input→Stage1 Process→Stage2 Desktop Artifact`に接続し、Runnerが外部から2回buildする偽L3と区別する。#1824はこの実WebView2 smokeを退行基線として維持し、#4570の三視点Pluginは同じConsumer契約へ接続する際に別途実検収する。新規Registry、Proof Store、E2E Runnerを作らない。
 
@@ -1582,7 +1582,7 @@ GD-1はexact PR HEADのSource/Command/Responses/Graph Pinと同一fixtureからG
 
 **次に解く順序**：#2831 B0/B1を実装着手の主線に置く。#1824は既存Windows generated-desktop jobを継続基線とし、#4572/#4579の合流後も反例を削らない。#1124の三要素分析法のモデルPluginと#2586/#4559の実Function・DB受領は並走させるが、Desktop Self-Buildの新Hard Gateにしない。#4544 G1/G3/G2で生成器自体をAIに作らせる研究をB0〜B3の先行条件にしない。
 
-**この§29の状態**：PR #4579 CI success、#4572 exact HEAD CI successおよびbranchの局所reentry実測、#4559/#4570のDraft試験報告を静的照合した計画更新。**統合HEADのBuild Intent→Stage1 TEI→Stage2 native Windows Desktop→実WebView2というB0〜B3の新試験はNOT RUN**。Owner受理・全Platform G4も未証明。
+**この§30の状態**：PR #4579 CI success、#4572 exact HEAD CI successおよびbranchの局所reentry実測、#4559/#4570のDraft試験報告を静的照合した計画更新。**統合HEADのBuild Intent→Stage1 TEI→Stage2 native Windows Desktop→実WebView2というB0〜B3の新試験はNOT RUN**。Owner受理・全Platform G4も未証明。
 ## 31. 2026-11-13 同一HEAD生成Desktop検収：B0実証とB1の実入力断線
 
 ### 31.1 初めて成立した限定的な同一HEAD実証
