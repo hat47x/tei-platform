@@ -1042,3 +1042,85 @@ Plugin自身をセルフビルドする際も既存Builder/BuildIntent/Stage1→
 
 **状態**：現mainのGraph表示コードと既存Issueを静的照合した設計・受入候補。新Graph意味Reader、Y0〜Y3縦断、Graphからの実Generator、Source書戻し、実OS試験、Owner受理は**NOT RUN**。現行Graph\`normalizeGraph\`や#4572/#4587のInspector生成結果を今回のSGC試験PASSには転用しない。
 
+---
+
+## 19. Studioの選択対象をCLI・AIハーネスへ渡す最小経路（2026-11-14、設計・受入追補）
+
+<!-- tei-desktop-subject-context-handoff-20261114 -->
+
+§14/18のSource／Graphの同一性、§13の編集・操作境界と、他チャットでの「TEI CUI/GUIで選択した設計要素を、生成AIが迷わず扱えるようにする」という要求を、**read-onlyの選択→現在性確認→用途別Context→外部受領**までの一本の経路にする。新しいHarness、AI Session Store、第二Source Resolver、MCP専用Meaningや全情報一括Promptを作る提案ではない。既存#4515（Subject Pin）、#3262（Required Design Context）、#2516（用途別開示）、#1158（型付き操作）、#1180/#2514（独立Expected）に処理を割り振る。
+
+### 19.1 選択操作で受け渡すのは「操作対象の意図」であり、権限ではない
+
+現行mainの\`reference/tei-studio-workbench/main.ts\`は\`selected: Subject | null\`を持ち、List／Graphから同じ\`inspect(entry.subject)\`へ収束する。\`responses.ts\`の世代管理はUIの後着採用だけを制御する。明示的なPin/Unpinと外部Harness送信は未実装である。現行\`cmd/tei-studio/assets/client.mjs\`の\`inspectSubject(workspaceID,kind,subjectID)\`と、\`cmd/tei-studio/main.go\`の\`StudioBridge.InspectSubject\`／\`studiohost\`を、まず既存の**read-onlyの検証入口**として使う。
+
+選択時には、少なくとも次の情報を**異なる性質の値**として扱う。
+
+| 情報 | 役割 | 受け入れられない省略／推定 |
+| --- | --- | --- |
+| **Focus** | いま閲覧・編集している一時的な対象。元の画面Session内で変わる | Focus移動をPin解除や他のDirty Bufferの変更と同一視しない |
+| **Pin Intent** | ユーザーが固定したいWorkspace ID＋Subject kind/id（必要ならSource occurrence）。将来のローカルUI状態 | 描画Edge ID、ラベル、座標から意味Relationを生成しない。Pinだけで現在のRoot／Grant資格を得ない |
+| **Source／Meaning Anchor** | Hostが実Sourceから解決する出所とRevision、意味ID、Role、対象Scope。Source spanが一意でない場合は未解決 | 生path、行番号、描画オフセットだけで同一Subjectへ束縛しない。Dirty Bufferと保存済みSourceを混ぜない |
+| **Context要求** | このSubjectで何をしたいか（説明、コード生成、Review、Test等）と必要な情報の範囲 | 用途未指定のWorkspace全体を「漏れなく」送信しない |
+| **Consumer／開示先** | 人向け画面／CLI／MCP／外部Harness等。現在のHostによる開示判定が必要 | read-onlyで取得可能＝外部LLMへ送信可能、ではない |
+
+複数Selectionを将来導入するときも、Subjectを表示名で重複排除しない。多重Relationは意味Occurrence IDが存在する場合だけ選択対象として送れる。現Workbenchの\`relatedGraph()\`が作る表示用\`parent:\` Edgeは**Relation選択・Pin・AIへ送る正式関係IDとしてunsupported**のままとする。
+
+### 19.2 具体的な引渡し経路と、各段階で停止する条件
+
+\`\`\`text
+Studio Focus / optional Pin（UIの意図）
+    ↓ workspaceID, kind/id, UI epoch（未信頼の要求）
+Host-owned Catalog / Inspect（現在の許可Root、Source/Meaningを再解決）
+    ↓ qualified Subject と受領済みRevision／Scope
+Required Design Context（#3262、目的別の必要項目と不足を照合）
+    ↓ Source refs / Role / Expected / partial・unknown を保持
+Disclosure Projection（#2516、対象Consumerと送出先の現在資格）
+    ↓ 許可範囲だけのContextと欠落診断
+CLI / MCP / Harness adapter（既存Operationを利用）
+    ↓ 実受信と転送完全性のObservation（業務受理ではない）
+AIの説明・コード候補・テスト提案
+    ↓ diff / source再照合 / Review、必要時のみ既存Accept／実行境界
+\`\`\`
+
+**最初の縦切りはGUI連携よりもCLIを先行できる**。既存のread-only \`model catalog\`、\`inspect\`、\`source-index\`、\`trace\`、\`validate\`等を組み合わせ、実Hostが解決した一Subjectを機械出力で取得する。具体的なargvや新しい\`context\`コマンドは現実の実装に合わせて検収し、ここで未実装コマンドを製品入口として固定しない。MCPやStudioはこの意味処理を再実装せず、適合するConsumer Adapterとする。外部AIハーネスの製品名をTEIのMeaningやOperationに含めない。
+
+Design Contextは一件のJSONが返っただけでは「完全」にならない。#3262に従い、用途・Subject・Scopeに対するRequired、Discovered、Loaded、Parsed、Bound、ReturnedとMissingを比較する。未対応Reader、Source未読込、部分Graph、Scope不明、必要なRule/依存が見つからない場合は、正しい解説を生成するための**未確定情報**として伝える。特に\`*.tei.md\`の\`TEI_MD_PARSER_UNBOUND\`と、空の\`source-index\`を「Sourceがない」「設計が完結した」に置き換えない。
+
+外部送信時は、#2516/#1178の用途・Consumer・Sink相対の開示を適用する。**受領できた情報の範囲**と**外部に渡せる情報の範囲**は別である。未許可のSource/Secret/存在件数・ID・原文を、エラーや診断に紛れて漏らさない。人向け表示で省略した事実も、正式な不存在の証明には使わない。
+
+### 19.3 同じSubjectを使っても、画面・CLI・AIの状態は共有しない
+
+- **AをPinし、Bを編集中**：AのContextを再Inspect／外部Harness向けに構成しても、BのFocus／Dirty Buffer／Graph選択・Editor Undoは変えない。新しいAI入力欄のFocusを強制しない。
+- **Pinの現在性が失効**：Workspace A→B→A、同Source offsetのSubject差替え、Meaning/Role変更、Panel/Window再作成、古いInspect Replyなどを受けた場合は、Pin Intent自体を勝手に書換えない。ただし、現在使用できるSubject／出所／Grantの資格は改めて判断する。
+- **下書きと保存済みの区別**：Dirty Bufferは、保存済みSourceの受理済みMeaningとして外部送信しない。Draftをレビュー用に明示提供する場合は、Draft由来・未受理・送信先・開示可否を別に示す。
+- **Harnessの成果**：AIが返したSource Patchや設計案は、独立Expectedに照らしたProposalであり、保存・Meaning Acceptance・Build・外部Effectとは異なる。古いRevisionに向けた提案を自動Applyしない。実Effectがunknownの場合は既存Receiptのlookup-firstを優先する。
+- **受信と完全性**：長いContextは固定Snapshotと同じGrantの範囲で分割取得し、順序・part digest・終了マーカーと受信件数を照合する。途中切断やRequest/Reply欠落は、CLI exit 0／MCP Tool successでも「全件受領」としない。#3262で報告された8,192byte切断等を負例に再利用する。
+
+### 19.4 Studioの最小UIと、持ち込まない実装
+
+P0のStudioでは、既存Inspectorの近くに**選択中のSubject、固定対象、Source出所、取得できた範囲／不足、現在性**を読取専用で示すところまでを最初の検討対象とする。複数の固定対象を使う大きな「AI Context棚」、常駐Chat／モデル切替、任意PluginによるBridge直接実行、相互に同期する第二のTask Storeは先に導入しない。CLI/AI-firstの時点では、このUI自体は製品P0のHard Gateにしない。
+
+AIが参照するPlugin/Operatorの利用法は、#951のContract/依存とPlugin側の説明・操作文書から探索できる必要がある。ただし、Skill／READMEは利用手順と必要なContractの案内役であり、**命令権・Plugin実装の存在・Builder／Provider選択・業務意味受理**を代行しない。最初の実績は、一SubjectのInspectと必要資料の**read-only実受領**に限定する。
+
+### 19.5 引渡し先と反証用の独立ケース
+
+| Case候補 | 入力・操作 | 必須の拒否／観測 |
+| --- | --- | --- |
+| **SCH-01** | AをPinしてBを閲覧・編集中にAをCLIで再Inspect | BのFocus／Dirty／Undo／Graph変化0。Aの対象は明示kind/idで再解決 |
+| **SCH-02** | 同LabelのNode、同端点・異意味の2 Edge、表示用\`parent:\`ID | Labelや描画IDで同一意味関係へ誤束縛0。Relation未対応はunsupported |
+| **SCH-03** | A→B→A、同offset別Subject、旧Reply後着 | Pin Intent保持と現在資格失効を区別。旧Context／旧Grantの自動復活0 |
+| **SCH-04** | 管理\`*.tei.md\`が未Reader、Source未読込、必要Relation欠落 | 機械／人向けContextのMissing・partial・unknownを保持。完全性を捏造しない |
+| **SCH-05** | 許可Scope外のSource／Secret／非公開Relationを含む | 元Source読取可能性と対外送出を別検査。禁止Source本文・ID・件数の開示0 |
+| **SCH-06** | 8,192byte切断、途中ページ欠落、stderr混在 | 全part／終了マーカー／stdout JSONの受領が不完全ならcomplete=不可 |
+| **SCH-07** | 外部Harnessが新Revisionに対し旧Source Patchを返す | Proposalとして保持。Review／再Read／再受理なく自動書戻し・Invoke0 |
+| **SCH-08** | Studio／CLI／MCPが同一Subjectを別Snapshot／Attemptから取得 | Identity／Source／Revision／Disclosure／Required範囲が一致しない全体同値ClaimはFAIL |
+| **SCH-09** | 実Provider／Builderの宣言だけがあり、実Call/Consumerは未観測 | Candidate/Selected/Actual Invoker/Recipient/Effectの区別を保つ |
+| **SCH-10** | SubjectのPlugin操作説明が上位依存文書を指す | Source/Provider version・依存と参照先を辿れる。ただし文書読取をPlugin実Load/Grantに昇格させない |
+
+**Owner**：#4515/#1824がFocus/Pin/UI、#3262がRequired Context Query、#2516/#1178がDisclosure、#1158/#3421が型付きHost Operationと実受領、#988/#2621がSource/Reader、#951がPlugin文書／依存、#1180/#2514がIndependent Expected、#1174が実Effect。SCH番号は既存Scenario／Issueへ引き渡す候補であり、第二のScenario形式ではない。
+
+**最小実装順**：C0 現在のCLIで一SubjectのCatalog／Inspect／Source/Reader／Required Coverageを照合 → C1 UIローカルの明示Subject Pin（#4515、read-only）とSourceへ戻る操作 → C2 用途別Contextを同じOperationからCLI／MCP／Harnessへ投影して送出・受領・開示を分離 → C3 AI Proposalを既存Preview／Reviewと接続。**C0はStudio GUI不在でも可能で、C1〜C3をnon-Plugin Stage1→Stage2 Desktop製品P0の前提にしない**。
+
+**状態**：この節は現行main Workbench/CLI Bridgeと既存Issueの静的照合に基づく設計案。新Subject Pin、Harness Context API／MCP Tool、実LLM送信、Disclosure E2E、Source Patch Apply、Owner受理は**NOT RUN**。read-only \`inspect\`等が既存することは、CLIとStudioの同一Consumer資格やAIへの送出許可の証明ではない。
+
