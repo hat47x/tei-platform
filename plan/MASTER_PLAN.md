@@ -626,6 +626,29 @@ tei external-candidates
 
 **実行順と報告**：#4625はR3-Aの局所PRとしてactual CI、コマンドcatalog/usage/繰り返しFlag/異常系を先に検査し、失敗があればそのDraft内で修正。R3-B/CとTEA-Q41/Q43は#3394/#4487/#1124の既存実Consumerへ引渡す。#4619 D1の実Provider/異質ConsumerとTEI Studio Desktop Stage1→Stage2セルフビルド#1824/#2831は、#4625のマージやR3-BをHard dependencyにしない。今回のこの節は**docs-only、main未統合**。PR #4625の実装結果を受理・動作済みと宣言せず、exact HEAD CIとOwner Reviewで別途判断する。新Core/Host/Parser/Registry/Policy/Validation Engineや第二Canonicalは増やさない。
 
+<!-- rea-r3c-native-delivery-witness-20261114 -->
+#### R3-Cの次の実装単位：製品CLIとNative Studioの独立受領（2026-11-14、仕様確定候補・製品試験未実施）
+
+**技術検収の更新（PRごとに別資格）**：R3-A通常CLI [Draft #4625](https://github.com/hat47x/tei-platform/pull/4625) のHEAD `24863bd69a9139e1a75459a7c6607514dbc73ad8`は9/9 Workflow成功。R3-B byte-only R2入口 [Draft #4630](https://github.com/hat47x/tei-platform/pull/4630) のHEAD `1ad749fc0eaacc195dd28ea88a97bd44d9581050`は12/12成功。Host固定・bounded Reader [Draft #4637](https://github.com/hat47x/tei-platform/pull/4637) の**修正後の最新HEAD** `9b8f5ca9b50d34040cfa0682f026f4fc29090f01`も [Workflow実一覧](https://github.com/hat47x/tei-platform/actions/runs/43571893030) のRepository Healthを含む**12/12 completed/success**を確認した。初稿`0d961098`の2 Rootテストは誤ったExpectedにより失敗し、後続HEADの成功を旧HEADに遡及させない。主計画の本Draft #4603 HEAD `7b4de59`は別途2/2 Workflow成功。これらは**各Draftの技術合格でありmain未統合・R3-C未実施・Current Grant/Meaning未受理**である。GitHubの一時的な`mergeable`表示はOwnerレビューや競合再評価に代わらない。
+
+**統合順序と差分所有**：#4630のbyte-only seamをR2既存仕様との互換・全Go/Health・Ownerレビューで単独検収してからmainへ取り込む。#4637は#4630を含む積層差分なので、取り込み後の最新mainに基準化して、Host専用4ファイルの差分と2 Root・実テスト子Process・絶対Path漏洩拒否を同一HEADで再検収する。#4625は独立にCLI既存JSON/exit互換・実子Processとmainとの差分を確認する。**この順序を満たさず、単に三PRのCIがgreenという理由で一括マージしない。**
+
+**第二Product Consumerの第一候補はNative Studioの限定read-only受領**とする。現R3-B `LocalREAReader.Read(workspaceID,selector,observationID,relationID)`はGo Host内部にとどまり、Wails/UIから未到達。次の小PRでは固定WorkspaceとHost管理Selectorだけを入力とするnative専用の小さな読み出し境界を、既存#3419 Application Operationおよび#4503のHost選択に合わせて設計する。**一般`StudioBridge`へ無条件に公開メソッドを増やさない**。既存Wails Serverが同BridgeのCommand/外部プロセス機能まで登録していることは[#4627](https://github.com/hat47x/tei-platform/pull/4627)のSurface Inventoryで判明しているため、Native限定登録／Build対象とServer公開面の非増加を独立検査する。Web/HTTP/MCPへの送出は現在のActor/Grant/Disclosure資格が成立するまで非公開。Native版でもローカルHost範囲外のEvidenceを許可しない。別Host、別Parser、別AuthZ Engineは作らない。
+
+**実際の二Consumer受領票（独立Expected #2514/#1180へ記録し、Operation v0へ新必須フィールドを追加しない）**：
+
+| 観測する段階 | CLI側の証拠 | Native Studio側の証拠 | 合否の上限 |
+| --- | --- | --- | --- |
+| 対象の固定 | 実`tei external-candidates`実行のargv・ローカルEvidence実体／Pin | Host起動時固定`WorkspaceID+Selector`と許可Rootの実照合 | 同名・同Digestでも異Workspaceの現在許可は継承しない |
+| 実読取 | プロセスが読んだEvidence byteのDigest、Evidence ID、申告Source版 | bounded Readerが同じ固定Evidenceを取得した実AttemptとDigest | Producer raw一致≠元Source現在性・必要閉包 |
+| 操作呼出し | 本番CLI dispatch→R2 Operation→stdout/exitを子プロセスで受領 | 本番Studio native Service→R2 Operation→Wails境界を別実行で受領 | Go test子Processだけ、同一関数再呼出しだけではR3-Cに数えない |
+| 受信結果 | `tei.cli.external-candidates/v0`の構造化結果 | UI側で受けた`tei.operations.external-candidates/v0`の許可済みread-only投影 | 比較はNode ID、Directed Edge IDと向き、Coverage、Unknown、Unselected、AuthorityLimits。別ReaderのReadAt/Tool在庫差は明示 |
+| 許可と開示 | ローカル利用の範囲を記録。CLIのraw Path診断は別Scope | 対象外Selector/Root変更時は定型Error。Server登録やJS/DOM/ログ経由の非公開情報漏出なし | 同じ表示JSONでもConsumer/Audience/現Grantの同一性は主張しない |
+
+**停止条件**：未知Selector、別Workspace、Root差替え、symlink脱出、4MiB超、保存raw改変と再Pin、同IDの平行Edge／曖昧選択、末尾欠落・partial/unknown、Private有無だけ異なる二世界、NativeからServerへの意図しないService露出を既存Expectedへ割り当てる。特に保存byteのA→B→A復元はDigestが再一致しても途中変更履歴や現在Grantを示さない。元Source/Worktree・Disclosure・Principal/Reader Epochを独立に照合できなければ、そのClaimを`unknown/not-qualified`にする。Nativeで1ユーザーの受領が成功しても、Webの2 Principal・2 Workspace・HTTP/WSのCurrent GrantをPASSとしない。
+
+**R3-C後の最初の業務受入**は「旧ソフトのあるFunctionの参照Dataは何か」という問いに限定する。外部REA EvidenceのNode/有向Edge候補を、X-TEAのFunction宣言・Query SQL・TEI Data/Function/BusinessのQualified Refへ**0..N対0..Nのレビュー候補**として結ぶ。Sourceにない手作業、QueryのJOIN増幅、未確認のDB/Plugin、三要素別unsupportedを別に表示し、TEA-Q41/Q43とREA-ALIGN-01〜04で誤昇格を検査する。Ownerの明示承認後だけ通常`*.tei.md`をPreview→Save→再Readし、SHO出典再解決と旧実測L／Owner期待D／新実測Tをそれぞれ別試験にする。**今回の追補はdocs-onlyで、Native第二Consumer接続・実Delivery・Owner Meaning・新旧同値はNOT RUN**。Desktopセルフビルド#1824/#2831と実Provider Read#2586のP0をブロックしない。
+
 <!-- rea-desktop-web-branch-session-evidence-handoff-20261114 -->
 #### Studio Desktop／将来Web版の協業境界をREA Candidate Reviewへ接続（2026-11-14／構想整合・未実装）
 
