@@ -1103,3 +1103,49 @@ Instrumented boundaryが部分的なら、**「観測できた範囲のGraph整�
 5. **P2 / #1124/#4510/#2831**：同じSource由来の問い相対図表にBusiness Promise→Data Invariant→Function/Effect→Batch/Generation→Failure Witness→Owner Decisionを投影。観測範囲外のCommand/秘密情報を欠落ゼロとして可視化せず、実Studio/Builder/Targetで別検証する。
 
 **停止線と現状**：#3250が分割候補/Requirement Pressure/Owner判断先を所有し、#267が正式意味受理、#1174が実Effect、#1130がBatchの縦断受入を所有する。本節は既存Issue/PRの静的照合による**ETL側の要件・停止条件・独立Expectedの引渡し**である。新たなProduct Go/CLI/実PostgreSQL/Command・別Subsystemの実Tx、障害回復、Owner受理、exact-head CIは **NOT RUN / NOT ACCEPTED**。新Core K/L/S型、第二Oracle/Scenario SSOT、分散Tx/Saga Coordinator、必須Hostは追加しない。
+
+## 31. 期間締め・訂正再開とBatch Effect：旧Open資格のABA失効（2026-11-14、設計候補）
+
+**§30との分離**：§30は業務要件としての即時整合K、保留許容L、受付/確定分離Sを選ぶ資格を所有する。本節は要件が受理済みの場合でもなお生じる**Period StateのOpen→Closed→Open、古いRunPlan Precheck、下流のApply/Effect Commit間のTOCTOU**を扱う。§27/29の受理済みSupersession、適用Scope、期待旧版へ**期間観測資格**を加えるだけで、新Period DSL・Generation Core型・Effect Engine/Host/分散Txを作らない。
+
+### 31.1 三つの観測境界（同じPASSへ潰さない）
+
+| 境界 | 分離して確認するもの | それだけでは未証明 |
+| --- | --- | --- |
+| **RunPlan / Admit** | Required Period/Effect Guards、Callerが実際に供給したGuards、観測Period State・Source Revision | Commit時もPeriod Open/Grant有効、Required Guardがすべて渡された |
+| **Period Transition / Durable Readback** | Open→Closing→ClosedまたはClosed→Openの状態・遷移、CloseとCorrectionの宣言Capability、後続の実State Readback | CallerのCapability ID申告＝実Capability実行/業務Receipt、State Fileと下流DBが同Tx |
+| **Apply / Business Effect** | 受理済みOwner・期間・訂正Intent、**現在期間状態と現在性**、現在Grant、期待旧Applied Generation、実Provider Commit/Receipt・独立Resource Read | Reader/RunPlan/Period File/CLI Exitだけで業務上の訂正完了、外部Recipient全員へ到達 |
+
+既存[#2882](https://github.com/hat47x/tei-platform/issues/2882)はWorkspaceのPeriod/Effect RuleからRunPlanへ接続する局所試験を持つ（Period State Map、合成Step/Journal）。**Callerが全Required Guardを渡したこと、外部DB Commit時の期間状態の再検証を証明していない**。このGapは#1130のRequired-vs-Suppliedと実Target受入へ戻す。
+
+### 31.2 Close能力X、Correction能力Y、State変更後Errorを別々に扱う
+
+未統合[Draft #4397](https://github.com/hat47x/tei-platform/pull/4397)は、宣言されたCloseRequires XをOpen→ClosingとClosing→Closedに、Correction YをClosed→Openに分ける。XとYが異なるとき、ReopenにXまで要求するのは過剰であり、Yだけで通常Closeを許すのも誤り。ただし**Capability IDが一致しただけでは実Y Invocation/現在Grant/Owner Acceptanceの証拠にならない**。
+
+未統合[Draft #4389](https://github.com/hat47x/tei-platform/pull/4389)は、実Workspaceで状態File保存後のCheckPeriods拒否によりHandlerがErrorを返し得ることのReadbackを担当。**CLI非0・Handler Error ≠ Period State変更なし**。独立State Read、変更済みStage、下流Effect/Recipientの別観測を要する。両DraftのGo/CLI変更は別OwnerのためこのETL設計PRからは編集しない。
+
+### 31.3 Open→Closed→OpenのABAを見逃さない
+
+固定の合成例としてPeriod Dの観測版を (Open,rev1)→(Closed,rev2)→(Open,rev3) とし、旧Run Aはrev1時点でPlan precheckを通過したとする。**rev1/rev2/rev3は試験用の比較値であり、現TEIのperiodstateにepochが実装済みという意味ではない**。
+
+| 一因子変更・障害 | 手書きExpected |
+| --- | --- |
+| rev1/OpenでRun AをAdmit後、Period Closeがrev2へ | 古いPlan admissibleをCommit資格へ昇格しない。Aの旧G1→G2 Applyは拒否/保留 |
+| 正規のCorrection Yを受理してPeriod rev3/Openへ再開 | OpenというStateだけから旧rev1 Attempt、旧Grant、旧Checkpointを復活させない |
+| rev3/Openにrev1を期待するAが遅着 | State=OpenでもRev ABAのため**拒否**。必要なOwner/Rule Cutで新Attemptを作る |
+| rev3で受理済みの新Attemptが期待G1→G2を適用 | 対象Providerが現在Period/Applied版/Authorityを**同じ更新境界**で保全できる場合だけEffect合格候補 |
+| 再Close rev4後、rev3で準備した旧G2→G3が遅着 | 期間の現在資格不一致で拒否/保留。旧訂正を自動Resumeしない |
+| Period State File更新後に非0 Exit | StateをReadback。Errorだけで無変更、あるいは他Provider Effect確定とは判定しない |
+| 外部Import/DBと期間Fileが別Provider | 一つのSQL UPDATEで二者の原子性を保証できない。実Fence/回復/Ownerが無ければunknown |
+
+**独立合成検算**：Python標準SQLiteの**単一in-memory DB/単一接続**にPeriod(D,state,epoch)と集計Target(A,amount,appliedGeneration)を設け、条件付きUPDATEに現Open/期待epoch/期待AppliedGenerationを含めて実行。初期rev1/G1=800円→Close rev2→旧Apply更新0件→Reopen rev3→旧rev1 Apply更新0件→**新rev3/G1→G2(A640円)更新1件**→再Close rev4→rev3向け旧Apply更新0件を確認した。**これは対象PeriodとTargetが同じDB・Transaction境界に存在するという合成仮定**であり、TEIの現Period File／実PostgreSQL/複数Process／Current Authorityや実Receipt/Owner受理を試験していない。
+
+### 31.4 業務不変条件・実装Ownerへの引継ぎ
+
+- **P0 / #4410**：固定Pure TSVの二入口・独立Expectedを先行。Close/Reopen・Effect Writerを初回のHard Gateにしない。
+- **P1 / #1130・#2882・Draft #4397/#4389**：Required Guard集合とSupplied Guard集合、Close X／Correction Yの遷移、CLI Error後State Readbackを既存テスト/Ownerで実証し、Declared/Observed/実Invocationを分離。重複実装・同一Fixtureの第二正本なし。
+- **P1 / #1174/#2564/#2514**：実ProviderのClose/Apply競合、現行Period版/Applied版、RequestHash/OperationID、Commit ACK-loss/Recorder失敗とReceipt/独立Readbackを対照。期間とEffectが異Providerなら、同一Txの保証を偽称しない。
+- **P1 / #3250/#2542/#2604**：締め済み期間の不変条件と、訂正を拒否する／明示再開する／次期補償とする等の業務Trade-offをOwnerへ提示する。直接越境CUD=0、RunPlan completedは整合性の十分条件ではない。
+- **P2 / #1124/#4510/#4522**：Accepted Period/Revision、Plan/Commit Attempt、実Reader/Effectと未証明Edgeを問い・Disclosureに相対化して投影する。図上にないWriter/秘密情報を不存在としない。
+
+**停止線**：本節は既存Source/Issueの静的照合と単一SQLite DBの局所条件付きUPDATEの検算。新TEI Go/CLI・実PostgreSQL/Period実Provider／二Process、MFT/外部Effect、Current Grant、業務Owner受理、exact-head CIは **NOT RUN / NOT ACCEPTED**。新PeriodRevision Core型、Period/Recovery Engine、Saga/Distributed Tx、Hostの採用は提案しない。
