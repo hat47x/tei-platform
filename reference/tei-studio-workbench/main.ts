@@ -4,6 +4,7 @@ import { mountReadonlyGraph } from "../tei-studio-graph/graph.ts";
 import { mountCommandPanel } from "../tei-studio-command/command.ts";
 import { createReadOnlyClient } from "../../cmd/tei-studio/assets/client.mjs";
 import { createResponseScope } from "./responses.ts";
+import { readPinnedSubject } from "./pin-reader.ts";
 import {
   initialPinState, pinSubject, unpinSubject, invalidatePin,
   pinRequest, acceptPinObservation,
@@ -220,14 +221,13 @@ async function refreshPinnedSubject() {
   }
   renderPin();
   await responses.run("pinned-inspection",
-    () => client!.inspectSubject(request.workspaceId, request.subject.kind, request.subject.id),
-    (reply) => {
+    () => readPinnedSubject(client!, request, catalog),
+    (view) => {
       if (catalogSnapshot !== catalog) {
         pinState = acceptPinObservation(pinState, request, { state: "needs-requalification" });
         renderPin();
         return;
       }
-      const view = readInspection(unwrap(reply), request.subject, catalog);
       const updated = acceptPinObservation(pinState, request, { state: "inspected" });
       if (updated === pinState) return;
       pinState = updated;
