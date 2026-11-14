@@ -138,6 +138,41 @@ func TestCompareCandidateSetsSameBytesDifferentAttempt(t *testing.T) {
 	}
 }
 
+// One provider may report a changed relation label for the very same source
+// bytes and external edge ID. Neither that ID nor a reused attempt ID proves
+// that the observed facts are unchanged.
+func TestCompareCandidateSetsSameBytesChangedObservedRelation(t *testing.T) {
+	before := mustGenerate(t, defaultEvidence())
+	for _, tc := range []struct {
+		name       string
+		attemptID  string
+	}{
+		{name: "new-attempt", attemptID: "ev-observation-corrected"},
+		{name: "reused-attempt-id", attemptID: "ev-minimal-1"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			changed := defaultEvidence()
+			changed.evidenceID = tc.attemptID
+			changed.edges[0].rel = "requires"
+			after := mustGenerate(t, changed)
+			comparison := CompareCandidateSets(before, after)
+			changedCount := 0
+			for _, entry := range comparison.Entries {
+				if entry.Status != ComparisonObservedFactsChanged {
+					continue
+				}
+				changedCount++
+				if !hasString(entry.Notes, "observed-structural-facts-changed-under-reused-candidate-id") ||
+					!hasString(entry.Notes, "source-backed-re-evaluation-is-required-before-meaning-or-edit") {
+					t.Fatalf("relation label changed but reviewer was not warned: %+v", entry)
+				}
+			}
+			if changedCount != 1 {
+				t.Fatalf("changed observed facts = %d, want one; %+v", changedCount, comparison.Entries)
+			}
+		})
+	}
+}
 // A changed source revision keeps the candidate identity and is reported as a
 // revision change that requires fresh review.
 func TestCompareCandidateSetsRevisionChange(t *testing.T) {
