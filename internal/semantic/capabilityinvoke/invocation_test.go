@@ -289,6 +289,118 @@ func TestSingleOutputPayloadPresenceIsNotInferredFromResultMode(t *testing.T) {
 	}
 }
 
+// Malformed declared inputs and effects are a pre-dispatch concern even when
+// the result contract itself is valid. This test does not assert that the
+// incoming input value is typed, authorized, or bound to a published Entry.
+func TestMalformedInputOrEffectDeclarationNeverDispatchesAdapter(t *testing.T) {
+	base := referenceCapability(t, "security.authenticate")
+	cases := []struct {
+		name   string
+		mutate func(*semantic.Capability)
+		want   string
+	}{
+		{
+			name: "input name missing",
+			mutate: func(c *semantic.Capability) {
+				c.Inputs = []semantic.Parameter{{Name: "", Type: "std.text"}}
+			},
+			want: "incomplete input",
+		},
+		{
+			name: "input type missing",
+			mutate: func(c *semantic.Capability) {
+				c.Inputs = []semantic.Parameter{{Name: "token", Type: ""}}
+			},
+			want: "incomplete input",
+		},
+		{
+			name: "duplicate input names",
+			mutate: func(c *semantic.Capability) {
+				c.Inputs = []semantic.Parameter{
+					{Name: "token", Type: "std.text"},
+					{Name: "token", Type: "std.text"},
+				}
+			},
+			want: "duplicate input",
+		},
+		{
+			name: "unsupported data effect",
+			mutate: func(c *semantic.Capability) {
+				c.Effect = &semantic.DataEffect{Kind: "unknown", Data: "sales.order"}
+			},
+			want: "unsupported data effect",
+		},
+		{
+			name: "effect data identity missing",
+			mutate: func(c *semantic.Capability) {
+				c.Effect = &semantic.DataEffect{Kind: semantic.DataEffectCreate}
+			},
+			want: "unsupported data effect",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			capability := base
+			tc.mutate(&capability)
+			calls := 0
+			adapter := adapterFunc(func(context.Context, core.CanonicalID, any) (capabilityinvoke.BusinessResult, error) {
+				calls++
+				return capabilityinvoke.BusinessResult{
+					Capability: capability.ID,
+					Mode:       capabilityinvoke.ResultOutcome,
+					Outcome:    "authenticated",
+					Payload:    map[string]string{"subjectId": "unexpected"},
+				}, nil
+			})
+			result, err := capabilityinvoke.Invoke(context.Background(), capability, adapter, nil)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("malformed declaration was admitted: result=%#v err=%v", result, err)
+			}
+			if calls != 0 {
+				t.Fatalf("malformed declaration reached Go Adapter %d times", calls)
+			}
+			if result.Capability != "" || result.Mode != "" || result.Outcome != "" || result.Payload != nil {
+				t.Fatalf("malformed declaration returned BusinessResult: %#v", result)
+			}
+		})
+	}
+}
+
+func TestNilContextNeverDispatchesCapabilityAdapter(t *testing.T) {
+	capability := referenceCapability(t, "sales.order.submit")
+	calls := 0
+	adapter := adapterFunc(func(context.Context, core.CanonicalID, any) (capabilityinvoke.BusinessResult, error) {
+		calls++
+		return capabilityinvoke.BusinessResult{
+			Capability: capability.ID, Mode: capabilityinvoke.ResultOutput,
+			Payload: "unexpected",
+		}, nil
+	})
+	result, err := capabilityinvoke.Invoke(nil, capability, adapter, nil)
+	if err == nil || !strings.Contains(err.Error(), "no context") {
+		t.Fatalf("nil context was not rejected: result=%#v err=%v", result, err)
+	}
+	if calls != 0 {
+		t.Fatalf("nil context reached Go Adapter %d times", calls)
+	}
+}
+
+func TestResultOnlyValidatorDoesNotClaimInputOrEffectAcceptance(t *testing.T) {
+	capability := referenceCapability(t, "sales.order.submit")
+	capability.Inputs = []semantic.Parameter{
+		{Name: "token", Type: "std.text"},
+		{Name: "token", Type: "std.text"},
+	}
+	result := capabilityinvoke.BusinessResult{
+		Capability: capability.ID,
+		Mode:       capabilityinvoke.ResultOutput,
+		Payload:    "a result mode, not input publication",
+	}
+	if err := capabilityinvoke.ValidateBusinessResult(capability, result); err != nil {
+		t.Fatalf("result-only validation unexpectedly became input/Entry authority: %v", err)
+	}
+}
+
 func referenceCapability(t *testing.T, id core.CanonicalID) semantic.Capability {
 	t.Helper()
 	_, filename, _, ok := runtime.Caller(0)
