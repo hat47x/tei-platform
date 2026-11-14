@@ -1555,6 +1555,7 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 ## 2026-11-14 組織C1の二時点保存・責任候補・Consumer接合を最短実証へ渡す（#2386/#4490/#4501）
 
 **受入補遺**：[ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)（設計・未受理）。既存のORG-BEH/CX/org-synthetic-r7を再利用し、第二Expected/Scenario・組織専用Workflow/Policy/Temporal Runtimeを作らない。
+- **11/14追加：組織履歴の実DB互換移行（補遺§11）**：#1126の業務Occurrence ID≠記録版ID≠物理PKを、#4125の未採用G0〜G5移行検収観点と#4234生成AppのSchema Migration不足へ接続。旧現行行しか残っていないDBから、既知でない過去のknown版を自動生成せず、履歴Coverageをunknownとして残す。新規隔離DBのA2二版共存と、旧Reader/Writer/直SQL/Batch/互換View・書込Fenceを伴う旧DBの移行は別受入。実Migration成功/自動Startup DDLは採用しない。#2586通常CLI実Readと#2831 Stage2セルフビルドを独立P0で維持し、組織本番CutoverをHard Gate化しない。
 - **11/14の実Source再照合（補遺§10）**：Draft #4567の実PG試験で使用した9行はr7のA2二版共存とは別fixture。Native Queryの出力3列にperson_idがなく、distinct Personや履歴Record Versionの正しい同定をQuery単独では証明できない。#1126/#4490で物理版識別、#2586で必要Relation/Person Read Cohort、#4501でCase責任/候補の局所Claimを検証する。#4616のmain Source-root Validation drift、#4579 Windows生成Workbench B0、#4597 Pin局所、#4623 Builder事前SHA、#4602 Hook作用不明はいずれも個別資格とし、Stage2/Host実Effect完了に合算しない。
 
 - **実Query vs 履歴保存**：Draft #4567の固定HEADでは `as_of_membership` valid/known半開区間・物理Mapping・使い捨てPG限定Readが成功したが、現行 `membership_id` 単独PKは同一Occurrenceの複数known版共存を妨げる。まず#4566/#4567の重複を照合してから、#1126/DB Ownerの物理版識別案で両版保存→同一validAt/異knownAt→実Rowset/Read Cohort/完全性→r7独立Expectedの縦断を行う。SQL WHERE成功だけをBEH-01全体合格としない。
