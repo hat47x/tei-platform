@@ -8,22 +8,20 @@ import (
 	"testing"
 )
 
-// Two different actual Workspace roots may contain different saved bytes with
-// the same producer-declared Evidence ID, node and source revision. The Host
-// must keep its chosen root and raw-byte pin, not infer an identical Worktree
-// or Current Grant from the external identity.
+// Two different actual Workspace roots can carry byte-identical producer
+// Evidence without thereby becoming the same Worktree, Principal or Grant.
+// Even if a Host binding is rewritten to match mutated file bytes, the R2
+// parser must refuse a broken producer delivery instead of accepting it.
 func TestLocalREAReaderKeepsSameProducerEvidenceSeparateAcrossRoots(t *testing.T) {
 	raw, err := os.ReadFile(filepath.Join("..", "externalanalysis", "testdata", "rea-6.8.0", "analysis.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	otherRaw := append(append([]byte{}, raw...), '\n')
-	otherDigest := sha256.Sum256(otherRaw)
 	rootA, rootB := t.TempDir(), t.TempDir()
 	for _, item := range []struct {
 		root string
 		raw  []byte
-	}{{rootA, raw}, {rootB, otherRaw}} {
+	}{{rootA, raw}, {rootB, raw}} {
 		if err := os.WriteFile(filepath.Join(item.root, "analysis.json"), item.raw, 0600); err != nil {
 			t.Fatal(err)
 		}
@@ -38,10 +36,6 @@ func TestLocalREAReaderKeepsSameProducerEvidenceSeparateAcrossRoots(t *testing.T
 	}
 	b := a
 	b.WorkspaceID = "workspace-2"
-	b.Digest = fmt.Sprintf("sha256:%x", otherDigest)
-	if b.Digest == a.Digest {
-		t.Fatal("fixture must have distinct saved-byte revisions")
-	}
 	reader, err := NewLocalREAReader(host, []LocalREABinding{a, b})
 	if err != nil {
 		t.Fatal(err)
@@ -54,26 +48,50 @@ func TestLocalREAReaderKeepsSameProducerEvidenceSeparateAcrossRoots(t *testing.T
 	if left.Value.Attempt.EvidenceID != right.Value.Attempt.EvidenceID ||
 		left.Value.Attempt.EvidenceID != localREAEvidenceID ||
 		left.Value.Attempt.ReceivedDigest != a.Digest ||
-		right.Value.Attempt.ReceivedDigest != b.Digest ||
+		right.Value.Attempt.ReceivedDigest != a.Digest ||
 		left.Value.Attempt.SourceRevision != right.Value.Attempt.SourceRevision ||
 		left.Value.Observation.NodeID != right.Value.Observation.NodeID ||
 		left.Value.Relation.RelationID != right.Value.Relation.RelationID {
 		t.Fatalf("producer identity or host-bound raw bytes were confused: left=%+v right=%+v", left.Value.Attempt, right.Value.Attempt)
 	}
 
-	// Swapping the contents between two still-allowlisted roots cannot make
-	// either original selector silently follow the identical Evidence ID.
-	if err := os.WriteFile(filepath.Join(rootA, "analysis.json"), otherRaw, 0600); err != nil {
+	// A mutated saved delivery with the *same* producer Evidence ID must not
+	// cross from Root B into Root A, even when both allowlisted roots exist.
+	otherRaw := append(append([]byte{}, raw...), '\n')
+	if err := os.WriteFile(filepath.Join(rootB, "analysis.json"), otherRaw, 0600); err != nil {
 		t.Fatal(err)
 	}
+	mutated := reader.Read("workspace-2", "shared-selector", localREANodeID, localREARelationID)
+	if mutated.OK || mutated.Value != nil || mutated.Failure == nil || mutated.Failure.Code != "OPERATION_FAILED" {
+		t.Fatalf("mutated Evidence was accepted for second root: %+v", mutated)
+	}
+	// Even updating the Host's raw-byte pin to the modified file does not
+	// turn a broken producer delivery into usable Evidence. Keep this
+	// separate from the simple stale-Host-Pin refusal above.
+	changedDigest := sha256.Sum256(otherRaw)
+	rebound := b
+	rebound.Digest = fmt.Sprintf("sha256:%x", changedDigest)
+	reboundReader, err := NewLocalREAReader(host, []LocalREABinding{a, rebound})
+	if err != nil {
+		t.Fatal(err)
+	}
+	repinned := reboundReader.Read("workspace-2", "shared-selector", localREANodeID, localREARelationID)
+	if repinned.OK || repinned.Value != nil || repinned.Failure == nil || repinned.Failure.Code != "OPERATION_FAILED" {
+		t.Fatalf("repinning a changed producer delivery must not repair it: %+v", repinned)
+	}
+	stillValid := reader.Read("workspace-1", "shared-selector", localREANodeID, localREARelationID)
+	if !stillValid.OK || stillValid.Failure != nil || stillValid.Value == nil ||
+		stillValid.Value.Attempt.ReceivedDigest != localREADigest {
+		t.Fatalf("mutation of other root invalidated or retargeted valid root: %+v", stillValid)
+	}
+	// Restoring the exact captured byte is a new local read. It does not
+	// prove that a source revision or Grant stayed current during A-B-A.
 	if err := os.WriteFile(filepath.Join(rootB, "analysis.json"), raw, 0600); err != nil {
 		t.Fatal(err)
 	}
-	for _, workspaceID := range []string{"workspace-1", "workspace-2"} {
-		got := reader.Read(workspaceID, "shared-selector", localREANodeID, localREARelationID)
-		if got.OK || got.Value != nil || got.Failure == nil || got.Failure.Code != "OPERATION_FAILED" {
-			t.Fatalf("swapped producer Evidence was accepted for %s: %+v", workspaceID, got)
-		}
+	restored := reader.Read("workspace-2", "shared-selector", localREANodeID, localREARelationID)
+	if !restored.OK || restored.Value == nil || restored.Value.Attempt.ReceivedDigest != localREADigest {
+		t.Fatalf("restored saved Evidence should be readable but not prove current Source: %+v", restored)
 	}
 }
 
