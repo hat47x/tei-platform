@@ -81,8 +81,10 @@ func TestRB0GeneratedBinaryDoesNotImplicitlyMigrate(t *testing.T) {
 		t.Fatalf("create isolated fixture db: %v", err)
 	}
 	defer db.Close()
-	if _, err := db.Exec(`CREATE TABLE orders (id TEXT PRIMARY KEY, customer_id TEXT, amount TEXT, currency TEXT, created_at TEXT);
-		INSERT INTO orders VALUES ('o1','c1','100','USD','2026-11-14');`); err != nil {
+	if _, err := db.Exec(`CREATE TABLE orders (id TEXT PRIMARY KEY, customer_id TEXT, amount TEXT, currency TEXT, created_at TEXT)`); err != nil {
+		t.Fatalf("create fixture schema: %v", err)
+	}
+	if _, err := db.Exec(`INSERT INTO orders VALUES ('o1','c1','100','USD','2026-11-14')`); err != nil {
 		t.Fatalf("seed DB: %v", err)
 	}
 	before := rb0SchemaNames(t, db)
