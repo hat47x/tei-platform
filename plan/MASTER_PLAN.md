@@ -167,6 +167,13 @@ Gate C — PAS-04 Evidence — Ready
 
 ### Studio Desktopセルフビルドを最優先にする現行の実証順（2026-11-13）
 
+**Desktop統合仕様の引継ぎ（2026-11-14）**：[Desktop Host設計 §§11〜19](design/DESKTOP_STUDIO_HOST_INTEGRATION_DESIGN.md)に、Wails/CLI、SourceとMeaning、Graph、Dirty Buffer、起動・復旧、生成Inspectorの変異試験、CLI先行の実質的セルフビルド、設計対象のAIへの引渡しを集約する。個別PRの古いHEADやCI成功は最新の製品合格へ加算しない。§14〜19のケースは#1180/#2514への引渡し候補であり、第二Scenario正本ではない。
+
+**Subject選択→CLI/MCP/AIへ渡す経路（§19）**：C0は既存CLIで一SubjectのCatalog/Inspect/Source/Required Contextを実読取する。C1はUIローカルの明示PinとFocus・Dirty Buffer分離。C2は用途と開示先の現在資格を確認し、CLI/MCP/Harnessへread-only Contextを完全受領させる。C3はAI提案を差分ReviewとSource再検査を経て既存Acceptanceへ接続する。Pinは操作意図であり、現在Grant・Source受理・外部送信許可ではない。描画用Edgeや同名Nodeは正式Relation Identityにならず、Workspace/Revision/Source A→B→A、partial、Reader未束縛、8,192byteの途中切断、非公開情報を独立負例で拒否する。
+
+**優先度とOwner**：C0はGUI未完成でも並行可能。#4515/#1824はPin/GUI、#3262はRequired Context、#2516/#1178はDisclosure、#1158は型付き操作、#951はPlugin文書、#1180/#2514はExpectedを担当する。新Host/Source Resolver/Harness/汎用Bridgeは作らない。正式non-Plugin BuildIntent→実Stage1→Stage2→Windows WebView2をP0に維持し、C1〜C3を追加Hard Gateにしない。現段階はdocs-onlyで、新MCP/AI送信、実Windows E2E、Owner受理はNOT RUN。
+
+
 #### 2026-11-14 第13次更新：SaaSの複数Worktree・DB実行対象を段階分離しP0 Self-buildを保護
 
 **最新の限定基線**：[Draft #4587](https://github.com/hat47x/tei-platform/pull/4587) HEAD `0fcb7b6265d7dfc5b5e93017e5c99e296eb13134`のWindows N2→N3実Bundle/EmbedFiles前後byte照合・改変コピー拒否・実WebView2はCI **12/12 success**。[Draft #4623](https://github.com/hat47x/tei-platform/pull/4623) HEAD `f1e219a`（Builder/Child事前pin）は**8/8 success**、[Draft #4624](https://github.com/hat47x/tei-platform/pull/4624) HEAD `2d403f49`（Resolver不正応答拒否）は**5/5 success**、ただし別HEAD/Draft・未merge。[Draft #4627](https://github.com/hat47x/tei-platform/pull/4627) HEAD `9491bf9e081bf98f39056d0a4142c2764c31289d`のWails Server `StudioBridge` exported 15 Method inventory/Service登録レビューtestは[Wails Host Run #43544229895](https://github.com/hat47x/tei-platform/actions/runs/43544229895)を含むCI **5/5 success**。**Method棚卸しの合格≠共有Web認証・実HTTP/WS公開遮断・DB/Workspace隔離**。現main WorkbenchはTypeScript/esbuild/CodeMirrorで、ReactもLitも依存していない。
