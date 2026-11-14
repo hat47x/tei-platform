@@ -451,3 +451,49 @@ Prepare時に解決できた契約・対象は**許可トークンではなく�
 **変更による再検証**：World Fingerprint／Model Revision／Artifact Revisionを混同しない。Source、Meaning/Role/Operator、Provider Lock/Toolchain、Entry公開、Host Grant、実Call route、Disclosureのどれが変わったかで、そのClaimに必要な資格だけを再検査する。layout-only変更や無関係Plugin追加で全Buildを無条件にやり直さず、必要な否定依存・未読込・外部参照が不明なら\`unknown/partial\`を維持。A→B→Aでも旧Authorization/Entry資格は自動復活しない（#2600/#3262/#2514）。
 
 **実施状態**：本節は現行mainの個別Sourceと既存Issue/他レーンのDraftを照合した**docs-only実装計画**。新Go Product Function起動、実\`tei\` subprocess、型付きOutput/Entry受入、Host/DB/EKI Effect、Stage1→Stage2 Function合流の本節による検証は**NOT RUN**。形式の最終採否・Owner Meaning Acceptanceは既存Issue/ADRで判断する。
+
+## 13. P0-Lを実装可能にする最小の具体的変更範囲（2026-11-14）
+
+現行main \`e888bb8f21367b721f0984953530da9627e2634d\` の個別Sourceをさらに確認した結果、**結果契約、製品CLI入口、最初の業務意味Fixture**の三箇所に、§11〜12では十分に特定できていなかった不足がある。本節は#4495の実装PRへ直接渡すチェックであり、独立のLaunch仕様／新Issueを増やさない。main更新後は、着手PRのexact HEADで再確認する。
+
+### 13.1 実コード・既存テストから確定できる境界
+
+| 実装／Fixture | 現在確認できること | Product Q2に必要な最小delta |
+| --- | --- | --- |
+| \`internal/semantic/capabilityinvoke/invocation.go\` | \`ValidateBusinessResult\`は単一Outputで\`Mode=output\`と空Outcomeを確認してreturnする。**\`result.Payload\`の実型、値や欠落はここで確認しない**。名前付きOutcomeの非nilとは分岐が異なる | 実Entry/HostのOutput契約に従う型・presence・NULL/precision・単位の検査。Generic \`capabilityinvoke\`へドメイン固有money規則をハードコードせず、既存Meaning/Targetの適合検証へ委譲。nilが適法なTargetもあるので「全単一Outputのnil禁止」を無条件導入しない |
+| \`cmd/tei/cli_commands.go\` | \`acceptedCommands\`には通常の公開Functionを起動する製品Verbがない。Referenceの\`view\`等はこの不足の代用ではない | **製品Typed Operationが先**。その後、CLIを薄いAdapterとして一入口追加する。CLIの正式名・引数・Wire versionは既存CAPI-4（#3422）とCLI互換Ownerが採用してから確定。未公開Entryを引数で推測して実行しない |
+| \`cmd/tei/cli_commands_test.go\` | \`TestAcceptedCommandsMatchDispatch\`が実Dispatchとコマンド一覧をASTで比較し、\`TestUnknownCommandRejectionIgnoresFlags\`が実\`tei\` subprocessの未知Verbを検査する | 新しいCLI入口を既存一覧・実Dispatch・Help・回帰テストへ**同時に**接続。単なる\`acceptedCommands\`追加、またはヘルプ表示だけでProduct起動としない |
+| \`internal/semantic/capabilityinvoke/invocation_test.go\` | 既存\`sales.order.submit\`の単一Output mode検証と、cancel-before-dispatchのAdapter call0、実行失敗をOutcomeへ変換しない局所テストがある | 既存テストの契約は保持。\`sales.order.submit\`を**pure計算の受理済みFixtureに読み替えない**。Product公開Entry/Host Grant/実Provider/CLI subprocessの試験を別に足す |
+| \`tools/reference-generator-selection/testdata/line-amount/contract.json\`と\`fixtures.json\` | \`sales.line-amount\`は**\`status=reference-local\`**。属性\`sales.order_line.quantity\`、\`unit_price\`、出力\`std.money\`はWorkspace意味に参照するが、数量×単価の**複合規則そのものはCanonical受理済みではない**。正例\`2x300\`は\`600.00 JPY\`（DECIMAL(8,2), half-up） | 生成器Referenceの結果をProductのAccepted Meaningへ**自動昇格しない**。最初のP0純粋Functionに適した既存Accepted契約を探すか、通常のOwnerレビューで小さな計算規則を受理してからEntryを公開する。後者のときも元Fixtureは独立比較入力の候補であって意味正本ではない |
+
+### 13.2 最初の実装PRの赤→緑を、三つの責務に絞る
+
+**PR-A0：意味と公開対象の確定（#4495／#2502／Meaning Owner）**。実Workspaceで公開可能なpure Capability/Function・Output型・入力・Effect absence・Target supportを一件選ぶ。候補がreference-localだけならその事実をIssueに報告し、Ownerが受理する前に\`published\`へ進めない。出典Source occurrence／Contract revisionと、選択済みCompositionの明示Entry公開（非公開時call=0）を局所Testで確かめる。UI Function Catalog/静的\`command\`と混同しない。
+
+**PR-A1：共通Product Operationと実Go Provider（#4495／#951／#1251／#3422）**。既存\`Capability\`と\`capabilityinvoke\`のResult modeを利用し、Hostが構成したTrusted Contextと現在Selectionから選択したGo実装へDispatchする。typed Inputの欠落/明示NULL/未取得を失わず検証し、実Outputは値・型・presenceをMeaningの必要条件に従って照合する。A/Bが同じ\`600.00 JPY\`を返しても、B選択/A実Callを外側WitnessでFAILにする。全Target共通Runner、第二Provider Registry、汎用\`Result any\`の無検査透過は採らない。
+
+**PR-A2：実製品CLI二入口（#4495／#3422）**。採用済みの正式CLI起動面を\`acceptedCommands\`／main Dispatch／Help／既存コマンド回帰と一緒に接続。CLIがProduct Operationへ直接変換し、ReferenceExecutorや別独自計算実装を経由しないことを検証。\`go build\`した**別プロセスの実\`tei\`**のbinary/argv/exit/Result bodyと、**そのプロセス内のProvider境界**に由来する実Call Evidenceを確認する。Go API内のcounterやCLIの\`provider=B\`自己申告だけで入口同値を主張しない。Transport formatと契約上のResultを復号後に比較し、既存CLI JSON v0の無断変更を避ける。
+
+この3分割は**同一#4495の小PR分割案**であって、新しい定常Gateや新規Ownerの発行ではない。PR-A0は公開対象が実際に受理されるまで未完了、PR-A1/A2は別FixtureのReference成功を合算してProduct Q2へ昇格させない。Goテスト／本番CLI未実行の段階で全工程をPASSにしない。
+
+### 13.3 既存Fixtureを使っても誤判定できる反例
+
+| 一因子対照 | 許される意味判定 | 現状の検査を流用する際の注意 |
+| --- | --- | --- |
+| \`2x300\` と\`half-up-tie\` | \`600.00 JPY\`、\`1.01 JPY\`を**受理済みの同じ規則**に基づき独立比較 | Generatorの\`reference-local\` Fixture自体は業務規則受理でない。単なる\`600\`出力一致も精度・通貨の比較を欠く |
+| \`missing-quantity\`と\`null-unit-price\` | 元入力は欠落と明示NULLとして区別し、業務規則が両方を\`missing\`に写すか否かを受理済み契約から判定 | 既存Generator fixtureは**どちらも出力state=\`missing\`**なので、結果値だけでは入力での区別保持を証明できない。Typed Operationの入口で別途検証する |
+| 単一Output modeだが\`Payload=nil\`／本文欠損 | 明示NULL可能性と未返却を混同せず、対象Output Contractで適合/拒否を決める。Result body未取得でEL-12は不合格 | 既存\`ValidateBusinessResult\`はOutput branchでPayload presenceを検査しない。いきなり全Capabilityへnil禁止を導入しない |
+| \`B selected/A invoked\`、値・型・Result bodyが同一 | selected/actualの不一致でFAIL | Providerの自己申告、結果の等値、Link済みArtifact名は独立Call Witnessでない |
+| 実CLIは未知Verbを正しくexit2で拒否 | 既存CLI文法の局所合格にとどめる | 新しいEntry呼出し/実ProviderのP0証拠に流用しない |
+
+**最小受入票**：\`exact HEAD / Accepted Meaning（reference-localなら未受理）/ Workspace・Source occurrence / published Entry version / typed input states / selected Provider＋実Call Site witness / actual Product CLI binary＋argv / actual Result body＋schema＋Failure / 既存Independent Expected参照 / PASS|FAIL|NOT RUN|unsupported\`。実Call・Result本文と現在Host権限の実証がない項目を同じ「成功」に束ねない。秘密／Host内パスやPrincipalの詳細をPublic Receiptへ複写しない。
+
+### 13.4 他レーンに追加するのは合流条件だけ
+
+- **Generator #4544**：既存の\`reference-local\` line-amountを標準Generator比較の入力として保つ。将来同じAccepted Ruleへ接合したときだけMeaning/Output/Target/Actual Providerの一因子照合を行う。今はLの第一Hard Gateにしない。
+- **DSL/Trait #988/#3278**：入力型・Output精度・欠落・実Providerの必須Methodを、表層構文や未採用Traitで自動補完しない。Target不対応はunsupported。
+- **Trigger #4497**：Manual/Schedule/Event/Batchは公開Entryと必要InputをPrepared Invocationへ写すが、queued時のpreviewやActor文字列がstart時のHost Grantではない。結果本文取得と実Effectは別。
+- **Studio Self-Build #2831/#4583**：全体最優先のB1→B2→B3を継続。Stage2実binaryで実Provider Dispatchを観測した時点だけ、LのFunction起動と結合成功を主張する。Build-time Generator RoleとRuntime Provider Roleを混同しない（#4601）。
+- **X-TEA/SHO/SUI/AI**：Data Script/Hookの内部実行を公開Entryへ無条件昇格せず、Modeler/Composer/Canvasからの呼出しは現在Disclosure/Host Contextを経た共通Product Operationへ接続する。公開・受理・実行をAIやUI Pinだけで付与しない。
+
+**現時点の資格**：この§13はmain\`e888bb8f...\`の個別Sourceと既存Reference契約を静的に照合した計画・反例の追補。PR #4618はDraft、§13による新Go Test、Product CLI、Provider/Host/DB/EKI実行、Stage2 Desktop Function起動はすべて**NOT RUN**。正式CLI構文・公開Entry schema・Canonical line-amount意味採用は**未決**。新Run Engine、Permission Issuer、第二正本を追加しない。
