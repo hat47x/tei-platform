@@ -41,6 +41,7 @@ type candidateFixture struct {
 	ProductsNotClaimed          []string
 	Graph                       struct {
 		Source, SourceDigest     string
+		RuleSection              struct{ ID, Condition, Status string }
 		SemanticIDs              struct{ Nodes, DirectedRelations []string }
 		IdenticalNodeLabels      bool
 		ParallelRelations        []candidateRelation
@@ -130,6 +131,10 @@ func auditFixture(f candidateFixture) []string {
 			add("missing SHA-256 source-byte pin")
 		}
 	}
+	if f.Graph.RuleSection.ID != "node.edge_ids" || f.Graph.RuleSection.Condition != "起点 = 対象ノード" ||
+		f.Graph.RuleSection.Status != "source-present; formal meaning not adopted" {
+		add("explicit Graph Rule source was dropped or falsely admitted")
+	}
 	if !f.Graph.IdenticalNodeLabels || len(f.Graph.SemanticIDs.Nodes) != 2 || len(f.Graph.SemanticIDs.DirectedRelations) != 2 || len(f.Graph.ParallelRelations) != 2 {
 		add("two-node two-relation pressure fixture missing")
 	}
@@ -197,6 +202,14 @@ func TestCandidateFixtureLinksToRealGraphAndManualBytes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("existing reference reader could not read graph: %v", err)
 	}
+	rule, err := graphreader.ParseRuleCandidate(source)
+	if err != nil {
+		t.Fatalf("explicit Rule table in current Graph source is unreadable: %v", err)
+	}
+	if rule.Rule.ID != f.Graph.RuleSection.ID ||
+		string(source[rule.Rule.ConditionSource.Start:rule.Rule.ConditionSource.End]) != f.Graph.RuleSection.Condition {
+		t.Fatal("Graph Rule identity or condition drifted from pinned source")
+	}
 	if len(got.Nodes) != 2 || len(got.Edges) != 2 {
 		t.Fatalf("graph identity count changed: %d/%d", len(got.Nodes), len(got.Edges))
 	}
@@ -254,6 +267,7 @@ func TestCandidateFixtureMutationsAreRejected(t *testing.T) {
 		{"false-source-acceptance", func(f *candidateFixture) { f.Documents.Public.SourceRefStatus = "accepted" }},
 		{"traversal", func(f *candidateFixture) { f.Documents.Public.Path = "../private.md" }},
 		{"missing-byte-pin", func(f *candidateFixture) { f.Documents.Public.SourceDigest = "" }},
+		{"rule-disappeared", func(f *candidateFixture) { f.Graph.RuleSection.ID = "" }},
 		{"conflated-relations", func(f *candidateFixture) { f.Graph.ParallelRelations[1].ID = "e-1" }},
 		{"candidate-role-promoted", func(f *candidateFixture) { f.Graph.ParallelRelations[0].RoleAdoption = "accepted" }},
 		{"lost-private-refusal", func(f *candidateFixture) {
