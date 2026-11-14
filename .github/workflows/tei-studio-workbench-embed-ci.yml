@@ -7,6 +7,12 @@ on:
     paths:
       - .github/workflows/tei-studio-workbench-embed-ci.yml
       - cmd/tei-studio/assets/workbench/**
+      # The bundle also inlines these; a change here without a rebuild leaves
+      # the embedded bundle behind its sources.
+      - cmd/tei-studio/assets/client.mjs
+      - reference/tei-studio-command/**
+      - reference/tei-studio-editor/**
+      - reference/tei-studio-graph/**
       - reference/tei-studio-workbench/**
   workflow_dispatch:
 
