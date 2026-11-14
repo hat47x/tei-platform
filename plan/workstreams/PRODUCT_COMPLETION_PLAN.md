@@ -142,6 +142,25 @@ B1a-I/Pの二段受入を維持しつつ、独自Frontendを「TEIが制約し�
 
 **最小の証拠票と停止条件**：既存#1180/#2514/#1163で`Exact HEAD / Workspace・Source・Function・Query Revision / typed-input declared? / selected→invoked Provider・DB Session / actual Rowset+Context ID・epoch・Scope・Coverage / A,B各Consumer delivered・received Body / allowed Projection・Grant qualification / independent Expected / PASS|FAIL|NOT RUN|UNSUPPORTED|UNKNOWN`を別列管理する。Consumerへ送らない内部接続・個人情報や非公開Source ID/件数/ダイジェストをGitHub/外部Harnessへ必須送信しない。最初に不足した辺を修正し、局所成功を次Sliceの成功へ昇格させない。**この節自体はdocs-only、R-A〜Dの新実行とOwner意味受理はNOT RUN**。
 
+<!-- b2c-ra-source-to-executor-failclosed-20261114 -->
+### G49 R-AのCode適合ギャップ：既存Query.Inputsを実Provider呼出し前に束縛する（2026-11-14）
+
+**今回のmain Source静的照合（成果の上限：実装着手点の確定）**：
+- `internal/query/model.go`に既存`query.Input {Name core.LocalName, Type core.CanonicalID}`と`query.EmbeddedSQL.Inputs []Input`がある。したがってQueryの型付き引数を表す**新しい公開Model/Core型は不要**。
+- `reference/workspace/applications/order-entry/queries/recent_orders.tei`には`query order_entry.recent_orders`、`datasource sales`、SQL source・Result mappingがあるが、**`input from`の宣言がない**。同ディレクトリの`recent_orders.sql`は`WHERE o.ordered_at >= :from`を使用する。Reference WorldのDriver testが通ることと、Query入力意味受理は異なる。
+- `internal/driver/browse_query_environment.go`の`ExecuteBrowseQueryInEnvironment`は、Environment/Instance/ProviderとExecutorの照合後に、`map[string]any`を`r.ExecuteBrowseQuery`へ渡す。**Query.Inputsの必須性/型/未知パラメータを、この入口で実Executor呼出し前に検査していない**。Registry側の物理接続が同一Instanceかはhost-assertedで、実Read Scope/現在Grantも別資格。
+- `tools/reference-browse-read/main.go`の`parseParams`はCLI引数`from=time:RFC3339`を`time.Time`にする一方、`DeclaredByQuery`を**SQL/Executor実行後**のContext構築前に照合する。したがって参照CLIのtyped tag成功、実PG3行取得、`declaredByQuery=false`をProduct契約適合へ昇格しない。
+
+**Owner #2586/#2622/#3422への実装PR分割案（新Command/APIの採用ではない）**：
+1. **RA-0 Source/Parser/型選択**：現行Query DSL Loaderが受け付ける`input`構文とCanonical time型を、既存Reader・Role/型Contractから確認する。採用済み構文・意味へ沿って`recent_orders.tei`へ`:from`を宣言し、再Loadした`Query.Inputs`に**名前・型・Source出典**が実際に反映されることをGo独立Expectedで固定。見た目だけの新DSLや、SQL placeholderからの推測による暗黙宣言はしない。型・構文が未受理なら`UNMAPPED`で止める。
+2. **RA-1 Provider前の強制検査**：同じSource/Queryと実Invocationの引数セットを比較し、必須`:from`欠落、型違い、未宣言名、explicit NULL/未取得の不許可、時刻のoffset/precision変換、別Query同名を独立負例にする。**拒否時は既存Counting Executorの実Call 0、Result/成功Receiptなし**。Mapの重複キー表現不可はCLI raw flags段の既存重複拒否と区別する。互換な既存Query/DSLへ一律のBreaking変更を加える前に対象Scope/ContractをOwnerが決める。
+3. **RA-2 一Attemptの実Value**：宣言成功かつType適合後だけ、既存#4539の隔離PostgreSQL read-only/REPEATABLE READ Fixtureに実引数を渡し、O-003/O-002/O-001の全3行・10:05境界2行・後方0行、Decimal scale2、Result Scope/0行の`unestablished`を独立Expectedへ照合。`selected provider`・実Executor・SQL byte/params・物理DB/Session/RLSとFunction Contextを同じ実Attemptで記録。選択と実Call一致なし/違うDBで偶然同じ行はFAIL。
+4. **RA-3 R-B/R-Cへ引渡し**：受理済み型付きOperationのResultを薄い製品`tei`入口へ渡した後、**同一Context**を標準/Native二Receiverへ配信。Draft [#4625](https://github.com/hat47x/tei-platform/pull/4625)の`external-candidates`は、既存Operation→実CLI childの別領域の**構造参照例のみ**。その実CLIが起動できてもB2C実PGやNative受領ではない。
+
+**Readと更新の境界**：同じ注文が3行返った事実、`:from`の時刻、ProviderのSessionを、全顧客の母集団・本人所有・現在Read Grant・注文確定Effectには読み替えない。非公開合成Readの単一Contextを、必要なAudience/用途の投影を通してからNative Consumerへ渡す。動的依存/Dirty保持/Source A→B→A、二Consumer・二Provider snapshotのCoherenceは移植したG08〜G13データ様式節の#2582/#2597/#1708へ委譲し、B2C用Reactive Engine/中央Snapshot Coordinatorを作らない。
+
+**資格**：今回確認したのはmain Sourceと設計契約であり、RA-0〜3のSource改修・Go Product入口・実PG/CLI/Native/Hostテストは**NOT RUN**。Owner Meaning受理・新DSL構文や日時Canonical Typeの採用は未決。Studio Desktopセルフビルド#2831/#4583が全体P0で、R-Aは並行P0。
+
 **計画統合状況**：同一計画ファイルを変更する並行[PR #4600](https://github.com/hat47x/tei-platform/pull/4600)の「問い相対旧依存辺N16/N17」「Studio Windows B0とBuildIntentギャップ」の二行を、本Draftにも**内容を欠落させず**取り込んだ。双方はまだ別Branch/未mainであり、#4600の採否・閉鎖、mainへの実マージ、競合解消を代行したものではない。新実行試験・Owner Meaning受理はNOT RUN。
 
 ## 最新の作業単位へ接続する
@@ -150,13 +169,125 @@ B1a-I/Pの二段受入を維持しつつ、独自Frontendを「TEIが制約し�
 
 | 既存の項目 | 現在の足場と着手先 | 次に満たす条件 |
 | --- | --- | --- |
-| G08〜G11/G37〜G42 | [#4350](https://github.com/hat47x/tei-platform/issues/4350)が型・構造Facet・表現・Context・写像を段階化。最初の検査は[#4351](https://github.com/hat47x/tei-platform/issues/4351)、構造は[#4352](https://github.com/hat47x/tei-platform/issues/4352)、Context束縛は[#4353](https://github.com/hat47x/tei-platform/issues/4353) | 既存の意味Ownerと独立Expectedへ接続する。単位・軸の記述欄が不足する現行Sourceを、型名の一致だけで表現できたと扱わない |
+| G08〜G11/G37〜G42 | [#4350](https://github.com/hat47x/tei-platform/issues/4350)のS1〜S3（[#4351](https://github.com/hat47x/tei-platform/issues/4351) / [#4352](https://github.com/hat47x/tei-platform/issues/4352) / [#4353](https://github.com/hat47x/tei-platform/issues/4353)）は合成Headless Referenceとしてmain統合済み。横断Matrix [PR #4464](https://github.com/hat47x/tei-platform/pull/4464)と限定Source編集 [PR #4538](https://github.com/hat47x/tei-platform/pull/4538)はOpen（2026-11-14照合） | 読取り用構造写像の判定・用途別Observer・操作Slot単位の逆写像・現在Grant/実Consumerを分離する。11/32セルの合成判定やSource編集の隔離試験を実Provider→通常`tei`/Studio→独立Consumerの製品合格へ転用しない。単位・軸・完全性の未宣言はunknown/unsupportedで残す |
 | G61 | [#4359](https://github.com/hat47x/tei-platform/issues/4359)が構文比較と実装順を所有。比較票は[#4361](https://github.com/hat47x/tei-platform/issues/4361)、候補Parserは[#4362](https://github.com/hat47x/tei-platform/issues/4362) | Parse、既存意味への変換、Source位置、互換性、正式採用を順に区別する。DSL案を製品Loaderの既定へ先に入れない |
 | G19/G25/G61 | [#1130](https://github.com/hat47x/tei-platform/issues/1130)のETL/Batch設計は[PR #4409](https://github.com/hat47x/tei-platform/pull/4409)へ、取得・変換の最初の縦断は[#4410](https://github.com/hat47x/tei-platform/issues/4410)、再開・外部実行は[#4411](https://github.com/hat47x/tei-platform/issues/4411)へ分割済み | 同じ固定入力と独立ExpectedをGo/CLIで照合する。新しいETL専用DSLや必須Schedulerを加えず、再実行と外部作用の結果を分ける |
 | G21/G23/G28 | プラグイン管理の一覧・診断は[#4376](https://github.com/hat47x/tei-platform/issues/4376)、計画・差分は[#4377](https://github.com/hat47x/tei-platform/issues/4377)、設定源と原子性は[#4378](https://github.com/hat47x/tei-platform/issues/4378) | 実Workspaceからの解決と選択、実呼出し、更新・失効の結果を別に観測する。管理画面の一覧を実Provider適合へ昇格しない |
 | G54 | [#4134](https://github.com/hat47x/tei-platform/issues/4134)の検証義務候補P0-Aと、固定有限データP0-Bを[#1131](https://github.com/hat47x/tei-platform/issues/1131)/[#1180](https://github.com/hat47x/tei-platform/issues/1180)へ接続 | 生成した試験の数と判別力を分ける。独立Expectedを固定し、満足例、単一違反、相互作用、観測不足と失敗の最小化を対照にする |
 | G13 | [#2586](https://github.com/hat47x/tei-platform/issues/2586)がP0。旧PR #4076はclosed/unmerged。[PR #4539](https://github.com/hat47x/tei-platform/pull/4539)はEnvironment経由の`public.orders/:from`実PG読取、一時的Function Context、別プロセスReference CLIを実装し、exact-head CI成功後にmain統合済み（`ee1af44c`）。使い捨てPG16での局所実測も記録。ただし**製品`tei` CLI・独立Native Consumer・現在Grantは未接続** | Referenceの`public.orders/:from`とXTEAの`sales."order"/:status`は別Query。#4539 mainの実Read/Scope/接続先身元・Typed Param・Rowset・Context/独立Readerを基線に、RLS/0件/欠落列/マスクで`unestablished`を保持する。次に製品`tei` CLI、同一Attemptを受領する独立Native Consumerを順に検証。PG局所PASSやCI成功を現在Grant/全件取得/Checkoutへ転用しない |
 | G49（B2C Native変更のCoverage） | [#3509](https://github.com/hat47x/tei-platform/issues/3509)の[最小B0判定票](https://github.com/hat47x/tei-platform/issues/3509#issuecomment-6813494503)をG49の初回受入候補に接続。案件固有Frontend/Edge/CMSは標準Rendererの採用を強制せず、実Source/Artifact R0→R1と既知のOperation/Context/Consumerだけをread-onlyで関連付ける。Native未登録部分の依存関係を自動で完全とみなさない | 既存BC-16/18/19/27/29/32/35/36/37/39/41を使い、通常文言C0と割引・同意条件を含む変更C3、旧Variant/旧Cartの正負を同一Fixtureで比較する。Change identity、Coverage、複数Lane候補、Required verification、Observed evidenceを別票にし、Coverage不足からNo Impact/公開安全/CVR向上を宣言しない。B0は**設計・試験候補**。#2586の実Readを先行し、H0/H1/H2の生産性比較は#2018、Commerce実Effect/実Browser/収益効果は後段で個別に検証 |
+
+### G08〜G13/G37〜G42：データ様式の用途・操作相対適格性を実Product経路へ接続（2026-11-14追補）
+
+[#4350](https://github.com/hat47x/tei-platform/issues/4350)は段階・依存の索引、[#2495](https://github.com/hat47x/tei-platform/issues/2495)/[#2544](https://github.com/hat47x/tei-platform/issues/2544)はFacet/演算意味、[#2497](https://github.com/hat47x/tei-platform/issues/2497)は写像/損失、[#4133](https://github.com/hat47x/tei-platform/issues/4133)は表現型、[#2506](https://github.com/hat47x/tei-platform/issues/2506)/[#2586](https://github.com/hat47x/tei-platform/issues/2586)はFunction Data Context/実Read、[#1124](https://github.com/hat47x/tei-platform/issues/1124)は設計Source編集、[#2500](https://github.com/hat47x/tei-platform/issues/2500)は業務データのViewChange→Operation Intentを所有する。本追補はその**製品受入順序**だけを明確にし、第二の意味正本・型Registry・Projection Engine・Action/Grant/Host・Scenario SSOTを作らない。
+
+**判断を混同しない**：A) 構造写像の`verdict`（既存5語彙）、B) **目的・問い・Observer・Scope・許容損失に相対的なread適合**、C) **対象Subject/Relation occurrence・Slot・具体Operationに相対的な逆編集候補**、D) **現在Source/Context epoch・権限・実Target/Effectの資格**は別列とする。一般の`lossy` Graph→Treeでも、明示ID・一意値span・恒等的に表示されたNode所有属性の局所更新は候補になりうる。一方、Edge IDなしのreparent/unlink、集計値の明細への自動配分、同ラベルからのIdentity復元は拒否する。これは既存Checkerの全写像`inverse=ineligible`を直ちに`eligible`へ変更する指示ではない。Slot/Operationスコープと独立Expectedを先に比較する（[#4533](https://github.com/hat47x/tei-platform/issues/4533)、[PR #4538](https://github.com/hat47x/tei-platform/pull/4538)）。
+
+**同一性と現在性**：`Subject ID`／`Edge occurrence`／`Source byte span`／`View occurrence`／`Selection epoch`／`Workspace`／`Provider snapshot`／`Grant`を混ぜない。Raw byte fingerprint一致はA→B→Aの履歴同一性、現在の意味受理、Writer権限を証明しない。編集Apply直前に現在Source/Revision・span値・Writer権限・独立Requiredを再照合し、旧AI Replyや別Contextの選択から書き戻さない。設計SourceへのPatch/Acceptanceと実DBへのAction/Commit/Receipt/独立再Readは別の縦断で検証する。表現の`null / missing / unfetched / withheld`と集合の`empty / partial / complete / unknown`、Queryの非表示・否定依存（`NOT EXISTS`等）は用途相対の必要閉包を保持する。
+
+| 順序 | 既存Owner・既存ケースを使う最小縦断 | 合格として要求する証拠 / 主張しないこと |
+| --- | --- | --- |
+| **D0：Reference契約の整理** | #4351〜53を基線に、#4464の11/32セル、`best`用途条件、`unknown/unqualified/uncovered`、#4533/#4538のSlot編集差を照合（XMAP-02/03/07、RSP-02、DF-X03、VE-01/03）。 | 同じ構造損失でもreadとSlot Editの判定が区別でき、既知Mutantと独立Expectedで偽許可・偽拒否を発見する。未検査21セルを安全/不可能と決めない。 |
+| **D1：実Read→二Consumer** | #4539でmainに統合された限定PG16 Reference Readを出発点に、#2586/#2506の同一Function・同一Attempt・同一Context/epoch/Scopeを表と集計Consumerへ渡す（DF-X01、HJ-03〜05）。 | `observed slice`と母集団、JOIN fanout、`COUNT/SUM`、0行・RLS・NULL・未取得・非開示・否定依存を独立Expectedで区別。通常`tei` CLIと実Consumer受領は未実証なので接続するまではNOT RUN。 |
+| **D2：設計Sourceの局所編集** | #1124/#2497とPR #4538で、表/Propertyの一意な型付き属性Patch→既存Preview/Review/Accept→実Source再Read/再投影を接続。Graph→TreeはNode属性の正例と多重Edgeの負例を追加（DF-X03）。 | 異Workspace同名、旧Revision、A→B→A、Edge ID欠落、集計編集、非可逆投影を独立に判別し、無関係byte不変・失敗時書込0を確認。限定合成Passを現在のOwner意味受理へ昇格しない。 |
+| **D3：業務Function操作・異種Target** | #2500/#1174で同じ明示Entity/Relationに対するIntent候補→現在Grant→実Effect Receipt→独立Read。#2498/#4133/#3827、SHO/SUI、外部Java/.NET Hostは用途に必要な異種Consumerを順に追加（DF-X04〜08）。 | Selection・UI配置からAction/Authorityを創出しない。実Host/DB、Owner Effect、外部Consumer、媒体同期の各Claimにexact版と実観測を要求。 |
+
+**停止線**：`Source Revision`・`Context epoch`・`Identity/Slot`・`Quantity/Time/CRS`・`Required Scope`・`current Grant`のうち当該操作に必要なものが未確認なら、read説明は可能でもEdit/Executeを許可しない。実行証拠はWorld/Model/Artifact revision、実選択Provider/Generator、実消費byte、独立Expected、Owner受理を分離し、既存[#2514](https://github.com/hat47x/tei-platform/issues/2514)/[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#1119](https://github.com/hat47x/tei-platform/issues/1119)のGateに載せる。新たな公開DSL・Core TypeKind・固定15表現Enumは異種Consumerの反例を得てからADRで判断する。
+
+
+### 外部候補・三要素・実Readの受領を結ぶ判別条件（2026-11-14追加）
+
+この表は新しいScenarioや型Schemaの正本ではない。D0〜D3で必要な既存Fixture（#4350 DF-X01〜08、#2497 XMAP、#2500 VE、#4472 TE-CR、#3394 REA、#2514/#1180 独立Expected）を**同じデータ様式契約へ接続する順序と、各Ownerの停止条件**だけを示す。REA/SHO/SUIや三要素の実装完了を、実Provider→通常`tei`/StudioのP0 Hard Dependencyにしない。
+
+| 接合点 | 共通データ様式の検査 | 必ず判別する正負・Owner |
+| --- | --- | --- |
+| **存在と探索結果** | `Subject existence`、`Reference count`、`Read coverage`、`Disclosure`を**別事実**とする。存在しないSubject・存在するが参照0・未列挙のSource・非開示・部分読取を空配列/成功一語に畳まない。 | #4584は「不存在Subjectの成功扱い」をmainで修正済みだが、外部REA→独立Consumerの同一性は未検収（#3394/#4603）。同Label別Subjectと、取得済み0件/未取得を既存Expectedで分離。 |
+| **GraphとREA観測** | 外部EvidenceのNode/Edge ID・有向・並行辺・根拠Source・coverageを保った候補Projectionを行う。REA観測→TEI正式Entity/Relation・三要素のData/Function/Businessへの昇格はOwnerの選択と意味検査が必要。 | Node label一致だけで同一化、並行/逆向きEdgeの消滅、未取得Sourceから関係不存在を断定、外部CandidateだけでDSL/CRUDを書き換えるものを拒否（#3394/#1124/#2497、DF-X03/04）。 |
+| **三要素CRUDの再投影** | `Data identity`と`Business/Function identity`、明示CRUD定義と推導Operation、矛盾・未掲載を別に扱う。図/表/相互参照の表示成功を業務意味の一致に昇格しない。 | 異なる索引の同名、CRUDDefinitionsのみのpairの脱落、同Pair矛盾の後勝ち、`OK:true`と未解決の矛盾共存を検査。実装Owner #4472、Source編集Owner #1124、DF-X04の再投影へ渡す。 |
+| **実DBの行とモデルSubject** | Source Pin（論理Subject/Source位置）と、Provider Result Sliceの行Identity/Version・grain・scopeを分ける。RLS/NULL/empty/partial、JOIN fanout、集計をContract相対のRead claimとして照合。 | 限定PG実ReadのRowsetを同一Function/AttemptでTableとAggregate Consumerへ渡す。**別の既存合成Fixture**の`2行×3行=6 JOIN行`についてはEntity6件への誤昇格を独立に拒否する。独立Readerと二Consumerの実受領を証明するまでは未合格（#2586/#2506、DF-X01/02）。 |
+| **編集と実行** | Studioの`Source span Patch→Preview/Review/Accept→再Projection`と、実DBの`Pending Change→Current Grant/CAS→Commit/Receipt→独立Read`を二経路に分ける。Selection PinだけではWriter/DB権限が生じない。 | 旧epoch/Source A→B→A、Row version競合、ACK-loss、非可逆Chart、未許可AI提案を正負比較。失敗または不確定時に自動再書込しない（#1124/#2500/#1174、DF-X05/VE-05）。 |
+| **文書・多Consumer・開示** | SUI Card/Island/Canvas→SHO Markdownの非単射性と、Raw byte/改行/BOM/Parser版・Source occurrenceを保持。表示から消えた情報や非公開Evidenceの存在をConsumerへ漏らさない。 | 同じMarkdown byteでも異なる元Graphを識別できない。Source byte一致とRendered一致を別採点。内部Path/Locator、hidden count、診断/DOM/Tool応答への二次開示を既存Disclosure Ownerが判定（#2497/#2516/#3394）。 |
+
+**D0→D1の最初の同一Attempt Witness**（既存Evidenceを結合する比較票であり新公開Schemaではない）：`Workspace+Source/Model Revision`、`実選択Query/Provider/実読byte`、`Context ID+epoch+grain+scope+coverage`、`Consumer A/Bの実受領結果と版`、`各ConsumerのObserver/必要閉包/未知`、`独立ExpectedとCurrent Disclosure/Grantの観測有無`を、同じ試行IDに照合する。各列が揃っていても**同一原子的Snapshot**やOwnerのMeaning Acceptanceを自動主張しない。Consumer Aだけ取得できた場合はAの限定Claimまでとし、Bの成功を作らない。
+
+**順序と非目標**：まずD1の実PG Rowset→Table/集計の二Consumer受領を製品/実Consumer経路で証明する。並行してD0のGraph→Tree Node Slot編集と三要素CRUDの矛盾負例を既存Ownerが検証する。外部REAのR3（CLI＋第二Consumer）は#3394/[Draft #4603](https://github.com/hat47x/tei-platform/pull/4603)が所有し、証拠を再利用するがD1の先行条件にはしない。生成Wailsのread-only WebView2成功 [Draft #4579](https://github.com/hat47x/tei-platform/pull/4579)は固定Fixture/WindowsでのConsumer能力の証拠であり、上記の実DB Context受領・現在Grant・セルフビルドL3を証明しない。第二Resolver/Graph Engine/CRUD正本/Consumer Adapter/公開Gate・Core型・実行Hostは増やさない。
+
+
+### 問い相対の証拠到達・異種Join・否定判断をD0〜D3へ適用（2026-11-14追加）
+
+横断レーンのREA R3設計 [Draft #4603](https://github.com/hat47x/tei-platform/pull/4603) の **P/J/Q（局所観測／異種Evidence Join／問い相対の必要閉包）** は、標準データ構造やCore型の増設ではなく、既存#4350 DF-X・#2586 HJ・#2497 MP・#4487 TEA-Q41/Q43・#2514/#1180の独立Expectedで**主張の到達範囲を点検する方法**として取り込む。#4603のMASTER_PLAN追補を複製せず、本計画では通常TEI Functionと二Consumerで検証すべき差分だけを所有する。
+
+1. **P：局所観測を壊さない。** 原Sourceの`Required / managed / actually loaded / parsed / selected Function+Query / provider actually invoked / rowset actually observed / consumer actually received`を、既存Reader/Operation/Evidenceから**別々の事実**として照合する。この列は一律の直列APIでも新しい状態Enumでもない。構成上Selected Aでも実Invoke B、SourceをLoadしても実Callなし、Raw digest一致でもParser/Role/Plugin pin更新、Consumerに配送せずCLIだけ成功を、合格へ縮約しない。各段で`UNBOUND_DATASOURCE`、未取得、empty、partial、Provider Error、非開示、Current Source/Grant未確認を該当する観測根拠と結ぶ（#2586/#1251/#2506）。
+2. **J：異種Evidenceの結合を無断で行わない。** REA External Node/Edge/Observation、三要素Data/Function/Business、TEI受理済みMeaning、Provider Rowset、旧システムのActual、TEI TargetのActualはProducer・Subject/occurrence・granularity・有効/観測時刻・Source版が異なる。同名、同IDの別Namespace、同じJSON/Source digest、同時刻、同じUI表示では結ばない。Qualified MappingとOwnerの受理範囲を明示し、未受理なら並列候補とunknownを残す（#3394/#1124/#4472/#2497）。
+3. **Q：否定・全称の主張は必要閉包を検査する。** 「参照0件」や「三要素図に表示されない」から、未使用・存在しない・安全に削除できる、と結論しない。各Questionに必要なSource/Relation family/動的呼出し/未ロードPlugin/手作業/未取得page/必要権限を既存Required Setで点検。十分でなければ`observed=0`と`absence unknown`を両立して表示する。非公開Source有無で公開件数・diagnostic・DOM/ARIA・Tool JSONが変わる二世界の反例は既存#2516へ渡す。R2のGraphCoverageをData/Function/Business全分野のCompletenessへ一般化しない。
+
+**既存受入に追加する独立の判別（新Fixture正本は作らない）**
+
+| 既存ケース・Owner | 受理側が必ず区別する二つのWorld |
+| --- | --- |
+| TEA-Q41／#4487・DF-X03/04／#4350 | REAがData候補+Edgeを届けGraph配送completeでも、未観測Function/Businessは`unsupported/unknown`。図の0件と実不存在を別主張にする。 |
+| TEA-Q43／#4487・DF-X01/02／#2586 | 旧SourceのFunction宣言と現PG `order_entry.recent_orders`のRead成功だけでは同一Functionの旧実行・移行一致を主張しない。Legacy Actual (L)、Owner Accepted Desired (D)、Target Observed Actual (T)を別観測で比較する。 |
+| TE-CR-01〜04／#4472・DF-X04／#4350 | Function×Dataに現れた宣言occurrence数、CRUD表のセル数、実業務更新回数を分ける。Index取り違え・明示のみpairの消失・矛盾後勝ち・`OK:true`への過剰昇格を検出。 |
+| HJ/DF-X01／#2586・#2506 | 実Readに成功しても`selected≠invoked`、Consumer Aのみ受領、B未受領、unknown/partialの隠蔽を非合格にする。2×3 JOINの合成反例は現PGの実Read事実と別証拠で扱う。 |
+| DF-X05／#1124・#1174・#2516 | Same byte/Source A→B→A/Grant変更・旧AI Replyを組み合わせても編集/再表示資格を自動復帰させない。低権限Consumerにprivate Evidenceの存在・パス/件数を推測させない。 |
+
+**D1への最小引渡し**：まず`order_entry.recent_orders`について同じ固定Workspace・Function・Provider選択・SQL引数・Source Revisionで、`selected → actual invoke → actual rowset → Context instance → Consumer A/B selected/invoked/received`の**最初の欠落辺**を一つだけ確定する。既存#4539の実PG16 Readと、別Headで成立したWebView2 Browser/InspectorやREA Consumerの成功を合算しない。同一Attemptと同一Contextでも全Source原子的Snapshotは推定せず、各Consumerの独立Expectedと現在の必要Scope/Disclosureを照合する。現時点でこの縦断の実行・Owner受理は **NOT RUN**。
+
+**D2/D3への停止線**：P/J/QはRead主張の十分性判定であり、書込みGrantやOperation Intentの発行元ではない。設計Sourceは#1124のAccept→再Projection、業務Actionは#2500/#1174のGrant→Effect→Receipt→独立Read、外部Hostは独立Consumerとして検証する。静的ObservationやAIが示したSource spanから、DB Schema更新・業務Effect・公開権限へ自動昇格しない。Plugin/Build時の`declared/selected/actually invoked/observed/enforced`も既存#2018/#3278/#2831のEvidenceに接続し、CLI/Browserの限定PASSをStage1→Stage2自己再構築成功と呼ばない。
+
+
+### Desktop独立編集／Web共同編集／AI候補に共通なデータ様式の保存・再資格化（2026-11-14追補）
+
+[Studio #1824](https://github.com/hat47x/tei-platform/issues/1824)の Desktop＝ローカルWorkspace/ローカルGitによる独立編集と、将来のWeb＝共有サーバWorkspaceでのチーム同時編集は、**保存先・同期・Session・認可の違い**である。両者とCLI/AI/SHOは既存Application Operation／Qualified Subject・Source/Model Context／Preview・Acceptance／Function Data Context／Build Evidenceを共通使用する（#1124/#1251/#2621）。これはWeb共同編集機構の実装済みClaimではない。Wails Desktopの実WebView2 read-only成功 #4579をWebでの共同編集・Server HA・同時保存合格へ転用しない。
+
+**6つの現在性・同一性を分ける**（形式/API名の採用ではなく既存Evidenceの比較観点）：(1) editorのunsaved **Draft/Buffer Revision**、(2) 管理Root中の**Source byte/occurrence/Revision**、(3) Owner受理済み**Model/Meaning Revision**、(4) UIの**Workspace/Branch/Session・Selection epoch/Context ID**、(5) 共有用**Git Commit/Tree/merge base**、(6) 生成器と入力閉包に基づく**World Fingerprint/Artifact Revision**。Sourceのbyteが一致してもA→B→A、別Workspace、別Parser/Role/Provider、Grant変更なら旧Meaning/Review/実行資格は戻らない。逆に同じ意味Subjectへの別表示位置・Markdown装飾変更だけでは意味変更を推定しない。
+
+**Web共同編集の三つの競合レベル**を分離する（#1824が体験/Host、#2621がRaw Authoring、#1124が意味編集、#1174/#2598が実Effectを所有）。
+- **L1 Buffer/Text**：同時文字編集・同期は草稿の問題。CRDT/Yjs等は候補であり、採用済みの共通Source Writerではない。未解決ConflictでもDraftは失わず別保存・Review可能とする。MarkdownのCRLF/BOM/未知Roleや未対応`*.tei.md`を自動正規化・登録しない。
+- **L2 Typed/Semantic Change**：Stable Subject+Source occurrence/Slot+base Source/Model Revision+必要依存の現在性から局所Patch候補を導出。異なるSlotなら自動許可ではなく依存と受理範囲を確認、同一Slotの競合・Graph edge identity欠落・CRUD矛盾・旧AI提案は明示Review/保留。CRDTの収束やGitの自動MergeはMeaning Acceptanceでない。
+- **L3 Git/Workspace/Build**：Desktopのcommit/rebaseとWebの共有Workspace確定版は別の操作。Merge後は実Sourceから再Index/再Validate/再Buildを必要範囲で再資格化し、Read-only Preview・Builder選択・実Builder起動・生成Artifact・Desktop実Consumerを別Evidenceへ記録。#4623の限定Plugin Builder選択→Child起動前digest一致はDraft・CI限定の成果で、非Plugin Wails DesktopのBuildIntent→Stage1→Stage2を証明しない（#2831）。
+
+**原本と表示を分ける**：通常Markdownは原文を保持して保存できる一方、TEI意味定義・宣言付きTable/Graph・生成物はAuthoring/Meaning/Read-onlyを区別し、`*.tei.md`へのParser/Role/Loader正式採用前に自動意味昇格しない（#2621）。同じCanonical SubjectでもTable、Graph、SHO Document、SUI Canvas上のView occurrence/座標は別。表示・Selection・AI pinからSourceのWriter・DBのAction・Owner Authorityを発行しない。外部Host/TEI Studioの実Consumerへ開示するContextはAudience/用途相対の許可済みSliceから作り、秘密の存在を公開件数/unknown/診断/DOM/Tool結果から漏らさない（#2516）。Source/Policyの変化をConsumerが**実際に観測したとき**、後着Replyの新規表示拒否と、既表示情報の資格失効を独立に評価する。検知されていない変更の即時撤回保証は主張しない。
+
+**既存ScenarioとExpectedへ渡す5つの最小受入（新Fixture SSOTは作らない）**
+
+| ケース | Desktop/Web/AIで共通に要求する正負対照 | Owner・開始条件 |
+| --- | --- | --- |
+| **CW-01** | 同じSourceの異Slotを2編集者が更新：Raw Diffで衝突しなくてもMeaning依存が交差する場合はReviewへ。片方の更新によってもう片方の未保存Draftや承認が黙って消えない。 | #1824/#2621/#1124。最初はHeadless 2 Draft/1 Sourceの合成試験。Webサーバ実運用は後段。 |
+| **CW-02** | 同じSubject/Slotへの別値・同名別Subject・多重Edgeの差分では、last-writer-winsやGraph表示IDへの転写をしない。既存Source span/Identity/Revisionが一致しないApplyは0件。 | #2497/#4533/#4538/#1124。D2のSlot編集負例に追加。 |
+| **CW-03** | Draft A→Source B→A、別Branch/Workspace・Parser/Role版変更・Git Merge後の同byteから、旧Model Acceptance・Review・Build Evidenceを自動復活させない。 | #2621/#1124/#2831/#2600。World/Model/Artifactを別資格として照合。 |
+| **CW-04** | 旧Workspace/旧Grantで生成したAI提案や非同期Inspectが新Sessionへ後着：再束縛のない自動Patch/Result表示を拒否。既表示情報の失効と許可済み無関係領域の継続表示を別確認。 | #1124 DS-X11、#2598/#2516。実WebView2/Policy検証は別Claim。 |
+| **CW-05** | 同じFunction Contextと許可済みSource SliceをDesktopとWebの異なるConsumerへ投影。各受領/Disclosureを実検証し、Reader/Consumerの受入不足を「描画成功」で代替しない。 | #2586 D1、#1251/#1824。Desktop/Web同時編集をD1のHard Gateへ追加しない。 |
+
+**実装順**：D1の実PG→同一Context→二ConsumerはP0のまま先行。並行してD2でCW-02（既存#4538の局所Patch）とCW-04（既存#1124 DS-X11）のHeadless負例を先に採用候補として検証し、CW-01/03のWeb共同編集とGit Mergeの実装は後段の#1824/#2621へ。何らかのCRDT/集中DB/共有Lock/新Server/新Authorityが必要かは実測してから判断する。最新mainへ本Draft計画が取り込まれたこと、Web共同編集実装・Studio GUI/Policy/DB実験・Owner意味受理の成功は**NOT RUN / NOT ACCEPTED**。
+
+
+### データ様式の動的意味：依存閉包・差分失効・複数Context保存（2026-11-14追補）
+
+静的な **Structure/Facet→Projection→Operation適格性** だけでは、複数Data Contextが変化したときにどのClaimを維持・撤回・再評価できるか説明できない。[#2582](https://github.com/hat47x/tei-platform/issues/2582)（Query/Context依存とRefresh）と[#2597](https://github.com/hat47x/tei-platform/issues/2597)（複数編集Session/Save）、[#1706](https://github.com/hat47x/tei-platform/issues/1706)（Relation集合の粒度）、[#1708](https://github.com/hat47x/tei-platform/issues/1708)（複数Read Snapshot整合）、[#2564](https://github.com/hat47x/tei-platform/issues/2564)（期待状態/CAS）を**データ様式の時間・変化に対する適格性**として既存D1〜D3へ接続する。新しいReactive Engine、万能Change Log、Snapshot Coordinator、Composite Transaction Runtime、第二Session/Cache/Operation SSOTを作らない。
+
+**変化の意味を4つの独立軸で追跡する**（新Core型名ではない）。
+1. **Observed Result Slice**：Subject/Relation/path/aggregateの粒度、値とNULL/未取得/非開示、collectionの必要Scopeとcomplete/partial/unknown、実Consumed Query/Provider Revision。0行はread-covered sliceの結果であり世界の不存在ではない。
+2. **Dependency/Required closure**：当該Claimが実際に必要とするField/Relation/Predicate/Query演算/時点。JOINやAggregateの出力列だけでは不足する。`WHERE`の非表示Field、`NOT EXISTS`・LEFT JOIN未一致・Top-N・LIMIT/ORDER・集合差等の**否定/非単調依存**と未知Dependencyを区別し、必要な入力閉包を説明する（#2387/#2582）。
+3. **Freshness/Coherence**：Source/Rule/Model版、Function Instanceと選択epoch、Providerの各Read snapshot/評価時点、Consumer実受領を分ける。同じ画面時刻や同じ値でも複数Providerが原子的Snapshotを共有したとは扱わない。Providerが保証する整合性以上は`unqualified`とする（#1708）。
+4. **Pending Change/Effect**：View/Sourceの表示差分、Instance+Anchorに属するDirty Change Set、型付きOperation Intent候補、HostがCommitしたResult/Receiptを分離。Read/Refreshは未保存Patchを消さず、Receipt/別Readの値一致だけで当該Attemptの因果Effectを断定しない（#2597/#2598/#1174）。
+
+**局所維持の判断**：必要な依存範囲に変更がなく、現在性・必要Scopeが満たされるClaimだけ維持候補とする。直接変更を観測したClaimは失効/純粋再評価/再Read候補へ。影響依存が未解決なら`no impact`ではなく`unknown/recheck required`へ。Providerが証明できない差分適用の代わりには、既存Queryによるread-only再取得を基準とする。単なるUI再描画やAI推測を整合したデータ変更として扱わない。全面失効も誤成功と同様に計測し、対象外のConsumer/Contextを不必要に停止させない。
+
+| 既存ケース・正本 | 順当な判断／誤判定を防ぐ負例 | 結合先 |
+| --- | --- | --- |
+| **RC-01/02 (#2582)** | 親H→D1明細2件・D2履歴3件。D2だけ変更してもD1のみの合計は局所保持候補、D1×D2 JOIN/依存Claimは再評価。Opaque依存が残る場合は「無影響」ではない。 | D1の二Consumer実Read後、D1.1 read-only Claim差分判定 |
+| **RC-04/05 (#2582)** | LEFT JOINの旧`(H,NULL)`はD2一致行の後着で撤回され得る。NOT EXISTS/Top-N/集合差/集計も追加行で旧結果が消える。部分ページから不存在/完全集計を断定しない。 | #2387/#1706/#1708、D1.1 |
+| **RC-03/07/08 (#2582)** | Parent A→Bで遅れて到着したA結果をBへ混入しない。他のInstance Aは保持。Rule改版のみとRenderer改版のみで再計算/再描画範囲を区別し、Provider別Snapshot不一致を明示。 | #1824/CW-04とD1 Consumer、必要ならGo/WASM同じ判断を比較 |
+| **ES-01〜04/09 (#2597)** | 同じFunction Definitionの2配置I1/I2でもDirty/Selection/Resultは別。A→B→Aで未保存Patchを誤移転せず、独立Context D1/D2・page1/3に表示された行だけで全件更新を作らない。 | D2 Source編集・Function Edit、#2506/#2500 |
+| **ES-05/06/11＋RC-06 (#2597/#2582)** | 2 Patchが同じUI Saveから送られてもall-or-noneではない。実Provider同一Tx確認まで個別結果を保持し、D1成功/D2失敗、ACK-loss/Commit unknown、期待版競合、再Readの因果同一性を別判断。 | D3 #1174/#2564 Effect/Receipt、業務Owner |
+| **RC-09/ES-13 (#2582/#2597)** | 遅着・訂正EventのWindowと現在最終値、値は同じでも業務確認/Grantが失効した状態を区別する。可変Stream/Time軸の同値を値一致だけで決めない。 | #4133/#1708、必要なDomainのP2 |
+
+**D1/D2の最初の縦断**：既存#4539の実PG Read→同一Function Context→TableとAggregateの二Consumer受領が成立した範囲でのみ、RC-01とRC-04の**限定Headless** read-only対照を続ける。RC合成Fixture（H/D1/D2）を`public.orders`の実PG Rowsetと混同せず、同一入力を都合よく別世界の証拠へ昇格しない。並行D2ではES-01/02/03/09の2配置・Dirty保持・部分取得を既存#2597/#1180へ委譲する。D3の実Tx・CAS・Receiptは独立Evidenceがある場合だけ検収し、E3実DBの別Operation成功を単一業務Saveの原子性に合算しない。
+
+**実行配置の判断**：Desktop/Webの共通State/Context判定をGo Native／Browser WASM等に置く可能性は#1824/#1145のTarget/Performance比較対象だが、ここでWASM必須ABIや第二のBusiness Rule Engineを決めない。依存失効・Anchor/epoch・Operation候補の**同じ入力→同じ判断**がHeadlessと異種Consumerで再現することを先に確認し、I/O・Grant・CommitはHost/Providerに残す。表示反応速度と再Query回数・過剰失効/誤維持の率を分離して測る。
+
+**今回の資格**：設計・受入順序の統合のみ。#2582/#2597のRC/ESケースは未実装・未実行の計画であり、実PG二Consumer、Headless selective refresh、実Web/WASM、実多Context Tx/Owner意味受理の新試験は**NOT RUN**。新DSL/Core/正式Reactive APIを本追補で採用しない。
 
 ## 案件の一巡で追加した七つの作業
 
