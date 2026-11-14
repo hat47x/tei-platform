@@ -591,3 +591,77 @@ AIハーネスは「現在のPinはどのWorkspace・Subjectか」「何が実So
 | Worker/Transport timeout後にAIが再実行要求 | 既存Request/Receipt lookup-first。確認不能はEffect unknown、無条件の再Submit 0 |
 
 **実施状態**：本節は既存PR・Issue・実測記録の設計上の統合であり、DT-0〜5の新しい実Build・Windows GUI・実PG Product Consumer・AI送出/受理試験を行っていない。採用済み正本、各Ownerと独立Expectedの境界を維持する。
+---
+
+## 13. Desktopの操作境界を編集・認可・実消費まで通す（2026-11-14、設計・受入追補）
+
+<!-- tei-desktop-operation-authoring-slice-20261114 -->
+
+§11の配置比較と§12の二つの一巡を、実装時に混同しやすい**画面の操作、保存されるSource、実行されるOperation**の境界で補う。以下は既存の型付きApplication Operation／Source Reader／BuildIntent／Receiptを使うための受入仕様であり、Desktop専用の第二API・Parser・権限Engine・Event Runtimeを採用するものではない。
+
+### 13.1 Wails Bridgeの「登録済み」と「公開してよい」を分ける
+
+現行\`cmd/tei-studio/main.go\`の\`StudioBridge\`には15個の公開メソッドがある。\`reference/tei-studio-workbench/responses.ts\`はUIの後着応答を除外するが、Host権限検査や実処理の取消しを提供しない。現状の登録メソッドをWeb／AIへそのまま公開してよいと解釈しない。
+
+| 実際のBridge入口 | 当面の扱い | Desktop／Webで検収すること |
+| --- | --- | --- |
+| \`ListWorkspaces\`、\`CatalogWorkspace\`、\`ValidateWorkspace\`、\`InspectSubject\`、\`ObserveXead\`、\`ViewPattern\`、\`ViewApplication\`、\`ViewPackage\` | Source／Workspaceに基づく参照・診断・投影。read-onlyであっても開示可能範囲を伴う | 実Hostが許可したRoot／Subjectだけを返し、異Workspaceの同名IDや古いSourceの結果を現在値と表示しない。結果本文・DOM・ARIA・ログへの開示も別途検査 |
+| \`PlanCommand\` | 実行に先立つ候補計画。**計画結果は実行許可ではない** | 選択したCapability、入力、必要Effect、未満足条件を示す。Pre-dispatch拒否時のAdapter呼出し0を確認 |
+| \`ExecuteCommand\`と\`WithPeriods\`／\`WithPolicy\`／\`WithReferenceStore\` | Invoke系。現Reference Storeの作用は一時的・非永続であり、本番のDB Commit成功と区別 | プラン時点の資格を流用せず、Invoke時のHost Grant／実Provider／Operation Identity／Effect／Receiptを確認。タイムアウト後はlookup-first、unknownなら自動再実行しない |
+| \`OpenShoDocument\`、\`ResumeShoDocument\` | **外部SHO CLIとの連携**。意味受理・保存・実Recipient結果をStudio自身が代行したことにしない | プロセス起動と入出力、Document Writerの保存結果、TEI Sourceへの再束縛を独立記録。DesktopのDocument操作とTEI Meaning Acceptanceを分離 |
+
+本表は**メソッドを操作意図別に整理したもの**で、現行コードの権限実装完了を意味しない。現在のServer PoCのloopback拘束は共有WebのPrincipal認可、HTTP/WSのAudience隔離、実行系入口の安全な公開を証明しない。共有Webの初回公開は参照系からの明示allowlistとし、Invoke／外部プロセス／Source書換えをデフォルト非公開とする（Owner #3421／#2516／#1158）。Local Desktopでも、UIからの文字列や選択表示をHostの権限根拠として使わない。
+
+### 13.2 一つの画面には複数の「版」がある
+
+Studioが表示・編集する値を、次の別々の実物として扱う。
+
+| 対象 | 正本／現在性の見方 | 禁止する推定 |
+| --- | --- | --- |
+| 編集中のBuffer | ユーザーの未保存入力。IME確定中、取り消し履歴、選択範囲を含む | 編集画面にある＝ディスクに保存済み |
+| 保存済みSource | 実ファイルのbyte／既存Source Index、Readerの取得位置 | 保存成功＝Meaning受理済み |
+| Meaning／候補差分 | 既存Validation／Shared Acceptanceが対象Revisionについて判定 | Parser成功＝現行Hostで実行可能 |
+| Build入力とArtifact | 正式BuildIntent／選択Builder、実読込byte、各生成段階のArtifact、Attempt | Preview成功＝実Stage1→Stage2の生成物 |
+| 実行結果／Delivery | 実Provider／Receipt、実WebView2／外部Consumerの受領 | 応答受信＝業務Commit／現在Disclosure成功 |
+
+表示には、観測できた対象・Revision・Scope・欠けている資格を対応付ける。未観測のRevisionやAuthorityを推定で埋めない。Bufferの一時版とSourceの実byte版、意味版とArtifact版に一律の連番・同一ハッシュを要求しない。必要な関係だけ既存Index／Build Evidence／Receiptに結び付ける。
+
+### 13.3 編集・修正・検証の最小遷移
+
+1. **Locate／Inspect**：Source-backedの\`WorkspaceRef\`／Subjectを確定できる範囲だけ表示する。Graphの描画Node・辺IDやMarkdownの見出し名だけで編集対象を確定しない。
+2. **Draft／Review**：テキスト編集、Quick Fix、AI候補、SHO編集はBufferへの提案・差分として扱う。各候補は元のSource／Buffer版と対象範囲、変更後の期待を示す。保存／受理／Build／Invokeは連動しない。
+3. **Apply／Save**：現在の保存済みbyteと候補の基準版を照合してから最小Patchを適用する。同名別ファイル・A→B→A・外部Editor更新・保存直前のWorkspace切替・symlink等のRoot逸脱は再解決または拒否する。行末、BOM、未変更のMarkdown糖衣表現を不必要に正規化しない。安全な保存方法と衝突判定のOS別受入はDocument Writer／Source Ownerへ委ねる。
+4. **Validate／Accept**：保存済みSourceを再読込し、Source・Meaning・Pre-dispatch・Entry/Hostの診断を別々に表示する。Unqualifiedやpartialを\`ok\`へ丸めない。意味受理には既存Ownerの明示的な判断が必要。
+5. **Build／Invoke／Observe**：対象と入力Revisionを再確定して既存Operationを呼ぶ。Builderが実読込した入力とWebView2が実消費したAsset、Invoke後のReceipt／独立再読込みをそれぞれ観測する。
+
+現行Wails Bridgeに一般的な\`SaveSource\`等の入口があるとは扱わない。未実装の段階は「未対応」と表示し、WebView側だけで擬似的な保存成功を成立させない。SHOの\`OpenShoDocument\`もStudio共通のSource書換えAPIへ読み替えない。UIが取得した\`sourceSpan\`が現在Revisionへ再解決できない場合、Jumpは保留し、Quick Fixの自動適用も行わない。
+
+### 13.4 Pin／応答順序／操作の実行状態を独立させる
+
+\`selected\`（今見ている対象）、明示\`Pin\`（参照し続けたい対象）、Dirty Buffer、Host実処理、Task／AIへのHandoffは別々の状態である。Pin AをBの閲覧中に裏で再Inspectしても、BのEditor／Graph／Dirty／Selectionを変更しない。Undoが戻すのはBufferやPin Intentのローカル状態だけであり、過去のGrant・Source資格や実行済みEffectではない。
+
+\`responseScope\`のlane／epochによる後着除外は、**表示の現在性**だけを担う。Workspace、Source byte、対象Identity、Plugin／Provider選択、Panel破棄、実Host Grantが変わった場合は、その応答を現在の説明・選択資格として再利用できるか各Ownerに確認する。UI上でAbort／閉じるを行ってもHostの副作用が取り消されたとは表示しない。Effectの状態が不明ならReceiptを先に照会し、重複Submitを避ける。
+
+### 13.5 プロセス起動から終了までを同じOperation観測でつなぐ
+
+Desktopの基準方式Aは、**OS起動 → Wails／Goサービス初期化 → Window／WebView2接続 → UI Event → 型付きApplication Operation → 必要なResponse／Effect → Window破棄／終了**の一巡として捉える。Editor・タブ・Windowが閉じても、Go側実行の成否を画面の消滅から推定しない。長時間操作、異常終了、再起動後のReceipt／Artifact／Draftの再読込は既存Ownerの実状態で判定する。
+
+B0同一exe子Worker、B1別Server、B2別Server/Workerはこの同じOperation／Result／実消費を維持してP1に比較する。親子ProcessのIPC（Named Pipe／UDS候補）とWebView2↔GoのWails Bridgeは異なる通信境界であり、一つの「IPC検証済み」にまとめない。Worker再起動でMeaning／Grant／Effectを再利用できるとは推定しない。
+
+### 13.6 実装に引き渡す独立負例と優先順位
+
+新しいScenario正本は作らず、次の対照を#1180／#2514へ既存DH／DT／PIN／UX受入の補助Expectedとして引き渡す。
+
+| 優先／Owner | 対照操作 | 観測すべき失敗の防止 |
+| --- | --- | --- |
+| **P0 #4583／#2831** | Buffer R1・保存済みSource R0のままPreview→正式Build→Stage2実起動 | Buildが実読込した版を記録し、R1を実Artifactに含めたと誤表示しない。R0/R1混在を別AttemptのPASSで隠さない |
+| **P0 #1824／#4515** | BのDirty Buffer閲覧中、Pin Aの裏Inspectが後着。さらにWorkspace A→B→A | BのEditor／Graph／Dirty不変。旧Aを現在資格へ自動昇格しない。旧ReplyをDOM／ARIAに採用しない |
+| **並行 #1124／#2621／SHO** | CRLF＋BOMを含む\`*.tei.md\`の一部分だけ修正し、外部Editorが同名ファイルを差替え | 未変更byte／糖衣形式を保持。競合・Root逸脱を拒否し、保存とMeaning受理は別票 |
+| **並行 #1158／#2516／#3421** | Server／AIから\`ExecuteCommand\`系や外部SHO連携を直接要求 | 明示許可前は公開しない。Hostで拒否し実Provider／外部Process呼出し0、開示対象外の本文／DOM／ログ送出0 |
+| **並行 #1174／#1251** | Invoke中にWebView2／Workerが終了、Responseなし、再操作 | Receipt先行照会。unknown中に無条件の再作用0。Reference Storeの一時作用を永続Commitと呼ばない |
+| **P1 #1824／#2391** | A/B0/B1/B2の同一Fixtureでcold/warm・p50/p95・memory・障害復旧を比較 | 成功したTransportだけで製品同値を主張せず、Productionに外部GUI計装が残っていないことを実バイナリで確認 |
+
+最初の実装着手は**P0の正式non-Plugin Studio BuildIntent→Stage1→Stage2→当該Windows WebView2**と、これを妨げない**現行WorkbenchのPin／後着独立性**である。一般Source保存、Web公開、Worker導入、SHO/AI完全統合をP0の追加Hard Gateにしない。実際のOwnerが選ぶ実装方法・既存Scenario ID・受理の所在をこの文書が上書きするものではない。
+
+**現状**：Bridge／Workbench実コードと既存Issueを照合して設計を補ったものであり、本節の新たなWindows／IME／実Web認可／OS保存／Stage2／Host Effect試験は **NOT RUN**。文書の更新やPR CIの成功を製品受理として扱わない。
+
