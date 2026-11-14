@@ -90,10 +90,8 @@ func TestCTKWindowInputObservationByteWitnesses(t *testing.T) {
 		t.Fatal(err)
 	}
 	var oracle struct {
-		InputObservations []ctkWindowInputRow `json:"inputObservations"`
-		Cases             []struct {
-			File string `json:"file"`
-		} `json:"cases"`
+		InputObservations []ctkWindowInputRow   `json:"inputObservations"`
+		Cases             []ctkWindowOracleCase `json:"cases"`
 	}
 	if err := json.Unmarshal(data, &oracle); err != nil {
 		t.Fatal(err)
@@ -101,8 +99,8 @@ func TestCTKWindowInputObservationByteWitnesses(t *testing.T) {
 	if _, err := validateCTKWindowInputRows(oracle.InputObservations); err != nil {
 		t.Fatal(err)
 	}
-	if len(oracle.Cases) != 5 {
-		t.Fatalf("unexpected source case count %d", len(oracle.Cases))
+	if err := checkCTKWindowCaseClosure(oracle.Cases); err != nil {
+		t.Fatalf("cannot search unqualified Markdown candidate Source: %v", err)
 	}
 	for _, c := range oracle.Cases {
 		t.Run(c.File, func(t *testing.T) {
