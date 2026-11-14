@@ -447,3 +447,50 @@ LRBラベルは独立Expected正本ではなく、既存#1180/#2514へ渡す横�
 **新HEAD f2f49a7c9732b3f88e8dc21c75cbdcc1084c0b70の実CIを確認**：[Wails Host #43545456013](https://github.com/hat47x/tei-platform/actions/runs/43545456013) completed/success。server-build Job 132295613443の実ログで CGO_ENABLED=0 go test -mod=readonly -count=1 -tags server . → ok tei/cmd/tei-studio 0.680s を確認。6 Mutation negativeを含む新Server Go試験はこの成功したスイートへ収録されている。同HEADのDesktop WebView smoke #43545456086、Cache、依存検査もcompleted/success。Repository Health #43545455990はこの照合時点ではin_progressであり、全Workflow合格や本番Web公開資格とはしない。旧HEAD 9491bf9eの成功と取り違えず、実Browser二Context表示分離≠別PrincipalのCurrent Grant/WS配信分離という資格上限を維持する。
 
 **未実行**：LRBの実Web/SHO/REA/認可/AI送出、PR横断BuildとStage1→Stage2再入、Owner意味受理。本章は既存PlanのOwner分離と実受入条件へ引渡す設計成果。
+
+
+## 19. 2026-11-14：外部Byte・Query Admission・UI Appearanceの独立資格
+
+### 19.1 実装の進展と横断的な意味
+
+異なる他チャットで進んだ3系統の変更は、一つの「Pluginの有効化」ではなく、次の独立した段階に位置付けられる。
+
+| 新しい実装候補 | 実際の作用 | 別に必要な資格 |
+| --- | --- | --- |
+| [REA Host-owned Bytes #4630](https://github.com/hat47x/tei-platform/pull/4630) | ops.ExternalCandidatesFromBytes がHost調達済みraw Byteから既存R2 Candidateを投影。EvidencePathが非空なら拒否 | Host認可済みResource選択・bounded取得、Current Disclosure、実Consumer Reply。意味受理は別 |
+| [Product Queryの型付きInput #4626](https://github.com/hat47x/tei-platform/pull/4626)＋[Driver pre-Executor検査 #4631](https://github.com/hat47x/tei-platform/pull/4631) | Sourceに実Query.Input from/std.datetimeを宣言し、実Provider前に参数の必須/型/未宣言などを拒否する限定実装候補 | 全型一般化・SQL placeholder全閉包、実DB/通常CLI、現在Grant/Effect。RA-1はRA-0へ積上げており単独受理しない |
+| [Studio Appearance #4628](https://github.com/hat47x/tei-platform/pull/4628) | TS/CSSのlight/dark/system・densityを局所保存し、選択/Editor/Dirtyの維持を目標とする実装Draft | Plugin選択済・Workspace設定・Current Grantではない。実WebView・アクセシビリティ・長期採否は別 |
+
+**同じ「State」という名称でまとめない**。Theme/densityのローカル保存はPresentation Preference、Plugin Managerのenabled/settingsVersionは#4378で未決の管理状態、Data ContextのActive Input/Pinは#2597/#2500、Current Grantは#1174、Provider Selectionは#951/#1016であり、どれもSource Accepted Meaningの正本と同義ではない。
+
+### 19.2 Product/API/Hostが持つ五つの時点
+
+1. **Discover**：型付きOperation/Toolが実装されているか・CLI/API/MCP/Studio/Webどの入口で呼べるかを観測。存在は権限や成功でない（#1158/#1251）。
+2. **Select/Acquire**：正しいWorkspace/Resource/Source Revision/Provider/Contractを選び、必要なByte/Query Parameterを取得。local PathをRemote Pathへ拡張しない（#1016/#3394）。
+3. **Admit**：解析用ByteならPathを持たない既存R2へ渡す。DB Queryなら宣言済みParameterとの型適合とCurrent Grant/実対象をExecutor/Effect前に検証し、不適合時はactual Executor Calls 0。legacy Sourceで宣言が空というだけでtyped-qualifiedとはしない（#4631/#1174）。
+4. **Invoke/Observe**：選択済みProviderの実Entry、実受領Byte、効果/Receipt/partial/Unknownと独立Readを別々に観測。Reference実行やSource Revision一致から業務完了を導かない（#1251/#1174）。
+5. **Deliver**：Result/Failure/Tool/Trace/AI TaskのうちAudienceが今受け取れるFieldだけを送る。実送出Byte・現在Disclosureを別検査。Modelに渡せたか/外部Consumerが受領したか/Skillが公示できるかも別である（#1178/#2515）。
+
+この五時点は**既存OperationやEvidence票の観測Projection**であり、新しい中央Server/Operation Schema/Global Authorization Gateway/Runnerの採用ではない。特にClientにあるUI Theme変更がPlan/Grantを変更したり、Browser WASMの同値計算が実ProviderのAdmitを代行したりしない。
+
+### 19.3 Byte-onlyの実コード上の開示負例
+
+#4630 HEAD 1ad749fc0eaacc195dd28ea88a97bd44d9581050 の実コードでは、ExternalCandidatesFromBytesがOSファイルReadをしない一方、ExternalCandidateView.Attempt.Toolはexternalanalysis.Toolをそのまま含む。同型にはjson公開のResolvedPath、AbsentReasonがある。ResultのEnvelope/Producer Error/Reasonも送信先に応じて開示検査が必要。**Pathless InputとPathless Outputは別資格**である。実漏えいを観測したとは主張しない。
+
+既存#1178のDisclosure Ownerに[具体的受入コメント](https://github.com/hat47x/tei-platform/issues/1178#issuecomment-6870458945)、#4630の実装Ownerに[同じレビュー](https://github.com/hat47x/tei-platform/pull/4630#issuecomment-6870443976)を引渡し。Host Raw Pathに合成canary、Producer ErrorにRaw marker、同名別Workspace Evidence、Read後のDisclosure失効を用意し、**Receiverが実際に受け取ったHTTP/WS/MCP/AI Tool Byte**に未許可markerがないことを測る。許可済みread-only正例が通ることも同時に測る。
+
+### 19.4 Source変更による旧Evidenceの再利用を明示的に拒否
+
+#4626では recent_orders に input from std.datetime を追加した結果、旧R0 Source Revisionを期待する受入Fixtureが現在の新Sourceと一致しなくなった。新しいModel Revision／World Snapshotの適格性を、過去のR0の実績から移さないため、Scratch Copyで**旧byteを元に戻した過去世界**の再現性と、現在のRA-0 Source/型付き入力の資格を独立に持つ。既存E1のバイナリ依存検査でsqlgen symbolが検出された失敗は、Source Input宣言と同一原因と証明されておらず、allowlist緩和で合格にしない。
+
+#4631では、Source Inputが空の旧Reference直呼出しは歴史挙動を残すが、現Environmentで未宣言の実Parameterが渡された場合はExecutor呼出し前に拒否する積上げ設計。**旧Reference PASSを現在の型付きProvider資格としない**。これを新しい第二Driver/Rule Engineにはせず、既存driver query executionのCallerが実使用したことを独立Expectedへ残す。
+
+### 19.5 今回のexact HEAD・CI・Owner分担
+
+- [REA local CLI #4625](https://github.com/hat47x/tei-platform/pull/4625) HEAD 24863bd69a9139e1a75459a7c6607514dbc73ad8：確認した9 Workflowは全てcompleted/success（Health #43545393255）。旧HEAD d2175d97のgofmt失敗と混同しない。R3-A local入口限定でRemote Path/Host認可・第二Consumerは未実装。
+- [REA byte-only #4630](https://github.com/hat47x/tei-platform/pull/4630) HEAD 1ad749fc0eaacc195dd28ea88a97bd44d9581050：確認時点、REA contract/Healthを含む11 Workflow success、Windows smokeはqueued。新Go test成功は、外部Browser/AI DeliveryとOwner意味受理を示さない。
+- [Studio Server Inventory #4627](https://github.com/hat47x/tei-platform/pull/4627) 旧HEAD f2f49a7c：nested Server Go TestとWindows smoke等4 Workflow successだがHealth #43545455990は**本PR追加server_bridge_surface_test.goのgofmt不一致でFAIL**。新HEAD a085004721629f2e8d2141aac8a1fb7f07507d7b でそのGo map整形を修正。新HEADのHealth終了を確認する前にPASSと記さない。
+- [Studio appearance #4628](https://github.com/hat47x/tei-platform/pull/4628) HEAD 4be527f2cc2d12a2d135eb0e9f32743bfa379352 は実CSS/JSとSmokeを含むDraft。CIはこの照合時点で複数実行中なので、外観のProduct/実Windows全資格は未判定。
+- [RA-1 pre-executor #4631](https://github.com/hat47x/tei-platform/pull/4631) HEAD f0db7bb07d59edd30e60fb8cc0e20a7eb066e369 は#4626上の積上げDraft。新HEADの実Go driver/実PG全面PASSは未確認。ValidationやEndpoint到達から実DB Contract適格性を推測しない。
+
+**優先度は維持**：P0 #4583 Stage1→Stage2 Desktop BuildIntent/ArtifactSet実結合。P1は#4627のmain統合可能なGo test健全性と#4630のHost-owned bytes/Disclosureのread-only Consumerを並行確認。P2は型付きQuery Inputの実Provider前拒否、Studio Web Auth/REA二Consumerの外部Consumer比較。P3でUI Themeの広範囲適合、Browser WASMの選択的実測、共有Webの共同編集/HAを個別に評価。これらは他PRの採用や新Hard Gateの創設ではない。
