@@ -156,7 +156,6 @@ func TestStaleMermaidRemainsReadOnly(t *testing.T) {
 	}
 }
 
-
 // This is an executable reference consumer, not the production TEI CLI.
 // One exact compiled artifact is invoked with two different request values.
 func TestGeneratedBinaryRuntimeNodeQuery(t *testing.T) {
