@@ -563,6 +563,37 @@ SQL/NoSQL/ログ等のリバース結果は、**Physical Observation→Structura
 
 **Owner・停止線。** R3のProduct出口と外部byte受領は#3394、共通操作/Transportは#3419、Store/開示は#4503/#2516、原典三要素/Graph/編集は#1124/#1125/#1126/#2497、SHOは#4317/#4467、試験は#2514/#1180、DB実Readは#2586、Studioセルフビルドは#1824/#2831。#4487/#4570/#4601等のDraft成果は候補として参照し、実Owner判断前に正式要件/合格へ昇格しない。この節は**docs-onlyの横断受入設計**。R3の実CLI・第二Consumer E2E、REA 6.9のT0-06、原典Source/三要素の正式受理、実Wailsセルフビルド、SHO/旧新DBは本変更ではNOT RUN／NOT ACCEPTED。
 
+<!-- rea-question-bound-join-producer-support-20261114 -->
+#### 問い相対のEvidence Joinと三要素の支持範囲：R3後段に追加すべき最小受入条件（2026-11-14、設計のみ）
+
+**他レーンからの現行差分**：[三要素Diagram Draft #4487](https://github.com/hat47x/tei-platform/pull/4487) §38〜39は、局所Projectionのcompleteから「図中になければ存在しない」へ飛躍しない判定と、**TEA-Q41（REA Data支持からF/B不存在を推定しない）／Q43（Legacy Function宣言と新PG Read成功を同一Function実行としない）**の二つを優先的な独立Expectedとして定めた。本REA R3では既存#3394/REA-HO/REA-XLANの受領証拠を提供し、この二ケースを**既存三要素/実Read OwnerのConsumerで確認**する。新しいREA Parser、三要素専用Truth Store、9正本、共通Proof Engine、製品Gateは作らない。
+
+**最小の問い相対Review票（既存Operation応答と既存Evidence/Source/Disclosureのread-only合成、正式APIではない）**：
+| 確認列 | 例・検証点 | 欠落時の扱い |
+| --- | --- | --- |
+| Question/Decision use-site | 「外部の参照を1件表示」「正式モデルに同一Functionがある」「安全に未使用削除できる」 | 問いなしでglobal complete・一般的に安全とは言わない |
+| Producer/Claim class | REA外部Observation、X-TEA `.xead`宣言、TEI Accepted Model、実PG Read、手作業Actualを区別 | 別ProducerのClaimへ黙示昇格しない |
+| Subject identity/Scope | External Evidence+Node/Edge ID、TEI Qualified Ref、Workspace/Consumer/Audience | 同名・同bytes別Workspaceだけで結ばない |
+| Attempt/Revision/Source closure | Producer raw digest、Source宣言版・Reader実Consumed Source集合、.xeaf/他Source・dynamic Plugin・欠落ページ | `unobserved/unsupported/partial`を「0件」にしない |
+| Relation semantics/Grain | 向き/多重辺、Function-level CRUDとBusiness Action、表のBusiness Key/NULL・時間 | 描画Edge ID/CRUD集計数から実Writeや意味同値を主張しない |
+| Disclosure/Delivery | 現Audienceで許可された公開Slice、CLI/Studioの別Invocationと受領証跡 | Path/Private件数・存在そのものを漏らさない |
+| Assessment ceiling | observed candidate／unresolved／review-required／accepted meaning（既存判断記録を参照）／actual observed | 未資格の強い判断は`unknown/not-qualified`。新Core enum化しない |
+
+**Producer支持範囲を行列で保存し、分母を混ぜない。** 現mainのR2 `operations.ExternalCandidateView`が運ぶ`GraphCoverage/Unknowns/Unselected`は外部解析の局所情報であり、**Data/Function/Business別の完成状態そのものを保証する型ではない**。#4487の`BuildReviewPacket.ThreeElement`等、別途Producerが持つ三要素評価をR2の実装済みフィールドと偽らない。REAがData候補1件、Graph配送completeであってもFunction/Businessの評価が`unsupported`なら「0件」「無い」「全て確認済み」と描かない。X-TEA `.xead`単一Sourceの構造read-only completeも別`.xead`/`.xeaf`/手作業/実Providerのabsenceには使わない。実PGのRowset成功はTarget実Readだけであり旧Function実行の証拠ではない。組織の担当候補・Business TaskAction宣言も、人間による実遂行・承認・Current Grantの証明ではない。
+
+**三段階判定（P/J/Q）**：
+1. **P: 局所Fact/Projection** — 一つのEvidenceからObservation/Edge/Source occurrence・Graph Familyのカバレッジと限界を正しく読めたか。対象の存在Witnessは限定的に得られる。
+2. **J: 異種証拠のJoin** — 同じQuestion、対象Scope・版・出典、適用Mapping・異なるReader Attempt・業務有効時点と必要なCurrent Disclosureを明示的に再照合できるか。同一Digest／同一表示名・等しいJSON／同時刻だけではJoinを受理しない。
+3. **Q: 問い相対の必要閉包** — 否定・全称・「安全に削除」等の主張には、Ownerが確定した`Required(Q)`と取得済み`Observed(Q)`の適格な一致、Relation family/未ロードPlugin/動的参照/Manual step/許可Scopeの十分性が要る。成立しなければ、**確認済み0件＋判断不能**であり「不存在確定」ではない。Private Sourceの存在の有無も公開回答から推測させない（#2516）。
+
+**最短の縦切り：R3-A/B/Cの製品出口を増やさず、Consumerの二つの反例へ引渡す。**
+- **TEA-Q41を先行**：固定の公開合成EvidenceからREA候補Node 1件＋Directed Relation 1件を既存R3 Operationで受領し、外部Graphの`complete/partial`と三要素別の`unsupported`を別出所として持つ**Consumer Review票**を作る。未対応のFunction/Businessを0件として表示したらFAIL。R2自体に存在しないFieldを追加済みと主張しない。#4487/#3394/#1124/#2516の既存Expected/Consumerを再利用。
+- **TEA-Q43を次に**：X-TEA SourceのFunction宣言（R等）と、`order_entry.recent_orders`等の独立PG Target実Readを同じ表示名で提示しても、Legacy→TargetのQualified Mapping/Source版/実Provider・受領Rowset/業務Owner Expectedがない限り「旧Functionの実行成功」「同値」「移行済み」としない。実旧システム観測がなければL（Legacy Actual）を欠損/unknownのまま残す。#4570/#4615/#2586/#4191/#2514へ引渡す。
+- **実Studioの表示へ**：#4570/`three-view-navigation/v0`の`coverage.status=partial`に`omittedRelations`だけがあるとき、画面で3つの0件内訳しか示さない既知Gapは#4613（CV-01〜04）に既に引渡し済み。表示上の`complete`を原典Source全要素、未読込Sourceや九観点の完全性に拡張しない。こちらでは重複実装せず、R3候補Consumerの出力でPartial理由を必ず保持する。
+- **匿名化・不開示の反例**：Private側だけが違う二世界で、同じAudienceに返す公開候補・件数/unknown内訳・エラー理由/locator・公開Digest/JSONを比較し、非公開要素の存在を表示差から推測させない。Private取得後の単純redactは原則使わず、初めから許可済みSliceで問を構成する。#2516のTEA-Q45に再利用し、新しいAuthZ実装を作らない。
+
+**受入の分担と優先度**：R3-A/Cの実Call/二Consumer受領は#3394/#3419、Remote Host固定取得と情報境界は#4503/#2516、原典/三要素支持範囲・UI表示は#4487/#1124/#4613/#4615、旧新Meaning/Target移行は#4191/#2586/#4125、独立Expectedは#2514/#1180。**最優先P0**のTEI Studioセルフビルド#1824/#2831と実Function Provider Read#2586をR3-Jや9観点の完成でブロックしない。#4487/#4570は未統合Draftであり現main実装済みとはしない。この節は**docs-only**で、新Go/Studio/Windows/PG、REA 6.9.0、二Consumer受領、現Grant/外部開示、旧新移行・Owner Meaningの新しい検証は**NOT RUN／NOT ACCEPTED**。
+
 **到達条件と優先順位**：R2 main統合済み→R3の同一Evidence・独立二Consumer実受領→T1-Bの一機能対応Preview→T2の旧実測／受理済み意味／新実測・SHO Save/Reopen。修正済み#4584のSubject存否判別を各Consumerで利用できるか、#4570の三視点server経路と実Windows Desktopの差、生成Inspector別HEAD成功の非加算は別資格として保持する。TEI Studioセルフビルドと#2586通常Product Provider Readの完了をR3に依存させない。
 
 **検討中の横断追補（DBアクセス・Query/2way SQL）**：対象DataSourceの既存Binding解決、DB別Native SQLの選択規約、SQL編集時の診断と分岐検証、異種DBでの意味同値性を、[DBアクセス・Query選択・2way SQLの最小適合計画](https://github.com/hat47x/tei-platform/issues/2622#issuecomment-6772875802)で小さな実証へ分解する。#2611・#2622・#2387・#2667に既存の責務を残し、新しいCore API・正式DSL構文・実DB対応の採用・完了を意味しない。
