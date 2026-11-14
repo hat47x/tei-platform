@@ -20,16 +20,16 @@ func TestREADualEntryCapturedInputAndIdentityBoundaries(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Construct both framing variants explicitly. The repository fixture is
+	// not required to preserve the original producer\u0027s BOM byte-for-byte.
 	bom := []byte{0xef, 0xbb, 0xbf}
-	if !bytes.HasPrefix(raw, bom) {
-		t.Fatal("captured fixture no longer has the UTF-8 BOM used by this input-contract regression")
-	}
 	plain := bytes.TrimPrefix(raw, bom)
+	withBOMBytes := append(append([]byte(nil), bom...), plain...)
 
 	dir := t.TempDir()
 	bomPath := filepath.Join(dir, "bom-analysis.json")
 	plainPath := filepath.Join(dir, "plain-analysis.json")
-	for path, data := range map[string][]byte{bomPath: raw, plainPath: plain} {
+	for path, data := range map[string][]byte{bomPath: withBOMBytes, plainPath: plain} {
 		if err := os.WriteFile(path, data, 0o600); err != nil {
 			t.Fatal(err)
 		}
@@ -58,21 +58,21 @@ func TestREADualEntryCapturedInputAndIdentityBoundaries(t *testing.T) {
 		return exit, response
 	}
 	type intakeResponse struct {
-		OK    bool                  `json:"ok"`
-		Error *cliInspectionFailure `json:"error"`
+		OK     bool                  `json:"ok"`
+		Error  *cliInspectionFailure `json:"error"`
 		Result struct {
 			AcceptedMeaning bool   `json:"acceptedMeaning"`
 			OwnerDecision   string `json:"ownerDecision"`
-			Attempt struct {
+			Attempt         struct {
 				EvidenceID string `json:"evidenceId"`
-				Provider struct {
+				Provider   struct {
 					Version string `json:"version"`
 				} `json:"provider"`
 			} `json:"attempt"`
 			Candidates []struct {
-				Kind string `json:"kind"`
+				Kind  string `json:"kind"`
 				Facts struct {
-					ExternalIdentity   string `json:"externalIdentity"`
+					ExternalIdentity     string `json:"externalIdentity"`
 					ExternalOccurrenceID string `json:"externalOccurrenceId"`
 				} `json:"facts"`
 			} `json:"candidates"`
@@ -96,12 +96,12 @@ func TestREADualEntryCapturedInputAndIdentityBoundaries(t *testing.T) {
 		return fmt.Sprintf("sha256:%x", sum)
 	}
 
-	// The semantic-graph selector accepts the original, BOM-prefixed bytes.
+	// The semantic-graph selector accepts BOM-prefixed captured content.
 	exit, withBOM := external(bomPath, "")
 	if exit != 0 || !withBOM.OK || withBOM.Result == nil {
 		t.Fatalf("R2 refused captured bytes: exit=%d reply=%+v", exit, withBOM)
 	}
-	if withBOM.Result.Attempt.ReceivedDigest != digest(raw) ||
+	if withBOM.Result.Attempt.ReceivedDigest != digest(withBOMBytes) ||
 		withBOM.Result.Relation == nil ||
 		withBOM.Result.Relation.RelationID != semanticRelationID ||
 		withBOM.Result.Observation == nil ||
