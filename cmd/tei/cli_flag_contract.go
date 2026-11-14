@@ -207,6 +207,9 @@ func validateNoEmptyStringArguments(fs *flag.FlagSet, command string) error {
 // stays out of this list, because "" there already means "not given" and the
 // command reports its own required-argument error.
 var emptyStringGuardedFlags = map[string]map[string]bool{
+	"external-candidates": {
+		"expected-evidence-id": true, "expected-received-digest": true, "expected-source-revision": true,
+	},
 	"inspect": {
 		"subject-kind": true, "subject-id": true, "workspace": true,
 	},
