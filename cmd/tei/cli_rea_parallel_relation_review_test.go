@@ -153,3 +153,51 @@ func TestREAIntakeParallelRelationsStayUnacceptedInPreview(t *testing.T) {
 		t.Fatalf("wrong duplicate-ID refusal: %+v", errorInfo)
 	}
 }
+
+ // The external application graph can be complete for *its own* extraction
+ // scope without witnessing a business Function, CRUD effect, or Owner meaning.
+ // This is synthetic CLI coverage, not an observation of an actual operation.
+func TestREAIntakeCompleteGraphDoesNotProveFunctionOrBusiness(t *testing.T) {
+	root := t.TempDir()
+	evidencePath := filepath.Join(root, "analysis.json")
+	if err := os.WriteFile(evidencePath, reaIntakeFixture(t), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var out strings.Builder
+	exit, err := runThreeElementCommand([]string{"rea-intake", "-evidence", evidencePath}, &out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if exit != 0 {
+		t.Fatalf("synthetic complete graph refused: exit=%d response=%s", exit, out.String())
+	}
+	var response map[string]any
+	if err := json.Unmarshal([]byte(out.String()), &response); err != nil {
+		t.Fatal(err)
+	}
+	if response["ok"] != true {
+		t.Fatalf("intake returned a failure: %v", response)
+	}
+	packet := response["result"].(map[string]any)
+	if packet["qualification"] != "complete" || packet["acceptedMeaning"] != false ||
+		packet["ownerDecision"] != "pending" {
+		t.Fatalf("a complete external graph is not accepted business meaning: %+v", packet)
+	}
+	coverage := packet["threeElementCoverage"].(map[string]any)
+	rows := coverage["elements"].([]any)
+	byElement := map[string]map[string]any{}
+	for _, raw := range rows {
+		row := raw.(map[string]any)
+		byElement[row["element"].(string)] = row
+	}
+	if byElement["data"]["status"] != "supported" {
+		t.Fatalf("the observed data-shaped relations disappeared: %v", rows)
+	}
+	for _, element := range []string{"function", "business"} {
+		row := byElement[element]
+		if row["status"] != "unsupported" || row["candidates"] != float64(0) ||
+			len(row["wouldNeed"].([]any)) == 0 || row["reason"] == "" {
+			t.Fatalf("unsupported %s was presented as witnessed, empty, or resolved: %v", element, row)
+		}
+	}
+}
