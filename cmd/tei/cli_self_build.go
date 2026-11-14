@@ -45,16 +45,16 @@ type selfBuildEntryEvidence struct {
 	ChildArtifact  string           `json:"childArtifactDigest,omitempty"`
 	CrossChecked   string           `json:"artifactCrossCheckedDigest,omitempty"`
 	CrossCheckOK   bool             `json:"artifactCrossCheckMatched"`
-	// This pin is specified before execution, not inferred from its output.
-	SelectedChildDigest string `json:"selectedChildDigest,omitempty"`
-	ChildPinChecked      bool   `json:"childPinChecked"`
-	ChildPinMatched      bool   `json:"childPinMatched"`
 	ClaimedInvoker string           `json:"claimedInvokerDigest,omitempty"`
 	ClaimChecked   bool             `json:"invokerClaimChecked"`
 	ClaimMatched   bool             `json:"invokerClaimMatched"`
 	L3Claimed      bool             `json:"l3Claimed"`
 	FailureCause   string           `json:"failureCause,omitempty"`
 	Boundary       string           `json:"claimBoundary"`
+	// Selected pin is specified before execution, not inferred from output.
+	SelectedChildDigest string `json:"selectedChildDigest,omitempty"`
+	ChildPinChecked      bool   `json:"childPinChecked"`
+	ChildPinMatched      bool   `json:"childPinMatched"`
 	// The child's own report about the declaration it read (§4.8). They are
 	// copied from the child's JSON and never compared by the primitive form;
 	// the outer shape does the comparison.
