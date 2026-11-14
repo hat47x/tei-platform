@@ -255,3 +255,73 @@ PM-C01〜08は本設計のCross-caseラベルであり、新Scenario/Expected正
 4. **実Windows再検収**：#4587は現時点でDraft・mainとの競合があり、旧HEADのWindows PASSは最新#4623の実Desktop N0 pin適用のPASSを保証しない。統合済み候補HEADでordinary/generated両Jobを再実行後、B2/B3を独立に判定する。#4583/#1824担当。
 
 今後の計画更新は、#4620がMASTER_PLAN上位主線、#4621が本Cross-case詳細、#4583がBuild実装受入、#4376～#4380がManager実装受入を所有する分離を守る。
+
+
+## 16. 2026-11-14：Studio Web共有サーバ・複数利用者・同時編集でのPlugin適格性
+
+### 16.1 前提・Scope（Web版の新設計候補、未採用）
+
+ユーザー構想：Desktop版は開発者ごとのローカルWails/Go環境で作業しGitリポジトリ経由で共有する。Web版は単一または必要時HA化した**開発サーバ上でのチーム開発・同時編集**を想定する。画面・Editor・Source/Model/Build/Plugin/AIとの接続は共通Operationを可能な限り利用し、Desktop→Web差分を小さくする。ただし**Webの共有セッション・認可・同時変更はDesktopのlocal Host条件をコピーしない**。
+
+本節は#1824のStudio Host/Web分離、#1158/#3421の共通Operation/HTTP Adapter、#1016/#951の選択と適合、#1124/#2621のAuthoring/Acceptance、#1529の閉鎖済み外部編集競合Reference、#4378の管理設定源、#1223のGeneration、#1174の現在Grant、#2515のHarness機密境界へ**追加の横断受入条件**を渡す。Web Collaboration Engine、第二Source Registry/Resolver、TEI専用認証Host、CRDT実装、共有Git Serverの新正本をここでは採用しない。
+
+### 16.2 多利用者で区別する7つのコンテキスト
+
+| Context | 正しい責務 | 同一視してはいけないもの |
+| --- | --- | --- |
+| Server Deployment／Plugin Inventory | 実Process/Artifactにロード・同梱され得るProviderとHost限界 | 案件で選択済み、利用者に許可済み |
+| Workspace／Project／Branch | Source/Manifest/Accepted Meaning/ToolchainとGit作業版 | 他Workspaceの同名Subject、全サーバのPlugin設定 |
+| Composition Snapshot | Contract/Provider/Runtime/Profile/Lockのexact選択、適用Generation | installed/enabled、Clientが任意指定するProvider |
+| Authenticated Principal／Effective Scope | Hostで検証済みの利用者・Workspace・Actor/許可Resource・現在失効 | Browserから送ったactor/role文字列、local Studioのno-auth |
+| Authoring Session／Draft | Client/Tab・編集中Buffer、Source base byte/revision、対象Pin、ProposalとPreview | 受理済みSource、他利用者のDraft/AIセッション |
+| Invocation／Build Attempt | 実Entry/Builder/Source Closure、どのGenerationを使用したか、Effect/Receipt | 過去成功、同じ結果、同じPlugin package |
+| Consumer／Disclosure | 実際に返す値・Error/Trace/AI Tool/LogのAudienceとPolicy時点 | Serverが読取れた全Data、他利用者への公開権限 |
+
+「同じPlugin ID」の共有は**同じImplementationを使える可能性**に過ぎない。Providerの内部Cache・Session・Temporary File・Connection PoolにはWorkspace/Principal/Resourceごとの強制分離が必要であり、共用可能かどうかはProvider Contractに応じたHostの実隔離Evidenceで判断する。静的Goバイナリに一つのProviderが同梱されても、各Workspaceの選択／Runtime Grant／現在Audienceは独立に適用する。Workspace単位で「未選択」を理由に物理的な非リンクを要求しない（物理除外はServer/Target Artifact単位のBuild資格）。
+
+### 16.3 一つのOperationがDesktopとWebで変わらない条件
+
+共通Operationは既存ADR-0048の型付きRequest/Result/Failure/Unknown/Scope/Effect契約を維持する。Wailsはlocal IPC + trustedRoot、WebはAuthenticated HTTP/session + Hostが解決したWorkspace Rootを使い、**Transportへ業務意味や第二Provider Resolverを置かない**。Target固有なのは、認証・Connection origin・CSRF/CORS・Host Session・共有Resourceの実強制である。Webで認証Provider不在/不正ならlocal no-authへfallbackしない。
+
+Authoring/Preview/Applyは原則として二時点：
+1. Read/Preview時：Workspace/branch/base Source byte fingerprint、Meaning/Contract/Provider/Scope/Session epoch、Subject/Occurrence/Source locationを凍結し、Read/partial/Unknownを維持。
+2. Apply直前：HostでActor・Root・Resource・Current Grant、実Source byte/Revision、受理の対象と依存、Provider binding/Generation、Write capabilityを**再読取・再検証**。異なるならstale/conflict/refusedを返し、自動merge/Acceptしない。成功後は実Source再読込・独立Expectedで確認。#1529閉鎖済みReferenceのSource drift・Watcher欠落負例をWeb共有環境で再利用するが、Go合成PASS＝実HTTP/HAの証拠ではない。
+
+Git commit hashやブランチ名はSource baseの一部だが、**Gitは同時編集の排他保証ではない**。未コミットSource byte、Server内のAuthoring Draft、Git commit、Accepted Meaning、実Artifact Revisionを分ける。最初の実証は**一Sourceにつき同時Apply時のCAS/競合拒否**に限定し、Operational TransformationやCRDT、複数File横断トランザクションは採用せず必要時に独立評価する。Webにおける可視化の同時編集（Cursor/Selection）とMeaningの同時変更も別の問題である。
+
+AI Harness/Agentは利用者Sessionの許可済みSource/Projectionを**明示的に委譲された範囲だけ**使う。AgentのTask/Proposal・Share/Review・Model outputをHostのBusiness Acceptance/Grantへ昇格させない。DSHの共用checkoutやSession broadcast/Logから、他利用者・他WorkspaceへRaw/Traceが送出されないことは#2515/#1178が実送出観測を所有する。
+
+### 16.4 Plugin管理と共有Serverの切替単位
+
+- **Workspace-local selection/configの変更**：当該Workspaceの将来呼出しと必要なBuild/Generationに影響する。他WorkspaceのProvider選択やSourceを無条件に変更しない。#4378の設定源は未採用なので、Web用Global Storeを本節から決めない。
+- **Server-level Plugin unload/update**：同じProcessに複数Workspace/SessionのActive Callがある。単一Workspaceでdisableしても、他Workspaceで必要なImplementationを即物理停止してはならない。共通Artifact切替時は全使用ClosureとIn-flight/Grant/Effect/Resource leaseを#1223で検査し、必要に応じて変更を拒否または後段へ延期する。
+- **静的Go Desktop/Server**：製品のProvider更新は原則新Artifactと安全なProcess再起動/Deployment。静的Providerの任意hot-swapや無停止は標準保証ではない。
+- **動的/HA Target**：readiness→新規RequestのGeneration切替→旧in-flight drain→cleanupに加え、**旧世代に結び付いたSession／Workspaceの現在権限**、永続Effect Unknown/Receiptと重複作用を#1174で再検査。Replica間で古い設定・旧Actor Grant・異なるPlugin lockを保持する場合に無停止資格を出さない。
+- **Server failure/Failover**：Web Session/Source Base/Operation Identity/Receiptの再取得可能な範囲を区別し、未永続なHost内Memoryを正本と見なさない。HAの合意・永続化・Fencing方式はこの段階で採用せず、単一Server正例→Failoverで偽PASSしない負例という順で検証する。Webの最初のP0でHA実装は要求しない。
+
+### 16.5 既存Expectedへ渡すWeb Plugin Cross-cases（番号は参照ラベル）
+
+| Case | 正常・拒否を区別する要点 | 既存Owner |
+| --- | --- | --- |
+| SWP-01 同一Serverで二Workspace | Workspace A選択Provider P1／B選択P2を同じServerで処理。Source/Lock/Entry/Consumerは混ざらない | #951/#1016/#1251/#3421 |
+| SWP-02 他利用者のRequest改変 | Web Browserがactor/Workspace/Provider IDを偽装。他ActorのSource/Trace/AI結果を開示せずHostで拒否 | #3421/#1043/#1174/#1178 |
+| SWP-03 同一Sourceの同時編集 | Editor X/Yが同byteをRead、XがApply後Yが旧PreviewをApply。Yはconflict・再Review、XのSource byteは維持 | #1824/#1124/#1529/#2621 |
+| SWP-04 プラグイン切替と旧Session | A WorkspaceがProviderをdisableしてもB Workspaceの使用を物理停止しない。A旧in-flightのCommit/Receiptは別資格 | #4378/#1223/#1174 |
+| SWP-05 同じActorの別Tab/別Buffer | Tab1のPin/DirtyとTab2のSource Readを混ぜない。A→B→Aの後着Replyで旧Successを再提示しない | #1824/#4515/#2597 |
+| SWP-06 Agent出力の横断漏洩 | Agent XがSource/Logを扱っても別Actor Y向けTool/Team/Log/AI outputへ未許可開示しない。送出実Byteを観測 | #2515/#1178/#3421 |
+| SWP-07 権限変更とCache | 同じResultをCacheから返せてもAudience/Grant/Workspaceが変わればDisclosure再評価。旧Grantを自動復活させない | #1174/#1178/#2600 |
+| SWP-08 HAまたは再起動 | 旧Session/旧Generation/未確定Effectを成功扱いしない。未永続Draftはlost/unavailableとし、重複Writeを自動再送しない | #1223/#1824/#1174 |
+
+SWP-01〜08は**既存#1180/#2514のExpectedへ引き渡す参照名**であり、新しい認可正本・Editor/Scenario Runner・Session Storeを定義しない。Synthetic 2 Workspace × 2 Principal × 2 Provider、同名別Subject・違うSource bytes、Read/Apply各2時点を最初の最小fixtureにする。
+
+### 16.6 優先順位と採用判定
+
+**P0（変更なし）**：#4583のStudio Desktop BuildIntent→Stage1→Stage2→Windows Consumer、#4611/#4612のInspector/Three-view実Providerと#1824の実IPC。Webの本番認証/同時編集/HAをこれらの新Hard Gateにしない。
+
+**P1（並行してHeadless準備）**：#3421の実HTTP read-only共通Operationへ二Workspace/二PrincipalのHost BindingとSWP-01/02/07を接続。#4376のread-only Plugin InventoryでServer available／Workspace selected／Session authorizedを別列で返す候補を検証する。#1158の既存Operationを共用し、Web用の新CLIやSecond Resolverを作らない。
+
+**P2（Web共有編集）**：#1824/#1124/#2621で一Sourceの二Session CAS/Preview/Apply/Source再Read（SWP-03/05）。#4378のSource不変設定源の採否と、Actor/Workspace単位のPlugin apply/disableの範囲を実証。CRDT等の同時入力共有機構は実際の競合頻度・Latency・操作粒度を測ってから評価する。
+
+**P3（選択した長寿命Targetのみ）**：#1223/#1174のGeneration切替/drain/failover（SWP-04/08）、#2515のAgent送出境界（SWP-06）の実Server/OS強制を確認。HA構成・IdP方式・Storage実装を現時点で採用済みとしない。
+
+**検証上限**：Studio Webの共有サーバ・同時編集・実認証・HA・Web版Plugin Managerは今回実装していない。本節は既存実装・Issue/議論の設計統合のみ。単一Serverの二Principal実HTTPテストもNOT RUN。採用判断は各Ownerの実測・独立Expected・正式レビュー後。
