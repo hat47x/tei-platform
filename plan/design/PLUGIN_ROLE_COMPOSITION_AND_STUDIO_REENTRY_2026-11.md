@@ -703,3 +703,108 @@ PCC-01/02/04/05は#4583/#1251の製品経路と合わせて確認するが、**P
 
 **今回の資格**：現行の設計・Issue・他チャットの判断を統合した実装順と検証条件。正式なPlugin Manifest／ABI、汎用Graph Compiler、動的Loader、実Wasm Component、外部Hostの隔離保証、自己記述DSLの正式採用、実Windows Stage2／実DB更新／Owner意味受理を達成したものではない。
 
+
+---
+
+<!-- tei-plugin-native-self-build-and-simplification-20261114 -->
+## 15. PluginそのものをTEIで作り、定義の簡素化を実測しながら自己拡張する（2026-11-14横断統合）
+
+### 15.1 目的：再コンパイルではなく、TEIによる実装能力の拡大を検証する
+
+セルフビルドの評価には、異なる二つの問いがある。一つは**TEIが自分自身やStudioの成果物を、必要なBuilder・入力・Artifactを追跡して再構築できるか**。もう一つは**TEI自身の機能、特にPluginの実装が、手書きGoコードから意味の分かるTEI定義と生成処理へ移っていくか**である。前者だけが成功しても後者は成立しない。逆に、生成コードの割合が増えても、実際のProvider選択やStage2の実起動がなければ製品のセルフビルドは成立しない。
+
+ユーザーが初期段階で求めるのは、Studioの画面操作を待たず、**TEI CLI（必要ならMCPを薄いConsumerとして接続）から `*.tei.md` を読み、モデル・図表・規則を実装へ変換し、生成PluginがさらにTEIの能力を拡張する一巡**である。Studio Desktopの正式なStage1→Stage2再構築[#2831](https://github.com/hat47x/tei-platform/issues/2831)／[#4583](https://github.com/hat47x/tei-platform/issues/4583)は全体P0のまま維持し、CLI-firstの小さな自己拡張実証を**その前段と並行するP0-S**として設ける。ただし新たな全体Hard Gateは追加しない。
+
+「`*.tei.md`にGoの関数名だけを書き、実処理を外部の手書きGoへdelegateする」方式は、外部部品の利用形態としては許容されるが、**TEIによる当該機能の自己実装**の証拠には数えない。図表や表が説明文として付いているだけの場合も同様である。図表の安定ID・Relation・Rule・テスト条件が実際に生成結果へ影響することを、故障注入で確認する。
+
+### 15.2 最初の一巡は何を実際に通すか
+
+次の一巡に使うのは、独立した小さな**pure／read-only Plugin**とする。例として、二つの同名Nodeと同じ両端点を持つ二本の有向Edgeを含むGraph定義を選び、Relation ID・向き・多重性を保持する検証／表示データを生成する。グラフの新描画Engineや本番更新は必要ない。図そのものはGraphvizなどの糖衣表現でよいが、**図で定義したEdgeと生成処理が同一の型付きGraph意味を参照する**必要がある。
+
+| 段階 | この段階の実現内容 | 独立に確認する証拠 |
+| --- | --- | --- |
+| **S0 原Source** | 管理対象として明示した`*.tei.md`の表／図／意味Role／少数の表形式Expectedを読み込む | 実Reader、Source byte、occurrence/span、選択Language版、必要Source閉包。Reader未実装ならunsupportedとして止め、別途Referenceとして記録 |
+| **S1 意味→生成** | 既存の標準データ構造とOperator／Generatorから、GraphのIdentityを保持する処理の**実装本体の一部**をGo等へ生成する | 生成された分岐・照合・データ構造が元定義のどの要素に依存するかを逆引き。手書きGoへ全委譲した実装は不合格 |
+| **S2 Plugin実利用** | 生成Pluginを既存#951／#1016の選択・合成・Load／Call経路で実行し、別ConsumerまたはCLIが実結果を受け取る | 選択Provider・実Entry・必要Artifact Member・Process／Toolchain・Input／Outputを同一Attemptで結ぶ。Mockを実Providerとして報告しない |
+| **S3 Plugin自己拡張** | TEIによって生成されたPlugin／Generatorの実装を次のStageのBuildに**実際に利用**する | Stage1の実Process image、解決したBuild Plan、子Builder起動、Stage2 ArtifactとConsumer結果。既存外部Launcherが二度Goを起動するだけでは不合格 |
+| **S4 定義の変更** | Edge／Rule／型など一因子だけ変え、Source→生成コード→実Plugin出力へ変化を伝える | 変更した条件が予測どおり結果を変える／不正と診断される。無関係な部分は不変。元定義に戻すA→B→Aは新Attemptと受理資格を維持 |
+
+まず**S0→S1→S2**を固定し、後からS3/S4へ進む。管理Root内の新しい`*.tei.md`については、現行[#2621](https://github.com/hat47x/tei-platform/issues/2621)にReader未接続／Loader拒否の限定的証拠があるため、正式Parser・Loaderが既に成立したとは書かない。Readerが未対応なら、旧`*.tei`や明示的な橋渡しを使ったReferenceは**暫定実証**として分離し、`*.tei.md`を正規製品経路で読み込んだ合格と区別する。
+
+初回に複雑なDSL文法を追加しない。必要ならMarkdown表のRole・明示Source範囲・Graph標準型だけで成立するよう、[#2620](https://github.com/hat47x/tei-platform/issues/2620)／[#2621](https://github.com/hat47x/tei-platform/issues/2621)／[#4359](https://github.com/hat47x/tei-platform/issues/4359)の既存Parser／Role／Source Indexへ戻してFit／Gapを提示する。
+
+### 15.3 「TEIで実装された」の判定方法
+
+単なる生成コードの行数や実行ファイルのbyte数をSelf-build率にしない。Pluginを実現する**機能上の義務**を基準に、どこが実際に実装されたかを分類する。
+
+| 区分 | 判定 | 自己実装実績として扱うか |
+| --- | --- | --- |
+| **TEI由来の処理** | 受理済み型・Rule・Relation／式・Operatorから、挙動を担う分岐／検証／変換等が生成され、独立Expectedと実呼出しで照合された | **対象義務について計上可** |
+| **TEIによる組立て** | TEIが既存Providerを正しく選択し、生成したAdapterから実呼出しした | **構成能力として別計上**。Provider本体の自己実装率には含めない |
+| **Go等の手書き実装** | 定義は入口・Wrapper・説明にとどまり、業務／技術的な挙動は外部コードが担う | **実装としては計上しない**。必要な外部境界として明示 |
+| **外部Toolchain／Library** | Goコンパイラ、Wails、RDB、既存ライブラリ等の他者実装を使用する | **外部依存として明示**。Self-buildの対象に無理に含めない |
+| **未知・未観測** | Required Source、実消費、Loader、Target、実Callなどが欠落する | 成功・不成功のどちらにも捏造せず、未検証として残す |
+
+必要以上にTEIへ処理を移植することも目的としない。暗号、DB Driver、数値計算ライブラリ、OS APIなどは外部依存の方が適切な場合がある。**TEI化の効果**は、対象の意味を記述する負担、異Targetへの展開、保守時の変更箇所、独立検証可能性が改善するかで評価する。
+
+### 15.4 自己実装率と定義の簡素化を、別の指標として報告する
+
+一つの「TEI化率」は誤解を招くため、少なくとも次の四つを**同一Revision／Target／Attemptの実測票**に記録する。
+
+1. **機能実装のTEI由来範囲**：選択したPluginのRequired Contract義務のうち、生成された処理が実際にその義務を担い、独立ExpectedとConsumerまで検証された件数／対象義務の総件数。各義務の重要度と未検証数も併記し、単純な件数比を品質評価へ昇格させない。
+2. **Build工程のTEI制御範囲**：選択したBuild Graph上の実工程と依存辺のうち、TEI Build Intent／resolved Builder／実Executionが同一Attemptで照合できた範囲。CI Shellが外部で実施した工程、未知のToolchain依存は別欄に置く。
+3. **Plugin自身の自己生成範囲**：Pluginが利用するParser／Operator／Generator／Adapter等のうち、TEI Sourceに由来する処理、既存の手書き実装、外部Providerを役割ごとに分ける。**生成したPluginを次Stageで使用した実観測**がなければ再帰セルフビルドとは呼ばない。
+4. **記述・保守負荷の変化**：同じ機能と独立Expectedについて、従来の手書きコード＋設定＋テストと、TEI Model／図表／Rule＋必要な手書き境界を比較する。定義の実質的な長さ、重複した意味記述、変更が必要だった箇所、診断性、Sourceを追う回数を比較する。生成コードの増減だけで簡素化を判断しない。
+
+測定の**分母を先に固定**する。例えば「100件の業務機能」ではなく、初回は一つのPluginが公開する数個のContract義務について、Fixtureと独立Expectedを固定して比較する。自動生成で機能を削除し、分母まで縮小して高い率を見せることは禁止する。計測の初回には目標率を決めず、負例が正しく検出でき、元の表現より保守しやすくなったかを優先する。
+
+**進展を判定する条件**は、「TEI由来の処理義務が増える」「同等以上の振る舞いと独立検証を維持する」「手書き境界・重複定義・変更箇所が減る」を**併せて**観測することとする。これらをすべて満たさなければ設計の失敗という意味ではないが、単に生成コードを増やした成果を「定義体の簡素化」と称さない。
+
+### 15.5 最初に再利用するPluginは二種類で十分
+
+**第一候補：Graph／Ruleのpure Plugin。** 自作の小さなGraphと検証表を一つのAuthoritative Sourceに記述し、同名二Node・同端点二Edge・Edge削除・向き変更を、独立Expectedで検査する。TEIに由来するIdentity保持や検証規則が実生成コードへ現れることを目で追える。結果はCLIからinspectできればよく、汎用Graph GUIやGraph Compilerを先に完成させる必要はない。
+
+**第二候補：データ／Inspector向けread-only Plugin。** Modelのフィールド・Relation・欠損／NULL／partialの区別から、読み取り用の型付き変換または表示モデルを生成する。実Data Providerの選択と実呼出しは[#1251](https://github.com/hat47x/tei-platform/issues/1251)／[#2586](https://github.com/hat47x/tei-platform/issues/2586)、Studio生成Inspectorは[#4583](https://github.com/hat47x/tei-platform/issues/4583)の既存資産へ接続する。純粋なモデルからの生成と外部DB Readの保証を混ぜない。
+
+どちらも、**同じ意味情報を二つの用途で再利用できること**（例：検証処理とInspector表示、あるいはHeadlessとStudio生成物）を採否条件とする。これにより、Domain固有のDSLやScreenを増やさずにTEIを使う価値を計測できる。最初から外部Host・動的Plugin Loader・Wasm・任意DB更新を取り込まない。
+
+### 15.6 既存のセルフビルド計画に割り付ける順序
+
+| 順 | 担当・既存基盤 | 実装してから提出する成果 |
+| --- | --- | --- |
+| **P0-S0：読み込み可否と比較基線** | #2621／#4359、#2831。最新mainの実Reader／Source Index／Builderを確認 | `*.tei.md`の実Loadの可否、旧`*.tei`との差、手書きBaselineと独立Fixture。未実装を自動補完しない |
+| **P0-S1：モデルからPlugin実装へ** | #2620／#1121／#951／#1180 | Graph／Ruleの実生成コードと実Provider呼出し。Source→生成Logic→Contract義務の対応表 |
+| **P0-S2：CLIから生成物を再利用** | #2831／#943／#1251 | 生成Pluginを実行するTEI CLI、Parent/Child image・Build Plan・Artifact・Consumerの同一Attempt証拠 |
+| **P0-S3：生成Plugin自身の再生成** | #2831／#4583／#2600 | Stage1で生成したPlugin／GeneratorがStage2生成を実際に駆動した証拠。Seedに残る処理と未知依存を明示 |
+| **P1：簡素化の対照・横展開** | #3278／#2497／#2621／#2600 | 第二Pluginと二Consumerへの展開、記述負荷比較、必要な外部実装の境界、局所再Buildの実測 |
+| **既存全体P0：Desktop製品再構築** | #2831／#4583／#1824 | 正式Studio Build Intent→Stage1 TEI実Process→Stage2 Windows Wails/WebView2実Consumer。CLIの部分成功から自動合格にしない |
+
+「P0-S」は**実験の順序を示す補助ラベル**であり、[#1119](https://github.com/hat47x/tei-platform/issues/1119)の既存G1/G2/G4や新たなHard Gateではない。Studioを最初の自己拡張の必須画面にしないことと、Desktop製品の最優先順位は両立する。
+
+最初の実装タスクは、広い「セルフビルド率改善」ではなく、**一つの`*.tei.md` SourceがGraphの意味上の差を生み、それを受けた生成Pluginが独立Expectedを満たす**ところまでに限定する。Readerが未実装なら、その最小橋渡しとSource／Anchorを先に実装し、無関係な文法・GUIを増やさない。
+
+### 15.7 独立Expectedへ渡す負例：PSB-01〜10
+
+既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)のScenario SSOTを使い、PSBは**Pluginセルフビルドの不足するassertだけを識別する索引**とする。新しい独立Expected Storeや専用Runnerは作らない。
+
+| Case | 反例／変更 | 独立に観測すべきこと |
+| --- | --- | --- |
+| **PSB-01** | 管理Rootの`*.tei.md`をLoaderが未対応のまま受理済みと報告 | 実Reader／Source Indexの不在はunsupported。Reference抽出の成功と製品Loadを分ける |
+| **PSB-02** | Markdown表／GraphvizのEdgeを変えても生成コード・実挙動が変わらない | 機能上依存する定義なら不足と診断。単なる説明図を生成実装へ計上しない |
+| **PSB-03** | 定義には検証Ruleがあるが、生成コードは手書きGoの同名関数を呼ぶだけ | TEIによる組立てまで。Rule本体のTEI自己実装として計上しない |
+| **PSB-04** | 二本の同名・同端点Edgeを同じIDとして生成する | 生成されたIdentity／多重性が失われ、独立ExpectedでFAIL |
+| **PSB-05** | Stage1に見えるexeはSeedまたは外部Launcher、Stage2 Pluginを実際には駆動していない | CLIの二度起動やbyte一致だけでS3資格を得ない |
+| **PSB-06** | Selected Provider=B、呼出し実体=A、結果は同byte | Plugin実Callの資格はFAIL。#1251の既存反例を再利用 |
+| **PSB-07** | 生成コードのみ手編集し、Sourceは不変 | Sourceと実消費Artifactの由来不一致を検出。手編集を黙ってSelf-build実績へ含めない |
+| **PSB-08** | 図のレイアウトのみ変更／Ruleのみ変更を対照 | layout-onlyで業務生成再Buildを強制せず、Rule変更は必要な生成と独立Testを再実行 |
+| **PSB-09** | Source A→B→A、Generator／Plugin版または実使用Targetが異なる | 内容の再利用可能性と旧Evidence・受理資格の復活を別判定 |
+| **PSB-10** | 自己実装割合が増えたがContract義務が欠落し、手書きGlueも増えた | 分子だけの増加を簡素化・機能改善と認めない。同じ分母と振る舞いで対照評価 |
+
+### 15.8 受入と停止条件
+
+**最小受入**は、独立Expectedを先に固定した一つのGraph／Rule Pluginについて、`*.tei.md`（または明示した暫定Bridge）から生成した**実装ロジック**を、実TEI CLI／Consumerが本当に呼び出し、図表とRuleの一因子変更が実挙動へ伝播すること。次段階では、生成Plugin自身が次Stageの生成に使われることを実ProcessとArtifactで検証する。
+
+**停止条件**は、(a) Markdownを正式に読み込めないのに合格とする、(b) 生成物がWrapperだけで振る舞いはすべて既存Go、(c) Sourceを変えても実生成コードが追随しない、(d) 同じ意味をStudio/CLIごとに二重実装する、(e) 独立ExpectedやOwner受理の根拠を生成物の出力から作る、(f) 計測の分母を後から変え、簡素化率を過大に示す場合である。該当すれば自動化範囲・抽象化範囲を戻し、既存Model／Source／Build/Providerの最小接続へ縮小する。
+
+**証拠資格**：今回の追加は、ユーザーの最新の自己拡張方針と既存#2620/#2621/#2831/#4583/#943/#1251/#2600の境界を照合した**設計・実装計画**である。実`*.tei.md` Reader、TEI生成Pluginの実Call、再帰的Plugin自己生成、定義量の測定、Studio全体のセルフビルドを今回実施・達成したわけではない。
+
