@@ -486,6 +486,8 @@ S0〜S4を一度に実装しない。**最初のPRはS0のReaderとS1の実装�
 
 **生成Artifactと候補構造の対応を確認する補助証拠**：Graph／Rule限定Referenceに、Node ID・Edge ID／向き・Rule条件だけを正規化した`CandidateShapeFingerprint`を追加する。生成Binaryの`-candidate-shape`から同じ値を取得し、基準とMermaid配置変更は一致、Edge向きとRule条件の変更では異なることを回帰で確認する。**Raw Source SHA-256／候補構造指紋／実Binary SHA-256は別の指標**である。いずれの一致も受理済みMeaning、現在のProvider/Grant、実Build入力閉包・Owner受理の代用品にはしない。Referenceの実行時要求を製品`tei` CLIの新たな公開コマンドとして追加するものでもない。実ProviderやStage2のP0は維持する。
 
+**指紋の自己申告を信用しない反例**：生成GoのEdge判定だけを事後差替えしても、Binary内に埋めた`-candidate-shape`の報告値は元のままにできる。両Binaryの実出力と実byte SHA-256は別であることをGo負例で検査する。S1のReference構造指紋は、**実Builderが消費した生成Source memberのbyte／外部で確認した実Artifact／実Consumerが実行した処理**を代替しない。B1〜B3では#4583/#2831の既存Build Intent・ArtifactSet・同一Attempt証拠で選択と実現の差を照合し、自己申告と一致しただけのStage2再入をPASSとしない。
+
 **固定した入力と期待結果**：[testdata/tei-md-graph](../../testdata/tei-md-graph/README.md)に、基準、`e-2`反転、Mermaidのレイアウト変更、Edge ID重複、表と導出図の不一致に、規則の起点→終点切替を加えた**6例**を通常の`*.tei.md`で置き、Graph出辺と生成コードの実行結果の期待値を別の`independent-expected.candidate.json`に記録した。これらは**既存#1180/#2514に採用を引き渡す候補**であり、`*.tei.md`を実Loaderが読めるという意味ではない。管理Source Rootの未対応Guard `TEI_MD_PARSER_UNBOUND`はReaderが正式に接続されるまで維持する。最初の技術課題は、選択した表・Fenceの元byte位置を保存し、Role／意味IDに結び付けること。MermaidのN1/N2やEdgeラベルを実Relation IDへ黙って昇格させない。
 
 **実装担当へ渡す受入票**：最初に「Edge同一性の保持」「重複IDの拒否」「方向別の抽出」など対象の機能上の義務を固定する。義務ごとに、(a) TEIのどのSource/Ruleが実装を規定したか、(b) 生成したGoのどこが挙動を担うか、(c) 外部Goが担当する境界、(d) 実Builderが読み込んだByteとArtifact、(e) 選択Pluginの実Callと独立Expected、(f) 定義変更前後の手修正・重複記述・再検証作業を記録する。**未観測の項目は未達とし、比率の分母を試験後に縮めない**。
