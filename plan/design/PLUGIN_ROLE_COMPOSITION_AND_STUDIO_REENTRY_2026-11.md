@@ -604,3 +604,102 @@ Aの成功をBの実外部Data Provider適格へ、Bの読取り成功をCの本
 
 **証拠資格**：既存Issue／PRと他チャットの設計を照合した計画の追補。新たなParser・Operator・Plugin Runtime・Windows E2E、正式Schema、Owner意味受理をこの章で達成したものではない。現行実装に存在するもの、Draft、未検証のものを各担当で区別する。
 
+
+---
+
+<!-- tei-plugin-phase-closure-bootstrap-20261114 -->
+## 14. 必要な機能からBuild・実行時の依存を導き、Pluginの配布と自己記述を段階的に実証する（2026-11-14横断追補）
+
+本章は、横断Plugin設計の残る実装上の問い――「必要な機能を指定したとき、どの実装を、どの工程・Targetに含めればよいか」を具体化する。第13章の貢献別整理を、案件ごとの構成選択、実装義務、Build、配布、外部Host、Studio自己再構築へ接続する。ただし、正式な新Manifest／ABI／Graph Engineや第二Resolverを採用する章ではない。
+
+### 14.1 三つの関係と、四つの工程を分けて扱う
+
+TEIの「依存」は一種類ではない。少なくとも次の三つは、元のSourceと同じ識別子・版へ戻れるようにしながら、別の関係として保持する。
+
+| 関係 | 問い | 正本・適用範囲 |
+| --- | --- | --- |
+| **意味上の要求** | このOperation、Trait、Data、表示が成立するには何が必要か | 受理済み意味、Contract、Role、Trait。意味受理はOwner |
+| **構成上の選択** | 対象Application／Targetでは、どのContractをどのProviderに担わせるか | #1016のApplication Profile、#951のexact Provider解決。競合は拒否 |
+| **物理的な実現** | どのSource、Builder、Artifact Member、実Process／Loader、Consumerが使われたか | #943／#1097／#2600のBuildと、#1251／#1174の実Call・Effect |
+
+これらを単一の万能Graphへ混ぜない。各関係を安定IDと版で結び付け、Modelerからは必要に応じて重ねて可視化できるようにする。とくに「意味上のRelationがある」ことから、DBの自動JOIN、Pluginの自動ロード、外部Resourceへのアクセスを暗黙に許さない。
+
+物理的な実現は、**作成時（Authoring）／構築時（Build）／アプリ実行時（Runtime）／結果受領時（Delivery）**の工程ごとに必要なものを分ける。例えばDSLのParserやGeneratorはAuthoring／Buildだけで使い、実行時の業務アプリから除外できる。一方、生成済みアプリのInspector／Operation ProviderはRuntimeで必要なら収録・実呼出しを証明し、WebView2のJavaScriptや帳票資産はDeliveryまで追跡する。
+
+### 14.2 Compositionの解決を、既存機構へ落とせる順序に固定する
+
+ここで示す手順は、既存のResolver・Builder・Hostの**呼び出し順と検収項目**であって、別の製品サービスではない。
+
+1. **必要な機能を確定する。** Application Profile、受理済みOperation、required Trait、Target・OS・配布制約から、必要なContract／RoleとScopeを取り出す。optional／advisoryの役割も区別する。
+2. **実装をexactに選ぶ。** #951の既存ResolverでContract版・fingerprint・Conformance、選択済みProvider、Target対応を照合する。候補が複数で決まらない、Providerが未導入、Scopeが違う場合は、ロード順やlatestへ黙ってフォールバックしない。
+3. **Traitの履行を点検する。** required Traitを、標準生成、Provider、手動実装などのいずれが満たすかを#3278の既存契約で検査する。宣言だけ、Hintだけ、Function名が似ているだけでは履行済みとしない。まだ証拠がなければ未検証とする。
+4. **工程とTargetごとの必要集合を導く。** 選ばれた貢献をAuthoring／Build／Runtime／Deliveryに振り分ける。論理Pluginと一つの物理Artifactの1対1を強制せず、必要なArtifact Member、Host Import、Resource、外部依存だけを列挙する。できないTargetはunsupportedと明示する。
+5. **実際の構築・呼出しを照合する。** #943／#1097のBuild ExecutionとArtifactSet、#1251の実Callで、宣言した入力と実消費byte、選択Builderと実Child、選択Providerと実Entryを別々に確認する。Stage1がStage2を構築した場合、親子Attemptの因果関係を保存する。
+6. **現在の利用資格を判定する。** 実際のHost Grant、対象Revision、Effect、Disclosure、Consumer受領はBuild完了とは別に確認する。過去のBOM／Fixture／Receiptを、失効した現在権限の代わりに使わない。
+
+**出力は一つの合否に畳まない。** 契約選択に成功しても実Artifactへの収録が未確認なら「選択済み／収録未検証」であり、実呼出しが確認されてもCommitや業務上の受理まで示さない。部分的な証拠、不明、非対応、拒否、未実行を区別して、既存InspectorやScenarioの読取り情報へ投影する。
+
+### 14.3 最小構成と検証済み構成は別の成果物である
+
+「このPlugin群を入れれば機能する」という提案と、「この組合せ・版・Targetで実際に検証した」という事実は異なる。構成の推奨には、既存[#3267](https://github.com/hat47x/tei-platform/issues/3267)が所有する **RQ-037 Verified Composition BOM** を使用する（RQ-035はData Source Workbench、RQ-036はDomain Model Map）。新しいBOMの正本は作らない。
+
+BOMが保持・参照する根拠は、少なくとも要求したContract、解決済みProviderとScope、Target、必要なArtifact Member、Fixture／Expected版、実際のBuild／Call／Consumer、検証の被覆範囲である。個々のPluginが別々に合格しただけでは、それらを組み合わせた製品が合格したとは扱わない。バージョン行列は全直積を常に実行するのではなく、境界条件・変更影響・必要な組合せに合わせて選ぶ。
+
+初回の実証は、既存のread-only Inspectorに加えて、同じContractに対する二つのProvider、二つのConsumer、二つのPlugin構成（必要／不要）を使い、**選択・Build収録・実Callの対応が説明できるか**を確かめる。対象が増えたときの計算量・依存数・診断時間も記録する。
+
+### 14.4 配布方式は、必要な隔離と更新条件から選ぶ
+
+標準配布は引き続き**Go単一バイナリへの静的Composition**とする。ただし、Pluginの論理契約は同じでも、実行場所・更新頻度・隔離要件により適切な物理方式は異なる。配布方式の選択を、Coreの固定Plugin種別へ押し込まない。
+
+| 方式 | 最初に採る条件 | 採用前に確認すること |
+| --- | --- | --- |
+| **静的合成** | 頻繁な無停止更新を要さず、信頼できる標準機能を一括配布する | 必要なProviderだけが実Targetに含まれ、現在のHostで正しく呼べること |
+| **別Process** | 障害・Resource・Toolchain・更新単位を分離する理由がある | 起動する実image、RPC／stdio等の契約、隔離の実強制、停止・再送・Effect不明の扱い |
+| **Wasm Component等** | 同じ実装を複数Hostで使う利点が、Adapter／Toolchain負荷を上回る | 実Componentを実Hostで呼び、型・意味・Host Importの差を独立検査。#1861の採否を先取りしない |
+| **Target固有Library／Extension** | Java/.NET/Browser/外部アプリが既存Hostの方式を必要とする | Contract資産と薄いBindingを独立利用できるか。Hostの配布・認可・ライセンス規則を守れるか |
+
+MCP／VUI／AIハーネスは、原則として型付きOperationを公開・利用する**Consumer／Adapter**であり、あらゆるPluginを実行する共通ABIではない。外部製品へは、可能であればContract／Fixtureを実装から分離して提供し、Provider実装やUIは必要に応じて選べるようにする。外部Hostからの再利用は[#2390](https://github.com/hat47x/tei-platform/issues/2390)のTEI非依存Consumerで検証し、TEI専用の常駐サービスを必須としない。
+
+これらの比較に、更新頻度、信頼境界、Target対応、起動／呼出しの実測、成果物サイズ、ライセンス、配備・RollbackとEffectの区別を用いる。最初から全方式を製品化せず、**純粋変換→外部Data Provider→信頼境界を越える実作用**の三例に対して、必要性を反証する。
+
+### 14.5 自己記述DSLは、段階ごとの権限を切り分けて導入する
+
+TEI自身のDSLやPluginの定義を標準データ構造で表せれば、Studioから言語やOperatorを検査・編集し、Targetへ生成できる可能性がある。ただし、**自分自身を読めたことが、その定義を正しいと承認することにはならない**。自己記述は既存の固定した解釈基盤を足場に、次の順で検証する。
+
+| 段階 | 検証すること | ここでは認めないこと |
+| --- | --- | --- |
+| **B0：固定Seed** | 現行Parser／Canonical／Source Indexを使い、Language・Operator・Roleの最小宣言をデータとして読める | 新定義から現行Parserを無条件に置換 |
+| **B1：Language選択** | WorkspaceがLanguage ID・版・Implementation pin・対象Sourceを指定し、#1018が決定論的に選ぶ | 未宣言Sourceの勝手な解釈、Provider不在時の黙ったfallback |
+| **B2：解釈候補** | 選択Parserが位置つきSourceと意味候補を返し、現行固定Seedと比較できる | 構文Parseの成功を意味受理に昇格 |
+| **B3：意味採用** | Contract／Rule／Traitの検査とOwner受理、版・出典を記録できる | AI候補・自己申告だけでProvider／Grantを承認 |
+| **B4：生成と実利用** | 受理された定義に対応するBuilder／ProviderがTargetを生成・実呼出しし、独立Expectedと比較できる | Builderの成功だけでStudio全体の自己再構築・本番資格を宣言 |
+
+実装順は、既存[#4359](https://github.com/hat47x/tei-platform/issues/4359)の最小構文・Source Anchor統合、[#1018](https://github.com/hat47x/tei-platform/issues/1018)のWorkspace Language選択、[#2620](https://github.com/hat47x/tei-platform/issues/2620)のRole、[#2831](https://github.com/hat47x/tei-platform/issues/2831)のセルフビルドと照合する。**B4をStudio DesktopのP0完成条件へ追加しない**。まず現行Seedによる製品実再構築を成立させ、その後に選択的な自己記述部品へ置き換える。
+
+### 14.6 追加の独立Expected候補：PCC-01〜10
+
+新しいExpected StoreやGateは設けず、[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)が持つScenarioに、既存PCX／PPC／HG／TC／VCBと重複しない差分だけを渡す。
+
+| Case | 変える一因子 | 独立に確認すること |
+| --- | --- | --- |
+| **PCC-01** | ProfileのrequiredなContractは同じで、実装ProviderだけA→Bへ切替 | #951の解決から実Targetへの正確な束縛。実Aの残留は不合格 |
+| **PCC-02** | Plugin PackageにはParserとRuntime Providerの両方があるが、TargetにはProvider不要 | Build側Parserは消費でき、生成アプリには不要Providerを無条件同梱しない |
+| **PCC-03** | required Traitを宣言し、標準／手動／Providerの履行をすべて外す | Trait未充足と診断。UI表示やManifest存在で履行済みにしない |
+| **PCC-04** | 明示required Providerを選択したのに、対応するTarget Memberが欠ける | Resolver PASSとBuild／Consumer FAILを別に記録する |
+| **PCC-05** | Runtime Providerを同一Artifact内の別Memberへ束縛 | Artifact Digestが同じでも、論理Pluginと実Entryの違いを判別する |
+| **PCC-06** | Contractは固定し、配布をGo静的合成から別Processへ変更 | 型・結果・失敗意味を保持し、Host制約／実Process・Effect資格は別検証 |
+| **PCC-07** | Plugin A/Bが個別Conformanceを通過し、組合せでは依存版が衝突 | 個別PASSをBOMの組合せPASSへ昇格させない |
+| **PCC-08** | 自己記述LanguageのProvider不在／版違い／構文は通るがSource Anchorを失う | 既存Seedへ暗黙切替せず、必要な段階で拒否・未受理にする |
+| **PCC-09** | 未選択Pluginの更新と、選択Providerの実装更新を対照 | 前者は無関係なBuild／Meaning失効を避け、後者は当該実装・Conformanceの再評価を要求 |
+| **PCC-10** | 旧BOMに合格証拠がある状態で、現在Grantまたは選択Artifactが失効する | 履歴は保持し、現在の実行・開示を再確認。古い証拠で復活させない |
+
+PCC-01/02/04/05は#4583/#1251の製品経路と合わせて確認するが、**P0のStage2 Buildを遅らせる追加Hard Gateにはしない**。PCC-03/07/09は#3278/#3267/#2600で参照評価、PCC-06/08/10は実Provider／Language／外部Hostの後続資格とする。
+
+### 14.7 完了条件と設計を縮小する条件
+
+第一の完了条件は、一つのread-only機能について、**Application要求→選択Contract／Provider→必要工程→実Build Member→実Provider呼出し→Consumer受領**を、同じ対象とVersion／Attemptで追跡できること。次に、不要な貢献を除いた静的Buildと、二つのConsumerからの同じ契約への呼出しを検証する。実作用と別Hostは、その後に独立した受入へ進める。
+
+同じ内容を成立させるために第二のResolver／契約正本／Host／認可Engineが必要になる、定義と物理Artifactを一対一に固定しないと成立しない、Buildだけで実利用を主張しなければならない、表記の違いで意味IDを作り直さなければならない、またはProvider選択がロード順に依存する場合は、共通抽象の採用を保留し、既存の一Function・一Provider・一Targetの境界へ戻す。
+
+**今回の資格**：現行の設計・Issue・他チャットの判断を統合した実装順と検証条件。正式なPlugin Manifest／ABI、汎用Graph Compiler、動的Loader、実Wasm Component、外部Hostの隔離保証、自己記述DSLの正式採用、実Windows Stage2／実DB更新／Owner意味受理を達成したものではない。
+
