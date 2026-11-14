@@ -848,3 +848,13 @@ ACD-02〜04については、**ParseできることをもってValidatorも受�
 **最初に閉じる辺**はACD-02/03の「Source→既存Workspace Validatorに具体的な診断があるか」というFit/Gapと、その修理後正例。ACD-01/04/05で境界を拡張する。#4359のS0〜S6はValidationの新`rule`表層、#4495は起動／Entry、#988/#1018はLanguage/Operator、#1180/#2514は独立Expected、#1124はSource位置・Studio Consumerを引き続き所有する。別Validator、第四のMeaning正本、実行Engine、全面DSL刷新、セルフビルドの新Hard Gateは導入しない。
 
 **現在の資格**：#4629/#4636の実行前構造拒否はmainにある。ACD-01〜08の**一つのSourceからの横断実テスト、Validator Gap実測、製品CLI/Studio Consumer、Owner意味受理は今回NOT RUN**。同じ拒否に見えるというだけで全層同一の製品検収PASSとしない。
+
+
+<!-- tei-20261114-acd-source-preflight-go-pr4654 -->
+### 20.4 ACD-02〜04のSource→実行前境界をGoテストへ移した（Draft #4654）
+
+[Draft PR #4654](https://github.com/hat47x/tei-platform/pull/4654)は**この節のA層とC層の最小接続**として、現行`syntax.NewParser(...).ParseSemanticFile()`が実Sourceから返す`semantic.Capability`を、既存`capabilityinvoke.Invoke`へ渡すテストファイルだけを追加する。比較するのは同名Input（ACD-02）、Output/Outcome混在（ACD-03）、同名Outcome（ACD-04）の3負例と各一因子修復の正例。実行時の不正宣言ではAdapter実呼出し数0・BusinessResultなし、修復後は1回呼び出す。未知Effect（ACD-01）はParser側で元Source行番号付き拒否を独立に確認する。
+
+重要なのは、**AのParse成功をBのWorkspace意味検証済みとしない**こと。新Goテストは`validation.Validate`や通常`workspace.Load`のSource位置付き診断をまだ実行しない。Bの最初の着手は、ACD-02/03が既存Workspace Validatorでどの診断を出すかの実測と、修理後のWorkspace正例である。Dの公開Entry・実Provider/Host Grant/Consumerも未接続。Staticなpreflightは、他チャットで整理した**Preview→Resolve→Admit→Commit→Observe**のうち実行前の拒否にしか相当せず、実Dispatch/Commit/外部Outcome・現在Disclosureを証明しない。
+
+**状態**：PR #4654のGoテストSource追加を確認。CIの結果・main統合・B/D層の実証は本節更新時点で未確認。実行結果はPRのexact HEADとActions IDを確認してからこの記述を更新する。
