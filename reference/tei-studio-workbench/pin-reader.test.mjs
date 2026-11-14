@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readPinnedSubject } from "./pin-reader.ts";
+import { readPinnedSubject, catalogIdentity } from "./pin-reader.ts";
 
 const subjectA = { kind: "semantic-data", id: "sales.order" };
 const subjectB = { kind: "semantic-data", id: "sales.invoice" };
@@ -77,3 +77,19 @@ test("PIN-PRODUCT-05: Host denial is not confused with a readable Product projec
 
 // This is a real call to a fake Host interface, not a live Wails/OS or
 // disclosure/AI handoff test. Latest Source/Grant must be verified separately.
+
+test("PIN-PRODUCT-06: a same-name Subject in a changed Catalog is not the pinned origin", () => {
+  const pinned = catalogIdentity(catalog);
+  assert.ok(pinned);
+  assert.equal(catalogIdentity({ ...catalog }), pinned);
+  // An unchanged Subject Kind/ID is insufficient when the Workspace is revised.
+  for (const changed of [
+    { ...catalog, modelRevision: "model-2" },
+    { ...catalog, worldFingerprint: "world-2" },
+    { ...catalog, sourceIndexFingerprint: "index-2" },
+  ]) {
+    assert.equal(changed.entries[0].subject.id, request.subject.id);
+    assert.notEqual(catalogIdentity(changed), pinned);
+  }
+  assert.equal(catalogIdentity(null), null);
+});
