@@ -152,3 +152,62 @@ Updaterは「更新を発見・検証・計画する共通契約」と「OSご�
 5. **更新・Installer**：P0の実Stage2を別環境へ配置し、親子起動とPlugin利用が再現することを確認した後、OS別のUpgrade／Rollback／Schema互換を検証する。
 
 **採用判断を保留するもの**：CLI子Backendの既定化、StudioのA→B移行、実バイナリ分離、共有Daemon、Wails Serverによる共有Web運用、更新管理主体ごとの自己Updaterの範囲。判断を先取りする新しいADR・第二Backend Engine・万能Update Registryを作らない。
+
+
+## 9. 実装PRを三つに分ける（2026-11-15）
+
+既存の意味処理を新しいBackendとして再実装せず、現在の同一Process基線から実IPCへ進む最小の差分を定める。上位の#4635 P0〜P4、#4702 SL-0〜6、#4698の二段階実証を置き換えない。
+
+### PR-A：直接経路の意味を固定する
+
+対象：cmd/tei/cli_inprocess_parity_test.go、internal/operations、internal/studiohost、cmd/tei-studioのRead-only Bridge。
+
+現行テストには、CLI inspectとoperations.InspectSubjectの同値性、CLIとStudioのCatalog比較がある。これを実IPCの検証結果に昇格させず、同一Workspace／Subject／Sourceの下でvalidate・inspectの型付きResult、Failure Code、診断のseverity・位置・意味上の完成／不合格を比較できるFixtureとして再利用する。正規化で多重項目を失わず、Worldが成立していないときに架空のFingerprintを付けない。internal/operations/dependency_test.goのWails・CLI・netへの逆依存禁止を維持する。
+
+完了条件：直接Go Operation、CLI、Studio Hostの同じ意味の結果を一意の独立Expectedで比較できる。実Desktop WebView、実子BackendはまだPASSとしない。
+
+### PR-B：CLIの一操作を実子Backendで呼ぶ
+
+対象：CLIが明示的に選ぶ実験的Backend経路、自己バイナリから起動する子Process、有限サイズのLocal IPC、既存Operationのread-only一呼出し。通常CLIの既定とJSON v0／text／exitは変更しない。
+
+親は実行対象のOS上の解決結果を確認し、PATHから曖昧に別のteiを選ばない。子とTransport・Operation Contract・実PeerをHandshakeする。子のstdoutをProtocol専用とし、親が従来のCLI出力へ投影する。正常終了、Crash、Timeout、偽Peer、旧Reply、無効なRequestを負例として、子Image・Attempt・IPC経路・実Invokeと結果を記録する。内部起動フラグやPIDの一致だけをPeer認証にしない。
+
+完了条件：同一Source／同一Operationの直接経路と子Process経路で意味と失敗分類が一致。Plugin Manager、書込み、外部Effectはこの段階の必須対象にしない。CLI自身のversion/help/復旧はBackendなしでも最低限動く。
+
+### PR-C：DesktopのWails Bridgeから同じ子Backendへ接続する
+
+対象：既存StudioBridgeのRead-only一メソッド、薄いGo IPC Client、Desktop親が管理する子の起動／停止。WebView JavaScriptからOS Pipe／Credentialへ直接アクセスさせず、既存Wails Service境界を利用する。Plugin由来の新しいWails Serviceを実行時に増設しない。
+
+現行Native同一Process経路を基準として、実Windows WebView2のBridge→IPC→実Go Operation→結果表示を一往復確認する。旧Workspace選択時の遅延応答、Dirty Buffer、子Crash後の再接続は別票で確認する。CLI子Process成功を実Desktop／Stage2 Desktopの資格に転用しない。
+
+完了条件：CLIとDesktopの実Backend縦断で同一意味を返し、実子Process・実Wails Bridge・実WebView Consumerを独立に記録する。Stage1→Stage2自己再構築と通常tei→実ProviderのP0を本PR-A〜Cの完了待ちにしない。
+
+## 10. Session・Plugin構成世代・Sourceの寿命を区別する
+
+実行中のProviderを、更新で上書きされる単一のMutable Registryから毎回再選択する構成は採らない。開始したInvocationには選択済みComposition／Plugin Artifact／Contract版を固定する。一方、Permissionと現在Grant、変更直前のSource Byte／Revisionは既存Ownerの要求に従って再検査する。Lock一致を実行許可へ昇格させない。
+
+| 単位 | 固定する参照 | 再評価する事項 |
+| --- | --- | --- |
+| CLI／Desktopの親 | 親のBuild／実Image、公開Operationの契約 | 操作対象、現在のWorkspace |
+| 子Backend Session | 実子Image、Transport、Session Epoch | Peer・現在提供可能なOperation |
+| Workspace View | 選択Subject／Source snapshot／Model Revision | 外部変更・現在の権限 |
+| Invocation | 実Provider／Artifact／Composition世代、Attempt | 必要なGrant・Commit直前の条件 |
+| Stagingされた更新 | Release候補と実Byte Digest | 現在Trust、更新適用時の差分 |
+
+旧Providerの実Artifactを使っているInvocationが存在する間は、そのArtifactをガベージ収集しない。StudioのSelection EpochとDirty Bufferは、BackendのAccepted Model Revisionではない。後着Replyは表示直前に選択先を再確認する。Pluginを更新しただけで旧Requestを新Providerへ自動再送しない。Serverや子Processの終了を外部Effectの失敗／Rollback証明とみなさない。
+
+## 11. Remote CLIのWorkspace指定と実行先を分離する
+
+ローカルCLIでの相対Path指定を、Remote Server上のPathとして暗黙に解釈し直さない。Remote利用では接続先とServer側Workspace Identityを別に明示する。ローカルSourceをRemoteで処理する必要がある場合は、送出対象／Byte Digest／Disclosure／受信側で実使用したSnapshotを記録する明示的な転送として扱う。暗黙のソースアップロードは禁止する。
+
+Remote CLIはServer側で選択したPlugin、現在Grant、Operation実行境界を使う。CLIがローカルで所有するPlugin LockやPluginバイナリはServerのProvider選択権限にならない。通信断でローカルへ黙ってFallbackしない。共有Backendが将来Git BranchやDB Sessionを扱う際も、実行場所・現在の権限・Source Snapshotを混同しない。
+
+## 12. 配布とUpdaterの最初の縦断
+
+Installerの製品化に先行して、TEIが生成した本体と必要なPlugin Closureを別環境へ配置し、起動・Plugin解決・実Provider呼出し・Consumer結果を確認する。Go単一バイナリには静的Provider／GUI資産を含められるが、外部Artifact・OS WebView・Toolchain等の依存が消えるわけではない。必要な内容を実配布BOMで説明する。
+
+更新は本体Release、外部Plugin Release、Workspace／DB変更を別単位とする。本体更新はStage→実Byte／署名／現在Trust検証→Drain→OS所有の適用→再起動とHandshake→確認とする。Plugin更新は選択世代を固定し、Install・Enable・Runtime Activeを別の事実として確認する。Workspace SourceやDB Migration、確定済みEffectは本体Rollbackで戻らない。OSのPackage Managerが管理する実行ファイルを自己Updaterが勝手に書き換えない。
+
+初期状態で検証済みのBootstrapとPluginをOfflineでも起動できるようにする。更新途中のCrashやRegistryへの接続不能時も、既存の旧構成から診断を行えることを確認する。Plugin ManagerのInstall／Enableが未モデルの段階で完成済みの更新UIを広告しない。
+
+追加の停止条件：第二Resolverの設置、既存CLI JSON／exit互換の無断破壊、WailsへのCore逆依存、Remote Pathの暗黙転送、Plugin版の暗黙選択、Effect Unknownの自動再送、実Stage2 Consumer未確認でのSelf-build達成宣言。
