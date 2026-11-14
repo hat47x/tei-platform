@@ -15,7 +15,14 @@
         ],
         "n-2": []
       },
-      "diagramConsistent": true
+      "diagramConsistent": true,
+      "generatedResult": {
+        "n-1": [
+          "e-1",
+          "e-2"
+        ],
+        "n-2": []
+      }
     },
     {
       "file": "edge-reversed.tei.md",
@@ -28,7 +35,15 @@
           "e-2"
         ]
       },
-      "diagramConsistent": true
+      "diagramConsistent": true,
+      "generatedResult": {
+        "n-1": [
+          "e-1"
+        ],
+        "n-2": [
+          "e-2"
+        ]
+      }
     },
     {
       "file": "layout-only.tei.md",
@@ -41,7 +56,14 @@
         "n-2": []
       },
       "diagramConsistent": true,
-      "meaningEqualTo": "baseline.tei.md"
+      "meaningEqualTo": "baseline.tei.md",
+      "generatedResult": {
+        "n-1": [
+          "e-1",
+          "e-2"
+        ],
+        "n-2": []
+      }
     },
     {
       "file": "duplicate-edge-id.tei.md",
@@ -61,7 +83,34 @@
         ]
       },
       "diagramConsistent": false,
-      "policy": "Report stale derived view. Never infer meaning from the stale diagram; do not overwrite either source without an explicit proposal."
+      "policy": "Report stale derived view. Never infer meaning from the stale diagram; do not overwrite either source without an explicit proposal.",
+      "generatedResult": {
+        "n-1": [
+          "e-1"
+        ],
+        "n-2": [
+          "e-2"
+        ]
+      }
+    },
+    {
+      "file": "rule-by-target.tei.md",
+      "valid": true,
+      "outgoing": {
+        "n-1": [
+          "e-1",
+          "e-2"
+        ],
+        "n-2": []
+      },
+      "diagramConsistent": true,
+      "generatedResult": {
+        "n-1": [],
+        "n-2": [
+          "e-1",
+          "e-2"
+        ]
+      }
     }
   ]
 }

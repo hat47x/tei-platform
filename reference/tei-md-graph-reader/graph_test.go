@@ -32,7 +32,7 @@ func fixtures(t *testing.T) []expectedCase {
 	if err := json.Unmarshal(b, &v); err != nil {
 		t.Fatal(err)
 	}
-	if len(v.Cases) != 5 {
+	if len(v.Cases) != 6 {
 		t.Fatalf("fixture count = %d", len(v.Cases))
 	}
 	return v.Cases

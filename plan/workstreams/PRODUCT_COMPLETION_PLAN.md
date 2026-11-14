@@ -480,9 +480,9 @@ S0〜S4を一度に実装しない。**最初のPRはS0のReaderとS1の実装�
 | Mermaidの配置や文書説明だけを変える | Source byte／表示の変更は残す。意味上のGraphと生成すべきロジックが同じなら、その範囲を不要に再Buildしない。ただしCache／Evidenceの再利用資格は別に判定する |
 | Stage1が生成したPluginを次Stageの実Buildへ渡す | Stage1実Process ID／Input closure／選択Builder／生成Artifact／Stage2での実Plugin Callを照合する。**Seedが二回Buildしただけでは達成としない** |
 
-**読取り専用の最初のGo実証**：[reference/tei-md-graph-reader](../../reference/tei-md-graph-reader/README.md) では、前記5入力の二つのMarkdown表からNode/Edge候補を取得し、元byte位置、同名別ID、並行Edge、重複ID拒否、導出Mermaidの不一致を独立Expectedへ照合する。製品の`*.tei.md` ReaderやSource/Roleの正式受理は**未成立**であり、現行`TEI_MD_PARSER_UNBOUND`を維持する。次はOwnerが既存Language Plugin／Workspace Loadへ選択されたSource byteを結び付け、さらに実Go Generatorと通常CLIの実使用を検収する。
+**限定的なGraph／Rule→Go生成実証**：[reference/tei-md-graph-reader](../../reference/tei-md-graph-reader/README.md) では、6入力のMarkdown表からNode/Edgeと明示したRule候補を読み、元byte位置と重複IDを検査する。生成器はRuleの「起点／終点」を実Goの条件式へ展開し、**別Processでコンパイル・実行した結果**を独立Expected候補と比較する。Edge反転とRule条件変更は生成Goが変わり、MermaidのLR/TB変更だけなら生成Goが一致する。ただし、これは**製品外のReferenceコード生成**であって、受理済みTEI Meaningに基づく製品Generator、選択済みPlugin/Providerの実Call、通常CLI Consumerを証明しない。正式`*.tei.md` Reader・Language Plugin/Role/Owner意味受理は未接続で、現行`TEI_MD_PARSER_UNBOUND`を維持する。
 
-**固定した入力と期待結果**：[testdata/tei-md-graph](../../testdata/tei-md-graph/README.md)に、基準、`e-2`反転、Mermaidのレイアウト変更、Edge ID重複、表と導出図の不一致の5例を通常の`*.tei.md`で置き、結果を別の`independent-expected.candidate.json`に記録した。これらは**既存#1180/#2514に採用を引き渡す候補**であり、`*.tei.md`を実Loaderが読めるという意味ではない。管理Source Rootの未対応Guard `TEI_MD_PARSER_UNBOUND`はReaderが正式に接続されるまで維持する。最初の技術課題は、選択した表・Fenceの元byte位置を保存し、Role／意味IDに結び付けること。MermaidのN1/N2やEdgeラベルを実Relation IDへ黙って昇格させない。
+**固定した入力と期待結果**：[testdata/tei-md-graph](../../testdata/tei-md-graph/README.md)に、基準、`e-2`反転、Mermaidのレイアウト変更、Edge ID重複、表と導出図の不一致に、規則の起点→終点切替を加えた**6例**を通常の`*.tei.md`で置き、Graph出辺と生成コードの実行結果の期待値を別の`independent-expected.candidate.json`に記録した。これらは**既存#1180/#2514に採用を引き渡す候補**であり、`*.tei.md`を実Loaderが読めるという意味ではない。管理Source Rootの未対応Guard `TEI_MD_PARSER_UNBOUND`はReaderが正式に接続されるまで維持する。最初の技術課題は、選択した表・Fenceの元byte位置を保存し、Role／意味IDに結び付けること。MermaidのN1/N2やEdgeラベルを実Relation IDへ黙って昇格させない。
 
 **実装担当へ渡す受入票**：最初に「Edge同一性の保持」「重複IDの拒否」「方向別の抽出」など対象の機能上の義務を固定する。義務ごとに、(a) TEIのどのSource/Ruleが実装を規定したか、(b) 生成したGoのどこが挙動を担うか、(c) 外部Goが担当する境界、(d) 実Builderが読み込んだByteとArtifact、(e) 選択Pluginの実Callと独立Expected、(f) 定義変更前後の手修正・重複記述・再検証作業を記録する。**未観測の項目は未達とし、比率の分母を試験後に縮めない**。
 

@@ -684,7 +684,7 @@ World Fingerprint／Model Revision／Artifact Revisionは用途ごとに保持�
 
 最初の実装PRは、既存SB-0〜4のうち**一つのReader/Source→意味Rule→生成Go→独立Expected**を動かすことを対象にする。現時点で`*.tei.md`の正式ReaderやGraphの汎用生成器が稼働していると仮定せず、最初に実Repoの入口を確認し、未接続なら`unsupported`と既存Ownerの不足契約を明示する。Headless Referenceの成功と通常`tei` CLIの製品経路も別扱いにする。
 
-**固定入力**：[Graph／Ruleの5つのMarkdown Fixture](../../testdata/tei-md-graph/README.md)と[独立Expected候補](../../testdata/tei-md-graph/independent-expected.candidate.json)を先に用意した。Markdown表を関係の定義元、Mermaidを表示用の導出図とし、図だけのレイアウト変更と、表の方向変更・重複IDを区別する。表と表示図が不一致の場合は勝手に一方へ合わせない。これは実ParserやGo Generatorを実装した証拠ではなく、既存#2621/#988と#1180/#2514へ渡す入出力候補である。
+**固定入力と限定実装**：[Graph／Ruleの6つのMarkdown Fixture](../../testdata/tei-md-graph/README.md)と[独立Expected候補](../../testdata/tei-md-graph/independent-expected.candidate.json)を利用する。Markdown表をGraphと規則の候補定義元、Mermaidを導出表示とする。[read-only Readerと限定Go生成Reference](../../reference/tei-md-graph-reader/README.md)では、Edge方向と明示Rule条件（起点／終点）の変更が生成Goの実条件式に伝わることを、別Go Processの実行結果で確認する。配置変更だけなら生成Goは同byteであり、表と表示図が不一致でも表を無断書換えしない。これは**限定Fixtureのコード生成実証**であり、正式Workspace/Language Pluginで受理したMeaning、製品Go Generator、実Provider/通常CLI/Stage1→Stage2の達成資格ではない。
 
 | 実装PRで提出する証拠 | 必要な最低内容 |
 | --- | --- |
