@@ -264,6 +264,9 @@ jobs:
           assert r["boundedReference"] == "partial"
           assert r["testExecutionAdmission"] == "exploration-only"
           assert r["qualifiedTestGeneration"] is False
+          assert r["unknowns"] == []
+          assert r["sourceCurrency"]["importedProviderSourceOccurrence"] == "not-required-by-bounded-closure"
+          assert len(r["sourceCurrencyControls"]) == 8
           assert len(r["syntheticControls"]) == 7
           assert len(r["additionalManifestControls"]) == 2
           assert len(r["transportByteControls"]) == 7
@@ -306,6 +309,7 @@ jobs:
               "- Function宣言の限定部分が揃っても**実Function入口・Query/Provider Read・Build収録/Host・Owner Meaningの全閉包は未資格**。",
               "- Test生成資格: **false**。固定公開Scenarioの局所探索のみ可能。",
               "- Function/Business/RuleのRequired Closure、Parser/Meaning、Provider実Read、外部Harness完全受領/開示、C1/NFRは未知。",
+              "- Source currency：8合成対照＋実CLIのProvider対（import先型に依存するとunknown、Provider Source/Manifest改変でもConsumer FPは不変）。Provider occurrence確認ではない。",
           ]
           print("\n".join(lines))
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as o:
@@ -459,6 +463,15 @@ jobs:
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as file:
               file.write("\n".join(lines) + "\n")
           PY
+      - name: Show Provider Source currency limit with real CLI positive/negative pair
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/reference-issue-test-ability/provider_currency_pair.py \
+            --root . \
+            --cli "$RUNNER_TEMP/tei" \
+            --out "$RUNNER_TEMP/issue-to-design/provider-currency-pair.json"
+          test -z "$(git status --porcelain=v1)"
       - name: Preserve bounded synthetic test-ability evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -470,6 +483,7 @@ jobs:
             ${{ runner.temp }}/issue-to-design/context-packet.json
             ${{ runner.temp }}/issue-to-design/test-ability.json
             ${{ runner.temp }}/issue-to-design/t1-line-number-candidate.json
+            ${{ runner.temp }}/issue-to-design/provider-currency-pair.json
             ${{ runner.temp }}/tei-scenario-c0.cover
           if-no-files-found: warn
           retention-days: 7
