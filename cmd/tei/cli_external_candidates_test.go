@@ -95,10 +95,10 @@ func TestExternalCandidatesR3AActualCLIProcess(t *testing.T) {
 	})
 
 	tests := []struct {
-		name       string
-		args       []string
-		wantExit   int
-		wantCode   string
+		name     string
+		args     []string
+		wantExit int
+		wantCode string
 	}{
 		{"missing ID", base[:len(base)-2], 2, "INVALID_ARGUMENT"},
 		{"unknown flag", append(append([]string{}, base...), "-made-up", "x"), 2, "INVALID_ARGUMENT"},
