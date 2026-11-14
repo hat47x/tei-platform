@@ -157,7 +157,7 @@ Desktopの親と子を自己実行ファイルから起動できても、実行�
 
 起動順は次のようにする。
 
-\`\`\`text
+```text
 OS launch → signed executable / embedded fallback UI
  → local Backend spawn (Wailsは親のみ)
  → peer / image / transport handshake
@@ -167,7 +167,7 @@ OS launch → signed executable / embedded fallback UI
  → selected Provider / permission and capability preflight
  → WORKSPACE_READY（選択範囲で機能を広告）
  → on-demand invocation / UI contribution activation
-\`\`\`
+```
 
 - CORE_READYの成立を全Pluginの正常起動と取り違えない。必須Coreが破損した場合はRead-only診断・復旧画面を別の組込み経路で表示する。
 - 起動時に未確認のRemote Registryから自動的に最新版を取得して実行しない。インストール済みの検証済み構成から起動し、更新確認は非同期または明示操作とする。
@@ -179,7 +179,7 @@ OS launch → signed executable / embedded fallback UI
 
 Local CLIは親がargv／出力／exitを所有し、子のstdoutをprotocol専用にする。構造化Request/Resultの上限、起動期限、取消通知、stderrの秘密情報開示制約を定義する。
 
-\`\`\`text
+```text
 tei command
  → identify local/explicit remote target
  → parse argv / preserve existing JSON v0 and exit contract
@@ -188,7 +188,7 @@ tei command
  → handshake / capability preflight / actual invoke
  → typed Outcome + backend identity + attempt
  → adapter renders stdout/stderr/exit
-\`\`\`
+```
 
 一対一の短命子ではstdio、長命の明示SessionではOS固有の保護されたIPCを比較する。どの経路でも同じApplication Operationから出力を導出し、CLI版ごとにProvider選択・Validation意味を実装し直さない。
 
@@ -196,13 +196,13 @@ Backend Sessionは「再利用可能な計算環境」であって、受理済�
 
 ### 12.3 子プロセスの信頼と寿命
 
-状態は Spawned→Handshake→CoreReady→WorkspaceReady→Draining→Exited。Timeout／Crash／PeerMismatch／ProtocolMismatch／PluginUnavailableを区別する。IPC接続者確認はOSのアクセス制御、親子で受け渡す一回限りのChannel／Handle等を組み合わせて検証し、nonceや\`--internal-backend\`フラグ単独を認証とみなさない。子ProcessのOS権限が親と同じなら、それだけではPluginをsandbox化したことにならない。Workspaceを変更する操作は既存Source/Acceptance Ownerに委譲する。
+状態は Spawned→Handshake→CoreReady→WorkspaceReady→Draining→Exited。Timeout／Crash／PeerMismatch／ProtocolMismatch／PluginUnavailableを区別する。IPC接続者確認はOSのアクセス制御、親子で受け渡す一回限りのChannel／Handle等を組み合わせて検証し、nonceや`--internal-backend`フラグ単独を認証とみなさない。子ProcessのOS権限が親と同じなら、それだけではPluginをsandbox化したことにならない。Workspaceを変更する操作は既存Source/Acceptance Ownerに委譲する。
 
 ## 13. Server配信ClientとPlugin GUIの構成世代
 
 WebではServerが**対応するClient HTML／JS／CSS**を配信する。単に最新版のUIを常に表示するのではなく、一つのDeployment Generationに結び付くClient Asset Set・利用するOperation Contract・選択されたGUI ContributionのDigestを確認する。
 
-- \`index.html\`等の入口は適切に再検証し、ハッシュ付きAssetは不変として配信する。
+- `index.html`等の入口は適切に再検証し、ハッシュ付きAssetは不変として配信する。
 - ブラウザーに残る旧TabやService Worker／Cacheからの旧Assetを考慮し、接続・操作時に互換性を確認する。未対応なら新しいUIの再読込みを明示要求する。
 - 途中でPlugin UIが更新されても、表示中のSessionへ新旧Moduleを黙って混合しない。動的GUI資産をLoadする場合、Artifact Digest・対象Deployment・Permissionを検査する。
 - 宣言的GUIを原則とし、第三者JSをStudio同一Originで自由実行させない。隔離方式が未実証のGUI実装は公開範囲を制限する。
@@ -223,7 +223,7 @@ Plugin Manifest／Release Descriptorは、役割（Language／Operator／Data／
 
 UpdaterはWails固有APIではなく、**更新候補の発見・検証・計画と、OS上の物理的な切替**を分けた機能である。Wails v3のUpdaterはDesktopの物理切替に利用可能だが、CLIにWailsをimportさせず、Package Managerが所有するインストールはその管理経路で更新する。
 
-\`\`\`text
+```text
 Discover → Plan → Fetch to immutable staging
  → actual-byte / signature / current-trust verification
  → compatible Backend + UI + Plugin Closure simulation
@@ -231,7 +231,7 @@ Discover → Plan → Fetch to immutable staging
  → apply through platform-owned installer/update helper
  → restart and verify new image / session / contract
  → Commit active generation or restore previous generation
-\`\`\`
+```
 
 - 本体、同梱UI資産、静的組込みPlugin、外部Pluginは更新単位が異なる。実際に必要な閉包についてだけ同時更新する。
 - Stagingが成功しても現在稼働中の世代を変更しない。新Sessionへ切り替えたことと、旧Session／外部Effectが終了したことを分ける。
@@ -244,11 +244,11 @@ Discover → Plan → Fetch to immutable staging
 
 ## 16. セルフビルドへ接続する実装順と検収
 
-この起動・更新の仕組みを先行する新基盤プロジェクトへ膨らませない。最優先はCLI/MCPから\`*.tei.md\`を正式Readerで読み、図表・Rule等の意味を使って実Go／Pluginを生成・実利用し、Stage1→Stage2のStudio Desktopを再構築すること。
+この起動・更新の仕組みを先行する新基盤プロジェクトへ膨らませない。最優先はCLI/MCPから`*.tei.md`を正式Readerで読み、図表・Rule等の意味を使って実Go／Pluginを生成・実利用し、Stage1→Stage2のStudio Desktopを再構築すること。
 
 | 既存主線との接続 | この設計で最低限確認するもの |
 | --- | --- |
-| Y1 Reader／意味Source | 正式\`*.tei.md\` Readerを使う。暫定変換やGoへの単純委譲を成果に数えない |
+| Y1 Reader／意味Source | 正式`*.tei.md` Readerを使う。暫定変換やGoへの単純委譲を成果に数えない |
 | Plugin主導生成 | 選択されたGenerator／Builder、実消費Source、生成Go/TS/JS、Bundle参照を区別 |
 | CLI Stage1→Stage2 | Stage1の実行ImageがBuilder childを起動し、次世代CLI／Pluginを実生成・呼出し |
 | Studio Stage1→Stage2 | 非Plugin Desktopを正式Build Subjectとして扱い、実N0→N3生成工程からWindows Wails/WebView2の実受領へ結ぶ |
@@ -271,7 +271,7 @@ Studio Stage1→Stage2と通常CLI→実Providerを優先し、Installer・Remot
 | EX-22 | Generator Buildは成功したがStage2 exeが旧UIを埋め込んでいる | 実Stage2／実配信AssetのDigest差として拒否 |
 | EX-23 | Package Manager管理のCLIを自己Updaterが上書き | 管理主体の不一致で停止。正式な管理経路へ戻す |
 | EX-24 | 同一ユーザーのStudioとCLIが別Sessionから同じSourceへAccept | 保存時のRevision／実Byte競合で拒否 |
-| EX-25 | \`*.tei.md\`をGoに単純delegateしGUI/Pluginだけ動く | セルフビルドの意味・生成割合・定義簡素化の達成に数えない |
+| EX-25 | `*.tei.md`をGoに単純delegateしGUI/Pluginだけ動く | セルフビルドの意味・生成割合・定義簡素化の達成に数えない |
 | EX-26 | 新Plugin Release公開中に必須Artifactが欠損 | Published／Installed／Activeへ昇格しない |
 | EX-27 | Clientに渡したSelection handleが古い・別Workspaceを指す | Preview／再選択を要求し、Harnessの暗黙書込みを拒否 |
 
