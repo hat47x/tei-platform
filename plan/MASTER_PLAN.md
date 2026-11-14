@@ -169,6 +169,8 @@ Gate C — PAS-04 Evidence — Ready
 - **P1 Desktop能力と配置比較**：既存Wails Bridge同一Process（A）、同exe従属Worker（B0）、別Wails Server＋HTTP/WS（B1）、別Server/Worker＋Named Pipe/UDS（B2）を比較。性能・OS ACL・peer・crash・復旧・配布・Audienceを実測して選び、B系をP0のHard Gateにしない。#4627の静的15 Method監査5/5 CIは**Public Web認証・WS開示の証明ではない**。#4628の外観試験は実Windows IME/読み上げと別検収。
 - **共通UI/Plugin/Source**：`*.tei.md`のDraft保存・Parser／Meaning受理（#2621）、Focus/Pin/Dirty・Source再Read、SHO Writer、Plugin Inventory→Plan→Apply（#4376〜#4380）、REA Host固定bounded read（#4637）、実Grant/Disclosure/Effect Receiptを分離。#4636のmain統合済みInput/Effect宣言preflightはProduct実Provider完了ではない。第二Host/Resolver/Policy/Scenarioを作らない。
 
+**二つの製品一巡の接続（同日追補）**：[Desktop Host設計 §12](design/DESKTOP_STUDIO_HOST_INTEGRATION_DESIGN.md#12-同一sourceから編集実データ生成実画面へつなぐ最小製品一巡2026-11-14)で、(1)正式non-Plugin Builder→生成Stage1→Stage2実Windows Consumer と、(2)Workspace/Subject Pin→Source-backed Inspect→必要に応じた実PG Data Context/診断→人間受理を**別の資格**として接続する。#4515のPin未実装／描画Relation ID非正本、#4647のpartial・0件不確定、#4648のToolchain観測≠Seed Trust、#4646の段階別Contribution、#4652のDSL診断四層を受入へ反映。#4651のDG-0〜4とOwnerの検収票を再利用し、AI OFFでの基本編集とSource保存を維持。**セルフビルドP0にPin/実DB/Plugin管理の新Hard Gateを追加しない**。
+
 **上限**：この2026-11-14追補自体は計画のみ。主計画より下の2026-11-13の個別PR状態は履歴として残す。新規Go/Windows/DB/OS IPC試験、生成Stage1→Stage2、Owner採用判断は実施していない。
 
 
