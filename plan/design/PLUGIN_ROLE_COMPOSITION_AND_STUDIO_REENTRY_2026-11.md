@@ -809,8 +809,8 @@ Harness向けのTEI導入Skillは短くし、**対象の特定→Inspect→Plugi
 
 ### 19.1 共通の利用体験と三つの入口
 
-1. **短いTEI Product Skill**：TEIが扱うモデルとPlugin、実CLI能力の発見方法、利用目的・対象の特定、必要な説明への移動方法、未確認情報と実権限の区別を教える。Skillは「操作の道案内」であり、Plugin機能一覧と構文リファレンスを複製しない。既存の \`skills/yi-tei-modeling/SKILL.md\` と \`references/read-only-model-investigation.md\` を出発点とし、固定済みHarness評価条件は変更しない。詳細なマニュアルはSkillから**必要時のみ**参照する。
-2. **型付きApplication Operationのread-only投影**：\`tei commands\`、既存\`model catalog\`/\`inspect\`/\`trace\`/\`validate\`等の実在入口を確認し、解決済みPlugin/Contract/Lockから概要・Documentation Index・公開モデル・直接/推移依存・適用条件を参照する。将来のDoc/Dependency Queryは**操作の設計候補**であり、現行CLIの実装済みCommandと混同しない。CLI、Studio、任意MCP Adapterは同じOperation/意味の別投影とする（#1158/#3419、実Plugin inventory #4376）。
+1. **短いTEI Product Skill**：TEIが扱うモデルとPlugin、実CLI能力の発見方法、利用目的・対象の特定、必要な説明への移動方法、未確認情報と実権限の区別を教える。Skillは「操作の道案内」であり、Plugin機能一覧と構文リファレンスを複製しない。既存の `skills/yi-tei-modeling/SKILL.md` と `references/read-only-model-investigation.md` を出発点とし、固定済みHarness評価条件は変更しない。詳細なマニュアルはSkillから**必要時のみ**参照する。
+2. **型付きApplication Operationのread-only投影**：`tei commands`、既存`model catalog`/`inspect`/`trace`/`validate`等の実在入口を確認し、解決済みPlugin/Contract/Lockから概要・Documentation Index・公開モデル・直接/推移依存・適用条件を参照する。将来のDoc/Dependency Queryは**操作の設計候補**であり、現行CLIの実装済みCommandと混同しない。CLI、Studio、任意MCP Adapterは同じOperation/意味の別投影とする（#1158/#3419、実Plugin inventory #4376）。
 3. **Plugin所有の説明と設計資産**：人が書くMarkdownの概要、入門、操作手引き、制約、移行方法、実装上の注意と、公開Contract/型付きモデル/図Projection/テストに対応する索引をPluginの管理下に置く。オフラインSkill配布へ同梱しても元の文書/版/Provenanceを保持し、コピーを第二正本にしない。人向け手引きと機械的契約を一つの巨大な書式へ押し込まない。
 
 ### 19.2 最小の公開説明面（Documentation Surface）とデータの所有者
@@ -822,7 +822,7 @@ Harness向けのTEI導入Skillは短くし、**対象の特定→Inspect→Plugi
 - **図・モデル**：意味は型付きSubject/Relation/ObligationのID/向き/多重度/Scope/出典で表し、Graphviz/Mermaid/ER/表/画像は投影とする。配置変更は意味変更ではない。編集は公開拡張点に対する型付きPatch/受理へ戻し、表示から未知の意味を逆生成しない。
 - **文書の資格**：文書の存在（discoverable）、取得（received）、本文の版整合（applicable）、契約との適合（checked）、実Consumerが確認した範囲（observed）、Owner受理を別に扱う。古いマニュアルを現在の実Provider保証としない。
 
-共通の論理応答（採用前の**概念例**）は \`{pluginRef, resolvedContractRef, subjectRef?, documentationRefs[], modelRefs[], parentDependencies[], scope, revision, status, unresolved[]}\` 程度で足りるかをまず試す。専用の正本を増やさず、既存Resultへのread-only投影／参照を第一候補とする。Node、Relation、文書のRefは表示ラベルではなく、出典と版に結び付ける。
+共通の論理応答（採用前の**概念例**）は `{pluginRef, resolvedContractRef, subjectRef?, documentationRefs[], modelRefs[], parentDependencies[], scope, revision, status, unresolved[]}` 程度で足りるかをまず試す。専用の正本を増やさず、既存Resultへのread-only投影／参照を第一候補とする。Node、Relation、文書のRefは表示ラベルではなく、出典と版に結び付ける。
 
 ### 19.3 上位Pluginの階層と公開情報を辿る
 
@@ -831,8 +831,8 @@ Harness向けのTEI導入Skillは短くし、**対象の特定→Inspect→Plugi
 - **Dependency ≠ Export ≠ Re-export ≠ Edit/Execute grant**。上位に依存すること自体は、内部文書・非公開Graph・下位からの再公開・Graph Patch・実作用の許可にならない。
 - 多親・ダイヤモンドで同一参照は一つにまとめ、異なる版や意味の衝突は診断する。循環は停止し、発見順・ロード順から勝手な優先順位を作らない。
 - 上位由来と下位固有の説明・モデル拡張差分を並べて見せる。下位の説明から上位の原文を黙って変更しない。引き継げるのは契約で公開したFacetとExtension Pointのみ。
-- 公開文書を段階取得するときは、\`Plugin+Contract+Source/Doc revision+Consumer scope\`に束縛し、ページ継続・end marker/欠落を検査する。Page間でSource/Grantが変わったら単一の完全な結果としない。禁止されたSourceについては本文・識別子・件数・Digest・存在自体を不正に漏らさない。
-- 読取りの結果は \`available / not-found / not-loaded / partial / stale / unsupported / permission-denied / unknown\` 等の意味を区別する。どの状態を実際に表現できるかは既存APIの型とのGapとして記録し、今回の設計だけで全状態の製品実装を宣言しない。
+- 公開文書を段階取得するときは、`Plugin+Contract+Source/Doc revision+Consumer scope`に束縛し、ページ継続・end marker/欠落を検査する。Page間でSource/Grantが変わったら単一の完全な結果としない。禁止されたSourceについては本文・識別子・件数・Digest・存在自体を不正に漏らさない。
+- 読取りの結果は `available / not-found / not-loaded / partial / stale / unsupported / permission-denied / unknown` 等の意味を区別する。どの状態を実際に表現できるかは既存APIの型とのGapとして記録し、今回の設計だけで全状態の製品実装を宣言しない。
 
 ### 19.4 設計要素の固定選択からHarnessへ渡す情報
 
@@ -850,7 +850,7 @@ Harnessはまず短いTEI Product Skillに従い、**対象発見→必要な公
 | D1 CLI | 現行Plugin Inventory/Resolverと共通Application OperationのRead投影 | 実WorkspaceでDoc indexと上位依存を取得し、unsupported/unresolvedを示す。#4376/#1158/#3262 |
 | D2 合成・変更 | 複数親、ダイヤモンド、非公開Ref、上位版改訂、文書改訂、レイアウトだけの差分 | 競合・漏洩拒否・依存部分の再検査と無関係変更の非干渉。#951/#1016/#2497/#3267 |
 | D3 Skill/Harness | Skill無しと短いSkill＋遅延資料ありを同一実CLI/Workspace/Scope/Expectedで比較 | 実Skill/Docロード、実Tool呼出し、全Reply受領、誤使用、Token/指示量、Source参照の正しさを計測。#2605/#2509/TAI #168 |
-| D4 Studio/TEI化 | 同じDoc/Model Refを図から往復し、Plugin自体の \`*.tei.md\` 生成範囲を増やす | Studioから固定対象→説明・上位図→AI変更案→検証の往復。Go委譲だけでない生成実装とDSL簡素化を計測。#2831/#1251/#1124 |
+| D4 Studio/TEI化 | 同じDoc/Model Refを図から往復し、Plugin自体の `*.tei.md` 生成範囲を増やす | Studioから固定対象→説明・上位図→AI変更案→検証の往復。Go委譲だけでない生成実装とDSL簡素化を計測。#2831/#1251/#1124 |
 
 独立Expectedへ渡す負例（PD-01〜10）：(01) 文書はあるが実契約が未解決、(02) Skillに未実装Command、(03) 文書版と依存Lockが異なる、(04) 非公開Nodeを継承、(05) 多段参照で情報漏洩、(06) ダイヤモンド・循環・同名文書競合、(07) Page途中切断、(08) layout-only変更で過剰失効、(09) Bの業務意味変更を合成PASSで自動受理、(10) 選択したPlugin Bと実Call Aが一致しないのに説明やResult一致だけで成功扱い。#1180/#2514を唯一のScenario/Expected Ownerとし、この節を新Runner/新Validation SSOTにしない。
 
