@@ -32,7 +32,7 @@ import (
 const schemaVersion = "tei.reference-browse-read.v0"
 
 const scope = "reference Consumer entry: one browse Pattern, one PostgreSQL, read-only transaction. " +
-	"Binding is host-asserted; coverage is never established; not the tei CLI."
+	"Binding is host-asserted; coverage is partial only when a restriction is seen and never complete; not the tei CLI."
 
 type response struct {
 	OK            bool                     `json:"ok"`
@@ -122,19 +122,44 @@ func run(args []string, out io.Writer, getenv func(string) string) int {
 	defer db.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
+	// The disposable-database confirmation uses a separate pooled connection, so that nothing
+	// is locked or read on the transaction below before the database is confirmed, and so that
+	// the first statement of that transaction can be the lock (see ObserveAcquisition).
+	var preName string
+	if err := db.QueryRowContext(ctx, `SELECT current_database()`).Scan(&preName); err != nil {
+		return fail("CONNECTION_UNAVAILABLE", errors.New("cannot query the database (details withheld)"))
+	}
+	switch preName {
+	case "", "postgres", "template0", "template1":
+		return fail("DATABASE_NOT_CONFIRMED", fmt.Errorf("refusing database %q: a dedicated disposable database is required", preName))
+	}
+	if preName != *confirm {
+		return fail("DATABASE_NOT_CONFIRMED", fmt.Errorf("-confirm-isolated %q does not equal current_database() %q", *confirm, preName))
+	}
+
+	declaredRelations, err := resolver.DeclaredBrowseRelations(appID, patID)
+	if err != nil {
+		return fail("BINDING_REFUSED", err)
+	}
+	pattern, err := resolver.ResolvePattern(appID, patID)
+	if err != nil {
+		return fail("BINDING_REFUSED", err)
+	}
+
 	tx, err := db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true, Isolation: sql.LevelRepeatableRead})
 	if err != nil {
 		return fail("CONNECTION_UNAVAILABLE", errors.New("cannot start a read-only transaction (details withheld)"))
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	observed, err := postgresquery.ObserveConnection(ctx, tx)
+	// First work on the transaction: lock the declared relations, then observe the read.
+	acquisition, err := postgresquery.ObserveAcquisition(ctx, tx, pattern.Query.Source, values, declaredRelations.Tables)
 	if err != nil {
 		return fail("OBSERVATION_FAILED", err)
 	}
-	switch observed.Database {
-	case "", "postgres", "template0", "template1":
-		return fail("DATABASE_NOT_CONFIRMED", fmt.Errorf("refusing database %q: a dedicated disposable database is required", observed.Database))
+	observed, err := postgresquery.ObserveConnection(ctx, tx)
+	if err != nil {
+		return fail("OBSERVATION_FAILED", err)
 	}
 	if observed.Database != *confirm {
 		return fail("DATABASE_NOT_CONFIRMED", fmt.Errorf("-confirm-isolated %q does not equal current_database() %q", *confirm, observed.Database))
@@ -157,7 +182,10 @@ func run(args []string, out io.Writer, getenv func(string) string) int {
 	for i := range shapes {
 		shapes[i].DeclaredByQuery = declared[shapes[i].Name]
 	}
-	fc, err := functioncontext.From(functioncontext.Input{Execution: execution, Connection: observed, Parameters: shapes})
+	fc, err := functioncontext.From(functioncontext.Input{
+		Execution: execution, Connection: observed, Parameters: shapes,
+		Declared: declaredRelations, Acquisition: &acquisition,
+	})
 	if err != nil {
 		return fail("CONTEXT_FAILED", err)
 	}
