@@ -466,6 +466,73 @@ Wails/Desktopと将来のServer/Webで、**Build Previewは同じread-only Opera
 
 本節は**文書設計の差分反映**。新Go/Node/WASM/Browser/WebServer/Stage2実行、Web版正式Host受入、WASMの優位性実測、Owner意味受理は実施していない。#4587 CIの限定PASSを別PRの受入や製品全体の完成に昇格しない。
 
+
+### 0.13 第13次横断統合：DesktopからSaaSへ拡張可能な実行対象固定・Web公開面・UI技術選定（2026-11-14）
+
+本節は、並行検討の「将来のTEI Studio SaaSは複数DB・複数Git branch/worktreeを扱えるオールインワン開発環境にする。ただし**今のP0 Desktopセルフビルドを止めない**」「Reactを既定とせず、Web標準/Web Components/Litも生成AI実装効率で比較する」を製品契約へ接続する。Wails/Go単一バイナリ、共通Operation/Source/Acceptance、外部Hostへの生成成果物配置という既存前提は維持。これは**将来要件・設計候補**であり、既存OwnerによるSaaS機能実装承認や製品の実動実証ではない。
+
+#### 0.13.1 今回の実装証拠と実証上限
+
+- [Draft #4627](https://github.com/hat47x/tei-platform/pull/4627) **exact HEAD `9491bf9e081bf98f39056d0a4142c2764c31289d`**で、nested `cmd/tei-studio`の`server_bridge_surface_test.go`が`StudioBridge`の実Go exported method set **15件**と`application.NewService`登録を検査し、増減・未分類をレビューのためFAILにする。分類にはSource readだけでなくCommand/SHOの作用系がある。同HEADのGitHub Actions **5/5 completed/success**、[Wails Host #43544229895](https://github.com/hat47x/tei-platform/actions/runs/43544229895)ではserver-tag付きGo test・loopback ServerとChromiumの二BrowserContextsを含むJobが成功。**WSP-02aの棚卸しの限定PASS**であって、実Wails Binder/HTTP/WSの到達遮断、別認証Principal/Workspace/Grant、Web公開認可、shared SaaSの隔離は**未検証**。Draft・未merge。
+- [Draft #4587](https://github.com/hat47x/tei-platform/pull/4587) HEAD `0fcb7b6265d7dfc5b5e93017e5c99e296eb13134`のWindows H1 N2→N3 Role/byte/Attemptと実WebView2の限定PASS（12/12 CI）は§0.12のまま維持。[#4623](https://github.com/hat47x/tei-platform/pull/4623)／[#4624](https://github.com/hat47x/tei-platform/pull/4624)別PRのbuilder pin／Resolver rejectの統合、非Plugin全工程、B2/B3は未実施。SaaS/複数DBを新たなB2前提条件へ昇格しない。
+- 現mainの`reference/tei-studio-workbench/package.json`はTypeScript＋esbuild＋CodeMirrorで**React/Litを依存としていない**。したがって現行UIを「Reactから移行すべきもの」と扱わず、現在の実コードを基線に比較する。
+
+#### 0.13.2 Studioの三つのContext：選択、Host解決、実Attempt
+
+| Context | 含める情報・所有者 | その情報だけでは成立しないこと |
+| --- | --- | --- |
+| **Viewer Selection（Client）** | 開いているProject/Workspace、表示Branch名、DB alias、Editor tab、Pin/Focus、Dirty Buffer、比較対象。DOM/IME/Caret・request generationはWorkbenchの局所状態 | 画面でBを選択したことは、実ProcessがBのworktree/DBを使った証拠にも現在Grantにもならない |
+| **Host-resolved Execution Context（Operation境界）** | Hostが解決したWorkspace/rootまたは隔離Worktree、Repository identity・worktree pathの安全な束縛、Branch ref＋解決時commit/Source revision/World fingerprint、Environment/Profile、選択DB instance/providerの**参照ID**、Target/Toolchain、主体とScope/現在Grant | Branch文字列・DB alias・接続情報の自己申告だけでは同一Git履歴・DB実instance・Credentialの許可を証明しない。UIやWASMはこのContextの発行者になれない |
+| **Frozen Build/Operation Attempt（実実行境界）** | 既存Build/Command/Effect Receiptに、開始時のHost-resolved Context・選択Source bytes/Revision・Builder/Plugin/Target・実Process/argv・DB binding・出力Role・結果／不明を結ぶ | 固定開始Snapshotは全外部依存のread-time閉包、実DB Effect、完了時Grant、OS Loaderのbyte拘束を自動証明しない。個別再資格化を要する |
+
+この分類は**既存Operation/Evidence/Receiptを読むための設計上のProjection**であり、巨大な新`ExecutionContext`型・永続Store・汎用Schedulerの新設を指示しない。Source occurrence/IDとGit path、Model Revision/World Fingerprint/Artifact Revision、Credential handle/DB instance、Window/Tab/Request/Attemptは別identity。**Branch名・Environment名・DB aliasを一意IDとしない**。A→B→Aやforce-pushで旧資格を自動復活させない。
+
+#### 0.13.3 複数Git worktreeと複数DBの最小実行契約
+
+- **Git**：一つのProjectで複数Branch/Worktreeを開いてもよいが、各OperationはHostが許可した**一つの具体的worktree/rootと解決済みrevision**を対象に開始する。Worktree一覧とcheckout/create/switchは異なる作用。初回P0は既存ローカル許可Workspace読取のまま、後続でread-only二Worktreeを表示してHost束縛一致を検証する。別Worktreeの同名`.tei`/同Subjectを一つのOwner受理・Source occurrenceへ合算しない。Dirty Bufferの保存前にbranch switchやbuild対象を黙って変更しない。
+- **DB**：Projectには複数Database profile/aliasがあり得るが、選択Environment→Provider→**実Database instance**の束縛は既存DB Provider/Environment OwnerがHost側で解決する。各Query/Commandが実使用したinstance/role/scopeをEvidenceに残し、UI選択aliasだけで実DB切替成功としない。初回はread-only二instanceの不一致拒否／Connectionの資格切れを検証。複数DBまたぎのatomic transactionや自動DB provisioningは本設計に含めず、未知の部分Effectは既存Receipt/Recoveryへ返す。Secret/接続文字列をBrowser/AI/Build Evidenceへ直接開示しない。
+- **Build/Process**：実Go/Node BuilderやDB環境整備をローカルStudioのように扱う将来SaaSは、WebView内ではなく**許可されたServer側の作業領域/Process**で実行する。Workspace root・checkout generation・DB binding・Target・Toolchain・出力先をAttempt開始時に束縛し、別ユーザー／別branchの生成Artifactが上書きしない。認可・resource quota・取消/再開・Credential保管・監査・Network egressはHost/実配備環境の責務。単にWails server tagでBuildできたことからこの隔離は得られない。
+- **並行処理**：二つのWindow/Browser Sessionが同じBranch/DBを触る場合、閲覧の並行性とSave/Accept/DB Effectの競合を分ける。既存Source CAS/Acceptance、Operation expected revision、DBの実Transaction/Conflictに委譲し、Git commitやDB更新に汎用Global Transactionを新設しない。旧Requestの後着は画面上の別Paneへ移送せず、結果は元のContext/Attemptに保全する。
+
+#### 0.13.4 Desktop → Web/SaaSへの段階拡張
+
+| 段階 | 採用する最小縦断 | 別に残す検収 |
+| --- | --- | --- |
+| **D0：今のDesktop P0** | 既存ローカルWorkspace、N0〜N3の正式TEI Build接続、Stage1生成TEI→Stage2 Desktop→その実WebView2 | 多DB・複数Branch SaaS・WASM/React/Lit変更をHard Gateにしない |
+| **D1：ローカル複数対象 read-only** | Host許可済み二Worktree×二DB aliasのCatalog/Inspect/Connection preview、同名対象の分離、Dirty/Pin/Build Previewの対象表示 | DB/Source書込と自動切替、Web Session認証は別 |
+| **D2：共通OperationのWeb試作** | Wails Server read-only限定Facadeまたは薄いWeb Adapterで同一Catalog/Inspect結果、Method/WSの実公開面、二BrowserContext遅延応答 | [#4627](https://github.com/hat47x/tei-platform/pull/4627) static inventory PASSだけで公開可能とはしない |
+| **D3：共有SaaS開発環境候補** | 2 Principal×2 Workspace×2 Worktree×2 DB Binding、実Host permission・隔離Build Process/Artifact・Resource上限/監査・秘密非開示を独立検証 | 実Git switch/Commit、DB provisioning/Effect、外部ネット公開の本番適格性、HA/多tenant運用は個別Owner判断 |
+
+**Hostは場所によって異なってよいが、共通Application Operationの契約とSource/Meaning正本は二重化しない**。ClientへのHost束縛値は表示用情報に限り、実Call時はHostがContext/Grantを再検証する。Agent/Harnessは候補EnvironmentやBranchを提案できても、既存Hostの実対象解決・Owner意味受理・DB Effect権限を飛び越えない。
+
+#### 0.13.5 Frontend選定は現行TypeScriptを基準にした実測で決める
+
+React採用もWeb Components/Lit全面移行も現時点で必須としない。生成AIによる実装効率を考慮するなら、人がJSXを読みやすいかより**Source変更→生成→bundle→実Desktop/Web操作→修正の反復**で判定する。
+
+| 候補 | 最初の扱い | 確認すべき論点 |
+| --- | --- | --- |
+| **現行plain TypeScript＋CodeMirror** | 比較基準。不要な新Frameworkを増やさない | Pin/Pane/Graph/Editorの状態分離、TypeScript型、Asset sizeと生成build時間、実IME/ARIA |
+| **Web Components / Lit** | 代表Pane一枚の独立Custom Elementで検証。Litはコンポーネントの更新・ライフサイクルが明確に改善する場合だけ | Shadow DOM境界とCodeMirror/選択・Focus/IME・CSSテーマの相互作用、Graph埋込、Wails/Web双方で同じ出力、テストしやすさ |
+| **React** | 必要な状態/Component ecosystemが実際に優位な場合の対照。既定/必須にはしない | 追加runtime・hydration/bridgeの有無、Editor/Graph連携、生成AI修正の局所性、Bundle/初期化/描画/テスト負担 |
+
+D1以前の評価は代表操作「Subject Catalog→明示Pin A→B編集→A裏応答後着→B保持→Source revision変更→read-only Build Preview」で比較する。同じ実Operation/Fixtureを使い、**実Bridge呼出し・DOM操作・Keyboard/IME/ARIA・差分更新・初期Bundle size・rebuild時間・メモリ・生成AI修正後の回帰率**で対照。勝者が出てもWails DesktopとWebのPresentationを別意味正本にしない。React/Lit導入のためだけにN0〜N3 Generator・Stage1→Stage2のP0を作り直さない。
+
+#### 0.13.6 既存Expectedへの最小引渡し
+
+| 候補 | 負例／停止条件 | 既存担当 |
+| --- | --- | --- |
+| **SCX-01** | Worktree A表示中にBの後着応答でA Editor/Pin/Build Snapshotが付け替わる | #1824/#4515/#3788 |
+| **SCX-02** | Branch A→B→A／force-push／同名Sourceで古いWorld/Meaning/Buildの現在資格が復活する | #1529/#2514/#2831 |
+| **SCX-03** | DB alias `sales`が別instanceへ解決されても実Query対象を黙って切替、Resultだけ同じなら成功とする | #2586/#1158/#1174 |
+| **SCX-04** | Principal AのServer Build path・Artifact・DB Credential・Source結果をBのSession/WSで取得する | #3421/#1824/#1178 |
+| **SCX-05** | server tagのWails `StudioBridge` 15 Methodを匿名public Webへ無制限公開。#4627 inventory PASSだけでGrant有とみなす | #4627/#3421/#1824 |
+| **SCX-06** | 未保存Buffer Bを保存Source Aと混同してBuild、旧Windowを新Stage2と広告、Client ContextがGrantを作る | #2831/#4583/#1824 |
+| **SCX-07** | Lit/React置換でIME・Caret・Pin後着隔離・実JS embed・生成差分のいずれかが退行 | #1824/#2018/#4515 |
+
+**判定・担当**：P0は#4583/#2831のB1→B2→B3と#4623/#4624合流に固定。SaaS/DB/Git Worktreeは#1824/#3421/#1529/#2586の将来レーン、実Wails公開面は#4627をWSP-02aの基線としてWSP-02b/03を後続で検証。Frontend比較は現Workbenchを壊さない並行実験。新Test SSOT/Worktree Manager/Global Scheduler/Second Authorityを創設しない。
+
+**今回の反映はdocs-only**。複数Git worktreeと複数DBの操作、公開Serverの認証/隔離、React/Lit比較、WASM実測、正式Stage1→Stage2 Self-build、Owner承認は実行・受理していない。
+
 ## 1. 位置づけと判断済み前提
 
 - **TEI Studio**はData/Function/Business三視点、Data Context、Source/Meaning、DBクライアント、Plugin、テスト、SHO文書機能への統合Workbench。
