@@ -956,3 +956,44 @@ read-only OperationではT3の**Invoke**を記録し、DB Commitがないのに�
 **採用順**：P0は#4583のnon-Plugin Studio Build→Stage1→Stage2と#1251のread-only実Provider/実Consumerを変えない。CXP-01/05/06を既存P0の対照に用い、CXP-02/03/04/07/08は各OwnerのP1以降で実作用・多Host・管理/開示を検証する。全Graph/Plugin Manager/Web/DBの完成をDesktopセルフビルドのHard Gateにしない。Expected保管先は既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#2514](https://github.com/hat47x/tei-platform/issues/2514)であり、新Runner/Schema/権限正本を増やさない。
 
 **範囲**：本章は他チャットとGitHub実装・CIを照合した設計更新のみ。CXP-01〜08の新Go/Windows/DB/HTTP試験、正式Product E2E、Owner意味受理は**NOT RUN／NOT ACCEPTED**。
+
+---
+
+<!-- domain-toolkits-plugin-strategy-20261114 -->
+## 28. 2026-11-14：専門分野別ToolkitをPlugin-first上に成立させる採否基準
+
+### 28.1 製品上の位置付け
+
+TEIは業務アプリケーション開発だけでなく、**Studio自体を分野特化のモデリング・分析・計画環境として使えること**を検証対象にする。Mathematica/R由来の数理・統計Operator、SQL Window/Report、WBS・PERT・CPM、熱力学の単位・状態・系、Systems Biologyの経路／ネットワーク計算は候補である。ただし現在は**研究・製品企画の候補**であり、正式なDSL構文、組込みAlgorithm、販売機能の採用決定ではない。
+
+**Plugin**は特定のContractを提供する技術的な拡張単位、**Toolkit**は分野利用者へEditor/Operator/Validator/Generator/Renderer/Example/Testを組み合わせて届ける製品単位、と区別する。一つのToolkitが複数Plugin/Artifactを含んでもよく、同じOperatorを異なるToolkitで再利用してよい。Coreには各専門領域の名前や固定enumを増やさず、標準データ型・構造・表現、Source/Meaning/Role、Contract/Provider選択と独立検証の機能を適切な既存Ownerで評価する。すべての専門計算をGo単一Binaryに同梱する必要はない。
+
+### 28.2 候補ポートフォリオと検証の順序
+
+| Toolkit候補 | 分野固有Plugin/Operatorの最小役割 | 共通基盤と最初の反証 | 位置付け |
+| --- | --- | --- | --- |
+| **Analytics／Reporting** | Window集計、集計粒度、統計量、レポート表・図への投影 | Queryのpartition/order/frame・NULL/重複と、#2586のread coverage/Scope、#2593のMeasure集計、#3820帳票Consumerを区別 | **先行候補A** |
+| **Project Planning** | WBS、依存DAG、PERT/CPM、工数/暦・クリティカルパス | #2495/#4350のGraph/Time Structure、循環・依存方向・暦差・複数経路の独立Expected | **先行候補B** |
+| **Statistics／DOE** | 分布・推定・検定・回帰・実験計画の演算と診断 | 欠損値、精度/丸め、単位、再現可能Seed、サンプル/母集団の区別 | **次候補** |
+| **Solver／Optimization** | 制約、探索・最適化、解の状態/限界 | infeasible/timeout/非最適解を最適と誤表示しない。外部Solverは別Provider/Host資格 | **次候補** |
+| **Symbolic Mathematics** | 数式変換・微分/積分・式の正規化 | 等式条件、定義域、未定義値、数値近似との区別を独立検証 | **調査候補** |
+| **Physical Systems** | 熱力学等の系・状態・単位・方程式と可視化 | 次元整合、単位変換、境界条件、保存則、Solver収束の診断 | **分野特化候補** |
+| **Systems Biology** | Pathway/Graph、化学量論・動的計算・専門Renderer | 生物学的同定、Source/版、複数Edge・方向性、モデル適合を区別 | **分野特化候補** |
+
+上表は分野別市場の需要・開発工数・販売力を**実測したランキングではない**。Analytics/Planningを先に選ぶ理由は、既存Query/Graph/標準表現/Studioの実装に近く、同じ汎用契約で対照できるためである。採用を決めるときは「分野の利用価値」「既存TEI基盤での実現割合」「Independent Expectedの作りやすさ」「Target/Host・配布・ライセンス負担」「Studio操作で減る実作業」の五観点を比較し、得点や市場性を推測で固定しない。
+
+### 28.3 先行2実例の受入設計（別OwnerのReference、P0のHard Gateではない）
+
+**A：Analytics**。同じSource/Scopeから、TEI QueryによるWindow集計を一例だけ定義し、パーティション・時刻順・同値順位・Frame境界・NULL/欠測・重複行を手書きExpected/独立RDB Queryと比較する。TEI標準表現・Reportへの投影を付けても、表示値一致だけで全母集団取得、現在Grant、Measureの再集計可能性を認定しない。対象は#2586/#2593/#3820、Plugin選択は#951/#1251。
+
+**B：Planning**。WBSタスクと依存有向辺をSourceとして保持し、循環がないFixtureでCPMの最早/最遅時刻とクリティカルパスを計算する。循環、不足する暦、ゼロ所要時間、同じ名称で異なるTask ID、並列Critical Path、進捗更新後の結果失効を各1因子の反例にする。SUIの視覚配置・Node Identity・Dependency Edge・Schedule計算の意味は別とし、Graph描画座標から依存関係を推定しない。対象は#2495/#4350/#4133、Operation/Providerは#951/#1158。
+
+どちらもEditor入力→型付きOperation→選択Provider→実計算→Studio/CLIの実Consumer→独立Expectedという**既存Q/Tの一往復**を利用する。分野固有の新中央Runner/第二Renderer Engine/Source Authorityを作らない。StudioをBuildするために専門Toolkitを先行実装する必要もない。
+
+### 28.4 他言語の知識・ライブラリを取り込む際の資格
+
+Mathematica/R等は、既存Algorithmの**意味・入力/出力・境界・テストケースを学ぶ参照元**として扱う。閉じた製品のソースを取得できると推測したり、利用条件を確認せずコード/パッケージを転記・再配布したりしない。商用ライセンス、OSS依存、出典、数式/アルゴリズムの独立実装、Target別コンパイル/実行、外部Host/Process選択を区別する。分野Pluginが必要とするGPUや大規模SolverをTEI標準実行の必須依存としない。計算の再現性はSeed・数値精度・ライブラリ/Toolchain版・単位/時点・実入力閉包で証明し、単なる同じ描画画像を計算同値の証拠にしない。
+
+**採用・実装順**：P0は#4583/#2831のStudio self-buildと#1251のread-only Provider結線を維持。先行A/Bは**P1/P2の比較Reference**として#2495/#4350/#951/#2586へ引渡す。統計・Solver・Symbolic・物理・Bioは、A/BでContract/Source/計算/表示・配布の適合範囲が見えた後に分野ごとの小さな独立Expectedで評価する。
+
+**状態**：分野別Toolkitの研究候補・実装比較票の追加のみ。A/Bの実Algorithm・Studio UI・Plugin/CLI実呼出し・性能測定・市場採否、Owner意味受理は**NOT RUN／NOT ACCEPTED**。
