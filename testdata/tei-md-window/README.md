@@ -18,6 +18,16 @@
 
 Sourceを修正する場合、ハッシュの再計算は必要だが**ハッシュだけ自動更新して合格扱いにしない**。定義と派生表示の意味差、Independent Expectedの正しさ、対象Role／Operator、変更を受理するOwnerの判断を確認し、変更と再確認の記録を残す。JSONの`adoption=proposal-only`は保持し、数理Toolkit専用のScenario SSOTや製品Schemaへ昇格しない。
 
+## 固定した負例も、検証対象から消さない
+
+5件の固定入力について、今度は**どの事例を検証するかという集合そのもの**も回帰テストで確認する。元ファイルのSHA-256が一致していても、候補JSONから重複IDの拒否例を削除したり、`valid: true`へ変更したりすると、以前のGoテストでは基準とFrame変更の2件だけが成功し、負例の欠落を見落とす余地があった。
+
+`window_candidate_oracle_test.go`では、5件のファイル名と件数、各入力の期待状態、正例7行の結果、`layout-only`が基準と同じ意味であること、重複IDが生成拒否候補であること、古い派生表示が不整合であることを**Fixtureの閉包**として固定する。対応する`*.tei.md`の追加・削除も検出する。3つの負例（ケースを削除、重複IDを有効化、古い表示を一致扱い）を用意し、いずれも閉包検査が拒否することを確かめる。
+
+また、`window_sourceindex_bridge_test.go`で、既存Graph／Ruleと同じ`internal/sourceindex`のArtifact・Range・Validateを用い、5入力の元SHA-256と、明示NULL行を含む既知のバイト範囲を照合する。説明文の追記だけで古いSource Indexが失効する負例も確認する。ただし、文字列の位置が正しいことと、その文字列を正式なWindow観測として意味受理することは別である。
+
+**これは期待結果候補の分類が勝手に変わっていないことの検査**であり、重複IDや派生表示を正式Readerで検出できたことではない。将来のReader検査では、Sourceのbyte位置と、選択した定義表、表示・例示だけの領域の違いも確認する。Code FenceやKaTeXの数式表示を、明示されていない業務規則へ昇格させない。これらは既存Language／Operator担当への受入条件であって、数理Toolkit専用Parserを先に作る条件にはしない。
+
 ## 既存の実証との接続
 
 `internal/database/sqlgen/sqlite/window_reference_test.go`と`window_frame_change_test.go`では、既存`SelectOptions`から生成したSQLite SQLを実DBで評価している。固定された七行の入力と期待値の照合は**C0／SQL方言**の検証である。今回追加するテストも、このJSONの基準・変更例を使ったC0の照合にとどまる。
