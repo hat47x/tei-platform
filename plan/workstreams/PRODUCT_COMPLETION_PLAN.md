@@ -468,7 +468,7 @@ TEIのセルフビルドは、最終的にはTEI Studio Desktopを含むTEI開�
 
 ### 最初の実装PRを、一つのGraph／Ruleから始める
 
-S0〜S4を一度に実装しない。**最初の製品コードPRはS0の選択SourceとReader/Source Indexの接続に限定**とし、選択したPluginの実呼出し（S2）、そのPluginを用いる次Stage再構築（S3）、定義変更からの再生成（S4）は、同じFixtureを引き継いで別の証拠で判定する。
+S0〜S4を一度に実装しない。**最初の製品コードPRはS0の選択SourceとReader/Source Indexの接続に限定する**。S1の意味処理生成、S2の選択Plugin実呼出し、S3の次Stage再構築、S4の定義変更からの再生成は、同じFixtureを引き継いで別の証拠で判定する。
 
 最初に固定する例は、**同じ表示名を持つNode `n-1` と `n-2`、`n-1 → n-2`のEdge `e-1` と `e-2`、Edge IDの重複を拒否する検査規則**である。初期のAuthoringでは**Markdown表を関係の定義元とし、MermaidをGitHubでも読める導出図**とする。Graphviz等の別表層は後続の対応範囲とし、Role／Identity／向き／多重性／規則のうち実装上意味を持つ部分を、実Readerがどこから取得したか追跡する。架空のTEI構文はここでは定めない。
 
@@ -504,8 +504,8 @@ S0〜S4を一度に実装しない。**最初の製品コードPRはS0の選択S
 | **S0: Reader→製品Source**（#2621/#988/#4704） | 固定5入力とBOM/CRLF・引用/Code Fence・不支持表・未選択Sourceの負例で元byte/spanと診断を確認。既存 *.tei ローダーは正常動作を維持 | ファイル一覧への登録のみ、Reference Reader単体PASS、Guardの一律解除 |
 | **S1: 受理済みRole→意味あるGo生成**（#2620/#951/#2831） | 固定されたSource/Role/Relationから出辺判定の条件処理を生成し、Edge反転で実Goの判断が変わる。重複ID拒否と独立Expectedを分離 | static JSONや手書きGoの薄い委譲、図の一時ラベルを意味IDへ利用 |
 | **S2: Pluginと実CLI使用**（#951/#1251/#4679） | Plugin Aの公開Facet/固定ContractをBが使い、Bの生成Artifactと実Callを検証。実選択/Build同梱/Load・Invokeを別照合 | 生成コードが存在するだけ、Documentation Surfaceが読めるだけ、Owner/Host Grantなしの実行成功 |
-| **S3: Graph Selector→実Artifact**（#4198/#3509/#2600） | 一Target/一Routeの選択Bindingと実Bundle Member、追加Route時の再評価（GQ-06a/b）を比較する | matched集合のみで全域完全と主張、生成AssetがBundle未収録でも適用完了 |
-| **S4: 二Consumer/Studio/Stage2**（#2831/#4583/#2586） | 同一版のModel/Artifact/Actual Consumerと親子Build Attemptを通す。Desktopは実Windows WebView2で受領 | Headless Referenceの別Attemptを足して正式Stage2セルフビルド達成とする |
+| **GQ-06: Graph Selector→実Artifact**（#4198/#3509/#2600） | 一Target/一Routeの選択Bindingと実Bundle Member、追加Route時の再評価（GQ-06a/b）を比較する | matched集合のみで全域完全と主張、生成AssetがBundle未収録でも適用完了 |
+| **SB-3/4: 二Consumer/Studio/Stage2**（#2831/#4583/#2586） | 同一版のModel/Artifact/Actual Consumerと親子Build Attemptを通す。Desktopは実Windows WebView2で受領 | Headless Referenceの別Attemptを足して正式Stage2セルフビルド達成とする |
 
 **一因子差での検収**：baselineの同端点Edge二本、e-2の逆転、重複ID拒否、MermaidだけのLR↔TB、表とMermaidの向き不一致を同じFixtureで使う。S0は本文と表の保存・読取りの資格のみを確認し、Mermaid表示の差をRole変更としない。S1は受理された関係だけを元に実生成する。意味不変時のskipはReference Readerの成功だけで正当化せず、実Builder入力/World・Model・Artifact Revision/Evidenceと実Consumerで確認する。独立Expectedの正式受理Ownerは#1180/#2514であり、[candidate JSON](../../testdata/tei-md-graph/independent-expected.candidate.json)の値はそのまま正式規格にはしない。
 
@@ -515,7 +515,7 @@ S0〜S4を一度に実装しない。**最初の製品コードPRはS0の選択S
 
 また、Pluginで要求される横断観測はSourceに一致する全件だけでなく、**契約に必要な選択Universe、対象Hook/Slot、選択された生成部品と実Artifact、実配布・実Consumer**を別資格で検収する。Selectorが正しく4 Routeを選んでも、Targetが3 Routeにしか実装しない場合は不適格。Build済みAssetが実Bundleに入っていなければRealizedとは言わない。この最小Artifact対応は#4198/#3509/Program Execution Model §33〜39の既存照合表へ接続し、新LedgerやGraph DBを作らない。
 
-**優先順**：全体P0 #4583/#2831の非Plugin Studio Stage1→Stage2実Desktopと、並行P0 #2586/#1251の通常製品CLI実Provider→二Consumerは変えない。S0は既存Ownerの小コードPR、S1〜S3はS0の同一Source/Expectedを再利用するP1の縦断とし、S0完了をStudio/DB/全B2Cの新Hard Gateにはしない。設計から実装への移行で追加の機能を増やすより、**元Source→実Reader→受理済み意味→実生成コード→選択Plugin→実Artifact/Consumer**の未接続部分を、同じ一件で徐々に埋める。
+**優先順**：全体P0 #4583/#2831の非Plugin Studio Stage1→Stage2実Desktopと、並行P0 #2586/#1251の通常製品CLI実Provider→二Consumerは変えない。S0は既存Ownerの小コードPR、S1/S2とGQ-06はS0の同一Source/Expectedを再利用するP1の縦断とし、S0完了をStudio/DB/全B2Cの新Hard Gateにはしない。設計から実装への移行で追加の機能を増やすより、**元Source→実Reader→受理済み意味→実生成コード→選択Plugin→実Artifact/Consumer**の未接続部分を、同じ一件で徐々に埋める。
 
 **資格**：本節は既存Referenceと最新mainに対する実装契約の更新であり、S0の製品Reader/正式Role、S1の実Go Generator、S2の実Plugin使用、S3の実Browser/Bundle、S4の正式Self-build・Owner意味受理を**新たに実証したものではない**。
 
