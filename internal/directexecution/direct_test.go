@@ -11,6 +11,15 @@ import (
 	"tei/internal/directexecution"
 )
 
+func TestSchemaIdentifiers(t *testing.T) {
+	if directexecution.PackageSchema != "tei.direct-execution/v0" {
+		t.Fatalf("package schema = %q", directexecution.PackageSchema)
+	}
+	if directexecution.EvidenceSchema != "tei.direct-execution-evidence/v0" {
+		t.Fatalf("evidence schema = %q", directexecution.EvidenceSchema)
+	}
+}
+
 func TestDirectWorker(t *testing.T) {
 	if os.Getenv("TEI_DIRECT_TEST_WORKER") != "1" {
 		return
