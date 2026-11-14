@@ -394,3 +394,36 @@ CLIやStudioには「Backendが使える」という単一Booleanを返さず、
 初回の子Backendでは読取り一操作のみを実行し、DB書込み／外部Effectを新しく公開しない。CLI通常経路の互換JSON・exitを保持し、`internal/operations`へWails・HTTP・CLI依存を入れない。製品`*.tei.md` Loaderを使ったと主張する場合は、選択Readerが実際に元byteを消費した証拠を必須にする。
 
 **優先順位は変更しない**。全体P0のStudio Stage1→Stage2と、並行P0の通常`tei`→actual Product Provider／異質Consumerを進め、PR-B／PR-C／Plugin Updaterは比較・拡張の独立縦切りとする。
+
+## 21. 再生成と再実行の境界を一つの実例で固定する（2026-11-15）
+
+main統合済み[#4733](https://github.com/hat47x/tei-platform/pull/4733)では、限定ReferenceのGraph／Ruleから生成した**同一の実Go Binary**に、Node IDを実行時引数として渡せる。これを子Backend、Plugin更新、セルフビルドに共通する失効判断の最小例として用いる。Referenceが実行できたことと、正式TEI製品がそのRuleを受理・実装できたことは区別する。
+
+| 変更内容 | 実際に必要な処理 | 新しく確認する証拠 | 禁止する誤判定 |
+| --- | --- | --- | --- |
+| CallerがNode IDを`n-1`から`n-2`へ変更 | **同じ実Artifactを再実行**。Invocation/Resultは新しいAttempt | 実Image Digest不変、argv／入力の実Byte、実Result、独立Expected | 入力変更だけでSource／Generatorが変わったとする |
+| Node/Edgeの向きやRule条件を変更 | Source/Meaningの再検証後、依存するGo生成・Buildを再評価 | 変更したSource span、Rule、生成Go／Artifact、出力の差 | 旧Artifactの同じ応答を現在の意味に流用 |
+| Mermaidの配置・説明だけ変更 | Source変更を記録。意味が不変と確認できた範囲のみ生成の省略を検討 | Source Revision、Meaning Revision、独立な再利用受理 | 意味不変なのでSourceの再確認も不要とする |
+| Plugin Artifact／Generator Toolchainを更新 | 実Build／Plugin Lockと契約の互換性を再評価。旧Invocationは開始時の実Artifactに固定 | Toolchain実Version・引数・環境、Artifact Digest、実選択Provider | 同じ版名・同じResultで実Image同一とする |
+| Current Grantを撤回、Remote接続先を変更 | 新Invocationの認可・選択先を再検査。単なるGrant更新は原則再コンパイル理由ではない | Host-issued Scope、現在Grant、接続先、実Attempt | 旧Lock／Client情報をAuthorityにする |
+| SourceがA→B→Aへ戻る | Raw Byteが一致しても現在Revision／受理とWorld Fingerprintを照合 | Source取得時点、World／Model／Artifactの独立Revision | Digest一致のみで旧Evidenceを無条件再利用 |
+
+この表は既存のWorld Fingerprint、Model Revision、Artifact Revision、Operation/Attempt、Plugin Lock、現在Grantを参照する。第二の失効管理器は作らない。まず`reference/tei-md-graph-reader`の既存独立Expectedを、**生成済みBinaryの実行時入力**と**定義／Rule変更後の生成物**の違いを調べるテストへ再利用する。製品CLI／Plugin/Studioで同じ意味処理が成立するかは別Gateで検収する。
+
+### 21.1 子Backendとセルフビルドに必要な入力Closure
+
+自己子Backendは「親と同じPathで起動した」だけでは同一Artifact使用を証明できない。実行したImage、実Process、Plugin実体／Composition、Workspace Source、要求時の契約、結果を結び付ける。Child SessionはArtifactを保持できても、次のRequestごとに現在Scopeと入力を検証する。
+
+Stage1がStage2を構築する場合は、親・子の実Process階層だけでなく、**実Toolchainと有効になったBuild引数／作業ディレクトリ／環境の影響**も記録する。現在レビュー中の[#4740](https://github.com/hat47x/tei-platform/pull/4740)では、子Go Processが親の`GOFLAGS`を継承したため初回テストが失敗し、親から明示的に`-modfile`を渡す方法で再検証したと報告されている。こうした変数は結果を変えるため、隠れた既定として放置しない。秘密値はログに平文保存せず、許可された公開メタデータや非可逆な参照で十分性を判断する。該当Toolchainの観測が完了していなければ、Buildの再現性を証明済みとしない。
+
+### 21.2 次のコードPRの停止条件と担当
+
+既存#4635の比較用PR-Bでは、現行`*.tei`のread-only `inspect`一件を**明示的な子実行経路**で呼び、実子Image／実Peer／限界付きIPC／旧応答拒否／Direct結果の意味一致を確認するだけとする。Graph/Ruleの製品ReaderやProvider実装を前提にしない。
+
+並行する#4730の製品Reader S0と#4702のactual Provider／通常`tei` CLIは別PRとして進める。後続で同じGraph/Ruleを実Provider経由で呼び出せた場合、生成された意味、選択Provider、実Provider、入力とResult、Independent Consumerを結合する。**同一Processと子Processで同じJSONが返ることだけではPlugin実行・Stage2セルフビルドは合格しない。**
+
+### 21.3 最新CIで確認した不具合と責務
+
+PR #4705のHEAD `966afa77`では、Cache Full／IncrementalはSUCCESSだが、[Repository Health](https://github.com/hat47x/tei-platform/actions/runs/43638793220) はFAIL。実ログの失敗は`reference/tei-md-graph-reader/rule_test.go`のgofmt差、`internal/query/standard/TestOpaqueNodeRoundTrip`の旧期待値、`TestExportedStringConstantsHaveATestOrAnEntry`の定数登録である。**#4705のDocs差分をGo修正へ拡張せず**、[#4736](https://github.com/hat47x/tei-platform/pull/4736)が担当する実コード・試験の是正を待って、対象HEADのCIを再評価する。旧HEADのHealth SUCCESSを今回のHEADへ転用しない。
+
+この節により、CLI direct→子Backend→Wailsと、Reader→Meaning→生成Provider→Consumerという二つの実証列を、再生成／再実行の判断として結び付ける。ただし、両列の先行Hard Gateや新しいHost／Runner／Resolver／失効の正本を増やさない。
