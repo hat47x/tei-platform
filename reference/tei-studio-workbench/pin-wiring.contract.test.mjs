@@ -98,7 +98,7 @@ test("PIN-WIRING-05: a changed Catalog cannot silently rebind an old Subject Pin
   assert.match(main, /import \{ readPinnedSubject, catalogIdentity \} from "\.\/pin-reader\.ts"/);
   assert.match(main, /pinnedCatalogIdentity === catalogIdentity\(catalogSnapshot\)/);
   assert.match(render, /pinnedCatalogMatches\(\)/);
-  assert.match(render, /固定後にモデルの版が変わりました/);
+  assert.match(render, /モデルの版が未取得か、固定後に変わりました/);
   assert.match(refresh, /!pinnedCatalogMatches\(\)/);
   assert.match(pinClick, /pinnedCatalogIdentity = catalogIdentity\(catalogSnapshot\)/);
   assert.match(unpinClick, /pinnedCatalogIdentity = null/);
