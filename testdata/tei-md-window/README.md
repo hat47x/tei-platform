@@ -38,6 +38,14 @@ Sourceを修正する場合、ハッシュの再計算は必要だが**ハッシ
 
 `v2`への更新はExpected候補の内部整理にとどまり、`adoption=proposal-only`と#1180／#2514の正式Owner判断は維持する。`v1`／`v2`の成功をTEIの製品Schema・正式DSL・SQLへの自動Loweringと呼ばない。
 
+## 実DBの入力も、固定候補から渡して比較する
+
+`window_bound_input_test.go`は、候補JSONの七行を実SQLiteの`observations`表へプレースホルダー付きで挿入し、既存SQLite方言が生成したWindow計算SQLを実行する。基準の直前三行と、変更後の直前二行の両方で、各観測行の系列・順序・値・NULLと三種類のWindow結果を独立Expectedに照合する。静的な`VALUES`句だけを実行した結果とは検証範囲を分ける。
+
+基準計算の成功後、実表のA3を30から300へ変更する。生成SQL自体は変えずに再実行し、A3の移動平均が20から110に変化することを検査する。この変更は**未受理の意図的な負例**であり、元のMarkdownやExpectedの書換え、意味受理、モデル改版として扱わない。SQLの構造が同じでも、読んだデータ版と結果が異なることを具体的に観測する。
+
+現行の`Source`→`JSON候補`は正式Readerで選択・受理された経路ではなく、`SQLite`はTEIの通常Provider／CLI／Studio Consumerではない。型付き入力候補から実DBへ渡す段階までがC0であり、これが成功しても`*.tei.md`の受理・標準QueryのWindow意味・製品セルフビルドは未成立である。
+
 ## 既存の実証との接続
 
 `internal/database/sqlgen/sqlite/window_reference_test.go`と`window_frame_change_test.go`では、既存`SelectOptions`から生成したSQLite SQLを実DBで評価している。固定された七行の入力と期待値の照合は**C0／SQL方言**の検証である。今回追加するテストも、このJSONの基準・変更例を使ったC0の照合にとどまる。
