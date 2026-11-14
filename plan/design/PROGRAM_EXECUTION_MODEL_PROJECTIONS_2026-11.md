@@ -684,6 +684,8 @@ World Fingerprint／Model Revision／Artifact Revisionは用途ごとに保持�
 
 最初の実装PRは、既存SB-0〜4のうち**一つのReader/Source→意味Rule→生成Go→独立Expected**を動かすことを対象にする。現時点で`*.tei.md`の正式ReaderやGraphの汎用生成器が稼働していると仮定せず、最初に実Repoの入口を確認し、未接続なら`unsupported`と既存Ownerの不足契約を明示する。Headless Referenceの成功と通常`tei` CLIの製品経路も別扱いにする。
 
+**固定入力**：[Graph／Ruleの5つのMarkdown Fixture](../../testdata/tei-md-graph/README.md)と[独立Expected候補](../../testdata/tei-md-graph/independent-expected.candidate.json)を先に用意した。Markdown表を関係の定義元、Mermaidを表示用の導出図とし、図だけのレイアウト変更と、表の方向変更・重複IDを区別する。表と表示図が不一致の場合は勝手に一方へ合わせない。これは実ParserやGo Generatorを実装した証拠ではなく、既存#2621/#988と#1180/#2514へ渡す入出力候補である。
+
 | 実装PRで提出する証拠 | 必要な最低内容 |
 | --- | --- |
 | **入力と意味** | Source occurrence/原byte、対応するNode/Edge/Rule、受理済みMeaningの参照または未受理・未対応の明示 |
