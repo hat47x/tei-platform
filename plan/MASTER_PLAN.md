@@ -194,6 +194,18 @@ Gate C — PAS-04 Evidence — Ready
 
 上表は#2600の選択的再資格化／旧依存辺・集合・否定依存、#2044のSource非破壊管理、#1223のTarget条件付きGenerationへ引き渡す**比較票**であり、共通の新状態Store・Cutover Engine・万能Hot Reloadの採用ではない。実際のRequired/Consumed Closureがunknown/partialなら「影響なし」と認定しない。最上位P0は引き続き#4583のStudio実Builder接続であり、この切替設計を先行Hard Gateにしない。
 
+**Plugin契約の時点整合性（#4623 Builder Pin × #4495 Script Entry × #1129 Hook）**：全処理に共有Transaction/Clockを導入するのではなく、各既存Ownerの**時点別Witness**を同一Attemptで相関させる。とりわけ選択された実装の`identity/contract/target/role`と内容Digestの一致は**別条件**であり、BuilderのファイルSHA一致からProvider Authority・実OS Loader byte・実成果物/業務意味を推定しない。選択したGenerationを処理中に保持することと、Commit直前にHostの現在Grantを再検査することは両立させる。
+
+| 境界 | 再確認するもの | 成立しても証明しないもの |
+| --- | --- | --- |
+| **T0 Preview/Plan** | Source occurrence、対象・Workspace、設定版、要求ContractとRequired/Consumed範囲 | Plan表示＝Owner意味受理／実行許可 |
+| **T1 Resolve/Bind** | #951/#1016のexact ProviderとContract/Role/Target、#2831のBuilder Catalog/PlanFingerprint（Stage/Target別） | Caller指定pin＝正式Resolver選択、同Digest＝同Authority |
+| **T2 Admit/Start** | 実Child image/Invoker/actual entryを起動前にT1へ照合。失効/不一致は該当する新規Callを0回に | 起動前hash＝OS Loader read-time byte、exit 0＝成果物適格 |
+| **T3 Commit/Emit** | effectful Pathでは必要Read/Guardと現在Host Grant/対象版を作用直前に検証、OperationID/RequestHash/Receiptを継承。Build出力は別のArtifact Effect | 開始時Grant＝Commit時Grant、出力File＝全依存閉包／DB rollback |
+| **T4 Observe/Consume** | 実Artifact member/Reader受領、Runtime結果・Disclosure現在Scope、未知・部分・古い応答を区別 | 識別子/Result同値＝正しいProvider実呼出し、ACK＝Effect確定 |
+
+**次の反証差分**：①同じ実exe Digestでも契約・Builder ID・選択Ownerが異なるB→A（S1選択をDigest一致で通過させない）、②T0の設定Preview後に設定/SourceがABAしてT2を迎える（old Planを再利用しない）、③旧Generationのin-flight処理中にCurrent Grantが失効（新Effect 0回、既CommitのUnknownはlookup-first）、④Script Entry非公開・Hook Guard拒否・Builder選択不一致のそれぞれで**その経路が所有する実Callを0回**とする。独立Expectedは#1180/#2514、Builderは[#4623](https://github.com/hat47x/tei-platform/pull/4623)（Caller Pin正負例は旧HEAD限定PASS、Resolver Bind追加はDraftで最新HEAD CI未確定）、Scriptは[#4495](https://github.com/hat47x/tei-platform/issues/4495)/Draft #4618、Hookは#1129/#1174へ委譲。共通なのは**証拠の区別**であり、ビルドChild・業務Entry・HookのCall Engineを統合しない。OS Loader TOCTOU、Current Grant実DB連結、全Source閉包、正式Non-Plugin Desktop Build、Stage2は追加実証前にPASSとしない。
+
 **現在の実行順と引渡し**：
 
 1. **P0-Buildを最優先**：#4583/#2831でN2 esbuild→N3 Go embed→非Plugin Desktop Buildへの一辺を、既存BuildIntent/BuildExecution/ArtifactSetに接続。次にStage1実Process→Stage2実Windows Desktop→Stage2自身の実Consumer。Graph Compiler・Plugin管理S3・X-TEA原典完全移植を初回Hard Gateにしない。
