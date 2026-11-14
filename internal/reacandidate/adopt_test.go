@@ -173,6 +173,7 @@ func TestCompareCandidateSetsSameBytesChangedObservedRelation(t *testing.T) {
 		})
 	}
 }
+
 // A changed source revision keeps the candidate identity and is reported as a
 // revision change that requires fresh review.
 func TestCompareCandidateSetsRevisionChange(t *testing.T) {
