@@ -216,6 +216,20 @@ Gate C — PAS-04 Evidence — Ready
 
 **Go/WASMは実行場所の選択肢であり権限Roleではない**：共通Go契約のID・Source/型付き結果は共有、UIのFocus/IME/Dirty Buffer/TabはTypeScript、HostによるProvider実選択・Current Grant・Commit/ReceiptはDesktop/Webそれぞれの信頼境界に残す。Browser Go/WASMは**配信許可済みデータのpure/read-only Projectionを一例だけ**native Go／TSと同Fixtureで結果・NULL/partial・Bundle bytes・起動/再計算遅延・Worker負荷を測ってから採否を決める。未配信・非開示SourceをWASM側から独自取得せず、local Preview成功をOwner受理や実行Grantへ昇格させない。#4621のWSP-01〜08と#1180/#2514を再利用し、Web多利用者・WASMの実検収を#4583 Desktopセルフビルドの新Hard Gateにはしない。**本節は設計・静的Source照合であり、実Server公開・Browser二利用者・WASM負荷試験はNOT RUN**。
 
+**開発セッション・Git作業版・DB資源・Plugin構成の交差境界（Studio SaaS将来要件、#1824/#1016/#2586）**：同一Serverで複数Gitブランチ・複数DB・複数開発者を扱うとき、**Server ProcessにPluginが収録済み**／**WorkspaceのEnvironmentがProviderを選択済み**／**あるActorが実DBへRead/Write可能**を同一の「有効」状態へしない。現在の`environment.Environment.Instances`（DB Instance ID/Definition/Provider）、`Bindings`（Application+Alias→Instance）、`ResourceBindings`（論理許可Scope→Host解決Resource ID）と#951/#1016のComposition・#1158のApplication Operationを再利用する。これは既存情報を**各Attemptへ束縛する照合票**であり、新たな大域SessionStore/DB Resolver/Canonical Context型の採用ではない。
+
+| 実操作前後の照合軸 | 安定参照と現在検査 | 誤った同一視・停止線 |
+| --- | --- | --- |
+| **開発者／作業文脈** | Hostで検証済みPrincipal・許可Workspace、Client Tab/AI Session/Pin epochは表示・Draft側 | Tab/Agentの選択＝Host Grant、他者の後着応答＝現在対象 |
+| **Git作業版／Source** | Repository/Checkoutまたは将来Worktree、Branch、実作業木のSource occurrence/bytes、Model Revision、変更のbase | 同じBranch名／Git HEAD＝Dirty Sourceや受理済み意味が同一。Worktree方式は未採用 |
+| **構成／Plugin** | Environment ID/Composition Lock、exact選択Provider/Contract、実リンク・呼出し、設定版が未モデルならunknown | Plugin導入済み＝全Branchで選択済み、同Digest＝同権限 |
+| **DB接続先／Resource** | Application DB Alias→Instance ID→Host解決実Resource、DB Provider/Scope、現在Grant、Read snapshot/coverage | 同じAlias＝同じDB、SQL Read 0行＝全件不存在、Secret Handle＝DB実接続検収 |
+| **Build／Effect／Consumer** | Build/Artifact/Target GenerationとConsumed byte、OperationID/RequestHash/実Receipt、読取り・編集の実Consumer | 同Branch・同ProviderでもDB横断Commitが原子的、Git revert＝DB副作用rollback |
+
+**最小縦断対照（既存#1180/#2514 Expectedへ。GDB-01〜06、未実行）**：GDB-01 同じRepoの二作業版でSourceが異なり、同名Subject/Plugin IDのResultを相互流用しない。GDB-02 同一AliasがEnvironment AのInstance AとBのInstance Bへ解決される場合、選択/実Read Resource/Source/Scopeを一Attemptで照合し、違えば拒否。GDB-03 同一DB Instanceを異なるBranchから参照してもWrite Targetと現在Grant/Owner受理を個別に検査し、Branch切替で旧Pending Changeを適用しない。GDB-04 別PrincipalのDB接続/Result/Secret、Studioの後着Reply、AI Harness tool/Logへの非許可送出を拒否。GDB-05 Plugin disable・DB Binding差替え・権限失効の後に旧Preview/Cacheを再実行資格へ昇格させない。GDB-06 設計SourceのGit復元/Branch rollback後も既に行われたDB Effectを巻き戻したと扱わず、Unknown Commitは同一OperationのReceiptをlookup-first。
+
+**着手順・Scope**：P0は[#4587](https://github.com/hat47x/tei-platform/pull/4587) exact HEAD `0fcb7b6` のWindows同一Attempt **12 Workflow success**（N2 JS bundle→N3 `EmbedFiles`選択・Go Build前後SHA一致、改変コピー拒否、実WebView2）を限定H1として記録し、正式非Plugin BuildExecution/ArtifactSetとStage1→Stage2は未成立のまま最優先。並行P1は[#4627](https://github.com/hat47x/tei-platform/pull/4627) exact HEAD `9491bf9` のserver-tagged Go公開面Inventory・loopback BrowserContexts限定CI successを踏まえ、**実Provider 2構成×DB Instance 2接続×Workspace/Checkout 2**のread-onlyの一件へ絞る。まずDesktop/Headlessで観測し、認証付きWeb・複数DB Read/Write・Git Worktree/共同編集/HAは独立の後続資格。UIはWeb標準寄りの候補含め既存WorkBenchを計測して比較し、React/Lit/WASMを本Plugin契約から固定しない。新DB Manager/多Branch Coordinator/汎用Web Hostを初回Hard Gateにしない。
+
 **現在の実行順と引渡し**：
 
 1. **P0-Buildを最優先**：#4583/#2831でN2 esbuild→N3 Go embed→非Plugin Desktop Buildへの一辺を、既存BuildIntent/BuildExecution/ArtifactSetに接続。次にStage1実Process→Stage2実Windows Desktop→Stage2自身の実Consumer。Graph Compiler・Plugin管理S3・X-TEA原典完全移植を初回Hard Gateにしない。
