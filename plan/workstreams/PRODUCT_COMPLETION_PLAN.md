@@ -539,9 +539,9 @@ S0〜S4を一度に実装しない。**固定6入力に対するGraph/RuleのGo�
 
 #### S0予備検証と正式Reader接続を分け、生成物の実消費までつなぐ（2026年11月15日）
 
-[旧PR #4745](https://github.com/hat47x/tei-platform/pull/4745)から[後継PR #4751](https://github.com/hat47x/tei-platform/pull/4751)へ引き継いだS0予備試験では、Graph/Rule限定Readerと既存Source Indexの直接照合（main #4742）から一歩進め、**実Manifestの宣言Root、Pinned Workspace Root、管理ファイル一覧、原文byte、候補RuleのSpan**を既存APIで読み合わせる**テスト専用のS0予備検証**を提出した。指定された`semantic/model.tei.md`は管理対象、Root宣言外の`drafts/not-declared.tei.md`は非対象とし、`Workspace.Load`が未選択Frontendに`TEI_MD_PARSER_UNBOUND`を返すことを先に検査する。ついでテストコードが既存のPinned Readを明示呼出し、元のSource Indexと一致すること、原文変更後に古いIndexが失効することを照合する。**これは`Load`の内部から選択済みMarkdown Readerが呼ばれた証拠ではない**。
+**S0-Pはmainに統合済み、S0-Aは未実装（2026年11月15日更新）。** [#4751](https://github.com/hat47x/tei-platform/pull/4751)では、実Workspace Manifestの`semantic` Root、未宣言`drafts`の除外、同一Pinned Rootからの元byte、固定されたGraph/Rule候補、既存Source IndexのFingerprint/Span、原文変更時の旧Index拒否を**テスト専用の事前検査**として接続した。旧[#4745](https://github.com/hat47x/tei-platform/pull/4745)は未マージでクローズされ、同内容の実Go試験が#4751からmainへ入った。現行の`Workspace.Load`は未選択`*.tei.md`に`TEI_MD_PARSER_UNBOUND`を返し続ける。これは意図した安全な境界であって、予備検査の成功により製品Readerを解放する理由にはならない。
 
-[PR #4745のexact HEAD健全性ログ](https://github.com/hat47x/tei-platform/actions/runs/43641434912)（`9e9a128c78c5a7913cedbfc309779c282caabb93`）では、`go test ./...`中の`internal/workspace`は成功したが、Repository Health全体は**失敗**した。確認できた原因は`internal/database/sqlgen/sqlite/window_candidate_oracle_test.go`の`gofmt`ずれと、`tools/repository-plan-check`の`SeverityUnsupported`既検査語彙が旧TODO一覧に残ることである。前者はGraph/Readerとは別の変更Owner、後者も既存[#4449](https://github.com/hat47x/tei-platform/pull/4449)等の担当で整合する。独立WorkflowのPASSを全体PASSと記録せず、かつこれらを理由に未受理MarkdownをLoaderへ通す暫定回避を行わない。旧PR #4745はmain進行に伴い**未マージでクローズ**された。後継[#4751](https://github.com/hat47x/tei-platform/pull/4751)は同じ2ファイルの変更を最新mainへ引き継ぎ、**main統合済み**である。ただし対象HEADのCIは各Workflowで別判定し、S0-Pの局所回帰成立から、正式`Workspace.Load`で選択Frontendが実読取したS0-AやStage1→Stage2の成功を推測しない。
+**CIの資格も分ける**：#4751のexact HEAD（`699ac0bd025a953d2a7a0e7dea2dbe9f1c19a67f`）では複数のWorkflowが成功した一方、[Repository Health](https://github.com/hat47x/tei-platform/actions/runs/43644037417)は失敗している。旧#4745の[Repository Healthログ](https://github.com/hat47x/tei-platform/actions/runs/43641434912)はSQLite Window試験の`gofmt`ずれと`SeverityUnsupported`の旧TODOを示したが、**旧HEADの原因や成功を、新HEADや最新mainに無条件転用しない**。最新main全体の状態は同一HEADのCIで別途判定し、修正済み・全体合格の主張を先取りしない。
 
 **次の実装は三つの資格を別々に満たす**。初回にすべてを一PRへ詰め込まない。
 
@@ -551,6 +551,12 @@ S0〜S4を一度に実装しない。**固定6入力に対するGraph/RuleのGo�
 | **S0-A：製品Reader Admission** | 実`Workspace.Load`の同一Attemptに対して、型付きで選択されたFrontend/版、Manifest Root、実際にReaderが消費したbyte/Span、Source Index Artifact/必要なRole候補を対応付ける | **未実装**。未選択は従来どおり拒否。管理済み≠Read済み≠Parse済み≠Qualified≠Owner受理 |
 | **S1/S2：意味Go・実Plugin** | Owner受理済みMeaning/Rule→Target Generatorの条件ロジック→生成Go→実Builder/Target→選択Pluginの組込み/Call→実Consumer | 限定ReferenceのGo条件分岐と同一Binary実入力は成功済みだが、製品Targetでの実消費は未成立 |
 | **Artifactの再入力／Studio** | 生成Source Memberが次Buildの**実入力byte**になり、生成JS等がWails埋込みへ渡る場合も、Builder/ArtifactSetの同じAttemptと子Process/受領先を照合 | [Generator契約Draft #4748](https://github.com/hat47x/tei-platform/pull/4748)の未実証Fit/Gapに接続。生成物の存在だけで次工程が消費したとみなさない |
+
+**実装担当が最初に変更すべき境界**：現行`internal/workspace/loader.go`は`scanManagedFiles`の後で`rejectUnboundTEIMarkdownSources`を実行し、その後に従来のSource Root別Domain Loaderへ進む。次の製品Go PRは、この既存の順序とPinned Source読取りを使い、**対応可能な一種類のFrontendが明示選択されたSourceにだけ**Reader呼出しを許す。実際の選択契約が未実装・曖昧な場合には、新構文を仮定して全ファイルを通さず、既存の`TEI_MD_PARSER_UNBOUND`または適切なunsupported診断を維持する。選択はWorkspace/Root/Source path/Frontend ID・契約版の組で確認し、`sourceindex.Artifact.Format="md"`をLanguage Profileの代わりにしない。
+
+**最小の完了証拠**：同じ一回の`Workspace.Load`で、(a)選択に使ったManifest/Frontend/Source Revision、(b)Root内にある実Sourceの読み取りbyte、(c)Node/Edge/Rule候補の元byte Span、(d)既存Source IndexのArtifact/Fingerprint、(e)`ReadByLoader`の真偽と解析・意味受理の**未達状態**を矛盾なく照合する。Source Indexの`RoleDefinition`等は参照種別であり、業務意味RoleやOwner Acceptanceとは別である。テストコードが`readPinnedWorkspaceFile`を直接呼んだだけの証拠はS0-Pのままとし、**実Loader内のReader消費を確認して初めてS0-A**と呼ぶ。
+
+**S0-Aの最小負例集合**：未選択Frontend、非宣言Rootの同名ファイル、通常`README.md`の説明用表、対応外Profile/版、Fence/引用内の見かけ上の定義、解析対象の重複ID、Load後の元byte改版を別々に拒否または非対象として示す。旧`*.tei`の通常Loadは回帰成功を維持する。型付きFrontendや意味Roleを選ぶ権限がない場合に候補の表示だけはできても、**正式Subject登録・Go生成・選択Plugin/実Provider起動は不可**とする。Source A→B→Aで同byteに戻っても、以前のOwner Acceptance・Current Grant・実Consumer受領は自動回復しない。
 
 S0-Aで最初に提示すべき**独立した正負**は、同一Source Snapshotからの1選択・1Reader・1Artifact整合、未選択Frontend・Root外ファイル・未対応構文・旧`*.tei`への退行・原文変更後の旧証拠再利用・暗黙のReader fallback拒否である。Rootを固定して読んだことは、複数Sourceの**原子的Snapshotを保証するわけではない**ため、取得したbyteと検証に使った版が一致する範囲だけをClaimとする。Owner意味受理前のGraph/Rule候補IDはSource Indexの正式Subjectへ勝手に登録しない。
 
