@@ -615,6 +615,51 @@ S0〜S3は**B2Cプラグイン内の成熟度の記録**であり、TEI Studio D
 
 **順序と停止線**：直近は既存P0のStudio実Windows Stage1→Stage2セルフビルド（#2831/#4583）と、並行するRA-2P→RA-3の実Read/二Consumer（#2586）だけを優先する。B1a-Pの実公開Grant、B1bの隔離Commerce Effect、B2の実験/Consent、B3のH0/H1/H2同条件比較、B4の予約/SubscriptionとPlugin採否は各Ownerの後続資格である。今回は計画文書の整理であり、追加の実PG・Native Browser・公開Host・実決済・Field実験・Plugin自己再生成を**実行したものではない**。検証未了のClaimは独立して残し、#3509へ結果を返す。
 
+
+### G49追補：アプリケーショングラフに対する横断的拡張（2026年11月14日）
+
+**目的**：B2C/一般Webで必要となるアクセス解析・広告・RUM/障害監視・監査・共通セキュリティなどを、全Page/Route/Operationに同じコードを繰り返すのではなく、**型付きアプリケーション/プロセスGraphを対象に選択規則と拡張点を宣言**する方式で扱う。従来AOPの動的Proxy/メソッド横取りを前提とせず、既存[#4198](https://github.com/hat47x/tei-platform/issues/4198) Lifecycle Graph、[#3503](https://github.com/hat47x/tei-platform/issues/3503) Interaction、[#3278](https://github.com/hat47x/tei-platform/issues/3278) Trait/Hook Slot、[#951](https://github.com/hat47x/tei-platform/issues/951) Contract/Provider、[#2090](https://github.com/hat47x/tei-platform/issues/2090)生成拡張点、[#1121](https://github.com/hat47x/tei-platform/issues/1121) Target Loweringで表現できる範囲を先に検査する。
+
+#### 最小構成：対象選択 → 拡張点への束縛 → 合成・検証 → Target生成
+
+| 構成要素 | 役割 | 注意点 |
+| --- | --- | --- |
+| **構造Graph** | Site/Route/Page/Section、Trigger/Operation/Interaction、Build/Releaseの型付きRole/Relation。Source Subject・occurrence・Revisionに対応 | Graphの描画座標・URL文字列・表示Labelを安定したMeaning IDとしない。Definition、Effective Plan、Trace、Diagramを別管理 |
+| **対象選択（Pointcut相当）** | 「公開Siteの全Page」「注文確定後のOperation」などをRole・Relation・属性と明示除外で選ぶ。必要なUniverse/Scope/動的Routeを記録 | 未ロードPlugin・未登録Route・partial/permission-deniedを対象0件や全Coverageへ変換しない |
+| **拡張点（Join Point/Hook Slot）** | Document構築、Navigation確定、Section表示、Operation before/after、Build/Release等、型とPhaseを持つ契約 | 任意DOM座標への無断書換えや、業務Guard/Authorize/Effect Fenceの迂回を認めない |
+| **拡張（Advice相当）** | Observe/Validate/Transform/Composeなどを既存ProviderまたはTarget Generatorで実現。optional/required・Target/Effectを明示 | 宣言・選択・Artifact収録・実Call・外部受領を別Claimとして検証 |
+| **適用条件・順序** | 同意・用途・Audience・Host Grant・実装能力、順序・重複回数・競合・除外を型付き関係で管理 | Plugin登録順で順序を暗黙決定しない。認可/Effect Fenceの前後変更を自由なAdviceで許さない |
+| **上位Plugin継承** | 上位Pluginが契約で開示する構造Graph・Role・Slot・版・可視Scopeを下位PluginのSelector/Adapterが再利用 | 未開示Node/内部図面/秘密Sourceを継承せず、親の改版・公開範囲縮小に伴い局所再解決する |
+
+**構文未確定の概念例**：Site「storefront」配下のpublic Pageを選択し、account.privateとcheckoutを除外する。Document準備のHookで、選択した解析Adapterの初期化を一文書につき高々一回組み込む。Navigation確定のHookでは、対象Routeへの遷移に対してpage-view候補を一回だけ生む。ただしanalytics目的の現在Consentが不明または拒否なら外部送信しない。この記述は将来のDSL案ではなく、まずGraph/Role/Contractに表現可能かを見る**意味的な受入例**とする。
+
+#### 同じ「全ページ差込み」でも異なる三つの作用
+
+1. **Assetの組込み**：Tag Manager等の共通Script/Head設定、CSP・nonce、重複挿入の抑止。静的HTML、SSR、Native Frontendの既存Head/Build slotに任意のGenerator/Adapterでlowerする。TEI Router/常駐JSの強制はしない。
+2. **Page viewと行動の観測**：初期Document load、SPA/CSRのRoute遷移、SSR→Hydration、再描画、戻る/進む、Consent更新を区別。「Script初期化一回」と「対象Navigationごとに観測一回」は異なる保証であり、観測候補・実送出・Provider受理も別。
+3. **広告配置**：AdSense等の広告配信はAnalyticsと別の目的・レイアウト影響がある。全Site向けの利用条件と、実際に挿入するSection/Placement Slotを分離する。Checkout等への誤挿入、CLS悪化、Provider policy・同意の不適合を検出する。
+
+**開示・権限**：外部計測/広告は別のEffect/Disclosureであり、TEI Graphが同意の権威を生み出すわけではない。実Consentは選択したHost/CMP等から取得し、用途・Audience・外部送信・保持/削除条件をBindingで確認する。初期Referenceは、未許可時に第三者Script/SDKの外部送信を防ぐbasic/blocked方式を使う。Google Consent Modeのadvanced方式の拒否中ping等は別の明示受理対象とする。計測障害は原則として購入確定を中断・巻戻ししないが、同意不明/拒否時の禁止送出はfail closed。セキュリティ・監査・業務Authorizeの不変義務を任意Analytics Adviceで置換してはならない（#1043/#1174/#2516）。
+
+**合成・失効**：同じHookへ同じeventを二重登録した場合は契約上の重複/競合を検出し、合意した順序・cardinality・Provider identityを固定する。Source A→B→A、Plugin版変更、上位開示Graph改版、Route追加/削除、Consent policy変更では必要部分を局所再検証。レイアウトのみ変更したDiagramや未選択Plugin追加では不要なBusiness/Artifact再受理をしない。動的Routeや隠れたSourceが未観測なら「全ページに適用済み」と主張しない。
+
+**実装の形**：Static Webならbuild-time HTML、SSRなら既存Frameworkのdocument/head/response slot、SPAなら任意Route Adapter、Go/Java等のServiceなら既存Operation Hook、Edgeなら選択した配信Contractへそれぞれ落とす。実装先に一致するJoin Pointがないrequired拡張は不適合とし、optionalは適用除外を可視化する。Runtime Proxyや第二Web Hostを暗黙に付加しない。H0 Nativeのみ、H1任意Contract/生成、H2任意Analytics/Experimentを同条件で計測する。H2の第三者Script負担をH0/H1に持ち込まない。
+
+#### 独立Expected候補（既存#1180/#2514、B2C #3509へ返す。第二テスト正本を作らない）
+
+| 反例 | 最小の判別 |
+| --- | --- |
+| **AX-01**：公開Page 3件、private/checkout 2件、未列挙動的Route | 公開対象だけを選択し、選択ID・除外理由・Scopeを保持。未列挙分はCoverage unknown |
+| **AX-02**：SSR→Hydration→SPA 2遷移→Section再描画 | Script初期化は文書に1回、計測候補は対象Navigationごとに1回、再描画のみの二重計測は0 |
+| **AX-03**：同意未取得→許可→撤回／CMP遅延 | 禁止区間の第三者送出0、同意更新時点と実Provider Callを独立観測 |
+| **AX-04**：二つの解析Pluginが同じevent/Slotへ適用 | 明示併用/競合拒否を区別し、登録順依存の二重送出を防ぐ |
+| **AX-05**：上位Pluginの公開Graph版変更/開示縮小 | 対象再解決・unknownを表示し、非公開Nodeのcount/diagnostic漏えいを防ぐ |
+| **AX-06**：広告枠なし・SDK遅延・CSP違反 | 無条件DOM破壊なし。BrowserでLayout/CLS、外部受理を独立検査 |
+| **AX-07**：標準Renderer撤去・旧Release復帰・Plugin非選択 | Native Frontendと手書き差分を保持し、不要なTEI JS/Network依存なし |
+| **AX-08**：Checkout確定後にAnalytics送出失敗/ACK喪失 | 業務Receiptと計測結果は分離。再送時に注文二重Effectなし |
+
+**最小実証順**：まず既存Graph/Role/HookでAX-01/04/05のread-only Selector/Composition Fit/Gapを検証し、次に任意のNative Frontendを用いてAX-02/03をBrowserで確認、その後AX-06〜08をTarget/Commerce/Releaseと結ぶ。Aspect専用Runtime/Core型/新DSLは必要な反例が得られるまで採用しない。**Studio実Windows Stage1→Stage2（#2831/#4583）と製品RA-2P→RA-3実Provider/二Consumer（#2586）が引き続きP0**。この追補はdocs-onlyで、実タグ配信、実Consent、広告表示、実Browser、Ownerの意味受理はNOT RUN / NOT ACCEPTED。
+
 ## 進行の記録と完了条件
 
 各G項目には、対象と版、既存の足場、次の作業、独立した正例・反例、依存、担当Issue、得た結果または未実施の理由を残す。状態は定義済み、実装候補、局所試験、通常入口での実行、利用側確認、案件受入を用途に応じて記す。Issueをclosedにしただけで、別の組合せや実行先が成立したと扱わない。
