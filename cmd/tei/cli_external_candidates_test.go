@@ -104,6 +104,8 @@ func TestExternalCandidatesR3AActualCLIProcess(t *testing.T) {
 		{"unknown flag", append(append([]string{}, base...), "-made-up", "x"), 2, "INVALID_ARGUMENT"},
 		{"positional input", append(append([]string{}, base...), "extra"), 2, "INVALID_ARGUMENT"},
 		{"missing local file", []string{"external-candidates", "-evidence-path", filepath.Join(t.TempDir(), "absent.json"), "-tool-version", "6.8.0", "-observation-id", nodeID, "-relation-id", relationID}, 2, "EXTERNAL_CANDIDATE_READ_FAILED"},
+		{"duplicate relation selector", append(append([]string{}, base...), "-relation-id", "another"), 2, "INVALID_ARGUMENT"},
+		{"explicit empty pin", append(append([]string{}, base...), "-expected-evidence-id", ""), 2, "INVALID_ARGUMENT"},
 		{"pin changed", append(append([]string{}, base...), "-expected-received-digest", "sha256:incorrect"), 1, "EXTERNAL_CANDIDATE_STALE"},
 		{"unknown relation", append(append([]string{}, base[:len(base)-1]...), "not-a-relation"), 1, "EXTERNAL_CANDIDATE_NOT_FOUND"},
 	}
