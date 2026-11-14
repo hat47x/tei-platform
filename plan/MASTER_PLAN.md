@@ -10,6 +10,8 @@
 
 関連文書は次のとおりです。
 
+- [業務ルールの統合・決定表の検証](design/BRMS_DECISION_ANALYSIS_INTEGRATION_2026-11.md)：独立BRMS／Hostを新設せず、IF・Markdown表・Graph・型付きOperatorから判断を生成し、競合・適用漏れ・判断不能・変更影響を検証する。Graph／一行Rule→Goの限定ReferenceとWorkspace Pinned SourceのS0予備検証はmainにあり（#4729/#4751）、**正式Reader／Meaning Binding／製品Generator／実Providerは別の未達**。次は#2621/#988で一Ruleを正式に受け、#4544の実生成Source消費を検収する。Unique決定表ではpartialでも完全に証明した二行の競合は確定できる一方、一行のみ・零件では母集団の完全性なしに唯一性・不存在を断定しない（#1180/#2514）。自然な業務説明とMockシミュレーションは同じSourceに従属させ、実Effect・実Consumerと区別する。Studio Stage1→Stage2と製品CLI→実ProviderのP0は維持する。
+
 - [Studio／CLI／WebのBackend子プロセス・Plugin管理・配布更新の統合設計](design/STUDIO_CLI_BACKEND_PROCESS_DISTRIBUTION_UPDATE_2026-11.md)：現行Desktop P0は同一Process方式Aを基準とし、将来候補としてWails親からローカル子BackendへのIPC接続を比較する。CLIはWails非依存の共通Backendを直接／自己子起動／再利用Sessionで比較する。WebはServer配信Clientと認証済みAPIを分離し、遠隔CLIはServer側のPlugin構成を使用する。G0〜G6は既存#1158/#1824/#2044/#2589/#2831/#4583の実装Ownerに接続し、**CLI子起動の既定化・共有Daemon・Updater製品採用は実測とOwner判断待ち**とする。Studio Stage1→Stage2セルフビルドのP0を変更しない。
 
 <!-- rea-two-intakes-current-main-20261114 -->
