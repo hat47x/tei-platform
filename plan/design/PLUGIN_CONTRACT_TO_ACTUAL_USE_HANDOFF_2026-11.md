@@ -734,7 +734,7 @@ Build Artifact Digestの一致だけでは、Publisher Identity、外部Store/Re
 
 ### 23.5 次の実装を小さくし、独立Expectedを保つ
 
-P0-A：既存BuildIntentの`Subject.Kind=plugin`制約に対して、非Plugin Studioの正式SubjectとBuildExecution/ArtifactSetを対応付ける。実Go Recipe存在を形式資格とみなさず、Plugin偽装を拒否。P0-B/C：H0/H1 Source MemberとStage1実Child→Stage2 Windows実Consumerを同一Attemptで検証。P0-D：Windows OS情報取得のTimeoutを、WebView2実機能失敗とは独立に扱う。
+P0-A：既存BuildIntentの`Subject.Kind=plugin`制約に対して、非Plugin Studioの正式SubjectとBuildExecution/ArtifactSetを対応付ける。実Go Recipe存在を形式資格とみなさず、Plugin偽装を拒否。P0-B/C：H0/H1 Source MemberとStage1実Child→Stage2 Windows実Consumerを同一Attemptで検証。P0-D：Windows OS情報取得のTimeoutを、WebView2実機能失敗とは独立に扱う。[Desktop #4587](https://github.com/hat47x/tei-platform/pull/4587)ではOS版確認の外部PowerShell起動を除く限定修正（HEAD `9b58533d`）を実装。Windows GUI・WebView2の検査条件は維持し、**新HEAD CIの実完了前には通常版合格としない**。
 
 並行P1：REA Host Reader/Consumer、Wails公開面の実HTTP/WS Current Grant、Query RA-0の衛生・Binary依存失敗の修正。P2：RA-2から正式Product Provider/通常CLI二Consumerへの接続と実Release Asset公開→別Consumer取得。理想段階別Contribution、生成器論理/物理Graph最適化の汎用化、Web共有配備は未受理の設計比較に留める。
 
@@ -861,7 +861,7 @@ QX-01〜08は既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)�
 
 ## 26. 2026-11-14：Query生成CLIと正式Sourceの接続、取得範囲・Build実体・外部Harnessの受入
 
-### 25.1 「Sourceを使った」の内訳を揃える
+### 26.1 「Sourceを使った」の内訳を揃える
 
 [生成read-only CLI Draft #4559](https://github.com/hat47x/tei-platform/pull/4559)では、browsegenが既存Workspace/Driverでrecent_ordersのSQL Sourceを読み、PostgreSQL向けCLIとmanifest/binary digestを結ぶ。Target不適合を生成前に拒否し、未生成要素を理由付きで列挙する。ただし当該DraftのSourceではfrom入力が**未宣言**で、manifestはinputDeclaration=undeclared、生成CLIの入力は文字列引数である。
 
@@ -869,13 +869,13 @@ QX-01〜08は既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)�
 
 したがって**#4559の未宣言Sourceによる生成成功を、#4626の型付きCurrent Sourceから生成したアプリの成功に読み替えない**。次の小さな縦断試験は、(1)実Source ID/Revision/raw bytesとSQL Member・補助.sql digest、(2)input from/std.datetimeのTypeとTarget Adapter変換、(3)実Generator→Binary/manifest digests、(4)正しいGo time.Timeでの実Provider Callと不正入力Call 0、(5)同じ使い捨てDBに対する独立Expected、(6)生成CLIと通常tei CLIそれぞれの実Invocation/Receiptを別票で結ぶ。第二Source Parser・第二Function Runnerは追加しない。
 
-### 25.2 SQLのRead成功・必要範囲・開示資格を直交させる
+### 26.2 SQLのRead成功・必要範囲・開示資格を直交させる
 
 [FunctionContext Draft #4647](https://github.com/hat47x/tei-platform/pull/4647) HEAD a962a3f6b13c58d93ad740998e5d94728c53e88d は**7/7 Workflow success**。native SQLではRLS/LIMIT/未宣言Relation等の可視の制限をpartial、制限が見つからなくてもunestablishedとopen（native-sql-predicate-not-closed）を維持し、complete/EmptyJustified=trueを決して出さない。STABLE SQL Function内に隠れた条件は独立負例となる。
 
 次を別々に判定する：**値の正しさ**（同じSource/DSN/Role/Snapshotと独立Read）、**範囲の正しさ**（RLS・関係・WHERE・粒度・未取得・欠損の閉包）、**開示の正しさ**（現在Actor/WorkspaceへのRow/Column/Source/Error・Tool情報の実送信Byte）。結果が0行でも存在しないとは自動推論しない。必要集合の定義、構造化Queryのcomplete採否、W4列由来・主キー型の扱いは#2586 Ownerが別決定する。
 
-### 25.3 ToolchainとState Observationも再現・隔離の証明ではない
+### 26.3 ToolchainとState Observationも再現・隔離の証明ではない
 
 [Toolchain Draft #4648](https://github.com/hat47x/tei-platform/pull/4648) HEAD 64fb0f9abdf1a8cf947a844a973eb6d48685623f は**8/8 Workflow success**。Builderが申告したGo実行ファイルをEntryが再読しmatched/mismatched/unreportedを記録するが、matchedはOSがそのCompilerを実起動した証拠ではない。Toolchainは現Build Planの正式Pinでもなく、同じPlanでも別Compilerによる別Artifact Byteとl2b.claimed=trueが両立する。
 
@@ -883,11 +883,11 @@ QX-01〜08は既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)�
 
 Studio P0の同一Attemptには、正式non-Plugin Subject→Builder/実Child→実Toolchain Observation（不明ならそのまま）→State Effect/未隔離範囲→N0/N2/N3実Source/Member→Stage1実Process→生成Stage2実Windows Consumerを独立Receiptで繋ぐ。新中央Runner、TEI専用Host、第二Artifact Storeを作らない。
 
-### 25.4 YIC/AI HarnessでのConsumer境界
+### 26.4 YIC/AI HarnessでのConsumer境界
 
 YIC Harness/SkillでTEIの候補や実結果を扱う場合も、Tool起動成功、TEI Hostの現在Grant、ReadしたSource/DBの取得範囲、送出したResult/Error/Source位置、外部Agentが実受領した内容、Owner正式意味受理を**別Witness**にする。YIC SessionをTEIの第二Host/認可/Source正本にしない。Source RevisionまたはCurrent Grantが変わったら、同じDigestの古いPreviewやAI Candidateを別Actorへ自動転用しない。
 
-### 25.5 次の実装・統合Case（NX-01〜08）
+### 26.5 次の実装・統合Case（NX-01〜08）
 
 | Case | 負例と停止線 | 正本Owner |
 | --- | --- | --- |
