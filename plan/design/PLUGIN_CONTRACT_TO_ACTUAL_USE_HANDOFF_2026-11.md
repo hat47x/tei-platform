@@ -639,3 +639,16 @@ Readerは既存ReadOnly.workspace()のRoot実体照合を行い、workspace.Read
 [PR #4636](https://github.com/hat47x/tei-platform/pull/4636)はHEAD da807abc65d560134e9a6aa4c4f7b8d92d3b2fef（9/9 GitHub Workflow completed/success）からmainへ**merged**。merge commit 18470e69d2755b29ce55285ff847305e2e3e420d を確認。これはInput名・型参照/重複、DataEffect宣言、nil contextという**静的宣言のpreflight→実Adapter Call=0**を現実にmainの共通Capability Invokeへ追加する変更である。前段#4629のResult Contract preflightと同じ汎用境界であり、新第二Validatorは作らない。
 
 **製品資格の停止線を維持**：元のInput値・意味Type/NULL/単位、公開EntryをHostが実選択したこと、Current Principal/Grant、実Provider Go call、Commit Receipt/EffectUnknown、通常tei subprocessはmainへのマージだけでは成立しない。#4495/#4618のL-P0→L-P1→L-P2をOwnerへ委譲し、Plugin一段階の契約構造適格をStudio/Generated App全面受理へ拡張しない。§20.7は当時のDraft状態の履歴記述、現在の実装状態は本追補を正とする。
+
+
+### 21.7 N0→N2の実選択と統合Build PRの新HEAD（2026-11-14継続）
+
+[Desktop Draft #4587](https://github.com/hat47x/tei-platform/pull/4587)は、従来のH1「N2 produced JS→N3 Go Embed実Member」に加えて、**H0「N0で生成したInspector TypeScript→N2 esbuildで実選択されたSource」**を実装した。N0 self-build生成物のrole/byte長/SHA-256/相対Path/HEAD/Attempt/Invoker receiptを固定し、N2起動直前の実Disk byteと、N2出力metafile.inputsが選んだSource memberを照合する。変更コピー、誤Role、誤Pathを拒否する3負例も含む。
+
+最初のH0 HEAD 641b19eb89b1bfbea45553448436616075135577の[Windows CI #43553869203](https://github.com/hat47x/tei-platform/actions/runs/43553869203)では、H0 Producerと実N2 esbuild選択のローカル証拠が同DigestでPASS、実選択Source 24件を確認した。一方、生成Windows Job全体は**後続N3 EvidenceのPowerShell重複keyでFAIL**。修正HEAD [357345d73b3ab74d67ec8bda675fcd63768e9c48](https://github.com/hat47x/tei-platform/commit/357345d73b3ab74d67ec8bda675fcd63768e9c48)で重複したesbuildSelectedCountを整理。**新HEADのWindows/Healthは照合時点で進行中**であり、初回H0部分PASSを全体PASSへ昇格しない。
+
+[Builder合流 Draft #4634](https://github.com/hat47x/tei-platform/pull/4634)も、Go6ファイルと当時のMASTER_PLANを含むHEAD 653d0d9a1d0125631aec4379550d2bce20364207の8/8 CI successを得た後、主計画のH0/H1最新状態を更新した**新HEAD 7d6a1238e6efbd83fb2bd4cfda9667c181567920**へ進んだ。更新後CIは照合時点でqueued/in_progressで、過去8/8を現HEADへ流用しない。
+
+**製品P0の最短差分をさらに限定**：H0のN0生成Byte/選択Role/実N2 member → H1のN2 JS Byte/実N3 Embed member → 非Plugin Studioの正式BuildIntent/BuildExecution/ArtifactSet → 生成Stage1→Stage2の実Windows WebView2を、同一Subject/HEAD/Run/Attemptに結ぶ。成功は各境界で発生した実Consumed/Delivered byteにより判定し、Compiler/esbuildの完全read-time byte捕捉は未実証とする。CLI/N0と生成UIの単なる文字列一致、WorkflowがGreenであること、旧Sourceに対するWindows受入を同一視しない。
+
+**統合順の注意**：#4634の新HEAD／#4587修正HEADのCIを独立に確認してから、両者を同じAttemptで接続する後続実装へ進む。二PRを手動でByteコピーして「全工程受理済み」としない。P1のWails従属Worker/HTTP/WASM選定をP0の必須条件へ追加しない。
