@@ -249,6 +249,48 @@ StudioはSourceの調査・編集・Buildを同じ画面から扱えるが、**�
 
 ---
 
+
+### 0.8 第8次横断統合：実TEI起動の限定実証からDesktop製品一巡へ（2026-11-14）
+
+本節は§0.6〜0.7の**現況差分と次の実装判断**のみを示す。詳細なDesigner/Pin/SHO/AI/Windows契約、DT/ED/PIN/BDの独立Expectedは既存のOwnerへ維持し、Desktop専用の第二Build Engine、第二Source/Meaning正本、専用Harness、権限・テスト正本を作らない。実証により旧記述の資格上限が変わった部分は、本節の固定HEADを優先して読む。
+
+#### 0.8.1 N0の実TEIプロセス起動は確認済み、B1-B〜B3は別資格
+
+- [Draft #4587](https://github.com/hat47x/tei-platform/pull/4587) **exact HEAD `24bfaed8fadcce5687fb7f02a121a21fd70f2861`**／[Windows CI #43450255223](https://github.com/hat47x/tei-platform/actions/runs/43450255223)で、実`tei self-build -child <generator.exe> -child-arg-file <argv.json> -artifact <output.ts>`がN0 Inspector Generatorを子プロセスとして起動。親/子image・argv・exit・成果物SHAの照合、別プロセスの比較生成、同一出力no-clobber負例がCIで限定成功した。N0実ファイルをN2へ配置し、同じJobでN2 esbuild選択24入力・N3 Go選択303入力・生成Windows Desktopと実WebView2/JS digestも確認。**通常のGoビルドで得たTEI CLIのprimitive child経路**であり、Build Catalog/IntentによるBuilder選択でも、生成Stage1 TEI自身がStage2を作る経路でもない。
+- **B1-B（次のP0）**：最小の一辺を「N0実生成TS → N2実esbuild → N3 Go embed」に固定し、既存#1080/#1097のBuild Execution/ArtifactSetと#2831の実Builder入口で**declared Builder/Intent、actual process image/argv、入出力Artifact role/digest、同一Attempt**を対応させる。Node/esbuild、nested Go/WailsをPlugin Subjectへ偽装しない。Reference `tools/reference-build-execution-binding/main.go`は`package main`であり直接の製品importではないため、既存製品型のFit/Gapを先に取り、必要な非Plugin Target Adapterだけを薄く実装する。選択不能工程は`unsupported`とし、CI Shell実行を正式Build Planに見せかけない。
+- **B2**：Windowsで**生成Stage1 TEIの実プロセス**がN0〜N3を駆動し、Stage2 native exeの独立Artifact/Attemptを残す。通常TEI CLI、Stage0 Launcher、外部Workflowの代理BuildをL3に算入しない。
+- **B3**：**そのStage2 exe自身**を別のWindows Window/Processとして起動し、配信JSのbyte hash、生成Inspector受理、StudioBridge/Graph/Catalog/Inspectの実WebView2受領を同じ生成Attemptへ結び直す。別HEADの旧Windowや旧bundleの緑を合算しない。Build完了と実行中Studioの自己更新・切替は別操作であり、失敗時は旧Studioを維持する。
+- **保証の三層**：Declared（選択・依存）／Observed（実Invoker/入出力/Consumer）／Enforced（実際に拒否できたOS/Host境界）を分ける。N2 metafile、N3 go list、前後SHA、CI successからread-time全閉包、A→B→Aの不存在、Windows OS隔離を導出せず、`qualifiedBuildIntent=false`・`dependencyClosure=unknown`をB1の未達部分に保持する。
+
+#### 0.8.2 Desktopを一巡するための状態・UI最小契約
+
+| 独立して示す内容 | GUI/CLIの同じ正本から示す情報 | 誤って行わないこと |
+| --- | --- | --- |
+| Editorの現在 | Focus・Pin Intent・Dirty Buffer版・選択箇所（UTF-16/UTF-8位置の違いを保持） | Pinの裏再確認による別SubjectのEditor/Graph/カーソル変更、旧応答の現在採用 |
+| SourceとMeaning | 保存済みRaw Source/occurrence/revision、解釈結果、Owner受理の範囲 | Save/Parser PASS/参照0件からMeaning受理や全参照の不存在へ昇格 |
+| Buildの現在 | 明示した保存済みSource/Profile、resolved Plan、選択Builder、actual Builder、入力/依存のunknown、ArtifactSet | Dirty Bufferの暗黙Save/Build、事後SHAから実入力閉包やL2/L3を宣言 |
+| 実Consumer | 生成exe、実起動したProcess/Window、配信Asset、実IPC/Renderer受領、現在Workspace Source | 生成済みを起動中／適用済み／全Plugin資格済みと表示 |
+| Proposal/Review | 対象・差分・確認したこと・次に可能なAction、基準Sourceと現在Source | AI/SHO/別Harnessからの候補を自動Merge・Apply・Grant継承 |
+
+初回のBuild Previewは**既存read-only Operation/Evidenceの投影**とし、新しいBuild Status DBや保存系は作らない。BuildはHostが再解決した**保存済みCanonical Source**を明示選択し、未保存Bufferは別に表示。受理／保存／Build／Stage2起動／現在Window切替は別Actionとする。UIのFocus/Request世代は後着混入を防ぐ局所ガードであり、Sourceの現在性・開示・権限は実Host/Source/Grantで別照合する。実Effect unknownの旧Replyは現在画面に採用しなくても既存Attempt/Receipt照会対象から捨てない。
+
+**同じ操作対象を表・Graph・Tree・SHO・AIで辿る**ときはQualified Subject + Source occurrence/Revision/Scopeが基本で、表示Label、Graphの描画Edge ID、構造FP、Canvas座標を確定Relation IDへ代用しない。非可逆投影や値span未取得の場合、Navigate/Previewだけを許可しApplyを停止する。参照集計はcomplete summaryとscoped interactive表示を分け、部分収集を「未使用確定」と表示しない。
+
+#### 0.8.3 独立Expectedへ引渡す最小負例と作業順
+
+| 対照 | 固定する拒否・表示条件 | 既存Owner |
+| --- | --- | --- |
+| Builder Bを宣言、実Invoker A。N2出力AをN3がBとして消費 | selected/actualまたはProducer/Consumer不一致をFAIL、未強制ならunknown | #4583/#2831/#1180/#2514 |
+| N0実Generatorは通ったが、N1〜N3はWorkflow直接起動 | N0限定PASS、B1全工程/L2/B2/B3の合格0 | #4583/#2831 |
+| Source AでResolve、Dirty B・外部編集A→B→A、旧結果後着 | 明示したAのBuildと表示、B暗黙Save 0、履歴・現在資格を旧digestだけで復活させない | #3788/#1529/#2595/#4515 |
+| B閲覧中にPin Aを裏で再Inspect、後着旧Aの成功/失敗 | BのEditor/Graph/Dirty Buffer/ARIAを変更しない。Pinの意図は保持し現在資格のみ再検査 | #4515/#1824 |
+| 新Stage2生成成功、旧Windowを検査／新Build中断 | 新exe自身のConsumerはNOT RUN、旧Windowは旧成果物として継続、無断置換0 | #1824/#4583/#3267 |
+| 実Provider不在・外部HandoffのGrant変更・Graph参照未完全 | read-only表示と現在利用資格を分け、AI提案やPlugin静的宣言から実Effect/Disclosureを推定しない | #1251/#2516/#1124/#1180 |
+
+**実装順**：(P0) B1-Bの一つの実Builder接続 → B2生成Stage1実再入 → B3当該Stage2実Window、並行で(#4515/#1824) AI OFFのread-only Navigate/PinとUX-23「B閲覧中のA裏再確認」を実Workbenchへ接続。その後、Dirty Buffer編集/Source条件付きSave・SHO共有Core、三要素分析法のモデル、実Function/DB Read、外部Harness限定Handoffをそれぞれ既存Ownerで進める。初回P0に全DSL/Graph/DB/SHO/AI/Plugin完成を直列依存として追加しない。
+
+**受入と証拠**：各Claimはexact HEAD、OS/Toolchain/Build tag、Source/Build/Artifact/Windowの識別、実Process/argv、独立Expected、実Consumer/Receipt、未取得依存、PASS/FAIL/NOT RUN/UNKNOWNの別列を残す。Receipt配送・Store登録・Owner業務意味受理はByte生成と別資格。今回の§0.8は**設計文書への反映のみ**で、新Go/Node/実Windows/Provider/OS強制試験やOwner正式受理を行ったものではない。
+
 ## 1. 位置づけと判断済み前提
 
 - **TEI Studio**はData/Function/Business三視点、Data Context、Source/Meaning、DBクライアント、Plugin、テスト、SHO文書機能への統合Workbench。
