@@ -118,3 +118,9 @@ G0・G1は既存Studioセルフビルド B1〜B3 より上位の必須Gateにし
 [Studio Backend起動・互換性・更新復旧の実装契約](STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)に、次の実装境界を切り出す。**現行P0はDesktopのWails＋Go同一Process（A）、将来の局所子Backendは#4635で比較するB0/B1/B2**とし、選定・実装・適合PASSを先取りしない。CLIはWails非依存・ADR-0048のin-process既定を維持したまま、子Backend／Session再利用を実測比較する。
 
 実装契約は、CORE_READYとWORKSPACE_READYの区別、実Peer／Transport／Operation Contract確認、旧Session Reply拒否、Plugin Composition世代固定、Shared AcceptanceのSource競合、Wails Web旧Tab、GitHub ReleaseとPlugin文書、UpdaterのStaging→Drain→物理切替→復旧と外部Effectの非可逆性を明示する。適用／受理／実効Grantは既存Ownerが判断する。新しい第二Resolverや万能Update Registryは作らない。既存#4635/#4702/#1180/#2514を受入担当として維持する。
+
+## 12. Wails標準UpdaterとStandalone同梱Release（2026-11-15）
+
+DesktopにはWails v3の `app.Updater` を優先利用する。ただしTEI Studioの現依存はv3.0.0-beta.29で、Updaterの製品組込みと選定安定版での実OS検証は未実施。公式Updaterが扱うのは原則**一つの実行対象の交換**であり、同一ZIPにDesktop/独立Server/Plugin/ユーザー設定を並べれば自動的に一括切替されるわけではない。
+
+配布はD1 Remote接続Desktop（Clientのみ更新）、D2 Standalone単一Binary（Go Backend／標準Plugin／既定設定Templateを内包）、D3 Standalone別Server同梱（同一Releaseだが複数Artifact活性化はInstaller等で別検証）に分ける。**最初はD2を第一候補**とし、D3は明示的な別Serverの需要とOS配布・Rollback条件を満たす場合に採用する。Plugin実体／Release Lock・設定Schema・User Override／Secret・DB Migrationを分ける詳細は[実装契約§22](STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)に委ねる。UIや本体の更新が外部Server／DBの更新権限を持つことにはしない。

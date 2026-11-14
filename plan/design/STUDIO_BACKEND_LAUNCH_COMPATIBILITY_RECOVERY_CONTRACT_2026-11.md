@@ -437,3 +437,66 @@ PR #4705の旧HEAD `7375ab6b`では、[Repository Health](https://github.com/hat
 その後mainに統合された[#4749](https://github.com/hat47x/tei-platform/pull/4749)はSQLite側の整形修正を含み、Source選択のS0-P試験[#4751](https://github.com/hat47x/tei-platform/pull/4751)も統合された。これらの修正と実証を本Docs PRの基線へ取り込む。ただし、**最新統合HEADでCIを再実行した結果が確認できるまで本PRの合格を主張しない**。正式Loader、実Provider、Child IPC、Windows Stage2の実行資格も別のまま保持する。
 
 設計の変更対象をDocsへ限定し、GoのCI不具合を別の旧修正PRから重複して取り込まない。CLI direct→Child→Wailsの通信検証と、Reader→Meaning→生成Provider→Consumerの業務意味検証は、異なる独立Expectedで判定する。
+
+## 22. Wails標準UpdaterとStandalone Releaseの配布契約（2026-11-15）
+
+Desktopの更新は、独自にダウンロード・署名検証・実行ファイル差し替え処理を作るのではなく、**Wails v3標準の `app.Updater` を第一候補**とする。製品としては、必要なローカルBackend、標準Plugin、起動に必要な設定テンプレートも同じ**Release単位**で届ける。ただし「同じReleaseに属する」と「Wails標準Updaterだけで任意の複数ファイルを同時に切り替えられる」は異なる。ここを混同しない。
+
+- **確認済みの上流仕様**：[Wails v3 Updater公式ガイド](https://wails.io/guides/updater/)（更新元Provider、署名、ステージング、実行ファイルの置換、イベント／画面）、[Wails Update Manifest](https://v3.wails.io/ja/reference/update-manifest/)（静的HTTPS配信にも対応）。
+- **現在のTEI実装**：`cmd/tei-studio/go.mod`は `github.com/wailsapp/wails/v3 v3.0.0-beta.29`、`main.go`には現時点で `app.Updater` 初期化がない。上流の安定版v3.0.0以降に移行可能だが、そのUpgradeとWindows/macOS/Linuxの実検証が必要である。API／Helper／パッケージングの現行依存版での動作を未確認のまま「組込み済み」としない。
+- **Wailsの交換単位**：公式ガイドのUpdater v1は基本的に単一の実行対象を差し替える。ZIP/TAR.GZはトップレベル1項目、macOSの `.app` 全体の交換は明示的に扱う。複数の独立した `.exe`、Pluginディレクトリ、ユーザー設定を列挙して同期的に交換する機構を、標準Updaterの機能とはみなさない。MSI/DMG/PKG自体をUpdaterが直接インストールできるとも想定しない。
+- **更新可能性の制約**：Wailsは実行対象の隣に更新用ステージングを作るため、書込み禁止のインストール場所やOS／パッケージマネージャ管理下での自己更新は別の検収が必要。WindowsのProgram Filesや複数利用者環境で、利用者権限の自己更新を暗黙に成功扱いしない。
+
+### 22.1 配布形態は三種類に分ける
+
+| 配布形態 | DesktopとBackendの関係 | 一緒に配るもの | 更新の責任 |
+| --- | --- | --- | --- |
+| **D1：Remote接続Desktop** | Desktopは明示したRemote Serverへ接続 | Studio Native UI、Client専用リソース／Plugin、接続先の初期設定テンプレート | DesktopはWails Updater。Remote Server／Server Plugin／DB設定はServer運用者が別Releaseで管理。ClientからRemoteを無断更新しない |
+| **D2：Standalone・単一実行物** | DesktopのGo Backendを同一Binary内で直接実行、必要なら**同じBinaryをB0子Processとして起動** | UI、Backendコード、標準Plugin、静的リソース、既定設定テンプレート。利用者データとSecretsは含めない | Wails Updaterの単一対象更新と整合しやすい第一候補。B0採用自体は#4635の実測後に判断 |
+| **D3：Standalone・別Server同梱** | DesktopとServer Buildを別Binaryで配布し、LoopbackやPipe等で接続 | Desktop、当該OSのServer実行物、依存PluginのClosure、必要なデフォルト設定と契約版 | **一つの製品Release**として署名／照合するが、複数ファイルの段階更新と切戻しはWailsの標準交換とは別契約。OS Installer／Package Managerまたは明示的なBundle活性化機構を評価 |
+
+D2は「サーバサイドの機能を同梱する」最も単純な実現手段である。**Server Buildを別OS Process・別Binaryとして配ることまで必須にしない**。共有Server運用やWeb配信に必要なD3構成は、D2とは独立にRelease可能とする。デスクトップのために独自TEI Hostを設けず、同じApplication Operation／Plugin契約のTarget別配置として扱う。
+
+### 22.2 Releaseに含めるものと、更新してはいけないもの
+
+| 分類 | Releaseに含める／含めない | 更新の意味 |
+| --- | --- | --- |
+| Studio実行物・配信UI | Release内の実バイト、OS/Arch、署名、UI Asset Revision | Wails UpdaterまたはOS配布主体が差し替え |
+| ローカルBackend（D2/D3） | Releaseで同梱する**実Image**、必要な起動モード、Operation/Wire Contract | Desktopとの互換性を起動時に検査。D3では旧Serverを止めてから新世代へ切替 |
+| 標準Plugin | 組込みなら本体Artifactへ固定。外部ArtifactならReleaseのLock・実Byte Digest・Provider資格・配布元を明示 | 本体更新で組込みPluginも更新。外部PluginはPlugin管理のPlan/Applyと独立した署名／実体検証が必要 |
+| 既定設定／設定Schema | 読取り専用のテンプレート、設定Schema版、Migrationの要否と予定 | テンプレートを更新しても既存の利用者設定を無条件上書きしない |
+| ユーザー設定・Workspace・DB | Releaseには含めない。初回作成後は書込み可能な利用者／管理者管理領域へ分離 | 明示Migration、バックアップ、所有者受理。秘密値・接続資格・個人データは配信物に入れない |
+
+Plugin側の実行依存（Data Provider／Operator／Generator等）は、**どのRuntimeに必要か**によって同梱対象を選ぶ。Editor専用Pluginや生成時だけ必要なGeneratorを、製品ServerのRuntimeへ無条件に載せない。また「依存Pluginを同梱した」ことと「Hostが現在のGrantでそのPluginを選択・呼び出せる」ことは別資格とする。
+
+### 22.3 Bundleとして一貫性を保つ
+
+既存のBundle／Plugin Lock／構成世代へ、次の対応を記録する。第二のPlugin RegistryやUpdater専用の業務意味正本は作らない。
+
+```text
+Release Identity / Signature / OS・Arch
+  ├─ Desktop実Image + UI Asset Revision
+  ├─ Backend実Image + Operation/Wire Contract (D2は同一Image)
+  ├─ Plugin Lock + Provider別Artifact実Digest
+  ├─ Default Config Schema + readonly Template Digest
+  └─ 必要なMigration／最低互換条件とRollback可能範囲
+```
+
+更新では、(1)同一ReleaseのMetadataと実Byte／署名を検証、(2)新Releaseをステージング、(3)子Backendの新規Invocationを止めて進行中Attemptを適切にDrain、(4)旧世代の実Processが終了したことを確認、(5)配布主体に適合する方式で実行対象を切替、(6)再起動後のBackend HandshakeとPlugin／設定互換性をReadで検証、(7)旧世代を必要な範囲で保全する。
+
+- **Wailsの戻し保証を過大評価しない**：実行ファイル交換の失敗時に旧実行物を復元できても、外部Pluginの部分更新やDB Migration／外部Effectまで一括Rollbackできるわけではない。
+- **混在世代を拒否する**：Desktopだけ新しくBackendが旧版／Plugin Lockが不一致／Schemaだけ先行した場合は、明示された互換範囲でない限り起動・実行を拒否し、診断と復旧手順を示す。既存Sessionは開始時のPlugin構成に固定し、新世代へ黙って移さない。
+- **ユーザー設定の保全**：新Templateとの差を表示し、設定Schema Migrationは事前バックアップ・失敗時の停止・再実行条件を明示する。DB SchemaやEffectの逆向きMigrationを常に可能とは扱わない。
+- **権限と所有者**：OS InstallerやPackage Manager管理の配布物は、その管理主体を優先する。アプリ内UpdaterとInstallerが同じPathを競合更新しない。Remote ServerのSecret／設定変更権限はClientに委譲しない。
+- **オフライン版**：D2/D3とも、ネットワークなしで起動可能な初期パッケージを提供する。自動更新は任意とし、USB等で受け取った署名付きReleaseを検証して適用する経路は後続検討とする。
+
+### 22.4 最小の検収と段階導入
+
+| Gate | 実際に確かめること | 未合格の限界 |
+| --- | --- | --- |
+| **UP-0：Wails標準Updater評価** | 現行beta.29の有無を静的確認後、選定した安定版で `Check→Download→Verify→Stage→Restart` の実Windows一回と、署名／版本違い拒否・更新不可Pathを検査 | 実製品導入／全OSサポートではない |
+| **UP-1：D2 Standalone** | 同一BinaryからDesktopとread-only Backendを起動し、更新前後でClient/Backend実Image・選択標準Plugin・既定設定Templateの一致を照合 | D3別Serverの同時更新能力ではない |
+| **UP-2：D3同梱Release** | Server実ImageとPlugin Closureを含むOS別Releaseを署名・照合・一括ステージングし、再起動で版混在と中途失敗を拒否。Wails単独で複数実ファイルを更新可能と仮定しない | OS Installer／Bundle活性化方式は実測とOwner決定待ち |
+| **UP-3：更新と復旧** | 更新途中Crash、旧Session、Plugin互換不一致、設定Schema変更、管理者権限不足、Effect Unknownをそれぞれ独立Expectedで検査 | 外部DBの自動逆行・Effect補償の合格にはならない |
+
+UP-0/1を第一検証候補とし、UP-2/3はD3を採用する場合に実施する。ただし、**UP-0〜3は全体P0のStudio Stage1→Stage2／通常`tei`実Provider呼出しへの新Hard Gateではない**。Wails標準UpdaterとInstallerの選定・移行は#1824、子Backendは#4635、Plugin Lock／配布は#2044／#951／#2589、実Effect／DB Migrationは既存の各Ownerに委ねる。ここでは設計と受入だけを定め、実UpdaterやOSパッケージ試験のPASSを主張しない。
