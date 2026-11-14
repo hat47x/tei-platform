@@ -455,7 +455,7 @@ Gは[#4583](https://github.com/hat47x/tei-platform/issues/4583)・[#2831](https:
 
 診断一覧は「対象」「層」「Error/Warning/Unknown/未検査」「実Source位置と再確認の必要性」「次にできる操作」を表示する。ドメイン専門家には業務上の意味、開発者には契約・依存とRaw span、AIには同じ型付き診断と既存コマンドを提供する。ただし**異なる利用主体へ同じ証拠を異なる資格として説明しない**。
 
-例えば同名Inputは、現DSLが構文上Parseできても、Workspace全体の意味検査には未接続の可能性がある。L3では既存のCapability構造検査がAdapter呼出し前に拒否する。AIのQuick Fix後は、現在のQualified Subject/Raw Source/Revisionを照合し、修正Source→再Parse→再Workspace診断→Pre-dispatch→必要ならEntry/Hostを**実行した範囲だけ**表示する。ACD-01〜04の負例を再利用し、業務意味のOwner受理や正式公開Entryを自動生成しない。
+例えば同名Inputは、現DSLが構文上Parseできても、従来mainではWorkspace Meaning側の診断が不足していた。[Validator修正Draft #4655](https://github.com/hat47x/tei-platform/pull/4655)は既存Canonical World/Validationの同名・空Input名拒否とSource→Parser→Validation→Runtime対照を追加したが、**まだDraft/未main**であり、実装時のPR exact HEADのHealth成功・実Studioへ到達する診断は別資格とする。L3では既存のCapability構造検査がAdapter呼出し前に拒否する。AIのQuick Fix後は、現在のQualified Subject/Raw Source/Revisionを照合し、修正Source→再Parse→再Workspace診断→Pre-dispatch→必要ならEntry/Hostを**実行した範囲だけ**表示する。ACD-01〜04の負例を再利用し、業務意味のOwner受理や正式公開Entryを自動生成しない。
 
 ### 診断の操作性と開発速度
 
@@ -484,3 +484,70 @@ Git作業版、DB接続先、Workspace、Principal/Grant、Plugin/Builder選択�
 **今回成熟した採用対象**：二つの一巡の別検収、DSL四層の診断投影、三つの実行票への収束、Source/DB/Actor/Plugin/Buildの版・権限の区別。正式Activity JSON、共通Pin ABI、React/LitやWorker配置、WASM担当、複数AIの自動マージ、YIC専用Harnessの状態永続化は現時点では未決とする。
 
 **実証状況**：今回の§25〜28は、2026-11-14の他チャット・現行GitHub Issue/PRを照合したdocs-onlyの設計・受入計画。新しいGo/Node/Windows/DB/AI試験、Product実Provider呼出し、Source Save、Owner意味受理、正式Schema採用、Studio Stage1→Stage2新一体Runは**NOT RUN / NOT ACCEPTED**である。
+
+
+## 29. 2026-11-14 第6次横断統合：Pin実装の試験を「現在できること」に合わせる
+
+[Pin State/応答lane Draft #4597](https://github.com/hat47x/tei-platform/pull/4597)の2026-11-14更新HEAD `a9c91e56eecdb6b588064188490fc3de950c1744`と現mainの実Sourceを照合した。同Draftでは既存の`pin-state.test.mjs`に加え`responses.pin.test.mjs`を標準`npm test`へ登録し、PIN-LANE-01〜04で独立laneと遅延Replyの扱いを試験する**コードが存在する**。これは純粋Pin状態・模擬Reader/Replyの契約であり、実`main.ts`／DOM／Host／実Windowsへは未配線である。
+
+### 29.1 読取専用の現Workbenchで先に検証する
+
+現mainの`reference/tei-studio-workbench/main.ts`は`createReadOnlyTextEditor(...)`を利用する。§16／§23／§27の「BのDirty Bufferを保持する」は**将来の編集可能Studioでの受入意図**であり、現在の読取専用Workbenchで未保存編集の存在・保持を実証することはできない。合格票を次の二段へ分割する。
+
+| 段階 | 実際に観測すること | 合格に含めないこと |
+| --- | --- | --- |
+| **PIN-R0（現行read-only Consumer）** | Bの`selected`、Editorの表示内容・version、Graph選択/位置、Source Status、Notice、Keyboard Focusを取得。Pin Aの裏Inspectが成功/失敗/後着しても**Bは変わらず、AのPin欄だけが更新** | Dirty Bufferの保存、IME編集中テキストの保持、実Source書込み資格 |
+| **PIN-E1（編集可能Consumerで後続）** | Bの実Dirty Buffer・Undo履歴・IME composing/カーソル・未保存Rawの条件付き保存を保持し、A側非同期Replyで変化させない | read-only PIN-R0だけの結果による編集機能のPASS |
+
+まずPIN-R0を#4515/#1824のUI受入へ渡す。PIN-E1は#1124/#2621の編集可能Source/WriterをConsumerへ接続した時点で別検証する。**既存のread-only Editorに架空のDirty状態を置くテストを出荷品質の証拠にしない。**
+
+### 29.2 最小実装パケットの手順と反例
+
+1. **現行baselineを固定**：公開合成Workspace、Qualified Subject A/B、Node 24系とWails試験環境、Source TS SHA、配信JS・EmbedのSHA、exact HEAD/Attemptを記録する。先に既存`npm test`／typecheck／buildとBundle比較の失敗箇所を再確認する。#4628の外観変更など、別PRのbundleを無音で取り込まない。
+2. **一件だけ明示Pin/Unpin**：現mainの`inspect(subject)`はForegroundで`selected`、Editor、Graph、Noticeを書き換える。Pinned ObservationではこのForeground関数を呼ばず、既存Hostの`inspectSubject`＋`readInspection`で適格化した結果を**Pin専用View**へ投影する。Pin Moduleを第二Resolverにしない。
+3. **二つの競合を別検査**：`responses.ts`のUI laneで順序を抑制し、`pin-state.ts`のgeneration/Workspace/Subjectで受取資格を比較。Unpin→再Pinした同Aへの旧Reply、Workspace A→B→A、Aの失敗とBの成功が交錯しても旧結果を採用しない。UI laneがHost OperationをCancelしたとは報告しない。
+4. **独立View試験**：PIN-LANE-01〜04の純粋/mock成功を保持した上で、実DOM/BrowserでBのEditor表示・Graph・Focus・通知が不変かを別のExpectedとして検証する。明示的な「Aを開く」だけがForeground移動になる。Aの現在Source/Current Grant失効と、既表示情報のDOM/ARIA撤回は#2516の別受入。
+5. **製品同一HEAD**：Source TS→生成`main.js`→埋込Asset→実Windows WebView2で同じPin操作が届いたことを証明する。B0の通常・生成Desktop両Job成功（#4587）は**Pin未搭載の旧Consumer基線**であり、この新機能のWindows成功ではない。
+
+**停止条件**：Product Readerが曖昧/版不一致ならPin Intentだけを維持し、Observationは再確認待ち。Graph表示用Edge IDを意味Relationとして確定しない。Current Grant未観測なら「許可済み」「共有可能」を表示しない。Pinテスト、HTML/CSS、WebView2、Host Grant/OS外部送信の資格を別欄に残す。
+
+## 30. Previewでの「対象が確定した」をData Workbenchの更新権限へ流用しない
+
+[Data Workbench #4496](https://github.com/hat47x/tei-platform/issues/4496)と[Table Lifecycle #1129](https://github.com/hat47x/tei-platform/issues/1129)を協業UXの次段へ接続する。ここで重要なのは、**選択した行・セルの表示と、更新先のDB事実を一意に特定することは別**という点である。AIが表のセルを指定できても、更新可能性は導出しない。
+
+| 段階 | ユーザーに見せるもの | 未確認なら拒否するもの |
+| --- | --- | --- |
+| Read | 実Provider/実DB Instance/実Query・Bind/Rowset/取得Scope、列由来/NULL資格/粒度の確認範囲 | データの全件性、NULLが保存値かどうかの推測 |
+| Select | Rowset上の一時選択・固定行/列、静的集合と動的Filter、意味上の論理PK/AK/FDと物理PKの区別 | 同名・同値・行番号だけからの実Entity特定 |
+| Propose | Before/Afterの候補、Source/Row Revision、使用した式・モデル・AIの根拠 | JOIN/集計/計算値/非可逆表示からの自動逆更新 |
+| Apply | 許可された単一1 Row/1 Field、対象Table/Key/Versionの再適格化、CAS/Current Grant、既存Operation | Query PreviewやPinだけからのDB Effect許可 |
+| Observe | 実ProviderのEffect/Receipt/独立再Read、結果不明区間の照会 | ACK喪失後の盲再Submit、GitのUndoをDB Rollbackとみなすこと |
+
+中間表や集計表に論理上の識別子・関数従属性・粒度・Lineageを**説明できる範囲で**表示しても、物理DBのPK/一意性・書込対象に使えるかは別の確認が必要。Read Scopeがpartial/unestablished、Row Identity/Versionが不明、権限・Schema Driftが未確認ならPreview/候補保持までに停止する。実DBのW4列来歴が未資格である間はNULL由来を断定しない。
+
+人間とAIが同じSQL結果から提案を作成する場合も、同じ文字列Query/Resultから一つのEntityが確定したと推定しない。別Workspace×別DB×別Provider、GraphとTableの別Projection、Source R0→R1、同一行の競合を独立Expectedへ渡す。最初は#2586の通常Product実Readを先行し、#4496のWCE-01〜11と#1174のEffect/Receiptの担当を重複させない。
+
+## 31. AI引継ぎの4段階と、次に渡す実装票
+
+[横断Consumer受入（main #4653）](https://github.com/hat47x/tei-platform/pull/4653)はDefinition→Binding→Authority→Execution→Acquisition→Delivery→Acceptanceを既存製品横断の検収観点として整理した。これを**AIへのContext引継ぎと結果受領の順序**に適用する。外部Harnessがまだ接続されていなくてもUI側に新しいAI RunnerやTask Storeを作る理由にはならない。
+
+| 段階 | 最小の成果 | 次へ進めない条件 |
+| --- | --- | --- |
+| **H-A 発見** | 現Actorの許可範囲で実Catalog/Skill/Operationを発見し、対応Subject/Source・Disclosureの有無を確かめる | 単なるTool/Skill名・AI回答文から実能力があると判断 |
+| **H-B 対象束縛** | Pin IntentとCurrent Product ReaderでQualifierを照合。必要Read-setと送出する実Slice、Audience、未取得をPreview | 固定名だけ、Source stale、現在のDisclosure unknown、対象外の生Sourceを含む |
+| **H-C 実呼出し・受領** | 既存CLI/Toolを実実行し、実Request/Reply end・Audience・内容・出所・Attemptを確認 | Toolの成功文字列、途中切断、欠けたReply、以前のReceiptを今回の受信に再生 |
+| **H-D 手順更新と復帰** | AIが返した候補を現在Source/Meaning/Dirtyと比較し、User Reviewへ戻す。使えた手順だけSkill案内へ反映 | 受信＝Owner受理、Tool Reply＝Host Grant、候補＝適用済みという自動昇格 |
+
+これはYIC/TAIの既存Session・Skill管理・G0/G1/G2等への**引渡し観点**であり、TEI側へ第二Harnessを実装する指示ではない。外部HandoffのRead-onlyを先に実Consumerで確認し、Provider Effect・書込みを別の許可条件とする。SHO Raw/Occurrence・SUI Cardは共有される情報の出典とWriterを保持し、TEIのSource/Meaningへの自動保存・修正は行わない。
+
+### 計画上の3つの実装票を更新
+
+| 票 | 次の一手 | 資格を保留する範囲 |
+| --- | --- | --- |
+| UX-PIN（先行） | §29 PIN-R0：現read-only WorkbenchでPin Aを裏Inspectし、B表示・Focus/Graph/Notice不変を実Consumerでテスト。次段PIN-E1でDirty Buffer | #4597は模擬/純粋テスト。現main UI、実WebView Pin、Current Grantは未受理 |
+| UX-DIAG（並行） | #4655の既存Workspace Validator差分を同HEADで検証し、確実なSource位置・修正候補→既存検査再実行をUIへ接続 | 同名Input Source→Validation Goテストの追加は製品GUI/Runtime受理ではない。Draft #4655はmain未統合 |
+| UX-READ（並行） | #2586通常Product Read→実Provider→独立Consumer。取得被覆・論理キー/実Row Identityを説明できる段階でPreviewを接続 | Reference PGは通常Product CLI資格でなく、CAS/Grant/Receipt/再Readは#4496の後段 |
+
+**最優先P0はnon-Plugin Studio Build Subject→実Builder→Stage1→Stage2 Desktop実WebView2（#4583/#2831）のまま**。UX-PIN R0はそれと並走できる最初のUI一件。UI技術や新Server配置・CRDT・複数AIの自動マージ・正式共通Pin/Context ABIは未決、初回実装のHard Gateに追加しない。
+
+**今回の変更はdocs-only**。#4597の実コード・#4655のDraft Go修正と#4653のmain設計を出典として参照し、現行Workbenchがread-onlyであることを明記した。今回の新しいNode/Go/Browser/Windows/DB/Harness実行、Pin GUI導入、Row Edit実Effect、Owner Meaning AcceptanceはNOT RUN / NOT ACCEPTED。
