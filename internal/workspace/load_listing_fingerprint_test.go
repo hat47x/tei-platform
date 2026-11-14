@@ -54,8 +54,11 @@ func referenceLoadFingerprint(t *testing.T, r Result) string {
 // in the change that does it.
 // Recompute for #2823: ManagedFile gained ReadByLoader so workspace-files can
 // separate managed-but-not-interpreted files from files a domain loader read.
-// The World, Sources and Contributions are unchanged.
-const referenceLoadFingerprintOnOriginMain = "61ebb5cabef7f5037ad26eadb9d379058c1138545c379774b4d72e24d69ee259"
+// RA-0 #4626 changed current Query.Inputs from none to from/std.datetime.
+// Old current fingerprint (pre-RA-0) 61ebb5cabef7f5037ad26eadb9d379058c1138545c379774b4d72e24d69ee259
+// is historical evidence, not the new current Golden; it must not be reused.
+// New digest is measured by the exact-head repository-health Go test.
+const referenceLoadFingerprintOnOriginMain = "435b687ed763cd9680901b0c76e198f70c2058a408162527ec809b3e54fb3091"
 
 func TestLoadReferenceWorkspaceFingerprintIsStable(t *testing.T) {
 	root := copyReferenceWorkspace(t)
