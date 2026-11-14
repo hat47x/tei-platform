@@ -1038,4 +1038,48 @@ H1はPlugin二件A／Bの**直接依存一辺だけ**を対象とし、上位説
 
 **受入上限**：最初はCLI実呼出しで、選択Pluginと一文書の対応・版・可読性を示せることまで。Graphの正式`*.tei.md` Reader・Go生成・Provider実利用・Pluginマニュアル一般公開・Studio/Harness・Owner意味受理の完了を代用しない。全体P0はStudio Stage1→Stage2（#2831/#4583）、並行P0は実Entry／Provider（#4495/#1251）。Plugin文書をその新Hard Gateにしない。
 
+
+### 21.7 Plugin更新・切戻し時にも正しい説明だけを使う
+
+<!-- tei-plugin-doc-generation-acceptance-20261115 -->
+
+第21.6節の**「一Plugin・一公開文書」の実装を最優先**としたうえで、Pluginの入替え・依存更新・Document改訂がある環境でも説明と実操作を取り違えないよう、受入の条件を定める。Plugin更新機構、文書専用Registry、別のResolverやAuthorityは新設しない。既存のComposition/Lock・公開Contract・Source・Application Operation・実Consumerの観測に接続する。
+
+#### どの時点の説明かを明らかにする
+
+一回のread-only参照で揃えるのは、少なくとも**(a) 実Workspace・Source版、(b) 選択Plugin ID/Version・Lock、(c) 公開Contract/Fingerprint、(d) Doc ID・Source Revision/Span・本文の取得状態、(e) Audience/Disclosure・取得用途、(f) 実際に結果を受け取ったConsumer**の対応である。これらを一つの新しい意味正本にまとめず、各Ownerから導出した参照と、実際に受領・照合した範囲を区別する。
+
+現行の `management.Row` はID/Version/Requires/Resolved/Lock/診断を提供するが、公開DocのSourceRef/Spanを持たない。InventoryのRowを「配布可能なマニュアル実体」へ拡張して本文を詰めるのではなく、**現行のPlugin選択をSource-backedな文書参照へ結ぶ最小の型付きread-only操作**を#4679/#1158/#4376の担当境界で選ぶ。Pluginそのものが起動しない場合でも文書のread-only参照はあり得る一方、表示可能＝実Provider利用可とは言わない。
+
+Documentを「取得済み」と言えるのは、実際のSource/byteと対象版を突き合わせ、要求したページ・範囲が受領できたときだけである。索引だけの発見、過去Cacheの存在、部分Tool Reply、別Audienceに対する許可は、それぞれ別の状態として記録する。現在のDisclosureが確認できなければ外部Harnessへの本文送出を保留し、秘密のDoc ID・件数・Digest・内部参照を漏らさない。
+
+#### 更新・配布の世代を越えるときの手順
+
+Pluginの更新は、**候補の取得／契約・依存の適合確認／Source・Manualの適用版確認／選択Plugin・Providerの切替／実Consumer再確認**を段階的に扱う。既存構成がAtomicな更新・切戻しを保証するかは実装で別途検証し、ここに書いた順序からProduction更新の安全性を主張しない。
+
+| 変化 | 文書・モデルの確認 | 実行と受入の境界 |
+| --- | --- | --- |
+| **文書のみ改訂** | 対象Docの版・参照先・検索索引・受領情報を再確認する | Contract/Generatorが不変なら業務意味・Go成果物の一律再生成は不要 |
+| **Contract/Extension Point改訂** | 上位Aの公開Facet、下位BのBinding、Manualの適用版と利用例を再照合 | Trait/Scenario/Target適合を改めて検証し、Ownerの意味受理は別 |
+| **Plugin選択・依存Lock更新** | 実選択されたA/Bと各Doc/Graphの版を更新世代に固定し、古い文書を現在の説明から分ける | Selected・Resolved・Loaded・実Invoke・Effectを別々に判定 |
+| **Audience/開示条件変更** | 現在の許可範囲で再判定し、禁止された内容を現行Consumerへ再送しない | 過去のReceiptや古いCacheから現在のGrantを復元しない |
+| **切戻し・Source A→B→A** | 最後に同じByteへ戻っても中間のSource/Contract/Grant/実Attemptを保持して再照合 | 同じArtifact digestだけで旧実行資格や未受領Resultを有効化しない |
+
+CLI／Studio／Harnessから返される後着応答は、**現在の選択対象と取得時のWorkspace/Lock/Source/Disclosure条件を比べてから**表示・反映する。古い回答は履歴資料にはできるが、最新のPinや更新済みModelへ黙って適用しない。GUIの一時Focus、Product-local Pin、実Harness SessionとActivity、Operation Attemptはそれぞれ異なるものとして扱う（#4515、TAI #629/#633）。新しいグローバルな世代管理Serviceを作るのではなく、既存のSource/構成世代とResultを利用する。
+
+#### 最初の一件を合格させるための実施順
+
+1. **H0／実Sourceの確認**：実バイナリの`commands`と`plugin-inventory -plugin`等を同じWorkspace/Environment/Lockで実行し、選択Plugin ID/Version/Requiresと診断を固定する。現行CLIの実引数を確認するまで、架空のDoc Command名をSkill/Manualへ記載しない。
+2. **H1／公開文書一件の参照**：既存[#4709](https://github.com/hat47x/tei-platform/pull/4709)のGraph Fixtureを意味入力の共通材料として使い、A→Bの依存一辺とAの公開Doc一件だけを別途構成する。定義表とMermaid図の表示を区別し、公開DocのSource/版/対象Contract/現在Audienceを照合する。Fixture自体に存在しないPlugin/Grant/正式Readerを補ったことにしない。
+3. **H2／利用例の実在性**：文書内のCLI名・Flagを実Discoveryと照合し、可能な範囲で既存read-only操作の要求と結果を照合する。Tool Replyの途中切断、Source未ロード、Doc版不一致は`partial/unknown/unsupported`等、既存型で表現できる資格へ落とす。
+4. **変更への最小回帰**：PHD-01/02/03/05/06/08（版不一致・無効Command・再公開制限・部分取得・文書のみ改訂・後着応答）の既存独立Expectedへ、Lock変更とA→B→Aの対照を割り当てる。独立Expectedは#2514、Scenarioは#1180で管理し、ここで新しい検証IDやRunnerを増やさない。
+5. **生成Pluginへの接続**：第20章とCLI先行セルフビルドの[#4720](https://github.com/hat47x/tei-platform/pull/4720)（Draft）へ、同じ公開Model/文書参照を実Go生成・Pluginの実呼出しの結果に結び付ける。Goへの単純委譲はTEI生成の割合に数えない。正式`*.tei.md` ReaderやPluginの実生成が未成立なら、Documentationの成功で代替しない。
+
+**一往復の合格基準**は「実CLIのPlugin選択→実Source-backedの公開Doc一件→現在の契約版・開示・文書内の操作例を照合→利用可能なread-only操作の実結果→不足・不一致を理由付きで返す」までとする。固定Pluginが未選択、正式Doc Refが未受理、実Sourceを読めない等の状況は、それぞれ`unresolved/unsupported/partial`を保持し、説明文の存在だけで合格としない。
+
+**計画間の整理**：Plugin公開面は#4679、A/B Fixtureは#4701、read-only実CLIの一往復は#4714と既存#4376、公開Model/Graphの意味忠実度は#2497/#2621、更新・配布とReleaseの資格は#1016/#2589/#3267、外部AI向けSkill/Handoffは#2605/#2509/TAI #629/#633を使う。旧[Draft #4685](https://github.com/hat47x/tei-platform/pull/4685)の第19章増補は、**現在のmainに既存§19〜21が入ったことを踏まえて重複統合しない**。本節は実装受入の不足だけを追加し、前段の議論を別の正本として複製しない。
+
+**資格上限**：本追補は現行mainの実コード、統合済みGraph Fixture、既存の他領域計画との突合せに基づく設計と作業引渡しである。文書一件のSource-backed実Read、更新・切戻しの製品実装、外部Harness実受領、生成Plugin/Target実行、正式意味受理は、この文書の更新だけでは成立しない。
+
+
 **資格**：第20・21章は、現行mainの第15〜18章を維持しながら、生成プラグインの一機能とPlugin説明の利用時適合を切り出した**設計・検収案**である。正式 *.tei.md Reader、新Generator、実Plugin E2E、Plugin Help API、実AI Harness、Owner受理を今回実装・実測したわけではない。
