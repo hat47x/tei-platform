@@ -324,6 +324,9 @@ Webの要求、CLIの起動、タイマー、Message、画面操作には、そ�
 | **Responseと実Consumer** | HTTP/CLI/Nativeへ同じ対象・版・結果の適切なProjectionが届いたか。必要な現在Grantを受領時にも照合する | HTTP 200、CLI終了コード0、表示成功をConsumerの意味受理／業務確定と同一視する（PL-10、PX-01/11） | [#1251](https://github.com/hat47x/tei-platform/issues/1251)・[#3509](https://github.com/hat47x/tei-platform/issues/3509) |
 | **図解・Target移植** | 同じ意味からLifecycle／Control／Effect／Traceの図を読取専用で投影し、Source位置と安定IDを保持する | 図の配置変更で意味Revisionが変わる、同期→非同期移植で順序・期限・Effect保証を落とす（PX-05/06/12） | [#4198](https://github.com/hat47x/tei-platform/issues/4198)・[#1124](https://github.com/hat47x/tei-platform/issues/1124) |
 
+<!-- g49-source-diagnostic-four-layers-20261114 -->
+**宣言を編集した時点と実行時の検査も分ける。** [DSLの四層計画 #4652](https://github.com/hat47x/tei-platform/pull/4652)と[引継ぎ・索引修正 #4659](https://github.com/hat47x/tei-platform/pull/4659)はmain統合済み。A＝Source構文・位置、B＝Workspace全体の意味整合、C＝Adapter前の構造拒否、D＝公開Entry・現在Grant・実Consumerの受領を、それぞれ独立に確認する。[実Sourceからの拒否テストDraft #4654](https://github.com/hat47x/tei-platform/pull/4654)はA/C、[同名Capability入力のWorkspace診断Draft #4655](https://github.com/hat47x/tei-platform/pull/4655)はB/CのGo実装候補だが、**両PRとも現HEADのRepository Healthに失敗が残り、main未統合**。ログ上の`gofmt`差分を修正してから同HEADで再試験し、Source位置のないRuntime診断に架空の字句位置を付けない。Parserが受理したことだけで実行許可を付与せず、Bで見つけた違反をCのAdapter call 0と照合する。Dの公開・現在Grant・実Providerは別Ownerで未実証である。
+
 **実現順**は、既存のProduct Read RA-2PとStudio Stage1→Stage2を先に完結させ、共通Lifecycleの最初の読取り専用Projectionをその結果へ結び付ける。TODO・Mockで外部部品を置き換える設計段階では、入力・結果・欠損・副作用・実装未接続を明示し、Mockと本番Providerを同一の成功票にしない。実Targetへの移植は、実際のInvocation、作用、Response、Consumerの受領を比較してから判断する。**この節は設計とScenarioの引渡しであり、新たなGo／DB／Windows／Scheduler実験の完了ではない。**
 
 ## 最新の作業単位へ接続する
