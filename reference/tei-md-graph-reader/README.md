@@ -32,6 +32,12 @@
 
 このテストが成功しても、**`*.tei.md`の製品Readerが使えることにはならない**。現行`internal/workspace/tei_md_source_guard.go`の`TEI_MD_PARSER_UNBOUND`は維持する。ここではWorkspace ManifestのSource選択、Language Plugin/Roleの承認、Source Index、実Builder入力、**製品Generator**、実Plugin/CLI Consumerを接続していない。
 
+## 既存Source Indexとのbyte照合
+
+`sourceindex_bridge_test.go`では、限定Readerが返したNode・Edge・Rule候補の元byte位置を、製品側で既に使用している`internal/sourceindex.RangeFromOffsets`で照合する。`NewArtifact`の原文SHA-256を固定し、元Sourceの説明を追記した場合には、古いArtifactの検証が拒否されることを確認する。実Sourceのbyte、候補の位置、将来のMeaningを同じものとして扱わないための境界試験である。
+
+**この試験はSource Indexの意味Referenceを登録しない。** `*.tei.md`は現行`NewArtifact`では一般の`md`形式に分類され、Language PluginやRoleは拡張子から選択できない。Workspaceでの実読み込み、Source受理、Buildの実消費、選択Providerの実Callは引き続き未確認。正式な接合は#2621/#988/#3030と既存Source IndexのOwnerが検収する。
+
 ## 次の製品実装へ引き渡すこと
 
 1. 現行Workspaceが実読込みしたSource byteと、Readerに渡すSource/Revision/Role/Selectionを既存Ownerで結び付ける。単にファイル名が`*.tei.md`であるだけでは選択しない。
