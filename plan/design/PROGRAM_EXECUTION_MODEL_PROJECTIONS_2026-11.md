@@ -703,6 +703,8 @@ World Fingerprint／Model Revision／Artifact Revisionは用途ごとに保持�
 
 **生成前候補と生成後Artifactを取り違えない**：限定Graph／Rule Referenceでは、Node・Edge・Rule条件の正規化構造だけから`CandidateShapeFingerprint`を導き、生成Binary自身の`-candidate-shape`照会値と比較する。原文Source Indexのbyte Fingerprint、Reference候補指紋、実BuildしたBinary SHA-256を別列で扱う。レイアウト変更は候補指紋不変、Edge反転・Rule条件切替は異なる指紋となる一方、A→B→AやProvider切替では同byte・同候補指紋でも過去の受理・実行資格を復活させない。候補指紋は**Referenceの観測用データ**であり、Canonical Meaning／Model Revision／正式Bundle Authorityの新しい正本ではない。正式Source/Provider/Consumerへの接続は既存#2600/#951/#4495/#1251のOwnerへ引き渡す。
 
+**自己報告指紋と実実行ロジックの不一致負例**：生成Goの実判定を起点→終点へ差し替えても、`-candidate-shape`の自己報告を変えずに実Binaryと結果を変えられる。限定Referenceでこの反例を別Build／別ProcessのGo試験として固定し、自己申告と原文候補の一致から`realized`や`observed`を推論しない。S1からP0のProvider／Studio B1〜B3へ進める際は、実Builderの入力member、実Artifactの外部再読digest、選択Builder／Providerの実Call、Stage2の実Consumerを**同一のSubject/Target/Attempt**へ束縛して検収する。#2600の増分reuseと#4583のセルフビルド資格は新たな一律Gateでなく既存Ownerのまま維持する。
+
 **段階的な合格表現**を徹底する。Reader/意味候補だけなら「Source対応の限定実証」、生成Goが独立Expectedと一致したなら「意味あるCodegenの局所実証」、通常CLIと実ProviderのCallまで揃えば「製品Entryの限定検証」、Stage1実Processが次StageのBuildを発行し実Consumerまで届いて初めて「該当Targetのセルフビルド」とする。別のHEADや別Attemptの局所成功を足し合わせない。Stage2 Desktop/Windows WebView2は#4583/#2831の正式資格を維持する。
 
 最初の負例は既存SBX-01〜06、PX-23〜29、PX-36/PX-44〜46などを使い、PX-59以降の番号は増やさず、#1180/#2514の該当Independent Expectedへ差分を追加する。**新たなテスト正本・万能Trace Envelope・一律のHard Gateは作らない。**
