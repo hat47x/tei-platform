@@ -87,6 +87,7 @@ func TestREADualEntryCapturedInputAndIdentityBoundaries(t *testing.T) {
 			} `json:"candidates"`
 		} `json:"result"`
 	}
+	var lastIntakeJSON string
 	intake := func(path string) (int, intakeResponse) {
 		t.Helper()
 		var out strings.Builder
@@ -94,6 +95,7 @@ func TestREADualEntryCapturedInputAndIdentityBoundaries(t *testing.T) {
 		if err != nil {
 			t.Fatalf("three-element rea-intake: %v", err)
 		}
+		lastIntakeJSON = out.String()
 		var response intakeResponse
 		if err := json.Unmarshal([]byte(out.String()), &response); err != nil {
 			t.Fatalf("three-element rea-intake non-JSON reply: %v: %s", err, out.String())
@@ -149,6 +151,44 @@ func TestREADualEntryCapturedInputAndIdentityBoundaries(t *testing.T) {
 	}
 	if review.Result.AcceptedMeaning || review.Result.OwnerDecision != "pending" {
 		t.Fatalf("a read-only intake is not Owner acceptance: %+v", review.Result)
+	}
+
+	// J-03, using actual saved REA output: completed static extraction does
+	// not witness an executing Function or accepted Business meaning. The
+	// application graph and semantic graph are separate observation scopes.
+	var decoded map[string]any
+	if err := json.Unmarshal([]byte(lastIntakeJSON), &decoded); err != nil {
+		t.Fatalf("captured review JSON is not parseable: %v", err)
+	}
+	packet, ok := decoded["result"].(map[string]any)
+	if !ok {
+		t.Fatalf("captured review has no result object: %+v", decoded)
+	}
+	coverage, ok := packet["threeElementCoverage"].(map[string]any)
+	if !ok {
+		t.Fatalf("captured review has no three-element coverage: %+v", packet)
+	}
+	rawElements, ok := coverage["elements"].([]any)
+	if !ok || len(rawElements) != 3 {
+		t.Fatalf("captured review must keep all three elements: %+v", coverage)
+	}
+	rows := map[string]map[string]any{}
+	for _, value := range rawElements {
+		element := value.(map[string]any)
+		rows[element["element"].(string)] = element
+	}
+	if rows["data"]["status"] != "supported" {
+		t.Fatalf("real captured structural evidence was lost: %+v", rows)
+	}
+	for _, elementName := range []string{"function", "business"} {
+		row := rows[elementName]
+		if row["status"] != "unsupported" || row["candidates"] != float64(0) {
+			t.Fatalf("unobserved %s was invented or treated as verified absence: %+v", elementName, row)
+		}
+		needed, ok := row["wouldNeed"].([]any)
+		if !ok || len(needed) == 0 {
+			t.Fatalf("missing evidence for %s was not explained: %+v", elementName, row)
+		}
 	}
 	seenApplicationEdge := false
 	for _, candidate := range review.Result.Candidates {
