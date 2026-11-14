@@ -3,8 +3,12 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
+	"net/url"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -31,4 +35,66 @@ func getEnvOrDefault(key, def string) string {
 		return v
 	}
 	return def
+}
+
+// openExistingSQLite never creates a database. Query uses SQLite mode=ro;
+// command uses mode=rw, which permits writes but still forbids creation.
+// This is a connection-safety check, not full Schema/History qualification.
+func openExistingSQLite(dsn string, readOnly bool) (*sql.DB, error) {
+	var filename string
+	params := url.Values{}
+	if strings.HasPrefix(dsn, "file:") {
+		uri, err := url.Parse(dsn)
+		if err != nil || uri.Host != "" || uri.Fragment != "" {
+			return nil, fmt.Errorf("unsupported SQLite file URI")
+		}
+		filename = uri.Path
+		if filename == "" {
+			filename = uri.Opaque
+		}
+		params = uri.Query()
+	} else {
+		if strings.ContainsAny(dsn, "?#") {
+			return nil, fmt.Errorf("unsupported SQLite DSN")
+		}
+		filename = dsn
+	}
+	if filename == "" || filename == ":memory:" {
+		return nil, fmt.Errorf("persistent SQLite database path required")
+	}
+
+	absolute, err := filepath.Abs(filename)
+	if err != nil {
+		return nil, fmt.Errorf("resolve SQLite database: %w", err)
+	}
+	stat, err := os.Stat(absolute)
+	if os.IsNotExist(err) {
+		return nil, fmt.Errorf("database not initialized")
+	}
+	if err != nil {
+		return nil, fmt.Errorf("inspect SQLite database: %w", err)
+	}
+	if !stat.Mode().IsRegular() {
+		return nil, fmt.Errorf("SQLite database is not a regular file")
+	}
+
+	uriPath := filepath.ToSlash(absolute)
+	if runtime.GOOS == "windows" {
+		uriPath = "/" + uriPath
+	}
+	uri := url.URL{Scheme: "file", Path: uriPath}
+	mode := "rw"
+	if readOnly {
+		mode = "ro"
+	}
+	// Do not trust a caller-supplied mode=memory/rwc or immutable=1.
+	params.Set("mode", mode)
+	params.Del("immutable")
+	uri.RawQuery = params.Encode()
+
+	db, err := sql.Open("sqlite", uri.String())
+	if err != nil {
+		return nil, fmt.Errorf("open SQLite database: %w", err)
+	}
+	return db, nil
 }
