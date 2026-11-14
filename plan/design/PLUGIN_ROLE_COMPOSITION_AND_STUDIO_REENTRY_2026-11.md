@@ -803,14 +803,67 @@ Harness向けのTEI導入Skillは短くし、**対象の特定→Inspect→Plugi
 **状態**：設計・受入候補。共通Plugin説明API、上位文書の実合成、Aspect Binding/Target生成、Harnessからの実操作、実Browser計測、Owner受理はNOT RUN / NOT ACCEPTED。
 
 
+## 19. 公開Pluginの設計知識を共通の入口から利用する（#4679）
+
+本節は§15の「上位Pluginの公開モデル・図解の継承」、§18の「共通説明」を、**実際に探す・読む・上位へ辿る・対象を固定してAIへ渡す・変更を検証する**という一続きの利用経路にする設計・実装計画である。[#4679](https://github.com/hat47x/tei-platform/issues/4679)を横断受入票、[#951](https://github.com/hat47x/tei-platform/issues/951)を公開Contract/Provider、[#1016](https://github.com/hat47x/tei-platform/issues/1016)を依存構成、[#2497](https://github.com/hat47x/tei-platform/issues/2497)を構造・図のProjection、[#3262](https://github.com/hat47x/tei-platform/issues/3262)を用途相対の読取り情報閉包、[#2605](https://github.com/hat47x/tei-platform/issues/2605)をTEI Product SkillのOwnerとする。文書専用の第二Registry/Resolver、第二Canonical、独立Documentation Host、AI専用意味正本は作らない。
+
+### 19.1 共通の利用体験と三つの入口
+
+1. **短いTEI Product Skill**：TEIが扱うモデルとPlugin、実CLI能力の発見方法、利用目的・対象の特定、必要な説明への移動方法、未確認情報と実権限の区別を教える。Skillは「操作の道案内」であり、Plugin機能一覧と構文リファレンスを複製しない。既存の `skills/yi-tei-modeling/SKILL.md` と `references/read-only-model-investigation.md` を出発点とし、固定済みHarness評価条件は変更しない。詳細なマニュアルはSkillから**必要時のみ**参照する。
+2. **型付きApplication Operationのread-only投影**：`tei commands`、既存`model catalog`/`inspect`/`trace`/`validate`等の実在入口を確認し、解決済みPlugin/Contract/Lockから概要・Documentation Index・公開モデル・直接/推移依存・適用条件を参照する。将来のDoc/Dependency Queryは**操作の設計候補**であり、現行CLIの実装済みCommandと混同しない。CLI、Studio、任意MCP Adapterは同じOperation/意味の別投影とする（#1158/#3419、実Plugin inventory #4376）。
+3. **Plugin所有の説明と設計資産**：人が書くMarkdownの概要、入門、操作手引き、制約、移行方法、実装上の注意と、公開Contract/型付きモデル/図Projection/テストに対応する索引をPluginの管理下に置く。オフラインSkill配布へ同梱しても元の文書/版/Provenanceを保持し、コピーを第二正本にしない。人向け手引きと機械的契約を一つの巨大な書式へ押し込まない。
+
+### 19.2 最小の公開説明面（Documentation Surface）とデータの所有者
+
+**公開・配布されるPlugin**の共通説明面は、Plugin ID・提供役割・短い紹介、選択済みContract/Version、対応Target/必要Capability、最短のread-only利用例、公開拡張点、直接上位依存、制限・未対応、詳細文書索引を最低限の発見項目とする。ただし全Pluginに厚いマニュアルの執筆を強制しない。内部Pluginの詳細文書は開示条件に従い非公開にできる。
+
+- **機械的事実**：Plugin identity、Contractと版、公開Model/Relation/Hook、依存辺、Source revision、Provider/Target選択、検証・利用状態は既存意味/契約/Lock/観測から導出する。手書き本文で実CapabilityやGrantを上書きできない。
+- **Plugin所有の文書**：概念説明、使用例、判断の背景、注意事項、障害対応をMarkdownなどの可読Sourceで保存し、Doc ID／文書種別／元Plugin版／Source位置を紐付ける。機能のリファレンスは契約からの導出可能部分と、手書きの補足を関連付ける。
+- **図・モデル**：意味は型付きSubject/Relation/ObligationのID/向き/多重度/Scope/出典で表し、Graphviz/Mermaid/ER/表/画像は投影とする。配置変更は意味変更ではない。編集は公開拡張点に対する型付きPatch/受理へ戻し、表示から未知の意味を逆生成しない。
+- **文書の資格**：文書の存在（discoverable）、取得（received）、本文の版整合（applicable）、契約との適合（checked）、実Consumerが確認した範囲（observed）、Owner受理を別に扱う。古いマニュアルを現在の実Provider保証としない。
+
+共通の論理応答（採用前の**概念例**）は `{pluginRef, resolvedContractRef, subjectRef?, documentationRefs[], modelRefs[], parentDependencies[], scope, revision, status, unresolved[]}` 程度で足りるかをまず試す。専用の正本を増やさず、既存Resultへのread-only投影／参照を第一候補とする。Node、Relation、文書のRefは表示ラベルではなく、出典と版に結び付ける。
+
+### 19.3 上位Pluginの階層と公開情報を辿る
+
+利用者が下位Plugin Bを選択したときは、まずB自身の説明を返し、必要に応じてBが依存する上位Aの**固定された実契約版**、公開文書索引、公開モデル、図Projectionへ辿る。さらにAの上位へ辿る場合も同じ規則を適用する。
+
+- **Dependency ≠ Export ≠ Re-export ≠ Edit/Execute grant**。上位に依存すること自体は、内部文書・非公開Graph・下位からの再公開・Graph Patch・実作用の許可にならない。
+- 多親・ダイヤモンドで同一参照は一つにまとめ、異なる版や意味の衝突は診断する。循環は停止し、発見順・ロード順から勝手な優先順位を作らない。
+- 上位由来と下位固有の説明・モデル拡張差分を並べて見せる。下位の説明から上位の原文を黙って変更しない。引き継げるのは契約で公開したFacetとExtension Pointのみ。
+- 公開文書を段階取得するときは、`Plugin+Contract+Source/Doc revision+Consumer scope`に束縛し、ページ継続・end marker/欠落を検査する。Page間でSource/Grantが変わったら単一の完全な結果としない。禁止されたSourceについては本文・識別子・件数・Digest・存在自体を不正に漏らさない。
+- 読取りの結果は `available / not-found / not-loaded / partial / stale / unsupported / permission-denied / unknown` 等の意味を区別する。どの状態を実際に表現できるかは既存APIの型とのGapとして記録し、今回の設計だけで全状態の製品実装を宣言しない。
+
+### 19.4 設計要素の固定選択からHarnessへ渡す情報
+
+TEI CUI/Studio/SHOで選択したModel/Diagram Node/RelationをHarnessが扱う場合、自由な説明文を唯一の入力とせず、**対象を固定した参照と小さな作業文脈**を渡す。
+
+必要な最小情報は、(a) Workspace/Source revision、(b) stable Subject kind+ID（Relationならoccurrence identityも）、(c) 意図した操作・参照範囲、(d) 選択Plugin/Contract/Providerの固定版、(e) 開示用途と対象Scope、(f) 関連する公開Doc/Model/Constraint/ScenarioのRef、(g) 未解決・欠落状態、である。図の描画用edge IDや表示座標だけで対象を特定したと扱わない。実行時GrantやOwner AcceptanceはTask Packetを受け取ったHarnessが自己付与できない。
+
+Harnessはまず短いTEI Product Skillに従い、**対象発見→必要な公開説明/依存の取得→差分候補→型付き検証→独立Expected→受理/Host実行を別経路で確認**する。Skillにプラグイン全件の文書やSourceを前置しない。CLIとStudio/SHOは同一Operation/Context契約のAdapterとして順次接続し、GUI選択が未実装ならHeadlessで対象参照の縦切りを先行する（#4503、#4515、#3262、#2516）。
+
+### 19.5 初期実証と受入条件（#4679 D0〜D4）
+
+| 段階 | 実証内容 | 完了条件とOwner |
+| --- | --- | --- |
+| D0 read-only fixture | A（公開モデル・図・短いmanual）とB（Aに依存し局所拡張）の二Plugin。Doc/Model/Contract refを固定 | 元の公開範囲・版・文書とGraphの出典を辿れる。#4679/#951/#2497 |
+| D1 CLI | 現行Plugin Inventory/Resolverと共通Application OperationのRead投影 | 実WorkspaceでDoc indexと上位依存を取得し、unsupported/unresolvedを示す。#4376/#1158/#3262 |
+| D2 合成・変更 | 複数親、ダイヤモンド、非公開Ref、上位版改訂、文書改訂、レイアウトだけの差分 | 競合・漏洩拒否・依存部分の再検査と無関係変更の非干渉。#951/#1016/#2497/#3267 |
+| D3 Skill/Harness | Skill無しと短いSkill＋遅延資料ありを同一実CLI/Workspace/Scope/Expectedで比較 | 実Skill/Docロード、実Tool呼出し、全Reply受領、誤使用、Token/指示量、Source参照の正しさを計測。#2605/#2509/TAI #168 |
+| D4 Studio/TEI化 | 同じDoc/Model Refを図から往復し、Plugin自体の `*.tei.md` 生成範囲を増やす | Studioから固定対象→説明・上位図→AI変更案→検証の往復。Go委譲だけでない生成実装とDSL簡素化を計測。#2831/#1251/#1124 |
+
+独立Expectedへ渡す負例（PD-01〜10）：(01) 文書はあるが実契約が未解決、(02) Skillに未実装Command、(03) 文書版と依存Lockが異なる、(04) 非公開Nodeを継承、(05) 多段参照で情報漏洩、(06) ダイヤモンド・循環・同名文書競合、(07) Page途中切断、(08) layout-only変更で過剰失効、(09) Bの業務意味変更を合成PASSで自動受理、(10) 選択したPlugin Bと実Call Aが一致しないのに説明やResult一致だけで成功扱い。#1180/#2514を唯一のScenario/Expected Ownerとし、この節を新Runner/新Validation SSOTにしない。
+
+**優先順位**：D0/D1はセルフビルドP0の阻害要件にしない並行実装。現在の最優先はStudio Stage1→Stage2実Windows WebView2 (#2831) とCLI/Studioから選択済み実Providerへの到達 (#1251)。D2〜D4の完成によってのみ「Pluginの知識が継承でき、実装が簡潔になった」と強く主張する。今回の追記は仕様候補と検収計画であり、共通Doc APIやGUI、正式Owner意味受理、実外部Harness全経路はNOT RUN / NOT ACCEPTED。
+
 ---
 
 <!-- tei-20261114-plugin-first-call-and-document-help-conformance -->
-## 19. 図表から実処理へ至る最初のPluginを、独立した入力で判別する（2026-11-14追補）
+## 20. 図表から実処理へ至る最初のPluginを、独立した入力で判別する（2026-11-14追補）
 
 第16章はTEI自身のPlugin生成を増やす方針、第17章はApplication Graphを使う横断拡張、第18章は公開説明の階層参照を定めた。本章はその全体像を繰り返さず、**最初の一機能を実際に生成・呼出しする際の固定入力、期待結果、手書き実装との境界**を定義する。全体のCLI→Stage1→Stage2→Desktopの進行順はmain統合済み[製品計画PR #4676](https://github.com/hat47x/tei-platform/pull/4676)、製品MVPの検収は[PR #4680](https://github.com/hat47x/tei-platform/pull/4680)へ委ねる。
 
-### 19.1 最初の固定Fixture
+### 20.1 最初の固定Fixture
 
 最初に使用するのは、同じ表示名を持つ二つのNodeと、同じ両端点を持つ二本の有向EdgeからなるGraphである。
 
@@ -833,7 +886,7 @@ Harness向けのTEI導入Skillは短くし、**対象の特定→Inspect→Plugi
 
 現行の管理対象 *.tei.md は正式Loaderで意味Sourceとして扱う能力が未実証であるため、**形式の採用を既成事実にしない**。まず[#2621](https://github.com/hat47x/tei-platform/issues/2621)／[#4359](https://github.com/hat47x/tei-platform/issues/4359)のReader・Source Anchorと既存[#2620](https://github.com/hat47x/tei-platform/issues/2620)のRoleを確認する。旧形式から明示Bridgeで同じモデルへ導出する場合はReference資格に限定し、正規の *.tei.md 製品読込みの成功には数えない。
 
-### 19.2 「Goを生成した」ではなく「TEIの意味で動いた」を確認する
+### 20.2 「Goを生成した」ではなく「TEIの意味で動いた」を確認する
 
 処理義務を、Sourceの読み込み、Graphの型付き解釈、出辺算出、Provider/Targetへの組立て、実CLI呼出し、独立Consumerへの受領に分ける。既存GoのParser・Toolchain・外部Libraryを利用して構わないが、出辺算出の本体が手書きGoの関数に丸投げされているなら、その義務は**TEI由来の実装に計上しない**。
 
@@ -841,7 +894,7 @@ Harness向けのTEI導入Skillは短くし、**対象の特定→Inspect→Plugi
 
 手書き部分には既存[#2090](https://github.com/hat47x/tei-platform/issues/2090)の版付き拡張点を使い、生成ファイルへの直接手編集は禁止する。基底の型や呼出順序を変えたときに旧Extensionが不適合となる負例を再利用する。
 
-### 19.3 一つの機能に必要な証拠の連鎖
+### 20.3 一つの機能に必要な証拠の連鎖
 
 正本を増やさず、既存Source Index・Semantic・Generator・Build Execution・Plugin Resolution・Driver Scenarioの読取り結果を**同一機能の照合表**へ集める。
 
@@ -856,7 +909,7 @@ Harness向けのTEI導入Skillは短くし、**対象の特定→Inspect→Plugi
 
 これらの段階は**新たなセルフビルドEngineのステージではなく、既存製品計画の個別の検収ラベル**である。R0〜R2を一件通してからR3〜R5へ進み、全体DesktopのStage2合格へ加算しない。Buildの再利用や依存失効は[#2600](https://github.com/hat47x/tei-platform/issues/2600)、独立Expectedは[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)が所有する。
 
-### 19.4 追加の検収差分：PGF-01〜06
+### 20.4 追加の検収差分：PGF-01〜06
 
 これらは既存Graph／Plugin／Build負例へ加える**特定Functionのassert索引**であり、新しいRunnerやExpected正本ではない。
 
@@ -871,11 +924,11 @@ Harness向けのTEI導入Skillは短くし、**対象の特定→Inspect→Plugi
 
 **最小完了条件**は、一つのGraph Sourceが実生成ロジックと実CLI結果を変え、その変更箇所がSourceまで逆引きでき、第三者がIndependent Expectedで再現できること。実Reader・生成器・実Providerのうち未成立の一辺だけを既存Ownerへ返し、別DSL／Host／Resolverを急いで作らない。
 
-## 20. Pluginの説明を実契約からたどり、上位文書と短いSkillの不整合を防ぐ
+## 21. Pluginの説明を実契約からたどり、上位文書と短いSkillの不整合を防ぐ
 
 第18章はPlugin説明の共通入口と継承範囲を定めた。本章では**実際の利用者とAIが、どの資料を、どの版として見て、何を判断してよいか**を固定する。説明書を置けば自動的に正しいとみなすのでも、詳細をSkillへ全転載するのでもない。
 
-### 20.1 一つのPluginに対する「概要→契約→使い方→根拠」の経路
+### 21.1 一つのPluginに対する「概要→契約→使い方→根拠」の経路
 
 初回のread-only利用では、対象PluginをCLIの既存Contract／Provider Selectionから特定し、次の順序で参照することを要件とする。
 
@@ -889,7 +942,7 @@ Harness向けのTEI導入Skillは短くし、**対象の特定→Inspect→Plugi
 
 文章の「概要」「手順」「設計上の背景」は人が書くことを許す。一方、Contract ID、Provider選択、CLIの現在の引数、Effect、必要Scope、実Target適合、Test結果のような**機械的事実は実Contractと観測に束縛**する。手書きマニュアルに記載された古いコマンドや失効したProviderを、Skillが正しいものとして採用しないようにする。
 
-### 20.2 上位文書を安全に辿るときの条件
+### 21.2 上位文書を安全に辿るときの条件
 
 Plugin BがAに依存し、CがBを利用する場合、BからAの公開Facetを参照できても、Cへの再公開は**Aが許した範囲とBの明示的な公開**の双方を必要とする。文書のURLやキャッシュそのものが現在のDisclosureの根拠にならない。読取りConsumerが外部AI Harnessなら、その開示可能範囲を読むたびに現在条件で判定する。
 
@@ -897,13 +950,13 @@ Plugin BがAに依存し、CがBを利用する場合、BからAの公開Facet�
 
 最初の実装は**選択済みPlugin一件の直接依存まで**でよい。上位文書を全部ローカル複製するのではなく、許可された文書の参照と、取得済み部分・取得不能部分を並べる。外部リンクや添付から取得した本文は指示や権限ではなく**検査対象データ**として扱い、AIのAction実行には既存Hostの許可を使う。
 
-### 20.3 Skillは入口を短く、厚いマニュアルはPlugin側へ
+### 21.3 Skillは入口を短く、厚いマニュアルはPlugin側へ
 
 既存[#2605](https://github.com/hat47x/tei-platform/issues/2605)のTEI Product Skillは、Workspaceと対象Subjectを特定し、実CLIのcommands／catalog／inspect／trace／validateへ進む**短い案内**を基礎とする。用途別Skillを追加する場合にも、Plugin全件の取扱説明や独立したContract正本をコピーしない。必要なときに選択Pluginの版付き説明・上位依存・実検証の根拠を取得する方式を優先する。
 
 マニュアルを厚くすること自体は認めるが、**短いSkillとPluginの詳細説明に同じ可変事実を二重に手書きしない**。生成AIが必要な節だけを選べるよう、契約ごとに見出し・役割・対象Target・代表例・非対応条件・診断を識別可能にする。自然言語だけで意味が曖昧な部分は、型付きContractへの参照で補う。過去版のPluginマニュアルを参照できることは、旧版を現在の選択済み実装として実行できることを意味しない。
 
-### 20.4 変更影響と独立Expected
+### 21.4 変更影響と独立Expected
 
 文書の説明文だけが更新された場合は、マニュアル表示・検索索引・生成AI向け抜粋の現在性を再確認する。Contract・Provider・CLI Entryが変わった場合は、該当手順・例・Conformanceを再資格化するが、無関係なGo生成物を無条件に再Buildしない。公開範囲の撤回なら、以前の表示やAI Context Cacheを現在許可として再送出しない。正しい失効範囲は[#2600](https://github.com/hat47x/tei-platform/issues/2600)と既存Disclosure/Authorityで判定する。
 
@@ -923,7 +976,7 @@ Plugin BがAに依存し、CがBを利用する場合、BからAの公開Facet�
 **実装順**は、H0一Pluginの概要とContract版の照合→H1直接依存する上位公開文書の参照→H2CLI/Studio/Harnessで同じSubjectへの読取り→H3菱形依存と版変更の検証、で十分である。#4515のWorkbench Subject Pin、#2605のProduct Skill、#951のProvider、#1016のComposition、#2516のDisclosureをそれぞれ再利用する。Pluginごとのヘルプ生成器・文書Registry・独自Skill Loaderを新製品Coreとして先行実装しない。
 
 
-### 20.5 実在するCLIを起点に、Plugin説明の最初の不足を一件だけ閉じる
+### 21.5 実在するCLIを起点に、Plugin説明の最初の不足を一件だけ閉じる
 
 <!-- tei-plugin-help-cli-h0-real-inventory-20261114 -->
 
@@ -938,7 +991,7 @@ Plugin BがAに依存し、CがBを利用する場合、BからAの公開Facet�
 | **H0 現行入口の観測** | `commands`／`version -json`と実バイナリを固定。Pluginを`plugin-lock`／`plugin-resolve`／`plugin-inventory`で特定。Snapshot/Workspace/Environment/Target/Plugin選択を区別 | #951／#1016／#4376。Discoveryは候補の列挙であり、実Call/Grantの保証ではない |
 | **H1 一つの文書参照** | 上位Aと利用側Bを同一Resolved Lockへ束縛。Aの公開説明またはGraph FacetのSource位置／ID／版を**既存Sourceのread-only投影**から得られるか調べる | #4679／#2620／#2621／#2497。既存APIにDoc Indexが無ければ、必要な最小Fieldと既存操作の責務を明示してunsupported |
 | **H2 手順の実在性** | 文書が示すCLI入口・Flagを実Command Discoveryと比較し、例を実行するならread-onlyに限定して実argv／exit／bodyを残す | #2605／#1155。説明の文字列一致やExit 0だけでは業務意味・結果受理を保証しない |
-| **H3 Pluginと生成実装の結合** | 第19章のGraph生成Pluginを対象に、同一Source／Contract／Generator／Artifact／選択Providerと、概要・上位Doc参照を対応付ける | #2831／#1251／#943。モデルを説明できても実生成・実呼出しは別資格 |
+| **H3 Pluginと生成実装の結合** | 第20章のGraph生成Pluginを対象に、同一Source／Contract／Generator／Artifact／選択Providerと、概要・上位Doc参照を対応付ける | #2831／#1251／#943。モデルを説明できても実生成・実呼出しは別資格 |
 | **H4 複数Consumer／別Process** | 同一選択Subjectと結果をCLI direct、Studio、外部Harnessで比較。CLI child Backend／Session再利用は独立した実装・実測後にのみ追加 | #4515／#2605／#2509、Backend設計PR #4690。CLIへWailsや常駐Backendを強制しない |
 
 H1はPlugin二件A／Bの**直接依存一辺だけ**を対象とし、上位説明をBが参照できることと、BからCへの再公開・Runtime Hook権限を分ける。H0/H1が不足している段階で、マニュアルだけを手作業で複製したり、Skillに未実装のコマンド例を書き足したりしない。必要な最小のread-only投影の型・取得条件が決まったら、#4679と既存Application APIのOwnerが判断する。最初からDocument Registry／新Resolver／Doc専用Runtimeを立てない。
@@ -947,9 +1000,8 @@ H1はPlugin二件A／Bの**直接依存一辺だけ**を対象とし、上位説
 
 **最初の否定試験**は、(a) Bが参照するAのVersionと提示Docがずれる、(b) Manual内のコマンド名・Flagが現行Discoveryと一致しない、(c) AがBへ公開した文書をBがCへ無許可で再公開する、(d) `plugin-inventory`の情報が一部欠けた状態を完全な依存集合として返す、(e) 文書の本文だけを変えて無関係なGo成果物まで再Buildする、の五つとする。**PHD-01/02/03/05/06**の既存Expectedに割り当て、テスト番号や正本は増やさない。
 
-このH0→H2で必要な実CLI情報が取得できれば、H3では第19章の最初の生成Pluginを同じDocument Surfaceで説明できるかを測る。その後にH4のStudio／Harnessへ進む。Pluginを説明するためだけにDesktopの完成を待つ必要はなく、**正式Studio Stage1→Stage2（#2831/#4583）と実Provider二入口（#1251/#4495）のP0に新Hard Gateを積まない**。
+このH0→H2で必要な実CLI情報が取得できれば、H3では第20章の最初の生成Pluginを同じDocument Surfaceで説明できるかを測る。その後にH4のStudio／Harnessへ進む。Pluginを説明するためだけにDesktopの完成を待つ必要はなく、**正式Studio Stage1→Stage2（#2831/#4583）と実Provider二入口（#1251/#4495）のP0に新Hard Gateを積まない**。
 
 **今回の資格**：現行CLI Discoveryと既存Issue／設計から作成した、最初の実装に向けた調査票と受入順序。実CLIバイナリの起動・`plugin-inventory`の実応答取得、Plugin Doc索引・Help API・実E2E実装、Studio/Harness比較、Owner受理は、この文書更新では未実施。
 
-**資格**：第19・20章は、現行mainの第15〜18章を維持しながら、生成プラグインの一機能とPlugin説明の利用時適合を切り出した**設計・検収案**である。正式 *.tei.md Reader、新Generator、実Plugin E2E、Plugin Help API、実AI Harness、Owner受理を今回実装・実測したわけではない。
-
+**資格**：第20・21章は、現行mainの第15〜18章を維持しながら、生成プラグインの一機能とPlugin説明の利用時適合を切り出した**設計・検収案**である。正式 *.tei.md Reader、新Generator、実Plugin E2E、Plugin Help API、実AI Harness、Owner受理を今回実装・実測したわけではない。
