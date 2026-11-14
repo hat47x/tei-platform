@@ -58,6 +58,17 @@ func ParseSQLToStandard(src string, dialect string) (*StandardQuery, []Diagnosti
 	p := &parser{src: src}
 	p.tokenize()
 	q, err := p.parseQuery()
+	if err == nil {
+		// A successful StandardQuery must account for the *entire* statement.
+		// In particular, WINDOW/OVER, locking clauses or a second statement
+		// must not disappear during SQL -> Standard -> SQL conversion.
+		if p.peek().kind == tokOther && p.peek().text == ";" {
+			p.next() // A single final statement terminator is harmless.
+		}
+		if p.peek().kind != tokEOF {
+			err = p.error("unconsumed SQL: feature not represented in StandardQuery")
+		}
+	}
 	if err != nil {
 		pos := p.peek().pos
 		if pos == 0 && len(p.tokens) > 0 {
