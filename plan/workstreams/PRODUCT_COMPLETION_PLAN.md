@@ -537,6 +537,27 @@ S0〜S4を一度に実装しない。**固定6入力に対するGraph/RuleのGo�
 
 ここで確認するのは**現行の選択と消費の断点**であり、Graph対象の新Registry、別Parser/Runtime、第二Acceptance、全Markdown構文対応、Studio依存のHard Gateを新設する理由にはならない。独立Expectedの採否は既存#1180/#2514に委ねる。
 
+#### S0予備検証と正式Reader接続を分け、生成物の実消費までつなぐ（2026年11月15日）
+
+[PR #4745](https://github.com/hat47x/tei-platform/pull/4745)では、Graph/Rule限定Readerと既存Source Indexの直接照合（main #4742）から一歩進め、**実Manifestの宣言Root、Pinned Workspace Root、管理ファイル一覧、原文byte、候補RuleのSpan**を既存APIで読み合わせる**テスト専用のS0予備検証**を提出した。指定された`semantic/model.tei.md`は管理対象、Root宣言外の`drafts/not-declared.tei.md`は非対象とし、`Workspace.Load`が未選択Frontendに`TEI_MD_PARSER_UNBOUND`を返すことを先に検査する。ついでテストコードが既存のPinned Readを明示呼出し、元のSource Indexと一致すること、原文変更後に古いIndexが失効することを照合する。**これは`Load`の内部から選択済みMarkdown Readerが呼ばれた証拠ではない**。
+
+[PR #4745のexact HEAD健全性ログ](https://github.com/hat47x/tei-platform/actions/runs/43641434912)（`9e9a128c78c5a7913cedbfc309779c282caabb93`）では、`go test ./...`中の`internal/workspace`は成功したが、Repository Health全体は**失敗**した。確認できた原因は`internal/database/sqlgen/sqlite/window_candidate_oracle_test.go`の`gofmt`ずれと、`tools/repository-plan-check`の`SeverityUnsupported`既検査語彙が旧TODO一覧に残ることである。前者はGraph/Readerとは別の変更Owner、後者も既存[#4449](https://github.com/hat47x/tei-platform/pull/4449)等の担当で整合する。独立WorkflowのPASSを全体PASSと記録せず、かつこれらを理由に未受理MarkdownをLoaderへ通す暫定回避を行わない。PR #4745は未マージなのでmain実装済みとは記さない。
+
+**次の実装は三つの資格を別々に満たす**。初回にすべてを一PRへ詰め込まない。
+
+| 段階 | 入力と実際の証拠 | 現在の資格と次の断点 |
+| --- | --- | --- |
+| **S0-P：Pinned Source予備検査** | Manifest `semantic` Root、非宣言`drafts`除外、Pinned Root読取り、候補Graph/Rule、Source Index fingerprint/Span、変更後の旧Index拒否 | #4745のテストコードと局所Go成功。未マージ。テスト側が選択・読取りを明示している |
+| **S0-A：製品Reader Admission** | 実`Workspace.Load`の同一Attemptに対して、型付きで選択されたFrontend/版、Manifest Root、実際にReaderが消費したbyte/Span、Source Index Artifact/必要なRole候補を対応付ける | **未実装**。未選択は従来どおり拒否。管理済み≠Read済み≠Parse済み≠Qualified≠Owner受理 |
+| **S1/S2：意味Go・実Plugin** | Owner受理済みMeaning/Rule→Target Generatorの条件ロジック→生成Go→実Builder/Target→選択Pluginの組込み/Call→実Consumer | 限定ReferenceのGo条件分岐と同一Binary実入力は成功済みだが、製品Targetでの実消費は未成立 |
+| **Artifactの再入力／Studio** | 生成Source Memberが次Buildの**実入力byte**になり、生成JS等がWails埋込みへ渡る場合も、Builder/ArtifactSetの同じAttemptと子Process/受領先を照合 | [Generator契約Draft #4748](https://github.com/hat47x/tei-platform/pull/4748)の未実証Fit/Gapに接続。生成物の存在だけで次工程が消費したとみなさない |
+
+S0-Aで最初に提示すべき**独立した正負**は、同一Source Snapshotからの1選択・1Reader・1Artifact整合、未選択Frontend・Root外ファイル・未対応構文・旧`*.tei`への退行・原文変更後の旧証拠再利用・暗黙のReader fallback拒否である。Rootを固定して読んだことは、複数Sourceの**原子的Snapshotを保証するわけではない**ため、取得したbyteと検証に使った版が一致する範囲だけをClaimとする。Owner意味受理前のGraph/Rule候補IDはSource Indexの正式Subjectへ勝手に登録しない。
+
+この順序を守れば、Pluginの説明文書や使用例の資格も整理できる。[Plugin公開文書Draft #4735](https://github.com/hat47x/tei-platform/pull/4735)の`-node`例は、現状では**限定Reference Binary向け**であり、通常の`tei` CLIで呼べる公開Operationではない。将来A PluginのManual/ContractをB Pluginが参照する場合、Source/Doc/Contract/Plugin版の一致、現在のDisclosure、実選択・実Builder消費・実Invocationを分けて検収する。公開文書を読めることを、Pluginが同梱されたことや実行できる資格とみなさない。
+
+**P0/P1の扱い**：本件は#2621/#988/#4704の正式Reader・Source Index接合を進めるP1の小縦断として扱う。全体P0のStudio Stage1→Stage2実Windows再構築（#2831/#4583）と、通常`tei`から実Provider→独立二Consumer（#2586/#1251）を遅らせる新Hard Gateを作らない。S0-Pの参考実装をそのまま製品の第二Loader/第二Registryに発展させず、S0-Aの差だけ既存のWorkspace契約へ移す。GC/GQの既存Expected・受入Ownerを再利用する。
+
 #### 次の製品実装PRで確定すること
 
 1. **明示されたFrontendの選択**：Workspaceの正規化済みSource path、Root、選択済みLanguage/Role Profile、選択Plugin/契約版、実Source byte/Revisionをそろえる。拡張子だけで「実行可能な意味定義」を認定しない。`internal/sourceindex/model.go`の`NewArtifact`は現状`path.Ext`で形式を得るため、`*.tei.md`のArtifact Formatは一般`md`と同じになる。これは**現在のSource Indexの書式分類**であり、選択FrontendやTEI宣言資格の証拠ではない。Formatフィールドを無断で変更して従来Consumerを壊すより、まず選択条件を別の既存契約から明示して負例で比較する。
