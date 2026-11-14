@@ -410,6 +410,62 @@ Wails/Desktopと将来のServer/Webで、**Build Previewは同じread-only Opera
 
 **本節の新規作業は文書・計画の差分のみ**。#4587最新CIのWindows E2E成功、#4623×#4624の同一HEAD統合、正式非Plugin BuildExecution API、生成Stage1→Stage2/当該Window、実共同編集/AI/Owner受理を実行・実装したものではない。
 
+
+### 0.12 第12次横断統合：H1限定実証後のB1残差とDesktop／Web／WASM共通化（2026-11-14）
+
+他チャットの「WebにもWailsを利用できないか」「UI以外の状態・Context処理をGo/WASMへ共有すべきではないか」を、**既存採用ADR-0048**、実`cmd/tei-studio/main.go`、現Windows自己構築CIと整合させる。新たなTEI常駐Host、Source/Meaningの第二正本、全機能WASM移植、Wails-Serverの無条件公開は採用しない。
+
+#### 0.12.1 H1は実装・CI合格へ更新したが、正式B1〜B3ではない
+
+- [Draft #4587](https://github.com/hat47x/tei-platform/pull/4587) **exact HEAD `0fcb7b6265d7dfc5b5e93017e5c99e296eb13134`** にN2 esbuild実出力とN3 Go `//go:embed`選択入力の同一Attempt照合が追加された。[Windows CI #43542664470](https://github.com/hat47x/tei-platform/actions/runs/43542664470)の`generated-desktop-webview2-smoke`と`desktop-webview2-smoke`がともに**completed/success**。同HEADのPR Workflowは**12/12 completed/success**。
+- 新証拠`n2-bundle-producer.json`は`role=workbench.bundle`、`format=text/javascript`、実JSのdigest/byte長、exact HEAD、GitHub run/attempt、esbuild metafile由来を保持。`n2-n3-bundle-handoff.json`は同じRoleのN3選択`EmbedFiles`、Go Build前後のSHA、`changedByteNegativeRejected`、`readTimeClosureProved=false`を別欄に保持。`b1-stage-input-observation.json`へ関連ファイル参照を追加。N3実選択in-repository **312件**、N2選択 **24件**、生成exe SHA-256 `e2158bc8e20a5f2fe153ca96d08aad1571d2bacc9c87672b288fbfcbe5566205`、実WebView2配信JS SHA-256 `755e5e85f8487d4e5361fe4262c77595c3ebc048068f2647b0b27862de804299`、682,327 bytesを当該HEADに紐付ける。
+- 失敗対照は**本来のembed元を変えず、独立コピーへ文字列を追加してdigest不一致を同じCheckerで拒否**するもの。正確な変更byte数を「1byte」とは主張しない。N2実生成→N3実選択bundleの一辺の**pre/post byte整合**を確認したが、コンパイラのread-time捕捉、Source/toolchainの完全閉包、形式上の正式`BuildExecution/ArtifactSet`採用ではない。N2/N3の実起動者はWorkflowであり、Stage1 TEI生成バイナリではない。**H1限定PASS≠BuildIntent全工程B1≠Stage1→Stage2 B2≠当該Stage2 WebView2 B3**。
+- [Draft #4623](https://github.com/hat47x/tei-platform/pull/4623) HEAD `f1e219a`は`-bind-resolved-builder`でCI **8/8 success**、[Draft #4624](https://github.com/hat47x/tei-platform/pull/4624) HEAD `2d403f49`はIntentとResolver結果の整合拒否でCI **5/5 success**。3本はまだ別HEAD/Draft、Owner受理・main統合前。#4587のN0はCaller `-expected-child-digest`であり正式BuildIntentからではない。
+
+**次のP0の差分**：旧§0.11の「H1を最初に実装」は**完了済みの限定実証**に改め、(A) #4623/#4624の宣言→選択Builder→実子起動前拒否を同一HEADで合流し、(B) N0生成TS→N2実esbuild選択Input（H0）をN2実行の前後でRole付き検査・誤Source/旧Source負例へ拡張、(C) N1/Node/esbuild/Go/Wails各実Invokerを**既存Build Execution/ArtifactSetの非Plugin Target**へ一工程ずつ接続して正式BuildIntentから実行（初回は一工程）、(D) 生成Stage1 TEI自身がStage2 Windows Desktopを構築・そのStage2自身で実Window/WebView2/Inspector受領を検査、とする。H1の実証Receiptは壊さず再利用する。B2/B3をWeb/WASM設計完了まで止めない。
+
+#### 0.12.2 WebとDesktopはUIだけでなく意味契約を共通化するが、実行境界は同一ではない
+
+採用[ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)の共通Application Operation契約が正。HTTPに統一するのではなく、Host/Transportから既存`internal/operations`、StudioHost、Command/Acceptance/Provider Ownerへ委譲する。
+
+| 層 | Desktop | Web | 共通化するもの／共有しないもの |
+| --- | --- | --- | --- |
+| **View / Interaction** | 埋込Workbench TypeScript/HTML/CSS、Wails WebView、Desktop window/OS integration | 同一Workbench component/presenterをBrowser表示、HTTP(S)等のTransport | Subject/Pane/Focus/Pin/Graph layout、read-only Build Preview表示規則。ブラウザーのOrigin/SessionとWails Window IDは共有しない |
+| **Application Service** | `StudioBridge`→同じGo StudioHost/Operation、ローカル対象allowlist、プロセス内呼出し/IPC | 明示したWeb Host HTTP/stream Adapter→同じGo Operation、ServerのPrincipal/Workspace/Session/CSRF等 | Operation ID・型付きRequest/Result/Failure・Source/Artifact/Attempt/Receiptの契約。Webの接続・セッション・認証/認可をWails PoCのloopbackに仮託しない |
+| **Projection / pure compute** | UIに必要なFilter/Graph/Layout/差分・型付き表示判定（当初TS実装も許容） | 同じ純粋投影計算をTS、またはベンチで採用したGo/WASMに配置 | **同一入力Snapshotと関数version→同じ表示用結果**。Context/Selection/Sourceの現在資格はGo/WASMが判定しない |
+| **Authoritative data/Effect** | 保存済みCanonical Source、Meaning受理、Host Current Grant、Build Attempt/Artifact/実DB Effectは既存Go/Owner | Web Serverの同一Ownerに接続、Principal/Session/公開範囲はWeb Hostが強制 | ClientのPin/WASM cacheは正本でも執行者でもない。Target別Host・作用記録・現在性の独立検収を省かない |
+
+**Wails v3 Serverモードの位置付け**：現`cmd/tei-studio/main.go`は`application.ServerOptions{Host:"127.0.0.1"}`で、`WAILS_SERVER_HOST`が他値なら明示拒否するread-only PoC。Workbench資産と`StudioBridge`の呼出しをServer buildでも実証する**ローカル参照Transport候補**であり、遠隔Webブラウザー向けの実運用Server/Session/Origin/HTTPS/CSRF/CORS認可の実装ではない。Wails Server版をWebの第一試作Hostとして比較検証してよいが、Web版にもDesktop Window/WebView runtimeを組み込むことや、localhostを外部公開することを要求しない。WebもGo single-binaryを配布単位とできるが、**Desktop用exeと同一物理Artifactであることを製品成立条件にしない**。
+
+#### 0.12.3 Go/WASMは共有ロジックの候補。優位性は実測・正本境界で判定
+
+- **共通化したい純粋関数候補**：大量Graphのviewport抽出・fit/expand、参照リンクと表示ツリーの投影、構造差分のvisual projection、局所Filter/Sort、Hostから返されたreadonly結果のClient側index生成。Reference同一データをTS実装／Go host実装／Go WASM実装でベンチする。JSON/JS↔WASM bridge・メモリ占有・cold start・incremental update・GC/Workerや描画境界を含める。表示形式の一致だけで実Target/Semanticsの同値性にしない。
+- **WASMに任せない権限・状態**：Canonical Source/受理Meaning、Host Context、User identity/Current Grant、BuildIntent Builder selection、Artifact/Receiptの資格、Commit/External Effect、競合解決の最終判断。WASM内の`selectedSubject`/`Pin`/`context`はUIの**局所Snapshot+世代**であり、Hostが返すSourceRevision/ContextFingerprint/RequestIdを再検査し、staleなら失効。JSに見える値・WASMに見える値のどちらかを正本に昇格しない。
+- **第一段階の決定**：UIは共通Workbenchを維持し、WASMを必須依存にしない。TSでも軽量で十分ならTS、Type/構造/性能で明確に有利な純粋演算だけWASMへ。Go/WASMでGo実装を再利用してもWeb Host/OS Permissionを実行できるわけではない。逆にClient Context/Pin管理をTSに置いても、Owner不在でApply/Build資格は付与できない。
+
+#### 0.12.4 運用と受入の最小試験：両Hostで共通の問い、独立した資格
+
+既存#1180/#2514のExpectedに差分接続する。全検査を新設WASM/Core/Second HostのHard Gateにしない。
+
+| ID候補 | 問い・反例 | 見るべき観測 |
+| --- | --- | --- |
+| **WCL-01** | DesktopとWebで同一保存済みSource R0をInspect | 共通OperationのValue/Failure・SourceRevision/Scope一致、配信/通信差は別 |
+| **WCL-02** | Pin Aの裏応答がB編集/Graph表示に後着 | Client generation失効、BのCaret/Dirty/Focus/Graph不変。Host取消は副作用取消の証明にならない |
+| **WCL-03** | Web Browser Session A/BでWorkspace/Principalが異なる | BへA Source/Pin/Artifactを開示しない。Desktop read-only allowlistだけで実WebのScope保護としない |
+| **WCL-04** | WASM SnapshotはR0、HostはR1/A→B→A | byte一致だけで旧Pin/Context/Build Receiptの現在性を回復しない。現在Host版を確認 |
+| **WCL-05** | TS投影とGo/WASM投影で大量Graph/Filterを同じ入力から実行 | 結果のID/方向/多重辺/orderingと、cold/warm latency・memory/bridge costを対照。性能改善が出なければTSのまま |
+| **WCL-06** | Web通信が切断された直後にApply/Build応答が失われた | 既存Attempt/Effect/Receiptをunknownで再照会。自動再実行・ローカルfallback・旧Window置換なし |
+| **WCL-07** | Stage2 Desktopの生成Asset digestと実Consumerが異なる | H1/H2とWebのAsset配信を別Producer/Consumerとして照合。旧版Cacheを新Build資格に転用しない |
+| **WCL-08** | Wails local Server動作から公開Web Serverへ移行 | Origin/HTTPS・CSRF/CORS・Session/Principal・Workspace認可・入力上限・情報開示をHostで独立受入。現localhost PoCのGreenは不可 |
+
+#### 0.12.5 Owner・反映順
+
+- **B1/B2/B3最優先**：#4583/#2831（BuildIntent→実Builder→Artifact→Stage1/Stage2）、#1824（Windows Wails実Window/IPC）、#1180/#2514（独立Expected）。H1のCI成功は固定、P0残差はH0＋正式Build Execution接続とStage再入。#4623/#4624の統合は同一HEADで検収。
+- **並行する共通API/GUI/Web**：#1158/#3421（ADR-0048、Desktop/Web代表Operation）、#1824/#4515（Workbench Pin/FocusとBuild Preview）、#1529/#3788（保存Source・Dirty Buffer）、#1124/#4570（三要素Provider）、SHO/SUI/Harnessは既存Document/Operation対象を共有。各Hostの許可・Effectは各Ownerを維持する。
+- **WASM実証は候補**：最初はread-only Graph/Filter 1関数のTS vs Go/WASMベンチ＋同一Snapshotの型付き出力検査。その結果から初めて採否・実行位置を決める。Go/WASM Runtimeを必須化したり、全Contextと状態管理をWASMへ移行したりしない。Wails Server利用の可否も同じくPoC/セキュリティ評価で判断する。
+
+本節は**文書設計の差分反映**。新Go/Node/WASM/Browser/WebServer/Stage2実行、Web版正式Host受入、WASMの優位性実測、Owner意味受理は実施していない。#4587 CIの限定PASSを別PRの受入や製品全体の完成に昇格しない。
+
 ## 1. 位置づけと判断済み前提
 
 - **TEI Studio**はData/Function/Business三視点、Data Context、Source/Meaning、DBクライアント、Plugin、テスト、SHO文書機能への統合Workbench。
