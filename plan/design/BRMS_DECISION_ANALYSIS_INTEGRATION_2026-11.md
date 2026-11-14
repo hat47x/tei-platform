@@ -272,7 +272,7 @@ A→B→AとSourceが戻っても、World Fingerprint／Model Revision／Artifac
 
 Source Index橋渡し試験の合格は「元byte位置の共有」を示すだけである。NewArtifactは*.tei.mdを現時点では一般のmdとして分類し、接尾辞からRoleを確定しない。Workspace選択・Language Plugin／Role・受理済みMeaning・製品Generator・実Provider・独立Consumerへの接続が次の本当の欠落部分である。
 
-既存の[Graph Reader参照実装](../../reference/tei-md-graph-reader/README.md)、[固定6入力](../../testdata/tei-md-graph/README.md)、[正式Reader接続検討PR #4704](https://github.com/hat47x/tei-platform/pull/4704)、[製品完成計画](../workstreams/PRODUCT_COMPLETION_PLAN.md)を参照する。PR #4704は検討中であり、採用済み製品Readerとはみなさない。
+既存の[Graph Reader参照実装（main統合済み）](https://github.com/hat47x/tei-platform/blob/main/reference/tei-md-graph-reader/README.md)、[固定6入力](../../testdata/tei-md-graph/README.md)、[正式Reader接続検討PR #4704](https://github.com/hat47x/tei-platform/pull/4704)、[製品完成計画](../workstreams/PRODUCT_COMPLETION_PLAN.md)を参照する。PR #4704は検討中であり、採用済み製品Readerとはみなさない。
 
 ## 23. D1を二つの資格に分解する：限定Referenceと製品への接続
 
