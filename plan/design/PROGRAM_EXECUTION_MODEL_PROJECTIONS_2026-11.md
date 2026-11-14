@@ -338,3 +338,85 @@ World Fingerprint、Model Revision、Artifact Revision、Evidenceの現在資格
 PX-23〜29は#4198 R0〜R4と#2514/#1180の既存Scenarioへ引き渡す候補であり、第二のテスト正本や新Gateを作らない。主線は引き続き、#4583/#2831のStage1→Stage2 Studio Desktopセルフビルドと#4495の実Entry→実Providerである。
 
 **状態：設計・受入条件の追補。上記反例の実行、Go/Windows/DB/異言語での新しいE2E試験、Ownerによる意味受理はNOT RUN / NOT ACCEPTED。**
+
+## 20. 対応関係の確かさと表現の損失
+
+一つのプログラムをDSL、処理図、関数一覧、SQL、生成コード、実行Traceへ表示する場合、同じ名前・同じ形が現れても、その対応が確定しているとは限らない。**表現間の対応と、その対応をどこまで確認できたか**を明示する。
+
+対応付けの起点は、既存のSource occurrence、意味Subject/Revision、型付きRelation/Edge ID、必要なRole/Operator Pinである。図の座標や生成コード中の行番号、似た名前を唯一の識別子にしない。生成後に行番号が変わっても、元の意味SubjectとSourceへ戻れる導出関係を保持する。ただし、同じ意味Subjectから複数のArtifactや表示Nodeが生成される場合もあり、一対一対応を強制しない。
+
+| 対応関係 | 表示・診断で分けること | 安全な利用範囲 |
+| --- | --- | --- |
+| **Sourceに明示された定義** | 原文位置、版、Role/Operator解決、意味受理の有無 | 受理済みならMeaningの根拠にできる。構文認識だけでは受理済みとしない |
+| **静的解析による依存候補** | 解決できたCall/Read、動的参照・未探索範囲、解析対象Artifact | 設計支援の候補。実行時に呼ばれたことの証拠ではない |
+| **Provider/Hostによる実観測** | 実Call、実Read Scope、Effect Receipt、取得範囲・時点・主体 | 観測したAttemptの証拠。未観測の経路不存在を主張しない |
+| **AI・移行ツールの推定** | 候補を得た入力と版、推定根拠、曖昧な対応・競合 | 説明・提案には使えるが、Owner受理／実行許可へ自動昇格しない |
+| **表示上の関連** | 展開・折畳み、集約、別名、レイアウト、意図的な省略 | 閲覧の便宜。意味上のEdgeや処理順と取り違えない |
+
+既存#2497の構造保存写像を再利用し、各Projectionが保持する性質を、少なくとも識別子・型・順序・多重性・粒度・NULL/欠損・時間・単位・取得範囲・編集可能性で検査する。GraphをTreeに表示して第二の親が隠れる、複数Edgeを一本の線にまとめる、Query集計で元行が失われる、といった場合には**表示できることと安全に書き戻せることを区別**する。
+
+表示からSourceへの変更には、次の限定的な往復条件を置く。対象と版を固定したうえで、（a）変更せず取得したViewを適用しても、非対象のSourceや意味を変えない、（b）Viewの編集が成功した場合は再読取りした投影に意図した変更が反映される、（c）同じ変更が他のRelationや糖衣原文を不必要に破壊しない、を確認する。これはすべての表現が双方向変換できるという主張ではない。集計View、部分取得、未解決Source、多対一の対応、Graphの単なる配置変更は、それぞれ適したread-onlyまたはView Metadata操作へ留める。
+
+生成AIによる自然文説明も同じ扱いとする。受理済みFunction/Business Ruleから**根拠付きで機械的に説明できる部分**と、推測・要約・補足を区別する。「通知した」「DBに保存された」「利用者が受領した」のような完了表現には、それぞれ実際のReceipt/Observationが必要である。説明文の生成成功を実行成功や業務意味の受理にしない。
+
+## 21. Target移植を確認する際の観測範囲と不足情報
+
+Go、Java、.NET、Web、Wails Desktop、CLI、Serverless等へ移すとき、「すべての内部処理が同じ順序で走る」ことを一律の条件にしない。SourceとTargetに対し、**どの入力・環境条件のもとで、どの振る舞いを等しいとみなすか**を先に決める。内部スレッドの割当てなど、利用者へ保証しない差は許容できる一方、外部に見える値、状態、権限、Effect、必要な時刻と順序は契約で明示する。
+
+| 確認の段階 | 問い | 成立したと主張できる範囲 |
+| --- | --- | --- |
+| 意味と表現の対応 | Sourceから解釈した計算・関係・制約・実行規則が、Target側で表せるか | 静的な型・Meaning/Operator/Model of Computationの対応。実動作は未証明 |
+| 生成と構築 | 選択済みBuilder/Generatorが必要な入力を読み、指定Target用Artifactを生成したか | 実消費入力・選択Provider・生成物の範囲。実ロードは未証明 |
+| 実行と作用 | 対象Artifactから選択Providerを実際に呼び、許可された範囲で結果・Effectが生じたか | 実AttemptとEffect観測。未取得・他Attempt・他Principalには拡張しない |
+| Consumer受領 | 実CLI、Studio/Web、別Host等が期待する値・版・開示を実際に受け取ったか | 観測したConsumerと条件に限った適合。全面同等性ではない |
+
+これは新しい4段階Gateではなく、#1121 Lowering、#2600/#2831 Build、#4495実Entry、#2586実Read、#2514独立Expectedから既に得られる証拠の整理である。
+
+移行前後の差は、**仕様の意図した変更**、**Target/Hostの能力差**、**Provider/生成器の実装不備**、**観測不足**の四つに分ける。例えばCLIからWebへ移しても同じ値を返す一方、Sessionの寿命、同時実行、キャンセル、ログ出力、実行権限が異なる場合がある。それらを未確認のまま完全互換とはしない。Providerに必要な時間的保証やTransaction保証がなければ、未知のFallbackで補完せず、既存の未対応・表現不能診断で停止する。
+
+「未対応」「一部取得できた」「取得を拒否された」「まだ検証していない」も分ける。実データが0件であるという事実と、対象集合が空であると**確かめられなかったこと**は異なる。利用可能なSourceとPluginの選択集合も実行時点で変わり得るため、以前の成功を現在の権限・Providerに自動適用しない。
+
+## 22. SQL・NoSQL・外部Providerをまたぐ実行モデル
+
+汎用実行モデルの最初の応用先として、データ処理の表現と実行条件を比較する。Queryの記法が共通化できても、RDB、ドキュメントDB、Graph DB、API、ログ/Streamで**結果の意味と実際の取得条件が同じになるとは限らない**。
+
+- **何を取得するか**：対象集合・条件・Join/Traverse、業務キー/物理キー、NULL・missing、多重度、重複、並び順、集計粒度。Native SQL/Native Queryの元の記法と方言を保持し、TEI標準表現への変換を強制しない。
+- **いつ・どの範囲か**：業務時点・Snapshotの一貫性、ページング、カーソル、Window、遅着イベント、途中取得、ProviderのRead Scope。部分Rowsetや観測済みページだけから全件の集計正しさを主張しない。
+- **どう実現したか**：論理QueryからTarget SQL/Provider QueryへLoweringした条件、Pushdown可能性、Unsupported Operator、実Bind値、実Provider Selection、Read Footprint。SQL文字列を得たこととDBが同じ意味で実行したことを分ける。
+- **何を変えたか**：Read、業務データのDML、Schema差分/DDL、Migration Plan、実Apply、独立Read-back、Cache失効を別の作用として扱う。Queryの図や分析結果から暗黙にDDLやData Migrationを実行しない。
+
+例えば、集計をJavaのメモリ処理からPostgreSQLへ移す場合、数量・金額が例題で一致しても、NULL伝播、Decimal丸め、GROUP BY粒度、重複、Snapshot時点が同じとは限らない。さらにNoSQLやAPIへ移すなら、Server側のFilter/Sort/Countの能力、ページ境界、順序保証、取得Scopeを確認する。条件が保存できない場合は、Resultの一致が偶然であっても適合を主張しない。
+
+この検討は#2387のQuery/SQL IR、#3270のData Source Workbench、#2497の意味保存写像、#3271の派生Snapshot/Cache、#1121のTarget Lowering、#2586/#2514の実Provider/独立検証へ引き渡す。汎用実行Graphを別のDB EngineやMigration実行器にしない。DB管理の標準範囲と外部Host/DB側の実Apply権限も#3270の既存Owner判断に従う。
+
+## 23. 最初に作る検証票と反例の追加
+
+最初のread-only投影では、専用Schemaを増やす代わりに、既存のSource/Meaning/Plugin/Artifact/Trace参照を並べた**人が読める照合表**を作る。これが「何を図示でき、何が不足しているか」の実装前検査になる。
+
+| 欄 | 記載する内容 |
+| --- | --- |
+| 対象と版 | 意味Subject/Revision、Source occurrence/byte、Role/Operator Pin、選択Scope |
+| 対応した関係 | Node/Edge identity、関係種別、Source/Meaning/Projection/Artifactへの対応、集約・欠落・未解決 |
+| 表現の保存条件 | 識別子、順序・多重性、NULL/missing、単位・精度、時間・粒度、取得範囲、編集可否 |
+| 実行の条件 | 必要Target能力、選択Provider、HostのGrant、Effect/再送条件、実Artifact、実Consumer |
+| 証拠と未確定 | 静的解析／独立Expected／実Call／実Read／Receipt／Consumer別の根拠。未実行・partial・unsupportedはそのまま |
+| 変更と再確認 | 変更種別、影響する依存、必要な下流資格、Source往復可否、未着手の確認先 |
+
+この照合表はCandidateと観測を一か所で見せるための**表示成果物**であり、Accepted MeaningやEvidenceの第二正本にはしない。CLI/JSONとStudioのGraph/Tableで同じ参照・Coverageを説明できるかを検証し、図からの書込みや実行操作は後段に分ける。
+
+追加の反例を既存#4198/#2497/#1124/#2514のScenarioへ渡す。
+
+| ID | 条件 | 検出する不正 | Owner |
+| --- | --- | --- | --- |
+| PX-30 | 同名Node・複数有向辺をGraph→Tree→Graphと表示 | 隠れた親・Edge identity・Multiplicityが消えるのに可逆編集と表示 | #2497/#1124 |
+| PX-31 | Runtime Traceに現れない静的Callがある | 未実行・未観測を「依存なし」や「参照0」と確定 | #4198/#2514 |
+| PX-32 | Sourceの説明コメントのみ変更、Meaningは不変 | Source byte・文書再確認と、意味・Artifact再生成を一律に扱う | #2600/#1124 |
+| PX-33 | Function出力値は一致するがSQLのGROUP BY粒度が違う | 代表値の一致を全件・同粒度の移植成功と表示 | #2387/#2514 |
+| PX-34 | NoSQL/APIの一ページ目だけを取得 | 未取得を0件／完全集合とみなして集計・通知を確定 | #3270/#2586 |
+| PX-35 | 実Targetに必要な順序保証がなく、Providerが自動的に代替 | 不足能力を隠したまま互換／成功と判定 | #1121/#951 |
+| PX-36 | 生成コードを手修正し、元Meaningへ逆投影しようとする | Sourceと生成Artifactの対応が不明なのに変更を業務仕様へ自動採用 | #1124/#2090/#2831 |
+| PX-37 | 複数Hostで同じOperation名が使われ、実Callの参照が片方だけ | 同名・同値により、別Host/Consumerの受領まで成功とする | #4495/#2586 |
+
+**実装・検証順**：P0のStage1→Stage2 Desktop実セルフビルド（#4583/#2831）と実Entry→実Provider二入口（#4495）を妨げない範囲で、#4198 R0の一Functionを対象とした照合表を作る。次に関係の投影損失（PX-30/31）とpure Functionの独立Expected、続いてSQL/Providerの粒度・取得範囲（PX-33/34）を比較する。最後に、二つのTargetを使う場合だけ実呼出し・Consumer受領へ進む。これらを全体P0の新必須Gateとはしない。
+
+**状態：設計・反例候補の統合。照合表の製品実装、PX-30〜37の試験、SQL/NoSQL実Provider、異言語Target、Owner意味受理はNOT RUN / NOT ACCEPTED。**
