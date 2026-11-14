@@ -966,3 +966,79 @@ Plugin自身をセルフビルドする際も既存Builder/BuildIntent/Stage1→
 
 **今回の追加は設計・実装引渡しのみ**。現行Draft中に存在するテスト・当該固定HEADでの旧実測を再利用した。M-1〜M-4の新変異試験、\`*.tei.md\`正式Reader、構文簡素化の実測、Plugin再帰、Stage2 Desktop製品E2E、Owner意味受理は**NOT RUN**。
 
+---
+
+## 18. 意味Graphを起点とするSource→図解→コード生成の最小縦断（2026-11-14、設計・受入追補）
+
+<!-- tei-desktop-semantic-graph-codegen-vertical-20261114 -->
+
+§14の「投影と編集は別」、§16の「GoへのdelegateだけではTEI実装とは数えない」、§17の「実定義変更による生成コード／振る舞いの較正」を**一つの小さなGraph意味実装**へつなぐ。他チャットでのY0〜Y3段階検証（旧*.tei CLI基線→新*.tei.md Reader→意味ある生成→外部Harness/Plugin自己生成）を採用しつつ、固有の新Grammar／Schema／Core Graph型を正式採用したことにはしない。既存Source／Canonical／Graph表示／Target Generator／Driver Scenario／Plugin ContractのOwnerを優先する。
+
+### 18.1 現行表示コードと意味実装の境界
+
+現行mainの\`reference/tei-studio-graph/graph.ts\`では\`GraphNode.id/label/x/y\`と\`GraphEdge.id/source/target/label\`を分離し、\`normalizeGraph\`が重複Node/Edge IDや存在しない端点を拒否する。**このIDはGraphInput内の描画用ID**であり、GoのAuthoritative Meaning・Source位置・Host権限の証明ではない。同モジュールの\`onSelect\`はNode IDだけを返し、Relationそのものの意味選択や編集契約はない。
+
+\`reference/tei-studio-workbench/presentation.ts\`の\`relatedGraph()\`はCatalogの\`parent\`を「parent:＋childのsubjectKey」という**表示用Edge ID**へ変換する。元Catalogの一つのparentから複数の異なる業務Relation occurrenceを復元できるとは限らない。現行Studio Graphが映している情報と、正式な意味Graphの全体を混同しない。
+
+最初の実装対象はGraph表示コンポーネントの「意味化」ではなく、**同じ限定FixtureのGraph意味を、型付きread-only Operation→既存Projection Adapter→表示／生成Targetへ別経路で渡す一巡**とする。意味IDが確実に得られない場合は表示専用とし、Source／Meaningへ戻る操作を拒否する。
+
+### 18.2 判別力の高い最小Graph Fixture
+
+**固定データ**：Node\`N-A\`と\`N-B\`はどちらも表示名「処理」だが、Logical Identityが異なる。Edge\`E-1\`と\`E-2\`はどちらも\`N-A → N-B\`だが意味Role／属性が異なる（合成例：\`requires\`と\`notifies\`）。逆向きの\`E-3\`は\`N-B → N-A\`。3辺を基準に、別の負例ではE-2の向きを反転する。Role名・IDは**合成Fixture内の例示**であり、TEIの正式Graph Grammarではない。
+
+| 変更・観測 | 意味上のExpected | 生成／表示上のExpected |
+| --- | --- | --- |
+| **N-A/N-Bの同名表示** | 2 Logical Nodeは別IDのまま | 図のラベルが同じでもSource Jump／生成結果の対象が入れ替わらない |
+| **E-1/E-2の並列辺** | 同方向でも2 Relation occurrence、異なるRoleを保持 | Source Graph・Query結果・生成Targetは2件を保持。図で重なるなら省略を明示 |
+| **E-3の逆向き** | \`B→A\`は\`A→B\`と異なる | 方向別のDependency解釈や生成結果でも逆方向として扱う |
+| **E-2の向き変更** | 受理された場合は意味変更 | 変更前の生成物の無条件再利用なし。影響外Artifactまで必ず変わるとは限らない |
+| **E-1のRole／属性変更** | Meaning変更。端点ID一致だけでは意味同一性を保証しない | 必要なRule/生成分岐／Expectedの変化を独立確認 |
+| **x/y・表示順のみ変更** | MeaningとFunction実動作は不変 | 描画Artifact変更は許容。意味Artifactの再利用資格は実Build依存に従う |
+| **別Workspace／Source ABA** | 同IDでもOrigin・版が違えば旧資格を継承しない | 旧GraphやGenerator Replyを新Meaningとして採用しない |
+| **Edgeの一部が未読込／秘匿** | 部分Graphで不存在を主張しない | 必須閉包が不明なら実行前診断。非公開情報の漏えいを防ぐ |
+
+このFixtureはBusiness/Function/Data/Process図、Plugin依存・Build Graphなどに共通する圧力試験として使えるが、\`requires/notifies\`を公式の業務Effectや実Build依存に昇格しない。用途別OperatorとRequired集合の受理が先に必要となる。
+
+### 18.3 Y0〜Y3で「図を描く」から「意味Graphで生成する」へ進む
+
+1. **Y0：現行SourceのHeadless基線**。既存Loaderが読める\`*.tei\`／契約JSON等の公開合成Fixtureを、既存Canonical／型付き参照で\`N-A/N-B/E-1/E-2/E-3\`のIdentity・Role・向き・多重性へ解決する。意味解釈が未対応のときは\`unresolved\`。CLI／Source Indexに実Subject・読込ScopeとSource位置・版・partial/unknownを確認する。描画JSONの整合だけでは合格しない。
+2. **Y1：\`*.tei.md\`実Reader**。#2621/#988/#2620の正式選択・Markdown Container→Language Parser→Role→Typed Meaningを通し、Source表／Graphviz等のspanを保持してY0と比較する。\`TEI_MD_PARSER_UNBOUND\`が残る間は**未成立**。説明用図から自動で実行定義を作らない。
+3. **Y2：意味を消費するGenerator**。二本のEdgeを区別する処理（例：起点・Relation Roleで絞り、Occurrence IDを保持する一覧／依存判定）を既存Operator／Generatorで生成し、CLIで実動作を観測する。描画座標をGo/TSの意味分岐にしない。Edgeの向き／Role変更で生成した処理と独立Expectedが適切に変わること、固定GoにE-1/E-2の意味を埋め込んでいないことを確認する。
+4. **Y3：実Consumer／Plugin／外部Harness**。Y2と同じMeaning/Scenario/独立ExpectedをStudio Graph／Table／Source NavigateとCLI／外部Harnessへ接続。後続でGenerator／Test Plugin ContributionそのもののTEI生成を試す。AIの図や合格判定をAuthority・Owner受理に昇格しない。
+
+**最短順**はY0のHeadless意味Fixtureと独立Expectedを先に揃え、Y1とY2を別レーンで進める。新\`*.tei.md\` Reader完成を現行JSON／旧DSLによるY2の予備検証の先行条件にしない一方、Y1なしで「\`*.tei.md\`駆動」とは呼ばない。実Studioではread-onlyとSource Jumpを先に扱い、意味Relation編集／Pinや実Effectを先行必須にしない。
+
+### 18.4 Source→Meaning→生成→検証の追跡可能性
+
+一つの変更について、既存Source Index／Build Plan／ArtifactSet／Scenario／Receiptで追える情報を**同一対象の時系列**として並べる。新しいGraph Trace Storeや第二Canonicalを作らない。
+
+| 追跡欄 | 記録する内容 |
+| --- | --- |
+| **Source** | Workspace／Root、原文File・byte digest・span、Language/Role選択と版、対象ID |
+| **Meaning** | Node/Relation occurrence ID・Role・向き・属性、Scope・Required closure、Meaning Revision、未解決の範囲 |
+| **Projection** | Table/Tree/Graph/説明と、表示で失われた情報。座標・描画Edge IDは別 |
+| **Generator** | 選択Operator/Plugin/Builder、実読込Source/Transform byte、Generated Source、Attempt |
+| **Artifact** | 正式Build Subject、Target/Toolchain、ArtifactSet digest、実Consumerが読み取ったbyte |
+| **Expected／Actual** | 独立Scenario、正常・変異ケース、CLI／Windows／外部HarnessごとのResult・資格上限 |
+
+この追跡はStudioから「この行・このEdgeがどのSourceに由来し、どの生成物に関係するか」を説明する用途にも使う。ただしクリックから実Generator消費・OS Consumer受領を捏造しない。Not-found・permission-denied・not-loaded・partial・Required closure不明を区別する。
+
+### 18.5 既存Ownerへ引き渡す独立負例
+
+| Case候補 | 破壊的変更・対照 | Expected |
+| --- | --- | --- |
+| **SGC-01** | 同Labelの\`N-A/N-B\`を一覧・Graph・Sourceで表示 | Logical ID 2個を維持。誤った同一化0 |
+| **SGC-02** | 同方向\`E-1/E-2\`を異Roleで保持 | 2 occurrence維持。描画用\`parent:\`を意味Relation IDへ昇格しない |
+| **SGC-03** | E-2の向き／Role変更とx/yのみの変更を比較 | 意味変更なら生成処理・Expectedへ影響、座標変更なら意味処理不変 |
+| **SGC-04** | 管理\`*.tei.md\` Parser未束縛／旧新同Subject衝突 | Markdown閲覧成功だけでY1合格にしない |
+| **SGC-05** | 固定GoがGraphの関係を処理しTEI側Role変更を無視 | 生成コードと実動作の因果連鎖がないためY2不合格 |
+| **SGC-06** | Graph→Treeで一方のRelationが非表示のまま保存操作 | 原Relation削除／自動書戻し0 |
+| **SGC-07** | 必要Edgeがpartial/permission-denied／Workspace A→B→A | 未知や旧資格を自動で現在の受理済み意味に変換しない |
+| **SGC-08** | CLI・Generator・Windows実使用を別Source／別Attemptで合算 | 局所実績は保持、全体一巡は未成立 |
+
+**Owner**：#1120（安定ID・意味参照の既存実装）、#2495/#2497（GraphとProjection Loss）、#2620/#2621/#988（Raw/Typed／Role／Reader）、#1124/#1824（Studio）、#1180/#2514（独立Expected）、#2831/#4583（Build・Windows）、#951/#4646（Plugin）。SGC番号は引渡しの候補であり、新しいScenario正本やRunnerではない。
+
+**停止線**：Y0＝実Sourceを読んだ意味Graph、Y1＝\`*.tei.md\`実Readerによる同等の解決、Y2＝意味変更が**生成した処理と独立Expected**へ作用、Y3＝実Consumerが同一対象を受領、を別に判定する。**最優先のnon-Plugin Studio BuildIntent→実Stage1→Stage2 Windows WebView2に追加Hard Gateを設けない**。
+
+**状態**：現mainのGraph表示コードと既存Issueを静的照合した設計・受入候補。新Graph意味Reader、Y0〜Y3縦断、Graphからの実Generator、Source書戻し、実OS試験、Owner受理は**NOT RUN**。現行Graph\`normalizeGraph\`や#4572/#4587のInspector生成結果を今回のSGC試験PASSには転用しない。
+
