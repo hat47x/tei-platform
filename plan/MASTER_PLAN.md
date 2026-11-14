@@ -821,6 +821,39 @@ tei external-candidates
 
 **到達条件と優先順位**：R2 main統合済み→R3の同一Evidence・独立二Consumer実受領→T1-Bの一機能対応Preview→T2の旧実測／受理済み意味／新実測・SHO Save/Reopen。修正済み#4584のSubject存否判別を各Consumerで利用できるか、#4570の三視点server経路と実Windows Desktopの差、生成Inspector別HEAD成功の非加算は別資格として保持する。TEI Studioセルフビルドと#2586通常Product Provider Readの完了をR3に依存させない。
 
+<!-- rea-semantic-admission-process-witness-20261114 -->
+#### REA観測をTEIの意味・実行へ結ぶ最小接続（2026-11-14／設計統合、製品受入は別）
+
+**位置付け**：外部逆解析ツール **Reverse Engineer Anything（REA）** の成果は、TEIのData／Function／Businessを理解するための**根拠付き観測候補**である。業務・会計の **Resource–Event–Agent** モデルとは名称だけが共通で、同一機構ではない。将来つなぐ場合も、外部ソース中の「Agent」「Event」から業務上の担当者・責任・認証Principal・実行時Eventを自動確定しない。三要素固有の解釈はPlugin側、Identity・Source/Relation・型付きOperation・Projection・検査はTEI共通側に置く（#1124/#1125/#1126/#4198/#3394）。
+
+**4つの区別を保ったまま取り込む。** ①ソースの記述・構文（取得集合、位置、Producer版）、②観測した構造（Node/Edge ID、方向・多重度、Graph coverage）、③業務上の意味の候補（Data/Function/Businessの対応、保留、反証）、④評価と実現（実Query/Provider、Business Operation、生成Artifact、Consumerでの動作）は別々の証拠である。標準データ様式の「型・構造・表現・Facet」も直交させ、Graphviz/Markdown/図面/説明文は同じ根拠付きCandidateの**用途別の見せ方**とする。見せ方を変えても外部Element IDを正式TEI Qualified Refへ上書きしない。DSL新構文やJSON Schema取込みは将来のLanguage Plugin/宣言的構文Adapterで検討し、R3のために第二Parser・第二Canonical・新DSL文法を必須化しない（#4619/#4359/#2497）。
+
+| 接続段階 | 固定する根拠 | この段階で確定できないこと |
+| --- | --- | --- |
+| **観測の受領** | Producer Evidence ID、raw byte digest、Tool/版・Producer Attempt、申告Source Revision、Observed/Inference/Unavailable、Node ID、有向Relation ID、Unknown/Unselected/Coverage | 元Sourceの現在性、必要Source全量、正式TEI Subject/業務意味 |
+| **問いに沿った照合** | Question、必要なSource/Graph/Function/Manual範囲、実Consumed集合、多対多候補と未決・反証 | 参照0による未使用確定、Graph completeからBusiness complete、同名による自動採用 |
+| **人が受理する変更** | TEI Qualified Ref、元Source版/Occurrence/Slot、差分・影響、Owner決定、Save後の再Read・再Projection | UI選択、AI要約、SHO草稿やBuild成功による無承認Source変更 |
+| **生成・実行・照合** | Provider選抜/実Invoke、生成Input/Artifact/使用Byte、実DB/Host Context、Result/Effect/独立Consumer受領 | byte一致からの実動作、Function exit0からのBusiness完了、応答成功からのDB commit |
+
+**プロセス図との意味境界**：TEI共通の「Bootstrap → 待受け → Event/Request → 処理 → 必要時Response」という実行フローでは、REA Evidenceの**取得・閲覧要求**と、解析対象アプリケーションで推定した**イベント処理の流れ**を別レーンに描く。前者はHost管理Evidenceを読んでRecipientへ届けるRead-only Operationの実証、後者は旧実装に関する静的な観測候補である。推定されたHandler/TimerをTEIの実行可能なFunction/Actionへ暗黙登録しない。正式Function/Actionが業務意味、Script/Providerが実装を所有し、起動の適格性・現在Grant・Effect/Receiptを別途検収する。未実装部品をTODO＋Mockで全体シミュレーションする場合も、Mock成功をLegacy実測へ昇格させない（#1125/#1129/#4614）。
+
+**R3-Cを縦断試験の最小断面とする。** 同じCaptured REA 6.8.0 Producer Evidenceから、通常の tei external-candidates 実子Processと、実Native Wails/WebView2 JSの**別Product Consumer**をそれぞれ起動して対照する。Host固定Selector→許可Rootからのbounded実Read→既存 ExternalCandidatesFromBytes →許可済みProjection→JS/DOM実受領の順に、Parent/Child Attemptの系譜・受領byteと版を記録する。Producer、CLI、Host Reader、Native ConsumerのAttemptを一つのIDへ潰さない。Selected/Invoked/ReceivedとNode ID・Relation ID/向き・Unknown/Unselectedを受信側で独立照合する。同じGo関数の再呼出しやテスト専用子ProcessはR3-C達成とはしない。Native専用Serviceが server build のNetwork公開面を増やしたら不合格とし、一般StudioBridgeに安易にREAメソッドを増やさない（#4661/#4627/#4503/#2516）。
+
+**最初の業務上の問いは一つに絞る。** 「旧システムのFunction Fは、どのDataを読み書きするか」。REA構造証拠、X-TEA宣言、SQL/FKの観測、手作業、Target PGの実Readは**別Producer・別粒度**として併置し、対応は0..N対0..Nの候補とする。SQLに現れるテーブル名からFunctionの業務意味やC/R/U/Dを確定しない。GraphCoverage=completeでもDataのみ支持・Function/Business不明なら unknown/unsupported を保持（TEA-Q41）。Legacy Function名と新PG結果の一致も、旧実測L／Ownerが受理した期待D／新実測Tの同値証明ではない（TEA-Q43）。Previewから通常のTEI Sourceへ明示採用→Save/ReRead→SHO出典再解決は**R3-Cの後の独立受入**である（#1124/#3788/#2497/#4317/#4467）。
+
+**既存Expectedへ加える検証観点（新しい試験正本は作らない）**：
+
+| 項目 | 必須の正負対照 | 既存Owner |
+| --- | --- | --- |
+| **REA-XP-01 受領の系譜** | 同一Producer rawをCLIとNativeで別々に実Invoke/Receiveし、各Attempt/受領版を保持。共通関数を二度呼ぶだけなら不合格 | #4661/#3394/#2514 |
+| **REA-XP-02 意味を自動昇格しない** | Graph completeかつData支持・F/B unsupported、同名別ID・平行Edgeでも、Meaningや不存在・未使用を確定しない | #1124/#4487/#3788 |
+| **REA-XP-03 Source/Selection競合** | Source/Root/PinのA→B→A、別Tab後着、閲覧中Bに対するPin A再検証でもBのDirty Buffer/Graphを変えない | #4503/#4515/#1124 |
+| **REA-XP-04 開示前の拒否** | 他Workspace/未知Selector、Raw改変・4MiB超、Current Grant不適格、Private二世界で、許可外Read・Delivery・DOM/ARIA/ログ漏洩を拒否 | #4503/#2516/#3421 |
+| **REA-XP-05 業務上の採用** | Source版・Qualified Target・Owner決定を満たすときだけPreview→Save/ReRead。手作業・JOIN fanout・partial/NULL/未取得を残す | #1124/#1126/#2497/#2586 |
+| **REA-XP-06 実行比較の上限** | L（旧実測）/D（Owner期待）/T（新実測）とProvider actual Invoke、Result/Effect/Recoveryを別評価。MockやBuild、REA受領だけなら未実施 | #2586/#2387/#1174/#1180 |
+
+**順序と資格**：①#4625/#4630/#4637の各HEAD・積層差分・Ownerレビュー、②#4661のNative限定導線と二Product Consumer実受領、③一Functionのread-only対応Review・明示的なSource保存、④SHO実Save/Reopen、⑤L/D/Tの独立実測比較、と区切る。#4637 HEAD 9b8f5ca9b50d34040cfa0682f026f4fc29090f01 はRepository Healthを含め**12/12 Workflow completed/success**を再照合した。ただしDraft／main未統合で、R3-C、Current Principal/Grant、Owner Meaning、SHO Writerや旧新実測は未成立。Studio DesktopのStage1→Stage2セルフビルド（#4583/#2831）と通常CLIからの実PG Provider Read（#2586）はREAのHard Gateにしない。新Host/Authority/Parser/Receipt Engineを設けず、既存Operation・Host・Test Ownerを再利用する。
+
 **検討中の横断追補（DBアクセス・Query/2way SQL）**：対象DataSourceの既存Binding解決、DB別Native SQLの選択規約、SQL編集時の診断と分岐検証、異種DBでの意味同値性を、[DBアクセス・Query選択・2way SQLの最小適合計画](https://github.com/hat47x/tei-platform/issues/2622#issuecomment-6772875802)で小さな実証へ分解する。#2611・#2622・#2387・#2667に既存の責務を残し、新しいCore API・正式DSL構文・実DB対応の採用・完了を意味しない。
 **2026-11-09／Product Queryの物理入力乖離を解消（独立Source Fixture段階）**：[Workbench設計§22](design/DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)と[隔離PG Product Fixture](../examples/data-source-workbench/README.md)に、既存`postgres_seed.sql`の`sales_order`4列と、実`order_entry.recent_orders` SQLが要求する`public.orders`5列＋`:from`の**物理Schema不一致**を反映した。従来F-01〜10を壊さず、専用`recent_orders_product_seed.sql`を別Sourceとして追加し、3行／境界一致2行／後方0行の独立Source-static ExpectedをGoで判別する。**これは実PostgreSQL接続・Provider Invoke成功ではない**。最初の未成立実行辺は、固定Function/Queryの実Consumed SQL+args→Alias/物理Instance/Provider→実Rowset/Function Data Context。Ownerは#2586、実ProductのCLI/Studioは#1251、Schema適用は#2892。main #3540の静的Inspector S2-referenceは実CLI/Wails経路まで前進したが、外部Plugin Build/Grant/2×2実BOMを証明せず、異質JSONLは後続比較とする。新Gate/Host/Query正本なし。
 
