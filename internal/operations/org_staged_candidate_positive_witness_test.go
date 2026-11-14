@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"tei/internal/application"
+	"tei/internal/core"
 	"tei/internal/driver"
 	"tei/internal/driver/queryresult"
 	"tei/internal/environment"
@@ -182,11 +183,28 @@ func TestOrgStagedPositiveCandidatePartialIsNotComplete(t *testing.T) {
 // This uses the actual Product Function Context projector, but the query result
 // is deliberately synthesized in process. It does not perform a Provider read.
 func orgPositiveSyntheticNativeContext(t *testing.T, values [][]any) functioncontext.Context {
+	return orgPositiveSyntheticContext(t, values, "organization.role_assignment", []string{
+		"role_assignment_id", "person_id", "role_id",
+	})
+}
+
+// Both Source-backed Data shapes use the real Function Context projection.
+// Only the input BrowseQueryEnvironmentExecution is synthetic; no DB is read.
+func orgPositiveSyntheticResponsibilityContext(t *testing.T, values [][]any) functioncontext.Context {
+	return orgPositiveSyntheticContext(t, values, "organization.responsibility", []string{
+		"responsibility_id", "subject_person_id", "object_org_unit_id",
+	})
+}
+
+func orgPositiveSyntheticContext(t *testing.T, values [][]any, dataID string, columns []string) functioncontext.Context {
 	t.Helper()
+	if len(columns) != 3 {
+		t.Fatal("this synthetic fixture expects three columns")
+	}
 	cols := []queryresult.Column{
-		{Raw: "role_assignment_id", Attribute: "organization.role_assignment.role_assignment_id"},
-		{Raw: "person_id", Attribute: "organization.role_assignment.person_id"},
-		{Raw: "role_id", Attribute: "organization.role_assignment.role_id"},
+		{Raw: columns[0], Attribute: core.CanonicalID(dataID + "." + columns[0])},
+		{Raw: columns[1], Attribute: core.CanonicalID(dataID + "." + columns[1])},
+		{Raw: columns[2], Attribute: core.CanonicalID(dataID + "." + columns[2])},
 	}
 	execution := driver.BrowseQueryEnvironmentExecution{
 		Environment: "development",
@@ -204,11 +222,11 @@ func orgPositiveSyntheticNativeContext(t *testing.T, values [][]any) functioncon
 				Datasource: &application.DatabaseRequirement{
 					Alias: "org_read", TargetDatabase: "org_store",
 				},
-				Data: &semantic.Data{ID: "organization.role_assignment"},
+				Data: &semantic.Data{ID: core.CanonicalID(dataID)},
 			},
 			Result: driver.BrowseQueryResult{
 				Raw: queryresult.RawResult{
-					Columns: []string{"role_assignment_id", "person_id", "role_id"}, Rows: values,
+					Columns: columns, Rows: values,
 				},
 				Mapped: queryresult.MappedResult{
 					Columns: cols, Rows: values,
@@ -257,55 +275,124 @@ func orgPositiveRolesFromNativeContext(ctx functioncontext.Context) ([]orgPositi
 	return out, nil
 }
 
+// This test-only consumer takes Responsibility values from a *second*
+// Function Context. Same-name labels and a cursor EOF are not authority to
+// join; the synthetic cohort assertion remains separate from these values.
+func orgPositiveDutiesFromNativeContext(ctx functioncontext.Context) ([]orgPositiveDuty, error) {
+	if string(ctx.Function.Data) != "organization.responsibility" || len(ctx.Columns) != 3 {
+		return nil, fmt.Errorf("unbound Responsibility rowset")
+	}
+	for i, want := range []string{
+		"organization.responsibility.responsibility_id",
+		"organization.responsibility.subject_person_id",
+		"organization.responsibility.object_org_unit_id",
+	} {
+		if string(ctx.Columns[i].Attribute) != want {
+			return nil, fmt.Errorf("unbound Responsibility column %d", i)
+		}
+	}
+	out := make([]orgPositiveDuty, 0, len(ctx.Rows))
+	for _, row := range ctx.Rows {
+		if len(row) != 3 {
+			return nil, fmt.Errorf("incomplete Responsibility row")
+		}
+		fields := [3]string{}
+		for i := range fields {
+			v, ok := row[i].Value.(string)
+			if row[i].State != functioncontext.StateValue || !ok || v == "" {
+				return nil, fmt.Errorf("Responsibility has missing or null identity at column %d", i)
+			}
+			fields[i] = v
+		}
+		out = append(out, orgPositiveDuty{id: fields[0], person: fields[1], unit: fields[2]})
+	}
+	return out, nil
+}
+
 // The native Context from a completed cursor cannot independently establish
 // that the RoleAssignment and Responsibility universes are complete. A Product
 // Consumer must not copy the fixture's closed-world flag into its own claim.
 func TestOrgStagedPositiveCandidateActualFunctionContextCoverage(t *testing.T) {
-	duties := []orgPositiveDuty{
-		{id: "RS1", person: "P1", unit: "D1"},
-		{id: "RS2", person: "P2", unit: "D1"},
-	}
+	// Role and Responsibility are separate Product Context projections.
+	// Their observed values are read by the test Consumer, not passed as
+	// synthetic role/duty structs straight into the candidate probe.
 	for _, tc := range []struct {
 		name              string
-		rawRows           [][]any
-		duties            []orgPositiveDuty
+		roleRows          [][]any
+		dutyRows          [][]any
 		expectedClaim     string
 		expectedNotUnique bool
 	}{
 		{
-			name: "zero native rows", rawRows: [][]any{}, duties: nil,
+			name: "zero native rows",
+			roleRows: [][]any{},
+			dutyRows: [][]any{},
 			expectedClaim: "partial-none",
 		},
 		{
-			name: "one native row", rawRows: [][]any{{"RA1", "P1", "R1"}},
-			duties: duties[:1], expectedClaim: "partial-one",
+			name: "one native row each",
+			roleRows: [][]any{{"RA1", "P1", "R1"}},
+			dutyRows: [][]any{{"RS1", "P1", "D1"}},
+			expectedClaim: "partial-one",
 		},
 		{
-			name: "two native rows", rawRows: [][]any{{"RA1", "P1", "R1"}, {"RA2", "P2", "R1"}},
-			duties: duties, expectedClaim: "partial-many", expectedNotUnique: true,
+			name: "two native rows each",
+			roleRows: [][]any{{"RA1", "P1", "R1"}, {"RA2", "P2", "R1"}},
+			dutyRows: [][]any{{"RS1", "P1", "D1"}, {"RS2", "P2", "D1"}},
+			expectedClaim: "partial-many", expectedNotUnique: true,
+		},
+		{
+			name: "one role, no responsibility",
+			roleRows: [][]any{{"RA1", "P1", "R1"}},
+			dutyRows: [][]any{},
+			expectedClaim: "partial-none",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			context := orgPositiveSyntheticNativeContext(t, tc.rawRows)
-			if context.Rowset.RowCount != len(tc.rawRows) || !context.Rowset.FullyRead {
-				t.Fatalf("actual Function Context rowset: %+v", context.Rowset)
+			roleContext := orgPositiveSyntheticNativeContext(t, tc.roleRows)
+			dutyContext := orgPositiveSyntheticResponsibilityContext(t, tc.dutyRows)
+			for _, read := range []struct {
+				ctx functioncontext.Context
+				n int
+			}{
+				{ctx: roleContext, n: len(tc.roleRows)},
+				{ctx: dutyContext, n: len(tc.dutyRows)},
+			} {
+				if read.ctx.Rowset.RowCount != read.n || !read.ctx.Rowset.FullyRead {
+					t.Fatalf("actual Function Context rowset: %+v", read.ctx.Rowset)
+				}
+				if read.ctx.Coverage.Status != semantic.CoverageUnestablished ||
+					read.ctx.Coverage.EmptyJustified {
+					t.Fatalf("cursor EOF incorrectly established required cohort: %+v", read.ctx.Coverage)
+				}
+				if read.ctx.Binding.Assertion != functioncontext.BindingHostAsserted ||
+					read.ctx.Source.SourceRevision != functioncontext.SourceUnknown {
+					t.Fatalf("native Context claimed unverified Source or connection: %+v %+v",
+						read.ctx.Binding, read.ctx.Source)
+				}
 			}
-			if context.Coverage.Status != semantic.CoverageUnestablished ||
-				context.Coverage.EmptyJustified {
-				t.Fatalf("cursor EOF incorrectly established relation coverage: %+v", context.Coverage)
-			}
-			// This is a conservative test adapter, not a reusable Product Rule.
-			// Cohort identity here is supplied by the fixture, not Function Context.
-			read := orgPositiveRead{
-				cohort:          "synthetic-s1",
-				closed:          context.Coverage.Status == semantic.CoverageComplete,
-				cursorFullyRead: context.Rowset.FullyRead,
-			}
-			observedRoles, err := orgPositiveRolesFromNativeContext(context)
+			// These two Consumers preserve the distinct Context outputs.
+			observedRoles, err := orgPositiveRolesFromNativeContext(roleContext)
 			if err != nil {
 				t.Fatal(err)
 			}
-			got := orgPositiveWitnessProbe(observedRoles, tc.duties, read, read)
+			observedDuties, err := orgPositiveDutiesFromNativeContext(dutyContext)
+			if err != nil {
+				t.Fatal(err)
+			}
+			// This cohort identity is test-only; the Product Context has
+			// not verified a same-snapshot read across the two Queries.
+			roleRead := orgPositiveRead{
+				cohort: "test-fixture-cohort",
+				closed: roleContext.Coverage.Status == semantic.CoverageComplete,
+				cursorFullyRead: roleContext.Rowset.FullyRead,
+			}
+			dutyRead := orgPositiveRead{
+				cohort: "test-fixture-cohort",
+				closed: dutyContext.Coverage.Status == semantic.CoverageComplete,
+				cursorFullyRead: dutyContext.Rowset.FullyRead,
+			}
+			got := orgPositiveWitnessProbe(observedRoles, observedDuties, roleRead, dutyRead)
 			if got.claim != tc.expectedClaim || got.notUnique != tc.expectedNotUnique {
 				t.Fatalf("native Context overqualified observed candidate: %+v", got)
 			}
@@ -321,5 +408,12 @@ func TestOrgStagedPositiveCandidateNativeNullIdentityIsUnresolved(t *testing.T) 
 	}
 	if _, err := orgPositiveRolesFromNativeContext(ctx); err == nil {
 		t.Fatal("a NULL Person ID was silently joined or converted to no candidate")
+	}
+	dutyCtx := orgPositiveSyntheticResponsibilityContext(t, [][]any{{"RS1", nil, "D1"}})
+	if dutyCtx.Rows[0][1].State != functioncontext.StateNull {
+		t.Fatal("Responsibility NULL lost in native Function Context")
+	}
+	if _, err := orgPositiveDutiesFromNativeContext(dutyCtx); err == nil {
+		t.Fatal("a NULL Responsibility subject Person ID was treated as no candidate")
 	}
 }
