@@ -734,7 +734,7 @@ Build Artifact Digestの一致だけでは、Publisher Identity、外部Store/Re
 
 ### 23.5 次の実装を小さくし、独立Expectedを保つ
 
-P0-A：既存BuildIntentの`Subject.Kind=plugin`制約に対して、非Plugin Studioの正式SubjectとBuildExecution/ArtifactSetを対応付ける。実Go Recipe存在を形式資格とみなさず、Plugin偽装を拒否。P0-B/C：H0/H1 Source MemberとStage1実Child→Stage2 Windows実Consumerを同一Attemptで検証。P0-D：Windows OS情報取得のTimeoutを、WebView2実機能失敗とは独立に扱う。[Desktop #4587](https://github.com/hat47x/tei-platform/pull/4587)ではOS版確認の外部PowerShell起動を除く限定修正（HEAD `9b58533d`）を実装。Windows GUI・WebView2の検査条件は維持し、**新HEAD CIの実完了前には通常版合格としない**。
+P0-A：既存BuildIntentの`Subject.Kind=plugin`制約に対して、非Plugin Studioの正式SubjectとBuildExecution/ArtifactSetを対応付ける。実Go Recipe存在を形式資格とみなさず、Plugin偽装を拒否。P0-B/C：H0/H1 Source MemberとStage1実Child→Stage2 Windows実Consumerを同一Attemptで検証。P0-D：Windows OS情報取得のTimeoutを、WebView2実機能失敗とは独立に扱う。[Desktop #4587](https://github.com/hat47x/tei-platform/pull/4587)ではOS版確認の外部PowerShell起動を除く限定修正（HEAD `9b58533d`）を実装した。同HEADの[Windows #43572235468](https://github.com/hat47x/tei-platform/actions/runs/43572235468)は**生成版・通常版の実WebView2両Jobともcompleted/success**。これで旧HEADのOS版Probe timeoutによる通常版未検収は解消したが、**正式な非Plugin BuildExecution/ArtifactSet・Stage1 Studio→Stage2 Studio自己再構築は別の未実証条件**である。
 
 並行P1：REA Host Reader/Consumer、Wails公開面の実HTTP/WS Current Grant、Query RA-0の衛生・Binary依存失敗の修正。P2：RA-2から正式Product Provider/通常CLI二Consumerへの接続と実Release Asset公開→別Consumer取得。理想段階別Contribution、生成器論理/物理Graph最適化の汎用化、Web共有配備は未受理の設計比較に留める。
 
