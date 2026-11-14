@@ -859,7 +859,7 @@ QX-01〜08は既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)�
 **状態**：本節は設計書のみ。QX-01〜08の新Go/Windows/Stage2試験、正式なOwnerによる意味受理はNOT RUN／NOT ACCEPTED。
 
 
-## 25. 2026-11-14：Query生成CLIと正式Sourceの接続、取得範囲・Build実体・外部Harnessの受入
+## 26. 2026-11-14：Query生成CLIと正式Sourceの接続、取得範囲・Build実体・外部Harnessの受入
 
 ### 25.1 「Sourceを使った」の内訳を揃える
 
