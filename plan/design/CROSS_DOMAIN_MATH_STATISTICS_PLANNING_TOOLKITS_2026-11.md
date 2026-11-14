@@ -526,7 +526,7 @@ Window候補5件はSHA-256で元ファイルと結び付いているが、**候�
 
 同時に、原文の五つの`*.tei.md`に手書きの観測行が一致することを既存`sourceindex.RangeFromOffsets`でbyte位置まで照合する。これは**試験対象の字句的なSource対応**であり、正式ReaderがMarkdownのどの表を実定義として選んだかの検査ではない。Graphの限定Source Index実証と、WindowのC0実DBをつなぐための引渡し材料であり、TEIの正式Role／Operator受理やC1／C2の完成とは区別する。
 
-[Manifest管理RootとPinned Sourceの予備試験 #4745](https://github.com/hat47x/tei-platform/pull/4745)はGraph／Ruleの製品S0に向けた未統合の検証候補である。Window側で第二のWorkspace Loaderを作らず、#2621/#988の既存Ownerが正式Readerを接続した後に、**同じPinned Sourceから選択した表Cell→型付き観測→計算定義→生成SQL→実Provider→独立Expected**を一つの試行として追う。複数HEADの局所CIを寄せ集めて、製品の一貫生成が完了したとは扱わない。
+[Manifest管理RootとPinned SourceのS0予備試験 #4751](https://github.com/hat47x/tei-platform/pull/4751)はmainに統合済みである。実Workspaceの管理Root選択、宣言外draftの隔離、Pinned Rootの元byte、Source Indexの失効をテスト内で検証したが、正式な`Workspace.Load`は依然として`TEI_MD_PARSER_UNBOUND`を返す。Window側で第二のWorkspace Loaderを作らず、#2621/#988の既存Ownerが正式Readerを接続した後に、**同じPinned Sourceから選択した表Cell→型付き観測→計算定義→生成SQL→実Provider→独立Expected**を一つの試行として追う。複数HEADの局所CIを寄せ集めて、製品の一貫生成が完了したとは扱わない。
 
 ### 正式Readerが未接続である現状から、最小の実読取りへ進む
 
