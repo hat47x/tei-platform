@@ -1746,9 +1746,25 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 
 **順序の補正**：#4490が先に定めたBEH-01/02の二時点結果差分・非出力依存/取得完全性を保持する。OI-1は合成Referenceでの候補評価を並行できるが、製品のQuery/Provider/Rule→Consumer合格は実Read Cohortと必要Readの証拠が揃ってから判定する。重要な反例は、可視の人物1件が同じでも完全Readならcomplete-one、RLS/Limit/欠測で範囲不明ならincomplete-or-unknownとなること、候補があってもHost Grantは生まれないこと、二経路のPerson重複を根拠Pathごと保持することである。
 
-**他レーンの再利用**：main統合済みApplication Graph #4681、Plugin共通文書Issue #4679と後継Draft #4689、CLI in-process/Studio子Serverの配置候補Draft #4688/#4690、CLI-first自己生成 #4676/#4680へ接続する。製品入口や文書探索を模倣した第二Runtime/Doc Registry/Resolverは作らない。通常tei CLI実Provider Read #2586とDesktopセルフビルド #2831の独立P0は不変。
+**他レーンの再利用**：main統合済みApplication Graph #4681、Plugin共通文書Issue #4679とmain統合済み #4689、CLI in-process/Studio子Serverの配置候補Draft #4688/#4690、CLI-first自己生成 #4676/#4680へ接続する。製品入口や文書探索を模倣した第二Runtime/Doc Registry/Resolverは作らない。通常tei CLI実Provider Read #2586とDesktopセルフビルド #2831の独立P0は不変。
 
 **資格**：§26・本段落はdocs-onlyの実装引渡しであり、今回の実Rule、Go/PG、CLI、Host、Plugin文書取得、Windows/Studio実試験、Owner採用はNOT RUN / NOT ACCEPTED。
+
+
+<!-- org-c1-change-impact-multi-axis-20261115 -->
+### 2026-11-15 高度組織モデル：異動・職位・役割・責任を別Relationとして解決する（補遺§27）
+
+**実装契約**：[組織C1横断受入補遺§27](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)に、現行 `org-staged-axis` 実Sourceと[main統合済みの構造・評価・変更同値設計 #4667](https://github.com/hat47x/tei-platform/pull/4667)を対応付けた。**Membership・Occupancy・RoleAssignment・Responsibility・Directive・Caseを単一の所属・権限状態へ縮約しない**。所属・職位は二時点属性を持つが、現在のRoleAssignment/Responsibilityはその二時点列とCase C1関係を持たない。Membership→PersonやOccupancy→Personの正式なRelationも現Sourceでは欠けるため、未採用の人物解決経路を創作しない。
+
+**既存Ownerと次の着手**：
+- **#4490／#2386／#1126**：先行ORG-BEH-01/02の実時点・非出力依存・Read Completenessを保ち、次にOI-1/CR-00〜08の候補実Reader/Rule、さらに本補遺ORX-1〜3で「必要Relationの欠落」「職位占有人物の未解決」「時点を持たないRole/Responsibilityのas-of偽合格」を反証する。DomainごとのPerson/Position/Subject対応とDuty/Case意味はOwnerが採用したProfileだけに限定。
+- **#4490／#4501／#1174／#1444**：異動・役職交替・責任変更・Directive発効・Case移管を別の変更Intent/Revision/Effectとし、旧新責任の4象限、Current Grant、実Receipt/ACKを独立検証。r7のFTE・A2訂正からCase C1や実権限を推論しない（ORX-4〜6）。
+- **#2497／#1124／#2582／#2600**：複数親のOrgUnit Graph、渡辺式ER図の**親左・子右と識別／非識別線の区別**、Mermaid直接Sourceの対応可能範囲とLoss-aware Viewを再利用。非出力依存も含む問い相対の再資格化、無関係な変更の過剰失効防止、A→B→Aでの旧受理・旧Effect復活禁止を確認する（ORX-7〜8）。
+- **#4681／#4679／#4689／#2831**：業務関係GraphとEntry/Function/Providerの実効計画・Observed Traceを分離。CLI/Studio/AIは同一Source/Meaning/Plugin版のread-only根拠を共有し、Plugin文書参照を権限や実Runの証拠にしない。#4689のPlugin生成・文書の設計はmain統合済みだが、実Help/生成Pluginの適合は別受入。
+
+**導入順**：既存CRの純粋候補試験→ORX-1〜3の実Relation Path/時点の欠落→ORX-4〜6の責任・Grant非連動→ORX-7〜8の再資格化/図面保持。すべて既存ORG-BEH/CX/SMと#1180/#2514のIndependent Expectedへ割当て、組織専用新Runnerや第二Expectedを作らない。#2586の通常tei CLI初回実Provider Read、#2831のStudio Stage1→Stage2を独立P0で継続し、Org高度対応をHard Gateにしない。
+
+**受入上限**：本項と§27は設計・担当引渡しのみ。正式Person/Occupancy/Case Link、actual PG二時点版、実候補Reader/Rule、Plugin/Studio/Host Product E2E、Owner Meaningは**NOT RUN / NOT ACCEPTED**。参照PRのmain統合は製品実証の成功を意味しない。
 
 ## 先に固定しないもの
 
