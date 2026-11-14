@@ -29,6 +29,7 @@
 
 | 文書 | 対象 |
 | --- | --- |
+| [`CONSUMER_QUALIFIED_CROSS_LANE_ACCEPTANCE_2026-11-14.md`](CONSUMER_QUALIFIED_CROSS_LANE_ACCEPTANCE_2026-11-14.md) | 実Consumerの対象・Source/World/Attempt、Provider・被覆、現在Grant、Artifact・Effect、受領とOwner受理を区別する横断検収（#4583/#2586/#4495/#3394、設計・試験計画） |
 | [`SCRIPT_LAUNCH_ENTRY_TEST_QUALIFICATION_2026-11.md`](SCRIPT_LAUNCH_ENTRY_TEST_QUALIFICATION_2026-11.md) | Script/Functionの公開Entry→製品Go Binary実起動と、OKF/DSL近傍の直接テスト・Driver Scenario結合テストの責務分担（#4502/#4495/#1180、実装前設計） |
 | [`ETL_BATCH_FUNCTION_COMPOSITION_DESIGN_2026-11.md`](ETL_BATCH_FUNCTION_COMPOSITION_DESIGN_2026-11.md) | ETL・Batch処理を既存Function・Data Operations・Operator・Pluginの合成として表す要件・基本設計・実装計画（[#1130](https://github.com/hat47x/tei-platform/issues/1130)・[#2622](https://github.com/hat47x/tei-platform/issues/2622)・[#4194](https://github.com/hat47x/tei-platform/issues/4194)、実装前設計・Owner未採用） |
 | [`AI_PERFORMANCE_TUNING_OBSERVABILITY_2026-11.md`](AI_PERFORMANCE_TUNING_OBSERVABILITY_2026-11.md) | 生成AIによる性能チューニングの設計ヒント・統計の実測と、Source／Function／Query／Provider／受領の資格を分けた独立Benchmark・改善検証（#3271・#3262・#2586、設計・実証候補） |
