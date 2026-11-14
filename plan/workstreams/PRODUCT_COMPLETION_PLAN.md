@@ -468,7 +468,7 @@ TEIのセルフビルドは、最終的にはTEI Studio Desktopを含むTEI開�
 
 ### 最初の実装PRを、一つのGraph／Ruleから始める
 
-S0〜S4を一度に実装しない。**最初のPRはS0のReaderとS1の実装ロジック生成を最小単位**とし、選択したPluginの実呼出し（S2）、そのPluginを用いる次Stage再構築（S3）、定義変更からの再生成（S4）は、同じFixtureを引き継いで別の証拠で判定する。
+S0〜S4を一度に実装しない。**最初の製品コードPRはS0の選択SourceとReader/Source Indexの接続に限定する**。S1の意味処理生成、S2の選択Plugin実呼出し、S3の次Stage再構築、S4の定義変更からの再生成は、同じFixtureを引き継いで別の証拠で判定する。
 
 最初に固定する例は、**同じ表示名を持つNode `n-1` と `n-2`、`n-1 → n-2`のEdge `e-1` と `e-2`、Edge IDの重複を拒否する検査規則**である。初期のAuthoringでは**Markdown表を関係の定義元とし、MermaidをGitHubでも読める導出図**とする。Graphviz等の別表層は後続の対応範囲とし、Role／Identity／向き／多重性／規則のうち実装上意味を持つ部分を、実Readerがどこから取得したか追跡する。架空のTEI構文はここでは定めない。
 
@@ -487,6 +487,37 @@ S0〜S4を一度に実装しない。**最初のPRはS0のReaderとS1の実装�
 **実装担当へ渡す受入票**：最初に「Edge同一性の保持」「重複IDの拒否」「方向別の抽出」など対象の機能上の義務を固定する。義務ごとに、(a) TEIのどのSource/Ruleが実装を規定したか、(b) 生成したGoのどこが挙動を担うか、(c) 外部Goが担当する境界、(d) 実Builderが読み込んだByteとArtifact、(e) 選択Pluginの実Callと独立Expected、(f) 定義変更前後の手修正・重複記述・再検証作業を記録する。**未観測の項目は未達とし、比率の分母を試験後に縮めない**。
 
 最初のプルリクエストで`*.tei.md`が正式にLoadできなければ、結果をunsupportedと明示し、#2621/#4359の**既存Reader/Source索引を通る最小対応**だけを追加する。旧`*.tei`や手動変換を使うReference経路は分けて記録する。文法全体、Studio GUI、汎用Graph Compiler、DB Provider、独立Hostを初回の完成条件に加えない。
+
+
+### 固定Fixtureを製品の構造Graphへつなぐ次の実装契約（2026年11月15日）
+
+[main統合済みの固定Fixture #4709](https://github.com/hat47x/tei-platform/pull/4709)と[read-only Go参照Reader](../../reference/tei-md-graph-reader/README.md)により、「同名二Node、並行する別ID二Edge、方向反転、重複ID、layout-only、表と導出Mermaid図の不一致」を**元byte位置付きで読める限定的な足場**がある。いっぽう、製品の[Workspace Loader](../../internal/workspace/loader.go)は選択済みMarkdown Frontendへ接続しておらず、[TEI_MD_PARSER_UNBOUND](../../internal/workspace/tei_md_source_guard.go)で管理下の未接続 *.tei.md を拒否する。これを、参照実装で読めた＝通常CLIで意味モデルを構築済み、と読み替えない。Reader移行案[Draft #4704](https://github.com/hat47x/tei-platform/pull/4704)のMR-0〜3と[Issue #2621](https://github.com/hat47x/tei-platform/issues/2621)に、次の最小製品経路を引き渡す。
+
+#### 初回の製品コードPRを一つの接続に限定する
+
+**S0 — Sourceを選んで実際に読んだ事実を製品へ渡す**：Workspace/Manifest/選択したFrontend・Source Root・Source Revisionを固定し、既存のSource Scanner/Readerが実際に読んだ元byteと、Node/Edge表の出典Span・意味ID候補を**現行Workspace/Source Indexの責務**へ引き渡す。Raw Markdown一般やCode Fenceすべてを実行対象にせず、Readerが対応する二種類の表/既知のRole選択のみに適用する。現行のGuardは未選択・未対応の管理Sourceへの明示拒否として維持し、「管理対象に登録された」「Reference Readerが別経路で読めた」だけで実製品Loaderの受理フラグを立てない。**解析済み候補と、Ownerが認めた業務意味は別資格**。このS0では新しい独立Graph Compiler、第二Source Registry、文字起こし/画像Parser、Runtime/Hook Weaverを設けない。
+
+最初の実装PRが報告すべき独立した状態は、(1) managed、(2) actual read-by-loader と正確なbyte/Revision、(3) parsed candidate＋Source locator、(4) Role-bound/Qualified、(5) Owner Accepted、(6) Generator/Builder consumed である。S0で(3)まで到達しても(4)〜(6)を実装済みとは書かず、既存State/Issueに未接続として返す。**行列の空欄・未支持はfalseの完全読込みではなく、unsupported/partial/unknown**。新しい状態管理基盤を作る趣旨ではなく、既存のLoader/Source Index/Build証拠を監査するための最小の検収票である。
+
+| Step | 次の実装PRに求める合格証拠 | 合格と誤認しない条件 |
+| --- | --- | --- |
+| **S0: Reader→製品Source**（#2621/#988/#4704） | 固定5入力とBOM/CRLF・引用/Code Fence・不支持表・未選択Sourceの負例で元byte/spanと診断を確認。既存 *.tei ローダーは正常動作を維持 | ファイル一覧への登録のみ、Reference Reader単体PASS、Guardの一律解除 |
+| **S1: 受理済みRole→意味あるGo生成**（#2620/#951/#2831） | 固定されたSource/Role/Relationから出辺判定の条件処理を生成し、Edge反転で実Goの判断が変わる。重複ID拒否と独立Expectedを分離 | static JSONや手書きGoの薄い委譲、図の一時ラベルを意味IDへ利用 |
+| **S2: Pluginと実CLI使用**（#951/#1251/#4679） | Plugin Aの公開Facet/固定ContractをBが使い、Bの生成Artifactと実Callを検証。実選択/Build同梱/Load・Invokeを別照合 | 生成コードが存在するだけ、Documentation Surfaceが読めるだけ、Owner/Host Grantなしの実行成功 |
+| **GQ-06: Graph Selector→実Artifact**（#4198/#3509/#2600） | 一Target/一Routeの選択Bindingと実Bundle Member、追加Route時の再評価（GQ-06a/b）を比較する | matched集合のみで全域完全と主張、生成AssetがBundle未収録でも適用完了 |
+| **SB-3/4: 二Consumer/Studio/Stage2**（#2831/#4583/#2586） | 同一版のModel/Artifact/Actual Consumerと親子Build Attemptを通す。Desktopは実Windows WebView2で受領 | Headless Referenceの別Attemptを足して正式Stage2セルフビルド達成とする |
+
+**一因子差での検収**：baselineの同端点Edge二本、e-2の逆転、重複ID拒否、MermaidだけのLR↔TB、表とMermaidの向き不一致を同じFixtureで使う。S0は本文と表の保存・読取りの資格のみを確認し、Mermaid表示の差をRole変更としない。S1は受理された関係だけを元に実生成する。意味不変時のskipはReference Readerの成功だけで正当化せず、実Builder入力/World・Model・Artifact Revision/Evidenceと実Consumerで確認する。独立Expectedの正式受理Ownerは#1180/#2514であり、[candidate JSON](../../testdata/tei-md-graph/independent-expected.candidate.json)の値はそのまま正式規格にはしない。
+
+#### 複数の原資料・AI候補・構造Graphは、S0の後続入口として合流させる
+
+ホワイトボード写真、会議の文字起こし、CSV/Excel/帳票、既存画面/DBなどから得たSource factsとAI Structure Candidateは、**Source ID・Revision・locator、観測/推測、矛盾・欠落・公開範囲**を持つread-only Proposalとして、既存[#267](https://github.com/hat47x/tei-platform/issues/267)／[#1124](https://github.com/hat47x/tei-platform/issues/1124)／[#2497](https://github.com/hat47x/tei-platform/issues/2497)で扱う。現状Legacy Actualと望ましいDesired Candidate、Accepted Meaning、生成後のTarget Actualを別にする。**人間によるSource/Meaning受理前のAI候補GraphをS1 GeneratorやGQ Selectorへ自動投入しない**。初期S0/S1の必須前提に画像・音声Providerや自動三要素分析モデル化を加えない。最初のCross-channel試験は、同名二Node/並行Edgeを描いた資料に対するread-only候補→固定Fixtureとの一致・矛盾確認の一件でよい。
+
+また、Pluginで要求される横断観測はSourceに一致する全件だけでなく、**契約に必要な選択Universe、対象Hook/Slot、選択された生成部品と実Artifact、実配布・実Consumer**を別資格で検収する。Selectorが正しく4 Routeを選んでも、Targetが3 Routeにしか実装しない場合は不適格。Build済みAssetが実Bundleに入っていなければRealizedとは言わない。この最小Artifact対応は#4198/#3509/Program Execution Model §33〜39の既存照合表へ接続し、新LedgerやGraph DBを作らない。
+
+**優先順**：全体P0 #4583/#2831の非Plugin Studio Stage1→Stage2実Desktopと、並行P0 #2586/#1251の通常製品CLI実Provider→二Consumerは変えない。S0は既存Ownerの小コードPR、S1/S2とGQ-06はS0の同一Source/Expectedを再利用するP1の縦断とし、S0完了をStudio/DB/全B2Cの新Hard Gateにはしない。設計から実装への移行で追加の機能を増やすより、**元Source→実Reader→受理済み意味→実生成コード→選択Plugin→実Artifact/Consumer**の未接続部分を、同じ一件で徐々に埋める。
+
+**資格**：本節は既存Referenceと最新mainに対する実装契約の更新であり、S0の製品Reader/正式Role、S1の実Go Generator、S2の実Plugin使用、S3の実Browser/Bundle、S4の正式Self-build・Owner意味受理を**新たに実証したものではない**。
 
 ### 「TEIで実装できた範囲」と「定義を簡素化できたか」を測る
 
