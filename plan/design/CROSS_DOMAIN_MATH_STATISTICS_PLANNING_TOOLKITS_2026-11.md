@@ -629,6 +629,16 @@ CTK-14の回帰として、既存SQLite方言の`SelectOptions`内でWindowの`R
 
 これは**SQL方言生成器におけるC0の意味差分テスト**である。正式な`*.tei.md`を読み込んでいないため、C1のReader成功やC2のTEI由来Go生成を示すものではない。既存のFrame変更と候補JSONを使ったSQL方言テストは、それぞれの対象コミットのSQL Dialect Plugin CIで成功している。Source byteのSHA-256照合を加えた今回の試験は、変更後の対象コミットで別に確認する。
 
+### Window未対応の標準Query変換では、SQLを失わず明示拒否する
+
+[Graph／Ruleの局所Go生成実証 #4729](https://github.com/hat47x/tei-platform/pull/4729)は、選択したMarkdown規則表から`if`の実条件を生成し、別のGo Processで独立Expectedへ照合する段階までmainへ入った。これは**実際に定義が生成コードの挙動を変えた**限定的なReferenceであり、正式WorkspaceのMeaning・Target Generator・Plugin実Call・Stage1→Stage2の受理ではない。Windowもこの実証の条件（Source同一性／明示規則／実行生成物／独立Expected）を再利用するが、Graph専用の意味やReaderを数理表へ流用したことにはしない。
+
+他方、`internal/query/standard/model.go`の`StandardQuery`には、Windowの`PARTITION`・`ORDER`・`ROWS`／`RANGE`を保持する正式Nodeがない。既存SQLite方言の`SelectOptions.Window`は文字列でSQLを生成できても、**Native SQL→StandardQuery→Target SQLの意味的な往復**を保証しない。特に、`WINDOW`などの未解釈トークンをParserが残したまま成功扱いしたり、`Opaque`をGeneratorが読み飛ばして別の`SELECT`を出したりしてはならない。
+
+今回の最小実装は、SQL全文を構造化できない場合は**元SQLを`Opaque`に保存し、診断を返す**という既存の契約を確実にする。具体的には、`ParseSQLToStandard`が単一の末尾セミコロンを除き、消費していないSQLトークンを検出して失敗とする。`StandardToSQL`は`Opaque`を別の不完全SQLとして再生成せず、`OPAQUE_QUERY_UNSUPPORTED`で拒否する。CTE内に`Opaque`がある場合も、空のCTE本文を含むSQLを返さない。
+
+この修正の回帰は、名前付きWindow、`OVER`を含む式、未対応のロック句、二番目のSQL文、単一SELECT末尾のセミコロン、CTEの中にある未対応Queryを固定する。**拒否はWindow対応そのものではない**。元SQLを保持することとNativeで実行する許可は別であり、Owner／Provider／Scopeの確認なしに`Opaque.SQL`をそのまま実行しない。正式なWindow意味NodeやQuery Loweringを導入するかは既存[#2387](https://github.com/hat47x/tei-platform/issues/2387)／[#2586](https://github.com/hat47x/tei-platform/issues/2586)に委ね、無理に`StandardQuery`の型を先行拡張しない。
+
 ### Query変換の適合を説明するための判定語彙
 
 SQLとTEI Query、NoSQLのNative Pipeline等を相互に扱うときは、次の区別をレビュー票に残す。この分類は**設計上の記録語彙の候補**であって、新しいCore enumや正式なSQL AST/IRの採用を宣言するものではない。
@@ -675,7 +685,7 @@ WBS・PERT・CPMで扱う予定は、作業の開始・終了を計画するた�
 | CTK-08 | 二つのProviderで数値が一致しても、Snapshot時点・実入力・Scope・許可が異なるなら同一条件の再現と扱わない | #2582／#2600／#2514 |
 | CTK-09 | 分析・Window・科学計算の読取り操作が、DB未初期化を理由に暗黙のDDLやMigrationを実行しない | #4234／#4657／#3270 |
 | CTK-10 | B2のNULL、同順位のB3を含む参照SQLで、ROWS 2 PRECEDING／累積ROWS／累積RANGEの値を取り違えない | #2387／#2514 |
-| CTK-11 | SQL/Query/Native演算の変換を、意味一致／条件付き／Native保持／非対応／未検証として説明し、未確認を同義としない | #2387／#951／#2497 |
+| CTK-11 | SQL／Query／Nativeの往復でWindowなど未対応の意味を落とさない。消費していないSQLは元文字列をOpaqueに保持して診断し、OpaqueやそのCTEから誤ったSQLを再生成しない。単一末尾セミコロンを誤拒否しない | #2387／#951／#2497／#2514 |
 | CTK-12 | SUI上のカード・島・配置をWBSの先行関係へ自動昇格させず、独立した作業IDとDAGを保持する | #2495／#2497／#3791 |
 | CTK-13 | 普通のMarkdown表の行ID・列・空欄／NULL／未取得を、Sourceの位置と版を保持して対応付ける。対応するRoleが未受理なら意味化を拒否する | #988／#2619／#2620／#2621 |
 | CTK-14 | ROWS範囲を直前三行から直前二行へ受理済みで変更すると、生成物が変わりA3=25、A4=35となる。Native SQL文字列の単なる委譲では合格にしない | #1121／#2387／#2514 |
