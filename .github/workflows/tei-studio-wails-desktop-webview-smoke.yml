@@ -6,6 +6,8 @@ on:
     paths:
       - .github/workflows/tei-studio-wails-desktop-webview-smoke.yml
       - cmd/tei-studio/**
+      - cmd/tei/**
+      - internal/buildintent/**
       - go.mod
       - go.sum
       # Exact Go production import closure from cmd/tei-studio, studiohost, operations and xeadsource.
@@ -36,12 +38,17 @@ on:
       - internal/workspace/**
       - internal/xeadsource/**
       - reference/workspace/**
+      - reference/tei-studio-*/**
+      - tools/reference-studio-static-composition/**
+      - tools/reference-studio-part-generator/**
   pull_request:
     branches: [main]
     types: [opened, reopened, synchronize, ready_for_review]
     paths:
       - .github/workflows/tei-studio-wails-desktop-webview-smoke.yml
       - cmd/tei-studio/**
+      - cmd/tei/**
+      - internal/buildintent/**
       - go.mod
       - go.sum
       # Exact Go production import closure from cmd/tei-studio, studiohost, operations and xeadsource.
@@ -72,6 +79,9 @@ on:
       - internal/workspace/**
       - internal/xeadsource/**
       - reference/workspace/**
+      - reference/tei-studio-*/**
+      - tools/reference-studio-static-composition/**
+      - tools/reference-studio-part-generator/**
   workflow_dispatch:
 
 permissions:
@@ -166,5 +176,563 @@ jobs:
         with:
           name: tei-studio-desktop-workbench-webview2-smoke-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ github.workspace }}/tei-studio-desktop-webview2-smoke/**
+          retention-days: 7
+          if-no-files-found: warn
+
+  generated-desktop-webview2-smoke:
+    # Same PoC B generated Workbench as the Linux server job, but exercised
+    # through the actual native Windows Wails WebView2 process (#1824, #2831).
+    runs-on: windows-2022
+    timeout-minutes: 45
+    env:
+      GOTOOLCHAIN: local
+      GOWORK: off
+      CANDIDATE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+      # The existing WebDriver's preexisting-process check uses this exact image name.
+      STUDIO_DESKTOP_EXE: ${{ github.workspace }}\tei-studio-desktop-webview-smoke.exe
+      STUDIO_SMOKE_EVIDENCE_DIR: ${{ github.workspace }}\tei-studio-generated-desktop-webview2-smoke
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Pin Go 1.26.11
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version: '1.26.11'
+          check-latest: false
+          cache: false
+      - name: Pin Node 24 for the existing generated Workbench
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          check-latest: false
+      - name: Prepare generated-Desktop evidence
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force -Path $env:STUDIO_SMOKE_EVIDENCE_DIR | Out-Null
+          $actual = (git rev-parse HEAD).Trim()
+          if ($actual -ne $env:CANDIDATE_HEAD_SHA) { throw 'Checkout differs from the exact candidate HEAD' }
+          "candidate=$actual" | Set-Content -Path (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'generation-provenance.txt') -Encoding utf8
+      - name: Regenerate and verify Inspector reader Source against the actual Workbench input
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # The TEI CLI is the real invoker of the N0 generator child.
+          # This is primitive self-build, NOT a BuildIntent execution or a
+          # generated Stage1 TEI constructing the Stage2 Desktop.
+          go test -count=1 ./tools/reference-studio-part-generator
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          go test -count=1 ./cmd/tei -run '^TestSelfBuildSelectedChildPinRefusesMismatchBeforeRunning$'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $contract = 'reference/tei-studio-workbench/inspection-reader.contract.json'
+          $transform = 'reference/tei-studio-workbench/builder-sources/inspection-reader-v1.transform.json'
+          $consumedSource = 'reference/tei-studio-workbench/inspection-reader.generated.ts'
+          $generated = Join-Path $env:RUNNER_TEMP ('tei-inspection-reader-' + [guid]::NewGuid().ToString('N') + '.ts')
+          $teiExe = Join-Path $env:RUNNER_TEMP ('tei-n0-invoker-' + [guid]::NewGuid().ToString('N') + '.exe')
+          $generatorExe = Join-Path $env:RUNNER_TEMP ('tei-n0-generator-' + [guid]::NewGuid().ToString('N') + '.exe')
+          go build -mod=readonly -o $teiExe ./cmd/tei
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          go build -mod=readonly -o $generatorExe ./tools/reference-studio-part-generator
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $childArgs = @('-contract', $contract, '-transform', $transform, '-artifact-out', $generated)
+          $childArgsPath = Join-Path $env:RUNNER_TEMP ('tei-n0-argv-' + [guid]::NewGuid().ToString('N') + '.json')
+          ConvertTo-Json -InputObject $childArgs -Compress | Set-Content -LiteralPath $childArgsPath -Encoding utf8
+          $generatorHash = (Get-FileHash -LiteralPath $generatorExe -Algorithm SHA256).Hash.ToLowerInvariant()
+          $selectedBuilderPin = "sha256:$generatorHash"
+          $entryLines = & $teiExe self-build -child $generatorExe -expected-child-digest $selectedBuilderPin -child-arg-file $childArgsPath -artifact $generated
+          if ($LASTEXITCODE -ne 0) { throw 'TEI self-build CLI did not complete its N0 observation' }
+          $entryJson = $entryLines | Out-String
+          $entry = $entryJson | ConvertFrom-Json
+          if ($entry.schemaVersion -ne 'tei.cli.self-build-entry/v0' -or $entry.childSchema -ne 'tei.reference.studio-part-generator/v0' -or -not $entry.artifactCrossCheckMatched -or
+              -not $entry.childPinChecked -or -not $entry.childPinMatched -or $entry.selectedChildDigest -ne $selectedBuilderPin -or
+              $entry.invoked.exitCode -ne 0 -or $entry.l3Claimed) { throw 'TEI N0 selected builder pin, invocation or artifact cross-check failed' }
+          $expectedArgv = @($generatorExe) + $childArgs
+          if ($entry.invoked.argv.Count -ne $expectedArgv.Count) { throw 'TEI invoked different N0 argument count' }
+          for ($i = 0; $i -lt $expectedArgv.Count; $i++) {
+            if ([string]$entry.invoked.argv[$i] -cne [string]$expectedArgv[$i]) { throw "TEI invoked different N0 argv[$i]" }
+          }
+          $invokerHash = (Get-FileHash -LiteralPath $teiExe -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($entry.invokerDigest -ne "sha256:$invokerHash") { throw 'TEI N0 invoker image digest mismatch' }
+          if ($entry.invoked.executableDigest -ne "sha256:$generatorHash") { throw 'TEI N0 generator image digest mismatch' }
+          if (-not (Test-Path -LiteralPath $generated)) { throw 'TEI N0 child did not create a part artifact' }
+          $actual = (Get-FileHash -LiteralPath $generated -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($entry.childArtifactDigest -ne "sha256:$actual" -or
+              $entry.artifactCrossCheckedDigest -ne "sha256:$actual") { throw 'TEI N0 child report differs from the generated part bytes' }
+          $entryJson | Set-Content -LiteralPath (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n0-tei-self-build-entry.json') -Encoding utf8
+          Write-Host "N0-tei-process-invoked-generator sha256:$actual"
+          # Selected B / actual A is refused by TEI itself before the child
+          # runs, not merely discovered after its artifact has been written.
+          $wrongPinOutput = Join-Path $env:RUNNER_TEMP ('tei-n0-refused-' + [guid]::NewGuid().ToString('N') + '.ts')
+          $wrongPinArgsPath = Join-Path $env:RUNNER_TEMP ('tei-n0-refused-argv-' + [guid]::NewGuid().ToString('N') + '.json')
+          $wrongPinArgs = @('-contract', $contract, '-transform', $transform, '-artifact-out', $wrongPinOutput)
+          ConvertTo-Json -InputObject $wrongPinArgs -Compress | Set-Content -LiteralPath $wrongPinArgsPath -Encoding utf8
+          $wrongPin = 'sha256:' + ('0' * 64)
+          $priorPreference = $ErrorActionPreference
+          $ErrorActionPreference = 'Continue'
+          $wrongPinResult = & $teiExe self-build -child $generatorExe -expected-child-digest $wrongPin -child-arg-file $wrongPinArgsPath -artifact $wrongPinOutput 2>&1
+          $wrongPinExit = $LASTEXITCODE
+          $ErrorActionPreference = $priorPreference
+          if ($wrongPinExit -eq 0 -or (($wrongPinResult | Out-String) -notmatch 'selected child builder digest mismatch')) {
+            throw 'N0 mismatched selected builder was not refused before execution'
+          }
+          if (Test-Path -LiteralPath $wrongPinOutput) { throw 'N0 mismatched selected builder caused an artifact write' }
+          Write-Host 'N0-selected-builder-pin-negative-refused-before-child-start'
+          # A duplicate exact output is a negative test. It must not overwrite
+          # the file the actual TEI-invoked child produced.
+          $priorPreference = $ErrorActionPreference
+          $ErrorActionPreference = 'Continue'
+          $duplicateOutput = & $teiExe self-build -child $generatorExe -child-arg-file $childArgsPath -artifact $generated 2>&1
+          $duplicateExit = $LASTEXITCODE
+          $ErrorActionPreference = $priorPreference
+          if ($duplicateExit -eq 0 -or (($duplicateOutput | Out-String) -notmatch 'artifact path already exists')) {
+            throw 'TEI N0 duplicate output was not refused'
+          }
+          $afterRejectedDuplicate = (Get-FileHash -LiteralPath $generated -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($afterRejectedDuplicate -ne $actual) { throw 'TEI N0 duplicate attempt altered the original part' }
+          # Independently regenerate to another path. The generator report
+          # recorded below belongs to this comparison run, not to the child
+          # report that the TEI CLI actually verified.
+          $comparison = Join-Path $env:RUNNER_TEMP ('tei-inspection-reader-compare-' + [guid]::NewGuid().ToString('N') + '.ts')
+          $reportLines = & $generatorExe -contract $contract -transform $transform -artifact-out $comparison
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $reportJson = $reportLines | Out-String
+          $report = $reportJson | ConvertFrom-Json
+          $comparisonHash = (Get-FileHash -LiteralPath $comparison -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($comparisonHash -ne $actual) { throw 'Independent N0 regeneration differs from the TEI-invoked artifact' }
+          $consumed = (Get-FileHash -LiteralPath $consumedSource -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $consumed) { throw 'N0 regenerated Inspector differs from the TypeScript consumed by Workbench' }
+          if ($report.artifactDigest -ne "sha256:$actual") { throw 'N0 comparison generator receipt differs from the actual generated bytes' }
+          $contractHash = (Get-FileHash -LiteralPath $contract -Algorithm SHA256).Hash.ToLowerInvariant()
+          $transformHash = (Get-FileHash -LiteralPath $transform -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($report.contractBytesDigest -ne "sha256:$contractHash") { throw 'N0 generator consumed a different contract Source' }
+          if ($report.transformBytesDigest -ne "sha256:$transformHash") { throw 'N0 generator consumed a different transform Source' }
+          # The next npm/esbuild step imports this exact path. Install the bytes
+          # produced by N0 in this run, not merely the checked-in equivalent.
+          # The preceding equality check still fails if the checked-in generated
+          # source was stale, so this copy cannot silently mask Source drift.
+          Copy-Item -LiteralPath $generated -Destination $consumedSource -Force
+          $installed = (Get-FileHash -LiteralPath $consumedSource -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($installed -ne $actual) { throw 'N0 generated part was not installed as the Workbench input' }
+
+          # The TEI-invoked N0 part is the producer for N2's selected TS input.
+          # This receipt is a bounded byte/role/attempt observation, not an
+          # authoritative BuildIntent graph or proof of esbuild read-time bytes.
+          $n0N2Producer = @{
+            schemaVersion = 'tei.reference.studio-n0-n2-producer/v0'
+            role = 'inspector.reader.source'
+            format = 'text/typescript'
+            path = $consumedSource
+            digest = "sha256:$installed"
+            bytes = [long](Get-Item -LiteralPath $consumedSource).Length
+            invokerReceipt = 'n0-tei-self-build-entry.json'
+            comparisonReceipt = 'n0-inspector-comparison-generator.json'
+            exactHead = $env:CANDIDATE_HEAD_SHA
+            attempt = '${{ github.run_id }}-${{ github.run_attempt }}'
+          }
+          $n0N2Producer | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n0-n2-inspector-producer.json') -Encoding utf8
+          Write-Host "N0-N2-inspector-producer-recorded sha256:$installed"
+          $reportJson | Set-Content -Path (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n0-inspector-comparison-generator.json') -Encoding utf8
+          foreach ($pair in @("N0.contract=$contractHash", "N0.transform=$transformHash", "N0.output=$actual", "N0.workbenchInput=$consumed")) {
+            $pair | Add-Content -Path (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'generation-provenance.txt') -Encoding utf8
+          }
+          Write-Host "N0-inspector-regeneration-verified sha256:$actual"
+
+      - name: Generate and pin PoC B services and current Workbench
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          go test -count=1 ./tools/reference-studio-static-composition
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          go run ./tools/reference-studio-static-composition -fixture tools/reference-studio-static-composition/fixture.json -out internal/studiohost/staticservices
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node tools/reference-studio-static-composition/compose-ui.mjs tools/reference-studio-static-composition/fixture.json tools/reference-studio-static-composition/generated
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node tools/reference-studio-static-composition/connect-workbench.mjs reference/tei-studio-workbench/main.ts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Push-Location reference/tei-studio-workbench
+          try {
+            npm ci
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            npm test
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            npm run typecheck
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+            # Verify N0's actual artifact on disk immediately before the real
+            # N2 esbuild invocation. Selection is checked from its metafile
+            # afterwards; the two observations do not prove read-time capture.
+            $n0N2ReceiptPath = Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n0-n2-inspector-producer.json'
+            if (-not (Test-Path -LiteralPath $n0N2ReceiptPath -PathType Leaf)) { throw 'N0 source producer receipt missing before N2' }
+            $n0N2Producer = Get-Content -LiteralPath $n0N2ReceiptPath -Raw | ConvertFrom-Json
+            $expectedInspectorPath = 'reference/tei-studio-workbench/inspection-reader.generated.ts'
+            if ($n0N2Producer.schemaVersion -cne 'tei.reference.studio-n0-n2-producer/v0' -or
+                $n0N2Producer.role -cne 'inspector.reader.source' -or $n0N2Producer.format -cne 'text/typescript' -or
+                $n0N2Producer.path -cne $expectedInspectorPath -or
+                $n0N2Producer.invokerReceipt -cne 'n0-tei-self-build-entry.json' -or
+                $n0N2Producer.exactHead -cne $env:CANDIDATE_HEAD_SHA -or
+                $n0N2Producer.attempt -cne '${{ github.run_id }}-${{ github.run_attempt }}') {
+              throw 'N0 source producer role/path/HEAD/attempt does not match this N2 invocation'
+            }
+            $n0N2BeforeHash = (Get-FileHash -LiteralPath 'inspection-reader.generated.ts' -Algorithm SHA256).Hash.ToLowerInvariant()
+            $n0N2BeforeBytes = [long](Get-Item -LiteralPath 'inspection-reader.generated.ts').Length
+            if ($n0N2Producer.digest -cne "sha256:$n0N2BeforeHash" -or [long]$n0N2Producer.bytes -ne $n0N2BeforeBytes) {
+              throw 'N0 generated Inspector bytes changed before N2 esbuild'
+            }
+            # esbuild's metafile is emitted by the very build that produces the
+            # Desktop bundle, not by a second dry-run resolver.
+            node --input-type=module -e 'import { build } from "esbuild"; import { resolve } from "node:path"; import { writeFileSync } from "node:fs"; const result = await build({ absWorkingDir: process.cwd(), entryPoints: ["main.generated.ts"], outfile: resolve(process.cwd(), "../../cmd/tei-studio/assets/workbench/main.js"), bundle: true, format: "esm", platform: "browser", target: "es2022", metafile: true, nodePaths: [resolve(process.cwd(), "node_modules")] }); writeFileSync(resolve(process.env.STUDIO_SMOKE_EVIDENCE_DIR, "n2-esbuild-metafile.json"), JSON.stringify(result.metafile, null, 2));'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally { Pop-Location }
+          # The actual esbuild execution reports its selected source members.
+          # This is stronger than checking a file happened to be present.
+          # It is still builder-reported post-build evidence, not a read-time
+          # snapshot or proof that no undeclared input/environment was consumed.
+          $metafilePath = Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n2-esbuild-metafile.json'
+          if (-not (Test-Path -LiteralPath $metafilePath -PathType Leaf)) { throw 'N2 esbuild did not emit a metafile' }
+          $metafile = Get-Content -LiteralPath $metafilePath -Raw | ConvertFrom-Json -AsHashtable
+          if (-not $metafile.inputs -or -not $metafile.outputs) { throw 'N2 esbuild metafile is incomplete' }
+          # Tie esbuild's reported output to the bytes that Wails embeds.
+          $bundleOutput = @($metafile.outputs.Keys | Where-Object { ($_ -replace '\\', '/') -match '(^|/)cmd/tei-studio/assets/workbench/main\.js$' })
+          if ($bundleOutput.Count -ne 1) { throw "N2 esbuild did not declare the expected Workbench output: $($metafile.outputs.Keys -join ', ')" }
+          $bundleOutputLength = (Get-Item -LiteralPath 'cmd/tei-studio/assets/workbench/main.js').Length
+          if ([long]$metafile.outputs[$bundleOutput[0]].bytes -ne [long]$bundleOutputLength) { throw 'N2 esbuild reported output length differs from actual bundle' }
+          $selected = @($metafile.inputs.Keys)
+          foreach ($required in @('main.generated.ts', 'inspection-reader.generated.ts')) {
+            if ($selected -notcontains $required) { throw "N2 esbuild did not select required Source: $required" }
+          }
+          $metaObservedSources = @()
+          foreach ($inputPath in ($selected | Sort-Object)) {
+            $physical = Join-Path 'reference/tei-studio-workbench' $inputPath
+            if (-not (Test-Path -LiteralPath $physical -PathType Leaf)) { throw "N2 esbuild selected a Source that cannot be observed: $inputPath" }
+            $hash = (Get-FileHash -LiteralPath $physical -Algorithm SHA256).Hash.ToLowerInvariant()
+            $metaObservedSources += @{ path = $inputPath; selectedByEsbuild = $true; digestAfterBuild = "sha256:$hash" }
+          }
+          $metaObservedSources | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n2-esbuild-selected-sources.json') -Encoding utf8
+
+          # The same N2 esbuild process selected this specific TS source.
+          # Join its real selection with N0's producer receipt on a single
+          # role, physical member, digest, exact HEAD, and run attempt.
+          $n2InspectorSelected = @($metaObservedSources | Where-Object { $_.path -ceq 'inspection-reader.generated.ts' })
+          if ($n2InspectorSelected.Count -ne 1) { throw 'N2 did not select exactly one N0 Inspector source input' }
+          $n0N2AfterDigest = [string]$n2InspectorSelected[0].digestAfterBuild
+          $n0N2AfterBytes = [long](Get-Item -LiteralPath 'reference/tei-studio-workbench/inspection-reader.generated.ts').Length
+          if ($n0N2AfterBytes -ne $n0N2BeforeBytes -or $n0N2AfterDigest -cne "sha256:$n0N2BeforeHash") {
+            throw 'N0-N2 Inspector input changed during N2 esbuild'
+          }
+          $checkN0N2 = {
+            param([string]$role, [string]$path, [string]$digest)
+            if ($role -cne 'inspector.reader.source' -or $path -cne 'reference/tei-studio-workbench/inspection-reader.generated.ts') {
+              throw 'N0-N2 Inspector source role/path mismatch'
+            }
+            if ($digest -cne $n0N2AfterDigest) { throw 'N0-N2 Inspector source digest mismatch' }
+          }
+          & $checkN0N2 $n0N2Producer.role $n0N2Producer.path $n0N2Producer.digest
+          # Negative controls: changed bytes of an isolated copy, and a fake
+          # role/path with the original bytes. Neither alters the actual input.
+          $changedInspectorCopy = Join-Path $env:RUNNER_TEMP ('tei-n0-n2-modified-' + [guid]::NewGuid().ToString('N') + '.ts')
+          Copy-Item -LiteralPath 'reference/tei-studio-workbench/inspection-reader.generated.ts' -Destination $changedInspectorCopy
+          Add-Content -LiteralPath $changedInspectorCopy -Value '// N0-N2 negative control'
+          $changedInspectorHash = (Get-FileHash -LiteralPath $changedInspectorCopy -Algorithm SHA256).Hash.ToLowerInvariant()
+          $changedBytesRejected = $false
+          try { & $checkN0N2 $n0N2Producer.role $n0N2Producer.path "sha256:$changedInspectorHash" }
+          catch {
+            if ($_.Exception.Message -notmatch 'N0-N2 Inspector source digest mismatch') { throw }
+            $changedBytesRejected = $true
+          }
+          if (-not $changedBytesRejected) { throw 'N0-N2 changed Inspector copy unexpectedly passed' }
+          $changedRoleRejected = $false
+          try { & $checkN0N2 'other.role' $n0N2Producer.path $n0N2Producer.digest }
+          catch {
+            if ($_.Exception.Message -notmatch 'N0-N2 Inspector source role/path mismatch') { throw }
+            $changedRoleRejected = $true
+          }
+          $changedPathRejected = $false
+          try { & $checkN0N2 $n0N2Producer.role 'other/inspection-reader.generated.ts' $n0N2Producer.digest }
+          catch {
+            if ($_.Exception.Message -notmatch 'N0-N2 Inspector source role/path mismatch') { throw }
+            $changedPathRejected = $true
+          }
+          if (-not $changedRoleRejected -or -not $changedPathRejected) { throw 'N0-N2 false role/path with valid bytes unexpectedly passed' }
+          $n0N2Handoff = @{
+            schemaVersion = 'tei.reference.studio-n0-n2-handoff/v0'
+            role = $n0N2Producer.role
+            format = $n0N2Producer.format
+            path = $n0N2Producer.path
+            producerReceipt = 'n0-n2-inspector-producer.json'
+            invokerReceipt = $n0N2Producer.invokerReceipt
+            esbuildSelectionReceipt = 'n2-esbuild-metafile.json'
+            selectedByEsbuild = $true
+            digestBeforeEsbuild = "sha256:$n0N2BeforeHash"
+            digestAfterEsbuild = $n0N2AfterDigest
+            bytesBeforeEsbuild = $n0N2BeforeBytes
+            bytesAfterEsbuild = $n0N2AfterBytes
+            changedCopyNegativeRejected = $changedBytesRejected
+            changedRoleNegativeRejected = $changedRoleRejected
+            changedPathNegativeRejected = $changedPathRejected
+            readTimeClosureProved = $false
+            exactHead = $n0N2Producer.exactHead
+            attempt = $n0N2Producer.attempt
+          }
+          $n0N2Handoff | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n0-n2-inspector-handoff.json') -Encoding utf8
+          Write-Host "N0-N2-selected-inspector-handoff-verified sha256:$n0N2BeforeHash"
+          Write-Host "N2-esbuild-selected-inputs-recorded count=$($selected.Count)"
+          $bundle = 'cmd/tei-studio/assets/workbench/main.js'
+          $source = 'reference/tei-studio-workbench/main.generated.ts'
+          $goService = 'internal/studiohost/staticservices/services.generated.go'
+          foreach ($p in @($bundle, $source, $goService)) {
+            if (-not (Test-Path -LiteralPath $p)) { throw "Missing generated input: $p" }
+          }
+          $digest = (Get-FileHash -LiteralPath $bundle -Algorithm SHA256).Hash.ToLowerInvariant()
+          # N2's output contract is a concrete byte sequence, not merely a
+          # later name-based post-build observation. Record it before N3 starts
+          # so the Go embed selection can refuse a changed or stale bundle.
+          $n2Producer = @{
+            schemaVersion = 'tei.reference.studio-n2-output/v0'
+            role = 'workbench.bundle'
+            format = 'text/javascript'
+            path = $bundle
+            digest = "sha256:$digest"
+            bytes = [long](Get-Item -LiteralPath $bundle).Length
+            producerSelection = 'esbuild metafile: n2-esbuild-metafile.json'
+            exactHead = $env:CANDIDATE_HEAD_SHA
+            attempt = "${{ github.run_id }}-${{ github.run_attempt }}"
+          }
+          $n2Producer | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n2-bundle-producer.json') -Encoding utf8
+          Write-Host "N2-producer-bundle-recorded sha256:$digest"
+          "TEI_GENERATED_WORKBENCH_BUNDLE_SHA256=$digest" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          foreach ($p in @($bundle, $source, $goService, 'tools/reference-studio-static-composition/fixture.json')) {
+            $hash = (Get-FileHash -LiteralPath $p -Algorithm SHA256).Hash.ToLowerInvariant()
+            "${p}=$hash" | Add-Content -Path (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'generation-provenance.txt') -Encoding utf8
+          }
+      - name: Build generated native Wails Desktop (not server mode)
+        shell: pwsh
+        working-directory: cmd/tei-studio
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ((go version) -notmatch 'go1\.26\.11') { throw 'Go 1.26.11 is required' }
+          go mod tidy
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git diff --exit-code -- go.mod go.sum
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Observe the Go package/file selection using the same tags and nested
+          # module as the real Desktop build. The go list report is not an
+          # independent proof of read-time inputs, nor a qualified BuildIntent.
+          $rows = @(go list -mod=readonly -deps -tags studio_generated -f '{{.Dir}}|{{join .GoFiles ","}}|{{join .CgoFiles ","}}|{{join .SFiles ","}}|{{join .CFiles ","}}|{{join .HFiles ","}}|{{join .SysoFiles ","}}|{{join .EmbedFiles ","}}' .)
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $rootPrefix = [IO.Path]::GetFullPath($env:GITHUB_WORKSPACE) + [IO.Path]::DirectorySeparatorChar
+          $selectedGoFiles = @{}
+          $kinds = @('go', 'cgo', 'asm', 'c', 'header', 'syso', 'embed')
+          foreach ($row in $rows) {
+            $cols = @($row -split '\|', 8)
+            if ($cols.Count -ne 8) { throw "N3 go list returned an unexpected record: $row" }
+            $dir = $cols[0]
+            if ([string]::IsNullOrWhiteSpace($dir)) { continue }
+            for ($i = 1; $i -le 7; $i++) {
+              foreach ($member in @($cols[$i] -split ',')) {
+                if ([string]::IsNullOrWhiteSpace($member)) { continue }
+                $physical = [IO.Path]::GetFullPath((Join-Path $dir $member))
+                if (-not $physical.StartsWith($rootPrefix, [StringComparison]::OrdinalIgnoreCase)) { continue }
+                if (-not (Test-Path -LiteralPath $physical -PathType Leaf)) { throw "N3 selected file missing: $physical" }
+                $relative = [IO.Path]::GetRelativePath($env:GITHUB_WORKSPACE, $physical).Replace('\', '/')
+                $sha = (Get-FileHash -LiteralPath $physical -Algorithm SHA256).Hash.ToLowerInvariant()
+                if ($selectedGoFiles.ContainsKey($relative)) {
+                  if ($selectedGoFiles[$relative].before -ne $sha) { throw "N3 source changed during selection: $relative" }
+                } else {
+                  $selectedGoFiles[$relative] = @{ before = $sha; kind = $kinds[$i - 1] }
+                }
+              }
+            }
+          }
+          foreach ($required in @('cmd/tei-studio/main.go', 'cmd/tei-studio/assets/workbench/main.js')) {
+            if (-not $selectedGoFiles.ContainsKey($required)) { throw "N3 Go build did not select required source/embed: $required" }
+          }
+          if ($selectedGoFiles.Count -eq 0) { throw 'N3 go list selected no in-repository files' }
+          # N2 producer output -> N3 selected Go embed is a role-bound
+          # handoff. Check before Go execution, not only after the Desktop exe
+          # exists. This still does not prove the OS read-time byte closure.
+          $producerPath = Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n2-bundle-producer.json'
+          if (-not (Test-Path -LiteralPath $producerPath -PathType Leaf)) { throw 'N2 bundle producer receipt missing before N3' }
+          $producer = Get-Content -LiteralPath $producerPath -Raw | ConvertFrom-Json
+          $selectedEmbed = $selectedGoFiles['cmd/tei-studio/assets/workbench/main.js'].before
+          $embedPath = Join-Path $env:GITHUB_WORKSPACE 'cmd/tei-studio/assets/workbench/main.js'
+          $embedBytes = [long](Get-Item -LiteralPath $embedPath).Length
+          $currentHead = (git rev-parse HEAD).Trim()
+          if ($producer.schemaVersion -ne 'tei.reference.studio-n2-output/v0' -or
+              $producer.role -ne 'workbench.bundle' -or $producer.path -ne 'cmd/tei-studio/assets/workbench/main.js' -or
+              $producer.format -ne 'text/javascript' -or $producer.exactHead -ne $currentHead -or
+              $producer.attempt -ne "${{ github.run_id }}-${{ github.run_attempt }}" -or
+              [long]$producer.bytes -ne $embedBytes) { throw 'N2 producer contract does not match this N3 attempt and Go embed member' }
+          $checkHandoff = {
+            param([string]$producedDigest, [string]$selectedDigest)
+            if ($producedDigest -cne $selectedDigest) { throw 'N2-N3 bundle handoff digest mismatch before N3 Go build' }
+          }
+          & $checkHandoff $producer.digest "sha256:$selectedEmbed"
+          # Negative control on an isolated copy of the actual N2 bundle:
+          # one additional byte must be rejected by the SAME checker. Never
+          # change the actual Go embed source in this negative experiment.
+          $tamperedCopy = Join-Path $env:RUNNER_TEMP ('tei-n2-n3-tampered-' + [guid]::NewGuid().ToString('N') + '.js')
+          Copy-Item -LiteralPath $embedPath -Destination $tamperedCopy
+          [IO.File]::AppendAllText($tamperedCopy, '// tampered handoff negative')
+          $tamperedHash = (Get-FileHash -LiteralPath $tamperedCopy -Algorithm SHA256).Hash.ToLowerInvariant()
+          $negativeRejected = $false
+          try { & $checkHandoff $producer.digest "sha256:$tamperedHash" }
+          catch {
+            if ($_.Exception.Message -notmatch 'N2-N3 bundle handoff digest mismatch') { throw }
+            $negativeRejected = $true
+          }
+          if (-not $negativeRejected) { throw 'A changed N2 bundle passed the N3 handoff check' }
+          $n2N3Handoff = @{
+            schemaVersion = 'tei.reference.studio-bundle-handoff/v0'
+            role = 'workbench.bundle'
+            producerReceipt = 'n2-bundle-producer.json'
+            producerDigest = $producer.digest
+            consumer = 'cmd/tei-studio go list -tags studio_generated / .EmbedFiles'
+            consumerSelectedPath = 'cmd/tei-studio/assets/workbench/main.js'
+            digestBeforeGoBuild = "sha256:$selectedEmbed"
+            selectedByGoList = $true
+            changedByteNegativeRejected = $negativeRejected
+            readTimeClosureProved = $false
+            exactHead = $currentHead
+            attempt = $producer.attempt
+          }
+          Write-Host "N2-N3-embed-handoff-verified-before-go-build sha256:$selectedEmbed"
+          go build -mod=readonly -tags studio_generated -o $env:STUDIO_DESKTOP_EXE .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not (Test-Path -LiteralPath $env:STUDIO_DESKTOP_EXE)) { throw 'Generated Desktop executable not created' }
+          # Re-read the selected in-repository bytes after the real go build.
+          # Changes during the attempt invalidate this bounded observation.
+          $goSelectionManifest = @(
+            foreach ($relative in @($selectedGoFiles.Keys | Sort-Object)) {
+              $physical = Join-Path $env:GITHUB_WORKSPACE ($relative.Replace('/', '\'))
+              $after = (Get-FileHash -LiteralPath $physical -Algorithm SHA256).Hash.ToLowerInvariant()
+              $entry = $selectedGoFiles[$relative]
+              if ($after -ne $entry.before) { throw "N3 selected input changed during go build: $relative" }
+              @{ path = $relative; kind = $entry.kind; digestBeforeBuild = "sha256:$($entry.before)"; digestAfterBuild = "sha256:$after" }
+            }
+          )
+          $goSelectionManifest | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n3-go-selected-sources.json') -Encoding utf8
+          $postEmbed = (Get-FileHash -LiteralPath $embedPath -Algorithm SHA256).Hash.ToLowerInvariant()
+          & $checkHandoff $producer.digest "sha256:$postEmbed"
+          $n2N3Handoff.digestAfterGoBuild = "sha256:$postEmbed"
+          $n2N3Handoff | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n2-n3-bundle-handoff.json') -Encoding utf8
+          Write-Host "N3-go-selected-in-repo-inputs-recorded count=$($goSelectionManifest.Count)"
+          (Get-FileHash -LiteralPath $env:STUDIO_DESKTOP_EXE -Algorithm SHA256).Hash.ToLowerInvariant() |
+            Add-Content -Path (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'generated-desktop-exe.sha256') -Encoding utf8
+          # B1-A observation only. This is a bounded set of named files consumed
+          # by this CI recipe, NOT an authoritative BuildIntent graph/closure.
+          # A different OS/process/builder/hidden Node/Go input remains unknown.
+          # The Wails Build step above runs from the nested Go module; hash from repo root.
+          Set-Location $env:GITHUB_WORKSPACE
+          $namedHash = {
+            param([string]$path)
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "B1-A named input missing: $path" }
+            return (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
+          }
+          $n0Report = Get-Content -LiteralPath (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n0-inspector-comparison-generator.json') -Raw | ConvertFrom-Json
+          $n0TeiEntry = Get-Content -LiteralPath (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n0-tei-self-build-entry.json') -Raw | ConvertFrom-Json
+          $n0Part = & $namedHash 'reference/tei-studio-workbench/inspection-reader.generated.ts'
+
+          $n0N2Receipt = Get-Content -LiteralPath (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n0-n2-inspector-handoff.json') -Raw | ConvertFrom-Json
+          if ($n0N2Receipt.schemaVersion -cne 'tei.reference.studio-n0-n2-handoff/v0' -or
+              -not $n0N2Receipt.selectedByEsbuild -or -not $n0N2Receipt.changedCopyNegativeRejected -or
+              -not $n0N2Receipt.changedRoleNegativeRejected -or -not $n0N2Receipt.changedPathNegativeRejected -or
+              $n0N2Receipt.readTimeClosureProved -or $n0N2Receipt.digestAfterEsbuild -cne "sha256:$n0Part" -or
+              $n0N2Receipt.exactHead -cne $env:CANDIDATE_HEAD_SHA -or
+              $n0N2Receipt.attempt -cne '${{ github.run_id }}-${{ github.run_attempt }}') {
+            throw 'N0-N2 esbuild selected Inspector handoff is not valid for this N3 attempt'
+          }
+          $n2SelectedSources = @(Get-Content -LiteralPath (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n2-esbuild-selected-sources.json') -Raw | ConvertFrom-Json)
+          if (-not $n0TeiEntry.artifactCrossCheckMatched -or $n0TeiEntry.artifactCrossCheckedDigest -ne "sha256:$n0Part") { throw 'TEI-invoked N0 artifact changed before N3' }
+          if ($n0Report.artifactDigest -ne "sha256:$n0Part") { throw 'N0 part was changed after regeneration' }
+          $bundle = & $namedHash 'cmd/tei-studio/assets/workbench/main.js'
+          if ($bundle -ne $env:TEI_GENERATED_WORKBENCH_BUNDLE_SHA256) { throw 'N2 Workbench changed after generation' }
+          $exe = & $namedHash $env:STUDIO_DESKTOP_EXE
+          $head = (git rev-parse HEAD).Trim()
+          if ($head -ne $env:CANDIDATE_HEAD_SHA) { throw 'B1-A observation refers to a different HEAD' }
+          $observation = @{
+            status = 'bounded-workflow-observation'
+            qualifiedBuildIntent = $false
+            dependencyClosure = 'unknown'
+            ownerAcceptance = 'not-evaluated'
+            exactHead = $head
+            attempt = "${{ github.run_id }}-${{ github.run_attempt }}"
+            platform = 'windows-2022'
+            goVersion = (go version)
+            nodeVersion = (node --version)
+            n0 = @{
+              inputContractSha256 = & $namedHash 'reference/tei-studio-workbench/inspection-reader.contract.json'
+              inputTransformSha256 = & $namedHash 'reference/tei-studio-workbench/builder-sources/inspection-reader-v1.transform.json'
+              observedPartSha256 = $n0Part
+              source = 'tei self-build primitive child: reference-studio-part-generator (not BuildIntent)'
+              teiInvokerDigest = $n0TeiEntry.invokerDigest
+              actualGeneratorDigest = $n0TeiEntry.invoked.executableDigest
+              selectedBuilderDigest = $n0TeiEntry.selectedChildDigest
+              selectedBuilderPinChecked = $n0TeiEntry.childPinChecked
+              selectedBuilderPinMatched = $n0TeiEntry.childPinMatched
+              selectionBasis = 'explicit workflow pin/TEI pre-start byte digest'
+              n2SourceProducerReceipt = 'n0-n2-inspector-producer.json'
+              processEntryReceipt = 'n0-tei-self-build-entry.json'
+              invocationCrossChecked = $n0TeiEntry.artifactCrossCheckMatched
+              stage1GeneratedTeiInvoker = $false
+            }
+            n1 = @{
+              fixtureSha256 = & $namedHash 'tools/reference-studio-static-composition/fixture.json'
+              generatedGoServiceSha256 = & $namedHash 'internal/studiohost/staticservices/services.generated.go'
+              generatedTypeScriptSha256 = & $namedHash 'reference/tei-studio-workbench/main.generated.ts'
+              invoker = 'workflow:go run + node composition'
+            }
+            n2 = @{
+              inspectorInputSha256 = $n0Part
+              generatedMainInputSha256 = & $namedHash 'reference/tei-studio-workbench/main.generated.ts'
+              packageLockSha256 = & $namedHash 'reference/tei-studio-workbench/package-lock.json'
+              workbenchBundleSha256 = $bundle
+              n0N2HandoffReceipt = 'n0-n2-inspector-handoff.json'
+              n0N2RoleMatched = $true
+              n0N2ChangedCopyRejected = $n0N2Receipt.changedCopyNegativeRejected
+              esbuildSelectedSources = 'n2-esbuild-selected-sources.json'
+              esbuildSelectedCount = $n2SelectedSources.Count
+              producerArtifactReceipt = 'n2-bundle-producer.json'
+              esbuildOutput = 'cmd/tei-studio/assets/workbench/main.js'
+              selectionBasis = 'esbuild-metafile/post-build-file-hash'
+              invoker = 'workflow:node/esbuild'
+            }
+            n3 = @{
+              bundleInputSha256 = $bundle
+              generatedGoServiceInputSha256 = & $namedHash 'internal/studiohost/staticservices/services.generated.go'
+              rootGoModSha256 = & $namedHash 'go.mod'
+              rootGoSumSha256 = & $namedHash 'go.sum'
+              nestedGoModSha256 = & $namedHash 'cmd/tei-studio/go.mod'
+              nestedGoSumSha256 = & $namedHash 'cmd/tei-studio/go.sum'
+              desktopExeSha256 = $exe
+              buildTags = 'studio_generated'
+              goSelectedSources = 'n3-go-selected-sources.json'
+              goSelectedInRepoCount = $goSelectionManifest.Count
+              bundleHandoffReceipt = 'n2-n3-bundle-handoff.json'
+              changedBundleNegativeRejected = $n2N3Handoff.changedByteNegativeRejected
+              bundleDigestMatchedBeforeGoBuild = $true
+              bundleDigestMatchedAfterGoBuild = $true
+              goSelectionBasis = 'go-list-with-matching-build-tags/pre-post-hash'
+              invoker = 'workflow:go build (not a Stage1 TEI binary)'
+            }
+          }
+          $observation | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'b1-stage-input-observation.json') -Encoding utf8
+          Write-Host "B1-A-named-input-observation-recorded sha256:$exe"
+      - name: Verify generated bundle served by the native WebView2 and real StudioBridge
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (-not $env:TEI_GENERATED_WORKBENCH_BUNDLE_SHA256) { throw 'Generated bundle digest missing' }
+          python cmd/tei-studio/test/desktop_webview_smoke.py $env:STUDIO_DESKTOP_EXE $env:STUDIO_SMOKE_EVIDENCE_DIR
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Upload generated Desktop WebView2 observations
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tei-studio-generated-desktop-webview2-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ github.workspace }}/tei-studio-generated-desktop-webview2-smoke/**
           retention-days: 7
           if-no-files-found: warn

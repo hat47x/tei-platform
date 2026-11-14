@@ -65,6 +65,7 @@
 | [`reference-studio-host-boundary/`](reference-studio-host-boundary/) | TEI StudioのWeb接続・失効・要求スコープと、DesktopのDraft・private-resource境界を確認する独立回帰（#1824） |
 | [`reference-studio-host-qualification/`](reference-studio-host-qualification/) | TEI StudioでCLI・Go共通操作・Host結果の意味を比較する検査（#1824） |
 | [`reference-studio-static-composition/`](reference-studio-static-composition/) | TEI Studioの静的合成の最小参照実装（#1824） |
+| [`reference-studio-part-generator/`](reference-studio-part-generator/) | Studioの読取り専用Inspector reader一つを、契約Sourceから既存の決定論transform実行機構で生成する`tei self-build`用child。生成物は実Wails Desktopへ収録され、使用を独立に観測する。Stage1のTEI実プロセスによるStage2再生成の観測手順を含む（#1824・#2831） |
 | [`reference-studio-plugin-inventory/`](reference-studio-plugin-inventory/) | Studioのプラグインについて、導入・有効・権限・版対応・提供元・読取り可否を別の値として整理し、未完了の走査や過去の件数を現在の0件・確認済みにせず、無効プラグインを起動せずに診断する参照（#2045） |
 | [`reference-studio-plugin-disable/`](reference-studio-plugin-disable/) | Studioのプラグインの無効化・削除・再有効化について、必須依存の追加候補、明示確定、設定版・宣言・ソース指紋・権限の再検査、設定更新と拡張起動の分離、設計ソースのバイト保持を判定する参照（#2046） |
 | [`reference-studio-plugin-data-lifecycle/`](reference-studio-plugin-data-lifecycle/) | Studioの生ソース保存と明示的なデータ削除について、プラグイン不在でも保存できること、受理・実行との分離、外部編集との競合、プラグイン削除とデータ削除の区別、共有・不明領域の扱い、保持不能時の全体拒否、変換規則の適用を判定する参照（#2047） |

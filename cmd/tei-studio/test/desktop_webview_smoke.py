@@ -319,15 +319,12 @@ def main() -> int:
         print(f"{event}: {json.dumps(values, ensure_ascii=False, sort_keys=True)}", flush=True)
 
     try:
-        facts["os_version"] = subprocess.run(
-            ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", "[System.Environment]::OSVersion.VersionString"],
-            check=True,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=15,
-        ).stdout.strip()
+        # OS metadata must not gate the WebView2 smoke on a second PowerShell
+        # process. On overloaded Windows runners that process may time out
+        # before the Desktop itself is launched.
+        os_version = sys.getwindowsversion()
+        facts["os_version"] = f"{os_version.major}.{os_version.minor}.{os_version.build}"
+        facts["os_version_source"] = "python.sys.getwindowsversion"
         facts["python_version"] = sys.version
         facts["go_version"] = subprocess.run(["go", "version"], check=True, capture_output=True, text=True, timeout=15).stdout.strip()
         facts["checkout_sha"] = subprocess.run(["git", "rev-parse", "HEAD"], check=True, capture_output=True, text=True, timeout=15).stdout.strip()
@@ -562,6 +559,8 @@ return {
   connection: document.querySelector('#connection')?.textContent ?? '',
   subjectTitle: document.querySelector('#subject-title')?.textContent ?? '',
   sourceStatus: document.querySelector('#source-status')?.textContent ?? '',
+  inspectionReader: document.documentElement.dataset.teiInspectionReader ?? '',
+  inspectionReaderCalls: Number(document.documentElement.dataset.teiInspectionReaderCalls ?? '0'),
   notice: document.querySelector('#notice')?.textContent ?? '',
   diagnosticSummary: document.querySelector('#diagnostic-summary')?.textContent ?? '',
   editor: editor?.innerText ?? '',
@@ -630,6 +629,67 @@ return {
         if page_state.get("editorEditable") != "false" or page_state.get("graphLabel") != "読取り専用グラフ":
             raise RuntimeError("Workbench source or graph is not marked read-only")
 
+        # The Inspector reader is generated from a contract Source. The part
+        # records the digest of that contract on the document only when it
+        # accepts a projection, so this observes the generated part running in
+        # this WebView, for the contract on disk now, rather than its presence
+        # in the bundle. The digest is recomputed here from the contract bytes.
+        contract_path = Path(__file__).resolve().parents[3] / "reference" / "tei-studio-workbench" / "inspection-reader.contract.json"
+        contract_canonical = json.dumps(json.loads(contract_path.read_text(encoding="utf-8")), separators=(",", ":"), ensure_ascii=False)
+        expected_reader = "sha256:" + hashlib.sha256(contract_canonical.encode("utf-8")).hexdigest()
+        facts["generated_inspection_reader"] = {
+            "expectedContractDigest": expected_reader,
+            "observedContractDigest": page_state.get("inspectionReader"),
+            "acceptedProjectionsAfterInitialInspect": page_state.get("inspectionReaderCalls"),
+        }
+        if page_state.get("inspectionReader") != expected_reader:
+            raise RuntimeError(f"Inspect was not rendered by the Inspector reader generated from the current contract: expected {expected_reader}, observed {page_state.get('inspectionReader')!r}")
+        if not isinstance(page_state.get("inspectionReaderCalls"), int) or page_state["inspectionReaderCalls"] < 1:
+            raise RuntimeError(f"Generated Inspector reader did not record the initial Inspect: {page_state.get('inspectionReaderCalls')!r}")
+
+        # Opt-in in the generated-native-Desktop CI job only. The ordinary
+        # Wails Desktop smoke retains its existing behavior and requirements.
+        # Match the actual same-origin resource served inside the native WebView2
+        # to the bytes pinned before the generated Desktop binary was built.
+        expected_bundle_digest = os.environ.get("TEI_GENERATED_WORKBENCH_BUNDLE_SHA256")
+        if expected_bundle_digest:
+            if not re.fullmatch(r"[0-9a-f]{64}", expected_bundle_digest):
+                raise RuntimeError("The generated Workbench bundle digest is not a lowercase SHA-256")
+            bundle_probe_script = """
+const done = arguments[arguments.length - 1];
+(async () => {
+  const response = await fetch('/workbench/main.js', { cache: 'no-store' });
+  if (!response.ok) throw Error(`Workbench resource status ${response.status}`);
+  const raw = await response.arrayBuffer();
+  const digest = await crypto.subtle.digest('SHA-256', raw);
+  const sha256 = Array.from(new Uint8Array(digest))
+    .map(v => v.toString(16).padStart(2, '0')).join('');
+  done({ sha256, bytes: raw.byteLength, pathname: new URL(response.url).pathname });
+})().catch(error => done({ error: String(error) }));
+"""
+            bundle_response = webdriver_request(
+                base_url,
+                "POST",
+                f"/session/{driver_session}/execute/async",
+                {"script": bundle_probe_script, "args": []},
+                timeout_seconds=30,
+            ).get("value", {})
+            facts["generated_workbench_bundle"] = {
+                "expected_sha256": expected_bundle_digest,
+                "webview_response": bundle_response,
+            }
+            if bundle_response.get("error") or (
+                bundle_response.get("pathname") != "/workbench/main.js"
+                or bundle_response.get("sha256") != expected_bundle_digest
+            ):
+                raise RuntimeError("Native WebView2 served a different Workbench bundle than the generated input")
+            record(
+                "generated-workbench-asset-verified",
+                sha256=expected_bundle_digest,
+                bytes=bundle_response.get("bytes"),
+                pathname=bundle_response.get("pathname"),
+            )
+
         # Invoke the same registered Host methods through Wails' runtime and compare
         # their values with the actual WebView projection, rather than relying on a mock.
         bridge_script = """
@@ -693,6 +753,10 @@ const [kind, subjectId] = arguments;
             time.sleep(0.2)
         if graph_state.get("subjectTitle") != child.get("id") or json.loads(graph_state.get("editor", "null")) != graph_response.get("value", {}).get("canonical"):
             raise RuntimeError("Graph selection did not render the Host Inspect canonical projection")
+        # A second Inspect must pass through the same generated part again.
+        facts["generated_inspection_reader"]["acceptedProjectionsAfterGraphInspect"] = graph_state.get("inspectionReaderCalls")
+        if graph_state.get("inspectionReader") != expected_reader or graph_state.get("inspectionReaderCalls", 0) <= page_state["inspectionReaderCalls"]:
+            raise RuntimeError(f"Graph Inspect did not pass through the generated Inspector reader: {graph_state.get('inspectionReaderCalls')!r}")
 
         validate_click = """
 const button = document.querySelector('#commands button[data-command-id="validate"]');

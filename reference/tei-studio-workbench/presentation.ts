@@ -216,28 +216,13 @@ export function readValidation(raw: unknown): Finding[] {
     };
   });
 }
-export function readInspection(raw: unknown, expected: Subject, catalog: Catalog) {
-  const v = record(raw);
-  if (
-    v.effect !== "read-only" ||
-    subjectKey(subject(v.subject)) !== subjectKey(expected) ||
-    !Object.hasOwn(v, "canonical") ||
-    typeof v.worldFingerprint !== "string" ||
-    typeof v.sourceIndexFingerprint !== "string"
-  )
-    throw Error("INVALID_INSPECTION_RESPONSE");
-  if (!catalog ||
-      v.worldFingerprint !== catalog.worldFingerprint ||
-      v.sourceIndexFingerprint !== catalog.sourceIndexFingerprint)
-    throw Error("STALE_MODEL_PROJECTION");
-  return {
-    text: JSON.stringify(v.canonical, null, 2),
-    version: `${v.worldFingerprint}:${v.sourceIndexFingerprint}`,
-    sourceStatus: String(v.sourceStatus ?? "unknown"),
-    worldFingerprint: v.worldFingerprint,
-    sourceIndexFingerprint: v.sourceIndexFingerprint,
-  };
-}
+// The Inspector reader is generated from inspection-reader.contract.json by a
+// TEI deterministic transform. There is no hand-written copy to keep in step:
+// change the contract Source and regenerate.
+export {
+  readInspection,
+  inspectionReaderProvenance,
+} from "./inspection-reader.generated.ts";
 export function relatedGraph(entries: readonly Entry[], selected: Subject) {
   const key = subjectKey(selected);
   const active = entries.find((e) => subjectKey(e.subject) === key);

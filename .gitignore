@@ -22,3 +22,7 @@ coverage.out
 
 # ビルド成果物（ソースから再生成できる実行ファイル）
 *.exe
+
+# Python test / launcher bytecode is local derived state, not TEI build input
+__pycache__/
+*.py[cod]
