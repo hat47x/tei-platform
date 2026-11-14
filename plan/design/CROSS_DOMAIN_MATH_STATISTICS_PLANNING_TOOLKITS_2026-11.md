@@ -520,6 +520,14 @@ Window候補5件はSHA-256で元ファイルと結び付いているが、**候�
 
 [MarkdownのFence境界修正候補 #4725](https://github.com/hat47x/tei-platform/pull/4725)は未統合のDraftであり、GraphとRuleの例示領域を定義に誤認しないための負例を扱う。これは統計表・KaTeX式・Graphviz／Mermaidが共存する文書でも必要な境界である。Readerの正式採用時は、バッククォートとチルダのFence、開始長・終了長、インデントコード、未閉領域、BOM／CRLF、元byte spanを検証し、**表示や例示に現れた数式・計算条件を実行可能な定義へ勝手に変えない**。KaTeXは表示、TEIが意味・演算・検証を担う方針を維持し、専門Parserや第二の数式正本を追加しない。
 
+### 元データとWindow結果を別の独立Expectedで照合する
+
+従来のWindow回帰は七行の平均を照合し、入力行ではB2のNULL有無や系列の非空だけを確認していた。入力が変わったにもかかわらず偶然同じ平均になる場合を見逃さないよう、[WindowのExpected候補](../../testdata/tei-md-window/independent-expected.candidate.json)を`v2`とし、七行の観測ID・系列・順序・入力値・明示NULLを**結果のExpectedとは別に固定**した。実SQLの入力行と三つのWindow計算結果を同一行IDについて照合する。JSONの欠落値、明示NULL、整数、非整数を区別する負例も加える。
+
+同時に、原文の五つの`*.tei.md`に手書きの観測行が一致することを既存`sourceindex.RangeFromOffsets`でbyte位置まで照合する。これは**試験対象の字句的なSource対応**であり、正式ReaderがMarkdownのどの表を実定義として選んだかの検査ではない。Graphの限定Source Index実証と、WindowのC0実DBをつなぐための引渡し材料であり、TEIの正式Role／Operator受理やC1／C2の完成とは区別する。
+
+[Manifest管理RootとPinned SourceのS0予備試験 #4751](https://github.com/hat47x/tei-platform/pull/4751)はmainに統合済みである。実Workspaceの管理Root選択、宣言外draftの隔離、Pinned Rootの元byte、Source Indexの失効をテスト内で検証したが、正式な`Workspace.Load`は依然として`TEI_MD_PARSER_UNBOUND`を返す。Window側で第二のWorkspace Loaderを作らず、#2621/#988の既存Ownerが正式Readerを接続した後に、**同じPinned Sourceから選択した表Cell→型付き観測→計算定義→生成SQL→実Provider→独立Expected**を一つの試行として追う。複数HEADの局所CIを寄せ集めて、製品の一貫生成が完了したとは扱わない。
+
 ### 正式Readerが未接続である現状から、最小の実読取りへ進む
 
 2026-11-14時点の`internal/workspace/loader.go`は、管理Sourceを走査したあと、`rejectUnboundTEIMarkdownSources`で管理対象の`*.tei.md`を**`TEI_MD_PARSER_UNBOUND`として明示拒否**する。現在の`loadSemantics`が呼ぶ`syntax.NewParser(...).ParseSemanticFile()`は従来形式のParserであり、Markdownの表・フェンス・本文のRoleを実際に解釈した証拠ではない。`ManagedFile`の列挙、`ReadByLoader`の真偽、Parserでの解釈、意味の受理、Buildでの実消費はそれぞれ別の事実である。
