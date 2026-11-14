@@ -883,6 +883,41 @@ tei external-candidates
 
 **この節の資格**：既存の各設計・実装・CIの確認から得た計画上の判断であり、REA-XP-07〜10、旧Targetの実Trigger、Native第二Consumer、Owner Meaning、旧新Function同値を新たに実行したものではない。主計画Draftはmain未統合のままレビューする。
 
+
+<!-- rea-one-function-question-review-handoff-20261114 -->
+#### 一機能の「根拠を確認して受理する」作業を最小の製品断面にする（2026-11-14／設計・実施引渡し）
+
+**追加の判断**：REAが抽出したNode/Relationから、最初に作るのは新しい正式DSLや新しい業務モデルではない。**「旧Function Fは、どのDataを読み、どのDataを書き換えるか」への根拠付き回答**を、既存の型付きread-only Operationと三要素の参照・Source/Context契約を使って組み立てる。資料の位置、読めた範囲、対応が曖昧な部分まで表示し、利用者がSourceに戻って確認できることを優先する。一つの回答ができても「そのData以外は使わない」「旧機能を新Targetで再現できた」とは結論しない。
+
+**回答を作るときの最小項目（既存Projectionを用途別に合成し、新しい保存Schemaは定義しない）**：
+
+| 表示項目 | 含める内容・選択時の操作 | 合格の上限 |
+| --- | --- | --- |
+| 問いと対象 | Question、Workspace/Source版、旧Functionの候補ID、必要なData/Function/Businessの範囲 | 候補IDの一致は正式TEI Qualified Refとの同一性ではない |
+| 確認できたこと | REA Evidence ID、Node/有向Relation IDと原Source位置、X-TEA宣言/SQL、観測・推論の区分 | 静的参照は実際のSQL実行、Business上の実行成功を証明しない |
+| まだ確認していないこと | 未取得ファイル、動的参照、別Plugin/DB、手作業、partial/unknown、必要閉包 | 非表示・未取得・権限不足から「0件・不存在」を導かない |
+| 対応候補と理由 | 外部Element↔旧Function/IO↔TEI Data/Function/Businessの0..N対応、支持・反証・曖昧な理由 | AIの説明、名前の一致、候補スコアはOwnerの意味受理ではない |
+| 次に取れる操作 | 原Sourceへ移動、関係の経路を確認、候補の比較、必要な追加観測、変更Previewの作成 | 閲覧とPreviewでは実Source/DB/外部Hostへの書込みをしない |
+| 独立した検証結果 | Consumer実受領、必要ならMock/実Provider/旧実測L・Owner期待D・新実測Tを出典別に表示 | Mock/Target結果をLegacy実測やOwner受理へ読み替えない |
+
+**Studioの操作順**：対象を探す→**Source版と外部IDを固定**→候補と根拠を比較する→未解決・不完全を確かめる→必要なら採用候補を作る→変更先のQualified Ref/Source Slotと影響をPreviewする→Ownerが明示的に判断→Sourceを保存して独立再読取・再投影する。初期のREA R3-Cは**根拠を読むところまで**を実装する。Focusは一時的な閲覧位置、Pinは対象固定、Dirty Bufferは未保存内容であり、一つにまとめない。候補のReviewや見かけのSource一致だけで編集可能にしない。複数の元Occurrenceが同じ表示要素へ集約された場合、編集先が特定できない限りread-onlyのまま理由を示す。
+
+**説明文の扱いを明確にする。** 説明の生成元を①旧ソースから直接確認できた事項、②解析やAIによる解釈の候補、③Ownerが受理した業務条件、④Mockで確かめた振る舞い、⑤実Host/DBで観測した結果に分ける。日本語の業務説明や仕様書へ正式な「する／しなければならない」を記載するのは、③の意味に根拠がある部分だけとし、①②は「コード上の参照がある」「候補である」、④⑤は実証した環境と範囲を明示する。専門家が読める業務DSLから説明文・テストパターン表・TODO外部部品のMockをほぼ直訳できる粒度を目指すが、逆解析の結果を自然な文章に整えたこと自体で承認済み仕様とはしない。出典がない手作業、Business上の責任、完了条件を補って確定文へしない（#2622/#1125/#1158）。
+
+**三要素・DB移行との接続**：Function-level C/R/U/Dを認定するには、単にSQL/ERのRelationが見えることではなく、関係を辿った根拠と対応するFunction/Action/IOのSourceを示す。旧Source・新Query・DB Instance・Provider・入力パラメータ・取得範囲は別の束縛とし、特にJOINの行数増幅、NULL/欠損、RLS/制限付き取得を同一の意味へ潰さない。読み取りが成立しただけなら更新系のEffect/Recoveryを認定しない。通常利用者にはFunction/業務Dataと現在できる操作を先に示し、DB Alias/方言/実DSNは必要かつ開示が許される場面だけへ配置する。外部REAの対応候補を使ってDesired Schema/DB DDLを自動更新しない（#1126/#2586/#2622）。
+
+**既存独立Expectedに引き渡す3つの小さなケース**：
+
+| ケース | 正常・負例の入力 | 求める判断（実装結果ではない） |
+| --- | --- | --- |
+| **REA-XP-11 説明の出典** | 静的な参照経路はあるが業務条件の根拠がない。AIは完了条件を含む流暢な説明文を提案 | 出典のある構造と意味候補は表示可能。ただし未受理の完了条件を正式な説明・DSL・試験Oracleに採用しない（#1124/#1125/#2514） |
+| **REA-XP-12 一問の回答の忠実度** | 同名Functionが二つ、平行Edge・未取得Pluginあり。短縮図でTask→Dataに見える | 元の連鎖・Sourceへ戻れ、対応候補と未解決が残る。単一Function/Writerの確定や「Dataは未使用」の誤断定をしない（#1124/#4487/#3262） |
+| **REA-XP-13 Preview後の差替え** | 候補の採用Previewを開いたままSource版/Slotが変更。元byte A→B→Aや別Tab後着も起きる | 実際の変更は現在版・対象の一意性・Owner判断を再確認してから。古いPreviewを黙ってApplyせず、無関係な閲覧状態やDirty Bufferも変更しない（#2497/#4515/#1126） |
+
+**実装・検証を分割する**：#3394/#4661はEvidenceを実CLI/Nativeへ届ける責務まで、#1124/#4487は一Functionの根拠付き三要素Reviewと文書/図面への投影、#1125/#1158/#4495は受理済み業務プロセスの説明とTODO/Mock、#1126/#2497は意味を落とさないSource編集、#2586/#2622は実Provider/Context、#4317/#4467はSHO保存・再読取、#2514/#1180は独立Expectedを扱う。**REA-XP-11〜13のHeadless FixtureはR3-Cと並行して設計可能**だが、正式Native受領・Owner受理・実移行の達成とは別に記録する。R3-A/Bを未統合のまま二Consumerを成功扱いせず、対象が未確定ならFit/Gapだけを既存Ownerへ返す。
+
+**製品P0と現況**：非Plugin StudioのStage1→Stage2 Windows Desktop実セルフビルド（#4583/#2831）、通常tei CLIからの実PostgreSQL Provider Readと独立Consumer（#2586）を優先する。今回のREA-XP-11〜13は**設計と試験引渡しのみ**で、Headless/Native/旧Runtime/実DB/SHOの新試験やOwnerの意味受理は行っていない。新しいREA専用Host、承認Engine、Meaning Registry、共通Editorや第二Expected正本を導入しない。
+
 **検討中の横断追補（DBアクセス・Query/2way SQL）**：対象DataSourceの既存Binding解決、DB別Native SQLの選択規約、SQL編集時の診断と分岐検証、異種DBでの意味同値性を、[DBアクセス・Query選択・2way SQLの最小適合計画](https://github.com/hat47x/tei-platform/issues/2622#issuecomment-6772875802)で小さな実証へ分解する。#2611・#2622・#2387・#2667に既存の責務を残し、新しいCore API・正式DSL構文・実DB対応の採用・完了を意味しない。
 **2026-11-09／Product Queryの物理入力乖離を解消（独立Source Fixture段階）**：[Workbench設計§22](design/DATA_SOURCE_WORKBENCH_STANDARD_SCOPE_2026-11.md)と[隔離PG Product Fixture](../examples/data-source-workbench/README.md)に、既存`postgres_seed.sql`の`sales_order`4列と、実`order_entry.recent_orders` SQLが要求する`public.orders`5列＋`:from`の**物理Schema不一致**を反映した。従来F-01〜10を壊さず、専用`recent_orders_product_seed.sql`を別Sourceとして追加し、3行／境界一致2行／後方0行の独立Source-static ExpectedをGoで判別する。**これは実PostgreSQL接続・Provider Invoke成功ではない**。最初の未成立実行辺は、固定Function/Queryの実Consumed SQL+args→Alias/物理Instance/Provider→実Rowset/Function Data Context。Ownerは#2586、実ProductのCLI/Studioは#1251、Schema適用は#2892。main #3540の静的Inspector S2-referenceは実CLI/Wails経路まで前進したが、外部Plugin Build/Grant/2×2実BOMを証明せず、異質JSONLは後続比較とする。新Gate/Host/Query正本なし。
 
