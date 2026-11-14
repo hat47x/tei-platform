@@ -1037,6 +1037,71 @@ Studioで図のEntity・Field・Relation、Markdownの表行、業務フロー�
 
 必要になってから、撮影・音声・Excel・画面等のSource ConnectorをPluginとして増やす。**初回の新しい合成Fixtureは手描き図風の画像＋会議録＋CSVから一件のRelation候補を作る範囲**に限定し、元出典の独立照合→CLIの候補受領→限定Source編集可能性を確認する。Studioの便利なGUIやAIによる一括モデル確定は後続であり、第二Source Index／第二Acceptance／新Web Hostを作らない。
 
+### 31.17 GraphとRuleの実装済み参照例から、宣言的構文の最小契約を固定する（2026-11-15追補）
+
+前節までの横断設計に、**現在の`main`で読める実装の到達点**を接続する。[`reference/tei-md-graph-reader`](../../reference/tei-md-graph-reader/README.md)では、6つの`*.tei.md` Fixtureに対し、限定されたMarkdown表からNode／Edge／Rule候補を読み、元のbyte位置を返す。`GenerateGo`は関係の起点／終点を判定する実Go条件分岐を生成し、テストは別の`go run`で独立Expected候補と照合する。これは**表→限定解釈→Goの実ロジック→独立観測**の局所成立である。
+
+同じ参照実装が行っていないことも明確にする。`ParseCandidate`は、名称を固定した二つの節の表だけを読み、Rule Readerも一つの表・一行に限定される。意味上のIDと表示用Mermaid IDは別であり、Derived Mermaidは表を上書きしない。**製品Workspace Loader、選択されたLanguage Plugin、Canonical Meaning、通常CLI、実Plugin／Provider、Stage1→Stage2セルフビルドには接続していない。** `TEI_MD_PARSER_UNBOUND`を保持しているのは正常な未対応の表明である。
+
+この実証から採用候補にできるのは「新しいGraph DSL」ではなく、次の小さい**Source→意味候補の読取り契約**である。
+
+| 条件 | Readerが確認すべきこと | なぜ必要か |
+| --- | --- | --- |
+| 選択範囲 | Workspaceが選択したSource、Profile／Language版、定義として読める節・表 | 説明・引用・例の実行化を防ぐ |
+| 識別子 | Node／Edge／Ruleごとの独立ID、参照先のQualified ID、重複・曖昧さ | 同名Node、同端点の多重有向Edgeを保持 |
+| 原文への対応 | Table cell／Fence／Source span、BOM・CRLF・UTF-8、Source revision | 診断と局所Patchを元byteへ戻す |
+| 表現の区別 | 定義元のTable、MermaidのDirect Authoring／Derived View、自然言語の候補 | 図面の表示変更で意味を上書きしない |
+| 解釈の資格 | Role、型・Operator契約、必要な依存と入力の完全性 | Parserが読めても意味の採用・実行資格は別 |
+| 消費・再利用 | 生成TargetのBuild入力／Generator版、独立Expected、実際に選択されたConsumer | 単体の生成成功を製品セルフビルドと呼ばない |
+
+**Mermaidは一律に派生図とはしない**。このGraph Fixtureでは表が定義元である。一方、ER図やシーケンス図でMermaid自身がRole上必要な意味を表現でき、Sourceへの対応が一意なら、§32〜35に従って直接Authoring候補とできる。どちらの場合も、**同じClaimを二つの編集元から独立採用しない**。
+
+### 31.18 規則・判断・データ操作は同じ構文入口を使い、意味は分ける
+
+BRMS的な機能を持たせる際も、独立したRule Engineの導入を第一目標にしない。Ruleを、用途に応じて**DataのConstraint／Validation、Derivation、FunctionのDecision、BusinessのLifecycle条件、Capability／Effectの前提**へ結び付ける。書式としては小さい判断表をMarkdown表で表し、複雑な条件や式を必要時だけ短い`rule`／Operator宣言で補う。条件付きの処理と実際のCommand／Transactionは別の責務である。
+
+例えば業務上の「受注明細の数量を判定する」は、レビュー面では以下のような表で説明できる。これは**説明用の構文候補**であり、現在の`main`に同じ列名のDecision Parserが実装されているわけではない。
+
+````markdown
+## 数量の判定（候補）
+
+判定方式：条件が一つだけ成立すること（Unique）
+
+| ID | 条件 | 結果 |
+| --- | --- | --- |
+| quantity.positive | 数量が0より大きい | 受理可能 |
+| quantity.nonpositive | 数量が0以下 | 受理不可 |
+
+NULL、未取得、非開示、入力の完全性が不明な場合の判定は未定義。
+````
+
+**`Unique`を初期比較対象のHit Policy候補**とし、複数行が同時に成立する場合は先に書かれた行を無断で採用せず、競合として示す。条件が成立しない場合、評価に必要な入力が揃わない場合、矛盾した複数の結果が成立する場合を別に扱う。NULL／空集合／部分取得、時点・単位・精度、適用Scope、短絡・順序、明示例外、候補の有効期間はOperator／Function Data Contextと整合させる。判定結果に`受理可能`と書いても、**現在のGrantやOperationの実行を許可したことにはならない**。
+
+この書式の適用可能性は[#2622](https://github.com/hat47x/tei-platform/issues/2622)のData Operations、[#988](https://github.com/hat47x/tei-platform/issues/988)のOperator意味、[#4134](https://github.com/hat47x/tei-platform/issues/4134)のObligation／独立Expected、[#4193](https://github.com/hat47x/tei-platform/issues/4193)の状態表／状態図の同一意味投影に委ねる。特殊な集計やNative SQLの方言は、正本となるSQL Sourceを保持したうえで明示Bindingする。**Decision表の行順と業務上の優先順位を同一視しない**。
+
+### 31.19 三要素分析法とセルフビルドに同じ「読み替え境界」を適用する
+
+図面から得られた内容を宣言する場合、Data・Function・Businessは同じMarkdownファイルに隣接させてもよいが、**「どのRoleのどのClaimか」**を明示する。
+
+- **Data**：Entity・Field・Key／FD・識別／非識別Relation・Subsystem相対のCRUD等。サンプルCSVの重複なしだけで業務上のKeyを受理しない。
+- **Function**：Input／Output・Function Data Context・Relation path・Field・粒度・必要な完全性・Rule／Operator／Query binding。Data Relationがあるだけで自動Fetchを増やさない。
+- **Business**：担当者・発生契機・業務作業・帳票／現物・受渡し・例外／承認。業務フロー上の作業をすべて実行可能Functionへ変換しない。
+- **Projection**：Mermaid／渡辺式ER／業務フロー／CRUD・表・ツリー等。表示可能性、Loss、編集可能範囲とSource権限をそれぞれ示す。
+
+これを行う際、ホワイトボード・会議録・帳票・CSV・既存画面から抽出されたCandidateは、§31.6〜31.16で定義した原資料→観測→候補→Source-bound Draft→受理済みMeaningの経路に留める。**多経路資料のAI解析は、Readerが明示的に束縛されたSourceを読むことの代替ではない**。同じContent・同じ識別子が見えても、異なるScope／版／公開範囲の資料を黙って一件へ統合しない。
+
+**実装順の更新（既存工程の置換候補）**：
+
+| 順 | 具体的に閉じる辺 | 最低限の証拠 |
+| --- | --- | --- |
+| **A-0 参照実装の再利用** | 現在のGraph/Rule Reader→生成Go実処理の限定テストを固定 | 実Fixture／生成コード／別Processの独立Expected、現在のmainでの実実装範囲を説明 |
+| **A-1 正式Reader入口** | Workspace選択とLanguage／Role pin→Markdown内の選択済みTable／Fence→既存Source Index | 元byte範囲、重複ID・未対応節の拒否、`TEI_MD_PARSER_UNBOUND`からの正式移行範囲 |
+| **A-2 意味と生成** | 受理されたGraph／Rule／Function Data Context→既存Generator／Target | 型／Key／Ruleの意味差分と生成Go差分、図の配置変更で生成意味不変 |
+| **A-3 Pluginの実消費** | TEI由来生成物→選択済みPlugin／通常CLI→独立Consumer | Go委譲のためだけの薄い包装を除き、実Targetの処理と観測を検査 |
+| **A-4 自己再構築と専門View** | 同じSource／Build Intent→Stage1／Stage2→Windows Wails Studio・三要素Viewer | 再構築の入力・Generator版・構造生成率・定義量の変化・表示のLossを分離して実測 |
+
+A-0は現`main`に**局所的な参照実装として存在**する。A-1〜A-4を完了したとはみなさない。[#4359](https://github.com/hat47x/tei-platform/issues/4359)／[#2621](https://github.com/hat47x/tei-platform/issues/2621)／[#1018](https://github.com/hat47x/tei-platform/issues/1018)／[#4536](https://github.com/hat47x/tei-platform/issues/4536)／[#4544](https://github.com/hat47x/tei-platform/issues/4544)／[#2831](https://github.com/hat47x/tei-platform/issues/2831)／[#4583](https://github.com/hat47x/tei-platform/issues/4583)にそのまま引き渡し、新しいParser Registry・第二のMeaning Store・Rule Runtime・Studio Hostを作らない。P0の実Studioセルフビルドと通常製品CLI→実Provider／独立Consumerは優先維持する。
+
 ## 32. Mermaidを直接記述するER図・シーケンス図
 
 §28では、複雑なGraphについて型付き表からMermaidを導出する例を優先した。ただし、これを**全Mermaidを読み取り専用にする規則とはしない**。Mermaid自身が対象用途に必要な意味を表せるなら、ER図`erDiagram`、シーケンス図`sequenceDiagram`等を**直接のAuthoring Source候補**として認める。GitHub上で図を読める利点をそのまま生かす。
