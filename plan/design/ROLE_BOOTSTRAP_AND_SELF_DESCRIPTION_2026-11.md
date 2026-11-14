@@ -2,6 +2,8 @@
 
 **状態：横断設計候補／実TEI Core・DSL・Role Resolverへの採用前。** 本計画の設計上の中心は、標準データ構造でRole/Operator/構文Plugin自身を記述可能にしながら、**その自己記述を初めて読むための有限な解釈の根**を明示し、循環と未決、実行資格の区別を機械検査できるようにすること。
 
+**現時点の読み方（2026-11-14）**：第1〜39節は設計判断と過去の試行を記録したものであり、すべてが製品に実装されたわけではない。今回の実装順と、JSON Schemaなどの外部定義を図解・診断へつなぐ具体案は[第40節](#40-2026-11-14-外部の宣言を読みやすく投影し安全に編集するための実装順)にまとめた。最優先は引き続き**TEI Studio Desktop自身によるStage2構築**であり、外部Schema対応や構文自己記述を新たな前提条件にはしない。
+
 - **横断Owner**：[Everything is Data #2619](https://github.com/hat47x/tei-platform/issues/2619)、[標準構造・意味Role #2620](https://github.com/hat47x/tei-platform/issues/2620)。
 - **実装Owner**：[DSL Language/Operator Plugin #988](https://github.com/hat47x/tei-platform/issues/988)、[Plugin/Service Contract #951](https://github.com/hat47x/tei-platform/issues/951)、既存Semantic Extension Lock／Source/Accepted Meaning。独立のParser Registry・Extension Resolver・実行Hostを新設しない。
 - **Consumer**：[Markdown/Source #2621](https://github.com/hat47x/tei-platform/issues/2621)、[Facet/Law #2544](https://github.com/hat47x/tei-platform/issues/2544)、[Product Skill #2605](https://github.com/hat47x/tei-platform/issues/2605)、[将来Skill #2614](https://github.com/hat47x/tei-platform/issues/2614)、[構造保存 #2497](https://github.com/hat47x/tei-platform/issues/2497)、[Studio #1124](https://github.com/hat47x/tei-platform/issues/1124)、[Context #2516](https://github.com/hat47x/tei-platform/issues/2516)。
@@ -2117,7 +2119,7 @@ M/P/R/Tは**既存のSource/Contract/BuildExecution/Evidenceへの検収の観�
 
 | 優先/既存Owner | 最小の具体的な次タスク | 独立Expected／停止条件 |
 | --- | --- | --- |
-| **P0 #2831/#4583** | Non-Plugin DesktopのN0/N1/N2/N3を実BuildExecution/ArtifactSetで結線。Go/Node/esbuild/Embed/Toolchainの実消費と実Stage1→Stage2→Windows WebView2を一Attemptで取得 | #4634 Builder選抜8/8、#4648 Toolchain実体8/8は別証拠。#4587最新HEAD通常Desktop Windows Job失敗を勝手にPASSへ変えない |
+| **P0 #2831/#4583** | Non-Plugin DesktopのN0/N1/N2/N3を実BuildExecution/ArtifactSetで結線。Go/Node/esbuild/Embed/Toolchainの実消費と実Stage1→Stage2→Windows WebView2を一Attemptで取得 | #4634 Builder選抜8/8、#4648 Toolchain実体8/8は別証拠。#4587旧HEADの通常Windows失敗は履歴として残し、新HEAD `9b58533d`の全12 Workflow successをB0限定の実績として区別する。正式Stage1→Stage2はなお未検証 |
 | **P0 #4536/#4359/#988** | `fx.rate` Role S0に既存Validation第二Subjectを追加し、Schema/Parser/Reader要求/独立Expectedの「実適用可能なContribution」を#4646 Referenceと照合 | Required/readDemandの一致は物理Provider read・Full Meaning/Grant合格でない。新`rule`/`*.tei.md`の正式採用を先に要求しない |
 | **P1 #951/#3279/#4646** | Meaning ID/Version/FPとEditor/Build/Runtime/Testの必要Contributionを小Product Subjectで受理前検査。Runtime-only Package版違いを含む12反例 | 未要求Stageの欠落で全体失敗にしない一方、要求Stage不足はFail closed。Layout/Package版＝Meaning版としない |
 | **P1 #2586/#4647/#4496** | Function Contextの`partial/unestablished`を実ReadからConsumerへ運び、W4列出所を必要な1 Providerで確認する。RA-2P/RA-3 Product入口を別PRへ | 0行/SQL Plan/RLS監査だけで`complete/EmptyJustified`、stored NULL、行粒度Entityを認定しない |
@@ -2166,11 +2168,11 @@ M/P/R/Tは**既存のSource/Contract/BuildExecution/Evidenceへの検収の観�
 
 この事例をDSL自己記述にも適用する：**テストから独立したExpected**は「固定JSONが存在する」ことと同義ではない。前提に反するExpectedは修正し、その一因子差と観測を履歴として残す。Source/byte一致、Producer/Parser申告、Role名、Candidate generated resultを**それ自身の正解**として自己採点しない。READ→Project→Deliverの各境界に独立根拠がなければUnknown/Unacceptedを維持。L1のByte spanとL3のAdapter call0も、それぞれの独立対照を持つ。
 
-新REA実Readerの**現PR HEAD`9b8f5ca9b50d34040cfa0682f026f4fc29090f01`**では、Actions取得時点で**12 Workflow中11 success／1 in_progress（Health）**。別Process Readerや二Rootテストの限定成功も、Studio/Wails/MCP/AI Recipientへの正式配送・Current Principal/Grant/Disclosureを証明しない。#4503/#2516への既存引渡しを維持する。
+新REA実Readerの**現PR HEAD`9b8f5ca9b50d34040cfa0682f026f4fc29090f01`**では、Actions取得時点で**12 Workflowすべてcompleted/success（旧・中間判定11件成功／Health実行中は履歴として区別）**。別Process Readerや二Rootテストの限定成功も、Studio/Wails/MCP/AI Recipientへの正式配送・Current Principal/Grant/Disclosureを証明しない。#4503/#2516への既存引渡しを維持する。
 
 ### 39.4 最新Studio CIの回復を正確に反映し、P0を前へ進める
 
-[#4587](https://github.com/hat47x/tei-platform/pull/4587)の旧HEAD`357345d7`では、Windows通常Desktop JobでOS情報取得のPowerShellが15秒Timeoutとなったが、生成Desktop Jobは成功していた。新HEAD`9b58533df8764a74c578d478d8c6ee92a382642e`はOS版記録だけをPython`sys.getwindowsversion()`へ変更して外部PowerShell実行への依存を除いた。対象[Windows Workflow #43572235468](https://github.com/hat47x/tei-platform/actions/runs/43572235468)の**generated-desktop-webview2-smokeとdesktop-webview2-smokeの両Jobがcompleted/success**であることを直接確認した。新HEAD全12 Workflowは取得時点**9 success／3 in_progress**であり、全体12/12 PASSとは書かない。
+[#4587](https://github.com/hat47x/tei-platform/pull/4587)の旧HEAD`357345d7`では、Windows通常Desktop JobでOS情報取得のPowerShellが15秒Timeoutとなったが、生成Desktop Jobは成功していた。新HEAD`9b58533df8764a74c578d478d8c6ee92a382642e`はOS版記録だけをPython`sys.getwindowsversion()`へ変更して外部PowerShell実行への依存を除いた。対象[Windows Workflow #43572235468](https://github.com/hat47x/tei-platform/actions/runs/43572235468)の**generated-desktop-webview2-smokeとdesktop-webview2-smokeの両Jobがcompleted/success**であることを直接確認した。新HEAD全12 Workflowは、その後**12/12 completed/success**まで直接再確認できた。途中の9件成功・3件実行中は履歴上の中間値であり、最新の判定ではない。
 
 この局所修正でWindows**B0/H0/H1のCI再検証範囲**は改善したが、Non-Plugin`BuildExecution/ArtifactSet`で`N0→N2→N3`を実起動し、**Stage1 TEI image自身がStage2 Studio Windows exeをBuild→そのStage2 exeでWebView2を受領**するP0/B2/B3は別。テスト前のOS診断プロセスが不要な単なるPreflightにならないことは製品品質上の改善だが、実Builder/Artifact/Toolchainの完全閉包に読み替えない。
 
@@ -2187,3 +2189,83 @@ M/P/R/Tは**既存のSource/Contract/BuildExecution/Evidenceへの検収の観�
 **本節で成熟した判断**：DSLの自己記述を「定義できた」「文法的に正しい」「実行宣言を静的に検査できた」「実Providerを呼べた」「権限を得た」に分け、それぞれ既存の実コードと独立Expectedを使う。新しく実装する必要があるのは**同一Subjectと同一RevisionでのL1/L2/L3比較という小さな接続試験**であり、新Meta Schemaや「すべてを知る」診断器ではない。
 
 **状態**：`39はGitHub現mainの実コード、Draft #4652/#4653、既存Actions・REA反例に基づく**Docs-only追加**。今回新しいGo/Windows/E2E・Parser/Studio/Child testを実行したものではない。#4587新HEAD両Windows Job成功も全Workflow/正式Stage2/Owner Meaning受理を証明しない。
+
+<!-- tei-self-description-schema-view-20261114 -->
+## 40. 2026-11-14 外部の宣言を読みやすく投影し、安全に編集するための実装順
+
+### 40.1 まず実現するのは、構文の自由化よりも「理解できる表示」
+
+第38・39節では、意味の同一性、段階ごとの実装、実読取範囲、Toolchain、構文診断と実行直前の拒否を切り分けた。次に必要なのは、それらの情報をドメイン専門家が**普段は簡潔に読み、必要なときに根拠へ戻れる**形にすることだ。
+
+[協業UX Draft #4605 第32節](https://github.com/hat47x/tei-platform/pull/4605)と、[宣言的構文 #4359](https://github.com/hat47x/tei-platform/issues/4359)、[Language Plugin #1018](https://github.com/hat47x/tei-platform/issues/1018)、[投影と逆写像 #2497](https://github.com/hat47x/tei-platform/issues/2497)を共通の実装線に置く。最初の対象は**公開した固定JSON Schema一つ**とし、独自DSLの文法を何でも定義できる仕組みを先に作らない。
+
+利用者が最初に見るものは、業務上の名前、属性、参照先、必須条件、制約の概要でよい。`$defs`／`$ref`の解決経路、原文位置、型・制約・Operatorの細部、版と実装の選択、未解決の理由は、Inspector・ツールチップ・ジャンプ・診断から必要に応じて確認できるようにする。この「情報を減らす」操作は**画面上の折り畳み**であり、元のSourceや意味情報を削除することではない。
+
+### 40.2 意味の特性は、構文と表示形式の中間に置く
+
+新しい大きな共通Schemaではなく、TEIが持つ標準データ構造・Role・Facet・型付き参照の上に、必要な**意味特性**を明示的に束縛する。
+
+| 観点 | 区別して保存・検査するもの | 誤った実装 |
+| --- | --- | --- |
+| **識別** | Source occurrence、Qualified Subject、意味ID、Graph node/edge ID、表示ラベル | 同名属性や画面上の座標を同じ実体とみなす |
+| **関係** | 参照方向、多重性、所有関係、関係自体の属性、適用条件 | Graphの見た目だけで意味上の関係を決める |
+| **順序・集合** | 意味上の順序、表示の並び、重複許容、単位・精度、NULL／欠落／未知 | 並べ替えや表示上の省略で意味まで変更する |
+| **制約** | 型、必須性、選択肢、条件付き制約、適用Scope、制約を検査した実Operator | 外部Schemaを構文解析しただけで制約が成立したと認める |
+| **投影** | 元の要素・参照先、変換の損失、曖昧性、逆写像の可否、Source版 | 図に出せなかった情報を無かったことにする |
+
+JSON Schemaでは特に、`$ref`、`$defs`、`oneOf`／`anyOf`、配列、追加Keyword、未知の拡張を、**読み取れたもの／未解決のもの／TEIの標準構造に写せないもの**として分ける。`oneOf`は「複数の候補を自由に選べる」という表示へ単純化しない。外部参照の所在や権限が不明なら、勝手に取りに行ったり意味を補ったりしない。
+
+ここでいう意味特性は、外部仕様をTEIの業務モデルへ無断変換する許可ではない。構文木から得た候補と、検証・受理済みの意味は引き続き区別する。Graph・Tree・Table・属性カードは**同じ対象についての別の見方**であり、それぞれ第二のSource正本にならない。
+
+### 40.3 読取・説明・入力支援・編集・実行を別の達成段階にする
+
+最初から双方向編集や新言語の実行を一括で実装しない。既存Workbench、Reader、Validator、Source Writer、Operationと権限の境界を利用する。
+
+| 段階 | まず確認すること | 許されない近道 |
+| --- | --- | --- |
+| **V0 原文を読む** | 選択したReader/版、Raw byte、対象のOccurrenceと原文位置が実在すること | Parser成功を意味受理とする |
+| **V1 分かりやすく説明する** | Tree・属性表・制約一覧・Inspectorが同じ対象へ戻ること。非対応や未取得を区別できること | 見えない`$ref`や制約を無音で捨てる |
+| **V2 入力を支援する** | 既存L1構文診断とL2 Workspace検証の根拠が原文位置へ戻ること | Runtime側に存在しないSource位置を作る |
+| **V3 一項目だけ編集する** | 逆写像が一意な項目に限り、対象ID/元Revision/原文差分を固定してPreview→条件付きWriter→独立再Read | 非可逆Graphや古いAI案から自動保存する |
+| **V4 実際に使用する** | 選択された実装、実Consumer、現在Grant、Provider/Effect Receiptを用途別に検証 | 表示・診断・保存成功から実行許可を推定する |
+
+V0～V2の閲覧は**最初の小実証**。V3は#2497/#1124のSource Writer契約が既に対応できるときだけ一項目で試す。V4は#39のL3/L4および既存Host/Provider側の資格であり、JSON Schema表示実装からは自動で開かない。原文のコメント、改行、キー順、未知Keywordなどは、特定のWriterが安全に保持できると確認できるまで、原文を自動整形しない。
+
+人間とAIには同じ「対象・元版・差分・検証結果」を見せる。AIの提案は候補であって承認済みの変更ではない。Editorの未保存内容と保存済Source、表示中の対象とPinned対象を区別し、背景の再検査によって選択や未保存編集を壊さない。最初の画面結線は[#4605](https://github.com/hat47x/tei-platform/pull/4605)の既存**UX-PIN／UX-DIAG／UX-READ**へ割り当て、新たな第四のUX実行票を作らない。
+
+### 40.4 構文自体の自己記述は、有限なBootstrapから段階的に行う
+
+TEI DSLの構文定義を通常のデータとして保持し、図や入力支援もそこから生成する構想は維持する。ただし、初めてその定義を読むParserまで自己記述へ置き換えると起動根拠が循環する。
+
+初期段階では**既存の有限Seed Readerと、明示選択されたLanguage Plugin／Parser実装**を使う。採用候補の文法記述を固定Parserで読み、構文候補→標準データ構造→意味の型・Role・Operatorへ落とし、旧版Readerと独立Expectedで検査する。記述されたGrammarが自身を承認したことにはしない。ANTLR／Tree-sitter／PEGなどは、Source位置の精度、エラー回復、決定性、版Pin、対象Target、編集との相性を比較してから選択する。
+
+「自由な構文」を最終目標とする一方、**最初の製品成果は、外部Schemaを安全に読むこと**とする。業務DSLに`struct`／`func`やGo型引数を表出させない。入力順は業務専門家の認知順を優先し、Markdown/Graphviz/関数チェーンは、標準構造の糖衣表現として元形式を保つ。
+
+### 40.5 独立Expectedに渡す、最初の八つの反例
+
+下表は[#4605 第32節](https://github.com/hat47x/tei-platform/pull/4605)のSX-01〜08を、自己記述の既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)へ**重複させず参照するための実装順**である。新Test SSOTやRenderer Registryは作らない。
+
+| 受入対象 | 最初の一因子差 | 正しく停止・表示すべきこと |
+| --- | --- | --- |
+| SX-01／V0-V1 | `$ref`／`oneOf`／未知Keyword | 読めた範囲だけを説明し、未知要素・損失を明示する |
+| SX-02／V1 | 同名属性が別Occurrenceに存在する | 表示名だけでは編集対象を確定しない |
+| SX-03／V2 | Parserは通ったが参照先Role・Type・Operatorが未解決 | 構文成功と意味検証の未達を別に診断する |
+| SX-04／V3 | 元SourceがR0→R1→R0、あるいはDirty Bufferと競合 | 古い位置情報から自動Patchせず再確認する |
+| SX-05／V1 | Source一部が未取得・非開示 | その存在・件数を不適切に漏らさず、取得範囲を不明として扱う |
+| SX-06／V0 | 同じLanguage名で別Parser版・未選択の自己記述 | 明示Pinなしに実装を選ばず、起動循環を拒否する |
+| SX-07／V1 | 同じSourceをCLIとStudioで別表示 | 対象ID、制約、既知の損失を照合し、画面の成功をRuntime成功へ流用しない |
+| SX-08／V2 | Background診断・後着AI応答・Focus移動 | 現行選択とPin・未保存編集を変更しない |
+
+最初の実装Caseは**固定JSON Schema一件のV0/V1と、Source位置に戻るV2の診断一件**までとする。逆編集V3と任意文法V4は後続。数学・統計・WBS/PERT・科学Toolkit（[Draft #4663](https://github.com/hat47x/tei-platform/pull/4663)）にも投影の仕組みは再利用し得るが、数値計算の正しさや単位・精度・時系列等の適合は各専門Operatorの独立試験が必要であり、Rendererの合格を領域計算の受理にしない。
+
+### 40.6 最新の実装状況を踏まえた、次の変更単位
+
+**第一優先：Studio Desktopの自己構築（#4583/#2831）**。[#4587](https://github.com/hat47x/tei-platform/pull/4587) 現HEAD `9b58533df8764a74c578d478d8c6ee92a382642e`は**12/12 GitHub Workflow completed/success**。通常・生成のWindows WebView2両Jobも同じHEADで成功した。ただしこれは**生成された部品・Desktop B0の実利用**まで。Non-Plugin BuildExecutionでN0→N2→N3を実駆動したことや、Stage1がStage2 Windows Studioを生成し、そのStage2を起動したB2/B3は未実証である。#4634のBuilder pin成功や#4648のToolchain観測を合算しない。
+
+**並行する最小診断：CapabilityのSourceから実拒否まで（#4359/#4495）**。[#4654](https://github.com/hat47x/tei-platform/pull/4654)現HEAD `a7a9aec8a2450be1f3fa9bd2c4aa19826c01fa98`は**7/8 Workflow success・Repository Health failure**。実ログでは`internal/syntax/capability_authoring_preflight_boundary_test.go`の`gofmt`差分が失敗要因で、Goの全テスト自体はPASS。[#4655](https://github.com/hat47x/tei-platform/pull/4655)現HEAD `3261d172a573ba95e56236291b5a572fd7dbc9e4`も**7/8 success・Health failure**。実ログでは`internal/validation/capability_input_parity_test.go`の`gofmt`差分に加え、mainへ統合された設計文書`CONSUMER_QUALIFIED_CROSS_LANE_ACCEPTANCE_2026-11-14.md`が`plan/design/README.md`索引に載っていないため、`TestPlanReadmesMentionEveryEntry`が失敗。これは**Source→Parser→Workspace Validator→Adapter前拒否**の論理が実装不能という証拠ではなく、まず整形・索引を正しいブランチ上で修正して同一HEADのCIを再実行するべき状態である。成功した一部テストをPR全体PASSとは記さない。
+
+**既存REA試験の更新**。[#4637](https://github.com/hat47x/tei-platform/pull/4637)現HEAD `9b8f5ca9b50d34040cfa0682f026f4fc29090f01`は**12/12 Workflow success**。Hostが固定したSelectorからbyteを読んだ実績と、許可されたStudio/SHO/AI Consumerへの現在時点の開示は別である。Raw Digestを変更してもProducerによる元の配送が証明されない場合は受理しない独立Expectedを保つ。
+
+**実装の切り分け**：P0は①#4583 Stage1→Stage2の実Build、②既存CapabilityのL1/L2/L3診断の復旧と一結線。P1は③JSON Schema V0/V1/V2の限定read-only UX、④実Provider/独立Consumer、⑤一意に戻せる編集V3。P2は⑥Language Grammarの自己記述、⑦数理・科学Toolkit等への広げ方。外部JSON Schema対応、AI協業、独自Syntax PluginをStudioセルフビルドの新Hard Gateにしない。
+
+**状態**：本節は現行GitHubのSource/Issue/PR、実CI、協業UX Draftの設計を反映した**計画更新**。JSON Schema製品Reader/図解、逆編集、Grammarコンパイル、Go/Node/Windowsの新規E2E、正式Owner意味受理、Stage2再構築は本節の作業では**未実施**。
