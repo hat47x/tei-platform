@@ -1551,6 +1551,16 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 
 **採否**：新規Source/Rule/公的契約や業務責任の解釈はOwnerの意味受理が必要。本追補はdocs-onlyであり、実Org Provider/Host・SHO/HarnessとのOrg C1 E2E・Owner意味受理は **NOT RUN**。
 
+
+## 2026-11-14 組織C1の二時点保存・責任候補・Consumer接合を最短実証へ渡す（#2386/#4490/#4501）
+
+**受入補遺**：[ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)（設計・未受理）。既存のORG-BEH/CX/org-synthetic-r7を再利用し、第二Expected/Scenario・組織専用Workflow/Policy/Temporal Runtimeを作らない。
+
+- **実Query vs 履歴保存**：Draft #4567の固定HEADでは \`as_of_membership\` valid/known半開区間・物理Mapping・使い捨てPG限定Readが成功したが、現行 \`membership_id\` 単独PKは同一Occurrenceの複数known版共存を妨げる。まず#4566/#4567の重複を照合してから、#1126/DB Ownerの物理版識別案で両版保存→同一validAt/異knownAt→実Rowset/Read Cohort/完全性→r7独立Expectedの縦断を行う。SQL WHERE成功だけをBEH-01全体合格としない。
+- **判断候補の確定性**：0/1/複数/partialの観測結果と必要Readの完全性・Rule/Case rev・Current Host Grantを分離。異動≠Case責任移管≠Subsystem Owner、通知≠ACK、旧Receipt/GrantのABA復活禁止を維持する。
+- **他チャットの横断差分**：DSL自己記述/Source編集、三要素明示CRUD-onlyのmain修正 #4551、Studio/Stage2セルフビルド、Plugin六ScopeとB2C Headless、AI固定対象/SHO再投影、#2582の問い相対Required影響、#2516 Disclosure、#2600 Build/Evidence資格を同一C1の**別々のWitness**へ対応付ける。通常組織Dataへ一律ACLを追加しない。
+- **優先・競合処理**：#2586 通常CLI実Provider Readと#1824/#2831 Stage2セルフビルドを独立P0で維持。組織段階計画§10.12へ並行追記するDraft #4555（Desktop）と#4585（六Scope）は、片方の全文上書きや暗黙優先で扱わず前方統合・節番号整理を検討する。#4566/#4567も実Queryの重複変更を無条件に両方採用しない。現補遺はdocs-onlyで新実試験/Owner受理はNOT RUN。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
