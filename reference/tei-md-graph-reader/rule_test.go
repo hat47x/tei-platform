@@ -194,6 +194,19 @@ func TestGeneratedBinaryRuntimeNodeQuery(t *testing.T) {
 				t.Fatal(err)
 			}
 			artifactDigest := sha256.Sum256(before)
+			// Keep the existing no-argument output contract on the same binary.
+			fullCall := exec.Command(binaryFile)
+			fullOut, err := fullCall.Output()
+			if err != nil {
+				t.Fatalf("default invocation: %v", err)
+			}
+			var full map[string][]string
+			if err := json.Unmarshal(fullOut, &full); err != nil {
+				t.Fatalf("default JSON: %v", err)
+			}
+			if !reflect.DeepEqual(full, tc.GeneratedResult) {
+				t.Fatalf("default invocation=%#v, expected=%#v", full, tc.GeneratedResult)
+			}
 			// Both queries are handled by the same prebuilt process artifact.
 			// The caller supplies the Node ID; neither source regeneration
 			// nor an Expected-derived stub is involved between invocations.
