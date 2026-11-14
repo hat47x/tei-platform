@@ -41,3 +41,12 @@ The limit is **E0-W reference interoperability only**. It does not establish
 canonical JCS/DSSE/COSE, a secure issuer directory, current Publisher Trust,
 GitHub Release readback, the release-version CAS, provider semantic Conformance,
 or a Runtime/Host grant. No bundled test key may be used for real publication.
+
+
+## E1-C independent signed HTTP Release readback (test-only)
+
+E1-BではConsumerはHTTP経由でArtifactを取得する一方、署名済みReleaseの入力をローカルの固定Fixtureから得ていた。E1-Cの`http_consumer.mjs`は**別OSプロセスのNode ConsumerがHTTPから未信頼のRaw JSONを取得**して、既存`wire.mjs`の厳密なJSON検査と`verify.mjs`のtest-only Ed25519 Publisher/Verifier署名・Profile・Target・Release Digest検査を実行する。その後、検証済みReleaseの必須`core/ui` Role/Digestに対して**各Memberを個別のHTTP GET**で実取得しSHA-256を照合する。
+
+対応するGoテスト`../reference-build-artifact-store/registry_e1_signed_http_test.go`は、**既存CASを使うPublisher側の試験用loopback Server**であり、新しいRegistry APIやWriterを実装しない。正例と9件の負例（署名・版・Target改変、Raw JSON同名キー重複、署名EnvelopeのRedirect/過大Body/欠落、正しいR1署名に対する別Member Body、Publisher読戻し成功後のMember欠落）をGoの子プロセス起動から実証する。ConsumerへPublisherのCAS Receipt・Byte・Roleの期待値を引数で渡さない。
+
+固定テスト鍵による**signed subject verification**とLoopback HTTP member transportの合成はReference限定のClaimであり、実Publisher Authority/Owner委任、現在のIssuer鍵失効、実GitHub Releases、遠隔TLS／別Host、Version CAS、同時世代切替（ABA）、秘密Evidenceの開示・Runtime Effectは**未実証**。HTTP serverがPublisherであるという認証も行わない。テスト鍵・固定Policyを本番で再利用しない。製品用JSON Canonical Profileを制定するものでもない。
