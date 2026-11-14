@@ -671,7 +671,7 @@ Readerは既存ReadOnly.workspace()のRoot実体照合を行い、workspace.Read
 | #4634 Builder合流 | 7d6a1238e6efbd83fb2bd4cfda9667c181567920：**8/8 Workflow success**（旧HEAD 653d0d9とは別Attempt） | plugin主体のResolver/Child pinからnon-Plugin Studioの実Build Subjectと実Artifactへ接続 |
 | #4587 H0/H1 | 357345d73b3ab74d67ec8bda675fcd63768e9c48：**12件中11 Workflow success、Windows #43554075677はfailure** | Windows内のgenerated Job 132322840114はH0/H1 Byte照合＋実WebView2 success。ordinary Job 132322839843はOS VersionStringのPowerShell 15秒Timeoutでfailure。Workflow全体成功・通常版成功ではない |
 | #4627 Wails監査 | b9cf5447bcd3881aec06d97e4f3060f7de80b331：**5/5 Workflow success** | 静的なService/15 Method監査のみ。Webの認証・異Workspace・WS Event開示は別 |
-| #4637 REA Host Reader | 170f9be5907cea4af981582ab4c11c5dafb91e87：**12/12 Workflow success** | 4MiB以内のHost固定Selector実Byte読取。Wails/HTTPへ公開済みではなくCurrent Grant/Deliveryは未検証 |
+| #4637 REA Host Reader | 旧HEAD 170f9be5907cea4af981582ab4c11c5dafb91e87：**12/12 Workflow success**。**新HEAD f9e355d5ccdc96bf4a25ff939fca444a18de1942 は別OS子ProcessのGo試験を追加し、CIは進行中** | 4MiB以内のHost固定Selector実Byte読取。Wails/HTTPへ公開済みではなくCurrent Grant/Deliveryは未検証 |
 | #4636 Script Input/Effect Preflight | da807abc65d560134e9a6aa4c4f7b8d92d3b2fef：**9/9 success後main merged** | 宣言不整合のAdapter Call=0まで。実Provider/Owner受理/Effect/CLIは別 |
 | #4639 Script Launch計画 | 5507150353f4da0ca0b008687b610191c275e551：**main merged** | 既存契約の計画反映であって新Provider実行ではない |
 
@@ -701,3 +701,9 @@ Build Artifact Digestの一致だけでは、Publisher Identity、外部Store/Re
 **P2以降**：#4641の論理/物理Graph意味保存、#4640の外部Release Readback、#4632の段階別Contribution管理を独立Expectedと実Consumerの必要性に従って評価する。
 
 主計画 plan/MASTER_PLAN.md は#4620/#4634の並行Ownerが更新する。本書では対応する検証条件とexact HEAD事実だけを保持し、重複した主計画の編集・新Core Schema採用を行わない。**本節による新Go/Windows/実Provider/配布試験とOwner意味受理はNOT RUN/NOT ACCEPTED。**
+
+### 22.6 REAの新実行境界は製品Consumerと区別する（同日追跡）
+
+[REA Host Reader Draft #4637](https://github.com/hat47x/tei-platform/pull/4637)は、旧HEAD 170f9be5 の12/12 success後、新HEAD f9e355d5ccdc96bf4a25ff939fca444a18de1942 へ進んだ。追加された local_rea_reader_process_test.go は**Goテスト自身を別OS子Processで起動**し、その子がHost固定Binding→実Evidence Read→型付きProjectionを行ったPID・Evidence ID/Digest/Observation/Directed Relation/ReadAtを親へ戻して検証する。未許可Selector/他Workspace/変更Rawで秘密Metadataが子Receiptへ出ない負例も含む。
+
+これはプロセスをまたいだread-only投影の検証を一段深めるが、**製品のStudio UI/Wails Bridge/MCP/別Transport Consumerが実際に受信したこととは異なる**。別OS Processという実行形態だけで異質Consumerや現在Principal/Grantを証明したと扱わない。新HEADのGo/REA/Health/Windows全CIは今回の照合時点で未完了（既知成功数を継承せず）。#4630先行merge→#4637重複差分のrebase/再検収、R3-Cの実Consumer Delivery/Audienceと独立Expectedという停止線は変えない。
