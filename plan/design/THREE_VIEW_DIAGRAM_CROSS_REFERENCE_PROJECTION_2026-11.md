@@ -869,3 +869,422 @@ StudioでUI要素を選択しAI/DSH系Harnessへ細かく指示する設計は�
 新しいGate／Registry／Domain Parser／Graph Authority／Host／Runner／専用Harness Session Storeを導入しない。必要なテストは既存Go/CLI、[#2514](https://github.com/hat47x/tei-platform/issues/2514)/[#1180](https://github.com/hat47x/tei-platform/issues/1180)のIndependent Expectedに接続する。
 
 **現在の状態**：本§33・二Reader照合Go試験は当該Draftのソースとして保存する計画変更。新Headの`gofmt/go test/vet`とRepository Healthが実際に成功するまで、Product MapやAI-Harness操作を合格扱いしない。図表の完全性・実Studio/SHO/DSH送出、業務効果・Meaning Acceptanceは未実証。
+
+## 34. TEA三要素×三層を「問い相対の証拠」として投影する（2026-11-12、採用前）
+
+**状態**：Method／Cross-viewの設計・受入候補。新Core Kind・9セルCanonical・Evidence Store・Policy Engine・Runner・Hostを採用しない。新たな実CLI/Go/Node/Studio/Provider試験や業務Owner受理は主張しない。[三要素Method Draft #4478](https://github.com/hat47x/tei-platform/pull/4478)はLifecycle/AI Harness、[実CLI→Node Draft #4396](https://github.com/hat47x/tei-platform/pull/4396)はCatalog/Validation表示を担当。本節は図表間Cross-referenceに**何を根拠として表示・診断できるか**だけを扱い、両PRの変更pathを触らない。
+
+### 34.1 三要素と三層は直交するが、9種類の正本を作らない
+
+[三要素分析法の原典説明](https://atmarkit.itmedia.co.jp/fbiz/cbuild/complete/doa/01/01.html)ではData／Function／Businessの各観点を論理要件・物理制約・実装で見る。TEIではこれを**9個のモデルや状態フィールドではなく、既存Source・Semantic Role・Binding/Target・Evidenceに対する問い相対のProjection**として扱う。元の方法論は業務システムに特化するので、汎用TEIの他Domainへ全語彙を強制しない。
+
+| 観点 | 論理要件 | 物理制約 | 実装・観測 |
+| --- | --- | --- | --- |
+| Data | 業務Identity、Key/FD、値域、Relation | DBMS、Storage、所在地・分離制約、Schema/Provider選択条件 | 実Schema・制約、実Rows/Read、移行と品質の独立観測 |
+| Function | Interaction/UI、Command、I/O、Function-level CRUD | 言語/Framework、Capability、実行・Transport制約 | 実Artifact/Provider選択、Invoke/Read、Effect/Receipt/独立Readback |
+| Business | Procedure、Manual/External Step、Actor、Trigger、業務規則 | 人員・組織・担当配置、業務時間、社内制度・社会的制約（IT設定とは限らない） | 実際の作業遂行と業務結果の観測。ログだけで人の実施やOwner受理を代替しない |
+
+物理制約のうち人員・社会的条件は自動抽出を前提にせず、出典・時点・開示資格を必要とする。Business Actorを実Authorization Principalへ昇格させない。物理FKから業務Keyを、実Rowから全母集団を、Function宣言から実Action Effectを逆算しない。
+
+### 34.2 Cross-view Queryの最小構成（説明用で正式Schemaではない）
+
+同じSource/Accepted Meaningから導出した図・CRUD表・CLI/MCP・SHO表示は、用途に応じ公開資格済みSliceの**問Qに対する証拠**を示す。既存Typed Ref・Evidence・Coverage・Projectionの組合せで次を保持する。別のStore、DSL、Authorityを作らない。
+
+1. **Question/Use-site**：例えば「Business ActionがOrderを更新したか」と「FunctionがUを宣言するか」を別の問にする。
+2. **Subject/Relationの同一性**：Workspace観測、Qualified Subject（Scope/Kind/ID）、多重Relation occurrence、Source/Meaning Revision、effective time、各Reader Attemptの対応関係を保持。同名・表示ID・Source locator・Fingerprintだけで同一Workspace/Readと見なさない。
+3. **Premises/Derivation**：Source-backed、declared Function-level C/R/U/D、derived-potential、inferred-indirect、observed-effectの起源を分離。導出Rule/version、複数Source、競合宣言、未解決Endpointを保存。
+4. **Coverage/Disclosure**：問に必要なSource、Role、Relation、Writer、Observationの母集団と被覆を宣言。非表示・非開示・not-examinedは0件にしない。Raw CountsやPrivate Edgeは公開Sliceより前に資格審査する。
+5. **Realization/Observation**：Provider/Artifact/Target/Build Unit、Operation/Attempt、I/O、Tx/Recovery、Receipt・独立Readbackを別Evidenceへ参照。静的Sourceの一致は実呼出し成功ではない。
+6. **Assessmentの限界**：根拠付き矛盾、実現保証の欠落、証拠不足/失効、明示的対象外を区別し既存Validation/Trait Assessmentから説明する。新しい全域Core Enumにはしない。
+
+**不存在判定**：あるQとScopeについて必要なSource/Relation/Roleの閉包、現行のReader/Rule版、公開資格が成立する範囲でのみ「そのScopeでは該当なし」と言える。未知Writer・未読込Source・部分Model Map・非開示Relationがある場合はunknownであり、全域の越境CUD 0や「図にないので不存在」と表示しない。非公開対象の有無や件数も漏らさない。
+
+### 34.3 三視点を跨いでもDirectnessと実行の資格を失わない
+
+- Business Action→Function→Dataは導出経路であり、Function-level UをAction固有の実Uへ昇格させない。Functionを持たないManual/External Actionも残す。[#1031](https://github.com/hat47x/tei-platform/issues/1031)のX-TEA Source観測は別Evidence。
+- 同じFunction→Dataの複数R/Uや矛盾宣言を行・Occurrence単位で残す。Draft [#4403](https://github.com/hat47x/tei-platform/pull/4403)は、合成CharacterizationでCRUD表の複数行とCrossReferenceの先頭優先、矛盾報告があってもOK=trueになり得る境界を記録した。これは製品Validator変更・全Writer把握の証拠ではない。#1127/#1132/#3250が判断Owner。
+- ETL/ELT Transform/Join/AggregateはFunction/Operation側のData lineage。スケジュール・承認・手動引継ぎ・File Relayは該当Business/External Operation Roleを別に示す。Batchの結果値、全Member完了、Publish、Recipient受領、Resume、Delta、Effect/Recoveryを同一視しない。[ETL/Batch設計](ETL_BATCH_FUNCTION_COMPOSITION_DESIGN_2026-11.md)と[#1130](https://github.com/hat47x/tei-platform/issues/1130)へ委譲する。
+- Subsystemの論理更新責任とData所有候補、direct CUD、委譲、effective/observed Effect、物理Target、業務Ownerを別軸にする。[#3250](https://github.com/hat47x/tei-platform/issues/3250)の候補・ScoreはAcceptedや実Tx証拠ではない。
+- モデル由来TestはObligation候補を[#4134](https://github.com/hat47x/tei-platform/issues/4134)へ渡すが、モデルから生成したExpectedで同じモデルの正しさを自己証明しない。受理済みRule／手書き固定Expected／独立実観測が必要（#2514/#1180）。
+
+### 34.4 追加の反証候補（すべて新試験NOT RUN）
+
+| ID | 対照と最小期待 | Owner |
+| --- | --- | --- |
+| TEA-Q01 | 実sales.order.lines RelationのModel Map/Locateは同一Qualified意味を指すが、Source移動後は旧Locatorを失効。別Read Attemptを原子的同一と呼ばない | #1120/#1124 |
+| TEA-Q02 | 同じFunction→DataにRとU、または相反するCRUD宣言。先頭行への縮約による喪失・競合を明示し、唯一Writerや無矛盾を断言しない | #1127/#3250/#4403 |
+| TEA-Q03 | Functionを持たないManual ActionとFunction-level Uの経路が同居。欠落扱いせずAction固有実Effectは不明 | #1125/#1031 |
+| TEA-Q04 | ETL Batch exit成功でも一部Member未公開・Recipient独立Read欠落。全件完了や自動再実行適格を推定しない | #1130/#2604/#1174 |
+| TEA-Q05 | Subsystem間direct Updateを委譲候補へ置換。score改善をEffective Effect/Tx/Recovery証明にしない | #3250/#267 |
+| TEA-Q06 | Closed Domain IntentとJava/SQL制約観測はあるがWriter集合または人員条件が未知。保証欠落と実違反を区別する | #3278/#1126/#2386 |
+| TEA-Q07 | Private Relationのみ変えた二世界、同名異Scope、別Workspace同Snapshot。Public Graph/ARIA/ToolにPrivate件数を漏らさず旧Bindを拒否 | #2516/#1124 |
+| TEA-Q08 | 意味RuleとExpectedを同一生成器で作った後にMutantを実行。自己生成Expectedでは合格不可、独立固定Expectedで照合 | #4134/#2514/#1180 |
+
+### 34.5 最小組込み順と停止線
+
+**P0**：#1124の同一Consumer実Source/選択/currentnessと#2586の実Provider Readを最優先に保ち、実Relation一件からData/Function/Businessの根拠付きread-only Queryを試す。#4396の実CLI→別Node限定証拠をSame Attempt/Owner受理と呼ばない。**P1**：#4403の多重CRUD・矛盾を既存Model/Consumerの受入候補としてOwnerへ返す。Validator Error化、Directness、Owner採否はここで決めない。**P2**：ETL・Subsystem・Traitの必要なEvidenceだけを問Qへ結合する。**P3**：一意で可逆なEdit IntentだけProposal→Impact/Validation→既存Shared Acceptance→再投影。Plugin Build/複数Instance/Self-buildは#951/#2831の別資格。
+
+**撤回条件**：既存modelref・Evidence・Cross-view表で問いと根拠を説明でき、追加抽象に効果が無い／第二正本を作る／Private件数を漏らす／derivedをActualへ昇格する／Method更新だけでAccepted Meaningが変わる場合は専用の実装を追加せず既存Projectionへ戻す。**TEA-Q01〜08の新試験、実Policy/Studio GUI/Provider/業務Owner受理はNOT RUN／NOT ACCEPTED**。
+
+### 34.6 量化を伴う問いと、成立・反証に必要な証拠を分離する（2026-11-12 横断深化）
+
+**設計上の差分**：現行§34.2はQuestion/Scope/Evidenceを扱うが、「一件見つければよい問い」と「全件を確認する問い」を同じClosure条件へ押し込むと、正当な局所発見を不必要に拒否したり、部分観測から誤った不存在を断定したりする。ここでは新Proof Engine/正式Schemaを作らず、既存Typed Ref・Evidence・[#3262](https://github.com/hat47x/tei-platform/issues/3262) Design Context Required Closure・[#2514](https://github.com/hat47x/tei-platform/issues/2514)独立Expectedへの**解釈規則**を記録する。
+
+| 問いの論理形と証拠対象 | 成立を支え得る証拠 | 反証を支え得る証拠 | 誤用してはいけない根拠 |
+| --- | --- | --- | --- |
+| **存在**：固定Scope内に宣言済みDirect Updateが一件以上ある | Qualified Relation/Occurrence・出典・現在Meaningが結びついた**一件の陽性Witness**。全件列挙はこの存在主張の必要条件でない | 対象Function・Data・必要Source/Roleの**閉包が確認された範囲での0件**。未読込はunknown | 部分CRUD表の空セル、derived-potentialからのActual Update |
+| **全称**：対象Functionすべてが特定の制約を満たす | 閉じた対象集合を網羅して検査した証拠、または適用範囲を明示した有資格の意味規則・実現保証とその適用証拠 | 同じ母集団・条件に属する**一件の有資格な反例** | 少数の正常サンプル、Validation OKだけで全Sourceの閉包を代用 |
+| **不存在／禁止**：越境Direct CUDがない | 全Writer/Operation/Scopeの定義と対象閉包、およびdirect性の解決 | 対象閉包内の越境**Direct** C/U/Dの有資格一件で禁止主張を反証し得る | 未解決Writerを0件扱い、委譲や潜在EffectをDirectと同一視 |
+| **実行事実**：特定のActionでOrderが実際に更新された | 実Operation/Attempt・対象・時点に束縛したEffect/Receiptと必要な独立Readback | 十分に観測した同一実行範囲での反例。ただし見えなかっただけならunknown | Function-level U宣言、UI操作成功、HTTP ACK、Batch exit 0 |
+| **業務受理**：更新は業務的に正当だった | Accepted Rule/Owner判断と実業務結果を、主体・適用時点を揃えて比較 | 適用条件に反した有資格の業務反例 | 実DB値の変化、生成器のPass、MethodやProviderのロード成功 |
+
+**証拠の非対称性**：一つの陽性Witnessは存在命題を限定的に支持し得るが、全称の成立には十分でない。一件の反例は対応する全称を否定し得るが、反例が未公開・Scope不一致・旧版・別Attemptなら現在の命題の反証にしない。逆に存在の否定は完全閉包を要する。有限データ全件の走査以外にも、有資格な不変条件の演繹的保証は成立方法の候補だが、宣言した規則の正しさと実Providerが実際に履行したことは別の証拠で確認する。特に業務MECEの母集団・排他・網羅をJava Enum単体の存在から導かない。
+
+**限定判定の手順（新Core State enumを増やさない）**：
+1. 現在のUse-siteに適した**公開済みSlice**をOwnerから受ける。Secret/Privateの有無・件数・候補Scoreを低権限側で推測しない。
+2. 問Qの母集団、対象Scope、量化（存在／全称／不存在／一試行の事実）、意味対象、Revision・時点を固定する。SubjectとRelation Occurrenceを混同せず、表示上の同じラベルから同一性を作らない。
+3. 必要なSource・Role・Relation・Writer・Provider／実Observerと、返却・ページ・Consumer完全受領のCoverageを別々に照合する。局所の陽性Witnessを全件Completeと呼ばず、exit 0やtraceのunresolved 0をQueryの完全性へ昇格しない。
+4. 主張の種類に適合したWitness／Counterexample／Rule依存を評価し、**どの主張を支持・否定できるか**と残余Unknown／古い根拠を提示する。Validation/Assessment/Source Acceptance/Current Grant/Observed Effectは既存Ownerからの別資格であり、一つのverified Booleanへ縮約しない。
+5. Claim由来のDataset・Scenario候補は[#4134](https://github.com/hat47x/tei-platform/issues/4134)へ引き渡す。**同じ生成器が候補と期待値を同時生成した成功は独立Oracleではない**。人手固定Golden／Owner受理Rule／独立Expectedを維持する。Method/Source/Rule改版時は先行のWitness・Expected・Receiptを現在の正当性へ無条件に流用しない。
+
+### 34.7 問い相対の反証対照（TEA-Q09〜Q14、全件NOT RUN）
+
+| ID | 同じ入力をどう問うか | 必要な独立Expected・拒否条件 |
+| --- | --- | --- |
+| **TEA-Q09** | 部分ロードしたFunction→Data CRUDに一件だけSource-backed Uがある | 「この固定Scopeに宣言Uが存在」は限定支持可能。ただし「すべてのWriterを取得」「越境Uは0」への昇格を拒否 |
+| **TEA-Q10** | 十Functionのうち一件に同じ適用条件を満たさないUpdate宣言がある | 全Function制約の反例は一件で示せるが、Business Action固有Effectや別Scopeの実違反へ誤伝播しない |
+| **TEA-Q11** | LIMIT/ページ欠落・Loader未取得によりCRUD表・Business図で対象が見えない | 既知の0件、未読込、未受領、権限不明を別に保持し、存在否定・全件完了を拒否。実Consumer完了条件は#3262 |
+| **TEA-Q12** | Function-level UとBusiness Action→Function経路があり、実行ACKのみ存在 | Declared／derived potentialは説明可能だが、当該Actionの実Updateと業務完了を支持しない。Receipt/独立Readbackは#1174/#1180へ |
+| **TEA-Q13** | ETLで各Chunkの部分集計は正しいが、総Member閉包・重複排除・丸めの適合が未観測 | 「観測済みChunk内で成立」と「対象期間の全件で成立」を別判定。Data型/単位/NULL/精度を保存、#1130/#2514 |
+| **TEA-Q14** | 同じ公開Source/Relation Sliceを維持したまま非公開Writerだけ変更 | 公開Consumerの図・Counts・診断・順位は変わらない。全体の不存在証明を公開側へ漏らさずunknown。実Disclosure/side channelは#2516 |
+
+**位置づけと優先順**：本節は#4473のPinned Target/媒体横断Contract、#4478のLifecycle Graph、#4403のCRUD検証コード、#4396の実CLI→Node、#4134のTest Generator、#3262のDesign Context Queryの**代替実装ではない**。まず#1124同一Consumerと#2586 Product実Readを進め、TEA-Q09〜14は既存Read/Rule/Expectedを再利用した小さな局所対照から検討する。追加試験のGo/Node/DB/Workbench/SHO/AI実行、現在Policy、正式受理はすべて**NOT RUN**。独立の新Proof Store・汎用Rule Engine・Method専用Hostを作らない。
+
+### 34.8 問い別の証拠再利用・失効：意味の保存と現在資格を別にする（2026-11-12 継続研究）
+
+**追加の差分**：§34.6〜34.7で定めた存在・全称・不存在・実行・業務受理は、**Source改版後に同じ過去Evidenceを現在の主張へ使えるか**がそれぞれ異なる。これは新Incremental Engineの仕様ではなく、[Source改版とConsumer影響](SOURCE_REVISION_CORRESPONDENCE_AND_CONSUMER_IMPACT_2026-11.md)、[Cross-view変更適格性 #1143](https://github.com/hat47x/tei-platform/issues/1143)、[増分再利用 #2600](https://github.com/hat47x/tei-platform/issues/2600)、[Design Context #3262](https://github.com/hat47x/tei-platform/issues/3262)の既存判定を、**TEAの同じQuestion・同じ公開済みScopeに対してどう説明するか**というConsumer上の限定合成である。
+
+まず、問Qに必要な依存の閉包（Expected / Required Source, Rule, Relation, Writer, temporal assumptions）と、その試行の実Producer・実Consumerが参照したもの（Observed / Consumed Source, Provider, Artifact, Output）を**別の由来**で保持する。Requiredが列挙されても実Consumedを証明しない。実Consumedの列挙は意味上のRequiredが漏れていない証拠ではない。「変更と交差しない」と判断するには、対象Questionに必要な依存閉包の根拠、当該Claimの全前提の現行資格、比較対象のWorkspace/Scope/Revision対応、閉包内での非影響を確認する。これらが未取得なら再利用可ではなくunknown。Read-onlyの宣言存在を問う場合は実ProviderのConsumedを要求せず、実行結果を問う場合だけ実Attempt側の証拠を必要とする。
+
+| 変更／観測の種類 | TEA Claimについて保存・再利用し得るもの | 必ず再資格化・失効を検討するもの |
+| --- | --- | --- |
+| **同じScope内へ新しいFunction/Relation occurrenceを追加** | 既存の有資格な存在Witnessは、同じPredicate/Identity/Ruleで今も存続するなら存在Claimを支持し得る。全称反例も当該反例が存続すれば有効候補 | 「存在しない」「全件適合」「全Writer取得」「越境CUD 0」は、集合拡大の影響を再評価。前回のcompleteは今回のcompleteを含意しない |
+| **既存のFunction/Relation occurrenceを削除・分割・置換** | 変更対象に依存しない局所Claimは、独立な依存閉包が証明できるなら再利用候補 | 唯一の存在Witness／全称反例が削除された場合、その証拠を現行結論へ持ち越さない。分割後の同一ID・旧Source Spanを一対一対応と推測しない |
+| **Source Path/空白のみ変化、受理済みMeaningは同じ** | Source非依存の論理的Projectionは再利用候補（対象のMeaning/Rule pinが本当に不変な場合） | Source Index/Trace locator/引用/図からのSource jumpを再照合。Path-sensitive Builder・Artifact・Package lockは別判定。単なるWorld Fingerprint一致では保証不足 |
+| **Method Rule・Semantic Role解釈・Operator実装を更新** | 過去の結論・旧Rule下の証拠は履歴として保存 | 依存する導出・Trait/CRUD分類・独立Expectedの適用範囲を再検査。Notationだけの変更と異なる。Provider/Target更新から業務Meaningの改版を推測しない |
+| **実Provider、Query/SQL、Runtime Input、Rowset Snapshot、外部Ack/Effectが変化** | 旧Attemptに何が起きたかという歴史的Evidenceは保持 | 新Attemptの実行事実、NULL/重複/粒度/完全性、Receipt/独立Readback、業務上の正当性を再判定。旧成功は未来の成功ではない |
+| **Grant/Disclosure/Business Owner・業務有効時点だけ変化** | 読取SourceやMeaningの過去Version自体は消さない | 現在の公開Slice・表示/検索/ARIA/Tool JSON/Export、権限、Owner受理の資格を更新。以前は見えたPrivate Witnessや件数を再送信しない |
+
+**単調性を誤用しない**：論理述語と母集団の意味が固定され、追加のみ行われることが有資格である場合、存在の陽性Witnessと全称の否定Witnessは保持可能な候補になり得る。これは**追加で既存の意味・Relation Directness・Role・Source同一性やPredicateが変わらない**という条件付きである。更新・削除・再分類・Rule変更・Tenant/Scope変更・Late Event・DB snapshot移動を「追加のみ」と誤分類しない。集合が小さくなると不存在が維持され得ても、観測範囲・Rule版・現在Grantが不明なら現在の不存在保証とは呼ばない。**ローカル検証省略の適格性と業務意味の真偽は別**である。
+
+### 34.9 TEA Methodの複数Instance・Provider差替えを、問いと証拠の分離で検証する
+
+既存[TEA Method Profile §15.1](THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)はSemantic Interface/Role/Rule/Projection/Notationの組合せであり、新TEA専用Canonicalではない。既存[Plugin合成設計](AI_NATIVE_PLUGIN_COMPOSITION_DESIGN_2026-10.md)の型/Instance・Provides/Requires・Targetを踏まえ、**Method Profile、具体的Provider、実行Artifact、Scopeに束縛された複数の使用Instanceを同一視しない**。以下は新Manifestや新Plugin APIフィールドではなく、既存Contractと実Consumerで検収すべき条件。
+
+- **Type/Instance**：一つのMethod Profileを別Workspace・別Scoped Source・別Consumerに複数配置できる。InstanceごとにRole/Rule pin・対象ScopeとSource/Consumer版・現在の公開資格を照合し、同名SubjectをグローバルSingletonのMapで誤共有しない。共通ProfileであってもInstance間のRead Attempt・Selected Subject・Grantの同一性を仮定しない。
+- **Notation/Reader/Projectionの交換**：形式・レイアウトの差替えはAccepted Meaningを自動変更しない。新ReaderがSource依存を増やす、Source-only変更でSpanが動く、Providerが別TargetやPermissionを必要とする場合は実Consumed/Build/Disclosure/Effectの対象Claimだけ独立に再資格化する。
+- **Rule/意味拡張の更新**：同じ表示Shapeであっても、DataのKey/FD、FunctionのDirect CRUD、BusinessのOwner/Action境界を解釈するRuleが変わったなら旧Evidenceにそのまま新しい意味を持たせない。AIがPluginを更新しても既存Accepted Meaningが自動昇格しない。提案と正式なMeaning受理は既存[#267](https://github.com/hat47x/tei-platform/issues/267)へ戻す。
+- **資格の独立性**：Method packageのビルド・ロード・実行可能性は、与えられたWorkspaceのSource Closure、実Provider Capability、現在Disclosure、業務Effect/受理を証明しない。MethodのSelf-buildは[#2831](https://github.com/hat47x/tei-platform/issues/2831)の宣言工程／実工程／Artifact資格を利用し、専用Host・別Resolver・第二Build Graphを作らない。
+
+**最小表示の方向**：Studio/CLI/SHO/AIには各問いについて「確認できた結論」「その根拠」「未確認である理由」「変更によって使えなくなった根拠への履歴リンク」を提示できればよい。Profile/Provider/Source/Grant/Receiptの全内部列を常に巨大な図表に露出させない。ただし必要な証拠に逆到達できない過度の簡略化は避ける。非公開の旧WitnessやRaw Locatorを公開Hintに埋め込まない。
+
+### 34.10 追加の負例と導入順（TEA-Q15〜Q21、新試験NOT RUN）
+
+| ID | 最小変異と問 | 必要な反証・停止条件 |
+| --- | --- | --- |
+| **TEA-Q15** | 一件のDirect U Witness取得後、同Scopeへ未解決のWriterを一件追加 | 有資格な存在主張は局所維持候補だが、「唯一のWriter」「越境CUD 0」「全件OK」を再利用しない |
+| **TEA-Q16** | 全称NGの唯一の反例Relationを削除し、同名の別Relationを追加 | 旧反例を現行全称NGへ再利用しない。同名を同一Qualified Occurrenceと推測しない |
+| **TEA-Q17** | 同byte Sourceを別Pathへ移しMeaning/World FPは不変 | 論理内容は局所再利用候補、Source jump/引用とpath-sensitive Buildは旧資格を失う。既存#2626証拠を履歴ReferenceとしTEA E2E成功と呼ばない |
+| **TEA-Q18** | Notation-only変更とMethod Rule/Operator実装変更を別々に注入 | Layout変更はMeaningを動かさず、Rule依存Claim/独立Expectedを別再検査。旧Provider PASSを新Providerへ転用しない |
+| **TEA-Q19** | 同じMethod Profileの二Instanceが別Workspaceで同一表示名・同一World FPを持つ | Source/Scope/Read Attempt/GrantがQualifiedでなければ旧Witnessの交差利用を拒否。独自グローバルTEA Singletonを設けない |
+| **TEA-Q20** | Source/Meaningを変えず現在Grantを撤回し、Private Writerのみを追加 | 生Counts・図の配置・ARIA・Tool Reply/AI Contextに非公開差分を漏らさず、旧Disclosure資格を失効 |
+| **TEA-Q21** | 過去Action実EffectとConsumer Readbackが成功した後、Provider/DB snapshotを更新 | 旧Receiptは履歴のまま保全、新Attemptの成功・業務受理は未観測。現在のRowset/Writer閉包を旧観測で補わない |
+
+**責務・優先順**：P0は既存#1124／#3262の一Function・一Data Relation・一Business参照と、異なる二版／二Instanceのread-only比較。Source差の局所Readは既存#2516/#2626に照合し、#2586の実Provider初回Read・#1251のPlugin実消費を前提待ちで停止させない。P1で#1143/#2600の変更影響・Source再資格化を使用し、追加独立Expectedの採否は#2514/#4134、最終受理は#267、Self-buildは#2831へ引渡す。**本節は設計のみ**であり、TEA-Q15〜Q21の実行、実Studio/SHO、複数Instance実配備、実Provider・現Policy/Owner受理はすべてNOT RUN。新Core/DSL/Policy Engine/Proof Store/Universal Cache/Hostは導入しない。
+
+### 34.11 Legacy観測・Desired受理・Target観測の三要素比較（2026-11-12：採用前）
+
+**TEA固有の移行・再構築の問い**：既存のData／Function／BusinessはMethodの三観点（§34.1）である。一方、既存Source・実動作を知る**L=Legacy Observed Actual**、Ownerが選択した**D=Desired Accepted Meaning**、再生成先で確認した**T=Target Observed Actual**は**観測・権限の三つの別文脈**であり、三要素・三層に第3の27セルCanonicalを追加する設計ではない。[#3394](https://github.com/hat47x/tei-platform/issues/3394)のREA/X-TEA等の外部解析候補、[#1031](https://github.com/hat47x/tei-platform/issues/1031)のSource-faithful cross-view観測、[#4125](https://github.com/hat47x/tei-platform/issues/4125)のDB移行検収を**既存Ownerのまま**問相対に合成する。LやTのSource observationをTEI Accepted Sourceへ暗黙昇格せず、Dの宣言を実行済みの事実に変えない。
+
+| TEA観点 | L：Source／旧動作から観測 | D：受理する目標意味 | T：新しいTargetの独立観測 |
+| --- | --- | --- | --- |
+| **Data** | 旧Schema/実Row、旧Key・Relation候補、Nullable/履歴の観測範囲 | 業務Identity・Key/FD・Relation・履歴・値域・移行変換規則 | 実Schema／Rowset／Key集合・NULL・Multiplicity・履歴、Snapshot/CDCの独立読取 |
+| **Function** | 旧Function I/O・宣言CRUD、実行ログ／外部副作用があればその限定Evidence | 入出力・Failure・Effect・依存Function/Capability・必要な互換条件 | 生成Artifactだけでなく実Provider選択／Invocation／Effect／実Consumer結果 |
+| **Business** | Manual/External Step、Actor/Handoff、旧業務フロー候補、実施記録の有無 | 手順・意図的な変更・規則・責任・受理する例外／運用条件 | 人の作業・外部連携を含む実際の業務結果と、その観測／Owner判断 |
+
+**三者の対応は推論としての自動同一化を禁止**：L→DはSource/Artifact/Business Element間の**候補Mapping**と個別の採否、D→Tは生成・実現・観測の適合評価である。LとTの表示名・PK・Source IDが一致しても同じ業務意味とはいえない。逆に意図的な業務改善でLとDが異なる場合、L≠Tは自動で不適合ではないが、**明示的に受理された差分の範囲外で失われた意味**は検証対象のまま保持する。分割・統合・複数Role/Relation occurrence・Target別物理実現は多対多対応と曖昧さを残し、候補の一意化や旧Source TokenからのCanonical ID創作を行わない。
+
+**旧実装由来の観測の限界**：例えば[#1031](https://github.com/hat47x/tei-platform/issues/1031)のTaskAction→Function→IOTable CRUDは導出経路であって、旧Business Action固有の実Effectではない。同じ導出をTargetへ作り直してもL/Tの実Effect比較は成立しない。外部REAのread-only Evidenceが完全に受領されても、Accepted Meaning/現行AuthorityやSource/Runtime Closureとは別。#3394ではREA 6.7単一JSONと6.8 JSONL終端など**プロトコル版差の局所証拠**があり、Producer/Receiver完全性と意味変換を別に検収する。
+
+### 34.12 意味保存の義務は「三視点の対応」と「実行上の観測」を別々に扱う
+
+一つの業務問いQについて、Dが要求する**保存義務**を、Qualified Subject/Relation occurrence・適用時点・対象母集団・業務Key/Value意味・Function I/O/Failure/Effect・Business Manual/Handoff・許容された変更範囲・独立Expectedに戻れる参照の**組合せ**として表す。これは既存Requirement/Rule/Scenario/Evidenceの読取専用対応表であり、新DSL/Contract Kind/Proof Engineではない。業務Owner未受理のL→D候補はAccepted義務にならず、旧実装から未知のRuleを無言で推定しない。
+
+1. **Lの観測資格**：実Source/External Producer版、Raw/Result受領、Source Scope・Relation ID・必要Coverageを区別。構文/Source分析から旧Transactionや全Business Rule・全Writerの実在を推測しない。
+2. **L→Dの提案・差分受理**：Source候補とDのQualified Subject/Roleを相互参照し、欠落・統合・新規・意図的変更を説明する。Explicit Source Proposal/Shared Acceptance [#267](https://github.com/hat47x/tei-platform/issues/267)を経ず、外部ObservationをCanonicalに格納しない。未決や多対多はUnresolved。
+3. **D→Tの実現資格**：採用したMeaning/Rule/Target/Provider/ArtifactのPinと、生成・Build/Load/Invocationの実消費を区別。Artifact同byteやSource World FPだけでは実TargetがDを履行した証拠にならない（#2586/#1251/#2831）。
+4. **問い相対の独立比較**：同じData粒度/NULL/重複/時点、Function Failure/Effect、Business Manual/External Stepの必要集合と、旧新の実Attempt/独立Expectedを照合する。L/Tが別時点や旧新Client混在・CDC遅延下なら、同じSnapshotでないことを明示し、比較不能を等価にしない。判定は各Obligationの支持・反例・Unknown・許容差分に分け、全システムの単一Equivalent Booleanは採用しない。
+5. **Cutover/Owner判断は別**：[DB移行 #4125](https://github.com/hat47x/tei-platform/issues/4125)のExpand/Backfill/Validate/Cutover/Contract、[#1174](https://github.com/hat47x/tei-platform/issues/1174)のEffect/Receipt、[#2514](https://github.com/hat47x/tei-platform/issues/2514)の独立Oracleへ委譲する。TEAの図表・比較PASSだけでRelease、Runtime Grant、業務Meaningを採否しない。
+
+**禁じる推移律**：L観測→D候補のMappingと、D→Tの合成Projectionが共に成功しても、LとTの業務・実動作同等性を自動結論しない。両者は出発点のAuthority、必要なSource閉包、対象母集団、時点、実観測の性質が違い得る。同じGeneratorから作ったTargetとExpectedの一致は独立比較ではない。逆に、LとDが明示的に異なることは、D→Tの必要な観測を省く理由にならない。
+
+### 34.13 旧新の三要素比較に固有の反証（TEA-Q22〜Q29、追加試験NOT RUN）
+
+| ID | 対照 | 必要な判断と停止線 |
+| --- | --- | --- |
+| **TEA-Q22** | Legacy/Targetで同じPhysical PK、別の業務Key/FD | PK一致をDのBusiness Identity/FD保存の証拠にしない。意味に必要なKey対応と実Data検証は別 |
+| **TEA-Q23** | 旧TaskAction→Function→IOTable UをTargetにも再現 | Source経路の一致と旧新Action固有実Effect／Txの一致を区別。双方の未観測をPASSへ昇格しない |
+| **TEA-Q24** | Legacyに人手電話確認のStepがあり、新UIに対応Functionがない | Manual/External Actionを自動実装不能・欠落と断定しない。Dで受理された実施方法・責任・結果の保存を別照合 |
+| **TEA-Q25** | DがLegacyの旧規則から意図的変更を受理、Targetが旧挙動と異なる | L≠Tを自動FAILにも、自動改善成功にもせず、受理済差分と未受理差分を分ける |
+| **TEA-Q26** | 旧Data Relationが新Targetの2 Relationに分割、同名のLinkも残る | 旧ID→新ID一対一を発明しない。Mapping/Source/Role/関係端点を個々に証明 |
+| **TEA-Q27** | DB Cutoverで旧新Client並走中、CDC欠落・異時点Snapshot | 局所的なRow一致・Schema一致から全件移行成功を主張しない。#4125既存Ownerへ |
+| **TEA-Q28** | 外部REA 6.7単一JSONと6.8 JSONLで終端/部分受領が異なる | Protocolの受理資格とSource Observation、Product Typed Reader、TEA Meaningを分離。外部CandidateをAccepted Canonicalに偽装しない |
+| **TEA-Q29** | D由来のGenerated Targetと同じRuleから生成したExpectedが一致 | 非独立Expectedによる自己証明を拒否。別Ownerの固定/独立ExpectedでData/Function/Businessの必要Claimを比較 |
+
+**初回の狭い検収出口**：公開・合成の一つのLegacy Source観測（Business Step→Function→Data Relation）、一つのDのQualified Meaning/Rule候補、一つのTのread-only Function/Provider受領を、同一の問いQから別々に辿れるかを比較する。新Target実Effect・DB Cutover・Owner Meaning受理はその後の独立試験とする。#3394の外部REA Product入場、#2586実Function Read、#1124同一Studio Consumer、#4134/2514独立Expectedの進行を相互ブロッカーにしない。**§34.11〜13とTEA-Q22〜Q29は設計案、実試験／実GUI／実DB旧新比較／実Provider Effect／Owner受理はNOT RUN。** TEA専用Reader、第二Canonical、Migration Engine、Host、Truth/Proof Storeを新設しない。
+
+## 35. TEA最初の実Source縦断を既存Consumerで成立させる（2026-11-12、採用前）
+
+**今回の判断**：§34のTEA-Q01〜29は反証候補の棚卸しであり、29件の新テストや独自Verifierを先に実装する作業計画ではない。現行mainの internal/operations/model_map.go の MapWorkspace/MapWorld、model_location.go の LocateWorkspace/LocateInCatalog、cmd/tei/cli_model.go の model locate、reference/tei-three-element-method/public-slice.mjs と catalog-validation.mjs を**別々の資格のまま**段階結合する。「実Sourceで対応する宣言を見付けた」と「そのSourceを現在の公開Viewとして安全に渡せる」「実Functionが読んだ」は同一でない。
+
+### 35.1 最初の一件と、二つの実在する入口
+
+対象を公開 reference/workspace の **semantic-relation:sales.order.lines** 一件に固定する。MapWorkspace(root) の ModelMap と LocateWorkspace(root, Subject{Kind:"semantic-relation",ID:"sales.order.lines"}, limit) の ModelLocationを比較し、実CLIでは次の既存Commandを利用する（出力の成功を今回新たに実行・確認したという意味ではない）。
+
+    tei model locate -workspace <root> -subject-kind semantic-relation -subject-id sales.order.lines
+
+| 証拠／照合箇所 | 現行APIに基づく固定Expectedと停止線 |
+| --- | --- |
+| **対象とSource** | Catalog/Locateの Qualified Kind+ID、Workspace Identity、WorldFingerprint、SourceIndexFingerprint、ModelRevision、SourceStatusを照合。別LoadのFingerprint一致は原子的読取りを証明しない |
+| **親とTarget** | Mapのcontains(parent→relation)とrefers-to(relation→target)、LocateのParent Pathとrelation-targetを、Subject/方向/型付きRelationで対応付ける。同名・同端点・表示IDだけでIDを決めない |
+| **未導出と未解決** | Map.Coverageはpartial-projection。Location.Coverage.NotDerivedは空のOutgoing/Incomingを不存在へ変えない。MapのresolvedはCanonical declaration内の構造解決であり、Source Indexed/Role Accepted/Effect/編集権限ではない |
+| **Sourceだけの改版** | Source移動/改ByteでWorld/Linksが不変でもSourceIndexFingerprint・ModelRevision・Source locatorが変化し得る。現mainのModel Map局所特性試験を再利用し、同じ合成試験を再発明しない |
+
+**二つの異なる応答形式を同一Schemaにしない**：Map.LinkはFrom/To/Relation/Resolution、Location.OutgoingはRole/From/To/Resolvedという別投影である。たとえばMapのrefers-toとLocationのrelation-targetは、方向・Subject・Relation意味を照合する**明示的な対応**が必要。Link解決済みをSource/Business現在性へ昇格しない。
+
+### 35.2 実CLI→Node 三視点の限定入場と現在の不足
+
+[Draft #4396](https://github.com/hat47x/tei-platform/pull/4396)は実Go CLIのCatalog/Validateを別Node Consumerへ束縛する**独立した実装担当**である。成功CatalogとValidation NGをread-onlyとして同時に示せる反面、現在のRole/Policyを実Sourceから確定した証拠、Relation Source Locatorを同じ実Consumerに配送した証拠は持たない。これを新規Product Gate/全面三視点成立と呼ばない。
+
+既存Node projectPublicTeaSlice の入力はscope/workspaceObservation/subjects/relationsを持つ**caller-prequalified public slice**であって、GoのModel Map/Catalog/Locate JSONをそのまま渡せるProduction Adapterではない。個別Role・公開対象範囲・Consumer用開示資格を[#2516](https://github.com/hat47x/tei-platform/issues/2516)/[#2620](https://github.com/hat47x/tei-platform/issues/2620)が証明するまで実Sourceから直結してはいけない。T18の既存Catalog Validation joinと、必要なSource Locator/Subjectの紐付けを別々に計測する。新しい第二Policy/ResolverをTEA側に用意しない。
+
+**次の最小の引継ぎ**（#4396 Ownerへ。既存実装やCIを横取りしない）：
+1. 一件のCatalog/Locate/MapのSubjectとRelationを、同じRoot/Scope/Revisionの**候補**として受け取る。Loader/Index取得とConsumer受領が別試行ならその相関を同一Attemptと偽らない。
+2. 関連するSourceStatusと親／Target、NotDerived/partialをSourceの出典付きで保持。Raw/Private Sourceや未公開件数をNode Fixtureに追加しない。渡せる公開Sliceの作成元が未資格なら、UIへの実結線を保留。
+3. Validation.ok=falseのread-only局所表示、同ID異Scope、同端点異Relation、Source path drift、未導出Writerを、一つずつ独立Expectedへ対照。#2514/#4134に採点独立性を委譲。新しいMockのPASSを実Product Effectとしない。
+
+### 35.3 Businessと利用価値に広げる停止条件
+
+M0/M1で一Relationの照合を成立させたら、[#1031](https://github.com/hat47x/tei-platform/issues/1031)/[#1125](https://github.com/hat47x/tei-platform/issues/1125)のBusiness Manual StepとAction→Function→Data derived pathを、**Function-level CRUD／Action固有のEffectとは別**に接続する（TEA-X01/X10を再利用）。BusinessにFunctionを持たないStepがある場合にData/Function不足を自動断定しない。ここで新TEA固有のSchemaやValidatorを作らず、実ProviderのEffectは#2586/#1174、Subsystemの責務・名称変化は#3250、ETLのInput Cut/Checkpoint/Published/Consumedは#1130、変更・受理は#267が所有する。
+
+**認知負荷の実証**：Generic Catalog/Locate/InspectとTEA三視点を、同じ1)Relation出典探索、2)Business Action→Dataの経路説明、3)Source改版後の失効理由特定、という三Taskで比較する。正しいSubject選択率、無根拠Effect推論、Unknownの説明漏れ、Source jump成功、操作数・時間を測定候補とする。比較手順・人数・閾値・実測は未定／NOT RUN。図表やMethodを増やしただけで改善と判定せず、効果が無ければ専用UIを縮小する。
+
+**優先順位**：#2586の実Function→Provider Rowset→Data Context→Consumer、#1251のPlugin selected→invoked→receivedを主線とし、TEAのM0→M1同一Relation／開示境界は並行実証。Studio/Wails・TEA専用Host・新CLI・独立Canonical・Rule/Proof Engine・Universal Cache・新Acceptance Gateを初期の前提にしない。**本§35は現行ソースの静的照合に基づく受入案であり、新しいCLI/Node E2E、実Policy/Studio GUI/Target Effect/Owner受理/利用者比較はNOT RUN／NOT ACCEPTED**。
+
+### 35.4 最初の実Relationを二つのOperationで読むGo試験（2026-11-12、独立Draft #4521）
+
+§35.1で固定したM0 gapを、[Go試験Draft #4521](https://github.com/hat47x/tei-platform/pull/4521)へ実装した。新規ファイル internal/operations/tea_real_relation_map_locate_test.go は公開実Source reference/workspace/semantic/sales/order.tei を対象とし、MapWorkspace と LocateWorkspace のKind/ID・Workspace Identity・World/SourceIndex Fingerprint・ModelRevision・Validation・親・Target・SourceStatus・部分被覆を一つのGo試験で突合する。Relationは semantic-relation:sales.order.lines、Parentは semantic-data:sales.order、Targetは semantic-data:sales.order_line。Map contains/refers-to と Locate relation-target を正確な型・方向・件数で比較する。別々のLoad間の同FP一致は、単一の原子的Source読取でも現Policy/Role資格でもない。
+
+**実装の証拠と限界**：試験は既存Go package/公開Workspaceだけを使った1ファイル追加。baseline main 8c3d1a5582cf3e9a40b52b3a2ebaa041739b4fd2、初期head 134a92dc500385b2c1f403562d3b8750f5998e7d、保存Blob 85a08789a1ae66ea8068097eda14f7ebecd6bbaa。gofmt -l は空で、ローカル git hash-object とGitHub Blobが一致した。実Go test/Repository Healthの合格はこの情報から推定せず、exact-head CIで独立検収する。Node/Studio同一Consumer、現在Disclosure、実Function/DB、Action-specific Effect、Owner受理は試験対象外。
+
+**他チャットのMethod境界との接合**：[三要素Methodの並行Draft #4478](https://github.com/hat47x/tei-platform/pull/4478) §27〜28ではTEAを業務向け任意Profileとし、UI項目追加をData列自動生成とせず、Data列削除ではUI項目を無断削除せずMapping失効を明示する検収候補を固定した。M0のread-only ReaderはSource/Schema/UIのいずれも書き換えない。Methodを使わない一般コード開発や既存BuildをTEA必須Gateで止めず、Source/Role/Relationが適格な範囲だけ三視点へ投影する。DMU試験、UI Writer、Migration/Role判定の重複実装はしない。
+
+**次の判定**：#4521のGo試験・Healthを固定版で検収した後、同じ一Relationの実公開適格Sliceが既存Node Consumerへ届かない理由（Qualified Role/Disclosureと実Source→Node mapping）だけを #4396/#2516/#1124 のOwnerへ引き渡す。新Core/Reader/Policy/Host/Proof Engineを追加しない。
+
+### 35.5 実Go試験の負例：Validation未実施をInvalidへ縮約しない（2026-11-12）
+
+[実Go Draft #4521](https://github.com/hat47x/tei-platform/pull/4521)の旧head 134a92dc500385b2c1f403562d3b8750f5998e7d に対する[Repository Health Run #43232810923](https://github.com/hat47x/tei-platform/actions/runs/43232810923)は **completed/failure**。実JobログのGo単体試験失敗であり、gofmt/vet/公開Workspace ValidateはPASSした。同じ公開SourceのMapとLocateでWorld/SourceIndex Fingerprintは一致するが、MapWorkspaceの埋込Catalog.Validationは {OK:false, ErrorCount:0, WarningCount:0}、LocateWorkspaceの実Catalog Validationは {OK:true, ErrorCount:0, WarningCount:3}。旧試験でこの二つを同じ「検証済みVerdict」とみなして比較したことが偽失敗の原因となった。
+
+**責務の切分け**：現mainのMapWorkspaceはCatalogWorldを直接生成しており、低水準のCatalogWorldはValidationを実行しない。**未評価のGoゼロ値falseは、実Validatorの不合格証拠ではない**。[既存Draft #4392](https://github.com/hat47x/tei-platform/pull/4392)がMapの同一LoadからcatalogValidation(loaded)を設定する本体修正を所有するので、TEA側で第二Validation Engineを実装しない。#4521新head a849471e05e3146c01d5b544ff6440c542c1baf5 ではMap/LocateのValidation同値assertを除き、Locateの実ValidatorがOK=trueであることと、実Relation/親/Target・Source ID・版・partial/NotDerivedを照合する検査を残した。**修正後headの全Health完了まではM0実試験PASSを主張しない**。
+
+**Method側の設計含意**：TEA三視点でinvalidと表示するには、その対象とRule・Sourceについて検証が実行され、資格付きの不合格結果があることが必要。未実行／未受信／不開示をfalseへ縮約して業務図面へ赤表示しない。既存の状態・ProvenanceをConsumerで説明し、新しいcheckedフラグや独自Truth Storeは設けない。ValidなSourceというだけでRelation全件閉包・Current Disclosure・EditEligible・Effect・Owner Meaningを証明しない。既存#4392と[#4510](https://github.com/hat47x/tei-platform/pull/4510)を実装Ownerとして保持し、#4521は型付きread-only Relation照合のみで受け入れる。
+
+## 36. 実X-TEA三視点PluginとTEI-native三視点を別資格で合流する（2026-11-13、設計追補）
+
+### 36.1 現行実装：二つの異なるSource経路を一つの正本へ偽装しない
+
+2026-11-13確認main `f3b58e7b580f0ecbea1d2feb156f52c2147f63a7` において[#4392](https://github.com/hat47x/tei-platform/pull/4392)のMap/Catalog/Validate一致修正は**merged**。既存[TEA Go Draft #4521](https://github.com/hat47x/tei-platform/pull/4521) の修正後exact head `a849471e05e3146c01d5b544ff6440c542c1baf5` はRepository Healthを含む **11/11 checks completed/success**。公開実 TEI-native Source `semantic-relation:sales.order.lines` の Map/Locate の一致が局所試験として成立した。PR自体はDraft・未統合で、二Readerは別Load、Current Policy/Studio受領ではない。検証NG時の保持は[Draft #4557](https://github.com/hat47x/tei-platform/pull/4557)が別担当。
+
+並行する[X-TEA三要素分析法のStudio Plugin Draft #4570](https://github.com/hat47x/tei-platform/pull/4570) は exact head `8d8f1439d260a3ebb0a633c2f2e040ab25b20cc4` で**11/11 GitHub checks completed/success**。`internal/operations/three_view.go`のSource-format中立なread-only Navigation Contract、`cmd/tei-studio/plugins/xteathreeview`の `.xead` Reader/配置規則、既存`threeelement.GenerateCRUDTable`、選択済Provider実Entry観測、`StudioBridge.NavigateThreeView`、独立 `/three-view/` 画面、合成`.xead`によるWindows WebView2スモークが存在する。旧X-TEA実設計Source、別Workspace同BytesのPin、正式Meaning/Disclosure、実Workbench入口、人のGUI受入、編集・Effect・DBは**未実証**。本§36はそのOwnerブランチへコードを重ねない。
+
+| 経路 | 正本・資格 | 可能になったこと | なお主張できないこと |
+| --- | --- | --- | --- |
+| TEI-native `Workspace→Catalog/Map/Locate` | TEI Source Kind+ID、World/Index/Model Revision、Workspace identity、partial coverage | 一Relationの親/Target/Sourceを型付きで照合。#4521実試験PASS | X-TEA Raw解釈、正式Role/Disclosure、Consumerの同Attempt受領、全Graph/Effect |
+| X-TEA Raw `.xead`→Plugin→Studio | 原文Artifact digest、Source位置のoccurrence、MappingFingerprint、DerivationRevision、Plugin/Host観測、single-source coverage | 合成Business→Function→Function-declared CRUD→Data→Source位置、通常/生成StudioとWindows read-only試験 | 正式TEI Canonical Identity、受理Meaning、旧実Source全件、Action固有CRUD、Provider認定・現在Grant |
+| Function→Environment→PG16→Context | [merged #4539](https://github.com/hat47x/tei-platform/pull/4539) の使い捨てPG16・参照CLI・独立Read | 明示されたFunction Data Contextへの限定的な実Rowset結合 | 通常`tei` CLI/Studio受信、旧X-TEA業務との同等性、全件・Closed world・Write Effect |
+
+**合流規則**：これらは同じBusiness/Data/Functionの見方を持ち得ても、**同一のSubject Identity／Authority／Reader Attemptを共有しない**。X-TEA Source ID、位置依存Token、表示名、TEI-native Kind+ID、実PG Table/Column を暗黙に相互変換しない。X-TEA Source Fact→Structural Candidate→Owner受理Meaning（現v0は`not-bound`）を分離し、正式Mapping/Current Scope/Rule/Disclosureの既存Owner資格がない限り、L（Legacy observed）からD（Desired accepted）へ昇格しない。実PG ReadをT（Target observed）と認定できても、特定Lとの意味同等性は別Expectedが必要。
+
+### 36.2 新たに見つかったPin同一性の反例候補（#4614既存受入へ追記）
+
+[PR #4570](https://github.com/hat47x/tei-platform/pull/4570) の静的コードから、`ThreeViewPin={Occurrence,SourceArtifactDigest}` とHostの `held=(digest一致 && occurrence存在)` は**Workspace identityとSourcePathをPin-originとして比較していない**。`CrossViewSourceNodes`のOccurrenceは原文digest＋要素位置由来である。一方、三視点画面はWorkspace/Source変更後もPinを意図的に保持するため、**別Workspace・同Path・同Bytes**、または**同Workspace・別Path・同Bytes**で、別対象のままのPinを「保持中」と報告し得る。これは**コードからの条件付き推論**であって当該二世界の実Go/Browser再現はNOT RUN。正本ID／権限漏洩の実事故を主張しない。
+
+既存[#4614](https://github.com/hat47x/tei-platform/issues/4614#issuecomment-6852919600)へ、PIN-XW-01（別Workspace同Bytes）、PIN-XW-02（別SourcePath同Bytes）、PIN-XW-03（元Scopeへの戻りとA→B→A・Grant差）を**固定の公開合成対照候補**として引き渡した。期待は「意図的Pinは解除しない」「対象外Scopeではheldと表示しない」「同名・同IDの別要素へ再束縛しない」の三条件を同時に満たすこと。現在のPlugin契約v0はSource bytes内での局所Pin整合のみ。既存Workspace/Source originを利用者画面側で保持するか、将来の契約で型付きに束縛するかは#4614/#1124 Owner判断であり、TEA独自のPin Store、新Canonical ID/Role Resolverを作らない。
+
+### 36.3 受入順序：実Source、現在公開、製品Consumerを同じPASSに畳まない
+
+| 優先 | 既存Owner | 実証内容・停止線 |
+| --- | --- | --- |
+| P0-A（局所基線） | #4521/#4392/#4557 | TEI-native正常RelationのMap/Locate 11/11 PASS、MapのValidation修正merged。検証NGケースは別Draftで再実証し、Source/Meaning/Actionの完全性へ飛躍しない |
+| P0-B（X-TEA適合） | #4570/#4615/#1031/#941 | 同一固定の実`.xead`を既存Source Readerと三視点Pluginで独立集計比較。Source Token/導出Policy/未知/欠落ID/重複、未配置/省略、Function-level CRUDを残す。**公開は集計とFingerprintのみ**、実原文や旧IDを再配布しない。`.xeaf`・複数Sourceと設計Functionの非1:1は後続資格 |
+| P0-C（Pin/Studioの安全） | #4614/#4613/#1124/#2516 | 同Bytes別Workspace/SourceのPin再束縛拒否、Workbench入口/古い応答/現在Disclosure、Desktop人間受入を独立に実行。Desktop合成スモーク合格をCurrent Grantへ昇格しない |
+| P0-D（実Function） | #2586/#4539/#1251/#4510 | 既存実PG Readを通常`tei` CLI→Studio Bridgeの同一Read到達へ引渡す。表示CRUDから実Read/Action Effectを推論しない。P0-B/Cを実ReadのHard Gateにしない |
+| P1（編集・再生成） | #4538/#267/#2831/#4541 | 一意なSource SlotでのPreview/Acceptance/独立再読込と通常・生成Desktopのself-buildは別受入。Generic Core/Host必須化・未選択Provider物理混入の黙認を避ける |
+
+本§36は既存実装・exact-head CI・Issue/PR契約の照合から得た**研究・検収設計の更新**。X-TEA正確な実Sourceの再演、PIN-XWの実試験、Current Disclosure、正式TEI Meaning Mapping、元業務とTargetの同等性、Owner受理・ユーザー認知負荷比較は**NOT RUN / NOT ACCEPTED**。新Core Kind/Schema/Host/Policy/Runner/Plugin Registryや無条件のRequired Gateを追加しない。
+
+## 37. 三要素CRUDをサブシステムの更新責任へ昇格させる条件（2026-11-13、採用前）
+
+### 37.1 原典宣言・導出行・正式な更新責任・実Effectは四つの異なるClaim
+
+前節の実X-TEA Plugin [#4570](https://github.com/hat47x/tei-platform/pull/4570) の固定head `8d8f1439d260a3ebb0a633c2f2e040ab25b20cc4` を具体的に点検すると、`navigate.go` はX-TEA `.xead` のSource-backed `function-data-operation`ごとに **Source relation occurrence** を記録し、一時的な `threeelement.CRUDDefinition` を宣言粒度で生成する。続いてmainの `threeelement.GenerateCRUDTable` を呼び、同じFunction occurrence×Data occurrenceを原則1行の表示用CRUDへ投影する。現在の `GenerateCRUDTable` は重複pairの明示定義を内部mapで後勝ち格納するが、`ConflictingDeclarations` という要レビュー印を併せて付ける。X-TEA Pluginはさらに同pairの関係が2件以上なら `Conflicting=true` とする。**画面にC/R/U/D列が描けることと、業務的に確定した更新責任は同義ではない**。表示行の論理値・後勝ち選択だけをサブシステム分割の確定CUDへ接続しない。
+
+| 階層 | 既存の根拠・粒度 | 実際に使用できる判断 | 昇格禁止の境界 |
+| --- | --- | --- | --- |
+| **A. Source宣言** | `.xead`のIOTable→Function/DataとSource occurrence、Operation、Source digest／Reading rule | 原典の個別宣言が存在するというread-only事実 | Source ID/OccurrenceだけからAccepted CanonicalのIdentity/Ownerを作らない |
+| **B. 三視点導出行** | `function-data-operation`群→`threeelement.GenerateCRUDTable`、レビュー印、single-source coverage | Function×Dataの表示用CRUD候補と曖昧性の可視化 | 複数宣言・矛盾・未配置をOR/last-winsで確定値にしない。Action固有CRUDでもない |
+| **C. 論理更新責任** | 既存#267/#1120/#1127によるQualified Scope/Revision、Accepted Direct CUDとData Primary Owner、問相対Required closure | 分割候補の越境Direct CUD評価への資格付き入力 | Source Fact/候補/現在未開示の辺を確定Ownerや0 Writerに変換しない |
+| **D. Target実Effect** | 実Provider選択・Invocation、SQL/Rowset、Tx/Receipt、独立Readback（#2586/#1174） | 特定Attemptで観測した限定的な実動作 | Cの宣言・Generatorの出力・#4539のread-only RowsetだけでWrite/全件/成功Commitを主張しない |
+
+**非可換な操作**：宣言occurrenceの集合を単純に`Function×Data→boolean CRUD`へ集約し、その表からData Owner/越境CUDを計数する順序では、複数宣言の出典・相反するC/U/Dの値・Current Disclosure・必要Source欠落を復元できない。逆にOwnerの受理・Source/Rule・Directness・Closureを先に資格付けした上で集約するなら、**問いに限定した**既知Writer候補を安全に評価できる。この順序差は単なる表示選択ではなく、判断の正当性の差である。TEAに新しいCRUD SSOTや独立Validatorを加えるのではなく、既存ProducerのSource occurrence／review flag／coverage／AuthorityLimitsから未資格を保持して既存Ownerへ返す。
+
+### 37.2 サブシステム分割の条件付き最適性とTEAの表示責務
+
+[Subsystem Issue #3250](https://github.com/hat47x/tei-platform/issues/3250#issuecomment-6852946660) のSP-U01〜06は、既知のDirect CUD辺だけならAが最良でも、未確定辺の有無でBへ優劣が逆転し得る合成Expectedを設計している。`exact-for-supplied-graph`は**与えられたGraph**の探索資格であって業務全域の最適性ではない。未知の辺を列挙できていない場合、TEAは図上の空白・CRUD列空欄・Unknown/omitted/partialを「越境CUD=0」や「改善成功」に変換しない。
+
+有限で資格付け済みの仮説集合と共通のworld集合Ωがあるときだけ、候補pとqの差を各同一worldで比較できる。全worldで厳密にpが優る十分必要条件は `max_{ω∈Ω}(cost(p,ω)-cost(q,ω)) < 0`（同じ指標・単位・制約の下）。異なる候補を別々に区間化してから共通未知辺の相関を忘れた比較を、厳密な順位保証として報告しない。Ωが正当化できない場合はrank-indeterminateとし、**順位を逆転させ得る未資格なSource Relationの調査**を優先候補として示す。Private Sourceを順位算出へ混ぜて公開時だけ隠すことは[#2516](https://github.com/hat47x/tei-platform/issues/2516)に反する。認可された公開Sliceから問いごとの入力を構成する。
+
+### 37.3 最初の追加検収：同じ見た目でも異なる業務判断を導く反例
+
+| ID | Source／操作 | 独立Expectedと責務 |
+| --- | --- | --- |
+| **TEA-Q30** | 同一X-TEA Function/Dataに異なるIOTable CとUの宣言、AB/BA順序反転 | 関係occurrenceの数と種類は保持。CRUD表示の`conflicting`が真のまま、最終列値（後勝ち）が変わっても**確定CUD評価・Subsys順位へ連動しない**。X-TEA実Go回帰は#4570/#4615、意味粒度は#4472へ |
+| **TEA-Q31** | 同じC宣言を同pairに二重配置 | Source宣言2件と表示pair1件を区別。「実Write2回」や「更新責任2倍」を出さない。X-TEA PluginのSource occurrenceを残し、#3250既存SP-M2の評価経路に戻す |
+| **TEA-Q32** | 未読込Sourceまたは`.xeaf`にだけ存在し得る別Function/Action/Writer | single-source `coverage.complete`でも必要Source全閉包・業務Action/Runtime Effectはunknown。#4615の実Source/.xeafと#2586の実Providerは独立検収 |
+| **TEA-Q33** | before/afterでMap/CRUD上のCUD候補が減少したがSource Reader被覆も縮小 | 見た目のスコア改善を正式な責務改善へ昇格させない。#3250 SP-X25/26の観測差、Source/Revision/Disclosure同一性を先に照合 |
+| **TEA-Q34** | Graph/Layout/表示名またはSubsystem Snapshot Labelだけ変更 | Qualified Owner/Direct CUD不変なら責務移管・正式Renameと表示しない。#3250のSP-X23/24、#1120のIdentity/Lineage Ownerへ戻す |
+| **TEA-Q35** | W0で固定したPinを同一bytesのW1へ切替え、その先のCRUD/Source表で評価 | #4614のPIN-XW-01/02。Pinの保持と現在Scopeでの有効性を分離し、別Workspaceの同Digest/Occurrenceを同じ資格として再使用しない |
+
+この6件は**既存Ownerへの問相対Expectedの提案であり、新Go試験・新Renderer実行・実X-TEA Source／実DB EffectはNOT RUN**。同じテストを#3250/#4570のSource変更へ二重実装しない。粒度Ownerは#4472、Legacy Fidelityは#4615、Pinは#4614、Scope/Disclosureは#2516、論理Subsystemの順位は#3250、Independent Expectedは#2514とする。
+
+### 37.4 今回確定した状態と、実装順序
+
+- 旧§36のCI未完了表現は**記録時点の履歴**。PR #4487の直前head `2d97ca68ecc69d89ff5842716d811e7431b954b8` はGitHubで**Cache/Repository Health 2/2 completed/success**と確認。ただしこの§37を追加した新headのCIや設計Owner採用は別。
+- 実装優先は、(1) #4570/#4615でSource declaration occurrence→function-level CRUD表示の出典保持と実Source忠実性、(2) #4614でWorkspace/Sourceを跨ぐPin拒否、(3) #4472/#3250でMeaning/Direct CUDの資格後にだけ候補順位比較、(4) #2586の通常製品CLI/Studio Readを**並列**に接続する順。P0 Product ReadとStudioセルフビルドを、三要素分析Methodの追加仕様や#3250完全性の待ちで止めない。
+- TEA/StudioはSource Fact→Structural Candidate→Accepted MeaningとL/D/Tを区別する既存契約を使用。新Core Kind・Host・Graph SSOT・Role Resolver・Policy/Proof Engine・Updater/Transaction Oracleを導入しない。業務Owner受理、Current Grant、原典Source全文対応、実更新実行、認知負荷の定量効果は**未証明**。
+
+## 38. 三視点の局所completeと「図中になければ無い」の成立範囲（2026-11-13、設計追補）
+
+### 38.1 原典の九観点と現在のread-only三視点は同一の完全性Claimではない
+
+原典の三要素分析法は**Data/Function/Businessの三つのアスペクト**を、**論理要件・物理制約・実装**の三層から見る九観点を説明している（[原典解説](https://atmarkit.itmedia.co.jp/fbiz/cbuild/complete/doa/01/02.html)）。TEIはこれを第二Canonicalや9新型にせず、既存Source/Decision/実Observationを問相対に重ねるMethod Profileとして扱う。最新[X-TEA read-only Plugin Draft #4570](https://github.com/hat47x/tei-platform/pull/4570)の`three-view-navigation/v0`は、**一件の`.xead` Sourceについての構造候補・Function宣言CRUD・表示位置**を返す。単独で論理要件/物理制約/実装の九観点の完全な実観測や原典Modelerとの意味同等性を証明したわけではない。
+
+「図中になければ存在しない」と即断可能な完全性は、**必要なSource/Plugin/Build/Effectの宣言集合が閉じ、現在の開示資格とReader Attemptが整合し、その問いの投影が完全な場合にだけ成立する条件付きClaim**として表す。単一`.xead`を局所的に完全投影できたことから、別`.xead`、`.xeaf`、人手業務、未観測Provider、実Writerの不存在は導かれない。開示が限定された利用者への表示ではPrivate項目の件数すら無資格に漏らさない。
+
+### 38.2 UIで観測された具体的なClaim Ceilingの相違
+
+固定PR #4570 head `8d8f1439d260a3ebb0a633c2f2e040ab25b20cc4`のSource静的照合：`navigate.go`は`coverage.Status=partial`を `UnplacedConstructs` / `UnknownConstructs` / `UnresolvedRelations` / **`len(OmittedRelations)`** の論理和で判定する。一方 `cmd/tei-studio/assets/three-view/main.js`は partial画面で前3項目しか表示せず、`OmittedRelations`の種類と件数を隠す。例えば**他3項目がゼロ・OmittedRelationsが1件**なら、「部分的、未配置0・未知0・未解決0」という見た目になり、部分的である根拠を失う。`complete`時の表示は「全要素を配置しました。」だが、Source metadata/SystemやRelation evidenceなどのSource constructは必ずしもData/Function/Businessの`ThreeViewSubject`にならない。`Scope=single-source-artifact`の**定義済みProjectionで未配置等なし**を、「原典Source全要素を三視点へ配置済み」へ広げない。
+
+**最小修正・Owner境界**：既存`coverage.scope/status/omittedRelations`が持つ資格を説明するだけでよい。既存[#4613の受入追補 CV-01〜04](https://github.com/hat47x/tei-platform/issues/4613#issuecomment-6854940903)には、省略1件だけのpartial/真因表示、Source metadataを含むcomplete文言の限定、別Source未読込、遅延応答失効を記録した。表示が新しい全件カウントを必要とするときだけ[#4615](https://github.com/hat47x/tei-platform/issues/4615)が実X-TEA Sourceの出典に戻る。表示はOwnerのCurrent Disclosureで資格付けされたcountsのみ。既存#4570/#4613の実装へ別ブランチから重複コードを足さない。**これらの実Node/Browser負例はNOT RUN**。
+
+### 38.3 観測事実・証拠Join・問相対Closureを三段階で分離する
+
+| 判断段階 | 正の証拠 | この段階だけでは不足するもの |
+| --- | --- | --- |
+| **P. 投影内の事実** | 型付きSource Fact/Occurrence、Source digest、Mapping rule、`coverage`の範囲と欠落内訳、Validation Attempt | 名前/旧Source ID/Occurrence一致だけではAccepted Subject、現在Scope、実Action Effectではない |
+| **J. 証拠間のJoin資格** | 同じ問い・対象・Workspace/Source origin、Reader Attempt/Revision、Derivation rule、業務Owner Decision、現在Audience Disclosure、実Provider Attemptの必要なリンクを個別照合 | FPが同じ二Readerを単一atomic Readにしない。Graph/Sourceの同型性をOwner Meaningや実Invocationの同一性へ推移させない |
+| **Q. 問いに対するClosed-world** | その問いに必要なSource/Role/Relation/Provider/Manual Step集合が資格付きで列挙され、必要Reader/Policy/受理証跡が現在有効で、公開Slice内の未観測・未解決を説明できる | `coverage.complete`だけで「0 Writer」「越境更新0」「実処理無し」「Subsystem最適」を証明できない |
+
+**absence(Q,x)を許す最低条件**：必要な集合`Required(Q)`と検査範囲`Observed(Q)`の一致をそのAudience/時点で受理済みの根拠で確認し、Source/Rule/Read Attempt/Current Disclosureがその問いに適格で、`x`の存在を判定するRelation family自体の被覆が十分であること。いずれか未資格なら `unknown / not-qualified`（禁止された内容の存在を推測しない）。これは既存契約を組み合わせるための**受入上の述語**であり、TEAの新Truth Store・新Checker・新Policy Engineの実装要求ではない。
+
+### 38.4 影響を最大化する次の小検証と作業順
+
+| ID | 対照と独立Expected | 担当/状態 |
+| --- | --- | --- |
+| **TEA-Q36** | `partial`かつomitted=1、他の欠落カウンタ0。UI/ARIA/Tool JSONに省略理由が残り、仮の全件数や不存在を断定しない | #4613の表示・#4570のProducer。新実GUIテスト未実施 |
+| **TEA-Q37** | `single-source`で`complete`、別`.xeaf`/別Sourceに必要なFunction/Writerがあり得る。表題・診断は局所completeと問いのclosureを別表示 | #4615/#1031。実外部Sourceの比較未実施 |
+| **TEA-Q38** | 同じSource bytes/Occurrenceでも別Workspace/別SourcePathでPin再資格が失敗し、現在選択だけで他方のSubjectへ再束縛しない | #4614のPIN-XW-01〜03。実再現未実施 |
+| **TEA-Q39** | 既知CUD辺しか観測していない二つの分割候補に未知の逆転辺を与える。見た目の`complete`や局所score優勢をOwner採用の最適解にしない | #3250のSP-U01〜06、#2516。新Product最適化試験未実施 |
+| **TEA-Q40** | 旧Lの構造候補・DのOwner未受理・Tの実PG ReadがそれぞれPASSしても、L/Tの実業務同等性、TのWriter閉包、D意味受理はPASSしない | #267/#2586/#2514。実Legacy↔Target対応試験未実施 |
+
+**優先**：(1)現在Draftの#4570 read-only Producerが持つcoverageとStudio表示の差を合成独立Expectedで検証、(2) #4615 実Sourceの集計と原典配置規則、(3) #4614 Origin-qualified Pin、(4) #3250のDecision-relevant Unknownを問相対調査、(5) #2586の通常`tei` CLI→Studioの実Readはこれらと**並列**。[#4557](https://github.com/hat47x/tei-platform/pull/4557)は今回mainへmerged：検証NGのMap/Locate閲覧とVerdict保持をGo回帰で実証済み。先行[#4521](https://github.com/hat47x/tei-platform/pull/4521)は実公開Relationの正常系CI PASSだがDraft未統合。実X-TEAの原典完全性・Current Grant/Disclosure・Owner受理・Product実E2Eは未証明。TEAの図面と開発パイプラインに新たな暗黙処理や必須Hostを加えない。
+
+## 39. 異種Producerの三要素Evidenceを結ぶ際の禁止推移（2026-11-13、採用前・他領域横断）
+
+### 39.1 REA実Candidate Intakeの到達点を三視点へ正しく取り込む
+
+2026-11-13確認main `b03c415e5fd13d8feec96d9669d96d6db9035e8c` の `internal/reacandidate/` と[REA受容設計](REA_THREE_ELEMENT_CANDIDATE_INTAKE_2026-11.md)を照合。既存 `tei three-element rea-intake` は **External Attempt JSON→`DecodeAttemptEvidence`→`GenerateCandidates`→`BindCandidates`→`PreviewAdoption`/`CompareCandidateSets`/`BuildReviewPacket`** を実装済み。CLI／Goの合成Fixture試験があるが、実ProviderのこのAttemptをStudio三視点/通常CLIへ連結してOwnerが受理したことではない。Candidateの`accepted=false`・`ownerDecision=pending`、必要なら`source-digest-conflict`/`independently-bound`、`meaningLoss`を維持し、Candidate IDをTEI Canonical IDとみなさない。
+
+**既存の実装上のClosed Vocabulary**：`internal/reacandidate/coverage.go` の `EvaluateThreeElementCoverage` は、REAの静的な外部node/有向edgeがある場合Dataだけを`data=supported`とし、**Function/Businessは各`unsupported`**（理由と必要Evidence付き）。同じAttemptにFunctionらしいrelation labelがあってもFunction supportedへ昇格しない。これはREA Producerの提示事実の限界であり、Function/Businessの不存在・取得失敗・Current Policy拒否ではない（既存`TestThreeElementCoverageSupportsOnlyData`、`TestThreeElementCoverageRelationLabelsDoNotSupportFunction`）。グラフの`coverage.complete`はこの三観点全体の完備を意味しない。
+
+| 証拠のProducer／別Owner | 主張できる最小の局所事実 | **無いことを主張できない対象** |
+| --- | --- | --- |
+| TEI-native Map/Locate（#4392/#4557/#4521） | Qualified TEI Source Kind+IDで局所Source/Relation/Validationを閲覧 | 必要なRole全件、実Function、実業務遂行、現在Disclosure |
+| X-TEA `.xead` Studio Plugin [#4570](https://github.com/hat47x/tei-platform/pull/4570) | 一件のLegacy SourceのData/Function/Business構造候補、Function-declared CRUD、Source occurrence、single-source coverage | `.xeaf`/別Source/実SQL/業務Actorの遂行能力と実作業記録、Canonical Accepted Meaning |
+| REA external Intake [#3394](https://github.com/hat47x/tei-platform/issues/3394) | 外部Attemptの構造観測・有向edgeのData-shaped候補と独立束縛状態（現Productで`data=supported`、`function/business=unsupported`） | Function/Businessの不在、業務規則・実runtime effect、Canonical ID一致、Owner Meaning受理 |
+| Environment→PG16 Function Context [merged #4539](https://github.com/hat47x/tei-platform/pull/4539) | 明示Environment/Providerへの限定実Read・Rowset返却 | 旧X-TEAのFunction/Actionとの同義、Target全Writer/業務Effect、Human Business Actual |
+| 組織／Business Activity（#2386、#1124） | 受理されたBusiness Source/Role/手順や、必要なら実担当者・時点の限定Observation | 手順の記述だけで実行されたか、実施可能な要員がいるか、権限が現在有効か |
+
+### 39.2 九つの観点を増やさず、二つの独立受入問いで突き合わせる
+
+[三要素分析法の原典](https://atmarkit.itmedia.co.jp/fbiz/cbuild/complete/doa/01/01.html)ではData/Function/Businessと論理要件／物理制約／実装を直交に扱い、**業務実装とは業務手順を遂行できる実際の要員**も含む。既存[Diagram Contract §14](THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)は九観点を既に表形式で設計済みであり、ここで新しい9型・新Matrix SSOT・Business Workflow強制を提案しない。本§39は、Producerの支持範囲が異なる証拠を同じ図表に置くときの、独立Expectedを具体化する差分である。
+
+| ID | 最小合成対照・独立Expected | 既存Ownerと停止線 |
+| --- | --- | --- |
+| **TEA-Q41** | REA graph coverageがcompleteでData candidateが1件。`threeElementCoverage.function=unsupported`・`business=unsupported`と理由が消えず、Function/Businessを0件・Absent・検証済みと表示しない | #3394既存coverage試験を再利用、#1124 Consumer資格は別。新試験NOT RUN |
+| **TEA-Q42** | 同じ表示名／Source pathだがREA candidateは`provider-reported`のみ、またはcurrent Workspace byteが不一致。X-TEAの同名DataやTEI-native Subjectと自動Joinせず`source-digest-conflict`/unresolvedを保持 | #3394/#1120/#267。外部ID/Source span・受理Mappingがない限りCanonical同一性不明 |
+| **TEA-Q43** | X-TEA `.xead`にFunction宣言Rあり、独立実PG Queryが成功。同じ文字列のFunctionでもAccepted Mapping/Selected Provider/同Attempt/時点を別に照合し、Legacy Functionの実行成功としない | #4570/#2586/#1251。局所read証拠を旧新Effect比較へ昇格しない |
+| **TEA-Q44** | Business TaskActionのSource FactとOrgの担当者割当候補があり、実作業記録・手順実行の独立観測が無い。Business実装/遂行は`not-observed`とし、欠勤・人員不足・実行許可の有無を推論しない | #1124/#2386/#1174。必要時にManual/External Stepの独立Expectedへ |
+| **TEA-Q45** | 同じ公開SliceでPrivate REA Observation/旧Business Stepを二世界で増減。公開三視点の候補・不支持理由・Unknown件数・digest／DOM/Tool JSONがPrivate差分で変化しない | #2516 Current Disclosure。Private集計を公開後にredactする方式は不許可 |
+| **TEA-Q46** | REA v6.8の`truncated=false`でも`status=unknown`・`omitted_count>0`等の局所実値。REA `qualification`、X-TEA `single-source coverage`、TEI Map `partial-projection`の3つのcomplete/partialを同一分母の一つの真偽値にしない | #3394/#4615/#4557。CLAIMの分母とAttempt・Ruleを残す |
+
+### 39.3 最小の実施順と採否・撤回条件
+
+**最初に実装/検収すべきものはTEA-Q41とQ43の二件だけ**。Q41は既存REA `BuildReviewPacket.ThreeElement`を読み出すConsumerがunsupportedの二面を「不存在」へ変えないか、公開合成の既存Fixtureで確認する。Q43は一つのFunctionに限定し、旧宣言と実Target Readの対応を**Ownerが受理したMappingとは分けて**照合する。新REA Reader・TEA正本・検証エンジン・業務実行Runnerを作らない。X-TEA実Source T1-B、`.xeaf`、Studio Consumer、実PG通常CLI結線と旧新Actual比較の順序は各Owner #4615/#3394/#2586/#2514に委ね、相互のHard prerequisiteにしない。
+
+**反証の停止線**：`data=supported`を「正式なData Business Identity」と扱う、REAが`function=unsupported`であるのをFunction 0件と描画、X-TEA Business Actionを実作業完了と記す、あるいはPG実Readがあるというだけで旧X-TEA Functionが同じものだと宣言するなら、この異種Joinは不合格。Owner Accepted、Current Disclosure、外部実AttemptのSource closureと実Business executionは**未証明**。本§39は設計の横断接続で、新Go/Node/Windows/E2E試験とOwner採用は**NOT RUN / NOT ACCEPTED**。
+
+## 40. 原典準拠のMethod検収と、構造不変でも変わる検証資格（2026-11-14、採用前）
+
+### 40.1 原典が要求する「システム観」とTEI汎用構造を対応付ける
+
+三要素分析法の[原典講座前編](https://atmarkit.itmedia.co.jp/fbiz/cbuild/complete/doa/01/01.html)と[後編のサブシステム／CRUD説明](https://www.itmedia.co.jp/im/articles/0605/09/news085_2.html)を再確認。三つのアスペクトは**データ構成・機能構成・業務構成**。論理要件と物理制約のせめぎ合いの上に実装が成立する見方であって、Data/Function/Businessの型が存在するだけでは原典の再現に達しない。原典では業務上の利用者・取引先という社会的文脈、テーブルと機能のサブシステム内凝集・越境CUDの抑制、複数の図面を用いた反復が重要である。既存[#1124](https://github.com/hat47x/tei-platform/issues/1124)のDG-01〜06と[Method Diagram Contract §14](THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)を**原典忠実性の主たる実装Owner／九観点の既存設計**とし、本節は不足している判定資格と独立Expectedだけを追加する。九つの新Canonical Kind、新しい万能Method Schemaは作らない。
+
+| 原典の成果物・働き | TEIで使い得る現在の接点 | 原典忠実性を主張するための不足／停止線 |
+| --- | --- | --- |
+| Data：Dataモデル、Key、関係、必要ならInstanceの例示 | `threeelement.DataElement/DataRelation`、`ModelMap/Locate`、X-TEA `.xead`の`Table/TableField/TableKey`読取 | Key/Relationの種類・多重性・項目参照と原典図法、Source逆引き、受理Meaningの独立照合が必要。関係が描画できても業務Identity/FDとは限らない |
+| Function：Function階層、画面/入出力、DataとのCRUD／逆引き | `threeelement.FunctionElement`、明示CRUD/Function Operation、`xteathreeview`の`IOTable` | Function×Data宣言、業務Action固有操作、実Provider I/O/Effectを区別する。原典の機能階層/画面操作はgeneric Functionへの黙った置換をしない |
+| Business：業務フロー（イベント付きDFD）、職務・Action Tree、Actor/Handoff | `BusinessElement/Activity`、X-TEAの`Task/TaskAction/TaskFunctionIO`のSource Fact／構造候補、組織Role/Case | 図面のイベント・順序・例外・人手・担当を忠実に表せるかは未検証。Business nodeの存在は実施できる要員、業務遂行、権限、Owner受理を保証しない |
+| サブシステム／横断CRUD、相互参照と変更影響 | #3250の分割候補、#4472のCRUD整理、#1124のDG-01〜06 | Declaration occurrence→Qualified Direct CUD→Owner責任→実Effectの各段階を昇格させず、越境0・最適化成功を局所図表から結論しない |
+| 図上操作・原典Authoring／逆写像 | `Source Navigate`、Studio Inspector、Preview/Shared Acceptance、SHOの図表・文書候補 | 表示可能、意味が保たれる、Sourceへ可逆編集可能、実Modelerと同じ操作の各主張を別の独立Expectedで検査。単なるノード/エッジ数の一致で同等としない |
+
+**採用候補となる判定の単位**は、原典固定版の特定「図面・表示・操作」×対象Source/原典Meaning×TEI実Consumerの組合せ。各単位に①出典/実行版、②保持した要素・Relation・Rule/順序/多重性、③失った意味と未対応、④Navigation/操作、⑤編集・再投影資格、⑥独立Expected/実行Attemptを記録し、`observed / partially-supported / unsupported / not-examined`を**検収票の語彙**として説明する。これは新しいProduct enumや真偽判定Engineの要求ではない。各図の原典同等性とTEI固有の便利機能を別欄とし、一般Graph/Workflow/AI/ETL対応を原典忠実性の代替証拠にしない。利用許諾未確認の旧設計モデルや本文を公開Fixtureに流用しない（#941/#4615）。
+
+### 40.2 Source Rootだけの変更で判定が変わる実証を、TEAのView資格へ適用
+
+2026-11-14確認mainの[merged #4616](https://github.com/hat47x/tei-platform/pull/4616) `TestModelViewRootAvailabilityChangesValidationWithoutStructuralDrift` は、宣言済み未知Root `future` の**欠落→空ディレクトリ実在**だけを変更した二時点の独立Loadを比較する。`Catalog/Map/Locate/Validate`のValidationは `OK=false,error=1,warning=0` → `OK=true,error=0,warning=1`。一方、Semantic Source bytes、World/SourceIndex Fingerprint、ModelRevision、Workspace Identity、Map Links、対象Subjectは不変である（同PR exact head `80bf7420334d57f42c871eb7a071ec21fdda7ec5` のCI成功）。**一つのSource Rootの有無に関する限定的なGo実証**であり、全Root/Imported Source/Plugin/Runtimeや同一atomic snapshotの証明ではない。
+
+これを三要素Methodへ伝播するとき、**図面の構造とValidationのVerdictは別の鮮度軸**で扱うべきことが具体的に示された。TEAのSource-backed Data/Function/Business Relationを全件再生成するかは実装の最適化問題であり、Rootの欠落が解消しても図面上の意味Relationや受理済み業務規則が変化したと推論しない。他方、Diagram内容のFingerprint、Source Index FP、Workspace IDだけを鍵にした旧`validation.ok`の無条件再利用も許さない。必要Rootの現在性を再確認できない場合は、Consumerが持つ判定を`unknown/not-revalidated`として説明する。これは最新の実際のRoot状態を常時検知できるという意味ではなく、Watcherや新しいGlobal Epochを提案するものでもない。
+
+| 変更したもの | 図面・意味の局所比較 | 失効／再検証すべき資格 |
+| --- | --- | --- |
+| 未解釈Rootが欠落→実在、意味Source/FP不変（#4616実証） | 同Source/同RuleのMap LinkとSubject構造は局所的に保たれる | Source Root Validation verdictは再検証。古いWorkbenchのOK/NG表示をFPだけで現在値と扱わない |
+| `.xead`のbytesやSourcePath/Workspace変更 | Source Fact/Occurrence、関係位置、Pin originを比較し直す | Rule・Source binding・Pin資格、旧Navigate/Inspect Replyの採用可否 |
+| Method Reading Rule/Notationのみ変更 | Notation/LayoutだけならAccepted Meaningは不変。Rule意味変更は候補として分離 | DerivationRule/Projection FP、Semantic Rule変更時の既存Owner Acceptance |
+| 業務Meaning Decision/Owner版のみ変更 | Legacy Source Factを改変しない | Accepted Mappingの適用資格、L→DとD→Tの現在対応 |
+| Current Grant/Disclosureだけ変更 | Source digestを意味改版と偽装しない | **公開Sliceを再資格化**し、非公開件数や診断を漏らさない。以前の公開可能性を再利用しない |
+| 実Builder/Provider/EffectのAttemptだけ変更 | 三視点構造と原典Meaningを自動変更しない | Target実消費・Stage2 artifact/Provider Call・結果のAttempt資格（#4583/#2586） |
+
+上述の失効は一律の「図を全部クリア」でも「内容FP一致だから全資格維持」でもない。**変わった根拠が支持していたClaimだけを再資格化する**ことが、図表の透明性と認知負荷の軽減を両立させる方針。実WorkbenchでSource Root変更を検知する方法、`readCatalog`が現Go `validation/workspace`を捨てる問題、後着Validate Reply/Pinの現在性は既存[#1124の引継ぎ](https://github.com/hat47x/tei-platform/issues/1124#issuecomment-6855470232)と[Studio設計Draft #4510 §16.24](https://github.com/hat47x/tei-platform/pull/4510)のOwnerに保持する。TEA側でPresenter、Policy Engine、Cache、Watcherを再実装しない。
+
+### 40.3 原典忠実性・現在性・操作適格性を分離する追加Expected
+
+| ID | 一因子だけ変える独立対照 | 期待される判定／受入先 |
+| --- | --- | --- |
+| **TEA-Q47** | 一つのSemantic SourceとMap Graphは不変、Root `future`欠落→実在（#4616既存fixture） | 図面のRelation/Subjectは不変でもValidationだけNG→warning付きOK。WorkbenchがRoot再読取なしに旧判定を現在OK/NGとして固定しない（#1124/#4510、実UI未検収） |
+| **TEA-Q48** | X-TEAのTask→Action→Function→IOTable→Table経路を図で示し、同じエッジ集合をgeneric Graphへ単純投影 | 端点だけでなく、業務Action/Function-declared CRUD、参照出典・順序/未解決、図法上の関係を識別。Action固有Effectや実業務遂行を捏造しない（#1031/#4615） |
+| **TEA-Q49** | 原典のFunction階層・Data参照・Business TaskActionが同一表示名を含む | 三つの観点それぞれのKind・Occurrence・元図面へのNavigateを保持。名前一致だけで同一Subject/Role/編集対象に束縛しない（#1124 DG-01〜03） |
+| **TEA-Q50** | Source/意味Ruleは同じ、Renderer/Notationだけ差替え；次に意味Ruleを変える | 第1ケースはAccepted Semantic/Decisionが不変。第2はProposal→既存Shared Acceptanceなしに意味更新しない（#267/#1124） |
+| **TEA-Q51** | 原典対応の一つの照合タスクをGeneric InspectとMethod Viewの両方で実施 | 正答率／誤った不存在断定／Source到達／操作回数・所要時間を同じFixtureで比較。Method Viewの認知負荷低下を根拠なく主張しない（#2514、UX Owner） |
+
+**順序と撤回線**：P0はTEA-Q47の既存Go Witnessを引き継いだ**Workbench Consumerの根拠保持**と、Q48の**合成一経路**での原典図法の情報欠落表。次はX-TEA実Sourceの公開可能な集計比較（#4615）とQ49の操作性へ。Q50は意味Rule/Acceptance、Q51は実UIが使える後に実施し、どれもDesktop Self-build #4583 B1-B→B2→B3、実Function Read #2586のHard Gateにしない。現`/three-view/`は合成fixture向けread-only Draftであり、人の実GUI受入、原典全図面/九観点の忠実性、現Grant、編集、業務実行はNOT RUN/NOT ACCEPTED。新Method Host、強制ワークフロー、新Source truth store、業務意味のAI自動承認は導入しない。

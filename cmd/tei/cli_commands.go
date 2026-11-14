@@ -35,6 +35,7 @@ var acceptedCommands = []string{
 	"deployment-simulate",
 	"deployment-start",
 	"deployment-start-recovery",
+	"external-candidates",
 	"desired-schema",
 	"grants",
 	"index",
@@ -232,6 +233,11 @@ func helpText(fs *flag.FlagSet, command string) string {
 			// flag it reads is stated here instead of dumping the shared set
 			// (#3943).
 			fmt.Fprintf(&out, "  -dsn string\n    \tdbcheck: PostgreSQL DSN (defaults to TEI_TEST_POSTGRES_DSN)\n")
+			return out.String()
+		}
+		if command == "external-candidates" {
+			var args externalCandidatesCLIArgs
+			writeFlagHelp(&out, externalCandidatesCLIFlags(&args), command, nil)
 			return out.String()
 		}
 		if command == "self-build" {

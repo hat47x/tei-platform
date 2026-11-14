@@ -1,0 +1,21 @@
+{
+  "schema": "tei.reference.generator-contract/v0",
+  "id": "sales.order_line.quantity_positive",
+  "version": "1",
+  "status": "reference-local",
+  "note": "受理済みの Validation sales.order_line.quantity_positive (positive) を対象にする参照用の契約です。output は状態文字列を運ぶだけで、Validation の結果型を新しく定めるものではありません。",
+  "inputs": [
+    {
+      "attribute": "sales.order_line.quantity",
+      "primitive": "std.decimal"
+    }
+  ],
+  "output": {
+    "primitive": "std.text"
+  },
+  "validation": {
+    "id": "sales.order_line.quantity_positive",
+    "kind": "positive",
+    "input": "quantity"
+  }
+}

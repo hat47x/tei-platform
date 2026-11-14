@@ -161,3 +161,66 @@
 - 派生名の規則を、生成器とProviderのどちらが所有するか。両方が宣言し、照合はCoreが行う案を有力とするが、ADR-0033の境界との整合は未確認。
 - 別の保証を持つ変更案を受理した後に、元の保証へ戻す際の変更・移行手順。
 - 本書の宣言は、どれも実装・試験で確かめていない。四つの宣言を一つの契約にまとめることで、別々に作る場合より検査が減るかどうかは、最初の適用先で測る。
+
+## 8. 2026-11-14 横断追補：生成器の適合から実Consumerまでの接続（設計・未実証）
+
+**状態**：本節は検証可能な接続案であり、正式な新Schema・新Core・新Builder・新Runtime・新受理規則の採用ではない。静的照合の基準はmain `e051895b03bfbd7b4a08d30aa3193465b9ab1bd0`。Go/Windows/実Targetの新規試験、Owner意味受理は本節では **NOT RUN / NOT ACCEPTED**。前節の派生名・拡張点・書込み窓・能力縮退の責務を変更しない。
+
+### 8.1 既存の実装と、追加すべき一本の線
+
+- [Generator #4544](https://github.com/hat47x/tei-platform/issues/4544)と `tools/reference-generator-selection` は、受理契約に対する手書き・テンプレート・AI由来の候補、複数言語、独立Fixture、出所・digestの比較を既に扱う。 `meta.go` の生成器からの生成は深さ1の限定Referenceであり、一般的な自己解釈・無制限メタ生成ではない。出自と適合性、適合と本番実使用は別Claim。
+- [Self-build #2831](https://github.com/hat47x/tei-platform/issues/2831)と[Desktop #4583](https://github.com/hat47x/tei-platform/issues/4583)には、生成したInspector、生成Workbench/Go service、実Windows WebView2、TEI CLIからのGenerator Child起動という局所成果がある。複数HEAD・複数AttemptのPASSを足して、単一Build IntentのStudio Stage2再入PASSとはしない。
+- mainの `internal/buildintent/intent.go` は `go-command` Recipe用Sourceを扱えるが、`BuildIntent.Validate` は `Subject.Kind=plugin` のみ受け付ける。 `resolve.go` も `plugin.BuildPlan.Plugin` へ格納する。**Goコマンドを構築するRecipeが存在することと、非Plugin Subjectを正しく表現できることは別**。実Studio/CLIを架空のPluginへ偽装して一般化しない。
+- [Draft #4634](https://github.com/hat47x/tei-platform/pull/4634)は選択Builderの宣言整合とChild起動前pinを同一HEADで検査する実装候補。未統合・未検証の領域を含むため、ここに新しい第二Resolverを追加しない。
+
+第一の縦断課題は、`Generator Candidate → exact selected implementation → resolved Build Intent → actual invoker → ArtifactSet → actual Consumer` の**同一Subject・同一Attempt相対の証拠接続**である。候補の適合試験と実製品ビルドは異なるSubjectなら別々に示す。既存の `line-amount` FixtureとStudio Inspectorを同一の受理済み業務意味として無断で結合しない。
+
+### 8.2 標準構造で表す「宣言・解決・観測・消費・受理」
+
+新しい `Pipeline` 専用正本を作らず、既存の型付きRecord/Relation/Graph/Ref・BuildExecution/ArtifactSet/Subject Binding・Source Index・Selectionを再利用する。下表は**比較票の項目候補**であり、採用済みのAPI定義ではない。
+
+| 段階 | 対象として保持するもの | この段階が証明しないこと |
+| --- | --- | --- |
+| Declared | Accepted Meaning、生成Intent、要求Capability、必要入力・依存・出力・Target・許された書込み範囲 | Providerの存在、全入力の確定 |
+| Resolved | exact Generator/Builderと実装bytes・推移依存Pin、Source closure、Plan fingerprint | その実装がOS上で起動したこと |
+| Observed | Attempt ID、実Process image/argv、読取/生成/リンクのうち実際に観測した辺、実Artifact member bytes | 観測されなかった工程の不存在、意味適合 |
+| Consumed | 実Builder/Bundle/Runtime/Browserが受領したmember、役割、digest、対象Scopeと版 | Provider・Hostの現在権限、業務Effect |
+| Accepted/Qualified | 独立Expected・適用版・反例の検証、Owner意味受理、現在の利用資格をそれぞれ参照 | 他Target、他Attempt、将来時点への自動継承 |
+
+「図中になければ無い」は、質問で指定したScope/時点/Consumer/選択された実行経路について必要Source全集合と工程観測の被覆が**閉じたと証明できた場合だけ**の不在主張。未選択・未読込・未観測はunknown/unsupportedを維持する。フィルタや作図の成功を閉包の証明としない。
+
+### 8.3 合成・最適化がグラフ形状を変える場合
+
+宣言した論理Operationを、実BuilderのStepへ常に1対1に割り当てる必要はない。Fusion、部分評価、静的リンク、Pushdown、Cacheや並列化は論理グラフの辺数を変える。ただし、**対応付けの根拠がない消滅辺を最適化扱いにしない**。
+
+1. 変換前のOperator入出力型・NULL/欠損/未取得・順序・多重度・単位・丸め・Effect・時点を契約として固定する。
+2. 変換後の物理StepのSource/Artifact/Provider Pinを記録し、どの論理Operation群を実現したかの対応表を作る。多対一・一対多は許しても、未対応の要求は残す。
+3. 独立Expectedと既知Mutantで比較する。結果値が偶然一致しても、外部Effect・順序・失敗時の部分成功、Receiptの同一性を省略しない。
+4. Safety/Semantic Gate、Target/Physical Gate、実WorkloadのPerformance Gateを区別し、性能利得だけで意味保存を認定しない。正当化できない変換は採用せず元のPlanを使う。
+
+これは汎用Optimizer新設の要求ではなく、[Plugin実現・最適化要件](PLUGIN_REALIZATION_AND_OPTIMIZATION_REQUIREMENTS_2026-11.md)で既に扱う最適化が生成・Build・図表の資格と衝突しないための検収接続である。
+
+### 8.4 まず実施する独立負例（新規試験はNOT RUN）
+
+| Case | 変更する一因子 | 合否と停止線・担当 |
+| --- | --- | --- |
+| GCX-01 | Generator Bを選択したのに実呼出しはA | 同じ出力bytesでも不一致。#4544/#4634で選択・実呼出しを照合 |
+| GCX-02 | 宣言した生成TSを古いJS bundleへ差し替え | 実Consumer byte不一致。#4583でBuilder→Bundle→WebView2を独立照合 |
+| GCX-03 | non-Plugin CLIを `plugin` Subjectに偽装 | 見かけのBuild成功を非Plugin Subject適合と認定しない。#1080/#1097/#2831の候補モデルへ戻す |
+| GCX-04 | Node/npm/Go module/埋込Assetの必要依存を一つ除く | Source closure=unknown/unsupported、Stage2資格は不成立。#2595/#2831 |
+| GCX-05 | Stage0がStage2までbuildし、Stage1実TEIは起動されない | digest収束だけでは再帰的Self-buildと呼ばない。#2831/#4583 |
+| GCX-06 | 融合前後でNULL・順序・Effect・丸めを一つ変える | 同値の自己申告を拒否し独立Expectedへ。#4544/#2514 |
+| GCX-07 | 生成器の指定外の手書き領域を再生成時に変更 | 事前検出して変更停止。既存#2090/#2092の書込み窓契約 |
+| GCX-08 | 意味契約に必要な規則が未受理のまま生成器が既定値を挿入 | unsupported/unknownを保持。生成物の出力一致だけでAccepted Meaningにしない |
+
+### 8.5 実装順と抽象追加の停止線
+
+1. **G0（既存Reference確認）**：#4544の同一`line-amount`契約で標準・手書き・AI候補を比較し、独立Expected・欠損/NULL/丸めMutantの判別を先に通す。新Selectorを作らない。
+2. **G1（実Builderとの接続）**：#4634のBuilder selection→Child pinの独立CI結果を確認し、#2831の実Generator N0へ接続する際に不足するBuild Subject Bindingを列挙。 `go-command` と `Subject.Kind` の不整合を解消する最小の既存型射影を先に評価し、新Core型は後回し。
+3. **G2（単一Studio Attempt）**：Inspector Source→生成TS→esbuild入力→JS bundle→Go/Wails build→Windows WebView2実利用を同一Build Intent/ArtifactSetに結ぶ。Stage1のProcessが次段Buildを駆動したことは別Claimで確認。
+4. **G3（第二Target）**：同一Accepted MeaningからGoとJava/.NETなどの第二実Targetを比較。言語名だけの生成や合成fixtureを実Target適合と呼ばない。
+5. **G4（メタ生成採否）**：標準Transformの合成で満たせない契約が反復し、生成器を生成することでレビュー工数・差分理解・再利用が実測で改善するときだけ深さ1を超える一般化を検討。Lisp的自己記述を先に必須化しない。
+
+**撤回条件**：新しいメタ構造・接続型を導入しても、既存契約での同一Subject追跡、隠れた依存の削減、変更に必要な検証範囲の縮小のいずれも示せない場合は、専用構造を撤回し既存Build Intent/ArtifactSetと文書上の比較票へ戻す。
+
+**責務**：生成器候補とConformanceは#2016/#4544、Source全入力は#2595、Meaning/Loweringは#1121/#2620、Build実行/Subjectは#1080/#1097、製品Self-buildは#2831/#4583、独立Expectedは#1180/#2514、図表は#2497/#1124がそれぞれ正本。新Runner、第二Resolver、第二Artifact Store、TEI専用Host、中央Authorityは導入しない。

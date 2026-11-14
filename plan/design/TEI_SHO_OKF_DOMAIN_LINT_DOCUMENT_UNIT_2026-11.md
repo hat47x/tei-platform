@@ -146,3 +146,7 @@ tei_binding:
 **停止条件**：OKF互換Consumerの未知拡張拒否、Parserが原文を破壊、Lintが受理/権限を偽装、同名/別Scopeへの暗黙Binding、Plugin未使用による不可逆なBuild混入、出典/引用の誤帰属、Editorの自動書戻しでTEI Meaning変更、固定納品の自動置換。問題が起きればread-only投影に戻し、保存・納品・実行資格を分けて記録する。
 
 **今回の証拠状態**：一次仕様と既存Issue/設計の確認に基づく**計画文書**。OKF Plugin実装、ドメインLintの実CLI、SHO G2/G3保存、元資料のOKF化、実Provider/外部Consumer送出、Owner正式受理はすべて**NOT RUN**。既存CLI/CIの限定PASSを本案へ転用しない。
+
+## K2実Provider二Consumerの独立受入計画（2026-11-12）
+
+K1/K1Rの限定実証を実Provider二Consumerへ進める検収ゲート、Source/Manifestの改訂、実Load/Invoke、Required閉包、Owner/Grant/Disclosureの区別は、[K2 Provider二Consumer受入計画](TEI_OKF_K2_PROVIDER_TWO_CONSUMER_ADMISSION_2026-11.md)を参照する。本書のP0〜P5を置換するものではなく、K2実行の証拠基準を補足する。旧PR #3329のマージ済み履歴と、現mainに存在する本書を混同しない。
