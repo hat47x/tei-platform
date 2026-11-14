@@ -146,28 +146,56 @@ func sourceRevisionOf(receipt externalanalysis.Receipt) string {
 	return receipt.Source.Revision
 }
 
-// ExternalCandidates reads one saved external analysis output and projects the
-// selected observation and directed edge, with the attempt they came from.
-//
-// It reuses the intake's receipt and candidate reading rather than parsing the
-// producer's bytes a second time: there is one reader of the Evidence format,
-// and this projection is a view over it.
+// ExternalCandidates is the local saved-file entry. A file path is accepted
+// here only; Host and remote consumers must select and read authorized bytes
+// themselves before invoking ExternalCandidatesFromBytes.
 func ExternalCandidates(request ExternalCandidateRequest, at time.Time) (ExternalCandidateView, error) {
 	if strings.TrimSpace(request.EvidencePath) == "" {
 		return ExternalCandidateView{}, &ExternalCandidateError{Code: ExternalCandidateInvalidRequest, Message: "evidence path must be nonempty"}
 	}
-	if strings.TrimSpace(request.ToolVersion) == "" {
-		return ExternalCandidateView{}, &ExternalCandidateError{Code: ExternalCandidateInvalidRequest, Message: "tool version must be declared: the framing and the accepted source kinds belong to a version"}
-	}
-	if strings.TrimSpace(request.ObservationID) == "" {
-		return ExternalCandidateView{}, &ExternalCandidateError{Code: ExternalCandidateInvalidRequest, Message: "observation id must be nonempty"}
-	}
-	if strings.TrimSpace(request.RelationID) == "" {
-		return ExternalCandidateView{}, &ExternalCandidateError{Code: ExternalCandidateInvalidRequest, Message: "relation id must be nonempty"}
+	// Preserve the local entry's validation-before-I/O ordering.
+	if err := validateExternalCandidateSelection(request); err != nil {
+		return ExternalCandidateView{}, err
 	}
 	raw, err := os.ReadFile(request.EvidencePath)
 	if err != nil {
 		return ExternalCandidateView{}, &ExternalCandidateError{Code: ExternalCandidateReadFailed, Message: fmt.Sprintf("read the saved external analysis output: %v", err)}
+	}
+	// Path selection ends at the local file boundary. The byte projection
+	// receives no path and cannot open a second file or re-resolve a selector.
+	request.EvidencePath = ""
+	return ExternalCandidatesFromBytes(request, raw, at)
+}
+
+// validateExternalCandidateSelection enforces the existing R2 identity/version
+// requirements for both local-file and already-acquired-byte entries.
+func validateExternalCandidateSelection(request ExternalCandidateRequest) error {
+	if strings.TrimSpace(request.ToolVersion) == "" {
+		return &ExternalCandidateError{Code: ExternalCandidateInvalidRequest, Message: "tool version must be declared: the framing and the accepted source kinds belong to a version"}
+	}
+	if strings.TrimSpace(request.ObservationID) == "" {
+		return &ExternalCandidateError{Code: ExternalCandidateInvalidRequest, Message: "observation id must be nonempty"}
+	}
+	if strings.TrimSpace(request.RelationID) == "" {
+		return &ExternalCandidateError{Code: ExternalCandidateInvalidRequest, Message: "relation id must be nonempty"}
+	}
+	return nil
+}
+
+// ExternalCandidatesFromBytes projects a single already-acquired REA Evidence
+// byte sequence using the same R2 receipt, parser, identity and pin rules as
+// ExternalCandidates. It performs NO path resolution, filesystem read, grant
+// check or delivery. The Host remains solely responsible for trusted workspace
+// selection, bounded read, current disclosure, and consumer delivery receipts.
+//
+// EvidencePath must be empty: callers cannot smuggle a local file selector
+// through this entry. A successful projection is not proof of those Host facts.
+func ExternalCandidatesFromBytes(request ExternalCandidateRequest, raw []byte, at time.Time) (ExternalCandidateView, error) {
+	if request.EvidencePath != "" {
+		return ExternalCandidateView{}, &ExternalCandidateError{Code: ExternalCandidateInvalidRequest, Message: "byte projection does not accept an evidence path"}
+	}
+	if err := validateExternalCandidateSelection(request); err != nil {
+		return ExternalCandidateView{}, err
 	}
 	tool := request.Tool
 	if strings.TrimSpace(tool.Name) == "" {
