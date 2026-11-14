@@ -434,7 +434,7 @@ Host-specific Load / Grant / Effect evidence (separate owner)
 
 ### 13.4 ETL/Batch・保管先横断のE1証拠を用途別に扱う（2026-11-11追補）
 
-並行する[ETL/Batch設計Draft #4409](https://github.com/hat47x/tei-platform/pull/4409)は、型付きFunction／Data Operations／Operatorの合成で、固定TSV→変換→Artifact/Evidence→独立Consumerを段階実証する計画である。**同PRは未統合の設計候補**であり、実ETL Job／Scheduler／外部書込みが成立した証拠ではない。Registry E1と共通化してよいのは実Byte・必要Member・Content Digest・取得Attemptの**観測契約**だけとする。業務日付、Record粒度、NULL/欠損、Checkpoint、再実行・Effect/ACKの意味をRegistryのRelease/Version Commitへ畳み込まない。
+並行する[ETL/Batch設計PR #4409](https://github.com/hat47x/tei-platform/pull/4409)はmain統合済みであり、型付きFunction／Data Operations／Operatorの合成を用いた固定TSV→変換→Artifact/Evidence→独立Consumerの段階実証計画を記録する。**設計の統合は実ETL Job／Scheduler／外部書込みの成立証拠ではない**。Registry E1と共通化してよいのは実Byte・必要Member・Content Digest・取得Attemptの**観測契約**だけとする。業務日付、Record粒度、NULL/欠損、Checkpoint、再実行・Effect/ACKの意味をRegistryのRelease/Version Commitへ畳み込まない。
 
 [Git連動Evidence保管 #4307](https://github.com/hat47x/tei-platform/issues/4307)の方針も併せて、次の4軸を別々に保持する。
 
@@ -457,3 +457,32 @@ Registry登録・名前検索・第三者評価は**公開許可を持つPlugin 
 | RG-E1-20 | Artifact一式ReadbackがPASSだがETL JobのEffect／下流受領ACKが不明 | Registry公開のByte Claimだけを維持し、業務受理・再実行安全性・完了Receiptへ昇格しない（#1130/#2542/#1174） |
 
 **状態**：公開証拠・公開の可否・用途別現在性の設計接続のみ。RG-E1-17〜20、実ETL Job、NAS/S3別Provider、private-to-public開示負例、Registry P/C E2Eの新規実行は**NOT RUN**。製品用共有Artifact Store／新Core型／Registry独自Effect Engineは追加しない。
+
+### 13.5 E1-C統合と実GitHub ReleaseのReadback移行条件（2026-11-14）
+
+**確認版**：main `372091456b5be53dd169e8ccc84256b779624921`。既存E0-S/WとE1-A/Bに加え、[merged #4617](https://github.com/hat47x/tei-platform/pull/4617)ではGo製の既存CASを使うloopback配布面から、**独立Node OSプロセス**が未知のRaw JSON署名付きReleaseをHTTP取得し、既存`wire.mjs`／`verify.mjs`でEd25519署名・Release Subject・Profile/Targetを検査後、必須`core/ui`の全byteを別GETする。正常1／拒否9を含む専用CIと全体Health・P0-A・Cache・脆弱性確認が、同PRの**merge candidate**で成功。固定テスト鍵とmock Policyであり、本番Issuer・現在Trust・外部Releaseはなお**未実証**。
+
+#### 実配布へ移す前の現状と停止線
+
+- 2026-11-14のGitHub REST `GET /repos/hat47x/tei-platform/releases?per_page=30` は認可された現行接続で`[]`を返した。**検証に使える実Releaseが発見できていない**。既存Repoへの公開Release新規作成・テスト鍵の配布・設定変更は本レビューの対象外で、行っていない。
+- 同Repoの**Immutable Releases設定は未確認**。設定確認は管理権限を必要とし、現在のGitHub読取り接続では当該管理設定の検証に対応しない。EnabledやOwner-enforced、現在のNamespace所有権を推定しない。
+- GitHub Release AssetのREST取得は`200`による直接Body取得と`302`のRedirectを取り得る。E1-B/Cのloopback限定`Redirect拒否`を**本番GitHub Consumerへ機械的に移植しない**。Release Asset APIの固定識別子、転送先Origin/Host、Credential非転送、再Redirect回数、Response Body上限、実SHA-256をProvider側の取得Profileとして独立検証する。事前の`browser_download_url`やGitHub署名付きURLだけでContent/Publisher Trustを主張しない。
+- GitHubのImmutable Releaseが**対象の公開時に有効と実証された場合**に限り、Asset/Tagの公開後変更不能性とGitHub Release AttestationをGitHub固有のProvider Evidenceとして使える。ただしReleaseの削除・現在の取得可否・TEI Publisher/Verifier委任・Consumer Grant・業務Effectは別。GitHub Release AttestationとTEIのEd25519 Publisher Claimは**別Issuer・別Subject**であり、片方が他方を代替しない。
+- 固定`(Plugin ID, Version, Signed Release Digest, Publisher Epoch)`のVersion Bindingについて、GitHub上の`Release ID/Tag/Commit SHA/Asset ID`は**Locatorと外部世代の証拠**であり、TEIの公式な名前予約・同名版の原子的確定を自動で証明しない。Immutable設定が無いStoreでは旧版の保持・再取得・混合拒否が未成立となり得る。Providerごとに既存#1105/#2604の証拠を使い、第二Registry CASを設置しない。
+
+#### 最初の実配布受入シナリオ（Referenceは後続・以下はNOT RUN）
+
+| Case | Publisher Pの観測と独立Consumer Cの観測 | 合格／拒否の範囲 |
+| --- | --- | --- |
+| RG-E1-27 | Ownerが明示的に許可した**隔離Release**に、署名付きReference Envelopeと必須`core/ui`をすべてUploadし、Pが公開先から全byteをReadback。Cは別Attempt/別ProcessでRelease ID＋Asset IDを固定して独立取得 | Content Digest、Role/Digest、Signed Subject、Publisher/Verifier固定Profileを実byteで照合。公開許可・Version Commit・現在Trustは別資格 |
+| RG-E1-28 | 公開途中の必須Asset未Upload、またはUpload成功でも公開前のDraft・一部missing | 全必須Memberが揃うまではPublished/Qualifiedに昇格しない。API Upload ACKは独立Cの受領証拠ではない |
+| RG-E1-29 | GitHub Asset取得APIが`200`直Body、または`302` CDNへ移送 | **選択したProvider Policy**の範囲でのみRedirect先と認証情報伝播を検査。最終Bodyのbyte上限＋Digestを必ず検証。無検証Redirectと認証情報転送を拒否 |
+| RG-E1-30 | signed R1 Envelopeを固定した後、1 Assetだけ別Release/R2のbyteへ切替、または同一byteを別Roleへ提示 | Role→exact digest不一致を拒否。内容一致だけから同一Publication Generation/Current Grantへ昇格しない |
+| RG-E1-31 | GitHub側のAsset metadata `digest`は一致するが、HTTP Responseが欠損・破損・不可用、またはmetadataと実byteが不一致 | GitHub metadataは有用な追加比較値だが、Consumer自身の実Body Digestと現在の取扱権限が独立に必要 |
+| RG-E1-32 | GitHubでImmutable Releasesの有効性を確認せずTag/Assetを発行、または後からReleaseが削除される | `immutable`/継続Availableを推定しない。Tag/Asset固定の証拠を別に要求し、失効・消失・再取得失敗を現在の状態として記録 |
+| RG-E1-33 | private CAS/NAS/S3のEvidence Digest・Locatorを、Release掲載対象として発見 | Publication許可が無ければ存在/Locator/metadataも公開・外部送出しない。Public Index応答と権限を持つConsumer診断のProjectionを分離（#4307） |
+| RG-E1-34 | GitHub Release Attestation／PlatformでのAsset同一性はValidだが、TEI Publisher委任・Contract Conformance／Plugin Manager enable/actual Loadが不明 | GitHub provenanceをTEI Issuerの公式保証・現在Grant・E3実使用へ自動昇格しない（#1104/#951/#4377/#2390/#3267） |
+
+**担当と順序**：まず#2589のE1-C成果を固定し、#2604のManifest/Member実Readerと#1105のCAS、#4307のDisclosure、#951/#1104のAuthorityを照合。次にOwnerが**隔離・公開許可・必要な権限・GitHub immutable設定の扱い**を明示した実Releaseで、PとCの別Attempt・実Byteを実測する。現行のPlugin Manager [#4377](https://github.com/hat47x/tei-platform/issues/4377)やPlugin契約の[Draft #4621](https://github.com/hat47x/tei-platform/pull/4621)が扱う`Selected/Installed/Enabled/Actual Invoked/Current Grant`は独立資格。自己記述・Signature/HTTP GETの成功を実採用・実効果へ昇格しない。
+
+**結論／実証上限**：E1-Cのtest-only CI成功とmain統合までは確認済み。`RG-E1-27〜34`、外部GitHub Release公開、実Release Assetの`200/302` Readback、Immutable Release設定確認、Publisher/Verifier現在Trust、実外部Host/Business Effectは**NOT RUN / UNQUALIFIED**。GitHub専用API/固定Asset名/同一SignerをTEI Coreへ強制しない。
