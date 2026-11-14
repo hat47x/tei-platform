@@ -2,11 +2,14 @@ package teimdreader
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -150,5 +153,108 @@ func TestStaleMermaidRemainsReadOnly(t *testing.T) {
 	}
 	if !reflect.DeepEqual(runGenerated(t, got), map[string][]string{"n-1": {"e-1"}, "n-2": {"e-2"}}) {
 		t.Error("stale display overrode table definition")
+	}
+}
+
+
+// This is an executable reference consumer, not the production TEI CLI.
+// One exact compiled artifact is invoked with two different request values.
+func TestGeneratedBinaryRuntimeNodeQuery(t *testing.T) {
+	expected := ruleExpected(t)
+	for _, tc := range expected.Cases {
+		if !tc.Valid {
+			continue
+		}
+		t.Run(tc.File, func(t *testing.T) {
+			src := fixtureSource(t, tc.File)
+			candidate, err := ParseRuleCandidate(src)
+			if err != nil {
+				t.Fatal(err)
+			}
+			generated, err := GenerateGo(candidate)
+			if err != nil {
+				t.Fatal(err)
+			}
+			dir := t.TempDir()
+			sourceFile := filepath.Join(dir, "generated.go")
+			binaryName := "generated"
+			if runtime.GOOS == "windows" {
+				binaryName += ".exe"
+			}
+			binaryFile := filepath.Join(dir, binaryName)
+			if err := os.WriteFile(sourceFile, generated, 0600); err != nil {
+				t.Fatal(err)
+			}
+			build := exec.Command("go", "build", "-o", binaryFile, sourceFile)
+			build.Env = append(os.Environ(), "GOTOOLCHAIN=local", "GOWORK=off", "GO111MODULE=off")
+			if out, err := build.CombinedOutput(); err != nil {
+				t.Fatalf("build of generated Go failed: %v\n%s", err, out)
+			}
+			before, err := os.ReadFile(binaryFile)
+			if err != nil {
+				t.Fatal(err)
+			}
+			artifactDigest := sha256.Sum256(before)
+			// Keep the existing no-argument output contract on the same binary.
+			fullCall := exec.Command(binaryFile)
+			fullOut, err := fullCall.Output()
+			if err != nil {
+				t.Fatalf("default invocation: %v", err)
+			}
+			var full map[string][]string
+			if err := json.Unmarshal(fullOut, &full); err != nil {
+				t.Fatalf("default JSON: %v", err)
+			}
+			if !reflect.DeepEqual(full, tc.GeneratedResult) {
+				t.Fatalf("default invocation=%#v, expected=%#v", full, tc.GeneratedResult)
+			}
+			// Both queries are handled by the same prebuilt process artifact.
+			// The caller supplies the Node ID; neither source regeneration
+			// nor an Expected-derived stub is involved between invocations.
+			for _, node := range []string{"n-1", "n-2"} {
+				call := exec.Command(binaryFile, "-node", node)
+				out, err := call.Output()
+				if err != nil {
+					t.Fatalf("node %q: %v", node, err)
+				}
+				var actual map[string][]string
+				if err := json.Unmarshal(out, &actual); err != nil {
+					t.Fatalf("node %q: invalid JSON %q: %v", node, out, err)
+				}
+				want := map[string][]string{node: tc.GeneratedResult[node]}
+				if !reflect.DeepEqual(actual, want) {
+					t.Fatalf("node %q: actual=%#v, independent expected=%#v", node, actual, want)
+				}
+			}
+			// Missing -node and explicitly empty -node are distinct:
+			// only the former permits the full-graph projection.
+			for _, request := range []struct {
+				args    []string
+				message string
+			}{
+				{[]string{"-node", "missing-node"}, "unknown node"},
+				{[]string{"-node", ""}, "empty node ID"},
+				{[]string{"-node="}, "empty node ID"},
+				{[]string{"unexpected"}, "unexpected positional arguments"},
+			} {
+				call := exec.Command(binaryFile, request.args...)
+				out, err := call.CombinedOutput()
+				var exitErr *exec.ExitError
+				if !errors.As(err, &exitErr) || exitErr.ExitCode() != 2 {
+					t.Fatalf("args %q: expected exit 2, got %v; output=%s", request.args, err, out)
+				}
+				if !strings.Contains(string(out), request.message) {
+					t.Fatalf("args %q: expected %q diagnostic, got %q", request.args, request.message, out)
+				}
+			}
+			after, err := os.ReadFile(binaryFile)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if sha256.Sum256(after) != artifactDigest {
+				t.Fatal("compiled artifact changed between independent calls")
+			}
+			t.Logf("compiled reference binary SHA-256=%x (7 runtime invocations, one build)", artifactDigest)
+		})
 	}
 }

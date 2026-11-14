@@ -10,6 +10,16 @@ func StandardToSQL(q *StandardQuery) (string, []Diagnostic) {
 	if q == nil {
 		return "", []Diagnostic{{Code: "EMPTY_QUERY", Message: "query is nil"}}
 	}
+	// Opaque stores the exact unsupported native SQL for review; it is not a
+	// structured query that StandardToSQL may silently discard or recompose.
+	for _, n := range q.Nodes {
+		if _, opaque := n.(*Opaque); opaque {
+			return "", []Diagnostic{{
+				Code: "OPAQUE_QUERY_UNSUPPORTED", Message: "opaque native SQL cannot be regenerated from StandardQuery",
+				Severity: SeverityUnsupported,
+			}}
+		}
+	}
 	var diags []Diagnostic
 	var sb strings.Builder
 
@@ -23,6 +33,10 @@ func StandardToSQL(q *StandardQuery) (string, []Diagnostic) {
 			sb.WriteString(" AS (")
 			sql, d := StandardToSQL(cte.Query)
 			diags = append(diags, d...)
+			if sql == "" {
+				// Never emit WITH name AS () when a nested query is unsupported.
+				return "", diags
+			}
 			sb.WriteString(sql)
 			sb.WriteString(")")
 		}
