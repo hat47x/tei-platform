@@ -36,7 +36,7 @@ func TestREADualEntryCapturedInputAndIdentityBoundaries(t *testing.T) {
 	}
 
 	const (
-		semanticNodeID = "jsrg_node_237478f2a27c9614a522cbfc7ab60fa96943a458d164945d25af634f1240b652"
+		semanticNodeID     = "jsrg_node_237478f2a27c9614a522cbfc7ab60fa96943a458d164945d25af634f1240b652"
 		semanticRelationID = "jsrg_relation_0f6757a241c56fd84ecaec91f538d8297d222eb5625e4cdbcb2de7603f330718"
 	)
 	external := func(path, expectedDigest string) (int, externalCandidatesCLIResponse) {
@@ -72,7 +72,7 @@ func TestREADualEntryCapturedInputAndIdentityBoundaries(t *testing.T) {
 			Candidates []struct {
 				Kind string `json:"kind"`
 				Facts struct {
-					ExternalIdentity string `json:"externalIdentity"`
+					ExternalIdentity   string `json:"externalIdentity"`
 					ExternalOccurrenceID string `json:"externalOccurrenceId"`
 				} `json:"facts"`
 			} `json:"candidates"`
