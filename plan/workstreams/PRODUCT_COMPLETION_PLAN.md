@@ -260,6 +260,30 @@ B1a-I/Pの二段受入を維持しつつ、独自Frontendを「TEIが制約し�
 
 **先行順位を維持**：全体P0はStudio Desktop Stage1→Stage2セルフビルド[#2831](https://github.com/hat47x/tei-platform/issues/2831)/[#4583](https://github.com/hat47x/tei-platform/issues/4583)。並行P0は[#2586](https://github.com/hat47x/tei-platform/issues/2586) RA-2P通常`tei` Product Read→RA-3二Consumer。B1a-Pはその**外部公開への追加資格**。B1b Cart/Order/Payment副作用、B2 Variant/Experiment、B3 H0/H1/H2の費用・性能比較、B4予約/Subscriptionへの拡張を初回ReadのHard Gateにしない。成功資格はSource宣言、局所Go、参照PG、製品CLI、Native、公開Host、Business Effect、実験効果で別々に記録。本文は設計・受入計画であり、実公開認証・Commerce・Browser E2E・CVR実証を行った意味ではない。
 
+<!-- g49-b1b-effect-measurement-separation-20261114 -->
+## G49 B1b〜B3：購入の確定・公開切替・計測の資格を連結せず照合する（2026-11-14）
+
+**採る判断**：B2Cの差別化は新しいCheckout/Analytics Engineを作ることではなく、既存の型付きOperation/Effect/Receiptと、独自Frontend/Commerce/Flag/Analyticsの**異なる正本の間で、何が実際に確定したかを取り違えず変更できること**にある。B1a-Iの正式Product Read（RA-2P→RA-3）とB1a-PのCurrent Grantはそれぞれ未成立のまま。以下はその後段の**実施手順・独立Expected候補**であり、実Commerce・Browser・Field実験の完了を表さない。新StateMachine/Host/決済処理/統計Engine/必須Client SDKは設けず、[#1174](https://github.com/hat47x/tei-platform/issues/1174)、[#1129](https://github.com/hat47x/tei-platform/issues/1129)、[#3503](https://github.com/hat47x/tei-platform/issues/3503)、[#951](https://github.com/hat47x/tei-platform/issues/951)、[#1180](https://github.com/hat47x/tei-platform/issues/1180)を再利用する。
+
+| 一つの購入導線の観測点 | 正本と許される主張 | 禁止する昇格・必須反例 |
+| --- | --- | --- |
+| **① Product/Offer表示** | Product/Price/Promotionの公開版・通貨・有効時刻・Audience、SSR/Edge/Client/Cacheで実表示したVariantを別票に記録。表示は見積りまたは案内である | 古いCDN/Clientの割引表示を現在の販売価格とみなさない。C0の文言変更に実効Coupon/Disclosure/Consent変更を混入させない |
+| **② Cart/Checkout Intent** | 同一操作対象・選択Customer/Guest・数量・Quote版、二重送信を判別できるOperation Identity。Optimistic UIは仮状態に限る | 画面上の「完了」、FlagのAssignment、Click/IntentをOrder・Payment確定とみなさない。Guest→会員結合は現在Hostで別判定 |
+| **③ 実Provider確定境界** | 権威あるServer/Commerce Providerが現在の価格・税・Coupon・在庫・対象・実行権限を再評価し、選択Providerと実呼出しProvider・送信要求・応答・Commitを突合 | 旧VariantのOffer、旧Grant、A選択→B実Call、Hookのbefore/after成功だけでCommit成功としない。実Provider能力を超えるexactly-onceを宣言しない |
+| **④ Effect/Receiptの確定** | 同じOperation IdentityでReceipt・再照会可能なOrder/Payment Outcome・独立Readを分ける。重複要求はProviderの冪等契約に従い再照合する | Timeout/応答喪失/unknown commitでは**未確定**のまま。安全な自動再送と仮定せずlookup first、照会不能はunknownを維持。Client UIの成功表示やAnalytics Eventで補完しない |
+| **⑤ Experiment/Analytics** | Assignment、実際のExposure、許可されたEvent、Action、業務Effect、Outcomeを異なる観測とし、母集団・欠測・Consent版・割当版・観測時刻を記録 | Exposure未観測を非露出確定、計測不能を非購入、Order確定を因果upliftに変換しない。SRM、返品・取消・粗利益等のguardrailは既存分析/Providerを利用 |
+| **⑥ Release/撤回** | UI/Creative/Flagのロールバックと、既存Order/Paymentの訂正・返金は**別操作**。旧SSR/Edge/Client/Service Worker・Private Cacheの生存と現在Backend受理条件を照合 | Flag巻戻しで既存の注文Effectを消したと扱わない。既配信・オフライン保存済みbyteを遡及的に消去できる保証はしない。失効後の**新規配信**を現在Grantで抑止し、残存配信は別途検出・運用対処する |
+
+**B1bの最小縦切り**：公開の本番決済ではなく、隔離したCommerce Sandboxを一つ選ぶ。正常Cart→Checkoutだけでなく、同じOperation IDによる重複送信、Commit前拒否、Commit後ACK喪失、旧Quote/旧Grant、Provider選択と実Callの不一致を各一組の正負対照にする。外部Effectについては、Client表示・実Call・Provider Receipt・独立Order再読込みを別列に残す。Writeの効果や権限を証明できないときは`unknown`とし、既存[#1174](https://github.com/hat47x/tei-platform/issues/1174)/[#1129](https://github.com/hat47x/tei-platform/issues/1129)へ未成立を返す。B1a-Pの公開Host合格をSandbox内のEffect実装の着手条件にせず、外部公開の認定には別途現在Grantを要求する。
+
+**B2の最小縦切り**：既存Experiment/Flag Providerを任意選択し、**一つの既存Native画面**でAssignment→SSR実表示→Hydration→Exposure→任意Analytics送出→Checkout Outcomeを時点と版付きで追跡。Variant混在、旧Client復帰、未同意、計測欠落、遅延Event、既存注文取消後のOutcome誤計上を反例にする。Payload/集計で個人識別情報・顧客関係・DSN・内部Evidence位置を無断露出しない。結果の`consent-denied`、`not-observed`、`unavailable`をゼロEvent／ゼロ購入と同一視しない。
+
+**変更影響／失効への引渡し**：Native Frontend・CMS/Creative・Flag/Allocation・Target Build/Release・業務Rule・Provider/Contract・Current Grant/Consent・Source Relationの実効差分から、既存[#4518](https://github.com/hat47x/tei-platform/issues/4518)/[#3271](https://github.com/hat47x/tei-platform/issues/3271)/[#2582](https://github.com/hat47x/tei-platform/issues/2582)/[#2600](https://github.com/hat47x/tei-platform/issues/2600)の必要上流・実消費・失効候補を照合する。ファイル種別が文言/画像でも価格/同意へ影響するなら軽い変更レーンで逃がさない。旧Graphから削除されたRequired辺、A→B→A、Provider/Generator版変更、Audience/時点切替を「byte一致だから安全」と判断しない。逆に無関係なNative Routeや未選択H2 Adapterを巻き込む過剰失効も検出する。Graph/Source Universeがpartial/unavailableなら`no impact`と断定しない。
+
+**B3の比較条件**：[#2018](https://github.com/hat47x/tei-platform/issues/2018)の既存比較に、H0=Nativeのみ、H1=選択した型付きContract/Build-time Adapter、H2=さらに任意Experiment Adapterを、**同じNative Frontend・同じ実Provider/Scenario・同じ機能・同じ変更・同じ測定条件**で投入する。正確性を独立Expectedで先に判定し、初回実装工数・変更時間・Review/復旧工数・追加JS/HTTP Request/TTFB/INP/LCP/CLS・Provider/運用費・発見した不正/欠測を別票に採る。初期値は未測定。H0にTEI JS/DOM/Router/Runtimeを強制しない。H1/H2の費用が便益を超えるときは**Plugin非採用・撤去を正式な合格選択肢**とする。CVR/粗利益の因果効果は標本、割付、Consent、追跡欠測、期間、統計的不確かさを確認した実Experimentがなければ`not measured`とする。
+
+**順序と責務**：全体P0は[#2831](https://github.com/hat47x/tei-platform/issues/2831)/[#4583](https://github.com/hat47x/tei-platform/issues/4583) Stage1→Stage2 Desktop Self-build。並行P0の[#2586](https://github.com/hat47x/tei-platform/issues/2586) RA-2P/RA-3からB1a-Iを実Consumerへ接続。B1a-Pは[#1043](https://github.com/hat47x/tei-platform/issues/1043)/[#1656](https://github.com/hat47x/tei-platform/issues/1656)/[#2516](https://github.com/hat47x/tei-platform/issues/2516)の実Host開示で別検収。B1bは#1174/#1129/#951、B2は#3503/#2604/#3271、B3は#2018へ受入を返す。すべて[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#2514](https://github.com/hat47x/tei-platform/issues/2514)の既存Independent Expectedに追記し、**B2C専用の第二Scenario/Effect/Analytics正本を作らない**。本文は設計と検収順の更新であり、新規Go/PG/Browser/Commerce/実験試験とOwner意味受理は`NOT RUN / NOT ACCEPTED`。
+
 ## 最新の作業単位へ接続する
 
 2026年11月11日のmain `9d31f82486b2eac42791f4f3bc5cd588d69cb4fc`と関連Issueを照合した。以下は着手先の更新であり、Issueの起票・限定Reference・候補Parserを製品の完成へ数えない。以後の進捗は各Issueと[実装状況](../../docs/status.md)から再取得する。
