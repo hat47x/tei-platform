@@ -90,6 +90,9 @@ func TestGateBUnifiedSyntheticScenarioReplaysOrderEntryWithoutUI(t *testing.T) {
 	evidence.Authentication = authentication.Result
 	evidence.Steps = append(evidence.Steps, "authentication")
 
+	// The selected synthetic order is on 2026-09-03. Use the declared
+	// std.datetime input rather than bypassing the Product Query contract.
+	browseFrom := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
 	browse, err := resolver.ExecuteBrowseQuery(
 		ctx,
 		"order_entry",
@@ -103,8 +106,9 @@ func TestGateBUnifiedSyntheticScenarioReplaysOrderEntryWithoutUI(t *testing.T) {
 			if q.ID != "order_entry.recent_orders" || datasource.Alias != "sales" || datasource.TargetDatabase != "sales_core" {
 				return driver.BrowseQueryResult{}, fmt.Errorf("browseのCanonical解決結果が変わっています: query=%s datasource=%#v", q.ID, datasource)
 			}
-			if len(parameters) != 0 {
-				return driver.BrowseQueryResult{}, fmt.Errorf("統合Scenarioで未定義のbrowse parameterを受け取りました: %#v", parameters)
+			value, ok := parameters["from"].(time.Time)
+			if !ok || len(parameters) != 1 || !value.Equal(browseFrom) {
+				return driver.BrowseQueryResult{}, fmt.Errorf("統合ScenarioのQuery入力が宣言されたfromと一致しません")
 			}
 			return driver.BrowseQueryResult{Raw: queryresult.RawResult{
 				Columns: []string{"total_amount", "status", "ordered_at", "customer_id", "order_id"},
@@ -117,7 +121,7 @@ func TestGateBUnifiedSyntheticScenarioReplaysOrderEntryWithoutUI(t *testing.T) {
 				}},
 			}}, nil
 		}),
-		nil,
+		map[string]any{"from": browseFrom},
 	)
 	if err != nil {
 		t.Fatalf("browseを実行できません: %v", err)
