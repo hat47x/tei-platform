@@ -4,7 +4,7 @@
 - **目的**：業務設計者の意図と、Java／Go／.NET／SQL／ファイル／API／ETLなどの実現・観測を、出典と資格を失わず照合する。人間とAIが、手入力を最小限にして設計特性を発見・説明・修正できるようにする。
 - **関連Owner**：[構造・Facet #2495](https://github.com/hat47x/tei-platform/issues/2495)、[演算と法則 #2544](https://github.com/hat47x/tei-platform/issues/2544)、[業務キーとFD #1126](https://github.com/hat47x/tei-platform/issues/1126)、[Everything is Data #2620](https://github.com/hat47x/tei-platform/issues/2620)、[認識・Review #958](https://github.com/hat47x/tei-platform/issues/958)、[横断変更 #1143](https://github.com/hat47x/tei-platform/issues/1143)、[Scenario #1131](https://github.com/hat47x/tei-platform/issues/1131)、[構造Projection #2497](https://github.com/hat47x/tei-platform/issues/2497)、[用途相対開示 #2516](https://github.com/hat47x/tei-platform/issues/2516)、[正式Acceptance #267](https://github.com/hat47x/tei-platform/issues/267)。
 - **既存実装との接点**：[Semantic論理キー・FDの宣言](SEMANTIC_LOGICAL_IDENTITY_FD_AUTHORING.md)は明示Sourceの構造検証まで。ソース内の業務キーを勝手に導出しない。[意味変更とデータ進化](SEMANTIC_CHANGE_DATA_EVOLUTION_DESIGN_2026-10.md)の値影響・DB migrationは別Owner。[ADR-0030](../adr/0030-context-scoped-epistemic-knowledge.md)の認識的注記を第二正本にしない。
-- **変更境界**：#2496はFacet上位分類とLawの独立Draft、#2778はSQL/DDL静的事実の独立Draft。双方の担当ファイル・ブランチへ割り込まず、本書は両者の**最小横断評価票と負例**を提示する。新Gate、新Registry、新Semantic Authority、専用Hostは提案しない。
+- **変更境界（2026-11-15更新）**：本書の初版は[PR #3027](https://github.com/hat47x/tei-platform/pull/3027)でmainへ統合済み。旧Draft #2496（Facet分類）と#2778（SQL/DDL）はclosed・未統合であり、両者の内容をmainの実装とみなさない。本書は既存の分類・検証・実装の結果を比較する設計であり、新しいGate、Registry、Semantic Authority、専用Hostを設けない。
 
 ## 1. 結論：Traitの種類と「対象がTraitを満たす」というClaimを別にする
 
@@ -146,7 +146,80 @@ assessment:
 
 - Core固定Trait enumの増殖、Ontology/Reasoner/Proof Engineの強制導入、別のKnowledge Canonical/Assessment Authority/Review台帳の新設、Host必須化。
 - 静的コード・DB PK・データ分布から業務意味や「強属性」を自動採用すること。
-- 既存Issueの優先度や担当の一方的変更、Draft #2496/#2778/#2860への別担当変更。
+- 既存Issueの優先度や担当の一方的変更。過去のDraftの状態を現在の実装状態とみなすこと。
 - 成功したテストを、実Provider、実Policy、業務Ownerの意思決定、現在のデプロイに拡大すること。
 
 新設が必要な最小共通契約は、TR Caseと既存契約の表現上の不足が**再現可能に確認された場合だけ**、対象Issueへ差分を返す。本書単体では正式仕様採否を決めない。
+
+## 10. 現行実装から見たFit/Gap（2026-11-15追補）
+
+**確認基準**：main `5a3f8895f0bbd1cf6302d75f8c64e6bb3ddeb1c3`。ここに書く実装の説明は、確認したソースと関連PR・Issueの範囲に限る。今回、新しいCLI試験、DB試験、Studio操作は実行していない。
+
+| 確認したもの | 現在できること | まだ説明できないこと |
+| --- | --- | --- |
+| [`internal/semantic/model.go`](../../internal/semantic/model.go) | Data属性の`Required`・`Immutable`、明示した`CandidateKey`・`FunctionalDependency`を保持する。`Value`には未記述・明示的空文字・値ありの区別がある | `Immutable`を宣言しただけで、すべての更新経路が実際に変更を拒否すること。候補キーが業務上正しいこと |
+| [`internal/semantic/completion.go`](../../internal/semantic/completion.go) | Ownerの完了条件について、成立・不成立・未検証・証拠矛盾を区別する。信頼できる反例は、全件取得がなくても不成立の根拠になり得る | 呼び手が渡す`Coverage`の真偽。実Source・実Consumerの取得範囲をこの評価器自身が確認するわけではない |
+| [TEA Trait表示の参照実装](../../reference/tei-three-element-method/trait-attachments.mjs)（[統合PR #2972](https://github.com/hat47x/tei-platform/pull/2972)） | すでに公開許可・対象選定を終えたTrait Claimを、Data／Function／Businessの表示対象へ読み取り専用で対応付ける | Traitを発見すること、実Sourceを解析して評価すること、Policyや現在の権限を自ら確認すること。Snapshot文字列の一致は実Sourceの鮮度証明ではない |
+| [三視点の証拠設計](THREE_VIEW_DIAGRAM_CROSS_REFERENCE_PROJECTION_2026-11.md)（[統合PR #4487](https://github.com/hat47x/tei-platform/pull/4487)） | §34.6〜34.10で、存在・全称・不存在・実行事実・業務受理を異なる問いとして整理し、Source改版後の証拠の再利用条件を検討できる | 新しい問い別検証がStudio・実Providerまで一巡したという実証。机上の条件を現在の全Consumerの保証へ広げること |
+| [原子的Trait履行のDraft #4330](https://github.com/hat47x/tei-platform/pull/4330)（[#3279](https://github.com/hat47x/tei-platform/issues/3279)） | `tei.operations.inspect`のContract・Provider・実呼出し・不変条件を、一つの実装義務として読み取り専用で評価する候補 | 業務の閉値域や強属性の判定。`Closure`は呼び手の申告であり、全依存を独立取得して確認した証拠ではない。PRは未統合 |
+| [モデル由来テスト #4134](https://github.com/hat47x/tei-platform/issues/4134) | 意図された特性から試験候補を作り、独立Expectedで検証する順序と担当を整理する | 生成器が出した試験データや期待値を、そのまま業務意味の正しさとして採用すること |
+
+**最初に埋めるGap**は、新しいTrait型の追加ではない。一つの業務属性について「何を宣言したか」「何を実際に読んだか」「どの更新経路を確認できたか」を、同じSubject・Scope・版で説明することだ。属性宣言を読む機能と実装義務を調べる機能が別々に存在しても、その間の対応が未確認なら、全体の適合を主張できない。
+
+### 10.1 同じ「Trait」という名前でも、二種類の主張を混ぜない
+
+業務属性のTraitと、プラグインが実装する能力のTraitは異なる。
+
+- **業務特性**：`order.status`が一定の値域に属する、`item.category`を変更すると業務上の同一性が変わる、といった意味についての主張。設計者が対象と条件を定める。業務上の正しさはSourceやDBの構造だけでは確定しない。
+- **実装義務**：選択したProviderが指定のContractと不変条件を満たし、必要な呼出しを実行できる、という実装についての主張。#4330の原子的Traitはこの種類である。
+
+両者は「対象」「要求」「根拠」「未確認」を整理する方法を共有できる。しかし、同じ`traitId`や表示名を持つだけでは同一の特性ではない。業務特性から実装義務へ進むには、受理済みの意味、対象Operation、実装先、強制すべき条件、必要な観測を**明示的に対応付ける**必要がある。対応がなければ「同じ名前の実装が見つかった」とだけ報告し、業務特性の適合には使わない。
+
+### 10.2 自動判定の三段階を、観測範囲まで明示する
+
+TEIが返す説明は、次の三段階に分ける。新しいCore状態を増やす案ではなく、既存の結果を読むための区別である。
+
+1. **構造を見つけた**：Sourceから`Immutable`や`CandidateKey`などの宣言を読んだ。どのSourceのどの版かを示す。これは意図の表明を観測したのであって、実動作の保証ではない。
+2. **実装に対応付いた**：受理済みの要求に対し、該当するValidator、Operation、DB制約、Providerなどを特定した。取得できなかったSource、別のWriter、適用時点が不明なら、調べられた範囲を明記する。
+3. **必要な動作を確かめた**：同じ対象と条件で、実呼出しや独立した読取りなどの証拠を得た。単一の実行で成功したことと、今後の全実行・全Targetで保証できることは分ける。
+
+一件の有資格な反例は、その反例が属する全称主張を否定し得る。一方、反例が見つからないことを一般的な成立の証拠にするには、対象の完全な範囲か、それに代わる有資格な保証が必要である。具体的な解釈は[三視点設計§34.6〜34.10](THREE_VIEW_DIAGRAM_CROSS_REFERENCE_PROJECTION_2026-11.md)を参照し、ここで別の判定器を作らない。
+
+## 11. 次の小さな受入例：業務特性と実装義務をつなぐ
+
+最初から多言語・全DBを対象にせず、次の二つを独立に扱う。
+
+**例A：`sales.order.status`の閉値域**。三つの業務状態を許すという案に対し、Java Enum、PostgreSQL制約、API・取込・ETLのWriterを区別する。現行TEIにその値域が正式受理されているとは仮定しない。Javaの宣言が読めた時点では「Javaに3つの定数がある」と説明する。PostgreSQLの実DDLが`VARCHAR NOT NULL`なら、DB列の非NULL制約は確認できるが、値域を3値に限定する根拠は不足する。不正な行が存在するかは別途実データを調べる。MECEは対象母集団と分類述語を受理するまで未確認とする。
+
+**例B：`Immutable`が宣言された属性**。`internal/semantic/model.go`の`Immutable`は設計の静的な入力として使える。ここから、同じ業務個体に対する更新Operationが実際に属性値の変更を拒否するかを調べる。値の変化を有資格な実Readbackで観測した場合、指定した条件の不変性に対する反例候補になる。ただし、訂正・版更新・別個体への置換が許されるかは設計者の受理済みルールに従い、更新を見つけただけで「強属性違反」と断定しない。「強属性」の原典定義は引き続き未確認である。
+
+### 11.1 追加する判別票（設計候補・未実行）
+
+| ID | 入力と問い | 期待する診断 | 担当 |
+| --- | --- | --- | --- |
+| **TR-13** | Domainの閉値域Claimと、同名のPlugin能力Traitを並べる | 明示的なMeaning→Operation→Contract対応がなければ、業務適合の根拠に使わない | #3027／#3279 |
+| **TR-14** | `Immutable=true`、変更可能な書込み経路の存在、実Readbackは未取得 | 宣言と実装の調査結果は表示できるが、実際に変更されたとは断定しない | #1126／#1143 |
+| **TR-15** | 同じ対象・適用条件で属性値の変更を独立Readbackで確認 | 対応する不変性主張への反例候補を示す。訂正例外や業務上の同一性は別に確認する | #1129／#1180 |
+| **TR-16** | Callerが`Coverage=complete`を申告し、外部Importを実際には読んでいない | `complete`という申告から全Source取得済み・全Writer確認済みへ昇格しない | #3262／#2620 |
+| **TR-17** | 同じ公開Trait表示に対し、非公開Sourceだけ異なる | 表示本文、件数、診断、ツール応答から秘密の差を推測できない。実Policy検証は別 | #2516／#1124 |
+| **TR-18** | Intentから試験データとExpectedを同じ生成器が作る | 試験実行が成功しても独立Oracleの資格がない。#4134の別Expectedを要求する | #4134／#2514 |
+| **TR-19** | SourceやMethod Ruleを更新し、以前の適合結果を再利用する | 旧根拠を履歴として保持し、現在のScope・依存・改版対応が確認できない場合は現在適合を未確認にする | #1143／#2600 |
+
+判別票の追加は計画だけであり、既存テストがTR-13〜19に合格したという記録ではない。#4134のモデル由来テストに候補を渡す際は、同趣旨のMDTケースとの重複を照合する。
+
+### 11.2 最初の成果物は「警告一覧」よりも、根拠を比べられる一画面にする
+
+一つの属性について、設計者が**意図／確認した実装／実行時の証拠／確認できない範囲**を並べて読めればよい。必ずしも新しいStudio画面が必要とは限らない。既存CLIのread-only結果と[三視点のTrait表示](../../reference/tei-three-element-method/trait-attachments.mjs)を使える範囲で比較する。
+
+警告は少なくとも、①受理済み意図に反する有資格な反例、②実装上の保証が見つからない、③確認に必要なSourceや権限が不足する、を別の説明にする。未受理のAI提案は①に入れない。情報を開示できない場合も、非公開の対象や件数を警告から推測できないようにする。
+
+## 12. 計画への適用と停止条件（2026-11-15）
+
+- **P0：実Sourceに即したFit/Gap**。既存`Attribute`・CandidateKey/FD・Source Index・Validation・TEA表示の間で、実際に参照できるSubjectと証拠を一件選ぶ。まずTR-13、TR-14、TR-16の独立Expectedを作る。閉値域の正式Sourceがない場合は、構文を推測して補わずGapとして記録する。
+- **P1：観測・反例**。実Provider／DBで対象と時点が一致することを確認できた場合だけTR-15を実証する。#2586の実Reader、#1180のScenarioと独立Read、#3279の実装義務を再利用し、今回独自のRunnerやProviderを作らない。
+- **P1：三視点への説明**。#4487の問い別証拠と#2972の公開Trait表示を使い、同じSubjectをCLIとStudioで比較する。#1124の選択対象・鮮度・公開条件を確認するまで、合成表示を実Studioの適合とは扱わない。
+- **P2：試験生成・変更影響**。独立Expectedが整った判別票だけ#4134に渡す。SourceやTargetを変更したときの証拠の再利用は#1143/#2600に従う。セルフビルドの工程への接続は#2831の実Build証拠に委ねる。
+
+**停止条件**：対象の同一性が曖昧、業務規則が未受理、必要なSourceが未取得、全Writerの範囲が不明、実ProviderのGrantが未確認、独立Expectedがない、現在の公開許可が成立していない場合は、その条件に依存する判定だけを未確認にする。別の対象で得た有資格な局所証拠まで無効にはしない。形式検証の成功を、業務判断や実行権限の承認にはしない。
+
+この追補による新しいCore Trait型・Reasoner・Source Writer・Gate・業務Ownerの決定はない。採用判断は各IssueのOwnerへ戻す。
