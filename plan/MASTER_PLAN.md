@@ -1673,18 +1673,16 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 
 **採否**：新規Source/Rule/公的契約や業務責任の解釈はOwnerの意味受理が必要。本追補はdocs-onlyであり、実Org Provider/Host・SHO/HarnessとのOrg C1 E2E・Owner意味受理は **NOT RUN**。
 
-<<<<<<< HEAD
 **Studio Desktopの実構築→TEIセルフビルド／組織C1受入の最短接続（組織計画§10.12）**：製品の最優先目標は**Wails/Go版TEI Studio Desktopの実OS起動**（#1824）と、既存TEI Typed Build Graphを使った**stage1 TEI実プロセスからstage2 Studioを再生成するセルフビルド**（#2831）。Go CLIのセルフビルドCI成功をDesktop起動・D2再生成成功とは見なさない。**生成Workbenchのserver/Chromiumでの成功と通常Wails Desktop/WebView2での成功も合算しない**。#4541のGD-0〜4に沿い、生成assetをserverなしのDesktopへ組み込み、実WebView2→IPC→Go Catalog/Inspect応答まで同一HEAD・実Process・Selectionで検証する。組織C1のread-only Data/三要素CRUDは#4551 main統合の派生結果と接続し、#4539の実PG受注Queryは通常tei CLI→Studioの別Consumer経路に結ぶ（同一業務Queryだと誤認しない）。X-TEA三要素は業務向けPluginとして移植し、汎用Coreを固定しない（#1124/#1125/#1251）。D0実Desktop、D1 Model/Provider受領、D2セルフビルド、D3 X-TEA Plugin、D4 Pin/SHO/AI適用の各資格を独立Expectedとexact HEADで判定する。#2586の通常CLI Provider実ReadはGUI完成待ちにせず並行P0。#4500/#4551のmain統合は確認済みだが、D0〜D4の実行証拠は未成立。新Build Engine/Host/Scenario正本を作らない。
-=======
+
 <!-- org-six-scope-headless-master-20261113 -->
 ### 2026-11-13 組織意味とPlugin六つの適用範囲・B2C Headlessを接合する（受入設計）
 
-[段階計画 §10.12](design/ORGANIZATION_STAGED_MODELING_PLAN_2026-11.md)に、配布（Distribution）・設計編集（Authoring）・アプリ構成（Composition）・組織関係（Organization）・実行（Runtime）・用途別開示（Disclosure）を**別の適用範囲**として照合する方針を追加した。六つは比較・受入観点であり、固定Core enum、第二の認可基盤、TEI独自Hostではない。兼務Personや同一Plugin配布から別Tenant Grantを推定せず、B2Cの購買者をMembershipに押し込まない。専用Frontendが型付きApplication APIを呼ぶ完全Headlessを選べることを維持する。
+[段階計画 §10.13](design/ORGANIZATION_STAGED_MODELING_PLAN_2026-11.md)に、配布（Distribution）・設計編集（Authoring）・アプリ構成（Composition）・組織関係（Organization）・実行（Runtime）・用途別開示（Disclosure）を**別の適用範囲**として照合する方針を追加した。六つは比較・受入観点であり、固定Core enum、第二の認可基盤、TEI独自Hostではない。兼務Personや同一Plugin配布から別Tenant Grantを推定せず、B2Cの購買者をMembershipに押し込まない。専用Frontendが型付きApplication APIを呼ぶ完全Headlessを選べることを維持する。
 
 最初に既存r7組織Sourceと追加の合成Tenant/Consumer/Host Scenarioを区別し、#4490 ORG-BEH、#4501 CX、#2903 SCOPE/JOIN、#3509 B0〜B4を**第二Expected正本なし**で横断照合する。#2586の通常 tei CLI→実Provider Read→一ConsumerをP0として先行させ、その後Org C1の実Queryと複数Consumer、Host現Grant/Effect/Receipt、Disclosure非干渉性を既存Ownerに引き渡す。組織Dataを無条件で秘密にせず、保護を要する項目と接続先に応じて制御する。UI選択・AI提案・Plugin配布・局所Node/Go PASSは実Readや現在Grantの代替としない。
 
 **状態**：設計追補のみ。実Org C1 Provider、実Multi-Tenant/Headless B2C、Host/Disclosure、CI、Owner意味受理は未実施。TEI Desktopセルフビルドと初回実Readの優先順位を変更しない。
->>>>>>> ffcfe872624ec79fafe1b4acbede94bcef46194f
 
 ## 先に固定しないもの
 
