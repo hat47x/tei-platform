@@ -256,6 +256,70 @@ func TestCompareCandidateSetsReversedEdgeNeedsEndpointMapping(t *testing.T) {
 	}
 }
 
+// A deterministic structural-key pairing is still ambiguous when two
+// independent parallel occurrences share the same source span and label.
+// A renumbered ID cannot silently nominate one of them for Source editing.
+func TestCompareCandidateSetsParallelRenumberingRequiresOccurrenceMapping(t *testing.T) {
+	old := defaultEvidence()
+	second := old.edges[0]
+	second.id = "edge-order-line-parallel"
+	old.edges = append(old.edges, second)
+	before := mustGenerate(t, old)
+
+	changed := defaultEvidence()
+	changed.evidenceID = "ev-parallel-renumbered"
+	firstRenumbered := changed.edges[0]
+	firstRenumbered.id = "edge-order-line-new-1"
+	secondRenumbered := changed.edges[0]
+	secondRenumbered.id = "edge-order-line-new-2"
+	// Deliberately reverse input order to expose positional fallback.
+	changed.edges = []edgeFixture{secondRenumbered, firstRenumbered}
+	after := mustGenerate(t, changed)
+
+	comparison := CompareCandidateSets(before, after)
+	renumbered := 0
+	for _, entry := range comparison.Entries {
+		if entry.Status != ComparisonRenumbered {
+			continue
+		}
+		renumbered++
+		if !hasString(entry.Notes, "structural-key-multiple-occurrences-cannot-identify-individual-relation") ||
+			!hasString(entry.Notes, "source-backed-occurrence-mapping-is-required-before-edit") ||
+			!hasString(entry.Notes, "a-renumbered-candidate-requires-fresh-owner-review") {
+			t.Fatalf("parallel edge gained an unqualified individual identity: %+v", entry)
+		}
+	}
+	if renumbered != 2 {
+		t.Fatalf("renumbered = %d, want two candidate-only review hints: %+v", renumbered, comparison.Entries)
+	}
+}
+
+// A unique source-backed structural candidate does not need the parallel
+// ambiguity marker, although it still requires a fresh Owner review.
+func TestCompareCandidateSetsUniqueEdgeRenumberingNoParallelAmbiguity(t *testing.T) {
+	before := mustGenerate(t, defaultEvidence())
+	afterFixture := defaultEvidence()
+	afterFixture.evidenceID = "ev-single-renumbered"
+	afterFixture.edges[0].id = "edge-order-line-renumbered"
+	after := mustGenerate(t, afterFixture)
+	comparison := CompareCandidateSets(before, after)
+	matched := 0
+	for _, entry := range comparison.Entries {
+		if entry.Status != ComparisonRenumbered {
+			continue
+		}
+		matched++
+		if hasString(entry.Notes, "structural-key-multiple-occurrences-cannot-identify-individual-relation") {
+			t.Fatalf("unique edge incorrectly marked as parallel: %+v", entry)
+		}
+		if !hasString(entry.Notes, "a-renumbered-candidate-requires-fresh-owner-review") {
+			t.Fatalf("single renumbering lost review requirement: %+v", entry)
+		}
+	}
+	if matched != 1 {
+		t.Fatalf("renumbered = %d, want one: %+v", matched, comparison.Entries)
+	}
+}
 // Added and removed candidates are reported without a structural match.
 func TestCompareCandidateSetsAddedAndRemoved(t *testing.T) {
 	first := mustGenerate(t, defaultEvidence())
