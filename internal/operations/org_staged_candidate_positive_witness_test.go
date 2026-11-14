@@ -1,6 +1,7 @@
 package operations
 
 import (
+	"fmt"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -183,6 +184,7 @@ func TestOrgStagedPositiveCandidatePartialIsNotComplete(t *testing.T) {
 func orgPositiveSyntheticNativeContext(t *testing.T, values [][]any) functioncontext.Context {
 	t.Helper()
 	cols := []queryresult.Column{
+		{Raw: "role_assignment_id", Attribute: "organization.role_assignment.role_assignment_id"},
 		{Raw: "person_id", Attribute: "organization.role_assignment.person_id"},
 		{Raw: "role_id", Attribute: "organization.role_assignment.role_id"},
 	}
@@ -206,7 +208,7 @@ func orgPositiveSyntheticNativeContext(t *testing.T, values [][]any) functioncon
 			},
 			Result: driver.BrowseQueryResult{
 				Raw: queryresult.RawResult{
-					Columns: []string{"person_id", "role_id"}, Rows: values,
+					Columns: []string{"role_assignment_id", "person_id", "role_id"}, Rows: values,
 				},
 				Mapped: queryresult.MappedResult{
 					Columns: cols, Rows: values,
@@ -221,14 +223,44 @@ func orgPositiveSyntheticNativeContext(t *testing.T, values [][]any) functioncon
 	return ctx
 }
 
+// This is only a *test consumer adapter*: it reads the Context's actual
+// mapped row values and verifies the selected columns/identities. It is not
+// TEI's accepted Organization Rule, its Person resolver, or a real Query.
+func orgPositiveRolesFromNativeContext(ctx functioncontext.Context) ([]orgPositiveRole, error) {
+	if string(ctx.Function.Data) != "organization.role_assignment" || len(ctx.Columns) != 3 {
+		return nil, fmt.Errorf("unbound RoleAssignment rowset")
+	}
+	for i, want := range []string{
+		"organization.role_assignment.role_assignment_id",
+		"organization.role_assignment.person_id",
+		"organization.role_assignment.role_id",
+	} {
+		if string(ctx.Columns[i].Attribute) != want {
+			return nil, fmt.Errorf("unbound RoleAssignment column %d", i)
+		}
+	}
+	out := make([]orgPositiveRole, 0, len(ctx.Rows))
+	for _, row := range ctx.Rows {
+		if len(row) != 3 {
+			return nil, fmt.Errorf("incomplete RoleAssignment row")
+		}
+		fields := [3]string{}
+		for i := range fields {
+			value, ok := row[i].Value.(string)
+			if row[i].State != functioncontext.StateValue || !ok || value == "" {
+				return nil, fmt.Errorf("RoleAssignment row has missing or null identity at column %d", i)
+			}
+			fields[i] = value
+		}
+		out = append(out, orgPositiveRole{id: fields[0], person: fields[1], role: fields[2]})
+	}
+	return out, nil
+}
+
 // The native Context from a completed cursor cannot independently establish
 // that the RoleAssignment and Responsibility universes are complete. A Product
 // Consumer must not copy the fixture's closed-world flag into its own claim.
 func TestOrgStagedPositiveCandidateActualFunctionContextCoverage(t *testing.T) {
-	roles := []orgPositiveRole{
-		{id: "RA1", person: "P1", role: "R1"},
-		{id: "RA2", person: "P2", role: "R1"},
-	}
 	duties := []orgPositiveDuty{
 		{id: "RS1", person: "P1", unit: "D1"},
 		{id: "RS2", person: "P2", unit: "D1"},
@@ -236,22 +268,21 @@ func TestOrgStagedPositiveCandidateActualFunctionContextCoverage(t *testing.T) {
 	for _, tc := range []struct {
 		name              string
 		rawRows           [][]any
-		roles             []orgPositiveRole
 		duties            []orgPositiveDuty
 		expectedClaim     string
 		expectedNotUnique bool
 	}{
 		{
-			name: "zero native rows", rawRows: [][]any{}, roles: nil, duties: nil,
+			name: "zero native rows", rawRows: [][]any{}, duties: nil,
 			expectedClaim: "partial-none",
 		},
 		{
-			name: "one native row", rawRows: [][]any{{"P1", "R1"}},
-			roles: roles[:1], duties: duties[:1], expectedClaim: "partial-one",
+			name: "one native row", rawRows: [][]any{{"RA1", "P1", "R1"}},
+			duties: duties[:1], expectedClaim: "partial-one",
 		},
 		{
-			name: "two native rows", rawRows: [][]any{{"P1", "R1"}, {"P2", "R1"}},
-			roles: roles, duties: duties, expectedClaim: "partial-many", expectedNotUnique: true,
+			name: "two native rows", rawRows: [][]any{{"RA1", "P1", "R1"}, {"RA2", "P2", "R1"}},
+			duties: duties, expectedClaim: "partial-many", expectedNotUnique: true,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -270,10 +301,25 @@ func TestOrgStagedPositiveCandidateActualFunctionContextCoverage(t *testing.T) {
 				closed:          context.Coverage.Status == semantic.CoverageComplete,
 				cursorFullyRead: context.Rowset.FullyRead,
 			}
-			got := orgPositiveWitnessProbe(tc.roles, tc.duties, read, read)
+			observedRoles, err := orgPositiveRolesFromNativeContext(context)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := orgPositiveWitnessProbe(observedRoles, tc.duties, read, read)
 			if got.claim != tc.expectedClaim || got.notUnique != tc.expectedNotUnique {
 				t.Fatalf("native Context overqualified observed candidate: %+v", got)
 			}
 		})
+	}
+}
+
+// A database-mapped NULL is not proof of an absent Person or an empty Role.
+func TestOrgStagedPositiveCandidateNativeNullIdentityIsUnresolved(t *testing.T) {
+	ctx := orgPositiveSyntheticNativeContext(t, [][]any{{"RA1", nil, "R1"}})
+	if ctx.Rows[0][1].State != functioncontext.StateNull {
+		t.Fatal("NULL lost in native Function Context projection")
+	}
+	if _, err := orgPositiveRolesFromNativeContext(ctx); err == nil {
+		t.Fatal("a NULL Person ID was silently joined or converted to no candidate")
 	}
 }
