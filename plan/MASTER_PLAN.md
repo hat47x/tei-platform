@@ -175,6 +175,8 @@ Gate C — PAS-04 Evidence — Ready
 
 **Sourceと複数の表示の往復（2026-11-14追加）**：[Desktop Host設計 §14](design/DESKTOP_STUDIO_HOST_INTEGRATION_DESIGN.md#14-標準データ構造からsourceへ戻れるdesktop投影と編集2026-11-14設計受入追補)に、自己記述Role／Markdown・DSL構文／Property・Table・Tree・Graphの関係と、表示からSourceへ戻れる編集資格を整理した。**同じラベルの別Node、同一端点の多重Relation、Graph→Treeや集計などの非可逆な表示、部分取得・未読込Roleを黙って単一の意味対象へ縮約しない**。意味Relation occurrence IDが未確認の描画EdgeはPin・編集不可とする。最初は既存Catalog/Inspect→read-only Sourceジャンプと同一Subjectの複数表示を実証し、可逆な局所編集はPreview→Patch→保存→実Source再読込→再投影で別受入。No-opでは元Markdown/CRLF/BOM/糖衣形式のbyte保持を目指す。SPV-01〜08は#1124/#2497/#2621/#2620/#988/#4515/#3262の既存Ownerと#1180/#2514のExpectedへ引渡す。Go要素をDSLへ露出させず、第二Canonical／Parser／Writer／テストRunnerを作らない。これらは**セルフビルドP0の追加Hard Gateではなく**、新しい実GUI／Source編集試験・Owner意味受理はNOT RUN。
 
+**Desktop起動・終了・再開の受入（2026-11-14追加）**：[Desktop Host設計 §15](design/DESKTOP_STUDIO_HOST_INTEGRATION_DESIGN.md#15-desktopの起動終了再開を保存済みの事実と画面の記憶に分ける2026-11-14設計受入追補)で、既存§3の復旧原則を実Window／Go Host／Source／Operation／Assetの寿命別に整理した。現行`reference/tei-studio-workbench/main.ts`の`pagehide`は`responses.dispose()`とEditor／Graph／Panel破棄までであり、**Draft保存・実Go Command取消し・Effect不成立の証明ではない**。再開時はSource／Workspace Root／現在Grantを再照合し、復元候補のDraft、Pin Intent、未確定Effect、Build/配布Assetを別の資格にする。初手は既存read-only Workbenchを使う実Windows起動→Catalog/Inspect→`pagehide`旧Reply拒否（DL-01/02）；Draft安全保存、実Effect失敗回復、Plugin／Asset版差は各Ownerの後続受入（DL-03〜06）。方式Aのcold/warm起動、Host／Bridge／Source Index／描画、IME、RSS/CPUの区間別実測をDL-07へ整理し、性能閾値・Worker必須化・独自Session正本は先に固定しない。#1824／#4515／#2621／#1174／#1129／#2516／#2831／#4583で既存Expectedを再利用し、**Stage1→Stage2セルフビルドP0へ新Hard Gateを増やさない**。この追補はdocs-only、新Windows／Crash／Recovery実試験・Owner受理はNOT RUN。
+
 **上限**：この2026-11-14追補自体は計画のみ。主計画より下の2026-11-13の個別PR状態は履歴として残す。新規Go/Windows/DB/OS IPC試験、生成Stage1→Stage2、Owner採用判断は実施していない。
 
 
