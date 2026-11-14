@@ -274,3 +274,19 @@ func mapFor(env, instance core.CanonicalID, executor driver.BrowseQueryExecutor)
 func typedBrowseFrom() map[string]any {
 	return map[string]any{"from": time.Date(2026, 11, 7, 0, 0, 0, 0, time.UTC)}
 }
+
+func TestBrowseQueryInEnvironmentRejectsLegacyUndeclaredArguments(t *testing.T) {
+	w := referenceWorld(t)
+	for i := range w.Queries {
+		if w.Queries[i].ID == browsePat {
+			w.Queries[i].Inputs = nil
+		}
+	}
+	exec := &countingBrowseExecutor{}
+	registry := mapFor(browseEnvDev, browseInst, exec)
+	_, err := driver.NewResolver(w).ExecuteBrowseQueryInEnvironment(
+		context.Background(), browseEnvDev, browseApp, browsePat, registry, typedBrowseFrom())
+	if err == nil || !strings.Contains(err.Error(), "no declared inputs") || exec.calls != 0 {
+		t.Fatalf("untyped Environment input should never invoke Provider: err=%v calls=%d", err, exec.calls)
+	}
+}
