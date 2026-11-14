@@ -365,3 +365,16 @@ J-01で明らかになったsemantic_graphとapplication graphの違いを保つ
 他チャットの成果は、ModelerのER/業務フローでのSource-faithful編集契約（#4694）、StudioのPin/Focus→CLI/AIへのContext引渡し（#4696）、実行モデルGraph変更の局所再検証票（main統合済み#4703）に分けて接続する。読取Candidateと編集可能なMeaning／Graphの昇格は、既存Owner #1120/#1124/#2497/#2514 への限定引渡しとし、新たな承認EngineやGraph正本は設けない。製品P0であるStudio Stage1→Stage2と通常CLI実PG Readの順序は変えない。
 
 **状態**：ComparatorとGo負例のSource追加、設計への反映。正式な試験成功は当該exact HEADのCIが完了してから判定する。J-02gとNative/Source Save-ReRead/Owner意味受理はNOT RUN。
+
+<!-- rea-j03-question-relative-evidence-ceiling-20261114 -->
+### 10.9 J-03：観測済みの構造と、未観測のFunction／Businessを分けて回答する
+
+「旧Function FはどのDataを読み書きするか」という問いへの最初の正しい回答は、**外部REAだけではFunction FとそのRead/Write Effectを証明できない**という場合がある。JavaScript Application Graphの`coverage=complete`は、そのGraphが宣言した静的抽出範囲での完了を意味する。Function、CRUD、業務ルール、旧Runtimeの実作用まで完全に確認したことにはならない。
+
+現在の`reacandidate.EvaluateThreeElementCoverage`は、Source-backedなNodeや有向RelationについてDataを`supported`とし、FunctionとBusinessは理由と追加に必要なEvidenceを添えて`unsupported`と報告する。この状態をレビュー票でそのまま見せ、**unsupportedを0件・不存在・未使用・削除可能へ変換しない**。実Functionが求められた場合は、入口Operation、入出力、DBの実Read/Write、Actor/RuleのOwner受理など、何が不足しているかを明示する。既存#3262のRequired(Q)とConsumed(Q)の差、#2514独立Expected、#2586実Providerの検収を使い、新しいEvidence Storeは作らない。
+
+追加の局所Go回帰`TestREAIntakeCompleteGraphDoesNotProveFunctionOrBusiness`は、公開合成`reaIntakeFixture`を実`three-element rea-intake`のCommand handlerへ渡し、Graphが`qualification=complete`でもData=supported／Function=unsupported／Business=unsupported／Owner pendingとなること、各unsupported行に追加で必要なEvidenceの記載が残ることを検証する。**これは実旧システムでのFunction/DB観測試験ではない**。
+
+次の製品受入では、このレビュー行をStudioで一Functionの質問を選んだ際に、PinしたQualified SubjectとCurrent Workspace、SourceのActual Attempt、未知・不支持項目、Disclosure資格を含む独立Expectedとして提示する。ただしStudio UIやAI説明の成立はこのHeadless試験からは主張しない。回答の説明文はGraph→DSLから直訳可能な受理済み業務意味だけで構成し、外部静的解析で見えないWriteを補わない。旧Actual／Desired／TEI Target Actualは別々の実測とする。
+
+本節はJ-01/J-02に続く**問相対の停止線**であり、新しいBRMS、特別なREA Adapter、専用UI Hostを作る要件ではない。まず既存CLIから見える確定／未知を区別し、Functionの全体意味・Source編集・Studio実受領・Pluginによる実Go生成は後続の別資格とする。
