@@ -9,7 +9,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/hat47x/tei-platform/tools/reference-application-binary/internal/teiparse"
+	"tei/tools/reference-application-binary/internal/teiparse"
 )
 
 // GenerationContext holds all data passed to templates.

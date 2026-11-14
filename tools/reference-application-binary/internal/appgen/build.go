@@ -26,7 +26,12 @@ func Build(workspaceRoot, appID, sourceDir, outputPath, platform string) (*Build
 	if err := writeGoMod(sourceDir, appID); err != nil {
 		return nil, fmt.Errorf("write go.mod: %w", err)
 	}
+	return BuildModule(sourceDir, outputPath, platform)
+}
 
+// BuildModule compiles an already complete generated Go module (its own
+// go.mod included) into a single binary. The caller owns the module contents.
+func BuildModule(sourceDir, outputPath, platform string) (*BuildResult, error) {
 	buildStart := time.Now()
 
 	goCache := filepath.Join(sourceDir, ".gocache")
@@ -47,7 +52,7 @@ func Build(workspaceRoot, appID, sourceDir, outputPath, platform string) (*Build
 		"GOCACHE="+goCache,
 		"GOTMPDIR="+goTmp,
 		"GOMODCACHE="+goModCache,
-		"GOFLAGS=-mod=mod",
+		"GOFLAGS=-mod=mod -modcacherw",
 		"GONOSUMDB=*",
 		"GOSUMDB=off")
 
