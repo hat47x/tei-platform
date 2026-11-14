@@ -678,20 +678,20 @@ TEI自身のDSLやPluginの定義を標準データ構造で表せれば、Studi
 
 ### 14.6 追加の独立Expected候補：PCC-01〜10
 
-新しいExpected StoreやGateは設けず、[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)が持つScenarioに、既存PCX／PPC／HG／TC／VCBと重複しない差分だけを渡す。
+新しいExpected StoreやGateは設けない。PCCは新しい独立テスト群の採番ではなく、[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)へ渡す**工程別の追加assertの索引**である。既存PCX／PPC／HG／TC／VCBと重なるFixture・期待値を複製せず、既存の試験に不足するTarget Member、必要工程、実Consumerの検査だけを追加する。
 
 | Case | 変える一因子 | 独立に確認すること |
 | --- | --- | --- |
-| **PCC-01** | ProfileのrequiredなContractは同じで、実装ProviderだけA→Bへ切替 | #951の解決から実Targetへの正確な束縛。実Aの残留は不合格 |
-| **PCC-02** | Plugin PackageにはParserとRuntime Providerの両方があるが、TargetにはProvider不要 | Build側Parserは消費でき、生成アプリには不要Providerを無条件同梱しない |
-| **PCC-03** | required Traitを宣言し、標準／手動／Providerの履行をすべて外す | Trait未充足と診断。UI表示やManifest存在で履行済みにしない |
-| **PCC-04** | 明示required Providerを選択したのに、対応するTarget Memberが欠ける | Resolver PASSとBuild／Consumer FAILを別に記録する |
+| **PCC-01** | PPC-04／PCX-08のA→B切替に、Profileのrequired依存閉包を加える | 既存の実A拒否に加え、選択済みBの必須MemberがBuildへ伝播したかを別検査 |
+| **PCC-02** | PCX-07のPackageを、CLIだけ／Studio UIありの二Profileへ展開 | ParserのBuild消費、UI不要時のMember除外、必要時の実Consumerへの収録を別々に検査 |
+| **PCC-03** | TC-01/02のTrait充足経路を、選択ProfileとTarget別に切替 | 必須Traitの適合診断を再利用し、選択されなかった履行実装を対象のBuildへ混入させない |
+| **PCC-04** | PPC-02の必須Provider欠落試験に、Memberは存在するが必須Host Importが欠ける条件を追加 | 実Loader／Invokerがunsupportedを返し、Build収録成功を実呼出し成功にしない |
 | **PCC-05** | Runtime Providerを同一Artifact内の別Memberへ束縛 | Artifact Digestが同じでも、論理Pluginと実Entryの違いを判別する |
 | **PCC-06** | Contractは固定し、配布をGo静的合成から別Processへ変更 | 型・結果・失敗意味を保持し、Host制約／実Process・Effect資格は別検証 |
-| **PCC-07** | Plugin A/Bが個別Conformanceを通過し、組合せでは依存版が衝突 | 個別PASSをBOMの組合せPASSへ昇格させない |
-| **PCC-08** | 自己記述LanguageのProvider不在／版違い／構文は通るがSource Anchorを失う | 既存Seedへ暗黙切替せず、必要な段階で拒否・未受理にする |
-| **PCC-09** | 未選択Pluginの更新と、選択Providerの実装更新を対照 | 前者は無関係なBuild／Meaning失効を避け、後者は当該実装・Conformanceの再評価を要求 |
-| **PCC-10** | 旧BOMに合格証拠がある状態で、現在Grantまたは選択Artifactが失効する | 履歴は保持し、現在の実行・開示を再確認。古い証拠で復活させない |
+| **PCC-07** | VCBの既存A/B組合せFixtureで、単体適合済みのまま共通依存だけ版衝突させる | 既存BOM判定を再利用し、選択閉包の未解決箇所と組合せ不適格を明示 |
+| **PCC-08** | #1018のLanguage不在・版違いFixtureに、Seed B0と候補B2の差を追加 | 暗黙fallback拒否を再利用し、Parse可能／Anchor適合／意味採用の三資格を混同しない |
+| **PCC-09** | IB-07／DI-04の既存依存差分試験で、選択Predicateから依存辺が削除・追加される | 未選択Providerを不必要に再Buildせず、追加・削除された実依存辺の閉包は再検証 |
+| **PCC-10** | VCB／PCFの旧BOM Fixtureで、過去Artifactは同byteのまま現在Host Grantだけ失効 | 履歴のBuild Conformanceを維持し、現在の実行・開示資格だけを拒否または未検証へ戻す |
 
 PCC-01/02/04/05は#4583/#1251の製品経路と合わせて確認するが、**P0のStage2 Buildを遅らせる追加Hard Gateにはしない**。PCC-03/07/09は#3278/#3267/#2600で参照評価、PCC-06/08/10は実Provider／Language／外部Hostの後続資格とする。
 
