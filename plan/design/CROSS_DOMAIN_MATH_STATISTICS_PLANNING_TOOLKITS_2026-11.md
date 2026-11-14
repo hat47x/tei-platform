@@ -482,6 +482,22 @@ PluginやCLI／Backendの更新は、選択中のContract／構成と、更新�
 
 いずれも、編集前後のSource、意味Revision、生成結果、実入力、実Call、独立Expectedを混同しない。表の再表示やPythonによる記法試作の成功を、Go本体の正式Reader・通常CLI・MCP・生成アプリの合格へ引き継がない。
 
+### WindowもMarkdownの固定入力と独立Expected候補から始める
+
+[Graph／Ruleの固定入力](../../testdata/tei-md-graph/README.md)に続き、数理側にも[Windowの固定入力5件](../../testdata/tei-md-window/README.md)と[独立Expected候補](../../testdata/tei-md-window/independent-expected.candidate.json)を追加する。どちらも**Markdown表を定義元とし、派生図・派生した表示を意味の正本として上書きしない**方針で統一する。
+
+| 入力候補 | 意味上の差 | 対応する既存CTK |
+| --- | --- | --- |
+| 基準 | 七行とB2のNULL・B2/B3同順位。三種類のWindow結果を固定 | 01／03／10 |
+| Frame変更 | movingを直前三行から直前二行へ。A3=20→25、A4=30→35、B3=10→15 | 14 |
+| 表示のみ変更 | 説明段落のみ変更。計算の意味と結果は同じ | 15 |
+| 観測ID重複 | A3を異なる値で二回記述。勝手に一行へ統合せず拒否する | 13 |
+| 古い派生結果 | Frame変更後も旧movingを表示。定義元へ逆反映せず、不一致を報告 | 17 |
+
+Expected JSONの`adoption=proposal-only`は、既存#1180/#2514による受理を待つ状態であり、新たなScenario正本や製品Schemaではない。GraphとWindowのそれぞれに専用Parserを追加しない。まず両分野の表Cell／Source位置とRoleを正式Readerに引き渡し、意味を保てる範囲を比較する。
+
+既存SQLite方言の回帰はC0に限定される。新しい`window_candidate_oracle_test.go`は候補JSONの基準・Frame変更を読み込み、`SelectOptions`で生成したSQLを実DBで照合するが、**Markdown本文を解釈しない**。候補ファイルの存在や結果一致は、C1の正式ReaderやC2のTEI定義由来生成の合格を意味しない。
+
 ### 正式Readerが未接続である現状から、最小の実読取りへ進む
 
 2026-11-14時点の`internal/workspace/loader.go`は、管理Sourceを走査したあと、`rejectUnboundTEIMarkdownSources`で管理対象の`*.tei.md`を**`TEI_MD_PARSER_UNBOUND`として明示拒否**する。現在の`loadSemantics`が呼ぶ`syntax.NewParser(...).ParseSemanticFile()`は従来形式のParserであり、Markdownの表・フェンス・本文のRoleを実際に解釈した証拠ではない。`ManagedFile`の列挙、`ReadByLoader`の真偽、Parserでの解釈、意味の受理、Buildでの実消費はそれぞれ別の事実である。
@@ -599,9 +615,9 @@ ORDER BY grp, seq, obs_id;
 
 ### 計算条件を変えた場合の回帰検査
 
-CTK-14の次の一歩として、既存SQLite方言の`SelectOptions`内でWindowの`ROWS BETWEEN 2 PRECEDING`を`ROWS BETWEEN 1 PRECEDING`に置き換え、生成SQLを実SQLiteで実行する`window_frame_change_test.go`を追加する。全七行を照合し、A3は20→25、A4は30→35、B3は10→15に変化する一方、変更していない二種類の累積Windowは元の結果を保つことを期待する。
+CTK-14の回帰として、既存SQLite方言の`SelectOptions`内でWindowの`ROWS BETWEEN 2 PRECEDING`を`ROWS BETWEEN 1 PRECEDING`に置き換え、生成SQLを実SQLiteで実行する`window_frame_change_test.go`を既に追加した。全七行を照合し、A3は20→25、A4は30→35、B3は10→15に変化する一方、変更していない二種類の累積Windowは元の結果を保つことを期待する。
 
-これは**SQL方言生成器におけるC0の意味差分テスト**である。正式な`*.tei.md`を読み込んでいないため、C1のReader成功やC2のTEI由来Go生成を示すものではない。新テストのGo CI結果は当該コミットに対して個別に確かめる。
+これは**SQL方言生成器におけるC0の意味差分テスト**である。正式な`*.tei.md`を読み込んでいないため、C1のReader成功やC2のTEI由来Go生成を示すものではない。既存のFrame変更テストは対象コミットのSQL Dialect Plugin CIで成功している。新しい候補JSONを使ったテストのGo CIはその追加コミットについて別に確かめる。
 
 ### Query変換の適合を説明するための判定語彙
 

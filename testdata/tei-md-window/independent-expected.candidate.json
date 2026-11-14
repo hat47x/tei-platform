@@ -1,0 +1,125 @@
+{
+  "schema": "tei-ctk-window-independent-expected-candidate/v1",
+  "adoption": "proposal-only",
+  "authority": "existing #1180 / #2514 Owner acceptance required",
+  "meaning": "Source Markdown observation/Window tables are authoring candidates; source explanations and derived views are non-authoritative; no production Reader is connected",
+  "cases": [
+    {
+      "file": "baseline.tei.md",
+      "valid": true,
+      "movingPrecedingRows": 2,
+      "outputs": [
+        {
+          "obs_id": "A1",
+          "moving": 10,
+          "cumulative_rows": 10,
+          "cumulative_range": 10
+        },
+        {
+          "obs_id": "A2",
+          "moving": 15,
+          "cumulative_rows": 15,
+          "cumulative_range": 15
+        },
+        {
+          "obs_id": "A3",
+          "moving": 20,
+          "cumulative_rows": 20,
+          "cumulative_range": 20
+        },
+        {
+          "obs_id": "A4",
+          "moving": 30,
+          "cumulative_rows": 25,
+          "cumulative_range": 25
+        },
+        {
+          "obs_id": "B1",
+          "moving": 5,
+          "cumulative_rows": 5,
+          "cumulative_range": 5
+        },
+        {
+          "obs_id": "B2",
+          "moving": 5,
+          "cumulative_rows": 5,
+          "cumulative_range": 10
+        },
+        {
+          "obs_id": "B3",
+          "moving": 10,
+          "cumulative_rows": 10,
+          "cumulative_range": 10
+        }
+      ]
+    },
+    {
+      "file": "frame-narrowed.tei.md",
+      "valid": true,
+      "movingPrecedingRows": 1,
+      "outputs": [
+        {
+          "obs_id": "A1",
+          "moving": 10,
+          "cumulative_rows": 10,
+          "cumulative_range": 10
+        },
+        {
+          "obs_id": "A2",
+          "moving": 15,
+          "cumulative_rows": 15,
+          "cumulative_range": 15
+        },
+        {
+          "obs_id": "A3",
+          "moving": 25,
+          "cumulative_rows": 20,
+          "cumulative_range": 20
+        },
+        {
+          "obs_id": "A4",
+          "moving": 35,
+          "cumulative_rows": 25,
+          "cumulative_range": 25
+        },
+        {
+          "obs_id": "B1",
+          "moving": 5,
+          "cumulative_rows": 5,
+          "cumulative_range": 5
+        },
+        {
+          "obs_id": "B2",
+          "moving": 5,
+          "cumulative_rows": 5,
+          "cumulative_range": 10
+        },
+        {
+          "obs_id": "B3",
+          "moving": 15,
+          "cumulative_rows": 10,
+          "cumulative_range": 10
+        }
+      ]
+    },
+    {
+      "file": "layout-only.tei.md",
+      "valid": true,
+      "meaningEqualTo": "baseline.tei.md",
+      "notes": "Markdown presentation change; byte/revision changes without Window meaning change"
+    },
+    {
+      "file": "duplicate-observation-id.tei.md",
+      "valid": false,
+      "diagnosticCandidate": "duplicate-observation-id",
+      "noGeneratedQuery": true
+    },
+    {
+      "file": "derived-view-stale.tei.md",
+      "valid": true,
+      "meaningEqualTo": "frame-narrowed.tei.md",
+      "derivedViewConsistent": false,
+      "notes": "A3/A4/B3 displayed previous moving values 20/30/10 although authoritative frame=1 requires 25/35/15"
+    }
+  ]
+}
