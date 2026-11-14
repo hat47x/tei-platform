@@ -181,3 +181,62 @@ S1とS2の一致、S4とS5の一致は、それぞれ**該当する辺の限定�
 DSH、Codex、Claude Code、Studio AIは設計・Code・Builder候補を提案できるが、Resolverの正式選択、Hostの起動前検証、Ownerの意味受理を肩代わりしない。Harness変更で実行資格が黙って変わらないよう、Plan提案と現在のAuthority、実使用Artifactを別に観測する。
 
 **今回の追補の資格上限**：既存PRとCIの現在状態の確認、設計文書への引渡しのみ。新たなGo/Node/Windows/実DB試験、B1-B/Cの実BuildIntent接続、B2/B3 Desktop再入、Owner受理はNOT RUN / NOT ACCEPTED。
+
+
+## 14. 2026-11-14：Plugin管理・静的包含・実行世代を混同しない（#2044 × #1223 × #4620）
+
+### 14.1 正本の重複を避ける責務
+
+[横断主計画Draft #4620](https://github.com/hat47x/tei-platform/pull/4620)は現在の優先順と「選択的再資格化」の上位判断を担当する。本節は、[Plugin Manager #2044](https://github.com/hat47x/tei-platform/issues/2044) S1～S5 の**製品受入へ渡す状態分類と反証票**に限定する。同じ主計画や新Plugin Managerを作らない。
+
+現行製品には plugin.Definition／Environment構成選択／plugin.Lock はあるが、Plugin Manager専用の installed／enabled 永続状態や settingsVersion はない。三つの参考管理パッケージのテストPASSは実CLI/Studio管理操作の合格ではない。[#4376](https://github.com/hat47x/tei-platform/issues/4376)はCLIのread-only inventory、[#4377](https://github.com/hat47x/tei-platform/issues/4377)はread-only plan、[#4378](https://github.com/hat47x/tei-platform/issues/4378)は設定源・原子性・監査、[#4379](https://github.com/hat47x/tei-platform/issues/4379)は実Studio、[#4380](https://github.com/hat47x/tei-platform/issues/4380)は不可逆操作を所有する。
+
+### 14.2 ひとつのenabledを使わずに投影する状態軸
+
+| 独立の状態 | 読取りで観測できる例 | 証拠が無いときの表現 | Owner |
+| --- | --- | --- | --- |
+| Source宣言・形式 | Workspaceに保持されたDefinition/入力形式、Source provenance | 未ロード・未知形式・partialを宣言なし／不存在へ潰さない | #4376/#1920/#2621 |
+| 導入可能性 | 実装Artifact/適合Contract/Packageが解決できるか | 宣言だけではinstalledとしない | #4376/#2589 |
+| 有効設定 | Ownerが許した設定Storeの現在版 | 現状not-modelled。Environment選択をenabledへ代入しない | #4378 |
+| 構成選択 | 実Environment/Profile/Contractでexact Providerを選んだか | Candidate Catalogにあるだけではselectedでない | #951/#1016 |
+| 実Buildへの包含 | selected Target Build Closureと実Link/Embed、Artifact identity | Lockのみならphysical inclusionはunknown | #2600/#3267/#2831 |
+| 実行時利用 | loaded/observed entry/actual invoked、Generation、active in-flight | embeddedだが非呼出なら invoked とはしない | #1251/#1223/#1174 |
+| 現在Authority・Effect | Target現在Grant、Resource scope、Effect・Receipt | 旧Grant/旧Receipt/旧世代PASSを現在資格に昇格しない | #1174/#1223 |
+| 設計データの保持 | 原Source bytes、版、未知断片、保持対象 | plugin disable/remove はSourceやデータを削除しない | #4378/#4380/#2497 |
+
+静的Go Reference Hostの無条件importは「固定バイナリへ含まれている」ことの候補でしかなく、案件Profileの選択や現行Runtime使用の証拠にはならない。Go単一バイナリへ動的Loader/Watcherを必須としない。長寿命Process/Wasm等Targetを選んだ場合だけ#1223のreadiness→cutover→drain→cleanupを検証する。
+
+### 14.3 Inventory → Plan → Apply の再検証契約
+
+**Read**：#4376 は現Workspace/Source、Declaration/Selection/Lock、判明したArtifact/Scopeを収集するが、存在しないinstalled/enabled/settingsVersionは補完・推定しない。未取得なら原因つきnot-modelled/unknown。秘密や顧客データ本体をEvidenceへ入れない。
+
+**Plan**：#4377 は変更案・影響Contract・必須依存、Source/保持データの影響、必要な再生成/再起動/Generation切替、許可・禁止・unknown、正確なPrecondition revisionを提示する。Plan作成は状態変更・権限付与・現在Grantの保証ではない。required依存A→B→CでBの無効化を要求されたらAの扱いを明示候補として返し、勝手にAとCを停止しない。任意依存は現行DSLに無いため、任意性を仮定した自動判定をしない。
+
+**Apply**：#4378/#2550 は、Ownerが採用した設定源のsettingsVersion、Workspace Source revision/bytes、Contract/Provider Lock/依存集合、対象Environment/Target、Actor/Current Grantと実操作のEffect範囲を**操作直前に再照合**する。Preconditionが不明・古い・競合するなら適用せずread/planの更新を要求。AgentによるPlan提案やUIの古い成功・確認済み表示を実Apply権限に変えない。変更可能な設定範囲と現Source保存・不可逆データ削除を一つのTransactionで実行したように広告しない。
+
+**After**：設定への書込みが成功した場合、実際に変化した設定版／Generation／Runtime Authorizationを再Readで確認する。新規SelectionやBuildが必要でも成功を先取りしない。Source bytesを変更しないdisableと、Sourceを実際に変える編集／Format migrationは別操作。Runtime切替済みでも旧in-flightのEffect/Receiptを消失したものと扱わない。
+
+設定源の候補（Host Store、Workspace管理ファイル等）は#4378 D1で未決定。ここでは新Store/Namespaceを指定せず、Sourceを変えずに設定を変えるならSource宣言と管理設定が二つの**別用途の情報源**になる点だけを明示する。「第二Resolver/Meaning正本を作らない」ことと「設定の保持先が別である」ことは同じ命題ではない。
+
+### 14.4 変更種別ごとの最小再資格化（新Gateではなく既存Issueへ接続）
+
+| 変更・障害 | Source/Meaning | Build/Artifact | 実行・権限・Generation | Owner/試験 |
+| --- | --- | --- | --- | --- |
+| 未選択Pluginだけを追加（選択閉包に不変） | 原Source/Accepted Meaningは維持可能 | 実Build非包含を証明できれば再生成省略候補。静的import実包含なら別 | 現Consumer/Grantに影響なしなら再資格不要候補。未観測はunknown | #4377/#2600：PM-C01 |
+| 必須Guard/Providerを無効化 | Source原文は保持 | 新構成の生成/選択可否を再判定。勝手にfallbackしない | 現Operationを拒否または既存Authorityで安全にdrain。新Grantなしに実行継続しない | #951/#1223/#1174：PM-C02 |
+| ProviderをA→B→Aで戻す／Source移動 | 同byteでもRevision/Source location/前回受理資格を再確認 | 実Build入力とGenerator/Lockの時点を比較し再利用可否を個別判断 | 古いRuntime Grant/世代/Consumer受領は自動復活しない | #2600/#2514：PM-C03 |
+| 実行中に新Generationへcutover、旧Grantを失効 | Source変更なしもありうる | Static Goの場合は次のBinary/再起動、動的Targetなら現物実切替を検査 | 新規呼出しは新世代へ。旧in-flightのCommit直前Grant、Effect Unknown/receipt lookupはHostで再評価 | #1223/#1174：PM-C04 |
+| Diagram layout-only変更 | Business IDと意味は不変（条件つき） | 意味Codeの再生成不要候補。表示Assetだけ変わる場合はそのConsumerに限定 | Runtimeの業務Effect資格を無条件失効しない | #2497/#1124/#2600：PM-C05 |
+| Plugin disabledだが旧Sourceに未知断片あり | Raw Draftなら元byte保存・再開可。構造受理不可の場合は非受理 | Parsed/Acceptedを装って生成しない | ManagerのdisableとSourceの構造編集を分ける | #4378/#4380/#2621：PM-C06 |
+| plan作成後settingsVersion/Lock/Source/Permissionが更新 | 元Sourceは変更しない | 旧Plan由来のBuild操作は適用不可 | 古いUI/AI confirmationを無効とし、適用前に再Read/再Plan | #4377/#4378/#1529：PM-C07 |
+| remove-pluginとdelete-dataを一括指定 | Source/保持データの境界を明示 | Artifact/Source削除を自動実行しない | 後者は別のOwner承認、監査・復旧・外部Resourceの確認が必要 | #4380/#2553：PM-C08 |
+
+PM-C01〜08は本設計のCross-caseラベルであり、新Scenario/Expected正本を作らない。#1180/#2514および#4376〜#4380既存PM1〜PM5の該当負例へ最小限接続する。該当変更の閉包がpartial/unknownなら「影響なし」ではなく不確定を明示する。
+
+### 14.5 形式版とRaw保存の停止条件
+
+[#1920](https://github.com/hat47x/tei-platform/issues/1920)はGitHub上Closedだが、本文の形式版・中央変換・未知断片保持の完了チェックは空欄であり、**現製品の未知属性・未知子要素を持つ .tei のlossless parse/editを証明しない**。Plugin Managerは未知Sourceを消去・自動format変換せず、許されたRaw Draft保存と、構造的に受理済みのSemantic Edit/Promoteを別操作にする。Known parserで拒否したSourceをempty inventory・未インストール確定・safe deleteへ昇格しない。
+
+**次の最小引渡し**：P0 Studio Self-build #4583とInspector selected-entry #4611/#4612はそのまま最優先。並行で#4376のread-only inventoryを実Workspace/Lock/CLIで一件成立させ、#4377の非破壊plan、#4378の設定源採用判断を順に行う。#4378の設定源が未決定のままApply/disable UIを製品化しない。
+
+**今回の資格上限**：既存Issue/PR/sourceの静的照合と設計受入案。新Go/Windows UI/外部Resource操作、実Generation cutover、Plugin Manager製品E2E、Owner採用・意味受理は NOT RUN / NOT ACCEPTED。
