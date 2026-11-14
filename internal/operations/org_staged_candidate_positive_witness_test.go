@@ -353,7 +353,7 @@ func TestOrgStagedPositiveCandidateActualFunctionContextCoverage(t *testing.T) {
 			dutyContext := orgPositiveSyntheticResponsibilityContext(t, tc.dutyRows)
 			for _, read := range []struct {
 				ctx functioncontext.Context
-				n int
+				n   int
 			}{
 				{ctx: roleContext, n: len(tc.roleRows)},
 				{ctx: dutyContext, n: len(tc.dutyRows)},
@@ -383,13 +383,13 @@ func TestOrgStagedPositiveCandidateActualFunctionContextCoverage(t *testing.T) {
 			// This cohort identity is test-only; the Product Context has
 			// not verified a same-snapshot read across the two Queries.
 			roleRead := orgPositiveRead{
-				cohort: "test-fixture-cohort",
-				closed: roleContext.Coverage.Status == semantic.CoverageComplete,
+				cohort:          "test-fixture-cohort",
+				closed:          roleContext.Coverage.Status == semantic.CoverageComplete,
 				cursorFullyRead: roleContext.Rowset.FullyRead,
 			}
 			dutyRead := orgPositiveRead{
-				cohort: "test-fixture-cohort",
-				closed: dutyContext.Coverage.Status == semantic.CoverageComplete,
+				cohort:          "test-fixture-cohort",
+				closed:          dutyContext.Coverage.Status == semantic.CoverageComplete,
 				cursorFullyRead: dutyContext.Rowset.FullyRead,
 			}
 			got := orgPositiveWitnessProbe(observedRoles, observedDuties, roleRead, dutyRead)
