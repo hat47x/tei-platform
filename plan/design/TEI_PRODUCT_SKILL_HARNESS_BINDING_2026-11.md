@@ -802,3 +802,38 @@ TAI Activityは計画・Attempt・Lease/Fence・再試行制御、AI Sessionは�
 **運用上の次手**：#4583/#4593のBuild Fit/Gapを製品Ownerの正本、#2509の実H2をHarness Ownerの正本とし、この§17は証拠の受渡し形式だけを規定する。重複Issue、別Build Manager、第二Evidence DB、中央Meaning Registryは不要。
 
 **資格**：本節は受入設計であり、ここに列挙した新しい実Attempt/Consumer Probeを実行したものではない。#4587のB0同一HEAD Windows CIは既存の限定PASS。B1〜B3一体Self-build、外部H2/H3、SHO正式往復はNOT RUN。
+
+
+---
+
+<!-- harness-nov14-crosslane-consumption-gate -->
+## 18. 2026-11-14：DSL・Plugin・Desktopの最新議論をHarnessの実Consumer境界へ収束
+
+11月14日の[dogfooding #4651](https://github.com/hat47x/tei-platform/pull/4651)、[DSL実行前診断 #4652](https://github.com/hat47x/tei-platform/pull/4652)、[Plugin実使用 #4643](https://github.com/hat47x/tei-platform/pull/4643)、[Desktop #4650](https://github.com/hat47x/tei-platform/pull/4650)はいずれも**Draft・未merge**。それぞれのOwnerの受入条件をここで複製せず、§15〜17のHarness/Consumerに渡す境界だけ確定する。
+
+### 18.1 単一の縦断Subject、独立した4つの資格
+
+最小Subjectは「Studioで選択したqualified SourceからInspectorを生成し、Desktopへ同梱し、実Consumerがその定義を使用する」一往復。Product Probeと外部Harness H2は**同じSource/Goalを参照できても別Attempt・別資格**とする。
+
+| 資格 | 実際に必要なWitness | 他資格へ昇格しないもの |
+| --- | --- | --- |
+| Definition（DSL） | 固定Seed/Language Contract/Parser fingerprint、Source revision、宣言の診断、Workspace参照解決、実行直前拒否 | Parser成功やAI候補だけで実行許可しない |
+| Build（TEI） | 非Plugin Studio Subjectの正式Resolve、選択/実Builder、N0〜N3実入出力、Stage1→Stage2同一Attempt | CI Launcherの外部Build、Plugin Recipeの流用、単独B0成功 |
+| Runtime（Plugin/Host） | 宣言→選択→ロード→実呼出し→結果Consumer、Grant/Effect/回数、実Providerの受理 | 同梱・loaded・receipt存在だけでinvoked/usedとしない |
+| Delivery（Harness/SHO） | 選択固定、Source再読取、送信時Disclosure、送信byte、ACK、実Consumer Used、正式保存/再開 | ACKだけでMeaning AcceptedやBusiness Effectとしない |
+
+**新規に明確になった接点**：#4651の非Plugin Studio Build SubjectをPluginとして偽装してBuildIntent.Validateを通さない。#4652のDSL診断はSource解析→Workspace解決→実行直前拒否→権限/実呼出しの四層で、診断OKを実権限の代用にしない。#4643のBuild GeneratorとRuntime Providerを別資格にし、Plugin状態をdeclared/selected/loaded/invoked/consumed/delivered/acceptedに区別する。#4650の編集Buffer、保存Source、Build入力、実読込Source、Artifact、実使用Artifactはそれぞれ独立のRevision/Digestを持ち、Focus移動・非同期応答・IMEをSelection epochの代替にしない。
+
+### 18.2 受入順序と中止条件
+
+1. **D0 Definition**：同名Input重複、Output/Outcome矛盾、参照欠落、Source/Language世代差を独立Expectedで拒否。対象未確定ならAIへの実行依頼を出さない。
+2. **D1 Build Selection**：非Plugin Subjectが現在のBuildIntent/Planで未受理なら`unsupported`として停止。別のPlugin Subjectへ置換しない。
+3. **D2 Actual Build**：宣言/実Builder、Source/Toolchain、N0〜N3 Artifactを一つのAttemptに結び、Stage1が実際にStage2を生成したかを観測。旧Artifact流用とPlan外esbuildを拒否。
+4. **D3 Actual Consumer**：Stage2 Desktop/WebView2が生成Inspectorを実使用したことを実byteとusageで確認。単なるembed成功は不十分。
+5. **D4 External Delivery**：必要な場合だけH2 Harness/SHOへ現在のSelection/Grantで送信し、ACKとConsumer Usedを別観測。SHO正式保存・再Openと元Source再解決は別判定。
+
+**独立負例**：同名Source/同labelの対象混同、非Plugin→Pluginすり替え、宣言だけされたPlugin、生成時と実行時のGrant差、Bufferのみ更新して保存Source旧版、Stage2旧JS混入、Tool Replyの途中切れ、SHO同名別Sourceへの誤保存。各負例は失敗した資格だけをFAILとし、未実施の上位資格はNOT RUNのまま。
+
+**優先順位**：#4583 B1〜B3と#4651 DG-0〜DG-4の実接合をP0とし、#4652の診断・拒否、#4643の実Plugin使用、#4650のDesktop実Consumerをその実装に沿って接続。H2（#2509）は独立並走し、H3/正式SHO保存をP0のHard Gateにしない。新Host、Build Manager、Registry、Authority、Evidence DBを作らない。
+
+**資格と未実施**：本節は他Draftの受入条件をHarness/Consumer境界に写像した設計変更である。これらのDraftがmainへ統合済みとは主張しない。B1〜B3の完全Self-build、外部H2/H3、SHO正式往復、新規反例実行はいずれも未実証。
