@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createResponseScope } from "./responses.ts";
+import { readInspection, inspectEligibility } from "./presentation.ts";
 import {
   initialPinState, pinSubject, unpinSubject, invalidatePin,
   pinRequest, acceptPinObservation,
@@ -76,4 +77,65 @@ test("PIN-LANE-04: newer pinned request suppresses older reply without touching 
   assert.equal(await old, false);
   assert.deepEqual(pinned, ["A-current"]);
   assert.deepEqual(selected, ["B"]);
+});
+
+
+const catalog = {
+  entries: [{ subject: A, sourceStatus: "indexed", ambiguous: false }],
+  modelRevision: "model-v1",
+  worldFingerprint: "world-v1",
+  sourceIndexFingerprint: "source-v1",
+};
+const inspection = {
+  effect: "read-only",
+  subject: A,
+  canonical: { name: "Order" },
+  worldFingerprint: "world-v1",
+  sourceIndexFingerprint: "source-v1",
+  sourceStatus: "indexed",
+};
+
+test("PIN-READER-01: Product Inspector qualifies pinned A but cannot change viewed B", async () => {
+  const scope = createResponseScope();
+  let pin = pinSubject(initialPinState(), "workspace-a", 1, A);
+  const request = pinRequest(pin);
+  assert.ok(request);
+  assert.equal(inspectEligibility(catalog, request.subject).ok, true);
+  const viewed = { subject: B, text: "B stays visible", graph: "B graph", notice: "B notice" };
+  let observedVersion = null;
+  const accepted = await scope.run("pinned-inspection", async () => inspection,
+    reply => {
+      const projection = readInspection(reply, request.subject, catalog);
+      observedVersion = projection.version;
+      pin = acceptPinObservation(pin, request, { state: "inspected" });
+    }, error => { throw error; });
+  assert.equal(accepted, true);
+  assert.equal(pin.observation.state, "inspected");
+  assert.equal(observedVersion, "world-v1:source-v1");
+  assert.deepEqual(viewed, {
+    subject: B, text: "B stays visible", graph: "B graph", notice: "B notice",
+  });
+});
+
+test("PIN-READER-02: wrong Subject or stale Source is not a qualified Pin observation", async () => {
+  for (const mismatched of [
+    { ...inspection, subject: B },
+    { ...inspection, worldFingerprint: "stale-world" },
+    { ...inspection, sourceIndexFingerprint: "stale-source" },
+  ]) {
+    const scope = createResponseScope();
+    let pin = pinSubject(initialPinState(), "workspace-a", 1, A);
+    const request = pinRequest(pin);
+    assert.ok(request);
+    const accepted = await scope.run("pinned-inspection", async () => mismatched,
+      reply => {
+        readInspection(reply, request.subject, catalog);
+        pin = acceptPinObservation(pin, request, { state: "inspected" });
+      }, error => {
+        assert.match(String(error), /(INVALID_INSPECTION_RESPONSE|STALE_MODEL_PROJECTION)/);
+        pin = acceptPinObservation(pin, request, { state: "needs-requalification" });
+      });
+    assert.equal(accepted, true);
+    assert.equal(pin.observation.state, "needs-requalification");
+  }
 });
