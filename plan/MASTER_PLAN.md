@@ -158,18 +158,35 @@ Gate C — PAS-04 Evidence — Ready
 
 判定段階Cの後は、定義の記述・知識の活用と、二つ目の実行先の検証を並行して進めます。互いの完成を待つ必要はありません。最初の実行先で確認した違いと検証根拠を共有します。
 
-### Studio Desktopセルフビルドを最優先にする現行の実証順（2026-11-13）
+### Studio Desktopセルフビルドを最優先にする現行の実証順（2026-11-14更新）
 
-**最上位の製品目標は、TEI Studio Desktopを実OS上で構築・利用し、TEI自身が次のStudioを再構築すること**。この目的に対し、最初から新しいDSL/汎用Interpreter/独立Build Hostや全機能のX-TEA・B2C実装を要求しない。既存Wails、Workspace/Source Index、標準BuildIntent/Builder、型付きOperation/Providerを使い、以下の証拠を段階的に接続する。段階の記述は新しい全体Hard Gateではない。
+**最上位の製品目標**は、TEI Studio Desktopの実Windows/Wails成果物をTEIの正式Build経路で生成し、生成Stage1 TEI自身がStage2 Desktopを構築し、その**Stage2実exe**がWebView2で動作すること。Go単一バイナリ・外部Target Host・業務専門家向けDSL・同一Source/Meaning正本を維持し、第二Build Engine・汎用Interpreter・独自業務Host・第二Authorityを増やさない。過去の限定成功を一つのEnd-to-End資格に合算しない。
 
-1. **実Desktopへの生成部品接続**：[Draft PR #4572](https://github.com/hat47x/tei-platform/pull/4572)で、TEI契約Source→既存の決定論Transform→Inspector reader（TypeScript）→esbuild bundle→Go `//go:embed`→**実Windows WebView2 Desktopでの利用**を局所実測。生成前bundleを使った負例とSource digestの対照も報告され、PR exact-headのHealth/Workbench Embed/Windows WebView Smoke等は成功。ただし**Draft・main未統合**であり、実Wails表示に成功したこととStudio全体のTEI自己生成は別資格。
-2. **実Builder入力の閉包**：#2831の既存BuildIntent/Builderへ、前項のTransform/生成Sourceだけでなく、**実際に実行したNode/esbuild・Wails Build・nested Studio module・Go embed**を、必要入力・実呼出し・出力Artifactとして明示的に結ぶ。#4572ではbundling/Wails BuildがまだTEI Build Graphの外にあり、`l2b`合格やBuilder完全性を宣言しない。別のBuild Engineを作らず、既存Adapterが実行できる必要工程を一つずつ通す。
-3. **自己再入場とOS境界**：Stage1として実生成したTEIの**プロセスイメージ**がStage2のBuildPlan解決・Builder要求・実Artifact生成を駆動したことを実行証拠で確認する（#2831）。[main PR #4575](https://github.com/hat47x/tei-platform/pull/4575)のentry事後状態観測は、空ディレクトリを作るだけの偽独立を防がない。[PR #4578](https://github.com/hat47x/tei-platform/pull/4578)の境界launcherも現時点で入口Flagが未結線。Child申告、二回のByte一致、Stage0製Go Build、局所Reentryだけで**全体セルフビルド／OS隔離**としない。
-4. **異質Consumerで製品の基盤を試す**：[main #4539](https://github.com/hat47x/tei-platform/pull/4539)は実PostgreSQL→一時的Function Data Context→限定Reference CLIを実装済み。次は#2586/#4495で製品`tei` CLI・Typed APIへ結線し、#1124の実Studio IPCと同一結果の受領を独立Expectedで確認する。[X-TEA三視点プラグインDraft #4570](https://github.com/hat47x/tei-platform/pull/4570)はStudio Bridge/CRUD/Source Navigateの局所試験があるが、実DesktopでのX-TEA原典受入は未実施で、exact-headの全体CIに失敗が残る。X-TEAを正本通り再現しつつ、Studioセルフビルドの先行必須条件としない。
-5. **Source/選択の失敗を隠さない**：[Issue #4577](https://github.com/hat47x/tei-platform/issues/4577)では`tei source-index`のSubject指定時に不存在を`ok:true`・exit 0と報告する不一致が実測されている。解消までは`inspect`/`trace`等の存在検査を別に行い、空のReference集合をSubject不存在・取得不能・未使用の証拠に昇格させない。B2Cの[main #4550](https://github.com/hat47x/tei-platform/pull/4550)は**申告Graph内**のRequired多段上流依存を検証する限定Referenceで、実Native/SQL全依存の閉包を保証しない。
+**現実装基線と今回の新Draft**：
+- [Draft #4587](https://github.com/hat47x/tei-platform/pull/4587) exact HEAD `0fcb7b6265d7dfc5b5e93017e5c99e296eb13134`／[Windows CI #43542664470](https://github.com/hat47x/tei-platform/actions/runs/43542664470)ほか同HEAD **12/12 success**。N2 esbuildが実生成したJSをRole/`sha256`/Attempt付きで記録し、N3 `go list -tags studio_generated`が選んだEmbedFilesの実byteとGo Build前後で照合、独立改変コピーを拒否、生成版/通常版の実WebView2 smoke成功。**H1 N2→N3の局所実証済み**。N2/N3の実InvokerはまだWorkflow、compiler read-time完全閉包・B2/B3・Owner意味受理は未実証。
+- [Draft #4623](https://github.com/hat47x/tei-platform/pull/4623) HEAD `f1e219a`の`-bind-resolved-builder`／Child pin検査はCI **8/8 success**。[Draft #4624](https://github.com/hat47x/tei-platform/pull/4624) HEAD `2d403f49`の宣言/Resolver応答一致拒否はCI **5/5 success**。両者は別HEADで、Plugin主体BuildPlanの限定機能。
+- **[新Draft #4634](https://github.com/hat47x/tei-platform/pull/4634)** は、上記二PRの変更Go本体3ファイル・新試験3ファイルを、両者のbase `e888bb8f`と現mainのBlob一致を確認したうえで**同一main-based branchへ集約**。本節更新時点で新HEADのCIは**未完了／NOT RUN相当**であり、元PRの個別CIを統合成功へ昇格しない。先に`internal/buildintent`／`cmd/tei`のGo正負試験、Self-build、Healthと共通CLI実子起動前拒否を当該新HEADで検収する。正常例は実Resolver→選択Builder B→実子B、負例は宣言と不一致のResolver返答、および正しくBを解決して実子Aへすり替えたときの子Call 0/Artifact 0とする。
 
-**検収票の分離**：生成したSource、実Builder入力、生成したArtifact、Stage1実Process、Stage2実呼出し、実Desktop WebViewでの使用、外部Provider/Consumerの受領を別欄に記録する。各段階に対応した実失敗・Source改版・未取得/partial・同名別Workspace・旧bundleの負例を独立Expectedで確認する（#1180/#2514）。**今回の計画追補は実装・GUI・CLI・Stage2の新たな製品E2Eを実行したものではない**。
+**P0：一つの実因果経路へ接続する残作業**：
+1. **宣言→選択→起動前拒否の一HEAD検収**：#4634のexact-head CI結果とプラン/子/Artifact Receiptを確認し、選択B/実A・不正Resolverが混入した場合の拒否を実測。Catal​og入力の意味受理、実OS LoaderのTOCTOU、外部Provider/current Grantは別資格。
+2. **H0 N0→N2**：生成Inspector TSの実Producer Role/digest/Source revisionをN2実esbuild selected inputsに接続し、旧TS・別Workspace・未選択Entry・A→B→Aの負例を拒否。成功済みH1の`n2-bundle-producer.json`／`n2-n3-bundle-handoff.json`は既存Evidenceとして再利用し、新Manifest/Runnerを作らない。
+3. **正式な非Plugin Desktop Build**：N1 Compose、N2 Node/esbuild、N3 nested Go/Wailsの実Invoker/argv/入力/Artifact memberを、既存BuildExecution/ArtifactSetとTarget Adapterへ一工程ずつ接続する。CLI/Workflowの直接shell起動成功や`go list`選択報告は、正式BuildIntent実起動・全read-time入力閉包の代用ではない。
+4. **B2→B3**：生成Stage1 TEIの実Process imageがStage2を構築したReceiptと、その**当該Stage2 exe**が実Windows/WebView2で配信するJS・StudioBridge/Inspector受領を照合。Stage0/別Workflow/旧Windowの成功を借用しない。
+5. **独立Consumer**：X-TEA三視点/SHO/REA/実PG Queryは共通Application Operationを利用し、Source Fact・Meaning受理・Plugin選択・Host Grant・実Read・Consumer disclosureを別資格とする。REAの[ローカルCLI Draft #4625](https://github.com/hat47x/tei-platform/pull/4625) exact HEAD `24863bd6`はCI **9/9 success**だが、`evidence-path`をStudio/Webの自由入力pathへ転用しない。Web/Hostは許可済みResource選択→一回のbounded bytes読取→型付きOperationとする。実Provider/二Consumer/原典受理は別。
 
+**並行P1：Studio Desktop/Server/WebのService配置**：
+- [採用ADR-0048](https://github.com/hat47x/tei-platform/blob/main/plan/adr/0048-shared-application-api-and-transport-adapters.md)に従い、`internal/operations`／StudioHost/Providerを唯一の意味処理として維持。現`cmd/tei-studio`はWails Bridgeから**同一Go ProcessのStudioHostを直接呼ぶ**。Server Buildは`-tags server`でnative Windowを作らず、`127.0.0.1`へ束縛する別Build成果物。従って「Wails Serverを従属ProcessにすればDesktopとServerが自動的に同一実行バイナリ・性能・障害特性になる」とは断定しない。
+- **比較する構成は二つ**：A) 現行同一ProcessのBridge→Go Operation（P0標準）、B) Desktopの小さなOS Shell／Bridgeがローカルで起動・監視するGo Service Childを、明示した型付きIPC経由で利用（将来候補）。Bでも単一配布が必要なら同一実行ファイルの子モードか配布単位の設計から検証し、Wails `server` build tagの別Artifactを無条件に同梱としない。ローカルTransportはloopback HTTPを実測基線に、Windows Named Pipe／Linux等Unix Domain Socketの利用可能性とrequest framing/streaming、認証・Process寿命・再起動を比較する。**IPCの方がHTTPより常に速いとは仮定しない**。
+- **判定材料**：同一Fixture／同一実Go Operationで短いCatalog、長いGraph／大量Reader結果、連続入力更新、生成Build progressを測り、cold start・p50/p95/p99、メモリ、Payload copy/serialization、キャンセル、Crash/kill/restart、Window close、Build/Devホット更新、実Windows GUIの停止/応答を記録する。数値閾値は製品要求・基線実測を受けてから設定し、測定前に新子Process/IPCをP0へ強制しない。
+- **故障境界**：Client/IPCでAck喪失・タイムアウトが起きてもBuild/DB/外部Effectを自動再送しない。HostによるWorkspace/Environment/Grant/Attempt ID再検査、現在Receipt lookupと`unknown-effect`、OS child終了・再接続時にOwner正本を失わないことを確認する。UIのDirty Buffer・Focus/Pin/Graph/Window世代はHostのSource・Meaning/Build/Effect正本と別寿命に保持する。
+- [Draft #4627](https://github.com/hat47x/tei-platform/pull/4627)はServer登録`StudioBridge`の15 exported Methodと`application.Options.Services`のAST/6改変対照を持つ。旧HEADの[Wails Host CI #43545456013](https://github.com/hat47x/tei-platform/actions/runs/43545456013)はPASS、同HEAD Healthは`server_bridge_surface_test.go`の`gofmt`でFAIL。別の新HEAD `a0850047`で整形が修正されCI再実行中。**新HEAD全CIは未受入**。実HTTP/WS公開面・別Principal/Workspace・Origin/CSRF/Session/Grantの検収は#3421/#1824の独立WSP-02b/03として続け、Command/SHO/Local Pathのexportをそのままpublic Webへ開放しない。
+
+**並行P2（P0のHard Gateにはしない）**：
+- 将来SaaSで複数Git Worktree×DB instanceを扱う際はViewer Selection／Host-resolved Source・Git commit・Environment/DB Binding／実Build・Command Attemptを分離。Git Branch名・DB alias・Renderer入力を現在Authorityにしない。まずローカルread-only二対象、次にWebの二Principal等へ拡張する。実Source/DB Current Grant・Git/DB Effectは既存Ownerを使用する。
+- [Plugin理想構成Draft #4632](https://github.com/hat47x/tei-platform/pull/4632)はStudio UI・意味定義・Generator・Runtime・TestのContribution、Package/Contract/Variant/Artifact/Configuration/Resolutionを**将来の設計案**として示す。現`plugin.BuildPlan`やDesktop実装済みContractへ無検証で置換せず、Build-only Generatorと配布Stage2 Runtime Providerの包含を分け、最小的に受入可能なRoleから実装する。
+- 現Workbench plain TypeScript＋CodeMirror／esbuildを維持し、Web Components/Lit・React・Go/WASMの比較は代表Pane／純粋Projectionに限定する。実DOM/IME/Caret/Pin後着・Graph/ARIA・Bundle Build/OS Consumerと生成AI修正後の回帰を測定。未実装Web/共有SaaS・全WASMはP0阻害要因にしない。
+
+**資格とOwner**：#4583/#2831はBuildおよびB2/B3、#1824はStudio/Windows/プロセス配置、#3421はWeb公開面、#1158は共通Operation、#2586は実DB束縛、#951/#2044はPlugin選択/管理、#1180/#2514は独立Expected。上記はPlan/Owner間の引継ぎであり、新Test SSOTや業務受理ではない。**本PRによって新しく実装したのは#4623/#4624由来の限定Go code同一HEAD集約だけ**で、非Plugin B1/B2/B3・Go/WASM・新IPC・SaaS実動は未実施。
 ## 現在の判定段階と引継ぎ
 
 ### 判定段階A：アプリケーションの意味を実行・検証環境へ渡せる
