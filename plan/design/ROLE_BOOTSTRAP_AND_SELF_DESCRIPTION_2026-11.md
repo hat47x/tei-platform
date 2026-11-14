@@ -2061,3 +2061,69 @@ WIT-A〜Hは既存各Caseの**横断索引**であり、第二のFixture/テス�
 **P1-E Product Read（#4626→#4631→#4638→#2586）**：RA-0 typed Query Source、RA-1 Executor前Input Guard、RA-2 disposable PG16、RA-3通常Product CLI→Function Context→Standard/Native二Consumerを、各PRが現行Source基線へ積上がるたびに**同一checkout/同一Attempt**で再確認。実Provider Selector/actual Instance、Native SQL方言/NULL/JOIN/Scope/Grantと、CUI/Studio受領は別資格。
 
 **状態**：この節は、他チャット・現行Issue/PR・GitHub Actionsの直接取得に基づく設計Draft更新。新Go/Windows/PG/子Process試験を本節で実施したわけではなく、Source形式、Semantic Role、History復元、AI Skill実行権限、Studio Public Web、Stage2 Self-buildの**正式採用／Owner意味受理は未実施**。主計画は#4583 Desktop P0を維持し、History Runner修正とHost Reader/Skill正規化を新Hard Gateにしない。
+
+<!-- tei-self-description-contribution-coverage-toolchain-20261114 -->
+## 38. 2026-11-14 自己記述の実装境界を四軸に収束：意味同一性・段階別Contribution・読取被覆・Toolchain実体（実装引継ぎ）
+
+### 38.1 今回の追加は「さらに一般化すること」ではなく、既存の意味を実用の四軸で取り違えないこと
+
+第31〜37節で列挙したRole/Grammar/意味/Build/Source/Evidenceの軸は維持する。今回の他チャットで実装・検収が進んだ[#4646](https://github.com/hat47x/tei-platform/pull/4646)（段階別Plugin Contribution）、[#4647](https://github.com/hat47x/tei-platform/pull/4647)（Function Data Context実Read Scope）、[#4648](https://github.com/hat47x/tei-platform/pull/4648)（Builder Toolchainの実体観測）、[#4644](https://github.com/hat47x/tei-platform/pull/4644)（修復済RA-0/RA-1/RA-2の一HEAD試験）、[#4559](https://github.com/hat47x/tei-platform/pull/4559)（read-only Function生成）を踏まえ、**DSL自己記述の最初の製品出口**を次の四軸で限定する。
+
+| 軸 | 不変・独立に比較する内容 | 誤った短絡と停止条件 | 実装／判断Owner |
+| --- | --- | --- | --- |
+| **M：Meaning Identity** | Subject kind/ID、Meaning version/fingerprint、Role/Operator/Type/Facet/Expected、Current/Frozen Sourceの区別 | 同ID／同Result／同byte＝Owner意味受理・旧新互換、とはしない | #2620/#4536/#988/#2514 |
+| **P：Phase Contribution** | Editor／Build／Runtime／Testごとに必要なContract/Scope/Target/Provider/Artifactの適格な提供。必要な段階が欠ければ全体適用不可 | 同MeaningだからRuntime用PackageをEditorへ自動流用、候補一覧順でPluginを選抜、とはしない | #951/#4646/#3279/#1251 |
+| **R：Read Coverage** | Required Scope、実Provider/Instance、宣言Query/Bind、実読取と観測可能なRLS/Limit/Join/View、partial/unestablished/unknown、Result列由来 | 実結果0行＝完全に不存在、メタ情報で見えた範囲に制限なし＝complete、とはしない | #2586/#4647/#4644/#4496 |
+| **T：Toolchain/Target** | Selected Builder、Toolchain実体/版/Path byte、Go/Node/Target OS/タグ、実Build入力・Artifact byte・Stage2 Consumer | 同Planで生成Byte同一／Builder申告matched＝OS exec/trust/G4、とはしない | #2831/#4648/#4583/#2595 |
+
+M/P/R/Tは**既存のSource/Contract/BuildExecution/Evidenceへの検収の観点**であり、共通Coreに`MP RT`なる新Schema、万能Trait Resolver、第二Version Registryを追加しない。正規化やキャッシュは真の要求を満たす最小の層に留める。
+
+### 38.2 Phase Contribution：Meaningの同一性と段階固有の実装要求は独立
+
+[#4646](https://github.com/hat47x/tei-platform/pull/4646) exact HEAD `77463edb17642d6400202d0229f33ec69db23b90`は既存[#951](https://github.com/hat47x/tei-platform/issues/951)のContract Resolverを使い、**一つのMeaning ID/version/fingerprintとEditor／Build／Runtime／Test別Contract**を対応付けるread-only Referenceを追加した。四段階、Runtime Packageだけ版が異なる例、Target/Scope/Provider/Artifact等の不一致12種類、曖昧候補と明示wiring、Editor-only・Runtime欠落、候補列挙順を比較する。**実コードのロード、正式Target同値、権限/Provider実Invoke、永続Lock、Artifact bytesは検証していない**。
+
+自己記述の判断：同一Meaningを扱うEditor用PackageとRuntime用Packageは、**一つの実装配布物を常に共有する必要はない**。一方、必要な段階のContractが揃わなければ「全段階で適格」とはしない。Coreは意味IDと契約解決を保ち、Target/Stage別のRequired Contributionは選択されたProfileの責務とする。Phase別のContractの不整合に対して**部分的な全体成功Plan**を返さない。Atomic Traitの`required/provided/manual-required/fulfillment`と現在Host Grantは別軸。
+
+次の局所検証は、`fx.rate`（Role）と既存`Validation`を同じMeaning/Subjectで別段階へ**無理に配布したことにしない**。まず一つのread-only Function/Rule Subjectを選び、既存Contract解決による`Editor read／Build projection／Runtime evaluation／Test Expected`の四段階に必要なContributionを列挙し、必要段階欠落・別Target/Scope・別Provider・順序並べ替えを反例にする。#4646のReference成功をProduct Studio/Target採用へ昇格しない。
+
+### 38.3 Read Coverage：Native SQLから完全性を捏造しないことを製品契約に含める
+
+[#4647](https://github.com/hat47x/tei-platform/pull/4647) exact HEAD `a962a3f6b13c58d93ad740998e5d94728c53e88d`は既存`internal/functioncontext`へ、PostgreSQL Readの観測可能な制約を**保守的に`partial`へ落とす**限定実装を追加。RLS、LIMIT、宣言と違うRelation、View/partition/foreign table/function scanを観測できた場合に非完全性を返す。SQLの述語・STABLE関数などは不可視になり得るため、`complete`や`EmptyJustified=true`を出さず、`unestablished/open`として保持する。独立対照では表3行・関数適用後2行となる隠れた述語を再現し、誤った完全性への昇格を拒否。7 Mutantが検出されるという同PRの試験報告あり。
+
+**受入の変化**：DSL/Roleの`Required Source`は、Function Data Contextの実読取結果だけから逆算して確定させない。`requested`／`observed restrictions`／`returned rows`／`disclosed slice`／`independently complete`を分離し、未知は`unestablished`に残す。NULLの`stored`起源や`entity`粒度、列単位の出所・OID/attnumは同PRで**W4未実装**。SQL`sql.Tx`では列出所を得られず、必要ならProvider固有のpgx接続境界で局所実証を行う。W4を全Source型・全DB ProviderのHard Gateにしない。
+
+現HEADのActions **7/7 completed/success**を確認したが、実製品CLI／外部Host/Grant／構造化Queryでの完全被覆は別。実PG Reference Reader[#4644](https://github.com/hat47x/tei-platform/pull/4644)の7ケースや`#4608`の要求Probeを#4647の完全性証拠へ無条件に合算しない。
+
+### 38.4 Toolchain：同じBuild Planから異なるArtifact bytesが生まれる実例を正本へ反映
+
+[#4648](https://github.com/hat47x/tei-platform/pull/4648) exact HEAD `64fb0f9abdf1a8cf947a844a973eb6d48685623f`で、**同一Plan／Go1.26.11とGo1.27.0**の2条件は双方`l2b.claimed=true`・`toolchainObservation.state=matched`を返したが、**生成ArtifactのSHA-256は別**（PR実測は`b3b54142…`／`fc29a6d0…`）。現行Build PlanはGo Toolchainを正式に指名しておらず、今回の追加は実体観測・報告のみ。GitHub Actionsは同HEADで**8/8 completed/success**。ただしSeed Trust／OS Loader実行したPath Byte／Target別完全閉包／Stage2再入／G4は実証していない。
+
+**Ownerに残す選択**：
+- Toolchain pinをBuild Planの入力にするか、選択Builder契約／Build Executionの検証・Qualification専用に置くか。
+- `go version`文字列だけか、実`go` executable digest・GOROOT distribution・依存の再現単位まで固定するか。実`go` Path byteの読取一致だけで、OS execやSeed Trustを証明したことにはしない。
+- Cacheにおける`World Fingerprint`・`Model Revision`・`Artifact Revision`と、`Selected Toolchain`の版差をどこで失効させるか。**Artifact再利用／Build省略／Evidence再利用を別判定**し、同Plan異Artifactを誤ってCASに上書きしない。
+
+この判断をする前に`#4648`の`matched`を「Goの意味や最適化が同じ」「別版コンパイラの成果物が同byte」とは呼ばない。元PlanがToolchain非指定である以上、両版成功は現行仕様の説明であり、仕様をPin型へ改定した後の試験結果ではない。性能（Toolchain Source全部のdigest再読取コスト）と出荷配布のGo単一バイナリ標準も独立評価する。
+
+### 38.5 一度だけ行うべきQuery受入の積上げ：RA-0/1/2 Reference成功とProduct生成のずれ
+
+[#4644](https://github.com/hat47x/tei-platform/pull/4644) exact HEAD `b5c23044ebaf8671d73a140da92fc9c4d74edff4`では、修正済み[#4626](https://github.com/hat47x/tei-platform/pull/4626) RA-0（`input from std.datetime`／現行SourceとFrozen旧Runnerを分離）＋[#4631](https://github.com/hat47x/tei-platform/pull/4631) RA-1（Executor前Typed Input拒否）＋[#4638](https://github.com/hat47x/tei-platform/pull/4638) RA-2（隔離PG16親＋7 subtest非SKIP）が、**同一積上げHEADの専用Workflow 3/3 completed/success**。これはReferenceと限定Goの実証であり、RA-0単独HEAD `9eecf2b9`の**18中17 success・1 failure**（API Binary`sqlgen`依存閉包検査[#1182](https://github.com/hat47x/tei-platform/issues/1182)）を消さない。RA-0のHistory/Health成功もCurrent Meaning Owner受理にはならない。
+
+さらに[#4559](https://github.com/hat47x/tei-platform/pull/4559)は`order_entry.recent_orders`をSource→read-only Go Function Binaryへ生成し、使い捨てPGとの限定比較を行っているが、**そのPRが基にするSourceでは`input from`が未宣言**であり、SQL`:from`を暫定Source-of-Truthにしている旨を記録している。`#4644`は**明示宣言済み`from`を含む別Source改訂**。同じFunction ID/SQLのように見えても、**両ブランチの生成器・Query型・Source Revisionをそのまま一つのAccepted Functionと呼ばない**。
+
+**次のProduct Exit（#2586/#1121）**：現Source/Format/Typed Queryを先に一つへ揃える→`actual selected Query/Provider/DB Instance + typed :from`を固定→Sourceから生成したread-only Functionの実Builder/Artifact/Entryを選択→通常`tei` CLI/共通Application APIから呼び出す→Provider実Row ReadとFunction Data ContextのScope（partial/unestablished）、独立Expected、Standard/Native異質二Consumerの受領を別々に証拠化。`#4559`の古い`undeclared` fallbackを正式Productへ流用せず、Ownerによる意味/公開Entry/Host Grantを独立判定。作り直すのは必要な接合点だけで、DSL/Query Engine/Providerを複製しない。
+
+### 38.6 「何を次に実装するか」をOwnerごとに一枚へ収束
+
+| 優先/既存Owner | 最小の具体的な次タスク | 独立Expected／停止条件 |
+| --- | --- | --- |
+| **P0 #2831/#4583** | Non-Plugin DesktopのN0/N1/N2/N3を実BuildExecution/ArtifactSetで結線。Go/Node/esbuild/Embed/Toolchainの実消費と実Stage1→Stage2→Windows WebView2を一Attemptで取得 | #4634 Builder選抜8/8、#4648 Toolchain実体8/8は別証拠。#4587最新HEAD通常Desktop Windows Job失敗を勝手にPASSへ変えない |
+| **P0 #4536/#4359/#988** | `fx.rate` Role S0に既存Validation第二Subjectを追加し、Schema/Parser/Reader要求/独立Expectedの「実適用可能なContribution」を#4646 Referenceと照合 | Required/readDemandの一致は物理Provider read・Full Meaning/Grant合格でない。新`rule`/`*.tei.md`の正式採用を先に要求しない |
+| **P1 #951/#3279/#4646** | Meaning ID/Version/FPとEditor/Build/Runtime/Testの必要Contributionを小Product Subjectで受理前検査。Runtime-only Package版違いを含む12反例 | 未要求Stageの欠落で全体失敗にしない一方、要求Stage不足はFail closed。Layout/Package版＝Meaning版としない |
+| **P1 #2586/#4647/#4496** | Function Contextの`partial/unestablished`を実ReadからConsumerへ運び、W4列出所を必要な1 Providerで確認する。RA-2P/RA-3 Product入口を別PRへ | 0行/SQL Plan/RLS監査だけで`complete/EmptyJustified`、stored NULL、行粒度Entityを認定しない |
+| **P1 #1121/#4559/#4644** | `recent_orders`の新型付きSourceを生成read-only Functionへ再接合し、実Provider/二Consumer/独立Expectedを照合 | 旧`#4559`の未宣言`:from` fallback・別Source Revisionを現在受理Sourceと混ぜない |
+| **P2 #2600/#2595/#2831** | 同Plan異Toolchain、Toolchain更新A→B→A、選択Builder実体差、別Artifact生成をFull/Incremental/Stage2の試験へ反映 | Toolchain観測`matched`や同Source ByteをBuild省略・Evidence復活・Seed Trust/G4へ昇格させない |
+
+**次に新しい設計節を増やす前の受入ライン**：上記P0のいずれか一つについて、既存Ownerの実Source/実コード/独立Expectedを同一HEAD・同一Attemptで試験し、`declared / selected / actual invoked / actual read-or-produced / verified / consumer received`のうち本当に観測された欄だけをPASSにする。Source Writer、Role Interpreter、Builder、Provider/Host/Registryを新設して迂回しない。独立Expectedの第二正本、新Hard Gateを作らない。
+
+**状態**：本節は既存PRの変更内容と該当exact HEADのActions結果を照合した**docs-only統合・実装引継ぎ**。#4646 3/3、#4647 7/7、#4648 8/8、#4644 3/3の各限定CI成功を同一製品E2Eに合算しない。正式Studio Stage1→Stage2、Source新Rule/Markdown正式Reader、W4実Consumer、RA-2P/RA-3 Product CLI二Consumer、Owner意味受理、新Go/PG/Windows実行は本更新で**NOT RUN / NOT ACCEPTED**。
