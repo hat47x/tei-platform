@@ -1374,3 +1374,12 @@ PDCは既存#4515のPIN-R0／#3262のD0、#1180/#2514のScenario/Independent Exp
 
 **本節の状態**：横断的な設計・受入引渡しであり、Pin UIとCLI D0.2を同一Source/Attemptへ結び付けた製品E2E、実DOM/Windows WebView2、Source/Grant変更の現在検査、AI外部送出・帰着、Owner意味受理は**NOT RUN**。§21〜22の実CLI13 Reply/限定CI PASSはそれ自体の限定実績として維持する。
 
+### 23.5 Markdown Graph/Ruleの実Go生成Referenceを、Pinとは別資格で引き継ぐ
+
+2026-11-15のmainには、`reference/tei-md-graph-reader/ParseRuleCandidate`と`GenerateGo`の**限定した参照実装**が加わった。固定した六つのMarkdown入力を使い、Graph表のNode/Edge ID・Source byte位置、明示Rule一件の起点／終点条件を読み、`NodeEdgeIDs`を実装するGoコードを生成する。テストでは生成ソースを別`go run`プロセスで実行し、`testdata/tei-md-graph/independent-expected.candidate.json`の期待結果と照合する。Edge反転・Rule条件の変更は出力を変え、Mermaid配置だけの変更は出力を変えない。重複Edge IDや古い派生図も明示的に区別する。
+
+これは§18で求めた「図表と規則が実際のコードの振る舞いを担う」ことの**参照実証の拡大**であり、単なるGo関数への委譲より一歩進んでいる。ただし、表から読むRuleは固定Fixture専用の候補（日本語条件は表層の読みやすさのためで、TEIの日本語DSL採用ではない）。`internal/workspace/tei_md_source_guard.go`の`TEI_MD_PARSER_UNBOUND`、正式Source Loader・Language Plugin・Role受理・Source Index、製品Generator／Builder・CLI実Consumerとは未接続である。よって現在のPin UIから表示GraphのNode・Edgeを正式な意味Relationとして固定したり、生成Goの動作をStudioセルフビルドの合格に流用したりしない。
+
+**次の接続は独立した二経路とする。** G0は既存#988/#2621へ、元byte・Role・Subject occurrenceを持つ正式Reader選択の検収（候補から採用済みMeaningへの段差）。G1は#4544/#2831へ、選択済みOperator／Generator・実Builder Input・実Artifact・実CLI Consumerを同じSource/Attemptでつなぐ検収。Pin/GUI側#4515は、正式Qualified Subjectを解決できるまではSource候補を「候補」として提示するだけにする。これらを一度に必須化せず、現行の非Plugin Studio Stage1→Stage2 Windows実機P0を保つ。
+
+**状態**：mainの限定Go Reader・生成Go・独立Expectedテストコードを静的に確認。現在の本節で新たにGoテストを実行したわけではなく、正式Reader／製品Codegen／Desktop Pin→Graph候補の実Consumer接合は未検収。
