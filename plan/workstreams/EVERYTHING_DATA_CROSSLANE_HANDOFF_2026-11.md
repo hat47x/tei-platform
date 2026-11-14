@@ -472,6 +472,47 @@ H0/H1と異質領域の要件探索は並行可能。H2/H4の実Effect資格は�
 **セルフビルド優先の停止線**：現行の受理済みDSLでStudio Desktopを構築できるなら、新ruleのG1〜G3完成を新たなHard Gateとしない。ただし新ruleを通常製品入口で利用可能にするときは、G1/G2の選択と失敗原子性を先に検証する。**今回は設計追補のみ。G0〜G4の新通し試験、#4607のGo/CI、Writer/実Product/Studio、正式文法採否はNOT RUN・NOT ADOPTED。**
 
 
+
+#### DSL編集候補の採用と実行結果の世代混同を防ぐ：Previewから独立再読取まで（2026-11-14、製品引渡し）
+
+**新しい接合点**：[#4359](https://github.com/hat47x/tei-platform/issues/4359)の新表層構文を「解析できた」から「Studioと外部Consumerで現在のモデルとして使用できる」へ進める際、**Sourceの編集候補／採用済み定義／実行済み結果／配信時の資格を一つの成功状態にしない**。#4361〜#4367の構文第一縦断、#3788の編集入口、#2586の実PostgreSQL限定読取、#2600の増分Build、#2831のStudioセルフビルドが**異なる時点・別の試行**で部分的に成功していても、積み合わせてProduct E2E合格にしない。ここでいう「世代」はレビュー用の区分であり、新Core Epoch Registry、製品共通Transaction Engine、第二Acceptance Serviceは追加しない。
+
+| 別々に固定する境界 | 必須の記録・識別 | 禁止する短絡 |
+| --- | --- | --- |
+| **Definition epoch**（採用対象の定義） | Source集合とRevision/byte、Workspace、Language選択pin、Operator/Role/Contractの有効版、全必須宣言・参照閉包、World/Model fingerprint | 同じ意味ID・一部成功Parse・Source hash再一致だけで現行Worldを更新 |
+| **Edit/Buffer epoch**（未保存候補） | 元Occurrence、対象値のbyte span、Base Revision、編集中Buffer版、明示Operation、変更外byte | 古いspanから現在のSourceへ推測Patch、Formatterの出力＝保存済みの扱い |
+| **Execution Attempt**（実評価） | 参照したDefinition、選択/実呼出Provider、Query/SQL byteとbind、Snapshot/Scope/Grain/Completeness、観測Read/Effect、Resultの版・状態 | 旧Attemptの遅着結果を新Definitionの成功と表示、別AttemptのReceiptを合成 |
+| **Build/Artifact epoch**（生成実現） | 選択されたGenerator/Target/実Toolchain、実消費入力の閉包、ArtifactSet、実Consumerが受け取ったmember | Source値一致でBuild実行・配布・採用済みと推定 |
+| **Consumer/Grant epoch**（使用時点） | 利用者/Consumer・用途・Disclosure/Effect Policy・現在Grantと、配信時の実条件 | 過去のResult/キャッシュ/Permissionを現在の開示・操作の許可に昇格 |
+
+**編集から製品採用までの操作境界**（#3788/#2497の既存Source Edit責務を使う。製品API名や既存実装の存在は主張しない）：
+
+1. **Preview**：保存前Sourceを変更せず、新旧候補と対象Occurrence/byte span、要求される参照・未解決、想定Meaning差分を表示する。Candidate Worldは診断に利用できるが**現在のProduct Worldではない**。Parserが有効なruleとIssueを同時返却したとき、一部のruleだけを黙って製品へ公開しない。
+2. **Resolve**：対象のLanguage/Operator/Role pinとSource/Refを既存Resolverで一意確定する。Potential/Requiredの入力依存とObservedを区別する。未知の必須依存、同名別Source、未読込Language、重複Canonical IDなら「適用不能／不明」を可視化する。
+3. **Admit**：既存Product World検証とSource Writerの局所逆写像条件を両方確認する。構文として適合しても、非単射ProjectionやTarget未対応は勝手に書戻さない。**Product利用可能性の判定は業務Ownerの意味受理やHost権限付与ではない**。必要な所有者承認／言語形式選択が未確定ならread-onlyのままにする。
+4. **Commit**：編集対象の現在SourceとBase Revision/Buffer epochを再照合した上で、既存Writerが実行可能な最小Patchだけを適用。no-op Saveは書込み0。ファイル間Renameのように既存手段が原子性を保証しないOperationは自動完了としない。失敗時は既存復旧・診断へ返し、**一部書込み成功を全体成功と表示しない**。
+5. **Observe**：書込み後の権威Sourceを**独立に再読取**し、実byte・Occurrence・版、再Parse/全Source参照と期待した意味差分、既存消費経路を照合する。CAS成功だけでは完全な採用完了ではない。独立再読取ができない/一致しないときは「現在Model更新成功」を主張せず、要照合・再診断とする。既存Worldの結果は必要に応じ**旧版・履歴**として区別し、現在の実Effect/開示に使わない。
+
+**実行と公開のFence**：Studioの編集後に旧Attemptの応答が遅着した場合、その結果は**旧Definitionに結びつく歴史的な観測**として保持可能だが、新SourceのCurrent Inspector/Claimに無条件で反映しない。新Current用に必要なReadは新DefinitionのAttemptで再評価し、実Provider/Query/Completenessを観測する。配信・Operation直前のCurrent Grant／Consumer用途は別途再確認する。Source CommitのCASとDBのSnapshotは別機構であり、同じ時刻だったというだけで単一の分散Transactionを主張しない。実Action/Commitは#1174のOwnerを通す。現在の構成で「現在世代」と証明できないときは、再評価・再Buildを選ぶか、現在Claimを保留する。旧Evidenceは消さない。
+
+**最小の独立対照**（既存#4361/#2514/#1180のScenario/Expectedと#3788の編集テストへ渡す。新Runnerなし）：
+
+| ID | 一因子の差分 | 正しい判定 |
+| --- | --- | --- |
+| DSL-E01 | 1 Sourceに適合ruleと属性未解決ruleを置く | 診断用部分Candidateは可。問題ruleを欠いたProduct Worldへ自動採用しない（既存DSL-I01の製品試行） |
+| DSL-E02 | A定義で実Read開始→Bへ編集中改版→Aの応答が遅着 | AのResult/Read traceはA Attemptへ束縛。BのCurrent Inspector/Meaning PASSとして上書きしない |
+| DSL-E03 | CAS成功後、独立Readerから想定外byte/Source移動/参照断絶を観測 | 「Commit試行成功」と「現行定義採用」を分離。再読取不一致なら採用保留、復旧診断 |
+| DSL-E04 | A→B→Aでbyteが再一致、古いBuffer spanを適用 | Base Revision/Occurrenceが旧世代ならzero-write。Source hash一致だけでCAS/Source mappingの再資格化をしない |
+| DSL-E05 | Query結果の取得後、Consumerへの配信前にGrantを失う | 歴史的なRead証拠は保持。現在の開示を拒否し、秘匿件数・値・Source位置を漏らさない |
+| DSL-E06 | Definitionが選んだProviderと実呼出先・SQLが不一致 | 選択の宣言と実Readを別に示し、同一Attemptの受入を拒否／NOT PROVEN |
+| DSL-E07 | 複数SourceへのRename中に2件目の書込みが失敗 | 原子性が未実装なら自動適用を許可せずPreview/候補へ留める。部分成功を完全な採用としない |
+| DSL-E08 | 明示整形なしの保存後、生成Targetの再利用を実施 | Sourceの無操作は書込み0。Build/ArtifactのskipはRequired閉包とactual Toolchain/Consumer資格で**別々に**判定 |
+
+**実装順と既存実証の基線**：G0=#4405とstacked #4607/#4608を**同一HEAD**で検証。G1/G2=#4367/#4359でformatVersion・Language pin選択→全Worldのfail-closed導入。G3=#4364/#4366/#3788で最小Patch・no-op・独立再Read。G4=#2586（mainへ統合済みの限定PostgreSQL Read #4539）から実Provider/Consumer同一Attemptの read-only 受領へ、#2600で入力閉包と増分skipへ進める。#2831は現在のDSLでのStudio Desktopセルフビルドを優先し、この新編集プロトコルを**Studio P0の追加Hard Gateにしない**。一方、Productで新rule編集を公開するなら、G1〜G3とE01〜E04の実試験を別途必須にする。
+
+**状態（2026-11-14）**：上記は現行実装差分と他レーンの受入方針から導いた**設計・受入候補**。この追補で新しいGo製品コード・Studio編集・実Query E2E・Consumer配信・CAS Writer・実二世代試験を実装／実行したわけではない。G0〜G4の同一HEAD一括PASS、Owner正式採用、実Host Grant成功は**NOT PROVEN / NOT RUN**。
+
+
 ### 9.6 用途別に定義するDesign Contextの完全性と、テスト提案・表示・実行の資格（2026-11-07、横断追補）
 
 **主張別の完全性は一列の成熟度ではない**：同じSource/World/Functionでも「設計情報を使ってテスト候補を考える」「Providerの取得結果を検証する」「Function内で表現する」「書込みを実行する」は必要な証拠集合が異なる。すべてに実DB/書込みGrantを要求するとテスト設計や文書閲覧が不必要に停止し、逆に「read-only CLIの結果が完全」を全用途の実行資格に流用すると誤った自動化になる。標準データ構造・標準表現型・Function Contextは共通Carrierとして使うが、**Required ObligationとConsumed Evidenceを利用目的／対象Scope／Consumerごとに判定**する（#2619/#2507/#2497）。
