@@ -3,7 +3,6 @@ package workbenchfixture
 import (
 	"bytes"
 	"os"
-	"reflect"
 	"regexp"
 	"sort"
 	"strings"
