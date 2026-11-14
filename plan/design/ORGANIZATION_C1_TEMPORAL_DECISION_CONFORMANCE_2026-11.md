@@ -741,4 +741,50 @@ ALTER TABLE "public"."org_memberships" ADD COLUMN "person_support_id" pg_catalog
 
 - **原因確認**：最初のDDL候補HEAD `65b83487` の[Studio Source Loop Run #43572108566](https://github.com/hat47x/tei-platform/actions/runs/43572108566)で、追加Goテスト内の文字列`before`（一時DSL Sourceの置換前テキスト）と、同名にしたPhysical Baseline変数が衝突し、`no new variables on left side of :=`／文字列を`physical.SchemaSnapshot`へ代入できないGoコンパイル失敗を実ログで確認。この失敗は新Testのコードに由来し、Studio本体の検証不合格とは断定しない。
 - **修正**：[PR #4633](https://github.com/hat47x/tei-platform/pull/4633) の新HEAD `85f657002f8b9f05dfd119a72565e583985b8494` ではPhysical Baseline変数だけを`physicalBefore`へ変更し、既存のSemantic DSLの`before`文字列は保持。`schemadiff.Compare(desired, physicalBefore)`に固定。新しい機構やOwner意味変更なし。
-- **CIの資格**：誤コードのHEAD `65b83487`はPASSではなく、[Health #43572108581](https://github.com/hat47x/tei-platform/actions/runs/43572108581)もcancelled。修正後の[Health #43572492328](https://github.com/hat47x/tei-platform/actions/runs/43572492328)の全Go/gofmt/vetを同HEADで完了確認するまでは追加SchemaDiff testを`NOT VERIFIED`に維持。旧HEAD `2c155383`の正常/負例7＋5成功は当該旧HEAD限定で失効しない。
+- **CIの資格（再確認済み）**：旧HEAD 65b83487のGoコンパイル失敗・Health #43572108581のキャンセルは履歴として保持。修正後HEAD 85f657002f8b9f05dfd119a72565e583985b8494の[Health #43572492328](https://github.com/hat47x/tei-platform/actions/runs/43572492328)はcompleted/success。Job 132379737524で全Go、operations 3.073s、gofmt、vetのPASSを確認したため、DSL→offline SchemaDiff/DDLのコードを当該HEADの限定技術証拠として再資格化する。一方同HEADの[Windows smoke #43572492248](https://github.com/hat47x/tei-platform/actions/runs/43572492248)はPowerShellによるOSVersion取得が15秒timeoutとなりfailed。Go本体の失敗ではないが全Workflow合格でもない。別[Desktop PR #4587](https://github.com/hat47x/tei-platform/pull/4587)の別HEADのWindows成功をこのHEADに転用しない。
+
+
+## 21. 人物数とFTEを、実SourceからConsumerまで一続きで検証する（2026-11-14）
+
+### 21.1 人数が同じでも、訂正前と訂正後は同じ結果ではない
+
+既存の org-synthetic-r7 は、同じ有効日（2027-06-15）でも、記録時点によって所属の集計が変わることを示している。
+
+| 記録時点（knownAt） | D1の所属／FTE | D2の所属／FTE | 全体の所属／人物／FTE |
+| --- | --- | --- | --- |
+| 2027-07-01 | A1、A2／1.6 | A3、A4／1.4 | **4件／3人／3.0** |
+| 2027-07-03 | A1／1.0 | A3、A4／1.4 | **3件／3人／2.4** |
+
+A2は同じ人物P2の所属であり、旧記録版は7月2日に置き換えられ、新版では有効期間が6月1日で終了する。P2にはD2側のA3もある。したがって、人物数がどちらも3人であることは、時点の選択、所属版の共存保存、取得範囲の完全性を証明しない。FTEはr7の合成配賦値から計算するもので、製品の数値・単位設計を確定するものではない。
+
+**独立Expectedは値だけでなく、所属ID集合、人物への関係、部署別FTE、有効時点／記録時点、取得範囲を組にする。** 新しいExpectedの正本は作らず、既存r7を用いる。RLSやLIMITで取得が制約された場合、見えた行の合計は表示範囲の小計にすぎず、全体の人数やFTEを確定させない。
+
+### 21.2 既存の横断受入を、C1の一つのReadへ適用する
+
+mainへ統合済みの[Consumer横断設計 #4653](https://github.com/hat47x/tei-platform/pull/4653)が示すDefinition→Binding→Authority→Execution→Acquisition→Delivery→Acceptanceを、組織C1のread-only照会へ適用する。新しい組織専用PipelineやRunnerを設けない。
+
+| 引渡し | 必要な具体的証拠 | まだ代用できないもの |
+| --- | --- | --- |
+| **業務意味→保存**（#2386/#1126/#4125） | Ownerが採用した一つのM-P／M-E／M-X Profile、Person関係の向き・Key・出典、Membershipの記録版PK | 一時DSLのRelation Storageやnullable列ADDだけ |
+| **保存→実Query**（#4490/#4567） | 同一DB内のA2旧新二版、選ばれた実Mapping/Provider/SQL、knownAt/validAtとPerson IDのRowset | DDLレンダリング成功、別DBの参照SQL成功 |
+| **実Query→Context**（#4647/#2586） | 取得した実Rowsetの粒度・NULL・欠測、RLS/Limit/Scope・Read Cohort、被覆の根拠 | 制限が不明なunestablished、見えた範囲だけのpartial |
+| **Context→受領者**（#4653/#4501） | 用途・Audience・Source Revisionに対応した実Consumerの受領と、必要なら独立Invocation | Provider実行PASS、CLI標準出力、Studio Previewのみ |
+| **受領→実業務行為**（#1174/#3421） | Caseの現在責任、Host Grant、Effect、Commit Receipt、ACKを別々に確認 | Org RoleやRead結果から実行権限を推測すること |
+
+**最初のProduct Exitはread-onlyでよい。** ContextとConsumerまでの実Readが成立したことを、承認・辞令などHostの書込行為と混同しない。#2586の通常tei CLI実Readと#2831のStudio Desktop Stage2セルフビルドは独立P0のまま維持する。
+
+### 21.3 段階ごとに提供物が異なっても、意味の根拠は失わない
+
+[Plugin Reference Draft #4646](https://github.com/hat47x/tei-platform/pull/4646)は、共通の意味ID／版／Fingerprintと、Studio・Generator・Runtime・Testに固有なContract、Target、Scope、Provider、Artifactを分離する試作である。固定HEAD 77463edbの技術CIは3件すべてsuccessだが、製品の登録・認可・実行を完成させたものではない。
+
+C1でも、人物と所属の意味定義が一致しているだけで、別DB AliasのQuery、異なるRuntime版、別Consumerへ届いたResultまで等価だとは扱わない。逆に、read-only Previewに書込Runtimeの提供物を必須とすることもしない。#2611のAlias競合、#2600のSource差分による再資格化を、既存のOwnerのもとで再利用する。
+
+[Desktop設計 Draft #4650](https://github.com/hat47x/tei-platform/pull/4650)が区別する「Studioを生成して動かす一巡」と「業務Sourceを開いて使う一巡」も分けて扱う。C1の一時DSLがLoaderへ通ることは、Studioの選択対象Pin・安全な逆編集・生成版Stage2の実稼働を証明しない。
+
+### 21.4 次に実装するのは、一つの意味Profileの正の縦断試験
+
+まず#2386/#1126がr7の個人所属に対応する一Profileを採否し、人物の同定根拠、兼務、欠測、関係の向きとKeyを定める。そのうえで#4490/#4567がA2旧新の物理版共存と実Queryを確かめ、#2586が実ProviderからContextと独立Consumerへ結果を渡す。この順序は製品のP0への追加条件ではなく、**C1固有の受入順序**である。
+
+検出すべき反例は、記録時点の取り違え、同じ人物の二所属、A2の旧版消失、RLSによる取得不足、異なるSource Revisionを受け取ったConsumerである。いずれも既存Scenario/独立Expectedへ帰属させ、第二の履歴Engine、Resolver、認可基盤を作らない。
+
+**到達点**：PR #4633のDSL／Validator／offline DDLは固定HEADで技術検証済み。人物同定・二時点履歴の実DB保存・complete Rowset・通常CLIと独立Consumerの受領・Owner意味採用は未実証である。
