@@ -956,3 +956,21 @@ P0/P1がPASSしてもP2〜P5をPASSにしない。P2の解消は**現在の正�
 **進行条件**：#4597のP0/静的CI PASSは採用できる。ただしP2のBundle不一致を保持したまま「実Desktop完成」とは言わない。UI実装は#4515の局所Ownerが担当し、生成JSは正規Build Recipeで再生成する。#4572生成Reader・#4579実WebView2・#2831セルフビルドは統合HEADで別途検収する。
 
 **状態**：本節は現行`main.ts`/`index.html`の実コードと現HEAD CIに基づく**具体的実装仕様**。PIN-UI-01〜06はExpectedを定義した段階で、実装・試験は未実施。
+
+
+## 28. 2026-11-14 Pin独立laneの実テストを追加
+
+[Draft #4597](https://github.com/hat47x/tei-platform/pull/4597)に`responses.pin.test.mjs`を追加し、従来のPin状態遷移7件とは別に**4件の非同期応答回帰**をコード化した。現HEAD `a9c91e56eecdb6b588064188490fc3de950c1744`。
+
+| テスト | 操作と独立Expected |
+| --- | --- |
+| PIN-LANE-01 | AをPinしたままBの通常Inspectが成功し、後着AのPin結果も採用。Bの選択結果を維持 |
+| PIN-LANE-02 | Pin Reader実行中にUnpinし、`invalidate("pinned-inspection")`。後着A成功はpublishされずIntentはnull |
+| PIN-LANE-03 | Pin Reader実行中にWorkspaceを切替え`responses.reset()`。旧Workspaceの後着失敗を表示しない |
+| PIN-LANE-04 | 同じPin laneで旧Aと新Aを並行し、新A成功後に旧Aが後着。新Aのみ採用、通常Inspect Bは維持 |
+
+標準`npm test`に追加し、専用`studio-pin-state-contract.yml`もPin状態遷移7件とlane回帰4件の両方を実行するよう変更した。Workflowのpathsにも新ファイルを追加した。
+
+**検証境界**：このテストは`createResponseScope`と`pin-state`を合成した非同期順序の検証であり、`main.ts`の実UI配線、実ReaderのSource/Revision、Windows WebView2の操作試験ではない。追加後HEADのCIは**結果未確認**。旧HEADの専用CI/Repository health成功を新HEADへ転用しない。embedded bundle byte比較のFAILも未解消。
+
+**次段階**：新HEADのCI確認後、#4515で`main.ts`の実Pin UIに同じlane/Intent検査を配線し、UIからBを表示したままAの再確認を実行するE2Eを追加する。
