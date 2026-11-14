@@ -513,6 +513,44 @@ H0/H1と異質領域の要件探索は並行可能。H2/H4の実Effect資格は�
 **状態（2026-11-14）**：上記は現行実装差分と他レーンの受入方針から導いた**設計・受入候補**。この追補で新しいGo製品コード・Studio編集・実Query E2E・Consumer配信・CAS Writer・実二世代試験を実装／実行したわけではない。G0〜G4の同一HEAD一括PASS、Owner正式採用、実Host Grant成功は**NOT PROVEN / NOT RUN**。
 
 
+#### Language Pluginを自己更新するときの有限Bootstrapと構文世代の移行契約（2026-11-14、E2／Self-build接合）
+
+**未接続の問題**：DSLがLanguage Plugin自身や解釈契約を通常データとして記述できても、**その記述を最初に解釈する機構は、更新対象自身を信頼して選んではならない**。さらに「新旧表層が同じ業務MeaningへLoweringする」ことと「古いSourceを将来も同じ意味で再現できる」こと、「生成されたTEIが自身を再構築できる」ことは独立。ここでは[#4536](https://github.com/hat47x/tei-platform/issues/4536)の有限Bootstrap、[#1018](https://github.com/hat47x/tei-platform/issues/1018)のWorkspace→Language E2、[#4359](https://github.com/hat47x/tei-platform/issues/4359) S6、[#988](https://github.com/hat47x/tei-platform/issues/988)のexact Operator pin、[#2831](https://github.com/hat47x/tei-platform/issues/2831)のSelf-buildを一つの**段階的な検証順**に接続する。新たな自己解釈Kernel、専用Host、第二Parser Registry／第二Meaning正本の設置は決定しない。
+
+**現行コードから確認できる出発点**：mainの`internal/workspace/loader.go`は既知rootを個別に振り分け、Semanticでは`syntax.NewParser(...).ParseSemanticFile()`を直接呼ぶ。Semanticの`formatVersion`は1/2のみ受理し、Workspace版との不一致を拒む。未知rootは現状forward-compatibleな在庫として扱えるが、**在庫＝解析・Meaning受理ではない**。`internal/formatversion/formatversion.go`は既存のCentral経由Codec変換境界であり、Language Plugin版の選択規則そのものではない。`reference/dsl-language-plugin/self_description_workspace_boundary_test.go`は実Workspaceを読む局所試験を持つが、同ファイルのLanguage identityはtest-onlyラベルであり、製品で実Pinを選び実装が提供された証拠ではない。これらの差を埋めずに「自己記述DSLを正式採用」と表示しない。
+
+**循環させない最小の起動順**（概念上の処理段階であり、新製品APIではない）：
+
+| 順 | 読み取るもの・使用する契約 | ここで許してはいけない推論 |
+| --- | --- | --- |
+| **B0 固定Seed** | 既存の受理済みWorkspace/Manifest形式と、Seedが解釈可能な既存Lock/Source情報から**選択要求**を収集。既存Loaderの読める範囲を超えるLanguage記述はまだ実行しない | 未解釈の同Workspace DSL payloadを使って、先に自分のParser・Plugin版・権限を選ぶ |
+| **B1 選択の確定** | #1018/#951の既存Contract/Provider解決で、Language ID・Contract版・Implementation identity/fingerprint・Source root/suffix・必要Capabilityを固定。候補不在/競合/Pin不一致は停止 | 名前一致の別Provider、暗黙最新版、未登録default、任意の未知rootを勝手に採用 |
+| **B2 限定ParseとLowering** | 選択したParserで該当Sourceだけを読み、span/診断付きのtyped候補を既存Semantic/Source Indexへ渡す。参照循環はread-only表現とeager評価を区別 | Parse成功・Role宣言・Plugin自身の宣言＝Canonical Meaningの受理や実Effect |
+| **B3 Workspace採用** | 全必須SourceのParse/Lowering/参照・同ID重複・Operator契約と独立Expectedを確認した場合に限り、既存のProduct World/Acceptance責務へ進む。部分Candidateは診断用として保持可 | 一件の失敗を除外したWorld、未解釈Source、あいまいなLanguage versionを完全Worldとして公開 |
+| **B4 実Target／Self-build** | 受理対象とBuild Intent、選択Generator/Toolchain、実生成Artifact/Consumerを照合し、Stage1の実生成TEIがStage2構築を指示した事実を独立に測る | 同じSourceの再Parse、同じStage2 output byte、別HEADの局所PASSだけで全Studio Self-build/意味正当性を主張 |
+
+**版は一本の整数にまとめない**： (a) Workspace/Semanticの`formatVersion`、(b) Language Contract version、(c)実Parser Implementation pin、(d)Operator/Role契約とそのImplementation、(e)Format Codecの入力・出力版、(f)生成Target/Toolchainは別に記録する。#4367の**C1=formatVersion 3**と**C2=Language Contract版で選択**はOwnerの未決選択肢であり、C1・C2を同時有効にする仕様を推測しない。どちらでも現行v1/v2 SourceとそのWriterは既定で変えず、`*.tei.md`の未束縛Readerを勝手に起動しない。将来の移行は既存#1920 Codecへ依頼し、出典byte/spanとloss/diagnosticsを残す。変更が不可逆・意味不明ならPreview/unsupportedとする。
+
+**自己更新と履歴再現**：新ParserのSourceとその選択宣言は**旧Seedから解釈可能な固定情報**に結び、候補Languageを検証した後でのみ次のWorkspaceへ採用する。Languageが自分自身の解釈資格を生成してその結果で同じ試行をPASSにする自己証明は不可。旧定義の歴史的再現は、旧Source・旧manifest/lock・解釈器実体と必要Operator版・独立Expectedの残存・利用資格を別々に確認する。現在の最新版だけで旧Sourceを読み直した結果を旧実行の再現と呼ばない。保存されていない旧実装を復元可能だと約束せず、再現不能なら`not-retained/unverifiable`で報告する。SourceのA→B→Aやファイル移動では、値/byteの一致とOccurrence/Revision・選択履歴の一致を分ける。
+
+**独立反例**（#4361/#2514/#1180のScenario/Expectedを再利用するための候補。第二のRunnerなし）：
+
+| ID | 一因子だけ変える試行 | 期待する判定 |
+| --- | --- | --- |
+| DSL-LB01 | Parser更新を記述するSourceが、その更新Parserでしか読めず固定Seedが解釈できない | 宣言自体をB0で実行しない。unsupported／待機。自己解釈で循環を突破しない |
+| DSL-LB02 | 同じLanguage ID/Contract版だが実Parser Implementation fingerprintだけ違う | B1のexact pin不一致で拒否。旧Parserを別実装へ黙って置換しない |
+| DSL-LB03 | 旧formatVersion 1/2を新ruleへ自動再解釈しようとする | 旧構文の既存意味は不変。新構文は未選択なら拒否し、移行は明示Preview |
+| DSL-LB04 | 同じRule IDの旧validationと新ruleを複数Sourceに併存 | 個別Parse成功でもWorkspace全域重複を拒否。Sourceのロード順で採用しない |
+| DSL-LB05 | Source rootをLanguage-boundと明示したがProvider未導入。対照は宣言なし未知root | 明示したrootは失敗／未解析。宣言なし未知rootの在庫は解析済みと扱わない |
+| DSL-LB06 | Role/Operator定義を候補として読めるが、Required Shape・Implementation pinまたは独立Expectedが欠ける | Read-only inspect可でもMeaning/Effect/Target採用は不成立。#4536に未結合の辺を記録 |
+| DSL-LB07 | 同じ旧Sourceを新Parserだけで再実行。旧Parser binary/Lockは残っていない | 現行解釈の局所試験は可能でも歴史的再現を証明しない。旧版証拠の残存状態を別表示 |
+| DSL-LB08 | Stage1/2の出力が見かけ上同じだが、Stage2生成の実起動はStage0 Seedに委ねた | #2831/#4583の実Process/Build Intent/Artifact連鎖を満たさず、全体Self-build未成立 |
+
+**最短実装順・停止線**：まず#4361/#4405と積上げ#4607/#4608で、既存SemanticへのLoweringとSource位置・Read demandを**同一HEAD**で検収（B2の前段）。続いて#1018 E2／#4367 S6がB0/B1（選択宣言の起点・版/pin・拒否）を実Product入口で証明した後、#4536/#2620が一RoleのB2/B3を照合。#2831/#4583は非Plugin Studioの既存Build Intentを主線としてB4を実証する。**汎用自己ホスト文法、全Language/Roleの自己解釈、DSL migration engine、歴史Parser archive、セルフビルド以外のRuntime HostはStudio P0の追加Hard Gateにしない**。未知はunknown/unsupportedとして停止し、業務Meaningや許可を推測しない。
+
+**状態**：本節は設計判断・実装Ownerへの受入引渡し。新E2 Product dispatch、FormatVersion 3採用、自己Parser実起動、別版の歴史再現、Stage1→Stage2の全Studio Self-build、上記LB試験、Owner受理は**NOT RUN／NOT ADOPTED**。
+
+
 ### 9.6 用途別に定義するDesign Contextの完全性と、テスト提案・表示・実行の資格（2026-11-07、横断追補）
 
 **主張別の完全性は一列の成熟度ではない**：同じSource/World/Functionでも「設計情報を使ってテスト候補を考える」「Providerの取得結果を検証する」「Function内で表現する」「書込みを実行する」は必要な証拠集合が異なる。すべてに実DB/書込みGrantを要求するとテスト設計や文書閲覧が不必要に停止し、逆に「read-only CLIの結果が完全」を全用途の実行資格に流用すると誤った自動化になる。標準データ構造・標準表現型・Function Contextは共通Carrierとして使うが、**Required ObligationとConsumed Evidenceを利用目的／対象Scope／Consumerごとに判定**する（#2619/#2507/#2497）。
