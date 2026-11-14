@@ -142,6 +142,16 @@ func main() {
 		}
 		return
 	}
+	if command == "external-candidates" {
+		code, err := runExternalCandidatesCommand(os.Args[2:], os.Stdout)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		if code != 0 {
+			os.Exit(code)
+		}
+		return
+	}
 	if command == "commands" {
 		if len(os.Args) == 3 && (os.Args[2] == "-h" || os.Args[2] == "-help") {
 			io.WriteString(os.Stdout, "usage: tei commands\n\tdiscovery of the selected read-only commands; no arguments\n")

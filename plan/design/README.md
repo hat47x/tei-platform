@@ -29,6 +29,7 @@
 
 | 文書 | 対象 |
 | --- | --- |
+| [`SEMANTIC_STRUCTURE_MAPPING_AND_DECLARATIVE_SYNTAX_VIEW_2026-11.md`](SEMANTIC_STRUCTURE_MAPPING_AND_DECLARATIVE_SYNTAX_VIEW_2026-11.md) | 標準データ構造の意味特性・構造間変換、JSON Schemaの図解、DSL構文・View定義、Source編集の可逆性と段階的な検証計画（#2495/#2497/#988/#2620/#1124。横断設計・未採用） |
 | [`PROCESS_LIFECYCLE_TRIGGER_OPERATION_SEMANTICS_2026-11.md`](PROCESS_LIFECYCLE_TRIGGER_OPERATION_SEMANTICS_2026-11.md) | Trigger・Invocation・State／Effect・Outcome／Responseを共通の意味から図・DSL・Mock・Targetへつなぐ検討。既存Application API／Script LaunchのOwnerへ返す |
 | [`CROSS_DOMAIN_MATH_STATISTICS_PLANNING_TOOLKITS_2026-11.md`](CROSS_DOMAIN_MATH_STATISTICS_PLANNING_TOOLKITS_2026-11.md) | 数理・統計、ウィンドウ集計、工程計画、Solver・実験計画法、物理系・生命科学を、既存のDSL・標準表現型・Operator・Providerと照合し、Studioと一般アプリケーションで検証する計画（[#4660](https://github.com/hat47x/tei-platform/issues/4660)、評価待ち） |
 | [`SCRIPT_LAUNCH_ENTRY_TEST_QUALIFICATION_2026-11.md`](SCRIPT_LAUNCH_ENTRY_TEST_QUALIFICATION_2026-11.md) | Script/Functionの公開Entry→製品Go Binary実起動と、OKF/DSL近傍の直接テスト・Driver Scenario結合テストの責務分担（#4502/#4495/#1180、実装前設計） |
@@ -64,6 +65,7 @@
 | [`BUSINESS_LIFECYCLE_V1_DESIGN.md`](BUSINESS_LIFECYCLE_V1_DESIGN.md) | 業務の状態遷移を意味の正本として定義し、実行・観測する設計（ISSUE-000038 / ADR-0024 / ADR-0025） |
 | [`DESIGN_SYNTHESIS_CROSS_VIEW_PROOF_DESIGN.md`](DESIGN_SYNTHESIS_CROSS_VIEW_PROOF_DESIGN.md) | RQ-026の複数視点の照合を、対象を限定した証明上の条件として設計案の候補を絞り込む処理へ接続する、評価待ちの設計 |
 | [`ARTIFACT_SET_SCOPE_AND_CONSUMER_READ_EVIDENCE_2026-11.md`](ARTIFACT_SET_SCOPE_AND_CONSUMER_READ_EVIDENCE_2026-11.md) | #2482・#2604の導出Artifactについて、Application/Consumerの必要集合とManifest内部整合、公開一式の実読取を区別する検証計画（提案中・未採用） |
+| [`CROSS_LAYER_CONTRACT_PRESERVATION_AND_CLAIM_QUALIFICATION_2026-11.md`](CROSS_LAYER_CONTRACT_PRESERVATION_AND_CLAIM_QUALIFICATION_2026-11.md) | 意味・Contract・Trait・Mapping・Build・実Consumerを越えるClaimの非昇格、Scope相対の再資格化、複数領域への受入引渡し（横断設計候補・未採用） |
 | [`TOPOLOGY_COMPOSITE_VIEWS_AND_PIPELINE_2026-10.md`](TOPOLOGY_COMPOSITE_VIEWS_AND_PIPELINE_2026-10.md) | トポロジーの基本構造・複合図表と関連表・Complect解消・開発パイプラインの完全性を、既存契約へ照合する未採用の設計・段階的実証計画 |
 | [`PROJECT_PLUGIN_COMPOSITION_DESIGN.md`](PROJECT_PLUGIN_COMPOSITION_DESIGN.md) | 案件ごとのプラグイン、画面部品一式、仕様テンプレート、構成プロファイルの境界（[GitHub #1016](https://github.com/hat47x/tei-platform/issues/1016)、評価待ち） |
 | [`MULTILINGUAL_SEMANTIC_RESOURCE_DESIGN_2026-10.md`](MULTILINGUAL_SEMANTIC_RESOURCE_DESIGN_2026-10.md) | 意味モデルと表示資源を分離する多言語対応、言語資源の所有、代替、配布、翻訳の確認（[GitHub #1396](https://github.com/hat47x/tei-platform/issues/1396)、評価待ち） |
@@ -182,11 +184,13 @@
 | [`TEI_MD_DOMAIN_DIAGRAM_TO_BUILD_LOWERING_2026-11.md`](TEI_MD_DOMAIN_DIAGRAM_TO_BUILD_LOWERING_2026-11.md) | *.tei.md ドメイン知識の図表表現からコード生成・ビルドへ到る縦断設計（設計候補、2026-11-11） |
 | [`TEI_MD_DOMAIN_DIAGRAM_TO_BUILD_IMPLEMENTATION_GUIDE_2026-11.md`](TEI_MD_DOMAIN_DIAGRAM_TO_BUILD_IMPLEMENTATION_GUIDE_2026-11.md) | *.tei.md ドメイン図表→Build 実装導線（P0-A成立後、P1-B〜P3-Dの受入・依存Owner・再利用Fixture） |
 | [`TEI_SHO_OKF_DOMAIN_LINT_DOCUMENT_UNIT_2026-11.md`](TEI_SHO_OKF_DOMAIN_LINT_DOCUMENT_UNIT_2026-11.md) | TEI/SHOのOKF知識バンドルとドメインLint：段階導入の検証計画 |
+| [`TEI_OKF_K2_PROVIDER_TWO_CONSUMER_ADMISSION_2026-11.md`](TEI_OKF_K2_PROVIDER_TWO_CONSUMER_ADMISSION_2026-11.md) | OKF K2実Provider二Consumerの選択・実呼出し・独立検証と横断証拠境界 |
 | [`TEI_SHO_DOCUMENT_DRAFT_INTEGRATION_2026-11.md`](TEI_SHO_DOCUMENT_DRAFT_INTEGRATION_2026-11.md) | TEI受理済みモデルの一要素と一関係を、SourceとRevisionを保持した説明文書DraftとしてSHOへ渡し、編集・保存・再開・モデル改版時の再確認までを行う最小統合機構（[SHO #19](https://github.com/hat47x/sho-composer/issues/19)・[SHO #4](https://github.com/hat47x/sho-composer/issues/4)・[SHO #6](https://github.com/hat47x/sho-composer/issues/6)、[#3394](https://github.com/hat47x/tei-platform/issues/3394)のSHO文書段、実装済みの最小基線） |
 | [`TEI_SHO_DOCUMENT_DRAFT_NEXT_STAGES_2026-11.md`](TEI_SHO_DOCUMENT_DRAFT_NEXT_STAGES_2026-11.md) | 上の契約を段階2〜5（CRUD表・三要素分析図・仕様書・固定納品版）へ伸ばす実行計画と、相互CI・Studio実組込み・逆方向禁止・`*.tei.md`取込みの横断課題、Owner判断事項の一覧（実装前設計） |
 | [`TEI_STUDIO_SHO_EMBEDDING_FORM_2026-11.md`](TEI_STUDIO_SHO_EMBEDDING_FORM_2026-11.md) | TEI Studio から SHO 文書編集部品を利用する形態の実測と決定（子プロセス起動を維持）・失敗分類6種・未測定（配布・Linux/macOS）（代行決定済み） |
 | [`DOCUMENT_DRAFT_CITATION_AND_OCCURRENCE_ID_2026-11.md`](DOCUMENT_DRAFT_CITATION_AND_OCCURRENCE_ID_2026-11.md) | Draft 引用の解決（`recorded-not-resolved` のまま）と Occurrence ID の永続性（snapshot-local のまま）の代行決定と根拠・撤回条件 |
 | [`TEI_MD_READ_SIDE_DESIGN_2026-11.md`](TEI_MD_READ_SIDE_DESIGN_2026-11.md) | SHO 保存物（`*.tei.md`）の TEI 側読み取り設計。読み取り側が答えるべき4つ（R-01〜04）・Parser完了後も変えない境界・Parser 入出力契約。実装は Parser（#3346）完了後（設計のみ） |
+| [`AI_GENERATOR_AUTHORING_STANDARD_2026-11.md`](AI_GENERATOR_AUTHORING_STANDARD_2026-11.md) | 生成AIがコードジェネレータを作るときの標準方式の設計案（未採用）。Transform Source・外部Generator・Generator Definitionの3方式の比較、共通の最小契約、停止条件、決定性と生成AI過程の分離、メタ生成の境界、検証手順。最小実証は[`tools/reference-generator-selection/`](../../tools/reference-generator-selection/README.md)の`validation`契約（[#4553](https://github.com/hat47x/tei-platform/issues/4553)） |
 
 ## 関連する参照事例と評価
 

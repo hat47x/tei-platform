@@ -764,3 +764,609 @@ Readに失敗した場合はValidationが`false`なのではなく**未観測**�
 **新たな6件の合成T18負例**: (a) Read成功＋Validation NGでも三視点read-only Occurrenceを保持、(b)warning>0でも`validation.ok=true`をそのまま表示、(c)Read失敗/未観測・Validation欠落から`false`を発明しない、(d)同じ表示IDでも別Workspace/Snapshot/Scopeは拒否、(e)件数・booleanの型不正や負数を拒否、(f)秘密Source metadataやGetterを評価せず拒否。現行の合成Reference計**37件（Public Slice14 / Trait17 / Catalog6）**をGitHubから取得した正確な3ソース・3テストでV8互換ハーネスにより**37/37 PASS**。これは**正規Node test runnerの完了結果ではなく、実Go Workspace・実Catalog JSON・現在Policyを受領したテストでもない**。更新後exact-headの専用Node CIとRepository Healthは別途確認する。
 
 特に**グローバルなValidationのError/Warning総数**は非公開Sourceに由来し得るため、公開可能かの判定は#2516が先に行う。未開示の生Countsを「TEAが実際に秘密を除去する」目的で流し込まない。合成RuntimeはAssessment・個別Subjectの健全性・Editable・Owner Meaningを創作しない。今後T21〜T23へ接続するには、**実Catalog Producerの読取版・Workspace・Scope・現在Disclosure→同一Workbench Consumer**の別資格を必要とする。
+
+## 23. Lifecycle Graph・AI Harness・三視点Modelerの統合資格（2026-11-12）
+
+**状態**：RQ-036/#3503/#1124/#3278/#1180/#2514への設計引渡し。Graph Compiler、Diagram Writer、AI Chat/VUI/Harness実Target、実DB/Effect、Owner受理はNOT RUN。Draft #3507の旧Branchは現時点で参照できないため、本節を独立した既存設計への追補とする。第二Graph正本/Resolver/Workflow Host/Scenario Runnerは作らない。
+
+### 23.1 Authoritative / Proposed / Effective / Observedを分離
+
+| 対象 | 意味・資格 | 確認点 |
+| --- | --- | --- |
+| Authoritative Source / Accepted Meaning | 業務意味・型・Relation・Operation・Owner受理 | Source/Revision/Scope/Meaning |
+| Proposed Graph Patch / AI Candidate | 人/AI/Harnessが提案したNode/Edge/Guard/Binding変更 | stable ID、対象選択、競合、出典。未受理なら実行不可 |
+| Effective Graph / Selected Provider | 受理済みSourceと選択Pluginを合成した構造 | Lock、型、全Path Obligation、未選択Plugin非干渉 |
+| Generated Target / Actual Invocation | Artifact、実Host/Consumer、Effect/Receipt | 選択B→実B呼出し、Target Coverage、Effect/Unknown |
+| Diagram / Session / Observed Trace | 編集・表示・文脈・実行観測の投影 | Read/Disclosure、現在Grant、同一Attempt/Scope |
+
+**固定Selection Context**：UIのハイライト/行番号ではなく、stable qualified Subject ID＋Source span＋Workspace/World/Snapshot/Revision＋Scopeを保持する。選択解除、Canvas切替、Harness切替で対象を暗黙変更しない。旧Revisionの変更は競合として提示し、AIが意味対応を推測して自動再結合しない。
+
+### 23.2 各製品への投影
+
+- **TEI Modeler**：Data/Function/Business、Event/State、Lifecycle/Plugin、CRUD/Relation Cross-referenceを標準Graph/Roleから投影。Edge ID、多重性、向き、NULL/Absent、Source位置を欠くProjectionはread-onlyとする。
+- **SHO Composer**：文章・表・図への引用と挿入でSource/Accepted Meaningの資格を保持。引用先が同名異内容へ変化した場合は保存・再開時に再解決。SHO編集をTEI業務正本へ自動昇格しない。
+- **SUI/CSW**：Card/Island/KJ法的な探索Clusterは候補構造であり、業務Relation/OperationのAuthorityではない。Owner受理前はProposed Graphに留める。
+- **共有AI Harness**：セッション・文脈・Selection Contextは製品間で受け渡せるが、現在Grant/Disclosure/Effect/Source資格はOperationごとに再検証。DSH/Codex/Claude Code等は等価なAdapter候補として扱い、標準Graphを特定実装へ従属させない。
+- **AI Chat/VUI**：Stream delta、partial tool arguments、ASR候補は未確定Event。Tool Intent確定→Host権限→Application Operation→Effect/Observationを区別し、Regenerate/Branch/Interrupt/Resumeで旧Effectを暗黙再実行しない。
+
+### 23.3 独立Expected候補（既存Scenario SSOTへ返す）
+
+| ID | 敵対的入力 | Expected |
+| --- | --- | --- |
+| LGX-17 | UI選択固定後に別Canvasへ移動してHarnessへ送信 | 元Subject/Source/Revisionを保持し、対象の暗黙変更なし |
+| LGX-18 | AIがEdge変更を提案するがOwner未受理 | Proposed表示可、Effective/Artifact/Effectは不変 |
+| LGX-19 | 同名の多重Edgeを図表編集 | Edge IDごとに識別。曖昧ならread-only/拒否 |
+| LGX-20 | Source A→B→A、Sessionは継続 | 旧Meaning/Grant/Artifact/Evidenceを自動復活させない |
+| LGX-21 | Chat partial Tool入力・音声候補でUI更新 | 表示更新可、Application Operation実Callは0 |
+| LGX-22 | CLI→Studio→HarnessでFunction/Source/Attempt照合 | Selected/Loaded/Invoked/Received/Effectを別証拠とし欠落はUNKNOWN |
+| LGX-23 | SHO引用後に同名異内容のSourceへ差替え | 旧Source同一性を主張せず再解決/差分を要求 |
+| LGX-24 | B2C Headlessが標準Rendererを使わない | Operation契約維持、TEI必須Browser Runtime/DOM/hopなし |
+
+上記はテスト実行結果ではない。#1180/#2514がExpected/Scenarioを所有し、既存LG/TLG/MAPとの重複を統合する。Selection Contextは#1124/#3262、Plugin/Graph合成は#3503/#3278、実Provider/Function Readは#1251/#2586へ引渡す。
+
+### 23.4 実装順序と停止条件
+
+1. **P0**：通常CLI/Studioの選択Provider実呼出し、Function→Query→実SQL/Rowset→Data Contextを同一Attemptで観測。合成Go試験と製品実行を区別。
+2. **P1 read-only**：実WorkspaceのM0 Model Map/Source Indexでstable ID・多重Edge・対象固定・Scope/Disclosureを確認。
+3. **P1 Graph Patch**：既存OperationへのValidation追加と条件分岐。Guard/Effect/Authority迂回を拒否し、Source帰還→Target生成を検証。
+4. **P2**：Chat/VUI/Harness/SHO/B2Cを異質Adapter/Projectionとして検証。Session継続とAuthority継続を分離。
+
+**停止**：第二正本/権限Engine/Hostを導入、候補を受理済みMeaningへ自動昇格、同名をIdentity扱い、実Provider未呼出しでE2E PASS、Session継続をGrant継続扱い。いずれも方式再検討の対象。
+
+## 24. 敵対的レビュー：Graphの可変性を「受理・生成・実行」へ誤昇格させない（2026-11-12）
+
+§23を実装可能にするための**追加設計候補**。新たなGate/Graph Compiler/Workflow Host/永続台帳は導入しない。既存#3503/#3278/#1124/#1180/#2514/#1251の責務を保持する。
+
+### 24.1 5種類の差分と失効範囲
+
+| 変更 | 必ず再検査する対象 | 原則として失効させない対象 |
+| --- | --- | --- |
+| Diagram Layoutだけ | 表示・操作可能領域、選択位置 | Accepted Meaning、Semantic Graph、生成Artifact |
+| Graph Node/Edge/Guard/Role | Source差分、**意味が変わる範囲の既存レビュー**、全Path Obligation、Target Plan/Scenario | 無関係な別Scopeの意味・生成物 |
+| Plugin選択・実装・Lock | Provider/Hook適合、合成Graph、生成物、実Invoker証拠 | 無関係な未選択PluginのConsumer |
+| Harness Session/AI提案 | 対象ID/Scope/Sourceの現在性、開示、提案の採否 | 未受理提案だけではBusiness State/Effect |
+| 実行中のGraph/Entity/Grant改版 | Attempt/Operation identity、再承認、Resume/Migration、Effect unknown | 旧Effectの事実そのもの。新実行への自動再利用は不可 |
+
+**失効は証拠の用途別**：Source Observation、Structural Candidate、Accepted Meaning、Build Artifact、Execution Receiptを一括破棄・一括再利用しない。A→B→Aでbyteが一致しても、途中の権限・Generator・Plugin・Owner受理の変更をなかったことにしない。Scopeの異なるConsumerへ「同じIDだから同じ資格」を流用しない。
+
+### 24.2 Graph Patchの実装に必要な二段階の受理
+
+- **構造受理**：Node/Edge stable ID、source revision、type/NULL/Absent、Patch precondition、Provider/Target capability、合成競合、到達可能性、全Path Obligationを検査する。静的UNKNOWNはPASSでなく、対象TargetにRuntime Guardの実証が必要。
+- **意味受理**：承認条件、業務Rule、Function/Relationの役割、操作対象、開示範囲を、**既存の通常開発と同等のレビュー・変更管理**で担当者が必要な範囲を確認する。新しいTEI専用の多段階承認エンジンや、全項目の個別署名を要件にしない。構造受理だけで業務意味が正しいとはみなさず、生成AIの推測は出典のある事実へ自動昇格させない（#267/#2621/#4143）。
+- **実行資格**：さらに実Host Grant、Source/Provider/Artifact Revision、対象Entity版、Effect identity/receiptを照合する。Owner受理済みでも古いGrantや未接続Providerでは実行不可。
+
+Graph編集を「編集可能」と表示する条件は、Projectionがlosslessであること、対象Source/Scopeが特定できること、現在の編集Grantがあること、変更をSourceへ反映できることを**別々に満たす**必要がある。Graphが見えるだけではEditableではない。
+
+### 24.3 高度なAI Harnessの安定した対象指定
+
+対象選択をUIの一時ハイライトから独立した**Selection Context（読み取り専用の対象指定値）**として扱う。GUIで選択したNode/Edge/Range/Graph/Document/Relationと、CUIで指定したqualified refは同じ対象表現へ正規化する。
+
+- Selection Contextは複数対象、集合、除外、Source範囲、Snapshot、Revision、Consumer Scopeを表現できる。UIは選択を固定/解除する明示操作を提供する。
+- AIへの送信時は「対象」「依頼」「参照文脈」「変更可能範囲」「禁止事項」「期待する証拠」を別々に渡す。大きな選択集合は対象数/未解決数/非開示数を表示し、暗黙の切り捨てをしない。
+- AI応答は**Proposed Patch/Document Edit/Action Plan**に分類する。どれも自動的なOwner意味受理やHost Grantではない。採用操作はSourceの現在性と差分を再照合する。
+- 複数製品間でSessionを共有しても、ConsumerごとにRead/Disclosure/Write/Effect権限を評価する。DSH・Codex・Claude Code等のハーネスはAdapterを通じて同じ選択契約へ接続する。
+- 選択固定後に対象が削除/移動/改版された場合は、候補の再解決を提示しても自動的に別対象へ編集しない。曖昧・欠落・非開示は区別する。
+
+### 24.4 実行状態の直交性
+
+**Graph Definition**（どの経路があり得るか）、**Interaction State**（何が確定したか）、**Business State**（何が成立したか）、**Execution/Effect State**（何を実際に呼び出したか）を分離する。
+
+ChatのStream delta、Voiceのpartial ASR、HarnessのTool提案、B2CのExperiment exposure、SHOの文章変更は、それだけではBusiness Operation/Effectの確定を意味しない。Resume/Regenerate/Branch/Timeout/Cancelでは、旧Operation/Effectの結果がunknownの場合に「未実行」と捏造しない。実行中のDefinition改版は旧版継続・明示Migration・拒否のいずれかを対象Scopeで決める。
+
+### 24.5 検証の優先順位と判定方法
+
+1. **最小の実証対象**：既存Operation一件、Provider B、CLI/Studio二Consumer、Node/Edge IDが重複表示名に依存しないread-only Model Map。#1251の実Call証拠が先。
+2. **同じIndependent Expected**で、元のOperation、Graph投影、Validation Patch、条件分岐Patchを比較。構造が同じでもProvider違い・Effect欠落なら不合格。
+3. **図面とCUIの二経路**で同じEdge変更を提案し、Source/Revision/Owner受理/Target生成への帰還を比較。Layout-onlyはSemantic digest不変。
+4. **AI Chat/VUI/B2C/SHO**は各々の固有Event/Representation/Source契約を別検証し、CLIのPASSから全媒体へ外挿しない。
+
+**追加の反例観点（既存LGX-17〜24に付帯）**：大量Selectionの一部が未取得、Graph同名多重Edgeの誤編集、Graph Patch順序非可換、Owner未受理の条件変更、実行中Grant失効、同名異内容Source、Plugin版A→B→A、選択Bと実Invoker A、Chat partial ToolがEffectを起こす、B2C非関与Routeへの必須JS混入。これらを#1180/#2514の独立Expectedへ還元し、第二テストSSOTを作らない。
+
+**採否停止線**：第二正本/第二Auth/第二Resolverが必要になる、AI候補をOwner受理と同一化する、静的UNKNOWNをPASSにする、未実行Targetを適合済みと表示する、Sourceへ帰還できないProjectionを編集可能と称する。この場合は設計を増築せず既存契約へ戻す。
+
+## 25. 実装引渡し：Selection Context・Patch・Execution Evidenceの最小縦断契約（2026-11-12）
+
+§23〜24の設計を実装可能な単位へ分解する。**新しい公開APIや正式Schemaの採用ではなく、既存ContractへのFit/Gapを調べるためのReference**である。#1124（Modeler）、#3262（Source Context）、#3503（Lifecycle）、#1251（Provider実Consumer）、#1180/#2514（Scenario/Expected）をOwnerとし、二重の正本・Resolver・Hostを作らない。
+
+### 25.1 Selection Contextは「表示選択」ではなく変更対象の契約
+
+最低限の情報を以下に分離する。
+
+| 区分 | 必須情報 | 禁止する解釈 |
+| --- | --- | --- |
+| Identity | qualified Subject ID、Kind、**Sourceで裏付けられるRelation occurrence ID**、複数対象の集合演算 | 表示名・行番号・座標・描画専用Edge IDを業務Relation IDにする |
+| Provenance | Workspace、World/Snapshot、Source URI/Span、Revision、fingerprint | 同名Source・同bytesの再出現を無条件に同一資格とする |
+| Scope | Consumer、選択時の可視範囲、未取得/非開示/曖昧の件数 | 見えた対象だけを完全集合と主張する |
+| Intent | read / explain / propose / edit / invoke の要求種別 | 選択操作だけでWrite/Effect Grantが成立したとする |
+| Lifetime | 固定時点、期待Revision、再解決方針、失効理由 | セッション存続で対象が常に現行とみなす |
+
+**権限はSelection Contextへ永続Grantとして埋め込まない**。選択時のScopeは診断用であり、実際のRead/Write/Effect時にHostが現在権限を判定する。固定選択の解除は明示操作とし、旧対象が消失した場合は自動で近傍の別対象へ付け替えない。
+
+**Focus／一時Selection／Pinned Target Set／Activity Context／Harness Sessionは同義ではない**（#4479/#4515）。最初の製品縦切りはWorkbench内のread-only Subject Pinに限り、元のSubject kind/ID/Workspace、現在のInspect結果、現在資格の不明点を保持する。現在のGraph描画が作る`parent:`形式のEdge IDは意味Relationの識別子ではないため、Sourceに裏付けられる正式なRelation occurrence IDが得られるまでRelation Pinをunsupportedとする。Pinned Targetを保持できたことだけで、Source/DB Scope/Disclosure/Grantの現在性や外部Harnessへの安全な送信まで証明したことにはしない。
+
+### 25.2 Proposed Patchから実行までの状態遷移
+
+~~~text
+Selected Context
+  -> Proposed Change (AI / Human)
+  -> Structural Validation
+  -> Owner Meaning Acceptance [業務意味を変える場合]
+  -> Source Commit / Revision
+  -> Effective Graph + Plugin Lock
+  -> Target Artifact + Build Evidence
+  -> Host Authorization + Actual Invocation
+  -> Outcome / Effect Receipt / UNKNOWN
+~~~
+
+- **構造のみの変更**：layout-onlyはSource業務意味・生成Artifactを変更しない。単なる表示設定も対象・Scopeの可視性検査は必要。
+- **意味を変える変更**：Edge/Guard/Operation/Relationの変更は通常開発の変更管理で判断した対象と範囲を示し、未確認のAI候補ならSource候補として保留する。編集者が手作業で確定した変更まで無条件に専用の再承認フローへ流さない。
+- **実行中の変更**：旧Attemptを黙って新Graphへ移さない。継続、明示Migration、拒否を区別し、既存Effect receiptとunknown commitを保持する。
+- **外部参照**：Source move/content change/permission-denied/unavailable/partial/not-foundは別状態。A→B→Aでも旧資格を自動復活させない。
+
+### 25.3 実Consumerを通した三つのReference Slice
+
+| Slice | 入力 | 実証する出口 | 主Owner |
+| --- | --- | --- | --- |
+| S0: Inspect | 実Workspace、選択Provider B、CLI/Studioの同一Subject | 選択B=実Invoker B、実Consumer受領、Source/Attempt一致 | #1251 / #1824 |
+| S1: Modeler Selection | **第一段は実WorkbenchのSubject Pin**（kind/ID/Workspace）。第二段でSource裏付けのあるRelation occurrence・同名多重Edge・AI提案を扱う | 第一段はFocus/IME/Canvas移動でもPin維持・旧応答拒否。第二段では描画Edge IDを拒否し、同名多重Relationを混同しない。いずれもOwner未受理ならEffect 0 | #1124 / #1824 / #4515 / #3262 |
+| S2: Graph Patch | 既存OperationへValidation追加と条件分岐、同一Independent Expected | 合成Graph、Source帰還、Target実Artifact、全Path Guard/Effect | #3503 / #3278 / #1121 |
+
+S0未実証の段階でS2の実Provider parityをPASSとしない。S1のread-only表示は編集・実行資格の証拠ではない。S2でTargetを実行しない場合はDesign/Buildまでの限定PASSに留める。
+
+### 25.4 Evidence Joinの最小照合キー
+
+**同じログが存在することと、同じ実行に由来することは別**。Evidenceを突き合わせる際は、少なくともWorkspace/World/Snapshot、Source revision、Operation/Attempt identity、Consumer/Target、selected Plugin/Provider Lock、Artifact revision、Host authority context、Effect identity/receiptを用途別に照合する。全部を一つの巨大IDに押し込まない。取得不能な項目はUNKNOWNとして示し、類似するタイムスタンプや表示名で結合しない。
+
+### 25.5 受入票と失敗時の報告
+
+各Sliceの報告には「Source実体」「選択Provider」「実Invoker」「Consumer受領」「Independent Expected」「Effect/Receipt」「Target coverage」「実行SHA/環境」「未検証事項」を記載する。局所合成テスト、CI成功、実Workspace実行、Owner意味受理は別欄とする。
+
+**採用判定**：S0で実Consumerが成立し、S1で安定Selection/Source資格が成立し、S2で少なくとも一Targetの実生成・実行と全Path Obligationが成立した場合に、Graph編集→実Targetの限定縦断を主張できる。Chat/VUI/SHO/B2C全Targetの適合はその後に個別検証する。
+
+**状態**：本節は設計と受入票の追加のみ。S0/S1/S2の実行、Target生成、Owner受理、CI検証は本変更ではNOT RUN。
+
+## 26. S0〜S2実装バックログと統合判定（2026-11-12）
+
+§25のReference Sliceを、**成果物・独立Expected・実行証拠・停止条件**で検収できる最小作業へ分解する。これは既存Issueへ割り当てる設計引渡しであり、新たな製品Gate、第二Scenario SSOT、独立Workflow Engineを作らない。
+
+| 順序/既存Owner | 作業と成果物 | 必須の反証・受入証拠 | 不合格・保留条件 |
+| --- | --- | --- | --- |
+| A / #1251 #1824 | 通常CLIとStudio Bridgeが選択済みInspector Provider Bを実呼出しする配線、同一Subject/Attemptの結果表示 | B選択→B実Invoker→CLI/Studio受領、BをAに差し替えた負例、Provider error/Grant失効 | 既存Direct実行や局所Go呼出しだけ、実Bridge未接続 |
+| B / #1124 #1824 #4515 #3262 | **B0 Subject Pin**を現行WorkbenchのInspectに接続。**B1 Relation Pin**はSource裏付けのあるoccurrence IDが利用可能になってから検証 | B0: Focus/IME/Esc/Canvas移動、別Workspace同Fingerprint、後着旧応答。B1: 同名多重Edge・CRUD Relationの曖昧拒否。各段でRevision/Disclosure未知を明示 | 描画専用Edge IDを意味ID化、Pin意図を現行Grantとみなす、B0成功だけでB1/外部HarnessをPASSにする |
+| C / #3503 #3278 #1121 | 最小Validation Patch→Effective Graph→Source帰還→一Target生成、次に条件分岐 | 全Path Authority/Effect、未受理Patch非反映、Patch順序競合、layout-only生成不変 | Guard迂回、Owner未受理、静的UNKNOWNをPASS |
+| D / #1180 #2514 #259 | A〜Cの同一Independent Expectedを既存Scenario/Conformanceに収容 | 実行SHA・Workspace・Source・Provider Lock・Artifact・Attempt・Receiptの突合、対象外Targetの明記 | 他PR/別SHAのCIや合成テストを製品実行証拠へ転用 |
+| E / #3503 #3509 #1124 | Chat/VUI/SHO/B2Cの異質Consumerへの限定接続 | partial tool/ASR=実Call 0、SHO同名異内容、B2C非関与Routeに必須JSなし | CLIでの合格を全Targetの合格とする |
+
+### 26.1 実装時の選択肢を閉じないための判断
+
+- Selection Contextのシリアライズ方式、UI保持場所、Harnessへの転送形式は**未採用**。まず同一対象を二Consumerで失わずに扱えることを優先する。公開ABIや新Core型の導入は必要性が立証された場合に限る。
+- Graph Patchの記述は既存標準データ表現を第一候補とし、Mermaid/Graphviz/Markdown/GUIはProjectionまたは糖衣として扱う。Layoutと業務意味の差分は別ハッシュ/失効規則で検証する。
+- 非同期実行・Wait/Resumeを扱う際は、Graph定義版、Attempt、Business Entity、Grant、Effect Receiptを分離する。新しいTEI常駐Hostを前提にしない。
+- Pluginの未選択実装の故障や、B2CでTEIが関与しないRouteは、無関係なConsumerを停止させない。ただし当該Scopeの必須安全義務を省略してよいという意味ではない。
+
+### 26.2 完了報告テンプレート（各作業共通）
+
+| 項目 | 記載内容 |
+| --- | --- |
+| Scope | Workspace/World/Source Revision、Consumer/Target、対象Operation/Subject |
+| Build | commit SHA、Artifact/Generator/Plugin Lock、実行環境 |
+| Evidence | Selected / Loaded / Invoked / Received / Effect のうち実際に観測した段階 |
+| Expected | 既存Scenario ID、独立Expected、正常/異常/NULL/Absent/部分集合 |
+| Result | PASS / FAIL / UNKNOWN / NOT RUN（未実証のTargetを明示） |
+| Authority | Owner意味受理、現在Host Grant、Disclosureをそれぞれ記載 |
+| Follow-up | 再現手順、失効要因、次のOwner、Blocker |
+
+### 26.3 実装の着手条件
+
+Aは既存Direct Baselineを破壊せず、実Provider B呼出しが可能な最小Consumerを選ぶ。Bは実Source Indexのstable identityを利用し、既存Model Map M0のread-only範囲を超えた編集資格を主張しない。CはA/Bの証拠を参照できる場合のみE2Eの限定受入候補とし、そうでなければCompiler/Projection単体検証と明示する。DはA〜Cと並行してExpectedを整備できるが、実行結果を先取りしない。EはA〜Dの結果を外挿せずConsumer固有の契約を再検証する。
+
+**この追補の状態**：バックログ/受入条件の設計のみ。コード変更、CI、実Consumer、Owner受理はNOT RUN。作業順序は依存関係であり、実装完了宣言ではない。
+
+## 27. テーブル定義とUI項目の連動：明示的な構造変更と安全な逆写像（2026-11-12）
+
+**利用者が明示した操作原則を具体化する。** 本節は、業務開発で選択した**三要素分析法**（データモデル・機能モデル・業務モデル）による表現に加え、TEIの汎用Source/Mapping/Projectionにも適用する変更連動を扱う。三要素分析法を汎用Coreの必須モデルとはしない。データモデル内の**テーブル／列の定義表示は、権威あるテーブル定義の写像**とし、図面を第二の定義正本にしない。業務キー・Relation・責任の意味は、物理PK/FKやテーブル定義の事実から自動受理しない（#1126/#4120）。ここでいう「テーブル定義」は選択したSource上のDesired/Declared構造であり、実DBで現在観測できたActual Schemaや未適用Migrationと混同しない。
+
+### 27.1 編集操作別の既定動作
+
+| 操作 | データモデル・Function/UIでの既定動作 | 別途必要な明示操作・確認 |
+| --- | --- | --- |
+| UI項目の追加 | UI要素だけを追加。対応する既存項目があればマッピング候補を提示してよい | **テーブル列は自動追加しない**。新列が必要なら対象テーブル・型・NULL/Default・制約を確認し、別の構造変更として明示 |
+| 既存のテーブル列をUIへ割当 | Source裏付けのある一意な項目だけMappingを設定。複数候補は未解決 | 対象の明示選択。編集/更新の場合はFunction/Operationと権限を別途検証 |
+| UI項目の削除 | UI定義／そのMappingのみ削除。データモデルの列は残す | テーブル列削除を意図するなら別の構造変更が必要 |
+| **権威あるテーブル定義から列を削除** | そのテーブルのデータモデル写像から列が消える。対応UI要素は残し、**有効な項目MappingはUI定義から除去し、未マッピング警告を表示**。旧対応は監査・影響調査用の履歴に限る | 関連Query/Function/CRUD/Constraint/Generatorへの影響を列挙し、MigrationのPlan/Applyは別実行 |
+| テーブル列のrename／split／merge | Source identity・旧新対応・依存の変化を検査。曖昧なら旧Mappingを自動付替えしない | 新しい対応付けの明示受理。単なる同名・近似型の一致から復活させない |
+| 実DBだけの外部Schema変更 | Actualとの差分・鮮度不足として観測。権威あるSource上の列定義やUI Mappingを**黙って消さない** | Source/Desiredへの採用、Migration/逆取込み等は別操作・別資格 |
+| Schema変更のPlan／Apply | 設計差分・DDL候補が出ても、実DBの変更完了を主張しない | Provider能力・対象環境・現行Grant・破壊性・データ損失・実行結果・再観測を照合（#3270） |
+
+**一操作で複数の変更を提案してもよいが、UI追加、テーブル定義変更、DB適用は別々の効果である。** ワンタッチの作成支援は許す一方、ユーザーが画面項目を配置しただけで列を新規作成したり既存DBを変更したりしない。明示確認済みの複合操作であっても、Source Commitが成功したこととDB Migrationが適用されたことは別のResultとして扱う。
+
+### 27.2 削除後の整合状態と操作可能範囲
+
+- **Source／Model**：列削除を権威あるSourceへ確定した時点で、対応するテーブル列のモデル写像は最新定義から除去する。ただし過去のSource Revisionや実DB Observationの履歴まで消去したことにはしない。
+- **Function／UI**：対応していたUI項目を消さない。有効なMappingを外し、未マッピングUI項目として残す。旧Mappingの根拠・出典は履歴や診断に残せるが、実行時のBindingには用いない。描画可能性と値取得・保存可能性を分ける。列がないのに旧値を表示することや保存先を推測することは禁止する。
+- **CRUD／クロスリファレンス**：列単位のCRUD参照、Function Input/Output、Query Lineage、依存Rule、テストFixtureを再評価する。Unresolved/partialを「依存なし」に読み替えず、影響を確認できない場合は変更適格を保留する。
+- **編集／実行**：未マッピングUI項目の表示・編集可能性は分離する。画面上で入力できても、対応先が未確定なら旧列・別列への書込Intentは生成・実行しない。既存コード、外部Host、手書きの処理には独立した影響確認を要する。
+- **選択の固定**：列を参照するPinned Targetは旧Intentの記録として残り得るが、失効後に似た列へ自動再束縛しない。現在のSource/Schema/Scope/Host Grantを再資格化する。
+
+### 27.3 同じ操作をGUIとCLIで説明・検証する
+
+製品上のコマンド名・JSON Schemaはこの段階で固定しない。既存のModeler/Studio/Data Source Workbench/Source編集契約を使い、次の**意味上の操作**を共通化する。
+
+1. 対象と現在版を明示して編集提案を作る（UI-only / Map-existing / Schema-desired-change / Schema-apply）。
+2. 影響範囲を取得する。Source Index、三要素図、CRUD/Query、UI Mapping、Migration Planから、解決済みと未知を別に返す。
+3. 明示した対象・変更範囲に対してSourceの現行性、構造妥当性、必要な意味受理を確認する。
+4. Sourceへ反映し、UI Mappingを再評価した結果と、実DBへ適用するためのPlanを**別々に表示**する。
+5. DB Applyを指示した場合だけ、外部Provider/Host権限の下で実行し、結果を独立に再観測する。
+
+CLIでは非対話操作も、承認済み変更の明示的な入力と対象版の指定を必要とする。確認UIがないことを自動作成・自動削除の理由にしない。通常コーディングを排除しないため、既存コードとの対応や未追跡依存は診断対象とし、モデル変更だけで既存処理まで更新済みとしない。
+
+### 27.4 独立Expectedへ渡す反例（設計候補・NOT RUN）
+
+| Case | 条件 | 必須結果 |
+| --- | --- | --- |
+| DMU-01 | UIへ未マッピング項目を一つ追加 | UI要素+1、テーブル列+0、実DB DDL 0 |
+| DMU-02 | UIから「新しい保存列」を明示要求し、Schema Source確定前に中断 | テーブル定義変更0、実DB Apply 0。候補のみ保持 |
+| DMU-03 | 共有列Cをテーブル定義から削除し、二つのFunction UIがCを使用 | 最新データモデル列C=0、UI要素2件は維持、有効Mapping 0・警告2件、旧列への書込0 |
+| DMU-04 | Source上の列削除後、DBへMigration未適用 | DesiredとActualの差を保持。物理列削除成功・実Commitを捏造しない |
+| DMU-05 | 外部DBで列削除、Source/Desiredは変更なし | Schema driftを警告。SourceのModel列・UI Mappingを無音で削除しない |
+| DMU-06 | 列renameに見えるdelete+add、同名／同型・Source A→B→A | 旧Mappingを自動復活させず、Identity/Revisionを再検査 |
+| DMU-07 | partial Catalog／非開示Relationに依存する列変更 | 影響「なし」やSafe Applyと断定しない。未知範囲を明示 |
+| DMU-08 | 描画Edge IDしかないUI／Pinned TargetからRelation列を更新 | 意味Relationへの書込0。Source裏付けのあるIDと編集資格を要求 |
+| DMU-09 | Schema Apply拒否／部分適用／結果不明 | Source Commit・Provider呼出し・DB Observation・Effect Receiptを別状態にし、成功と捏造しない |
+
+これらは**既存#1180/#2514のScenario・独立Expectedへの追加候補**であり、新しいテスト正本ではない。GUI・CLIの振る舞いを同じExpectedで比較する。ただし実DBの適用試験はProvider/権限の独立証拠が必要であり、合成テストのPASSから外挿しない。
+
+### 27.5 Ownerと実装順序
+
+- **#1126 / #1143**：テーブル定義と論理・物理Mapping、rename/delete影響、三モデル間の変更資格。
+- **#1124 / #1824 / #4515**：実Sourceに裏付いたModeler表示、read-only Subject Pin、未マッピングUIの警告。描画EdgeをSemantic Relation IDへ昇格させない。
+- **#3270 / #4120**：Desired/Actual差分、Schema Plan/Apply、外部変更・実DB観測とSource資格。
+- **#2500 / #2497 / #2586**：Function UIの表示と、実データ更新Intent、read-only Rowset受領、写像喪失・部分集合を分離。
+- **#1180 / #2514**：DMU-01〜09を既存Expectedへ結合。**実Provider Read・Plugin CLI/Studio P0をブロックしない**。
+
+着手順は、(a)現行Sourceからテーブル列とUI Mappingの**read-only**な依存表示、(b)削除時の未マッピング診断・提案差分、(c)GUI/CLIの同一Source編集資格、(d)明示的なDesired Schema変更、(e)実DB Applyの独立検証。正式API・Migration Engine・承認基盤・Graph正本の新設は、この設計だけを理由に行わない。
+
+**状態**：設計と検証候補の追補のみ。GUI/CLI編集、Migration、DB再観測、DMUの実行、Owner意味受理はすべてNOT RUN。
+
+### 27.6 テーブル変更からEntry/Trigger/実行までの影響資格（#4502/#4495への引渡し）
+
+第27節の「列・UIの変更」は**モデル編集の操作**である。実行に向けては、Function/Script Source、型付きOperation、公開Entry、Trigger Binding、実際にLinked/LoadedされたArtifact、実行Attemptまで、**同じ変更がどの依存を無効化するか**を別に確認する。Scriptの存在とEntry公開、Triggerの存在と実起動、Job受付と業務Effectを同一視しない（#4502/#4495）。ここでは起動器・Scheduler・Effect Engineを新設せず、既存契約に要求する**依存の追跡とAdmissionの停止条件**だけを整理する。
+
+| 変更・観測 | 変更後に照合する対象 | 断定・自動操作してはいけないこと |
+| --- | --- | --- |
+| UI項目の追加・削除 | UI Mapping・Form/Page・関連FunctionとEntryの入力要件への影響 | UI追加から列・Script・公開Entryを自動作成、UI削除だけで公開Entryを一律削除 |
+| Sourceのテーブル列削除／rename | Data Modelの現行列、全UI Mapping、Queryの参照列・`SELECT *`・`NATURAL JOIN`等の暗黙列集合、CRUD/Rule/Script入力、生成Artifact | 旧Function/Scriptの修復先を同名・同型で推測。非出力列を「依存なし」と判断 |
+| SourceのFunction/Operation契約変更 | Source/Contract Revision、必須引数（missing/NULL/unfetched）、公開Entry、Triggerの引数束縛、Linked/Loaded Artifact | Functionが存在するだけで起動可能、古いEntryやArtifactを現行扱い |
+| Actual DBだけの外部Schema変更 | Actual/Desiredの差分、取得範囲/時点、Provider/DB alias、Query/Field Mapping、次のInvocationの現在資格 | PartialなSchema観測から不存在を確定、Source/Desiredを無断変更 |
+| Triggerの改版・停止／Grant失効 | EntryとTarget、予定/配送Event、現在のAdmission、実Attempt/Effect | Trigger停止＝既存Effect取消、以前のGrant＝現在権限、設定済み定時刻＝実Run成功 |
+| Source/Provider/Artifactの差替え（A→B→Aを含む） | Selectionの起点、Revision、実Loaded bytes、選択Providerと実Invoker、Attempt/Effect | 元のFPに戻っただけで旧実行資格・旧選択・旧承認を復活 |
+
+**影響検出は依存の確実性を表示する。** Source上の直接参照だけでなく、Queryの列集合依存、式・Rule、手書きコード、外部Source/Providerに渡したMappingの未観測・曖昧さを区別する。依存を全件確認できない場合、影響「0件」ではなく`partial/unresolved`とし、影響するOperationの次回起動は必要な条件を再確認する。一方、関係のないOperation/Plugin/Consumerを無条件で停止させない。
+
+**保存から実実行までの段階**：①Source変更候補と影響一覧→②Source確定とモデル/UI再投影→③必要なFunction/Entry/Trigger契約の再評価→④Artifact生成・実ロード版照合→⑤Invocation時のTarget/Subject/Current Grant・Source/Artifact/Provider版の再照合→⑥実Attempt/Effect Receiptの独立観測。①〜④を終えても、⑤の現在資格や⑥の実行結果は成立しない。逆に既に確定したEffectは、後からSource/Entry/Triggerを削除しても取り消されたことにならない。Queued済み/実行中/ACK不明のAttemptは、#1174/#4502の既存Recovery・Cancel契約に委ねる。
+
+**検証の最小交差点**（新しいテストID・第二Scenario正本を作らない）：
+
+1. **DMU-03/04 × #4495 EL-03**：二画面で利用している列をSourceから削除。UI要素2件は保持、有効Mappingは0。依存Script/Entryが旧Contract/Artifactを使う起動要求は拒否。実DB列が旧まま残っていればDesired/Actual差を維持。
+2. **DMU-05/07 × #2586 HJ-01〜04**：外部DBの列変更またはpartial取得。Schema情報の不明点を保持し、Query/Contextの列・grain・完全性を確認できないClaimを確定しない。
+3. **DMU-06/08 × #4515 PIN-S0**：同名列再作成、Subject/Source A→B→A。固定UI/AI対象の旧Intentは残せても現在資格を復活させず、描画Edgeから業務更新先を推測しない。
+4. **#4502 N02/N06・#4495 EL-07 × DMU-03**：Trigger発火後にSource/Grant/Artifactが失効した場合は実起動時に拒否。Commit後のACK喪失ならEffectを`unknown`として保持し、再送で二重実行しない。Trigger停止・取消をRollback成功と呼ばない。
+
+**Ownerの範囲**：Data/Logical/Physical変更は#1126/#1143、Workbench/モデル編集は#1124/#4515、SQL/Query依存は#2387/#2586、UI逆写像は#2500/#2497、Entry/Trigger/Invocationは#4502/#4495、Actual DB/Migrationは#3270、Effect/Recoveryは#1174/#1129、独立Expectedは#1180/#2514。先行する**P0実Read/実Provider呼出しは継続**し、上記交差ケースの実Target実行は各担当の証拠が集まるまで`NOT RUN`とする。
+
+
+### 27.7 UIとData項目の対応状態：六つの診断区分（正式enum未採用）
+
+§27.1〜27.6の削除／再対応付け規則を実装へ渡すため、UIの一つの項目について次の**状態の違い**をGUIとCUIで説明できることを求める。これは既存Binding/Source/Observationから導出する**診断上の区分**であり、新Core enum、新Mapping Registry、新Writerの採用を意味しない（#1126/#1143/#2497/#2500）。状態名の製品表記は既存実装と照合してから決定する。
+
+| 状況 | 根拠と表示 | 有効な更新先・自動再対応付け |
+| --- | --- | --- |
+| 対応有効 | 現行Source版と参照先Identityが確認でき、必要Scopeが成立 | 現行Bindingの候補。ただし書込みはOperation/現在Grantを別確認 |
+| 意図的に未設定 | UI Draft/計算値/一時入力等、保存先を指定していない | UI定義の保存は可。保存先への更新Intentはなし |
+| 削除確定 | 権威あるSource上の項目削除・対応関係の失効を確認 | UI要素は保持、有効Bindingは解除。旧参照は診断・履歴のみ |
+| 旧版参照 | Source/Contract/Workspaceの基準版が古い | Pinの意図・旧Binding履歴は保持しても、利用前に再解決 |
+| 対応先が曖昧 | rename/split/同名再作成/多重Relationで複数候補 | 候補を提示し、明示確認まで自動付替え・実行しない |
+| 観測不十分 | partial/unfetched/unavailable/permission-denied/Source reader失敗 | 不存在や削除を断定しない。開示可能な範囲で不明点を表示 |
+
+**重要な区別**：UIのDraftは、業務Operationの公開や実行まで許すものではない。物理DBのActual Schemaを読めなかっただけでDesired/Accepted定義の列を削除しない。外部Actualから削除を完全に観測した場合も、Source上のDesired変更とは別に扱う。逆に権威あるSourceから列削除が確定した場合は、UIに旧値を書き込めるBindingを残さない。独立の計算項目/業務概念は、物理依存が失効しても無条件に意味自体を消さず、依存不整合を示す。
+
+**検収への接続**：既存DMU-01/03/04/05/06/07/08/10、#4500 ORG-MAP、#4515 PIN-S0、#4495 EL-03を同一Fixtureで対照する。特に「削除確定」と「観測不十分」を取り違える負例、「旧版参照」から同名列へ自動復活させる負例、「意図的に未設定」を一律ErrorにしてUI Draftすら保存できなくする過剰拒否を検査する。独立Expectedは#1180/#2514へ渡し、第二のテスト正本を作らない。
+
+
+### 27.8 CRUD矛盾とMapping失効は別の診断資格（#4472/#4534）
+
+第27.7節の六区分は**UI項目からデータ項目への対応**を説明するものであり、Data/Function/Businessを横断するCRUD宣言が業務上矛盾しないかを示すものではない。たとえば列への対応が現行Sourceで有効であっても、同じFunction×Dataに「更新あり」と「更新なし」の相反する明示CRUD宣言があれば、保存可否や変更影響の判断には追加のレビューが必要になる。逆にCRUD矛盾があっても、無関係な項目のread-only参照や局所検証まで無条件に停止させない。
+
+[main統合済み #4534](https://github.com/hat47x/tei-platform/pull/4534)は、`ContradictoryCRUDs()`の全件報告と、構造診断上の`OK`・CRUDの`conflicts-require-review`を別に扱う限定Product修正である。**2026-11-12 23:02 UTCにmainへマージ済み**（merge `5f35d5dc`）。構造OK・矛盾一覧・要レビュー表示という限定修正であり、Derived CRUD/Studio変更適用/Owner業務受理を証明しない。当初の「矛盾＝一律hard error」案は既存Issue #4472の判断保留と合致せず撤回されたため、ここでも新しい一律Error/Exit codeを定義しない。
+
+| 判断したいこと | 確認する証拠 | 主張できないこと |
+| --- | --- | --- |
+| モデルを構造として読めるか | Source/Kind/ID索引・構文/参照診断、構造OKの適用範囲 | CRUD業務整合・安全な更新・Owner意味受理 |
+| CRUD宣言に矛盾が見つかったか | 全宣言・同一Function×Dataの比較・衝突一覧・対象Scope | 最初の一件のみで衝突網羅、矛盾を後勝ちで消す |
+| CRUD表やクロスリファレンスを投影できるか | 明示CRUD-only行、操作由来行、Data索引、未解決/部分集合 | 表に見えた範囲がモデル全件、正しいData名を保証 |
+| 対象の変更を実行できるか | 有効Mapping、Operation/Entry、現在Target/Grant、Owner判断が必要な差分 | `validate.ok=true`や`crud.ok=true`だけで書込み許可 |
+
+**実装・検収の順序**：#4472が既存TE-CR-01〜06でData索引取り違え、明示CRUD-only行の脱落、矛盾の全件報告と表示資格を照合する。#4534のReview StatusをStudio/CLI/CUIに渡しても、それは既存Modeler/Operation上の**レビューが必要である旨の診断**であり、第二のApproval Engineではない。UI Mapping失効（DMU-03/05/07）と矛盾CRUD（TE-CR-03/04）が同時にある場合、両方を別に表示して、未確定の更新先への実書込みを実行しない。構造問題のない別Subjectの閲覧は継続できるよう、無関係範囲へ一律のFAILを伝播させない。
+
+**受入証拠の上限**：#4392/#4524のmain統合済み修正はValidationと重複ID索引を限定的に改善したが、CRUD矛盾の表示・明示行の保全・実Studio/Host更新を証明しない。#4534のmain統合は確認済みだが、#4513等のDraftや未実装の派生Consumerを採用済みとはしない。新しいScenario正本は作らず、TE-CR/DMUの既存Expectedを#1180/#2514で束縛する。**本節の実製品試験・Ownerの業務判断はNOT RUN**。
+
+## 28. 方法論プラグインと通常開発の受理：Coreに固定しない協業契約（2026-11-12）
+
+### 28.1 三要素分析法は重要な標準構成、しかし唯一の方法論ではない
+
+TEIは汎用的なプログラム・データ・文書・業務システムの構築基盤であり、**三要素分析法そのものをCoreの必須モデル構造や実行時依存にはしない**（#1124/#2620/#2621、組織モデルの別Draft #4500 §10.7）。Core側で必要なのは、既存の標準データ構造・型/Facet・Source/Revision/qualified reference・Projection/Mapping・Operation・Plugin選択・診断の共通能力である。Data/Function/Business、イベント付き業務フロー、ER/CRUD/職務/アクションツリーの原典に忠実な表現は、**業務向けMethod/Profile/Pluginの組合せ**で検証する。汎用GraphやFunction計算のRoleを揃えただけで原典を再現したとは主張しない。 **Method/Profile/PluginはTEIへの実装・配布上の区分であり、三要素分析法の正式名称・図法を置換するものではない**。原典の業務フロー、機能階層、職務・アクションツリー、データモデル、および対応一覧の正式名称・軸・セルの意味、閲覧から編集への往復を、実際のX-TEA資産との比較で受入範囲を確定する（#1124/#1031）。確認できない図法や操作はTEI独自拡張または未対応として示す。
+
+通常のコーディングはCore上の正規の開発経路として残す。業務開発でデータやFunctionの定義・整合確認を行うことは原則重要だが、**開発者に図面エディターの使用や全三モデルの作成を一律に強制する意味ではない**。ドメイン専門家が画面・業務手順・文章・例を入力し、開発者がKey/Relation/制約/データ移行などの高度なモデリングを支援し、生成AIは既存定義の調査と候補作成を担う。責務の境界は実案件の通常開発の分担に従う。
+
+| 利用形態 | 期待する利用条件 | 必須にしないもの |
+| --- | --- | --- |
+| 汎用コード中心 | Source/型/Plugin/既存Testに接続し、必要に応じ標準UIを使う | 三要素のモデル一式・TEI専用承認 |
+| 業務向け三要素分析法 | 原典の図法・相互参照・CRUD・Source往復をMethodとして追加 | 三要素専用の第二Core/Graph正本 |
+| 業務向け簡易データ連動 | UI追加と既存項目割当を支援し、構造変更の効果を明示 | UI追加からの列作成・DB DDL暗黙実行 |
+| 異質Domain/Target | 対象固有Pluginで必要なRole/Projection/Targetを構成 | Business Stateやテーブル必須化 |
+
+### 28.2 業務意味の確認は通常開発相当、AIによる事実誤認を局所で防ぐ
+
+§23〜27に記した「Owner意味受理」は、**通常の要求確認、設計レビュー、差分確認、Pull Requestレビュー等の作業に相当する**。Graph/Mapping変更一件ごとに独自の多段階ワークフローを新設することではない。業務上の意味を判断する必要がある部分と、単なる構文変更・配置変更・Refactorを区別し、既存の手続きと受入対象に基づいて確認する。
+
+AIが推測したMapping/Relation/Rule/Columnを「発見した事実」として自動反映しないため、必要な場合は、候補の対象・出典となるSource/DocumentとRevision・推論内容・適用範囲・反例・未解決事項を通常の変更差分や既存Authoring資料から辿れるようにする。**OKFはその記述・検査の一候補**（#4143/#2621）であり、すべての変更に新しいEvidence台帳/形式の必須記載を課さない。OKF Readerが形式を解釈できたことは、Meaning/Grant/Effectの受理を意味しない。Sourceに出典のないAI候補は、採否判断まで未解決として扱う（#267）。
+
+これは「実行時権限」の簡略化を意味しない。Source編集の通常レビューと、実DB Schema Apply／業務更新／実Effectにおける**現在のHost/DB権限・実行対象の確認**は別の責務である。
+
+### 28.3 実装に渡す追加反例（既存Expectedの補強）
+
+| Case | 入力・条件 | Expected |
+| --- | --- | --- |
+| DMU-10 | UIに計算式・外部API・一時入力項目を追加 | UI/Functionの表現は可能。永続テーブル列+0、暗黙DDL 0。更新可能性は別Operationと対応先で判定 |
+| DMU-11 | 業務Method Pluginを未選択にした一般コード/データ構造のSource | 汎用inspect/Source navigation/BuildがMethodの不在だけで停止しない。三要素図はunsupportedでもCore実行へ波及しない |
+| DMU-12 | AIが自然言語から新Relation/Columnを推定、原資料には裏付けがない | Candidate/出典不足の診断。既存Source列+0、Accepted Meaning変更0、実DB Apply 0 |
+| DMU-13 | 同じSourceから原典方式に近い業務モデル図と汎用Graph投影を生成 | 図法・CRUD・対象IDの情報欠落/追加を比較表に記載。表示類似だけで原典互換やMeaning同一と断定しない |
+| DMU-14 | 通常のコード修正のみ、またはUIレイアウトのみの変更 | 必要な型・依存・テストは検証するが、無関係な三要素/OKF/業務Ownerの追加承認を要求しない |
+| DMU-15 | Code/Sourceの変更提案がある一方、OKFなど参考資料は stale/partial/unavailable | 参考資料の欠落状態と、対象Sourceの現在性を別表示。旧文書のAI要約でMappingを無断再確定しない |
+
+DMU-01〜09、他DraftのORG-MAP-01〜10（#4500）と期待値・入力を照合し、重複するテストは**#1180/#2514の既存Scenarioへ統合**する。方法論の不在で一般コードが動かない負例は#2620/#951、AI候補の採否は#267、OKF形式Readerは#4143、三要素の原典再現は#1124/#1031がそれぞれOwnerを保持する。
+
+**計画への位置付け**：P0の実Provider・実Read（#1251/#2586）を変更しない。並行P1では最小のSource→Data/UI Mapping→未マッピング警告をGUI/CUIで確認し、方法論Pluginの有無と既存コード経路を対照にする。原典への忠実度評価・OKFを用いた資料管理は独立に段階導入する。今回の追補はdocs-onlyであり、DMU-10〜15の実試験・Owner確認・実DB Apply・実Targetは**NOT RUN**。
+
+
+## 29. 問いに応じた高速参照移動と「未使用」判定の資格（2026-11-12、横断設計）
+
+§23〜28を、X-TEAの項目レベル参照・被参照ジャンプ、TEI Studioの最小マウス操作、AIへの固定対象引渡しへ接続する。**既存Source/Model Indexを利用し、三要素分析法のMethod Plugin、図面Renderer、AI Harness Adapterが独立した意味正本・参照Resolver・常駐Hostを持たない。** 一般コード開発やMethod未選択Workspaceも基本的な参照操作を利用できるようにする。
+
+### 29.1 「参照0件」と「未使用」は異なる命題
+
+| 表示する判断 | 必要な資格 | 誤判定を避ける条件 |
+| --- | --- | --- |
+| 範囲内で参照N件を観測 | Workspace/Source Indexの版、typed relation、対象Scope/Reader Attempt | 観測件数、範囲、未索引・解決不能件数を区別 |
+| 限定Scopeで参照なし | **探索対象の閉包**、欠落Source・未導出・Current Disclosureを評価 | 不完全なら「観測0件・未確認あり」。単なる0件を未使用としない |
+| 変更しても影響しない | Query暗黙列集合、Script/Trigger/Entry、Artifact、Provider、外部Consumerを問いに応じて照合 | 未探索・非開示・依存未知はpartial/unknown |
+| 安全に削除・改名できる | 変更影響、現行Source/Target、逆写像、現在Write Grant、必要な意味確認 | read-onlyの不存在判断をEdit/Apply資格へ昇格しない |
+| 実業務で使われていない | 上記に加え必要なRuntime/DB/実Provider/外部Effectを期間限定で観測 | 静的索引のみでは判定しない |
+
+一件の陽性Witnessで限定的な参照の存在を示せるが、不存在・全件・安全削除には問いごとのRequired Source/Relation/Consumer Closureが必要。非公開参照を表示して漏洩させず、Policyが許す範囲で**判定不能であること**を示す（#2516）。表示上の「0件」が非公開世界の不存在を推測させないようにする。
+
+### 29.2 Locate・References・Pin・実操作の縦断
+
+1. **Locate → References**：qualified Subjectを既存Source Indexで再解決し、inbound/outboundのtyped relationを辿る。Source位置はjump先であってidentityではない。図面描画用Edge IDを正式Relation IDに読み替えない。
+2. **Pin → Explain/Propose**：参照元・先の複数選択を固定し、Revision・Scope・部分集合・未開示・除外条件を保持してAIへ引き渡す。固定対象はGrantではない。PinのOwnerは#4479であり、§25に第二Storeを作らない。
+3. **Preview → Source/Edit/Apply**：同じSubject/Source/Revisionの変更候補と影響範囲を確認。Sourceへ安全に帰還できない図表はread-only。編集採用とDB Apply/Host Effectは別。
+4. **Verify → Observation**：MapとLocateが同一Fingerprintでも、別Load間の一致は原子的Readを証明しない。実Consumer受領、Host Invocation、Effectは各々独立に観測する。
+
+**関連PRと資格（2026-11-13のPRメタデータ再確認）**：[#4524](https://github.com/hat47x/tei-platform/pull/4524)は同Kind同IDの誤索引を防ぐ限定修正として**2026-11-12 14:46:53 UTCにmainへmerge**、[#4392](https://github.com/hat47x/tei-platform/pull/4392)はMap埋込Validationの限定修正として**同日14:45:58 UTCにmerge**された。これは両修正の統合を示すが、**Studioの実Consumer、完全な三要素図・CRUD、Current Disclosure、実編集資格、別PRのCI成功は含まない**。[#4521](https://github.com/hat47x/tei-platform/pull/4521)は実SourceのMap/Locateを限定比較し、旧HEADのValidation不一致／新HEADの検証範囲を区別している。受入担当は各PRの**merged_at、mainにあるBlob、exact HEADの試験、実ConsumerのRead**を独立に確認する。これらを一括して「Modeler完成」とは呼ばない。 旧X-TEAの空・欠落IDは一時Occurrenceとして読取・移動できても、永続Semantic IDや逆編集先を捏造しない（#1031/#4510）。
+
+### 29.3 Studioの高速性を損なわない拡張境界
+
+- identity、kind、source span、inbound/outbound adjacency、diagnostic/coverageは**既存Producerの読取Projection**として必要最小限で取得。Graph Layout、統計、広範な依存探索は必要時に計算し、全Plugin/全Sourceの同期走査を初期Navigationの必須処理にしない。
+- 参照数・被参照数・未解決数の表示では**Index済み観測値と完全件数を区別**。非公開の生CountsはPolicy Owner #2516の判断を先行させる。
+- 増分Index/Cacheの再利用はWorkspace/World/Source Revision、Generator/選択Plugin、Projection設定、Consumer/Disclosure Scopeを用途別に照合する。無関係なPlugin変更で無関係なIndexを失効させず、関係するA→B→A・Grant変更では現在資格を再確認する。
+- キーボード中心に「参照へ移動」「被参照へ移動」「定義に戻る」「Pin/解除」「影響表示」「AIへ送出Preview」を一連の操作として設計。具体的なキー配列は衝突検証後に決め、IME・画面遷移・空白クリックでPinを解除しない。
+- 重い言語Plugin/Method Plugin/DB Providerは必要な操作だけに参加する。Methodが存在しない場合も基本Locateを無効化しない。性能はcold/warm、初回Locate、連続jump、参照一覧、Pin→Previewについて**実Workspaceの規模・Consumer別**に測定し、実測前に一律のミリ秒基準を採用しない。
+
+### 29.4 既存Scenarioへ戻す独立Expected候補
+
+| Case | 入力と期待する限定結果 | Owner |
+| --- | --- | --- |
+| NAV-01 | 実SourceでSubject→参照→被参照→定義へ戻る。typed RelationとSource位置が一致 | #1124/#1120 |
+| NAV-02 | 同Kind同ID重複。曖昧Subjectを一意に丸めずdiagnosticを表示 | #4475/#4524 |
+| NAV-03 | 別Kind同ID・同label多重Edge。Qualified ID/Edge IDで別対象として追跡 | #1124/#1120 |
+| NAV-04 | 観測参照0だが未索引Source、非開示/未導出依存がある。未使用の断定なし | #2516/#1124 |
+| NAV-05 | Completeな限定Scopeで参照0を報告。Runtime未使用・安全削除へ昇格しない | #1124/#1180 |
+| NAV-06 | 同FPでもMap/Locate Validation不一致。未実施/失敗を区別 | #4392/#4521 |
+| NAV-07 | Legacy SourceでID欠落。Occurrence移動のみ可能で永続Writer先は未確定 | #1031/#4479 |
+| NAV-08 | Pin中にSource A→B→A、別Workspace複製、Grant失効。黙って再結合しない | #3262/#4479/#2516 |
+| NAV-09 | 無関係Method Pluginの故障/遅延。基本LocateとP0 Provider Consumerを無関係に停止しない | #951/#1124/#1251 |
+| NAV-10 | 同一実Workspaceでcold/warm・連続jump・Pin Previewを計測。Scopeと負荷を別記 | #1124/#1824 |
+
+これらは**#1180/#2514に渡す独立Expectedの候補でありNOT RUN**。#4479の固定対象UX、#4510のQuestion-bound STQ、#4487のTEA-Q、#4504のSource再資格と同じFixture/反証は各Ownerを再利用し、第二Scenario正本を作らない。
+
+### 29.5 計画上の優先順位と停止条件
+
+- **P0維持**：#1251の通常CLI/Studio実Provider Invoke、#2586のFunction→Query→実Rowset→Consumer受領。Navigatorを先行Hard Gateにしない。
+- **P1a**：#4392（Map/Locate Validation整合）と#4524（同Kind同ID重複索引拒否）はmain統合済み。その限定実装を現行mainで確認し、#4521の実Relation一件を用いてread-onlyの統合・Consumer受領の残差を検証する。統合済み局所テストをStudio完了へ昇格しない。
+- **P1b**：実Sourceでread-only Locate→references→jump→backをStudio/CUIへ一件接続。Coverage/未索引を示す（#1124/#1824）。
+- **P1c**：固定Pin→AI PreviewでScope/Revision/Disclosureを再検査（#4479/#2516）。
+- **P2**：Graph/CRUD逆編集、変更影響、Artifact/実Effectを§25 S2と#1143/#2497へ接続。
+- **P3**：実Workspaceの性能・認知負担を測ってIndex/Cache/Plugin最適化を優先順位付け。
+
+**撤回条件**：観測0件を無条件に未使用と表示、表示名・位置から編集先を創作、partialをcompleteとして表示、別Loadを原子的Readと呼ぶ、SelectionをGrantとして扱う、Navigation初期表示に全Plugin同期ロードを要求する、実測なしで高速化を主張する。いずれも限定read-onlyへ戻して再検証する。
+
+**状態**：設計・バックログ・Expected候補のみ。新Navigation/Index/Pin UI、NAV-01〜10、性能実測、CI、現在Disclosure、Owner意味受理は**NOT RUN / NOT ACCEPTED**。
+
+
+### 29.6 参照ナビゲーションとScript近傍テストの統合受入（#4543/#4502）
+
+**#4525は未マージで終了し、後継の[Draft #4543](https://github.com/hat47x/tei-platform/pull/4543)がScript起動・近傍テストの計画を担う**。同DraftはPreviewと実行直前Admissionの資格、Source/Entry/Provider/Artifact/Target/Grantを同一Attemptで追うPL-R06〜08を追加しているが、実Go CLI二入口・実Provider/Effectの製品実証ではない。
+
+**実装で追加するのは第二のテスト体系ではなく、同じSourceから「どこを参照するか」と「何が実行されたか」を別々に観測する経路である。** #4543の近傍直接テスト（Rule/Operator/Function/Hook）と、#1180の複数Function/Driver Scenario、#4495の製品Entry/Invocation、#2586の実Query/Provider/Consumerは責務を分ける。以下は既存Expectedの**引渡し・照合条件**であり、新しい正式DSL/Runner/Oracle/Consoleコマンドを定義しない。
+
+| 受入経路 | 必要な一致と観測 | 合格の上限 |
+| --- | --- | --- |
+| A：Source→Locate/Map→参照往復（§29 P1a/b） | 実Workspace Root/Source Revision、qualified Subject、Relation occurrence、Source range、Validation済みか、Coverage/Disclosure。別Loadなら別Attemptとして記録 | read-only navigationの限定合格。編集資格・実Function実行ではない |
+| B：Source→Rule/Function近傍直接テスト（#4359/#988/#2620/#4543） | 近傍Source/Operator/Plugin版と独立Expected、入力のmissing/NULL/partial、**実際に参照したSource集合**。実行位置とテスト位置の一致だけを根拠にしない | 局所意味/実装特性の合格。Product Entry/Hostの資格ではない |
+| C：Function→Entry/Trigger→Product CLI Process（#4495/#4502） | 実Entry公開版、型付き引数、selected Provider、Linked/Loaded bytes、実Invoker、Operation/Attempt、結果の観測。CLIと共通APIの二入口を同じMeaningへ接続 | 観測した一Target/Consumerの実起動。Trigger設定や擬似Executorだけで実Effectは証明しない |
+| D：Query→Rowset→Function Data Context→Consumer（#2586） | 実Source/DB alias/Schema、Provider選択と実Read、Rowset grain/Scope/Completeness、Consumer受領と独立Expected | 実Readの一往復。参照0件、集計値、欠落から不存在や更新適格を推測しない |
+| E：Operation→Host Effect/Recovery（#1174/#1129） | current Grant、実Commit/Receipt、独立Observer、ACK喪失と未知結果の扱い | 実行したEffectだけの受入。B/C/Dの結果を流用しない |
+
+**同一Fixtureの条件**：A〜Eに共通の意味上のSubjectを使っても、異なるWorkspace Root、Model Revision、Source-only改版、DB/Grant/Plugin更新、Load時点を同一のObservationとして結合しない。Content FingerprintだけでSource Identity/Current Eligibilityを証明しない。直接テストのExpectedは、生成AIが作成した実装コードや生成テスト結果から逆算して確定させない。
+
+**実装担当への直近の小さな引渡し**：
+- #4392/#4524の**取り込み実態と現main実テスト**を確認したうえで、#4521の実Relation一件をAのread-only基線にする。既存の負例（同Kind同ID、Map/Locate Validationの不整合、同FP別Root）を流用する。
+- #4495/#4543はB/Cのテストを受け持ち、Aで見える参照・出典を起動契約へ渡しても、**Mapに存在する＝公開Entryあり**とは扱わない。
+- #2586のDは最優先の実Read主線。A/BのGUI・文書対応が未完成でも開始できる。
+- Scopeを限定できる領域では独立した無関係Plugin/MethodのエラーでA〜D全体を止めない。ただし**問いに必要なRequired Closure**に欠落がある場合は、その問いの結果だけ`unknown/blocked`を残す（#2582/#4518）。参照数0や未索引0を「絶対未使用」の証拠にはしない。
+
+**優先順位と停止条件**：P0は#1251/#2586と#4495の実Provider/CLI経路。§29.5のP1aはMap/Locate/Validation/Source Indexの実現状確認、P1bは一件の参照往復、**P1cはPin→AI Previewのまま維持**する。#4543の近傍直接テストとSource/Scope照合はP1bと並行できる独立の試験準備とし、PinやGUIの完成を実起動・直接テストのHard Gateにはしない。P2は安全な逆編集影響、P3は異質Consumerと性能。追加の横断Test SSOT、独自Acceptance Engine、同期全Pluginロード、実証前のTarget普遍適合宣言は行わない。**本節はdocs-onlyでありA〜Eの新しい通し実行はNOT RUN。**
+
+
+## 30. Lifecycle Graphから生成器への引渡し資格：G1→G3→G2（2026-11-13）
+
+本節は#4198の「型付きGraphをGeneratorの第一入力にできるか」という**未検証の仮説**と、#4544（Generator自己記述G1/G3）、[Draft #4541](https://github.com/hat47x/tei-platform/pull/4541) §24（自己記述から生成器生成への受渡し）を接続する。**新Generator Engine、第二Graph正本、独自Semantic Verifier、Toolchain/Plugin Registryを作る計画ではない**。GeneratorのSource/選抜/実BuildのOwnerは既存#2016/#2595/#1121/#951/#2600、独立Expectedは#1180/#2514に残す。
+
+### 30.1 Graphの表示・意味・生成入力を区別する
+
+- **Authoritative Semantic**：Sourceに受理されたFunction/Relation/Rule、型・Facet・NULL/Absent/Unfetched、粒度・単位・時点・丸め、業務Effectと必要な権限。三要素分析法はMethod/Profileとしてこの意味を説明し、図面が第二正本になるわけではない。
+- **Graph Projection / Proposed Patch**：GUI・Mermaid等の図形/編集候補と、Source・Relation occurrence・Owner確認範囲を区別する。Graphを実際に生成入力にできるかは、既存標準データ構造とRole/Operatorへのlosslessな復元で判別する。描画専用Edge ID・レイアウト座標・曖昧CRUD・未確定AI Mappingを入力の意味IDに昇格させない。
+- **Generation Intent / Selected Implementation**：受理済み意味を、Target Profileと選択可能な標準Operator/Generatorの契約へ束縛する**候補の構成票**。既存Resolver/Selectionを使い、不足したCapabilityは明示する。生成AIが補った固有Transform/Pluginは候補であり、選択や意味受理の証拠にならない。
+- **Artifact / Actual Invocation**：Generatorの選択・検査、実際に使用したGenerator/依存Source bytes、生成物、Builder、実Target、Host/ConsumerのCall/Effectはすべて別Claimとする。Sourceのbyteが一致してもImplementation/Toolchain/Generator/Current Grantの資格を省略しない。
+
+**初回の採否判断**：Graphのノード/辺を第一入力にすること自体は採用せず、**同じAccepted Semantic→標準データ/Role→Generation Intent**が、Graphを経由する場合と経由しない場合に意味上同じTarget生成指示を構成できるかを比較する。非可逆Graphや未対応Methodはread-only/unsupportedにとどめ、通常のコード生成・手書きコードの経路を停止しない。
+
+### 30.2 実装の小さな順序とOwner
+
+| 順序 | 既存Owner | 具体的な引渡し／反証 |
+| --- | --- | --- |
+| G1：構成票 | #4544/#2016/#2620 | 受理済み単一pure Function（既存line-amountなど）とTarget Profileを固定。標準Generator/Operatorで足りる範囲と生成AI追加の必要範囲を示し、実際に選択したImplementationとSource版を明示。未受理Graph Patchを混入させない |
+| G3：意味適合 | #4544/#2514/#1180 | 独立Expectedと既知Mutant（欠損をゼロ化、丸め差、同Resultでも別Meaning、選択Bに対して実呼出しA）で判別。自己生成したコードと期待値の相互保証を禁止 |
+| G2：合成資格 | #4544/#3278/#951/#1121 | 実例で二Transform/Guardの順序差・競合・partial failureを測る。原子的Traitの必要義務、全Path Authority/Effect、手書き領域の再生成保全を確認し、交換可能な一般法則を先取りしない |
+| Product受入 | #1251/#4495/#2586/#2595 | 同じSource/Target/AttemptでSelected→Linked/Loaded→Actual Invoked→Consumer Receivedを実観測。生成器Reference成功は製品CLI/Studioや実RowsetのPASSではない |
+
+**初期縦断は「ひとつの受理済みpure Function・ひとつの既存Target・ひとつの独立Expected」**に限定する。通常配布のGo単一Binaryを基本とし、Java/.NET/WASMなど外部Host向けTargetは個別資格を付す。Graph/Studio、AI Harness、異質Target、実DB書込みをすべて最初のHard Gateにしない。
+
+### 30.3 Lifecycle/CRUD/Mappingに特有の負例
+
+| 既存Expectedとの接合 | 入力差と必要な判断 |
+| --- | --- |
+| #4544 GG-04 × §27.8/§29 | 図形/Row数が同じでも、Relation多重度・CRUD矛盾・Queryのgrain/Scopeが異なる。Target指示へ欠落するならGraph-firstを不適格にし、コードを自動生成して成功扱いにしない |
+| #4544 GG-05 × §24/§25 | Validation/Guardを加える前後、Plugin/Transform A→BとB→Aで全Path Obligationが変わる。Targetを実行しない静的UNKNOWNは実行時安全のPASSではない |
+| #4544 GG-06 × §25 S0 | Generator/Provider B選択、実際はA使用、出力値が偶然一致する。実選択・実ロード・実呼出しIdentityが異なるためFAIL |
+| #4544 GG-02/03 × §27.7 | NULL/未取得・丸め・未マッピングUI項目・旧版列で正しい更新先が未確定。AI候補によるゼロ化/別列への補完は禁止し、Source/Contract Gapを診断 |
+| #4544 GG-07/09 × §24 | Generator版だけ更新、Script A→B→A、宣言Sourceと実Build入力不一致。Artifact/Evidenceの再資格化を必要範囲に限定し、実Build投入bytesを未確認ならUNKNOWN |
+
+既存#4544のGGケースを**本書内で再起票せず、交差条件だけを付記**する。AI CandidateをAuthoritative Meaningへ変えるときは通常開発相当のレビューとSource差分確認を使い、OKF等による資料追跡を必須の新承認制度にしない。
+
+### 30.4 何ができたら、この計画を進めるか
+
+(1) G1で既存#2016の実Referenceを用いて同一Accepted SemanticとTargetの構成票が作れること、(2) G3で独立Expectedにより誤Generatorを確実に落とせること、(3)実際の選択GeneratorとBuild投入byte/成果物のSource帰属が#2595の範囲で確認できること、(4)そのうえで、必要なら#4198 R1/R4のGraph Patch→Source帰還→実Targetの限定縦断に進むこと。この順にClaimを高める。
+
+**状態**：G1/G3/G2は他Ownerの計画を引用する設計引渡し。Graph-firstの製品採用、#4544 GG試験実行、今回の実Go/CLI/Studio/Host/CI追加試験、Owner意味受理は**NOT RUN / NOT ACCEPTED**。本追補でP0実Provider/Function Read/Script起動の優先順位は変更しない。
+
+## 31. 実Provider Readの製品経路への昇格とStudioセルフビルドへの接続（2026-11-13）
+
+§25 S0・§26 A/D・§29 A〜Eの優先度を、[main統合済み #4539](https://github.com/hat47x/tei-platform/pull/4539)の**限定された実証成果**を踏まえて更新する。対象は#2586の一Function実Readであり、TEI Studio Desktopによるセルフビルドという最上位の製品目標へ、既存の#1824/#2831の契約を使って段階的に接続する。**新しいDB Provider/Query Engine/Studio Host/Build Graph正本は作らない**。
+
+### 31.1 実証済みの範囲と未接続の範囲を区別する
+
+#4539のPR提出者は、`order_entry.recent_orders`（`public.orders`、`:from`、5列）に対し、既存Driver/Environment束縛→PostgreSQL 16.15→Raw Rows→read-only Function Data Context→専用`tools/reference-browse-read`の別プロセス入口を試験したと報告している。正常取得、時刻境界、0件、NULL・列欠落、SQL Source改版、JOIN重複、RLS/列権限/マスキングを含む。GitHubで**当該PRのCI completed/success**と**2026-11-12 23:08 UTCのmain統合（merge `ee1af44c`）**を確認した。ただし、提出者が報告した隔離PostgreSQL実試験を本レビューで独立再実行したわけではなく、通常製品CLI・Studioの実証でもない。
+
+| Claim | 現在わかること | 次に必要な証拠 |
+| --- | --- | --- |
+| Provider実Read | #4539の隔離PG16.15とDriver/Executorで限定実行。Environmentの選択・Query SQL digestが診断にある | mainへの統合済み実装を基準に、**同じSource/Providerを通常製品CLIで実呼出し** |
+| 実行結果の意味 | RowsetとFunction Contextへの変換。Coverageは`unestablished`、`EmptyJustified=false` | Rowsetの粒度・対象・RLS/DB接続の現在性を明示し、完全取得や不存在を**根拠なく主張しない** |
+| 利用者が使う入口 | 専用`tools/reference-browse-read`でJSON受領。**`cmd/tei`には未結線** | 現行CLI契約との競合解消後、実`tei` CLIで同一Query/型付き引数/拒否を検証（#4453/#4452/#4322と調整） |
+| Studio Consumer | Studio/Wailsからの同一Read・画面受領・現在Disclosureは未試験 | #1824の現行Bridge/Root選択へ限定read-only接続し、CLIと同一Result/Scopeを比較。Pinned Subject=実DB/Host Grantではない |
+| Studio self-build | 現行Go seed/既存self-build Reference・BuildPlanを再利用可能な候補 | #2831で**標準データ上の実Build Graph→TEI CLI/Studio代表Artifact→stage0/1/2**を独立受入。実Read成功だけで自動達成としない |
+
+**過去の「P0実Provider呼出しはすべて未実証」という一括表現を改める。** 局所・隔離実DBでの実Readには前進がある。ただし通常`tei` CLI、Studio、AI Harness、実業務Commitを証明しないため、§26のS0は依然製品Consumer経路での受入が必要である。#4539のQuery以外のX-TEA定義、SQL方言・DB Aliasも同じ資格へ自動拡大しない。
+
+### 31.2 次の実装引渡し：一つのReadを二Consumerへ
+
+| 着手順 | 実装担当・既存資産 | 最小検収と停止条件 |
+| --- | --- | --- |
+| R0a：既存基線を保全 | #4539/#2586、既存Environment/Driver/Function Context | 受理した一Functionと実SQL/Provider/Contextを固定。既存PG試験・独立ExpectedとSource digestを保持し、`tei`接続のための新Engineを作らない |
+| R0b：製品CLIへ接続 | #1251/#2586、`cmd/tei`既存契約と#4453/#4452/#4322 | `tei`実プロセスから同じQuery→Environment→Provider→Rowsetを受領。Provider未登録/Environment不一致/引数missing・NULL・型違いで**Executor呼出0**。返却が同値でもSelected B・Actual Aなら失格 |
+| R0c：Studio read-only受領 | #1824/#4515/#2586/#2516 | 同一Fixtureを現行Studio Bridgeで受け、CLIとのSource/Target/Attempt/Result/Scopeを照合。後着旧応答・Root切替・Grant/Disclosure未知を安全に区別し、UIに`complete`/書込み可能と偽表示しない |
+| R0d：Studioセルフビルドを別の製品受入へ | #2831/#943/#2620/#1063/#1121 | 標準Data/Role/Dependencyで表した実TEI BuildをGo seed/現行Adapterで実Artifactに変換、Artifact bytes・Toolchain・Source closure・再現性を確認。**R0b/R0cとは別の成功判定** |
+| 後続：実業務操作/異質Consumer | #4495/#1174/#1129/#4543 | Entry公開・Host current Grant・Effect/Receipt・外部Harnessを個別検証。ReadだけでWrite/Effectが成立したことにしない |
+
+R0bとR0dは並行に進められる。ただしStudio Desktopをセルフビルドする最終目標の検証では、**そのStudioが使用した実CLI/Bridge/ArtifactとBuild GraphのSource/Target/Toolchainが一致していること**を照合する。CLI、Studio、self-build各担当が新たに独立したSource/Plugin/Meaningの正本を持たないようにする。
+
+### 31.3 重要な独立負例（既存Scenarioへ接続）
+
+- **0行と完全不存在**：RLSや異なるDBで同じSQL/引数が0件/1件になり得る。単なる0行、ページサイズ未満、正常`Rows=0`を`complete`や`EmptyJustified=true`へ昇格させない（#4539・#2586 HJ-03/04）。
+- **NULLと観測不能**：列値NULL、列DROPによるSQLSTATE 42703、列権限拒否SQLSTATE 42501、マスキングView由来NULLは別事実。表示可能なNULLだけから原データの意味・存在を推測しない（§27.7・#2516）。
+- **宣言と実接続の差**：同じEnvironment名でも実DBのPrincipal/Schema/Version/Read-only Snapshotが異なる場合、`host-asserted`以上の帰属を宣言だけで保証しない。DSN/秘密情報はReceipt・AI文脈へ複写しない。
+- **GUIとCLIの差**：CLI成功後、Studioだけが古いWorkspace・Root・Sourceを参照する場合はR0c失格。AIへの固定対象選択もHost Grantではなく、結果開示は現在のPolicyで判断する。
+- **自己生成と自作検証**：#4544のGenerator G1/G3が生成した期待値を、そのまま#4539や#2831の実行成功の独立Expectedとして用いない。生成Artifactの同一ハッシュだけでは実行時選択・意味・Effectを証明できない。
+
+既存#1180/#2514のExpectedを再利用し、#4539のPG PQ正負ケース・#2586 HJ・#4515 PIN・#2831 SBを**別の正式テスト系列に複製せず交差参照**する。Source/World Revision、Query SQL digest、Environment/実Provider、DB観測範囲、Operation/Attempt、Consumer、Toolchain/Artifactを用途別に結合し、未取得は`unknown/unestablished`として残す。
+
+**状態**：#4539の実PG/専用ツール実証に関するコードと限定試験はmain統合済み。本節はその限定成果と残差を計画に反映しただけである。今回の`tei` CLI接続、Studio Consumer、自身の実Artifactの全セルフビルド、実Host/Effect、Owner受理、および本書からの新規製品試験は**NOT RUN**。
+
+## 32. TEI Studio Desktopをセルフビルドする製品縦断とX-TEA移管（2026-11-13）
+
+**最優先の製品目標は、TEI StudioのDesktop版を実際に構築し、TEI自身で次のTEI/Studioビルドを成立させること**。§31のPostgreSQL実Readを、ただちにセルフビルドの完成と見なさない。既存#1824（Wails/Desktop）、#2831（TEI全体Build）、#4544（Generator）、#4495（実Entry）、#1124/#950/#1031（X-TEAからのModeler移管）を**三つの実装レーン**に揃え、新たなStudio Host/Build Graph/Runner/正本は設けない。
+
+### 32.1 三つのレーンと最初の委任範囲
+
+| レーン | 目標と最初の実装対象 | 完了してもまだ主張できないこと |
+| --- | --- | --- |
+| **P0-A：実WailsにTEI生成部品を接続** | 現行Studio/Wailsのseedビルドと実起動を基線に、既存Operation/API/Bridgeに接続する**小さなTEI生成UI/Service部品1件**を実Desktopの実行に組み込む。正規のUser Action→Bridge→Go API→実Result→画面反映を、独立Expected/実起動ログ/版で照合（#1824/#1121/#4544） | サンプルHTMLへの描画、生成ファイルがあるだけ、開発用Web表示だけではDesktop統合・完全セルフビルドは未達 |
+| **P0-B：Stage1自身がStage2 Buildを開始** | #2831の標準Data/Role/BuildIntent→Resolved Plan→Go seed→Stage1 Artifactを使う。**実際に起動したStage1 TEIがStage2を発行し、その成果物を独立に検査**する。宣言Source/実Load byte/Toolchain/Generator/Plugin Lock/Artifact provenanceを突合し、Docs-only変更による無関係Artifact再構築も検査 | 外部LauncherがGo buildを2回実行、Stage1/2のハッシュ一致のみ、既存ReferenceのSB-3成功だけではTEI自身の自己再構築にならない |
+| **P0-C：X-TEA三要素とData ScriptのDesktop Plugin化** | Data/Function/Businessの原典に忠実な表示・CRUD相互参照・項目レベル参照/ジャンプの**read-only最小スライス**を、既存StudioのPlugin/Projectionへ接続。次に明示的なモデル編集往復、保存・Validation/Rule/Driverの段階移管を検証（#1124/#950/#1031/#1126） | 三つのRole名が並ぶだけで原典再現としない。参照表示ができても安全な逆編集、DB更新、実Host Effectは未実証 |
+
+**初回の高難度作業委任はP0-A一件に絞る。** P0-Bに必要なSource/Artifact/Build接合情報を同じ作業票で残すが、最初から三レーン全部の完成を一つのPRの受入条件としない。P0-BのBuild定義・既存Seed実証は独立に並行作業でき、P0-Cのread-only三視点移植も独立に準備できる。#4495の製品CLI/API実Provider起動と§31 R0b/R0cの実Readは別のP0実装レーンとして進め、P0-AのWails完成をHard Gateにしない。
+
+### 32.2 Desktop self-buildの段階判定
+
+| 段階 | 独立に確認する実績 |
+| --- | --- |
+| **DS-S0：Seed** | 現行Go/Wails/Studioをclean環境でビルドし、**実OSで起動**。既存Go API/Bridgeへの呼出と画面受領を観測。TEI生成によるものとは主張しない |
+| **DS-S1：宣言と実工程の突合** | 現行Studio Buildに関わるSource、生成部品、Generator、依存、Toolchain、Bundle、動的/暗黙の工程を列挙し、標準Build定義と実際の工程の欠落を診断 |
+| **DS-S2：生成部品の実使用** | TEIで生成した部品の実バイトと選択Generator/Sourceを特定し、**DS-S0と同じ実Desktop**で当該機能が動いたことを確認。手書き領域は上書きしない |
+| **DS-S3：Stage1→Stage2再入場** | seedが作ったStage1実ProcessがBuildIntent/Planを消費してStage2を起動し、Stage2 Artifact/Receiptを生成。外部Launcherによる二度ビルドを排除し、差分/失効/必要閉包を確認 |
+| **DS-S4：製品利用** | 再生成したStudioを実OSで起動し、同一Workspaceの対象選択→API/Bridge→結果表示、必要なら実Provider Readを別Claimとして結ぶ。X-TEA三視点は原典との忠実度を明示 |
+
+**成功の上限を明確にする**：DS-S0は通常Go/Wailsのビルド成功、DS-S2はTEI生成部品の実Desktop動作、DS-S3はTEI自身のStage2実行、DS-S4は製品利用の受入である。単独のGenerator Reference合格、ハッシュ一致、CIの緑、Go Binary起動だけでDS-S3/DS-S4には到達しない。Go単一バイナリは標準の配布形態だが、外部Host向け別Targetの適格性やWailsのOS別挙動を証明するものではない。
+
+### 32.3 引渡し時の最小証拠と敵対的負例
+
+- **同一版**：Workspace Root/World、Source occurrence/Revision、Ownerが確認した意味範囲、選択Generator/Plugin Lock、実Builder/Toolchain、BuildPlan、生成・実Load Artifact、起動Process/Attempt、実Consumer受領を照合する。Display Label・生成器自己申告・ファイル名・前後DigestのみでJoinしない。
+- **古いUI応答**：StudioがWorkspace AからBへ切替後、Aの遅延Bridge応答が到着してもBのResultとして表示しない。Pinned Subjectの保持は実Readの開示許可ではない。
+- **自動生成の境界**：既存の手書きUI/Service Source、Data Script保存の編集対象、SHO文書のWorking Copyを無断上書きしない。Graph/CRUDの意味損失はReview要診断として残す。
+- **実ビルドとの差**：Stage1が自力でStage2を始めない、Source declared D1/実Build D2、選択Generator B/実利用A、必要Dependency未読込、Plugin改版A→B→Aは、それぞれ対応するDS-S2/S3を不合格またはUNKNOWNにする。
+- **Plugin化の限界**：三視点read-onlyが成功しても、表/CRUDの明示行脱落、同名多重Relation、Modeler逆編集、Data Scriptの汎用保存、業務Effectは別途検証する（#4472/#1143/#1180/#2514）。
+
+### 32.4 全体計画の順序と停止線
+
+1. **先行P0**：P0-Aの実Desktop生成部品、#4495の実Go CLI/API起動、§31 R0bの通常`tei` CLI実Readは、それぞれ独立に最小E2Eを作る。Fable等に委任する初回作業はP0-Aのみとし、実Snapshot/Resultを渡す。
+2. **並行P0**：P0-Bの#2831実Stage1→Stage2、#4544のG1→G3、P0-CのX-TEA三視点read-only基線を並行する。G2汎用合成、Lifecycle Graph Compiler完成、SHO/VUI/外部Harnessの全面完成は先行条件にしない。
+3. **統合判定**：P0-A/Bの実Artifact・起動ProcessとP0-Cの原典に忠実なPlugin構成を、同じDesktopとSource版で突合。差分があれば未統合として可視化し、実装済みと表現しない。
+4. **後続拡張**：Data Scriptの保存・Load/Save hook、SmartDB/XF標準機能、複雑なRelation編集、DB Migration、異質Target/Consumer、性能チューニングへ進める。X-TEAの動的Binder性能を再導入せず、生成を基本とする。
+
+**Owner**：#1824 Studio/Wails、#2831 Self-build、#4495 Entry/CLI、#4539/#2586実Read、#4544 Generator、#1124/#950/#1031 X-TEA原典・三視点、#3278 Trait、#1180/#2514 Expected。#1119のG0〜G4既存受入を置換しない。**状態**：段階・テストの設計引渡しのみ。今回のDS-S0〜S4製品E2E、Fableへの実委任、OS起動、再生成Studio実動作、Owner採用は**NOT RUN / NOT ACCEPTED**。
+
+### 32.5 初回Desktop生成部品の選定とSource束縛Function Reference（2026-11-13）
+
+他チャットの#1121生成系、#2586実Read、#1824 Desktop、#2831 Self-buildを、**同一の完了条件にまとめず、製品縦断で受け渡す**。11月13日時点、[Draft #4559](https://github.com/hat47x/tei-platform/pull/4559) は一つのread-only Function（order_entry.recent_orders）を既存Workspace LoaderとDriver ResolverからGo CLIへ生成するB1 Referenceを追加している。提出者はWSL/Go/隔離PostgreSQLでSource変化への感度・決定性・手書きExpected・実行/引数拒否を検証したと報告しているが、**Draft・未統合**であり、本節では試験を独立再実行していない。
+
+**最初に区別する二つの実装対象**：
+
+| 対象 | 最小実装の出発点 | ここでは成立しない主張 |
+| --- | --- | --- |
+| **D-W：Desktop生成部品（P0-A、最優先）** | **既存PoC B/Workbench生成を再利用**。生成済みUIとGoサービスをWindowsのstudio_generated（serverなし）実Desktopに組み込み、WebView2でGraph/Commandの実操作→Bridge→Host→結果表示を確認。必要なread-only Catalog/Locateも既存APIから選ぶ | 単なる手書きStudio実装、generated serverでのChromium結果、生成済みWindows exeのBuildのみ、別のCLIでの実験 |
+| **F-B1：Source束縛Function生成（#4559、独立Reference）** | 既存Loader/Resolver、Query Source、Target Dialect、生成manifest/実Binary/receiptから、read-only PostgreSQL CLI一件を生成し、独立Expectedと実DBで確認。#4539の手配線Readとの限定比較に使う | Wailsの生成部品、Environment/実Provider束縛の同一性、通常製品tei CLI、実Desktop利用、Host Grant、全件取得、Studio自己ビルド |
+| **B-S：TEI Stage1→Stage2（P0-B、並行）** | #2831の既存BuildIntent/Plan/Go Adapter/Source closureで、実Stage1 TEI Processが次の実Buildを起動し、Artifact/Toolchain/実入力を照合 | F-B1のBinary再生成やGo buildを2回実行するだけでのセルフビルド成立 |
+
+**D-Wの最小実行票（最初の高難度委任、#1824 Owner）**：現mainの二つの既存Workflowを読んで、以下の**実Consumer未接続Edge**に限定する。① 現行通常Windows Desktop→WebView2 smoke、既存PoC B生成→studio_generated/server→Chromiumの二つを、別Process/Attemptの基線として記録。加えて既存PoC A CIはstudio_generated（serverなし）のWindows exeの**Buildのみ**行っており、実WebViewは別証拠だと扱う。② 同一候補HEAD/Workspace/Generator版で既存reference-studio-static-composition、compose-ui、connect-workbench、esbuildを使用し、ui.generated.mjs・services.generated.go・bundle/埋込Assetの実Digestを取得。必要なSource Pinを無断変更しない。③ Windowsのstudio_generated（serverなし）実Desktop binaryをBuildし、Go Module/Assets/生成部品の**実Build消費**とexe digestを突合。④ その同じexeを実Windows WebView2で起動し、既存WebDriverで生成Graph/Commandの操作→StudioBridge/Host Result→画面まで実観測する。⑤ 生成Asset未収録・未import・手書き同値代替、古いWorkspace/Rootの後着応答、誤Host/開示条件を独立負例で検査する。**Component単体・実Desktop Build・WebView2の実Consumerは別判定**とし、新たなUI Generator、Studio Host、Runnerを先に作らない。初回は書込・外部DB・AIハーネスを不要とし、業務Meaningの新承認を要求しない。現行Wails版の安全性/安定版更新判断は#1824/#4498で別途資格確認する。
+
+**F-B1の既知の残差と利用条件（#1121/#2586 Owner）**：
+
+- Queryには入力fromの正式宣言がなく、現B1はSQL中の名前付き引数を暫定的に抽出してmanifestにundeclaredと記録する。これは**正式なFunction入力契約の完成ではない**。将来のEntry/生成実行に渡す際はmissing/NULL/unfetched/型を宣言から再資格化する。
+- 対象SQLファイルは現Source Indexの登録対象外で、B1がSQL SHA-256をSourceRevisionに追加する。**Source Indexが閉じた／依存列挙が完全**という証拠にはならない。Sourceの移動・内容A→B→A・生成器改版での再利用可否は#2595/#2600の既存契約に従う。
+- READ ONLYは生成Sourceの静的確認とREAD ONLY Transactionの参照試験であり、**実行時の書込拒否を意図的に試した試験とT10変異生成器の実検出は未実施**（#4559提出時）。セキュリティ/書込許可の根拠としない。
+- #4559のmanifest/receiptと古いBinary拒否は、**生成物の整合性**の限定Reference。実Provider Binding、現在Grant/Disclosure、Runtime Result、Owner意味受理、Host Effectは別資格。D-WへそのままCLI Binaryを埋め込まず、使えるGenerator/Build/Receiptの共通契約だけを比較してから再利用する。
+- #4539はmain統合済みで、専用CLI経由の実Provider Readという比較基準がある。F-B1はEnvironment経由の実行ではないため、**同じ行が返っても同一Execution/Provider/Scopeとは判定しない**。最初の通常tei CLI/Studio read-only実Readは§31 R0b/R0cとして独立継続する。
+
+**既存Expectedへ返す限定反証**（新Scenario正本を作らない）：D-W1 生成部品がファイルに存在する／Windows exeがBuild済みでも実WebView2 Consumer未使用、D-W2 generated server Chromiumまたは手書きコードだけが同値Resultを返す、D-W3 Workspace A→B後に旧A応答が遅延到着、F-B1-1 Query SQLだけ変更したのに生成Revision/実Binaryが不変、F-B1-2 SQLのundeclared入力を正式型契約と誤認、F-B1-3 stale Binaryのreceiptのみ書換え、F-B1-4 READ ONLY静的検査のみで書込拒否試験を省く、B-S1 外部Launcherによる二回BuildでStage1自身のStage2実行を捏造。#1180/#2514の既存Scenario/Expected、#2831 SB、#4559 B1試験に紐付け、同じテストを各PRで複製しない。
+
+**Ownerと優先順位**：P0-A D-Wは#1824（Desktop Consumer）と#1121/#4544（生成）で最初の一件。F-B1の生成器品質・正式入力/Source Index残差は#4559/#1121、通常製品Readは#2586/#1251、Stage1再入場は#2831が担当。P0-CのX-TEA read-only三視点#1124はD-Wで使えるSubject/Locateがあればその後に接続し、原典互換の範囲を新たに推測しない。**今回のD-W1〜3、F-B1-1〜4、B-S1を新たに製品実試験したわけではない。D-W実OS動作、Source-bound生成のmain統合、全CI、Stage2実自己起動、Owner意味受理はいずれもNOT RUN / NOT PROVEN。**
