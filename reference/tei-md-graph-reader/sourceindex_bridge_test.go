@@ -1,6 +1,7 @@
 package teimdreader
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 
@@ -103,6 +104,10 @@ func TestSourceIndexRevisionDoesNotInheritCandidateShapeFingerprint(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
+	baseGenerated, err := GenerateGo(base)
+	if err != nil {
+		t.Fatal(err)
+	}
 	baseArtifact, err := sourceindex.NewArtifact(path, original)
 	if err != nil {
 		t.Fatal(err)
@@ -147,6 +152,13 @@ func TestSourceIndexRevisionDoesNotInheritCandidateShapeFingerprint(t *testing.T
 			}
 			if got := candidateShape == baseShape; got != tc.sameShape {
 				t.Fatalf("same reference structure = %t, want %t", got, tc.sameShape)
+			}
+			generated, err := GenerateGo(parsed)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := bytes.Equal(generated, baseGenerated); got != tc.sameShape {
+				t.Fatalf("same reference generated Go = %t, want %t", got, tc.sameShape)
 			}
 			artifact, err := sourceindex.NewArtifact(path, tc.bytes)
 			if err != nil {
