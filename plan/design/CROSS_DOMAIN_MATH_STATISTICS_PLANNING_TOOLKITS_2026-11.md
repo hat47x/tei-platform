@@ -508,6 +508,18 @@ Expected JSONの`adoption=proposal-only`は、既存#1180/#2514による受理�
 
 次のReader／Loweringの縦断では、固定Sourceのバイト同一性に加え、(1) 実際に選択された観測表・計算条件のCell位置、(2) Role／Operatorの受理、(3) Frame・Partition・Order・NULLの型付き意味、(4) 生成器が実消費した入力、(5) SQLite実結果と独立Expectedを順番に観測する。**Sourceのハッシュを更新するだけでExpectedの再受理や再生成を済ませたとはみなさない**。既存[#2595](https://github.com/hat47x/tei-platform/issues/2595)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)へ引き渡し、第二のReceipt／意味正本を増やさない。
 
+### 期待値のSourceだけでなく、検証すべき負例の集合も固定する
+
+Window候補5件はSHA-256で元ファイルと結び付いているが、**候補の一部をJSONから削除しても基準計算のテストだけは成功し得る**。そこで、`window_candidate_oracle_test.go`に5件の候補ファイル名・必須件数・期待状態の閉包検査を追加する。重複IDの拒否候補を消す、`valid`へ変更する、古い派生表示を一致扱いする変更はそれぞれ拒否する。数理計算の数値一致と、検証の対象・負例が残っていることを区別する。
+
+[Graph／RuleのSource Index実連携 #4742](https://github.com/hat47x/tei-platform/pull/4742)に合わせ、Windowの全5入力でも`sourceindex.NewArtifact`／`Index.Validate`／`RangeFromOffsets`を使う実Go回帰を追加する。既存の`sourceSHA256`と同じ元バイトを指すこと、B2の明示NULLを含む既知の文字列の元byte span、説明追記による古いSource Indexの失効を確認する。**これはSource位置と原本の整合検査であり、B2のCellを正式Readerが意味として選択した証拠ではない。**
+
+この閉包は**独立Expected候補のテスト上の固定条件**であり、正式な意味受理や新しいScenario正本ではない。現在の検証で成立するのはSource byteと期待値候補の組、既存SQLite方言が生成するSQL、実DBの結果までである。負例に対して製品Readerが正確なSource位置で診断を返せたことや、Markdown表から意味を生成できたことではない。
+
+また、[Graph／Ruleの生成バイナリ実引数試験 #4733](https://github.com/hat47x/tei-platform/pull/4733)は、同じ生成Go Binaryへ別々のNode IDを渡し、結果の違いと未知・空IDの拒否を検証する**局所的な実行例**である。Windowを次の応用へ広げるときも、入力変化に対する実結果と独立Expectedを確認するが、製品のFunction Entry／Provider／CLIの実Callには自動昇格させない。
+
+[MarkdownのFence境界修正候補 #4725](https://github.com/hat47x/tei-platform/pull/4725)は未統合のDraftであり、GraphとRuleの例示領域を定義に誤認しないための負例を扱う。これは統計表・KaTeX式・Graphviz／Mermaidが共存する文書でも必要な境界である。Readerの正式採用時は、バッククォートとチルダのFence、開始長・終了長、インデントコード、未閉領域、BOM／CRLF、元byte spanを検証し、**表示や例示に現れた数式・計算条件を実行可能な定義へ勝手に変えない**。KaTeXは表示、TEIが意味・演算・検証を担う方針を維持し、専門Parserや第二の数式正本を追加しない。
+
 ### 正式Readerが未接続である現状から、最小の実読取りへ進む
 
 2026-11-14時点の`internal/workspace/loader.go`は、管理Sourceを走査したあと、`rejectUnboundTEIMarkdownSources`で管理対象の`*.tei.md`を**`TEI_MD_PARSER_UNBOUND`として明示拒否**する。現在の`loadSemantics`が呼ぶ`syntax.NewParser(...).ParseSemanticFile()`は従来形式のParserであり、Markdownの表・フェンス・本文のRoleを実際に解釈した証拠ではない。`ManagedFile`の列挙、`ReadByLoader`の真偽、Parserでの解釈、意味の受理、Buildでの実消費はそれぞれ別の事実である。
