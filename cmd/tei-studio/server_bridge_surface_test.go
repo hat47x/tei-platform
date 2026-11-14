@@ -6,6 +6,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"reflect"
 	"sort"
 	"strings"
 	"testing"
@@ -75,20 +76,12 @@ func TestServerBridgeExportedMethodInventoryRequiresReview(t *testing.T) {
 		"ResumeShoDocument":                "external child process / file path",
 	}
 	found := map[string]bool{}
-	for _, decl := range file.Decls {
-		fn, ok := decl.(*ast.FuncDecl)
-		if !ok || fn.Recv == nil || len(fn.Recv.List) != 1 || !ast.IsExported(fn.Name.Name) {
-			continue
-		}
-		pointer, ok := fn.Recv.List[0].Type.(*ast.StarExpr)
-		if !ok {
-			continue
-		}
-		receiver, ok := pointer.X.(*ast.Ident)
-		if !ok || receiver.Name != "StudioBridge" {
-			continue
-		}
-		name := fn.Name.Name
+	// Reflection inspects the effective Go method set, including methods
+	// promoted from embedded types and methods declared in another file.
+	// It is the candidate set, not proof of every Wails HTTP route.
+	typ := reflect.TypeOf(&StudioBridge{})
+	for i := 0; i < typ.NumMethod(); i++ {
+		name := typ.Method(i).Name
 		found[name] = true
 		if _, classified := expected[name]; !classified {
 			t.Errorf("new Wails Server exported method %q has no exposure classification; review before adding it to the shared-host surface", name)
