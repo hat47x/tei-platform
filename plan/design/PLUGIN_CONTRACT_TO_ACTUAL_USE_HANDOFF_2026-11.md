@@ -494,3 +494,80 @@ LRBラベルは独立Expected正本ではなく、既存#1180/#2514へ渡す横�
 - [RA-1 pre-executor #4631](https://github.com/hat47x/tei-platform/pull/4631) HEAD f0db7bb07d59edd30e60fb8cc0e20a7eb066e369 は#4626上の積上げDraft。新HEADの実Go driver/実PG全面PASSは未確認。ValidationやEndpoint到達から実DB Contract適格性を推測しない。
 
 **優先度は維持**：P0 #4583 Stage1→Stage2 Desktop BuildIntent/ArtifactSet実結合。P1は#4627のmain統合可能なGo test健全性と#4630のHost-owned bytes/Disclosureのread-only Consumerを並行確認。P2は型付きQuery Inputの実Provider前拒否、Studio Web Auth/REA二Consumerの外部Consumer比較。P3でUI Themeの広範囲適合、Browser WASMの選択的実測、共有Webの共同編集/HAを個別に評価。これらは他PRの採用や新Hard Gateの創設ではない。
+
+
+## 20. 2026-11-14：段階別ContributionとDesktop実行配置の合流
+
+### 20.1 将来の製品能力を現在のPoCから切り離して設計する
+
+[理想設計Draft #4632](https://github.com/hat47x/tei-platform/pull/4632)は、Pluginを一つの実行関数の登録とせず、**意味定義→Studio編集UI→検査・変換→Build→生成アプリのUI/サービス→試験・運用**の段階別Contributionとして記述する案である。Package/Contract/Contribution/Variant/Artifact/Configuration/Resolutionの各概念を分け、利用者の標準Profileから始め、必要な機能の設計・生成・実行・テストを同じ選択に沿って展開する。
+
+**現在の実行規律と理想アーキテクチャの自由度は両立する。** 現行#951/#1016/#1158を再利用してP0/P1を進めるが、現PoCのRegistry型、固定Go API、ディレクトリ配置、単一のPlugin主語BuildPlanを将来の標準Schemaに昇格しない。新規Conceptの採用前には既存Contractの意味・Owner受理・Test Expected・Source provenanceを維持できるかを比較し、拡張／Adapter／置換を選ぶ。全面置換は可能な比較候補であり、無条件の全面作り直しではない。
+
+Contributionを複数箇所に提供しても一つの実行資格にまとめない。例えばDBのStudio Query Editor、Source Model、Query検証、Generator、生成AppのProvider、実PG read、Consumer Replyは**同じ契約と版を参照する別Artifact/Role/Effect/Authority**。Studioだけ新版でProductが旧版、選択Bで実Call A、未選択PluginのAsset収録、誤ったSource Revision再利用を、独立Expectedで検出する。
+
+### 20.2 二つの軸と四つのScopeを固定する比較票
+
+| 独立軸 | 選択の対象 | 選択から自動的には生じないもの |
+| --- | --- | --- |
+| **Contribution（何を提供するか）** | Language/Schema・Studio UI・Operator/Validation・Generator/Builder・Runtime Provider・Test/Operations等 | すべての段階への自動適用や実行許可 |
+| **Execution Placement（どこで動くか）** | Go静的結合・Desktop in-process・同一exe従属Worker・別Process/Server・Web/Browser Wasm・外部Target Host | 選択されたProvider・契約適合・同じOS権限・ABI互換 |
+| **Scope（誰/何に適用するか）** | Server/Device Inventory、Workspace/Profile、Window/Document/Editor Session、Product Application/Invocation | Server導入済＝全Workspace選択済、Window表示済＝全Principal開示許可 |
+| **Version/Authority（いつ有効か）** | Package/Contract/Source/Model/Toolchain/Artifact/Settings/Host Generation、Current Grant | byte一致・同じ名前・旧Release成功による現在受理 |
+
+実装ではこれらを一つの万能Registry/単一Version文字列へまとめない。Profile Resolve、Artifact Build、Actual Invocation、Current Grant、Deliveryを既存Ownerの独立責務として結ぶ。将来Contribution Registryの型を改める場合にも**既存契約の成功・失敗・不可知結果の独立Expected**を保持する。
+
+### 20.3 Desktop Host配置は三案を測ってから選ぶ
+
+他チャットで提案された「DesktopのWebViewは薄く、ローカルServer/WorkerでGoを共通化する」案を、次の比較としてP1に置く。
+
+| 案 | 実行構成 | 利点の候補 | 不利/未確定と実検査 |
+| --- | --- | --- | --- |
+| **A 現行** | Wails Desktop Window→同一Process Go Bridge→型付きApplication Operation | 起動とローカルCallが単純。配布1実体。IPC marshalling不要 | UI/Goの故障境界の共有、Web Hostとの差分 |
+| **B 従属Worker** | Desktop GUI→Named Pipe(Windows)/UDS(Unix)→self-spawnした同一exe Worker | Go業務Coreの実Process隔離、Worker監視・再起動を分けられる | 同一exe二Roleの起動／停止・双方向protocol・ACL・OS user・child identity。**Wails server buildとは別構成** |
+| **C 別Server** | Desktop GUI→従属Wails server Binary→loopback HTTP/WS | Web向けBridge/Frontend reuseの余地 | 二Binary/二Build Artifact・Port/Origin/WS/Audience・配布/更新/故障/起動費用。Web共有Hostの認証とは別検収 |
+
+Go/WailsのUIをDesktopとWebで共有できても、通信Protocol以外の差は消えない。Service lifecycle、secret/OS Permission、Plugin実LoaderとAvailability、Process exit中のEffectUnknown、実Source/Provider Generation、Tool stdout/AI送出、更新・Rollbackを案別に比較する。Native in-processはNetwork IPCと同じコストではないため、Named PipeがHTTPより軽い可能性を理由にAより速いと断定しない。
+
+**従属Workerは生成業務ApplicationへTEI独自Hostを義務付ける判断ではない。** Developer-facing Studioの配置候補に留め、#259のTarget/Host差と切り離す。既存Wails PoCはAを基準とし、Cのloopback serverは現Public Web資格なしのPoCのまま比較する。
+
+### 20.4 LPC受入と実測表（#1824/#1158/#4583へ）
+
+| Case | 独立Expectedの最小観測 | 不合格または未確定 |
+| --- | --- | --- |
+| LPC-01 Actual Worker | selected Build/Role→実起動Process exe SHA/args/Version→実Operation Response | self-spawn説明やBinary存在のみを実Call証拠にしない |
+| LPC-02 Local IPC Authority | Windows Pipe ACL/remote access制限、Unix Socket directory/mode、別OS User・他Workspace拒否 | loopback・same-machineという理由だけでTrusted Principal扱いしない |
+| LPC-03 Crash/Orphan | GUI/Worker各々を異常終了→実行中Task/Source Draftが失われない範囲、再接続・Process cleanup | 旧Replyを新Sessionへ無条件受理しない |
+| LPC-04 Effect Unknown | Commit途中の切断、再起動時のoperation identity/receipt lookup-first | 通信再接続時の自動reinvoke/重複外部副作用を拒否 |
+| LPC-05 Generation/ABA | A→B→A PluginやSource移動・内容復帰中、旧Worker Session/Grantを拒否 | 同Digestのみで新世代受理しない |
+| LPC-06 Disclosure | Worker logs、Progress、WS、外部Tool/AI Sinkの全送信byte | Browser/Window/Socket識別子を権限と推定しない |
+| LPC-07 同一仕事の性能 | 実Windows及びUnixでA/B/C同一Fixtureの起動、p50/p95/p99、CPU/RSS、編集中の入力停止、Preview latency | 仮の性能値や異なるOperationを比較しない |
+| LPC-08 Build/配布 | A/B/CのN0〜N3における選択Artifact/Toolchain/Dependency/実Consumed byte | CのServer BinaryをDesktop一バイナリ実績へ加算しない |
+
+これらLPCは新Runnerや新Authority正本ではなく#1180/#2514の独立Expectedへ引渡す。P0 #4583は**A現行構成の一Attempt Desktopセルフビルド**を先に完成させる。B/Cの評価はP1独立比較であり、Worker未実装を理由にP0停止しない。
+
+### 20.5 生成成果物とStudioを結ぶ最小縦断実証
+
+#4632の理想構想は、Core Schemaを先に全面固定せず、既存のorder_entry/recent_ordersを用いた**小さなDB Provider縦断**で圧力試験する。SourceのQuery Input from/std.datetime（#4626）、Driver呼出し前の型検査（stacked #4631）、実Environment/PG Provider（#2586）、Studio Query view、Target Generator/Artifact、実CLI/業務Consumerを同じVersion/Subjectへ関連付ける。
+
+- **Design**：StudioのProvider選択・Query編集とSource ID/Revision/Occurrenceを保存。Style/Theme（#4628）は意味Definitionと独立する。
+- **Build**：生成対象に必要なContributionとArtifactだけを含む。未選択Provider/Studio-only Fixture/EditorはRuntimeへ含めない。Builderの宣言と解決（#4624）、actual child pin（#4623）、N2→N3 handoff（#4587）を一Attemptへ結ぶ。非Plugin Desktopを偽のPlugin扱いしない。
+- **Run**：選択B/実Call Bを実Provider Entryで確認。invalid/missing/null/extra datetimeはExecutor Call 0。現PGからのReadはHost Current Grant/DB Instance/Source Revisionを別観測。
+- **Consume**：UI/CLI/APIで同じOperation意味と異なるAdapter失敗分類を比較。旧Source Fixtureの過去合格、New Source/DB/Current Grantを別票にする。
+- **Change/Disable**：Plugin A→B→A、DB/Themeの変更、Scope違い、追加/削除、古いPreview、モデル改版による旧Expected失効を検査。Client EditorのDirty/IME/Focusは基本的に保持し、Host Effectと混同しない。
+
+この縦断が成功する前に、全Pluginの高度Dependency Scheduler/自動置換を先に導入しない。DB・認証・組織・テストの四系統を完全合成する#4632の長期資格は、P0の硬い依存にはしない。
+
+### 20.6 実装済みResult Contract preflightを正しく位置づける
+
+[PR #4629](https://github.com/hat47x/tei-platform/pull/4629)は**Closed/Merged**（HEAD 00ea85234720db01a06279fd87e2c72cf1001605、同HEAD 9 Workflow success）。internal/semantic/capabilityinvokeでMalformed Result ContractをAdapter Call前に拒否し、6つの不正契約に対するCall 0を検証した。今後のScript Launch/Plugin A1でもこの実装を使い、別Result Validatorを増やさない。
+
+ただしResult Contract形状の正常性は、Entry公開・Owner意味受理・実Selected Provider・現在Granted Scope・外部Effect/Receipt・Target Windows Consumerを証明しない。前段のpreflightを、公開Host側の実Actor/Resource Authorityや後段のDisclosure検査にすり替えない。
+
+### 20.7 現時点のCI資格と非干渉
+
+- [Wails Server公開面テストDraft #4627](https://github.com/hat47x/tei-platform/pull/4627)：前HEAD f2f49a7cおよびa0850047のRepository Healthが、追加Goテストのgofmt driftで**failure**と実Jobで確認された。新HEAD b9cf5447bcd3881aec06d97e4f3060f7de80b331 で原因の余分な空行を除去。最新HEADの新CIは確認時点でqueued/in_progressであり、旧HEADのHost/Windows Go成功を合算せず**Healthは再検収待ち**。
+- [REA bytes Draft #4630](https://github.com/hat47x/tei-platform/pull/4630)：HEAD 1ad749fc0eaacc195dd28ea88a97bd44d9581050、12/12 Workflow completed/success。Windows Smokeは**Attempt 1でPowerShell OS情報取得Timeout失敗→該当Job再実行Attempt 2でsuccess**。成功したのは一般Studio Windows Smokeであり、REA→Studio実Consumerの受領ではない。Attempt間の履歴を保持。
+- [Studio Appearance #4628](https://github.com/hat47x/tei-platform/pull/4628)、[RA-1 stacked #4631](https://github.com/hat47x/tei-platform/pull/4631)、[Plugin理想設計 #4632](https://github.com/hat47x/tei-platform/pull/4632)はいずれもDraftであり、設計案・局所Go/Browser試験を全Target受理や正式PoC置換へ昇格させない。RA-1はRA-0 #4626の先行受理後に合流可否を判定する。
+
+**変更範囲**：本書の追加のみ。#4632と#4620が編集する plan/MASTER_PLAN.md、#4632の理想設計原本、#4587の実Windows Buildなど他Ownerの並行ファイルは編集しない。理想設計は選択肢として保持し、#951/#1016/#1158で今使える操作をP0に接続する。Go/IPC/OS Process/P99比較・共有Web認証・Studio→Generated App新DB E2E・Owner受理は本節でNOT RUN。
