@@ -131,6 +131,30 @@ func TestEKITaskExecuteTimeoutKeepsAcceptedTaskID(t *testing.T) {
 	}
 }
 
+func TestEKITaskExecuteDoesNotEchoDuplicateMemberNames(t *testing.T) {
+	for _, onSubmit := range []bool{true, false} {
+		t.Run(fmt.Sprintf("submit=%t", onSubmit), func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == http.MethodPost {
+					w.WriteHeader(http.StatusAccepted)
+					if onSubmit {
+						fmt.Fprintf(w, `{"task_id":%q,"private-canary":1,"private-canary":2}`, testEKITaskID)
+					} else {
+						fmt.Fprintf(w, `{"task_id":%q}`, testEKITaskID)
+					}
+					return
+				}
+				fmt.Fprint(w, `{"private-canary":1,"private-canary":2}`)
+			}))
+			defer server.Close()
+			_, err := (EKITaskExecute{BaseURL: server.URL, Client: server.Client(), Timeout: time.Second}).Invoke(context.Background(), "test", executeInput())
+			if err == nil || strings.Contains(err.Error(), "private-canary") {
+				t.Fatalf("duplicate member leaked or accepted: %v", err)
+			}
+		})
+	}
+}
+
 func TestEKITaskExecuteDoesNotFollowSubmitRedirect(t *testing.T) {
 	var reached atomic.Int32
 	sink := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { reached.Add(1); w.WriteHeader(202) }))

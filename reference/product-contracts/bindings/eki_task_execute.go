@@ -112,7 +112,7 @@ func (b EKITaskExecute) Invoke(ctx context.Context, id core.CanonicalID, input a
 		}
 		if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusConflict {
 			if err := scenariotest.RejectDuplicateJSONMembers(body); err != nil {
-				return fail(fmt.Errorf("invalid result JSON: %w", err))
+				return fail(errors.New("invalid result JSON"))
 			}
 		}
 		switch resp.StatusCode {

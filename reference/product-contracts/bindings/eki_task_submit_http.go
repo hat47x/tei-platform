@@ -76,7 +76,7 @@ func (b EKITaskSubmitHTTP) Invoke(ctx context.Context, id core.CanonicalID, inpu
 		return capabilityinvoke.BusinessResult{}, fmt.Errorf("task acceptance exceeds limit")
 	}
 	if err := scenariotest.RejectDuplicateJSONMembers(bodyBytes); err != nil {
-		return capabilityinvoke.BusinessResult{}, fmt.Errorf("invalid task acceptance: %w", err)
+		return capabilityinvoke.BusinessResult{}, fmt.Errorf("invalid task acceptance JSON")
 	}
 	var payload map[string]any
 	if err := json.Unmarshal(bodyBytes, &payload); err != nil || payload == nil {
