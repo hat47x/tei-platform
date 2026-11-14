@@ -12,6 +12,8 @@
 
 ### 統合後、次の実装で確かめること（2026年11月14日）
 
+**横断の受入境界**：Source/意味/生成Artifact/実Provider/Consumerの各PASSを同一製品成功に合成する条件、変更後の選択的失効、Graph/Ruleから実コードへ至る最小試験、Plugin自己構築率・定義簡素化の測定は[横断統合受入境界](../design/CROSS_CUTTING_ACCEPTANCE_BOUNDARIES_2026-11-12.md)を参照する。この参照は下表の優先順・各Owner・実行済み証拠の資格を変更しない。
+
 [横断統合 #4683](https://github.com/hat47x/tei-platform/pull/4683)と[実対象の回帰試験統合 #4684](https://github.com/hat47x/tei-platform/pull/4684)によって、以前の計画・一部の生成コード・安全性試験はmainに入りました。ただし、**統合できたコード、通常の製品入口から動いた機能、実際に利用先が受け取った結果**は別々の成果です。以前のDraftの状態をそのまま現在の実装状況として読まないため、直近の着手先を以下に固定します。
 
 | 優先順位と着手先 | 最初に通す実装・検証 | 合格と呼ぶ前に残すもの |
@@ -21,6 +23,18 @@
 | **CLI先行の小実証：TEI自身による生成**（#2621／#951／#2831） | 既存の[CLI先行計画 #4676](https://github.com/hat47x/tei-platform/pull/4676)を使い、同名Node二つ・別IDの多重有向EdgeとRuleを、Sourceから**実際の判定ロジック**へ生成。向き変更／ID重複／レイアウトのみの変更を対照にする | `*.tei.md`の正式Readerが未対応なら`unsupported`。Goへの委譲だけを自己実装と数えない。選択Pluginの実Call、生成コードの由来、固定した義務の分母、再生成・保守負荷を別記録 |
 | **P1：Plugin説明と公開モデルの探索**（[#4679](https://github.com/hat47x/tei-platform/issues/4679)／#951） | 上位A・利用側Bの二Pluginを固定し、Aが公開したContract／Graph／Manual索引へ、Bのread-only Inspectから正しい版で辿る。短いProduct Skillは既存の実コマンドの発見方法だけを案内 | 非公開文書・図・上位依存の存在情報を漏らさない。閲覧可を再公開可・実行可へ昇格させない。新Docs Registry／未実装CLIコマンドを前提にしない |
 | **P1：横断Concernと専門計算の適合**（#4198／#3509／#4660） | main統合済みの[Application Graph設計 #4681](https://github.com/hat47x/tei-platform/pull/4681)では、まず一つのRoute／Entryに対するread-only適用表を作る。計算側は[SQLite Window実DB試験 #4670](https://github.com/hat47x/tei-platform/pull/4670)を基線に、必要な入力範囲とProvider能力を調べる | 計測の挿入・同意・二重発火、外部Solver、NoSQLでの同等性、通常CLIの実計算・Consumer受領は未検証。新Aspect Weaverや第二Query Engineを導入しない |
+
+### P1で接続する業務判断・設計入力・数式（2026年11月15日）
+
+これらは新しい製品P0の前提ではなく、既存の標準Data/Rule/Expression・Function Data Context・表現型を実案件に近づける**受入作業**とする。詳細な正負例とOwner境界は[横断統合受入境界§14〜17](../design/CROSS_CUTTING_ACCEPTANCE_BOUNDARIES_2026-11-12.md)を参照。
+
+| 対象 | 次に確認する最小経路 | 失格となる短絡・Owner |
+| --- | --- | --- |
+| **BRMS相当の業務判断** | 明示RoleのMarkdown Decision Table→既存Rule/Context→生成Target結果。条件重複、未定義、partial/NULL、有効時点、Rule改訂を独立Expectedと比較 | 暗黙の行順による優先決定、Ruleの説明だけで実Commit成功を主張。#2621/#4370/#1126/#2506/#951/#2514 |
+| **多様な設計入力** | 手描き業務図の写真とCSV/Excelを出典位置付き候補として取り込み、三要素分析法のモデルへ人間がReview。会議録・帳票・既存画面は経路別の観測境界を維持 | 画像解釈・列名・画面表示を受理済み意味に昇格、同名別Entityを統合。#1124/#2621/#267/#3394/#2497 |
+| **KaTeX数式と演算** | Markdown中の式Source/Role→既存Expression/Operator/Context→表示と独立結果を比較。単位、精度、未観測、時点、マクロ依存を保持 | 数式の表示一致を実計算成功やSource一致に読み替える。#4370/#4350/#4353/#2495/#2514 |
+
+独立したBRMS実行Host、全資料の中央取込サービス、数式専用DBは新設しない。未取得の外部資料や未接続のReader/生成器/Consumerについて、完了を主張しない。
 
 最初の各PRには、**既存のSourceと対象版、具体的な正例・反例、実行された入口・Builder／Provider、独立Expected、確認できたConsumer、未検証の範囲**を短い一枚の引渡しとして残す。Ownerの意味受理、現在のHost Grant、外部Effect、実DB Migrationは別資格とし、推測による補完はしない。図面・Markdown表・Graphvizは標準データへの可読な表現として使い、表示上の変更を意味や実行権限へ昇格させない。
 
