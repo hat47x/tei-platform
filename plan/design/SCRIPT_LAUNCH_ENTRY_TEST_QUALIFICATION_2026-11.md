@@ -810,3 +810,41 @@ Script LaunchのA0〜A4と実ReadのRA-0〜RA-3の間には、新しいEngineで
 | **FH-08** | 生成BinaryのDigest一致、だがHost選択Provider=B／実Call=A | 実Call前に拒否。Binary照合・署名・モデル構造の成功をProvider同一性や現在Grantに代えない |
 
 **採否と現在の状態**：§19は他チャットの限定Go/DB/CLI/Build試験を正確に引き継ぐ作業計画であり、各PRは指定HEADでのCIが成功していてもDraft・未統合。A0〜A4、RA-2P/RA-3、完全性`complete`、実Stage2、公開Host Grantは、**この追補によって実装・受理されたことにはならない**。既存#4495/#2586/#2831/#1182/#2514へ返し、新しい検査正本や汎用Runnerを作らない。
+
+
+<!-- tei-20261114-authoring-runtime-capability-preflight-parity -->
+## 20. DSL Authoring診断と実行前宣言検査を、一つの不正定義で照合する（2026-11-14）
+
+### 20.1 位置づけと実装上の出発点
+
+[main統合済み #4629](https://github.com/hat47x/tei-platform/pull/4629)と[main統合済み #4636](https://github.com/hat47x/tei-platform/pull/4636)により、`internal/semantic/capabilityinvoke.Invoke`はCapabilityのResult、Input、DataEffectの**構造不正をAdapter呼出し前に拒否**する。これは実装・既存Go回帰で確認した限定事実であり、DSLから同じ不正をSource位置付きで説明できること、公開Entryの資格、Input実値・TypeRef解決、選択Provider/Current Grantを検証済みという意味ではない。
+
+既存`internal/syntax/parser.go:parseSemanticCapability`は`effect`の重複・未知Kind、`input`の名前と型の字句構造等をParse段階で検査する。一方、**同名Input、OutputとOutcomesの混在、同名Outcome**はその関数内で蓄積され、ここでは一意性・Resultモードの整合を判定しない。これらが**Workspace全体の既存Validatorで拒否されるか**は、実Sourceを使った検証で確認する。見つからなければSource診断の欠落として既存Validator/Workspace Ownerに返し、RuntimeチェックをDSLの意味正本に格上げしない。
+
+同じSourceからの検証でも次の四層を分ける。**(A) Source字句・構文／byte span、(B) Workspace全体のCanonical参照・重複・型整合、(C) Runtime構造preflightとAdapter call=0、(D) Owner受理・Entry公開・Host選択Provider/Grant**。AとBでの拒否理由はCのGoエラー文面と文字列一致を要しない。対応づけるのは*不正理由の種類・対象Subject・条件付きSource位置・拒否位相*であって、実行時から存在しないSource座標を作らない。
+
+### 20.2 最小の対照ケース（#4359／#4495／#1180／#2514の既存Expectedへ参照）
+
+| Case | 一因子の差分 | Authoring/Workspace側に期待すること | Runtime/公開側で必須のこと |
+| --- | --- | --- | --- |
+| **ACD-01** | `effect`のKindを未定義語へ変える | Parserの`unsupported data effect kind`を原Source位置付きで拒否 | 外部から構成した同じ不正Canonical CapabilityもAdapter call=0。Parserで拒否したSourceからはInvokable Subjectを作らない |
+| **ACD-02** | `input token std.text`を二行宣言する | Parserが読み取れたことを成功と数えず、全Worldで同名Inputを診断できるか調査。既存Validatorで不明なら未接続と記録 | #4636の重複Input拒否でcall=0。正しい一行に修復した正例も通す |
+| **ACD-03** | 同じCapabilityに`output std.text`と`outcome ok std.text`を併記 | 宣言の相互矛盾をSource上で指摘できるか照合。構文Parse成功と意味受理を分離 | #4629の混在Result拒否でcall=0。どちらか一方式に直した正例を対照 |
+| **ACD-04** | 同名`outcome`を二回定義 | RuntimeエラーをSource診断へ後付けで写さず、既存全World検証で二重宣言を検出できるか照合 | #4629のduplicate Outcome拒否でcall=0 |
+| **ACD-05** | `input`型参照を文法上のCanonical IDだがWorldに無いTypeへ変更 | ParseできてもType解決済みとはしない。Required Sourceが不足している場合は未確定のまま | #4636はTypeRef非空までしか検査しない。**実行前の型解決/Entry公開資格は別**。型解決未実証のままcall=0まで確認できなければProduct拒否資格はNOT PROVEN |
+| **ACD-06** | Effect宣言を削除する | 原SourceにEffect句が無い事実を記録（ゼロのEffectとは区別） | `Effect == nil`は構造上許されてもpure受理・Host Grantを意味しない。権限/Effectを暗黙補完しない |
+| **ACD-07** | Sourceを持たない不正CanonicalをAPIへ直接与える | 対応するSource occurrenceが無ければspanを`unavailable`。架空の位置へ結びつけない | preflightのcall=0を独立確認。Source診断・Studioジャンプの成功へ流用しない |
+| **ACD-08** | R0のSourceとR1の同ID・別宣言を入れ替える | Workspace/Source occurrence/raw digestとLanguage Pinを再束縛し、旧アンカー・診断を流用しない | R0のEntry/Provider/Actual AttemptをR1へ引継がない。Source状態と現在Grantを別確認 |
+
+ACD-02〜04については、**ParseできることをもってValidatorも受理したと判定しない**。まず現行`validation.Validate`等に対応する検査があるかを実Go Testで判別し、不足がある場合のみ既存Ownerに最小差分を切り出す。ACD-05はRuntime構造検査へ型・Grant・Provider権限を詰め込む要求ではない。
+
+### 20.3 実装時の最小テスト手順と判定票
+
+1. **A/B Authoring**：`reference/workspace`の使い捨てコピー、または同等に隔離した既存Workspaceで一件ずつSourceを変え、現行Parser→既存Workspace Load/Validationを通す。診断有無、Subject ID、Original Source byte range、負例が完全Worldとして公開されないこと、修正後の正例を記録する。新`rule`構文や`*.tei.md` Readerを本試験の前提にしない。
+2. **C Runtime**：同じ問題を持つ`semantic.Capability`をGo側の固定Fixtureとして渡し、現行`capabilityinvoke.Invoke`でAdapter呼出数が0、BusinessResultが作られないことを確認。A/Bの失敗でCをスキップせず、防御層として独立に判定する。Contextの事前取消とAdapter後の取消・Effect不明を混同しない。
+3. **D Product接合（後続）**：Owner受理済みSubject/Entryが実在する場合だけ、通常製品CLIとTyped APIが同一Contract/選択Providerを通って起動するかを#4495へ引き渡す。Invalid Source、未選択Plugin、部分Load、未公開Entryは実Providerを呼ばない。実Product接合を未実施ならDをNOT RUNとする。
+4. **報告**：`case / Source path+raw digest+Revision / Parser result+span / World Validation result+diagnostic / Runtime refusal+adapter calls / Accepted Meaning+Entry / actual Provider / observed Consumer / PASS・FAIL・NOT RUN・unsupported`。同一版でないSource・Expected・Build/Consumerの成功は足さない。
+
+**最初に閉じる辺**はACD-02/03の「Source→既存Workspace Validatorに具体的な診断があるか」というFit/Gapと、その修理後正例。ACD-01/04/05で境界を拡張する。#4359のS0〜S6はValidationの新`rule`表層、#4495は起動／Entry、#988/#1018はLanguage/Operator、#1180/#2514は独立Expected、#1124はSource位置・Studio Consumerを引き続き所有する。別Validator、第四のMeaning正本、実行Engine、全面DSL刷新、セルフビルドの新Hard Gateは導入しない。
+
+**現在の資格**：#4629/#4636の実行前構造拒否はmainにある。ACD-01〜08の**一つのSourceからの横断実テスト、Validator Gap実測、製品CLI/Studio Consumer、Owner意味受理は今回NOT RUN**。同じ拒否に見えるというだけで全層同一の製品検収PASSとしない。
