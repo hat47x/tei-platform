@@ -11,14 +11,13 @@ import "testing"
 // new exported string constant fails the check until it has a test or an entry.
 // An entry is a to-do with a reason, not a licence to leave a word untested.
 var unmentionedStringConstants = []string{
-	// internal/query の語彙（relation.go の4つと standard/model.go の1つ）は、
+	// internal/query/relation.go の4つの語彙は、
 	// 並行変更で追加された語がまだどの試験にも現れていない。語を足した変更の
 	// 担当が試験を付けるまでの to-do としてここへ置く。
 	"internal/query/relation.go/RelationFetchModeEager",
 	"internal/query/relation.go/RelationQueryModeGraph",
 	"internal/query/relation.go/RelationQueryModePath",
 	"internal/query/relation.go/RelationQueryModeTree",
-	"internal/query/standard/model.go/SeverityUnsupported",
 }
 
 func TestExportedStringConstantsHaveATestOrAnEntry(t *testing.T) {
