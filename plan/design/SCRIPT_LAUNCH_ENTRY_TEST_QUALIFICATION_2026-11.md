@@ -649,9 +649,9 @@ LR-A〜Dは全直列Hard Gateではない。LR-Aの受理待ち中は、LR-Bの�
 
 ### 16.1 現行mainで見つかった欠落と最小修正
 
-main `e888bb8f...` の `internal/semantic/capabilityinvoke/invocation.go` は、実Adapterを先に呼び、その後で `ValidateBusinessResult` を実行する。元コードは出力契約のないCapabilityを拒否するが、**拒否前にAdapterへ到達する**。またOutputとnamed Outcomesの矛盾は、Output分岐の優先により結果検査から見逃せる。これは*不正なContractがEffectful Providerへ伝わらない*というP0の前提に反する。公開Entry/現在Grant/Business Meaningの検査をここで実装する必要はない。
+修正前main `e888bb8f...` の `internal/semantic/capabilityinvoke/invocation.go` は、実Adapterを先に呼び、その後で `ValidateBusinessResult` を実行する。元コードは出力契約のないCapabilityを拒否するが、**拒否前にAdapterへ到達する**。またOutputとnamed Outcomesの矛盾は、Output分岐の優先により結果検査から見逃せる。これは*不正なContractがEffectful Providerへ伝わらない*というP0の前提に反する。公開Entry/現在Grant/Business Meaningの検査をここで実装する必要はない。
 
-[実装Draft PR #4629](https://github.com/hat47x/tei-platform/pull/4629) は既存 `capabilityinvoke.Invoke` に `validateResultContract` を**Adapter実呼出し前**へ配置し、直接 `ValidateBusinessResult` の利用でも同じ検査を行う。拒否するのは空Capability identity、Resultなし、single Output＋named Outcomesの両立、Outcome name/payload型参照欠落、duplicate outcome名。これらを一件ずつ壊したSynthetic testでAdapter call0を検証する。すでに正しいnamed Outcome／single Output／pre-dispatch cancellationは既存testで保護する。
+[main統合済みPR #4629](https://github.com/hat47x/tei-platform/pull/4629) は既存 `capabilityinvoke.Invoke` に `validateResultContract` を**Adapter実呼出し前**へ配置し、直接 `ValidateBusinessResult` の利用でも同じ検査を行う。拒否するのは空Capability identity、Resultなし、single Output＋named Outcomesの両立、Outcome name/payload型参照欠落、duplicate outcome名。これらを一件ずつ壊したSynthetic testでAdapter call0を検証する。すでに正しいnamed Outcome／single Output／pre-dispatch cancellationは既存testで保護する。
 
 **あえて固定しない条件**：`BusinessResult.Payload==nil`を汎用的に禁止しない（Nullable/未取得／Missingの業務意味はAccepted Type/Target/Adapter側）。Outcome中の`Payload`の値shapeやInputの型／単位・Owner意味、Entry公開、Provider選択、Host Grantを`validateResultContract`が判断したとみなさない。これらはA0/A1後段とEL-01/04/08/12に残す。
 
@@ -664,7 +664,7 @@ main `e888bb8f...` の `internal/semantic/capabilityinvoke/invocation.go` は、
 | **RC-03 unaffected paths** | Authenticated/Denied、single Output、Context cancelなど既存局所契約の非退行 | 実Go selected Providerのactual linked member、Host Current Grant/Effect |
 | **RC-04 build/consumer** | コードは`internal/semantic/capabilityinvoke` 2ファイルだけ。新CLI・新Provider・新Registryはなし | L-P正式Function/実`tei` CLI subprocess／Studio IPC／Web/WASM／Stage2 Product Function |
 
-本実装は**A1内の部分実装**であってA0 Owner受理やEL-01公開Entry資格を代替せず、L-RのPostgreSQL Readや#4623/#4624のBuildIntent Validatorとも結合しない。#4625のCLIファイルとは非重複。実装・試験・結果は[Draft #4629](https://github.com/hat47x/tei-platform/pull/4629)へ記録し、§16には到達範囲のみ反映する。
+本実装は**A1内の部分実装**であってA0 Owner受理やEL-01公開Entry資格を代替せず、L-RのPostgreSQL Readや#4623/#4624のBuildIntent Validatorとも結合しない。#4625のCLIファイルとは非重複。実装・試験・統合結果は[merged #4629](https://github.com/hat47x/tei-platform/pull/4629)へ記録し、§16には到達範囲のみ反映する。
 
 ### 16.3 BuildIntentの実装と共有するのは三段の検証順序
 
@@ -676,4 +676,27 @@ main `e888bb8f...` の `internal/semantic/capabilityinvoke/invocation.go` は、
 
 この三段は共通のAPI/Receipt/Independent Expectedの**比較視点**であって、Product Build、Function、DB Providerへ万能実行Engineを要求しない。CLIやStudioの表示だけでどれか一段を省略しない。
 
-**確認状態（当初）**：Goの2ファイルをmain起点の隔離BranchへcommitしてPR #4629を作成。PRのCI開始を観測済みだが、**この文書追補だけを理由にexact HEAD Go test合格とは記載しない**。CIの合否は#4629の当該headとリンク先により別途判定する。Original #4618はdocs-only Draftのまま維持。
+**統合実績（2026-11-14）**：[PR #4629](https://github.com/hat47x/tei-platform/pull/4629) のexact HEAD `00ea85234720db01a06279fd87e2c72cf1001605`で、GitHub Actions **9/9 completed/success**（[Repository Health](https://github.com/hat47x/tei-platform/actions/runs/43545545189)を含む）。変更2ファイル、追加Go回帰・既存テスト、最新mainとの競合なしを照合して **squash commit [`76b4d29a`](https://github.com/hat47x/tei-platform/commit/76b4d29a3e482f4f8729344fe423b9eaa9c7b548)でmain統合済み**。§16のRC-01〜03はその限定検査範囲でコード実装／CIの証拠があるが、RC-04の公開Entry・選択済み実Provider・Host Grant・製品CLI・二Consumerは依然NOT RUN。#4618自身はdocs-only Draftのまま変更開始時点の状態を保持する。
+
+## 17. #4629 main統合後のProduct起動最短実装・判定境界（2026-11-14）
+
+**現在得た不変条件**：不正なResult契約→実Adapter呼出し0はmainの`semantic/capabilityinvoke.Invoke`で成立。**必要な追加は同じ契約検査の別写しでなく、実際のProduct EntryをHostの選択Providerへ渡す欠落した辺**である。以下は既存#4495/#2586/#951/#3422/#3421/#1180への作業分配で、新しく独立したリリースGate/実行Engineを作らない。
+
+| 優先・Owner | 実装と独立Expectedの単位 | 限界 |
+| --- | --- | --- |
+| **L-P0 Owner受理／公開：#4495** | Reference-localのD8/line-amountではなく、Meaning Ownerの通常受理済みpure Capabilityを選び、実際に公開したEntry/Target/Output Contract/Source Revisionの同じ版を固定。選べない間はSynthetic Fixtureで構造/Selected Providerの負例を開発する | Synthetic成功で未受理Entryをpublic化しない。Effect未宣言を自動pure判定しない |
+| **L-P1 Go Product binding：#4495/#951/#3422** | 現`capabilityinvoke.Invoke`を再利用し、Hostが解決した**選択Providerと実Go Adapter呼出し**を一つのApplication Operation/Attemptに束縛。Entry不存在／無資格・選択B→実A・選択Providerなし・Input版不一致はAdapter call0。Output値/NULL/欠落はAccepted Typeで別検証 | Product Adapterに新Result Engine/Registry/Authorityを作らない。構造検査だけではProvider Identity/Grantedを証明しない |
+| **L-P2 通常製品CLI：#4495/#1158** | 同じProduct Operationを通常`cmd/tei`実subprocess経由で起動し、Process・選択Provider・actual Go call witness・実Output body/Failureを対照する。CLI Help/Catalog/Dispatchは既存`acceptedCommands`等へ統合し、[#4625](https://github.com/hat47x/tei-platform/pull/4625)のREA CLIと重複しない | `exit 0`や同じ値だけで成功を認定しない。CLI/Plugin Test Fixtureからbusiness acceptanceを作らない |
+| **L-R（並行）実PG Read：#2586** | merged #4539のEnv→実PG→Function Contextを再利用。`:from`のQuery input不足、Connection host-asserted、Coverage unestablishedを現況として保持し、通常製品Consumer/Grant/Disclosureへ接続 | DB read成功／0行はpure Function完了やClosed-world coverageを意味しない |
+| **L-C（後続）Studio/Server/Stage2：#3421/#4583** | 同じApplication OperationをDesktop IPC/Serverで呼ぶ。実Source/Entry/Provider/Current Grant/Resultの同一Attempt比較。WebはPrincipal×Workspace×Tabで開示分離を検査。Stage2 Desktopは実Linked Provider収録・実Callの別資格 | 現Wails localhost Reference Host、旧Browser response suppression、BuildIntent Builder pinのPASSはProduct Entry結果に流用しない |
+
+### 最初にレビュー可能にするべき反例（既存Expectedに追加）
+
+- **EP-01**：実Providerへ到達できる合成Adapterがあっても、公開Entryが未解決→call0（#4629のRC-01とは別）。
+- **EP-02**：契約・入力・Resultが全て同一でも、Selected Provider B／actual A→FAILかつB以外のCallは0。静的Go登録経路の場合は実Call witnessを独立に採る。
+- **EP-03**：公開Entryは存在するがHost Current Grantが失効、Workspace/Target/Source版が違う→invoke0。Previewの成功を流用しない。
+- **EP-04**：実Adapterは呼ばれたがOutput body欠落、nullable Output/NULLとMissingの区別ができない、またはResultは合格でもEffect観測が不明→`BusinessVerified`にはしない。実行後のResult検証失敗はRollbackの証拠でない。
+- **EP-05**：CLIとStudioで同じSnapshotや表示値が得られても、片方はReference executor/別Provider→Product二入口資格FAIL。
+- **EP-06**：Source/Build/Entryは同bytesへA→B→Aで戻っても、Owner meaning acceptance・現在Grant・Runtime loaded member・Consumer disclosureを旧資格から自動復活させない。
+
+**着手依存**：EP-01/02のSynthetic typed Adapter検証はA0のOwner意味受理と並走可能。正式公開/実GrantのPASSと合算しない。EP-05/Stage2のWebViewは実Go L-P1/P2の確定後に合流するが、TEI Studio自己再構築#4583の最優先実装をブロックしない。**現状**：この節は#4629 merged実績と他レーンの現実装を根拠とした次工程の設計。ProductのEntry/Provider/CLI/Web/Stage2 E2Eは**NOT RUN**。
