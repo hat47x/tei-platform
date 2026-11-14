@@ -609,7 +609,7 @@ Readerは既存ReadOnly.workspace()のRoot実体照合を行い、workspace.Read
 
 - #4634は#4623と#4624のGo変更を一main-based HEADへ集約した候補である。元2本をそれぞれmergeしてから#4634をさらに適用するのではなく、**#4634を統合単位としてOwnerが差分・受理基準を確認**し、元PRは参照履歴として扱う。別PR #4587が生成WorkbenchのN2→N3 Byte handoffと実Windows WebViewを持つため、これらを同じBuild Attempt/NonPlugin Subject/Targetへ接続する次実装を#4583で担当する。
 - #4627は5/5 CI成功により、**静的Service Inventoryガードとしてレビュー可能**になった。Web公開を許可する入口ではない。Wails Serverで明示したread-only Facadeの実Endpoint/Actor/Workspaceと、Event broadcastのAudienceによる拒否は#3421で別資格を取得する。
-- #4636は#4629のmain統合済みResult検査を再利用する。Capability Input/Effect宣言の構造不備をAdapter Call=0で止める局所防御は前進。実入力値の型/NULL/時間条件やAuthorityが未確定でも一般Result検査を厳しくしすぎない。L-P0→L-P1→L-P2の一往復を既存Script Launch #4495/Plan #4618へ委譲する。
+- #4636は、#4629のmain統合済みResult検査を再利用する入力・Effect宣言の構造preflightを実装し、同HEADの9/9 CIを経て**mainへ統合済み**。Capability Input/Effect宣言の構造不備をAdapter Call=0で止める局所防御は成立。実入力値の型/NULL/時間条件やAuthorityが未確定でも一般Result検査を厳しくしすぎない。L-P0→L-P1→L-P2の一往復を既存Script Launch #4495/Plan #4618へ委譲する。
 - Studio外観設定 #4628のPreferenceはClient UI状態として維持し、#4378のPlugin Configuration/Workspace Lockと混同しない。理想Contribution #4632を現PoCの実Loaderへ自動昇格せず、既存解決・実Call・Artifact/Targetをもとに移行案を比較する。
 
 ### 21.4 追加する統合受入Case（新独立Runnerではない）
@@ -628,8 +628,14 @@ Readerは既存ReadOnly.workspace()のRoot実体照合を行い、workspace.Read
 
 ### 21.5 PR統合の明確な前提と新CIの扱い
 
-依存の順序：**#4630 → #4637**（#4637はmain比較の差分に#4630由来2ファイルを含むため、前者統合後に再base/差分削減、新HEADで再検収）、**#4626 → #4631**（Source型宣言先行、積上げGo Test合格と実PGは別）、**#4629 merged → #4636 review**、**#4623/#4624 → #4634を一統合単位としてレビュー**、**#4627は独立して限定static guardをレビュー**。これはmerge実行指示ではなく、重複導入・古い基準との照合漏れを避ける受入順序。
+依存の順序：**#4630 → #4637**（#4637はmain比較の差分に#4630由来2ファイルを含むため、前者統合後に再base/差分削減、新HEADで再検収）、**#4626 → #4631**（Source型宣言先行、積上げGo Test合格と実PGは別）、**#4629 merged → #4636 merged（現在main実装）**、**#4623/#4624 → #4634を一統合単位としてレビュー**、**#4627は独立して限定static guardをレビュー**。これはmerge実行指示ではなく、重複導入・古い基準との照合漏れを避ける受入順序。
 
 観測の履歴を保持：#4630のWindows SmokeはAttempt 1で環境Timeout・Attempt 2成功。#4627の初期HEADはgofmt不一致でHealth失敗・修正HEAD b9cf5447で5/5成功。失敗履歴を消して初回から成功したとは記述しない。PR更新でHEADが変わった場合、前HEADの成功を新HEADへ流用しない。
 
 **資格上限**：この章は各GitHub PRの現HEAD/CI実績と実コード・既存Ownerの受入条件を照合した実装引渡しであり、当章追加による新Go Test・実Web AuthZ/WS/OS IPC/実DB・Stage1→Stage2 Build・Owner正式受理はNOT RUN。並行PRが編集するMASTER_PLAN.md/理想設計原本を重複変更しない。
+
+### 21.6 2026-11-14 追補：Script Launchの宣言preflightがmainに統合
+
+[PR #4636](https://github.com/hat47x/tei-platform/pull/4636)はHEAD da807abc65d560134e9a6aa4c4f7b8d92d3b2fef（9/9 GitHub Workflow completed/success）からmainへ**merged**。merge commit 18470e69d2755b29ce55285ff847305e2e3e420d を確認。これはInput名・型参照/重複、DataEffect宣言、nil contextという**静的宣言のpreflight→実Adapter Call=0**を現実にmainの共通Capability Invokeへ追加する変更である。前段#4629のResult Contract preflightと同じ汎用境界であり、新第二Validatorは作らない。
+
+**製品資格の停止線を維持**：元のInput値・意味Type/NULL/単位、公開EntryをHostが実選択したこと、Current Principal/Grant、実Provider Go call、Commit Receipt/EffectUnknown、通常tei subprocessはmainへのマージだけでは成立しない。#4495/#4618のL-P0→L-P1→L-P2をOwnerへ委譲し、Plugin一段階の契約構造適格をStudio/Generated App全面受理へ拡張しない。§20.7は当時のDraft状態の履歴記述、現在の実装状態は本追補を正とする。
