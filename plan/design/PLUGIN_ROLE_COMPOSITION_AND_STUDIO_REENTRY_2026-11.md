@@ -1185,4 +1185,27 @@ CLI／Studio／Harnessから返される後着応答は、**現在の選択対�
 次の#4714実装はこのSourceを**入力用の独立Fixture**として使い、`plugin-inventory`の実World選択と公開DocのSource-backed Product Readの差分を証明する。独立Expectedの採否は既存#1180/#2514へ戻す。Fixtureを作成したことをもって、実Plugin Inventoryに合成A/Bが登録された、Doc/GrantがProductで受理された、read-only APIやRuntime Providerが動いたとは主張しない。
 
 
+### 21.11 合成Fixtureの整合性を実Goテストで監査し、製品受入とは切り分ける
+
+<!-- tei-plugin-doc-reference-fixture-audit-20261115 -->
+
+[PDC-0 #4701](https://github.com/hat47x/tei-platform/issues/4701)の合成A/Bデータに対して、[reference/plugin-doc-reference/](../../reference/plugin-doc-reference/README.md)に**Fixture監査だけを行うGoテスト**を追加した。新しいPlugin Reader/Resolver/文書Registry/認可エンジンではなく、既存Graph Readerと固定元Sourceを再利用する。
+
+`TestCandidateFixtureLinksToRealGraphAndManualBytes`は、(1)候補JSONが`proposal-only`であり、A/B/C直接依存・契約/公開/再公開・Case IDが整合していること、(2)`reference/tei-md-graph-reader.ParseCandidate`に元`baseline.tei.md` byteを渡したときに同ラベルの二Node、同端点の二Relationの意味IDとbyte spanが候補と一致すること、(3)公開・非公開Manualの実ファイルが別で、公開Manualが非公開本文を複製していないことを調べる。
+
+`TestCandidateFixtureMutationsAreRejected`は、Aの版、Bの依存、候補Lock、再公開、非公開指定、Source参照の候補資格、Path traversal、Relation ID合流、Roleの無断受理、非公開Metadataの返却Expected、ケース欠落、実製品機能の無断「合格」主張について**12種の合成改変**を与え、候補Fixtureの整合性監査が失敗を検出するか確認する。JSON上の`permission-denied`という期待結果は、実ProductのDisclosure/Authorization拒否を起動した結果ではない。
+
+実行コマンドは`go test ./reference/plugin-doc-reference -count=1`。既存のGraph生成Reference（`go test ./reference/tei-md-graph-reader`）、既存Inventory CLIテスト（`TestPluginInventoryEnvelopeAndModes`）とは**別の検査**である。成果を記録する際は実Commit、Go Toolchain/OS、テスト実行のOutputとScopeをそれぞれ保存し、実行していない検査をPASSにしない。
+
+| 検査 | 成立してよい主張 | まだ証明できない主張 |
+| --- | --- | --- |
+| PDC-0 Go Fixture監査 | 合成JSON/元Graph/Manualの整合性と定義された変異の検出 | 独立Expectedの正式採用、現在のAudienceでの実Doc拒否 |
+| 製品`plugin-inventory`回帰 | 実Workspaceで選択/解決されたPluginのID/Version/Lock/診断 | 公開DocのSourceRef・正文の取得 |
+| 製品Doc一件 read-only（#4714） | 明示Doc Ref/契約版/Source/Disclosureを実Readで結合できた範囲 | Graph意味受理、実Generator/Provider/Owner受理 |
+| Graph→Go Reference | 固定Sourceから生成したGoの実Process/Node入力の限定結果 | 正式`*.tei.md` Readerや製品CLI Pluginのセルフビルド |
+| 製品Go/実Consumer（第20章/#4720） | 実受理された意味が選択Plugin/Provider/Consumerで利用された範囲 | 別Audienceへの公開許可や未観測の外部効果 |
+
+次の**最小Go Product Patch**は引き続き#4714が所有し、`plugin-inventory`で選択されたPluginから、明示Doc Ref一件を管理Source/現在の版へ結び付けることに集中する。Fixture監査がGreenであっても、製品CLIのDoc ReaderやAuthZを追加実装済みとはみなさない。#2514/#1180の独立Expected正式採用、#951の実Provider資格、#2621のReader受理、Studio Stage1→Stage2のP0をこのReference監査へ移さない。
+
+
 **資格**：第20・21章は、現行mainの第15〜18章を維持しながら、生成プラグインの一機能とPlugin説明の利用時適合を切り出した**設計・検収案**である。正式 *.tei.md Reader、新Generator、実Plugin E2E、Plugin Help API、実AI Harness、Owner受理を今回実装・実測したわけではない。
