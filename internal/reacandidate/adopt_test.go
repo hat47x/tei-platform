@@ -320,6 +320,7 @@ func TestCompareCandidateSetsUniqueEdgeRenumberingNoParallelAmbiguity(t *testing
 		t.Fatalf("renumbered = %d, want one: %+v", matched, comparison.Entries)
 	}
 }
+
 // Added and removed candidates are reported without a structural match.
 func TestCompareCandidateSetsAddedAndRemoved(t *testing.T) {
 	first := mustGenerate(t, defaultEvidence())
