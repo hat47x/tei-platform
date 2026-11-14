@@ -412,7 +412,7 @@ Language/Operator/Generator/Data/Presentationという役割と、native Go / se
 
 ### 18.1 他チャットと実コードの交差：SHO・REAのローカルPath
 
-[REAローカルCLI Draft #4625](https://github.com/hat47x/tei-platform/pull/4625)は、保存済みEvidenceの受領を既存operations.ExternalCandidatesから読むread-only入口を作った。evidence-pathは**local CLIの入力Path**であり、ReadFailedの内部Pathが外部Disclosure可能であると保証しない。exact HEAD d2175d97e11b6a6f9bc6b390ddae98c519a576fe は9 Workflowのうち8 success、[Repository Health #43543262432](https://github.com/hat47x/tei-platform/actions/runs/43543262432) failure。全体の受理資格を成功とはしない。
+[REAローカルCLI Draft #4625](https://github.com/hat47x/tei-platform/pull/4625)は、保存済みEvidenceの受領を既存operations.ExternalCandidatesから読むread-only入口を作った。evidence-pathは**local CLIの入力Path**であり、ReadFailedの内部Pathが外部Disclosure可能であると保証しない。exact HEAD d2175d97e11b6a6f9bc6b390ddae98c519a576fe は9 Workflowのうち8 success、[Repository Health #43543262432](https://github.com/hat47x/tei-platform/actions/runs/43543262432) failure。全体の受理資格を成功とはしない。 Health job 132288471320のログでgo vet/go test/Workspace validate/ADR indexはPASS、gofmt -l .のみFAILし、drift対象はcmd/tei/cli_flag_contract.goと特定した。R3-AのOwnerへ[PRコメント](https://github.com/hat47x/tei-platform/pull/4625#issuecomment-6870141370)で新HEADの整形・再検証を引渡した。
 
 現mainのWails StudioBridge.OpenShoDocument(draftPath,documentPath)／ResumeShoDocument(documentPath)は、Host設定のSHO_DOC_COMMANDで外部子プロセスへ中継する。現在loopback-onlyなので「外部から任意Pathへ侵入可能」という実証ではないが、このMethodをそのままpublic multiuser Webへ公開してよい理由にもならない。
 
