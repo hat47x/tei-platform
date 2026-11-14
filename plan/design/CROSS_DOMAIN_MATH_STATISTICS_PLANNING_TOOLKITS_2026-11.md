@@ -433,11 +433,11 @@ TEIには、**受理済みValidationからGoの実装を生成して独立Expect
 | --- | --- | --- |
 | ローカルCLI（直接利用） | Go単一バイナリのWails非依存Backend | 通信Serverを必須にしない。現在の型・Contract・実Providerに到達したか |
 | ローカルCLI（分離が必要な場合） | 明示的に起動・選択したローカルBackend子プロセス | 同一APIの要求・応答、IPC相手・版・プロセス帰属、実Callを確認する |
-| Desktop Studio | WailsはClient側。ローカルBackend子プロセスとIPCで接続 | GUIで選んだSubjectとBackendのSource・構成・現在資格が一致するか |
+| Desktop Studio | **現行の実装基線**はNative同一プロセス。ローカルBackend子プロセス／IPCは将来の分離候補 | 現行経路の実Consumerと、将来の子BackendのHandshake・版・権限を別の資格で検収する |
 | リモートCLI／Client | 接続先ServerのBackend | Server側のProvider構成・権限・実データ範囲を正本とする。ClientのローカルPluginやCacheを勝手に代用しない |
 | MCP／AIハーネス | 明示されたCLIまたはBackend経路 | 引き渡したSubjectと開示許可を再確認し、説明やSkill文書だけから実行を許可しない |
 
-初回の計算実証でローカルCLIをHTTP待受け必須にしない。Desktop側はUIの都合でWailsを使っても、CLI／Backendの実装はWailsに依存しない。ローカル子プロセスを使う必要があるなら、既存の起動・通信・終了管理の責務へ渡す。**単純な一回の計算のために専用の科学Serverや常駐Processを先に必須化しない。**
+初回の計算実証でローカルCLIをHTTP待受け必須にしない。Desktop側はUIの都合でWailsを使っても、CLI／Backendの実装はWailsに依存しない。現行DesktopのNative同一プロセス経路と、将来の子Backend／IPC分離案は混同しない。後者の採否・起動・互換性・回復は[検討中のPR #4705](https://github.com/hat47x/tei-platform/pull/4705)と既存のBackend Ownerに委ねる。**単純な一回の計算のために専用の科学Serverや常駐Processを先に必須化しない。**
 
 実行要求を渡す前に、最低限、対象のSubject／Source・Meaning Revision、要求するOperator ContractとProfile、対象Target、実行Backendの識別情報、選択したProviderと版・構成、利用主体とRead Scopeを照合する。ClientとBackendの互換性を確かめるHandshakeや構成Digestは**既存のContract／Compositionの表現で実装可能かを先に確認する候補**であり、この計画から新しい通信Schemaや必須ABIを確定しない。
 
@@ -481,6 +481,24 @@ PluginやCLI／Backendの更新は、選択中のContract／構成と、更新�
 2. **意味を変えない変更**：計算に影響しない説明文や表示配置だけを変更する。Sourceの版が変わった事実は残しつつ、計算の意味・出力結果は同じであること。ビルドの省略やArtifact再利用の可否は、既存のWorld／Model／Artifactと依存条件で別に判断する。
 
 いずれも、編集前後のSource、意味Revision、生成結果、実入力、実Call、独立Expectedを混同しない。表の再表示やPythonによる記法試作の成功を、Go本体の正式Reader・通常CLI・MCP・生成アプリの合格へ引き継がない。
+
+### 正式Readerが未接続である現状から、最小の実読取りへ進む
+
+2026-11-14時点の`internal/workspace/loader.go`は、管理Sourceを走査したあと、`rejectUnboundTEIMarkdownSources`で管理対象の`*.tei.md`を**`TEI_MD_PARSER_UNBOUND`として明示拒否**する。現在の`loadSemantics`が呼ぶ`syntax.NewParser(...).ParseSemanticFile()`は従来形式のParserであり、Markdownの表・フェンス・本文のRoleを実際に解釈した証拠ではない。`ManagedFile`の列挙、`ReadByLoader`の真偽、Parserでの解釈、意味の受理、Buildでの実消費はそれぞれ別の事実である。
+
+この拒否は不備を隠さないための安全策である。Guardを削除して、管理対象に入っただけの`*.tei.md`を「読めた」とする対応は採用しない。実装順は既存の[Markdown移行計画](TEI_MD_UNIFIED_AUTHORING_MIGRATION_2026-11.md)のMR-0〜3、および検討中の[Reader最小実装PR #4704](https://github.com/hat47x/tei-platform/pull/4704)へ合わせる。#4704は**レビュー中の設計であり、Readerの実装完了ではない**。
+
+| 検証する段階 | 最初に通す内容 | 数理Windowに適用する際の限界 |
+| --- | --- | --- |
+| MR-0：現行の明示拒否 | Workspaceに管理された`*.tei.md`で、Readerが未束縛なら`TEI_MD_PARSER_UNBOUND`。旧`*.tei`と普通の`README.md`は従来どおり扱う | Window表もこの時点ではMeaningとして読めない。C1は未達 |
+| MR-1：選択した宣言領域 | Markdown容器の元byte列から、選択した宣言領域を抽出する。引用・説明・例示の表は意味に昇格しない | 最初は従来文法のコード領域を候補にできるが、**通常のMarkdown表を読めるわけではない** |
+| MR-2：既存Parserと元位置 | 抽出した実byte列を既存Parserへ渡し、Source occurrenceと診断を元Markdownのbyte spanに戻す | CRLF、BOM、日本語、複数Fence、同名の別領域で位置を推測しない。式やWindow Roleは別に資格化 |
+| MR-3：正式Loader／実消費 | 明示選択した領域の実読込・Source Index・Build入力を照合する | 構文が読めても、WindowのPartition／Order／Frame／NULLを受理してSQLを生成できたとは限らない |
+| 数理用途への拡張 | Markdown表の識別子・値・欠測、Windowの演算・範囲を既存の型・Role・Operatorへ束縛する | この範囲はMR-3の当然の結果ではない。Source→意味→Target生成→実Providerの各資格を別に検収 |
+
+最後の段階を新しい汎用Authoring Gateや別のParserにしない。最初は**一つの宣言領域の元byte→既存Parser→元Source位置**を通し、Markdown表全体の意味解釈は、その読み取り能力を前提に対象を明示選択する。単純なFence抽出でTEI内部へ貼った旧DSLと、普通の表から型付きWindow意味を作れたことを混同しない。
+
+CTK-13とCTK-17の反例は、既存Reader計画のMR-X1（未束縛拒否）、MR-X3（選択領域と説明の区別）、MR-X4（元byte span）、MR-X5（旧新同ID競合）、MR-X8（Required Source未取得）へ対応付ける。新たなExpectedの正本を作らず、`internal/workspace/tei_md_source_guard_test.go`の既存負例を第一の回帰基線に使う。数理Window側の七行Expectedは、Readerが本当に解釈したSubjectと同じSource Revisionへ結び付いた場合だけ後段に渡す。
 
 ### 記法の試作から製品実装へ渡す範囲
 
@@ -667,4 +685,4 @@ Solver・実験計画法は、同じ計算契約・観測・受理の分離を�
 
 ## 24. 確認できたことと未実証のこと
 
-この文書は、2026年11月14日時点の既存Issue・設計資料と分野横断の検討を踏まえた**設計・検証計画**である。SQLite方言のCTE・Windowによる限定的なGo回帰テストは[PR #4670](https://github.com/hat47x/tei-platform/pull/4670)でmainへ統合され、対象HEADのSQL Dialect Plugin CIが成功した。 また、生成器選抜には受理済み`positive` ValidationからGo成果物を作るReference実装があるが、これは数理Windowの意味や`*.tei.md`の正式Readerの受理を意味しない。一方、この成果は正式な`*.tei.md`の読取り・意味受理、TEI自身のコード生成、通常CLI/MCPの実利用、NoSQLや科学計算Providerとの同等性を保証しない。今回のMarkdown表や数値・単位・Backend選択の反例は**設計候補・独立Expected**であり、新しいGo／R／Python／Windows／科学計算の実行、専門家レビュー、市場調査を行ったわけではない。数値計算やSolver、実験計画法、専門Toolkitが製品として完成したとは判断せず、採否は既存OwnerのIssue／ADR／実Evidenceへ戻す。
+この文書は、2026年11月14日時点の既存Issue・設計資料と分野横断の検討を踏まえた**設計・検証計画**である。SQLite方言のCTE・Windowによる限定的なGo回帰テストは[PR #4670](https://github.com/hat47x/tei-platform/pull/4670)でmainへ統合され、対象HEADのSQL Dialect Plugin CIが成功した。また、生成器選抜には受理済み`positive` ValidationからGo成果物を作るReference実装がある。ただし、現在の`*.tei.md` Workspace読込はReader未束縛を明示拒否しており、これら既存Referenceは数理Windowの意味受理、正式Reader、TEI自身のコード生成、通常CLI/MCPの実利用、NoSQLや科学計算Providerとの同等性を保証しない。今回のMarkdown表や数値・単位・Backend選択の反例は**設計候補・独立Expected**であり、新しいGo／R／Python／Windows／科学計算の実行、専門家レビュー、市場調査を行ったわけではない。数値計算やSolver、実験計画法、専門Toolkitが製品として完成したとは判断せず、採否は既存OwnerのIssue／ADR／実Evidenceへ戻す。
