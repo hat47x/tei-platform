@@ -1236,3 +1236,79 @@ OIは**この補遺の作業順索引**であり、ORG-BEH/CX、既存Scenario/E
 4. **D：実行・複数Consumer** — CR-06とCase Handoffは#1174/#2499/#1444の実Host/Receipt/ACKが揃う段階へ引き渡す。CLI／Studio／Skill経路はSource/Read/Plugin版を照合するが、各受領を別実測する。
 
 **停止線**：Sourceにない承認Rule・Case関係を捏造、RoleAssignmentだけからGrantを発行、partialをnone/oneへ縮約、Record Version・Relation Occurrenceと表示Edgeを混同、同名Personの自動同定、新Core/Workflow/Authorization/Plugin文書Registry/第二Expectedを追加、または本節のDocs PASSを実Product/Owner受理へ昇格すること。この節自体は文書・引渡し計画のみで新しい実試験はNOT RUN。
+
+
+## 27. 組織改編をまたぐ人物・所属・役職・責任の解決と、変更時の再評価を具体化する（2026-11-15）
+
+> **状態：既存Sourceに基づく実装判断・独立Expectedへの引渡し。新製品実行、Owner Meaning Acceptanceは未実施。** §26は合成D1/R1から候補を導く最小試験である。本節はその先にある異動・兼務・職位変更・辞令・Case引継ぎを、既存Relation/Rule/Query/Host境界のまま組み合わせる。組織専用Workflow/Temporal/Auth Engineや第二Expected Storeを増設しない。
+
+### 27.1 異なる関係には、異なる識別子・版・規則が必要
+
+現行main `reference/org-staged-axis/semantic/organization-axes/model.tei`（今回確認したSource blob `ddb47442`）の確認結果を、実際のデータ項目に即して固定する。
+
+| 関係・データ | 現Sourceの確実な入力 | **存在しない／推定してはいけない関係** |
+| --- | --- | --- |
+| **Membership** | membershipId、orgUnitId、allocation、validFrom/validTo、knownFrom/knownTo、OrgUnitへのunit Relation | Membership→Personは現正式Sourceにない。EmploymentやAffiliationのPerson Relationだけで本人を同定しない |
+| **Occupancy** | occupancyId、positionId、valid/known、PositionへのRelation | Occupancy→Personがないため「D1のPositionに就いている人」は確定できない |
+| **Position** | positionId、orgUnitId、OrgUnitへのRelation | Positionに属することとRole R1/責任・実Grantを同一視しない |
+| **RoleAssignment** | roleAssignmentId、personId、roleId、Person/RoleへのRelation | 対象OrgUnit、valid/known、Roleの承認Dutyは現Sourceにない |
+| **Responsibility** | responsibilityId、subjectPersonId、objectOrgUnitId、Person/OrgUnitへのRelation | Dutyの種類、Case C1、時点、承認の可否は現Sourceにない |
+| **Directive** | directiveId、subjectPersonId、objectOrgUnitId、effectiveFrom/effectiveTo、sourceRevision | Directiveの存在からMembership/RoleAssignment/Responsibilityの変更が実Commit済みとは判定しない |
+| **OrgUnit** | orgUnitId、supervisorId、matrixParentId、supervisor/matrixParent Relation | 上司・マトリクス上の上位関係が、Caseの承認権限や人事上の代理を自動的に与えるわけではない |
+
+特に、「部門長が案件を承認する」という業務文を一つのRoleAssignment属性や部署階層だけで処理しない。最低限、**案件の対象Duty／適用組織／職位または役割／その時点の人物への解決経路／例外／必要なCurrent Grant**を、どのSourceとOwnerが責任を持つか区別する。
+
+将来のProfileは、①PersonをRoleAssignmentで直接解決、②Position/Occupancyを通して解決、③Employment/Affiliationなどの明示的なSubject Relationで解決、という**採否可能な候補経路**を比較する。すべてを全組織で必須化しない。現Sourceにない経路は`unresolved`として止める。人物IDを名前一致で補完しない。
+
+### 27.2 複数の異動・兼務・職位交替が同時に起きても、勝手に他の意味を変更しない
+
+「組織に起きた変更」を1種類のUpdateイベントへまとめない。各変更の出典、対象Occurrenceと版、valid/known、必要Readと影響範囲を保持し、Query/Rule/Consumerが**実際に依存した範囲だけ**を再評価する。
+
+| 発生した変更 | 再評価が必要なもの | 自動変更してはいけないもの |
+| --- | --- | --- |
+| P2のMembership A2/A3の配賦や期間を変更 | 人物同定を正式に束縛しているProfileなら、所属・FTE・所属依存の候補Rule | RoleAssignment、Position占有、Case責任、Current Grant、旧Receipt |
+| D1のPositionへ就任／退任 | 受理済みのPosition↔Occupancy↔Person経路、職位に依存する候補 | RoleAssignmentや所属、承認済Caseを辞令だけで変更しない |
+| RoleAssignmentの追加・取り消し | 対象Role/ScopeをRequired Readに含む候補Rule | Membership、Position、Host上のGrantや実Effect |
+| Responsibilityの対象D1→D2変更 | 対象Dutyを確定できる場合だけ対応する責任候補・説明・必要な通知 | Case C1のhandlingUnit、移管Receipt/ACK |
+| D1のsupervisor/matrixParent変更 | 組織図、受理済み上位組織探索・規則のRequired Set | 上位者への自動承認権限、既存の委任 |
+| Directiveの発効・取消 | 実際にDirectiveを参照するRelation変更候補、Proposal/Preview/受理/適用の段階 | Sourceにない複数のRelationの一括Commitを済んだことにしない |
+| Case C1の取扱先変更 | 受理済みCase Revision、Handling Responsibilityと明示Handoff Procedure | 人事関係・Subsystem責務・別HostのGrantや通知ACK |
+
+**再評価の要否は依存に相対的**である。WHERE/NOT EXISTS、Roleの存在しないこと、対象Scope、時間境界、RLS等は結果列に出ない場合もRuleの必要情報である。Source A→B→Aや同じラベルのD1再採用が生じても、Effect/ACKや旧Owner判断が復活したとは扱わない。無関係な所属変更で全Worldの全Consumerを無条件に再計算することも避け、unknown/partialな依存は安全側の再検査へ送る（#2582/#2600/#4518）。
+
+### 27.3 validAt・knownAtと「現在実行してよいか」は直交する
+
+組織史をある時点で再生するQueryには、最低限、事業上の有効時点（validAt）と、その情報が把握されていた時点（knownAt）を指定する。役職や所属の実Sourceに二時点が存在しても、RoleAssignment/Responsibilityにその列があるわけではない。**時間が異なるRelationを一つのas-of集合に暗黙合成しない。**
+
+同一validAtでknownAtを切替えたr7のMembership 4→3・Person 3→3・FTE 3.0→2.4は、対応する物理A2二版の同一DB保存、人物Link、実Provider Query、完全Read Cohortが未接続であり、現在は独立合成Expectedである。変更履歴の発見によって、過去に実行されたCase移管を自動再実行したり、既存Effect Receiptを削除・上書きしたりしない。
+
+一方、現在のHostで操作を実行できるかは、Actor Principal・現在Grant/Policy Epoch・対象Case Revision・時間・Tenant/Scope・Actionに対する権限の再照合が必要になる。**歴史時点の承認候補と、今の承認資格は異なる。** 候補解決の読取が正しくても、実行時点でGrantが失効したらEffectを行わない（#1174/#2499）。Commit unknownの場合は外部効果の重複を避けてReceipt照会へ戻し、ACK欠落を成功としない（#1125/#1444）。
+
+### 27.4 上位組織・マトリクス・複数親の表示と、正式な意思決定経路を分ける
+
+OrgUnitのsupervisorとmatrixParentは異なる関係であり、二つが同じ上位部署を示しても一つのRelation Occurrenceへ併合しない。多重親は組織グラフで保持し、単一親Treeで省略したEdgeには表示上の欠落とSource Refを残す。循環、不明な親、同名別Unitを検出したとき、組織図の見た目で解消せず診断する。
+
+渡辺式ER図の採用例では**親を左・子を右**に置き、同じ横列での上下位置を元の宣言順等から決定論的に求める。[main統合済み #4667](https://github.com/hat47x/tei-platform/pull/4667)の§33〜36にある識別／非識別関係とKey・FDの適合条件を参照し、PK継承と単純FKを線種・キーで区別する。Mermaidは、表現できる範囲では直接Sourceにもなり得るが、非対応のEdge ID、複数関係、時点、Roleを図上の同形線へ黙って縮約しない。説明用のMermaid図と受理済み実Sourceは区別し、二重正本を作らない。
+
+### 27.5 業務上の判断経路とアプリケーションの実行経路をつなぐ
+
+一つの「案件C1の取扱者を求める」要求に対し、意味上の経路は**Case→対象Duty/OrgUnit→受理済み責任Rule→Person/Position/Role Relation**である。これを実行する計画は**Entry/Function→選択Query/Provider→Rowset/Cohort→Rule結果→Consumer**という別のグラフになる（main統合 #4681）。実際に呼び出されたQuery・Rule・Providerと受信先はObserved Traceで確かめる。
+
+業務関係のEdgeが存在しても、Product Operationが実Readしたとは限らない。アプリケーションGraphの対象が見つかっても、Plugin公開FacetのScope/版、Target生成、Provider Load、Actual Invocation、Recipient受領、Host Effectは個別資格である。Source Span/VersionとGraph上のSubject PinをCLI・Studio・AIへ共通に渡し、説明と変更提案はread-only Context→Preview→Owner受理へ戻す。Pluginマニュアルには「この関係が何を意味するか」を記載し、実権限やCandidate Ruleの第二正本にしない（#4679、main統合 #4689）。
+
+### 27.6 既存の独立Expectedへ割り当てる追加反例と実装順
+
+| この節の観測ラベル | 最初に固定する負例／合格条件 | 既存の受入先 |
+| --- | --- | --- |
+| **ORX-1** | MembershipにPerson LinkがないのにEmployment Personや同名人物で補うことを拒否。正式Key/向き未決定ならunknown | #2386/#1126、#4490、#4633 |
+| **ORX-2** | OccupancyにPersonへのRelationがない状態では、Positionから占有人物を確定しない | #2386 WU-04、#4490 BEH-04 |
+| **ORX-3** | Role/Responsibilityの時点未定義をMembershipの二時点で補間せず、時点付き候補を未実証とする | #4490 BEH-01/04、#2510 |
+| **ORX-4** | P2異動でFTEが変わっても、Case C1担当・旧ACK・Current Grantが変わらない | #4490 BEH-06、#4501 CX-01〜03 |
+| **ORX-5** | supervisor/matrixParentの重複・複数親・循環と、承認Chainを別に評価。Treeで隠れたEdgeは読取専用 | #4490 BEH-07、#2497/#1124 |
+| **ORX-6** | Caseの明示Linkがないと候補P1をC1承認者と呼ばない。本人Role一致でも実Grantは別 | #4490 BEH-04/05、§26 CR-06/07 |
+| **ORX-7** | Source/Rule/Required Readが変化したら関係するQuery/候補/Consumerだけ再資格化し、A→B→Aの旧Effectを復活させない | #2582/#2600、#4501 |
+| **ORX-8** | Mermaid/Layoutの位置変更ではMeaning/Codegenは変わらない。識別線/非識別線の変更はKeyの意味受理を再確認 | #4667 SM-63〜70、#1126/#2497 |
+
+ORXは新しい正式Scenario IDではなく、**既存Expected／担当Ownerへ割り当てる参照ラベル**に限定する。CR-00〜08で最小の候補解決が成立した後、まずORX-1〜3でRelation Pathの欠落と時点境界を検査し、続いてORX-4〜6で改編と責任の非連動、最後にORX-7〜8で増分再資格化・図面の意味保存を検証する。個別試験で扱うCase・Person・Tenant・ProviderのSourceが異なる場合、同じAttemptだったように合算しない。
+
+**不採用／停止条件**：未採用のPerson/Occupancy/Case Relationを自動生成、職位・上司・配賦率を承認・委任の法的根拠とみなす、組織変更からCase移管やHost Grantを発行、Sourceにない二時点を補う、グラフの親子線を一律PK継承にする、図面を実際のResult/Effectに昇格、Repo外の新Workflow/Policy/Expected Engineを先に導入する。正式Meaning/API/DB更新は各Ownerが採否し、本§27のdocs-only更新ではGo/SQL/Provider/Windows/Host試験・Owner Meaning Acceptanceを実行したとは主張しない。
