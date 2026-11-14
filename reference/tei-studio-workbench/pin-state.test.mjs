@@ -71,3 +71,24 @@ test("unpin leaves no request and cannot accept a late result", () => {
   assert.equal(pinRequest(state), null);
   assert.equal(acceptPinObservation(state, old, inspected), state);
 });
+
+test("PIN-ABA-07: returning to workspace A rebinds intent only on explicit user action", () => {
+  let state = pinSubject(initialPinState(), "workspace-a", 1, A);
+  const old = pinRequest(state);
+  // A -> B -> A preserves the original intent, not the previous observation.
+  state = invalidatePin(state);
+  assert.deepEqual(state.intent.subject, A);
+  assert.equal(state.intent.workspaceEpoch, 1);
+  assert.equal(state.observation.state, "needs-requalification");
+  assert.equal(acceptPinObservation(state, old, inspected), state);
+  // Current workspace A is epoch 3; the UI explicitly rebinds to it.
+  state = pinSubject(state, "workspace-a", 3, state.intent.subject);
+  state = invalidatePin(state);
+  const current = pinRequest(state);
+  assert.equal(current.workspaceEpoch, 3);
+  assert.notEqual(current.generation, old.generation);
+  assert.deepEqual(current.subject, A);
+  assert.equal(acceptPinObservation(state, old, inspected), state);
+  state = acceptPinObservation(state, current, inspected);
+  assert.equal(state.observation.state, "inspected");
+});
