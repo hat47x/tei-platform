@@ -576,3 +576,73 @@ Graphの問いには、対象となるアプリケーション・Profile・Targe
 **優先順位**：P0は引き続き#4583/#2831のStudio Stage1→Stage2 Desktop実セルフビルドと#4495/#1251の実Entry→実Provider二入口。P1として、現在の一Function/Entryと一Routeを使ってApplication Graphのread-only照合とCLI/Studioの同一Subject確認を行う。P2で一つの任意計測を実Targetへ差分生成し、Consent・重複・欠落の負例を確認する。P3で必須監査Hookや複数Target・複数Harnessの相違を広げる。B2Cの高度な計測・Experiment/Commerceは#3509へ戻す。
 
 この追補は新Graph Compiler、Aspect Weaver、常駐Harness、中央Pin Store、独立Plugin文書Registryを導入する判断ではない。**現在の資格は設計・受入条件の提案であり、PX-48〜58、実Browser送出、実計測、全Target生成、Harness実連携の新試験およびOwner意味受理はNOT RUN / NOT ACCEPTED。**
+
+## 33. 構造Graphの成立範囲を対象相対で確定する
+
+Graphを利用して「このRouteには計測が適用されている」「このEntryから実Providerを呼べる」と判断するとき、まず**何を対象に、どこまで調査できているか**を明示する。全Workspaceの完全なGraphを先に要求するのではなく、選択されたApplication Profile、Target/Variant、配備環境、Source/Meaningの版、Consumerと問いを固定する。回答の成立範囲は、この問いに対して評価する。
+
+| 見る範囲 | 分かること | 混同してはならないこと |
+| --- | --- | --- |
+| **定義済み** | Source/Accepted MeaningにあるRoute、Entry、Operation、Relationと適用条件 | 定義が存在することと公開・選択済みであること |
+| **構成で選択済み** | Profile/Target、Contract/Provider、Guard、Plugin Facetと必要な依存集合 | 選択されたことと実Artifactへの収録・実行資格 |
+| **実現済み** | 実Builderが消費した入力、生成ArtifactのMember、実Loader/Invokerへの対応 | Artifactが存在することと実Consumerが使用したこと |
+| **実際に観測済み** | 対象Attemptで起きたCall/Read/Effect、Browser/CLI/Studioの受領 | 一度観測されなかったことと、あらゆる経路で起きないこと |
+
+これらは同じGraphの異なる見方であり、単純な集合の包含関係ではない。たとえば選択されたGuardがInvocationを拒否した場合、実Provider Callが0回でも正しい。定義されたOptional HookがTargetで不要な場合、Artifactにないことが正しい場合もある。逆に、未選択Pluginの実装が不要なBinaryに収録されていれば、選択資格と物理同梱は不一致である。**予想する呼出し回数・適用範囲は、Guard、条件、Target能力、現在Grantとともに判定する**。
+
+「全件」「存在しない」を主張できるのは、対象のSource/Registry/Route集合が問いに対して閉じており、動的登録・外部Provider・未選択Variant・未読Sourceなどの必要な依存を確認できた場合だけである。静的Graphが部分取得なら、あるNode/Edgeが見つからないことは unknown であって0件ではない。実Traceがない場合も、単なる未実行、観測不足、Guardによる不実行を区別する。
+
+対象の完全性、Meaningの確定、Build閉包、実Callの観測、現在Disclosureはそれぞれ別の資格とする。この整理は既存#4198 R0〜R4、#2600の実消費入力、#951のComposition、#2586の実Readを**一つの閲覧面で照合するため**のもので、第二のGraph Storeや新しいEvidence正本を作るものではない。
+
+## 34. 宣言と実現の差を説明する照合表
+
+最初のread-only機能は、Graphを巨大な一枚絵として完成させるのではなく、**固定した一つのSubjectについて、設計上必要な関係と観測できた実現を並べる**。行は型付きNode/Relation occurrenceの参照を保ち、画面上のNode名や単なる文字列パスを比較キーにしない。
+
+| 照合すること | 正常と判定できる例 | 差分・不明として残す例 |
+| --- | --- | --- |
+| 対象と版 | Qualified Subject、Workspace/Source Revision、Target/Profileを固定 | 同名別Subject、A→B→A、同Revisionを申告する別Provider |
+| 関係の意味 | Data/Control/Call/Authority/EffectのEdge Roleと多重度が保持 | 同端点の二Edgeを一本に集約、描画用Edge IDを意味参照へ昇格 |
+| 選択と依存 | Contract/Providerと必要Source閉包をexactに解決 | 表示上は選択済みだが、別Providerが実Call-siteに残る |
+| 成果物 | 実Build Attempt、入力byte、Generator、Artifact Memberと実ロード先を結合 | 生成ファイルがあるだけで実LoadやTarget適合を宣言 |
+| 実行と受領 | 実Consumerで該当Artifact/Providerを呼び、対応するOutput/Failureを観測 | 旧AttemptのTrace、別Consumerの結果、ACKを業務完了として流用 |
+| 未確定と権限 | 部分取得、未観測、unsupported、permission-deniedを区別し開示を再確認 | Secretや未許可FacetをGraphが見えるから送出 |
+
+相違を発見したら、（a）宣言と選択の不一致、（b）構成とBuildの不一致、（c）Buildと実行の不一致、（d）結果とConsumer受領の不一致、（e）現在のAuthority・Disclosureの不一致、に分類して既存Ownerへ戻す。**一つの不一致から別の層の故障を推測で確定しない**。特に実Readの0件・部分取得、Hookのskipped・not evaluated、Effect unknownはそれぞれの意味を保持する。
+
+同じ設計上のSubjectについて、CLI/JSON、StudioのTable/Graph、Harnessの短い説明が一致しているかを、同一の出典・版・Coverageで比べる。表示形式による省略がある場合はそれを記録し、表示が一致しただけで実Callの一致と扱わない。これまでの§23の照合票に必要な列を追加するだけで、専用の新しいデータベースやStatus enumは採用しない。
+
+## 35. CLI・Studio・Harnessの対象引渡しに必要な三つの閉包
+
+TEIの設計要素をAIへ渡す際は、**指示の範囲、対象の範囲、実行能力の範囲**を分離する。これらを混ぜてしまうと、選択した図の説明を頼んだだけでSourceを書き換えたり、別Workspaceの同名Functionを操作したりする危険がある。
+
+| 閉包 | 含めるもの | 含めてはならないもの |
+| --- | --- | --- |
+| **Instruction** | この作業で求める目的、許される読取り・変更案、必要な独立検証と返答形式 | Skill文書から自動的に認可・承認を得たという仮定 |
+| **Subject** | Workspaceの識別、Source occurrenceとRevision、Qualified Subject ID、必要なNode/Edge、選択したView/Contextの粒度 | 描画ラベル・座標・一時選択を意味IDとすること |
+| **Capability** | 現在Hostが認めるInspect/Proposal/Apply/Build/Invokeの操作範囲、必要Contract/Provider、開示先 | 外部Harnessの自己申告Role、旧SessionのGrant、Graph上に見えるだけの実行権限 |
+
+これらは新しい三種類の永続Tokenや中央Pin Storeを設計するという意味ではない。既存のSubject Pin、Typed Application API、Source/Role、Plugin Capability、Host Authorityを**受け渡すときの確認項目**である。CLI・Studio・MCP・外部Harnessで利用可能な操作はそれぞれ異なるため、短いTEI Skillを共通の操作案内として利用しても、実Tool・現在権限・実Consumerを同じとみなさない。
+
+最初の引渡しはread-onlyに限り、固定SubjectのInspect結果とPluginの公開説明を、必要なScopeへ絞って渡す。更新Proposalは元のSource/Revisionへ束縛し、Apply直前に再照合する。A→B→A、Workspace切替、旧非同期Reply到着、公開Facetの撤回時には、旧資格を自動的に復活させない。Graphの描画用Edgeを選択しても、意味Relation IDと対応付けられるまではRelation編集不可とする。
+
+Markdown優先の *.tei.md は本文・インデント付きリスト・表・図・式の原文を保持し、必要な箇所だけTEIの意味Roleへ解決する。ファイル名やコードフェンスがあることを正式Readerの実装証拠にしない。Readerが未接続なら unsupported のまま止め、AIの手変換やGoへの委譲で製品の読込み成功を偽装しない。Generatorが実際に理解した表・図の規則と、手書きGoへ委ねた処理は自己生成範囲の評価で別に数える。
+
+## 36. 最初の一枚の照合票と実装への引渡し
+
+多数の反例を個別の新システムとして作るのではなく、**既存Scenarioと一つの固定Fixtureの比較票**へ整理する。最初の題材は、現在存在が確認できる一つのpure/read-only Function/Entryと、そのFunctionを利用するPlugin・実Providerの範囲とする。B2C全Route、全Plugin、全Targetを同時に完成させない。
+
+第一段の実証では、次の一巡だけを要求する。
+
+1. 実Sourceと受理済みMeaningが参照できるか、または何が未結合かを記録する。*.tei.md Readerがないときは、未対応と明示する。
+2. Definition/Selected/Realized/Observedの四つの見方で、同じSubjectとTyped RelationをCLI/JSONへread-onlyで投影し、Source参照・版・Coverage・不明を揃える。
+3. 選択Provider Bと実Call Aの取り違え、同名Node/多重辺の消失、未観測=不存在、表示だけの変更による過剰Build失効を、既存PX-01〜58・EL・PPC・SBXの該当独立Expectedで比較する。
+4. 実Buildと実Providerの検証は既存#4495/#1251/#2600の資格へ引き渡す。局所Headlessの成功をStudio Stage1→Stage2へ加算しない。
+5. Studio PinとHarnessへの受渡しは最初はread-onlyの同一Subjectの説明に限定し、実開示・Proposal Apply・Relation編集はそれぞれのOwnerの後続検証に残す。
+
+最初の完了条件は「Graphが描けた」ことではなく、**一つのSubjectについて各段階の一致・不一致・未確認を、別々の証拠とSourceへ逆追跡できること**である。特に、同じ型付き関係の意味解釈、実Builderが消費したbyte、実Providerの呼出し、二つのConsumerの受領を、別試行のCI成功を足し合わせず説明できる必要がある。
+
+担当を増やさないため、Graph inventoryは#4198、構造・往復は#2497/#1124、Source/Roleは#2620/#4536、Product Entry/Providerは#4495/#1251、Build/Evidenceは#2600/#2831、現在開示とUI Pinは#2516/#4515、Independent Expectedは#1180/#2514、Markdown Readerとセルフビルドは#988/#1018/#2831と既存作業計画へ引き渡す。
+
+**優先順位は維持する。** 全体P0は正式Studio Desktop Stage1→Stage2と実Windows Consumer、並行P0は通常CLI・別Consumerからの実Entry→実Provider。今回のGraph照合と三閉包のread-only引渡しは、P0に割り込ませない小さなHeadless検証として進める。正式Graph Schema、万能App Graph Compiler、常駐Harness Runtime、新Source/Evidence Store、新Hard Gateは導入しない。
+
+**状態**：設計と受入条件の追補。四層照合の製品実装、同一SubjectでのCLI/Studio/Harness実往復、*.tei.md正式Reader、Go/Windows/E2E、Owner意味受理はNOT RUN / NOT ACCEPTED。
