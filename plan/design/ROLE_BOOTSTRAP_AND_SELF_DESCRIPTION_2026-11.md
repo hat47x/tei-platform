@@ -2454,7 +2454,6 @@ TEI DSLの構文定義を通常のデータとして保持し、図や入力支�
 
 **統合後の状態（2026-11-14）**：以下は旧mainのSourceで見つかった反証の記録であり、現在の実装状態ではない。[統合PR #4683](https://github.com/hat47x/tei-platform/pull/4683)の取り込み後、現mainの`tools/reference-application-binary/templates/main.go.tmpl`はDB不要の`validate`を分離し、通常`query/command`の暗黙`applyMigrations`を除去している。実行バイナリの無作用・全Providerでの安全性は、修正Sourceの読取ではなく[#4657](https://github.com/hat47x/tei-platform/issues/4657)の対象別実試験で判断する。
 
-
 自己記述DSLが「データを読む」「検証する」と説明したOperationについて、**生成された実行ファイルが予期しないデータ変更を起こさないこと**は、構文や意味の正しさとは別に確認する必要がある。
 
 この問題は想定上の危険ではない。2026-11-14のmainで実Sourceを確認すると、`tools/reference-application-binary/templates/main.go.tmpl`では`query`、`command`、`validate`が共通で`sql.Open("sqlite", cfg.DSN)`→`Ping`→**`applyMigrations`**を経てから個々の処理へ進む。`migrations.go.tmpl`は生成されたMigrationの`SchemaSQL`を`db.ExecContext`で順次実行する。現在の実装は、問合せや検証の入口からもDDL等へ到達し得る構造である。
@@ -2643,7 +2642,6 @@ R0〜R4はこの節での**検収の見通し**であり、[製品計画 #4676](
 
 **統合後の状態（2026-11-14）**：この節でDraftと記した[#4541](https://github.com/hat47x/tei-platform/pull/4541)と[#4676](https://github.com/hat47x/tei-platform/pull/4676)は、[#4683](https://github.com/hat47x/tei-platform/pull/4683)経由でmain統合済み。[#4675](https://github.com/hat47x/tei-platform/pull/4675)は取得時点では設計Draft。#4683/#4684の対象PR HEADはそれぞれ14/14 Workflow successだが、CLIでのTEI-native Plugin生成やStage2 Desktop完成の証明ではない。以降の歴史的CI記録を現状判定へ流用しない。
 
-
 1. **最初の実装PR**：#2621/#4359/#2620が、上記の固定Graphを`*.tei.md`から**正規のReaderで読めるか**を実Sourceで検査する。読めないなら具体的な不足箇所だけをLanguage Plugin #988/#1018へ返し、代替JSON等を正式TEIの成功としない。読める範囲だけをSource/Role/Ruleとして固定する。
 2. **次の実装PR**：#4544/#951/#1121/#1251の既存Generator/Builder/Providerで出辺の検証・選択処理を実生成し、通常CLIの実呼出し・独立Expectedへつなぐ。最初はEdge反転、削除、Layout-only、重複IDの正負を一つのFixtureで判別する。
 3. **再帰への接続**：#2831/#4583のStage1実ProcessからStage2実Artifactを構築し、同じPluginをStage2でも実使用する。非Plugin Studio BuildとPluginの生成比率は**別のClaim**。CLIによる局所実証を早めても、正式Windows Desktop Stage1→Stage2を置換しない。
@@ -2653,12 +2651,14 @@ R0〜R4はこの節での**検収の見通し**であり、[製品計画 #4676](
 
 **全体のP0は変更しない。** Studio DesktopをTEI自身がStage1→Stage2まで構築し、生成されたWindows Wails/WebView2で使用する製品出口と、通常CLIからの実Entry→実Provider→独立Consumerの検収を維持する。一方、CLIで先に試せるGraph/RuleからのPlugin自己生成は、その製品目標を早める**並行する小さな実装**とする。新Host/Parser Registry/Runner/万能Graph Compiler/意味正本は設けない。
 
-**状態**：本節は他チャットの成果と実GitHubのPR・main設計・Actionsを照合した計画更新である。`*.tei.md`の正式Graph Reader、Graph Ruleのコード生成、Plugin実行、Stage1→Stage2 CLI/Windows、Plugin自己生成比率・定義削減の実測、公開Facet合成の実テスト、Owner意味受理は今回**NOT RUN / NOT ACCEPTED**。設計の採用候補と、完成した製品機能を混同しない。<!-- tei-self-description-docs-generated-graph-20261114 -->
+**状態**：本節は他チャットの成果と実GitHubのPR・main設計・Actionsを照合した計画更新である。`*.tei.md`の正式Graph Reader、Graph Ruleのコード生成、Plugin実行、Stage1→Stage2 CLI/Windows、Plugin自己生成比率・定義削減の実測、公開Facet合成の実テスト、Owner意味受理は今回**NOT RUN / NOT ACCEPTED**。設計の採用候補と、完成した製品機能を混同しない。
+
+<!-- tei-self-description-docs-generated-graph-20261114 -->
 ### 44.7 生成Pluginの機能と説明を、同じ定義から辿る
 
 第44.2節の同名二Node・有向多重Edgeを用いる**出辺ID集合／件数の生成Plugin**を、Plugin文書の最初の共通実証にも使う。専用の別Fixtureや新しいPlugin文書正本を増やすのではなく、**一つの業務上の意味から生成した実装と、その使い方を調べる経路**が一致していることを検証する。
 
-[Plugin文書契約 #4679](https://github.com/hat47x/tei-platform/issues/4679)と[既存Plugin設計の`18](https://github.com/hat47x/tei-platform/blob/main/plan/design/PLUGIN_ROLE_COMPOSITION_AND_STUDIO_REENTRY_2026-11.md)を受入Ownerとする。Plugin Aは固定した公開Graph/Ruleと短い説明を提供し、Plugin BはAの公開Contractに依存して出辺処理を生成する、という二Pluginで始める。
+[Plugin文書契約 #4679](https://github.com/hat47x/tei-platform/issues/4679)と[既存Plugin設計の第18節](https://github.com/hat47x/tei-platform/blob/main/plan/design/PLUGIN_ROLE_COMPOSITION_AND_STUDIO_REENTRY_2026-11.md)を受入Ownerとする。Plugin Aは固定した公開Graph/Ruleと短い説明を提供し、Plugin BはAの公開Contractに依存して出辺処理を生成する、という二Pluginで始める。
 
 最初に利用者へ示す説明は、Plugin ID・用途、Contract/Version、公開Input/Output、選択Target/必要条件、最短のread-only例、直接依存、制限、マニュアル索引とする。契約から確定できる署名・版・公開モデル・選択Providerは**実ContractとSourceから導出**する。説明文・使用方法・設計意図・故障対応は**Plugin自身が所有するMarkdownマニュアル**を使い、必要なときだけ辿る。説明を複製して別のCapability正本としない。
 
