@@ -652,3 +652,52 @@ Readerは既存ReadOnly.workspace()のRoot実体照合を行い、workspace.Read
 **製品P0の最短差分をさらに限定**：H0のN0生成Byte/選択Role/実N2 member → H1のN2 JS Byte/実N3 Embed member → 非Plugin Studioの正式BuildIntent/BuildExecution/ArtifactSet → 生成Stage1→Stage2の実Windows WebView2を、同一Subject/HEAD/Run/Attemptに結ぶ。成功は各境界で発生した実Consumed/Delivered byteにより判定し、Compiler/esbuildの完全read-time byte捕捉は未実証とする。CLI/N0と生成UIの単なる文字列一致、WorkflowがGreenであること、旧Sourceに対するWindows受入を同一視しない。
 
 **統合順の注意**：#4634の新HEAD／#4587修正HEADのCIを独立に確認してから、両者を同じAttemptで接続する後続実装へ進む。二PRを手動でByteコピーして「全工程受理済み」としない。P1のWails従属Worker/HTTP/WASM選定をP0の必須条件へ追加しない。
+
+
+## 22. 2026-11-14：非Pluginセルフビルドの実製品ゲートと配布資格の分離
+
+### 22.1 最新コードと他チャットを照合した実装上の欠落
+
+[Generator契約Draft #4641](https://github.com/hat47x/tei-platform/pull/4641)の実コード調査によれば、既存BuildIntentはGoコマンドRecipeを持つものの、BuildIntent.ValidateのSubject.Kindはpluginを前提とし、Resolverもplugin.BuildPlan.Pluginへ格納する。このため**Goコマンドを実行できることと、Studio本体というnon-Plugin Subjectを正式BuildExecution/ArtifactSetへ対応付けられることは別資格**である。
+
+[Builder統合Draft #4634](https://github.com/hat47x/tei-platform/pull/4634)の実Builder選択・起動前pinを、Desktop #4587のH0（N0生成Inspector TS→N2実esbuild選択）およびH1（N2生成JS→N3実Go埋込み選択）と接続するには、まず**正式non-Plugin Studio Subjectと同一Attempt**を既存BuildExecution/ArtifactSetへ結ぶ。Studioを架空のPluginに見せる方法、新Builder Registry、別Runner、新Hostは採らない。対象と成果物の対応だけを既存#1080/#1097/#2831/#4583 Ownerが最小変更で設計する。
+
+[Generator #4641](https://github.com/hat47x/tei-platform/pull/4641)が指摘するもう一つの条件は、論理Graphを最適化した際に物理Stepと1対1でなくても、**要求された意味・NULL/欠損・順序・丸め・Effect・Source→Artifactの対応が保たれること**である。グラフに描画されないだけのSourceを「無い」と判断しない。一般Optimizerや第二GeneratorをP0へ導入せず、意味保存の負例を既存Expectedへ委譲する。
+
+### 22.2 同日新HEADの技術実績と停止線
+
+| 実装 | exact HEAD / CI | 次の未受入事項 |
+| --- | --- | --- |
+| #4634 Builder合流 | 7d6a1238e6efbd83fb2bd4cfda9667c181567920：**8/8 Workflow success**（旧HEAD 653d0d9とは別Attempt） | plugin主体のResolver/Child pinからnon-Plugin Studioの実Build Subjectと実Artifactへ接続 |
+| #4587 H0/H1 | 357345d73b3ab74d67ec8bda675fcd63768e9c48：**12件中11 Workflow success、Windows #43554075677はfailure** | Windows内のgenerated Job 132322840114はH0/H1 Byte照合＋実WebView2 success。ordinary Job 132322839843はOS VersionStringのPowerShell 15秒Timeoutでfailure。Workflow全体成功・通常版成功ではない |
+| #4627 Wails監査 | b9cf5447bcd3881aec06d97e4f3060f7de80b331：**5/5 Workflow success** | 静的なService/15 Method監査のみ。Webの認証・異Workspace・WS Event開示は別 |
+| #4637 REA Host Reader | 170f9be5907cea4af981582ab4c11c5dafb91e87：**12/12 Workflow success** | 4MiB以内のHost固定Selector実Byte読取。Wails/HTTPへ公開済みではなくCurrent Grant/Deliveryは未検証 |
+| #4636 Script Input/Effect Preflight | da807abc65d560134e9a6aa4c4f7b8d92d3b2fef：**9/9 success後main merged** | 宣言不整合のAdapter Call=0まで。実Provider/Owner受理/Effect/CLIは別 |
+| #4639 Script Launch計画 | 5507150353f4da0ca0b008687b610191c275e551：**main merged** | 既存契約の計画反映であって新Provider実行ではない |
+
+失敗履歴、WorkflowとJob、HEADとAttemptを保持し、異なるHEADの成功数を加算して製品完成としない。
+
+### 22.3 Desktop P0は四つの独立した受入条件に絞る
+
+| Case | 実Positiveと負例 | 受入Owner |
+| --- | --- | --- |
+| P0-A 正式Build対象 | non-Plugin Studio Subject→宣言→実Resolver→selected Builder→prestart実Child image→Receiptを同一Attemptで観測。仮Pluginへの偽装・選択B/実A・宣言外依存は子起動前拒否 | #1080/#1097/#4583 |
+| P0-B 実Source/Member | N0生成TSのN2 selected Input、N2生成JSのN3 selected Embedをrole/path/digest/HEAD/Attemptで対照。誤Role/Path/別Attempt/旧Sourceの一致を拒否し、read-time完全閉包は未証明として保持 | #4583/#2831 |
+| P0-C Stage2 Consumer | Stage1実ProcessがStage2を生成したReceipt、実Stage2 exe・BundleのDigest、生成したStage2自身によるWindows WebView2実受領を照合。既存exe直接起動をSelfBuildと認定しない | #4583/#1824 |
+| P0-D Windows失敗分類 | 同一HEADでgenerated/ordinary JobとOS前提診断を別報告。PowerShell版情報Timeoutを意味/Provider失敗と混同せず、診断の回避だけで未実行のGUI検査まで成功扱いしない | #4583/#1824 |
+
+これらは新しい中央受理エンジンの契約ではなく、既存BuildExecution/ArtifactSetと#1180/#2514の独立Expectedへ渡す実行ケースである。P1のWails別Worker/HTTP/WASM方式比較はP0をブロックしない。
+
+### 22.4 外部Registry/ReleaseはBuildの次に別資格として扱う
+
+[Registry Draft #4640](https://github.com/hat47x/tei-platform/pull/4640)は、main統合済みE1-Cのtest-only HTTP Signed Release/Member試験から、実GitHub Releases等への公開・独立Readbackへ移るときの区別を提案する。実GitHub Release発行、外部Asset取得、Immutable Release設定・公開承認は**未実証**であり、現在のDesktop BuildのHard Gateにしない。
+
+Build Artifact Digestの一致だけでは、Publisher Identity、外部Store/ReleaseのMember、HTTP 200/302 Redirect時の認可転送、実Body Digest、Consumer Readback、現在Trust、Private Evidence Disclosureを証明しない。配布が必要になった時点で#2589/#2604/#1105の既存Ownerが別Attemptで公開→外部Provider→Consumer取得を検収する。第二Publisher/Store/Authorityは作らない。
+
+### 22.5 プラグインと製品計画への接続
+
+**P0**：non-Plugin Studio Build SubjectとH0/H1、Stage2実Consumerの接続を最優先。  
+**並行P1**：REAは#4630→#4637の依存順で先行Byte APIを統合してから重複差分を整理し、新HEADで検収。Wailsは#4627の静的ガードと#3421の実HTTP/WS認可を区別する。  
+**P2以降**：#4641の論理/物理Graph意味保存、#4640の外部Release Readback、#4632の段階別Contribution管理を独立Expectedと実Consumerの必要性に従って評価する。
+
+主計画 plan/MASTER_PLAN.md は#4620/#4634の並行Ownerが更新する。本書では対応する検証条件とexact HEAD事実だけを保持し、重複した主計画の編集・新Core Schema採用を行わない。**本節による新Go/Windows/実Provider/配布試験とOwner意味受理はNOT RUN/NOT ACCEPTED。**
