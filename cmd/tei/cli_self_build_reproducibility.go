@@ -22,7 +22,7 @@ import (
 // digest collisions. That scope is stated in the boundary instead of being left
 // for a reader to assume.
 
-const reproducibilityBoundary = "two runs of the same child executable from the same plan, in separate state directories, produced the same artifact bytes; this shows the builder was deterministic for that plan, with that binary, on the host that ran it, in these two attempts, and together with the on-disk digest match it supports the claim that the artifact is that plan's output. The same plan was also observed to yield the same artifact bytes on linux/amd64 and windows/amd64 (SB-C0 §4.25). linux/arm64 under emulation was observed too (SB-C0 §4.37, plan/evidence/TEI_GO_SELF_BUILD_ARM64_L2B_CHAIN_2026-11-10.md); there the two runs agreed with each other but the artifact bytes differed from amd64, because the builder binary differed, so cross-architecture equality of artifact bytes is not claimed. It is not a proof for any other host, another builder version or another plan, and it is not L2-b, acceptance, or runtime authority"
+const reproducibilityBoundary = "two runs of the same child executable from the same plan, each passed its own state directory, produced the same artifact bytes; whether each run used the directory it was passed is the child's report unless stateObservation says this entry saw it (SB-C0 §4.55), and shared state would make the second run a replay rather than a second observation; this shows the builder was deterministic for that plan, with that binary, on the host that ran it, in these two attempts, and together with the on-disk digest match it supports the claim that the artifact is that plan's output. The same plan was also observed to yield the same artifact bytes on linux/amd64 and windows/amd64 (SB-C0 §4.25). linux/arm64 under emulation was observed too (SB-C0 §4.37, plan/evidence/TEI_GO_SELF_BUILD_ARM64_L2B_CHAIN_2026-11-10.md); there the two runs agreed with each other but the artifact bytes differed from amd64, because the builder binary differed, so cross-architecture equality of artifact bytes is not claimed. It is not a proof for any other host, another builder version or another plan, and it is not L2-b, acceptance, or runtime authority"
 
 const (
 	reproducibilityReproduced  = "reproduced"
@@ -62,7 +62,11 @@ type selfBuildReproducibility struct {
 	// OnDiskDigest is the artifact this attempt left in place, re-read after the
 	// second build so a later overwrite would be visible.
 	OnDiskDigest string `json:"onDiskDigest,omitempty"`
-	Boundary     string `json:"boundary"`
+	// StateObservation is what this entry itself saw in the two state directories,
+	// without asking the child (SB-C0 §4.55). It is recorded beside the verdict and
+	// does not change it.
+	StateObservation *selfBuildStateObservation `json:"stateObservation,omitempty"`
+	Boundary         string                     `json:"boundary"`
 }
 
 // The three bases §4.37 can name for state separation. Only the first two are
@@ -136,8 +140,19 @@ func checkArtifactReproducibility(
 	firstStateDir string,
 	firstReportedStateDir string,
 	outputPath string,
-) selfBuildReproducibility {
-	record := selfBuildReproducibility{Boundary: reproducibilityBoundary}
+	firstObserved stateDirObservation,
+) (record selfBuildReproducibility) {
+	record = selfBuildReproducibility{Boundary: reproducibilityBoundary}
+	secondReportedStateDir := ""
+	defer func() {
+		// Whatever the verdict, the reading of the directories is completed from the
+		// first run's half, so an unperformed or mismatched check still says what
+		// this entry saw.
+		if record.StateObservation != nil {
+			completed := assessStateObservation(firstObserved, record.StateObservation.Second, record.StateObservation.SameDirectory, firstReportedStateDir, secondReportedStateDir)
+			record.StateObservation = &completed
+		}
+	}()
 	unperformed := func(reason string) selfBuildReproducibility {
 		record.State = reproducibilityUnperformed
 		record.UnperformedReason = reason
@@ -157,6 +172,7 @@ func checkArtifactReproducibility(
 		return unperformed(err.Error())
 	}
 
+	secondBefore := stateDirBefore(secondState)
 	// The listing is taken before the second build so a write into the first run's
 	// state shows up as a difference, not as an untested possibility.
 	firstListingBefore, err := listStateDirEntries(firstStateDir)
@@ -168,6 +184,14 @@ func checkArtifactReproducibility(
 	if err != nil {
 		return unperformed("the second build could not be started: " + err.Error())
 	}
+	// Read the second state directory now: it is removed when this function
+	// returns. The first directory's half is filled in by the caller, which saw it
+	// before and after the first run.
+	record.StateObservation = &selfBuildStateObservation{
+		Second:        stateDirAfter(secondBefore),
+		SameDirectory: sameStateDirectory(firstStateDir, secondState),
+	}
+	secondReportedStateDir = evidence.ChildStateDir
 	if evidence.ChildArtifact == "" {
 		return unperformed("the second build reported no artifact digest" + reasonSuffix(evidence.FailureCause))
 	}

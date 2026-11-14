@@ -1,0 +1,40 @@
+commit 4b1a3973ba3918b9445ef9b74e51c422858eab04, WSL2 Ubuntu 24.04, linux/amd64, go1.26.11, one run per row
+
+[honest] entry at 4b1a3973: ok=True qualified=False l2b.claimed=True reproducibility=reproduced bytesEqual=True
+[honest] observer boundary=none: verdict=PASS-LIMITED bytesEqual=True selfReportMatchesPassed=[True, True]
+   not observed: no OS boundary: writes and reads outside the passed state were not observed
+   attempt 1: exit=0 seconds=6.09 stateFilesAfter=545 stateBytesAfter=33561683 procExeAtStart=/usr/bin/env buildError=None
+   attempt 2: exit=0 seconds=9.52 stateFilesAfter=545 stateBytesAfter=33561683 procExeAtStart=/usr/bin/env buildError=None
+[honest] observer boundary=ns: verdict=PASS-LIMITED bytesEqual=True selfReportMatchesPassed=[True, True]
+   not observed: attempt 1 boundary: RO_FAILED /tmp/.X11-unix
+   not observed: attempt 2 boundary: RO_FAILED /tmp/.X11-unix
+   not observed: ns boundary: pre-existing host files stayed readable (ambient input is not excluded)
+   attempt 1: exit=0 seconds=6.71 stateFilesAfter=545 stateBytesAfter=33561683 procExeAtStart=/usr/bin/unshare buildError=None
+   attempt 2: exit=0 seconds=6.12 stateFilesAfter=545 stateBytesAfter=33561683 procExeAtStart=/usr/bin/unshare buildError=None
+
+[share] entry at 4b1a3973: ok=True qualified=False l2b.claimed=True reproducibility=reproduced bytesEqual=True
+[share] observer boundary=none: verdict=FAIL bytesEqual=True selfReportMatchesPassed=[True, True]
+   FAIL: attempt 1: the build succeeded but wrote nothing into the state it was passed
+   FAIL: attempt 2: the build succeeded but wrote nothing into the state it was passed
+   not observed: no OS boundary: writes and reads outside the passed state were not observed
+   attempt 1: exit=0 seconds=6.41 stateFilesAfter=0 stateBytesAfter=0 procExeAtStart=/usr/bin/env buildError=None
+   attempt 2: exit=0 seconds=0.28 stateFilesAfter=0 stateBytesAfter=0 procExeAtStart=/usr/bin/env buildError=None
+[share] observer boundary=ns: verdict=FAIL bytesEqual=False selfReportMatchesPassed=[False, False]
+   FAIL: an attempt did not produce an artifact (exit 0/0)
+   not observed: attempt 1 boundary: RO_FAILED /tmp/.X11-unix
+   not observed: attempt 2 boundary: RO_FAILED /tmp/.X11-unix
+   not observed: ns boundary: pre-existing host files stayed readable (ambient input is not excluded)
+   attempt 1: exit=0 seconds=0.12 stateFilesAfter=0 stateBytesAfter=0 procExeAtStart=/usr/bin/unshare buildError=the dependency coverage check did not run: create isolated build state: mkdir /home/mbs0267/task6-work/shared-share: read-only file system
+   attempt 2: exit=0 seconds=0.11 stateFilesAfter=0 stateBytesAfter=0 procExeAtStart=/usr/bin/unshare buildError=the dependency coverage check did not run: create isolated build state: mkdir /home/mbs0267/task6-work/shared-share: read-only file system
+
+[copy] entry at 4b1a3973: ok=True qualified=False l2b.claimed=True reproducibility=reproduced bytesEqual=True
+[copy] observer boundary=none: verdict=PASS-LIMITED bytesEqual=True selfReportMatchesPassed=[True, True]
+   not observed: no OS boundary: writes and reads outside the passed state were not observed
+   attempt 1: exit=0 seconds=7.05 stateFilesAfter=545 stateBytesAfter=33561683 procExeAtStart=/usr/bin/python3.12 buildError=None
+   attempt 2: exit=0 seconds=0.45 stateFilesAfter=545 stateBytesAfter=33561683 procExeAtStart=/usr/bin/env buildError=None
+[copy] observer boundary=ns: verdict=PASS-LIMITED bytesEqual=True selfReportMatchesPassed=[True, True]
+   not observed: attempt 1 boundary: RO_FAILED /tmp/.X11-unix
+   not observed: attempt 2 boundary: RO_FAILED /tmp/.X11-unix
+   not observed: ns boundary: pre-existing host files stayed readable (ambient input is not excluded)
+   attempt 1: exit=0 seconds=5.5 stateFilesAfter=545 stateBytesAfter=33561683 procExeAtStart=/usr/bin/unshare buildError=None
+   attempt 2: exit=0 seconds=6.61 stateFilesAfter=545 stateBytesAfter=33561683 procExeAtStart=/usr/bin/unshare buildError=None
