@@ -8,9 +8,9 @@
 go test ./reference/plugin-doc-reference -count=1
 ```
 
-`TestCandidateFixtureLinksToRealGraphAndManualBytes` は、採用前JSONのA/B/C直接依存・文書所有・版・開示候補・期待結果ケースIDを検査します。さらに、既存 `reference/tei-md-graph-reader.ParseCandidate` に`baseline.tei.md`の実byteを渡し、同表示名の二Node、同端点の二Relationと元byte位置が候補と一致するか確認します。Graph／公開・非公開ManualのSHA-256を候補JSONの固定値と実byteで照合し、公開／非公開Manualの実ファイルが分かれ、公開Manualに非公開本文が複製されていないことも確認します。
+`TestCandidateFixtureLinksToRealGraphAndManualBytes` は、採用前JSONのA/B/C直接依存・文書所有・版・開示候補・期待結果ケースIDを検査します。さらに、既存 `reference/tei-md-graph-reader.ParseCandidate` に`baseline.tei.md`の実byteを渡し、同表示名の二Node、同端点の二Relationと元byte位置、および現行Sourceに追加された明示Rule表のID・条件が候補と一致するか確認します。Graph／公開・非公開ManualのSHA-256を候補JSONの固定値と実byteで照合し、公開／非公開Manualの実ファイルが分かれ、公開Manualに非公開本文が複製されていないことも確認します。
 
-`TestCandidateFixtureMutationsAreRejected` は、Aの選択版、Bの直接依存、Lock候補、再公開、非公開指定、Source digest欠落、Path traversal、関係ID、意味Roleの採用表示、拒否Expectedの漏洩、ケース欠落、製品の受理済み主張を個別に改変し、**13種類の候補Fixture改変に対する整合性検査**が不整合を検出できるか調べます。
+`TestCandidateFixtureMutationsAreRejected` は、Aの選択版、Bの直接依存、Lock候補、再公開、非公開指定、Source digest欠落、Path traversal、関係ID、意味Roleの採用表示、拒否Expectedの漏洩、ケース欠落、製品の受理済み主張を個別に改変し、**14種類の候補Fixture改変に対する整合性検査**が不整合を検出できるか調べます。
 
 これらの試験は、独立ExpectedのOwner採用、正式なPlugin/Doc/Disclosure Manifest、Productの公開文書Source Reader、`plugin-inventory`の実Plugin A/B選択、Provider実Call、AI/Hostの情報漏洩を実証しません。JSONに「permission-denied」とあることの照合は、実Hostの拒否を呼んだ証拠ではありません。
 
