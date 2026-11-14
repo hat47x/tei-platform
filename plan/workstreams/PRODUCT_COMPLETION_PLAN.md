@@ -241,7 +241,7 @@ B1a-I/Pの二段受入を維持しつつ、独自Frontendを「TEIが制約し�
 | **業務操作によるDB変更**（G13／G25） | [生成アプリ修正Draft #4662](https://github.com/hat47x/tei-platform/pull/4662) HEAD `095c5a11`は、生成された`query`／`command`／`validate`でMigrationを暗黙実行しないコード候補と、生成バイナリの別Process負例を追加。Repository Health／Cache／既知脆弱性の**3系統CI成功**。通常Queryは既存DBを読取専用で開き、Commandは既存DBに限り更新し、ValidateはDBなしで実行する。**DB未存在・Schema不適合で業務操作が勝手にDDLやDB作成を行わないこと**を製品側の安全条件とする | #4657／#4234／#4125。これはSQLite単一Provider向けのRB0安全停止候補。実Schema/History/Release検証、明示Init/Upgrade、複数DB・PostgreSQL移行、旧新ClientのCutoverは未完成。DB接続成功を移行適格・現在Grantと同一視しない |
 | **再現可能なビルド**（Studio P0） | [Toolchain観測Draft #4648](https://github.com/hat47x/tei-platform/pull/4648) HEAD `64fb0f9a`は8系統CI成功。Go 1.26.11／1.27.0の実測で同じBuild計画でも生成バイトが異なる例を確認し、`toolchainObservation.matched`と`namedByPlan=false`を区別する。前者は申告されたファイルの読戻し一致で、実際にそのToolchainを起動した証明ではない | #2831／#4583。ToolchainをBuild Intentの正式入力に含めるか、Build子Processの実起動とStage1→Stage2成果物受領をどう束縛するかはOwner判断。現時点のSeed Trust／Stage2完成を宣言しない |
 | **Desktopでの利用** | [Windows再検証Draft #4587](https://github.com/hat47x/tei-platform/pull/4587) HEAD `9b58533d`は12/12 CI成功。通常版と生成版のWebView2実Jobが両方成功した | B0の実使用に限定。正式な非Plugin Build Subject→実ArtifactSet→Stage1再生成→Stage2起動→WebView2利用を同じ実行で結ぶB2/B3は未達。計画優先順位は変更しない |
-| **専門Toolkit・Plugin** | [数理・統計・科学Toolkit #4663](https://github.com/hat47x/tei-platform/pull/4663)と[役割別Plugin構成 #4664](https://github.com/hat47x/tei-platform/pull/4664)は未統合の設計PR。直近の更新HEAD（#4663 `ee672c9b`、#4664 `dcb694cd`）では**CIを再検証中**であり、旧HEADの設計CI成功を現在の全体合格として使わない。統計Window／WBS・PERT／科学計算等の独立Expected、Studioと他Targetの受領条件を整理した | 新Core型・専用DSL・科学Runtime・第二Plugin Hostは先行採用しない。P0のQuery実Read・Studioセルフビルドを待たせず、外部Runtime不要の小さなWindow集計から既存Operator/Consumerで適合性を測る |
+| **専門Toolkit・Plugin** | [数理・統計・科学Toolkit #4663](https://github.com/hat47x/tei-platform/pull/4663)の**設計文書はmain統合済み**。これはWindow集計やPERT等の計算機能が実装済みという意味ではない。[役割別Plugin構成 #4664](https://github.com/hat47x/tei-platform/pull/4664)は未統合で、HEAD `dcb694cd`のRepository Healthに失敗が残る。二つの計画の実装資格は別に検証する。統計Window／WBS・PERT／科学計算等の独立Expected、Studioと他Targetの受領条件を整理した | 新Core型・専用DSL・科学Runtime・第二Plugin Hostは先行採用しない。P0のQuery実Read・Studioセルフビルドを待たせず、外部Runtime不要の小さなWindow集計から既存Operator/Consumerで適合性を測る |
 
 **実装順**：最初に[RA-0〜RA-2R一体検証Draft #4644](https://github.com/hat47x/tei-platform/pull/4644)の実Go／参照PG成功を維持したまま、RA-2Pで**通常製品`tei` CLI→実Provider/実DB・Role・SQL・typed Params→Function Data Context**を一つのAttemptとして検査する。取得範囲を`complete`へ推測昇格せず、通常操作が暗黙DDLを実行しない負例も別Ownerへ渡す。RA-3で標準Displayと独立Native Consumerの受領本文を独立に照合し、B1a-Pで会員・匿名・運用者ごとの現在Grantと開示範囲を別途確認する。Studioは非Plugin DesktopのStage1→Stage2一往復を優先し、Toolkit・Migration本格適用・公開Web共同編集をその完成の前提にしない。
 
@@ -298,6 +298,33 @@ B1a-I/Pの二段受入を維持しつつ、独自Frontendを「TEIが制約し�
 **B3の比較条件**：[#2018](https://github.com/hat47x/tei-platform/issues/2018)の既存比較に、H0=Nativeのみ、H1=選択した型付きContract/Build-time Adapter、H2=さらに任意Experiment Adapterを、**同じNative Frontend・同じ実Provider/Scenario・同じ機能・同じ変更・同じ測定条件**で投入する。正確性を独立Expectedで先に判定し、初回実装工数・変更時間・Review/復旧工数・追加JS/HTTP Request/TTFB/INP/LCP/CLS・Provider/運用費・発見した不正/欠測を別票に採る。初期値は未測定。H0にTEI JS/DOM/Router/Runtimeを強制しない。H1/H2の費用が便益を超えるときは**Plugin非採用・撤去を正式な合格選択肢**とする。CVR/粗利益の因果効果は標本、割付、Consent、追跡欠測、期間、統計的不確かさを確認した実Experimentがなければ`not measured`とする。
 
 **順序と責務**：全体P0は[#2831](https://github.com/hat47x/tei-platform/issues/2831)/[#4583](https://github.com/hat47x/tei-platform/issues/4583) Stage1→Stage2 Desktop Self-build。並行P0の[#2586](https://github.com/hat47x/tei-platform/issues/2586) RA-2P/RA-3からB1a-Iを実Consumerへ接続。B1a-Pは[#1043](https://github.com/hat47x/tei-platform/issues/1043)/[#1656](https://github.com/hat47x/tei-platform/issues/1656)/[#2516](https://github.com/hat47x/tei-platform/issues/2516)の実Host開示で別検収。B1bは#1174/#1129/#951、B2は#3503/#2604/#3271、B3は#2018へ受入を返す。すべて[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#2514](https://github.com/hat47x/tei-platform/issues/2514)の既存Independent Expectedに追記し、**B2C専用の第二Scenario/Effect/Analytics正本を作らない**。本文は設計と検収順の更新であり、新規Go/PG/Browser/Commerce/実験試験とOwner意味受理は`NOT RUN / NOT ACCEPTED`。
+
+## プロセス・イベント・応答を共通の意味から説明する（設計候補）
+
+Webの要求、CLIの起動、タイマー、Message、画面操作には、それぞれ異なるHost・起動方式がある。ここで標準化を検討するのは一つのイベントループではなく、**Trigger→型付きInvocation→Function/Rule→State/Effect→Outcome→Response／Consumer受領**という意味の対応である。長寿命Processの起動・停止と、一件の処理の成功・失敗も混同しない。
+
+初期の受入は、受注受付の説明用Fixtureを使い、HTTP/CLIの二入口が同じ意味Operationへ至るかをHeadlessで照合する。期限の境界、現在Grant、DB Commit後の通知結果不明、重複・逆順Event、未実装のTimer Providerを負例にする。外部部品はContractとTODOを先に記述し、既存Driver ScenarioのMockと独立Expectedで基本設計からシミュレーションする。ただし、Mockの成功は実DBやBrokerの実行証拠にならない。
+
+詳細は[Lifecycle・Trigger・Operationの共通意味設計](../design/PROCESS_LIFECYCLE_TRIGGER_OPERATION_SEMANTICS_2026-11.md)を参照する。Ownerは[共通Application API #1158](https://github.com/hat47x/tei-platform/issues/1158)、[Script Launch #4495](https://github.com/hat47x/tei-platform/issues/4495)等の既存Issueに分け、新Runtime・Dispatcher・Schedulerを前提にしない。**現行P0のStudio Stage1→Stage2と通常CLIの実Readには、新しい先行依存を追加しない。**
+
+
+<!-- g49-lifecycle-process-invocation-acceptance-20261114 -->
+### G49の読取りと業務確定を、同じ意味モデルから別々に検証する
+
+[共通実行モデルの設計 #4665](https://github.com/hat47x/tei-platform/pull/4665)と[Lifecycle・Triggerの設計 #4666](https://github.com/hat47x/tei-platform/pull/4666)はmain統合済みである。ただし、両方とも**設計上の対応関係**を定めたもので、共通Event Loop、Scheduler、Graph Compiler、Host、正式DSL構文の新規採用ではない。G49では、Processの生存状態と、利用者による一件のInvocationが成功したかを別に扱う。
+
+**最初は二種類のOperationを混ぜずに試す。** `order_entry.recent_orders`は指定日時以降の注文履歴を読み取るOperationであり、RA-0〜RA-2Rでは型付き入力と使い捨てPGの参照読取りまでを検証している。受注確定`submit`はDB Commit・Receipt・通知などの外部作用が関係し、読取りが成功してもその資格を引き継がない。どちらも、元のSourceにあるSubject・Guard・入力・Output/Outcome・必要なEffectを意味の対応元とし、説明文・処理図・Scenarioを派生表現として生成する。生成した説明文や図を第二の業務意味正本にはしない。
+
+| 段階 | 最小の確認 | 必ず区別する反例 | Owner |
+| --- | --- | --- | --- |
+| **LifecycleとTrigger** | CLI起動とHTTP要求が同じ意味Operationを指せるか。単発CLIに常駐Loopを要求しない | Triggerの宣言を、実Schedulerの発火や現在の実行許可と混同しない（PL-01/02/06） | [#1158](https://github.com/hat47x/tei-platform/issues/1158)・[#4495](https://github.com/hat47x/tei-platform/issues/4495) |
+| **Typed InvocationとRead** | `from`の宣言・実引数・選択Provider・実Connection・取得したRowsetとCoverageが同一Attemptに対応するか | 選択A／実B、型違い、RLSの`partial`、0行を全件不存在と誤認する場合（PL-01/10、PX-10） | [#2586](https://github.com/hat47x/tei-platform/issues/2586)・[#2514](https://github.com/hat47x/tei-platform/issues/2514) |
+| **意味評価と実作用** | 受注確定のGuard、期限と現在Grant、提案されたState/EffectをContractとMock／独立Expectedで先に対照する | Mockの受注確定を実DB Commitと呼ぶ、期限の発生時刻と判定時刻を取り違える（PL-03/07） | [#1129](https://github.com/hat47x/tei-platform/issues/1129)・[#1174](https://github.com/hat47x/tei-platform/issues/1174) |
+| **EffectとOutcome** | Commit成功・通知送信・通知受領・結果不明を別Receiptで検証する | Commit後のACK喪失を未実行と誤認し、無条件再送で注文を重複確定する（PL-04/05/09、PX-03/04） | [#1174](https://github.com/hat47x/tei-platform/issues/1174)・[#1129](https://github.com/hat47x/tei-platform/issues/1129) |
+| **Responseと実Consumer** | HTTP/CLI/Nativeへ同じ対象・版・結果の適切なProjectionが届いたか。必要な現在Grantを受領時にも照合する | HTTP 200、CLI終了コード0、表示成功をConsumerの意味受理／業務確定と同一視する（PL-10、PX-01/11） | [#1251](https://github.com/hat47x/tei-platform/issues/1251)・[#3509](https://github.com/hat47x/tei-platform/issues/3509) |
+| **図解・Target移植** | 同じ意味からLifecycle／Control／Effect／Traceの図を読取専用で投影し、Source位置と安定IDを保持する | 図の配置変更で意味Revisionが変わる、同期→非同期移植で順序・期限・Effect保証を落とす（PX-05/06/12） | [#4198](https://github.com/hat47x/tei-platform/issues/4198)・[#1124](https://github.com/hat47x/tei-platform/issues/1124) |
+
+**実現順**は、既存のProduct Read RA-2PとStudio Stage1→Stage2を先に完結させ、共通Lifecycleの最初の読取り専用Projectionをその結果へ結び付ける。TODO・Mockで外部部品を置き換える設計段階では、入力・結果・欠損・副作用・実装未接続を明示し、Mockと本番Providerを同一の成功票にしない。実Targetへの移植は、実際のInvocation、作用、Response、Consumerの受領を比較してから判断する。**この節は設計とScenarioの引渡しであり、新たなGo／DB／Windows／Scheduler実験の完了ではない。**
 
 ## 最新の作業単位へ接続する
 
