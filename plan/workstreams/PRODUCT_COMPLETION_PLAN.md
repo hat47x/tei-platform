@@ -616,6 +616,50 @@ S0〜S3は**B2Cプラグイン内の成熟度の記録**であり、TEI Studio D
 **順序と停止線**：直近は既存P0のStudio実Windows Stage1→Stage2セルフビルド（#2831/#4583）と、並行するRA-2P→RA-3の実Read/二Consumer（#2586）だけを優先する。B1a-Pの実公開Grant、B1bの隔離Commerce Effect、B2の実験/Consent、B3のH0/H1/H2同条件比較、B4の予約/SubscriptionとPlugin採否は各Ownerの後続資格である。今回は計画文書の整理であり、追加の実PG・Native Browser・公開Host・実決済・Field実験・Plugin自己再生成を**実行したものではない**。検証未了のClaimは独立して残し、#3509へ結果を返す。
 
 
+
+### G49前提基盤：アプリケーション構造Graphを生成・合成・検証に共通利用する（2026年11月14日）
+
+**採否の判断**：アプリケーション構造を型付きGraphとして把握する能力は、B2C向けAspectだけでなく、DSL/標準構造、Function/Business、Plugin依存、Build、StudioとAI編集に共通する**設計上の基盤能力**として育てる。一方、単一巨大なGraphをアプリケーションの唯一の記述形式にしたり、Graph Interpreter／Graph Compiler／第二Model Registry／共通実行Hostを新設したりすることは、現時点では採用しない。既存の受理済みMeaning、Source/Revision、標準Graph/Role、Typed Relation、Operator/ProviderとBuilderへ投影・接続する。正式なGraph Schema/DSLは実Targetの不足を確認してから既存Ownerが判断する（#4198/#2620/#4350/#951/#2831）。
+
+#### なぜ基盤として有効か、どこまで必要か
+
+- 個々のPageやFunctionに共通タグを手書きで加える方式は小規模で単純だが、対象漏れ・重複・変更差分の追跡が難しい。ASTへの一括挿入は短期的には実装しやすい反面、業務上の意味・Owner・拡張範囲を認識しにくい。**型付きGraphの意味で対象を選ぶ**方式なら、公開Page、確定Operation、選択済みPlugin等を一つの関係モデルから取り出し、複数Targetへ適用・検査できる。
+- ただしGraphを完備するまで何も生成できない構造は不適切。最初は一Function・一Route・一Pluginに限定したread-onlyの構造投影から始め、既存の通常TEI実行経路を変更しない。グラフは**生成器が使える正規化済みの意味入力の一Facet**として発展させ、DSL記述者に大量のNode/Edge列挙を強制しない。
+- 構造の確認から実装への接続には、Sourceに存在する定義、静的解析による候補、Owner受理済み意味、選択された実装、実Provider/実Consumerでの観測という異なる根拠がある。同名・同digest・同図形を理由に無断で昇格させない。
+
+#### 複数Graphを共通の識別・関係基盤から投影する
+
+| 投影と問い | 元となる情報 | 権限・実証上の停止線 |
+| --- | --- | --- |
+| **Application Structure**：どこに何があるか | Application/Site/Route/Page/Section、Service/Entry、Component、Source・公開Facet、contains/uses/exposes等の型付きRelation | 宣言されたRouteと、Framework側の実動的Route/Edge Rewrite/旧配信を混同しない。対象UniverseのCoverageと未観測を明示 |
+| **Behavior/Process**：どの条件で何が起きるか | Trigger、Function、Operation、State、Control/Data依存、Guard/Effectの意味と順序条件 | 「呼ぶ」関係と制御遷移、Read依存、Transaction、Authorizationを同じ無名の辺にしない |
+| **Composition/Effective Plan**：どの拡張を使うか | Application Profile、選択Provider/Plugin、Trait/Hook Slot、公開された上位Facet、Patch、Target能力 | Definitionと選択済み構成、実Build収録、実Invokeは別資格。上位Pluginの非公開Graph/Grantは継承しない |
+| **Build/Delivery**：何が生成され使われるか | World/Model/Artifact Revision、Source/Generator/Toolchain、Artifact依存、配信ReleaseとConsumer | 依存GraphのDeclaredと実消費byteを照合。生成/配布成功だけで実Consumerの受領を主張しない |
+| **Observed Trace / Diagram**：何が観測されどう表示するか | Attempt、実Call/Result/Effect Receipt、SourceからのView/Graphviz/Mermaid投影 | Traceは定義の実行保証ではない。Diagram座標・色・集約は意味Revisionと独立 |
+
+**Graphの最小不変条件**：NodeにはNamespace付きの安定したSubject参照とSource occurrence/Revision、Edgeには独立ID・型・向き・多重性・Source/Owner、必要なら時間条件・適用Scope・開示条件を持たせる。ひとつのEdge IDに包含・呼出し・依存・許可・実Effectを兼任させない。Node同名・複数有向辺・逆向き関係は保持する。Graph→Tree/Table/Diagramで情報が失われる場合はloss/unsupportedを表示し、逆書戻しを許可する前に一意なSubject/Slotを確定する（#2497/#1124、既存PX-30/31/38〜47）。
+
+**推論できる範囲の限定**：静的に閉じた有限Fixtureでは「選択された全公開Page」を主張できる。一方、Native React等の動的Route、外部CMS、手書きPlugin、実Providerの隠れたCallがある場合、宣言済みUniverseだけでは「本番の全ページ／全処理」を証明できない。Graphの取得は既存fresh/stale/partial/unavailable/permission-denied等を維持し、Required Selectorが対象Closureを満たさなければ不適合/要確認とする。対象除外は監査・認可・Effect Fenceといった非任意義務を緩めない。
+
+#### 基盤の実現順：read-onlyから実Generatorへ
+
+| 段階 | 具体的に成立させる能力 | 次へ進める条件 |
+| --- | --- | --- |
+| **AG0：現行Sourceの構造索引** | 一つの受理済みFunction＋一つのSite/Route＋一つのProvider/Pluginを既存Sourceからread-only Graph/JSON/図へ投影 | Source Subject・occurrence・Revision、Node/Edge identity、未解決とCoverageを保持。図の位置だけの変更は意味/Artifact不変 |
+| **AG1：意味的な対象選択** | Public Page集合、除外Page、Function Operationなどの限定Selectorを既存Role/Relationから求める | 手計算の独立Expectedと一致。未登録動的Routeはunknownであり、空/completeを返さない |
+| **AG2：Plugin合成の実効Graph** | 上位公開Facetの参照＋選択Provider/Trait/Hook Slot＋二Plugin Patchを既存Resolverと比較 | 実装義務・順序・重複とGuard/Effect Fence迂回を検出。追加順を入れ替えても明示非順序部分は同じ結果 |
+| **AG3：生成器への実接続** | AG1/AG2の選択結果から、静的/SSR等の**一つの選択Targetだけ**にScript/計測Adapterまたは純粋Validatorを生成 | H0 NativeのみはTEI Browser Runtime 0。生成byte、実消費Artifact、選択Plugin/Target、独立Consumerを別観測。タグの実送信はまだ別 |
+| **AG4：変更・逆参照・自己生成** | 一Route追加/削除、Plugin公開Facet改版、Source A→B→Aで対象/依存閉包を再計算。図からの編集は必要なものだけSource Patchへ | 旧Selection epoch/Source不一致を拒否。無関係Consumerの過剰失効を避ける。Go委譲だけをTEI自身の生成範囲へ算入しない |
+| **AG5：異Target/実運用の比較** | Native/標準UI/Serverの二Consumer、動的Route/Consent、旧Release、実Browser Traceを同一Scenarioに照合 | Definition→Effective Graph→実Artifact→実Target受領とHost Grantを別々に受理。Performance/追加JS/Build費用をH0/H1/H2で測る |
+
+**Graph索引とBuild依存の接続**：Source→Graphはロード・解決した対象と版を特定して更新し、Graph→Effect Plan→Target→Artifactの依存は選択・実消費した辺だけ追跡する。Reverse dependencyを用いた変更影響解析は有用だが、選択対象の閉包や動的参照がpartialなら「影響なし」とは扱わない。World Fingerprint、Model Revision、Artifact Revision、実Builder/Provider版を分け、A→B→A・空集合・Plugin削除・旧Cacheを失効判定へ渡す（#2600/#2582/#1016）。Graphの索引だけを永続的な第二正本にしない。
+
+**実装費用と撤回条件**：最初のAG0/AG1はGo単一バイナリの既存Reader/Workspace/標準Graph表現を使い、保守すべきNode/Edge種別・メモリ・再計算時間を実測する。読み取り用Graph/Role Projectionと小さなSelectorで十分なら新公開DSLやGraph DBを導入しない。大量のNode/Edgeを手記述しなければ使えない、手書きNative/外部Hostの構造を必須TEI Runtimeなしに扱えない、全体再Buildが増える、権限/EffectをGraph合成で迂回できる場合は設計を縮小または撤回する。
+
+**既存Ownerへの引渡し**：構造・意味/#4350・#2620、LifecycleとProgram Graph/#4198・#3503・#4673、Plugin/#3278・#951・#1016、Source編集/#1124・#2497、Build/#2831・#2600、実Provider/Consumer/#2586・#4495、受入/#1180・#2514、B2C/このG49と#3509。既存PX-23/27/30/38〜47、AX-01/04/05を第一の反例候補として使う。第二のScenario正本や新Hard Gateを設けない。
+
+**優先度**：AG0/AG1の小さなread-only研究・局所実装は既存作業と並走可。ただし全体製品P0はStudio Desktop Stage1→Stage2実Windowsセルフビルド（#2831/#4583）、並行P0は通常TEI製品入口→実Provider→同一Contextの独立二Consumer（#2586）のまま。AG2〜AG5をこれらの先行Hard Dependencyとしない。**本節は設計・計画の提案で、Graph基盤製品化・実Generator/Browser/Provider試験・Owner意味受理は NOT RUN / NOT ACCEPTED**。
+
 ### G49追補：アプリケーショングラフに対する横断的拡張（2026年11月14日）
 
 **目的**：B2C/一般Webで必要となるアクセス解析・広告・RUM/障害監視・監査・共通セキュリティなどを、全Page/Route/Operationに同じコードを繰り返すのではなく、**型付きアプリケーション/プロセスGraphを対象に選択規則と拡張点を宣言**する方式で扱う。従来AOPの動的Proxy/メソッド横取りを前提とせず、既存[#4198](https://github.com/hat47x/tei-platform/issues/4198) Lifecycle Graph、[#3503](https://github.com/hat47x/tei-platform/issues/3503) Interaction、[#3278](https://github.com/hat47x/tei-platform/issues/3278) Trait/Hook Slot、[#951](https://github.com/hat47x/tei-platform/issues/951) Contract/Provider、[#2090](https://github.com/hat47x/tei-platform/issues/2090)生成拡張点、[#1121](https://github.com/hat47x/tei-platform/issues/1121) Target Loweringで表現できる範囲を先に検査する。
