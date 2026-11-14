@@ -29,6 +29,7 @@
 
 | 文書 | 対象 |
 | --- | --- |
+| [`SEMANTIC_STRUCTURE_MAPPING_AND_DECLARATIVE_SYNTAX_VIEW_2026-11.md`](SEMANTIC_STRUCTURE_MAPPING_AND_DECLARATIVE_SYNTAX_VIEW_2026-11.md) | 標準データ構造の意味特性・構造間変換、JSON Schemaの図解、DSL構文・View定義、Source編集の可逆性と段階的な検証計画（#2495/#2497/#988/#2620/#1124。横断設計・未採用） |
 | [`PROCESS_LIFECYCLE_TRIGGER_OPERATION_SEMANTICS_2026-11.md`](PROCESS_LIFECYCLE_TRIGGER_OPERATION_SEMANTICS_2026-11.md) | Trigger・Invocation・State／Effect・Outcome／Responseを共通の意味から図・DSL・Mock・Targetへつなぐ検討。既存Application API／Script LaunchのOwnerへ返す |
 | [`CROSS_DOMAIN_MATH_STATISTICS_PLANNING_TOOLKITS_2026-11.md`](CROSS_DOMAIN_MATH_STATISTICS_PLANNING_TOOLKITS_2026-11.md) | 数理・統計、ウィンドウ集計、工程計画、Solver・実験計画法、物理系・生命科学を、既存のDSL・標準表現型・Operator・Providerと照合し、Studioと一般アプリケーションで検証する計画（[#4660](https://github.com/hat47x/tei-platform/issues/4660)、評価待ち） |
 | [`SCRIPT_LAUNCH_ENTRY_TEST_QUALIFICATION_2026-11.md`](SCRIPT_LAUNCH_ENTRY_TEST_QUALIFICATION_2026-11.md) | Script/Functionの公開Entry→製品Go Binary実起動と、OKF/DSL近傍の直接テスト・Driver Scenario結合テストの責務分担（#4502/#4495/#1180、実装前設計） |
