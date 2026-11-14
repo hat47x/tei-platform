@@ -484,6 +484,8 @@ S0〜S4を一度に実装しない。**最初のPRはS0のReaderとS1の実装�
 
 **同じ生成成果物への実行時要求（限定検証）**：前記Referenceの生成Goに、従来の全件JSONに加え`-node`で一Nodeを選ぶ入力を追加した。有効な各Fixtureを一度だけコンパイルし、**同一BinaryのSHA-256を固定したまま**全件・二Node・未知Node・明示空ID二方式・余分な引数の7通りを実行する。選択Nodeの結果は独立Expectedと照合し、未知Node、明示空ID、余分な引数は非ゼロ終了で拒否する。**Node指定なしの全件取得**と、空文字列を指定した要求の区別を保つ。これはS1の**実行時入力に応じた生成処理の局所証拠**であり、製品`tei` CLIが実Providerを選択・呼出したS2の証拠、Stage1によるStage2再BuildのS3の証拠には加算しない。次のP0は既存#4495/#1251/#951の**同じ選択Providerを実CLIと別Consumerで呼ぶ経路**であり、新しいRunnerや独立Hostは設けない。
 
+**生成Artifactと候補構造の対応を確認する補助証拠**：Graph／Rule限定Referenceに、Node ID・Edge ID／向き・Rule条件だけを正規化した`CandidateShapeFingerprint`を追加する。生成Binaryの`-candidate-shape`から同じ値を取得し、基準とMermaid配置変更は一致、Edge向きとRule条件の変更では異なることを回帰で確認する。**Raw Source SHA-256／候補構造指紋／実Binary SHA-256は別の指標**である。いずれの一致も受理済みMeaning、現在のProvider/Grant、実Build入力閉包・Owner受理の代用品にはしない。Referenceの実行時要求を製品`tei` CLIの新たな公開コマンドとして追加するものでもない。実ProviderやStage2のP0は維持する。
+
 **固定した入力と期待結果**：[testdata/tei-md-graph](../../testdata/tei-md-graph/README.md)に、基準、`e-2`反転、Mermaidのレイアウト変更、Edge ID重複、表と導出図の不一致に、規則の起点→終点切替を加えた**6例**を通常の`*.tei.md`で置き、Graph出辺と生成コードの実行結果の期待値を別の`independent-expected.candidate.json`に記録した。これらは**既存#1180/#2514に採用を引き渡す候補**であり、`*.tei.md`を実Loaderが読めるという意味ではない。管理Source Rootの未対応Guard `TEI_MD_PARSER_UNBOUND`はReaderが正式に接続されるまで維持する。最初の技術課題は、選択した表・Fenceの元byte位置を保存し、Role／意味IDに結び付けること。MermaidのN1/N2やEdgeラベルを実Relation IDへ黙って昇格させない。
 
 **実装担当へ渡す受入票**：最初に「Edge同一性の保持」「重複IDの拒否」「方向別の抽出」など対象の機能上の義務を固定する。義務ごとに、(a) TEIのどのSource/Ruleが実装を規定したか、(b) 生成したGoのどこが挙動を担うか、(c) 外部Goが担当する境界、(d) 実Builderが読み込んだByteとArtifact、(e) 選択Pluginの実Callと独立Expected、(f) 定義変更前後の手修正・重複記述・再検証作業を記録する。**未観測の項目は未達とし、比率の分母を試験後に縮めない**。
