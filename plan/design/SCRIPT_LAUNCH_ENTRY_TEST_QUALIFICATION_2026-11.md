@@ -456,7 +456,23 @@ Prepare時に解決できた契約・対象は**許可トークンではなく�
 
 現行main `e888bb8f21367b721f0984953530da9627e2634d` の個別Sourceをさらに確認した結果、**結果契約、製品CLI入口、最初の業務意味Fixture**の三箇所に、§11〜12では十分に特定できていなかった不足がある。本節は#4495の実装PRへ直接渡すチェックであり、独立のLaunch仕様／新Issueを増やさない。main更新後は、着手PRのexact HEADで再確認する。
 
-### 13.1 実コード・既存テストから確定できる境界
+### 13.1 参照Workspace内のCapability実数とP0候補の受理境界
+
+main `e888bb8f...` で`reference/workspace/semantic`配下の6つの`*.tei` Sourceを直接読み、明示`capability`は次の3件と確認した。これは**このReference WorkspaceのSource定義の棚卸し**であり、全TEI Workspaceや全PluginのCapability一覧、個々のMeaningのOwner Acceptance、公開Entryの存在証明ではない。
+
+| 参照WorkspaceのCapability | 宣言された結果 | P0 pureの流用判断 |
+| --- | --- | --- |
+| `sales.order.submit` | `input order sales.order`、`output sales.order` | 受注確定という業務用途。`Effect`未宣言という構文上の事実だけでpure/no-read/no-side-effectと推定しない。既存`capabilityinvoke`のOutput mode局所試験は維持するが、計算Functionへ無条件転用しない |
+| `security.authenticate` | `authenticated/denied`の名前付きOutcome | 認証文脈を持つ契約。Result modeの参考例として利用可、公開業務計算の独立Expectedとは別 |
+| `security.authorize` | `allowed/denied`の名前付きOutcome | 認可を扱うSemantic契約であり、**Hostの現在Grant決定の代わりに採用しない**。意味の一致・Effect absence・Host admissionは別根拠 |
+
+同じReference Workspace内には`sales.order_line.quantity`・`unit_price`属性があるが、Generatorの`sales.line-amount`は`testdata/line-amount/contract.json`にのみある**`reference-local`規則**であり、上のCanonical Capability一覧には登場しない。従って、**現時点で確認できるこれらのSourceをそのまま使って「Owner受理済み・明示公開済みのpure line-amount Product Entryがある」とは主張できない**。
+
+**A0の分岐を確定**：①別の実Workspaceに既存のOwner受理済みpure Functionが見つかれば、そのSource occurrenceとContract/Effect/Target/公開面を実検査して採用する、または②`line-amount`等の有限規則をOwnerが通常の意味レビューで明示受理し、Canonical Function・Operator/rounding/NULL/単位/Output/Effectの必要条件と独立Expectedを結び、**さらに別途Entry公開を確認**する。どちらも満たさなければA0は未成立、A1/A2のReference実行でP0 Product Q2を代替しない。採用と公開を自動化するための新承認レイヤーや中央Registryは作らない。
+
+**合否に用いる最小対照**：未公開Functionのcall 0（EL-01）、`line-amount`が`reference-local`のままなら`published`に昇格しない、`Effect`フィールドのnilだけでpureとは宣言しない、`security.authorize`の名前付き業務OutcomeとHost Admissionを混同しない。独立Expectedの正本は#1180/#2514、Function/Entry公開のOwnerは#2502/#4495に維持する。
+
+### 13.2 実コード・既存テストから確定できる境界
 
 | 実装／Fixture | 現在確認できること | Product Q2に必要な最小delta |
 | --- | --- | --- |
@@ -466,9 +482,9 @@ Prepare時に解決できた契約・対象は**許可トークンではなく�
 | `internal/semantic/capabilityinvoke/invocation_test.go` | 既存`sales.order.submit`の単一Output mode検証と、cancel-before-dispatchのAdapter call0、実行失敗をOutcomeへ変換しない局所テストがある | 既存テストの契約は保持。`sales.order.submit`を**pure計算の受理済みFixtureに読み替えない**。Product公開Entry/Host Grant/実Provider/CLI subprocessの試験を別に足す |
 | `tools/reference-generator-selection/testdata/line-amount/contract.json`と`fixtures.json` | `sales.line-amount`は**`status=reference-local`**。属性`sales.order_line.quantity`、`unit_price`、出力`std.money`はWorkspace意味に参照するが、数量×単価の**複合規則そのものはCanonical受理済みではない**。正例`2x300`は`600.00 JPY`（DECIMAL(8,2), half-up） | 生成器Referenceの結果をProductのAccepted Meaningへ**自動昇格しない**。最初のP0純粋Functionに適した既存Accepted契約を探すか、通常のOwnerレビューで小さな計算規則を受理してからEntryを公開する。後者のときも元Fixtureは独立比較入力の候補であって意味正本ではない |
 
-### 13.2 最初の実装PRの赤→緑を、三つの責務に絞る
+### 13.3 最初の実装PRの赤→緑を、三つの責務に絞る
 
-**PR-A0：意味と公開対象の確定（#4495／#2502／Meaning Owner）**。実Workspaceで公開可能なpure Capability/Function・Output型・入力・Effect absence・Target supportを一件選ぶ。候補がreference-localだけならその事実をIssueに報告し、Ownerが受理する前に`published`へ進めない。出典Source occurrence／Contract revisionと、選択済みCompositionの明示Entry公開（非公開時call=0）を局所Testで確かめる。UI Function Catalog/静的`command`と混同しない。
+**PR-A0：意味と公開対象の確定（#4495／#2502／Meaning Owner）**。上記13.1の実Capability棚卸しから、**Ownerが受理したpure意味・必要Read/Effectの分類・Output型・NULL/丸め/単位・Target適合**を一件確定する。候補が`reference-local`だけならそれをIssueへ報告し、Meaningの通常レビュー/受理とEntryの明示公開を別々に確認するまで`published`へ進めない。出典Source occurrence／Contract revisionと、選択済みCompositionの明示Entry公開（非公開時call=0）を局所Testで確かめる。UI Function Catalog/静的`command`と混同しない。
 
 **PR-A1：共通Product Operationと実Go Provider（#4495／#951／#1251／#3422）**。既存`Capability`と`capabilityinvoke`のResult modeを利用し、Hostが構成したTrusted Contextと現在Selectionから選択したGo実装へDispatchする。typed Inputの欠落/明示NULL/未取得を失わず検証し、実Outputは値・型・presenceをMeaningの必要条件に従って照合する。A/Bが同じ`600.00 JPY`を返しても、B選択/A実Callを外側WitnessでFAILにする。全Target共通Runner、第二Provider Registry、汎用`Result any`の無検査透過は採らない。
 
@@ -476,7 +492,7 @@ Prepare時に解決できた契約・対象は**許可トークンではなく�
 
 この3分割は**同一#4495の小PR分割案**であって、新しい定常Gateや新規Ownerの発行ではない。PR-A0は公開対象が実際に受理されるまで未完了、PR-A1/A2は別FixtureのReference成功を合算してProduct Q2へ昇格させない。Goテスト／本番CLI未実行の段階で全工程をPASSにしない。
 
-### 13.3 既存Fixtureを使っても誤判定できる反例
+### 13.4 既存Fixtureを使っても誤判定できる反例
 
 | 一因子対照 | 許される意味判定 | 現状の検査を流用する際の注意 |
 | --- | --- | --- |
@@ -488,7 +504,7 @@ Prepare時に解決できた契約・対象は**許可トークンではなく�
 
 **最小受入票**：`exact HEAD / Accepted Meaning（reference-localなら未受理）/ Workspace・Source occurrence / published Entry version / typed input states / selected Provider＋実Call Site witness / actual Product CLI binary＋argv / actual Result body＋schema＋Failure / 既存Independent Expected参照 / PASS|FAIL|NOT RUN|unsupported`。実Call・Result本文と現在Host権限の実証がない項目を同じ「成功」に束ねない。秘密／Host内パスやPrincipalの詳細をPublic Receiptへ複写しない。
 
-### 13.4 他レーンに追加するのは合流条件だけ
+### 13.5 他レーンに追加するのは合流条件だけ
 
 - **Generator #4544**：既存の`reference-local` line-amountを標準Generator比較の入力として保つ。将来同じAccepted Ruleへ接合したときだけMeaning/Output/Target/Actual Providerの一因子照合を行う。今はLの第一Hard Gateにしない。
 - **DSL/Trait #988/#3278**：入力型・Output精度・欠落・実Providerの必須Methodを、表層構文や未採用Traitで自動補完しない。Target不対応はunsupported。
