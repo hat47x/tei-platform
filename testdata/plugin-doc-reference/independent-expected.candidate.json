@@ -1,0 +1,236 @@
+{
+  "schema": "tei.plugin-public-doc-independent-expected-candidate/v0",
+  "adoption": "proposal-only",
+  "authority": "PDC-0 issue #4701; independent Expected owner #1180/#2514; no TEI schema acceptance",
+  "productsNotClaimed": [
+    "selected product plugin",
+    "source-backed plugin-doc read",
+    "formal tei.md meaning reader",
+    "runtime provider invoke",
+    "publication grant"
+  ],
+  "graph": {
+    "source": "testdata/tei-md-graph/baseline.tei.md",
+    "semanticIDs": {
+      "nodes": [
+        "n-1",
+        "n-2"
+      ],
+      "directedRelations": [
+        "e-1",
+        "e-2"
+      ]
+    },
+    "identicalNodeLabels": true,
+    "parallelRelations": [
+      {
+        "id": "e-1",
+        "from": "n-1",
+        "to": "n-2",
+        "occurrenceRole": "reference-link",
+        "roleAdoption": "candidate-only"
+      },
+      {
+        "id": "e-2",
+        "from": "n-1",
+        "to": "n-2",
+        "occurrenceRole": "dependency-link",
+        "roleAdoption": "candidate-only"
+      }
+    ],
+    "diagramIDsNotSemanticIDs": [
+      "N1",
+      "N2"
+    ],
+    "sourceDigest": "sha256:b5834e59318980eedb481bffc96ee13476168e3cdfb747ec0e504b5610c9200d",
+    "ruleSection": {
+      "id": "node.edge_ids",
+      "condition": "起点 = 対象ノード",
+      "status": "source-present; formal meaning not adopted"
+    }
+  },
+  "plugins": {
+    "A": {
+      "id": "fixture.graph-base",
+      "version": "1.0.0",
+      "contract": "graph-read/v1",
+      "publicExtensionCandidate": "graph.read.after"
+    },
+    "B": {
+      "id": "fixture.graph-extension",
+      "version": "1.0.0",
+      "requires": {
+        "plugin": "fixture.graph-base",
+        "compatibleMajor": 1
+      },
+      "selectedBaseCandidate": "fixture.graph-base@1.0.0",
+      "referenceMode": "link-only; no doc or graph copy",
+      "reexport": "not-authorized"
+    },
+    "C": {
+      "id": "fixture.graph-consumer",
+      "version": "1.0.0",
+      "requires": {
+        "plugin": "fixture.graph-extension",
+        "compatibleMajor": 1
+      },
+      "baseManualReexport": "not-authorized"
+    }
+  },
+  "documents": {
+    "public": {
+      "id": "fixture.graph-base.guide",
+      "owner": "fixture.graph-base@1.0.0",
+      "contract": "graph-read/v1",
+      "path": "testdata/plugin-doc-reference/public-manual.md",
+      "visibility": "allowed-in-candidate-for-B",
+      "sourceRefStatus": "candidate-unbound",
+      "sourceDigest": "sha256:362be3b5be8dd20c29e6e5da7eabacae8b53f60797779aadafdfd50ebd643f20"
+    },
+    "private": {
+      "id": "fixture.graph-base.internal",
+      "owner": "fixture.graph-base@1.0.0",
+      "path": "testdata/plugin-doc-reference/internal-manual.md",
+      "visibility": "denied-to-B-and-C",
+      "sourceRefStatus": "candidate-unbound",
+      "sourceDigest": "sha256:b03a9644f3d848e40b70f439ea92e1a1802a1714a83a447feb19faa6fbe76034"
+    }
+  },
+  "cases": [
+    {
+      "id": "PDC-00",
+      "variant": "B directly references A public guide and graph",
+      "expect": {
+        "result": "candidate-reference",
+        "owner": "fixture.graph-base@1.0.0",
+        "doc": "fixture.graph-base.guide",
+        "graphSource": "testdata/tei-md-graph/baseline.tei.md",
+        "binding": "explicit-only",
+        "productRead": "not-run"
+      }
+    },
+    {
+      "id": "PDC-01",
+      "variant": "Two nodes share the same displayed label",
+      "expect": {
+        "nodeIDs": [
+          "n-1",
+          "n-2"
+        ],
+        "merge": false
+      }
+    },
+    {
+      "id": "PDC-02",
+      "variant": "Two directed relations share endpoints",
+      "expect": {
+        "relationIDs": [
+          "e-1",
+          "e-2"
+        ],
+        "from": "n-1",
+        "to": "n-2",
+        "roles": [
+          "reference-link",
+          "dependency-link"
+        ],
+        "rolesStatus": "candidate-only",
+        "diagramIDSubstitution": false
+      }
+    },
+    {
+      "id": "PDC-03",
+      "variant": "B requests private document",
+      "expect": {
+        "result": "permission-denied",
+        "returnedPrivateBody": false,
+        "returnedPrivateMetadata": false
+      }
+    },
+    {
+      "id": "PDC-04",
+      "variant": "B selects A 1.0.0 but receives a guide applicable only to A 2.0.0",
+      "expect": {
+        "result": "version-mismatch",
+        "useAsCurrentGuide": false,
+        "selected": "fixture.graph-base@1.0.0",
+        "guideAppliesTo": "fixture.graph-base@2.0.0"
+      }
+    },
+    {
+      "id": "PDC-05",
+      "variant": "Manual prose changes alone OR Mermaid layout changes alone",
+      "expect": {
+        "manualOnly": {
+          "docRecheck": true,
+          "modelMeaningMustChange": false,
+          "goArtifactRebuildRequiredByThisChange": false
+        },
+        "layoutOnly": {
+          "displayRecheck": true,
+          "modelMeaningMustChange": false,
+          "goArtifactRebuildRequiredByThisChange": false
+        },
+        "sourceRevisionRecheck": true
+      }
+    },
+    {
+      "id": "PDC-06",
+      "variant": "A public semantic relation or extension point changes",
+      "expect": {
+        "result": "downstream-requalification-required",
+        "affectedBinding": "fixture.graph-extension",
+        "meaningAndGeneratorReview": true
+      }
+    },
+    {
+      "id": "PDC-07",
+      "variant": "Manual is partial or source not loaded",
+      "expect": {
+        "result": "partial-or-not-loaded",
+        "completeManualRead": false,
+        "absenceProved": false
+      }
+    },
+    {
+      "id": "PDC-08",
+      "variant": "B selected but actual provider A invoked",
+      "expect": {
+        "result": "runtime-identity-mismatch",
+        "docMatchIsEffectProof": false
+      }
+    },
+    {
+      "id": "PHD-02",
+      "variant": "Guide mentions a non-existent CLI command",
+      "expect": {
+        "result": "unsupported-command",
+        "commandIsRunnable": false
+      }
+    },
+    {
+      "id": "PHD-03",
+      "variant": "C tries to re-publish A guide via B",
+      "expect": {
+        "result": "reexport-not-authorized",
+        "returnedPrivateBody": false
+      }
+    },
+    {
+      "id": "PHD-08",
+      "variant": "Old guide reply arrives after Workspace/Lock/Scope changes",
+      "expect": {
+        "result": "stale-response",
+        "applyToCurrentSelection": false
+      }
+    },
+    {
+      "id": "LOCK-UNKNOWN",
+      "variant": "Only requires CompatibleMajor=1; no selected exact Lock",
+      "expect": {
+        "result": "exact-version-unknown",
+        "chooseGuideFromMajorOnly": false
+      }
+    }
+  ]
+}
