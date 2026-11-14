@@ -411,3 +411,855 @@ Checkpointは「どこまで進んだか」の記録であり、**「同じ意�
 - **未決**: §15のO-01〜O-10。決めるまで実装の対象にしない、または既定案を選んで覆す条件をPR本文へ書く。
 - **停止線**: §14の各Wの停止条件と、§1の「第二のDSL/データモデル/Workflow Engineを作らない」規則。
 - **次の作業**: 本設計の起票（Issue更新と子Issue起票）までで止め、大規模実装は開始しない。実装はW1の独立Expectedから始める。`.NET`評価は[#4435](https://github.com/hat47x/tei-platform/issues/4435)、main由来の失敗は[#4434](https://github.com/hat47x/tei-platform/issues/4434)が担当。
+
+## 18. 入力閉包と業務期間の再集計：Claim相対の完全性・遅着・訂正（2026-11-12、設計候補）
+
+- **状態**：既存 #1130 / #4410 / #4411 のW1〜W8、N-01〜12の受入を明確化する設計候補。新Core/正式API、第二DSL、専用ETL Engine、Runner、Authority、Manifestの採用を意味しない。実装・正式Owner判断は別資格。
+- **目的**：物理ファイルの読了と、業務期間の全Fact取得を区別する。Source revisionと業務期・Capture時点・実行Attempt・公開Generationを分離し、遅着と訂正を無条件のCheckpoint再開で処理しない。
+
+### 18.1 Claim相対のInput Closure
+
+| 独立したClaim | 最低限必要な証拠 | そこから推論できないこと |
+| --- | --- | --- |
+| **Physical Read Complete** | pinned物理ObjectのEOF、length/digest/形式照合、Reader attempt | 物理Objectに業務全件が入っている |
+| **Required Source Closure** | 問いに必要なSource/Relation/FX表/Rule/Partition/業務期の列挙、受理済みMeaning・Source identityとの対応 | 要求を宣言しただけで実際に読めたこと |
+| **Population Complete** | 対象Factの粒度・母集団・重複規則・Partition/snapshot coverageと、必要なら独立件数・Key集合など | EOFや件数一致から業務全件・未知Readerの不存在 |
+| **Temporal Cut Qualified** | 有効業務期、capture as-of、event/ingestion時刻、source snapshot・watermark範囲、遅延許容・観測時刻 | 単なるRun開始時刻やTrigger成功から業務締め完了 |
+| **Output/Publication/Consumer Qualified** | 実Outputの法則適合、独立Expected、実Member bytes、Generation/Reader pin、Effect/Ownerの別証拠 | Transform成功から公開一式性・取込・業務受理 |
+
+Claimに必要なSource/Reader/Relationが未Loaded・Unknown・非開示なら、そのClaimについて全件・不存在を主張しない。一件の存在の観測は限定的な陽性Witnessとなり得るが、不存在や全称には必要なClosureが要る。公開可能なCoverage理由と秘密の件数・パスも分ける（#2514/#2516、Studio Draft #4510、TEA Draft #4487）。ここでは新しいClaim Engineを実装しない。
+
+**比較票（正式Schemaではない）**：Question、Accepted Meaning/Function、Data/Fact identityとbase grain、業務Periodとtimezone、必要Source roots/partition/lookup-rate revisions、期待する集合・complete条件、実Snapshot/Reader attempt/byte digest、Actual Consumed range、Coverage/欠落理由、Operator Lawと単位、独立Expected、Disclosure/Current Grant。Required・Declared・Selected・Consumed・Observedは混ぜない（#2831/#3279）。
+
+### 18.2 業務Dの時点分離と再実行の三形態
+
+同じ業務期Dであっても、(1) valid/effective business period、(2) source snapshot / capture as-of、(3) processing・physical Attempt、(4) publication・Reader observedAt は別の時点。event timeとingestion timeも別。Periodの端点・timezone・業務カレンダーを固定し、実行日から勝手に業務基準日を推測しない。
+
+| 実行形態 | Source/Result条件 | 拒否・停止条件 |
+| --- | --- | --- |
+| **Same-Run Resume** | pinned Source/Plan/Meaning、Input digest・処理済み範囲、出力世代、current fenceを照合 | old checkpointを新Snapshotへ流用しない。Unknown Effectを自動再実行しない |
+| **New Delta Run** | base revisionからtarget revisionへ連続した変更履歴、削除/訂正/再出現・watermark・遅着を確認 | base=targetを要求しない。CDCのgapや欠落が不明ならunsupported/unknown |
+| **Restatement / Correction Output** | 同じ業務期でも新Source Snapshotまたは訂正Ruleを明示し、新Run・新Artifact Generationを形成 | 旧Runや旧Outputを黙って上書きしない。業務期のclose/reopen、Ledger訂正/Effectは別Owner判断 |
+
+初期の安全な候補は**有界Snapshotを完全再読込して別Generationで再集計**する方式。CDC完全性や外部Stream受信保証が実証されるまでは自動差分・遅延補正を全件成功としない。ただし全案件に全件再集計を強制する新しい製品規則ではない。予定Slot/Trigger occurrence、配送Attempt、RunKey、実行Attempt、Operation ID、再公開Generationは別の同一性であり、同じ日付から無条件に同一IDを導出しない（#4502）。
+
+### 18.3 MergeableとRetractableを別Traitとして扱う
+
+- 同一単位のSUMがチャンクmerge可能でも、Sourceの全Factが重複なく被覆されたという保証は別。AVGは(sum,count)、COUNT DISTINCTは正確な集合状態等が必要で、Stockの時間方向SUM、JOIN fanout、quantityの単位混在はDecimal型だけでは適格にならない（#2593）。
+- **撤回/訂正可能性は結合則からは導けない**。SUMを安全に差分更新するにはFact identityとbefore/afterまたは有資格なsigned delta、変更・削除履歴の全件性が必要。MIN/MAXで過去の極値を削除すれば残る集合または十分な状態を再参照する必要がある。Mergeable / Retractable / Source Complete / Effect Replay Safeは独立の資格。
+- Traitの設計意図、静的推論、実Provider/TargetでのConformanceを区別。SQL Pushdownや並列化を数学的法則だけで実行許可せず、NULL/Collation/Decimal精度・Snapshot/Scope/現在Grantを確認する（#2622/#3279/#2514）。
+
+### 18.4 固定反例（既存N/EF/APの独立Expectedへ接続）
+
+新しいScenario正本を作らず、N-02/03/06/08/11/12、#2542 EF-01/04、#2604 AP-01/06の一因子変形として扱う。ここでは全行JPY、quantityは同種の「個」で統一し、rate/丸めを固定する。
+
+| 入力の差分 | 手書きIndependent Expected | 禁止する誤成功 |
+| --- | --- | --- |
+| R1のp1: o1=A accepted 2個×100円、o3=A pending 100個×1円。p2: o2=A accepted 3個×200円、o4=B accepted 1個×50円 | 完全取得時はA数量5/800円、B数量1/50円 | pending算入、分割された同Groupの最終chunkだけを採用 |
+| p1のEOF/digestは正常だがp2のReaderはfailed/未取得 | p1の部分結果は計算可能でも、R1全体はunqualified。Bの不存在は主張不可 | p1の物理読了を業務期D全件Completeとする |
+| R1公開後、同じ業務期Dの遅着o5=A accepted 1個×40円を別Snapshot R2で観測 | R2のA数量6/840円、B数量1/50円。旧R1は当時のas-ofとして保持 | 旧Checkpointへo5を継足し、R1の証拠を改ざん |
+| o2が3個から2個へ訂正されたR3 | 完全な差分または全件再読込ならA数量5/640円 | after-onlyを新規Factとして加算、旧Contributionを黙って残す |
+| 同じ予定Slotを再Deliveryする一方、SourceはR1→R2に変わる | Trigger/Delivery/Run/Source/Generationを別列で観測 | 同じ日付だから同一Operation IDで無条件再開してよい |
+
+R1のFile byteが完全でも、業務対象母集団がProvider/OwnerによりClosedと確認されなければ、R1の結果は**観測Snapshot相対**の意味に限る。遅着後の再集計がAnalysis Artifactの再発行で済むか、Period reopen / Correction / Business Effectを必要とするかは#1129/#1130/#1174のOwner判断。Artifactを新世代で公開できたことは業務Ledger更新済みの証明ではない。
+
+### 18.5 反映順・Owner境界
+
+1. **P0 / #4410 W1/W2**：固定TSVのEOFとClaim-relative Population Completenessを別Assertionにする。N-11の真の空/未取得、N-03のGroup merge、#2593の単位を既存独立Expectedで確認。初回SliceへStream/CDC Engineを足さない。
+2. **P1 / #4410 W3/W5、#2604**：Data Output digest、Run Evidence、R1/R2公開Generationと実Consumer readbackを別資格として比較。新Publisher/Manifestを作らない。
+3. **P1 / #4411 W6/W7**：Resume/Delta/Restatementの適格性表、Required・Consumed Source Closure、Source改版時の失効、Commit Unknownの照会停止を既存Runlog/Receiptへ接合。新RunKey・Checkpoint正本を追加しない。
+4. **P2 / #2542/#2593/#4502/#4194**：実Provider/TargetのSnapshot・CDC・Event遅着・Trigger occurrence・EKI Resultを実証した範囲から段階的に接続。外部ACKやWorker CompletedはBusiness Acceptedではない。
+5. **Studio / #1124/#4510**：Dataflow/Temporal Dependency/Publication/Evidenceを型付きGraphの用途相対Projectionとし、未取得/非開示を「図に無いので実際に存在しない」と見せない。Source改版後の旧Preview・旧選択は実編集/Effect資格に昇格させない。
+
+**実証範囲と停止線**：今回の追補はmainの設計・既存Issue/PRの静的照合に基づく設計候補。上表の新規Execution/Go/CLI/実DB・MFT/EKI/Studio/Independent Consumer/Owner採用はNOT RUN。第二のSource/Scenario/Oracle/Temporal Engine/Host/Registry/Authorityを導入しない。
+
+## 19. 最適化の意味保存：宣言Graph・選択Graph・実観測を照合する（2026-11-12、設計候補）
+
+**位置づけ**：§18のInput Closure・Temporal Cutを満たしたうえで、既存Plugin最適化要件 [PRO-03〜06、PRO-09、OPT-04/06/07](PLUGIN_REALIZATION_AND_OPTIMIZATION_REQUIREMENTS_2026-11.md)、[Data Operations #2622](https://github.com/hat47x/tei-platform/issues/2622)、[Measure #2593](https://github.com/hat47x/tei-platform/issues/2593)、[Incremental Reuse #2600](https://github.com/hat47x/tei-platform/issues/2600) の適用条件を**ETL/Batch Consumer**に具体化する。正式Optimizer・新共通Plan Schema・新Verifier・新Runnerではなく、既存のSource/Typed Expression/Relation/Function/RunPlan/Plugin選択/実行Evidenceから導出する**比較投影**の提案である。
+
+### 19.1 入出力の値一致だけでは意味保存ではない
+
+最適化候補を、対象Question/Source Scope/Revision/Temporal Cut/Targetに相対化した**観測可能な契約**の下で比較する。
+
+| 保存すべき観測意味 | 比較するもの | 値だけ一致した場合に見落とすこと |
+| --- | --- | --- |
+| Value / Grain / Multiplicity | 型、NULL/空/未取得、Fact identity、Group、重複と並び順、Unit/Decimal/Rounding | JOIN fanout、順序依存、誤った集約粒度 |
+| Required Input / Coverage | 必要と実消費したSource/Relation/Partition、Snapshot、業務期、Lookup版 | 同じ行数でも対象母集団欠落、旧rateのCache hit |
+| Validation / Failure | どの対象行でいつ検証し、Reject/Unknown/Partial/Diagnosticが発生するか | Filter移動で不正行の診断が消える |
+| Authority / Disclosure | 選択Providerの実Read Scope、現在Grant、Consumerの開示可能範囲 | 正しい値を権限外Consumerへ返す |
+| Effect / Delivery | Operation/Import Unit/Receipt、Commit Unknown、出力Generation・実Reader | 変換結果一致でも再送やPublishで業務Effectが重複 |
+| Provenance / Realization | Semantic Plan/選択したBinding、実Toolchain/Artifact/Provider、実Attempt | 別Provider実行、図外処理、未ロード経路を見落とす |
+
+**適格性の判定**： (a)必要なSource/Rule/Provider Law・現在資格が充足、(b)選択した書換えの前提が満たされ、(c)限定された独立Expectedで正常・失敗・権限の差を反証、(d)実Target上の選択・実消費・結果を別観測すること。独立FixtureのPASSは一般の数学的同値証明でも実Provider全範囲のConformanceでもない。保証範囲外はconditional/unknown/unsupportedとして止める。
+
+### 19.2 三つのGraphを「一つの正本の異なる投影」として比較する
+
+| 投影 | 主な要素 | まだ保証しないこと |
+| --- | --- | --- |
+| **Semantic / Declared Flow** | Accepted SourceからのFunction・Operator・Data/Control Dependency、Required Closure、Effect/Validation/Outputの宣言 | Providerが選ばれた、実処理した |
+| **Selected / Lowered Execution** | 選択したProvider/Plugin Instance・Target/Artifact・書換え前後のRelation、実行入口/予定・Capability/Resource | 実Provider呼出・実Input Read・実Effect |
+| **Observed Attempt / Consumer** | 実Entry/Loaded bytes、実Read範囲・結果・診断・Attempt/Receipt・公開Member・実Reader readback、未観測の区分 | 観測境界外に工程・Effectが無いこと |
+
+**Edge対応票**：declared relation/operation → selected or rewritten equivalent → actual consumed/produced/receipt → evidence/coverage/unresolved reason。最適化で消えたNodeは「条件付きで正しく省略された」のか「実際には未観測・漏れた」のかを区別。選択Graphに存在しないSourceの実消費はUnexpected Edgeとして診断するが、Traceに無いものを自動的に「実行されなかった」と判定しない。Claim相対のRequired・Observed closureが有資格なときに限り限定的な不存在が言える（#2831、#1124、Studio Draft #4510、TEA Draft #4487）。秘密のSource/Edgeは許可されたViewerだけに開示する（#2516）。
+
+### 19.3 既存Pressure Caseで検証する書換え反例
+
+**Pushdown / Outer Join（PRO-03、OPT-04、DO-01）**：顧客A/Bがあり、Aにのみ status=accepted の注文があるとする。元Queryが LEFT JOIN の後に WHERE 注文.status=accepted を評価するなら結果はAだけ。誤った書換えでその条件を JOINのONに**移し、WHEREから取り去る**と、Bが右側NULLの行として結果に残る。ProviderでのSQL文法が正しくても、出力集合の意味は同値ではない。公式SQL説明：[PostgreSQL 18 Table Expressions](https://www.postgresql.org/docs/current/queries-table-expressions.html)。外部結合のNull-extended rows、三値論理、他のWHERE条件まで含めて書換えを資格化する。
+
+**Filter / ValidateのFusion・順序変更（PRO-03/04、W2）**：未受理レコードに不正な数量/通貨がある入力で、業務契約が「全入力をValidateしてからacceptedだけFilter」と指定する場合、Filterを先行すると失敗行の診断が消える。逆に「acceptedだけ検証する」と受理されたMeaningならこの差は起きない。**同じ成功Output byteでもError/Diagnosticが異なる正負例**を一組として比較。Filter/Validationのどちらを正とするかをOptimizerが決めない。
+
+**Aggregation/Join・Measure（DO-01/07、#2593 MC）**：1件の100円Factに2個のTagをJOINして結果をSUMすると200円になり得る。元Factの粒度で100円とするMeaningから、JOIN後SUMへ勝手に変換しない。単にDISTINCTした結果もFact identityやTag/OccurrenceのMeaningを失い得る。Quantity Kind、Group Key、Multiplicty、Fact identityと対象Populationを前提条件とする。
+
+**Cache/Scope・Temporal ABA（PRO-05、OPT-06、#2600 IB-09/10）**：Source byteとRuleが同一でも、Reader Snapshot/Period・Role・ProviderのCurrent GrantやDisclosureは別資格。Tenant Aが読める結果を、同DigestだけでTenant Bに返すCache Hitは拒否。同byteへ戻ったSource A→B→Aでも、過去の受理と現在権限は自動復活しない。計算キャッシュの再利用可能性と実Consumerの現在の使用・開示資格は**別判定**。
+
+**Effectful Fusion/Retry（PRO-06、OPT-07、#2542/#1174）**：二つのTransform Stageを融合しても、Transfer/Import/Business CommitのReceiptを一つのResultへ縮退しない。ACK-lossやCommit Unknown後に「Fusion成功/同Result digest」を再送可能性として扱わない。純粋な変換だけの成功を外部Effectの実行資格と区別する。
+
+**正例の要件**：同一固定Snapshotの純粋なProjection/Filter等で、NULL・欠損・Order・診断・Scope・Output encodingが保存される条件を事前に宣言した場合だけ候補書換えを許容。実際に書換えた二実装の結果・診断・選択Provider/実入力を照合し、適合しなければ通常経路を維持する。新Case IDや独立Expectedの第二正本は増やさず、既存OPT/DO/MC/Nケースの一因子変形として扱う。
+
+### 19.4 Optimizerを新設せず可視化・検証する最小手順
+
+1. **P0 計画票**：既存のW1/W2固定TSVのFlowを「変更前Semantic Graph」として固定し、候補書換え・変更後Selected Graph・適用条件・Reject reasonをread-onlyで記述。No Rewriteを既定とし、現行実装に自動書換えは追加しない。#2622/#951/#3279の型/Provider適格性を使用。
+2. **P0 反証**：上記Outer JoinのA/B、Filter/Validateの不正行、Cacheの別Scopeで、成功行だけでなくReject/Unknown/Disclosureも含む独立Expectedを作成。既存#2514と#2593のFixture Ownerが受理するまで設計候補に留める。
+3. **P1 一つの合法な書換え**：W1〜W5の初回純粋Go/CLI縦断が成立した後、最小のPure操作についてBaseline/選択候補を同一pin・同じTarget/Expectedで比較。selected providerとactual invoked/read rangeを確認し、意味PASSと速度改善PASSを独立記録（#2600/#2018）。
+4. **P1 Studio/Headless**：Semantic → Selected → ObservedのEdge対応・Coverage/Unknown/Source位置をRead-only投影。図に表示された処理と実ObservabilityのClosureが不足する場合、「図中に無いものは存在しない」を主張しない。Source変更やGrant失効後は旧Plan表示と現在実行資格を分離。
+5. **P2 Provider別Target適合**：実DB pushdown、Fusion、Cache、部分集計、差分適用は、それぞれのProvider Contract・Snapshot・Target/Toolchain・実Policyが確認できた範囲だけ増やす。常駐Runtime/第二Graph Storeや共通Cost-based Optimizerを新設しない。
+
+**採用しないもの**：最適化候補の自動生成をもって安全な実行許可とすること、Value digestだけを意味・権限・効果の証明とすること、Trace未発見から業務全域の不存在を主張すること、性能改善により失敗・権限・未受理条件を上書きすること。
+
+**証拠状態**：既存設計とSQL/Changelog文献の比較・反例の静的推論に限る。書換えコード、実DB/Provider、実SQL plan、実Go/CLI/Wails、二Consumer/OS権限、独立Expected実試験、性能測定、Owner意味受理はすべて **NOT RUN / NOT ACCEPTED**。
+
+## 20. 複数Sourceの整合Cut・用途別Graph・実装責務（2026-11-12、設計候補）
+
+**この節の固有論点**：§19がRewriteの意味保存・失敗・権限・実行前後の対応を扱うのに対し、§20は **複数Sourceの観測時点を業務的な整合時点と区別すること** と、同一標準構造の **Data/Control/Effect/Observationという用途別の辺** を整理する。先行のRewrite一覧、Cache/Retryの拒否条件は§19.3および既存PRO/OPT/DO/MCへ委譲し、第二のOptimizer/Source正本を設けない。
+
+### 20.1 追加の順序反例：Filter / Sort / Page / Limit
+
+| 一因子変更 | 独立Expected | 偽成功として拒否すること |
+| --- | --- | --- |
+| 入力の先頭がstatus=rejected、次行がaccepted。Filter後にLimit 1を取る場合と、Limit 1後にFilterする場合を比較 | 前者はacceptedが1行、後者は0行。両者は同値ではない | FilterとLimitを一般に交換可能と判定。Readerがpartial/順序不定なのに同じ上位1件の取得を宣言 |
+| 同点Sort Keyを持つ2行を異なるページで読取り、ページ間にSource変更を挟む | Stable tie-breakとPinned Snapshot/全Partition Coverageが欠ければ全ページを一つの順序付き集合とみなさない | 安定ソートなしのPaginationを全件完了・決定論的出力の保証へ昇格 |
+
+正負例は#1130 N-02、#2622 DO-01/07、#2593の既存Expectedへ束縛する。複数Providerで同じRow集合を得てもOrder/Diagnostic/Scopeが異なればTarget側の等価性が未資格となり得る。実QueryのPushdown・Pagination試験はNOT RUN。
+
+### 20.2 複数SourceのSnapshot Vectorと業務上の整合時点を分離する
+
+§18の`Physical Read Complete`をSource AとBで別々に満たしても、A/Bの行集合に**単一の業務的な整合時点**が存在することは証明されない。例えば注文Aが時刻t2のSnapshotに新しい顧客C2を含み、マスタBがt1のSnapshotでC2作成前なら、両ReaderともEOF/byte digest/件数が正しくても、Joinで得た`C2なし`は「C2が業務上存在しない」の証拠ではない。
+
+- **Vector-pinned data**：`orders@r2 + customers@r1`のように各Sourceの版・Scope・取得時点・実Consumedを明示することはできる。これは「この版の組の下での演算結果」の資格であり、同時点性の証明ではない。新しい`SnapshotVector` Core型や分散Snapshot Engineを先に要求せず、既存Source/Lineageと関係へ投影する。
+- **Coherent business cut**：共通Tx/Snapshot、Providerに認められた有効時点契約、業務Ownerが受理した許容時差/As-of規則など、問いに応じた**実効的な横断整合の根拠**が別途必要。Source個別のAs-of表記やWall-clock読取時刻の近さだけで自動昇格しない。
+- **欠落の意味**：横断整合が未確定ならJoin不一致を`unresolved/not-observed-at-this-cut`とし、実在する顧客の不存在・削除・欠損0件と決めない。受入対象が「二Sourceの観測版Vectorから計算した分析値」に限定されるなら、その狭いClaimを示せる。
+- **時点変更後**：同じ業務Periodでも新Vectorでの再集計は§18.2のRestatement/新Generation。旧結果を改ざんしない。Output値が偶然一致してもSource依存・現Consumer資格の再評価が必要。
+
+### 20.3 図表の完全性：Data/Control/Effect/Observationを別Relationで接続
+
+同じ標準構造のNode/Port/Binding/Relationを使い、次の**用途相対Projection**を重ねる。第二のGraph/Flow/Source正本を作らない。
+
+| Projection | 表示・検査する辺 | 描かれていても保証しないもの |
+| --- | --- | --- |
+| Data dependency | Dataset→Transform→Output、必要Inputと実Consumed、Grain/Scope/Snapshot | 次Stepの起動、全データ取得、外部Sourceの不存在 |
+| Trigger/Control | Entry・Schedule/Event/手動Trigger→Invocation、順序/条件/Blocked | 実Scheduler実行、Current Grant、Commit成功 |
+| Effect/Subsystem | Function→意図したCUD/Effect→Owner/Provider・委譲先、Commit/Receipt境界 | 宣言が実Writer/実Commitだったこと、越境CUDが0であること |
+| Observation/Lineage | Source/Plan/Build/Run/Attempt/Result/Manifest/Reader証拠、ObservedAt/未被覆/開示 | ある図表の表示完了から、見えていない外部処理・業務受理まで証明すること |
+
+[#3250](https://github.com/hat47x/tei-platform/issues/3250)の論理Subsystem更新凝集は**ETLが横断Readを実行できること**と両立する。しかしETL Jobが別SubsystemのTableへ直接C/U/Dを書き込む場合、Dataflowの一本の矢印で境界を隠さず、対象Ownerの型付きAction/Providerへの委譲か、直接越境CUDとその理由・Transaction/Recovery/Authorityの未解決を明示する。論理Subsystemは物理DB/Processの配置と同義ではない。Export→Transfer→Import等へ切り替えても、Effectが消滅したとは主張しない（[#2542](https://github.com/hat47x/tei-platform/issues/2542)、[#1174](https://github.com/hat47x/tei-platform/issues/1174)）。
+
+**図中になければ無い**と判断できるのは、採用したQuestion/Scope/Accepted Revisionに対して**必要Source・Operator・外部境界・実Consumed・実Effect観測の閉包が証明され、非開示・未読込・不透明なProviderが残らない範囲に限る**。そうでなければ外部/unknownの境界Nodeを残す。Studio[#1124](https://github.com/hat47x/tei-platform/issues/1124)/[Draft #4510](https://github.com/hat47x/tei-platform/pull/4510)のread-only ProjectionとShared Acceptanceを使い、図を直接第二Canonicalにしない。
+
+### 20.4 最小の検証・実装順（既存Expected/Issueを再利用、すべてNOT RUN）
+
+1. **P0/#4410 W1/W2と#2593/#2622**：すでにあるN-01/02/03/12・MC-01/02/05・DO-07から、§19.3の合法/不合法Rewriteを**同一の独立Expected**で比較。最初の固定TSVでは`Filter→Convert→Aggregate`を固定したままとし、新Optimizerや実DB PushdownをW1のHard Gateにしない。
+2. **P1/#2622/#3279/#2514**：同じ受理済みMeaningの二実現（直接Go/SQLなど）でSource Vector、選択/実ロードProvider、使用した演算、実Output/NULL/失敗、Target・Lawを別列に取り、実Conformanceと型宣言だけのFitを分離。失われた前提を`unverified/unsupported`に落とす。
+3. **P1/#2831/#2600**：Planの描画上の辺と、実行したCommand/Actual Consumed Input/暗黙のrate表・Query/Cache/出力Memberを突合する。実際に実行されなかったNodeや未宣言Pushdown/外部Sourceを負例化。結果digest一致だけでPlan閉包やセルフビルド資格に昇格しない。
+4. **P1/#3250/#1132/#1174**：横断集計の**Read依存**と、他Subsystemへの**direct/effective CUD**を別々に投影。直接WriterをAdapter呼出しへ変えた場合も、Effect/Owner/Receiptが消えていないことを観測票で確認する。新分散Tx・Grant・Effect Runnerを作らない。
+5. **P2/#2542/#4194/#4502/#4510**：Event/External Worker/Relay/Studioは既存起動・Delivery・Observationの契約へ差し込む。外部Task Success・ACK・Manifest・画面の緑表示のいずれもBusiness Acceptedへ自動昇格させない。
+
+**外部調査との位置づけ**：Apache BeamのWindow/Trigger/Pane/late dataの区別（https://beam.apache.org/documentation/programming-guide/）と、OpenLineageのJob/Run/Input/Output facetの区別（https://openlineage.io/docs/spec/facets/）は、上の責務分離の比較対象である。BeamやOpenLineageのRuntime/SchemaをTEIへ導入する判断ではない。新しいGo/SQL/二Provider・実DB/Stage・Studio・Business Owner受理の試験は**NOT RUN**。
+
+## 21. 部分入力でも保持できるClaim：Witness・Bound・Finalの資格（2026-11-12、設計候補）
+
+**問題設定**：§18のPopulation Completeが不明でも、一部の事実は限定的に正しく言える。ただし「partial resultを業務の最終集計としてPublishしてよい」こととは別。§19の演算子Rewrite資格、§20の複数Source Business Cut・用途別Graphと合わせ、[Conformance #2514](https://github.com/hat47x/tei-platform/issues/2514)、[Measure #2593](https://github.com/hat47x/tei-platform/issues/2593)、[Data Operations #2622](https://github.com/hat47x/tei-platform/issues/2622)、[Trait #3279](https://github.com/hat47x/tei-platform/issues/3279)、[Cross-layer Draft #4522](https://github.com/hat47x/tei-platform/pull/4522)へ受入条件として返す。正式なClaim enum/証明Engine/特別なPartial Publisherを新設する提案ではない。
+
+### 21.1 同じ固定Snapshotに対する部分集合と、別Revisionの変化を混ぜない
+
+対象Fact集合を D、実検証済みの部分集合を S とする。以下の限定推論は **Sが同じ固定・必要なSnapshot Dの真正な部分集合であり、Fact identity・重複・Null/単位/Scope・対象業務Cutが保全**された場合に限る。Sの行がSourceに存在したことと、未取得D＼Sについて何が存在するかは独立である。
+
+**非単調なChangeと区別**：新Revisionで更新・削除・Rekey・Correctionがある場合はS⊆Dという拡張条件を失う。同一内容へ戻るSource A→B→A、Cross-source不整合、Providerのopaque Filter、後着Recordの削除、Current Grant失効でも旧Witness/Boundの現在適格性は自動保持されない。Incremental RunのDelta/Restatementは§18.2、実変更履歴は#2622/#2600へ返す。
+
+| 提示可能なClaim | 固定Snapshot内の証明条件 | 完全性が無いと禁止するClaim |
+| --- | --- | --- |
+| **Verified Witness（存在する一件）** | そのFactの出典、入力Scope・型・Fact identityと現在の閲覧資格が検証済み。正の存在判定・条件を満たす実例の観測 | 観測していない対象が存在しない、期間全件が成立 |
+| **One-sided Bound（下界・上界）** | Measure/演算が追加Factに対して単調であること、値域・重複規約・計算の精度が有資格。例：非負ContributionのSUMは下界、重複なしCOUNTは下界、非空集合のMAXは下界・MINは上界 | 真の総額・最終COUNT/順位・一般的なSUMの下界 |
+| **Complete / Final Result** | 必要Source/Partition/Temporal Cutの閉包・全件被覆、選択演算の独立Expected、出力・公開Generationと必要なConsumer readback。業務Effect/Owner受理はさらに別 | EOF・Watermark・Partial PaneのみでBusiness Acceptedへ昇格 |
+
+**数式上の候補**：入力拡張 S⊆D が資格化された場合、肯定的な存在証人の保持、重複を正しく扱ったCOUNTの下界、値が非負のSUMの下界は成り立ち得る。一方、受理されたFactに負の金額・返品・取消が混ざるとSUM(S)≤SUM(D)とは限らない。負値のない集合でも平均、中央値、Top-N、NOT EXISTS/anti-join、全件Validation PASSを部分観測から確定できない。外部JOINの有効時点・参照Sourceが未整合なら、陽性Witnessさえ「同じ業務Cutで真」とは言えず、観測Vectorに相対化する（§20.2）。
+
+### 21.2 「単調」でも業務的な最終性・公開権限は得られない
+
+- **演算単調性**と**事実の時間的安定性**は独立。固定Snapshotの追加観測に対して保持される陽性Witnessであっても、後の訂正RevisionでそのFactが削除されれば新RevisionのTruthとは限らない。Mergeable、Retractable、Monotone-under-extension、Population Completeを一つのTraitに畳まない。
+- **局所的な導出は全体集計を証明しない**。例えば顧客Aの100円明細を1件観測したなら「Aにその明細が存在した」というClaimは可能だが、Aの請求額100円・未取得取引なし・会計Period終了は不可。厳密に非負でその他の条件を満たした場合だけ「同じ対象集合・同じSnapshotにおける合計が少なくとも100円」というBound候補を示せる。
+- **存在の表示自体が情報漏洩になり得る**。Witness/Bound/unknownの区別、件数・パス・Source identityを公開Consumerへ出す前に#2516のCurrent Disclosureを評価する。拒否・未取得・秘匿はそれぞれ意味が違うが、低権限側には秘匿要素の存在を推測できる情報を返さない。
+- **部分公開は明示的なConsumer契約が必要**。Early/Partial/Aggregate candidateを出せる計算能力と、そのConsumerがその不完全結果を受け取る権限・用途は別。W3の最初の固定TSV Batchは従来どおり未完了を通常Final成果物として公開しない。必要なら将来のアナリティクスConsumerだけに、必要範囲・as-of・Qualifierを伴った限定出力候補を検討し、#2604の一式公開/Reader資格や#267 Owner受理を飛び越えない。
+- **WatermarkはProviderが定める進捗意味**。Window end通過・Pane emitから実Source/外部マスタ・業務CUDまで完全閉包したとは推測しない。参考：Apache Beamの[Watermarks and late data](https://beam.apache.org/documentation/programming-guide/)では遅延要素とearly/late paneを区別している。TEIにBeamのWindow/Trigger Runtimeを必須導入する趣旨ではない。
+
+### 21.3 既存N/MC/DOへの反証ケース（独立Expectedの候補、未実行）
+
+同じ顧客A・同一JPY単位・Pinned Snapshot R1を固定し、実入力S={o1: accepted 1個×100円}、R1内の未取得候補を分けて比較する。下記は生成プログラムの出力をOracleに使わない手書きExpectedであり、現行製品実装の合格ではない。
+
+| 一因子変更 | 限定的な正しいClaim | 拒否すべき誤Claim |
+| --- | --- | --- |
+| Sを真正に観測、残りPartitionは未取得 | R1相対のo1存在はWitness。非負金額・重複なしの保証があれば金額100円は下界候補 | R1の総額100円、他顧客が存在しない、Final |
+| 未取得Partitionに+40円の同顧客Fact | 観測Sの金額下界100円、全件を読んだ場合の金額140円 | 部分入力で総額100円と確定 |
+| 未取得Partitionに返品−200円のFact | R1の全件金額は−100円。Sの100円は下界ではない | SUMというOperator名だけで下界を自動付与 |
+| 未取得顧客マスタに対応Cが存在 | ordersにあるCの観測は可能。anti-joinでのC未登録は未資格 | partial masterにC行が無い→Cは存在しない |
+| R2でo1を訂正削除する | 旧R1のWitnessは歴史的記録として保持。R2の新Claimは再資格化 | R1の陽性Witness・GrantをR2の現行真実へ流用 |
+| Sの実観測と値は同じだが閲覧Grantを失効 | 歴史的Evidenceは残せる。現在の開示は拒否/保留 | Value digest一致からCurrent Disclosureを復活 |
+| 1行目acceptedの到着後にEarly Triggerが発火 | 当該Snapshotの部分Paneという説明は可能（Providerが保証する範囲内） | Trigger発火・Watermark通過だけでFinal/Business Accepted |
+
+関係代数の追加入力に対する単調性は、選択・射影・正のJOIN/UNIONと、否定/差集合で異なる（例：[monotone query研究レビュー](https://pmc.ncbi.nlm.nih.gov/articles/PMC10328546/)）。この数学的区別を、Providerの実保証、Current Authority、業務的な時間Cutへそのまま昇格しない。
+
+### 21.4 受入順・既存Ownerと停止線
+
+1. **P0 / #4410 W1/W2**：現行TSVのpartialをFinalとして出さない規則を維持。独立Expectedに、真の空・未取得・真正な陽性Witness・非負Contribution/負Contribution・マスタ欠落の説明を追加する候補。追加Fixture/Case番号はOwnerが既存N-02/03/11/12、MC/DOのいずれに収めるか判断。
+2. **P1 / #2593/#2622/#3279/#2514**：Measure×Operation×Axes×Temporal Cut×Providerの条件付き法則と実Conformanceを分離。手書きOracle→限定Go/Provider独立対照の順で検証し、数学的性質のみから全Consumerへ保証を広げない。
+3. **P1 / #2604/#2516/#1130**：同じCandidate結果がData Readで可視でも、Final Artifact Publication/Consumer use/業務Effectへ昇格しない。部分結果を公開する要件がない現在のP0では新Partial Publisherを作らない。
+4. **P1〜P2 / #1124/#4510/#4487**：Studio/TEAの問い相対Graphで、限定Witness・Bound・Unknown・完全結果を可視化。隠れたWriter、未読Source、Observed cut不整合を偽の不存在・Writerゼロへ縮約しない。新Graph正本/専用Claim Engineなし。
+5. **P2 / #2542/#4502/#4194**：実外部Stream/Relay/EKIのWatermark・ACK・Worker Resultと、Provider Dataset/Business OwnerのFinal資格を分離して観測する。締め・補正の実承認は従来Ownerへ戻す。
+
+**停止線と検証範囲**：この§21は既存設計・独立小規模数学反例と公開研究に基づく設計案。Syntheticな非負SUMと返品の対照はローカルPython上で集合追加ケースを列挙して確認したが、TEI Go/CLI/実DB/EKI/MFT/Studio・独立Consumer/実Disclosure/Owner受理・exact-head CIは **NOT RUN / NOT ACCEPTED**。新Schema、演算Engine、Scheduler、Host、Validator/Claim Storeや第二のOracleを追加しない。
+
+## 22. Change Streamと再計算の受入：Snapshot接合・撤回可能性・回復（2026-11-12、設計候補）
+
+**位置づけ**：§21は**固定Snapshotの部分入力**でも保持できるWitness/Bound/Finalを扱う。これに対して本節は**異Revision間の追加・更新・削除イベントを使った再計算**が適格かを扱う。§18.2のSame-Run Resume / New Delta Run / Restatementと§19の意味保存を前提とし、ETL専用CDC Engine、第二Checkpoint/Scenario/Manifest/State Store、Scheduler、TEI必須Hostを導入しない。#1130のW7・[#4411](https://github.com/hat47x/tei-platform/issues/4411)の受入Pressureとして実装Ownerへ渡す。
+
+### 22.1 「変更が届いた」と「変更集合が完全」を区別する
+
+| 変更・配送形式 | 必要な追加保証 | 無条件に主張しないこと |
+| --- | --- | --- |
+| **Append-only** | Sourceの不変Fact規約、Event/Fact identity、重複、対象Partition、取り込んだ位置と完了範囲 | 後から訂正・取消・削除されないことが宣言だけで成立する |
+| **Keyed Upsert（after-only）** | 一意で安定したKey、Keyごとの順序/Revision、**同じScope・版の旧Fact State** | UPDATE_AFTERをINSERTとして加算できる。旧寄与を知らずにSUMを訂正できる |
+| **Before/After Retract** | 旧行と新行の対応、Update/Deleteの連続性、失われたEvent/二重配送の判別、演算側のretraction適格性 | beforeとafterの片方が欠けても同じ結果になる |
+| **Key-only DELETE** | 過去のFact/寄与を復元できる有資格State、または残存集合の完全再読込 | Keyだけから過去の金額・Groupを導出できる |
+| **Snapshot→Tail接合** | 固定Snapshot境界、Change log開始位置、並走範囲の重複排除、Gap/Retention、必要なSource間のCut | Snapshot終了後のTail購読があれば途中の変更を全件捕捉した |
+| **Watermark/Deadline/Trigger** | Event timeと観測/処理時点、Sourceによる遅延規則、窓、late eventの扱い、業務期/Ownerの締め規則 | Watermark通過・Scheduler成功・Task Completed = Business Final |
+
+Snapshotのp1/p2読取が成功しても、Tailの途中Gapで訂正イベントを失えばNew Delta Runは`unqualified`である。未確認の欠落を「変更0件」にせず、完全に固定したSnapshotを再読取できる場合のみ**別Run・新GenerationのFull Restatement**へ移る。Full Snapshotすら不完全なら`unknown/unsupported`。ProviderのSnapshot/CDC形式と実保持期限は#2622/#2542が適合確認を担当する。
+
+### 22.2 演算の結合法則と撤回法則は別
+
+- **Mergeable**：固定Cutで重複・欠落なく分割した部分状態を結合できる。SUMの合成、AVGの`(sum,count)`はこの例である。これだけではDelete・Correctionの安全な適用は証明できない（#2593）。
+- **Retractable**：更新/削除されるFactの**旧寄与**を有資格に取得し、新寄与との差を演算規則に従って反映できる。SUMでも旧Contribution不明なら差分訂正は不可。DISTINCTは必要なID/出現回数、MIN/MAXは削除後の残存候補を要する。
+- **Impact complete**：実読行に加え`NOT EXISTS`等の否定依存、Filter/Top-Nの集合依存、FX rate/Lookup/Calendar/Rule版・Scope/Temporal Cut変更を含む、安全な影響**上界**が確認できる。`Consumed 0 rows`を依存0としない（#2600 IB-07/09/10）。
+- **Replay-safe**：値の再計算と、DB Write/Import/Message等のEffect再送は別資格。Operation ID・Current Grant・Commit/Receiptを使い、Commit Unknownを再送可能として推論しない（#1174/#2499）。
+
+### 22.3 固定反例（既存§18.4 R1〜R3を拡張、Expectedは手計算）
+
+業務期D、同一JPY/数量単位、R1はAのo1=2×100円、o2=3×200円、Bのo4=1×50円で全件固定。R2でAのo5=1×40円を追加。R3でo2を3個→2個へ訂正。R4でo1を削除する。
+
+| 対照入力 | Aの独立Expected（数量/金額） | 誤成功として検出すること |
+| --- | --- | --- |
+| R1 Full Snapshot | **5 / 800円** | p2未取得なのに全件Final |
+| R2 Append o5 | **6 / 840円** | 同Event IDの再配送を二重加算 |
+| R3 Correct o2（旧3×200→新2×200） | **5 / 640円** | after-only新400円を追加し旧600円を残す |
+| R4 Delete o1 | **3 / 440円** | key-only Deleteなのに旧寄与未取得で差引成功 |
+| R4以降、o5の追加Eventを同一Event IDで再配送 | **3 / 440円**（そのSourceが同一Eventとして識別できる場合） | 同Byteの別業務Eventまで誤dedup |
+| Rate表だけ改版、注文Factは不変 | 新Rate・適用日未指定のため金額Expectedは**未定**。必要Sourceを再評価 | 注文byte不変⇒出力不変 |
+| R2→R3の訂正Event欠落 | Deltaは`unknown`。完全な新SnapshotならRestatement候補 | 不完全TailからR3の全件Finalを推定 |
+
+独立Expectedは実装出力から生成しない。R1〜R4の算術が一致しても、Change log連続性、Source/Scope/Business Cut、公開Generation、Consumerの実読取、Owner受理を**別列**で確認する。新しいCase ID正本を作らず、§13 N-02/03/06/08/11/12、#2593 MC-08、#2600 IB-09、#2514へ一因子変形として返す。
+
+### 22.4 CheckpointとPublicationの非原子境界
+
+**記録したoffset＝Effectなし／Published済み**ではない。純粋計算でも「新Generationを公開した直後にRunLogのCheckpoint保存に失敗」と「Checkpoint保存後、公開前にCrash」は別の故障注入である。再起動時にCheckpointの進捗だけを信用せず、Run/Attempt・Source Cut・物理Member/Generation・実Publisher状態を独立Readbackし、古いWriterのFence/実Provider Commitは対応Ownerが確認する§9/#2604/#1174）。同じByteの再生成が安全でも、外部Recipientへの再送は別。明示的な一式公開・独立Reader保証がない場合`unknown`を維持し、第二のPublisher/Transaction Coordinatorは先行導入しない。
+
+### 22.5 既存計画への最小追加
+
+1. **P0 / #4410 W1/W2**：最初のPure TSV実行を優先し、上表の算術Expectedを既存Nに関連付ける。CDC/Stream/追加DSLは初回受入のHard Gateにしない。
+2. **P1 / #4411 W7 + #2622/#2593/#3279**：Source Change Form×Operator Law×旧Stateの有資格性をread-onlyで比較。Snapshot→Tail Gap、before欠落、key-only Deleteを`unsupported/unknown`とする。実Target Fulfillmentは別。
+3. **P1 / #2604/#2514/#1174**：一つの故障注入でPublished Generation、Checkpoint、Consumer Read、Effect/Receiptを別観測。純粋変換のRecoveryから業務Effect再試行の安全性を一般化しない。
+4. **P2 / #2600/#2831/#2582/#4510**：正しい局所再計算と過小・過大な再評価、Negative Dependency、旧Planの失効と現行Disclosureを複合GraphへProjection。図外の実消費・非開示を不存在扱いしない。
+
+**外部比較（採用決定ではない）**：Apache FlinkはAppend/Upsert/Retractと`UPDATE_BEFORE`/`UPDATE_AFTER`/`DELETE`を区別する（https://nightlies.apache.org/flink/flink-docs-stable/docs/dev/table/functions/ptfs/）。Debezium PostgreSQLは初期Snapshotと継続的なChange Streamを接続する（https://debezium.io/documentation/reference/connectors/postgresql.html）。BeamのWatermark/Allowed Lateness/Triggerは遅着データ処理の比較対象（https://beam.apache.org/documentation/programming-guide/）。TEI固有のCDC/Temporal Engineを採用する根拠にはしない。
+
+**証拠と停止線**：本文は設計・独立算術Expected・外部仕様の静的比較。Go/CLI/実DB・CDC・Snapshot→Tail・Crash/復旧・実Consumer・実Provider Receipt・Owner意味受理は **NOT RUN / NOT ACCEPTED**。新Core型、第二DSL/Verifier/Artifact Store、必須Hostを追加しない。
+
+## 23. 再集計Generationの受領とConsumer使用資格：公開・読取・適用を分ける（2026-11-13、設計候補）
+
+**追加するGap**：§18のRestatement、§21のWitness/Bound/Final、§22のChange Stream・Checkpoint/Publicationの非原子境界に対して、**下流Consumerがどの世代を実際に読取り、採用・適用・業務受理したか**は独立に未確認となり得る。これは [#2604](https://github.com/hat47x/tei-platform/issues/2604) の一式公開、[#2516](https://github.com/hat47x/tei-platform/issues/2516) の用途別Disclosure、[#1174](https://github.com/hat47x/tei-platform/issues/1174) のEffect/Receipt、[Cross-layer Draft #4522](https://github.com/hat47x/tei-platform/pull/4522) のClaim再資格化の **ETL Reader/Consumerへの適用**。別のRelease Store、Consumer State Engine、Publisher、Scheduler、Host、Claim Registryを設けない。
+
+### 23.1 Publicationの成功とConsumer適用の間にある独立境界
+
+| 観測できた段階（説明用） | 確認する対象 | そこから主張してはいけないこと |
+| --- | --- | --- |
+| **Produced / Staged** | Function/Source Cut/Run/Attemptに結び付く出力byte、Member候補とdigest | 一式公開済み、外部到達 |
+| **Verified Member Set** | 必要Memberの列挙・内容/digest・役割/版・欠落/旧残存、独立Expected | Current Releaseが切り替わった、任意Readerの受領 |
+| **Published Generation** | Publisherが有資格に公開し、必要ならActive Refを望む旧世代から条件付き切替した証拠 | 全Consumerが同Generationを読んだ、業務へ適用した |
+| **Consumer Read Qualified** | Readerが選択したGenerationと同版の必要Member/byteを**実際に**読んで検証、Read Scope/ObservedAt/現在Disclosure | Consumerが取込み・Effect Commitまで完了 |
+| **Applied / Imported Effect** | 対象Consumerが実行したImport Unit/Operation ID/実Provider Commitまたは結果不明の照会 | その結果を業務Ownerが意味的に受理した |
+| **Business Accepted** | 業務主体が正しい入力Cut・意味Revision・期間・結果/訂正の適用を判断した記録 | 外部キャッシュ/CDN全域の失効や過去Byteの物理消去 |
+
+表は新しい永続状態列挙ではなく、既存Artifact/Run/Effect/Consumerの**Evidence比較票**。不十分な階層では、その対象のClaimをunknown/partial/not-observedに止める。現在Grantは各読取・適用の有資格性として再評価し、過去のRead/Commit Evidenceを物理削除したと扱わない。
+
+### 23.2 Active世代の切替と、読み始めたConsumerのPinned世代
+
+例としてR1入力からG1、訂正後R3入力からG2を生成する。**PublisherがG2を公開した時点**と、**各ConsumerがG1/G2を読み終えた時点**は異なる。
+
+- **Producerの安全候補（Providerの実保証が前提）**：G2の必要Member全体をStage→byte/digest/独立Expectedで確認→Generation単位の参照を公開→必要な場合だけexpected active=G1からG2への条件付き切替を試みる。条件付き切替、原子的更新、世代別の不変Body、Read Lease/保持期間がTargetで実現できるかは別。単一File rename・Catalog pointer変更・Manifest Completeを複数Memberや複数Providerでのatomicityの証明としない（#2604）。
+- **Consumerの安全候補**：最初に選択したG1/G2を固定し、そのGenerationの必要Memberだけを取得・Digest照合する。途中でActive RefがG1→G2へ動いても、一つの結果にG1 summaryとG2 manifestを混ぜない。Pinned G1がまだ読めればG1相対の**歴史的結果**を取得できるが、「現行最新版」とは言えない。G1のMemberが既に失効・期限切れなら欠落を**明示的に停止**し、現在Refで別Read Attemptを始めるかOwner指定のRecoveryに戻る。
+- **切替失敗・競合**：同じexpected active=G1で異なるG2/G3が並走したら、Last Writer Winsで業務意味の新旧順序を推測しない。CAS相当がないProviderでは採用できない保障をunsupported/unknownに落とし、単一物理Object/対象Hostが提供する範囲だけ条件付き運用する。
+- **ReadとApplyの間**：ReaderがG2の全Memberを見ても、下流DBへのImportがfail/partial/commit-unknownならConsumed/Appliedを一つのPASSにしない。業務締め・訂正の適用には、受理した業務期・Owner・Operation/Receipt/最新Grantとの対応が必要。ACK-lossだけで再送可と推論しない（#1174/#4411）。
+- **Retention/使用資格**：過去G1の証拠保持・GC可能性・Active ConsumerのPin期間は別の判断。G1 Source/ArtifactをGCした後も歴史的Evidence記録は残り得るが、再ReadやReplayを保証しない。Source Change Logの保持期限切れは§22のDeltaに、旧公開物の残存/撤去と低権限Consumerの情報漏洩は#2604/#2516に返す。Current Grantを失ったConsumerには、たとえG1が保存されていても現行Read資格を自動復活させない。
+
+### 23.3 独立Expectedの例（既存N/AP/EFへ一因子で追加、正式Fixtureではない）
+
+| 故障・変化注入 | 判定対象 | 手書きExpected / 禁止する偽成功 |
+| --- | --- | --- |
+| R1→G1でA=5個/800円、R3→G2でA=5個/640円（§18.4、§22.3） | Generationsと業務Cut | それぞれ当該Source/Rule版への出力。双方の数量5でも金額・Source Cut/Generationが異なる |
+| Consumer C1がG1をPinし、summary取得後にActiveをG2へ切替 | 一式Readerの版混在 | C1は保持されたG1 manifest・全Memberを読むか、欠落で停止。G2 memberを混ぜてPASSしない |
+| C2がG2全Memberを読んだがImportはタイムアウト、Commit不明 | Read vs Applied/Receipt | Consumer Readは限定PASS、Effectはunknown。Owner Acceptedは未観測 |
+| G2 Published後もC1がG1を読んでいる | Consumerごとの進捗/鮮度 | C1のG1歴史的ReadとG2最新版のPublishedは同時に真。G1 ReadからC1がG2を消費済みとは言えない |
+| G1の必要MemberがRetentionで消え、C1がG1 Pinのまま取得を続ける | Retention/Release lifetime | Read拒否・停止または明示的新Attempt。G2の同名Memberへ無断フォールバックしない |
+| G2出力byteがG1と偶然同じで、Run/Disclosure/Source Cutだけ改版 | Content reuse vs Usage | 計算Byteの再利用候補と、Generation/Reader/Current Grant・Owner受理の再資格化を分離 |
+| 公開範囲のGrant失効後、古い外部Reader/CDNでG1を取得 | 秘密・撤去の保証 | Producerの「非公開設定」だけで実外部Readが拒否済みと宣言しない。実Target/Disclosure証拠なしならunknown、公開範囲の差を低権限へ漏らさない |
+
+**小さな独立計算**：2世代×2回のMember参照でActiveが変化し得る4通りを列挙すると、参照を毎Member更新する非Pin方式では2通りで世代混合、最初の世代にPinすれば0通りとなる（**不変Memberが保持され、各Readが成功する場合の合成モデル**）。これは実Publisherの原子性、TargetのRead Consistency、実Consumerの資格を試験した結果ではない。
+
+### 23.4 実装へ渡す最小接続と優先順
+
+1. **P0 / #4410 W1〜W5**：純粋TSV→決定的Output BodyとRun/Attempt Evidenceの区別を優先。初回の正常経路にRelease Switch/外部Consumer・部分結果配信を新規導入しない。G1/G2のExpectedは将来の独立受入票として固定候補に留める。
+2. **P1 / #2604 AP-01/06, #2514**：既存Artifact/Manifestとread-only Consumerを使い、G1→G2のActive切替前後で、同一Pinned GenerationのMember集合・byte・missingを比較する。Providerに世代固定/保持保証がなければ未適格として扱い、第二Publisherを実装しない。
+3. **P1 / #4411 W6〜W7, #1174**：同じInputCut/Rule/OutputでRun/Attempt別、Commit Unknown、Consumer Read/Applyの独立Eventと照会資格を対照。再試行可否をData digest/Task ACKから決めない。
+4. **P1 / #2516/#2600/#4522**：公開Scope/Grantだけ変化した場合、旧byteの計算利用可否と新Reader使用資格/外部撤去の独立判定、正しい部分再資格化/不要な全失効を検証。別のClaim CacheやPolicy発行者を作らない。
+5. **P2 / #1124/#4510/#4487**：Studio/TEAへSource Cut→Generation→Reader/Effect/OwnerのEvidence Edgeを問い相対に投影。「現在表示」の意味を、観測した具体的Consumer/世代/時刻に限定。非開示Source/古いView/旧Pinを現在Edit/Run適格性と混同しない。
+
+**外部仕様との比較（採用判断ではない）**：[Apache Iceberg仕様](https://iceberg.apache.org/spec/)はReader Snapshot隔離・Snapshot Reference/Retentionを区別する。[Delta Lake Change Data Feed](https://docs.delta.io/delta-change-data-feed/)はChange Logの保持期限/VACUUMと前提Versionを扱う。[OpenLineage](https://openlineage.io/docs/spec/facets/)はJob/Run/Input/Outputの追跡Facetを分ける。これらは検討対象であり、TEIにIceberg/Delta/Lineage Runtimeや新Schemaを必須採用する理由ではない。
+
+**検証上限**：Issue/PR/設計文書と公開仕様の静的照合、及び上記2世代のローカル合成組合せ計算。実TEI Go/CLI/Publisher/DB/Consumer/Host/CDN/EKI/Studio、現行Grant/Owner Meaning Acceptance、exact-head CIは **NOT RUN / NOT ACCEPTED**。新Runtime/Release Engine/Publisher/Manifest/DB Transaction Coordinatorなし。
+
+## 24. 依存Graph改版によるETL再計算：削除辺・否定依存・局所再資格化（2026-11-13、設計候補）
+
+**今回の追加論点**：§18〜§23はInput/Change/計算/公開の正当性を分離した。しかし**計算で参照するData/Rule/Source/Providerの関係自体が増減・再束縛された場合**、古いGraphから新しいGraphへどのOutput・Evidenceを保持してよいかは別の問いである。#2600のDI-01〜08（依存辺差分・正しいskip/過剰失効）、#2582のRC-01〜09（Data Contextの反応的再評価）、#2622のData Operations、#2514の独立Expectedを、ETL/BatchのConsumerへ**最小限に適用**する。新しいDependency Engine/Graph正本/Optimizer/Cache/Claim Registryを採用しない。
+
+### 24.1 「変化した事実」と「変化した依存構造」を別々に比較
+
+| 判定面（既存Source・Projectionを再利用） | Before/Afterで確認すること | これだけでは不足すること |
+| --- | --- | --- |
+| **Required / Accepted** | Accepted Meaning、Function Data Context、Predicate/Join/Group/Scope/Temporal Cut、Required Source・否定/集合依存、Role/版 | 宣言しただけではProviderがその範囲を実Readした証拠はない |
+| **Selected / Lowered** | 解決したQuery/Operator/Plugin Instance/Target、実際のSQL/外部Binding・Source選択、Toolchain/Artifact | 正しい選択でも実ロード/実Read/実Outputと一致するとは限らない |
+| **Consumed / Observed** | 実際のSource/Range/Member/byte、Returned rows/NULL、Read Attempt/Result/拒否、Coverage/未ロードの理由 | 0行から対象Collectionが空とは言えず、未読の負の依存も消えない |
+| **Reusable Result** | 正しい計算結果の候補、Semantic版・Output bytes/Generation・現在必要なReader条件 | 計算Byte一致だけでは古い独立Expected・Owner受理・現在Grant/Disclosureは再利用できない |
+| **Impact / No-impact** | 上記の前後Edge/PathとClosureで、Claimごとの影響の**安全な上界**・非影響の理由 | 未発見の辺・opaque Providerを「影響なし」へ丸めてよいわけではない |
+
+**判定単位はConsumer/Claim × Meaning revision × Source Scope/Cut**。同じDataを読む二つのFunctionでも、必要なRule/Source・Group/Output・認可範囲は異なる。差分で変更されたEdgeの単なる前後集合だけでは不十分で、削除されたEdgeから到達していたConsumer、新しく到達するConsumer、別経路の有無と既存実Consumed/未観測範囲を区別する（#2600 DI-01/02）。新Graphが閉じていない場合は「このConsumerでは未解決」と表示し、無関係な他Consumerまで一律に失効させない。
+
+### 24.2 一つの正しい再計算省略と、一つの誤省略を同じ入力で識別
+
+**合成の独立Expected**：同じOrders Snapshot O1を読む二Consumer A/Bを想定する。
+
+| 変更 | A: 数量集計SUM(quantity) | B: JPY換算売上SUM(amount×rate) | 診断・再計算のExpected |
+| --- | --- | --- | --- |
+| Rate版R1→R2、Orders O1は不変。Required GraphでAはRate非依存、BはRate依存と閉包確認済み | **計算結果の再利用候補** | **再計算/再検証必要** | Aのrate非干渉が説明可能。Bで旧rateの結果を流用したらFalse Reuse |
+| AのMeaning v1は売上、v2は数量へ変更し、Rateへの依存辺も削除 | **Meaning変更時点に再評価が必要** | Bは従来通り | Aで旧売上Outputを新数量Outputとして流用するのは誤り。v2の成立後の次回Rate変更ではAは非影響候補 |
+| 新規RuleがAのFilter条件に追加。現Snapshotの結果byteが偶然同一 | **Required Closure/意味版の再資格化が必要** | Ruleに無関係なBは候補保持 | Result一致をRule/検証資格の永久再利用へ昇格しない |
+| BがNOT EXISTS参照先の新しいDeliveryを観測（旧Readは0行） | AがそのSourceに非依存なら候補保持 | Bの該当集合を撤回/再評価 | 旧Consumedが0件だったことから「Bに依存無し」と言わない |
+| Query IDは同じでSQL/WHERE/ORDER/Environment/Scopeだけ変化 | 対象Claimの選択/Scopeを再評価 | 同左、必要なものだけ | Query ID一致・前回Rows一致を実Provider意味適合へ昇格しない |
+| Source A→B→A、結果byteは最終的に同一。旧Artifact/Grantは別版 | 計算byte再利用は条件付き候補 | 同左 | 現在のSource/Owner/Expected/Reader/Grant受理は再検証。古いReceiptを復活させない |
+
+「影響あり」は必ず全件再実行を意味しない。局所的な再導出、Stage単位の再評価、Artifact bytesの有資格な再利用、独立Expected/Disclosureだけの再資格化などを別選択肢とし、手段を**意味を保存できる実Targetの能力**に応じて選ぶ。逆に「影響なし」には、対象Claimに必要な閉じた依存範囲と、その変更の非干渉根拠が必要である。単に実Readされた行が同じ・選択Graphに辺が見えないだけでは不足する。
+
+### 24.3 実Sourceへ接続する最初の観測点：#4539の資格上限
+
+[統合済み #4539](https://github.com/hat47x/tei-platform/pull/4539) は、Environmentに束縛した実PostgreSQL Query Read→限定Function Data Context→別ProcessのReference CLI受領を実証している。ただしこれは**製品 tei CLI / Studio / 認可された実Hostの一気通貫ではない**。実Queryの0行についてEmptyJustifiedはfalse、RLSで2/3行になってもCoverageはunestablished、マスクViewでNULLが返る場合はNULLの出自が不明、SQL/Source版変更に応じた全件・不存在/再利用判定は未証明である。
+
+初期接続では、次の三種の入力だけを既存Provider/Function Context比較票へ束縛する。
+
+- **Q1 positive**：固定Environment・SQL・scopeで実取得行とObserved Attemptを記録。限定した陽性Witnessは可能だが、全件数・全Contextを証明しない。
+- **Q2 empty/RLS**：0件・2/3件・NULL maskingを各々別の部分/未資格Claimとして表示。見かけ上同じ0件/NULLでも実SQL・Environment・Grantを省略しない。
+- **Q3 changed selection**：SQL/WHERE/Scope/Role/Source alias変更後、実選択・実Consumedの再比較が必要。Source/Query IDが同名でも旧Contextの現在性は自動継承しない。
+
+#2586/#2622のProvider/実Query入力が完了する前に、#4410のPure TSV最小縦断を実PG/Studioに置き換えない。#4539のReference Entryを製品Batchが採用済みと偽らず、独立Read/Ownerを求める。
+
+### 24.4 Test/計画の優先順位（既存DI/RC/Nを再利用）
+
+1. **P0 / #4410 W1〜W5**：TSV Filter/Convert/Aggregateの固定Expectedと二入口は維持。Rate依存、Rule改版、余分/欠落Partitionについて、事前に独立ExpectedのAffected/Unaffected一覧を手書きし、実装出力から採点表を生成しない。
+2. **P1 / #2600 DI-01/02/03/05・#2582 RC-01/03/04/05**：改版前後のRequired/Selected/Consumed EdgeとScopeを同じClaimへ対応させ、False Reuse、Unnecessary Invalidation、Unknown Erasedを区別。**最小の次の一辺**が未観測ならそのEdgeとOwnerを示し、Graph全体の完全性を捏造しない（[横断設計Draft #4527](https://github.com/hat47x/tei-platform/pull/4527)、[#4522](https://github.com/hat47x/tei-platform/pull/4522)）。
+3. **P1 / #2622/#2586/#2514**：#4539のReadを参照起点としてQ1〜Q3のSQL/Row/Context/Environment束縛を独立Expectedで判別し、製品 tei CLI/Studio・Closed-world Scopeは別Gateのまま保持。失敗/未取得/NULL/部分RLSを同列の成功Rowsに変換しない。
+4. **P2 / #2600/#2831**：Full clean vs Selectiveの意味・Member Set・実入力・Changed Edgeを同一対象Revisionで比較し、実Latency/再実行数を**正しさの後**に計測。Stage1生成Builder/Stage2実ProcessのSelf-build問題をETL単独の成功で代替しない。
+5. **P2 / #2604/#2516/#4510**：§23のReader Pin/公開Generation・Current Disclosureと、Studioの問い相対Data/Control/Effect/Evidence投影を接続。計算Outputを再利用できても、現Consumer/業務Ownerの実使用資格を別照合する。
+
+**禁止する設計の混線**：#2600のBuild Skip正本、#2582の反応的Data Context、#2622のProvider能力、#2514の独立Expected、#1180のScenario、#2604の一式公開、#267の意味受理は各Ownerのまま。新Graph Solver、Source Registry、Cache、Evidence/Claim Engine、CDC Runtime、固定Hostは追加しない。§24は**宣言・選択・実観測の既存Graphを比較するread-only設計候補**であり、実Go/CLI/DB差分、Selective性能測定、Studio/Owner受理は **NOT RUN / NOT ACCEPTED**。
+
+## 25. Generation退役とConsumer到達の閉包：Pin・Retention・GCと訂正受理を分ける（2026-11-13、設計候補）
+
+**§24との責務分離**：§24は**依存Graph/Rule/Source/Providerの改版後、どの結果を再計算・再資格化するか**を扱う。対して本節は、§23のG1→G2 Publication以降、**古いG1をどのConsumerが読んでおり、いつ退役・物理回収できるか、G2の業務訂正がどの受取先まで届いたか**を扱う。既存#2604（PublicationとReader）、#2542（外部連携）、#1174（Effect）、#2516（Disclosure）、#2600（Reuse）、#4522（Claim再資格化）がOwner。**第二のLease Registry/Release Coordinator/GC Engine/Publisher/Claim Storeを採用しない**。
+
+### 25.1 「読取終了」「物理回収」「訂正完了」は別Claim
+
+| 問い相対の主張 | 必要な証拠 | その証拠だけで言えないこと |
+| --- | --- | --- |
+| **Reader完読 / 安全な失敗** | 対象ConsumerのPinned Generation・必要Member・実Readの結果・保持期限/失効時拒否 | 他Consumerが同じVersionを読んだ、G2が業務適用された |
+| **G1退役 / Blob回収** | Providerの不変世代・生存参照、Pin/Lease、Retention・実GC操作・削除後Readback | 外部CDN/Recipient/Backupが全て消去済み、全宛先にG2訂正済み |
+| **G2配布 / 適用 / Owner受理** | 受理された用途・期間・**有限Consumer cohort**と、各Read/Import/Effect/業務Owner記録 | 未登録・不特定・Offline Consumerまで訂正済み |
+
+**この三者は一般に互いを含意しない**。G2をBillingがApplied済みでも、G1をArchiveが合法的に歴史読取中のことがある。逆にG1をGCできてもOfflineの宛先がG2をAppliedした証拠ではない。G1が保管されていても現在のGrant/Disclosureは別。
+
+### 25.2 退役の二つの正当化方式を混同しない
+
+- **継続Read保証型**：不変Generation/版付きMember、Readerの実Open同一性、対象のactive Pin/Lease、Member保持とGCの競合制御が必要。新Pin取得とRetire判定の間に未保護区間があれば、旧Readerを無停止完了できると主張しない。Providerが保証できなければunsupported/unknown。
+- **期限後のfail-safe許容型**：Readerとの明示的な契約でRetention期限後の旧Read拒否・別Attempt開始を認めるなら、全Offline Consumerの完了をGCの絶対要件にしない。ただしG1/G2のMemberを混ぜて成功とはせず、必要な期限・現在Grant・参照の検証を要する。継続Read保証と同じ契約として表示しない。
+- **共有Content Blob**：G1のManifestや参照を退役しても、G2が同一SHA256のByteを参照していれば、G2が必要とする実Blobを削除できない。Contentの再利用可能性、世代所属、物理Reachability、現在の開示可否を別資格にする。
+- **外部に残る旧Byte**：OriginのGCやRevocationを確認しても、外部Recipient/CDN/Backupからの物理撤去を証明したことにはならない。配布済みコピーや既読Evidenceの扱いは#2516/#2542の実Target境界で判定。
+- **対象Consumer集合の閉包**：「全員G2済み」を主張するには、Ownerが受理した用途相対のConsumer集合と各宛先の実Read/Effect受理を必要とする。公開Reader一覧に現れないものを不存在へ丸めず、未観測の宛先はunknownとする。
+
+### 25.3 既存実試験を前提にする反例と、まだ未実証の競合
+
+統合済み[#3256](https://github.com/hat47x/tei-platform/pull/3256)の実CLI/別Process Reader試験には、**R1とR2で5 Memberのbyteが同じでも、同Directory上書き後の旧R1 Pinを拒否**する例がある（[#2604実証記録](https://github.com/hat47x/tei-platform/issues/2604#issuecomment-6740694625)）。統合済み[#4240](https://github.com/hat47x/tei-platform/pull/4240)には**R1→R2→R1の中間ABA**、Member Path→物理Open同一性不足の負例がある。これはReadの保証上限の実試験であり、**不変Generation/並走Reader/GCの実現・完全性を証明したものではない**。
+
+| 一因子の競合・変更 | 不適格な主張 / 条件付きの期待 |
+| --- | --- |
+| GCがPin=0を確認→ReaderがG1 Pinを新規取得→GCがG1削除→Reader Read | 一瞬のPin=0で安全GCとしない。ProviderがPin登録/Retireの競合を制御しない限りcontinued-readはunknown |
+| R1→R2→R1、または同Byteの外部MemberへPath差替え | Manifest前後一致・Digest一致から連続世代/同一実Openを推測しない（既存ABA/TOCTOU負例） |
+| G1をRetire、G2も同じ物理Blobを参照 | G2の生存参照があればBlobを保持。G1参照削除を共有Byte削除の根拠にしない |
+| BillingはG2 Applied、ArchiveはG1 Reading、別の宛先はOffline | 全Consumerの訂正済みは不適格。Owner受理のcohortと未観測を示す |
+| G1のDelta baseをGCした後にG1→G2差分のみ届く | Base/旧State/連続Deltaが未資格ならFull G2を再取得、またはunknownへ（§22） |
+| G1 Current Grantが失効したが旧Origin Byte・外部Cacheが残る | 保存Byteから現在Read資格を復活しない。Origin revokeで全外部コピー消去を主張しない |
+
+**独立の合成モデル**：4イベント GC_check、Reader_register、Reader_read、GC_delete で、checkがdeleteより先、registerがreadより先という制約を置くと**6通りの合法順列**がある。そのうち check→register→delete→read の**1通り**が、新Pin登録後にGCが進む危険な競合を示す。Pin取得とRetireの線形化が実Providerで成立するなら、Pin先行ではGCを延期、Retire先行では新Pinを拒否できる。**この列挙はTEIの実OS/FS/Provider試験ではない**。
+
+### 25.4 Owner別の受入順（新Runtimeなし）
+
+1. **P0 / #4410**：固定TSVの純粋Go/CLIを優先。GC/Lease/Reader cohort管理を初回BatchのHard Gateに追加しない。
+2. **P1 / #2604 AP-01/06/09/12、#2514**：統合済み#3256/#4240の実Reader/ABA/TOCTOU試験を再利用し、限定Providerで継続Read保証型かfail-safe期限型の**どちらを提供するか**Owner判断。実Writerと並走する二世代Reader、Pin vs GCの競合、共有Blob参照を独立Expectedで故障注入。第二Readerを実装しない。
+3. **P1 / #4411/#1174/#2542**：Archive/Billingという有限の受取先を用途付きで固定し、G2 Published、Read、Applied/Commit unknown、Owner Acceptedを独立比較。Transport ACKと実Importを混同しない。
+4. **P1 / #2600/#2516/#4522**：同ByteのGeneration再利用、Grant-only変更、旧Source A→B→A、GC後の証拠保持を区別し、false retain / unnecessary invalidation / unknown erasedを計測する。
+5. **P2 / #1124/#4510/#4487**：Studio/TEAの用途相対Data/Effect/Observation Edgeへ、Reader/cohort/Retired/unknownを必要な公開範囲だけ投影。秘密Readerの件数・存在は開示しない。
+
+**比較先**：[Apache Iceberg Snapshot Reference/Retention](https://iceberg.apache.org/docs/latest/branching/) と [Delta Lake VACUUM保持期間](https://docs.delta.io/delta-utility/) は実Readerと旧世代回収を区別する参考。TEIへIceberg/Delta Runtimeや新GC Schedulerを採用する決定ではない。
+
+**証拠上限**：GitHubの既存限定実Reader負例・静的Source照合・独立合成4イベントの順列のみ。新しいTEI Go/CLI、並走Provider、GC/OS原子性、外部Consumer/Import、Current Grant/Owner業務受理、exact-head CIは **NOT RUN / NOT ACCEPTED**。
+
+## 26. 変更前後Graphと同一CandidateのFull対Selective：過少・過大再計算の独立検収（2026-11-13、設計候補）
+
+**追加した判断**：§24でAffected/Unaffectedを論じたが、「R0とR1で値が違うことを検出した」だけでは**R1の選択的再計算が正しい**ことを証明できない。比較は(1)R0→R1の依存・意味・Source変更を発見、(2)**同一R1のAccepted Meaning・Scope/Cut・Target契約**でFull CleanとSelectiveを独立に実行/観測、(3)対象Claim・Output Member・診断/Effectを照合、(4)省略の根拠と実時間を別判定、の順とする。新たなETL専用キャッシュ検証器、Runner、Fixture/Scenario SSOTは作らない。正式なOperator最適化規則の採用ではなく、既存受入を利用した最小Pressure。
+
+### 26.1 不変条件：Before/Afterは影響発見、Full/SelectiveはR1正しさの判定
+
+| 比較 | 固定する項目 | 許される結論・禁止する結論 |
+| --- | --- | --- |
+| **R0→R1 Meaning/Dependency差** | Consumer/Question、R0とR1のSource/Rule/Graph版、Edgeの追加・削除・再束縛・実Scope/Predicate | 影響候補と未知の発見。**R0 ResultとR1 Resultの不一致**自体はSelective失敗ではない |
+| **Full(R1) と Selective(R1)** | 同じAccepted Meaning、Required集合・Source Cut（複数Sourceなら適格なVector）、Target/Operator/Decimal・Rule版、Expectedと対象Consumer | 出力値・Row/Group/NULL・必要Member/診断を比較。両者一致だけで「全業務入力が完全」「外部Effect安全」と言わない |
+| **省略の資格** | Claim-relative Required閉包、R0/R1の旧消失辺、R1選択/実消費、必要な集合・否定依存、未観測Scope、実変更の非干渉 | 影響なしの**証拠があるClaimだけ**skip候補。他ClaimのUnknownを無条件に伝播させない |
+| **再利用の資格** | Result/Artifact byte、Source/Meaning/Plugin版、Independent Expected、Release Generation・Reader pin・Current Disclosure | Output同byteでも旧Evidence/Grant/Owner Meaningを無条件に復活させない（§23/§25） |
+| **性能** | Full/Selectiveで同条件・同対象の実Run/Cache hit/miss、再実行Stage数、CPU/I/O、冷暖起動/時間分布 | 省略の正しさが未確認なら高速化成功と評価しない |
+
+既存[統合済み #4277](https://github.com/hat47x/tei-platform/pull/4277) の `tools/reference-cache-full-vs-incremental-verification/` はSource/Model/Dependency/Operator/Plugin/Toolchain/Receipt・Artifactの比較とCE-01〜06の負例を持つ。ただし**read-onlyのRunReport比較であり、実Full/Selective Runnerを自ら駆動しない**。そのレポートにFixture値を入れてPASSした事実を実Go/ETL実行の同等性へ昇格しない。まず既存報告形式と期待判定を再利用し、実Runnerがある段階でだけ同一R1を二方式で実行し独立Observedを投入する。
+
+### 26.2 旧依存辺の削除と問い相対Required：N16/N17をETLへ接続
+
+[統合済み #4591](https://github.com/hat47x/tei-platform/pull/4591) は参照B2C Inspectorに**申告された**R0-only Edgeを加え、削除辺の旧dependentを影響候補に残せる。ただし[未統合 #4592](https://github.com/hat47x/tei-platform/pull/4592) の反例は、旧辺削除からR1の全下流を無条件に辿ると、対象外のConsumer/Unknownまで過剰失効し得ることを示す。採用候補は、旧辺由来の起点は**対象ConsumerのR0∪R1 Required上流の内側**に制限し、別途明示されたRule変更は本来の全下流を評価する、という探索の分離。#4592はまだ実装・Ownerの最終受入が済んだ正本ではなく、main #4591との差を維持する。
+
+| 一因子差分（合成。Edge方向はSource→Dependent） | 対象Consumer PのExpected | 別Consumer S/残存UnknownのExpected |
+| --- | --- | --- |
+| R0: Rate→Rule→P、R1: Rule→P。Rate→Ruleだけ削除 | **PのMeaning/経路再評価**。R0の旧従属を見落とさない | Sに旧Edge由来のRequired Pathがないなら、削除だけでSを失効させない |
+| 同じR1でRule→Sも存在、明示Changedは空 | Pに対する旧辺削除の影響候補を保持 | SをR1 forward siblingだからという理由だけで影響ありとしない |
+| 同じGraphで明示Changed=Ruleが追加 | PとSの各Required/選択経路を再評価 | 「旧辺削除に関係しない」からとSのRule変更影響を隠さない |
+| R0のRate→Rule→P二段鎖がR1で丸ごと削除、Source Rateは未観測 | Pの旧従属と未観測上流を**unknown**として残す | 未観測Sourceを不存在としない。対象外ConsumerへUnknownを伝播しない |
+| R0で別Rule X→別Consumer Tの無関係旧Edgeだけ削除 | Pの閉じたRequired集合が本当に無関係なら非影響候補 | Tは別問いで独立評価。変更があるから全世界再実行とはしない |
+| 同一Query IDのままWHERE/ORDER/SQL/Environment、RLS Scopeのみ変更 | Required/Selected/Observedの再照合が必要 | 出力Rows一致・0件から物理/業務全件性を推測しない |
+
+**Sourceの実保証**：R0-only Edgeは入力者が申告した仮定であって、旧Native/SQL/Plugin依存を実Readerが全て列挙した証明ではない。#4592修正が将来mergeされても、実R0/R1 Source・Actual Consumed Closure・Current Grantは追加資格を要する（#2586/#3262/#2514/#2600）。自動的なNative/SQLソーススキャナや正式Dependency Core型は本案に含めない。
+
+### 26.3 「読取要求」と「実Read」を区別する独立検証
+
+[Draft #4608](https://github.com/hat47x/tei-platform/pull/4608) はRuleのValidation Sourceに対するNumber/RelationKeysの**呼出先・順序・回数**をProbeで照合し、同じ値が返る誤Attribute/Relation参照を検出する。これはValue equality（EQ1）と**Interface Read Demandの限定的なEQ2**を区別する実装候補であって、実PGの読込列・Runtimeの短絡・Provider出典・秘匿/ACLを観測したことではない。
+
+[統合済み #4539](https://github.com/hat47x/tei-platform/pull/4539) のEnvironment→実PostgreSQL→一時Function Data Contextは別の限定したObserved Read起点である。Query 0件/RLS 2/3/Mask NULLでもCoverageはunestablished。従って、**要求されたSource（Required）→実呼出要求（Demand）→実Provider Reader（Observed）→独立Consumer（Received）**は一つのPASSに畳まない。Rule DraftをPG実Readerへ勝手に結線せず、#2586/#2514/#988と既存Ownerに接続候補を返す。
+
+### 26.4 最小実証順：まず正しい部分集合、次に速さ
+
+1. **P0 #4410**：最初の副作用なしTSV Filter/Convert/Aggregateと独立Expectedを優先。新Full/Selective Engineを必須化せず、R0/R1のRule・Rate・Source変化に対する手書きAffected/Unaffected・Unknownだけを既存Nへ付帯する。
+2. **P1 #2600/#4518/#2582**：#4591が申告旧Edgeまで対応した事実と#4592の未統合修正を区別し、**旧辺削除・無関係旧辺・二段鎖・sibling**の影響票を確認。正しく局所化できないときは対象Claimをunknownにし、他Claimを不用意に失効させない。
+3. **P1 #4277/#2514/#2622**：ReferenceのFull/Incremental比較に独立Expectedと同一R1・同一Target条件を束縛。Read-onlyレポート比較の段階はREFERENCEと表示し、実Provider/ETLのFull/Selective両Runは新規受入対象として分離。
+4. **P1 #4608/#4539/#2586**：限定Rule Demand、実Environment/PGのRead、Data Context、同一Contextを読む二Consumerの**証拠辺**を個別に検証。正式製品`tei` CLI、Studio、Owner Meaning・現在Grantは未証明のまま。
+5. **P2 #2831/#2604/#4510**：セルフビルドの実Builder/Stage2/Artifact消費、OutputのGeneration Pin、Studioの問い相対Graphを照合。skipの正しさを実証した後、Cold/Warm FullとSelectiveの時間・再実行数を計測する。
+
+**現時点の証拠上限**：統合済みの参照比較#4277、申告旧Edgeの#4591、限定実PGの#4539、およびDraft #4592/#4608を静的照合した設計案。今回、新たなGo/CLI/PG、同一R1 Full/Selective二実行、失敗注入、CI、実Consumer/Studio、Owner意味受理は**NOT RUN / NOT ACCEPTED**。新Second Oracle/Graph Solver/Cache/Runtime、固定Host/新Grant Issuerは作らない。
+
+## 27. 下流Effectの旧Generation適用拒否と業務補償：Accepted Supersessionを別契約にする（2026-11-13、設計候補）
+
+**独立Gap**：§23はPublication/Consumer Read/Applied/Owner Acceptanceの証拠境界、§25は旧G1のRetention/GCと有限Consumer群への到達を扱う。§24/26は変更依存とFull/Selective再計算の正しさを扱う。しかし、下流の**現在の業務状態がG2へ進んだ後、遅れて届いたG1や比較不能な別訂正によってG2が上書きされない条件**は未明示である。このGapは[Effect Fence #1174](https://github.com/hat47x/tei-platform/issues/1174)、[Command/Receipt CAS #2564](https://github.com/hat47x/tei-platform/issues/2564)、[Import Unit #2542](https://github.com/hat47x/tei-platform/issues/2542)、[Subsystem Owner #3250](https://github.com/hat47x/tei-platform/issues/3250)に渡す。**新しいETL用Transaction Engine、Saga Coordinator、Command State Store、Host/Grant Issuer、第二Receipt Ledgerは作らない**。
+
+### 27.1 Generation identity／受理済み業務順序／実Applyを混同しない
+
+| 独立のClaim | 確認条件 | 推定してはならないこと |
+| --- | --- | --- |
+| **Source/Result Generation** | 対象Owner/Subsystem、業務期間、Source Cut/Rule・Meaning版、Output/Manifest/Reader Attempt | 世代文字列の辞書順、作成時刻、配送順だけで業務的な前後関係が決まる |
+| **Accepted Supersession** | Ownerが当該対象・期間で受理した現行版、期待旧版→次版の業務意味/訂正根拠 | 複数Source Vector・別業務期・別Branchを単一の巨大な全順序にできる |
+| **Authorized & Committed Apply** | 現在Grant/Scope、対象Providerの同一効果境界における期待旧版検査、Operation/Request、Receipt・独立Readback | 一式Read完了・公開済み・ACK受信なら業務効果がCommitした |
+| **Cohort Correction Accepted** | 受理された有限Consumer集合と各Consumerの取込・業務Owner判断（§25） | BillingがG2適用済みならArchiveや外部受取先も同じ |
+
+Event時刻／Business Effective時点／Source Cut／Generation公開時刻／配送到着時刻／実Apply・Owner受理時刻も別。**最後に到着したものが正しい、またはGeneration番号が大きければ自動上書き可**とは決めない。異なるRule・並行する業務Proposal・Source Vectorは、Ownerが明示する比較可能性/受理関係が無ければ未比較・保留とする。
+
+### 27.2 下流の現在版と期待旧版を、実更新と同じ境界で照合
+
+同一Owner・業務期間Dの現在適用済み版がG1（顧客A：数量5/金額800円）で、受理済みの訂正G1→G2（数量5/640円）を適用する場合の候補手順：
+
+1. **独立Read資格**：G2の固定Input Cut・Rule・必要Output Memberを§23に従いPinned Generationで実読取。Reader成功はAction Authority/Commitではない。
+2. **Ownerが受理した更新Intent**：対象のLogical Owner/Period/Scope、G1→G2という具体的Supersession・訂正内容・副作用形式を確認。Expected currentが不明ならGeneration文字列の比較で代用しない。
+3. **対象ProviderのEffect境界**：**適用時のCurrent Grant**と、Targetの現行適用版がG1であることを確認し、合致した場合だけG2更新と版・受領記録を結ぶ。これを別々のread-then-writeに分けて競合窓を作らない。Providerが条件付き書込みや同Tx Receiptを実現できなければunsupported/unknownに止め、TEI Coreで分散原子性を補ったとは言わない。
+4. **ConflictとUnknownを分離**：現行版が既にG2/G3なら旧G1からの適用はReject/Conflictとし、G1へ黙って戻さない。ネットワーク切断、Commit ACK欠落、Recorder故障なら実Effectはunknownであり、独立Receipt Lookup・Resource Read・現在Grant/Operation同一性を#1174/#2564で再確認する。明確なConflictとunknownを同じretry対象にしない。
+5. **別Subsystemのデータ**：ETLから他SubsystemのTableへ直接CUDするより、Owner側の受理済みAction/Importへ委譲する。委譲できても実Import/Owner受理が自動成功するわけではない（#3250）。
+
+**単一DB参照候補**：PostgreSQLではUPDATE WHEREに現在版の期待値を含め、RETURNINGで実際の更新行を確認できる（https://www.postgresql.org/docs/current/sql-update.html および https://www.postgresql.org/docs/current/dml-returning.html）。Read Committed/Repeatable Read/Serializableによる競合時の結果・Retry条件は別に評価する（https://www.postgresql.org/docs/current/transaction-iso.html）。**一行の条件付きUPDATEは、複数DB・外部Recipient・業務Owner Acceptanceの分散原子性を証明しない**。
+
+### 27.3 Restatement、業務補償、公開ポインタRollbackは別操作
+
+- **結果Restatement**：新Source/Rule Cutに基づく完全な新Generationへ置換。ただし必要なOwner受理済みの前後関係・適用版条件がなければ下流CUDを行わない。
+- **業務補償**：G2の訂正をさらに取り消す場合、Ownerが受理する**新しいCorrection/Compensation Effect**を要求する。最終金額がG1と同じ800円でも、G1の再送ではなくG2やG3を経た新G4の履歴/Operationを保全する。外部の送金・通知等が必ず一つの逆操作で戻せるとは言わない。
+- **Release pointer rollback**：公開ポインタG2→G1の切替は、既に適用されたDB Effect、受取先への配送、Business Acceptanceを取り消さない。旧データのRead可否も現行Disclosure/保持期限に従う（#2604/#2516）。
+- **同Byte・別意味**：G1とG4のOutput金額/byteが偶然一致しても、Source Cut・意味版・受理されたSupersession・新Request/Receipt・現在Grantは別。Result Digestを冪等キーやBusiness Versionの代用にしない。
+
+### 27.4 最小独立Expected：G1→G2→G3→G4（既存N/EF/RCAS/APへ一因子で返す）
+
+合成の受理済み直線経路を、Owner=Billing、期間D、A数量5、G1=800円、G2=640円、G3=700円、G4=800円（新補償）と定義する。これは**設計用の手書きExpectedであり、実業務Ownerの承認記録ではない**。
+
+| 一因子変更・配送順序 | 条件付きExpected |
+| --- | --- |
+| G1 Applied後に受理済みG1→G2を適用 | G2/640円の実Target状態候補。Receipt/独立Read/Owner Acceptanceを別採点 |
+| G2の後で古いG1初回配送やG1前提のWrite | Conflict/Reject。G2を800円へ上書きしない |
+| G3がG2に先行到着、現在TargetはG1 | G1→G3を別途Owner受理していない限り拒否/保留。最大世代選択しない |
+| G1を期待版に持つG2と別G2bが競合 | 同じOwner/対象を同一条件付きCommitで両方成功させない。敗者は再比較/再受理 |
+| G2 Commit後のACK喪失・Log不全 | Effect unknown。照会優先、無条件の再Import不可 |
+| G3後に新補償G4へ適用、金額800円 | 新G4/新Operationであり、古いG1のReceiptや実行を復活させない |
+| Billing G2済み、Archive G1 Read済み、第三宛先Offline | Billing局所Appliedと業務cohort全体の訂正完了は別 |
+| G2 Read時はGrant有効、Apply前に失効 | 適用権限の再確認・拒否。Read時Grantを現在のApply根拠にしない |
+| G2→G1へ公開ポインタのみRollback | 実Target Applied StateとOwner AcceptanceはG2のまま残り得る |
+
+**局所参照検算**：Python標準SQLiteの単一in-memory接続で、Owner/Period/期待旧Generationを条件とするUPDATEを実行。G1初期800→G2 640成功、遅延G1再Insert/G1前提Writeは更新0件、G2→G3 700成功、G3→新G4 800成功、最終G4/800円を確認。**同時実行、実PostgreSQL、TEIのProvider/Effect Receipt/Current Grantは検証していない**。
+
+### 27.5 既存Owner・検証優先順
+
+1. **P0 / #4410 W1〜W5**：固定TSVのPure Go/CLI同義・独立Expectedを優先し、DB CUDや新Sagaを初回受入Gateにしない。
+2. **P1 / #4411/#1174/#2564/#2514**：既存RCAS-01〜06・RequestHash/OperationIDと一つのOwner/Periodを束縛。Conflict、ACK-loss Unknown、同OperationのReceipt再観測、後続別Operation、現在Grantを同じ実Provider/Targetで別々に試す。既存実PG/Command局所証拠を流用してETL本体Apply成功と断定しない。
+3. **P1 / #2542/#3250/#2604**：Owner側Action/Importへの委譲、Pinned Generation、実Effect/業務受理を接続。外部Recipientとの非原子境界を残す。
+4. **P1 / #2600/#2516/#4522**：Source A→B→A、G1/G4同Byte、Grant-only変更、G3先行と無関係Consumerを一因子変化させ、false retain/過剰invalidating/unknown erasedを独立採点。
+5. **P2 / #1124/#4510/#4487**：Studio/TEAはSource Cut→Generated→Published→Read→Effect→Owner、Supersession/Conflict/unknownを問い相対に表示。非開示Writer・Readerの数を漏らさず、画面上の旧選択でEffectを実行しない。
+
+**停止線**：業務版の比較・補償の意味・適用権限の発行主体・外部Commitの再試行可否は既存Ownerに委ねる。自動的な最大Generation採用/逆演算/Saga、TEI Coreの新全順序型やTransaction Coordinatorを追加しない。**§27は設計・SQLite局所参照検算・既存Issue静的照合であり、新たなTEI Go/CLI・実PG/Provider/外部Import/Owner意味受理・exact-head CIは NOT RUN / NOT ACCEPTED**。
+
+## 28. 実行・省略工程の観測閉包：Planと同一Attemptの実Traceを突き合わせる（2026-11-13、設計候補）
+
+**焦点**：§26では同じR1に対するFull/Selectiveの結果と影響範囲を比較し、§27では後続業務Effectの受理済み順序を分けた。しかし「Plan内で選択したStageが本当に走ったか」「省略したStageは何を根拠に不必要と判断したか」「図にない実Read/外部処理がないと言えるか」は、**値やArtifact一致からは導けない別Claim**である。セルフビルド[#2831](https://github.com/hat47x/tei-platform/issues/2831)のBuildIntent→実Builder→Stage2、Studio[#1124](https://github.com/hat47x/tei-platform/issues/1124)/[Draft #4510](https://github.com/hat47x/tei-platform/pull/4510)の図表、増分[#2600](https://github.com/hat47x/tei-platform/issues/2600)の実Consumed、横断[Draft #4522](https://github.com/hat47x/tei-platform/pull/4522)のEvidence Joinを、**ETL一件のread-only受入票**として合成する。新Runtime/Tracer/Source Registry/Graph正本/Receipt Engineは採用しない。
+
+### 28.1 実行Graphは「宣言・選択・実呼出・読取・結果」の範囲付き突合
+
+| 観測段階（正式状態enumの提案ではない） | 独立に必要な証拠 | その段階のPASSだけでは言えないこと |
+| --- | --- | --- |
+| **Declared / Required** | 受理済みFunction/Plan・Operator、Required Source/Rule/Scope、想定Stage/Effect・外部境界、Meaning/Graph Revision | 全依存が選択・実ロード・実消費された |
+| **Selected / Lowered** | Step/Provider/Plugin/Targetの選択、実SQLやFile/Command・版、R1 Source Cut、Plan→選択Stageの対応 | 実Providerが呼ばれた、OS/外部Pluginで他工程が存在しなかった |
+| **Invoked / Completed / Failed** | **同じ計算Attempt**でのStep開始・終端・失敗・順序、実invoker/実Process・Provider呼出の対応、観測器の被覆 | 呼出成功＝期待した入力byte消費、結果確定、全業務Effect発生なし |
+| **Skipped / Blocked / Unknown** | Skipは対象StepとClaimに相対化した依存閉包・再利用候補・非影響根拠。BlockedはGuard/Validation/前段失敗。Unknownは実行状態または被覆不足 | 単にStepのTraceがない＝安全Skip。Blocked/未開始＝Cache Hitや全体無作用 |
+| **Consumed / Produced** | 実Open/File Member/SQL実行とReturned Rowset/NULL/部分性、Source occurrence・Scope/Cut、実Output/Artifact Member・Digest・Attempt | 「0 rows」＝Collection全件空、宣言Source＝実Consumed、Output digest一致＝同一実行 |
+| **Published / Received / Effect Readback** | 出力GenerationのPublish、別ConsumerのPin/Read、下流Operation/Commit・後日の独立Readback・Owner/Current Grantを**別々の証拠**で接続 | 異なるAttemptのReadbackを生産Attemptと同一視、ACK/画面表示＝業務受理 |
+
+**同一Attemptを要求する箇所**：Planの選択→Stepの実Invocation→その実Read/実Outputへ因果帰属させる際には、Run/Attempt/Stepまたは同等の実行識別、Source/Rule revisionと実Targetを関連付ける。**別Attemptを許容する箇所**：独立Reader/DB ReadbackやConsumer検収は別の実行であること自体が有効で、対象State/Generation・時点・Scope・前段Result/Operationの関係を示し、限定的な整合Claimだけを形成する。二つのGreen・同じValue/Digestだけでは因果Joinを成立させない。Source A→B→Aや同Byte別Workspace、並行別Runがある場合は特に旧Attemptの資格を流用しない。
+
+### 28.2 「図中になければ無い」を成立させるための観測範囲
+
+**図の完全性は問いと観測境界に相対化する**。例えば「この限定した純粋TSV参照処理の、既知のFile ReaderとStage Adapter経由のI/O/実行Stageは図と一致する」というClaimなら、列挙した入口・実呼出・計算・出力で閉包を検査できる。一方、任意Pluginの不透明な内部、OSの暗黙I/O、DB Trigger、外部Worker、未保存Editor Buffer/Studio別Workspace、非開示Sourceまで図外の不存在を普遍的に宣言しない。
+
+最低限の三つの突合：
+
+1. **Planned→Executed**：列挙したSelected StageごとにCompleted/Failed/Blocked/Skipped/Unknownを別に集約する。Completedには実CallerのIdentity/Attempt/版、Skippedにはその対象Claimについて成立したRequired・Consumedの閉包と非影響根拠を対応付ける。単純な計算Stageの予定外実行/未申告外部Side Effectがあれば、観測可能な範囲でPlan discrepancyとして扱う。
+2. **Required→Consumed**：必要なSource/Range/Predicate/negative dependency/Lookup/rate等と、実Provider/Readerが**そのAttemptで**消費した入力を照合。実Read行が0・部分Page・RLS/Mask・Source Binding未検証・opaque externalはClosure=unknownを保持。読取要求（Draft[#4608](https://github.com/hat47x/tei-platform/pull/4608)の限定Probe）と物理Read（統合済[#4539](https://github.com/hat47x/tei-platform/pull/4539)の実PG）を別証拠とする。
+3. **Produced→Used**：Planにある最終Output member/Manifestが、実生成・Stage→Publish→Reader pin・実Consumerの必要Memberを経て到達したかを照合。公開Ref切替・二世代混在・途中停止・Commit Unknownは§23/§25/§27と[#2604](https://github.com/hat47x/tei-platform/issues/2604)/[#1174](https://github.com/hat47x/tei-platform/issues/1174)に委譲する。
+
+Instrumented boundaryが部分的なら、**「観測できた範囲のGraph整合」**までは言えても「他に処理がない」と言ってはならない。この区別はStudioの表示にも残し、Unknown Node/外部境界を図から消さない。Plan Graphを実行器そのものに置換せず、Data/Control/Effect/Observationの別Relationとして同じSource/Revへ投影する（§20）。
+
+### 28.3 独立Expected：同じR1の二方式と未観測工程
+
+すべて設計上の手書きExpected。固定R1でConsumer AはQuantityだけ、Consumer BはRate依存のJPY金額を出すという§24/§26と同じ合成条件とし、実製品の試験ではない。
+
+| 一因子の違い | Qualified claim / 意図的に拒否するClaim |
+| --- | --- |
+| R1でRateだけ改版。AはそのSourceと非干渉が**閉包証明済み**。SelectiveがAを根拠付きSkip、Bを実Invoke/実Consumed | Aのskipは**局所候補**、Bの再計算を証拠付ける。Full(R1)とSelective(R1)のResult/必要Member/診断は別Attemptで比較。Aの過去Grant/Meaning受理を継承しない |
+| 同じResult byteだが、Bが未Invoke/欠落Trace、skip理由も不明 | Bの計算実行・安全skipは**unknown**。Byte比較PASSのみから実行Graph完了へ昇格しない |
+| Rateの実Readerは宣言Graphに無く、Runtimeで外部Lookupが行われた | 監視対象内で実Readを観測したなら**宣言Graphと実行Graphの不一致**。実際のI/Oが追跡対象外なら「無い」ではなく観測閉包未証明 |
+| Guard NGでTransformが一度も呼ばれない。前段に既にEffect/Temp/ログ出力がある | Transformは**blocked/not-invoked**であり、最適化skipではない。Run全体を無作用へ丸めない |
+| Rule Probeは正しいAttributeを要求したが、Providerが別Environment/SQL/Scopeを読んだ | Interface Demandは限定PASS、実Source/Target一致は不適格。Read Demandと実Provider Readを同一証拠にしない |
+| PostgreSQL Queryが0行またはRLSで2/3行、Result Digestは期待と同じ | Source Population Complete/全件不存在は**未成立**。見かけの0件を全業務Factが0としない |
+| Generation G2を別Consumerが**別Attempt**でPinして必要Memberを読んだ | 別Attempt/別時点のQualified Read Witnessとして記録。ProducerがG2を生成した同じAttemptだったとは言わない |
+| BuildIntentに記載のないesbuild/embed/外部Commandや、Stage1自身が起動していないStage2が存在 | 限定的な工程観測は記録できるが、Self-build L2/L3と「図に無ければ無い」の完全Claimは保留（#2831/#4583） |
+
+### 28.4 実装順：新Tracerを作る前に既存の観測を結び付ける
+
+1. **P0 #4410 W1/W2/W3/W5**：固定TSVのInput/Output digest、直接Go・CLI二入口、Independent Expectedを先行。Pure Runについては観測できる入口/Reader/Writerと失敗時の未公開を、**そのRunだけ**の限定Ledger/RunLog/Artifact対照票へ記録する。未実装のHookを製品Runtimeへ必須化せず、外部Effect=0の検収は試験対象のI/O/Effect境界を明示する。
+2. **P1 #4277/#2600/#2514**：既存`tools/reference-cache-full-vs-incremental-verification`のread-only Full/Incremental比較、#2600 DI-01/02/07の事前固定Expected、§26の同一R1比較へ「各StageのPlanned・Invoked・Skipped reason・実Consumed」を照合するレビュー列を付ける。参照RunReportに作者が値を埋めた成功を実Runner Observedへ昇格しない。
+3. **P1 #2586/#2622/#4608**：まずDraftのRule Demandの実呼出範囲と、merged #4539の実PG Provider Read/Contextを別列で取り、次に**通常`tei` CLI→実Context→異質二Consumer**で実Producer Attempt/Consumer Readを独立結線。Query/Provider版・RLS・Source Coverageを持たないなら欠損を表示。#4539の成功を製品CLI受領へ昇格しない。
+4. **P1〜P2 #2831/#4583/#4510**：同じBuild Target/RevisionのBuildIntent→選択Build Step→実Invoked Builder→選択/実消費Input→Artifact Member→実WebView2/Stage2 Processの**不足一辺**を逐次観測。別HEADのGreen、選択されたGo/esbuild Source一覧と実Read時Source Closure、Stage1自身のStage2駆動を混同しない。Studioのread-only図表はScope/unknown/外部Boundaryを残す。
+5. **P2 #2604/#1174/#2542/#2516**：Pub→Pin→Read→Applied/Effect→Ownerを別Attempt/時点と現在資格でつなぐ。Commit Unknown/旧Generation/現在Grant失効時に自動再送・無条件公開へ進めない。
+
+**証拠上限**：本§28は既存main/Draft/Issueと横断設計の静的照合に基づく**ETLの限定受入案**で、正式Event schema・Recorder/Graph Engine・新Runner・新Proof Store/Hostを追加しない。TEI Go/CLI/Provider/Studio/Stage2の新実行、全工程網羅性、外部Effect非存在、独立Consumerの同一Result受領、現在Disclosure・Owner Meaning、exact-head CIは **NOT RUN / NOT ACCEPTED**。
+
+## 29. 下流Applyの競合粒度：Full Replace・Scoped Replace・Deltaと不変条件（2026-11-13、設計候補）
+
+**§27を精密化し、§28と区別する**：§27の「受理済み期待旧Generationを検査してから下流EffectをApply」は、同じOwner/期間に閉じた訂正を安全側で説明する。しかし**期間D全体を1つのCAS粒度**にすると、独立した顧客A/Bの修正さえ競合し得る。逆に**明細Key単位のCAS**なら同じ顧客の集計・期間合計・他SubsystemのBusiness Invariantを壊す余地がある。§28は実行/省略Traceの閉包を扱い、本節は**業務的に許されるWrite・Read依存・Invariantの範囲**を扱う。既存[#3250のInvariant-aware検討](https://github.com/hat47x/tei-platform/issues/3250#issuecomment-6853879476)、[#2564](https://github.com/hat47x/tei-platform/issues/2564)、[#1174](https://github.com/hat47x/tei-platform/issues/1174)、[#2593](https://github.com/hat47x/tei-platform/issues/2593)、[#2622](https://github.com/hat47x/tei-platform/issues/2622)、[#2600](https://github.com/hat47x/tei-platform/issues/2600)へ条件を返す。新Write Scope DTO・Saga/Transaction Engine・専門のConflict Resolverを追加しない。
+
+### 29.1 競合単位は最低三つのFootprintから決まる
+
+| 分離する面 | 当該Operationで検証すること | 省くと起こる失敗 |
+| --- | --- | --- |
+| **Write footprint** | Owner・業務対象/期間・Group/Field・実際に更新/削除/追加する対象集合 | 古いFull Resultが他Groupの更新を上書き。削除対象や新規行を見落とす |
+| **Read/Precondition footprint** | 集計に寄与するSource Cut/Rule/FX/Lookup・Predicate/Scope・期待旧版、必要な未取得/否定依存 | 書き先Keyが別でも、古いRateや新規Accepted明細の影響を見落とす |
+| **Business Invariant/Effect footprint** | 期間合計・グループ横断制約・受理済み更新Intent・現行Grant/Receipt・Owner側Action | 行が別なら独立と誤認。越境Direct CUD=0だけで整合性PASSとする |
+
+**局所化の十分条件候補は、同じOwner/Source Cut・意味版のもと、相互のWrite/Required Read/Invariant依存に干渉がないことを有資格に証明でき、実TargetのCommit境界がその条件を守る場合だけ**。不足があればConflictを過小検出してはいけないが、無関係と確認済みの別Groupまで一律失効/Rejectしない（#3250/#4522/#2600）。
+
+### 29.2 Full／Scoped／Deltaは適用時の意味が異なる
+
+| 形態（説明用の呼称。正式Enumではない） | 必要な追加資格 | 安易に認めないこと |
+| --- | --- | --- |
+| **Full Replace（業務期D全体）** | Dの必要Input/Population/Temporal Cutの閉包、対象全集合（削除/欠落も含む）、期待旧版群またはOwner受理の同等Fenceを同じEffect境界で照合 | Aの期待版だけ一致しているからBも古い値で上書き可能。既存行の件数一致からPhantom不在 |
+| **Scoped Replace（顧客A等）** | 受理済み対象Predicate/KeyとScope内の完全性、Group移動・未取得/新規Matching行、Scope外Read/Invariant非干渉、現在Applied版 | 既存のA行だけCASすれば「新規A明細なし」も保証されたと宣言 |
+| **Corrective Delta（旧寄与→新寄与）** | Fact/Event identity・連続したbase→target・旧寄与/新寄与・単位/丸め/Operator Retractable・重複配送とReceipt | UPDATE_AFTERだけを別INSERTとして加算、key-only DELETEから旧金額を推定、Delta Byte一致で再送安全 |
+
+これらはTEI共通Operation/Function・Providerの型付きContractを比較するための表であって、新DSL/Engineを選定するものではない。**同じArtifact Generationを読めたことと、下流のどのScopeを置換できるかは別**（§23）。条件付きRow UPDATEだけでは複数行のFull Replaceや外部Recipientまで原子的に保全できない。参照：[PostgreSQL UPDATE](https://www.postgresql.org/docs/current/sql-update.html)、[Transaction Isolation](https://www.postgresql.org/docs/current/transaction-iso.html)。
+
+### 29.3 二顧客と共有集計による独立Expected
+
+合成のBilling/期間D、同一JPY単位で、最初にA=800円/rev1、B=50円/rev1が実Targetにあるとする。A→640円、B→70円の二つの訂正を考える。**A/B間にBusiness Invariant・共通Read依存がない**とOwnerが受理した有限Caseに限れば、異なるGroupへの期待旧版付き更新は両方成立できる。この状況で期間全体を一つの版として必ず競合にするのは、安全だが過度に直列化する候補である。
+
+| 一因子条件 | 独立Expected |
+| --- | --- |
+| A rev1→rev2=640、B rev1→rev2=70、相互に独立が立証済み | 最終A640/B70。両操作を不要に全期間Conflictとしない |
+| 古い全期間Snapshot (A800/B50) から作ったResult (A640/B50) を両Patch後にFull Replace | Bのrevが旧値と違うのでFull不適格。B70を50へ巻き戻さない |
+| 二つの明細o1/o2は別Keyだが同じA集計に寄与 | 明細のRow CAS成功だけでA集計が一致すると主張しない。A集計側の再評価/CASまたは有資格演算合成が必要 |
+| 旧SnapshotでPredicate status=acceptedの行を列挙後、新しいaccepted行を別TransactionがInsert | 既存RowのCASだけではPredicate対象集合の閉包を示せない。Providerの隔離/業務Cutと再資格化が必要 |
+| AとBが共通期間総額を満たす、またはAがBのFX/Ruleを参照 | 異なるWrite Groupでも非干渉ではない。Read/Invariant footprintの保全が必要 |
+| 同OperationIDで期待旧版または対象Scopeだけ変える | 同じ再送とは扱わない。#2564のRequestHash・同一性規則へ戻す |
+| Full ApplyのACK-loss、または途中までのEffect | Unknown/部分成功の実照会。無条件retry・別Scopeへの自動分割をしない |
+
+**局所計算**：Python標準SQLiteのin-memory表でA/B各rev1から、B=70/rev2とA=640/rev2の期待旧版付き更新を順に適用し、旧rev1によるA再更新は0行であることを確認した。A/Bの現行rev2からは、旧Fullの期待版(A rev1/B rev1)が一致せず拒否候補となる。もしBを無条件に50円へ上書きすると20円のLost Updateである。**同時実Tx・Full Replace/Predicate Lock・実TEI/PG/Owner Grantの試験ではない**。
+
+### 29.4 最小実装順と責務の停止線
+
+1. **P0/#4410**：固定Pure TSV→Filter/Convert/Aggregate→決定的Body＋独立Expected・二入口が先。Full/Scoped/Deltaの実DB Applyを初回のHard Gateにしない。
+2. **P1/#1174/#2564/#2514/#2542**：Owner/Period/Scope・期待旧版・Operation/Requestと対象ProviderのAtomic条件付きApplyを結び、Full/Scoped/DeltaのConflict/Unknownを一因子ずつ実検証。新DB/Effect Coordinatorなし。
+3. **P1/#3250/#2593/#2622/#3279**：業務不変条件を必須同居へ機械変換せず、Owner側Action、条件付Commit、順序・補償、要件の緩和を独立なTrade-offとして可視化。
+4. **P1/#2600/#4518/#4522**：Full/Selectiveの同一Revision検証とは別に、Applied Scopeの過小/過大Conflictと現在Disclosureを比較。
+5. **P2/#2604/#1124/#4510**：実Artifact Generation/ReaderからOwner側Applied Scope/Conflict/UnknownへEvidence Edgeを結ぶ。秘密Source・Reader・Writerを公開図で漏らさない。
+
+**検証上限**：GitHubのIssue/既存限定参照実装・公開SQL仕様の静的照合と、独立SQLite単一接続の局所更新検算まで。新TEI Go/CLI・実PostgreSQL/複数Process・Full Replace/外部Import・Current Grant・Owner意味受理・exact-head CIは**NOT RUN / NOT ACCEPTED**。新Canonical Write Mode/Proof Engine/Hostを追加しない。
+
+## 30. 要件選択を跨ぐETL/Batchの使用資格：即時不変条件・保留許容・補償の境界（2026-11-14、設計候補）
+
+**他レーンの新たなInput**：[#3250のRequirement Pressure](https://github.com/hat47x/tei-platform/issues/3250#issuecomment-6855362290) と [Minimal Conflict Witness・K/L/S案](https://github.com/hat47x/tei-platform/issues/3250#issuecomment-6855706071) は、受注と在庫の論理分割を、越境Direct CUDの最小化だけでなく**「いつ、誰に、何を保証するか」「失敗をどこまで許容するか」という要件選択**に戻して検討する方針を示した。§27はGeneration/受理済み訂正順序、§29は適用Write/Read/Invariant Footprintに着目している。本節は**Batch/ETLがその不変条件を実際の使用目的で侵害しないか**を追加する。第二Requirement/Scenario/Business Acceptance正本や専用Saga/Tx Engineは作らず、#3250の判断資料を#1130/#2542へ用途相対で受け渡す。
+
+### 30.1 要件を選ぶ前に分割案を合格扱いしない
+
+固定した同一Owner/業務対象/Source revisionで、合成例の即時不変条件を「OrderがConfirmedなら、各Commit後の観測可能な状態において有効なReservationが存在する」とする。注文の受付はConfirmedとは限らない。
+
+| 業務の選択肢（#3250のK/L/S、いずれも未受理の説明用候補） | Batch/越境Functionへ必要な条件 | 残すべきTrade-offと未証明 |
+| --- | --- | --- |
+| **K: 強い約束を維持** | Confirmedへの確定とReservationを、実Targetで保証された一つの整合性境界に置く。Owner側の統合Command・同一Tx責務を第一候補とする | 同じSubsystem名だけで原子性は成立しない。論理上複数Subsystemでも同じ実Txに閉じる設計は可能性として残すが、実Provider保証が必要。別RunのETLファイル搬送で即時原子性を代用しない |
+| **L: 引当不成功を業務的に許容** | Accepted Orderの未引当・失敗・取消等の業務状態、失敗種別、最大保留期限、通知・返金・代替・手作業Ownerと、再試行/重複/不明Effectの処理を受理する | 技術的な結合が減っても顧客体験・運用・資金拘束・照会負担は増え得る。Eventualと書くだけでは期限内解消・補償完遂を保証しない |
+| **S: 受付と確定の時点を変更** | Received/Pendingを許し、Reservationが有資格に成立した後だけConfirmedに移る。Pendingから拒否/取消/期限切れの終端を定義する | 非同期Command/Batchがあっても、Confirm直前の引当失効・期限切れ・ACK-loss・並行二重引当への保護が必要。状態追加はAtomicityの実証ではない |
+
+**適用順は「要件衝突の説明→業務Ownerが変更案を受理→受理済みMeaning/Versionに対して分割候補を再評価→実Target/Effectを検証」**。AIや分割OptimizerがKを勝手にL/Sへ緩和しない。KとL/SはBusiness obligationそのものが違い、Cross-Write Countや単一Pareto Scoreを同条件の構造最適化改善として比較しない。強い要件を維持する候補では、分割を見送ることも適格な結論とする。K/L/Sを新Core enumに固定しない。
+
+### 30.2 ETLのOutput作成と業務Commandへの使用を分類する
+
+| ETL/Batchの使用位置 | 成立し得る限定Claim | 追加で要求すべき境界 |
+| --- | --- | --- |
+| **Read-only集計・過去帳票の生成** | 固定Cutと独立Expectedに相対するPure Result/Artifact | Input Closure、Rule/Time、Partial/Final、Generation一式公開。これだけではOrder/Reservationの業務Commitを起こさない |
+| **注文・在庫の非正本Projection/Catalog更新** | 投影/検索対象だけがR1→R2へ進んだ | Projectionの鮮度・Consumerが利用した世代、現在Disclosure。Projectionの最新値を、確定直前の在庫の権威ある引当証拠へ昇格しない |
+| **Ownerに委譲するCommand/Import** | Owner側Operationへの送信と受信/実Commit/Readbackが別々に観測された | Authority、Source/Request Hash、Operation ID、Expected prior state、Provider Commit/Receipt、現行Grant。越境Direct CUD=0でも、委譲先の実Effect・不変条件は残る |
+| **Restatement・遅着Delta・補償Batch** | 新しいSource Cut/Accepted supersessionに対する再計算結果 | 旧Generation適用拒否、Scope内のRead/Write/Invariant footprint、既受理状態との因果、通知/補償/再送とOwnerの期限。過去G1の配送成功から現行G2の適用を推測しない |
+| **External Trigger/Worker/MFT・不透明Plugin** | 宣言/Selected/Transport ACKなど観測した段階まで | 未追跡のWriter/Trigger、外部Recipientの状態、独立Readback、現行Disclosure。図表に見えない処理を不存在と断定せずunknownで残す |
+
+**論理分割は物理配置ではない**。同一DBを用いる複数論理Subsystemと、別DBの一Subsystemも概念上は区別する。TEIの標準Graph/typed Port・Operation/Provider/既存Pluginから比較し、特定の分散Tx、Saga、Host、専用Workflow/CDCエンジンを先行採用しない。
+
+### 30.3 最小の独立Expected（#3250 SP-N01〜N09と#1130 N/EFへ対応付ける候補）
+
+| 一因子の合成Trace | 確認すべきExpected / 偽成功の拒否 |
+| --- | --- |
+| Confirmed Order Commit → Inventory Reserve不成功。別Subsystemの越境Direct CUDは0 | **Kなら不変条件違反**。構造の越境Writeゼロ・Transportが成功したことから合格にしない |
+| Inventory Reservation成功 → Confirmed Order Commit失敗 | 孤立Reservation・解放/TTLとOwnerを未解決で残す。「順序を逆にすれば無条件安全」としない |
+| Received/PendingをCommit → Reserve成功 → 実状態照会 → Confirmed（S候補） | 当該合成Traceでは確認前のConfirmedを避けられるが、並行更新・Lease/TTL・Target Commitを実証するまで製品安全性はunknown |
+| Pending → Reserve技術Timeout/ACK-loss、Provider Commitは不明 | **unknown Effect**。業務的欠品・確実な予約失敗・二重再送許可に縮約しない。Operation/Receipt/独立Readbackへ |
+| L候補でPendingのまま期限超過し、Cancel/通知/Refundが実行されない | 「失敗を許容する」という宣言だけでは合格しない。業務Ownerが受理した期限・手動復旧・未終端を別に検証 |
+| G1売上集計の作成/公開成功だが、同値を用いて即時Inventory確保済みと表示 | Artifactの公開から現在在庫引当のEffectを推測しない。利用用途に必要なFreshness/Authoritative Ownerを照合 |
+| G2に訂正した後、外部Batchが古いG1でOwner Importを再送 | 期待旧版/Operation/Scopeが不適格なら拒否・照会。配送・計算再実行の成功を業務適用成功にしない（§27/29） |
+| OwnerがK→Lへ要件緩和を**提案**、未受理のまま分割/ETLを選択 | 旧Kへの要求不適合を維持。承認前にAccepted Rule/Batch/Grant/Studioへ自動反映しない |
+| OwnerがLを**正式受理**し、新たな通知/補償義務が増える | 新Meaning/Scope/Source CutでRequired/Selected/Consumed/Effectを再評価。旧K版と新L版の数値Scoreを同一問題として比較しない |
+
+最小反例は、特定の順序・故障・観測範囲についての**設計上のWitness**であり、全分散Targetでの不可能性証明や正式な業務要件受理ではない。複数Sourceの整合Cut（§18/20）、旧GenerationのPublication/Reader/GC（§23/25）、外部EffectのCommitted/Unknown（§27）、実行Graph（§28）を一つの成功判定へ押し込まない。
+
+### 30.4 優先順・Owner境界・検証資格
+
+1. **P0 / #4410**：Pure TSVの最小Go＋CLI二入口と固定Expectedを完了させる。K/L/Sの実業務Command・別DB・Compensationを初期Gateへ追加しない。
+2. **P1 / #3250/#1125/#1127/#267/#2514**：既存SP-N01〜N09のK/L/S合成Trace・業務例外・Source逆引き・未受理をread-only説明として接続。個別の要件衝突に対し最小の問い/不足Evidenceを示し、Ownerが採用した変更だけを新Sourceへ反映。Subsystem候補のAccepted Direct CUDと実Effectは別資格。
+3. **P1 / #1130/#4411/#2542/#1174/#2564**：ETL Import/Command/遅着Correctionについて、必要なAccepted Meaning、Source Cut、Business State/Deadline、Expected prior state、Operation/Receipt/独立Readbackを別観測。Timeout・ACK-loss・partial Applyはunknown/partialのまま照会に戻す。
+4. **P1 / #2593/#2600/#2622/#3279**：R0→R1で業務契約が変更された場合の依存改版・実Read・Full/Selectiveの比較を「同じR1の意味で」実施。見かけ上の同byte・同数値で現在の業務約束を再利用しない。
+5. **P2 / #1124/#4510/#2831**：同じSource由来の問い相対図表にBusiness Promise→Data Invariant→Function/Effect→Batch/Generation→Failure Witness→Owner Decisionを投影。観測範囲外のCommand/秘密情報を欠落ゼロとして可視化せず、実Studio/Builder/Targetで別検証する。
+
+**停止線と現状**：#3250が分割候補/Requirement Pressure/Owner判断先を所有し、#267が正式意味受理、#1174が実Effect、#1130がBatchの縦断受入を所有する。本節は既存Issue/PRの静的照合による**ETL側の要件・停止条件・独立Expectedの引渡し**である。新たなProduct Go/CLI/実PostgreSQL/Command・別Subsystemの実Tx、障害回復、Owner受理、exact-head CIは **NOT RUN / NOT ACCEPTED**。新Core K/L/S型、第二Oracle/Scenario SSOT、分散Tx/Saga Coordinator、必須Hostは追加しない。
+
+## 31. 期間締め・訂正再開とBatch Effect：旧Open資格のABA失効（2026-11-14、設計候補）
+
+**§30との分離**：§30は業務要件としての即時整合K、保留許容L、受付/確定分離Sを選ぶ資格を所有する。本節は要件が受理済みの場合でもなお生じる**Period StateのOpen→Closed→Open、古いRunPlan Precheck、下流のApply/Effect Commit間のTOCTOU**を扱う。§27/29の受理済みSupersession、適用Scope、期待旧版へ**期間観測資格**を加えるだけで、新Period DSL・Generation Core型・Effect Engine/Host/分散Txを作らない。
+
+### 31.1 三つの観測境界（同じPASSへ潰さない）
+
+| 境界 | 分離して確認するもの | それだけでは未証明 |
+| --- | --- | --- |
+| **RunPlan / Admit** | Required Period/Effect Guards、Callerが実際に供給したGuards、観測Period State・Source Revision | Commit時もPeriod Open/Grant有効、Required Guardがすべて渡された |
+| **Period Transition / Durable Readback** | Open→Closing→ClosedまたはClosed→Openの状態・遷移、CloseとCorrectionの宣言Capability、後続の実State Readback | CallerのCapability ID申告＝実Capability実行/業務Receipt、State Fileと下流DBが同Tx |
+| **Apply / Business Effect** | 受理済みOwner・期間・訂正Intent、**現在期間状態と現在性**、現在Grant、期待旧Applied Generation、実Provider Commit/Receipt・独立Resource Read | Reader/RunPlan/Period File/CLI Exitだけで業務上の訂正完了、外部Recipient全員へ到達 |
+
+既存[#2882](https://github.com/hat47x/tei-platform/issues/2882)はWorkspaceのPeriod/Effect RuleからRunPlanへ接続する局所試験を持つ（Period State Map、合成Step/Journal）。**Callerが全Required Guardを渡したこと、外部DB Commit時の期間状態の再検証を証明していない**。このGapは#1130のRequired-vs-Suppliedと実Target受入へ戻す。
+
+### 31.2 Close能力X、Correction能力Y、State変更後Errorを別々に扱う
+
+未統合[Draft #4397](https://github.com/hat47x/tei-platform/pull/4397)は、宣言されたCloseRequires XをOpen→ClosingとClosing→Closedに、Correction YをClosed→Openに分ける。XとYが異なるとき、ReopenにXまで要求するのは過剰であり、Yだけで通常Closeを許すのも誤り。ただし**Capability IDが一致しただけでは実Y Invocation/現在Grant/Owner Acceptanceの証拠にならない**。
+
+未統合[Draft #4389](https://github.com/hat47x/tei-platform/pull/4389)は、実Workspaceで状態File保存後のCheckPeriods拒否によりHandlerがErrorを返し得ることのReadbackを担当。**CLI非0・Handler Error ≠ Period State変更なし**。独立State Read、変更済みStage、下流Effect/Recipientの別観測を要する。両DraftのGo/CLI変更は別OwnerのためこのETL設計PRからは編集しない。
+
+### 31.3 Open→Closed→OpenのABAを見逃さない
+
+固定の合成例としてPeriod Dの観測版を (Open,rev1)→(Closed,rev2)→(Open,rev3) とし、旧Run Aはrev1時点でPlan precheckを通過したとする。**rev1/rev2/rev3は試験用の比較値であり、現TEIのperiodstateにepochが実装済みという意味ではない**。
+
+| 一因子変更・障害 | 手書きExpected |
+| --- | --- |
+| rev1/OpenでRun AをAdmit後、Period Closeがrev2へ | 古いPlan admissibleをCommit資格へ昇格しない。Aの旧G1→G2 Applyは拒否/保留 |
+| 正規のCorrection Yを受理してPeriod rev3/Openへ再開 | OpenというStateだけから旧rev1 Attempt、旧Grant、旧Checkpointを復活させない |
+| rev3/Openにrev1を期待するAが遅着 | State=OpenでもRev ABAのため**拒否**。必要なOwner/Rule Cutで新Attemptを作る |
+| rev3で受理済みの新Attemptが期待G1→G2を適用 | 対象Providerが現在Period/Applied版/Authorityを**同じ更新境界**で保全できる場合だけEffect合格候補 |
+| 再Close rev4後、rev3で準備した旧G2→G3が遅着 | 期間の現在資格不一致で拒否/保留。旧訂正を自動Resumeしない |
+| Period State File更新後に非0 Exit | StateをReadback。Errorだけで無変更、あるいは他Provider Effect確定とは判定しない |
+| 外部Import/DBと期間Fileが別Provider | 一つのSQL UPDATEで二者の原子性を保証できない。実Fence/回復/Ownerが無ければunknown |
+
+**独立合成検算**：Python標準SQLiteの**単一in-memory DB/単一接続**にPeriod(D,state,epoch)と集計Target(A,amount,appliedGeneration)を設け、条件付きUPDATEに現Open/期待epoch/期待AppliedGenerationを含めて実行。初期rev1/G1=800円→Close rev2→旧Apply更新0件→Reopen rev3→旧rev1 Apply更新0件→**新rev3/G1→G2(A640円)更新1件**→再Close rev4→rev3向け旧Apply更新0件を確認した。**これは対象PeriodとTargetが同じDB・Transaction境界に存在するという合成仮定**であり、TEIの現Period File／実PostgreSQL/複数Process／Current Authorityや実Receipt/Owner受理を試験していない。
+
+### 31.4 業務不変条件・実装Ownerへの引継ぎ
+
+- **P0 / #4410**：固定Pure TSVの二入口・独立Expectedを先行。Close/Reopen・Effect Writerを初回のHard Gateにしない。
+- **P1 / #1130・#2882・Draft #4397/#4389**：Required Guard集合とSupplied Guard集合、Close X／Correction Yの遷移、CLI Error後State Readbackを既存テスト/Ownerで実証し、Declared/Observed/実Invocationを分離。重複実装・同一Fixtureの第二正本なし。
+- **P1 / #1174/#2564/#2514**：実ProviderのClose/Apply競合、現行Period版/Applied版、RequestHash/OperationID、Commit ACK-loss/Recorder失敗とReceipt/独立Readbackを対照。期間とEffectが異Providerなら、同一Txの保証を偽称しない。
+- **P1 / #3250/#2542/#2604**：締め済み期間の不変条件と、訂正を拒否する／明示再開する／次期補償とする等の業務Trade-offをOwnerへ提示する。直接越境CUD=0、RunPlan completedは整合性の十分条件ではない。
+- **P2 / #1124/#4510/#4522**：Accepted Period/Revision、Plan/Commit Attempt、実Reader/Effectと未証明Edgeを問い・Disclosureに相対化して投影する。図上にないWriter/秘密情報を不存在としない。
+
+**停止線**：本節は既存Source/Issueの静的照合と単一SQLite DBの局所条件付きUPDATEの検算。新TEI Go/CLI・実PostgreSQL/Period実Provider／二Process、MFT/外部Effect、Current Grant、業務Owner受理、exact-head CIは **NOT RUN / NOT ACCEPTED**。新PeriodRevision Core型、Period/Recovery Engine、Saga/Distributed Tx、Hostの採用は提案しない。
+
+## 32. Checkpointと途中集計の同一Cut：位置だけの再開で二重計上・欠落を起こさない（2026-11-14、設計候補）
+
+**新たに区別するGap**：既存§9.2/#4411はrunKey、Plan/Source/入力digest、出力世代、旧Attemptと新OwnerのFencingを再開資格に含む。§22.4はCheckpoint位置と一式Publicationの非原子性を扱う。本節ではさらに、**同じSource版・同じRunでも、処理済み位置と途中計算状態が違うCutを表していると、純粋なSUMですら誤る**ことを具体化する。新しいCheckpoint Store、Chunk Engine、二つ目のFailure分類、専用Job Schedulerは導入しない。**P0 #4410はまず副作用のない全件再計算を優先**する。
+
+### 32.1 二つの保存順序はいずれも誤集計を作り得る
+
+業務期D、同じ数量単位/JPYで顧客AのR1に含まれるFactを、p1 = 数量2・200円、p2 = 数量3・600円とする（§18.4のA=5個/800円と同じ）。仮にSource pin/Rule/Decimalは固定済み、Filter済み、外部Effectなし、同一Runの未公開内部集計を逐次処理するとする。正しいFinalは数量5/800円。
+
+| Crash位置 / 復旧に残った状態 | 再開がしてしまうこと | 結果 / Expected |
+| --- | --- | --- |
+| **集計状態p1=2/200だけ耐久化**、offsetは0のまま | p1を再読込して加算し、さらにp2も加算 | **7個/1,000円：Duplicate**。Checkpoint位置を信じた再開を拒否 |
+| **offset=p1処理済だけ耐久化**、集計は0/0のまま | p2のみ処理してp1を飛ばす | **3個/600円：Omission**。Checkpoint位置を信じた再開を拒否 |
+| 集計状態2/200とoffset=p1が**同じ処理済みPrefixを表す**有資格の境界 | p2だけ処理 | **5個/800円**。再開を認め得る（他の§9.2条件も必要） |
+| 中途状態を捨て、R1/Ruleを同一pinで先頭から純粋再計算 | p1＋p2を新Attemptで計算 | **5個/800円**。P0の安全な基線（同じSourceを再取得できることが前提） |
+
+**核心**：offsetと集計値を別々に書くなら、先書き順を逆転するだけでは解決しない。たとえばCheckpointへ両者のdigestを並べるだけでも、二つの値が**同じ処理済みSource Prefixの真正な計算結果**であると証明できるわけではない。実Providerによる同一Cutの原子的保存、もしくは実際に照合可能な不変Stage Snapshotへの条件付き参照など、選択したTargetで達成できる方式をOwnerが検証する必要がある。
+
+### 32.2 「同じ処理済みPrefix」を何で限定するか
+
+限定した各Aggregate Stateは、**処理済みSource範囲とGroupの寄与が一対一に対応**し、以下を満たす場合のみ再利用候補となる。
+
+| 資格軸 | 必要な証拠 | 見せかけの一致で不足する点 |
+| --- | --- | --- |
+| **Input/Cut** | Source Identity/Revision、業務Cut、pinされたByte/型、Partition/offset・Range、対象GroupとFact identityの重複・欠落検査 | 行数だけ、同じoffset、同じFile nameでは同一Fact集合を保証しない |
+| **Meaning/Accumulator** | Plan/Function/Rule/Rate/Decimal版、Filter/Convert、Group Key/単位・丸め、集計Operatorの合成可能性 | 純粋SUMの加法性だけでは旧寄与の重複、負値/訂正/DELETEへのretractabilityを保証しない（§21/22） |
+| **Durable Stage Cut** | processedPrefixとAggregate Stateが同一有資格Source Prefixを表す、Stage Memberの内容/digest・保存完了、欠落/破損時の拒否 | Progress Recordだけの成功や、集計Valueだけの一致から整合したCheckpointとは言えない |
+| **Run/Attempt/Fence** | runKey、同じAccepted Meaning、旧Attemptの観測、現在Owner、旧Writerの実効的な書込み拒否、出力Generationの未公開/公開状態 | RunLog resume判定や別Host再起動だけではSource/Race/外部Effectの安全を示さない |
+| **Downstream** | 一式Publication/Reader、業務適用/外部Effectの現在状態を別観測（§23/25/27/31） | 未公開Stageの復旧可能性を、PublishedやConsumer Appliedへ昇格しない |
+
+有限Prefixについての期待等式（比較票であり新Core Claim型ではない）：
+
+  AggregatedState(Cut=k) = Aggregate(Filter(Convert(ExactlyOnce Facts from pinned input [0,k))))
+
+これは**同一入力と意味のもとでの参照計算規則**。ソース変更や業務期訂正後は新Run/Restatementを評価し、単にoffsetが一致するから旧Accumulatorを採用しない。複数Sourceなら整合Vector、Group移動や暗黙Refへの依存があれば必要集合閉包も別資格。AVGならSUMとCOUNTの組、COUNT DISTINCTなら正確な集合条件等、Operator lawを[#2593](https://github.com/hat47x/tei-platform/issues/2593)/[#3279](https://github.com/hat47x/tei-platform/issues/3279)へ渡す。
+
+### 32.3 過大な再開Engineを作らないための復旧判断
+
+- **P0のPure Batch**：入力のpin/版・独立Expectedが固定できるなら、中途Stageを破棄し最初から再計算する。古い途中ファイルを公開領域へ紛れ込ませず、新AttemptのEvidenceを別に持つ。完全再計算したBodyのdigest一致は、再開状態の有資格性とは別。
+- **後続のW7最適化**：Prefix単位Resumeを採るなら、入力Source cut・処理済みRange/Fact重複なし・Accumulator Cut・Rule/Operator・Run/Attempt/Fenceを**一組で検証**。どれか未確認ならResume不適格とし、純粋ならClean Restart、現Source再取得不可なら明示Unknown/Abort。
+- **Output stage/Publication間**：Stage状態保存成功でもReleaseがPublishedとは言えない。逆に公開成功後のCheckpoint失敗で同Generationを二重公開しない。既存#2604の実Member/Reader、#4411/#1174のEffect分離へ戻す。
+- **外部Effectの場合**：内部純粋段階を安全にやり直せても、後続Import/API/Messageを無条件に再送しない。Effect unknownはReceipt Lookup first、Current GrantとOwner判断。実際のOperation/Receiptが異なるなら新しいAttemptに無断付替えない。
+- **障害の判別**：Progressだけ進んだ/Accumulatorだけ進んだ/Stage byte破損/Source改版/旧Writer残留/公開後Crashを**別の独立Expected**で評価し、Source、Stage、Release、Effect、Consumerを一つのsuccessfulにしない。
+
+### 32.4 独立算術検算・受入順
+
+Python標準ライブラリのDecimalを使い、R1の二つのChunk p1=(2,200), p2=(3,600)を固定した。実行したローカル純粋合成検算は、Clean Restart=5/800、**State-first crash→Resume=7/1000**、**Offset-first crash→Resume=3/600**、**Consistent CutからResume=5/800**。Assertionで4条件を照合した。**実Go/TEI Reader、Checkpointer、Filesystem crash/durability、DB Tx、実RunLog/Owner Fencingの試験ではない**。この数値は設計用独立Expectedであり、実装から期待値を生成しない。
+
+1. **P0 #4410 W1/W2/W3/W5**：Source/Rate/Meaning版固定のPure TSVフル処理、二入口の決定的Body/独立Expected、失敗時の公開領域部分Memberなしを優先。Chunk/Resume実装・第二Checkpoint Storeを必須化しない。
+2. **P1 #4411 W6/W7・#2514**：既存N-03/04/05/06に上記二方向Crashの独立Expectedを加え、runlog.Decide/OwnsやStage/Effectの責務を再利用。必要なSource/State Cutが未証明ならResumeを拒否する負例を先行し、実Targetの対応後にClean/Resume結果を比較。
+3. **P1 #2593/#3279/#2622/#2600**：AggregateのCommutativity/Associativity/Contribution identity、Group・単位/丸め、Source Read/Required/Observed、Full vs Selectiveの同一Cutを照合。演算が数学的にmergeableなだけで永続再開が安全とは言わない。
+4. **P1 #2604/#1174/#2564/#2542**：途中Stage、Publication、実Consumer/Import、Commit Unknown・Receiptをそれぞれ別の実Reader/Provider試験へ引渡し、既存Ownerの実装を重複しない。
+5. **P2 #1124/#4510/#4487**：Studio/TEAのData/Control/Effect/Observationへ、Attempt/Source Range/Aggregate Cut・Unknownの証拠だけを相対的に投影。秘密のRow/Reader/Group存在を現在Disclosureなしで表示しない。
+
+**停止線**：本節は合成Decimal演算の反例と静的Source/Issue照合による設計候補。新Go/CLI/実Filesystem Kill・実PG/外部Provider/実Consumer/Current Grant・Owner受理、exact-head CIは **NOT RUN / NOT ACCEPTED**。第二Recovery Runtime/State Store、TEI共通Scheduler/Host、独自DSL、別Oracleを作らない。
+
+## 33. Batch完了と業務解消は別：失敗許容Envelopeの時間・運用容量を検収する（2026-11-14、設計候補）
+
+**他チャットからの差分**：[サブシステム#3250 Failure Acceptance Envelope](https://github.com/hat47x/tei-platform/issues/3250#issuecomment-6870568084) は、K（強い約束）/L（失敗許容）/S（受付と確定の分離）を、**禁じる状態Safety、期限付き進行Progress、回復責任・運用Capacity**に分けた。§30は業務上の約束を選ぶ条件、§31は締め・再開時の旧Run/Period資格失効、§32はCheckpointの処理済み入力Cutと集計状態の一致を扱う。本節は別のGap――**Run Completed/Checkpoint Saved/Generation Publishedが、個々の注文の期限付き解消を意味しない**――を#1130/#4411・#2542・#1174・#2514へ受入項目として渡す。第二の業務SLO正本、Temporal DSL、Scheduler、補償Engineは追加しない。
+
+### 33.1 業務上の約束とBatch実行を別の時点・証拠で保持
+
+| 分離すべき事実 | 既存Source・Observationから必要な証拠 | 禁止する意味昇格 |
+| --- | --- | --- |
+| **Promise / 起算点** | Ownerが受理した業務State、約束の相手/対象、Received・Confirmed・Fulfilledの意味、対象Period/Time basisと現在のSource版 | Batch Run Start/Change Event Timeが顧客向け期限の自動的な起算点 |
+| **Safety** | 禁止状態、注文・引当・在庫全体の制約、Reservation TTLと履行までの有効期間、対象集合の閉包、権威あるOwner側State | 個別Reserve ACK、0件の部分Read、少ない失敗率から全注文が安全 |
+| **Decision milestone** | Pending/ReceivedからT_decide内にConfirmed/Cancelled/Escalated等、契約で許された状態へ到達した実観測 | Escalatedに到達しただけで業務がResolved。期限未受理なのに「期限内成功」 |
+| **Resolution milestone** | Escalated/未処理をT_resolve内に最終解消する義務、Ownerによる適用/通知/返金・手作業完了の実Readback | 外部Import ACK、通知要求送信、Batch Completedで解決済み |
+| **Run / Publication / Downstream** | Attempt・Source Cut/Gap・Checkpoint Cut・Output Generation・独立Consumer Pin/Read・実Effect/Receiptを別観測 | Saved OffsetやPublished Artifactから業務Effect、または全Consumerへ到達済み |
+| **Capacity / Backlog** | 母集団・期間、案件年齢、到着負荷/相関障害、実対応量、営業時間・引継ぎ、担当能力と未観測を区別 | 平均対応率や平均手作業工数からピーク時の期限制約を自動保証 |
+
+期限T_decide/T_resolve、暦・時間帯・停止条件・Promise対象が未受理なら**unknown**。Kでは即時禁止状態を「失敗率予算」に換算しない。L/Sでも許可したPendingが永遠に続くとは解釈せず、Owner受理済みの進行・回復義務を別確認する。Business Error、技術的な確定失敗、**Commit Unknown**を一種類に丸めない。業務Owner未受理のK→L/S案はAccepted Kの適否を変更しない。
+
+直列の処理経路が唯一の解消手段だと仮定する場合、受付からのSource観測遅延、実行待機、計算、配信、Owner適用、必要な確認までの**各上限と合計**を、受理済み期限と比較する。上限未観測、複数Sourceの整合Cut不明、外部Recipient未受領、Clock起点のずれがあれば「期限保証」は不適格。合計が期限内でも障害分岐・Resource容量・対象Universe/現在Grantを検証しなければ、全ケースの保証へ昇格させない。
+
+### 33.2 平均処理能力が足りても期限を守れない有限反例
+
+**独立の合成算術**：各スロット開始時に単位工数1の未解消案件が到着し、スロット内の最大対応Capacityは2件と仮定。期末Backlogは B(next)=max(0,B(now)+Arrivals-Capacity)（案件の個別期限/優先順位はこの式に含めない）。
+
+| スロット | 新しい要対応件数 | 対応能力 | 期末未解消（Expected） |
+| --- | ---: | ---: | ---: |
+| 1 | 1 | 2 | **0** |
+| 2 | 1 | 2 | **0** |
+| 3 | 5 | 2 | **3** |
+| 4 | 1 | 2 | **2** |
+| 5以降（毎回） | 2 | 2 | **2のまま** |
+
+最初の4スロットの平均到着は(1+1+5+1)/4=**2件/スロット**で、対応能力の平均2件に等しい。それでも一度集中到着した未解消2件は、後続の到着=能力なら**消えない**。ゆえに「平均到着数≦平均能力」「全Batch Run成功」「平均手作業工数が少ない」は、個々のAcceptedなT_decide/T_resolveの保証ではない。これは実業務の失敗率、能力、期限を推定した結果ではなく、[#3250 SP-FE06](https://github.com/hat47x/tei-platform/issues/3250#issuecomment-6870568084)に付帯する有限・手計算Expectedである。個々の期限、Escalated後の別Queue、再試行で増える作業、相関障害を評価するには別の実観測が要る。
+
+### 33.3 既存Expectedへの一因子接続
+
+| 一因子の説明用Trace | Expected / 拒否する偽成功 |
+| --- | --- |
+| Received、まだReservationなし、Status=Pending | Accepted PromiseがPendingを許す場合だけSafety違反とせず、**期限付き進行は未証明**（SP-FE01/02） |
+| Run Completed→Published G2、外部RecipientのRead/Applyは未観測 | Pure Batchの局所成功のみ。**Business Resolved / Applied within deadlineはunknown**（§23/28） |
+| Received→Escalated、後続解決は未観測 | EscalationがT_decideの許容到達点なら中間到達の候補。T_resolveをPASSへ丸めない |
+| 予約ACK後にTTL失効→旧ACKでConfirmed | 確定時点にValid ReservationがなければSafety不適格（SP-FE04）。過去成功の現在資格を流用しない |
+| Reserve Timeout/ACK-loss後、Batchが同Operationを盲目的再配送 | **Commit Unknown**、Receipt Lookup first。二重引当/自動取消を安全としない（SP-FE03、#1174/#2564） |
+| 在庫1で2注文の個別Success、全Reservationを未読 | 全体安全性はunknown。全対象でActive Reservationが2と実確認されれば数量不変条件違反（SP-FE05） |
+| Period Open rev1で受付、Closed rev2→Open rev3後に旧Runが再開 | §31の旧Admit/Checkpoint失効。**業務受付の期限起算点を勝手にrev3へリセットしない** |
+| 作業Queueに未解消2件あるが最後のBatchは全件Completed | Run完了と業務解消を別表示し、期限超過/運用能力を別評価（SP-FE06） |
+| 公開対象のPending/未解消件数が0だがRLS/未取得・非開示が残る | 公開質問のUniverse/Disclosure Closureなしに全域「未解消0件」としない（SP-FE07/09） |
+
+**証拠の上限**：有限TraceのSafety違反は検出できるが、短いTraceを通過しただけで全時点Safetyや期限付きLivenessを保証しない。同じAccepted SourceからData（在庫/引当）・Function（Command/Effect）・Business（約束/例外/対応Owner）を関連付け、AudienceのPublic Slice内で先にProjectionを構成する。Privateの未解消件数・故障率・非公開担当を公開カード・順位・件数・digest・AI文脈で漏らさない。
+
+### 33.4 受入順・実装責務・停止線
+
+1. **P0 / #4410**：最初の副作用なしTSV二入口、独立Expected、失敗時の未公開を優先。業務Deadlineや補償Runnerを初回Hard Gateに追加しない。
+2. **P1 / #3250 SP-FE01〜09・#1125・#2514**：既存K/L/Sの小さなread-only合成Caseに、Safety/Decision milestone/Resolution milestone/Capacityを別列で付帯。T_decide/T_resolveはOwner受理前はunknownとし、仮の数値は合成例としてのみ扱う。新Fixture/Scenario正本なし。
+3. **P1 / #1130/#4411/#2542/#1174/#2564**：Run Completed→Generation Published→Recipient Read→Owner Applied→業務解消の**次の未証明一辺**だけを順に実証。Commit Unknownや外部Recipient/Current Authorityを別Attemptの独立Readbackで検証する。
+4. **P1 / #4397/#4389、§31**：Period Open→Closed→Openの旧Run無効化と、再開後のPending年齢/期限・Applied版を別々に照合。Period State再開で受理済み業務期限が自動再設定されると扱わない。
+5. **P2 / #2600/#1124/#4510/#4522/#2831**：Studio/TEAは問い相対のSafety/進行/未証明・非公開境界を投影。Self-buildのStage1/Stage2成功から実業務解消を推論しない。
+
+**停止線**：#3250が要件の選択と失敗許容の判断資料、#267が正式意味受理、#1174が実Effect、#1130がBatch実証を所有。本節の資格は**既存Issue/PR静的照合と有限Backlog算術だけ**。新TEI Go/CLI/実PG/Runtime/Recipient/運用能力・障害回復の実測、業務Ownerの期限/予算受理、Current Grant、exact-head CIは **NOT RUN / NOT ACCEPTED**。新Core時刻型/Temporal DSL/Recovery/SLO Engine、第二Oracle/Receipt Store、必須Hostなし。
