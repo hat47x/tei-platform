@@ -199,3 +199,74 @@ GUIのfocus移動、同名Node、A→B→A、Plugin版更新、Grant失効、SHO
 
 次の実装PRでは、一つの正例と最も危険な負例を**同じ入力系・同じHEAD**で示す。検証が欠けた辺のOwnerへ局所的に戻し、追加の汎用Framework・独立Expected正本・Second Hostを要求しない。
 
+## 14. BRMSの強みを、既存Rule/Function/Pluginへ取り込む
+
+標準Data/Relation/Temporal/Expression/RuleとFunction Data ContextからTargetコードを生成する原則は変えない。TEIにとってBRMSから学ぶ価値が高いのは、独立した常駐Rule Engineではなく、**業務上の判断を読みやすく定義し、衝突を検出し、どの版・入力・根拠で判断したか説明し、改訂の影響を検証する契約**である。Ruleだけで権限やCommitを確定しない。既存#2621/#4370（Authoring）、#1126（意味）、#2506（Context）、#988（Operator/DSL）、#951（Plugin）、#2514（独立Expected）、#2600（変更再検証）へ割り当てる。
+
+### 14.1 追加する意味上の要求
+
+| 取り入れる要素 | TEIでの扱い | 採用前に避けること |
+| --- | --- | --- |
+| Decision Table | Markdown表等の明示Roleから、既存Rule/Expression/Resultの組合せへ対応。行ID・適用対象・入力・結果・Source spanを保持 | 全Markdown表を自動で実行する、新たなRule専用言語を標準として固定 |
+| 適用時点と有効範囲 | Domainの有効区間、判断に使うSnapshot/Context epoch、実行Attemptを別に記録。業務時刻とビルド時刻は混ぜない | 現在時刻だけで過去の判断を再解釈する |
+| 重複・衝突・優先順位 | 重なり、欠落した場合分け、相反する結果を検出。優先順位・first-match等は**業務側で明示受理されたときだけ**選択する | 暗黙の表行順・Plugin登録順・最も厳しい値を競合解決規則にする |
+| 判断理由 | 適用Rule ID・版・入力Coverage・成立/不成立/不明・採用した結果を型付きResult/診断へ付す。開示範囲は用途/Grantに従う | 説明のために非公開入力や私的な組織情報を漏らす |
+| 改訂の検証 | 同じ入力を旧新Ruleと生成Targetへ適用し、結果差・対象外・未観測を明記。影響するFunction/Consumerのみに再検査を試みる | ルール変更を表示変更と同一視、過去のPASSを現在資格に流用 |
+| Ruleの配布・切替 | 原則は生成コード/Artifactの版付き配布。実行時切替が必要な場合のみ、既存Plugin選択/Host資格/Artifact版とセットで別途実証 | 無審査の動的Rule hot reloadや第二Rule Hostの導入 |
+
+Ruleの評価値は少なくとも「成立」「不成立」「入力不足等により未確定」「未評価」を区別する。実Readのpartial、SQL NULL、観測されないRelationを一律falseにしない。Validation、導出値、Decision、表示条件、副作用に関わるOperationは評価対象と実効果を別にする。既存のState/Capability契約とHostが実行権限・Commitの判定主体である。
+
+### 14.2 最初のRule Pressureと独立Expectedの引渡し
+
+下表は**試験案**であり正式DSL構文・採用済み業務規則ではない。Fixtureを決める際は、例示する金額・時点ではなく明示したRule IDと期待結果を#1180/#2514で独立に確定する。
+
+| 対照 | 入力の変化 | 期待する受入条件 |
+| --- | --- | --- |
+| BR-01 正常な単一適用 | 適用条件と有効期間が一致する一Rule | 実生成Go/実Providerの判断、Rule ID・版・Contextを同じAttemptで照合 |
+| BR-02 条件が重なる | 相反する二Ruleが同じSubject/時点に適用 | 暗黙の行順で選ばず、未受理の優先方針は競合診断 |
+| BR-03 条件に空隙 | どの行にも当てはまらず、既定判断が未定義 | 許可/拒否を捏造せず、未定義として報告 |
+| BR-04 部分取得・NULL | 必要Relationが未取得、またはNULL | 不成立と未確定を区別し、最終判断への過大な昇格を防ぐ |
+| BR-05 有効時点の切替 | 同じ入力で、業務適用日時だけ境界前後に移す | Source版・Rule適用時点・観測時点を区別。旧判断の説明は残す |
+| BR-06 Rule改訂と再生成 | Rule表の一条件のみ変える。表示配置は変更しない | 変更前後のTarget実判定差を独立Expectedで比較。無関係な生成物の再Buildを当然視しない |
+| BR-07 理由の開示 | 同じ判定だがConsumerのGrantが異なる | 判定と説明の公開範囲を分離し、Rule traceから保護入力を漏らさない |
+
+Ruleを説明できることと、Rule Engineを新設することは同じではない。実行時にRuleを交換する必要性は**二つの改訂を異なる配布版で試し、停止・再実行・Rollback・Host許可を観測した後**に判断する。その前に汎用動的評価器をP0の必須要件へ追加しない。
+
+## 15. 外部の業務資料からTEIモデルへの入力経路
+
+設計入力はMarkdown/DSLだけではない。三要素分析法にもとづくホワイトボード写真、会議文字起こし、CSV/Excel実データ、帳票サンプル、既存画面は**異なる種類の観測資料**として扱う。生成AIが抽出した図面・関係・規則は、出典付きの候補であって確定したデータモデル・機能モデル・業務モデルではない。SUIの探索的な配置、SHOの説明・引用、TEIの受理済み意味を混線させない。
+
+| 入力経路 | 最小の出典位置と注意点 | 最初に生成する候補 |
+| --- | --- | --- |
+| ホワイトボード写真・手描き図 | 元画像/撮影時点、切出し領域、文字・矢印の不確かさ。同名図形を同一IDと仮定しない | Data/Function/Businessモデルの構造候補、未確定のRelation/担当 |
+| 会議音声・文字起こし | 録音または転記Source、発言時刻、発言者の同定資格、否定/仮定/将来計画の区別 | 用語・業務契機・条件・例外・対立する発言の候補 |
+| CSV/Excel実データ | ファイル版、CSV行/列またはSheet/Cell/Range、Schema/NULL/集計粒度/抽出Scope | Entity・Key・Relation・制約の仮説。列名を業務意味として無条件採用しない |
+| 帳票・帳票サンプル | 文書版、ページ、項目位置、明細/集計/表示専用の別 | 表示と出力要件、Function Data Contextおよび出力項目の候補 |
+| 既存画面・操作記録 | 画面版・画面要素・選択状態・操作の実観測。見た目と保存結果を分離 | Function・UI Pattern・Operation Intent・表示条件の候補 |
+
+いずれも **原Source→実際に観測/抽出した要素→AIの推定と根拠→人間のReview/Owner受理→TEIの意味ID/Source locator→生成・実行** の順に照合する。複数資料で同じ名前が現れても、同一業務Entityや時点、権限の一致を自動認定しない。X-TEA Modelerに由来するデータ・機能・業務モデルの図法と、TEI側で拡張するGraph/CRUD/時点の区別も維持する。
+
+最初の**P1受入候補**は一つの受注業務を対象に「手描き業務図の写真」と「CSV/Excelの表」を二経路で比較すること。資料が未提供ならテストを実行したことにはしない。独立Expectedは、(a)同名別ID、(b)曖昧な矢印、(c)図とデータで異なる粒度、(d)画像の未読領域、(e)一方の資料にしかない要素、(f)人的確認後のSource逆参照を含める。会議・帳票・画面は各Source locator/Scopeの契約を固定してから個別に拡張する。Ownerは#1124（三要素Modeler）、#2621（Authoring）、#267（AI候補/受理境界）、#3394（既存資産逆解析）、#2497（意味保存）、#2514（Expected）。既存のSource/Evidence機構を使い、新規一元取込サービスやモデル正本は前提としない。
+
+## 16. KaTeX数式の役割：表示と計算意味の切分け
+
+KaTeXはTEI Studio/SHO等で数式を読みやすく見せる**表現手段の候補**。数式の意味、量・単位・精度、NULL/未観測、計算対象・有効時点、Operator契約、Targetの例外処理をKaTeXの表示文字列から推定しない。表示の一致は計算意味や原Sourceのbyte一致を証明しない（#4353 RSP-05）。
+
+- Markdown中の式はまずSource byte/occurrence、式領域のRole、参照マクロの定義/版を保持する。説明用の数式を無条件で実行しない（#4370/#2621）。
+- 意味として採用する場合だけ、既存のExpression/Rule/Operator、Function Data Context、単位・精度・適用時点に束縛する（#988/#2495/#2506）。不明なシンボルや単位をAIが埋めた場合は候補として停止する。
+- Target Go/SQLなどのコード生成、実計算、独立Expected、表示を**別々の観測**にする。除数0、異なる単位、欠損値、丸め境界、適用時点違いを負例にする。
+- P1はまず同一式の「原文→意味束縛→表示」とその逆参照をheadless/read-onlyで照合。P2で生成Targetの実結果とStudio/SHO表示を比較する。編集可能DOCX出力やヘッドレス描画方式、複雑式の自動意味推定は現段階で採用しない。
+
+担当は#4370/#2621（Authoring/Source）、#4350/#4353（表現型とContext束縛）、#2497（意味保存）、#2514（独立Expected）に置く。専用数式DB、第二の式実行Engine、P0への新しいHard Dependencyを設けない。
+
+## 17. 実装順と受入状況の上限
+
+| 段階 | この追補で追加する最小作業 | 完了と判断する証拠 |
+| --- | --- | --- |
+| 既存P0（優先順は不変） | Studio Stage1→Stage2、通常tei実Read二Consumer、Graph/Ruleの小さな実Go生成 | 元Ownerのexact HEAD・実Consumer・独立Expected。§14〜16の新能力は待たない |
+| P1-R 規則の説明と衝突診断 | 一つのRule表を明示Roleから読み、BR-01〜04をRule/Contextに束縛して実生成判定まで比較 | ID・Source span・重複/未確定・実Target結果の一致。表の存在だけを意味受理にしない |
+| P1-I 設計資料の候補化 | 写真とCSV/Excelから一つのモデルについて候補を抽出し、曖昧性とSource位置を保持 | 実SourceとReview→受理版の差分。入力Channel別の未観測を隠さない |
+| P1-M 数式の意味束縛 | 数式Source/Role→Expression/Context→表示と診断を照合 | 単位/NULL/Source位置/マクロ依存を保持。表示のみでRule実装成功としない |
+| P2 Rule改訂・表現横断 | BR-05〜07、Target/Consumer間の判断・理由・再生成・開示の一致 | Release/Host/Policy適格性と実観測を分離し、旧証拠を新実行資格に流用しない |
+
+これらは**設計とOwnerへの受入提案**であり、新たな実PG/Go/Studio/SHO/AI入力処理やKaTeXレンダリングの実行・合格を主張しない。現行の完成判断は#1119、#2831/#4583、#2586/#1251、#1180/#2514が引き続き優先する。
