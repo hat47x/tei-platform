@@ -1709,9 +1709,9 @@ Studio/SHOは、同じSource位置・時点・判断理由・欠測の区別を�
 
 ### 35.1 「二時点Queryが書ける」と「同じ所属の改訂版を保存できる」は別の達成
 
-組織の合成例 `org-synthetic-r7` は、同じ有効時点について認識時点を変えるとMembership数・FTEが変わること、P2が複数の所属経路を持つことを独立Expectedとして示す。しかし、**保存する行の同一性と版の同一性はまだ製品で解決されていない**。既存の[履歴GAP特性試験Draft #4633](https://github.com/hat47x/tei-platform/pull/4633)は、現在のMembershipがPersonへの正式Linkを欠くこと、物理Persistenceの単独 `membership_id` 主キーでは同一所属の訂正前後を共存させられないこと、現行Queryの結果だけでdistinct Personを確定できないことを検査する。これは問題の**検出**であり、解決済みとの主張ではない。
+組織の合成例 `org-synthetic-r7` は、同じ有効時点について認識時点を変えるとMembership数・FTEが変わること、P2が複数の所属経路を持つことを独立Expectedとして示す。しかし、**保存する行の同一性と版の同一性はまだ製品で解決されていない**。既存の[履歴GAP特性試験 #4633](https://github.com/hat47x/tei-platform/pull/4633)は、現在のMembershipがPersonへの正式Linkを欠くこと、物理Persistenceの単独 `membership_id` 主キーでは同一所属の訂正前後を共存させられないこと、現行Queryの結果だけでdistinct Personを確定できないことを検査する。これは問題の**検出**であり、解決済みとの主張ではない。
 
-[二時点Query・物理Mapping修正Draft #4567](https://github.com/hat47x/tei-platform/pull/4567)は、物理表 `public.org_memberships`、有効時点・認識時点の半開区間、`valid_to` / `known_to` の対応を試す。使い捨てPostgreSQLでのopt-in試験も用意しているが、Draftの局所的なSQL実行が通っても、同じMembership occurrenceの複数認識版が保存できたことや、Personと結び付いた人数・FTEの計算の正しさは保証しない。#4566と#4567を独立した二つの正本として採用しない。
+[二時点Query・物理Mapping修正 #4567](https://github.com/hat47x/tei-platform/pull/4567)は、物理表 `public.org_memberships`、有効時点・認識時点の半開区間、`valid_to` / `known_to` の対応を試す。使い捨てPostgreSQLでのopt-in試験も用意しているが、局所的なSQL実行が通っても、同じMembership occurrenceの複数認識版が保存できたことや、Personと結び付いた人数・FTEの計算の正しさは保証しない。#4566と#4567はmainへ統合済みだが、独立した二つの正本として採用しない。
 
 ### 35.2 三つの意味判断を先にOwnerへ返す
 
@@ -1739,6 +1739,29 @@ MVRは既存#1180/#2514および#4490のBEHに渡す**試験観点**であり、
 
 最初に#2386/#1126で関係と版識別を受理し、#4633のGAP検査を「存在しないことを確認する試験」から「採用された関係・保存・再読取が成立する試験」へ置き換える。続いて#4567のQuery/Mappingと使い捨てDB実行を現在のmain上で再検証し、実Provider→Function Context→独立Consumer（#2586/#4495）と二Relationの同一Read Cohort（#4490）へ接続する。型付きRuleと実Go生成・実Builderの接続は正式Reader Owner（#2621/#988/#1121/#4544）へ渡す。
 
-[組織候補Go後継PR #4796](https://github.com/hat47x/tei-platform/pull/4796)は、合成二Contextの正のPath・partial・NULLを調べる試験として別扱いにする。対象HEADの全体健全性は整形不一致と旧main上の文書検査で失敗しており、**現行mainへの前方移植、整形修正、exact HEADの再検証が済むまでコードをマージしない**。#4633/#4567についてもDraftを事実上のmain実装と扱わない。
+[組織候補Go後継PR #4796](https://github.com/hat47x/tei-platform/pull/4796)はmainへ統合済み。合成二Contextの正のPath・partial・NULLを検査する回帰であって、実Provider Read Cohortや承認適格者の確定ではない。過去HEADの整形・全体健全性失敗を消さず、当該コードの現在資格は統合時のHEADと独立CIで別途判断する。#4633/#4567は既にmainへ統合済み。ただしGAP特性試験と局所的な物理Query試験であり、人物Linkや旧新版共存の実装・受理を証明するものではない。
 
 **優先順位と限界**：通常`tei` CLIの初回実Read #2586とStudio Stage1→Stage2 #2831は独立P0として維持する。§35は未解決の意味・物理保存・受入経路を収束させる計画であり、今ここで新しいDB版保存、実組織Provider E2E、正式業務Rule、Host Grant、Owner Acceptanceを実装・受理したものではない。
+
+<!-- org-c1-asof-input-contract-20261115 -->
+## 36. 二時点Queryの入力名と実SQLの参照を一致させる（2026-11-15）
+
+### 36.1 合成試験で見逃した実際の不一致
+組織の`as_of_membership.tei`は`input valid_at`と`input known_at`を宣言している一方、main上のSQLは`:valid_from`と`:known_from`を参照していた。さらに、物理Queryテストと使い捨てPostgreSQLテストは旧名の引数を与えており、構造試験は新名を期待していた。**同じ製品入口を検査するテスト同士が、異なる入力契約を正としていた**。実行経路の結果が合って見えても、宣言と実呼出しの不一致を見逃す構造だった。
+
+修正対象を**宣言済みの評価時点名**にそろえる。データ列`valid_from`・`known_from`は「区間の開始」、引数`valid_at`・`known_at`は「いつの値を求めるか」であり、同じ名称へ潰さない。半開区間の判定は `from <= at AND (to IS NULL OR at < to)` を維持する。Datasource、SQL Dialect、物理テーブル、Result Mapping、業務上のMembership IDは変更しない。
+
+### 36.2 三つの独立対照と失敗の扱い
+
+| 検証対象 | 期待する事実 | なお証明しないもの |
+| --- | --- | --- |
+| **宣言・SQL照合** | `valid_at/known_at/allocation_min`がQuery入力とSQL Placeholderで一致。旧名を引数として渡すことを拒否 | Person Link、旧新版の履歴共存 |
+| **実Query Binder・Result Mapping** | 同じ入力を実バインダへ渡し、引数の取り違え・未宣言入力・別DBを拒否。列順に依存せず結果を解釈 | 実DBの内容・Snapshot/Coverageの完全性 |
+| **隔離PostgreSQL Read** | valid/known両境界とNULL上端を、独立Expectedで評価。Skipは実Read PASSとしない | 同一Membershipの複数版保存・二Relation同一Read Cohort・現在Grant |
+
+CLI・Studio・生成Goから再利用する際も、**単一の受理済みSourceにあるQuery Inputを契約の正本**とし、呼出し元が任意のAliasを追加して互換とみなさない。Sourceの列名変更とInput名変更は別の変更であり、Consumerとテストを追随させずに旧Evidenceを再使用しない。
+
+### 36.3 実装範囲と次の停止線
+今回のコード修正は、既存`*.tei` Queryと既存Go回帰の引数を一致させる**限定的な製品修正**である。§35の意味Owner選択（Membership→Person）と版識別・同一Occurrenceの実DB二版保存は依然未完了。#2586の通常CLI実Provider受領、#4490の二Relation同一Cohort、#2621/#988の正式`*.tei.md` Reader→Rule生成Go、#2831のStudio Stage2を自動達成したとしない。独立Expectedは既存#1180/#2514を利用し、新Query Engine、Alias Registry、第二テスト正本を作らない。
+
+**実装の合格条件**：修正後の固定HEADでGo構造試験・実バインダ試験・使い捨てPostgreSQL opt-in試験の実行結果を分けて報告する。Go静的検査や一般のRepository Health成功だけで後者をPASSとしない。使い捨てDBを用意できなければDB実証は未実施と記す。
