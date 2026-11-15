@@ -3431,3 +3431,50 @@ Visual Studio/.NETのSource／Designer／Resource／Generated Source分離から
 **実装順**：第一Packetは既存Rule比較試験からSubject／入力／PとGの論理Read・実観測を一問の表へ集約し、SD-53-02の選択と実使用不一致を負例にする。第二Packetは#5097の自己記述Data Fixtureが独立CIで受理された後にだけ、そこで記述されたShapeとpositiveのRequired Shapeを比較する。required=noをRelation禁止と見なさず、生成された検査一義務で実際の手書き分岐を削除して初めてM2へ進む。第三Packetは既存R2-P／R3とStudio Stage1→Stage2の別P0を結ぶ。
 
 独立Expectedは#1180／#2514、Source/Languageは#988／#2621、Rule／Generatorは#1121／#4544、Port／Pluginは#951／#1223、実Builderは#2595、実Providerは#4495、UI編集は#2497／#1124、Windows Stage2は#2831／#4583へ渡す。**今回の状態は設計・引継ぎのみ**。新しい実経路検査、M1/M2実置換、型付きPort Runtime、正式R2-P全閉包、実Provider、Stage2再帰実行をこの文書追記で完成としない。
+
+<!-- tei-self-description-symbol-independent-obligation-witness-20261115 -->
+## 54. 2026-11-15 生成関数名が変わっても、自己記述した義務の同一性を保つ
+
+### 54.1 設計上の識別子と、Target上の呼出し名を分けて実測する
+
+第53節では、テストの対象をGoのメソッド名ではなく、Subject・実装義務・前提・抽象経路・状態不変条件・独立Expectedで特定する方針を定めた。これを既存の製品Readerと生成Go Binaryで反証可能にする。対象は `organization.transfer_request.allocation_positive`、元Sourceは印付きData項目定義表と隣接Ruleを含む `tei.authoring/v1` の同一Workspaceである。
+
+現在のmainの `TestMarkedDataTableRuleRealGoAndEvaluatorReadParity`（PR #5118）は、型付きRuleをP（既存Evaluator）とG（生成Go Binary）で評価し、結果だけでなく実Read先・回数を照合している。また、生成Goが別Attributeを読んで**結果だけ同じになる反例**も既にある。今回の差分は、この試験にもう一つ、**生成Goの関数名だけを変更する正例**を加える。元Rule IDと判断、対象Attribute、Read一回、入力と独立Expectedは一切変更しない。
+
+| Go側の実現 | 意図した違い | 独立に確かめること |
+| --- | --- | --- |
+| `EvaluateSelected` | 現行Generatorの出力 | 選択済みRule、対象Attributeへの一回のRead、入力別の結果・エラー |
+| `EvaluateRenamed` | Targetの関数名だけ異なる | Ruleの意味ID・Read先・結果は同じ。関数名変更だけで新しいRuleにしない |
+| `EvaluateMisbound` | 関数名とRead先が異なる | 入力値と結果が一致しても、異なるAttributeを読んだ実装は不適合 |
+
+同じ六入力（正値・ゼロ・負値・負のゼロ・NULL・未取得）を別Processの実Binaryに与える。独立Expectedの下で三つの実現それぞれの結果／Error／Read先／回数を記録する。ただし、この試験は**手書きのTest Driverが三つのGo関数を明示的に呼び分ける**ものであり、製品がP/G/Dを選択するRuntime機構や自動的な実経路Traceを実装したわけではない。関数名を変えた際に実Entryを正しく結線し直すことは依然として必要で、呼出し名を実行上不要とする趣旨ではない。
+
+### 54.2 「同じ意味」を、観測同値・出典同値・利用資格に分ける
+
+| 検収軸 | 今回の局所試験が直接示すもの | 別に確かめる必要があるもの |
+| --- | --- | --- |
+| **意味上の対象** | 元Rule ID／Source occurrence、型付きAttribute、同じLaw | 別Source・別業務Contextの同名Ruleを同一Subjectとしない |
+| **観測された振舞い** | Result・Error・一回のNumber ReadとそのID。名前だけ変更した正例／誤Read負例 | 物理DB Read、取得完全性、複数Provider・Effectを含む経路 |
+| **生成とビルド** | テスト用Go packageを実コンパイルし、三関数を同じ別Processで実行 | 選択済みBuilder・正式Build Intent・Artifactを一Attemptで閉じたR2-P |
+| **現在の資格** | 同条件の独立Expectedに照らした局所的な判断 | Reader／Generator版、実装選択、Source Revision、Owner受理、現在Grant、公開適格性 |
+
+PR #5056の生成Go配置前byte不一致拒否に加え、PR #5109がmainに取り込んだのは、**BuildPlan解決後に生成Goのbyteが変更されたら、通常の `tei self-build` が旧Planでの構築を拒否し、Artifactを残さない**という別の反例である。生成関数名が変わっても判断が同じという今回の局所正例は、同じBinaryやArtifactを流用してよいという許可にはならない。Target名の変更はGoの生成byteを変えるため、Build側のSource／Artifact資格は別に再照合する。
+
+こうして「意味の同一性」「実Readの同一性」「Builderが消費したbyteの同一性」「現在使える資格」は互いに独立した検収対象とする。メソッド名や生成ファイル名はTarget上のLocatorであり、意味IDや独立Expectedの正本にはしない。
+
+### 54.3 次の自己記述M1／M2へ持ち込む具体的な境界
+
+自己記述したValidation宣言のData表は、Rule ID・Kind・Attribute IDなど**定義情報の形**を表す。表を読めても、`positive`の禁止Relation、厳密な0超過、評価不能と不合格の区別までは自動検査されない。特に `relationId` の `required=no` は「指定不要」であり「指定禁止」ではない。
+
+まず、(a) 現行 `GeneratePositive` の独立Shape基線、(b) TEIで読んだ定義情報、(c) 実Readerが選択した型付きRuleを、**どの義務が記述可能／未表現／未検査なのか**で対応付ける。次に一つの義務について、Data／Rule／Facetなど既存の意味モデルを用いた検査器を実生成・実呼出しし、旧Goの重複分岐を製品経路から削除する。生成ファイルを作っただけ、あるいは試験Driver内だけで評価しただけではM2としない。初回の自己記述FixtureとGo回帰はPR #5097で別途審査中であり、本節では受理済みの製品機能として数えない。
+
+他チャットの「抽象経路を所定の状態のまま通るか」という検査には、今回の三関数の観測を**局所的なP/G経路の実証部品**として渡す。実現方式の選択と実Callの不一致（SD-53-02）、Owner承認済みのLaw、実Provider、Studio Stage1→Stage2は、証拠が揃った段階で独立した実装Packetとする。選択機構をテストのためだけに第二Runtimeとして作らない。
+
+### 54.4 今回の完了条件と作業引渡し
+
+1. **このPRのGo回帰**：実際に生成したGoの関数名変更だけでは同じRuleのResult／Readが変わらず、誤Readした別実装は結果が同じでも区別できること。Focused Go／exact HEAD CIで検証する。
+2. **M1→M2**：PR #5097のReader回帰は独立して確定させ、現行positive Shape基線と照合。既存Meaningから検査一義務を実生成し、実使用・旧Go一分岐削除まで進める。最優先の実装Ownerは#2620／#1121／#1180／#2514。
+3. **R2-P／実装選択**：#5109のPlan後Source変更拒否を足場に、Reader／Generatorの選択・Source現行性を正式Builderの実入力まで接続する。Operatorの旧生成Scenario Command失効は並行PR #5114のexact HEADで別検収し、本PRで重複実装しない。
+4. **製品出口**：通常CLI→実Providerの選択・呼出しと、TEI自身が生成したStudio Stage1からのStage2 Windows再構築は、いずれも独立したP0を維持する。
+
+**この変更の上限**：既存試験への局所的なGo正例の追加と、自己記述への受入境界の反映。正式なRuntime実現方式選択、Targetをまたぐ一般的な意味同値、M1／M2手書き実装置換、R2-P全出典閉包、R3実Provider、Stage2再帰セルフビルドを実証したものではない。
