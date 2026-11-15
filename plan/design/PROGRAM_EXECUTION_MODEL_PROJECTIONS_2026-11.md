@@ -1255,3 +1255,33 @@ flowchart LR
 Ruleが型付きMeaningへ変換されたことと、そのRuleが**実際の入力集合で評価されたこと**を分離する。Unique判定に必要なRule集合の選択と入力の取得完全性は別の根拠であり、Ruleが一件だけ見えたことを「競合なし」の全称根拠にしない（#988/#2514）。次のProduct PRでは同じSource/Subjectの定義・実Reader・独立Expected・実Provider/Consumerを段階接合する。S-LOC-0の純粋PresenterもこのGo結果を実Host Replyとして受け取るまでは製品S-LOC表示の成立とはいえない。
 
 **現状の停止線**：内蔵Rule Readerは限定実装であり、Graph/Windowの製品Reader、外部Language Pluginのexact Lock→実Load、生成Go Plugin/通常CLI実Provider、現在Grant/Disclosure、実Windows WebView2およびStage1→Stage2の資格は別に確認する。このPRが追加するのはGo回帰と既存計画への引渡しである。テスト合格、Owner意味受理、業務実行E2Eは**当該HEADの実Runで確認されるまで未認定**とする。新しいHost・Registry・Runner・Source Store・第二のExpected正本は設けない。
+
+### 63.4 選択済みRuleの実評価と「読んだ入力」を分けて照合する（2026-11-15）
+
+§63.3の製品内蔵Readerは、選択した`*.tei.md`から`semantic.Validation`へ到達し、元Sourceに戻る**定義の証拠**を与える。次に必要なのは、作られた意味モデルを説明するだけでなく、そのRuleが**具体的にどの入力を要求したか**を実Evaluatorの呼出しで確認することである。Graph/RuleのSource位置が分かったことと、実際に検証用Inputを取得し判断したことを混同しない。
+
+追加する`TestSelectedMarkdownRulesDriveEvaluatorReadFootprint`（`internal/operations/selected_rule_markdown_evaluator_read_footprint_test.go`）は、実`workspace.Load`の明示Language選択と、`BuildSourceIndexFromLoad`→`InspectionFromLoad`が返す正規化済みRuleを使い、既存`validationeval.Evaluate`を呼び出す。**RuleのID/Kind/Attribute/Relation、入力値、Expected結果、実際に要求されるSourceの呼出し**を、テスト側でそれぞれ固定する。Inspectorの出力からExpectedを再生成しない。
+
+| 評価対象 | 合格・不成立・エラーの検査 | 実際のRead Footprint |
+| --- | --- | --- |
+| 数量が正 | 2は`satisfied`、0は`not-satisfied` | `Number(sales.order_line.quantity)`を一度 |
+| 数量のNULL／未取得 | いずれも評価エラー。`not-satisfied`に変換しない | 同じAttributeの`Number`呼出し一度 |
+| 明細番号の一意性 | 観測した完全な合成集合`[1,2]`は`satisfied`、`[1,1]`は`not-satisfied` | `RelationKeys(sales.order.lines, sales.order_line.line_number)`を一度 |
+| 空集合／取得範囲不明 | 完全と明示した空集合だけ`satisfied`。未取得の集合は評価エラー | 同じRelationとAttributeの組を一度 |
+
+この段階での`validationeval.Source`は**要求した対象以外のReadを拒否し、取得範囲の完全性をテスト側で明示する合成入力**である。実Database/Driver/Providerを読んだわけではなく、現行Evaluator自身が一般にRead Coverageを検証できることも証明していない。入力取得の資格、NULL/欠損の実Binder表現、適用したRule集合の完全性、業務上の適用時点、公開Entryとその実Go Provider、書込みEffect／Receiptは、それぞれ既存#988/#1180/#2514/#4495で別検収する。
+
+```mermaid
+flowchart LR
+  A["Manifestで選択したRule Markdown"] --> B["実Workspace.Load"]
+  B --> C["Canonical semantic.Validation"]
+  C --> D["既存Evaluatorを実呼出し"]
+  X["固定Expected／厳密な合成Source"] --> D
+  D --> E["Result・error／Read Footprint"]
+  E --> F["業務結果・取得不能を区別"]
+  F -. "Provider/DB/Effect証拠ではない" .-> G["実Provider・通常CLI・製品Consumer"]
+```
+
+この回帰は、提案B「`tei`記述をGoへ委譲しただけ」の検証の一段階であり、TEIから判断ロジックを生成して実Builder/Artifactを使う方式Cや、実Provider呼出しの検証を代替しない。以降は固定したRule・Source・Expectedを維持して、生成結果の同値だけでなく**入力読取要求と実Consumerが使ったArtifact／Providerの一致**を比較する。Studio S-LOC／Pin／正規BundleとWindows Stage1→Stage2は独立P0のままとし、新しいRuntime、Evaluator、万能Read Coverage Store、Gateは導入しない。
+
+**検証上の注意**：前回PR #4891のCache CIは`success`、Repository Healthは確認時点で`in_progress`であり、RuleのGo回帰単体が合格したと判断する根拠にはならない。本節の追加試験も、当該PR exact HEADの実Go test結果を確認して初めて合格とする。
