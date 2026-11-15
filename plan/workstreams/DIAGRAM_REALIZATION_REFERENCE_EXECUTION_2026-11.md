@@ -57,6 +57,26 @@
 
 DRI-0の直後に**DRI-G0**を行う。ここで「Iで充分／Gに適格／Hが適格／委譲が必要／unsupported」を記録し、DRI-1の選択票へ渡す。DRI-G0で閉じない題材は生成器の追加開発ではなく、設計の属性発見であるDRI-2または既存Ownerへ差し戻す。閉じた題材だけDRI-3のHook契約、DRI-4の実Builderへ進める。DRI-5のStudioセルフビルドは引き続き独立の優先経路とする。
 
+## Source／Designer／Resource／生成物の実体を照合する
+
+設計文書の[§13：ファイル役割・Build工程・Hookの分離](../design/DIAGRAM_TO_REALIZATION_STRATEGY_AND_HOOKS_2026-11.md#13-source・designer・resource・生成物をファイルの役割として分離する2026-11-15追補)をDRI-1〜5へ重ねる。これはIDEのファイル分割を模倣する新しいWorkspace規約ではなく、**TEIの意味からTarget成果物へ到達する際に、何を誰が編集・生成・消費するかを明示するための検査票**である。
+
+| 役割・工程 | 既存実体を使う最初の対照 | 確かめる一つの差 |
+| --- | --- | --- |
+| Authoring／Designer | 選択Markdown RuleとStudioのSource／Graph／Inspector | 図のレイアウト・説明・正規Meaningを分け、逆対応のない編集を拒否 |
+| Resource／契約Source | `inspection-reader.contract.json`、既存WorkbenchのAsset | リソース原byteと使用側の参照、埋込みの最新版を別に照合 |
+| Generator Definition | `builder-sources/inspection-reader-v1.transform.json`、`validationgen.GeneratePositive` | Generator版の変更を業務Meaning改版と同一視しない |
+| Generated Source | `inspection-reader.generated.ts`、Ruleの生成Go | 手編集を許さず、生成byteと実Build配置byteを照合 |
+| Custom／Hook | `presentation.ts`の明示Re-export、既存Extension Point参照 | 生成部品を編集せずにTargetへ接続。Hook契約不一致・二重登録を拒否 |
+| Build Intermediate／Bundle | Workbenchの生成部品→Bundle→埋込み、Rule→Go package→Builder | 生成しただけのファイルと実Compiler／Bundlerの消費を区別 |
+| Consumer／Evidence | 通常CLI BinaryとWails実画面 | 生成／収録／実使用／業務Effectを別々に判定 |
+
+最初の追補試験は**FL-02（Hookを保持した再生成）、FL-03（生成コード直接編集・Symbol衝突）、FL-04（生成GoがCompiler入力へ届かない）**を優先し、次に**FL-05（Workbenchの生成TSと実埋込みの不一致）**へ接続する。既存RG／LC／R2-PのIndependent Expectedを再利用し、新しいExpected正本を作らない。
+
+**Goの重要な相違点**：コンパイラがソースを部分クラスとして自動合成するTargetとは違い、Goでの継ぎ目はInterface／明示的Function Binding／Compositionへ置く。通常の`go build`がTEIのGeneratorを自動実行するわけではないため、生成をBuildより前の明示Stepとし、同一package／moduleの実消費byteを検査する。TypeScript／Web UIも同様に、生成TSがあるだけではBundler・Wailsの実使用にならない。
+
+**文脈限定との関係**：DRI-G0のAI依頼には`authoringSource`、`generatorDefinition`、`generatedOutputs`、`editableCustomSources`、`resourceInputs`、`targetBuildInputs`を、既存情報への**参照**として指定する。これらはProduct Skillの作業票上の説明項目であり、新しい固定SchemaやDSL属性名ではない。生成ファイルの場所は実Targetに従い、利用者の業務DSLへ物理パスを必須にしない。
+
 ## 作業単位と引渡し
 
 | 段階 | 入力・既存の担当 | 最小の証拠と完了条件 | 結果を渡す先 |
