@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"tei/internal/core"
@@ -146,5 +148,138 @@ func TestSelectedMarkdownRulesDriveEvaluatorReadFootprint(t *testing.T) {
 				t.Fatalf("wrong actual input read footprint: %v want %q", probe.reads, tc.wantRead)
 			}
 		})
+	}
+}
+
+
+// fixedRuleMutationSource is one unchanged input dataset for both Rule versions.
+// A changed result is therefore attributable to the authored Rule's read target,
+// not to editing the data or substituting a different Provider.
+type fixedRuleMutationSource struct {
+	reads []core.CanonicalID
+}
+
+func (s *fixedRuleMutationSource) Number(attribute core.CanonicalID) (*big.Rat, error) {
+	s.reads = append(s.reads, attribute)
+	switch attribute {
+	case "sales.order_line.quantity":
+		return big.NewRat(0, 1), nil
+	case "sales.order_line.line_number":
+		return big.NewRat(2, 1), nil
+	default:
+		return nil, fmt.Errorf("unexpected attribute %s", attribute)
+	}
+}
+
+func (s *fixedRuleMutationSource) RelationKeys(relation, attribute core.CanonicalID) ([]string, error) {
+	return nil, fmt.Errorf("unexpected relation read %s / %s", relation, attribute)
+}
+
+// A single edit to the selected Markdown Rule must change the Canonical
+// dependency, the Evaluator's actual Source read and the business result.
+// Merely updating the display text or replaying a fixed Go function fails.
+func TestSelectedMarkdownRuleEditChangesActualEvaluatorRead(t *testing.T) {
+	sourceRoot := filepath.Join("..", "workspace", "testdata", "tei-md-rule")
+	root := t.TempDir()
+	for _, rel := range []string{
+		"tei.workspace.yaml",
+		"semantic/sales/order.tei",
+		"semantic/sales/order-line-rules.tei.md",
+	} {
+		raw, err := os.ReadFile(filepath.Join(sourceRoot, filepath.FromSlash(rel)))
+		if err != nil {
+			t.Fatalf("read product Rule fixture %s: %v", rel, err)
+		}
+		dest := filepath.Join(root, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(dest, raw, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	subject := sourceindex.Subject{
+		Kind: "semantic-validation", ID: "sales.order_line.quantity_positive",
+	}
+	readSelected := func() (SubjectInspection, string) {
+		t.Helper()
+		loaded, err := workspace.Load(root)
+		if err != nil {
+			t.Fatalf("load selected Rule: %v", err)
+		}
+		if len(loaded.AuthoringSources) != 1 ||
+			loaded.AuthoringSources[0].Language.LanguageID != "tei.rule-authoring" ||
+			loaded.AuthoringSources[0].Definitions != 2 {
+			t.Fatalf("Rule language selection changed: %+v", loaded.AuthoringSources)
+		}
+		index, err := workspace.BuildSourceIndexFromLoad(root, loaded)
+		if err != nil {
+			t.Fatal(err)
+		}
+		inspection, err := InspectionFromLoad(loaded, index, subject)
+		if err != nil {
+			t.Fatalf("inspect selected Rule: %v", err)
+		}
+		if len(inspection.Sources.References) != 1 ||
+			len(inspection.Sources.Artifacts) != 1 {
+			t.Fatalf("Rule lacks one exact Source occurrence: %+v", inspection.Sources)
+		}
+		const markdownPath = "semantic/sales/order-line-rules.tei.md"
+		if inspection.Sources.References[0].ArtifactPath != markdownPath ||
+			inspection.Sources.Artifacts[0].Path != markdownPath {
+			t.Fatalf("selected Rule came from another Source: %+v", inspection.Sources)
+		}
+		return inspection, sourceindex.ModelRevision(index)
+	}
+	evaluate := func(inspection SubjectInspection, wantAttribute core.CanonicalID, want validationeval.Result) {
+		t.Helper()
+		var rule semantic.Validation
+		if err := json.Unmarshal(inspection.Canonical, &rule); err != nil {
+			t.Fatal(err)
+		}
+		if rule.ID != core.CanonicalID(subject.ID) ||
+			rule.Kind != semantic.ValidationPositive || rule.Attribute != wantAttribute {
+			t.Fatalf("authored Rule did not change its canonical dependency: %+v", rule)
+		}
+		src := &fixedRuleMutationSource{}
+		got, err := validationeval.Evaluate(rule, src)
+		if err != nil || got != want {
+			t.Fatalf("evaluated %s: got %q err=%v, want %q", wantAttribute, got, err, want)
+		}
+		if len(src.reads) != 1 || src.reads[0] != wantAttribute {
+			t.Fatalf("actual read target %v, want only %s", src.reads, wantAttribute)
+		}
+	}
+
+	before, beforeRevision := readSelected()
+	evaluate(before, "sales.order_line.quantity", validationeval.ResultNotSatisfied)
+
+	path := filepath.Join(root, "semantic", "sales", "order-line-rules.tei.md")
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const original = "sales.order_line.quantity is positive"
+	const replacement = "sales.order_line.line_number is positive"
+	if strings.Count(string(raw), original) != 1 {
+		t.Fatal("the selected Rule's original expression is not unique")
+	}
+	if err := os.WriteFile(path, []byte(strings.Replace(string(raw), original, replacement, 1)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	after, afterRevision := readSelected()
+	evaluate(after, "sales.order_line.line_number", validationeval.ResultSatisfied)
+	if beforeRevision == afterRevision ||
+		before.SourceIndexFingerprint == after.SourceIndexFingerprint ||
+		before.WorldFingerprint == after.WorldFingerprint ||
+		before.Sources.Artifacts[0].Fingerprint == after.Sources.Artifacts[0].Fingerprint {
+		t.Fatal("selected Rule edit did not change its Source revision and typed World")
+	}
+	// The ID text precedes the edited predicate. Same Subject/byte location
+	// alone cannot qualify the old interpretation of a changed Rule.
+	if before.Subject != after.Subject ||
+		before.Sources.References[0].Range != after.Sources.References[0].Range {
+		t.Fatal("Rule identifier was moved or silently retargeted")
 	}
 }
