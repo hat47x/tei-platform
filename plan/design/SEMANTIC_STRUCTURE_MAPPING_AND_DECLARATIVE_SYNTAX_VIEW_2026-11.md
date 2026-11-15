@@ -1003,3 +1003,70 @@ Source byte、Reference候補構造指紋、Model Revision、Artifact Revision�
 検収の単位は「どのSource/Revisionの、どのSubjectとOperationが、どのPlugin/Generator/Providerの実Callを通って、どのConsumerへ届き、何を失ったか」という一つのClaimである。既存[#4350](https://github.com/hat47x/tei-platform/issues/4350)のDF-X01〜08と[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#2514](https://github.com/hat47x/tei-platform/issues/2514)の独立Expectedへ追補し、第二の検査体系にはしない。
 
 **本節の状態**：既存mainのReference成果を踏まえた設計・実装引渡し。ここで正式Reader、製品Codegen/Provider、第二Consumer、GUI編集、Stage2完成を新たに実装・実測したとは主張しない。
+
+---
+
+<!-- data-forms-question-scoped-evidence-20261115 -->
+## 38. 問いに必要な根拠と取得範囲を、すべてのデータ様式で保つ（2026-11-15）
+
+### 38.1 継承する成果と、今回加える判断
+
+第37節は、Source→意味解釈→実生成／Provider→Consumerへの接続を扱った。ここでは**保持したデータから何を結論できるか**を明確にする。
+
+11月15日にmainへ統合された[BRMSの決定表設計PR #4765](https://github.com/hat47x/tei-platform/pull/4765)、[組織C1の時間・判断・生成計画PR #4780](https://github.com/hat47x/tei-platform/pull/4780)、[REA一機能のEvidence→設計→生成計画PR #4767](https://github.com/hat47x/tei-platform/pull/4767)、[宣言的構文の製品接続PR #4756](https://github.com/hat47x/tei-platform/pull/4756)を、標準データ様式の同じ比較原則へ結び付ける。
+
+従来の「値・Identity・構造・時間・Source版・MappingのLoss」に加えて、**その問いを成立させる観測がどこまで揃っているか**をConsumerごとのClaimとして追跡する。新しい共通Truth型・Decision Runtime・Coverage Engineを作るのではなく、既存のFunction Data Context、Result Slice、Mapping契約、Source/Evidence、独立Expectedを使う。
+
+### 38.2 肯定できることと、否定・唯一性まで確定できることは非対称
+
+重要なのは、単なる取得行数ではなく、**どの対象範囲に対し、どの条件を確かめ、どこまで結論できるか**である。
+
+- **存在の証拠**：対象と関係の正式Identity、必要な条件、時点が確認された一件のWitnessがあれば、指定したScopeにおける「少なくとも一件」は証明できる。ただし、後にSourceが撤回・改版された場合は現在性を再評価する。
+- **複数の証拠**：相異なる正式Identityを持つ二件のWitnessがあれば、部分取得でも「少なくとも二件」は証明できる。一人への二つのMembership／Relation occurrenceを「二人」とは数えない。Graphでは同端点の二Edgeが関係Occurrence二件でも、Nodeは二個体とは限らない。
+- **唯一性・不存在の証拠**：「これ以外にない」「一件だけ」「未使用」「No Match」「更新しない」は、必要なDomain・Predicate・Provider能力・時間範囲・非表示の依存Fieldまで閉じていることを要求する。Rowsetが最後まで読まれたことだけでは、元の母集団へのCoverageが完全とはいえない。
+- **確定した競合**：Unique決定表で二つの相異なるRule行が必要条件を満たすなら、未取得行があっても二行のConflictは確定する。同じ出力値でもConflictである。一行だけが成立し他行に未取得条件があれば、唯一性は未確定である。
+- **適格性・作用資格**：組織上の構造候補が存在しても、承認者・担当者・操作対象として適格かどうかは、Role/責任/委任/適用時点/業務規則と現在Grantを検査して決める。Read Claimが成立しても実行GrantやEffect Receiptは導けない。
+
+これらの判断は、**同じSource Revision・識別規則・Predicate・Domainの範囲内でのみ**比較可能である。別時点の所属、異なるQuery filter、権限の異なるConsumerを暗黙に結合しない。取得情報が増えると既存の陽性Witnessは通常保持できるが、Source改版やIdentityの訂正・意味受理の変更まで単調性を約束するものではない。
+
+### 38.3 一つのFunctionに必要な「問いと根拠」を固定する
+
+新しい永続Schemaを設けず、既存のFunction Data Context／Mapping／Evidenceから次の項目を**検収時の読み取り票**として再構成する。
+
+| 問い | 必ず確認する既存の情報 | 不足時に言ってはいけないこと |
+| --- | --- | --- |
+| **何についてか** | Semantic Subject／Relation occurrence／grain／Identity、出典のSource Revision | 同名Label、行index、表示Nodeを正式Identityとみなす |
+| **どの時点・範囲か** | Domain／Observation time、Query predicate、Scope、Page、Snapshot/Context epoch | 異なる時点や部分集合を「全件」「現在の一人」とみなす |
+| **何が実際に分かったか** | 確認済みの陽性Witness、評価済みの条件、未取得・非開示・不明の依存項目 | 未観測をfalse／NULL／不在として扱う |
+| **何が失われたか** | Mappingのorder／multiplicity／grain／presence／coverage／loss、合成先の必要Observer | 集計・Tree・Markdown／図の同一表示から元Relationを逆復元する |
+| **何が実行できるか** | 正式Meaning/Rule・実Provider／Generator・現在Grant・Effect/Receipt | read-onlyのpreservedやReference PASSを実編集／実Effectの許可とする |
+| **誰に示せるか** | ConsumerのAudience／Disclosure／許可されたField・Relation・Count | 非開示件数・Hidden Edge・内部SourceRefを説明やGraphへ漏らす |
+
+内部で陽性Witnessを保持していても、Consumerには「結論を表示する資格がない」場合がある。**観測可能性と開示可能性を別に保ち**、withheldに関する件数・ID・Digest・否定判定から隠れた情報を推測できる表示を避ける。必要な根拠が欠ける場合は、既存の`unknown`／`unqualified`／`partial`等の適切な語彙で表し、新しい公開判定Enumを固定しない。
+
+### 38.4 同じ関係を三つの用途へ投影する最小対照
+
+**対象**は既存のGraph/Rule六入力、組織C1の二時点・兼務、REAの外部Relation二入口、BRMSのUnique決定表とする。新たな巨大Fixtureは作らず、下表の反例を既存の#4350 DF-X01〜08／XMAP、#1180/#2514、各Domain OwnerのExpectedへ引き渡す。
+
+| 用途 | 陽性として言えること | 閉包／意味受理なしには言えないこと | 表現・編集上の失敗例 |
+| --- | --- | --- | --- |
+| **Graph→Tree／一覧** | 相異なるEdge ID二本と向きが保存されていれば「出辺二本」 | 「相異なるPersonが二人」「表示Treeが元Graphの全辺」 | 二本の関係を端点Mapに畳む。表示Nodeから自動書戻し |
+| **組織・承認者の候補** | 二つの独立Person IDへの有効な正のRelation経路があれば候補二人以上 | 「候補はちょうど二人」「唯一の承認者」「現在Grantあり」 | 兼務のRelation occurrenceを人物件数へ加算。異動前後を同一Snapshotとする |
+| **REA旧モデル→三要素図** | Source付き外部Relation candidate／occurrenceが個別に存在する | 正式Business Relation受理、Function全Graphの完全性、編集資格 | Candidate ID／modelref Edge／描画線IDを同一視し、平行辺を潰す |
+| **決定表Unique** | 必要条件を満たす二行からConflict確定 | 一行のみのUnique／零件からのNo Match、全Rule適用範囲のGapなし | 不完全なInputをfalse扱い。同出力の二行を競合なしと判定 |
+| **SQL／NoSQLの負の検索** | 既に読めた陽性行の範囲付き存在 | 閉包なしの`NOT EXISTS`、未使用、全期間0件 | `FullyRead`と母集団Coverageを同義にする |
+| **集計／Chart／文書** | 採用済みMappingが明示するgrainの集計値や説明 | 一つの集計値から元行・Source occurrenceの唯一編集先 | 同じ表示byteだから元Worldも同じと認定 |
+
+この比較では、**構造が保存されたか／この問いに十分な証拠があるか／現在のConsumerに開示してよいか／編集・実行できるか**の四つを別に採点する。五語彙のMapping Verdictを一つの総合スコアにして上書きしない。Consumerが違ってもSource・Predicate・grain・Snapshot・Observerが合致するClaimだけを比較し、相違がある場合は「不一致」と「比較不能」を分ける。
+
+### 38.5 製品へ接続する順序と、合格させないもの
+
+1. **第37節のP0はそのまま継続**する。既存`reference/tei-md-graph-reader`のCandidate/生成Go成果と、正式`*.tei.md` Reader→Accepted Meaning→製品Generator/Builder→通常CLI実Callの間にある未接続部分を、#2621/#988/#2831/#951で一辺ずつ検証する。#4751のPinned Source予備試験と#4758の候補指紋・同Binary照会を、正式S0-Aや製品実Callへ昇格しない。
+2. **実Readの独立P0を維持**する。#2586/#2506で実Providerが消費したSource・Predicate・Result Sliceと、二つの異質Consumerが受け取った許可済みClaimを突合する。SUI/SHO/Studioの実Consumerはそれぞれ異なる製品受領の証拠が必要である。
+3. **問い相対の反例を既存Expectedへ追加**する。部分取得でも陽性二件／Unique二行のConflictを認める正例と、不明な非出力Field／Incomplete Domainで唯一性・No Matchを保留する負例を対にする。異なる二Relation occurrence・同Person、一致する同名Label・別Identity、二時点Revision、開示不可の件数を含める。
+4. **Editorは一意な元Source Slotに限定**する。表示で選択した行・Node・Relation候補・集計値からWriter権限を推定せず、逆写像と最新Revision・Owner受理・Grantの条件が欠ければzero-write／Preview止まりとする（#2500/#1124/#2621）。
+5. **Self-buildと専門Toolkitを別資格で評価**する。標準Facet・Ruleが実Go判断やPlugin実装を生み、次Stage Builder/Consumerが実際に消費することを#2831/#4583で確認する。説明文・数式・Mock・Referenceの成功やGoへの全面delegateをセルフビルドと数えない。
+
+各Ownerの受入票には、**確認できた陽性事実／必要な全件性／未観測の依存／取得・開示の資格／意味受理／実Consumer／未実行の辺**を別列で記す。既存Reference／Corpus／Expectedの再実装、新しい共通Result Schema、Graph/Rule Runtime、Universal Query Planner、追加Host、全体P0へのHard Gateは作らない。
+
+**検証状況（この節の追加時点）**：#4765/#4780/#4767/#4756の計画はmain統合済み。#4758の限定Reader＋Go生成・実Binary照会もmain統合済み。実Graph/組織/REA/BRMSを同じ製品Function・同一Attemptで連結した証拠、正式`*.tei.md` Reader、横断Consumer、実編集、Studio Stage2、Owner意味受理は、この追補では**NOT RUN／NOT ACCEPTED**。
