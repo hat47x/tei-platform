@@ -2719,6 +2719,14 @@ Studio／SHO／SUI／AIが同じ意味候補を提示しても、編集資格は
 
 **実装状態**：今回の複合PKは検証用テーブルの候補であり、TEI標準Schema・新Temporal Engine・第二Expected管理・製品業務Ruleとして採用していない。
 
+
+<!-- org-revision-key-pg-evidence-20261115 -->
+### 2026-11-15 組織C1：履歴キー候補の実DB比較を受入結果へ確定（補遺§38.4）
+
+[設計§38.4](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)と[PR #4880](https://github.com/hat47x/tei-platform/pull/4880)（main統合 `c6ebebf2`）で、隔離PostgreSQLの一時テーブルによる`(membership_id, known_from)`候補の比較を実施。固定HEAD `6fe73a1a`の[実PG run 43684287479](https://github.com/hat47x/tei-platform/actions/runs/43684287479)は**success**：同じA2の訂正旧新2版の共存、既知時点境界での読み分け、区間の重なる第三版による二つの異なる配賦の同時成立を検査した。CIの実行対象と必須PASS判定にも新試験を追加し、未実行の成功扱いを防いだ。
+
+**採用しないまま残す条件**：複合主キーだけでは時点区間の非重複を保証しない。#2386/#1126が業務同一性・版識別・訂正／取消／再所属・Person Link・兼務・競合裁定を受理してから、正式Persistence・Query・実Provider→独立Consumerの正例へ接続する。今回の一時テーブルを製品Schemaに昇格させない。#2586の通常CLI実Read、#2831のDesktop Stage2を独立P0として維持し、全体Repository Health・Host Grant・Case/REAとのLinkは別資格とする。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
