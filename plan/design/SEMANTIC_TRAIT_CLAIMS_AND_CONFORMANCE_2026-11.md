@@ -272,3 +272,55 @@ Functionが結論を出す際の確認範囲は、最低限、次を区別する
 **最初の実装単位**はTR-Q20/Q21の合成Fixtureを、既存のRead FootprintとFunction Context・独立Expectedで説明できるか確かめることとする。TR-Q22/Q26は既存の標準Graph／Node View read-only投影へ、TR-Q23はBatch/ETLの計算粒度・出力粒度の設計へ、TR-Q24は外部Evidenceの元資料と候補生成の検収へ、TR-Q25はRuleから実Go生成・Builder・通常CLIの縦断へそれぞれ戻す。
 
 S1〜S3のread-only Referenceがmainに統合されていても、製品の正式Graph Reader、汎用Trait判定器、実ProviderのRead閉包、Studioでの逆編集、Ownerの意味受理は別の完了条件である。**Studio DesktopのStage1→Stage2実Windows受領と、選択された実Providerを通常CLIから呼ぶ製品P0を変更しない**。この節の判別票は未実行の設計候補として扱い、採否と実装は各Ownerに委ねる。
+
+## 14. 項目定義表から型付き実装へ：意味を増やさない最小縦断（2026-11-15）
+
+### 14.1 データ様式を、定義・記録・表現・処理の四つで再利用する
+
+一つのMarkdown表があれば、そこに書かれているすべてが業務データになるわけではない。**表の役割は、利用する言語契約と明示的なSource位置で決まる**。現行の選択済み`tei.authoring/v1`で`<!-- tei: data TransferRequest in organization -->`が直結する項目表は、一行を一属性とする`semantic.Data`の定義である。印のない「申請例」の行は記録として取り込まれず、DB保存や更新にも使われない。新旧のMarkdown言語が同じ`*.tei.md`を同時に主張すれば、Readerを推測で選ばずLoadを拒否する。
+
+| 使い道 | 同じSourceから取り出すもの | 自動的に成立させないこと |
+| --- | --- | --- |
+| 定義 | Data ID、Attribute ID、型、required、表示名、出典のbyte位置 | 実レコード、業務Key、参照先の存在、NULLと欠損の扱い |
+| 記録 | DB/API/Fileの実Readで得たOccurrence、値、時点、取得範囲 | 定義表のサンプル行からの実データ生成、全件性 |
+| 表現 | Form／Table／Tree／Graphなどのread-only ProjectionとSource Mapping | 表示IDからの業務Identity確定、非単射な逆編集、Grant |
+| 処理 | 型付きRule／Operator、依存Read、生成コードまたは汎用関数 | Reader合格だけでの実Builder消費、選択Provider起動、業務意味受理 |
+
+`required: no`／未指定を読み取っても、未設定・明示NULL・空文字列・未取得を同じ値へ正規化しない。項目定義で必要性が指定されていないことは、実行時の値の欠落を無条件に許可することでもない。PATCHの省略と明示NULLは、データ取込／更新Intentと現在の書込権限で別に判断する。
+
+### 14.2 実装して判別する最初の一辺
+
+既存の`internal/workspace/testdata/tei-md-data-table`では、`TransferRequest`項目表と`allocation_positive`のRuleが一つの`*.tei.md`に共存する。Loaderは同じSourceから`semantic.Data`と`semantic.Validation`を返し、Source Indexでそれぞれの位置を保持する。新しい検証`TestTEIMDDataTableRuleGoLoweringAndSourceRevision`では、表から解決された`organization.transfer_request.allocation`の型を**同じLoadのRuleに渡し**、既存の`validationgen.GeneratePositive`から`source.Number(...)`と`value.Sign() > 0`を含むGoを生成する。
+
+ここで生成するGoは、選択済みRuleの判断処理を実際に含む。ただし、このテスト単体では生成GoをBuild Plan／製品CLI経由でコンパイル・実行していない。既存Rule由来のGo実Build試験と、このData表由来の型・位置・Source改版試験を**別の証拠として接続**し、元表から通常`tei self-build`・正式Builder・Binary Consumerまでを単一Attemptで通したと認定しない。
+
+次の二つの差分が、結果の一致より重要である。
+
+1. **説明だけ変更する場合**：型付きRuleから生成されるGoが同じでも、管理対象`*.tei.md`のbyteが変わる。古いSource Indexは失効し、新しいLoadとIndexを作り直す。Go byte一致を旧Buildの意味受理・出典資格の継承に使わない。
+2. **`std.decimal`を`std.text`に変える場合**：Ruleの文字列や入力例が変わらなくても、生成器は同じLoadから解決した型を使い、Decimal専用の`positive` loweringを拒否する。呼出し側が古い型を直接渡して合格にする経路は設けない。
+
+### 14.3 異なる実例でも保持するIdentityと時間
+
+本縦断に続くGraphと組織二時点データには、同じ原則を適用するが別のOwnerで検証する。
+
+- **Graph／REA**：関係IDが存在することと、観測されたNode IDがその関係の端点に一致することを分ける。main統合済み#5038の実Verifier負例は、物理的な参照整合を試せる。しかし一致だけでは業務Relationの受理・現在のPlugin配線・実Callを証明しない。多重Edgeは端点が同じでも個別Occurrenceである。
+- **組織・履歴**：main統合済み#5027の隔離PostgreSQLケースでは、同じMembershipの訂正版と、異なるMembershipの同時成立を分ける。同じ`validAt`・`knownAt`に複数行が存在しても、別Occurrenceなら「同一関係の版衝突」ではない。データ様式側で時刻を一つに潰したり、Graphの端点だけから版を一意化しない。
+- **Process／Plugin**：Node Viewは標準Graphの表現型として共通化するが、Declared／Selected／Built／Observedと業務Relationの受理は別。描画線と実Provider呼出しは同一の事象ではない。
+
+したがって、標準データ様式の汎化は「表・図・フローに共通の構造を持たせる」だけでは終わらない。**StructureとOccurrence、適用Scopeと時点、表現Loss、処理に必要なRead、生成・実行の受領資格を、失わずに別々に追跡できること**を横断受入条件とする。専用Graph Runtime／Temporal Engine／新しい意味正本は追加しない。
+
+### 14.4 既存の独立Expectedと計画への引渡し
+
+| ID | 判別する差分 | 現状・次の検証先 |
+| --- | --- | --- |
+| **DFG-01** | 印つき項目表とネイティブData宣言を、同じAttribute ID・型・required・表示とSource位置で比較 | 既存`tei_md_data_table_test.go`の局所試験。製品Runtimeは別 |
+| **DFG-02** | 同じ`tei.authoring/v1`の表の型とRuleから生成Goへ変換し、参照先Attributeと生成分岐を検査 | 新規Go回帰を追加。exact HEADのCI判定まではPASS未記録 |
+| **DFG-03** | 説明のみ変更し、Go byteは同じでも旧Source Indexを拒否 | 新規Go回帰を追加。古いArtifact／Consumerの失効は別試験 |
+| **DFG-04** | 表の型だけDecimal→Textへ変更し、Rule式は不変 | 新規Go回帰で型不一致の生成拒否を検査 |
+| **DFG-05** | 印のない例示表、未指定・明示NULL・部分取得、PATCH省略を混同しない | 表の非取込は既存試験。更新と実Recordは#1127／#1180／#2514 |
+| **DFG-06** | 同端点の多重Relation、片端点のみ観測、二時点の訂正・別Occurrenceを同一Graph投影で判別 | #5038／#5027の局所成果を#2497／#2386へ接続。新規製品Graph Readerは未受理 |
+| **DFG-07** | 表→Rule→生成Go→実Builder入力→Artifact→通常CLI実Provider／独立Consumerを同じSource Revisionで束縛 | #1121／#4495／#2514の製品縦断で検証。今回の追加試験だけでは未達 |
+
+最初の合格判定はDFG-02〜04の局所Goテストと既存DFG-01の維持に限定する。続く実装では、既存`tei self-build`の生成Go受領とSource Planの双方に**同じ表定義とRule IDが実際に使用されたこと**を紐付ける。自動生成が適する処理と、標準Data／Operationを受け取る汎用関数で十分な処理は、DSLに見える構造を同じまま保って選べるようにする。どちらの経路でも意味の独立Expectedと実Consumerの観測は省略しない。
+
+引渡し先はデータ様式#4350、Reader／DSL#2621、Function Data Context#2506、Mapping#2497、Rule Build#1121、実Provider#4495、独立Expected#1180／#2514、Studio Stage1→Stage2 #2831／#4583。**通常CLIの実Provider受領とStudio DesktopセルフビルドのP0を維持する**。新しいGateを作るのではなく、既存の合否票に今回増えた証拠を接続する。
