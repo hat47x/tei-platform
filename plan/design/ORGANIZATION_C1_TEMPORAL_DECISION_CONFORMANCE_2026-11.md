@@ -822,7 +822,7 @@ C1でも、人物と所属の意味定義が一致しているだけで、別DB 
 
 ### 22.1 受入の単位は「組織図が描けた」ではなく、元の意味を失わない一巡
 
-最初に閉じる対象は、既存 \`org-synthetic-r7\` の Person P1〜P3、Membership A1〜A4、所属先 D1/D2、A2 の遡及訂正という**一つの小さな業務世界**に限定する。別々のfixtureを組み合わせて成功と数えない。次の六つを同一Source Revisionと、時点・Providerを明示したAttemptで追跡する。
+最初に閉じる対象は、既存 `org-synthetic-r7` の Person P1〜P3、Membership A1〜A4、所属先 D1/D2、A2 の遡及訂正という**一つの小さな業務世界**に限定する。別々のfixtureを組み合わせて成功と数えない。次の六つを同一Source Revisionと、時点・Providerを明示したAttemptで追跡する。
 
 1. **Meaning**：Person・OrgUnit・Membershipの独立Identity、A2/A3が同じP2に対応する根拠、所属の関係方向・Key・配賦単位、訂正の原因と業務上の期間をSourceから読める。
 2. **Storage**：同一A2 Occurrenceに対する訂正前・訂正後のRecord Versionが、同一の隔離PostgreSQLに物理的に共存する。Occurrence ID、Version ID、Physical PKを混同しない。
@@ -876,7 +876,7 @@ C1でも、人物と所属の意味定義が一致しているだけで、別DB 
 - **モデル差分の伝播率**：A2訂正やP2兼務の変化を一度Sourceへ反映したとき、DSL検査、実Query、Expected、表示と生成物へ正しく波及するか。どの段階で手動修正が必要かを列挙する。
 - **構造保持率**：Source側のPerson/Occurrence/Version/RelationのID、多重性、時点、方向、根拠が各投影へ受け継がれた割合。重要属性が失われた表示にはloss reportを付す。
 - **Plugin再利用率**：同じ型付きGraph/Temporal/Query/Projectionの契約を、組織以外のデータにも使えるか。組織専用の二つ目のResolver/Engineを作らない。
-- **自己記述・自己生成の範囲**：Generator/Plugin自身の仕様・テスト・生成可能部分を \`*.tei.md\` で表現し、TEIが再生成できる部分と手書きのBootstrap/Target境界を分けて数える。割合だけでなく、段階ごとに手書き部分がなぜ残るかを記録する。
+- **自己記述・自己生成の範囲**：Generator/Plugin自身の仕様・テスト・生成可能部分を `*.tei.md` で表現し、TEIが再生成できる部分と手書きのBootstrap/Target境界を分けて数える。割合だけでなく、段階ごとに手書き部分がなぜ残るかを記録する。
 
 図・表・Markdown・Queryは標準意味モデルの複数表現として扱う。新しいDSL文法や図法の採用が必要な箇所は別Ownerへ差し戻し、C1一巡のために独自の固定組織Kindを設けない。Plugin方式もGo単一バイナリと外部Host生成の既定を崩さず、静的組込み/生成コード/外部プロセスの方式選定を各境界の要件に委ねる。
 
@@ -884,7 +884,7 @@ C1でも、人物と所属の意味定義が一致しているだけで、別DB 
 
 - **C1-0 Read-only契約固定**：#2386がM-P/M-E/M-Xの一Profile、人物関係の向き・Key・Sourceを採否。DB Ownerが既存のPK/Mapping/Readerの実状を再確認する。
 - **C1-1 物理版共存**：隔離PGにA2新旧を同時保存。Source由来のPerson Link・Version ID・PK、独立Expectedで旧新の選択を試す。DDL候補だけでは停止。
-- **C1-2 Query→Consumer**：通常\`tei\` CLIの実Provider read入口を利用し、同じSource/DB/Attemptで人数・FTEとContextを導出、独立Consumer受領まで確認する。
+- **C1-2 Query→Consumer**：通常`tei` CLIの実Provider read入口を利用し、同じSource/DB/Attemptで人数・FTEとContextを導出、独立Consumer受領まで確認する。
 - **C1-3 Loss-aware投影**：Read-onlyのTree/Graph/Table/Temporalを同一Sourceから出す。初めはSource位置へのNavigationと差分Previewのみとし、逆編集は一意同定・CASが成立する項目に限定。
 - **C1-4 生成・自己記述の削減試験**：上記のための手書きGo/SQL/表示Adapterと生成された箇所を比較し、TEIに移せた業務意味と依存が縮小した箇所を記録。Pluginの自己生成は独立の証拠で扱う。
 
@@ -907,7 +907,7 @@ C1でも、人物と所属の意味定義が一致しているだけで、別DB 
 
 ここでの「責任保持先」は可変的な業務対象への参照であり、Person/Account/Tenant/Principalを統一する新Coreスーパー型ではない。RACI、単独責任・共同責任・合議などは用途別Projection/Rule候補であって、全案件への固定enum/必須カラムではない。
 
-**Sourceの境界**：\`org-synthetic-r7\` は人物・所属・二時点FTEの独立Expectedである。Case C1のhandlingUnit/Responsibility/Handoffに関する合成Sourceとは、暗黙に同じ保存Worldとはみなさない。両者を一つのProduct Attemptで組み合わせる場合、採用されたCase→OrgUnit関係・出典・モデル版・DB Cohortを明示してから照合する。人物P2の兼務を根拠なくC1の責任者と認定しない。
+**Sourceの境界**：`org-synthetic-r7` は人物・所属・二時点FTEの独立Expectedである。Case C1のhandlingUnit/Responsibility/Handoffに関する合成Sourceとは、暗黙に同じ保存Worldとはみなさない。両者を一つのProduct Attemptで組み合わせる場合、採用されたCase→OrgUnit関係・出典・モデル版・DB Cohortを明示してから照合する。人物P2の兼務を根拠なくC1の責任者と認定しない。
 
 ### 23.2 候補解決は型付き関係の読み取りであり、権限の推定ではない
 
