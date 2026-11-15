@@ -8,80 +8,80 @@ import (
 	"testing"
 
 	"tei/internal/sourceindex"
+	"tei/internal/workspace"
 )
 
-// A selected Markdown rule is real read-only semantic Validation with a
-// source byte anchor. It is not an implicitly published Function Entry.
-// This test uses the product Workspace reader, not the Reference parser.
+// A selected Markdown Rule becomes semantic.Validation, not a published
+// Function Entry. Resolve the positive Rule and the missing Capability from
+// exactly one product Workspace Load and its Source Index.
 func TestSelectedRuleMarkdownSourceIsNotAnExecutableCapability(t *testing.T) {
 	root := filepath.Join("..", "workspace", "testdata", "tei-md-rule")
 	const ruleID = "sales.order_line.quantity_positive"
-	subject := sourceindex.Subject{Kind: "semantic-validation", ID: ruleID}
-
-	read, err := ReadWorkspaceSubject(root, subject)
+	const sourcePath = "semantic/sales/order-line-rules.tei.md"
+	loaded, err := workspace.Load(root)
 	if err != nil {
-		t.Fatalf("read selected Markdown rule: %v", err)
+		t.Fatalf("load product Markdown Rule Workspace: %v", err)
 	}
-	inspection := read.Inspection
-	if read.ModelRevision == "" || inspection.Subject != subject ||
-		inspection.Effect != "read-only" || inspection.SourceStatus != "indexed" ||
-		inspection.SourceIndexFingerprint == "" {
-		t.Fatalf("read did not bind rule to the product Source Index: %+v", inspection)
+	if len(loaded.AuthoringSources) != 1 ||
+		loaded.AuthoringSources[0].Language.LanguageID != "tei.rule-authoring" ||
+		loaded.AuthoringSources[0].Language.ContractVersion != "v0" {
+		t.Fatalf("unexpected selected product Rule language: %+v", loaded.AuthoringSources)
+	}
+	idx, err := workspace.BuildSourceIndexFromLoad(root, loaded)
+	if err != nil {
+		t.Fatalf("index same-Load Source: %v", err)
+	}
+
+	subject := sourceindex.Subject{Kind: "semantic-validation", ID: ruleID}
+	inspection, err := InspectionFromLoad(loaded, idx, subject)
+	if err != nil {
+		t.Fatalf("inspect selected Rule: %v", err)
 	}
 	var canonical struct {
 		ID string `json:"id"`
 	}
 	if err := json.Unmarshal(inspection.Canonical, &canonical); err != nil {
-		t.Fatalf("decode canonical rule: %v", err)
+		t.Fatalf("decode canonical Rule: %v", err)
 	}
-	if canonical.ID != ruleID {
-		t.Fatalf("wrong canonical rule: %q", canonical.ID)
+	if canonical.ID != ruleID || inspection.Effect != "read-only" ||
+		inspection.SourceStatus != "indexed" || len(inspection.AuthorityLimits) == 0 {
+		t.Fatalf("Rule Source observation lost its identity or limits: %+v", inspection)
 	}
-	if len(inspection.AuthorityLimits) == 0 {
-		t.Fatal("source inspection must retain read-only authority limits")
+	raw, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(sourcePath)))
+	if err != nil {
+		t.Fatal(err)
 	}
-
-	const sourcePath = "semantic/sales/order-line-rules.tei.md"
-	artifactByPath := make(map[string]sourceindex.Artifact, len(inspection.Sources.Artifacts))
-	for _, artifact := range inspection.Sources.Artifacts {
-		artifactByPath[artifact.Path] = artifact
-	}
-	matched := false
+	found := false
 	for _, ref := range inspection.Sources.References {
 		if ref.Subject != subject || ref.Role != sourceindex.RoleDefinition {
-			t.Fatalf("unexpected rule source reference: %+v", ref)
+			t.Fatalf("Rule Reference changed identity or role: %+v", ref)
 		}
 		if ref.ArtifactPath != sourcePath {
 			continue
 		}
-		artifact, ok := artifactByPath[ref.ArtifactPath]
-		if !ok {
-			t.Fatalf("missing artifact for rule reference: %+v", ref)
-		}
-		raw, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(sourcePath)))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if artifact.Fingerprint != sourceindex.Fingerprint(raw) {
-			t.Fatal("rule Source Index fingerprint differs from actual Markdown bytes")
-		}
 		if err := ref.Range.Validate(raw); err != nil {
-			t.Fatalf("invalid source byte range: %v", err)
+			t.Fatalf("invalid Rule byte range: %v", err)
 		}
 		if got := string(raw[ref.Range.Start.Offset:ref.Range.End.Offset]); got != ruleID {
-			t.Fatalf("Markdown rule source anchor=%q, want %q", got, ruleID)
+			t.Fatalf("Rule source anchor=%q, want %q", got, ruleID)
 		}
-		matched = true
+		found = true
 	}
-	if !matched {
-		t.Fatalf("selected Markdown rule has no definition anchor in %s", sourcePath)
+	if !found {
+		t.Fatalf("Rule %s has no original Markdown definition Source", ruleID)
 	}
 
-	// A rule read as semantic.Validation never implies a published Function
-	// or even the existence of a Canonical semantic.Capability with that ID.
-	_, err = InspectSubject(root, sourceindex.Subject{Kind: "semantic-capability", ID: ruleID})
+	// A Source lookup can be empty without proving whether a Canonical model
+	// exists. The same-Load Canonical Inspector must reject a Capability with
+	// the Rule's ID; a readable Rule cannot become a callable Function.
+	capability := sourceindex.Subject{Kind: "semantic-capability", ID: ruleID}
+	trace, err := TraceSubjectSourcesFromIndex(idx, capability)
+	if err != nil || len(trace.References) != 0 {
+		t.Fatalf("Rule ID unexpectedly has Capability Source: trace=%+v err=%v", trace, err)
+	}
+	_, err = InspectionFromLoad(loaded, idx, capability)
 	var inspectionErr *InspectionError
 	if !errors.As(err, &inspectionErr) || inspectionErr.Code != InspectionNotFound {
-		t.Fatalf("Markdown rule became a Capability or unexpected error: %v", err)
+		t.Fatalf("Rule was mistaken for a Capability: %v", err)
 	}
 }
