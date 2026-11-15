@@ -2982,3 +2982,13 @@ SourceとResultの形式、Language Pinの供給元、Product Readerの接続箇
 
 **この追補の範囲**：新しいGo回帰と設計上の引継ぎ。Goテストの合否は該当PRのexact HEAD CIで判定する。Reader実接続、業務Meaning受理、実Provider/CLI Consumer、Studio Stage1→Stage2について、新たな製品合格を主張しない。
 
+
+<!-- tei-self-description-ci-evidence-handoff-20261115 -->
+### 47.8 自己記述の回帰テストと製品受入を、CIの実結果で分ける
+
+第47.7節のGo回帰はmainに取り込まれている。しかし、元PR #4857のexact HEADではCache検証が成功した一方、Repository Healthとルートの脆弱性検査が失敗した。失敗ログに現れた直接のコンパイル阻害は、当時の `cmd/tei/cli_self_build_outer.go` の未使用変数であり、Graph Readerの正負対照の合否を証明するものではない。現行mainの同ファイルでは当該変数が使用されているが、**修正後の実Goテスト成功を古いCI結果から推定しない**。
+
+さらに、当時のWorkflow契約試験では、RA-1の自動実行定義にtop-level `concurrency`がないこと、REA外部Evidenceの二ジョブが`go.mod`と独立したGo版を固定していることを検出した。この二箇所を既存Workflow契約に合わせ、**PR単位での実行制御、Go toolchainの単一参照元、exact HEADのGo回帰結果**を個別に確認する。Workflow修正そのものを製品Readerの成功と同一視しない。
+
+**次の受入条件**：第47.7節の負例が最新のSource/Toolchain上で成功し、A0〜A3を実装した時点で、製品の「選択成功」と「非選択拒否」を同一Loadと独立Expectedで対照できること。Repository Healthが赤い場合は実際の原因・対象版・失敗段階を記録し、他PRのGreen、CacheのGreen、あるいはGoファイルがmainに存在する事実で穴埋めしない。Studio Stage1→Stage2と通常CLIの実Provider Readは引き続き独立したP0である。
+
