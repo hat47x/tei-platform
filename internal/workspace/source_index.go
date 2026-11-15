@@ -129,7 +129,21 @@ func buildSourceIndex(root string, result Result, strict bool) (sourceindex.Inde
 		}
 		content := contents[artifact.Path]
 		subject := subjectFromSourceKey(key)
-		rng, exact, err := exactSubjectRange(content, subject, anchorTables, artifact.Path)
+		var rng sourceindex.Range
+		var exact bool
+		if anchor, recorded := result.sourceAnchors[key]; recorded {
+			// The Load-time parse of a selected authoring language already
+			// recorded this range. Parsing the file again with the native
+			// grammar would be a second, different reading.
+			anchorPath, pathErr := sourceindex.NormalizeWorkspacePath(anchor.File)
+			if pathErr != nil || anchorPath != artifact.Path {
+				return sourceindex.Index{}, fmt.Errorf("source %s: recorded anchor belongs to %q, not %s", key, anchor.File, artifact.Path)
+			}
+			rng, err = sourceindex.RangeFromOffsets(content, anchor.Start, anchor.End)
+			exact = true
+		} else {
+			rng, exact, err = exactSubjectRange(content, subject, anchorTables, artifact.Path)
+		}
 		if err != nil {
 			return sourceindex.Index{}, fmt.Errorf("source %s in %s: %w", key, artifact.Path, err)
 		}

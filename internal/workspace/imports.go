@@ -43,6 +43,10 @@ type workspaceManifest struct {
 	FormatVersion int
 	Sources       []string
 	Imports       []WorkspaceImport
+	// Languages are the authoring languages this Workspace selected, exactly
+	// as written. An empty list selects none: a *.tei.md source then stays
+	// unread and Load refuses it.
+	Languages []AuthoringLanguageSelection
 }
 
 // parseWorkspaceManifestYAML accepts the existing small workspace YAML subset
@@ -66,6 +70,7 @@ func parseWorkspaceManifestYAML(src string) (workspaceManifest, error) {
 	var out workspaceManifest
 	section := ""
 	current := -1
+	languagesDeclared := false
 	for n, raw := range strings.Split(src, "\n") {
 		line := manifestLine(raw)
 		if line == "" {
@@ -109,8 +114,33 @@ func parseWorkspaceManifestYAML(src string) (workspaceManifest, error) {
 		case "imports:":
 			section = "imports"
 			continue
+		case "languages:":
+			if languagesDeclared {
+				return workspaceManifest{}, fmt.Errorf("line %d: duplicate languages section", n+1)
+			}
+			languagesDeclared = true
+			section = "languages"
+			continue
 		}
 		switch section {
+		case "languages":
+			if !strings.HasPrefix(line, "-") {
+				return workspaceManifest{}, fmt.Errorf("line %d: unsupported workspace manifest entry %q", n+1, line)
+			}
+			value, err := manifestScalar(strings.TrimPrefix(line, "-"))
+			if err != nil {
+				return workspaceManifest{}, fmt.Errorf("line %d: language: %w", n+1, err)
+			}
+			selection, err := parseAuthoringLanguageSelection(value)
+			if err != nil {
+				return workspaceManifest{}, fmt.Errorf("line %d: %w", n+1, err)
+			}
+			for _, existing := range out.Languages {
+				if existing.LanguageID == selection.LanguageID {
+					return workspaceManifest{}, fmt.Errorf("line %d: language %q is selected more than once", n+1, selection.LanguageID)
+				}
+			}
+			out.Languages = append(out.Languages, selection)
 		case "sources":
 			if !strings.HasPrefix(line, "-") {
 				return workspaceManifest{}, fmt.Errorf("line %d: unsupported workspace manifest entry %q", n+1, line)
