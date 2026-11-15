@@ -3,6 +3,7 @@ package partition
 import (
 	"encoding/json"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"tei/internal/application"
@@ -76,6 +77,10 @@ func TestReferenceWorkspaceIntentStopsBeforeDirectCUD(t *testing.T) {
 		{Kind: "semantic-capability", ID: "sales.order.submit"},
 		{Kind: "semantic-data", ID: "sales.order"},
 	}
+	worldFingerprint, sourceFingerprint, err := operations.WorkspaceProjectionFingerprints(loaded.World, index)
+	if err != nil {
+		t.Fatalf("fingerprint captured Workspace: %v", err)
+	}
 	for _, subject := range subjects {
 		if len(index.ReferencesFor(subject)) == 0 {
 			t.Fatalf("no indexed Source location for %v", subject)
@@ -88,8 +93,15 @@ func TestReferenceWorkspaceIntentStopsBeforeDirectCUD(t *testing.T) {
 		}
 		if inspected.Subject != subject || inspected.Effect != "read-only" ||
 			inspected.SourceStatus != "indexed" || inspected.Workspace == nil ||
+			inspected.WorldFingerprint == "" || inspected.SourceIndexFingerprint == "" ||
 			len(inspected.Sources.References) == 0 {
 			t.Fatalf("unqualified read-only inspection for %v: %+v", subject, inspected)
+		}
+		if !reflect.DeepEqual(*inspected.Workspace, loaded.Identity()) {
+			t.Fatalf("inspection Workspace differs from loaded Workspace for %v", subject)
+		}
+		if inspected.WorldFingerprint != worldFingerprint || inspected.SourceIndexFingerprint != sourceFingerprint {
+			t.Fatalf("Workspace revision drift across subject inspections for %v", subject)
 		}
 		var canonical struct {
 			ID string `json:"id"`
