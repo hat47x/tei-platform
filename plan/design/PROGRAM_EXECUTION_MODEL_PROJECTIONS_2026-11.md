@@ -1151,7 +1151,7 @@ TEI内評価・契約付きMock・実Providerを同じ業務意味から生成�
 
 ## 61. 実行図の最初の一歩は、実在するInspectorの対象から始める（2026-11-15追補）
 
-§57〜60で整理した証拠の連鎖を製品へ接続する際、最初から「公開Functionを選んで、すべての実行経路を表示できる」と仮定しない。現行`internal/operations/inspect.go`の`InspectSubject`は、`Workspace.Load`から正規化Worldを読み、**先にCanon­ical Subjectを解決してから**`BuildSourceIndex`へ進む。対象種別は`InspectionSubjectKinds`の閉じた集合であり、`semantic-capability`には対応するが、任意のFunction/Entry/実行Attemptを自由に参照するAPIではない。
+§57〜60で整理した証拠の連鎖を製品へ接続する際、最初から「公開Functionを選んで、すべての実行経路を表示できる」と仮定しない。現行`internal/operations/inspect.go`の`InspectSubject`は、`Workspace.Load`から正規化Worldを読み、**先にCanonical Subjectを解決してから**`BuildSourceIndex`へ進む。対象種別は`InspectionSubjectKinds`の閉じた集合であり、`semantic-capability`には対応するが、任意のFunction/Entry/実行Attemptを自由に参照するAPIではない。
 
 したがって最初のread-only検証は、**実在する一件の`semantic-capability`とそのSource参照の照合**へ限定する。「Capabilityの定義をInspectできる」と「公開Entryから実Providerが呼ばれた」を別の問いとして表示し、前者の成功だけで後者を有効化しない。対象種別が未対応なら、表示名やGraphの描画Nodeから代用のCanonical IDを合成せず、既存`UNSUPPORTED_SUBJECT_KIND`を返す。
 
