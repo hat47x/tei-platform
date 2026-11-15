@@ -19,6 +19,29 @@ type SourceError struct {
 	Err     error
 }
 
+// SourceErrors contains syntax findings from one validation load. A partial
+// World is never returned with this error.
+type SourceErrors struct {
+	Errors []*SourceError
+}
+
+func (e *SourceErrors) Error() string {
+	if len(e.Errors) == 0 {
+		return "no source errors"
+	}
+	return e.Errors[0].Error()
+}
+
+func (r *Result) collectSourceError(path string, err error) error {
+	wrapped := sourceErr(path, err)
+	var syntaxError *SourceError
+	if r.syntaxErrors == nil || !errors.As(wrapped, &syntaxError) {
+		return wrapped
+	}
+	r.syntaxErrors.Errors = append(r.syntaxErrors.Errors, syntaxError)
+	return nil
+}
+
 func (e *SourceError) Error() string {
 	return fmt.Sprintf("%s:%d:%d: %s", e.Path, e.Range.Start.Line, e.Range.Start.Column, e.Message)
 }

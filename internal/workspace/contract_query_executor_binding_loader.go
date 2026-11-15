@@ -26,7 +26,10 @@ func loadContractQueryExecutorBindings(root string, r *Result) error {
 		}
 		binding, err := syntax.NewParser(string(src)).ParseContractQueryExecutorBinding()
 		if err != nil {
-			return sourceErr(path, err)
+			if err := r.collectSourceError(path, err); err != nil {
+				return err
+			}
+			continue
 		}
 		sourceKey := "contract-query-executor-binding:" + binding.Identity()
 		if previous, exists := r.Sources[sourceKey]; exists {
