@@ -157,3 +157,112 @@ func TestOrgAxisAsOfActualPostgresOptIn(t *testing.T) {
 		})
 	}
 }
+
+// TestOrgAxisAsOfRevisionKeyCandidateOptIn compares a possible *physical*
+// identity for historical revisions without changing the product's Persistence
+// Mapping or declaring the candidate as accepted business meaning.
+//
+// The candidate primary key (membership_id, known_from) can store two revisions
+// but cannot itself reject overlapping known-time intervals. Both properties
+// are measured in a transaction against disposable PostgreSQL. The transaction
+// is rolled back even when a test fails.
+func TestOrgAxisAsOfRevisionKeyCandidateOptIn(t *testing.T) {
+	dsn := os.Getenv("TEI_ORG_AXIS_PG_DSN")
+	if dsn == "" {
+		t.Skip("physical revision candidate NOT RUN: TEI_ORG_AXIS_PG_DSN unset")
+	}
+	const isolated = "tei_org_axis_e2e"
+	if os.Getenv("TEI_ORG_AXIS_PG_CONFIRM_ISOLATED") != isolated {
+		t.Fatal("isolated database confirmation absent")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	db, err := sql.Open("pgx", dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	var dbName string
+	if err := db.QueryRowContext(ctx, "SELECT current_database()").Scan(&dbName); err != nil || dbName != isolated {
+		t.Fatalf("refusing revision candidate outside isolated DB %q: %v", dbName, err)
+	}
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback()
+	_, err = tx.ExecContext(ctx, `CREATE TEMP TABLE org_membership_revision_candidate (
+		membership_id text NOT NULL,
+		known_from timestamptz NOT NULL,
+		known_to timestamptz,
+		allocation numeric(8,2) NOT NULL,
+		PRIMARY KEY (membership_id, known_from)
+	) ON COMMIT DROP`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const insert = `INSERT INTO org_membership_revision_candidate
+		(membership_id, known_from, known_to, allocation)
+		VALUES ($1, $2::timestamptz, $3::timestamptz, $4)`
+	if _, err := tx.ExecContext(ctx, insert, "A2", "2027-04-01", "2027-07-03", "0.60"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.ExecContext(ctx, insert, "A2", "2027-07-03", nil, "0.90"); err != nil {
+		t.Fatalf("candidate must be able to store two versions of A2: %v", err)
+	}
+	var versionCount int
+	if err := tx.QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM org_membership_revision_candidate WHERE membership_id = $1", "A2").Scan(&versionCount); err != nil {
+		t.Fatal(err)
+	}
+	if versionCount != 2 {
+		t.Fatalf("two revisions must remain stored: got %d", versionCount)
+	}
+	const asOf = `SELECT allocation::text FROM org_membership_revision_candidate
+		WHERE membership_id = $1 AND known_from <= $2::timestamptz
+		AND (known_to IS NULL OR $2::timestamptz < known_to)`
+	for _, tc := range []struct {
+		name, knownAt, allocation string
+	}{
+		{"previous version immediately before boundary", "2027-07-02", "0.60"},
+		{"corrected version exactly at boundary", "2027-07-03", "0.90"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rows, err := tx.QueryContext(ctx, asOf, "A2", tc.knownAt)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer rows.Close()
+			var values []string
+			for rows.Next() {
+				var v string
+				if err := rows.Scan(&v); err != nil {
+					t.Fatal(err)
+				}
+				values = append(values, v)
+			}
+			if err := rows.Err(); err != nil {
+				t.Fatal(err)
+			}
+			if len(values) != 1 || values[0] != tc.allocation {
+				t.Fatalf("as-of %s: got %v, want [%s]", tc.knownAt, values, tc.allocation)
+			}
+		})
+	}
+	// This third row has a distinct key, but overlaps both accepted candidates.
+	// A composite PK alone is not an interval-exclusion constraint.
+	if _, err := tx.ExecContext(ctx, insert, "A2", "2027-06-01", "2027-08-01", "0.70"); err != nil {
+		t.Fatalf("candidate key unexpectedly rejected overlapping known-time version: %v", err)
+	}
+	var active, distinct int
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*), COUNT(DISTINCT allocation)
+		FROM org_membership_revision_candidate
+		WHERE membership_id = $1 AND known_from <= $2::timestamptz
+		AND (known_to IS NULL OR $2::timestamptz < known_to)`,
+		"A2", "2027-07-03").Scan(&active, &distinct); err != nil {
+		t.Fatal(err)
+	}
+	if active != 2 || distinct != 2 {
+		t.Fatalf("overlapping candidate should leave two conflicting versions, count=%d distinct=%d", active, distinct)
+	}
+}

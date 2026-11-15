@@ -2706,6 +2706,19 @@ Studio／SHO／SUI／AIが同じ意味候補を提示しても、編集資格は
 - **次の受入条件**：#2386/#1126がMembership occurrence、訂正・版ID、Person Link/兼務の意味を選ぶ。#1180/#2514/#4490へMVR-02の**旧新2版を共存保存してknownAt別に再読込する正例**を渡す。複合キーや履歴表は比較候補であり、採用済みの製品仕様ではない。
 - **証拠の扱い**：元[PR #4866](https://github.com/hat47x/tei-platform/pull/4866)はclosed/unmerged。コードと組織設計の現行mainに同じ内容があることと、PRがマージされたことは別の主張として記録する。一般Repository Health、通常tei CLI→実Provider→独立Consumer #2586、正式`*.tei.md` Reader/生成Go、Studio Stage2 #2831は独立P0。
 
+
+<!-- org-revision-key-candidate-compare-20261115 -->
+### 2026-11-15 組織C1：訂正履歴の物理キー候補を実測し、業務意味の採否へ返す（補遺§38）
+
+[組織C1設計§38](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)で、現行`membership_id`単独PKの訂正版共存不能（隔離PG負例 [run 43681066038](https://github.com/hat47x/tei-platform/actions/runs/43681066038) 実PASS）から、**履歴版を保存できることと、knownAtで一つの版に解決できることを分ける**検証へ進む。
+
+- **実験用の二版正例**：製品Persistence/Queryを変更せず、既存使い捨てPGに候補`(membership_id, known_from)`の一時テーブルを作る。A2旧版と新版を保持し、境界前後に別の配賦を一行ずつ読み出せるかを確認する。
+- **区間重複の負例**：同じA2の第三版がknownAt上で旧新版と重なっても複合PKだけでは拒否されず、同一時点に異なる配賦の二版が該当することを確認。任意一行の選択や上書きを正解としない。隔離PGの実PASSまでは予想結果に留め、合成GoやSQL文字列検査から実証と宣言しない。
+- **Owner採用判断**：#2386/#1126がMembership occurrence、版ID、訂正・取消・再所属、Person Link、兼務と区間非重複・同時更新の意味を受理する。複合PK、版ID分離、現在行＋履歴表の候補を比較し、選んだ方式だけを正式`*.tei` Persistence/Queryへ反映する。独立Expectedは#1180/#2514/#4490のMVR-01〜05を再利用。
+- **実製品への橋渡し**：意味受理後、同じA2の二版を実DBへ保存・同一validAtでknownAtを切り替えて実Provider→Function Context→独立Consumerへ渡す。Read Cohort/Row Coverage/Current Grantと正式`*.tei.md` Reader・生成Goは別資格。CLI実Provider初回Read #2586とStudio Stage1→Stage2 #2831を独立P0として維持。
+
+**実装状態**：今回の複合PKは検証用テーブルの候補であり、TEI標準Schema・新Temporal Engine・第二Expected管理・製品業務Ruleとして採用していない。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
