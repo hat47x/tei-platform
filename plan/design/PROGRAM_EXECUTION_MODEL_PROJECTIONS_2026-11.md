@@ -943,3 +943,129 @@ Ownerが受け取るべき一枚の検収票には、固定Subject/Source/World�
 - **Effectを含む後続段階**：受注確定や組織Case・REAの実例で、二時点の照会結果、業務Rule判断、DB Commit、通知、ACK、実Readback、Current Grantを別証拠として統合する（#1174/#1129/#4490/#4501）。新Scheduler・新Host・汎用StateMachineを作らない。
 
 本追補は**設計・Owner引渡しの更新のみ**である。新しいGo/SQL/Java/.NET/Windowsの実行テスト、製品Reader・実Provider・Stage2、実Effect/独立Consumerの受領、Ownerによる業務Meaningの正式受理は行っていない。新しい独立Expected正本やPX番号を追加せず、既存Scenarioへ必要な差分を引き渡す。
+
+## 51. 実行図に「予定」と「実際」を重ねるための基準（2026-11-15 第4次統合）
+
+第45〜50節で意味・実行・観測の三面を分けた。次は、設計者が実行図を開いたとき、**契約として必要な経路と、特定の試行で実際にたどった経路を同じ対象で比較できるようにする**。図の描画機能を新しい実行Engineへ育てるのではなく、既存のSource/Meaning、Operation/Provider、Receipt/Evidenceを読み取る限定的なProjectionから始める。
+
+最初に固定するのは、問い（例：「この公開Entryが選択されたProviderを呼んだか」）、Workspace、Source occurrence/Revision、Accepted Meaningの有無、Target/Build variant、実Consumer、対象Attemptと必要な開示範囲である。これらを固定しない「最新の実行図」や「すべての経路」は意味が曖昧になる。
+
+| 図に載せる関係 | 答えられる問い | その図だけでは答えられない問い |
+| --- | --- | --- |
+| **定義された経路** | Entry→Function/Rule、要求Effect、型付きRelationが何を意図するか | 実Hostが公開・呼出したか |
+| **選択された実効経路** | Target/Plugin Lock/Contract/Guardを考慮すると何を使う予定か | 実BuilderがそのSourceを読んだか、実ProviderがCalledされたか |
+| **実現された経路** | 選択Builderが消費したSource、Artifact Member、実Image/Providerは何か | 当該Attemptでその処理を通ったか |
+| **観測された経路** | 実Call、Result、Read/Effect/Receipt、受領先のうち何が見えたか | Traceに現れなかった経路が存在しないか、現在のGrantが有効か |
+
+この四つの関係は単純な包含関係ではない。Guardによる正当な拒否なら、定義上のProvider経路が存在しても実Callはゼロでよい。任意PluginのHookもTargetによって生成されないことがある。逆に実Callが存在しても、受理済み契約から外れたProviderが呼ばれていれば「観測済みだから正しい」とはならない。
+
+**観測がない**ことと**起きなかったと確認できた**ことを区別する。後者を主張するには、対象となる全Call siteやInstrumented Scope、対象Attempt、観測の完備性が、その問いを満たしている必要がある。「一つのTraceにない」「画面に表示されない」「Source Indexで検索できない」は不存在の証明ではない。partial、unknown、not-loaded、permission-denied、unsupportedをゼロ件や成功に変換しない。
+
+## 52. 図の線を、独立した証拠へ結び付ける
+
+実行図の辺には「宣言上の呼出し」「Provider選択」「実際のCall」「作用確定」「観測・配送」の異なる意味がある。同じ二つのNodeを結ぶ線でも、それらを一本にまとめてはならない。多重Edgeのidentity、方向、意味Role、Occurrenceを保持する。Runtime Traceの一行や描画ライブラリが自動発行したEdge IDを、Sourceの意味Relation IDへ昇格させない。
+
+```mermaid
+flowchart LR
+  subgraph D["契約・実効Plan（設計上の経路）"]
+    E["公開Entry"] -->|型付きInvocation| F["業務Function"]
+    F -->|選択先| B["Provider B"]
+  end
+  subgraph T["実行Attempt（対照用の不一致例）"]
+    A["実際にCalledされたProvider A"] --> R["実Result"]
+    A --> W["実Read／Effectは別途確認"]
+  end
+  B -. "選択B／実Call A：不一致" .-> A
+```
+
+これは**故障注入を説明する合成図**であり、現在の製品で不正Callが観測されたという記録ではない。同じResultが返っても、Provider AとBの実コード、Source/Artifact、Grant、Effectが同じと認定しない。Provider契約の選択は#951/#4495、実Calledと入出力はOperation/Driver、作用の確定は#1174/#1129が別々に証明する。
+
+| 問いの種類 | 必要な証拠 | 図の上で認める表示 |
+| --- | --- | --- |
+| **一件の存在** | 型・Subject/Attemptが合う正の実Witness | 「この範囲で一件を観測」と限定して示す |
+| **全件に対する適合** | 完全な対象集合、必要な不変条件と独立Expected、実Provider/Consumerの対象範囲 | 対象Scopeと適合を確認した割合・不足を表示 |
+| **一件もない** | 対象集合・観測点・時間範囲の閉包、必要な否定条件 | 閉包がない場合は「未確認」と示す |
+| **Ruleの競合** | 別IDの二行が同じ入力に対してそれぞれ成立した正の根拠 | 取得がpartialでも、確定した二行のConflictを示せる |
+| **業務Effectの確定** | 実DB/外部Host側Receiptと、必要な場合の独立Readback | ACKやExit 0とは別の確定情報を示す |
+| **現在の利用・公開資格** | 現在のHost Grant、Audience、Source/Provider/Disclosure | 旧い成功Traceを再利用せず再確認 |
+
+ここでいう「適合を確認した割合」は、全体の分母が有資格に確定しているときだけ計算する。部分取得されたGraphやRLSで隠れたRowsetに対して「全処理の80%」などの見かけの完全率を作らない。RuleのUnique判定も、二行一致で競合を確定できる一方、一行の一致だけでは唯一性を証明できないという既存BRMS設計に従う。
+
+図へ重ねる証拠は、原Sourceのbyte/位置、Meaning Revision、Provider/Builderの実版、Artifact Digest、Attempt、Read ScopeとCoverage、Receipt、Consumer、Expectedの識別子で追跡する。**新しい汎用Trace形式やClaim Storeは作らない。** 実在する既存の証拠がない項目を、表示用の仮データで補完しない。
+
+## 53. Process再起動時に、何を引き継げるかを図解する
+
+CLIの直接起動、StudioのWails Native実装、子Backend候補、Web/Batchの外部Hostは、同じApplication APIを使えてもProcessとSessionの寿命が異なる。特に再起動では、実行中のAttemptと、Processが終了したという事実を分ける。
+
+```mermaid
+sequenceDiagram
+  participant C as 呼出側CLI／Studio
+  participant H as Host／Provider
+  participant D as DB・外部Effect
+  C->>H: 型付きInvocation（業務操作ID／Attempt）
+  H->>H: Prepare／Admit
+  H->>D: 条件付き更新の要求
+  D-->>H: Commitが成立する場合
+  Note over H,C: Commit後・応答前にProcessが停止した例
+  C--xH: 応答を受け取れない
+  Note over C: 呼出側に見える結果は不明
+  C->>D: 許可された独立Receipt照会／Readback
+  D-->>C: 確定・未確定の根拠（取得範囲付き）
+  Note over C: 根拠と現在資格を照合してから次のActionを判断
+```
+
+この図は**正常／障害の取り得る因果経路**を示すもので、全DB・全Hostに一意なReceipt APIが存在すると仮定していない。外部照会は実Provider/Hostの契約と権限を満たす場合だけ行える。読み取れなかった場合はunknownを保持し、Effect再送が安全であると推測しない。
+
+再起動で再利用できるものは、利用者の未保存Buffer、Workspace選択、Pin、提出済みOperation IDなど、各Ownerが保存を認めた範囲に限る。復元してよい**表示の状態**と、復元してよい**実行権限・Provider実体・Effectの実行済み判定**は異なる。実Child Image、Protocol/Plugin Lock、Process Generation、Server側Workspace、Source/Meaning Revision、現在Grantを照合せず、旧SessionのReplyを現在の操作に結び付けない。
+
+ServerやWorkerの自動再起動と、業務Operationの自動再送は別のPolicyである。Child Process方式の採否も#4635の実比較に委ねる。現行の同一Process Desktopを、子Backendの実動作実証として表示しない。#4775で計画へ統合されたScript LaunchのPrepare→Admit→Invoke→Observe/Discloseと、その実装Ownerを再利用する。
+
+## 54. Studio・CLI・AIが同じ実行図を扱うときの操作境界
+
+最初のUIは、全Workspaceの巨大Graphよりも、**一つのEntry／Functionを選び、その契約・実効Plan・実行Attemptを横に照合できるread-only画面**がよい。Studio上でSource・Graph・Trace・表・説明文を切り替えても、同じSubjectを参照しているかを明示する。
+
+| 画面で見たいもの | 最小の表示・操作 | 書込み・公開の制約 |
+| --- | --- | --- |
+| 対象 | Workspace、Source occurrence、Meaning/Targetの版、PinしたSubject | 同じ表示名や位置を対象IDとしない。Bへ移った後のAの遅延返信はBに作用させない |
+| 契約 | Entry、Function/Rule、必要なCondition・Effect・Guard、Source位置 | Reader未接続・Meaning未受理は候補／unsupportedと表示 |
+| 実効Plan | 選択Contract/Provider/Target、実Builder/Artifactの対応 | 宣言された選択と実Load/実Callの一致を推測しない |
+| 実行Trace | 当該AttemptでのCall、Result、Read/Effect/Receipt、ConsumerとCoverage | 古いTraceと新しいAttemptを名前だけで接合しない |
+| 差分と説明 | 契約上必要な関係、実現した関係、観測の欠落・不一致・未確定 | 非公開Facetや現在開示されない情報を外部AIへ送らない |
+
+図上のNode/Edgeを選択した場合は、型付きSubject/Relationへの一意な対応を検証してからEditorの元Sourceへ移動する。多義的なViewや描画専用Edge、部分的な投影から逆編集を始めない。変更する場合もSource occurrence/Revisionに束縛したProposal→Preview→再読取→Applyの既存経路を用い、GraphのDragやAIの要約によって業務Meaning、Current Grant、Effectを直接変更しない。
+
+説明は「何を目的に、どの条件で何を判断し、何を実行し、何が確かめられたか」を自然な日本語で述べ、元のRule行・業務Source・実Receiptへ辿れるようにする。AIからの補足はCandidateと区別する。**出典から導いた説明文と、その説明文を正解として生成したテストの一致**を、独立Expectedによる検収と呼ばない。AI Harnessへ渡す内容はInstruction・Subject・Capabilityの三閉包で固定し、Skillや図から権限を与えない。
+
+## 55. 最小の検証シナリオを既存Fixture・Driverへ引き渡す
+
+ここでは新しい試験番号・Expected正本を定義せず、**既存のGraph/Rule Fixture、Script Launch EL、Receipt/Driver、Studio PinとSelf-buildの試験に追加する観測項目**をまとめる。
+
+| 検証の問い | 固定する一因子／故障注入 | 必要な区別 |
+| --- | --- | --- |
+| 同一Relationを追跡できるか | 同名二Node、同端点二Edge、片Edge反転、描画用Edge再採番 | Relation ID／方向／多重度／Source spanとView Edgeの違い |
+| 選択先が本当に呼ばれたか | Selected B、Actual A。同値Resultを返す | 不正なProvider実体・実Artifactを検出し、値一致だけでPASSにしない |
+| Ruleが同じか | Rule条件だけ変更／説明だけ変更／A→B→A | 原byte・受理Meaning・生成Go・実Input/Result・再資格化の別判定 |
+| Call=0を証明できるか | Entry拒否と、Traceだけを欠落させる反例 | 拒否経路の独立Witnessと、観測不足からの不存在断定の違い |
+| Commit・応答・再送は別か | DB確定後・返信前のProcess停止、ACK喪失 | Receipt取得、結果unknown、現在Grantと重複副作用防止 |
+| Process世代を分けられるか | Child再起動／Plugin版変更／古いStudio Reply | 現在の実Image/Lock/Workspaceと旧Pin・旧Attemptの分離 |
+| 実行図の変更で再Buildが要るか | レイアウトのみ／Source記述変更／Rule変更／Builder版変更 | Source Index、Meaning、Artifact/Evidence再利用、現在Grantを独立評価 |
+
+最初の正常側の縦断は、#4495の**一つの公開pure Function→Host選択Provider→型付きApplication API→通常製品`tei` CLI**である。引き続き別のConsumerを検収するが、最初からHTTP・VUI・Batch・MCP・Studioの全入口を一度に接続しない。Graph/Rule Fixtureによる生成Go・独立Expectedの成功は、同じFunction/Providerと実接続するまでは別Subjectの成果とする。
+
+受理済みMeaningと正式`*.tei.md` ReaderのS0-Aが未成立なら、図をCandidateとして表示するにとどめる。テスト用S0-Pや限定Referenceの出力、模擬Traceによって実製品のEntry・Provider・Stage2の合格を作らない。独立Expectedは#1180/#2514に置き、図や実装結果から自己生成したExpectedに依存しない。
+
+## 56. 最初に実装するread-only差分と、製品P0への合流
+
+| 作業単位 | 小さな成果と停止線 | 担当する既存Owner |
+| --- | --- | --- |
+| **D0：観測できる範囲を表示** | 固定Subjectの定義／選択／実現／観測を既存の型付き参照で並べる。必要な参照がない層はunknown／unsupported | #4198／#2497／#1124 |
+| **D1：一因子変更のread-only比較** | Edge方向・ID・Rule・Layoutのみ変更の前後と、Source/Meaning/Artifact/Traceの影響を区別 | #2600／#2514／#2621 |
+| **D2：Product Entryの実証へ接続** | 公開pure Entry、選択実Go Provider、通常CLI実Process、独立Consumerの同一AttemptとResult/Failure | #4495／#2586／#1251 |
+| **D3：実Effectの復旧を観測** | 実Provider/DBとReceipt再読取、Commit後ACK喪失・重複再送の判定。未実証ならunknownで停止 | #1174／#1129／#1130 |
+| **既存P0：正式Desktop自己再構築** | Stage1自身のBuild Intentから実Builder・生成Stage2 Windows Artifact・実WebView2 Consumerまでつなぐ | #2831／#4583 |
+
+D0/D1はP0の新Hard Gateではない。特にCLIの実Provider接続とDesktop Stage2の完成を「図解機能が全Targetで完成するまで」停止させない。GUIより先に既存CLI/JSON Inspectorで意味ID・版・Coverageを揃え、Studioは同じread-only Projectionを消費する。新しいGraph Compiler、Trace Collector、中央Evidence Store、Scheduler、Rule Runtime、Hostは設けない。
+
+**受入条件**：各実装PRで、(a)固定した対象と問い、(b)実際に消費したSource/Artifact/Provider、(c)Observed/Not Observed/Unknownの根拠となる取得範囲、(d)独立Expectedとの対照、(e)Consumer/Audience、(f)現在資格と再利用・失効理由を、既存ReceiptやSource参照で確認できること。説明可能な小さな対象で成立したことを、全Workspace/全Plugin/全Targetの証明へ拡大しない。
+
+**現在の資格**：本節は既存資料と限定Referenceの成果を受けた設計・実装引渡しの更新である。新Go/Node/Windows/DB/実ProviderのE2E、新Studio Trace Overlay、Ownerの業務意味受理、実Stage2の成功を新たに主張しない。既存の各Owner・独立Expectedへの引渡しと、実実装の完了を区別する。
