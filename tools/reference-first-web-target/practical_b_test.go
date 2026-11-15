@@ -354,6 +354,9 @@ const (
 	practicalBBaseModelRevision = "sha256:4234d86eba95e86a1bf0fd34df7c896f095cca1aa10dc5650d9ddd4dc2b08db4"
 	practicalBApplicationSource = "applications/order-entry/application.tei"
 	practicalBValidationSource  = "semantic/sales/validation.tei"
+	practicalBQuerySource       = "applications/order-entry/queries/recent_orders.tei"
+	practicalBQueryBefore       = "sha256:a7c1c4f6fc55bf93ba775c444c1b2576cc2e979e4e0d93aeeecbe508c61fe3ac"
+	practicalBQueryInputInsert  = "    input from std.datetime\n"
 	practicalBApplicationBefore = "sha256:d9152277abbeb0fdc1ea23e5d54084b8c2ef1ebb5e45e3d32b2340fe04eff71a"
 	practicalBValidationBefore  = "sha256:bd641910f993ef84cbab1ccf3616de8d98c715e7679268115a71a0327e126633"
 	practicalBApplicationInsert = "    uses validation sales.order_line.line_number_positive\n"
@@ -365,6 +368,9 @@ func revertPracticalBAcceptance(t *testing.T, tool, scratch string) {
 	t.Helper()
 	revertPracticalBSource(t, scratch, practicalBApplicationSource, practicalBApplicationInsert, practicalBApplicationBefore)
 	revertPracticalBSource(t, scratch, practicalBValidationSource, practicalBValidationInsert, practicalBValidationBefore)
+	// この受理候補は旧R0 Sourceを固定した歴史Fixture。追加したQuery inputだけは
+	// scratchの中で旧bytesへ戻す。現在WorkspaceへのWriter/Acceptanceを復活させない。
+	revertPracticalBSource(t, scratch, practicalBQuerySource, practicalBQueryInputInsert, practicalBQueryBefore)
 	if err := os.Remove(filepath.Join(scratch, filepath.FromSlash(practicalBAcceptedRecord))); err != nil {
 		t.Fatalf("受理記録をscratch copyから外せません: %v", err)
 	}

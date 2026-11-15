@@ -169,6 +169,33 @@ func TestHistoricalProcessPluginRunnerEvidenceParity(t *testing.T) {
 			t.Fatalf("write frozen manifest %s: %v", target, err)
 		}
 	}
+	// The pinned old runner predates Query input declarations. Restore only
+	// this exact pre-RA-0 Query source in the isolated frozen comparison tree,
+	// never in current reference/workspace or its current Golden World.
+	const preRA0QueryRevision = "e888bb8f21367b721f0984953530da9627e2634d"
+	const preRA0QuerySHA256 = "a7c1c4f6fc55bf93ba775c444c1b2576cc2e979e4e0d93aeeecbe508c61fe3ac"
+	queryPath := filepath.Join("reference", "workspace", "applications", "order-entry", "queries", "recent_orders.tei")
+	oldQueryCommand := exec.Command("git", "-C", repo, "show", preRA0QueryRevision+":"+filepath.ToSlash(queryPath))
+	oldQuery, err := oldQueryCommand.Output()
+	if err != nil {
+		t.Fatalf("read pinned pre-RA-0 Query source: %v", err)
+	}
+	oldSum := sha256.Sum256(oldQuery)
+	if got := hex.EncodeToString(oldSum[:]); got != preRA0QuerySHA256 ||
+		bytes.Contains(oldQuery, []byte("input from std.datetime")) {
+		t.Fatalf("frozen Query source is not the expected pre-RA-0 raw bytes: sha256=%s", got)
+	}
+	currentQuery, err := os.ReadFile(filepath.Join(currentTree, queryPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(currentQuery, []byte("input from std.datetime")) ||
+		bytes.Equal(currentQuery, oldQuery) {
+		t.Fatal("current typed Query source must differ from the pinned frozen Query")
+	}
+	if err := os.WriteFile(filepath.Join(frozenTree, queryPath), oldQuery, 0o644); err != nil {
+		t.Fatalf("restore pinned historical Query in isolated worktree: %v", err)
+	}
 	commit := exec.Command("git", "-C", frozenTree,
 		"-c", "user.name=tei-frozen-workspace",
 		"-c", "user.email=tei-frozen-workspace@example.invalid",
@@ -177,13 +204,15 @@ func TestHistoricalProcessPluginRunnerEvidenceParity(t *testing.T) {
 		t.Fatalf("commit frozen checkout: %v: %s", err, out)
 	}
 	frozenRevision := string(git("-C", frozenTree, "rev-parse", "HEAD"))
-	// The frozen tree must differ from the live revision only by the two
-	// manifests that the pinned parser cannot read in the new format.
+	// The frozen comparison differs from live HEAD only in two pre-format
+	// manifests and this one sha256-pinned pre-RA-0 Query source. This is
+	// historical runner parity, not acceptance of the current typed Query.
 	liveRevision := string(git("rev-parse", "HEAD"))
 	changedPaths := strings.Fields(string(git("-C", repo, "diff", "--name-only", liveRevision, frozenRevision)))
 	sort.Strings(changedPaths)
 	wantChanged := []string{
 		"reference/plugin-self-build/workspace/tei.workspace.yaml",
+		"reference/workspace/applications/order-entry/queries/recent_orders.tei",
 		"reference/workspace/tei.workspace.yaml",
 	}
 	if !reflect.DeepEqual(changedPaths, wantChanged) {

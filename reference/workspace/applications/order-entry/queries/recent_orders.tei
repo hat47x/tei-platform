@@ -1,4 +1,5 @@
 query order_entry.recent_orders {
+    input from std.datetime
     datasource sales
     sql postgres file "recent_orders.sql"
     result {

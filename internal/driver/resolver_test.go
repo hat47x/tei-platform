@@ -31,6 +31,9 @@ func TestReferenceOrderEntryPatternsResolveWithoutDriverSpecificMeaning(t *testi
 		if resolved.Query == nil || resolved.Query.ID != "order_entry.recent_orders" {
 			t.Fatalf("query=%#v", resolved.Query)
 		}
+		if len(resolved.Query.Inputs) != 1 || resolved.Query.Inputs[0].Name != "from" || resolved.Query.Inputs[0].Type != "std.datetime" {
+			t.Fatalf("loaded and resolved typed Query input is missing: %+v", resolved.Query.Inputs)
+		}
 		if resolved.Datasource == nil ||
 			resolved.Datasource.Alias != "sales" ||
 			resolved.Datasource.TargetDatabase != "sales_core" ||

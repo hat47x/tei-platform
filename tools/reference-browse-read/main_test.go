@@ -257,8 +257,8 @@ func TestBrowseReadAgainstDisposablePostgreSQL(t *testing.T) {
 			c.Connection.Database != confirmName || !c.Connection.ReadOnly || c.Connection.Snapshot == "" {
 			t.Fatalf("binding/connection=%+v %+v", c.Binding, c.Connection)
 		}
-		if len(c.Parameters) != 1 || c.Parameters[0].Name != "from" || c.Parameters[0].DeclaredByQuery {
-			t.Fatalf("the undeclared :from must be reported as undeclared: %+v", c.Parameters)
+		if len(c.Parameters) != 1 || c.Parameters[0].Name != "from" || !c.Parameters[0].DeclaredByQuery {
+			t.Fatalf("the declared :from input must be reflected in the observed Context: %+v", c.Parameters)
 		}
 		if c.Coverage.Status != "unestablished" || c.Coverage.EmptyJustified || c.Coverage.Visibility != "unobserved" || c.Grain.Identity != "undeclared" {
 			t.Fatalf("claims raised above the ceiling: %+v %+v", c.Coverage, c.Grain)

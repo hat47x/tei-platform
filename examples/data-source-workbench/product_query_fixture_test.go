@@ -57,6 +57,7 @@ func TestProductRecentOrdersFixtureSourceContract(t *testing.T) {
 	}
 	for _, required := range []string{
 		"query order_entry.recent_orders",
+		"input from std.datetime",
 		"datasource sales",
 		"sql postgres file \"recent_orders.sql\"",
 		"column order_id -> sales.order.order_id",
