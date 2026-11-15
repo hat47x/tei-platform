@@ -339,12 +339,12 @@ EV-02は、Outboxを**同一DB Transactionへ投入できる実装を選んだ�
 
 ### 21.1 まず「型付きValidation一件」で可否を見極める
 
-最初の比較対象は、製品Workspaceが選択した \`tei.rule-authoring/v0\` 由来の \`sales.order_line.quantity_positive\` とする。このRuleを同じ\`semantic.Validation\`から二通りに実行する。
+最初の比較対象は、製品Workspaceが選択した `tei.rule-authoring/v0` 由来の `sales.order_line.quantity_positive` とする。このRuleを同じ`semantic.Validation`から二通りに実行する。
 
-1. **解釈経路**：既存\`validationeval.Evaluate\`が定義済みの比較を、合成Sourceの\`Number\`から読み取って実施する。
-2. **生成経路**：既存\`validationgen.GeneratePositive\`が、判断条件を埋め込んだGoを生成し、実際にGoツールチェーンでビルド・実行する。生成処理は\`validationeval.Evaluate\`へ判断を丸投げしない。
+1. **解釈経路**：既存`validationeval.Evaluate`が定義済みの比較を、合成Sourceの`Number`から読み取って実施する。
+2. **生成経路**：既存`validationgen.GeneratePositive`が、判断条件を埋め込んだGoを生成し、実際にGoツールチェーンでビルド・実行する。生成処理は`validationeval.Evaluate`へ判断を丸投げしない。
 
-実行結果だけでは同じ実装を二度呼んだことを見落とすため、生成Goの比較処理と、二経路で実際に呼ばれた\`Source.Number\`の対象・回数を観測する。正値、ゼロ、負値、明示NULL、値の未取得を同じ入力表で比較し、エラーを業務上の\`not-satisfied\`へ変換しない。基準となる期待値は実装出力から自動生成しない。
+実行結果だけでは同じ実装を二度呼んだことを見落とすため、生成Goの比較処理と、二経路で実際に呼ばれた`Source.Number`の対象・回数を観測する。正値、ゼロ、負値、明示NULL、値の未取得を同じ入力表で比較し、エラーを業務上の`not-satisfied`へ変換しない。基準となる期待値は実装出力から自動生成しない。
 
 この比較は**形式が同じなら実現可能性まで同じだと証明するものではない**。現状、Go生成が対応するのは限定したRule Kind・型であり、未対応の指定を汎用関数へ黙って切り替えない。型・Phase・Read集合・依存Provider・Targetを含む適合は、対象ごとに確かめる。
 
@@ -352,12 +352,12 @@ EV-02は、Outboxを**同一DB Transactionへ投入できる実装を選んだ�
 
 次のGo回帰を、既存の製品Read・生成コードの経路をつなぐ**限定的な比較**として追加する。
 
-- \`internal/semantic/validationgen/positive_realization_parity_product_test.go\` の \`TestSelectedPositiveRuleInterpretedAndGeneratedRealizations\`：実\`Workspace.Load\`で選択した同一RuleをJSONで実Consumerへ渡し、解釈実行と生成Goを**同じGo Process内で別々に呼ぶ**。正値／ゼロ／負値／NULL／未取得の5入力について、独立した期待値と、各経路で1回だけ行うReadを照合する。異なる型のGo生成要求は拒否し、未選択の代替処理へ自動切替えしない。
-- このGo試験は、既存\`validationeval.Source\`・\`semantic.Validation\`・\`validationgen.GeneratePositive\`だけを利用する。第二のInterpreter、Runner、Compiler Service、Evidence Store、DSL構文は追加しない。
+- `internal/semantic/validationgen/positive_realization_parity_product_test.go` の `TestSelectedPositiveRuleInterpretedAndGeneratedRealizations`：実`Workspace.Load`で選択した同一RuleをJSONで実Consumerへ渡し、解釈実行と生成Goを**同じGo Process内で別々に呼ぶ**。正値／ゼロ／負値／NULL／未取得の5入力について、独立した期待値と、各経路で1回だけ行うReadを照合する。異なる型のGo生成要求は拒否し、未選択の代替処理へ自動切替えしない。
+- このGo試験は、既存`validationeval.Source`・`semantic.Validation`・`validationgen.GeneratePositive`だけを利用する。第二のInterpreter、Runner、Compiler Service、Evidence Store、DSL構文は追加しない。
 
-**区別する証拠**：既存のSource位置とReader選択、生成器のGo byte、二つの関数の実Call、Go試験Consumerの受領は、同じものを別名で数えてはいけない。試験がPASSした場合でも「一つの合成Sourceで二つのGo実現の結果とRead回数が一致した」とまで述べる。正式\`tei self-build\`経由のArtifact適格性、実DB／本番Provider、外部Host、非同期索引／帳票、Web／Studioの現在Grant、業務Owner受理は別資格である。
+**区別する証拠**：既存のSource位置とReader選択、生成器のGo byte、二つの関数の実Call、Go試験Consumerの受領は、同じものを別名で数えてはいけない。試験がPASSした場合でも「一つの合成Sourceで二つのGo実現の結果とRead回数が一致した」とまで述べる。正式`tei self-build`経由のArtifact適格性、実DB／本番Provider、外部Host、非同期索引／帳票、Web／Studioの現在Grant、業務Owner受理は別資格である。
 
-新Go試験のCI結果が確認されるまで、本節を**追加試験の実証完了**と読まない。既存の\`TestSelectedRuleGoThroughRealCLISelfBuild\`は生成Go→通常製品CLI Buildの別証拠、\`TestScenarioDecidesAnOperatorRuleWithTheSelectedImplementation\`は選択Operatorの実Callという別証拠であり、三つの試験を同一実行時のEnd-to-endとして加算しない。
+新Go試験のCI結果が確認されるまで、本節を**追加試験の実証完了**と読まない。既存の`TestSelectedRuleGoThroughRealCLISelfBuild`は生成Go→通常製品CLI Buildの別証拠、`TestScenarioDecidesAnOperatorRuleWithTheSelectedImplementation`は選択Operatorの実Callという別証拠であり、三つの試験を同一実行時のEnd-to-endとして加算しない。
 
 ## 23. 次段階では「実現方式の差」だけを増やす
 
