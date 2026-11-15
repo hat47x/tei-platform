@@ -590,9 +590,7 @@ Webの要求、CLIの起動、タイマー、Message、画面操作には、そ�
 
 **既存の独立Expectedへ渡す最短の反例**：①静的Head MemberがSelectorで選ばれたのに実Bundleへ入らない、②同じ公開RuleのG/Pで値が一致してもPだけ非公開情報を先読み、③Pの入力/演算子Pinが古いのに結果だけ同じ、④Gの旧Release/Edge Cacheが現在版と混在、⑤ConsentなしにD側Collectorへ送出、⑥価格をC0文言扱いで変更しDの再検証を省略、⑦H0にTEI JSを必須注入、⑧選択Aと実Provider Bを同一と扱う。新たなScenario正本を作らず、#3509のBC/AX/GQ/G49-EPと#1180/#2514へ対応付ける。値一致、Browser表示、Analytics成功、実注文Effect、CVR因果改善を一票に合算しない。
 
-**次の引渡し**：EP-0/1はread-only/静的生成の最小縦断として#4198/#951/#1121/#2090、G/P意味比較は#5069/#988/#1121/#2514、Targetへの配信・旧版・Consentは#2600/#3271/#3503/#2516、Commerce Effectは#1174/#1129へ戻す。#5075の型付き配線、#5076のPlugin充足設計は現時点では別の**未統合提案**として参照し、完成済みのConnector適合とは扱わない。B1a-I（通常`tei`→実Provider→Function Context→独立Consumer）とStudio Stage1→Stage2の製品P0は維持。**今回の追加は設計・実装順の更新のみで、新Go/Builder/実Browser/Commerce/実験、Owner意味受理はNOT RUN / NOT ACCEPTED**。
-
-
+**次の引渡し**：EP-0/1はread-only/静的生成の最小縦断として#4198/#951/#1121/#2090、G/P意味比較は#5069/#988/#1121/#2514、Targetへの配信・旧版・Consentは#2600/#3271/#3503/#2516、Commerce Effectは#1174/#1129へ戻す。[型付き配線 #5075](https://github.com/hat47x/tei-platform/pull/5075)と[Plugin充足設計 #5076](https://github.com/hat47x/tei-platform/pull/5076)は**main統合済みの設計**であり、製品Connector実Callや開示・適用の受理ではない。[Plugin実現方式 #5095](https://github.com/hat47x/tei-platform/pull/5095)もmain統合済み。B1a-I（通常`tei`→実Provider→Function Context→独立Consumer）とStudio Stage1→Stage2の製品P0は維持。**本節は設計・実装順の更新であり、新Go/Builder/実Browser/Commerce/実験、Owner意味受理はNOT RUN / NOT ACCEPTED**。
 
 <!-- g49-b2c-typed-placement-minimal-witness-20261115 -->
 ### G49 EP-0→EP-1：実際のB2C成果物へ至る型付き配置の最小契約（2026-11-15）
@@ -615,7 +613,7 @@ Webの要求、CLIの起動、タイマー、Message、画面操作には、そ�
 **独立Expectedと採否**：上記は[#3509](https://github.com/hat47x/tei-platform/issues/3509)のG49-EP、[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#2514](https://github.com/hat47x/tei-platform/issues/2514)に統合する**受入項目**であり、第二Scenario正本ではない。観測した「必須の配置義務が満たされた範囲」と、公開に必要な実Release/Grant/Consentを分離する。対照対象のH0 Native-onlyはTEI JS・Renderer・Contract採用ゼロでも適格とし、契約を使うH1だけを追加生成・運用費用で評価する。既存の正値Rule `validationeval` 対 `tei self-build` の実Go回帰（main [#5095](https://github.com/hat47x/tei-platform/pull/5095)が引用する基線）はG/P比較の実装証拠であって、B2CのHead/実配信/Browserの試験ではない。**本節固有のEP-0/1、実B2C Builder/Browser/Commerceの新試験はNOT RUN / NOT ACCEPTED**。Studio全体セルフビルド#2831/#4583と通常製品実Read#2586は並行P0のままにする。
 
 
-**SEO Headの情報を一括して扱わない**：初回のEP-0/1は公開用の静的な商品説明（例：`meta description`）**一Member**に限定する。商品名や`canonical`はURL・言語・Variantと紐づくため別の受入に分ける。価格・在庫・会員価格・クーポン・税額などは更新時点と権威をもつCommerce Providerのデータであり、静的ビルド時の値を現在の確定値として出力しない。Google Search CentralのMerchant Listingは商品情報の初期HTMLへの配置を推奨しているが、それはBuild時に古い価格を固定してよい根拠ではない。公開する必要がある場合は、対象の配信側で現在の公開可能なSnapshot/更新方針を検証し、UI、初期HTML、構造化データ、Checkoutでの価格確定の異なる時点と責務を区別する。これは既存Target/Providerへの制約であり、B2C専用SEOエンジンの追加要件ではない。
+**SEO Headの情報を一括して扱わない**：初回のEP-0/1は公開用の静的な商品説明（例：`meta description`）**一Member**に限定する。商品名や`canonical`はURL・言語・Variantと紐づくため別の受入に分ける。価格・在庫・会員価格・クーポン・税額などは更新時点と権威をもつCommerce Providerのデータであり、静的ビルド時の値を現在の確定値として出力しない。[Google Search CentralのMerchant Listing](https://developers.google.com/search/docs/appearance/structured-data/merchant-listing)は商品情報の初期HTMLへの配置を推奨しているが、それはBuild時に古い価格を固定してよい根拠ではない。公開する必要がある場合は、対象の配信側で現在の公開可能なSnapshot/更新方針を検証し、UI、初期HTML、構造化データ、Checkoutでの価格確定の異なる時点と責務を区別する。これは既存Target/Providerへの制約であり、B2C専用SEOエンジンの追加要件ではない。
 
 | Head情報の区分 | 初回の実現方式と取得・失効の条件 | 否定条件 |
 | --- | --- | --- |
