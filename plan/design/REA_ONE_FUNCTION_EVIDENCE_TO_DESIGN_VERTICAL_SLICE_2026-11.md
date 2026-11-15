@@ -463,3 +463,15 @@ Graphの構造的全件性、Function Read/Write、Owner受理、Source Patchの
 
 **製品P0の優先は変更しない**。正式`*.tei.md` Reader／Studio Stage1→Stage2 Windows実受領（#4583/#2831）と通常CLI→実Provider→実Function Context（#2586）は継続し、新しいHost／Parser／Comparator／Meaning Store／独立Expectedを追加しない。Source-backedな正式Writer/SHO Save・Owner受理・Native JS第二Consumer（#4661）は別資格のままとする。
 
+## 20. 型付きCandidateSetを既存比較へ接続するread-only CLI（2026-11-15）
+
+§19で`three-element rea-intake -before`の偽`unchanged`を止めた後、単に拒否を続けるだけでなく、すでに存在する`reacandidate.CompareCandidateSets`と`BuildReviewPacket`を**通常`tei` CLIから呼ぶ最小のConsumer入口**を加える。新しい比較アルゴリズムや独立したREA原本Readerは作らない。
+
+**入口**：`tei three-element rea-compare -before previous-candidate-set.json -after current-candidate-set.json`。入力は既存`reacandidate.GenerateCandidates`が返す`tei.rea.candidate-set/v0`相当の読み取り専用CandidateSet二件であり、旧`rea-intake`の簡易ReviewPacketや外部REAの生JSONを無条件に流用しない。Schema/Effect、Attempt Evidence IDとProviderの識別・版、CandidateSetの内容Fingerprint、固定のAuthorityLimits、Candidate IDの一意性とOwner確認待ちの状態を局所検査する。Fingerprintは正しい形式・自己整合を示すのみで、原本取得や外部Runとの一致、Owner意味受理、現在の閲覧権限の保証ではない。
+
+**出力**：既存`reacandidate.CompareCandidateSets(before,after)`の結果を`BuildReviewPacket(after,nil,nil,&comparison)`に組み込み、既存read-only Packetと`Summary()`をCLI JSON Envelopeに格納する。新しいStatus/Meaning/Decision Engineを作らず、`ambiguous-structural-match`の旧新片側Source／AttemptとReview Summaryを保全する。対象が複数の場合にCandidate ID順の偽対応を作らず、`unchanged`でもOwner受理やSource編集権限には昇格させない。未知Schema/不整合Fingerprint/未確認Statusなどは成功Envelopeを返さず、終了コード2とする。
+
+**受入条件**：最小の型付きCandidateSetを既存Go APIからJSONにし、通常CLIの`runThreeElementCommand`経由で二時点を比較する。並行同構造Relation 2対2は旧2件・新2件を保留、要約で件数4、JSONで架空の相手Sourceがないことを検査する。一意の再採番はfresh Owner Review付きの候補、同じCandidate IDの異なる観測Factsは`observed-facts-changed`であり、元の`rea-intake -before`は依然`REA_COMPARISON_UNAVAILABLE`で拒否する。欠落ファイル・破損JSON・旧ReviewPacket・未知Schema・改変Fingerprint・重複Candidate IDを負例で固定する。
+
+**残る資格**：このPRが証明するのはGo CLI Dispatcher→既存Comparator→既存ReviewPacketへのread-only接合まで。外部REAツールをもう一度実行した証拠、Raw/UTF-8派生Byteの受領、実製品バイナリを別プロセス起動した独立Consumer、Wails JS受領、正式`*.tei.md`からFunction Read/Write、Source Patch/Save/ReRead、Owner受理、Pluginの自己構築、Studio Stage1→Stage2実Windows受領は引き続き別Expected。既存#1180/#2514/#4661/#2586/#4583/#2831を用い、新Host・Runner・意味正本・万能Readiness Gateを設けない。
+
