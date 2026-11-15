@@ -353,3 +353,19 @@ main統合済み[#5051](https://github.com/hat47x/tei-platform/pull/5051)の`//g
 **実装と計画の優先順位**：W0の一Operator Rule read-only接続票→D0 PostgreSQL一Function実Read／R2-PとR3の個別実Provider資格→Studio Stage1→Stage2実受領を**並列P0として維持**し、その後にNode View、外部Host、Effectful Hookへ接続する。CPW-23〜28は横断固有の反証候補であり、正式Meaning、Provider選択、Data操作、Disclosure／Grant、実Buildの第二正本を新設しない。
 
 **検証境界**：この節は、mainの限定実装と進行中のPRを区別した設計・引渡しである。CPW-23〜28の新しいGo／DB／Windows試験、DB横断Provider実接続、正式R2-P／R3の全経路、Stage1→Stage2再帰セルフビルド、Owner意味・開示受理は**今回新たに検収していない**。
+
+
+<!-- tei-api-plugin-wails-decoupling-20261115 -->
+## 11. API Pluginの機能と公開手段を分け、CLI／Serverの選択を一つの証拠へつなぐ（2026-11-15）
+
+[Studio／CLI配布統合設計§17](STUDIO_CLI_BACKEND_PROCESS_DISTRIBUTION_UPDATE_2026-11.md)は、API PluginをWails Serverに配置しても**Operation Provider自体をWailsに依存させない**。ここではその分離を、既存のShape／Law／Binding／Realization／Admission・Effect／Consumerに適用する。新しいPlugin kindやResolverは設けない。
+
+最初に区別するのは、(1) Operationが要求する入力・出力・失敗・Effectの意味、(2) 選択されたProviderの実装、(3) HTTP method/path・Audience・Disclosureなどの公開Contribution、(4) Wails等のTransport Host、(5) CLI／HTTP／Workbenchの実Consumerである。HTTPは実装したOperationの**公開面**であって、Wails Service名やURLがOperationの安定した意味IDになるわけではない。
+
+標準Node Viewで可視化する場合も`requires`（契約要求）、`provides`（能力提供）、`selected`（構成による選択）、`delivered`（実Artifact収録）、`published`（Hostによる公開）、`invoked`（実呼出し）、`observed`（Consumer受領）を**用途の異なる関係として表示**する。これは表示用の関係名であり、新しい永続Core enum／配線権限ではない。型・粒度・時点・partial、匿名／認証済みActor、Grant／Disclosureが一致しない接続は、図の線を結べても適格としない。
+
+最初の比較では既存`inspect`をCLI directとWails Server HTTPの双方へ通し、意味を同一条件で検査する。この段階の成功を「API Pluginを実行した」証拠と数えない。非Builtin Provider一件を選択できる段階になってから、その選択Lock、Target Closure、実Entry、HTTPの公開契約、独立HTTP Consumerまで順に追加する。**CLIがHTTPを呼ばずに成功すること**と、**同じProviderがServerでも実際に呼ばれること**を別の実測とする。
+
+独立Expectedへは、CLIが隠れてWailsを起動する、HTTP公開だけで未選択Providerを呼べる、CLI主体のRead ScopeをHTTPで無断継承する、A→B→Aで古いGrantが復活する、HTTP切断で未知Effectを自動再実行する、Hostが旧GenerationのRouteを生かす、の六つを渡す。コードと検証のOwnerは既存#1158／#951／#1251／#1824／#1180／#2514へ戻し、現行P0のStudioセルフビルド／通常CLI実Providerに新しいHard dependencyを足さない。
+
+**到達上限**：本節はPlugin接続の設計と検収候補であり、HTTP API Pluginの実製品機能、非Builtin Providerの二入口E2E、実Windows／Webの新PASSを意味しない。
