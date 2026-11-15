@@ -1098,6 +1098,11 @@ Webの要求、CLIの起動、タイマー、Message、画面操作には、そ�
 
 **2026-11-15実行図の製品引渡し**：[実行モデル図解§57〜60](../design/PROGRAM_EXECUTION_MODEL_PROJECTIONS_2026-11.md)では、最初のread-only回答を「固定した一つのEntry／Functionについて、定義・選択・実現・観測を結合できる範囲まで示す」に絞る。#4800の実Plugin Inventory exact LockはDocument／ProviderのLoad・実Call・Disclosureを保証しない。#4805のREA Candidateは同一ID／申告Digestでも観測Factsが変わり得る。#4792のWindow S0-Pは正式S0-Aと別、#4806のInspector制限表示は#4812の生成／配布Asset・実Consumer検証と別である。**実装の最初の切り方**は、#4812のAsset版一致、#2621の一Graph S0-A、#4495の公開pure Entry→実Go Provider→通常CLI、#2831/#4583の実Stage2を既存Ownerに維持する。Mock/TEI内評価は#4808に従い明示的なシミュレーションとして扱う。新しい共通Tracerや一律Hard Gateは設けず、未観測のCall/Effect/受領をPASSと表示しない。
 
+**SL-1の実Input／Source照合（2026年11月15日、[Script Launch §29.5〜29.6](../design/SCRIPT_LAUNCH_ENTRY_TEST_QUALIFICATION_2026-11.md)）**：mainの[組織as-of Query修正 #4847](https://github.com/hat47x/tei-platform/pull/4847)により、宣言した`valid_at/known_at`をSQL Placeholder／実Binder／実DB用試験と一致させる必要性が具体化した。これを公開pure Function一件の、受理済みInput→typed Request→選択済みProviderの実引数の対照へ移す。未宣言Alias／必須欠落／NULL・0・未取得の混同は実Call前に拒否し、結果値が一致するだけの入力不一致を通さない。
+
+さらに[Capability InspectorのGo回帰 #4853](https://github.com/hat47x/tei-platform/pull/4853)では、実Canonical IDとSource Index／元byte位置の一致が検証された。この**読取り専用の出典証拠**をSL-1のPrepareへ利用する一方、Entryの公開・Meaning受理・Host現在Grant・Provider実Callは別に照合する。次の受入は#4495と#1158、独立Expectedは#1180/#2514が担当し、Reader S0-AとStage1→Stage2のP0を先行依存にしない。**本追補は計画上の接続であり、pure Entryの実Provider呼出しと通常CLIの新しいPASSは未確認。**
+
+
 ## 進行の記録と完了条件
 
 各G項目には、対象と版、既存の足場、次の作業、独立した正例・反例、依存、担当Issue、得た結果または未実施の理由を残す。状態は定義済み、実装候補、局所試験、通常入口での実行、利用側確認、案件受入を用途に応じて記す。Issueをclosedにしただけで、別の組合せや実行先が成立したと扱わない。
