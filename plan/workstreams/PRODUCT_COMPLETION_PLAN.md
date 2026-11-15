@@ -1390,3 +1390,25 @@ mainのRule生成Go CLIビルド回帰は、選択Markdown原文のコピーをG
 **Sourceの採否・実装の段階**：まずORG-W1を既存CLI/Inspectorで反証し、ORG-W2は意味Owner判断とProviderの二版保存を待つ。W3は必要Readの全件性を少なくとも一つの負例で示し、W4はRead Cohortの一致が保証できた場合だけ二Consumerへ進め、W5は既存Host・Plugin実CallのOwnerに委ねる。未完了のLinkを説明用Graphで補わず、標準Data/Relation・Query・Rule・Representationの既存層を再利用する。通常CLI実Provider #2586とStudio Stage1→Stage2 #2831は引き続き並列P0であり、相互をHard Gateにしない。
 
 **状態**：これは既存mainの限定成果と、組織C1固有の欠落を結ぶ受入計画である。正式Membership履歴保存、Person Link、製品Read Cohort／二Consumer、BRMSでの実判断、Plugin/Host・Studio E2E、意味Ownerの採用はこの追記だけで成立しない。
+
+
+<!-- tei-api-plugin-cli-http-first-20261115 -->
+## API PluginをCLIとWails Serverから同じOperationへ接続する（2026-11-15・実装引渡し）
+
+[Studio／CLI配布統合設計§17](../design/STUDIO_CLI_BACKEND_PROCESS_DISTRIBUTION_UPDATE_2026-11.md)を、[ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)および[Plugin接続設計§11](../design/PLUGIN_CONNECTION_EVIDENCE_AND_COMPOSITION_SLICE_2026-11.md)の実装に結び付ける。**API PluginをWails Server上で公開できることと、CLIからその機能を直接利用できることを両立**させる。Wailsは公開Hostの候補にとどめ、Operation／Provider／Meaning／Grantの正本にならない。
+
+| 順 | 実装の最小単位 | 確認する成果と限界 |
+| --- | --- | --- |
+| **AP-0：共通操作の基線** | 既存`tei inspect`／`internal/operations`／依存禁止Go回帰を用いて、Wails非依存で同一Result／Failureを得る | 既存read-onlyのCLI実績。API Pluginの実Caller成功には算入しない |
+| **AP-1：Wails Server入口** | 一つのread-only Operationを薄いHTTP Adapterへ公開し、独立HTTP Clientで受領する | 同じSource Snapshot／有効ScopeでCLI directと正規化Result／Failureを比較。Route登録・HTTP 200だけでは不合格 |
+| **AP-2：非Builtin Provider** | 正式Profile／Lockで選んだ一つのProviderをCLI directとHTTPの双方から実Callする | Provider選択・実Artifact・Invocation Attempt・独立Consumerを確認。未選択／未同梱／Grant失効は拒否 |
+| **AP-3：Workbench・Node View** | Wails Bridgeと同一Source Pin、公開ContributionとProviderを用途別のNode Viewへ投影する | 旧ReplyやGraph表示線による暗黙の選択変更を拒否。実Windows画面・受領の資格は別 |
+| **AP-4：作用を伴うAPI** | Command／Recovery／Effect Receiptを備えた対象だけを後続で公開する | 認可、二重実行、通信断・結果不明、更新途中の互換性を検証。初期AP-1の必須条件にはしない |
+
+**作業の切り方**：次のコードPRはAP-0で既に存在する依存境界を再実装せず、AP-1のHTTP Adapter→共通Operationの最小E2Eを先に加える。AP-2を別PRで正式Plugin Providerへ接続し、CLIが裏でHTTPやWailsを起動していないこと、ServerがCLIをshell実行していないことを独立に確かめる。API外部公開や非冪等更新を最初から一般化しない。
+
+**配置とBootstrap**：CLI TargetはWails不在でもBuild／実行でき、Server TargetにだけWails／HTTP公開・Web資産を収録する。Target別BuildIntent／ArtifactSet／Release Closureの実Byteと、Provider実Call・現在Grantはそれぞれ別Evidenceとして保持する。Node Viewでは要求／提供／選択／配布／公開／実呼出し／受領を別関係で可視化し、図自体は第二の実行正本にしない。
+
+**優先順位と担当**：#1158／#3419〜#3422が共通Operation・HTTP Adapter、#951／#1016／#1251が実ProviderとProfile、#1824／#4635がWails HostとWorkbench、#1180／#2514がIndependent Expectedを担当する。API公開は既存P0の**R2-P生成Goの実Builder消費／通常CLIの実Provider R3（#4495）／Studio Stage1→Stage2 Windows（#2831／#4583）を止めない並走課題**とする。Server方式B0/B1/B2や配布D1/D2/D3の選定は、API Pluginの意味契約とは独立に検収する。
+
+**現時点**：AP-1〜4の新規実HTTP／非Builtin Provider／Windows／Effect試験はNOT RUN。AP-0の従来成果は今回の実行結果ではなく、現在の製品コードと既存回帰を基線に利用する計画である。
