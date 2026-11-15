@@ -1322,3 +1322,42 @@ PCGは新しいScenario正本ではない。#1180/#2514が既存HG/PLC/PDC/PDK�
 **P0-S正式Reader S0-A、P0-R通常CLIからの実Provider、P0-B非Plugin Studio Stage1→Stage2 Windowsを並行**させる。C4公開Doc、C5実作用、Release D2はこれらの新しいHard Gateにしない。最初のGo製品差分はC0、次にC2/C3の実生成・実Callを絞り、公開Docは#4714の別PRとする。
 
 Docs-only差分ではOwner/権限/Scenarioの責務を変更しない。PRは最新main基点、変更path、exact HEAD、CI結果（元から存在する失敗は切り分け）、必要なOwner受理を明示し、mainが進んだ場合は再基点化して現HEADを検証する。**本文は実装計画であり、製品Reader・Plugin生成・Stage2・DB/Hook作用の新規受入を意味しない。**
+
+---
+
+## 24. Sourceの選択から実Consumerまでを一つの検収票で追跡する（2026-11-15実装引渡し）
+
+### 24.1 実装済みの証拠と、まだ閉じていない接続
+
+第23章のC0〜C5は工程を分けるための地図である。次の実装PRでは、**一つの選択済みGraph/Rule Source、一つの業務判断、一つの選択Provider、一つの実Consumer**を対象に、各工程が同じSource occurrenceと契約に由来することを既存のEvidenceへ記録する。これを新しい保存モデルや横断実行エンジンにはしない。
+
+- **mainで観測可能**：#4758/#4804はReferenceのGraph/Rule候補・生成Goと原文改変を別資格で試験する。#4826は実Plugin選択の直接上位exact版・Lockを表示する。#4853はsales.order.submitの実InspectorからCanonical ID、Source Index、元byte位置、TraceSubjectSourcesとの対応をGo回帰で照合する。#4850はREAで同じ構造キーの候補が多対多・一対多の場合、個別Relationの相手を勝手に確定しない。
+- **まだ実証していない接続**：これらを結ぶ正式のMarkdown Reader S0-A、Ownerが受理したGraph/Ruleの業務意味、製品Builderに収録された生成Plugin、通常CLIの実Provider呼出し、Stage1→Stage2 Windowsの同一Attempt、現在Audienceに許された公開Manualの製品Read。先行Goテストの成功を一括してこの欠落のPASSとしない。
+
+### 24.2 最小実装パケット：A0〜A3を製品Go側で先に閉じる
+
+| Gate | 実際に確認すること | 停止条件／独立した反証 | 既存担当 |
+| --- | --- | --- | --- |
+| A0 Selection | 現行Application/EnvironmentのContractとLockから対象Language Providerの実Implementationを取得。選択版・未選択・未実装を区別 | Reference ParseSelected成功、同名ファイル、compatibleMajorからの推定では代替しない。選択経路が未実装ならunsupportedで停止 | #951/#1018/#988/#2621 |
+| A1 Read | A0で選択したReaderが同一Workspace.Loadの実原byte、管理Root、Source occurrenceを読む | 別時点のスキャン、管理外Draft、A→B→Aの古い読取り資格を流用しない | #2621/#2600 |
+| A2 Trace | Element/Relation/Rule ID、Span、Source IndexとInspector/Traceの元byte位置を照合 | #4853の限定回帰は再利用するが、Read-only Canonicalの一致を意味受理や編集対象の確定にしない | #1124/#2497/#2621 |
+| A3 Refusal / Compatibility | 未選択のMarkdown Readerを拒否し、既存tei定義の実Read/Commandの後方互換を検査 | 読取不能・部分取得・曖昧Relation候補を一意と補完しない。#4850の多重候補はpairingを作らずReviewへ返す | #988/#2514/#4850 |
+
+A0に実装対象のProviderがなければ、設計のための仮Providerや臨時Registryで穴を埋めない。A0の選択を作る小さな製品PRと、A1〜A3のSource読取り・位置照合PRを分けることを認める。既存Workspace、Management Report、Source Index、Operationの責務を保つ。
+
+### 24.3 意味・生成・製品実利用を同じ成功に畳まない
+
+1. **生成内容の確認**：受理Ruleの条件、GraphのEdge ID・向き・多重性が生成Goの業務判断へ反映される。表示Layoutや説明の変更は元Sourceだけを失効させ得る。構造指紋一致でも、生成Goや実Binaryの改変を外部Expectedで検出する。外部Goへの単純委譲は生成Pluginの意味実装量に計上しない（#1121/#2600/#2514）。
+2. **実利用の確認**：同じOperation/Contract/Providerについて、Build時選択、ArtifactSet収録、通常製品CLIのactual call、独立Consumer受領を別に観測する。各入口のWorld/Source/Result世代とCurrent Grantを照合する（#1251/#4495/#4583）。同値の結果でProvider違いを隠さない。
+3. **説明と実行許可の確認**：#4826のupstreamSelectionは直接依存の実選択版とLockに限る。公開文書はsourceBinding=unbound、disclosure=not-checked、readEligibility=not-assessedを#4714/#4679の製品Doc Readまで維持する。WorkbenchのauthorityLimits表示だけではRelease埋込AssetやWindowsでの受領を証明しない（#4806/#4852）。
+
+正本は既存のWorld／Model／Artifactの指紋、Plugin Inventory、Source Index、Evidence Packet #1163と独立Expected #1180/#2514である。**検収票はこれらの根拠を一件ごとに参照する読み取り専用の見方**であり、新しいBOM、Identity、全域Status、証拠DB、Scenario Runnerを導入しない。対象Sourceが部分取得、構造が曖昧、実Consumerが旧版、Grantが現在不明なら「判断できない」と表示し、成功・空集合・不存在に丸めない。
+
+### 24.4 次の二つのPRと完了の定義
+
+- **製品PR-S0A**（Owner #2621）：A0〜A3の最小Graph/Rule一件。実選択Implementationが存在するなら同じLoad byteからSource Indexへ接続し、ないならA0未実装を明示して最小Selection配線から着手。#4853のInspector/Trace Go回帰を検査の入口として再利用する。未選択拒否、Source A→B→A、曖昧候補、既存定義後方互換の負例を既存Expectedへ渡す。
+- **製品PR-PLG**（Owner #1121/#1251/#4495）：S0Aが受理した一Ruleだけを生成Goの実動作へ結び、実Builder/Artifactの同一性と通常CLI→選択Provider→独立Expectedを検査する。Studio Stage2の実Windows Consumerは#2831/#4583の並行P0として別途検収し、CLIの局所合格を代用しない。
+
+各PRで「受理した業務判断の数」「TEIから実生成された判断処理の数」「手書きまたはdelegateのみの処理の数」「変更後に手修正が必要だった箇所」「実際に受領したConsumerの数」を分けて記録する。これは数値目標を先に決めるためでなく、TEI自身によるPlugin実装の範囲が広がり、Markdown定義の記述が簡素になったかを追跡するためである。初回は固定の一例で十分であり、BRMS/REA/組織/Window/公開Doc/Updaterの完成を新たなP0依存にしない。
+
+本節は現行mainの実証と未接続の実装順を整えるdocs-onlyの追補であり、S0-A、生成Plugin、Provider実Call、Stage2、Ownerの業務意味受理を新たに実証したものではない。
