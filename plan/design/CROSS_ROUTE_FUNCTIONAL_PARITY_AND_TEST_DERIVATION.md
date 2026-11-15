@@ -854,7 +854,7 @@ T1-Aでは既知の明細行番号0のValidation負例を追加した。これ�
 
 ### 19.3 Desktopセルフビルドを最初の実Targetで検収する
 
-2026-11-13時点の[#4587](https://github.com/hat47x/tei-platform/pull/4587)の更新報告では、HEAD \`b26e87781e00b19bf142b22a35cfc62a857e88a3\` の[Windows WebView2 CI #43368714294](https://github.com/hat47x/tei-platform/actions/runs/43368714294)で、ordinary版・生成版の両Jobが**completed/success**。生成Inspectorの契約digest/使用回数と、生成JSの実配信bytesを、同一HEADのWindows Native Consumer上で検査した。これは**B0の限定的な統合実測**であり、Draft #4587はmain未統合。従来の#4572/#4579の別HEAD成功を足した結果ではない。
+2026-11-13時点の[#4587](https://github.com/hat47x/tei-platform/pull/4587)の更新報告では、HEAD `b26e87781e00b19bf142b22a35cfc62a857e88a3` の[Windows WebView2 CI #43368714294](https://github.com/hat47x/tei-platform/actions/runs/43368714294)で、ordinary版・生成版の両Jobが**completed/success**。生成Inspectorの契約digest/使用回数と、生成JSの実配信bytesを、同一HEADのWindows Native Consumer上で検査した。これは**B0の限定的な統合実測**であり、Draft #4587はmain未統合。従来の#4572/#4579の別HEAD成功を足した結果ではない。
 
 | セルフビルドの主張 | 証拠の現在地 | その主張のために次に検証すること |
 | --- | --- | --- |
@@ -869,8 +869,8 @@ T1-Aでは既知の明細行番号0のValidation負例を追加した。これ�
 
 | ID | 最初に注入する負例 | 要求する診断 |
 | --- | --- | --- |
-| **TQ-01** | 既存6 Stepのみ全PASS、必要Rule/Targetの分母には未検証が残る | \`local-pass / coverage-incomplete\`。製品全体PASSへ拡張しない |
-| **TQ-02** | required Caseをglob外・SKIPへ移しCIが緑 | required IDの\`not-discovered/skipped\`を検出。観測したCase件数で補完しない |
+| **TQ-01** | 既存6 Stepのみ全PASS、必要Rule/Targetの分母には未検証が残る | `local-pass / coverage-incomplete`。製品全体PASSへ拡張しない |
+| **TQ-02** | required Caseをglob外・SKIPへ移しCIが緑 | required IDの`not-discovered/skipped`を検出。観測したCase件数で補完しない |
 | **TQ-03** | Imported Sourceは変更、Consumer World/Index指紋は不変 | Source closureと実消費が不明なら現行資格はunknown/stale |
 | **TQ-04** | 独立Expectedが実EvaluatorのActualから作られる | 探索結果は保持し、独立検証基準の合格にしない |
 | **TQ-05** | AgentがBlindの正答を見てCase追加 | Case実行の結果は記録し、blind発見能力の得点から外す |
@@ -880,7 +880,7 @@ T1-Aでは既知の明細行番号0のValidation負例を追加した。これ�
 
 **最短の作業順**は次のとおり。
 
-1. **TQ-S0 / read-only照合**：現行Scenario 6 Stepと#3262のRequired Context、#2514の独立Expected、#4587のB0 evidenceを、新しい正本でなく一枚の比較表へ束ねる。主張ごとの\`required / observed / missing / unknown\`を出す。実行しなくても比較の欠落を再現できること。
+1. **TQ-S0 / read-only照合**：現行Scenario 6 Stepと#3262のRequired Context、#2514の独立Expected、#4587のB0 evidenceを、新しい正本でなく一枚の比較表へ束ねる。主張ごとの`required / observed / missing / unknown`を出す。実行しなくても比較の欠落を再現できること。
 2. **TQ-S1 / headless反証**：TQ-01〜05を合成Source・既存CLI／テストハーネスに接続し、実行されたCaseと検証されたClaimの差を記録する。T1Bは独立事前登録と候補Agentの実試行を要するため、単なる固定fixtureをBlind成功と呼ばない。
 3. **TQ-S2 / 実Desktop縦断**：#4583のB1→B2→B3が実装された段階で、TQ-06〜07と同一HEAD/Attempt/Consumer確認を行う。B0の既存成功は再利用可能な履歴であり、B2/B3の新Receiptにはならない。
 4. **TQ-S3 / Effectと再資格化**：#1174/#2597のCommit/Receipt unknown、#2600のArtifact再利用候補とEvidence再資格化を、同一Claimの現在資格へ連結する。副作用の実試験には隔離Resourceと許可済みGrantを必要とする。

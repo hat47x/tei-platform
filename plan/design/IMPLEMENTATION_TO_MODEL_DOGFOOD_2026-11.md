@@ -197,3 +197,20 @@ read-only投影を作る場合に必要な最小列は、対象Kind/ID、元Sour
 成功を「Goの行数削減」「図表の数」「見かけの抽象率」で計らない。**同じ意味上の義務を固定したとき、手書きGoでしか説明できなかった判断を何件標準モデルに移し、複数表現・Target・変更に再利用できたか**を数える。判断単位ごとに、(a)出典と型の確かさ、(b)生成／実行で使われた実体、(c)反例が検出した誤接続、(d)残る`opaque`、(e)可読性・レビュー費用・性能を記録する。移転した判断に対する独立Expectedが無い場合は、実用化したと扱わない。
 
 二つの表記を保つ費用やSource位置の曖昧さが得られる再利用を上回る場合は、表現を増やさず既存表記を維持する。Go ASTから業務意味を確定できない場合は、構造投影だけで停止する。この**拡張しない判断**も、dogfoodingから得た有効な設計結果として残す。
+
+
+<!-- tei-i2m0-ast-first-witness-20261115 -->
+### 9.5 Go ASTから実際に抽出できた構造だけを図・DSL候補へ渡す
+
+第9.3節のI2M-0を最小のGo回帰へ落とす。対象は`GeneratePositive`が出力する`EvaluateSelected`一関数とし、Go標準の`go/parser`／`go/ast`で**生成Goそのもの**を解析する。`Source.Number`の呼出し先・回数、`value.Sign() > 0`の分岐、成立／不成立の返却、Source／値のNULLおよびRead失敗の判別と、実コード内のbyte位置を観測する。手書きのGraphvizがそれらを記述していても、実ソースで確認できない要素は説明候補へ昇格させない。
+
+第一の実装候補は`internal/semantic/validationgen/positive_ast_projection_test.go`（[PR #4986](https://github.com/hat47x/tei-platform/pull/4986)）。元の`positive.go`にある**生成FunctionのAST**も別に読み、生成された評価Functionの構造と混同しない。観測範囲は次の三つの反証で固定する。
+
+| 変えるもの | Go ASTの観測条件 | 保持する資格の区別 |
+| --- | --- | --- |
+| 先頭の説明コメント | Source byte位置だけが変わり、Read対象・条件・結果構造は不変 | 元Source版／再受理が不要になるわけではない |
+| 型付きRuleの参照Attribute | `Source.Number`の引数に現れる元コード文字列と位置が変わる | 生成器と実Providerの選択・実Callは未証明 |
+| 実生成Goの比較`> 0`を`>= 0`へ改変 | 元の厳密な正値条件として**拒否**し、古い図の正当性を主張しない | 一件のAST反例を全経路の意味同値証明とは呼ばない |
+
+この検査は第4節の**C0：read-only構造観測**までである。抽出された局所変数名やGo ASTのNode IDをCanonical IDへ転用せず、業務MeaningのC2受理、逆編集、実Builder受領、実Provider／Consumerは後続として維持する。Go回帰の実行合格は当該コードを含むPRの**exact HEAD**で判定し、設計への追記やGitHubにテストが置かれた事実だけでPASSとしない。
+

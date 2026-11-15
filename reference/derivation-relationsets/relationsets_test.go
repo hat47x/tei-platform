@@ -196,3 +196,46 @@ func TestD9ScalarShape(t *testing.T) {
 		t.Fatalf("scalar with two rows accepted: %v", err)
 	}
 }
+
+func TestD9AsScalarRejectsIncompleteRead(t *testing.T) {
+	tests := []struct {
+		name         string
+		shape        Shape
+		completeness Completeness
+		rows         []Row
+	}{
+		{"optional unfetched zero rows", OptionalOne, Unfetched, nil},
+		{"optional partial zero rows", OptionalOne, Partial, nil},
+		{"optional partial one row", OptionalOne, Partial, []Row{{Amount: amount("5")}}},
+		{"scalar partial one row", Scalar, Partial, []Row{{Amount: amount("5")}}},
+		{"scalar unfetched one row", Scalar, Unfetched, []Row{{Amount: amount("5")}}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ref := SetRef{
+				Anchor: "order.O1", RelationID: "sales.customer",
+				Key: []string{"customer.id"}, Shape: tc.shape,
+				Completeness: tc.completeness, Rows: tc.rows,
+			}
+			got, err := AsScalar(ref)
+			if !errors.Is(err, ErrIncomplete) {
+				t.Fatalf("got %+v, %v; want ErrIncomplete", got, err)
+			}
+			if got.State == derivationref.Null {
+				t.Fatal("incomplete read was reported as an established NULL")
+			}
+		})
+	}
+}
+
+func TestD9AsScalarCompleteOptionalZeroIsNull(t *testing.T) {
+	ref := SetRef{
+		Anchor: "order.O1", RelationID: "sales.customer",
+		Key: []string{"customer.id"}, Shape: OptionalOne,
+		Completeness: Complete,
+	}
+	got, err := AsScalar(ref)
+	if err != nil || got.State != derivationref.Null {
+		t.Fatalf("fully fetched absent relation: got %+v, %v; want NULL", got, err)
+	}
+}
