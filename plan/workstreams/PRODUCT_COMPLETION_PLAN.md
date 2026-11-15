@@ -1260,3 +1260,19 @@ Webの要求、CLIの起動、タイマー、Message、画面操作には、そ�
 まずPQ-Aで原RuleのSource／Reader／Generatorと実Builder入力Go byte・Artifactを同一Build Attemptへ束縛し、PQ-Bで同じWorldでも`implementations:`切替後の旧Scenario選択・結果の無条件再利用を拒否する。両者の意味・実装・時点を独立に確認した後、正式Function一件の`入力→Rule→実Provider→独立Consumer`へ段階的に接続する。期待値は既存#1180/#2514を使用し、別のテスト正本を作らない。
 
 次の最上位P0は**通常CLI→実Provider実Read**と**Stage1→Stage2実Windows WebView2**のままとする。Studio Pin試験コードの存在や単独Self-build CI成功をStage2成立としない。業務Snapshot、現在Grant、移行先DB、帳票の実取得はOwner/Host/Providerが持つ別資格を実証するまで未完了。新規Framework／常駐Host／Runtime／Migration Engineは前提にしない。
+
+<!-- tei-product-self-described-conformance-first-witness-20261115 -->
+### 自己記述M1から実生成・実Buildへ渡す最初の一義務（2026年11月15日）
+
+[自己記述設計§50](../design/ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md)では、Readerや表の種類を増やすよりも、**手書きの意味処理を一箇所置換し、実Consumerが利用したことを証明する**順番を優先する。
+
+| 対象 | 最小実装差分 | 成立させる資格と既存担当 |
+| --- | --- | --- |
+| **SD-M1／M2** | 選択したpositive RuleのID／Attribute／Relation／解決型をSource付きでread-only投影し、独立Expectedで不足・禁止・型違いを検査。採用できた一条件を生成処理で置換し、旧Goの重複検査を実利用経路から取り除く | M1の説明・検査とM2の実置換を別検収。#2620／#4359／#1180／#2514 |
+| **R2-P出典閉包** | main #5009の通常tei self-build実Binaryと、#5020の原Source→生成Go ASTの局所証拠を、同一AttemptのReader／Generator／Build Intent／Builderが読んだ実Go byteへ接続する | Markdownを偽のgo-packageへ混ぜず、既存Build入口を使用。#4544／#2595／#1121 |
+| **SD-O1選択鮮度** | OperatorのLawを入力0の独立Expectedで確かめ、manifestの選択変更を旧Scenario Commandの失効条件として実検査する | World同値と選択／実Call／Law適合を区別。#988／#1018／#2600 |
+| **外側の製品受入** | 受理済みpure FunctionのR3公開Entry→実Provider→独立Consumerと、非Plugin Studio Stage1→Stage2 Windows実受領をそれぞれ実測する | R2-P／SD-O1の局所PASSでは代用しない。#4495／#1251／#2831／#4583 |
+
+印付きData項目表はtei.authoring/v1で既存Data意味へ入る**別の読みやすい表現**として検収し、Runtime RecordやMeta契約の正式文法とみなさない。Operatorの実装選択を説明できても、対象Lawの適合・外部Pluginの実byte Lock・実行Grantは別途確認する。**変更した手書き意味分岐の数、固定した実装義務の分母、再生成・Review負担**を比較し、Descriptor件数や生成Go行数を実装置換率にしない。
+
+**状態**：既存製品の限定成果を次の作業へ結んだ計画のみ。新M1／M2実コード、正式R2-Pの原文閉包、Scenarioコマンド失効修正、R3実Provider、Stage2 Windows新受領はこの更新で実行・完了していない。
