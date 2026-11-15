@@ -8,6 +8,8 @@
 
 過去の判断を本文に重ねて記すのではなく、現在の計画の基準を示します。以前の判断とその理由は、Gitの履歴、設計判断記録、課題からたどれます。
 
+
+- [宣言的な成果物要求とデータ・プロセス合成](design/DECLARATIVE_RESULT_PROCESS_COMPOSITION_2026-11.md)：既存のBatch設計と型付きノード/軽量サービスの横断設計をつなぐ。出力粒度、計算単位、集約単位、実行区分を分け、複数成果物の共通化、分類の多重所属、条件依存Lineage、時間シフト循環を検証する。C0（現行型Fit/Gap）→C1（二粒度・二出力・独立Expected）を#1130/#2622/#1124/#1180/#2514へ接続し、新規DSL／Runner／Optimizerは先行採用しない。実CLI ProviderとStudio Stage1→Stage2のP0を維持する（実装前設計）。
 関連文書は次のとおりです。
 
 - [標準データ・Processからノードフローと軽量サービスを構成する](design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)：既存Data／Facet・Role・Operation・Processから、Node occurrence／Port／Edge／Service／Entry／Targetを分離してAPIマッシュアップ、Webhook、イベント連携に再利用する実装前設計。**第一差分は既存Ruleと純粋変換のread-only型付きFlow→CLIでの実生成・実Consumer照合**とし、外部HTTP／認証／配備は別受入。SF-01〜12の独立Expected候補を既存#1180/#2514へ渡し、N0〜N4／W0〜W4に接続する。新Runner・Registry・Hostは作らず、通常CLI実Providerと非Plugin Studio Stage1→Stage2のP0を変えない。
