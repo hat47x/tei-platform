@@ -1,6 +1,6 @@
 # 業務外領域probe：後続実装者のための具体化ロードマップ
 
-親Issue：[#4193](https://github.com/hat47x/tei-platform/issues/4193)。研究文書：[TEIの汎用モデリング能力を業務外領域で確かめる限定実証](../plan/research/TEI_CROSS_DOMAIN_PROBE_CSW_VS_BEAR_2026-11.md)。
+親Issue：[#4193](https://github.com/hat47x/tei-platform/issues/4193)。研究文書：[TEIの汎用モデリング能力を業務外領域で確かめる限定実証](../../plan/research/TEI_CROSS_DOMAIN_PROBE_CSW_VS_BEAR_2026-11.md)。
 
 本書類は、研究・設計案の段階で止まったwork packetを、「実装者が最後まで作業できる具体的な手順」へ変換します。**製品アーキテクチャの変更・CSW Skill本文の手順変更・VSクマのGodot実装変更は行いません。** 判断材料の整備と、その先の実行可能な形までを対象とします。
 
