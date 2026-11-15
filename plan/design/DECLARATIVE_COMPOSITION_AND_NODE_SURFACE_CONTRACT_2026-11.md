@@ -529,3 +529,44 @@ DC-27〜32は新規テスト実施を表さず、#1180／#2514の独立Expected�
 | DC-38 | Data配線の見た目だけをProcess Triggerへ変更 | 表現の編集が実行意味やGrantを自動生成しない |
 
 DC-33〜35は追加Go回帰の観測対象と重なる。DC-36〜38は**未実装の独立Expected候補**であり、新しいExpected正本を作らず既存#1180／#2514へ渡す。追加Go試験のファイル収録とCI exact HEADのPASS、実Windows／Providerの実観測はそれぞれ別に報告する。
+
+## 27. 同じ意味を実現する方法として、コード生成とパラメータ実行を選び分ける（2026-11-15）
+
+宣言・Markdown表・Graphのパラメータから処理を実現する際、**すべてのModelを個別のGoソースに変換する必要はない**。既存の型付きOperator／Functionが、受理済みパラメータを受け取って同じ意味を実行できる場合は、その汎用処理を再利用する方が、生成・コンパイル・再配布を省ける。逆にTargetへの静的な組込み、固定された処理の高速化、外部Goへの委譲を減らすこと、実装の自己生成が目的なら、Sourceから判断処理を生成する価値がある。**意味の正本と検収条件を共通にし、実現方式だけを選択する**。
+
+### 27.1 三つの実現方式は、できたことを別に数える
+
+| 方式 | 処理を実現するもの | 適する状況／確認するもの | 数えない成果 |
+| --- | --- | --- | --- |
+| **G：Targetコード生成** | 受理済みRule／Graph等から生成した分岐・型・参照・接続処理を、既存Builderで実Artifactへ組み込む | 静的Target、配布先の実行環境制約、頻出処理の最適化、TEI自身／Pluginの実装置換。生成元・実Generator・Builder入力・Artifactを追跡 | 固定Goへの薄い委譲ラッパー、生成SourceをBuildせず放置 |
+| **P：パラメータによる汎用処理** | **既に存在する**型付きOperator／Functionの実装が、Modelの構造・条件・Port binding等を入力として解釈し実行する | 同じ演算を多数のModelで再利用、設定の変更頻度が高い、再Build不要なread-only変換。実Param／契約版・Provider・呼出しと独立Expectedを追跡 | 設定を読めただけ、表示だけ変わったこと、実処理未呼出し、生成コードと同じ実装比率への加算 |
+| **D：外部実装への委譲** | 手書きGo・外部ライブラリ・外部Serviceが意味処理の主体となる | 初期Seed、Target固有I/O、専門計算、未対応Plugin。Scope・入力／出力／Effect／Failure／実Provider選択を明示 | TEI自身がその業務判断を実装・生成したとの主張 |
+
+Pは**第二Interpreter／Rule Engine／Graph Runnerの新設を意味しない**。標準Operatorの実装に必要な純粋計算が既にあり、パラメータを型付きで受け取れる場合だけ利用する。OperatorがTargetに存在しない場合は、Target-nativeな実装・コード生成・明示的unsupportedを比較し、Go Runtimeの常駐やWails Hostを全Targetの必須依存にしない。Effectfulな処理はどの方式でも現在Grantと実Caller／Effect Receiptを既存Host側で検証する。
+
+### 27.2 実現方式を切り替えても、Source・Meaning・型・実結果の合格基準は動かさない
+
+第一比較は、製品が選んだ`sales.order_line.quantity_positive`一規則と同じ`std.decimal`属性・入力を固定し、(G) 現行`validationgen.GeneratePositive`で生成した判断Go、(P) 既存`validationeval`等が同じ型付きValidationを受ける評価経路、(D) 固定手書きGoの三つを、**実際に呼べる経路だけ**比較する。Gの限定生成と別Process実行はmainにあるが、**Pの同一条件での製品実Call・G/P/D三方式の独立E2E比較はこの計画では未実行**。未対応Kind／Relation／型を、別方式なら自動許容されるとしない。
+
+別のPressure Caseとして、二Node・二重Edgeから「指定Nodeの出辺IDを返す」Graphを使う。Pで実装するなら、Node／Edge／Port／Roleと方向・多重性を保持した**標準のGraph値**を、実Operatorの入力へ渡す。Graphのレイアウト、表示名、抽出時の行順を業務IDにしない。これは現段階では**Reference候補**であり、正式Graph Reader・汎用Operatorの製品実装があるとは主張しない。Graph ViewからPへの配線も実行許可に昇格させない。
+
+| 反例 | P（パラメータ実行）で検証すること | G（生成）で検証すること |
+| --- | --- | --- |
+| GP-01 閾値／参照属性など意味のある入力を変更 | **同じ実Binary**でも、現在Param／Inputを渡した実Callの結果が変わる。旧Paramを現在結果に使わない | 生成Go・実Builder入力・実Artifactが必要に応じて改版される。旧Artifactは現在資格でなくなる |
+| GP-02 図の座標・配色・説明だけを変更 | 意味Param不変なら判断結果は不変。元Source／Projectionの改訂は観測する | 生成処理は意味上同じになり得るが、旧Source証拠を無条件流用しない |
+| GP-03 同名二Node・多重Edge・逆方向・不適格ID | OccurrenceとEdge IDを失わず、不適格を明示拒否 | 同じ保持・拒否義務を、生成された実処理でも満たす |
+| GP-04 取得不足、NULL、missing、空集合、Error | 型／取得範囲／未確立を汎用関数が適当に埋めない | Source契約と生成分岐のError／Read footprintが欠落しない |
+| GP-05 演算実装の版・選択A→B | Model Revisionが不変でも現在実装の選択／呼出しと実行資格を再判定 | 生成器／依存Implementation／Artifactの必要部分を再資格化 |
+| GP-06 選択B、実Call A、値だけ一致 | 選択と実Callの不一致で停止 | 選択Generator／Builder／実Consumerの不一致で停止 |
+
+GP-01の「生成し直す必要がない」は、**Paramを固定したBundleや事前配布物を更新しなくてよい**ことまで自動保証しない。実Binaryを再利用できても、現在のModel／Param Revision、実Operator版・実Provider、選択Scope・HostのGrantは別に照合する。PとGで結果が一致しても、Source／Generator／実現Methodの資格は合算しない。
+
+### 27.3 採否は同一の一問と、更新時の負担を比較して決める
+
+まずOwnerが既存Standard Type／Role／Operatorで意味と境界を表せるか確認し、既存実装Pがあるなら**生成しない方式**を比較に含める。候補Pがない、Targetに載らない、未受理演算を任意スクリプトとして実行しなければならない場合は、Pを実装済み扱いにせずG／D／unsupportedへ明示的に振り分ける。
+
+P/G両経路を実行できる対象では、同じSourceの受理済みMeaning、同じFixtureと独立Expected（[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)）で、**意味適合率、モデル変更時の再Buildの要否・所要時間、実呼出し回数、実行時間・メモリ、Target対応、手書きコード／設定の重複、デバッグ・Source位置追跡**を測る。値だけでなくNULL・Error・多重度・取得範囲の反例を揃え、性能値の単一閾値を先に定めない。実測がなければ採否は保留する。
+
+セルフビルドの計測では、(a) **TEI由来の生成処理が実装する義務**、(b) **TEIが型付きパラメータで駆動した既存汎用処理の義務**、(c) **外部実装への委譲**、(d) **未対応**を分け、分母は対象義務を事前固定する。Pが優れている機能を不必要にコード生成しない一方、Pの利用数をGのコード生成・Plugin自己生成の実証率へ加算しない。再生成に伴う定義の簡素化・変更負担は別の指標として評価する。
+
+**導入順**：既存RuleのGをR2-P正式Builderへ接続する最優先と、TEI Studio Stage1→Stage2セルフビルド、通常CLI実ProviderのR3は変更しない。この比較は[#1121](https://github.com/hat47x/tei-platform/issues/1121)（Lowering）、[#4544](https://github.com/hat47x/tei-platform/issues/4544)（Generator）、[#988](https://github.com/hat47x/tei-platform/issues/988)／[#951](https://github.com/hat47x/tei-platform/issues/951)（Operator／Plugin）、[#4198](https://github.com/hat47x/tei-platform/issues/4198)（Graph）、[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)（独立Expected）、[#2831](https://github.com/hat47x/tei-platform/issues/2831)／[#4583](https://github.com/hat47x/tei-platform/issues/4583)（セルフビルド）へ既存差分として渡す。**新しいDSL Grammar／Runner／自動Execution Grant／Runtime Registryは追加しない。**
