@@ -95,6 +95,17 @@ DC-27〜32は#1180／#2514の既存独立Expectedへ引き渡す。最初に実�
 
 この追補に伴う新試験の実合否はexact HEADのCIで別途確認する。DC-33〜38は既存#1180／#2514の独立Expected候補へ引き渡し、新しいGrammar／Graph Runtime／Registry／Hostは作らない。
 
+
+### P1：表から定義したRuleの解釈とGo生成を一つのMeaningで検証（2026年11月15日）
+
+[宣言的構文の合成契約§27](../design/DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md)に従い、Data項目定義表と正値Ruleが同居する既存Markdownで、**一つの型付きValidationから汎用EvaluatorとGo生成器を別々に呼ぶ**Focused試験を追加する。実装票はinternal/operations/inspect_markdown_data_table_rule_evaluation_test.go（2テスト）。
+
+正常系は、同じLoadのSource・型・Attribute IDを固定し、既存validationevalの正値／0／負値／NULL／未取得を独立Expectedと一回の論理Readで照合する。既存validationgenのGo生成は、同じAttributeと正値条件を出力することを確認する。**生成Goの実Binary実行は今回のテストに含めない**。型だけをstd.decimal→std.textに変える負例では、元RuleのID・本文が残っていてもValidatorが不適合を示し、Go生成は拒否する。Readerの成功を実行資格へ昇格させない。
+
+汎用解釈かコード生成かは、DSLの表記ではなくTarget、pure判定／外部Effect、実Builder・独立Consumerの要否、型／Read／失敗の対応可能範囲から選ぶ。両方式が対応する領域のみ、後続の実BinaryとEvaluatorを同一入力・一試行で比較する。DC-39〜41は#1180／#2514の独立Expectedへ接続し、同一の業務意味正本を二つ作らない。
+
+正式R2-PのSource／Reader／Generator→Builder実入力byte、R3の通常CLI公開Entry→選択Provider、Studio Stage1→Stage2の実Windows受領は**独立したP0**を維持する。並行PR #5054／#5056／#5059のCI結果と本Focused試験の結果を混同しない。
+
 ### P1で接続する業務判断・設計入力・数式（2026年11月15日）
 
 これらは新しい製品P0の前提ではなく、既存の標準Data/Rule/Expression・Function Data Context・表現型を実案件に近づける**受入作業**とする。詳細な正負例とOwner境界は[横断統合受入境界§14〜17](../design/CROSS_CUTTING_ACCEPTANCE_BOUNDARIES_2026-11-12.md)を参照。
