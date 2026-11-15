@@ -834,3 +834,112 @@ flowchart LR
 最初の故障注入は、**選択B・実Call A**、同名二Nodeと多重Edgeの取り違え、Rule競合と不完全な取得、DB Commit直後のACK喪失、旧版Source/Providerの再利用、表示だけの変更での過剰Build、別Artifactを使ったStudio表示、外部Harnessへの無許可開示を対象とする。新しい`PX-`や`PL-`のScenario正本は作らず、既存#1180/#2514、#1174、#2600、#4495、#4583の独立Expected／Driverへ該当条件を引き渡す。
 
 **現在の資格**：この追補は既存の局所Referenceやmainにある限定生成・テストを踏まえた設計と計画の更新である。今回の変更で新たなGo／DB／Windows／Stage2実行、製品`*.tei.md` Reader、正式Rule/業務意味受理、実Effect・二Consumer受領を実施したとは主張しない。Ownerが正式採用するまでは仕様候補として管理する。
+
+## 45. 実行モデルを三つの面に分け、因果関係で結ぶ（2026-11-15 第3次統合）
+
+前節まではBootstrapからConsumerまでを一本の流れとして説明した。しかし、その図の上下位置を**実行すべき命令列**と読み替えると、業務FunctionとProvider実装の順序、DBの確定と通知・応答の順序を誤解しやすい。図は次の三面を区別して描く。
+
+| 面 | 読み手の問い | 代表的な対象 | 根拠 |
+| --- | --- | --- | --- |
+| **意味・定義** | 何を判断し、何を成立させたいか | Data/Function/Business、Rule、State transition、Effect要求、公開Entry契約 | Source occurrenceと受理済みMeaning。未受理候補は候補のまま |
+| **実現・実行** | 誰が実際に呼び、どの保証で作用するか | Trigger/Invocation、Admit、選択Provider、実Call、Transaction、外部Host | 選択と実Called、実Build/実Image、現在Grant、Attempt |
+| **観測・受領** | 何が確認でき、誰に届いたか | Rowset、Result/Failure、Commit/Effect Receipt、ACK、Consumer受領 | 出典とCoverage、実再読取、独立Expected、観測先 |
+
+```mermaid
+flowchart TB
+  subgraph D["意味・定義（何を実現するか）"]
+    D1["Source occurrence"] --> D2["受理済みFunction／Rule／Effect要求"]
+  end
+  subgraph R["実現・実行（誰がどう動かすか）"]
+    R0["Trigger／型付きEntry"] --> R1{"Prepare／Admit"}
+    R1 -->|拒否| RX["Callなし／拒否結果"]
+    R1 -->|許可| R2["選択Providerと実Call先を照合"]
+    R2 --> R3["実Provider／外部Host"]
+    R3 --> R4["DB／外部Effect"]
+  end
+  subgraph O["観測・受領（何を確認したか）"]
+    O1["実CallのResult／Failure"]
+    O2["独立Receipt／Readback"]
+    O3["Response／Consumer受領"]
+  end
+  D2 -. "契約と実装対応" .-> R2
+  R3 --> O1
+  R4 --> O2
+  O1 --> O3
+  O2 -. "業務上必要な場合だけ" .-> O3
+```
+
+**業務Operationが実Providerを呼ぶ、という説明は意味上の対応関係**であり、ProviderがOperationの定義を評価する前に起動しなければならない、という順序指定ではない。業務RuleをGo内で評価するのか、SQLの条件へLoweringするのか、外部Providerが契約に基づいて評価するのかはTarget/Providerと受理済み意味によって決まる。図は実装選択を勝手に規定しない。
+
+同じ三面を、通常CLI・Wails Desktop・Web Adapter・外部Hostで照合する。TEI独自の常駐Event Loopや二重Execution Registryは追加しない。Runtimeの実行と、コード生成のためのBuild Lifecycleは別のSubject/Attemptを持ち、Build成功をRuntime成功へ昇格させない。
+
+## 46. 時刻の列ではなく、成立が必要な因果関係を記述する
+
+Triggerの発生時刻、Entry受付時刻、業務評価時点、DBのvalid/known time、Provider呼出し時刻、Commit確定時刻、外部送信時刻、ACK受領時刻は別である。単一の時計順に並べるだけで、因果関係を証明することはできない。**因果・並行・未確定を保持したまま、読み手に必要な順序だけ投影する**。
+
+| 関係 | 意味 | 設計／実行で確かめるもの |
+| --- | --- | --- |
+| 必須先行 | Bの成立にはAが必要 | Guard/Authorityの先行、同一Versionに対する条件付き更新、Commit後の通知手配など |
+| 条件付き先行 | 特定条件下でAの後にBが可能 | 通知対象がある場合、Ruleが許可の場合、選択Providerが対応する場合 |
+| 独立・並行可 | AとBに固定の前後を要求しない | 独立したread-only照会、別Invocationの計算。実I/Oの競合とGrantは別確認 |
+| 順序不明／観測不足 | 実際の先後・確定を証明できない | 非同期配送、Client/Serverの別時計、Trace欠落、結果不明の外部Call |
+
+とくに「DBを更新してからメールを送る」という文章は、DB Commitとメール送信を原子的な一操作にすることを意味しない。Commit後通知の保証が必要なら、対象のTransaction、Outbox等の既存Provider/Host機能、再送条件、業務キー、Effect Receiptと失敗時の回復を明示する。実装がない段階ではMockで因果とFailureを試せるが、実配送の保証にはならない。
+
+個別のInvocationは同一Functionを利用しても別Attemptであり、再送・取消・重複イベントでは**同一の業務操作識別**と**実行試行識別**を分ける。旧いAttemptの成功Receiptを現在のGrantや別のAudienceへ流用しない。履歴訂正・validAt/knownAtの変更から、過去のCaseを無条件に再実行しない。#1174/#1129/#4497/#4193/#4490/#4501の既存Ownerで用途別に検収する。
+
+## 47. 処理結果を一つの成功／失敗へ圧縮しない
+
+次の表は**どの段階まで確かめられたか**を表す設計上の照合例であり、全製品共通の新しいStatus enumではない。
+
+| 対照 | Rule／Admit | Provider呼出し | Effectの確定 | Response／受領 | 見落としてはならないこと |
+| --- | --- | --- | --- | --- | --- |
+| 入力・権限の拒否 | 拒否 | 0回 | 対象Effectなしと検証 | 拒否応答 | 拒否経路でProviderを実行しない |
+| Rule競合／取得partial | 判断不能 | 0回が期待 | 未実行を確認 | 診断 | 一件の一致をUnique/許可としない |
+| Pure Function成功 | 許可 | 選択先の実Callを確認 | Effectなしの契約に限る | 値・型・受領先を確認 | 値の一致だけで実Provider一致を主張しない |
+| DB Commit成功・ACK欠落 | 許可 | 1回以上の実Call事実 | DB再読取・Receiptで確定 | 配送は不明 | ACK欠落をRollbackや処理失敗にしない |
+| Call後のResult契約違反 | 許可 | 実Callあり | 不明の場合あり | 不正Resultを拒否 | 呼出し後の失敗を「未実行」にしない |
+| 通知送信後に取消 | 許可済み | 実Callあり | 更新と通知を別に確定 | 相手受領不明の場合あり | 取消によって既存の外部作用は消えない |
+| 実際のProviderが選択と異なる | 入場の一部は通過 | AをCalled、BをSelected | 別の作用を生んだおそれ | 値が同じでも不適合 | 名前・結果一致でProvider Identityを代替しない |
+
+失敗や不明を「成功していないから再送してよい」に変換しない。**呼出し前の拒否**と**呼出し後のResult違反**では再試行の意味が異なる。後者に副作用の可能性があれば、Operation identityと対応するReceipt/実状態の再読取を先行し、重複確定の防止条件が不明なら自動再実行を止める。X-TEA移植で確認された合成Stateの到達と実DB Commit、正式Recoveryを別資格として扱う。
+
+「実Providerが呼ばれなかった」という観測を不存在の主張に使う場合も、必要な実行経路・Trace・ConsumerのCoverageが閉じているかを問う。Entry拒否のコード上の分岐、隔離MockでのCall=0、実Hostの完全なCall=0は別の証拠である。
+
+## 48. 表現・言語・Targetを変えても保存する契約
+
+同じ受理済みMeaningを複数のDSL表層、Go/Java/.NETやSQLへLoweringする際、**同じ出力値**だけで同等性を判定しない。次の三つを区別して比較する。
+
+1. **構造の同等性**：対象Identity、Relation方向・多重度、型、NULL/欠損/未取得、時間条件、単位・精度、Rule/Decisionの意味、元Sourceへの追跡を保持したか。
+2. **評価の同等性**：独立Expectedの正負例で、分岐・競合・Unknown、丸め、Query結果集合の範囲、状態遷移、例外の意味が一致するか。部分取得による判断不能を0件やFalseに変えない。
+3. **実行の同等性**：実Host・選択されたProvider、現在Grant、実Build Artifact、入出力、永続化、外部Effect、Receipt、独立Consumerの受領が必要な範囲で一致するか。
+
+受理済みの構造を使うGraph/Rule Referenceは①②の**限定実証**に使える。しかし、そのReferenceで成功した条件分岐を、正式`Workspace.Load`による`*.tei.md` Reader、受理済み業務Meaning、実Go Provider、Studio Stage2と自動的につなげない。既存S0-PのPinned Source予備試験と製品S0-A、SL-1a〜1c、Stage1→Stage2を別の段階で照合する。
+
+組織の二時点Member照会では、同じ人数でもMembership件数/FTE/Source版が異なることがある。REAの外部Evidenceも、観測→候補→Owner受理→実行根拠を経ずに正式Operationへ昇格できない。DB移行はSQL文字列の形だけでなく行多重度、NULL、Snapshot、Column/Row Coverageと対象Providerの実能力を調べる。UI・Mermaid・Graphviz・KaTeXはPresentationの表層であり、意味を失う投影にはLossを明示する。上位Pluginから継承する図面は公開Facet／版／現在Disclosureの範囲に限り、Host Grantは継承しない。
+
+## 49. 一つの定義から説明・図・コード・試験を導く最小縦断
+
+実装担当へ渡す最初の比較を、既存Graph/Ruleの固定Fixtureと一つの公開pure Functionの二本の小さな経路から構成する。両者を**別Subjectのまま並行検証**し、同じ意味Source/Function/Providerへ実際に接続できた段階でのみ一つのEnd-to-Endと扱う。
+
+| 既存資産／次の操作 | 同一性・独立性の検収 | 不合格を見分ける負例 |
+| --- | --- | --- |
+| Graph：同名二Node・別ID二Edgeと一行Rule | Node/Edge identity、方向・多重度、Rule条件、元byte位置 | Edge反転、ID重複、Layout-only、説明だけ変更、表と派生図の不一致 |
+| 正式Reader S0-A | 選択されたFrontendが実`Workspace.Load`で元byteを読んだか | テスト専用Reader成功、未選択Source、旧Indexの流用 |
+| 受理Meaning→Go生成 | 生成コードの分岐・型・Rule、外部Go委譲範囲、独立Expected | 固定JSONの書出し、候補指紋だけ一致する改変Binary |
+| Pure Function Entry実呼出し | 同一Meaning/Revision、型付きInput、SelectedとActual Provider、通常製品CLI実Process | A/B Provider取り違え、Adapter後Result違反、Call=0/1の誤分類 |
+| 実Build・Stage2 | Build Intent→実Builder入力→Artifact Digest→生成Desktop実Consumer | 外部Runnerが二度Build、別HEADの成功合算、旧Assetの再利用 |
+| 説明／図／試験の導出 | 出典・時点・Role・Rule条件を保った自然な説明、Figure/ViewごとのLoss | 説明から独立Expectedを自己循環生成、図の表示順を実行順と誤認 |
+
+定義を単にGoの関数に委譲するだけではTEIによる生成の成果とみなさない。最初の測定は、**意味を記述するTEI側の定義量、生成された判断・Relation処理、手書き/委譲コード量、変更の伝播先、Generator/Plugin自身をTEIで実生成した範囲**を版ごとに比較する。行数の削減だけを品質としない。検証の判別力、Traceability、独立Expected、ビルド時間を併記する。
+
+Ownerが受け取るべき一枚の検収票には、固定Subject/Source/World、Meaningの受理有無、選択Contract/Provider、Builderの実消費Member、Artifact/Toolchain、Attempt、Effect/Receipt、Consumer/Audience、Coverage、独立Expected、現在資格・失効理由を用途別に記録する。必須の欄が未取得ならunknownとして残す。万能Trace Envelopeや新しいEvidence Storeを作らず、既存Receipt・Evidence・Build・Driverの識別子を参照する。
+
+## 50. 既存計画への組込みと切り分け
+
+- **全体P0**：非Plugin Studio Desktopを正式Build Subjectとして、Stage1 TEI実ProcessによるStage2 Windows Build・実WebView2 Consumerへ接続する（#2831/#4583）。N0→N2→N3の実Builder入力、Stage2が使う実ArtifactとRuntime Witnessを別証拠として受け取る。
+- **並行P0**：選択された`*.tei.md` Reader S0-A／正式Meaningと、公開pure Entry→Host選択の実Go Provider→通常製品`tei` CLI→独立Consumerを段階的に閉じる（#2621/#988/#4495/#2586）。既存Script Launch計画のSL-1a〜1cは後継PR #4775のOwnerで調整し、この文書から別の実装順やHard Gateを作らない。
+- **小さな先行実証**：§49のGraph/Rule固定対照と三面のread-only図・照合表を既存#4198/#2497/#1180/#2514へ渡す。正式Reader未接続のままReferenceによる描画・Go生成を製品合格としない。
+- **Effectを含む後続段階**：受注確定や組織Case・REAの実例で、二時点の照会結果、業務Rule判断、DB Commit、通知、ACK、実Readback、Current Grantを別証拠として統合する（#1174/#1129/#4490/#4501）。新Scheduler・新Host・汎用StateMachineを作らない。
+
+本追補は**設計・Owner引渡しの更新のみ**である。新しいGo/SQL/Java/.NET/Windowsの実行テスト、製品Reader・実Provider・Stage2、実Effect/独立Consumerの受領、Ownerによる業務Meaningの正式受理は行っていない。新しい独立Expected正本やPX番号を追加せず、既存Scenarioへ必要な差分を引き渡す。
