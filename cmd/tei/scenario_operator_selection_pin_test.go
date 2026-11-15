@@ -185,3 +185,34 @@ func TestGeneratedScenarioCommandInvalidatesOperatorSelectionChange(t *testing.T
 		t.Fatalf("generated command accepted missing Operator Selection pin: %v", err)
 	}
 }
+
+// Order is not part of the selected Operator contract. A genuine identity
+// change is, and nil and an explicitly empty section mean the same selection.
+func TestScenarioOperatorSelectionFingerprintIgnoresManifestOrder(t *testing.T) {
+	a := []workspace.OperatorImplementationSelection{
+		{Operator: "sales.first", Implementation: "example.alpha"},
+		{Operator: "sales.second", Implementation: "example.beta"},
+	}
+	b := []workspace.OperatorImplementationSelection{a[1], a[0]}
+	first, err := fingerprintScenarioOperatorSelection(a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reordered, err := fingerprintScenarioOperatorSelection(b)
+	if err != nil || first != reordered {
+		t.Fatalf("reordered but equivalent selections changed fingerprint: %q vs %q err=%v", first, reordered, err)
+	}
+	b[0].Implementation = "example.gamma"
+	changed, err := fingerprintScenarioOperatorSelection(b)
+	if err != nil || first == changed {
+		t.Fatalf("changed selected implementation kept fingerprint: %q vs %q err=%v", first, changed, err)
+	}
+	none, err := fingerprintScenarioOperatorSelection(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	empty, err := fingerprintScenarioOperatorSelection([]workspace.OperatorImplementationSelection{})
+	if err != nil || none != empty {
+		t.Fatalf("nil and empty selections differ: %q vs %q err=%v", none, empty, err)
+	}
+}
