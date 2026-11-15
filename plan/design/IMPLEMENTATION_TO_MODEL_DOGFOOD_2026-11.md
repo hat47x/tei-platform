@@ -343,3 +343,49 @@ I2M-1回帰が対象HEADで成立した場合の次の一件は、`sales.order_l
 dogfoodingの進捗は、(1)対象の判断義務、(2)元TEI定義、(3)生成が担ったGoの範囲、(4)依然として手書き／試験Driverが担う範囲、(5)実BuilderとConsumerが受領した範囲、(6)独立Expectedの範囲を一件ずつ対応付ける。表現・図面・生成Goの行数が増えても、**手書きの業務判断が実際に減らなければ自己構築の前進として加算しない**。
 
 G6のStudio Stage1→Stage2では、同じ原則を非Plugin Desktopへ適用し、TEIで定義した部品がStage2に実際に組み込まれ、実Windows WebView2のConsumerで受領された範囲だけを評価する。RuleのCLIバイナリをStage2の実証へ流用しない。
+
+## 13. 生成元の閉包とコンパイル入力の閉包を分ける（2026-11-15）
+
+### 13.1 同じBuild Intentに名前を並べることは、同じ変換を証明することではない
+
+前節のR2-P引渡しを実APIに照らして確認した。`internal/buildintent/intent.go`の`BuildIntent.Sources`は、Sourceの`Kind/ID/Ref`を宣言し、`definitionSource`にはrecipeに応じた種類のSourceを要求する。`go-command`のdefinitionSourceが指すのは**GoのEntrypoint package**である。`internal/buildintent/catalog.go`の`DirSourceResolver`は参照ファイル／ディレクトリの実byteを読み、相対member名とbyte長を含めたDigestを導出するが、**Language Readerで意味が受理されたことや、Generatorがその原文を使ったことは証明しない**。
+
+ここで区別する二つの閉包は次のとおりである。
+
+| 閉包 | 対象 | 責任を負う証人 |
+| --- | --- | --- |
+| **生成元の閉包（derivation）** | 選択Rootと原Markdown byte／Source Index、Reader ID・版、選択された型付きRule・属性型、実Generator実装／版・Target、生成Go byte | 現行`Workspace.Load`／`sourceindex`／`validationgen.GeneratePositive`の一試行に由来する観測。型付き意味受理はOwner別 |
+| **ビルド入力の閉包（consumption）** | 実`BuildIntent`、Go Entrypoint・依存package／module、`buildintent.Resolve`のPlan、Builderが実際に読んだ入力、Artifact Digest・実Image | 既存`tei self-build`のEntry・Resolver・Builder報告・Artifact Binding・再現性の一試行 |
+
+両者をつなぐ接続点は**ある試行で得た生成Goの実byteと、そのbyteを含むGo Source packageを実Builderが消費したという一致**である。生成Goが同じbyteでも、その生成元が別Root・別Reader・別Generatorであれば出典を併合しない。逆に、説明文だけが変わった場合は出典の現在性を再検証するが、Go byteが不変だからといって不要な再ビルドを機械的に要求しない。Artifact再利用、旧Evidence再利用、現在Grantはそれぞれ別の判断となる。
+
+**設計選択**：原MarkdownとGenerator実装を、現在の`go-command`の`definitionSource`へ代入しない。さらに、現在の`IntentSource`が任意の`Kind`を構文上受け付けることを、正式な「Rule Source」「Generator Source」の型・解決・コンパイル閉包対応が製品で成立した証拠にしない。新しい種類を試験の都合で追加して完了扱いにせず、まず既存Source/Builderのどの出典欄に情報が欠けるかをread-onlyで観測する。
+
+### 13.2 最小実装：生成時と実Builder時の証人を同じAttemptで突き合わせる
+
+実装Owner #2621／#1121／#4544へ渡す最小Packetは、`cmd/tei/cli_self_build_generated_rule_go_test.go`の**現在のテスト・Builder・Catalogを保持**したまま、実Build Attemptに対する検証用の対応表を一つ作るものとする。表の列は次に限定し、正式な新Core Schema・Receipt format・別Generatorを提案しない。
+
+| 列 | 観測の取得元 | 反証に必要なこと |
+| --- | --- | --- |
+| 原文とReader | 同じ`Workspace.Load`のAuthoringSources、原byte・Source Index・Rule Definition Range | 同名別SourceやA→B→Aで旧Range／Fingerprintを使えない |
+| 型付きRuleと生成元 | 同じLoadから選択した`semantic.Validation`、型解決、Generatorの実Source／選択版 | 参照Attribute・Generator改版が旧出典の受理を失効させる |
+| Goの受渡し | 実`GeneratePositive`のbyte／Digest、試行用packageに書いた`generated.go`の再読byte | 生成B／配置Aを拒否。AST上のSource位置は元Markdown位置でない |
+| Plan選択 | 実`BuildIntent`のEntrypoint Source ID、`Resolve`のSource Closure FingerprintとPlan | `definitionSource`を誤って原Ruleへ振り替えない。別package／moduleを混ぜない |
+| 実Builder消費 | Builderの実入力／Isolation member、Plan Cross-check、Artifact Binding、ChildRun | 申告Digest一致だけでは不十分。異なるActual Byte／Attempt／Targetを拒否 |
+| 結果と受領 | 出力Artifact／Imageと独立5入力の観測 | 正しい結果を返す別Binaryを、当該Build Attemptのものとして受理しない |
+
+着手は**最初の3列（原文・型・Go配置）と既存Plan・Builder観測の突き合わせ**に絞る。Generation Observerが保存していない版情報は「未取得」、Builderが本当に読んだbyteを示せない箇所は「未証明」とする。出典を後からJSONに書き足すだけではConsumptionを証明できない。検査用の対応表は既存の試験内部で導出し、Ownerが正式なProduction契約を選択するまでは公開APIにしない。
+
+### 13.3 一つの同一性判定から、三つの資格を作らない
+
+| 一因子変更 | 出典の現在性 | 生成Go／コンパイル資産 | 実Provider／Consumerの現在性 |
+| --- | --- | --- | --- |
+| Markdown説明文のみ | **旧Source Indexは失効**、新byteで再読込 | 型・Go byteが同じ可能性。再利用可否は実依存と生成器版で評価 | 旧AttemptのGrantや実受領を自動更新しない |
+| Rule参照先／正値条件 | Rule型・依存・独立Expectedを再評価 | 生成Go差分とBuilder入力差分を実測 | 旧Imageや古いRead先のCallを現在の判断としない |
+| Generatorだけ更新、出力Goが偶然同じ | Generator資格の再評価が必要 | Artifact byte再利用候補はあり得るがGenerator受理の流用は不可 | 実Providerの版・受領とは別 |
+| EntrypointをBへ変更、Builderは旧Aを使用 | 原Sourceが正しくても無関係 | Plan／実入力／Artifactの一致が破れるため停止 | バイナリの結果一致で救済しない |
+| Operator実装選択のみ変更 | Ruleの同一意味IDは残り得る | 選択を持つGenerated Command・Scenario Artifactを再資格化 | 実Called ImplementationとOwnerのLaw適合を再確認 |
+
+[宣言的構文・Operator選択の横断設計](DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md)§22〜23と[派生Projection・Runtime・移行の受入](DERIVED_PROJECTIONS_RUNTIME_AND_MIGRATION_ACCEPTANCE_2026-11.md)§13のPQ-A／PQ-Bは、この表の別々の行・Ownerに対応する。P0の**正式pure Functionの公開Entry→実Provider→独立Consumer**と、**非Plugin Studio Stage1→Stage2 Windows WebView2**は引き続き並行する。自分自身をGoでビルドできた事実を、生成Pluginの正規配布・Studio全体の自己生成に拡大しない。
+
+新たに確定したのは**「Source解決が存在する」ことと「業務言語の出典が正式Buildに連続している」ことの差**である。後者が確かめられるまでは正式R2-Pの完了とはしない。

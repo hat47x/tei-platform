@@ -316,3 +316,13 @@ PR #5009で追加した`TestSelectedRuleGoThroughRealCLISelfBuild`は、既存�
 Build Intentの`definitionSource`はGo依存パッケージの先頭ではなく、実際のEntrypointを含むPackageへ対応付ける。結果確認では、CLIから導出したPlan、Builderが読んだPlan、再現されたArtifact、完成Binaryの正値・ゼロ・負値・NULL・未取得の判断を分ける。これは**既存の参照Builderと製品CLIの組合せ**による限定的な実証であり、生成器・Rule原文のSource資格、正式なBusiness Function Entry、実行時の選択Provider／Grant、Windows Stage2を自動受理しない。
 
 また、並行マージ時に本計画の日本語が文字化けした事例を再発防止対象とする。正常な§14.10までの内容をGit履歴の元byte列から復旧し、Repository Plan Checkで不正なUTF-8、置換文字、Markdownに不適切な制御文字を拒否する。これは文書の自然さすべてを機械判定するものではなく、**原文を破壊するエンコーディング事故を確実に検出する下限**である。読める日本語の保持と、Source／Meaning／Build／Invocationの受入資格の維持を別々に検査する。
+
+### 14.12 生成元と実ビルド入力を別の閉包として照合する
+
+[dogfooding設計§13](IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md)では、現行`BuildIntent.Sources`、`DirSourceResolver`、`go-command`の`definitionSource`を実コードと照合し、R2-Pの次の実装を**生成元の閉包と実コンパイル入力の閉包の接合**に絞った。
+
+現行の`definitionSource`はGo Entrypoint packageを示す。元Rule MarkdownやGeneratorをこの欄へ入れ替えると、Buildの定義と生成元の役割が壊れる。また、Resolverがファイル／ディレクトリの実byteをFingerprintへ取り込めることだけでは、その原文が選択済み`tei.rule-authoring/v0`のReaderで実際に解釈されたこと、GeneratorがそのRuleを使ったこと、Builderが生成されたGo byteを消費したことは証明できない。
+
+既存`TestSelectedRuleGoThroughRealCLISelfBuild`を基線に、同じ試行の`Workspace.Load`／Source Index・型付きRule／Generator・生成Go／実Entrypoint Source・Plan／Builder実入力・Artifactを**別々の由来を保ったまま照合**する。第一差分はテスト内のread-only対応表と一因子の負例で十分であり、新Source Kind・Resolver・Receipt schemaの正式採用はOwnerの検証後に判断する。
+
+最初の負例は**生成Goとして選択したBと試験packageに置いたAが異なる場合**とし、既存のBuilder／Artifact照合に届く前に差異を検出する。次に原文説明のみの変更ではSource Evidenceだけが失効すること、Generator版変更で出力byteが不変でも生成資格は別に受け直すことを検査する。実際のBuilderが読んだbyteを観測できなければ、形式上のDigest一致から正式R2-P合格を主張しない。R3実Provider・Windows Stage2・Owner意味受理は引き続き別列とする。
