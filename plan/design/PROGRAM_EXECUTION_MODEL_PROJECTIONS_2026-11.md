@@ -1288,7 +1288,7 @@ flowchart LR
 
 **同一入力に対するRule原文の一因子変更（§63.4の追加実証）**：`TestSelectedMarkdownRuleEditChangesActualEvaluatorRead`では、製品Reader用Fixtureを一時Workspaceへコピーし、`sales.order_line.quantity_positive`という**Rule IDは維持したまま**、検査対象のAttributeだけ`sales.order_line.quantity`から`sales.order_line.line_number`へ変更する。入力Sourceは固定し、数量0・明細番号2を返す一つの合成データセットを前後で共用する。変更前の既存Evaluatorは数量を読み`not-satisfied`を返し、変更後は明細番号を読み`satisfied`を返すこと、各回の実Read先が一件だけであることを検査する。ManifestのLanguage選択、実`workspace.Load`、同一LoadのIndex、`InspectionFromLoad`の各工程は変更前後とも通す。
 
-ここで固定したRule ID・Source識別子位置の一致は、**同じ意味が継続した証拠にならない**。Canonically選択したAttribute・World Fingerprint・Source Index Fingerprint・Model Revision・Artifact Fingerprintが変更に追随することを別々に確認する。元Rule IDと評価対象Attributeの名前が一時的に一致しなくなるのは、IDの文字列から意味を推測せず、現在のSourceと型付きMeaningを読むための意図的な負荷例である。
+ここで固定したRule ID・Source識別子位置の一致は、**同じ意味が継続した証拠にならない**。正規化されたRuleが参照するAttribute・World Fingerprint・Source Index Fingerprint・Model Revision・Artifact Fingerprintが変更に追随することを別々に確認する。元Rule IDと評価対象Attributeの名前が一時的に一致しなくなるのは、IDの文字列から意味を推測せず、現在のSourceと型付きMeaningを読むための意図的な負荷例である。
 
 このテストは「Sourceを変えても以前のGo評価が固定の結果を返すだけ」という**TEI宣言の無効化**を検出できるが、意味を含むGoコードをTEIから生成した方式Cの成立は証明しない。今回は既存`validationeval.Evaluate`へ委譲する方式Bの実到達点に限定する。方式Cは同じ二版のSource・独立Expected・入力Read先を使い、生成Go byte／実Builder・Artifactの差分、通常CLI/選択Providerの実使用、Consumer受領をそれぞれ計測する（研究統合計画§16.13〜16.17、#1121/#1251/#4495）。Source ID、Rule ID、Artifact SHAの一致のみで古い実行資格を復活させない。
 
