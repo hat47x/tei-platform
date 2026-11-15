@@ -1374,14 +1374,14 @@ main `eeafd9cb` は`internal/semantic/validationgen.GeneratePositive`を追加�
 | A0〜A3／Reader | 内蔵Ruleの選択、元byte、Source Index、旧構文との意味同値 | 外部Language Pluginの実Resolver／exact Lock、Graph/Window Reader、未検証の全境界条件 |
 | Evaluator／Read | 選択Ruleの正数／ゼロ／NULL／欠損、Relation Keyの重複・空集合・範囲不明、Rule変更後のRead先 | 実Providerの入力全件性・取得時点・現在Grant |
 | R1／Go Lowering | 選択済みPositive＋解決済みDecimalからの実比較・分岐生成、生成Goの実Process試験 | 同じMarkdown Sourceの変更→再Load→型解決→Go再生成→実結果までの一連の差分、独立ExpectedとOwner判断 |
-| R2／R3／実Product | 未実証 | 実Builderが生成byteを入力に取り込んだArtifactSet、実選択Provider Entryの通常`tei` CLI Call、別Consumerの受領 |
+| R2参照Builder／R2-P製品／R3実Call | 既存参照BuilderのBuildPlanは生成Goを実読取り・隔離コンパイルし、Artifact Digest／Lock／実Binary結果と改変拒否を検査（main `c2cf3fe8`） | **R2-P**：製品で選択されたBuild IntentとRuntime Contributionの収録。**R3**：受理Functionの公開Entry、入力Binding、実Provider actual call、独立Consumer受領 |
 | Studio／公開Doc／Effect | 独立した既存計画で管理 | Stage1→Stage2実Windows、現在AudienceでのDoc Read、Guard／Grant／Receipt |
 
 ### 24.6 内蔵Readerと外部Language Pluginの分離、次の実装順
 
 内蔵`builtinAuthoringLanguageProviders`による静的実装選択と、外部Language PluginのContract／Resolver／Lock／実Binary収録は別経路である。外部実装を選べなければ`unsupported`で停止し、内蔵Readerへ黙ってfallbackしない。既存#951/#1016の選択・工程別Build閉包を用い、第二Registry／Language Hostを新設しない。`BuildSourceIndexFromLoad`は単一Loadで保持したbyteの追跡であり、Import全体や複数ファイルの原子的Snapshotを保証しない。
 
-最短の後続差分は、[Rule製品第一縦断](PLUGIN_RULE_PRODUCT_VERTICAL_SLICE_2026-11.md)の`sales.order_line.quantity_positive`を固定し、(1)同じMarkdown定義を変更して生成Goと実結果まで差を伝える、(2)実BuilderがそのGo byteを正しい契約・Toolchainで消費する、(3)通常製品CLIから選択済みProviderのactual entryを一度呼び独立Expectedと比べる、の順に閉じる。Rule集合の全件読取りと、評価に必要なData／Relation／時点の全件取得は別資格である。現在GrantやEffect／ReceiptをReader・Evaluator・生成Goの合格から推測しない。
+最短の後続差分は、[Rule製品第一縦断](PLUGIN_RULE_PRODUCT_VERTICAL_SLICE_2026-11.md)の`sales.order_line.quantity_positive`を固定し、(1)同じMarkdown定義を変更して生成Goと実結果まで差を伝える、(2)参照BuildPlanの成功を基線に、**製品が選択したBuilder**でそのGo byteとRuntime Providerを実Artifactへ収録する、(3)Rule IDからEntryを自動公開せず、受理Functionの型付きEntry／引数Bindingを定めて通常製品CLIから選択済みProviderを実呼出しし独立Expectedと比べる、の順に閉じる。Rule集合の全件読取りと、評価に必要なData／Relation／時点の全件取得は別資格である。現在GrantやEffect／ReceiptをReader・Evaluator・生成Goの合格から推測しない。
 
 Node-RED型のノードFlowや簡易APIへ展開する場合も、新しい意味モデルを作らず、既存の標準データ構造・Operator/Function・Process Flow・型付きOperationへ接続する。Nodeは部品のPresentationにとどまらず、Portの型・条件・必要Context・副作用と実Consumerを既存契約から説明できることを検収する。ただし最初のR2／R3をGraph全般／Node UI／API公開の完成待ちにしない。**Studio Stage1実TEI→Stage2実Windows WebView2は引き続き独立した最上位P0**とする。
 

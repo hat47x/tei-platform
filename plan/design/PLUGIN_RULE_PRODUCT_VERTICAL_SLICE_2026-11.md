@@ -225,7 +225,7 @@ Source変更A→B→A、生成器版変更、Build時だけの依存、入力取
 
 ### 14.4 既存参照Builderに生成Goを渡す一試行（PR #4934）
 
-実Builder入力の照合は、BuildPlanの型を説明するだけでは検証できない。[PR #4934](https://github.com/hat47x/tei-platform/pull/4934)で、`tools/reference-go-build-from-plan/validationgen_build_binding_test.go` に、実 `Workspace.Load` → 選択Rule・Source Index → `validationgen.GeneratePositive` → 一時Go package → 既存 `DirSourceResolver`／`plugin.BuildPlan` → 既存 `reference-go-build-from-plan` の `-isolate` 実行 → Artifact Digest・BuildArtifactLock照合 → **Builderが生成した実Binaryの独立Expected**という試験を加える。
+実Builder入力の照合は、BuildPlanの型を説明するだけでは検証できない。PR #4934はclosed／unmergedだが、現在のmainでは統合コミット [`c2cf3fe8`](https://github.com/hat47x/tei-platform/commit/c2cf3fe883de7653ef1e0fdb3cf43bd42dcecbcc)を経て `tools/reference-go-build-from-plan/validationgen_build_binding_test.go` が収録されている。この試験には、実 `Workspace.Load` → 選択Rule・Source Index → `validationgen.GeneratePositive` → 一時Go package → 既存 `DirSourceResolver`／`plugin.BuildPlan` → 既存 `reference-go-build-from-plan` の `-isolate` 実行 → Artifact Digest・BuildArtifactLock照合 → **Builderが生成した実Binaryの独立Expected**という手順が実装されている。**mainのファイル収録と、特定HEADのCI成功・Owner受理は別の事実である。**
 
 この試験では生成Goを計画確定後に書き換え、古い計画がコンパイル前に拒否されることも確かめる。Goモジュール文脈と、生成Goが参照する既存 `core/identity`、`internal/core`、`internal/semantic`、`internal/semantic/validationeval` を計画Sourceとして明示する。ReaderのSource ID／Attribute型、BuildPlanの実入力Digest、Binaryの実挙動は別々に照合し、一致結果だけを根拠にしない。
 
