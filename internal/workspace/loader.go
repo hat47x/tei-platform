@@ -70,6 +70,10 @@ type Result struct {
 	// Case tables read during Load, attached to their operators once every
 	// source is read. Empty in a returned Result.
 	pendingOperatorCases []pendingOperatorCases
+	// RuleExamples are the example tables of the Workspace, resolved against
+	// the World. They are not part of the World.
+	RuleExamples        []RuleExample
+	pendingRuleExamples []pendingRuleExample
 
 	// Private, transient read provenance. Not part of Canonical World or a
 	// serialized Source Index; only Load may populate this snapshot.
@@ -380,6 +384,9 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 		return Result{}, err
 	}
 	if err := attachOperatorCases(&r); err != nil {
+		return Result{}, err
+	}
+	if err := resolveRuleExamples(&r); err != nil {
 		return Result{}, err
 	}
 	if r.syntaxErrors != nil && len(r.syntaxErrors.Errors) > 0 {

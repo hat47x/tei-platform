@@ -55,6 +55,7 @@ func loadAuthoringMarkdown(root string, r *Result, filename string, src []byte) 
 	}
 	tables := make([]syntax.DataTableAuthoring, 0, len(document.Tables))
 	var caseTables []syntax.OperatorCasesAuthoring
+	var exampleTables []syntax.RuleExampleAuthoring
 	for _, table := range document.Tables {
 		// The first word of the mark says what the table defines.
 		switch table.Words[0].Text {
@@ -70,9 +71,15 @@ func loadAuthoringMarkdown(root string, r *Result, filename string, src []byte) 
 				return 0, 0, r.collectSourceError(filename, err)
 			}
 			caseTables = append(caseTables, parsed)
+		case "example":
+			parsed, err := syntax.ParseRuleExampleTable(table)
+			if err != nil {
+				return 0, 0, r.collectSourceError(filename, err)
+			}
+			exampleTables = append(exampleTables, parsed)
 		default:
 			return 0, 0, r.collectSourceError(filename, &syntax.ParseError{Pos: table.Mark.Start, End: table.Mark.End,
-				Msg: "unknown tei mark; a table is marked <!-- tei: data <Name> in <namespace> --> or <!-- tei: cases of <operator> -->"})
+				Msg: "unknown tei mark; a table is marked <!-- tei: data <Name> in <namespace> -->, <!-- tei: cases of <operator> --> or <!-- tei: example of <data> -->"})
 		}
 	}
 	regionCount, definitions, err := mergeAuthoringMarkdown(root, r, filename, regions, tables)
@@ -87,7 +94,14 @@ func loadAuthoringMarkdown(root string, r *Result, filename string, src []byte) 
 			filename: filename, relative: relative, table: table,
 		})
 	}
-	return regionCount + len(caseTables), definitions + len(caseTables), nil
+	// Example records define nothing. They are resolved after every source is
+	// read and kept beside the World.
+	for _, table := range exampleTables {
+		r.pendingRuleExamples = append(r.pendingRuleExamples, pendingRuleExample{
+			filename: filename, relative: relative, table: table,
+		})
+	}
+	return regionCount + len(caseTables) + len(exampleTables), definitions + len(caseTables), nil
 }
 
 // pendingOperatorCases is a case table read during Load and not yet attached

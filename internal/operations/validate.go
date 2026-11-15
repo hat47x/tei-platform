@@ -2,6 +2,7 @@ package operations
 
 import (
 	"errors"
+	"tei/internal/semantic/validationeval"
 	"tei/internal/validation"
 	"tei/internal/workspace"
 )
@@ -120,8 +121,19 @@ func ValidateWorkspace(root string) (WorkspaceValidation, error) {
 		return WorkspaceValidation{}, err
 	}
 	identity := loaded.Identity()
+	diagnostics := workspace.ProjectDiagnosticsWithLoadedDuplicates(validation.Validate(loaded.World), index, loaded)
+	// Examples are checked only against definitions the validator accepts. A
+	// rule that is itself reported would be asked about records it cannot
+	// read, and the example finding would repeat the definition finding.
+	definitionsAccepted := true
+	for _, diagnostic := range diagnostics {
+		definitionsAccepted = definitionsAccepted && diagnostic.Diagnostic.Severity != validation.Error
+	}
+	if definitionsAccepted {
+		diagnostics = append(diagnostics, CheckRuleExamples(loaded, validationeval.BuiltinImplementations())...)
+	}
 	return WorkspaceValidation{
-		Diagnostics:            workspace.ProjectDiagnosticsWithLoadedDuplicates(validation.Validate(loaded.World), index, loaded),
+		Diagnostics:            diagnostics,
 		WorldFingerprint:       worldFP,
 		SourceIndexFingerprint: sourceFP,
 		Declarations:           CountDeclarations(loaded.World),
