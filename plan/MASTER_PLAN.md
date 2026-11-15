@@ -2691,6 +2691,16 @@ Studio／SHO／SUI／AIが同じ意味候補を提示しても、編集資格は
 
 **優先順位**：通常CLI実Provider初回Read #2586とDesktop Stage1→Stage2 #2831は変更しない。この修正自体は実組織人物数やCase承認の完成を示さない。
 
+
+<!-- org-c1-duplicate-revision-real-pg-20261115 -->
+### 2026-11-15 組織C1：訂正版共存不能を実PostgreSQLで検証し、MVR-02の正例へ引き渡す（補遺§37.4）
+
+[組織C1設計§37.4](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)に、**同一Membership A2の旧版と訂正版を現在の単独PKでは並存保存できない**ことの実DB証拠を追加した。固定HEAD `8cf10feb` の[隔離PostgreSQL run 43681066038](https://github.com/hat47x/tei-platform/actions/runs/43681066038)はsuccess。SQLSTATE `23505`の一致・旧行が一件残る負例、従来の二時点境界4例が明示PASS。Queryの宣言InputとSQL Placeholderの集合一致もGo回帰に加え、現在main上の両Goファイルと設計§37のblobが固定HEADと一致することを確認した。
+
+- **実証したこと**：現行`membership_id`単独PKによる同一Occurrence訂正版の挿入拒否。失敗後の旧版保持。隔離DBでの既存のas-of境界。これを「二時点履歴保存機能が完成した」と言い換えない。
+- **次の受入条件**：#2386/#1126がMembership occurrence、訂正・版ID、Person Link/兼務の意味を選ぶ。#1180/#2514/#4490へMVR-02の**旧新2版を共存保存してknownAt別に再読込する正例**を渡す。複合キーや履歴表は比較候補であり、採用済みの製品仕様ではない。
+- **証拠の扱い**：元[PR #4866](https://github.com/hat47x/tei-platform/pull/4866)はclosed/unmerged。コードと組織設計の現行mainに同じ内容があることと、PRがマージされたことは別の主張として記録する。一般Repository Health、通常tei CLI→実Provider→独立Consumer #2586、正式`*.tei.md` Reader/生成Go、Studio Stage2 #2831は独立P0。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
