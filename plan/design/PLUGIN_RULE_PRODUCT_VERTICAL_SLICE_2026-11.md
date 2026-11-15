@@ -288,3 +288,11 @@ Ruleは他のFunction、標準Operator、Table Script／Data Rule、Node Flowか
 この性質をTEIドッグフーディングの検証原則として採用する。**実装から抽出した型・判断・制約が、DSL／Markdown／図表の異なる表現を経ても保存され、再生成によって確認できること**を要求する。Graphでは画面上のNode／Edge IDと業務Relationの識別子を混同せず、Canvasの配置変更だけで業務Goの意味を変えない。複数の意味等価な表現を増やす際にも、新たな意味正本・Reader／Generator／Builder・Plugin Registryを増やさず、標準データ構造と既存Operator契約を再利用する。
 
 この回帰が成功しても、正式製品Builderによる実byte消費（R2-P）、公開Entryを介した実Provider／通常製品CLIの呼出し（R3）、Windows Studioの実ConsumerとStage1→Stage2は別の検収である。原文A→B→A、選択B／実Call A、Ownerの業務意味受理と現在Grantは、既存の第14.6〜14.7節および#4544／#4495へ引き続き委ねる。
+
+### 14.9 従来構文と選択済みRule Markdownを混ぜずに診断する
+
+R0の入口にも、実Providerと同じ「選択された実装だけが入力を解釈できる」という境界を適用する。従来の`.tei`意味ファイルでは`validation`が既存の規則であり、`rule`は自動的に別名扱いしない。Rule Authoringは、Workspace Manifestが`tei.rule-authoring/v0`を明示選択した`*.tei.md`だけを受け持つ。未選択の`*.tei.md`、通常のMarkdown、管理対象外のSource、従来`.tei`の`rule`を同じものとして読み替えない。
+
+このため、従来`.tei`の`rule`を検出した場合は単に「不明な宣言」とするのではなく、**定義したファイルと対象語の原byte範囲を示したうえで、Rule Authoringの選択条件と置き場所を案内する**。エラーの改善は、Readerの自動選択・意味の受理・旧構文の暗黙変換ではない。未知語は引き続き未知語として拒否し、構文の未受理を半分だけ読み込んだモデルに変えない。
+
+負例は既存`internal/syntax/rule_placement_test.go`と`internal/workspace/rule_placement_source_diagnostic_test.go`で扱い、選択・未選択・従来構文の回帰は既存`tei_md_source_guard_test.go`と製品Readerのテストを流用する。CIの監視対象も**現在存在する`rule_authoring_markdown_loader.go`／`parser.go`／実テスト**と一致させ、廃止した旧guardファイルへの参照で失敗させない。これによってR0の診断品質を改善しても、R2-Pの実Builder選抜、R3の正式Provider実Call、Stage1→Stage2 Windowsの実証を合格扱いしない。
