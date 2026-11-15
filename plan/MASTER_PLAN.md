@@ -10,6 +10,8 @@
 
 関連文書は次のとおりです。
 
+- [Web標準UI・Web Components・AI開発ハーネスの横断設計](design/WEB_STANDARD_COMPONENT_AND_AGENT_HARNESS_2026-11.md)：Google Modern Web Guidanceを外部の知識基盤として利用し、HTML/CSS／Design Tokens／Web ComponentsをWeb/Desktop共通UIの基線に置く。Lit+TypeScript、Vanilla TypeScript、Lit+JavaScript/JSDocは同一インスペクタで比較し、静的検査・CEM・WebView実機・AI変更検証を通じて採否を判断する。既存React Starter・CodeMirror・SUI Canvasは排除せず、UI公開契約とTEI Action/Authority/Resultを分離する。#997/#1000/#1824/#1180/#2514へ受入を接続し、非Plugin Studio Stage1→Stage2 #2831/#4583、CLI実生成・実Providerの**P0を維持**する。現時点は設計のみで、Google Skill CI導入／Lit製品採用／Theme PR #4628統合／実WebView検収は未実施。
+
 - [Rule Authoringから実Plugin・製品CLIへ進む第一縦断](design/PLUGIN_RULE_PRODUCT_VERTICAL_SLICE_2026-11.md)：mainで実装された内蔵Rule Authoring Readerを出発点に、まずReaderの選択・Source失効を製品回帰で確認し、次に受理Ruleの比較・分岐をGoへ実生成してBuilderの実入力、選択済みProviderの通常CLI実Call、独立Consumerへつなぐ。静的Go合成を製品の第一候補とし、独立Process・外部Hostへの生成は契約を共有する代替方式として比較する。PLV-01〜12は既存#1180/#2514へ引き渡す反証候補であり、実行済みとは扱わない。**Studio Desktop Stage1→Stage2 Windows実再入 #2831/#4583は引き続き並行する最上位P0**。第二Resolver／Runner／Host／証拠正本は追加しない。
 
 - [Wagby 11の機能体系からTEIへ取り込む設計課題](design/WAGBY11_CAPABILITY_GAP_AND_TEI_INTEGRATION_2026-11.md)：2026-11-15の公開機能一覧／マニュアルを照合し、参照値の時点・親子複合キーの原子保存・入力Patchの非送信とNULL・検索条件とAuthZ・人数承認／委任・一括取込／帳票／Outbox／移行を横断的な実務受入題材として整理した。W11-01〜18は独立Expectedの**候補**であり、製品実装・正式受理の実績ではない。既存Data／SmartDB／BRMS／組織／Lifecycle／Target Generator／#1180・#2514へ接続し、新Host／Rule Engine／Registryを作らない。**P0は正式Reader #2621/#1018、通常CLI実Provider #4495、Studio Stage1→Stage2 #2831/#4583を維持**し、第一縦断を受注親子・保存単価・合計のW11-01〜04へ絞る。

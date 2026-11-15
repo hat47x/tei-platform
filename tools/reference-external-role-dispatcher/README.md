@@ -8,6 +8,8 @@ ISSUE-000087 / GitHub #4218のPoC実装です。`AGENTS.md`の「モデル → �
 - 同一ホストでの並行claimは単一成功、期限切れleaseは`sweep`で回復可能。
 - DSH adapterは`dry-run`既定で、実際の自動起動は行いません。`gh` CLIも`dry-run`で変更を回避します。
 
+ロール別の委任、Step Code CLIの認証・起動・再開、DSHなどの実行方式の詳細は、必要なときだけ[AIロール委任・外部Harness・Step Code CLI運用ガイド](AGENT_ROLE_AND_STEP_CODE_OPERATIONS.md)を参照します。共通で最初に確認する実装規約はルートの[AGENTS.md](../../AGENTS.md)です。
+
 ## 構成
 
 ```text

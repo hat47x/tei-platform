@@ -29,6 +29,7 @@
 
 | 文書 | 対象 |
 | --- | --- |
+| [`WEB_STANDARD_COMPONENT_AND_AGENT_HARNESS_2026-11.md`](WEB_STANDARD_COMPONENT_AND_AGENT_HARNESS_2026-11.md) | Web標準CSS・Web ComponentsとAI開発ハーネスの横断規約。Lit/TypeScript/JSDocを比較し、CEM・Design Tokens・WebView実機・TEIセルフビルドへの接続を段階検証する設計（#997/#1824/#2831/#1180、実装前） |
 | [`TEI_DESKTOP_WEB_STANDARD_UI_IMPLEMENTATION_2026-11.md`](TEI_DESKTOP_WEB_STANDARD_UI_IMPLEMENTATION_2026-11.md) | 現行TypeScriptを基線にWeb Components／LitとWeb標準CSSを比較し、AI開発の型・Lint・DOM/IME/ARIA・正規Bundle・実Wails Consumerを段階検収する実装指針（設計、製品未受入） |
 | [`TEI_DESKTOP_PRODUCT_CONTRACT_2026-11.md`](TEI_DESKTOP_PRODUCT_CONTRACT_2026-11.md) | Studio Desktopの製品契約。Sourceから実Consumer、非Plugin Stage1→Stage2セルフビルド、Pin・Backend・配布／復旧／実験Mobileの受入境界（#1824/#2831/#4583。§0.17が現在の統合判断） |
 | [`BRMS_DECISION_ANALYSIS_INTEGRATION_2026-11.md`](BRMS_DECISION_ANALYSIS_INTEGRATION_2026-11.md) | 業務ルールを既存Data／Function／Operatorと生成コードへ接続する横断設計。有限Unique決定表、partial時の判断可能性、判断理由、変更影響、Sourceから実Consumerまでの検証順（未採用設計） |
