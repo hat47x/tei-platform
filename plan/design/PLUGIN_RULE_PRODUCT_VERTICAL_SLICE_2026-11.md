@@ -1,6 +1,6 @@
 # Rule Authoringから実Plugin・製品Consumerまでの第一縦断：実装と検収の接続計画
 
-- **状態**：2026年11月15日の設計・実装引渡し。R1の限定的な正値Rule→Go生成は[PR #4911](https://github.com/hat47x/tei-platform/pull/4911)でmainに統合済み。Rule改版による再生成・別Process実行を追加検証する段階であり、正式Builder／実Plugin呼出し、Windows Stage2は未受理。
+- **状態**：2026年11月15日の設計・実装引渡し。R1（正値Rule→実判断Go生成）は[PR #4911](https://github.com/hat47x/tei-platform/pull/4911)でmain統合済み。R2の既存参照Builder回帰は製品の正式Builder選択とは別資格。実Plugin呼出し、通常CLIの業務Entry、Windows Stage2は未受理。
 - **優先対象**：内蔵Rule Authoring Markdown Readerで読み取った一つのpureなValidationを、生成Goの判断処理、実Builder、選択済みProvider、通常製品CLIまでつなぐ。
 - **前提となる実装事実**：mainの[7921b005](https://github.com/hat47x/tei-platform/commit/7921b005a44d325983d24ca2b8b58b0737dd778d)で、明示選択されたtei.rule-authoring/v0を内蔵ReaderがWorkspace Loadの原文から読み、semantic.ValidationとSource anchorへ投影する経路が追加された。これは外部Language Pluginや正式Graph Readerの製品受入ではない。
 - **既存の正本**：[Pluginの役割・合成・Stage2再入](PLUGIN_ROLE_COMPOSITION_AND_STUDIO_REENTRY_2026-11.md)、[Plugin-firstの実運用検証](PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md)、[自己記述](ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md)、[製品完成計画](../workstreams/PRODUCT_COMPLETION_PLAN.md)を維持する。本書は一機能の実装差分を決める補助計画であり、第二のContract、Resolver、Meaning、Builder、Runner、Evidence Storeを作らない。
@@ -230,3 +230,37 @@ Source変更A→B→A、生成器版変更、Build時だけの依存、入力取
 この試験では生成Goを計画確定後に書き換え、古い計画がコンパイル前に拒否されることも確かめる。Goモジュール文脈と、生成Goが参照する既存 `core/identity`、`internal/core`、`internal/semantic`、`internal/semantic/validationeval` を計画Sourceとして明示する。ReaderのSource ID／Attribute型、BuildPlanの実入力Digest、Binaryの実挙動は別々に照合し、一致結果だけを根拠にしない。
 
 **受入範囲は既存Reference Builderでの一回の実Go消費に限る。** この試験で作ったBuildPlanはテスト用であり、正式製品 `tei` が選択したBuilder／Plugin Runtimeを証明しない。製品Build Intentから実ProviderのEntryまでの接続と、Stage1→Stage2 Windows実再入は、それぞれ既存#4544／#4495／#2831／#4583に残す。PRのマージとexact HEADのGo／CI成功も区別する。
+
+## 15. R3の第一縦断：判断Ruleを公開Entryと実Providerへつなぐ
+
+### 15.1 公開するのはRuleそのものではなく、選択されたFunctionである
+
+現行 `semantic.Validation` は業務判断を記述する型付き意味であり、外部から起動できるFunction／Capabilityではない。`validationgen.GeneratePositive` が生成する `EvaluateSelected` も、Goモジュール内で呼び出せる関数であって、Pluginとして登録された実Entryではない。**Rule IDを公開APIへ自動昇格させず、明示的に選択・受理したread-only Functionの判断部品として組み込む。**
+
+最初は `sales.order_line.quantity_positive`（`std.decimal`）一件だけを扱う。取得済みDecimalの正値判定は `satisfied`／`not-satisfied`、欠損・NULL・取得不能・型不適合は評価不能として区別する。NULLと未取得に異なる業務Outcomeを与えるかは、現行実装とOwnerの契約で確認し、生成器が補わない。
+
+### 15.2 既存資産のどこを通すか
+
+| 確認する境界 | 現行資産／Owner | 一件目の合格条件 |
+| --- | --- | --- |
+| Source／Meaning | `workspace.Load`、`semantic.Validation`、`sourceindex`（#988／#1018） | Manifestで選んだ原Source・Rule ID・Attribute型・元byte位置を同一Loadで照合。意味受理の代用にしない |
+| Generation／Build | `validationgen.GeneratePositive`、`buildintent`、`plugin.BuildPlan`（#4544／#943／#2595） | 実Builderが生成Goを読み、Generator版・入力閉包・Toolchain・実Artifactを一Attemptへ束縛。Reference Builderの証拠を正式選択へ昇格させない |
+| 公開Entry | `semantic.Capability`、`application.InteractionCommand`／`Pattern`（#4495／#3422） | 一つのFunctionの入力・結果・エラー、公開対象HostとScope、選択したEntryを明示。内部RuleやHookは暗黙に公開しない |
+| 実Provider | `composition.Selection`／`Service`、Pluginの選択・Lock（#951／#1016／#1251） | 選択Bが収録されたArtifactと実Instanceに一致し、実CallもBへ到達する。`Service` の呼出しBindingはHostの現在Grantの代替でない |
+| 二入口の受領 | 共通Application API／通常 `tei` CLI（#1158／#4495／#1180／#2514） | 同一型付きOperationをAPIとCLI実Processから呼び、実Provider Binding・Read footprint・Outcomeを独立Expectedと照合。CLI専用業務Dispatcherを作らない |
+
+`internal/plugin/implementation` の現行 `static-response-v1` はDeployment Executorの固定応答向けであり、Rule実行の汎用Contractではない。その固定JSONや新しい `validation` 専用Capability enumへ押し込まない。`composition.Service` は選択・型付き呼出しの実装候補にすぎず、現行製品CLIがこのRuleを実行済みという証拠ではない。既存Contractで不足が生じた時だけ#951／#4495のOwnerが最小拡張を採否判断する。
+
+### 15.3 一つの実装PRと反証
+
+最初のPRは**一つのread-only Function、選択された一つのProvider、共通API／実製品CLIの二入口**に限定する。検収記録では、①元Source・Meaning、②生成Goの実byte、③BuildPlan・Artifact／Lock、④公開Entry・現在のScope／Grant、⑤実ProviderのIdentity、⑥実ReadとBusiness Outcome、⑦独立Consumerの受領を別欄にし、未取得の欄を `unknown` とする。
+
+反証候補：**R3-03** 選択B・実Call A（結果が同値でも拒否）、**R3-04** Rule改版後も旧Binaryで評価、**R3-05** NULL／未取得を `not-satisfied` に畳む、**R3-06** 未公開Entry／別Scopeが呼べる、**R3-07** 実Providerを呼ばずCLIの固定応答のみ一致。既存R2／R3／PLV／Driver Scenarioと重複するものは新しい試験正本を作らず、実Callの観測だけを追加する。
+
+Node Flow・簡易API・Studio・YIC Harnessは、この**同じFunction／Entry／Provider**の別投影・別Consumerとする。Node独自Runner、第二Meaning、認可Storeや常駐TEI Hostは増やさない。Studio Stage1→Stage2 Windows（#2831／#4583）は独立した最上位P0を維持する。
+
+### 15.4 同日のCI修復とその限界
+
+未宣言の `dbIntrospectSemanticFlag` が実CLIのビルドを停止させていたため、[PR #4940](https://github.com/hat47x/tei-platform/pull/4940)で `db-introspect -semantic` の宣言を復元してmainへマージした。同PRのexact HEADで実CLIを使うAction Surface、独立Node Catalog参照、Source→Web E1-A、製品SkillとCacheの検査は成功した。これは**製品CLIのコンパイル停止の修復**であり、全体CI、正式R2、R3実Provider Call、Windows WebView2、Stage2が成功したという主張ではない。
+
+**次のOwnerへの実装引渡し**：#4544／#2595が生成Goの正式Build Intent・実選択Builderへの収録を閉じ、#4495／#1251がその実Artifactから公開read-only Entryへ到達する通常CLI＋共通APIの二入口を閉じる。意味・権限・公開の採用はOwner判断に残す。
