@@ -235,6 +235,7 @@ func main() {
 	periodAdvance := fs.String("advance", "", "periods: move this period one step toward closed and record it")
 	periodCloseCapability := fs.String("close-capability", "", "periods: the capability that already ran, satisfying close-requires when closing and correction when reopening")
 	dbCheckDSNFlag := fs.String("dsn", "", "dbcheck: PostgreSQL DSN (defaults to TEI_TEST_POSTGRES_DSN)")
+	dbIntrospectSemanticFlag := fs.Bool("semantic", false, "db-introspect: project physical schema to semantic candidates (not accepted meaning)")
 	grantsOut := fs.String("grants-out", "", "grants: write the grants document here instead of stdout")
 	grantCapability := fs.String("grant-capability", "", "issue-grant: the capability the grant is issued to")
 	grantKind := fs.String("grant-kind", "filesystem", "issue-grant: permission kind")
