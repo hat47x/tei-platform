@@ -805,9 +805,11 @@ Bootstrapの起動検査が成功した後であっても、Workspace切替、So
 
 Wails公式Updaterの`app.Updater`は、設定した公開鍵による署名検証、ダウンロード・Staging、**単一対象の交換**を扱う。ZIP/TAR.GZはトップレベルEntryがちょうど一つでなければならず、Desktopと別Serverと外付けPluginを同列に置いたArchiveの一括Activationはできない（公式 https://wails.io/guides/updater/ ）。したがって以下の三方式を混ぜない。
 
+現行の**実行方式A（Wails＋Go同一Process／CLI Direct）**は、下表のD1〜D3の**配布形態**とは独立した比較基線である。Aでの実Read・画面受領は現在の基準として検証し、配布D1を「現行方式A」の別名にしない。
+
 | 製品配布 | Bootstrap／更新の責務 | 優先順 |
 | --- | --- | --- |
-| **A 現行の実行基線**：Wails＋Go同一Process／CLI Direct | 今のビルド・起動・診断を実証基線とし、生成UIと実Imageの一致を確認。配布形態D1（Remote接続Client）とは別軸 | P0の比較基線 |
+| **D1 Remote接続Desktop**：UI Clientから配備済みServerへ明示接続 | Client Imageの更新とServer／Plugin配備を分離。Protocol／Operation版・現在Grantは接続先Hostで確認し、Localへ暗黙切替しない | 利用形態に応じた比較候補 |
 | **D2 静的Release**：標準Pluginと既定資産をGo製品Imageに内包 | Release ClosureでTarget/Artifact/Lock/設定Schemaと実Imageを照合。署名付き単一Imageの更新→実起動→Read一往復を別資格にする | P1第一候補 |
 | **D3 別Server**：複数実Image／Process | Installer/DeploymentがBundle内の複数Image、切替、Handshake、Drain、Rollbackの責任を持つ。Updaterの単一swapだけを二Processの原子的更新と呼ばない | 必要性の実測後 |
 
@@ -997,7 +999,7 @@ Studioでは編集の即応性を保つため、IME／カーソル／Dirty Buffe
 | **配布形態** | D1＝Remote接続Desktop、D2＝標準PluginとUIを内包したStandalone単一Image、D3＝別Server等の複数Image同梱 | Releaseの実byte／署名、Plugin Lock、設定Schema、Installer／Updater所有、復旧可能性 |
 | **Operationの実行先** | Local／明示Remote／Hostが許した別Execution Target | 現在のProvider／Grant／Source／DB／Effectを**実行先で**検証。暗黙Local fallbackは禁止 |
 
-従来§28.4の「D1 現行」は**実行構成Aの現行基線**を指していたが、§22のD1はRemote接続Desktopという**配布形態**である。本節で両者を分離し、§28.4の行名もAへ訂正した。AとD2は両立し、B0もD2単一Imageと両立し得る。B0はGo Runtimeが二つになるため、単一Binaryというだけで高速・省メモリとは決めない。B1/B2は別Process・別成果物としてReleaseとInstallerの検証が必要。
+従来§28.4で「D1 現行」としていたのは**実行方式Aの現行基線**だったが、§22のD1はRemote接続Desktopという**配布形態**である。§28.4では現行基線Aを表の外へ分け、D1の行をRemote接続Desktopへ修正した。AとD2は両立し、B0もD2単一Imageと両立し得る。B0はGo Runtimeが二つになるため、単一Binaryというだけで高速・省メモリとは決めない。B1/B2は別Process・別成果物としてReleaseとInstallerの検証が必要。
 
 ### 30.5 Wails Updaterと子Workerを同居させる際の停止条件
 
