@@ -1,7 +1,7 @@
 # TEIの技術調査を設計へ反映する方針 — 2026年10月
 
 状態：**現行の技術調査の反映計画**  
-最終更新：**2026-11-06**
+最終更新：**2026-11-15**
 
 ## 1. 位置づけ
 
@@ -1382,3 +1382,62 @@ Pluginの[main #3337](https://github.com/hat47x/tei-platform/pull/3337)は、宣
 評価は Physical Source Observation→Structural Candidate→Owner Accepted Data/Function/Business Meaning→Graph/CRUD Source逆参照→Product Function/Provider実Read を別Laneで進める。物理制約が無いことから業務Relation不存在を断定せず、DB reverse完了を三視点P0-Mの必須Blocking前提にしない。#3270/#2495/#2497/#1124/#2586に引継ぎ、第二DB Schema Engineや図面正本は作らない。
 
 **現時点の並行優先順**：P0-Tはmain #3354の11 CLI/32限定Controlsから、必要Function/Business情報と実Consumer受領、次に盲検T1-Bへ。P0-D1は選択Provider→実Invocation→CLI/Studio二Consumerを証明。P0-RはReference PGの成功を実Product Function/Query/Provider/Consumerの同一Attemptへ。P0-Mは実TEI Source→三視点Graph/CRUDのread-only導出、Workbench Reverseは候補Inputとして並行。H2/H3隔離・G4は独立Owner。#1119 Gateを変えず、新Host/Runner/Registry/Attesterを増やさない。正式Owner Meaning、実Product E2E、L3/G4、H2/H3比較はNOT RUN。
+
+## 16. 2026-11-15：研究成果を汎用能力と製品実証へ還元する
+
+**判断**：研究からすぐに採用するのは、比較方法、異分野による反証、実証順序である。新しいCore型、研究専用Runtime、第二Registry、Verifier、Host、意味受理機関は導入しない。研究機能は既存DSL・標準データ構造・標準Operator・Pluginの順に表現し、利用目的別のToolkitはその組合せとして定義する。TEI Studio Desktopのセルフビルドを最優先とする。
+
+### 16.1 業務と研究に共通する能力へ整理する
+
+| 対象 | 共通化する最小能力 | 分野固有として残すもの | 判断 |
+| --- | --- | --- | --- |
+| Analytics／Reporting | Query、表、時系列、集計、図・帳票の表現 | SQL方言、Renderer、統計Provider | 標準表現から二Consumerへの実投影を先行 |
+| WBS／PERT／CPM／Project Planning | Task依存Graph、期間、制約、表と図の相補投影 | スケジューリング、最適化Operator | SUIとの共通性を検証。Task専用Coreは保留 |
+| Statistics／DOE／Simulation | 単位、配列、実験入力、乱数条件、Result、独立Expected | 統計推定、分布、シミュレーションProvider | 最初はread-onlyの再現可能な小Fixture |
+| Solver／Optimization | 変数、制約、目的関数、Scenario、結果の来歴 | Solver Adapter／Operator | 最適性証明と業務Meaning受理を分離 |
+| CSW | Input、Run、Candidate、作者Decisionと来歴 | 創造的な問い・解釈・著者による採否 | 受渡し境界のみ限定実証済み |
+| VSクマ | 観測、身体状態、意思決定、時系列Scenario | Godot物理、描画、CPU認知と運動実装 | 契約のread-only鏡は限定実証済み |
+
+[main統合済みPR #4289](https://github.com/hat47x/tei-platform/pull/4289)は、CSW 7件・VSクマ14件の初回Go試験、各Workspaceのvalidate成功（宣言37件・68件）を報告する。ただしCSW実執筆・著者受理、VSクマの実Godot動作、モデルからの実GDScript／Go生成は未検証である。範囲、finite、時間窓、状態遷移、欠如、配列の表現不足は、既存[#2495](https://github.com/hat47x/tei-platform/issues/2495)・[#2501](https://github.com/hat47x/tei-platform/issues/2501)・[#4193](https://github.com/hat47x/tei-platform/issues/4193)のPressure Corpusへ戻す。二例の共通部分だけから標準型を追加しない。
+
+**ToolkitとPluginは異なる**。前者は目的に沿って既存モデル・Scenario・表示・Operatorを組み合わせたもの。後者は生成、接続、実行、Target対応の拡張。Python Target Generatorは研究上の相互運用候補として維持するが、Go単一バイナリ・外部Host・Studioセルフビルドの必須条件にはしない。
+
+### 16.2 2026年研究の製品への適用先と限界
+
+- [LLM in Model-Driven Engineeringの体系的マッピング研究](https://link.springer.com/article/10.1007/s10664-026-10921-4)は、モデル生成に比して移行・DSL設計・Metamodelingや比較基準の研究が少ないと報告する。TEIでは生成の一回成功でなく、元Sourceの保持・安全な局所変更・再生成・参照解決を[#2621](https://github.com/hat47x/tei-platform/issues/2621)の検収対象とする。
+- [From Text to DSL](https://arxiv.org/abs/2605.15865)は構文の妥当性、意味の充足、モデル間参照整合を分けて評価する。ParserのPASSを、Ownerの意味受理や実Target適合へ昇格しない。AIのモデル規模と費用対効果は同一入力・同一Expectedで比較する。
+- [TestSuiteBench](https://arxiv.org/abs/2610.13065)と[Req2Test-Bench](https://arxiv.org/abs/2610.36584)は、生成テストの実行成功と仕様違反の検出能力が異なることを示す。[#2514](https://github.com/hat47x/tei-platform/issues/2514)と[#1180](https://github.com/hat47x/tei-platform/issues/1180)で独立Expected、要求ごとのMutant、実行成功率、判別力、母集団完全性を別票にする。論文の成功率をTEI自身の実測値へ転用しない。
+- [EvoGenUI-Bench](https://aclanthology.org/2026.emnlp-main.1158/)と[FlowEval](https://machinelearning.apple.com/research/floweval-ui-evaluation)は、生成UIの単発の外見だけでなく、複数回の変更後の動作・状態維持・操作経路を評価する。Studio／SHO／SUIのSource変更→局所Patch→保存→再読込→再生成→実操作を同じ対象版で追跡する。論文の評価装置をそのまま新製品Harnessへ導入するわけではない。
+
+### 16.3 研究成果の四段階資格
+
+| 資格 | 昇格条件 | 止めるべき誤認 |
+| --- | --- | --- |
+| R0 概念適合 | ID、意味Role、単位、粒度、時間軸、依存と不足の記述 | AI候補や図から自動的に意味を受理 |
+| R1 独立Pressure | 固定された元Source、正負例、独立Expected、実試験記録 | 合成Fixtureの成功を実対象の成功とする |
+| R2 製品実行 | 正式Reader・標準Model・意味を担う生成Go・実Provider・独立Consumer | delegateだけの生成、選択B／実Invoke A、Source位置の喪失 |
+| R3 継続再生成 | 変更前後のWorld／Model／Artifact版、実Process、Stage1→Stage2、同一実行根拠 | 二回の同一Buildや別試行の成功を完全セルフビルドと呼ぶ |
+
+各Evidenceには元Source・実消費byte／span、Operator・Plugin版、選択Provider、Host・Grant、Expectedの出自、実Attempt、範囲と失効条件を付ける。R0〜R3は研究内の適格性であり、[#1119](https://github.com/hat47x/tei-platform/issues/1119)の製品Gate、[#2831](https://github.com/hat47x/tei-platform/issues/2831)のG4、業務Ownerの判断を置き換えない。
+
+### 16.4 実装順：研究を一本のProduct縦断に接続する
+
+**P0-S／Source**：[#2621](https://github.com/hat47x/tei-platform/issues/2621)の正式Readerで、一つの明示選択したMarkdown TEI SourceのGraph／Ruleを元byte・span・Role付きで読み、曖昧な部分や旧新形式の衝突は拒否する。全Grammar完成を待つ必要はない。
+
+**P0-G／Generator**：[#1121](https://github.com/hat47x/tei-platform/issues/1121)で一つのRule・Relation・Data Contextを実Goへ生成し、Goへのdelegateだけの方式と比較する。生成行数よりも、意味を担う箇所、原Sourceとの対応、変更の局所性、独立試験で評価する。
+
+**P0-R／ProviderとConsumer**：[#2586](https://github.com/hat47x/tei-platform/issues/2586)・[#1251](https://github.com/hat47x/tei-platform/issues/1251)・[#1163](https://github.com/hat47x/tei-platform/issues/1163)で、Function選択→Query／実Provider→通常CLI→Studio読取Consumerを同一Attemptへ接続する。Full／Top-1、NULL／欠損、非出力Predicate、取得範囲、selected／actual Provider、Disclosureを別のClaimとする。
+
+**P0-B／セルフビルド**：[#2831](https://github.com/hat47x/tei-platform/issues/2831)で生成されたService／WorkbenchとStage1の実TEIによるStage2再入を一つのexact HEADで統合検証する。過去の別CIにおけるWindows UI成功と部分Stage2成功を合算しない。
+
+**並行Pressure**：[#2514](https://github.com/hat47x/tei-platform/issues/2514)の要件別Mutantと[#2501](https://github.com/hat47x/tei-platform/issues/2501)の異種構造を、上記四段階へ少数ずつ追加する。CSW・VSクマのPoCは製品P0のブロッカーにしない。
+
+### 16.5 採用・差戻し・マージの基準
+
+- 同じ意味要素が**業務と研究の異なる二用途**で実Providerまたは実Consumerに再利用されて初めて、標準Operatorや表現型への昇格を検討する。似た構造のモック二例では不足。
+- 元Sourceの逆参照・NULL／空集合・時間／粒度・選択Provider・現在Grantが欠落した場合、見かけの一致があってもR2を認めない。
+- 新しいRuntime／Host／Registry／受理機関が必要だという提案は、既存Plugin・Generator・外部Providerで解けない理由を独立に比較する。
+- GitHub上では古いDraftを重複Mergeしない。現mainへ最小差分で移し、CI・差分・Readbackを確認して短期で統合する。研究で得た結論とOwnerによる製品採用は別の記録とする。
+- 改善指標は論文件数やDSL行数ではなく、ドメイン専門家が記述する負担、意味を持つ生成割合、独立に検出した欠陥、Source変更から実Consumer確認までの所要時間。まず基準値を測り、改善率は実測後に判断する。
+
+**未達**：正式Markdown Readerの製品縦断、意味を担うGo生成、実Providerと二Consumerの同一Attempt、Studio全体のStage2セルフビルド、CSW作者採否、VSクマGodot実連携、業務Ownerの正式意味受理は、本節の追記だけでは成立しない。
