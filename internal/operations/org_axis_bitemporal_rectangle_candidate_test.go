@@ -80,7 +80,7 @@ func TestOrgAxisAsOfBitemporalRectangleCandidateOptIn(t *testing.T) {
 		AND valid_from <= $2::timestamptz AND (valid_to IS NULL OR $2::timestamptz < valid_to)
 		AND known_from <= $3::timestamptz AND (known_to IS NULL OR $3::timestamptz < known_to)
 		ORDER BY revision_id`
-	check := func(id, validAt, knownAt string, want []string) {
+	check := func(t *testing.T, id, validAt, knownAt string, want []string) {
 		t.Helper()
 		rows, err := tx.QueryContext(ctx, asOf, id, validAt, knownAt)
 		if err != nil {
@@ -105,12 +105,12 @@ func TestOrgAxisAsOfBitemporalRectangleCandidateOptIn(t *testing.T) {
 	// Overlapping known-time intervals do not imply ambiguity if their valid
 	// intervals are disjoint. Known-time-only exclusion would reject A3.
 	t.Run("known overlap but disjoint valid periods", func(t *testing.T) {
-		check("A3", "2027-05-31", "2027-07-04", []string{"A3-early"})
-		check("A3", "2027-06-01", "2027-07-04", []string{"A3-later"})
+		check(t, "A3", "2027-05-31", "2027-07-04", []string{"A3-early"})
+		check(t, "A3", "2027-06-01", "2027-07-04", []string{"A3-later"})
 	})
 	t.Run("corrected A2 before and at known boundary", func(t *testing.T) {
-		check("A2", "2027-05-15", "2027-07-02", []string{"A2-old"})
-		check("A2", "2027-05-15", "2027-07-03", []string{"A2-new"})
+		check(t, "A2", "2027-05-15", "2027-07-02", []string{"A2-old"})
+		check(t, "A2", "2027-05-15", "2027-07-03", []string{"A2-new"})
 	})
 	// A third physical revision is permitted by the candidate PK, and its
 	// valid and known periods BOTH overlap A2-new at the same query point.
@@ -121,11 +121,11 @@ func TestOrgAxisAsOfBitemporalRectangleCandidateOptIn(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Run("both axes overlap yields competing versions", func(t *testing.T) {
-		check("A2", "2027-07-01", "2027-07-04", []string{"A2-conflicting", "A2-new"})
+		check(t, "A2", "2027-07-01", "2027-07-04", []string{"A2-conflicting", "A2-new"})
 	})
 	t.Run("either axis outside overlap resolves single version", func(t *testing.T) {
-		check("A2", "2027-04-30", "2027-07-04", []string{"A2-new"})
-		check("A2", "2027-08-01", "2027-07-04", []string{"A2-new"})
-		check("A2", "2027-07-01", "2027-08-01", []string{"A2-new"})
+		check(t, "A2", "2027-04-30", "2027-07-04", []string{"A2-new"})
+		check(t, "A2", "2027-08-01", "2027-07-04", []string{"A2-new"})
+		check(t, "A2", "2027-07-01", "2027-08-01", []string{"A2-new"})
 	})
 }
