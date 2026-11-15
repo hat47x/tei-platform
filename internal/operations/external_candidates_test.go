@@ -1,40 +1,86 @@
 package operations_test
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
-	"unicode/utf16"
 
 	"tei/internal/externalanalysis"
 	"tei/internal/operations"
 )
 
-// The fixtures are the real captured REA output under
-// internal/externalanalysis/testdata, with the run record in the manifest next
-// to them. The assertions below pin the projection field by field, so a
-// producer change fails here instead of quietly redefining what a candidate
-// view holds.
+// These positive graph tests use an explicitly synthetic fixture, not the
+// captured REA analysis.json. The real 6.8.0 delivery has normalized_result={}
+// and is tested separately as a receipt without a selectable semantic graph.
+// Fixture data MUST NOT be reported as a real external producer observation.
 const (
-	candidateEvidenceID = "ev_a88c70bcd066b2f04fdf97cb349369f0779b9c68cc4ac6c0e5f38f3539477a93"
-	candidateNodeID     = "jsrg_node_237478f2a27c9614a522cbfc7ab60fa96943a458d164945d25af634f1240b652"
-	candidateRelationID = "jsrg_relation_0f6757a241c56fd84ecaec91f538d8297d222eb5625e4cdbcb2de7603f330718"
-	candidateDigest     = "sha256:7ea3780d8dc23d00c380145af62d63bf194e39decbaefab3d82c5a3b4134bba9"
+	candidateEvidenceID = "ev-synthetic-operations-graph-v1"
+	candidateNodeID     = "synthetic-node-selected"
+	candidateRelationID = "synthetic-relation-selected"
 )
 
 var candidateReadAt = time.Date(2026, 11, 11, 5, 5, 0, 0, time.UTC)
 
+func candidateDigest(t *testing.T) string {
+	t.Helper()
+	raw := mustReadFile(t, candidateFixture(t))
+	return fmt.Sprintf("sha256:%x", sha256.Sum256(raw))
+}
+
 func candidateFixture(t *testing.T) string {
 	t.Helper()
-	path := filepath.Join("..", "externalanalysis", "testdata", "rea-6.8.0", "analysis.json")
+	path := filepath.Join("testdata", "rea_external_candidates_synthetic.json")
 	if _, err := os.ReadFile(path); err != nil {
 		t.Fatalf("read fixture %s: %v", path, err)
 	}
 	return path
+}
+
+// TestCapturedREAReceiptCannotSupplyAbsentSemanticGraph keeps the actual
+// captured REA bytes as evidence, without adding synthetic observations to
+// its normalized_result. A complete Receipt is not a candidate selection.
+func TestCapturedREAReceiptCannotSupplyAbsentSemanticGraph(t *testing.T) {
+	captured := filepath.Join("..", "externalanalysis", "testdata", "rea-6.8.0", "analysis.json")
+	raw := mustReadFile(t, captured)
+	before := fmt.Sprintf("sha256:%x", sha256.Sum256(raw))
+	receipt := externalanalysis.Receive(raw,
+		externalanalysis.Tool{Name: "rea", Version: "6.8.0", Present: true},
+		candidateReadAt)
+	if receipt.State != externalanalysis.StateComplete || receipt.Evidence == nil {
+		t.Fatalf("real saved Evidence is not a complete Receipt: %+v", receipt)
+	}
+	if receipt.Raw.Fingerprint != before {
+		t.Fatalf("real raw digest changed: got %s want %s", receipt.Raw.Fingerprint, before)
+	}
+	if receipt.Promotion.AcceptedMeaning || receipt.Promotion.CanonicalWorld || receipt.Promotion.DatabaseObservation {
+		t.Fatalf("receipt wrongly promoted original bytes: %+v", receipt.Promotion)
+	}
+	if _, err := externalanalysis.ReadCandidates(receipt.EvidenceBody()); err == nil {
+		t.Fatal("captured normalized_result={} must not produce a semantic graph")
+	}
+	view, err := operations.ExternalCandidates(operations.ExternalCandidateRequest{
+		EvidencePath:  captured,
+		ToolVersion:   "6.8.0",
+		ObservationID: candidateNodeID,
+		RelationID:    candidateRelationID,
+		Tool:          externalanalysis.Tool{Name: "rea", Present: true},
+	}, candidateReadAt)
+	var candidateErr *operations.ExternalCandidateError
+	if !errors.As(err, &candidateErr) || candidateErr.Code != operations.ExternalCandidateUnusable {
+		t.Fatalf("real receipt-only capture must refuse candidate selection: view=%+v err=%v", view, err)
+	}
+	if view.Observation != nil || view.Relation != nil {
+		t.Fatalf("real receipt-only capture fabricated graph candidates: %+v", view)
+	}
+	if current := fmt.Sprintf("sha256:%x", sha256.Sum256(mustReadFile(t, captured))); current != before {
+		t.Fatal("receipt-only test mutated saved actual REA bytes")
+	}
 }
 
 // TestExternalCandidatesProjectsOneObservationAndOneRelation is the T1-A
@@ -62,8 +108,8 @@ func TestExternalCandidatesProjectsOneObservationAndOneRelation(t *testing.T) {
 	if view.Attempt.EvidenceID != candidateEvidenceID {
 		t.Fatalf("attempt evidence id=%s", view.Attempt.EvidenceID)
 	}
-	if view.Attempt.ReceivedDigest != candidateDigest {
-		t.Fatalf("attempt digest=%s want %s", view.Attempt.ReceivedDigest, candidateDigest)
+	if view.Attempt.ReceivedDigest != candidateDigest(t) {
+		t.Fatalf("attempt digest=%s want %s", view.Attempt.ReceivedDigest, candidateDigest(t))
 	}
 	if view.Attempt.ReadAt != "2026-11-11T05:05:00Z" {
 		t.Fatalf("attempt readAt=%s", view.Attempt.ReadAt)
@@ -71,7 +117,7 @@ func TestExternalCandidatesProjectsOneObservationAndOneRelation(t *testing.T) {
 	if view.Attempt.Provider.ID != "rea-javascript-application" {
 		t.Fatalf("attempt provider=%s", view.Attempt.Provider.ID)
 	}
-	if view.Attempt.Envelope == nil || view.Attempt.Envelope.Command != "analyze-javascript-application" {
+	if view.Attempt.Envelope == nil || view.Attempt.Envelope.Command != "synthetic-test-only-not-real-rea-capture" {
 		t.Fatalf("attempt envelope=%+v: the producer's own execution record travels with the attempt", view.Attempt.Envelope)
 	}
 
@@ -230,7 +276,7 @@ func TestExternalCandidatesRecordsTheToolAbsence(t *testing.T) {
 	if view.Attempt.Tool.AbsentReason == "" {
 		t.Fatal("the absence needs a reason a reader can act on")
 	}
-	if view.Attempt.ReceivedDigest != candidateDigest {
+	if view.Attempt.ReceivedDigest != candidateDigest(t) {
 		t.Fatalf("digest=%s: the bytes are still the bytes", view.Attempt.ReceivedDigest)
 	}
 	if view.Observation == nil || view.Relation == nil {
@@ -264,7 +310,7 @@ func TestExternalCandidateSelectionIsNotTheWholeGraph(t *testing.T) {
 // covers T1A-03: a producer that names an edge only by its endpoints gets a
 // TEI-derived handle, and the handle says it was derived.
 func TestExternalCandidatesUsesTheDerivedHandleOnlyWhenTheProducerStatesNone(t *testing.T) {
-	derived := derivedEvidenceFixture(t, `,"relation_id":"jsrg_relation_0f6757a241c56fd84ecaec91f538d8297d222eb5625e4cdbcb2de7603f330718"`, "")
+	derived := derivedEvidenceFixture(t, `"relation_id":"`+candidateRelationID+`",`, "")
 	view, err := operations.ExternalCandidates(operations.ExternalCandidateRequest{
 		EvidencePath:  derived,
 		ToolVersion:   "6.8.0",
@@ -445,26 +491,15 @@ func mustReadFile(t *testing.T, path string) []byte {
 	return raw
 }
 
-// candidateText reads the captured fixture and decodes it to text. The fixture
-// is UTF-16LE with a BOM on the host that captured it, so a literal replace over
-// the raw bytes would find nothing; the derived copies are written as UTF-8,
-// which the intake reads as-is.
+// candidateText reads the explicitly synthetic UTF-8 graph fixture. Tests
+// mutate only disposable copies; the captured REA delivery stays unchanged.
 func candidateText(t *testing.T) string {
 	t.Helper()
-	raw := mustReadFile(t, candidateFixture(t))
-	if len(raw) < 2 || raw[0] != 0xFF || raw[1] != 0xFE {
-		return string(raw)
-	}
-	units := make([]uint16, 0, (len(raw)-2)/2)
-	for i := 2; i+1 < len(raw); i += 2 {
-		units = append(units, uint16(raw[i])|uint16(raw[i+1])<<8)
-	}
-	return string(utf16.Decode(units))
+	return string(mustReadFile(t, candidateFixture(t)))
 }
 
-// derivedEvidenceFixture writes a derived copy of the captured Evidence with
-// one literal replaced, and returns its path. The bytes are the producer's;
-// the replacement is the test's own negative.
+// derivedEvidenceFixture writes a mutated copy of synthetic test Evidence;
+// these bytes are never attributed to a real REA run.
 func derivedEvidenceFixture(t *testing.T, from, to string) string {
 	t.Helper()
 	text := candidateText(t)

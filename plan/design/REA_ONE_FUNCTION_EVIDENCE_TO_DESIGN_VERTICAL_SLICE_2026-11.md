@@ -505,3 +505,13 @@ Graphの構造的全件性、Function Read/Write、Owner受理、Source Patchの
 
 この是正が確認できるのは、外部REA実走→受領Byte→Receipt／派生Request→存在する場合に限ったR2外部候補投影までである。`three-element rea-candidates`が実保存Graphから三要素CandidateSetを生成できたこと、Old/New Sourceが継続していること、Owner意味受理、Native JS第二Consumer、TEI Studio実Stage2、実PG Function Read/Write、Source Apply/Save/ReReadは別の実Expectedとする。Go契約試験の旧保存FixtureにGraphがあると想定した不整合は独立の修正対象として残し、実証条件を勝手に緩めない。 なお、実ToolがAnalysisとViewを捕捉した直後に原Byte Digestを記録し、候補選択・出力検証で失敗しても`--report`へ失敗状態と短い原因を残す。CIの終了コードは成功へ読み替えず、`always()`のartifact取得を診断に使う。
 
+## 24. 実保存REA原本と合成Semantic Graphの契約試験を分離する（2026-11-15）
+
+§22～23で、保存済み6.8.0の`analysis.json`は**Receiptとして受領できるが`normalized_result={}`でGraphを持たない**と確認した。しかし従来の`internal/operations/external_candidates_test.go`と`external_candidates_ambiguity_test.go`、実バイナリを起動する`cmd/tei/cli_external_candidates_test.go`は、この原本に選択可能なNode・Relation・Unknownが存在するとみなしていた。REA専用CIのGo契約試験は実際に`semantic_graph`をGoの`map`へ強制変換してpanicした。失敗を解消するために保存原本を改変したり、実外部ProviderがGraphを返したかのようなFixtureを正本へ上書きすることはしない。
+
+**二つの独立した試験系列を採用する**。実保存原本は`internal/externalanalysis/testdata/rea-6.8.0/analysis.json`の受領Byteをそのまま読み、Receipt State／Evidence ID／SHA256／Promotion不許可と、`ReadCandidates`および`ExternalCandidates`がGraph欠落を`EXTERNAL_CANDIDATE_UNUSABLE`として拒否する事実を固定する。外部Sourceの現在性や業務意味は推論しない。保存原本の内容変更・生成Graph挿入は一切行わない。
+
+一方、選択可能なObservation／有向Relation／並行Relation／同一IDの重複／Derived Handleの衝突／未選択件数／CoverageとUnknownの保持／Source改訂の**機能的性質**は、別の`internal/operations/testdata/rea_external_candidates_synthetic.json`で検証する。このFixtureは独立の`ev-synthetic-operations-graph-v1`、`meta.command=synthetic-test-only-not-real-rea-capture`、合成Node 7件・Relation 2件・Unknown 1件のGraphを持ち、実保存ファイルとは異なるExpectedとRaw Digestを使う。GoのR2 Operation試験と別プロセスの実CLI R3試験は、同じ合成Fixtureを使用し、成功結果に**実REAのProducer資格を付与しない**。固定の旧Receipt Digestと候補GraphのSHA256を混同せず、合成原本のDigestを入力Byteから計算する。合成変異は一時コピーのみに行い、原本Fixtureも変更しない。
+
+**検収の判定を分ける**：実保存原本からの候補投影の拒否は負例の成功、合成Graphからの候補選択と曖昧性拒否は機能の成功にすぎない。実REA再実行からそのGraphを受領できたか、独立Current Grant、Ownerによる意味受理、Source Patch/Save/ReRead、Wails Studio第二Consumer、`*.tei.md`正式Reader／PG Function実Provider／Plugin自身のTEIセルフビルドは依然として未検証。REA 6.8.0のView配送の別CI失敗（`rea-evidence -view`が終了1）は本修正では成功へ読み替えず、その`--report`の受領Digestと失敗理由から独立調査する。既存P0のStage1→Stage2 Windowsと実Function Providerは維持し、第二Graph正本・新Host・新Comparatorを設けない。
+
