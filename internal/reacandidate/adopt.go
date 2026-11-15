@@ -218,8 +218,6 @@ type CandidateComparisonEntry struct {
 
 // Comparison statuses.
 // A reused candidate identity does not imply its observed facts stayed the same.
-const ComparisonObservedFactsChanged = "observed-facts-changed"
-
 const (
 	ComparisonUnchanged            = "unchanged"
 	ComparisonAdded                = "added"
@@ -415,17 +413,6 @@ func comparePair(before, after StructureCandidate, beforeAttempt, afterAttempt s
 			"the-current-bytes-are-identical-in-a-different-attempt",
 			"identical-current-bytes-are-not-evidence-that-nothing-changed-in-between",
 			"no-prior-review-grant-or-acceptance-is-revived")
-	}
-	// An unchanged CandidateID and source digest do not imply the external
-	// observation has the same contents: a later provider/tool version may
-	// reinterpret identical bytes, and an attempt ID may have been reused.
-	if !reflect.DeepEqual(before.Facts, after.Facts) {
-		entry.Notes = append(entry.Notes,
-			"observed-structural-facts-changed-under-reused-candidate-id",
-			"source-backed-re-evaluation-is-required-before-meaning-or-edit")
-		if sameBytes {
-			entry.Status = ComparisonObservedFactsChanged
-		}
 	}
 	return entry
 }
