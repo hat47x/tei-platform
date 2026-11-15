@@ -2782,3 +2782,59 @@ PluginのDescriptorがTEIで書けても、実際のValidator/Generator処理が
 標準Prelude（`std.*`）については、現在Go内にある固定Primitiveの自己記述とSource-backed定義への移行を**B0のSeed最小化候補**として継続検証する。Preludeを同名の`.tei`へコピーするだけではSource・Meaning・fingerprint・Reader資格は保存されない。移行は#2620と既存Source/Format VersionのOwnerが有限Seed→候補Standard Source→独立意味比較→Owner切替の順で進め、初回Graph/Rule生成やStudio Desktop P0の前提条件にはしない。
 
 **採用と実行の境界**：本第45.7〜45.8節は成熟した他レーンの契約を第45節の実装順へ接続する計画更新のみ。SDX-24〜31、新`*.tei.md` Product Reader、新Go/Plugin実生成・実呼出し、Studio Stage2、Source安全書戻し、Owner意味受理の新実証は**NOT RUN**。既存mainの限定Referenceや別HEADで成立したWindows CIを同一Attemptの製品PASSへ合算しない。
+
+
+<!-- tei-self-description-product-s0a-observed-binary-20261115 -->
+### 45.9 次の製品差分を「Sourceを実際に選んで読めた」ことへ絞る（2026-11-15）
+
+**この節の新しい実装判断は一つだけ**。§45のD1〜D5を同時に実装せず、初回の製品Go変更は[製品完成計画のS0-A](../workstreams/PRODUCT_COMPLETION_PLAN.md)に合わせ、**明示的に選択・版固定された一つの`*.tei.md` Sourceを、製品Workspaceの同じLoadで読んで出典付き候補まで到達できるか**に限る。これを自己記述DSLの「最初の製品入口」とし、実生成・実Plugin呼出し・Owner意味受理を同一PRの成功条件にしない。
+
+現行mainの静的な実装境界は次のとおり（作業開始時に再取得すること）。
+- `internal/workspace/loader.go`は`scanManagedFiles`直後に`rejectUnboundTEIMarkdownSources`を実行し、`*.tei.md`があると`TEI_MD_PARSER_UNBOUND`で停止する。Rootに存在することと、Domain Loaderがそのbyteを実解釈したことは別。
+- `ManagedFile.ReadByLoader`は**Load中にDomain Loaderが元byteを消費した**という観測であって、構文受理・意味受理・必要Source閉包の保証ではない。`Result.sourceSnapshot`と`sourceManagedExtra`は区別され、管理対象のbyte保持だけを「解析済みSource」に読み替えない。
+- `internal/sourceindex/model.go`の`NewArtifact`は物理拡張子から`Format`を決めるので、`*.tei.md`は`md`となる。`RoleDefinition/RoleAuthoring/RoleImplementation/RoleDerived`は**Source上の出典役割**であって、意味Role/Operator契約ではない。Format値やIndex Artifactの追加でLanguage選択を省略しない。
+- main統合済みの限定Reference #4729/#4742/#4751/#4758は、Graph/Rule候補、元byte位置、実Go条件分岐、候補指紋を扱うが、製品`Workspace.Load`でのParser選抜・正式Source IndexへのSemantic Reference登録・Accepted Meaningを実証したものではない。
+
+初回PRの最小変更案は、**既存Language Plugin選択境界（#988/#1018）を通り、Manifest/Root/suffix/Language ID・契約Version・実装Pinが一致する一ファイルだけを対象に、既存ReaderとSource Indexへつなぐ**こと。現行のProduct Resolverでその選択ができない間は、そこで`unsupported`／`TEI_MD_PARSER_UNBOUND`として停止する。例示用Reference ReaderをHostに直結して「製品Parser選択済み」と偽装しない。選択したReader自身にもCanonical MeaningやHost Grantを発行させない。
+
+このPRが成立したと判定するために必要なのは次の組合せであり、個別の局所PASSの加算ではない。
+
+| 観測点 | 同一試行で確かめること | 不足時の扱い |
+| --- | --- | --- |
+| **選択** | Managed Root/実Manifest＋明示Language/Provider契約VersionとImplementation exact Pin。旧`*.tei`は従来のReaderのまま | 未指定・版不一致・曖昧な選択は**拒否**。登録順winnerは不可 |
+| **読取** | 管理対象一件の実byteを、既存Root containmentとReader境界に従い一度確定。解析用・出典用・検証用に同じLoad時byteを使用 | 後から別ファイルを再読して成功した形にはしない。未Readは`absent`ではない |
+| **候補** | GraphのNode/Edge/Rule ID、独立した多重Edge、条件セルのbyte spanを保ち、診断を元Sourceの位置に戻す | 引用/Fence中の例、同Label別Node、欠落/重複ID、BOM/CRLFを勝手に正規化しない |
+| **索引** | 選択した元byteから既存Source Index Artifact/Rangeを構築し、変更後に旧Source Indexが失効する。Subject Referenceが未成立なら未成立と表示 | `Format=md`や`Role=definition`を業務Role受理に換算しない |
+| **公開結果** | Typed Candidate、Source Index、Load状態、診断を用途別に区別し、すべて成立しない限り完全なWorldとして公開しない | 未対応・矛盾時にはfail-closed。Draft保存と意味受理を混ぜない |
+
+ここでは新しい全Markdown Grammarや新`formatVersion`、Graph専用のSemantic Core型、第二Parser Registryを採用しない。最初の実Go PRが`Reader選択→Load時byte→候補と出典`に達することが目標であり、正式Grammarの採否は#2621/#988/#4359の判断に従う。
+
+### 45.10 「候補指紋の自己申告」から「外部の実消費証拠」への段階差
+
+前節で生まれた候補を生成・自己構築へつなぐ場合、**Sourceの同一性、候補構造の同一性、実生成Goの同一性、実Artifactの同一性、実Consumerでの振る舞い**は混同できない。
+
+| 既存の証拠 | 識別する対象 | それだけでは証明できないこと |
+| --- | --- | --- |
+| 元Source SHA／Source Index Fingerprint | 元のMarkdown、注釈、配置、CRLF等を含むbyte | 解釈候補・意味の成立 |
+| `CandidateShapeFingerprint` | 固定ReferenceにおけるNode ID・Edge IDと向き・Rule IDと条件（表示名やSource spanは除外） | 業務Meaning、Selected Language/Provider、現在のSource Index |
+| 実生成Go byte／digest | 当該Generator出力の実Source | BuilderがそのSourceを使ってBuildしたこと |
+| 実Binary digestとBuilder／Toolchain／入力 | 特定Attemptで観測したArtifactと実際のBuild経路 | 指紋の自己申告と実行ロジックの一致、別ConsumerがそのBinaryを使ったこと |
+| 実Consumerのimage/argv・入力・実結果 | 実行された対象とその観測出力 | Ownerの業務意味受理、権限・Effect成功、将来の利用資格 |
+
+特にmain #4761の`fingerprint_observation_test.go`は、生成Goの`e.from == nodeID`を`e.to == nodeID`に**生成後差し替えても**、埋め込まれた`-candidate-shape`の自己申告は一致し、実Binary digestと実Node結果は変化することを確認する負例である。#4759は、説明／LayoutのみのSource変更でも旧Source Indexを再利用できないことを固定している。これらの局所Reference反例を、製品の万能Attestation機構・新資格発行APIへ拡大しない。
+
+**したがって、生成器自己記述の最初の受入は「生成器のDescriptorが同じ文字列を返した」ではなく、同一Subject／Source Revision／選択Language・Role・Operator／Generator・Toolchain／Build Attemptに対し、実Builderが消費したSource memberと、実Consumerが呼び出したArtifact／結果を既存Build・Source・Evidence境界で突合すること**とする。実際のBuilder入力閉包が不明な工程は`unknown`、不一致は`fail`とし、正しい結果を一度返しただけで`qualified`へ上げない。
+
+### 45.11 既存の製品計画・検証Ownerへ渡す最短の作業順
+
+新たな親Issue、第二Expected、拡張用の万能Hostを追加する代わりに、同一Graph/Rule Fixtureで既存の担当を順に満たす。
+
+1. **S0-P（成立済みReference）→ S0-A（次の製品コードPR）**：#4751のPinned Root予備検証、#4742のSource Indexと#4729のRule候補を実Sourceのまま使い、#1018/#2621/#988で明示選択→Load時byte→候補＋原Source診断を実証。未選択`*.tei.md`の拒否、旧`*.tei`維持、引用/Fence、Root外、重複ID、Load後の一因子変更を負例にする。
+2. **S1（意味解釈・生成）**：選択済み候補を、Ownerが受理した標準Data/Relation/Role/Operator契約の**表現可能な部分**だけLoweringし、#4544/#1121のGenerator選抜と独立Expectedへ接続する。Graph表示同値・Source同値だけでMeaning同値としない。正式意味受理が無ければ`candidate`に留める。
+3. **S2（実生成・実呼出し）**：Rule条件一件とEdge反転の結果を実生成Goから得て、選択Generator／実Source／実Artifact／実Plugin・CLI Consumerを一つのAttemptで照合。main #4761の改変Mutantを見逃す自己申告チェックだけでは不合格とする（#1251/#2595/#2514）。
+4. **S3（自己再構築）**：TEIで生成した判断の担当範囲を定量比較したうえでCLI Stage1→Stage2、正式Desktop Stage1→Stage2→Windows WebView2へ進む。Desktopは`plugin`の偽装Subjectに押し込まず、#4583/#2831の非Plugin Build／実Consumerの独立受入に従う。
+
+合格記録は既存の`Source/Model/Artifact Revision`、Selection/Implementation Pin、Observed Read、Builder・Consumer Attemptと独立Expectedを**用途ごとに**参照する。`Required`の空宣言は全入力を読んだ証拠ではなく、`Observed`一回分も将来の否定依存・未読込Requiredを免除しない（#2582/#2600）。外部Source/Providerの失効やSource A→B→A後の旧Receiptを現在の実行許可に復活させない。
+
+**今回の成果の上限**：ここで確認したGo Sourceおよびmain統合済みReferenceの契約に基づく**製品Go実装の引継ぎ条件**である。今回新たな`Workspace.Load`の選択Parser実装、`*.tei.md`正式Reader、Runtime/Go/Windows一体試験、実Plugin、Owner Meaning Acceptance、Studio Stage2合格を得たわけではない。全体P0である**Studio Desktop Stage1→Stage2**と並行P0の**通常`tei` CLI→実Provider Read→独立Consumer**を変更しない。
+
