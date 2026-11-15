@@ -586,8 +586,28 @@ Webの要求、CLIの起動、タイマー、Message、画面操作には、そ�
 
 **既存の独立Expectedへ渡す最短の反例**：①静的Head MemberがSelectorで選ばれたのに実Bundleへ入らない、②同じ公開RuleのG/Pで値が一致してもPだけ非公開情報を先読み、③Pの入力/演算子Pinが古いのに結果だけ同じ、④Gの旧Release/Edge Cacheが現在版と混在、⑤ConsentなしにD側Collectorへ送出、⑥価格をC0文言扱いで変更しDの再検証を省略、⑦H0にTEI JSを必須注入、⑧選択Aと実Provider Bを同一と扱う。新たなScenario正本を作らず、#3509のBC/AX/GQ/G49-EPと#1180/#2514へ対応付ける。値一致、Browser表示、Analytics成功、実注文Effect、CVR因果改善を一票に合算しない。
 
-**次の引渡し**：EP-0/1はread-only/静的生成の最小縦断として#4198/#951/#1121/#2090、G/P意味比較は#5069/#988/#1121/#2514、Targetへの配信・旧版・Consentは#2600/#3271/#3503/#2516、Commerce Effectは#1174/#1129へ戻す。#5075の型付き配線、#5076のPlugin充足設計は現時点では別の**未統合提案**として参照し、完成済みのConnector適合とは扱わない。B1a-I（通常`tei`→実Provider→Function Context→独立Consumer）とStudio Stage1→Stage2の製品P0は維持。**今回の追加は設計・実装順の更新のみで、新Go/Builder/実Browser/Commerce/実験、Owner意味受理はNOT RUN / NOT ACCEPTED**。
+**次の引渡し**：EP-0/1はread-only/静的生成の最小縦断として#4198/#951/#1121/#2090、G/P意味比較は#5069/#988/#1121/#2514、Targetへの配信・旧版・Consentは#2600/#3271/#3503/#2516、Commerce Effectは#1174/#1129へ戻す。[型付き配線 #5075](https://github.com/hat47x/tei-platform/pull/5075)と[Plugin充足設計 #5076](https://github.com/hat47x/tei-platform/pull/5076)は**main統合済みの設計**であり、製品Connector実Callや開示・適用の受理ではない。[Plugin実現方式 #5095](https://github.com/hat47x/tei-platform/pull/5095)もmain統合済み。B1a-I（通常`tei`→実Provider→Function Context→独立Consumer）とStudio Stage1→Stage2の製品P0は維持。**本節は設計・実装順の更新であり、新Go/Builder/実Browser/Commerce/実験、Owner意味受理はNOT RUN / NOT ACCEPTED**。
 
+
+<!-- g49-b2c-typed-placement-minimal-witness-20261115 -->
+### G49 EP-0→EP-1：実際のB2C成果物へ至る型付き配置の最小契約（2026-11-15）
+
+[Node配線の意味適合 #5075](https://github.com/hat47x/tei-platform/pull/5075)、[Plugin充足と開示 #5076](https://github.com/hat47x/tei-platform/pull/5076)、[実現方式 #5095](https://github.com/hat47x/tei-platform/pull/5095)を受け、G49の最小実験を**具体的な一つのBinding**へ絞る。候補は、合成・公開可能な商品案内ページの**Headメタ情報一か所**（題名、説明、canonical等）の任意Build時挿入である。これは実装題材の提案であって、現行TEIにNative Route/Head Slot/SEO Generatorが実装済みという主張ではない。既存Targetが当該Slotを公開しない場合、結線は `unbound/unsupported` として報告する。新しいDOM Wrapper、必須JS、Router、SEO Engine、Adapter Solverは作らない。
+
+**一か所をつなぐ際に必要な情報**を、`SourceのSubject/occurrence/Revision` → `提供側の型・意味・公開Facet` → `利用側の必要Shape/多重度・locale・Scope/開示・生成時点` → `明示Adapter（必要な場合）` → `Route/Slotの選択結果と必要性` → `実現方式G/P/Dと実行先` → `実Builder入力・Artifact Member` の順に照合する。型名が一致しても、値の欠損、時点、対象顧客、言語、許容Audience、単位、Error/NULLの意味が合わなければ自動結線しない。逆に値を個々の基本型へ分解することを強制せず、適合する複合型をそのまま結線し、明示Adapterで必要な変換だけ行えるようにする。いずれも新しいCore Port型ではなく、#2497/#951/#1016/#4350の既存評価項目への投影である。
+
+| 対照する一因子 | EP-0（選択・結線）の独立Expected | EP-1（生成・実収録）の独立Expected |
+| --- | --- | --- |
+| 公開Head一件と、未探索のCMS動的Route | 観測したRoute/Slotの適用義務は判定し、CMSの未知Routeを全サイト適用済みとしない | **実際に選択した一Memberだけ**を生成成果物で照合。知らないRoute用のMemberを捏造しない |
+| 必須SEO項目と任意Analyticsを別扱い | 必須項目のBinding欠落は未充足。任意Analytics不採用は業務Operationの失敗ではない | 必須Member欠落は不適合。Analyticsを含めないH0も正規構成として保持 |
+| 同じSlotへの二つの適用・順序依存 | 衝突・重複・優先順位が未宣言なら勝手に一つを選ばない。Edgeの出現IDは区別 | 同じMetadata/Scriptの二重収録を単純に「成功2件」と数えない |
+| 公開情報の文言変更／価格・同意の変更 | 文字列編集であってもRule/Price/Consent依存があればC0に限定しない | Source/Builderの版と成果物の差を確認。旧Memberや旧配信Responseの現在性を推定しない |
+| 公開SEO情報と、非公開Customer/Order入力 | 公開Headへの秘匿依存を、型が合うだけで許容しない。未取得・非開示は空文字として埋めない | 原Source byteや秘密値の無断同梱を拒否。Member Hashが一致しても開示適格性を保証しない |
+| 同じMeaningをG/P/Dで実現 | Head静的情報はG候補、現行価格・Cart/Payment・現在Grantは権威あるDに残し、Pは実装済み型付き評価のみ。配置ごとに方式を選ぶ | GならBuilder/Member、Pなら評価時の実Input/Read、Dなら実Provider Call/Receiptを**別の票**とし、不要なArtifact生成を要求しない |
+
+**最小実行順**：(1) 既存Workspaceから一つの対象とSource occurrenceを読み、Route/Slotの実在性を確かめる。(2) 必要Shapeと公開範囲を宣言し、Selectorのmatched/excluded/undeterminedを読み取る。(3) 実Targetがある場合に限り、選択したBuilderの**実Consumed Input**とArtifact Memberを同一World/Generator/Toolchain版で照合する。(4) Memberの削除・重複・未宣言Adapter・非公開入力・旧Sourceという一因子の負例を置く。(5) 配信D、可視化V、外部受領Rは後続の別資格にする。実Target/Slotが存在しない場合には(3)以降を実行済みと偽らず、既存#1121/#2090へTarget拡張要求を返す。
+
+**独立Expectedと採否**：上記は[#3509](https://github.com/hat47x/tei-platform/issues/3509)のG49-EP、[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#2514](https://github.com/hat47x/tei-platform/issues/2514)に統合する**受入項目**であり、第二Scenario正本ではない。観測した「必須の配置義務が満たされた範囲」と、公開に必要な実Release/Grant/Consentを分離する。対照対象のH0 Native-onlyはTEI JS・Renderer・Contract採用ゼロでも適格とし、契約を使うH1だけを追加生成・運用費用で評価する。既存の正値Rule `validationeval` 対 `tei self-build` の実Go回帰（main [#5095](https://github.com/hat47x/tei-platform/pull/5095)が引用する基線）はG/P比較の実装証拠であって、B2CのHead/実配信/Browserの試験ではない。**本節固有のEP-0/1、実B2C Builder/Browser/Commerceの新試験はNOT RUN / NOT ACCEPTED**。Studio全体セルフビルド#2831/#4583と通常製品実Read#2586は並行P0のままにする。
 
 ## 最新の作業単位へ接続する
 
