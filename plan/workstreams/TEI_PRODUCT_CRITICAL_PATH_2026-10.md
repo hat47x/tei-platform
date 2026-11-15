@@ -1730,11 +1730,23 @@ P0-S/R/Bは互いに別の到達資格であり、適格な小差分から並行
 
 | 作業Owner／直近PR | 現行事実と次に閉じる1差分 | 追加する既存Expectedの観測点 |
 | --- | --- | --- |
-| **L／#4714・#4845** | main #4800/#4826で`documentReadPreflight`は選択Pluginのexact版・Lockと直接上位だけを実`management.Report`から投影。#4844のJSONL全体コンパイル障害はmain修正済み。#4845は実`tei commands`／`plugin-inventory`／`plugin-lock`の同一実CLIバイナリでの照合を行う未統合PR | Product選択の無い合成Pluginを拒否、Lock unknown/exactを区別。SourceBinding/Disclosure/ReadEligibilityは未確認のまま。実一Doc Readは#4714/#4679の別PR |
-| **S／#1824・#4583・#4842** | #4812は9系統CI成功でもclosed/unmerged。Source/Bundle/埋込資産の必要差分を現行main後継PRへ回収し、新HEADで実Wails検査。#4842はSource位置を純粋ProjectionするDraftであり、元Source Open/GUI/実Consumerは別 | 旧`index.html`と新`main.js`の混在拒否、現在Replyの`authorityLimits`保持、Source Indexのbyte RangeとPinの旧応答拒否 |
+| **L／#4714・#4845** | main #4800/#4826で`documentReadPreflight`は選択Pluginのexact版・Lockと直接上位だけを実`management.Report`から投影。#4844のJSONL全体コンパイル障害はmain修正済み。#4845はclosed/unmergedだが、その実CLI検査Goファイル（Blob `5707eb32e472e441b0ff60bb7bc8fde2237b05db`）は現行mainに存在する | Product選択の無い合成Pluginを拒否、Lock unknown/exactを区別。SourceBinding/Disclosure/ReadEligibilityは未確認のまま。実一Doc Readは#4714/#4679の別PR |
+| **S／#1824・#4583・#4842** | #4812は9系統CI成功でもclosed/unmerged。Source/Bundle/埋込資産の必要差分を現行main後継PRへ回収し、新HEADで実Wails検査。#4842／後継#4854はclosed/unmergedだが、Source位置の純粋Projectionと7回帰は現行mainに存在する。元Source Open／GUI／実Consumerは別 | 旧`index.html`と新`main.js`の混在拒否、現在Replyの`authorityLimits`保持、Source Indexのbyte RangeとPinの旧応答拒否 |
 | **B／#2621・#4495・#4583** | 製品S0-A選択`*.tei.md`同一Load byte→実生成Go→通常CLI実Provider／独立Consumer、並行して非Plugin Studio BuildIntent→Stage1→Stage2実Windows | 実Builder/Toolchainと消費Source、生成・埋込Assetの実byte、実Stage2 Image/ProcessとWindows受領を別資格で照合。生成器自己申告／別HEADの成功は代替不可 |
 | **U／#1824・#2044（P1）** | 現行Wails `v3.0.0-beta.29`の固定基線と、次に採用する安定版のexact Pin候補を比較。単一対象UpdaterとD2 Release Closureを検証 | 署名と実Image、標準Plugin/設定Schema/ユーザー設定、更新後再起動・互換Handshake、現行Grantを別Expected。D3複数Processの原子切替は非対象 |
 
 **引渡し順**：まずLの未統合PRの実CI／Code Review、Sの後継Bundle回収、S0-Aの正式Source Reader、R0の実Provider、Bの非Plugin Stage2を**依存のある部分だけ直列・その他は並行**で進める。LのDoc Read、SのS-LOC/Source Open、UのUpdaterをStage2の新Hard Gateにしない。既存#1180/#2514/#2600のExpectedとEvidenceへ一因子変更の差分を足し、新Runner・Host・Registry・Policy Engineを増やさない。
 
 **今回の資格**：現行mainに実在する#4826/#4844と未統合#4845/#4842/#4812の作業資格を区別した設計・実装引渡し。新Go/Node/Windows/正式Reader／実Provider／実Doc／Stage2の製品実行、Owner意味受理、Updater試験はNOT RUN。
+
+### 実装回収の優先順位（Bootstrap §29.6、現行mainのファイルを再確認）
+
+「PRが未マージ」だけをもって機能未実装とは判断しない。現行mainでは、Plugin Manual候補×実CLIのGo回帰（`cmd/tei/cli_plugin_public_manual_discovery_test.go`）、Studio S-LOCのread-only投影と7試験（`reference/tei-studio-workbench/source-locations.ts`等）、Language ReferenceとProduct未接続の負例（`reference/dsl-language-plugin/workspace_admission_boundary_test.go`）の**原文Blobがすでに存在する**。それぞれの元#4845／#4854／#4857がclosed/unmergedである事実と、現行mainのファイル存在を両方保持する。旧PRのCI実行結果を新HEADの成功へ継承しない。
+
+W0の停止要因はより具体的である。現行mainの参照`reference/tei-studio-workbench/index.html`にはPin操作ボタンとInspect制限表示があるが、実埋込`cmd/tei-studio/assets/workbench/index.html`には無い。**現行PinのReader Fixture／HTML／Presenterの契約不一致→正規Bundle再生成→Embedded Asset byte照合→Windows WebView2実受領**を#1824/#4583の一つの後継コードPRへ分解する。旧#4812の生成済みJS／HTMLをそのままコピーしない。W0はP0-B（非Plugin Studio Stage1→Stage2）の一部であって、別の製品Gateではない。
+
+S0-Aは#4834のA0→A1→A2→A3に従う。まず**製品のManifest/受理済みContract/Lockから選択Language Providerを取得できるか**調べ、無ければ`unsupported`で止める。Reference`ParseSelected`は合成Pinの解析成功と製品`Workspace.Load`の`TEI_MD_PARSER_UNBOUND`を同じSourceで示す負例にすぎない。A0の欠落を新Registryや暗黙選択で埋めない。
+
+優先度は**W0とS0-Aの実コード境界を先に閉じ、P0-R実Providerを並走、P0-B Stage1→Stage2の実受領へ接続**。公開Doc一件の実Read、S-LOC画面表示／S-OPEN、D2署名・Updaterは独立後続。必要な検証は既存#1180/#2514のExpectedへ渡し、別のEvidence Store／Host／Test Runnerを作らない。
+
+**本追補は計画のみ**。mainのGo/TSファイル・HTML Blobを再読した結果であり、新しいGo/Node/Windows CI合格や製品Reader／Provider／Stage2の実動作は示していない。
