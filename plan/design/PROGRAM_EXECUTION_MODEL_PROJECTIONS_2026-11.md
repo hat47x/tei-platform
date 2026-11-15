@@ -943,3 +943,40 @@ Ownerが受け取るべき一枚の検収票には、固定Subject/Source/World�
 - **Effectを含む後続段階**：受注確定や組織Case・REAの実例で、二時点の照会結果、業務Rule判断、DB Commit、通知、ACK、実Readback、Current Grantを別証拠として統合する（#1174/#1129/#4490/#4501）。新Scheduler・新Host・汎用StateMachineを作らない。
 
 本追補は**設計・Owner引渡しの更新のみ**である。新しいGo/SQL/Java/.NET/Windowsの実行テスト、製品Reader・実Provider・Stage2、実Effect/独立Consumerの受領、Ownerによる業務Meaningの正式受理は行っていない。新しい独立Expected正本やPX番号を追加せず、既存Scenarioへ必要な差分を引き渡す。
+
+## 51. 起動前の業務シミュレーションを、実Providerへの引渡しと区別する（2026-11-15）
+
+### 51.1 同じ受理済みFunctionから、説明・Mock・実呼出しへ進む
+
+業務DSLには、利用者が理解できる業務順序で、対象、入力、前提、判断、出力、例外とEffectを記述する。Function/Rule/Processの説明文は、受理済みの意味構造からできるだけ直接導き、Goの関数・子Process・IPC・HTTPなど実現方式の用語を業務記述へ混ぜない。処理を紹介する文章や図解は派生Projectionであり、Meaningや独立Expectedの第二の正本にはしない。
+
+実装済みでない外部機能も、契約だけは先に記述できる。外部部品を「実装済み」に見せるのではなく、必要なInput/Output/Failure、対象と時点、Effect、Resource/Authority、TODO・Mockで代替している範囲を明示する。契約に適合するMockを選択したシミュレーションでは、TEI内のData／Function／Businessを一巡できる。ただしMockの成功は、実Providerへの接続、外部CommitやConsumer受領、Hostの現在Grantを何も保証しない。
+
+これらの意味契約は、CLI先行のシミュレーション、独立したテストパターン表、SHOへの説明・図、GeneratorによるTargetコードの入力として共用する。Lean等による形式的な検査は、受理済み意味からの派生成果物として必要性を評価する。形式的な証明、実Target適合、Ownerの意味受理は別の資格である。
+
+### 51.2 初回の最小縦断は三つの実行経路を分けて検収する
+
+| 経路 | まず成立させること | 絶対に代用しないもの |
+| --- | --- | --- |
+| **TEI内評価** | 明示されたMeaning/Rule/typed inputを使った純粋な判定と、独立Expectedによる正負検査 | 本番の実Go Provider・実DB Reader |
+| **契約付きMock** | 外部未実装部品のTODO・Contract版・入力/出力・Failure/unknownを固定し、模擬応答と障害注入で手順を最後まで追跡 | 実外部Effect、Host Grant、実Delivery/Receipt |
+| **実Provider** | 公開Entry→Host現在Admission→選択Go Provider/Artifact→通常製品`tei` CLI→実Result BodyのWitness | Mockの記録、参照`view -execute`、CLI exit 0だけの成功 |
+
+Mockと実Providerは同じ入出力・拒否条件に対するConformanceを比較するが、Invocation/Attempt/Artifact/Observerの識別子を同一と偽装しない。Mockから本番へ自動的に切り替える動作や、Providerが欠けた際の黙ったMock fallbackは認めない。外部作用を持つOperationは、実Host側のResource/Lease、Operation ID、現在GrantとEffect Receiptの受入が完了するまで本番実行へ昇格させない。
+
+### 51.3 説明とテストで検証するのは、値だけではなく判断できる範囲
+
+たとえば決定表で一件が一致した場合も、必要Rule/Rowを部分取得しただけなら「唯一の判断」とは書けない。未取得・明示NULL・対象0件・非開示・適用期間外を分ける。十分な根拠のある二行の同時一致から競合の存在が証明できる場合と、必要な全候補を確認できず唯一性を断定できない場合を、同じSourceから導く説明とTestの双方で扱う。
+
+REAのResource／Event／Agent、組織の兼務・代理・責任移管、SQL／NoSQLの期間・集約・結果の完全性は、この判断境界を試す追加Pressureに使う。専門領域のGraph・Rule・Queryを一つの新しい万能DSLへ統合するのではなく、共通の意味契約と独立Expectedで差を判定する。
+
+### 51.4 実装担当へ渡す最短の検収順
+
+1. **同じ一件の業務Functionを固定する**：Owner受理のMeaning/Source、Entry公開範囲、純粋性の依存閉包、typed input、独立Expectedをまず#4495/#1180/#2514で固定する。受理されていなければ「未受理」を残し、例示の数量×単価を製品適格と読み替えない。
+2. **Read-only説明とシミュレーション**：同じFunctionから起動条件・判断・結果の自然な日本語説明を派生させ、TEI内評価と、必要な場合だけ契約付きMockを実行する。Mockに故意の型違反、partial read、Effect unknownを与えて検出できることを検証する。
+3. **Product実Go Providerへ切り替えた別Attempt**：#4495のSL-1a/1b/1cをそのまま利用し、宣言不正/失効Grantでは実Adapter call=0、実Call後の不正Resultではcall=1、selected B/actual Aでは結果一致でもFAILとする。MockでのPASSを本番資格として持ち越さない。
+4. **変更影響と実Consumerを確認する**：Rule条件・Graph関係・Source版・Provider実装・Toolchain変更と、説明/Layoutだけの変更を分け、Reader再受理・Generator/Artifact・現在Grant・Consumer開示を必要範囲だけ再資格化する。Stage1→Stage2 Windows実Consumerは#2831/#4583で別に検収する。
+
+**既存Ownerとの分担**：Business/Process説明と図は#1125/#2497、本稿の実行三面は#4198、Meaning/DSLと正式Readerは#988/#2621、決定表はBRMS統合設計、Script Launch実起動は#4495/#4502、実DB/Effectは#2586/#1129/#1174、独立Expectedは#1180/#2514、CLI先行自己構築とDesktopは#2831/#4583を正本とする。新Mock Engine／Grant Issuer／Test Registry／汎用StateMachineを追加しない。
+
+本節は**設計と製品受入への引渡し**である。TEI内シミュレーション・契約付きMock・Product実Go Provider・実DB/外部Effect・Windows Stage2を今回新たに実行したという主張はしない。既存の独立Fixture/Scenarioから次の実装差分を取得し、コード・実バイナリ・Consumerの結果を別々に検収する。
