@@ -52,6 +52,44 @@ func TestReceiveRealSavedEvidence(t *testing.T) {
 	}
 }
 
+// Actual upstream JSONL failures use a reserved control record. This
+// synthetic transport witness proves classification, not a live tool run.
+func TestReceiveTypedProducerFailureDoesNotPromoteEvidence(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		content string
+		want    State
+	}{
+		{"jsonl-error", `{"$rea":"jsonl/v1","type":"error","ok":false,"result":{"ok":false,"error":{"code":"INVALID_SOURCE_KIND","category":"validation","message":"synthetic"}}}`, StateFailed},
+		{"json-error", `{"ok":false,"error":{"code":"BAD_REQUEST","category":"validation","message":"synthetic"}}`, StateFailed},
+		{"missing-code", `{"$rea":"jsonl/v1","type":"error","ok":false,"result":{"error":{"message":"no code"}}}`, StateMismatch},
+		{"missing-ok", `{"error":{"code":"BAD_REQUEST"}}`, StateMismatch},
+		{"not-a-failure", `{"$rea":"jsonl/v1","type":"metadata","records":{"emitted":0}}`, StateMismatch},
+		{"false-with-no-error", `{"ok":false}`, StateMismatch},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			raw := []byte(tc.content)
+			receipt := Receive(raw, Tool{Name: "rea", Version: "6.8.0", Present: true}, testTime)
+			if receipt.State != tc.want {
+				t.Fatalf("state=%s want=%s reason=%s", receipt.State, tc.want, receipt.Reason)
+			}
+			if receipt.Evidence != nil || receipt.EvidenceBody() != nil ||
+				receipt.Promotion.AcceptedMeaning || receipt.Promotion.CanonicalWorld ||
+				receipt.Promotion.DatabaseObservation {
+				t.Fatalf("negative transport became Evidence or accepted meaning: %+v", receipt)
+			}
+			if tc.want == StateFailed {
+				if receipt.Failure == nil || receipt.Failure.Code == "" {
+					t.Fatalf("typed upstream failure was lost: %+v", receipt)
+				}
+				if receipt.Raw.Bytes != len(raw) || receipt.Raw.Fingerprint == "" {
+					t.Fatalf("failed receipt lost received byte provenance: %+v", receipt.Raw)
+				}
+			}
+		})
+	}
+}
+
 func TestReceiveEmptyBytes(t *testing.T) {
 	receipt := Receive([]byte{}, Tool{}, testTime)
 	if receipt.State != StateMissing {

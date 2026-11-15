@@ -56,15 +56,20 @@ func Receive(raw []byte, tool Tool, acquiredAt time.Time) Receipt {
 		return receipt
 	}
 
+	// A producer failure is a typed negative receipt, not a partial
+	// application graph. It has no Evidence body and grants no promotion.
+	if document.Failure != nil {
+		receipt.Failure = document.Failure
+		receipt.State = StateFailed
+		receipt.Reason = failureReason(document.Failure)
+		return receipt
+	}
 	receipt.body = document.Raw
 	receipt.Evidence = document.Evidence.evidence(document.Envelope)
 	receipt.Source = document.Evidence.source()
 	receipt.Envelope = document.envelope()
 
 	switch {
-	case document.Failure != nil && strings.TrimSpace(document.Failure.Code) != "":
-		receipt.State = StateFailed
-		receipt.Reason = failureReason(document.Failure)
 	case len(document.Evidence.Confidence) == 0 && len(document.Evidence.Authority) == 0:
 		receipt.State = StatePartial
 		receipt.Reason = "Evidenceにconfidence/authorityがなく、解析の状態を確認できません"
@@ -88,12 +93,42 @@ type document struct {
 }
 
 func parseDocument(text []byte) (*document, evidenceProblems, error) {
+	// REA 6.8 JSONL errors are one "$rea":"jsonl/v1" control
+	// document. Recognize only an explicit failure marker and a typed
+	// error code; never reinterpret arbitrary JSON or a failed Evidence
+	// projection as a successful analysis.
+	var control struct {
+		Protocol string          `json:"$rea"`
+		Type     string          `json:"type"`
+		OK       *bool           `json:"ok"`
+		Result   json.RawMessage `json:"result"`
+	}
+	if err := json.Unmarshal(text, &control); err == nil && control.Protocol != "" {
+		if control.Protocol != "jsonl/v1" || control.Type != "error" ||
+			control.OK == nil || *control.OK {
+			return &document{}, evidenceProblems{invalid: []string{"REA JSONL controlは明示された失敗応答ではありません"}}, nil
+		}
+		failure, err := decodeProducerFailure(control.Result)
+		if err != nil {
+			return &document{}, evidenceProblems{invalid: []string{"REA JSONL失敗応答: " + err.Error()}}, nil
+		}
+		return &document{Failure: &failure, Raw: text}, evidenceProblems{}, nil
+	}
+
 	var envelope struct {
-		OK    bool          `json:"ok"`
+		OK    *bool           `json:"ok"`
 		Data  json.RawMessage `json:"data"`
 		Meta  json.RawMessage `json:"meta"`
+		Error json.RawMessage `json:"error"`
 	}
-	if err := json.Unmarshal(text, &envelope); err == nil && envelope.OK && len(envelope.Data) > 0 {
+	if err := json.Unmarshal(text, &envelope); err == nil && envelope.OK != nil && !*envelope.OK && len(envelope.Error) > 0 {
+		failure, err := decodeProducerFailure(envelope.Error)
+		if err != nil {
+			return &document{}, evidenceProblems{invalid: []string{"REA JSON失敗応答: " + err.Error()}}, nil
+		}
+		return &document{Failure: &failure, Raw: text}, evidenceProblems{}, nil
+	}
+	if err := json.Unmarshal(text, &envelope); err == nil && envelope.OK != nil && *envelope.OK && len(envelope.Data) > 0 {
 		record, problems := parseEvidenceRecord(envelope.Data)
 		return &document{
 			Meta:     envelope.Meta,
@@ -104,6 +139,28 @@ func parseDocument(text []byte) (*document, evidenceProblems, error) {
 	}
 	record, problems := parseEvidenceRecord(text)
 	return &document{Evidence: record, Raw: text}, problems, nil
+}
+
+// decodeProducerFailure handles a direct typed error and the full-output
+// {ok:false,error:{...}} shape wrapped by REA JSONL's result. Missing or
+// non-string codes never become a StateFailed receipt.
+func decodeProducerFailure(raw json.RawMessage) (Failure, error) {
+	var payload struct {
+		Code     string          `json:"code"`
+		Category string          `json:"category"`
+		Message  string          `json:"message"`
+		Error    json.RawMessage `json:"error"`
+	}
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return Failure{}, err
+	}
+	if len(payload.Error) > 0 {
+		return decodeProducerFailure(payload.Error)
+	}
+	if strings.TrimSpace(payload.Code) == "" {
+		return Failure{}, fmt.Errorf("型付きerror.codeがありません")
+	}
+	return Failure{Code: payload.Code, Category: payload.Category, Message: payload.Message}, nil
 }
 
 type evidenceRecord struct {
