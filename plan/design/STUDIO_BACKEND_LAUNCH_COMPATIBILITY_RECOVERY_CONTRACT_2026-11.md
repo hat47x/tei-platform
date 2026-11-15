@@ -834,8 +834,8 @@ Wails公式Updaterの`app.Updater`は、設定した公開鍵による署名検�
 
 - [#4826](https://github.com/hat47x/tei-platform/pull/4826)はmain統合済み。実`internal/plugin/management/document_preflight.go`は`documentReadPreflight.upstreamSelection`に、対象の`Requires`で示された**直接の依存先だけ**を安定順序で投影する。既存`Report`のexact Version・CompatibleMajor照合・Lock・選択失敗を再利用し、二度目のResolverを呼ばない。A→B→Cの連鎖があっても、Cの結果を自動的な推移的Doc/Grant閉包とみなさない。
 - [#4844](https://github.com/hat47x/tei-platform/pull/4844)は`internal/jsonl.ReadBytes`の重複宣言を解消してmain統合済み。これはGoビルド障害の修正であり、実Plugin文書ReadやRuntimeを新たに受理したものではない。
-- [#4845](https://github.com/hat47x/tei-platform/pull/4845)は実ビルド済み`tei`を用いて`tei commands`、`plugin-inventory`、`plugin-lock`を通す後継テストPR（現時点で未統合）。合成Doc候補の存在と、実Product Workspaceで選択された`tei.database.postgres`の状態を**別Subjectとして**検査する。公開候補がCLIへ登録された、または文書を閲覧できる、とは主張しない。
-- [#4842](https://github.com/hat47x/tei-platform/pull/4842)はS-LOC-0のDraft。既存`SubjectInspection.sources`から元Sourceの相対位置・Role・byte範囲を**純粋なread-only Projection**で検証する計画・実装候補であり、原文の再取得（S-OPEN）、GUI表示、Wails埋込資産、現在Disclosure、意味受理は別資格である。
+- [#4845](https://github.com/hat47x/tei-platform/pull/4845)はclosed／unmergedだが、同PRの`cmd/tei/cli_plugin_public_manual_discovery_test.go`と同一BlobのGo回帰は現行mainに存在する。実`tei` Binaryで`tei commands`、`plugin-inventory`、`plugin-lock`を照合する試験コードがあることと、当該HEADのCI成功／Product一Doc Readの資格は別である。合成Doc候補の存在と、実Product Workspaceで選択された`tei.database.postgres`の状態を**別Subjectとして**検査する。公開候補がCLIへ登録された、または文書を閲覧できる、とは主張しない。
+- [#4842](https://github.com/hat47x/tei-platform/pull/4842)と後継[#4854](https://github.com/hat47x/tei-platform/pull/4854)はclosed／unmergedだが、`reference/tei-studio-workbench/source-locations.ts`と7件の回帰が現行mainに存在する。既存`SubjectInspection.sources`から元Sourceの相対位置・Role・byte範囲を**純粋なread-only Projection**で検証する実コードであり、原文の再取得（S-OPEN）、GUI表示、Wails埋込資産、現在Disclosure、意味受理は別資格である。
 - [#4824](https://github.com/hat47x/tei-platform/pull/4824)、[#4825](https://github.com/hat47x/tei-platform/pull/4825)、[#4827](https://github.com/hat47x/tei-platform/pull/4827)はmain統合済みのdogfooding／Plugin引渡し設計である。D-A〜D-E、PDC-1 D1-1〜4、Plugin一Operation・一Provider・一Consumerの既存Owner・既存Expectedを再利用する。
 
 上記のどの成功も`sourceBinding:"unbound"`、`disclosure:"not-checked"`、`readEligibility:"not-assessed"`を勝手に`allowed`へ変えない。Bootstrapの資格は選択・整合性を診断する資格であり、実行と公開の許可ではない。
@@ -846,8 +846,8 @@ Wails公式Updaterの`app.Updater`は、設定した公開鍵による署名検�
 
 | 経路 | 現行の最小入口 | 実際に確かめること | 終点と未受理事項 |
 | --- | --- | --- | --- |
-| **L：Plugin説明** | 既存`plugin-inventory -plugin`の選択版・直接上位版・Lock | 一つの実`tei` Binaryから`tei commands`→`plugin-inventory`→`plugin-lock`を順に呼び、実選択／未選択／Lock不明・一致を比較。候補Manualは元byte・SourceRefを別に保持 | #4845は実CLIと事前検査まで。#4714/#4679のDocument Binding→現在Disclosure→一Doc Source-backed Readは別実装 |
-| **S：Studio読取** | 現行`InspectSubject`、Source Index、`authorityLimits` | Pinned Subject・Workspace/Source Revision・現在Replyを照合し、Source位置のローカル投影（#4842）は未実装のS-OPENと区別。生成Presenter→実Wails埋込byte→実Windows Consumerを一連の証拠で確認 | #4812の旧HEAD CIは合格でもclosed/unmerged。最新mainへの回収と再試験、S-LOC表示・Source Openは未完了 |
+| **L：Plugin説明** | 既存`plugin-inventory -plugin`の選択版・直接上位版・Lock | 一つの実`tei` Binaryから`tei commands`→`plugin-inventory`→`plugin-lock`を順に呼び、実選択／未選択／Lock不明・一致を比較。候補Manualは元byte・SourceRefを別に保持 | #4845由来の同一Blobの実CLI試験は現行mainに存在するが、許される主張は事前検査とDiscoveryの検証可能性まで。#4714/#4679のDocument Binding→現在Disclosure→一Doc Source-backed Readは別実装 |
+| **S：Studio読取** | 現行`InspectSubject`、Source Index、`authorityLimits` | Pinned Subject・Workspace/Source Revision・現在Replyを照合し、Source位置のローカル投影（現行mainの`source-locations.ts`／7試験）は未実装のS-OPENおよび未接続の実画面表示と区別。生成Presenter→実Wails埋込byte→実Windows Consumerを一連の証拠で確認 | #4812の旧HEAD CIは合格でもclosed/unmerged。最新mainへの回収と再試験、S-LOC表示・Source Openは未完了 |
 | **B：TEI-native生成・再入** | 既存二Node／二Edge／一Rule Fixture、BuildExecution／ArtifactSet | 明示選択`*.tei.md`の同一Load byte→受理済み意味→実生成Goの判断→実Builder消費→選択された実Artifact／Plugin→通常CLI Consumerを順次観測。非Plugin Studio BuildはStage1→Stage2実Processを独立に追う | #2621/#4495/#2831/#4583のP0。Reference生成、Mock、生成器自己申告指紋、通常Desktop Smokeだけでは不可 |
 
 **重要な依存関係**：Lの公開文書ReadをS0-A製品業務ReaderのHard Gateにしない。SのS-LOC／S-OPENをBのStage1→Stage2 BuildのHard Gateにしない。Bの実Provider CallをLのマニュアル読取許可へ転用しない。
@@ -882,11 +882,30 @@ Wails公式Updaterの`app.Updater`は、設定した公開鍵による署名検�
 
 ### 29.5 次の作業はコード差分とOwner受領に限定する
 
-- **#4845／#4714（Plugin Doc）**：現在の実CLI Discoveryと選択・Lock・直接上位版のテスト結果を確認する。その後、一Plugin→明示Document Ref→現行Audience/Disclosure→許可されたread-only本文一件を**別コードPR**で閉じる。
-- **#1824／#4583（Studio Workbench）**：closed/unmerged #4812の必要なSource/Bundle資産だけを現在mainへ持ち込み、正規生成＋同一HEADのWindows WebView2を再試験する。S-LOC-0 #4842は純粋Projectionとして並行させる。
+- **#4845／#4714（Plugin Doc）**：現行mainに存在する実CLI Discoveryと選択・Lock・直接上位版のGoテストを、mainのexact HEADで再実行し結果を確認する。その後、一Plugin→明示Document Ref→現行Audience/Disclosure→許可されたread-only本文一件を**別コードPR**で閉じる。
+- **#1824／#4583（Studio Workbench）**：closed/unmerged #4812の必要なSource/Bundle資産だけを現在mainへ持ち込み、正規生成＋同一HEADのWindows WebView2を再試験する。現行mainのS-LOC-0純粋Projectionは保持し、実UI接続・Wails検収・S-OPENは別に進める。
 - **#2621／#1018（正式Source）**：S0-Pの予備検査を製品`Workspace.Load`へつなぎ、選択されない`*.tei.md`の拒否と同一元byte読取の肯定を一PRで検証する。
 - **#4495／#1251（実Provider）、#2831／#4583（Stage2）**：実呼出しと独立ConsumerをCLI側で検収し、非Plugin Studio BuildのStage1→Stage2→Windows実受領を別の同一HEADで検収する。
 
 この節を理由にP0の優先順位・Hard Gateを増やさない。#4824/#4825/#4827の既存計画はOwnerごとの正本として利用し、重複した仕様書・新Test Runnerを作らない。
 
 **今回の上限**：§29は現行mainのGo実装・関連PR・設計の読み合わせに基づく実装引渡しであり、新たな`*.tei.md`製品Reader／文書Reader／Wails Embedded Asset修正／実Provider／Stage2／Updaterの実装・実OS合格は主張しない。
+
+### 29.6 未マージPRの結果と現行mainのファイル実在を混同しない（2026-11-15、実装調査）
+
+§29.1〜29.5で「PRが未統合」とした機能の一部について、**現在のmainを再読すると同じBlobが既に存在する**。PRのMerge状態ではなく、実ファイルの内容を直接照合した結果である。由来となるPRがclosed/unmergedでも、現行mainの実コードまで「未存在」と表現するのは誤り。一方、同じBlobがあることは旧HEADのCI実行結果・実Consumerの採用・製品の受理まで移転しない。
+
+| 現行mainに存在するもの | 現行mainのBlob SHA | 現時点で利用できること／利用できないこと |
+| --- | --- | --- |
+| `cmd/tei/cli_plugin_public_manual_discovery_test.go`（#4845と同内容） | `5707eb32e472e441b0ff60bb7bc8fde2237b05db` | 実CLI BinaryでDiscoveryと選択版・Lockを検査するGo回帰の存在。正式Document Binding・Source-backed本文Read／Disclosureは依然なし |
+| `reference/tei-studio-workbench/source-locations.ts`（#4854の実装を含む） | `0c3f28cedc7f3c609d318fdb679b8844ad0cdbbb` | read-onlyでByte Offset／Role／相対Pathを投影する関数。現在のWorkbench表示・安全な原文Open・Wails実配布の成功は別 |
+| `reference/tei-studio-workbench/source-locations.test.mjs` | `5d8c2acd33ed044b92d683ffbe0d50783f9be69a` | 7件のローカル純粋投影試験を現行`npm test`で実行可能。S-LOC実画面への配線や完全性は証明しない |
+| `reference/dsl-language-plugin/workspace_admission_boundary_test.go`（#4857と同内容） | `c7d533442b25a8e839cb4626bd7a1b7a3556b57d` | 合成SelectionによるReference解析成功と、製品`Workspace.Load`の`TEI_MD_PARSER_UNBOUND`拒否を同一Sourceで検査するGo負例。製品Language選択のA0が成立したわけではない |
+
+**当面の製品停止線**はSourceの同名性でもPRの番号でもなく、実物の不一致に置く。2026-11-15時点のmainを比べると、`reference/tei-studio-workbench/index.html`にはPin操作とInspectの参照制限表示の要素があるが、`cmd/tei-studio/assets/workbench/index.html`にはまだ存在しない。後者の古い資産を含むWailsを起動しても、参照Presenterの成功を実画面の成功としては認められない。
+
+W0の次の**一つのコードPR**は、現在の`main.ts`／`index.html`／Pin Reader Fixture間の不一致を先に解消し、その**同じmainを入力**として正規`dist`→Go埋込資産を再生成する。旧#4812のJS/HTMLを現在のPin構成へ無検証にコピーしない。Node24の`npm ci`→`npm test`→`npm run test:p0-presenter`→`npm run typecheck`→`npm run build`、配布HTML/JS/CSS/NOTICEのbyte一致、同一HEADのWindows WebView2 Inspector／Pin／参照制限の実受領を順に確認する。途中で失敗した項目は失敗したまま報告し、全体Go Buildや旧CIの成功で置き換えない（#1824/#4583）。
+
+また、製品S0-Aの最初の実装は[自己記述§47.5](ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md)の**A0→A1→A2→A3**の順に限定する。A0で実Manifest／受理済みContract／Lockに基づくProduct Language Selectionの接続が存在しなければ`unsupported`で止め、Reference`ParseSelected`へ合成Pinを与えて製品選択と偽装しない。A1以降は実`Workspace.Load`の同一元byte・位置つき候補、旧`*.tei`互換と未選択拒否を検査する（#988/#1018/#2621）。
+
+**現在資格**：これは現行mainのBlobと参照HTML・埋込HTMLの直接照合を設計と既存実装計画へ反映したもの。Go／Node／Windowsの新しい実行結果、製品Source Reader、Doc Read、実Provider、Stage2、Updaterの新PASSではない。必要なExpectedは既存#1180/#2514で管理し、第二のRegistry／Test Runner／Hostは作らない。
