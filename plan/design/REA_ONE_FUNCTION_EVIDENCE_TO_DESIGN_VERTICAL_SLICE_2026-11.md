@@ -485,3 +485,13 @@ Graphの構造的全件性、Function Read/Write、Owner受理、Source Patchの
 
 これはGo CLI振分けから既存Reader→既存Generator→JSON CandidateSet→既存Comparator→ReviewPacketを通す、製品コードの**読み取り専用・型付き一往復**である。外部Tool再実行や受領Byteの独立Capture、原Sourceの現在性・生成物の表示/編集資格、Owner意味受理、Wails JS第二Consumer、正式`*.tei.md` Source Apply/Save/ReRead、実Provider Function Read/Write、Plugin自己構築、Studio Stage1→Stage2実Windowsは検収していない。新Host／第二Reader／第二Comparator／意味正本／万能Gateは設けず、既存#1180/#2514/#4661/#2586/#4583/#2831へ分けて引き渡す。
 
+## 22. 実保存REA原本のReceiptと候補生成資格を分離する（2026-11-15）
+
+§21で保存済みREA JSON→既存Decoder/Generator→CandidateSet→Comparatorのread-only CLI経路を実装した。一方、既存の`cmd/tei/rea_evidence_test.go`の末尾には、`reaEvidenceOuterArgs.observationID/relationID`および`reaEvidenceResult.Candidates`を要求する古いテストが残っており、現行`rea-evidence`には存在しないAPIを想定してGoビルドを止めていた。これを理由にProduct APIへ根拠のない選択機能を復活させない。
+
+より重要なのは、テストが参照する**実保存済み6.8.0原本**`internal/externalanalysis/testdata/rea-6.8.0/analysis.json`の内容である。このファイルには受領可能な`evidence_id`・Provider・Subject Digestがあるが、`normalized_result`は`{}`であり、`JavaScriptApplicationGraph`のNodes/EdgesやObservation/Relation IDは含まれない。従来テストが特定の観測と関係を選択できたとするExpectedは、保存ファイル自体が支持しない。
+
+**修正**：既存`rea-evidence`による実保存原本のReceipt取得と、Raw Byte数・Evidence ID・Promotionなしを検証する。同じ原本を§21の`rea-candidates`に渡すと、既存`DecodeAttemptEvidence`が`GRAPH_MISSING`（終了コード2）で拒否し、候補JSONを出力せず原本Byteを変えないことを回帰化する。外部ツールの有無がReceiptの欠けたGraphを埋めることはない。
+
+この変更は**本物の保存ファイルが持つ証拠と、合成Graph付きFixtureが示す操作能力を分ける**ためのもの。§21の合成旧2辺→新2辺比較は引き続き合成受入であり、実ツールのGraph取得成功、再実行による現在性、外部Occurrenceの完全性、正式Owner意味受理、Source Apply/Save/ReReadやNative Studio第二Consumerは未検収。次に実保存Graphまたは正しく束縛されたViewを取得できる段階で、Evidence ID・Raw/派生Digest・Provider版・Coverage・Relation Occurrenceを別の受入として追加する。既存#1180/#2514/#4661/#2586/#4583/#2831のP0を維持し、未実装フィールド・架空Source・第二Reader/Hostを増やさない。
+
