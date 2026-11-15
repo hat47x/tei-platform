@@ -633,3 +633,15 @@ REAという略称は、ここでは二つの別概念を指す。外部の **Re
 **最小受入**：既存`TestInspectRealSavedViewIsComplete`による旧Fixture正例に加え、現行JSONメタデータのdata件数2/申告2/総数10、data0件の明示完了、終端なし、件数矛盾、未知type、未知protocol、emitted欠落、source件数矛盾、壊れたdata行を局所Go回帰にする。実際の6.8.0を呼ぶ既存REA専用CIで`tei rea-evidence -view`と後続の工具負例2件まで到達できた場合だけ、R0-Bを実Toolの完了として記録する。過去のrun 43721894737の失敗を新実装の成功へ読み替えない。
 
 **横断適用**：標準データ構造・SQL集計・Plugin Flow・Node Viewでも、配送のレコード数（`emitted`）と元集合の粒度・列挙範囲（`source`/Coverage）は別の情報である。部分集合2件の受領が正常でも「業務FunctionのReadが2件だけ」「他のResource/Eventが存在しない」とは答えない。Source/Meaning/Builder/Provider/Effectの次の資格は既存#1180/#2514、#3394、#2586、#4661へ引き渡す。実行系と業務REAの新Core・意味正本・Hostは増やさず、Stage1→Stage2 Windowsと通常CLI実Providerという製品P0を維持する。
+
+## 32. R0-B実走完了後に残った失敗Receiptの検収を閉じる（2026-11-16）
+
+[PR #5106](https://github.com/hat47x/tei-platform/pull/5106)をmainへ統合した。固定HEADの[REA専用CI run 43731902211](https://github.com/hat47x/tei-platform/actions/runs/43731902211)で、**6.7.0・6.8.0とも実Toolの4 checks / notRun=[]、real-toolジョブはそれぞれSUCCESS**となった。§30の「6.8.0のView受領が終了1」は以前の取得Attemptの記録として維持し、新Readerによる改善はこの新しいAttemptと固定HEADで証明する。ただしGo contractジョブは別理由で失敗しており、REA CI全体を緑と報告しない。
+
+残るGo契約の`TestExternalCandidatesRefusesWhatItCannotProject`では、保存済み`rea-6.8.0/error-source-kind.jsonl`を読もうとしていたが、当該ファイルは実捕捉された原本として存在しない。このテストの意図は**Producerが返した失敗応答を、Graphの欠落やファイルI/Oエラーとは別の型付き状態として拒否すること**であり、存在しない保存原本を作って「実Tool Captured」と呼ぶことではない。
+
+同時に既存`Receive`の`document.Failure`は設定される経路がなく、`EXTERNAL_CANDIDATE_FAILED`という判定には実際には到達できなかった。既存Readerの受領境界だけを修正し、REA JSONLの明示的`$rea=jsonl/v1`・`type=error`・`ok=false`（または明示`ok=false,error`のJSON）と型付き`error.code`が揃う場合に限り`StateFailed`として受領する。生ByteのFingerprintと失敗のCode/Category/Messageを残すが、**Evidence本体・Graph・Source Relation・Promotionを一切生成しない**。不明な制御形式、失敗コード欠落、成功/失敗の宣言がないJSONはMismatchのままにする。Operation側は既存の`ExternalCandidateFailed`分岐をそのまま利用する。
+
+テストで必要な否定応答は`t.TempDir()`に**synthetic negative**として明示生成し、旧6.8.0実保存原本のbyte・manifestを変更しない。既存`internal/externalanalysis`の正負Go回帰と`internal/operations`の該当契約、REA real-tool二版を**新しい固定HEADで別々に合格確認**する。旧CIに同居する組織モデル試験の失敗も、REAL REAの合格やこのReceiptの合格で帳消しにしない。
+
+**次の縦断はR1→R2へ**：Receipt成功・Failure判別・Producer Relationの端点照合・JSONL配送完備が確認できた時点で、外部ObservationからData/Function/Businessと経済Resource/Event/Agentへの対応候補を、既存の型付きReviewとOwner受理に限定して進める。組織二時点、Node Flow、Operator実装選択、CLI/Studio証拠結合の既存main設計を再利用する。ただし技術的なID・型・範囲・時点一致は業務意味の承認ではなく、抽象経路に付いた名前が生成Goメソッド名と一致する必要もない。新Meaning/Graph/Expected Engineは作らず、通常CLI実PG Function ReadとWindows Studio Stage1→Stage2の独立P0を維持する。
