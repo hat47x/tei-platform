@@ -1285,3 +1285,11 @@ flowchart LR
 この回帰は、提案B「`tei`記述をGoへ委譲しただけ」の検証の一段階であり、TEIから判断ロジックを生成して実Builder/Artifactを使う方式Cや、実Provider呼出しの検証を代替しない。以降は固定したRule・Source・Expectedを維持して、生成結果の同値だけでなく**入力読取要求と実Consumerが使ったArtifact／Providerの一致**を比較する。Studio S-LOC／Pin／正規BundleとWindows Stage1→Stage2は独立P0のままとし、新しいRuntime、Evaluator、万能Read Coverage Store、Gateは導入しない。
 
 **検証上の注意**：前回PR #4891のCache CIは`success`、Repository Healthは確認時点で`in_progress`であり、RuleのGo回帰単体が合格したと判断する根拠にはならない。本節の追加試験も、当該PR exact HEADの実Go test結果を確認して初めて合格とする。
+
+**同一入力に対するRule原文の一因子変更（§63.4の追加実証）**：`TestSelectedMarkdownRuleEditChangesActualEvaluatorRead`では、製品Reader用Fixtureを一時Workspaceへコピーし、`sales.order_line.quantity_positive`という**Rule IDは維持したまま**、検査対象のAttributeだけ`sales.order_line.quantity`から`sales.order_line.line_number`へ変更する。入力Sourceは固定し、数量0・明細番号2を返す一つの合成データセットを前後で共用する。変更前の既存Evaluatorは数量を読み`not-satisfied`を返し、変更後は明細番号を読み`satisfied`を返すこと、各回の実Read先が一件だけであることを検査する。ManifestのLanguage選択、実`workspace.Load`、同一LoadのIndex、`InspectionFromLoad`の各工程は変更前後とも通す。
+
+ここで固定したRule ID・Source識別子位置の一致は、**同じ意味が継続した証拠にならない**。Canonically選択したAttribute・World Fingerprint・Source Index Fingerprint・Model Revision・Artifact Fingerprintが変更に追随することを別々に確認する。元Rule IDと評価対象Attributeの名前が一時的に一致しなくなるのは、IDの文字列から意味を推測せず、現在のSourceと型付きMeaningを読むための意図的な負荷例である。
+
+このテストは「Sourceを変えても以前のGo評価が固定の結果を返すだけ」という**TEI宣言の無効化**を検出できるが、意味を含むGoコードをTEIから生成した方式Cの成立は証明しない。今回は既存`validationeval.Evaluate`へ委譲する方式Bの実到達点に限定する。方式Cは同じ二版のSource・独立Expected・入力Read先を使い、生成Go byte／実Builder・Artifactの差分、通常CLI/選択Providerの実使用、Consumer受領をそれぞれ計測する（研究統合計画§16.13〜16.17、#1121/#1251/#4495）。Source ID、Rule ID、Artifact SHAの一致のみで古い実行資格を復活させない。
+
+**CI記録の単位**：#4901のCacheは当該HEADで成功し、セルフビルドは失敗、Repository Healthは取得時点で進行中だった。ここから新試験の合格・失敗を推定しない。本追加試験もPRのexact HEADでGoの対象試験が実行されたことを別に確認する。
