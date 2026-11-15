@@ -1358,3 +1358,47 @@ TEIの業務DSLには、業務担当者が読む順序で、対象・入力・�
 **責務と優先順位**：同一モデルからの説明・図・Mock・テスト・生成Targetの関係は[実行モデル図解](PROGRAM_EXECUTION_MODEL_PROJECTIONS_2026-11.md)§49〜56を参照し、正本を複製しない。業務意味と標準DSLは#988/#2621、Rule/決定表はBRMS統合設計、Source/Consumerは#2586、実起動は#4495/#4502、独立Expectedは#1180/#2514を利用する。全体P0は#2831/#4583のStudio Stage1→Stage2、並行P0は公開pure Entryの実Provider→通常製品CLIであり、Mockの製品化や新Engineを先行Hard Gateにしない。
 
 本節は設計と引渡しである。TEI内Evaluator・契約付きMockの製品採用、実Provider CLI/外部DB/Windows E2Eの新規合格、Ownerの正式な意味受理は主張しない。
+
+## 29. 最初の実Go Entryを、既存の二つのInvoke境界から組み立てる（2026-11-15）
+
+### 29.1 実コードの責務を見極め、薄い接合箇所だけを新しくする
+
+最初のProduct Entryは「公開Functionを見つけたら、任意のAdapterへIDと入力を流す」実装にしてはならない。現在のGoコードには、再利用できる二つの独立した足場がある。ただし、**両者の契約は異なる**。
+
+| 現行Go接点 | mainで実際に持つ能力 | 業務pure FunctionのProduct起動として不足するもの |
+| --- | --- | --- |
+| `internal/semantic/capabilityinvoke.Invoke` | CapabilityのInput/Result/Effect**宣言の形状**を事前検査し、`Adapter.Invoke(ctx, capability.ID, input)`を呼び、`BusinessResult`のCapability・Mode・Outcomeを検査。事前取消ならcall=0、呼出し後の契約違反ならcall=1 | 公開Entryの有効性、実入力値の意味型／欠損／NULL、現在Host Grant、Provider・Artifactの実選択。 `Payload any`の形状検査から業務型適合を推論しない |
+| `internal/servicehost.SelectedServiceCarrierInvoker` → `internal/plugin/runtime.Registry.InvokeSelectedServiceCarrier` | Host CoordinatorのGeneration Lease、RouteSource、選択ServiceのContract／Provider／Artifact照合、Hostの現在Service Acceptance、Process Runtimeへの実委譲と来歴。結果はService Carrierの選択・受理・Runtimeを分ける | 公開業務EntryをこのService Contractと同一視できる根拠。Domain Input/Result/Outcomeの意味型、Goプロセス内のpure Providerへの直接経路。既存RuntimeはJSON/Process Service Carrierであり、業務Functionの汎用Hostではない |
+| `cmd/tei/main.go`／`cli_view.go` | 通常製品のコマンド分岐とReference実行。現行`view -execute`はReferenceExecutor／MemoryUnitOfWorkで動く | Product Entryの公開・Discovery・型付きInvocation、実Go Provider実Call、実Bodyの独立検証。新しいCLI名やFlagはOwner受理前に仕様として約束しない |
+
+既存Service CarrierのSource／Artifact／Providerの照合と、CapabilityのResult契約検査は、**参考にできるが互換APIとは限らない**。新しいProduct実装が必要とするのは、既存Composition／Hostが既に選択した一つの公開Entryを、既存型付きApplication Operationの具体的なProvider呼出しへつなぐ小さな接合である。AdapterにContract発行、Provider再解決、Grant判定、Source意味受理を兼務させず、第二Registry／第二Hostを増やさない。
+
+### 29.2 最初の一件で決める入力・Provider・返却の対応
+
+実装の最初に、既存WorkspaceからOwnerが受理した**pure Function一件**を選ぶ。その対象についてFunction ID、公開Entry、Meaning／Contract Revision、Target、実選択Go Provider、必要な型付きInputと独立Expectedを一票に固定する。適格なFunctionがまだ公開されていなければ「公開Entry未受理」として停止し、参照ワークスペースの数量×単価の例や合成Fixtureを本番公開の代理にしない。
+
+**Prepare**では公開EntryとInputの受理済み意味型、Source／対象Revision、Provider選択とArtifactの所在を確定する。missing・明示NULL・0・未取得・非開示を同一の値に畳まない。Pluginの`documentReadPreflight`が上位Pluginの厳密Version／Lockまで表示しても（#4800／#4826）、それは文書参照用の選択証拠であって、実ProviderのLoad、現在Grant、業務Entryの公開証拠ではない。
+
+**Admit**ではHostが現在のPrincipal／Target／Scope／Grantを、Provider実呼出し前に判定する。GUIの選択、MCPのTool記述、CLIのrole／provider／actor引数は候補であり、Host権限ではない。権限が失効した場合、実Adapterの呼出しはゼロとする。長時間処理やEffectを持つ後続Functionは、Owner側の開始直前・Commit直前検査を別に要する。
+
+**Invoke**ではHostが選んだ実Go Provider／Artifactへ到達した事実を、元のEntry/Contract/Meaningと同じAttemptで照合する。selected Bとactual Aが同じ値を返しても不合格とする。契約不正や取消の前に実Callしない場合と、実Call後にResult/通信が不正な場合を区別し、call=1後のFailureを「Effectなし」「自動再試行可」に変換しない。
+
+**Observe**では実Body、型付きOutcome／Failure、独立Expectedとの照合、Consumer／Audienceへの開示を別に確認する。初回pure Functionに実DB Receiptを偽装せず、書込みへの拡張では既存#1129/#1174の実Receipt・独立Readと照合する。必要な証拠が欠けた欄を空文字・成功として補完しない。
+
+### 29.3 実装PRを三つに分ける（新しいEngineは設けない）
+
+| 既存Ownerへ渡す最小PR | 実際に動かすもの | 最小の反例と停止条件 |
+| --- | --- | --- |
+| **A：Entry選択・Host Admit**（#4495/#951/#1158） | 受理済みFunctionと公開Entryを既存Composition／Hostの現在選択に結び、Application API側で実Inputを検証 | Entry非公開、Source A→B→A、Plugin Lock不一致、missing／NULL、Prepare後Grant失効。Call=0と理由を残す |
+| **B：実Go Provider呼出し**（#4495/#1251） | Aで確定した実Provider／ArtifactにだけDispatchし、実Call Witnessと`BusinessResult`を照合 | selected B・actual A、同値Result、呼出し後の未定義Outcome、取消・期限切れ。Call=1後に安全な未実行と表示しない |
+| **C：通常`tei` CLIの別OSプロセス**（#4495/#1158/#1180） | 同じ業務Meaningと独立Expectedを、製品バイナリから別Attemptで実行。Payload／Failureと実Consumer受領を観測 | `view -execute`への誤接続、Mockの黙った代用、exit0・HTTP200・Result数字だけの見せかけ合格、古いSource/Artifactの再利用 |
+
+同一Contract／Fixtureを再利用するが、A/B/Cの受入を混ぜない。AのRead-only判定からMockを選ぶ操作も、実Go Providerへ黙って切り替える操作も禁止する。CLIのDiscoveryは現行の限定read-only仕様を保ち、製品Operationの正式公開範囲は#1158/#4495で決める。
+
+### 29.4 横断設計との接続と今回の停止線
+
+#4824のdogfoodingのD-A〜D-E（正式Reader→実Go処理→実Plugin/通常CLI→Stage1再構築→Windows Consumer）は**同じ意味Sourceを最後まで追う別の縦断**である。最初の公開pure Entryの実Provider呼出しは、その完了まで待たせない。現在の`*.tei.md`は正式Reader未接続の範囲を明示し、既存`*.tei`の受理済みFunctionを利用可能な場合に限る。Graph/Rule参照GoやMockの成功をProduct Entryの実Callへ転用しない。
+
+Studio Inspectorの参照制限表示（#4806）も、製品Build／実Wails埋込資産／現在Host実行許可とは別資格。Source・Provider・Target・Resultを同じ欄に並べて表示する場合も、各欄の取得時点・資格とunknownを維持する。#4821の実行モデル図解、#4827の横断Plugin計画、#1180/#2514の独立Expectedを共用し、別のTrace StoreやScenario正本を追加しない。
+
+**本章の成果はGoコードの実在箇所に基づく実装引渡しであり、A/B/Cの実Product Go/CLI E2E、実Windows／DB作用、Owner意味受理は今回新たに確認していない。** 全体P0は#2831/#4583のDesktop Stage1→Stage2、並行P0は#4495の最初の実Go Entryで変更しない。
