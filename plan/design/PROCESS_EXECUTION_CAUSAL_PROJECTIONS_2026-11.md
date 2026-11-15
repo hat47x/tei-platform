@@ -350,7 +350,7 @@ flowchart LR
   T --> H["現在Grantと再送可否を別判定"]
 ```
 
-図のE→MとE→Bは**設計上の発生条件**であり、MとBの配信・実実行の順序を保証しない。実際のCommit・Outbox・Broker・Consumerから対応する証拠が得られなければ、該当線は「要求された関係」のままにする。U→Cの破線は無条件の再実行ではなく、照会・同一Operation identity・fence・現在Grantの確認後にだけ再試行可否を決める境界である。
+図のE→MとE→Bは**設計上の発生条件**であり、MとBの配信・実実行の順序を保証しない。実際のCommit・Outbox・Broker・Consumerから対応する証拠が得られなければ、該当線は「要求された関係」のままにする。U→T→Hの経路は無条件の再実行ではなく、照会・同一Operation identity・fence・現在Grantを確認したうえで再試行可否を判断する境界である。
 
 また、承認や長期ProcessではDefinitionの改版と実行中Instanceの経路を混ぜない。**Instanceで固定された経路、処理時のGrant、観測時の外部状態は別時点**であり、一つの現在時刻へ正規化しない。「最終的に同じ状態に見える」だけで、誤ったActorによる遷移や二重Effectを合格にしない。
 
@@ -384,3 +384,116 @@ flowchart LR
 C0〜C4は新しいSprint順や製品Hard Gateではない。最初の成果物は**「問い一つ／対象一つ／現在のSource・Meaning／表示された事実／不足の理由／独立Expectedへの参照」**を持つ小さなJSON・図・表の同一内容で足りる。既存PX／SF／EL／BRMS／REAの負例・既存Ownerへ引き渡し、第二のScenario正本、Graph Runner、Trace Store、業務承認Engineを追加しない。
 
 **現時点の資格**：§16〜19は設計と検証手順の追補であり、異種境界の製品実装、Go／DB／Queue／Windowsの新試験、実Effect、通常CLI actual Providerの同一製品試行、Ownerによる意味受理を**実施・合格したものではない**。全体P0のStudio Stage1→Stage2 Desktop実セルフビルドと並行P0の公開Entry→実Provider二入口は従来どおり優先する。
+
+## 20. 「次に実行できるか」を一つのReady値で決めない
+
+Process、Rule、Batch、Plugin Hookを同じ図でたどれるようになっても、**図上で次のNodeがつながっていることと、HostがそのOperationを今実行してよいことは別**である。実行準備を単一の真偽値へ畳まず、選択したOperationが必要とする条件を、既存契約と実際の観測に沿って個別に照合する。
+
+| 確認する条件 | 判断に使う既存の根拠 | 不足している場合の扱い |
+| --- | --- | --- |
+| **定義の適格性** | Source occurrence／選択Language／受理済みMeaning、Function・Operationの型と必須Guard | 定義の候補や一部だけの読取りを、正式な意味・全Rule集合と見なさない |
+| **入力の適格性** | Function Data Context、型・NULL・欠損、粒度、Snapshot／読取epoch、必要な集合のCoverage | 未取得や部分取得をfalse／NULL／空集合に変換して進めない |
+| **構成の適格性** | Target/Profile、Contract、選択されたexact Provider／Plugin Lock、実Artifact | Providerが存在すること、生成byteがあることを実選択・実使用と同一視しない |
+| **今回の起動資格** | Invocation、Hostの現在Grant、Actor、期限、対象Scope、fence／重複防止条件 | 古い許可や申請時Actor候補を、現在の実行許可として流用しない |
+| **先行する作用の帰結** | 同一Operation identityのReceipt、必要な独立Readback、未確定Effect | ACK喪失／Commit不明時は照会を優先し、未実行と決め付けて再送しない |
+| **結果の開示と受領** | Audience／Disclosure、Response、Consumer世代、実受領の証拠 | 業務処理が成功していても、公開・配信・受領まで完了と表示しない |
+
+適格性は**Operationと時点に対して相対的**である。たとえば、純粋なRuleの評価では外部EffectのReceiptは不要だが、そのRuleの結果を使った受注確定Commandには現在のGrantとCommitの検証が必要になる。「未評価」「対象外」「不適合」「実際に拒否された」を一つの未Ready表示にまとめない。逆に、Ruleがtrueを返しただけで後続Commandを実行可能と判定することもない。
+
+この照合は新しいAdmission Engineや共通Ready APIを作る提案ではない。既存のScript Launch／`execution`／Provider／Hostが保持する現在資格を、**どの条件がどのProducerに裏付けられているか**という形で読み取り専用に表示する。判断の所有者は変えない。
+
+## 21. 「同じ時点の実行」を説明するための因果カット
+
+一つの画面にSource、実行計画、実DBの値、Providerの呼出し、通知履歴を並べても、それらが同一の原子的Snapshotから得られたとは限らない。問いに必要な因果関係をたどる際には、**観測した結果と、その結果に必要な原因の証拠がそろっている範囲**を示す。ここでは説明上、この範囲を「因果カット」と呼ぶ。新しい保存形式や分散Snapshot収集基盤は導入しない。
+
+区別する時点は、少なくとも次の五つである。
+
+- **定義の時点**：選択したSource byte、Meaning Revision、Generator・Providerの版。定義を改版しても、進行中Instanceが新経路へ自動的に移るわけではない。
+- **業務上の時点**：取引日・有効日、申請時の組織・経路、遡及訂正が適用される期間。観測時刻とは異なる。
+- **入力の時点**：実ReadのSnapshot／Context epoch、取得済みの集合と未取得部分。複数Providerを呼んだだけでは同一Snapshotにならない。
+- **作用の時点**：Invocation／Attempt、現在Grant、Effect要求とCommit、外部Providerが確認した操作。Messageの受信時刻だけでは取引確定時刻を示せない。
+- **受領・説明の時点**：Consumerの世代、観測・取得時刻、Disclosureの現在性。旧Replyの後着で現在の画面へ昔の資格を上書きしない。
+
+因果カットの検査では、問いに必要な原因の集合を先に特定し、そのうち**どれが証拠として閉じているか**を記す。重要な原因が未取得・非開示・別Attemptなら、結果の観測は示せても「必要な原因をすべて確認した」とは表示しない。なお、取得できない原因を隠さずに表示することと、その非公開の内容自体をViewerへ送ることは別である。
+
+```mermaid
+flowchart TB
+  subgraph Demand["説明したい結果"]
+    O["日次売上集計のResult"]
+  end
+  subgraph Origins["必要な原因"]
+    A["入力A：取得・同一範囲を確認"]
+    B["入力B：未取得／遅延の可能性"]
+    R["集計Rule・粒度・期間"]
+  end
+  A --> O
+  B -. "対応する実Read未確認" .-> O
+  R --> O
+  O --> J{"問いに必要な入力は閉じたか"}
+  J -->|はい・証拠あり| C["対象範囲の集計を検証"]
+  J -->|未確認| U["局所Resultのみ観測／全件完了は未証明"]
+```
+
+上図で入力Bの破線が消えたことは、入力Bが存在しない証拠にはならない。また、A・Bがそろっていても、互いに異なるSnapshotや粒度なら集計の同等性は成立しない。並列Joinで二つのAttemptを一つの線に縮約するときは、**入力数・条件・同一性・取得範囲・未確定の分岐**を保持する。単なる時刻順の並びやTraceの親子関係だけで因果を補完しない。
+
+## 22. 中断後の操作を「再実行」という一語でまとめない
+
+起動・失敗・再開・取消を図示する際には、やり直す対象が**純粋計算なのか、未確定の外部作用なのか、配信なのか**を区別する。特に同じOperation identityでの再送、Checkpointからの再開、業務上の補償を同じ矢印にしない。
+
+| 操作 | 許可の前提 | 成功を主張できない例 |
+| --- | --- | --- |
+| **純粋な再評価** | 入力・Rule・精度・Snapshot等の比較条件を固定し、副作用がないと確認 | 同じResultでも別Attributeを読んだ／未取得をNULLに丸めた |
+| **Checkpointからの継続** | 保存状態の版、元Instance／Attempt、Definition・Artifact・Provider Lock、未完了Stepと現在資格を照合 | 再開位置だけ一致して、旧Pluginや失効Grantで続行した |
+| **外部Commandの照会・再試行** | Operation identity、ProviderのReceipt／Readback、冪等性・fence、現在Grantを実際に確認 | Commit後のACK喪失を未実行とみなし、二重副作用を起こした |
+| **業務上の補償** | 元Effectと補償Operationの別Identity、補償可能条件・権限・新たなReceipt | 元の外部作用を物理的に巻き戻せたと断定した |
+| **結果の再配送** | 元結果の開示範囲、Audience、Consumer世代、送信・受領の記録 | 古いReplyを新しい選択対象へ適用し、業務Commitの証拠にもした |
+
+```mermaid
+flowchart LR
+  S["Process中断後の再確認"] --> E{"元OperationのEffect"}
+  E -->|Receiptで確定| D["確定した作用を保持"]
+  E -->|結果不明| Q["同一Operationを照会"]
+  E -->|未要求を実証| P["現在の資格で実行可否を再判定"]
+  Q --> T{"照会結果・冪等性・fence"}
+  T -->|未確定| H["停止して照会継続"]
+  T -->|確定| D
+  T -->|未実行を実証| P
+  D --> N["後続通知・Consumer受領を別に確認"]
+```
+
+図の「確定した作用を保持」は、後続通知まで届けたことを意味しない。逆に、補償が可能でも元Effectの履歴を削除しない。イベント履歴、業務状態、送信履歴が一致しない場合には、どの部分を独立に確認できたかを示し、旧Attemptと新Attemptを結果の同一性だけで結ばない。
+
+この復旧分類は、既存#1129/#1174のEffect・Receipt、#1130のBatch、#4198のProcess Lifecycle、#1180/#2514の独立Expectedに返す。新たなRecovery Orchestratorの製品採用を先取りしない。
+
+## 23. 一つのRuleから、説明・図・実行証拠の差を反証する
+
+初期実装は§19のC0〜C4を使い、別のScenario体系を増やさない。具体的には、`sales.order_line.quantity_positive`の**選択済みSource→型付きRule→合成入力の実Read→生成Go**を一つのSubjectの証拠として整える。Readerや生成器の局所テストから正式Builder・実Provider・実Consumerまでを飛び越えない。
+
+| 反証したい取り違え | 最小の比較 | 期待する説明 |
+| --- | --- | --- |
+| 入力の不完全さを判断falseにする | 同じRuleで必要Attributeを完全取得／unfetched／NULLに切り替える | 判断不可、NULL、falseを区別し、呼んだReadだけを事実として表示 |
+| Ruleの変更を表示差分にする | 属性参照を一因子変更し、図の座標だけの変更と比較する | 意味依存・生成Go・説明Source位置と、View-only変更の失効先を分ける |
+| 生成Goの結果一致を実Provider一致とする | Provider Bを選び、別Aの実Callを記録した合成照合票を用いる | 同じ数値ResultでもSelectedとactual Calledの不一致を表示 |
+| 集計の一部を全件とする | 日次集計で必要な二入力のうち一方だけを実観測する | 一件の正の証人と、全件完了に足りない入力閉包を別に示す |
+| ACK喪失を失敗・再実行可とする | 元OperationにCommit証拠がありReplyだけ欠ける場合と、Effect unknownを比較 | Commit確定、配送未確認、照会待ちを別欄にし、二重実行を避ける |
+| 図の同一性を業務IDの同一性とする | 同名Node二つ・同端点の二Edgeを描き、表示側で折り畳む | 描画用Edge ID、Meaning Relation、Attempt Spanを混ぜず、縮約による情報損失を提示 |
+
+独立Expectedは実装者が出した図・生成Go・Resultから作らず、既存#1180/#2514のFixtureと反例に結び付ける。SourceとMeaningの対応が未受理なら未受理のまま示す。**正しい理由を説明する図**と、**実際に呼ばれたことを説明する図**の間には、Builderが読んだbyte、実Process Image、実Provider、Attempt、Consumerを結ぶ証拠が必要である。
+
+最初の製品差分は、固定した一Ruleに対する既存Inspector／Source Index／CLI JSONの**read-onlyな照合結果**に限定する。既存StudioのSubject Pinへ表示する際は、同じWorkspace・Source Revision・対象epochに束縛し、現在選択されていない旧Replyを混入させない。新しいWriter／Runtime／永続Graph Storeを加えず、分からない条件を分からないまま説明できることを合格基準にする。
+
+## 24. 図の表示と製品受入を、一つの小さな引渡し票にする
+
+実装担当者が独自の検収台帳を作らないよう、§20〜23で必要な項目は既存のInspection・Build Evidence・Driver受入へ分配する。CLI JSON、StudioのTable/Node View、説明文は**同じSubject・Revision・Audienceの異なる投影**として扱い、描画の一致を実行成功へ昇格させない。
+
+| 次の作業 | 最初に渡す証拠 | 残すべき未確認・Owner |
+| --- | --- | --- |
+| **C0/C1：Sourceと判断** | 選択済みRuleの原byte・型・実Read・Source位置、独立Expected | 未取得／意味未受理。#2621/#988/#1121 |
+| **C2：接続条件** | Rule→Guard、Event→Batch、Operation→Effectで必要な型・粒度・時点・Current Grant | Target能力、Input閉包、外部Adapter未確認。#4198/#1130/#951 |
+| **C3：実行と復旧** | Attempt、actual Provider、Effect identity・Receipt、再試行の拒否理由 | 実DB／通知、再送保証を合成から移転しない。#4495/#1129/#1174 |
+| **C4：複数Consumerの照合** | 同一Subjectを参照するCLI/Studioの版・Coverage・表示損失、実Consumer受領 | Wails実埋込・Stage2 Windows、現在Disclosure。#1824/#2831/#4583 |
+| **横断の独立検証** | 一因子変更、対象閉包、失効、否定判断の独立Expected | 新Scenario正本を増やさない。#1180/#2514 |
+
+**着手順**は、実在するRuleの読み取り専用照合→一因子の失効反証→合成の部分入力・Effect unknown反例→実Builder・実Provider・実Consumerの独立照合とする。Studio Stage1→Stage2の正式Desktopセルフビルド、通常CLIからのactual Provider／実Readは引き続き**並行する最上位P0**であり、この図解を新Hard Gateにしない。
+
+**実施状況**：§20〜24は採用前の設計・引渡し条件。新たなGo／Node／DB／Queue／Windows実試験、製品での異種接続・復旧、Owner意味受理、独立Consumerの同一Attempt受領は今回の文書変更では実施していない。
