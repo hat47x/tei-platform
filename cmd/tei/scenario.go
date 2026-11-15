@@ -254,22 +254,12 @@ func runScenarioCommand(args []string, output io.Writer) error {
 	}
 	lockDigest := sha256.Sum256(lockSource)
 	plan.PluginLockSHA256 = hex.EncodeToString(lockDigest[:])
-	// Operator implementation selection is not part of Canonical World or
-	// Plugin Lock. Canonically order the selected identities so manifest entry
-	// reordering cannot invalidate a semantically identical generated command.
-	selections := scenarioImplementationSelections(loaded.OperatorImplementations)
-	sort.Slice(selections, func(i, j int) bool {
-		if selections[i].Operator != selections[j].Operator {
-			return selections[i].Operator < selections[j].Operator
-		}
-		return selections[i].Implementation < selections[j].Implementation
-	})
-	selectionBytes, err := json.Marshal(selections)
+	// The selected Operator implementations are not Canonical World or
+	// Plugin Lock. They require a separate pin before any generated run.
+	plan.OperatorSelectionSHA256, err = fingerprintScenarioOperatorSelection(loaded.OperatorImplementations)
 	if err != nil {
-		return fmt.Errorf("fingerprint selected Operator implementations: %w", err)
+		return err
 	}
-	selectionDigest := sha256.Sum256(selectionBytes)
-	plan.OperatorSelectionSHA256 = hex.EncodeToString(selectionDigest[:])
 	for i := range plan.Commands {
 		command := &plan.Commands[i]
 		command.Argv = append(command.Argv,
@@ -387,4 +377,23 @@ func runScenarioCommand(args []string, output io.Writer) error {
 		})
 	}
 	return fmt.Errorf("unreachable scenario action %q", action)
+}
+
+// fingerprintScenarioOperatorSelection binds the actual Workspace selection
+// rather than the Canonical World. Manifest ordering is not selection meaning;
+// duplicate selections are already rejected by Workspace.Load.
+func fingerprintScenarioOperatorSelection(selected []workspace.OperatorImplementationSelection) (string, error) {
+	selections := scenarioImplementationSelections(selected)
+	sort.Slice(selections, func(i, j int) bool {
+		if selections[i].Operator != selections[j].Operator {
+			return selections[i].Operator < selections[j].Operator
+		}
+		return selections[i].Implementation < selections[j].Implementation
+	})
+	bytes, err := json.Marshal(selections)
+	if err != nil {
+		return "", fmt.Errorf("fingerprint selected Operator implementations: %w", err)
+	}
+	digest := sha256.Sum256(bytes)
+	return hex.EncodeToString(digest[:]), nil
 }
