@@ -2608,6 +2608,25 @@ Studio／SHO／SUI／AIが同じ意味候補を提示しても、編集資格は
 
 この追補は**限定的な実装済みread-only機能を製品受入へ接続する設計案**である。正式`*.tei.md` Reader、現在Disclosureの実判定、Plugin Document読取、実Provider／Stage2 Desktop、業務Ownerの意味受理を実装済みに繰り上げない。Studio Stage1→Stage2と通常CLI実Provider ReadのP0を維持する。
 
+<!-- tei-declarative-s0-evaluation-evidence-20261115 -->
+### 構文S0の比較を、読みやすさと観測できる意味の両面から始める
+
+[#4359](https://github.com/hat47x/tei-platform/issues/4359)のS0比較は、構文の採否を先取りせず**同じ二つの業務規則を何通りの表層で自然かつ厳密に表せるか**を確かめる最小試験とする。対象は既存`reference/workspace/semantic/sales/validation.tei`の数量の正値検証と明細番号の一意性検証。現行`validation ... positive/relation-unique`を基準とし、提案`rule ...: X is positive/unique per ...`、宣言済みRoleのMarkdown表、外部Pin付きOperator呼出しを**未採用候補として**並べる。実Frontendにない記法を受理済み・実行済みと表示しない。
+
+| 比較軸 | 事前に固定する基準 | 記録する結果と担当 |
+| --- | --- | --- |
+| **業務文としての読み順** | 対象→条件→判断→結果、明示的なScope。Goの`struct/func/import`は要求しない | 初見の読者が対象と条件を読み取れるか、不要な参照反復・構文トークン・説明の追記を要した箇所を記録。#4359のOwnerが採否判断 |
+| **意味と評価の区別** | 数量2は`satisfied`、0は`not-satisfied`、明示NULLはerror。明細番号1,1は`not-satisfied`。空の評価対象は現行Evaluatorで`satisfied` | 同じ独立Expectedを全候補で参照。空対象の局所評価結果だけから、実ProviderのRead全件性・不存在を主張しない。#2514/#2506 |
+| **構文／Source忠実性** | 同一のValidation ID・Kind・Attribute・Relationを保持し、原byteとSource spanは候補ごとに区別 | BOM/CRLF、同名別Source、説明表、Role未選択、No-op保存、位置付き診断、旧`*.tei`互換。#2621/#988 |
+| **評価時の観測** | 同一の戻り値に加え、評価した条件・必要Read・失敗・非開示を区別 | [#988](https://github.com/hat47x/tei-platform/issues/988)のEQ0〜EQ2とDTQ-01〜09を再利用。短絡で不要な非公開Fieldを読まないScriptを、先読みする決定表へ無条件に書き換えない。#2506/#2515 |
+| **実装への到達** | 選択Frontendの同一`Workspace.Load`元byte→Source Index→意味候補をS0-Aで実観測 | `TEI_MD_PARSER_UNBOUND`を未実装時に維持し、Referenceの成功と正式Reader／受理／Generatorの資格を区別。#2621/#1018 |
+
+**値一致への反証を実DBから取り込む**：main統合済み[SQLite Window負例 #4822](https://github.com/hat47x/tei-platform/pull/4822)では、同じ生成SQLを使い、B2が明示NULLの七行とB2行自体を削除した六行で、B3の累積平均がいずれも10になる。一方、B2を0に変更すると七行のままでB3の平均は20/3になる。したがって**一つの集計値が同じでも、InputのRow Identity・NULL／不存在・入力集合の閉包・Coverageは一致したとはいえない**。この実DBのC0負例を、Graph／RuleやDecision表の同値性に対する反証として再利用する。ただし、固定JSON→SQLiteの局所成功を正式Markdown Reader、標準Window Query、実製品Providerの受入へ昇格しない。
+
+**実装に渡す順序**：まず#4359の旧記法と改善案の文章比較・独立Expected・観測可能なRead FootprintをS0で記録する。次に#2621/#988/#1018で**一つの選択済みGraph/Rule Source**の実`Workspace.Load`と候補位置へ進み、受理済み一Rule→実Generator／Builderの分岐変更を#4544/#2595で検証する。Window／Decision／異質TargetはS0-Aの前提ではなく後続の反証とする。専門家の可読性を重視しながら、Parserの実装容易性や結果値の一致だけで文法を選ばない。全体P0のStudio Stage1→Stage2と通常CLI実Provider呼出しも維持する。
+
+**受入上限**：本追補は既存Reference・実SQLite回帰・DSL Ownerの独立Expectedを結び付ける設計手順。正式な新Rule文法採用、`*.tei.md` Product Reader、比較の実測、意味受理、実Provider・Stage2再構築は今回実施していない。
+
 **現在の証拠と停止線**：mainの限定ReferenceにはGraph／Rule→条件分岐Go生成・同一Binaryへの実行時Node入力・Source Indexのbyte検査がある。一方、製品の正式Reader／選択Role／Accepted Meaning→通常Generator・Plugin・CLI実Call→Stage2実再構築は別の未達資格である。[PR #4744](https://github.com/hat47x/tei-platform/pull/4744)はMarkdown-firstと三要素図面の統合Draftであり、同PRや本節のdocs-only変更を製品機能の採用・Owner意味受理と読み替えない。
 
 
