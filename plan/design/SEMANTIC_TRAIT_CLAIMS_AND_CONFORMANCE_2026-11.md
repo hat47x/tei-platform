@@ -223,3 +223,52 @@ TEIが返す説明は、次の三段階に分ける。新しいCore状態を増�
 **停止条件**：対象の同一性が曖昧、業務規則が未受理、必要なSourceが未取得、全Writerの範囲が不明、実ProviderのGrantが未確認、独立Expectedがない、現在の公開許可が成立していない場合は、その条件に依存する判定だけを未確認にする。別の対象で得た有資格な局所証拠まで無効にはしない。形式検証の成功を、業務判断や実行権限の承認にはしない。
 
 この追補による新しいCore Trait型・Reasoner・Source Writer・Gate・業務Ownerの決定はない。採用判断は各IssueのOwnerへ戻す。
+
+## 13. 問いに必要な証拠の閉包と、標準データ様式の再利用（2026-11-15）
+
+この節は、標準データ様式の段階計画 [#4350](https://github.com/hat47x/tei-platform/issues/4350)、構造写像 [#2497](https://github.com/hat47x/tei-platform/issues/2497)、Function Data Context [#2506](https://github.com/hat47x/tei-platform/issues/2506) と、現行のTrait検証をつなぐ**検収上の補足**である。新しい結果型、閉包Engine、汎用Query評価器や第二のScenario正本を定義しない。
+
+### 13.1 「何を見たか」と「どの結論を出せるか」を分ける
+
+同じRecord、Collection、GraphやTableを扱っていても、利用するFunctionの問いによって必要な証拠が違う。結果値の一致、観測済みデータの個数、必要な全データの取得完了を一つの「正しい」にまとめない。観測が部分的でも**特定の肯定的な反例・存在証拠は成立し得る**が、単に見つからないことから不存在や唯一性を断定することはできない。
+
+| 問い | 部分取得でも成立し得る局所証拠 | 全体として結論を出す追加条件 |
+| --- | --- | --- |
+| 指定条件を満たす個体が存在するか | 対象・述語・時点が有資格な一件のWitnessで、存在を確認できる | 存在しないという結論には、対象Scopeの完全取得か、適用可能な制約・証明が必要 |
+| 該当数が少なくともN件か | 重複とIdentityを確定できる異なるN件のWitnessで下限を確認できる | 正確な総件数やN件以下の主張には、対象集合と重複規則の閉包が必要 |
+| 一意な規則・対象だけが該当するか | 同時に該当する異なる二件の有資格Witnessで、一意性を否定できる | 一意と断定するには、規則集合と評価対象の両方について、Scope・時点・取得完全性を確認する |
+| 該当しない、違反しない、他に経路がないか | 一件の有資格な違反・別経路は全称／不存在の主張を反証できる | 違反や経路が見つからないだけでは足りず、探索対象と関係の閉包が必要 |
+| 合計・平均・期間集計が正確か | 取得済み範囲についての部分集計・計算過程は説明できる | 母集団の閉包、集計粒度、NULL・未取得・重複、多重所属、端数処理、時点が必要 |
+
+この区別は、論理的には「新しい対象を追加しても成立した肯定的証拠が覆らない問い」と、「追加の対象によって結論が変わる問い」の差を利用する。ただし、**権限や開示の境界を越えて全体の個数・有無を推測してよい**という意味ではない。表示可能なWitness・件数・診断自体を、現在のAudience、Tenant、Purpose、Hostの開示判断に従わせる。
+
+### 13.2 閉包を一枚のフラグにしない
+
+Functionが結論を出す際の確認範囲は、最低限、次を区別する。
+
+| 確認対象 | 確認する内容 | 欠けた場合の扱い |
+| --- | --- | --- |
+| 対象 | 業務Identity、Graph Relation occurrence、親子集合、Business Key、参照の対応 | 同じ表示ラベル・物理行・描画Edgeから個体を決めない |
+| 評価範囲 | Function Data Context、grain、filter、page/window、snapshot、valid/known時点 | 局所Witnessを保てても、全件・不存在の結論は保留 |
+| 規則 | 選択済みRule ID・版、適用Scope、優先順位、例外、必要なRule集合の閉包 | 「読めた規則だけで唯一」と判断しない |
+| 読取 | 必要なRead Footprint、実際のProvider Read、NULL／missing／unfetched／withheld | 宣言された依存関係と実際に読めた入力を同一視しない |
+| 実現・配布 | Source版、生成器、Build入力、Artifact、実Provider、独立Consumer | Reference結果やBuild成功を通常CLI／実Host受領へ昇格しない |
+| 操作 | 表現型のSelection、逆写像Loss、現在のGrant、EffectとReceipt | 表示できることをSource編集・業務Actionの資格にしない |
+
+この表は既存のSource Index・Trace・Context・Scenarioから読取専用で構成する**説明票**であり、新しい永続Ledgerではない。出典が非公開・未取得なら、公開面にその存在や件数を漏らさず、可能な範囲の不足理由だけを示す。値が再び一致するA→B→A改版でも、旧Source位置・Attempt・Consumerの資格を自動復活させない。
+
+### 13.3 横断Pressure Caseと引渡し
+
+| ID | 一因子の差・入力例 | 独立Expectedへ渡す判別点 | 既存Owner |
+| --- | --- | --- | --- |
+| TR-Q20 | 1/3ページだけを取得し、そこに有資格な該当行を一件発見 | 存在の局所Witnessは保持するが、全件件数／不存在を主張しない | #2506／#2514 |
+| TR-Q21 | 一意候補を一件だけ取得、規則集合の一部は未取得 | 唯一性は未確認。既知の二件が競合すれば、全件取得前でも競合を示せる | #2620／#1180 |
+| TR-Q22 | 多重有向Graphの同端点・同label二EdgeをTreeへ投影 | Edge occurrenceを潰さず、非表示関係・逆編集資格を失損として示す | #2497／#2500 |
+| TR-Q23 | 二つの子集合（2件・3件）を同じPanelへ配置 | JOINの6組と原子集合の2件・3件を区別し、集計grainと実行Partitionを混同しない | #2506／#2497 |
+| TR-Q24 | 実保存された外部EvidenceのReceiptは存在するが、解析Graphが空 | Receiptの受領は成立する一方、Graph候補生成は未成立として拒否し、架空のRelationを補わない | #2621／#2514 |
+| TR-Q25 | SourceのRule参照属性だけ変更、表示値は以前と一致 | Source／Semantic／生成Go／実Builder／Consumerの失効を別に検査し、結果一致だけで旧資格を再利用しない | #1143／#1121／#2514 |
+| TR-Q26 | 同じGraph表示部品へBusiness RelationとPlugin配線をそれぞれ投影 | Node/Edge描画IDを業務・Plugin・Operation IDへ変換せず、Declared／Selected／Built／Observedを区別する | #2497／#951／#1124 |
+
+**最初の実装単位**はTR-Q20/Q21の合成Fixtureを、既存のRead FootprintとFunction Context・独立Expectedで説明できるか確かめることとする。TR-Q22/Q26は既存の標準Graph／Node View read-only投影へ、TR-Q23はBatch/ETLの計算粒度・出力粒度の設計へ、TR-Q24は外部Evidenceの元資料と候補生成の検収へ、TR-Q25はRuleから実Go生成・Builder・通常CLIの縦断へそれぞれ戻す。
+
+S1〜S3のread-only Referenceがmainに統合されていても、製品の正式Graph Reader、汎用Trait判定器、実ProviderのRead閉包、Studioでの逆編集、Ownerの意味受理は別の完了条件である。**Studio DesktopのStage1→Stage2実Windows受領と、選択された実Providerを通常CLIから呼ぶ製品P0を変更しない**。この節の判別票は未実行の設計候補として扱い、採否と実装は各Ownerに委ねる。
