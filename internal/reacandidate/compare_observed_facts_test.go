@@ -25,10 +25,10 @@ func TestCompareCandidateSetsSameSourceChangedObservedRelation(t *testing.T) {
 		changedKind = "imports"
 	}
 	tests := []struct {
-		name           string
-		reuseAttempt   bool
-		changeSource   bool
-		wantStatus     string
+		name         string
+		reuseAttempt bool
+		changeSource bool
+		wantStatus   string
 	}{
 		{"different-attempt-same-source", false, false, ComparisonObservedFactsChanged},
 		{"reused-attempt-same-source", true, false, ComparisonObservedFactsChanged},
