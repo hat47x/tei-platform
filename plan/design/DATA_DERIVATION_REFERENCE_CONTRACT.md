@@ -151,3 +151,38 @@ Data RuleとFunction固有Ruleの双方が関係する場合は、安易に「Ta
 | V-D06 | 非保存の導出値でFilter→Sort→Limitを適用。必要な全件性やSQL Pushdown同等性を証明できなければunsupportedとする | #1640 |
 
 これらは#1180/#2514の既存Scenarioへ参照で束ねる候補であり、新しいRule Runtime、Query Engine、テスト正本、Hard Gateを増やさない。Go/Provider/実DB/Studioの製品受入は別段階で検証する。
+
+
+## 適用時点と実装資格：同じ規則を違うPhaseへ安全に接続する（2026-11-15／検証案）
+
+既存の「規則の意味定義」と「適用先Binding」の分離を、**初期表示・Draft編集・Query・保存前・保存後・外部Effect**まで貫く。項目拡張定義は型、単位、保存／仮想、NULL、Constraint、Ruleへの安定参照を持つ。式本文はDataに共通ならTable Script／Data Ruleの一次Sourceに置き、検索・集計母集団をFunction側で決める場合はFunction Data Context／Queryへ置く。表・画面・保存経路ごとに実行可能DSLをコピーしない。
+
+ここで「同じRuleを使う」は、すべてのPhaseで同じ結果を約束する意味ではない。入力に使える値の種類、評価時点、取得範囲、再評価の契機、Authority、持続化能力がPhaseによって違うため、**同一Rule ID・型付きOperatorであってもAttachmentが満たす前提を個別に検査する**。
+
+| 適用の場面 | 必要な入力と結果の意味 | その段階だけでは保証できないこと |
+| --- | --- | --- |
+| Form初期化 | Form初期Contextの候補値。画面を開いた時点・利用者・既定条件を記録 | 変更後の自動再計算、API・Batchからの同じ値の採用 |
+| Draft編集 | 未保存の親子Change Set、削除予定、既存未変更行を含めた計算候補 | DB保存、採番、全子集合の取得、他Actorとの競合解消 |
+| Query／表示 | Function ContextのRead Scope、Result Grain、Relation Path、データの時点に即した導出結果 | Filter／Sort／Limitの順序が正しいこと、書戻し可能性 |
+| Before-write | 実対象のold/new、Version、選択Providerの必要データ、Data/Function Constraintと現在Grant | Commitが完了したこと、外部配送・受領の完了 |
+| DB保存後・Commit前のHook | Transaction中の書込みと関連行への変更Intentを評価 | **確定済みという意味の「保存後」**、Transaction外のEffectの取消 |
+| Commit結果・非同期処理 | Host／ProviderのCommit Result、Outbox/Job要求、独立Readback | 通知配信・帳票取得・外部受信側での業務受理 |
+
+具体例として、Order（親）とLine（明細2件）に対し、一件削除予定・一件編集・別タブの未変更行があるとする。Draft表示中の合計は、**現在のタブの表示行だけ**から算定してはならない。必要な子集合の全体が取得できない場合は、合計の完全性を偽らず保留・再取得・不確定に分類する。保存前には別時点のold/newと現在Grantで再判定し、Commit後にDraft値がそのまま確定したと推定しない。集約のNULLと0件の違い、Decimalの精度・丸め、複合親キー、子Versionは既存#1637/#1640/#1129/#2622の契約へ渡す。
+
+**Ruleの宣言、Sourceから解決したRule、生成コードに含まれるRule、実Providerが呼んだHook、実際のEffectは五つの異なる証拠である。** 説明文・Rule Catalog・プラグインの自己申告を、呼出し成立や結果の証拠へ昇格させない。Generatorが生成した型付きHook Adapterと、対象Rule ID／Version／Operator ABI／適用PhaseのBindingを、既存#988/#951/#1121/#4495の経路で照合する。実装の欠落・同じRuleの二重登録・別Phaseへの誤接続・古いSourceの再利用は停止条件とする。データ更新後だがCommit前のHookは外部通知の確定時点ではない。外部EffectはTransaction内Outbox登録とCommit後配送など既存#1174の責務を使う。
+
+### 追加する独立Expected候補（未実行）
+
+| ID | 反例 | 期待／既存担当 |
+| --- | --- | --- |
+| DR-PH-01 | フォーム初期値をAPIからの保存時制約として無条件適用 | Formの候補値とOperationの正本入力／保存規則を分離（#2506/#1129） |
+| DR-PH-02 | 削除予定の子行を含める／未表示タブの子行を除外したDraft合計を確定 | 明示Change Setと全Relation集合の完全性が必要（#2622/#2597） |
+| DR-PH-03 | Draft合計が表示されたため保存成功と判断 | Draft値、DB Commit、Readbackを分離（#1129/#1174） |
+| DR-PH-04 | 導出を一部取得後のSort/Limitで実行 | #1640のQuery依存順序に違反する計画を拒否 |
+| DR-PH-05 | 宣言だけあるRuleを実行済みとみなす | exact Rule ID／実Binding／実呼出し／独立観測を分離（#988/#4495） |
+| DR-PH-06 | 同じRule IDを違うPhase／2 Pluginに競合登録 | 別の結果スロットとContractが明示されない限り診断（#951/#1129） |
+| DR-PH-07 | DB書込み直後のHookから直接外部通知し、後でRollback | Commit前Hookと配送資格を分け、Outbox/Receiptへ委譲（#1129/#1174） |
+| DR-PH-08 | 非保存仮想値と確定保存Snapshotを再読込時に自動同一視 | 確定値・Rule版・評価時点を区別（#1641） |
+
+採否は既存#1180/#2514のIndependent Expected／Scenarioへ参照で取り込む。まず一つの正式Sourceからの型付き純粋Rule→実Go生成→通常CLI実Provider／Consumerの既存P0を閉じ、その後にDraft／Commitの差・複数子・実DB・非同期Effectへ展開する。新しいTable Script Runtime、Hook Engine、Formula Registry、文法、共通Host、P0は設けない。
