@@ -3,8 +3,8 @@ package operations_test
 import (
 	"crypto/sha256"
 	"encoding/json"
-	"fmt"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -65,11 +65,11 @@ func TestCapturedREAReceiptCannotSupplyAbsentSemanticGraph(t *testing.T) {
 		t.Fatal("captured normalized_result={} must not produce a semantic graph")
 	}
 	view, err := operations.ExternalCandidates(operations.ExternalCandidateRequest{
-		EvidencePath: captured,
-		ToolVersion: "6.8.0",
+		EvidencePath:  captured,
+		ToolVersion:   "6.8.0",
 		ObservationID: candidateNodeID,
-		RelationID: candidateRelationID,
-		Tool: externalanalysis.Tool{Name: "rea", Present: true},
+		RelationID:    candidateRelationID,
+		Tool:          externalanalysis.Tool{Name: "rea", Present: true},
 	}, candidateReadAt)
 	var candidateErr *operations.ExternalCandidateError
 	if !errors.As(err, &candidateErr) || candidateErr.Code != operations.ExternalCandidateUnusable {
