@@ -278,3 +278,13 @@ Ruleは他のFunction、標準Operator、Table Script／Data Rule、Node Flowか
 **実装プロファイルの誤用を防ぐ。** 現行 `internal/plugin/implementation/model.go` の `static-response-v1` はDeployment Executorの固定応答向けであり、Rule／Functionの汎用実装Contractではない。ここへ期待する判定JSONを置いても、生成Goを選択Providerが実行した証拠にはならない。`composition.Selection` は宣言上の選択、`composition.Service.Invoke` が返すBindingは実装を追跡する観測であり、どちらもHostの現在Grantではない。R3の最小実装は、既存の共通Application APIと正式なProvider選択の接続を先に確認する。
 
 **製品CLIの現在の基線。** `cmd/tei/main.go` の未宣言 `dbIntrospectSemanticFlag` で実CLIがビルド不能だった問題は[PR #4940](https://github.com/hat47x/tei-platform/pull/4940)で修復してmainへ統合した。同PRのexact HEADではAction Surfaceの実CLI、独立Node Catalog、Source→Web E1-A、製品Skill、Cache、脆弱性確認が成功。一方、Studio／Issue-to-Design／Self-buildの失敗は残り、全体Healthの成功も確認していない。これらのCI結果を、正式R2のBuilder実選択、R3の公開Entry実Provider Call、Studio Stage2の受入と混同しない。
+
+### 14.8 二つのDSL表現で同じGoを生成し、異なる出典を保持する
+
+[製品回帰 `14.8対応](../../internal/semantic/validationgen/positive_surface_identity_test.go)では、同じ `sales.order_line.quantity_positive` を、明示選択された `tei.rule-authoring/v0` Markdownと従来の `validation` 構文から、それぞれ**実 `Workspace.Load` → 型解決 → `GeneratePositive`** で生成する。一方のLoaderから得たCanonicalを他方へコピーせず、同一の `semantic.Validation`／`std.decimal` であることを確認し、生成Goのbyte完全一致を独立に判定する。生成Goは実際に `source.Number` を一回読み、`value.Sign() > 0` を評価する構造を持つ。
+
+この回帰で確かめる本質は、**記述表現の違いが生成物の意味を変えないことと、出典が異なる事実を消さないことの両立**である。二つのSource Indexはそれぞれ本来のファイル位置・原byte指紋・Model Revisionを保持する。Markdownの説明文だけを変更した場合は、旧Source Indexの現行資格を拒否しつつ、型付きRuleと生成Goのbyteは変わらないことを照合する。
+
+これをTEIドッグフーディングの一つの検収原則とする。コードから抽出した意味・制約をDSL、Markdown表、Graph／Nodeの複数表現に写し、再び同じTargetへ生成するとき、**意味が同じなら生成結果を一致させ、Source／編集対象／受理・開示資格は統合しない**。GraphでNode／Edgeの描画IDが異なってもRelationの意味を変えないこと、画面配置だけの変更で業務Goを作り直さないことにも同じ原則を適用する。ただしGUIの描画・保存・Builderの実消費・実Provider／Studio Windows Consumerの適格性は各Ownerの別試験であり、本Go回帰のPASSから推論しない。
+
+今回追加するのは**既存製品Loaderと実Generatorをつなぐ独立Conformance試験のみ**で、新しい意味正本・Reader／Generator／BuildPlan・Plugin Registryは設けない。原文改版A→B→Aや実Builderの生成Go消費、R3の実Provider Identityは`14.6〜14.7と#4544／#4495へ引き続き委ねる。
