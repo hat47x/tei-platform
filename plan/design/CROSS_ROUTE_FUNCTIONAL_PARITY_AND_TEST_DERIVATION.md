@@ -814,3 +814,77 @@ main統合済み[PR #2894](https://github.com/hat47x/tei-platform/pull/2894)の`
 **責務と次の停止線**：#2811は検収順・証拠台帳リンクのみを所有。独立期待値の判別力=#2514、Case集合=#1180、Result Slice=#2506、実Query/Provider=#2586/#2622、同一改訂Packet=#1163、開示=#2516、Source移行=#3030。新しいRuntime/Runner/独立期待値Store・Owner認可は追加しない。**当該R05〜07の新テスト、PG実行、CallerからCompletionへの実連結、Owner受理、OKF実Attestationは今回NOT RUN**。
 
 **統合ブランチの再適用条件（2026-11-07照合時）**：本Draft #2811 は現mainと大きく分岐している（照合時点のGitHub Compareでahead 57／behind 925）。mainの同名計画書は別Blob `722e1711e74c08ca967efb9554325a2ed9891f79`、本台帳ファイルはmainに未配置。したがって、Draft内で章を増補・旧CI成功を確認しても**現在mainに計画が採用されたことにはならない**。マージ前にmainの現行Source/文書・既存Owner責務との重複を再照合し、影響した本文だけを新しいmain基線へ移植／コンフリクト解決する。古い成果の一括上書きやDraft 57コミットの無条件合算を禁止し、新しい統合HEADでDiff・リンク・必要CI/必要Obligationを再検収する。これは**統合作業の未実施条件**であり、今回rebase/mergeや統合後のテストを行ったものではない。
+
+
+## 19. 同一試行と独立検証基準で「現在主張できること」を決める（2026-11-13）
+
+**位置づけ：設計の統合提案。新しいテスト実行・Blind評価・正式受理は NOT RUN。** §9〜18のAI Case Intake、必須Case実行確認、Claim相対Coverage、Source再資格化を一つの実装順へ整理する。既存のAccepted Canonical（意味）、保存済みDriver Scenario（シナリオテスト）、#2514（独立期待値・判別力）、#3262（テスト設計用Contextの完全性）、#1163（実行Evidence）、#2600（再利用候補）を使う。第二のScenario正本・Tester/Runner・独自CI認可・新たな一括PASS Enumは作らない。
+
+### 19.1 統合の単位は「Case」でも「CIの緑」でもなく、検証対象の主張
+
+実装の進展は異なる速度で起きる。たとえば、合成FixtureでValidationが成功しても実Providerの全件読取は証明されない。生成JSがWindows WebView2で使われても、Stage1のTEIがStage2 Desktopを構築したことにはならない。**過去の個別成功を保持したまま、いま述べたい主張に必要な証拠だけを同一条件で照合する**。
+
+| 比較するもの | 何を固定するか | 不足したときの扱い |
+| --- | --- | --- |
+| **Claim** | Subjectの安定ID、主張するOperation/Invariant、業務Scopeと粒度、Accepted Meaning revision、Targetと必要Effect | 主張が広すぎれば、成立する狭いClaimへ分ける。自動で範囲を拡張しない |
+| **Required obligations** | Case/Rule/Branch、必要なSource/Relation/Predicate field、独立Observation、実Target固有の義務、事前確定した対象集合 | 分母未確定・未探索・欠落を明示。発見済みCaseが全件PASSしてもCoverage completeにしない |
+| **Test definition** | Scenario ID/revisionとStep、Fixture bytes、独立Expectedの出典・適用条件・公開/秘匿区分、必要Mutant | ExpectedをActualや同じEvaluatorから生成した場合はG2未資格。候補は正式Scenarioと区別 |
+| **Execution witness** | exact HEAD、実Sourceのloaded/parsed/selected/consumed、Plugin/Generator/Toolchain/BOM、実Process/Target、Attempt/CI、Case別PASS/FAIL/SKIP/NOT RUN | 別HEAD・別Attempt・別Consumerの結果をつなぎ、実際には存在しない統合実行を作らない |
+| **Current applicability** | Source/Meaning/Scenario/Expected/Provider/Grant/Scopeの現Revision、Source closure、必要なら独立Read/Effect receipt | 履歴PASSは保存し、現在資格はstale/unknown/unqualifiedと区別。再実行可能性と再利用候補は別判断 |
+
+上表は既存情報への**read-only照合View**であり、新しい永続正本ではない。テスト結果（成功・失敗）と、そのClaimへの適用資格（十分・不足・不適合・未判定）は二軸で報告する。必要Obligationの集合自体を証明できない場合は、未探索領域を残す。実行済み正例から全称Claimを自動導出しない。一方、Scopeと帰属が確かな反例は、完全集合のReadがなくてもその全称Claimを否定できることがある。
+
+### 19.2 生成AIの能力を「既知Case追加」から「未知の必要検証の自律発見」へ測る
+
+T1-Aでは既知の明細行番号0のValidation負例を追加した。これは既存の実CLIにCaseを入れる経路の確認であり、**Agentが明示されなかった必要Ruleを発見できる能力の実証ではない**。次のT1-Bは、§10のTest Authoring Scaffoldと#3262のDesign Contextを用い、検証基準を事前に封印したうえで行う。
+
+1. **事前登録**：レビュー側が対象Accepted Source、独立Required集合、既知Mutantと期待する検出条件を候補Agentと別に固定する。候補へは許可されたDomain/Rule/Source Queryと通常の開発依頼を渡すが、欠落Ruleの名称・正答・Mutant位置は渡さない。
+2. **実際の探索を記録**：Agentが利用したCLI/Tool、受領したSource/Context/継続Page、発見した候補Rule、Case/Fixture差分、探索打切り・未取得を記録する。単に既知IDを追加できたことと、自ら不足を特定したことを別採点する。
+3. **採点側で独立判定**：封印したRequired集合とCandidateをStable ID・Source Revision・意味Scopeで突き合わせ、正例/負例とMutantを実行できる範囲で比較する。失敗原因を縮小したら縮小Fixtureでの再実行を必要とする。
+4. **受理は別工程**：新規Caseが判別力を持っても、Ownerによる意味受理、正式Scenarioへの取込み、実Provider/Target資格は自動成立しない。再生成後のRequired Obligationと実Case一覧の差分を再検収する。
+
+| Blind試験 | 独立期待値と反証対象 | 最小の合否境界 |
+| --- | --- | --- |
+| **T1B-B0：未知の検証漏れ** | 明示されたCase一覧にはないがAccepted Sourceから辿れる必須Ruleを封印。対応Mutantを事前に用意 | Candidateが自律的にRule/Sourceを特定し、既知Mutantを拒否できたときのみ「発見＋判別」。単なる推測やテスト件数増加では不可 |
+| **T1B-B1：必要Contextの未受領** | 必須Import/SourceまたはTool応答の一部を取得できない対照 | 正答を捏造せずunknown/incompleteに止め、再取得や明示不足を示す。途中切断の受領を完了扱いしない |
+| **T1B-B2：一意性・Scopeの破綻** | 同名異ID／同ID衝突、別Tenant/旧Snapshot、部分ページを混在 | 見かけの値や件数一致から同一対象・全件成立を主張しない。曖昧なCandidateは保留 |
+| **T1B-BX：採点情報の流出** | 期待値、Mutant、先行結果がPrompt/Tool/Session log/Fixtureへ混入 | 漏出した試行をblindの新規発見として採点しない。#2515のOS/Tool/Network境界で実検証が必要 |
+
+試験比較の主要指標は「自律発見した必要Obligationの数」「事前登録した故障への局所検出力」「虚偽の確定判断」「Caseの重複」「必要Context取得の完全性」「試験とレビューに要した実費用」。固定上限まで生成した件数をCoverageと呼ばず、未探索領域を残す。評価データの独立性が成立しない試行は能力推定から除外する。
+
+### 19.3 Desktopセルフビルドを最初の実Targetで検収する
+
+2026-11-13時点の[#4587](https://github.com/hat47x/tei-platform/pull/4587)の更新報告では、HEAD \`b26e87781e00b19bf142b22a35cfc62a857e88a3\` の[Windows WebView2 CI #43368714294](https://github.com/hat47x/tei-platform/actions/runs/43368714294)で、ordinary版・生成版の両Jobが**completed/success**。生成Inspectorの契約digest/使用回数と、生成JSの実配信bytesを、同一HEADのWindows Native Consumer上で検査した。これは**B0の限定的な統合実測**であり、Draft #4587はmain未統合。従来の#4572/#4579の別HEAD成功を足した結果ではない。
+
+| セルフビルドの主張 | 証拠の現在地 | その主張のために次に検証すること |
+| --- | --- | --- |
+| **B0：生成部品が実Desktopで使われる** | #4587の報告した統合HEAD・Windows WebView2実行は限定的に成立 | 必要な負例、統合差分、現在mainへの採用は別検収。生成結果の使用と業務意味を混同しない |
+| **B1：工程が宣言Build Intentに閉じる** | 未受入 | 契約Source→Go/TS→esbuild→embed→nested Wails/Go buildのDeclared/Actual差分。暗黙入力・外部module・省略工程を拒否 |
+| **B2：Stage1 TEIがStage2 Desktopを実構築する** | 未受入 | Stage1の実Process/argv/Toolchain、実Builder、Stage2 exe digestが**同一Attempt**でつながる |
+| **B3：Stage2 Desktopが実際に動く** | 未受入 | B2で生成されたそのexeをWindows WebView2で起動し、同一ArtifactのInspector/Bridge/Graph/配信JSを確認 |
+
+**テスト側の責務**は、#4583が所有するB1〜B3の実装を重複させることではない。#1180のScenario/Caseと#2514の独立期待値から各B主張のRequired Obligationを作り、#1163のEvidenceへ照合すること。生成されたテストがWindows CIに登録されても、実行しなかったJob・skipされた必要Case・旧exeで動いたConsumerは合格にしない。
+
+### 19.4 最小の統合受入セットと実装順
+
+| ID | 最初に注入する負例 | 要求する診断 |
+| --- | --- | --- |
+| **TQ-01** | 既存6 Stepのみ全PASS、必要Rule/Targetの分母には未検証が残る | \`local-pass / coverage-incomplete\`。製品全体PASSへ拡張しない |
+| **TQ-02** | required Caseをglob外・SKIPへ移しCIが緑 | required IDの\`not-discovered/skipped\`を検出。観測したCase件数で補完しない |
+| **TQ-03** | Imported Sourceは変更、Consumer World/Index指紋は不変 | Source closureと実消費が不明なら現行資格はunknown/stale |
+| **TQ-04** | 独立Expectedが実EvaluatorのActualから作られる | 探索結果は保持し、独立検証基準の合格にしない |
+| **TQ-05** | AgentがBlindの正答を見てCase追加 | Case実行の結果は記録し、blind発見能力の得点から外す |
+| **TQ-06** | 既存#4587のB0成功ReceiptからB2/B3を導出 | B0のみ限定PASS、B2/B3はNOT RUN／unqualified |
+| **TQ-07** | Stage1が未参加、外側RunnerだけがStage2 exeを構築 | Stage1→Stage2自己構築Claimを拒否 |
+| **TQ-08** | CommandがACKを返すが独立Read/Effect receiptがない | 実行応答と業務Effect確認を分け、unknown時は無条件replayしない |
+
+**最短の作業順**は次のとおり。
+
+1. **TQ-S0 / read-only照合**：現行Scenario 6 Stepと#3262のRequired Context、#2514の独立Expected、#4587のB0 evidenceを、新しい正本でなく一枚の比較表へ束ねる。主張ごとの\`required / observed / missing / unknown\`を出す。実行しなくても比較の欠落を再現できること。
+2. **TQ-S1 / headless反証**：TQ-01〜05を合成Source・既存CLI／テストハーネスに接続し、実行されたCaseと検証されたClaimの差を記録する。T1Bは独立事前登録と候補Agentの実試行を要するため、単なる固定fixtureをBlind成功と呼ばない。
+3. **TQ-S2 / 実Desktop縦断**：#4583のB1→B2→B3が実装された段階で、TQ-06〜07と同一HEAD/Attempt/Consumer確認を行う。B0の既存成功は再利用可能な履歴であり、B2/B3の新Receiptにはならない。
+4. **TQ-S3 / Effectと再資格化**：#1174/#2597のCommit/Receipt unknown、#2600のArtifact再利用候補とEvidence再資格化を、同一Claimの現在資格へ連結する。副作用の実試験には隔離Resourceと許可済みGrantを必要とする。
+
+**完了条件**：少なくとも一つのClaimについて、独立Required集合、Source/Scenario/Expected、実際に試みた全required Case、同一HEAD/実TargetのWitness、現在資格を同一Revisionで照合でき、別のClaimは証拠が足りないため**未資格と表示できる**こと。失敗や未実行を隠して一つの全体PASSへ潰さない。#1180はScenario・Target別派生、#2514は独立期待値・Blind判別、#3262はContext取得、#4583/#2831はDesktop実Build、#1163はEvidence、#1174はEffectの既存Ownerを維持する。
+
+**本追補の実施状況**：計画本文の更新のみ。TQ-01〜08の新テスト、T1B-B0/B1/B2/BXのBlind実行、実Target B1〜B3、Provider/Effect、Owner受理、exact-head新CIは本追補では実施していない。
