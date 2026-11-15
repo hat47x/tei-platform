@@ -155,7 +155,7 @@ C0/C1は人とAIの分析支援としてすぐ利用できる。C2/C3は、対�
 
 前節の`GeneratePositive`／生成された`EvaluateSelected`を、[Rule第一縦断](PLUGIN_RULE_PRODUCT_VERTICAL_SLICE_2026-11.md)のR1と[文書手法からの抽象化](APPLICATION_ABSTRACTION_DOCUMENT_METHOD_WEAVING_2026-11.md)のD0〜D3へ結び直す。今回は新しい言語処理系や図面正本を提案しない。すでに存在する`Workspace.Load`、内蔵Markdown Reader、従来の`validation`構文、`semantic.Validation`、`sourceindex.Index`、`validationgen.GeneratePositive`、`go/parser`を使い、**一つの意味上の判断が二種類の記述からどこまで再現できるか**を、原文ごとに検証する。
 
-具体的な比較対象は`sales.order_line.quantity_positive`の`positive` Ruleと解決済み`std.decimal`の属性である。[PR #4973](https://github.com/hat47x/tei-platform/pull/4973)は、明示選択した`tei.rule-authoring/v0`のMarkdownと従来の`validation`構文を**別々の実Workspace**でLoadし、生成Goのbyte一致とSource Index／指紋の差を検査する回帰の候補である。**2026-11-15の照合時点ではopen／未マージ**のため、両表記の製品受入済み同等性とは記載しない。
+具体的な比較対象は`sales.order_line.quantity_positive`の`positive` Ruleと解決済み`std.decimal`の属性である。[PR #4973](https://github.com/hat47x/tei-platform/pull/4973)は、明示選択した`tei.rule-authoring/v0`のMarkdownと従来の`validation`構文を**別々の実Workspace**でLoadし、生成Goのbyte一致とSource Index／指紋の差を検査する回帰の候補である。**提案PR #4973はclosed／unmergedだが、同名の回帰ファイルは現行mainに存在する。** PRの状態、実ファイルの存在、対象HEADでのテスト合格は別々に記録し、両表記の製品受入済み同等性とは記載しない。
 
 比較では次の四つを独立に判定する。
 
@@ -204,7 +204,7 @@ read-only投影を作る場合に必要な最小列は、対象Kind/ID、元Sour
 
 第9.3節のI2M-0を最小のGo回帰へ落とす。対象は`GeneratePositive`が出力する`EvaluateSelected`一関数とし、Go標準の`go/parser`／`go/ast`で**生成Goそのもの**を解析する。`Source.Number`の呼出し先・回数、`value.Sign() > 0`の分岐、成立／不成立の返却、Source／値のNULLおよびRead失敗の判別と、実コード内のbyte位置を観測する。手書きのGraphvizがそれらを記述していても、実ソースで確認できない要素は説明候補へ昇格させない。
 
-第一の実装候補は`internal/semantic/validationgen/positive_ast_projection_test.go`（[PR #4986](https://github.com/hat47x/tei-platform/pull/4986)）。元の`positive.go`にある**生成FunctionのAST**も別に読み、生成された評価Functionの構造と混同しない。観測範囲は次の三つの反証で固定する。
+最初の限定回帰`internal/semantic/validationgen/positive_ast_projection_test.go`は現行mainに存在する（提案PR [#4986](https://github.com/hat47x/tei-platform/pull/4986)はclosed／unmerged）。元の`positive.go`にある**生成FunctionのAST**も別に読み、生成された評価Functionの構造と混同しない。観測範囲は次の三つの反証で固定する。
 
 | 変えるもの | Go ASTの観測条件 | 保持する資格の区別 |
 | --- | --- | --- |
@@ -214,3 +214,49 @@ read-only投影を作る場合に必要な最小列は、対象Kind/ID、元Sour
 
 この検査は第4節の**C0：read-only構造観測**までである。抽出された局所変数名やGo ASTのNode IDをCanonical IDへ転用せず、業務MeaningのC2受理、逆編集、実Builder受領、実Provider／Consumerは後続として維持する。Go回帰の実行合格は当該コードを含むPRの**exact HEAD**で判定し、設計への追記やGitHubにテストが置かれた事実だけでPASSとしない。
 
+## 10. I2M-1：同じ意味・別出典・別構造位置を結合する（2026-11-15）
+
+### 10.1 実装済み足場の正確な位置づけ
+
+現在のmainには、提案PRのマージ状況とは独立して、次の**テストファイルそのもの**が存在する。
+
+| 現存する実テスト | 実際に検査する範囲 | 製品機能と混同しないこと |
+| --- | --- | --- |
+| `internal/semantic/validationgen/positive_surface_identity_test.go` | `TestSameRuleFromTwoProductSurfacesGeneratesIdenticalGoButDistinctSourceEvidence`：別WorkspaceのMarkdown／従来構文を実`Workspace.Load`し、型付きRule・生成Goのbyte一致・異なるSource Evidence・説明文変更後のIndex失効を比較 | 追加の正式Reader、業務Ownerの意味受理、現在Grant |
+| `internal/semantic/validationgen/positive_ast_projection_test.go` | `TestGeneratedPositiveASTHasTraceableReadAndDecision`および`TestGeneratorSourceAndGeneratedDecisionRemainDistinct`：生成GoからRead先・回数・厳密な正値条件・NULL／失敗分岐・Go側byte位置を観測 | 汎用Code-to-Model解析器、編集可能DSL、正式Builder／実Provider |
+
+いずれも**テスト内に閉じたread-only観測**であり、製品が返す共通ViewModelやStudioの公開APIではない。提案PR #4973／#4986はclosed／unmergedであるため、変更の来歴は実Blobとmainの履歴で検査する。今回の静的確認だけで、対象HEADのGoテストがPASSしたと主張しない。
+
+### 10.2 原Sourceの位置と生成Goの位置を同じものにしない
+
+最初の結合で守るべき条件は、**原記述→型付きRule**と**生成されたGo→Go AST**が、それぞれ異なるSource対応であることだ。Goの`Source.Number`に付くbyte offsetは生成Goファイル内の位置であり、`*.tei.md`や`*.tei`のRule出現位置ではない。二つの異なるDSLから同じGoが生成されても、その位置を元Sourceへ流用すると誤った編集対象を選んでしまう。
+
+最小のread-only照合では、次の情報を既存の構造から取得し、検証時の一時的な比較票に保持する。新しい永続Schemaは作らない。
+
+| 観測の段階 | 既存構造から確認すること | 結合を止める条件 |
+| --- | --- | --- |
+| 元Source | Workspace Root、選択Reader／版、Source Index・元byte・Rule Range、World／Modelの版 | Reader未束縛、旧Index、別Rootや不完全な出典 |
+| 意味の候補 | `semantic.Validation`のID/Kind/Attribute/Relation、型解決済み`std.decimal` | 名前や表示ラベルだけの一致、型の不一致 |
+| Target生成 | `GeneratePositive`への実入力、Generator版、生成Goの実byteとDigest | 旧出力・別Target・別Generatorを現行として流用 |
+| Go構造 | その生成GoのASTによるRead、正値分岐、NULL／Error／Return、Go側Span | 未観測Effectや間接Callを業務上の事実に昇格 |
+| 実Consumer | R2実Builder入力、Artifact／Image、R3実Provider選択・Attempt、受領先 | ローカル`go run`／テストの成功を製品受理と同一視 |
+
+同一型付きRule・同一生成Goは、**Meaning候補とTarget出力に限った等価性**である。原文・Reader・Source位置・現在性は引き続き各Sourceに所属する。Go ASTとDSLの間に完全な双方向対応があるかは別に検証する。
+
+### 10.3 次の実装Packetを一つに絞る
+
+次は、既存の二テストを拡張して**「選択済みRuleの原Source Rangeと、同じRuleから生成したGoのAST上のRead先・条件」を一試行で照合する**、I2M-1の限定回帰を追加する。まず一Rule・一Attribute・一生成Functionに限定し、試験内の導出情報をそのまま公開製品APIにしない。
+
+独立Expectedは、(1)正常な型／Rule ID／二種類のSpanの結合、(2)同じGo byteを持つ別Sourceの出典分離、(3)説明改版だけで旧Source Indexが失効すること、(4)属性変更で旧GoのRead先との結合を拒否すること、(5)比較演算子`> 0`→`>= 0`や失敗Return削除の検出、(6)部分Index／同名異ID／異Workspaceの扱いをそれぞれ別にする。
+
+**注意**：最初のGoテストが観測できるのはWorkspace／Source Index／型／生成byte／ASTの範囲である。Host Grant、古いBrowser Event、実DB、Builder選択B／実行A、WindowsのStage2は同じ回帰でPASSにできない。未接続は`NOT RUN／unknown`として残し、それぞれ既存の検証Ownerへ返す。Sourceからの独立ExpectedをAIが自己承認しない。
+
+### 10.4 Studioへの投影と、一般化を止める基準
+
+[Web標準UI設計§14](WEB_STANDARD_COMPONENT_AND_AGENT_HARNESS_2026-11.md)の既存`tei:inspector-selection-request`は、利用者の選択Intentを渡すだけである。現在のInspectorに存在しない生成GoやASTの列を**想像で補って表示しない**。まず現行Product InspectとPresenterのFit/Gapを確認し、取得できない列は未取得・未接続と表示する。Goテスト内部の観測器をフロントエンドへ直結するために新Host／Registryを設けない。
+
+Markdown表・Graphviz・Node ViewのProjectionは、それぞれ省略した情報と逆編集可能な範囲を明示する。Goの変数名やGraph描画IDを業務RelationやRule occurrenceの正本にしない。別Sourceの対応が曖昧ならread-onlyに留める。
+
+判断の移転は、生成コード行数や図面数ではなく、**TEI定義で表現・変更・独立検証できるようになった実装上の義務**の増加と、残る手書きGo／差分調整／レビュー費用で測る。二つ目の異質Domainで有益性が確認できるまでは、汎用Go解析器や新Core型を採用しない。
+
+実装のOwnerは#2621（Reader）、#1121（Generator）、#4544（Builder）、#4495（Provider）、#1824（Studio）、#1180／#2514（独立Expected）。**正式Reader→実Builder→通常CLI実Provider、および非Plugin Studio Stage1→Stage2 WindowsのP0を優先**し、I2M-1を新たなHard Gateにしない。
