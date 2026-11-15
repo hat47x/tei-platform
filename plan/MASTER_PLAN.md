@@ -2686,6 +2686,16 @@ Studio／SHO／SUI／AIが同じ意味候補を提示しても、編集資格は
 
 **優先順位**：通常CLI実Provider初回Read #2586とDesktop Stage1→Stage2 #2831は変更しない。この修正自体は実組織人物数やCase承認の完成を示さない。
 
+
+<!-- org-c1-duplicate-revision-real-pg-20261115 -->
+### 2026-11-15 組織C1：同一Membershipの訂正旧新版が共存できない物理制約を実DB負例で固定（補遺§37）
+
+[組織C1設計§37](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)に、**二時点Queryの局所成功と、同じMembershipの改訂版を並存保存できることは別資格**であると明記した。現行`membership_id`単独PKと一致する使い捨てPostgreSQLで、A2旧版（配賦0.60）を保持したまま、同じA2の新認識版（配賦0.90）を挿入するとSQLSTATE `23505`で拒否され、元の行が維持される負例を追加する。実Workspace QueryのInputとSQL Placeholderの集合も同一ソースから突き合わせ、§36で発見した取り違えの再発を防止する。
+
+- **検証**：既存`TEI_ORG_AXIS_PG_DSN`隔離DB Workflowの明示PASSでMVR-02の**現行方式の失敗を確認した**ときだけ実測とする。`SKIP`・コンパイル失敗・別領域の成功を代用しない。負例がPASSしても訂正版の並存保存機能の合格ではない。
+- **意味Ownerの停止線**：#2386/#1126のMembership occurrence／版ID／Person Link・訂正と兼務の意味受理なしに複合PK・履歴表・枝番を勝手に採用しない。候補方式の独立Expectedと保存・再読込（MVR-01〜05）は#1180/#2514/#4490の既存受入へ引き渡す。
+- **製品P0**：通常`tei` CLI実Provider Read #2586、正式`*.tei.md` Readerと生成Go、Studio Stage1→Stage2 #2831は別工程で継続。新Temporal Engine／第二Expected Store／汎用Hostを導入しない。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
