@@ -299,3 +299,87 @@ DC-13〜20は既存#1180／#2514に渡す**反証候補**であり、今回新�
 成熟度は構文数やノード数でなく、重複しない意味定義の再利用率、接続の誤受理と余分なReadの減少、失効範囲の精度、実Builder消費・独立Consumer観測、同じ機能の定義量と診断手数の削減で測る。
 
 **本追補の受入上限**：診断の設計と反証候補。製品互換性判定器、R2／R3、Source逆編集、Owner意味受理、Studio Stage2の実装を完了したと主張しない。
+
+## 18. 宣言の役割を表記形式から切り離す（2026-11-15横断追補）
+
+### 18.1 同じMarkdown表でも、定義・事実・要求・実現・観測は異なる
+
+横断設計の共通結論は、**表記を統一するのでなく、記述内容の役割と、受理後にどの契約へ接続するかを統一的に説明する**ことである。Markdown／SQL／Mermaid／関数チェーン／Node Viewを、同じ万能Grammarに変換することは目標ではない。
+
+| 文書・構文の役割 | 具体的な対象例 | 既存の受け皿・受入条件 | してはならないこと |
+| --- | --- | --- | --- |
+| **定義（Definition）** | 異動申請の項目定義表、受注明細のRule、Relation定義 | 選択Reader／明示Roleから既存Data／Validation／Relationへ。Definitionと出典位置を一意にする | 表に見える任意の記録をData宣言に変える |
+| **事実（Instance／Observation）** | ある人物の所属履歴、ある時点の注文、計測結果 | Data Context／Providerから、業務キー・値・取得範囲・時点・出典を確認 | 事実の一行をSchemaやRuleとして採用する |
+| **成果要求（Desired Result）** | 店舗×日次売上、二つの異なる粒度の帳票、APIの応答 | 要求粒度、評価範囲、集約範囲、取得完全性、品質、利用者を既存Query／Function／Processへ接続 | 要求しただけで物理計算や公開が完了したとみなす |
+| **実現選択（Realization）** | Operator実装選択、Plugin Provider、Target Generator | Contract、Scope、選択実装・Lock、Builder実入力、Artifactを別々に追う | 選択済みを実呼出し済みや現在の実行許可に置換する |
+| **実行・受領の記録（Evidence）** | 実Call、DB Readback、Receipt、独立Consumerの受信 | 実Attempt、現在の対象／版、観測範囲と完全性、受領先を確認 | ログ不在から無実行を断定したり、別AttemptのPASSを足す |
+
+これは説明のための**役割区分**であり、五つのCore型や第二の文書Engineを採用する提案ではない。既存のSource Roleと各OwnerのSemantic、Execution／Evidence契約に割り当てる。
+
+異動申請の表を例にすると、**項目の名前・型・必須性**を列にした表は定義候補である。一方、「人Aが部署Bへ異動した」という行は記録であり、通常はData InstanceとしてProvider／Queryから読む。さらに「各部署の人数を有効日時点で求める」という表は結果要求となる。同じ表構文を使うという理由で三者を合流させない。組織の有効時点と記録・観測時点、所属と申請・現在Grantも区別する（#2386／#4501）。
+
+### 18.2 文書からMeaningへ入場させる条件
+
+選択済みSourceから既存Meaningへ至る入口は、次の順序で検査する。全体に共通する新しいReaderやAdmission Storeを設けない。
+
+1. **対象と形式の選択**：Workspace identity／epoch、Source path、原byte、選択Language ID／版、Source occurrence、Definition／Reference／Example等のRoleを固定する。見出し名や表の列名だけで、採用するReaderや意味を推定しない。
+2. **Roleに対応する既存受け皿の確定**：Data定義表はData、Rule文はValidation、実記録はProviderのInput、成果要求はQuery／Function／Result契約等へ引き渡す。受け皿のない記法はunsupported／候補として扱う。
+3. **意味・同一性の照合**：既存ID、型、Key、Relation、単位、粒度、時点、NULL／欠損／未取得、Source位置を、必要な対象について検査する。同じCanonical IDの二重Definitionを表層の優先順位で黙って解決しない。
+4. **変更と投影の境界**：元表面の文面とSpanを保ち、無損失の編集Slotだけを別途資格化する。見せられるが逆編集できない図や要約はread-onlyとし、no-op Saveはbyte不変を基準にする。
+5. **製品経路の受入**：SourceをLoadできること、型付きMeaningが一致すること、実Builderが生成Goを消費したこと、選択実装が呼ばれたこと、Consumerが結果を受領したことを別の試験とする。
+
+既存の内蔵Rule Reader（tei.rule-authoring/v0）は実製品Loaderの基線である。PR [#5010](https://github.com/hat47x/tei-platform/pull/5010) は、明示されたData項目定義表を読み、既存Dataへ接続する提案として参照する。**この追補の確認時点でPR #5010は未マージ**。同PRが提案する言語名や表構文を本設計で正式採用しない。Source種類が増えた場合でも、Readerの選択・既存Meaningとの同値・元位置・重複拒否・正本選択をそれぞれ検収する（#2621／#4359／#988）。
+
+## 19. 適格性診断と実行の受入結果は異なる
+
+### 19.1 接続候補の三判定と、実証の六状態を混同しない
+
+§14の「成立を裏付ける／矛盾／判定材料不足」は、**接続A→Bの要求と保証についての設計時の判断**である。一方、既存の検収票のPASS／FAIL／NOT RUN／UNSUPPORTED／UNKNOWN／STALEは、**指定された実経路を検証した際の状態**である。互いに一対一対応しない。
+
+たとえば、型とSourceが一致した接続は構造上「成立を裏付ける」と表示できる。それでも実Providerの呼出しはNOT RUNかもしれない。Providerが実行されていてもReceiptが欠落すればEffectの結果はUNKNOWNとなる。以前PASSしたProducerがSource改版でSTALEになった場合、古い結果を現在の接続資格に流用しない。未選択Providerは実装選択の不足であり、型矛盾と混同しない。
+
+**判定票の最小項目**（現行Schemaの新設ではなくread-only照合用）：問い／Workspace ID・epoch／Subject ID・Source occurrence／Role・Reader／要求する保証／実際に確認した保証／既存Owner／当該Source・Revision／観測範囲・時点／判断理由／次に不足する証拠／現在Disclosure。生成・実行・受領の欄は実物がある場合だけ関連Attempt、Artifact、Provider、Consumerを記す。
+
+一つの画面に一覧・ノード図・文章説明を同時表示しても、同じ判定票の異なるProjectionとし、UIの線や位置からMeaningやGrantを生成しない。見る人に開示してよい情報と、編集・実行を許してよい情報も別に検査する。
+
+### 19.2 三つの異種接続で受理条件を確かめる
+
+| 接続候補 | 保持したい意味 | 静的に検査するもの | その後の独立受入 |
+| --- | --- | --- | --- |
+| **Data項目定義表 → Rule** | 対象Attribute、型、元Sourceを保つ | Data定義とRuleが別Sourceでも、同じWorkspace・Canonical ID・型へ解決されるか | Ruleの評価Read要求・生成Go・型不適合・旧契約拒否を独立Expectedと比較。実Providerは別 |
+| **Rule → Desired Result／Node** | 条件を使った結果と、条件に使う入力範囲を分ける | Ruleの真偽と結果の粒度・NULL・Read Scope、EdgeのData／Control役割 | 無断集約・未取得→0件・図の線→Triggerの誤昇格を拒否。実Build／実Consumerは別 |
+| **Operator宣言 → 実装選択 → CLI** | 契約に合う選択と、実際に呼ばれた実装を分ける | Operator ID／版、Workspace manifestの選択、対応関数、実装候補の一意性 | 選択B／実Call Aの負例、古い選択／生成Commandの失効、実Host・Grant・Consumerを別に検証 |
+
+PR [#5007](https://github.com/hat47x/tei-platform/pull/5007)では、WorkspaceにおけるOperator実装選択と局所的な実Call観測がmainに統合された。一方、同PRの説明でも、生成済みCommandの選択ID固定、一般Plugin Lockからの選択、通常CLI全経路の受入には残差がある。**選択実装を観測できた局所試験と、Pluginの製品E2Eが成立したことは別**として扱う。
+
+## 20. 最小の縦断と作業の出口
+
+既存のR1-M／R2／R3、Node N0〜N4、Studio Stage1→Stage2、I2M-1、#1180／#2514に接続し、新しい並行ロードマップやHard Gateは作らない。
+
+| 順序と引渡し | 対象・成果物 | 独立の反証と終了条件 |
+| --- | --- | --- |
+| **A：Reader境界を確定**（#2621／#988） | 選択済みRuleと、必要に応じて受理されたData項目定義表から同一既存SemanticとSource Indexを得る | 定義表と記録表を混同しない。二表層で同一ID・同一Meaningなら二重Definition拒否、別Workspaceの同名を合一しない |
+| **B：局所診断を一つだけ生成**（#1124／#2497／#4198） | quantity_positive一RuleのSource・Role・型・Read・接続理由・不足証拠を、CLI／Inspectorが参照できるread-only投影として表示 | 図・表・説明が暗黙DispatchやProvider成功を主張しない。曖昧なSpan、LossのあるEdgeを逆編集させない |
+| **C：製品生成と呼出しを分けて証明**（#4544／#2595／#4495／#951） | R2は生成Go実byte→実Builder入力→Artifact→別Consumer。R3は選択Provider→通常製品CLIでの実Call | 同じRule／Attemptを照合できない間は一連の成功とみなさない。選択と実Callの不一致、古いCommandを検出 |
+| **D：Studioで同じ問いを観測**（#1824／#2831／#4583） | PinしたWorkspace・Subject・Source版を、実Windows Stage2のInspectorと生成物へ結ぶ | Pin／遅着／ABAの反例、実Windows WebView2の受領、Stage1によるStage2の再構築を別々に検収 |
+
+**最初の着手はAの既存基線確認とBの一Rule read-only診断だけ**とする。実装可能性を調べるために、Data表・Rule・Operatorの全汎化構文を同時採用しない。構造の同値検査を製品Builder／ProviderのP0完了条件へ追加しない。
+
+### 20.1 既存Expectedへ渡す一因子反証候補
+
+| ID | 変更 | 拒否／保存すべき境界 |
+| --- | --- | --- |
+| DC-21 | 同じMarkdown表でRoleだけをDefinition→Instanceへ変更 | 表の外形一致からData宣言を自動生成しない |
+| DC-22 | 同じData IDをMarkdown表と従来DSLから二重に定義 | Readerの優先度で片方を黙殺せず、二重Definitionを拒否 |
+| DC-23 | 同じ型とKeyの成果要求についてGrainだけを注文→注文明細へ変更 | 型一致と集計結果の同値を混同しない |
+| DC-24 | 取得0件がcomplete→partialになる | 不在やRuleの適用対象不存在を確定しない |
+| DC-25 | 実装選択Bのまま局所Call先をAへ差替え | 結果値が同じでも実Callの不一致を検出 |
+| DC-26 | 同じSourceへA→B→Aで戻し、古いCommand／Source Indexを渡す | byte一致だけで実装選択・実行・開示の現行資格を復活させない |
+
+いずれも**未実行の候補**であり、追加のScenario正本は設けない。#1180／#2514の独立Expectedに割り当てる際は、実装から期待値を作り直さず、正例・負例・観測Owner・受入の上限を先に固定する。
+
+### 20.2 汎化の成果を測る
+
+表現形式の数ではなく、(1)定義と記録の誤読取を防げるか、(2)同じ意味定義をRule／表／Node／CLI／Studioへ再利用しても正本が増えないか、(3)失効・不足・禁止を原因つきで説明できるか、(4)実際の生成・Builder消費・Provider呼出しが増えたか、(5)新機能に要するDSL量・手書きGo量・変更手数が減ったかを測る。二つ目の異質な領域でも有効になるまで、汎用Writer／Optimizer／新Core型の採用判断は保留する。
+
+**この追補は実装前の設計判断と作業引渡しであり、PR #5010のLanguage仕様採用、GUI Writer、Rule／Data表の汎用逆編集、R2／R3、Stage2セルフビルドの実証ではない。**
