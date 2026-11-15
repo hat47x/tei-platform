@@ -909,3 +909,24 @@ W0の次の**一つのコードPR**は、現在の`main.ts`／`index.html`／Pin
 また、製品S0-Aの最初の実装は[自己記述§47.5](ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md)の**A0→A1→A2→A3**の順に限定する。A0で実Manifest／受理済みContract／Lockに基づくProduct Language Selectionの接続が存在しなければ`unsupported`で止め、Reference`ParseSelected`へ合成Pinを与えて製品選択と偽装しない。A1以降は実`Workspace.Load`の同一元byte・位置つき候補、旧`*.tei`互換と未選択拒否を検査する（#988/#1018/#2621）。
 
 **現在資格**：これは現行mainのBlobと参照HTML・埋込HTMLの直接照合を設計と既存実装計画へ反映したもの。Go／Node／Windowsの新しい実行結果、製品Source Reader、Doc Read、実Provider、Stage2、Updaterの新PASSではない。必要なExpectedは既存#1180/#2514で管理し、第二のRegistry／Test Runner／Hostは作らない。
+
+### 29.7 内蔵Rule言語の製品Readerを検収し、一般Language拡張と区別する（2026-11-15）
+
+§29.6ではProduct側に正式Language選択がない段階を記録した。その後のmain merge `7921b005a44d325983d24ca2b8b58b0737dd778d` で、**`tei.rule-authoring/v0`の内蔵Markdown ReaderがProduct `workspace.Load`へ接続**された。従来の「`*.tei.md`は一律未接続」という説明は、**現在の内蔵Rule言語には当てはまらない**。一方、Reference Graphの`ParseSelected`、外部Language Plugin選択、受理Meaning、実Generator／Providerをこの成功へ包含しない。
+
+**実装されたA0〜A3の限定範囲**を、次のように捉える。
+
+| 段階 | 今回の実Goにある具体的な経路 | 製品受理の上限 |
+| --- | --- | --- |
+| **A0：言語選択** | Workspace Manifestの`languages: [tei.rule-authoring/v0]`を`AuthoringLanguageSelection`として解析し、`builtinAuthoringLanguageProviders`から`tei.builtin.rule-authoring-markdown`を一意に選ぶ。選択なし、実装なし、複数候補は明示拒否 | **内蔵Reader選択**は実装済み。外部PluginのContract/Resolver/Lockで実装を選ぶ一般機構は未実装 |
+| **A1：定義の取得** | `semantic` Root下の`*.tei.md`を、選択した実装が`readSourceForLoad`で読み、`ScanTEIMarkdown`の正確な`tei` Fence内のみを`ParseRuleAuthoringAnchored`へ渡す | `semantic.Validation`へ変換するRuleに限定。散文、非`tei` Fence、別言語のGraph/Windowを暗黙解釈しない |
+| **A2：出典の保持** | 同じLoadで読んだByteと、各Rule IDの`sourceAnchors`を`BuildSourceIndexFromLoad`へ渡し、`semantic-validation`のArtifact・Byte Rangeを作る。実消費件数は`AuthoringSources`に残す | 出典位置はReaderの観測事実。Owner意味受理、原文Openや編集Grant、全Workspaceの原子的Snapshotは別 |
+| **A3：拒否と互換** | 選択のない`*.tei.md`は`TEI_MD_PARSER_UNBOUND`。未知Contract、曖昧実装、曖昧Source所有者、定義不整合もFail Closed。既存`*.tei`の読み取りは独立に維持 | 「選ばれた`tei.rule-authoring/v0`一件で成功」と「選択なしでは拒否」を**異なるWorkspace**で検査し、拒否ガードを削除しない |
+
+この限定Product経路の正負を固定するため、今回`internal/workspace/tei_md_rule_product_evidence_test.go`を追加した。既存`internal/workspace/testdata/tei-md-rule`を**そのまま**使用し、実Loadの`AuthoringSources`が1件、`tei`定義領域が2件、Ruleが2件であること、`ManagedFiles.ReadByLoader`が真であること、Source IndexのArtifact Fingerprintと二つの`semantic-validation`のByte Rangeが**実元Byteと一致**することを検査する。別Workspaceで同一Markdownを選択なしに配置し、`TEI_MD_PARSER_UNBOUND`が残ることを確認する。**新テストのPASSは対象PR exact HEADのGo CI結果を取得するまでは未確定**とする。
+
+次のTEI-native自己構築は、この限定成功を**実装可能な最初のAuthoring能力**として再利用する。まず`tei.rule-authoring/v0`一件のRuleを既存Validator/Evaluatorへ渡した上で、当該RuleがGenerator／Pluginへどう入力されるかを`#1121/#4544/#2621`へ、実生成Goと選択Providerの通常CLI呼出しを`#1251/#4495`へ引き渡す。Sourceの位置一致や`semantic.Validation`への格納だけでは、実行結果とConsumerの資格を代替しない。Graph/Windowまで拡張する場合は、既存の`languages`解決・Source Index・独立Expectedを再利用し、暫定的な自動Parserや第二Registryを導入しない。
+
+並行するStudio W0では、main統合済み[#4869](https://github.com/hat47x/tei-platform/pull/4869)によりHost `authorityLimits`のPin Fixture不一致が修正された。一方、参照`main.ts`の`unpin-current`/`inspect-pinned`とHTMLの`pin-release`/`pin-check`の不一致を直す[#4876](https://github.com/hat47x/tei-platform/pull/4876)はDraftであり、現行mainの配布HTML/JSとの差分と**別の障害**である。修正は(1)参照HTMLとHandlerの一致、(2)Reference Node24全試験・生成、(3)現行正規Bundle/Go EmbedのByte一致、(4)実Windows WebView2受領の順。**通常のWindows SmokeもStage1がStage2を作った証拠ではない**。
+
+**本節の境界**：選択内蔵Readerの実装と追加テストは、業務意味の受理、外部Language Pluginの実選択、Graph/Window一般Reader、公開Manualの実Read、実Provider、非Plugin Studio Stage1→Stage2、Updaterの成功を意味しない。実Readに関する新しい証拠は本PRの`internal/workspace`テストの結果と独立Expectedに限って判断する。
