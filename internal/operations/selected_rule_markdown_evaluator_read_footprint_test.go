@@ -151,7 +151,6 @@ func TestSelectedMarkdownRulesDriveEvaluatorReadFootprint(t *testing.T) {
 	}
 }
 
-
 // fixedRuleMutationSource is one unchanged input dataset for both Rule versions.
 // A changed result is therefore attributable to the authored Rule's read target,
 // not to editing the data or substituting a different Provider.
