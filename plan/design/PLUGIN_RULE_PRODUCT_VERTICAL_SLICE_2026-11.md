@@ -382,3 +382,18 @@ Ruleの原文と生成Goを同じBuild入力へ収録できても、**入力の�
 複合型の全体連結、項目単位の連結、Adapter経由の変換は、標準の型付きMappingへ委ねる。各段で型、NULL／欠損、多重度、変換後の意味とEffectを保持し、**型が適合することと権限があることを別々に判定する**。CLI、MCP、Wails Desktopの入口は共通Operationへ接続するが、WailsをSemantic CoreやAPI Pluginの必須Hostにしない。
 
 **実装状況の境界**：選択済みRuleの生成Go→実Builder→Binaryと、同一Ruleの汎用Evaluator比較の限定的な証拠は既にある。一方、正式R3 Entry→選択Providerの実Call、両方式の実行時選択を拒否する負例、独立した二Consumerでの実利用、Windows Studio Stage2は未検収である。新しい統一Runner、万能Interpreter、第二の意味正本は導入しない。まず既存のEvaluator／Generator／Scenarioの試験へ負例を追加する。
+
+### 14.17 BuildPlan解決後の入力変更を正式CLIで拒否する
+
+§14.14の`requireSelectedGeneratedGo`は、生成結果をGo packageへ配置した**その時点**の一致を検査する。一方、`buildintent.Resolve`が実byteを取得してPlanを決めた後、BuilderがSourceを読むまでに内容が変わった場合、配置時点の照合だけでは検出できない。そこで既存の`TestSelectedRuleGoThroughRealCLISelfBuild`を一つの反例で拡張し、**選択したPlanに含まれる生成Goと実Builder入力が時間差で食い違う場合**を確認する。
+
+試験は、同じ`Workspace.Load`と`GeneratePositive`で選んだRuleから`generated.go`を作成し、実`Build Intent`を解決した後にだけ、Goの判断結果を変えないコメントbyteを一行追記する。**古い`plan.json`を渡した通常`tei self-build`の実CLI試行が失敗し、合格のL2-bと公開可能なArtifactを残さないこと**を要求する。その後に選択された元byteへ戻し、同じCLI→Builder→実Binaryの正・ゼロ・負・NULL・未取得の正例を維持する。
+
+| 時点 | 正例・負例の条件 | 受入の上限 |
+| --- | --- | --- |
+| 選択・生成 | Rule ID／型／Readerと生成Goが一致 | 出典の現在性と業務意味受理は別 |
+| Plan解決 | BuildIntentから生成Goを含むGo packageを選ぶ | `definitionSource`はGo Entrypointのまま |
+| **Plan後・Builder前** | Go byteだけ変え、元Planをそのまま使う | **CLI/Builderによる実入力不一致の拒否**。配置時のGuardだけでは代替不可 |
+| 復元・実Build | 元byteを再配置し、実CLIからBinaryを受領 | 当該Go packageに限ったR2-Pの追加検査 |
+
+これは新たなBuild/Source Schemaや常駐監視器ではなく、**既存Plan・Builder・Artifact照合の時間的な停止線**を一つ実測する回帰である。Generator実装版や元MarkdownのA→B→A改訂による資格失効、実Provider／現在Grant、Windows Studio Stage1→Stage2はこの試験だけでは成立しない。Go test単体の結果は変更HEADで確認し、リポジトリ全体のHealthとは分けて記録する。

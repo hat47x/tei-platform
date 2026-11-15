@@ -226,6 +226,50 @@ func TestSelectedRuleGoThroughRealCLISelfBuild(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// A preflight byte check alone cannot establish what the Builder will
+	// consume. Mutate generated.go *after* the exact BuildPlan was resolved,
+	// while retaining its original plan.json and intent. The normal CLI must
+	// refuse the stale-plan attempt rather than publish a different image.
+	lateGo := append(append([]byte(nil), generated...), []byte("\n// changed after BuildPlan resolution\n")...)
+	if err := os.WriteFile(generatedPath, lateGo, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	lateArtifact := filepath.Join(root, "late-changed-rule-command")
+	lateCmd := exec.Command(cli,
+		"self-build",
+		"-workspace", workspace,
+		"-intent", "tei.command.tei",
+		"-intent-file", intentPath,
+		"-build-catalog", catalogPath,
+		"-build-catalog-digest", catalogDigest,
+		"-build-source-root", repoRoot,
+		"-child", builder,
+		"-child-arg", string(args),
+		"-state", filepath.Join(root, "late-changed-state"),
+		"-output", lateArtifact,
+	)
+	var lateStdout, lateStderr bytes.Buffer
+	lateCmd.Stdout, lateCmd.Stderr = &lateStdout, &lateStderr
+	lateErr := lateCmd.Run()
+	var lateReport l2bGoBuildResult
+	if err := json.Unmarshal(lateStdout.Bytes(), &lateReport); err != nil {
+		t.Fatalf("stale-plan CLI did not return JSON: run=%v decode=%v\n%s\n%s",
+			lateErr, err, lateStdout.String(), lateStderr.String())
+	}
+	if lateErr == nil || lateReport.OK || (lateReport.L2B != nil && lateReport.L2B.Claimed) {
+		t.Fatalf("post-plan change in generated.go was accepted: run=%v report=%+v\nstderr=%s",
+			lateErr, lateReport, lateStderr.String())
+	}
+	if _, err := os.Stat(lateArtifact); !os.IsNotExist(err) {
+		t.Fatalf("failed late-change attempt left a publishable artifact: %v", err)
+	}
+	if err := os.WriteFile(generatedPath, generated, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := requireSelectedGeneratedGo(generatedPath, generated); err != nil {
+		t.Fatalf("restored generated Go does not match the selected Rule: %v", err)
+	}
+
 	artifact := filepath.Join(root, "rule-command")
 	cmd := exec.Command(cli,
 		"self-build",
