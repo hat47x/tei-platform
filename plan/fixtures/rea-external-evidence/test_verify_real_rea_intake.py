@@ -21,8 +21,9 @@ def evidence_bytes(with_graph):
     data = {"evidence_id": "ev-test", "normalized_result": {}}
     if with_graph:
         data["normalized_result"]["semantic_graph"] = {
-            "nodes": [{"node_id": "node-1"}],
-            "relations": [{"relation_id": "relation-1"}],
+            "nodes": [{"node_id": "node-1"}, {"node_id": "node-2"}],
+            "relations": [{"relation_id": "relation-1",
+                           "source_node_id": "node-1", "target_node_id": "node-2"}],
         }
     return json.dumps({"ok": True, "data": data}).encode("utf-8")
 
@@ -116,6 +117,54 @@ class RealREAVerifierBoundaryTests(unittest.TestCase):
                 {"relation": "imports"}]
             path = self.save(directory, json.dumps(document).encode())
             self.assertIsNone(verifier.selection_from_evidence(path))
+
+    def test_unrelated_first_node_is_not_selected_with_relation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            document = json.loads(evidence_bytes(True))
+            nodes = document["data"]["normalized_result"]["semantic_graph"]["nodes"]
+            nodes.insert(0, {"node_id": "unrelated-first"})
+            path = self.save(directory, json.dumps(document).encode())
+            self.assertEqual(verifier.selection_from_evidence(path),
+                             {"nodeID": "node-1", "relationID": "relation-1"})
+
+    def test_relation_with_no_observed_endpoint_is_not_projected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            document = json.loads(evidence_bytes(True))
+            relation = document["data"]["normalized_result"]["semantic_graph"]["relations"][0]
+            relation["source_node_id"] = "unknown-source"
+            relation["target_node_id"] = "unknown-target"
+            path = self.save(directory, json.dumps(document).encode())
+            self.assertIsNone(verifier.selection_from_evidence(path))
+            report = {"checks": [], "notRun": []}
+            calls = []
+            with mock.patch.object(verifier, "tei_json", side_effect=self.fake_cli(path, calls)):
+                verifier.verify_common("tei", path, "6.8.0", None, report)
+            self.assertEqual([call[0] for call in calls],
+                             ["rea-evidence", "rea-evidence"])
+            self.assertTrue(any("NOT RUN" in reason for reason in report["notRun"]))
+
+    def test_relation_can_select_observed_target_when_source_is_missing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            document = json.loads(evidence_bytes(True))
+            relation = document["data"]["normalized_result"]["semantic_graph"]["relations"][0]
+            relation["source_node_id"] = "missing-source"
+            path = self.save(directory, json.dumps(document).encode())
+            self.assertEqual(verifier.selection_from_evidence(path),
+                             {"nodeID": "node-2", "relationID": "relation-1"})
+
+    def test_duplicate_producer_ids_cannot_choose_an_arbitrary_occurrence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            document = json.loads(evidence_bytes(True))
+            graph = document["data"]["normalized_result"]["semantic_graph"]
+            graph["nodes"].append({"node_id": "node-1"})
+            path = self.save(directory, json.dumps(document).encode())
+            with self.assertRaisesRegex(AssertionError, "duplicate producer node IDs"):
+                verifier.selection_from_evidence(path)
+            graph["nodes"].pop()
+            graph["relations"].append(dict(graph["relations"][0]))
+            path.write_text(json.dumps(document), encoding="utf-8")
+            with self.assertRaisesRegex(AssertionError, "duplicate producer relation IDs"):
+                verifier.selection_from_evidence(path)
 
     def test_malformed_graph_is_not_silently_downgraded(self):
         with tempfile.TemporaryDirectory() as directory:
