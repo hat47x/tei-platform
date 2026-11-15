@@ -139,8 +139,6 @@ PoCを漫然と横展開しないため、まず一つのInspectorについて�
 
 **未確認の実績**：現行mainでのLit実装、Modern Web Guidance導入済みCI、PR #4628の採用、Wails v3.1.0移行、実OS全対象のCSS合格、TEI定義からのWeb Component完全自動生成とStage2実Windows Consumer。これらを本書の存在だけでPASSにしない。
 
-
-
 ## 9. Studio実装に直結する縦断計画（2026-11-15追補）
 
 ### 9.1 先に決めるのはフレームワークではなく、何を共通化するか

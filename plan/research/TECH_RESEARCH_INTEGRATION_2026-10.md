@@ -1605,3 +1605,52 @@ Cの成立には、**変更したRuleの意味から少なくとも一つの判�
 なお、[PR #4885](https://github.com/hat47x/tei-platform/pull/4885)のexact HEADのCache CIは成功、Repository Healthは失敗であった。直近の[#4890](https://github.com/hat47x/tei-platform/pull/4890)のCIでもCache成功に対し一部Studio／Self-build系が失敗し、全Workflowの確定を待つものがあった。これを本研究計画のPASSとせず、実コードPRを統合する際には、そのPRのHEADでGo build・対象テスト・必要な製品入口を確認し、別レーンの失敗原因と分離する。未接続db-introspect入口の修正候補[#4895](https://github.com/hat47x/tei-platform/pull/4895)／[#4896](https://github.com/hat47x/tei-platform/pull/4896)は**競合する別方針**であり、本計画で一方を勝手に採用・重複マージしない。
 
 **この追補の性格**：既存研究計画に具体的な比較実験と受入判定を引き渡す。新しいRule→Go生成の実行、通常CLI／実Provider、Graph Reader、Window C1/C2、独立Consumer E2E、Stage2全体、業務Owner Meaning受理は**今回NOT RUN／NOT PROVEN**。
+
+### 16.18 ノードベースの構成を標準Operatorとプロセスモデルへ接続する
+
+Wailsの[ESP Studio紹介](https://wails.io/docs/community/showcase/espstudio/)と[Node-REDの基本概念](https://nodered.org/docs/user-guide/concepts)・[ノード開発](https://nodered.org/docs/creating-nodes/)は、視覚的な接続と再利用可能な処理部品がIoT／イベント駆動アプリケーションに有効な設計例である。一方、ノード専用の新言語・新Runnerを作ると、通常のTEI Function／Process Flow／CLI／Generatorと別体系になる。この用途では**ノードを意味の正本とせず、標準Operator／Function／Entryなどの型付き契約をGraphに投影する**方向を研究採用候補とする。具体的なNode-RED互換、ESP Studio採用、Cloud運用は未決定。
+
+既存の標準データ構造（Record、Collection、Relation、Graph、Event、時系列等）と[#2495](https://github.com/hat47x/tei-platform/issues/2495)のFacet、[#2620](https://github.com/hat47x/tei-platform/issues/2620)の意味Roleを先に使う。Nodeは対象を参照するOccurrenceであり、**Operatorの定義**（入力／出力／型／Error／Effect／実装候補）と、**Flow内のNode配置**（識別子／Port binding／接続）と、**Canvas上の見た目**（座標／折畳み／色）を分離する。あるOperatorをFlowから外しても、Function、Script、通常API、表形式の関数チェーンから同じ契約で利用できることを第一の再利用条件とする。
+
+Graphには構造上のEdgeと意味上のEdgeを混同させない。少なくともデータ依存、制御遷移、イベント配送、状態参照、Effectの順序制約はRoleで区別する。同じ有向Graphでも、DAGとしての処理、循環を持つ状態機械、長寿命のイベントストリーム、業務の承認Flowは異なる実行規則を持つ。閉路を一律禁止／許可せず、採用されたFlow Roleと実行契約に基づき検査する。多重辺・同名Node・Portごとのcardinality／順序・NULL／missing／unfetched・Error経路を勝手に一つへ潰さない。
+
+### 16.19 最小の再利用単位と、Service／Node群の導入順
+
+| 部品群 | Nodeとして提供する候補 | Nodeを使わない再利用先 | 導入時の確認事項 |
+| --- | --- | --- | --- |
+| 純粋変換 | 型付き入力、Map／Filter／Join、Rule評価、単位換算 | TEI Function、Query、Generator、CLI | 決定性、NULL／欠損、範囲、順序、多重度、Source span |
+| Flow制御 | 分岐、結合、反復の明示条件、エラー分岐 | 業務Process、Script、Scenario | 条件評価・未解決Branch・閉路／停止条件・再入 |
+| Event／状態 | Manual／Schedule／Webhook／MQTT起動、Timer、状態読書き | Entry／Trigger Provider、状態遷移モデル、Batch | 時刻・順序・配送回数・状態のScopeと永続性。Broker／SchedulerをCoreに内蔵しない |
+| 外部Connector | HTTP、DB、File／Object Store、外部API、Message Broker | Data Provider、ETL／MFT、共通Application API | Version／Lock／credentialの帰属、Retry安全性、partial取得、外部Effect |
+| 公開と観測 | Response、Webhook Entry、ログ・Metric、独立Test／Inspect | CLI／Web／Desktop／MCP Consumer、監査 | Entry公開と内部Functionの差、権限・Source秘匿・実Output／Effect受領 |
+
+最初から全てのNode群を実装しない。初期対象は**純粋変換を含む二〜三Operatorの読取り専用Flow**とし、Graphで選んだOperatorが通常のFunction入口からも同じ契約で使えるかを比較する。簡易API・マッシュアップ・IoT・クラウドFlowは有力な製品用途だが、通信・認証・秘密情報・長期実行を含むので、読取り専用の実Provider縦断と型付きEntry公開が成立してから拡張する。用途別のNode Palette／Toolkitは、既存Plugin Contractと公開Manualの組合せで提供できるかを先に確かめ、専用Registryを作らない。
+
+### 16.20 ノードFlowの第一Headless実験と独立反例（計画・NOT RUN）
+
+第一実験は既存の選択済みMarkdown Ruleを、入力→型付き変換→Rule判定→Resultという**明示的なGraphの一経路**へ接続する。各Nodeが参照する既存Operator／FunctionのID、Source byte、契約版、入力・出力Port、Dependency、Target生成物を固定する。同じ処理をノード図なしの通常Functionチェーンでも実行し、[#1121](https://github.com/hat47x/tei-platform/issues/1121)／[#4544](https://github.com/hat47x/tei-platform/issues/4544)の生成選抜と[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)の独立Expectedを共有する。実製品Readerがまだ解釈できないGraph記法はReference候補として明示し、正式受理を装わない。
+
+| 反例 | 不適格となる振る舞い |
+| --- | --- |
+| NF-01 同名の二Node・同端点の別Edge | Node／EdgeのOccurrenceを暗黙に統合、片方の処理を消失 |
+| NF-02 出力Portの型／単位／cardinalityと次入力が不一致 | 暗黙変換で意味を変える、欠落Portを適当な既定値で補う |
+| NF-03 Data EdgeをControl／Event Edgeとして実行 | Source順でたまたま成功しただけで、必要条件を満たしたと誤認 |
+| NF-04 未指定の循環／無限反復、並列Mergeの順序不明 | 停止条件・順序の意味を説明せず成功とする |
+| NF-05 Node表示の位置・色だけ変更 | 意味Revisionや生成コードが不必要に変化する |
+| NF-06 Operatorの版・Source・Plugin Lock変更 | 旧Artifactや旧Consumer Outcomeを無条件に現在のPASSへ再利用 |
+| NF-07 選択Connector=B、実呼出し=A、同じ結果 | Selectedとactualの不一致を値一致で見逃す |
+| NF-08 Event再送／Timeout／Effect unknown | 非冪等Effectを承認なしで再実行し、二重処理を生じさせる |
+| NF-09 外部Actorが公開Entry／Scope／Grantを偽装 | 内部Nodeの存在を公開許可に読み替え、Hostの現在認可を迂回 |
+| NF-10 Sourceの局所変更とCanvas Patchが競合 | 古いbyte範囲・間違ったSubjectを上書きし、そのままBuildする |
+
+**初回の合格条件**：同じRule／同じInputについて、Node Graphと通常のFunctionチェーンが同じ独立Expectedを満たし、同時にNode／Edge identity・型・実選択Operator・Source参照の差異を隠さないこと。Graphの配置だけを変えた場合は意味結果を維持し、意味を変えるPatchでは生成結果の局所変化を確認する。実Provider／Cloud Endpoint／Studio Canvasへの展開は、この初回合格から独立した後続段階で判定する。
+
+### 16.21 Flowから実サービスへ進む順序とOwner境界
+
+1. **N0 構造と意味契約の棚卸し**：既存Graph・Process Flow・Function／Operator・Lifecycle GraphのID／Source／Roleと不足を照合。[#4198](https://github.com/hat47x/tei-platform/issues/4198)がLifecycleとGraph Patch、[#2495](https://github.com/hat47x/tei-platform/issues/2495)／[#4350](https://github.com/hat47x/tei-platform/issues/4350)が標準構造の分類、[#988](https://github.com/hat47x/tei-platform/issues/988)がOperator意味を担当する。新Core Graph型の採用は保留。
+2. **N1 CLI-firstの型付きGraph確認**：Ruleを含む二〜三Operatorのデータ経路をHeadlessで解釈・検査し、通常Functionチェーンと同一意味を比較。未対応のSource Grammarはunsupportedとし、既存[#2621](https://github.com/hat47x/tei-platform/issues/2621)のReaderへ必要最小限の差分を引き渡す。
+3. **N2 Generator／実Consumerへ接続**：Graphから選択済みOperatorを実TargetへLoweringし、Goへの単純委譲だけでない生成処理と通常CLIの呼出し・独立Expectedを追跡。[#1121](https://github.com/hat47x/tei-platform/issues/1121)／[#4544](https://github.com/hat47x/tei-platform/issues/4544)／[#2586](https://github.com/hat47x/tei-platform/issues/2586)の既存Ownerを用いる。
+4. **N3 Studio編集は既存ModelのProjectionとして実装**：[#1824](https://github.com/hat47x/tei-platform/issues/1824)のWails UIでNode／Edgeの選択・移動・接続を型付きPatchとして表現し、保存後再読込・Source位置・競合を照合する。UIの実装によって独立したFlow意味正本を作らない。全体P0の非Plugin Stage1→Stage2（[#2831](https://github.com/hat47x/tei-platform/issues/2831)／[#4583](https://github.com/hat47x/tei-platform/issues/4583)）を阻害しない。
+5. **N4 外部Trigger／API／クラウドサービスへ展開**：[#4495](https://github.com/hat47x/tei-platform/issues/4495)のEntry／Trigger／Invocation、[#3422](https://github.com/hat47x/tei-platform/issues/3422)の共通API・Host受理、[#951](https://github.com/hat47x/tei-platform/issues/951)／[#1251](https://github.com/hat47x/tei-platform/issues/1251)のPlugin実選択に接続する。Webhook／MQTT／Scheduler／DB書込みは必要なProvider・認可・Effect／Retry資格が証明されたものから採用。Node-REDやenebularに似たサービス機能を最初からTEI内蔵Cloud Hostとして実装しない。
+
+**評価と採否**：別用途（APIマッシュアップ、IoT、B2C、科学実験、業務Workflow）を拡大するのは、N1／N2で同じ標準OperatorがNode外から再利用でき、型・対象・権限・Effectの不一致を独立に検出できた後とする。第二のRunner／Registry／Scheduler／Hostを新設する提案は、既存のOperator、Target Generator、Plugin Provider、外部Hostで解決できない最小反例を示してから検討する。N0〜N4は**研究から製品へ渡す段階案**であり、正式Node Flow DSL・Runner・Editor・Cloud Hostの実装完了を示さない。

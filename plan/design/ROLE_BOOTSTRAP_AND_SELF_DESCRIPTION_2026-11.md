@@ -3009,7 +3009,7 @@ mainに存在する`internal/workspace/tei_md_rule_product_read_test.go`（#4890
 
 | 並行して通す小さな縦断 | 次に確認する実成果 | 合格と呼ばないもの |
 | --- | --- | --- |
-| **R：内蔵Rule→実Go判断**（#4359/#1121/#4544/#2595） | 既存`semantic.Validation`の`positive`／`relation-unique`から実判定を含むGoを生成し、実Builderの消費Source・生成Artifact digest・**独立Consumerの実行結果**を同一試行で照合する。0、負値、NULL、複数行・重複を独立Expectedと比較 | `Parse`成功、既存Evaluator呼出しへ全面委譲した薄いGo、候補指紋の自己申告、生成Sourceだけの比較 |
+| **R：内蔵Rule→実Go判断**（#4359/#1121/#4544/#2595） | **最初は`quantity_positive`一規則**に限り、既存`semantic.Validation`の`positive`判定を含むGoを生成する。0・正値・負値・NULL・未取得を独立Expectedで照合し、実Builderが消費したSource、生成Artifact digest、独立Consumerの実結果を同一試行で確認。次に`relation-unique`を、Relationの取得範囲の完全性を含む別試験で追加する | 実Evaluatorを合成入力で呼んだ試験、既存Evaluatorへ全面委譲した薄いGo、生成Sourceだけの比較、未取得行を空集合と扱う成功 |
 | **G：Graphの正式Reader→Rule→生成**（#2621/#988/#1018/#951） | 同Labelの別Node ID、同端点の多重有向Edge、起点／終点の条件切替、重複Edge ID拒否を、Manifestで**別Languageとして選択した実製品Source**から出典付きで生成へ渡す | 内蔵`tei.rule-authoring`による表の黙認、Reference単体の`GenerateGo`、Root外DraftのRead、未選択時の空World |
 | **L：外部Language Pluginの実選択**（#988/#1018/#1251） | 既存Pluginの契約／Lockからexact実Implementationを決め、Source→Readerの実ロード資格を照合。必要なCapabilityが未実装ならその段階で明示停止 | 組込ProviderのID一致、Reference`ParseSelected`の合成Pin、Plugin一覧でのresolvedだけ |
 
@@ -3020,4 +3020,30 @@ RとGは同一のRuntime Hostや第二Generatorを要求しない。Rでは最�
 製品Readerが返す`AuthoringSources`と`Source Index`を、Studio・SHO・CLI・AIの参照説明へ投影する場合は**現在の選択言語・原文版・対象Subject・開示範囲**を揃える。定義領域を読めても、本文全体が業務定義となるわけではない。`tei` Fence以外の文章・Mermaid・Markdown表は説明Sourceとして保持され、意味への変換は別のLanguage契約が選ばれるまで行わない。Source上の位置を編集・公開する場合は、元byteとAnchorを再照合し、旧Replyを流用せず、非公開Subjectの存在を漏らさない。
 
 全体P0の**Studio Stage1自身によるStage2実Windows生成・起動**（#2831/#4583）と、並行P0の**通常`tei` CLI→実Provider Read→独立二Consumer**（#1251/#4495）は維持する。内蔵Rule Product Read、実Go生成、実Plugin Call、Studio Stage1→Stage2は**独立した到達点**であり、いずれの局所成功も他の資格を代行しない。今回の更新は最新mainに実在するSource/Goテストを設計へ反映したもので、R/G/Lの新Go生成・実Provider・Owner意味受理・Stage2を実行したものではない。
+
+
+<!-- tei-self-description-rule-evaluator-read-closure-20261115 -->
+### 47.12 製品で選んだRuleの意味同値とEvaluatorの実呼出しを、生成コードの証拠から分離する
+
+最新mainには、内蔵`tei.rule-authoring/v0`を選んで`Workspace.Load`したRuleと、旧`validation`の別Workspaceで読み取ったRuleの**型付き値を比較するGo回帰**（#4900）がある。Rule IDだけでなくSymbol・Kind・Attribute・Relationの一致を照合し、同一IDを旧新両形式で宣言した場合は拒否する。異なる書き方が同じ`semantic.Validation`に至るという局所成果だが、二つのSourceは別々の元byteとSource Indexを持ち、同じ実行資格にはならない。
+
+さらにmainの`internal/operations/selected_rule_markdown_evaluator_read_footprint_test.go`（#4901）では、選択したMarkdown Rule→`InspectionFromLoad`→既存`validationeval.Evaluate`の経路を実Goテストとして結んでいる。入力`validationeval.Source`は合成の読取りProbeであり、以下の8例を区別する。数量は**正の数／0／NULL／未取得**、明細番号は**重複なし／重複あり／取得範囲が完全な空集合／取得範囲不明**。要求したAttribute・Relationと読取回数を観測し、未取得を0や空集合へ置き換えない。
+
+この二つはSource選択・型付き意味・既存Evaluatorの動作を結ぶ**検収材料**である。しかし**Ruleから新しいGo判断コードを生成した証拠ではない**。Providerが実DBを読んだ事実、値の取得範囲、独立したConsumerの受領、Ownerによる意味受理も含まない。Reader実装を再作成する代わりに、この既存回帰を次の生成・消費比較の基線として再利用する。
+
+### 47.13 実Go生成を最小の一規則から始め、集合を使うRuleは取得範囲の検収後へ分ける
+
+次の製品Go差分は、`sales.order_line.quantity_positive`を一つ選んだ実`Workspace.Load`から始める。`semantic.Validation`と元Rule ID位置を同じSource Indexへ結び、既存のTarget Generator／Builderの入口に渡す。生成したGoは**正値と0・負値の条件を実コードで判定**し、NULL／未取得／型不適合は独立Expectedに照らしてそれぞれ決められた結果または明示的な拒否を返す。必要な入力を取得していないのに「検証合格」と返さない。
+
+比較対象は①現在の既存Go／Evaluator、②TEI宣言を読んで既存Evaluatorへ委譲するだけの薄いGo、③TEIのRuleから判定条件を生成したGoの三つとする。①②③の出力一致だけで③の自前生成を認めず、**生成された条件分岐の実Byte、実Builderに渡したByte、Toolchain、Artifact digest、別Process Consumerの実結果**を揃える。Sourceの条件のみを変更して生成Goと結果に差が現れる正例、説明文のみ変更してSourceの改版だけが発生する対照、生成Binaryが古い実装のまま指紋だけ合わせた負例を既存#1180/#2514のExpectedへ接続する。
+
+`sales.order.lines.line_number_unique`は別段階とする。Relationの全対象行・キー・時間条件が揃ったと分からなければ、重複が見つからない結果は合格ではない。完全空集合と取得不能を別物として保つ`47.12のProbeを基線に、実Providerがどの範囲を読んだかを独立Consumerで確認してから生成対象を広げる。これにより、最初の`positive`の生成・Buildを不必要に遅らせず、集合閉包の難しさも隠さない。
+
+### 47.14 Ruleの存在から公開Function／Capabilityを自動生成しない
+
+`semantic-validation:sales.order_line.quantity_positive`がSource IndexとInspectorで見えることは、同名の`semantic-capability`、公開Function Entry、実Provider、現在Grantの存在を意味しない。後継PR #4902は、この別Subjectの`SUBJECT_NOT_FOUND`を**同一Loadの負例**で確認する担当であり、Source文字列検索で実行入口を合成しない。PRの存在・Goファイルの部分編集・旧HEADの合格を、当該負例の製品受理として数えない。
+
+公開Function／CLIへの実接続は#4495/#1251が、現行のContract/Provider/Grantを使って独立に実証する。全体P0のStudio Stage1自身によるStage2 Windows起動（#2831/#4583）、Graphの正式Reader（#2621/#1018）、外部Language PluginのLock（#988/#1018）も従来どおり並行する。
+
+**今回の検収範囲**はmainに現存するRule型付き同値・合成入力によるEvaluator読取のGo回帰と、次の製品Go実装順の計画化である。新たなGo生成、DB Providerの実Read、通常CLI／独立二Consumer、Studio Stage2、OwnerのMeaning受理は**この変更ではNOT RUN／NOT PROVEN**。
 

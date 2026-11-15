@@ -930,3 +930,28 @@ W0の次の**一つのコードPR**は、現在の`main.ts`／`index.html`／Pin
 並行するStudio W0では、main統合済み[#4869](https://github.com/hat47x/tei-platform/pull/4869)によりHost `authorityLimits`のPin Fixture不一致が修正された。一方、参照`main.ts`の`unpin-current`/`inspect-pinned`とHTMLの`pin-release`/`pin-check`の不一致を直す[#4876](https://github.com/hat47x/tei-platform/pull/4876)はDraftであり、現行mainの配布HTML/JSとの差分と**別の障害**である。修正は(1)参照HTMLとHandlerの一致、(2)Reference Node24全試験・生成、(3)現行正規Bundle/Go EmbedのByte一致、(4)実Windows WebView2受領の順。**通常のWindows SmokeもStage1がStage2を作った証拠ではない**。
 
 **本節の境界**：選択内蔵Readerの実装と追加テストは、業務意味の受理、外部Language Pluginの実選択、Graph/Window一般Reader、公開Manualの実Read、実Provider、非Plugin Studio Stage1→Stage2、Updaterの成功を意味しない。実Readに関する新しい証拠は#4890の実Goテストと独立Expectedに基づいて判定し、**本節自身は設計・受入条件の統合に限る**。
+
+### 29.8 実Ruleの意味判断を生成物・実Consumerへつなぐ（2026-11-15）
+
+内蔵Readerの正式製品入場は§29.7で整理した。以後にmainへ統合された[#4890](https://github.com/hat47x/tei-platform/pull/4890)、[#4891](https://github.com/hat47x/tei-platform/pull/4891)、[#4900](https://github.com/hat47x/tei-platform/pull/4900)、[#4901](https://github.com/hat47x/tei-platform/pull/4901)を踏まえ、次の実装は**もう一つReaderを追加することではなく、既存のRule意味をGo生成・実Builder・実Providerへ接続すること**とする。以下はmainのファイル実在・PR統合を確認した範囲であり、各PRのexact HEAD CI成功とは区別する。
+
+| 段階 | 現在ある実装と証拠 | まだ埋まっていない接続 |
+| --- | --- | --- |
+| **R0：Sourceと意味候補** | Manifestで選択した`tei.rule-authoring/v0`を製品`workspace.Load`が消費。2 Ruleの正規化`semantic.Validation`・元byte範囲・原文説明だけの変更による旧Index失効・未選択／未知Contract拒否（#4890）。`InspectionFromLoad`と`TraceSubjectSourcesFromIndex`で同じLoadのSourceを照合（#4891） | 外部Language Plugin、Graph/Window一般Reader、Ownerによる意味受理 |
+| **R0.5：意味の表層一致** | 旧`validation`とMarkdown Ruleの**型付き`semantic.Validation`全体**（ID、Kind、Attribute、Relation等）を二つのProduct Loadで対照し、同じWorkspaceでの二重宣言を拒否（#4900） | 記述表層が異なっても、実Generator／Builderが同じAccepted Meaningを消費すること |
+| **R1：評価と入力要求** | #4901は実`validationeval.Evaluate`を呼び、数量2／0／NULL／未取得、明細番号の重複／非重複／完全と申告した空集合／未取得Scopeの8条件と`Number`／`RelationKeys`呼出し先を確認 | 入力は**合成`evaluatorReadProbe`**。実DB／Host Providerの入力範囲・NULL／完全性・現在Grant、公開Entryではない |
+| **R2：TEIからGo判断を生成** | 既存の`semantic.Validation`、Source Anchor、型情報、Generator／Artifact／Toolchain証拠を再利用可能 | **未受理**。生成Goを実Builderが消費したByte・差分追随・独立Expected・生成された判断が手書きGoへ委譲されていないこと |
+| **R3：実Providerと別Consumer** | 既存Plugin選択／Lock・共通Application API／CLIなどの器を再利用可能 | **未受理**。実選択Providerの実Go Entry・別Processの通常`tei` CLI、独立Consumerの観測、必要時のHost現在Grant |
+| **W0／B：Studioと再入** | Pin Host応答Fixture #4869、S-LOC pure投影、参照WorkbenchのPin／Inspect。Desktop計画§0.18.8に6段階検収 | #4876のDOM ID修正はDraft。正規BundleとGo埋込Assetのbyte一致・Windows WebView2・Stage1自身からのStage2 Buildは未受理 |
+
+**R2の最初のコードPRは、既存の[Plugin Rule製品縦断計画](PLUGIN_RULE_PRODUCT_VERTICAL_SLICE_2026-11.md)§11に固定された`sales.order_line.quantity_positive`一件だけを扱う。** `internal/workspace/testdata/tei-md-rule/semantic/sales/order-line-rules.tei.md`で選択されたRuleと隣接`order.tei`の`std.decimal`型を実入力とし、Go判断を**Ruleの型付き意味から生成**する。`1`／`0`／`-1`の対照は独立Expectedで評価し、NULL・欠損・型不適合を0やfalseに補完しない。既存の型・Validation契約で決められない結果は`unsupported`として返し、Generatorが仕様を新設しない。
+
+ここでは**二つの変化を別々に検証**する。実行時入力の数量のみ変更した場合は、生成済みGo判断の実呼出し結果が変わること。Ruleの条件そのものを改訂した場合は、同じParser／型付きMeaningを再取得して生成Goの判断が変わり、前版Artifactが無検証再利用されないこと。逆に説明文・Markdown見出しだけの変更ではRaw SourceとSource Indexは失効する一方、Meaning／生成Artifactの再利用可否は既存#2600の別判定に委ねる。**Raw byteが変わったから必ず全再生成、意味の出力が同じだから旧Sourceを無条件採用、のどちらも避ける。**
+
+R2の受入で必要なのは、独立Expectedと生成Goの型付き判断、Generator/Toolchain exact版、実Builderが読み込んだSource、成果物byteの実証である。生成結果をそのまま手書き判断へ委譲しただけ、Mockで条件を代行しただけ、生成器が自己申告したFingerprintしかない、という場合は未受理とする。**R3の次PR**で既存Plugin/Provider選択・実Go Artifactを通常製品`tei` CLIと独立Consumerへ接続する。Ruleが存在するだけで同名`semantic-capability`／公開Function Entryを自動発行しない（負例候補[#4902](https://github.com/hat47x/tei-platform/pull/4902)、統合未確定）。
+
+**CLIビルド停止は別Ownerへ返す。** 現mainの`acceptedCommands`には`db-introspect`があり、`runDBIntrospect`と`-semantic`フラグ宣言も存在するが、`cmd/tei/main.go`の実Dispatchが欠けて`dbIntrospectSemanticFlag`未使用コンパイル失敗を生む。`#4895`は宣言除去、`#4896`は既存公開CommandへのDispatch接続という**競合する修正候補**である。現行の公開Commandと既存Runnerを維持する方針なら、**#4896のDispatch接続が整合的な第一候補**であり、#4895のフラグ削除だけでは公開済みCommandが実行できない矛盾を解消しない。CLI担当はCommand Discovery／公開引数／実Runner／否定的試験を照合し、**一方だけを実CLIビルド・別Process負例の実結果で採用**する。既存公開Commandを残したまま入口だけなくす・フラグだけを使ったことにする、という一見Greenの修正は避ける。ビルド失敗による全体CIの`inconclusive`を、Ruleの新テストFAILやCLI/Stage2のPASSへ読み替えない。
+
+**W0は並行P0のまま**、[#4876](https://github.com/hat47x/tei-platform/pull/4876)の二つのボタンIDをまず参照HTMLの`main.ts`と揃え、既存Nodeテストを通し、**当該HEADの正規dist→四配布Asset→Go embed→実Windows WebView2受領**を順に閉じる。その次が非Plugin Studio Stage1自身によるStage2再Buildである。Reader/Ruleの進展やUIの局所成功を、Stage2実再入のPASSへ合算しない。
+
+**既存Owner・合格条件を再利用する。** Reader/Language #2621/#1018、Generator #1121/#4544/#2595、Plugin #951/#1251、通常CLI/Provider #4495、Workbench #1824、Stage2 #2831/#4583、独立Expected #1180/#2514。Plugin公開Doc一件の実Read、S-OPEN、Wails安定版／Updater、外部Language Plugin、Graph多重辺Readerは別スライスとし、新Host／Registry／Rule Runtime／Evidence Store／Hard Gateを追加しない。本節は設計・実装引渡しであり、追加のGo／CLI／Node／Windows製品E2E・Owner意味受理を実施したという主張ではない。
