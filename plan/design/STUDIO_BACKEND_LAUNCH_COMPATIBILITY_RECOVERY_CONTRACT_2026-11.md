@@ -1,0 +1,651 @@
+# Studio／CLI Backend起動・構成世代・更新復旧の実装契約（2026-11-15）
+
+- **状態**：設計／実装引渡し案。実Local IPC、子Server、Installer、Updaterの完成、製品採用、実OSでの検収、Ownerの業務意味受理は未確認。
+- **上位設計**：[Studio/CLI/Web配布更新の統合設計](STUDIO_CLI_BACKEND_PROCESS_DISTRIBUTION_UPDATE_2026-11.md)、[CLI/IPC/HTTP共通API ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)、[Plugin管理契約](PLUGIN_MANAGEMENT_CONTRACT_2026-11.md)。
+- **先行する実装主線**：[Studio自己再構築 #2831](https://github.com/hat47x/tei-platform/issues/2831)／[#4583](https://github.com/hat47x/tei-platform/issues/4583)、[Product実Entry→実Provider #4495](https://github.com/hat47x/tei-platform/issues/4495)、[Studio方式比較 #4635](https://github.com/hat47x/tei-platform/issues/4635)、[共通操作 #1158](https://github.com/hat47x/tei-platform/issues/1158)、[Plugin管理 #2044](https://github.com/hat47x/tei-platform/issues/2044)。
+- **別の引渡し**：[製品受入のScript Launch／Session計画 PR #4702](https://github.com/hat47x/tei-platform/pull/4702)。同PRのSL-0〜6を再定義せず、実行配置と更新に固有の具体的な合格条件だけを加える。
+- **根拠の性質**：2026-11-15に統合PR #4697の設計・現行`cmd/tei-studio`と`cmd/tei`を静的確認。新しいGo、Windows/WebView2、Plugin/Updater実行はNOT RUN。
+
+## 1. 製品実績と目標を分けて扱う
+
+DesktopはWails＋Go同一プロセス構成（方式A）を現在のP0実証基線とする。利用者が目標に指定するWails親→ローカルBackend子プロセス→IPC（方式B）は重要な設計候補だが、実装済み・採用済みとしない。#4635の比較順を維持し、Studio Stage1→Stage2自己再構築をBの採用待ちにしない。CLIも現行in-processを基線として残し、Wailsをimportしない。Bを既定にする場合は実測とOwner判断を経てADR-0048を正式改訂する。
+
+| 比較対象 | 意味処理の所有者 | 性能・隔離の特徴 | 採用状況 |
+| --- | --- | --- | --- |
+| A. Native direct | 共通Application APIを親から直接 | 起動・IPC負荷が小さい／同一プロセス障害 | 現行P0基線 |
+| B0. 自分自身を子Backendとして起動 | 同じGo Backend実装 | 配布は単一exe／二Processの起動費用 | 実測対象 |
+| B1. ローカルWails Server HTTP/WS | 共通APIのWails Adapter | Web共通化の余地／WebSocket・Originの追加検査 | 実測対象 |
+| B2. ローカルBackendをNamed Pipe/UDSで接続 | Wails非依存Backend | IPCを明示・OS別保護が必要 | 第一候補の一つ、未採用 |
+| R. Remote Server | Server側の共通API・選択Plugin | AuthN/AuthZ・Tenant・通信不確実性 | 将来接続先、製品受入は別 |
+
+B0は「同じ実行ファイルを別Processとして呼ぶ方式」であり、B1のWails Server Buildと同義ではない。WailsはFrontend Host／Server Asset Adapterへ閉じ込め、CLI・`internal/operations`・`internal/plugin`はWails非依存を維持する。生成された業務アプリにTEI Studio Backendを必須化しない（ADR-0043）。
+
+## 2. ローカルBackendの起動と所有
+
+最初のE2EはWorkspaceを一つだけ開き、`validate`／`inspect`を一度ずつ呼ぶ。Serverの起動にPlugin Registryへのネットワーク接続を必須にせず、検証済みの配置から起動する。Plugin managerの新しい保存先、万能Registry、汎用Session Storeを先に作らない。
+
+### 2.1 二段階の利用開始
+
+```text
+OS launch → Boot/Recovery UI and version/help
+    ↓
+親ProcessがBackendの実Imageを指定して起動
+    ↓
+IPC Peer/Protocol/実Build Identityの確認
+    ↓
+CORE_READY ──→ 設定・診断・既知のPlugin構成の閲覧
+    ↓
+Workspaceを現在のSourceと権限で開く
+    ↓
+Resolver→Lock→Provider/Artifact→利用可能Capabilityの確認
+    ↓
+WORKSPACE_READY ──→ 選択されたOperationとGUIを公開
+```
+
+`CORE_READY`は全Pluginの実起動を意味しない。`WORKSPACE_READY`も全Plugin／全操作の提供を意味しない。選択したWorkspaceで利用可能な操作と欠落の理由を返す。壊れたPluginが一件あっても、基本の診断・復旧を可能な限り残す。既存管理実装で`install`／`enable`／`init-failure`が未モデルである間は、状態を勝手に推定・表示しない。
+
+### 2.2 子ProcessとCLIの扱い
+
+Desktop: `Wails UI → StudioBridge（薄いAdapter）→ Local IPC Client → child Backend`。WebViewからPipe／Named Pipe／OS Credentialへ直接接続させない。Wails Service登録をPluginごとに実行時増設せず、公開メソッドの静的境界からCapability/Operationへ委譲する。
+
+CLI: `argv → target選択 → (direct または one-shot child または明示Session または remote) → 共通API → 既存CLI JSON/text/exit投影`。コマンドの対象がLocalかRemoteかを明示し、通信失敗時に暗黙切替しない。Child stdoutはProtocol専用、ユーザーへ表示するJSONは親が生成する。独立した`version`／`help`／`update status`／RecoveryはBackendが壊れていても最低限動く候補とする。
+
+親子Processのイメージ一致を、引数`--internal-backend`、PATH文字列、親の宣言Versionだけで保証したとみなさない。OS上で解決した実行対象と起動後のPeerを確かめる。起動時のPath置換や実Image差異を負例に含める。起動対象のDigestと実際に動いたImageの同一性が実証できないOSでは、保証済みと説明しない。
+
+### 2.3 親子の状態と異常終了
+
+`CREATED → STARTING → HANDSHAKING → CORE_READY → WORKSPACE_READY → DRAINING → EXITED`を最小のライフサイクル投影とする。これを第二の業務StateMachineとして実装せず、Hostが観測した状態を既存Operation/Attempt/Receiptへ接続する。
+
+親が終了するときは子の新規受付を止め、制限時間内に既知のread-only処理を終了する。長時間Buildや外部Effectについては「親が終了したので完了／失敗した」と判定しない。非同期Jobは耐久的な実行OwnerとReceiptが無い限り、親から独立した継続を広告しない。
+
+## 3. 互換性Handshakeの実効条件
+
+新しい万能Request Envelopeを導入するのではなく、開始時のNegotiationとして次を照合する。
+
+| 対象 | チェック | 拒否時 |
+| --- | --- | --- |
+| Transport | wire version、framing、max payload、stream形態 | Handshake拒否 |
+| Operation Contract | Operation ID、request/result/failure schema、effect、必要context | 当該Operationを非公開または実行拒否 |
+| Client/Backend | 起動した実ImageのBuild Identity、対応Operation集合 | 互換Contractが無ければ拒否 |
+| Plugin | Resolver選択、Lock、Provider Contract、Artifact Digest、現在Grant | 対象Capabilityを提供不可 |
+| Workspace | Source snapshot、Accepted Model Revision、Scope | staleなら再読込み・Preview |
+| UI Asset | Client asset Digest、配備世代、UI Contribution | 旧UIとの非互換操作を拒否 |
+
+**単一のバージョン番号一致を全体条件にはしない。** 同じPlugin名・版が双方にあるだけで実Artifact・現在権限が一致したことにはならない。逆にRemote CLIはServerのPlugin実装を使うので、Clientへ同一Pluginバイナリ配布を要求しない。
+
+Handshake成功をAuthorizationやSource受理と混同せず、効果を伴う要求は**実行時にも**現在のContext／Source／Plugin実体を検証する。Clientが送ったactor／role／scopeはHostが発行した認可情報ではない。
+
+## 4. 構成世代と画面・CLIの応答の結び付け
+
+別Process化で最も危険なのは、旧Sessionの遅延応答、更新で入替えられたProvider、編集中の未保存Sourceが一つの画面に混じることである。
+
+次の**参照情報の組**で実行と結果を照合する。独立した新しい正本テーブルではなく、既存契約からの必要最小の投影とする。
+
+```text
+OperationReceiptReference =
+  Server/Process Session Epoch
+  + Operation ID / Contract Version
+  + Request/Attempt Identity
+  + Selected Plugin Composition Generation
+  + Workspace / Source Snapshot / Accepted Model Revision
+  + [UI Buffer Generation / Selection Epoch where applicable]
+  + Result / Failure / Effect Observation Reference
+```
+
+- **Plugin更新**：開始済みOperationには開始時の構成世代を固定する。Release／Artifact StoreはContent Addressedにしても、Source／Grant／Permission／契約受理の正本を置き換えない。
+- **Studio編集**：Client Buffer Generationは編集中の状態でありAccepted Model Revisionではない。後着応答や異なるWorkspaceの応答を破棄し、Source変更は既存Shared AcceptanceへExpected Revisionと実Byte照合を渡す。
+- **CLI反復**：同じHarness Sessionでも現在のOperation ContextとGrantを再検査する。結果キャッシュは利用者／Scope／ContextのPartitionを無視して再利用しない。
+- **Remote**：Clientが選んだPlugin構成でServer側を上書きしない。Serverは実効Compositionを応答へ記録する。通信断・ACK喪失があっても外部Effectを自動再送しない。
+
+## 5. Pluginの起動・CLI拡張・GUIの責務
+
+Plugin ID、Capability ID、Sourceの意味Subject、Runtime実装を同一IDへ畳まない。Pluginの状態は宣言・環境選択・Lock固定・物理導入・有効設定・初期化・実Invocation・実Effectを分離し、未モデル項目は未モデルのまま報告する。
+
+- **CLI**：既存の`plugin-inventory`等の読取りを基線とし、選択済みCapabilityのDiscoveryを段階的に拡張する。動的コマンド表示はOperation Contractから導出し、Pluginごとにargvパーサや第二Resolverを持たない。
+- **Desktop**：Pluginが寄与するメニュー・Inspector・Editor・Diagramは、必要なContributionとBackendの提供可能Capabilityを照合して組み立てる。宣言的UIを基本とし、未検証の第三者JSを同一Originで実行させない。
+- **Web**：Client資産はServerと対応する配備世代から配信する。旧Tab／Cacheの処理はHandshakeで互換性を検査し、必要なら再読込みする。Wails Server BuildのBackend→Frontendイベントは全接続BrowserへBroadcastされるため、機密・Workspace別イベントを単純な`Emit`で送らない（公式Server Build仕様を根拠に実隔離経路を検証）。
+- **Release文書**：Plugin Manual、Example、短いSkill、上位依存が公開する図解をRelease／Contract／公開範囲に束縛する。説明文書の取得成功と、実コード実行許可・現在Grantを区別する。
+
+## 6. Installer／Updaterの更新単位と復旧責任
+
+Updaterは「更新を発見・検証・計画する共通契約」と「OSごとの実ファイル入替・再起動」を分ける。DesktopのWails Updater、CLI独立Updater、Package Manager、共有Serverの配備システムは後者の別Adapterであり、一つのUpdaterを全経路へ強制しない。
+
+| 更新対象 | 切替単位 | 安全な復旧の範囲 |
+| --- | --- | --- |
+| Studio/CLI本体 | OS署名・Release Digestが確認された実exe／App Bundle | 旧版の実行物を保存し、親子Session停止後に切替 |
+| 埋込みGUI／静的Provider | 本体と同じBuild成果物 | 実exeのBuild／Asset証拠を照合。単独更新不可 |
+| 外部Plugin実体 | 不変Artifact＋選択Composition世代 | 旧世代を参照できる範囲で戻す |
+| Workspace設定／モデル | 既存Source／Acceptance／Settings Owner | 本体Rollbackでは戻らない。前後の版・意味受理を別に管理 |
+| DB Migration／外部Effect | 実Provider／DB／Execution Owner | **バイナリRollbackと独立**。確定済み作用を自動Undoしない |
+
+更新は`Discover → Verify actual bytes/trust → Stage → Plan → Quiesce/Drain → Apply → Restart/Handshake → Confirm`。旧実行物の復旧を可能にしても、その世代で使用されたSourceの可逆性・現在Grant・外部Effectの補償は証明されない。インストーラに同梱する初期標準Pluginはオフラインで検証できる構成とし、更新確認のネットワーク障害をStudio起動失敗へ直結させない。
+
+公開Releaseと実ダウンロードのDigest／署名／Publisher現在資格を分離する。GitHub Releasesを配布元にしても、Release名やTagから得たURLだけで実行許可しない。認証情報はOS秘密情報管理／信頼済みBackendが扱い、Browser Pluginへ生値を渡さない。
+
+## 7. 独立Expected／受入試験への差分
+
+以下は既存#1180/#2514のScenarioとして追加検討する**負例**であり、いずれもNOT RUN。#4635のP0〜P4と#4702のSL-0〜6に、必要なものを関連付ける。
+
+| ID | 敵対的条件 | 期待する観測 |
+| --- | --- | --- |
+| BL-01 | 現行Directと子Backendで同じ`validate`／`inspect` | Source／診断／Failure意味一致。Perfは実測別票 |
+| BL-02 | 偽のIPC Peer、起動イメージの差替え、接続元違い | Handshake拒否。誤ったPeerでProvider未起動 |
+| BL-03 | 子Backendが受付後にCrash、外部EffectのACK喪失 | Success偽装・盲目的再Dispatchを禁止、Receipt再確認 |
+| BL-04 | StudioのWorkspaceを切替えた後に古い応答到着 | 旧Selection／Buffer Generationを画面へ適用しない |
+| BL-05 | 二つのBackendから同じSourceへ同時Accept | Model Revisionと実Source Byteによる競合拒否 |
+| BL-06 | Plugin更新中に旧Operationが継続 | 開始時のProvider／Artifact／Composition世代を維持 |
+| BL-07 | Remote CLIが異なるLocal Lockを指定 | Server側の構成を維持し、不一致を明示 |
+| BL-08 | Plugin本体は正しいがUI Assetが別配備世代 | 非互換UIを拒否・再読込み要求 |
+| BL-09 | Plugin Manager破損／インターネット断 | 最小Bootstrap・旧検証済み構成で診断可能 |
+| BL-10 | インストーラ管理CLIを自己Updaterが上書き | 更新管理主体の衝突を検出し適用拒否 |
+| BL-11 | Plugin Codeだけ更新・Manualだけ更新 | 必要な再検査範囲を区別。意味受理／Grantは自動更新しない |
+| BL-12 | Stage1がStage2構築途中で子Processを使う | Invoker／child digest／argv／Source closure／出力／実Consumerを別Claimとして検証 |
+
+各試験の記録は、対象HEAD／OS／Go＋Wails Version／Selected Plugin Lock／実行イメージと生成資産Digest／Workspace Scope／Actual Provider／結果／独立Expected／PASS・FAIL・NOT RUNを含める。旧PRのGo／Windows／Reference合格を別HEADの完成証拠として合算しない。
+
+## 8. 着手順と採否の境界
+
+1. **今のP0を継続**：Studio非Plugin Build Subject／Stage1→Stage2 Desktop実再構築、通常CLIからProduct Entry→actual Go Providerの呼出し。外部Installerや子Server実装をP0のHard Gateにしない。
+2. **小さなBackend比較**：#4635／#1158の既存受入で`validate`／`inspect`をA対B0対B2（B1は必要時）の同じSource／Operationで比較。起動、p50/p95/p99、CPU、Peak RSS、ログ漏えい、旧Reply、クラッシュの復旧を測定する。
+3. **Plugin縦断**：#2044／#951／#1251の既存所有者で、実Providerの選択→起動→結果→Artifact→権限を一致確認。PluginのInstall／Enable新設は既存S2〜S5の管理契約を先に確定する。
+4. **Server配信Client／Remote**：#1043／#1158／#4635の既存権限／Web Host試験へ接続。Wails ServerをMulti-Tenant安全と推定しない。
+5. **更新・Installer**：P0の実Stage2を別環境へ配置し、親子起動とPlugin利用が再現することを確認した後、OS別のUpgrade／Rollback／Schema互換を検証する。
+
+**採用判断を保留するもの**：CLI子Backendの既定化、StudioのA→B移行、実バイナリ分離、共有Daemon、Wails Serverによる共有Web運用、更新管理主体ごとの自己Updaterの範囲。判断を先取りする新しいADR・第二Backend Engine・万能Update Registryを作らない。
+
+
+## 9. 実装PRを三つに分ける（2026-11-15）
+
+既存の意味処理を新しいBackendとして再実装せず、現在の同一Process基線から実IPCへ進む最小の差分を定める。上位の#4635 P0〜P4、#4702 SL-0〜6、#4698の二段階実証を置き換えない。
+
+### PR-A：直接経路の意味を固定する
+
+対象：cmd/tei/cli_inprocess_parity_test.go、internal/operations、internal/studiohost、cmd/tei-studioのRead-only Bridge。
+
+現行テストには、CLI inspectとoperations.InspectSubjectの同値性、CLIとStudioのCatalog比較がある。これを実IPCの検証結果に昇格させず、同一Workspace／Subject／Sourceの下でvalidate・inspectの型付きResult、Failure Code、診断のseverity・位置・意味上の完成／不合格を比較できるFixtureとして再利用する。正規化で多重項目を失わず、Worldが成立していないときに架空のFingerprintを付けない。internal/operations/dependency_test.goのWails・CLI・netへの逆依存禁止を維持する。
+
+完了条件：直接Go Operation、CLI、Studio Hostの同じ意味の結果を一意の独立Expectedで比較できる。実Desktop WebView、実子BackendはまだPASSとしない。
+
+### PR-B：CLIの一操作を実子Backendで呼ぶ
+
+対象：CLIが明示的に選ぶ実験的Backend経路、自己バイナリから起動する子Process、有限サイズのLocal IPC、既存Operationのread-only一呼出し。通常CLIの既定とJSON v0／text／exitは変更しない。
+
+親は実行対象のOS上の解決結果を確認し、PATHから曖昧に別のteiを選ばない。子とTransport・Operation Contract・実PeerをHandshakeする。子のstdoutをProtocol専用とし、親が従来のCLI出力へ投影する。正常終了、Crash、Timeout、偽Peer、旧Reply、無効なRequestを負例として、子Image・Attempt・IPC経路・実Invokeと結果を記録する。内部起動フラグやPIDの一致だけをPeer認証にしない。
+
+完了条件：同一Source／同一Operationの直接経路と子Process経路で意味と失敗分類が一致。Plugin Manager、書込み、外部Effectはこの段階の必須対象にしない。CLI自身のversion/help/復旧はBackendなしでも最低限動く。
+
+### PR-C：DesktopのWails Bridgeから同じ子Backendへ接続する
+
+対象：既存StudioBridgeのRead-only一メソッド、薄いGo IPC Client、Desktop親が管理する子の起動／停止。WebView JavaScriptからOS Pipe／Credentialへ直接アクセスさせず、既存Wails Service境界を利用する。Plugin由来の新しいWails Serviceを実行時に増設しない。
+
+現行Native同一Process経路を基準として、実Windows WebView2のBridge→IPC→実Go Operation→結果表示を一往復確認する。旧Workspace選択時の遅延応答、Dirty Buffer、子Crash後の再接続は別票で確認する。CLI子Process成功を実Desktop／Stage2 Desktopの資格に転用しない。
+
+完了条件：CLIとDesktopの実Backend縦断で同一意味を返し、実子Process・実Wails Bridge・実WebView Consumerを独立に記録する。Stage1→Stage2自己再構築と通常tei→実ProviderのP0を本PR-A〜Cの完了待ちにしない。
+
+## 10. Session・Plugin構成世代・Sourceの寿命を区別する
+
+実行中のProviderを、更新で上書きされる単一のMutable Registryから毎回再選択する構成は採らない。開始したInvocationには選択済みComposition／Plugin Artifact／Contract版を固定する。一方、Permissionと現在Grant、変更直前のSource Byte／Revisionは既存Ownerの要求に従って再検査する。Lock一致を実行許可へ昇格させない。
+
+| 単位 | 固定する参照 | 再評価する事項 |
+| --- | --- | --- |
+| CLI／Desktopの親 | 親のBuild／実Image、公開Operationの契約 | 操作対象、現在のWorkspace |
+| 子Backend Session | 実子Image、Transport、Session Epoch | Peer・現在提供可能なOperation |
+| Workspace View | 選択Subject／Source snapshot／Model Revision | 外部変更・現在の権限 |
+| Invocation | 実Provider／Artifact／Composition世代、Attempt | 必要なGrant・Commit直前の条件 |
+| Stagingされた更新 | Release候補と実Byte Digest | 現在Trust、更新適用時の差分 |
+
+旧Providerの実Artifactを使っているInvocationが存在する間は、そのArtifactをガベージ収集しない。StudioのSelection EpochとDirty Bufferは、BackendのAccepted Model Revisionではない。後着Replyは表示直前に選択先を再確認する。Pluginを更新しただけで旧Requestを新Providerへ自動再送しない。Serverや子Processの終了を外部Effectの失敗／Rollback証明とみなさない。
+
+## 11. Remote CLIのWorkspace指定と実行先を分離する
+
+ローカルCLIでの相対Path指定を、Remote Server上のPathとして暗黙に解釈し直さない。Remote利用では接続先とServer側Workspace Identityを別に明示する。ローカルSourceをRemoteで処理する必要がある場合は、送出対象／Byte Digest／Disclosure／受信側で実使用したSnapshotを記録する明示的な転送として扱う。暗黙のソースアップロードは禁止する。
+
+Remote CLIはServer側で選択したPlugin、現在Grant、Operation実行境界を使う。CLIがローカルで所有するPlugin LockやPluginバイナリはServerのProvider選択権限にならない。通信断でローカルへ黙ってFallbackしない。共有Backendが将来Git BranchやDB Sessionを扱う際も、実行場所・現在の権限・Source Snapshotを混同しない。
+
+## 12. 配布とUpdaterの最初の縦断
+
+Installerの製品化に先行して、TEIが生成した本体と必要なPlugin Closureを別環境へ配置し、起動・Plugin解決・実Provider呼出し・Consumer結果を確認する。Go単一バイナリには静的Provider／GUI資産を含められるが、外部Artifact・OS WebView・Toolchain等の依存が消えるわけではない。必要な内容を実配布BOMで説明する。
+
+更新は本体Release、外部Plugin Release、Workspace／DB変更を別単位とする。本体更新はStage→実Byte／署名／現在Trust検証→Drain→OS所有の適用→再起動とHandshake→確認とする。Plugin更新は選択世代を固定し、Install・Enable・Runtime Activeを別の事実として確認する。Workspace SourceやDB Migration、確定済みEffectは本体Rollbackで戻らない。OSのPackage Managerが管理する実行ファイルを自己Updaterが勝手に書き換えない。
+
+初期状態で検証済みのBootstrapとPluginをOfflineでも起動できるようにする。更新途中のCrashやRegistryへの接続不能時も、既存の旧構成から診断を行えることを確認する。Plugin ManagerのInstall／Enableが未モデルの段階で完成済みの更新UIを広告しない。
+
+追加の停止条件：第二Resolverの設置、既存CLI JSON／exit互換の無断破壊、WailsへのCore逆依存、Remote Pathの暗黙転送、Plugin版の暗黙選択、Effect Unknownの自動再送、実Stage2 Consumer未確認でのSelf-build達成宣言。
+
+## 13. 自己子起動を可能にする実装境界（2026-11-15、現行コード再照合）
+
+この節はB0（同一exeの別Process）を実装する場合に必要な**変更箇所の候補**を示す。B0の採用を決めるものではない。最初の実装はCLIの明示的なread-only試験経路に限定する。
+
+### 13.1 Go ModuleとWails起動の境界
+
+現行の`cmd/tei-studio/go.mod`はルートとは別のGo Moduleで、`tei`を`../..`へreplaceし、Wails v3を利用している。`cmd/tei-studio/main.go`は通常のflag解析後に`studiohost`を組み立て、WailsのServiceを登録して`app.Run()`を呼ぶ。現行コードには子Backend専用の独立した起動入口はない。`-tags server`の経路も、127.0.0.1に限定した既存PoCであり、Remote共有Serverの認証・隔離実装ではない。
+
+実装時の候補は次のように分離する。
+
+- **ルートGo Module**：Application OperationとBackend実体、型付きResult/Failure、Plugin Resolver／Runtimeを所有する。Wails／Windows UIへ逆依存しない。既存`internal/operations/dependency_test.go`を回帰試験とする。
+- **CLIのmain**：argvと互換出力／exitを所有し、実験的な子Backend入口への切替を行う。通常コマンドを無断で別Processに変更しない。
+- **Studio nested moduleのmain**：Native UI初期化**より前**に子モードを選別できる構造へする。GUI通常起動と子Backend起動の依存・初期化順を明示する。Wails／Go Backendが同じexeにリンクされることと、子モードがGUIを初期化することは同義ではない。
+- **Windows向けビルド**：GUIサブシステムの実行物から子を起動した際の標準入出力、Pipe Handle継承、引数、終了処理を実Windowsで確認する。stdioが利用できると推測で固定せず、専用Pipe／Named Pipeを比較する。
+- **更新中の自己実行**：更新によって親・子が別の実Imageへ切り替わる可能性を考慮し、起動対象の固定と実Peer検証、実起動Imageの証拠を別に記録する。子が自己申告したVersion／親が読んだPath文字列だけで同一Byteを証明しない。
+
+これらは最小のBootstrap・Process Adapter上の責務であり、新しいStudio専用Parser、Plugin Resolver、業務Hostを増やす理由にはならない。
+
+### 13.2 一つのRead操作だけを公開する
+
+最初の子Backendは`inspect`または`validate`一件と、Protocol/Health/Shutdownの必要最小の制御だけを公開する。既存Operationを呼び出すので、Sourceの意味解釈や失敗の分類をIPC側で再実装しない。子Backend専用の動的プラグインargvを追加せず、コマンドDiscoveryに存在しない名前を正式製品機能と広告しない。
+
+Transportの都合で要求・応答にCorrelation IDを付す場合も、Operationの業務Identity／Effect Receiptと混同しない。Requestが届いたがResponseが失われたことと、業務作用が無かったことは異なる。子の正常終了も、業務Commitの完了証明ではない。
+
+## 14. Studioの即応状態とAIへの対象引渡し
+
+子Backend採用の判断では、RPCの平均所要時間だけでなく、**操作中の編集感覚が変わらないこと**を確認する。入力中のIME合成状態、CodeMirrorの未保存Buffer、Focus／Selection／Undo、暫定的な図面配置はClientで保持する。文字入力を一打ごとに子Backendへ送信し、応答待ちで編集状態を決定する設計を既定にしない。
+
+保存済みSourceやAccepted Model RevisionをBackendが所有し、ClientのDirty Bufferは未受理の編集案として扱う。Preview、Validate、Buildは、その要求に用いたSource snapshot／Buffer Generation／Selection Epochを明示して実行する。結果が後着したときは、要求時と現在の表示対象を照合してから採用する。
+
+現行のPin状態遷移の[PR #4597](https://github.com/hat47x/tei-platform/pull/4597)は、Pin/Unpin/Undo/ABAの局所的な実装と試験であり、実UI／Reader／Source Revision／Grant／外部Harness送出まで成立したものではない。実装でこの局所テストをWebView/AI連携済みとみなさない。
+
+CLI／MCP／外部Harnessへ選択Subjectを渡す場合は、Qualified Subject、元Source occurrence、Workspace、Revision、Selection Epoch、開示可能範囲を使い、受信側が現在の対象へ再解決する。StudioのPinが存在するという事実は、Pluginの実行許可、Sourceの保存権限、外部AIへの秘密情報送信資格を意味しない。別Workspaceの同名SubjectやA→B→Aで古い照会結果を現在の選択へ昇格させない。
+
+これらは#4515/#4597、#4698、#2516／#2514の既存Ownerへつなぎ、新たなSelection正本や専用Harnessを設けない。
+
+## 15. 既存実証と未実装の機能を混同しない
+
+周辺PRの成果を本件の実Backend試験と混ぜないため、最初の受入表に次の事実を固定する。
+
+| 実装・設計の起点 | 現時点で主張できること | 主張しないこと |
+| --- | --- | --- |
+| `cmd/tei/cli_inprocess_parity_test.go` | CLI／共通Operation／Studio Hostの一部の直接意味比較が実装されている | 実IPC、実Wails Consumer、全Operation同値 |
+| `cmd/tei-studio/main.go` | WailsのServiceを同一ProcessのGo Hostへ登録する経路がある | 子Backend常用、共有WebのMulti-Tenant対応 |
+| [#4710](https://github.com/hat47x/tei-platform/pull/4710) Direct実行の別PR | 子Processの出力Byte、失敗、Digestの実装・試験がmainに統合済み | Studio BackendのIPC、業務Effectの成功、Source/Toolchainの完全固定 |
+| [#4704](https://github.com/hat47x/tei-platform/pull/4704) Markdown Reader | 正式`*.tei.md` Readerに必要な段階と負例が整理された | 現行Loaderが管理下の`*.tei.md`を正式に受理・解釈すること |
+| [#4708](https://github.com/hat47x/tei-platform/pull/4708) Plugin文書 | Inventory→公開Manual SourceRefの最初の接続差分が特定された | 製品CLIの`plugin docs`／完全なInstall/Enableが実装済みであること |
+| [#4702](https://github.com/hat47x/tei-platform/pull/4702) Script Launch | actual Provider→通常CLIへの最初の実装票がある | Product実Call／Effect・二Consumerが新たに実証されたこと |
+
+特に最初のIPC試験は、現行の正式Workspace Readerで実際に処理できる既存Fixtureを使う。正式Readerが未完成の`*.tei.md`を、そのまま成功済みの意味Sourceとして渡さない。正式Readerとセルフビルドの主線は独立して進め、それぞれのSource／Build／実Consumer証拠を再結合する。
+
+## 16. 方式比較の採否票と初回合格の上限
+
+#4635の方式比較では、A=現行Native同一Process、B0=自己exe子Process、B1=loopback HTTP/WS、B2=Named Pipe/UDSを混同せず、一つの契約を持つ異なるTransportとして測る。B0は起動物の方式、B1/B2は通信形式なので、組合せ自体は実装選択であり排他的な分類とは限らない。
+
+同じHardware／Workspace／Operation／Plugin構成で、Cold Start、Core Readyまで、最初のUI表示まで、100回の短いOperation、MB級のModel/Graph、長時間Buildの通知、p50/p95/p99、親子合計のPeak RSS／CPU、Cancel／Crash／再接続を比較する。ベンチマーク値だけでなく、Source版、操作契約、実Process／Image、実Clientを揃える。閾値は実測より先に根拠なく決めない。
+
+最初に合格を主張できるのは「指定したread-only一Operationが、実子Backend経由で既存Direct経路と意味同値であり、起動・Peer・失敗・結果が観測された」範囲までとする。正式Stage2 StudioのWindows実Consumer、実Provider、Plugin更新、Updaterの資格へ拡大しない。
+
+**実装優先順位**：PR-A（既存Direct parity）→PR-B（明示CLI自己子）→PR-C（Wails子Backend一往復）。ただし#2831/#4583のStudio Stage1→Stage2セルフビルドと#4495の通常CLI→actual Providerは、これらの完了待ちにしない。
+
+## 17. 製品主線と子Backend検証の接合点（2026-11-15、Graph実生成／Provider受入との照合）
+
+**子Backend試験で何を観測したか**と、**TEIが業務意味から何を生成・実行したか**は別の問いである。両者を同じ実行記録で追跡できるようにするが、片方のPASSをもう片方の資格へ昇格させない。
+
+| 既存の実装・受入 | 現在の到達点 | 子Backend計画との接合 | 新しいPASSの上限 |
+| --- | --- | --- | --- |
+| #4709/#4722のMarkdown Graph固定Fixture／限定Reader | 元Source byte/spanとNode/Edge IDを持つ参照候補を読める | 同じFixtureを、将来の実Operation/Providerの回帰で再利用 | 正式`*.tei.md` Loader／意味受理ではない |
+| [#4729](https://github.com/hat47x/tei-platform/pull/4729)のGraph/Rule→Go→独立Consumer | mainに限定ReferenceのGraph/Rule条件→Go制御分岐の生成・別Processでの実行が統合済み。旧Graph専用PR #4728は重複を避けて未マージのままclose済み | Edge反転とRuleの条件変更が実Go／Consumerへ伝播し、layout-onlyでは意味を維持する証拠を再利用 | 製品Target Generator、正式Markdown Loader、Plugin実Provider呼出し、Studio Stage2ではない |
+| #4712のcapabilityinvoke実Adapter境界 | Dispatch前call0／Dispatch後call1と結果契約不正・取消を区別する局所回帰がmain統合済み | 子ProcessでACKが消えても「未Dispatch」へ戻さない | 外部Effect不在・安全Retryの証明ではない |
+| [#4702](https://github.com/hat47x/tei-platform/pull/4702)のSL-1a/b/c | 公開pure Entry→型付きAPI→選択済み実Go Provider→通常tei別Processの計画 | Provider選択Identityと実Invoke、通常CLIの到達と、IPCの独立証拠を合流させる | 実Product EntryとOwner意味受理は未実証 |
+| #2831/#4583のStudio Stage1→Stage2 | 独立BuildIntent／実Builder／実Windows WebView2 Consumerを必要とする既存P0 | 将来Stage2が子Backendを用いる場合は、親／子双方の実ImageとGUI Assetを別に計測 | 子IPCの局所成功で製品Self-build PASSとしない |
+
+Graphを使う最初の技術例では、**同名Node二つ・多重有向Edge・Edge反転・layout-only・Mermaid表示差異**を区別する。同じモデル上での小変更から実Goの動作へつながることが重要だが、参照実装の`go run`を通常`tei`のPlugin実Callと呼ばない。また、`*.tei.md`が正式Loaderの管理下で未束縛として拒否される間は、参照Readerの成功を正式なSource受理に転用しない。
+
+セルフビルドの改善指標は、生成Goの行数やPlugin数だけではなく、**各振る舞いがTEIの図表・Ruleから生成されたのか、既存Go部品に委譲したのか、手書きで残ったのか**を、機能単位で比較する。Plugin自身をTEIから構築する比率と、保守する定義体の簡素化も別に計測し、旧Generator／旧Sourceが混在した結果を達成としない（#4720、#4718、#1180/#2514）。
+
+## 18. PR-Bの実子Backendを実装する際の具体的な境界
+
+既存の`operations.InspectSubject`等を、通信のために別の意味Engineへ移し替えない。PR-Bで新たに必要になるのは、**明示的なDispatch経路、親子通信、結果の対応付け、子の終了管理**である。
+
+### 18.1 起動と通信の最小Contract
+
+- 親は明示的な試験指定時のみ現在の実行ファイルから子を起動する。通常CLIのコマンド体系・JSON v0・exit・stderrは維持する。子の動作モードはGUI/Wails起動やWorkspaceの外部書込みより前に選別する。
+- 子の通信は一対一・有限サイズとし、Transport用のRequest ID、Operation ID/Contract、Workspace指定、Deadline、Cancel、Response/Failureを扱う。ただし業務Request EnvelopeやExecution Receiptの第二正本を作らない。親子共通のTransport表現を既存の型付きOperationへ変換する薄いAdapterにとどめる。
+- コマンド実行結果がJSONである場合は、子から利用者向けJSONを出力させず、親が従来のCLI Result投影を行う。子側の診断ログをProtocol用stdoutへ混入させない。サイズ超過・部分Frame・EOF・不明なOperation・Protocol不一致を実Failureにする。
+- 子ProcessのPeer確認は、引数とPIDだけに頼らない。親が作成した一回限りのPipe/Handle等のOS資源とProcess起動事実を照合する。Process Exit Code、Timeout、実起動Path、実Image Digestを観測項目へ加えるが、Digestの取得方法が実Imageと一致しないOSでは`unverified`として扱う。
+- 子が正常にReplyしなかった場合は、読取りであっても古いReplyを後続Sessionへ流用しない。副作用を持つ操作はこのPRでは公開しない。将来のEffectでは#4712が固定したcall0/call1とReceipt照合を使い、ACK喪失を安全Retry許可へ読み替えない。
+
+最初の受入Fixtureは、**現在の製品Loaderで実際に読める既存Workspace**から選ぶ。Reference Graphの未受理Markdownを直接渡して「製品BackendがReaderを通した」と偽装しない。新しいSource Readerの追加も、このPR-Bの前提条件にはしない。
+
+### 18.2 PR-BからPR-Cへの引渡しを明文化する
+
+PR-Bは、実`tei`親Process→実`tei`子Processのread-only一操作について、既存Directと同じ意味結果、実Child ID、Handshake、故障時Failureを報告するだけとする。
+
+PR-Cでは、`cmd/tei-studio` nested ModuleのWails Native起動経路と、子Backend経路を同じRead-only Operationで比較する。実Windows WebView2、`StudioBridge`、Go IPC Adapter、実子Image、表示した対象とRevisionをそれぞれ観測する。**CLIの成功だけでWindows GUIの出来上がりを主張しない。**
+
+StudioのClientはIME、Focus、未保存Buffer、選択Pin、Layoutを維持し、子Processの再起動で現在の編集状態を上書きしない。GUIからBackendへ引き渡すのは現在のSelection/Qualified Subjectの参照であり、保存権限やAIへのDisclosure Grantではない。
+
+## 19. 実行票の必須証拠・方式採否・継続的検証
+
+既存の#1180/#2514を独立ExpectedのOwnerとして利用する。ここで新しいScenario ID体系や永続Registryは設けない。PR-A〜Cの各受入票は、最小限次の関係を同じAttempt内で再構成できなければならない。
+
+```text
+Source byte/span + Workspace / Subject / Revision
+  → Parsed / Accepted Meaning (別資格)
+  → Operation Contract + Entry / Capability + Host Scope
+  → Resolved Plugin + selected Provider / locked Artifact
+  → Actual invoked Provider + call count + Attempt / Session Epoch
+  → Result / Failure + Effect observation (if applicable)
+  → CLI / Wails Consumer + Independent Expected
+  → Claim: Direct | Child IPC | GUI Bridge | Product Provider | Self-build
+```
+
+同じJSONや業務値が返っても、選択したProvider BではなくAが呼ばれた場合はProvider実行の受入に使わない。Childの実Processが見つかっても、対象Source・契約・Actual Providerが未確認なら製品実行資格にはならない。反対に、正式ReaderやPluginが未完成の状態でも、**read-only一操作のIPC同値性**だけは限定して実証できる。
+
+### 19.1 性能・分離方式の採否表
+
+| 採用判断 | 実測が必要な項目 | 保留すべき条件 |
+| --- | --- | --- |
+| CLI direct既定→自己子既定 | Cold start、短命コマンド頻度、p50/p95/p99、合計RSS、JSON/exit互換、障害回復 | 性能測定なし・既存Script互換破壊 |
+| Studio Native A→B0/B1/B2 | 編集中の体感応答、IME/Focus/Buffer、実WebView2、Pipe/HTTPの攻撃面、親子故障、更新時のImage不一致 | 未保存内容の欠落・旧Reply採用・実Wails証拠なし |
+| Session再利用・共有Daemon | 一Process当たりのWorkspace/Grant隔離、連続操作、Source競合、Child孤児化とOwner | 利用需要が不明・暗黙のWorkspace共有 |
+| 外部Plugin／Updater | Release Byte、Lock/Composition、実Provider、旧Session Drain、現在Trust、OS管理主体、Plugin Data Migration | 状態がnotModelled・Effect Unknown・Rollback意味が不明 |
+
+性能の具体的な許容値は実測と製品Ownerの要求を根拠に決める。ベンチマーク上の平均値の改善だけで、プロセス分離や共有Serverの採用を決定しない。
+
+### 19.2 文書・CIの完了条件
+
+設計文書は`plan/design/README.md`の索引に追加し、`tools/repository-plan-check`の文書一覧検査を通す。PR #4705の先行HEAD `fa17bef8`では、`TestPlanReadmesMentionEveryEntry`が本ファイルの索引欠落でFAILし、全体Health CIが失敗した（Cache検証のみSUCCESS）。索引漏れを修正した後のHEAD `80ac4f86`では、[Repository Health CI](https://github.com/hat47x/tei-platform/actions/runs/43629359234) とCache Full vs Incrementalの両方がSUCCESSである。**この成功は`80ac4f86`に限定**され、以後の追補HEADについての再検証は別に必要。別PRのGo実行結果、提案段階のExpectedを今回の新しい製品合格として記録しない。
+
+最終的に、子Backendの採用要否は#4635のOwnerが、CLI既定変更はADR-0048のOwnerが、Plugin管理／Updaterと実行資格は各Plugin/Host Ownerが決める。段階導入の目的はStudio Stage1→Stage2とProduct実Provider実行を早めることにあり、子Backend／Installer／共有Serverを新しい先行Hard Gateにはしない。
+
+
+## 20. 実装の接続順を一本化する（2026-11-15、#4729／#4730／#4702との照合）
+
+他Workstreamで進んだGraph/Ruleの参照Go生成を、子Backend先行の新開発へ引き戻さない。ここで統一するのは「一件のMeaning／Operationを、どこから呼び出したか」と「その意味が正式Reader・生成Providerから来たか」の証拠の結び付け方である。**読取り経路を縦に通す試験と、意味生成の製品化は並行可能**とする。
+
+| 既存の取組・優先 | 次の実装で一つだけ確定すること | 成立を主張できる範囲 | 引渡し先 |
+| --- | --- | --- | --- |
+| **S0：製品Reader（独立P0候補）** | 選択された `*.tei.md` の元Byte・Span・Roleを既存Workspace Loader／Source Indexへ接続し、未選択Sourceを拒否 | 正式に選択したFrontendを製品側が実読取したこと。Ownerが意味を受理したことではない | #4730／#2621／#988／#4704 |
+| **S1：意味からGoへ（S0後）** | Accepted Meaning／Ruleの変更が実生成Goの判断へ伝播し、独立Consumerの結果を変える | 生成ロジックの実使用。Reference `go run`のみなら製品生成PASSにはしない | #4729の参照結果、#2600／#2831 |
+| **SL-1：実Product Entry（並行P0）** | 一つのOwner受理pure Functionを、選択済みactual Go Providerへ型付きAPI→通常`tei` CLIから実呼出しする | 当該Entry／Provider／CLIの実到達。call0/1とEffect資格は別 | #4702／#4495／#951／#1251 |
+| **PR-B：CLI自己子Backend（並行比較）** | 既存`*.tei` Fixtureを用い、read-only `inspect`一往復でDirectとChildの意味・Failure一致を実証 | 実IPCと子ProcessのRead限定資格。正式`*.tei.md`や実Product Providerを必要条件にしない | #4635／#1158／#1180 |
+| **PR-C：Desktop子Backend（PR-Bの後）** | Wails Native Bridge→Go IPC→実子Process→同じRead Operationを実Windowsで呼び出す | Windows GUI／IPC資格。Studio Stage1→Stage2自己構築とは別 | #4635／#1824 |
+| **SB-3/4：CLI／Studio再入（全体P0を維持）** | Stage1の実ProcessからStage2を生成、次世代CLI/Pluginの実CallとWindows WebView2を別票で確認 | 製品自己構築の資格。Builder申告・BOMのみでは不可 | #2831／#4583 |
+
+### 20.1 Source Indexと業務意味の境界
+
+最新の[製品Reader引渡しPR #4730](https://github.com/hat47x/tei-platform/pull/4730)が指摘するように、一般のPath拡張子判定では `*.tei.md` の最終拡張子は `md` になる。**Source Indexにファイルが載ったことと、TEI Frontendが選択・Parseされて意味Sourceとして使用されたことを区別**する。Source Index側のRoleも、業務上のMeaning Roleを自動的に決める資格ではない。
+
+限定ReferenceのGraph／Ruleを製品へ引き上げる前には、選択したFrontend、元Sourceのbyte-span、Ruleの条件、実ParserのProviderと版、Reader診断、後段Buildへ渡した入力を追跡する。現行Workspace Loaderが `TEI_MD_PARSER_UNBOUND` を返す場合、未接続のMarkdownを成功した製品Sourceとして扱わない。
+
+**S0-P（実装済みの事前検査）**：main統合済みの[PR #4751](https://github.com/hat47x/tei-platform/pull/4751)は、実Manifestの管理Root、Pinned `os.Root`で取得したSourceの元Byte、管理Root外の`drafts/`の非混入、既存Source IndexのByte/Spanと旧Artifact拒否を`internal/workspace`のGo試験でつないだ。ここでも`Workspace.Load`は`TEI_MD_PARSER_UNBOUND`で拒否し、**正式Parserの選択、意味Sourceへの受理、Target生成は行っていない**。
+
+**次に着手するS0-A（製品Readerの最小実装）**：既存`Workspace.Load`が選択したFrontendへ、同じPinned Rootから実際に読み取ったRaw byteとSource位置を渡し、既存のSource Index／Reader診断へ連結する。一つの選択Sourceと現行`*.tei`互換だけを対象とし、未選択・未対応・不正Fence・Revision不一致は曖昧な成功へ変換しない。正式なLanguage Role／業務Meaning／Owner受理を、この一段階の合格条件にしない。受入票とOwnerは[#4730](https://github.com/hat47x/tei-platform/pull/4730)・#2621／#988に従う。
+
+なお、通常のPlugin公開マニュアル一件をSource-backedで読取り、選択済みPlugin／Contract版／現在の開示資格へ結び付ける[PR #4750](https://github.com/hat47x/tei-platform/pull/4750)の作業には、**業務`*.tei.md`の意味Parser完成を先行条件としない**。同じSource Indexを用いても、Pluginの帰属やDisclosureをRaw byte登録だけから推定しない。
+
+また、[Fence拒否の修正PR #4725](https://github.com/hat47x/tei-platform/pull/4725)は、チルダ／長いCode Fence／インデント付き例示から偽の定義が読まれる問題をGraph/Ruleの限定Referenceで扱う。修正PRが未統合の間は、現在の参照Readerへ任意のMarkdownを安全に渡せると主張しない。正式製品Readerの負例は#2621の既存受入へ引き渡す。
+
+### 20.2 一つの実行票に記録するもの
+
+複数の工程を一度に「成功」にまとめず、利用者やHarnessが辿る一つの実行票には、最初から別の資格欄を置く。
+
+| 資格 | 必須の実観測 | 欠けたとき |
+| --- | --- | --- |
+| Source read | Frontend、実Source Byte／Span、Source/Reader Revision | `not-consumed` |
+| Meaning accepted | 業務対象・Role／Rule・受理OwnerとVersion | `proposal-only` |
+| Generated artifact | Generator/Toolchain実Version、Consumed Byte Closure、実Output Digest | `not-generated` |
+| Provider invocation | selected Plugin/Lockとactual Provider、call count、現在Grant | `not-invoked`／`unverified` |
+| Transport execution | Direct／Child／Wails、実Process Epoch、Protocol、Actual Operation、Result/Failure | `transport-unverified` |
+| Independent consumer | 実CLI／Studio／別Host、独立Expectedと照合 | `consumer-not-verified` |
+| Self-build reentry | Stage1実Process→Stage2実Build、実Child／生成Artifact／Consumer | `reentry-not-verified` |
+
+上記の文字列は受入票の**説明語彙案**であり、現行JSON Schemaへの新しいenum追加ではない。既存のWorld/Model/Artifact RevisionとAttempt/Receiptを参照し、第二のEvidence Registryを新設しない。DirectとChildが同じJSONを返してもProvider実呼出しを証明しない。生成Goが独立Consumerで動いても正式Readerの実消費を証明しない。
+
+### 20.3 ユーザーから見える診断
+
+CLIやStudioには「Backendが使える」という単一Booleanを返さず、次のどこで成立しなかったかを区別して表示する。例：Backend自体の起動失敗、Source未束縛、Provider未選択、Provider実体／Grant不一致、IPC timeout、結果が不明な外部Effect、実行成功だがConsumer未検証。
+
+ただし、診断の意味は既存OperationのFailure／Plugin managementのReason Codeから投影し、新しい画面固有Policyを作らない。Studioがオフラインでも`CORE_READY`としてSource／Plugin構成を診断できることと、当該Workspaceの実Operationが利用できることは別に表示する。
+
+### 20.4 次のコードPRで守る停止条件
+
+**製品Reader S0-A（#4730／#2621）**は、S0-Pで確認できたManifest・Pinned Root・既存Source Indexを、選択Frontendによる実Reader消費まで接続する。選択元のByteとReaderが消費したByte／Spanの一致、`*.tei`互換、管理Root外の非混入、未束縛Frontendの拒否、旧Source Indexの失効を正負一組で検収する。Reference Readerの直接呼出しだけではS0-A合格としない。新しいParser正本、Plugin Registry、実行Hostは追加しない。
+
+**CLI子Backend PR-B（#4635／#1158）**は、既存の正式`*.tei` Workspaceで`inspect`の読取り一操作だけを試す。Direct経路と実子Processの意味・Failure同値、親子の実Identity、有限Frame、Timeout／Crash／旧Reply拒否、stdout・exit互換を観測する。DB書込み／外部Effectや未完成Markdown Loaderを、この試験の対象に含めない。`internal/operations`にはWails・HTTP・CLI依存を追加しない。
+
+どちらのPRでも独立Expectedを使い、実際に越えた境界だけを報告する。**全体P0のStudio Stage1→Stage2と、並行P0の通常`tei`→actual Product Provider／異質Consumerは変更しない**。PR-CとPlugin Updaterは後続の独立検収とする。
+
+## 21. 再生成と再実行の境界を一つの実例で固定する（2026-11-15）
+
+main統合済み[#4733](https://github.com/hat47x/tei-platform/pull/4733)では、限定ReferenceのGraph／Ruleから生成した**同一の実Go Binary**に、Node IDを実行時引数として渡せる。これを子Backend、Plugin更新、セルフビルドに共通する失効判断の最小例として用いる。Referenceが実行できたことと、正式TEI製品がそのRuleを受理・実装できたことは区別する。
+
+| 変更内容 | 実際に必要な処理 | 新しく確認する証拠 | 禁止する誤判定 |
+| --- | --- | --- | --- |
+| 呼出側がNode IDを`n-1`から`n-2`へ変更 | **同じ実Artifactを再実行**。Invocation/Resultは新しいAttempt | 実Image Digest不変、argv／入力の実Byte、実Result、独立Expected | 入力変更だけでSource／Generatorが変わったとする |
+| Node/Edgeの向きやRule条件を変更 | Source/Meaningの再検証後、依存するGo生成・Buildを再評価 | 変更したSource span、Rule、生成Go／Artifact、出力の差 | 旧Artifactの同じ応答を現在の意味に流用 |
+| Mermaidの配置・説明だけ変更 | Source変更を記録。意味が不変と確認できた範囲のみ生成の省略を検討 | Source Revision、Meaning Revision、独立な再利用受理 | 意味不変なのでSourceの再確認も不要とする |
+| Plugin成果物／生成器のToolchainを更新 | 実Build／Plugin Lockと契約の互換性を再評価。旧Invocationは開始時の実Artifactに固定 | Toolchain実Version・引数・環境、Artifact Digest、実選択Provider | 同じ版名・同じResultで実Image同一とする |
+| Current Grantを撤回、Remote接続先を変更 | 新Invocationの認可・選択先を再検査。単なるGrant更新は原則再コンパイル理由ではない | Host-issued Scope、現在Grant、接続先、実Attempt | 旧Lock／Client情報をAuthorityにする |
+| SourceがA→B→Aと変更される | Raw Byteが一致しても現在Revision／受理とWorld Fingerprintを照合 | Source取得時点、World／Model／Artifactの独立Revision | Digest一致のみで旧Evidenceを無条件再利用 |
+
+この表は既存のWorld Fingerprint、Model Revision、Artifact Revision、Operation/Attempt、Plugin Lock、現在Grantを参照する。第二の失効管理器は作らない。まず`reference/tei-md-graph-reader`の既存独立Expectedを、**生成済みBinaryの実行時入力**と**定義／Rule変更後の生成物**の違いを調べるテストへ再利用する。製品CLI／Plugin/Studioで同じ意味処理が成立するかは別Gateで検収する。
+
+### 21.1 子Backendとセルフビルドに必要な入力Closure
+
+自己子Backendは「親と同じPathで起動した」だけでは同一Artifact使用を証明できない。実行したImage、実Process、Plugin実体／Composition、Workspace Source、要求時の契約、結果を結び付ける。Child SessionはArtifactを保持できても、次のRequestごとに現在Scopeと入力を検証する。
+
+Stage1がStage2を構築する場合は、親・子の実Process階層だけでなく、**実Toolchainと有効になったBuild引数／作業ディレクトリ／環境の影響**も記録する。現在レビュー中の[#4740](https://github.com/hat47x/tei-platform/pull/4740)では、子Go Processが親の`GOFLAGS`を継承したため初回テストが失敗し、親から明示的に`-modfile`を渡す方法で再検証したと報告されている。こうした変数は結果を変えるため、隠れた既定として放置しない。秘密値はログに平文保存せず、許可された公開メタデータや非可逆な参照で十分性を判断する。該当Toolchainの観測が完了していなければ、Buildの再現性を証明済みとしない。
+
+### 21.2 次のコードPRの停止条件と担当
+
+既存#4635の比較用PR-Bでは、現行`*.tei`のread-only `inspect`一件を**明示的な子実行経路**で呼び、実子Image／実Peer／限界付きIPC／旧応答拒否／Direct結果の意味一致を確認するだけとする。Graph/Ruleの製品ReaderやProvider実装を前提にしない。
+
+並行する#4730の製品Reader S0と#4702のactual Provider／通常`tei` CLIは別PRとして進める。後続で同じGraph/Ruleを実Provider経由で呼び出せた場合、生成された意味、選択Provider、実Provider、入力とResult、Independent Consumerを結合する。**同一Processと子Processで同じJSONが返ることだけではPlugin実行・Stage2セルフビルドは合格しない。**
+
+### 21.3 実行済みCIと現行HEADの区別
+
+PR #4705の旧HEAD `7375ab6b`では、[Repository Health](https://github.com/hat47x/tei-platform/actions/runs/43644211064) の全Goテストと`go vet`はPASSしたが、`internal/database/sqlgen/sqlite/window_candidate_oracle_test.go`の`gofmt`差によりJob全体はFAILだった。Cache Full／Incremental検証はSUCCESS。旧HEADを「全体CI成功」と記録しない。
+
+その後mainに統合された[#4749](https://github.com/hat47x/tei-platform/pull/4749)はSQLite側の整形修正を含み、Source選択のS0-P試験[#4751](https://github.com/hat47x/tei-platform/pull/4751)も統合された。これらの修正と実証を本Docs PRの基線へ取り込む。ただし、**最新統合HEADでCIを再実行した結果が確認できるまで本PRの合格を主張しない**。正式Loader、実Provider、Child IPC、Windows Stage2の実行資格も別のまま保持する。
+
+設計の変更対象をDocsへ限定し、GoのCI不具合を別の旧修正PRから重複して取り込まない。CLI direct→Child→Wailsの通信検証と、Reader→Meaning→生成Provider→Consumerの業務意味検証は、異なる独立Expectedで判定する。
+
+## 22. Wails標準UpdaterとStandalone Releaseの配布契約（2026-11-15）
+
+Desktopの更新は、独自にダウンロード・署名検証・実行ファイル差し替え処理を作るのではなく、**Wails v3標準の `app.Updater` を第一候補**とする。製品としては、必要なローカルBackend、標準Plugin、起動に必要な設定テンプレートも同じ**Release単位**で届ける。ただし「同じReleaseに属する」と「Wails標準Updaterだけで任意の複数ファイルを同時に切り替えられる」は異なる。ここを混同しない。
+
+- **確認済みの上流仕様**：[Wails v3 Updater公式ガイド](https://wails.io/guides/updater/)（更新元Provider、署名、ステージング、実行ファイルの置換、イベント／画面）、[Wails Update Manifest](https://v3.wails.io/ja/reference/update-manifest/)（静的HTTPS配信にも対応）。
+- **現在のTEI実装**：`cmd/tei-studio/go.mod`は `github.com/wailsapp/wails/v3 v3.0.0-beta.29`、`main.go`には現時点で `app.Updater` 初期化がない。上流の最新安定版は2026-11-01公開のv3.1.0（2026-11-15確認）であり、#1824のS0-Uで当該安定版への移行とWindows/macOS/Linuxの実検証が必要である。v3.2.0-nightlyは検証用の別候補であり、配布版へ自動採用しない。API／Helper／パッケージングの現行依存版での動作を未確認のまま「組込み済み」としない。
+- **Wailsの交換単位**：公式ガイドのUpdater v1は基本的に単一の実行対象を差し替える。ZIP/TAR.GZはトップレベル1項目、macOSの `.app` 全体の交換は明示的に扱う。複数の独立した `.exe`、Pluginディレクトリ、ユーザー設定を列挙して同期的に交換する機構を、標準Updaterの機能とはみなさない。MSI/DMG/PKG自体をUpdaterが直接インストールできるとも想定しない。
+- **更新可能性の制約**：Wailsは実行対象の隣に更新用ステージングを作るため、書込み禁止のインストール場所やOS／パッケージマネージャ管理下での自己更新は別の検収が必要。WindowsのProgram Filesや複数利用者環境で、利用者権限の自己更新を暗黙に成功扱いしない。
+
+### 22.1 配布形態は三種類に分ける
+
+| 配布形態 | DesktopとBackendの関係 | 一緒に配るもの | 更新の責任 |
+| --- | --- | --- | --- |
+| **D1：Remote接続Desktop** | Desktopは明示したRemote Serverへ接続 | Studio Native UI、Client専用リソース／Plugin、接続先の初期設定テンプレート | DesktopはWails Updater。Remote Server／Server Plugin／DB設定はServer運用者が別Releaseで管理。ClientからRemoteを無断更新しない |
+| **D2：Standalone・単一実行物** | DesktopのGo Backendを同一Binary内で直接実行、必要なら**同じBinaryをB0子Processとして起動** | UI、Backendコード、標準Plugin、静的リソース、既定設定テンプレート。利用者データとSecretsは含めない | Wails Updaterの単一対象更新と整合しやすい第一候補。B0採用自体は#4635の実測後に判断 |
+| **D3：Standalone・別Server同梱** | DesktopとServer Buildを別Binaryで配布し、LoopbackやPipe等で接続 | Desktop、当該OSのServer実行物、依存PluginのClosure、必要なデフォルト設定と契約版 | **一つの製品Release**として署名／照合するが、複数ファイルの段階更新と切戻しはWailsの標準交換とは別契約。OS Installer／Package Managerまたは明示的なBundle活性化機構を評価 |
+
+D2は「サーバサイドの機能を同梱する」最も単純な実現手段である。**Server Buildを別OS Process・別Binaryとして配ることまで必須にしない**。共有Server運用やWeb配信に必要なD3構成は、D2とは独立にRelease可能とする。デスクトップのために独自TEI Hostを設けず、同じApplication Operation／Plugin契約のTarget別配置として扱う。
+
+### 22.2 Releaseに含めるものと、更新してはいけないもの
+
+| 分類 | Releaseに含める／含めない | 更新の意味 |
+| --- | --- | --- |
+| Studio実行物・配信UI | Release内の実バイト、OS/Arch、署名、UI Asset Revision | Wails UpdaterまたはOS配布主体が差し替え |
+| ローカルBackend（D2/D3） | Releaseで同梱する**実Image**、必要な起動モード、Operation/Wire Contract | Desktopとの互換性を起動時に検査。D3では旧Serverを止めてから新世代へ切替 |
+| 標準Plugin | 組込みなら本体Artifactへ固定。外部ArtifactならReleaseのLock・実Byte Digest・Provider資格・配布元を明示 | 本体更新で組込みPluginも更新。外部PluginはPlugin管理のPlan/Applyと独立した署名／実体検証が必要 |
+| 既定設定／設定Schema | 読取り専用のテンプレート、設定Schema版、Migrationの要否と予定 | テンプレートを更新しても既存の利用者設定を無条件上書きしない |
+| ユーザー設定・Workspace・DB | Releaseには含めない。初回作成後は書込み可能な利用者／管理者管理領域へ分離 | 明示Migration、バックアップ、所有者受理。秘密値・接続資格・個人データは配信物に入れない |
+
+Plugin側の実行依存（Data Provider／Operator／Generator等）は、**どのRuntimeに必要か**によって同梱対象を選ぶ。Editor専用Pluginや生成時だけ必要なGeneratorを、製品ServerのRuntimeへ無条件に載せない。また「依存Pluginを同梱した」ことと「Hostが現在のGrantでそのPluginを選択・呼び出せる」ことは別資格とする。
+
+### 22.3 Bundleとして一貫性を保つ
+
+既存のBundle／Plugin Lock／構成世代へ、次の対応を記録する。第二のPlugin RegistryやUpdater専用の業務意味正本は作らない。
+
+```text
+Release Identity / Signature / OS・Arch
+  ├─ Desktop実Image + UI Asset Revision
+  ├─ Backend実Image + Operation/Wire Contract (D2は同一Image)
+  ├─ Plugin Lock + Provider別Artifact実Digest
+  ├─ Default Config Schema + readonly Template Digest
+  └─ 必要なMigration／最低互換条件とRollback可能範囲
+```
+
+更新では、(1)同一ReleaseのMetadataと実Byte／署名を検証、(2)新Releaseをステージング、(3)子Backendの新規Invocationを止めて進行中Attemptを適切にDrain、(4)旧世代の実Processが終了したことを確認、(5)配布主体に適合する方式で実行対象を切替、(6)再起動後のBackend HandshakeとPlugin／設定互換性をReadで検証、(7)旧世代を必要な範囲で保全する。
+
+- **Wailsの戻し保証を過大評価しない**：実行ファイル交換の失敗時に旧実行物を復元できても、外部Pluginの部分更新やDB Migration／外部Effectまで一括Rollbackできるわけではない。
+- **混在世代を拒否する**：Desktopだけ新しくBackendが旧版／Plugin Lockが不一致／Schemaだけ先行した場合は、明示された互換範囲でない限り起動・実行を拒否し、診断と復旧手順を示す。既存Sessionは開始時のPlugin構成に固定し、新世代へ黙って移さない。
+- **ユーザー設定の保全**：新Templateとの差を表示し、設定Schema Migrationは事前バックアップ・失敗時の停止・再実行条件を明示する。DB SchemaやEffectの逆向きMigrationを常に可能とは扱わない。
+- **権限と所有者**：OS InstallerやPackage Manager管理の配布物は、その管理主体を優先する。アプリ内UpdaterとInstallerが同じPathを競合更新しない。Remote ServerのSecret／設定変更権限はClientに委譲しない。
+- **オフライン版**：D2/D3とも、ネットワークなしで起動可能な初期パッケージを提供する。自動更新は任意とし、USB等で受け取った署名付きReleaseを検証して適用する経路は後続検討とする。
+
+### 22.4 最小の検収と段階導入
+
+| Gate | 実際に確かめること | 未合格の限界 |
+| --- | --- | --- |
+| **UP-0：Wails標準Updater評価** | 現行beta.29の有無を静的確認後、選定した安定版で `Check→Download→Verify→Stage→Restart` の実Windows一回と、署名／版本違い拒否・更新不可Pathを検査 | 実製品導入／全OSサポートではない |
+| **UP-1：D2 Standalone** | 同一BinaryからDesktopとread-only Backendを起動し、更新前後でClient/Backend実Image・選択標準Plugin・既定設定Templateの一致を照合 | D3別Serverの同時更新能力ではない |
+| **UP-2：D3同梱Release** | Server実ImageとPlugin Closureを含むOS別Releaseを署名・照合・一括ステージングし、再起動で版混在と中途失敗を拒否。Wails単独で複数実ファイルを更新可能と仮定しない | OS Installer／Bundle活性化方式は実測とOwner決定待ち |
+| **UP-3：更新と復旧** | 更新途中Crash、旧Session、Plugin互換不一致、設定Schema変更、管理者権限不足、Effect Unknownをそれぞれ独立Expectedで検査 | 外部DBの自動逆行・Effect補償の合格にはならない |
+
+UP-0/1を第一検証候補とし、UP-2/3はD3を採用する場合に実施する。ただし、**UP-0〜3は全体P0のStudio Stage1→Stage2／通常`tei`実Provider呼出しへの新Hard Gateではない**。Wails標準UpdaterとInstallerの選定・移行は#1824、子Backendは#4635、Plugin Lock／配布は#2044／#951／#2589、実Effect／DB Migrationは既存の各Ownerに委ねる。ここでは設計と受入だけを定め、実UpdaterやOSパッケージ試験のPASSを主張しない。
+
+### 22.5 Wails v3.1.0／Wake評価を既存の着手順に接続する（2026-11-15）
+
+Wailsは2026-11-01に[安定版v3.1.0](https://wails.io/changelog/)を公開した。追加された**Wake（`wails.yaml`によるビルド・同梱CLI／Serverの定義・パッケージ作成・署名）は実験的**であり、Updaterの単一対象の交換とは別機能である。[Wailsの解説](https://wails.io/blog/wails-v3-1-released/)／[Wake仕様](https://v3.wails.io/experimental/yaml-builds/)を根拠に次のように扱う。
+
+| 既存担当と優先順位 | 最小変更・実行観測 | 合格と取り違えないこと |
+| --- | --- | --- |
+| **#1824 S0-R → S0-U：安定版移行** | まず現行beta.29・Go 1.26.11の実Windows Desktop／Server BuildとWorkbench生成Assetを固定。隔離したPRでWails v3.1.0と対応する`@wailsio/runtime`／生成Bindingsを揃え、同じSource-backed Catalog/Inspectの実Bridgeを再検証 | `go.mod`の版番号だけの変更、Go Service直接呼出しだけでStable移行PASSにしない |
+| **#1824／#2831／#4583：D2初回配布** | Standalone単一ImageにUI Asset、標準Plugin、読み取り専用の既定設定を固定し、実Windowsでオフライン起動・実Read・Stage1→Stage2への入力閉包を独立確認 | Wails Updater／OS Installer試験をStudioの自己構築成功の代わりにしない |
+| **#1824／#2044：D3のWake試験** | `WAILS_EXP_USE_WAKE=1`を明示した**隔離PoC**で、既存Taskfileを残し、`wails3 build --plan --json`のOS/Arch・実行物・Build flags・CGO・Plugin Closureを比較。`binaries`または`--skip-build`でDesktopと別Serverの実Byteを収める能力を検査 | Wakeは`wails.yaml`有効化によってTaskfile経路を切り替える**片道の移行**を伴う。実績が揃うまで既存Buildを置き換えない。Wakeの同梱・署名はWails Updaterによる複数実行物の原子的切替保証ではない |
+| **#1824：UP-0／UP-1** | 公開鍵と実Artifact署名、Update Check/Verify/Stage/Restart、非書込み可能Path、旧Server／Plugin Lock混在、失敗時の復旧を実OSで独立Expectedに照合 | Installer管理領域の自己更新、DB Migrationの逆行、外部Effectの補償をUpgraderの実行成功に含めない |
+| **M-0〜M-2：Mobileの探索** | v3.1.0固定でAndroid/iOSの適用可能なRead-only Wails Bridgeを対象別に試す。共有するのは業務意味とSource/Operation契約であって、Binaryではない | Mobile実験BuildのPASSをDesktop配布／Mobile正式サポートに算入しない |
+
+**配布時の資格**は、実Release Identity、Wails/Go/Frontend Toolchainと必要なBuild Environment、Target OS/Arch、Desktop/Backend実Image、生成Asset digest、選択Pluginの実Artifact、既定設定Schemaを既存ArtifactSet／Bundle／Plugin Lockに束縛して検証する。TEIの新しいPackage Manager／第二の生成・意味Engineは作らない。Wake導入をP0の新しいHard Gateにせず、既存#1824で比較結果と採否を記録する。
+
+## 23. Wails Mobileの実験的ビルドと正式サポート待機（2026-11-15）
+
+Wails v3.1.0（2026-11-01公開）時点で、**Windows／macOS／LinuxのDesktopは正式な互換性保証対象**だが、**Android／iOSは実験的機能であり正式サポート対象外**である。[公式Roadmap](https://wails.io/status/)／[Mobile Overview](https://wails.io/guides/mobile/)／[iOS](https://wails.io/guides/mobile/ios/)／[Android](https://wails.io/guides/mobile/android/)を根拠に、TEI StudioのMobileを「ビルド可能性の試験対象」と「製品として保証する対象」に分ける。Wailsの公開状況が変わるまでMobile版を正式な納品・互換性・セキュリティ更新の対象へ自動追加しない。
+
+### 23.1 DesktopとMobileで共有する範囲
+
+Wails側では同じGoコードとWebフロントエンドをモバイル向けにビルドできる。iOSはWKWebView＋Xcode、AndroidはAndroid WebView＋GoのAndroid向け共有ライブラリ／NDKを利用する。これは**Wails側の一般的な対応**であり、現在のTEI Studio `cmd/tei-studio`（v3.0.0-beta.29）がiOS/AndroidでBuild・起動済みという主張ではない。
+
+- **共有する正本**：Domain Meaning、型付きApplication Operation／Contract、Reader・Source provenance、Pluginの論理役割、Go生成元、UIの宣言的モデル、独立ExpectedをDesktopと共通にする。Mobile専用の意味Engineや二重のHostを作らない。
+- **分けるAdapter**：WebView／OS API、File Picker、Workspaceの許可済み読取り、アプリのライフサイクル、Touch／Safe Area、IME／アクセシビリティ、公開・更新の仕組みはTarget別に持つ。既存の`StudioBridge`を無制限にMobileへ公開せず、利用可能なRead Operationだけを宣言的Capabilityとして提供する。
+- **最初の機能範囲**：内包したRead-only Fixtureの一覧・参照・検査結果表示など、サーバ依存・外部Effectのない小さな動作から始める。編集・大容量Graph・任意Filesystem／Process制御・Plugin導入・Builder再入は後続評価とする。
+- **画面の方針**：Desktop画面を小さく表示するだけで同等の操作性があると判断しない。狭い画面・縦横切替・タッチ入力に適したLayout／ナビゲーションは同じ意味モデルから生成する別Projectionとし、保存されたモデルの意味・同一性は変えない。
+
+### 23.2 子Backend・Updater・PluginのMobile境界
+
+前節§22の**D2 Desktop単一実行ファイル／B0自己子Backend**は、Mobileの既定配置にはしない。MobileではGoのServiceをWailsのアプリ内に置く構成を最初の実験対象とし、子Processの起動、ローカルDaemon、Pipe/UDS、外部Server Binaryの同梱を当然可能とみなさない。WailsにDesktop向けUpdaterがあっても、MobileのAPK／AAB・iOSアプリの配布／更新へ同じ実行ファイル置換を適用しない。Mobileの配布主体と署名・権限・ストアポリシーは独立に評価する。
+
+Pluginは「論理定義を共有できること」と「その実装をMobileでロード・実行できること」を分ける。**静的に組み込む標準Plugin**、Read-onlyの文書／設定、Mobile対応のGo変換だけを最初に評価し、端末上での動的なNative実行コードのダウンロード・ロード・差替え、OS外のServer配信を成立済みとはしない。DesktopのPlugin Lock／同一Version名だけでMobileの現在の実行資格を与えず、Targetと実Artifact／Host Scopeを照合する。
+
+Remote接続Mobileは将来の別の配置候補だが、接続先・認証・オフライン時の機能差・Disclosureを明示する。Remote接続によってサーバの実Pluginや設定をMobileパッケージへコピーする義務は生じない。
+
+### 23.3 検証の段階と正式サポートへの移行条件
+
+| 段階 | 具体的な受入 | 成功として数えないもの |
+| --- | --- | --- |
+| **M-0：追跡・調査** | Wails公式Status／Release／Mobile APIの変更を追跡し、現行TEI依存との差分・制約を記録 | Wailsの一般的なデモ成功をTEI Studio製品合格とする |
+| **M-1：実験的Build** | Wails安定版へ移行済みの候補BranchからAndroidエミュレーターでBuild／起動。iOSはmacOS＋Xcode Simulatorを使い、同じRead-only OperationとUIを確認 | Android成功をiOS成功とする／Desktopセルフビルド資格に加算する |
+| **M-2：機能・寿命の実測** | Touch／IME／Safe Area、Foreground↔Background復帰、Root／Source／Grant、Memory・起動・診断、Remote拒否をMobile上で実測 | エミュレーターの表示だけで実機・オフライン・セキュリティを保証する |
+| **M-3：正式サポート判断** | **Wails側が各Mobile OSを正式な互換性保証対象に追加**し、TEIで当該OSのBuild・実機・配布／署名・更新／復旧・Plugin／設定・アクセシビリティの受入を完了したときに、Ownerが製品対象へ昇格する | Wails v3 Desktop安定版の存在、Mobile試験BuildのPASSだけで正式採用する |
+
+Wails側の「Mobileが実験的」の表記に変化がない限り、M-0〜2はオプションの探索・回帰試験であり、M-3は待機する。正式サポート時期を独自に約束しない。現在の全体P0は**実WindowsのStudio Stage1→Stage2**と、通常`tei`の実Provider／異質Consumerであり、Mobile BuildやWailsのMobile安定化を新Hard Gateにしない。
+
+**検証状態**：公式文書と現行TEI依存の静的照合のみ。TEI StudioのAndroid／iOSビルド、Simulator／実機試験、Mobile配布、Mobile Plugin実行、Owner製品採用はNOT RUN。
+
+### 23.4 モバイルでのビルド条件と共通ソースの検査
+
+Wails公式の[Mobile Overview](https://wails.io/guides/mobile/)に従い、**`GOOS=ios`では`darwin`、`GOOS=android`では`linux`のBuild条件も成立する**点を検査する。Desktop専用処理を`//go:build darwin`または`//go:build linux`だけで選ばない。必要に応じ`darwin && !ios`、`linux && !android`などで区分し、OSごとのProcess起動・Installer・Wails Updater・Filesystem権限・動的Native PluginがMobileへ紛れ込まないようにする。
+
+Mobile実験Buildの最初の期待値は、同じ`*.tei.md`／既存`*.tei`のうち正式に受理されたRead-only Operationを、Desktopとは異なるPackage/Host上で呼び出せる範囲に限定する。**共通Sourceをビルドしただけで業務意味の受理やMobile Plugin実行資格は得られない**。iOS/Android双方のビルド結果、実Device/Simulator、Source Snapshot、表示・診断を別々の証拠として記録する。
+
+## 24. 更新配布の資格と業務意味の資格を分ける（2026-11-15、最新main統合の実証に基づく）
+
+Wails Desktop／Standalone／Mobileで共通にするのは、単一の「バージョンが同じ」という判定ではない。**Sourceが現在のものか、候補構造が同じか、生成物が同じか、配布された実行物が同じか、実際に使用できるか**を別々に確認する。main統合済みの[#4758](https://github.com/hat47x/tei-platform/pull/4758)は、限定Graph/Rule Referenceの生成Go Binaryに`-candidate-shape`照会を追加した。これを配布検査の参考にするが、正式なTEI製品Loader／業務Meaning／Pluginの証拠と取り違えない。
+
+| 比較する対象 | 何を示せるか | これだけでは示せないこと | 最初の利用箇所 |
+| --- | --- | --- | --- |
+| **Raw Source Digest／Pinned Revision** | 実際に読んだ文書のbyteとSource時点 | 正式Frontendの消費、意味受理、実Permission | #4751のS0-P、#4730のS0-A |
+| **候補構造のFingerprint** | Node/Edge／Rule条件などReferenceが解釈した局所構造の同値 | 説明・Source Span、Owner意味受理、現在のWorld、生成済みBinary同一性 | main #4758とReader→生成器の回帰 |
+| **Artifact Digest／Toolchain** | 生成されたGo／UI Asset／Plugin Artifactの実Byteと生成条件 | そのArtifactの動作・実Provider選択・現在Grant | #2831/#4583のStage1→Stage2、#4748 |
+| **Desktop／Server Release Identity** | OS/Arch、実Image、UI Asset、同梱Plugin Lock・既定設定Schemaの組合せ | DB Migration成功、実Client表示、すべてのPlugin実行資格 | D2の初回配布、D3のWake／Installer試験 |
+| **Operation／Current Grant／Receipt** | 実呼出し先、許可、実Attemptと観測結果 | 外部Effectの自動取消し、別Consumerによる意味検証 | #4702／#1158／#2044 |
+
+候補構造の指紋は**再生成の検討材料**である。同じ構造指紋でもRaw Sourceが変更されればSource／受理は別途再確認する。A→B→Aで元Digestに戻っても、旧Owner受理・旧Build Evidence・旧Releaseの使用資格を自動復活させない。逆にNode IDなど**呼出時の入力**を変えただけなら、生成Sourceが変わったと扱わず、同じ実Binaryで新しいAttemptを記録する。新しいDigest正本や第二のEvidence Registryは設けない。
+
+### 24.1 生成したPluginを実際の配布物へ接続する
+
+[#4750](https://github.com/hat47x/tei-platform/pull/4750)のPlugin文書設計、および[#4765](https://github.com/hat47x/tei-platform/pull/4765)の標準Rule／Decision Analysisを、**製品実行と配布の担当境界**で結ぶ。
+
+- **定義から生成**：業務の条件・時点・結果・例外が受理済みMeaningとして確定した後、既存のTarget Generator／Plugin Contractで生成する。ReferenceのGraph/Rule→GoやBRMS設計文書だけで実Providerに登録しない。Mock／独立Expectedでの試験成功は実DB／外部Effectを保証しない。
+- **同梱候補の確定**：Releaseに載せる実Pluginは、実行時に必要なOperator／Data Provider／言語実装等のClosureを既存Plugin Lockで閉じる。別のServer／Mobile Targetには同一ソースから生成してもTarget固有のArtifact Digestと現在Scopeを持たせる。
+- **公開する説明**：バージョン付きマニュアルのSourceRef／Document Byteと、利用者が参照できる現在Disclosureを結ぶ。文書を同梱しただけでInstall／Enable／Current Grantを得たとは扱わない。Public Docのread-only受領は、業務Markdownの正式Reader完成を待つ新Hard Gateにしない。
+- **起動時の照合**：D2単一Binary、D3別Server、Remote D1ごとに、Client Contract／Backend実Image／Plugin Lock／設定Schemaの互換範囲を確かめる。実Processで選ばれたProviderと、配布Manifestで宣言したProviderの一致は**Invocation時の別票**で確認する。
+- **更新と効果**：新Releaseの配置成功は実Process切替・Session Drain・Workspace／User設定の保全を自動証明しない。DB Migration／外部Effectはそれぞれの受理Ownerの責任とし、結果不明を安全な再送成功に変換しない。
+
+### 24.2 次にコードで実証すべき小さな閉路
+
+1. **#1824 S0-U**：現行beta.29からv3.1.0へ移行した実Windows Studioで、既存のSource-backed Readを実WebView2経由で呼び出し、旧Frontend Bundleの混入を拒否する。既存の#2831/#4583の実Build証拠と照合するが、セルフビルドの代替としない。
+2. **#1824 UP-1／#2044**：その実Binaryに必要な標準Plugin一件と既定設定一件を内包したD2候補を作り、オフライン起動／Read、設定上書きの拒否、Release版と実Imageの一致を独立に調べる。署名Update成功はUP-0で別途判定する。
+3. **#1824 UP-2（任意）**：D3でWakeがServer実Image／Plugin Closureを**配布物へ収められること**と、Updater／Installerが**混在世代を出さず切り替えられること**を別試験にする。Wakeの導入でP0工程を止めない。
+4. **M-1／M-2（探索）**：同じ受理済みRead操作をAndroid／iOSでビルド・受領できるかを見る。OS固有Package/Capabilityは別資格であり、正式なMobile対応時期は約束しない。
+
+**受入上限**：この節は現行mainの実コード・設計PRと上流Wails仕様を照合した**計画の更新**である。新しいWails安定版ビルド、D2/D3 Package、実Plugin／Provider、Mobile試験、Stage1→Stage2再入の追加成功は今回NOT RUN。全体P0の順位を変えない。
+## 25. Bootstrap／Release Closure／Plugin実行資格の統合（2026-11-15）
+
+### 25.1 Bootstrapを肥大化させない
+
+Bootstrapの責任は、起動対象の確定、Releaseと構成の検証、既存Application APIへの接続、利用不可時の診断と復旧に限定する。業務Meaningの解釈、Plugin Resolverの再実装、汎用Host、第二Evidence Store、独自Updaterは持たせない。製品本体が起動できない場合に備え、Pluginの初期化前でも版・実Image・選択構成・失敗理由を診断できる最小経路を残す。
+
+1. **BOOTSTRAP_READY**：実行物・Release Manifest・署名/信頼基点・必要な構成Schemaを検査できる。Plugin未ロードでも診断は可能。
+2. **CORE_READY**：既存Application APIを初期化し、対応Operation Contractを列挙できる。ここでは業務Providerが使用可能とは限らない。
+3. **WORKSPACE_READY**：Pinned Source、選択済みPlugin Closure、対象Workspaceの適合を検査した。Sourceの正式Reader消費とMeaning受理は別の資格である。
+4. **OPERATION_READY**：選択された実Provider、現行Grant、Operation SchemaなどをInvocationごとに再確認した。実Effectの成功や独立Consumerによる受領は実行後にしか確定しない。
+
+状態は単調に進むとは限らない。Source更新、Plugin選択変更、権限変更、子Backend再起動によって、操作単位の資格を失効させる。旧Statusを別Workspaceや別Attemptに流用しない。
+
+### 25.2 Release Closureを配布と実行の橋渡しにする
+
+既存のBuild Artifact／Plugin Lock／Source Indexをそのまま利用し、製品Releaseに対して**どの実バイトを組み合わせて起動するか**を解決する。Releaseの記述は、OS/Arch、Desktop/CLI/Serverの実Image Digest、UI/生成Asset、標準Pluginの契約版とArtifact Digest、構成Schema・既定Template、必要なProtocol／Operation版、および署名・検証元の識別情報を含む。これは新しいPlugin Registryではなく、既存の選択・構築結果を配布用に固定したManifestである。
+
+- **Build-only依存**：Generator・Codegen Toolchain・検証ツールはBuild Evidenceに記録し、生成した製品へ必要なく同梱しない。
+- **Runtime依存**：選択したOperator／Provider／UI Contribution等はTargetごとに閉じる。同名PluginでもWindows・Linux・MobileのArtifact Digestは別物として扱う。
+- **D2単一Image**：Goコードと標準Plugin、読み取り専用の既定設定Template／UI資産を原則として静的に含める。外部Pluginを選ぶ場合は別Closureと更新権限を明示する。
+- **D3複数Image**：Desktopと別Serverを同一Releaseとして配布できても、その二つのProcessが同時に切り替わったことを意味しない。Versioned Release Directory、検証済みActivation記録、互換HandshakeとDrainをInstaller/Deployment側の責任で扱う。
+- **User data**：User Override、Secret、Workspace、履歴、DBはReleaseの不可変領域と分ける。設定Schema Migrationは乾式検査とバックアップ/復旧経路を先に設計し、単なるBinary RollbackでDB変更を戻せるとは主張しない。
+
+Release Manifest／署名が正しくても、Pluginが実行可能、当該Userが権限を持つ、Ownerが業務意味を受理した、という意味にはならない。
+
+### 25.3 Wails Updaterが担う範囲と、製品が追加で担う範囲
+
+Wails v3の公式Updaterは\`app.Updater\`でReleaseの取得・検証・Staging・単一対象の交換を扱う。公開鍵を設定した署名検証を第一候補とし、digest-onlyを署名済みと混同しない。ZIP/TAR.GZは**最上位Entryが一つ**という制約があるため、Desktop.exeと別Server.exeとPluginを最上位に並べたArchiveをUpdaterの一括更新Packageとみなさない。Windowsの.exe/ZIP、macOSの.appを内包したZIP、LinuxのBinary/TAR.GZをOSごとに検証する。インストーラやOSパッケージ管理器が更新を所有する構成では、競合する自己更新を禁止する。
+
+D2では、本体Imageに埋め込んだ標準Pluginと既定設定Templateも本体交換で一緒に更新されるため、配布の整合性を単純にできる。ただし**更新後の実起動・Workspace適合・現行Grant・操作結果**は別途確認する。D3の別Serverや外付けPluginを同時に置き換える必要がある場合、Updaterの単一対象交換だけでは不十分である。Installer/Deploymentへ独立した多成果物の更新責務を委ね、Staging検査→新規Invocation停止→進行中の処理のDrain/引継ぎ→Activation→新旧Handshake→動作確認の順に判定する。
+
+切替失敗時は、可能な範囲で旧Releaseの起動資格を再評価し、問題を診断可能な状態に戻す。新旧DB Schemaが非互換、外部Effectが結果不明、現在の権限が変わった場合は、無条件Rollback・再試行しない。
+
+### 25.4 統合試験は既存OwnerのExpectedへ割り当てる
+
+| ID | 入力・故障条件 | 合格条件とOwner |
+| --- | --- | --- |
+| BRC-01 | D2の固定Image／UI Asset／標準Plugin／既定設定 | Manifest／実消費byte／Plugin Lockの照合、実Windows WebView2でread-only一往復（#1824、#2044） |
+| BRC-02 | 同一SourceでBuild-only Generatorだけを入替え | Release内容と生成資格の差を示し、旧Evidenceを自動再利用しない（#2831、#2600） |
+| BRC-03 | Plugin ArtifactのDigestまたはTargetを変更 | 実行前にClosure不適合を拒否、旧Sessionの選択構成を混在させない（#2044、#951） |
+| BRC-04 | 設定Template変更／旧User Override／Secret | Schema互換を検証し、利用者設定をReleaseで上書きしない（#1824） |
+| BRC-05 | 署名不一致、破損Archive、複数最上位Entry | 更新を適用せず旧版と診断経路を保持（#1824） |
+| BRC-06 | D3切替中の子Server停止・旧Frontend残存 | Contract不一致を拒否し、結果不明の外部Effectを自動再送しない（#4635、#1158、#1174） |
+| BRC-07 | A→B→AのSource復帰、同Fingerprint／異Current Grant | Source／Meaning／Artifact／Release／Invocationの資格を別判定（#2600、#1180、#2514） |
+| BRC-08 | OS Package Manager管理下で自己更新を試みる | 管理経路が競合する操作を拒否、導入・復旧担当を明示（#1824） |
+| BRC-09 | Mobile BuildのDesktop専用Process／Updater混入 | ios/android固有Buildで拒否、Read-onlyの実験資格をDesktop製品受理に加算しない（#1824） |
+
+新たな一括Gateや試験Runnerは作らない。独立Expectedの受理は既存#1180/#2514が所有する。設計だけのBRCは実OS/Goのテスト結果とは区別する。
+
+### 25.5 実装順と停止条件
+
+**P0-A：CLI-firstの実生成・自己再入**。正式な\`*.tei.md\` Source→受理済みGraph/Rule→実Go Generator→生成Binary/Plugin→通常\`tei\` CLI実行を一つのAttemptで検収する。手書きGoへの委譲だけでTEI-native自己生成としない（#2621、#4544、#4495）。
+
+**P0-B：Studioの非Pluginセルフビルド**。同一Build IntentからStage1がStage2 Desktopを生成し、実Windows WebView2でその生成部品を使った結果を受領する。CLI/PluginのReference PASSをStage2 DesktopのPASSへ合算しない（#2831、#4583）。
+
+**並行する小規模な比較**。現行Native同一Process／CLI Directを基線に、子Backend一件の\`inspect\`で意味・結果・故障・性能を比較する。子Backend既定化は実測後にADR-0048のOwnerが判断する（#4635、#1158）。
+
+**P1：D2製品Release**。安定版Wailsへの移行とUpdaterの単一対象実OS試験を分け、署名付きImage／標準Plugin／既定設定／Offline起動を検収する（#1824、#2044）。
+
+**P2：必要性が示された場合に限る**。D3のWake複数Image Packaging、別ServerのDeployment、Mobile実験Buildをそれぞれ独立評価する。WakeやMobile、D3の先行実装をP0-A/BのHard dependencyにはしない。
+
+**現在の到達状況**：§25は設計と検収計画の統合である。新しいUpdater組込み、署名付きRelease、実Plugin閉包検査、Mobile Build、Windows Stage2、Owner意味受理の実施・成功を主張しない。
