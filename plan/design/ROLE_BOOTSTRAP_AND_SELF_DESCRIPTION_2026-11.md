@@ -3272,3 +3272,47 @@ PR #5007で、同一Operator宣言に対してmanifestだけを切り替え、�
 この反証は#1180／#2514の既存Expectedへ割り当てる候補であり、この文書の追加だけで試験を実施したことにはならない。**最初のGo実装PacketはSD-50-03のM1 read-only候補、並行してSD-50-05のScenario Selection鮮度**。正式R2-Pの出典閉包は#4544／#2595、公開pure FunctionのR3は#4495／#1251、Stage1→Stage2の実Windows Studioは#2831／#4583で並行する。Data表のSyntaxとLanguageは#988／#1018／#2621、I2M位置照合は#1121／#1824、書戻しは#2497／#1124が担当する。
 
 **この追補の資格**：現存Go／テストの到達点と未接続の境界を更新した設計・実装引継ぎ。新しいM1/M2の実装、Scenario Command鮮度修正、A〜Dの正式Build同一Attempt束縛、実Provider、Owner意味受理、Stage2 Desktopの新しい完了を主張しない。
+
+<!-- tei-self-description-positive-baseline-and-source-disclosure-20261115 -->
+## 51. 2026-11-15 自己記述への実装移管を、独立基線・原文消費・開示の三点から絞り込む
+
+### 51.1 今回の実装はM2ではなく、M1/M2を判定するための独立基線である
+
+第50節では自己記述からRequired Shape検査を生成する方式Cを第一候補とした。その前段として、現行validationgen.GeneratePositiveが受理するpositive一規則の**固定された期待形**をGoの focused 回帰として追加する。対象はinternal/semantic/validationgen/positive_shape_obligation_baseline_test.goのTestPositiveLoweringShapeIndependentBaseline。正常な「Rule ID・単一Attribute・Relationなし・std.decimal・Go package名」を固定し、ID欠損・Attribute欠損・余分なRelation・非対応Kind・型違い・未解決型・不正package名を、それぞれ一因子だけ変えて拒否する。拒否した入力からGoを出力しないことも調べる。
+
+この試験は、生成する検査器のExpectedを**既存Generatorから動的に作らない**ための基線である。現在のGoの正答をすべて受理済みの業務Lawとみなさず、後続のOwner評価に渡す。元Ruleの製品Reader・Source位置・生成Go実行・実Builder消費は既存の別試験が担当する。したがって、focused testがPASSしても**M0の説明／M1のDescriptor由来検査／M2のGo分岐置換は一つも新たに実装されたことにはならない**。新しい形の検査器に入る際は、この独立基線の正常・負例を使って比較し、Go手書きの該当一義務が本当に減ったかを確認する。
+
+M2を急ぐあまり新しいGrammarや汎用Meta Interpreterを設けるのではなく、まず一つの義務を正確に移す。型やRelationの適合だけで、positiveという業務演算の結果・NULL／欠損のLaw・実Providerの取得完全性まで認めない。
+
+### 51.2 最新mainで進んだR2-Pの「原文の実消費」を正しく位置付ける
+
+第50節のR2-Pの説明時点から、mainのcmd/tei/cli_self_build_generated_rule_go_test.goはさらに前進した。コミット8c27de4e37では、選択したMarkdown原文の現行byteと同一LoadのSource Indexを照合し、生成Goと同じGo packageへsource.tei.mdをコピーする。Go標準のembedを通して**完成したCLIビルドの実Binaryがその原文byte列からSHA-256を計算して報告する**。説明文だけの変更でBuildPlan/Source Closureの指紋が変わる負例も加わった。以前の「生成Goだけがビルドされた」に据え置いて評価しない。
+
+ただし、ここで観測したのは**試験内で選択した原文のコピーがGo packageに収録され、そのbyteを完成Binaryが持つこと**である。このコピーは元WorkspaceのReader/Generator選択証拠を正式なBuild Intent依存として自動受理したわけではなく、Generator自体の実装版やRuleとの意味適合を実Buildが再検証したわけでもない。特に、次を区別する。
+
+| 問い | 現行の観測 | 残る資格 |
+| --- | --- | --- |
+| 元DSLが実選択されたか | Workspace.Load・選択Reader・Source Index・byte現行性 | 完全なManifest/Import閉包と選択の今の資格 |
+| 原文byteがビルド成果物へ入ったか | テスト内の同一コピーとembed、実Binaryによるbyte Hash報告 | 実行対象が**その原文の意味を解釈・受理**したという主張 |
+| Goの判断を誰が作ったか | GeneratePositiveの実出力・ASTでRead先と分岐を観測 | Generator実装の版・純粋な契約・Buildまでの選択済み出典 |
+| 生成Ruleが公開利用されたか | Binary局所実行で判断を確認 | 正式Function Entry→選択実Provider→通常Consumer、現在Grant |
+
+**「原文を内包する」「原文を解釈する」「原文から生成したコードを実使用する」は、三つの異なる事実**である。最初の一つだけで自己記述・自己構築の完成を主張しない。次の実装は、既存Build Intentのgo-package Definition Sourceを変更せず、Workspace相対の原文ID、Reader・Generatorの選択と実装資格、生成Go byte、Builderが読んだbyteの対応を一Attemptの既存証拠で接続することに絞る。
+
+### 51.3 原文同梱は証拠の強化になる一方、公開してよいことの証明ではない
+
+原文byteの埋込みは、**試験Fixtureの証拠**としては有効である。しかし本番の配布Artifactへ任意の*.tei.mdや添付・業務記録を無条件に含めると、Binaryの解析から非公開Sourceが読めてしまう。内包したデータが暗号化されていると仮定しない。SourceのSHA-256を示す場合も、識別子・組織情報・短い機密値などの公開適格性をHashだけで自動認定しない。
+
+そのため当面は**テスト専用の小さな公開可能Fixture**を対象とし、本番配布、MCP／AI Harnessの利用可能情報、Studio／SHO表示、Pluginの別Host配信では、既存のDisclosure／Artifact公開契約を通す。原byteの同梱、byte Hashだけの出力、出典表示、非公開に保つことは別々の選択肢とする。必要な監査証拠を残すことと配布物へ原文を載せることを同じ実装義務にしない。新しいPolicy EngineやSource Storeの導入を正当化するものでもない。
+
+### 51.4 進める順番と別系統の実証
+
+1. **最小の独立基線**：本PRのpositive Shape負例をfocused Goで実行してから、Ownerが期待条件を確認する。試験コード自体はM1ではない。
+2. **自己記述M1→M2**：既存の型付きRule／Source／InspectorからRequired Shape候補をread-onlyで投影し、一条件をデータ由来の検査処理として実生成・実呼出しへ移す。同じ条件の手書きGo分岐が削減され、負例が保たれたときだけM2。
+3. **正式R2-P**：原文埋込みの実証に重ねて、Reader／Generatorの実選択と実装版、生成byte、Builder実消費byteの同一Attemptを束縛する。原文だけ同じで生成コードが別、または生成元が違うのに結果値だけ同じ、という反例を拒否する。
+4. **選択変更の鮮度**：Operator実装のmanifest選択変更後の旧Scenarioコマンド拒否は、並行PR #5054と既存Scenario Ownerで検証する。本PRで同じGo修正を複製しない。実装IDの現在性、演算Law適合、Plugin実装byteのPin、現在Grantは依然として別。
+5. **製品の出口**：PR #5042/#5052で生成Wails Studio PoC Bの通常・生成Windows WebView2 Jobが同一HEADで成功した成果を認める。一方**TEI自身がStage1の生成物を使ってStage2 Studioを再構築した実証**と、R3公開pure Functionの実Provider呼出しは別途P0とする。
+
+今回の反証IDをSD-51-01（Shape単一不正のGo出力拒否）、SD-51-02（原文同梱・Generator不一致）、SD-51-03（原文の無断Disclosure）、SD-51-04（Operator旧選択実行）、SD-51-05（生成Windows PoC B成功をStage2再帰と誤認）として既存#1180／#2514へ引き渡す。#2620／#4359がM1/M2、#1121／#4544／#2595がR2-P、#988／#1018／#2600が実装選択、#1124／#1824が表示、#4495／#1251が実Provider、#2831／#4583がStage2のOwnerを維持する。
+
+**今回の実装上限**：追加したGoは固定されたShapeの検査基線のみ。元Sourceをビルドする既存試験、Windowsの成功、Scenario鮮度改善をこのGoテストの成果に加算しない。M1/M2製品実装、Generator版の正式Build束縛、実Provider、現在Grant、Stage1→Stage2の再帰的Self-buildは未実証。
