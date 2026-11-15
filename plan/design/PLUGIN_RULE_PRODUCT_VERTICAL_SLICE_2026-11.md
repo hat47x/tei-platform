@@ -345,9 +345,47 @@ Build Intentは、その原文を含むGo Packageを実Source閉包として列�
 
 次の負例は、**元Rule原文をA→B→Aと戻したときのSource Revision失効**と、**Generator実装版を変えても生成Goが同一となる場合の生成資格失効**である。既存のSource Index、Build Intent、Receiptの各責務を維持し、再ビルドの必要性と意味受理の必要性を別々に記録する。
 
-### 14.15 BuildPlan解決後の入力変更を正式CLIで拒否する
+### 14.15 変更後の再利用判断を、出典・成果物・実行資格に分ける
 
-前節の`requireSelectedGeneratedGo`は、生成結果をGo packageへ配置した**その時点**の一致を検査する。一方、`buildintent.Resolve`が実byteを取得してPlanを決めた後、BuilderがSourceを読むまでに内容が変わった場合、配置時点の照合だけでは検出できない。そこで既存の`TestSelectedRuleGoThroughRealCLISelfBuild`を一つの反例で拡張し、**選択したPlanに含まれる生成Goと実Builder入力が時間差で食い違う場合**を確認する。
+Ruleの原文と生成Goを同じBuild入力へ収録できても、**入力の同一性、生成物の再利用、業務上の受理、実行許可は別の判断**である。§14.14の配置先照合を足場に、変更の種類ごとに失効する資格と、再利用を検討できる対象を分ける。
+
+| 変更・事象 | Source／生成資格 | Build Artifact | 実行・意味受理 |
+| --- | --- | --- | --- |
+| 原文の説明文だけを変更 | 旧Source Evidenceは失効。新しい原文位置・Revisionを再確認 | 生成Goと実Build閉包が同一なら再利用を検討。ただし原文を同梱する現行実証ではBuild閉包が変わる | 説明が業務意味を変えないかOwnerが判断。旧Grantを自動復活させない |
+| 原文をA→B→Aと編集 | 最終byteがAでも旧Revisionの資格は復活しない | 最終Build入力が同じならArtifact再利用を別途判断 | 過去の受理を変更履歴の代わりに用いない |
+| Generator版を変更し、出力Goは同一 | 旧Generator資格は失効。新しい版の選択と実消費を確認 | Go閉包が同じなら再ビルド不要となる余地がある | 新Generatorによる意味適合は独立に受理する |
+| Readerまたは選択Pluginを変更 | 選択したReader／Plugin Lockを再解決。旧解釈資格は失効 | byte一致だけで新しい意味解釈の正当性を推定しない | 選択Provider・Authority・Grantを再確認 |
+| 生成Goと配置先Goが不一致 | 同一Attemptの対応付けに失敗 | Builder起動前に拒否し、旧Artifactへ無言で切り替えない | 実行不可。Owner受理へ進めない |
+| Operator選択をA→B→Aと変更 | 現行選択と履歴を照合。旧選択資格は復活しない | Artifactが同じでも実行対象の選択は別 | 旧CLI／旧Grantの無条件再利用を拒否 |
+
+**検収の依存関係**は、(1) 現行SourceとReader／Generator／Plugin Lockを確定し、(2) 選択した実現方式の入力と、必要ならBuild Intent／Artifactを照合し、(3) Ownerによる当該業務意味の受理と現在の認可・Grantを**実行前**に確認し、(4) 正式Entryから選択Providerが実際に呼ばれたことを、Result／Effect／Receiptで検収する。受理とGrantは相互に代替できず、順序を固定した一つの承認ステップにもまとめない。未受理・未認可の対象に副作用を発生させてからOwner受理を求めてはならない。途中で失敗した場合は、後段の成功履歴で埋め合わせない。
+
+この表は**実装済み機能の一覧ではなく、次の負例と受入票の判定基準**である。現行のSource IndexとBuild Intentだけで編集履歴A→B→AやGenerator版の全資格を証明できるとは主張しない。まず既存のRevision／Receipt／Plugin Lockで保持できる観測値を調べ、不足が確認された項目だけを既存契約へ追加する。新たな万能Registryや別系統のBuild機構は設けない。
+
+実装順は、原文A→B→Aの失効を示す独立負例、Generator版変更でGo byteが同じ場合の資格分離、正式Entry→Provider実Callの順とする。直接解釈するOperatorについても、生成Goの代わりに**選択したモデルと実際に解釈されたモデル**を照合し、生成方式と直接解釈方式を同じ受入票で比較する。Windows Studio Stage2、R3、Owner受理はそれぞれ独立した検収のまま維持する。
+
+### 14.16 実現方式の選択と、実際に呼ばれた方式を同じ受入票で検証する
+
+図表の実現方式として、生成コード、既存の型付きEvaluatorによる直接解釈、明示的なDelegate、これらの組合せを認める。ただし、**採用候補が複数あること**と、**特定Attemptで選択・呼出しを受理したこと**は異なる。方式を示さず結果が同じだからよい、という判定は行わない。これは [実装からモデルへのdogfooding §15](IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md) および [Plugin接続検収 §11](PLUGIN_CONNECTION_EVIDENCE_AND_COMPOSITION_SLICE_2026-11.md) と共通の境界である。
+
+| 受入票の欄 | コード生成 | 直接解釈・Delegate |
+| --- | --- | --- |
+| 選択 | Rule原文・Revision、Reader、Generator版、Target、選択Operator | Rule原文・Revision、Reader、Evaluator／Delegateの識別・版、選択Operator |
+| 実際の入力 | 生成Goのbyte列と配置先を照合し、Build Intent／Builder実入力へ接続 | 選択モデルのbyte列・型・Revisionと、実際にEvaluator／Delegateへ渡した入力を照合 |
+| 実現結果 | Build Receipt／Artifact／正式Entryと実Consumerの識別 | 実Evaluator／Delegateの呼出し記録と、実Consumerの識別 |
+| 独立Expected | 正値・ゼロ・負値・NULL・未取得、Read先と回数、失敗種別 | 同じExpectedを別経路で検証。結果一致だけでは方式選択の証明としない |
+| 実行前の資格 | Ownerが受理した意味・現在のProvider選択・Grant／Effect条件 | 同左。直接解釈だから認可を省略しない |
+| 実行後の証拠 | 選択した生成版が呼ばれたResult／Effect／Receipt | 選択したEvaluator／Delegateが呼ばれたResult／Effect／Receipt |
+
+最初の負例は **「解釈方式を選択したのに、生成Goへ無言でフォールバックする」**、その逆、および **「結果は同じでも別Providerが呼ばれる」** の三つとする。選択対象が未取得、失効、未対応なら、黙って別方式に切り替えず、診断に選択と実Callの差を残す。UIやNode Viewの接続線、Pluginの型適合、Targetへの配置だけでは実Callの証明にならない。
+
+複合型の全体連結、項目単位の連結、Adapter経由の変換は、標準の型付きMappingへ委ねる。各段で型、NULL／欠損、多重度、変換後の意味とEffectを保持し、**型が適合することと権限があることを別々に判定する**。CLI、MCP、Wails Desktopの入口は共通Operationへ接続するが、WailsをSemantic CoreやAPI Pluginの必須Hostにしない。
+
+**実装状況の境界**：選択済みRuleの生成Go→実Builder→Binaryと、同一Ruleの汎用Evaluator比較の限定的な証拠は既にある。一方、正式R3 Entry→選択Providerの実Call、両方式の実行時選択を拒否する負例、独立した二Consumerでの実利用、Windows Studio Stage2は未検収である。新しい統一Runner、万能Interpreter、第二の意味正本は導入しない。まず既存のEvaluator／Generator／Scenarioの試験へ負例を追加する。
+
+### 14.17 BuildPlan解決後の入力変更を正式CLIで拒否する
+
+§14.14の`requireSelectedGeneratedGo`は、生成結果をGo packageへ配置した**その時点**の一致を検査する。一方、`buildintent.Resolve`が実byteを取得してPlanを決めた後、BuilderがSourceを読むまでに内容が変わった場合、配置時点の照合だけでは検出できない。そこで既存の`TestSelectedRuleGoThroughRealCLISelfBuild`を一つの反例で拡張し、**選択したPlanに含まれる生成Goと実Builder入力が時間差で食い違う場合**を確認する。
 
 試験は、同じ`Workspace.Load`と`GeneratePositive`で選んだRuleから`generated.go`を作成し、実`Build Intent`を解決した後にだけ、Goの判断結果を変えないコメントbyteを一行追記する。**古い`plan.json`を渡した通常`tei self-build`の実CLI試行が失敗し、合格のL2-bと公開可能なArtifactを残さないこと**を要求する。その後に選択された元byteへ戻し、同じCLI→Builder→実Binaryの正・ゼロ・負・NULL・未取得の正例を維持する。
 
