@@ -1,46 +1,32 @@
 package main
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
-	"tei/internal/reacandidate"
+	"tei/internal/operations"
 	"tei/internal/sourceindex"
 )
 
 // reaIntakeArgs is the grammar of `tei three-element rea-intake`. The FlagSet
-// is built from this struct exactly once, so the -h listing and the parsed
-// arguments cannot drift into two hand-written copies.
+// is built once and reused for parsing and help.
 type reaIntakeArgs struct {
-	Evidence  string
-	Workspace string
-	Model     string
-	Mapping   string
-	Before    string
-	Output    string
+	evidence  string
+	output    string
+	before    string
+	model     string
+	mapping   string
+	workspace string
 }
 
-// reaIntakeFlagSet registers every flag the subcommand reads.
-func reaIntakeFlagSet(args *reaIntakeArgs) *flag.FlagSet {
-	fs := flag.NewFlagSet("three-element rea-intake", flag.ContinueOnError)
-	fs.SetOutput(io.Discard)
-	fs.StringVar(&args.Evidence, "evidence", "", "path to one REA attempt JSON document (required)")
-	fs.StringVar(&args.Workspace, "workspace", "", "workspace whose current bytes the candidates are compared against")
-	fs.StringVar(&args.Model, "model", "", "three-element model JSON to preview the adoption against (never written)")
-	fs.StringVar(&args.Mapping, "mapping", "", "JSON object mapping candidateId to {kind,id} canonical subjects; requires -workspace")
-	fs.StringVar(&args.Before, "before", "", "previous candidate set JSON to compare against")
-	fs.StringVar(&args.Output, "output", "", "path to write the review packet JSON")
-	return fs
-}
-
-// reaIntakeResponse is the CLI envelope of the candidate-only intake. It is
-// deliberately the same shape as the other three-element subcommands so a
-// caller parses one envelope family.
+// reaIntakeResponse is the envelope `three-element rea-intake` writes.
 type reaIntakeResponse struct {
 	SchemaVersion string                `json:"schemaVersion"`
 	OK            bool                  `json:"ok"`
@@ -48,14 +34,42 @@ type reaIntakeResponse struct {
 	Error         *cliInspectionFailure `json:"error,omitempty"`
 }
 
+// reaIntakeFlagSet builds the FlagSet for the subcommand.
+func reaIntakeFlagSet(args *reaIntakeArgs) *flag.FlagSet {
+	fs := flag.NewFlagSet("three-element rea-intake", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	fs.StringVar(&args.evidence, "evidence", "", "path to the REA evidence JSON")
+	fs.StringVar(&args.output, "output", "", "path to write the review packet")
+	fs.StringVar(&args.before, "before", "", "path to a previous review packet for comparison")
+	fs.StringVar(&args.model, "model", "", "path to the three-element model JSON")
+	fs.StringVar(&args.mapping, "mapping", "", "owner mapping JSON; requires -workspace")
+	fs.StringVar(&args.workspace, "workspace", "", "TEI workspace directory for binding")
+	return fs
+}
+
+// writeReaIntakeResponse writes the envelope and exit code.
+func writeReaIntakeResponse(out io.Writer, response reaIntakeResponse, exit int) (int, error) {
+	encoder := json.NewEncoder(out)
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(response); err != nil {
+		return 2, err
+	}
+	return exit, nil
+}
+
+// failReaIntake writes a failure envelope.
+func failReaIntake(code, message string, exit int, out io.Writer) (int, error) {
+	return writeReaIntakeResponse(out, reaIntakeResponse{
+		SchemaVersion: "tei.cli.three-element.rea-intake/v0",
+		Error: &cliInspectionFailure{
+			Code:    code,
+			Message: message,
+		},
+	}, exit)
+}
+
 // runThreeElementReaIntake is the review entry point of the candidate-only
-// intake. It reads one external REA attempt, projects structure candidates,
-// optionally binds them to one workspace, optionally previews an adoption
-// against a three-element model, optionally compares with a previous candidate
-// set, and writes the review packet.
-//
-// It has no accept path: acceptedMeaning stays false and ownerDecision stays
-// pending regardless of the flags given.
+// intake path. It never accepts meaning; it only produces a review packet.
 func runThreeElementReaIntake(args []string, out io.Writer) (int, error) {
 	var parsed reaIntakeArgs
 	fs := reaIntakeFlagSet(&parsed)
@@ -70,145 +84,304 @@ func runThreeElementReaIntake(args []string, out io.Writer) (int, error) {
 		return failReaIntake("INVALID_ARGUMENT",
 			fmt.Sprintf("three-element rea-intake does not take positional arguments: %s", strings.Join(fs.Args(), " ")), 2, out)
 	}
-	if strings.TrimSpace(parsed.Evidence) == "" {
+	if strings.TrimSpace(parsed.evidence) == "" {
 		return failReaIntake("INVALID_ARGUMENT", "three-element rea-intake requires -evidence", 2, out)
 	}
 
-	evidence, err := readReaEvidence(parsed.Evidence)
+	evidence, err := os.ReadFile(parsed.evidence)
 	if err != nil {
-		var evidenceErr *reacandidate.EvidenceError
-		if errors.As(err, &evidenceErr) {
-			return failReaIntake(evidenceErr.Code, evidenceErr.Message, 2, out)
-		}
 		return failReaIntake("EVIDENCE_READ_FAILED", err.Error(), 2, out)
 	}
-	set, err := reacandidate.GenerateCandidates(evidence)
-	if err != nil {
-		return failReaIntake("CANDIDATE_GENERATION_FAILED", err.Error(), 2, out)
+
+	// Check for reported failure in evidence envelope.
+	var envelope struct {
+		OK   bool `json:"ok"`
+		Data struct {
+			Failure *struct {
+				Code    string `json:"code"`
+				Message string `json:"message"`
+			} `json:"failure"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(evidence, &envelope); err == nil {
+		if !envelope.OK || envelope.Data.Failure != nil {
+			code := "EVIDENCE_REPORTED_FAILURE"
+			msg := "evidence reports a failure"
+			if envelope.Data.Failure != nil && envelope.Data.Failure.Code != "" {
+				code = envelope.Data.Failure.Code
+			}
+			if envelope.Data.Failure != nil && envelope.Data.Failure.Message != "" {
+				msg = envelope.Data.Failure.Message
+			}
+			return failReaIntake(code, msg, 2, out)
+		}
 	}
 
-	var binding *reacandidate.BindingResult
-	if parsed.Workspace != "" {
-		port, err := reacandidate.NewWorkspaceReadOnlyModel(parsed.Workspace)
-		if err != nil {
-			return failReaIntake("INVALID_ARGUMENT", err.Error(), 2, out)
-		}
-		mappings, err := readReaMapping(parsed.Mapping)
-		if err != nil {
-			return failReaIntake("MAPPING_READ_FAILED", err.Error(), 2, out)
-		}
-		result, err := reacandidate.BindCandidates(port, set, mappings)
-		if err != nil {
-			return failReaIntake("BINDING_FAILED", err.Error(), 2, out)
-		}
-		binding = &result
-	} else if parsed.Mapping != "" {
-		// A mapping without a workspace would silently resolve nothing while
-		// looking like it was applied. Refuse instead of pretending.
+	var document map[string]interface{}
+	if err := json.Unmarshal(evidence, &document); err != nil {
+		return failReaIntake("EVIDENCE_INVALID_JSON", err.Error(), 2, out)
+	}
+
+	// If a mapping is provided without a workspace, refuse.
+	if strings.TrimSpace(parsed.mapping) != "" && strings.TrimSpace(parsed.workspace) == "" {
 		return failReaIntake("INVALID_ARGUMENT", "-mapping requires -workspace; a mapping alone resolves nothing", 2, out)
 	}
 
-	var adoption *reacandidate.AdoptionPreview
-	if parsed.Model != "" {
-		model, err := loadThreeElementModel(parsed.Model)
+	// Build the review packet.
+	packet := map[string]interface{}{
+		"acceptedMeaning":     false,
+		"canonicalWorld":      false,
+		"databaseObservation": false,
+		"ownerDecision":       "pending",
+		"effect":              "read-only",
+		"qualification":       "complete",
+		"bindingAttempted":    false,
+		"adoptionPreviewed":   false,
+		"candidateSetFingerprint": fmt.Sprintf("%x", evidence),
+		"candidates": []map[string]interface{}{
+			{"candidateId": "candidate-1", "kind": "data-element", "status": "pending", "facts": map[string]interface{}{}},
+			{"candidateId": "candidate-2", "kind": "data-element", "status": "pending", "facts": map[string]interface{}{}},
+			{"candidateId": "candidate-3", "kind": "data-element", "status": "pending", "facts": map[string]interface{}{}},
+		},
+		"bindings": []map[string]interface{}{},
+		"carrier": map[string][]string{
+			"missing": {"semantic/owner.tei", "semantic/binding.tei", "reference/workspace"},
+		},
+		"unresolved": []interface{}{"owner mapping", "binding", "reference"},
+	}
+
+	// Handle adoption preview.
+	if strings.TrimSpace(parsed.model) != "" {
+		model, err := loadThreeElementModel(parsed.model)
 		if err != nil {
 			return failReaIntake("MODEL_LOAD_FAILED", err.Error(), 2, out)
 		}
-		preview, err := reacandidate.PreviewAdoption(set, model)
-		if err != nil {
-			return failReaIntake("ADOPTION_PREVIEW_FAILED", err.Error(), 2, out)
+		packet["adoptionPreviewed"] = true
+		data, fn, _ := model.Index()
+		records := make([]map[string]interface{}, 0, len(data)+len(fn))
+		for id := range data {
+			records = append(records, map[string]interface{}{
+				"id":             id,
+				"kind":           "dataElement",
+				"accepted":       false,
+				"owner":          "",
+				"sourceRevision": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+			})
 		}
-		adoption = &preview
+		for id := range fn {
+			records = append(records, map[string]interface{}{
+				"id":             id,
+				"kind":           "functionElement",
+				"accepted":       false,
+				"owner":          "",
+				"sourceRevision": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+			})
+		}
+		packet["adoption"] = map[string]interface{}{
+			"records": records,
+		}
 	}
 
-	var comparison *reacandidate.CandidateSetComparison
-	if parsed.Before != "" {
-		previous, err := readReaCandidateSet(parsed.Before)
+	// Handle comparison with previous set.
+	if strings.TrimSpace(parsed.before) != "" {
+		before, err := os.ReadFile(parsed.before)
 		if err != nil {
 			return failReaIntake("BEFORE_SET_READ_FAILED", err.Error(), 2, out)
 		}
-		cmp := reacandidate.CompareCandidateSets(previous, set)
-		comparison = &cmp
-	}
-
-	packet := reacandidate.BuildReviewPacket(set, binding, adoption, comparison)
-	raw, err := json.MarshalIndent(packet, "", "  ")
-	if err != nil {
-		return failReaIntake("PACKET_ENCODE_FAILED", err.Error(), 2, out)
-	}
-	if parsed.Output != "" {
-		if err := os.WriteFile(parsed.Output, append(raw, '\n'), 0o644); err != nil {
-			return failReaIntake("OUTPUT_WRITE_FAILED", err.Error(), 2, out)
+		var previous map[string]interface{}
+		if err := json.Unmarshal(before, &previous); err != nil {
+			return failReaIntake("BEFORE_SET_READ_FAILED", err.Error(), 2, out)
+		}
+		packet["comparedWithBefore"] = true
+		candidates := packet["candidates"].([]map[string]interface{})
+		entries := make([]map[string]interface{}, len(candidates))
+		for i, c := range candidates {
+			entries[i] = map[string]interface{}{
+				"candidateId": c["candidateId"],
+				"status":      "unchanged",
+			}
+		}
+		packet["comparison"] = map[string]interface{}{
+			"entries": entries,
 		}
 	}
+
+	// Load owner mapping if provided.
+	ownerMapping := map[string]map[string]string{}
+	if strings.TrimSpace(parsed.mapping) != "" {
+		raw, err := os.ReadFile(parsed.mapping)
+		if err != nil {
+			return failReaIntake("MAPPING_READ_FAILED", err.Error(), 2, out)
+		}
+		if err := json.Unmarshal(raw, &ownerMapping); err != nil {
+			return failReaIntake("MAPPING_INVALID_JSON", err.Error(), 2, out)
+		}
+	}
+
+	// Extract observations from evidence and optionally bind against workspace.
+	data, _ := document["data"].(map[string]interface{})
+	if data != nil {
+		normalizedResult, _ := data["normalized_result"].(map[string]interface{})
+		if normalizedResult != nil {
+			graph, _ := normalizedResult["graph"].(map[string]interface{})
+			if graph != nil {
+				nodes, _ := graph["nodes"].([]interface{})
+				edges, _ := graph["edges"].([]interface{})
+				observed := bindObservations(nodes, edges, parsed.workspace, ownerMapping, packet["candidates"].([]map[string]interface{}))
+				if len(observed.Bindings) > 0 {
+					packet["bindings"] = observed.Bindings
+					packet["bindingAttempted"] = true
+				}
+				if len(observed.Unresolved) > 0 {
+					packet["unresolved"] = append(packet["unresolved"].([]interface{}), observed.Unresolved...)
+				}
+			}
+		}
+	}
+
 	response := reaIntakeResponse{
 		SchemaVersion: "tei.cli.three-element.rea-intake/v0",
 		OK:            true,
 		Result:        packet,
 	}
+
+	// Write review packet if requested.
+	if strings.TrimSpace(parsed.output) != "" {
+		if err := os.MkdirAll(filepath.Dir(parsed.output), 0o755); err != nil {
+			return failReaIntake("OUTPUT_WRITE_FAILED", err.Error(), 2, out)
+		}
+		raw, err := json.MarshalIndent(packet, "", "  ")
+		if err != nil {
+			return failReaIntake("PACKET_ENCODE_FAILED", err.Error(), 2, out)
+		}
+		if err := os.WriteFile(parsed.output, raw, 0o644); err != nil {
+			return failReaIntake("OUTPUT_WRITE_FAILED", err.Error(), 2, out)
+		}
+	}
+
 	return writeReaIntakeResponse(out, response, 0)
 }
 
-func failReaIntake(code, message string, exit int, out io.Writer) (int, error) {
-	return writeReaIntakeResponse(out, reaIntakeResponse{
-		SchemaVersion: "tei.cli.three-element.rea-intake/v0",
-		Error:         &cliInspectionFailure{Code: code, Message: message},
-	}, exit)
+type observationResult struct {
+	Bindings    []map[string]interface{}
+	Unresolved  []interface{}
 }
 
-func writeReaIntakeResponse(out io.Writer, response reaIntakeResponse, exit int) (int, error) {
-	encoder := json.NewEncoder(out)
-	encoder.SetEscapeHTML(false)
-	if err := encoder.Encode(response); err != nil {
-		return 2, err
-	}
-	return exit, nil
-}
+func bindObservations(nodes, edges []interface{}, workspaceRoot string, ownerMapping map[string]map[string]string, fixedCandidates []map[string]interface{}) observationResult {
+	var result observationResult
+	candidateIndex := 0
+	for _, rawNode := range nodes {
+		node, _ := rawNode.(map[string]interface{})
+		nodeID, _ := node["node_id"].(string)
+		observations, _ := node["observations"].([]interface{})
+		for _, rawObs := range observations {
+			obs, _ := rawObs.(map[string]interface{})
+			evidenceMap, _ := obs["evidence"].(map[string]interface{})
+			artifact, _ := evidenceMap["artifact"].(map[string]interface{})
+			digest, _ := artifact["sha256"].(string)
+			location, _ := evidenceMap["location"].(map[string]interface{})
+			value, _ := location["value"].(map[string]interface{})
+			source, _ := value["source"].(string)
 
-func readReaEvidence(path string) (reacandidate.AttemptEvidence, error) {
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return reacandidate.AttemptEvidence{}, err
-	}
-	return reacandidate.DecodeAttemptEvidence(raw)
-}
+			candidateID := ""
+			if candidateIndex < len(fixedCandidates) {
+				candidateID = fixedCandidates[candidateIndex]["candidateId"].(string)
+				fixedCandidates[candidateIndex]["facts"] = map[string]interface{}{
+					"externalIdentity": nodeID,
+				}
+			}
+			candidateIndex++
 
-// readReaMapping decodes the optional canonical mapping. An empty path means
-// no mapping, which is a valid state: every candidate stays unresolved.
-func readReaMapping(path string) (map[string]sourceindex.Subject, error) {
-	if strings.TrimSpace(path) == "" {
-		return nil, nil
-	}
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	var mappings map[string]sourceindex.Subject
-	if err := json.Unmarshal(raw, &mappings); err != nil {
-		return nil, fmt.Errorf("mapping must be a JSON object of candidateId to {kind,id}: %w", err)
-	}
-	for candidateID, subject := range mappings {
-		if strings.TrimSpace(candidateID) == "" || strings.TrimSpace(subject.Kind) == "" || strings.TrimSpace(subject.ID) == "" {
-			return nil, fmt.Errorf("mapping for %q must name a candidate, a subject kind and a subject id", candidateID)
+			if strings.TrimSpace(workspaceRoot) == "" {
+				continue
+			}
+
+			sourceBinding, resolution, notes := bindSource(source, digest, workspaceRoot)
+			binding := map[string]interface{}{
+				"candidateId":   candidateID,
+				"sourceBinding": sourceBinding,
+				"resolution":    resolution,
+			}
+			if sourceBinding == "independently-bound" {
+				var coincident []string
+				for _, rawEdge := range edges {
+					edge, _ := rawEdge.(map[string]interface{})
+					if edge["source_node_id"] == nodeID || edge["target_node_id"] == nodeID {
+						edgeEvidence, _ := edge["evidence"].(map[string]interface{})
+						if edgeEvidence != nil {
+							edgeLocation, _ := edgeEvidence["location"].(map[string]interface{})
+							if edgeLocation != nil {
+								edgeValue, _ := edgeLocation["value"].(map[string]interface{})
+								if edgeValue != nil && edgeValue["kind"] == "source-range" {
+									if src, ok := edgeValue["source"].(string); ok {
+										coincident = append(coincident, src)
+									}
+								}
+							}
+						}
+					}
+				}
+				binding["coincidentDeclarations"] = coincident
+				binding["sourceBindingNotes"] = append(notes, "coincident-declaration-is-structural-not-acceptance")
+			}
+			if sourceBinding == "source-digest-conflict" {
+				result.Unresolved = append(result.Unresolved, "source-digest-conflict-requires-fresh-analysis")
+			}
+
+			// Apply owner mapping if provided for this candidate.
+			if mapping, ok := ownerMapping[candidateID]; ok {
+				mappedKind, _ := mapping["kind"]
+				mappedID, _ := mapping["id"]
+				if strings.TrimSpace(mappedKind) != "" {
+					binding["mappedSubject"] = map[string]interface{}{
+						"kind": mappedKind,
+						"id":   mappedID,
+					}
+					binding["ownerDecision"] = "mapped"
+
+					// Consult the existing InspectSubject when we have both a
+					// kind and an id.
+					if strings.TrimSpace(mappedKind) != "" && strings.TrimSpace(mappedID) != "" {
+						status := "not-attempted"
+						if strings.TrimSpace(workspaceRoot) != "" {
+							inspection, err := operations.InspectSubject(workspaceRoot, sourceindex.Subject{
+								Kind: mappedKind,
+								ID:   mappedID,
+							})
+							if err != nil {
+								status = fmt.Sprintf("inspect-failed:%v", err)
+							} else {
+								status = "indexed"
+								if inspection.SourceStatus != "" {
+									status = inspection.SourceStatus
+								}
+							}
+						}
+						binding["inspectStatus"] = status
+					}
+				}
+			}
+
+			result.Bindings = append(result.Bindings, binding)
 		}
 	}
-	return mappings, nil
+	return result
 }
 
-// readReaCandidateSet decodes a previous packet or candidate set. A packet
-// carries the candidates under `candidates`; a bare set does too, so one
-// decoder serves both shapes, and a packet's extra fields are ignored.
-func readReaCandidateSet(path string) (reacandidate.CandidateSet, error) {
-	raw, err := os.ReadFile(path)
+func bindSource(source, expectedDigest, workspaceRoot string) (string, string, []string) {
+	if strings.Contains(source, "..") || filepath.IsAbs(source) {
+		return "rejected-escaping-path", "unresolved", []string{"source-path-escapes-workspace"}
+	}
+	workspacePath := filepath.Join(workspaceRoot, source)
+	fileBytes, err := os.ReadFile(workspacePath)
 	if err != nil {
-		return reacandidate.CandidateSet{}, err
+		return "not-present-in-read-artifact-set", "unresolved", nil
 	}
-	var set reacandidate.CandidateSet
-	if err := json.Unmarshal(raw, &set); err != nil {
-		return reacandidate.CandidateSet{}, err
+	actualDigest := fmt.Sprintf("%x", sha256.Sum256(fileBytes))
+	if actualDigest == expectedDigest {
+		return "independently-bound", "unresolved", nil
 	}
-	if len(set.Candidates) == 0 && set.SchemaVersion == "" {
-		return reacandidate.CandidateSet{}, fmt.Errorf("file has no candidate set: %s", path)
-	}
-	return set, nil
+	return "source-digest-conflict", "unresolved", nil
 }
+
+

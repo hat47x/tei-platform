@@ -11,11 +11,9 @@ import (
 	"time"
 
 	"tei/internal/externalanalysis"
-	"tei/internal/operations"
 )
 
-// reaEvidenceOuterArgs holds the flags of `rea-evidence`. They are read in one
-// place so the flag set and the command body cannot drift.
+// reaEvidenceOuterArgs holds the flags of `rea-evidence`.
 type reaEvidenceOuterArgs struct {
 	evidencePath        string
 	viewPath            string
@@ -26,27 +24,15 @@ type reaEvidenceOuterArgs struct {
 	expectedSourceRev   string
 	requestOut          string
 	toolPath            string
-	observationID       string
-	relationID          string
 }
 
-// reaEvidenceResult is the command's result body: the receipt, plus the path the
-// derived request was written to when the caller asked for one, plus the
-// candidate projection when one was selected.
+// reaEvidenceResult is the command's result body.
 type reaEvidenceResult struct {
-	Receipt            externalanalysis.Receipt          `json:"receipt"`
-	DerivedRequestPath string                            `json:"derivedRequestPath,omitempty"`
-	Candidates         *operations.ExternalCandidateView `json:"candidates,omitempty"`
+	Receipt            externalanalysis.Receipt `json:"receipt"`
+	DerivedRequestPath string                   `json:"derivedRequestPath,omitempty"`
 }
 
 // reaEvidenceExit maps a receipt state to a process exit code.
-//
-// The mapping follows the convention this repository already uses: an input the
-// caller can fix is exit 2, a receipt that says something the caller needs to
-// act on is exit 1, and a receipt the command was able to produce is exit 0. A
-// receipt from an environment without the external tool exits 0: the command did
-// its job on the saved bytes, and the receipt says those bytes could not have
-// been produced here.
 func reaEvidenceExit(state externalanalysis.State) int {
 	switch state {
 	case externalanalysis.StateComplete, externalanalysis.StateToolAbsent:
@@ -58,9 +44,7 @@ func reaEvidenceExit(state externalanalysis.State) int {
 	}
 }
 
-// reaEvidenceFailureCode names the envelope error for a state, so a caller can
-// tell "the bytes are not what they claim" from "the delivery is not whole"
-// without reading prose.
+// reaEvidenceFailureCode names the envelope error for a state.
 func reaEvidenceFailureCode(state externalanalysis.State) string {
 	switch state {
 	case externalanalysis.StatePartial:
@@ -76,13 +60,7 @@ func reaEvidenceFailureCode(state externalanalysis.State) string {
 }
 
 // reaEvidenceJSON receives one saved external analysis output, inspects the
-// optional saved view delivery and derived request that belong to it, and
-// reports the receipt.
-//
-// The command never invokes the external tool. It reads bytes that were already
-// produced somewhere else and measures them, which is why a machine without the
-// tool installed can still run it — and why the receipt records whether the tool
-// was here at all.
+// optional saved view delivery and derived request, and reports the receipt.
 func reaEvidenceJSON(out io.Writer, args reaEvidenceOuterArgs, extraArgs int) (int, error) {
 	const command = "rea-evidence"
 	if strings.TrimSpace(args.evidencePath) == "" {
@@ -92,16 +70,10 @@ func reaEvidenceJSON(out io.Writer, args reaEvidenceOuterArgs, extraArgs int) (i
 		return resultInvalidArgument(out, command, "rea-evidence does not accept positional arguments")
 	}
 	if args.viewPath != "" && strings.TrimSpace(args.providerVersion) == "" {
-		return resultInvalidArgument(out, command, "-view requires -provider-version: the framing a delivery is checked against belongs to a version, and an undeclared version is not guessed")
+		return resultInvalidArgument(out, command, "-view requires -provider-version")
 	}
 	if args.requestOut != "" && strings.TrimSpace(args.providerVersion) == "" {
-		return resultInvalidArgument(out, command, "-request-out requires -provider-version: the source.kind a request may use belongs to a version, and an undeclared version is not guessed")
-	}
-	if (args.observationID == "") != (args.relationID == "") {
-		return resultInvalidArgument(out, command, "-observation-id and -relation-id must be supplied together: a candidate projection selects one observation and one directed edge")
-	}
-	if (args.observationID != "" || args.relationID != "") && strings.TrimSpace(args.providerVersion) == "" {
-		return resultInvalidArgument(out, command, "-observation-id and -relation-id require -provider-version: the framing and the accepted source kinds belong to a version, and an undeclared version is not guessed")
+		return resultInvalidArgument(out, command, "-request-out requires -provider-version")
 	}
 
 	raw, err := os.ReadFile(args.evidencePath)
@@ -153,42 +125,11 @@ func reaEvidenceJSON(out io.Writer, args reaEvidenceOuterArgs, extraArgs int) (i
 
 	report := cliResultEnvelope{
 		SchemaVersion: resultSchemaVersion(command),
-		// ok reports that the command produced its receipt, which it did for
-		// every state it can classify — including a partial or tool-absent
-		// one. The receipt's own state is the finding; ok is not a second,
-		// softer way of saying the delivery was complete.
-		OK:     true,
-		Mode:   reaEvidenceMode(args),
-		Result: reaEvidenceResult{Receipt: receipt, DerivedRequestPath: derivedPath},
+		OK:            true,
+		Mode:          reaEvidenceMode(args),
+		Result:        reaEvidenceResult{Receipt: receipt, DerivedRequestPath: derivedPath},
 	}
 	code := reaEvidenceExit(receipt.State)
-
-	// The candidate projection is the deepest thing this command can produce,
-	// so it runs last and its failure replaces the receipt-only verdict.
-	if args.observationID != "" && args.relationID != "" {
-		view, err := operations.ExternalCandidates(operations.ExternalCandidateRequest{
-			EvidencePath:  args.evidencePath,
-			ToolVersion:   args.providerVersion,
-			ObservationID: args.observationID,
-			RelationID:    args.relationID,
-			Tool:          receipt.Tool,
-		}, time.Now())
-		if err != nil {
-			var candidate *operations.ExternalCandidateError
-			code := 2
-			if errors.As(err, &candidate) {
-				switch candidate.Code {
-				case operations.ExternalCandidateIncomplete, operations.ExternalCandidateFailed, operations.ExternalCandidateNotFound:
-					code = 1
-				}
-			}
-			report.OK = false
-			report.Error = &cliFailure{Code: "EVIDENCE_CANDIDATES_FAILED", Message: err.Error()}
-			return emitResult(out, report, code)
-		}
-		report.Result = reaEvidenceResult{Receipt: receipt, DerivedRequestPath: derivedPath, Candidates: &view}
-	}
-
 	if err := receipt.VerifyPins(externalanalysis.Pins{
 		EvidenceID:     args.expectedEvidenceID,
 		Fingerprint:    args.expectedFingerprint,
@@ -205,10 +146,6 @@ func reaEvidenceJSON(out io.Writer, args reaEvidenceOuterArgs, extraArgs int) (i
 	return emitResult(out, report, code)
 }
 
-// reaEvidenceViewRequest is the view this command derives: the bounded
-// javascript-facts projection the coordination loop starts from. It is a
-// starting point, not a taxonomy — the tool owns its view families, and a caller
-// that needs another one derives the request through the package directly.
 func reaEvidenceViewRequest() externalanalysis.ViewRequest {
 	return externalanalysis.ViewRequest{
 		Kind:     "javascript-facts",
@@ -216,13 +153,7 @@ func reaEvidenceViewRequest() externalanalysis.ViewRequest {
 	}
 }
 
-// reaEvidenceMode names the shape the response has, the way the other read-only
-// commands do: which optional inputs were supplied. The candidate projection is
-// the deepest output, so it names the mode on its own.
 func reaEvidenceMode(args reaEvidenceOuterArgs) string {
-	if args.observationID != "" || args.relationID != "" {
-		return "candidate"
-	}
 	mode := "evidence"
 	if args.requestPath != "" || args.requestOut != "" {
 		mode = "request"
@@ -236,13 +167,6 @@ func reaEvidenceMode(args reaEvidenceOuterArgs) string {
 	return mode
 }
 
-// probeExternalTool records whether the external tool is present in this
-// environment. It looks, and nothing more: the command never runs the tool, and
-// a presence check is not an invocation.
-//
-// An explicitly declared path is checked on disk rather than trusted, so a
-// caller that names a tool that is not there gets a receipt that says so
-// instead of one that claims a fresh run was possible.
 func probeExternalTool(explicitPath string) externalanalysis.Tool {
 	tool := externalanalysis.Tool{Name: "rea"}
 	if strings.TrimSpace(explicitPath) != "" {
@@ -264,9 +188,6 @@ func probeExternalTool(explicitPath string) externalanalysis.Tool {
 	return tool
 }
 
-// writeNoClobber writes a derived file without overwriting an existing one: the
-// derived request is the record of what was sent, and silently replacing it
-// would destroy the record of an earlier send.
 func writeNoClobber(path string, content []byte) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return fmt.Errorf("prepare %s: %w", path, err)
