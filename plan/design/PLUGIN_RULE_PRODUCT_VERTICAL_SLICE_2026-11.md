@@ -153,6 +153,13 @@ UI実装におけるTypeScript・Web標準技術・Wailsの選択は#1824の担�
 
 ただし**生成関数に受理済みSourceやOwner権限を自動的に付与するものではない**。現段階ではGenerator選択版のLock、生成元から実Builder入力までのDigest、正式Plugin Contribution、通常CLIが呼ぶ実Provider、Studioの実Windows Consumerを繋いでいない。PR #4911の試験コードの存在とそのexact HEADでのCI成功も分けて記録する。R1局所試験が通ったら、別のテスト専用Generatorへ拡張するのでなく、#4544の既存Build入口へこの生成Byteを渡すR2を優先する。
 
+<!-- tei-rule-generated-binary-mutation-witness-20261115 -->
+### R1.5：同一Rule IDの変更を、生成Goの実行バイナリまで追跡する
+
+[製品Go回帰](../../internal/semantic/validationgen/positive_mutation_binary_test.go)では、`tei.rule-authoring/v0`で選んだ`quantity_positive`のIDと`positive`を固定し、参照先だけ`quantity`から同じ`std.decimal`型の`secondary_quantity`へ変更する。型のために追加した`secondaryQuantity`は両比較で**共通の固定Data宣言**とし、比較中にDataの型定義は変更しない。変更前後の`Workspace.Load`→`semantic.Validation`→`Source Index`→`GeneratePositive`からそれぞれGo Sourceを作り、同じ手書きConsumerで**別々の実バイナリを`go build`・実行**する。Expectedは`quantity:satisfied:1`と`secondary_quantity:not-satisfied:1`で固定し、旧Indexの指紋失効、新Indexの成立、生成Source／Binary byteの相違を検査する。片方のGo Sourceと固定したJSONだけで二出力を演出するテストではない。
+
+ただしこれは**直接GoツールチェーンによるR1.5の局所実消費**であって、製品の選択済みBuilder／Build Intent／ArtifactSet、生成Plugin登録、通常`tei` CLI・実Provider／別ConsumerによるR2・R3ではない。R2の次PRでは、この**同じ生成byte**を既存のBuilder選択とSource/Build入力閉包へ結び、`Selected B/Actual A`・Build後のSource差替え・旧Artifact再利用を拒否する。R3はその正式Artifactを通常CLIで実際に呼び出す。Source IDやBinary SHAの一致だけでOwner意味受理・現在Grant・実Effectを認定しない。テスト追加とHEADのCI合格も別に記録する。
+
 ## 13. ノード型FlowとPluginを、同じ標準モデルから展開する
 
 Node-RED／Enebular型のプログラミング、ESPStudioのようなNode UI、データ連携・マッシュアップ・簡易APIに向けても、**Flow専用の別Meaning／Runnerを作らない**。既存の標準データ構造、Operator Contract、Function／Process Flow、Capability Invocationを組み合わせ、GUIのNodeはその投影として扱う。[研究統合§16.18〜16.21](../research/TECH_RESEARCH_INTEGRATION_2026-10.md)の議論と方向を合わせるが、現行Plugin第一縦断R1〜R3より先に新しい実行基盤を導入しない。
