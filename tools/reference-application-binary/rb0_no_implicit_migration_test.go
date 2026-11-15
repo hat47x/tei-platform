@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"tei/tools/reference-application-binary/internal/appgen"
 	_ "modernc.org/sqlite"
+	"tei/tools/reference-application-binary/internal/appgen"
 )
 
 // RBM-01 / RBM-01b: generated normal operations may use an existing DB,
