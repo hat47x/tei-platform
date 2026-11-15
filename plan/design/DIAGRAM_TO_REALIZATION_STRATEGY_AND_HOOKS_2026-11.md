@@ -286,3 +286,97 @@ Contextの範囲は過不足なく固定する。過剰な候補列挙や無関�
 2026-11-15の現行mainには、限定的なMarkdown Rule→生成Go→通常CLI `self-build` 経路（PR #5009）と、選択された生成GoとBuilderに置くbyteの取り違え負例（PR #5056）がある。これらは今後のA課題の基線として使える。一方、同一の`*.tei.md`の任意図表をReaderが解釈し、I/G/D/Hを自動選択し、Hookを実Targetへ配置して、StudioのStage1→Stage2まで再入場する**一つの完成経路**はまだ成立していない。
 
 本書は既存のGenerator／Evaluator／Plugin実装のOwnerに候補比較と負例を渡すものであり、採用済みDSL文法・保証された生成AI成功率・自動運用権限を新設するものではない。
+
+## 13. Source・Designer・Resource・生成物を、ファイルの役割として分離する（2026-11-15追補）
+
+長年の統合開発環境で成立している構成から学ぶべきことは、特定の拡張子やGUIの模倣ではない。**人が編集する入力、視覚的に編集する投影、リソース、生成器定義、生成したコード、手書き拡張、ビルド中間物、最終成果物の所有者が別であること**、そしてそれらを一つのプロジェクトとして発見・更新・検証できる点である。
+
+同じ画面について「設計ファイル」「生成コード」「手書きの振る舞い」「画像・文言」「ビルド済みUI」を別に扱う。生成コードへの手編集を禁止しても、デザイナーで画面を編集できなくなるわけではない。デザイナーは受理可能な変更を**元のAuthoring Sourceへ戻す編集面**であり、新しい正本ではない。
+
+### 13.1 役割と物理形式の対応
+
+| ファイル／成果物の役割 | 既存の開発環境に見られる分離の型 | TEIにおける扱い |
+| --- | --- | --- |
+| **Authoring Source** | UI定義・モデル定義を編集し、実装を派生させる | `*.tei.md`を主入口に据える。説明・図・表は選択済みReader／Roleだけを意味として読む。原文byteとOccurrenceを保存する |
+| **Designer View** | ソースを視覚編集する専用画面 | StudioのTable／Graph／Flow／Property Inspector。Canonical IDと元Source Spanへ結び、書戻しが一意でないものはread-onlyにする |
+| **Resource Source** | 画像・文字列・言語別文言・スタイル等をコードと分離 | 既存の適切なJSON／CSS／画像／文言等を使用。資産を必要とする意味・使用位置・版・開示Scopeは型付き参照で管理し、Resource自身を意味正本と取り違えない |
+| **Generator Definition** | 生成規則を記したテンプレート、Compiler拡張 | 既存Template／Transform IR／Target Generator PluginのSourceと版を固定。単なる入力表やデザイナーの操作履歴とは分ける |
+| **Generated Source** | `*.designer.*`、`*.generated.*`、`*.g.*`等の生成物 | 例：`inspection-reader.generated.ts`、選択Ruleからの生成Go。Targetごとの規則で命名。通常は自動再生成し、人／AIが直接編集しない |
+| **Custom Source** | 自動生成の外にある手書き実装／拡張 | 案件のGo／TypeScript等を通常のソースとして保守。Hook ID・入力／出力・Effectを明示して接続し、生成物のOwnershipを侵さない |
+| **Build Intermediate** | ビルド中に作られ、別のBuild工程が消費する一時ソース／コンパイル済みリソース | 生成を実行したAttempt、置いたbyte、Builderが読んだbyteを照合。コミットするかどうかはTarget・再現可能性で判断し、常に正本化しない |
+| **Deliverable／Evidence** | バイナリ／Bundleとビルド記録 | `Build Intent`・Artifact・物理Bundleと実Consumerを別に照合。Source／Model／Artifactの改訂と現在Grantを混同しない |
+
+**拡張子は主として成果物の形式とツール連携を示し、所有者や正本性は別の明示契約で決める。** 同じ`.go`でも手書きと生成物があり、同じ`.json`でも受理済み契約Sourceと派生設定がある。ファイル名の接尾辞だけに依存した認可、削除、上書き、更新判定を行わない。名前・拡張子は対象Language／Targetごとの慣例とし、業務DSLへC#やGo固有の概念を持ち込まない。
+
+### 13.2 同じ対象から派生する複数ファイルを一組として扱う
+
+```text
+Authoring Source: order-entry.tei.md       ← 人が編集する意味・設計
+   │ Canonical Subject／Rule／View／Resource Ref
+   ├── Designer（Studio）                  ← Sourceの型付き投影、編集候補
+   ├── Resource Source（任意）             ← 文言／画像／スタイル等の原資
+   ├── Generator Definition（別の所有者）   ← 変換手順・版・Target
+   │     ├── order-entry.generated.go     ← 生成後のTargetコード
+   │     ├── order-entry.generated.ts     ← 必要なら別Targetの部品
+   │     └── 生成したManifest／Asset等       ← 必要な場合だけ
+   └── Custom Source（別管理）            ← 明示Hook／Adapter
+           ↓ 既存Composition／Build Intent
+        Stage／Build → Bundle／Binary → 実Consumer
+```
+
+これは**論理上の対応関係の例**であり、上記ファイル名・ディレクトリを新たな標準拡張子や必須Workspace構成として決定したものではない。各実ファイルはSourceのRole、Canonical Ref、Target、Artifact Ref、実byteで区別する。見た目の一組を表す親子表示（Explorerのネスト）と、ビルド依存、意味参照、生成物の所有、Runtime Invocationはそれぞれ別の関係である。
+
+Resourceのうち、業務上の文言・税率・分類定義のように**結果の意味を変えるもの**は、単なる装飾Resource扱いにせず既存Data／Rule／Configurationの受理対象にする。デザイン用の画像やレイアウト設定はView／Asset参照へ分ける。外部Resourceを埋め込む場合も原byte、使用資格、Target側の変換版を追えるようにする。
+
+### 13.3 生成とビルドの開始時点を明示する
+
+デザイン時に入力の保存を契機として生成する方式と、コンパイル直前に生成する方式は、成果物の寿命と検査方法が違う。
+
+- **デザイン時生成**：SourceやContractの変更直後にPreview／生成差分を示す。高速な局所確認に向く。ただしエディタにある生成済みファイルだけをBuild入力とみなさず、保存時・実Builder時の版を照合する。
+- **ビルド時生成**：Build Plan内で`Read → Resolve → Generate → Stage → Compile／Bundle`を順序づける。ビルド途中で新しく生まれたファイルが、後続のCompiler／Bundleに実際に渡されたことを検査する。
+- **コンパイラ内生成**：Compilerの拡張口があるTargetでは、生成ソースを編集中の手書きファイルへ書き戻さずCompilationへ追加できる場合がある。TEIではTarget Generator Pluginの個別実装とし、Coreへ新しいCompilerを設けない。
+- **解釈実行**：個別の生成工程を飛ばし、実行時にPinしたParameterと標準Functionを使用する。Resource PackagingやTargetのBuildが必要なら独立に残す。
+
+重要な境界として、Goの通常の`go build`は、独自Generatorを自動で起動するものではない。TEIのBuilderは明示された生成工程の後、**そのGo package／moduleでCompilerが実際に参照する位置**へ生成byteを配置してから実Buildする。どの位置でコンパイル対象になったかを、`Build Intent`の申告だけでなく実消費で確認する。
+
+既存Studio部品での`inspection-reader.contract.json` → `builder-sources/*.transform.json` → `inspection-reader.generated.ts` → 実Bundleという経路を、この役割分離の最小対照として使う。ただしこの参照ではBundlerやDesktop全体のBuildが正式Build Graphの全工程として一括管理されたわけではない。
+
+### 13.4 生成コードへのHook接続は言語ごとに実現し、契約は共通化する
+
+生成クラスと手書きクラスをCompilerが合成する言語では、ファイルを分けたまま一つの型を形成できる。一方、**Goに同等のpartial class機構はない**。この差を業務モデルに露出させず、Hookの**意味上の契約**と、Targetの**実装方法**を分ける。
+
+| Targetの性質 | 生成物の外で拡張する第一候補 | 注意点 |
+| --- | --- | --- |
+| 同じ型を複数ソースで構成可能 | 型の分割／基底クラス＋派生クラス | 再生成時の型名・Signature・Override先の変更を検出 |
+| Go／単一Packageの静的結合 | Interface／明示的なFunction Binding／生成したCompositionコード | 文字列名や`init()`の偶然の順序でBindingしない。手書きPackageを自動上書きしない |
+| TypeScript／Web UI | Module Export／Import／Component Slot／明示Event API | Bundlerで生成済み部品が収録され、実DOM・WebViewで使われたことを確認 |
+| Resource／画面設定 | Token／Resource ID／明示されたView Slot | Resourceの存在だけで業務意味と実使用を受理しない |
+
+Hookがなければ必ず安全というわけではない。実行位相・Callbackの多重呼出し・Guard・Effect／Receiptまで含めた既存契約を使う。生成コードと手書きコードの**双方が同じ判断を別々に持つ**状態は、変更時の不整合を生むため検出する。Generator専用の注入APIを新設するより、まず既存CompositionとProvider／Operator Bindingで接続できるかを試す。
+
+### 13.5 IDEに必要なのは「階層の表示」と「検証された更新経路」
+
+StudioのプロジェクトExplorerで一つの`*.tei.md`を開いたとき、Source／Designer／Resources／Generated／Custom／Build・Evidenceを**一つの論理グループ**として発見できるようにする。ただし「親子表示」から正本・生成依存・所有権を推測しない。表示は既存Source Index／Artifact／Build／Pluginの参照をまとめたProjectionであり、新しいSource Registryではない。
+
+- **Source変更**：現行Definitionを再読込し、Meaningの変更かViewだけの変更かを分け、必要なGenerator／Interpreter／Artifactだけを再評価する。
+- **Designer編集**：変更対象のCanonical ID・Source Occurrence・書戻しWindowが一意である場合のみ型付きPatchをPreview。二重定義、非可逆Projection、古いPinならread-onlyにする。
+- **Resource変更**：使用先とBundle・埋込みの影響を追い、業務意味を変えるResourceなら必要なAcceptanceへ戻す。
+- **Generatedの直接編集**：Derived Artifactの差分として報告し、黙ってSource変更に取り込まず、次回生成で無警告上書きしない。
+- **Custom編集**：Hookの契約版とBinding、再生成時の保全、既存Guard・Effectの独立検証を行う。
+
+この設計はStudio・CLI・AI Harnessの操作面に共通であり、GUI特有のOwnerにはしない。Explorerの表示改善と、実Project Buildの成功と、実Target Consumerによる受領はそれぞれ別の受入段階とする。
+
+### 13.6 最小の受入シナリオ（旧文書のRG・既存LCを再利用）
+
+| ID | 条件 | 期待 |
+| --- | --- | --- |
+| **FL-01** | Rule Sourceを1項目変更、説明文だけ変更、Designer上の配置だけ変更 | Source／Meaning／View／Artifactの必要な再評価を区別。表示だけで業務判断Goを変更しない |
+| **FL-02** | 別ファイルのCustom Hookを保持したままGenerator版を更新 | 生成物だけ更新し、Hookは保全。Signatureや契約不一致はFail Closed |
+| **FL-03** | 生成済み`.go`を編集し、生成ファイルと手書きファイルが同名Symbolを持つ | 直接編集・同名衝突を検出し、上書きや暗黙の勝者選択を行わない |
+| **FL-04** | Generator出力は正しいがGo packageへ未配置／旧byteを配置 | 実Compiler入力不一致として不合格。生成だけの合格をBuild合格にしない |
+| **FL-05** | 新しい生成TSはできたがBundler／Wails埋込は旧版 | 実BundleとWebViewのConsumer合格は保留 |
+| **FL-06** | Resourceを更新し、意味を変えない表示変更と業務Ruleを変える設定変更を混在 | Resource Ref／意味Revision／Artifactを個別に判定 |
+| **FL-07** | 同じ定義から別Targetへ生成するが、Target側でResourceやHookを暗黙に省く | Required Setの不一致としてUnsupported。黙って別意味へ縮退しない |
+| **FL-08** | Source A→B→A、生成器・外部依存だけ更新、Artifact byteは同一 | byte同値は現在のAcceptance・Generator資格・Build Evidence・Host Grantを復活させない |
+
+まずFL-02／03／04を既存Extension Point参照とRuleの製品Builder入力試験に重ね、FL-05をStudio生成部品の実Consumer試験へ引き渡す。**新しい汎用Project Schema、拡張子、ビルドエンジン、Resources Registryは設けず、対象の足りない一辺だけを既存Ownerへ戻す。**
