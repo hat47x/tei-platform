@@ -51,3 +51,38 @@
 ## 統合単位
 
 本計画・設計の整合を確認した文書変更は、実装待ちで保留せず独立PRとして扱える。製品実装はDRI-0/1、DRI-2/3、DRI-4、DRI-5の順に分け、既存Ownerを維持する。受入未確認を既存Gateの成功へ昇格せず、`main`の健全性を確認してから統合する。
+
+
+## 自動生成を許す前の文脈限定Gate（DRI-G0）
+
+実装を急いで大きなGeneratorへ渡すのではなく、**対象を定型的な変換へ閉じ込められるか**を先に判定する。この判定は設計上の選抜条件であり、新しい製品Hard Gateや第2のRegistryを意味しない。判定票の正本は[設計§10](../design/DIAGRAM_TO_REALIZATION_STRATEGY_AND_HOOKS_2026-11.md#10-生成する文脈を絞り生成対象をボイラープレートに近づける)と既存の独立Expected、Generator適合記録に置く。
+
+| 対象 | 文脈限定に必要な作業 | 判定 |
+| --- | --- | --- |
+| **Source/Meaning** | 選択済みReaderが読むRoleとCanonical ID、入力型、Read範囲、NULL／欠落、業務効果、必要なScopeを確定 | 不足があれば意味・型Ownerへ返す。AIが補完しない |
+| **実現方法** | 標準Function／生成／混合／DB・外部Provider委譲の適合候補を照合 | すでにFunctionで十分なら重複する生成器を作らない |
+| **対象コード** | 生成物のOwner、Target・Toolchain、許容Import、出力シンボル、配置、接続Hookを固定 | 任意の既存ファイルを書き換えるタスクをGeneratorに渡さない |
+| **検収** | 独立Expectedと負例を先に固定。Source配置・型・Rule参照先の一因子変化、直接編集／二重Hook等を加える | 失敗する条件を検出できない限り、自動生成の適格性を主張しない |
+| **再現と実使用** | 固定したGenerator Sourceで再実行し、生成物byte、実Builder消費、実Provider／Consumerを別々に観測 | AIが同じ回答を繰り返すという主観的期待に依存しない |
+
+### 最初に比較する限定タスク
+
+**適格候補**：選択済みの `quantity_positive` の型付きRule、既存Go Generator、既存Evaluator／Adapter、指定Hookのない既定構成。Rule自体の業務判断をAIに創作させず、既存Patternに従ったTarget Adapter／Binding／生成Goの接続を確認する。
+
+**対照負例**：同じRuleの説明から、関連表の更新、通知、再送時の回復、UI権限まで一度に実装するタスク。必要なEffectやGrantが確定していないため、AIに作らせて自動採用しない。
+
+**異質な2番目の対象**：同名ノード・多重有向辺のGraph。選択Reader／Graph Modelの意味IDと描画IDを分け、辺の向き・多重度・並びを変えて必要なロジックが変わるかを検証する。現状の限定Readerを正式な万能Parserと扱わない。
+
+### 完了条件と計測
+
+- 文脈の縮小によって、修正対象ファイル・入力規則・許可Hookが定まること。
+- 独立Expectedで重大な反例を拒否し、定型Generatorの再生成が同じ契約で再現可能であること。
+- **「自動生成できた」よりも「自動生成してはいけない範囲を止められた」を先に証明すること**。
+- AIが一度Generator／案件Hookを実装する工程と、固定Generatorが毎回決定的に生成する工程を別の工数・適合試験として計上すること。
+- 成功率の数値を先に掲げず、対象Pattern／Target／負例母集団と試行記録を揃えた後で評価すること。
+
+**既存の確認済み基線**：PR #5009 の限定的なRule→生成Go→通常CLI Build、PR #5056 の生成GoとBuilder配置byteの取り違え拒否を再利用する。一連のSource出典・正式Provider／Host・Studio Stage1→Stage2が合格したとは主張しない。
+
+## 進める順序の補正
+
+DRI-0の直後に**DRI-G0**を行う。ここで「Iで充分／Gに適格／Hが適格／委譲が必要／unsupported」を記録し、DRI-1の選択票へ渡す。DRI-G0で閉じない題材は生成器の追加開発ではなく、設計の属性発見であるDRI-2または既存Ownerへ差し戻す。閉じた題材だけDRI-3のHook契約、DRI-4の実Builderへ進める。DRI-5のStudioセルフビルドは引き続き独立の優先経路とする。
