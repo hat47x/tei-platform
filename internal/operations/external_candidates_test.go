@@ -117,7 +117,7 @@ func TestExternalCandidatesProjectsOneObservationAndOneRelation(t *testing.T) {
 	if view.Attempt.Provider.ID != "rea-javascript-application" {
 		t.Fatalf("attempt provider=%s", view.Attempt.Provider.ID)
 	}
-	if view.Attempt.Envelope == nil || view.Attempt.Envelope.Command != "analyze-javascript-application" {
+	if view.Attempt.Envelope == nil || view.Attempt.Envelope.Command != "synthetic-test-only-not-real-rea-capture" {
 		t.Fatalf("attempt envelope=%+v: the producer's own execution record travels with the attempt", view.Attempt.Envelope)
 	}
 
