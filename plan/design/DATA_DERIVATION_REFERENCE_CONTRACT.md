@@ -83,7 +83,7 @@
 
 | 候補 | 配置と理由 | 誤った配置 |
 | --- | --- | --- |
-| 受注明細の\`quantity × agreedUnitPrice\` | Dataの属性値に普遍的な純粋導出。Table Script／Data Ruleから同一#1637のRuleを参照 | フォーム・受注登録Function・帳票それぞれに式を複写 |
+| 受注明細の`quantity × agreedUnitPrice` | Dataの属性値に普遍的な純粋導出。Table Script／Data Ruleから同一#1637のRuleを参照 | フォーム・受注登録Function・帳票それぞれに式を複写 |
 | 受注の明細合計（明細Relationの全件が必要） | 所属Relation、粒度、空集合、採用時点がData側に定まるならData Rule候補。完全性を満たすQuery/Providerが必要 | 画面の表示済み子行だけで永続合計を確定 |
 | 「今月・自分の担当顧客」の売上 | 母集団、Actor、期間、現在AuthZがFunctionに固有。Function Context／Query | 顧客Dataの普遍的属性やTable Scriptへ隠して格納 |
 | 承認済み注文だけの請求対象抽出 | 選択集合はFunction Context、承認状態の意味はBusiness、判定に使うRuleは共通化可 | 単一テーブルの表示項目・UIイベントで承認資格を確定 |
