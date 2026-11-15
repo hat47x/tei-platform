@@ -54,14 +54,90 @@ func loadAuthoringMarkdown(root string, r *Result, filename string, src []byte) 
 		return 0, 0, r.collectSourceError(filename, err)
 	}
 	tables := make([]syntax.DataTableAuthoring, 0, len(document.Tables))
+	var caseTables []syntax.OperatorCasesAuthoring
 	for _, table := range document.Tables {
-		parsed, err := syntax.ParseDataTable(table)
-		if err != nil {
-			return 0, 0, r.collectSourceError(filename, err)
+		// The first word of the mark says what the table defines.
+		switch table.Words[0].Text {
+		case "data":
+			parsed, err := syntax.ParseDataTable(table)
+			if err != nil {
+				return 0, 0, r.collectSourceError(filename, err)
+			}
+			tables = append(tables, parsed)
+		case "cases":
+			parsed, err := syntax.ParseOperatorCasesTable(table)
+			if err != nil {
+				return 0, 0, r.collectSourceError(filename, err)
+			}
+			caseTables = append(caseTables, parsed)
+		default:
+			return 0, 0, r.collectSourceError(filename, &syntax.ParseError{Pos: table.Mark.Start, End: table.Mark.End,
+				Msg: "unknown tei mark; a table is marked <!-- tei: data <Name> in <namespace> --> or <!-- tei: cases of <operator> -->"})
 		}
-		tables = append(tables, parsed)
 	}
-	return mergeAuthoringMarkdown(root, r, filename, regions, tables)
+	regionCount, definitions, err := mergeAuthoringMarkdown(root, r, filename, regions, tables)
+	if err != nil {
+		return 0, 0, err
+	}
+	// Examples are attached after every source is read, because the operator
+	// may be declared in a document that is read later.
+	relative := relPath(root, filename)
+	for _, table := range caseTables {
+		r.pendingOperatorCases = append(r.pendingOperatorCases, pendingOperatorCases{
+			filename: filename, relative: relative, table: table,
+		})
+	}
+	return regionCount + len(caseTables), definitions + len(caseTables), nil
+}
+
+// pendingOperatorCases is a case table read during Load and not yet attached
+// to the operator it names.
+type pendingOperatorCases struct {
+	filename string
+	relative string
+	table    syntax.OperatorCasesAuthoring
+}
+
+// attachOperatorCases adds every case table to the operator it names. A table
+// for an operator no source declares, and a second table for one operator,
+// stop the Load at the table's own position.
+func attachOperatorCases(r *Result) error {
+	attached := map[core.CanonicalID]pendingOperatorCases{}
+	for _, pending := range r.pendingOperatorCases {
+		table := pending.table
+		fail := func(message string) error {
+			return r.collectSourceError(pending.filename, &syntax.ParseError{
+				Pos: table.OperatorSpan.Start, End: table.OperatorSpan.End, Msg: message})
+		}
+		if prior, duplicate := attached[table.Operator]; duplicate {
+			if err := fail(fmt.Sprintf("operator %s already has a case table at %s:%d:%d; write its examples in one table",
+				table.Operator, filepath.ToSlash(prior.relative), prior.table.OperatorSpan.Start.Line, prior.table.OperatorSpan.Start.Column)); err != nil {
+				return err
+			}
+			continue
+		}
+		found := false
+		for i := range r.World.Semantics {
+			for j := range r.World.Semantics[i].Operators {
+				if r.World.Semantics[i].Operators[j].ID != table.Operator {
+					continue
+				}
+				found = true
+				for _, example := range table.Cases {
+					r.World.Semantics[i].Operators[j].Cases = append(r.World.Semantics[i].Operators[j].Cases, example.Value)
+				}
+			}
+		}
+		if !found {
+			if err := fail(fmt.Sprintf("the examples are for operator %s, but no source declares that operator", table.Operator)); err != nil {
+				return err
+			}
+			continue
+		}
+		attached[table.Operator] = pending
+	}
+	r.pendingOperatorCases = nil
+	return nil
 }
 
 // mergeAuthoringMarkdown adds the definitions of one source to the World, or

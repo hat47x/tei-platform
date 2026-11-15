@@ -72,10 +72,20 @@ func evaluateScenarioValidations(resolver driver.Resolver, appID core.CanonicalI
 			return "", err
 		}
 		if rule.Kind == semantic.ValidationOperator {
-			if len(calls) != before+1 || calls[before].Operator != rule.Operator {
+			// The implementation is asked about the contract's examples first
+			// and about the fixture value last, so one rule makes one or more
+			// calls. Every one of them must be the selected implementation of
+			// this rule's operator.
+			made := calls[before:]
+			if len(made) == 0 {
 				return "", fmt.Errorf("Canonical Validation %s was decided without calling the implementation selected for operator %s", rule.ID, rule.Operator)
 			}
-			called[string(rule.ID)] = calls[before].Implementation
+			for _, call := range made {
+				if call.Operator != rule.Operator || call.Implementation != made[len(made)-1].Implementation {
+					return "", fmt.Errorf("Canonical Validation %s was decided with a call that does not belong to operator %s", rule.ID, rule.Operator)
+				}
+			}
+			called[string(rule.ID)] = made[len(made)-1].Implementation
 		}
 		return got, nil
 	})

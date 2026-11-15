@@ -2,6 +2,7 @@ package syntax_test
 
 import (
 	"errors"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -31,7 +32,7 @@ func TestRuleAuthoringReadsAnOperatorDeclarationAndItsUse(t *testing.T) {
 	}
 
 	wantOperators := []semantic.Operator{{ID: "sales.non_negative", Symbol: "non_negative", Input: semantic.OperatorInputNumber}}
-	if len(anchored.Value.Operators) != 1 || anchored.Value.Operators[0] != wantOperators[0] {
+	if len(anchored.Value.Operators) != 1 || !reflect.DeepEqual(anchored.Value.Operators[0], wantOperators[0]) {
 		t.Fatalf("operators=%+v, want %+v", anchored.Value.Operators, wantOperators)
 	}
 	if len(anchored.Value.Validations) != 2 {
