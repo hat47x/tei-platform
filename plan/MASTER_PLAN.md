@@ -2659,14 +2659,26 @@ Studio／SHO／SUI／AIが同じ意味候補を提示しても、編集資格は
 <!-- org-c1-person-revision-product-gap-20261115 -->
 ### 2026-11-15 組織C1：人物との関係・訂正版の保存・実Readを三段で検証する（補遺§35）
 
-[組織C1補遺§35](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)で、合成r7の時点別人数/FTEと、実`org-staged-axis`のMembership/Person Link・物理保存・Readの間に残る二つの断線を具体化した。①現行MembershipにPersonへの正式Linkがなく実人数を確定できない、②物理`membership_id`単独PKのままでは同じ所属の訂正旧新版を同じテーブルに共存させられない。#4633のGAP試験と#4567の二時点Query/使い捨てPostgreSQL試験は**どちらもDraftであり、保存・意味受理・通常製品CLIを完成したことにしない**。
+[組織C1補遺§35](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)で、合成r7の時点別人数/FTEと、実`org-staged-axis`のMembership/Person Link・物理保存・Readの間に残る二つの断線を具体化した。①現行MembershipにPersonへの正式Linkがなく実人数を確定できない、②物理`membership_id`単独PKのままでは同じ所属の訂正旧新版を同じテーブルに共存させられない。#4633のGAP試験と#4567の二時点Query/使い捨てPostgreSQL試験は**ともにmain統合済み**だが、GAPの検出と局所Query/実PG試験であり、履歴版共存・人物同定・通常CLIの製品完了を示さない。
 
 - **先に意味Owner**：#2386/#1126がMembership→Personを直接またはEmployment/Affiliation経由で解決するか、業務IDと履歴版をどう識別するか、兼務・複合キー・有効区間を決める。履歴非必須アプリには二時点Schemaを強制しない。
 - **次にProduct**：#4633の「欠落を確認する」GAP特性試験を採用契約の正例に置き換え、#4567のphysical Query/Mappingと同一Membership旧新版を隔離DBで保存・再読込する検査を接続。その後#2586/#4495/#4490で同一Attemptの実Provider→Function Context→独立ConsumerとvalidAt/knownAt・Required Read/Snapshot/Coverageを証明する。
 - **MVR-01〜05**：人物Link・版共存・二時点の実Result・複合Key/NULL・RoleAssignment/Responsibility/Caseとの同一World連結を既存#1180/#2514の独立Expectedへ渡す。合成r7と別Case Fixtureを同じWorldとして便宜的に結合しない。
-- **Go回帰の統合条件**：#4796の合成二Context・正Path/partial/NULL回帰は現行mainへの追随と`gofmt`・Repository Healthのexact HEAD再検証後に統合。旧HEADの全Goテストや別領域CIの成功は転用しない。正式Reader→Rule意味受理→実Go生成／Builderは#2621/#988/#1121/#4544の別Product資格。
+- **Go回帰の現在資格**：#4796はmain統合済みの合成二Context・正Path/partial/NULL回帰。旧HEADのgofmt/Health失敗を実DBやCase C1の達成に読み替えない。正式Reader→Rule意味受理→実Go生成／Builderは#2621/#988/#1121/#4544の別Product資格。
 
 **P0**：通常`tei` CLI初回実Provider Read #2586およびStage1→Stage2 Desktop #2831は独立に継続。本文は採用前の設計・実装計画であり、新しい実組織DB/CLI/Host/Studio検証・Owner意味受理は未達。新Core/Temporal Engine/Host/Expected正本を追加しない。
+
+
+<!-- org-c1-asof-sql-input-parity-20261115 -->
+### 2026-11-15 組織C1：Query宣言とSQL入力の実整合をProductで検証する（補遺§36）
+
+[組織C1補遺§36](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)で、main上の`as_of_membership.tei`に存在した具体的な不一致を解消する。**宣言は`valid_at/known_at`、SQLと旧物理テストは`valid_from/known_from`**であり、同じQueryの構造試験・実バインダ・隔離PG試験が異なる引数名を正と見なしていた。SQLの`valid_from/known_from`は行の区間開始列、`valid_at/known_at`は評価時点の入力として分離する。
+
+- **修正と回帰**：既存Query SQLの時点パラメータを宣言済み`valid_at/known_at`へ統一。既存Goバインダ試験と使い捨てPG opt-in試験も同名入力に変更し、旧区間名を引数に渡す負例を追加。Datasource/Result Mapping/物理列/PK/半開区間条件は維持。
+- **受入**：固定HEADの宣言・SQL構造、実PostgreSQLバインダ、隔離DBでの二時点結果を別々に証明。CIの`go test`だけではopt-inの実DB PASSを主張しない。Source/Query Inputを受理契約の正本とし、Controller・CLI・Studioが独自Aliasを正として実行しない。
+- **未解決・Owner**：#2386/#1126のPerson Linkと版識別、同一Membershipの訂正旧新版保存、#2586/#4490の一Attempt実Cohort、正式`*.tei.md` Reader→生成Go、現在Grant/Caseは別資格。#1180/#2514の既存Expectedを使い、新Alias Registry/Host/Temporal Engine/第二正本は作らない。
+
+**優先順位**：通常CLI実Provider初回Read #2586とDesktop Stage1→Stage2 #2831は変更しない。この修正自体は実組織人物数やCase承認の完成を示さない。
 
 ## 先に固定しないもの
 
