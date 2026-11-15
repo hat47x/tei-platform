@@ -31,6 +31,9 @@ CSW（Cultural Substrate Weaving）とVSクマ（VS Bear Simulator）を独立�
 | `bear/statemachine.go` | 回復状態機械のread-only遷移表。到達不能・デッドエンド・未知端点・優先度衝突・global遷移のスコープ違反を診断する |
 | `bear/statemachine_test.go` | 上流ファイルへの転記照合、正例の構造証拠、4件のmutation試験 |
 | `csw/anchor_test.go` | CSWの帰属4値を`SKILL.md`の4区分の一文へ逐語で結ぶ転記照合 |
+| [`CSW_01_ANCHOR_UPDATE.md`](CSW_01_ANCHOR_UPDATE.md) | CSW-01の補足節をgit公開したあとのanchor更新手順（確定版） |
+| [`BEAR_01_SYNC_DRAFT.md`](BEAR_01_SYNC_DRAFT.md) | BEAR-01保留中の同期手順草案（3点：列挙一致・境界値同期・上流追跡） |
+| [`vocabulary_prototype/`](vocabulary_prototype/README.md) | VOC-01aの最小プロトタイプ。`range`宣言のパースと境界値検査（研究物。製品パーサは未変更） |
 | [`ANCHOR_POLICY.md`](ANCHOR_POLICY.md) | 外部Repository転記の照合下限と、実際に照合した証跡（実施日・上流commit・件数・skip数） |
 
 ## 実行
