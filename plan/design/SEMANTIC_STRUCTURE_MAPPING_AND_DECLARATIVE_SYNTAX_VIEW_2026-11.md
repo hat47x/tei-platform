@@ -1829,7 +1829,7 @@ main [#4847](https://github.com/hat47x/tei-platform/pull/4847)は、組織C1のN
 | `positive_product_test.go` | 内蔵Ruleの実`Workspace.Load`→同Load Source Indexと原文ID Span→型解決→Go生成→一時ディレクトリの`go run .`で正値・0・負値・NULL相当・未取得の五例を照合。`Number`はそれぞれ一回 | 正規TEI Builder/BuildPlanがそのGo byteを入力にしたこと、署名済みArtifact、通常製品`tei` CLI/Provider/独立Consumerの受領 |
 | main #4908／#4913の既存Evaluator回帰 | Rule IDを維持し、`quantity`から`line_number`へ元Markdownを変更。再LoadでSource Indexの失効、型付き参照属性、実EvaluatorのRead先・判断が変化 | この変更を`GeneratePositive`が生成・実行できること、実DB Snapshot／全件性、Ownerの意味受理 |
 
-**重要な型境界**：Product Fixtureの`quantity`は`std.decimal`だが`line_number`は`std.integer`、`unit_price`に対応する`unitPrice`の型は`std.money`である。現`GeneratePositive`は`std.decimal`に限定され、後二者を拒否する。したがってEvaluatorの`quantity→line_number`変更試験を、そのまま「生成Goの変更追随に成功した例」として扱えない。現在のGo生成器は属性型を引数で受け取るため、**呼出し側が実Worldの対象Attribute ID・型・選択Sourceを一つの受理経路から解決すること**が必須である。未解決型を適当な`std.decimal`として渡して生成が成功することは合格としない。
+**重要な型境界**：製品Fixtureの`quantity`は`std.decimal`、`line_number`は`std.integer`、価格属性`unitPrice`は`std.money`である。現`GeneratePositive`は`std.decimal`に限定され、後二者を拒否する。したがってEvaluatorの`quantity→line_number`変更試験を、そのまま「生成Goの変更追随に成功した例」として扱えない。現在のGo生成器は属性型を引数で受け取るため、**呼出し側が実Worldの対象Attribute ID・型・選択Sourceを一つの受理経路から解決すること**が必須である。未解決型を適当な`std.decimal`として渡して生成が成功することは合格としない。
 
 #### 39.12.2 R1の変更追随を一つのWorkspaceから閉じ、R2では生成Byteの消費を立証する
 
@@ -1837,12 +1837,12 @@ main [#4847](https://github.com/hat47x/tei-platform/pull/4847)は、組織C1のN
 
 | 段階 | 同じ入力から得るべき証拠 | やってはいけない代用 |
 | --- | --- | --- |
-| **R1-M（変更追随）** | 原文のRule ID・Kindと評価用の値集合を固定。元`quantity`から、隔離Fixtureに追加して型を`std.decimal`と解決した**別の属性**へ参照を一箇所だけ変更。各々実`Workspace.Load`→型解決→生成Go→別Process評価を行い、Read先・生成Byte・期待結果を対にする。旧Source Index／旧Edit Planは失効 | `std.integer`を`std.decimal`と申告する、Generatorに手書き`Validation`だけを渡す、旧Goを実行して新Ruleの結果と呼ぶ |
+| **R1-M（変更追随）** | 原文のRule ID・Kindと評価用の値集合を固定。隔離FixtureのDataへ別の`std.decimal`属性を**比較前に追加して固定**し、元`quantity`からその属性へRuleの参照だけを一箇所変更。各々実`Workspace.Load`→型解決→生成Go→別Process評価を行い、Read先・生成Byte・期待結果を対にする。旧Source Index／旧Edit Planは失効 | `std.integer`を`std.decimal`と申告する、Generatorに手書き`Validation`だけを渡す、旧Goを実行して新Ruleの結果と呼ぶ |
 | **R1-F（拒否）** | 変更先が現行`std.integer`／`std.money`、型未解決、Relation付きRule、別Kindである場合、未対応として拒否し生成物なし | 対応していない意味を数値へ暗黙変換し「実行できた」と扱う |
 | **R2（実Builder消費）** | 受理済みTarget／Generator／Toolchain・同じBuild Attemptを明記し、実Builderが消費した生成Go byteのdigest、外から測ったBinary digest、生成した判断部分への実呼出しと独立Expectedを一組で収集。変更後のBuilder再実行も同じ方式で比較 | 生成Goを試験内で`go run`したことだけを正式Builderの実入力やBundleの現在資格に読み替える |
 | **R3（通常CLI・Provider）** | 明示選択したProvider実装・版・Invocation・入力Closure／Coverage・独立Consumerの受領を通常製品`tei`別Processで確認 | 合成`validationeval.Source`の五／八ケースを実DB読取・Provider実Invocationの証拠にする |
 
-型付きの実WordをScript Launchの公開`semantic-capability`へ自動変換しない。[#4902](https://github.com/hat47x/tei-platform/pull/4902)の同名Capability不存在の負例は別PRの検収対象であり、Rule読取成功からPublic Entryや現在Grantを発行しない。最優先は**R1-M→R2の同一Ruleの実Byte消費**であり、Graph/Window ReaderとWindows Stage1→Stage2を新しいHard Gateで止めない。
+型付きRuleをScript Launchの公開`semantic-capability`へ自動変換しない。[#4902](https://github.com/hat47x/tei-platform/pull/4902)の同名Capability不存在の負例は別PRの検収対象であり、Rule読取成功からPublic Entryや現在Grantを発行しない。最優先は**R1-M→R2の同一Ruleの実Byte消費**であり、Graph/Window ReaderとWindows Stage1→Stage2を新しいHard Gateで止めない。
 
 #### 39.12.3 Sourceの同じ見かけと、根拠のない比較結果を製品Wireへ流さない
 
