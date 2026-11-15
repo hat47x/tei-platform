@@ -171,22 +171,21 @@ UIが保持する一時表示・Pin・Dirty Bufferと、Release後も必要なWo
 
 ## 12. W0の実装を小さく閉じる：現行Sourceと実Desktopの検収パケット（2026-11-15）
 
-### 12.1 現行mainで再現できる最初の不一致
+### 12.1 参照Pinと正規配布Bundleの実装到達点（2026-11-15現在）
 
-実装着手時の状態は、[Workbenchの`main.ts`](../../reference/tei-studio-workbench/main.ts)、[参照`index.html`](../../reference/tei-studio-workbench/index.html)、[配布用`index.html`](../../cmd/tei-studio/assets/workbench/index.html)、[既存Pin配線テスト](../../reference/tei-studio-workbench/pin-wiring.contract.test.mjs)の**同じHEAD**を比較して判定する。
+同一性の検査対象は、[Workbenchの`main.ts`](../../reference/tei-studio-workbench/main.ts)、[参照`index.html`](../../reference/tei-studio-workbench/index.html)、[配布`index.html`](../../cmd/tei-studio/assets/workbench/index.html)、[Pin配線テスト](../../reference/tei-studio-workbench/pin-wiring.contract.test.mjs)と、[Embed CI](../../.github/workflows/tei-studio-workbench-embed-ci.yml)に固定する。以下は古い欠陥の再掲ではなく、**実際にmainへ入った修正と受入済みの範囲**である。
 
-- 現行`main.ts`のPin解除・再確認Handlerは`unpin-current`と`inspect-pinned`を参照するが、参照HTMLは`pin-release`と`pin-check`を残している。既存`PIN-WIRING-03`は、この二つのID不一致を検出できる。修正専用[Draft #4876](https://github.com/hat47x/tei-platform/pull/4876)は現時点で**未マージ**であり、未統合の差分を現行製品に算入しない。
-**W0-Aの実装調査（2026-11-15、PR #4920）**：旧Draft #4876のexact HEADでは、Workbench Node 24 CIの57件がPASSした一方、`PIN-WIRING-03`が画面側の`pin-version`欠落によりFAILした（[run 43681382183](https://github.com/hat47x/tei-platform/actions/runs/43681382183)）。さらに参照`main.ts`には、未定義の旧`pinReader`へイベントを送る処理と、現行`pinState`／Host Readerを使う処理が同居し、`pin-current`のclick登録も二重だった。**新しい実装では旧経路を削除し、既存Presenterが使用する三ボタン・版表示をDOMに一致させる**。独立検査`PIN-WIRING-08`は二重登録・旧controller残存を拒否する。これは参照Sourceの回復であって、配布Asset/Windowsの受領や意味受理ではない。修正PRの正確なHEADのNode Test／Typecheck／BuildがPASSするまでW0-Aは未検収とする。
-
-- 配布`assets/workbench/index.html`には、参照HTMLのPin領域そのものが収録されていない。参照HTMLの二つのIDを合わせただけでは、`//go:embed`された旧HTML・JSの不一致は解消しない。
-- 内蔵Rule Markdownについては、main統合済み[製品Load/Source Index #4890](https://github.com/hat47x/tei-platform/pull/4890)、[Inspect/Trace #4891](https://github.com/hat47x/tei-platform/pull/4891)、[旧Validationとの意味同値・重複拒否 #4900](https://github.com/hat47x/tei-platform/pull/4900)、[既存Evaluatorと合成Read Footprint #4901](https://github.com/hat47x/tei-platform/pull/4901)を実コードの到達点とする。ただしGoテストがmainにあることと、当該HEADのCI成功は分けて確認する。実DB Provider・公開Capability Entry・生成Go・Windows UI使用は別資格のまま。
+- **W0-A 参照Pin配線は修正済み**：[PR #4920](https://github.com/hat47x/tei-platform/pull/4920)（merge `dca4985f5b6e4d9e3fc08e9655b77a42eec79589`）で、二重に登録された`pin-current`、未定義の旧`pinReader`参照、旧`pin-check`／`pin-release`、欠落した`pin-version`の不一致を解消した。PR exact HEAD `159799bd82309666c2ad6b97da8b1017a8403219`に対する[Pin専用CI](https://github.com/hat47x/tei-platform/actions/runs/43688648884)は**completed/success**。SourceとそのNodeテストの成立までであり、実Windows Desktopの操作資格ではない。
+- **W0-B 正規Bundleは配布Assetへ同期済み**：[PR #4945](https://github.com/hat47x/tei-platform/pull/4945)（merge `8961848bd0867cc69619e8d80a3e22f19a248065`）で、同一Sourceと依存Lockを用いてNode 24.21.0の`npm ci`→`npm test`→`npm run typecheck`→`npm run build`を実行した。HTML・JS・CSSの配布Blobを更新し、NOTICEは差分なし。exact HEAD `20350bd2423d220be88f961bec2e41039e93d59a`に対する[Embed CI](https://github.com/hat47x/tei-platform/actions/runs/43695051532)は**completed/success**（四ファイル`cmp`と`dependencies.json`非配布）。一時生成Workflowはmainへ持ち込まなかった。
+- **W0-C/Dは独立に未受理**：埋込Assetのbyte一致はGo/Wailsの実Window、Pin操作、Provider実呼出し、Stage1→Stage2再構築を証明しない。[Windows WebView2 Smoke](../../.github/workflows/tei-studio-wails-desktop-webview-smoke.yml)の実HTML/JS受領とHost読取を同一HEADで評価し、その後にPin Aと閲覧中Bの非干渉を実Windowで確認する。既存SmokeがPoC Bの静的版ピンや実WebDriverで停止した場合は、配布Bundleの検収とは別票で原因を残す。
+- **RuleはReaderより先へ一段進んだ**：main統合済み[製品Load #4890](https://github.com/hat47x/tei-platform/pull/4890)／[Inspect #4891](https://github.com/hat47x/tei-platform/pull/4891)／[型付き意味同値 #4900](https://github.com/hat47x/tei-platform/pull/4900)／[合成Read #4901](https://github.com/hat47x/tei-platform/pull/4901)に加え、[正値Ruleの条件付きGo生成 #4911](https://github.com/hat47x/tei-platform/pull/4911)がR1の局所実装としてmainに存在する。ただし参照Builder実消費、製品CLIの実Provider/Entry、Owner受理、Windows Stage2の成功へは昇格させない。
 
 ### 12.2 W0-A／B／C／Dの統合順
 
 | 単位 | 実装範囲と既存の検査 | 合格とみなす境界 |
 | --- | --- | --- |
-| **W0-A 参照SourceのPin整合** | #4876のOwner変更を取り込み、Pinの二つのIDと`main.ts`を揃える。現行`npm test`の`PIN-WIRING-03`とPin Reader/State回帰を変更せず実行 | 該当HEADでテストが実際にPASSすること。古いFixtureや`authorityLimits`条件を弱めない。これは参照UI Sourceの検査まで |
-| **W0-B 正規Bundleの同期** | 同じHEADの`npm ci`→`npm test`→`npm run typecheck`→`npm run build`。生成`dist`の四ファイルを`cmd/tei-studio/assets/workbench/`へ同期し、[Embed CI](../../.github/workflows/tei-studio-workbench-embed-ci.yml)の`cmp`を実行 | HTML／JS／CSS／THIRD_PARTY_NOTICESの全byte一致、`dependencies.json`非埋込、元のSource・Lock・Toolchainの記録。旧#4812の配布物の無検証流用はFAIL |
+| **W0-A 参照SourceのPin整合（#4920済）** | 旧Controllerを除去し、3操作・版表示・既存Pin Reader/Stateの契約を一致させた。`PIN-WIRING-03/08`とNode 24 Pin CIを同一HEADで実行 | **Pin CI success確認済み**。Source配線まで。Host権限や実Windowの受領は別資格 |
+| **W0-B 正規Bundleの同期（#4945済）** | 同一Node 24.21.0 BuildのHTML・JS・CSSを配布に反映（NOTICE差分なし）。[Embed CI](../../.github/workflows/tei-studio-workbench-embed-ci.yml)で4ファイルの`cmp`と`dependencies.json`非埋込を確認 | **Embed CI success確認済み**。Source→配布byteの一致まで。実Windows描画やStage2は未受理 |
 | **W0-C 実Wails画面** | [既存Windows WebView2 Smoke](../../.github/workflows/tei-studio-wails-desktop-webview-smoke.yml)を同一HEADで実行。通常Desktopの実Window→Service→Catalog／Inspect、Pin領域のDOM/ARIA・後着Replyを観測できるよう、必要なAssertだけOwnerへ引き渡す | 実Window/IPC、配布JSの使用、AをPinしてBを閲覧した際の非干渉を**別々に**確認。PinのHTMLが配布されただけ、WebDriverのProcessが起動しただけでは不合格 |
 | **W0-D 実Stage2** | #2831/#4583が、選択済み非Plugin Build SubjectからStage1の実TEI Process→実Builder→Stage2 Imageへ接続し、Stage2自身からW0-Cの操作を再検証 | 既存BuildExecution／ArtifactSet／実起動主体／Go・Node・Wails入力とArtifactの一致。通常Desktopが成功しても自己再構築の合格へ転用しない |
 

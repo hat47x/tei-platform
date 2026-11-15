@@ -230,3 +230,28 @@ Source変更A→B→A、生成器版変更、Build時だけの依存、入力取
 この試験では生成Goを計画確定後に書き換え、古い計画がコンパイル前に拒否されることも確かめる。Goモジュール文脈と、生成Goが参照する既存 `core/identity`、`internal/core`、`internal/semantic`、`internal/semantic/validationeval` を計画Sourceとして明示する。ReaderのSource ID／Attribute型、BuildPlanの実入力Digest、Binaryの実挙動は別々に照合し、一致結果だけを根拠にしない。
 
 **受入範囲は既存Reference Builderでの一回の実Go消費に限る。** この試験で作ったBuildPlanはテスト用であり、正式製品 `tei` が選択したBuilder／Plugin Runtimeを証明しない。製品Build Intentから実ProviderのEntryまでの接続と、Stage1→Stage2 Windows実再入は、それぞれ既存#4544／#4495／#2831／#4583に残す。PRのマージとexact HEADのGo／CI成功も区別する。
+
+### 14.5 参照Builderの実績と製品R2の残差
+
+現行mainには`tools/reference-go-build-from-plan/validationgen_build_binding_test.go`が実在する（旧[PR #4934](https://github.com/hat47x/tei-platform/pull/4934)自体は未マージでクローズ）。製品Loaderで選択したRuleから生成Goを作り、既存BuildPlanと`DirSourceResolver`がGo Source／依存パッケージ／Module Contextを実Digestで照合し、`-isolate`ビルドのArtifact Digest／BuildArtifactLock／五つの実バイナリ結果を検査する。#4934の実CIでは`tei/tools/reference-go-build-from-plan`パッケージの試験が成功したが、全体Healthは他パッケージの問題により失敗している。**この結果を参照Builderでの局所R2先行証拠として記録し、正式製品R2合格には昇格しない。**
+
+既存テストが作るBuildPlanには、元MarkdownのRule Source／選択Language・Generator版／Owner意味受理までを製品Builderの入力として束縛する一貫した契約はまだ示されていない。実装の次の最小単位は、#4544／#2595の**既存製品Build入口**で次の連鎖を再現することに絞る。`選択済みSource（現在版）→解決済み型付きMeaning→選択Generator実装と版→生成Go byte→実Builder入力byte→Build Artifact`。各要素のFingerprintや版を一つの「全部OK」に潰さず、変更・旧版再利用・Selected B／Actual Aを原因ごとに拒否する。構文上の同値とOwner受理、同一生成GoとSourceの現行性、署名・供給資格とGoコンパイル成功を区別する。製品CLIに新しい参考コマンドを足さず、Builderの重複実装も行わない。
+
+Data Rule／Table Script／Field拡張はデータ意味の側へ、独立したFunctionとData Contextは公開Entryの側へ収める（#4937）。Node Flowは同じRule／Operator／Sourceからread-onlyに投影し、公開・実行はHostの実権限とProviderを要する別ゲートとする（#4924）。最初のR3対象はこのR2を先行条件にしない受理済みpure Function一件とし、#4495の実Providerと通常製品CLIのConsumerを並行して完成させる。
+
+### 14.6 製品R2の最小一件と、意味変更・説明文変更の扱い
+
+現行`reference-go-build-from-plan`の`go-command`でBuildPlanに載せられる実消費Sourceは、`go-package`と`go-module`である。`checkSourcesAreRead`は実際に読まないkindを拒否し、`checkDependencyCoverage`はGoの依存パッケージを検査する。参照BuilderにRule Markdownを読ませるため、`*.tei.md`を`go-package`と偽装したり、ビルドが読まないSourceを計画へ足したりする方法は採らない。
+
+次の製品R2は、現行のpureな`GeneratePositive`やGo Builderへ権限・Source解釈を重複実装するのではなく、**既存の選択・生成・Build境界を呼ぶ製品側の一連の処理**として実装する。まず`Workspace.Load`で確定した管理Source、Language版、Rule／型、Source IndexとWorld／Model Revisionを取得する。次に同じ選択版からGoを生成し、**生成Attemptの入力指紋・Generator実装と版・出力Go digest**を実Builderへ引き渡す。Builderは従来どおり実Go入力とToolchain／依存を独立に検査し、結果のArtifact digest・Build lock・Consumerを生成Attemptへ結び付ける。必要な受渡し形式は既存#943／#2595／#4544の契約上で決め、新しい汎用Source kindや第二BuildPlan、Evidence正本を新設しない。
+
+| 反証となる変更 | Generator側で確かめること | Build／再利用側で確かめること |
+| --- | --- | --- |
+| **Rule条件・参照先を変更** | 新しい`Workspace.Load`と型解決、別の意味・Go digest、旧Source Indexの失効 | 古い生成Attempt／Build資格を拒否し、新Go byteを実Builderが読む。別の実Consumer結果を独立Expectedと比較 |
+| **Markdown説明文・レイアウトだけ変更** | 管理Sourceの原byte指紋は変わるが、選択Ruleの意味・生成Goは同じかを再評価 | **生成Go／Artifactの再利用可否**と、**旧Sourceに基づくEvidence／Owner受理・現在Grantの再利用可否**を分けて判定。byte相違だけで全Targetを再生成すると決めず、同一Meaningだけで証拠も自動復活させない |
+| **Generator／Toolchain／依存版だけ変更** | Ruleが同じでも、実装・Target・版の組を再検証 | 旧Plan・Artifactの自動受理を禁止。入力Goが同じか、実BuildでどのToolchainを読んだかを別票にする |
+| **Source A→B→A、選択B／実行A** | 同byte・同IDでも前回のAuthorityを継承せず、選択版とBuild対象を明示 | 旧ReceiptやGrantを復活させず、実ArtifactとProvider実EntryのIdentityを別照合 |
+
+**最初に通す二つの負例**は、(1) Rule原文を意味が変わるように変更したのに旧Go／旧BuildPlanを使おうとする試行、(2) 説明文のみの変更後に、生成Goの再利用可否とSource-backed Evidenceの再確認を混同する試行とする。Go BuilderへMarkdownを読ませる暫定対応ではなく、実生成AttemptからBuilderの実入力へ至る証拠の橋渡しを#4544／#2595で実装する。R3の通常`tei` CLIからの選択Provider actual Call、R4の独立Consumer、Studio Stage1→Stage2 Windowsの実再入は並行P0のまま残す。
+
+**現状の判定**：R1.5のテストはmain収録済み、参照Builderの一連の検査コードもmainに存在する。製品R2で必要なRule→Go生成Attempt→実Builder入力の連鎖、R3の実Provider、Stage2 Windows、Ownerの業務意味受理は未検収である。この節は実装と要求の境界を定めるものであり、Go／CLI／Windows／DB試験を新規に実行した記録ではない。

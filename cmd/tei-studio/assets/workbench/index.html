@@ -77,11 +77,28 @@
         <p class="eyebrow">操作と診断</p>
         <h2>作業領域の状態</h2>
         <p id="diagnostic-summary" class="summary">未検証</p>
+        <section class="pin-panel" aria-labelledby="pin-heading">
+          <h3 id="pin-heading">固定した設計要素</h3>
+          <p class="hint">閲覧中の要素とは独立して保持します。現在の権限やAIへの送信許可は示しません。</p>
+          <p id="pin-subject" class="pin-subject">固定なし</p>
+          <div class="pin-actions">
+            <button id="pin-current" type="button" disabled>選択要素を固定</button>
+            <button id="inspect-pinned" type="button" disabled>再確認</button>
+            <button id="unpin-current" type="button" disabled>固定を解除</button>
+          </div>
+          <p id="pin-status" class="hint" role="status" aria-live="polite">未固定</p>
+          <p class="hint">参照したモデルの版：<code id="pin-version">未取得</code></p>
+        </section>
         <div id="commands"></div>
         <details class="revision">
           <summary>観測したモデルの版</summary>
           <code id="revision">未取得</code>
           <p>この値は参照結果の同定用です。書込みや受理の権限を示しません。</p>
+        </details>
+        <details class="revision" open>
+          <summary>参照結果が保証しないこと</summary>
+          <p id="inspection-limits-state" role="status">未取得</p>
+          <ul id="inspection-limits" aria-label="参照結果の制限"></ul>
         </details>
       </aside>
     </main>

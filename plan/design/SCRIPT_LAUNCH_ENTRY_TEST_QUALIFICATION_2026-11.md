@@ -1445,7 +1445,7 @@ Studio Inspectorの参照制限表示（#4806）も、製品Build／実Wails埋�
 
 [Go生成の実装 #4911](https://github.com/hat47x/tei-platform/pull/4911)は、製品`Workspace.Load`で選択された`sales.order_line.quantity_positive`と、解決済みの`std.decimal`型を`validationgen.GeneratePositive`へ渡し、`source.Number("sales.order_line.quantity")`の実読取と`value.Sign() > 0`の判断を含むGoを生成する。テストでは生成したソースを別OSプロセスの`go run .`で動かし、正値・0・負値・NULL・未取得の固定Expectedを照合する。生成Goが既存`validationeval.Evaluate`を単に呼び出して済ませていないことも検査する。**これはR1の局所的なGo Loweringであり、製品Builderの採用、生成Pluginの選択、公開Function Entry、実Providerの起動ではない。**
 
-[Rule変更の実Evaluator回帰 #4913](https://github.com/hat47x/tei-platform/pull/4913)は、同じRule IDと合成入力を維持して参照先を`quantity`から`line_number`へ変更したとき、既存Evaluatorの実Read先・判断・Source／World版が変化することを示した。しかし#4911の生成差分負例は、メモリ上の`semantic.Validation.Attribute`だけを直接変えた試験であり、**編集した`*.tei.md`の原文から再Loadして生成Goが更新されたという縦断試験にはまだなっていない**。次のR1回帰は、同一Workspaceを編集前後それぞれ実Loadし、実Source Index→型解決→生成Goのbyte差分→別プロセスの判断まで一連で対照する。RuleのIDが同じでも、参照先・型・Source Revisionが変われば旧生成物を黙って再利用しない。単なる説明文変更は意味と生成Goの不必要な変更を起こさず、Sourceの現在性だけを別に再確認する。
+[Rule変更の実Evaluator回帰 #4913](https://github.com/hat47x/tei-platform/pull/4913)は、同じRule IDと合成入力を維持して参照先を`quantity`から`line_number`へ変更したとき、既存Evaluatorの実Read先・判断・Source／World版が変化することを示した。その後mainに入った[原文再Loadと生成Go実行の回帰 #4932](https://github.com/hat47x/tei-platform/pull/4932)と[別バイナリでの対照 #4930](https://github.com/hat47x/tei-platform/pull/4930)では、Rule IDと型付き入力の前提をそろえたうえで、`*.tei.md`の参照Attributeを変え、前後の製品`Workspace.Load`→Source Index→型解決→`GeneratePositive`→別Goプロセス／実バイナリの判断とRead先まで照合する試験が追加された。**R1の原文改版追随は実Goテストが存在する段階へ進んだ**が、参照Builder／正式製品Builderによる採用や実Provider Callは別である。RuleのIDが同じでも、参照先・型・Source Revisionが変われば旧生成物を黙って再利用しない。単なる説明文変更は意味と生成Goの不必要な変更を起こさず、Sourceの現在性だけを別に再確認する。
 
 次の製品接続は、既存[Plugin Rule縦断計画](PLUGIN_RULE_PRODUCT_VERTICAL_SLICE_2026-11.md)のR2／R3と、公開pure Functionの#4495のA／B／Cを**同じ受入票で照合するが、同一の実装とはみなさない**。
 
@@ -1459,3 +1459,15 @@ Studio Inspectorの参照制限表示（#4806）も、製品Build／実Wails埋�
 初回pure Functionの起動は、Ruleを公開可能なCapabilityへ自動変換することを前提にせず、既存`semantic-capability`／Function Contractの受理済み一件を使って並行に進める。Rule生成のR2完了を待つ必要はない。逆にR1の局所Generatorへ未整備のHostやRegistryを付け足して起動成功を作らない。生成器・Provider・Targetの境界は#1121/#1251/#4495、独立Expectedは#1180/#2514、Studio Stage1→Stage2は#2831/#4583の既存Ownerに残す。
 
 **実証の上限**：ここで確認したのはmainの製品Reader、型付きRule、Evaluatorの合成Read、限定的な生成Goと別プロセス実行のコード・試験の存在であり、R1再Load縦断／R2実Builder／R3公開Provider・通常製品CLI／Windows実Consumerの新しいPASSではない。
+
+### 29.9 参照Builderの実消費と製品Build Intentの未接続
+
+現在のmainには、[参照Builderの実Go回帰](../../tools/reference-go-build-from-plan/validationgen_build_binding_test.go)が存在する。製品`Workspace.Load`の選択Ruleから`validationgen.GeneratePositive`でGoを生成し、既存の`DirSourceResolver`で生成ファイル・依存Goパッケージ・`go.mod`／`go.sum`のDigestを組み立て、既存`reference-go-build-from-plan`の`-isolate`でコンパイルする。BuildPlan確定後の生成Go byte差替えを拒否し、実際に生成されたバイナリ、Artifact Digest、BuildArtifactLock、依存閉包、五つの固定Expectedを対照する。旧[PR #4934](https://github.com/hat47x/tei-platform/pull/4934)は未マージでクローズされたが、同ファイルと同一Blobがmainに存在することを確認した。#4934のRepository Healthでは`tei/tools/reference-go-build-from-plan`パッケージが成功した一方、リポジトリ全体は別のOperations等の失敗で不合格だった。PRの統合履歴とmain上の実コード・実行結果を取り違えない。
+
+これは**参照Builderが計画した生成Goを実際に読み、コンパイルした**というR2の局所的な先行証拠である。ただし、このテストで組み立てるBuildPlanのSourcesは、生成Go・必要なGoパッケージ・Goモジュール文脈が中心であり、元の`*.tei.md`、生成時のSource Index、選択したLanguage／Generatorの実装版、Ownerが受理した意味を**製品の同一Build Intentの入力として結び切った証拠ではない**。生成GoのDigestとArtifact Lockだけで「このRule版からこのGeneratorが生成し、現在のOwnerが実行を認めた」と推論しない。見た目の同じGoへ戻るA→B→Aや、条件変更後に古い生成Goを再使用する負例を別資格として保持する。
+
+次に必要なのは参照Builderの複製ではない。#4544／#2595の既存製品Build経路で、受理されたSource／型付きRule／Generator選択と版／生成Goの実byte／Builderが実読取したbyte／Target／Toolchain／出力Artifactを、各境界で照合可能にする。原文の説明だけが変わった場合はSourceの現在性を再確認しつつ、業務意味と生成Goが不変であることを区別する。Ruleの条件・型が変わった場合は、生成とBuildの再適格化を要求する。SourceやBuilderの申告Digestだけでは十分とせず、actual Source byteと実Builder入力を照合する。既存のWorld／Model／Artifact RevisionとBuild Evidenceを再利用し、新しいArtifact正本や独立Runnerを作らない。
+
+FunctionはDataと独立した公開契約である。[Data／Functionの分担整理 #4937](https://github.com/hat47x/tei-platform/pull/4937)に従い、Data RuleとField拡張／Table Scriptの意味は公開Function Entryと混同しない。Ruleから生成したGoを公開する必要がある場合も、#4495でOwnerが受理したFunction契約・入力Context・現在Host Grant・実Provider選択に**明示的に結合**して初めて起動対象とする。型付きNode／Flowとして表示する場合は[UI／Flow設計 #4924](https://github.com/hat47x/tei-platform/pull/4924)の標準Operator／Port／Occurrenceへ投影するだけで、Node表示やグラフのLayoutから実行許可を発行しない。NodeのN2実CallとStudioのW0〜W4／Stage1→Stage2は独立したConsumer受領である。
+
+次の受入差分は、①製品Build IntentのSource・Generator provenanceを伴う生成Go受領、②同一Rule／Generatorの版変更・旧Go／別Builderによる誤使用を拒否、③受理済みpure Functionからselected／actual Providerの実Call、④通常製品`tei` CLIの別OSプロセスと独立Expected、と分割する。未実装の外部Hostや汎用Flow実行機構を導入して最初の一件を代用しない。
