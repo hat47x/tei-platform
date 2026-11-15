@@ -297,3 +297,66 @@ R3-CのWindows実Wails Consumer、正式Source Apply、実PG Function Context、
 
 **統合上の判断**：旧PR #4603はmain進行により大幅に遅れたため、本書の成熟した部分だけを最新main基点で移した。ほかの開発レーンによるMASTER_PLAN/READMEの追補は維持し、旧ブランチの大量の古い差分を再適用しない。
 
+## 12. 最初の一問をHeadlessで検証する：現行Product型からの実装単位（2026-11-15）
+
+この節は前節の設計を現行mainの実コードに照らして検収可能な単位へ落としたもの。最初の問いは「旧Function FはData Dを実際に読むか」。構造観測で答えられる部分と、実Read・業務意味が未確認の部分を分ける。既存P/J/Qは評価観点であり、別の共通Engine／Response Schema／Runnerを追加する提案ではない。
+
+### 12.1 現行の二つの入口と資格の差
+
+| 現行の型と入口 | 保持できる事実 | これだけでは確認できないこと |
+| --- | --- | --- |
+| 通常CLI external-candidates → operations.ExternalCandidateView | 保存済みRawから明示IDで選ぶObservation 1件と有向Relation 1件、Attempt.EvidenceID、ReceivedDigest、申告SourceRevision、Tool版、Coverage/Unknown、Unselected件数、AuthorityLimits | 旧業務Functionとの対応、実Read/Write、完全なGraph、現在Grant、正式意味 |
+| three-element rea-intake → reacandidate.ReviewPacket | CandidateのStructuralFacts/Inference/SourceRevision/MeaningLoss/Unresolved、Carrier、ThreeElementCoverage、Owner未受理状態 | 正式Source変更、業務の完了条件、実DB Effect、独立Native Consumer |
+| reacandidate.EvaluateThreeElementCoverage | 現行の静的REA候補についてDataの構造候補をsupported、Function/Businessをunsupportedと理由・wouldNeedで区別 | 旧システムにFunction/Businessが不存在という証明や、全Sourceの調査完了 |
+
+現行ElementCoverage.Statusの二値はsupported/unsupportedであり、「その三要素の候補を当該Evidenceが支持できるか」の意味に限る。External Evidenceのpartial、取得0件、Reader not-attempted、permission-denied、Source Binding、実ProviderのRead資格をこの二値に押し込まない。将来の未知Statusも、supportedやunchangedへ黙って丸めない。
+
+external-candidatesはProducerの保存済みRawを読む。他方、rea-intakeにUTF-16LE/BOM原本からUTF-8派生を与えるときは、**元Rawと派生byteのDigestが異なることを前提**とする。Producer Evidence ID、元Raw、派生変換、内容の同値、両Reader受領、Consumer Attemptを別々に照合できた場合だけ、同じProducer観測に由来する二つのProjectionとして比較する。似たResultや同じID文字列だけで同一Read Attemptとしない。
+
+### 12.2 初回の回答の書き方と停止条件
+
+Headlessでは、既存Projectionの読取結果から次の構成の**回答候補**を作れるかを試す。恒久的なJSON Schemaを新設しない。
+
+> **確認できた構造**：Producerが報告した特定Source上のNode A→Node BというRelation e1。外部ID、方向、出典、申告版、選択されなかった関係数を保持。
+>
+> **三要素への対応候補**：Dataの構造候補はあるが、Node Aが業務Function Fかどうかは未確認。Function/Businessのcoverageはunsupportedであり、不存在の意味ではない。
+>
+> **問いへの回答**：「FがDを実際に読む」は未確認。静的Relationのラベルがimportsやrequiresでも、実Readや更新Effectに直訳しない。
+>
+> **次に確認すること**：FのEntry・入出力とQuery、選択Providerの実Invocation、物理Relation/params、Read Scope・時点・必要なGrant、独立Consumerが受け取ったRowset。
+
+問いごとのRequired（必要なSource/Relation/Rule/実Reader）とConsumed（実際に参照・取得したもの）を区別する。既知の陽性観測はその範囲で提示できるが、「使われていない」「削除できる」「実Readしない」という否定・全称の結論は必要な閉包がなければ保留する。異なるSource/版/Scopeの証拠、同一原本から派生した複数AI要約、別Attemptの結果を無条件に足さない。
+
+### 12.3 実装を一つの小PRに限定する
+
+最初は既存Reader/CLIとReviewPacketの受領をHeadlessの試験で検証し、必要な範囲のみ読み取り専用Projectionを足す。順序は以下の通り。
+
+1. **独立Expectedを先に固定**：公開合成のTask T→Action A→Function F→IOTable I→Data D、手作業M、未取得Source U、同名異IDのn1/n2と並行するe1/e2を用意する。実Captured REA 6.8.0とは別Fixtureにする。
+2. **外部Observationの選択**：通常CLIの明示Observation ID／Relation IDで一件ずつ選び、Evidence ID、元Byte digest、関係の方向・ID、Unselected、AuthorityLimitsを記録。ローカルCLIの任意EvidencePath入力をNative/Webへ転用しない。
+3. **三要素Reviewの確認**：現行rea-intakeでData/Function/Businessのsupported/unsupportedとwouldNeedを確認する。派生入力なら元Rawからの変換証拠を別票にする。ReviewPacketのAcceptedMeaning=falseをOwner受理に置換しない。
+4. **問いに対する回答**：選んだ構造と必要な実Read根拠の不足を表示し、確認済み／推論候補／未確認／矛盾を説明文の分類として扱う。これを新しい共通真理値Enumにはしない。
+5. **別レーンへ引継ぎ**：実Wails JSへの受領は#4661、正式Source編集は#267/#2497、実PG Query→Function Contextは#2586、受理済みRule→生成・実CLIは#951/#1251/#4544へ渡す。
+
+### 12.4 既存Scenarioへ渡す独立Expected（新しいテスト正本は作らない）
+
+| 索引 | 入力と反例 | 最小合格・停止の判断 |
+| --- | --- | --- |
+| RQ-01 | Captured Rawの一Observation＋有向Relation | 元ID/向き/Digest/Unselectedを保ち、Functionの実Readと混同しない |
+| RQ-02 | Data候補あり、Function/Businessはunsupported | wouldNeedを提示し、不存在・未使用・CUDなしと断定しない |
+| RQ-03 | 合成T/A/F/I/Dはあるが実Provider Receiptなし | 静的構造は示すが、F reads Dの実行事実は未確認 |
+| RQ-04 | 同名別ID、e1/e2並行関係の再採番、1対2・2対1 | 対応が曖昧なら個別Relation編集を止め、並び順で確定しない |
+| RQ-05 | 同Candidate IDでもObservedKind/State/Coverage変更 | 外部の観測事実差分を保持し、未知Statusをunchangedへ丸めない。#4693のDraftとmain実装を混同しない |
+| RQ-06 | UTF-16LE元RawとUTF-8派生 | Byte digestの違いと同値確認の範囲を区別し、二入口成功を単一Read Attemptとしない |
+| RQ-07 | 0件、未取得U、未ロードPlugin、権限制限 | 未使用・削除可能の全称結論を拒否し、Requiredの不足を示す |
+| RQ-08 | Source A→B→A、Grant変更、後着Response | 昔のApproval/Disclosureを自動復活させず、他ViewのFocus/Dirty Bufferを汚さない |
+| RQ-09 | 未受理REA CandidateをGraph→Goへ直接投入 | 製品生成資格を認めず、main #4733の局所Reference生成と区別する |
+
+RQは#1180/#2514へ不足Assertを引き渡す**索引のみ**。#4693（関係再対応・事実差分）と#4716（他媒体）はDraftのため、現行mainで実装済みの成功とはしない。二Producerや二Readerの別CIを足し合わせて一つのProduct E2E合格とも呼ばない。
+
+### 12.5 次の区切り・製品優先順位
+
+**R0**：現行Product二入口のSource/Raw/Tool版と実Receiptを一件ずつ確認する（RQ-01/02/06）。**R1**：合成三要素の一Function質問をHeadlessに投影し、確認・不答・曖昧Relationの停止を検査する（RQ-03/04/07）。R0/R1の局所合格はR3-CのWindows第二Consumer、正式Source Apply、実Function PG Read、SHO Save/Reopenの合格に流用しない。
+
+main #4751/#4756/#4733/#4777とも、**Source選択→実Reader→Meaning candidate／受理済み意味→生成→実Invoke／Consumer→Evidence**を別々に証明する方針で整合する。製品P0はStudio Stage1→Stage2 Windowsセルフビルド#4583/#2831と、通常tei CLIの実Provider→Function Context→独立Consumer#2586のまま維持する。第二Host/Parser/Graph Compiler/Meaning Store/Scenario Runnerを新設しない。
+
+**証拠上限**：現行Go型・既存CLIと他レーンの実装状態を静的照合した設計・試験引継ぎ。今回の新Go/Windows/PG試験、正式Owner意味受理、Source Apply、SHO保存、Target実EffectやTEI-native Plugin生成は未実施。

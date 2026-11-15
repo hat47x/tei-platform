@@ -112,3 +112,40 @@ G0・G1は既存Studioセルフビルド B1〜B3 より上位の必須Gateにし
 ## 10. 現時点の結論と主張の限界
 
 本案は、Desktopの子プロセス候補とCLIのWails非依存・ローカル開発を両立できるか検討する。現行P0基線の同一Process方式とADR-0048の既定は変更しない。子BackendとRemote Serverは同じOperation/Plugin契約を使用するが、同一プロセス・同一バイナリ・同一Plugin版を義務付けない。利用する側の実行範囲と権限、Client／Server互換性、Artifactの実バイトを固定する。現行コードの実Local IPC、Remote CLI、Plugin install／enable、署名付きUpdater、三OSのInstaller／自己更新の完成を示す文書ではない。
+
+## 11. 子Backendの実装契約と配布・復旧の受入（2026-11-15）
+
+[Studio Backend起動・互換性・更新復旧の実装契約](STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)に、次の実装境界を切り出す。**現行P0はDesktopのWails＋Go同一Process（A）、将来の局所子Backendは#4635で比較するB0/B1/B2**とし、選定・実装・適合PASSを先取りしない。CLIはWails非依存・ADR-0048のin-process既定を維持したまま、子Backend／Session再利用を実測比較する。
+
+実装契約は、CORE_READYとWORKSPACE_READYの区別、実Peer／Transport／Operation Contract確認、旧Session Reply拒否、Plugin Composition世代固定、Shared AcceptanceのSource競合、Wails Web旧Tab、GitHub ReleaseとPlugin文書、UpdaterのStaging→Drain→物理切替→復旧と外部Effectの非可逆性を明示する。適用／受理／実効Grantは既存Ownerが判断する。新しい第二Resolverや万能Update Registryは作らない。既存#4635/#4702/#1180/#2514を受入担当として維持する。
+
+## 12. Wails標準UpdaterとStandalone同梱Release（2026-11-15）
+
+DesktopにはWails v3の `app.Updater` を優先利用する。ただしTEI Studioの現依存はv3.0.0-beta.29で、Updaterの製品組込みと選定安定版での実OS検証は未実施。公式Updaterが扱うのは原則**一つの実行対象の交換**であり、同一ZIPにDesktop/独立Server/Plugin/ユーザー設定を並べれば自動的に一括切替されるわけではない。
+
+配布はD1 Remote接続Desktop（Clientのみ更新）、D2 Standalone単一Binary（Go Backend／標準Plugin／既定設定Templateを内包）、D3 Standalone別Server同梱（同一Releaseだが複数Artifact活性化はInstaller等で別検証）に分ける。**最初はD2を第一候補**とし、D3は明示的な別Serverの需要とOS配布・Rollback条件を満たす場合に採用する。Plugin実体／Release Lock・設定Schema・User Override／Secret・DB Migrationを分ける詳細は[実装契約§22](STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)に委ねる。UIや本体の更新が外部Server／DBの更新権限を持つことにはしない。
+
+## 13. Wails Mobileは実験的Buildのみ先行し正式サポートを待つ（2026-11-15）
+
+[Wails v3公式Roadmap](https://wails.io/status/)ではDesktop（Windows／macOS／Linux）は安定版の互換性保証対象だが、AndroidとiOSは実験的機能のままである。Desktopと同一のGo／Web SourceからMobileへBuild可能なWailsの機能を利用して、**TEI Studioでも将来のビルド・起動・Read-only操作を選択的に試験**する。ただし現在のTEI Studioはbeta.29依存で、実Mobile試験の合格は未確認。AndroidはSDK/NDK、iOSはmacOS＋Xcodeの独立した環境で検証する。
+
+MobileではDesktop用の自己子Backend、Wails実行ファイル置換Updater、動的Native Pluginを当然使えるとは扱わない。Application Operation／意味モデルは共通にし、OS Adapter／Screen Projection／Package／更新権限をTarget別に分ける。**Wails公式が各Mobile OSを安定サポートに含め、TEI自身が実機・配布・更新・復旧の受入を通すまでは正式な製品サポートを開始しない**。詳細とM-0〜3は[実装契約§23](STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)。Desktop Stage1→Stage2のP0を変更しない。
+
+## 14. Wails v3.1.0安定版への移行とWakeの実験的評価（2026-11-15）
+
+Wailsの2026-11-01公開の最新安定版は**v3.1.0**。現TEI Studioはv3.0.0-beta.29のため、[#1824](https://github.com/hat47x/tei-platform/issues/1824)が既に管理するS0-R（現行再現）→S0-U（安定版移行）を基準とする。Go／Wails／`@wailsio/runtime`／生成Bindings／Workbench埋込みBundleを同一ビルド証拠で照合する。
+
+v3.1.0の**Wakeは実験的**だが、`wails.yaml`の`binaries`でDesktopに付属CLI／Serverを定義でき、OS別配布・署名や`--skip-build`による生成済みBinaryの利用を比較できる。既存TaskfileからWakeへの変更は経路切替を伴うため、まず隔離したPoCと`--plan --json`の比較に限る。Wakeで複数Artifactを同梱できても、Wails標準Updaterで複数実行物を原子的に交換できるわけではない。正式採用と更新方式の選定は既存Ownerが判断する。
+
+MobileはAndroid/iOSが実験的な間、正式サポートを待機する。特に`ios`が`darwin`、`android`が`linux`のビルド条件を引き継ぐため、Desktop専用Goファイルを誤ってMobileへ含めない検証を設ける。詳細は[実装契約§22.5・§23.4](STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)。Studio Stage1→Stage2／通常CLI実ProviderのP0は不変。
+
+## 15. 生成・受理・配布を単一の成功判定にしない（2026-11-15）
+
+main統合済みのGraph／Rule候補構造指紋[#4758](https://github.com/hat47x/tei-platform/pull/4758)、Plugin公開文書設計[#4750](https://github.com/hat47x/tei-platform/pull/4750)、BRMSの標準Rule統合[#4765](https://github.com/hat47x/tei-platform/pull/4765)を配布の受入へ接続する。Raw Sourceの現在性、候補意味の同値、実生成Artifact、Desktop／Server Release、実Provider／Current Grantは別の資格であり、指紋一致や同梱・文書公開でOwner受理や実行許可を与えない。
+
+最初の製品縦断は既存#1824のS0-R→S0-UによるWails v3.1.0実Read、#2831/#4583の実セルフビルド、D2単一ImageのRelease/Plugin/設定の照合で進める。D3 Wake/InstallerとAndroid・iOSは独立した比較・探索である。**正式`*.tei.md` Reader S0-A／実Providerは別Ownerの並行P0であり、完成待ちの新Hard Gateにしない**。失効・同梱・実行資格と四つの最小検証は[実装契約§24](STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)にまとめる。
+## 16. BootstrapとPlugin配布をRelease Closureで整合させる（2026-11-15）
+
+[実装契約§25](STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)では、起動時に検査するRelease実Image／UI Asset／標準Plugin／既定設定Schemaと、操作時に確認する実Provider／Current Grant／Effect Receiptを分けた。D2単一Imageへの静的内包を標準候補とし、D3別Serverの複数成果物切替はWails Updaterが自動で保証するものとは扱わない。Bootstrapは診断・復旧をPlugin初期化前に実行できる最小経路を維持し、第二Resolver／Host／Registry／Updaterは作らない。
+
+Wails公式UpdaterのArchiveは原則として最上位Entryを一つに制限する。外部Plugin／Serverの実行世代、利用者設定、DB Migrationは別の管理責任とする。BRC-01〜09を既存#1180/#2514の独立Expected候補とし、優先度はCLI-first実生成・Studio Stage1→Stage2・通常CLI実ProviderをP0、Wails安定版とD2更新をP1、D3／Mobile探索をP2のまま維持する。この追加は設計・検証項目であり、新しいGoコード・配布・Windows・Android/iOSのPASSではない。
