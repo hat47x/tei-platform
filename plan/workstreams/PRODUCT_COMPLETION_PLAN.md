@@ -26,7 +26,7 @@
 
 ### 図解のP1：定義・生成・実Attemptを証拠つきで比較する（2026年11月15日）
 
-[プロセス実行図の因果・意味保存・証拠照合](../design/PROCESS_EXECUTION_CAUSAL_PROJECTIONS_2026-11.md)の§10〜39に、他の標準Data・Node／Plugin配線・業務Process／REA・Rule・セルフビルドの議論を接続した。異なる図を一つの実行エンジンで統一するのではなく、**Sourceからの投影、Targetへの生成、実際の呼出し、独立した受領の間にどの根拠が必要か**を、対象に応じて切り出す。部分取得から「不存在」や「すべて成功」と推測する図は不合格とする。
+[プロセス実行図の因果・意味保存・証拠照合](../design/PROCESS_EXECUTION_CAUSAL_PROJECTIONS_2026-11.md)の§10〜44に、他の標準Data・Node／Plugin配線・業務Process／REA・Rule・セルフビルドの議論を接続した。異なる図を一つの実行エンジンで統一するのではなく、**Sourceからの投影、Targetへの生成、実際の呼出し、独立した受領の間にどの根拠が必要か**を、対象に応じて切り出す。部分取得から「不存在」や「すべて成功」と推測する図は不合格とする。
 
 最初の実装担当は#1124／#2497／#4198（読取専用図解）と#988／#1121（選択済みRule・Go生成）である。固定した一Ruleの現在のSource／型／Read範囲をCLI/Headlessで表示し、未接続のBuilder・Provider・Effectを未確認のまま示す。同じ入力・Rule IDで参照Attributeを一因子変更し、生成Go／実Read／判断と旧Evidenceの失効を既存#1180／#2514へ返す。Generator自身のGo構造をTEIの意味候補へ戻すP1 dogfoodingは別Subjectとして進める。**Go AST・図の一致、Mock、別HEADのCI成功を、通常CLIの実Provider／Stage2実Windows受領へ加算しない。**
 
@@ -39,6 +39,8 @@
 **実装基線の更新（§30〜34）**：#4980の実`tei inspect`とは独立に、#5007で選択済みOperator実装の局所Call、#5009で選択済み`quantity_positive`由来Goの通常製品`tei self-build`・Build Intent・実Binary判断がmainへ追加された。これらを同じRule／Attemptの縦断E2Eと合算しない。まず**Manifestの実装選択A→Bだけが変わり、Canonical Worldは変わらない場合に、旧生成Scenario Commandが古い選択で起動されることを拒否または再資格化する**E1を#4359/#951と並行PluginのCPW-11へ渡す。入力0で`non-negative`と`non-zero`の結果が異なる独立Expectedを用い、World Fingerprint一致を現在の実装選択資格に転用しない。E2のRule→Go→Buildは実Binaryの局所成功と元Markdown／Generator版の正式Build Plan束縛を別票にし、手書きDriverを自己構築の生成部分に数えない。E3の組織MembershipはvalidAt／knownAt、recordedAt／observedAtと二Occurrenceの並存を区別し、隔離PostgreSQL候補と製品正式Queryの受入を分ける。E4のCLI／Studio／AI表示では古いPin・開示・Audienceを維持する。新しく共通Runtime／証拠Storeを作らず、P0を優先する。
 
 **証拠の照合資格と現行製品の受入（§35〜39）**：次の実行図P1は、既存`tei inspect`のQualified Subject・Source byte／位置・型・Authority Limitsから、確実に言えるEdgeと未確認Edgeを区別するread-only表示に限定する。#5037の実CLIと直接Operationの結果一致は共通ReaderのTransport同値であり、独立ExpectedやProvider実Callではない。#5038のREA実Evidence端点照合は技術的参照整合であって業務Relation／Effectの受理ではない。#5027の組織二時点隔離PG候補はOccurrence／validAt／knownAtを区別し、正式Query・Grantを代行しない。#5025の実WebView2 Pin再読込負例は現在観測の再資格化を示すが、Stage1→Stage2受領ではない。**選択A→Bで旧生成Scenarioを拒否するGo実装は#5054が審査中**のため、mainでの既定保護として数えない。新規共通証拠Store・万能Status APIを作らず、同一Load・同一Subject・実Producer・取得範囲・選択鮮度・Audienceを既存Ownerの証拠から照合する。検収結果は既存#1180/#2514と#4198/#1124/#951/#1824へ返し、通常CLI R3／正式R2-P／Stage2実Windowsの既存P0を優先する。
+
+**実現方式と証拠の受渡し（§40〜44）**：標準Rule／型付きSourceは、既存`validationeval.Evaluate`による汎用評価と、`validationgen.GeneratePositive`による生成Goの二経路を別々に実証できる。コード生成が必要な場合と単純なパラメータ評価で足りる場合を選べる余地を残すが、これを口実に新Evaluator／Runner／DSL選択構文を先行しない。main済み#5051では原Markdown byteの同一Load検査、`//go:embed`付きSource Closure、実Binary内SHA-256の確認まで到達した。ただし元LocatorとReader／Generator実装資格の正式Build Plan束縛は未受理。生成Goをコンパイル可能な別byteへ入れ替える#5056と、選択A→B後に旧Scenario Commandを拒否する#5054は**未マージPR**として継続し、mainの合格としない。#5042/#5052の11依存Source／Lockを固定した生成Workbench PoC Bの実Windows受領は限定的に検証されたが、Rule Binaryと同一Artifactの一往復でも正式Stage1→Stage2でもない。次の実装差分は既存テスト内部のEC-01〜08（別Source、同Go／説明改版、生成Go／実Builder不一致、同Resultの実装切替、Binary原文Hashの限界、UI旧依存、汎用評価との比較、Effect unknown）を#1180/#2514へ渡し、定義→Read→編集→保存前→DB操作→Commit→通知→開示を別資格として表す小さなread-only照合票を作る。Source出典の再確認・Artifact再利用・現在Grantを分離し、正式R2-P／R3とWindows Stage2を引き続きP0とする。
 
 P0は引き続き、#4495の公開pure Entry→actual Provider→通常CLIの実二入口と、#2831/#4583のStage1実TEI→Stage2実Windows WebView2を優先する。図解・編集・REA・BRMS・ETLの全対象対応をP0の新しい前提にしない。
 
