@@ -66,7 +66,7 @@ Expectedは既存Scenario Test SSOT #1180に置き、各Targetの実Runは#2514�
 
 ### 7.1 三つの業務対象を、一つの画面・テーブル・フローへ潰さない
 
-最初の縦断例は「受注の明細編集→確定→一覧・帳票→別Entryでの照会」とする。既存の\`order_entry\`関連のSourceとDriver Scenarioを候補として使うが、実Sourceの未確認項目を実装済みと仮定しない。モデルを増やす前に、次の役割をそれぞれ固定する。
+最初の縦断例は「受注の明細編集→確定→一覧・帳票→別Entryでの照会」とする。既存の`order_entry`関連のSourceとDriver Scenarioを候補として使うが、実Sourceの未確認項目を実装済みと仮定しない。モデルを増やす前に、次の役割をそれぞれ固定する。
 
 | 役割 | 例と受理対象 | 各Projectionで保持すること |
 | --- | --- | --- |
@@ -84,7 +84,7 @@ Expectedは既存Scenario Test SSOT #1180に置き、各Targetの実Runは#2514�
 - **検索**：絞り込み条件、現在のDisclosure／RLS、索引の非同期鮮度、ページングによるpartialを別に保持。単一のQueryが0件でも、対象全体に存在しないことやほかのRoleで見えないことは証明しない。
 - **業務状態**：申請時の経路と必要人数のSnapshotは、現在の候補者の実行資格や委任の有効性とは違う。Business Instanceは元データ側の状態を原則とし、単一の全業務共通State表／新Workflow Engineを前提にしない。
 
-第一段階では既存Data Rule／Function Data Context／Process／Authorityの適用条件を対応付ける。実際の評価／保存／承認／全文索引／通知を確認していない辺は\`unverified\`のままにする（#1637／#1640／#1129／#2386／#2622／#2586）。
+第一段階では既存Data Rule／Function Data Context／Process／Authorityの適用条件を対応付ける。実際の評価／保存／承認／全文索引／通知を確認していない辺は`unverified`のままにする（#1637／#1640／#1129／#2386／#2622／#2586）。
 
 ### 7.3 同じ意味に対する異なる表現を、用途別の派生物として扱う
 
@@ -94,7 +94,7 @@ Expectedは既存Scenario Test SSOT #1180に置き、各Targetの実Runは#2514�
 - **用途ごとに変えてよいもの**：図の座標と表示順、画面レイアウト、設計書の章選択、レポートTemplate、CLIの表示形式、MCP Toolの説明。ただし変更の影響がないかは依存閉包で確かめる。
 - **生成だけでは同一性が保証されないもの**：実ロード済みWeb資産、実Builderが読んだGo byte、実DBの列とデータ、外部Hostの現在認可、帳票Bodyと取得可否、APIの実Call、Consumerが受け取った値。
 
-これを\`Working Draft → Selected Source → Accepted Meaning → Projection → Artifact → Loaded/Invoked → Observed Result\`の別欄で追跡する。A→B→AのSource移動、同名別Root、失効したPlugin Lock、検索Indexの遅延などを単純なbyte一致で相殺しない。既存のWorld Fingerprint／Model Revision／Artifact Revision／Evidence／Source Indexを利用し、第二のCanonicalや汎用ロード台帳を作らない。
+これを`Working Draft → Selected Source → Accepted Meaning → Projection → Artifact → Loaded/Invoked → Observed Result`の別欄で追跡する。A→B→AのSource移動、同名別Root、失効したPlugin Lock、検索Indexの遅延などを単純なbyte一致で相殺しない。既存のWorld Fingerprint／Model Revision／Artifact Revision／Evidence／Source Indexを利用し、第二のCanonicalや汎用ロード台帳を作らない。
 
 特にGraphとNode Flowでは、**構造を描く線、値の依存線、制御の遷移線、Plugin提供・依存線**を意味Roleごとに区別する。見た目が同じPortでも適用Phase・入出力型・時間／認可条件が合わなければ接続不適格とする。座標編集は意味変更でなくView改版、Sourceへの逆書戻しは元spanと一意の編集対象が確認できた場合だけ候補化する（#2497／#4198／#951／#1124）。
 
@@ -102,9 +102,9 @@ Expectedは既存Scenario Test SSOT #1180に置き、各Targetの実Runは#2514�
 
 ### 8.1 まず一つのRuleを実Goで消費する
 
-現在の内蔵Markdown Rule Readerは、\`*.tei.md\`をManifestで選択し、限定Ruleを型付き意味へ読める経路を持つ。したがって次に作るのは別Parser／新DSLではない。
+現在の内蔵Markdown Rule Readerは、`*.tei.md`をManifestで選択し、限定Ruleを型付き意味へ読める経路を持つ。したがって次に作るのは別Parser／新DSLではない。
 
-1. 選択された\`*.tei.md\`から、Rule ID・元byte位置・型・依存Field・適用Phaseを一件読み、選択ReaderとPlugin/Source版を固定する。未選択・誤配置・部分読込みは拒否する。
+1. 選択された`*.tei.md`から、Rule ID・元byte位置・型・依存Field・適用Phaseを一件読み、選択ReaderとPlugin/Source版を固定する。未選択・誤配置・部分読込みは拒否する。
 2. 同じRuleから生成された**実Go byte**を、既存Builderが実際に受け取る入力と突合し、実ArtifactのMember・digestを記録する。参照Generatorの単独実行結果を製品Builder実績へ昇格させない。
 3. 通常CLIで受理済みFunction一件の実Provider Readを行い、入力Query/Environment・実SQL/Parameter・返却RowsetとFunction Context、独立Expected・一つのConsumerを対応付ける。Providerの選択とactual Call、0件とpartial、NULLと未取得を別観測とする。
 4. Rule生成と実Providerの各経路が独立に合格した後に、一つの業務Functionで結合する。Write／Commit／ACK lost／Outboxと現在Grantは#1174／#1129の別資格で検収し、Readの成功をWriteに一般化しない。
@@ -115,7 +115,7 @@ Expectedは既存Scenario Test SSOT #1180に置き、各Targetの実Runは#2514�
 
 Migrationの最初の受入は**隔離DBのread-only観測とDry-run**で、旧新のStable ID、業務キー／複合キー、物理列、型、制約、DDL所有者、Data Conversion案、既存データ、移行履歴を並べる。その後、許可されたProviderで実DDL/変換を適用し、独立Readerで再取得する。Historyだけの修復をDB実型変更と扱わない。
 
-業務データの移送で旧環境のRole・Grant・Owner ID・申請中のRoute Snapshotを無条件にコピーしない。照合できない主体・権限・添付Bodyの状態は\`unknown\`／\`partial\`として停止する。Stagingからの参照解決や行単位の部分確定を必要とする場合は、既存Batch/Operation／Receiptの設計を使用する。検証のみ、全件原子確定、正常行のみ確定の違いを自動的に統一しない（#3270／#1129／#1130／#1174／#2622）。
+業務データの移送で旧環境のRole・Grant・Owner ID・申請中のRoute Snapshotを無条件にコピーしない。照合できない主体・権限・添付Bodyの状態は`unknown`／`partial`として停止する。Stagingからの参照解決や行単位の部分確定を必要とする場合は、既存Batch/Operation／Receiptの設計を使用する。検証のみ、全件原子確定、正常行のみ確定の違いを自動的に統一しない（#3270／#1129／#1130／#1174／#2622）。
 
 ### 8.3 非同期成果物は、受付・処理・生成・実取得を別に観測する
 
@@ -134,7 +134,7 @@ Migrationの最初の受入は**隔離DBのread-only観測とDry-run**で、旧�
 | XA-01 | Report受付後Template変更／取得時Grant失効 | Template版、Query scope／Data snapshot、Jobと実Artifact body、取得拒否 | #1130／#1158／#2514 |
 | XE-01 | CLIの既知Functionに対しMCPは検索しか提供しない | Tool Discovery、Binding適合、actual Provider Call、現在GrantとDisclosureを別扱い | #1180／#1251／#4495 |
 
-**最初の実装差分**は、選択済みRule一件の\`Source span → Typed Rule → generated Go → actual Builder input\`を実Productで結び、既存Scenarioの正常・NULL・欠落・条件変更・旧Sourceの負例を走らせること。次の別差分で通常CLI→実Provider→Raw Rowset→Context→独立Consumerを確認する。双方の結果を一つの受注Functionに結び、SHO設計書やStudio図面はread-only Consumerとして追加する。実DB MigrationやMCP Writeは最初の二差分のHard Gateにしない。
+**最初の実装差分**は、選択済みRule一件の`Source span → Typed Rule → generated Go → actual Builder input`を実Productで結び、既存Scenarioの正常・NULL・欠落・条件変更・旧Sourceの負例を走らせること。次の別差分で通常CLI→実Provider→Raw Rowset→Context→独立Consumerを確認する。双方の結果を一つの受注Functionに結び、SHO設計書やStudio図面はread-only Consumerとして追加する。実DB MigrationやMCP Writeは最初の二差分のHard Gateにしない。
 
 **並行P0**：StudioのStage1→Stage2 Windows実セルフビルドは#2831／#4583に従い継続する。生成Goの実Builderと正規Wails Assetの埋込はそれぞれ実byteで検査し、どちらかのCI合格を他方へ転用しない。
 
@@ -142,7 +142,7 @@ Migrationの最初の受入は**隔離DBのread-only観測とDry-run**で、旧�
 
 - **変更の波及**：説明文、Graph配置、式・Query・依存Relation、Generator／Plugin、Loaded Runtime、Grant、Target Schema/DB値の各変更について、元Source・意味・生成物・実Call・実Effect・Consumerのどこまで失効するかを既存依存Graph／Evidenceで示す。Source A→B→Aや同byte別Rootも再選択を要求する。
 - **成功の定義**：ドキュメントやテストの数でなく、(a) 人が保守する定義の重複減少、(b) 不適格な接続・旧版を誤受入しない率、(c) 変更後に必要な再検査範囲、(d) 実Builder/Provider/Windows/Consumerの同一Attemptでの証拠、(e) 診断からSourceまで戻れる手数を比較する。計測はPlugin・設定・生成コードを含めた総作業量とする。
-- **停止条件**：選択Readerが実Sourceを読めない、型／Phaseが不明、Builder入力が観測できない、DB Providerの実Callが無い、Graph対応が多義、現在Grant／Result Disclosureが不明、Runtimeだけ旧版などの場合は、その辺を\`unsupported\`／\`unverified\`／\`stale\`として止める。説明やMockが成功しても埋めない。
+- **停止条件**：選択Readerが実Sourceを読めない、型／Phaseが不明、Builder入力が観測できない、DB Providerの実Callが無い、Graph対応が多義、現在Grant／Result Disclosureが不明、Runtimeだけ旧版などの場合は、その辺を`unsupported`／`unverified`／`stale`として止める。説明やMockが成功しても埋めない。
 - **保留**：新Core型・新Grammar・Graph Compiler・Workflow Host・Migration Engine・Outbox Store・独立テスト実行基盤・万能Registry・AIによる自動業務意味受理は、この段階で追加しない。
 
 **検証上限**：ここまでの§7〜10は既存成果の設計統合と次の実装パケットである。新たなGo/Node/Windows/DB/MCP実行試験、業務Ownerの意味受理、製品の完全適合は本追補では未実施。
