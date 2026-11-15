@@ -29,6 +29,7 @@
 
 | 文書 | 対象 |
 | --- | --- |
+| [`APPLICATION_ABSTRACTION_DOCUMENT_METHOD_WEAVING_2026-11.md`](APPLICATION_ABSTRACTION_DOCUMENT_METHOD_WEAVING_2026-11.md) | 文書のスコープ・Role・引用・図表・履歴を既存Data／Function／Projection／Pluginへ編み込み、構造・意味・表現・実現・現在資格の合成判定と独立Expected DW-01〜10を定める横断設計（実装前）。 |
 | [`PROCESS_EXECUTION_CAUSAL_PROJECTIONS_2026-11.md`](PROCESS_EXECUTION_CAUSAL_PROJECTIONS_2026-11.md) | プロセス実行図を因果関係と独立Evidenceの照合として生成するread-only契約。定義・選択・実Call・Effect／Consumer、観測閉包、CLI／Studio共通Projectionと既存PX／SF／EL反例の接続（実装前）。 |
 | [`DECLARATIVE_RESULT_PROCESS_COMPOSITION_2026-11.md`](DECLARATIVE_RESULT_PROCESS_COMPOSITION_2026-11.md) | 成果物要求から計算・集約単位、依存構造、複数出力の共有、物理計画を導出する横断設計。Batch／Node Flowを標準Data・Operator・Processに接続する（実装前）。 |
 | [`SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md`](SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md) | 標準Data／Facet・Operation・Processから型付きノード、APIマッシュアップ、Webhook／イベント・軽量サービスを構成する横断契約。ServiceとGraph、Entryと配備、認可・取得完全性・Effectを分離し、既存Flow N0〜N4へ受入候補を引き渡す（実装前設計）。 |
