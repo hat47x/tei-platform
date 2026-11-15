@@ -1681,3 +1681,18 @@ Plugin状態は**宣言／導入可能／有効設定／Composition／Build包�
 最初のIssue Ownerは#4583/#2831（DG-0）、#4515（Pin）、#4359/#4495（DSL）、#1251/#2586（DB）、#1180/#2514（独立Expected）を再利用する。新たな横断承認Gate・Host・Registry・Build Engineは増設しない。
 
 **実行状況**：本追補は設計・計画のみ。新Go/Node/Windows/PostgreSQL実行NOT RUN。#4606はDraft、main未統合。新規に取得したPR状態とPR本文のCI報告を区別して記載した。
+
+## 2026-11-15 Bootstrap／Plugin実体構成のP0実装パケット（前節と同じOwner・Expectedを使用）
+
+[Bootstrap実装契約§26](../design/STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)は、Plugin選択・Build同梱・Runtime実呼出しを独立に照合する最小作業を既存の主線へ割り当てる。追加のBootstrap Host、BOM Schema、製品Gateは設けない。
+
+| 実装パケット | 最小差分 | 必要な独立Expected／停止条件 |
+| --- | --- | --- |
+| **P0-S：Reader選択** | #2621/#1018の選択済み一つの`*.tei.md`を、製品`Workspace.Load`の同一byteから解析し、位置つき候補／Source Indexを返す | S0-A。未選択／Provider不在なら`TEI_MD_PARSER_UNBOUND`等で拒否。Source登録のみを製品読取成功としない |
+| **P0-R：実Provider Read** | #4495/#1251の公開read-only Operationをexact Providerに束縛し、通常CLIと独立Consumerへ返す | PCC-01/04/05と既存Provider試験。選択・実Image収録・実Entry・結果を別観測。Plugin管理S1の`envSelected`は有効設定や実起動の証拠ではない |
+| **P0-B：非Plugin Studio Build** | #2831/#4583の非Plugin Subjectから同一Build IntentでTS生成、esbuild／Go embed、Stage1→Stage2を実行 | DG0-NP-01〜03。Stage2の実Windows WebView2・実Imageと生成Sourceの一致。P0-Rの成功を必須前提にしない |
+| **P1-U：D2配布・更新** | #1824/#2044の現行beta再現→固定Wails安定版試験→署名付き単一Image／標準Plugin／既定設定のOffline起動・更新 | BRC-01/03/04/05/08。署名・Archive交換と実Runtime/Current Grantを別資格にする。D3とMobileは後続比較 |
+
+**最初のread-only照合票**は、Subject／Pinned Source、選択ContractとProvider、必要Runtime Member、実Process Image、現在Grant、実InvocationとResult、使用したSource Indexを別欄で扱う。存在しないinstall／enable／init-failure／effect状態は管理実装の`notModelled`を保持し、`ready=true`を新たに判定しない。StudioとCLIは同じOperation／Reasonを利用するが、画面FocusとPinned Subject、Backend構成世代とInvocation Attemptを独立させる。
+
+P0-S/R/Bは互いに別の到達資格であり、適格な小差分から並行着手する。D3子Server／Wake／Mobile、AI Harnessの新Agent Loop、Plugin自己記述B4は、このP0に新たなHard Dependencyを課さない。設計上の引渡しであって、正式Reader・Provider、実Stage2、Windows/Updater試験の新PASSではない。
