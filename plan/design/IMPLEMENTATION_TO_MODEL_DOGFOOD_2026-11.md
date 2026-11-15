@@ -149,51 +149,20 @@ C0/C1は人とAIの分析支援としてすぐ利用できる。C2/C3は、対�
 
 この対応表をI2M-0〜4の提出物へ追加する。**図が何を省略したか、どの意味上の義務を引き受けたか、どの実Targetでは未確認か**を同じ対象で比較し、図の簡潔さやGoの生成行数だけで成果を測らない。実装は既存#2619/#2620、#1124、#1121、#4495、#1180/#2514の担当に接続し、追加のCore型・Runner・Acceptance正本は作らない。
 
-## 9. 二つの表現と一つの判断を照合する最初のdogfooding（2026-11-15）
+<!-- tei-implementation-ast-observation-i2m0-20261115 -->
+## 9. 実コードから始める最小の観測：Go ASTの出典付き判断構造
 
-### 9.1 同じGoを作ることと、同じSourceであることを分ける
+I2M-0の最初の実装対象は、汎用Go解析器ではなく、現行の`GeneratePositive`が出力する`EvaluateSelected`一関数とする。既存の[製品Rule生成R1](../../internal/semantic/validationgen/positive.go)と、第3節の手書きGraphvizを実コードと照合し、図の内容が元Goから確認できる部分だけを抽出する。
 
-前節の`GeneratePositive`／生成された`EvaluateSelected`を、[Rule第一縦断](PLUGIN_RULE_PRODUCT_VERTICAL_SLICE_2026-11.md)のR1と[文書手法からの抽象化](APPLICATION_ABSTRACTION_DOCUMENT_METHOD_WEAVING_2026-11.md)のD0〜D3へ結び直す。今回は新しい言語処理系や図面正本を提案しない。すでに存在する`Workspace.Load`、内蔵Markdown Reader、従来の`validation`構文、`semantic.Validation`、`sourceindex.Index`、`validationgen.GeneratePositive`、`go/parser`を使い、**一つの意味上の判断が二種類の記述からどこまで再現できるか**を、原文ごとに検証する。
+新しい`internal/semantic/validationgen/positive_ast_projection_test.go`は、Go標準の`go/parser`／`go/ast`で**生成されたGoの構文木を実際に読み**、`Source.Number(Attribute)`が一度呼ばれること、`value.Sign() > 0`の厳密な条件、成立／不成立の返却、NULL・Read失敗の拒否経路を検査する。Readと条件の**元Go byte範囲**を同じParserから得て、実ソースの切片と一致させる。生成器自身の`positive.go`も別のASTとして解析し、Go生成Functionと生成された評価Functionを異なる実装として扱う。
 
-具体的な比較対象は`sales.order_line.quantity_positive`の`positive` Ruleと解決済み`std.decimal`の属性である。[PR #4973](https://github.com/hat47x/tei-platform/pull/4973)は、明示選択した`tei.rule-authoring/v0`のMarkdownと従来の`validation`構文を**別々の実Workspace**でLoadし、生成Goのbyte一致とSource Index／指紋の差を検査する回帰の候補である。**2026-11-15の照合時点ではopen／未マージ**のため、両表記の製品受入済み同等性とは記載しない。
-
-比較では次の四つを独立に判定する。
-
-| 対象 | 同一と認める根拠 | 同一視しないもの |
+| 一因子変更 | 期待する構造観測 | 本試験だけでは言えないこと |
 | --- | --- | --- |
-| 型付き意味 | 両Readerが得たRuleの`Kind`、`ID`、`Attribute`、`Relation`と解決済み属性型が一致 | 元ファイル・言語Plugin・説明文・Reader選択 |
-| Target生成結果 | 同じGenerator／Target条件で実際に生成したGo byteが完全一致 | 元Source byte、Source Span／Occurrence、取得時点 |
-| 実装構造 | 生成Goを`go/parser`で検査し、Read先、NULL／error、分岐、Resultを出典付きで対応付ける | ASTからの業務意味受理、外部IOや到達性の証明 |
-| 実行と製品資格 | 既存R1の別Process実評価を、R2の実Builder消費、R3の実Provider／通常CLI、実Consumerから分離して提示 | 生成Goの一致だけによるBuilder／Plugin／Grant／Effect／Owner受理 |
+| Goの先頭コメントのみ変更 | 元byte位置は動くが、読み取るAttributeと分岐・返却の構造は同じ | ソースRevisionが同じ、再利用・受理資格が維持された |
+| RuleのAttribute参照のみ変更 | 生成Goの`Source.Number`に埋め込まれた参照先が変わる | 業務Ownerが新しい意味を受理した、実Providerがその値を取得した |
+| 生成Goの`> 0`を`>= 0`へ改変 | ASTの厳密な正値条件としては**拒否**する | 静的AST検査だけで全入力・全分岐の意味同値を証明できた |
 
-**意味上は同等でも、出典は別**である。同一Sourceの説明だけを変更した場合は、生成Goが不変でも元byteとSource Indexの現在性は再確認が必要。意味条件・参照属性を変更した場合は、生成Go・依存Closure・独立Expectedを再検証する。`A→B→A`やOperator／Generatorの改版では、元のbyteが再び一致しても旧Attemptや古いAuthoritative判断が復活するとは限らない。World Fingerprint／Model Revision／Artifact Revision／現在Grantを同じ一つの「版」にまとめない。
+この試験は**C0のread-only構造観測**である。観測結果を新しい標準Meaning、受理済みDSLや編集可能なNode Graphへ昇格させず、ソース位置と読み取れた構造を既存のI2M-1候補へ引き渡す。Goの変数名・制御分岐・例外処理が変わると抽出できる範囲も変わるため、対象Functionを明示した限定テストとして開始し、対応外は自動補完しない。
 
-### 9.2 図とDSLは、保持した情報と失った情報が分かる投影にする
+**次の分離された検収**は、I2M-1で型・Read・FailureとCanonical Ruleへの対応をOwnerが確認すること、I2M-2で既存の生成Go別Process試験・独立Expectedと突き合わせること、I2M-3で製品の正式Builderが実際に読んだbyteへ結び付けることである。I2M-0のコードをmainに置いた事実やGoテストの一部成功を、製品Builder／実Provider／Studio Stage2の合格とは数えない。
 
-表示する一つの対象は「Ruleを読む→`GeneratePositive`でGoを生成する→生成`EvaluateSelected`が数値を読む→結果を返す」という**生成時と実行時の二つのProcess**である。Graphviz、Markdown表、関数チェーン、Studio Node Viewは、既存Data／Function／Process／Relationをそれぞれ用途に適した形へ投影したものとして比較する。Goの`fmt.Fprintf`や`strings.Builder`をDSLへ写すのではなく、**型付きRuleをGoにLoweringする生成Function**と**生成されたGoが担う評価Function**を分離する。
-
-read-only投影を作る場合に必要な最小列は、対象Kind/ID、元Source path／byte span、Reader／Generator版、確定した型とRead/Branch/Failure、観測に使ったArtifact／Attempt、非解析領域、Projectionで省略した情報、**逆編集を許可できる範囲**である。これは既存Source Index、標準モデル、Builder Evidenceからの導出列であり、別の中央台帳や新Core Schemaの提案ではない。Go ASTのLocal ID、GraphのEdge ID、Studio選択EventのSubjectは、正式なRule occurrenceと自動的に同一とはしない。
-
-同じ意味を持つ二表現を一つの図に重ねる場合も、**Sourceへ戻る矢印は二本のまま残す**。生成Goのbyteが等しいからといって、片方のSourceへ注釈や編集を自動転記してはいけない。Source位置や編集対象が一意に決まらないProjectionはread-onlyとし、編集・再生成の提案は元SourceのDiffとOwner判断を伴わせる。
-
-### 9.3 まず固定する独立反証と停止条件
-
-| 比較入力・変異 | 独立Expected候補 | 合格と誤認してはいけないこと |
-| --- | --- | --- |
-| Markdownと従来構文で同じ型付き`positive` | 選択・型付きRule・Go byteの同等性を各々証明し、Source Evidenceは分離 | 言語表記が違っても現在の出典資格が同じ |
-| 説明文だけ改版 | 業務判断とGoが不変でもSource byte・Source Indexの古い証拠を再使用しない | Artifactが不変ならIndexも現行 |
-| 参照属性を`quantity`から`second_quantity`に変更 | 型解決・Read先・生成byte・結果変化を別々に照合 | Rule IDが不変なら依存も同じ |
-| Goから読み取れないEffect・間接呼出・並行処理 | 未確定区間を`opaque/unknown`と表示し、意味・逆編集を保留 | 図にしたことでEffect不存在を証明 |
-| 別Workspace同名Subject／A→B→A／古いUI Event | 元Source Revisionと現在Selection/Pin/epochを再確認。旧Eventを新Inspectとして採用しない | 同じラベルやTarget byteだけで現在性を回復 |
-| Canvas配置や表示テーマだけ変更 | 型付きMeaningと業務Goの不変性、表示Artifactの要再検証を分離 | Layout変更でRule Sourceを書き換える |
-| 選択Build Bに対して旧生成物Aを実行 | Generator出力・Builder実入力・実Image／Attemptが違えば結果が同じでも不合格 | 生成Goの単体`go run`成功を製品R2/R3へ加算 |
-
-実装の第一差分はI2M-0の**出典付き構造観測だけ**とし、対象を`GeneratePositive`と、選択されたRule一件から生成した`EvaluateSelected`に限定する。独立Expectedは既存#1180/#2514、正式Readerは#2621、生成は#1121、実Builderは#4544、通常CLI／Providerは#4495、Studio実Consumerは#1824に委ねる。新しいCode-to-DSL Writer、Graph Runner、Proof Store、業務DSLへのGo構文露出を先行させない。
-
-### 9.4 Studioとの接続と採否の物差し
-
-[Web標準UI設計](WEB_STANDARD_COMPONENT_AND_AGENT_HARNESS_2026-11.md)の§13で実装済みのread-only選択Event`tei:inspector-selection-request`を使用する。これはWorkspace ID/epochとSubjectを伝えるIntentであり、出典・業務Meaning・Grantを受理するものではない。次のInspector Presenterは、**選択済みSubject→検証済みRule／Source候補→生成Goと元Sourceの対応→証明済み／未確認の境界**をread-onlyで表示する方向へ段階拡張する。ただし実配布Bundle・実Windows WebView2・Stage2再構築の資格は別票であり、こちらのD0図解を先行Hard Gateにしない。
-
-成功を「Goの行数削減」「図表の数」「見かけの抽象率」で計らない。**同じ意味上の義務を固定したとき、手書きGoでしか説明できなかった判断を何件標準モデルに移し、複数表現・Target・変更に再利用できたか**を数える。判断単位ごとに、(a)出典と型の確かさ、(b)生成／実行で使われた実体、(c)反例が検出した誤接続、(d)残る`opaque`、(e)可読性・レビュー費用・性能を記録する。移転した判断に対する独立Expectedが無い場合は、実用化したと扱わない。
-
-二つの表記を保つ費用やSource位置の曖昧さが得られる再利用を上回る場合は、表現を増やさず既存表記を維持する。Go ASTから業務意味を確定できない場合は、構造投影だけで停止する。この**拡張しない判断**も、dogfoodingから得た有効な設計結果として残す。
