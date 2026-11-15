@@ -44,6 +44,18 @@ P0は引き続き、#4495の公開pure Entry→actual Provider→通常CLIの実
 
 このP1は通常CLIの実Provider／独立Consumerと、Studio Stage1→Stage2実Windows受領の**P0を待たせるHard Gateではない**。既存#2619/#2620（構造）、#988/#2621（DSL）、#1121/#4544（Generator/Builder）、#1180/#2514（独立Expected）、#2831/#4583（Studio）へ分担する。現段階は設計・検収条件であり、実Code→DSLの製品機能を実装済みとはしない。
 
+### 宣言の役割を見分けるP1（2026年11月15日）
+
+[宣言的構文の合成契約§18〜20](../design/DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md)の実装引渡しは、**表面が同じでも定義・事実・要求・実現選択・実観測を混ぜない**ことから始める。最初の対象は、選択済みMarkdown Rule一件と、その元Source・型・論理Readである。Data項目定義表のPR #5010は採用・統合確認後に対照へ使い、業務記録の表を自動的にData定義へ変えない。
+
+| 小さな受入単位 | 得るもの | 失格となる短絡 |
+| --- | --- | --- |
+| **P1-A：ReaderとRole**（#2621／#988） | 同一Rule IDの定義Occurrence、元byte／Reader、既存Typed Meaning。追加のData表は受理された実経路からだけ読む | 表の列名だけで意味を確定、同一IDの二重Definitionを黙殺、他Workspaceと合一 |
+| **P1-B：接続理由のread-only投影**（#1124／#2497／#4198） | 既存Source／型／Readと、不足しているProvider・Builder・権限の理由を一問一対象で表示 | 「構造適合」を「実行可能」へ昇格、partialから不在を断定、描画Edgeを実Dispatchにする |
+| **P1-C：実Builder／実Callの別検収**（#4544／#4495／#951） | R2の生成Go実byte→実Builder消費→Artifact／Consumerと、R3の選択Provider→実CLI Callを別々に観測 | 別AttemptのPASS合算、選択B／実Call A、A→B→Aの旧証拠復活 |
+
+正例・負例はDC-21〜26を既存#1180／#2514へ引き渡し、実装から期待値を逆算しない。P1の診断表示が完成しても、既存P0の通常製品CLI・実ProviderおよびStage1→Stage2実Windows受領の完了を宣言しない。追加のGrammar・Writer・Hostを着手前提にしない。
+
 ### P1で接続する業務判断・設計入力・数式（2026年11月15日）
 
 これらは新しい製品P0の前提ではなく、既存の標準Data/Rule/Expression・Function Data Context・表現型を実案件に近づける**受入作業**とする。詳細な正負例とOwner境界は[横断統合受入境界§14〜17](../design/CROSS_CUTTING_ACCEPTANCE_BOUNDARIES_2026-11-12.md)を参照。
