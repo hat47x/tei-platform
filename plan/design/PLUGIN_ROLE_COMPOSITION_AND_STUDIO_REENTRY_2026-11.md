@@ -1113,7 +1113,7 @@ main統合済み[PR #4742](https://github.com/hat47x/tei-platform/pull/4742)で�
 | **公開／非公開Manualの原byte** | PDC-0候補の各Doc Source SHA-256／ID／適用Contract版と、明示Doc参照 | 開示資格、再公開権限、Source-backed Product Readの成立 |
 | **現在のPluginと利用資格** | 実`plugin-inventory`のID・正確な版・Lock／現在のAudience・Disclosure／要求Consumer | 上記どのハッシュ一致からも自動導出できない。実Provider Callはさらに別資格 |
 
-**併用するFixtureを固定する。** [PDC-0 Issue #4701](https://github.com/hat47x/tei-platform/issues/4701)の[PR #4757](https://github.com/hat47x/tei-platform/pull/4757)は、Plugin A（`fixture.graph-base`）／B（`fixture.graph-extension`）／C、公開Manualと非公開Manual、現在のGraph／Rule Sourceを**複製せず参照**する合成入力である。Rule表追加後の実Raw Source SHA-256へ更新され、13候補ケースと14種類の改変をGoで監査する。PR #4757のexact HEADの全体健全性・増分・依存検査は成功しているが、**Draftのため未マージ**。そのJSONの`sourceRefStatus: candidate-unbound`／`adoption: proposal-only`は正式なDoc参照・公開Schema・AuthZの受理ではない。
+**併用するFixtureを固定する。** [PDC-0 Issue #4701](https://github.com/hat47x/tei-platform/issues/4701)の[main統合済みPR #4757](https://github.com/hat47x/tei-platform/pull/4757)は、Plugin A（`fixture.graph-base`）／B（`fixture.graph-extension`）／C、公開Manualと非公開Manual、現在のGraph／Rule Sourceを**複製せず参照**する合成入力である。Rule表追加後の実Raw Source SHA-256へ更新され、13候補ケースと14種類の改変をGoで監査する。PR #4757のexact HEADの全体健全性・増分・依存検査は成功しているが、**main統合済み**。そのJSONの`sourceRefStatus: candidate-unbound`／`adoption: proposal-only`は正式なDoc参照・公開Schema・AuthZの受理ではない。
 
 #### 変更に応じた必要な再確認
 
@@ -1125,16 +1125,16 @@ main統合済み[PR #4742](https://github.com/hat47x/tei-platform/pull/4742)で�
 
 #### 実装引継ぎを二段に限定する
 
-**PDC-0（[#4701](https://github.com/hat47x/tei-platform/issues/4701)）**は合成Fixtureと独立Expected候補の監査を担当する。Draft #4757がmainに統合され、該当HEADの実Go試験結果とOwnerのExpectedレビューを確認するまでは、正式な文書取得や開示判定の成功へ数えない。
+**PDC-0（[#4701](https://github.com/hat47x/tei-platform/issues/4701)）**は合成Fixtureと独立Expected候補の監査を担当する。#4757のGo監査はmainへ統合済みだが、OwnerのExpected正式受理と製品Doc Reader・現在Disclosureの実検証は別である。参照Goの成功を正式な文書取得や開示判定へ数えない。
 
 **PDC-1（[#4714](https://github.com/hat47x/tei-platform/issues/4714)）**の最初の製品Go PRは、選択済みPlugin一件・公開Document一件について、**実Workspaceの管理Sourceから読んだ現在の原byte／SourceRefと、選択済みPlugin ID・正確な版・Contract・Lock・Audienceを、既存のread-only Application Operationで照合する**ところまでとする。既存のPlugin Inventory自体に文書Readerを組み込まず、採用前Fixture JSONを正式Plugin Manifestへ流用しない。Denied・Partial・未ロード・版不一致・曖昧な対象は理由を区別し、許可のない文書本文やメタデータを返さない。Manual記載の`tei commands`と、Reference Binary固有の`-candidate-shape`／`-node`は実在する入口を別々に検査する。
 
 **最初の検収票**：`Source byte/Span`、`Doc SourceRef/版`、`Selected Plugin/Lock`、`Current Disclosure`、`Read-only Consumer Reply`を同一Attemptで示す。候補構造指紋と実Binary SHA-256は**別欄のReference Witness**であり、製品Target Generator、実Provider二Consumer、Studio Stage1→Stage2やOwner意味受理を代用しない。新たなDoc Registry、第二Resolver、Source Snapshot Engine、検証番号やHard Gateは作らず、既存PDC-00〜08、PHD、#1180/#2514を再利用する。
 
-**資格**：#4758は実Go生成・同一Reference Binary照会までmainに存在する。#4757はDraftでCI成功・未マージ、PDC-1の製品文書読取りは未実装。第21.8節はこれらの実際の状態を照合した計画・検収方針であり、製品実装と正式Owner受理の記録ではない。
+**資格**：#4758は実Go生成・同一Reference Binary照会までmainに存在する。#4757は合成Fixture/Go監査をmain統合済み（対象HEADのCI成功、独立Expectedは候補）。PDC-1の製品文書読取りは未実装。第21.8節はこれらの実際の状態を照合した計画・検収方針であり、製品実装と正式Owner受理の記録ではない。
 
 
-### 21.8 PDC-0の実CI結果から、公開文書一件の製品Readへ移る
+### 21.9 PDC-0の実CI結果から、公開文書一件の製品Readへ移る
 
 <!-- tei-plugin-pdc0-green-to-product-read-20261115 -->
 
@@ -1142,7 +1142,7 @@ main統合済み[PR #4742](https://github.com/hat47x/tei-platform/pull/4742)で�
 
 #### 合成Fixtureの実証結果と資格上限
 
-[PDC-0の後継Draft #4757](https://github.com/hat47x/tei-platform/pull/4757) は、最新mainのGraphに追加された明示Rule表を含む原byteで固定し直した、A/B/C合成Plugin・公開／非公開Manual・13件の採用前Expected候補を持つ。既存 `ParseCandidate`／`ParseRuleCandidate` と実Source byte/Span、Graph・両ManualのSHA-256、14種類の合成変異を照合する **Reference Go試験** を追加した。
+[PDC-0のmain統合済みPR #4757](https://github.com/hat47x/tei-platform/pull/4757) は、最新mainのGraphに追加された明示Rule表を含む原byteで固定し直した、A/B/C合成Plugin・公開／非公開Manual・13件の採用前Expected候補を持つ。既存 `ParseCandidate`／`ParseRuleCandidate` と実Source byte/Span、Graph・両ManualのSHA-256、14種類の合成変異を照合する **Reference Go試験** を追加した。
 
 #4757の対象HEAD `d9219cf051918786290f167d1201bb3c46d90eca` では、[Repository Health実行 #43649576594](https://github.com/hat47x/tei-platform/actions/runs/43649576594) が成功し、ログに `ok tei/reference/plugin-doc-reference`、`PASS gofmt -l . is empty`、`PASS go vet ./...`、`PASS go test -count=1 -timeout 60m ./...` が残った。Cache Full/Incremental検証 #43649576625、既知脆弱性チェック #43649576602 も成功した。**この結果を「PDC-0候補Fixture監査のGo実行成功」と呼ぶ**。独立ExpectedのOwner正式受理や、実WorkspaceでのA/B選択・Product文書読取・開示拒否は含まれない。新HEAD・main統合時には試行を再確認する。
 
