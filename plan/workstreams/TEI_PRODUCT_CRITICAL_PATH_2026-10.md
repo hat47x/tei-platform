@@ -1755,7 +1755,7 @@ S0-Aは#4834のA0→A1→A2→A3に従う。まず**製品のManifest/受理済�
 
 mainの`7921b005`で製品`workspace.Load`に内蔵`tei.rule-authoring/v0` Readerが入った。従来の「A0選択不能」は**外部Language Plugin・Graph/Window一般化**には引き続き当てはまるが、**内蔵Rule言語のManifest明示選択**には当てはまらない。A0〜A3の実装有無を言語ごとに分けて管理する。
 
-- **次の製品回帰（このPR、#2621/#1018）**：`internal/workspace/tei_md_rule_product_evidence_test.go`で既存固定Workspaceを実Loadし、Ruleの選択言語／二つのFenceとValidation／同一Load元Byte／Source IndexのByte Range・Fingerprintを検査する。選択の無い別Workspaceでは`TEI_MD_PARSER_UNBOUND`を維持する。結果は本PR HEADのGoテスト・Repository Healthで確認し、他HEADの成功を流用しない。
+- **次の製品回帰（並行PR #4890、#2621/#1018）**：`internal/workspace/tei_md_rule_product_read_test.go`で既存固定Workspaceを実Loadし、Ruleの選択言語／二つのFenceとValidation／同一Load元Byte／Source IndexのByte Range・Fingerprintを検査する。選択の無い別Workspaceでは`TEI_MD_PARSER_UNBOUND`を維持する。結果は#4890 HEADのGoテスト・Repository Healthで確認し、他HEADの成功を流用しない。
 - **その後の製品スライス**：同じRuleを既存Validator/Evaluatorに消費させる結果から、`#1121/#4544`のGenerator接続、`#1251/#4495`の実Go Provider→通常CLI/独立Consumerへ進める。最初の内蔵成功を外部Language PluginのResolver/LockやGraph/Window Readerの適格性に使わない。
 - **並走するW0（#1824/#4583）**：Pin Fixtureの実Host制限はmain #4869で修正済み。DOM IDの不一致は#4876（Draft）で検査中。参照HTML/Handler→Node24正規Bundle→配布Go Embed→実Windows WebView2の同一HEAD検収を、非Plugin Studio Stage1→Stage2へ接続する。旧#4812成功HEADの資産を上書きコピーしない。
 - **独立後続**：Plugin一DocumentのSource-backed Read/現在Disclosure #4714/#4679、S-LOC画面/S-OPEN、安定版Wails/D2 Updateは正式Reader/実Provider/Stage2の新Hard Gateにしない。
