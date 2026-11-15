@@ -231,7 +231,7 @@ func TestReaEvidenceRefusesTheEnvelopeAsTheEvidenceBody(t *testing.T) {
 		t.Fatal(err)
 	}
 	envelopeDocument := map[string]any{}
-	if err := json.Unmarshal([]byte(mustRead(t, envelope)), &envelopeDocument); err != nil {
+	if err := json.Unmarshal([]byte(mustReadText(t, envelope)), &envelopeDocument); err != nil {
 		t.Fatal(err)
 	}
 	request := map[string]any{
@@ -297,7 +297,7 @@ func TestReaEvidenceDerivesARequestWithItsOwnDigest(t *testing.T) {
 	if receipt.Derived.Fingerprint == receipt.Raw.Fingerprint {
 		t.Fatal("the derived request must not share the Evidence digest")
 	}
-	written := mustRead(t, requestOut)
+	written := mustReadText(t, requestOut)
 	var parsed struct {
 		Source struct {
 			Kind     string          `json:"kind"`
@@ -459,7 +459,7 @@ func TestReaEvidenceRequiresADeclaredVersion(t *testing.T) {
 	}
 }
 
-func mustRead(t *testing.T, path string) string {
+func mustReadText(t *testing.T, path string) string {
 	t.Helper()
 	raw, err := os.ReadFile(path)
 	if err != nil {
@@ -576,6 +576,6 @@ func mustJSONText(t *testing.T, value any) string {
 
 func receiptFingerprint(t *testing.T, path string) string {
 	t.Helper()
-	receipt := externalanalysis.Receive([]byte(mustRead(t, path)), externalanalysis.Tool{Name: "rea", Present: true}, time.Now())
+	receipt := externalanalysis.Receive([]byte(mustReadText(t, path)), externalanalysis.Tool{Name: "rea", Present: true}, time.Now())
 	return receipt.Raw.Fingerprint
 }
