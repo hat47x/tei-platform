@@ -1199,6 +1199,31 @@ func Validate(w ir.World) []Diagnostic {
 		}
 	}
 
+	// Database requirements can be authored before environments exist. Once
+	// an environment is present, warn if no environment binds the alias to an
+	// existing instance. This does not qualify any particular deployment.
+	// The query datasource warning above also runs without environments.
+	if len(w.Environments) > 0 {
+		for _, a := range w.Applications {
+			for _, req := range a.Databases {
+				bound := false
+				for _, e := range envs {
+					for _, b := range e.Bindings {
+						if b.Application == a.ID && b.Alias == req.Alias {
+							if _, ok := e.InstanceByID(b.Instance); ok {
+								bound = true
+							}
+						}
+					}
+				}
+				if !bound {
+					out = append(out, Diagnostic{Code: "UNBOUND_DATABASE_REQUIREMENT", Severity: Warning, Message: fmt.Sprintf(
+						"application %s database %s is not bound in any environment; %s", a.ID, req.Alias, unboundDatasourceHint(w, a, req.Alias))})
+				}
+			}
+		}
+	}
+
 	seenBindings := map[string]struct{}{}
 	for _, b := range w.Bindings {
 		key := fmt.Sprintf("%s/%s", b.Application, b.Capability)

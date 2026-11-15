@@ -1,0 +1,15 @@
+UNBOUND_DATABASE_REQUIREMENT (warning) added to Validate.
+
+  warning UNBOUND_DATABASE_REQUIREMENT application reporting database sales is
+  not bound in any environment; add "bind reporting.sales -> sales_core.dev"
+  inside environment development, which already declares that instance
+
+First implementation flagged 5 of 18 workspaces:
+  examples/xtea-lowcode, reference/org-headless-workspace,
+  reference/standard-crud/workspace (2 requirements), reference/org-staged-axis,
+  reference/org-staged-basic
+
+All five declare ZERO environments (environments=0, bind lines=0), so "add a
+bind" is noise there. Added `warnsAboutBindings := len(w.Environments) > 0`:
+
+  after the gate: 0 / 18
