@@ -30,3 +30,21 @@ go run ./tools/reference-application-binary/cmd/tei-application-binary \
 ## `-function` なしの旧モード
 
 `databases/` のMigrationを抽出して `migrations.go` を生成します。Query・Command・Validationは生成器内の固定内容で、Sourceに依存しません（Migration以外はSourceを変えても出力が変わらないことを2026-11-12に確認）。P0-Aの試験はこの旧モードを対象とします。
+
+## `-validations` モード（Validationの規則の門）
+
+Application が `uses validation` で宣言した Validation を、宣言順に評価して最初の不成立で止める Go CLI を生成します。DB・Authorization・効果は持ちません。
+
+```bash
+go run ./tools/reference-application-binary/cmd/tei-application-binary \
+  -workspace reference/workspace -application order_entry -validations -out /tmp/order-entry-validate
+/tmp/order-entry-validate/bin/validate validate order_entry < input.json
+```
+
+- 入力は標準入力のJSON（`numbers` と `relationKeys`。`reference/driver-scenarios/fixtures/` と同じ形）。
+- 終了コード: 0 全て成立、1 不成立、2 引数不正またはJSONでない入力、3 評価を完了できない（値なし・数値でない・キーなし）。評価不能は業務上の不成立にしません。
+- 対応する種類は `positive` と `relation-unique` だけです。それ以外の種類を宣言していれば、生成前に `VALIDATION_KIND_UNSUPPORTED` で止まります。
+- 未生成の Pattern は `manifest.json` に列挙します。Command の効果は Source に本文がないため `effect-not-in-source` として残し、生成しません。
+- 規則の評価は `validationeval` の第二実装です。生成物と既存の Evaluator を同じ入力に流す差分試験（`TestVGGeneratedGateMatchesFixedExpected`）と、手で固定した期待値（`testdata/validation_gate_expected.json`）で照合し、わずかに誤った生成器4種（0を許す、重複を見逃す、短絡しない、評価不能を拒否に畳む）が落ちることを `TestVGMutantsAreCaught` で確認しています。
+
+主張できる範囲: 「宣言された規則を、宣言された順序と3値で評価する」まで。`submit_order` の成立、Authorization、効果、入力データの取得元は範囲外です。

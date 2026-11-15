@@ -1,0 +1,37 @@
+{
+  "note": "Hand-fixed from the declared meaning of the three Validations of order_entry (positive: value > 0, relation-unique: no repeated key in the Relation, evaluated in declared order, stop at the first one not satisfied; a missing or non-numeric value is an evaluation that cannot be completed, not a business result). Never generated from a binary or from the Evaluator output.",
+  "rules": [
+    "sales.order_line.quantity_positive",
+    "sales.order.lines.line_number_unique",
+    "sales.order_line.line_number_positive"
+  ],
+  "cases": [
+    {"name": "all satisfied", "exit": 0,
+     "input": {"numbers": {"sales.order_line.quantity": "2", "sales.order_line.line_number": "1"}, "relationKeys": [{"relation": "sales.order.lines", "attribute": "sales.order_line.line_number", "keys": ["1", "2"]}]},
+     "results": ["sales.order_line.quantity_positive=satisfied", "sales.order.lines.line_number_unique=satisfied", "sales.order_line.line_number_positive=satisfied"], "stoppedAt": ""},
+    {"name": "quantity zero", "exit": 1,
+     "input": {"numbers": {"sales.order_line.quantity": "0", "sales.order_line.line_number": "1"}, "relationKeys": [{"relation": "sales.order.lines", "attribute": "sales.order_line.line_number", "keys": ["1", "2"]}]},
+     "results": ["sales.order_line.quantity_positive=not-satisfied"], "stoppedAt": "sales.order_line.quantity_positive"},
+    {"name": "quantity negative", "exit": 1,
+     "input": {"numbers": {"sales.order_line.quantity": "-5", "sales.order_line.line_number": "1"}, "relationKeys": [{"relation": "sales.order.lines", "attribute": "sales.order_line.line_number", "keys": ["1", "2"]}]},
+     "results": ["sales.order_line.quantity_positive=not-satisfied"], "stoppedAt": "sales.order_line.quantity_positive"},
+    {"name": "duplicate line number", "exit": 1,
+     "input": {"numbers": {"sales.order_line.quantity": "2.5", "sales.order_line.line_number": "1"}, "relationKeys": [{"relation": "sales.order.lines", "attribute": "sales.order_line.line_number", "keys": ["1", "1"]}]},
+     "results": ["sales.order_line.quantity_positive=satisfied", "sales.order.lines.line_number_unique=not-satisfied"], "stoppedAt": "sales.order.lines.line_number_unique"},
+    {"name": "line number zero", "exit": 1,
+     "input": {"numbers": {"sales.order_line.quantity": "2", "sales.order_line.line_number": "0"}, "relationKeys": [{"relation": "sales.order.lines", "attribute": "sales.order_line.line_number", "keys": ["0", "2"]}]},
+     "results": ["sales.order_line.quantity_positive=satisfied", "sales.order.lines.line_number_unique=satisfied", "sales.order_line.line_number_positive=not-satisfied"], "stoppedAt": "sales.order_line.line_number_positive"},
+    {"name": "quantity missing", "exit": 3,
+     "input": {"numbers": {"sales.order_line.line_number": "1"}, "relationKeys": [{"relation": "sales.order.lines", "attribute": "sales.order_line.line_number", "keys": ["1", "2"]}]},
+     "results": [], "stoppedAt": "sales.order_line.quantity_positive"},
+    {"name": "quantity not a number", "exit": 3,
+     "input": {"numbers": {"sales.order_line.quantity": "abc", "sales.order_line.line_number": "1"}, "relationKeys": [{"relation": "sales.order.lines", "attribute": "sales.order_line.line_number", "keys": ["1", "2"]}]},
+     "results": [], "stoppedAt": "sales.order_line.quantity_positive"},
+    {"name": "relation keys missing", "exit": 3,
+     "input": {"numbers": {"sales.order_line.quantity": "2", "sales.order_line.line_number": "1"}, "relationKeys": []},
+     "results": ["sales.order_line.quantity_positive=satisfied"], "stoppedAt": "sales.order.lines.line_number_unique"},
+    {"name": "both quantity and keys bad: first declared rule decides", "exit": 1,
+     "input": {"numbers": {"sales.order_line.quantity": "0", "sales.order_line.line_number": "1"}, "relationKeys": [{"relation": "sales.order.lines", "attribute": "sales.order_line.line_number", "keys": ["1", "1"]}]},
+     "results": ["sales.order_line.quantity_positive=not-satisfied"], "stoppedAt": "sales.order_line.quantity_positive"}
+  ]
+}

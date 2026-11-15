@@ -40,3 +40,33 @@ func runBrowse(workspace, application, function, target, out, binary string) err
 	fmt.Println(string(b))
 	return nil
 }
+
+// runValidationGate generates and builds the rule gate of one Application.
+func runValidationGate(workspace, application, out, binary string) error {
+	plan, err := browsegen.NewValidationPlan(workspace, application)
+	if err != nil {
+		return err
+	}
+	if out == "" {
+		return fmt.Errorf("-out is required with -validations")
+	}
+	if _, err := browsegen.GenerateValidation(plan, out); err != nil {
+		return fmt.Errorf("generate: %w", err)
+	}
+	if binary == "" {
+		binary = filepath.Join(out, "bin", "validate")
+		if runtime.GOOS == "windows" {
+			binary += ".exe"
+		}
+	}
+	rc, err := browsegen.Build(out, binary)
+	if err != nil {
+		return fmt.Errorf("build: %w", err)
+	}
+	b, _ := json.MarshalIndent(rc, "", "  ")
+	if err := os.WriteFile(filepath.Join(out, "receipt.json"), append(b, '\n'), 0o644); err != nil {
+		return err
+	}
+	fmt.Println(string(b))
+	return nil
+}

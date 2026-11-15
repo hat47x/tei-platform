@@ -25,6 +25,7 @@ func run() error {
 	out := flag.String("out", "", "Output directory for generated sources")
 	binary := flag.String("binary", "", "Output binary path")
 	platform := flag.String("platform", "", "GOOS/GOARCH for cross compilation (legacy mode)")
+	validations := flag.Bool("validations", false, "generate the Validation rule gate of -application (no effect, no database)")
 	function := flag.String("function", "", "browse Function (Pattern ID) to generate from the Source; selects the Source-bound mode")
 	target := flag.String("target", "postgres", "Target dialect for -function mode")
 	flag.Parse()
@@ -33,6 +34,9 @@ func run() error {
 		return fmt.Errorf("-workspace and -application are required")
 	}
 
+	if *validations {
+		return runValidationGate(*workspace, *application, *out, *binary)
+	}
 	if *function != "" {
 		return runBrowse(*workspace, *application, *function, *target, *out, *binary)
 	}
