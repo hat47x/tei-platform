@@ -1068,3 +1068,15 @@ S3の有効期間・認識期間は、§10.13のProvider/Consumer・REA・AI/SHO
 この比較から**新しいTemporal Coreや特定DB依存のDSLを先に作らない**。まず隔離PostgreSQLで、正例を拒否せず競合を拒否し、エラー後に元の版を読めることを実測する。さらに、旧known期間を閉じて新版を登録する同一トランザクションの順序を確かめる。ただし同時Writer、障害復旧、Receipt、正式Provider Migrationと現在の認可は別試験であり、候補試験が成功した時点で製品に採用したとはしない。
 
 **他レーンへの共通契約**：BRMSの単一担当者判断には必要Read集合の完全性とPerson Linkを要求し、Graph/StudioではOccurrence・版・表示Edgeを混ぜない。REA/SHO/AIは観測Sourceと意味受理を分離する。Pluginの導入・選択と現在のHost Grantは別。現行S1の単純組織やB2CのHeadlessな利用に二時点専用Runtimeを強制しない。既存O-P1〜5を受入順とし、P0の #2586/#2831 は変更しない。
+
+
+<!-- org-two-writer-stage-s3-20261115 -->
+### 10.17 S3の二時点制約を、一つの接続から同時Writerまで段階的に検収する
+
+[組織C1補遺§42](ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)は、保存時の競合防止について、**一つのトランザクション内で正負例を判定できた**段階と、**別のDB接続から同時に書かれても制約を破れない**段階を分ける。[PR #5063](https://github.com/hat47x/tei-platform/pull/5063)の隔離PostgreSQL run #43724543096 は前者の明示PASS。一方、後者は新しい二Writer候補試験のCI結果を確認してから合否を更新する。正式`*.tei` Persistenceへの採用はさらに後のOwner判断と製品実装を要する。
+
+S3の最小受入は、単一所属Occurrence・Assertion revision・物理行の三つを同じIDとして扱わず、validAtとknownAtがともに交差する競合だけを拒否し、正当な認識訂正と有効期間の切替、別Membershipの共存を維持すること。DB制約のSQLSTATE 23P01は保存時の競合という**技術的観測**であり、業務上の異動承認、現在Grant、実Host Effectの完了票ではない。
+
+次の製品試験は、意味Ownerが単一値性とPerson Relationを受理したあと、正式Sourceの版ID・物理Mapping・Migration→実Providerの旧新二版保存→再起動後の二時点再読込→Function Contextと二Consumerの同一Read Cohortへ進める。Ruleは必要Read集合とpartial/欠測を別資格で確認する。API/Plugin/Studioは実選択・実呼出し・現在Grantを分け、Node表示のEdgeと元Relation occurrenceを混同しない。
+
+隔離PGでの局所成功を別Providerの採用判断や製品MVR-02/03合格へ昇格させない。S1で歴史を必要としないDataに二時点Engineを強制せず、通常CLI実Read #2586とDesktopセルフビルド #2831の先行P0を維持する。

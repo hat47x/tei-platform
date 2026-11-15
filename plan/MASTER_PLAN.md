@@ -2834,3 +2834,13 @@ Studio／SHO／SUI／AIが同じ意味候補を提示しても、編集資格は
 [組織C1補遺§41](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)と[段階計画§10.16](design/ORGANIZATION_STAGED_MODELING_PLAN_2026-11.md)で、**読取時に曖昧さを発見する能力**と**保存時に競合版の混入を防ぐ能力**を分離した。既存の隔離PostgreSQL実測（PR #5027）では試験用複合キーだけでは二時点の競合を拒否できなかったため、同じMembershipのvalid/known両区間が重なったときだけ拒否するPostgreSQL GiST EXCLUDE候補を追加する。正当な認識訂正・有効期間切替・別Membershipの同時存在を保つこと、SQLSTATE 23P01と23505の識別、失敗後の再読込、同一トランザクションで旧known期間を閉じて新版を追加することを独立Expectedとする。
 
 **合格上限**：新候補は一時DB内の物理制約の比較であって、製品の正式Persistence、業務Ownerが受理した単一値性、同時Writer/障害復旧、完全なRead Cohort、二Consumer、Host Grant・Effectの実証ではない。業務意味・三同一性（Membership occurrence／Assertion revision／Provider row）は#2386/#1126、正式Provider・Queryは#2586/#2622、Rule・Caseと現在実行は#4490/#4501/#1174が担当する。S3を選ばない簡潔モデルへTemporal Engineを強制せず、標準Graph/BRMS/REA/Studio/Pluginへ共通の意味・取得資格だけを引き渡す。**通常CLI実Read #2586とDesktopセルフビルド #2831を独立P0に保つ。**
+
+
+<!-- org-bitemporal-two-writer-20261115 -->
+### 2026-11-15 組織C1：二時点の保存時排他を同時Writerまで検証する（補遺§42）
+
+[組織C1補遺§42](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)に、main統合済み[PR #5063](https://github.com/hat47x/tei-platform/pull/5063)の**隔離PostgreSQLでの明示PASS**（run #43724543096）を記録した。二つの時間区間の重なりを使うGiST EXCLUDE候補について、正当な期間交替、別Membership共存、23P01競合拒否、SAVEPOINT復旧は一トランザクション内で確認済み。一方、二つの接続が同時に書き込むときの待機・Commit後の競合判定は別資格である。
+
+次の固定実測は、隔離DBの専用Schema上に共有テーブルを作り、A2の第一Writer未Commit中に第二WriterがDB Lock待機へ入ることを観測する。第一Writer確定後の第二Writerが23P01で拒否され、勝者の版だけが残り、境界で接する訂正版・別Membershipを引き続き保存できることを確認する。**専用CIの実行・非SKIP・明示PASSが揃うまではExpectedとして扱う**。同時Writer試験も正式Persistence・HostのEffect／Receipt、Ownerの単一値性受理にはならない。
+
+業務意味は#2386/#1126、Product Persistence/Providerは#2622/#2586、業務Rule・Consumerは#4490/#2514、現在Grant/Effectは#1174/#2499で別検収する。PostgreSQL固有のExtension/IndexをTEI Core／DSLへ強制せず、標準Data/Relation/Queryから必要なProvider実装を選ぶ。通常CLI実Read #2586とStudio Desktopセルフビルド #2831を先行P0のまま維持する。
