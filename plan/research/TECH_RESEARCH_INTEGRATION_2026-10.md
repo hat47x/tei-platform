@@ -1710,3 +1710,43 @@ Studio側のR4は[#2831](https://github.com/hat47x/tei-platform/issues/2831)／[
 最初にCoreへ昇格させるのではなく、既存のStandard Type／Role／Operator／Pluginで説明できる範囲と損失を、[#2495](https://github.com/hat47x/tei-platform/issues/2495)／[#4350](https://github.com/hat47x/tei-platform/issues/4350)へ具体的な反例として返す。数学・統計Toolkit、Nodeサービス、Wagby比較の別途P0を増やさない。
 
 **今回の受入状態**：PR #4911で局所Go Loweringのコード・試験はmainへ入ったが、当該exact HEADの全CI、R2／R3／R4、正式Graph Reader、実Provider／外部Effect、Ownerの意味受理、異分野での汎用Core採用は**NOT PROVEN**。その不足を埋める次の差分は、新しい形式の追加より**既存Builderが実生成Goを読んだか**の実証を優先する。
+
+### 16.26 実装・文書・成果物を往復させる研究の現在位置（2026-11-15）
+
+前節のR2着手順は維持するが、**何が既にできているか**を次のように訂正する。[PR #4911](https://github.com/hat47x/tei-platform/pull/4911)の局所Rule→Go生成に加え、mainには`tools/reference-go-build-from-plan/validationgen_build_binding_test.go`が収録されている。これは選択済みMarkdown Ruleから生成Goを作り、既存参照Builderの`-isolate`経路でGo package／moduleを実読込して成果物・Lock・実バイナリの結果を照合する**参照Build検査コード**である。正式製品BuilderがManifest上のMarkdown Source・選択Generator・生成Goの因果関係を同じBuild Attemptで束縛した証拠ではない。[製品R2の正本§14.5〜14.8](../design/PLUGIN_RULE_PRODUCT_VERTICAL_SLICE_2026-11.md)を参照し、新しいBuildPlan正本は作らない。
+
+並行して[実装→モデルのドッグフーディング](../design/IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md)、[文書手法とアプリケーション抽象の合成](../design/APPLICATION_ABSTRACTION_DOCUMENT_METHOD_WEAVING_2026-11.md)、[宣言の合成とNode投影](../design/DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md)がmainへ統合された。これらは**設計・実証計画**であり、Go→Graph／DSLの自動逆変換や正式Node Editorが既に製品実装されたことを示さない。新しい研究実験は、三文書の検証番号（I2M／DW／DC）を参照し、第二の独立Expected・採用Gateを作らない。
+
+### 16.27 「同じ意味」と「同じ証拠」は別の等価性として評価する
+
+二つのSourceが同じ型付きRuleを表現しても、同じSourceではない。逆に同じ図の形や同じテスト結果であっても、意味や実行したコードが同じとは限らない。既存のWorld／Model／Artifact RevisionおよびSource Index／Attemptの証拠を、以下の**比較観点**に分ける。新しい共通SchemaやFingerprint方式は提案しない。
+
+| 比較する関係 | 判定に必要なもの | 成立しても保証しないこと |
+| --- | --- | --- |
+| Source同一性 | Reader選択、原byte、Source位置、当該Workspaceの版 | 内容が正しいこと・Owner意味受理・実行許可 |
+| 意味同値 | 解決したType／Rule／Scope／Operator意味、NULL・欠損・時点・粒度の条件 | Source IndexやRevision、可逆編集の同一性 |
+| 生成物同値 | 選択したGeneratorとTarget、実生成byte・依存／Toolchain | 別のBuild Attemptの入力完全性・現在利用資格 |
+| 実行結果同値 | 実Artifact／実Providerの呼出し、Input集合・時点、独立Expected | 同じ生成元・同じGrant・永続Effect／外部受領 |
+| 表現・編集同値 | 対象・Role・Source Slot・Loss、Projectionの変更可能範囲 | 表示IDやGraph配置から元意味を一意に逆算できること |
+
+最初の対照は次の三組とする。**(E1)** 明示選択したMarkdown Ruleと従来の`.tei` Validationを別々にProduct Loadし、解決済みRule・属性型・生成Goが同値でもSource指紋・位置は独立に保持する。**(E2)** Markdownの説明文だけを変えると、旧Source Indexは失効するが、再Loadした意味・生成Goは変化しない。**(E3)** Ruleの参照属性や条件を変えた場合は、実Read先・生成分岐・独立Expectedの関係が変わる。E1／E2の製品Go回帰は[PR #4973](https://github.com/hat47x/tei-platform/pull/4973)として提案中であり、**この時点では未マージ／exact HEAD検収未了**。E3の一因子生成・Read先の拡張も[PR #4970](https://github.com/hat47x/tei-platform/pull/4970)の別提案であり、計画上の成立と区別する。
+
+ここでSourceの字句差異が無条件に「意味不変」となるのではない。**同じ意味と判定できるReader／Role／型・Scopeの契約が固定されているときだけ**、該当する生成物の再利用候補とする。Sourceの改訂やA→B→Aが起きた後のOwner受理・Grant・実Attemptは、出力Go byteが同じでも自動復活しない。
+
+### 16.28 文書の抽象化をアプリの機能へ編み込む、二つの保存条件
+
+第一は**意味の保存**。文章の説明、Markdown表、Graph、Rule／Functionチェーン、Node Viewは、それぞれDefinition／例示／候補／試験／投影といったRoleを明示する。引用表や`text` Fenceを自動でRule化しない。同じSubjectの表現間変換で、Type・Relation identity・Cardinality・集合の完全性・時点・Operator版に不足があるなら、表示は可能でも実行へ昇格せず`lossy`／`unsupported`とする。とくにNodeの見かけ上の接続、文書内の矢印、Source内の文字列一致を、Pluginの実配線・Providerの実Callとして扱わない。
+
+第二は**編集の責任の保存**。read-only投影が見られることと、そこから正本を編集できることは別である。編集候補を許すのは、対象のCanonical ID／Source occurrence、正本Revision、局所byte span、元表現へ戻せる一意Slot、現在の編集権限がそろった場合だけとする。複数のSourceが同じモデルへ写る場合、表示側から元Sourceを勝手に選ばない。変更提案→Review→安全なSource Patch→再Load→再投影→実生成の順を保ち、Dirty buffer・別版Pin・Layout-only更新を同じ操作にしない。文書編集の扱いは[#2621](https://github.com/hat47x/tei-platform/issues/2621)、投影損失は[#2497](https://github.com/hat47x/tei-platform/issues/2497)、Studioは[#1824](https://github.com/hat47x/tei-platform/issues/1824)を正本とする。
+
+この二条件を**成果物要求と計算粒度**にも適用する。[Batch／ETLの成果物要求・粒度の横断設計](../design/ETL_BATCH_FUNCTION_COMPOSITION_DESIGN.md)と[標準Service Flow](../design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)の比較では、同じ値が一行に出ても「明細ごと」「受注ごと」「期間ごと」は異なる結果契約であり、FlowのPort結合／Window／帳票へ同じOperatorを再利用する際にはGrain・Partition・入力範囲を固定する。図表／文書の見やすさが計算の完全性を保証するわけではない。
+
+### 16.29 次の実験を二つの独立した縦断へ分ける
+
+**縦断A：既存Goの責務をTEIへ戻す。** 現行`validationgen.GeneratePositive`（コード生成Function）と、その出力`EvaluateSelected`（判断Function）を区別して、AST／参照型／実Read Footprintからの**候補抽出**→既存Validation／Operatorへの意味対応→専門家が読めるMarkdown・表・Graphの投影→独立Expected→再生成比較と進める。動的Dispatch／IO／権限・Effectで静的抽出できない部分はOpaqueとして保持し、AIの推測で確定しない。確認する価値は「DSLに置き換えた行数」ではなく、手書き判断の削減、変換後のSourceの読みやすさ、総定義量、変更時の修正箇所、テスト判別力である。採否と実装は[ドッグフーディングI2M-0〜4](../design/IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md)に返す。
+
+**縦断B：TEI定義から実製品の成果物を作る。** §16.23のR2-Pに沿い、選択済み`quantity_positive`→実生成Go byte→既存製品Builder実入力→ArtifactSet→別Consumer結果を一つのBuild Attemptで証明する。その後、公開pure FunctionのR3（型付きEntry／現在Grant／実Provider／通常CLI）を別に成立させ、最後に接合する。参照Builderの成功は足場であり、正式R2の完了としない。Studioの正規埋込Assetは[PR #4945](https://github.com/hat47x/tei-platform/pull/4945)でmainに収録されたが、W0-BのSource／配布byte照合、Windows実画面のW0-C、Stage1→Stage2のW0-Dは別受入であり、生成Go縦断と合算しない。
+
+**統合の判断**：AとBを同じRule ID・Independent Expected・変更ケースで比較し、モデルからの再生成を増やすほど、手書き責務が実際に減るのか、逆にPlugin・設定・Target別例外が増えていないかを確認する。Graph／Window／組織／REA／API／B2Cへ拡張する前に、既存Rule一件のE1〜E3と製品R2の「意味保存・証拠非同一・実消費」の三条件を満たす。実証が不足していれば専門Plugin／read-only Viewにとどめ、Coreへの昇格は[#2495](https://github.com/hat47x/tei-platform/issues/2495)／[#4350](https://github.com/hat47x/tei-platform/issues/4350)へ具体的な反例を返す。
+
+**状態・優先度**：既存研究統合計画の実装判断を更新するのみ。二本の新しいGo／Windows／DB試験、Ownerの意味受理、正式Builder／Provider／Stage2は**今回NOT RUN／NOT PROVEN**。全体P0のStudio実セルフビルドと通常CLI実Provider／独立Consumerを変更せず、追加のHard Gate、新Host・Runner・Meaning Store・Verifier・Generator Registryを設けない。
