@@ -805,7 +805,32 @@ P0の優先順位は**Desktop Stage1→Stage2／通常`tei`実Provider／正式R
 **この一変更の受入上限と統合条件**：Hostの実`authorityLimits`をPresenter/DOMで失わないことは、Sourceの原byteを再解決したこと、Ownerが意味を正式受理したこと、Current Grant/Disclosureが有効なこと、生成Builder/Providerが実呼出しされたことを**一切証明しない**。E-READの次の差分は同じSource/Subject/Revisionの実Wails Browser受領と元Source復帰。E-PINは#4515の同一HEAD Node24/npm・埋込byte・実Windows B非干渉の採否条件を変えず、E-TRACEは#2831/#4583のStage1→Stage2最優先条件を変更しない。
 
 
-**実装の現状**：E-READ Presenter／参照制限の画面投影と回帰試験の変更は[Draft #4806](https://github.com/hat47x/tei-platform/pull/4806)にあるが、`cmd/tei-studio/assets/workbench/`に埋め込む生成JavaScript／HTMLは未同期。**正式Node24 CI、生成/埋込byte一致、実Wails/Windows WebView2の同一HEAD確認前に製品実装としてmainへ採用しない**。この§0.18.5は検証すべき契約・作業順序としての統合であり、GUI実装成功の宣言ではない。
+**実装と配布物の現在位置（2026-11-15更新）**：[PR #4806](https://github.com/hat47x/tei-platform/pull/4806)はmainへマージ済み（`9e0db14b`）。ただし当該実装HEADのWorkbench embedded bundle／Repository Health／Wails HostのCIは失敗しており、**コードのmain収録と、実配信Consumerの受入は別**。後続の[修正PR #4812](https://github.com/hat47x/tei-platform/pull/4812)は、固定Source snapshotを旧版と現行版に分け、HTML/JSの正規生成・Wails配布資産と実Browser検査を同じHEADへ接続する。確認時点のHEAD `19678758`ではWorkbench bundle、Windows WebView2、Wails Host、Cache、脆弱性検査がsuccess、Repository Healthは実行中。**#4812の最新HEAD・main統合・新たなConsumer受入はそれぞれ再確認する**。本計画の採否はCIと実取得資産に従い、旧HEADの成功を転用しない。
+
+
+#### 0.18.6 次の一巡は元Sourceの参照位置を正確に示し、「開く」を別の受入にする（2026-11-15）
+
+**主眼**：E-READの次に増やすのは、新しいSource Explorerや任意ファイルOpen APIではない。**現行`InspectSubject`が返した同一Readの`sources`を、利用者が確認できる参照位置へ投影する**ことである。「元Sourceが参照一覧に載っている」「その原文を現在Rootから開いてbyte一致を再確認した」「その原文を書込みできる」は別資格とする。
+
+現mainの`internal/operations/workspace_subject_read.go`は、同一Workspace Loadに対して`inspectionFromResolved`を呼び、Canonical Subject→Source Index→`TraceSubjectSourcesFromIndex`の順で投影する。`internal/operations/trace.go`の`SubjectSources`は`subject`、`artifacts[]`、`references[]`を持ち、`internal/sourceindex/model.go`の`Reference`は`subject`／`artifactPath`／`range`／`role`、`Artifact`はworkspace相対`path`／`format`／`fingerprint`を持つ。既存値を使い、第二のSource IDや位置Storeは作らない。
+
+**S-LOC（参照位置表示）**：同一Subjectの`sources.references[]`を最大20件の表示に投影する。各行は`artifactPath`（Workspace相対）、`role`（definition／authoring／implementation／derived等）、`range.start/end`の行・列とbyte offset、対応する`artifacts[]`のFingerprintを**それぞれの出典付きの値**として保持する。行・列はSource Indexの位置表現であり、Unicodeの文字数・画面桁・CodeMirrorの位置と無条件に一致させない。日本語UTF-8、LF/CRLF、BOMでの変換差を、元Raw byteと独立Expectedで検収する。20件を超えた場合は「表示上省略した件数」を明示し、全件を表示した、あるいは参照が0件と推定しない。1つのSubjectへ複数Referenceや異Roleが存在しても先頭1件に勝手に集約しない。
+
+- **Hostが返した情報だけを投影する**：見つかった`Reference`からCanonical Meaningを新規合成しない。`sources.references`が空なら「参照位置を確認できない」、`sourceStatus`が`not-indexed`でも「Sourceが存在しない」「未使用」ではない。Indexの完全性・開示範囲が未確定なら不在の断定をしない。
+- **相互参照**：表示する`artifactPath`と`artifacts[].path`、範囲、Fingerprintは既存Source Indexの結果に従う。対象と異なるWorkspace、Artifactの欠落・不正Path、旧Fingerprint、Index/Catalogの失効を無検査で表示用リンクへ変換しない。パスは`textContent`で表示し、`file://` URLやRendererが組み立てた絶対パスへ変換しない。
+- **表示位置は権限ではない**：`authorityLimits`と同じPaneに出す。現在の許可Scope／Disclosureを超えるSourceパスやカウントをClientへ送る可否はHost側の既存#2516契約に従う。EditorのDirty Buffer、Pin、SHOの文書本文は正式な保存済みSourceと別に置き、Graphの描画Edge IDを`Reference`のSource identityへ置換しない。
+- **S-OPEN（原文復帰）は独立**：既存のHostに安全な原文Open能力が確認されるまではボタンを無効化し、一覧をクリックしても原文byteを開いたことにしない。将来のOpenはHost発行のWorkspace/RootとSource Revision・Artifact Fingerprint・rangeを**実読取時に再照合**し、実返却byteの長さ・範囲を限定。旧PinのA→B→A、書換え後同Path、Symlink/Root差替え、別Principal、部分取得／取得不能なら明示的に拒否・再確認する。OSの外部EditorやFile Pickerへの無制限パス委譲を追加しない。
+
+**二段階の実装と停止線**：
+
+| 段階 | 既存資産へ追加する最小差分 | 独立受入 |
+| --- | --- | --- |
+| **S-LOC** | `presentation.ts`から実`SubjectInspection.sources`の公開可能なReference/Artifact metadataだけを限定表示し、WorkbenchのSource欄へread-only投影。現`responses.run("inspection")`でWorkspace/Subject/Source Index改版の後着表示を拒否 | 同Subject複数Reference、Role、byte offset、日本語/CRLF、Index不一致、20件超、0件／partial、旧Reply、XSS風Pathが、実Host Reply・表示上限・独立Expectedと一致。Node24/正規Bundle/実Windowsを別列で検収 |
+| **S-OPEN** | 既存Ownerが許可したときだけ、Hostによる実Raw読取と現在Root/Scope/Revision検査を接続。Editorはread-only、未保存Bufferとは別。AI外部送出／Source Writeは行わない | 実Source byte・Range・現在Root・Host Grant・A→B→A・返却後失効・戻る操作を同一Consumer/Attemptで確認。単なるS-LOCのPath表示は合格としない |
+
+**担当・優先**：S-LOCのPresenter/UIは#1824/#3421、Source Indexの出典・完全性は#1124/#3788、Disclosureは#2516、Pin/編集の非干渉は#4515、独立Expectedは#1180/#2514へ戻す。E-TRACE/正式`*.tei.md` Reader/Stage1→Stage2をS-LOCのHard Gateにしない。実装PRで現Wails配布Assetの生成と実使用を同一HEADへ束縛し、出荷前の失敗を別Branchで再発させない。
+
+**現時点の到達点**：S-LOC/S-OPENは**設計と受入計画のみ**。実Sourceへ戻るHost Operation、実DOM/Windows表示、権限・Disclosureの再検査、Owner意味受理は今回NOT RUN。
 
 ## 1. 位置づけと判断済み前提
 
