@@ -320,3 +320,57 @@ EV-02は、Outboxを**同一DB Transactionへ投入できる実装を選んだ�
 **優先順位は不変更**：PQ-A（正式Source→選択Reader／Generator→生成Go→実Builderの出典束縛）、PQ-B（Operator選択A→B→旧Scenario失効）、#2586通常CLI実Read、#2831 Stage1→Stage2 Windows実セルフビルドを先行する。EV-01〜06は新しい判定段階や横断Hard Gateではない。
 
 **今回の証拠上限**：§18〜20は既存設計・公開仕様記述の照合から得た受入計画であり、EVケースのGo／実DB／実OS／検索索引／帳票／承認／配送を新たに実行していない。外部仕様の読解をTEIの実Provider適合・Ownerの業務意味受理へ昇格させない。
+
+
+## 21. 同じ定義をコード生成と汎用関数のどちらで実現するか（2026-11-15）
+
+従来の比較では、モデルからGo／Java等のソースを生成する経路を主に扱ってきた。しかし、定義された表・図・Ruleのパラメータを既存の型付き汎用関数で解釈すれば、**生成コードを増やさずに業務動作を実現できる場合**もある。これを生成方式に対する例外や暫定実装と決め付けず、**同じ受理済み意味を実現する二つの方法**として比較する。
+
+ここで共通化するのはData／Function／Business、型・Rule・Relation、適用Phaseと入出力・失敗・副作用の契約である。実現方法は、選択されたOperator／Generator／Providerと実行環境の組合せとして持ち、**モデル上の二重正本は作らない**。
+
+| 判断する点 | 汎用関数による解釈 | Targetコード生成 |
+| --- | --- | --- |
+| 向く範囲 | 既存Operatorで意味を不足なく表せる純粋計算・検証、宣言的な表示や単純なData操作 | 固定Targetの最適化、複数言語への配布、複雑な業務制約、実行先に合わせた静的合成 |
+| 更新と観測 | 定義・実行器の版、選択された実装、実Callと入力Scopeを毎回区別する | Reader・Generator版・生成byte・Builder入力・実ロードArtifactを区別する |
+| 主な落とし穴 | 汎用関数にない意味を黙って近似する、未選択実装へのfallback、解釈器の現行版と定義版の不一致 | 生成結果が元Ruleを参照せず別実装へ委譲する、古い成果物の再利用、TargetごとのNULL・精度差 |
+| 共通の検収 | 対象Identity・値／NULL／未取得・Read集合・結果・失敗・現在Scope | 同左。さらに原Source→生成物→実Builder／Consumerの資格を確認する |
+
+**実現方式は業務意味でも、配布Packageの固定属性でもない。** 同じRuleをGoの生成コードで動かす場合とGo単一バイナリ内の型付き関数で解釈する場合がある。外部.NET／Java Hostを選ぶ場合も、Hostが受け取るBindingとその実行資格を別に検証する。コード生成・解釈のいずれも、業務上の副作用を実行するときは既存のOperation／Provider／Effect／Receiptと現在Grantを省略できない。
+
+### 21.1 まず「型付きValidation一件」で可否を見極める
+
+最初の比較対象は、製品Workspaceが選択した \`tei.rule-authoring/v0\` 由来の \`sales.order_line.quantity_positive\` とする。このRuleを同じ\`semantic.Validation\`から二通りに実行する。
+
+1. **解釈経路**：既存\`validationeval.Evaluate\`が定義済みの比較を、合成Sourceの\`Number\`から読み取って実施する。
+2. **生成経路**：既存\`validationgen.GeneratePositive\`が、判断条件を埋め込んだGoを生成し、実際にGoツールチェーンでビルド・実行する。生成処理は\`validationeval.Evaluate\`へ判断を丸投げしない。
+
+実行結果だけでは同じ実装を二度呼んだことを見落とすため、生成Goの比較処理と、二経路で実際に呼ばれた\`Source.Number\`の対象・回数を観測する。正値、ゼロ、負値、明示NULL、値の未取得を同じ入力表で比較し、エラーを業務上の\`not-satisfied\`へ変換しない。基準となる期待値は実装出力から自動生成しない。
+
+この比較は**形式が同じなら実現可能性まで同じだと証明するものではない**。現状、Go生成が対応するのは限定したRule Kind・型であり、未対応の指定を汎用関数へ黙って切り替えない。型・Phase・Read集合・依存Provider・Targetを含む適合は、対象ごとに確かめる。
+
+## 22. 実コードで確かめた一辺と残る欠落
+
+次のGo回帰を、既存の製品Read・生成コードの経路をつなぐ**限定的な比較**として追加する。
+
+- \`internal/semantic/validationgen/positive_realization_parity_product_test.go\` の \`TestSelectedPositiveRuleInterpretedAndGeneratedRealizations\`：実\`Workspace.Load\`で選択した同一RuleをJSONで実Consumerへ渡し、解釈実行と生成Goを**同じGo Process内で別々に呼ぶ**。正値／ゼロ／負値／NULL／未取得の5入力について、独立した期待値と、各経路で1回だけ行うReadを照合する。異なる型のGo生成要求は拒否し、未選択の代替処理へ自動切替えしない。
+- このGo試験は、既存\`validationeval.Source\`・\`semantic.Validation\`・\`validationgen.GeneratePositive\`だけを利用する。第二のInterpreter、Runner、Compiler Service、Evidence Store、DSL構文は追加しない。
+
+**区別する証拠**：既存のSource位置とReader選択、生成器のGo byte、二つの関数の実Call、Go試験Consumerの受領は、同じものを別名で数えてはいけない。試験がPASSした場合でも「一つの合成Sourceで二つのGo実現の結果とRead回数が一致した」とまで述べる。正式\`tei self-build\`経由のArtifact適格性、実DB／本番Provider、外部Host、非同期索引／帳票、Web／Studioの現在Grant、業務Owner受理は別資格である。
+
+新Go試験のCI結果が確認されるまで、本節を**追加試験の実証完了**と読まない。既存の\`TestSelectedRuleGoThroughRealCLISelfBuild\`は生成Go→通常製品CLI Buildの別証拠、\`TestScenarioDecidesAnOperatorRuleWithTheSelectedImplementation\`は選択Operatorの実Callという別証拠であり、三つの試験を同一実行時のEnd-to-endとして加算しない。
+
+## 23. 次段階では「実現方式の差」だけを増やす
+
+最初の五値比較が通った後は、同じCanonical Ruleのまま**一因子だけを変える**。新しいテスト正本は設けず、既存#1180／#2514の独立Expectedへ追加する。
+
+| 比較候補 | 固定する条件／変更する一点 | 不合格にする挙動と既存Owner |
+| --- | --- | --- |
+| RV-01 | 入力Source／型／値を固定し、汎用関数と生成Goを選び替える | 結果が偶然同じでも実Called ID不明、Read先や例外の不一致（#2621／#1121／#2514） |
+| RV-02 | 意味を変えず説明文だけ改版する | 原Sourceの旧位置・改版証拠を残したまま「再確認不要」とする。意味・Artifactの無関係な一律再ビルドも避ける（#2600／#2250） |
+| RV-03 | Ruleの参照Attributeだけを変更し、旧生成物または旧解釈用Indexを再利用する | 旧SourceからのRead対象や旧判断を新定義の結果へ昇格（#2621／#2600） |
+| RV-04 | Ruleの適用PhaseをDraftから保存前へ変更する | 同じ計算結果だけで、取得完全性、現在Grant、原子性と実DB保存を同じ資格にする（#1129／#1174／#2586） |
+| RV-05 | 実装の対応型・Provider Capabilityが欠ける | 無断fallback、NULL／partialの丸め、対象外Read、Write可能なふりをする（#1251／#2622／#2516） |
+
+**実装の順序**：今回のGo二経路比較を局所回帰として先行し、正式Rule Source→実BuilderのPQ-A、Operator実装選択と旧版失効のPQ-B、通常CLI→実Provider Read（#2586）へ結果を**別々の資格として**引き渡す。その後、同じFunctionへの接合が実際に成立した場合に限って、親子Draft、Transaction内Hook、Outbox、索引水位、帳票等のEV-01〜06を選択する。いずれもP0のStudio Desktop Stage1→Stage2セルフビルドを妨げる新しい必須条件にはしない。
+
+判断基準は方式の好みではなく、**人が書く定義をどれだけ簡潔に保てるか、意味を失わずに実行できるか、生成／解釈の実装と版を正確に追跡できるか**である。計画の合意と実Provider／配備の検証を同じ達成報告へまとめない。
