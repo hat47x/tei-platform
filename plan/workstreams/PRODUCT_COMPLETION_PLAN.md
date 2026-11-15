@@ -79,6 +79,28 @@ Script Launch §25、ADR-0048、#4495に基づき、最初は**公開済みのpu
 
 **CIとPR統合**：過去の#4702 HEADで全体Healthが失敗した要因は、GraphのGo整形（main #4742）、SQL `Opaque`旧期待（main #4741）、Query語彙の試験登録（main #4711）、SQLite Window参照試験のGo整形（main [#4749](https://github.com/hat47x/tei-platform/pull/4749)）として、いずれも別のmain統合で対応済みである。ただし、先行HEADの`go test`／`go vet`成功や修正の統合事実だけで**本PRの全体CIが成功したとは判断しない**。最新mainとの仮統合HEADでCacheとRepository Healthの両方が成功してから、製品完成計画を統合する。mainに統合された[SQLite Window入力検証 #4754](https://github.com/hat47x/tei-platform/pull/4754)は、固定7行のID／系列／順序／整数／明示NULLと独立Expectedを照合する別分野の実Go・実SQLite検査である。入力の欠落と明示NULL、0、指数表記、53bit超整数を混同しない反例を、Script Launchの業務Input契約を設計する際の参考とする。ただし、正式Markdown Readerや製品Providerの業務型受理にそのまま転用しない。
 
+### SL-1：事前確認を実行資格に読み替えない（2026年11月15日）
+
+11月15日にmainへ統合された実装から、**事前確認と実行許可が別の資格であること**を、製品の最初の一機能にも適用する。新たなAdmission Engineや実行状態Schemaを導入するのではなく、既存のSource／Plugin／Host／Consumerで確認済みの範囲を越えて成功と表示しないための実装受入条件である。
+
+| 現行の実装と根拠 | 確認できること | Product Entryへ持ち込めない主張 |
+| --- | --- | --- |
+| [Plugin文書の事前検査 #4800](https://github.com/hat47x/tei-platform/pull/4800) | 選択PluginのVersionとLock一致。exact-version-pinnedでもSourceはunbound、開示は未検査、Read適格性は未判定 | 文書閲覧権限、Plugin実ロード、業務Functionの公開Entry・実行Grant。**文書用Preflightを業務Executionの判定器として再利用しない** |
+| [Studio Inspectorの参照制限 #4806](https://github.com/hat47x/tei-platform/pull/4806) | InspectSubjectのauthorityLimitsを保持・表示し、古いReplyやWorkspace切替で以前の表示を無効化 | 選択対象への書込み・実行・公開権限、実Windows配布物の同一性。Workbench／Bundle同期は別検証（#4812） |
+| internal/semantic/capabilityinvoke/invocation.go | 宣言の不正・呼出し前取消でAdapter call=0、呼出し後の不正BusinessResultでcall=1。ResultのMode/Outcomeを検査 | 入力実値の業務型、公開Entry、実Provider選択、Host現在Grant、Payload anyの内容の正当性 |
+| [Script Launch設計§27〜28](../design/SCRIPT_LAUNCH_ENTRY_TEST_QUALIFICATION_2026-11.md) | Prepare／Admit／Invoke／Observeと、TEI内評価／Mock／実Providerの証拠を分離 | Product実Go Provider／通常製品tei CLIが実行できたこと。Mock成功・CLI exit 0は代替にならない |
+
+**次の実装票は三つに絞る。**
+
+1. **起動候補のRead-only票**（#4495）：固定Source／Accepted Meaning、Functionと公開Entry、型付き入力、対象・期待Revision、選択Contract／Provider／Artifactの所在を明示。未選択・未受理・Source unboundならそのまま停止し、Plugin文書のPreflightやStudio Inspect成功で補わない。
+2. **実起動のAdmission／Call票**（#4495／#951）：既存Hostが現在Principal／Scope／Grant、Entry公開、選択Provider／Artifactを確認してから、型付きAPIで実Providerを呼ぶ。call=0の拒否、selected B／actual Aの同値Result、call=1後の不正Resultを既存ELと独立Expectedで区別。Payload anyの実値やNullabilityの受理は選択Adapter／業務契約側で担い、generic形状検査へ意味受理を移さない。
+3. **別ProcessのCLI／Consumer票**（#4495／#1158／#1180）：同じMeaningを通常製品teiの別OS Processで実行。Direct APIとは別Attemptを記録し、実Body／Failure／現在Audienceを検収する。参照view -execute、Mock、Plugin Lock、Studio InspectのPASSを製品実呼出しのPASSへ合算しない。
+
+データ依存を持つFunctionでは、どこか一つのEnvironmentでDB Aliasが結合していることと、今回選んだTarget／Environmentで実際に接続できることも区別する。未結合DB要件の警告を追加する[PR #4811](https://github.com/hat47x/tei-platform/pull/4811)は現時点で検証中の候補であり、**マージ前に製品の既存保証として数えない**。実DB Read、部分取得・NULL、HostのRow Scopeは#2586/#2622が別に受理する。
+
+**優先順位は据え置く**。全体P0はStudio Stage1→Stage2セルフビルド（#2831/#4583）、並行P0は一つの公開pure Entryの実Go Provider→通常tei CLI（#4495）。Local Child/Remote、Trigger、Updater、Plugin文書の正式Read、新Mock Runtimeは先行依存としない。新Go Product E2E、実Windows配布物、外部DB Effect、Ownerの業務意味受理は本追補ではNOT RUN。
+
+
 ## 不足を戻す担当
 
 各担当Issueには以下の範囲に属するG項目の作業と正負の受入条件を引き渡す。実装・実行結果はそのIssueと既存のEvidenceに記録する。
