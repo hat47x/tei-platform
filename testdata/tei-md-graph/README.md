@@ -22,6 +22,8 @@
 
 この6入力を解釈する**read-onlyのGo参照Readerと限定Go生成実装**は[reference/tei-md-graph-reader](../../reference/tei-md-graph-reader/README.md)に置く。表のセル位置と独立Expectedの一致は検証対象だが、製品Workspace Loadへの接続や意味受理を表すものではない。
 
+この5入力を解釈する**read-onlyのGo参照実装**は[reference/tei-md-graph-reader](../../reference/tei-md-graph-reader/README.md)に置く。表のセル位置と独立Expectedの一致は検証対象だが、製品Workspace Loadへの接続や意味受理を表すものではない。
+
 ## 最初の実装に渡す範囲
 
 1. **Source／Reader**：元のUTF-8 byte列と表Cell・Fenceの位置を保存し、どの部分を正式にRole/Operatorへ選択したかを明示します。例示表・説明・Mermaidを拡張子だけで実行可能とみなしません。未対応なら`TEI_MD_PARSER_UNBOUND`等の既存の未対応診断を保持します。
