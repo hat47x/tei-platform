@@ -205,7 +205,7 @@ jobs:
       - name: Pin Node 24 for the existing generated Workbench
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: '24'
+          node-version: '24.21.0'
           check-latest: false
       - name: Prepare generated-Desktop evidence
         shell: pwsh
@@ -239,10 +239,45 @@ jobs:
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             npm run typecheck
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-            node --input-type=module -e 'import { build } from "esbuild"; import { resolve } from "node:path"; await build({ absWorkingDir: process.cwd(), entryPoints: ["main.generated.ts"], outfile: resolve(process.cwd(), "../../cmd/tei-studio/assets/workbench/main.js"), bundle: true, format: "esm", platform: "browser", target: "es2022", nodePaths: [resolve(process.cwd(), "node_modules")] });'
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           } finally { Pop-Location }
+          node --test tools/reference-studio-static-composition/build-generated-workbench.test.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # The generated PoC B formerly ran Node/esbuild directly from this CI
+          # step. Give the existing TEI self-build CLI the actual N2 child launch
+          # and cross-check its report against the output on disk.
           $bundle = 'cmd/tei-studio/assets/workbench/main.js'
+          if (-not (Test-Path -LiteralPath $bundle)) { throw 'Missing checked-in Workbench bundle' }
+          Remove-Item -LiteralPath $bundle -Force
+          $teiInvoker = Join-Path $env:RUNNER_TEMP 'tei-studio-n2-invoker.exe'
+          go build -mod=readonly -o $teiInvoker ./cmd/tei
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $nodeExe = (Get-Command node.exe).Source
+          $nodeDigest = (Get-FileHash -LiteralPath $nodeExe -Algorithm SHA256).Hash.ToLowerInvariant()
+          node --check tools/reference-studio-static-composition/build-generated-workbench.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $argvFile = Join-Path $env:RUNNER_TEMP 'tei-studio-n2-child-argv.json'
+          ConvertTo-Json -InputObject ([string[]]@('tools/reference-studio-static-composition/build-generated-workbench.mjs')) -Compress |
+            Set-Content -LiteralPath $argvFile -Encoding utf8
+          $receiptText = (& $teiInvoker self-build -child $nodeExe -child-arg-file $argvFile -artifact $bundle -expected-child-digest "sha256:$nodeDigest" | Out-String)
+          if ($LASTEXITCODE -ne 0) { throw 'TEI self-build N2 child invocation failed' }
+          $receipt = $receiptText | ConvertFrom-Json
+          $bundleDigest = (Get-FileHash -LiteralPath $bundle -Algorithm SHA256).Hash.ToLowerInvariant()
+          $invokerDigest = (Get-FileHash -LiteralPath $teiInvoker -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($receipt.schemaVersion -ne 'tei.cli.self-build-entry/v0' -or
+              $receipt.childSchema -ne 'tei.builder.studio-workbench-esbuild/v0' -or
+              $receipt.invokerDigest -ne "sha256:$invokerDigest" -or
+              $receipt.invoked.executableDigest -ne "sha256:$nodeDigest" -or
+              $receipt.selectedChildDigest -ne "sha256:$nodeDigest" -or
+              $receipt.childPinChecked -ne $true -or
+              $receipt.childPinMatched -ne $true -or
+              $receipt.invoked.exitCode -ne 0 -or
+              $receipt.artifactCrossCheckedDigest -ne "sha256:$bundleDigest" -or
+              $receipt.childArtifactDigest -ne "sha256:$bundleDigest" -or
+              $receipt.artifactCrossCheckMatched -ne $true -or
+              $receipt.failureCause -or $receipt.l3Claimed) {
+            throw "TEI N2 execution or artifact pin does not match actual bundle: $receiptText"
+          }
+          $receiptText | Set-Content -LiteralPath (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'n2-tei-cli-invocation.json') -Encoding utf8
           $source = 'reference/tei-studio-workbench/main.generated.ts'
           $goService = 'internal/studiohost/staticservices/services.generated.go'
           foreach ($p in @($bundle, $source, $goService)) {
@@ -250,7 +285,9 @@ jobs:
           }
           $digest = (Get-FileHash -LiteralPath $bundle -Algorithm SHA256).Hash.ToLowerInvariant()
           "TEI_GENERATED_WORKBENCH_BUNDLE_SHA256=$digest" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          foreach ($p in @($bundle, $source, $goService, 'tools/reference-studio-static-composition/fixture.json')) {
+          foreach ($p in @($bundle, $source, $goService, 'tools/reference-studio-static-composition/fixture.json',
+              'tools/reference-studio-static-composition/build-generated-workbench.mjs',
+              'reference/tei-studio-workbench/package-lock.json')) {
             $hash = (Get-FileHash -LiteralPath $p -Algorithm SHA256).Hash.ToLowerInvariant()
             "${p}=$hash" | Add-Content -Path (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'generation-provenance.txt') -Encoding utf8
           }
