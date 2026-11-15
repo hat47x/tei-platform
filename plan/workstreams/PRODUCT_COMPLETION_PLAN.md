@@ -567,7 +567,7 @@ Webの要求、CLIの起動、タイマー、Message、画面操作には、そ�
 | **D：外部Host/Providerへ委譲** | 最新の価格・在庫・税/クーポン、Cart/Checkout/Payment、現在Grant、外部Flag/Analytics/CMSの権威ある処理 | Selected Providerとactual Call、現在Grant/Consent、外部Effect/Receipt/独立Read。委譲の成功をTEI生成実装の割合へ算入しない |
 | **H0：Native実装のみ** | ブランド独自Router/DOM/CSS/状態管理、FrameworkのSSR/SPA/Hydration、手書きFrontend | 型付きContractを使わない場合も正規比較対象。**必須TEI Browser JS/DOM wrapper/Proxyは0**。存在しないTEI経路にG/P/Dの証拠を要求しない |
 
-G/P/Dは**意味の実現方法**、H0/H1/H2は**TEI導入と任意プラグイン利用を比較する構成**であり、同じ分類軸ではない。一つのRouteでHeadはG、Request時の限定表示判断はP、購入確定はD、ブランドの画面はNativeで構成できる。Pで実行した関数がDのProviderを呼ぶ場合には、純粋なPの成功とは別にDの実Call/Effectを確認する。どの方式でもBrowser/Server/Edge/Build-timeの配置はPluginの公開CapabilityとTarget条件から決め、実行先の不適合を暗黙Fallbackで埋めない。
+この節の**方式G/P/D**（コード生成／既存評価／外部委譲）と前節の**段階G/D**（生成物の確認／配布の確認）は、略号が同じでも別の分類である。またH0/H1/H2は、TEI導入と任意プラグイン利用を比較する**構成**であり、方式G/P/Dとは直交する。一つのRouteでHeadはG、Request時の限定表示判断はP、購入確定はD、ブランドの画面はNativeで構成できる。Pで実行した関数がDのProviderを呼ぶ場合には、純粋なPの成功とは別にDの実Call/Effectを確認する。どの方式でもBrowser/Server/Edge/Build-timeの配置はPluginの公開CapabilityとTarget条件から決め、実行先の不適合を暗黙Fallbackで埋めない。
 
 **Bindingの最小検収票（新しいCore schemaではない）**：対象のQualified Source/Meaning・Source occurrence、適用するRoute/Section/Operation/Hook Slot、選択条件とUniverse、配置先とLifecycle phase、必要な多重度、G/P/D選択と実装Pin、利用側のRequired Data Context/Scope/時点、Actual Member/実Invoke、実Consumer、現在の開示・実行資格を**別欄**で記録する。Fragment/Markdown/Graphの見た目やPlugin名だけでBindingの同一性を決めない。Providerの選択と実呼出し、参照したPage集合と未探索の動的Route集合は一致を仮定しない。Requiredな横断適用でScopeが未観測なら全件成功を認定せず、任意の計測・広告が止まっただけで業務Operationを停止させない（#951/#1016/#2497/#3262/#3278/#3503/#4198）。
 
