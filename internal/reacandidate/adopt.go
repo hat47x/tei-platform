@@ -1,6 +1,7 @@
 package reacandidate
 
 import (
+	"encoding/json"
 	"reflect"
 	"sort"
 	"strings"
@@ -214,6 +215,28 @@ type CandidateComparisonEntry struct {
 	BeforeAttemptID string         `json:"beforeAttemptId,omitempty"`
 	AfterAttemptID  string         `json:"afterAttemptId,omitempty"`
 	Notes           []string       `json:"notes,omitempty"`
+}
+
+// MarshalJSON omits a before/after Source when that side is not known.
+//
+// encoding/json does not omit a zero-valued struct for omitempty. Without this
+// override a one-sided comparison encodes a phantom beforeSource/afterSource
+// object, which a consumer may mistake for a real counterpart. Keep the Go
+// value fields intact for existing callers; override only the wire projection.
+func (entry CandidateComparisonEntry) MarshalJSON() ([]byte, error) {
+	type plain CandidateComparisonEntry
+	wire := struct {
+		plain
+		BeforeSource *SourceRevision `json:"beforeSource,omitempty"`
+		AfterSource  *SourceRevision `json:"afterSource,omitempty"`
+	}{plain: plain(entry)}
+	if !reflect.DeepEqual(entry.BeforeSource, SourceRevision{}) {
+		wire.BeforeSource = &entry.BeforeSource
+	}
+	if !reflect.DeepEqual(entry.AfterSource, SourceRevision{}) {
+		wire.AfterSource = &entry.AfterSource
+	}
+	return json.Marshal(wire)
 }
 
 // Comparison statuses.
