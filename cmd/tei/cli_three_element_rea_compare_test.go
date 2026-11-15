@@ -191,7 +191,7 @@ func TestThreeElementREACompareRejectsUnqualifiedInputs(t *testing.T) {
 	valid := comparisonCLICandidateSet("attempt-old", "edge-1")
 	writeComparisonCLICandidateSet(t, beforePath, valid)
 	cases := []struct {
-		name string
+		name  string
 		value reacandidate.CandidateSet
 	}{
 		{name: "unrecognized-schema", value: func() reacandidate.CandidateSet {
@@ -256,6 +256,15 @@ func TestThreeElementREACompareRejectsUnqualifiedInputs(t *testing.T) {
 		exit, response := runComparisonCLI(t, beforePath, afterPath)
 		if exit != 2 || response.Error == nil || response.Error.Code != "AFTER_CANDIDATE_SET_INVALID" {
 			t.Fatalf("malformed input accepted: %+v", response)
+		}
+	})
+	t.Run("null", func(t *testing.T) {
+		if err := os.WriteFile(afterPath, []byte("null"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		exit, response := runComparisonCLI(t, beforePath, afterPath)
+		if exit != 2 || response.Error == nil || response.Error.Code != "AFTER_CANDIDATE_SET_INVALID" {
+			t.Fatalf("null input accepted: %+v", response)
 		}
 	})
 	t.Run("missing-before", func(t *testing.T) {
