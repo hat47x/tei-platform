@@ -12,6 +12,8 @@ go test ./reference/plugin-doc-reference -count=1
 
 `TestCandidateFixtureMutationsAreRejected` は、Aの選択版、Bの直接依存、Lock候補、再公開、非公開指定、Source digest欠落、Path traversal、関係ID、意味Roleの採用表示、拒否Expectedの漏洩、ケース欠落、製品の受理済み主張を個別に改変し、**14種類の候補Fixture改変に対する整合性検査**が不整合を検出できるか調べます。
 
+`TestPDC0ReferenceGraphShapeDoesNotReplaceSourceOrDisclosure` は、実際のGraph／Rule候補から構造指紋とGo生成ソースを照合します。図の配置変更と説明の追記は候補構造を変えず、辺の向きやRule条件の変更は生成ソースを変える一方、原文や公開Manualを編集すれば各Sourceのbyte指紋は更新が必要です。これは**参照Fixtureに対する監査**であり、製品PluginのDoc取得・Disclosure・現在Grant・実Provider Callではありません。
+
 これらの試験は、独立ExpectedのOwner採用、正式なPlugin/Doc/Disclosure Manifest、Productの公開文書Source Reader、`plugin-inventory`の実Plugin A/B選択、Provider実Call、AI/Hostの情報漏洩を実証しません。JSONに「permission-denied」とあることの照合は、実Hostの拒否を呼んだ証拠ではありません。
 
 既存のGraph→Go生成・独立実行は`go test ./reference/tei-md-graph-reader`で別途評価します。正式製品側の縦切りは[#4714](https://github.com/hat47x/tei-platform/issues/4714)、Fixture/ExpectedのOwner判断は[#4701](https://github.com/hat47x/tei-platform/issues/4701)と[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#2514](https://github.com/hat47x/tei-platform/issues/2514)の担当です。新しいパーサー、Registry、AuthZ Engine、Runnerは追加していません。
