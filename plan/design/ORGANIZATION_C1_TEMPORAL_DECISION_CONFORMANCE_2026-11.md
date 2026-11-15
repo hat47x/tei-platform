@@ -1791,3 +1791,12 @@ CLI・Studio・生成Goから再利用する際も、**単一の受理済みSour
 #2386/#1126は、Membership occurrenceの業務同一性、訂正・取消・再所属、Person Link、兼務・多重性を先に選択する。物理化は、業務IDと版IDを分離する方式、複合キー、履歴表等を比較し、採用方式に応じてQuery・Persistence Mapping・独立Expectedを同時に更新する。特定の保存方式や全アプリへの二時点Schema義務化は、Owner受理前に決めない。
 
 既存#1180/#2514/#4490のMVR-01〜05、#2586の実Provider→Function Context→Consumer、正式Reader/Generator、Studio Stage1→Stage2は引き続き別票とする。今回の追加試験は既存の隔離DB opt-in Workflowを利用する。CIが`SKIP`した場合やGoビルドで停止した場合は、**この負例を実測済みと報告しない**。全体Repository Healthが他領域で失敗しても、試験単位の実PASSと製品全体のPASSは分離する。
+
+<!-- org-c1-realpg-23505-evidence-20261115 -->
+### 37.4 隔離PostgreSQLで確認した失敗と、残る正例（2026-11-15）
+
+固定HEAD `8cf10feb5677ea8e97dec364eb1954a041b76455` の[実PostgreSQL試験 run 43681066038](https://github.com/hat47x/tei-platform/actions/runs/43681066038)は**completed/success**。ジョブログで、`TestOrgAxisAsOfActualPostgresOptIn`の新しい「同一Membership occurrenceの訂正版を共存できない」負例と、従来のvalidAt/knownAt境界4例がすべて**明示PASS**した。対象Goファイルの`gofmt`検査と隔離DB作成も成功し、SKIPをPASSに読み替えていない。
+
+この試験ではA2の二度目の挿入がPostgreSQL SQLSTATE `23505`で拒否され、元行が一行のまま保持される。**確認できた結論は現行PKの保存制約であり、訂正版の保存・復元を実現したことではない**。Source/意味/Provider Dataset/Consumer/Grantの資格は別票に残す。なお、[PR #4866](https://github.com/hat47x/tei-platform/pull/4866)はGitHub上`closed/unmerged`であり、PR自体をマージ済みとは記録しない。現在mainのGoテスト2件と本設計§37のblobが当該固定HEADの内容と一致することを確認したうえで、計画の引渡しだけをこの節で確定する。
+
+次の**MVR-02正例**は、#2386/#1126がMembership業務同一性と履歴版の識別を受理した後、同一所属の旧新版を実際に共存保存し、同じvalidAtに対するknownAtの違いで両版を再読込する試験である。現行PK拒否の負例だけを増やしても、この正例には進まない。
