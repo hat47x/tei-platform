@@ -40,7 +40,7 @@ func reaIntakeFlagSet(args *reaIntakeArgs) *flag.FlagSet {
 	fs.SetOutput(io.Discard)
 	fs.StringVar(&args.evidence, "evidence", "", "path to the REA evidence JSON")
 	fs.StringVar(&args.output, "output", "", "path to write the review packet")
-	fs.StringVar(&args.before, "before", "", "path to a previous review packet for comparison")
+	fs.StringVar(&args.before, "before", "", "previous review packet (source-backed comparison is unavailable; fails closed)")
 	fs.StringVar(&args.model, "model", "", "path to the three-element model JSON")
 	fs.StringVar(&args.mapping, "mapping", "", "owner mapping JSON; requires -workspace")
 	fs.StringVar(&args.workspace, "workspace", "", "TEI workspace directory for binding")
@@ -137,7 +137,10 @@ func runThreeElementReaIntake(args []string, out io.Writer) (int, error) {
 		"qualification":       "complete",
 		"bindingAttempted":    false,
 		"adoptionPreviewed":   false,
-		"candidateSetFingerprint": fmt.Sprintf("%x", evidence),
+		// Legacy field: fingerprint the bytes actually read, not a raw hex dump
+		// of the full input. This does not establish Candidate/Meaning identity.
+		"candidateSetFingerprint": fmt.Sprintf("sha256:%x", sha256.Sum256(evidence)),
+		"fingerprintBasis":        "raw-evidence-bytes-not-candidate-identity",
 		"candidates": []map[string]interface{}{
 			{"candidateId": "candidate-1", "kind": "data-element", "status": "pending", "facts": map[string]interface{}{}},
 			{"candidateId": "candidate-2", "kind": "data-element", "status": "pending", "facts": map[string]interface{}{}},
@@ -192,18 +195,15 @@ func runThreeElementReaIntake(args []string, out io.Writer) (int, error) {
 		if err := json.Unmarshal(before, &previous); err != nil {
 			return failReaIntake("BEFORE_SET_READ_FAILED", err.Error(), 2, out)
 		}
-		packet["comparedWithBefore"] = true
-		candidates := packet["candidates"].([]map[string]interface{})
-		entries := make([]map[string]interface{}, len(candidates))
-		for i, c := range candidates {
-			entries[i] = map[string]interface{}{
-				"candidateId": c["candidateId"],
-				"status":      "unchanged",
-			}
+		if previous == nil {
+			return failReaIntake("BEFORE_SET_READ_FAILED", "previous review packet must be a JSON object", 2, out)
 		}
-		packet["comparison"] = map[string]interface{}{
-			"entries": entries,
-		}
+		// This legacy CLI has synthetic candidate IDs, not source-backed
+		// CandidateSet identities. It cannot infer unchanged/added/removed
+		// from a parsed earlier packet or identical current input bytes.
+		// Fail closed rather than publishing fabricated comparison entries.
+		return failReaIntake("REA_COMPARISON_UNAVAILABLE",
+			"rea-intake -before cannot compare source-backed candidate sets; use the dedicated reacandidate comparison after a verified intake", 2, out)
 	}
 
 	// Load owner mapping if provided.
