@@ -1,6 +1,7 @@
 package reacandidate
 
 import (
+	"reflect"
 	"testing"
 
 	"tei/internal/threeelement"
@@ -338,6 +339,14 @@ func TestCompareCandidateSetsParallelRenumberingRequiresOccurrenceMapping(t *tes
 	}
 	if ambiguousBefore != 2 || ambiguousAfter != 2 {
 		t.Fatalf("ambiguous entries before=%d after=%d, want 2 each: %+v", ambiguousBefore, ambiguousAfter, comparison.Entries)
+	}
+	// Reordering source input cannot choose a different individual relation.
+	alternate := changed
+	alternate.edges = []edgeFixture{firstRenumbered, secondRenumbered}
+	alternateEntries := CompareCandidateSets(before, mustGenerate(t, alternate)).Entries
+	if !reflect.DeepEqual(comparison.Entries, alternateEntries) {
+		t.Fatalf("reordering parallel edges changed the review:\nold=%+v\nnew=%+v",
+			comparison.Entries, alternateEntries)
 	}
 }
 
