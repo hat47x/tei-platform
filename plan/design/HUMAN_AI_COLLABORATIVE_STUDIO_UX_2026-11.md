@@ -223,7 +223,7 @@ UX-13/14/15はSource/Modeler系、UX-16/17はHandoff/Harness系、UX-18/22は実
 
 ### 16.1 表示中の対象と、裏側で確認する対象を分離する
 
-現行Workbenchの通常\`inspect(subject)\`は応答により\`selected\`、Editor、Graph、Noticeを変更する。人が**Bを閲覧中**に、固定した**Aの現在性をAI/Inspectorが裏側で確認**する際、同じ表示更新経路を使えばBがAへ戻り、利用者の操作を妨げる。したがって固定対象再確認は、次の区別を守る。
+現行Workbenchの通常`inspect(subject)`は応答により`selected`、Editor、Graph、Noticeを変更する。人が**Bを閲覧中**に、固定した**Aの現在性をAI/Inspectorが裏側で確認**する際、同じ表示更新経路を使えばBがAへ戻り、利用者の操作を妨げる。したがって固定対象再確認は、次の区別を守る。
 
 | 経路 | 変えてよいもの | 変えてはいけないもの |
 | --- | --- | --- |
@@ -232,11 +232,11 @@ UX-13/14/15はSource/Modeler系、UX-16/17はHandoff/Harness系、UX-18/22は実
 | Candidate Review（Aの変更案を確認） | Aの変更候補と差分・根拠の独立表示 | Bの未保存編集、AのSource実内容・業務意味・外部Effect |
 | 明示的な「Aを開く」 | 利用者の操作によるForeground遷移 | Pinの同一性の自動変更 |
 
-最初は既存\`client.inspectSubject\`／\`readInspection\`と\`responses.ts\`のlane制御を再利用する。\`pinned-inspection\`は**実装上の応答区分の候補**であって正式APIではない。Pin時点のgeneration／Workspace epoch／Qualified Subjectを応答受領時に照合する。同じAをUnpin→再Pinした場合も旧Aの返答を現在のPinに使わない。
+最初は既存`client.inspectSubject`／`readInspection`と`responses.ts`のlane制御を再利用する。`pinned-inspection`は**実装上の応答区分の候補**であって正式APIではない。Pin時点のgeneration／Workspace epoch／Qualified Subjectを応答受領時に照合する。同じAをUnpin→再Pinした場合も旧Aの返答を現在のPinに使わない。
 
 このUI世代管理は**Source RevisionやCurrent Grantの証拠ではない**。旧Replyを新規表示させない検査と、既表示内容の開示資格の再評価・必要な非表示化は独立に行う。現在の開示変更を観測できない場合、即時撤回を保証したとは表示しない（#2516）。
 
-**実装差の現況**：Draft #4597にはPin Intent/Observationの純粋状態遷移と単独テストがある。ただし\`main.ts\`の実Workbench表示・生成Bundle・実Windows Consumerには未接続。旧HEADではNodeテスト/型チェック/ビルドと、埋込Bundle byte比較の失敗が同居した。局所単体試験の合格をStudio実装完了にしない。
+**実装差の現況**：Draft #4597にはPin Intent/Observationの純粋状態遷移と単独テストがある。ただし`main.ts`の実Workbench表示・生成Bundle・実Windows Consumerには未接続。旧HEADではNodeテスト/型チェック/ビルドと、埋込Bundle byte比較の失敗が同居した。局所単体試験の合格をStudio実装完了にしない。
 
 ### 16.2 再確認時の障害を人間の作業へ波及させない
 
@@ -315,7 +315,7 @@ UX-01〜22・PIN-S0/ABA・Desktop DT/BD/Scenarioの既存受入へ追加する**
 | UX-33 | 参照展開/Pin再確認に時間が掛かる | 無関係なEditor入力を阻害しない。未完了はprogress/partial、参照0・完全な空集合と混同しない | #1824/#3262/#2018 |
 | UX-34 | AI/SHOへ候補を引き継ぎ、相手は別Scope/Grant | 目的と参照は保持できるが、今のRecipientで再資格化する。受領からApply/Disclosure権限を継承しない | #2509/#2516/SHO #19 |
 
-**最初の実装パケットはUX-23に絞る。** まず#4597の純粋Pin状態遷移、現行\`main.ts\`のForeground Inspect、\`responses.ts\`の応答制御、\`readInspection\`のHost結果検査のFit/Gapをとる。次に実Workbenchで「B閲覧中にAを裏で確認」の正負を検証する。生成埋込JSのbyte一致と実Windows WebView2を同じHEADで別assertし、状態テストのPASSだけで製品UXのPASSへ昇格させない。
+**最初の実装パケットはUX-23に絞る。** まず#4597の純粋Pin状態遷移、現行`main.ts`のForeground Inspect、`responses.ts`の応答制御、`readInspection`のHost結果検査のFit/Gapをとる。次に実Workbenchで「B閲覧中にAを裏で確認」の正負を検証する。生成埋込JSのbyte一致と実Windows WebView2を同じHEADで別assertし、状態テストのPASSだけで製品UXのPASSへ昇格させない。
 
 UX-26〜28のDirty Buffer→Review→条件付きSaveと、UX-31〜32のBuild/Consumerは**別の受入レーン**に残す。#4583 B1-B（N0→esbuild→Go embedの実Builder辺）→B2 Stage1実TEI→B3そのStage2実Consumerの最優先順を変更しない。AI送出や複数Agentの自動仲裁を最初のDesktop/PinのHard Gateに追加しない。
 

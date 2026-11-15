@@ -1632,7 +1632,7 @@ Sourceの変更については、mainの[Capability回帰 #4870](https://github.
 
 REAの[Review要約修正 #4863](https://github.com/hat47x/tei-platform/pull/4863)は、曖昧な多重Relationを要約からも落とさず、未知Statusを成功へ丸めない。組織の[実PG負例 #4877](https://github.com/hat47x/tei-platform/pull/4877)は、同一Membershipの訂正版を保存・再読込できるという**正例ではなく、現制約の拒否**を確認した。Wagby比較の[共有表・複合キー整理 #4874](https://github.com/hat47x/tei-platform/pull/4874)と合わせ、**業務Identity／関係Occurrence／物理PK／表示Edge／訂正履歴**をGraphの一つのIDや物理行に押し込まない。初回Rule GeneratorのHard Gateにはせず、既存#1180/#2514へ拡張時の反証として残す。
 
-Studioでは[Desktop契約 #4879](https://github.com/hat47x/tei-platform/pull/4879)が、実Capability→Inspect/Trace→S-LOC→Pin→正規Bundle→Windows WebView2→Stage1→Stage2を段階分離した。#4869のHost制限Fixture修正はmain統合済みで、Pin解除／再確認ボタンIDの修正[#4876](https://github.com/hat47x/tei-platform/pull/4876)は審査中。参照TypeScriptの成功を、埋込`main.js`／`index.html`の一致や実Windowsでの動作に昇格しない。**Studioセルフビルドと通常CLIの実Provider呼出しは内蔵Readerの追加検収を待たずに並行P0を継続**する。
+Studioでは[Desktop契約 #4879](https://github.com/hat47x/tei-platform/pull/4879)が、実Capability→Inspect/Trace→S-LOC→Pin→正規Bundle→Windows WebView2→Stage1→Stage2を段階分離した。#4869のHost制限Fixture修正に続き、Pin操作の旧Controller整理[#4920](https://github.com/hat47x/tei-platform/pull/4920)と正規WorkbenchのWails埋込Asset同期[#4945](https://github.com/hat47x/tei-platform/pull/4945)がmainへ統合された。参照TypeScriptの成功を、埋込`main.js`／`index.html`の一致や実Windowsでの動作に昇格しない。**Studioセルフビルドと通常CLIの実Provider呼出しは内蔵Readerの追加検収を待たずに並行P0を継続**する。
 
 この追補はmain上のGo Sourceとマージ履歴を読んで反映した**計画更新**であり、新Go/Node/Windows/PGの実行、内蔵Readerのexact HEAD回帰成功、正式Graph Reader、外部Language Plugin、Generator・Provider実Call、Stage2、Owner意味受理は本変更では実施していない。CIの不合格は別Ownerの原因を分類し、文書のマージを製品の受入票に転用しない。
 
@@ -1678,9 +1678,9 @@ Studioでは[Desktop契約 #4879](https://github.com/hat47x/tei-platform/pull/48
 
 mainに[実Go生成 #4911](https://github.com/hat47x/tei-platform/pull/4911)が統合された。既存の内蔵Rule Readerで選択した`quantity_positive`から、解決済み`std.decimal`と型付き`semantic.Validation`を入力に、実際の`value.Sign() > 0`を含むGoを生成する`internal/semantic/validationgen.GeneratePositive`が加わった。別Go Processで正値／0／負値／NULL／欠損を実行する試験コードも存在する。未対応Kind／型／Relationを拒否し、既存`validationeval.Source/Result`を用いるため、第二EvaluatorやDSLへのGo構文露出を増やさず、**単なる手書きEvaluatorへの委譲を越えるR1の局所実装**となった。ただし、PRのマージと、その正確なHEADに対するGoテスト成功、製品Builderによる生成物消費は別資格である。
 
-元のR1試験では、型付きRuleの`Attribute`をテストコード内で直接差し替えた際にGo Sourceが変わることを確認している。次の一因子試験では、**テスト用WorkspaceのMarkdown原文そのものを編集**し、同じManifest/Language選択・同じRule IDのまま`Workspace.Load`をもう一度通す。その際、変更前のSource Index失効、変更後の型解決、再生成されたGoの`Number`呼出し先、固定した二入力での別Go Process実行結果をひと続きで照合する。元のFixtureは編集せず、変更先も`std.decimal`の独立属性として一時Workspaceにだけ追加する。型が`std.integer`や`std.money`の項目へ変更された場合は、暗黙の型変換や疑似的な成功で隠さず未対応として拒否する。
+後続の[Rule原文改版回帰 #4932](https://github.com/hat47x/tei-platform/pull/4932)と[生成バイナリ対照 #4930](https://github.com/hat47x/tei-platform/pull/4930)がmainに統合された。両者は、**隔離したWorkspaceのMarkdown原文でRuleの参照属性だけを変更**し、同じManifest・Rule ID・入力・型`std.decimal`を保ちながら、実`Workspace.Load`→Source Index→型解決→Go再生成→別Go Process／実コンパイル済みBinaryの読取先と判定差分を検査する。旧Source Indexは改版後のRaw byteを拒否する。第二の`std.decimal`属性は両試行で同じ一時Data定義へ追加し、元のFixtureを変えない。`std.integer`・`std.money`への暗黙変換や、同一IDを根拠とする旧生成物の再利用は引き続き受理しない。
 
-この新しい回帰が成功しても、実SourceのReaderと実Go生成器を**テスト関数が接合した**という範囲までである。Generatorを製品の正式Builderが選択したこと、Build Intentに実Source/Toolchain/Targetを束縛したこと、Plugin Runtimeに入れたこと、通常製品CLIでProviderが呼ばれたこと、Ownerが業務意味を受理したことには拡張しない。実Goテストの合否は、新PRのexact HEADで個別に記録する。
+この回帰は、実SourceのReaderと実Go生成器を**テスト関数が接合した**局所R1の証拠である。[#4978対象HEADのRepository Health](https://github.com/hat47x/tei-platform/actions/runs/43699354375)では`tei/internal/semantic/validationgen`のパッケージ試験が成功したが、全体Healthは別の失敗により不合格だった。Generatorが正式な製品Builderへ選択されたこと、Build IntentへSource/Toolchain/Targetを束縛したこと、Plugin Runtimeへ収録したこと、通常製品CLIからProviderが呼ばれたこと、Ownerが業務意味を受理したことには昇格させない。
 
 ### 15.68 R2へ渡す最小の実装契約と、失格になる再利用
 
@@ -1693,4 +1693,4 @@ R2では、`GeneratePositive(rule, attributeType, packageName)`の戻りbyteだ�
 | **変更追随** | 条件・参照Attribute変更なら実Go判断・Read Scope・実Consumer結果を再検収。Markdown説明文の変更ならSourceの再確認と意味不変を別票にする | Source A→B→Aで古い受理票・Grant・Build資格を自動復活 |
 | **Runtime閉包** | 選択Providerと実Entry、許可された入力Read、結果・Effect/Receipt、通常製品CLIと独立Consumerの実観測 | Build成功やGenerated Goの単独`go run`を実Provider Callへ昇格 |
 
-初回のR2はpureな数量判定一件に限定する。既存Builderに差し込む際に新Registry／Host／独自Runner／第二意味正本を必要とするなら、共通部品を増やす前に**既存Build Intentのどの入力契約が足りないか**をOwner #4544／#1121へ返す。R2の実ArtifactとR3の実Provider/CLI、R4のStudio Stage1→Stage2はそれぞれ実消費の証拠を持つ。Node Flowや簡易APIも同じOperator/Function/Processの投影として後続で検証し、初回Rule生成PRのHard Gateへは追加しない。
+現在のmainには`tools/reference-go-build-from-plan/validationgen_build_binding_test.go`もあり、生成Goの実byteを既存の**参照BuildPlan Builder**が読み込む試験を収録している。[#4978対象HEADのRepository Health](https://github.com/hat47x/tei-platform/actions/runs/43699354375)では`tei/tools/reference-go-build-from-plan`のパッケージ試験が成功した。これはR2の前段となる実消費の根拠であり、**製品CLIが選んだ正式Builder／Build Intent・Plugin Lock／Runtime Providerの資格ではない**。初回の正式R2はpureな数量判定一件に限定する。新Registry／Host／独自Runner／第二意味正本を増やす前に、既存Build Intentから生成byte／Source版／Generator版／選択Builder／実Artifactをどこまで一Attemptで束縛できるかをOwner #4544／#1121へ返す。R2の実ArtifactとR3の実Provider/CLI、R4のStudio Stage1→Stage2はそれぞれ実消費の証拠を持つ。Node Flowや簡易APIも同じOperator/Function/Processの投影として後続で検証し、初回Rule生成PRのHard Gateへは追加しない。
