@@ -598,7 +598,7 @@ Git作業版、DB接続先、Workspace、Principal/Grant、Plugin/Builder選択�
 
 ## 33. 2026-11-15：実際の入力資料を起点とする協業UXと実装順
 
-今回の横断レビューでは、[Markdown Graph/Ruleの固定資料 #4709](https://github.com/hat47x/tei-platform/pull/4709)がmainへ統合されたこと、[Markdown Reader実装前計画 #4704](https://github.com/hat47x/tei-platform/pull/4704)、[Studio選択対象のCLI・AI接続 #4696](https://github.com/hat47x/tei-platform/pull/4696)、[Desktop/CLI起動契約 #4705](https://github.com/hat47x/tei-platform/pull/4705)、[YIC最初の協業実行票](https://github.com/hat47x/tai-pleroma/pull/648)を確認した。既存の一般設計に新しい正本を増やすのではなく、**現時点で使える入口と、これから実装する入口を分けて一つの利用体験へ収束**させる。
+今回の横断レビューでは、[Markdown Graph/Ruleの固定資料 #4709](https://github.com/hat47x/tei-platform/pull/4709)がmainへ統合されたこと、[Markdown Reader実装前計画 #4704](https://github.com/hat47x/tei-platform/pull/4704)、[Studio選択対象のCLI・AI接続 #4696](https://github.com/hat47x/tei-platform/pull/4696)、[Desktop/CLI起動契約 #4705](https://github.com/hat47x/tei-platform/pull/4705)、[YIC最初の協業実行票](https://github.com/hat47x/tai-pleroma/blob/main/docs/yi-constellation/tei-selection-harness-first-vertical-slice-2026-11-15.md)（[PR #648](https://github.com/hat47x/tai-pleroma/pull/648)で2026年11月15日にmainへ統合）を確認した。既存の一般設計に新しい正本を増やすのではなく、**現時点で使える入口と、これから実装する入口を分けて一つの利用体験へ収束**させる。
 
 ### 33.1 最初の二つの実証を混ぜない
 
@@ -629,7 +629,7 @@ Bの基準例には表示名がどちらも「対象」のノード n-1／n-2と
 4. **元対象へ復帰**：AIの返答を元のSubject・元Sourceへ結び、現在の版で再照合する。古い応答・別Workspace・権限不明なら候補として保持し、画面のFocusや未保存Bufferに無音適用しない。
 5. **編集は次段階**：採用候補は既存のPreview/Diff、意味の確認、条件付きWriter、独立再読取を通す。受信、保存、Meaning受理、Build、実Provider Effectを同じ「完了」と表示しない。
 
-外部Harnessへの正式な送受信・受信先管理・Session復旧は[TAI #648](https://github.com/hat47x/tai-pleroma/pull/648)の実行票を正本とする。既存Handoff v1に必要なQualifierが表せなければunsupportedで止め、TEI側に第二のSession Storeや専用Agent Loopを作らない。
+外部Harnessへの正式な送受信・受信先管理・Session復旧は、[YICでmainへ統合済みの最初の実行票](https://github.com/hat47x/tai-pleroma/blob/main/docs/yi-constellation/tei-selection-harness-first-vertical-slice-2026-11-15.md)と[横断計画](https://github.com/hat47x/tai-pleroma/blob/main/docs/yi-constellation/harness-cross-ui-session-probe-2026-11-14.md)に示す順序を参照し、既存TAI HarnessのOwner契約で受理する。既存Handoff v1に必要なQualifierが表せなければunsupportedで止め、TEI側に第二のSession Storeや専用Agent Loopを作らない。
 
 ### 33.4 UI非干渉・Source位置・プロセス配置
 
