@@ -554,3 +554,36 @@ Wails側の「Mobileが実験的」の表記に変化がない限り、M-0〜2�
 Wails公式の[Mobile Overview](https://wails.io/guides/mobile/)に従い、**`GOOS=ios`では`darwin`、`GOOS=android`では`linux`のBuild条件も成立する**点を検査する。Desktop専用処理を`//go:build darwin`または`//go:build linux`だけで選ばない。必要に応じ`darwin && !ios`、`linux && !android`などで区分し、OSごとのProcess起動・Installer・Wails Updater・Filesystem権限・動的Native PluginがMobileへ紛れ込まないようにする。
 
 Mobile実験Buildの最初の期待値は、同じ`*.tei.md`／既存`*.tei`のうち正式に受理されたRead-only Operationを、Desktopとは異なるPackage/Host上で呼び出せる範囲に限定する。**共通Sourceをビルドしただけで業務意味の受理やMobile Plugin実行資格は得られない**。iOS/Android双方のビルド結果、実Device/Simulator、Source Snapshot、表示・診断を別々の証拠として記録する。
+
+## 24. 更新配布の資格と業務意味の資格を分ける（2026-11-15、最新main統合の実証に基づく）
+
+Wails Desktop／Standalone／Mobileで共通にするのは、単一の「バージョンが同じ」という判定ではない。**Sourceが現在のものか、候補構造が同じか、生成物が同じか、配布された実行物が同じか、実際に使用できるか**を別々に確認する。main統合済みの[#4758](https://github.com/hat47x/tei-platform/pull/4758)は、限定Graph/Rule Referenceの生成Go Binaryに`-candidate-shape`照会を追加した。これを配布検査の参考にするが、正式なTEI製品Loader／業務Meaning／Pluginの証拠と取り違えない。
+
+| 比較する対象 | 何を示せるか | これだけでは示せないこと | 最初の利用箇所 |
+| --- | --- | --- | --- |
+| **Raw Source Digest／Pinned Revision** | 実際に読んだ文書のbyteとSource時点 | 正式Frontendの消費、意味受理、実Permission | #4751のS0-P、#4730のS0-A |
+| **候補構造のFingerprint** | Node/Edge／Rule条件などReferenceが解釈した局所構造の同値 | 説明・Source Span、Owner意味受理、現在のWorld、生成済みBinary同一性 | main #4758とReader→生成器の回帰 |
+| **Artifact Digest／Toolchain** | 生成されたGo／UI Asset／Plugin Artifactの実Byteと生成条件 | そのArtifactの動作・実Provider選択・現在Grant | #2831/#4583のStage1→Stage2、#4748 |
+| **Desktop／Server Release Identity** | OS/Arch、実Image、UI Asset、同梱Plugin Lock・既定設定Schemaの組合せ | DB Migration成功、実Client表示、すべてのPlugin実行資格 | D2の初回配布、D3のWake／Installer試験 |
+| **Operation／Current Grant／Receipt** | 実呼出し先、許可、実Attemptと観測結果 | 外部Effectの自動取消し、別Consumerによる意味検証 | #4702／#1158／#2044 |
+
+候補構造の指紋は**再生成の検討材料**である。同じ構造指紋でもRaw Sourceが変更されればSource／受理は別途再確認する。A→B→Aで元Digestに戻っても、旧Owner受理・旧Build Evidence・旧Releaseの使用資格を自動復活させない。逆にNode IDなど**呼出時の入力**を変えただけなら、生成Sourceが変わったと扱わず、同じ実Binaryで新しいAttemptを記録する。新しいDigest正本や第二のEvidence Registryは設けない。
+
+### 24.1 生成したPluginを実際の配布物へ接続する
+
+[#4750](https://github.com/hat47x/tei-platform/pull/4750)のPlugin文書設計、および[#4765](https://github.com/hat47x/tei-platform/pull/4765)の標準Rule／Decision Analysisを、**製品実行と配布の担当境界**で結ぶ。
+
+- **定義から生成**：業務の条件・時点・結果・例外が受理済みMeaningとして確定した後、既存のTarget Generator／Plugin Contractで生成する。ReferenceのGraph/Rule→GoやBRMS設計文書だけで実Providerに登録しない。Mock／独立Expectedでの試験成功は実DB／外部Effectを保証しない。
+- **同梱候補の確定**：Releaseに載せる実Pluginは、実行時に必要なOperator／Data Provider／言語実装等のClosureを既存Plugin Lockで閉じる。別のServer／Mobile Targetには同一ソースから生成してもTarget固有のArtifact Digestと現在Scopeを持たせる。
+- **公開する説明**：バージョン付きマニュアルのSourceRef／Document Byteと、利用者が参照できる現在Disclosureを結ぶ。文書を同梱しただけでInstall／Enable／Current Grantを得たとは扱わない。Public Docのread-only受領は、業務Markdownの正式Reader完成を待つ新Hard Gateにしない。
+- **起動時の照合**：D2単一Binary、D3別Server、Remote D1ごとに、Client Contract／Backend実Image／Plugin Lock／設定Schemaの互換範囲を確かめる。実Processで選ばれたProviderと、配布Manifestで宣言したProviderの一致は**Invocation時の別票**で確認する。
+- **更新と効果**：新Releaseの配置成功は実Process切替・Session Drain・Workspace／User設定の保全を自動証明しない。DB Migration／外部Effectはそれぞれの受理Ownerの責任とし、結果不明を安全な再送成功に変換しない。
+
+### 24.2 次にコードで実証すべき小さな閉路
+
+1. **#1824 S0-U**：現行beta.29からv3.1.0へ移行した実Windows Studioで、既存のSource-backed Readを実WebView2経由で呼び出し、旧Frontend Bundleの混入を拒否する。既存の#2831/#4583の実Build証拠と照合するが、セルフビルドの代替としない。
+2. **#1824 UP-1／#2044**：その実Binaryに必要な標準Plugin一件と既定設定一件を内包したD2候補を作り、オフライン起動／Read、設定上書きの拒否、Release版と実Imageの一致を独立に調べる。署名Update成功はUP-0で別途判定する。
+3. **#1824 UP-2（任意）**：D3でWakeがServer実Image／Plugin Closureを**配布物へ収められること**と、Updater／Installerが**混在世代を出さず切り替えられること**を別試験にする。Wakeの導入でP0工程を止めない。
+4. **M-1／M-2（探索）**：同じ受理済みRead操作をAndroid／iOSでビルド・受領できるかを見る。OS固有Package/Capabilityは別資格であり、正式なMobile対応時期は約束しない。
+
+**受入上限**：この節は現行mainの実コード・設計PRと上流Wails仕様を照合した**計画の更新**である。新しいWails安定版ビルド、D2/D3 Package、実Plugin／Provider、Mobile試験、Stage1→Stage2再入の追加成功は今回NOT RUN。全体P0の順位を変えない。
