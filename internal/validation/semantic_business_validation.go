@@ -86,6 +86,18 @@ func validateSemanticBusinessValidations(w ir.World) []Diagnostic {
 				continue
 			}
 			operators[operator.ID] = operator
+			if prior, exists := otherSemanticElements[operator.ID]; exists {
+				// A rule writes an attribute before `is` and an operator after
+				// it. One identity that is both would make a reordered rule
+				// resolve instead of failing.
+				out = append(out, errFor(
+					operatorSubject,
+					"DUPLICATE_SEMANTIC_ELEMENT",
+					"semantic element %s is declared as both %s and operator",
+					operator.ID,
+					prior,
+				))
+			}
 			if !strings.HasPrefix(string(operator.ID), string(ns.ID)+".") {
 				out = append(out, errFor(
 					operatorSubject,

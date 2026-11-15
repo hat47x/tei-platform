@@ -414,6 +414,13 @@ func rejectRuleKeywordAsSubject(t Token) error {
 	case "is", "per", "rule", "namespace", "operator", "takes":
 		return fmt.Errorf("%q cannot be a rule subject; declare the constrained attribute before \"is\"", t.Text)
 	}
+	// A predicate word in the subject position means the clauses were written
+	// in the other order (`positive is a.b`). Since a qualified name after
+	// `is` is an operator reference, accepting it here would turn a reordered
+	// rule into a rule about an operator named like the attribute.
+	if RulePredicate(t.Text).valid() {
+		return fmt.Errorf("%q is a predicate, not an attribute; write the constrained attribute before \"is\" and the predicate after it", t.Text)
+	}
 	return nil
 }
 
