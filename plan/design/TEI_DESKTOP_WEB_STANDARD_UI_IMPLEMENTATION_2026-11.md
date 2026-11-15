@@ -176,6 +176,8 @@ UIが保持する一時表示・Pin・Dirty Bufferと、Release後も必要なWo
 実装着手時の状態は、[Workbenchの`main.ts`](../../reference/tei-studio-workbench/main.ts)、[参照`index.html`](../../reference/tei-studio-workbench/index.html)、[配布用`index.html`](../../cmd/tei-studio/assets/workbench/index.html)、[既存Pin配線テスト](../../reference/tei-studio-workbench/pin-wiring.contract.test.mjs)の**同じHEAD**を比較して判定する。
 
 - 現行`main.ts`のPin解除・再確認Handlerは`unpin-current`と`inspect-pinned`を参照するが、参照HTMLは`pin-release`と`pin-check`を残している。既存`PIN-WIRING-03`は、この二つのID不一致を検出できる。修正専用[Draft #4876](https://github.com/hat47x/tei-platform/pull/4876)は現時点で**未マージ**であり、未統合の差分を現行製品に算入しない。
+**W0-Aの実装調査（2026-11-15、PR #4920）**：旧Draft #4876のexact HEADでは、Workbench Node 24 CIの57件がPASSした一方、`PIN-WIRING-03`が画面側の`pin-version`欠落によりFAILした（[run 43681382183](https://github.com/hat47x/tei-platform/actions/runs/43681382183)）。さらに参照`main.ts`には、未定義の旧`pinReader`へイベントを送る処理と、現行`pinState`／Host Readerを使う処理が同居し、`pin-current`のclick登録も二重だった。**新しい実装では旧経路を削除し、既存Presenterが使用する三ボタン・版表示をDOMに一致させる**。独立検査`PIN-WIRING-08`は二重登録・旧controller残存を拒否する。これは参照Sourceの回復であって、配布Asset/Windowsの受領や意味受理ではない。修正PRの正確なHEADのNode Test／Typecheck／BuildがPASSするまでW0-Aは未検収とする。
+
 - 配布`assets/workbench/index.html`には、参照HTMLのPin領域そのものが収録されていない。参照HTMLの二つのIDを合わせただけでは、`//go:embed`された旧HTML・JSの不一致は解消しない。
 - 内蔵Rule Markdownについては、main統合済み[製品Load/Source Index #4890](https://github.com/hat47x/tei-platform/pull/4890)、[Inspect/Trace #4891](https://github.com/hat47x/tei-platform/pull/4891)、[旧Validationとの意味同値・重複拒否 #4900](https://github.com/hat47x/tei-platform/pull/4900)、[既存Evaluatorと合成Read Footprint #4901](https://github.com/hat47x/tei-platform/pull/4901)を実コードの到達点とする。ただしGoテストがmainにあることと、当該HEADのCI成功は分けて確認する。実DB Provider・公開Capability Entry・生成Go・Windows UI使用は別資格のまま。
 
