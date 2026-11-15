@@ -102,7 +102,7 @@ func TestCapabilitySourceValidationAndPreDispatchAgreeOnMalformedDeclarations(t 
 
 func TestCapabilityCanonicalInputNameRequiredInWorkspaceValidation(t *testing.T) {
 	world := ir.World{Semantics: []semantic.Namespace{{
-		ID: "security",
+		ID:   "security",
 		Data: []semantic.Data{{ID: "security.account"}},
 		Capabilities: []semantic.Capability{{
 			ID:     "security.inspect",
