@@ -117,7 +117,7 @@ func TestOrgAxisAsOfActualPostgresOptIn(t *testing.T) {
 	} {
 		t.Run(tc.title, func(t *testing.T) {
 			actual, err := executor.ExecuteBrowseQuery(ctx, q, ds, map[string]any{
-				"valid_from": date(tc.validAt), "known_from": date(tc.knownAt), "allocation_min": tc.minimum,
+				"valid_at": date(tc.validAt), "known_at": date(tc.knownAt), "allocation_min": tc.minimum,
 			})
 			if err != nil {
 				t.Fatal(err)
