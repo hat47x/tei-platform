@@ -1681,3 +1681,46 @@ WindowのS0-Pは[main統合済みPR #4792](https://github.com/hat47x/tei-platfor
 補助的な証拠として[Studio S-LOC試作 #4842](https://github.com/hat47x/tei-platform/pull/4842)のSource位置投影や[Plugin実CLI Discovery試作 #4845](https://github.com/hat47x/tei-platform/pull/4845)を利用する場合も、**現時点では別PRの審査対象**であり、正式Reader／原文の現在再Read／Manual公開／実Consumerの完了には数えない。組織の二時点Query引数とBinderの不一致を修正する[PR #4843](https://github.com/hat47x/tei-platform/pull/4843)も別Ownerの進行中修正であり、別時点・別人物間の意味同一性を保証するものではない。
 
 **本節の資格**：実コードとmainの限定Go回帰、主線計画を照合した実装引渡しであり、A0〜A3の製品Reader、正式Rule集合、Provider二Consumer、Windows実受領をこの文書更新で新たに通したものではない。独立Expectedは#1180/#2514、最初の製品P0はReader・実Provider・Studioセルフビルドの三系統を維持する。
+
+<!-- tei-data-forms-identity-asof-inspector-conformance-20261115 -->
+### 39.9 Sourceの参照先・関係の個別対応・評価時点を、別々に確定する（2026-11-15）
+
+前節までのSource入場（A0〜A3）とRule／Inputの閉包に対し、mainへ統合された[REAの曖昧な仮対応の解消 #4850](https://github.com/hat47x/tei-platform/pull/4850)、[組織の二時点Query契約修正 #4847](https://github.com/hat47x/tei-platform/pull/4847)、[実Capability InspectorのSource位置検査 #4853](https://github.com/hat47x/tei-platform/pull/4853)を接続する。三者は、いずれも識別・選択の欠落を別の手掛かりで埋めてしまうと誤った業務判断へ進むが、**互いに代わりを務める証拠ではない**。
+
+#### 39.9.1 Sourceを指せることと、現在の原文を開けることを分ける
+
+mainの`internal/operations/inspect_capability_source_evidence_test.go`は、実Workspaceの`semantic-capability:sales.order.submit`を`InspectSubject`で読取り、Canonical ID・read-only制限・Source Index fingerprint・`semantic/sales/order.tei`の元byte位置・`TraceSubjectSources`との一致を照合する。存在しないSubjectでは、空のTraceと`SUBJECT_NOT_FOUND`のInspector拒否を区別する。
+
+この回帰は、**現行の`*.tei`で一つのSubjectとSource位置を照合できるというHeadless側の基準**として利用する。正式`*.tei.md`のLanguage選抜（A0）／Reader（A1）や、現在のRoot・Revision・Audience・Grantで原文を再取得するS-OPENを成立させたものではない。相対Path・Source Range・digestを画面へ示すだけでは、原文の再Read、個別RelationのSource Patch、公開・実行を許可しない。
+
+#### 39.9.2 構造が同じでも、個別Relationの対応を捏造しない
+
+mainの`internal/reacandidate/adopt.go`は、同一Candidate IDの比較と、構造キーによるfallbackを分けている。後者では旧側・新側が各一件のときに限り候補として再採番を報告し、**どちらか一方でも二件以上あれば**`ambiguous-structural-match`として個別のbefore/after対応を作らない。旧新のCandidate群は報告できても、相手側のSource／Attemptを任意に埋めたり、配列順で一対一に割り当てたりしない。
+
+| 比較対象 | 読取り専用で示せること | 検証せずに行ってはいけないこと |
+| --- | --- | --- |
+| 同じCandidate IDの新旧 | 当該候補の観測FactsやSource Revisionの変化 | ID／申告digest一致のみでOwnerの旧受理を再使用 |
+| 構造キーが旧一件・新一件 | 構造上の再採番候補（正式Relation IDではない） | Source-backedな同一Occurrence・編集先が確定したと宣言 |
+| 旧二件・新二件、旧一件・新二件、旧二件・新一件 | 構造上似ている候補集合と、個別対応が未確定な理由 | いずれかを恣意的にペアにし、旧Source/Attemptから新Edgeへ書戻し |
+| Graph→Treeや集計へ投影 | 受理済みIdentity／Multiplicityを明示できる範囲の表示 | 多重辺・同名ノード・同Person複数経路を同一の編集対象へ縮約 |
+
+正式な業務Relation、Graph上の描画線、Source内の出現位置、外部`ExternalOccurrenceID`は同一のID空間ではない。個別Source Slotを特定できないときは、既存のread-only Review／Loss報告のまま止める。新しい自動Matching Engineや逆書戻し権限は作らない。
+
+#### 39.9.3 評価する二時点と、保存行の区間開始を混同しない
+
+main [#4847](https://github.com/hat47x/tei-platform/pull/4847)は、組織C1のNative as-of Queryで、**呼出し入力**の`valid_at`／`known_at`と、**保存された区間開始列**の`valid_from`／`known_from`を区別し、SQL Placeholder・実Binder試験の入力名を宣言へ揃えた。旧区間列名を入力引数に渡したときは、実Provider呼出し前の拒否例にする。
+
+二時点の照合には、Query定義・Callerが渡す引数・Binderが渡した値・Providerが消費したSnapshot／Read Cohort・ResultのPerson／Relation Identityがそれぞれ必要になる。宣言とBinderの一致は重要な前提だが、**二Relationが同じDB Snapshotで読まれたこと、Membershipから正式Person Linkが成立したこと、訂正前後の行を物理的に共存保存できること**を保証しない（[組織C1§35〜36](ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)）。この境界は、Ruleの適用時点とInput取得時点を区別する第39.8.2節にも適用する。
+
+#### 39.9.4 最小の検収票を実コードへ戻す
+
+| 既存の検収経路 | 最低限確認する正例と拒否例 | 次に渡す未接続部分 |
+| --- | --- | --- |
+| **Source参照**：`internal/operations/inspect_capability_source_evidence_test.go` | 実Canonical CapabilityのSource Span一致／不存在SubjectのInspector拒否 | `*.tei.md`正式選抜A0〜A3、StudioのS-OPEN／現在Audience／実Windows受領（#2621/#1824/#4583） |
+| **関係候補比較**：`internal/reacandidate/adopt_test.go` | 一対一の候補再採番／多重候補では`ambiguous-structural-match`、個別の相手Sourceを未記入 | 正式Relation IDとSource SlotのOwner受理、限定Writerのゼロ書込み（#2497/#1124/#4661） |
+| **二時点Query**：`internal/operations/org_axis_asof_physical_test.go` | 宣言済み`valid_at`／`known_at`のBinder一致／旧`valid_from`／`known_from`入力の事前拒否 | 同一DB Read Cohort、Person Link／履歴共存、独立Consumer（#2586/#2506） |
+| **Language境界**：`reference/dsl-language-plugin/workspace_admission_boundary_test.go` | 限定Referenceで候補解析可／同じManaged Sourceの製品`Workspace.Load`は未束縛拒否 | 正式製品Selectionから同一Load byteを読むA0〜A3（#988/#1018/#2621） |
+
+以上の実証は**局所Go回帰の存在・役割を確認したもの**であり、各PRのRepository HealthやWindows/PG試験が一律に成功したと主張するものではない。特に、mainに試験ファイルがあることと、その試験の全体CIが合格したことは別。新しい独立Expected、Schema、Host、Graph Matcher、Temporal Engineは設けず、#1180/#2514の既存Ownerへ正負対照を引き渡す。
+
+初回P0は前節どおりGraphのA0→A1〜A3正式Reader、並行する通常CLI→実Provider→独立Consumer、Studio非Plugin Stage1→Stage2である。REA・組織・Inspectorの横断反例を、Graph一件を実際に読むための新たな必須条件にはしない。
