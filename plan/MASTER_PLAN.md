@@ -2782,3 +2782,10 @@ Studio／SHO／SUI／AIが同じ意味候補を提示しても、編集資格は
 - 本番運用の高可用性を共通機構として扱うこと
 
 参照事例や検証根拠によって必要性を確かめるまでは、これらの方式を固定しません。
+
+
+### 2026-11-15 組織C1：二時点の重なりを直積で検証する（補遺§39）
+
+[組織C1設計§39](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)に、複合主キーの版保存だけでは区間競合が防げない§38の実測を引き継ぎ、**valid期間とknown期間がともに重なる場合の版競合**と、**known期間が重なってもvalid期間が隣接する正当な変更**を区別するORG-BT-01〜05を追加した。単一Occurrenceに一版しか成立しないかは業務Ownerの選択であり、Personの兼務・別Membershipとの重なりを禁止しない。
+
+隔離PostgreSQLの一時テーブルで二軸の正負例を比較する `TestOrgAxisAsOfBitemporalRectangleCandidateOptIn` を用意し、専用CIの必須PASS対象に加えた。**この計画記述だけでは実PG試験のPASS・Owner意味受理・製品Persistenceへの採用を意味しない。** #2386/#1126の訂正と異動・版IDの意味判断後に、#1180/#2514/#4490のMVR-02/03を実Provider→二Consumerで検収する。#2586の通常CLI実Readと#2831のDesktop Stage1→Stage2は引き続き独立P0とする。

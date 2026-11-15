@@ -1834,3 +1834,36 @@ CLI・Studio・生成Goから再利用する際も、**単一の受理済みSour
 **得られた結論**：単独PKの保存拒否に対し、複合キー候補は一時表上で二版を保存し境界で読み分けられた。しかし重なる第三版も格納でき、knownAtだけでは一版に定まらない。つまり複合キーが十分条件ではない。Ownerが訂正、取消、再所属、時点区間の非重複または競合の表示・解消方法を受理する前に、標準のPersistence Mappingへ反映しない。
 
 次の製品差分は、意味Ownerが選んだ方式と制約を実`*.tei` Source/物理Mapping/Queryへ反映した**同一Membershipの二版保存・実Provider Read・独立Consumer正例**である。今回の実験の一時テーブルやSQLをそのまま製品実装として流用しない。
+
+<!-- org-c1-bitemporal-rectangle-20261115 -->
+## 39. 二時点の版競合を「有効期間×認識期間」の重なりで捉える（2026-11-15）
+
+### 39.1 一つの時間軸だけで履歴の正否を判定しない
+
+§38の複合キー候補は旧新の版を保存できても、同じ認識時点で二版が該当する危険が残った。ただし、`known_from/known_to`が重なる二行を無条件に不正とすれば、**同じ認識時点に把握されているが、有効期間は前後に分かれる**正当な変更履歴まで排除してしまう。訂正・異動・取消を一律の「known期間非重複」へ押し込めない。
+
+単一のMembership occurrenceについて「指定されたvalidAtとknownAtにおける属性値は一つに決まる」という意味をOwnerが選ぶ場合、競合を判定する候補は、二行の**有効期間も認識期間も重なること**である。各版は二つの半開区間の直積領域として比較する。これは物理制約の提案であり、すべての組織関係に単一値性を強制する新Core仕様ではない。異なるMembership occurrence、兼務、複数の役割は同一人物について重なってよい。
+
+### 39.2 追加する独立対照（ORG-BT-01〜05）
+
+| 受入観点 | 合成入力と期待 | 禁止する推論 |
+| --- | --- | --- |
+| ORG-BT-01 訂正時の境界 | 同一A2旧版と新版はvalid期間が同じでもknown境界の前後で一版ずつ | 履歴版が共存しただけで実Providerが正しく使えるとは言わない |
+| ORG-BT-02 正当な有効期間の交替 | 同一A3の二版はknown期間が同じでも、valid期間が隣接し重ならないため、各validAtで一版 | known期間の重複だけを制約違反にしない |
+| ORG-BT-03 二軸が交差する競合 | A2の第三版がvalidとknownの両軸で新版に重なると、同一評価点で二版を返す | 主キーが異なるからといって一意性を保証しない |
+| ORG-BT-04 片軸だけ外れた時点 | 第三版のvalid終了・known終了、valid開始前では元の新版だけに戻る | 区間端点の排他を曖昧にしない |
+| ORG-BT-05 所属と人物の粒度 | 異なるMembership IDや同一Personの兼務は、上記の単一Occurrenceの版競合とは別に数える | Membership版数・Membership数・Person実人数を同一視しない |
+
+`TestOrgAxisAsOfBitemporalRectangleCandidateOptIn`は既存の隔離PostgreSQL `tei_org_axis_e2e` に接続し、トランザクション内の一時テーブルでORG-BT-01〜04を検証する。既存製品のPersistence・Query・Ruleや正本fixtureは変更しない。CIでは試験名の明示PASSを必須とし、未実行（SKIP）を実証済みにしない。ORG-BT-05は人物の正式Relation/Owner意味受理が必要なため、今回のSQL試験には含めない。
+
+### 39.3 物理実装前に分ける判断
+
+- **業務意味**：同一Occurrence、訂正、実際の所属変更、取消・再所属、別Occurrence、複数値を許す関係の区別は#2386/#1126が選ぶ。訂正イベントの有効日と記録日は新しい二人・二所属の証拠にはならない。
+- **保存制約**：単独・複合PK、版ID、二次元区間重なり検査、同時Writerの競合、境界・NULL上端・遅延訂正を比較する。制約を将来のPostgreSQL実装へ寄せるか、他Providerにも移せる検証とするかは既存DB/Provider Ownerの仕事であり、検証用一時テーブルの振る舞いを標準DDLとしない。
+- **読み取りと利用**：一意に読めても、Person Link、Source Revision、Read Cohort、Scope/全件性、Business Rule、現在Host Grantは独立。二行が返った際の`LIMIT 1`やソート先頭採用を、業務判断の解決に使わない。
+
+### 39.4 次の実装ゲート
+
+候補SQLの実測後は、#2386/#1126による単一値性・訂正と異動・Occurrence/版IDの意味受理を条件として、採用方式を正式`*.tei`の保存・Queryへ反映し、同一A2の旧新二版を実Provider→Function Context→二Consumerで同一World/Snapshotから再読込するMVR-02/03正例へ進める。競合の検出だけでなく、**正しい履歴が拒否されず、実際の競合が黙殺されない**ことを両面から確認する。
+
+この§39は比較試験と受入条件の拡張であり、採用済みTemporal Engine、組織別Authorization、製品MVR-02合格、Owner意味受理、Studio/Host E2Eを意味しない。通常CLI実Providerの#2586とDesktopセルフビルド#2831を先行P0に保つ。
