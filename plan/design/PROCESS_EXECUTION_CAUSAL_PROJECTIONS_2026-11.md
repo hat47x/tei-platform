@@ -346,7 +346,8 @@ flowchart LR
   E --> B["集計入力Event生成"]
   M --> D["配送Attempt・受領の別確認"]
   B --> A["締切り条件・重複を検査して集計"]
-  U -. "Receipt照会で確認するまで再送保留" .-> C
+  U --> T["同一OperationのReceipt照会・fence確認"]
+  T --> H["現在Grantと再送可否を別判定"]
 ```
 
 図のE→MとE→Bは**設計上の発生条件**であり、MとBの配信・実実行の順序を保証しない。実際のCommit・Outbox・Broker・Consumerから対応する証拠が得られなければ、該当線は「要求された関係」のままにする。U→Cの破線は無条件の再実行ではなく、照会・同一Operation identity・fence・現在Grantの確認後にだけ再試行可否を決める境界である。
@@ -370,7 +371,7 @@ flowchart LR
 
 ## 19. 一問ずつ実装するための小さな反証と引渡し
 
-実装は二つの独立した題材から始める。一つ目は**実在する選択済みMarkdown Rule** \`sales.order_line.quantity_positive\` のread-only説明であり、現在の \`Workspace.Load\`／Source Index／\`semantic.Validation\`／\`validationeval\`／\`validationgen.GeneratePositive\` に接続する。二つ目は**合成されたEffect unknown事例**であり、DB／Queue／通知の製品E2Eを行ったことにはしない。両者の証拠を、一つの業務Operationが製品で通ったかのように結合しない。
+実装は二つの独立した題材から始める。一つ目は**実在する選択済みMarkdown Rule** `sales.order_line.quantity_positive` のread-only説明であり、現在の `Workspace.Load`／Source Index／`semantic.Validation`／`validationeval`／`validationgen.GeneratePositive` に接続する。二つ目は**合成されたEffect unknown事例**であり、DB／Queue／通知の製品E2Eを行ったことにはしない。両者の証拠を、一つの業務Operationが製品で通ったかのように結合しない。
 
 | 順番 | 既存資産を使う最小の作業 | 独立Expectedで落とす反例・受け渡し先 |
 | --- | --- | --- |
