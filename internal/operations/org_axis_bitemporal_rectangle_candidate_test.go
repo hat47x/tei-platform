@@ -60,11 +60,13 @@ func TestOrgAxisAsOfBitemporalRectangleCandidateOptIn(t *testing.T) {
 	// A3 is a distinct occurrence whose two valid periods do not overlap,
 	// although both versions are known during exactly the same period.
 	for _, r := range []struct {
-		id, rev, validFrom string
-		validTo            any
-		knownFrom          string
-		knownTo            any
-		allocation         string
+		id         string
+		rev        string
+		validFrom  string
+		validTo    any
+		knownFrom  string
+		knownTo    any
+		allocation string
 	}{
 		{"A2", "A2-old", "2027-01-01", nil, "2027-04-01", "2027-07-03", "0.60"},
 		{"A2", "A2-new", "2027-01-01", nil, "2027-07-03", nil, "0.90"},
