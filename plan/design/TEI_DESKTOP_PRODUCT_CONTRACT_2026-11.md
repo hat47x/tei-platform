@@ -522,6 +522,8 @@ D1以前の評価は代表操作「Subject Catalog→明示Pin A→B編集→A�
 
 **実Consumerまでの設計追補（2026-11-15）**：[Web標準UI指針 §§8〜11](TEI_DESKTOP_WEB_STANDARD_UI_IMPLEMENTATION_2026-11.md)で、現行Embed CIにあるHTML／JS／CSS／第三者通知の四byte比較から、実Wails配信・Pin／S-LOCのDOM受領・Stage1→Stage2までを別々に検収する。内蔵`tei.rule-authoring/v0` Readerの限定製品Load（Bootstrap §29.7）は実在するが、Source表示・AI開示・Rule→Go/Provider/Owner受理へ昇格させない。StandaloneのD2単一Image＋Updater、子Backend D3、Mobile実験を製品P0の新前提にせず、W0の現Sourceからの正規Bundle回復を先行する。
 
+**W0分割検収と最新実装の引渡し（2026-11-15）**：[Desktop Web標準UI指針 §§12〜13](TEI_DESKTOP_WEB_STANDARD_UI_IMPLEMENTATION_2026-11.md)で、参照HTMLのPin Handler ID整合（未マージDraft #4876）と配布HTML/JSの未同期を別の欠陥として固定し、W0-A参照配線／B正規Asset四byte／C実Windows受領／D Stage1→Stage2実再構築を既存P-03〜06へ割り当てた。主たるWeb開発規約はmain統合済み`AGENTS.md`と[横断Web標準UI設計](WEB_STANDARD_COMPONENT_AND_AGENT_HARNESS_2026-11.md)を参照する。#4890/#4891/#4900/#4901の内蔵Rule Reader・Inspector・構文意味同値・Evaluator合成Readは限定実装／回帰であり、実Provider Call／Owner受理／Desktop実DOM検収ではない。ノードベースフローは標準構造／既存Process Flowのread-only Projectionを先に適格化するP1であり、新Host／Runtime・新Hard Gateは作らない。
+
 #### 0.13.6 既存Expectedへの最小引渡し
 
 | 候補 | 負例／停止条件 | 既存担当 |
