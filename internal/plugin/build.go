@@ -77,6 +77,25 @@ type BuildParameter struct {
 	Value string `json:"value"`
 }
 
+// BuildParameterGoToolchainClosureDigest is the parameter a plan uses to name the
+// Go toolchain it must be built with. Its value is the toolchain closure digest
+// the reference Go builders compute (VERSION, bin/go, pkg/tool/<os>_<arch> and
+// src under GOROOT). The plan does not otherwise name a toolchain, and the same
+// plan built with two toolchains yields two artifacts (#2831, 2026-11-16 decision
+// 3). Naming it is optional: a plan without it is built with whatever -go names,
+// and the reports say which toolchain that was.
+const BuildParameterGoToolchainClosureDigest = "go.toolchain.closureDigest"
+
+// PlannedParameter returns the value of the named parameter, if the plan has it.
+func (p BuildPlan) PlannedParameter(name string) (string, bool) {
+	for _, param := range p.Parameters {
+		if param.Name == name {
+			return param.Value, true
+		}
+	}
+	return "", false
+}
+
 // BuildRecipe identifies what the selected builder is asked to build without
 // embedding an arbitrary shell command in the canonical build contract.
 // Kind is interpreted by the builder adapter; Entrypoint identifies the

@@ -28,6 +28,7 @@ func satisfiedL2B() selfBuildOuterEvidence {
 			L2BClaimed: false,
 		},
 		ArtifactReproducibility: &selfBuildReproducibility{State: reproducibilityReproduced},
+		BuilderBinding:          &selfBuildBuilderBinding{State: builderBindingBound, Matched: true},
 	}
 }
 
@@ -161,11 +162,55 @@ func TestAssessL2BOnAnEmptyAttemptReportsEveryCondition(t *testing.T) {
 	if claim.Claimed {
 		t.Fatal("an empty attempt claimed L2-b")
 	}
-	// Five independent conditions. The three facts about the plan receipt answer
-	// one question with mutually exclusive answers, so an attempt with no receipt
-	// reports one entry for it, not three.
-	if len(claim.Unmet) != 5 {
-		t.Fatalf("unmet has %d entries, want 5:\n%s", len(claim.Unmet), strings.Join(claim.Unmet, "\n"))
+	// Six independent conditions: the five of §4.23 and the builder binding
+	// (#2831 decision 1). The three facts about the plan receipt answer one
+	// question with mutually exclusive answers, so an attempt with no receipt
+	// reports one entry for it, not three. The toolchain adds no condition when
+	// the plan names none, and an empty attempt has no plan.
+	if len(claim.Unmet) != 6 {
+		t.Fatalf("unmet has %d entries, want 6:\n%s", len(claim.Unmet), strings.Join(claim.Unmet, "\n"))
+	}
+}
+
+// Decision 1 (#2831): the builder binding is a condition of the claim.
+func TestAssessL2BRequiresTheStartedFileToBeTheDeclaredBuilder(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		binding *selfBuildBuilderBinding
+		want    string
+	}{
+		{"never compared", nil, "not shown to be the builder the plan declares (unperformed)"},
+		{"other bytes", &selfBuildBuilderBinding{State: builderBindingMismatched}, "not shown to be the builder the plan declares (mismatched)"},
+	} {
+		report := satisfiedL2B()
+		report.BuilderBinding = tc.binding
+		claim := assessL2B(report)
+		if claim.Claimed || !strings.Contains(strings.Join(claim.Unmet, "\n"), tc.want) {
+			t.Fatalf("%s: claimed=%v unmet=%v", tc.name, claim.Claimed, claim.Unmet)
+		}
+	}
+}
+
+// Decision 3 (#2831): a plan that names its toolchain adds a condition; a plan
+// that names none does not.
+func TestAssessL2BChecksTheToolchainOnlyWhenThePlanNamesOne(t *testing.T) {
+	unnamed := satisfiedL2B()
+	unnamed.ToolchainObservation = &selfBuildToolchainObservation{State: toolchainObservationMatched}
+	if claim := assessL2B(unnamed); !claim.Claimed {
+		t.Fatalf("a plan without a toolchain lost the claim: %v", claim.Unmet)
+	}
+
+	matching := satisfiedL2B()
+	matching.ToolchainObservation = &selfBuildToolchainObservation{NamedByPlan: true, MatchesPlan: true}
+	if claim := assessL2B(matching); !claim.Claimed {
+		t.Fatalf("the toolchain the plan names was reported, yet the claim failed: %v", claim.Unmet)
+	}
+
+	other := satisfiedL2B()
+	other.ToolchainObservation = &selfBuildToolchainObservation{NamedByPlan: true, PlanReason: "the plan names Go toolchain A, but the builder reported B"}
+	claim := assessL2B(other)
+	if claim.Claimed || !strings.Contains(strings.Join(claim.Unmet, "\n"), "did not report the Go toolchain the plan names") {
+		t.Fatalf("another toolchain kept the claim: claimed=%v unmet=%v", claim.Claimed, claim.Unmet)
 	}
 }
 

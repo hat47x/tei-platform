@@ -216,6 +216,15 @@ func run(args []string, out io.Writer) error {
 			isolateExplicit = true
 		}
 	})
+	// The toolchain is observed before anything runs, so a plan that names a
+	// different one stops here rather than after a build it does not describe.
+	rep.Toolchain = observeToolchain(goExe)
+	planned, planNames := plan.PlannedParameter(plugin.BuildParameterGoToolchainClosureDigest)
+	if reason := checkPlannedToolchain(planned, planNames, rep.Toolchain); reason != "" {
+		rep.BuildError = reason
+		return emit(out, rep)
+	}
+
 	planNamesModule := planNamesModuleContext(plan)
 	isolateBuild := *isolate
 	if !isolateExplicit && planNamesModule {
@@ -265,7 +274,6 @@ func run(args []string, out io.Writer) error {
 		return emit(out, rep)
 	}
 
-	rep.Toolchain = observeToolchain(goExe)
 	rep.BuildCommand = []string{goExe, "build", "-trimpath", "-buildvcs=false", "-mod=readonly", "-o", *artifactOut, plan.Recipe.Entrypoint}
 
 	var buildErr error

@@ -536,8 +536,17 @@ func TestStateObservationOnARealGoBuild(t *testing.T) {
 		}
 		// The five conditions are unchanged, so the claim still stands; what the
 		// reader now gets is that the separation is declared, not seen.
-		if !report.L2B.Claimed {
-			t.Fatalf("this test pins the current predicate; if it changed, §4.55 must change with it: %+v", report.L2B)
+		//
+		// The wrapper is not the builder the plan declares, so since #2831
+		// decision 1 the claim is withheld by the builder binding — not by the
+		// state observation, which stays a record.
+		if report.L2B.Claimed || !strings.Contains(strings.Join(report.L2B.Unmet, "\n"), "not shown to be the builder the plan declares") {
+			t.Fatalf("the wrapper was not withheld by the builder binding: %+v", report.L2B)
+		}
+		for _, unmet := range report.L2B.Unmet {
+			if strings.Contains(unmet, "state") {
+				t.Fatalf("the state observation became a condition: %v", report.L2B.Unmet)
+			}
 		}
 		if reproduction.StateObservation.Kind != stateObservationDeclaredOnly || report.L2B.StateSeparation != stateObservationDeclaredOnly {
 			t.Fatalf("kind = %q, stateSeparation = %q", reproduction.StateObservation.Kind, report.L2B.StateSeparation)

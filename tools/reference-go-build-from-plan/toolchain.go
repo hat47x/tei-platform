@@ -16,7 +16,7 @@ import (
 // carries it, the least this process can do is say which toolchain it ran, so a
 // reader of the report can tell two such builds apart.
 
-const toolchainBoundary = "the Go toolchain this process resolved from -go before building, hashed by this process; the plan does not name a toolchain, so this is a report of what was used, not a check against anything declared, and it confers no trust in the toolchain"
+const toolchainBoundary = "the Go toolchain this process resolved from -go before building, hashed by this process; when the plan names a toolchain (go.toolchain.closureDigest) this process refuses to build with any other, and when it does not, this is a report of what was used, not a check against anything declared. It confers no trust in the toolchain"
 
 // toolchainReport is what this process resolved and hashed. Every value is this
 // builder's own statement; the entry re-reads the executable to compare.
@@ -30,6 +30,11 @@ type toolchainReport struct {
 	// encoding the other reference builders use (gobuilder.HashToolchain).
 	GoRoot        string `json:"goRoot,omitempty"`
 	ClosureDigest string `json:"closureDigest,omitempty"`
+	// PlannedClosureDigest is the toolchain the plan names, when it names one
+	// (plugin.BuildParameterGoToolchainClosureDigest). MatchesPlan is true only
+	// when the plan names one and ClosureDigest equals it.
+	PlannedClosureDigest string `json:"plannedClosureDigest,omitempty"`
+	MatchesPlan          bool   `json:"matchesPlan"`
 	// NotObserved says what could not be read, so an absent digest is never taken
 	// for an unchanged toolchain.
 	NotObserved string `json:"notObserved,omitempty"`
@@ -83,4 +88,30 @@ func observeToolchain(goExe string) *toolchainReport {
 	record.GoRoot = root
 	record.ClosureDigest = closure
 	return record
+}
+
+// checkPlannedToolchain records the toolchain the plan names and returns why the
+// build must not start, or "" when it may. A plan that names no toolchain never
+// stops a build here; one that names a toolchain this process could not hash, or
+// a different one, does.
+func checkPlannedToolchain(planned string, planNames bool, record *toolchainReport) string {
+	if !planNames {
+		return ""
+	}
+	record.PlannedClosureDigest = planned
+	switch {
+	case record.ClosureDigest == "":
+		return "the plan names Go toolchain " + planned + ", but this process could not hash the toolchain -go resolves to" + reasonSuffix(record.NotObserved)
+	case record.ClosureDigest != planned:
+		return "the plan names Go toolchain " + planned + ", but -go resolves to " + record.ClosureDigest + "; a build with another toolchain would produce an artifact the plan does not describe"
+	}
+	record.MatchesPlan = true
+	return ""
+}
+
+func reasonSuffix(reason string) string {
+	if strings.TrimSpace(reason) == "" {
+		return ""
+	}
+	return ": " + reason
 }
