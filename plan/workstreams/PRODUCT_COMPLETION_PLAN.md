@@ -1491,3 +1491,17 @@ mainのRule生成Go CLIビルド回帰は、選択Markdown原文のコピーをG
 **Source所有の原則**：DSL正本、Studio／SHOのDesigner投影、Resource、Generator定義、Generated Source、Custom Hook、Build Artifactを役割で区別する。Visual StudioのDesigner・Resource分離は参考とするが、TEIの新しい拡張子をこの段階では採用しない。生成物を手編集して正本化せず、案件固有の処理は既存Hook／Plugin契約で接続する。
 
 **現在の資格**：PR #5073／#5087のP/G比較と#5101のMapping整理を基線にした設計・試験引継ぎのみ。PR #5097は確認時点で未マージであるため、自己記述Fixtureの実行PASSをmainの成立条件へ算入しない。AW-0〜3の新しい抽象経路テスト、自己記述M2処理置換、正式R2-P、実Provider、Studio Stage1→Stage2をこの文書で検収済みとは扱わない。
+
+<!-- tei-product-semantic-subject-target-symbol-witness-20261115 -->
+### 生成Goの名前に依存せず、実Readと出典を検収する（2026年11月15日）
+
+[自己記述設計§54](../design/ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md)を、既存のRule実行比較テストへ接続する。mainのPR #5118で、Markdown Data項目表→型付きRule→P（直接評価）／G（Go実Binary）の六入力とRead先を検証できるようになった。今回のGo差分は、同テストに**Target関数名だけ変えた正例**を追加し、もともとある「結果が同じでもRead先が違う」負例と同時に照合する。
+
+| 検収すること | 今回の具体的な条件 | 今後の担当 |
+| --- | --- | --- |
+| **意味IDとTarget名の分離** | 同じRule・同じ入力を、原生成関数／名前だけ変えた関数／誤Read関数へ通し、Result・Error・Read Attribute・回数を固定Expectedで比較。名前変更だけでは別Ruleとしない | #2620／#1121／#1180／#2514 |
+| **Artifactの現在性** | 名前変更はGo byteを変える。PR #5109の旧BuildPlan拒否と区別し、意味同値だけで以前のArtifactを流用しない | #4544／#2595 |
+| **自己記述の実置換** | PR #5097のData表Reader回帰は独立に受理し、optionalと禁止を区別してRequired Shapeの一義務を実生成・実使用。旧Go分岐を削除できて初めてM2 | #2620／#988／#1121 |
+| **製品上の実経路** | テストDriverの明示的な三関数呼分けをRuntime実現選択とみなさず、実選択→実Call、正式R2-P、公開Function→Provider→Consumer、Studio Stage1→Stage2を別検収 | #951／#4495／#2831／#4583 |
+
+今回のGoテスト追加は既存のRead観測を利用し、SourceやMeaningの第二正本、独自Test DSL、Generator、Build Runtimeを増やさない。**新Go差分の実行成否はこのPRのexact HEAD CIで判定する。** ProductのRuntime方式選択とTEI自身による検査分岐の置換は、この時点では未実装である。
