@@ -1431,7 +1431,11 @@ Studio Inspectorの参照制限表示（#4806）も、製品Build／実Wails埋�
 
 同一LoadでのRule／Capabilityの対照は、[製品Rule検証 #4890](https://github.com/hat47x/tei-platform/pull/4890)と[Inspector元位置検証 #4891](https://github.com/hat47x/tei-platform/pull/4891)の既存テストを拡張して行い、同じSourceの確認を別テストに複製しない。
 
-最初のScript Launchでは、`semantic-validation`のSourceが読めることと、`semantic-capability`の公開実行資格を混同しない。実Fixture`internal/workspace/testdata/tei-md-rule`は`sales.order_line.quantity_positive`等のRuleを持つが、RuleのCanonical IDをそのまま起動可能FunctionのEntry IDへ昇格させない。既存の`operations.InspectSubject`／`ReadWorkspaceSubject`でRuleのCanonical IDと元Markdown byte位置を検査し、同じIDのCapabilityが公開されたと推論しないというHeadless負例を、#4495のPrepare段階へ追加する。確認後も、Ownerが別途受理したpure FunctionのInput/Output/Effectと現在Entry/Providerを検証して初めてA→B→Cへ進む。
+さらに、[意味同値回帰 #4900](https://github.com/hat47x/tei-platform/pull/4900)は従来の`validation`と選択済みMarkdown Ruleが、Rule ID／Kind／Attribute／Relationを含む同じ型付き`semantic.Validation`へ合流することと、同一Rule IDの二重宣言拒否を検査する。[実Evaluator回帰 #4901](https://github.com/hat47x/tei-platform/pull/4901)は同じ製品Ruleから既存`validationeval.Evaluate`へ進み、数量・明細番号の正負八例と実際に要求したAttribute／RelationのRead Footprintを照合する。これは**製品Reader→型付きMeaning→既存EvaluatorのGo経路**が実在する証拠である。ただし、Evaluatorへ渡す数値と関係の集合はテスト用の合成`Source`が返したものであり、実DB・Providerの取得完了やScopeの全件性、Hostの現在Grantを証明しない。
+
+最初の公開Function Entryへの接続では、この先行実績から「Rule ID＝Entry ID」「Evaluator結果＝実Provider結果」を推測しない。必要なら別途Ownerが受理したFunction契約にRuleを結び、実TargetのReader／Providerがどの行・属性・関係・時点を取得したかを、Evaluatorが要求したRead Footprintと比較する。未取得と空集合、NULLと0を区別できない場合は実Call前に停止またはunknownとして扱う。固定Expectedを既存#1180/#2514から参照し、合成Evaluatorと実Target双方の成功を一つのPASSへ合算しない。
+
+最初のScript Launchでは、`semantic-validation`のSourceが読めることと、`semantic-capability`の公開実行資格を混同しない。実Fixture`internal/workspace/testdata/tei-md-rule`は`sales.order_line.quantity_positive`等のRuleを持つが、RuleのCanonical IDをそのまま起動可能FunctionのEntry IDへ昇格させない。既存の`workspace.Load`／`BuildSourceIndexFromLoad`／`operations.InspectionFromLoad`でRuleのCanonical IDと元Markdown byte位置を同一Snapshotから検査し、同じIDのCapabilityが公開されたと推論しないというHeadless負例を、#4495のPrepare段階へ追加する。確認後も、Ownerが別途受理したpure FunctionのInput/Output/Effectと現在Entry/Providerを検証して初めてA→B→Cへ進む。
 
 [Source改版回帰 #4870](https://github.com/hat47x/tei-platform/pull/4870)では、Canonicalが同じでも改行のみの編集でSource／Index／Artifact Fingerprintが変わり、A→B→Aで見かけのFingerprintが戻る反例がmainへ入った。将来Ruleを含む文書を生成や起動へ渡す場合も、Canonical同値や再計算したbyte一致だけで旧Meaning受理／実行Grantを復活させない。Rule Readerが同じLoadで得た`AuthoringSources`の言語・定義件数は**読取り観測**であり、Provider呼出しやConsumer受領のReceiptではない。
 
