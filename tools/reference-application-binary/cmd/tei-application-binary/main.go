@@ -9,7 +9,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/hat47x/tei-platform/tools/reference-application-binary/internal/appgen"
+	"tei/tools/reference-application-binary/internal/appgen"
 )
 
 func main() {
@@ -24,11 +24,17 @@ func run() error {
 	application := flag.String("application", "", "Application ID")
 	out := flag.String("out", "", "Output directory for generated sources")
 	binary := flag.String("binary", "", "Output binary path")
-	goBinary := flag.String("go", "", "Go toolchain path")
+	platform := flag.String("platform", "", "GOOS/GOARCH for cross compilation (legacy mode)")
+	function := flag.String("function", "", "browse Function (Pattern ID) to generate from the Source; selects the Source-bound mode")
+	target := flag.String("target", "postgres", "Target dialect for -function mode")
 	flag.Parse()
 
 	if *workspace == "" || *application == "" {
 		return fmt.Errorf("-workspace and -application are required")
+	}
+
+	if *function != "" {
+		return runBrowse(*workspace, *application, *function, *target, *out, *binary)
 	}
 
 	ctx, err := appgen.ExtractModel(*workspace, *application)
@@ -62,7 +68,7 @@ func run() error {
 		}
 	}
 
-	artifactDigest, err := appgen.Build(*workspace, *application, sourceDir, binaryPath, *goBinary)
+	built, err := appgen.Build(*workspace, *application, sourceDir, binaryPath, *platform)
 	if err != nil {
 		return fmt.Errorf("build: %w", err)
 	}
@@ -74,7 +80,7 @@ func run() error {
 		"modelRevision":  ctx.ModelRevision,
 		"toolchain":      ctx.Toolchain,
 		"generator":      ctx.GeneratorID + "/" + ctx.GeneratorVersion,
-		"artifactDigest": artifactDigest,
+		"artifactDigest": built.Digest,
 		"generatedAt":    generatedAt,
 		"sourceDir":      sourceDir,
 		"binaryPath":     binaryPath,

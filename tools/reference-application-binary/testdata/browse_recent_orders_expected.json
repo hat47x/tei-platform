@@ -1,0 +1,14 @@
+{
+  "note": "Hand-fixed from examples/data-source-workbench/README.md PQ-02..04 and recent_orders_product_seed.sql. Never generated from a Query result or from generator output.",
+  "columns": ["order_id", "customer_id", "ordered_at", "status", "total_amount"],
+  "rows": {
+    "O-001": {"customer_id": "C-101", "ordered_at": "2026-11-07T10:00:00Z", "status": "accepted", "total_amount": "120.50"},
+    "O-002": {"customer_id": "C-101", "ordered_at": "2026-11-07T10:05:00Z", "status": "pending", "total_amount": "0.00"},
+    "O-003": {"customer_id": "C-202", "ordered_at": "2026-11-07T10:10:00Z", "status": "accepted", "total_amount": "5.25"}
+  },
+  "cases": [
+    {"name": "PQ-02", "from": "2026-11-07T09:00:00Z", "orderIds": ["O-003", "O-002", "O-001"]},
+    {"name": "PQ-03", "from": "2026-11-07T10:05:00Z", "orderIds": ["O-003", "O-002"]},
+    {"name": "PQ-04", "from": "2026-11-07T10:10:01Z", "orderIds": []}
+  ]
+}

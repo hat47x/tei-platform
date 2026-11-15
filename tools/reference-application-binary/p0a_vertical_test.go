@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hat47x/tei-platform/tools/reference-application-binary/internal/appgen"
-	"github.com/hat47x/tei-platform/tools/reference-application-binary/internal/teiparse"
+	"tei/tools/reference-application-binary/internal/appgen"
+	"tei/tools/reference-application-binary/internal/teiparse"
 )
 
 const (
