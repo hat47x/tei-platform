@@ -1072,3 +1072,75 @@ D0/D1はP0の新Hard Gateではない。特にCLIの実Provider接続とDesktop 
 **受入条件**：各実装PRで、(a)固定した対象と問い、(b)実際に消費したSource/Artifact/Provider、(c)Observed/Not Observed/Unknownの根拠となる取得範囲、(d)独立Expectedとの対照、(e)Consumer/Audience、(f)現在資格と再利用・失効理由を、既存ReceiptやSource参照で確認できること。説明可能な小さな対象で成立したことを、全Workspace/全Plugin/全Targetの証明へ拡大しない。
 
 **現在の資格**：本節は既存資料と限定Referenceの成果を受けた設計・実装引渡しの更新である。新Go/Node/Windows/DB/実ProviderのE2E、新Studio Trace Overlay、Ownerの業務意味受理、実Stage2の成功を新たに主張しない。既存の各Owner・独立Expectedへの引渡しと、実実装の完了を区別する。
+
+## 57. 実在する小さな証拠をつなぐ順序（2026-11-15 第5次統合）
+
+§51〜56では契約上の経路と実際の観測を重ねる方針を決めた。最初の実装では、未知の全体Traceを想定するより、**いま製品または限定試験が返せる事実**から始める。2026-11-15時点で現行mainのコード・関連PRを照合すると、次の接点は存在するが、これらを足し合わせても製品End-to-Endは完成しない。
+
+| 既存の接点 | 現物から主張できる最小のこと | まだ言えないこと・次の担当 |
+| --- | --- | --- |
+| `internal/workspace/tei_md_window_pinned_source_test.go`（#4792） | Windowの五つの固定候補について、選択Manifest、元byte、Source Indexと負例の候補Sourceをテスト専用S0-Pとして追跡する | `*.tei.md`の製品`Workspace.Load`での正式Frontend／Role・Meaning受理（S0-A、#2621/#988） |
+| `reference/tei-md-graph-reader/`とGraph/Rule六Fixture（#4758/#4759/#4761） | 候補RuleのGo生成、原文と候補指紋・生成Binaryの違い、自己申告指紋の偽陽性を限定検査する | 一般Meaning／製品Generator・実Provider・実Consumerの合格（#4544/#4495） |
+| `internal/plugin/management/document_preflight.go`（#4800） | 既存Inventory/Resolver結果から、選択Pluginのexact Version/Lock、scan-incomplete等をread-onlyで事前点検する | Plugin→Documentの正式Binding、Doc原文、Disclosure/現在Grant、実Load・実Call。実コード自身が`sourceBinding=unbound`／`readEligibility=not-assessed`を維持 |
+| `internal/reacandidate/adopt.go`（#4805） | 同一Candidate IDと申告Source DigestでもStructuralFactsが変われば、観測事実の変更を区別する | CandidateのOwner受理、正式Business Relation、実FunctionのReadやCommit |
+| Studio `InspectSubject.authorityLimits`のWorkbench表示（#4806） | Inspectorの参照結果に付随する制限を、欠落・型違反・古いReplyを拒否しながら表示する方向の実装と回帰 | 画面表示を意味受理・編集・AI開示のGrantへ昇格すること。生成/配布HTMLとWorkbenchの版一致は#4812で別検収 |
+| Script Launch §28（#4808） | TEI内評価・契約付きMock・公開Entryの実Providerを、同じ意味契約に対する**別資格の経路**として比較する | Mock PASSからProduct Provider／DB Commit／Current Grantへ資格を移すこと |
+
+重要なのは**既に存在するread-onlyの事実と、まだ無いJoinの根拠を分ける**ことである。Sourceを追跡できたことは意味を評価したことではない。Pluginのexact Lockが確認できてもDocumentの取得許可は成立しない。Studioが制限文を表示しても、その文字列が実配布ArtifactやWindows WebView2で利用されたとは限らない。今回の差分から新しいClaim Store、観測Collector、共通Hostを作らない。
+
+## 58. 「一つの問い」に答える証拠の結合条件
+
+最初の図解は何でも関連付ける巨大Graphではなく、利用者が選んだ一つの問いに必要な**結合が成立した範囲**を表す。たとえば「この公開Entryは、指定された業務契約に従ってProvider Bを実際に呼んだか」という問いでは、次の独立の根拠を確かめる。
+
+| 照合箇所 | 結合に必要な情報 | 保留または不適合となる例 |
+| --- | --- | --- |
+| Source→Meaning | 選択されたWorkspace/Root、Source occurrence、実読取byte/位置、Frontend/Role、受理されたMeaning Revision | S0-Pでbyteを読んだだけ、未選択の表、名前だけ一致、Reader未接続 |
+| Meaning→契約・選択 | Entry／Functionの安定ID、型付きInput、Contract Revision、実Target、Hostが選んだProviderと現在のGrant | 未受理候補、別Targetでしか成立しないProvider、失効したGrant |
+| 選択→実現 | Providerの実Load・実Called先、実Artifact/Version/Lock、Builder/Process Generationと対象Attempt | 選択B／実Call A、InventoryにあるだけのPlugin、旧Imageの流用 |
+| Call→Result／Effect | 実Attempt、Input/Result/Failureと必要なCoverage、外部HostのOperation identity、Commit/Receipt・Readback | Call後の契約違反をCall=0と扱う、ACK不明をRollbackと推測 |
+| 結果→Consumer | 対象Consumer/Audience、出力の版、実受領とDisclosure、現在のReply/Pin | 別Attempt・別Audience・別Window/Server世代の成功を合算 |
+
+この順序は**設計上の照合手順であり、Runtimeの強制的な逐次命令列ではない**。同じFunction IDでも、別Source occurrence、別Environment、別Time/Snapshot、別Provider Version、別Attemptは自動的に一続きの証拠にはならない。二つの証拠をつなぐには、元のProducerと対象、固定した版、必要な範囲、独立に確認できる対応付けを要求する。HashやCandidate IDの一致だけで、実観測Facts・Owner受理・Current Grantまで一致したとは判断しない。
+
+負の結論には正の結論以上の条件が要る。実際に二つの異なるRule行の成立を確認できればUniqueのConflictは示せるが、一行だけの成立では唯一性を示せない。実観測に一件もないことからProvider Callの不存在を証明するには、対象Callsite／Attempt／時間範囲の**観測閉包**が必要である。行の読み終わりと母集団の取得完全性、Clientの画面更新とArtifactの実埋込み、Sessionの再開とEffectの再送資格も同じ論理で区別する。
+
+判断を返すread-only Viewには、各問いに対して「何を確かめたか」「不適合を示す根拠」「確かめられない範囲」「その根拠の版・Producer」を添える。これは説明の表示仕様であり、汎用の新しい永続判定Enumや署名形式ではない。現行実装が根拠を返さない場合は、**表示用に推測した値を置かず、未確認とする**。
+
+## 59. 実行図で示す資格の移動と、移してはいけない範囲
+
+```mermaid
+flowchart TB
+  S["元Source・候補"] -->|正式ReaderとOwner受理| M["受理済みMeaning"]
+  M -->|選択されたGenerator| B["Target生成・実Build"]
+  B -->|実Image/Providerの確認| C["実HostでのInvocation"]
+  C -->|実Callの証拠| O["観測されたResult"]
+  C -->|外部Providerの独立根拠| E["Effect／Receipt"]
+  O -->|実送出・受領の証拠| U["Consumer受領"]
+  X["S0-PのPinned byte／限定Go Reference"] -. "製品Reader/Meaningを代用しない" .-> S
+  Y["Plugin Inventoryのexact Lock"] -. "実Load/開示を代用しない" .-> C
+  Z["契約付きMock／TEI内評価"] -. "実Providerの資格を代用しない" .-> O
+```
+
+この図の実線も**合格を自動付与する矢印ではなく、次の資格を判断する際の必要な根拠の種類**を示す。例えば実Buildが成立しても、そのArtifactを実Consumerが使ったとは限らない。実Provider Callが成立しても、業務Effectの確定は別に確認する。図を描画できること、自然な説明を生成できること、テストを再現できることは、それぞれ有益だがProduct入場の権限にはならない。
+
+TEI内評価・契約付きMock・実Providerを同じ業務意味から生成する場合、**生成元の契約は共有しても、実行Attempt・実Provider・実Source・Resultの資格は共有しない**。Mockが必要な未実装部品にはTODO・入力・Output/Failure・要求Effect・仮定を残す。本番Invocationで実Providerがない場合にMockへ黙ってfallbackしない。Rule分析のpartial、Null/未取得、組織のPerson同定やREA Candidateの観測変更もMockで「成功すること」に塗り替えない。
+
+実行図から設計書・判断理由・テストパターンを生成する際にも、元Sourceへの出典と情報損失を示す。独立Expectedを生成結果の自己一致で代替せず、#1180/#2514のOwnerが検証する。SourceのA→B→A、Generator版、Plugin版、観測Facts、Hostの現在Grantを変更した場合は、Source／Meaning／Artifact／Evidence／実行資格のうち、**何を再検証すべきか**を別々に判断する。
+
+## 60. 最初の製品PRを五つの小さな確認へ分解する
+
+各確認は**異なる契約の一つのPRまたは既存Owner内の作業**であり、ひとつの巨大なRunnerや新しい一律Hard Gateへまとめない。
+
+| 確認 | 実装担当へ渡す最小差分 | 認定しないこと |
+| --- | --- | --- |
+| **V0：現在のInspectorを正しく表示** | #4812で旧PR1/current Inspect付きWorkbenchの固定版・構成HTML/TypeScript・生成/埋込Assetを実消費版と突き合わせる。#4806のauthorityLimitsを古いReplyや別Subjectに表示しない | Node/Presenter試験だけで実Wails/Windowsの表示が成立したとしない |
+| **V1：一問のread-only照合** | #4198/#1124の一Functionについて、既存InspectorのSubject/Source版・参照限界を起点とし、他の証拠へのLinkは実在する場合のみ表示。Plugin Inventory/Document Preflightは**別の前提**として示す | Pluginが選択されたことを実Function CalledやDisclosureへ昇格させない |
+| **V2：正式Sourceの一本を接続** | #2621/#988でGraph/Rule六件から一つだけ選び、実`Workspace.Load`→正式Frontend/Role→同一byteとSource Index→候補を接続する（S0-A）。Window五件のS0-Pは別の負例資産として維持 | 参照ReaderによるGo生成やWindow Source追跡を正式Meaning受理へ昇格させない |
+| **V3：実Product起動を閉じる** | #4495のSL-1a〜1cで、Ownerが受理した公開pure Entry→actual Go Provider→型付きApplication API→通常`tei` CLIの別OS Process→独立Expectedを照合する | Reference `tei view -execute`、Mock PASS、同値Resultを実Provider一致としない |
+| **V4：実ConsumerとEffectを段階的に確認** | #2831/#4583ではStage1実Build→Stage2 Windows実Artifact/実WebView2、#1129/#1174では書込みReceipt/独立Readback/Unknown Effectを**別のSubject**として進める | BuildだけでRuntime合格、ACKだけでCommit確定、旧SessionのReplyで現在資格を宣言しない |
+
+**作業順の注意**：V0のStudio表示の不整合をV3のCLI実Providerの着手条件にしない。V2の正式ReaderとV3の公開pure Entryは現時点で別Subjectであり、同じ受理Meaning／実Artifactに実際に接続できるまでは「一つのセルフビルドE2E」と呼ばない。V4のStage2は全体P0として優先度を保持するが、Effect付き業務やPlugin文書公開の完了を待つ必要はない。
+
+実装PRの最小報告は、変更した実ファイル、正のWitnessと反例、テストを走らせたexact HEAD、使用したBuilder/Provider/Consumer、未実装の継ぎ目、Owner受理の有無とする。CI未完了や旧PRのPASSは新HEADのPASSへ流用しない。既存の独立Expected/Source Index/Evidence/Receiptを使用し、新しいScenario正本やPX番号を追加しない。
+
+**今回の範囲**：§57〜60は現行コード・並行PRからの設計と実装引渡しであり、製品S0-A、実Providerの通常CLI End-to-End、新Studioの実ブラウザ・実Windows、Stage1→Stage2、業務Effect/Recovery、Owner意味受理の新しい合格を主張しない。
