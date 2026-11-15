@@ -8,7 +8,7 @@
 
 - [文書手法からアプリケーション抽象へ：意味を保った構成の横断設計](design/APPLICATION_ABSTRACTION_DOCUMENT_METHOD_WEAVING_2026-11.md)：見出し・表・図・引用・判断理由・変更履歴が持つスコープ、役割、写像、再利用、変更という抽象能力を、既存Data／Role・Facet／Function／Process／Projection／Pluginへ割り当てる。構造・意味・表現・実現・現在資格を別々に検査し、DW-01〜10の独立Expected候補を#1180/#2514と各Ownerへ接続する。**最初の実装は内蔵Markdown Rule Reader一件の引用／定義の区別、原文保持、条件変更の失効差**に限定し、生成Go→実Builder→通常CLI実ProviderおよびStudio Stage1→Stage2の並行P0を変更しない。新しい文書Engine・Core Schema・Host・正本は先行採用しない（実装前設計）。
 
-- [設計Projection・実ロード版・データ移行の横断受入](design/DERIVED_PROJECTIONS_RUNTIME_AND_MIGRATION_ACCEPTANCE_2026-11.md)：既存Data／Function／Businessと標準Graph／Ruleから、設計書・帳票・Go・API／MCP・DB移行へ意味を保って投影する。§7〜10で受注一機能を例に、Lookupの時点、Draft／Commit、承認経路Snapshot／現在Grant、生成byte／実ロード版、Migration／独立Readを一因子負例で接続。**最初は選択済みRule一件のSource位置→生成Go→実Builder入力、その後にCLI→実Provider→独立Consumer**。既存#1180/#2514と各Ownerへ引き渡し、新Host・第二Canonical・新Gateは作らない。Studio Stage1→Stage2の並行P0を維持する（設計統合・製品E2E未実施）。
+- [設計Projection・実ロード版・データ移行の横断受入](design/DERIVED_PROJECTIONS_RUNTIME_AND_MIGRATION_ACCEPTANCE_2026-11.md)：既存Data／Function／BusinessとRule／Graphから、設計書・Go・帳票・API・DB移行への投影を一つの受注機能で照合する。§7〜10ではLookupの取得時点、Draft／Commit、承認経路Snapshot／現在Grant、Builder・Runtime・Consumerの資格を分離。§11〜14ではmainの実Rule CLI Build #5009、Operator選択 #5007、Source/AST #5020、Studio Pin #5025の**異なる試験・Subject**を混同せず、PQ-A（原Rule／Reader／Generatorと実Buildの束縛）・PQ-B（実装A→B後の旧Scenario失効）に具体化する。既存#1180/#2514へ引き渡し、通常CLI実ProviderとStudio Stage1→Stage2を並行P0として維持。新Host・第二Canonical・新Gateは作らない（設計統合、追加E2E未実施）。
 
 過去の判断を本文に重ねて記すのではなく、現在の計画の基準を示します。以前の判断とその理由は、Gitの履歴、設計判断記録、課題からたどれます。
 
