@@ -175,3 +175,25 @@ Native SQLからのQuery結果や外部REAのSource候補も、Eventに包めば
 実行上の並列性と順序保証、State遷移とEffectのCommit境界、Triggerの各媒体への公開形、Event Envelopeの正式Schema、期限・再試行・取消の詳細な保証は未決である。最小Fixtureの独立Expected、Source文法と表現のFit/Gap、現在のGoコードやTargetの制約を先に調べてから採否を判断する。
 
 本資料は設計のみ。Go、DB、Wails、Scheduler、Broker、外部Harnessを使う新たな実動作試験やOwnerの正式受理は行っていない。
+
+
+## 追補：業務Processの定義版・実行中Instance・現在の資格を分ける（2026-11-15）
+
+既存のProcess Lifecycle（Host/実行基盤）とInvocation（要求一回）の区別に加え、業務上の申請・承認などでは**Business Process DefinitionとBusiness Process Instance**を区別する。Definitionは経路のStage・Guard・候補者解決方針・人数条件を表し、Instanceは申請時に実際に選ばれた経路・担当枠・状態・履歴を保持する。別の正本や独立Workflow Engineを設けず、既存のBusiness／Organization／State Machine／Operationと型付き参照で結ぶ（#2386／#4198／#4490／#1174）。
+
+**実行中の経路をいつ固定するか**は業務契約である。申請時の経路定義・担当候補のSnapshotを保存する業務では、後のDefinition改版だけで旧Instanceの承認者を置換しない。一方、**資格の現在性**は固定しない。承認候補に登録された時点では有効でも、実行時にAccount／Organization／参照Grantを失えば、現在の操作許可を自動で持つわけではない。観測対象は少なくともRoute Definition Revision、Instance Route Snapshot、Stage Actor Identity、実Actor、委任元、validAt／knownAt、現在Grantの評価版、State Transition／Effect Receiptである。
+
+**複数人の承認を「2人から2票得た」という数値だけにしない。** SINGLE／ANY_ONE／ALL／N_OF_MのようなStage条件を、担当候補集合・申請時必要人数・承認済みActor集合・未処理で現在資格を持つ集合の関係として表現する候補とする。例えば3人から2人必要で承認済み1人・残る資格者0人なら、数値上の過半数計算以前に**必要人数を満たす余地がない**ことを診断する。担当者を無断で補充したり、必要人数を下げたり、過去の承認実績を消したりしない。進行不能時の拒否・取消・自動却下は業務Policyごとに決定し、汎用Runtimeの唯一の既定動作にしない。
+
+委任も独立したGrantではない。委任の対象Operation・元の担当者・実行Actor・対象Route／Stage・有効期間と、現在のRead Authority／操作資格がすべて満たされる場合に限り承認候補とする。委任の存在を理由に、申請・業務データ編集・別Function実行まで許可しない。本人と代理人の競合実行、旧InstanceのActor変更、間接的な組織変更を同じBusiness Identity／Operation Receiptで区別する。
+
+| 反例候補 | 診断・期待 | 既存Owner |
+| --- | --- | --- |
+| BP-R01 | 申請時に経路Aで作成後、DefinitionをBへ改版。旧Instanceが無言でBへ置換されない | #4198／#4490 |
+| BP-R02 | N_OF_Mで2人必要、1人承認済み・残る全員が資格失効。承認待ちを無期限に成功扱いしない | #2386／#4198 |
+| BP-R03 | 有効期間内の委任があるが代理人に対象DataのRead Grantがない。操作を拒否 | #2386／#1174 |
+| BP-R04 | 申請者と代理人が同一、または複数経路の委任を連鎖させて自己承認を試行 | #2386／#4490 |
+| BP-R05 | 承認待ち中に画面から業務Dataを更新、またはAPIから同操作を実行。両方を同じBusiness Guardと現在AuthZで判定 | #1158／#1174 |
+| BP-R06 | Operationの受付、状態遷移確定、通知要求、実配送を一つの「承認成功」へ圧縮 | #1129／#4495／#1174 |
+
+**検証順**：まず固定済みの架空RouteとActor集合でHeadlessの正負を照合する。その次にOrganization/Grantの有効時点・版変化とOperationを一試行へ接続し、最後にDB Commit／独立Readback／外部通知を観測する。Stage1→Stage2 Windowsセルフビルドと通常CLI実ProviderのP0を阻害しない。受入候補は既存#1180/#2514へ束ねる。静的な設計から実AuthZや実業務完了を推定しない。
