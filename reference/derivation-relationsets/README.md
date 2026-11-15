@@ -7,7 +7,7 @@
 ## 入力形と完全性
 
 - `Shape`: `scalar`（1行の属性）、`optional-one`（0..1参照）、`many`（1:N集合）、`aggregate`（集約済み結果）を別の入力形として扱う。同名のSQL列やResultの行順から意味を推測しない。
-- `Completeness`: `complete` / `partial`（ページ・上位N件・途中切断）/ `unfetched`。表示ページや途中まで取得した集合を完全集合として集計しない。
+- `Completeness`: `complete` / `partial`（ページ・上位N件・途中切断）/ `unfetched`。表示ページや途中まで取得した集合を完全集合として集計しない。**単一参照も同様で、`AsScalar` は完全取得を確認できない `scalar`／`optional-one` を拒否する**。`optional-one` の0件をNULLと認めるのは、完全に取得できた場合だけである。
 - `Anchor`: 集合が属する親Entity Instance。集合の完全性と評価のアンカーを区別する。
 - `Key`: 明示のキー束縛を必須とする。暗黙のKey推測をしない。
 - `many` / `aggregate` の各行は業務識別（CandidateKey または明示のCollection identity）を必須とする。識別がないまま黙って deduplicate しない。
@@ -38,6 +38,8 @@
 | O1の明細1件だけ取得 | 不完全入力として拒否 | `TestD9IncompleteOrUnfetchedSetIsNotSummed` |
 | many Relationをscalar引数へ | 形状不一致 | `TestD9ManyRelationToScalarRejected` |
 | one Relationに2件一致 | 多重度違反 | `TestD9OptionalOneCardinalityViolation` |
+| optional-oneを取得していない／途中まで取得した | 完全性が不足するためNULLへ変換せず拒否 | `TestD9AsScalarRejectsIncompleteRead` |
+| optional-oneを完全取得して0件 | NULLで返す | `TestD9AsScalarCompleteOptionalZeroIsNull` |
 | 同一業務識別の重複 | fan-outとして拒否 | `TestD9DuplicateBusinessIdentityIsFanOut` |
 
 ## 焦点試験
