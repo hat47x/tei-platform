@@ -2838,3 +2838,61 @@ PluginのDescriptorがTEIで書けても、実際のValidator/Generator処理が
 
 **今回の成果の上限**：ここで確認したGo Sourceおよびmain統合済みReferenceの契約に基づく**製品Go実装の引継ぎ条件**である。今回新たな`Workspace.Load`の選択Parser実装、`*.tei.md`正式Reader、Runtime/Go/Windows一体試験、実Plugin、Owner Meaning Acceptance、Studio Stage2合格を得たわけではない。全体P0である**Studio Desktop Stage1→Stage2**と並行P0の**通常`tei` CLI→実Provider Read→独立Consumer**を変更しない。
 
+
+<!-- tei-self-description-cross-domain-admission-20261115 -->
+## 46. 2026-11-15 自己記述の製品入口をGraphとWindowで比較し、共通契約だけを固定する（実装引継ぎ）
+
+### 46.1 今回の差分：構文の共通化と意味の共通化を混同しない
+
+第45節までで、自己記述は有限Bootstrap／Language・Role・Operatorの選抜／Sourceを保つ候補生成／独立Meaning受理／実生成・Consumer受領へ分けた。ここでは新しいメタモデルを増やさず、**同じReader選択と出典保存の仕組みを、異なる二つの記述様式で使えるか**を、次の製品実装の比較条件へする。
+
+- **Graph/Rule**：`testdata/tei-md-graph/`の固定6例。明示Rule条件で出辺IDを求める限定Referenceは、条件分岐付きGo生成・Source Index対照・候補構造指紋・自己申告指紋への反証までmainにある（#4729/#4742/#4758/#4759/#4761）。正式製品`Workspace.Load`に接続されたMeaningではない。
+- **Window**：`testdata/tei-md-window/`の固定5例。main #4776では基準とFrame変更の2例について、Manifest/Pinned SourceとSource IndexのS0-Pが成立した。残る負例を含む5例へ広げるPR #4792は**確認時点でopen**。Windowの型付きSQL生成やC0実SQLite試験があっても、正式Markdown ReaderやGraphと同じMeaningを取得した証拠ではない。
+- **共通境界**：Manifest／Source Rootの管理範囲、実読取byte、Language ID・contract version・implementation pin、元byteのspanと出典、診断とSource Index、必要なSource closureは共通化する。Graphの多重Edge、WindowのFrame・NULL・時系列順序はそれぞれの意味契約へ残す。`sourceindex.Role`を業務Meaning Roleと取り違えない。
+
+「二つの例で同じReaderが成功した」ことを、一つの巨大なGrammarや万能Semantic Interpreterの採用理由にはしない。意味の解釈はRole／Operator／Trait実装義務へ委譲し、形式が違ってもSourceの選抜・観測・資格分離の規則だけを共有する。
+
+### 46.2 P0の最初のGo変更はGraph S0-Aの一件に限定する
+
+製品接続の最初のGo PRは、`#1018/#988/#2621`の既存Language Selectionと`Workspace.Load`・Source Indexの入口を接続する**一つの選択済みGraph/Rule Source**を対象にする。やることは「新しいGraph構文を採用」ではなく、**Reader選択→同じLoad時の原Source byte→候補とSource span→Source Indexへの記録**が途切れないことの実証である。
+
+1. 現行`rejectUnboundTEIMarkdownSources`は、Providerが不在・未選択・競合・版不一致の場合の**拒否条件として保持**する。suffixや`Format=md`による暗黙のParser採用、Reference Readerへの無条件fallbackはしない。
+2. 管理対象のPath・Root・Manifestを固定し、実際に選ばれたLanguage/Providerの契約・実装pinを既存解決経路で検証する。実装側に必要な選択情報が欠ける場合は、新しい独立Registryを作らず`unsupported`で停止する。
+3. 同一Load時のbyteをParser、Range、Source Indexで共有する。`ManagedFile.ReadByLoader`だけで解析成功を証明せず、引用・Fence・BOM/CRLF・未選択Draft・同Label別IDと多重Edgeを元byte上で判別する。
+4. 成功時に公開できるのは**Source付き構造候補と正確な診断**まで。正式Role適用・OwnerのMeaning受理・実行Authority・Target生成は次の別PR。何らかの候補だけが読めても、未読込Requiredや診断付き不完全Worldを「全部受理済み」として返さない。
+
+旧`*.tei`のReaderを退行させず、Graphの局所Referenceが持つ別Process Go実行をProduct S0-Aの成果として加算しない。Window側は同じSource選択・出典契約の**第二圧力試験**とし、最初のGraph S0-Aを待たせる追加Hard Gateにしない。
+
+### 46.3 一因子変更で、構文／意味／実装／利用資格の別々の結果を観測する
+
+次表は新しいFixture正本ではなく、既存Graph6例・Window5例と既存#1180/#2514の独立Expectedに対応させる**引継ぎ比較票**である。Readerが例示的に「読める」ことと、その業務上の意味が「正しい」ことを独立に検査する。
+
+| 変える条件 | Graph側の観測 | Window側の観測 | 共通の停止条件 |
+| --- | --- | --- | --- |
+| 表示・説明だけ変更 | 元Source fingerprintは変わるが、固定Referenceの候補構造指紋と生成Goは不変となる例を対照 | Layout-onlyでも元byteは別として扱う。意味の同値は別に判定 | 旧Source Indexを流用しない。意味差が無いことから新Readの省略を推定しない |
+| 意味条件だけ変更 | Edge逆向き、Ruleの`from/to`切替を別々に試す | `ROWS BETWEEN 2 PRECEDING`→`1 PRECEDING`などFrameのみ変更 | Source値の差→選択Reader→意味契約→生成結果の各段階を混同しない |
+| 不適格・競合する原文 | 重複Node/Edge ID、曖昧Rule、引用・Fenceの例示 | 観測ID重複、古い派生表示、NULLと未取得の区別 | **不適格でもSourceは選択・追跡可能**だが、Meaning受理や正しいQuery/実行へ昇格させない |
+| 未選択の同拡張子Draft | Manifestの管理外`drafts/*.tei.md` | 同名だが別byteの`drafts/window.tei.md` | 同名・近接・表の形から優先Sourceを推測しない。公開範囲とRootを保つ |
+| 解釈・生成器の変更 | 生成Goの`e.from`条件だけ改変し、自己申告指紋を維持するmain #4761の反例 | 将来のWindow Operator／SQL方言・Null/Frame解釈の版変更を別契約で検証 | 候補指紋の一致だけで実Builder入力・実Artifact・実結果・現在Grantを認定しない |
+
+Windowの`#4792`にある5例への拡張は、そのPRのexact HEAD CIと統合結果を確認した範囲だけ実績に数える。既存Graphの意味処理とWindowのSQL実現が同一だという主張は行わない。
+
+### 46.4 自己記述から導出するのは説明・診断・テスト候補であり、正解と権限ではない
+
+意味Role/OperatorのRequired Shapeや実装義務が標準データとして読めるなら、Studio/SHO/AI向けに**「対象は何か→どの条件が必要か→何を判定するか→結果・未決事項は何か」**という説明を、同じSource・意味IDに基づいて生成できる。説明を別の業務意味正本として保存しない。説明文・Markdown見出し・AIの要約をそのままExecutable Ruleに変換しない。
+
+同様に、型・NULL・多重度・粒度・時点・Effect・Trait履行条件から検査候補や不足条件を提示しても、**独立Expectedの正解値やOwner意味受理を自動生成したことにはならない**。実装が未選択・未使用ならTraitを充足と扱わず、データがpartialなら不存在や唯一性を確定しない。これをGraphとWindowの両例で示し、Read-only Inspector→局所編集→正式受理→実Target/Consumerを別資格のまま維持する。
+
+### 46.5 次の担当・実装差分・受入順
+
+| 順序 | 次に作る実際の差分 | 担当／合格を認める対象 |
+| --- | --- | --- |
+| **A** | 一つのGraph/Rule文書について、既存選抜経路から`Workspace.Load`の実Readerへ結び、Source byte/span・Source Indexを一致させる最小製品Go実装と正負テスト | #1018/#988/#2621。**Product S0-Aのみ**。既存`TEI_MD_PARSER_UNBOUND`負例を「未選択は拒否／正しく選択した一件のみ候補」として更新 |
+| **B** | Window5例のS0-PとGraph S0-Aを、同じ共通Source契約の観点で対照する | #4660/#4792と#2620。Graphの完成を待たせない。必要なFrontend・Operatorは別選抜 |
+| **C** | 同一Graph Ruleを受理済みMeaning→Generator→実Builder/実Consumerへ渡し、`#4761`型の自己報告だけでは検出できない改変を外部証拠で見抜く | #4544/#1121/#2595/#1251。実Goの判断とConsumer実結果、独立Expectedを確認。Referenceの生成成功を製品成功にしない |
+| **D** | Plugin自身のGenerator/判断処理のTEI生成領域と、手書きGo・委譲・標準Operatorを分けて再測定する | #2620/#951/#2831。実装義務と保守負担が移ったかを測り、CLI再入から正式Desktop Stage1→Stage2は別検収 |
+
+変更を記録するときは、`Source occurrence／実Read byte／選択Language・Role・Operatorと推移Pin／型付きMeaning候補・Accepted Meaning／実Generator・Build入力・Toolchain／Artifact／実Consumer／Independent Expected`のうち、**そのAttemptが実際に取得・検証できた欄だけ**を資格付きで提示する。空欄を`passed`で埋めない。新しいReceipt Store、Parser Registry、Meta Interpreter、Run Hostは作らず、既存EvidenceとOwnerへ接続する。
+
+**資格・優先順位**：本第46節はmainと別PRの実装範囲を照合した**設計／実装引継ぎの追補**であり、この変更による製品S0-Aの実Reader接続、Windowの正式Meaning、実Target/実DB、Stage2 Studio、OwnerのMeaning受理は**NOT RUN／NOT PROVEN**。既存P0のStudio Desktop Stage1→Stage2と、並行P0の通常`tei` CLI→実Provider Read→独立Consumerは変更しない。
+
