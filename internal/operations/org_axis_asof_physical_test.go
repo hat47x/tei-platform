@@ -54,10 +54,10 @@ func TestOrgAxisAsOfQueryPhysicalBinding(t *testing.T) {
 	}
 	required := []string{
 		"FROM public.org_memberships m",
-		"m.valid_from <= :valid_from",
-		":valid_from < m.valid_to",
-		"m.known_from <= :known_from",
-		":known_from < m.known_to",
+		"m.valid_from <= :valid_at",
+		":valid_at < m.valid_to",
+		"m.known_from <= :known_at",
+		":known_at < m.known_to",
 		"m.allocation >= :allocation_min",
 	}
 	for _, token := range required {
@@ -77,7 +77,7 @@ func TestOrgAxisAsOfQueryPhysicalBinding(t *testing.T) {
 	validAt := time.Date(2027, 6, 15, 0, 0, 0, 0, time.UTC)
 	knownAt := time.Date(2027, 7, 1, 0, 0, 0, 0, time.UTC)
 	got, err := executor.ExecuteBrowseQuery(context.Background(), q, ds, map[string]any{
-		"valid_from": validAt, "known_from": knownAt, "allocation_min": "0.40",
+		"valid_at": validAt, "known_at": knownAt, "allocation_min": "0.40",
 	})
 	if err != nil {
 		t.Fatalf("native Query failed before instrumented DB read: %v", err)
@@ -86,7 +86,7 @@ func TestOrgAxisAsOfQueryPhysicalBinding(t *testing.T) {
 		name  string
 		value any
 	}{
-		{"valid_from", validAt}, {"known_from", knownAt}, {"allocation_min", "0.40"},
+		{"valid_at", validAt}, {"known_at", knownAt}, {"allocation_min", "0.40"},
 	} {
 		seen := false
 		for _, arg := range probe.args {
@@ -98,8 +98,8 @@ func TestOrgAxisAsOfQueryPhysicalBinding(t *testing.T) {
 			t.Fatalf("bound SQL did not forward %s=%v: %+v", input.name, input.value, probe.args)
 		}
 	}
-	if strings.Contains(probe.statement, ":valid_from") ||
-		strings.Contains(probe.statement, ":known_from") ||
+	if strings.Contains(probe.statement, ":valid_at") ||
+		strings.Contains(probe.statement, ":known_at") ||
 		strings.Contains(probe.statement, ":allocation_min") {
 		t.Fatalf("named SQL parameters were not bound: %s", probe.statement)
 	}
@@ -115,14 +115,21 @@ func TestOrgAxisAsOfQueryPhysicalBinding(t *testing.T) {
 	recorded := probe.statement
 	if _, err := (postgresquery.Executor{DB: db, Database: "wrong_store"}).
 		ExecuteBrowseQuery(context.Background(), q, ds, map[string]any{
-			"valid_from": validAt, "known_from": knownAt, "allocation_min": "0.40",
+			"valid_at": validAt, "known_at": knownAt, "allocation_min": "0.40",
 		}); err == nil {
 		t.Fatal("wrong target database must be rejected")
 	}
 	if _, err := executor.ExecuteBrowseQuery(context.Background(), q, ds, map[string]any{
-		"valid_from": validAt, "known_from": knownAt, "allocation_min": "0.40", "not_declared": 1,
+		"valid_at": validAt, "known_at": knownAt, "allocation_min": "0.40", "not_declared": 1,
 	}); err == nil {
 		t.Fatal("unknown physical parameter must be rejected")
+	}
+	// Legacy row-boundary names must not be accepted as evaluation instants.
+	// The same untrusted argument shape must stop before a Provider call.
+	if _, err := executor.ExecuteBrowseQuery(context.Background(), q, ds, map[string]any{
+		"valid_from": validAt, "known_from": knownAt, "allocation_min": "0.40",
+	}); err == nil {
+		t.Fatal("undeclared boundary-style arguments must not be treated as evaluation instants")
 	}
 	if probe.statement != recorded {
 		t.Fatal("rejected input must not reach the SQL driver")
