@@ -611,3 +611,55 @@ BRMSでは、差分を受け取るたびに次の三つを別々に判定する�
 U-01〜10は**本設計から既存#1180／#2514へ提出する検収候補**であり、テストが新しく実装・実行・Owner受理されたことを意味しない。特にU-06は、Domainを非負JPY・二区分に固定した場合、三行が全域を覆う基準決定表では構成できない。**試験用に一部の区間を意図的に削除した別のRule版**を使い、基準表のまま「No Match」になる入力を捏造しない。U-05の追加行も既存三行だけでは成立せず、未取得Fieldに依存する試験専用行を明示する。
 
 実装・検証のOwnerは、有限解析 #988／#1637、Source選択 #2621／#1018、Generator／Builder #4544／#2595、Function Context／組織Query #2506／#4490、実CLI／Provider #4495／#2586、独立Expected #1180／#2514とする。全体の最優先はStudio Stage1→Stage2 #2831／#4583および製品CLIからの実Provider・独立Consumerであり、Rule全般の仕様統一や一般的なDMN Runtimeを前提にはしない。
+## 44. 決定を確定するには、規則の範囲と入力の範囲を別々に確かめる
+
+第38節の`confirmed`（確実に一致する行）と`possible`（一致する可能性が残る行）は、**評価対象となるRule集合が確定している場合**の判断方法である。実WorkspaceのReaderがまだ一部の表しか選択していない、Ruleの版が不明、対象Tenant・有効時点・Roleによって規則の適用範囲が変わる、といった場合には、その集合自体を未確定として扱う。
+
+ここで検証する対象を二つに分ける。
+
+- **規則側の範囲**：どのSource／Occurrenceを選択し、どのRule ID／版／Scope／有効時点を対象にしたか。未選択の文書、未解析の表、重複ID、競合するRole、未受理のMeaningが残っていないか。単にSource Indexが作成されたことは、Rule集合が確定した証拠ではない。
+- **入力側の範囲**：各Ruleの条件に必要なField、Relation、時点、非出力の依存、否定条件のReadが揃い、取得した母集団・Snapshotが主張に十分か。Cursor終端や`FullyRead=true`だけでは母集団の全件性を示さない。NULL、未取得、アクセス拒否、評価失敗は分ける。
+
+| 規則集合と入力の状態 | 言えること | 言えないこと |
+| --- | --- | --- |
+| 選択済み・受理済みの同一Decision／Scopeで、異なる二行が確実に一致 | **その範囲内のUnique違反を証明できる**。別のRuleが未確認でもこの二行の同時成立は消えない | すべての適用Ruleを発見した、全違反を列挙した |
+| 対象Rule集合が確定し、`confirmed`も`possible`も同じ一行 | **そのRule集合・時点・Scope内で一意に一致** | 将来版・別Tenant・未選択Sourceまで一意 |
+| 対象Rule集合が確定し、すべての行で成立し得ないことを確認 | **その範囲内でNo Match** | 未取得のRule集合を含む広い範囲での不存在 |
+| 入力の取得範囲は完全だが、適用Rule集合が不明 | 観測したRuleについての局所的な一致／不一致 | 決定表全体のUnique／No Match／Gapがないこと |
+| Rule集合は確定しているが、否定条件の必要Readが不足 | 確実な正の一致や、必要な反例がある場合の局所競合 | 一致の唯一性、該当なし、適格者の不存在 |
+| Ruleの意味・版・Source Roleが未受理／不整合 | 出典付きの候補や構造上の疑義 | 受理済み業務Decisionの確定結果 |
+
+一部の行についてだけ判定できるときは、「その行の成立」と「決定の確定」を分けて説明する。特に`possible`が空であることだけでは不十分で、**そもそも調べるべきRule行が欠けていないこと**を確認する。行の意味が未受理、型検査に失敗、評価中にエラーが起きた場合は、これらを単なる`possible`として数え直さない。
+
+この二つの範囲の検証は、既存Workspace／Source Index／Language・Role選択、型付きMeaning／Operator、Function Context／Queryの取得範囲・Claim Closureを組み合わせる。BRMS専用のRule Registry・Rowset Engine・新しい永続状態を設ける理由にはしない。
+
+## 45. 判断の説明は、実行した処理と開示できる情報に合わせる
+
+[データ様式の横断設計](SEMANTIC_STRUCTURE_MAPPING_AND_DECLARATIVE_SYNTAX_VIEW_2026-11.md)と、[プラグイン構成の設計](PLUGIN_ROLE_COMPOSITION_AND_STUDIO_REENTRY_2026-11.md)、[実行モデルの図解](PROGRAM_EXECUTION_MODEL_PROJECTIONS_2026-11.md)から、BRMSの説明に必要な検証を三段階に分ける。
+
+1. **判断の根拠**：選択した業務Subject、Rule行と条件の出典、Rule集合の範囲、必要な入力と取得範囲、確認済みの一致・未確定の理由を示す。説明文は同じ受理済みSourceから派生させ、AIの補足を根拠に書き戻さない。
+2. **実際の処理との対応**：どの意味がGeneratorへ渡され、どのSource memberをBuilderが読み、どのArtifactが実行され、どの結果をConsumerが受け取ったか。限定Graph／Ruleの候補構造指紋やBinaryの自己申告だけで、この対応を証明したことにはしない。
+3. **現在の開示・操作の資格**：Pluginの実選択版・Lockが一致していても、Ruleの公開文書が存在することや、その内容を現在のAudienceへ開示できることは証明できない。Studioが`authorityLimits`を表示しても、編集・承認・実行権限が新たに与えられるわけではない。Host Grant／Disclosure／Effect Receiptは別に検査する。
+
+例えば「割引率を5％と判定した」という説明には、基準となる会員区分と購入額、Ruleの適用時点、他行が成立しない根拠まで含められる。ただし、権限のないConsumerには非公開Ruleの名称・存在件数・元Source digestを表示しない。理由を伏せるときも、**非公開という制約**と、**評価に必要なデータが不足していること**を同じ内部状態へ変換しない。利用者へ開示する文言や詳細度はAudienceの契約に従う。
+
+main統合済み[Pluginの事前選択・Lock検査 #4800](https://github.com/hat47x/tei-platform/pull/4800)は、文書の正式なSource-backed読取り・Disclosure受理と別資格である。直接上位Pluginの厳密版を追加表示する[PR #4826](https://github.com/hat47x/tei-platform/pull/4826)も、確認時点では未マージであり、BRMSの公開・実行権限を代替する機能ではない。これらは説明やStudioの表示を作る際の既存境界として使い、専用のBRMS権限管理を加えない。
+
+## 46. 次の実装に渡す、二つの範囲の負例と合格条件
+
+第43節U-01〜10のOwnerは変えず、次の負例を**同じ独立Expectedに対する不足条件**として渡す。別の期待結果ファイルやBRMS専用Test Runnerは作らない。
+
+| 追加の照合 | 意図的に欠かすもの | 期待する判定と根拠 |
+| --- | --- | --- |
+| C-01：見えているD01だけで一致 | 同じScopeのD02／D03を含むRule集合の確定 | D01の局所一致は説明可能。しかしUnique確定とはしない |
+| C-02：確認済み二行が一致 | 他のRuleの読取り | 二行が同じ受理済みDecision／Scopeなら局所Conflictを報告。全件の規則数までは主張しない |
+| C-03：全入力が揃う | Readerが選択する一つのRule Source | 入力完全でもNo Match／Gapなしを確定できない |
+| C-04：全Ruleが見えている | 否定条件に必要な非出力Read | 該当なし／唯一の適格者を確定できない。正の候補存在は別に報告できる |
+| C-05：重複するPerson経路 | 異なるPersonの正の証拠 | 経路数を人数に使わない。現在Grantを推測しない |
+| C-06：実Pluginの版・Lockだけ一致 | Rule本文のSource Binding／現在Disclosure | バージョン一致をRule開示・実行可能へ昇格しない |
+| C-07：参照Binaryが候補指紋を表示 | 実生成Sourceの消費・Artifact外部測定 | 自己申告のみでは実行処理の一致を証明できない |
+| C-08：Mockで一連の判断が成功 | 実Provider／Consumer／Effect Receipt | 模擬成功と製品実行・外部作用を分けて報告する |
+
+**最初の実装対象は引き続き一つのGraph／Rule Sourceの正式S0-A入場**である。C-01〜08のために汎用Decision Engine、全DMN／FEEL、組織専用Join、第二のRegistry、Studioの別Runtimeを先行実装しない。Product Reader #2621／#988、型付きOperator #1637、実生成 #4544／#2595、取得範囲 #2506／#4490、検証 #1180／#2514、Provider／Consumer #4495／#2586へ分割して引き渡す。
+
+採用上の停止線も同じである。実装済みなのはGraph／Ruleの限定Reference、WorkspaceによるS0-P取得追跡、実SQLite Window入力の限定検証、Plugin Lockの事前検査など**個別に確認できた範囲だけ**である。正式`*.tei.md` Reader・受理Meaningからの製品Generator／実Builder消費・通常製品CLIの実Provider受領・Studio Stage1→Stage2・独立ExpectedのOwner受理は、この文書更新で成立したとはいわない。
