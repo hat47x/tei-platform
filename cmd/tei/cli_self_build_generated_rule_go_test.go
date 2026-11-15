@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 	"tei/internal/buildintent"
 	"tei/internal/core"
 	"tei/internal/semantic"
+	"tei/internal/semantic/validationeval"
 	"tei/internal/semantic/validationgen"
 	"tei/internal/sourceindex"
 	"tei/internal/workspace"
@@ -267,6 +269,68 @@ func TestSelectedRuleGoThroughRealCLISelfBuild(t *testing.T) {
 	if string(out) != want {
 		t.Fatalf("CLI-built generated Go changed its decision/read footprint:\n%s\nwanted:\n%s", out, want)
 	}
+
+	// The same selected semantic.Validation also has a parameter-driven
+	// evaluator. It is an alternative realization, not another Meaning source.
+	// The generated binary was checked against independent Expected above;
+	// now require the existing generic evaluator to agree on both its result
+	// and the number of Source reads. No Runtime Provider is claimed here.
+	for _, tc := range []struct {
+		name, number, expected string
+		missing                bool
+	}{
+		{"positive", "2.5", "satisfied", false},
+		{"zero", "0", "not-satisfied", false},
+		{"negative", "-1", "not-satisfied", false},
+		{"null", "", "error", false},
+		{"missing", "", "error", true},
+	} {
+		t.Run("generic-vs-generated-"+tc.name, func(t *testing.T) {
+			var value *big.Rat
+			if tc.number != "" {
+				value = new(big.Rat)
+				if _, ok := value.SetString(tc.number); !ok {
+					t.Fatalf("bad independent input %q", tc.number)
+				}
+			}
+			source := &documentRuleNumber{value: value, missing: tc.missing}
+			result, evalErr := validationeval.Evaluate(selected, source)
+			observed := string(result)
+			if evalErr != nil {
+				observed = "error"
+			}
+			if observed != tc.expected || source.reads != 1 {
+				t.Fatalf("generic evaluation: got %s, reads=%d, err=%v; want %s, reads=1",
+					observed, source.reads, evalErr, tc.expected)
+			}
+			generatedLine := fmt.Sprintf("%s:%s:%d\n", tc.name, observed, source.reads)
+			if !bytes.Contains(out, []byte(generatedLine)) {
+				t.Fatalf("CLI-built generated Rule differs from generic evaluation: %q not in %q",
+					generatedLine, out)
+			}
+		})
+	}
+}
+
+type documentRuleNumber struct {
+	value   *big.Rat
+	missing bool
+	reads   int
+}
+
+func (s *documentRuleNumber) Number(id core.CanonicalID) (*big.Rat, error) {
+	if id != "sales.order_line.quantity" {
+		return nil, fmt.Errorf("unexpected attribute %s", id)
+	}
+	s.reads++
+	if s.missing {
+		return nil, fmt.Errorf("number unavailable")
+	}
+	return s.value, nil
+}
+
+func (s *documentRuleNumber) RelationKeys(relation, attribute core.CanonicalID) ([]string, error) {
+	return nil, fmt.Errorf("unexpected relation read %s / %s", relation, attribute)
 }
 
 // requireSelectedGeneratedGo is a test-only byte boundary between the

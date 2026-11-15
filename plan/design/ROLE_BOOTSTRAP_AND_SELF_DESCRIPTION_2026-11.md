@@ -3278,7 +3278,7 @@ PR #5007で、同一Operator宣言に対してmanifestだけを切り替え、�
 
 ### 51.1 今回の実装はM2ではなく、M1/M2を判定するための独立基線である
 
-第50節では自己記述からRequired Shape検査を生成する方式Cを第一候補とした。その前段として、現行validationgen.GeneratePositiveが受理するpositive一規則の**固定された期待形**をGoの focused 回帰として追加する。対象はinternal/semantic/validationgen/positive_shape_obligation_baseline_test.goのTestPositiveLoweringShapeIndependentBaseline。正常な「Rule ID・単一Attribute・Relationなし・std.decimal」を固定し、ID欠損・Attribute欠損・余分なRelation・非対応Kind・型違い・未知型の六つを一因子ずつ拒否する。Go package名の不正はDSLの形ではなく、Target Lowering固有の条件として別の負例で拒否する。拒否した入力からGoを出力しないことも調べる。
+第50節では自己記述からRequired Shape検査を生成する方式Cを第一候補とした。その前段として、現行validationgen.GeneratePositiveが受理するpositive一規則の**固定された期待形**をGoの focused 回帰として追加する。対象はinternal/semantic/validationgen/positive_shape_obligation_baseline_test.goのTestPositiveRuleShapeIndependentBaseline。正常な「Rule ID・単一Attribute・Relationなし・std.decimal」を固定し、ID欠損・Attribute欠損・余分なRelation・非対応Kind・型違い・未知型の六つを一因子ずつ拒否する。Go package名の不正はDSLの形ではなく、Target Lowering固有の条件として別の負例で拒否する。拒否した入力からGoを出力しないことも調べる。
 
 この試験は、生成する検査器のExpectedを**既存Generatorから動的に作らない**ための基線である。現在のGoの正答をすべて受理済みの業務Lawとみなさず、後続のOwner評価に渡す。元Ruleの製品Reader・Source位置・生成Go実行・実Builder消費は既存の別試験が担当する。したがって、focused testがPASSしても**M0の説明／M1のDescriptor由来検査／M2のGo分岐置換は一つも新たに実装されたことにはならない**。新しい形の検査器に入る際は、この独立基線の正常・負例を使って比較し、Go手書きの該当一義務が本当に減ったかを確認する。
 
@@ -3316,3 +3316,42 @@ M2を急ぐあまり新しいGrammarや汎用Meta Interpreterを設けるので�
 今回の反証IDをSD-51-01（Shape単一不正のGo出力拒否）、SD-51-02（原文同梱・Generator不一致）、SD-51-03（原文の無断Disclosure）、SD-51-04（Operator旧選択実行）、SD-51-05（生成Windows PoC B成功をStage2再帰と誤認）として既存#1180／#2514へ引き渡す。#2620／#4359がM1/M2、#1121／#4544／#2595がR2-P、#988／#1018／#2600が実装選択、#1124／#1824が表示、#4495／#1251が実Provider、#2831／#4583がStage2のOwnerを維持する。
 
 **今回の実装上限**：追加したGoは固定されたShapeの検査基線のみ。元Sourceをビルドする既存試験、Windowsの成功、Scenario鮮度改善をこのGoテストの成果に加算しない。M1/M2製品実装、Generator版の正式Build束縛、実Provider、現在Grant、Stage1→Stage2の再帰的Self-buildは未実証。
+
+<!-- tei-self-description-validation-data-witness-20261115 -->
+## 52. 2026-11-15 TEIでTEIの検査規則を記述する最小実験と、その意味上の限界
+
+### 52.1 最初の自己記述資産を、現行製品Readerで読める形にする
+
+第51節で独立Expectedを固定した後、次に確かめることを**「TEIが自分自身の検査規則の構造を、普段使うData表現で説明できるか」**へ絞る。初回は新Grammar、Role Interpreter、自己解釈Hostを作らない。既存の組込み言語 tei.authoring/v1、印付きMarkdown項目定義表、semantic.Data、Source Indexをそのまま使用する。
+
+実装Fixtureは internal/workspace/testdata/tei-md-self-description/semantic/tei/validation-declaration.tei.md、Go回帰は internal/workspace/tei_md_self_description_test.go の TestTEIValidationDeclarationSelfDescriptionIsOnlyData とする。ここではRuleの**定義を記録するDataの形**として、規則ID／種類／対象属性を必須、対象関係を任意と記述する。実Workspace.LoadがReaderの選択と一つの定義領域を観測し、既存Validatorがそのsemantic.Dataを検査でき、各項目のSource位置に戻れることを確かめる。
+
+| 何ができるか | 今回の実証で確認すること | そこからは言えないこと |
+| --- | --- | --- |
+| **自己記述D1：表現** | 自分の検査規則のメタデータの形を、TEIのData項目定義表で記述できる | TEI CoreのValidation型定義を正式に置換したこと |
+| **通常のDataとしての解釈** | 選択Reader→既存semantic.Data→Validator／Source Indexが働く | 記述したDataが自動的にValidationのメタ契約として採用されたこと |
+| **読取と表示** | 元Sourceの項目位置とCanonical IDを読み取り専用で追跡できる | Sourceの編集・開示・実行、独立Expectedへの自動昇格 |
+| **制約の表現限界** | required=yes/noとTypeRefが記述できる | Relation指定禁止、positiveの厳密な0超過、Operator Law、NULL／欠損、時点・Grantを検査できること |
+
+特に**「Relationが必須でない」と「Relationを指定してはいけない」は異なる**。現行Data表のrequired=noを禁止制約へ読み替えると、誤って不正なpositive Ruleを受理する。この違いを理由に初回から新しい否定制約DSLや汎用Meta Evaluatorを設けるのではなく、表で表現できる範囲と未表現の義務を別々に記録する。
+
+また、自己記述したDataを**通常の業務Recordと混同しない**。そのData型の定義をLoadしただけでは、個々のRule宣言の実行時RecordやValidator実装は作られない。対象となるsemantic-validationやsemantic-capabilityが自動生成されていないことを負例にする。
+
+### 52.2 二つの自己記述を一つの成熟度に足さない
+
+本例の到達点は「TEI表層で自分自身のSchema相当の一部を宣言でき、既存Data Readerが扱える」ことである。先行するquantity_positiveは「独立Expectedで形を固定し、現行の手書きGeneratorが実Goの判断を出力できる」ことである。**別々の機能について別々の事実を示しただけ**であり、両者を組み合わせた「自己記述から実装生成済み」という評価はしない。
+
+次の実装は、新Data表に独自の実行意味を足す前に、既存の標準Data／Facet／Validation／Operator表現のどれで、対象Attributeの必須性・Relation禁止・型解決の独立条件を記述できるかを確認する。未表現の条件をGo手書きに残す場合は、残した義務数と理由を記録する。いずれかの一条件をTEIで表現し、**その定義を実Readerが読み、その契約から検査コードが生成され、既存GeneratePositiveの重複するGo分岐が実際に消えた**場合だけ、その条件についてM2と認める。標準のデータ様式を表現するために、業務専門家へGoのstruct／func／型引数やGeneratorの内部構造を見せない。
+
+### 52.3 次に再利用する三つの異質な反証
+
+| 反証 | 一因子変更 | Ownerへ渡す問い |
+| --- | --- | --- |
+| SD-52-01 | Data表のrelationIdをoptionalにする | optionalがforbiddenへ誤変換されず、positiveのRelation禁止は未実装のまま表示できるか |
+| SD-52-02 | 印なしの説明表を置く、または未選択Languageを使う | 文書の説明／定義／業務記録を混ぜず、選択Readerがない場合に黙って受理しないか |
+| SD-52-03 | Self-description表のSourceを改版し、旧Index・旧生成Go・旧Commandを残す | Source改版／型付きMeaning／生成Artifact／実装選択の失効を分離できるか |
+| SD-52-04 | Graphの多重Edge／組織の二時点関係／Operatorの変更を追加する | 一つのData表で表せない関係・粒度・Lawを無理に押し込んでいないか |
+
+SD-52-01〜04は既存#1180/#2514の独立Expectedへ渡す候補とする。本例のfocused GoはData読込・出典・非Rule化だけを対象とし、これらのすべてを実行した証拠とはしない。Reader・Language版は#988/#1018/#2621、意味役割とMeta構造は#2620/#4359、Generatorの実置換は#1121、Builder消費は#4544/#2595、Studio／SHO／Node投影は#1124/#1824/#2497へ渡す。実Providerと非Plugin Studio Stage1→Stage2は従来どおり独立P0。
+
+**今回の受入上限**：TEIのData表でTEI検査規則の一部を記述し、既存製品ReaderとSource Indexで扱う**小さな自己記述実験**。positive RuleのRequired Shapeをその表から自動検査する製品M1、Goの手書き分岐を置き換えたM2、実Plugin契約、実Provider、再帰的Studioセルフビルドは未達。表を収録したことも、CIの実行結果を確認するまではテストPASSを意味しない。

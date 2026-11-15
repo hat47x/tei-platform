@@ -220,3 +220,19 @@ CLI TargetはGoの共通Operationと必要Providerだけで成立し、Wails／H
 最初のAPI Plugin専用Runtime、万能Route DSL、中央Daemon、動的ロード機構は作らない。具体的な実装Ownerは#1158／#3419〜#3422（共通OperationとTransport）、#951／#1016／#1251（選択・実Provider）、#1824／#4635（Host）、#1180／#2514（独立Expected）を再利用する。新たな実証をもって、#2831／#4583の非Plugin Studio Stage1→Stage2や#4495の通常CLI実Providerの既存P0を置き換えない。
 
 **状態**：17.4〜17.6は既存実装と他の横断設計を踏まえた追加の実装方針である。Wails Server上の公開API、非Builtin API Plugin、HTTP↔CLI実Provider同値、外部公開の認証・認可・配布について実証済みとは扱わない。
+
+### 17.7 現行Studio実装からAP-1を切り出す
+
+現行`cmd/tei-studio/main.go`の`StudioBridge`はWails固有の薄い入口であり、`internal/studiohost/readonly.go`の`ReadOnly`は`internal/operations`に委譲する。後者にある`InspectSubject`／Workspace allowlistと元Source／Failureの照合を再利用し、**公開HTTPのために新しい意味処理やCLI shell呼出しを実装しない**。現行`internal/operations/dependency_test.go`はWails／HTTP等への推移依存を拒否する基線なので、これも重複実装しない。
+
+Wails公式の[Service HTTP Routes](https://v3.wails.io/features/bindings/services/#http-routes)には`ServeHTTP`を持つServiceを`application.ServiceOptions.Route`で登録する経路がある。最初の実装は`cmd/tei-studio`側の**専用read-only HTTP Adapter**だけを明示Routeへ登録し、既存`StudioBridge`に含まれる更新・Command系メソッド群をHTTPへ一括公開しない。HostのHTTPフレーミングと公開範囲はWails側、対象解決と共通結果の意味は既存Ownerへ残す。独自のHTTP routeと`/wails/runtime`のWails Bindingを同じ公開契約とみなさない。
+
+最初の試験では`-tags server`の実Wails Serverと独立したHTTP Clientを使い、**127.0.0.1限定**で受理したWorkspace／Subjectにだけread-only要求を通す。現行の`WAILS_SERVER_HOST`と`WAILS_SERVER_PORT`の防御を維持し、Routeを登録したからといって外部ネットワークに公開しない。外部公開／認証された共有利用は、HostでのActor確定、Audience／Disclosure、現在Grant、Rate／サイズ制限を実装し、独立に検証してから選ぶ。
+
+### 17.8 型付き入出力と公開Audienceを同時に扱う
+
+他のPlugin接続と同じく、APIの入力・出力は標準Data型を基本とする。**Record全体を渡す**、**必要なField／Relation Pathだけをつなぐ**、**明示的Adapterを介して型を変換する**という三方式を、HTTP公開にも適用する。ただし、型・Fieldが接続できることは開示や意味保存の資格にならない。例として`OrderSummary`全体に`internalNote`が含まれるとき、HTTPで許可されたFieldへのProjectionを公開Contributionで明示し、CLIからの型付き直接呼出しと開示範囲を区別する。
+
+検収票では(1) Operationの型付きRequest／Result／Failure、(2)公開ContributionによるField Mapping・Loss・Audience、(3)Transportのwire codec、(4)選択Provider／実Entry、(5)実Consumerが復号した値を別々に照合する。Decimalの精度、欠損とNULL、Collectionのpartial／完全性、時点・ScopeをHTTPのJSON表記へ無断で落とさない。CLI文字列／HTTP JSONのbyte一致ではなく、**契約に従って復号した意味値と必要Read／Failure**を比較する。値が一致してもHost固有の認可や公開資格までは一致したと判定しない。
+
+この照合は既存[標準サービスFlow§11](SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)／[Plugin入出力Mapping](PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md)に委譲する。新しいCore Port型、HTTP専用業務Meaning、複数段の自動Adapter探索は初回に加えない。

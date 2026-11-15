@@ -354,9 +354,29 @@ main統合済み[#5051](https://github.com/hat47x/tei-platform/pull/5051)の`//g
 
 **検証境界**：この節は、mainの限定実装と進行中のPRを区別した設計・引渡しである。CPW-23〜28の新しいGo／DB／Windows試験、DB横断Provider実接続、正式R2-P／R3の全経路、Stage1→Stage2再帰セルフビルド、Owner意味・開示受理は**今回新たに検収していない**。
 
+---
+
+## 11. 解釈と生成を別の実現候補として、接続検収票へ加える（2026-11-15）
+
+[Pluginの実現・最適化契約§10](PLUGIN_REALIZATION_AND_OPTIMIZATION_REQUIREMENTS_2026-11.md)では、受理された型付きモデルを既存汎用関数で直接評価する方法と、同じ意味からTarget向けコードを生成する方法を、**互いに競合し得る実現候補**として整理した。これは本書§9のShape／Law／Binding／Realization／Admission・Effect／Consumerの枠組みを増やすものではなく、**Realizationの実体が異なる**例である。
+
+最初の `quantity_positive` では、既存 `validationeval.Evaluate` と `validationgen.GeneratePositive` が生成したGoの `EvaluateSelected` を同じ型付きRule・独立Expectedで比較する。生成の入力検査とRuntime評価の前提は同一でないため、まず生成器が受け付けるShapeへ対象を絞り、正値・ゼロ・負値／nil・取得失敗／Read先と回数を判定する。ここで結果が一致しても、生成版／解釈版の**どちらが製品で選択・実呼出しされたか**を別に確認する。
+
+| 接続検収票の欄 | 直接評価の証拠 | 生成評価の証拠 |
+| --- | --- | --- |
+| Meaning／Context | 選択済みRule・Model revision・必要Read／Sourceの取得範囲 | 同じRule／型に加え、Generator入力と選択Target |
+| Realization | 実Evaluatorの識別、Target内での利用可能性、実Calledの記録 | 生成器版・生成Go byte・実Builder入力・Artifactと実Entry |
+| Consumer／資格 | 実CallerのResult／Failure・現在のHost条件 | 実Consumerの同一Contract結果・現在Grant／Effectの別判定 |
+| 改版 | Runtime側へ届いたモデルbyteと選択版の再確認 | Generator／Toolchain／Builder／Artifact・Consumerの依存失効 |
+
+**コード生成省略は再配布省略を意味しない。** Goバイナリに型付きモデルを同梱するならそのbyteの実収録と改版を確認し、Studioから動的に読むなら現在のSource／選択実装・取得時点を確認する。無条件の生成→直接評価fallbackは、選択Providerの不一致を隠すため認めない。
+
+最初に追加する反証は§10のRZM-01／04。独立Expectedは#1180／#2514、実現方式の比較は#1121／#4544、実Provider選択は#951／#1251、Build／差分失効は#2595／#2600に委ねる。新たな汎用Interpreter、第二Resolver／Runner、全Target同値を前提にしない。Studio Stage1→Stage2 Windowsと公開pure Function R3の優先順位は変更しない。
+
+**状態**：main `84c335b` に収録された同一Ruleの汎用評価／生成Go比較を再利用する設計引渡しであり、重複するGo回帰は追加しない。RZM-04の正式な実現方式選択と実Callの不一致負例、実Provider・独立二Consumerは未検収。
 
 <!-- tei-api-plugin-wails-decoupling-20261115 -->
-## 11. API Pluginの機能と公開手段を分け、CLI／Serverの選択を一つの証拠へつなぐ（2026-11-15）
+## 12. API Pluginの機能と公開手段を分け、CLI／Serverの選択を一つの証拠へつなぐ（2026-11-15）
 
 [Studio／CLI配布統合設計§17](STUDIO_CLI_BACKEND_PROCESS_DISTRIBUTION_UPDATE_2026-11.md)は、API PluginをWails Serverに配置しても**Operation Provider自体をWailsに依存させない**。ここではその分離を、既存のShape／Law／Binding／Realization／Admission・Effect／Consumerに適用する。新しいPlugin kindやResolverは設けない。
 
@@ -369,3 +389,9 @@ main統合済み[#5051](https://github.com/hat47x/tei-platform/pull/5051)の`//g
 独立Expectedへは、CLIが隠れてWailsを起動する、HTTP公開だけで未選択Providerを呼べる、CLI主体のRead ScopeをHTTPで無断継承する、A→B→Aで古いGrantが復活する、HTTP切断で未知Effectを自動再実行する、Hostが旧GenerationのRouteを生かす、の六つを渡す。コードと検証のOwnerは既存#1158／#951／#1251／#1824／#1180／#2514へ戻し、現行P0のStudioセルフビルド／通常CLI実Providerに新しいHard dependencyを足さない。
 
 **到達上限**：本節はPlugin接続の設計と検収候補であり、HTTP API Pluginの実製品機能、非Builtin Providerの二入口E2E、実Windows／Webの新PASSを意味しない。
+
+### 12.1 Port全体／Field／AdapterとAPI公開の接合点
+
+[標準Flow§11](SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)の型付き配線をこのAPIにも使用する。全体Record、個別Field、明示Adapterの三方式は**Provider間で何を受け渡すか**を決める。一方、公開Contributionは**誰に、どのField・Failureを出してよいか**を決める。例えば内部CLIで読める`internalNote`を、単にRecord型が一致するという理由でHTTP応答へ含めない。Adapterが切り落としたField／partial／Lossは隠さず、既存Mapping・Disclosure・AudienceのOwnerへ渡す。
+
+WailsのHTTP Routeが登録済みでも、(a)対象Providerが選択され、(b)そのArtifactが実Imageへ収録され、(c)現在Grant／Disclosureが成立し、(d)独立HTTP Consumerが実際の値を受け取った、の各段階は別の事実である。CLI directの結果とHTTPの結果は、同じScope・Snapshot・Contextから型付きに復号したときだけ意味を比較する。HTTP statusやWails Bindingの呼出成功で実Providerの一致を代用しない。

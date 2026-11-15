@@ -1925,3 +1925,48 @@ O-P2/3の合格をO-P4/5へ昇格させない。通常CLIの初回実Provider Re
 - **REA／AI／SHO**：外部Candidate、Source位置、observed-at、Owner採否を分け、Person/REA Agent/Account/Principalを自動同一視しない。図の表示優先やAI提案は業務上の本務・責任・Grantを作らない。
 
 既存#1180/#2514/#4490のExpected/Scenario/Attemptを利用し、二つ目のExpected Store、新しい組織Core、Temporal Engine、Workflow/Authorization Runtimeを増やさない。新しい受入票ではSource/World版、Occurrence/Revision、validAt/knownAt、Provider/Snapshot/Scope/Coverage、Consumer、Expected/Observed、Owner意味受理と実Effect資格を別欄に保持する。
+
+<!-- org-two-axis-exclusion-20261115 -->
+## 41. 二時点の単一値制約をDBで守る方式と、Provider間の受入境界（2026-11-15）
+
+### 41.1 読取時の曖昧さ検出と、保存時の競合防止は別の能力
+
+§39〜40の実PostgreSQL検証では、一つの所属A2に対して有効時点と認識時点の両方が交差する第三版を**読取時に複数行として発見**できた。しかし、複合主キーだけではその版の挿入を防げない。保存側で単一値性を保証するには、Ownerが受理した「同じMembership occurrenceでは、任意の validAt と knownAt の組に対して高々一版」という業務Ruleを、Providerの同時Writerを含めてどう守るかを決めなければならない。
+
+PostgreSQLには、スカラーMembership IDの等値比較と二つの時間Rangeの重なりを組み合わせる **GiST EXCLUDE制約** がある（[PostgreSQL公式Range Types](https://www.postgresql.org/docs/current/rangetypes.html)）。今回の候補は btree_gist と tstzrange を使い、半開区間の「境界で接する二版」を許しつつ、**同一Membershipの valid区間・known区間がともに交差する挿入**をSQLSTATE 23P01（exclusion_violation）で拒否する。
+
+この制約の採否は、実装可能性とは独立した業務Owner #2386/#1126の判断である。単一値性が不要な関係・別Occurrenceの兼務・複数の関係軸へ一律に適用しない。org-staged-axis の正式Persistence、共通DSL、Graph Core、認可機構にはこの実験から新しい制約を自動追加しない。
+
+### 41.2 隔離PostgreSQLの追加候補試験と期待する差分
+
+新しい TestOrgAxisAsOfExclusionConstraintCandidateOptIn は、既存CIの使い捨て tei_org_axis_e2e DB内で、rollbackされる単一トランザクションを用いる。トランザクション内で btree_gist を準備し、TEMP TABLEと二軸EXCLUDE制約を定義する。正式テーブル・既存Data・拡張の永続インストールは行わない。
+
+| 試験 | 独立期待 | 取り違えてはならない意味 |
+| --- | --- | --- |
+| A2の訂正 | 同じvalid区間でもknown期間が境界で接すれば旧版・新版を保存し、knownAtで読み分ける | 旧版の物理行消去や別Occurrence発行ではない |
+| A3の有効期間交替 | 同じknown期間でもvalid期間が隣接すれば保存し、validAtで読み分ける | known期間だけの重複を一律禁止しない |
+| 別所属A4 | A2と同じ二時点で別Membershipが存在しても拒否しない | 異なる所属を同一人として確定したわけではない |
+| A2の第三版 | 同一Occurrenceで二軸がともに交差する版を投入すると、制約名付き23P01で拒否する | 23505（単なる重複PK）や任意のProvider失敗と混同しない |
+| 失敗後の再読込 | SAVEPOINTを戻した後、旧新の正しい版が残り、Queryが動く | 実HostのACK/Receiptや障害復旧を立証したわけではない |
+| A5の訂正更新 | 同じDBトランザクション内で旧known区間を閉じ、境界から新版を追加すると両版が保存可能 | 正式業務処理のCommit、別接続同時更新・再試行の安全性は未実測 |
+
+対象CIにはこの候補を必須PASSとして追加する。実行しなかったTestのskipを成功として扱わず、Go formatting・DB名確認・実SQLSTATE・受理された行の再読込を別々に検査する。**PRの固定HEADにおける実CI成功が確認されるまでは、この表はExpectedでありObservedではない。**
+
+### 41.3 Provider中立の意味と、PostgreSQL固有の制約を混ぜない
+
+| 方式 | 利点と制約 | 採否を決める観測 |
+| --- | --- | --- |
+| 候補A：DB-native EXCLUDE | PostgreSQLの競合排除機構を使える。btree_gistの有無・DDL/Migration・GiST Index・同時Writer/lock・メンテナンスを伴う | 同一時点の競合防止、正当な境界許容、同時コミット、訂正順序、SQLSTATEと復旧。Provider限定で明示採用するか |
+| 候補B：Provider/Operationの事前読取→検証 | Provider種別をまたぎやすいが、読取後から書込までに別Writerが挿入できる。単なるSELECT後INSERTでは競合を防げない | SERIALIZABLE/対象範囲Lock等で競合を閉じる実証、lost update・再試行・Receiptの扱い |
+| 候補C：版保存とSnapshot投影を別テーブル・文書に分割 | 監査履歴と現在表示を区別しやすいが、二重正本・部分更新・再計算の失敗が発生し得る | Transaction/Outbox/再構築・対象キー・二Consumerの同一Snapshotを確認 |
+
+どの方式でも、**意味的に単一値であること**、**物理保存に競合が入らないこと**、**Read Cohortが必要な全版を取得したこと**、**Ruleの判断に利用してよいこと**は独立している。Queryで0/1件になってもRLSやpartial取得を通じて欠けた版がないとは言えず、当該集合の完全性を別に立証する。SQLのORDER BY/LIMIT 1によって業務上の競合を解消したことにはしない。
+
+### 41.4 BRMS・REA・標準Graph・Studioへの引渡し
+
+- **Rule/BRMS**：Uniqueな担当・承認者・部署を求めるRuleは、所属関係の単一版制約だけでは合格しない。Personへの正式Relation、必要Read集合、Rule版、単位・粒度、部分取得・permission-deniedと現在のHost Grantを別に判定し、0件・1件・複数・未取得／競合を区別する。User-facing説明で複数候補をソート先頭の一人へ黙って縮約しない。
+- **標準Graph/ノード表示**：Membership occurrence、Assertion revision、Provider row、投影上のNode/Edge IDは別。表示で一つの部署へ集約されても、元Relation、複数経路、訂正前後とSourceを失わない。Treeへの投影で第二の親を消去しない。
+- **REA/外部Source**：取得時点（observed-at）と業務側のknown-timeを同一視せず、外部Agentの同名・ID一致でPersonへLinkしない。外部候補は正式Relationの意味受理を経て初めて製品Sourceへ接続する。
+- **Studio/SHO/AIとPlugin**：表・図・説明が同じvalidAt/knownAt/Source版を表していても、それだけで実行GrantやCommit/Effectの資格を作らない。Source pin、Provider/Rule版、配布と実Composition、対象Consumer・開示Sliceを固定し、変更時は既存Preview・再読込の手順を利用する。
+
+この方式比較は§40のO-P1〜5に従属する。次の製品実装はOwnerが意味を選択した正式Persistenceで旧新二版を保存し、実Provider→Function Context→二Consumerへ同じWorld/Read Cohortから渡すこと。DB-nativeの実験がPASSしても、TEI専用Temporal Engine・独自Host・業務専用Authorization・第二Expected Storeを導入しない。#2586の通常CLI実Readと#2831のDesktopセルフビルドを独立P0のまま維持する。
