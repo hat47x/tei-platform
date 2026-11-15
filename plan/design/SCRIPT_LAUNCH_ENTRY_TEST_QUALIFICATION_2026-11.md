@@ -1481,3 +1481,19 @@ FunctionはDataと独立した公開契約である。[Data／Functionの分担�
 **独立した実行証拠の入口**：既存`.github/workflows/action-surface-real-cli.yml`はPRのexact HEADをCheckout・照合し、通常製品CLIをBuildしている。この同じWorkflowに既存`TestProductInspectCLISelectedMarkdownRuleIsNotCapability`を`-run`で単独実行するStepを設ける。元テストのファイルBlob、`gofmt`、実CLI別OSプロセスの正負例とsource byte対照、試験前後のcleanを同一Attemptの証拠として残す。これによりRepository Healthの独立したREA／CLI Catalog等の失敗と、この製品CLI Subject Kind負例の実行結果を切り分ける。**この試験のPASSは読み取り専用の境界だけ**に適用し、Function Entry公開・現在Grant・selected／actual Provider実Call・Effect／Receipt・独立Consumer受領には拡張しない。
 
 次の実装は、このread-only入口をFunction起動用に改造することではない。#4495／#1158で別途Owner受理済みのpure Functionを選び、Function契約→typed Request→現在公開Entry／Host Grant→選択Providerとactual Provider→通常製品`tei`からの**実Invocation**を、同じ対象の独立Expectedと受領結果で照合する。R2-Pの生成Go実Builder消費は#4544／#2595で並行検収する。Node／StudioのInspector可視化、Source Open、Windows Stage1→Stage2は別のConsumer／権限境界として扱う。
+
+### 29.11 生成Rule Goの通常self-build実消費と、Operator選択の再資格化
+
+[PR #5009](https://github.com/hat47x/tei-platform/pull/5009)で、選択済み`tei.rule-authoring/v0`の正値Ruleを製品`Workspace.Load`から取得し、`validationgen.GeneratePositive`で生成したGoを、既存`buildintent.Resolve`と通常製品`tei self-build`から`reference-go-build-from-plan`へ渡すGoテストがmainに入った。Goの依存閉包、実Entrypointの`definitionSource`、Plan Cross-check、Artifact Binding、再現性、L2-b、隔離Build、完成Binaryの正値／ゼロ／負値／NULL／未取得という五つの固定期待値を照合する。**参照Builderを直接呼んだだけの§29.9から、通常製品CLIが生成Goをビルド対象として実際に消費する段階へ前進した。** ただし、テストコードが存在することと単独CIが成功したことは別に記録する。
+
+この成果を製品R2-P全体の完了へ読み替えない。現行の`writeFullChainDeclaration`はGoのEntrypointと依存Package、`go.mod`／`go.sum`を列挙する一方、元`*.tei.md`の実byte、同じLoadのSource Index／World Revision、Reader／Generator実装版、業務意味の受理を**選択済みBuild IntentのSource／Generator資格として束縛していない**。テスト用の生成Goと実バイナリが一致しても、Source A→B→AやGeneratorの変更後に旧Goを使用できないとは証明できない。初回の追加Product試験は、新しいBuilderを作らず、この具体的なSource/Generator→生成Attempt→実Builder読取byteの連鎖を既存#4544／#2595の入口で閉じる。
+
+一方、[PR #5007](https://github.com/hat47x/tei-platform/pull/5007)では、文書内に宣言したOperatorをWorkspace Manifestの`implementations: operator/use`で明示選択し、Scenarioの`evaluate-validations`で組込みの実装を呼んで実装名を記録できるようになった。選択`tei.number.non-negative`と`tei.number.non-zero`は入力0に対して異なる判断を返す。ここでは**Ruleの宣言＝意味、Manifestの実装選択＝Composition、実Callした実装＝実行証拠**として区別する。現在の制限として、生成済みScenario Commandが実装選択だけの変更で失効する保証と、外部Plugin Lock／実Providerとの結合、Scenario CLI全体の実Call試験はまだ成立していない。
+
+| 次の一件 | 追加の実検査 | 不合格とする反例 |
+| --- | --- | --- |
+| R2-Pの出典閉包 | Rule元byte／Source Index／World／選択Language・Generator版／生成Go digest／Builder実入力／Artifactを同じAttemptで照合 | Rule条件だけ更新して旧GoをBuild、A→B→Aで旧受理復活、Generator B選択／実Aを使用 |
+| Operator選択とScenario資格 | Manifest上の選択を変更したとき、生成済みScenario Command・実装選択証拠を再資格化し、実Callした実装名と結果を独立Expectedで比較 | World／Rule IDが不変だから旧選択を使う、同じ値を返す別実装を実選択とみなす |
+| 公開pure EntryのR3 | Owner受理済み別Functionを、公開Entry→Host現在Grant→typed Input→selected/actual Provider実Call→通常製品CLIの別Processと実Consumerへ通す | RuleやOperatorが読めたこと、Scenarioの合成評価、CLI self-buildの成功を実Function Invokeに流用 |
+
+継続検査は既存`.github/workflows/tei-self-build-qualification.yml`のLinux/amd64実Go環境に`TestSelectedRuleGoThroughRealCLISelfBuild`の単独Stepを追加し、Goテストが`testing.Short()`やTarget不一致でSkipしていないことも`-v`ログで確認する。Rule生成Goが`tei/internal`を参照するため、別module Targetへ同じArtifactを配布できるという一般化を避ける。公開FunctionのProvider／現在Grant、Owner意味受理、Stage1→Stage2 Windowsの新しいPASSとはしない。
