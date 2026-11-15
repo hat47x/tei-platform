@@ -1658,3 +1658,48 @@ SourceのRaw byte、候補の構造指紋、採用Meaning、生成Sourceの実Bu
 これらは新しいExpected/Scenario体系を作るためのIDではなく、§31のOCP-0〜4とOCC-01〜10を**実コードPRに渡す作業単位**である。既存#1180/#2514の独立ExpectedとDriver Scenarioを再利用する。
 
 **停止条件とP0**：正式Person/Case関係が受理されていない、DB版が共存しない、観測範囲を保証できない、または現在Grantが未確認なら、それぞれ該当する段階で保留する。最初から全ての組織業務機能を一度に実装しない。通常製品`tei` CLIの初回実Provider Read #2586とStudio Stage1→Stage2 #2831の優先順位は不変。ここに書いた実組織DB/CLI/Reader/Host/Studio試験は**未実施**で、Owner Meaning Acceptanceも**未受理**である。
+
+<!-- org-c1-cross-view-identity-20261115 -->
+## 34. 組織・REA・案件処理を横断するとき、同じ人物と責任をどう確かめるか（2026-11-15）
+
+### 34.1 三つの視点は接続するが、同一人物・同一権限を推定しない
+
+既存の組織C1は、人物の所属・役割・責任を読む**組織の視点**である。REAのEconomic Agent/Resource/Event/Commitmentは、業務資源と経済的な参加・交換の**業務事実の視点**である。CaseのHandling Unit・Responsibility・Handoffは、対象案件の受渡しと現在の手続を扱う**案件の視点**である。同じ名前、IDの文字列、あるいは画面上の近接だけで三者を結合しない。
+
+例えば「D1の役割R1を持つP1が、イベントE1の当事者で、案件C1の承認者でもある」という説明を生成するには、三つの事実それぞれにAccepted Source・時点・Scopeがあり、**P1⇄REA Agent、Agent⇄Event、Case⇄担当責任**の意味ある対応をOwnerが受理している必要がある。REAのAgentと組織Personを同一型として一律に扱わない。REAの関係からCaseの現在Grantを導出しない。現状の`org-synthetic-r7`とCase C1の別Fixtureを同じ実業務Worldとして混ぜない。
+
+この接続は、新しい共通Schemaや汎用Organization/REA Runtimeを追加するためではない。組織・REA・プロセスの各Sourceが示す意味を既存標準Data/Function/Businessモデルで参照し、受理済みの関係だけを既存Query・Rule・Generatorへ渡す。
+
+### 34.2 四つの時点と実行資格を独立に確かめる
+
+| 対象 | 何を示すか | 代用してはいけないもの |
+| --- | --- | --- |
+| **有効時点（validAt）** | その組織関係や業務事実が有効だった時点 | その値をDBから読んだ時刻 |
+| **認識時点（knownAt）** | 遡及訂正を踏まえて、どの版の事実を知っているか | 二Queryの同一DB Snapshot |
+| **観測範囲（Read Cohort / Attempt）** | どのProvider・Instance・Isolation・Snapshot・Tenant/Scopeで何を取得したか | 正式な業務意味の受理、母集団の全件性 |
+| **現在の実行資格（Current Grant）** | 今、誰がそのActionを実行できるか | 過去の所属・REA参加・Case担当の一致 |
+
+**観測した事実・確定できる業務判断・実行できるActionは別段階**とする。Role変更やCase移管の途中で、同じP1が過去の責任経路に残っていても、旧Grantや既存Receiptが復活することはない。A→B→Aで同じ値が再び現れても、Snapshot・Source Revision・現在Grantを再確認する。
+
+### 34.3 横断判断を安全に再利用できる最小の試験
+
+| 反例ID | 一因子の変更 | 正しく保留・拒否する判断 |
+| --- | --- | --- |
+| **OXV-01** | 組織Person P1とREA Agentの同名・ID形式のみ一致 | 正式Linkのない同一主体認定 |
+| **OXV-02** | 二Relationは同じvalidAtだがknownAtが異なる | 遡及訂正前後の関係を同時に正当化 |
+| **OXV-03** | knownAtは等しいが実Read Snapshot/Scopeが違う | 一つの完全な候補集合として結論する |
+| **OXV-04** | Personには複数のRelation Occurrenceがある | 人物・REA Agentを二人分と誤計数 |
+| **OXV-05** | 正の参加・所属経路があり、除外／非出力条件が未取得 | 「唯一」「承認可能」「該当者なし」の確定 |
+| **OXV-06** | CaseのHandling Unitが移管され、旧Grant/Receiptが存在する | 過去の担当者による再実行の許可 |
+| **OXV-07** | 構造上のData関係は読めるがFunction/BusinessのMeaningが未受理 | 「この機能がこのDataを業務上利用する」との断定 |
+| **OXV-08** | Studio/SHOで候補Path・人数・理由を表示するが現在の開示資格がない | 非公開のPerson ID・件数・判断理由の漏えい |
+
+ここで列挙したOXVは**既存独立ExpectedとDriver Scenarioへ渡す検証観点**であり、第二のExpected Store、汎用証明サービス、永続Result Enumではない。部分取得でも異なる二人物の正の経路が確かなら唯一性を反証できるが、REAの当事者資格・案件承認資格の証明は別に必要である。図からの編集でも、多重Occurrence・版・Source位置が一意に確定しない限り自動Commitしない。
+
+### 34.4 実装Ownerへ渡す順序
+
+まず**組織Read-1/2（§33、#4490/#2586）**で同一Read Cohort・必要Read集合を実証し、**#2386**でPerson/Role/Responsibility/Case Linkの意味を受理する。その後、**REA既存Owner（#3394）**の受理済みAgent/Participationと最小の一関係だけを対応付ける。正式`*.tei.md` Reader・型付きRule・実GeneratorのOwner（#2621/#988/#1121）がその関係を生成Goへ反映したことを既存#1180/#2514のExpectedで照合する。Caseの状態変更・Host Grant/Effectは#4501/#1174の別検収に残す。
+
+Studio/SHOは、同じSource位置・時点・判断理由・欠測の区別を表示する**読取側のProjection**として始める。安全な編集はPreview→Resolve→Admit→Commit→独立再Readを既存UI/操作Ownerへ返し、候補Graphからの不可逆な逆編集を禁止する。Sourceの説明文・構造指紋・生成Go・実Read・Runtime Grant・Effect Receiptは別の証拠で扱う。
+
+**計画上の停止線**：この§34はREA・組織・案件の既存設計を横断する採用前の検収条件である。現時点で同一実DB Worldからの統合実Read、REA AgentとPersonのOwner Link受理、Case C1の正式Rule、Product `*.tei.md` Reader、生成Go、実Host Grant、Studio E2Eを実証・受理したわけではない。全体P0の#2586・#2831は維持する。
