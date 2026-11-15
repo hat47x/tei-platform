@@ -149,3 +149,74 @@ main統合済みのGraph／Rule候補構造指紋[#4758](https://github.com/hat4
 [実装契約§25](STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)では、起動時に検査するRelease実Image／UI Asset／標準Plugin／既定設定Schemaと、操作時に確認する実Provider／Current Grant／Effect Receiptを分けた。D2単一Imageへの静的内包を標準候補とし、D3別Serverの複数成果物切替はWails Updaterが自動で保証するものとは扱わない。Bootstrapは診断・復旧をPlugin初期化前に実行できる最小経路を維持し、第二Resolver／Host／Registry／Updaterは作らない。
 
 Wails公式UpdaterのArchiveは原則として最上位Entryを一つに制限する。外部Plugin／Serverの実行世代、利用者設定、DB Migrationは別の管理責任とする。BRC-01〜09を既存#1180/#2514の独立Expected候補とし、優先度はCLI-first実生成・Studio Stage1→Stage2・通常CLI実ProviderをP0、Wails安定版とD2更新をP1、D3／Mobile探索をP2のまま維持する。この追加は設計・検証項目であり、新しいGoコード・配布・Windows・Android/iOSのPASSではない。
+
+## 17. API PluginはWails Serverに配置しても、Wailsに依存させない（2026-11-15）
+
+### 17.1 APIを提供する能力と、HTTPを受け付ける場所を分ける
+
+API Pluginの代表的な配備先はWails Serverでよい。ただし**API Pluginの意味・処理・契約はWailsのService BindingやServer Buildに所有させない**。WailsはHTTP／Browser／Workbenchを受け付けるHost Adapterの候補であり、CLIは同じApplication Operationへプロセス内から直接到達できる必要がある。[ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)の依存方向と#1158を正本とし、専用の第二API実行器・Dispatcher・Plugin Registryを作らない。
+
+ここで「API Plugin」は少なくとも二つの責務を区別して扱う。**Operation Provider**は要求型・結果型・失敗・作用を持つ業務／管理操作を実装する。**API公開Contribution**は、そのOperationのどの版をどのHTTP method/path、公開Scope、認証要件、wire形式へ投影するかを記述する。同じPlugin Bundleが両方を含んでもよいが、HTTP Route自体を業務意味の正本にしない。CLIのコマンド表示も同じOperation Contractから導出し、HTTP用の処理を再実装しない。
+
+```text
+CLI (local) ── direct typed call ────────────────────────┐
+CLI (explicit remote) ── HTTP client ──┐                │
+External HTTP client ──────────────────┤                │
+                                  HTTP/API Adapter      │
+                                  (Wails Server等)      │
+Wails Workbench ── thin Service/Bridge Adapter ────────┤
+MCP / other Host ── their Transport Adapter ───────────┤
+                                                      ↓
+                                shared Application Operation
+                                       / Resolver + Lock
+                                       / actual Provider + Grant
+                                                      ↓
+                                       typed Result / Failure
+```
+
+ローカルCLIの通常操作にHTTP listener、Wails runtime、WebView、常駐Serverを要求しない。リモートCLIは明示された接続先へHTTP等で到達してよいが、障害時に暗黙でLocalへ切り替えない。Serverの実行Provider／GrantはServer側で選ぶ。CLIが指定したPlugin名はServerのAuthorityにならない。
+
+### 17.2 Wails固有の機能はHost側だけで利用する
+
+Wails v3のServer BuildはGUIなしで動作し、Service Binding、HTTP HandlerをService Routeへ登録する機能を持つ。TEIではこれを**公開Adapterの実装手段の一つ**として利用する。Wailsの`application.Service`・`ServiceOptions.Route`・`/wails/runtime`をPluginの必須インターフェイスにしない。Wails固有の型のimportは`cmd/tei-studio`等のHost境界へ閉じ込め、`internal/operations`とOperation Provider／契約定義への逆依存を拒否する。
+
+APIのmethod/path・schema・OpenAPI等の公開記述は、受理されたOperation Contractと公開Contributionから生成または一致検査する。静的Go Compositionを最初の配備形態とし、動的配線・外部Process化は隔離や更新の要件が実証された場合のみ検討する。公開Routeが存在すること、Pluginが選択されたこと、実Entryが呼ばれたこと、現在Grantが有効であることは別の証拠とする。
+
+Wails ServerのOrigin／WebSocket設定は、独自の公開HTTP API全体の認証・認可・CSRF・CORS・要求上限を自動的には保証しない。外部公開時はHost／API Adapterの入口制御とOperation実行時の現在Grantを別々に検証する。Browser向けBinding、外部向けHTTP API、CLI直呼びで要求主体の生成経路が異なることも契約に残す。
+
+### 17.3 一つのread-only Operationで三つの入口を実証する
+
+| 受入候補 | 実際に観測するもの | 誤って合格にしないもの |
+| --- | --- | --- |
+| **API-P1** CLI direct | 同じPin／Sourceから`inspect`を共通Operation経由で呼び、型付きResult／Failureを得る。CLIの実依存にWailsがなく、Server停止中も成功する | CLIが隠れてlocalhost HTTPを呼ぶ構成 |
+| **API-P2** Wails Server HTTP | 同じOperationと選択ProviderをHTTP Adapterから呼び、wire差を除いた意味・FailureがAPI-P1と一致する | WailsのHTTP 200／Route登録だけをProvider実呼出しとみなす |
+| **API-P3** Wails Workbench | 実Browser／Studio Bridge経由で同一Resultを受領し、Workspace／Source Revision／Attemptを照合する | Wails Bindingが存在するだけで画面が使ったとみなす |
+| **API-N1** 切替・権限 | Provider A→B→A、旧Lock、現在Grant失効、異Workspace、別主体を個別に注入して拒否・再資格化を確認 | Source／Artifactの同一Digestで旧実行資格を復活させる |
+| **API-N2** HTTP境界 | 非公開Route、未許可Operation、Browserの不正Origin、無認証要求、過大入力、古いClientを拒否する | Wails runtime用のOrigin制御だけで外部API全体を安全とみなす |
+| **API-N3** 実行・配布 | CLI TargetにはWails非依存の必要Memberだけを、Server Targetには公開Adapterを含む必要MemberだけをBuild/Release Closureとして追跡する | CI上の起動成功や宣言済みBOMだけで実同梱・実消費を確定する |
+
+第一のコード差分は既存#1158／#3419〜#3421の型付き`inspect`を使った**CLI directとWails Server HTTPの二入口比較**に絞る。Workbench実受領は#1824、Plugin選択／実Callは#951／#1251、独立Expectedは#1180／#2514へ戻す。#2831／#4583の非Plugin Studio Stage1→Stage2と#4495の通常CLI実Providerを引き続きP0の主線とし、API公開・リモートCLI・D3配布の完成を新しいHard Gateにしない。
+
+**到達上限**：本節は責務と反証の設計追補であり、Wails Server上の製品API Plugin、HTTP実配信、CLIとの実同値、外部公開時の安全性について新たな実測PASSを主張しない。
+
+### 17.4 APIを「呼び出せる操作」と「外部に公開する窓口」に分ける
+
+TEIの共通Application APIは、HTTPを使わずに型付き操作を呼び出すための**アプリケーション内部の契約**である。一方、HTTP APIはその操作を外部へ公開する**配信上の契約**である。前者にURL、HTTP status、Cookie、Wails Serviceの型を持ち込まない。後者ではmethod/pathだけでなく、Request／Result／Failureの写像、公開Audience、認証方法、Scope、Rate／Payload制限、版・廃止条件を明示する。
+
+同じBundleがOperation ProviderとHTTP公開Contributionを含んでも、公開Contributionを選択しただけでRouteを自動登録しない。まず受理済みOperationとProfile、exact Provider／Contract／Target／現在Grant、配布Artifactを照合する。Hostは許可された公開Routeだけを組み立て、起動後の実Entry・Client受領を別に観測する。APIの宣言があることと、そのAPIが現に外部へ開いていることを混同しない。
+
+**最小実装は同期のread-only要求／応答に限定する。** WebSocketや購読、長時間Job、Webhook、更新・確定操作へ広げる場合は、Transportの接続状態と、業務Operationの完了・Effect Receipt・再試行可否を分ける。切断やタイムアウトを取消・Rollbackの証拠にしない。非冪等操作では同じHTTP要求の再送が二重の業務作用を起こさないよう、既存Command／Recovery契約の受理を別途必要とする。
+
+### 17.5 配布構成とNode Viewにも同じ責務分離を通す
+
+CLI TargetはGoの共通Operationと必要Providerだけで成立し、Wails／HTTP Adapter／Web assetsをBuild-only・Runtimeいずれの必須依存にもしない。Wails Server Targetは、同じOperation実装にHTTP公開ContributionとHost Adapterを加えた別のArtifact Closureとして追跡する。Studio Desktop TargetはWails Bridgeが直接または明示的な子Backendへ接続する。B0/B1/B2の実行方式とD1/D2/D3の配布方式は独立に選び、どれもProviderの意味Identityにはしない。
+
+標準Node Viewでは、**Operationを要求する**、**Providerが提供する**、**Profileが選択する**、**Hostが公開する**、**実Processが呼び出す**、**Consumerが受領する**を別種類の辺で投影する。配置や図上の配線は既存Resolver／BuildIntent／Invocation／Grantの観測結果を読むだけであり、線を引く操作だけでProvider選択・権限・実公開を変更しない。これにより、Node-RED型のHTTP入口と、CLIの直接入口を、標準Process／Data／Operation上の二つの表現として扱える。
+
+### 17.6 既存コードから始め、Plugin実証へ段階的に進む
+
+最初はmainにある`internal/operations/dependency_test.go`（Wails／HTTP等への推移依存を拒否）と、製品`tei inspect`の共通Operation照合を基線にする。この段階で証明できるのは**Wailsに依存しない共通OperationとCLIの利用**であって、外部API Pluginの実Callではない。次に同一Source／ScopeをWails Server HTTP経由で実受領し、最後に**正式なProfileで選択した非Builtin Provider**へ置き換えて、CLI直呼びとHTTP入口の選択Provider／実Image／Invocation／結果を独立Expectedで検証する。
+
+最初のAPI Plugin専用Runtime、万能Route DSL、中央Daemon、動的ロード機構は作らない。具体的な実装Ownerは#1158／#3419〜#3422（共通OperationとTransport）、#951／#1016／#1251（選択・実Provider）、#1824／#4635（Host）、#1180／#2514（独立Expected）を再利用する。新たな実証をもって、#2831／#4583の非Plugin Studio Stage1→Stage2や#4495の通常CLI実Providerの既存P0を置き換えない。
+
+**状態**：17.4〜17.6は既存実装と他の横断設計を踏まえた追加の実装方針である。Wails Server上の公開API、非Builtin API Plugin、HTTP↔CLI実Provider同値、外部公開の認証・認可・配布について実証済みとは扱わない。
