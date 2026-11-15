@@ -4,6 +4,26 @@
 
 ## 1. 作業開始時に確認すること
 
+### まず使う検査コマンド
+
+```bash
+# root Go module（変更したpackageへ範囲を絞る）
+go test -count=1 ./<対象パッケージ>
+go vet ./<対象パッケージ>
+go run ./cmd/tei validate -workspace reference/workspace
+
+# Studio Workbench（reference/tei-studio-workbench/で実行）
+npm ci
+npm test
+npm run typecheck
+npm run build
+
+# 設計・計画ファイルを変更した場合
+go test -count=1 ./tools/repository-plan-check
+```
+
+`<対象パッケージ>`は実際のGo package pathへ置換する。Studioの`cmd/tei-studio`は別Go moduleなので、必要な検査はそのmodule内で行う。**WebのLint／実WebView試験はまだWorkbenchのpackage scriptsに揃っていないため、存在しない`npm run lint`等を実行済みと記載しない。** 実施する検査は変更範囲に応じて選び、詳細は[CONTRIBUTING.md](CONTRIBUTING.md)で確認する。
+
 1. `git status`、現在のbranchとHEAD、最新の`main`、対象Issue/PR、変更予定のpathを確認し、ほかの作業の差分を上書きしない。
 2. ルートの[README.md](README.md)と対象ディレクトリのREADME、必要な場合だけ[現行アーキテクチャ](docs/architecture.md)・[実装状況](docs/status.md)を読む。
 3. 仕様・優先順位を変える場合は[全体計画](plan/MASTER_PLAN.md)、[要求](requirements/TEI_PRODUCT_REQUIREMENTS.md)、関連Issue、採用済み[ADR](plan/adr/README.md)と受入条件を確認する。**設計案と実装済みの事実、旧PRと現行mainを混同しない。**
