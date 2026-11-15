@@ -159,8 +159,8 @@ func TestB1OmissionsListed(t *testing.T) {
 			t.Errorf("omission %q not reported (have %v)", want, plan.Omissions)
 		}
 	}
-	if plan.InputDeclaration != "undeclared" || len(plan.Params) != 1 || plan.Params[0] != "from" {
-		t.Errorf("input handling: declaration=%s params=%v", plan.InputDeclaration, plan.Params)
+	if plan.InputDeclaration != "declared" || len(plan.Params) != 1 || plan.Params[0] != "from" || len(plan.ParamKinds) != 1 || plan.ParamKinds[0] != "datetime" {
+		t.Errorf("input handling: declaration=%s params=%v kinds=%v", plan.InputDeclaration, plan.Params, plan.ParamKinds)
 	}
 }
 
@@ -207,11 +207,12 @@ func TestB1BinaryRejectsBeforeDatabaseAndDetectsStale(t *testing.T) {
 	}
 	dead := []string{"TEI_DSN=postgres://x:x@127.0.0.1:1/none?sslmode=disable&connect_timeout=1"}
 	cases := map[string][]string{
-		"no argument":    {"query", b1Pattern},
-		"extra argument": {"query", b1Pattern, "--from=2026-11-07T09:00:00Z", "--status=accepted"},
-		"duplicate":      {"query", b1Pattern, "--from=a", "--from=b"},
-		"wrong function": {"query", "order_entry.customer_reference", "--from=a"},
-		"positional":     {"query", b1Pattern, "2026-11-07T09:00:00Z"},
+		"no argument":     {"query", b1Pattern},
+		"extra argument":  {"query", b1Pattern, "--from=2026-11-07T09:00:00Z", "--status=accepted"},
+		"duplicate":       {"query", b1Pattern, "--from=a", "--from=b"},
+		"wrong function":  {"query", "order_entry.customer_reference", "--from=a"},
+		"positional":      {"query", b1Pattern, "2026-11-07T09:00:00Z"},
+		"not a date-time": {"query", b1Pattern, "--from=42"},
 	}
 	for name, args := range cases {
 		if msg, code := b1Run(bin, dead, args...); code != 2 {
@@ -440,4 +441,40 @@ func sprint(v any) string {
 	}
 	b, _ := json.Marshal(v)
 	return string(b)
+}
+
+func b1QueryTei(ws string) string {
+	return filepath.Join(ws, "applications", "order-entry", "queries", "recent_orders.tei")
+}
+
+// The declared input type is the authority: a type the generator cannot check
+// is refused before generation, and removing the declaration is visible in the
+// plan and the generated code.
+func TestB1DeclaredInputTypeIsTheAuthority(t *testing.T) {
+	ws := b1CopyWorkspace(t)
+	raw, err := os.ReadFile(b1QueryTei(ws))
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(raw)
+	if !strings.Contains(src, "    input from std.datetime\n") {
+		t.Fatalf("the Source no longer declares input from std.datetime:\n%s", src)
+	}
+	if err := os.WriteFile(b1QueryTei(ws), []byte(strings.Replace(src, "input from std.datetime", "input from std.identifier", 1)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := browsegen.NewPlan(ws, b1App, b1Pattern, browsegen.TargetPostgres); !errors.Is(err, browsegen.ErrInputTypeUnsupported) {
+		t.Fatalf("want INPUT_TYPE_UNSUPPORTED, got %v", err)
+	}
+	if err := os.WriteFile(b1QueryTei(ws), []byte(strings.Replace(src, "    input from std.datetime\n", "", 1)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	undeclared, outU := b1Generate(t, ws)
+	declared, outD := b1Generate(t, b1Workspace(t))
+	if undeclared.InputDeclaration != "undeclared" || undeclared.ParamKinds[0] != "text-undeclared" {
+		t.Fatalf("undeclared plan: %s %v", undeclared.InputDeclaration, undeclared.ParamKinds)
+	}
+	if b1Read(t, outU, "main.go") == b1Read(t, outD, "main.go") || undeclared.ModelDigest == declared.ModelDigest {
+		t.Fatal("removing the input declaration must change the generated Function")
+	}
 }

@@ -32,6 +32,11 @@ const sqlText = {{.BoundSQLLiteral}}
 
 var paramNames = []string{ {{- range .Params}}{{.Literal}}, {{end -}} }
 
+// paramKinds says how each argument is checked before the database is
+// contacted: "datetime" must be RFC 3339 (the declared type), "text-undeclared"
+// is passed through as text.
+var paramKinds = []string{ {{- range .ParamKinds}}{{.Literal}}, {{end -}} }
+
 var resultColumns = []string{ {{- range .Columns}}{{.Literal}}, {{end -}} }
 
 type usageError struct{ msg string }
@@ -110,7 +115,16 @@ func runQuery(args []string) error {
 	}
 	vals := make([]any, len(paramNames))
 	for i, n := range paramNames {
-		vals[i] = given[n]
+		switch paramKinds[i] {
+		case "datetime":
+			t, err := time.Parse(time.RFC3339Nano, given[n])
+			if err != nil {
+				return usageError{"argument " + n + " must be an RFC 3339 date-time (declared std.datetime): " + given[n]}
+			}
+			vals[i] = t
+		default:
+			vals[i] = given[n]
+		}
 	}
 	ctx := context.Background()
 	db, err := sql.Open("pgx", dsn)
