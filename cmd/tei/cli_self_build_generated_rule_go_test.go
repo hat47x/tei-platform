@@ -2,7 +2,9 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,6 +16,7 @@ import (
 	"tei/internal/core"
 	"tei/internal/semantic"
 	"tei/internal/semantic/validationgen"
+	"tei/internal/sourceindex"
 	"tei/internal/workspace"
 )
 
@@ -70,6 +73,33 @@ func TestSelectedRuleGoThroughRealCLISelfBuild(t *testing.T) {
 		attributeType != "std.decimal" {
 		t.Fatalf("wrong selected Rule or resolved type: %+v / %s", selected, attributeType)
 	}
+	// Recheck the same-load Source Index against the original Markdown bytes.
+	// A late edit cannot silently become the provenance of the generated Go.
+	const sourcePath = "semantic/sales/order-line-rules.tei.md"
+	index, err := workspace.BuildSourceIndexFromLoad(fixture, loaded)
+	if err != nil {
+		t.Fatalf("selected Rule Source Index: %v", err)
+	}
+	original, err := os.ReadFile(filepath.Join(fixture, filepath.FromSlash(sourcePath)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := index.Validate(func(path string) ([]byte, error) {
+		return os.ReadFile(filepath.Join(fixture, filepath.FromSlash(path)))
+	}); err != nil {
+		t.Fatalf("source changed after selected Workspace.Load: %v", err)
+	}
+	refs := index.ReferencesFor(sourceindex.Subject{Kind: "semantic-validation", ID: string(selected.ID)})
+	if len(refs) != 1 || refs[0].ArtifactPath != sourcePath || refs[0].Role != sourceindex.RoleDefinition {
+		t.Fatalf("selected Rule does not have exactly one original Source location: %+v", refs)
+	}
+	if err := refs[0].Range.Validate(original); err != nil {
+		t.Fatalf("selected Rule Source range: %v", err)
+	}
+	if got := string(original[refs[0].Range.Start.Offset:refs[0].Range.End.Offset]); got != string(selected.ID) {
+		t.Fatalf("Source Index bound %q instead of the selected Rule %s", got, selected.ID)
+	}
+
 	generated, err := validationgen.GeneratePositive(selected, attributeType, "main")
 	if err != nil {
 		t.Fatalf("generate positive Rule Go: %v", err)
@@ -93,7 +123,9 @@ func TestSelectedRuleGoThroughRealCLISelfBuild(t *testing.T) {
 	entry := "./" + filepath.ToSlash(relative)
 	for name, data := range map[string][]byte{
 		"generated.go": generated,
-		"main.go":      []byte(generatedRuleDriver),
+		"main.go":       []byte(generatedRuleDriver),
+		"provenance.go": []byte(generatedRuleProvenance),
+		"source.tei.md": original,
 	} {
 		if err := os.WriteFile(filepath.Join(pkgDir, name), data, 0o600); err != nil {
 			t.Fatal(err)
@@ -189,10 +221,31 @@ func TestSelectedRuleGoThroughRealCLISelfBuild(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CLI-built generated Go could not run: %v\n%s", err, out)
 	}
-	const want = "positive:satisfied:1\nzero:not-satisfied:1\nnegative:not-satisfied:1\nnull:error:1\nmissing:error:1\n"
+	want := fmt.Sprintf("source-sha256:%x\n", sha256.Sum256(original)) +
+		"positive:satisfied:1\nzero:not-satisfied:1\nnegative:not-satisfied:1\nnull:error:1\nmissing:error:1\n"
 	if string(out) != want {
 		t.Fatalf("CLI-built generated Go changed its decision/read footprint:\n%s\nwanted:\n%s", out, want)
 	}
 }
 
 const generatedRuleDriver = "package main\n\nimport (\n\t\"errors\"\n\t\"fmt\"\n\t\"math/big\"\n\t\"tei/internal/core\"\n)\n\ntype ruleNumber struct { value *big.Rat; missing bool; reads int }\n\nfunc (s *ruleNumber) Number(id core.CanonicalID) (*big.Rat, error) {\n\tif id != \"sales.order_line.quantity\" { return nil, errors.New(\"wrong attribute\") }\n\ts.reads++\n\tif s.missing { return nil, errors.New(\"unavailable\") }\n\treturn s.value, nil\n}\n\nfunc (s *ruleNumber) RelationKeys(_, _ core.CanonicalID) ([]string, error) {\n\treturn nil, errors.New(\"unexpected relation read\")\n}\n\nfunc main() {\n\tfor _, tc := range []struct { name, number string; missing bool }{\n\t\t{\"positive\", \"2.5\", false},\n\t\t{\"zero\", \"0\", false},\n\t\t{\"negative\", \"-1\", false},\n\t\t{\"null\", \"\", false},\n\t\t{\"missing\", \"\", true},\n\t} {\n\t\tvar value *big.Rat\n\t\tif tc.number != \"\" {\n\t\t\tvalue = new(big.Rat)\n\t\t\tif _, ok := value.SetString(tc.number); !ok { panic(tc.number) }\n\t\t}\n\t\tsource := &ruleNumber{value: value, missing: tc.missing}\n\t\tresult, err := EvaluateSelected(source)\n\t\tif err != nil {\n\t\t\tfmt.Printf(\"%s:error:%d\\n\", tc.name, source.reads)\n\t\t} else {\n\t\t\tfmt.Printf(\"%s:%s:%d\\n\", tc.name, result, source.reads)\n\t\t}\n\t}\n}\n"
+
+// generatedRuleProvenance is an intentionally small Go source carried in the
+// same go-package BuildSource as the original selected Rule bytes. The final
+// binary must actually embed and hash the staged Markdown, not merely print a
+// hash that the test injected as a literal.
+const generatedRuleProvenance = `package main
+
+import (
+	"crypto/sha256"
+	_ "embed"
+	"fmt"
+)
+
+//go:embed source.tei.md
+var embeddedSelectedRule []byte
+
+func init() {
+	fmt.Printf("source-sha256:%x\\n", sha256.Sum256(embeddedSelectedRule))
+}
+`
