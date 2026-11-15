@@ -1556,3 +1556,44 @@ Readerの実装が完了する前でも、二つの仕事は独立して前へ�
 重複`ReadBytes`は[PR #4844](https://github.com/hat47x/tei-platform/pull/4844)で、既存`jsonl.go`の実装を残して重複ファイルを削除し、main統合された。これはコンパイル上の一障害の修正であり、WorkbenchやWorkflow／索引の別障害まで修正した証拠ではない。#4812の未統合Workbench修正を旧版から無条件にコピーしない。今後のCLI検収では、実バイナリのBuild失敗をSource/Meaning/Providerの不合格と混同せず、まず阻害した工程と実際に起動できた工程を分けて残す。
 
 **docs-onlyの統合判断**では、対象HEADの差分が既存計画の追記だけであること、既存§15.1〜15.54を保持すること、Markdown見出し・表・リンクが整合すること、既存mainの失敗と変更に起因する新しい失敗を区別することを確認する。全体CIの不合格をPASSに書き換えず、必要な修正を各Ownerへ返す。実装PRの資格はこれより厳しく、対象HEADでReaderの実Source読取、独立Expected、実CLI／Provider／Consumer、Stage1→Stage2実Processをそれぞれ検査し、未実行は未実行のまま示す。計画をマージすることは、それらを製品として受理することではない。
+
+<!-- tei-dogfood-20261115-admission-controls -->
+### 15.57 同じSourceを扱っても、Referenceの成功と製品の受理は別に確かめる
+
+§15.51のA0〜A3を実装へ渡す前に、**現行製品で通っている読取り、限定Referenceで通っている解釈、未実装の製品Markdown読取り**を三つの対照として固定する。これは新しい入場ゲートではなく、既存#988/#1018/#2621と#1180/#2514の正負試験に共通の観測条件を渡すものである。
+
+| 対照 | 実際に確かめること | 未確認のまま残すこと |
+| --- | --- | --- |
+| **現行製品の正例** | mainの[Go実装 #4853](https://github.com/hat47x/tei-platform/pull/4853)が扱う`reference/workspace`の`semantic-capability:sales.order.submit`について、`InspectSubject`のCanonical ID・read-only制限、`semantic/sales/order.tei`の元byte/Source Index/Range、`TraceSubjectSources`との対応を確認する | Entry公開、Provider起動、業務Effect、別形式のReader |
+| **限定Referenceの正例** | `testdata/tei-md-graph/baseline.tei.md`を、明示した合成Language PinとE1 `ParseSelected`で候補として読み、Node/Edge ID・Ruleの元byte位置を確認する | 製品Manifest/LockによるReader選択、WorkspaceへのMeaning受理 |
+| **現行製品の拒否例** | 同じGraph Markdownを管理Rootに置き、製品`workspace.Load`が`TEI_MD_PARSER_UNBOUND`で止まることと、未管理Draftを意味入力に数えないことを確認する | Product S0-Aの正例成立 |
+
+最後の二つを同一Graph原文で照合する試験案は[PR #4857](https://github.com/hat47x/tei-platform/pull/4857)にある。ただし同PRは**closed/unmerged**であり、Go回帰がmainに存在するという実績には数えない。既存Fixtureとテスト期待値の持ち主を確認したうえで、必要な最小Go試験だけを最新mainから別PRに切り出す。Reference解析の成功をもって製品Guardを解除しない。製品選択元のA0を先に確定できなければ、意図的な`unsupported`で止める。
+
+### 15.58 Sourceの位置・正式な同一性・編集対象を一つのIDへ押し込まない
+
+[製品Inspectorの実Go回帰 #4853](https://github.com/hat47x/tei-platform/pull/4853)は、Source Indexの参照0件だけではCanonical Subjectの不存在を確定できず、存在しない`sales.not_declared`は製品`InspectSubject`の`SUBJECT_NOT_FOUND`と別に扱うことを固定した。Sourceの存在、型付き意味ID、Provider実選択、現在の実行権限は互いの代用品ではない。
+
+さらに[REAの並行Relation修正 #4850](https://github.com/hat47x/tei-platform/pull/4850)では、同じ構造キーに複数候補があるときに配列順で勝手な一対一対応を作らず、個々の相手側Source/Attemptを空のまま曖昧な候補群として報告するようになった。これをGraph dogfoodingの負例へ戻す。**同じLabelのNode、同型のEdge、同じ関係の再取得、Source位置の一致から、正式Relation IDや編集対象を決めてはならない**。一対一を証明できないときは、新旧の候補集合と必要なOwner判断を示す。
+
+[Studio S-LOCの試験案 #4854](https://github.com/hat47x/tei-platform/pull/4854)は`source-locations.ts`でRole・相対Path・byte offset・Artifact指紋を保持する限定テストを用意したが、**closed/unmerged**であり現在のWorkbench実画面に入った証拠ではない。[mainの製品計画 #4846](https://github.com/hat47x/tei-platform/pull/4846)が記録する局所7試験PASSも、埋込JS・Pin UI・Windows Consumerの受入とは別である。Source位置を表示できても、その位置から原文を再取得するS-OPEN、編集書戻し、AIへの送出を許可しない。byte offsetを日本語文字数やEditorのUTF-16列位置に暗黙変換しない。
+
+### 15.59 次の製品実装PRは、境界一つにつき独立して検証する
+
+ReaderのA0を調べるPRでは、現在の製品Manifest/Contract/Lock/Language実装の**どの具体的APIが選択を供給するか**を明示する。E1 Referenceの`Selection`を合成して成功させるだけでは不十分である。A0が未実装と確定したら、未束縛を維持したまま必要な最小の製品契約接続をOwnerへ返し、独自のResolverや選択Registryを追加しない。A1〜A3は、A0で実際に選択された一件について次を通す。
+
+- Readerへ渡った原byteがWorkspaceの同一Loadで取得されたものであること。Source Index、候補の元byte範囲、同Label別Nodeと多重EdgeのID・方向を照合する。
+- 選択Sourceを欠く、未束縛、複数選択、選択版不一致、旧新同Subject競合、Source A→B→A、Root外Draftの各拒否が実際に働くこと。通常`*.tei`の現行読取は退行させない。
+- Parser Candidate／Accepted Meaning／実Builder Input／実PluginのRuntime／外部Consumerは、各工程が未到達なら`NOT RUN`と記録すること。一次ソース・独立Expected・実観測の版を相互に流用しない。
+
+**実Goを一度に全部変更しない。** 最初の検収はA0の選択可否と拒否の実装位置、次にA1〜A3の同一Source byteからの候補・Source位置、次に§15.52の意味付きGo生成と実Consumerで切る。すでにあるReference試験・計画・独立Expectedを第二の正本として複製しない。
+
+### 15.60 通常CLIの実ProviderとStudioセルフビルドは並行して止まらず進める
+
+[組織Queryの修正 #4847](https://github.com/hat47x/tei-platform/pull/4847)は、宣言された`valid_at`／`known_at`とSQL／実Binderの入力名を合わせた。これは製品の公開Entryにも通じる反証である。Source上で同じ意味を宣言していても、**受理Input→実Typed Request→実Binder→実Provider引数**が一致しなければ、呼出しの成功を主張しない。未宣言Alias・欠落/NULL/未取得・時点やRead Scope不一致は、意味の省略に進む前に止める。
+
+Plugin文書の実CLI対照は[#4845](https://github.com/hat47x/tei-platform/pull/4845)で検討された。公開Manualの存在と、実製品`tei commands`／`plugin-inventory`／`plugin-lock`で発見できる版・Lockは別資格である。#4845は**closed/unmerged**であり、通常Markdown文書のProduct Readや実Plugin Invokeまで成立したとは扱わない。正式`*.tei.md` Readerの完成を、この並行作業の新しい開始条件にしない。
+
+Studioも同様に、非Pluginの実Build Subject→Stage1自身のBuild要求→全Child/Builder pin→Stage2 ArtifactSet→Windows WebView2受領へ進める。未統合S-LOC投影や古いWorkbench Bundleの合格を、この経路の代用にしない。P0-S（Reader）、P0-R（実Provider）、P0-B（Stage1→Stage2）は相互に必要な共通機構を使うが、初回の実証を阻む新Hard Dependencyとして結合しない。
+
+**統合時の品質判断**は、対象HEADと現在mainの比較、差分が意図した範囲だけであること、実行した試験と実行していない試験の区別、独立Expectedの改変有無を一組として残す。mainのHealthが既存障害で失敗する場合も失敗を隠さず、変更に起因した新しい問題と切り分ける。コードPRで製品の実Call/Consumerを要求する場合は、全体Healthの説明だけで実試験を省かない。この追補自体は設計・計画であり、新しいGo/Node/Windows/DB検証、正式Reader、Owner意味受理の完了を意味しない。
