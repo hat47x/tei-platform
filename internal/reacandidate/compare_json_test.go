@@ -30,9 +30,9 @@ func TestComparisonJSONAmbiguousRelationsOmitUnprovenCounterparts(t *testing.T) 
 		t.Fatal(err)
 	}
 	var wire struct {
-		AcceptedMeaning bool `json:"acceptedMeaning"`
-		OwnerDecision string `json:"ownerDecision"`
-		Comparison struct {
+		AcceptedMeaning bool   `json:"acceptedMeaning"`
+		OwnerDecision   string `json:"ownerDecision"`
+		Comparison      struct {
 			Entries []map[string]json.RawMessage `json:"entries"`
 		} `json:"comparison"`
 	}
@@ -101,11 +101,11 @@ func TestComparisonJSONPreservesPresentSidesOnly(t *testing.T) {
 		fixture.evidenceID = "ev-json-no-relations"
 		fixture.edges = nil
 		withoutRelation := mustGenerate(t, fixture)
-		for _, tc := range []struct{
-			status string
+		for _, tc := range []struct {
+			status     string
 			comparison CandidateSetComparison
-			present string
-			absent string
+			present    string
+			absent     string
 		}{
 			{ComparisonRemoved, CompareCandidateSets(baseline, withoutRelation), "beforeSource", "afterSource"},
 			{ComparisonAdded, CompareCandidateSets(withoutRelation, baseline), "afterSource", "beforeSource"},
