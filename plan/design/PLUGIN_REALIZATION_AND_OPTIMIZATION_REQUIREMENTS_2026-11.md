@@ -255,6 +255,6 @@ TEIの図表・宣言・Ruleを扱う際、すべてをソースコードへ生�
 | **RZM-07** | 固有Go生成へ切替えても、Consumerの現在Grant／Effectが未確認 | 生成成功から実行権限・Effect確定を推定しない |
 | **RZM-08** | 生成／解釈が同条件で合格し、性能／保守費だけ異なる | Target別実測に基づき採用。性能改善で適合不良を覆さない |
 
-**実装の最短順**：まず#1180／#2514にRZM-01の独立Expectedを固定し、**既存Evaluatorと生成Goを同一の固定Fixtureで比較するテスト一件**を#1121／#4544へ引き渡す。新しいCompiler／Interpreter／Selectorを作らない。続いてRZM-04で明示選択と実呼出しの対応を既存[接続検収票§9](PLUGIN_CONNECTION_EVIDENCE_AND_COMPOSITION_SLICE_2026-11.md)へ載せ、RZM-03／06でSource→Artifact・Model配布の差分失効を#2600／#2595へ渡す。実行時の切替を行う場合は#951／#1251の現在Hostに選択を明示し、長寿命Target以外へ動的切替機構を強制しない。
+**実装の最短順**：第一差分として `internal/semantic/validationgen/positive_realization_modes_test.go` に、製品Workspaceが選んだpositive Ruleを既存Evaluatorと生成Goの両方で実行し、正値／ゼロ／負値／nil／取得失敗・Read回数を固定期待値へ照合するGo回帰を追加した。**テストSourceの追加と、exact HEADでの実CI成功は別資格**であり、今回のRZM-01全体やProduct実Providerの完成とはみなさない。#1180／#2514を独立ExpectedのOwner、#1121／#4544を実装担当とし、新しいCompiler／Interpreter／Selectorを作らない。続いてRZM-04で明示選択と実呼出しの対応を既存[接続検収票§9](PLUGIN_CONNECTION_EVIDENCE_AND_COMPOSITION_SLICE_2026-11.md)へ載せ、RZM-03／06でSource→Artifact・Model配布の差分失効を#2600／#2595へ渡す。実行時の切替を行う場合は#951／#1251の現在Hostに選択を明示し、長寿命Target以外へ動的切替機構を強制しない。
 
-**到達条件**：一Functionで直接評価と生成評価のどちらも、同じMeaning・Context・独立Expected・実Consumerを持ち、選択した実装と実際に使った実装の対応を追跡できた時に限り、二方式の相互代替を主張できる。その後で最適化・外部Targetへ拡大する。今回の変更は設計と実装引渡しであり、RZM-01〜08の新Go／Windows／実Provider試験、正式二方式の製品選択やOwnerの意味受理は**NOT RUN／NOT ACCEPTED**。
+**到達条件**：一Functionで直接評価と生成評価のどちらも、同じMeaning・Context・独立Expected・実Consumerを持ち、選択した実装と実際に使った実装の対応を追跡できた時に限り、二方式の相互代替を主張できる。その後で最適化・外部Targetへ拡大する。今回の変更ではRZM-01の限定GoテストSourceを追加した。**CI exact HEADの合否は別確認**であり、RZM-02〜08・実Windows／実Provider／独立Target Consumer・正式二方式の製品選択・Owner意味受理は**NOT RUN／NOT ACCEPTED**。
