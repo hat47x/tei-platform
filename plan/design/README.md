@@ -29,6 +29,7 @@
 
 | 文書 | 対象 |
 | --- | --- |
+| [`TEI_DESKTOP_PRODUCT_CONTRACT_2026-11.md`](TEI_DESKTOP_PRODUCT_CONTRACT_2026-11.md) | Studio Desktopの製品契約。Sourceから実Consumer、非Plugin Stage1→Stage2セルフビルド、Pin・Backend・配布／復旧／実験Mobileの受入境界（#1824/#2831/#4583。§0.17が現在の統合判断） |
 | [`BRMS_DECISION_ANALYSIS_INTEGRATION_2026-11.md`](BRMS_DECISION_ANALYSIS_INTEGRATION_2026-11.md) | 業務ルールを既存Data／Function／Operatorと生成コードへ接続する横断設計。有限Unique決定表、partial時の判断可能性、判断理由、変更影響、Sourceから実Consumerまでの検証順（未採用設計） |
 | [`SEMANTIC_STRUCTURE_MAPPING_AND_DECLARATIVE_SYNTAX_VIEW_2026-11.md`](SEMANTIC_STRUCTURE_MAPPING_AND_DECLARATIVE_SYNTAX_VIEW_2026-11.md) | 標準データ構造の意味特性・構造間変換、JSON Schemaの図解、DSL構文・View定義、Source編集の可逆性と段階的な検証計画（#2495/#2497/#988/#2620/#1124。横断設計・未採用） |
 | [`PROCESS_LIFECYCLE_TRIGGER_OPERATION_SEMANTICS_2026-11.md`](PROCESS_LIFECYCLE_TRIGGER_OPERATION_SEMANTICS_2026-11.md) | Trigger・Invocation・State／Effect・Outcome／Responseを共通の意味から図・DSL・Mock・Targetへつなぐ検討。既存Application API／Script LaunchのOwnerへ返す |
