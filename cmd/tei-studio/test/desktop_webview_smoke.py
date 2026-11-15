@@ -287,7 +287,7 @@ def main() -> int:
     evidence_dir.mkdir(parents=True, exist_ok=True)
     facts: dict[str, Any] = {
         "result": "FAIL_NOT_COMPLETED",
-        "scope": "native Wails WebView2 Workbench Catalog, read-only Inspect projection, Validate display, native read-only Editor keyboard flow, and fixed-fixture ObserveXead UI flow",
+        "scope": "native Wails WebView2 Workbench Catalog, read-only Inspect/Pin A-B recheck, Validate display, native read-only Editor keyboard flow, and fixed-fixture ObserveXead UI flow",
         "app_path": str(app_path),
         "run_id": os.environ.get("GITHUB_RUN_ID"),
         "run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT"),
@@ -558,6 +558,12 @@ return {
   pathname: location.pathname,
   connection: document.querySelector('#connection')?.textContent ?? '',
   subjectTitle: document.querySelector('#subject-title')?.textContent ?? '',
+  pinSubject: document.querySelector('#pin-subject')?.textContent ?? '',
+  pinStatus: document.querySelector('#pin-status')?.textContent ?? '',
+  pinVersion: document.querySelector('#pin-version')?.textContent ?? '',
+  pinCurrentDisabled: document.querySelector('#pin-current')?.disabled ?? null,
+  pinRecheckDisabled: document.querySelector('#inspect-pinned')?.disabled ?? null,
+  pinReleaseDisabled: document.querySelector('#unpin-current')?.disabled ?? null,
   sourceStatus: document.querySelector('#source-status')?.textContent ?? '',
   inspectionReader: document.documentElement.dataset.teiInspectionReader ?? '',
   inspectionReaderCalls: Number(document.documentElement.dataset.teiInspectionReaderCalls ?? '0'),
@@ -743,6 +749,79 @@ const done = arguments[arguments.length - 1];
         if displayed_canonical != initial_value.get("canonical"):
             raise RuntimeError("Workbench canonical projection differs from the Host Inspect response")
 
+        # Pin A in the actual embedded Wails WebView2, using its real Host
+        # Reader. The Pin is a read-only intent; it never grants disclosure.
+        pin_a = "semantic-data · sales.order（workspace-1）"
+        expected_pin_parts = [
+            initial_value.get("worldFingerprint"),
+            initial_value.get("sourceIndexFingerprint"),
+        ]
+        if not all(isinstance(part, str) and part.strip() for part in expected_pin_parts):
+            raise RuntimeError("Initial Host inspection did not provide a qualified Pin revision")
+        expected_pin_version = ":".join(expected_pin_parts)
+        if (
+            page_state.get("pinCurrentDisabled") is not False
+            or page_state.get("pinRecheckDisabled") is not True
+            or page_state.get("pinReleaseDisabled") is not True
+        ):
+            raise RuntimeError("Initial Pin controls do not expose an eligible unpinned subject")
+
+        def click_native_pin(button_id: str) -> dict[str, Any]:
+            # A real DOM click must execute the registered Workbench listener.
+            script = """
+const button = document.getElementById(arguments[0]);
+if (!button || button.disabled) throw new Error('Pin button is absent or disabled');
+button.click();
+return {
+  pinSubject: document.getElementById('pin-subject')?.textContent ?? '',
+  pinStatus: document.getElementById('pin-status')?.textContent ?? '',
+  pinVersion: document.getElementById('pin-version')?.textContent ?? '',
+  selectedTitle: document.getElementById('subject-title')?.textContent ?? '',
+  editor: document.querySelector('#editor .cm-content')?.innerText ?? '',
+  pinRecheckDisabled: document.getElementById('inspect-pinned')?.disabled ?? null,
+  pinReleaseDisabled: document.getElementById('unpin-current')?.disabled ?? null
+};
+"""
+            reply = webdriver_request(
+                base_url, "POST", f"/session/{driver_session}/execute/sync",
+                {"script": script, "args": [button_id]},
+            ).get("value", {})
+            if not isinstance(reply, dict):
+                raise RuntimeError(f"Native Pin click did not return a state: {button_id}")
+            return reply
+
+        pinned_click = click_native_pin("pin-current")
+        if (
+            pinned_click.get("pinSubject") != pin_a
+            or pinned_click.get("selectedTitle") != "sales.order"
+            or pinned_click.get("editor") != page_state.get("editor")
+        ):
+            raise RuntimeError("Pin A unexpectedly changed the selected Inspector")
+        pinned_a_state: dict[str, Any] = {}
+        pin_deadline = time.monotonic() + 12
+        while time.monotonic() < pin_deadline:
+            pinned_a_state = webdriver_request(
+                base_url, "POST", f"/session/{driver_session}/execute/sync",
+                {"script": inspect_script, "args": []},
+            ).get("value", {})
+            if (
+                pinned_a_state.get("pinSubject") == pin_a
+                and pinned_a_state.get("pinStatus", "").startswith("読取り済み。")
+                and pinned_a_state.get("pinVersion") == expected_pin_version
+            ):
+                break
+            time.sleep(0.2)
+        if (
+            pinned_a_state.get("pinSubject") != pin_a
+            or not pinned_a_state.get("pinStatus", "").startswith("読取り済み。")
+            or pinned_a_state.get("pinVersion") != expected_pin_version
+            or pinned_a_state.get("subjectTitle") != "sales.order"
+            or pinned_a_state.get("editor") != page_state.get("editor")
+            or pinned_a_state.get("pinRecheckDisabled") is not False
+            or pinned_a_state.get("pinReleaseDisabled") is not False
+        ):
+            raise RuntimeError("Pin A was not read and qualified by the native Host without changing the selection")
+
         catalog_value = catalog_envelope.get("value", {})
         entries = catalog_value.get("entries", [])
         direct_children = [entry for entry in entries if entry.get("parent") == {"kind": "semantic-data", "id": "sales.order"} and entry.get("symbol") == "orderId"]
@@ -778,6 +857,76 @@ const [kind, subjectId] = arguments;
             time.sleep(0.2)
         if graph_state.get("subjectTitle") != child.get("id") or json.loads(graph_state.get("editor", "null")) != graph_response.get("value", {}).get("canonical"):
             raise RuntimeError("Graph selection did not render the Host Inspect canonical projection")
+        # B is selected in the ordinary Inspector, while the actual Pin still
+        # identifies A with the original, qualified Host revision.
+        if (
+            graph_state.get("pinSubject") != pin_a
+            or not graph_state.get("pinStatus", "").startswith("読取り済み。")
+            or graph_state.get("pinVersion") != expected_pin_version
+            or graph_state.get("pinRecheckDisabled") is not False
+        ):
+            raise RuntimeError("Selecting B changed or silently requalified pinned A")
+
+        # Recheck must explicitly invalidate A's previous observation before
+        # accepting a new read. Neither step may replace B's Editor or Graph.
+        recheck_click = click_native_pin("inspect-pinned")
+        if (
+            recheck_click.get("pinSubject") != pin_a
+            or recheck_click.get("pinStatus") != "対象の再確認が必要です。"
+            or recheck_click.get("pinVersion") != "未取得"
+            or recheck_click.get("selectedTitle") != child.get("id")
+            or recheck_click.get("editor") != graph_state.get("editor")
+        ):
+            raise RuntimeError("Explicit Pin A recheck did not invalidate the prior observation or preserve B")
+        rechecked_a_state: dict[str, Any] = {}
+        recheck_deadline = time.monotonic() + 12
+        while time.monotonic() < recheck_deadline:
+            rechecked_a_state = webdriver_request(
+                base_url, "POST", f"/session/{driver_session}/execute/sync",
+                {"script": inspect_script, "args": []},
+            ).get("value", {})
+            if (
+                rechecked_a_state.get("pinSubject") == pin_a
+                and rechecked_a_state.get("pinStatus", "").startswith("読取り済み。")
+                and rechecked_a_state.get("pinVersion") == expected_pin_version
+            ):
+                break
+            time.sleep(0.2)
+        if (
+            rechecked_a_state.get("pinSubject") != pin_a
+            or not rechecked_a_state.get("pinStatus", "").startswith("読取り済み。")
+            or rechecked_a_state.get("pinVersion") != expected_pin_version
+            or rechecked_a_state.get("subjectTitle") != child.get("id")
+            or rechecked_a_state.get("editor") != graph_state.get("editor")
+        ):
+            raise RuntimeError("Native Pin A recheck did not return a qualified read while B stayed selected")
+
+        released_a_state = click_native_pin("unpin-current")
+        if (
+            released_a_state.get("pinSubject") != "固定対象はありません。"
+            or released_a_state.get("pinStatus") != "未固定"
+            or released_a_state.get("pinVersion") != "未取得"
+            or released_a_state.get("pinRecheckDisabled") is not True
+            or released_a_state.get("pinReleaseDisabled") is not True
+            or released_a_state.get("selectedTitle") != child.get("id")
+            or released_a_state.get("editor") != graph_state.get("editor")
+        ):
+            raise RuntimeError("Unpin did not release A or changed the selected B Inspector")
+        facts["pin_readonly"] = {
+            "workspace_id": "workspace-1", "pinned_subject": "sales.order",
+            "viewed_subject": child.get("id"), "host_revision_qualified": True,
+            "recheck_invalidated_previous_observation": True,
+            "recheck_requalified_original_subject": True,
+            "unpin_preserved_selected_subject": True, "released": True,
+            "native_webview2": True, "external_disclosure_qualified": False,
+        }
+        record(
+            "native-webview2-pin-a-select-b-recheck-release-verified",
+            pinned_subject="sales.order", viewed_subject=child.get("id"),
+            host_revision_qualified=True, selection_preserved=True,
+            old_observation_invalidated=True, released=True,
+        )
+
         # This ordinary Wails Host uses the existing Inspector path. Its
         # acceptance is the independent Host Inspect/canonical equality above.
         # Do not require a generated Inspector marker that this binary does not
