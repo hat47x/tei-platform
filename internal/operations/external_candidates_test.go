@@ -243,7 +243,14 @@ func TestExternalCandidatesRefusesWhatItCannotProject(t *testing.T) {
 		t.Fatalf("bytes that are not an Evidence must be refused as unusable: %v", err)
 	}
 
-	refusal := filepath.Join("..", "externalanalysis", "testdata", "rea-6.8.0", "error-source-kind.jsonl")
+	// This is an explicitly synthetic negative delivery. The historical REA
+	// 6.8.0 capture has analysis.json/view.jsonl, not error-source-kind.jsonl;
+	// do not invent a captured producer failure to satisfy this test.
+	refusal := filepath.Join(dir, "synthetic-error-source-kind.jsonl")
+	const failureJSONL = `{"$rea":"jsonl/v1","type":"error","ok":false,"result":{"ok":false,"error":{"code":"INVALID_SOURCE_KIND","category":"validation","message":"synthetic unsupported source kind"}}}` + "\n"
+	if err := os.WriteFile(refusal, []byte(failureJSONL), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	request = base
 	request.EvidencePath = refusal
 	_, err = operations.ExternalCandidates(request, candidateReadAt)
