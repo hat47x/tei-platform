@@ -1009,8 +1009,11 @@ sequenceDiagram
   Note over H,C: Commit後・応答前にProcessが停止した例
   C--xH: 応答を受け取れない
   Note over C: 呼出側に見える結果は不明
-  C->>D: 許可された独立Receipt照会／Readback
-  D-->>C: 確定・未確定の根拠（取得範囲付き）
+  participant H2 as 再起動後のHost
+  C->>H2: 業務操作IDを指定して照会を依頼
+  H2->>D: 許可されたReceipt照会／Readback
+  D-->>H2: 確定・未確定の根拠（取得範囲付き）
+  H2-->>C: 現在の公開資格に合う照会結果
   Note over C: 根拠と現在資格を照合してから次のActionを判断
 ```
 
