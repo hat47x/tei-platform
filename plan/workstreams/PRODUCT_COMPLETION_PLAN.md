@@ -1375,3 +1375,10 @@ mainのRule生成Go CLIビルド回帰は、選択Markdown原文のコピーをG
 **Sourceの採否・実装の段階**：まずORG-W1を既存CLI/Inspectorで反証し、ORG-W2は意味Owner判断とProviderの二版保存を待つ。W3は必要Readの全件性を少なくとも一つの負例で示し、W4はRead Cohortの一致が保証できた場合だけ二Consumerへ進め、W5は既存Host・Plugin実CallのOwnerに委ねる。未完了のLinkを説明用Graphで補わず、標準Data/Relation・Query・Rule・Representationの既存層を再利用する。通常CLI実Provider #2586とStudio Stage1→Stage2 #2831は引き続き並列P0であり、相互をHard Gateにしない。
 
 **状態**：これは既存mainの限定成果と、組織C1固有の欠落を結ぶ受入計画である。正式Membership履歴保存、Person Link、製品Read Cohort／二Consumer、BRMSでの実判断、Plugin/Host・Studio E2E、意味Ownerの採用はこの追記だけで成立しない。
+
+<!-- tei-product-self-described-validation-data-reader-20261115 -->
+### TEI自身の検査規則をDataで記述する製品Reader実験（2026年11月15日）
+
+[自己記述設計§52](../design/ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md)の小さな縦断を追加する。組込みtei.authoring/v1の**印付き項目定義表**を使い、検査規則の識別子・種類・対象属性・任意の関係という**定義情報の形**を既存semantic.Dataへ読み込む。実Workspace.Load／型付きData／既存Validator／元byteのSource Indexを同じFixtureで照合し、同名のsemantic-validationや公開Capabilityを自動生成しないことを負例にする。追加Goはinternal/workspace/tei_md_self_description_test.go。これは新Grammarやメタ専用Runtimeを要しない自己記述D1と通常Data Readerの実消費であり、positive Ruleに対するM1契約解釈ではない。
+
+**特に禁止する誤解**：Data表のoptionalはforbiddenを意味しない。relationIdがrequired=noでも「positiveではRelationを指定できない」とは検査できない。最初のM1/M2は、既存のpositiveの固定独立Expectedに対して、未表現の義務を明示したうえで一条件の検査コードをTEIから実生成し、手書きGoの重複分岐を消すところへ進める。元MarkdownのGo embed（#5064以前の§51参照）も原文とGeneratorの意味適合、Disclosure、R3／Stage2を証明しない。CI合格は本テストのexact HEADで確認する。#2620/#988/#1018/#1121/#1180/#2514が担当し、通常CLI実ProviderとWindows Stage1→Stage2のP0を維持する。
