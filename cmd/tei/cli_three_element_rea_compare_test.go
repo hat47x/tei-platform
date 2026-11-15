@@ -44,8 +44,6 @@ func comparisonCLICandidateSet(attempt string, ids ...string) reacandidate.Candi
 			},
 			ReviewStatus: reacandidate.ReviewStatusRequiresOwner,
 			Resolution:   reacandidate.ResolutionUnresolved,
-			ReviewStatus:   reacandidate.ReviewStatusRequiresOwner,
-			Resolution:     reacandidate.ResolutionUnresolved,
 		})
 	}
 	set.Fingerprint = reacandidate.SetFingerprint(set)
