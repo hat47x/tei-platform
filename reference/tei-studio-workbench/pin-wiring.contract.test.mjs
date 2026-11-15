@@ -128,3 +128,14 @@ test("PIN-WIRING-07: unknown Catalog identity disables Pin and never revives sta
   assert.match(click, /catalogIdentity\(catalogSnapshot\) === null/);
   assert.match(background, /"CATALOG_IDENTITY_UNAVAILABLE"/);
 });
+
+test("PIN-WIRING-08: current Pin handlers are unique and the obsolete controller is absent", () => {
+  for (const id of ["pin-current", "unpin-current", "inspect-pinned"]) {
+    const handler = `element("${id}").addEventListener("click"`;
+    assert.equal(main.split(handler).length - 1, 1, `duplicate or missing handler: ${id}`);
+  }
+  assert.doesNotMatch(main, /\bpinReader\b/);
+  assert.doesNotMatch(main, /renderPin\(pinReader\.current\(\)\)/);
+  assert.doesNotMatch(main, /element\(["']pin-(?:check|release)["']\)/);
+  assert.doesNotMatch(markup, /id="pin-(?:check|release)"/);
+});
