@@ -614,7 +614,7 @@ Release Manifest／署名が正しくても、Pluginが実行可能、当該User
 
 ### 25.3 Wails Updaterが担う範囲と、製品が追加で担う範囲
 
-Wails v3の公式Updaterは\`app.Updater\`でReleaseの取得・検証・Staging・単一対象の交換を扱う。公開鍵を設定した署名検証を第一候補とし、digest-onlyを署名済みと混同しない。ZIP/TAR.GZは**最上位Entryが一つ**という制約があるため、Desktop.exeと別Server.exeとPluginを最上位に並べたArchiveをUpdaterの一括更新Packageとみなさない。Windowsの.exe/ZIP、macOSの.appを内包したZIP、LinuxのBinary/TAR.GZをOSごとに検証する。インストーラやOSパッケージ管理器が更新を所有する構成では、競合する自己更新を禁止する。
+Wails v3の公式Updaterは`app.Updater`でReleaseの取得・検証・Staging・単一対象の交換を扱う。公開鍵を設定した署名検証を第一候補とし、digest-onlyを署名済みと混同しない。ZIP/TAR.GZは**最上位Entryが一つ**という制約があるため、Desktop.exeと別Server.exeとPluginを最上位に並べたArchiveをUpdaterの一括更新Packageとみなさない。Windowsの.exe/ZIP、macOSの.appを内包したZIP、LinuxのBinary/TAR.GZをOSごとに検証する。インストーラやOSパッケージ管理器が更新を所有する構成では、競合する自己更新を禁止する。
 
 D2では、本体Imageに埋め込んだ標準Pluginと既定設定Templateも本体交換で一緒に更新されるため、配布の整合性を単純にできる。ただし**更新後の実起動・Workspace適合・現行Grant・操作結果**は別途確認する。D3の別Serverや外付けPluginを同時に置き換える必要がある場合、Updaterの単一対象交換だけでは不十分である。Installer/Deploymentへ独立した多成果物の更新責務を委ね、Staging検査→新規Invocation停止→進行中の処理のDrain/引継ぎ→Activation→新旧Handshake→動作確認の順に判定する。
 
@@ -638,14 +638,76 @@ D2では、本体Imageに埋め込んだ標準Pluginと既定設定Templateも�
 
 ### 25.5 実装順と停止条件
 
-**P0-A：CLI-firstの実生成・自己再入**。正式な\`*.tei.md\` Source→受理済みGraph/Rule→実Go Generator→生成Binary/Plugin→通常\`tei\` CLI実行を一つのAttemptで検収する。手書きGoへの委譲だけでTEI-native自己生成としない（#2621、#4544、#4495）。
+**P0-A：CLI-firstの実生成・自己再入**。正式な`*.tei.md` Source→受理済みGraph/Rule→実Go Generator→生成Binary/Plugin→通常`tei` CLI実行を一つのAttemptで検収する。手書きGoへの委譲だけでTEI-native自己生成としない（#2621、#4544、#4495）。
 
 **P0-B：Studioの非Pluginセルフビルド**。同一Build IntentからStage1がStage2 Desktopを生成し、実Windows WebView2でその生成部品を使った結果を受領する。CLI/PluginのReference PASSをStage2 DesktopのPASSへ合算しない（#2831、#4583）。
 
-**並行する小規模な比較**。現行Native同一Process／CLI Directを基線に、子Backend一件の\`inspect\`で意味・結果・故障・性能を比較する。子Backend既定化は実測後にADR-0048のOwnerが判断する（#4635、#1158）。
+**並行する小規模な比較**。現行Native同一Process／CLI Directを基線に、子Backend一件の`inspect`で意味・結果・故障・性能を比較する。子Backend既定化は実測後にADR-0048のOwnerが判断する（#4635、#1158）。
 
 **P1：D2製品Release**。安定版Wailsへの移行とUpdaterの単一対象実OS試験を分け、署名付きImage／標準Plugin／既定設定／Offline起動を検収する（#1824、#2044）。
 
 **P2：必要性が示された場合に限る**。D3のWake複数Image Packaging、別ServerのDeployment、Mobile実験Buildをそれぞれ独立評価する。WakeやMobile、D3の先行実装をP0-A/BのHard dependencyにはしない。
 
 **現在の到達状況**：§25は設計と検収計画の統合である。新しいUpdater組込み、署名付きRelease、実Plugin閉包検査、Mobile Build、Windows Stage2、Owner意味受理の実施・成功を主張しない。
+
+## 26. 実行可能なPlugin構成を一つのread-only操作で確かめる（2026-11-15、横断統合）
+
+### 26.1 配布されたことと、実際に使えることは別の事実
+
+§25のRelease Closureを、既存[Plugin管理契約](PLUGIN_MANAGEMENT_CONTRACT_2026-11.md)と[役割合成§14](PLUGIN_ROLE_COMPOSITION_AND_STUDIO_REENTRY_2026-11.md)へ接続する。Pluginは名称や種類の集合ではなく、対象のApplication／Operationが必要とするContractに対する**実装の貢献**として選ぶ。既存#951のResolver、#1016のApplication Profile、#3267のRQ-037 Verified Composition BOMを利用し、Bootstrap内に第二のResolver、BOM正本、実装可能性判定器を作らない。
+
+| 見る段階 | 読み取る既存の根拠 | その事実だけで保証しないこと |
+| --- | --- | --- |
+| 要求 | Application Profile、受理済みOperation、required TraitとTarget | 実装が存在すること |
+| 選択・固定 | exact Contract／Provider、Environment、Plugin Lock、Implementation Pin | 実ArtifactがReleaseに収録されたこと |
+| 構築・同梱 | BuildIntent／ArtifactSet、実消費Source、Release実Imageと必要Member | 実Loaderが呼んだこと |
+| 起動・公開 | Application APIの対応Operation、実Process／Loader境界、公開対象Scope | 現在の実行許可・作用成功 |
+| 実行・受領 | 現在Grant、Invocation、実Entry、Result／Failure、独立Consumer | Ownerの業務意味受理・外部Effectの自動取消し |
+
+特に現在の`internal/plugin/management`は、`declared`、`envSelected`、`resolved`、`lockPinned`、`artifactDigest`等を導出する。一方、install／enable／init-failure／invocation／effectには`notModelled`の情報がある。**`envSelected`を`enabled`に、`planBuilt`を`invoked`に、`notModelled`を`false`に変換しない**。実行面の資格を調べる際は、管理側が現に持つ項目と、Provider／Consumerが後から観測した項目を別々に表示する。
+
+### 26.2 最初の受入対象は一つのread-only `inspect`
+
+CLI／Studioの両方で、既存Application APIから同じread-only Operationを呼び、必要なContextが実際の呼出し先まで届くことを確かめる。最初の実装は新しいBootstrap Commandや新しいProtocolの導入ではなく、既存`plugin-inventory`、`plugin-resolve`、`plugin-lock`と、既存Inspect／Source Index／Invocationの**参照結果の突合**とする。
+
+同一の検証票が参照するものは、以下を用途別に結び付けた**read-only Projection**であって、新しい永続ManifestのSchemaではない。
+
+- **Subject／Context**：Workspaceと対象Subjectのstable identity、Pinned Source Revision、選択したOperation Contract／Target。Editorの現在FocusはSubject Pinを上書きしない。
+- **Source／Meaning**：Managed Root・Manifest・選択Language／Parser実装のPin、実際にLoadで読んだ元byte、Typed Candidate、受理済みMeaningが存在する場合のRevision。未受理候補はそのまま候補とする。
+- **Composition／Build**：Application Profile、Contract→exact Provider選択、required Member／Build-only Member、Lock、Toolchain、実消費Source／Artifact DigestとBuild Attempt。
+- **Release／Runtime**：Release Identity、起動した実Process／Image Digest、実BackendのProtocol・Operation Contract、実Provider EntryとInvocation Attempt。Client側の申告値だけで実Imageを確定しない。
+- **Authority／Delivery**：現在のGrantとDisclosure、結果・失敗、独立Consumerが観測したbyteと取得範囲。Secret・未公開Plugin文書・未許可の業務データを診断に含めない。
+
+必須情報が取得できないときは、`unsupported`、`unknown`、`not-run`、`notModelled`等の**既存の適切な状態語彙**を保持する。現時点で存在しない状態フィールドやすべての情報を返す万能APIを新設しない。出典、Rev、Attemptを突合できない項目を単純な`ready: true`にまとめない。
+
+### 26.3 `*.tei.md`はSourceの登録だけでは起動資格を持たない
+
+[自己記述§45.9〜45.11](ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md)で整理したS0-P→S0-A→実生成の順を、本章のBootstrapにも適用する。正式な製品`Workspace.Load`が選択Language／実装Pinに沿って元byteを消費し、Source Index／候補を返すまでは、未選択`*.tei.md`に対する`TEI_MD_PARSER_UNBOUND`拒否を保持する。Reference Readerや候補構造指紋が動いたことを、製品Pluginロード・業務意味受理としない。
+
+同一の二Node・二Edge Graphと一つのRuleを、Sourceの選択と元byte→生成されたGo判断処理→実Binary→通常CLI Consumerへ順に通す。生成物の自己申告指紋が同一でも実際の判断ロジックが変わる[既存の反例](ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md)を使い、実Builderが消費したSourceと実Consumerの結果で照合する。Goへの単純委譲、別Runで得た成功の寄せ集め、Stage1の名を付けただけのGo起動を合格にしない。
+
+### 26.4 Studio／CLI／AI Harnessが共有するのはOperationと固定対象
+
+GUIのFocus移動でSubject Pinを暗黙変更しない。AI Harnessへ渡すのは許されたSubject、Source Revision、選択Operation、必要最小限のContract、現在のDisclosureであり、履歴や非公開Plugin文書を無差別に送らない。AIが返した候補は実Provider選択・Source更新・Current Grantにならず、Preview／Review／Applyと実Consumer受領をそれぞれ既存Ownerの契約で検収する。
+
+CLIの短命実行、StudioのWails Bridge、比較候補の子Backend、RemoteのHTTP／MCPでは、**共通Operationの意味と失敗分類**を照合する。一方、実Process Identity、Transport Peer、Session、Grant、Update権限は配置ごとに持つ。Remote障害を理由に未承認のLocalへ暗黙に切り替えない。Backend再起動・旧Reply・Source A→B→A・更新中のClient旧世代も、選択対象とAttemptを再評価する。
+
+### 26.5 受入パケットとOwnerへの具体的引渡し
+
+| 既存の受入項目 | 今回追加する最小の照合 | 引渡し先 |
+| --- | --- | --- |
+| S0-A／SDX | 明示Source選択→Load時の同一元byte→位置つき候補／Index。未選択、旧Source、曖昧なParserを拒否 | #2621、#1018、#1180 |
+| PCC-01/02/04/05／BRC-01/03 | required Contract→exact Provider→Target／Build-only区分→実ImageへのMember収録→実Read。未収録、Host Import不足を別理由で表示 | #951、#2044、#4583、#2514 |
+| PCC-10／BRC-07 | 同Artifact DigestのままGrantだけ失効、またはA→B→A。古い実行資格を戻さず、歴史的Build実績は保全 | #1174、#2600、#1180 |
+| DG0-NP-01〜03 | 非Plugin Studio Build Subject→実Builder Source→Stage1→Stage2→Windows実WebView2でImage一致 | #2831、#4583 |
+| PIN／DT既存項目 | Focus Bへの移動、未保存Buffer、旧Reply、外部Harness。Pin Aのまま独立Inspectを再確認 | #4515、#1824、#2514 |
+| BRC-04/05/06/08 | 既定Template変更・更新署名不一致・更新途中切断・OS管理下自己更新。旧実Image、User data、Effect未知を保護 | #1824、#2044、#4635 |
+
+初回のコード差分は、**S0-Aを閉じる最小Source Reader接続と、選択Providerを持つ一read-only Operationの実Call**を別PR／別Claimで進める。次に既存Build実行へ非Plugin Studio Subjectを接続し、Stage1→Stage2 Desktopを同一Build Intentで検収する。Release Closureの一枚表示やUpdater GUIはこれらのP0へ新たな前提条件を課さない。
+
+### 26.6 採否と到達上限
+
+- 標準はGo単一Binaryへの静的Compositionでよい。別Process／Wasm／Target固有Extensionは、更新頻度、障害隔離、Host依存の実測に照らして必要なときだけ選ぶ。
+- 依存Pluginの公開図解・文書は、公開ScopeとSourceRef／Contract版を守る範囲で継承できる。上位のSource編集権限や実行Grantまで継承しない。
+- Build成功、Release署名、Runtime初期化、Provider実Call、Consumer受領の資格を区別し、**独立Expectedで未確認の箇所は未確認のまま残す**。
+- 本章は既存設計・コードの照合による実装引渡しである。新しい製品Reader、Plugin導入管理、実Provider、Desktop Stage2、Wails更新、OS配布、Owner意味受理の新PASSは主張しない。
