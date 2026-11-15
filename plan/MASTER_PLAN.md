@@ -2438,7 +2438,7 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 | 順序 | 接続する実装・検査 | 主なOwner・受入 |
 | --- | --- | --- |
 | 1 | [#4359](https://github.com/hat47x/tei-platform/issues/4359) S0の旧`validation`／低ノイズ`rule`／宣言Role付きMarkdown表／Operator pinを、同じ二規則・独立Expectedで比較する。S1以降の実装は正式構文をOwnerが選んでから進める | #4359、#988、#2514 |
-| 2 | 選択された`*.tei.md`のManifest／Pinned Sourceを**製品`Workspace.Load`の同一Attempt**で正式Reader・Role・既存Source Indexへ接続する。予備試験S0-Pと製品受入S0-Aを分ける | #2621、#1018、[PR #4751](https://github.com/hat47x/tei-platform/pull/4751)、[PR #4730](https://github.com/hat47x/tei-platform/pull/4730) |
+| 2 | **A0：既存Contract／Lockから製品Language Providerを選抜できるかを先に確認**する。未実装なら明示拒否し、Reference `ParseSelected`で代用しない。選択できた一件に限り、A1〜A3として`*.tei.md`の同一`Workspace.Load`原byte読取・Role／Source Index位置・負例／旧`.tei`互換を検収。S0-PとS0-Aは別資格 | #2621、#988、#1018、[自己記述 #4834](https://github.com/hat47x/tei-platform/pull/4834)、[データ様式§39.8](design/SEMANTIC_STRUCTURE_MAPPING_AND_DECLARATIVE_SYNTAX_VIEW_2026-11.md) |
 | 3 | 実Graph／RuleのSourceから、受理済み意味→既存Generator→生成Go／Pluginを接続し、二Consumerと独立Expectedで正負を照合する | #1121、#1251、#2586、#1180 |
 | 4 | 生成された構造・制約・Pluginを次のBuilderが本当に利用したか追跡し、CLI先行→Studio Stage1→Stage2・Windows実Consumerへ進める | #2831、#4583 |
 | 5 | 上の縦断で得たFit／Gapを、Graph／Tree／Table、BRMS、Query／Native SQL、Data Context、数理Toolkit、Studio／SHO／SUIの表示・限定Patchへ戻す。表示・逆編集・実Providerの資格はそれぞれ別に判定する | #2495、#2497、#1124、#4660 |
