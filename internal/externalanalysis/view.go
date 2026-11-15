@@ -74,6 +74,38 @@ func (r Receipt) WithView(raw []byte, framing Framing) Receipt {
 		if view.Emitted == 0 && view.SourceCount == 0 {
 			view.Emitted = view.Records
 		}
+	} else if strings.Contains(last, `"$rea"`) {
+		// Current REA JSONL uses a structured metadata object instead of the
+		// legacy "$rea=..." line. Counts belong to the actual delivery, not
+		// to the historical fixture's fixed number of records.
+		view.Control = "metadata"
+		trimmed = trimmed[:len(trimmed)-1]
+		view.Records = len(trimmed)
+		meta, err := parseJSONObjectTerminal(last)
+		if err != nil {
+			r.View = &view
+			return r.withVerdict(StateMismatch, "JSONL終端metadataの形式が不正です: "+err.Error())
+		}
+		view.Collection = meta.Records.Path
+		view.Emitted = *meta.Records.Emitted
+		if meta.Records.Source != nil {
+			view.SourceCount = *meta.Records.Source
+		}
+		view.EvidenceID = meta.Context.EvidenceID
+		if !framing.RequiresTerminal {
+			r.View = &view
+			return r.withVerdict(StateMismatch, "このProvider版はJSONL終端metadataを宣言していません")
+		}
+		for _, line := range trimmed {
+			if !json.Valid([]byte(line)) {
+				r.View = &view
+				return r.withVerdict(StateMismatch, "JSONLのdata recordがJSONとして不正です")
+			}
+		}
+		if view.Records != view.Emitted {
+			r.View = &view
+			return r.withVerdict(StatePartial, fmt.Sprintf("JSONL data record数=%dがmetadata emitted=%dと一致しません", view.Records, view.Emitted))
+		}
 	} else {
 		view.Control = "none"
 		if framing.RequiresTerminal {
@@ -88,7 +120,9 @@ func (r Receipt) WithView(raw []byte, framing Framing) Receipt {
 		}
 	}
 
-	view.EvidenceID = firstEvidenceID(trimmed)
+	if view.EvidenceID == "" {
+		view.EvidenceID = firstEvidenceID(trimmed)
+	}
 	duplicates := findDuplicates(trimmed)
 	if len(duplicates) > 0 {
 		return r.withVerdict(StateMismatch, "重複したEvidence IDがあります: "+strings.Join(duplicates, ", "))
@@ -97,6 +131,43 @@ func (r Receipt) WithView(raw []byte, framing Framing) Receipt {
 
 	r.View = &view
 	return r
+}
+
+// jsonlObjectTerminal is the REA 6.8 JSONL control record. The records
+// collection is a bounded projection; its emitted count is not a global
+// completeness claim about the analyzed application.
+type jsonlObjectTerminal struct {
+	Protocol string `json:"$rea"`
+	Type     string `json:"type"`
+	Records  struct {
+		Path    []string `json:"path"`
+		Emitted *int     `json:"emitted"`
+		Source  *int     `json:"source"`
+	} `json:"records"`
+	Context struct {
+		EvidenceID string `json:"evidence_id"`
+	} `json:"context"`
+}
+
+func parseJSONObjectTerminal(line string) (jsonlObjectTerminal, error) {
+	var meta jsonlObjectTerminal
+	if err := json.Unmarshal([]byte(line), &meta); err != nil {
+		return meta, err
+	}
+	if meta.Protocol != "jsonl/v1" || meta.Type != "metadata" {
+		return meta, fmt.Errorf("protocol=%q type=%q", meta.Protocol, meta.Type)
+	}
+	if len(meta.Records.Path) == 0 {
+		return meta, fmt.Errorf("records.pathがありません")
+	}
+	if meta.Records.Emitted == nil || *meta.Records.Emitted < 0 {
+		return meta, fmt.Errorf("records.emittedがありません、または負数です")
+	}
+	if meta.Records.Source != nil &&
+		(*meta.Records.Source < 0 || *meta.Records.Source < *meta.Records.Emitted) {
+		return meta, fmt.Errorf("records.sourceはemitted以上の非負整数である必要があります")
+	}
+	return meta, nil
 }
 
 type terminal struct {
