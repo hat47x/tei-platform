@@ -2814,3 +2814,9 @@ Studio／SHO／SUI／AIが同じ意味候補を提示しても、編集資格は
 [組織C1補遺§40](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)と[段階計画§10.15](design/ORGANIZATION_STAGED_MODELING_PLAN_2026-11.md)に、二時点の履歴版・人物との関係・正式Query・二Consumerの検収を具体化した。PR [#5027](https://github.com/hat47x/tei-platform/pull/5027)はmain統合済み（commit `a8d3c4f8`）。[隔離PostgreSQL run 43707188012](https://github.com/hat47x/tei-platform/actions/runs/43707188012)で、単独PKの版保存拒否、試験用複合PKの旧新版保存と区間重複、**有効期間×認識期間の二軸競合と別Membershipの同時共存**が明示PASS。一時テーブルでの物理比較であり、正式Persistenceの履歴保存・Person Link・実Cohort/Consumer・業務Ruleを受理したものではない。全体Repository Healthの失敗は別票。
 
 **次の受入順**：#2386/#1126がOccurrence/Revision/Person Link・訂正と異動・単一値性を選択→受理した正式`*.tei` Persistence/Queryで同じA2の旧新二版を保存・再読込（MVR-02）→同じvalidAt/異なるknownAtとSource/Scope/Coverageを実Providerで照合（MVR-03）→Function Context/二Consumerの同版一致→BRMS/Case・Studio/SHO・Host Effectへ別資格で引渡し。外部REA/AIの候補、known-timeとrecorded-at/observed-at、通常Data閲覧と実Host Grantはそれぞれ独立のまま。**優先P0の通常CLI実Read #2586とDesktopセルフビルド #2831を妨げる新EngineやGateを追加しない**。
+
+### 2026-11-15 組織C1：二時点競合の保存時拒否を隔離PGで比較する（補遺§41）
+
+[組織C1補遺§41](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)と[段階計画§10.16](design/ORGANIZATION_STAGED_MODELING_PLAN_2026-11.md)で、**読取時に曖昧さを発見する能力**と**保存時に競合版の混入を防ぐ能力**を分離した。既存の隔離PostgreSQL実測（PR #5027）では試験用複合キーだけでは二時点の競合を拒否できなかったため、同じMembershipのvalid/known両区間が重なったときだけ拒否するPostgreSQL GiST EXCLUDE候補を追加する。正当な認識訂正・有効期間切替・別Membershipの同時存在を保つこと、SQLSTATE 23P01と23505の識別、失敗後の再読込、同一トランザクションで旧known期間を閉じて新版を追加することを独立Expectedとする。
+
+**合格上限**：新候補は一時DB内の物理制約の比較であって、製品の正式Persistence、業務Ownerが受理した単一値性、同時Writer/障害復旧、完全なRead Cohort、二Consumer、Host Grant・Effectの実証ではない。業務意味・三同一性（Membership occurrence／Assertion revision／Provider row）は#2386/#1126、正式Provider・Queryは#2586/#2622、Rule・Caseと現在実行は#4490/#4501/#1174が担当する。S3を選ばない簡潔モデルへTemporal Engineを強制せず、標準Graph/BRMS/REA/Studio/Pluginへ共通の意味・取得資格だけを引き渡す。**通常CLI実Read #2586とDesktopセルフビルド #2831を独立P0に保つ。**
