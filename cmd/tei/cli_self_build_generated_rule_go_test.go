@@ -122,7 +122,7 @@ func TestSelectedRuleGoThroughRealCLISelfBuild(t *testing.T) {
 	}
 	entry := "./" + filepath.ToSlash(relative)
 	for name, data := range map[string][]byte{
-		"generated.go": generated,
+		"generated.go":  generated,
 		"main.go":       []byte(generatedRuleDriver),
 		"provenance.go": []byte(generatedRuleProvenance),
 		"source.tei.md": original,
@@ -246,6 +246,6 @@ import (
 var embeddedSelectedRule []byte
 
 func init() {
-	fmt.Printf("source-sha256:%x\\n", sha256.Sum256(embeddedSelectedRule))
+	fmt.Printf("source-sha256:%x\n", sha256.Sum256(embeddedSelectedRule))
 }
 `
