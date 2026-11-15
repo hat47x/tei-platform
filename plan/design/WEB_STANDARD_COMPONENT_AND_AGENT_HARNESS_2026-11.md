@@ -345,3 +345,36 @@ Node View／Flowは標準Data型・Direction・Multiplicity・Presence・Coverag
 | **WEB-P3：公開Route一件**（#3509／#997／#1016） | 公開可能な説明Facetを一つ選び、Source→Head／表示Slot→実Builder入力→生成Asset Member→外部閲覧を追う。静的説明と動的Offerを別途管理 | 未選択Slotへの暗黙配置、非公開Field混入、生成Assetの旧版利用、単なるHTML生成を実Consumer受領と誤認 |
 
 WEB-P1〜P3は並列の**P1候補**であり、正式なStudio非Plugin BuildIntent→Stage1→Stage2実Windows（#2831／#4583）と、通常CLI→実Provider Read→独立Consumer（#2586／#4495）の二本のP0へ新しいHard Gateを追加しない。新しいWeb Framework、HTTP Runner、第二のOperation Registry、テスト正本は導入しない。反例は既存#1180／#2514の独立Expectedと、各OwnerのIssueへ引き渡す。現段階は設計・実装Packetの定義であり、WEB-P2/P3の製品E2E、Web向け認証・開示、SSR、オフライン編集、別OSでの実受領は未検収である。
+
+
+## 18. 宣言的UIの共通部分を、表現方式と実行場所から独立させる（2026-11-16、設計補遺）
+
+### 18.1 UI定義は「どの意味を、どこに、どう見せるか」の組合せにする
+
+[標準構造とUI投影の横断設計](SEMANTIC_STRUCTURE_MAPPING_AND_DECLARATIVE_SYNTAX_VIEW_2026-11.md)、[共通APIのADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)と、[Desktop Workbench指針](TEI_DESKTOP_WEB_STANDARD_UI_IMPLEMENTATION_2026-11.md)の責務を守る。TEIのUI定義はGoの構文や特定Frameworkのコンポーネント木を記述するものではない。人が読む宣言の中心を、利用者が確認・操作する情報の順序に置く。必要な情報は既存のMeaning／Projection／Binding／UI Kitの公開契約へ割り当て、新しいUI専用意味正本・AST・Registryは増やさない。
+
+| 関心事 | 残すべき情報 | 保持する場所と制約 |
+| --- | --- | --- |
+| 対象・データ | qualified Subject、Field／Relation、単位・粒度、NULL／欠損／部分取得、Source occurrence | 標準Data／意味・参照契約。画面ラベルや配列位置を意味IDに代用しない |
+| 操作 | 読取り、編集意図、検証、保存要求、実行要求と型付きResult／Failure | 共通Operation。UIイベントは意図の通知であり、GrantやEffectの成立ではない |
+| 表示 | Group／Field／Table／Tree／Graph等の表現選択、順序、可視条件、アクセシビリティ上の意味 | UI Projection／Component Contract。CSSやDOMへ業務Ruleを複製しない |
+| 配置・外観 | Flex／Grid、必要なCanvas座標、密度、Token、狭幅時の配置 | Target別Renderer／案件UI Layer。Source Meaningとは独立に変更可能とする |
+| 配信・接続 | 静的／対話型／Server側描画、Browser／WebView、操作のTransport、公開可能なField | Target／公開Contribution／Host Adapter。HTTPやWails固有名を安定Operation IDにしない |
+
+この分担はコード生成の停止線でもある。たとえば表のField順、ラベル、入力制約、OperationへのBindingを受理済み定義から生成できても、認可やデータ保存をブラウザ生成コードへ委任しない。逆に単に手書きのTypeScript関数名を宣言から呼ぶだけでは、TEIが意味あるUI構造を生成できた成果と数えない。Web ComponentsのCEMは公開形状の派生物であり、元定義へ無条件に逆変換できるものとは扱わない。
+
+### 18.2 画面状態は「編集しているもの」と「確かめたもの」を分ける
+
+WebとDesktopの表示部品が共有するのは、Hostによる解決前の選択Intent、Hostが今回返した公開可能なViewModel、利用者が編集している局所Bufferである。Workspace／Subject／Source occurrence、Request epoch、Scope、開示範囲が変わったら、古い結果を再利用できるかをHostと表示側でそれぞれ判定する。FocusとPinは別の閲覧laneとして保ち、Pinの再確認でEditorのCaret・Undo・IME・Dirty状態を変更しない。
+
+SSRや静的HTMLから対話画面へ移行する際も、初期HTMLに含めたSnapshotと、Clientが後から得たRead結果を「同じ画面だから同じ資格」としない。初期描画の公開情報、最新Readの取得範囲、現在のActor／Audience／Disclosure、保留中の編集入力、Build Assetの版を区別する。Hydrationによる再描画で入力中の値が消えたり、サーバーで開示を拒否したFieldが古いHTML・キャッシュ・Source Mapから見えたりする場合は不合格とする。
+
+状態の寿命が違うため、UI技術比較でも「DOMを再利用できるか」だけを比較しない。入力保持、非同期の後着拒否、Partialと空集合の区別、Source改版後の再Inspect、操作が許可されない場合の説明を、Vanilla／Lit／React／Desktopで同じ独立Expectedに照合する。
+
+### 18.3 作業を小さく切り、セルフビルドの主線を妨げない
+
+WEB-P1では最初から宣言的UIの新構文を追加しない。現行の `inspector-selection.ts`、`presentation.ts`、`source-locations.ts` と `main.ts` に対し、既存の一つのread-only Subjectについて、(a)Hostが検証した入力、(b)純粋な表示Projection、(c)UIが発する選択Intent、(d)Host Adapterでの再Inspectの境界を、現行型とテストで示す。Rendererの差し替えやLit採用は、この分離が確認できてから判断する。
+
+続くWEB-P2は同じOperationのCLI directとHTTP公開を、WEB-P3は一つの公開FacetのSource→Builder→Asset Member→外部Consumerを、それぞれ独立した実証にする。UI生成を進める場合は、定義の記述量、生成された構造・入力制約・Binding、手書きのTarget固有コード、再生成時の差分を同じFixtureで計測する。CodeMirrorや高密度Canvasなど、手書きの方が合理的な部分を無理に生成対象へ含めない。
+
+**反証対象**：同名異Subjectの取り違え、部分取得を「該当なし」にする表示、旧Requestの後着反映、Pin確認によるDirty入力の消去、SSR初期HTMLからの開示漏れ、Componentの表示だけでCommand実行可能とする誤判定、Layoutだけの変更で生成業務コードが変化する差分、生成器改版後の旧Asset使用。既存#1180／#2514のExpectedと#997／#1158／#1824／#2831のOwnerに割り当てる。ここで列挙したものは**受入候補であり、新しいテストPASSを表さない**。
