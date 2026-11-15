@@ -37,6 +37,36 @@ func loadRuleAuthoringMarkdown(root string, r *Result, filename string, src []by
 	if err != nil {
 		return 0, 0, r.collectSourceError(filename, err)
 	}
+	return mergeAuthoringMarkdown(root, r, filename, regions, nil)
+}
+
+// loadAuthoringMarkdown is the built-in implementation of tei.authoring/v1
+// for TEI Markdown. It reads what tei.rule-authoring/v0 reads from `tei`
+// fences and, in addition, Data item tables marked with a tei comment. A
+// table becomes the existing semantic.Data; no new meaning model is added.
+func loadAuthoringMarkdown(root string, r *Result, filename string, src []byte) (int, int, error) {
+	document, err := syntax.ScanTEIMarkdownDocument(string(src))
+	if err != nil {
+		return 0, 0, r.collectSourceError(filename, err)
+	}
+	regions, err := syntax.ParseRuleAuthoringRegions(string(src), document.Regions)
+	if err != nil {
+		return 0, 0, r.collectSourceError(filename, err)
+	}
+	tables := make([]syntax.DataTableAuthoring, 0, len(document.Tables))
+	for _, table := range document.Tables {
+		parsed, err := syntax.ParseDataTable(table)
+		if err != nil {
+			return 0, 0, r.collectSourceError(filename, err)
+		}
+		tables = append(tables, parsed)
+	}
+	return mergeAuthoringMarkdown(root, r, filename, regions, tables)
+}
+
+// mergeAuthoringMarkdown adds the definitions of one source to the World, or
+// none of them.
+func mergeAuthoringMarkdown(root string, r *Result, filename string, regions []syntax.RuleAuthoringMarkdownRegion, tables []syntax.DataTableAuthoring) (int, int, error) {
 	relative := relPath(root, filename)
 
 	// Report every problem of the source before deciding to contribute nothing.
@@ -83,6 +113,23 @@ func loadRuleAuthoringMarkdown(root string, r *Result, filename string, src []by
 				}
 			}
 		}
+	}
+	declaredData := map[core.CanonicalID]SourceLocation{}
+	for _, table := range tables {
+		id := table.Value.ID
+		prior, declared := r.Sources["semantic-data:"+string(id)]
+		if !declared {
+			prior, declared = declaredData[id]
+		}
+		if declared {
+			message := fmt.Sprintf("data %s is already declared at %s:%d:%d; one identity cannot have two declarations",
+				id, filepath.ToSlash(prior.File), prior.Line, prior.Column)
+			if err := reject(table.SymbolSpan, message); err != nil {
+				return 0, 0, err
+			}
+			continue
+		}
+		declaredData[id] = SourceLocation{File: relative, Line: table.SymbolSpan.Start.Line, Column: table.SymbolSpan.Start.Column}
 	}
 	if rejected {
 		return 0, 0, nil
@@ -131,5 +178,31 @@ func loadRuleAuthoringMarkdown(root string, r *Result, filename string, src []by
 			r.semanticFilesByNamespace[namespace] = append(r.semanticFilesByNamespace[namespace], relative)
 		}
 	}
-	return len(regions), definitions, nil
+	for _, table := range tables {
+		idx, known := byNamespace[table.Namespace]
+		if !known {
+			idx = len(r.World.Semantics)
+			byNamespace[table.Namespace] = idx
+			r.World.Semantics = append(r.World.Semantics, semantic.Namespace{ID: table.Namespace})
+			record("semantic:"+string(table.Namespace), table.NamespaceSpan)
+		}
+		r.World.Semantics[idx].Data = append(r.World.Semantics[idx].Data, table.Value)
+		record("semantic-data:"+string(table.Value.ID), table.SymbolSpan)
+		for _, attribute := range table.Attributes {
+			record("semantic-attribute:"+string(attribute.Value.ID), attribute.SymbolSpan)
+		}
+		definitions++
+		if r.semanticFilesByNamespace == nil {
+			r.semanticFilesByNamespace = make(map[string][]string)
+		}
+		namespace := string(table.Namespace)
+		listed := false
+		for _, existing := range r.semanticFilesByNamespace[namespace] {
+			listed = listed || existing == relative
+		}
+		if !listed {
+			r.semanticFilesByNamespace[namespace] = append(r.semanticFilesByNamespace[namespace], relative)
+		}
+	}
+	return len(regions) + len(tables), definitions, nil
 }

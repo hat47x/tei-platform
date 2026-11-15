@@ -77,6 +77,18 @@ func builtinAuthoringLanguageProviders() []authoringLanguageProvider {
 		SourceRoot: "semantic",
 		Suffix:     teiMarkdownSuffix,
 		Load:       loadRuleAuthoringMarkdown,
+	}, {
+		// tei.authoring/v1 reads everything tei.rule-authoring/v0 reads and,
+		// in addition, marked Data item tables. A Workspace selects one of the
+		// two; selecting both leaves every *.tei.md claimed twice and stops.
+		Binding: AuthoringLanguageBinding{
+			LanguageID:       "tei.authoring",
+			ContractVersion:  "v1",
+			ImplementationID: "tei.builtin.authoring-markdown",
+		},
+		SourceRoot: "semantic",
+		Suffix:     teiMarkdownSuffix,
+		Load:       loadAuthoringMarkdown,
 	}}
 }
 
