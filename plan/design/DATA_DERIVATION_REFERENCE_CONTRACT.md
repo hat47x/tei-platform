@@ -70,7 +70,7 @@
 
 ## 追補：Data Ruleの配置をFunction非従属と両立させる（2026-11-15、設計判断案）
 
-本節はWagby 11とX-TEAの機能体系の比較を受けた**既存#1637の適用先・#1129のTable lifecycle・#2622のData Operationsの分担の明確化**である。新しい式言語、Rule Engine、Schema、Registryを追加しない。以下はAuthoringと受入の方針であり、実Providerへの接続・Ownerの意味受理を示すものではない。全体の比較は[Wagby 11統合設計](WAGBY11_CAPABILITY_GAP_AND_TEI_INTEGRATION_2026-11.md)を参照する。
+本節は**既存#1637の適用先・#1129のTable lifecycle・#2622のData Operationsの分担を明確化**する設計案である。新しい式言語、Rule Engine、Schema、Registryを追加しない。以下はAuthoringと受入の方針であり、実Providerへの接続・Ownerの意味受理を示すものではない。
 
 ### 計算が依存する意味の範囲から配置先を選ぶ
 
@@ -115,6 +115,6 @@ Data RuleとFunction固有Ruleの双方が関係する場合は、安易に「Ta
 | Read/Draft/Commit/Effect | 画面のDraft表示・実DB保存・外部通知の各結果を区別する | #1129/#1174 |
 | Function Viewからの編集 | 表示Row/集計値を無条件に業務Identityへ逆写像せず、明示Operation Intentへ変換可能な場合だけ実行候補とする | #2500 |
 
-これらは[Wagby比較のW11-FM-01〜12](WAGBY11_CAPABILITY_GAP_AND_TEI_INTEGRATION_2026-11.md)と**同じ独立Expected／Fixtureを参照して使う候補**である。専用の新Test SSOTを増やさず、#1180/#2514へ渡す。
+これらは既存の受注・明細に関するScenario／Fixtureへ統合する候補である。専用の新Test SSOTを増やさず、#1180/#2514へ渡す。
 
 **未決**：Table Scriptをファイル単位でどう分割するか、項目拡張からRule IDを明示するか逆引きするか、関係を横断するData Ruleの完全性条件、FunctionとDataのRule Attachment競合の診断契約。これらは既存Source Index／型付きOperator／Data Operationsで実証してから決め、現段階で新DSL文法を固定しない。
