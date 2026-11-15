@@ -118,7 +118,7 @@ DC-01〜12は**テスト計画上の名前**に限る。第二Expected Storeや�
 
 ## 8. R1-Mの最初の製品Reader→参照Generator接合候補（2026-11-15）
 
-[Draft PR #4970](https://github.com/hat47x/tei-platform/pull/4970) は、§7の「参照先一因子変更」を既存製品コードに対して回帰試験にする作業である。`tools/reference-generator-selection/rule_markdown_one_factor_generator_test.go` が扱う範囲は次のとおり。
+[PR #4970](https://github.com/hat47x/tei-platform/pull/4970) はクローズ済み（未マージ）だが、関連Focused Go試験はmainに存在する。同PRは、§7の「参照先一因子変更」を既存製品コードに対して回帰試験にする作業である。`tools/reference-generator-selection/rule_markdown_one_factor_generator_test.go` が扱う範囲は次のとおり。
 
 - **比較対象を固定**：同一`sales.order_line.quantity_positive`、同一Language選択`tei.rule-authoring/v0`、同一`std.decimal`二属性、同一生成器Sourceを用い、MarkdownのRule参照先だけを`quantity`→`approved_quantity`に変更する。二属性の定義は両Workspaceであらかじめ同一にしておく。
 - **製品側の読取を使う**：実`workspace.Load`→選択済みReader→既存`semantic.Validation`→型Validator→同一LoadのSource Indexを通し、Rule IDと元byte位置の整合を検査する。候補がParser単体で読めただけなら合格にしない。
@@ -126,7 +126,7 @@ DC-01〜12は**テスト計画上の名前**に限る。第二Expected Storeや�
 - **生成へ明示的に接合**：既存Referenceの`GenerateFromTransformSource`／`VerifyTransformCandidate`を使い、変更後のTyped Ruleと明示更新したGenerator入力契約の一致、生成Go byte変化、別Process`go build`と同一JSON入力での出力変化を調べる。古い入力契約の流用と`std.text`への非数値変更は拒否する。
 - **証拠の分割**：`semantic.Validation`の参照先変更、Raw Markdownの変更、Generator入力契約変更、生成Go変更、別Processの結果変更をそれぞれ記録する。Goを一度コンパイルできたことや同じRule IDを保ったことは、Product Builder実消費・業務意味の継続受理・実Provider効果の証明ではない。
 
-**受入上限**：PRのexact HEADでfocused Go testとRepository Healthの実行結果を確認するまで、R1-Mは**候補／未検収**。実Builderの消費MemberとArtifact byte、同一Build Attempt、独立Consumerは次の**R2**に残す。read-only Node Viewを作るときは、このRuleの参照線を意味／論理Readの線として表示し、実行・Provider呼出し・編集可能配線に見せない。新しい共通Core Port型、Graph Runtime、第二Expected Storeは導入しない。
+**受入上限**：Focused Go試験がmainに存在しても、同一exact HEADでの実行ログとRepository Healthの確認なしにはR1-M全体のPASSを主張しない。実Builderの消費MemberとArtifact byte、同一Build Attempt、独立Consumerは次の**R2**に残す。read-only Node Viewを作るときは、このRuleの参照線を意味／論理Readの線として表示し、実行・Provider呼出し・編集可能配線に見せない。新しい共通Core Port型、Graph Runtime、第二Expected Storeは導入しない。
 
 ## 9. 横断設計の追加結論：宣言の「合成」と「投影」を別の操作にする
 
@@ -196,7 +196,7 @@ B0固定Bootstrap→B1選択Language→B2自己記述候補→B3独立受理→B
 
 現行`main`には、選択済み内蔵`tei.rule-authoring/v0`を使う実`Workspace.Load`、元byteを保持するSource Index、`semantic.Validation`への接続、`validationeval.Source`でのRead要求、参照用の`deterministic-transform-v1`→Go生成器が**別々に存在**する。これらは同じ製品レベルのBuilder／Provider資格として連結済みではない。
 
-本ブランチのFocused Go試験は、現行の固定Workspaceを複製し、両方の版に`quantity`と`approvedQuantity`という`std.decimal`属性を用意する。正規のRule IDは変えず、Markdown内の`quantity is positive`だけを`approved_quantity is positive`へ変更する（データ属性宣言のCamelCaseとCanonical IDのsnake_caseを区別）。変更に対応する外部Generator契約の入力AttributeとJSON入力Keyも明示的に更新し、**既存`GenerateFromTransformSource`に渡す**。これらの契約修正はSource差分を受けた必要な調整であり、暗黙の推論ではない。
+mainに収録済みのFocused Go試験は、現行の固定Workspaceを複製し、両方の版に`quantity`と`approvedQuantity`という`std.decimal`属性を用意する。正規のRule IDは変えず、Markdown内の`quantity is positive`だけを`approved_quantity is positive`へ変更する（データ属性宣言のCamelCaseとCanonical IDのsnake_caseを区別）。変更に対応する外部Generator契約の入力AttributeとJSON入力Keyも明示的に更新し、**既存`GenerateFromTransformSource`に渡す**。これらの契約修正はSource差分を受けた必要な調整であり、暗黙の推論ではない。
 
 今回の局所試験では、同一JSONにある正数（`quantity=2`）と負数（`approvedQuantity=-2`）を独立Expectedとして固定し、実Evaluatorが要求したAttributeと生成Goの別プロセス実行が参照先変更に追随することを確かめる。変更前のGenerator入力契約を使い回した場合は、生成前に拒否する。**0・NULL・欠落、旧入力だけを渡す実行時Fallback検査は次の追加試験に残す**。`item_name`（`std.text`）への変更は、正数判定に適した型ではないため既存ValidatorとGenerator契約で拒否する。生成Go byteが異なることは検査しても、Compilerの出力が業務意味を受理したことにはしない。
 
@@ -218,3 +218,84 @@ R1-Mを局所的に満たしても、R2以降のGateを先取りしない。既�
 大規模バッチ／データマート、ノード型フローによるサービス連携、低コードCRUD、Web／モバイル／Desktop、Rule／Decision／BRMS、組織・手続・REA、数理・最適化、TEI／SUI／SHOのModeler／文書化は、**同じMeaningから複数の用途別表層を作る**実例となる。ただし単一の実行Schedulerや統一された副作用モデルを先に作らない。各分野に固有のTransaction／Snapshot／Event／Resourceの制約を、既存OperatorやProviderに明示して吸収できるかで採否を判断する。
 
 本設計の追加結論は「共通化するのは表記ではなく合成条件と検収の接続」「Nodeは用途別の投影」「文書は意味を検査する入口」「実装からDSLへ戻すドッグフーディングを先行」の四点とする。新Grammar、共通Graph Runtime、第二の意味正本、横断Plugin Host、万能Evidence Store、新しいP0 Hard Gateの採用は保留する。
+
+## 14. 接続適格性の判定を単一の可否にしない（2026-11-15追補）
+
+宣言的構文の次の実装論点は、**異なる宣言を接続するときに不足・矛盾・成立を区別する診断**である。「Portの型が同じ」「同じRule結果になった」だけで合成可とする設計は避ける。ここで述べる判定は、既存の型検査・Validator・Source Index・Plugin／Execution契約の結果を束ねて**読み取り専用で説明する方法**であり、新しいCore enum、万能Solver、第二のMeaning／Expected正本ではない。
+
+接続A→Bに対して、Bが要求する事実を、Aの**宣言上の保証**と**現在観測できた保証**から検査する。関係する軸ごとに次の三状態を区別する。
+
+| 判定 | 意味 | 最小の扱い |
+| --- | --- | --- |
+| **成立を裏付ける** | 該当する要求が既存Ownerの契約と具体的証拠で充足される | 該当軸の候補を前進できる。ただし実行許可とは別 |
+| **矛盾がある** | 型・単位・多重度・参照先・明示契約等が要求に反する | 接続を拒否し、原因のSource位置と要求側を示す |
+| **判定材料が不足** | 対応外、未宣言、取得不完全、Snapshot不一致、未選択Provider等で充足を確認できない | 候補・read-onlyに留める。false／空集合／承認に置換しない |
+
+全体を単一の序列にせず、**構造／評価意味／Source資格／実現・Builder／実行時Authority／Effect・Consumer**を別の問いとして扱う。構造が合致しても業務意味は未受理であり得る。実Buildが成功しても現在Grantや実Provider呼出しを証明しない。意味が受理されていても現在Source Revisionが失効していれば、その受理を自動復活させない。
+
+「不足」は、宣言がない場合と、宣言はあるが**現在の入力・権限・取得完全性では証明できない場合**を診断上区別する。後者は実Providerや実行時の再確認に委ねる。一方、局所的な純粋Ruleの比較にHTTP Delivery Receiptを要求するなど、問いに無関係な軸を共通必須条件に増やさない。
+
+### 14.1 既存Ownerへの照合順
+
+| 調べる内容 | 既存情報 | 無断で行わないこと |
+| --- | --- | --- |
+| Subject／DefinitionとOccurrence | Canonical ID、Source Index、Role、同名・多重Edgeの個別ID | ラベル一致による対象の統合 |
+| 型と構造 | Data型／Facet、単位、Cardinality、Bag／Set、業務キー、粒度 | 暗黙cast、distinct、集約・展開 |
+| Rule／Query評価 | Operator版、NULL／欠損、Read Footprint、短絡、時点、取得完全性 | NULL→false、unfetched→0件、余分なRead |
+| Process／Operation | Trigger、先行条件、Failure／Retry／Effect境界 | Data EdgeからDispatch順を推定 |
+| Pluginと生成 | Contract／Provider／Implementation exact Pin、生成Source、Builder入力とArtifact | Descriptor表示からLoaded／実Callを推定 |
+| 出典・編集・現在資格 | 原byte、Source Revision、選択Reader、Acceptance、Authority／Disclosure | 導出Viewから原文を無条件更新・実行 |
+
+比較するGuaranteeとRequirementの出典位置およびOwnerを表示できなければ、型名だけから「接続可能」を製品判断として出さない。Scope、Snapshot、Row Coverageは一般的な型包含だけでは決まらない。非公開情報の診断結果もDisclosureを通して表示する。
+
+## 15. 意味の合成・用途別投影・実行資格を分ける
+
+- **意味保存**：同じSubject、型、Input範囲、Bag／NULL、評価順、Read Footprint、エラーを保つ。結果値の一致だけでは足りない。
+- **情報保存**：Source位置、Node／Edge identity、関係属性、完全性、時間条件を失う表現はLossとして示す。損失のある表現から対応不能なSlotを逆編集しない。
+- **作用保存**：RuleからOperationへ進むときはTrigger／現在Grant／選択Provider／実Call／Receiptを別途証明する。描画線から自動起動しない。
+- **再利用保存**：原byte、Accepted Meaning、生成Artifact、実行時資格は異なる失効単位。A→B→AでSourceが一致しても旧Authority・Effectの証拠は復元しない。
+
+とくに**表現を移すこと**と**新しい接続を意味へ追加すること**を区別する。Ruleをread-onlyノードへ投影しても意味は増えない。一方、Rule結果を「注文確定」Operationの起動条件として接続するなら、新たな業務・実行意味の候補としてSourceとOwnerの受理が必要になる。
+
+CUEの制約統合（[公式仕様](https://cuelang.org/docs/reference/spec/)）は型・制約の静的適合の参考になる。ただしTEIのRead Footprint、現在Grant、外部Effectは単純な値の統合では保証できない。DMNがDecision RequirementsとDecision Logicを分け、Processとの接続を別に扱う点（[OMG DMN仕様](https://www.omg.org/spec/DMN/1.5/)）も参考になる。両言語をTEIの新たな表層文法に採用する趣旨ではない。
+
+## 16. 変更で失効する範囲を分ける
+
+| 一因子変更 | 必ず再確認するもの | それだけで失効／成立を断言しないもの |
+| --- | --- | --- |
+| Markdown説明・図の配置のみ | 原byte／Source Index、表示・編集Slot | 評価意味や生成Artifactの再生成必要性 |
+| Rule参照属性 | Reader→型付きRule、Read要求、Generator入力、生成Go、独立Expected | 実Provider Read、業務Ownerの受理 |
+| 型は同じで粒度・Snapshotが異なる | Query／Data ContextのScope・集約・完全性 | 型名一致による接続適格 |
+| BagをUnique要求に接続 | 業務Key／多重度・明示Operator契約 | 暗黙distinctやKey推測 |
+| Plugin Pin変更 | 選択契約、実ロード・Builder入力・Call追跡 | 過去の実行や現在Grant |
+| 認可・Provider観測が変化 | 実行時Authority／Read／Effect／Consumer | Sourceや生成Go byteの変更 |
+| A→B→Aで元Sourceに戻る | 現在版と意味・生成・実行の資格を別々に確認 | 旧Receipt、旧Grantの自動復活 |
+
+この表を新しい横断的失効Engineの仕様とはしない。まず一Ruleと二つの表層で、既存World／Model／Artifact Revision、Source Index、Build Attemptの証拠を照合する。
+
+## 17. 製品へ渡す最小実装・反証
+
+最初の差分は新たなComposition EngineやGraph Runtimeでなく、**選択済みRuleの接続診断をread-onlyで提示する局所投影**とする。
+
+1. 実製品Loadの既存テスト（internal/workspace/tei_md_rule_surface_equivalence_test.go）を基点とし、Markdown Ruleと旧ValidationのTyped Meaning一致、Source occurrence／Reader資格の独立を保つ。
+2. mainに存在する参照先変更のFocused試験（tools/reference-generator-selection/selected_markdown_rule_rebind_test.go、rule_markdown_one_factor_generator_test.go）から、型・Source位置・論理Read要求・生成Go・別Process結果の現存する観測だけを利用する。ファイル収録と**今回のexact HEAD CIのPASS**は別の証拠。
+3. 一つのRule ID、参照Attributeと型、Source位置、選択Reader、依存関係の種類、資格の上限を一覧化する。未定義のPort IDや実Providerの架空の観測値を作らない。
+4. std.decimal参照とstd.text不適合を対照し、NULL・欠落・旧入力Fallbackを混ぜない。読取専用投影から実Build、実Provider、現在Grantの成立を主張しない。
+5. R2では生成Go byteと既存実Builder入力・最終Artifact・独立Consumerを同一Attemptで結ぶ。R3の通常tei CLI→実Providerは別経路とし、両者の成功後に接合する。Studio Stage1→Stage2を引き続き並行P0とする。
+
+| 反証ID | 一因子変更 | 独立Expectedで確認すること |
+| --- | --- | --- |
+| DC-13 | 型は同じで入力粒度のみ変更 | 型一致と評価範囲を区別 |
+| DC-14 | 完全な0件→partial 0件 | 不在・空集合を確定しない |
+| DC-15 | 同結果の式に余分なField Readを追加 | 値一致でもRead Footprint非同値 |
+| DC-16 | 図の線をDataからTriggerに変更 | 配置は同じでも実行意味の変更を認識 |
+| DC-17 | 同じRuleをMarkdown／旧Validationから読込 | Typed Meaning一致、Source／Reader資格は独立 |
+| DC-18 | 選択Provider Bに対して実Call A | Result一致でも実使用不一致 |
+| DC-19 | LossのあるGraph→Treeから逆編集 | 不確定なEdge変更を拒否 |
+| DC-20 | 説明変更→Rule変更→A→B→A | Source／Meaning／Artifact／Authorityの失効差 |
+
+DC-13〜20は既存#1180／#2514に渡す**反証候補**であり、今回新たにテストを実装・実行・採択したものではない。#2621（Source）、#988（Language／Operator）、#2497（Loss）、#4544（Generator／Builder）、#951（Plugin）、#1124（編集）、#2831／#4583（Studio）へ必要な問いだけを渡す。
+
+成熟度は構文数やノード数でなく、重複しない意味定義の再利用率、接続の誤受理と余分なReadの減少、失効範囲の精度、実Builder消費・独立Consumer観測、同じ機能の定義量と診断手数の削減で測る。
+
+**本追補の受入上限**：診断の設計と反証候補。製品互換性判定器、R2／R3、Source逆編集、Owner意味受理、Studio Stage2の実装を完了したと主張しない。
