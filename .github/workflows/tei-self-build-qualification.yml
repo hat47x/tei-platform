@@ -265,6 +265,17 @@ jobs:
             and .output.string == "hello from exact engine"
           ' "$RUNNER_TEMP/tei-transform-runtime-engine-response.json" >/dev/null
 
+      # Distinct from the reference engine self-build: generated Rule Go
+      # must be accepted by the ordinary product tei self-build CLI.
+      - name: Rule由来の生成Goを通常tei CLIのBuild Intent経路で実ビルド
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(gofmt -l cmd/tei/cli_self_build_generated_rule_go_test.go cmd/tei/cli_self_build_full_chain_test.go)"
+          echo "rule-self-build-test-blob=$(git rev-parse HEAD:cmd/tei/cli_self_build_generated_rule_go_test.go)"
+          go test -count=1 -timeout 20m -v ./cmd/tei -run '^TestSelectedRuleGoThroughRealCLISelfBuild$'
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+
       - name: 自己構築の全鎖を実対象で確認
         shell: bash
         run: |
