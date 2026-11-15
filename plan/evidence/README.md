@@ -20,6 +20,7 @@
 - [知識移植の実行可能な検証](KNOWLEDGE_PORTABILITY_EXECUTABLE_EVIDENCE_2026-09.md)
 - [X-TEA固定版 NotNull／Relationship任意性／DDL・Web認証の静的対照](XTEA_NOTNULL_RELATION_WEB_AUTH_STATIC_CROSSCHECK_20261026.md)（旧実装の比較証拠。Accepted Meaning・本番適格性の実証ではない）
 - [TEI Studio PoCの証拠採取手順](TEI_STUDIO_POC_EVIDENCE_RUNBOOK_20261014.md)
+- [Studioの部品一つをTEIのSourceから生成し、実Desktopで使われたことを観測した](TEI_STUDIO_SELF_BUILD_S1_INSPECTION_READER_2026-11-13.md)（Inspector readerを契約Sourceから既存transformで生成。実Windows WebView2で使用を観測し、生成前bundleでは同じ確認だけが失敗。Stage1のTEI実プロセスによる再生成も一致。bundlingとWails BuildはBuild graphの外、CIは未実行）
 - [E1合成証拠の索引（JSON）](TEI_E1_SYNTHETIC_MANIFEST_20261012_38267656696.json)と、その原本[`tei-e1-synthetic-38267656696/`](tei-e1-synthetic-38267656696/)（試験用証拠。製品Gateは未資格。バイト列で照合するため[`.gitattributes`](../../.gitattributes)で改行変換を除外している）
 - [E2a-1実PostgreSQL先行証拠の受領記録（JSON）](TEI_E2A1_REAL_POSTGRES_RECEIPT_38311557882.json)（上の保全文書が参照する原本。製品G2は未資格）
 - [#1803 新規作成DDLの実PostgreSQL実行の記録（JSON）](POSTGRES_DDL_ENTRY_REAL_DB_20261020.json)（上の説明文書が参照する、生の結果）

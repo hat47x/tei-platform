@@ -1,0 +1,689 @@
+{
+  "formatVersion": 1,
+  "identity": {
+    "id": "tei.studio.generator.inspection_reader",
+    "version": "1.0.0",
+    "contractVersion": "tei.plugin-transform/v1"
+  },
+  "profile": "deterministic-transform-v1",
+  "limits": {
+    "maxSteps": 10000,
+    "maxCollection": 1000,
+    "maxInputNodes": 1000,
+    "maxInputBytes": 65536,
+    "maxOutputBytes": 65536,
+    "maxNestingDepth": 16
+  },
+  "inputs": [
+    {
+      "name": "contract",
+      "kind": "object"
+    }
+  ],
+  "program": {
+    "assertions": [
+      {
+        "op": "assert-equal",
+        "actual": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "contract"
+          },
+          "field": "formatVersion"
+        },
+        "expected": {
+          "op": "literal",
+          "literal": 1
+        }
+      },
+      {
+        "op": "assert-equal",
+        "actual": {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "part"
+          },
+          "field": "id"
+        },
+        "expected": {
+          "op": "literal",
+          "literal": "tei.studio.inspection_reader"
+        }
+      },
+      {
+        "op": "assert-nonblank",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "catalog"
+          },
+          "field": "sourceIndexFingerprint"
+        }
+      },
+      {
+        "op": "assert-nonblank",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "catalog"
+          },
+          "field": "worldFingerprint"
+        }
+      },
+      {
+        "op": "assert-nonblank",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "failures"
+          },
+          "field": "inspection"
+        }
+      },
+      {
+        "op": "assert-nonblank",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "failures"
+          },
+          "field": "response"
+        }
+      },
+      {
+        "op": "assert-nonblank",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "failures"
+          },
+          "field": "stale"
+        }
+      },
+      {
+        "op": "assert-nonblank",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "failures"
+          },
+          "field": "subject"
+        }
+      },
+      {
+        "op": "assert-nonblank",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "operation"
+          },
+          "field": "bridge"
+        }
+      },
+      {
+        "op": "assert-nonblank",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "operation"
+          },
+          "field": "effect"
+        }
+      },
+      {
+        "op": "assert-nonblank",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "part"
+          },
+          "field": "id"
+        }
+      },
+      {
+        "op": "assert-nonblank",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "part"
+          },
+          "field": "version"
+        }
+      },
+      {
+        "op": "assert-nonblank",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "projection"
+          },
+          "field": "missingSourceStatus"
+        }
+      },
+      {
+        "op": "assert-nonblank",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "response"
+          },
+          "field": "canonical"
+        }
+      },
+      {
+        "op": "assert-nonblank",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "response"
+          },
+          "field": "effect"
+        }
+      },
+      {
+        "op": "assert-nonblank",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "response"
+          },
+          "field": "sourceIndexFingerprint"
+        }
+      },
+      {
+        "op": "assert-nonblank",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "response"
+          },
+          "field": "sourceStatus"
+        }
+      },
+      {
+        "op": "assert-nonblank",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "response"
+          },
+          "field": "subject"
+        }
+      },
+      {
+        "op": "assert-nonblank",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "response"
+          },
+          "field": "subjectId"
+        }
+      },
+      {
+        "op": "assert-nonblank",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "response"
+          },
+          "field": "subjectKind"
+        }
+      },
+      {
+        "op": "assert-nonblank",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "response"
+          },
+          "field": "worldFingerprint"
+        }
+      }
+    ],
+    "output": {
+      "op": "join-strings",
+      "values": [
+        {
+          "op": "literal",
+          "literal": "// Code generated by TEI deterministic transform tei.studio.generator.inspection_reader; DO NOT EDIT.\n// Source: inspection-reader.contract.json\n// Transform: builder-sources/inspection-reader-v1.transform.json\n// Regenerate with tools/reference-studio-part-generator (see its README).\nimport type { Catalog, Subject } from \"./presentation.ts\";\n\n/** Identity of the TEI-owned Source this part was generated from. */\nexport const inspectionReaderProvenance = Object.freeze({\n  part: \""
+        },
+        {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "part"
+          },
+          "field": "id"
+        },
+        {
+          "op": "literal",
+          "literal": "\",\n  version: \""
+        },
+        {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "part"
+          },
+          "field": "version"
+        },
+        {
+          "op": "literal",
+          "literal": "\",\n  operation: \""
+        },
+        {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "operation"
+          },
+          "field": "bridge"
+        },
+        {
+          "op": "literal",
+          "literal": "\",\n  contractDigest: \"sha256:"
+        },
+        {
+          "op": "sha256",
+          "from": {
+            "op": "canonical-json",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            }
+          }
+        },
+        {
+          "op": "literal",
+          "literal": "\",\n});\nfunction record(value: unknown): Record<string, unknown> {\n  if (!value || typeof value !== \"object\" || Array.isArray(value))\n    throw Error(\""
+        },
+        {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "failures"
+          },
+          "field": "response"
+        },
+        {
+          "op": "literal",
+          "literal": "\");\n  return value as Record<string, unknown>;\n}\nfunction subject(value: unknown): Subject {\n  const v = record(value);\n  const kind = v[\""
+        },
+        {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "response"
+          },
+          "field": "subjectKind"
+        },
+        {
+          "op": "literal",
+          "literal": "\"],\n    id = v[\""
+        },
+        {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "response"
+          },
+          "field": "subjectId"
+        },
+        {
+          "op": "literal",
+          "literal": "\"];\n  if (typeof kind !== \"string\" || !kind || typeof id !== \"string\" || !id)\n    throw Error(\""
+        },
+        {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "failures"
+          },
+          "field": "subject"
+        },
+        {
+          "op": "literal",
+          "literal": "\");\n  return { kind, id };\n}\nconst key = (s: Subject) => JSON.stringify([s.kind, s.id]);\ntype UseRecord = { dataset?: Record<string, string | undefined> };\n// Observable only where a DOM exists: a real WebView or browser records that\n// this generated part, not a hand-written copy, produced the projection.\nfunction recordUse() {\n  const root = (globalThis as { document?: { documentElement?: UseRecord } })\n    .document?.documentElement;\n  if (!root?.dataset) return;\n  root.dataset.teiInspectionReader = inspectionReaderProvenance.contractDigest;\n  root.dataset.teiInspectionReaderCalls = String(\n    Number(root.dataset.teiInspectionReaderCalls ?? \"0\") + 1,\n  );\n}\nexport function readInspection(raw: unknown, expected: Subject, catalog: Catalog) {\n  const v = record(raw);\n  const world = v[\""
+        },
+        {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "response"
+          },
+          "field": "worldFingerprint"
+        },
+        {
+          "op": "literal",
+          "literal": "\"],\n    index = v[\""
+        },
+        {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "response"
+          },
+          "field": "sourceIndexFingerprint"
+        },
+        {
+          "op": "literal",
+          "literal": "\"];\n  if (\n    v[\""
+        },
+        {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "response"
+          },
+          "field": "effect"
+        },
+        {
+          "op": "literal",
+          "literal": "\"] !== \""
+        },
+        {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "operation"
+          },
+          "field": "effect"
+        },
+        {
+          "op": "literal",
+          "literal": "\" ||\n    key(subject(v[\""
+        },
+        {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "response"
+          },
+          "field": "subject"
+        },
+        {
+          "op": "literal",
+          "literal": "\"])) !== key(expected) ||\n    !Object.hasOwn(v, \""
+        },
+        {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "response"
+          },
+          "field": "canonical"
+        },
+        {
+          "op": "literal",
+          "literal": "\") ||\n    typeof world !== \"string\" ||\n    typeof index !== \"string\"\n  )\n    throw Error(\""
+        },
+        {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "failures"
+          },
+          "field": "inspection"
+        },
+        {
+          "op": "literal",
+          "literal": "\");\n  if (\n    !catalog ||\n    world !== catalog[\""
+        },
+        {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "catalog"
+          },
+          "field": "worldFingerprint"
+        },
+        {
+          "op": "literal",
+          "literal": "\"] ||\n    index !== catalog[\""
+        },
+        {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "catalog"
+          },
+          "field": "sourceIndexFingerprint"
+        },
+        {
+          "op": "literal",
+          "literal": "\"]\n  )\n    throw Error(\""
+        },
+        {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "failures"
+          },
+          "field": "stale"
+        },
+        {
+          "op": "literal",
+          "literal": "\");\n  recordUse();\n  return {\n    text: JSON.stringify(v[\""
+        },
+        {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "response"
+          },
+          "field": "canonical"
+        },
+        {
+          "op": "literal",
+          "literal": "\"], null, 2),\n    version: world + \":\" + index,\n    sourceStatus: String(v[\""
+        },
+        {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "response"
+          },
+          "field": "sourceStatus"
+        },
+        {
+          "op": "literal",
+          "literal": "\"] ?? \""
+        },
+        {
+          "op": "select-field",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "contract"
+            },
+            "field": "projection"
+          },
+          "field": "missingSourceStatus"
+        },
+        {
+          "op": "literal",
+          "literal": "\"),\n    worldFingerprint: world,\n    sourceIndexFingerprint: index,\n  };\n}\n"
+        }
+      ]
+    }
+  }
+}

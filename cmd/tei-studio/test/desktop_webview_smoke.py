@@ -562,6 +562,8 @@ return {
   connection: document.querySelector('#connection')?.textContent ?? '',
   subjectTitle: document.querySelector('#subject-title')?.textContent ?? '',
   sourceStatus: document.querySelector('#source-status')?.textContent ?? '',
+  inspectionReader: document.documentElement.dataset.teiInspectionReader ?? '',
+  inspectionReaderCalls: Number(document.documentElement.dataset.teiInspectionReaderCalls ?? '0'),
   notice: document.querySelector('#notice')?.textContent ?? '',
   diagnosticSummary: document.querySelector('#diagnostic-summary')?.textContent ?? '',
   editor: editor?.innerText ?? '',
@@ -736,6 +738,10 @@ const [kind, subjectId] = arguments;
             time.sleep(0.2)
         if graph_state.get("subjectTitle") != child.get("id") or json.loads(graph_state.get("editor", "null")) != graph_response.get("value", {}).get("canonical"):
             raise RuntimeError("Graph selection did not render the Host Inspect canonical projection")
+        # A second Inspect must pass through the same generated part again.
+        facts["generated_inspection_reader"]["acceptedProjectionsAfterGraphInspect"] = graph_state.get("inspectionReaderCalls")
+        if graph_state.get("inspectionReader") != expected_reader or graph_state.get("inspectionReaderCalls", 0) <= page_state["inspectionReaderCalls"]:
+            raise RuntimeError(f"Graph Inspect did not pass through the generated Inspector reader: {graph_state.get('inspectionReaderCalls')!r}")
 
         validate_click = """
 const button = document.querySelector('#commands button[data-command-id="validate"]');

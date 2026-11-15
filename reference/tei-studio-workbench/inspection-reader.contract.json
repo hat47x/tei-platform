@@ -1,0 +1,34 @@
+{
+  "formatVersion": 1,
+  "part": {
+    "id": "tei.studio.inspection_reader",
+    "version": "1.0.0"
+  },
+  "operation": {
+    "bridge": "main.StudioBridge.InspectSubject",
+    "effect": "read-only"
+  },
+  "response": {
+    "effect": "effect",
+    "subject": "subject",
+    "subjectKind": "kind",
+    "subjectId": "id",
+    "canonical": "canonical",
+    "worldFingerprint": "worldFingerprint",
+    "sourceIndexFingerprint": "sourceIndexFingerprint",
+    "sourceStatus": "sourceStatus"
+  },
+  "catalog": {
+    "worldFingerprint": "worldFingerprint",
+    "sourceIndexFingerprint": "sourceIndexFingerprint"
+  },
+  "failures": {
+    "response": "INVALID_MODEL_RESPONSE",
+    "subject": "INVALID_SUBJECT_RESPONSE",
+    "inspection": "INVALID_INSPECTION_RESPONSE",
+    "stale": "STALE_MODEL_PROJECTION"
+  },
+  "projection": {
+    "missingSourceStatus": "unknown"
+  }
+}
