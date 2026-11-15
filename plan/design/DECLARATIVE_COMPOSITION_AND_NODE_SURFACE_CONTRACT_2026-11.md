@@ -127,3 +127,94 @@ DC-01〜12は**テスト計画上の名前**に限る。第二Expected Storeや�
 - **証拠の分割**：`semantic.Validation`の参照先変更、Raw Markdownの変更、Generator入力契約変更、生成Go変更、別Processの結果変更をそれぞれ記録する。Goを一度コンパイルできたことや同じRule IDを保ったことは、Product Builder実消費・業務意味の継続受理・実Provider効果の証明ではない。
 
 **受入上限**：PRのexact HEADでfocused Go testとRepository Healthの実行結果を確認するまで、R1-Mは**候補／未検収**。実Builderの消費MemberとArtifact byte、同一Build Attempt、独立Consumerは次の**R2**に残す。read-only Node Viewを作るときは、このRuleの参照線を意味／論理Readの線として表示し、実行・Provider呼出し・編集可能配線に見せない。新しい共通Core Port型、Graph Runtime、第二Expected Storeは導入しない。
+
+## 8. 横断設計の追加結論：宣言の「合成」と「投影」を別の操作にする
+
+宣言的構文を増やすこと自体は目的ではない。既存のData／Function／Business、標準データ構造、Rule／Query／Operation、PluginとTarget Generatorを、**変更できる境界が分かる一つのモデル**として組み立てることが目的である。構文を増やさなくても、同じ定義からCLI、Studio、業務図、ノード画面、生成Go、設計文書を作れるなら、その方が基盤としては強い。
+
+このため、宣言的構文の機能を次の三つに分ける。
+
+| 機能 | 入力と出力 | 成立条件・禁止事項 |
+| --- | --- | --- |
+| **宣言の読取り** | 明示選択されたSource＋Language／Role → 元位置を持つ既存Meaning Candidate | Reader選択、対象範囲、原byteを確定する。見出し、表の列名、識別子名から自動受理しない |
+| **意味の合成** | 既存Subjectと型付きRelation／Binding／Contract → 接続が成立するかの診断・必要条件 | 型、粒度、時点、集合の完全性、NULL、Effect、現在資格を**必要な問いに応じて**照合。不足条件を暗黙補完しない |
+| **用途別の投影** | 同じMeaning／Source／必要なEvidence → DSL、表、Graph、UI、図解、Target／説明文書 | Sourceの正本を増やさず、表現による損失と編集可能なSlotを宣言。表示可能と実行可能を混同しない |
+
+「対象・関係・約束」という§2の分解は、この三つを結ぶ**検証の見取り図**であり、第二の万能IRや新たなCore Schemaを要求するものではない。既存モデルの属性が足りない場合だけ、正規のOwnerで追加すべき最小の契約を検討する。
+
+### 8.1 合成可能性はポートの形だけでは決まらない
+
+接続 `A → B` の候補を評価するとき、少なくとも `A` の保証と `B` の要求について、**型と単位、定義／Instance、BagとCardinality、対象範囲と粒度、評価時点と既知時点、NULL／欠損／partial、順序と短絡、EffectとFailure**の不一致を検出する。
+
+例えば「Rowsの配列」というポート型が同じでも、対象が注文単位か注文行単位か、全件が観測済みか、RLSで一部の行が見えないかによって、`NOT EXISTS`、件数、Uniqueの意味が変わる。つなげられると見えることは合成可能性の十分条件ではない。安全な暗黙変換は最初から設定せず、必要なら既存Operator契約の明示Adapterとして示す。
+
+条件を説明するための形式は `Guarantees(A) satisfies Requirements(B)` と表せるが、これは**証明済みの型システムや汎用Solverが実装されたという主張ではない**。粒度、Snapshot、権限のように一般的な包含判定が困難な属性は、不明なら「接続候補・未受理」で止める。
+
+### 8.2 ノードの見た目を共通化し、線の意味は分ける
+
+データパイプライン、簡易API、業務手順、Plugin構成、モデルの依存関係、実行Traceにノード表示を再利用する。ただし、各線を一種類の「実行する矢印」へ統合しない。
+
+| 線の意味 | 採用すべき主たる確認先 | 初期UIの挙動 |
+| --- | --- | --- |
+| Data flow／Relation path | Data Context、Operator、Query、粒度とRead Scope | read-onlyで型・多重性・未取得を表示 |
+| Conditional／Decision | Validation、Rule／Decisionの評価状態とHit Policy | unknown、error、競合、未評価を見分ける |
+| Causal／Execution | Trigger、Operation、Lifecycle、Receipt | 必須先行・並行可能・順序不明を区別 |
+| Plugin binding／Realization | Capability、Contract、Provider選択、Implementation Lock | 宣言・選択・実ロード・実使用を別列で表示 |
+| Evidence／Projection | Source Index、出典位置、用途別開示、Loss | 現Source版と編集資格を提示。実行線を生成しない |
+
+同じSubjectを複数Viewに表示しても、Identityを複製しない。ノードUIのレイアウト情報とMeaningを別に保持し、同じ表示名の二Node、同端点・同ラベルの多重Edgeを保持する。図の読みやすさを優先してEdgeを隠した場合は、正本へ逆編集できない理由を示す。Plugin間の配線でも、宣言の接続・選択された実装・実際に呼び出されたProviderを混同しない。
+
+## 9. ドキュメントも宣言の検証面として使う
+
+Markdown-firstの利点は記法の短さだけでなく、**人の認知順に沿って目的、対象、規則、例外、理由、根拠を近くに配置できること**にある。
+
+通常の `*.tei.md` は文章、見出し、入れ子リスト、小表、Mermaidと必要最小限の `tei` Fenceで構成する。規則、SQL、大表、業務図面は各Source形式を保持し、該当範囲を選択済みReader／Roleで結び付ける。説明段落・引用・図の矢印・AIの解釈を、そのまま型付きMeaningや実行権限に昇格させない。Markdownの見出し文字列を日本語Grammarとして固定もしない。
+
+ドキュメントから機能への接続は、次のように**照合可能な経路**で成立させる。
+
+`原文とSource位置 → 選択Reader／Role → Canonical候補 → 独立ExpectedとOwner受理 → Target Generator → Artifact／Builder実消費 → 独立Consumerによる観測`
+
+Mermaid・Graphviz・決定表・関数チェーン・ER／業務フロー・設計書は、この経路のどこを可視化したものかを明示する。Graphの構造等価、Ruleの評価等価、Effectの確定、画面操作からSourceへの逆書戻しは別の検収であり、**同じ図を描ける**だけでは代用できない。
+
+文書には、何が分かっていて何が不足しているかを、長い免責文ではなく対象のすぐ近くに表示する。例えば「Readerで実読取済み／Meaningは候補／Providerは未観測／Sourceへの逆編集は不可」という短い資格表示は、概要の注意書きを増やすより実務で役立つ。必要なEvidenceと開示可否は用途相対で判定する。
+
+## 10. 自己記述・ドッグフーディングへの接続
+
+宣言的構文の成熟は、Goの構造をDSLに見せることではない。**実際に存在するTEIの実装を意味のまとまりとして抽出し、その抽象化がコード生成と実動作を改善すること**で判断する。
+
+最初の題材はすでに現行製品Readerに存在する `sales.order_line.quantity_positive` とする。次の順序を保つ。
+
+1. 実装から既存の抽象境界を発見する。Source Reader、`semantic.Validation`、既存Validator／Evaluator、Generator Source、生成Go、実Builder入力を実ファイル・実Callで照合する。推測した構造は候補として分ける。
+2. 同じRule IDを保ち、`std.decimal` の参照属性だけを一箇所変更したときに、Load、型、Read要求先、生成Go、実行結果が追随するかを比較する。正常対照と`std.text`への非互換変更を分ける。
+3. 同じ意味・違う表層（旧Validation／選択Markdown Rule）と、違う意味・同じ最終Result（参照属性だけが違う）を、別の問いとして検収する。実Provider Readがない試験では「SourceインターフェースへのRead要求」までしか主張しない。
+4. 機能の重要部分が実際に生成されたGoへ移ったこと、生成Goを製品の実Builderが**そのAttemptで消費したこと**、同じArtifactを独立Consumerが実行したことを次段で検収する。Goへの委譲だけでは構造のセルフビルドと認定しない。
+5. 再利用可能と確認できたOperator／Data Context／Projectionの表現を、必要な箇所だけ`*.tei.md`へ戻す。その変更により定義量、冗長性、検証対象、生成率、失敗診断が改善したかを計測する。Parserを増やして「DSL化率」を見かけ上高めない。
+
+B0固定Bootstrap→B1選択Language→B2自己記述候補→B3独立受理→B4生成とStage2という既存の区分は保持する。受理済みSubjectの再利用と、Interpreter自身をTEIで再構築したことは同一ではない。Plugin／Targetの拡張も、Source権限やRuntime Authorityを自動で獲得する抜け道にはしない。
+
+## 11. 今回のR1-M最小試験とR2以降の引渡し
+
+現行`main`には、選択済み内蔵`tei.rule-authoring/v0`を使う実`Workspace.Load`、元byteを保持するSource Index、`semantic.Validation`への接続、`validationeval.Source`でのRead要求、参照用の`deterministic-transform-v1`→Go生成器が**別々に存在**する。これらは同じ製品レベルのBuilder／Provider資格として連結済みではない。
+
+本ブランチのFocused Go試験は、現行の固定Workspaceを複製し、両方の版に`quantity`と`threshold`という`std.decimal`属性を用意する。正規のRule IDは変えず、Markdown内の`quantity is positive`だけを`threshold is positive`へ変更する。変更に対応する外部Generator契約の入力AttributeとJSON入力Keyも明示的に更新し、**既存`GenerateFromTransformSource`に渡す**。これらの契約修正はSource差分を受けた必要な調整であり、暗黙の推論ではない。
+
+固定期待値では正数・0・負数・NULL・欠落を区別し、実Evaluatorが要求したAttributeと生成Goの別プロセス実行が新しい対象へ追随することを確かめる。旧属性だけを渡す負例で自動Fallbackを拒否する。`threshold`を`std.text`に変えた場合は、参照契約と型が一致しないため生成前に拒否する。生成Go byteが異なることは検査しても、Compilerの出力が業務意味を受理したことにはしない。
+
+**この試験の資格の上限**は、製品の選択済みMarkdown Reader→型付きValidationと、既存**参照用**Generator→外部Go Build／別Process実行の局所接合である。契約が自動再生成されるわけではなく、現実のProvider Read、実ProviderへのFunction Entry、製品Plugin実装選択、製品Builderの消費、Windows、Studio Stage1→Stage2は別途未実証とする。CIとexact HEADが確認されるまでは新Go試験自体をPASSと記録しない。
+
+### 11.1 次に残す具体的な差分
+
+| 段階 | 一件の成果物と必要な証拠 | 不足すれば不合格とすること |
+| --- | --- | --- |
+| **R1-M** | 選択Source→Rule意味→Read要求→参照生成Go→外部Binary結果 | 旧InputへのFallback、意味は同じとするRead先の取り違え |
+| **R2** | 同一Attempt内の生成Go元byte、既存実Builderが読むファイル／Module、最終Binary実byte、別Consumer | 生成ソースだけを置き、実Builderが読んだ証拠がない |
+| **R3（製品）** | 通常`tei` CLI→選択済みPlugin／実Provider→独立したRead／Effect／Consumer | reference実行を製品の呼出しと誤認する |
+| **Stage1→Stage2** | TEI定義・Generatorの自己構築比率、Stage2 Studioの実BuilderとWindows／Native Consumer | Goコード委譲のみ、画面表示のみ、二つの別AttemptのEvidence寄せ集め |
+
+R1-Mを局所的に満たしても、R2以降のGateを先取りしない。既存[#4544](https://github.com/hat47x/tei-platform/issues/4544)（Generator）、[#2600](https://github.com/hat47x/tei-platform/issues/2600)（再利用）、[#2831](https://github.com/hat47x/tei-platform/issues/2831)（self-build）、[#4583](https://github.com/hat47x/tei-platform/issues/4583)（Studio）へ、同じSubject／Source Revision／Build Attemptを紐付けて引き渡す。
+
+## 12. 適用域と採用保留の境界
+
+大規模バッチ／データマート、ノード型フローによるサービス連携、低コードCRUD、Web／モバイル／Desktop、Rule／Decision／BRMS、組織・手続・REA、数理・最適化、TEI／SUI／SHOのModeler／文書化は、**同じMeaningから複数の用途別表層を作る**実例となる。ただし単一の実行Schedulerや統一された副作用モデルを先に作らない。各分野に固有のTransaction／Snapshot／Event／Resourceの制約を、既存OperatorやProviderに明示して吸収できるかで採否を判断する。
+
+本設計の追加結論は「共通化するのは表記ではなく合成条件と検収の接続」「Nodeは用途別の投影」「文書は意味を検査する入口」「実装からDSLへ戻すドッグフーディングを先行」の四点とする。新Grammar、共通Graph Runtime、第二の意味正本、横断Plugin Host、万能Evidence Store、新しいP0 Hard Gateの採用は保留する。
