@@ -15,10 +15,14 @@ type Namespace struct {
 	Data          []Data       `json:"data,omitempty"`
 	Capabilities  []Capability `json:"capabilities,omitempty"`
 	Validations   []Validation `json:"validations,omitempty"`
-	Periods       []Period     `json:"periods,omitempty"`
-	Calendars     []Calendar   `json:"calendars,omitempty"`
-	EffectRules   []EffectRule `json:"effectRules,omitempty"`
-	RunPlans      []RunPlan    `json:"runPlans,omitempty"`
+	// Operators are the operator contracts this namespace declares. A
+	// declaration is data: it names what a rule may write after `is` and what
+	// the operator reads. It is not an implementation.
+	Operators   []Operator   `json:"operators,omitempty"`
+	Periods     []Period     `json:"periods,omitempty"`
+	Calendars   []Calendar   `json:"calendars,omitempty"`
+	EffectRules []EffectRule `json:"effectRules,omitempty"`
+	RunPlans    []RunPlan    `json:"runPlans,omitempty"`
 }
 
 // Calendar declares the business calendar a period follows: when the fiscal
@@ -179,10 +183,34 @@ type ValidationKind string
 const (
 	ValidationPositive       ValidationKind = "positive"
 	ValidationRelationUnique ValidationKind = "relation-unique"
+	// ValidationOperator states that the rule is decided by a declared
+	// Operator. The kind never changes when an operator is added: the
+	// operator's identity is data in Validation.Operator.
+	ValidationOperator ValidationKind = "operator"
 )
 
 func (k ValidationKind) Valid() bool {
-	return k == ValidationPositive || k == ValidationRelationUnique
+	return k == ValidationPositive || k == ValidationRelationUnique || k == ValidationOperator
+}
+
+// OperatorInput states what an operator reads. It fixes the read demand of
+// every rule that uses the operator, independent of the implementation.
+type OperatorInput string
+
+const (
+	// OperatorInputNumber is one numeric value of the constrained attribute.
+	OperatorInputNumber OperatorInput = "number"
+)
+
+func (i OperatorInput) Valid() bool { return i == OperatorInputNumber }
+
+// Operator is a declared operator contract. A rule refers to it by ID. The
+// result is a truth value: the rule is satisfied or not satisfied. The
+// contract carries no implementation and grants no execution authority.
+type Operator struct {
+	ID     core.CanonicalID `json:"id"`
+	Symbol string           `json:"symbol"`
+	Input  OperatorInput    `json:"input"`
 }
 
 // Validationは、Semantic上の業務ruleを機械可読な形で保持する。
@@ -194,6 +222,8 @@ type Validation struct {
 	Kind      ValidationKind   `json:"kind"`
 	Attribute core.CanonicalID `json:"attribute"`
 	Relation  core.CanonicalID `json:"relation,omitempty"`
+	// Operator is set only for ValidationOperator and names a declared Operator.
+	Operator core.CanonicalID `json:"operator,omitempty"`
 }
 
 type Parameter struct {

@@ -25,6 +25,11 @@ func RuleAnchors(file RuleAuthoringFile) []SubjectAnchor {
 			Kind: "semantic-validation", ID: string(rule.ID), Anchor: rule.IDSpan,
 		})
 	}
+	for _, operator := range file.Operators {
+		anchors = append(anchors, SubjectAnchor{
+			Kind: "semantic-operator", ID: string(operator.ID), Anchor: operator.IDSpan,
+		})
+	}
 	return anchors
 }
 

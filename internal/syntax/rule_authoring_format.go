@@ -39,6 +39,17 @@ func FormatRuleAuthoring(src string) (string, error) {
 	if hasRuleComment(src) {
 		return "", ErrRuleFormatUnsupported
 	}
+	// The canonical layout below renders rules with the two built-in
+	// predicates only. Dropping an operator declaration or reference while
+	// formatting would delete meaning, so such a source is refused.
+	if len(file.Operators) != 0 {
+		return "", fmt.Errorf("%w: operator declarations have no canonical layout yet", ErrRuleFormatUnsupported)
+	}
+	for _, rule := range file.Rules {
+		if rule.Operator != nil {
+			return "", fmt.Errorf("%w: operator references have no canonical layout yet", ErrRuleFormatUnsupported)
+		}
+	}
 	value, issues := RuleNamespace(file)
 	if len(issues) != 0 {
 		// A source whose references cannot be resolved has no canonical

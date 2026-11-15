@@ -40,6 +40,8 @@ func RuleValidationKind(predicate RulePredicate) (semantic.ValidationKind, bool)
 		return semantic.ValidationPositive, true
 	case RulePredicateUnique:
 		return semantic.ValidationRelationUnique, true
+	case RulePredicateOperator:
+		return semantic.ValidationOperator, true
 	default:
 		return "", false
 	}
@@ -65,7 +67,29 @@ func RuleNamespace(file RuleAuthoringFile) (semantic.Namespace, []RuleConversion
 		}
 		out.Validations = append(out.Validations, validation)
 	}
+	for _, operator := range file.Operators {
+		input, ok := OperatorInputFor(operator.Input)
+		if !ok {
+			issues = append(issues, RuleConversionIssue{
+				RuleID: operator.ID, Span: operator.InputSpan,
+				Msg: fmt.Sprintf("operator input %q has no existing operator input", operator.Input),
+			})
+			continue
+		}
+		out.Operators = append(out.Operators, semantic.Operator{
+			ID: operator.ID, Symbol: operator.Symbol, Input: input,
+		})
+	}
 	return out, issues
+}
+
+// OperatorInputFor maps one input word onto the existing operator input. The
+// second return value is false for a word this surface does not define.
+func OperatorInputFor(word OperatorInputWord) (semantic.OperatorInput, bool) {
+	if word == OperatorInputNumberWord {
+		return semantic.OperatorInputNumber, true
+	}
+	return "", false
 }
 
 func ruleToValidation(rule RuleAuthoring) (semantic.Validation, *RuleConversionIssue) {
@@ -85,6 +109,24 @@ func ruleToValidation(rule RuleAuthoring) (semantic.Validation, *RuleConversionI
 		Symbol:    rule.Symbol,
 		Kind:      kind,
 		Attribute: attribute,
+	}
+	if kind == semantic.ValidationOperator {
+		if rule.Operator == nil {
+			return semantic.Validation{}, &RuleConversionIssue{
+				RuleID: rule.ID, Span: rule.PredicateSpan,
+				Msg: "an operator rule requires an operator reference; none was authored",
+			}
+		}
+		operator, issue := ruleCanonicalReference(rule, *rule.Operator, "operator")
+		if issue != nil {
+			return semantic.Validation{}, issue
+		}
+		validation.Operator = operator
+	} else if rule.Operator != nil {
+		return semantic.Validation{}, &RuleConversionIssue{
+			RuleID: rule.ID, Span: rule.Operator.Anchor,
+			Msg: fmt.Sprintf("%s accepts no operator reference, but %q was authored", kind, rule.Operator.Text),
+		}
 	}
 	if kind == semantic.ValidationRelationUnique {
 		if rule.Scope == nil {
