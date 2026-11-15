@@ -514,4 +514,73 @@ Graphの構造的全件性、Function Read/Write、Owner受理、Source Patchの
 一方、選択可能なObservation／有向Relation／並行Relation／同一IDの重複／Derived Handleの衝突／未選択件数／CoverageとUnknownの保持／Source改訂の**機能的性質**は、別の`internal/operations/testdata/rea_external_candidates_synthetic.json`で検証する。このFixtureは独立の`ev-synthetic-operations-graph-v1`、`meta.command=synthetic-test-only-not-real-rea-capture`、合成Node 7件・Relation 2件・Unknown 1件のGraphを持ち、実保存ファイルとは異なるExpectedとRaw Digestを使う。GoのR2 Operation試験と別プロセスの実CLI R3試験は、同じ合成Fixtureを使用し、成功結果に**実REAのProducer資格を付与しない**。固定の旧Receipt Digestと候補GraphのSHA256を混同せず、合成原本のDigestを入力Byteから計算する。合成変異は一時コピーのみに行い、原本Fixtureも変更しない。
 
 **検収の判定を分ける**：実保存原本からの候補投影の拒否は負例の成功、合成Graphからの候補選択と曖昧性拒否は機能の成功にすぎない。実REA再実行からそのGraphを受領できたか、独立Current Grant、Ownerによる意味受理、Source Patch/Save/ReRead、Wails Studio第二Consumer、`*.tei.md`正式Reader／PG Function実Provider／Plugin自身のTEIセルフビルドは依然として未検証。REA 6.8.0のView配送の別CI失敗（`rea-evidence -view`が終了1）は本修正では成功へ読み替えず、その`--report`の受領Digestと失敗理由から独立調査する。既存P0のStage1→Stage2 Windowsと実Function Providerは維持し、第二Graph正本・新Host・新Comparatorを設けない。
+## 25. 逆解析REAと業務REAを三要素モデルへ接続する（2026-11-15、横断設計追補）
+
+REAという略称は、ここでは二つの別概念を指す。外部の **Reverse Engineer Anything** は、プログラムや画面などを調べ、根拠付きの観測を提供する。一方、**Resource–Event–Agent** は、業務資源・経済事象・関与主体から取引や業務の意味を理解する分析方法である。**両者を一つのREA Parserや専用Core型へ統合しない。** 外部解析をCandidateの入力経路、Resource/Event/Agentを受理可能な意味Roleとして扱い、既存の三要素・標準データ構造・Rule・Processへ投影する。
+
+| 異なる軸 | 逆解析から得るもの | 業務REAとして検討するもの | TEIに接続する場所 |
+| --- | --- | --- | --- |
+| Resource | テーブル・項目・APIレスポンス・状態変数とその出典 | 在庫、債権、サービス提供能力など、業務で増減・移転の対象となる資源 | DataのRole/Relation、単位・粒度・時間条件、Persistence/Query |
+| Event | 呼出し・更新・ログ・画面遷移などの観測 | 資源の受渡し・消費・変換など、業務上の経済事象 | BusinessのProcess/Event/Ruleと、必要なFunction呼出し |
+| Agent | User ID・担当者欄・認証主体・外部Actor候補 | 取引に参加する内部・外部の当事者と役割 | Business/組織モデルのParticipation・Responsibility・期間 |
+| Relation | 有向Edge、Source occurrence、呼出し先、FK・SQL参照 | 資源の流入出、Event間の対応、主体の参加 | 標準Graphの**意味Role付きRelation**と元Sourceへの追跡 |
+
+**Functionの呼出しは業務Eventではない。** 一つのEventに複数のFunctionや手作業が関与し、一つのFunctionが複数Eventの処理を受け持つ場合もある。商品出荷と入金のようなEvent同士の対応（duality）や、資源の増減（stock-flow）を検討しても、コード上の順序、DB更新、同名フィールドだけでは成立しない。これらはOwnerが根拠・条件・対応範囲を確認したときに初めて正式な意味Roleとなる。すべての業務に会計語彙や二重性を強制せず、必要な領域に限って使う。
+
+**Economic Agent ≠ Person ≠ Principal ≠ Host Grant**。顧客、代理人、担当部署、認証済み利用者、サービスアカウント、取引に参加する当事者は、名前が同じでも別の概念である。対応関係は根拠付きのQualified Link、役割、時間条件と対象Scopeで表す。現在の操作権限はHostがその都度確認し、古いREA候補や組織履歴から再生しない。Resourceの識別子も、業務キー・物理PK・Document ID・Source上の表示名を区別する。
+
+**表現は増やすより投影を使い分ける。** 同一のAccepted Sourceから、三要素表、REA三角関係、Node Flow、状態遷移、ER/Graph、Process図、SHO文書を生成する。表示のためにEdgeを短縮・集約したら、元のRelation occurrence、方向、多重性、Source、導出Ruleへの戻り道を残す。戻れない図から編集対象を決めない。SUIの空間配置やStudioの線のIDも、意味上のRelation identityではない。
+
+## 26. 「旧FunctionがDataを読む」から「業務上どの資源が動く」までを一問ずつ検証する
+
+最初の製品Questionは従来どおり、**「Function FがData Dを読む／書くといえるか」**とする。次のQuestionを、同じSourceと意味受理を再利用できる場合だけ派生させる。**「その更新は、Resource Rに関するEvent Eのどの役割を担うか」**である。前問の成功は後問の証拠ではない。
+
+答えの資格を一つのReadyフラグへ圧縮せず、既存Receipt／Review／Inspect／Traceに次の四つの問いを並べて表示する。
+
+| 資格 | 確認する事実 | 不足時の答え |
+| --- | --- | --- |
+| 観測 P | 実Producer、保存された原Byte、Graphの有無、選択したObservation/Relation ID、Source位置 | Receiptは有効でもGraphが無ければ候補選択は未実行 |
+| 根拠閉包 Q | このQuestionで必要なSource/Plugin/手作業/動的実行/期間が取得済みか | 0件でも不在とは断定せず、partial/unknown/unsupportedを区別 |
+| 対応付け J | 外部Occurrence→Data/Function/Business→Resource/Event/Agent→正式Qualified Refの対応が一意で、Owner受理されたか | 複数候補を残し、意味RoleやSource Patchを確定しない |
+| 実現 A | Source/Rule改版、Generator実消費、実Provider Read/Write、Effect/独立Consumerの受領 | 図、生成Go、模擬結果だけでは旧新同値・業務完了としない |
+
+**現状の重要な反例**：保存済みREA 6.8.0の実原本はReceiptとして受領可能だが、normalized_resultが空で、Semantic Graphに関係IDがない。#4962/#4990/#5003で実原本と合成Graphを切り分けた。合成Graphで候補選択や並行Edge比較が動くことは、実Producerから同じGraphを取得した証拠ではない。この欠落は新しいパーサーや架空のRelation IDで補修せず、実Producer成果物または明示的なViewを、**同一Producer Attempt／Source・Raw/派生Digestを照合しながら**受領する作業へ返す。
+
+さらに、旧システムでの静的SQL参照、TEIの宣言上のCRUD、Providerによる実Rowset/Mutation、DB Commit、外部通知、業務Event完了は異なる。同じFunction名であっても旧実測L、Owner受理した期待D、新実測Tを別に採取する。Read成功によりWriteやEvent成立を証明しない。業務REAのEventを履歴に保持するか、本体行の状態として扱うかは個別要件で選ぶ。汎用Event StoreやREA専用Runtimeは前提にしない。
+
+### 26.1 独立Expectedへの反証引渡し（REA-XQ-01〜08）
+
+| ID | 入力差分 | 期待する判断 |
+| --- | --- | --- |
+| REA-XQ-01 | 実Receiptあり／Graphなし、合成Graphあり | 実Producerに候補があると偽装しない。Receipt合格と候補未実行を両立 |
+| REA-XQ-02 | 同名の二Node・同端点の平行Relation二本 | Labelや図の線番号で同一化せず、Source occurrenceが不明なら逆編集拒否 |
+| REA-XQ-03 | Function参照あり、実Provider Read未実施 | 宣言上の利用候補を提示し、実Read・未使用判定は保留 |
+| REA-XQ-04 | Agent表示名一致、Role/期間/Principal異なる | 当事者・担当者・認証Principalを自動Linkせず、Grantも推測しない |
+| REA-XQ-05 | DBの在庫値減少、出荷Event/取消・二重計上が未観測 | Resourceの更新候補だけ示し、経済Eventを受理・確定しない |
+| REA-XQ-06 | 一Eventに二Function＋手作業、Function一件だけ解析 | Function数をEvent数に置換せず、必要なBusiness Scopeをunknownにする |
+| REA-XQ-07 | 原SourceがA→B→A、Candidate IDとDigestが見かけ上同じ | 旧Owner受理・生成物・現在Grant・Consumer受領を自動復活させない |
+| REA-XQ-08 | 低権限Consumerに非公開Source/当事者が混在 | Disclosure対象外のID・存在・件数・理由を露出しない |
+
+これらは新しいテスト正本ではなく、#1180/#2514の独立Expectedと#2516のDisclosure検収へ追加する**判別条件**である。実行ログが揃うまではすべて試験候補として扱う。
+
+## 27. 実装順序を一つの製品縦断へ絞る
+
+| 順 | 次の実作業・Owner | 合格に必要な証拠 | 依存・停止条件 |
+| --- | --- | --- | --- |
+| **R0** | #3394：実REA 6.8.0の一成果物で、Receipt・View・Graphの配送とProducer発行IDを区別 | 実保存byte、実Tool/版、Subject/Attempt、Rawと明示変換した派生byte、Graph/IDが存在するときだけ候補投影 | Graph欠落なら「Receiptまで合格」で停止。合成Fixtureで実陽性を代替しない |
+| **R1** | #1124/#4487：既存CandidateSet／ReviewPacketで一Function・一Data・一手作業をHeadless回答 | Original RelationとQualified Mapping候補、Required/Consumed、Unknown、曖昧時のfail-closed | 外部Node/Edgeを正式Data/Function/Businessへ自動昇格しない |
+| **R2** | #1124/#2386：業務REAのResource/Event/Agentを既存Meaning/Graph/Rule Roleとして限定受理 | 元のF/D・Event参加・時点・粒度・Ownerの適用範囲を同じQuestionに照合 | Event≠Function、Agent≠Principal、Read≠業務Effect。汎用新Core型を作らない |
+| **R3** | #2621/#988/#1121/#4544：受理済み一件から図・Rule・生成Go・独立テストへ | 実Builderが同じSource/Artifact byteを消費。図のLayout変更と意味変更を別に失効判定 | Goへdelegateするだけの見せかけのSelf-buildを合格にしない |
+| **R4** | #2586/#4495：通常tei CLI→実Provider→Function Context→独立Consumer、必要なら旧L/D/T比較 | selected/actual Provider、実Rowset/Effect、必要なReceiptとConsumer ACKを別々に採取 | 実Readを実Write、MockをCommit、同名旧Functionを実旧System実測にしない |
+| **R5** | #4661/#4583/#2831：Native Studioの実Read ConsumerとStage1→Stage2を独立検収 | Windows Wails/WebView2の実受領・正規埋込Asset、Stage1によるStage2再Build | R0〜R4をDesktop P0の新しい前提条件にしない |
+
+**次に最も価値が高いREA固有の実装差分**はR0である。実Graphが届けば、既存の型付き候補・比較CLIで同一外部Attemptの一問を検証できる。届かなければ、Producer/Delivery能力とTEI受領契約のFit/Gapを確定できる。どちらも新Reader/Registry/Host/Expected Engineを増やさずに判断できる。並行してR1の合成反証は続けるが、両者の試験資格を合算しない。
+
+## 28. 自己適用で測る効果と文書化の境界
+
+最初の自己適用対象は、TEI自身のREA候補取得・候補比較・三要素Reviewのうち**意味を持つ一操作**とする。解析器が出した説明をそのまま正式Sourceにせず、レビューで受理したData/Function/BusinessとRelation/Ruleが、実生成コードの条件・参照・出力に反映されることを試す。
+
+**評価指標**は、(1)元Source→意味Role→生成Go→実結果まで追えるRelationの割合、(2)元Sourceへ戻れない表現のLoss件数、(3)同一DSLから図・文書・テスト・Target生成に使えた意味の範囲、(4)手書きGoへ残る処理とその理由、(5)Source/Toolchain/Owner Meaning変更時に正しく失効したArtifact/Consumerの範囲、とする。単なる行数削減やAI説明の滑らかさでは判定しない。
+
+この追補は**設計判断と受入計画の更新**であり、業務REA Roleの製品実装、実REA Graph付き受領、Owner受理、Go生成・Provider/Effect、Windows Stage2の新しい実証ではない。製品の独立P0は、通常CLI実ProviderとStudio Stage1→Stage2のまま維持する。
 
