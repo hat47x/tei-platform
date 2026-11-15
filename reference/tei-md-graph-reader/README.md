@@ -32,6 +32,8 @@
 
 生成されたReference Binaryは`-candidate-shape`でこの候補指紋を一行出力する。既存`-node`の検索結果や引数なしの全件JSONは変えない。`-candidate-shape`と`-node`の同時指定は不正な要求として拒否する。固定したFixtureでは、基準とレイアウトのみ変更した例は同じ指紋、Edge反転とRule切替は異なる指紋、表とMermaidの不一致例は表の構造に従った指紋となる。
 
+**自己申告だけでは実生成物を認証できない反例**：`fingerprint_observation_test.go`では、生成GoのEdge判定をビルド前に意図的に起点→終点へ差し替える。差し替え版のBinaryは元の`-candidate-shape`をそのまま返せる一方、実BinaryのSHA-256とNode別出力は元版と異なる。これは指紋を信用する受入テストではなく、**指紋の自己申告が実行された処理の証明にならない**ことを示す負例である。次段では、Builderが実消費した元Sourceと生成Source member、外部から読んだArtifact byte、選択Providerと実Invokerを同一Attemptで照合する。
+
 **三つの指紋は用途が違う**。Source IndexのSHA-256は*元Markdownの実byte*、この構造指紋は*Referenceが解釈した候補の構造*、実Binary SHA-256は*実際にBuildしたArtifact*の識別子である。候補指紋が一致してもSourceの同一性・Readerの正当性・Ownerによる意味受理・選択Provider・現在の権限・実Consumer受領は証明できない。逆に説明やレイアウトだけの編集はSource SHA-256を変えるが、同じ処理を再生成すべきと自動判断する根拠ではない。A→B→Aで同じ内容に戻っても、過去の受理・実行資格は自動復活しない。
 
 この指紋と照会引数は**限定Referenceにだけ存在する**。正式なTEI Providerの公開コマンド、Bundle証拠、Semantic RevisionやArtifact Revisionの新しい正本として採用しない。今後は既存#2600/#951/#4495の実消費・選択・実呼出しと照合し、必要な情報だけを製品契約へ取り込む。
