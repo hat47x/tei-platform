@@ -1430,3 +1430,56 @@ Readerが1件通った次のPRで、§15.38の固定Fixture（同Labelの別Node
 | **#2497/#4515/#1180/#2514** | 編集済みだが記録失敗したEffect、独立Expected、A→B→Aでの再資格 | Source Writerの全回復・Owner意味受理 |
 
 **今回の採用範囲**：#4683/#4684のmain統合実績と独立レビューの未解決三件、mainの`*.tei.md`拒否Guard、既存のCLI-first/Graph/Plugin/DG計画を**実装順へ並べ直したdocs-onlyの計画更新**。新Go/Node/Windows/実PG、Graphコード生成、CLI Stage1→Stage2、Studio Stage2、Readerの新たな実装・実試験、正式Owner受理は**NOT RUN / NOT ACCEPTED**。修正済み・main統合済み・製品実Consumer資格を混同せず、既存#1163 Evidence Packet／#1180 Scenario／#2514 Independent Expectedの正本を一つずつ利用する。
+
+
+<!-- tei-dogfood-20261115-implementation-bridge -->
+### 15.46 限定的な実証を、正式な製品経路へつなぐ（2026-11-15）
+
+ここからは§15.42〜15.45の実装順を更新する。技術検討の対象を増やすのではなく、**今ある成果を、実際に使う製品の一往復へつなぐ**ことに集中する。次の表の「確認済み」は各PRの限定的な結果であり、TEI全体の合格を意味しない。
+
+| mainで確認した接続点 | ここまで言えること | 次に確認しなければならないこと |
+| --- | --- | --- |
+| [Graph/Rule候補と生成Go #4758](https://github.com/hat47x/tei-platform/pull/4758)、[Source失効 #4759](https://github.com/hat47x/tei-platform/pull/4759)、[Binary改変反例 #4761](https://github.com/hat47x/tei-platform/pull/4761) | 候補の構造指紋、原Sourceの指紋、生成Go、実Binary、実行結果を分けて検査できる。Binaryが正しい指紋を自己申告していても、処理が改変され得ることも実証した | 正式Readerが選んだMeaningから生成し、**外部から照合した実Artifact**を選択Pluginとして製品CLIが呼んだか |
+| [Graphと公開Manualの交差回帰 #4804](https://github.com/hat47x/tei-platform/pull/4804)、[Plugin文書の事前検査 #4800](https://github.com/hat47x/tei-platform/pull/4800) | 候補GraphとManualの元byteを別々に追え、選択Pluginの版・Lockを文書取得前に点検する入口がある | 公開Documentの正式SourceRef、現在Disclosure、本文取得、実Provider Call。事前検査だけでは文書の読取許可も実使用も証明できない |
+| [WindowのPinned Source回帰 #4792](https://github.com/hat47x/tei-platform/pull/4792)、[自己記述の製品S0-A契約 #4801](https://github.com/hat47x/tei-platform/pull/4801) | 正例と意味上の負例を含め、候補Sourceの原文を追跡できる。GraphとWindowに共通する選択・読取・出典の境界を整理した | 正式に選択した一つの `*.tei.md` を、実`Workspace.Load`が**同じbyte列**から解釈し、Source位置つきのMeaningへ渡すこと |
+| [Workbenchの参照制限表示 #4806](https://github.com/hat47x/tei-platform/pull/4806) | `InspectSubject`の制限をread-only画面へ伝える実装と負例がある | 実際に配布されたHTML/JSと埋込Asset、現在のHost応答、実Windows WebView2受領を同じ版で確かめる。[配布資産の固定修正 #4812](https://github.com/hat47x/tei-platform/pull/4812)の未統合試験を製品合格として先取りしない |
+
+特に、現行`internal/workspace/tei_md_source_guard.go`の`TEI_MD_PARSER_UNBOUND`は、未束縛の管理対象Sourceを黙って無視しないための**正しい暫定拒否**である。このGuardを外して形式的な成功を作らない。現行`internal/buildintent/intent.go`には`go-command`と`go-package`に関する定義があっても、`BuildIntent`の正式な非Plugin Subjectが製品の実Buildを通ったことにはならない。いずれも§15.43のReader実装と#4583のDesktop実装で、独立に断線を閉じる。
+
+### 15.47 初回製品dogfoodを「一Source、一操作、一Consumer」の連続試行にする
+
+最初の対象は§15.38の有向多重Graphとし、既存`testdata/tei-md-graph/`のFixture・独立Expectedを再利用する。画面、DB、AI、外部Workflowを必要条件にせず、まず通常の`tei` CLIで一つの操作を最後まで追う。どの工程も、前工程の試験成功から推測して済ませない。
+
+| 順序と実装Owner | 最小の実装差分 | 合格と停止条件 |
+| --- | --- | --- |
+| **D-A：S0-A製品Reader**（#2621/#988/#1018） | 明示的に選択したGraph/Rule Source一件を、既存`Workspace.Load`とLanguage選択経路から同じ原byte・Source span・Node/Edge ID・Rule候補へ渡す | 選択なし、Parser版不明、管理対象外のSource混入、同Label別IDの潰れを拒否。未選択の`*.tei.md`は従来の拒否を保持する。候補からAccepted Meaningへの昇格はOwner判断 |
+| **D-B：実Go処理の生成**（#1121/#4678） | 選択済みGraph/Ruleの意味から、出辺ID・件数を求めるGo処理を生成し、同一Expectedの前後比較に使う | レイアウトのみの変更では結果不変、Edge反転・Rule変更で結果が変わる。固定JSONの表示、既存の手書きGoへの単なる委譲、指紋の自己申告だけでは未合格 |
+| **D-C：選択Pluginの実Buildと実Call**（#951/#1251/#2831） | 既存Resolver/Builderを通してArtifactを得て、実選択Provider Aを通常CLIのConsumerから呼び、出力と実Invokerを照合する | Provider Aを選んでBを実行する、旧Artifactを使う、Lockだけ一致する、Mockを返す、実Callなしで終了する経路を拒否。Source・選択・Artifact・実Callを同じAttemptに結ぶ |
+| **D-D：Stage1による再入**（#2831/#4583） | Stage1の**実TEI Process**から次のBuildを要求し、Stage2で生成された同じ操作を再実行する | Stage0の二度Buildを自己再構築と数えない。再現性確認の**二度目のChild起動を含む全Child**にBuilder/Artifact pinを伝え、異なる実体を起動前に拒否 |
+| **D-E：Studio製品へ合流**（#1824/#4583） | 非PluginのStudio Subjectを既存Build/ArtifactSetへ接続し、Stage2の実Windows Wails/WebView2で対象のInspect/操作を受領する | D-DのCLI成功や過去のWindows Smokeを流用しない。配布Asset、実Binary、応答版、選択Subject、実Consumerを確認して初めてDesktopのClaimを出す |
+
+この順番は、すべてを一本の巨大PRにする指示ではない。**最初の実装PRはD-A一辺に限定する**。同時に、D-D側のBuilder pinと非Plugin Subjectの修正は独立して進められる。D-Aが未成立でも、既存の限定ReferenceでD-BのGeneratorの反例を先に洗い出すことはできる。ただし、その結果を正式Reader経由の製品合格とは呼ばない。
+
+### 15.48 「TEIで作った」を、実装の負担と変更の伝播まで測る
+
+§15.39の四指標は保持し、最初の一往復では記録方法を次のように具体化する。開始前に、GraphのID識別、辺の方向、多重性、出辺抽出、件数、誤入力、Source復帰という**意味上の義務**を固定する。各義務ごとに「TEIの意味から生成」「TEIは呼出し先を指定するだけ」「外部Goで実装」「未対応」を記録する。Goの生成行数が増えても、Go Wrapperに処理を逃がした義務は前進と数えない。
+
+同じFixtureと独立Expectedを使い、外部Go中心の実装とTEI-native生成を比較する。少なくとも、(1) Edge方向の一変更、(2) Layoutだけの変更、(3) 説明だけの変更、(4) 生成Goの事後改変、(5) A→B→AのSource復帰を試す。**原Sourceの再確認、候補意味の同値、生成物の再利用、実行結果の再利用、現在の使用許可**をそれぞれ別の判断にする。
+
+測定するのは定義の文字数だけではない。専門家が変更したSourceの数、修正が必要だったGo・設定の箇所、再生成と再検査の回数、元Sourceへ戻る操作、Cold/Warm Buildの時間を残す。実測のない改善率は書かない。将来、TEIがPlugin自身を生成する割合を増やす場合も、同じ義務の分母を固定した比較を継続し、新たに対応した機能は別版として数える。
+
+### 15.49 他レーンから取り込むものと、初回には持ち込まないもの
+
+**BRMS・業務DSL**：Markdownの説明・決定表・Graphは共通の意味への入口だが、説明文やMockを意味の正本にしない。初回はGraph出辺操作だけを実Go生成で確認し、後続の決定表は競合・一意性・未確定を独立Expectedで検査する（#988/#1121/#2514）。
+
+**REA・組織・Query/DB**：関係ID、向き、多重性を失わないGraphの成果は再利用する。ただし業務主体の同定、時間条件、部分取得、NULL、RLS、現在Grantを純粋Graphの成功で受理しない。通常`tei` CLIによる一Functionの実PostgreSQL Readと「未観測Relation≠制限なし」の修正は、#2586/#4495の並行P0として続ける。
+
+**Studio・SHO・SUI・外部Harness**：同じSubject/Source Revisionと元位置を利用者がたどれることを先に確認する。AI OFFのread-only経路を基線に、FocusとPin、候補Diffと正式Apply、公開ContractとDisclosure、Document RawとAccepted Meaningを分離する。CLI/MCP/Harness間の受渡しが成功しても、実Window受領・Source書戻し・外部Effectの資格へ自動昇格させない。
+
+**Pluginの自己構築**：Language／Operator／Data Provider／Target Generator／Lifecycle Hookを一度に自己生成しない。最初の純粋Graph Pluginで「意味ある処理の生成」と「実選択Artifactの使用」を証明し、次のread-only Inspector Pluginで再利用できる共通部分を確認する。新しいHost、第二Resolver/Registry、Graph専用Compiler、別のScenario正本は設けない。
+
+### 15.50 着手判断・証拠の上限・引渡し
+
+今回の実装着手順は**D-Aの正式Reader一件、並行してD-Dの全Child pinと非Plugin Subject、続いてD-B→D-C→D-D、最後にD-Eの実Desktop**とする。これまでの#1163 Evidence Packet、#1180 Scenario、#2514 Independent Expectedをそのまま使い、Source/Meaning/Build/Runtime/Consumerの担当Ownerへ試験を返す。試験は原則として同一Source版、選択、Toolchain、実Process、Artifact、Attemptを照合し、外部Consumerの観測を残す。
+
+本節の追補は、mainの実Go Sourceと統合済みPR・並行PRを確認した**設計・計画更新のみ**である。新たなGo/Node/Windows/実PostgreSQLの実行、正式`*.tei.md` Parser、製品Plugin Invoke、Stage1→Stage2 Desktop、現在Grant、Ownerによる業務意味の受理は**今回実施していない**。個別Reference試験の成功を製品資格へ転用せず、実装PRごとにexact HEADのCIと独立Expectedを確認する。
