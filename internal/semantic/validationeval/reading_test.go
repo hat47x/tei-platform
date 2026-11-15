@@ -507,7 +507,9 @@ func TestTheOlderEntryStillAnswersTheSame(t *testing.T) {
 		!strings.Contains(err.Error(), "has no evaluable number for attribute sales.order_line.quantity") {
 		t.Fatalf("got=%q err=%v", got, err)
 	}
-	if got, err := validationeval.Evaluate(discountRule, &operatorSource{value: rat("1")}); err == nil || got != "" {
+	// The entry without operators does not look for an operator at all.
+	if got, err := validationeval.Evaluate(discountRule, &operatorSource{value: rat("1")}); err == nil || got != "" ||
+		!strings.Contains(err.Error(), "has no corresponding Evaluator") {
 		t.Fatalf("the entry without operators decided an operator rule: got=%q err=%v", got, err)
 	}
 }

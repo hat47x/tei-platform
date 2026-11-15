@@ -78,3 +78,22 @@ func TestValidationFixtureRefusesAnUnclearState(t *testing.T) {
 		})
 	}
 }
+
+// The words are part of the Fixture format. Renaming a constant must not
+// silently change what an existing Fixture file means.
+func TestValidationFixtureStateWordsAreFixed(t *testing.T) {
+	words := map[string]string{
+		ValidationStateNull:        "null",
+		ValidationStateNotFetched:  "not-fetched",
+		ValidationCoverageComplete: "complete",
+		ValidationCoveragePartial:  "partial",
+	}
+	if len(words) != 4 {
+		t.Fatalf("two words are the same: %v", words)
+	}
+	for got, want := range words {
+		if got != want {
+			t.Fatalf("the Fixture word %q changed to %q", want, got)
+		}
+	}
+}
