@@ -9,10 +9,10 @@ query org_axes_view.as_of_membership {
             m.org_unit_id,
             m.allocation
         FROM public.org_memberships m
-        WHERE m.valid_from <= :valid_from
-          AND (m.valid_to IS NULL OR :valid_from < m.valid_to)
-          AND m.known_from <= :known_from
-          AND (m.known_to IS NULL OR :known_from < m.known_to)
+        WHERE m.valid_from <= :valid_at
+          AND (m.valid_to IS NULL OR :valid_at < m.valid_to)
+          AND m.known_from <= :known_at
+          AND (m.known_to IS NULL OR :known_at < m.known_to)
           AND m.allocation >= :allocation_min
     }
     result {
