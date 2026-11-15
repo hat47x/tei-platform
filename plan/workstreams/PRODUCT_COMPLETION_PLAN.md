@@ -155,6 +155,8 @@ DC-39〜40を既存#1180／#2514の独立Expectedへ接続し、DC-41は実Binar
 
 **起動時に選択する実装と実際に使った実装の照合（[起動契約§31](../design/STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)）**：main統合済み#5051は選択Ruleの原Markdownを生成Goと同じBuild入力に収録し、実BinaryのSHA-256が元byteと一致した限定実証である。#5054はOperator実装A→B変更後に旧Scenarioコマンドを拒否する修正候補であり、未マージのまま製品資格に加算しない。起動後の実選択Provider・現行Grant・実CallをSource／生成byteの一致から推測しない。定義済みRuleを**既存Evaluatorで解釈する**方式と**Goを生成する**方式は、同じ意味と独立Expectedで比較できるが、前者を自己コード生成の成果と数えない。#5042/#5052の生成PoC B Windows実受領と、非Plugin Stage1→Stage2実再構築も別に検収する。新Interpreter／Hostを作らず、B0とR3を独立Ownerへ引き渡す。
 
+**SL-0のCLI／Studio Host三入口基線（[起動契約§32](../design/STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)）**：既存#5037の通常製品`tei inspect`別OS Processと`operations.InspectSubject`の同値試験に、Wailsに依存しない`studiohost.ReadOnly.InspectSubject`を追加する。同じ内蔵Markdown Ruleについて、正規化意味・元Source／Workspace Identity／`authorityLimits`を含む`SubjectInspection`全体を照合。同名非公開Capabilityと偽Ruleの`SUBJECT_NOT_FOUND`、未許可Workspaceの`WORKSPACE_NOT_ALLOWED`、`business_rejection`／`not_retryable`／`effectUnknown=false`を実Go試験で確認する。これは**Studio Host Go境界の検証**であってWebView／HTTP公開・現在Grant／正式Provider Callではない。#5096のAPI Pluginは次段AP-1でWails Serverの薄い公開Adapterに接続し、CLIへのWails・HTTP依存を加えない。LoopbackへのbindのみでSourceの開示許可を得たとは扱わない。#5059のN2実CLI子Process／Windows成功はBuild一往復の実証であり、B0常駐Backendや正式Stage1→Stage2の成立と区別する。今回の追加試験の合否は対象HEAD CIを独立に確認し、P0のStudio再入#2831/#4583・通常CLI実Provider#4495を維持する。
+
 ### SL-1の最初の実コード差分と、受理可能な証拠（2026年11月15日）
 
 Script Launch §25、ADR-0048、#4495に基づき、最初は**公開済みのpure Function一件を直接Go APIから実Go Providerへ呼ぶ**差分を閉じる。次に、同じ意味契約を通常の製品tei実行ファイルの別OSプロセスから呼ぶ。これは二つの独立Attemptであり、プロセス・Request IDが同じであると仮定しない。Stage1→Stage2セルフビルド、実PostgreSQL Function Read、Studio子Backend/IPC、MCP、外部Effectはそれぞれの別Gateに残す。

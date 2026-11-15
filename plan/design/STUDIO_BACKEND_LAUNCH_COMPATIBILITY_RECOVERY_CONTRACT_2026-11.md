@@ -1084,3 +1084,27 @@ Studio側では[PR #5042](https://github.com/hat47x/tei-platform/pull/5042)の�
 第三に#4495／#1251で、現在選択されたpure Function／Providerを通常製品`tei`から実際に呼び、Selection／actual Call／Consumerを同一Attemptの証拠へ結ぶ。Source同一性やScenarioの旧計画拒否を、この実Callの代替とはしない。
 
 **本節は既存実装・main統合済みPRと未統合候補の差を整理した実装引渡しであり、新しい子Backend・解釈Runtime・実Provider・Windows Stage2の完成を示さない。**
+
+## 32. CLIとStudio Hostの同じread-only操作を、API公開・子Backend比較の基線にする（2026-11-15）
+
+### 32.1 実Operationの同値と、Hostの許可境界を別々に試す
+
+現行の`cmd/tei/cli_inspect_rule_markdown_process_test.go`には、通常製品`tei inspect`の別OS Processと`operations.InspectSubject`直接呼出しとの同値性がある（main #5037）。この試験を、**Wailsに依存しない既存`studiohost.ReadOnly`の`InspectSubject`**へ広げる。選択済みMarkdown Rule一件について、CLI JSONの`SubjectInspection`全体とStudio Hostの`InspectionResponse.Value`を同一Workspace／Subjectで比較する。Source位置、WorldとSource Index、Workspace Identity、`authorityLimits`を省略して一致と判定しない。
+
+存在しない`semantic-capability`と非`tei` Fenceの偽Ruleでは、CLIの`SUBJECT_NOT_FOUND`をStudio Hostも返し、`business_rejection`／`not_retryable`／`effectUnknown=false`の分類を失わないことを検査する。Hostで許可していない`workspace-2`を渡した場合は、Subjectの内容に関係なく`WORKSPACE_NOT_ALLOWED`で拒否する。
+
+この追加は**実CLI別OS Process／直接Operation／Studio Host Go呼出しの三つの入口**を比較するもの。WebView内の実JavaScript、HTTP、B0子Backend、非Builtin PluginのProvider実Callは通していない。新規試験の合否はPRのexact HEAD CIで確認し、旧#5037のPASSから推定しない。
+
+### 32.2 Wails Serverは公開Adapterであり、Operation Providerではない
+
+[並行PR #5096](https://github.com/hat47x/tei-platform/pull/5096)が進めるAPI PluginのCLI直接利用とWails Server公開では、`studiohost.ReadOnly`または既存の型付きOperationをHost側の薄いHTTP Routeで利用する。CLIはWailsのService、HTTP Listener、常駐Serverを必要とせず、Wails HostがCLIバイナリをshell起動して意味処理を代用しない。
+
+HTTP公開は`InspectSubject`の実行能力だけでなく**開示資格**を伴うため、Loopback Bindだけを認可とみなさない。公開主体、Audience、Scope／Workspace allowlist、Origin／CSRF、Client資産世代、現行Grantの該当性をHost Adapterで検証し、未提供の認証・Disclosureを暗黙許可しない。既存Wails v3のHTTP Service Routeを利用する場合も、`StudioBridge`の変更系メソッド全体を公開しない。CLI／Studio Hostで同じCanonicalとFailureになっただけでは、HTTP応答としてSource位置を第三者へ開示してよい理由にはならない。
+
+### 32.3 N2の実子起動をB0常駐Backendと取り違えない
+
+mainに統合された[#5059](https://github.com/hat47x/tei-platform/pull/5059)は、実`tei self-build` CLIがNodeの生成Workbench Adapterを子Processとして起動し、選択ImageのDigest、生成JS Artifact、実Windows WebView2への引渡しを限定的に確認した。このN2は**既存の一回限りのBuilder／Child実行基線**であり、常駐するB0 Backendの相互認証・Session・IPC・Operation Dispatchを実装したものではない。
+
+次のB0実験では、N2のImage Pin／親子Exit／Artifactの実測方法を再利用しつつ、同じread-only`inspect`のResultとFailureを§32.1の三入口と照合する。相手Process／nonce／通信契約、Cancellation、旧Reply、Worktree／Workspace境界とParent死後の孤児処理は別の受入票とする。CLI Directを既定から変更するかは実測と#4635の判断を待つ。
+
+**優先順位**：非Plugin Studio Stage1→Stage2の完全再入（#2831/#4583）と、通常製品CLIからの実Provider（#4495/#1251）がP0。Studio Hostのread-only三入口同値を新たなP0 Hard Gateにせず、Wails HTTPとB0を別々に実証する。Expectedは#1180/#2514を使用し、第二Host／Resolver／Registry／Test Runnerは作らない。
