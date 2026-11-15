@@ -503,5 +503,5 @@ Graphの構造的全件性、Function Read/Write、Owner受理、Source Patchの
 
 `normalized_result={}`などでGraph／選択IDが欠ける場合、Source-backed候補は**NOT RUN**として記録するが、Receiptと派生Requestの検収は省かない。不正なGraph型を無言で空扱いせず拒否する。Fixtureをテストの都合で加筆せず、実保存Byteの変更やGraph取得成功も主張しない。合成の並行Relation試験と実保存原本の資格を区別する点は§22と同じ。
 
-この是正が確認できるのは、外部REA実走→受領Byte→Receipt／派生Request→存在する場合に限ったR2外部候補投影までである。`three-element rea-candidates`が実保存Graphから三要素CandidateSetを生成できたこと、Old/New Sourceが継続していること、Owner意味受理、Native JS第二Consumer、TEI Studio実Stage2、実PG Function Read/Write、Source Apply/Save/ReReadは別の実Expectedとする。Go契約試験の旧保存FixtureにGraphがあると想定した不整合は独立の修正対象として残し、実証条件を勝手に緩めない。
+この是正が確認できるのは、外部REA実走→受領Byte→Receipt／派生Request→存在する場合に限ったR2外部候補投影までである。`three-element rea-candidates`が実保存Graphから三要素CandidateSetを生成できたこと、Old/New Sourceが継続していること、Owner意味受理、Native JS第二Consumer、TEI Studio実Stage2、実PG Function Read/Write、Source Apply/Save/ReReadは別の実Expectedとする。Go契約試験の旧保存FixtureにGraphがあると想定した不整合は独立の修正対象として残し、実証条件を勝手に緩めない。 なお、実ToolがAnalysisとViewを捕捉した直後に原Byte Digestを記録し、候補選択・出力検証で失敗しても`--report`へ失敗状態と短い原因を残す。CIの終了コードは成功へ読み替えず、`always()`のartifact取得を診断に使う。
 
