@@ -2448,15 +2448,18 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 | 順序 | 接続する実装・検査 | 主なOwner・受入 |
 | --- | --- | --- |
 | 1 | [#4359](https://github.com/hat47x/tei-platform/issues/4359) S0の旧`validation`／低ノイズ`rule`／宣言Role付きMarkdown表／Operator pinを、同じ二規則・独立Expectedで比較する。S1以降の実装は正式構文をOwnerが選んでから進める | #4359、#988、#2514 |
-| 2 | **A0：既存Contract／Lockから製品Language Providerを選抜できるかを先に確認**する。未実装なら明示拒否し、Reference `ParseSelected`で代用しない。選択できた一件に限り、A1〜A3として`*.tei.md`の同一`Workspace.Load`原byte読取・Role／Source Index位置・負例／旧`.tei`互換を検収。S0-PとS0-Aは別資格 | #2621、#988、#1018、[自己記述 #4834](https://github.com/hat47x/tei-platform/pull/4834)、[データ様式§39.8](design/SEMANTIC_STRUCTURE_MAPPING_AND_DECLARATIVE_SYNTAX_VIEW_2026-11.md) |
+| 2 | **内蔵Rule Markdown Readerの製品接続を基準に、Graph固有S0-Aを実装する**。mainの`tei.rule-authoring/v0`はManifestの明示Language選択→同一`Workspace.Load`原byte→既存`semantic.Validation`／Source Index Spanまで実装済み。GraphのNode/Edge ID・向き・多重性を内蔵Ruleへ読み替えず、正確なLanguage選抜A0→同一LoadのA1→出典A2→負例・互換A3で個別検収。外部Language Pluginの実Lockは別資格 | #2621、#988、#1018、[内蔵実装コミット](https://github.com/hat47x/tei-platform/commit/7921b005a44d325983d24ca2b8b58b0737dd778d)、[データ様式§39.10](design/SEMANTIC_STRUCTURE_MAPPING_AND_DECLARATIVE_SYNTAX_VIEW_2026-11.md) |
 | 3 | 実Graph／RuleのSourceから、受理済み意味→既存Generator→生成Go／Pluginを接続し、二Consumerと独立Expectedで正負を照合する | #1121、#1251、#2586、#1180 |
 | 4 | 生成された構造・制約・Pluginを次のBuilderが本当に利用したか追跡し、CLI先行→Studio Stage1→Stage2・Windows実Consumerへ進める | #2831、#4583 |
 | 5 | 上の縦断で得たFit／Gapを、Graph／Tree／Table、BRMS、Query／Native SQL、Data Context、数理Toolkit、Studio／SHO／SUIの表示・限定Patchへ戻す。表示・逆編集・実Providerの資格はそれぞれ別に判定する | #2495、#2497、#1124、#4660 |
 
 **判別すべき負例**：NULLと未取得の混同、空集合とpartialの混同、同名Node・多重Edgeの消失、曖昧参照の先勝ち、同一Rule IDの二重正本、説明用Code Fenceの誤実行、SQLのBag／NULL／Join差の消去、Mermaid配置変更による不要な再生成、Rule変更後の旧生成Binary再利用、AI候補の無受理実行、未選択Pluginの呼出し、生成物未使用の見かけ上のセルフビルド成功。独立ExpectedとScenarioは既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)の正本へ渡す。
 
+<!-- data-forms-builtin-rule-reader-plan-20261115 -->
+**製品実装と異種データの圧力試験を分ける**：内蔵Rule Sourceの`tei`定義Fence・Namespace・既存Validation・Source Spanは、現在の製品Loaderで成立する一限定経路である。Graph Node／Edgeと外部Language Plugin、実Generator/Builder、通常CLI/Provider/Stage2のOwner受入へ自動昇格しない。Wagby 11比較の共有物理表・複合キー、組織C1の同一Membership訂正版を単独PKが`23505`で拒否する実PG負例を[データ様式§39.10](design/SEMANTIC_STRUCTURE_MAPPING_AND_DECLARATIVE_SYNTAX_VIEW_2026-11.md)へ引き渡す。物理キーが一致しても業務Occurrenceや履歴版を特定したとは扱わず、MVR-02の旧新版共存・二時点再Readは#2386/#1126で受理するまで未達。第一の製品Graph Source一件、通常CLI実Provider、非Plugin Stage1→Stage2のP0は変更しない。
+
 <!-- data-forms-identity-asof-inspector-plan-20261115 -->
-**実装済みの異質な反証への引渡し**：標準データ様式[§39.9](design/SEMANTIC_STRUCTURE_MAPPING_AND_DECLARATIVE_SYNTAX_VIEW_2026-11.md)では、(1)実`InspectSubject`のCanonical/元Source byte位置の一致とS-OPEN未実施（main #4853）、(2)REAの構造キー一致が複数ある場合は個別Relationの対応を捏造しない（main #4850）、(3)組織二時点Queryの評価入力`valid_at/known_at`と物理区間列`valid_from/known_from`を混同せずBinderの旧名呼出しを拒否（main #4847）、(4)ReferenceのGraph読取とProduct Language未束縛拒否を別に観測、という四つの局所Go検査を次Ownerへ渡す。個別試験の存在・成功と、正式`*.tei.md` Reader／実Read Cohort／Source編集許可／Wails実Consumerの製品受入を分け、#2621/#988・#2497/#1124・#2586/#2506・#1824/#4583へ既存Expectedで引き継ぐ。これらを初回Graph S0-Aの新しいHard Gateにはしない。
+**実装済みの異質な反証への引渡し**：標準データ様式[§39.9〜39.10](design/SEMANTIC_STRUCTURE_MAPPING_AND_DECLARATIVE_SYNTAX_VIEW_2026-11.md)では、(1)実`InspectSubject`のCanonical/元Source byte位置の一致とS-OPEN未実施（main #4853）、(2)REAの構造キー一致が複数ある場合は個別Relationの対応を捏造しない（main #4850）、(3)組織二時点Queryの評価入力`valid_at/known_at`と物理区間列`valid_from/known_from`を混同せずBinderの旧名呼出しを拒否（main #4847）、(4)ReferenceのGraph読取とProduct Language未束縛拒否を別に観測、という四つの局所Go検査を次Ownerへ渡す。個別試験の存在・成功と、正式`*.tei.md` Reader／実Read Cohort／Source編集許可／Wails実Consumerの製品受入を分け、#2621/#988・#2497/#1124・#2586/#2506・#1824/#4583へ既存Expectedで引き継ぐ。これらを初回Graph S0-Aの新しいHard Gateにはしない。
 
 ### 記述形式と意味の同値性を分けて検収する
 
