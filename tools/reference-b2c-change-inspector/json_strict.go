@@ -73,7 +73,6 @@ func walkJSONObjectKeys(dec *json.Decoder) error {
 	}
 }
 
-
 // simpleFoldJSONKey canonicalizes each Unicode simple-fold equivalence class.
 // encoding/json matches struct fields with Unicode simple folding, which is
 // broader than strings.ToLower: "scope" and "ſcope" address the same field.
