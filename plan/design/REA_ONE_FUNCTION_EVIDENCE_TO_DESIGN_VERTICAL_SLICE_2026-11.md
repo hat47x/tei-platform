@@ -584,3 +584,23 @@ REAという略称は、ここでは二つの別概念を指す。外部の **Re
 
 この追補は**設計判断と受入計画の更新**であり、業務REA Roleの製品実装、実REA Graph付き受領、Owner受理、Go生成・Provider/Effect、Windows Stage2の新しい実証ではない。製品の独立P0は、通常CLI実ProviderとStudio Stage1→Stage2のまま維持する。
 
+## 29. Producerの関係端点に基づく一組の選択を、実REA入口で保証する（2026-11-15）
+
+§25〜28でいう「Graph付きEvidenceが届けば最初の一問を試せる」には、選択した観測NodeとRelationが**同じGraphに存在するだけでなく、Producerが表明した関係端点を共有すること**が必要である。従来の`verify_real_rea_intake.py`は最初の`node_id`と最初の`relation_id`を独立に拾っており、Graphの先頭NodeがそのRelationに無関係でも、TEIの`external-candidates`へ二つのIDを渡せた。Node/Relationそれぞれの存在を確認しても、組としての参照整合性は確認したことにならない。
+
+既存の`selection_from_evidence`で、Graph内のProducer発行`node_id`集合と`relation_id`集合を読み、**選択Relationの`source_node_id`または`target_node_id`のいずれかと一致する観測Nodeだけ**を一組として返す。Source端点を先に試すが、未観測ならTarget端点を使える。どちらにも観測Nodeが無ければ候補投影はNOT RUNとし、Receiptと派生Requestの検証を続ける。同種Producer IDの重複は曖昧な選択として拒否する。これらの判定は**実Graphの取得成功や業務上の関係受理の証明ではない**。Source/Target双方の完全性やRelationの真偽は、別の必要根拠・Coverage・Owner資格で判断する。
+
+**固定反例（REA-PAIR-01〜04）**：
+
+| 反例 | 期待する選択・拒否 |
+| --- | --- |
+| PAIR-01：先頭Node n0は無関係、Relation r1はn1→n2 | n0+r1の見かけ上の組を作らず、n1+r1を選ぶ |
+| PAIR-02：Relationの両端は未観測のID | Receiptを捨てず、候補投影のみNOT RUN |
+| PAIR-03：Source端点は未観測、Target端点n2は観測 | n2+r1を選べるが、Source側の完備を断定しない |
+| PAIR-04：Node IDまたはRelation IDが同一Graph内で重複 | 任意のOccurrenceを選ばず、検証を失敗させる |
+
+これらは既存VerifierのPython transport mockに限定した試験である。外部REA 6.7/6.8の実再実行、Graph付き正例、TEI CLIの実バイナリ第二Consumer、Native JS、正式三要素Function/Business、Source Apply、実Provider/Effectを本変更の合格へ合算しない。保存済み6.8.0原本の`normalized_result={}`は変更せず、引き続き「ReceiptはあるがGraph選択はNOT RUN」の対照例とする。
+
+**他領域へ再利用する判断**：この「関係の双方の端点が同じ文脈に載るか」という技術的保証と、Relation occurrenceの識別、Ownerが受理した意味Link、Processの実Call/Effectは別の資格である。Node Flowの配線、Plugin依存、三要素CRUD、業務REAのEvent/Participation、組織Person/Agent、Studio Graph/Source逆編集にも、最初の**端点参照整合**の後で意味・時点・権限を順に検証する。表示上のEdge IDや同名LabelをProducer Relation IDに見立てず、失われたIdentityを新たな万能Graph Coreで補わない。
+
+**次の製品R0**は実Toolの`analyze-javascript-application`→保存Evidence→`inspect-analysis-view`という一Attemptを観測し、Graphの具体的な配置・端点ID・Scopeを現物で確かめること。保存元とViewの同一Evidence/Raw/派生Digestを別々に確認し、配送GraphがなければProducer・Selectorのどちらが不足したかを報告する。REA-XQ-01〜08の独立Expected（#1180/#2514）と、Native実受領（#4661）を飛ばさない。製品P0の通常CLI実Provider（#2586/#4495）およびStudio Stage1→Stage2 Windows（#2831/#4583）は並行して継続する。
