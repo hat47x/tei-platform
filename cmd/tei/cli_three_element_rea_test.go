@@ -356,7 +356,7 @@ func TestThreeElementReaIntakeBeforeRefusesFabricatedUnchanged(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, tc := range []struct {
-		name string
+		name     string
 		previous []byte
 	}{
 		{name: "identical-previous-review", previous: original},
@@ -390,8 +390,8 @@ func TestThreeElementReaIntakeBeforeMalformedOrMissing(t *testing.T) {
 	if err := os.WriteFile(evidencePath, reaIntakeFixture(t), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	for _, tc := range []struct{
-		name string
+	for _, tc := range []struct {
+		name  string
 		prior []byte
 		write bool
 	}{
@@ -402,12 +402,14 @@ func TestThreeElementReaIntakeBeforeMalformedOrMissing(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			_ = os.Remove(previousPath)
 			if tc.write {
-				if err := os.WriteFile(previousPath, tc.prior, 0o644); err != nil { t.Fatal(err) }
+				if err := os.WriteFile(previousPath, tc.prior, 0o644); err != nil {
+					t.Fatal(err)
+				}
 			}
 			var out strings.Builder
 			code, err := runThreeElementCommand([]string{"rea-intake", "-evidence", evidencePath, "-before", previousPath}, &out)
 			if err != nil || code != 2 {
-				t.Fatalf("invalid before did not fail: code=%d err=%v out=%s",code,err,out.String())
+				t.Fatalf("invalid before did not fail: code=%d err=%v out=%s", code, err, out.String())
 			}
 			resp := decodeReaIntake(t, out.String())
 			if resp.OK || resp.Error == nil || resp.Error.Code != "BEFORE_SET_READ_FAILED" {
