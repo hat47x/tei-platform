@@ -164,15 +164,18 @@
 
 | 時間 | 意味 | 標準構造での置き方 |
 | --- | --- | --- |
-| valid-time | 業務上有効な期間 | `validFrom`/`validTo` 属性（半開区間 [from,to) を採用する場合は明示） |
-| recorded-at | レコードをProviderが記録・更新した時刻 | `knownFrom`/`knownTo` 属性。valid-time と同一視しない |
-| evaluated-at | 評価・再評価を行った時刻 | Rule/Query 実行の記録。対象Dataの属性にしない |
-| Rule revision | その時点で採用されていた規則版 | Rule の版。現在のRuleを過去データへ遡及適用しない |
+| valid-time | 関係・属性が業務上有効な期間 | `validFrom`/`validTo`。採用した区間境界の意味を明記 |
+| known-time | ある事実がいつ認識されていたかという期間 | `knownFrom`/`knownTo`。同じvalidAtに対してknownAtを変え、訂正前後の認識を再現 |
+| recorded-at | Providerがレコードや訂正を保存・更新した時刻 | 物理書込みの記録・Provider Receipt。known-timeの始点と自動同一視しない |
+| observed-at | 外部Evidenceや取得元を実際に観測した時刻 | Source取得・Reader/Providerの観測記録。Source自身のknown-timeへ無条件に置き換えない |
+| evaluated-at | Query/Ruleが判断した時刻 | 評価Attemptの記録。validAt・knownAtという問合せ入力とは区別 |
+| Rule revision | その時点で採用されていた規則版 | Ruleの版。現行Ruleを過去の判断に自動遡及適用しない |
 | confirmed fact | 過去に実行・送信・確定した事実 | Effect/Receipt（#1174）。履歴解釈の変更で消えない |
 
 - 遡及訂正は**同一 occurrence ID を保つ**。訂正は「訂正後の履歴解釈」を変えるが、過去の実Commit・送信・Receipt は消えず、旧Receiptを現在有効化しない。
 - 辞令（`Directive`）は複数の関係変更を束ねる**原因・発効日・出典**として保持する。イベントは現在の所属でも権限でもない。
 - 発効前は旧体制、発効後は新体制として、整合した単一revisionを表示する。遅延・部分取込・中断時の半端な状態を正式版として公開しない。
+- 同じ所属の版が競合するかは、業務Ownerが「指定validAt×knownAtで単一値」と受理した場合に限り、**valid区間とknown区間の両方が交差するか**を確認する。known区間の重なりだけで、隣接した異動履歴を不正にしない（組織C1補遺§39）。物理PKと二軸の非重複は別制約である。
 
 ### 3.5 責任・代理・承認・権限の接続
 
@@ -224,7 +227,7 @@
 | Identity | occurrence ID は訂正を通して不変（`A2` のまま）。版は `MembershipVersion` 等の別Data、または属性組で表現 |
 | Relation | S2 と同じ。履歴は Relation 定義を変えず occurrence と属性で持つ |
 | Cardinality | S2 と同じ。期間重複の可否は Cardinality ではなく Rule |
-| Time | valid-time・recorded-at・evaluated-at・Rule revision・confirmed fact を別物として保持。辞令（`Directive`）は原因・発効日・出典 |
+| Time | valid-time・known-timeを独立の区間として保持し、recorded-at・observed-at・evaluated-at・Rule revision・confirmed factと分ける。辞令（`Directive`）は原因・発効日・出典。両時間区間の重なり検査は業務Ruleの意味受理後（補遺§39） |
 | Validation | 半開区間の重複、同一occurrenceの同時有効版が2件、未来発効の混在は**現行Validationでは表現できない**。表現案は提案として分離し、Owner判断に委ねる |
 | Query | `EmbeddedSQL.Inputs` に as-of（valid）と known を**別引数**として明示。analyzer の `Lineage`・`Coverage` で非出力依存を保持（ORG-QD-01〜12 の再利用） |
 | 表示形式 | 時点別組織表、異動前後の差分表、対象件数・保留件数 |
@@ -1021,3 +1024,21 @@ D0/D2の判定では**同じ成果物が存在する**ことと**TEI自身がそ
 **停止・撤回条件**：所属によるTenantの自動同一視、同姓同名によるAccount統合、配布=実Load=現行Grantという短絡、B2Cに標準UI/共通Hostを強制、保護項目の表示非表示だけでExport安全宣言、partial/permission deniedを0件と解釈、旧Receipt/Grantを現在へ復活させる、合成fixture PASSを実Host E2Eへ昇格する場合は、該当Claimを不適格としてOwnerへ返す。
 
 **状態**：本節は§10.1〜10.11を横断する**受入設計の追補**であり、新しい六Scope Core、Model/Plugin Writer、B2C実Consumer、組織C1実Provider、実Multi-Tenant/IdP/Host/Effect、CI実行、Ownerの業務意味受理は **NOT RUN / NOT ACCEPTED**。最優先のTEI Desktopセルフビルドおよび #2586 の実Readを阻害する新しいHard Gateにはしない。
+
+<!-- org-known-recorded-temporal-crosslane-20261115 -->
+### 10.14 二時点履歴と外部観測・Rule判断・Studio表示を同一の時刻に潰さない（2026-11-15）
+
+S3の有効期間・認識期間は、§10.13のProvider/Consumer・REA・AI/SHO・実Host接続で使われる**観測時刻や実行時刻とは異なる**。既存の[組織C1横断受入補遺§35〜39](ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)が示す版の保存制約を、時間軸の読み替えで回避しない。以下はOwner間の受入対照であり、Time Engineや新しい常設Evidence Schemaの設置要求ではない。
+
+| 接続先 | 時点・版の最小契約 | 負例と判定 |
+| --- | --- | --- |
+| **通常Data/Query/Provider（#2386/#1126/#2586）** | 元Membership occurrence、版識別、validAt・knownAt、受理されたRelation、実読取Source/Scope/Snapshotを対応付ける。Providerの保存時刻をknownFromの代用品にしない | 同じA2訂正前後の保存、異なるknownAtでの復元、二軸重複の検出をそれぞれ別PASSにする。実PKが単独IDのままなら共存は未成立 |
+| **外部REA・CSV・写真・文字起こし（#3394/#2510）** | 外部のSource発行時刻、取得・観測時刻、TEIの意味受理時点、業務上の有効期間を別欄に保持。外部Agent/Personは受理済みLinkがあるときだけ接続 | 取得が新しいから業務上も新規所属、あるいは以前から認識されていたと推定しない。Candidateは正式Membershipではない |
+| **BRMS・責任・Case（#4501/#1174）** | Case基準時点、Queryが評価するvalidAt/knownAt、Rule revision、現在のPrincipal/Grant epoch、Effect Receipt時点を区別 | 過去の所属候補が存在しても現在の承認Grantは生まれない。異動後の旧Receiptも現在の許可へ復活させない |
+| **Studio/SHO/AI（#1124/#2516/#4515）** | 表示・説明にはSource revision、validAt/knownAt、表示epoch、取得の不確実性、元Relation occurrence/版を保持。二時点の変更はPreviewと独立再Readへ接続 | 図が同じでもknownAtが違うなら結果の再利用資格を再審査。Graphの親選択や画面更新から業務意味受理/保存Commitを推定しない |
+| **Plugin/B2C/外部Host（#2903/#3509/#2499）** | Distribution/Composition/Organization/Runtime/Disclosureの範囲と時点を分離。公開版の履歴QueryはConsumerごとの許可済みSliceで評価 | 所属・Tenant・Account・Principalを同一視しない。履歴Read成功から外部Hostの実行権限を導出しない |
+
+**受入順**：①§39の独立ORG-BT-01〜05を隔離PostgreSQLで検査、②#2386/#1126がOccurrence・訂正・異動・単一値性と版IDを判断、③採用した`*.tei` Persistence/Queryを実Providerと手書きExpectedで検査、④同一World/Read Cohortの二ConsumerへContextを渡す、⑤業務Rule・Studio/SHO・Hostを別資格で接続する。既存#1180/#2514/#4490のExpectedを再利用し、二つ目の正本を作らない。
+
+**現況と停止線**：PR #5008で§39・合成Go/隔離PostgreSQLの候補テストがmainへ統合された。ただし同PRのCIは別のREA Go試験のコンパイル不一致で組織テスト実行前に停止した。原因修正の独立PR #5011があり、組織の実PG資格は修正を含む固定版で**明示PASS**を確認するまで保留する。§10.14は意味・業務RuleのOwner受理や製品二時点保存の完成を主張しない。CLI実Read #2586とDesktopセルフビルド #2831は先行P0のままとする。
+
