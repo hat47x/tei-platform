@@ -1781,12 +1781,51 @@ Studio側のR4は[#2831](https://github.com/hat47x/tei-platform/issues/2831)／[
 
 ### 16.32 次に閉じる製品の一件はR2-Pの実Build入力であり、I2M-0やInspectを代用しない
 
-**現時点の最短の未接続点は、Product選択済みRule→実Generator→既存製品Builderの実Read→ArtifactSetを一つのAttemptへ束縛すること**である。参照Builderが生成Goを`-isolate`で読んだテスト、ASTが判断処理を見つけたテスト、実製品CLIの`inspect`がSourceを表示したテストは、互いに補強し合うが**三つを足しても製品R2-P／R3の成立にはならない**。
+**最短の未接続点は、生成Goが通常`tei self-build`を通った実績（§16.33）を、元のMarkdown Source／選択Reader／実Generator資格へ同一Attemptで束縛すること**である。参照Builder、実CLIによる生成Go Build、AST観測、実`tei inspect`はそれぞれ実コードとして進んだが、**合算しても製品R2-Pの完全なSource資格やR3のProvider実Invocationにはならない**。
 
 第一実装PRで、既存のSource Index／Generation Intent／BuildIntent／ArtifactSet／Evidenceを使い、`Rule Source byte／Reader pin／Rule ID・Type／実Generator identity／生成Go byte／実Builderが読んだSource／Toolchain／成果物`を、**実際に消費された入力**で突き合わせる。これらは新しいメタモデルの属性案ではなく、既存Witnessの照合項目である。
 
 受入の反例は次の五つへ絞る。B1：選択したRuleと別Ruleから生成したGoを混入、B2：説明文だけ変更した旧Source資格を自動復活、B3：Rule条件改版後も古い生成Goを収録、B4：Generator／Pluginの選択Bに対し実Call A、B5：実Builderが生成Goを読まず手書き実装へ委譲。実Artifactと独立Expectedが一致してもB1／B4／B5は不合格。最小R2-Pは[#2595](https://github.com/hat47x/tei-platform/issues/2595)／[#4544](https://github.com/hat47x/tei-platform/issues/4544)、変更失効は[#2600](https://github.com/hat47x/tei-platform/issues/2600)へ引き渡す。
 
-**並行P0を維持する**：R3の公開pure Function→現在Grant→実Provider→通常製品CLI／独立Consumer（[#4495](https://github.com/hat47x/tei-platform/issues/4495)／[#1251](https://github.com/hat47x/tei-platform/issues/1251)）はR2と独立に進め、後で両者を接合する。Studioは[W0-B埋込Asset再同期 #4983](https://github.com/hat47x/tei-platform/pull/4983)と、通常Wails WebView2の限定成功を記した[#4989](https://github.com/hat47x/tei-platform/pull/4989)を別資格とする。生成DesktopのPin不一致、Stage1→Stage2実再構築（[#2831](https://github.com/hat47x/tei-platform/issues/2831)／[#4583](https://github.com/hat47x/tei-platform/issues/4583)）は未解決のまま明示する。
+**並行P0を維持する**：R3の公開pure Function→現在Grant→実Provider→通常製品CLI／独立Consumer（[#4495](https://github.com/hat47x/tei-platform/issues/4495)／[#1251](https://github.com/hat47x/tei-platform/issues/1251)）はR2と独立に進め、後で両者を接合する。Studioは[W0-B埋込Asset再同期 #4983](https://github.com/hat47x/tei-platform/pull/4983)、[通常Windows WebView2でのPin A→閲覧B→A再確認→解除の限定成功 #5002](https://github.com/hat47x/tei-platform/pull/5002)を**別のHEADに紐づく限定資格**として扱う。生成DesktopのPin不一致、後着Reply／Dirty等の未試験条件、Stage1→Stage2実再構築（[#2831](https://github.com/hat47x/tei-platform/issues/2831)／[#4583](https://github.com/hat47x/tei-platform/issues/4583)）は未解決のまま明示する。
 
 本節の更新は**main実コードの静的再読取と研究→実装Ownerへの検収手渡し**であり、新しいGo／DB／Wails／正式Builderの実行結果やOwnerの意味受理は今回**NOT RUN／NOT PROVEN**である。
+
+### 16.33 通常`tei self-build`による生成Goの実消費を、新しい基線へ昇格する
+
+[main統合済みPR #5009](https://github.com/hat47x/tei-platform/pull/5009)で`cmd/tei/cli_self_build_generated_rule_go_test.go`が追加された。実`Workspace.Load`の選択済み`tei.rule-authoring/v0`／`quantity_positive`から`GeneratePositive`の判断Goを作り、テスト用のGo Command Packageへ配置する。続いて既存`writeFullChainDeclaration`／`buildintent.Resolve`／通常製品`tei self-build`／`reference-go-build-from-plan -isolate`を通し、Plan Cross-check、生成Goの実Entry Source、Artifact Binding、L2-b、依存閉包、再現性、完成Binaryの五入力結果を照合する**実CLI経路のGo回帰**である。従来の参照Builder直呼出しから一段前進した。
+
+ただしこの試験では、**選択済みRuleからGoを作り、Go Command用Build Intentを組む接続をテストコードが担う**。元`*.tei.md`の原byte・選択Reader／Language版・意味Rule・`GeneratePositive`の実装資格と、実Builderが読んだGo／最終Artifactは、正式な製品経路の一つのBuild Intent／Artifactとしてまだ閉じていない。実CLIの`self-build`成功≠当該Ruleの正式Generator／Plugin選択済み配布資格である。またLinux/amd64・通常テストモードを前提とし、`testing.Short`や別PlatformのSkipをPASSにしない。Go試験ファイルがmainへ入ったことと、その名前のテストがexact HEADで実行・合格したことを別票に記録する。
+
+**次の最小製品差分（R2-P残差）**：Reader／Source Indexの現在Snapshotと実Generator Contract／実Implementationを、既存Build Intent→Builderの入力へどこで渡すかを[#2595](https://github.com/hat47x/tei-platform/issues/2595)／[#4544](https://github.com/hat47x/tei-platform/issues/4544)が確定する。Go Commandが実消費された証拠は引き継ぐが、テスト用Source準備の段階を「製品がRule Sourceを解決した」と読み替えない。前節B1〜B5を使い、Rule IDを差し替えた生成Go、同じGo byteの旧Source資格、実Generator A／選択B、過去Artifactの再利用を独立に拒否する。第二Builderや専用Runnerは作らない。
+
+### 16.34 Operatorの宣言・実装選択・実呼出しを分け、意味適合は別に受け入れる
+
+[main統合済みPR #5007](https://github.com/hat47x/tei-platform/pull/5007)は、`*.tei.md`に宣言された`sales.non_negative`を使うRuleについて、Workspace manifestの`implementations:`から`tei.number.non-negative`／`tei.number.non-zero`を選び、ScenarioのValidation評価で選択した組込み実装を呼んだ結果を`validationImplementations`へ記録する。未選択、利用不能、同名実装の曖昧性を拒否するコードと試験がmainへ入った。**意味上のOperator宣言と実装選択が別状態であること**を製品の限定経路で確認する一歩である。
+
+`0`に対し「非負」と「非ゼロ」は結果が異なる。同じ`takes number`を満たし、選択した実装が実際に呼ばれたとしても、**宣言された`non_negative`という意味に`non-zero`が適合するわけではない**。現在の実装は型カテゴリの一致を中心に調べるもので、業務意味適合や独立したProvider Conformanceを保証していない。この差を新たなOperator Registryで埋めず、[#951](https://github.com/hat47x/tei-platform/issues/951)のContract／Conformance、[#1251](https://github.com/hat47x/tei-platform/issues/1251)の実選択、[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)の独立Expectedへ返す。
+
+| 比較 | 反証と必要な結果 | 現時点の資格 |
+| --- | --- | --- |
+| 宣言A、選択B、実呼出しB | Bを呼んだ事実は保持するが、Aの意味契約への適合は別判定 | 組込み二実装のScenario評価 |
+| 実装選択だけ変更・Rule原文不変 | 意味Worldは不変でも実Result／実装呼出し／実行Artifact資格は変わり得る | 選択値の旧生成物失効は未接続 |
+| 未選択／不在／重複実装 | 実Evaluator前に拒否。登録順による暗黙選択をしない | 限定試験コードあり |
+| 公開Entry→Plugin実Provider | 現在Grant、Artifact／Lock、Host実呼出し、独立Consumer受領まで別に観測 | **R3未成立** |
+
+特に、既存Scenarioの評価関数を呼ぶGoテストを「製品`tei scenario run`の別OS Process E2E」や「正式外部Plugin ABI適合」とは扱わない。次のR3では、選択B・Actual Aの値一致負例だけでなく、**選択B・Actual Bでも意味契約に不適合な場合**を拒否する。Plugin間の配線図は、Declared／Selected／Built／Observedを区別したread-only Projectionとし、描画Edgeを実Authorityへ昇格させない。
+
+### 16.35 文書表をData定義へ使う条件と、実記録の表を混同しない
+
+[開発中PR #5010](https://github.com/hat47x/tei-platform/pull/5010)では、`*.tei.md`の明示`<!-- tei: data … -->`領域にある**項目定義表**を、既存`semantic.Data`へ読込む`tei.authoring/v1`が提案されている。題材は組織の異動申請`TransferRequest`で、`personId`等の項目・型・必須・表示・説明をMarkdownで記述する。表は**レコードの形を定める定義**であり、実際の所属・異動履歴の一行一行を保存するデータではない。後者は既存Data Provider／Query／Temporal契約の対象である。これは「文書の表を標準データ構造に使える」ことと「表の行を業務データとして自動取込みできる」ことを区別する具体例となる。
+
+採否は[#2621](https://github.com/hat47x/tei-platform/issues/2621)／[#988](https://github.com/hat47x/tei-platform/issues/988)／[#1018](https://github.com/hat47x/tei-platform/issues/1018)へ返す。比較すべきは、従来の`data`宣言との型付き意味同値、`display`／`description`の表現上のRole、セル原byte範囲・診断位置、明示Reader版の拒否、Scope／Identityの保持、未対応`immutable`／`role`／`value`／Relation／候補キーの欠落である。**定義内容が部分的にしか書けない表を、従来Dataの完全な逆編集形式とみなさない**。Featureを表へ追加するときは、同一Source・同一意味・再読込・安全なSlot・複合キー等の反例が成立してから拡張する。
+
+#5010は確認時点でOpenであり、提案ブランチのローカルGo試験の申告をmain採用・Linux CI・実Query／DB／Generator受入へ昇格しない。元の`tei.rule-authoring/v0`と`tei.authoring/v1`が二系統の名前になる点も、早期に一律統合せず、既存Readerとの選択・互換・Source Indexの差を対照してからOwnerが判断する。
+
+### 16.36 研究の次段は「完成した限定経路の未接続だけ」を実装する
+
+[実Windows Pinの検収 #5002](https://github.com/hat47x/tei-platform/pull/5002)により、通常Wails WebView2で**Pin A固定→GraphからB閲覧→A再確認→解除しBを保持**するW0-Cの限定的な実測が追加された。正規埋込AssetのW0-Bとは別のexact HEAD資格を維持し、生成Desktop側の旧Snapshot不一致、後着応答／Dirty状態／Root切替、非Plugin Stage1自身によるStage2再構築は未成立とする。W0-Cを再度「未実装」と書かず、[#1824](https://github.com/hat47x/tei-platform/issues/1824)／[#2831](https://github.com/hat47x/tei-platform/issues/2831)／[#4583](https://github.com/hat47x/tei-platform/issues/4583)が次の未接続だけを扱う。
+
+次の実装順は並列三本とし、新しい横断P0を増やさない。**Builder：** #5009の実CLI self-buildから、Markdown Reader／Rule／Generatorの資格を既存Build Attemptへ束縛してR2-Pを閉じる。**実行：** #5007の組込みOperator選択・実Callを参照しつつ、受理されたpure Functionの公開Entry・実Provider・現在Grant・通常CLI／独立ConsumerをR3として別に閉じる。**Desktop：** 通常W0-Cを基線に、正規埋込Assetの版とStage1→Stage2の実Windows再入を閉じる。三本を合流したあとに限って、標準Node Flow／文書表／Plugin自己記述を製品の第二異種Consumerとして使えるかを評価する。
+
+**停止条件**：手書きGoや参照Builderの結果を正式Source資格にすり替える、Operator実装の呼出し一致を意味Conformanceへ読み替える、Markdown表の項目定義と実記録を混同する、旧Windows成功を別HEADのStage2へ転用する場合は進めない。本節は**研究から既存Ownerへ渡す判断**であり、新Go／Windows／DB／正式Providerの実行やOwnerの意味受理は今回**NOT RUN／NOT PROVEN**である。
