@@ -2982,3 +2982,15 @@ SourceとResultの形式、Language Pinの供給元、Product Readerの接続箇
 
 **この追補の範囲**：新しいGo回帰と設計上の引継ぎ。Goテストの合否は該当PRのexact HEAD CIで判定する。Reader実接続、業務Meaning受理、実Provider/CLI Consumer、Studio Stage1→Stage2について、新たな製品合格を主張しない。
 
+
+<!-- tei-self-description-ci-evidence-handoff-20261115 -->
+### 47.8 Go回帰をmainに取り込んだ事実と、製品受入のCI合格を分ける
+
+第47.7節のE1→Workspace未束縛拒否のGo回帰はmainにある。ただし、元PR #4857の**exact HEAD**ではCache検証が成功し、Repository Healthとルートの脆弱性検査は失敗した。両者のログが示した直接のビルド阻害は、当時のCLIの未使用変数である。このため、当該HEADでGraph Readerの正負対照が合格したとも、テスト自体が失敗したとも認定しない。新たなHEADで実行した結果だけを採用する。
+
+同じログでは、RA-1 workflowのtop-level `concurrency`欠落と、REA workflow二ジョブのGo版直指定が検査契約に違反していた。現在mainの該当ファイルでは、PR単位の並列実行制御と`go-version-file: go.mod`の二箇所への適用を確認できる。しかし、**設定の静的な整合、Workflowの実行成功、製品Goの検証完了は別の合格項目**である。既存のWorkflow OwnerによるPRと、この設計書の記録も別々に扱う。
+
+**次の製品実装・受入順**は変えない。A0で実際のLanguage契約／Implementation Pinの供給元を決め、A1で同じLoad時byteをReaderが消費し、A2で元位置をSource Indexに結び、A3で未選択拒否と旧形式を回帰する。Goの全体ビルドが別Ownerの変更で止まった場合は、その試行のProduct S0-A・Provider・Stage2の結果を`inconclusive`として残し、Cacheの成功や過去の合格から製品PASSを補わない。
+
+本追補は**検査結果の読み方と実装計画への引継ぎ**であり、新Reader、Semantic Meaning受理、実Plugin呼出し、通常CLIの実Provider Read、Studio Stage1→Stage2の合格を示すものではない。独立Expectedは引き続き#1180/#2514、Language選択は#988/#1018、自己記述は#2620、Build/Consumerは既存Ownerが担当する。
+
