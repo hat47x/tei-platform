@@ -1635,3 +1635,14 @@ REAの[Review要約修正 #4863](https://github.com/hat47x/tei-platform/pull/486
 Studioでは[Desktop契約 #4879](https://github.com/hat47x/tei-platform/pull/4879)が、実Capability→Inspect/Trace→S-LOC→Pin→正規Bundle→Windows WebView2→Stage1→Stage2を段階分離した。#4869のHost制限Fixture修正はmain統合済みで、Pin解除／再確認ボタンIDの修正[#4876](https://github.com/hat47x/tei-platform/pull/4876)は審査中。参照TypeScriptの成功を、埋込`main.js`／`index.html`の一致や実Windowsでの動作に昇格しない。**Studioセルフビルドと通常CLIの実Provider呼出しは内蔵Readerの追加検収を待たずに並行P0を継続**する。
 
 この追補はmain上のGo Sourceとマージ履歴を読んで反映した**計画更新**であり、新Go/Node/Windows/PGの実行、内蔵Readerのexact HEAD回帰成功、正式Graph Reader、外部Language Plugin、Generator・Provider実Call、Stage2、Owner意味受理は本変更では実施していない。CIの不合格は別Ownerの原因を分類し、文書のマージを製品の受入票に転用しない。
+
+<!-- tei-dogfood-cli-introspect-reader-ci-20261115 -->
+### 15.64 実Readerの回帰を集約し、CLIの起動阻害を製品単位で解消する
+
+[内蔵Rule Readerの製品Go対照 #4891](https://github.com/hat47x/tei-platform/pull/4891)はmainに統合された。`workspace.Load`の選択結果を既存`semantic.Validation`とSource Index／Inspector／Traceへ結び付け、説明用`text`フェンス内のRuleを未宣言として扱う。この局所的な**実コード・実試験の収録**と、そのHEADでの全体CI成功やOwnerの意味受理は別資格である。[Workspace回帰 #4890](https://github.com/hat47x/tei-platform/pull/4890)はmain統合済みで、内蔵Readerの二定義・未選択と版不一致の拒否・Source Index失効を実Go試験へ追加した。ただしそのHEADの実行結果は別途確認する。類似範囲を扱う[#4893](https://github.com/hat47x/tei-platform/pull/4893)はDraftであり、同じ正負試験を無条件に重複マージせず、**mainの既存Fixtureと独立Expectedへ固有の検証だけを戻す**。Graphと外部Language Pluginの正式Readerは未検収のままとする。
+
+[前回dogfooding PR #4881](https://github.com/hat47x/tei-platform/pull/4881)のexact HEADでは、Issue-to-Designの製品CLIビルドが`cmd/tei/main.go`の未使用`dbIntrospectSemanticFlag`で止まった。コードを照合すると、既存の`db-introspect`はコマンドとして認識され、`runDBIntrospect`にはPostgreSQL／SQLiteの物理Schema読取りと、明示`-semantic`時の`schematosemantic.Project`が実装されている一方、正規`main`から呼ぶ分岐が欠けていた。そこで本作業では、未使用フラグを削って機能を隠すのではなく、**既存のread-only処理をWorkspace／Worldロード前に接続**する。必須Provider／DSNと余分な位置引数を先に検査し、未指定ならDBへ接続せず拒否する。
+
+ただし`db-introspect -semantic`が返すのは**物理DB Schemaから推定した意味候補**であって、Ownerが受理したData/Relation/業務Keyではない。実DBの観測・Read Scope・Snapshot・部分取得・時点、SourceとTargetへの対応、現在Grantを別々に記録する。CLIが起動することと、実DBの成功・業務Meaning・Graph/Rule生成・実Provider・Windows Stage2を混同しない。
+
+この小修正の受入は、(1) 対象HEADで`cmd/tei`がコンパイルされる、(2) 通常CLIで`db-introspect`がWorkspaceなしに既存関数へ到達する、(3) 引数不備・非対応Providerで正しく拒否する、(4) `-semantic`の指定なしに意味投影しない、の四点に限定する。他パッケージの既存CI障害は失敗のまま切り分け、#2621内蔵Reader、#4495実Provider、#2831/#4583非Plugin Stage1→Stage2の並行P0を変更しない。
