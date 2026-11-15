@@ -21,18 +21,18 @@ import (
 // syntactic evidence and exact Go byte ranges, not accepted TEI meaning,
 // complete control-flow equivalence, a public Capability, or a Build receipt.
 type observedPositiveGo struct {
-	ReadAttribute     string
-	ReadCount         int
-	StrictPositive    bool
-	TrueResult        bool
-	FalseResult       bool
-	SourceNilGuard    bool
-	ValueNilGuard     bool
-	ReadErrorGuard    bool
-	ReadStart         int
-	ReadEnd           int
-	ConditionStart    int
-	ConditionEnd      int
+	ReadAttribute  string
+	ReadCount      int
+	StrictPositive bool
+	TrueResult     bool
+	FalseResult    bool
+	SourceNilGuard bool
+	ValueNilGuard  bool
+	ReadErrorGuard bool
+	ReadStart      int
+	ReadEnd        int
+	ConditionStart int
+	ConditionEnd   int
 }
 
 func selectorName(expr ast.Expr, receiver, method string) bool {
