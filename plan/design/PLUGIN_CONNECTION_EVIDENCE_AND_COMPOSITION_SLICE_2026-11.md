@@ -374,3 +374,24 @@ main統合済み[#5051](https://github.com/hat47x/tei-platform/pull/5051)の`//g
 最初に追加する反証は§10のRZM-01／04。独立Expectedは#1180／#2514、実現方式の比較は#1121／#4544、実Provider選択は#951／#1251、Build／差分失効は#2595／#2600に委ねる。新たな汎用Interpreter、第二Resolver／Runner、全Target同値を前提にしない。Studio Stage1→Stage2 Windowsと公開pure Function R3の優先順位は変更しない。
 
 **状態**：main `84c335b` に収録された同一Ruleの汎用評価／生成Go比較を再利用する設計引渡しであり、重複するGo回帰は追加しない。RZM-04の正式な実現方式選択と実Callの不一致負例、実Provider・独立二Consumerは未検収。
+
+<!-- tei-api-plugin-wails-decoupling-20261115 -->
+## 12. API Pluginの機能と公開手段を分け、CLI／Serverの選択を一つの証拠へつなぐ（2026-11-15）
+
+[Studio／CLI配布統合設計§17](STUDIO_CLI_BACKEND_PROCESS_DISTRIBUTION_UPDATE_2026-11.md)は、API PluginをWails Serverに配置しても**Operation Provider自体をWailsに依存させない**。ここではその分離を、既存のShape／Law／Binding／Realization／Admission・Effect／Consumerに適用する。新しいPlugin kindやResolverは設けない。
+
+最初に区別するのは、(1) Operationが要求する入力・出力・失敗・Effectの意味、(2) 選択されたProviderの実装、(3) HTTP method/path・Audience・Disclosureなどの公開Contribution、(4) Wails等のTransport Host、(5) CLI／HTTP／Workbenchの実Consumerである。HTTPは実装したOperationの**公開面**であって、Wails Service名やURLがOperationの安定した意味IDになるわけではない。
+
+標準Node Viewで可視化する場合も`requires`（契約要求）、`provides`（能力提供）、`selected`（構成による選択）、`delivered`（実Artifact収録）、`published`（Hostによる公開）、`invoked`（実呼出し）、`observed`（Consumer受領）を**用途の異なる関係として表示**する。これは表示用の関係名であり、新しい永続Core enum／配線権限ではない。型・粒度・時点・partial、匿名／認証済みActor、Grant／Disclosureが一致しない接続は、図の線を結べても適格としない。
+
+最初の比較では既存`inspect`をCLI directとWails Server HTTPの双方へ通し、意味を同一条件で検査する。この段階の成功を「API Pluginを実行した」証拠と数えない。非Builtin Provider一件を選択できる段階になってから、その選択Lock、Target Closure、実Entry、HTTPの公開契約、独立HTTP Consumerまで順に追加する。**CLIがHTTPを呼ばずに成功すること**と、**同じProviderがServerでも実際に呼ばれること**を別の実測とする。
+
+独立Expectedへは、CLIが隠れてWailsを起動する、HTTP公開だけで未選択Providerを呼べる、CLI主体のRead ScopeをHTTPで無断継承する、A→B→Aで古いGrantが復活する、HTTP切断で未知Effectを自動再実行する、Hostが旧GenerationのRouteを生かす、の六つを渡す。コードと検証のOwnerは既存#1158／#951／#1251／#1824／#1180／#2514へ戻し、現行P0のStudioセルフビルド／通常CLI実Providerに新しいHard dependencyを足さない。
+
+**到達上限**：本節はPlugin接続の設計と検収候補であり、HTTP API Pluginの実製品機能、非Builtin Providerの二入口E2E、実Windows／Webの新PASSを意味しない。
+
+### 12.1 Port全体／Field／AdapterとAPI公開の接合点
+
+[標準Flow§11](SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)の型付き配線をこのAPIにも使用する。全体Record、個別Field、明示Adapterの三方式は**Provider間で何を受け渡すか**を決める。一方、公開Contributionは**誰に、どのField・Failureを出してよいか**を決める。例えば内部CLIで読める`internalNote`を、単にRecord型が一致するという理由でHTTP応答へ含めない。Adapterが切り落としたField／partial／Lossは隠さず、既存Mapping・Disclosure・AudienceのOwnerへ渡す。
+
+WailsのHTTP Routeが登録済みでも、(a)対象Providerが選択され、(b)そのArtifactが実Imageへ収録され、(c)現在Grant／Disclosureが成立し、(d)独立HTTP Consumerが実際の値を受け取った、の各段階は別の事実である。CLI directの結果とHTTPの結果は、同じScope・Snapshot・Contextから型付きに復号したときだけ意味を比較する。HTTP statusやWails Bindingの呼出成功で実Providerの一致を代用しない。
