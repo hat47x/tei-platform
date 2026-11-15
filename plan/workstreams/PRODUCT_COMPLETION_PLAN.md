@@ -24,6 +24,14 @@
 | **P1：Plugin説明と公開モデルの探索**（[#4679](https://github.com/hat47x/tei-platform/issues/4679)／#951） | 上位A・利用側Bの二Pluginを固定し、Aが公開したContract／Graph／Manual索引へ、Bのread-only Inspectから正しい版で辿る。短いProduct Skillは既存の実コマンドの発見方法だけを案内 | 非公開文書・図・上位依存の存在情報を漏らさない。閲覧可を再公開可・実行可へ昇格させない。新Docs Registry／未実装CLIコマンドを前提にしない |
 | **P1：横断Concernと専門計算の適合**（#4198／#3509／#4660） | main統合済みの[Application Graph設計 #4681](https://github.com/hat47x/tei-platform/pull/4681)では、まず一つのRoute／Entryに対するread-only適用表を作る。計算側は[SQLite Window実DB試験 #4670](https://github.com/hat47x/tei-platform/pull/4670)を基線に、必要な入力範囲とProvider能力を調べる | 計測の挿入・同意・二重発火、外部Solver、NoSQLでの同等性、通常CLIの実計算・Consumer受領は未検証。新Aspect Weaverや第二Query Engineを導入しない |
 
+### 図解のP1：定義・生成・実Attemptを証拠つきで比較する（2026年11月15日）
+
+[プロセス実行図の因果・意味保存・証拠照合](../design/PROCESS_EXECUTION_CAUSAL_PROJECTIONS_2026-11.md)の§10〜15に、他の標準Data・Node／Plugin配線・業務Process／REA・Rule・セルフビルドの議論を接続した。異なる図を一つの実行エンジンで統一するのではなく、**Sourceからの投影、Targetへの生成、実際の呼出し、独立した受領の間にどの根拠が必要か**を、対象に応じて切り出す。部分取得から「不存在」や「すべて成功」と推測する図は不合格とする。
+
+最初の実装担当は#1124／#2497／#4198（読取専用図解）と#988／#1121（選択済みRule・Go生成）である。固定した一Ruleの現在のSource／型／Read範囲をCLI/Headlessで表示し、未接続のBuilder・Provider・Effectを未確認のまま示す。同じ入力・Rule IDで参照Attributeを一因子変更し、生成Go／実Read／判断と旧Evidenceの失効を既存#1180／#2514へ返す。Generator自身のGo構造をTEIの意味候補へ戻すP1 dogfoodingは別Subjectとして進める。**Go AST・図の一致、Mock、別HEADのCI成功を、通常CLIの実Provider／Stage2実Windows受領へ加算しない。**
+
+P0は引き続き、#4495の公開pure Entry→actual Provider→通常CLIの実二入口と、#2831/#4583のStage1実TEI→Stage2実Windows WebView2を優先する。図解・編集・REA・BRMS・ETLの全対象対応をP0の新しい前提にしない。
+
 ### TEI自身の実装をモデル・図・DSLへ折り返すdogfooding（P1、既存P0と並行）
 
 [実装コードの意味保存と自己記述dogfooding](../design/IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md)では、**現在動いているTEI自身のGoコードを観測し、既存の標準Data／Function／Business・Rule／Processへ対応付けて、図表・DSL候補を導出する**ことを検証対象に加える。単にDSLからGoを生成したり、構文木を図にしたりするだけでは合格としない。業務判断、Read／Failure、Generator自身の責務、Plugin／Build／実Consumerの証拠を分け、元Sourceへの対応と未理解の実装範囲を示す。

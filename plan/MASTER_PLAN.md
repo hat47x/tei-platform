@@ -12,7 +12,7 @@
 - [宣言的な成果物要求とデータ・プロセス合成](design/DECLARATIVE_RESULT_PROCESS_COMPOSITION_2026-11.md)：既存のBatch設計と型付きノード/軽量サービスの横断設計をつなぐ。出力粒度、計算単位、集約単位、実行区分を分け、複数成果物の共通化、分類の多重所属、条件依存Lineage、時間シフト循環を検証する。C0（現行型Fit/Gap）→C1（二粒度・二出力・独立Expected）を#1130/#2622/#1124/#1180/#2514へ接続し、新規DSL／Runner／Optimizerは先行採用しない。実CLI ProviderとStudio Stage1→Stage2のP0を維持する（実装前設計）。
 関連文書は次のとおりです。
 
-- [実行モデルの因果図と独立証拠を照合する](design/PROCESS_EXECUTION_CAUSAL_PROJECTIONS_2026-11.md)：既存の実行図・標準Node Flow・成果物要求を、定義／選択／実Attemptの三面と型付きEdge、観測閉包、独立Expectedで接続するread-only設計。最初は実在する選択済みRuleのSource Index/Inspectionと限定Go生成の証拠を一問で表示し、Builder／実Provider／Effect／Consumerの未確認範囲を明示する。既存#4198/#1124/#4495/#1180/#2514へ反例を引き渡し、新Graph Runtimeや第二正本を作らず、CLI実Provider・Studio Stage1→Stage2のP0を維持する。
+- [実行モデルの因果図と独立証拠を照合する](design/PROCESS_EXECUTION_CAUSAL_PROJECTIONS_2026-11.md)：既存の実行図を、定義／選択／実Attemptと観測閉包で照合するread-only設計。**§10〜15では、双方向投影の編集可能範囲、Targetへの意味保存、Rule・ETL・Process承認・REA事象・Plugin配線・セルフビルドそれぞれの実行規則、問いに必要な証拠の切出しと縮約時に残す義務を具体化した。** 最小差分は選択済みRuleのSource／Read／実Go生成を一問で照合し、Builder・Provider・Effect・Consumerの資格が未接続なら未確認として返す。Dogfoodingの実Go→図／DSL候補、通常CLIの実Providerと非Plugin Studio Stage1→Stage2は別Subject・別受入として進める（#4198/#1124/#988/#1121/#4495/#1180/#2514/#2831/#4583）。新Graph Runtime・第二正本・Hard Gateは作らず、業務Meaning受理・Go/Windows E2Eの今回実施を主張しない。
 
 
 - [標準データ・Processからノードフローと軽量サービスを構成する](design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)：既存Data／Facet・Role・Operation・Processから、Node occurrence／Port／Edge／Service／Entry／Targetを分離してAPIマッシュアップ、Webhook、イベント連携に再利用する実装前設計。**第一差分は既存Ruleと純粋変換のread-only型付きFlow→CLIでの実生成・実Consumer照合**とし、外部HTTP／認証／配備は別受入。SF-01〜12の独立Expected候補を既存#1180/#2514へ渡し、N0〜N4／W0〜W4に接続する。新Runner・Registry・Hostは作らず、通常CLI実Providerと非Plugin Studio Stage1→Stage2のP0を変えない。
