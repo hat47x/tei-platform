@@ -2847,7 +2847,7 @@ PluginのDescriptorがTEIで書けても、実際のValidator/Generator処理が
 第45節までで、自己記述は有限Bootstrap／Language・Role・Operatorの選抜／Sourceを保つ候補生成／独立Meaning受理／実生成・Consumer受領へ分けた。ここでは新しいメタモデルを増やさず、**同じReader選択と出典保存の仕組みを、異なる二つの記述様式で使えるか**を、次の製品実装の比較条件へする。
 
 - **Graph/Rule**：`testdata/tei-md-graph/`の固定6例。明示Rule条件で出辺IDを求める限定Referenceは、条件分岐付きGo生成・Source Index対照・候補構造指紋・自己申告指紋への反証までmainにある（#4729/#4742/#4758/#4759/#4761）。正式製品`Workspace.Load`に接続されたMeaningではない。
-- **Window**：`testdata/tei-md-window/`の固定5例。main #4776では基準とFrame変更の2例について、Manifest/Pinned SourceとSource IndexのS0-Pが成立した。残る負例を含む5例へ広げるPR #4792は**確認時点でopen**。Windowの型付きSQL生成やC0実SQLite試験があっても、正式Markdown ReaderやGraphと同じMeaningを取得した証拠ではない。
+- **Window**：`testdata/tei-md-window/`の固定5例。main #4776で基準とFrame変更の2例を検証し、その後mainへ入った#4792では、重複観測ID・古い派生表示・未選択Draftの負例を含む5例すべてについて、Manifest/Pinned SourceとSource IndexのS0-Pを検証した。Windowの型付きSQL生成やC0実SQLite試験があっても、正式Markdown ReaderやGraphと同じMeaningを取得した証拠ではない。
 - **共通境界**：Manifest／Source Rootの管理範囲、実読取byte、Language ID・contract version・implementation pin、元byteのspanと出典、診断とSource Index、必要なSource closureは共通化する。Graphの多重Edge、WindowのFrame・NULL・時系列順序はそれぞれの意味契約へ残す。`sourceindex.Role`を業務Meaning Roleと取り違えない。
 
 「二つの例で同じReaderが成功した」ことを、一つの巨大なGrammarや万能Semantic Interpreterの採用理由にはしない。意味の解釈はRole／Operator／Trait実装義務へ委譲し、形式が違ってもSourceの選抜・観測・資格分離の規則だけを共有する。
@@ -2875,7 +2875,7 @@ PluginのDescriptorがTEIで書けても、実際のValidator/Generator処理が
 | 未選択の同拡張子Draft | Manifestの管理外`drafts/*.tei.md` | 同名だが別byteの`drafts/window.tei.md` | 同名・近接・表の形から優先Sourceを推測しない。公開範囲とRootを保つ |
 | 解釈・生成器の変更 | 生成Goの`e.from`条件だけ改変し、自己申告指紋を維持するmain #4761の反例 | 将来のWindow Operator／SQL方言・Null/Frame解釈の版変更を別契約で検証 | 候補指紋の一致だけで実Builder入力・実Artifact・実結果・現在Grantを認定しない |
 
-Windowの`#4792`にある5例への拡張は、そのPRのexact HEAD CIと統合結果を確認した範囲だけ実績に数える。既存Graphの意味処理とWindowのSQL実現が同一だという主張は行わない。
+Windowの5例へのS0-P拡張はmainの実Goテストで確認できるが、`Workspace.Load`の未束縛拒否は維持されている。Source追跡の成立と、正式Frontend/Meaningの成立は別に判定する。既存Graphの意味処理とWindowのSQL実現が同一だという主張は行わない。
 
 ### 46.4 自己記述から導出するのは説明・診断・テスト候補であり、正解と権限ではない
 
@@ -2895,4 +2895,51 @@ Windowの`#4792`にある5例への拡張は、そのPRのexact HEAD CIと統合
 変更を記録するときは、`Source occurrence／実Read byte／選択Language・Role・Operatorと推移Pin／型付きMeaning候補・Accepted Meaning／実Generator・Build入力・Toolchain／Artifact／実Consumer／Independent Expected`のうち、**そのAttemptが実際に取得・検証できた欄だけ**を資格付きで提示する。空欄を`passed`で埋めない。新しいReceipt Store、Parser Registry、Meta Interpreter、Run Hostは作らず、既存EvidenceとOwnerへ接続する。
 
 **資格・優先順位**：本第46節はmainと別PRの実装範囲を照合した**設計／実装引継ぎの追補**であり、この変更による製品S0-Aの実Reader接続、Windowの正式Meaning、実Target/実DB、Stage2 Studio、OwnerのMeaning受理は**NOT RUN／NOT PROVEN**。既存P0のStudio Desktop Stage1→Stage2と、並行P0の通常`tei` CLI→実Provider Read→独立Consumerは変更しない。
+
+
+<!-- tei-self-description-disclosure-and-consumption-20261115 -->
+## 47. 2026-11-15 自己記述を「説明できる」「公開できる」「実行できる」に分けて検収する
+
+### 47.1 自己記述の読取成功は、公開・編集・利用の許可ではない
+
+第45〜46節はGraph/RuleとWindowでSourceの選択・出典・意味候補を検査する手順を固定した。今回新たに一つの受入境界を足す。**同じSubjectの自己記述から導いた説明が正しくても、その説明を現在の利用者に公開できるか、編集できるか、実際のPluginや業務Functionを呼び出せるかは別の判断**である。
+
+mainにある`reference/plugin-doc-reference/shape_source_separation_test.go`（#4804）では、Graph/Ruleの元Source・候補構造・生成Goと、Pluginの公開Manual Sourceを別々に照合する。しかしPDC-0の合成Fixtureは`proposal-only`／`candidate-unbound`であり、製品の一Plugin・一文書取得、Current Audience/Disclosure、Host Grantは未実証（#4714）。したがって、Manualが存在することや`plugin-inventory`でPluginがresolvedになったことを、現在公開可能／呼出し可能の証拠にしない。
+
+Studio E-READ（#4806/#4809）では`InspectSubject.authorityLimits`のような参照上の制限をWorkbenchへ渡す方向が進むが、**UIソースのテスト、配信JSの正規Build、Wailsへの埋込byte、実Windows WebView2の受領を別々に検収**する。参照制限が表示された場合も、それはAuthorityを新たに与える操作ではない。過去のInspect ReplyをWorkspace/選択/Source Revision変更後へ持ち越さない。
+
+### 47.2 一つのSubjectに対する三つの回答を、既存の根拠から組み立てる
+
+Studio／CLI／SHO／AIに提示する説明は、用途ごとの質問に必要な根拠だけを既存のInspector・Source Index・Plugin Inventory・Build Evidenceから読み取る。新しい`self-description status`や中央Registryを正本として追加しない。
+
+| 質問 | 参照する既存の根拠 | 言ってはいけないこと |
+| --- | --- | --- |
+| **何が定義されているか** | 実LoadのSource occurrence、元byte/span、Language・Role/Operatorの契約とexact Implementation Pin、読取範囲 | 未読込・非開示を「存在しない」、表層一致を「意味同値」とする |
+| **今、何を説明・公開できるか** | 当該Audienceに許された説明Source/版、Plugin/Manual Source Revision、Current Disclosure、Inspectorの現在ReplyとauthorityLimits | 内部で読めたSourceを外部AIや一般利用者へ無条件に開示する。`read-only`を編集許可に換算する |
+| **今、何を実行・再利用できるか** | Accepted Meaning、選択済みProvider/Generatorと実BuildのSource member・Toolchain、Artifact、実Consumer/Current Grant | 候補指紋・Manual・過去のGreen CIから、現在の実呼出し・Effect成功を保証する |
+
+業務担当者が自然に読める説明は、原則「対象→条件→判断→結果／判断不能」の認知順で表示する。Sourceから生成した説明の出典を辿れるようにし、説明だけを変更して意味Sourceを暗黙に書き換えない。安全な変更が必要なら**Preview→Resolve→Admit→Commit→別Readerによる再Read**を使い、変更対象の元Source位置が一意でないときはzero-writeで停止する（#2497/#1124/#2621）。
+
+### 47.3 実装に追加するのは新しい機構でなく、一因子変更の照合
+
+第45節のSDX-24〜31と独立Expected #1180/#2514へ、次の変化を**同一Subject、同一試行の根拠**として結び付ける。個別の新Scenario正本を作らない。
+
+| 一つだけ変える条件 | 保持すべき判定 |
+| --- | --- |
+| Graphの説明・配置だけ変更 | Raw SourceとSource Indexは失効／再取得。固定Referenceの候補構造と生成Goは不変となり得る。全Artifactの無差別再Buildも、旧Source Indexの無条件再利用も認めない |
+| Graph Rule/Edge方向だけ変更、Manualは旧版のまま | 生成する判断と結果の差を独立Expectedで検査する。古いManualが新しい判断を説明できるとは断定せず、文書の依存とDisclosureを再評価 |
+| 公開Manualだけ更新、Graph Ruleは不変 | Manualの元byte/Revisionと現在の公開範囲は再確認する。GeneratorがManualを読まないなら生成Goが変化するとは仮定しない |
+| 同名の選択Sourceを管理外Draftへ差替え、またはSource A→B→A | Manifest/Root・実Read byte・Selectionを再照合。古い候補、Index、公開Reply、Build/Grantの資格を名前やハッシュの一致だけで復活させない |
+| 古いInspect Reply、欠落したauthorityLimits、公開先のAudience変更 | 表示は拒否または現在の適格なReplyだけを表示。非公開Subjectの存在・件数・Source pathを制限文から漏らさない |
+| 生成Binaryが候補指紋を正しく自己申告するが、判断Goを改変 | #4761の反例どおり、実Builderの消費SourceとArtifact digest、実Consumerの振る舞いを外部から対照。自己報告値だけで資格を与えない |
+
+### 47.4 実装計画への引継ぎと停止線
+
+**P0-S（製品Reader）は引き続き最初の一件**。#1018/#988/#2621が明示選択したGraph/Ruleを製品`Workspace.Load`で同じ原byteから解釈し、出典付き候補を既存Source Indexへ結び付ける。main #4792のWindow5例は、これを待たせない第二の検査材料とする。
+
+**PDC-1（製品Plugin公開文書の一件Read）は別の最小実装**。#4714/#4701のOwnerが、選択済みPlugin版と実取得した公開Manualの元Source/Disclosureを、製品のRead-only入口と利用側へつなぐ。#4804の合成Fixture回帰を入口の成功へ読み替えず、Pluginの実Call/Grantはさらに別資格とする。
+
+**E-READ（Studio参照制限）の製品検収も独立**。#4806/#4809/#2831/#4583の既存経路で、現在のInspector Replyと拒否条件→正規UI Build→実埋込byte→Windows WebView2を段階別に確認する。公開説明や編集提案の成功をStudio Stage1→Stage2セルフビルドの成功へ昇格させない。
+
+S0-A、PDC-1、E-READは**同一Subject/Revision/Scopeを安全に説明できるための異なる入口**であり、相互の先行Hard Gateではない。全体製品P0のStudio Stage1→Stage2、並行P0の通常`tei` CLI→実Provider Read→独立Consumer、Rule→Go実生成Pluginの検証を妨げない。今回は新しいProduct Reader／実Doc取得／正式Studio実表示／実Plugin・Owner意味受理／Windows Stage2を追加実装したものではなく、**設計の受入とOwner引継ぎのみ**である。
 
