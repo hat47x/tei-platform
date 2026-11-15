@@ -26,9 +26,11 @@
 
 ### 図解のP1：定義・生成・実Attemptを証拠つきで比較する（2026年11月15日）
 
-[プロセス実行図の因果・意味保存・証拠照合](../design/PROCESS_EXECUTION_CAUSAL_PROJECTIONS_2026-11.md)の§10〜39に、他の標準Data・Node／Plugin配線・業務Process／REA・Rule・セルフビルドの議論を接続した。異なる図を一つの実行エンジンで統一するのではなく、**Sourceからの投影、Targetへの生成、実際の呼出し、独立した受領の間にどの根拠が必要か**を、対象に応じて切り出す。部分取得から「不存在」や「すべて成功」と推測する図は不合格とする。
+[プロセス実行図の因果・意味保存・証拠照合](../design/PROCESS_EXECUTION_CAUSAL_PROJECTIONS_2026-11.md)の§10〜47に、他の標準Data・Node／Plugin配線・業務Process／REA・Rule・セルフビルドの議論を接続した。異なる図を一つの実行エンジンで統一するのではなく、**Sourceからの投影、Targetへの生成、実際の呼出し、独立した受領の間にどの根拠が必要か**を、対象に応じて切り出す。部分取得から「不存在」や「すべて成功」と推測する図は不合格とする。
 
 **方式の選択と証拠の表示（§40〜44）**：既存の型付きRuleを評価する汎用Functionと、RuleからGoを生成する方式は対立しない。判断・実Read・NULL／未取得・エラーが同じ意味を守れる範囲で比較し、解釈ならEvaluatorの実装版と今回読んだモデル、コード生成ならGenerator／Build Input／実Artifact、外部Providerなら実Called／Grant／Effectを別に確認する。最初は固定`quantity_positive`の一Ruleで既存`validationeval.Evaluate`と`validationgen.GeneratePositive`の局所結果・Read先を比較する。main済み#5051の原文同梱・#5058の実CLI inspectは限定成果として保持し、選択鮮度#5054、Builder入力取違え#5056、N2実TEI起動#5059は未統合のまま検収を待つ。**新Interpreter／Optimizer／Hostを製品P0へ追加しない**。
+
+**実装用の反証と保存・通知の段階（§45〜47）**：main済み#5051で実Source byteを原文コピーとしてBuild Sourceへ収録し、実Binary内Hashまで確認できた事実と、未マージ#5056で対処する生成Go／Builder入力の取り違え、#5042/#5052の11依存Sourceを固定した生成Workbench実Windows Consumerを、**別々の受渡しの証拠**として扱う。原文コピーの正しさ、Builder実消費、Binary内同梱byte、Consumerが実際に利用したArtifactの同一性を確認するまでは一つのE2Eに結ばない。画面・保存処理は定義→取得・表示→編集→保存前検査→トランザクション→Commit→非同期→開示をProcess／Operation／Effectで説明し、段階を跨ぐGrantやReceiptを捏造しない。EC-01〜08の反例（別Source、説明改版、生成Go差替え、同Resultでの実装変更、Binary Hashの資格、旧Workbench依存、汎用評価との差、ACK喪失）を既存#1180/#2514と該当Ownerへ渡す。新Engine／Graph Store／Expected正本を作らず、通常CLI実Provider R3・正式Builder R2-P・Stage1→Stage2実WindowsのP0を優先する。
 
 最初の実装担当は#1124／#2497／#4198（読取専用図解）と#988／#1121（選択済みRule・Go生成）である。固定した一Ruleの現在のSource／型／Read範囲をCLI/Headlessで表示し、未接続のBuilder・Provider・Effectを未確認のまま示す。同じ入力・Rule IDで参照Attributeを一因子変更し、生成Go／実Read／判断と旧Evidenceの失効を既存#1180／#2514へ返す。Generator自身のGo構造をTEIの意味候補へ戻すP1 dogfoodingは別Subjectとして進める。**Go AST・図の一致、Mock、別HEADのCI成功を、通常CLIの実Provider／Stage2実Windows受領へ加算しない。**
 
@@ -96,6 +98,15 @@ DC-27〜32は#1180／#2514の既存独立Expectedへ引き渡す。最初に実�
 並行する#5051は選択元Markdownのbyteコピーを生成Goの実Build入力に含める限定試験、#5052は生成PoC Bの実Windows WebView2成功を記録したもの。前者は正式R2-Pの元ファイルLocator・Reader・Generator出典閉包全体を、後者は非Plugin Studio Stage1→Stage2セルフビルドを保証しない。次に製品として受け入れる一件は、**元宣言→実Build入力と実Consumerの対応を同じAttemptで証明**することであり、通常CLI実Provider／Stage2を並行P0に保つ。
 
 この追補に伴う新試験の実合否はexact HEADのCIで別途確認する。DC-33〜38は既存#1180／#2514の独立Expected候補へ引き渡し、新しいGrammar／Graph Runtime／Registry／Hostは作らない。
+
+
+### P1：Data表とRuleの汎用評価・生成を同じ意味で照合（2026年11月15日）
+
+[宣言的構文の合成契約§27〜28](../design/DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md)のG（コード生成）／P（パラメータ実行）／D（外部委譲）の区別を、既存Data定義表と隣接Ruleの実装票へつなぐ。internal/operations/inspect_markdown_data_table_rule_evaluation_test.goに2つのFocused試験を追加し、同じ製品Loadから一つの型付きValidationを解決する。
+
+Pは既存validationevalで正値・0・負値・NULL・未取得の五入力と論理Read先を確認する。Gは同じRuleから既存validationgenで生成したGoの参照先と条件を検査する。ただし**今回の生成Goを実ビルド／起動して比較する試験ではない**。Data項目表のallocation型をdecimal→textへ変える一因子負例では、Validatorの拒否とGo生成拒否、Source／World版の変更を別に確認する。
+
+DC-39〜40を既存#1180／#2514の独立Expectedへ接続し、DC-41は実BinaryとのRead Footprint一致を要求する次段候補とする。元宣言→Generator→実Builder入力→Artifactの正式R2-P、通常CLI実ProviderのR3、Studio Stage1→Stage2 Windows受領は並行P0であり、Pの評価成功をGの自己生成達成率へ加算しない。対象HEADでGoテストとRepository Healthを確認するまで新たなPASSを主張しない。
 
 ### P1で接続する業務判断・設計入力・数式（2026年11月15日）
 
@@ -1351,3 +1362,25 @@ Webの要求、CLIの起動、タイマー、Message、画面操作には、そ�
 mainのRule生成Go CLIビルド回帰は、選択Markdown原文のコピーをGo embedで同梱し、完成Binaryが算出する原文Hashまで観測する段階へ進んだ。これを正式R2-Pの「元Source／Reader／Generator資格を同一Attemptに束縛した」実証に読み替えない。原文をBinaryに収録するかは**開示資格を持つ公開可能なFixture**に限定して検証し、製品・Plugin・Studio・AI配布への原byte同梱は既存DisclosureのOwner判断なしに一般化しない。
 
 並行するScenario実装選択A→Bによる旧生成Command失効はPR #5054と既存#2600に委ね、Go修正を重複させない。生成Studioの通常／生成Windows WebView2両Job成功（#5042／#5052）は製品PoCとして採用するが、Stage1→Stage2の実再入（#2831／#4583）とR3のactual Provider（#4495／#1251）は独立P0のままとする。Go focused回帰のCI合否、手書き検査の実削減、原文配布の開示受理を別の検収票で確認する。
+
+
+<!-- tei-org-c1-model-to-consumer-bridge-20261115 -->
+### 組織C1を標準Data・Rule・Node表示へつなぐ一機能縦断（2026年11月15日）
+
+組織モデリングの製品完成は、組織図や二時点Queryが個別に動くことではなく、**一つのAcceptedな所属関係を、記述から保存・読取・判断・表示まで、意味と出典を保って受け渡せること**で判定する。[組織C1補遺§40](../design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)のO-P1〜5、[段階計画§10.15](../design/ORGANIZATION_STAGED_MODELING_PLAN_2026-11.md)を既存の完了判定とし、新しい製品Gateや第二の期待値正本は作らない。
+
+他レーンのmain成果は三つを再利用する。①[PR #5058](https://github.com/hat47x/tei-platform/pull/5058)の印付きMarkdown項目定義表→既存Data/InspectorとCLI結果の照合、②[PR #5055](https://github.com/hat47x/tei-platform/pull/5055)のREA端点／組織二時点／Node Flowを結ぶ際のMeaning受理境界、③[PR #5061](https://github.com/hat47x/tei-platform/pull/5061)のPlugin接続におけるShape／Law／Binding／Realization／Admission／Consumerの別資格である。これらの成功を組織C1の実Provider・実Rule・Studio E2Eへ足し合わせない。
+
+| 受入単位 | 次の実装・独立Expected | 明示する未接続と担当 |
+| --- | --- | --- |
+| **ORG-W1 記述と実記録を分ける** | 異動申請TransferRequestの印付き**Data定義表**は既存ReaderでData／Attributeとしてinspectし、型・必須・Source原byte位置を従来Dataと照合する。Membershipの**実所属行**は正式Providerから取得し、定義表の1行を所属データとして取り込まない | #2621/#988のReader・Source、#2386の業務Meaning。Markdown定義が未対応のRelation・複合Key・履歴版・Propertyを推測して埋めない |
+| **ORG-W2 二時点の保存と実Read** | Ownerが受理したOccurrence／Assertion revision／Person Linkを正式Persistenceへ反映。validAt・knownAtを宣言したQueryから、同一A2の旧新二版をProviderが実取得する。SQLバインドと非表示allocation_minの依存も固定 | #2386/#1126→#2622/#2586。隔離PGの試験用版と正式Sourceは別。保存時の二軸競合排他は[PR #5063](https://github.com/hat47x/tei-platform/pull/5063)の**未確定候補**であり、CI成功まで実証済みとしない |
+| **ORG-W3 必要な取得の閉包とRule** | 同じvalidAt/knownAt・Scopeで、Membership、Person Relation、Ruleが使うRole/Responsibility、非出力Filterを「必要なRead集合」として明示。全部取得／部分取得／0件／競合／開示拒否を分け、人数・所属件数・FTE・承認候補の粒度を混同しない | #4490/#4501/#2510。BRMSのUnique候補は二軸の「同一所属一版」と別のLaw。Source Revision・Rule revision・Read Cohort・Current Grantを独立に保持 |
+| **ORG-W4 二Consumerの投影と逆編集** | 同じAccepted World/Read Cohortの所属A2をCLIのTableとStudio/SHOのGraph／Treeに投影し、Occurrence・版・有効／認識時点・Source位置・Edgeの向き／多重性を照合。第二親と非表示の取得依存を失わない | #1124/#2497/#2516。Source PIN→Preview→再Readを経ないGraph端点ドラッグやAI後着でSource／承認者を更新しない。Studio実WebView2受領は別 |
+| **ORG-W5 Plugin・Hostへの公開** | 別Consumer/Pluginで同じShapeが使えても、業務Lawの独立Expected、現在のImplementation/Provider Binding、生成・実Call、公開Slice、Host Guard/Effectをそれぞれ照合する | #951/#1251/#2499/#1174/#5061。所属＝Account/Tenant Grantではなく、Plugin配布＝実Composition／実Invokeではない |
+
+**最小シナリオ**は合成org-synthetic-r7のP2・A2・A3をOwner採否待ちのReferenceとして使う。同じP2が二つのMembershipを持つ時点では「所属件数2／distinct Person1」という粒度の違いを保持し、A2の認識後の訂正で同じvalidAtに対する結果が変わることを観察する。**r7（known境界2027-07-02）と隔離PG候補（2027-07-03）は異なるFixture**であり、同じ正式Worldで実証したことにしない。別Source・別Reader・別Providerの結果は同じ時間ラベルや画面上のNode名が一致しても自動Joinしない。
+
+**Sourceの採否・実装の段階**：まずORG-W1を既存CLI/Inspectorで反証し、ORG-W2は意味Owner判断とProviderの二版保存を待つ。W3は必要Readの全件性を少なくとも一つの負例で示し、W4はRead Cohortの一致が保証できた場合だけ二Consumerへ進め、W5は既存Host・Plugin実CallのOwnerに委ねる。未完了のLinkを説明用Graphで補わず、標準Data/Relation・Query・Rule・Representationの既存層を再利用する。通常CLI実Provider #2586とStudio Stage1→Stage2 #2831は引き続き並列P0であり、相互をHard Gateにしない。
+
+**状態**：これは既存mainの限定成果と、組織C1固有の欠落を結ぶ受入計画である。正式Membership履歴保存、Person Link、製品Read Cohort／二Consumer、BRMSでの実判断、Plugin/Host・Studio E2E、意味Ownerの採用はこの追記だけで成立しない。
