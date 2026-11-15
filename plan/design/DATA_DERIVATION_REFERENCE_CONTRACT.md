@@ -66,3 +66,55 @@
 - **X-TEA実動作との同等性**：#940 の実Runtime観測が得られるまで主張しない。
 
 実装時は最新mainと並行PRを確認し、変更範囲に応じた試験を実施する。全リポジトリの健全性試験を一律必須としない。
+
+
+## 追補：Data Ruleの配置をFunction非従属と両立させる（2026-11-15、設計判断案）
+
+本節はWagby 11とX-TEAの機能体系の比較を受けた**既存#1637の適用先・#1129のTable lifecycle・#2622のData Operationsの分担の明確化**である。新しい式言語、Rule Engine、Schema、Registryを追加しない。以下はAuthoringと受入の方針であり、実Providerへの接続・Ownerの意味受理を示すものではない。全体の比較は[Wagby 11統合設計](WAGBY11_CAPABILITY_GAP_AND_TEI_INTEGRATION_2026-11.md)を参照する。
+
+### 計算が依存する意味の範囲から配置先を選ぶ
+
+「Data RuleかFunction Ruleか」を**SQLのテーブル数やUI部品の数だけで判別しない**。次を順に確かめる。
+
+1. **何についての値・判断か**：特定Dataの属性、関係、制約か。利用者が要求する検索・集計結果か。業務上のイベント・責任・状態遷移か。最初に対象の意味と粒度を定める。
+2. **値が変わる要因は何か**：同じData、同じ有効時点、同じ受理済み規則、同じ必要入力集合が揃ったとき、利用するFunction／画面／操作者／検索母集団が違っても意味上の値が同じか。異なるなら、何の違いに由来するかを明示する。
+3. **どの依存を明示する必要があるか**：他のRelation、期間、集計母集団、外部情報源、取得完全性、Context、Ruleの版、現在の権限が必要なら隠さない。特に**複数行を読むから直ちにFunction Ruleとは限らない**。Dataに固有の関係集合から一意に定義できる値はData Rule候補になり得る。ただし部分取得を全件とみなさない。
+4. **何を変えるか**：純粋導出、Validation、Draft変更、保存前の許容変更、業務状態遷移、実DB／外部Effectを区別する。「値が計算できる」と「実際に書き換えてよい」は別資格である。
+
+| 候補 | 配置と理由 | 誤った配置 |
+| --- | --- | --- |
+| 受注明細の\`quantity × agreedUnitPrice\` | Dataの属性値に普遍的な純粋導出。Table Script／Data Ruleから同一#1637のRuleを参照 | フォーム・受注登録Function・帳票それぞれに式を複写 |
+| 受注の明細合計（明細Relationの全件が必要） | 所属Relation、粒度、空集合、採用時点がData側に定まるならData Rule候補。完全性を満たすQuery/Providerが必要 | 画面の表示済み子行だけで永続合計を確定 |
+| 「今月・自分の担当顧客」の売上 | 母集団、Actor、期間、現在AuthZがFunctionに固有。Function Context／Query | 顧客Dataの普遍的属性やTable Scriptへ隠して格納 |
+| 承認済み注文だけの請求対象抽出 | 選択集合はFunction Context、承認状態の意味はBusiness、判定に使うRuleは共通化可 | 単一テーブルの表示項目・UIイベントで承認資格を確定 |
+| 郵便番号の型、先頭ゼロ保持、必須 | Dataの型・値域・Constraint／項目拡張Facet。任意の式実行を要求しない | 型定義がないままTable Scriptで毎回文字列変換 |
+| APIだけで完結する価格試算 | FunctionはData Modelを所有しなくてもよい。必要な型付き入力・共通Operator・外部Providerを明示 | Data Modelの新規作成をFunction存在の必須条件とする |
+
+**原則**：純粋な規則の意味定義と、どこで／いつ適用するかのAttachmentを分ける。共有したいのはOperatorと受理済みの意味であり、画面・Table・Functionごとに式の第二正本を作らない。一つのRuleが複数の対象へ適用可能でも、時点・型・Scope・現在Grantの適合まで自動保証しない。
+
+### 項目拡張定義とTable Scriptの一方向参照
+
+まずは**項目拡張定義＝属性の宣言、Table Script／Data Rule＝Data局所の振る舞いの記述元**という整理を採る。項目には型・Facet・NULL・保存性・仮想属性という静的な性質を置き、計算式の本文と実行順序は別の場所へ複写しない。Studioが項目から式を開く場合は、解決済みRule IDとSource位置を通じて一次Scriptへ移動する。Field表示画面で式編集を可能にする場合でも、同じScript Sourceへ安全に書き戻せるときに限る。編集不可ならread-onlyにする。
+
+ここでいう「Table」は**Dataの局所的なライフサイクルを表す利用者向けの見方**であり、物理RDBテーブルや専用Runtimeが必要という意味ではない。RDB/API/Document等のData Providerに同じ意味契約を投影する。仮想項目が名前を持っていても、Queryによる一時集計結果を必ず永続Data属性へ格納するわけではない。
+
+### 規則の合成と衝突解決を順序依存にしない
+
+Data RuleとFunction固有Ruleの双方が関係する場合は、安易に「Table Scriptを先、Function Scriptを後」で上書きしない。Ruleの適用先・結果スロット・Phase・前提・Read-set/Write-set・依存を比較し、競合があるときは同じ意味の参照へ統合するか、用途が異なることを明示して別出力へ分ける。別々のRuleが同じ結果スロットへ書く場合、排他的条件や合成規則が受理されない限り自動採用しない。依存循環・未取得値・粒度違い・失効したContextは既存診断へ渡す。
+
+**読取側と保存側を混同しない**。Table Scriptによる導出値をQueryのFilter/Sort/Aggregate/Limitへ使う場合は#1640の計画順序が必要。純粋計算を行う行とその入力集合の取得が不完全な場合、再計算できるという理由だけで全件集計を成功にしない。業務上確定して保存された値は#1641の区別に従い、現在の入力・Rule版への変更で暗黙上書きしない。DB確定、通知、再実行は#1129/#1174のOperation/Effect/Receiptへ委譲する。
+
+### 既存受入への反例引渡し（いずれも今回未実行）
+
+| 検証観点 | Expected・失敗を防ぐ条件 | Owner |
+| --- | --- | --- |
+| DataなしFunction | 型付き入力・Operator・外部ProviderだけでFunction候補が成立。Data Model/物理Tableなしを不正としない | #2506/#2586 |
+| 共有Data RuleとFunction固有集計 | 同じ行金額のRuleを一覧・入力・CLIで共有し、担当者別月次集計はFunction固有Contextへ | #1637/#2506/#2622 |
+| 仮想項目の検索・ページ分割 | 導出前Limit/不完全集合で誤結果を返さない | #1640 |
+| 競合するRule Attachment | FieldとTable Scriptに別式を二重定義、またはFunctionが同じ保存スロットを上書きする場合は自動解決しない | #1637/#1129 |
+| Read/Draft/Commit/Effect | 画面のDraft表示・実DB保存・外部通知の各結果を区別する | #1129/#1174 |
+| Function Viewからの編集 | 表示Row/集計値を無条件に業務Identityへ逆写像せず、明示Operation Intentへ変換可能な場合だけ実行候補とする | #2500 |
+
+これらは[Wagby比較のW11-FM-01〜12](WAGBY11_CAPABILITY_GAP_AND_TEI_INTEGRATION_2026-11.md)と**同じ独立Expected／Fixtureを参照して使う候補**である。専用の新Test SSOTを増やさず、#1180/#2514へ渡す。
+
+**未決**：Table Scriptをファイル単位でどう分割するか、項目拡張からRule IDを明示するか逆引きするか、関係を横断するData Ruleの完全性条件、FunctionとDataのRule Attachment競合の診断契約。これらは既存Source Index／型付きOperator／Data Operationsで実証してから決め、現段階で新DSL文法を固定しない。
