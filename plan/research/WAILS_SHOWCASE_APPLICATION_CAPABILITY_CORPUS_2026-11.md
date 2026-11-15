@@ -198,9 +198,11 @@ Pluginの表示上の有効化と、Contractの正当な公開、Providerの選�
 | 現在の足場 | 現行コード・既存証拠で確認できる範囲 | 次に埋める欠落 |
 | --- | --- | --- |
 | Rule→Go→通常`tei self-build`（#5009/#5051） | 製品`Workspace.Load`から選択したRuleの生成Goと原Markdownのbyte同一コピーを一つのGo packageへ入れ、既存BuilderでBinaryを生成し、Binary自身の原文SHA-256を照合する回帰をmainへ収録。Goコードが同じでも原文コピーの説明byte変更でBuild Planが変わる負例を追加 | 元Source Locator、Reader/Generatorの実装版、実GoコピーとBuilder入力を一Attemptで正式束縛するR2-P全体。公開Function Entryのactual Provider CallはR3。ソースに試験があることと全CI合格を同一視しない |
-| Markdown Dataの製品Inspector（#5043） | 選択済み`tei.authoring/v1`のData定義表・項目セル・隣接Ruleを同一原文位置へ照合し、非定義の例表を誤読しないread-onlyのGo回帰をmainへ追加 | 別Consumerとしての実Studio同一Subject表示、二表現での取得完全性、編集Intentと保存効果。Readerの選択・Source位置から権限を推測しない |
+| Markdown Dataの製品InspectorとCLI（#5043/#5058） | 選択済み`tei.authoring/v1`のData定義表・項目セル・隣接Ruleを同一原文位置へ照合。別Processの実`tei inspect`と直接`operations.InspectSubject`の結果を比較する回帰もmainへ収録。非定義の例表や同名Capabilityを誤って受け入れない | CLIと共通Operationは同じ製品Reader系統を使うため、結果の一致を独立業務Expectedと呼ばない。実Studioでの二表現、編集Intent、実Provider/Effectの受入は別 |
 | Operator実装選択（#5007/#5053、実装候補#5054） | Workspace Manifestで選んだ組込みOperatorを合成Scenarioから呼ぶ既存経路。実装選択A→BでWorld/Plugin Lockが同じでも旧生成Commandを拒否する契約は#5053の計画としてmainに反映 | `operatorSelectionSha256`をPlan/CLIへPinする#5054は確認時点でOpen。exact HEADの試験・統合後に限り実装済みとする。実装Artifactや現在Grantまで保証するものではない |
 | 実Wails WebView2（#5012/#5025/#5042/#5052） | Pin A保持中のBのCaret/Graph非干渉、再読込後の旧Pin失効に加え、固定した現行11ファイルのSource/Lockから構成した生成PoC Bと通常Desktopが、exact HEAD `00b92d3b6685834cab3a90595e449553e80d0d15` の[Windows run 43722212784](https://github.com/hat47x/tei-platform/actions/runs/43722212784)で両Job成功。生成資産不一致を許す改修ではない | 既存固定PoC Bの実Consumer成功を、TEIが実Build SubjectからStudio Stage1→Stage2へ再生成した証拠としない。別Workspace A→B→A、Dirty Buffer、実Provider、配布更新も別検収 |
+| Plugin接続の資格整理（#5061） | Shape／Law／Binding／Realization／Admission・Effect／Consumerの問いを分け、既存Operator選択とRule原文同梱を別Subjectの実績として整理した設計がmainへ収録 | Contract/Providerの実適合や業務Law、実Call/Grantは未実証。#5054のOperator選択失効は未マージの実装候補 |
+| 生成Workbench N2のTEI CLI起動（計画#5065、実装候補#5059） | 既存PoC Bの実Windows成功を維持しつつ、Seed生成TEI CLIからNode/esbuild子Processを実起動して生成JS・Receipt・Digestを照合する候補を明記 | #5059は確認時点でOpen。仮に成功しても正式BuildIntent/Builder選択と、生成Stage1が自身をStage2へ再構築したという資格ではない |
 | Graph/Node配線の参照整合（#5038と標準Flow設計） | 受領したREA GraphからNode/Relationを選ぶとき、両者が同一Graphの端点で結ばれているかを調べる実Verifier修正をmainへ収録 | 端点一致は業務意味、Graphの時間条件、Plugin Provider選択、実Call/Effectの証明ではない。型付きFlow→実Generator/Consumerの独立試験を要する |
 
 これらは別々の証拠であり、一つが成立しても残りの資格に自動昇格しない。「機能が見える」「モデルが読める」「実生成した」「実Providerが作用した」「別Consumerで受領した」を区別し、Source改版・実装選択変更・生成Artifact変更の失効範囲をそれぞれ観測する。
@@ -245,3 +247,48 @@ MQ Studio型のCapability Driverと、Plugin間配線用Node Viewに共通する
 - `operatorSelectionSha256`（#5054）は`selected`の現在性を検証する候補であり、`built/invoked/observed`やBusiness Meaningの資格を補完しない。実装PRが未受理なら、図でも「計画された接続」と表示する。
 
 **引渡しと採否**：一本目は#1124/#997/#1824、二本目は#2621/#1121/#4544/#4495、三本目は#951/#1158と標準Flow/Nodeの既存Ownerに渡し、WC-03/05/09/13/14/15/17/18の独立Expectedは#1180/#2514の既存枠組みへ接続する。段階間で新しい正本・Runner・Registry・Gateは作らない。各段階で、実装量ではなく**既存の標準要素を再利用した範囲、削減した手書き部分、実Consumerの同値と失効試験**を記録する。
+
+## 14. コード生成と汎用解釈を、同じ設計から選択する
+
+Wailsショーケースには、TerminalやSQL Editorのように入力をその場で解釈したほうが自然な機能と、決まったRule・UIを多数回動かすため事前生成が有利な機能が混在する。この違いを「生成しやすいDSL」と「解釈専用の別DSL」に分ける必要はない。**既存の正式なData／Function／Processと、対象Target・性能・副作用・配布条件から実現方式を選ぶ**。
+
+| 実現方式 | 適する対象 | 使える資格と停止条件 |
+| --- | --- | --- |
+| 既存の汎用関数で解釈 | read-only Query/Inspector、少数の標準Node/Port、テンプレート/Widget、対話的なPreview | 入力を正式型とSource/Revisionへ解決し、現在のPolicy/Grantと取得完全性を毎回確認。解釈できることと実Effectの許可を同一視しない |
+| コード生成してTargetへ配備 | 繰り返し評価されるRule、定まった画面・API/帳票、外部Hostへ渡すJava/.NET/Goの生成物 | Source/Meaning/Generator版、生成byte、Builder実消費、Artifact/Targetを別資格で検証。元Markdownや図表にGoの構文を要求しない |
+| 専門Plugin/Host Adapterで実現 | OS Terminal/PTY、Clipboard、Native Dialog、更新器、特殊Device、互換性が厳しいSQL方言 | 専門実装を正当な拡張と認め、Contract/権限/Provider/Effect/Receiptを共通に保つ。無理に汎用Nodeや生成コードへ置換しない |
+
+いずれを選んでも、Sourceが表・図・Graphviz・Markdown・関数チェーンであることは実現方式を一意に決めない。Generator固有の属性が必要なら、意味モデルと切り離したTarget/Projectionの設定またはPattern/Skillとして付与し、専門家が読む通常DSLへ機械的な細目を露出しない。
+
+対象Functionが同じなら、解釈方式と生成方式は**意味上の入力・出力・失敗分類・副作用範囲**を比べる。両方式で処理順や最適化が異なる場合は、同値の成立範囲を記録する。実現方式の変更はArtifact/実装選択の版変更として扱い、生成 byte が一致しても現在のGrantや業務意味を自動再受理しない。
+
+最初の二系統は、既存`quantity_positive`の生成Go判断と、Markdown Data表のread-only Inspectorである。どちらも製品の実装がすでに存在するが、**同じ業務Functionを両方式で実装したという証拠ではない**。意味同値の最初の試験は、同じ正式Ruleを異なる二つの実現方式で扱える最小例が揃ってから行う。第13節の二つの別Workspaceを一つの業務世界に混ぜない。
+
+## 15. Wailsアプリの配布・更新をTEIのArtifact契約へ接続する
+
+LToolsの拡張UI、Minecraft Updater/Packsmithの配布、WailsTermのNative連携は、共通WorkBenchの開発だけでなく、生成アプリの配布境界を検証する事例である。Wails v3のUpdaterやService機能を使う場合も、**パッケージの更新成功＝TEIモデル／Pluginの業務適合の再受理**とはしない。
+
+- **D1／オンライン接続**：別Server側にProviderを持つ場合、Clientは現在のService API/Contract・Peer/Workspace・実Grantの組を毎回照合する。UI更新でRemote Providerの現在資格を推測しない。
+- **D2／単体パッケージ**：Go単一実行形式を基本とし、Studioや生成Desktopがスタンドアローンで動くなら、必要なBackend/Plugin/設定/Assetsを一つのRelease Closureとして宣言する。バイナリに直接同梱するか補助ファイルに置くかは実装方式の選択であり、依存漏れを許さない。複数ファイルを使うなら、一部だけの更新後に古いPlugin/設定を混用しない。
+- **D3／Worker・従属Server**：同一実行ファイルのWorker子Processと、別Wails Server子Processは起動時のPeer Identity／Protocol/Contract版、起動・停止・復旧、更新途中の旧Process/Cacheを検証する。D2パッケージにまとめられることと、通信の安全性は別の問いである。
+
+配布時には、少なくとも**(a) Product/Source Revision、(b) Meaning/受理情報、(c) Operator・Provider選択とPlugin Lock、(d) Generator/Build Intent/Artifact、(e) 実機に配信したFrontend/Backend/補助設定、(f) 実行時のGrant/Receipt**を関連づける。すべてを新しいManifest型へ詰め込むのではなく、既存Bundle/Build Evidence/Plugin Contract/Host Adapterの記録を相互参照する。
+
+Updaterは、更新前に閉包・署名／出典と対象Platformを照合し、旧版との同時稼働、途中失敗、ロールバック、オフライン起動後の失効を試す。Wailsの更新支援機能の具体的な適用可否・更新単位は対象バージョンとOSで調べ、採用を先に確定しない。Mobileは現行Desktop成果から無条件に正式サポートへ昇格させない。
+
+**既存Ownerへ**：Wails Service/Native/Updater/Workerの比較は#4635/#1824、Plugin依存とVersion Lockは#951、Bundle/Artifactとセルフビルドは#2831/#4583および既存Builder、実配布/安全な更新の検収は既存Product/Release計画に戻す。専用のTEI Host・Updater Runtimeを先行作成しない。
+
+## 16. 次の受入試験を、現在の断点に直結させる
+
+新しい機能の採用条件を増やすのではなく、第5・12節の独立Expected候補へ、現在の実装が持つ断点の反例を加える。
+
+| ID | 一因子だけを変える条件 | 独立して期待する判断／未証明 |
+| --- | --- | --- |
+| WC-19 | 同一正式Ruleの意味を保ち、解釈方式とコード生成方式を切り替える | 同じ入力・NULL/欠損・失敗分類・許可Scopeで意味同値を確認。現行RuleとData Inspectorを異なる実現方式と称して代用しない |
+| WC-20 | 固定PoC BのFrontend Source/Lock 11件の一つだけを更新する | 実Generator/配信Bundleの再資格化を要する。旧Windows PASSで新HEAD・Stage2を受理しない |
+| WC-21 | Plugin/Operator実装A→Bへ変更し、WorldとPlugin LockとRuleの見た目を保つ | 旧生成Commandを評価前に拒否する。#5054のexact HEAD受入前は現行mainで成立済みと表示しない |
+| WC-22 | D2 Standaloneの一部Pluginまたは設定だけ旧版で復元し、残りを更新済みとする | Release Closureの整合・Target適合を再検証し、古いBundleの一部から実行資格を復元しない |
+| WC-23 | 別Workspace/別Roleに同名Subjectがあり、Node配線の端点IDだけ一致する | Source/Workspace/Revisionと意味Relation occurrenceを確認し、単なる端点参照一致から編集・実行を許可しない |
+| WC-24 | StudioでPin A→B→Aと戻し、原文ハッシュも以前と同じになるが、その間に選択Providerまたは現在Grantが変わる | 古いPin/Selection/実行権限を復帰させない。Source同値と意味受理、Provider Selection、Grant、実Effectを別票で再資格化 |
+
+**実装順序**：P0の正式Stage1→Stage2 Windows再入とR2-P/R3の実Providerを止めず、まずWC-20（既存実WebView2・Source Closure）とWC-21（既存Scenario）を各Ownerの実試験へ接続する。WC-19は同じ正式Ruleに二方式が揃うまで研究上の反証候補、WC-22は配布実証着手時、WC-23/24は既存Graph/Studio/SUIのModel/PinのOwnerへ戻す。候補IDを列挙しただけでテスト済み扱いしない。
