@@ -63,9 +63,9 @@ func TestReceiveTypedProducerFailureDoesNotPromoteEvidence(t *testing.T) {
 		{"jsonl-error", `{"$rea":"jsonl/v1","type":"error","ok":false,"result":{"ok":false,"error":{"code":"INVALID_SOURCE_KIND","category":"validation","message":"synthetic"}}}`, StateFailed},
 		{"json-error", `{"ok":false,"error":{"code":"BAD_REQUEST","category":"validation","message":"synthetic"}}`, StateFailed},
 		{"missing-code", `{"$rea":"jsonl/v1","type":"error","ok":false,"result":{"error":{"message":"no code"}}}`, StateMismatch},
-		{"missing-ok", `{"error":{"code":"BAD_REQUEST"}}`, StateMissing},
+		{"missing-ok", `{"error":{"code":"BAD_REQUEST"}}`, StateMismatch},
 		{"not-a-failure", `{"$rea":"jsonl/v1","type":"metadata","records":{"emitted":0}}`, StateMismatch},
-		{"false-with-no-error", `{"ok":false}`, StateMissing},
+		{"false-with-no-error", `{"ok":false}`, StateMismatch},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			raw := []byte(tc.content)
