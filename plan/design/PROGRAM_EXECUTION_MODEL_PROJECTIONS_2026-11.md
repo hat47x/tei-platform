@@ -1293,3 +1293,9 @@ flowchart LR
 このテストは「Sourceを変えても以前のGo評価が固定の結果を返すだけ」という**TEI宣言の無効化**を検出できるが、意味を含むGoコードをTEIから生成した方式Cの成立は証明しない。今回は既存`validationeval.Evaluate`へ委譲する方式Bの実到達点に限定する。方式Cは同じ二版のSource・独立Expected・入力Read先を使い、生成Go byte／実Builder・Artifactの差分、通常CLI/選択Providerの実使用、Consumer受領をそれぞれ計測する（研究統合計画§16.13〜16.17、#1121/#1251/#4495）。Source ID、Rule ID、Artifact SHAの一致のみで古い実行資格を復活させない。
 
 **CI記録の単位**：#4901のCacheは当該HEADで成功し、セルフビルドは失敗、Repository Healthは取得時点で進行中だった。ここから新試験の合格・失敗を推定しない。本追加試験もPRのexact HEADでGoの対象試験が実行されたことを別に確認する。
+
+**意味を含むGo生成への接続（R1）**：mainの[PR #4911](https://github.com/hat47x/tei-platform/pull/4911)で、内蔵Rule Readerが選択した`semantic.Validation`の`positive`／`std.decimal`に限り、`validationgen.GeneratePositive`が`source.Number`と`value.Sign() > 0`を含むGoを生成できるようになった。既存Evaluatorを呼ぶだけのWrapperではない。ただしPR #4911の局所生成成功は、既存BuilderがこのGoを入力に用いた証拠でも、通常CLIの実Provider呼出しでもない。
+
+新しい`TestSelectedMarkdownRuleMutationChangesGeneratedGoAndRealResult`では、**二つの`std.decimal`属性を持つ同一モデル・同一固定入力**を保ち、Markdown Ruleの参照Attributeだけを`quantity`から`second_quantity`へ変更する。旧版・新版それぞれの製品`Workspace.Load`→同一LoadのSource Index→型解決→実Go生成→別Process`go run`を通し、生成Goの相違、Source改訂、元Rule ID位置の維持、読み取る属性が各1回であること、数量0の不成立から代替数量2の成立への変化を**別々に**検査する。現在のGeneratorが`std.integer`を許可しないため、ここでは無理に明細番号へ型を広げない。Rule IDは固定しても型付きMeaningの依存先は変わる。
+
+これは**生成Goを直接`go run`したR1の局所回帰**であり、R2の正式Builder・ArtifactSet／消費byte、R3の選択済みProvider・通常製品CLI、R4の独立Consumer・Windows Stage2の資格を付与しない。今後の比較は、生成器版と正確な入力閉包をBuilderの実ログ／Receiptへ結び、選択Artifact Bに対してAを呼んだ場合を結果が一致しても拒否する。今回のGo testはPR exact HEADで合否を確定する。
