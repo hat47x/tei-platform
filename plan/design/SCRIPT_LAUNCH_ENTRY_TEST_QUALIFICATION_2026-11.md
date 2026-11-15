@@ -1327,3 +1327,34 @@ ScheduleのTZ/DST・missed-run、Eventのbefore/within/post-commit、Batchの入
 5. **Trigger・Effectを後段で接続する**。TR-03/04/05/07/11のGrant失効、改版、重複配送、ACK喪失、Target表現不足を専門Ownerの実Evidenceで検収する。初回pure FunctionのPASSを実DB Commitやexactly-once保証へ拡張しない。
 
 **計画への接続**：全体P0は#2831/#4583の非Plugin Studio Stage1→Stage2、並行P0は#4495の公開Entry→実Provider→通常tei CLI。正式Markdown Reader、Graph/Ruleの実生成、Builderへの入力、実Consumerはそれぞれ#2621/#1121/#2831が別に受理する。今回は既存契約の引渡しと失敗時の主張範囲を収束させたもので、新Go実装、実Windows Child、業務Meaning受理、実外部Effect E2EはNOT RUN。
+
+## 28. 起動前の評価と契約付きMockを、実Providerの資格と混同しない（2026-11-15）
+
+### 28.1 同じ業務契約から三つの実現を比較する
+
+TEIの業務DSLには、業務担当者が読む順序で、対象・入力・前提・Rule／判断・例外・結果・外部Effectを記す。その意味モデルから、説明文、図、テストパターン、TEI内評価、生成Targetへの引渡しを導く。業務説明はできるだけ元の意味記述から直接表現し、Go関数・IPC・子Processの構成を業務DSLへ露出しない。**説明文・図・Mock応答を独立した業務意味の正本へ昇格させない**。
+
+| 経路 | 適格な最小成果 | 証明できないこと |
+| --- | --- | --- |
+| **TEI内評価** | 受理されたFunction/Rule・型付きInputに対し、独立Expectedで判断・計算と拒否を照合 | 実Target ProviderのLoad/Call、Host現在Grant、外部Effect |
+| **契約付きMock** | 未実装の外部依存をTODOとして明示し、入力・結果・Failure・Effect宣言に適合する模擬応答で全体手順を検証 | 実Provider可用性、実DB/Network Commit、Consumerの実受領 |
+| **実Provider** | 公開Entry→Hostによる現在Admission→実選択Artifact/Provider→typed API・通常製品`tei` CLIの実呼出しと独立Result検証 | 他Targetや他時点でも同じ資格が成り立つこと |
+
+契約付きMockは**明示されたシミュレーション経路でのみ**選択できるようにする。実Provider不在、Grant失効、Load失敗、Target非対応を理由に、本番Invocationを無断でMockへfallbackさせない。契約への適合をMockと実Providerで比較しても、各Invocation/Attempt/Source/Artifactは別の観測として記録する。TEI内評価やMockのPASSを本番Execution／外部Effect／Current AuthorityのPASSへ移すことはできない。
+
+### 28.2 TODOの存在と業務シミュレーションの成立を別の判断にする
+
+未実装の外部部品には、呼び出し前提、要求Input、応答・Failure/unknown、Effectと必要な権限／Resource、未確認の外部依存を記録する。その部品をMockで代用した場合には、どの仮定に依存して業務手順が先へ進んだかを説明できるようにする。実Targetで同じ入力を表現できなければnot-representable/unsupportedとして止め、入力を省略・固定値に書き換えて通さない。
+
+決定表や組織・REA・SQL/NoSQLによるInputの取得がpartialである場合、十分な証拠を伴う二行競合の存在は確定できても、唯一の一致や不存在は全件取得なしに断定しない。未取得／明示NULL／非開示／0件／Rule非一致を、説明・Mock・独立テストのどれでも混同しない。表示上の「実行できそう」という判断をHostのAdmitへ昇格させない。
+
+### 28.3 既存Ownerへ返す実装順
+
+1. **意味と検証基準を固定**：#4495でOwner受理済みの公開pure Function一件を選び、既存#1180/#2514の独立Expectedと固定Source/Meaning/Contract/Inputを確定する。未受理の数量×単価例は製品Entryとして仮採用しない。
+2. **TEI内評価と必要なMockを限定比較**：同じ意味契約の正常・missing／NULL／unfetched・partial／unknown・不正Resultを比較し、実未実装部品のTODOとMock使用を必ず出力に残す。Mock/TEI内評価を新しい共通Runnerに集約せず、既存Test/Scenarioと対象Contractを再利用する。
+3. **Product実Go Providerで別Attemptを取得**：既存§25／#4495のSL-1a→1b→1cを優先。宣言・Grant不正は実Adapter call=0、呼出し後Result不正はcall=1、selected B／actual Aは値が同じでもFAIL。通常`tei view -execute`のReference結果やexit 0を実Providerの証拠にしない。
+4. **外部作用はOwnerの証拠へ戻す**：書込み・通知・Batch／Event等は#1129/#1174/#4497で現在Grant、Provider/Effect、Receipt/独立Read、ACK喪失後の再送条件を別に検証する。結果の説明はSHOへ派生できるが、業務意味受理や外部実行許可をSHOへ移さない。
+
+**責務と優先順位**：同一モデルからの説明・図・Mock・テスト・生成Targetの関係は[実行モデル図解](PROGRAM_EXECUTION_MODEL_PROJECTIONS_2026-11.md)§49〜56を参照し、正本を複製しない。業務意味と標準DSLは#988/#2621、Rule/決定表はBRMS統合設計、Source/Consumerは#2586、実起動は#4495/#4502、独立Expectedは#1180/#2514を利用する。全体P0は#2831/#4583のStudio Stage1→Stage2、並行P0は公開pure Entryの実Provider→通常製品CLIであり、Mockの製品化や新Engineを先行Hard Gateにしない。
+
+本節は設計と引渡しである。TEI内Evaluator・契約付きMockの製品採用、実Provider CLI/外部DB/Windows E2Eの新規合格、Ownerの正式な意味受理は主張しない。
