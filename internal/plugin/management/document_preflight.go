@@ -16,7 +16,7 @@ type DocumentReadPreflight struct {
 	LockPinned       *bool  `json:"lockPinned"`
 	SourceBinding    string `json:"sourceBinding"`
 	Disclosure       string `json:"disclosure"`
-	DocumentReadable bool   `json:"documentReadable"`
+	ReadEligibility  string `json:"readEligibility"`
 }
 
 const (
@@ -42,7 +42,7 @@ func InspectDocumentReadPreflight(report Report, pluginID string) DocumentReadPr
 		SelectionStatus:  DocumentSelectionScanIncomplete,
 		SourceBinding:    "unbound",
 		Disclosure:       "not-checked",
-		DocumentReadable: false,
+		ReadEligibility:   "not-assessed",
 	}
 	if report.ScanState != ScanComplete {
 		return out
