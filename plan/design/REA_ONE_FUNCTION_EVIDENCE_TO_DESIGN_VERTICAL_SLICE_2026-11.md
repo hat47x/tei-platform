@@ -379,3 +379,22 @@ main #4751/#4756/#4733/#4777とも、**Source選択→実Reader→Meaning candid
 
 **証拠上限**：実Go回帰のCI結果は対象HEADで別に確認する。今回の修正は外部Producerの実再解析試験、Owner意味受理、実Provider／Target実Effect、Native Wails JS受領、TEI-native Plugin自己構築の完了を意味しない。
 
+## 14. 保存済みREA原本の二入口と並行Relationの回帰検証（2026-11-15）
+
+前節のRQ-01〜09を現行CLIで検証する。旧Draft [#4693](https://github.com/hat47x/tei-platform/pull/4693)のJ-01（保存原本と派生入力）、J-02（並行Relation）、J-03（三要素Coverage）のうち、既存型のまま独立試験できる二つのGoテストファイルを現行mainへ移す。観測事実変更（旧J-02k〜m）はすでに[#4805](https://github.com/hat47x/tei-platform/pull/4805)がmainに入っているため、重複移植しない。
+
+### 現行の二入口で検証すること
+
+- **Captured 6.8.0原本**：UTF-16LE/BOMの保存済み原本をそのまま外部候補選択へ渡す。Evidence ID、実受領Raw digest、指定したsemantic graphのNode・有向Relation IDを確認する。三要素取込みへは明示的にUTF-8へ変換した別byte列を渡す。原本Digestで派生入力をPinした要求はstale拒否。保存原本を読んだことはProducerの再解析や現在Sourceの保証ではない。
+- **二つのGraphの区別**：外部選択のjsrg_（semantic graph）と三要素候補のjag_（application graph）は別の観測範囲であり、同一Evidence IDから同じFunctionやRelationの正式な対応を推定しない。Captured ReviewではDataの構造候補をsupported、FunctionとBusinessをunsupportedかつwouldNeedありとし、Owner Decisionはpendingを維持する。
+- **並行する外部Relation**：合成Application Graphで同端点・同ラベルのEdgeを二本用意し、別のExternalOccurrenceIDとCandidate ID、read-only Previewの別CrossReferenceを保持する。既存CarrierAuditのexternal-edge-identity Lossも消さない。Producerが同じEdge IDを重複させた入力は拒否する。
+- **構造completeの資格上限**：Graphの観測範囲がcompleteであっても、Functionの実Read/Write、Business意味、実DB Effect、全Sourceの網羅性を示すものではない。0件を「未使用・削除可能」とはしない。
+
+| 対象テスト | 期待する観測 | 主張しないもの |
+| --- | --- | --- |
+| cli_rea_dual_entry_contract_test.go | 保存原本とUTF-8派生を別入力として受領、Raw digest差、Graph種別、旧Pin拒否、三要素CoverageとOwner pending | 二つのCLI呼出しが同一原子的Attemptであること、別Native Product Consumerの成功 |
+| cli_rea_parallel_relation_review_test.go | 並行Edgeの区別、Previewの未受理、Carrierの識別子Loss、重複外部ID拒否、completeでもFunction/Business unsupported | 外部IDを正式な業務Relation IDとして受理したこと、実CRUD／Effect |
+
+テストはCLIのGo handlerを直接呼ぶ。通常teiバイナリの独立起動、Native Wails JS/WebView2による第二Consumer、Source Save/ReRead、SHO Save/Reopen、実Provider/DB、Owner意味受理、生成Plugin実使用、REA外部ツールの新しい実行は、今回の証拠に含めない。R3-Cは引き続き[#4661](https://github.com/hat47x/tei-platform/issues/4661)で検収する。
+
+**統合後の引継ぎ**：Draft #4693の同じテストファイルと#4805の実装は二重マージせず、端点再採番と1対多／多対1の曖昧性、独立Sourceに戻れない個別Relation編集など未完了項目だけを現行mainへ再基準化する。他媒体のEvidence候補Draft #4716は別レーン。追加のParser、Host、Meaning Store、Expected Engine、Source書戻し機構は設けない。
