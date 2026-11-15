@@ -17,6 +17,7 @@ on:
       - 'internal/operations/org_axis_asof_physical_test.go'
       - 'internal/operations/org_axis_asof_postgres_integration_test.go'
       - 'internal/operations/org_axis_bitemporal_rectangle_candidate_test.go'
+      - 'internal/operations/org_axis_bitemporal_exclusion_candidate_test.go'
       - '.github/workflows/tei-postgres-unrun-suites-ci.yml'
       - 'go.mod'
       - 'go.sum'
@@ -31,6 +32,7 @@ on:
       - 'internal/operations/org_axis_asof_physical_test.go'
       - 'internal/operations/org_axis_asof_postgres_integration_test.go'
       - 'internal/operations/org_axis_bitemporal_rectangle_candidate_test.go'
+      - 'internal/operations/org_axis_bitemporal_exclusion_candidate_test.go'
       - '.github/workflows/tei-postgres-unrun-suites-ci.yml'
       - 'go.mod'
       - 'go.sum'
@@ -112,7 +114,8 @@ jobs:
           set -euo pipefail
           gofmt -d internal/operations/org_axis_asof_physical_test.go \
             internal/operations/org_axis_asof_postgres_integration_test.go \
-            internal/operations/org_axis_bitemporal_rectangle_candidate_test.go | tee "$RUNNER_TEMP/org-asof-gofmt.diff"
+            internal/operations/org_axis_bitemporal_rectangle_candidate_test.go \
+            internal/operations/org_axis_bitemporal_exclusion_candidate_test.go | tee "$RUNNER_TEMP/org-asof-gofmt.diff"
           test ! -s "$RUNNER_TEMP/org-asof-gofmt.diff"
 
       # The suites create their own tables and drop their own schemas; separate
@@ -149,7 +152,7 @@ jobs:
           go test -count=1 -v -timeout 10m -run 'TestScopedPostgres|TestScopedTenantPostgres' \
             ./reference/web-api-contract | tee -a "$log"
           # Native as-of Query and isolated revision-key candidate probe; both must execute.
-          go test -count=1 -v -timeout 10m -run '^TestOrgAxisAsOf(ActualPostgres|RevisionKeyCandidate|BitemporalRectangleCandidate)OptIn$' \
+          go test -count=1 -v -timeout 10m -run '^TestOrgAxisAsOf(ActualPostgres|RevisionKeyCandidate|BitemporalRectangleCandidate|ExclusionConstraintCandidate)OptIn$' \
             ./internal/operations | tee -a "$log"
 
       - name: SKIPとFAILの検証
@@ -188,6 +191,7 @@ jobs:
             'TestOrgAxisAsOfActualPostgresOptIn'
             'TestOrgAxisAsOfRevisionKeyCandidateOptIn'
             'TestOrgAxisAsOfBitemporalRectangleCandidateOptIn'
+            'TestOrgAxisAsOfExclusionConstraintCandidateOptIn'
           )
           for name in "${required[@]}"; do
             grep -Eq -- "^[[:space:]]*--- PASS: ${name} \(" "$log" || { echo "required test did not PASS: ${name}" >&2; exit 1; }

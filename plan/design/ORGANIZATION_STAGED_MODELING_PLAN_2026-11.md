@@ -1057,3 +1057,14 @@ S3の有効期間・認識期間は、§10.13のProvider/Consumer・REA・AI/SHO
 まず手書きExpected付きの**同一A2の旧新二版保存→二時点Query→Function Context→二Consumer**を一つのWorldと実Read Cohortで検査する。合成r7と隔離PG候補の異なる日付・配賦を便宜上Joinせず、出典・粒度・時点・単位・Scopeを明示する。二版保存と取得完全性が欠ける間は、候補解決や人数/FTE集計を正式な判断へ流さない。
 
 組織の通常Dataには組織専用ACLを課さず、必要な保護対象の特定項目と外部Host実行Grantだけを既存の対応Ownerへ渡す。新Temporal Engine、組織固有のBRMS/Workflow Runtime、新しいExpected Store、独自Hostは作らない。全体P0の#2586/#2831を新Hard Gateで妨げない。
+
+<!-- org-exclusion-candidate-handoff-20261115 -->
+### 10.16 単一値の意味と保存時の排他を別々に実装する
+
+[組織C1補遺§41](ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)では、二時点で旧新の版を読み分けるだけでなく、**競合版が同時に保存されることを防ぐ仕組み**を候補として比較する。
+
+対象はS3で「同じ所属OccurrenceのvalidAt×knownAtには高々一つのAssertion revision」という条件をOwnerが採用した場合に限る。正当な異動・再所属・兼務・マトリクス上の多重関係を一律に排除しない。比較対象は①PostgreSQLのGiST EXCLUDE（membership ID等値＋valid/known両区間重複）、②Provider/Operation内での読取・Lock/Serializable検証、③版保存とProjectionを分ける方式。SQLSTATE 23P01は二軸除外制約違反、23505はPK重複として別に扱う。区間外・別Membership・境界で接する版は正例。
+
+この比較から**新しいTemporal Coreや特定DB依存のDSLを先に作らない**。まず隔離PostgreSQLで、正例を拒否せず競合を拒否し、エラー後に元の版を読めることを実測する。さらに、旧known期間を閉じて新版を登録する同一トランザクションの順序を確かめる。ただし同時Writer、障害復旧、Receipt、正式Provider Migrationと現在の認可は別試験であり、候補試験が成功した時点で製品に採用したとはしない。
+
+**他レーンへの共通契約**：BRMSの単一担当者判断には必要Read集合の完全性とPerson Linkを要求し、Graph/StudioではOccurrence・版・表示Edgeを混ぜない。REA/SHO/AIは観測Sourceと意味受理を分離する。Pluginの導入・選択と現在のHost Grantは別。現行S1の単純組織やB2CのHeadlessな利用に二時点専用Runtimeを強制しない。既存O-P1〜5を受入順とし、P0の #2586/#2831 は変更しない。
