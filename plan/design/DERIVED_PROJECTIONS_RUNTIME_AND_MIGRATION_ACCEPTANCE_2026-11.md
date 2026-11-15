@@ -146,3 +146,74 @@ Migrationの最初の受入は**隔離DBのread-only観測とDry-run**で、旧�
 - **保留**：新Core型・新Grammar・Graph Compiler・Workflow Host・Migration Engine・Outbox Store・独立テスト実行基盤・万能Registry・AIによる自動業務意味受理は、この段階で追加しない。
 
 **検証上限**：ここまでの§7〜10は既存成果の設計統合と次の実装パケットである。新たなGo/Node/Windows/DB/MCP実行試験、業務Ownerの意味受理、製品の完全適合は本追補では未実施。
+## 11. 同じ意味モデルでも実装選択と現在性が違う：実Go回帰からの再整理（2026-11-15）
+
+### 11.1 既に実証した範囲を起点にする
+
+前回§8〜9の「生成Go→実Builderはこれから」という説明は、製品コードの進展に応じて精密化が必要になった。現在mainには、次の**それぞれ独立した**実装と回帰がある。
+
+| 実装済みの限定Witness | 実際に確認すること | これだけでは保証しないこと |
+| --- | --- | --- |
+| [#5020](https://github.com/hat47x/tei-platform/pull/5020)・`internal/semantic/validationgen/positive_surface_identity_test.go` | 同一型付きRuleをMarkdown／従来構文から読んだ場合、元Source位置・指紋・Model Revisionは区別しながら、生成GoとASTのRead・条件が一致。説明文だけの変更で旧Source Indexが失効 | 異なるSourceが同じ受理経緯／編集資格を持つこと、実Provider／Owner受理 |
+| [#5009](https://github.com/hat47x/tei-platform/pull/5009)・`cmd/tei/cli_self_build_generated_rule_go_test.go` | 選択済み`quantity_positive`の生成Goをテスト用Go Entrypointへ配置し、通常`tei self-build`、Plan／Artifact照合、別Process Binaryの正・0・負・NULL・欠落を検査 | Authoring Source／Reader／Generator版を**同一Build Intentへ束縛したこと**、正式公開Function・実Provider、他Target |
+| [#5007](https://github.com/hat47x/tei-platform/pull/5007)・`cmd/tei/scenario_operator_implementation_test.go` | 宣言Worldを変えずに`implementations:`の組込み実装を`non-negative`と`non-zero`で切替えると、入力0の結果と実Called IDが変わる。未選択・曖昧・未搭載は拒否 | 選択実装が業務上の意味に適合すること、外部Plugin Lock／実Provider一致、生成Scenarioの旧版失効 |
+| [#5025](https://github.com/hat47x/tei-platform/pull/5025)・`cmd/tei-studio/test/desktop_webview_smoke.py` | 実WebView2用テストにWorkspace再読込→旧Pin観測失効→利用者の明示再確認を追加 | 同テストの全HEAD CI合格、Stage1からStage2へのWindows自己再構築、現在の業務Grant |
+
+**注意**：この四つは同じRule／Workspace／実Attemptの連続E2Eではない。特に`quantity_positive`のGo生成試験と`discount_non_negative`のOperator選択試験は**別Fixture・別Subject**である。片方のPASSから他方の機能実装を推論しない。選択済み実装の`non-zero`は負値も真となり得るため、実装選択が成功しても「負値を禁止する」という業務要求への意味適合は別に検証する。
+
+### 11.2 保存するのは万能の一致フラグではなく、根拠付きの対応関係
+
+次の対象は異なるIdentityと改版軸を持つ。**同じ文字列や同じGo byteで一つに統一しない**。
+
+1. **Authoring Source**：Workspace Root、Source path／occurrence／原byte／範囲、選択Readerと版、保存済みか未保存か。
+2. **Accepted Meaning**：Qualified Rule／Operator／Relation IDと型、適用Phase、必要なRead、Ownerが受理した業務条件。未受理の候補は候補のまま。
+3. **Resolved Realization**：Workspaceが選んだOperator実装、Plugin/Provider/Target Generator、選択版・Lock、Toolchain。宣言上の候補と実搭載・実Callを分ける。
+4. **Build / Loaded Artifact**：実Builder入力Go byte、依存閉包、Artifact digest、実ロードBinary／埋込UI／設定とその観測時点。実生成結果と実ロード版は別。
+5. **Execution / Consumer**：実Context、入力取得範囲／Snapshot、現在Grant、実Called ID、結果・Effect Receipt、独立Consumerの受領時点とAudience。
+
+この5対象はSource→意味→実現選択→実Build→実利用という**検証可能な辺**で結び、全対象に共通の万能Revisionを新設しない。World Fingerprint／Model Revision／Artifact Revisionと、Runtime／Provider／Consumerの観測票を引き続き分ける。既存Evidenceの再利用可能性は各辺の依存集合とAuthorityを検査して判断する（#2250／#2255／#2600／#3267）。
+
+### 11.3 変更の種類ごとに、残せる資格と失効する資格を区別する
+
+| 一因子変更 | 保持できる候補 | 必ず再確認する境界 |
+| --- | --- | --- |
+| Markdownの説明文だけ変更 | 型付きRule、生成Goの等価性 | 元Source位置・指紋・引用／説明の扱い、旧Indexの現在性 |
+| Rule条件・参照Field・評価Phase変更 | 無関係なData定義・Renderer | Typed Meaning、Read集合、生成Go、Builder／実行結果、必要なConsumer |
+| 同じWorldで`implementations:`だけ変更 | Source Meaningの構造、無関係な成果物 | 実装選択・解決可能性・選択実Call、業務要求への適合、旧Scenario／生成物の実利用資格 |
+| Source Rootの切替・A→B→A・同名別ID | 過去の発行記録 | 現行Root／Occurrence、Source Index、編集対象・依存先。byte一致だけでは復活させない |
+| Graphの座標・設計書の表示順だけ変更 | 元Graph／Ruleの意味 | 該当Renderer／表示Consumer。実行Goを一律再生成しない |
+| 商品価格・Relation・Read Scope変更 | 取引時点の確定Snapshotと無関係Rule | 現在参照値、Query取得完全性、照会時点、業務Ruleの依存。過去取引値の黙示的再計算は禁止 |
+| 申請先組織の変更・委任／Grant期限切れ | 申請時Route Snapshot・承認実績の履歴 | 現在の行為主体と許可、残りの承認人数、後続Actionの適格性 |
+| Generator／Plugin／Embed／Config変更 | 直接無関係のSource Meaning | 実Artifact、実Loaded／Invoked版、現在Consumer。必要な配布・再起動を実測 |
+| DB列型・Migration履歴だけ変更 | 未変更の業務モデル・説明書式 | 実Schema／実データとMigration適用履歴を**別々に**照合。履歴修復を型変換済みとしない |
+
+「残せる候補」はPASSを自動継承する意味ではない。必要な依存閉包・取得時点・Observer／Audienceがそろわない場合は`unknown`とする。これにより、意味が不変の文書編集で全Buildを無駄に失効させず、実装だけ変更されたのに古い判断・実行資格が残ることも防ぐ。
+
+## 12. 時点・権限・部分取得を一つの受注例で比較する
+
+受注の明細・価格Snapshot・検索・承認・帳票・環境移行を同じ案件で扱う際、少なくとも**取引上の有効時点、組織が知っていた時点、Provider記録時刻、外部観測時刻、Rule評価時点**を区別する。全Functionへ常時五つの日時列を物理保存する要求ではない。問いに必要な時点と取得根拠を、Data Context／Process Instance／Evidenceへ選択的に対応付ける（組織C1／#2386、業務State #1129、独立期待値 #1180／#2514）。
+
+例えば、注文時の単価は保存Snapshot、商品マスターの価格は現在参照、承認経路は申請時Snapshot、実行資格は操作直前のGrantである。二つの異なる時点の値が一致しないことをエラーとしない一方、どの時点を使うか未定義の計算を自動確定しない。全文検索索引の準備完了と、元データ改版・添付解析の完了も別の観測となる。
+
+- **Draft→Commit**：全子明細の追加・変更・削除予定を集めたDraft結果と、実DB保存前の再検証結果を分ける。親子のAtomic Commitと外部通知／添付BlobのAtomicityは同一視しない。
+- **Batch→再実行**：検証のみ、全件原子確定、行単位部分確定を別Policyとする。同じファイル・同じ値でも、実行要求ID・行Operation ID・ExpectedVersion・Receiptを確認しなければ再送可能とはしない。
+- **移行→公開**：旧DBからデータを移せても、移行先のPerson／Role／Grant、実Loader／API、帳票取得権限は改めて検査する。履歴のある業務主体と現在のログイン主体を一致と推測しない。
+
+## 13. 次の実装は「二つの小さな接続試験」に限定する
+
+| 作業Packet | 実装対象と反例 | 合格上限と既存Owner |
+| --- | --- | --- |
+| **PQ-A：出典付き実Build** | 現存する`TestSelectedRuleGoThroughRealCLISelfBuild`を基線に、同じBuild Attemptで**原Rule byte／Reader選択／生成器版／生成Go digest／実Build Intent source／実Builder入力／Artifact**を照合する。説明だけの改版、参照Field変更、Generator改版、Source Root A→B→Aを別に操作 | 出典と実Builder消費の正しい束縛まで。外部Host／実DB／公開Functionを含めない（#2621／#4544／#2595／#2600） |
+| **PQ-B：実装選択の鮮度** | 現存する`TestScenarioDecidesAnOperatorRuleWithTheSelectedImplementation`を基線に、同じWorldに対する実装A→Bと、**旧選択で生成したScenarioコマンド／結果を再使用する負例**を追加する。選択ID・実Called ID・結果・版を区別し、意味に不適合な実装を期待値に合わせて正当化しない | 実装選択／Scenario再資格化まで。外部Plugin Lock、通常Function→実ProviderのR3やGrantまで主張しない（#988／#1018／#1180／#2514／#2600） |
+
+両Packetは**別Subjectの独立回帰**として着手でき、最初から一つの巨大な横断テストへ統合しない。PQ-A／Bが成立してから、受注Function一件について`typed input → Rule → actual Provider Read → Result → independent Consumer`を同一試行で連結する。次段で選択済みRule/Pluginの実Target適合、必要なData Migration、帳票／APIなどの派生Consumerを検収する。
+
+**並行する最優先課題**は変えない：通常`tei` CLIからの実Provider／独立Consumer（#2586／#1251／#4495）と、Stage1実TEI→Stage2実Windows WebView2（#2831／#4583）。Pin再確認試験と生成Go CLI Buildの結果を、Stage2完了の代用にしない。新Core Schema、第二Rule Engine、Manager／Registry、常駐Host、別Scenario正本、Migration Engineを加えない。
+
+## 14. Ownerへの引渡しと今回の検証上限
+
+PQ-A／Bの期待値は既存Driver Scenario SSOT #1180と独立Expected #2514へ返す。従来のXP/XR/XM/XA/XEを廃止・改番せず、必要な反例だけを各Ownerへ追加する。Source／Graph／文書は#2621／#2497／#1124、生成／Plugin／Builderは#951／#1121／#4544、DBと移行は#3270／#1174、業務状態は#1129／#2386、実行可否と閲覧は対象Host／Providerが判断する。
+
+計画の成熟度は、モデルや文書の数でなく、**人が維持する定義の削減、誤った実装選択や古い成果物の拒否、局所再検証の精度、実行結果まで到達した割合**で評価する。特に同じMeaningでも実装選択を変えた時に旧版の再利用を止められるかを優先して測る。
+
+**この§11〜14は現行Source／統合済みPRとの静的照合と設計上の実装引渡しであり、新しいGo・Windows・DB・MCP試験、Ownerの業務意味受理は本追補で実行していない。** 既存PRのマージや一部CI成功を、この追加計画のPASSとしない。
