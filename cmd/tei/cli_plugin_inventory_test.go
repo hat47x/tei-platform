@@ -130,13 +130,13 @@ func TestPluginInventoryEnvelopeAndModes(t *testing.T) {
 		t.Fatalf("the supplied lock pins this plugin: %+v", row)
 	}
 	var docPreflight struct {
-		PluginID         string `json:"pluginId"`
-		Environment      string `json:"environment"`
-		SelectionStatus  string `json:"selectionStatus"`
-		ResolvedVersion  string `json:"resolvedVersion"`
-		LockPinned       *bool  `json:"lockPinned"`
-		SourceBinding    string `json:"sourceBinding"`
-		Disclosure       string `json:"disclosure"`
+		PluginID        string `json:"pluginId"`
+		Environment     string `json:"environment"`
+		SelectionStatus string `json:"selectionStatus"`
+		ResolvedVersion string `json:"resolvedVersion"`
+		LockPinned      *bool  `json:"lockPinned"`
+		SourceBinding   string `json:"sourceBinding"`
+		Disclosure      string `json:"disclosure"`
 		ReadEligibility string `json:"readEligibility"`
 	}
 	if err := reMarshal(detailShape["documentReadPreflight"], &docPreflight); err != nil {
@@ -155,8 +155,8 @@ func TestPluginInventoryEnvelopeAndModes(t *testing.T) {
 	unlocked := run(0, "plugin-inventory", "-workspace", reference, "-environment", "development",
 		"-plugin", "tei.database.postgres")
 	var unlockedDoc struct {
-		SelectionStatus  string `json:"selectionStatus"`
-		LockPinned       *bool  `json:"lockPinned"`
+		SelectionStatus string `json:"selectionStatus"`
+		LockPinned      *bool  `json:"lockPinned"`
 		ReadEligibility string `json:"readEligibility"`
 	}
 	var unlockedShape map[string]json.RawMessage
