@@ -162,8 +162,8 @@
 
 本書のP0-A〜P3-Dは、旧 `.tei` のコード生成から始めた**歴史的な縦断検証**として維持する。一方、現行の `*.tei.md` では選択されたRule Readerから `semantic.Validation` へ接続する限定的な製品経路が実装されている。以前の「新Reader未接続」という記述を、現時点でRuleを一切読めないという意味に拡大しない。
 
-今後の一般化では、`Parse → Model` の後に**実現方式の選択**を置く。受理済みMeaningと選択Target／Contractを照合し、標準Functionが版付きParameterを解釈する経路（I）、Target-nativeコード生成（G）、混合（H）を比較する。Iでは個別の業務ロジックのコード生成を飛ばすが、実行用パラメータのPackaging、既存Targetへの静的結合、実Read／Provider／Authority検査は残る。
+今後の一般化では、`Parse → Model` の後に**実現方式の選択**を置く。受理済みMeaningと選択Target／Contractを照合し、標準Functionが版付きParameterを解釈する経路（I）、Target-nativeコード生成（G）、DB／外部Providerへの委譲（D）、それらの混合（H）を比較する。Iでは個別の業務ロジックのコード生成を飛ばすが、実行用パラメータのPackaging、既存Targetへの静的結合、実Read／Provider／Authority検査は残る。
 
-詳細設計と負例RG-01〜12は[図表から実装へ：解釈実行・コード生成・フック拡張の選択設計](DIAGRAM_TO_REALIZATION_STRATEGY_AND_HOOKS_2026-11.md)を参照。図表の属性追加は、業務意味・要求保証・Target設定・表示・Pattern／Skillへ分類する。生成されたソースファイルは原則編集せず、既存のExtension Point／Hook契約に基づき別ファイルから拡張する。これらの新しい方式は**設計候補**であり、本書の旧形式P0-Aの受入を使って製品でのI/G/HやHook接続を合格とはしない。
+詳細設計と負例RG-01〜12は[図表から実装へ：解釈実行・コード生成・フック拡張の選択設計](DIAGRAM_TO_REALIZATION_STRATEGY_AND_HOOKS_2026-11.md)を参照。図表の属性追加は、業務意味・要求保証・Target設定・表示・Pattern／Skillへ分類する。生成されたソースファイルは原則編集せず、既存のExtension Point／Hook契約に基づき別ファイルから拡張する。これらの新しい方式は**設計候補**であり、本書の旧形式P0-Aの受入を使って製品でのI/G/D/HやHook接続を合格とはしない。
 
 実装順序は[実証計画](../workstreams/DIAGRAM_REALIZATION_REFERENCE_EXECUTION_2026-11.md)へ引き渡し、既存の#1121/#4544/#2090/#951/#943/#2514/#2831のOwnerを維持する。
