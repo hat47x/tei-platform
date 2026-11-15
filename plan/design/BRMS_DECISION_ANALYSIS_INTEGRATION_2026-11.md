@@ -448,3 +448,74 @@ DMNは参考規格とし、現行正式版は[OMG DMN 1.6](https://www.omg.org/s
 [宣言的構文の製品接続PR #4756](https://github.com/hat47x/tei-platform/pull/4756)のSource／Meaning／Generation／Execution／Provenance・Reuseという資格分離とも整合させる。表・Graph・IF・SQLを一つの文法へ統合する必要はない。業務意味を保った表層ごとの解釈とTargetごとのコード生成を優先し、共通Rule Runtimeや第二Source Indexは設けない。
 
 **採用と検証の現在性**：本節は設計・引渡しの案であり、一般Unique決定表の実装、製品Readerの受理、Go／SQL／JavaのTarget間同値、実Provider、Desktopセルフビルド、Ownerの意味受理を新たに証明するものではない。再利用するEvidenceはそのProducer・Artifact・Source Revision・試験Scope・現在の資格とともに確認する。
+
+
+## 34. 判断の出典から実行まで：「同じ規則で動いた」を何で確かめるか（2026-11-15）
+
+mainへ統合された[Graph／Rule候補構造指紋 #4758](https://github.com/hat47x/tei-platform/pull/4758)は、限定Readerが解釈したNode ID集合、Edge IDと有向端点、Rule IDと条件の種類から、ドメインを区別したSHA-256を作る。生成したReference Binaryでも `-candidate-shape` から照会できる。これは、Ruleの実装をTEIが生成する際の追跡可能性を高める一歩である。ただし、**「Binaryがある指紋を自己申告した」と「そのBinaryの判定ロジックが当該Ruleに一致する」は別の主張**である。
+
+[負例PR #4761](https://github.com/hat47x/tei-platform/pull/4761)は、Goに埋め込まれた指紋を変えずに `e.from == nodeID` を `e.to == nodeID` へ差し替え、自己申告が一致しても別Binary・別実行結果になることを検査する提案である。このPRは確認時点で未マージ。限定Referenceが改変を実行時に防止する機能を備えたとは主張しない。既存のBuild／Artifact／実Consumerから**独立して確認した証拠**と結び付ける必要がある。
+
+| 何を特定するか | 既存の証拠と責任 | その証拠だけでは不足すること |
+| --- | --- | --- |
+| Sourceの原文 | Managed Workspaceの実Source byte、Source Index、Occurrence、Fingerprint | 表示上似ている文書・Candidate・受理済みMeaningと同じとは限らない |
+| 参照Readerの候補 | 限定Graph／RuleのCandidateShapeFingerprintと元byte span | 業務意味・会員種別・時間条件まで含めた一般の意味指紋ではない |
+| 受理された意味 | Owner／Language・Role・型付きOperator・SourceとModel Revisionの既存受理記録 | 同じ意味をTargetが消費した保証ではない |
+| 生成時の実入力 | 選択されたGenerator／Toolchain／Plugin、依存閉包、実Build Source member、Build Attempt | 生成したファイルが後段のコンパイラに読まれた証拠なしでは利用済みといえない |
+| 実行成果物 | 第三者が実Artifact byteを測ったDigest、Target、当該AttemptとProducer | Binary自身の `-candidate-shape` 自己申告だけでは制御ロジックを証明できない |
+| 実行の観測 | 同一Artifactへの実入力、実Process／実Provider、独立Expectedとの差、Consumer受領 | 対象の業務認可、更新Commit、外部Effect Receiptは別資格 |
+| 現在の許可 | Host側のCurrent Grant／Audience／Effect Contract | 過去のRule一致・成功Receipt・ハッシュから現在の権限は導出できない |
+
+上の各行は**説明・検収の観点**であり、新しい永続Receipt形式、Evidenceサーバー、中央Rule Repositoryを定義しない。既存のWorld Fingerprint、Model Revision、Artifact Revision、Source Index、Builder／Provider Receiptを意味に応じて参照する。参照SourceのA→B→Aや同名再作成、Generator版変更を、単なるハッシュ一致で再受理しない。
+
+特に参照実装の候補指紋は、表示名、Markdownの配置、Mermaidの見せ方、Source位置を含まない。**それらを評価しない限定Referenceで等しい**という事実を、他のMeaning Roleや業務説明まで含む製品全体の意味同値へ拡大しない。将来の意味同値は当該Meaning／Operator／Targetの契約と依存集合に沿って個別に判定する。
+
+## 35. 変更を六つの経路に分けて検証する
+
+実装の更新が必要か、実行だけを繰り返すべきか、証拠を再確認すべきかは別々の問いである。BRMSではRuleの変更と、実行時の対象／取得データの変更を明確に分離する。
+
+| 一因子変更 | Source原文 | 限定候補構造／生成Go | 次に必要な確認 |
+| --- | --- | --- | --- |
+| Mermaidのレイアウト・表示名だけを変更 | 原文Fingerprintは変わる | 限定Referenceの対象構造・生成Goは不変のはず | 旧Source Indexを再利用しない。Meaning／説明の影響範囲は別判断 |
+| 原文に説明だけを追記 | 原文Fingerprintは変わる | 限定Referenceの処理Sourceは不変のはず | 証拠位置・参照文書を再検証。自動で業務意味を改訂しない |
+| Edgeの向き、Rule条件を変更 | 変わる | 変わる | 依存するMeaning／生成分岐／独立Expected／Artifactを再照合 |
+| 同じ生成BinaryへのNode ID指定を変更 | 変わらない | 変わらない | 実入力と結果を比較。入力変更を再生成理由にしない |
+| SQL構造は同じでDB行の値が変わる | Rule Sourceは不変 | 生成SQLは不変でもよい | Providerが実際に取得した行・Snapshot／Read Closureと結果を再検査 |
+| Generator／Toolchain／選択Plugin版を変更 | 業務Sourceは不変でもよい | 生成Go・Binaryが変わり得る | 生成器の版、実Build Source消費とTargetの同値を再検証 |
+| 生成Goの条件だけを事後改変 | Rule Source／候補指紋は不変でもよい | 実GoとBinary、結果は変わり得る | 自己申告指紋は不十分。外部測定Artifactと実実行を比較 |
+| SourceをA→B→Aに戻す／Current Grantを変更 | 最終byte／候補構造が再一致し得る | 生成Goが再一致し得る | Source Occurrence／Decision履歴・現在の権限は再確認 |
+
+前四件は既存Graph／Rule Fixtureと同じBinaryへのRuntime Input、次の二件は実DB入力・Toolchainの独立性に対応する。Graph／Rule側の[差分試験PR #4759](https://github.com/hat47x/tei-platform/pull/4759)は「原文SHAが変わり、候補指紋と生成Goが同じでもSource Indexは失効する」を確認する提案であり、確認時点では未マージである。
+
+別の領域では[SQLite Windowの実表入力試験PR #4760](https://github.com/hat47x/tei-platform/pull/4760)が、同一の生成SQLでもDB入力の変更によって結果が変わる検証を進めている。ただしこれはWindow Queryの限定試験であって、BRMSの正式SQL Target、SourceからのDecision生成、Provider選択、Go／SQL同値を示さない。**再生成不要と判断できること**と**再実行の入力・結果を検証できること**を混ぜず、既存#2600／#4544／#2514へ渡す。
+
+## 36. 判断の説明は、検査可能な理由と判断の限界を両方示す
+
+SHO・Studio・CLI・AIへ同じ判断を説明するときは、業務担当者にとって分かる文章を優先する。表示の粒度は異なっても、次の内容を元Sourceと実行の証拠にたどれるようにする。
+
+- **何を決めたか**：業務上の対象、結果、適用するRule／時点／Scope。Decisionと後続の更新操作を分ける。
+- **何が根拠か**：どの入力・Relation／Rule行の条件が成立し、その証拠がどの取得範囲から来たか。少なくとも一件の成立の根拠を示すのか、Uniqueまで証明できたのかを区別する。
+- **何がまだ不明か**：未取得・partial・NULL・否定条件に必要なRead、Ruleの未受理、別時点の状態。競合を証明できた場合と、競合がないと証明できた場合を対称に扱わない。
+- **どの実装が評価したか**：正式製品なら受理Meaning→Generator実入力→実Artifact→Actual Consumerの対応。限定Referenceならその資格を明示する。
+- **次に何をしてよいか**：ルールが「注文可能」と判断しても、保存や外部送信は別のHost Grant・Effect Contract・Receiptに従う。説明文から権限を新たに作らない。
+
+例えば会員割引で購入額が基準額以上かつstandard区分なら「該当Ruleから割引率5%」と説明できる。しかし他の行の入力が未取得なら、唯一一致したとは書かない。逆に二行が確実に成立したときは、残りの行が未取得でも「Unique違反が確認された」と説明できる。評価不能を通常の「対象外」へ変換しない。
+
+理由の表示は**許可されている内容に限る**。権限がない利用者に対して、非公開Ruleの本文だけでなく、存在を示すID・候補人数・Source digest・内部の版を出すことも避ける。監査やOwner受理に必要な詳細は、適切なAudienceの既存Review／Evidence経路で確認する。AIが書いた説明は原Sourceを上書きせず、生成された説明と追加した推測を区別する。これは[Plugin公開文書・Disclosureの設計PR #4762](https://github.com/hat47x/tei-platform/pull/4762)の境界とも整合する。
+
+## 37. 次の製品PRに渡す最小の検収票
+
+ここから製品機能を増やす際には、**一件のRuleを正式に選び、その生成処理が実行されたこと**と、**一般のUnique決定表を静的に解析すること**を別の作業として進める。
+
+| 作業 | 最小の検査 | Owner／再利用する既存資産 |
+| --- | --- | --- |
+| Source選択・正式Meaning接続 | 実Workspace内の選択済みSourceを、正しいReader／Role／型付きOperatorに対応付ける。未選択・Fence内・同名別IDは誤採用しない | #2621／#988／#1018／#4359、main #4751、Reader修正PR #4725 |
+| 生成ロジックの実消費 | Rule条件変更が実Generatorから出る分岐に効き、実Builderが選択Source memberを読んだことを照合 | #4544／#2595／#2600、Generator設計PR #4748 |
+| 生成Artifactと結果 | 候補指紋の自己申告だけを信じず、実Artifact Digestと同一Binaryでの異なる入力・実出力を独立に照合 | main #4758、負例PR #4761、#1180／#2514 |
+| 有限Unique決定表 | 完全に証明した二行の競合、二行目の入力不足、真のNo Match、重複行が同じ値を返す場合を分ける | #988／#1637／#1180／#2514、前節X13〜X16 |
+| 業務説明・Mockでの流れ | 対象／時点／条件／理由／情報不足を自然文にでき、未実装の外部契約はMockで試せる。実Effectと混同しない | Data／Function／Business、SHO、既存Script／Effect設計 |
+| 実Providerとセルフビルド | 通常製品CLI→選択Provider→独立Consumer、TEI由来の判断ロジック増加・Delegate削減・Stage1→Stage2を別々に検収 | #4495／#1251／#2586、#2831／#4583、自己記述PR #4763 |
+
+最初に取り込む変更は製品S0-A／Meaning Bindingの担当に寄せ、Graph Fingerprint・Source Index・Reference Generator・独立ExpectedをBRMSで再実装しない。Ruleに適用する生成の責任範囲と、既存Goへ単に委譲する範囲を分ける。実Source／候補形状／受理意味／生成Source／Binary／Runtime入力／実DB入力／結果が同じ試行の中で結び付かなければ、原因を特定して次の差分を作る。
+
+本節は**実装済みの現状説明と未採用の製品受入提案を区別する更新**である。#4758の候補指紋実装を一般意味Fingerprint、製品Artifact保証、権限、BRMSの実装完成へ昇格させない。新Result Enum／新Grammar Engine／Rule Server／Host／第二Source Index／全体Gateは導入しない。
