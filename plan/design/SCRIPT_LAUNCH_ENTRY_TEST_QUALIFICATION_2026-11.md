@@ -1402,3 +1402,23 @@ TEIの業務DSLには、業務担当者が読む順序で、対象・入力・�
 Studio Inspectorの参照制限表示（#4806）も、製品Build／実Wails埋込資産／現在Host実行許可とは別資格。Source・Provider・Target・Resultを同じ欄に並べて表示する場合も、各欄の取得時点・資格とunknownを維持する。#4821の実行モデル図解、#4827の横断Plugin計画、#1180/#2514の独立Expectedを共用し、別のTrace StoreやScenario正本を追加しない。
 
 **本章の成果はGoコードの実在箇所に基づく実装引渡しであり、A/B/Cの実Product Go/CLI E2E、実Windows／DB作用、Owner意味受理は今回新たに確認していない。** 全体P0は#2831/#4583のDesktop Stage1→Stage2、並行P0は#4495の最初の実Go Entryで変更しない。
+
+### 29.5 宣言した入力が、実際のProvider引数に届くまでを検査する
+
+現行mainへ統合された[組織Queryの修正 #4847](https://github.com/hat47x/tei-platform/pull/4847)は、設計だけでなくNative Query、GoのProduct Binder／Result Mapping試験、隔離PostgreSQL用試験の入力名を揃えた。原問題は、宣言が`valid_at/known_at`を要求するのに、SQL Placeholderと実Binder試験が`valid_from/known_from`を与えていたことにある。**物理列の期間開始と、要求の評価時点は別の意味**であり、SQL実行が偶然成功しても入力契約の一致を証明できない。
+
+同じ破綻を最初のpure Functionで繰り返さないため、#4495のA→B→Cの各境界では、受理済みFunctionのInput名／意味型／必須性／NULL許容と、実際のtyped Request、選択済みProviderに渡る実引数の対応を検査する。Input定義の形だけを検査する`capabilityinvoke.Invoke`は、この実値照合を代行しない。Targetごとに表現不能な値があればunsupportedで停止し、未宣言の別名や既定値に読み替えて先へ進めない。
+
+最小の対照は、正しい名前と値の正常例、未宣言の旧名、必須入力の欠落、明示NULLと未取得の混同、0と欠損の混同、Sourceの同名別版、**実Binderだけ旧名を使い結果値は一致する例**である。名前・意味・Source／Contract Revisionの不一致は実Provider Callの前に拒否し、call=0を観測する。実呼出し後の不正Resultはcall=1のまま扱い、入力拒否へ偽装しない。実Providerへ届いた引数のWitnessと独立Expectedは#1180/#2514を再利用し、新しいAlias自動補正層や第二Binder正本を設けない。
+
+#4847は組織Queryの修正実装であり、pure Function Entryの製品起動やHost現在Grantが成立したことは示さない。二時点のRead Cohort・Person Link・実DB接続と外部Effectは#2586の専門Ownerで検収する。
+
+### 29.6 Sourceを特定できることと、公開Entryへ入場できることを分離する
+
+[製品InspectorのGo回帰 #4853](https://github.com/hat47x/tei-platform/pull/4853)は、実`reference/workspace`の`semantic-capability:sales.order.submit`を`InspectSubject`で特定し、Source IndexのArtifact Fingerprint、`semantic/sales/order.tei`の元UTF-8 byte Rangeと識別子、`TraceSubjectSources`の結果が対応することを検査する。また、存在しないCapabilityのSource Trace空集合と、Canonical Inspectorの`SUBJECT_NOT_FOUND`を区別している。**これは実在するread-only Source照合であり、Entryの公開・現在Grant・実Provider Callを実証するテストではない**。
+
+最初のProduct Entryの準備では、この既存`semantic-capability` Inspectorを用いて、実際に読んだWorkspace、Canonical ID、Source Fingerprint／元byte位置、実行対象となる受理済みMeaning／Contractの対応を確認する。Source Referenceを見つけたことだけで、Function IDや公開Entryを生成・推定しない。Inspectorの`worldFingerprint`は内容説明であり、現在Grantや受理Revisionの代用ではない。Source Open／編集と実行は別の権限である。
+
+その後、既存Hostで公開Entry・Current Grant・exact Provider/Artifactを照合してから実Callへ進む。読み取り時点と実行時点のSource／Selection／権限が異なる場合は停止・再評価する。A→B→Aで同じbyteへ戻っても、過去の受理とGrantを自動復活させない。結果画面には、Source確認・Owner意味受理・Entry公開・Host Admit・actual Provider Call・Consumer受領を、**取得時点が異なる別資格**として表示し、未確認をPASSへ変換しない。
+
+製品の最短順は、(a) 正式に受理されたpure EntryのSourceとtyped Input、(b) Hostの現在入場資格と実Provider、(c) 通常`tei` CLIの別OS Processと独立Consumerである。#4853のHeadless回帰を再実装したり、汎用Entry InspectorやSource Readerを新設したりしない。正式`*.tei.md` ReaderのA0〜A3とStudioのWindows Stage1→Stage2は別のP0であり、いずれの局所成功も相互に代替しない。本節は実装引渡しであって、Product pure Entryの実Go／CLI E2E、外部Effect、Owner意味受理を新たに合格と判定しない。
