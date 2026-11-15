@@ -1393,3 +1393,93 @@ mainで確認できる`tools/reference-go-build-from-plan/validationgen_build_bi
 このため、R2-Pは製品Build Intent→選択Generator→実Builder入力→Artifact／Runtime収録、R3は独立した受理済みpure Function→明示公開Entry→型付きBinding→選択Provider／現在Grant→実Call→Consumerという二本の実装レーンを保つ。**R3の最初の実Provider検査はR2-Pの完成を待たない。** 両者が合格した後、Rule由来の生成実装と公開Entryを同じ意味・版・実Artifactの下で結合する。Data／Function／Businessの責務分離とNode Flowの標準Operator／Process投影を維持し、Rule IDをEntry IDとして暗黙に採用しない。
 
 具体的な正負・Owner引渡しは[Rule第一縦断§14.5〜14.7](PLUGIN_RULE_PRODUCT_VERTICAL_SLICE_2026-11.md)へ一本化する。本節は追加のBuilder、Entry Registry、Rule Runtime、Host、Scenario正本を作る要求ではなく、現行mainの限定Go実証と未実装の製品接続を区別する計画である。
+---
+
+<!-- cross-plugin-typed-joinpoints-20261115 -->
+## 25. 横断Pluginの接続点を型付き契約で固定する（2026-11-15・設計／実装引渡し）
+
+### 25.1 横断機能を「万能な割込み処理」にしない
+
+Validation、監査、ログ、生成、通知、権限照会、表示拡張は、複数の入口・業務機能にまたがって再利用したい。しかし、すべてを同じ`before/after`のHookとして実行すると、**何の前後か、どのデータを見たか、誰が実行を止められるか、作用の成否がどこで確定するか**が曖昧になる。
+
+そこで、Pluginが持つ共通の性質を「任意の処理へ割り込む権利」ではなく、**既存のOwnerが公開した接続点（join point）に対する型付きの貢献**として扱う。接続点はSource/Model/Build/Operation/Effect/Presentationの既存契約から導き、Plugin独自のGlobal Interceptor、第二のRunner、Authorityを追加しない。Go単一バイナリの静的合成では生成時に結線でき、長寿命Serverの世代切替では同じ結線条件を実行時に再検証する。
+
+| 位置と貢献 | 具体例 | 守るべき境界 |
+| --- | --- | --- |
+| **Authoring／意味の候補** | Markdown Reader、Validation診断、型付きRule候補 | ParseやPluginの自己申告は意味受理ではない。原文・Source occurrenceを保持 |
+| **Generation／Build** | Generator Transform、出力検査、Asset生成 | 選択Generatorと実Builderの入力byte・Artifactの資格を分ける。Build時Pluginを実Runtimeへ無条件同梱しない |
+| **Operation入場前** | 入力検査、データ完全性確認、現在のHost Grant照会 | 実作用への到達前に判定する。PluginがGrantを自己発行したり、未知を許可に変えたりしない |
+| **Operation内の純粋合成** | 計算、Rule、型付き値変換、read-only Query | 入出力の型・NULL／欠損／未取得・時点・粒度・Scopeを失わない |
+| **実作用とその後** | DB更新、外部通知、監査の永続記録、独立Observer | Commit・送出ACK・受信・Observationは異なる。通知失敗が確定済みCommitを取り消したことにしない |
+| **Consumer表示** | CLI出力、Studio Node View、Web/MCP/VUI公開、説明文書 | 表示可否・対象Audience・公開Entryを個別に判断。UIからExecution Grantを継承しない |
+
+これは固定PluginKindの提案ではない。一つのPackageが複数の貢献を持っても、それぞれにContract、選択、依存、実利用、公開先、再資格化の対象がある。Plugin Packageは配布単位、貢献は設計・検収単位である。
+
+### 25.2 接続点が最低限示す情報と、Graphで区別する関係
+
+新しいCore Schemaを先に確定せず、既存Subject／Ref・Contract・Application Operation・Lifecycle/Hook・Build Intent・Source Indexの組合せで次の**照合項目**を埋められるか確認する。
+
+| 照合項目 | 答える問い |
+| --- | --- |
+| 所有者と対象 | 接続点のOwnerは誰か。対象Operation／Function／Rule／Source occurrence／Targetはどれか |
+| 位相と利用条件 | Authoring／Build／実行のどこか。Guardの前後か、Commit前か、Commit後か。対象行の取得範囲と時点は確定したか |
+| 契約と束縛 | Required Contract、実選択Provider、実Artifact、版／fingerprint／Lock、TargetとHostは何か |
+| Contextと作用 | 読める入力、必要Scope、完全性、Effectの有無、公開可能な結果、現在Host Authorityによる制約は何か |
+| 呼出し責任 | 宣言された`uses`と実Callの主体・最大回数は何か。失敗時に停止／継続を決めるのは誰か |
+| 順序と失効 | どの先行処理が必要か。逆順で意味が変わるか。変更時にどのConsumer／Evidenceを再確認するか |
+
+**標準Graphは共通だが、すべての辺を「依存」にしない。** Modelが別Modelを`参照する`、ContractがProviderへ`束縛される`、OperationがProviderを`実呼出しする`、EffectがObserverに`観測される`、Node Viewが対象を`表示する`、という関係は識別子・方向・多重性・根拠が異なる。GraphのNode／Port／Edgeは同じ標準データ構造で投影できるが、各辺の意味は既存ContractとObservationのOwnerから読み取る。表示用の配線を変更しても実構成は変わらず、**配線の編集は型付きModel／Composition変更候補**としてPreview→Review→Acceptを経て初めて生成・実構成へ反映する。
+
+同じ画面に次の三つを重ねて表示できるようにし、色・座標や「接続済み」の一語で混ぜない。
+
+1. **宣言した配線**：Required Contract、候補Provider、指定位相、想定順序。まだ呼ばれていない。
+2. **選択・生成された配線**：実Selection／Lock、生成先、Build Input／収録Artifact、実行可能なEntry。まだ現在Grantや実呼出しの証拠ではない。
+3. **実際に通った配線**：Attemptと実Provider Entry、Call回数、Failure／Receipt／Effect Observation、Consumer受領。未観測の辺は`unknown`のまま残す。
+
+Node View共通化の作業は既存の[サービス／ノード構成](SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)と[#4198](https://github.com/hat47x/tei-platform/issues/4198)、[#1124](https://github.com/hat47x/tei-platform/issues/1124)へ接続する。本節が第二の実行Graph正本やGraph Editorを所有するわけではない。
+
+### 25.3 横断合成の適格性：順序・回数・失敗を先に決める
+
+純粋なValidation／Transformなら、型と入力依存が成立する範囲で合成できる。一方、実作用が混じる場合、**Graphに線を描けることと、安全に実行できることは異なる**。最初のComposition Planは既存のResolverとLifecycle Ownerが以下を検査した派生物として作る。
+
+1. ContractとTargetの適合、必須Context、現在のSource／Model／Artifact世代を確認する。Provider競合は「先に見つかったもの」で選ばず拒否する。未選択・不適合のPluginはRuntimeの実依存へ混入させない。
+2. データ依存と必須Guard・Commit境界から先行関係を導く。**順序が結果に影響する二つの貢献を暗黙に並べない**。循環、曖昧な順序、Guard迂回、型・Scopeの不一致は不適格とする。交換可能性と部分失敗の独立性が確認できない処理は、並列化しない。
+3. 実作用のCallerを一つに定め、1 Attempt・1対象で許される境界到達回数を検査する。宣言`uses`の自動CallとImplementation内のCallを重ねない。冪等キーがあっても、二重Callを正当化する根拠にはしない。
+4. **必須Guard**の拒否と**任意Observer**の不調を同じ`warn`へ流さない。作用不明／`lookup_first`が混ざれば後続Effectと無条件Retryを止める。Commit後に発生した別Effectの失敗をCommit前の拒否として書き換えない。
+5. 実行開始時のProvider／Artifact／構成世代をAttemptへ固定する。Serverの世代切替ではin-flightの旧世代を維持し、緊急Grant失効の扱いはHostが個別に決める。静的CLIは必要なときだけ再生成・再ビルドすればよく、常駐Routerを要求しない。
+6. Observer・ログ・AI向けのread-only貢献であっても、Secret・個人情報・Source Path等の開示資格をHostに確認する。値を「見られる」ことと外部に「渡せる」ことを区別する。
+
+最小例は、受理済み`sales.order_line.quantity_positive`を**pure Rule**として生成し、別途明示されたFunctionの入力検証へ参照させるものとする。Ruleの存在だけで公開Entryや実行Hookを自動生成しない。CLI／Studioは同じ型付きOperationを別のSurfaceへ投影する。将来の`sales.order.submit`等の実作用へ進む際は、入力検証→Host Guard→単一Callerの実作用→独立Observationを別の判定として示す。通知／監査が必須の業務要件なら、独立トランザクションかoutbox等の失敗整合方式をEffect Ownerが採否判断する。汎用`after` Hookによる実行だけで原子性は保証しない。
+
+### 25.4 既存独立Expectedへの追加差分（XCJ-01〜09）
+
+HG-10〜19、RE-01〜05、PLC-01〜09を複写せず、**横断的な配線／再利用で初めて生じる差分**だけを[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)へ渡す。新Runner／新Expected正本は作らない。
+
+| Case | 一因子の対照 | 期待する判別 |
+| --- | --- | --- |
+| XCJ-01 | 同じPlugin PackageのBuild時Generatorだけを選ぶ／Runtime側も選ぶ | Buildで使ったPluginはRuntimeに自動収録されない。必要なRuntime Contributionだけが依存に入る |
+| XCJ-02 | 同じContractのValidationをCLIから呼ぶ／Studioから呼ぶ | Source・入力・Required Context・Provider実Entry・Outcomeの意味は同じ。入口固有GrantとConsumer受領は別票 |
+| XCJ-03 | Graphの表示用Edgeを移動／Contract Bindingを変更 | 前者は意味・Build変更なし。後者は変更候補として再Resolve・Reviewする。図の編集を即時Grantへ昇格させない |
+| XCJ-04 | 純粋なTransform A→BとB→Aで結果が異なる | 明示順序なしの合成を拒否。両者の順序独立性を名前や型一致から仮定しない |
+| XCJ-05 | Optional Observerが応答不能／必須pre-commit Guardが応答不能 | 前者の開示・監査上の制約と、後者の実作用停止を別に判定。必須処理を黙ってskipしない |
+| XCJ-06 | Provider更新中、旧Attemptが実行中／新Attemptが開始 | 旧・新Binding／Artifactを混在させず、現在Grant失効は別処理。結果値の一致のみで合格にしない |
+| XCJ-07 | read-only Node Viewに実CallのEvidenceなし／実Callあり | 宣言・選択の線は表示可能でも、実行済みと描かない。Attempt・対象・時点の異なるReceiptを流用しない |
+| XCJ-08 | 同じEntryをCLIで同期実行／イベント・VUIから候補起動 | partial引数、ACK、発話の確認を実行済みと扱わない。未対応の配送・期限・取消の意味は`unsupported` |
+| XCJ-09 | 業務Commit成功後、外部通知に失敗／ACKが不明 | Commit成否と通知Effectを独立表示。確認なしの自動再送・見かけ上のrollbackをしない |
+
+HG-10/11（Guard前実Callと二重Call）、HG-13/14/17（内側のEffect不明）、HG-15（0行と未取得）は**実作用Pluginの先行ゲート**として維持する。[#4602](https://github.com/hat47x/tei-platform/issues/4602)の限定Failure修復があっても、HG-10/11や本表の実Consumerが証明済みになるわけではない。
+
+### 25.5 実装順と、横断性を主張できる範囲
+
+| 順序 | 具体的な最小差分 | 引渡し先・受入 |
+| --- | --- | --- |
+| **P0-a（既存D1と並行）** | Inspector／pure Ruleの一件について、既存Service Contract→selected Provider→型付きOperation→CLI／Studioの**read-only配線投影**を作る。必須Contextと実Entryの所在を表示する | #951/#1251/#1158/#1124。選択B／実呼出A、別Source、欠損／partialを拒否。新たなSurface Registryを作らない |
+| **P0-b（実証後）** | 同一OpのProvider実Callと、CLI・Studioそれぞれの実ConsumerをAttemptで照合。宣言配線と観測配線の差をInspectorから辿れるようにする | #1251/#3262/#2514。Host実Grantは別資格。Studio Stage2は#2831/#4583で独立検収 |
+| **P1（Hookを必要とする一例）** | 追加Validationと一つのbefore位相を既存Hook RunnerへLoweringし、順序・Caller・Call回数・Failureを固定。unsafeなGraph Patchを拒否する | #1129/#4198、既存HG-10/11/15。Effectful版は先行負例が揃うまで公開しない |
+| **P2（Target差と外部再利用）** | 同じContractを軽量API／Node Flow／MCP／VUI・外部Hostで投影し、同期・非同期・Trigger・Current Grant／Consumerの差を比較する | #3422/#4495/#2390。Target未対応なら`unsupported`、黙ったfallback禁止 |
+
+この順序は**TEI Studio DesktopのStage1実TEI→Stage2実Windows WebView2**と、RuleのR2-P／pure FunctionのR3を最上位P0から外さない。P0-aのread-only配線図が完成しなくても、それらの既存実装・検収を止めない。
+
+**採用・縮小条件**：既存のContract／Operation／Hook／Graphで接続点のOwner・対象・順序・実Callを表せるなら、新しい横断Interceptor基盤は導入しない。どうしても表現できない欠落は一件のTarget／業務例と独立Expectedを先に示し、既存Ownerに必要な差分だけ返す。出力コードの行数、実Runtime依存、実起動時間、更新時の再構築範囲を最小例で測定し、最初から「Pluginだから軽量・高性能」とは主張しない。
+
+**現在の証拠**：既存計画・mainの限定実装・Issueの静的照合をもとにした設計／実装引渡し。XCJ-01〜09の新規Go／Windows／外部Host試験、実DB Effect、Ownerによる新しい意味受理は**NOT RUN／NOT ACCEPTED**。
