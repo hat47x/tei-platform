@@ -154,9 +154,9 @@ func TestREACandidatesCLIRefusesInvalidEvidenceWithoutOutput(t *testing.T) {
 	dir := t.TempDir()
 	evidencePath := filepath.Join(dir, "invalid.json")
 	for _, tc := range []struct {
-		name    string
-		raw     []byte
-		code    string
+		name string
+		raw  []byte
+		code string
 	}{
 		{"bad-json", []byte("{not json"), "EVIDENCE_INVALID_JSON"},
 		{"failure-envelope", []byte(`{"ok":false,"data":{}}`), "EVIDENCE_REPORTED_FAILURE"},
