@@ -1299,3 +1299,11 @@ flowchart LR
 新しい`TestSelectedMarkdownRuleMutationChangesGeneratedGoAndRealResult`では、**二つの`std.decimal`属性を持つ同一モデル・同一固定入力**を保ち、Markdown Ruleの参照Attributeだけを`quantity`から`second_quantity`へ変更する。旧版・新版それぞれの製品`Workspace.Load`→同一LoadのSource Index→型解決→実Go生成→別Process`go run`を通し、生成Goの相違、Source改訂、元Rule ID位置の維持、読み取る属性が各1回であること、数量0の不成立から代替数量2の成立への変化を**別々に**検査する。現在のGeneratorが`std.integer`を許可しないため、ここでは無理に明細番号へ型を広げない。Rule IDは固定しても型付きMeaningの依存先は変わる。
 
 これは**生成Goを直接`go run`したR1の局所回帰**であり、R2の正式Builder・ArtifactSet／消費byte、R3の選択済みProvider・通常製品CLI、R4の独立Consumer・Windows Stage2の資格を付与しない。今後の比較は、生成器版と正確な入力閉包をBuilderの実ログ／Receiptへ結び、選択Artifact Bに対してAを呼んだ場合を結果が一致しても拒否する。今回のGo testはPR exact HEADで合否を確定する。
+
+## 64. 因果関係と独立証拠を一つの問いで照合する（2026-11-15 第6次統合）
+
+既存§57〜63の限定的な実Source/Rule/生成Goの証拠は、**一つの実行が全部成立したという証拠ではない**。図解の後続は、巨大な実行Graphや新しいCollectorではなく、質問対象を固定したread-only Projectionの結合条件と観測閉包を実証する。
+
+[因果関係・証拠束縛・図面生成の検証契約](PROCESS_EXECUTION_CAUSAL_PROJECTIONS_2026-11.md)に、定義・選択・実Attemptという三つの面、Data/Control/Event/State/EffectとObserved Evidenceの差、正の反例と全称的な不存在判断の非対称性、資料生成・Node UI・Studio編集の安全な往復、最小実装手順を整理した。**最初の実装は`sales.order_line.quantity_positive`の既存Source Index/Inspectionを出発点とし、未接続のBuilder／Provider／Effect／Consumerを未確認のまま表示する一対象・一問の照合**に限定する。
+
+PX-06/09/10/11、SF-01/02/03/08/09/10、EL-03/04/07/12は#1180/#2514にある既存Scenarioの候補を再利用する。図解の完成を正式Reader→実Go→製品Builder→通常CLI実Provider、Studio Stage1→Stage2の新Hard Gateにしない。本追補は設計統合であり、新Go/Node/Windows/DBの実試験、業務Meaning受理・製品E2Eの成功ではない。

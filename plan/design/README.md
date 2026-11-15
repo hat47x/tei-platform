@@ -29,6 +29,7 @@
 
 | 文書 | 対象 |
 | --- | --- |
+| [`PROCESS_EXECUTION_CAUSAL_PROJECTIONS_2026-11.md`](PROCESS_EXECUTION_CAUSAL_PROJECTIONS_2026-11.md) | プロセス実行図を因果関係と独立Evidenceの照合として生成するread-only契約。定義・選択・実Call・Effect／Consumer、観測閉包、CLI／Studio共通Projectionと既存PX／SF／EL反例の接続（実装前）。 |
 | [`DECLARATIVE_RESULT_PROCESS_COMPOSITION_2026-11.md`](DECLARATIVE_RESULT_PROCESS_COMPOSITION_2026-11.md) | 成果物要求から計算・集約単位、依存構造、複数出力の共有、物理計画を導出する横断設計。Batch／Node Flowを標準Data・Operator・Processに接続する（実装前）。 |
 | [`SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md`](SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md) | 標準Data／Facet・Operation・Processから型付きノード、APIマッシュアップ、Webhook／イベント・軽量サービスを構成する横断契約。ServiceとGraph、Entryと配備、認可・取得完全性・Effectを分離し、既存Flow N0〜N4へ受入候補を引き渡す（実装前設計）。 |
 | [`WEB_STANDARD_COMPONENT_AND_AGENT_HARNESS_2026-11.md`](WEB_STANDARD_COMPONENT_AND_AGENT_HARNESS_2026-11.md) | Web標準CSS・Web ComponentsとAI開発ハーネスの横断規約。Lit/TypeScript/JSDocを比較し、CEM・Design Tokens・WebView実機・TEIセルフビルドへの接続を段階検証する設計（#997/#1824/#2831/#1180、実装前） |
