@@ -518,6 +518,8 @@ React採用もWeb Components/Lit全面移行も現時点で必須としない。
 
 D1以前の評価は代表操作「Subject Catalog→明示Pin A→B編集→A裏応答後着→B保持→Source revision変更→read-only Build Preview」で比較する。同じ実Operation/Fixtureを使い、**実Bridge呼出し・DOM操作・Keyboard/IME/ARIA・差分更新・初期Bundle size・rebuild時間・メモリ・生成AI修正後の回帰率**で対照。勝者が出てもWails DesktopとWebのPresentationを別意味正本にしない。React/Lit導入のためだけにN0〜N3 Generator・Stage1→Stage2のP0を作り直さない。
 
+**Web標準UIの実装指針（2026-11-15）**：[Web標準UI開発・検収指針](TEI_DESKTOP_WEB_STANDARD_UI_IMPLEMENTATION_2026-11.md)に、現行plain TypeScriptを基線とするVanilla Custom Element／Lit＋TypeScript／Lit＋JSDocの小部品比較、CSS Token・Cascade Layer・Grid/Flex・Shadow DOMの選択条件、静的検査・IME/ARIA・配布byte・実WebView2の停止線を整理した。最初の候補はS-LOCのread-only表示部品とし、Wails/Hostを直接呼ばず、Node24の既存試験とP-04/P-05の実Consumer検収へ接続する。これは実装方式の受入条件であり、Lit採用・UI全面移行・製品PASSを宣言するものではない。
+
 #### 0.13.6 既存Expectedへの最小引渡し
 
 | 候補 | 負例／停止条件 | 既存担当 |
