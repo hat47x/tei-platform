@@ -1272,3 +1272,58 @@ Child方式のEndpointはLoopbackに置くだけで安全としない。OS Pipe/
 | 通信同値の誤判定 | 同じ値を返したがactual Provider BではなくA、Artifact版・Disclosure/Receiptも不一致 |
 
 **Owner**：#1158/ADR-0048が共通APIと入口、#4635/#1824がStudio Child/IPC、#951/#1251がPlugin選択・Load/配布、#4495/#4502がEntry/Provider実呼出し、#2831/#4583がBuilderとセルフビルド、#1129/#1174がEffect/Recovery、#1180/#2514が独立Expectedを所有する。Studio子ServerはTEIの全Targetへ強制しない。ここでの結果は現状確認に基づく実装引渡し案であり、新Child IPC E2E、CLI連携、Performance、Plugin Hot Reload、Server公開安全性、実Provider/DB作用の受理はNOT RUN / NOT ACCEPTED。
+
+## 27. 起動と継続実行を、版・権限・観測の異なる寿命に分ける（2026-11-15）
+
+### 27.1 起動要求の形成は、業務実行の許可ではない
+
+前節までのFunction／Entry／Trigger／Invocationという区分を維持し、起動を「準備」「入場」「実呼出し」「結果の利用」の四つの確認に分ける。これは新しいLaunch Engineや四状態の共通Runtimeを設ける提案ではなく、既存Application API、Capability Invocation、Host Authority、Run/Effect、Consumerへの**検収の切り口**である。
+
+| 確認する境界 | 必要な根拠 | 成立しても言えないこと |
+| --- | --- | --- |
+| **Prepare**：起動候補を構成 | Owner受理済みFunction/Contract、公開Entry、具体的な対象と型付き入力、Source/Meaning revision、選択されたComposition | 現在Grantがある、Providerを呼んだ |
+| **Admit**：実行直前に許可を判定 | 実Hostによる現在Principal/Scope/Grant、Targetとexpected revision、期限・取消、実行先で利用可能なArtifact/Resource | Effectが起きた、Resultが正しい |
+| **Invoke**：選択実装へ到達 | selected Providerとactual loaded/linked Provider/Artifactの一致、実Call Witness、Attemptの識別 | Output Bodyの完全性、Commitの確定 |
+| **Observe/Disclose**：結果を検証・開示 | typed Outcomeと実Body、必要なら独立Receipt/Read、現在Audience、固定したWorkspace/Subject/Window世代 | 他Target・別Attemptでも同じ資格がある |
+
+不在・明示NULL・0・未取得・非開示の違いは、入力の準備から実Result確認まで失わない。Previewで「実行できる可能性がある」と分かっても、Admitは実呼出し直前に行う。公開Entryの有無、Host Grant、Effect可否の判定をUI、AI、Pluginの自己申告だけへ委ねない。実Adapter呼出し前の拒否はcall=0として記録し、call=1の後に不正Outcomeや通信断が生じても「未実行」「安全な再試行」とは断定しない。
+
+### 27.2 一つの起動には、異なる時点の版が関与する
+
+全要素を巨大なExecution Contextへ複製したり、単一のWorld Fingerprintだけで現在資格を代表させたりしない。既存Ownerが保持する識別子・Evidenceを照合する。
+
+| 寿命の異なる対象 | 起動で固定・再照合すること | 主担当 |
+| --- | --- | --- |
+| **業務のSourceと意味** | 実読取Source byte/occurrence、Accepted Meaning/Contract版、Entry公開版、対象ID・期待版。A→B→Aでも過去の受理を無条件復活させない | #2621／#4502／#4495 |
+| **配備した実装** | Composition/Lock、選択Provider、Build Artifact member byte、実LoadしたImage/Provider。契約版一致と物理同一性は別 | #951／#943／#1251 |
+| **現在の実行資格** | Host側Principal、Target/Scope/Grant、必要Resource、期限、Effect入場とCommit直前の資格 | #1118／#1129／#1174 |
+| **利用者側の表示・開示** | Workspace/Subject/Selection epoch、Server generation、Consumer Audienceと開示時点。旧Replyを現在の操作結果へ採用しない | #1824／#4515／#2516 |
+| **再送・復旧** | Trigger occurrence、Operation ID、Attempt、実Effect Receipt、外部Task/Delivery IDを別々に記録 | #4497／#1130／#1174 |
+
+特にStudioでWorkspace Aの読み取り中にWorkspace Bへ切り替えた場合、後着のAの応答はBの画面へ反映しない。ただし、表示を破棄することは既に開始した業務Operationの取消でもCommitの巻戻しでもない。逆に、プロセス再起動で同じ画面を復元できても、古いSource/Grant/Plugin Lockによる実行資格は復活しない。
+
+### 27.3 プロセスを再起動できることと、Invocationを再実行できることを区別する
+
+CLI直接呼出し、Studio Native、必要時のChild Backendは同じ業務契約の異なる物理経路である。#4635における従属Childは比較・将来の選択肢であり、現行P0のWails Native同一ProcessとCLI Directを置き換えたわけではない。§26の「子Serverを基本経路とする」は目標構成の検討として読み、実測・Owner採否まで製品の標準配置を変更しない。
+
+実Childを使う場合、親が監視するのはProcessの生成・生存・停止・孤児化であり、子または選択Hostが検証するのはProvider実行とEffectである。HandshakeでProtocolやPlugin Lockの互換が分かっても、個別Entryの現在Grantや対象の現在性は保証されない。再接続後に旧Replyを表示するかどうか、失敗したOperationを再送してよいかどうかは別の判断となる。
+
+故障後の扱いは既存Failure/Receiptに従う。実Call前の確実な拒否、Call後のResult不正、Commit後ACK喪失、通知のみ失敗、Effect不明を区別し、unknownなら照会を先行して無条件再送しない。再試行可能性はOperation IDだけでなく、同じTarget/Subject/Meaning/Artifact/Effect契約の下で既存Ownerが保証する範囲を条件とする。単なるtimeoutやOS exit codeから重複実行の安全性を推測しない。
+
+### 27.4 Triggerを追加しても、起動の保証を作り直さない
+
+Manual/UI/CLI/MCP/AI、Schedule、Event、Batch/EKIは、同じ公開Entryに対して具体的なInvocationを準備する**別の契機**として扱う。Trigger occurrence、要求配送、Admission、Run開始、業務Effect、Consumer受領は別事実である。定時発火しただけで以前のGrantを使わず、Eventが届いただけでTx後の通知を送らず、外部Taskが完了しただけでBody/Receiptを確認済みにしない。
+
+ScheduleのTZ/DST・missed-run、Eventのbefore/within/post-commit、Batchの入力配送やResource/Effectの表現可否は、それぞれ#4497/#1129/#1130の専門契約を参照する。Target側で表現できない引数、Scope、期限、Effectはnot-representable/unsupportedとして止める。Triggerを実装するために新Scheduler、Broker、Job Registry、TEI共通Hostを加えない。AI提案、Macro公開、MCP tool発見も権限の発行ではない。
+
+### 27.5 次の最小差分と独立検証
+
+既存#4495のEL-01〜12、#4497のTR-01〜12、#4635の配置比較、#1180/#2514の独立Expectedを使う。新しいScenario IDや第二Test Runnerを追加せず、**各受入を同じ具体的Source・契約・実Build・実Call位置でつなぐ**。
+
+1. **最初の一機能を受理する**。現行Workspaceのpure Functionを棚卸し、Ownerが受理した入力型・Effect範囲・Entry公開・選択Go Providerを固定する。Referenceの「2×300=600」やEffect未宣言をpure認定に転用しない。適格な公開Entryが無ければその不足を先にOwnerへ返す。
+2. **Product typed APIで実Go Providerを一度呼ぶ**。Prepare/Admitの失敗はcall=0、selected B→actual Aは値が同じでもFAIL、呼出し後Result不正はcall=1とし、actual Provider/ArtifactのWitnessを残す。既存capabilityinvokeの宣言前後検査を利用し、Grant IssuerをAdapterへ移さない。
+3. **通常tei CLIを別OS Processとして呼ぶ**。同じFunction契約と独立Expectedを用いるが、Direct APIとは別Attemptとして識別する。参照Command/MemoryUnitOfWorkやCLI exit 0だけではProduct実行成功としない。製品CLIの新コマンド名は発見・契約検収後に採用する。
+4. **read-onlyで配置・画面時点を比較する**。実Windows Native/ChildのA/B比較は#4635が担当し、Source/Subject/Result、実Peer/Artifact、古いReply/Selection epochを確認する。子Backend採用やMCP/Web公開をStudio Stage1→Stage2のHard Gateにしない。
+5. **Trigger・Effectを後段で接続する**。TR-03/04/05/07/11のGrant失効、改版、重複配送、ACK喪失、Target表現不足を専門Ownerの実Evidenceで検収する。初回pure FunctionのPASSを実DB Commitやexactly-once保証へ拡張しない。
+
+**計画への接続**：全体P0は#2831/#4583の非Plugin Studio Stage1→Stage2、並行P0は#4495の公開Entry→実Provider→通常tei CLI。正式Markdown Reader、Graph/Ruleの実生成、Builderへの入力、実Consumerはそれぞれ#2621/#1121/#2831が別に受理する。今回は既存契約の引渡しと失敗時の主張範囲を収束させたもので、新Go実装、実Windows Child、業務Meaning受理、実外部Effect E2EはNOT RUN。
