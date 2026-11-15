@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"reflect"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -63,6 +64,16 @@ func TestProductInspectCLISelectedMarkdownRuleIsNotCapability(t *testing.T) {
 	}
 	subject := sourceindex.Subject{Kind: "semantic-validation", ID: ruleID}
 	seen := rule.Result
+	// Fix the direct Application Operation baseline before introducing a
+	// child Backend transport. The OS-process CLI must preserve the entire
+	// read-only projection, including Source and authority limitations.
+	direct, err := operations.InspectSubject(root, subject)
+	if err != nil {
+		t.Fatalf("direct inspect Operation: %v", err)
+	}
+	if !reflect.DeepEqual(*seen, direct) {
+		t.Fatalf("actual CLI process diverged from direct inspect Operation:\nCLI: %+v\nDirect: %+v", *seen, direct)
+	}
 	if seen.Subject != subject || seen.Effect != "read-only" ||
 		seen.SourceStatus != "indexed" || len(seen.AuthorityLimits) == 0 {
 		t.Fatalf("CLI Rule inspection lost subject/source/authority: %+v", seen)
@@ -111,6 +122,11 @@ func TestProductInspectCLISelectedMarkdownRuleIsNotCapability(t *testing.T) {
 		if missing.OK || missing.Result != nil || missing.Error == nil ||
 			missing.Error.Code != operations.InspectionNotFound {
 			t.Fatalf("inspect %s:%s must fail closed: %+v", tc.kind, tc.id, missing)
+		}
+		_, directErr := operations.InspectSubject(root, sourceindex.Subject{Kind: tc.kind, ID: tc.id})
+		var classified *operations.InspectionError
+		if !errors.As(directErr, &classified) || classified.Code != missing.Error.Code {
+			t.Fatalf("inspect %s:%s direct/CLI failure mismatch: direct=%v CLI=%+v", tc.kind, tc.id, directErr, missing.Error)
 		}
 	}
 }
