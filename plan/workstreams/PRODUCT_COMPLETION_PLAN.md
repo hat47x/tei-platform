@@ -97,6 +97,15 @@ DC-27〜32は#1180／#2514の既存独立Expectedへ引き渡す。最初に実�
 
 この追補に伴う新試験の実合否はexact HEADのCIで別途確認する。DC-33〜38は既存#1180／#2514の独立Expected候補へ引き渡し、新しいGrammar／Graph Runtime／Registry／Hostは作らない。
 
+
+### P1：Data表とRuleの汎用評価・生成を同じ意味で照合（2026年11月15日）
+
+[宣言的構文の合成契約§27〜28](../design/DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md)のG（コード生成）／P（パラメータ実行）／D（外部委譲）の区別を、既存Data定義表と隣接Ruleの実装票へつなぐ。internal/operations/inspect_markdown_data_table_rule_evaluation_test.goに2つのFocused試験を追加し、同じ製品Loadから一つの型付きValidationを解決する。
+
+Pは既存validationevalで正値・0・負値・NULL・未取得の五入力と論理Read先を確認する。Gは同じRuleから既存validationgenで生成したGoの参照先と条件を検査する。ただし**今回の生成Goを実ビルド／起動して比較する試験ではない**。Data項目表のallocation型をdecimal→textへ変える一因子負例では、Validatorの拒否とGo生成拒否、Source／World版の変更を別に確認する。
+
+DC-39〜40を既存#1180／#2514の独立Expectedへ接続し、DC-41は実BinaryとのRead Footprint一致を要求する次段候補とする。元宣言→Generator→実Builder入力→Artifactの正式R2-P、通常CLI実ProviderのR3、Studio Stage1→Stage2 Windows受領は並行P0であり、Pの評価成功をGの自己生成達成率へ加算しない。対象HEADでGoテストとRepository Healthを確認するまで新たなPASSを主張しない。
+
 ### P1で接続する業務判断・設計入力・数式（2026年11月15日）
 
 これらは新しい製品P0の前提ではなく、既存の標準Data/Rule/Expression・Function Data Context・表現型を実案件に近づける**受入作業**とする。詳細な正負例とOwner境界は[横断統合受入境界§14〜17](../design/CROSS_CUTTING_ACCEPTANCE_BOUNDARIES_2026-11-12.md)を参照。
