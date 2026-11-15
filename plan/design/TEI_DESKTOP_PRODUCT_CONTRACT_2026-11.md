@@ -520,6 +520,8 @@ D1以前の評価は代表操作「Subject Catalog→明示Pin A→B編集→A�
 
 **Web標準UIの実装指針（2026-11-15）**：[Web標準UI開発・検収指針](TEI_DESKTOP_WEB_STANDARD_UI_IMPLEMENTATION_2026-11.md)に、現行plain TypeScriptを基線とするVanilla Custom Element／Lit＋TypeScript／Lit＋JSDocの小部品比較、CSS Token・Cascade Layer・Grid/Flex・Shadow DOMの選択条件、静的検査・IME/ARIA・配布byte・実WebView2の停止線を整理した。最初の候補はS-LOCのread-only表示部品とし、Wails/Hostを直接呼ばず、Node24の既存試験とP-04/P-05の実Consumer検収へ接続する。これは実装方式の受入条件であり、Lit採用・UI全面移行・製品PASSを宣言するものではない。
 
+**実Consumerまでの設計追補（2026-11-15）**：[Web標準UI指針 §§8〜11](TEI_DESKTOP_WEB_STANDARD_UI_IMPLEMENTATION_2026-11.md)で、現行Embed CIにあるHTML／JS／CSS／第三者通知の四byte比較から、実Wails配信・Pin／S-LOCのDOM受領・Stage1→Stage2までを別々に検収する。内蔵`tei.rule-authoring/v0` Readerの限定製品Load（Bootstrap §29.7）は実在するが、Source表示・AI開示・Rule→Go/Provider/Owner受理へ昇格させない。StandaloneのD2単一Image＋Updater、子Backend D3、Mobile実験を製品P0の新前提にせず、W0の現Sourceからの正規Bundle回復を先行する。
+
 #### 0.13.6 既存Expectedへの最小引渡し
 
 | 候補 | 負例／停止条件 | 既存担当 |

@@ -959,9 +959,14 @@ A0を製品に接続する変更では、既存の拒否証拠を消すのでは
 
 **移行時のテスト方針**：最初のReader実装で従来の一律拒否が条件付き拒否へ変わるなら、既存の負例は「未選択の世界」に残し、正式に選択された世界の肯定例を**同じFixtureを共有する別テスト**で追加する。拒否テストの一括削除や`TEI_MD_PARSER_UNBOUND`の全面解除はしない。A0のSelection供給は#1018/#988、A1〜A3の実読取・Source Indexは#2621/#1017/#1180/#2514へ引き渡す。新Registry、暫定Manifest拡張、第二Reader、独立Expected正本を作らず、Studio Stage1→Stage2と通常CLI実Providerの独立P0を維持する。
 
+<!-- tei-builtin-rule-md-product-reader-20261115 -->
+**製品コードへの初接続を確認する検査**：mainの[内蔵Rule Markdown実装](../../internal/workspace/authoring_language.go)／[Rule Reader](../../internal/workspace/rule_authoring_markdown_loader.go)と実Fixture `internal/workspace/testdata/tei-md-rule`を検収基線とする。選択された`tei.rule-authoring/v0`は、Markdown内の二つの`tei`定義領域を既存`semantic.Validation`と同じSubjectへ写し、`AuthoringSources`に実Readと定義件数を記録する。定義外の説明・`text`例示は読み取らず、元byteをSource Indexに保持する。追加する[製品回帰](../../internal/workspace/tei_md_rule_product_read_test.go)では、Product `Load`の実読取・二Rule IDの正確なbyte Range・同じLoadからのIndex、説明だけの変更時の旧Fingerprint失効、未選択と版違いの拒否を一緒に照合する。**テストのコード追加はCI成功と同義ではない**ため、exact HEAD結果を別途記録する。
+
+次の一歩は新しい普遍Parserではなく、**この実装を一つの契約として確実に検収したうえで**、(a)外部Language Pluginの実Resolver/Lockとの連携、(b)Graph/Windowの異なるSource様式、(c)受理済みMeaningから製品Generatorによる一Rule実Go生成と実Builder／通常CLI Consumerを、それぞれ別のOwnerへ渡すこと。Readerが型付きValidationを作ったことは、業務Ownerの意味受理・Plugin選択・実Provider/Effect・Windows Stage2を意味しない。新Registry／Host／Expected正本は増設しない。
+
 #### S0予備検証と正式Reader接続を分け、生成物の実消費までつなぐ（2026年11月15日）
 
-**S0-Pはmainに統合済み、S0-Aは未実装（2026年11月15日更新）。** [#4751](https://github.com/hat47x/tei-platform/pull/4751)では、実Workspace Manifestの`semantic` Root、未宣言`drafts`の除外、同一Pinned Rootからの元byte、固定されたGraph/Rule候補、既存Source IndexのFingerprint/Span、原文変更時の旧Index拒否を**テスト専用の事前検査**として接続した。旧[#4745](https://github.com/hat47x/tei-platform/pull/4745)は未マージでクローズされ、同内容の実Go試験が#4751からmainへ入った。現行の`Workspace.Load`は未選択`*.tei.md`に`TEI_MD_PARSER_UNBOUND`を返し続ける。これは意図した安全な境界であって、予備検査の成功により製品Readerを解放する理由にはならない。
+**S0-PのGraph／Window予備検査はmain統合済み。内蔵`tei.rule-authoring/v0`については、選択された`*.tei.md`の製品Loadと`semantic.Validation`／Source anchorへの接続がmainに実装された（2026年11月15日更新）。** ただし、Graph／Windowの製品Reader、外部Language Pluginの実選抜／Lock、Ownerによる意味受理、生成Pluginの実使用は未成立。 [#4751](https://github.com/hat47x/tei-platform/pull/4751)では、実Workspace Manifestの`semantic` Root、未宣言`drafts`の除外、同一Pinned Rootからの元byte、固定されたGraph/Rule候補、既存Source IndexのFingerprint/Span、原文変更時の旧Index拒否を**テスト専用の事前検査**として接続した。旧[#4745](https://github.com/hat47x/tei-platform/pull/4745)は未マージでクローズされ、同内容の実Go試験が#4751からmainへ入った。現行の`Workspace.Load`は未選択`*.tei.md`に`TEI_MD_PARSER_UNBOUND`を返し続ける。これは意図した安全な境界であって、予備検査の成功により製品Readerを解放する理由にはならない。
 
 **CIの資格も分ける**：#4751のexact HEAD（`699ac0bd025a953d2a7a0e7dea2dbe9f1c19a67f`）では複数のWorkflowが成功した一方、[Repository Health](https://github.com/hat47x/tei-platform/actions/runs/43644037417)は失敗している。旧#4745の[Repository Healthログ](https://github.com/hat47x/tei-platform/actions/runs/43641434912)はSQLite Window試験の`gofmt`ずれと`SeverityUnsupported`の旧TODOを示したが、**旧HEADの原因や成功を、新HEADや最新mainに無条件転用しない**。最新main全体の状態は同一HEADのCIで別途判定し、修正済み・全体合格の主張を先取りしない。
 
@@ -970,11 +975,11 @@ A0を製品に接続する変更では、既存の拒否証拠を消すのでは
 | 段階 | 入力と実際の証拠 | 現在の資格と次の断点 |
 | --- | --- | --- |
 | **S0-P：Pinned Source予備検査** | Manifest `semantic` Root、非宣言`drafts`除外、Pinned Root読取り、候補Graph/Rule、Source Index fingerprint/Span、変更後の旧Index拒否 | [main #4751](https://github.com/hat47x/tei-platform/pull/4751)へテストが統合済み。ただし読取りはテスト側で明示しており、製品LoaderのFrontend選択は未接続 |
-| **S0-A：製品Reader Admission** | 実`Workspace.Load`の同一Attemptに対して、型付きで選択されたFrontend/版、Manifest Root、実際にReaderが消費したbyte/Span、Source Index Artifact/必要なRole候補を対応付ける | **未実装**。未選択は従来どおり拒否。管理済み≠Read済み≠Parse済み≠Qualified≠Owner受理 |
+| **S0-A：製品Reader Admission** | 実`Workspace.Load`の同一Attemptに対して、型付きで選択されたFrontend/版、Manifest Root、実際にReaderが消費したbyte/Span、Source Index Artifact/必要なRole候補を対応付ける | **内蔵Rule Markdownの限定経路はコード接続済み**。同一Loader／Indexと正負回帰を検収し、Graph／Window・外部Pluginは別途実装。未選択は従来どおり拒否。管理済み≠Read済み≠Parse済み≠Owner受理 |
 | **S1/S2：意味Go・実Plugin** | Owner受理済みMeaning/Rule→Target Generatorの条件ロジック→生成Go→実Builder/Target→選択Pluginの組込み/Call→実Consumer | 限定ReferenceのGo条件分岐と同一Binary実入力は成功済みだが、製品Targetでの実消費は未成立 |
 | **Artifactの再入力／Studio** | 生成Source Memberが次Buildの**実入力byte**になり、生成JS等がWails埋込みへ渡る場合も、Builder/ArtifactSetの同じAttemptと子Process/受領先を照合 | [Generator契約Draft #4748](https://github.com/hat47x/tei-platform/pull/4748)の未実証Fit/Gapに接続。生成物の存在だけで次工程が消費したとみなさない |
 
-**実装担当が最初に変更すべき境界**：現行`internal/workspace/loader.go`は`scanManagedFiles`の後で`rejectUnboundTEIMarkdownSources`を実行し、その後に従来のSource Root別Domain Loaderへ進む。次の製品Go PRは、この既存の順序とPinned Source読取りを使い、**対応可能な一種類のFrontendが明示選択されたSourceにだけ**Reader呼出しを許す。実際の選択契約が未実装・曖昧な場合には、新構文を仮定して全ファイルを通さず、既存の`TEI_MD_PARSER_UNBOUND`または適切なunsupported診断を維持する。選択はWorkspace/Root/Source path/Frontend ID・契約版の組で確認し、`sourceindex.Artifact.Format="md"`をLanguage Profileの代わりにしない。
+**次に変更すべき製品境界**：現在の`internal/workspace/loader.go`は`scanManagedFiles`の後、Manifestの`languages:`から内蔵Contract／版を`resolveAuthoringLanguages`で解決し、`admitTEIMarkdownSources`でSourceごとにReaderを選ぶ。選択済みのRule Markdownは従来の`semantic` Loaderの後に`loadAuthoringSources`で同じLoadの元byteを読む。これは**内蔵`tei.rule-authoring/v0`に限った製品接続**であり、GraphのMarkdown表、Window、外部Language Pluginを読める証拠ではない。次は選択あり／なしの両世界でLoader・`AuthoringSources`・Source Index／旧`.tei`を独立照合する。未選択・契約版不一致・実装曖昧性はfail-closedを維持し、`sourceindex.Artifact.Format="md"`だけをFrontend選択の根拠にしない。
 
 **最小の完了証拠**：同じ一回の`Workspace.Load`で、(a)選択に使ったManifest/Frontend/Source Revision、(b)Root内にある実Sourceの読み取りbyte、(c)Node/Edge/Rule候補の元byte Span、(d)既存Source IndexのArtifact/Fingerprint、(e)`ReadByLoader`の真偽と解析・意味受理の**未達状態**を矛盾なく照合する。Source Indexの`RoleDefinition`等は参照種別であり、業務意味RoleやOwner Acceptanceとは別である。テストコードが`readPinnedWorkspaceFile`を直接呼んだだけの証拠はS0-Pのままとし、**実Loader内のReader消費を確認して初めてS0-A**と呼ぶ。
 
