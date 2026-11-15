@@ -225,6 +225,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node tools/reference-studio-static-composition/compose-ui.mjs tools/reference-studio-static-composition/fixture.json tools/reference-studio-static-composition/generated
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Check the exact source-closure pin and every omission/change negative
+          # before creating any generated Workbench artifact.
+          node --test tools/reference-studio-static-composition/connect-workbench.test.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node tools/reference-studio-static-composition/connect-workbench.mjs reference/tei-studio-workbench/main.ts
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Push-Location reference/tei-studio-workbench

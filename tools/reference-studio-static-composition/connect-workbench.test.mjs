@@ -10,6 +10,7 @@ import {
   WORKBENCH_CURRENT_HEAD, WORKBENCH_CURRENT_MAIN_BLOB,
   WORKBENCH_MAIN_CONSUMER_HEAD, WORKBENCH_MAIN_CONSUMER_BLOB,
   WORKBENCH_PR1_HEAD, WORKBENCH_PR1_BLOB,
+  WORKBENCH_NATIVE_HEAD, WORKBENCH_NATIVE_MAIN_BLOB,
 } from './connect-workbench.mjs';
 
 const graph = 'import { mountReadonlyGraph } from "../tei-studio-graph/graph.ts";\n';
@@ -28,22 +29,26 @@ test('historical Workbench pins and exact PR1 candidate reject unknown revisions
     'c55ad2285268533f5f1c90fbc9fe766bae57f009',
     WORKBENCH_MAIN_CONSUMER_HEAD,
     WORKBENCH_PR1_HEAD,
+    WORKBENCH_NATIVE_HEAD,
   ]);
   assert.deepEqual(WORKBENCH_PINS.map(pin => pin.mainBlob), [
     '2a65a9f70245068bf2455248d98d280b382b01e4',
     'cc2644e5a9167dbc3a0b5368ff270276a2ba1b67',
     WORKBENCH_MAIN_CONSUMER_BLOB,
     WORKBENCH_PR1_BLOB,
+    WORKBENCH_NATIVE_MAIN_BLOB,
   ]);
   assert.deepEqual(WORKBENCH_PINS.map(pin => pin.commandHead), [
     '26f47772ed49f5c4a9e1c50026c335783bc5e153',
     '01f5022240fd86c6ac38c1107310e299a1615b48',
     WORKBENCH_MAIN_CONSUMER_HEAD,
     WORKBENCH_MAIN_CONSUMER_HEAD,
+    WORKBENCH_MAIN_CONSUMER_HEAD,
   ]);
   assert.deepEqual(WORKBENCH_PINS.map(pin => pin.commandBlob), [
     '4e0d5484f82944d5b7d3b0b8431f3a9a1eaa7081',
     '6c6ee81288c9857ca2f1c282639ba49f059f5535',
+    'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
     'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
     'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
   ]);
@@ -55,6 +60,7 @@ test('historical Workbench pins and exact PR1 candidate reject unknown revisions
   assert.equal(WORKBENCH_CURRENT_MAIN_BLOB, WORKBENCH_PINS[1].mainBlob);
   assert.equal(WORKBENCH_MAIN_CONSUMER_BLOB, WORKBENCH_PINS[2].mainBlob);
   assert.equal(WORKBENCH_PR1_BLOB, WORKBENCH_PINS[3].mainBlob);
+  assert.equal(WORKBENCH_NATIVE_MAIN_BLOB, WORKBENCH_PINS[4].mainBlob);
   assert.ok(Object.isFrozen(WORKBENCH_PINS));
   assert.ok(WORKBENCH_PINS.every(Object.isFrozen));
   assert.notEqual(WORKBENCH_PINS[0].mainBlob, WORKBENCH_PINS[1].mainBlob);
@@ -66,21 +72,38 @@ test('historical Workbench pins and exact PR1 candidate reject unknown revisions
     /workbench_pin_override_forbidden/);
 });
 
-test('qualified PR1 Workbench candidate binds exact Command, responses and Graph assets', async () => {
-  const pin = WORKBENCH_PINS.find(value => value.head === WORKBENCH_PR1_HEAD);
+test('native-qualified Workbench candidate binds exact Command, Graph, response and browser closure', async () => {
+  const pin = WORKBENCH_PINS.find(value => value.head === WORKBENCH_NATIVE_HEAD);
   assert.ok(pin);
-  assert.equal(pin.mainBlob, WORKBENCH_PR1_BLOB);
-  assert.notEqual(pin.mainBlob, WORKBENCH_MAIN_CONSUMER_BLOB);
+  assert.equal(pin.mainBlob, WORKBENCH_NATIVE_MAIN_BLOB);
+  assert.notEqual(pin.mainBlob, WORKBENCH_PR1_BLOB);
   const root = new URL('../../', import.meta.url);
   const source = await readFile(new URL('reference/tei-studio-workbench/main.ts', root), 'utf8');
   const commandSource = await readFile(new URL('reference/tei-studio-command/command.ts', root), 'utf8');
   const responsesSource = await readFile(new URL('reference/tei-studio-workbench/responses.ts', root), 'utf8');
   const graphSource = await readFile(new URL('reference/tei-studio-graph/graph.ts', root), 'utf8');
+  const closureSources = Object.fromEntries(await Promise.all(
+    Object.keys(pin.closureBlobs).map(async path =>
+      [path, await readFile(new URL(path, root), 'utf8')])));
   assert.equal(pinnedWorkbenchRevision(source), pin);
   assert.throws(() => pinnedWorkbenchRevision(source + '\n// unqualified change\n'),
     /workbench_revision_mismatch/);
-  assert.equal(inspectPinnedDependencies(pin, commandSource, responsesSource, graphSource), true);
-  assert.throws(() => inspectPinnedDependencies(pin, commandSource, responsesSource, graphSource + '\n'),
+  assert.equal(inspectPinnedDependencies(pin, commandSource, responsesSource, graphSource, closureSources), true);
+  assert.throws(() => inspectPinnedDependencies(pin, commandSource, responsesSource, graphSource),
+    /workbench_closure_missing_or_extra/);
+  const missing = {...closureSources};
+  delete missing['reference/tei-studio-workbench/inspector-selection.ts'];
+  assert.throws(() => inspectPinnedDependencies(pin, commandSource, responsesSource, graphSource, missing),
+    /workbench_closure_missing_or_extra/);
+  const extra = {...closureSources, 'unqualified.ts': 'export {}'};
+  assert.throws(() => inspectPinnedDependencies(pin, commandSource, responsesSource, graphSource, extra),
+    /workbench_closure_missing_or_extra/);
+  for (const path of Object.keys(pin.closureBlobs)) {
+    const changed = {...closureSources, [path]: closureSources[path] + '\\n// changed\\n'};
+    assert.throws(() => inspectPinnedDependencies(pin, commandSource, responsesSource, graphSource, changed),
+      /workbench_closure_revision_mismatch/, path);
+  }
+  assert.throws(() => inspectPinnedDependencies(pin, commandSource, responsesSource, graphSource + '\n', closureSources),
     /graph_revision_mismatch/);
   const connected = connectWorkbenchSource(source);
   assert.equal((connected.match(/ui.generated.mjs/g) ?? []).length, 1);
