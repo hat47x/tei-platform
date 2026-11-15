@@ -1816,11 +1816,11 @@ Studio側のR4は[#2831](https://github.com/hat47x/tei-platform/issues/2831)／[
 
 ### 16.35 文書表をData定義へ使う条件と、実記録の表を混同しない
 
-[開発中PR #5010](https://github.com/hat47x/tei-platform/pull/5010)では、`*.tei.md`の明示`<!-- tei: data … -->`領域にある**項目定義表**を、既存`semantic.Data`へ読込む`tei.authoring/v1`が提案されている。題材は組織の異動申請`TransferRequest`で、`personId`等の項目・型・必須・表示・説明をMarkdownで記述する。表は**レコードの形を定める定義**であり、実際の所属・異動履歴の一行一行を保存するデータではない。後者は既存Data Provider／Query／Temporal契約の対象である。これは「文書の表を標準データ構造に使える」ことと「表の行を業務データとして自動取込みできる」ことを区別する具体例となる。
+[未マージで閉じた提案PR #5010](https://github.com/hat47x/tei-platform/pull/5010)では、`*.tei.md`の明示`<!-- tei: data … -->`領域にある**項目定義表**を、既存`semantic.Data`へ読込む`tei.authoring/v1`が提案されている。題材は組織の異動申請`TransferRequest`で、`personId`等の項目・型・必須・表示・説明をMarkdownで記述する。表は**レコードの形を定める定義**であり、実際の所属・異動履歴の一行一行を保存するデータではない。後者は既存Data Provider／Query／Temporal契約の対象である。これは「文書の表を標準データ構造に使える」ことと「表の行を業務データとして自動取込みできる」ことを区別する具体例となる。
 
 採否は[#2621](https://github.com/hat47x/tei-platform/issues/2621)／[#988](https://github.com/hat47x/tei-platform/issues/988)／[#1018](https://github.com/hat47x/tei-platform/issues/1018)へ返す。比較すべきは、従来の`data`宣言との型付き意味同値、`display`／`description`の表現上のRole、セル原byte範囲・診断位置、明示Reader版の拒否、Scope／Identityの保持、未対応`immutable`／`role`／`value`／Relation／候補キーの欠落である。**定義内容が部分的にしか書けない表を、従来Dataの完全な逆編集形式とみなさない**。Featureを表へ追加するときは、同一Source・同一意味・再読込・安全なSlot・複合キー等の反例が成立してから拡張する。
 
-#5010は確認時点でOpenであり、提案ブランチのローカルGo試験の申告をmain採用・Linux CI・実Query／DB／Generator受入へ昇格しない。元の`tei.rule-authoring/v0`と`tei.authoring/v1`が二系統の名前になる点も、早期に一律統合せず、既存Readerとの選択・互換・Source Indexの差を対照してからOwnerが判断する。
+#5010は確認時点でClosed／未マージであり、提案ブランチのローカルGo試験の申告をmain採用・Linux CI・実Query／DB／Generator受入へ昇格しない。元の`tei.rule-authoring/v0`と`tei.authoring/v1`が二系統の名前になる点も、早期に一律統合せず、既存Readerとの選択・互換・Source Indexの差を対照してからOwnerが判断する。
 
 ### 16.36 研究の次段は「完成した限定経路の未接続だけ」を実装する
 
