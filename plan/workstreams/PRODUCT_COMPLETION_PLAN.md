@@ -58,6 +58,19 @@ P0は引き続き、#4495の公開pure Entry→actual Provider→通常CLIの実
 
 正例・負例はDC-21〜26を既存#1180／#2514へ引き渡し、実装から期待値を逆算しない。P1の診断表示が完成しても、既存P0の通常製品CLI・実ProviderおよびStage1→Stage2実Windows受領の完了を宣言しない。追加のGrammar・Writer・Hostを着手前提にしない。
 
+### P1：構文汎化を実製品の出典照合につなぐ（2026年11月15日追補）
+
+[宣言的構文の合成契約§21〜23](../design/DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md)を、前節のP1-A〜Cへ追加する**実装判断**として接続する。現行mainには印付きData項目定義表の製品Load回帰、Operator実選択／局所Call（#5007）、生成Ruleの通常tei self-build（#5009）、原DSL Sourceと生成Go ASTの同時照合（#5020）が存在する。ただし、Data表の原提案PR #5010は未マージであり、実在するコードの所在と提案PRの状態を混同しない。
+
+| 既存の実装担当に渡す問い | 最初の確認方法 | 受理しない短絡 |
+| --- | --- | --- |
+| **P1-A／Reader・Role**（#2621／#988／#1018） | 現行の明示選択Readerで一つのDefinitionを読み、印のない表を説明として残し、旧DSLと既存Meaning／Source位置を比較 | Data表を読めたという理由で業務記録も定義化、選択Languageを自動推測 |
+| **P1-B／Operator Law・選択の鮮度**（#988／#4359／#2514） | 非負と非ゼロの実装を境界値0で区別し、実装の選択・実Call・意味的適合を別Expectedで確認。manifest変更後の旧Scenario Commandを拒否 | 型適合とCall成功だけで業務Rule適合を承認 |
+| **P1-C／Build出典**（#1121／#4544／#2595） | 一Ruleの元Markdown・Reader・Generator・生成Go・Build Intent・Builder実入力・最終Artifactを同一Build Attemptで照合 | #5009の実Binary試験だけから元Source/Generatorの完全束縛を推定 |
+| **Studio投影**（#1124／#1824／#4583） | 既存Inspectで確認できる欄だけから一問一Subjectのread-only表示を作り、未取得・不一致・古いPinを区別 | GUI表示だけでSource編集や実Provider・Windows Stage2実行を認定 |
+
+DC-27〜32は#1180／#2514の既存独立Expectedへ引き渡す。最初に実装するのは既存Reader／Ruleの検査可能な経路であり、汎用Node Editor、Markdown表の全面Writer、第二のPlugin Resolverは作らない。全体のP0は通常CLIの公開pure Function→実Provider→独立Consumerと、Stage1によるStage2 Desktop実Windows再構築のままとする。
+
 ### P1で接続する業務判断・設計入力・数式（2026年11月15日）
 
 これらは新しい製品P0の前提ではなく、既存の標準Data/Rule/Expression・Function Data Context・表現型を実案件に近づける**受入作業**とする。詳細な正負例とOwner境界は[横断統合受入境界§14〜17](../design/CROSS_CUTTING_ACCEPTANCE_BOUNDARIES_2026-11-12.md)を参照。

@@ -383,3 +383,76 @@ PR [#5007](https://github.com/hat47x/tei-platform/pull/5007)では、Workspace�
 表現形式の数ではなく、(1)定義と記録の誤読取を防げるか、(2)同じ意味定義をRule／表／Node／CLI／Studioへ再利用しても正本が増えないか、(3)失効・不足・禁止を原因つきで説明できるか、(4)実際の生成・Builder消費・Provider呼出しが増えたか、(5)新機能に要するDSL量・手書きGo量・変更手数が減ったかを測る。二つ目の異質な領域でも有効になるまで、汎用Writer／Optimizer／新Core型の採用判断は保留する。
 
 **この追補は実装前の設計判断と作業引渡しであり、PR #5010のLanguage仕様採用、GUI Writer、Rule／Data表の汎用逆編集、R2／R3、Stage2セルフビルドの実証ではない。**
+
+## 21. 宣言の入口を「形式・役割・意味」の三つで照合する（2026-11-15追補）
+
+### 21.1 現行製品で確かめられる範囲を更新する
+
+現在のmainには、明示選択した内蔵ReaderでMarkdownのRuleを読み取る経路に加え、**印を付けたData項目定義表を既存semantic.Dataへ変換する実コードとWorkspace Loader試験**が存在する。実在する実装は、internal/syntax/data_table_authoring.go、internal/workspace/authoring_language.go、internal/workspace/tei_md_data_table_test.goで確認できる。元の提案PR #5010はclosed／unmergedであり、PRの状態だけを製品実装の有無と同一視しない。採用来歴と現在のmainでの実体は別に確認する。
+
+| 一つのSourceを読む時の問い | 現行基線 | 追加の判断を要すること |
+| --- | --- | --- |
+| **どのReaderが読むか** | Workspace manifestでLanguage契約と版を明示する。実Loaderはちょうど一つの内蔵実装を選ぶ | 外部Language Pluginの選択／Lock、複数Reader競合の製品資格 |
+| **どこが定義か** | tei Rule領域と印付きData項目定義表を読み、元Sourceの位置を保持する | 文章・例示表・業務記録を推測で定義に昇格しない |
+| **既存Meaningへどう対応するか** | Ruleはsemantic.Validation、Data項目定義表はsemantic.Dataを使う。後者には従来Dataとの型付き同値を比較する試験がある | 同値な候補と、同一Workspace内で競合する二つのDefinitionを混同しない |
+| **読めた結果をどこまで使えるか** | Source Index、型Validator、限定Rule評価の範囲まで局所試験がある | Query／Persistence／生成／公開Entry／権限を読取成功だけで確定しない |
+
+この三つの問いを一つの「Markdown対応済み」に潰さない。利用者の認知順に沿った表や文章を維持し、Goの構文、Readerの技術的な構造や内部的な識別子をDSLへ持ち込まない。既存のtei.rule-authoring/v0とtei.authoring/v1がどう共存するかは、Source選択の曖昧さを増やさないという条件で#988／#1018の判断へ戻す。
+
+### 21.2 定義と記録の違いは構文ではなくRoleで守る
+
+項目定義表は「所属履歴を記録するDataの形」を宣言するもので、実際の所属行や異動履歴の正本ではない。所属・責任・現在Grant、validAt・knownAt・取得完全性は、実際のRecordとQuery／Providerで確認する。将来、文書中の例表や試験入力もReaderで扱う場合には、採用するRoleと対象Snapshotを先に定義し、Definitionへ暗黙昇格させない。
+
+## 22. Operatorの選択と実行が成立しても、意味の適合は別に確かめる
+
+[PR #5007](https://github.com/hat47x/tei-platform/pull/5007) では、WorkspaceのOperator宣言とmanifestの実装選択を分離し、Scenario評価関数で選択した組込み実装への局所Callを観測できるようになった。これは既存意味モデルを維持する上で重要な前進である。一方、実際に呼ばれた実装が、業務上要求した演算規則と**すべての入力で一致するか**は別問題である。
+
+たとえば数値0に対して、非負判定はtrue、非ゼロ判定はfalseとなる。両方とも数値を受け取るため型だけでは選択を排除できない。選択IDを変えても同じWorldを読めることを成功としつつ、**演算の意味・境界値・NULL／欠損・失敗時の振舞い**はOperator契約の独立Expectedと照合する。適合しなければ、正しく選択・呼び出せた実装でも業務意味の受入は不可である。
+
+| 層 | 確認すること | 現時点で主張しないこと |
+| --- | --- | --- |
+| Operator定義 | 意味ID、対象型、要求するLaw・入力／出力条件 | 名前や引数型だけで実装が適合すると決めること |
+| 実装選択 | manifestのOperator→実装名、重複・未宣言の拒否 | その選択が永続すること、Plugin Lockが存在すること |
+| 実Call | 選択した組込み実装が評価時に呼ばれた事実 | 外部Pluginの実Provider呼出し、通常CLI全体のE2E |
+| Conformance | 0・正負・NULL／欠損・競合／エラーなど、Ownerが定めた独立Expected | 型適合や同じ一入力の結果だけによる意味受理 |
+| 版の現在性 | 実装選択を含めたCommandとBuildの再資格化 | Source byteが変わらなければ旧Commandを再使用できるとの推定 |
+
+特に**Operator実装選択のみの変更**は、Ruleの意味IDを変えずに実行結果を変え得る。manifestを変更しても旧Scenario Commandを有効のまま利用できる残差は、選択識別子・生成コマンド・実Attemptを照合する対象とする。新しいResolverや汎用Executorを追加するのではなく、既存のSelection／Source・Artifact・Executionの失効規則へ戻す。
+
+## 23. 宣言から実Artifactまでの出典を一つの問いで追う
+
+### 23.1 生成されたGoが動くことと、元宣言からの連続性
+
+[PR #5009](https://github.com/hat47x/tei-platform/pull/5009) により、製品Workspaceから選択したRuleが生成したGoを、通常のtei self-build、既存Build Intent、実Builderの経路でビルドし、実Binaryの判断を独立入力に照合する限定回帰がmainに入った。[PR #5020](https://github.com/hat47x/tei-platform/pull/5020) では、元RuleのSource位置と生成Go AST上のRead先・条件を一試行で照合する回帰もmainに入った。
+
+二つの実証を連結したように見える図は描ける。しかし、**同一Build Attemptで元Markdown byte、Reader選択、型付きRule、Generator実装版、生成Go byte、Build Intent、Builder実入力、Artifact、Consumerを結んだ証拠**がまだなければ、正式R2-Pの全経路を合格としない。
+
+最小限必要な照合順は以下である。新しい永続Evidence Storeを設けず、既存Ownerの情報を一問一対象で参照する。
+
+1. **原Source**：Workspace ID／epoch、元byteとSource Index、Reader ID／版、Rule Definition occurrence。
+2. **意味と生成**：選択した型付きRule、Data型、Generator実コード／版、生成Goの実byteとContent Digest。
+3. **実Build**：同じ試行のBuild Intent／Definition Source、Builderが実際に読んだ入力、Artifact memberと最終Binaryの実byte。
+4. **実利用**：別Processの独立Consumer、必要なら公開Function Entry／選択Providerの実Callと現在Grantをさらに別票で照合する。
+
+いずれかの対応関係が不明なら、その**辺だけを未接続**として示す。ASTのGoファイル位置を原MarkdownのSource位置として扱わない。Rule IDが等しくても別Workspaceや別Source RevisionのArtifactを流用しない。
+
+### 23.2 最初の一画面・一問い合わせ
+
+CLI／Studio共通のread-only表示は、既存のInspect結果を入口とし、一つのRuleについて**原定義／Reader／型付き意味／論理Read／生成Go／実Builder／実Call／独立Consumer**を必要な範囲だけ並べる。現在の製品APIが持たない欄は未取得、接続関係が不明な欄は未接続と示す。Inspectorでリンクを開けたことをSource編集資格や実行許可に昇格しない。
+
+同じ情報をMarkdown表、Source近傍の説明、Node Viewへ投影できるが、表示を変えても意味の正本を複製しない。最初は一つのRule IDに限定し、Graph／Process／Pluginへの拡張はOwnerが実際の異種ケースで保証を検証してから進める。
+
+### 23.3 既存独立Expectedへ渡す反証候補
+
+| ID | 一因子の変更・負例 | 判定してほしいこと |
+| --- | --- | --- |
+| DC-27 | 印のない事実の表をData定義表と同じ列順で配置 | SourceのRoleを推測で昇格しない |
+| DC-28 | 二つのLanguage実装が同じSourceを受け取る | 選択順で勝者を決めず、曖昧さを拒否 |
+| DC-29 | Operator実装を非負から非ゼロへ変え、入力0を与える | 型／Call成功と意味Lawの不一致を区別 |
+| DC-30 | Ruleと原byteは同じでmanifestの実装選択のみ変更 | 旧Scenario Command／関連Artifactの現在性を再確認 |
+| DC-31 | 生成GoとASTは一致するが、Build Intentが別のSourceを指す | 生成結果の一致だけで元Sourceとの連続性を認めない |
+| DC-32 | 同じRule IDを別Workspace／別Source版から読んで一つの実Binary結果へ接続 | 同名・同IDを結合キーにせず、一試行のSource資格を求める |
+
+DC-27〜32は新規テスト実施を表さず、#1180／#2514の独立Expectedへの**引渡し候補**とする。既存#988／#1018（Language／Operator）、#2621（Source）、#1121／#4544（Generator／Builder）、#951／#4495（Plugin／Entry）、#1124／#1824（Inspector）、#2831／#4583（Stage2）へ担当の問いとして戻す。
+
+**優先順位は従来どおり**、通常CLIでの実Providerと、Stage1が再構築したStudio Stage2の実Windows受領をP0とする。本追補によって新Grammar、横断Runtime、第二Meaning／Evidence Store、全面的なSource Writerを前提条件にしない。
