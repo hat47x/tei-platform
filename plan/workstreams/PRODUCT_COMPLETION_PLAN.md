@@ -1123,6 +1123,8 @@ Webの要求、CLIの起動、タイマー、Message、画面操作には、そ�
 さらに[Capability InspectorのGo回帰 #4853](https://github.com/hat47x/tei-platform/pull/4853)では、実Canonical IDとSource Index／元byte位置の一致が検証された。この**読取り専用の出典証拠**をSL-1のPrepareへ利用する一方、Entryの公開・Meaning受理・Host現在Grant・Provider実Callは別に照合する。次の受入は#4495と#1158、独立Expectedは#1180/#2514が担当し、Reader S0-AとStage1→Stage2のP0を先行依存にしない。**本追補は計画上の接続であり、pure Entryの実Provider呼出しと通常CLIの新しいPASSは未確認。**
 
 
+**SL-1のRule Markdown実Source・非Entry対照（2026年11月15日、[Script Launch §29.7](../design/SCRIPT_LAUNCH_ENTRY_TEST_QUALIFICATION_2026-11.md)）**：製品`Workspace.Load`には内蔵`tei.rule-authoring/v0`の厳密選択と、同一Load原文から`semantic.Validation`と元byte anchorへの読取経路が既にある。従前の「すべての`*.tei.md` Readerが未接続」は現行mainの実装範囲を正しく表さない。最初のHeadless対照は、実選択済みRuleの`semantic-validation`がSource Indexへ結び付く正例と、Rule IDが同名の公開`semantic-capability`／Function Entryを自動生成しない負例を同一Fixtureで確認する。**Rule読取成功をSL-1の実Go Provider・通常CLI起動成功に加算しない**。続く実装は#4495の受理済みpure Function・Host現在Grant・実Binder引数・selected/actual Provider・独立Consumerの別検収を行う。Graph Markdownや外部Language Plugin／Source Open／Studio Stage2は別OwnerのP0を維持する。
+
 ## 進行の記録と完了条件
 
 各G項目には、対象と版、既存の足場、次の作業、独立した正例・反例、依存、担当Issue、得た結果または未実施の理由を残す。状態は定義済み、実装候補、局所試験、通常入口での実行、利用側確認、案件受入を用途に応じて記す。Issueをclosedにしただけで、別の組合せや実行先が成立したと扱わない。
