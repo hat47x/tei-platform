@@ -2610,6 +2610,8 @@ Graph／Ruleの候補構造指紋を生成Binaryから照会する[PR #4758](htt
 
 **第51節の検収基線**：Goのpositive形検査に固定の正常・負例テストを追加し、自己記述から検査実装を置換する際の独立Expectedの起点にする。これはM1/M2実現ではない。最新mainのRule原文をGo embedで完成Binaryへ収録するR2-P限定回帰を認めつつ、原文コピーの実消費・意味解釈・Generator選択資格を区別する。配布Binaryへの原文内包は公開許可を意味せず、非公開Sourceや業務記録の同梱は既存Disclosureの確認まで行わない。生成Windows Studio PoC Bの実Job成功も、再帰的Stage1→Stage2の成立とは分ける。Operator旧Scenario失効は並行実装PRで扱い、同じGo修正を複製しない。
 
+**第52節の自己記述実験**：通常のtei.authoring/v1とsemantic.Dataを使い、TEIのValidation宣言が持つ項目をTEIの印付きData表として記述する製品Reader回帰を追加する。選択Reader、Canonical Data、項目別Source位置、同じIDの実Validation／Capabilityを自動生成しないことを検査する。required=noは「Relation指定禁止」ではないため、positiveのRequired Shape／Lawをこの表のLoadだけで受理しない。将来のM1は既存型・Roleから未表現の制約を補う根拠を比較し、一義務を生成・実使用してGo手書き分岐を削除した場合のみM2へ進める。詳細は[自己記述設計§52](design/ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md)。
+
 ### Data Contextと時点を、構文に埋め込まないまま明示的に束縛する
 
 **「何を、いつ、どの範囲まで読んだか」**を、専門家にとって読める対象→条件→判断→結果の順で説明できるようにする。Data Contextの`grain`、Collectionのcompleteness、Contextをまたいだ同一Subject binding、型付きRelation pathとそのoccurrence、有効時点、取得元と版、Operator契約のpinを、既存Data／Function／Query／Role／Facetから辿れることが必要である。これらをすべて独自構文キーワードにする必要はなく、Markdown表／短いRule／型付き関係など、そのSourceで自然な形式を選ぶ。
