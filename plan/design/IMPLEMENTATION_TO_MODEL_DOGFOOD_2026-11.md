@@ -265,7 +265,7 @@ Markdown表・Graphviz・Node ViewのProjectionは、それぞれ省略した情
 
 ### 11.1 第一回帰を既存Reader・AST観測器の合成として実装する
 
-前章で計画したI2M-1を、`internal/semantic/validationgen/positive_source_ast_binding_test.go`の限定Go回帰として追加する（本ブランチの新規テスト。**exact HEADのCIと独立レビューが済むまでは合格未確認**）。
+前章で計画したI2M-1を、`internal/semantic/validationgen/positive_surface_identity_test.go`の限定Go回帰として追加する（既存テストにAST照合を追加する変更。**exact HEADのCIと独立レビューが済むまでは合格未確認**）。
 
 テストは、既存`Workspace.Load`／`BuildSourceIndexFromLoad`／`GeneratePositive`と、I2M-0のテスト内観測器`observeGeneratedPositiveGo`を使用する。**新しい製品Reader・AST Engine・一般化されたViewModelではない**。比較の一試行に、選択Reader、Rule IDと型、元SourceのDefinition Span・Fingerprint／Model Revision、生成Go byte、AST上のRead先・呼出回数・分岐条件とGo Spanを含める。
 
