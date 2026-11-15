@@ -495,3 +495,13 @@ Graphの構造的全件性、Function Read/Write、Owner受理、Source Patchの
 
 この変更は**本物の保存ファイルが持つ証拠と、合成Graph付きFixtureが示す操作能力を分ける**ためのもの。§21の合成旧2辺→新2辺比較は引き続き合成受入であり、実ツールのGraph取得成功、再実行による現在性、外部Occurrenceの完全性、正式Owner意味受理、Source Apply/Save/ReReadやNative Studio第二Consumerは未検収。次に実保存Graphまたは正しく束縛されたViewを取得できる段階で、Evidence ID・Raw/派生Digest・Provider版・Coverage・Relation Occurrenceを別の受入として追加する。既存#1180/#2514/#4661/#2586/#4583/#2831のP0を維持し、未実装フィールド・架空Source・第二Reader/Hostを増やさない。
 
+## 23. REA専用CIを「Receipt受領」と「Producer ID付き候補選択」に分離する（2026-11-15）
+
+§21～22で既存REA Reader・型付き候補生成・比較CLIを接続した一方、REA専用CIの`verify_real_rea_intake.py`には旧契約が残っていた。スクリプトは`tei rea-evidence -observation-id ... -relation-id ...`を実行していたが、現行`rea-evidence`は**原本Receiptと派生Requestを受領する入口**であり、候補選択引数を持たない。外部ツール6.7.0／6.8.0の実行後にこの架空のCLI呼び出しで終了コード2となり、実REAが失敗したかのように読めるCI結果を作っていた。
+
+**修正方針**：原本ByteからのReceipt受領・Evidence ID・Raw SHA256・Promotion=false・派生Request検証は、候補Graphの有無にかかわらず毎回実施する。Producerが同じ受領原本内の`normalized_result.semantic_graph`にNode ID／Relation IDの双方を表明したときだけ、既存の`tei external-candidates -evidence-path ... -tool-version ... -observation-id ... -relation-id ...`を呼ぶ。選択結果がRead-only Operation Contractであること、同じ受領Raw SHA256、外部IDとAuthorityLimitsを検査する。
+
+`normalized_result={}`などでGraph／選択IDが欠ける場合、Source-backed候補は**NOT RUN**として記録するが、Receiptと派生Requestの検収は省かない。不正なGraph型を無言で空扱いせず拒否する。Fixtureをテストの都合で加筆せず、実保存Byteの変更やGraph取得成功も主張しない。合成の並行Relation試験と実保存原本の資格を区別する点は§22と同じ。
+
+この是正が確認できるのは、外部REA実走→受領Byte→Receipt／派生Request→存在する場合に限ったR2外部候補投影までである。`three-element rea-candidates`が実保存Graphから三要素CandidateSetを生成できたこと、Old/New Sourceが継続していること、Owner意味受理、Native JS第二Consumer、TEI Studio実Stage2、実PG Function Read/Write、Source Apply/Save/ReReadは別の実Expectedとする。Go契約試験の旧保存FixtureにGraphがあると想定した不整合は独立の修正対象として残し、実証条件を勝手に緩めない。
+
