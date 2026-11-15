@@ -389,3 +389,46 @@ G6のStudio Stage1→Stage2では、同じ原則を非Plugin Desktopへ適用し
 [宣言的構文・Operator選択の横断設計](DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md)§22〜23と[派生Projection・Runtime・移行の受入](DERIVED_PROJECTIONS_RUNTIME_AND_MIGRATION_ACCEPTANCE_2026-11.md)§13のPQ-A／PQ-Bは、この表の別々の行・Ownerに対応する。P0の**正式pure Functionの公開Entry→実Provider→独立Consumer**と、**非Plugin Studio Stage1→Stage2 Windows WebView2**は引き続き並行する。自分自身をGoでビルドできた事実を、生成Pluginの正規配布・Studio全体の自己生成に拡大しない。
 
 新たに確定したのは**「Source解決が存在する」ことと「業務言語の出典が正式Buildに連続している」ことの差**である。後者が確かめられるまでは正式R2-Pの完了とはしない。
+
+## 14. 検査義務を一つTEIへ移し、次のTEIで使う（2026-11-15）
+
+これまでに実証してきた「TEIのRuleからGoの判断処理を生成する」能力を、**その生成器を構成する手書きGoの判断を減らす**段階へ進める。最初から生成器全体の自己記述や万能Interpreterを目指さない。実装義務一件を置き換え、旧Goと同じ負例を拒否できること、次世代のTEI自身がその検査器を使えることを別々に検証する。生成型・解釈型・外部委譲型の区分と計測は[製品完成計画](../workstreams/PRODUCT_COMPLETION_PLAN.md)を再利用する。
+
+### 14.1 最初に移す義務と、意図的に移さない義務
+
+現行`internal/semantic/validationgen/positive.go`の`GeneratePositive`には、positive RuleのID・Attributeが存在し、Relationが存在しないことを検査する手書きGo条件がある。**最初の移管対象は、このRequired Shape検査一件**とする。既存標準Data／Record／Rule／Roleが表す形状として宣言し、選択済みRuleの型付き意味へ結び付ける。利用者向けDSLへGoの`struct`や`func`を露出させず、既存Readerで読めない表を実行可能な宣言として黙って採用しない。
+
+`Kind=positive`の演算Law、`std.decimal`の型解決、NULL／未取得の評価、Goターゲットの`packageName`識別子検査は**別々の義務**として残す。Goからなくした分岐と、新しくTEIが担えるようになった分岐を一対一で確認するためである。Go単一バイナリや既存Goライブラリの使用は妨げない。
+
+基線として、`internal/semantic/validationgen/positive_shape_obligation_baseline_test.go`の`TestPositiveRuleShapeIndependentBaseline`（正常形、6種類の形状／型に関する拒否、別のGo package名拒否）と、`cmd/tei/cli_self_build_generated_rule_go_test.go`の`TestSelectedRuleGoThroughRealCLISelfBuild`（正値・ゼロ・負値・NULL・未取得）を使う。**独立Expectedを新Generatorの出力から作り直さない。** 業務Ownerの意味受理は別資格とする。
+
+### 14.2 自己置換は四段階で合格を判定する
+
+| 段階 | 実際に確認するもの | 成功と認めないもの |
+| --- | --- | --- |
+| **M0 出典固定** | 既存`Workspace.Load`、元Source byte／Source Index、選択Reader、型付きRule、旧Go分岐と独立Expectedを対応付ける | 未選択のMarkdown表、説明図からの暗黙の意味採用 |
+| **M1 TEIによる検査** | 既存Role／Operatorの解釈か既存Target Generatorを用いて、TEI定義がRequired Shapeの受理・拒否を**実際に決める**。選択実装と版を固定 | Descriptorを書いただけ、判断を丸ごと旧Goへ委譲しただけ |
+| **M2 手書き条件の置換** | 本来の`GeneratePositive`の実経路でTEI由来の検査を使用し、同義の旧Go判断を外す。独立Expectedと実Builder入力の一致を維持 | 新実装をテスト時だけ呼び、実製品では旧Go分岐が判定する。条件の二重保守 |
+| **M3 実再入と継続変更** | Stage0 Seed→Stage1実TEI→Stage2実TEIの**実Invoker／Source／Builder／Artifact／利用Plugin**を照合し、Stage2が当該検査を使って次の定義変更を処理する | Seedが二回ビルドした、Stage2が旧Pluginを使う、成果物の同値だけで実利用を主張する |
+
+M1には生成型・解釈型の両方を許すが、**M3のセルフビルド合格には意味のあるコード生成と実Builder消費を少なくとも一経路必要**とする。どちらの実現方式でも、検査器が未選択・失効・適合不能になった場合に旧Goへ**無言でフォールバックしない**。旧実装をSeed・比較用Referenceとして残すことは認め、製品の二重の意味正本にはしない。
+
+### 14.3 自己認証の循環とBuild入力を分ける
+
+自己記述した検査器が「自分自身の定義は正しい」と申告するだけでは検証にならない。**M0の旧Go基線と固定Independent ExpectedでM1候補を先に検査し、M2の実置換を別Attemptで確認する。** Role／Operatorの有限Bootstrap、SourceとGeneratorの実装版、選択Plugin Lockは既存#2620/#988/#1018の責務に留める。
+
+元RuleとReader／Generatorの出典閉包、生成したGo、`BuildIntent`のEntrypoint Source、Builderが実際に消費したGo byte、完成Artifactは一つのAttemptで照合する。`go-command`の`definitionSource`はGo Entrypointを指すので、ここへMarkdownのRule IDを代入しない。原文の同梱／Hashは**実byteの消費**を示す限定証拠であり、意味受理、実Generator資格、秘密の原文を公開してよいことまで保証しない。
+
+説明文だけ変えた場合は旧Source Indexを失効させ、意味上同じ生成Go／Artifactの再利用資格は別に判断する。Generator実装だけ変わって出力byteが偶然同じでも、旧Generator資格の再利用は不可。Operator選択A→B→Aでも旧実行資格は自動復活しない。
+
+### 14.4 最初のPR、比較方法、次の対象
+
+**初回のコード差分はM1だけ**とする。既存RuleのID／Attribute必須とRelation禁止を標準の形状条件として一つ表現し、実Goのテストに閉じたRunnerを新設せず、既存Role/Operatorの適用可能性を調べる。実行経路がない場合は`unsupported`を明示し、既存Reader・Generatorの不足する一点へ差分を返す。M1が独立Expectedを満たした後、別PRでM2の旧Go分岐を削減し、M3のStage再入へつなぐ。
+
+移管前後に、義務の固定分母、TEI由来の実判断、委譲・手書き・未実装、**実際に削減したGoの条件分岐**、TEI定義・例外設定・改版時の修正箇所、独立検収・レビューの実作業、生成・実行性能を記録する。手書き条件を別の設定やAIプロンプトへ移しただけなら簡素化としない。全指標の単調改善は要求せず、同じ機能を維持する総負担を測る。
+
+第二の異質な対象は、既存`testdata/tei-md-graph`の**6つのGraph入力**とする。そこには限定Reader／生成実験があるが、正式`*.tei.md` Readerはまだ未接続であり、`TEI_MD_PARSER_UNBOUND`を維持する。API PluginはWailsの機能へ固定せず、CLI／MCP／Studioは共通Operationへの別入口として展開する。最終Windows Studio Stage1→Stage2は#2831/#4583の独立P0に留める。
+
+**実装担当**：#2620/#4359（Shape／Role）、#2621/#988/#1018（Reader）、#1121/#4544（Generator）、#943/#951/#1251（Plugin）、#2595/#2831（実Build）、#2600（失効）、#1180/#2514（独立Expected）。#5056の生成Goと実入力の取り違え拒否、#5054のOperator選択後の旧Scenario失効は別PRとして扱う。新Host・Registry・万能Meta Interpreter・独立Expected正本は増やさない。
+
+**現状**：手書きGoのShape検査、独立基線、Rule生成Goの実CLI Buildは存在する。M1〜M3の移行、Generator自身のTEI実セルフビルド、定義簡素化の実測、正式R3 Provider／Windows Studio Stage2の成立をこの追補では主張しない。
