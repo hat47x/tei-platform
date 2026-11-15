@@ -1204,3 +1204,18 @@ Webの要求、CLIの起動、タイマー、Message、画面操作には、そ�
 中小規模案件の対応率は事前に定めた案件と必須条件の集合に対して測る。標準のみ、既存資産接続、新規拡張、未成立を分け、保留・実施不能の理由を示す。大規模案件の省力化は生成時間に加え、追加質問、手修正、レビュー、統合、更新と引継ぎを比較する。性能は正しい結果を保った入力・構成で測り、量、待ち時間、メモリ、費用と取消後の処理を残す。
 
 計画への反映が完了した状態は全G項目の担当、設計への接続、次の受入、依存を確認できることとする。製品としての達成は各Issueと既存の受入経路で判定する。理想像が更新された場合は、既存の項目との関係を先に確認し、不足する作業と条件を同じ担当へ戻す。 [生産性 #2018](https://github.com/hat47x/tei-platform/issues/2018) · [案件対応範囲 #3796](https://github.com/hat47x/tei-platform/issues/3796)
+
+
+<!-- tei-product-self-description-operator-selection-handoff-20261115 -->
+### 自己記述から実装選択・実使用へ進む最小検収（2026年11月15日）
+
+[自己記述設計§48〜49](../design/ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md)を、既存P0を妨げない二つの実装Packetとして引き渡す。
+
+| 並行するPacket | 次の実装と合格範囲 | 既存Owner・停止条件 |
+| --- | --- | --- |
+| **SD-M1：形と診断** | 製品で選んだ quantity_positive のID／Attribute／Relation／解決型と原Sourceを既存Inspectorからread-onlyで対応付け、Required Shape候補と独立Expectedを照合する。次にGoの重複する検査一箇所を生成処理で本当に置換した場合だけM2とする | #2620／#4359／#1180／#2514。Descriptorを文書へ移しただけではM2ではない |
+| **SD-O1：実装選択と実Call** | 同一Operator宣言・入力0のままmanifestの実装名を non-negative→non-zero と変更。Worldが同じでも実Call・結果が変わること、旧生成Scenarioコマンドの選択改版検出が不十分なことを一因子反例で固定する | #988／#1018／#2600とScenario Owner。現行の組込み実装名を外部Plugin Lockと同一視しない |
+
+それぞれの観測は異なるSubjectに属するため、成功を単純加算して全体セルフビルドの合格にしない。後続は既存の**R2-P：生成Go byte→正式Builder入力→Artifact**、並行する**R3：受理済みpure Function→公開Entry→実Provider→独立Consumer**、さらに**Studio Stage1→Stage2のWindows実受領**へ渡す。Node View／Graph／文書／AI向け説明は既存Meaning・Source・版を読み取り専用で投影し、意味受理・実行権限・逆編集権限を自動付与しない。新Core・Registry・Runtime・横断Hard Gateは導入しない。
+
+**状態**：現存のGo実装とPR #5007の限定試験を前提にした受入計画。新Descriptor検査／Go分岐置換、生成Scenarioコマンドの失効修正、外部Plugin、正式Builder、通常CLI actual Provider、Studio Stage2の新検証はNOT RUN。
