@@ -1158,6 +1158,8 @@ main統合済み[PR #4742](https://github.com/hat47x/tei-platform/pull/4742)で�
 | D1-3 公開資格を確認 | 文書参照と現在Audience/Disclosureを**Owner境界で**検査し、許可された必要範囲だけを返す | Fixtureの`visibility`は正式Grantではない。許可不明・途中切断なら本文と非公開Metadataを送らない |
 | D1-4 使用例を検証 | 本文中のCLI/Operationを実 `tei commands`／既存read-only Operationと照合して返す | Reference生成バイナリの`-node`は製品`tei`のFlagではない。例示コマンドをHostへ無断実行しない |
 
+**D1-0実選択の上位依存を追加して検証する（PR #4826）**：main統合済み[#4800](https://github.com/hat47x/tei-platform/pull/4800)の`documentReadPreflight`を拡張し、選択された下位Plugin Bの**直接`Requires`だけ**について、既存Resolver/Lockが実際に選んだ上位AのID・`compatibleMajor`・正確なVersion・Lock状態・不一致理由を`upstreamSelection`として返す。C→B→Aの依存があっても、Cの直接上位をAと偽らない。版不一致、上位の未宣言・未選択・未解決、Lockなし・不一致を独立に表し、二つ目のResolverは実行しない。この結果は**どの版を参照する可能性があるかの選択証拠だけ**であり、Aの公開Documentが存在することも、Aの文書をBへ開示してよいことも、BからCへの再公開が許されたことも意味しない。`sourceBinding=unbound`、`disclosure=not-checked`、`readEligibility=not-assessed`を保ち、D1-1（正式Doc帰属）以降と区別する。PR #4826のコードと正負テストは現時点で**CI・Owner確認待ち**であり、検証完了を先取りしない。
+
 **最初の製品テストを置く場所**は、#4714が所有する実CLI／Application Operationの経路である。#4757の合成FixtureをSourceと期待値の対照に利用しても、正式なDocument grammar、第二Resolver、Document Registry、AI専用Readerや新Hostは作らない。通常のMarkdownマニュアル一件のread-only取得には、業務意味用の正式`*.tei.md` Reader完成を先行条件にしない。一方、同ManualからリンクしたGraph/Ruleの**意味受理・生成**には正式Reader/Meaning/Targetの検証を要求する。
 
 D1の独立負例は、(1)未選択Plugin、(2)同名別Doc、(3)CompatibleMajorのみでexact版不明、(4)旧版Manual、(5)非公開Doc/再公開、(6)Source変更・A→B→A、(7)partial reply/後着応答、(8)文書内にだけある未実装Commandである。PDC-0 JSONの期待値をそのまま実製品の認可結果とするのではなく、**実Productの同一Attemptで観測できた範囲**を#1180/#2514に渡す。
