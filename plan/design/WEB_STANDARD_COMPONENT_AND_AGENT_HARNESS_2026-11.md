@@ -322,7 +322,7 @@ UI-P1の公開選択Eventは、利用者が何を見ようとしているかを�
 
 ### 16.2 API PluginをWailsから切り離し、Webの公開責任を明示する
 
-[CLI／Backend配布設計§17](STUDIO_CLI_BACKEND_PROCESS_DISTRIBUTION_UPDATE_2026-11.md)の「Operation ProviderとAPI公開Contributionの分離」をWebにも適用する。通常のローカルCLIはApplication Operationへ直接到達し、HTTP listener、WebView、Wailsを必要としない。WebではHTTP Adapterが認証済みActor・Audience・Disclosure・入力の完全性・実Provider選択を評価し、Wails Serverは利用できるHostの一つとして扱う。Browserからの要求やHTTP Route名をOperationの意味ID・Grantの正本としない。
+採用済みの[ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)と、審査中の[API Plugin／CLI直結設計 PR #5096](https://github.com/hat47x/tei-platform/pull/5096)で提案されている「Operation ProviderとAPI公開Contributionの分離」を、Webの受入候補として具体化する。通常のローカルCLIはApplication Operationへ直接到達し、HTTP listener、WebView、Wailsを必要としない。WebではHTTP Adapterが認証済みActor・Audience・Disclosure・入力の完全性・実Provider選択を評価し、Wails Serverは利用できるHostの一つとして扱う。Browserからの要求やHTTP Route名をOperationの意味ID・Grantの正本としない。
 
 公開の適格性は **Operation契約 → Provider選択 → Targetへの収録 → Route公開 → 今回の認可・開示 → 実Call → Consumer受領** の順に確認する。型が一致しても内部用RecordのFieldをそのまま外部へ渡さず、全体Record／Field単位／明示AdapterのどのBindingで何が失われ、何が公開されるかを既存Mapping・Disclosureに示す。URLや表示上のアクセス制御だけで秘密を守らない。外部Browser向けには少なくともOrigin／CORS、CSRF、Cookie／Session、CSP、認証・認可、キャッシュの共有範囲をTarget別に検査し、Secretと内部CredentialをHTML／JS／Source Map／ログへ含めない。
 
