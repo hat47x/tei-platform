@@ -52,3 +52,13 @@ WebはPoC Aと同じloopback・ローカル単一利用者・参照専用の範�
 ## 未確認の範囲
 
 この文書の手順は、実行結果を示さない。Desktop実WebView、別アプリとの共通部品利用、PoC B生成構成との等価性、アクセシビリティ全項目、利用者による価値確認、公開Web適格性は別々に検証する。Studioの画面成功を生成業務Desktop Targetの合格へ転用しない。
+
+## S-LOC-0：Source参照位置を扱う独立したread-only投影
+
+`source-locations.ts`は、現行`InspectSubject`の`sources.artifacts[]`と`sources.references[]`を、ひとつのCatalog/Inspect応答に対する検証済みの表示用データへ変換する。まず`readInspection`で正確なSubject、read-only応答、Hostが付した`authorityLimits`、World／Source Index指紋の一致を確認してから、参照元の相対Path、Role、行・列・**byte offset**、Artifact指紋を取り出す。同一Subjectへの複数参照や異Roleを統合しない。最大20件だけを返し、観測件数と表示上の省略件数を別に保持する。
+
+Source Indexの`references`が0件、またはGoのnil slice由来でnullだった場合も、**観測0件**であって「Sourceに参照が存在しない」「Workspaceを完全に調べ終わった」ではない（`completenessEstablished:false`）。相対パスの不正、別Subject、Artifact指紋欠落、byte範囲の逆転、旧Catalogとの指紋不一致は拒否する。日本語やCRLFのbyte位置をCodeMirrorのUTF-16列位置と混同しない。
+
+**このモジュールはまだWorkbench画面やWailsの埋込Bundleから利用されない。** パスをFile URL・絶対パスに変換せず、原文を読み取らず、Source Write／Grant／Disclosure／Meaning Acceptanceを推定しない。実画面のS-LOC表示と、実Root・原文byteをHostが再確認するS-OPENは、Desktop製品契約§0.18.6の独立した後続段階である。
+
+`npm test`に`source-locations.test.mjs`を追加しており、対象不一致、複数Role、20件超、0件、旧版、相対Path・範囲の不正、HTML風Pathを含むSourceメタデータを検証する。通常の`npm run typecheck`と同じソースを使用する。純粋投影のCI成功と、Node/esbuildの生成Asset／Wails実Windowの受領は別の資格として扱う。
