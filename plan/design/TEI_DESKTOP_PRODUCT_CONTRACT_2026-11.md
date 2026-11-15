@@ -832,6 +832,18 @@ P0の優先順位は**Desktop Stage1→Stage2／通常`tei`実Provider／正式R
 
 **現時点の到達点**：S-LOC/S-OPENは**設計と受入計画のみ**。実Sourceへ戻るHost Operation、実DOM/Windows表示、権限・Disclosureの再検査、Owner意味受理は今回NOT RUN。
 
+#### 0.18.7 S-LOC-0：実参照メタデータの純粋投影を製品画面から分離する（2026-11-15）
+
+**最初の実装単位は、`InspectSubject.sources`を失わず受け取る、Hostに依存しない読み取り専用モジュールと回帰テストに限定する。** この段階ではEditor、WailsのBridge、生成HTML/JS、OS上の原文Openを変更しない。既存WorkbenchのPin実装とBundleの版が他のPRで変わっても、実装を不注意に旧UIへ差し戻さずに済む。
+
+`reference/tei-studio-workbench/source-locations.ts`を**S-LOC-0**の入口とする。`readInspection`の既存検証を通した同一Subject・同一Catalog World/Source Index指紋・Hostの`authorityLimits`だけを受け、`sources.subject`と各`references[].subject`のIdentityを再照合する。Source位置は`artifactPath`、`role`、`range.start/end`のbyte offset／行／列、同Pathの`artifacts[].fingerprint`を保持し、最大20件だけを投影する。参照0件もSourceの不存在・未使用確定ではなく、`completenessEstablished:false`の観測として返す。Goのnil sliceがJSONの`null`となる場合も0件として扱い、未供給のフィールドを偽の0件にしない。欠落Artifact、重複Path、別Subject、相対Pathの逸脱、逆転byte範囲は拒否し、Renderer用の絶対File URLやEditor UTF-16座標は作らない。
+
+回帰では、複数ReferenceとRole、20件超の表示省略、日本語を含むPathとbyte offset、`not-indexed`の0件、旧World/Index、Authority Limit欠落、不正Path/Range、HTML風Pathを独立に照合する。Node24の`npm test`と`typecheck`を現行package scriptに組み込み、**この純粋関数の成功を実WorkbenchでS-LOCが見えた、Hostの現在Root/Disclosureが受理された、原文を開いたという証拠へ昇格しない**。
+
+**配布境界の更新**：[PR #4812](https://github.com/hat47x/tei-platform/pull/4812)の最後のHEAD `5035ef82`では9種のCIがsuccessだったが、同PRは**未マージでclosed**。その後mainのWorkbench SourceはPin UIの実装で変更され、#4812の古い`main.js`／`index.html`をそのままmainへ移すと最新の描画・Pinを壊す可能性がある。正式なWails配信は**現mainの最新Sourceから毎回再生成し、同じHEADの埋込byte／Browser／Windows WebView2を独立検査する**。S-LOC-0はその前段であり、S-LOC画面・S-OPEN・Current Grant・正式`*.tei.md` Reader／Stage1→Stage2は各Ownerの後続検収として維持する。
+
+**実装とCIの実観測（2026-11-15）**：[Draft PR #4842](https://github.com/hat47x/tei-platform/pull/4842)のexact HEAD `b38e0058`にはこの純粋投影、7つのNode回帰と標準`npm test`への登録がある。[Workbench embedded bundle CI #43676020851](https://github.com/hat47x/tei-platform/actions/runs/43676020851)のログでは、新設したS-LOC **7件はすべてPASS**。ただし同Workflowは既存のPin Product Reader Fixtureに`authorityLimits`が欠けること、`main.ts`と`index.html`のPinボタンIDが異なることなどから**overall FAIL**。Windows CI #43676020844も、`internal/jsonl.ReadBytes`二重宣言と静的Workbench固定版不一致でFAIL。二重宣言は後続[PR #4844](https://github.com/hat47x/tei-platform/pull/4844)がmainへマージして修正したが、**#4842の旧HEADに遡ってCI成功を付与しない**。現行Pin Fixture／UI接続と生成・埋込資産は別の修正・検収対象とし、総合CI成功または製品S-LOC完了をここでは主張しない。
+
 ## 1. 位置づけと判断済み前提
 
 - **TEI Studio**はData/Function/Business三視点、Data Context、Source/Meaning、DBクライアント、Plugin、テスト、SHO文書機能への統合Workbench。
