@@ -1412,7 +1412,7 @@ mainのRule生成Go CLIビルド回帰は、選択Markdown原文のコピーをG
 | 受入単位 | 次の実装・独立Expected | 明示する未接続と担当 |
 | --- | --- | --- |
 | **ORG-W1 記述と実記録を分ける** | 異動申請TransferRequestの印付き**Data定義表**は既存ReaderでData／Attributeとしてinspectし、型・必須・Source原byte位置を従来Dataと照合する。Membershipの**実所属行**は正式Providerから取得し、定義表の1行を所属データとして取り込まない | #2621/#988のReader・Source、#2386の業務Meaning。Markdown定義が未対応のRelation・複合Key・履歴版・Propertyを推測して埋めない |
-| **ORG-W2 二時点の保存と実Read** | Ownerが受理したOccurrence／Assertion revision／Person Linkを正式Persistenceへ反映。validAt・knownAtを宣言したQueryから、同一A2の旧新二版をProviderが実取得する。SQLバインドと非表示allocation_minの依存も固定 | #2386/#1126→#2622/#2586。隔離PGの試験用版と正式Sourceは別。保存時の二軸競合排他は[PR #5063](https://github.com/hat47x/tei-platform/pull/5063)の**未確定候補**であり、CI成功まで実証済みとしない |
+| **ORG-W2 二時点の保存と実Read** | Ownerが受理したOccurrence／Assertion revision／Person Linkを正式Persistenceへ反映。validAt・knownAtを宣言したQueryから、同一A2の旧新二版をProviderが実取得する。SQLバインドと非表示allocation_minの依存も固定 | #2386/#1126→#2622/#2586。隔離PGの試験用版と正式Sourceは別。保存時の二軸競合排他は[PR #5063](https://github.com/hat47x/tei-platform/pull/5063)の隔離PG run #43724543096で**一接続の正負例が明示PASS**。二接続の同時Writerは[PR #5099](https://github.com/hat47x/tei-platform/pull/5099)の未確定候補であり、正式Source／Migrationへの採用は別 |
 | **ORG-W3 必要な取得の閉包とRule** | 同じvalidAt/knownAt・Scopeで、Membership、Person Relation、Ruleが使うRole/Responsibility、非出力Filterを「必要なRead集合」として明示。全部取得／部分取得／0件／競合／開示拒否を分け、人数・所属件数・FTE・承認候補の粒度を混同しない | #4490/#4501/#2510。BRMSのUnique候補は二軸の「同一所属一版」と別のLaw。Source Revision・Rule revision・Read Cohort・Current Grantを独立に保持 |
 | **ORG-W4 二Consumerの投影と逆編集** | 同じAccepted World/Read Cohortの所属A2をCLIのTableとStudio/SHOのGraph／Treeに投影し、Occurrence・版・有効／認識時点・Source位置・Edgeの向き／多重性を照合。第二親と非表示の取得依存を失わない | #1124/#2497/#2516。Source PIN→Preview→再Readを経ないGraph端点ドラッグやAI後着でSource／承認者を更新しない。Studio実WebView2受領は別 |
 | **ORG-W5 Plugin・Hostへの公開** | 別Consumer/Pluginで同じShapeが使えても、業務Lawの独立Expected、現在のImplementation/Provider Binding、生成・実Call、公開Slice、Host Guard/Effectをそれぞれ照合する | #951/#1251/#2499/#1174/#5061。所属＝Account/Tenant Grantではなく、Plugin配布＝実Composition／実Invokeではない |
@@ -1422,6 +1422,23 @@ mainのRule生成Go CLIビルド回帰は、選択Markdown原文のコピーをG
 **Sourceの採否・実装の段階**：まずORG-W1を既存CLI/Inspectorで反証し、ORG-W2は意味Owner判断とProviderの二版保存を待つ。W3は必要Readの全件性を少なくとも一つの負例で示し、W4はRead Cohortの一致が保証できた場合だけ二Consumerへ進め、W5は既存Host・Plugin実CallのOwnerに委ねる。未完了のLinkを説明用Graphで補わず、標準Data/Relation・Query・Rule・Representationの既存層を再利用する。通常CLI実Provider #2586とStudio Stage1→Stage2 #2831は引き続き並列P0であり、相互をHard Gateにしない。
 
 **状態**：これは既存mainの限定成果と、組織C1固有の欠落を結ぶ受入計画である。正式Membership履歴保存、Person Link、製品Read Cohort／二Consumer、BRMSでの実判断、Plugin/Host・Studio E2E、意味Ownerの採用はこの追記だけで成立しない。
+
+
+<!-- org-matrix-parent-cardinality-realization-20261115 -->
+#### ORG-W4a：関係の多重性と、保存・読取で実現できる多重性を照合する
+
+現行[組織Source](../../reference/org-staged-axis/semantic/organization-axes/model.tei)には、`OrgUnit.matrixParent` が **`many` のRelation**として宣言されている。一方、対応するKeyは単一項目`matrixParentId`から`OrgUnit.orgUnitId`への参照であり、現行の`org-staged-axis`にOrgUnit用の正式Persistenceや複数Edgeを実Providerで取得するQueryはない。**多重性を宣言できることと、同じOrgUnitから異なる二つの上位OrgUnitへの関係を保存・再読込できることは別**である。
+
+| 確認する経路 | 独立Expectedと停止線 |
+| --- | --- |
+| **MP-1 Source／Meaning** | `supervisor`（one）と`matrixParent`（many）の向き・Relation ID・適用時点・業務意味を別に保持する。二つの親が存在する場合も、表示順で本務・指揮系統を決めない |
+| **MP-2 保存／Provider** | 同じOrgUnit UからP1・P2の二本の`matrixParent` Relation occurrenceを、別IDとして保存・実Readできるかを正式Relation Storage／中間表／Providerが証明する。単一の`matrixParentId`スカラー、同じUの履歴版二行、`many`という構文宣言だけではこの正例を満たさない |
+| **MP-3 標準Graph／Node** | P1・P2への両有向Edgeを別のEdge ID・元Source・Scopeで保持し、同名Node／同ラベルEdgeを潰さない。必要な辺がpartialなら「親は一つだけ」と判定しない |
+| **MP-4 Tree／Studio／Rule** | 単一親Treeに投影するとき、省略した第二のEdgeと不可逆性を明示。配置上の主親は表示選択であり、BRMSの唯一承認者・現在Grantの根拠にはならない |
+
+最初の実装は、**一つの正式Relation、二つのEdge occurrence、同じvalidAt/knownAtでの実Provider二件取得**を、Source／Persistence／Query／Graphで独立Expectedに照合すること。これをMembershipの旧新版（二行であって別Edgeではない）や、Personの兼務（別Membership occurrence）と混同しない。#2386/#1126が多重性とRelation保存方式の意味を受理し、#1124/#2497/#2622が実取得と表示上の保持を担当する。Graphの宣言だけから新しいJoin機構、Graph DB、組織専用Authorizationを導入しない。
+
+**現況**：現行Sourceの宣言とKeyの形、OrgUnitの製品Persistence未接続を静的に照合した設計GAP。複数親の実Provider取得、編集往復、Studio／BRMS製品受入は**NOT RUN**。正式所属履歴の二Writer候補#5099とは、対象Relationも試験の合否も独立して扱う。
 
 <!-- tei-product-self-described-validation-data-reader-20261115 -->
 ### TEI自身の検査規則をDataで記述する製品Reader実験（2026年11月15日）
