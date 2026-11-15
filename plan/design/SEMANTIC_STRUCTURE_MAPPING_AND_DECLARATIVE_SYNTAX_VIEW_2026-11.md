@@ -1097,7 +1097,7 @@ Source byte、Reference候補構造指紋、Model Revision、Artifact Revision�
 
 **現在の検証範囲**：[Graph/Rule限定Go生成 #4758](https://github.com/hat47x/tei-platform/pull/4758)、候補構造が同じでも旧Source Indexを拒否する[#4759](https://github.com/hat47x/tei-platform/pull/4759)、生成Binaryの候補指紋自己申告を信用できない[#4761](https://github.com/hat47x/tei-platform/pull/4761)、Window SQLの実表値変更（生成SQL不変でも結果が変化）を試す[#4760](https://github.com/hat47x/tei-platform/pull/4760)はmainへ統合済み。ただし、これらは**それぞれ限定したReference／SQLite回帰**であり、正式`*.tei.md` Reader・製品Query/Provider・実CLI Consumerの同一Attemptを証明していない。
 
-WindowのS0-Pは現mainで少なくとも基準とFrame変更の二入力を検査している。負例を含む五入力すべてへの拡張は[PR #4792](https://github.com/hat47x/tei-platform/pull/4792)の進行中の作業として別管理し、正式Reader受理やmain実績に算入しない。期待値JSONはいずれも`adoption=proposal-only`であり、#1180/#2514のOwner正式受理を代替しない。
+WindowのS0-Pは[main統合済みPR #4792](https://github.com/hat47x/tei-platform/pull/4792)によって、基準・Frame変更・説明配置のみ変更・観測ID重複・古い派生表示の固定5入力すべてを、Manifest管理Root／Pinned Source／元byte位置／Source Index失効で検査する段階まで進んだ。不適格な原文もSource追跡から脱落させず、5入力とも製品Workspace.LoadではTEI_MD_PARSER_UNBOUNDを維持する。この成功を正式Reader・Window意味受理・製品Query生成とは呼ばない。期待値JSONはいずれも`adoption=proposal-only`であり、#1180/#2514のOwner正式受理を代替しない。
 
 ### 39.3 最初の製品PRの入場・終了条件を狭く固定する
 
@@ -1137,3 +1137,31 @@ WindowのS0-Pは現mainで少なくとも基準とFrame変更の二入力を検�
 最初に着手するのは**Graph S0-A一入力の正式Read**であり、Window全五例、一般BRMS決定表、REA/組織の完全性、GUI編集をそのPRの新しいHard Gateにはしない。次にGraph/Ruleの実Generated Function→通常CLI、実Provider Read→Function Data Context→独立Consumer、Studio Stage1→Stage2実Windows WebView2の各Ownerで不足する一辺を順に埋める。Sourceと実Consumerの間で新たな完了Claimを得るまで、`NOT RUN`を成功に書き換えない。
 
 **この節の資格**：main統合済みの限定試験・設計と、進行中のPRを区別した実装引渡し。Graph製品S0-A、Accepted Meaning、製品Codegen／Provider、実二Consumer、Studio Stage2、Writer／Owner正式受理をここで実装・検収したものではない。全体P0と既存Ownerの独立Expected正本は変更しない。
+
+<!-- tei-data-forms-observed-consumer-20261115 -->
+
+### 39.6 Sourceの同一性・観測結果・実Consumerの現在資格を分ける（2026-11-15）
+
+他レーンでmainへ統合された実装から、Sourceを追跡できることと、その情報を実Consumerが正しく使えることの間にある不足を、さらに具体的に判断できるようになった。第二のEvidence Storeや横断Runtimeを設けず、既存のSource Index、候補比較、Plugin Inventory、Studio InspectorとBuildの検収へ返す。
+
+| 実装と現在の資格 | 実際に確認できること | 追加の受入を要すること |
+| --- | --- | --- |
+| **Window S0-P**：main [#4792](https://github.com/hat47x/tei-platform/pull/4792) | 正常・重複ID・旧派生表示を含む5原文の管理Root選択、Pinned byte、Source位置、Index失効。無効な定義もSource追跡から落とさない | 5例すべてで正式Loaderは未束縛を拒否する。選択Frontend・意味解釈・製品Queryは別検収 |
+| **REA候補比較**：main [#4805](https://github.com/hat47x/tei-platform/pull/4805) | 同じCandidate ID・申告Source DigestでもStructuralFactsが変化すれば observed-facts-changed と判定する | 申告digestの一致だけでは意味受理、観測の不変、外部REA全件取得、Current Grantを保証しない |
+| **Plugin文書の前提検査**：main [#4800](https://github.com/hat47x/tei-platform/pull/4800) | 実Plugin Inventoryの選択状態、正確な版・Lockの一致と不一致をread-onlyで判別 | exact-version-pinnedでもSource Bindingは未束縛、Disclosureは未確認、readEligibilityは未評価。本文・隠れたID・件数は公開しない |
+| **Studio Inspector**：main [#4806](https://github.com/hat47x/tei-platform/pull/4806) | Workbenchの実装SourceでauthorityLimitsの保持・表示、型不正や古いReplyを拒否する処理を追加 | Sourceコードの検査だけでは正規生成Bundle・Wails埋込資産・実Windows WebView2の表示まで保証しない。構成同期は[PR #4812](https://github.com/hat47x/tei-platform/pull/4812)の別検証 |
+| **Graph/Rule生成**：main [#4758](https://github.com/hat47x/tei-platform/pull/4758)・[#4761](https://github.com/hat47x/tei-platform/pull/4761) | 候補からのGo処理生成と、Binaryが申告する構造指紋だけでは実ロジックの正しさを証明できない負例 | 受理Meaning、実Builderの入力、外部測定Artifact、通常CLIの選択CallとConsumer受領を別に確認 |
+
+#### 39.6.1 統合する五つの負例と担当
+
+既存の独立Expected（#1180/#2514）へ戻す不足条件は次の五つ。別のCase番号体系や製品入場Gateを作らない。
+
+1. **Source追跡成功・意味未受理**：Windowの不正な二候補も原byteと位置を保持したまま、意味Reader未接続なら拒否する。担当は#2621/#988。S0-Aは従前どおりGraph一入力から着手する。
+2. **同じID／digestでも観測Factが変化**：REA候補比較では旧Attemptの unchanged 判定や旧Owner受理を自動継承しない。担当はREAの既存Ownerと#2497。
+3. **Pluginが選択・Lock済みでも文書は読めない**：出典・Audience・Disclosure・現在資格を別に検査し、隠れた本文・件数・参照を漏らさない。担当は#4714/#2516。
+4. **画面ソースが新しくても実Bundleは旧版**：Presenter試験、正規Bundle生成、配布資産のbyte一致、実Wails/WebView2受領を別試行で確認する。担当は#1824/#4583。#4812の完了を先取りしない。
+5. **候補構造が同じでも実処理は異なる**：候補の構造指紋や実行ファイルの自己申告ではなく、Generatorが実消費したMeaning、実Builder、生成判断、外部測定Artifact、CLI実結果を比較する。担当は#4544/#2831。
+
+この五例に共通するのは、**ある層の有効な証拠を次の層の受入へ自動昇格させない**ことである。ただしSource、REA、Plugin、UI、Generatorの意味・権限を同じ一つのCore型に押し込まない。第39.3節の正式Graph S0-A、実Provider→独立Consumer、Studio Stage1→Stage2は引き続き別々のP0作業とする。
+
+**今回の状態**：新たな製品E2Eではなく、mainの限定実装と進行中#4812を区別した設計・検収の引渡し。実Markdown Reader、受理Meaning→製品Generator/Provider、Wails実Consumer、Stage2、Owner正式受理は本差分では未検収。

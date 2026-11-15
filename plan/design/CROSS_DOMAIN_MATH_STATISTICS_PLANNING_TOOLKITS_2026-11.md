@@ -550,6 +550,14 @@ Window候補5件はSHA-256で元ファイルと結び付いているが、**候�
 
 [BRMS決定分析 #4765](https://github.com/hat47x/tei-platform/pull/4765)で明確になった部分観測の境界も同様に適用する。**期待値候補に七行あることは、製品のSource取得が完全だった証拠ではない**。未読Sourceや未解決Cellが残る間は、観測された行の整合を言えても、他に行がないこと・全件の唯一性・結果の現在性を保証しない。Source閉包、入力Datasetの版、生成SQL/Artifact、実行観測、Owner受理を既存のEvidenceとRevisionで区別し、同じSource指紋から結果再利用の資格を自動導出しない。
 
+### 管理Sourceに負例が含まれても、原文の来歴を失わない
+
+WindowのS0-Pは当初、基準と計算範囲変更の二つの正例に限っていた。これを**五件の固定候補すべて**へ拡張し、表示だけの変更、観測IDの重複、計算定義と古い派生表示の不一致も、既存WorkspaceのManifest管理Rootから元バイト列として特定・再読取できることを確認する。選択されない`drafts`には**選択済み原文と異なるバイト列**を置き、取り違えを検出できるようにする。管理対象に含めないだけでなく、選択済み原文のSHA-256とも混同しない。五つの`sourceSHA256`、B2のNULL行、各Frame、負例固有のA3重複行／旧表示行をSource Indexのbyte位置に照合する。原文変更で旧Indexを失効させることも共通に検査する。
+
+ここでの「読める」は、**Managed Sourceの発見と原文の取得**に限る。意図的に不正な候補でも、問題を報告するためのSource位置は失ってはならない。一方、製品`Workspace.Load`は五件とも`TEI_MD_PARSER_UNBOUND`として拒否する。重複IDを本番Readerが診断したこと、古い表示との差分を意味的に判定したこと、Rule／WindowがOwnerに受理されたことにはしない。負例を管理対象から外して検査を成功させることも、CandidateをValidへ変更して判定をすり抜けることも認めない。
+
+[自己記述の有限Bootstrap #4779](https://github.com/hat47x/tei-platform/pull/4779)と[プロセス実行モデル #4777](https://github.com/hat47x/tei-platform/pull/4777)がmainに統合した、Source→Meaning→生成→実Entry/Effect→Observationの資格分離をここでも使う。Windowの固定JSONやSQLiteへの入力バインドは、将来の正式Readerの**照合用候補**であって、正式Readerの代理ではない。最初の製品S0-AはGraph／Ruleで選択Frontendと原文Role／Cellを確立し、その後Windowの負例診断・Frame意味・Providerを接続する。第二Reader、第二Scenario正本、汎用Hard Gateは追加しない。
+
 ### 正式Readerが未接続である現状から、最小の実読取りへ進む
 
 2026-11-14時点の`internal/workspace/loader.go`は、管理Sourceを走査したあと、`rejectUnboundTEIMarkdownSources`で管理対象の`*.tei.md`を**`TEI_MD_PARSER_UNBOUND`として明示拒否**する。現在の`loadSemantics`が呼ぶ`syntax.NewParser(...).ParseSemanticFile()`は従来形式のParserであり、Markdownの表・フェンス・本文のRoleを実際に解釈した証拠ではない。`ManagedFile`の列挙、`ReadByLoader`の真偽、Parserでの解釈、意味の受理、Buildでの実消費はそれぞれ別の事実である。
