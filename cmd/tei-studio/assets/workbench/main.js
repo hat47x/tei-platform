@@ -18640,7 +18640,15 @@ var names = Object.freeze({
   catalog: "main.StudioBridge.CatalogWorkspace",
   validate: "main.StudioBridge.ValidateWorkspace",
   inspect: "main.StudioBridge.InspectSubject",
-  observeXead: "main.StudioBridge.ObserveXead"
+  observeXead: "main.StudioBridge.ObserveXead",
+  viewPattern: "main.StudioBridge.ViewPattern",
+  viewApplication: "main.StudioBridge.ViewApplication",
+  viewPackage: "main.StudioBridge.ViewPackage",
+  planCommand: "main.StudioBridge.PlanCommand",
+  executeCommand: "main.StudioBridge.ExecuteCommand",
+  executeCommandWithPeriods: "main.StudioBridge.ExecuteCommandWithPeriods",
+  executeCommandWithPolicy: "main.StudioBridge.ExecuteCommandWithPolicy",
+  executeCommandWithReferenceStore: "main.StudioBridge.ExecuteCommandWithReferenceStore"
 });
 function createReadOnlyClient(callByName) {
   if (typeof callByName !== "function") throw new TypeError("callByName must be a function");
@@ -18660,7 +18668,15 @@ function createReadOnlyClient(callByName) {
     catalogWorkspace: (workspaceID, namespace = "") => call("catalog", workspaceID, namespace),
     validateWorkspace: (workspaceID) => call("validate", workspaceID),
     inspectSubject: (workspaceID, kind, subjectID) => call("inspect", workspaceID, kind, subjectID),
-    observeXead: (workspaceID, relativePath) => call("observeXead", workspaceID, relativePath)
+    observeXead: (workspaceID, relativePath) => call("observeXead", workspaceID, relativePath),
+    viewPattern: (workspaceID, applicationID, patternID) => call("viewPattern", workspaceID, applicationID, patternID),
+    viewApplication: (workspaceID, applicationID) => call("viewApplication", workspaceID, applicationID),
+    viewPackage: (workspaceID, applicationID, packageID) => call("viewPackage", workspaceID, applicationID, packageID),
+    planCommand: (workspaceID, applicationID, patternID, capabilityID, inputs) => call("planCommand", workspaceID, applicationID, patternID, capabilityID, inputs),
+    executeCommand: (workspaceID, applicationID, patternID, capabilityID, inputs) => call("executeCommand", workspaceID, applicationID, patternID, capabilityID, inputs),
+    executeCommandWithPeriods: (workspaceID, applicationID, patternID, capabilityID, inputs, periods) => call("executeCommandWithPeriods", workspaceID, applicationID, patternID, capabilityID, inputs, periods),
+    executeCommandWithPolicy: (workspaceID, applicationID, patternID, capabilityID, inputs, periods, allowed) => call("executeCommandWithPolicy", workspaceID, applicationID, patternID, capabilityID, inputs, periods, allowed),
+    executeCommandWithReferenceStore: (workspaceID, applicationID, patternID, capabilityID, inputs, periods, allowed) => call("executeCommandWithReferenceStore", workspaceID, applicationID, patternID, capabilityID, inputs, periods, allowed)
   });
 }
 
@@ -18858,9 +18874,21 @@ function readValidation(raw) {
     };
   });
 }
+var INSPECTION_REQUIRED_LIMITS = [
+  "inspection-is-a-derived-read-only-projection",
+  "source-location-is-not-semantic-acceptance",
+  "source-location-is-not-write-authority",
+  "local-read-is-not-disclosure-permission"
+];
+var INSPECTION_LIMIT_LABELS = {
+  "inspection-is-a-derived-read-only-projection": "\u8868\u793A\u5185\u5BB9\u306F\u8AAD\u307F\u53D6\u308A\u5C02\u7528\u306E\u6D3E\u751F\u60C5\u5831\u3067\u3059\u3002",
+  "source-location-is-not-semantic-acceptance": "\u5143Source\u306E\u4F4D\u7F6E\u304C\u5206\u304B\u3063\u3066\u3082\u3001\u696D\u52D9\u4E0A\u306E\u610F\u5473\u304C\u53D7\u7406\u3055\u308C\u305F\u3068\u306F\u9650\u308A\u307E\u305B\u3093\u3002",
+  "source-location-is-not-write-authority": "\u5143Source\u306E\u4F4D\u7F6E\u306F\u3001\u7DE8\u96C6\u3084\u4FDD\u5B58\u306E\u8A31\u53EF\u3092\u793A\u3057\u307E\u305B\u3093\u3002",
+  "local-read-is-not-disclosure-permission": "\u30ED\u30FC\u30AB\u30EB\u3067\u8AAD\u3081\u3066\u3082\u3001\u5916\u90E8\u3078\u306E\u958B\u793A\u304C\u8A31\u53EF\u3055\u308C\u305F\u3068\u306F\u9650\u308A\u307E\u305B\u3093\u3002"
+};
 function readInspection(raw, expected, catalog) {
-  const v = record2(raw);
-  if (v.effect !== "read-only" || subjectKey(subject(v.subject)) !== subjectKey(expected) || !Object.hasOwn(v, "canonical") || typeof v.worldFingerprint !== "string" || typeof v.sourceIndexFingerprint !== "string")
+  const v = record2(raw), limits = v.authorityLimits;
+  if (v.effect !== "read-only" || subjectKey(subject(v.subject)) !== subjectKey(expected) || !Object.hasOwn(v, "canonical") || typeof v.worldFingerprint !== "string" || typeof v.sourceIndexFingerprint !== "string" || typeof v.sourceStatus !== "string" || !Array.isArray(limits) || !limits.every((limit) => typeof limit === "string") || !INSPECTION_REQUIRED_LIMITS.every((limit) => limits.includes(limit)))
     throw Error("INVALID_INSPECTION_RESPONSE");
   if (!catalog || v.worldFingerprint !== catalog.worldFingerprint || v.sourceIndexFingerprint !== catalog.sourceIndexFingerprint)
     throw Error("STALE_MODEL_PROJECTION");
@@ -18869,7 +18897,12 @@ function readInspection(raw, expected, catalog) {
     version: `${v.worldFingerprint}:${v.sourceIndexFingerprint}`,
     sourceStatus: String(v.sourceStatus ?? "unknown"),
     worldFingerprint: v.worldFingerprint,
-    sourceIndexFingerprint: v.sourceIndexFingerprint
+    sourceIndexFingerprint: v.sourceIndexFingerprint,
+    // Display limits returned by the actual read-only Host operation, not a
+    // client-side guess at grants or the current acceptance state.
+    authorityLimits: limits.map(
+      (limit) => INSPECTION_LIMIT_LABELS[limit] ?? `\u8FFD\u52A0\u306E\u5229\u7528\u5236\u9650\uFF1A${limit}`
+    )
   };
 }
 function relatedGraph(entries2, selected2) {
@@ -18940,6 +18973,21 @@ function showFailure(error) {
   const code = error instanceof Error ? error.message : "OPERATION_FAILED";
   notice.textContent = `\u64CD\u4F5C\u3092\u5B8C\u4E86\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\uFF1A${code}`;
   notice.dataset.state = "error";
+}
+function showInspectionLimits(limits, pending = "\u672A\u53D6\u5F97") {
+  const list2 = element("inspection-limits");
+  const state = element("inspection-limits-state");
+  list2.replaceChildren();
+  if (!limits) {
+    state.textContent = pending;
+    return;
+  }
+  state.textContent = "\u5B9F\u969B\u306EInspect\u7D50\u679C\u306B\u4ED8\u968F\u3059\u308B\u5236\u9650";
+  for (const limit of limits) {
+    const item = document.createElement("li");
+    item.textContent = limit;
+    list2.append(item);
+  }
 }
 function renderXead(raw) {
   const view = readXeadObservation(raw), result = element("xead-result");
@@ -19098,6 +19146,7 @@ async function inspect(subject2) {
     graph.update({ width: 680, height: 240, nodes: [], edges: [] });
     element("graph-note").textContent = "\u5BFE\u8C61\u306E\u4E00\u610F\u6027\u304C\u672A\u78BA\u5B9A\u306E\u305F\u3081\u95A2\u9023\u56F3\u306F\u4FDD\u7559\u3057\u307E\u3057\u305F\u3002";
     element("source-status").textContent = "\u5BFE\u8C61\u672A\u78BA\u5B9A";
+    showInspectionLimits(null);
     notice.textContent = `\u5019\u88DC\u306E\u95B2\u89A7\u306F\u7D99\u7D9A\u3067\u304D\u307E\u3059\u3002Inspect\u306F\u4FDD\u7559\uFF1A${eligibility.reason}`;
     notice.dataset.state = "error";
     return false;
@@ -19107,6 +19156,7 @@ async function inspect(subject2) {
   title.textContent = subject2.id;
   renderList();
   element("source-status").textContent = "\u30E2\u30C7\u30EB\u6295\u5F71\u3092\u53D6\u5F97\u4E2D";
+  showInspectionLimits(null, "\u53D6\u5F97\u4E2D");
   editor.setDocument({
     id: "pending",
     version: `${context}:${request}`,
@@ -19124,6 +19174,7 @@ async function inspect(subject2) {
       text: view.text
     });
     element("source-status").textContent = `\u53C2\u7167\u60C5\u5831\uFF1A${view.sourceStatus}`;
+    showInspectionLimits(view.authorityLimits);
     notice.textContent = "\u9078\u629E\u3057\u305F\u30E2\u30C7\u30EB\u306E\u6295\u5F71\u3092\u8868\u793A\u3057\u3066\u3044\u307E\u3059\u3002";
     notice.dataset.state = "ready";
   }, (error) => {
@@ -19138,6 +19189,7 @@ async function inspect(subject2) {
       element("graph-note").textContent = "\u53C2\u7167\u4E2D\u306B\u30E2\u30C7\u30EB\u306E\u66F4\u65B0\u3092\u691C\u51FA\u3057\u307E\u3057\u305F\u3002\u4E00\u89A7\u3092\u518D\u8AAD\u307F\u8FBC\u307F\u3057\u3066\u304F\u3060\u3055\u3044\u3002";
     }
     element("source-status").textContent = stale ? "\u7248\u4E0D\u4E00\u81F4" : "\u672A\u53D6\u5F97";
+    showInspectionLimits(null);
     throw error;
   });
 }
@@ -19175,6 +19227,7 @@ async function loadWorkspace() {
   title.textContent = "\u30E2\u30C7\u30EB\u3092\u8AAD\u307F\u8FBC\u307F\u4E2D";
   element("source-status").textContent = "\u672A\u53D6\u5F97";
   element("revision").textContent = "\u672A\u53D6\u5F97";
+  showInspectionLimits(null);
   editor.setDocument({
     id: "empty",
     version: String(context),
