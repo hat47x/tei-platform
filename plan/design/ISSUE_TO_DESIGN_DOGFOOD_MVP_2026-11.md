@@ -1446,9 +1446,9 @@ Readerが1件通った次のPRで、§15.38の固定Fixture（同Labelの別Node
 
 特に、現行`internal/workspace/tei_md_source_guard.go`の`TEI_MD_PARSER_UNBOUND`は、未束縛の管理対象Sourceを黙って無視しないための**正しい暫定拒否**である。このGuardを外して形式的な成功を作らない。現行`internal/buildintent/intent.go`には`go-command`と`go-package`に関する定義があっても、`BuildIntent`の正式な非Plugin Subjectが製品の実Buildを通ったことにはならない。いずれも§15.43のReader実装と#4583のDesktop実装で、独立に断線を閉じる。
 
-### 15.47 初回製品dogfoodを「一Source、一操作、一Consumer」の連続試行にする
+### 15.47 最初の製品実証は、一つの定義から生成した操作をCLIで確かめる
 
-最初の対象は§15.38の有向多重Graphとし、既存`testdata/tei-md-graph/`のFixture・独立Expectedを再利用する。画面、DB、AI、外部Workflowを必要条件にせず、まず通常の`tei` CLIで一つの操作を最後まで追う。どの工程も、前工程の試験成功から推測して済ませない。
+最初の対象には§15.38の有向多重Graphを選び、既存`testdata/tei-md-graph/`のFixtureと独立Expectedを再利用する。画面、DB、AI、外部Workflowを前提とせず、一つの定義から生成した操作を通常の`tei` CLIで呼び、結果を確かめる。各工程の成立を、前工程の試験成功だけで推測してはならない。
 
 | 順序と実装Owner | 最小の実装差分 | 合格と停止条件 |
 | --- | --- | --- |
@@ -1480,6 +1480,6 @@ Readerが1件通った次のPRで、§15.38の固定Fixture（同Labelの別Node
 
 ### 15.50 着手判断・証拠の上限・引渡し
 
-今回の実装着手順は**D-Aの正式Reader一件、並行してD-Dの全Child pinと非Plugin Subject、続いてD-B→D-C→D-D、最後にD-Eの実Desktop**とする。これまでの#1163 Evidence Packet、#1180 Scenario、#2514 Independent Expectedをそのまま使い、Source/Meaning/Build/Runtime/Consumerの担当Ownerへ試験を返す。試験は原則として同一Source版、選択、Toolchain、実Process、Artifact、Attemptを照合し、外部Consumerの観測を残す。
+まず**D-Aの正式Readerで一件を通し、並行してD-Dに必要な全Childのpin伝播と非Plugin Subjectを実装する**。そのうえでD-B→D-C→D-Dを接続し、最後にD-Eの実Desktopで確かめる。これまでの#1163 Evidence Packet、#1180 Scenario、#2514 Independent Expectedをそのまま使い、Source/Meaning/Build/Runtime/Consumerの担当Ownerへ試験を返す。試験は原則として同一Source版、選択、Toolchain、実Process、Artifact、Attemptを照合し、外部Consumerの観測を残す。
 
 本節の追補は、mainの実Go Sourceと統合済みPR・並行PRを確認した**設計・計画更新のみ**である。新たなGo/Node/Windows/実PostgreSQLの実行、正式`*.tei.md` Parser、製品Plugin Invoke、Stage1→Stage2 Desktop、現在Grant、Ownerによる業務意味の受理は**今回実施していない**。個別Reference試験の成功を製品資格へ転用せず、実装PRごとにexact HEADのCIと独立Expectedを確認する。
