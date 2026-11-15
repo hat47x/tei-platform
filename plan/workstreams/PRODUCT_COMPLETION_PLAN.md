@@ -24,6 +24,14 @@
 | **P1：Plugin説明と公開モデルの探索**（[#4679](https://github.com/hat47x/tei-platform/issues/4679)／#951） | 上位A・利用側Bの二Pluginを固定し、Aが公開したContract／Graph／Manual索引へ、Bのread-only Inspectから正しい版で辿る。短いProduct Skillは既存の実コマンドの発見方法だけを案内 | 非公開文書・図・上位依存の存在情報を漏らさない。閲覧可を再公開可・実行可へ昇格させない。新Docs Registry／未実装CLIコマンドを前提にしない |
 | **P1：横断Concernと専門計算の適合**（#4198／#3509／#4660） | main統合済みの[Application Graph設計 #4681](https://github.com/hat47x/tei-platform/pull/4681)では、まず一つのRoute／Entryに対するread-only適用表を作る。計算側は[SQLite Window実DB試験 #4670](https://github.com/hat47x/tei-platform/pull/4670)を基線に、必要な入力範囲とProvider能力を調べる | 計測の挿入・同意・二重発火、外部Solver、NoSQLでの同等性、通常CLIの実計算・Consumer受領は未検証。新Aspect Weaverや第二Query Engineを導入しない |
 
+### TEI自身の実装をモデル・図・DSLへ折り返すdogfooding（P1、既存P0と並行）
+
+[実装コードの意味保存と自己記述dogfooding](../design/IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md)では、**現在動いているTEI自身のGoコードを観測し、既存の標準Data／Function／Business・Rule／Processへ対応付けて、図表・DSL候補を導出する**ことを検証対象に加える。単にDSLからGoを生成したり、構文木を図にしたりするだけでは合格としない。業務判断、Read／Failure、Generator自身の責務、Plugin／Build／実Consumerの証拠を分け、元Sourceへの対応と未理解の実装範囲を示す。
+
+最初の対象は実在する`validationgen.GeneratePositive`（**生成Function**）と、そこから生まれた`EvaluateSelected`（**評価Function**）の二つである。まずGo AST・型と実Go結果からread-onlyの構造候補を抽出し、既存`quantity_positive`のDSLとGraphvizの対応を照合する。その後、正値／0／負値／NULL／未取得、Rule条件変更、説明文だけの変更を独立Expectedで比較し、実生成byte→正式Builder→実Providerへ段階的に接続する。**コードから推測した意味や図をOwner受理・実行許可に昇格させない。** TEIで実際に置換できた判断・実装責務、残る手書きGo、変更時の労力・性能を測る。新しい逆コンパイルEngine、第二Meaning正本、汎用Runnerは追加しない。
+
+このP1は通常CLIの実Provider／独立Consumerと、Studio Stage1→Stage2実Windows受領の**P0を待たせるHard Gateではない**。既存#2619/#2620（構造）、#988/#2621（DSL）、#1121/#4544（Generator/Builder）、#1180/#2514（独立Expected）、#2831/#4583（Studio）へ分担する。現段階は設計・検収条件であり、実Code→DSLの製品機能を実装済みとはしない。
+
 ### P1で接続する業務判断・設計入力・数式（2026年11月15日）
 
 これらは新しい製品P0の前提ではなく、既存の標準Data/Rule/Expression・Function Data Context・表現型を実案件に近づける**受入作業**とする。詳細な正負例とOwner境界は[横断統合受入境界§14〜17](../design/CROSS_CUTTING_ACCEPTANCE_BOUNDARIES_2026-11-12.md)を参照。
