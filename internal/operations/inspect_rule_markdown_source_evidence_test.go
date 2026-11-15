@@ -119,4 +119,18 @@ func TestInspectSelectedRuleMarkdownFromSameLoad(t *testing.T) {
 	}
 	_, err = InspectionFromLoad(loaded, index, quoted)
 	inspectionCode(t, err, InspectionNotFound)
+
+	// A selected Rule is a semantic.Validation, not a callable Capability.
+	// Resolve the other kind from this SAME Load and Source Index: a
+	// read-only Source trace must not create or select a public Entry.
+	capability := sourceindex.Subject{Kind: "semantic-capability", ID: cases[0].id}
+	capabilitySources, err := TraceSubjectSourcesFromIndex(index, capability)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(capabilitySources.References) != 0 || len(capabilitySources.Artifacts) != 0 {
+		t.Fatalf("Markdown Rule ID acquired a Capability Source: %+v", capabilitySources)
+	}
+	_, err = InspectionFromLoad(loaded, index, capability)
+	inspectionCode(t, err, InspectionNotFound)
 }
