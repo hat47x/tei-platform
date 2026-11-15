@@ -36,4 +36,5 @@
 - [TEI自身の設計をCLIで扱うドッグフーディングの実測と課題](TEI_DOGFOODING_CLI_SELF_DESIGN_2026-11.md)（#3149。read-only CLIでTEI自身の設計記述を発見・読取り・検証し、10件の課題を起票対象として整理。修正は未着手）
 - [TEI自身の設計をCLIで扱うドッグフーディング 第2ラウンド](TEI_DOGFOODING_CLI_SELF_DESIGN_2026-11.md)（#3149。現行main `4fd88c2b1` の実行物で再実測し、D-1・D-2・D-4〜D-8 が閉じたことと、D-3・D-9・D-10 が残ることを確認。MCP入口は未実装のため CLI 経路のみ実測）
 - [Script/Macroの製品化と実証計画](TEI_SCRIPT_MACRO_PRODUCT_PLAN_2026-11.md)
+- [TEI MVP dogfooding：判断の移管から次世代の自己構築まで](MVP_DOGFOOD_DECISION_TRANSFER_2026-11.md)（既存M0〜M3・AW-0〜3を一つの検査義務と実受入の作業順へ接続。計画・未実証）
 - [理想の利用像を製品の受入へつなぐ計画](PRODUCT_COMPLETION_PLAN.md)

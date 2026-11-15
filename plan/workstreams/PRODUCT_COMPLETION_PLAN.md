@@ -1572,3 +1572,20 @@ mainのRule生成Go CLIビルド回帰は、選択Markdown原文のコピーをG
 **Source所有の原則**：DSL正本、Studio／SHOのDesigner投影、Resource、Generator定義、Generated Source、Custom Hook、Build Artifactを役割で区別する。Visual StudioのDesigner・Resource分離は参考とするが、TEIの新しい拡張子をこの段階では採用しない。生成物を手編集して正本化せず、案件固有の処理は既存Hook／Plugin契約で接続する。
 
 **現在の資格**：PR #5073／#5087のP/G比較と#5101のMapping整理を基線にした設計・試験引継ぎのみ。PR #5097は確認時点で未マージであるため、自己記述Fixtureの実行PASSをmainの成立条件へ算入しない。AW-0〜3の新しい抽象経路テスト、自己記述M2処理置換、正式R2-P、実Provider、Studio Stage1→Stage2をこの文書で検収済みとは扱わない。
+
+<!-- mvp-dogfood-decision-transfer-20261116 -->
+### MVP dogfoodingの次の実装：検査一条件の移管を、次世代での実使用まで追う（2026年11月16日）
+
+[判断移管の実行パケット](MVP_DOGFOOD_DECISION_TRANSFER_2026-11.md)で、既存I2M §15のM0〜M3と自己記述§53のAW-0〜3を、**実装義務・対象Source・選択経路・同一Attemptの実使用・独立Expected**で接続した。新しいRuntime・Test Registry・Reader・Host・Build Engineは追加しない。
+
+最初に移管するのは現行`validationgen.GeneratePositive`のRequired Shape（Rule ID非空・Attribute非空・Relation禁止）に含まれる**実行可能な一条件**である。Data表に現れた`required=no`はRelation禁止を表せないため、記述だけでM1合格としない。まず現行Goの固定Shape基線を保持してTEI由来の判定を実行するD-1（M1）、その後に当該手書きGo条件を製品実経路から削るD-2（M2）を**別PR**で行う。続いて原Markdown／Reader／Generator／生成byte／実Build入力を同一Attemptで接続するD-3（R2-P）、Stage1実TEIがStage2を作って同検査を実使用するD-4（M3）へ進む。
+
+**変更反証の重点**は、選択G→実P、生成B→配置A、Plan解決後のbyte変異（main統合済みPR #5109）、Source A→B→A、説明変更による出典失効、型付きPortの必須欠落／Loss、実Binary成功と独立Consumer未受領の区別である。既存#1180／#2514をExpectedの正本とし、別HEADの試験成功を移管後の資格として再利用しない。
+
+**MVPの評価値**は、三つの原子的Shape条件のうちTEIが実際に担った数、同義の手書きGo条件の削除数、TEI定義とGenerator／Hookの保守変更量、診断→生成→実Build→Consumerの所要時間とする。生成行数や図面数だけで自己構築率を増やさない。正式Provider Call #2586と非Plugin Windows Studio Stage1→Stage2 #2831／#4583は引き続き**並行P0**とし、D-1〜D-2を両P0の前提Gateへ変更しない。
+
+**現時点の資格**：この追補は計画と受入条件の明確化のみ。D-1〜D-4の新Go製品実装・試験、M2の旧分岐削除、正式R2-P／R3、Studio Stage2の実再入を達成したものではない。
+
+**D-1の実装適格性**：[実行パケット§8](MVP_DOGFOOD_DECISION_TRANSFER_2026-11.md)で、Dataの`required=yes`と元Goの`!= ""`、`required=no`とRelationの`== ""`を区別した。自己記述された項目定義と実ValidationインスタンスのBinding、既存Operatorによる厳密な受理・拒否ができないならM1は`unsupported`とする。元Markdownを正常にLoadできる試験と、不正な型付きValidationを拒否する単体試験も別資格として扱う。
+
+**利用者側の最小dogfooding**：[実行パケット§9](MVP_DOGFOOD_DECISION_TRANSFER_2026-11.md)では、CLI実`tei inspect`と直接`operations.InspectSubject`の同値回帰を基線に、Wails非依存Studio Hostの三入口比較[PR #5119](https://github.com/hat47x/tei-platform/pull/5119)（Draft）を重複実装せず待つ。次はテスト用Ruleの説明変更／参照先変更→再Inspect→生成Go→実Buildという一往復を試す。Sourceの表示・編集Intent・実Provider・Windows Stage2の権限と証拠は混ぜない。
