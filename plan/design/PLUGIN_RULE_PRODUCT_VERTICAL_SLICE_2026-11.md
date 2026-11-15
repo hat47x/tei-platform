@@ -344,3 +344,18 @@ Build Intentは、その原文を含むGo Packageを実Source閉包として列�
 この検査は、新たな意味受理機構ではなく、同じ試行におけるGenerator出力とステージングされた実入力の取り違えを防ぐ最小の境界である。変更後のGoが同じ判断結果を返しても、byte不一致を見逃さない。反対に、byte一致だけを根拠としてReader／GeneratorのAuthority、元RuleのRevision、正式Providerの選択、現在Grant、Owner受理を昇格させない。
 
 次の負例は、**元Rule原文をA→B→Aと戻したときのSource Revision失効**と、**Generator実装版を変えても生成Goが同一となる場合の生成資格失効**である。既存のSource Index、Build Intent、Receiptの各責務を維持し、再ビルドの必要性と意味受理の必要性を別々に記録する。
+
+### 14.15 BuildPlan解決後の入力変更を正式CLIで拒否する
+
+前節の`requireSelectedGeneratedGo`は、生成結果をGo packageへ配置した**その時点**の一致を検査する。一方、`buildintent.Resolve`が実byteを取得してPlanを決めた後、BuilderがSourceを読むまでに内容が変わった場合、配置時点の照合だけでは検出できない。そこで既存の`TestSelectedRuleGoThroughRealCLISelfBuild`を一つの反例で拡張し、**選択したPlanに含まれる生成Goと実Builder入力が時間差で食い違う場合**を確認する。
+
+試験は、同じ`Workspace.Load`と`GeneratePositive`で選んだRuleから`generated.go`を作成し、実`Build Intent`を解決した後にだけ、Goの判断結果を変えないコメントbyteを一行追記する。**古い`plan.json`を渡した通常`tei self-build`の実CLI試行が失敗し、合格のL2-bと公開可能なArtifactを残さないこと**を要求する。その後に選択された元byteへ戻し、同じCLI→Builder→実Binaryの正・ゼロ・負・NULL・未取得の正例を維持する。
+
+| 時点 | 正例・負例の条件 | 受入の上限 |
+| --- | --- | --- |
+| 選択・生成 | Rule ID／型／Readerと生成Goが一致 | 出典の現在性と業務意味受理は別 |
+| Plan解決 | BuildIntentから生成Goを含むGo packageを選ぶ | `definitionSource`はGo Entrypointのまま |
+| **Plan後・Builder前** | Go byteだけ変え、元Planをそのまま使う | **CLI/Builderによる実入力不一致の拒否**。配置時のGuardだけでは代替不可 |
+| 復元・実Build | 元byteを再配置し、実CLIからBinaryを受領 | 当該Go packageに限ったR2-Pの追加検査 |
+
+これは新たなBuild/Source Schemaや常駐監視器ではなく、**既存Plan・Builder・Artifact照合の時間的な停止線**を一つ実測する回帰である。Generator実装版や元MarkdownのA→B→A改訂による資格失効、実Provider／現在Grant、Windows Studio Stage1→Stage2はこの試験だけでは成立しない。Go test単体の結果は変更HEADで確認し、リポジトリ全体のHealthとは分けて記録する。
