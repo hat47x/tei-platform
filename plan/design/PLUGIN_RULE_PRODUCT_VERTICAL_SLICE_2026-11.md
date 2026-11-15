@@ -129,3 +129,15 @@ UI実装におけるTypeScript・Web標準技術・Wailsの選択は#1824の担�
 - **PLV-16**：生成TSとNode側試験は新しくてもWailsに埋め込まれたAssetが古い。実Consumer資格は成立しない。
 
 **記録上の注意**：PR #4890／#4891のmain統合は製品Reader回帰の進展であって、外部Language Plugin、生成Plugin／実Provider、Studio Stage2、Owner意味受理の成功ではない。本追補は文書のみであり、追加したPLV-13〜16の試験実行や新しい製品実装を含まない。
+
+## 11. 最初の生成対象を実Fixtureで固定する
+
+設計上の抽象例ではなく、mainへ統合された実Fixture `internal/workspace/testdata/tei-md-rule/` を最初の入力にする。
+
+- **Source**：`semantic/sales/order-line-rules.tei.md` の `rule sales.order_line.quantity_positive`。定義は `sales.order_line.quantity is positive`、元位置は既存Source Indexに帰属する。同文書の `line_number_unique` と説明用 `text` ブロックは最初のGo生成対象に含めない。
+- **型の根拠**：隣接する `semantic/sales/order.tei` の `OrderLine.quantity type std.decimal` と対応付ける。Markdownに書かれていないGo型や丸め方を生成器が独自に推定しない。型解決できない場合は、仮の数値型で成功させず診断する。
+- **期待する対照**：数量1、0、-1について正の数かどうかを判定する。NULL、項目欠落、型不適合は、既存の入力・Validation契約に基づく拒否／未評価を明示し、勝手にfalseや0へ正規化しない。特にNULLの期待OutcomeはOwnerの独立Expectedが確定するまで未受理とする。
+- **変更追随**：正値条件の一箇所を変更した時に、生成Goの判断箇所、実Builderが消費したbyte、実Provider結果を比較する。変更したSourceを読み直さず生成物だけを更新したケース、生成Goが同じまま手書き実装を修正したケースは失格とする。
+- **実行先**：初回の観測は実製品CLIの型付きOperationから選択されたGo Providerへ到達すること。専用のReference runnerを正式な実行入口と呼ばない。成功後にStudioのInspect／Graph表示や他Targetへ展開する。
+
+このFixtureはReader・Inspectorを通した**意味候補の出発点**であり、生成用の正式なRule Operator／Provider Contract／入力のNULL意味がOwner受理済みであるとは限らない。足りない契約は#1121／#4544／#4495の既存担当で確定させ、対象を増やす前に一RuleのSourceから実Consumerまでを閉じる。
