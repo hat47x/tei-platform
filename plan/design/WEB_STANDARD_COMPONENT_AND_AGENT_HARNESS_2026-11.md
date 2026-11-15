@@ -244,3 +244,27 @@ UI-P1が扱うのは表示とイベントの境界、FLOW-P1が扱うのは意�
 UI-P1が現在の入力保持・キーボード・IME・Source表示を悪化させるなら、Lit比較や全面Custom Elements化を先行しない。Vanillaの公開契約分離で十分ならそれを基線とする。Flowが描けても正式Node/Edge occurrenceやPort型が確定しないなら実行へ昇格させない。逆にN1→N2がCLIで先に成立した場合、Studio GUIを待たずに実Consumerとして検収する。
 
 両方の狭い実証が閉じてから、同じMeaning/Operation Contractに接続する二つ目の独立Consumerを検証し、Web/Node/APIの表現が増えても業務意味・Authority・Effectの正本が増殖せず、Project UI Layerを安全に更新できることを確認する。それまでは「UIとFlowを統合実装済み」と記載しない。
+
+## 13. UI-P1の最小実装と次の検証段階（PR #4949）
+
+### 13.1 読み取り専用の選択要求を表示部品から切り離す
+
+W0〜W4／N0〜N4の統合方針を実コードに接続する最初の小差分は、現行Workbenchの**モデル一覧とGraphノードの選択要求を一つのUIイベントに収束**させる。対象は[PR #4949](https://github.com/hat47x/tei-platform/pull/4949)の `reference/tei-studio-workbench/inspector-selection.ts`、`main.ts`、関連試験であり、新しいHost・業務Operation・Graph Engine・UI Frameworkは導入しない。
+
+公開イベント `tei:inspector-selection-request` のdetailは、`workspaceId`、`workspaceEpoch`、`subject {kind,id}` の三要素だけとする。イベントはバブリングしShadow境界を越えられるが、**Hostへの実Callでも実行認可でもない**。受け側は現在のWorkspace IDとepochの一致と、実際の発信元がモデル一覧またはGraphであることを確認し、既存`inspect()`の`inspectEligibility`、`readInspection`、`responses.run("inspection")`を再利用する。イベントに混入した`effect`や`grant`等をHost資格として扱わない。
+
+| 証拠・反例 | 検査する範囲 | この結果だけでは主張しないこと |
+| --- | --- | --- |
+| 同一Subjectの一覧／Graph選択 | 両UI入口が同一イベントに接続され、Inspect入口を共有 | HTML部品の正式CEM採用、全WebView受領 |
+| Workspace A→B→A | 戻ったAの同名Subjectでも旧epochのEventを不採用 | Source/Policyの変化をすべて検出したこと |
+| NULL/不完全なEvent detail | 必須Subject、Workspace、整数epochが揃わない場合は拒否 | Source Indexの完全性、正式Relationの一意性 |
+| 偽Grant/Effect付きdetail | Eventからの型付き投影で権限・副作用の自己申告を捨てる | Host側Disclosure／AuthZや実Provider Receipt |
+| 正規Workbench Build | 既存のNode24、tsc、esbuild、CodeMirror、Pin/Readerの回帰を維持 | 実Windows WebView2、正規配布Asset、Stage2完成 |
+
+本差分で追加するNode標準試験は、公開イベントの形、失効、無効値、既存`inspect()`への静的接続を検査する。局所Node v22のType StrippingとTypeScript 5.8.3単体型検査のPASSは、**製品のNode24全テスト／正規Bundle／実Windows受入のPASSへ加算しない**。PRのCIが未終了なら`NOT RUN / PENDING`を保持する。
+
+### 13.2 次の差分は表示結果のPresenter分離に限定する
+
+イベント入口が一つになっても、`main.ts`には`readInspection`の結果をEditor、Source status、Authority limits、Noticeへ表示する処理が残る。次のUI-P1差分は、現在のReaderで検証した**読み取り専用の表示データ**と、DOMへの配置処理を分ける。選択のIntentと検証済みのInspect結果は別の型・寿命にし、Source Indexの`partial`／`null`、不明な現在Grant、Pin中のSubjectと現在Focusの違いを失わせない。現在の`main.ts`を全面コンポーネント化せず、失敗・保留・後着の出力を既存の入力・IME回帰へ接続する。
+
+その後、同じ公開契約を使ってVanilla TS／Lit TS／Lit JSを比較する。UI Frameworkの優劣やCEM採用は独立Expectedの結果で判断し、Node EditorのFLOW-P1/N1〜N2はその選定を待たない。**既存の#2621/#4544/#4495と#2831/#4583の実Reader・実Provider・セルフビルドを、Web UI方式の追加Hard Gateで止めない。**
