@@ -593,6 +593,39 @@ Webの要求、CLIの起動、タイマー、Message、画面操作には、そ�
 **次の引渡し**：EP-0/1はread-only/静的生成の最小縦断として#4198/#951/#1121/#2090、G/P意味比較は#5069/#988/#1121/#2514、Targetへの配信・旧版・Consentは#2600/#3271/#3503/#2516、Commerce Effectは#1174/#1129へ戻す。#5075の型付き配線、#5076のPlugin充足設計は現時点では別の**未統合提案**として参照し、完成済みのConnector適合とは扱わない。B1a-I（通常`tei`→実Provider→Function Context→独立Consumer）とStudio Stage1→Stage2の製品P0は維持。**今回の追加は設計・実装順の更新のみで、新Go/Builder/実Browser/Commerce/実験、Owner意味受理はNOT RUN / NOT ACCEPTED**。
 
 
+
+<!-- g49-b2c-typed-placement-minimal-witness-20261115 -->
+### G49 EP-0→EP-1：実際のB2C成果物へ至る型付き配置の最小契約（2026-11-15）
+
+[Node配線の意味適合 #5075](https://github.com/hat47x/tei-platform/pull/5075)、[Plugin充足と開示 #5076](https://github.com/hat47x/tei-platform/pull/5076)、[実現方式 #5095](https://github.com/hat47x/tei-platform/pull/5095)を受け、G49の最小実験を**具体的な一つのBinding**へ絞る。候補は、合成・公開可能な商品案内ページの**Headメタ情報一か所**（題名、説明、canonical等）の任意Build時挿入である。これは実装題材の提案であって、現行TEIにNative Route/Head Slot/SEO Generatorが実装済みという主張ではない。既存Targetが当該Slotを公開しない場合、結線は `unbound/unsupported` として報告する。新しいDOM Wrapper、必須JS、Router、SEO Engine、Adapter Solverは作らない。
+
+**一か所をつなぐ際に必要な情報**を、`SourceのSubject/occurrence/Revision` → `提供側の型・意味・公開Facet` → `利用側の必要Shape/多重度・locale・Scope/開示・生成時点` → `明示Adapter（必要な場合）` → `Route/Slotの選択結果と必要性` → `実現方式G/P/Dと実行先` → `実Builder入力・Artifact Member` の順に照合する。型名が一致しても、値の欠損、時点、対象顧客、言語、許容Audience、単位、Error/NULLの意味が合わなければ自動結線しない。逆に値を個々の基本型へ分解することを強制せず、適合する複合型をそのまま結線し、明示Adapterで必要な変換だけ行えるようにする。いずれも新しいCore Port型ではなく、#2497/#951/#1016/#4350の既存評価項目への投影である。
+
+| 対照する一因子 | EP-0（選択・結線）の独立Expected | EP-1（生成・実収録）の独立Expected |
+| --- | --- | --- |
+| 公開Head一件と、未探索のCMS動的Route | 観測したRoute/Slotの適用義務は判定し、CMSの未知Routeを全サイト適用済みとしない | **実際に選択した一Memberだけ**を生成成果物で照合。知らないRoute用のMemberを捏造しない |
+| 必須SEO項目と任意Analyticsを別扱い | 必須項目のBinding欠落は未充足。任意Analytics不採用は業務Operationの失敗ではない | 必須Member欠落は不適合。Analyticsを含めないH0も正規構成として保持 |
+| 同じSlotへの二つの適用・順序依存 | 衝突・重複・優先順位が未宣言なら勝手に一つを選ばない。Edgeの出現IDは区別 | 同じMetadata/Scriptの二重収録を単純に「成功2件」と数えない |
+| 公開情報の文言変更／価格・同意の変更 | 文字列編集であってもRule/Price/Consent依存があればC0に限定しない | Source/Builderの版と成果物の差を確認。旧Memberや旧配信Responseの現在性を推定しない |
+| 公開SEO情報と、非公開Customer/Order入力 | 公開Headへの秘匿依存を、型が合うだけで許容しない。未取得・非開示は空文字として埋めない | 原Source byteや秘密値の無断同梱を拒否。Member Hashが一致しても開示適格性を保証しない |
+| 同じMeaningをG/P/Dで実現 | Head静的情報はG候補、現行価格・Cart/Payment・現在Grantは権威あるDに残し、Pは実装済み型付き評価のみ。配置ごとに方式を選ぶ | GならBuilder/Member、Pなら評価時の実Input/Read、Dなら実Provider Call/Receiptを**別の票**とし、不要なArtifact生成を要求しない |
+
+**最小実行順**：(1) 既存Workspaceから一つの対象とSource occurrenceを読み、Route/Slotの実在性を確かめる。(2) 必要Shapeと公開範囲を宣言し、Selectorのmatched/excluded/undeterminedを読み取る。(3) 実Targetがある場合に限り、選択したBuilderの**実Consumed Input**とArtifact Memberを同一World/Generator/Toolchain版で照合する。(4) Memberの削除・重複・未宣言Adapter・非公開入力・旧Sourceという一因子の負例を置く。(5) 配信D、可視化V、外部受領Rは後続の別資格にする。実Target/Slotが存在しない場合には(3)以降を実行済みと偽らず、既存#1121/#2090へTarget拡張要求を返す。
+
+**独立Expectedと採否**：上記は[#3509](https://github.com/hat47x/tei-platform/issues/3509)のG49-EP、[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#2514](https://github.com/hat47x/tei-platform/issues/2514)に統合する**受入項目**であり、第二Scenario正本ではない。観測した「必須の配置義務が満たされた範囲」と、公開に必要な実Release/Grant/Consentを分離する。対照対象のH0 Native-onlyはTEI JS・Renderer・Contract採用ゼロでも適格とし、契約を使うH1だけを追加生成・運用費用で評価する。既存の正値Rule `validationeval` 対 `tei self-build` の実Go回帰（main [#5095](https://github.com/hat47x/tei-platform/pull/5095)が引用する基線）はG/P比較の実装証拠であって、B2CのHead/実配信/Browserの試験ではない。**本節固有のEP-0/1、実B2C Builder/Browser/Commerceの新試験はNOT RUN / NOT ACCEPTED**。Studio全体セルフビルド#2831/#4583と通常製品実Read#2586は並行P0のままにする。
+
+
+**SEO Headの情報を一括して扱わない**：初回のEP-0/1は公開用の静的な商品説明（例：`meta description`）**一Member**に限定する。商品名や`canonical`はURL・言語・Variantと紐づくため別の受入に分ける。価格・在庫・会員価格・クーポン・税額などは更新時点と権威をもつCommerce Providerのデータであり、静的ビルド時の値を現在の確定値として出力しない。Google Search CentralのMerchant Listingは商品情報の初期HTMLへの配置を推奨しているが、それはBuild時に古い価格を固定してよい根拠ではない。公開する必要がある場合は、対象の配信側で現在の公開可能なSnapshot/更新方針を検証し、UI、初期HTML、構造化データ、Checkoutでの価格確定の異なる時点と責務を区別する。これは既存Target/Providerへの制約であり、B2C専用SEOエンジンの追加要件ではない。
+
+| Head情報の区分 | 初回の実現方式と取得・失効の条件 | 否定条件 |
+| --- | --- | --- |
+| 公開静的説明 `meta description` | G候補。Source・公開Facet・locale・Builderの実Consumed Input・Memberを照合 | 必須Slot不在、NULL/未取得、非公開Source、Builder未収録を成功としない |
+| `title` / `canonical` / `hreflang` | 既存Route所有者のURL/言語/Variantと整合させる。Slot・Route Universeを別に確認 | 未探索CMS RouteやVariantに同じcanonicalを推定適用しない |
+| 価格・在庫等のProduct/Offer構造化データ | D側の公開可能な現在Snapshotと配信時の有効期間に従う。SEOの初期HTMLと購入時のServer確定を独立観測 | Builder時の古い価格、会員限定・未開示の価格、UIの楽観表示を業務確定として公開しない |
+| 実験用・計測用メタ情報 | H2の任意Extension。Flag Evaluation/Assignment/Exposure/Effectは別証拠 | Consent拒否やH0 Native-onlyで必須Collector/Browser JSを挿入しない |
+
+**止める条件と進める条件**：初回は既存Route/Slotの機械的探索を行い、無ければ `unbound/unsupported` を固定票として#1121/#2090に返す。公開静的説明の一Memberが実Targetに存在し、SourceとWorld/Generator/Toolchainが束縛され、実Builderから読み戻せた場合だけEP-1の限定PASSを認める。外部公開、Crawler受理、現在の商品価格、Commerce、CVRは引き続き未検証とする。この設計差分は#3509の正本、#1180/#2514の独立Expectedに引き渡す。Google/OpenFeatureの仕様記載は外部の比較資料であって、TEI実装の動作証拠ではない。
+
 ## 最新の作業単位へ接続する
 
 2026年11月11日のmain `9d31f82486b2eac42791f4f3bc5cd588d69cb4fc`と関連Issueを照合した。以下は着手先の更新であり、Issueの起票・限定Reference・候補Parserを製品の完成へ数えない。以後の進捗は各Issueと[実装状況](../../docs/status.md)から再取得する。
