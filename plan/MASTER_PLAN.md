@@ -2453,6 +2453,9 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 
 **判別すべき負例**：NULLと未取得の混同、空集合とpartialの混同、同名Node・多重Edgeの消失、曖昧参照の先勝ち、同一Rule IDの二重正本、説明用Code Fenceの誤実行、SQLのBag／NULL／Join差の消去、Mermaid配置変更による不要な再生成、Rule変更後の旧生成Binary再利用、AI候補の無受理実行、未選択Pluginの呼出し、生成物未使用の見かけ上のセルフビルド成功。独立ExpectedとScenarioは既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)の正本へ渡す。
 
+<!-- data-forms-identity-asof-inspector-plan-20261115 -->
+**実装済みの異質な反証への引渡し**：標準データ様式[§39.9](design/SEMANTIC_STRUCTURE_MAPPING_AND_DECLARATIVE_SYNTAX_VIEW_2026-11.md)では、(1)実`InspectSubject`のCanonical/元Source byte位置の一致とS-OPEN未実施（main #4853）、(2)REAの構造キー一致が複数ある場合は個別Relationの対応を捏造しない（main #4850）、(3)組織二時点Queryの評価入力`valid_at/known_at`と物理区間列`valid_from/known_from`を混同せずBinderの旧名呼出しを拒否（main #4847）、(4)ReferenceのGraph読取とProduct Language未束縛拒否を別に観測、という四つの局所Go検査を次Ownerへ渡す。個別試験の存在・成功と、正式`*.tei.md` Reader／実Read Cohort／Source編集許可／Wails実Consumerの製品受入を分け、#2621/#988・#2497/#1124・#2586/#2506・#1824/#4583へ既存Expectedで引き継ぐ。これらを初回Graph S0-Aの新しいHard Gateにはしない。
+
 ### 記述形式と意味の同値性を分けて検収する
 
 **構文の採否を決める条件**：読みやすさ・短さだけでなく、同じ業務意味に対応するかを、(1)構造、(2)評価、(3)変更の三軸で独立に確認する。GraphをTreeやMarkdownへ投影して同じNodeが見えても、Edge ID・向き・多重辺を失えば構造は同値ではない。集計結果が一致しても、SQLのBag多重度・NULL三値論理・Windowの順序とFrame・JOIN粒度が違えば評価は同値とはいえない。派生Viewを表示できても、そのViewから元Sourceの共有属性や関係を一意に変更できるとは限らない。形式が異なる場合は、同値と保証できる**範囲**を明示し、損失した意味はunknown／unsupportedに止める。
