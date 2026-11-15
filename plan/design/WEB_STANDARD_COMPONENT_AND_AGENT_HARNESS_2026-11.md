@@ -138,3 +138,69 @@ PoCを漫然と横展開しないため、まず一つのInspectorについて�
 **評価待ち**：LitとTypeScript/JSDocの最終選定、Design Tokens変換器、CSS最新機能のTarget別採否、CEMとTEI Modelerの往復編集、案件別スタイルPlugin配布の実装。
 
 **未確認の実績**：現行mainでのLit実装、Modern Web Guidance導入済みCI、PR #4628の採用、Wails v3.1.0移行、実OS全対象のCSS合格、TEI定義からのWeb Component完全自動生成とStage2実Windows Consumer。これらを本書の存在だけでPASSにしない。
+
+## 9. Studio実装に直結する縦断計画（2026-11-15追補）
+
+### 9.1 先に決めるのはフレームワークではなく、何を共通化するか
+
+Web Componentsを「すべてのTEI画面の内部表現」とはしない。TEIが公開・再利用する標準の境界は、**(a) Domain/Operation、(b) UI Projection、(c) Component Public Contract、(d) Framework/Target Adapter、(e) Generated Artifact**とする。この五層を分離できれば、同じComponent Contractの下でVanilla Custom Elements、Lit、既存React Starter、Canvas/SVGなどの固有実装を選べる。
+
+| 既存の正本・資産 | 共通化する情報 | 共通化しない情報 |
+| --- | --- | --- |
+| Data/Function/Process/Rule/Graph | 対象ID、Relation、操作名、入出力型、検証の責務 | 業務意味をUI部品へ書き直した複製 |
+| Studio Presenter／Inspector | 表示するSubject、Source Revision、現在資格、イベントの入出力 | Backend Grant、保存済みSourceの確定、Provider Effect |
+| UI構成キット #997/#1016 | 公開点、版、Target互換、Token、提供・置換・装飾契約 | 必ずCustom Elementsで描画するという固定 |
+| Native Canvas／Graph Editor | 選択・配置・ポインタの局所状態、描画用Edge | 描画Edge IDを正式Relation occurrence IDへ昇格 |
+| Harness／Skill | 対象をPinした変更要求、適用差分、独立Expectedと実行ログ | Agentが受理したと称する業務意味／実行許可 |
+
+UIを形式上「標準データ構造」に載せるだけでなく、TEI標準Data/Graph/Processから**どの要素を表示へ投影し、どのEventをOperationに接続するか**を、既存Meaning/Projection/Bindingとして追えることを受入条件とする。必要がなければUI専用Graph Schema、独自Process Runner、第二のComponent Registryを増やさない。
+
+Node-RED型のノード編集やマッシュアップは今後の有力なConsumerだが、ノードの画面上の位置・ポートの見た目・表示ラベルをFunction/Relation/Operatorの意味と混同しない。型付きPort、Direction、Multiplicity、Capability、Effectの制約が既存TEI Graph/Process契約に乗ることを先に確認する。Node固有の処理を汎用Operator/Providerとして再利用できる場合は、ノードを**一つの表示・編集Projection**として扱う。これはUI Kitの比較試験を全ノードエディタ実装へ膨らませる理由にはならない。
+
+### 9.2 着手順：まず現在の実配布を受領し、その後で表示方式を比較
+
+全体のP0（正式Reader→生成→通常CLI実Provider、非Plugin Studio Stage1→Stage2 Windows）は変更しない。以下は、#1824の**現在の一つのStudio read-only Consumer**へ追加する小さな作業順であり、全体P0へ新しいHard dependencyを追加しない。
+
+| 手順 | 最小の実差分と独立Expected | 次へ進む条件 |
+| --- | --- | --- |
+| **W0 実配布基線の回収** | 現行mainの\`reference/tei-studio-workbench/main.ts\`、\`presentation.ts\`、\`source-locations.ts\`、\`build.mjs\`を実Sourceとして固定し、\`npm ci\`→\`npm test\`→\`npm run typecheck\`→\`npm run build\`を実行。生成\`index.html\`／\`main.js\`／\`style.css\`／\`THIRD_PARTY_NOTICES.txt\`と依存MetafileをDigestで照合し、実Wails Go Embed・Windows Windowまで接続する | Reference BuildとEmbedded Assetを別実行で観測。生成元・Target・Toolchain不一致ならP1へ進めない。Node PASSとWindows PASSは別記 |
+| **W1 同一Inspectorの比較** | 読み取り専用Subject Inspectorを**Vanilla TypeScript／Lit+TypeScript／Lit+JavaScript(JSDoc)**で独立Fixtureとして比較。既存\`readInspection\`・\`readSourceLocations\`の純粋投影を流用し、同じ入力を与える。元の画面／CodeMirror／React Starterは変更しない | 同一DOM意味・キー操作・Source状況表示・イベント公開・CSS縮小の独立Expectedに達した方式のみ導入候補。Lit未導入時は比較の隔離成果だけを残す |
+| **W2 Component ContractとKit** | 実部品のAttribute/Property/Event/Slot/Part、CEM投影、Token版、UI Kit公開点、Target互換を**既存#997と並走**して照合 | CEMの生成結果だけでアプリケーションAction、業務Validation、Authorityを受理せず、React/Native経路でも意味と入力が一致 |
+| **W3 明示PinとAgent差分** | #4515のSubject Pinを現在Scopeで固定して「項目追加・見た目変更」のAI差分を作成。Source Revision・Saved/Dirty・Pin/Focusの別寿命を保存し、旧応答採用やUI暗黙保存を拒否 | 現在のHost Observe・Source/Pin・Disclosureに不足があれば拒否／未確認。AIの実送信先・対象範囲・現在Grantを別に検収 |
+| **W4 TEI生成と製品自己再入** | 正式に選択された\`*.tei.md\`から最小のInspector/View／CSS／型付きAdapterの一部を生成し、原SourceのModel/Artifact/ToolchainとBundle Digestを照合。Stage1→Stage2を**既存#2831/#4583**から受領 | GoやTSへの単純delegateではなく、ソース定義体の減少、生成が担う意味ある構造の増加、実Stage2 Consumer受領を別々に観測 |
+
+**W0はデザイン刷新やWails安定版移行の開始を意味しない。** 現在の\`cmd/tei-studio/go.mod\`はWails \`v3.0.0-beta.29\`であり、安定版へのS0-Uは別の隔離差分・実OS資格で判断する。参照WorkbenchのCSSも現行は主に\`style.css\`で、試作PR #4628の\`theme.css\`はmainへ未統合。新しいLayer、Token、Lit依存を「既にある標準機構」として検査しない。
+
+### 9.3 最小一部品の公開契約と負例
+
+最初の対象は\`semantic-capability:sales.order.submit\`の**read-only Inspect**とする。以下は契約候補の比較列であり、製品Type/APIの新設宣言ではない。
+
+| 列 | 提供元・観測 | 不正な短絡 |
+| --- | --- | --- |
+| \`subject\` | Hostから受け取った明示Kind/IDとWorkspace相対の選択 | 表示ラベルやGraph描画IDだけで対象を確定 |
+| \`source\` | \`readSourceLocations\`のbounded metadata／Index fingerprint | Source Indexの一部を全Sourceの完全性・Raw Readと称する |
+| \`disclosure\` | Hostの現在資格とReaderが返せる公開範囲 | CEM・DOM・CSS \`hidden\`だけを開示制御にする |
+| \`interaction\` | read-only select/inspectを既存Adapterへ委譲 | 表示部品から直接Commit/Save/Approveへ昇格 |
+| \`theme\` | Token/CSS変化とコンポーネントの状態寿命 | Theme変更でEditor入力を再生成・破棄 |
+| \`artifact\` | Build入力、実Bundle、Go Embed、実Windowの各Digest | \`dist\`だけ合格して埋込Assetを同一と判定 |
+
+最低限の対照は、正常一Subject、Workspace A→B→A、異Workspace同名Subject、後着旧Reply、失効Source、\`references=null\`と空Array、Index partial、Reader error、権限未確認、Shadow境界Event不達、狭幅・200%拡大、フォーカス・IME、CSS Theme変更の入力保持である。Known Mutantは「表示Elementから業務操作を直接呼ぶ」「古いIndexを現在のRootへ付け替える」「不正なEvent payloadを型検査から漏らす」「CSS対応をChromiumだけで保証する」「Buildの\`dist\`と埋込Assetの世代を取り違える」。
+
+一つの対象について、実Node試験、ブラウザ、Wails Server、**Windows実WebView2**、Stage2を独立列にする。Ownerの受入前にAI自身が生成したExpectedを採点基準へ採用しない。#1180/#2514に新しい大きな試験台帳を作らず、既存Scenarioへ反証対象を紐付ける。
+
+## 10. AIハーネス・Modern Web Guidanceの導入条件
+
+公式の[2026-11-10発表](https://developer.chrome.com/blog/modern-web-guidance-v1)はModern Web Guidance **1.0の安定版**を明示している。一方、GitHubの説明には時点やキャッシュによってpreview表現が残るため、CLIの動作・配布版はインストール時の実出力で照合する。公式ドキュメントの\`search\`、\`retrieve\`、\`legacy-scan\`は**提案を得る入口**であり、コード自動変更・受理済み標準の根拠ではない。
+
+- テレメトリーは\`DISABLE_TELEMETRY=1\`を適用し、外部送信の事実と範囲を確認。Agent Skillのインストールは明示した隔離対象で比較し、CIで無指定の\`@latest\`を毎回取得しない。CIに入れる場合は正確な版、取得元、依存閉包とライセンスを記録する。
+- Modern Web Guidanceの静的な指摘は、**ブラウザ・Wailsの実動作観測**で必ず検証する。ガイドのBrowser BaselineはWindows WebView2/macOS WebKit/Linux WebKitGTKの正式対応版・配布OSの確認に代わらない。Chrome DevToolsによる自動確認が可能な場合も、外部WebKit系OSの検査を加算しない。
+- 変更前後を同一課題・同一Context・同一独立Expectedで比較する。比較用のコード品質検査は、現在存在する\`npm test/typecheck/build\`を先に使い、\`lint\`・\`axe\`・CEM Analyzer等は**必要な最小Fixtureを導入したPRで初めて実行済みと記録**する。
+- Agentは対象Source/Subject/VersionとRead/Write許可範囲を固定する。下位Skillや検索結果の記述を権限にしない。実装→独立レビュー→対象CI→実OS Consumerを区別し、成功した範囲だけ報告する。
+
+## 11. 次に切り出す実装Packet
+
+**最初のコード変更**は、#1824の現行Workbenchから一つのread-only Inspectorの**Public Event + 型付き入力／出力**を取り出すことに限定する。既存\`presentation.ts\`／\`source-locations.ts\`の純粋投影を使い、\`main.ts\`のWails呼出しとDOMの交換可能な接続点を明示する。通常のビルドスクリプト・Lock・CodeMirror・既存Source Readerは維持する。内部実装をLitへ置換することを初回の完了条件にしない。
+
+このPacketが閉じた後、別の小PRで同じ入力・Event・DOM・CSSのFixtureをVanilla TS/Lit TS/Lit JSで比較する。採用判断まで実製品のLit依存・新Generator・Token規格を固定しない。次に公開ContractのCEM/Kit適合、テーマ・狭幅・IMEの負例、実Wails Consumerを順に接合する。
+
+同時進行の#2621正式Reader、#4495通常CLI実Provider、#2831/#4583非Plugin Stage1→Stage2を**主線**とし、W1のUI方式比較をそれらのブロッカーにしない。#4515 Pin、#2516 Disclosure、#951/#1016 Plugin/Kit、#993特殊Canvas、#1180/#2514独立ExpectedのOwnerを変更しない。業務Actionの認可、実Provider Effect、Receipt、Ownerの意味受理は必ず元Ownerへ返す。
