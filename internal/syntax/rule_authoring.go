@@ -37,7 +37,35 @@ const (
 	// RulePredicateUnique states that an attribute repeats no value within the
 	// declared scope. It requires an explicit scope.
 	RulePredicateUnique RulePredicate = "unique"
+	// RulePredicateOperator is not a word an author writes. It marks a rule
+	// whose predicate is a qualified reference to a declared operator, such as
+	// `is sales.non_negative`. The reference is kept in RuleAuthoring.Operator.
+	RulePredicateOperator RulePredicate = "operator"
 )
+
+// OperatorInputWord is a word of an operator declaration after `takes`. A
+// caller resolves it to an existing semantic.OperatorInput.
+type OperatorInputWord string
+
+// OperatorInputNumberWord declares that the operator reads one numeric value.
+const OperatorInputNumberWord OperatorInputWord = "number"
+
+// OperatorAuthoring is one parsed `operator` declaration:
+//
+//	operator sales.non_negative: takes number
+//
+// It declares a contract only. The surface has no place to write an
+// implementation, an effect, or a second input.
+type OperatorAuthoring struct {
+	Namespace core.CanonicalID
+	ID        core.CanonicalID
+	Symbol    string
+	Input     OperatorInputWord
+
+	DeclarationSpan Anchor
+	IDSpan          Anchor
+	InputSpan       Anchor
+}
 
 // rulePredicates lists every accepted predicate word in source order. A word
 // outside this list is a diagnostic, not a synonym for a nearby one.
@@ -75,6 +103,9 @@ type RuleAuthoring struct {
 	Subject RuleReference
 	// Predicate is the authored predicate word.
 	Predicate RulePredicate
+	// Operator is set only when the predicate is a qualified operator
+	// reference. It is the authored text; resolving it is the validator's job.
+	Operator *RuleReference
 	// Scope is set only when the source wrote `per <relation>`. A nil pointer
 	// means the source did not state a scope; it is never defaulted.
 	Scope *RuleReference
@@ -92,6 +123,7 @@ type RuleAuthoringFile struct {
 	Namespace     core.CanonicalID
 	NamespaceSpan Anchor
 	Rules         []RuleAuthoring
+	Operators     []OperatorAuthoring
 }
 
 // ParseRuleAuthoringFile parses a source whose only declarations are rule
@@ -119,6 +151,7 @@ func ParseRuleAuthoringFile(src string) (RuleAuthoringFile, error) {
 	out.NamespaceSpan = tokenAnchor(nsTok)
 
 	seen := make(map[core.CanonicalID]Anchor, 0)
+	seenOperators := make(map[core.CanonicalID]Anchor, 0)
 	for {
 		t, err := p.peek()
 		if err != nil {
@@ -127,6 +160,20 @@ func ParseRuleAuthoringFile(src string) (RuleAuthoringFile, error) {
 		if t.Kind == TokenEOF {
 			_, _ = p.next()
 			break
+		}
+		if t.Kind == TokenIdent && t.Text == "operator" {
+			operator, err := p.parseOperatorAuthoring(ns)
+			if err != nil {
+				return out, err
+			}
+			if prior, duplicate := seenOperators[operator.ID]; duplicate {
+				return out, p.errAtSpan(operator.IDSpan, fmt.Sprintf(
+					"operator %s is declared more than once; the first declaration is at %d:%d",
+					operator.ID, prior.Start.Line, prior.Start.Column))
+			}
+			seenOperators[operator.ID] = operator.IDSpan
+			out.Operators = append(out.Operators, operator)
+			continue
 		}
 		if t.Kind != TokenIdent || t.Text != "rule" {
 			if misplaced := p.misplacedDeclaration(t, "in a rule authoring source"); misplaced != nil {
@@ -146,11 +193,81 @@ func ParseRuleAuthoringFile(src string) (RuleAuthoringFile, error) {
 		seen[rule.ID] = rule.IDSpan
 		out.Rules = append(out.Rules, rule)
 	}
-	if len(out.Rules) == 0 {
+	if len(out.Rules) == 0 && len(out.Operators) == 0 {
 		return out, &ParseError{Pos: out.NamespaceSpan.End, End: out.NamespaceSpan.End,
 			Msg: "rule authoring source declares no rule"}
 	}
 	return out, nil
+}
+
+// parseOperatorAuthoring reads `operator <id>: takes <input>`. The input word
+// is a closed list: it decides what a rule using the operator reads, so an
+// unknown word is refused instead of being treated as "reads nothing".
+func (p *Parser) parseOperatorAuthoring(namespace core.CanonicalID) (OperatorAuthoring, error) {
+	keyword, err := p.next() // operator
+	if err != nil {
+		return OperatorAuthoring{}, err
+	}
+	nameTok, err := p.expect(TokenIdent)
+	if err != nil {
+		return OperatorAuthoring{}, err
+	}
+	id, symbol, err := ruleAuthoringIdentity(namespace, nameTok.Text)
+	if err != nil {
+		return OperatorAuthoring{}, p.errAt(nameTok, err.Error())
+	}
+	if _, err := p.expect(TokenColon); err != nil {
+		return OperatorAuthoring{}, p.errAt(nameTok, "expected \":\" after the operator name")
+	}
+	takes, err := p.next()
+	if err != nil {
+		return OperatorAuthoring{}, err
+	}
+	if takes.Kind != TokenIdent || takes.Text != "takes" {
+		at := takes
+		if takes.Kind == TokenEOF {
+			at = nameTok
+		}
+		return OperatorAuthoring{}, p.errAt(at, "expected \"takes\" after the operator name; write what the operator reads, for example \"takes number\"")
+	}
+	inputTok, err := p.next()
+	if err != nil {
+		return OperatorAuthoring{}, err
+	}
+	if inputTok.Kind != TokenIdent {
+		at := inputTok
+		if inputTok.Kind == TokenEOF {
+			at = takes
+		}
+		return OperatorAuthoring{}, p.errAt(at, "expected what the operator takes; accepted inputs are number")
+	}
+	if OperatorInputWord(inputTok.Text) != OperatorInputNumberWord {
+		return OperatorAuthoring{}, p.errAt(inputTok, fmt.Sprintf(
+			"unknown operator input %q; accepted inputs are number", inputTok.Text))
+	}
+	nt, err := p.peek()
+	if err != nil {
+		return OperatorAuthoring{}, err
+	}
+	if !ruleAuthoringDeclarationEnds(nt) {
+		return OperatorAuthoring{}, p.errAt(nt, fmt.Sprintf(
+			"unexpected %q after the operator declaration; an operator takes exactly one input", nt.Text))
+	}
+	return OperatorAuthoring{
+		Namespace:       namespace,
+		ID:              id,
+		Symbol:          symbol,
+		Input:           OperatorInputWord(inputTok.Text),
+		DeclarationSpan: Anchor{Start: keyword.Start, End: inputTok.End},
+		IDSpan:          tokenAnchor(nameTok),
+		InputSpan:       tokenAnchor(inputTok),
+	}, nil
+}
+
+// ruleAuthoringDeclarationEnds reports whether t may follow a complete
+// declaration: the end of the source or the keyword of the next declaration.
+func ruleAuthoringDeclarationEnds(t Token) bool {
+	return t.Kind == TokenEOF || t.Kind == TokenIdent && (t.Text == "rule" || t.Text == "operator")
 }
 
 func (p *Parser) parseRuleAuthoring(namespace core.CanonicalID) (RuleAuthoring, error) {
@@ -192,7 +309,14 @@ func (p *Parser) parseRuleAuthoring(namespace core.CanonicalID) (RuleAuthoring, 
 		return RuleAuthoring{}, err
 	}
 	predicate := RulePredicate(predTok.Text)
-	if !predicate.valid() {
+	var operator *RuleReference
+	if strings.Contains(predTok.Text, ".") {
+		// A qualified name after `is` refers to a declared operator. Whether
+		// it is declared is not decided here: like an attribute reference, it
+		// is resolved against the whole Workspace by the validator.
+		predicate = RulePredicateOperator
+		operator = &RuleReference{Text: predTok.Text, Anchor: tokenAnchor(predTok)}
+	} else if !predicate.valid() || predicate == RulePredicateOperator {
 		return RuleAuthoring{}, p.errAt(predTok, fmt.Sprintf(
 			"unknown rule predicate %q; accepted predicates are %s",
 			predTok.Text, validRulePredicatesText()))
@@ -204,6 +328,7 @@ func (p *Parser) parseRuleAuthoring(namespace core.CanonicalID) (RuleAuthoring, 
 		Symbol:          symbol,
 		Subject:         RuleReference{Text: subjectTok.Text, Anchor: tokenAnchor(subjectTok)},
 		Predicate:       predicate,
+		Operator:        operator,
 		DeclarationSpan: Anchor{Start: keyword.Start, End: predTok.End},
 		IDSpan:          tokenAnchor(nameTok),
 		SubjectSpan:     tokenAnchor(subjectTok),
@@ -234,6 +359,10 @@ func (p *Parser) parseRuleAuthoring(namespace core.CanonicalID) (RuleAuthoring, 
 		return RuleAuthoring{}, p.errAtSpan(rule.ScopeSpan,
 			"predicate \"positive\" accepts no scope; declare the constrained attribute instead")
 	}
+	if predicate == RulePredicateOperator && rule.Scope != nil {
+		return RuleAuthoring{}, p.errAtSpan(rule.ScopeSpan,
+			"a declared operator takes one value and accepts no scope")
+	}
 
 	// Anything left on the same declaration must be named. A stray keyword is
 	// reported as itself, so an author does not have to guess which word broke.
@@ -242,8 +371,7 @@ func (p *Parser) parseRuleAuthoring(namespace core.CanonicalID) (RuleAuthoring, 
 		return RuleAuthoring{}, err
 	}
 	switch {
-	case nt.Kind == TokenEOF:
-	case nt.Kind == TokenIdent && nt.Text == "rule":
+	case ruleAuthoringDeclarationEnds(nt):
 	default:
 		return RuleAuthoring{}, p.errAt(nt, fmt.Sprintf(
 			"unexpected %q after the rule body; each rule ends its own declaration", nt.Text))
@@ -283,8 +411,15 @@ func ruleAuthoringIdentity(namespace core.CanonicalID, symbol string) (core.Cano
 // missing predicate one token too late.
 func rejectRuleKeywordAsSubject(t Token) error {
 	switch t.Text {
-	case "is", "per", "rule", "namespace":
+	case "is", "per", "rule", "namespace", "operator", "takes":
 		return fmt.Errorf("%q cannot be a rule subject; declare the constrained attribute before \"is\"", t.Text)
+	}
+	// A predicate word in the subject position means the clauses were written
+	// in the other order (`positive is a.b`). Since a qualified name after
+	// `is` is an operator reference, accepting it here would turn a reordered
+	// rule into a rule about an operator named like the attribute.
+	if RulePredicate(t.Text).valid() {
+		return fmt.Errorf("%q is a predicate, not an attribute; write the constrained attribute before \"is\" and the predicate after it", t.Text)
 	}
 	return nil
 }

@@ -29,6 +29,8 @@ func normalizeNamespace(namespace Namespace) Namespace {
 	out.Data = append([]Data(nil), namespace.Data...)
 	out.Capabilities = append([]Capability(nil), namespace.Capabilities...)
 	out.Validations = append([]Validation(nil), namespace.Validations...)
+	out.Operators = append([]Operator(nil), namespace.Operators...)
+	sort.Slice(out.Operators, func(i, j int) bool { return out.Operators[i].ID < out.Operators[j].ID })
 	sort.Slice(out.Types, func(i, j int) bool { return out.Types[i].ID < out.Types[j].ID })
 	sort.Slice(out.Data, func(i, j int) bool { return out.Data[i].ID < out.Data[j].ID })
 	sort.Slice(out.Capabilities, func(i, j int) bool { return out.Capabilities[i].ID < out.Capabilities[j].ID })

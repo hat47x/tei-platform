@@ -34,6 +34,7 @@ func ParseRuleAuthoringMarkdown(src string) ([]RuleAuthoringMarkdownRegion, erro
 	}
 	out := make([]RuleAuthoringMarkdownRegion, 0, len(regions))
 	seen := map[core.CanonicalID]Anchor{}
+	seenOperators := map[core.CanonicalID]Anchor{}
 	for _, region := range regions {
 		parsed, err := ParseRuleAuthoringAnchored(MaskMarkdownRegion(src, region))
 		if err != nil {
@@ -50,6 +51,18 @@ func ParseRuleAuthoringMarkdown(src string) ([]RuleAuthoringMarkdownRegion, erro
 					rule.ID, prior.Start.Line, prior.Start.Column)}
 			}
 			seen[rule.ID] = rule.IDSpan
+		}
+		for _, operator := range parsed.File.Operators {
+			if !anchorWithin(operator.DeclarationSpan, region.Content) {
+				return nil, &ParseError{Pos: region.Open.Start, End: region.Open.End,
+					Msg: fmt.Sprintf("operator %s was read outside its definition region", operator.ID)}
+			}
+			if prior, duplicate := seenOperators[operator.ID]; duplicate {
+				return nil, &ParseError{Pos: operator.IDSpan.Start, End: operator.IDSpan.End, Msg: fmt.Sprintf(
+					"operator %s is declared more than once; the first declaration is at %d:%d",
+					operator.ID, prior.Start.Line, prior.Start.Column)}
+			}
+			seenOperators[operator.ID] = operator.IDSpan
 		}
 		out = append(out, RuleAuthoringMarkdownRegion{Region: region, Rules: parsed})
 	}

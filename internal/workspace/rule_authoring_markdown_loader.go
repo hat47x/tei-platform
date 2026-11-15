@@ -41,6 +41,7 @@ func loadRuleAuthoringMarkdown(root string, r *Result, filename string, src []by
 
 	// Report every problem of the source before deciding to contribute nothing.
 	rejected := false
+	declaredOperators := map[core.CanonicalID]SourceLocation{}
 	reject := func(span syntax.Anchor, message string) error {
 		rejected = true
 		return r.collectSourceError(filename, &syntax.ParseError{Pos: span.Start, End: span.End, Msg: message})
@@ -51,10 +52,27 @@ func loadRuleAuthoringMarkdown(root string, r *Result, filename string, src []by
 				return 0, 0, err
 			}
 		}
-		if len(region.Rules.Issues) == 0 && len(region.Rules.Value.Validations) != len(region.Rules.File.Rules) {
-			if err := reject(region.Region.Open, "a rule of this region produced no validation"); err != nil {
+		if len(region.Rules.Issues) == 0 && (len(region.Rules.Value.Validations) != len(region.Rules.File.Rules) ||
+			len(region.Rules.Value.Operators) != len(region.Rules.File.Operators)) {
+			if err := reject(region.Region.Open, "a declaration of this region produced no meaning"); err != nil {
 				return 0, 0, err
 			}
+		}
+		for _, operator := range region.Rules.File.Operators {
+			key := "semantic-operator:" + string(operator.ID)
+			prior, declared := r.Sources[key]
+			if !declared {
+				prior, declared = declaredOperators[operator.ID]
+			}
+			if declared {
+				message := fmt.Sprintf("operator %s is already declared at %s:%d:%d; one identity cannot have two declarations",
+					operator.ID, filepath.ToSlash(prior.File), prior.Line, prior.Column)
+				if err := reject(operator.IDSpan, message); err != nil {
+					return 0, 0, err
+				}
+				continue
+			}
+			declaredOperators[operator.ID] = SourceLocation{File: relative, Line: operator.IDSpan.Start.Line, Column: operator.IDSpan.Start.Column}
 		}
 		for _, rule := range region.Rules.File.Rules {
 			if prior, declared := r.Sources["semantic-validation:"+string(rule.ID)]; declared {
@@ -94,6 +112,11 @@ func loadRuleAuthoringMarkdown(root string, r *Result, filename string, src []by
 		for i, validation := range region.Rules.Value.Validations {
 			r.World.Semantics[idx].Validations = append(r.World.Semantics[idx].Validations, validation)
 			record("semantic-validation:"+string(validation.ID), file.Rules[i].IDSpan)
+			definitions++
+		}
+		for i, operator := range region.Rules.Value.Operators {
+			r.World.Semantics[idx].Operators = append(r.World.Semantics[idx].Operators, operator)
+			record("semantic-operator:"+string(operator.ID), file.Operators[i].IDSpan)
 			definitions++
 		}
 		if r.semanticFilesByNamespace == nil {
