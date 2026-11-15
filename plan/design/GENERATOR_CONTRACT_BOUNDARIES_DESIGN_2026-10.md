@@ -224,3 +224,90 @@
 **撤回条件**：新しいメタ構造・接続型を導入しても、既存契約での同一Subject追跡、隠れた依存の削減、変更に必要な検証範囲の縮小のいずれも示せない場合は、専用構造を撤回し既存Build Intent/ArtifactSetと文書上の比較票へ戻す。
 
 **責務**：生成器候補とConformanceは#2016/#4544、Source全入力は#2595、Meaning/Loweringは#1121/#2620、Build実行/Subjectは#1080/#1097、製品Self-buildは#2831/#4583、独立Expectedは#1180/#2514、図表は#2497/#1124がそれぞれ正本。新Runner、第二Resolver、第二Artifact Store、TEI専用Host、中央Authorityは導入しない。
+
+## 9. 2026-11-15 生成ロジックと生成ソースの実使用を区別する（設計・未実証）
+
+本節は8章で残した二つの不足を、現在の参照実装で確かめられる大きさに絞る。第一は、**TEIの意味定義が実装の判断内容を決めたか**という問題である。第二は、**生成したファイルを後続の構築工程が実際に読み込んだか**という問題である。どちらも成果物の存在や試験の終了コードだけでは判断できない。
+
+静的照合の基準はmain `5a3f8895f0bbd1cf6302d75f8c64e6bb3ddeb1c3`。以下は採用前の設計と試験候補であり、正式なSchema変更、Go/Windowsの新試験、意味の受理を行った記録ではない。
+
+### 9.1 何を生成したかを、実装の由来から判定する
+
+[PR #4722](https://github.com/hat47x/tei-platform/pull/4722)がmainへ取り込んだ限定的なMarkdown Graph Readerは、Node/Edge表から元のバイト位置を保ったGraph候補を取得し、既存のGoコードで出辺を計算できる。この成果は重要だが、正式な`*.tei.md`の意味受理、TEI RuleからのGo判断ロジックの生成、Pluginの実利用はまだ証明していない。[#4544](https://github.com/hat47x/tei-platform/issues/4544)が担当する生成器候補の選抜・独立適合検証とも、段階を分ける。
+
+最初のGraph例では、検証対象の義務を事前に固定する。例えば「有向辺の向きを読み取る」「指定Nodeの出辺IDを重複なく列挙する」「同名NodeをIDで区別する」「重複Edge IDを拒否する」は別の義務である。実装後に分母を小さくして生成率を高く見せない。
+
+| 実装の由来 | 数える範囲 | 数えない範囲 |
+| --- | --- | --- |
+| TEI由来の判断ロジック | 受理済みRule/Operatorまたは型付きの意味定義から、実際の分岐・計算・検証を実現した部分 | TEI定義を単に読み込む処理、生成Goの行数 |
+| TEI由来の構成・データ | Graph/Relation等から生成した値や結線が実処理へ反映された部分 | 既存Goの判断アルゴリズムそのもの |
+| 外部実装への委譲 | Go等の既存関数や手書きPluginが担った義務 | 委譲先の処理をTEI自身が生成したという主張 |
+| 未実装・帰属不明 | 必要なSource/意味/生成物/実呼出しを確定できない義務 | 成功した義務への繰入れ |
+
+同じ出力を得ても、固定値を返すGo Wrapperと、TEIのRuleから生成した処理では実装の由来が違う。**結果の比較に加え、入力の意味定義がどの生成規則を通り、どの実装箇所へ反映されたか**を既存のSource参照と生成記録で確認する。図表の配置だけを変えた場合と、`e-2`の向きを反転した場合の差は、[#4675](https://github.com/hat47x/tei-platform/pull/4675)・[#4676](https://github.com/hat47x/tei-platform/pull/4676)の既存試験計画を再利用する。新たなGraph専用の生成器や適合判定器は作らない。
+
+### 9.2 生成ファイルを次の工程へ渡す辺が、現在のBuild Graphには不足する
+
+[Build Execution Reference](../../tools/reference-build-execution-binding/README.md)の`BuildGraphEdge`は、生成側の出力を後続の`builder`または`BuildDependency`へ結び付けられる。しかし、生成したTypeScriptをesbuildの**ソース入力**として読み、生成JavaScriptをGoの`go:embed`対象へ渡す場合、その関係を既存の二種類の入力束縛だけでは直接表せない。これは現在の参照契約の表現上の不足であり、暗黙の`BuildDependency`へ言い換えて解決済みにはしない。
+
+まず既存の`ArtifactSet`、`BuildExecutionResult`、`BuildIntent`のSource解決、入力元索引を使い、次の対応を**読み取り専用の比較票**として取得する。
+
+| 確認する事実 | 必要な対応 | 拒否する取り違え |
+| --- | --- | --- |
+| 生成元 | 生成側のBuild結果、出力memberの役割・形式・digest | 別のBuild試行で得た同名ファイル |
+| 次工程への受渡し | memberから隔離した実Sourceの識別、実バイト列、意味を持つ相対パス | 同じファイル名、または検査前後のdigest一致だけによる推定 |
+| 次工程の入力 | 実Builderが読んだSource閉包と、そのPlan・実行Attempt | Resolverが選んだだけのSource、未読の生成物 |
+| 変換後の出力 | 次工程の出力memberと、その生成結果への参照 | TypeScriptと変換後JavaScript、JavaScriptと実行ファイル全体のdigestを直接比較 |
+| 実Consumer | 受領した成果物の役割・実バイト列・対象版・実行Attempt | ビルド成功からWebView2・CLIの実使用を推定 |
+
+最初の実装候補は、生成memberを管理された作業領域に配置し、既存Source解決器がその実バイト列を読んで作った入力と、生成側のmemberを照合する薄いAdapterである。ファイルの配置によって`go:embed`や相対importの解決が変わる場合、配置に関する情報もビルド入力として扱う。Sourceの検査時刻と実読取時刻が異なる問題、シンボリックリンクの差し替え、検査後に元へ戻すABAは[#2595](https://github.com/hat47x/tei-platform/issues/2595)の既存試験へ渡し、digestの一致だけで実読取の同一性を証明しない。
+
+この比較で実際に不足する型付き関係と必要な検査を確認してから、既存Build Graphに「出力memberを後続のSource入力へ結び付ける関係」を追加するか判断する。新しいPipeline正本、専用Runner、生成器Registryは提案しない。
+
+### 9.3 最初の一巡と停止条件
+
+実装順は二つの短い実証に分ける。CLI先行のGraph Pluginは**意味から処理を生成したか**を確認する対象であり、Studio Desktopのセルフビルドは**生成・構築・実使用がつながるか**を確認する対象である。両者の試行や意味を合算しない。
+
+1. **意味からの生成**：#4722の限定Readerで得た候補と、正式Readerが受理したMeaning/Ruleを区別する。受理済みの入力がない場合は、実Generatorの受入を`unsupported`のままにする。受理後は、事前に固定した義務に対してTEI由来の実装とGo委譲を分け、独立Expectedと既知の変異例を比較する。担当は#4544/#1121/#951/#2514。
+2. **生成物の受渡し**：#2831/#4583の既存N0〜N3で、生成TS→esbuild入力→JavaScript→Wailsの埋込Asset→実Desktop Consumerの順に、各工程の実入力と成果物memberを照合する。最初は一工程ずつ失敗点を記録し、すべてを同一Build Intent/Attemptへ束縛できた場合だけ全体資格を検討する。Stage1実TEIがStage2の構築を駆動したことは、別途そのProcessと子の実起動で確認する。
+3. **変更による再評価**：Edgeの向き変更とレイアウトのみの変更を区別し、生成ロジック、表示、Build結果、独立Expectedのうち何を再検査したか記録する。省略が正しいかと待ち時間が減ったかは[#2600](https://github.com/hat47x/tei-platform/issues/2600)で別々に測定する。
+
+既存のGCX/PSB/IB試験へ返す追加の観測事項は次の四つである。
+
+| 条件 | 検査すべき違い |
+| --- | --- |
+| 生成したTSは正しいが、esbuildが以前のファイルを読んだ | 出力memberの照合は成功しても、実Source入力の照合は不合格 |
+| 生成JavaScriptのdigestは一致するが、Wails側の埋込対象が別パス | パスに依存する入力解決と、実Desktopで使われたAssetを別々に確認 |
+| Graphの入力変更に伴い出力が変わったが、出辺の計算は既存Goに委譲した | TEI由来のデータ生成と、TEI由来の判断ロジック生成を別々に数える |
+| レイアウトだけを変えたのにGoの処理を再生成した | 意味の誤実装とは断定せず、再計算省略と保守負荷の問題として測定 |
+
+採否の基準は、既存のBuild/Source契約と少数の対応付けでこの二つの実証を説明できるかどうかである。実Source入力の結び付けを追加しても、実際に使われたファイルを特定できない場合は、その関係を製品契約へ昇格させない。**本節の新しいGo/Windows/独立Consumer試験はNOT RUN、Ownerの意味受理と製品全体のセルフビルドはNOT ACCEPTED**。
+
+<!-- tei-generator-source-artifact-actual-consumer-20261115 -->
+### 9.4 新たに確認できた実証と、まだ成立していない証拠
+
+前節の執筆後、[Graph/Rule実コード生成 #4729](https://github.com/hat47x/tei-platform/pull/4729)、[一つの生成Binaryを複数Node入力で実行する試験 #4733](https://github.com/hat47x/tei-platform/pull/4733)、[候補構造指紋の照会 #4758](https://github.com/hat47x/tei-platform/pull/4758)、[原Source変更と生成Goの同値・非同値を比べる試験 #4759](https://github.com/hat47x/tei-platform/pull/4759)、[指紋の自己申告を信用できない反例 #4761](https://github.com/hat47x/tei-platform/pull/4761)がmainに統合された。いずれも**限定的なReferenceの実証**であり、正式な`*.tei.md` Readerの選択、受理済みMeaning、製品Generatorや実Providerを使用した証拠ではない。
+
+この成果から、生成と実使用の関係を次の五つに分けて検収する。
+
+| 段階 | 確認するもの | 不合格となる例 |
+| --- | --- | --- |
+| **元Source** | Manifestが選択したPath、Role、文法版と、同一Loadで実読取した元byte、Source Indexの位置・現行性 | 候補指紋が同じだからといって変更前のIndexを有効にする |
+| **意味候補と受理済み意味** | 解析されたNode/Edge/Rule候補、解決した参照、Ownerが受理したContract・Meaning Revisionを区別 | テスト用候補をAccepted Meaningとして無条件に登録する |
+| **生成した判断ロジック** | 実際の条件分岐がTEIのRuleから生成されたこと、生成器と入力の版、生成Goのbyte | TEIのデータを既存の汎用Go関数へ渡しただけで「ロジックの自己生成」と数える |
+| **実Artifact** | Builderが実際に読んだSource member、生成出力、Toolchain、結果Binaryのdigestを同一Attemptで照合 | `-candidate-shape`の自己申告だけで、後から処理を書き換えたBinaryを認定する |
+| **実Consumer** | どのCLI／Desktop ProcessがどのArtifactを起動し、どのProvider・入力・権限で結果を受け取ったか | 参照実行成功を通常`tei` CLIのProvider呼出しやStudio Stage2起動とみなす |
+
+参照実装の試験では、レイアウトや説明だけの変更は**元Sourceの改版**だが、限定Profileの候補構造と生成Goの内容は同じでよい。一方、Edgeの向きやRule条件を変えると構造指紋と生成Goが変わる。いずれもSource Indexの旧byteは失効する。さらに#4761の反例では、生成Goの判定を事後に書き換えても、実Binaryが自己申告する`-candidate-shape`は元の値を維持できた。**候補指紋の一致は実行されたコードの証明ではない**ため、生成Sourceの実読取・Binary digest・独立Expectedによる結果を別に確認する。
+
+### 9.5 最初の製品実証で記録する最小の一巡
+
+ここでは新しいBuilderや証拠Storeを作らない。既存のWorkspace／Source Index／BuildExecution／ArtifactSet／Plugin Contractを使い、**一つのGraph/Ruleを一つの選択Frontendから取り込み、一つの実Generatorで条件分岐を生成する**ところまでを最初の単位とする。未選択の`*.tei.md`は現行の`TEI_MD_PARSER_UNBOUND`を維持し、文法選択を拡張子やMarkdown表の見た目から推測しない。
+
+初回の受入は、(1) 実`Workspace.Load`が選択済みSourceの同一byteをReaderへ渡す、(2) 受理したRuleから生成Goの条件を決める、(3) 生成Goを実Builderが読んだ事実を残す、(4) 別Processで実Binaryを動かし独立Expectedを照合する、という順で行う。未接続の段階は`not-run`または`unsupported`として明示する。Pluginの`selected / included / loaded / invoked / authorized / effect-observed`もそれぞれ別資格とする。
+
+特にStudioでは、生成TypeScriptのmemberがesbuildへ、生成JavaScriptのmemberがGo/Wailsの埋込入力へ届くことを、**出力側のmember IDと次工程の実読取Source ID・byte・相対パス**で比較する。先にread-onlyの比較票を作り、既存Build Graphに表現できない最小の関係が確定したときだけ契約の追加を検討する。Stage0が代わりにStage2までBuildした場合や、旧生成物が同じパスに残っていた場合は、Stage1によるセルフビルドの成功として扱わない。
+
+採用判断は[Generator適合 #4544](https://github.com/hat47x/tei-platform/issues/4544)、[Sourceの実消費・ABA #2595](https://github.com/hat47x/tei-platform/issues/2595)、[Build Execution #1080](https://github.com/hat47x/tei-platform/issues/1080)、[Studio自己再構築 #2831](https://github.com/hat47x/tei-platform/issues/2831)、[独立Expected #2514](https://github.com/hat47x/tei-platform/issues/2514)の既存Ownerへ返す。形式の選択は#2621/#988のOwnerに残し、Referenceの指紋を新たなModel Revisionの正本にしない。通常CLIでの実Provider取得とStudio Stage1→Stage2は、引き続き並行するP0である。
+
+**今回の状態**：既存Referenceの統合済みGoテストを静的に確認したうえで、生成器設計へ受入順と負例を追記したもの。正式Reader、製品Generator、実Source member→次Builder入力、Plugin Invoke、実Consumer、Owner受理の新しいE2E試験は実行していない。
