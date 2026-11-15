@@ -1385,3 +1385,11 @@ main `eeafd9cb` は`internal/semantic/validationgen.GeneratePositive`を追加�
 Node-RED型のノードFlowや簡易APIへ展開する場合も、新しい意味モデルを作らず、既存の標準データ構造・Operator/Function・Process Flow・型付きOperationへ接続する。Nodeは部品のPresentationにとどまらず、Portの型・条件・必要Context・副作用と実Consumerを既存契約から説明できることを検収する。ただし最初のR2／R3をGraph全般／Node UI／API公開の完成待ちにしない。**Studio Stage1実TEI→Stage2実Windows WebView2は引き続き独立した最上位P0**とする。
 
 本節はmainに実在する実装と未接続の工程を分ける文書追補であり、ここで新たなGo／Windows／実DB試験やOwnerの業務意味受理を行ったものではない。
+
+### 24.7 参照Builderと公開Entryは別の進捗として管理する（2026年11月15日）
+
+mainで確認できる`tools/reference-go-build-from-plan/validationgen_build_binding_test.go`は、実Workspaceで選ばれたRuleから生成したGoを、既存のReference BuildPlan／DirSourceResolverで**実際に読み込み、隔離ビルドしたBinaryとBuildArtifactLockを照合**する。計画確定後の生成Go差替えも拒否する。一方、そのBuildPlanはテスト用であり、製品選択済みBuilder・Runtime Contributionの収録を証明しない。Rule SourceのInspector／Source Indexが成立しても、`internal/operations/inspect_markdown_rule_entry_boundary_test.go`は**同名Capabilityの自動存在を拒否する**。
+
+このため、R2-Pは製品Build Intent→選択Generator→実Builder入力→Artifact／Runtime収録、R3は独立した受理済みpure Function→明示公開Entry→型付きBinding→選択Provider／現在Grant→実Call→Consumerという二本の実装レーンを保つ。**R3の最初の実Provider検査はR2-Pの完成を待たない。** 両者が合格した後、Rule由来の生成実装と公開Entryを同じ意味・版・実Artifactの下で結合する。Data／Function／Businessの責務分離とNode Flowの標準Operator／Process投影を維持し、Rule IDをEntry IDとして暗黙に採用しない。
+
+具体的な正負・Owner引渡しは[Rule第一縦断§14.5〜14.7](PLUGIN_RULE_PRODUCT_VERTICAL_SLICE_2026-11.md)へ一本化する。本節は追加のBuilder、Entry Registry、Rule Runtime、Host、Scenario正本を作る要求ではなく、現行mainの限定Go実証と未実装の製品接続を区別する計画である。
