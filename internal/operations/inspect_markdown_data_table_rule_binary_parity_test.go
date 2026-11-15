@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"tei/internal/core"
@@ -172,6 +173,9 @@ func TestMarkedDataTableRuleRealGoAndEvaluatorReadParity(t *testing.T) {
 		}
 	}
 	binary := filepath.Join(t.TempDir(), "tei-data-rule-parity")
+	if runtime.GOOS == "windows" {
+		binary += ".exe"
+	}
 	build := exec.Command(goExe, "build", "-o", binary, ".")
 	build.Dir = pkgDir
 	build.Env = append(os.Environ(), "GOWORK=off")
