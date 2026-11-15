@@ -68,6 +68,22 @@ function showFailure(error: unknown) {
   notice.textContent = `操作を完了できませんでした：${code}`;
   notice.dataset.state = "error";
 }
+function showInspectionLimits(limits: readonly string[] | null, pending = "未取得") {
+  const list = element<HTMLUListElement>("inspection-limits");
+  const state = element<HTMLParagraphElement>("inspection-limits-state");
+  list.replaceChildren();
+  if (!limits) {
+    state.textContent = pending;
+    return;
+  }
+  state.textContent = "実際のInspect結果に付随する制限";
+  for (const limit of limits) {
+    const item = document.createElement("li");
+    // Never interpret Host-provided strings as HTML.
+    item.textContent = limit;
+    list.append(item);
+  }
+}
 function renderXead(raw: unknown) {
   const view = readXeadObservation(raw), result = element<HTMLDivElement>("xead-result");
   const sections = view.tables.map((table) => {
@@ -220,6 +236,7 @@ async function inspect(subject: Subject) {
     graph.update({ width: 680, height: 240, nodes: [], edges: [] });
     element("graph-note").textContent = "対象の一意性が未確定のため関連図は保留しました。";
     element("source-status").textContent = "対象未確定";
+    showInspectionLimits(null);
     notice.textContent = `候補の閲覧は継続できます。Inspectは保留：${eligibility.reason}`;
     notice.dataset.state = "error";
     return false;
@@ -231,6 +248,7 @@ async function inspect(subject: Subject) {
   title.textContent = subject.id;
   renderList();
   element("source-status").textContent = "モデル投影を取得中";
+  showInspectionLimits(null, "取得中");
   editor.setDocument({
     id: "pending",
     version: `${context}:${request}`,
@@ -250,6 +268,7 @@ async function inspect(subject: Subject) {
       text: view.text,
     });
     element("source-status").textContent = `参照情報：${view.sourceStatus}`;
+    showInspectionLimits(view.authorityLimits);
     notice.textContent = "選択したモデルの投影を表示しています。";
     notice.dataset.state = "ready";
   }, (error) => {
@@ -267,6 +286,7 @@ async function inspect(subject: Subject) {
         "参照中にモデルの更新を検出しました。一覧を再読み込みしてください。";
     }
     element("source-status").textContent = stale ? "版不一致" : "未取得";
+    showInspectionLimits(null);
     throw error;
   });
 }
@@ -308,6 +328,7 @@ async function loadWorkspace() {
   title.textContent = "モデルを読み込み中";
   element("source-status").textContent = "未取得";
   element("revision").textContent = "未取得";
+  showInspectionLimits(null);
   editor.setDocument({
     id: "empty",
     version: String(context),

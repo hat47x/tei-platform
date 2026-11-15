@@ -56,6 +56,44 @@ test("a response for a different subject cannot replace the selected projection"
   };
   assert.throws(() => readInspection(raw, data.subject), /INVALID_INSPECTION/);
 });
+test("inspection discloses its read-only limits and refuses incomplete authority evidence", () => {
+  const catalog = {
+    entries: [data],
+    modelRevision: "model-1",
+    worldFingerprint: "world-1",
+    sourceIndexFingerprint: "source-1",
+  };
+  const authorityLimits = [
+    "inspection-is-a-derived-read-only-projection",
+    "source-location-is-not-semantic-acceptance",
+    "source-location-is-not-write-authority",
+    "local-read-is-not-disclosure-permission",
+  ];
+  const raw = {
+    effect: "read-only",
+    subject: data.subject,
+    canonical: { name: "注文" },
+    sourceStatus: "indexed",
+    worldFingerprint: "world-1",
+    sourceIndexFingerprint: "source-1",
+    authorityLimits,
+  };
+  const view = readInspection(raw, data.subject, catalog);
+  assert.equal(view.sourceStatus, "indexed");
+  assert.equal(view.authorityLimits.length, 4);
+  assert.match(view.authorityLimits[0], /読み取り専用/);
+  assert.match(view.authorityLimits[1], /受理/);
+  assert.match(view.authorityLimits[2], /編集/);
+  assert.match(view.authorityLimits[3], /開示/);
+  assert.throws(() => readInspection({ ...raw, authorityLimits: undefined }, data.subject, catalog), /INVALID_INSPECTION_RESPONSE/);
+  assert.throws(() => readInspection({ ...raw, authorityLimits: authorityLimits.slice(1) }, data.subject, catalog), /INVALID_INSPECTION_RESPONSE/);
+  assert.throws(() => readInspection({ ...raw, authorityLimits: [...authorityLimits, 1] }, data.subject, catalog), /INVALID_INSPECTION_RESPONSE/);
+  assert.throws(() => readInspection({ ...raw, sourceStatus: null }, data.subject, catalog), /INVALID_INSPECTION_RESPONSE/);
+  assert.throws(() => readInspection({ ...raw, effect: "write" }, data.subject, catalog), /INVALID_INSPECTION_RESPONSE/);
+  assert.throws(() => readInspection({ ...raw, sourceIndexFingerprint: "old" }, data.subject, catalog), /STALE_MODEL_PROJECTION/);
+  const extra = readInspection({ ...raw, authorityLimits: [...authorityLimits, "extra-limited-scope"] }, data.subject, catalog);
+  assert.match(extra.authorityLimits.at(-1), /extra-limited-scope/);
+});
 test("graph contains actual catalog relations and reports clipped neighbours", () => {
   const children = Array.from({ length: 10 }, (_, i) => ({
     subject: { kind: "semantic-attribute", id: `sales.order.f${i}` },

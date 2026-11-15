@@ -561,4 +561,388 @@ Design Synthesis
 
 一方、durable proof object、generic Claim、graph storage、global revision等のCore採用は、Reference Evidenceが具体的なlossを示すまで保留します。
 
-この方針により、三要素分析的なcross-viewの強みを保持しつつ、TEIの小さいkernel、file-native authority、Shared Acceptance Boundary、Derived Cognitionの非authority性を崩さずにDesign Synthesisへ接続できます。
+この方針により、三要素分析法のモデルに基づくcross-viewの強みを保持しつつ、TEIの小さいkernel、file-native authority、Shared Acceptance Boundary、Derived Cognitionの非authority性を崩さずにDesign Synthesisへ接続できます。
+
+## 16. 三要素分析法のモデルの検証を説明・操作・実装で一貫させる（2026-11-12 評価案）
+
+> 状態: **追加の設計・受入計画。実装と正式契約の採用ではない。**
+> 同じ関心事について複数の図・表・Tool Result・AI説明を作るとき、どの問いを検証したかを失わないことを目的とする。既存Ownerは #1124（モデル投影）、#1127（標準CRUD）、#3250（Subsystem分割）、#3262（必要Design Context）、#2514（独立Expected）、#1163（同一改訂Evidence）とし、現Productの具体的不整合は [#4472](https://github.com/hat47x/tei-platform/issues/4472) で扱う。
+
+### 16.1 技術的な統合：一覧や図表ではなく、問いへ戻れるProjection
+
+最小の説明順は次の通りとする。
+
+1. **何を変えたいか**（Businessの目的、または分野固有の対象・条件）。
+2. **何が同一の対象か**（Data / Subjectの業務IdentityとOccurrence、版）。
+3. **どんな規則が成立するか**（Constraint / State / Operation / OwnershipのAcceptedな意味）。
+4. **どの視点から確認するか**（Data、Function、Business Procedure、CRUD、Graph、AI向け構造化Contextなどの導出）。
+5. **何を問うか**（指定Scope内の必要Functionは存在するか／この更新が許されるか／違反はどのSourceにあるか）。
+6. **どこまで確認できたか**（構造検査／意味の整合／Provider選択／実呼出／Effect／独立再観測とExpected）。
+
+以上は説明用の論理依存であり、すべてを固定したCore Objectの階層として導入するものではない。
+
+三要素分析法のモデルは業務向けの重要なMethod Profileとして扱うが、科学データ／通信／編集／XRでも同じSubject・Source・Meaning・Scope・根拠つきProjectionを使う。CoreにBusiness Procedureを必須導入しない。新しいDomain Profileを作る際も、三要素分析法のモデルの単純な複製から始めず、分野の問いたいことを先に定義する。
+
+### 16.2 「OK」を一つの真偽値へ潰さない
+
+現Productでは以下を静的確認した（main 2026-11-12、`718a8b74`）。実Go Test・実CLI実行による新たな合格主張はない。
+
+- `internal/threeelement/validate.go`: `report.OK = report.ErrorCount == 0` であり、後から格納する `ContradictoryCRUDs` と独立。したがって`OK=true`でもCRUDの矛盾は存在し得る。
+- `cmd/tei/cli_three_element.go`: `three-element crud` は表の導出を行った後、結果の`OK:true`を返す。これは業務上の更新許可や全視点の完全整合を証明しない。
+- `internal/threeelement/crud.go`: `GenerateCRUDGaps` は明示CRUDのみからGapを求め、Function OperationのRを無視して「CRUDなし」を返し得る。他方、明示CRUDのRead不足らしき内部`missing`を結果に加えない分岐がある。**Readが必須かは契約相対**であり、全Functionへ固定してはいけない。
+
+望ましいConsumer表示は、**今回実施した操作の成功**、**検出した診断**、**その問いに対する適格性**を混ぜない。新しい一律の`ValidationState` enumや恒久的な`ProofRecord`をCoreへ追加する前に、既存`ValidationReport`／Proof Obligation／DesignContextPacketのread-only表示と適格性を利用する。
+
+例:
+
+| 問い | 実行上の事実 | 意味・適格性として返すべきこと |
+| --- | --- | --- |
+| CRUD表を導出できたか | CLIはJSONを返した | `projection-produced` は導出成功を表すだけ。対象集合・未収録と矛盾の有無は別 |
+| このFunctionが対象Dataを書けるか | 表にUがある | Acceptedな操作の意味／状態条件／現在Grant／Effectへ遡らなければ`authorized`ではない |
+| 全視点に矛盾はないか | 構造Error数が0 | Requiredな検査対象が閉じているか、矛盾一覧とunresolvedが残るかに応じて限定 |
+| 注文確定は終わったか | Command受理/HTTP 200 | 更新したDB・帳票発行・外部相手の独立観測を、業務完了へ無断昇格しない |
+
+表の文言は採用済みのCLI診断コードや新しい永続属性の確定を意味しない。
+
+### 16.3 コードを誤読しにくくする小さな抽象化
+
+文書化中に見えた実装の読みにくさは、単なる説明追加で回避せず、APIや処理責務の改善対象とする。
+
+- `ThreeElementModel.Index()` は **Data Map / Function Map / Business Map の3つを位置で返す**。 `crud.go` では `_, _, dataByID := model.Index()` としてBusiness MapをData Mapとして扱う箇所がある。Compilerの型が異なる場合に検出されるかどうかに頼らず、`indices.DataByID`のような名前付き結果、または`IndexData()`等の責務別参照を比較する。旧APIとConsumer影響を測って選定する（#4472）。
+- `GenerateCRUDTable`／`GenerateFunctionDataCrossReference`／`GenerateCRUDGaps` は、`CRUDDefinitions`の明示側と`FunctionElements.Operations`の導出側で列挙・優先・欠落判定が異なる。**Function×Dataの候補と根拠を保つ中間read-only view**を共通の入力とする案を比較し、衝突を後勝ち縮約しない。新しいCanonical CRUD正本を作るわけではない。
+- 表の空欄、未取得、明示的なNo、矛盾、未検査を同じ`false`と読ませない。区別は入力契約と説明の両方で保持し、開示範囲を越える未公開の存在・件数を漏らさない。
+
+これらは内部実装を固定する提案ではなく、より誤用しにくい代替を**独立Fixtureで比較するための選択肢**である。
+
+### 16.4 最小の正負対照と段階判断
+
+**P0／#4472**: Data/Function/Businessに名前を独立に設定した索引誤参照の正例、同一ID異種Kindの負例、明示CRUDのみ、Operation由来のみ、両方一致／競合、必要Read有／正当なWrite-only、構造OKだがCRUD矛盾ありのケースを試す。出力のName/ID、表のPair集合、Gap、Diagnostics、CLI/既存Consumer受領まで比較する。
+
+**P1／#1124/#3250**: 同じ受理済みSubject/Scope/RevisionからData図・Function図・Business Procedure図・CRUD表を導き、モデル上の更新違反またはFunction不足を一件仕込む。Graphに出ていないことを「存在しない」に変えず、証明できないときはunresolvedを維持。Source参照と図面上のOccurrenceは別。
+
+**P1／#3262/#2514/#1163**: AI/CUIとStudioで同じ問いを表示し、Candidate/Accepted/Observedを混同せず、元Source、独立Expected、必要集合と開示Scopeを一致させる。読める説明は`証明義務の根拠と結論`を短く表す。すべての詳細をスライドや一画面に羅列する必要はない。
+
+**P2／実DB・Target Owner**: 注文確定時の保存単価、商品マスター改版、同じ版の画面／新規帳票、訂正の正規Operation、発行済み帳票の別Assetというケースで、Mockの表示一致ではなく、実Provider/Consumer/独立Observationを結ぶ。
+
+段階の判定は、一件の現在のコード欠陥の修正から直接「三要素分析法のモデルに関する製品機能全体が検証済み」へ広げない。逆に、現実装が未対応であることを理由に将来仕様の表現を貧弱にする必要もない。要求した価値に向けた最小の反例・受入へ戻す。
+
+### 16.5 アウフヘーベンの判断
+
+「三要素分析法のモデルを扱う個別ツールを高度化する」「AI向けContextを別実装する」「試験用Proof DBを別に作る」という三つの発想を足すのではなく、**各Consumerが同一のAccepted Subjectと問いに相対的な根拠へ戻れること**を共通原理にする。既存Proof Obligation、Source Index、Canonical/Shared Acceptance、Read-only Projection、共通Operation API、Conformanceを合成すれば、この原理の多くは新しいCore Kindなしに評価できる。
+
+もし共通化によって専門家が扱う自然な記述順やNative SQLの表現力、GUIの安定した対象選択、Target固有の最適化が失われるなら、抽象化の方を修正する。共通化自体は目的ではない。
+
+### 16.6 価値・要求の発見と、実装から独立した仕様の最適化
+
+この設計の評価では、実装を「すでに成立している技術構造の証拠」として使う一方、将来仕様の上限や説明順の根拠とはしない。完成したコードのAPIに合わせてRequirementを後付けするのではなく、**利用者に必要な価値 → 検証可能な要求 → 最も少ない意味・契約境界 → Provider/Target実現 → 実証** の順で考える。
+
+#### 価値の新発見から仕様へ
+
+三要素分析法のモデルのProjectorとCRUD列挙、Design Context Query、AI編集支援、独立Expectedは、個別機能の集合としても説明できる。しかし横断して観察すると、より高位の価値候補を検討できる。
+
+> **価値候補 VQ-01（未採用）**：人とAIが、同じ対象・同じ変更について「何を根拠に、どこまで確認できたか」を共有し、複数の表現やTargetを横断してもその理解を失わない。
+
+この価値が必要とする能力を、別の大規模基盤を作る前に既存契約へ分解して比較する。
+
+| 必要な能力 | 第一候補として再利用する既存の責務 | 反例・選択条件 |
+| --- | --- | --- |
+| 同じ対象を特定 | Qualified Subject / Occurrence / Revision / Source reference | 同名異ID、同Subject別Occurrence、Source move/ABA |
+| 同じ問いを固定 | Scopeに相対的なRequired集合、Proof Obligation / Claim | Required不足を成立と誤判定、問いの範囲外の矛盾で過剰拒否 |
+| 根拠と結論を追う | Accepted Meaning、導出Graph、Diagnostics、Evidence参照 | Patternや類似度の推測をAcceptedに昇格、構造OKから業務整合OK |
+| 消費者ごとに説明する | 図・CRUD表・CLI／Studio／AI Context Projection | 詳細を見せるために常識的な聴衆の理解を妨げる、一方で編集対象の資格が消える |
+| 現実の結果と比較する | Driver Scenario、独立Expected、Provider受領・外部観測 | テスト生成器がExpectedも生成して自己証明、実行結果不明を成功へ変える |
+
+**Requirementとして採用するかは未定**。既存RQ-026/RQ-036等がこの価値を既に十分に含むなら新しいRequirement IDは作らず、受入条件へ反映する。既存要求で表現できない実質差分が独立の例で判明した場合だけ、正式要求Ownerへ採用候補を提案する。
+
+#### アウフヘーベンの比較基準
+
+1. **保存すべきもの**：三要素分析法のモデルのMethodとしての明瞭さ、Native SQLと既存資産、DSLの専門家向け認知順、Targetごとの適正化、人間の安定したGUI選択。
+2. **否定すべきもの**：機能ごとの第二の意味正本、図とAIと試験でのID・Source解決の重複、無根拠な万能OK、暗黙に最初/最後を選ぶ解決、検証できない「共通だから正しい」。
+3. **統合して得るもの**：Qualified Subject・問い相対の根拠を共通にし、Methodごとの解釈/ProjectionとTargetごとの実現はPlugin等で可変にする。
+4. **棄却条件**：共通化で結果の解釈（NULL・Coverage・粒度・Actor・Authority・Effect）が失われる、分野の表現力が落ちる、Source provenanceが切れる、機構が増えて利用者に説明できなくなる、独立Expectedで差が判別できない。
+
+最小PoCは、注文確定のBusiness Function＋状態/CRUD矛盾と、測定値の単位・欠測・時間の異分野対照を使用する。同じ共通契約で両方を成立させられるか、どこでMethod固有のContractが必要かを記録する。**既存コードが現時点で失敗することだけを理由に理想仕様を縮小しない**。失敗箇所は実装修正・接続Gap・仕様候補のいずれかに分類し、別々のOwnerへ渡す。
+
+#### 改訂計画への出力
+
+- 既存要求内の記述改善と検証不足は当該Issueへ。
+- 新たな価値・要求候補は、具体例と反証を添え、製品Requirement Ownerへ採否提案。
+- 技術構造の改善は、対案・変換可能性・独立Expected・移行影響まで含める。
+- 利用者向け説明では論理の順序を優先し、必要な章節参照だけを追加する。コードAPIの歴史的形状や複雑な検証内部は、読者が理解するために必要な範囲だけ示す。
+
+新たなData Modeler、Proof Engine、Context Registry、Acceptance Authority等の重複した製品機構を、説明の都合だけで導入しない。
+
+### 16.7 意味の同一性とScope相対の結論を、図表・AI・Runtimeで整合させる
+
+実装の現状を将来仕様の上限にはしない。設計したい価値は、**同じSubjectを扱う人・AI・Targetが「その問いに対してどこまで言えるか」を同じ意味で説明できること**である。
+
+ただし、`scope`が同じ文字列だからといって、以下を等号で結ばない。
+
+1. **Identity/Meaning scope**：どのSubject・Occurrence・Accepted Modelの話か（既存#1120）。
+2. **Required/Query scope**：判断に必要な集合・粒度・時点・依存は何か（既存#3262/#2506）。
+3. **Observed/Coverage scope**：実Providerが読んだ範囲、部分／完全性、単一Attemptは何か（既存#2586/#1163）。
+4. **Disclosure scope**：Consumerへ何を開示できるか。見えない存在・件数の推測も禁止条件に含む（既存#2516）。
+5. **Authority/Effect scope**：現在どのCallerとTargetがどの変更・副作用を許されているか（既存#1174）。
+
+これは五つのCore型を必須化する提案ではなく、**異なる正本と判定責務の対応関係**である。新しいContext Registry/Permission Engine/Proof DBを作らず、既存の対象参照・Query・Evidenceを使い、主張の用途に必要なScopeだけを照合する。
+
+#### 判別の最小例（未実行の計画）
+
+| 対照 | 想定入力 | 必要な結論 |
+| --- | --- | --- |
+| SCQ-01 正常0件 | 現在Scopeで対象を完全取得し、RLSやCursor truncationなし、0件を独立観測 | **その問合せScope内の0件**。別Tenant・過去時点・未列挙世界の不存在は主張しない |
+| SCQ-02 非開示／未読 | 同じ意味Subject、部分取得、または許可されない属性・Tenantがある | 非存在と断定せず、開示できる状態と診断を返す。秘匿した対象の存在／件数を漏らさない |
+| SCQ-03 読めるが書けない | 図・AI ContextへSubjectは表示できるが、現在Edit/Host Grantを持たない | NavigationとReadは可、Edit Intentの適用は不可。図上のSelectionをAuthorityにしない |
+| SCQ-04 合成で適格性が失われる | D→Representation→AI概要へ変換し、途中で粒度・欠測・Subject Refが失われる | 各表示が成功していても、元Dataの業務不存在／一意な逆編集／全体Coverageは主張しない |
+
+評価順は「対象と問いを特定→Requiredな意味とSourceを解決→ScopeごとのObserved/Disclosed/Authorizedを照合→Supported/Unresolved/Contradictionを用途相対に返す」。固定された単一巨大Scopeや、普遍的な「全世界で完全」という表示は採らない。
+
+**今後の仕様最適化の問い**：既存のScope参照、Function Data Context、Read-only Projection、Proof Obligationを繋ぐだけでSCQ-01〜04を正しく説明できるか。できなければ欠ける参照・必要な不変条件だけを追加し、既存Projector/Context/Permissionの第二正本は作らない。結果は#3262/#2497/#2516/#1124と共有する。コード移行・実Provider/GUI試験・Owner意味受理は本節では実施していない。
+
+### 16.8 確定Snapshotから実消費までの整合を、問いに相対的に評価する
+
+複数のProof Obligationが局所的にsupportedでも、**同じ業務結果について共同で成立した**とは限らない。設計の正しい構造と、実際の結果の成立を次の順に分ける（製品Schemaの追加ではなく、候補としての設計・検証票）。
+
+1. **意思・対象**：Acceptedな業務Action/Function、Business Outcome、対象集合とIdentity、Scope、版、処理意図。
+2. **一貫した入力**：必要なHeader/Detail/規則/時点/版/ProviderのRead cohortと取得閉包。別々のRead PASSや同じSnapshot Token文字列を、共通の一貫した観測と決めつけない。
+3. **実作用と生成**：対象/Grant/Provider/Artifactを固定し、実際のRequest、保存した実体、外部Effectを識別。Retry/Unknown時に実未実行とみなさない。
+4. **配布・受領**：発行レコード、保存済みArtifact Set、配信受付、受領した実Byteと必要Closureを区別。Manifest内整合と公開途中の混合版/旧版残存を別検査。
+5. **Businessとしての結末**：独立Readや外部のObservationとAcceptedな完了条件を比較し、業務Outcomeとして言える範囲を限定する。
+
+#### 重要な共同反例
+
+| ケース | 各局所検査で一見成立すること | 共同Claimとして成立しないこと |
+| --- | --- | --- |
+| RC-01 別cohortで帳票確定 | Header Query成功、明細Query成功、PDF Renderer成功 | 両Readを一つの業務的に整合したSnapshotとして固定した根拠 |
+| RC-02 発行直前の障害 | PDF実体は保存済み | 発行を正式に記録した／相手が配信を受けた |
+| RC-03 複数媒体 | CLI exit 0、HTTP 200、Web表示成功 | 両経路の同じ業務Effect／独立観測結果 |
+| RC-04 成果物一式の切替 | ManifestのContent digest一致、Generator PASS | Consumerが一式を同じ公開世代として取得し使用した |
+| RC-05 ACK喪失と再送 | Requestは送った、応答は失った | 未実行だった、再送しても二重作用が無い、業務完了した |
+
+ここでいうSnapshotは物理DBの単一Isolation方式ではない。業務Ruleに照らした確定済みイベントや再確認を含め、**用途に必要な集合の整合**を構成できることが重要。複数DB/非同期APIにまたがる原子性は、独立に採用された取引・回復方式でのみ認める。Snapshot/Artifact/Receiptが同じ型や表名である必要もない。
+
+#### 統合判断（アウフヘーベン）
+
+帳票、Build成果物公開、通知、外部Commandは各々固有の状態と回復能力を持つ。すべてを同じ新しい「発行Runtime」へ入れるのではなく、**Intent／Required Inputs／Actual Invocation・Produced Artifact／Observed Result／Owner Accepted Outcome**という照合の論理を共有する。設計・業務意味・実行主体・配布先のOwnerを消さない。Generated evidenceだけの自己証明を避け、受領者側の独立Observationを必要なケースで採る。
+
+追加の共通構造が有益かは、既存#1163 Evidence Packet、#1174 Effect Fence/Receipt、#2604 Artifact Set publication、#1130 Batch/Report、#3815 Snapshot帳票、#2514 Independent ExpectedをつなぐRead-only Referenceで反証してから判断する。新Host、Second Receipt Store、中央Publication Registry、万能Transactionを先行採用しない。
+
+**検収の出力**：対象・問い・Required集合→実Read cohort/Provider→不変なArtifact/Effect→相手に届いた実物→業務完了の判断、の各辺に根拠と未検証を記録する。最小例は注文確定単価1,200円に対する注文Header/Detailの版ずれ、帳票保存後の発行記録失敗、別媒体/再送時のUnknown。これは設計提案であり、今回の新規実CLI/DB/印刷/配信試験はNOT RUN。
+
+
+### 16.9 Derived IndexとFingerprintはAccepted Subjectと資格を変更しない（2026-11-12 追加評価）
+
+モデルの説明・図・AI Context・CRUD表がすべて同じSubjectを指すためには、単に`kind/id`のRefが揃うだけでなく、**参照を導出する過程で入力の同一性や状態が破壊されないこと**が前提となる。
+
+現行公開main `718a8b74`の`internal/threeelement/model.go`では、次のSource-level反例がある（実Go Test・CLI再現は今回NOT RUN）。
+
+- **ID collision**：`Index()`はData/Function/Businessを各mapに`data[e.ID]=e`等で格納する。kind内の二つの要素が同じIDなら後勝ち縮約されるが、`Validate()`の構造診断にkind内ID重複検査がない。`SameNameConflicts()`は名前の重複であり、同ID/異名を検出しない。
+- **Derived fingerprint mutates source**：`ModelFingerprint(model ThreeElementModel)`は値コピーされたStructの`DataElements[i].AuthorityLimits=nil`等を実行し、Sliceの共有Backing Arrayを通じて呼出し元の要素Fieldを消す。ハッシュを求める読取り専用処理が入力モデルの状態に副作用を起こす構造。
+- **Self-reference**：`json.Marshal(model)`に`model.ModelFingerprint`自身が含まれるため、先に計算して同Fieldへ格納すると、内容が実質同じでも次の計算は別Digestになる。既存`model_test.go`は空Fingerprint状態同士の比較のみ。
+
+この実装上の欠落は公開[Issue #4475](https://github.com/hat47x/tei-platform/issues/4475)へ限定委譲し、#4472のCRUD上のData索引誤用と区別する。
+
+**望ましい仕様の成立条件**：Stable/Qualified Subjectは同Kind同ID衝突を診断し、CrossKind同IDの合法性はKind+Scope契約に従う。Index/Graph/CRUD/AI Context/Fingerprintは原モデルを変えずに計算でき、派生結果を格納しただけで内容Digestが変化しない。モデルの意味的なFingerprintを変える入力と、Derived Diagnostic・現在Authority/Grant・実観測を変える入力は混同しない。現時点の`ThreeElementModel`型・3戻り値・JSON Field構成を将来仕様の制限として採用しない。
+
+**判別例・所有順**：TE-ID-01〜06（#4475）の正負を先に固定し、Input ID衝突が未解決なら「この図のSubjectは一意」とは主張しない。純粋なFingerprint計算は同一Meaning+異AuthorityLimitsでの値と現在資格を別に表示。実装内部の索引改善は#4475、三要素分析法のモデルからのProjectionの利用条件は#1124、Consumerでの問い相対の適格性は本Design Synthesis。新Identity/Permission Registryを先行追加しない。
+
+### 16.10 一つの可読なSourceからの参照閉包（2026-11-12 追加評価）
+
+主線の注文確定単価と、異分野対照の測定値を、単なる例の数ではなく**同じ意味を通す一つの縦断構造**として検査する。
+
+- Input/Source: 人が読めるDomain定義、型・Rule、Query Native資産、Function、Scenarioを明示。説明上のSyntax Sugarが複数あっても`Language Pin→同じMeaning`への変換条件を保持（#4359/#988/#2621）。
+- Resolved: すべてのType/Result/Contract/Provider参照が確定、または未確定な理由が説明できる。未宣言のResult TypeやLegacy Namespaceを暗黙に補わない。
+- Actual: 実行Query/Raw結果/Mappingの物理DB・Input/Result・粒度/時点からData Context、表示/Action、独立Read/Expectedへ、同一のSource/Subject/Revisionを追える（#2586/#2611/#2506）。
+- Proof: 相互参照を表示できるだけで正常終了とせず、Source未取得／別物理DB／未宣言列／同ID衝突／部分Context／Authority差を一因子ずつ変えて結論の適格性が変わるか確認する。
+
+これは三要素分析法のモデルの適用対象以外のDomainにも通じる設計上の**可読な最小例**の条件であり、現在のScript文法・Physical Queryを正本にするものではない。Domain expertの認知順を優先し、関係する契約が増える場合は標準Recipeで隠蔽できる複雑さと専門家が明示すべき判断を分ける。現実装で使えない構文を理由により優れた表現案を棄却しない。一方で、その構文が既存Parserで使えると主張しない。
+
+
+
+### 16.11 GUI/CUI共通の安定した対象固定と、問い相対のContext Tray（他チャット11/10〜12の成熟差分）
+
+**狙う利用価値**：利用者が三要素分析法のモデル図、CRUD表、Source、規則、SHO文書、SUIのCard等を行き来しながら、**今どの要素／関係／範囲についてAIと話しているかを失わない**。選択を自然に保ちつつ、違う対象・版へ誤適用しない。これは既存§16の「同じ問いに戻れる」を利用者操作で実現するための条件であり、新しい意味正本・ハーネス常駐Host・Session Registryの採用を意味しない。
+
+#### 三層の選択を混ぜない
+
+| 層 | 意味 | 変更される操作と不変条件 |
+| --- | --- | --- |
+| **Focus** | キーボード・マウス・入力欄の現在位置 | 移動、別窓のクリック、AI入力欄へのFocus移動で変わる。**Pinned Targetを自動解除しない** |
+| **Transient Selection** | 現画面の一時的な行・Node・範囲・複数Occurrence | 範囲選択やキャンバス移動で変わる。Pinの候補だが**それだけではSource編集対象／権限を確定しない** |
+| **Pinned Target／Task Context** | 利用者が明示固定したQualified Subject・Relation/Cell・Source occurrence・関係・問い・用途・Scopeの組 | 明示的なPin/追加/置換/解除、またはSource改版に伴う**再資格化要求**で管理。クリック外し、Canvas切替、チャット入力では消さない。旧参照が失効しても黙って別対象へ再束縛しない |
+
+Pinned Targetは**機能上の保持参照**であってAccepted Meaning、現在Host Grant、外部AIへの開示許可ではない。UI上の強調表示を完全性証拠としない。長い作業で複数Targetを固定する場合は同一Kind+IDを重複して意味対象へ増殖させず、**意味対象の集合と描画Occurrenceの集合**を別扱いにする。関係Edge、CRUD Cell、SourceのByte Span、Graphの複数Occurrenceは可逆性が異なるため、Node/Cellの区別を消さない。
+
+#### 最小の共有Context Envelope（正式Schema未採用）
+
+新しい公開`ContextPacket`型を増やすのではなく、既存`model locate`、Typed Model Map、`Catalog/Inspect/Trace`、#3262のDesign Context Query、#2516の用途別Disclosureの**既存結果を参照**して、利用者が作業対象を確認できるread-only投影を比較する。
+
+- **Target**：Product・Workspace identity、Qualified Kind/ID、Relation Instance ID／Function×Data Pairと宣言Occurrence、View/Canvas・表示Occurrence、必要ならEditor座標と原Source byte範囲。**同名や同位置だけでは一致判定しない**。
+- **Question**：利用者が指示した変更意図・参照対象、Required/Query Scope・Actor/時点、同じ問の許容Operation（inspect／propose／preview等）。適格性不明の変更操作は提案段階で止める。
+- **Snapshot/Completeness**：World／Source Index／Model Revision、Source/外部Provider/Plugin versionの観測状態、Required・loaded・returned・omitted、Unknown/Unresolved、bounded page・continuation/end、同時に観測できた範囲。Fingerprint一致だけでSource外の依存やA→B→A履歴を保証しない。
+- **Disclosure/Effect**：現在のAudience/Consumerへの開示可能な投影と、禁止・未検証の項目。現在Edit Grant/Meaning Acceptanceは**Apply直前**に別のOwnerで再検証。AIへの送出前に権限・Raw/件数の漏洩を点検し、送信していない部分の存在は推測させない。
+- **Lifecycle**：Pin作成元、User明示操作、対象Revision、問い合わせごとのRequest/Response correlation、後着結果の採否、Preview/Acceptance/Apply/Receiptの独立状態。UIには「保持中」「再確認必要」「解決不能」を区別し、裏で別対象へ置換しない。
+
+**CUIの同等性**は、ユーザーが明示指定した`Kind+ID+Workspace+Scope`をテキスト経由でも保持し、後続のread-only操作が同じContextで解決できること。CLIの新flagや永続Sessionファイルを先に必須化しない。既存`model locate`の`limit/total/omitted/coverage.notDerived`と、M0の`partial-projection`を利用し、近傍が省略されても「全件なし」とは答えない。CUIからTargetが複数選ばれた場合も、意図した集合と順序を再現し、曖昧さをFirst-Winsにしない。
+
+#### 複数製品・AIハーネスへのハンドオフ
+
+TEI/SUI/SEI/SHO/CSWが共通のHarness Sessionを利用するとき、**共有するのは作業対象の参照・問い・復帰位置・選択の履歴の必要部分**。各製品の正本Source・Meaning・Host Grant・DisclosureをSessionへ移管しない。AIハーネスは共通Application OperationのConsumer/Orchestratorで、DSH／Codex／Claude Code等の実装差はAdapterの機能宣言で示す。TEI/SHOの画面に特定Harnessを直接組み込むことを必須としない。
+
+CSW/SUIのKJ法的なCard/Islandの集合をTEI Relationへ投影するときは、**多対一・部分集合・表示順・提案Relation**の情報落ちを記録する。図を介した遷移で業務Relation IDが一意に確定しない場合はread-only。SHOの文字選択ではUTF-16表示位置と原文UTF-8 Byte Span・dirty bufferを別に扱う。図面/文書を跨いだ選択でも「同じPinだからSource Write可」とはしない。
+
+### 16.12 Pinの安定性と失効の敵対的受入（提案・未実行）
+
+ここでは「選択が解除されない便利さ」と「無効な選択へ誤作用しない安全性」を**同時**に評価する。既存#1124/#1452/#3262/#2514の検収に以下の正負対照を引き渡し、第二Test Runner/Proof Storeは作らない。
+
+| ID | 変更する一要因 | 合格条件 |
+| --- | --- | --- |
+| PIN-01 | 図のRelation RをPin→AI入力欄をFocus→別Canvasへ切替 | Pinは保持。FocusやTransient Selectionが変わっても、操作対象はRのまま |
+| PIN-02 | 同じSubjectを2 Canvasの3 Occurrenceに表示 | 意味対象は1件、表示Occurrenceは3件。どれを操作したかが復元可能 |
+| PIN-03 | 同端点・同種別だが別Relation IDの2辺 | Edgeの見た目や列挙順で自動選択しない。Identity不明ならApply拒否 |
+| PIN-04 | Pin作成後にSource移動／Byte改訂／A→B→A | 保持中の対象を勝手に置換しない。`needs-requalification`として再取得・Revision/LocatorとAuthorityを再検証 |
+| PIN-05 | Source不変、開示Grantだけ失効 | 表示・Tool送信・既キャッシュの資格を再判定。Pin保持と外部送信可否を分離 |
+| PIN-06 | 関連要素100件のうち`limit=1`・Provider必要Source未観測 | 残件・notDerived・Source外依存をUnknown/omittedとし、全100件が見えた・不存在と主張しない |
+| PIN-07 | AのInspect開始→BへPin変更→Aの応答後着 | BをAで上書きしない。Requestに束縛したAの結果を、現在Bの結果として表示しない |
+| PIN-08 | 複数Pinned Cellを1まとめにAIへ渡す | 各(Function,Data,宣言Occurrence)とUnknown/Conflictを保持。CRUD衝突を後勝ちで消さない |
+| PIN-09 | SHOで保存先だけ変更、原Markdown Byteは同じ | 相対Link/Asset解決の再確認が必要。TEI MeaningやSourceは自動改版しない |
+| PIN-10 | 同一Harness Sessionが別製品へ遷移 | 参照/問い/復帰位置を維持できるが、新Productの開示・現在Grantを継承したとみなさない |
+| PIN-11 | 明示Unpin→Undoで復帰 | Undoは**対象参照の復元**まで。旧Grant・旧Revision・旧AI Replyの自動再許可なし |
+| PIN-12 | Read-only Context内でAI変更候補が生成 | Preview/Source Diffは可能でもAccepted/Applied/Observedを自称せず、Shared Acceptanceと再読込に進む |
+
+**採否を決める比較**：同じScenarioと独立Expectedで (A)一時Selectionだけ、(B)Pinned Target＋限定Context、(C)HarnessのSession再利用を比較。選択の再指定回数・対象誤認率・Context漏洩／未解決の明瞭さ・操作の再現性とSource再資格化を測る。作業の容易さのために権限・受理・依存完全性の条件を緩めない。最小PoCは既存`sales.order.lines`と二Canvas、同名異ID Relation、Studio→SHOの参照1件で充分。初回から本番AI／全Pluginを接続する必要はない。
+
+**Owner/実装順**：
+- #1124：Modeler内のPin保持、選択Scope・Relation/CRUD Cell Source、read-only Previewと逆写像の可否。
+- #1452/#1824：実Target/Studio GUIでのFocus/Selection・旧応答制御、AI入力からの元View復帰。
+- #3262/#2516：用途相対ContextのSource閉包／Unknownと現在Disclosure。特に[Draft #4329](https://github.com/hat47x/tei-platform/pull/4329)のConsumer FP外のSource依存を`unknown`で止める結果を共有する。
+- #4472/#4475：CRUDの明示宣言・索引欠落と同Kind ID衝突、Fingerprint純粋性を先に修正・検証。**未修正ModelをPinの正しいIdentityとして前提にしない**。
+- #2586/#1251：実Function→Provider Readと正式Plugin実Invokeを最優先に維持。GUI PinとM0/LocateはこのP0の新しいHard Gateではない。
+- #2514/#1163：独立ExpectedとSource/Provider/Consumerの版・Attemptの照合。実Result/Effectの完成判定は別Owner。
+- SHO #19、SUI/CSW/TAI各Owner：共有Session参照とProduct-local Meaning/Authorityの分離。
+
+**状態**：本追加は設計・負例・Owner引渡しのみ。`Pin UI`／`Context Tray`／新CUIコマンド／外部Harnessの実Session連携／Studio・SHO・SUI/CSW実E2E／正式Owner受理は**NOT RUN／NOT PROVEN**。既存モデルの読取りGo・Source Index・M0/Locateの限定成功を、このProduct UXの完成証拠に転用しない。
+
+
+### 16.13 各媒体における「使える意味」と、非信頼Sourceの命令権を分ける（2026-11-12）
+
+§16.11〜16.12は既に Focus/Selection/Pin/Context Tray と実Grantを分ける。この追加では**Pinの実装を再提案しない**。選択が正しく保持されても、利用者の入力手段に対応できないUI、Localeにより異なる入力値、非信頼資料からの権限昇格があれば、継続作業は誤る。
+
+#### 3つの異なる適格性
+
+1. **Semantic Affordance（使える意味）**：対象Subject・Occurrence/Relation/Field、Action Purpose、利用条件、State/Outcome/Feedbackを、Web/Keyboard/支援技術/VUI/CUI等で認知・特定・操作・結果確認できること。単に業務API成功・ARIA属性が付いた・Mouseで動いたことから、別媒体の操作可能性を推定しない。
+2. **Presentation/Input（人から型付き値へ）**：Locale/Calendar/Identifier/QuantityとDraft/IME composition/確定Inputを区別。例えば同じ`1,234`という表示文字列でもLocale次第で異なる数値を表す。画面のLabel/ARIA名/音声認識文字列とAccepted Action IDの同一性は実Adapterが確認し、翻訳を意味IDの置換に使わない。
+3. **Instruction Provenance/Actual Egress（外部情報からの権限非昇格）**：`*.tei.md`、Native SQLコメント、SHO本文、Plugin Manifest、Tool/CLI/MCP Replyに「このToolを使う／秘密を送る」と書かれても、Source dataまたは要求の候補であってOwner Accepted InstructionやOS/Host Capabilityではない。**実際に到達できるTool・権限と外部送出先の制約を別に検証**する。Promptの文字列フィルタだけでは安全性資格にならない。
+
+| 反例ID | 見かけの正常 | 必要な独立判定 |
+| --- | --- | --- |
+| XUI-01 | Mouse/GUIで業務更新成功 | Keyboard/支援技術が同じ対象・Actionに到達し、対象と結果を識別できるか |
+| XUI-02 | 2件の受注に同じ「承認」Label | aria-label/見た目/音声で片方を推測せず、Qualified SubjectとPurpose/結果を区別するか |
+| XUI-03 | 表示文字列`1,234`が異Localeで同形 | Typed Parse/Formatと明示Input Source条件が同じ意味か、差異を明示・拒否するか |
+| XUI-04 | 日本語IMEのComposition中にonChangeが発生 | 暫定表示・Draft検証と確定Action/実Commitを分けるか。入力途中を自動保存適用しないか |
+| XUI-05 | 非信頼MarkdownやTool結果に命令形の文章 | 検討材料にはなるが、Owner Grant/Tool Call権限へ昇格せず、許可外の実Tool/Network出口をHostが止められるか |
+| XUI-06 | Studio画面で機密情報を隠した | DOM/ARIA/CLI JSON/Tool Result/Session Log/SHO引用/添付が、各Receiverに許されたScopeしか含まないか |
+
+**Owner**：UI品質・Web Adapterは#1000/#1824/#1180、VUIは#3503、Selection→Intentは既存#2500/#2598、異質ConsumerのContext/Disclosureは#2516、実OS/MCP/Network/Session Logの隔離は#2515、Independent Expectedは#2514。上記は**受入の合同索引**であり、既存OwnerのFixtureを別SSOTへコピーしない。
+
+**アウフヘーベン**：現在の三種を新Core情報モデルにするのではなく、同じAccepted Subject/Actionの参照とObserver Resultを必要なInput/Representationへ引き継ぐ。UIでは「何を・どう操作し・結果をどう確認するか」を簡潔に示し、内部で必要なRevision/Scope/Proofに戻れるようにする。すべての画面に複雑な証拠欄を常時表示しない。
+
+**観測上限**：設計・Source/Issue照合と独立負例案であり、新UI/Go/CUI/MCP/LLM/OS/Networkの実試験・実装・変更・正式受理はNOT RUN。Pinの既存§16.11〜12を出荷済みの製品機能として扱わない。
+
+### 16.14 三要素分析法の原典に忠実なModeler表現と、TEI汎用拡張を分ける（2026-11-12）
+
+**原典を先に確認する**。渡辺幸三氏の三要素分析法は業務システムのデータモデル・機能モデル・業務モデルの**相互牽制**に基づく分析・設計方法論。Data/Function/Businessという抽象フィールドの単純な3分割や、TEI独自Method Profileそのものと同義ではない。
+
+本人解説：
+- [2005年：三要素分析法の論理要件・物理制約・実装と三構成](https://atmarkit.itmedia.co.jp/fbiz/cbuild/complete/doa/01/01.html)
+- [2006年：3モデルの相互牽制とほぼ並行するモデリング](https://www.itmedia.co.jp/im/articles/0605/09/news085.html)
+- [2006年：データモデルの例値／サブシステム、機能モデルのUI・階層・CRUDとクロスレファレンス](https://www.itmedia.co.jp/im/articles/0605/09/news085_2.html)
+- [2006年：業務モデルの職務・業務マニュアル／アクションツリー、イベント付き業務フロー](https://www.itmedia.co.jp/im/articles/0605/09/news085_3.html)
+
+**用語**：説明には「三要素分析法」「データモデル」「機能モデル」「業務モデル」「業務フロー」「サブシステム」「クロスレファレンス」を用いる。TEIの汎用`Data`/`Function`/`Business`、Script-first/Role、AI操作・科学/XRへの利用は**TEI独自の写像／拡張**として明記する。原典の「機能モデル」をUIなしFunction一覧へ、業務モデルを純粋な実行Workflowへ、業務フローを単なる汎用DFDへ置換しない。サブジェクトエリアとサブシステムの違いも残す。名称の厳密な互換を名乗る場合はX-TEA Modeler固定版の実形式/描画と実Consumerを照合する。
+
+**情報の忠実性と拡張の順序**：
+1. 元のモデル要素と図法・設計作業をSource-faithfulに観測（#950、既存の固定Xead Modeler調査 `plan/design/AUTHORING_TOOL_FEATURE_TRANSFER_MAP_2026-10.md`）。
+2. Data/Function/Businessのsource relationを辿り、Function-level IOTable CRUDを特定のBusiness Actionの実Effectへ勝手に帰属させない（#1031）。
+3. 業務フロー・Role/Task/Action・人の作業（#1125）、業務モデル／機能モデル／データモデルの再投影・Source操作（#1124）、サブシステムとCRUD（#3250/#1132）、設計成果物（#1803）を**一式**で検収する。
+4. TEI汎用Model、別DomainやTargetを追加する場合は、その拡張・差異・失われる情報を明記。Source上のSortKey/Legacy ID/画面操作文や実RuntimeをTEI Canonical Meaningへ自動昇格させない。
+5. 受理は元からあるShared Acceptance、独立Expectedは#2514、業務実Effectは#1174へ委ねる。X-TEA互換のための第二Canonicalや永久専用Core型を先行追加しない。
+
+**判別案（NOT RUN）**：
+- `XT-F01` 業務モデルのアクションが画面機能と対象データへ結び付いている。画面と業務手順からデータモデルの不備を発見し、戻って改訂可能である。データモデル一方向生成だけで三要素分析法の忠実な実現としない。
+- `XT-F02` データモデルの例値・サブシステム別図・CRUD、機能モデルの画面・階層・CRUD逆引き、業務モデルの職務・アクションツリーを同一題材で確認。記述・図の形の互換未確認と、意味上の正しい再現を別欄で明示する。
+- `XT-F03` TaskActionが持つFunction利用参照が到達可能でも、そのFunction全体のCRUDを当該Action自身の書込実Effectと自動断定しない。手作業Actionを未定義Functionというだけで落とさない。
+- `XT-F04` 業務フローの主題領域（サブジェクトエリア）と、サブシステムによる設計の分割・表の更新責任を区別する。イベント記号、関係の図法、例値の見せ方の差も記録する。
+
+**記述上の差異ラベル（提案）**：原典準拠／TEIによる異表現／TEI独自拡張／意図的差異／原典未確認。このラベルは説明・受入票上の列であり、新Core列挙の要件ではない。
+
+**今回の到達点**：本人寄稿と公開Source/既存固定ソース調査の照合・計画のみ。現X-TEA Modeler実GUI・サンプルモデル、TEI実GUI/3モデルの同時編集、旧XML round-trip、Diagram E2E/CIは未実施。「互換達成」ではない。
+
+### 16.15 三モデル・設計段階・対応一覧を混同しない（2026-11-12）
+
+三要素分析法の**データモデル・機能モデル・業務モデル**は相互牽制する。渡辺幸三氏の解説にある**論理要件・物理制約・実装**は別の軸であり、3モデルの同義語でも「九つの正式モデル」でもない。TEIの汎用Role/Method Profile、3×3の照合表は**TEI側の説明・実現方式**であり、原典の正式な図法として扱わない。本文の`三要素`は、別Issue #2514で使うSoundness/Binding/Coverageという適合の三観点とも区別する。
+
+**原典忠実性の未解決点**：旧X-TEA Modelerが出力する「五種類の対応一覧」について、既存#1803・`plan/design/AUTHORING_TOOL_FEATURE_TRANSFER_MAP_2026-10.md`は存在と概略を記録しているが、**五つの正式名称・行列軸・セル意味・元の定義・出力条件**をすべて独立照合した証拠ではない。単一のCRUD表に集約して同等性を宣言しない。旧Sourceの固定版／実出力の比較と、TEI受理済みモデルからの導出を別の検証段階とする。
+
+| 検証ID | 正例・負例の差 | 既存Owner |
+| --- | --- | --- |
+| XT-G01 | 3モデルを表示できるだけでなく、業務手順と画面入力からデータモデルの不整合を見つけ、改訂できる。派生図だけなら不合格 | #1124/#1125 |
+| XT-G02 | 論理上の承認要求、物理DB列、実際の承認/Effectを分離。列やCRUDが存在するだけで業務要件を満たしたとしない | #1124/#1174 |
+| XT-G03 | X-TEA Modeler固定版の五一覧を、名称・軸・粒度・セル判定・未定義時の扱いごとに調べ、TEI導出とのFit/Gapを記録。未確認なら未確認と表示 | #1803/#1802 |
+| XT-G04 | Function-level CRUDのUを、Function利用元の各TaskActionに自動的に帰属させない。原典にないActual Effectを推測しない | #1031/#4472 |
+| XT-G05 | 業務フロー（イベント付きDFD）の手作業追加が、業務モデルのアクションツリーと対応一覧へどこまで反映されるかSource差分で検査 | #1125/#1124/#1803 |
+| XT-G06 | 三要素分析法の三モデルとTEI適合評価の三観点を用語上で明示的に区別する | #2514/#1192 |
+
+**最小縦断例**：注文確定の業務手順→承認画面/確定Function→注文の確定時単価という三モデルの対応をたどる。承認を経ず確定単価を現在マスター価格へ書き換える提案に対し、画面・CRUD・データモデルの各単体検査がPASSでも業務意味の矛盾を検出し、根拠と変更可能なSourceへ戻れること。旧X-TEAの操作・実出力を再現できたか、TEI側の意味的な代替を検証できたか、実Hostで実Effectを観測したかは別欄にする。
+
+**今回の資格**：既存の公開Xead Source調査・本人寄稿・TEIの既存Issueを照合した計画。X-TEA Modelerの五一覧の実出力比較、実GUI、TEIの新実装・独立E2Eは未実行。既存Conformance/Source/Runtimeへ委譲し、専用Coreの「九モデル」や第二の検証基盤を追加しない。
+
+### 16.16 原典の業務モデルとTEIの時点付き組織・実認可を区別する（2026-11-12）
+
+三要素分析法の**業務モデル**は職務・担当業務・業務手順／アクションツリー・画面利用を扱う。組織所属、案件の責任、現在の承認候補、認可Grant、実Effectを同一視しないことはTEI独自の時間・組織・Runtime契約への接合であり、原典の業務モデルの正式定義を置換しない。
+
+**反例**：受注C1を営業部長P1が担当。人事異動で営業部長がP2へ交代したが、C1の案件責任移管は未実施。業務モデルの「営業部長が承認」、現在の職位P2、案件責任P1、承認Functionの画面、現行Grantのいずれか一つだけから実承認者を確定してはならない。手作業の電話確認をAI/Workflowの処理成功へ自動変換してもならない。
+
+| 判別 | 合格条件 | Owner |
+| --- | --- | --- |
+| XT-H01 | 職務・在任・案件責任・移管/ACKを区別し、異動だけで案件責任を変更しない | #2386/#4501 |
+| XT-H02 | 機能モデルの承認画面・Function I/Oと業務モデルの手順を辿り、実Grant/Effectは独立確認 | #1124/#1125/#1174 |
+| XT-H03 | SHOの業務手順説明を過去版として保持し、現在の案件責任/組織改訂と混同しない | #2516 |
+| XT-H04 | 人手・外部作業・自動化候補・実完了を区別し、AI提案を実作業の証拠にしない | #1125/#267 |
+| XT-H05 | 三要素分析法のモデルからのテストObligationは候補。Expectedは別のOwner受理・固定独立基準で検査 | #4134/#2514 |
+
+**実装方針**：#4501のC1/CX-01〜12、#4490のBehavioral Conformance、#1125の業務フロー、#1124の統合Modelerを再利用。第二組織Core/権限エンジン/業務モデル正本を作らない。通常の組織Dataへ一律の機密ACLを追加しない。外部Providerの認可と保護対象Fieldの開示は既存契約で扱う。
+
+**資格**：Sourceと既存計画の静的照合・設計上の判別案。原典X-TEA Modelerの実GUI、組織の実Provider、SHO再読、実Host承認、独立E2Eは今回NOT RUN。
+
+### 16.17 生成成果物の既存PASSとX-TEA原典忠実性の資格を分ける（2026-11-12）
+
+#1803は設計成果物の再現性・Source追跡・未受理候補排除等の受入を`[x]`としている。しかし同Issueの旧X-TEA Modelerの五種類の対応一覧について、正式名称・行列軸・セル意味・出力条件・逆引き操作を原実出力と完全比較した根拠が本文に揃っているわけではない。**既存の生成器のPASSを撤回するのでなく、そのClaimの範囲を限定する**。
+
+| ID | 不合格の例 | 合格のための別資格 |
+| --- | --- | --- |
+| XT-I01 | Digestが一致するから原典の一覧も忠実と宣言 | ReproducibleとOriginal Semantic Parityを別に証明 |
+| XT-I02 | 汎用CRUD表に統合して、五一覧の軸・セル・逆引き・手作業との関係が消える | 原典の五一覧を固定Source/実出力でInventoryし、意味的忠実性を比較 |
+| XT-I03 | 同名異IDのFunctionを結合して、見た目だけ同じ一覧を出力 | Qualified ID・Source occurrence・revision・partialを照合 |
+| XT-I04 | 再生成できたことをモデル間の変更影響の検証済みと扱う | 三要素分析法のデータモデル・機能モデル・業務モデルの変更影響とOwner受理を分ける |
+| XT-I05 | 「旧書式の再現は非目標」を、旧設計者が確認できた情報・操作まで省略する理由にする | 意味的忠実性／操作上の忠実性／書式上の互換性を独立評価 |
+
+**実現判断**：旧フォント・座標・画面レイアウトを必須にせずとも、元の設計情報とレビュー作業は保持する。原典準拠、TEIによる異表現、意図的差異、未確認を出力ごとに明記。既存#1803（成果物）、#1802（機能移植Fit/Gap）、#950（Source-faithful）、#1124（Modeler編集）、#2514（独立Expected）で検証し、第二Artifact Store/Generatorは設けない。
+
+**資格**：Issue本文・既存計画の静的照合。旧Modelerの五一覧実出力比較とTEI実GUI/E2Eは未実施。
+
+### 16.18 原X-TEAで非空IDを持たないTaskActionの選択・編集を別資格で扱う（2026-11-12）
+
+公開#1031のexact-source accounting v1では、TaskAction 148件のうちID属性欠落35、属性あり空文字113、非空ID 0。TaskFunctionIO 407、distinct Action/Function 369、potential Action/Function/Table 665（actual Effectではない）。これは**原Sourceのread-only参照解決が成立しても、TaskActionごとの安定した編集Identityが確立したわけではない**ことを示す。
+
+| ID | 負例 | 別に証明すべきこと |
+| --- | --- | --- |
+| XT-J01 | Source tokenがあるため148件すべて安全に編集できると宣言 | locator/token・意味Identity・UI固定選択・保存先Spanの区別 |
+| XT-J02 | 同名・同FunctionのAction A/B間にXを挿入したら、選択中Bが別Actionへ変わる | Source版/親文脈/構造位置/内容の照合。不確実なら再確認・read-only |
+| XT-J03 | 旧XMLへTEI UUIDを一括書込して元Modelerへの無変更往復を主張 | 原Sourceの保持とTEI受理後のID付与、lossless round-trip/意図的変換の資格を分ける |
+| XT-J04 | 手作業Action移動後、古い参照を用いたCRUD/五一覧を成功扱い | 業務モデルのアクションツリー、Function参照、Source位置、派生一覧を再検査 |
+| XT-J05 | fixed-sourceのunresolved relation=0を「意味受理・編集先確定・実Effect確認」と宣言 | Source構造の参照解決だけを示すClaimへ限定 |
+
+**Fixture**：同一親Taskの下に、非空IDなし・同名・同FunctionのAction A/Bを置き、Bを固定選択したままA/Bの間へXを挿入。Sourceの版とSpanが変化した際、Bの誤選択・誤書戻しを防ぎ、元形式とTEI形式の情報損失を報告する。Source-faithful #950、read-only cross-view #1031、Modeler #1124、Projection逆写像 #2497、成果物 #1803、独立Expected #2514の既存Ownerで扱う。**Source tokenをそのまま永久の業務Identityに昇格させず、新Core ID型も先行追加しない**。
+
+**資格**：固定版Sourceの既存観測と設計上の負例。X-TEA実GUI・元XML編集往復・TEI Studio E2EはNOT RUN。

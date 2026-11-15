@@ -153,7 +153,10 @@ func GenerateCandidates(p CandidateProblem, opts ...CandidateOption) ([]Candidat
 	}
 	sort.Strings(subsystemList)
 
-	useExhaustive := len(p.Functions) <= options.MaxExhaustiveFunctions
+	// A small Function count alone does not prove that every candidate was
+	// enumerated. The existing enumerator has a fixed 4096-placement bound.
+	useExhaustive := len(p.Functions) <= options.MaxExhaustiveFunctions &&
+		exhaustivePlacementCountFits(allowedByComponent, options.MaxCandidates)
 
 	assignments := make([]map[string]string, 0)
 	if useExhaustive {
@@ -189,6 +192,28 @@ func GenerateCandidates(p CandidateProblem, opts ...CandidateOption) ([]Candidat
 	}
 	sortCandidates(candidates)
 	return candidates, candidates[0].Status
+}
+
+// exhaustivePlacementCountFits is a conservative upper bound on all possible
+// placements after must-link closure, *before* other constraints prune them.
+// It prevents reporting exhaustive-proven for a silently truncated enumeration.
+func exhaustivePlacementCountFits(allowedByComponent [][]string, maxCandidates int) bool {
+	const enumeratorLimit = 4096
+	if maxCandidates <= 0 {
+		return false
+	}
+	limit := maxCandidates
+	if limit > enumeratorLimit {
+		limit = enumeratorLimit
+	}
+	product := 1
+	for _, allowed := range allowedByComponent {
+		if len(allowed) == 0 || product > limit/len(allowed) {
+			return false
+		}
+		product *= len(allowed)
+	}
+	return true
 }
 
 func enumerateAssignments(components [][]string, allowedByComponent [][]string, subsystems []string, constraints []Constraint) []map[string]string {
@@ -241,7 +266,15 @@ func heuristicAssignments(components [][]string, allowedByComponent [][]string, 
 				assign[fn] = chosen
 			}
 		}
-		if len(assign) != len(components) {
+		// Must-link collapses multiple Functions into one component. Assignment
+		// cardinality must be compared with the original Function count, not
+		// with the number of components; otherwise a feasible assignment is
+		// incorrectly rejected as infeasible in heuristic mode.
+		expectedFunctions := 0
+		for _, comp := range components {
+			expectedFunctions += len(comp)
+		}
+		if len(assign) != expectedFunctions {
 			continue
 		}
 		key := assignmentKey(assign)

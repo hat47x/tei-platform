@@ -723,7 +723,7 @@ LR-A〜Dは全直列Hard Gateではない。LR-Aの受理待ち中は、LR-Bの�
 | **L-R2（RA-2）：隔離PostgreSQLの実Read** | [積上げDraft #4638](https://github.com/hat47x/tei-platform/pull/4638)、HEAD 0ce3a52fの[実CI #43553849861](https://github.com/hat47x/tei-platform/actions/runs/43553849861)で **実PostgreSQL 16・親＋7ケースすべて成功**。二つの空DB、別Reader/RLS、手書きExpectedと独立Read、境界・0行・NULL・欠落列・JOIN・Source改版を検査。SKIPを成功と誤認しない | **参照CLI限定**。#4626→#4631に積み上げ、main未統合。正式製品tei CLI、Native二Consumer、Host現在Grant、対象集合の完全性、Owner意味受理はNOT RUN |
 | **Builder実選択** | [Draft #4634](https://github.com/hat47x/tei-platform/pull/4634) は宣言対Resolverと選択Builder対実Child Digestを同一main基点HEAD 7d6a1238に統合。対象CI **8/8成功** | まだDraft。非Plugin DesktopのBuildExecution/ArtifactSet、実消費入力の閉包、Stage1がStage2を生成・再入する同一Attemptは未成立 |
 | **Wails公開面** | [Draft #4627](https://github.com/hat47x/tei-platform/pull/4627) は実Service登録と15個の公開Go MethodをAST/reflectで棚卸し。HEAD b9cf5447のActions **5/5成功** | Commandや外部Childの入口も含む。127.0.0.1限定Reference Serverを多利用者Webに公開してよい証拠ではなく、Principal／Workspace／Tabごとの認可・結果開示は未検証 |
-| **Studio生成Desktopと通常Desktop** | [Draft #4587](https://github.com/hat47x/tei-platform/pull/4587) の最新HEAD 357345d7はActions **11/12成功・1失敗**。同じWorkflowの生成Desktop WebView2 Jobは成功し、生成bundle・実WebView2・キーボード/XEAD読取り・正常終了を観測。一方、通常Desktop JobはOS版取得のPowerShellが15秒でtimeout（[Run #43554075677](https://github.com/hat47x/tei-platform/actions/runs/43554075677)） | 失敗は通常Desktop側の事前環境診断であり、生成Desktop成功を否定する結果ではない。ただしWorkflow全体のPASS・Stage1→Stage2自己再構築の同一Attempt・Webの現在認可は未成立。PowerShell環境障害を別切り分けして再試験 |
+| **Studio生成Desktopと通常Desktop** | [統合検証用Draft #4587](https://github.com/hat47x/tei-platform/pull/4587) の最新HEAD `9b58533d`はActions **12/12 completed/success**。同じHEADの[Windows WebView2 Run #43572235468](https://github.com/hat47x/tei-platform/actions/runs/43572235468)で、**生成Desktop Job #132378897972と通常Desktop Job #132378898168の両方が成功**。生成Inspector Reader再生成・実Workbench入力照合・Native Wails exe・実WebView2/StudioBridge受領を同一生成Jobで検証 | 旧HEAD `357345d7`の通常Desktop PowerShell 15秒timeoutは**このHEADで再現しなかった**。B0の生成部品＋実Windows Consumerの同一HEAD検証として保持。ただしDraft/main未統合、Stage1→Stage2の再生成・Stage2自身の実WebView2再入、非Plugin BuildIntent N0〜N3実駆動、現在Grantは別検収 |
 | **REA Studio HostローカルEvidence** | [積上げDraft #4637](https://github.com/hat47x/tei-platform/pull/4637)はHost起動時のEvidence Selector/Workspace相対Path/Digestでbyte-only R2投影へ渡す。旧HEAD f9e355d5は11/12成功、gofmt不一致でHealth失敗。修正HEAD f38117dcのCIは再実行中 | #4630のbyte-only Operationを先行受理する。Studio Bridge/Web/MCP公開、Current Grant、複数Principal開示、A→B→A現在性は別資格 |
 | **Plugin Releaseの独立受領** | [merged #4617](https://github.com/hat47x/tei-platform/pull/4617)、main 37209145は、test-only loopback HTTPで署名済みReleaseを別Node Processが受け取り、署名・2 Memberの実bytesを照合（正常1＋拒否9、専用CI success） | 実GitHub Releasesの配布、実Publisherの現在Trust、Contract/Provider Conformance、実Runtimeロード／Function EntryとHost Grantを保証しない。配布証明を実Go Function Providerの資格へ昇格しない |
 
@@ -735,7 +735,7 @@ LR-A〜Dは全直列Hard Gateではない。LR-Aの受理待ち中は、LR-Bの�
 2. **選択と実使用を同じAttemptで観測する**。Go Functionでは公開Entry／現在Grant／selected Providerとactual Adapterを、QueryではQuery byte／typed Params／実DBとRowsetを、BuildではBuilder／Child image／生成Artifactを別々に照合する。新しい共通Runner／Resolver／Registryは設けない。
 3. **Consumerの受領と開示を独立させる**。通常のtei CLI、Studio、Web/IPCの受領を段階的に検収する。UIで古い応答を隠す操作はHost側の取消・Rollbackではなく、Wailsのallowed配列やPinも現在Grantではない。
 
-**実装順への反映**：#4495はOwnerが純粋と受理したFunctionと明示公開Entryを一件固定し、L-P1の実選択Go Adapter→実Call、L-P2の通常製品CLIへ進む。受理前でも未公開Entry・Selected B／Actual A・失効Grantの呼出し0回は合成負例で先行検証できる。#2586はRA-0の旧Parser・歴史World／Web import graphの失敗を解消し、RA-1の限定Go検査とRA-2の実PG参照証拠を**同じ適格Source／実行Attempt**として再検収する。次に通常tei CLIとNative二Consumer・現在Grantを別検収する。#4583のStudioセルフビルドは最優先を維持し、#4587の生成Desktop成功と通常Desktopの事前PowerShell timeoutを分けて修正・再試験する。#4634のBuilder限定成功をStage2へ加算しない。
+**実装順への反映**：#4495はOwnerが純粋と受理したFunctionと明示公開Entryを一件固定し、L-P1の実選択Go Adapter→実Call、L-P2の通常製品CLIへ進む。受理前でも未公開Entry・Selected B／Actual A・失効Grantの呼出し0回は合成負例で先行検証できる。#2586はRA-0の旧Parser・歴史World／Web import graphの失敗を解消し、RA-1の限定Go検査とRA-2の実PG参照証拠を**同じ適格Source／実行Attempt**として再検収する。次に通常tei CLIとNative二Consumer・現在Grantを別検収する。#4583のStudioセルフビルドは最優先を維持し、#4587の生成Desktopと通常Desktopが最新HEADの同一Windows Workflowで再び双方成功したB0証拠を保持し、Stage1→Stage2の同一Build Intentでの実再入を別に検収する。#4634のBuilder限定成功をStage2へ加算しない。
 
 **この節の証拠上限**：#4629/#4636とRegistry E1-C #4617はmain実装済みだが、それぞれ異なる限定Contractの試験である。#4626/#4631/#4638/#4634/#4627/#4587は対象HEADでの結果があってもDraft・未統合。実PostgreSQL参照Readerの7ケース成功、生成Desktop WebView2 Job成功、Plugin Releaseの署名・実Byte一致から、公開Function Product Q2、通常tei CLI／独立二Consumer、現在Host Grant、多利用者Web、Studio Stage2の完成を導かない。
 
@@ -767,7 +767,594 @@ LR-A〜Dは全直列Hard Gateではない。LR-Aの受理待ち中は、LR-Bの�
 ### 18.3 QueryとStudioの並行検証（別Contract）
 
 - **RA-0 → RA-1 → RA-2R → RA-2P → RA-3**：RA-2Rは[実PostgreSQL16の7ケースCI](https://github.com/hat47x/tei-platform/actions/runs/43553849861)でReference Readerが成功。RA-2Pは**製品の同一Operation**から、実選択Provider/SQL/Rowset/Function Contextを同じAttemptで照合する未成立の工程。RA-3は通常`tei` CLIと独立Consumer、現在Grant/開示の受入。Source/歴史Fixture/E1が残るRA-0の新HEADを再資格せず、旧RA-1/RA-2成功を現在Sourceへ合算しない。
-- **Builder／Windows**：[#4634](https://github.com/hat47x/tei-platform/pull/4634)の同一HEAD 8/8成功は選択Builder/実Childの限定検査。[#4587](https://github.com/hat47x/tei-platform/pull/4587)は生成Desktop WebView2 Jobが成功、通常Desktop JobはPowerShell OS情報取得15秒timeoutで全体FAIL。これらをStage1→Stage2完全自己再構築へ合算しない。
+- **Builder／Windows**：[#4634](https://github.com/hat47x/tei-platform/pull/4634)の同一HEAD 8/8成功は選択Builder/実Childの限定検査。[#4587](https://github.com/hat47x/tei-platform/pull/4587)の最新HEAD `9b58533d`では[Windows WebView2 Run #43572235468](https://github.com/hat47x/tei-platform/actions/runs/43572235468)の生成Desktop Job・通常Desktop Jobがともにsuccess（12/12 Workflow成功）。旧HEADのPowerShell失敗は同一新HEADで解消を確認。これらをStage1→Stage2完全自己再構築へ合算しない。
 - **REA／配布**：#4637はローカルHost Reader、merged #4617は署名付きHTTP ReleaseとMember byteの独立Node検証。どちらも公開FunctionのOwner意味・Host Grant・外部Runtimeでの実Callを証明しない。
 
 **現状**：A0の正式公開Entry、A1の実Host現在Grant、A2の選択済みGo Providerの製品実呼出し、A3通常CLIと独立Consumer、A4 Stage1→Stage2の製品検収は**NOT RUN**。§17の局所Go前検査・実PG Reference・生成WebView2はそれぞれの限定資格として維持する。
+
+## 19. 型付き実Read・生成Function・自己再構築の証拠を接続する（2026-11-14）
+
+### 19.1 現在の実装に基づく判断
+
+Script LaunchのA0〜A4と実ReadのRA-0〜RA-3の間には、新しいEngineではなく**製品Operationに渡す入力・取得条件・生成実体・実際の使用先の証拠**が不足している。他チャットで進んだ次のPRを、現在の実行範囲ごとに照合した。
+
+| 実装候補と対象HEAD | 確認できた成果 | その成果で認定できないこと |
+| --- | --- | --- |
+| [RA-0 #4626](https://github.com/hat47x/tei-platform/pull/4626) `9eecf2b9`、[同一SourceでのRA-0/1/2再検収 #4644](https://github.com/hat47x/tei-platform/pull/4644) `b5c23044` | RA-0はActions **17/18成功**（Healthと歴史Self-buildはPASS、Browser→JSON APIの`sqlgen`混入検査のみFAIL）。#4644は仮統合HEADの**専用3/3成功**、うち実PostgreSQL16親＋7ケース非SKIP・全PASS。typed `std.datetime`に対する`time.Time`、不正入力のExecutor呼出し0を再試験 | RA-0はmain未統合・E1失敗あり。#4644はRA-0 branchをbaseとした統合検証用Draftであり、通常製品`tei` CLI／正式Product Provider／独立二Consumer／現在Grantを検査していない |
+| [Function Data Contextの取得観測 #4647](https://github.com/hat47x/tei-platform/pull/4647) `a962a3f6` | Go CI **7/7成功**。既存の取得Contextに、宣言関係のロック、実SQL plan・RLS・LIMIT・JOIN等の観測を加える。観測された制限は`partial`、未確認の完全性は`unestablished`。ローカルの隔離PG16試験でも両者を対照 | Native SQLは述語が閉じないため**`complete`と`emptyJustified=true`を出さない**。実列の出典（W4）、NULLの保存元、業務実体単位、正式HostのDB Instanceと接続の同一性、Source現在性、現在Grantは未実証 |
+| [Source束縛のRead-only Function生成 #4559](https://github.com/hat47x/tei-platform/pull/4559) `e328f223` | CI **3/3成功**。既存Workspace Loader/Resolverから`recent_orders`のGo CLIを生成し、Source SQL・生成Manifest・Binary SHAを結ぶ。対象外Pattern等の省略を記載、QueryのTarget方言違い・古いBinaryを拒否。ローカルの隔離PG16で3/2/0行等を確認 | 起点の古いSourceでは`:from`が**未宣言**で、GeneratorがSQL placeholderを発見して`inputDeclaration=undeclared`のまま実行可能にする。生成CLIの入力は`--from=<文字列>`で、RA-1の`time.Time`型付き境界とは異なる。**製品型付きEntry／通常`tei` CLI／Host Grant／READ ONLY実拒否試験**ではない |
+| [自己再構築のToolchain観測 #4648](https://github.com/hat47x/tei-platform/pull/4648) `64fb0f9a` | CI **8/8成功**。同じBuild計画をgo1.26.11/1.27.0でコンパイルし、結果のBinary byteが異なることを実測。実行ファイルの申告DigestとEntry自身の再読取を`matched/mismatched/unreported`で区別 | Build計画はGo toolchainをまだ入力として名指さない。`matched`はファイルのbyte照合であり、**そのGoを実Childが起動した証拠ではない**。同じPlan hashによる成果物再利用・Seed Trust/Stage2資格は未成立 |
+| [自己再構築のState観測 #4537](https://github.com/hat47x/tei-platform/pull/4537) `cb7faf8d` | CI **8/8成功**。二つのStateディレクトリに実際のファイルが作られたかと、ChildのProcess ImageをEntryが観測。空ディレクトリだけの偽分離を`declared-only`に分類 | 観測だけではStateのコピー・外部読取りを排除できず、`effect-observed`もOS隔離の証明ではない。現行`l2b.claimed`の判定は変わらず、Stage1→Stage2の自己再構築も別 |
+
+**共通の原則**：Sourceに型付き入力があること、SQLが実行できること、Rowsetが最後まで読めたこと、生成ArtifactのDigestが一致すること、Entryの入力先ディレクトリにファイルが存在することを、互いの資格に読み替えない。これらは別々の事実であり、同じAttemptのSource版・Host選択・実使用・Consumer受領がつながって初めて上位のClaimを検収する。
+
+### 19.2 製品へ取り込む順序と責務
+
+1. **Sourceを最初にそろえる（#2586/#1182）**：RA-0の明示`input from std.datetime`、旧Frozen Sourceの独立再現、`sqlgen`の実APIバイナリ混入を別々に検収する。#4644の仮統合結果が3/3でもE1失敗を無視してmainへ単独採用しない。生成器#4559をこのCurrent Sourceへ合わせた後、`inputDeclaration=declared`とSQL placeholder集合が一致しない限り**製品Functionを公開しない**。
+2. **値をProviderに渡す直前の型境界を統一する（#3422/#2586）**：RA-1の`time.Time`を受けるGo Executorと、#4559で生成したCLIの文字列引数を別契約として扱う。型変換をどの入口で行うかを既存Typed Operation側で決め、実値・明示NULL・missing・unknown fieldの違いを保持し、Host/DB呼出し前の負例にする。生成CLIに独自のBusiness Grant/新Dispatcherを追加しない。
+3. **実Readの不完全さを受領先まで残す（#2586/#2514）**：#4647の`coverage.status`、`reasons`、`open`、`rowset.fullyRead`、`nullOrigin`を、RA-2P Product Operation/RA-3 CLI・独立Consumerが欠損なく受け取る。行が0、カーソルを最後まで読んだ、RLSがinactive、宣言済み主キーが観測行内で一意のいずれも、全件取得・不存在・Entity粒度・保存NULLの証明にしない。W4の列由来観測は別Ownerの未実装課題に残す。
+4. **実生成物の同一性とBuild入力を閉じる（#2831/#4544）**：#4648の別Toolchain同一Plan→異Binaryを、World/Model/Artifactの各Revisionと区別する。正式なBuildIntentでToolchainを入力として名指すかはOwner判断を先行し、名指すなら選択した実Go実行ファイルのDigest・実Child起動・生成物を同一Attemptで照合する。#4537のState観測は弱い証拠として保持し、OS分離・再入・実Stage2実行を別に検査する。**#4648と#4537はともに`cmd/tei/cli_self_build.go`・`cli_self_build_outer.go`を変更**しており、別HEADでそれぞれ8/8 CI成功しただけでは両方を同時に適用できる証拠にならない。統合するときは競合を解決した一つのHEADで全体Health・Self-buildと、二つの観測が同じ実Attemptで報告されることを再確認する。
+5. **最終的に製品Entryで接続する（#4495）**：選択されOwnerが受理したpure Function Entryと、Sourceから生成したread-only Query Functionは同一概念ではない。両方ともHostが選択した実Provider／Artifact、現在Grant、契約Input/Result、通常製品`tei` CLIの実Callと独立Consumerを必要とする。どちらの参照CLIの成功も製品Entry公開の代用にしない。
+
+### 19.3 新しい失敗注入・受入条件（既存Scenario/独立Expectedへ渡す）
+
+| Case | 故障の入れ方 | 必須の拒否・観測 |
+| --- | --- | --- |
+| **FH-01** | `recent_orders`のSQLに`:from`があるが、QueryでInput未宣言 | Reference Generatorは`undeclared`を明示。製品公開は拒否。SQL placeholderから型を推測して通さない |
+| **FH-02** | `std.datetime`に文字列・明示NULL・未知Inputを渡す | Host実Executor呼出し0。CLI文字列の受信成功をGo型適合と見なさない |
+| **FH-03** | RLS・LIMIT・JOINで同じQueryが0行／部分行を返す | 実観測があるときは`partial`と理由を維持。独立Consumerが0行を不存在・全件取得と表示しない |
+| **FH-04** | Plan上の関係・RLS・Limitが正常でも、Native SQL関数が行を絞る | `unestablished`と`native-sql-predicate-not-closed`を残し、`complete`を拒否 |
+| **FH-05** | FunctionのOutputにNULLがあるが実列由来は未観測 | `nullOrigin=unestablished`。masking view等の可能性を保存NULLへ置き換えない |
+| **FH-06** | 同じBuild計画を別Go Toolchainで再実行し異なるArtifact byteを得る | 事実上の入力差とArtifact Revisionの違いを開示。Plan Digest一致を生成物再利用資格にしない |
+| **FH-07** | ChildがStateディレクトリを作るだけで他の場所を利用する | `declared-only`と未観測範囲を報告。バイト一致やexit 0から隔離・セルフビルド合格を推論しない |
+| **FH-08** | 生成BinaryのDigest一致、だがHost選択Provider=B／実Call=A | 実Call前に拒否。Binary照合・署名・モデル構造の成功をProvider同一性や現在Grantに代えない |
+
+**採否と現在の状態**：§19は他チャットの限定Go/DB/CLI/Build試験を正確に引き継ぐ作業計画であり、各PRは指定HEADでのCIが成功していてもDraft・未統合。A0〜A4、RA-2P/RA-3、完全性`complete`、実Stage2、公開Host Grantは、**この追補によって実装・受理されたことにはならない**。既存#4495/#2586/#2831/#1182/#2514へ返し、新しい検査正本や汎用Runnerを作らない。
+
+
+<!-- tei-20261114-authoring-runtime-capability-preflight-parity -->
+## 20. DSL Authoring診断と実行前宣言検査を、一つの不正定義で照合する（2026-11-14）
+
+### 20.1 位置づけと実装上の出発点
+
+[main統合済み #4629](https://github.com/hat47x/tei-platform/pull/4629)と[main統合済み #4636](https://github.com/hat47x/tei-platform/pull/4636)により、`internal/semantic/capabilityinvoke.Invoke`はCapabilityのResult、Input、DataEffectの**構造不正をAdapter呼出し前に拒否**する。これは実装・既存Go回帰で確認した限定事実であり、DSLから同じ不正をSource位置付きで説明できること、公開Entryの資格、Input実値・TypeRef解決、選択Provider/Current Grantを検証済みという意味ではない。
+
+既存`internal/syntax/parser.go:parseSemanticCapability`は`effect`の重複・未知Kind、`input`の名前と型の字句構造等をParse段階で検査する。一方、**同名Input、OutputとOutcomesの混在、同名Outcome**はその関数内で蓄積され、ここでは一意性・Resultモードの整合を判定しない。これらが**Workspace全体の既存Validatorで拒否されるか**は、実Sourceを使った検証で確認する。見つからなければSource診断の欠落として既存Validator/Workspace Ownerに返し、RuntimeチェックをDSLの意味正本に格上げしない。
+
+同じSourceからの検証でも次の四層を分ける。**(A) Source字句・構文／byte span、(B) Workspace全体のCanonical参照・重複・型整合、(C) Runtime構造preflightとAdapter call=0、(D) Owner受理・Entry公開・Host選択Provider/Grant**。AとBでの拒否理由はCのGoエラー文面と文字列一致を要しない。対応づけるのは*不正理由の種類・対象Subject・条件付きSource位置・拒否位相*であって、実行時から存在しないSource座標を作らない。
+
+### 20.2 最小の対照ケース（#4359／#4495／#1180／#2514の既存Expectedへ参照）
+
+| Case | 一因子の差分 | Authoring/Workspace側に期待すること | Runtime/公開側で必須のこと |
+| --- | --- | --- | --- |
+| **ACD-01** | `effect`のKindを未定義語へ変える | Parserの`unsupported data effect kind`を原Source位置付きで拒否 | 外部から構成した同じ不正Canonical CapabilityもAdapter call=0。Parserで拒否したSourceからはInvokable Subjectを作らない |
+| **ACD-02** | `input token std.text`を二行宣言する | Parserが読み取れたことを成功と数えず、全Worldで同名Inputを診断できるか調査。既存Validatorで不明なら未接続と記録 | #4636の重複Input拒否でcall=0。正しい一行に修復した正例も通す |
+| **ACD-03** | 同じCapabilityに`output std.text`と`outcome ok std.text`を併記 | 宣言の相互矛盾をSource上で指摘できるか照合。構文Parse成功と意味受理を分離 | #4629の混在Result拒否でcall=0。どちらか一方式に直した正例を対照 |
+| **ACD-04** | 同名`outcome`を二回定義 | RuntimeエラーをSource診断へ後付けで写さず、既存全World検証で二重宣言を検出できるか照合 | #4629のduplicate Outcome拒否でcall=0 |
+| **ACD-05** | `input`型参照を文法上のCanonical IDだがWorldに無いTypeへ変更 | ParseできてもType解決済みとはしない。Required Sourceが不足している場合は未確定のまま | #4636はTypeRef非空までしか検査しない。**実行前の型解決/Entry公開資格は別**。型解決未実証のままcall=0まで確認できなければProduct拒否資格はNOT PROVEN |
+| **ACD-06** | Effect宣言を削除する | 原SourceにEffect句が無い事実を記録（ゼロのEffectとは区別） | `Effect == nil`は構造上許されてもpure受理・Host Grantを意味しない。権限/Effectを暗黙補完しない |
+| **ACD-07** | Sourceを持たない不正CanonicalをAPIへ直接与える | 対応するSource occurrenceが無ければspanを`unavailable`。架空の位置へ結びつけない | preflightのcall=0を独立確認。Source診断・Studioジャンプの成功へ流用しない |
+| **ACD-08** | R0のSourceとR1の同ID・別宣言を入れ替える | Workspace/Source occurrence/raw digestとLanguage Pinを再束縛し、旧アンカー・診断を流用しない | R0のEntry/Provider/Actual AttemptをR1へ引継がない。Source状態と現在Grantを別確認 |
+
+ACD-02〜04については、**ParseできることをもってValidatorも受理したと判定しない**。まず現行`validation.Validate`等に対応する検査があるかを実Go Testで判別し、不足がある場合のみ既存Ownerに最小差分を切り出す。ACD-05はRuntime構造検査へ型・Grant・Provider権限を詰め込む要求ではない。
+
+### 20.3 実装時の最小テスト手順と判定票
+
+1. **A/B Authoring**：`reference/workspace`の使い捨てコピー、または同等に隔離した既存Workspaceで一件ずつSourceを変え、現行Parser→既存Workspace Load/Validationを通す。診断有無、Subject ID、Original Source byte range、負例が完全Worldとして公開されないこと、修正後の正例を記録する。新`rule`構文や`*.tei.md` Readerを本試験の前提にしない。
+2. **C Runtime**：同じ問題を持つ`semantic.Capability`をGo側の固定Fixtureとして渡し、現行`capabilityinvoke.Invoke`でAdapter呼出数が0、BusinessResultが作られないことを確認。A/Bの失敗でCをスキップせず、防御層として独立に判定する。Contextの事前取消とAdapter後の取消・Effect不明を混同しない。
+3. **D Product接合（後続）**：Owner受理済みSubject/Entryが実在する場合だけ、通常製品CLIとTyped APIが同一Contract/選択Providerを通って起動するかを#4495へ引き渡す。Invalid Source、未選択Plugin、部分Load、未公開Entryは実Providerを呼ばない。実Product接合を未実施ならDをNOT RUNとする。
+4. **報告**：`case / Source path+raw digest+Revision / Parser result+span / World Validation result+diagnostic / Runtime refusal+adapter calls / Accepted Meaning+Entry / actual Provider / observed Consumer / PASS・FAIL・NOT RUN・unsupported`。同一版でないSource・Expected・Build/Consumerの成功は足さない。
+
+**最初に閉じる辺**はACD-02/03の「Source→既存Workspace Validatorに具体的な診断があるか」というFit/Gapと、その修理後正例。ACD-01/04/05で境界を拡張する。#4359のS0〜S6はValidationの新`rule`表層、#4495は起動／Entry、#988/#1018はLanguage/Operator、#1180/#2514は独立Expected、#1124はSource位置・Studio Consumerを引き続き所有する。別Validator、第四のMeaning正本、実行Engine、全面DSL刷新、セルフビルドの新Hard Gateは導入しない。
+
+**現在の資格**：#4629/#4636の実行前構造拒否はmainにある。ACD-01〜08の**一つのSourceからの横断実テスト、Validator Gap実測、製品CLI/Studio Consumer、Owner意味受理は今回NOT RUN**。同じ拒否に見えるというだけで全層同一の製品検収PASSとしない。
+
+
+<!-- tei-20261114-acd-source-preflight-go-pr4654 -->
+### 20.4 ACD-02〜04のSource→実行前境界をGoテストへ移した（Draft #4654）
+
+[Draft PR #4654](https://github.com/hat47x/tei-platform/pull/4654)は**この節のA層とC層の最小接続**として、現行`syntax.NewParser(...).ParseSemanticFile()`が実Sourceから返す`semantic.Capability`を、既存`capabilityinvoke.Invoke`へ渡すテストファイルだけを追加する。比較するのは同名Input（ACD-02）、Output/Outcome混在（ACD-03）、同名Outcome（ACD-04）の3負例と各一因子修復の正例。実行時の不正宣言ではAdapter実呼出し数0・BusinessResultなし、修復後は1回呼び出す。未知Effect（ACD-01）はParser側で元Source行番号付き拒否を独立に確認する。
+
+重要なのは、**AのParse成功をBのWorkspace意味検証済みとしない**こと。新Goテストは`validation.Validate`や通常`workspace.Load`のSource位置付き診断をまだ実行しない。Bの最初の着手は、ACD-02/03が既存Workspace Validatorでどの診断を出すかの実測と、修理後のWorkspace正例である。Dの公開Entry・実Provider/Host Grant/Consumerも未接続。Staticなpreflightは、他チャットで整理した**Preview→Resolve→Admit→Commit→Observe**のうち実行前の拒否にしか相当せず、実Dispatch/Commit/外部Outcome・現在Disclosureを証明しない。
+
+**状態**：PR #4654のGoテストSource追加を確認。CIの結果・main統合・B/D層の実証は本節更新時点で未確認。実行結果はPRのexact HEADとActions IDを確認してからこの記述を更新する。
+
+### 20.5 Workspace入力診断の実装候補と、Consumer受領までの差分（2026-11-14）
+
+[DSL Source→Runtime境界のDraft #4654](https://github.com/hat47x/tei-platform/pull/4654)は、実SourceをParseしたCapabilityで同名Input・混在Result・重複OutcomeをAdapter前に拒否するGoテストを追加した。ただし、HEAD `a7a9aec8`のActionsは**7/8成功・Health失敗**で、実ログの原因は`internal/syntax/capability_authoring_preflight_boundary_test.go`の`gofmt`不一致。Workspace Validationを試験したものではない。
+
+[Workspace入力診断のDraft #4655](https://github.com/hat47x/tei-platform/pull/4655)は、既存`validation.Validate`に同名Capability Input／名前欠落の診断を接続し、実Source→Parser→Canonical World→Validator→実Adapter呼出し前拒否を1つの固定Sourceから対照した。HEAD `3261d172`のActionsは**7/8成功・Health失敗**。実ログに`internal/validation/capability_input_parity_test.go`の`gofmt`不一致と、#4653で追加した[Consumer横断受入設計](CONSUMER_QUALIFIED_CROSS_LANE_ACCEPTANCE_2026-11-14.md)を`plan/design/README.md`が索引化していない問題が出た。**いずれもmainへの実コード統合・Go全体Health合格には未達**。
+
+| 検収層 | 独立に必要な証拠 | Owner／現在の状態 |
+| --- | --- | --- |
+| **A：Source** | 実Parserの字句位置と受理・拒否。未知Effectは原Source位置から拒否、同名InputはParseできても意味受理へ進まない | #4359／#4654（Draft、整形修正とHealth再試験が必要） |
+| **B：Workspace** | Source由来のCapability Subjectと既存Validation Diagnostic。名前重複の診断を修正後正例と比較。Source位置がなければ座標を捏造しない | #4359／#4655（Draft、整形と計画索引の修正後、同一HEADでGo Health再試験） |
+| **C：実行前** | 無効なCanonicalのAdapter call=0、修正後call=1。ただしInput実値Type/NULLと現在Grantは別 | #4495（#4629/#4636の限定実装はmain） |
+| **D：製品EntryとConsumer** | Ownerが受理し公開したEntry、Host-selected actual Provider/Artifact、Current Grant、通常`tei` CLI／別Consumerの実Result受領とDisclosure | #4495/#3422、[Consumer横断受入設計](CONSUMER_QUALIFIED_CROSS_LANE_ACCEPTANCE_2026-11-14.md)；**NOT RUN** |
+
+**実装引渡し**：まず索引と2つの`gofmt`失敗を修正し、各Go PRのexact HEADでRepository Healthを再実行する。A/B/Cを同一Sourceで追う試験が成功しても、Dを自動PASSにしない。#4653のConsumer設計は**Delivery/Acceptanceの判定を横断して読むための設計**であり、新しいAuthority、Meaning Owner、Runner、Conformance採否の正本ではない。次に公開EntryとHost-selected実Go Providerを結び、通常製品`tei` CLIで結果を受領する不足辺を実装する。
+
+<!-- tei-scriptlaunch-crosslane-binding-20261114 -->
+## 21. 起動時のBindingと利用者への結果到達を一つの契約として検証する（2026-11-14 横断統合）
+
+### 21.1 今回確定する設計上の整理
+
+スクリプトを起動するとは、単にSourceやFunction名を指定することではない。受理された業務Functionを公開Entryへ結び、そのEntryを起動契機、対象、実行環境、現在の権限、結果の受領先に適合させることである。
+
+この関係は、自己記述DSL、標準データ構造、Target Generator、横断Plugin、Studio、AI Harnessに共通する。ただし**新たな万能Invocation Envelope、Script Runner、Scheduler、認可エンジン、状態保存テーブルを作る根拠にはしない**。既存Application API（ADR-0048）、Capability/Provider、Composition/Lock、Build、実Host、Effect Ownerの契約を接合する。
+
+以下の三つの役割は混ぜない。
+
+| 役割 | 何を定義するか | それだけでは保証しないこと |
+| --- | --- | --- |
+| Function / Accepted Meaning | 入出力の意味、必要なData Context、業務規則、許容するEffect、Owner | 公開Entry・実行場所・現在の実行許可 |
+| Entry / Trigger Binding | 何を誰に公開し、どの契機をどの入力へ写すか。Source/意味/契約の対象版 | 実Hostが受け付けたこと、実Provider呼出し、Commit |
+| Execution Binding / Result Projection | 対象Targetで選択されたProvider/Artifact、現在のHost条件、結果の返却・開示方法 | 処理の意味の第二正本、他Targetでの自動的な適合 |
+
+EntryはFunctionの一覧をそのまま公開したものではない。Table lifecycle hook、内部Script、AI候補Macro、未受理のGraph Patchは、参照可能であっても公開Entryではない。Script/DSLの糖衣構文、GraphのLayout、生成されたGo関数名から業務上の公開範囲を逆算しない。
+
+### 21.2 起動時に固定するもの、開始直前に再評価するもの
+
+Prepared Invocationでは、少なくともEntryと契約の版、Qualified Subject、実行対象と版、入力値と欠損状態、Source/意味の参照、Trigger occurrence（該当時）、Operation identity、期限と業務期間、選択Target・Provider/Artifactへの必要な参照を照合する。正確な保存形は既存のTyped OperationとTarget Adapterを先に棚卸しして決める。
+
+一方、実Hostが確認したPrincipal、現在のScope/Grant、実ロード済みArtifactのバイト列、Resource admission、Disclosure policyを、外部のactor/role/scope文字列、Sourceの宣言、生成AIの提案から作り出してはならない。
+
+| 判断時点 | 確認すること | 失敗時の扱い |
+| --- | --- | --- |
+| Authoring | Parserの構文位置、Workspace参照、意味型、Input/Result/Effect宣言 | A/B層の診断。補完で有効な公開Entryにしない |
+| Prepare | Accepted MeaningとEntry、Contract/Source/Target revision、必要Inputの形、選択Composition | stale、unresolved、unsupportedを区別。別名・最新バージョンへの無断再束縛をしない |
+| Admit | Hostの現在Grant、対象の現在性、Provider/Artifact実在、Deadline、必要な入力閉包 | Provider call 0で拒否または明示Policyに従う保留。Ready表示は権限ではない |
+| Invoke / Commit | Hostが実選択したProviderを呼ぶ。書込み直前の資格とEffect fenceは既存Ownerが検査 | 選択B・実呼出AならResult一致でもFAIL。ACK不明はEffect unknown |
+| Observe / Deliver | 実Result、DB/外部Receipt、独立再読取、応答、開示、外部Consumerの受領 | 取得・表示・通知の部分成功をBusiness Verifiedへ昇格しない |
+
+Source→Workspace→Runtime preflight→製品Entry/Host/Providerという§20のA/B/C/D層は維持する。これはProcess LifecycleのBootstrap/Readyとは別の軸であり、D層はA/B/Cの成功だけでは合格にならない。
+
+### 21.3 起動方法と実行場所は独立した選択軸
+
+Manual、UI、CLI、API/MCP、AI Harness、Schedule、Event、Data Hookは**起動の契機**である。一方、one-shot、既存Hostのevent-serving、外部へのdelegated executionは**処理の配置・受付方法**である。両者を一対一の種類として定義しない。CLIから既存Remote Hostへ委譲する場合も、Timerがone-shot Jobを起動する場合もある。
+
+Host/TargetごとのFitでは、型付きInput（missing／明示NULL／unfetchedを含む）、Result/Outcome、期限、対象版、現在のGrant、取消、再送、必要なEffect/Receipt/Disclosureの表現可否を、必須と任意に分ける。必要能力を運べなければunsupported / not-representableとし、引数の省略、別Providerや別Hostへの黙ったfallback、意味を変える同期化・非同期化をしない。
+
+DSLが自己記述されても、このTarget適合とRuntime実能力は別の検収である。Goのmain、Wails IPC、Java/.NET Host固有の構文やScheduler設定は、業務専門家向けDSLの必須記述へ露出させず、選択済みTarget Generator／Host Adapterで実現する。Graph/Markdownは意味Role付きの標準データ構造からの用途別Projectionとする。
+
+### 21.4 時間、入力の完備性、再開の同一性
+
+予定された発火、実配送、起動入場、業務上の基準日時、データが揃った時点、Commit、結果を閲覧した時点は異なる。同じUTCでも組織の有効期間、営業日締め、Time Zone/DST、RLSやAudienceが異なれば、許される処理は変わる。
+
+ScheduleやEventの発火だけで入力集合の完備性を確定しない。必要Partition/Watermark、Snapshot、Readerの取得範囲、未取得／権限制限／部分取得は、対象Functionの契約とData Ownerの独立根拠で評価する。Closure不明なら明示Trigger Policyに従って保留・再検査・拒否を選び、空集合や0行を「全件存在しない」と扱わない。
+
+再開も同一ではない。旧Snapshotに対する同一Runの継続、訂正差分の新Run、既公開結果の再確定を分ける。RunKeyやCheckpointの存在だけで、外部Effectの再実行資格を得られるわけではない。Commit後のACK喪失時は、既存Provider/DB Receiptや独立Readで同一Operationを照合し、証明できなければ再送を停止する。
+
+### 21.5 ResultとConsumer受領を分離する
+
+結果は一つの成功フラグにまとめない。少なくとも transport/起動の受付、実Attempt、業務上のOutcome、永続的Effect、応答や成果物の到達、現在のDisclosureを別のClaimとして検収する。OS exit 0、HTTP 200/202、Job ticket、画面への描画、外部Toolの呼出し完了は、それぞれ別段階の事実である。
+
+特にB2Cでは、Guest／本人／運用者／分析用途で同じFunctionやQueryを再利用しても、Row/Columnの開示、Cache、対象の版、本人性は共通にしない。AI Harnessへの結果送出では、Toolの完全受領、Source固定、用途別の開示、実Hostの権限を確認し、Raw Secretや未開示行をEvidenceへ転記しない。Studioは固定Selection／版／未保存Bufferを持ち、非同期の旧応答が現行対象の結果として表示されることを拒否する。
+
+SHOやSUIの図・文書、StudioのLifecycle図、外部Reportは同じOperation/SourceへのProjectionを持てるが、表示用の結合やAIによる意味候補がDB更新対象、公開Entry、Grantを決定してはならない。
+
+### 21.6 既存Scenarioへ渡す一因子負例
+
+ここに新しいScenario正本を設けず、#4495 EL、#4497 TR、#4198 R、#2514の独立Expected、およびConsumer横断設計のCLケースへ次の変形を引き渡す。
+
+| 変形 | 独立に観測する不合格条件 | Owner |
+| --- | --- | --- |
+| pure FunctionのAPI/CLI同値 | 値は600で一致しても、選択Provider Bに対して実Aを呼ぶ／実CLIはReferenceだけを返す | #4495、#3422 |
+| Source/言語/Operatorの版変更 | Source A→B→AやPlugin改版の後に旧Entry/Artifact/Grantを現在資格として使用 | #988、#943、#1251、#4495 |
+| ReadyとEntryの違い | Wails/Web HostがReadyでも、非公開Functionや失効Grantから実Providerへ到達 | #4495、#1824 |
+| TriggerとInput Closureの違い | 定時発火は成立するが必要Partitionが未取得なのに業務結果を確定 | #4497、#1130、#2586 |
+| 同じOperationの再送 | Commit直後ACK喪失→プロセス再起動→旧Checkpointから二重更新 | #1174、#1129、#4411 |
+| 同じRowset・異Audience | 会員Aに公開したデータまたはCacheを会員Bへそのまま開示 | #3509、#2586 |
+| AI/Studioの旧応答 | 編集Buffer・Source・Selectionの版が変わった後、過去の結果を現在の検証成功として表示 | #1124、#3422 |
+| Buildと実Consumerの差 | Stage1が新Artifactを生成しても、Stage2は旧Bundleや別Providerを実使用 | #4583、#2831、#1251 |
+
+各ケースは対象Source/Subject/Meaning・実Provider・実Loaded bytes・入力・実Host資格・独立Expected・実Consumer結果を別欄で照合する。再送、書込み、B2C開示をpure read-onlyのP0へ一度に持ち込まない。
+
+### 21.7 最短実装順と担当
+
+**全体P0はStudioセルフビルドを維持する。** #4583/#2831は非Plugin StudioのBuild Subject、実Builder/Toolchain/Artifact、Stage1→Stage2による再構築、Windows WebView2/IPCでの実受領を同じ世代で照合する。Script Launchの新GraphやExecution Profileを、この検収の追加Hard Gateにしない。
+
+**並行P0は#4495の公開pure Entryである。** 既存Capability/Typed Application APIを棚卸しし、Owner受理済み一FunctionをEntryへ公開する。Host-selected actual Go Providerを直接APIから呼び、通常tei CLI実プロセスでも同じEntry・対象・版・意味結果を確認する。構造上は正常でも実Providerの選択と呼出しが異なる負例を先に用意する。#4654/#4655のA/B/C構造検査が資格を得ても、D層の製品実Callの代わりにはならない。
+
+**後続P1は一つの実Readから実Consumerへ到達する。** #2586のRA-2P/RA-3、Audience別の開示・部分取得、#3422の別入口、#4198のread-only Graph/Traceへ拡張する。図解は正本Sourceへの位置とRepresentation Lossを保持し、書込み編集機能は後回しとする。
+
+**後続P2はTrigger・復旧・外部委譲である。** #4497/#1130の時刻・Event・Input Closure、#1129/#1174のEffect/Receipt、#4194のEKI能力Fitを各Ownerで検証する。新しいHost、Scheduler、Registry、独自ハーネスを採用する判断はこの段階から自動導出しない。
+
+今回の内容は**設計の成熟差分を実装・検収計画へ接続したもの**であり、正式DSL/API Schema、実Provider D層、Stage2、実Scheduler、実DB Commit、外部Harness、Owner意味受理の達成を宣言しない。個々のPASSはexact Source・Artifact・Toolchain・Consumerと、対応する実試行に限定する。
+
+<!-- tei-scriptlaunch-qualification-fit-20261114 -->
+## 22. Execution Bindingの解決順序と不適合の扱いを固定する（2026-11-14）
+
+### 22.1 共通実行モデルとの関係
+
+本節は、§21で整理した起動資格を実装可能な検査順序と引渡し条件に落とす。共通Application API、既存Capability/Provider/Composition、Source/Buildの固定、Hostが所有する権限、実EffectのOwnerを結び、未接続の「公開Entry→Host-selected actual Go Provider→通常製品CLI」を優先する。
+
+main統合済みの[共通実行モデル #4665](https://github.com/hat47x/tei-platform/pull/4665)と[Lifecycle設計 #4666](https://github.com/hat47x/tei-platform/pull/4666)、[Process Lifecycle設計](PROCESS_LIFECYCLE_TRIGGER_OPERATION_SEMANTICS_2026-11.md)はイベント・処理・応答の意味の対応を説明している。本節はそれを再定義せず、**あるHostとTargetで具体的に呼び出せるか**を判定する接合点に限定する。新しい中央Binding Registry、Launcher、Request Envelope、許可機関、業務状態表を導入しない。
+
+### 22.2 Bindingを解決する八つの検査
+
+以下は検査順を説明するもので、すべてを一つの関数に集約する要求ではない。各既存Componentが何を拒否し、どこへ引き渡すかを明らかにする。
+
+| 検査 | 確認する対象 | 停止線 |
+| --- | --- | --- |
+| **1. Meaning** | Ownerが受理したFunction/Action、意味版、入出力・Effect契約 | SourceのParse、Graph表示、Script保存だけでは意味受理としない |
+| **2. Publication** | 対象Consumer/Profileに公開されたEntry、契約版、Scope | 内部Function、Table Hook、個人Macro、旧公開版は暗黙にEntryへ昇格させない |
+| **3. Input Binding** | 意味型、実入力、missing／明示NULL／未取得・秘匿／未知欄、単位・精度 | 欠損を空文字やゼロに吸収しない。旧文字列Mapへの変換で差が消えるなら不適合 |
+| **4. Data Context** | Source Snapshot、Reader取得範囲、Scope、Partition/Watermark、更新対象の期待版 | SQL/NoSQLの部分取得やRLS制限を全件取得・入力完備と推測しない |
+| **5. Provider Fit** | Target、選択Provider、必要Capability/Effect/期限・取消、Artifact/Toolchain | 未選択Plugin、必須能力の省略、別Hostへの暗黙の代替を禁止 |
+| **6. Current Admission** | Hostが確立したPrincipal・Grant・Scope、実ロード成果物、現在の期限・対象 | 外部要求のactor/role/grant、過去の許可、Process Readyは権限にならない |
+| **7. Actual Invoke** | 同一Attemptの選択Providerと実Handler/実Process、入出力の実体 | Provider B選択・A呼出しは結果が一致しても不合格。Mockの成功は実Providerの成功ではない |
+| **8. Observe/Deliver** | Result/Outcome、Effect Receipt、独立Read、応答・成果物・Consumer受領/開示 | exit0、HTTP202、Queue ACK、表示成功だけでCommit/Business Verifiedとしない |
+
+順番を固定しても、TEIが認可を一括発行するわけではない。開始直前やCommit直前の現在性検査、冪等性の保証は既存Host／Effect Ownerの境界に残す。入場後にGrantや対象版が失効しても、先に得たResultやTokenを現在の許可として再利用しない。
+
+### 22.3 不適合の理由と回復責任を明示する
+
+一つの成否フラグでは原因を隠してしまう。診断と受入票には、何が不明で、誰が判断できるかを記す。次の語彙は概念上の分類であり、正式なError Enumの追加ではない。
+
+| 観測した状況 | 扱い | 判断するOwner |
+| --- | --- | --- |
+| Entry非公開、意味未受理、契約版不一致 | unpublished／not-accepted／staleを区別して拒否 | Function/Entry |
+| 必須Input欠落、NULL非許容、Source未取得、入力完備性不明 | invalid／incomplete／unknownを分け、入力を作り足さない | Source/Data/Function |
+| 選択Targetで必須Effect/Consistency/Deadline非対応 | unsupported／not-representable。意味を変える縮退禁止 | Target/Provider |
+| Host Grant失効、Resource未認可、Artifact不一致 | 現在資格で拒否・保留。LaunchがGrantを発行しない | Host/Authority |
+| 実Providerの不一致、Result本文欠落、Consumer未受領 | 不一致・未観測のまま記録し、成功としない | Runtime/Consumer |
+| Commit後ACK不明、外部Effect Receipt不明 | effect unknown。再送せず照合・回復判断へ引き渡す | DB/Effect/Recovery |
+
+unknownは曖昧な成功ではなく「観測できていない」を表す。必要Capabilityを持たないunsupportedや明示的な拒否とは区別する。SourceがA→B→Aへ戻っても、原Byteの一致だけで中間の改訂やOperatorの履歴を消さない。
+
+### 22.4 DB/NoSQLとTriggerを一つの実行規約に押し込まない
+
+QueryやData Scriptの入力完備性と更新の確定はProviderごとに異なる。RDBでもTransaction分離水準、Snapshot、RLS、Cursor、Paginationに違いがある。NoSQLではPartition/Collection、整合性水準、条件付き書込み、変更Feed、Query能力、反映遅延などが異なる。**一つのRead成功を全件性・最新性・権限の証明として共有しない。**
+
+Target/ProviderのFitでは、少なくとも（a）実際に読んだ範囲、（b）必要な入力集合の確定方法、（c）条件付き更新、（d）Operation重複防止の有効範囲、（e）更新・外部送信のReceipt/独立照合を、Functionが必要とする範囲で比較する。必要としない能力を全Providerへ一律に課さず、必要能力を実現できないTargetを実行可能と判定しない。
+
+DB移行時には旧・新ProviderのOperation適合を、Expand/Backfill/Validate/Cutover/Contractの各段階で再評価する（#4125）。Schedule/EventはこのFitを満たすFunctionへの**起動要求を作る側**であり、入力完備や実Schedulerの資格を与えない。旧Snapshotへの再開、遅着データの差分Run、既公開結果の再確定は別のOperation/Publication判断として#4497/#1130へ渡す。
+
+### 22.5 最初の一件と独立した呼出し証拠
+
+最初のP0は、Ownerが受理・公開し、副作用がないと認定された一Functionを型付きApplication APIと通常のtei CLIから呼ぶ。数量2、単価300、結果600の既存固定Scenarioは利用候補だが、そのScenarioが正式公開済みとは仮定しない。**Effectの宣言がないことを純粋性の証明に使わない。**
+
+実装前に既存のinternal/semantic/capabilityinvoke.Invoke、internal/command.Invoker.Invoke、internal/servicehost.SelectedServiceCarrierInvokerの適用範囲を棚卸しする。前者の宣言構造検査は実装済みだがEntry公開・現在Grantを担わず、後者二つもそれぞれCommand/Host固有の契約である。いずれか一つを万能のLaunch Engineに拡大しない。
+
+同じ意味契約と入力を、（i）Go Application APIの実Provider call、（ii）別OS Processで起動した通常tei CLIの実Provider call、という独立の二試行で観測する。選択先と実呼出し先、Source/Meaning/Entry revision、実ロードArtifact、入出力の意味を照合する。最初に落とす負例は、Entry未公開、必須Input欠落/NULL、現在Grant失効、Provider B選択・A実呼出し、Result本文欠落である。既存#4495 EL-01/04/05/06/08/12と#2514の独立Expectedへ割り当て、第二Fixture正本を作らない。
+
+Evidenceは既存Trace/Build Receipt/Driver Evidenceを参照し、Source occurrenceとrevision、Accepted MeaningとEntry、Targetとselected Provider、actual loaded bytesとactual call、Host current Grant、Operation/Attempt、observed output、Consumer deliveryとdisclosureを、**同じ試行で実際に照合できた範囲**で記録する。SecretやRaw InputをEvidenceへ複写しない。異なるHEAD・Artifact・Consumerの局所PASSを合算しない。
+
+### 22.6 優先順位を変えず、未成立の接合だけを閉じる
+
+- **全体P0**：#4583/#2831のStage1→Stage2実セルフビルド。保存Source、Build Intent/Toolchain、生成Bundle、Windows WebView2の実Consumerを同一世代で検査する。
+- **並行P0**：#4495の公開Entry→Host-selected Go Provider→直接API/通常tei CLI。§20のA/B/C層Go Draftの成功をD層の実呼出しへ昇格しない。
+- **後続P1**：#2586 RA-2P/RA-3の実ReadとAudience別Consumer、#4198のread-only Lifecycle/Trace図、#1124のSource位置と固定Selection。
+- **後続P2**：#4497/#1130のSchedule/Event/Input Closure、#1129/#1174のCommit/Outbox/Recovery、#4194/#4384の外部EKI能力FitをそれぞれOwnerの実試験として接続。
+
+現時点で証明済みなのはCapability宣言の構造に関するpreflightなど限定された範囲であり、D層の製品実Callは未確認である。本節は**設計・実装引渡しのみ**。新Go/CLI/DB/Host/EKI/Studio E2E、正式Schema採用、Owner意味受理はNOT RUN / NOT ACCEPTED。Mock Simulationや局所テストの成功をProduct Q2へ移転しない。
+
+<!-- tei-launch-cutpoint-effect-result-20261114 -->
+## 23. Provider呼出し前後の失敗と業務作用の帰属を切り分ける（2026-11-14 実コード再確認）
+
+### 23.1 結論：Resultの不正は「未実行」を意味しない
+
+現行mainの internal/semantic/capabilityinvoke/invocation.go は、Context事前取消とCapabilityのInput/Result/Effect**宣言構造**を確認した後にAdapter.Invokeを呼び、その戻り値をValidateBusinessResultで検査する。これは適切な防御層だが、**Adapterの前と後で拒否の意味が異なる**。Providerを呼んだ後に不正なOutcomeやCapability IDを発見しても、すでに外部Effectが起きた可能性は残る。
+
+特に、BusinessResultにはCapability/Mode/Outcome/Payloadがあり、AdapterのInputとResult Payloadはどちらもanyである。generic層の構造検査に入力値の意味型・NULL許容・単位・出力Payloadの正当性を期待してはならない。既存TestSingleOutputPayloadPresenceIsNotInferredFromResultModeは、単一OutputのPayload未指定を、genericなResultMode検査だけでは誤って拒否しないことを確認している。値の検証は、Ownerが受理したMeaningに結びつく実Provider/境界で別に満たす。
+
+これにより、起動前検査の成功、実Adapter呼出しの成功、Result契約の適格性、Business Outcome、外部Effect Receiptを**独立したClaim**として扱う。Result契約違反後に新しいOperation IDで再試行することは、既存Effect Ownerによる照合なしには許可しない。
+
+### 23.2 実行の中断位置ごとに判定する
+
+| Cut point | 観測と期待する扱い | その場では宣言できないこと |
+| --- | --- | --- |
+| **C0 事前拒否** | Context事前取消、宣言構造不正、Entry非公開、Input型不適合、Host現在Grant拒否。Adapter call=0を確認 | 未実行はこのAttemptの当該経路に限定。他経路や先行AttemptのEffect不在までは保証しない |
+| **C1 Dispatch境界** | Host選択Provider/実ロードArtifact・実呼出し先を同じAttemptで固定。Adapterへ到達したかを観測 | selected ProviderとCapability IDが一致するだけでactual実装が一致したとは言えない |
+| **C2 Adapter中の障害** | AdapterがError/取消/Timeoutを返す。BusinessResult成功を作らず、必要ならEffectをunknownとして保持 | Errorや取消をRollback、未Commit、安全な再送と見なさない |
+| **C3 Adapter後のResult拒否** | 呼出し後にundefined Outcome、Mode不一致、別Capability ID、必要Payload欠落を検出。Result不適格としてConsumerへ正常成功を渡さない | Provider/DB/外部通知が未実行だったとは言えない。Effect OwnerのReceipt照会を優先 |
+| **C4 Result形の適格** | BusinessResultの宣言上の形が適格であることを確認。Input/Output値の意味・業務不変条件は別の契約で判定 | Result shape合格から実DB Commit・開示・Consumer受領を推測しない |
+| **C5 Effect/Delivery観測** | Commit、Outbox、通知ACK、独立Read、Consumer受領を各Ownerの観測と結ぶ | Commit成功と通知成功、送信と開示可能、旧版の受領と現在資格を同一視しない |
+
+この表は全Target共通の新しい固定状態機械ではない。すでにあるCommand/Effect/Recovery契約に、事故が起きた地点を記録するための試験観点として適用する。純粋Functionは再評価可能な場合があるが、Effect宣言がnilという理由だけでpureと認定しない。
+
+### 23.3 コード責務の最小分離
+
+- **capabilityinvoke.Invoke**：宣言構造の事前拒否とBusinessResultの形の検査を担当。現行InterfaceはProvider選択の正本、Host Grant、実DB Receiptを持たず、これらを生成しない。
+- **command.Invokerの既存境界**：CommandのAuthorization、Lifecycle、Effect等の担当範囲を棚卸しする。ReferenceAuthorizerの許可を本番Host Grantとみなさない。ここへ一律のScript公開機能を押し込まない。
+- **servicehost.SelectedServiceCarrierInvoker**：Host generationと実Service Provider route/Artifactを固定する既存実装として参照する。ただしService Carrierの契約であり、業務FunctionのEntry公開やResult意味検証を済ませたものではない。
+- **#4495 Product接合**：公開pure EntryとHost-selected actual Go Adapterの同一性を、既存Composition/Provider側の実Call証拠により照合する。BusinessResultの値が同じという理由だけで実Providerを同定しない。
+
+Adapterの戻り値を巨大なTrace Envelopeへ拡張したり、genericなResult検査に全てのData型/Authority/Receiptを集約したりする前に、既存Host/DriverのEvidenceが同一Attemptを結べるか棚卸しする。
+
+### 23.4 実行する最小の一因子反例（独立Expectedは既存Owner）
+
+| 既存Caseへの追加検査 | 故障注入 | 期待する観測 |
+| --- | --- | --- |
+| EL-05 / ACD系 | 誤ったInput宣言と事前取消 | Adapter call=0、BusinessResultなし |
+| EL-04 | Provider B選択、Provider A実呼出し、Resultはどちらも同値 | 実Provider不一致を拒否。C1でactual Call Witnessを要求 |
+| EL-12 | Adapter呼出後に別Capability/未定義Outcomeを返す | Result契約違反、Adapter call=1。業務Effectの不在は推定しない |
+| EL-09 / TR-17 | Adapter中にCancel/Timeout、または結果返却後にDeadline超過 | Operationの実行・作用・取消のそれぞれを別に扱う |
+| EL-10 / TR-22 | Commit直後にACK喪失、Result拒否を契機に再送しそうになる | 同一OperationのReceipt照合。証明できなければ再送停止 |
+| CL-10 | Valid Resultだが実Output値のMeaning/型や開示先Audienceが不適合 | generic Result形と業務意味／Consumer受領を別判定 |
+
+最初は既存のTestUndefinedOutcomeIsExecutionContractError、TestAdapterCancellationErrorDoesNotBecomeBusinessOutcome、TestSingleOutputPayloadPresenceIsNotInferredFromResultMode、TestMalformedInputOrEffectDeclarationNeverDispatchesAdapterをInventoryとして利用する。必要な独立Witness/負例を#4495のGo focused testと通常tei CLI実プロセスに追加し、実DB・通知・Process killは#1174/#1129/#4497の別Gateへ委ねる。Source/Meaning/Entry/selected Provider/loaded Artifact/actual Call/Attempt/Result/Effect/Consumerの同一世代を確認できたところだけPASSとする。
+
+**状態と停止線**：本節は現行Goコードに基づく検査・引渡し設計。新しいGo試験や製品CLI起動、実Provider／DBのEffect検証、正式Schema採用、Owner意味受理は本節の追記ではNOT RUN / NOT ACCEPTED。全体P0のStudio Stage1→Stage2と、並行P0の公開pure Entry→実Go Provider→通常tei CLIを変更しない。
+
+<!-- tei-scriptlaunch-cli-selfbuild-plugin-contract-20261114 -->
+## 24. CLI起動からTEI主導のプラグイン自己構築へ接続する（2026-11-14）
+
+### 24.1 目的と受入の分離
+
+[セルフビルド #2831](https://github.com/hat47x/tei-platform/issues/2831)の11月14日更新と[CLI先行の製品計画 Draft #4676](https://github.com/hat47x/tei-platform/pull/4676)に従い、**初期の実質的なセルフビルドはTEI CLIを入口にしてよい**。MCPは同じ型付きApplication Operationを使う任意の別入口とし、GUI・Wails・WebView2を初回検証の必須条件にはしない。Studio Desktop Stage1→Stage2→Windows Consumerは引き続き最終的な独立製品受入である。
+
+Script Launchの役割は、受理されたFunctionの定義変更、TEIによるコード生成、実Builder、実ロードArtifact、Host-selected actual Provider呼出し、独立Consumerの結果受領を、同じSourceと意味の版に関連付けて検証すること。*.tei.md が固定Go Functionをdelegateするだけ、図表が実装に寄与しない、Stage0 ShellがGo Buildを二度行った、という結果を実質的なTEIセルフビルドの証拠にしない。#4495の公開pure Entry検収と#2831/#4675の自己構築検収は独立して保持する。
+
+### 24.2 起動契約から再帰的な生成へ至る最小経路
+
+| 段階 | 実際に確認すること | それだけでは証明しないこと |
+| --- | --- | --- |
+| L0 Source/Meaning | *.tei.mdの図・表・Ruleを実Readerが読んだByte/Revision、意味IDと契約、Source位置。未対応Readerはunsupported | ファイル名、Previewや構文強調だけでMeaning受理 |
+| L1 TEI Codegen | Rule/型/Graph関係の意味変更が、生成Go等の実装と独立Expectedによる実行結果を変える。Layout-onlyは意味不変 | 固定Go delegateの薄いWrapperをTEI生成実装と数える |
+| L2 Build/Plugin選択 | 実Stage1 Processと選択Builder、実消費したSource/Toolchain、生成PluginのArtifact member/Digest、親子Attemptの接続 | Stage0の二度Build、宣言上のDigestだけで再入を証明 |
+| L3 Entry/Actual Call | 生成された公開pure Entryを通常製品tei CLIから起動し、Hostが選んだ実Provider/Artifact、Result本文を観測 | 宣言・収録・Mock・Load成功だけで実Callに合格 |
+| L4 再帰的な自己構築 | 前Stageが生成した実CLI/Pluginの一部が次Stageの生成・実行を担い、実Childと独立Expectedを比較 | Plugin一部品の再生成を全Studio/全TEI自己構築に加算 |
+| L5 異質Consumer | 後続Studio/Windows、MCP、外部HostではEntry/実Call/現在Grant/受領・開示を独立確認 | CLI成功を別Targetの製品成功へ自動移転 |
+
+最初は副作用のないRuleまたはGraphを利用した小Functionを選ぶ。定義の一か所を変える→実生成コードが変わる→通常CLIで独立Expectedのとおり動作が変わることを確認し、次に同じ意味契約を持つPluginの実選択/実呼出し、さらに生成Pluginの次Stageでの実利用へ進む。新Graph Compiler・Runner・Hostは前提にしない。
+
+### 24.3 上位Pluginの公開図解を契約に従って再利用する
+
+下位Pluginが、上位Pluginから**契約により公開された**図・モデル参照・説明・制約を継承的に利用できることを要件とする。継承するのは利用を許された意味と表示情報であり、上位の非公開Source・内部Hook・実行権限・現在Grantではない。
+
+利用時には上位Contract/VersionとDisclosure Scope、元Subject/Relation/Edgeの安定ID、Source/Projectionの由来、Representation Loss、意味上の不変条件、選択Provider/Targetの適合範囲を追えるようにする。下位は公開された図解を参照・拡張できるが、表示用Layout変更だけで上位Accepted Meaningを改訂しない。公開撤回、上位Contract改版、関連SourceやProviderの変更では必要な依存部分のみ失効・再検証する。A→B→Aで同じByteに戻っても旧Grantや実Callの合格を自動復活させない。
+
+上位の図がread-onlyなら、下位Pluginの画面操作やAIが元Sourceへの編集権限を獲得しない。書込み可能な場合もSource span/Revision/Scopeを固定したChange Proposalと既存Preview→Resolve→Admit→Commit→Observeを通す。図を参照できること、Meaningを受理できること、Providerを実行できること、Consumerに開示できることは別の資格として#951/#2497/#4198/#1124へ引き渡す。第二の図解Registry・Authorityは追加しない。
+
+### 24.4 Plugin自己構築と定義簡素化を別指標で測る
+
+[Plugin自己構築計画 Draft #4675](https://github.com/hat47x/tei-platform/pull/4675)にある評価分母を再利用し、Script Launchは**実呼出しのEvidence**を提供する。Function/Rule/Plugin ContributionをTEI意味定義が動作を決める対象、Go/外部Providerへ委譲した対象、未対応対象に区分する。生成Goの行数、ファイル数、成果物DigestだけからTEI自己構築率を計算しない。
+
+定義の簡素化は同じ独立Expectedを保った上で、手書きGo/TS・重複設定・変更箇所・手修正・読み戻しやすさを二つ以上の改訂で比較する。NULL、単位、Effect、Audience、版の意味が失われた短縮は改善とは呼ばない。上位公開情報の参照により複製を減らした場合も、出典版の追跡と失効条件を満たして初めて成果とする。
+
+### 24.5 実装順と独立反例
+
+最初の製品起動実装は、#4495の受理済みpure Entry→Host-selected actual Go Provider→通常tei CLIである。*.tei.md実Reader/Role/CodegenのOwnerは#2621/#2620/#4359/#1121、Builder再入は#2831、Plugin構成と指標は#951/#4675、Desktop Stage2は#4583に残す。MCP/Studio/外部Hostは同じApplication APIの別入口として後続で独立検収する。
+
+| 反例（既存#1180/#2514のScenarioへ引渡し） | 不合格と判定すること |
+| --- | --- |
+| 未対応Reader | *.tei.mdの存在だけで実Loader/Meaning受理をPASS |
+| Wrapper-only | 図表・Ruleの意味を変えても生成Goの振る舞いが変わらないのにTEI-nativeと採点 |
+| 偽の再入 | Stage0の外部Shellだけが二度Buildし、Stage1から実Builderへの呼出しがない |
+| Provider不一致 | Plugin B選択・実Call A、結果が同じため見逃す |
+| 公開情報の越境 | 上位の非公開図・Source・Scopeを下位へ継承したと称して開示 |
+| 局所失効不良 | Layout-onlyで意味再Build、上位Contract改版で旧実行資格を維持 |
+| 失敗位置の混同 | Adapter後Result違反を未実行とみなし、Effect確認なしに再送 |
+| 偽の簡素化 | Go側へ意味を移し、試験の分母を減らし、NULL/Effectを弱めて改善と採点 |
+
+**状態**：本節は設計・実装/検収への引渡しのみ。正式*.tei.md Reader、TEI-native Codegen、実CLI E2E、CLI Stage1→Stage2、Plugin図解継承、MCP/Windows Consumerの新しい実試験、Owner意味受理はNOT RUN / NOT ACCEPTED。CLI-firstとDesktop自己再構築は互いの成果を代用しない。
+
+<!-- tei-scriptlaunch-actual-entry-implementation-ticket-20261114 -->
+## 25. 最初の製品Entry実装をGoの接合箇所と受入試験へ分解する（2026-11-14）
+
+### 25.1 静的に確認した既存実装と未接続箇所
+
+前節までの設計を増やすのではなく、現行mainの実コードを起点に最初のImplementation PRを小さく切る。
+
+| 既存入口／Go実装 | 使える範囲 | Product実行の不足 |
+| --- | --- | --- |
+| cmd/tei/main.go と cli_contract.go | 通常tei実Processのコマンド分岐。commands Discoveryはselected-read-only-commands限定 | 新しい製品Entryを既存のread-only一覧や参照CLIと偽装しない |
+| cmd/tei/cli_view.go | -command/-execute はapplicationview.CommandPlan→command.Invokerへ接続。ReferenceExecutor、ReferenceAuthorizer、MemoryUnitOfWorkが基本 | Refの結果をHostが公開したpure Entry／Host-selected actual Go Providerの証拠にできない |
+| internal/semantic/capabilityinvoke/invocation.go | 宣言の形を事前検査してAdapter.Invokeを呼び、返却後のBusinessResult形を検査 | Adapterの選択・実ロード・Entry公開・入力実値・現在Grantは外側で必要 |
+| internal/servicehost/service_carrier.go と application_route_source.go | Host generation、既存選択済みRoute、物理Service Providerを実Invokerへ束縛 | Service CarrierのJSON/process契約を業務pure FunctionのEntryと無断で同一視しない |
+| cmd/tei/cli_self_build.go と cli_self_build_outer.go | 子Process、Build Intent、子の読み込み宣言、Artifact byte照合などの独立観測。Outerのqualifiedは明示false | Stage1実Processが意味に基づいてStage2を再生成した証拠ではない。子を起動した事実とBuild合格は別 |
+| internal/buildintent/intent.go | go-command/go-packageのRecipe定義とBuild Intent検査 | Subject.Kindの現行Plugin制約と実Builder/ArtifactSetの対応を解消するのは#2831/#1080であってLaunch側で偽装しない |
+| internal/workspace/loader.go | 現行*.teiの実Parser・Workspace Load、管理対象ファイルとReadByLoaderを区別 | *.tei.mdが管理されていても実Language/Role Readerで解釈済みとは限らない。#2621/#1018のGap |
+
+**最初の純粋なProduct Entryの選定**は、現行Reference WorkspaceのCapabilityをInventoryし、(a) Owner受理、(b) 公開許可、(c) Effectを含む実依存の検査済み純粋性、(d) 対象Go Provider/Host/Target、(e)独立ExpectedとInput Typeが揃う一Functionを指定するところから始める。数量2×単価300→600はPressureとして使えるが、例示値やEffect nilだけで選定完了とは扱わない。適格な候補が存在しない場合はEntry未受理と記録し、純粋性・公開契約の受理を先行させる。
+
+### 25.2 最初の二つの差分を分離する
+
+**実装A：型付きApplication APIからProduct pure Go Providerを実呼出し**（#4495/#3422/#951）。既存Compositionが選択したProvider/Artifactの現在版を固定し、Host-owned Admissionで公開Entry/Grant/Inputを検査する。Adapterの選択とactual callを同一Attemptで観測し、既存capabilityinvoke.Invokeの事前宣言/事後Result検査へ渡す。選択B・実呼出A、Entry非公開、失効Grant、誤ったInput実値がProvider call0で拒否される場合と、実呼出し後のResult不正がcall1で拒否される場合を分ける。意味型の判定やCurrent Grant発行をgeneric Adapterへ追加しない。
+
+**実装B：同じ公開Entryを通常製品tei CLIから実呼出し**（#4495/#1158）。Go APIが合格した後に、通常製品バイナリの別OS Processから同じApplication Operationへ到達させる。現行tei view -executeはreference実行のまま保ち、Product実行をReferenceモードへ黙って混ぜない。CLIの正式なコマンド名、入力表現、Discovery範囲は#1158/#4495の実Contractとレビューで採否判断し、未採用の仮コマンド構文を文書から仕様に昇格させない。CLI stdoutのJSON一部一致だけでなく、実Host/Provider/Source/Artifact/Attempt/typed Result Bodyと独立Expectedを確認する。read-onlyのcommands Discoveryに、実行可能な製品Operationを無断追加しない。
+
+両差分は同じContract/Fixtureを使うが、実Go APIと別OS ProcessのCLIで**異なるAttempt**を取得する。両方が同じMeaningを実装したと検査し、同じAttempt IDだと偽って統合しない。暫定Reference CLIが600を返したことを、Product Entry D層の成功とみなさない。
+
+### 25.3 受入票を最初に確定する
+
+#4495 ELと#1180/#2514の既存Expectedに、以下を具体的な一因子試験として割り当てる。
+
+| 試験 | 故障注入・実入力 | 判定条件 |
+| --- | --- | --- |
+| A-01 / EL-01 | Function存在、Entryを公開しない | Provider call0。Discoveryで見えることと実行可能性を分離 |
+| A-02 / EL-05 | required missing／明示NULL／0／未取得を各々別Inputとする | Inputの意味と拒否を区別。generic宣言検査だけで通さない |
+| A-03 / EL-04 | selected B、actual A。両者のResultは同じ600 | 実Provider/Artifact不一致なら必ずFAIL |
+| A-04 / EL-07 | PrepareでGrant有効、Invoke前に失効 | Host現在Grantで拒否。外部入力のrole文字列は信用しない |
+| A-05 / EL-12 | Adapterがcall1後に別Capability／未宣言Outcome | Result契約エラー。Effectなし／安全Retryと主張しない |
+| B-01 / EL-02 | Go API正常、製品CLIがReference/Mockへ誤接続 | CLIの実Provider/Bodyが一致しないのでFAIL |
+| B-02 / EL-03 | Source/Contract/Artifactの一つだけ改版、旧CLIを実行 | 旧資格を自動再利用せずstale/unsupportedを明示 |
+| B-03 / EL-06 | CLIからHost actor/Grant/Providerを注入 | Hostが承認していない値をAuthority/Selectionへ昇格しない |
+| B-04 / EL-08 | CLIはExit0だがBodyなし／型が不正 | Product Consumer資格はFAIL |
+
+技術Failureが呼出し後に発生したときは、既存internal/failureのKind、Retryable、EffectUnknownをConsumerに伝える。特にLookupFirstやEffectUnknownをGo error一つへ潰さない。初回pure Functionでは実Effect Receiptの証明を要求しないが、Effectを持つFunctionへの拡大時は#1129/#1174のReceiptと再送Policyを別に受理する。既存Failure Contractを二重定義しない。
+
+### 25.4 セルフビルドへの接続は、製品起動A/Bとは別票にする
+
+[実行図・継承・自己構築のmain設計§24〜27](PROGRAM_EXECUTION_MODEL_PROJECTIONS_2026-11.md)と#4675/#4676を再利用する。最初のB0は現行Readerで解釈できるSource/Contractから開始し、*.tei.md Readerは独立のL0未完として明示する。生成部品の意味変更→実Target動作変更を確かめた後、既存tei self-buildのChild/Builder/Artifact照合を利用してCLI Stage1→Stage2を実現する。
+
+- **Sourceの意味が動作を支配**：Graph/Ruleの意味に関わるEdgeや条件を変更すると生成コード・結果が変わり、Layout-onlyなら意味が変わらない。固定GoラッパーのResult変化なしはFAIL（#2831/#2514）。
+- **Builderの実再入**：Stage1実Processが選択Builderと入力を実消費し、生成したStage2 CLI/Pluginが実際に次の検査を行う。tei self-buildの子Process起動/qualified=falseだけでは成立しない。
+- **Plugin由来の意味**：上位が公開したFacet/図面を下位が適合Scopeで使い、実Targetで必要なObligationとVersionを保つ。ただしFacetの参照可能性はProduct Entryの公開/実Grant/実Callを許可しない（#4198/#951）。
+- **TEI由来の実装割合**：処理・RuleごとにTEI生成／外部Go委譲／未実装を分け、２改訂で定義の短縮と実独立Expectedを比較する（#4675）。
+
+### 25.5 最小PR/Owner割当と終了条件
+
+| 順序 | 担当と変更候補 | PR単位で確認すること |
+| --- | --- | --- |
+| 0 | #4495/#951：公開pure EntryのOwner選定、既存Selection/Host/Adapterのコード棚卸し | 固定Subject/Source/Contract/Providerの一致した設計票。採用前なら実装BLOCKED |
+| 1 | #4495：型付きApplication API→actual Go Providerの小差分。internal/semantic/capabilityinvokeは既存検査を再利用 | A-01〜05のGo focused testと独立Call Witness。新Runner/Registry不要 |
+| 2 | #4495/#1158：cmd/tei/main.goの既存CLI入口を適切に拡張し、通常tei CLI実Processへ結線 | B-01〜04、実Input/Output/Failure、Mock・Referenceの偽PASSなし |
+| 3 | #2831/#2621/#1121：現行Sourceによる意味あるCodegen→Builder/CLI Child→Stage2 Pluginの最小再入 | Source変更の実動作差、Stage1実Child、Artifact/実Consumer、委譲のみを除外 |
+| 4 | #4583/#1824：非Plugin Studio Build Intent→Stage2 Windows Wails/WebView2 | #2831のCLI局所成功と別の受入。実Windows Consumerを観測 |
+
+完了とするのは、一つの受理済みpure FunctionについてA/Bの両入口を実行し、selected Providerとactual Providerが同じであること、入力・出力の意味とSource/Artifactが一致すること、独立Expectedの正負例が判別できることが**同一HEADの実試験**で確認された範囲だけである。初期CLI先行の意味実装とDesktop製品Stage2は別成果を保持する。
+
+**状態**：本節は現行mainの静的コードInventoryと最小実装引渡し。新Product CLI ABI、公開Entry、実Codegen、実Provider、*.tei.md Reader、Stage2、Windows、実DB Effect、Ownerの意味受理は今回の文書変更ではNOT RUN / NOT ACCEPTED。実コードPRに着手したとき、選択した具体的なMeaningと正負Fixtureを改めて検収する。
+
+<!-- tei-launch-placement-local-server-20261114 -->
+## 26. CLI・Studio従属Server・Pluginの実行配置とSession世代を接続する（2026-11-14）
+
+### 26.1 意味の共通化と配置の選択は別契約とする
+
+2026-11-14のユーザー方針を受け、**ローカルStudio DesktopはClientが従属Serverを子Processとして起動し、IPCで操作する構成を製品設計の基本経路**とする。一方、実装・運用上の採用資格、単一実行ファイルWorker/別Server成果物、IPC方式の選定は実試験で確定する。[ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)と[Studio配置比較 #4635](https://github.com/hat47x/tei-platform/issues/4635)の実測を経て採否を確定する。Script Launchでは、**共通のOperation/Entry/Provider契約を使うことと、Client/Serverを必ず同一Processまたは別Processにすることを分離**する。
+
+CLIの実行をWailsに依存させない。現行Goの共通Application OperationはTransport-neutralのままとし、Goパッケージの依存はAdapter→Operation→既存Ownerへ向ける。プロセス選択はHostの構成条件であり、業務Function DSLにGo main、子Process、HTTP、IPCを露出しない。TEIの共通Execution Serverを独立した業務Hostとして新設せず、Studio子ServerはStudioのSource/Build/Modelサービスの配置形態、外部Targetは既存.NET/Java/Go/WASM等Hostに責務を残す。
+
+| 利用入口 | 起動・配置の原則 | 証明する対象 |
+| --- | --- | --- |
+| ローカルtei CLI | 原則プロセス内で共通Application APIを呼ぶ。軽量読取り・pure評価に常駐Serverを要求しない | 実Provider選択、Source/Contract/Artifact、typed Result、現在の操作資格 |
+| CLIの隔離/共有処理 | 必要なOperationに限り、明示したローカル子Worker/Serverまたは既存接続先へ委譲可能とする。黙ったAuto Spawn/Remote切替をしない | Peer実体、Endpoint専有、Protocol/Plugin世代、委譲先の実Call/Failure |
+| Studio Desktop | ローカル時はWails Native Client→薄いGo IPC Client→従属子Serverを基本経路とする。ClientはWindow/未保存Buffer/Pin/描画即応を保持 | Studio ServerとWindowの独立Process・実IPC・Source/Artifact・対象の資格 |
+| Studio接続型/Web/MCP | 明示TargetのHTTP/IPC/stdio等Adapterから同じApplication API。接続先ごとに権限・開示・現在世代を検査 | 同じ意味結果が同じ受領資格を意味するわけではない |
+
+Studioの既存Wails Native同一Process実装は性能と障害時の対照であり、ローカルDesktopの子Server設計方針を初期値として残す。#4635の配置候補はA（Native一体）、B0（同じDesktop実行ファイルからself-spawn Worker）、B1（別Server Artifact/loopback HTTP）、B2（別Server Artifact/Named PipeまたはUDS）。**配置B0/B1/B2は#4583のセルフビルドB0/B1/B2/B3と別の番号体系**であり、受入票で混同しない。Loopback HTTPとOS IPCの優劣は測定前に決定しない。
+
+### 26.2 子Processを選ぶときに実際に固定する情報
+
+次の情報は既存Host/Build/Plugin/Operationの証拠に対応付け、第二の万能EnvelopeやRegistryを増設しない。
+
+| 時点 | 必要な照合 | 不一致時の扱い |
+| --- | --- | --- |
+| **Spawn** | 起動元Process/実Child image・Digest・argv・Owner、作業ディレクトリと隔離、Endpointの新規生成・専有 | 見つかったポートや同名Processを自分の子と推定せず拒否 |
+| **Handshake** | Client/ServiceのProtocol適合、Application Operation契約版、Server generation/Build Artifact、Host設定したWorkspace/Target | 古いService・互換外Protocolを拒否。UpdateやIn-processへの黙ったfallback禁止 |
+| **Plugin Resolve** | 既存Plugin Lock、Dependency/Contribution、Target/Scope、Server側がロードできたPackage/実Provider Member | Client側にあるManifestや選択名をServerで実Load済みと扱わない |
+| **Prepare/Admit** | 公開Entryと意味版、Source/Subject/expected revision、入力missing/NULL、現在Host Grant、Operation identity/Deadline | Protocol接続済み・Server ReadyでもProvider call0が必要な拒否は残る |
+| **Invoke/Observe** | 実Attempt、selected Providerとactual loaded Provider/bytes、BusinessResult、Effect Receipt、Consumer受領 | ACK/Exit0/HTTP200、PID生存、同値Resultだけで業務成功にしない |
+| **Restart/Upgrade** | 旧世代の処理・Source/Artifact/Plugin lock・Operation/Attempt/Receipt・Client Pinの再照合 | 旧Replyの現在採用、未知Effectの自動再送、旧Grantの復活を禁止 |
+
+Studioの子Serverを再起動するとき、Clientの未保存Buffer・Source Selection・PinはClientに保持してよいが、古いServer Generationの返信を現行Workspaceへ投影しない。進行中のBuildやDB処理は、終了通知と実Effect確定を区別して既存Receipt/独立Readへ渡す。Workerの自動再起動が必要でも、業務Operationの再送Policyとは別である。
+
+### 26.3 Plugin Managerを共有しても、Process内の実在庫は共有しない
+
+共通化するのはPluginのContract、選択規則、依存、Version/Lock、公開Contribution/文書、Target Fitと診断である。同じGoライブラリをCLIとStudio子Serverに組み込むことはできるが、**実ロード済みObject、インメモリCache、認証済みContext、現在Grant、Process固有のProvider実体はProcess間で共有されない**。
+
+Pluginの段階も区別する：Packageの発見・インストール、Contract/Dependencyの解決、Buildへの包含、Server起動時/Operation時のLoad、実Provider Call、Effect/Consumer観測。PluginがEditorに存在するだけではServer Runtimeに搭載済みではない。上位Pluginの公開図解/Skill説明も実行能力や権限ではない。Plugin文書は人間とAIが共に読める共通の短い入口と、依存する上位Contract/公開Manualへの版付き参照を持つが、非公開Sourceや内部Grantは展開しない（#951/#4198）。
+
+同一Build内への静的合成を選ぶPluginは、Packageを変えると実行ファイルを更新する必要がある場合がある。Child方式を選んでも、PluginのHot Reloadや独立Updateが自動で成立するわけではない。初期は選択Lock/実Build ImageとServer Generationの一致を優先し、UpdaterやHot ReloadはVersion互換・Rolling/Drain・Rollback・Artifact署名を独立実証してから採否を決める。旧Plugin世代に紐付く実Attemptを、更新後の新Provider呼出しと混同しない。
+
+### 26.4 敵対的レビュー：便利な構成を既定にしない
+
+| 候補 | 利点 | 棄却または保留すべき条件 |
+| --- | --- | --- |
+| CLIも毎回StudioのWails Serverを起動 | GUIと同じProcess boundaryを使える | CLIにWailsが混入、Cold Start/Memory/配布・更新が重く、Reference用途でも必須なら棄却 |
+| 全CLIが一つの常駐Daemonを共有 | Cold Startを削減し得る | Workspace/Principal/Plugin Lockの衝突、古いServer/Artifact、孤児Process・誤った実行権限の混線を防げないなら採用しない |
+| CLIは常にin-process | 単純・高速・単一Go Binary | 不信任PluginのCrash隔離、長時間Jobの切断・資源回収、別Hostへの委譲が必要なOperationには不足 |
+| Studioの子Serverを基本経路とする | Clientと業務Serviceを分離し、Provider更新や障害の影響を局所化し得る | 実Child IPC・Peer/Version/復旧とNative対照の性能・総Memory・配布を検証するまでは製品実装の合格を宣言しない |
+| 通信失敗時に別経路へ自動切替 | 一見利用継続できる | 対象・Source・Scope・Effectが変わり、二重実行や権限越境が生じ得るため原則禁止 |
+
+Child方式のEndpointはLoopbackに置くだけで安全としない。OS Pipe/UDSでは実Peer/ACL、HTTPではBind Address/Origin/許可範囲・CSRF、共通にChild Image/一回限りの接続情報・世代/Versionを確認する。具体的なIPC形式は実測による#4635の判断とし、Script Launchで新しいwire schemaを確定しない。Wails Rendererから任意のOS PipeやサービスMethodへ直接接続させない。
+
+### 26.5 最小の横断E2Eと優先順位
+
+**全体P0は#2831/#4583のCLI先行TEI意味実装と最終Desktop Stage1→Stage2を維持**し、並行起動P0は#4495のpure公開Entry→Host-selected actual Go Provider→型付きAPIと通常tei CLIである。ローカルChild構成の全面採用やUpdaterをこれらの新しいHard Gateにしない。
+
+最初の配置比較は#4635のRead-only ListWorkspaces/InspectSubject/ValidateWorkspaceを、同じWorkspace/Source/Subject Revisionで直接Go APIと実Child IPCから呼び、成功/失敗・実Content/Source/Provider、子ProcessとClientの対象固定を比べる。次に公開pure Entry一件をIn-process CLIと子Serverで比較し、実Provider/Contract/Resultを一致させ、異なるAttempt/Processとして記録する。MCP/Remoteは別Consumerとして後段へ残す。
+
+既存#4495 EL、#4635のA/B0/B1/B2、#1180/#2514の独立Expectedへ次の反例を引き渡す。新しいScenario正本を作らない。
+
+| 対照 | 不合格条件 |
+| --- | --- |
+| CLIのWails独立 | cmd/teiまたはinternal/operationsのGo依存にWails/HTTP Serverの必須実装が混入 |
+| 古いChild接続 | ChildのPID再利用・Endpoint乗取り・Protocol/Plugin Lock不一致をReadyだけで採用 |
+| Actor/Workspace越境 | CLI引数・Wails JS値がServer側のWorkspace/Grant/Provider選択を決定 |
+| Plugin更新 | Package更新後も旧Image/Load済みProviderを新Versionとして実呼出し |
+| Client復元 | Server再起動後、旧Pin/旧Replyを現在の選択へ結び、古いOutputを採用 |
+| Effect不明 | ChildがCommit後にCrash、Ackなし。新Attemptで無条件再送 |
+| Source-only成功 | *.tei.mdの説明文だけReadし、実Reader/意味生成/Provider実Callを済ませたと表示 |
+| 通信同値の誤判定 | 同じ値を返したがactual Provider BではなくA、Artifact版・Disclosure/Receiptも不一致 |
+
+**Owner**：#1158/ADR-0048が共通APIと入口、#4635/#1824がStudio Child/IPC、#951/#1251がPlugin選択・Load/配布、#4495/#4502がEntry/Provider実呼出し、#2831/#4583がBuilderとセルフビルド、#1129/#1174がEffect/Recovery、#1180/#2514が独立Expectedを所有する。Studio子ServerはTEIの全Targetへ強制しない。ここでの結果は現状確認に基づく実装引渡し案であり、新Child IPC E2E、CLI連携、Performance、Plugin Hot Reload、Server公開安全性、実Provider/DB作用の受理はNOT RUN / NOT ACCEPTED。
+
+## 27. 起動と継続実行を、版・権限・観測の異なる寿命に分ける（2026-11-15）
+
+### 27.1 起動要求の形成は、業務実行の許可ではない
+
+前節までのFunction／Entry／Trigger／Invocationという区分を維持し、起動を「準備」「入場」「実呼出し」「結果の利用」の四つの確認に分ける。これは新しいLaunch Engineや四状態の共通Runtimeを設ける提案ではなく、既存Application API、Capability Invocation、Host Authority、Run/Effect、Consumerへの**検収の切り口**である。
+
+| 確認する境界 | 必要な根拠 | 成立しても言えないこと |
+| --- | --- | --- |
+| **Prepare**：起動候補を構成 | Owner受理済みFunction/Contract、公開Entry、具体的な対象と型付き入力、Source/Meaning revision、選択されたComposition | 現在Grantがある、Providerを呼んだ |
+| **Admit**：実行直前に許可を判定 | 実Hostによる現在Principal/Scope/Grant、Targetとexpected revision、期限・取消、実行先で利用可能なArtifact/Resource | Effectが起きた、Resultが正しい |
+| **Invoke**：選択実装へ到達 | selected Providerとactual loaded/linked Provider/Artifactの一致、実Call Witness、Attemptの識別 | Output Bodyの完全性、Commitの確定 |
+| **Observe/Disclose**：結果を検証・開示 | typed Outcomeと実Body、必要なら独立Receipt/Read、現在Audience、固定したWorkspace/Subject/Window世代 | 他Target・別Attemptでも同じ資格がある |
+
+不在・明示NULL・0・未取得・非開示の違いは、入力の準備から実Result確認まで失わない。Previewで「実行できる可能性がある」と分かっても、Admitは実呼出し直前に行う。公開Entryの有無、Host Grant、Effect可否の判定をUI、AI、Pluginの自己申告だけへ委ねない。実Adapter呼出し前の拒否はcall=0として記録し、call=1の後に不正Outcomeや通信断が生じても「未実行」「安全な再試行」とは断定しない。
+
+### 27.2 一つの起動には、異なる時点の版が関与する
+
+全要素を巨大なExecution Contextへ複製したり、単一のWorld Fingerprintだけで現在資格を代表させたりしない。既存Ownerが保持する識別子・Evidenceを照合する。
+
+| 寿命の異なる対象 | 起動で固定・再照合すること | 主担当 |
+| --- | --- | --- |
+| **業務のSourceと意味** | 実読取Source byte/occurrence、Accepted Meaning/Contract版、Entry公開版、対象ID・期待版。A→B→Aでも過去の受理を無条件復活させない | #2621／#4502／#4495 |
+| **配備した実装** | Composition/Lock、選択Provider、Build Artifact member byte、実LoadしたImage/Provider。契約版一致と物理同一性は別 | #951／#943／#1251 |
+| **現在の実行資格** | Host側Principal、Target/Scope/Grant、必要Resource、期限、Effect入場とCommit直前の資格 | #1118／#1129／#1174 |
+| **利用者側の表示・開示** | Workspace/Subject/Selection epoch、Server generation、Consumer Audienceと開示時点。旧Replyを現在の操作結果へ採用しない | #1824／#4515／#2516 |
+| **再送・復旧** | Trigger occurrence、Operation ID、Attempt、実Effect Receipt、外部Task/Delivery IDを別々に記録 | #4497／#1130／#1174 |
+
+特にStudioでWorkspace Aの読み取り中にWorkspace Bへ切り替えた場合、後着のAの応答はBの画面へ反映しない。ただし、表示を破棄することは既に開始した業務Operationの取消でもCommitの巻戻しでもない。逆に、プロセス再起動で同じ画面を復元できても、古いSource/Grant/Plugin Lockによる実行資格は復活しない。
+
+### 27.3 プロセスを再起動できることと、Invocationを再実行できることを区別する
+
+CLI直接呼出し、Studio Native、必要時のChild Backendは同じ業務契約の異なる物理経路である。#4635における従属Childは比較・将来の選択肢であり、現行P0のWails Native同一ProcessとCLI Directを置き換えたわけではない。§26の「子Serverを基本経路とする」は目標構成の検討として読み、実測・Owner採否まで製品の標準配置を変更しない。
+
+実Childを使う場合、親が監視するのはProcessの生成・生存・停止・孤児化であり、子または選択Hostが検証するのはProvider実行とEffectである。HandshakeでProtocolやPlugin Lockの互換が分かっても、個別Entryの現在Grantや対象の現在性は保証されない。再接続後に旧Replyを表示するかどうか、失敗したOperationを再送してよいかどうかは別の判断となる。
+
+故障後の扱いは既存Failure/Receiptに従う。実Call前の確実な拒否、Call後のResult不正、Commit後ACK喪失、通知のみ失敗、Effect不明を区別し、unknownなら照会を先行して無条件再送しない。再試行可能性はOperation IDだけでなく、同じTarget/Subject/Meaning/Artifact/Effect契約の下で既存Ownerが保証する範囲を条件とする。単なるtimeoutやOS exit codeから重複実行の安全性を推測しない。
+
+### 27.4 Triggerを追加しても、起動の保証を作り直さない
+
+Manual/UI/CLI/MCP/AI、Schedule、Event、Batch/EKIは、同じ公開Entryに対して具体的なInvocationを準備する**別の契機**として扱う。Trigger occurrence、要求配送、Admission、Run開始、業務Effect、Consumer受領は別事実である。定時発火しただけで以前のGrantを使わず、Eventが届いただけでTx後の通知を送らず、外部Taskが完了しただけでBody/Receiptを確認済みにしない。
+
+ScheduleのTZ/DST・missed-run、Eventのbefore/within/post-commit、Batchの入力配送やResource/Effectの表現可否は、それぞれ#4497/#1129/#1130の専門契約を参照する。Target側で表現できない引数、Scope、期限、Effectはnot-representable/unsupportedとして止める。Triggerを実装するために新Scheduler、Broker、Job Registry、TEI共通Hostを加えない。AI提案、Macro公開、MCP tool発見も権限の発行ではない。
+
+### 27.5 次の最小差分と独立検証
+
+既存#4495のEL-01〜12、#4497のTR-01〜12、#4635の配置比較、#1180/#2514の独立Expectedを使う。新しいScenario IDや第二Test Runnerを追加せず、**各受入を同じ具体的Source・契約・実Build・実Call位置でつなぐ**。
+
+1. **最初の一機能を受理する**。現行Workspaceのpure Functionを棚卸し、Ownerが受理した入力型・Effect範囲・Entry公開・選択Go Providerを固定する。Referenceの「2×300=600」やEffect未宣言をpure認定に転用しない。適格な公開Entryが無ければその不足を先にOwnerへ返す。
+2. **Product typed APIで実Go Providerを一度呼ぶ**。Prepare/Admitの失敗はcall=0、selected B→actual Aは値が同じでもFAIL、呼出し後Result不正はcall=1とし、actual Provider/ArtifactのWitnessを残す。既存capabilityinvokeの宣言前後検査を利用し、Grant IssuerをAdapterへ移さない。
+3. **通常tei CLIを別OS Processとして呼ぶ**。同じFunction契約と独立Expectedを用いるが、Direct APIとは別Attemptとして識別する。参照Command/MemoryUnitOfWorkやCLI exit 0だけではProduct実行成功としない。製品CLIの新コマンド名は発見・契約検収後に採用する。
+4. **read-onlyで配置・画面時点を比較する**。実Windows Native/ChildのA/B比較は#4635が担当し、Source/Subject/Result、実Peer/Artifact、古いReply/Selection epochを確認する。子Backend採用やMCP/Web公開をStudio Stage1→Stage2のHard Gateにしない。
+5. **Trigger・Effectを後段で接続する**。TR-03/04/05/07/11のGrant失効、改版、重複配送、ACK喪失、Target表現不足を専門Ownerの実Evidenceで検収する。初回pure FunctionのPASSを実DB Commitやexactly-once保証へ拡張しない。
+
+**計画への接続**：全体P0は#2831/#4583の非Plugin Studio Stage1→Stage2、並行P0は#4495の公開Entry→実Provider→通常tei CLI。正式Markdown Reader、Graph/Ruleの実生成、Builderへの入力、実Consumerはそれぞれ#2621/#1121/#2831が別に受理する。今回は既存契約の引渡しと失敗時の主張範囲を収束させたもので、新Go実装、実Windows Child、業務Meaning受理、実外部Effect E2EはNOT RUN。
+
+## 28. 起動前の評価と契約付きMockを、実Providerの資格と混同しない（2026-11-15）
+
+### 28.1 同じ業務契約から三つの実現を比較する
+
+TEIの業務DSLには、業務担当者が読む順序で、対象・入力・前提・Rule／判断・例外・結果・外部Effectを記す。その意味モデルから、説明文、図、テストパターン、TEI内評価、生成Targetへの引渡しを導く。業務説明はできるだけ元の意味記述から直接表現し、Go関数・IPC・子Processの構成を業務DSLへ露出しない。**説明文・図・Mock応答を独立した業務意味の正本へ昇格させない**。
+
+| 経路 | 適格な最小成果 | 証明できないこと |
+| --- | --- | --- |
+| **TEI内評価** | 受理されたFunction/Rule・型付きInputに対し、独立Expectedで判断・計算と拒否を照合 | 実Target ProviderのLoad/Call、Host現在Grant、外部Effect |
+| **契約付きMock** | 未実装の外部依存をTODOとして明示し、入力・結果・Failure・Effect宣言に適合する模擬応答で全体手順を検証 | 実Provider可用性、実DB/Network Commit、Consumerの実受領 |
+| **実Provider** | 公開Entry→Hostによる現在Admission→実選択Artifact/Provider→typed API・通常製品`tei` CLIの実呼出しと独立Result検証 | 他Targetや他時点でも同じ資格が成り立つこと |
+
+契約付きMockは**明示されたシミュレーション経路でのみ**選択できるようにする。実Provider不在、Grant失効、Load失敗、Target非対応を理由に、本番Invocationを無断でMockへfallbackさせない。契約への適合をMockと実Providerで比較しても、各Invocation/Attempt/Source/Artifactは別の観測として記録する。TEI内評価やMockのPASSを本番Execution／外部Effect／Current AuthorityのPASSへ移すことはできない。
+
+### 28.2 TODOの存在と業務シミュレーションの成立を別の判断にする
+
+未実装の外部部品には、呼び出し前提、要求Input、応答・Failure/unknown、Effectと必要な権限／Resource、未確認の外部依存を記録する。その部品をMockで代用した場合には、どの仮定に依存して業務手順が先へ進んだかを説明できるようにする。実Targetで同じ入力を表現できなければnot-representable/unsupportedとして止め、入力を省略・固定値に書き換えて通さない。
+
+決定表や組織・REA・SQL/NoSQLによるInputの取得がpartialである場合、十分な証拠を伴う二行競合の存在は確定できても、唯一の一致や不存在は全件取得なしに断定しない。未取得／明示NULL／非開示／0件／Rule非一致を、説明・Mock・独立テストのどれでも混同しない。表示上の「実行できそう」という判断をHostのAdmitへ昇格させない。
+
+### 28.3 既存Ownerへ返す実装順
+
+1. **意味と検証基準を固定**：#4495でOwner受理済みの公開pure Function一件を選び、既存#1180/#2514の独立Expectedと固定Source/Meaning/Contract/Inputを確定する。未受理の数量×単価例は製品Entryとして仮採用しない。
+2. **TEI内評価と必要なMockを限定比較**：同じ意味契約の正常・missing／NULL／unfetched・partial／unknown・不正Resultを比較し、実未実装部品のTODOとMock使用を必ず出力に残す。Mock/TEI内評価を新しい共通Runnerに集約せず、既存Test/Scenarioと対象Contractを再利用する。
+3. **Product実Go Providerで別Attemptを取得**：既存§25／#4495のSL-1a→1b→1cを優先。宣言・Grant不正は実Adapter call=0、呼出し後Result不正はcall=1、selected B／actual Aは値が同じでもFAIL。通常`tei view -execute`のReference結果やexit 0を実Providerの証拠にしない。
+4. **外部作用はOwnerの証拠へ戻す**：書込み・通知・Batch／Event等は#1129/#1174/#4497で現在Grant、Provider/Effect、Receipt/独立Read、ACK喪失後の再送条件を別に検証する。結果の説明はSHOへ派生できるが、業務意味受理や外部実行許可をSHOへ移さない。
+
+**責務と優先順位**：同一モデルからの説明・図・Mock・テスト・生成Targetの関係は[実行モデル図解](PROGRAM_EXECUTION_MODEL_PROJECTIONS_2026-11.md)§49〜56を参照し、正本を複製しない。業務意味と標準DSLは#988/#2621、Rule/決定表はBRMS統合設計、Source/Consumerは#2586、実起動は#4495/#4502、独立Expectedは#1180/#2514を利用する。全体P0は#2831/#4583のStudio Stage1→Stage2、並行P0は公開pure Entryの実Provider→通常製品CLIであり、Mockの製品化や新Engineを先行Hard Gateにしない。
+
+本節は設計と引渡しである。TEI内Evaluator・契約付きMockの製品採用、実Provider CLI/外部DB/Windows E2Eの新規合格、Ownerの正式な意味受理は主張しない。

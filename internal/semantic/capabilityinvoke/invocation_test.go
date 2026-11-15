@@ -139,6 +139,91 @@ func TestOutcomeCannotBeReturnedForSingleOutputCapability(t *testing.T) {
 	}
 }
 
+// Post-dispatch Result contract failures are not proof of non-execution.
+//
+// An effectful Provider could have performed work before returning a malformed
+// result. This boundary can reject the result but must not claim rollback,
+// effect absence, or eligibility for automatic retry (#4495, EL-12).
+func TestPostDispatchContractErrorPreservesAdapterCallEvidence(t *testing.T) {
+	capability := referenceCapability(t, "security.authenticate")
+	tests := []struct {
+		name   string
+		result capabilityinvoke.BusinessResult
+		want   string
+	}{
+		{
+			name: "undeclared outcome",
+			result: capabilityinvoke.BusinessResult{
+				Capability: capability.ID,
+				Mode:       capabilityinvoke.ResultOutcome,
+				Outcome:    "not_declared",
+				Payload:    "unexpected",
+			},
+			want: "does not define outcome",
+		},
+		{
+			name: "different capability",
+			result: capabilityinvoke.BusinessResult{
+				Capability: "wrong.capability",
+				Mode:       capabilityinvoke.ResultOutcome,
+				Outcome:    "denied",
+				Payload:    "unexpected",
+			},
+			want: "different Capability",
+		},
+		{
+			name: "wrong result mode",
+			result: capabilityinvoke.BusinessResult{
+				Capability: capability.ID,
+				Mode:       capabilityinvoke.ResultOutput,
+				Payload:    "unexpected",
+			},
+			want: "named-outcome contract",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			calls := 0
+			adapter := adapterFunc(func(context.Context, core.CanonicalID, any) (capabilityinvoke.BusinessResult, error) {
+				calls++
+				return tt.result, nil
+			})
+			result, err := capabilityinvoke.Invoke(context.Background(), capability, adapter, nil)
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("post-dispatch contract violation was not rejected: result=%#v err=%v", result, err)
+			}
+			if calls != 1 {
+				t.Fatalf("post-dispatch result violation must remain a call=1 case, got %d", calls)
+			}
+			if result.Capability != "" || result.Mode != "" || result.Outcome != "" || result.Payload != nil {
+				t.Fatalf("invalid result was returned as accepted business output: %#v", result)
+			}
+		})
+	}
+}
+
+// Cancellation returned by an Adapter occurs after dispatch. The invocation
+// must preserve error identity without converting the result into a business
+// Outcome or misclassifying this as the pre-dispatch call=0 case.
+func TestPostDispatchCancellationKeepsAdapterCallEvidence(t *testing.T) {
+	capability := referenceCapability(t, "sales.order.submit")
+	calls := 0
+	adapter := adapterFunc(func(context.Context, core.CanonicalID, any) (capabilityinvoke.BusinessResult, error) {
+		calls++
+		return capabilityinvoke.BusinessResult{}, context.Canceled
+	})
+	result, err := capabilityinvoke.Invoke(context.Background(), capability, adapter, nil)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("Adapter cancellation identity was lost: result=%#v err=%v", result, err)
+	}
+	if calls != 1 {
+		t.Fatalf("Adapter cancellation after dispatch must remain a call=1 case, got %d", calls)
+	}
+	if result.Capability != "" || result.Mode != "" || result.Outcome != "" || result.Payload != nil {
+		t.Fatalf("post-dispatch cancellation produced a business outcome: %#v", result)
+	}
+}
+
 // Cancellation known before dispatch is a non-execution result, even for
 // effectful single-output Capabilities. No Adapter invocation is permitted.
 func TestCancelledContextDoesNotDispatchCapabilityAdapter(t *testing.T) {

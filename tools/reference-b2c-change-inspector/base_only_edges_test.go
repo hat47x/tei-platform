@@ -68,6 +68,7 @@ func TestBaseOnlyEdgeUnknownAndAmbiguousInputsRemainUnqualified(t *testing.T) {
 		t.Fatalf("deleted source without an R1 identity was called complete: %+v", r)
 	}
 	v.BaseOnlyEdges = []edge{{From: "old.source", To: "missing.consumer"}}
+	v.Required = []string{"native.pdp", "missing.consumer"}
 	r, err = inspect(v)
 	if err != nil {
 		t.Fatal(err)

@@ -254,3 +254,10 @@ build情報にコミットが無い場合（`-buildvcs=false`、checkout外で�
 ## 11. 共通操作の発見契約の具体化（2026-11-11）
 
 [#3419の実装仕様](CRITICAL_HEADLESS_ISSUE_IMPLEMENTATION_SPEC_2026-11.md) §4に、代表4操作のID、Requestの必須欄・既定値・最小例、失敗符号、`commands`のv1明示選択とv0維持、MCPとの対応付けを定める実装案を置く。CLIの現行出力を変更した記録ではなく、実装・実プロセス試験は今後行う。
+
+
+## 12. Studio/CLIの子Backend・Remote接続・Updater統合（2026-11-14、設計候補）
+
+[統合設計](STUDIO_CLI_BACKEND_PROCESS_DISTRIBUTION_UPDATE_2026-11.md)で、DesktopのWails親→ローカル子BackendのIPCを将来候補として、CLIでも同じWails非依存Backendの自己子起動を第一候補として比較する。CLIのversion/help/更新・復旧入口に子Server・ネットワーク・Pluginの正常起動を強制しない。Remote CLIは接続先を明示し、Server側のPlugin選択・実行資格を使用する。CLI本体のWails依存、暗黙のRemote→Local fallback、第二Resolverは採らない。
+
+**採用境界**：現在のDesktop P0は同一Process方式Aを基準とする。本項は実装前の比較計画であり、ADR-0048のローカルCLIプロセス内既定を変更しない。短命子Backend／直接呼出し／再利用Sessionを同一Fixtureで比較し、実測とOwner判断を経て必要な場合にADRを更新する。初回の検証は既存#1158/#3419〜#3421とStudio #1824に引き渡し、Stage1→Stage2セルフビルドを遅らせない。

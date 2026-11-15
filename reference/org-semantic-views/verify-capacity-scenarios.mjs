@@ -20,6 +20,14 @@ const BASELINE_EXPECTED = Object.freeze({
   allocatedTotalBasisPoints: 300,
 });
 
+// 'basisPoints' is a legacy fixture FIELD NAME, not a standardized financial bp.
+// Its synthetic meaning is hundredths of one FTE: 100 raw units = 1 FTE.
+// Financial basis points would instead require 10,000 units per whole ratio.
+// Do not infer a Quantity scale from the raw field name or an integer value.
+const SYNTHETIC_FTE_ENCODING = Object.freeze({
+  field: 'basisPoints', unit: 'FTE', encoding: 'fte-hundredths', rawUnitsPerFTE: 100,
+});
+
 // Fixture-local pure comparison; no Source write, accepted Rule or real read.
 function calculate({
   data = fixture,
@@ -29,13 +37,26 @@ function calculate({
   complete = true,
   allocationOverrides = {},
   unavailablePeople = [],
+  allocationEncoding = SYNTHETIC_FTE_ENCODING,
 } = {}) {
   if (data.sourceRevision !== sourceRevisionRef) {
     return { state: 'unresolved', reason: 'source-revision-mismatch' };
   }
   if (!complete) return { state: 'unknown', reason: 'incomplete-membership-or-allocation-scope' };
+  if (allocationEncoding?.field !== 'basisPoints' ||
+      allocationEncoding?.unit !== 'FTE' ||
+      allocationEncoding?.encoding !== 'fte-hundredths' ||
+      allocationEncoding?.rawUnitsPerFTE !== 100) {
+    return { state: 'unresolved', reason: 'unaccepted-allocation-unit-scale' };
+  }
   const rows = membershipVersionsAt(data, validAt, knownAt);
-  const allocationByRelation = new Map(data.allocations.map(a => [a.relation, a.basisPoints]));
+  const allocationByRelation = new Map();
+  for (const allocation of data.allocations) {
+    if (allocationByRelation.has(allocation.relation)) {
+      return { state: 'unresolved', reason: 'ambiguous-allocation-occurrence' };
+    }
+    allocationByRelation.set(allocation.relation, allocation.basisPoints);
+  }
   const rowIds = new Set(rows.map(r => r.id));
   if (rowIds.size !== rows.length) return { state: 'unresolved', reason: 'ambiguous-occurrence' };
   if (Object.keys(allocationOverrides).some(id => !rowIds.has(id))) {
@@ -127,6 +148,33 @@ test('ORG-CAP-05: incomplete input and missing allocation are unknown, never zer
   });
 });
 
+test('ORG-CAP-UNIT-01: synthetic FTE-hundredths must not be silently cast as financial bp', () => {
+  // These are literal fixture expectations; this reference cannot adopt a new Core Unit.
+  assert.equal(fixture.allocations.find(a => a.relation === 'A1').basisPoints, 100);
+  assert.equal(fixture.allocations.find(a => a.relation === 'A2').basisPoints, 60);
+  assert.equal(100 / SYNTHETIC_FTE_ENCODING.rawUnitsPerFTE, 1);
+  assert.equal(60 / SYNTHETIC_FTE_ENCODING.rawUnitsPerFTE, 0.6);
+  // Generic financial basis points denote 1/10,000 of a ratio, not 1/100.
+  assert.equal(100 / 10000, 0.01);
+  assert.deepEqual(calculate({ allocationEncoding: undefined }), calculate());
+  assert.deepEqual(calculate({ allocationEncoding: null }), {
+    state: 'unresolved', reason: 'unaccepted-allocation-unit-scale',
+  });
+  assert.deepEqual(calculate({ allocationEncoding: { field: 'basisPoints', unit: 'FTE',
+    encoding: 'financial-basis-points', rawUnitsPerFTE: 10000 } }), {
+    state: 'unresolved', reason: 'unaccepted-allocation-unit-scale',
+  });
+});
+
+test('ORG-CAP-UNIT-02: duplicate Allocation occurrence is a conflict, not last-value-wins', () => {
+  const data = { ...fixture, allocations: [...fixture.allocations,
+    { relation: 'A2', basisPoints: 800 }] };
+  assert.deepEqual(calculate({ data }), {
+    state: 'unresolved', reason: 'ambiguous-allocation-occurrence',
+  });
+  assert.equal(calculate().byDepartment.D1.allocatedBasisPoints, 160);
+});
+
 test('ORG-CAP-07: same valid date with later known date changes baseline eligibility', () => {
   const late = calculate({ knownAt: '2027-07-03' });
   assert.equal(late.membershipCount, 3);
@@ -138,6 +186,20 @@ test('ORG-CAP-07: same valid date with later known date changes baseline eligibi
   assert.deepEqual(calculate({ sourceRevisionRef: 'org-synthetic-r8' }), {
     state: 'unresolved', reason: 'source-revision-mismatch',
   });
+});
+
+test('ORG-CAP-07b: known-time correction affects D1/global, not D2 in complete synthetic scope', () => {
+  const earlier = calculate({ knownAt: '2027-07-01' });
+  const later = calculate({ knownAt: '2027-07-03' });
+  assert.equal(earlier.state, 'synthetic-complete');
+  assert.equal(later.state, 'synthetic-complete');
+  assert.deepEqual(later.byDepartment.D2, earlier.byDepartment.D2);
+  assert.notDeepEqual(later.byDepartment.D1, earlier.byDepartment.D1);
+  assert.notEqual(later.allocatedTotalBasisPoints, earlier.allocatedTotalBasisPoints);
+  assert.deepEqual(calculate({ knownAt: '2027-07-03', complete: false }), {
+    state: 'unknown', reason: 'incomplete-membership-or-allocation-scope',
+  });
+  // A matching D2 computed value is not evidence of a common real Provider cohort.
 });
 
 test('scenario rejects unrecognized occurrence and invalid basis, without mutating Source', () => {

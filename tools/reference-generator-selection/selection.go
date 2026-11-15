@@ -75,6 +75,20 @@ type Contract struct {
 	Output     TypeSpec        `json:"output"`
 	Rounding   Rounding        `json:"rounding"`
 	Projection *ProjectionSpec `json:"projection,omitempty"`
+	Validation *ValidationSpec `json:"validation,omitempty"`
+}
+
+// ValidationSpec marks a contract for one accepted Validation. The result state
+// is satisfied, not-satisfied, or unevaluable (Code: missing, null,
+// type-mismatch). Unevaluable mirrors validationeval.Evaluate returning an
+// error rather than NotSatisfied. ID and Kind must match the accepted
+// Validation in the Workspace; Input is the key the single contract input
+// arrives under. Rounding and Projection must be absent, and Output only
+// carries the state text.
+type ValidationSpec struct {
+	ID    string `json:"id"`
+	Kind  string `json:"kind"`
+	Input string `json:"input"`
 }
 
 // ProjectionSpec marks a non-numeric reference contract. Identity keeps the
@@ -376,6 +390,9 @@ func validateContract(contract Contract) error {
 	if strings.TrimSpace(contract.Output.Primitive) == "" {
 		return fmt.Errorf("contract output primitive is required")
 	}
+	if contract.Validation != nil {
+		return validateValidationSpec(contract)
+	}
 	if contract.Projection != nil {
 		switch contract.Projection.Kind {
 		case "identity", "normalize":
@@ -505,6 +522,11 @@ func validateAgainstWorkspace(contract Contract, world ir.World) error {
 	}
 	if _, err := primitiveOf(types, contract.Output.Primitive); err != nil {
 		return fmt.Errorf("output primitive %s: %w", contract.Output.Primitive, err)
+	}
+	if contract.Validation != nil {
+		if err := validateValidationAgainstWorkspace(contract, world); err != nil {
+			return err
+		}
 	}
 	// #2585 PFC-08: validate the projection fields directly against the
 	// Workspace, not only through the contract inputs. A field whose attribute
