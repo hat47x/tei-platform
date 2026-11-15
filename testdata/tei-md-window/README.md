@@ -18,6 +18,34 @@
 
 Sourceを修正する場合、ハッシュの再計算は必要だが**ハッシュだけ自動更新して合格扱いにしない**。定義と派生表示の意味差、Independent Expectedの正しさ、対象Role／Operator、変更を受理するOwnerの判断を確認し、変更と再確認の記録を残す。JSONの`adoption=proposal-only`は保持し、数理Toolkit専用のScenario SSOTや製品Schemaへ昇格しない。
 
+## 固定した負例も、検証対象から消さない
+
+5件の固定入力について、今度は**どの事例を検証するかという集合そのもの**も回帰テストで確認する。元ファイルのSHA-256が一致していても、候補JSONから重複IDの拒否例を削除したり、`valid: true`へ変更したりすると、以前のGoテストでは基準とFrame変更の2件だけが成功し、負例の欠落を見落とす余地があった。
+
+`window_candidate_oracle_test.go`では、5件のファイル名と件数、各入力の期待状態、正例7行の結果、`layout-only`が基準と同じ意味であること、重複IDが生成拒否候補であること、古い派生表示が不整合であることを**Fixtureの閉包**として固定する。対応する`*.tei.md`の追加・削除も検出する。3つの負例（ケースを削除、重複IDを有効化、古い表示を一致扱い）を用意し、いずれも閉包検査が拒否することを確かめる。
+
+また、`window_sourceindex_bridge_test.go`で、既存Graph／Ruleと同じ`internal/sourceindex`のArtifact・Range・Validateを用い、5入力の元SHA-256と、明示NULL行を含む既知のバイト範囲を照合する。説明文の追記だけで古いSource Indexが失効する負例も確認する。ただし、文字列の位置が正しいことと、その文字列を正式なWindow観測として意味受理することは別である。
+
+**これは期待結果候補の分類が勝手に変わっていないことの検査**であり、重複IDや派生表示を正式Readerで検出できたことではない。将来のReader検査では、Sourceのbyte位置と、選択した定義表、表示・例示だけの領域の違いも確認する。Code FenceやKaTeXの数式表示を、明示されていない業務規則へ昇格させない。これらは既存Language／Operator担当への受入条件であって、数理Toolkit専用Parserを先に作る条件にはしない。
+
+## 入力行と計算結果を別々に照合する
+
+`independent-expected.candidate.json`を`v2`へ更新し、計算結果だけでなく、7つの観測について`obs_id`・系列`grp`・順序`seq`・入力`value`の候補期待値も独立して記録する。B2の`value: null`は、`value`項目自体がない場合や数値の0とは異なる。Goの回帰では`json.RawMessage`で**項目欠落／明示NULL／整数**を区別し、非整数や意図しないNULLも拒否する。さらに、`2^53`を超える整数`9007199254740993`を`int64`で正確に保持できることを確認し、指数表記`1e2`を受入済み整数へ勝手に正規化しない。これはテスト候補のデコード精度であり、SQLiteの巨大整数集計やTEI標準数値型の精度保証ではない。
+
+既存のSQLite方言が生成したSQLを実行した後、**計算結果の7行×3種類のWindow値に加えて、入力行そのものの系列・順序・値・NULLも照合**する。SQL側で系列を取り違えたり、別の数値を読んだりしても、平均が偶然同じなら成功という判定を避ける。
+
+さらに、5つのMarkdown候補それぞれについて、手書きの入力候補と対応する**既知の観測行の原文を一度ずつ含むこと**をbyte位置付きで検査する。重複IDの負例には追加のA3行が一つあることも検査する。これは固定された原文の字句照合であり、Markdown表・コードFence・引用を解釈する正式Readerではない。字句が一致するだけで入力をMeaningに受理しない。
+
+`v2`への更新はExpected候補の内部整理にとどまり、`adoption=proposal-only`と#1180／#2514の正式Owner判断は維持する。`v1`／`v2`の成功をTEIの製品Schema・正式DSL・SQLへの自動Loweringと呼ばない。
+
+## 実DBの入力も、固定候補から渡して比較する
+
+`window_bound_input_test.go`は、候補JSONの七行を実SQLiteの`observations`表へプレースホルダー付きで挿入し、既存SQLite方言が生成したWindow計算SQLを実行する。基準の直前三行と、変更後の直前二行の両方で、各観測行の系列・順序・値・NULLと三種類のWindow結果を独立Expectedに照合する。静的な`VALUES`句だけを実行した結果とは検証範囲を分ける。
+
+基準計算の成功後、実表のA3を30から300へ変更する。生成SQL自体は変えずに再実行し、A3の移動平均が20から110に変化することを検査する。この変更は**未受理の意図的な負例**であり、元のMarkdownやExpectedの書換え、意味受理、モデル改版として扱わない。SQLの構造が同じでも、読んだデータ版と結果が異なることを具体的に観測する。
+
+現行の`Source`→`JSON候補`は正式Readerで選択・受理された経路ではなく、`SQLite`はTEIの通常Provider／CLI／Studio Consumerではない。型付き入力候補から実DBへ渡す段階までがC0であり、これが成功しても`*.tei.md`の受理・標準QueryのWindow意味・製品セルフビルドは未成立である。
+
 ## 既存の実証との接続
 
 `internal/database/sqlgen/sqlite/window_reference_test.go`と`window_frame_change_test.go`では、既存`SelectOptions`から生成したSQLite SQLを実DBで評価している。固定された七行の入力と期待値の照合は**C0／SQL方言**の検証である。今回追加するテストも、このJSONの基準・変更例を使ったC0の照合にとどまる。

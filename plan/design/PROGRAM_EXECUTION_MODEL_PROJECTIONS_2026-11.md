@@ -695,10 +695,142 @@ World Fingerprint／Model Revision／Artifact Revisionは用途ごとに保持�
 | **実使用** | 選択Plugin/Providerと実Call先、通常CLIと独立Consumerの受領、FailureとCurrent Grantの確認可能範囲 |
 | **局所再検証** | 何を再解析し、どの下流だけ再生成・再検査したか。skip理由、unknown、実時間、余計な失効・見落とし |
 
-**同一生成Binaryの入力別実使用**：固定した6件のGraph/Rule候補を利用したReference生成Goでは、初期の全Node出力に加えて、Callerから指定したNode IDについて出辺／入辺の計算結果を返す。同じ生成Binaryに7通りの入力を与え、実Outputと未知・明示空Nodeの拒否、Binary SHA-256の不変を確認することを**限定したRuntime Call Witness**として扱う。ただし、これを既存TEIのFunction Entry/Provider実呼出しやCLI・Studio二Consumerの成立証拠には使わない。業務意味の受理、Source選択、実Artifactの配備、Hostが選択したProviderとのIdentity照合は引き続き別の実装・受入である。固定出力を書き出すだけのReferenceと、入力に応じた生成ロジックが動くReferenceは区別するが、Referenceの出力が正しくても製品資格は昇格しない。
+**同一生成Binaryの入力別実使用**：固定した6件のGraph/Rule候補を利用したReference生成Goでは、初期の全Node出力に加えて、Callerから指定したNode IDについて出辺／入辺の計算結果を返す。同じ生成Binaryに9通りの入力を与え、実Output、未知・明示空Nodeと指紋照会の競合拒否、候補指紋の一致、Binary SHA-256の不変を確認することを**限定したRuntime Call Witness**として扱う。ただし、これを既存TEIのFunction Entry/Provider実呼出しやCLI・Studio二Consumerの成立証拠には使わない。業務意味の受理、Source選択、実Artifactの配備、Hostが選択したProviderとのIdentity照合は引き続き別の実装・受入である。固定出力を書き出すだけのReferenceと、入力に応じた生成ロジックが動くReferenceは区別するが、Referenceの出力が正しくても製品資格は昇格しない。
+
+**Source Indexの既存機能へ接続する最小の証拠**：Graph／Rule限定ReaderのNode・Edge・Rule候補を、既存`sourceindex.NewArtifact`の元Source fingerprintと`RangeFromOffsets`のbyte位置へ照合し、元Sourceの説明だけを変えた場合にも古いArtifactの検証を拒否するGo回帰を追加した。これは正式なSource Indexへの意味Reference登録やLanguage Plugin選択、実Build消費を意味しない。`*.tei.md`の物理形式判定が`md`であっても、Parser／Meaningを自動選択しない。製品接合の次の一手は、**選択されたSource Reader→実Loader→元byteと型付きRole→受理済みMeaning**の順に各境界を証明し、Graph/Ruleの参照生成結果を業務意味として自動昇格させないこと。詳細は[Go回帰と資格境界](../../reference/tei-md-graph-reader/README.md)を参照する。
+
+**Manifest選択と原文の結合を試す限定圧力テスト**：[test-only Workspace preflight](../../internal/workspace/tei_md_selected_source_pressure_test.go) では、宣言済み`semantic` Rootと未宣言`drafts`を分け、既存`Load`が未束縛`*.tei.md`を拒否することを先に確認する。別途、同じPinned RootでManifest→管理ファイル列挙→原文byte→限定Reference Reader→Source Indexの範囲を照合し、原文変更後は旧Indexを失効させる。ただしこの読取りは**テスト内で明示した候補の事前検査**であり、`Load`の製品読取り・Profile/Role選択・Meaning受理を接続したものではない。S0の次の本実装は、実`Workspace.Load`と型付きの選択済みFrontendを同じAttemptで結び、選択しなかった候補や未対応構文を拒否し、受理したSourceだけをSource Index/Buildへ渡すところまでを最小範囲とする。#2621/#988/#3030と進行中の#4704/#4730の検収へ引き渡し、ここから新たな独立Loaderを派生させない。Go試験が正式に通るまでは実証済みとしない。
+
+**生成前候補と生成後Artifactを取り違えない**：限定Graph／Rule Referenceでは、Node・Edge・Rule条件の正規化構造だけから`CandidateShapeFingerprint`を導き、生成Binary自身の`-candidate-shape`照会値と比較する。原文Source Indexのbyte Fingerprint、Reference候補指紋、実BuildしたBinary SHA-256を別列で扱う。レイアウト変更は候補指紋不変、Edge反転・Rule条件切替は異なる指紋となる一方、A→B→AやProvider切替では同byte・同候補指紋でも過去の受理・実行資格を復活させない。候補指紋は**Referenceの観測用データ**であり、Canonical Meaning／Model Revision／正式Bundle Authorityの新しい正本ではない。正式Source/Provider/Consumerへの接続は既存#2600/#951/#4495/#1251のOwnerへ引き渡す。
+
+**自己報告指紋と実実行ロジックの不一致負例**：生成Goの実判定を起点→終点へ差し替えても、`-candidate-shape`の自己報告を変えずに実Binaryと結果を変えられる。限定Referenceでこの反例を別Build／別ProcessのGo試験として固定し、自己申告と原文候補の一致から`realized`や`observed`を推論しない。S1からP0のProvider／Studio B1〜B3へ進める際は、実Builderの入力member、実Artifactの外部再読digest、選択Builder／Providerの実Call、Stage2の実Consumerを**同一のSubject/Target/Attempt**へ束縛して検収する。#2600の増分reuseと#4583のセルフビルド資格は新たな一律Gateでなく既存Ownerのまま維持する。
 
 **段階的な合格表現**を徹底する。Reader/意味候補だけなら「Source対応の限定実証」、生成Goが独立Expectedと一致したなら「意味あるCodegenの局所実証」、通常CLIと実ProviderのCallまで揃えば「製品Entryの限定検証」、Stage1実Processが次StageのBuildを発行し実Consumerまで届いて初めて「該当Targetのセルフビルド」とする。別のHEADや別Attemptの局所成功を足し合わせない。Stage2 Desktop/Windows WebView2は#4583/#2831の正式資格を維持する。
 
 最初の負例は既存SBX-01〜06、PX-23〜29、PX-36/PX-44〜46などを使い、PX-59以降の番号は増やさず、#1180/#2514の該当Independent Expectedへ差分を追加する。**新たなテスト正本・万能Trace Envelope・一律のHard Gateは作らない。**
 
 **状態**：本節は実装担当へ渡す照合条件・測定方針である。生成Go・Provider実呼出し・CLI再入・Studio Stage1→Stage2の新しい実行結果、増分skipの正当性・速度改善、Owner意味受理はまだ主張しない。
+
+## 40. LifecycleとInvocationを重ねずに描く（2026-11-15追補）
+
+プロセスの起動から停止までの時間と、一件の要求が評価される時間は異なる。前者はHostの責任、後者は公開Entry・Operation・実Provider・Consumerの関係として扱う。同一Host上で複数Invocationが並行し、単発CLIやServerlessでは待機ループが明示されないこともある。TEIはその違いを図に表せる必要があるが、共通Runtime Loopを生成して違いを消してはならない。
+
+```mermaid
+flowchart TB
+  subgraph L["Host側：Process Lifecycle"]
+    L0["起動・構成選択"] --> L1["Contract・Provider・Artifactの準備"]
+    L1 --> L2["Entry公開／受付可能"]
+    L2 --> L3["停止・復旧"]
+  end
+  subgraph I["要求ごと：Invocation / Attempt"]
+    I0["Trigger occurrence"] --> I1["型付きEntry・Subjectの解決"]
+    I1 --> I2{"現在の入場条件"}
+    I2 -->|拒否| I9["拒否結果：Provider未呼出し"]
+    I2 -->|許可| I3["選択済みProviderを実Call"]
+    I3 --> I4["Operation：計算・判断・要求Effect"]
+    I4 --> I5["Commit／外部Effect／Receiptの照合"]
+    I4 --> I6["値・Outcome・診断"]
+    I5 --> I7["再読取・配送・Consumer受領"]
+    I6 --> I7
+  end
+  L2 -. "受付可能な期間・Targetに依存" .-> I1
+```
+
+この図は構造と因果関係を示す**設計Projection**であり、全Targetに同じ実行順を命じるものではない。特にEffectとResponseの時間順、通知のACK、Cancellation、複数Providerによる分散Commitは図だけでは決まらない。各Edgeに順序保証・所有者・失敗時の扱いが定義されていない場合は、便宜的な矢印を契約へ昇格させない。図上の「許可」は現在のHost Grantを表し、業務Ruleの許可とは別に検査する。
+
+| 独立した問い | 必要な観測・版 | 不適切な同一視 |
+| --- | --- | --- |
+| Hostは起動・受付可能か | Process/Backend実Image、選択構成、現在の入口 | Studio GUI表示＝Backend実Provider準備完了 |
+| Invocationは受理されたか | Trigger occurrence、公開Entry、Input、Subject/Meaning Revision、現在Grant | Trigger受信＝Operation実行 |
+| Operationは実行されたか | Attempt、選択Providerと実Call先、評価したRule/時点 | 同じOutput＝同じ実装・Provider |
+| Effectは確定したか | DB/外部側のReceipt・再読取と必要な業務キー | HTTP 200／ACK＝Commit成功 |
+| Consumerが結果を受けたか | 実受領先、開示範囲、Response/Receiptの対応 | 別Attempt・別Audienceの成功の流用 |
+
+## 41. 業務上の「受注確定」から実行図を導く
+
+題材は、業務担当者が読める「注文を確定する」という一つのOperationとする。以下は**設計例であり、現行製品で採用済みのDSL構文でも、実業務の受理済みRuleでもない**。仕様として説明できる条件を先に挙げ、図・表・説明文・Go生成を同じ受理済み意味に結び付ける。
+
+| 業務上の順序 | 対象・条件・結果 | 外部境界と停止条件 |
+| --- | --- | --- |
+| 1. 注文を特定する | 注文ID、注文Revision、依頼者、処理時点を固定する | 不足・不一致なら受付拒否。別注文へ推測補完しない |
+| 2. 確定可能か判断する | 状態、期限、権限、適用される業務Ruleを評価する | Decision Tableの複数一致・部分取得・不明を勝手に許可へしない |
+| 3. 金額等を計算する | 明示した通貨、精度、丸め、明細集合で導出する | 欠損・NULLと空集合、金額0を区別 |
+| 4. 注文を確定する | 対象Versionを条件に更新し、業務キーとReceiptを対応させる | DB側の更新確定は実Provider／Transactionの証拠を要する |
+| 5. 確認を通知する | 通知の必要性と宛先・内容を判断する | Commitと通知送信・ACKは別のEffect。結果不明なら再読取を優先 |
+| 6. 依頼者に結果を返す | Outcome、参照可能なReceipt、診断を許された形で返す | 返答成功と外部Effect／相手Consumer受領を混同しない |
+
+```mermaid
+flowchart TD
+  A["受注確定要求"] --> B["注文・版・対象時点を解決"]
+  B --> C{"公開Entry／現在Grant／入力契約"}
+  C -->|不適合| R["拒否：実Providerを呼ばない"]
+  C -->|適合| D{"業務Ruleを評価"}
+  D -->|禁止| X["業務拒否"]
+  D -->|不明・競合| U["判断保留・診断"]
+  D -->|許可| E["金額導出・更新要求を形成"]
+  E --> F["実Providerで条件付き更新"]
+  F -->|確定の証拠| G["必要な通知を手配"]
+  F -->|結果不明| H["Receipt／DB再読取：安易に再実行しない"]
+  G --> I["Outcomeと配送状況を別々に返す"]
+  H --> I
+```
+
+設計図から「注文の確定に成功した」と説明するには、図上で成功経路が存在するだけでは不十分である。入力集合の完全性、業務Ruleの受理、実Providerの実行、Transaction/外部Effectの確定、現在の開示資格を用途ごとに調べる必要がある。MockによるScenario一巡は初期段階で有効だが、Mock Receiptを実DB Commitと呼ばない。X-TEA移植の`/session-submit`→`sales.order.submit`の合成State到達も、実Provider／実Commit／Recoveryの証明へ昇格させない。
+
+この一つのOperationから、三要素分析法の業務フロー・機能／CRUD・データモデル、Rule/状態図、Interaction図、実Traceを**それぞれの意味と情報損失を明示して**投影する。業務フローにある担当者・台帳・現物移動の意味はRuntimeのCall Graphへ吸収しない。図面の番号、座標、色は安定したSubject/Relation IDの代用にしない。
+
+## 42. 他領域へ展開するときに保持する意味の境界
+
+| 関連設計 | 実行モデルと共有すること | 同じものにしないこと・Owner |
+| --- | --- | --- |
+| BRMS／宣言的構文 | Ruleの条件・優先度・Conflict/Unknown、表・式・Graphの共通意味と説明文 | partialな一行一致をUniqueと断定しない。正式Reader/意味受理は#2621/#988、Ruleは既存BRMS担当 |
+| RDB／NoSQL／DB移行 | Queryの型付きInput、Snapshot/時間条件、取得Coverage、条件付きEffect | Rowset 0件＝全件不存在、SQL方言変換＝同等結果としない。実Providerは#2586 |
+| 組織／履歴／REA | OccurrenceとRevision、validAt/knownAt、関係多重度、外部根拠のSource | 履歴訂正＝過去のCase自動再実行、REA候補＝業務意味受理としない。#4490/#4501と既存REA担当 |
+| B2C／Web・VUI | HTTP/画面/Voice等のTrigger→同じ型付きEntry、Audience/Disclosure | 表示・音声応答＝実業務Effect成功、Client計測＝Server確定としない。#3509/#2516 |
+| Batch／Scheduler | 期間、Chunk、Restart、再送、途中完了と不明をAttempt単位で追う | Scheduler宣言＝実発火、Chunk完了＝Job全体完了としない。#1130/#1174 |
+| Plugin／AI Harness | 選択されたContract、公開Facet、Hook位相、固定SubjectをCLI/Studio/AI間で参照 | Skill/図の説明＝Grant、Plugin図面継承＝Private情報再公開としない。#951/#4198/#4515 |
+| Desktopセルフビルド | Source→Meaning→Generator→実Builder入力→Artifact→Stage2 Consumerの依存・実観測 | テスト用Readerや参照Go実行＝正式Workspace/Studio Stage2としない。#2831/#4583 |
+
+**共通するのは意味上の参照関係と検収上の問い**であり、各分野を一つのState Machine／一つのExecution Envelopeに押し込むことではない。外部Hostが持つ認証、取引、スケジューリング、プロセス管理をTEI自身に再実装しない。TEI生成側は既存Plugin/Target Generatorから必要なAdapterを用意し、Hostが担う契約を明示する。
+
+## 43. 図解・Target生成・実観測を同一Subjectで照合する
+
+図の相互変換を無条件の可逆操作にしない。元の`*.tei.md`のMarkdown表・Mermaid・文章・式は糖衣表現として保持し、正式に選択されたReaderが把握できた部分だけを意味対象へ束縛する。表からRuleやGraphを導出する場合も、図の表現が省いたEdge ID・多重度・時間条件・例外は、元Meaningから取得できない限り`loss`／`unknown`として示す。Read-only Viewでの見やすさとSourceへの安全な書戻しは別の適格性である。
+
+最初の実証には既存`testdata/tei-md-graph/`の同名二Node・二多重Edge、Rule条件を利用する。次の対応を**別々の証拠**として記録する。
+
+1. 原SourceのOccurrence/byte位置・Reader選択・意味候補と、Ownerが受理したMeaningの有無。
+2. どのRule／Edge条件が生成Goの判定式・呼出し順に変換され、どの処理を手書きGo／外部Pluginへ委譲したか。
+3. 実Builderが受け取った入力・Generator/Plugin/Toolchainの実版、生成Artifactと再読取Digest。
+4. 通常`tei` CLIからの実Entry/Provider呼出しと、独立Consumerが受領したOutput/Failure。
+5. 変更後のRaw Source、Meaning、Artifact、Evidence、現在Grantの再利用判断。表示だけの変更とEdge方向の変更、A→B→Aを区別する。
+
+```mermaid
+flowchart LR
+  S["Source occurrence／原byte"] --> M["Meaning候補・Owner受理"]
+  M --> V["図・表・説明（Projection）"]
+  M --> G["Target Generator／Plugin選択"]
+  G --> B["実Build／Artifact"]
+  B --> C["実Entry／Provider／Consumer"]
+  C --> O["実Observation／Receipt"]
+  V -. "表示からのChange Proposal" .-> S
+  O -. "検証結果は意味受理を代替しない" .-> M
+```
+
+「図が正しい」「生成Goが動いた」「意味上の契約を満たした」「実Hostで正しく使われた」は、異なる合格主張とする。Product `Workspace.Load`による`*.tei.md`正式Reader接続（S0-A）が未成立なら、限定Referenceやテスト専用S0-P成功で代用しない。生成Sourceが業務の判断を実装している割合、Generator/Plugin自身のTEI主導生成率、手書きコード量、再生成時の変更伝播を継続的に測り、「Goへ委譲しただけ」を自己記述・セルフビルドの成果としない。
+
+## 44. 既存P0へ組み込む最小の受入順
+
+全体P0は**Studio Stage1→Stage2実Desktop／Windows WebView2**（#2831/#4583）であり、これと並行して**正式Entry→選択された実Provider→通常製品CLIと独立Consumer**（#4495/#2586）を閉じる。この追補は新たな製品Hard Gateを設定せず、既存Ownerが提出する証拠の読み方を揃える。
+
+| 実施順 | 実装／検証の一辺 | 受け取る証拠・停止条件 |
+| --- | --- | --- |
+| A：read-only対応 | 一つのFunction/EntryについてLifecycle・Control・Effect・TraceのViewを同じSubjectから出す | ID、Relation多重度、Source版、取得CoverageとUnsupportedが各Viewで保たれる。図だけの成功は局所資格 |
+| B：小さな意味生成 | Graphの向き・Rule条件を変え、生成Goの実条件・Runtime Inputへの反映を比較 | 独立Expectedに一致し、固定JSON出力・手書きGoへの単純委譲でない。変更・未変更の境界を再確認 |
+| C：製品の実呼出し | 公開Entryと選択実Providerの呼出し、型付きInput/Failureを通常CLIと別Consumerで観測 | 同一Subject/Revision/選択Provider/Attemptの実Witness。Provider不一致・Grant失効は拒否 |
+| D：Effect付き業務 | 受注のMock→実DB→Receipt再読取→通知／Consumerへ段階拡張 | 更新結果、通知、ACK、Responseを別Witnessで照合。Effect unknown時はlookup-firstを確認 |
+| E：自己再構築 | 正式BuildIntentと実Builder入力、生成Desktop Stage1→Stage2→実WebView2 | 同一Build系列のSource・Artifact・Process・Consumerを追える。別HEAD/別CI成功の合算不可 |
+
+最初の故障注入は、**選択B・実Call A**、同名二Nodeと多重Edgeの取り違え、Rule競合と不完全な取得、DB Commit直後のACK喪失、旧版Source/Providerの再利用、表示だけの変更での過剰Build、別Artifactを使ったStudio表示、外部Harnessへの無許可開示を対象とする。新しい`PX-`や`PL-`のScenario正本は作らず、既存#1180/#2514、#1174、#2600、#4495、#4583の独立Expected／Driverへ該当条件を引き渡す。
+
+**現在の資格**：この追補は既存の局所Referenceやmainにある限定生成・テストを踏まえた設計と計画の更新である。今回の変更で新たなGo／DB／Windows／Stage2実行、製品`*.tei.md` Reader、正式Rule/業務意味受理、実Effect・二Consumer受領を実施したとは主張しない。Ownerが正式採用するまでは仕様候補として管理する。

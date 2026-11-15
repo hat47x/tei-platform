@@ -22,15 +22,33 @@
 
 生成Goの`main`は、引数を付けない場合に従来どおり全NodeとEdge IDの一覧をJSONで返す。`-node n-1`または`-node n-2`を与えると、そのNodeの結果だけを返す。**存在しないNode ID、明示した空のNode ID、余分な位置引数は、空配列や全件への暗黙Fallbackとせず、非ゼロ終了で拒否する。** Node指定を省略した全件取得と、`-node ""`／`-node=`の明示空文字列は区別する。
 
-`rule_test.go`では、固定済みの有効な各Source候補から生成したGoを**一度だけ`go build`**し、その同一Binaryに7通り（全件・Node二件・未知Node・明示空ID二方式・余分な引数）の要求を送る。Node別出力と全件出力を既存の独立Expected候補と照合し、呼出し前後の**実BinaryのSHA-256が不変**であることを確認する。これはCallerの入力で振る舞いが変わる最小の証拠であり、Source変更による再生成や固定JSONの書出しとは分けて扱う。
+`rule_test.go`では、固定済みの有効な各Source候補から生成したGoを**一度だけ`go build`**し、その同一Binaryに9通り（全件・Node二件・未知Node・明示空ID二方式・余分な引数・候補指紋照会・指紋照会とNode指定の同時要求）の要求を送る。Node別出力と全件出力を既存の独立Expected候補と照合し、呼出し前後の**実BinaryのSHA-256が不変**であることを確認する。これはCallerの入力で振る舞いが変わる最小の証拠であり、Source変更による再生成や固定JSONの書出しとは分けて扱う。
 
 ここでの`-node`は**生成したReferenceプログラムの検証用引数**であって、製品`tei` CLIの公開Command名、Function Entry、Host選択済みProvider、Application APIの正式Contractではない。同じBinaryへの複数回の実行と、異なる製品Consumerが同じProviderを呼び出したことは別の資格である。次段では、受理済みMeaning/Source Revision、契約と選択Provider、実Builder/Artifact、実CLI/独立Consumerの呼出しを既存#4495/#1251/#951/#2600に従って一貫して照合する。
+
+## 候補の構造指紋と、原文・Artifactの別資格
+
+`CandidateShapeFingerprint`は、このReference Generatorが利用する**Node ID集合、Edge ID／起点／終点、Rule ID／起点・終点条件**を正規化したJSONからSHA-256を計算する。NodeやEdgeの表中の並び、表示名、Markdown装飾、Mermaidの配置・表示、Sourceのbyte位置は含めない。値には`tei-md-graph-reference/shape-v1`という固定の区分を加え、後日の生成規則変更で同じ識別子を流用しない。
+
+生成されたReference Binaryは`-candidate-shape`でこの候補指紋を一行出力する。既存`-node`の検索結果や引数なしの全件JSONは変えない。`-candidate-shape`と`-node`の同時指定は不正な要求として拒否する。固定したFixtureでは、基準とレイアウトのみ変更した例は同じ指紋、Edge反転とRule切替は異なる指紋、表とMermaidの不一致例は表の構造に従った指紋となる。
+
+**自己申告だけでは実生成物を認証できない反例**：`fingerprint_observation_test.go`では、生成GoのEdge判定をビルド前に意図的に起点→終点へ差し替える。差し替え版のBinaryは元の`-candidate-shape`をそのまま返せる一方、実BinaryのSHA-256とNode別出力は元版と異なる。これは指紋を信用する受入テストではなく、**指紋の自己申告が実行された処理の証明にならない**ことを示す負例である。次段では、Builderが実消費した元Sourceと生成Source member、外部から読んだArtifact byte、選択Providerと実Invokerを同一Attemptで照合する。
+
+**三つの指紋は用途が違う**。Source IndexのSHA-256は*元Markdownの実byte*、この構造指紋は*Referenceが解釈した候補の構造*、実Binary SHA-256は*実際にBuildしたArtifact*の識別子である。候補指紋が一致してもSourceの同一性・Readerの正当性・Ownerによる意味受理・選択Provider・現在の権限・実Consumer受領は証明できない。逆に説明やレイアウトだけの編集はSource SHA-256を変えるが、同じ処理を再生成すべきと自動判断する根拠ではない。A→B→Aで同じ内容に戻っても、過去の受理・実行資格は自動復活しない。
+
+この指紋と照会引数は**限定Referenceにだけ存在する**。正式なTEI Providerの公開コマンド、Bundle証拠、Semantic RevisionやArtifact Revisionの新しい正本として採用しない。今後は既存#2600/#951/#4495の実消費・選択・実呼出しと照合し、必要な情報だけを製品契約へ取り込む。
 
 ## 実行
 
 ルートモジュールから`go test ./reference/tei-md-graph-reader`を実行する。テストは、生成実装から独立に保存した`testdata/tei-md-graph/independent-expected.candidate.json`に照合する。元byte位置、レイアウトのみの変更、引用・Fence、未知端点、重複Section、未対応表、表示IDの未解決を負例に含む。
 
 このテストが成功しても、**`*.tei.md`の製品Readerが使えることにはならない**。現行`internal/workspace/tei_md_source_guard.go`の`TEI_MD_PARSER_UNBOUND`は維持する。ここではWorkspace ManifestのSource選択、Language Plugin/Roleの承認、Source Index、実Builder入力、**製品Generator**、実Plugin/CLI Consumerを接続していない。
+
+## 既存Source Indexとのbyte照合
+
+`sourceindex_bridge_test.go`では、限定Readerが返したNode・Edge・Rule候補の元byte位置を、製品側で既に使用している`internal/sourceindex.RangeFromOffsets`で照合する。`NewArtifact`の原文SHA-256を固定し、元Sourceの説明を追記した場合には、古いArtifactの検証が拒否されることを確認する。実Sourceのbyte、候補の位置、将来のMeaningを同じものとして扱わないための境界試験である。
+
+**この試験はSource Indexの意味Referenceを登録しない。** `*.tei.md`は現行`NewArtifact`では一般の`md`形式に分類され、Language PluginやRoleは拡張子から選択できない。Workspaceでの実読み込み、Source受理、Buildの実消費、選択Providerの実Callは引き続き未確認。正式な接合は#2621/#988/#3030と既存Source IndexのOwnerが検収する。
 
 ## 次の製品実装へ引き渡すこと
 

@@ -508,6 +508,38 @@ Expected JSONの`adoption=proposal-only`は、既存#1180/#2514による受理�
 
 次のReader／Loweringの縦断では、固定Sourceのバイト同一性に加え、(1) 実際に選択された観測表・計算条件のCell位置、(2) Role／Operatorの受理、(3) Frame・Partition・Order・NULLの型付き意味、(4) 生成器が実消費した入力、(5) SQLite実結果と独立Expectedを順番に観測する。**Sourceのハッシュを更新するだけでExpectedの再受理や再生成を済ませたとはみなさない**。既存[#2595](https://github.com/hat47x/tei-platform/issues/2595)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)へ引き渡し、第二のReceipt／意味正本を増やさない。
 
+### 期待値のSourceだけでなく、検証すべき負例の集合も固定する
+
+Window候補5件はSHA-256で元ファイルと結び付いているが、**候補の一部をJSONから削除しても基準計算のテストだけは成功し得る**。そこで、`window_candidate_oracle_test.go`に5件の候補ファイル名・必須件数・期待状態の閉包検査を追加する。重複IDの拒否候補を消す、`valid`へ変更する、古い派生表示を一致扱いする変更はそれぞれ拒否する。数理計算の数値一致と、検証の対象・負例が残っていることを区別する。
+
+[Graph／RuleのSource Index実連携 #4742](https://github.com/hat47x/tei-platform/pull/4742)に合わせ、Windowの全5入力でも`sourceindex.NewArtifact`／`Index.Validate`／`RangeFromOffsets`を使う実Go回帰を追加する。既存の`sourceSHA256`と同じ元バイトを指すこと、B2の明示NULLを含む既知の文字列の元byte span、説明追記による古いSource Indexの失効を確認する。**これはSource位置と原本の整合検査であり、B2のCellを正式Readerが意味として選択した証拠ではない。**
+
+この閉包は**独立Expected候補のテスト上の固定条件**であり、正式な意味受理や新しいScenario正本ではない。現在の検証で成立するのはSource byteと期待値候補の組、既存SQLite方言が生成するSQL、実DBの結果までである。負例に対して製品Readerが正確なSource位置で診断を返せたことや、Markdown表から意味を生成できたことではない。
+
+また、[Graph／Ruleの生成バイナリ実引数試験 #4733](https://github.com/hat47x/tei-platform/pull/4733)は、同じ生成Go Binaryへ別々のNode IDを渡し、結果の違いと未知・空IDの拒否を検証する**局所的な実行例**である。Windowを次の応用へ広げるときも、入力変化に対する実結果と独立Expectedを確認するが、製品のFunction Entry／Provider／CLIの実Callには自動昇格させない。
+
+[MarkdownのFence境界修正候補 #4725](https://github.com/hat47x/tei-platform/pull/4725)は未統合のDraftであり、GraphとRuleの例示領域を定義に誤認しないための負例を扱う。これは統計表・KaTeX式・Graphviz／Mermaidが共存する文書でも必要な境界である。Readerの正式採用時は、バッククォートとチルダのFence、開始長・終了長、インデントコード、未閉領域、BOM／CRLF、元byte spanを検証し、**表示や例示に現れた数式・計算条件を実行可能な定義へ勝手に変えない**。KaTeXは表示、TEIが意味・演算・検証を担う方針を維持し、専門Parserや第二の数式正本を追加しない。
+
+### 元データとWindow結果を別の独立Expectedで照合する
+
+従来のWindow回帰は七行の平均を照合し、入力行ではB2のNULL有無や系列の非空だけを確認していた。入力が変わったにもかかわらず偶然同じ平均になる場合を見逃さないよう、[WindowのExpected候補](../../testdata/tei-md-window/independent-expected.candidate.json)を`v2`とし、七行の観測ID・系列・順序・入力値・明示NULLを**結果のExpectedとは別に固定**した。実SQLの入力行と三つのWindow計算結果を同一行IDについて照合する。JSONの欠落値、明示NULL、整数、非整数を区別する負例も加える。
+
+同時に、原文の五つの`*.tei.md`に手書きの観測行が一致することを既存`sourceindex.RangeFromOffsets`でbyte位置まで照合する。これは**試験対象の字句的なSource対応**であり、正式ReaderがMarkdownのどの表を実定義として選んだかの検査ではない。Graphの限定Source Index実証と、WindowのC0実DBをつなぐための引渡し材料であり、TEIの正式Role／Operator受理やC1／C2の完成とは区別する。
+
+[Manifest管理RootとPinned SourceのS0予備試験 #4751](https://github.com/hat47x/tei-platform/pull/4751)はmainに統合済みである。実Workspaceの管理Root選択、宣言外draftの隔離、Pinned Rootの元byte、Source Indexの失効をテスト内で検証したが、正式な`Workspace.Load`は依然として`TEI_MD_PARSER_UNBOUND`を返す。Window側で第二のWorkspace Loaderを作らず、#2621/#988の既存Ownerが正式Readerを接続した後に、**同じPinned Sourceから選択した表Cell→型付き観測→計算定義→生成SQL→実Provider→独立Expected**を一つの試行として追う。複数HEADの局所CIを寄せ集めて、製品の一貫生成が完了したとは扱わない。
+
+### 独立した入力候補を実SQLiteへ束縛し、同じ生成SQLで入力変更を確かめる
+
+[Window入力候補v2](../../testdata/tei-md-window/independent-expected.candidate.json)では、七行の観測値と三つのWindow結果がそれぞれ固定された。しかし既存のSQLite回帰は、入力側のCTEに`VALUES`を直接書き込んでおり、**固定した入力候補を実DBへ渡したこと自体**は検証していなかった。
+
+新しい`internal/database/sqlgen/sqlite/window_bound_input_test.go`では、候補JSONの七行を既存の`validateCTKWindowInputRows`で検査し、`obs_id`を主キーとする実SQLite表へプレースホルダーを使って挿入する。B2は数値のゼロではなくSQL NULLとして渡す。既存`SelectOptions`のWindow演算・`OrderBy`を再利用して、今度は**実表を読み込むSQLを生成**し、元の独立Expectedと七行すべてを照合する。直前三行／直前二行の二条件を同じ入力で比べる。
+
+さらに、実表のA3だけを30から300へ更新し、**生成済みSQLを変更せず再実行**する。直前三行のA3平均が20から110へ変わることを確かめ、入力が変わったのに以前の結果を返す経路を検出する。これは入力→実DB→生成SQL→観測結果の限定C0試験であり、受理されたTEIの`*.tei.md`定義から実行したという意味ではない。候補JSONの手入力を受理済み意味に昇格させず、正式Readerや既存Query／Provider契約を迂回しない。
+
+[Graph／Ruleの候補構造指紋 #4758](https://github.com/hat47x/tei-platform/pull/4758)はmainに統合された。限定Referenceの生成バイナリが構造候補の指紋を応答できるようになり、**Raw SourceのSHA-256・候補構造の指紋・実BinaryのSHA-256は別の値と資格**であることを実証した。ただし正式Reader・Owner受理・現在の実行許可はこれだけでは成立しない。Windowに第二の指紋体系を増やさず、今後は正式Readerで選択した表Cell・意味Revision・実生成入力・Artifact・実Consumerの対応を既存Source Index／Build契約で検証する。入力変更後に生成SQLが同じでも、**実DBデータ版と実行結果の証拠は同じではない**。古い計算結果を現在の結果として再利用しない。
+
+また[入れ子Opaqueの拒否修正 #4755](https://github.com/hat47x/tei-platform/pull/4755)はレビュー中である。標準QueryがWindowを意味表現できないままNative SQLの一部を取り落とす経路は引き続き拒否する。今回のテストで扱う既存SQLite方言のWindow直接生成を、標準QueryのWindow対応やNative SQLの実行許可として受理しない。
+
 ### 正式Readerが未接続である現状から、最小の実読取りへ進む
 
 2026-11-14時点の`internal/workspace/loader.go`は、管理Sourceを走査したあと、`rejectUnboundTEIMarkdownSources`で管理対象の`*.tei.md`を**`TEI_MD_PARSER_UNBOUND`として明示拒否**する。現在の`loadSemantics`が呼ぶ`syntax.NewParser(...).ParseSemanticFile()`は従来形式のParserであり、Markdownの表・フェンス・本文のRoleを実際に解釈した証拠ではない。`ManagedFile`の列挙、`ReadByLoader`の真偽、Parserでの解釈、意味の受理、Buildでの実消費はそれぞれ別の事実である。
