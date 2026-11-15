@@ -72,7 +72,7 @@ func TestSameRuleFromTwoProductSurfacesGeneratesIdenticalGoButDistinctSourceEvid
 		code              []byte
 		index             sourceindex.Index
 		sourceFingerprint string
-		modelRevision    string
+		modelRevision     string
 	}
 	build := func(workspaceRoot, sourcePath string, expectMarkdown bool) witness {
 		t.Helper()
