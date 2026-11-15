@@ -541,7 +541,7 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 	// §4.55: read the state directory before and after the first run, so the
 	// reproduction record can say what this entry saw rather than what it was told.
 	firstState := stateDirBefore(parsed.State)
-	evidence, err := driveSelfBuild(parsed.Child, childArgs, parsed.Output, "")
+	evidence, err := driveSelfBuild(parsed.Child, childArgs, parsed.Output, "", selectedBuilderDigest)
 	if err != nil {
 		if parsed.BindResolvedBuilder && strings.Contains(err.Error(), "selected child builder digest mismatch") {
 			// Preserve the resolved-plan evidence on refusal; no child process
