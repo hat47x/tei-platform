@@ -10,7 +10,7 @@
 
 関連文書は次のとおりです。
 
-- [TEI Desktop製品契約（現在の統合判断は§0.17）](design/TEI_DESKTOP_PRODUCT_CONTRACT_2026-11.md)：共通Application APIを使うGo/Wails Desktopの優先順位と受入を一本化する。最優先は#2831/#4583の非Plugin Build→Stage1実TEI→Stage2実Windows WebView2で、並行して正式`*.tei.md` Reader／CLI-native生成・実Providerと、Source復帰・Pin・実Windowを別資格で検証する。子Backend、Release/Updater、Mobileは先行Hard Gateにせず、既存Owner／独立Expectedへ接続する。文書をmainに収録しても製品E2EやOwner受理を証明したことにはならない。
+- [TEI Desktop製品契約（現在の統合判断は§0.18）](design/TEI_DESKTOP_PRODUCT_CONTRACT_2026-11.md)：共通Application APIを使うGo/Wails Desktopの優先順位と受入を一本化する。最優先は#2831/#4583の非Plugin Build→Stage1実TEI→Stage2実Windows WebView2で、並行して正式`*.tei.md` Reader／CLI-native生成・実Providerと、Source復帰・Pin・実Windowを別資格で検証する。子Backend、Release/Updater、Mobileは先行Hard Gateにせず、既存Owner／独立Expectedへ接続する。§0.18では既存`InspectSubject`を起点とするSource→Meaning→Build/Plugin→Consumerの**根拠Inspector**を、AI OFF・read-onlyの一Subjectから実装する。Sourceを読んだこと、意味を受理したこと、生成物を実使用したこと、外部Effectの確認を独立表示する。E-READ／E-PIN／E-TRACEの三つの最小差分を既存#1824/#4515/#4583/#4495とExpectedへ渡す。文書をmainに収録しても製品E2EやOwner受理を証明したことにはならない。
 
 - [業務ルールの統合・決定表の検証](design/BRMS_DECISION_ANALYSIS_INTEGRATION_2026-11.md)：独立BRMS／Hostを新設せず、IF・Markdown表・Graph・型付きOperatorから判断を生成し、競合・適用漏れ・判断不能・変更影響を検証する。Graph／一行Rule→Goの限定ReferenceとWorkspace Pinned SourceのS0予備検証はmainにあり（#4729/#4751）、**正式Reader／Meaning Binding／製品Generator／実Providerは別の未達**。次は#2621/#988で一Ruleを正式に受け、#4544の実生成Source消費を検収する。Unique決定表ではpartialでも完全に証明した二行の競合は確定できる一方、一行のみ・零件では母集団の完全性なしに唯一性・不存在を断定しない（#1180/#2514）。自然な業務説明とMockシミュレーションは同じSourceに従属させ、実Effect・実Consumerと区別する。Studio Stage1→Stage2と製品CLI→実ProviderのP0は維持する。
 
