@@ -1471,3 +1471,11 @@ Studio Inspectorの参照制限表示（#4806）も、製品Build／実Wails埋�
 FunctionはDataと独立した公開契約である。[Data／Functionの分担整理 #4937](https://github.com/hat47x/tei-platform/pull/4937)に従い、Data RuleとField拡張／Table Scriptの意味は公開Function Entryと混同しない。Ruleから生成したGoを公開する必要がある場合も、#4495でOwnerが受理したFunction契約・入力Context・現在Host Grant・実Provider選択に**明示的に結合**して初めて起動対象とする。型付きNode／Flowとして表示する場合は[UI／Flow設計 #4924](https://github.com/hat47x/tei-platform/pull/4924)の標準Operator／Port／Occurrenceへ投影するだけで、Node表示やグラフのLayoutから実行許可を発行しない。NodeのN2実CallとStudioのW0〜W4／Stage1→Stage2は独立したConsumer受領である。
 
 次の受入差分は、①製品Build IntentのSource・Generator provenanceを伴う生成Go受領、②同一Rule／Generatorの版変更・旧Go／別Builderによる誤使用を拒否、③受理済みpure Functionからselected／actual Providerの実Call、④通常製品`tei` CLIの別OSプロセスと独立Expected、と分割する。未実装の外部Hostや汎用Flow実行機構を導入して最初の一件を代用しない。
+
+### 29.10 製品CLIのread-only Rule検査を、Entry起動と混同しない
+
+現行`cmd/tei/main.go`の正式`inspect -workspace -subject-kind -subject-id`は、`cliInspectionReport`（`tei.cli.inspect/v0`）を返す製品CLIのread-only入口である。`internal/operations`側の同一Load回帰[#4902](https://github.com/hat47x/tei-platform/pull/4902)に加え、**実ビルドした通常`tei`を別OSプロセスで起動する正負対照**を受入条件に加える。内蔵`tei.rule-authoring/v0`が選択された既存Workspaceを指定し、`semantic-validation:sales.order_line.quantity_positive`はexit 0と同一Rule ID／Attribute／原MarkdownのArtifact Fingerprint／元byte位置が一致する。一方、同じIDを`semantic-capability`で指定した場合と、本文の`text` fenced blockにだけ現れる別Ruleを指定した場合は、exit 1の`SUBJECT_NOT_FOUND`で停止する。
+
+この正負対照は、**「Sourceを読めるRule」と「公開されているFunction Entry」の資格差を製品CLIの境界で保持できるか**を問う。CLIからInspectorを呼べたことは、選択済み実Providerの`Service.Invoke`、Hostの現在Grant、実Binder入力、Effect／Receipt、Independent Consumer受領を何一つ実証しない。取得したSource位置やFingerprintを公開Entryの証拠に流用しない。
+
+次の実装は、このread-only入口をFunction起動用に改造することではない。#4495／#1158で別途Owner受理済みのpure Functionを選び、Function契約→typed Request→現在公開Entry／Host Grant→選択Providerとactual Provider→通常製品`tei`からの**実Invocation**を、同じ対象の独立Expectedと受領結果で照合する。R2-Pの生成Go実Builder消費は#4544／#2595で並行検収する。Node／StudioのInspector可視化、Source Open、Windows Stage1→Stage2は別のConsumer／権限境界として扱う。
