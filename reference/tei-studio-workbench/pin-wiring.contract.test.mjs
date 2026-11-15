@@ -134,8 +134,8 @@ test("PIN-WIRING-08: current Pin handlers are unique and the obsolete controller
     const handler = `element("${id}").addEventListener("click"`;
     assert.equal(main.split(handler).length - 1, 1, `duplicate or missing handler: ${id}`);
   }
-  assert.doesNotMatch(main, /\\bpinReader\\b/);
-  assert.doesNotMatch(main, /renderPin\\(pinReader\\.current\\(\\)\\)/);
-  assert.doesNotMatch(main, /element\\(["']pin-(?:check|release)["']\\)/);
+  assert.doesNotMatch(main, /\bpinReader\b/);
+  assert.doesNotMatch(main, /renderPin\(pinReader\.current\(\)\)/);
+  assert.doesNotMatch(main, /element\(["']pin-(?:check|release)["']\)/);
   assert.doesNotMatch(markup, /id="pin-(?:check|release)"/);
 });
