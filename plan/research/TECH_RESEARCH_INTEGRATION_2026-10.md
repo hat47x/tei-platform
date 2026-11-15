@@ -1434,10 +1434,56 @@ Pluginの[main #3337](https://github.com/hat47x/tei-platform/pull/3337)は、宣
 
 ### 16.5 採用・差戻し・マージの基準
 
-- 同じ意味要素が**業務と研究の異なる二用途**で実Providerまたは実Consumerに再利用されて初めて、標準Operatorや表現型への昇格を検討する。似た構造のモック二例では不足。
+- 異なる用途で同じ意味要素を実Providerまたは実Consumerに再利用できることは、汎用Coreへの昇格を検討する有力な根拠となる。ただし、似た構造のモック二例では不足する。単一分野に固有の要件は、まず専門OperatorやPluginで実現可能かを確認する。
 - 元Sourceの逆参照・NULL／空集合・時間／粒度・選択Provider・現在Grantが欠落した場合、見かけの一致があってもR2を認めない。
 - 新しいRuntime／Host／Registry／受理機関が必要だという提案は、既存Plugin・Generator・外部Providerで解けない理由を独立に比較する。
 - GitHub上では古いDraftを重複Mergeしない。現mainへ最小差分で移し、CI・差分・Readbackを確認して短期で統合する。研究で得た結論とOwnerによる製品採用は別の記録とする。
 - 改善指標は論文件数やDSL行数ではなく、ドメイン専門家が記述する負担、意味を持つ生成割合、独立に検出した欠陥、Source変更から実Consumer確認までの所要時間。まず基準値を測り、改善率は実測後に判断する。
 
 **未達**：正式Markdown Readerの製品縦断、意味を担うGo生成、実Providerと二Consumerの同一Attempt、Studio全体のStage2セルフビルド、CSW作者採否、VSクマGodot実連携、業務Ownerの正式意味受理は、本節の追記だけでは成立しない。
+
+### 16.6 何を共通化するか――意味・表現・実行を分けて考える
+
+DSL自己記述、三要素Modeler、REA、組織、BRMS、Lifecycle Graph、SUI・SHO、科学技術領域の検討を、次の三層で照合する。
+
+| 層 | TEIで共通に扱うもの | 意図的に分けるもの | 反証例 |
+| --- | --- | --- | --- |
+| 意味とSource | Subject、Role、Relation、Rule、単位・粒度・時間、参照元 | 作者判断、経済的意味、業務Ownerの受理 | 同名別Subject、組織の二時点、未受理候補 |
+| 表現と編集 | Markdown・表・Graph・数式・Timelineの投影、元Sourceへ戻せる変更 | 画面座標、説明文、表示上の省略 | 同じSubjectの二Canvas、同一端点の多重辺、layout-only変更 |
+| 生成と実行 | 型付きModel→Operator／Generator→選択Provider、結果の追跡 | Godotの物理、統計Solver、CPU認知、外部Hostの権限 | 選択B・実呼出しA、RuleをGoへ丸投げ、古いArtifact |
+
+同じGraph構造を利用できても、REAの資源移転、組織の所属履歴、ゲームの状態遷移、CSWの創造的仮説が同じ意味を持つわけではない。標準構造と分野別のRole／Operatorの組合せで表し、同一の実行意味へ無理に統合しない。Graphviz・Markdown・関数チェーンの糖衣表現は、出典と保存時の形式を保持する。新Core型や新Hostを増やすのは、既存表現では情報を失う反例を確認してから判断する。
+
+### 16.7 三方式の比較実験：同じ一Ruleから成果を測る（計画・NOT RUN）
+
+最初の実験は新しいDemoではなく、[#2621](https://github.com/hat47x/tei-platform/issues/2621)の正式Readerが明示的に選択する一つのTEI Markdown Sourceと、そこに含まれる既存Rule／Relationを対象にする。未受理の受注業務Mappingを正解扱いしない。
+
+| 方式 | 実行内容 | 判断したい差 |
+| --- | --- | --- |
+| A：現行Go | 現行Go実装→Provider→CLI | 現実の修正・検証コストの基準 |
+| B：記述のみTEI | TEIに宣言を置き、実処理は既存Goへ委譲 | 設計書・参照の効果と、生成能力の不足 |
+| C：意味を含むTEI生成 | Rule／Relation／Data Contextから実動するGoを生成→同じProvider→CLI／Studio | 宣言変更が実動作へ追随するか、委譲部分と再作業を減らせるか |
+
+三方式で共通に固定するのは、期待動作、Dataset、独立Expected、Provider、TargetとHost条件。BとCでは同じTEI Sourceのbyte・span・意味IDも固定する。AはTEI Sourceを消費しない対照群とし、その相違を評価票に残す。比較する指標は、専門家が維持する意味定義の量、生成Goが担うRule／Relationの範囲、Source変更から実Consumerの再確認までの時間、出典へ戻れない箇所、Mutant検出力、生成・実行コストである。行数や初回生成速度だけでは採用を判断しない。
+
+**共通の拒否例**：
+1. 宣言Sourceが実Loader／Generatorに渡っていないのに、構文合格だけで受理する。
+2. Goへの単純委譲を、意味を含むコード生成とみなす。
+3. 同名Node、多重辺、辺の向き、別Canvas出現を潰す。
+4. NULL・空集合・partial・未知範囲・非表示Predicateを暗黙に完全扱いする。
+5. 選択したProviderと実呼出しProviderが異なるのに、結果が同じため合格する。
+6. Source移動、A→B→A、Plugin版変更、layout-only変更をすべて同じ失効とみなす。
+7. AI候補や図面の局所変更を、Owner受理と独立再読込なしで意味正本にする。
+8. 別々のBuild・Windows画面・Stage2の成功を足して、同一Attemptのセルフビルドと呼ぶ。
+
+試験票とExpectedは既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)に置く。生成は[#1121](https://github.com/hat47x/tei-platform/issues/1121)、実Readは[#2586](https://github.com/hat47x/tei-platform/issues/2586)、Provider実選択は[#1251](https://github.com/hat47x/tei-platform/issues/1251)、Studio Stage1→Stage2は[#2831](https://github.com/hat47x/tei-platform/issues/2831)が引き続き担当する。研究専用Runnerや第二のEvidence正本は作らない。
+
+### 16.8 専門PluginとCore昇格の判断、実装への引渡し
+
+- 一つの専門領域にしか現れない要求でも、必要性が明確で標準構造に無理なく接続できるなら、Operator・Plugin・外部Providerとして提供できる。異分野での再利用は**汎用Coreへ昇格する際の有力な根拠**だが、専門実装を許さない条件にはしない。
+- 異分野で同じ振る舞いが観測された場合でも、同じ意味・時点・Scope・Authorityであることを反証付きで示せるまで、共通の意味契約へ昇格しない。Core追加より既存の型／Role／Operatorで済むかを先に確かめる。
+- [#4198](https://github.com/hat47x/tei-platform/issues/4198)のLifecycle Graphは、型付きGraphを生成入力にする研究候補として進める。正式Markdown ReaderとDesktop Stage2をGraph Compilerの完成待ちにしない。
+- 最初のStudioセルフビルドは非PluginのBuild Subjectとして検収する。Pluginの宣言・選択・Build収録・実Loader・実呼出し・Grant・Effectはそれぞれ別資格。Plugin ManualやUpdaterの配送完成をセルフビルドの前提にしない。
+- SUI／SHOは追加のread-only Consumer候補、CSW・VSクマは不足を検出する独立Pressure、Python／Solver／DOEは後続Target・Operator候補とする。いずれも当面のProduct P0を止めない。
+
+**次の実装判断**：まずS0-A正式Readerで一Sourceの実消費を確認し、A／B／Cの同一Expected比較へ進む。CがAより複雑で実動作や変更追随の改善を示せなければ、共通化を広げずSource Fidelity・Generator・Provider資格の不足を直す。比較が成立しても、Stage2全体・業務Owner意味受理・外部Effectの合格は別途必要である。
