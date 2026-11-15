@@ -479,3 +479,46 @@ UI初期値は入力支援であり、保存時に必須な値の保証や、API
 **停止条件**：対象EntryとRuleの対応不明、必須ReadのCoverage不足、実Caller／宣言Selection不一致、実Builder／Provider未観測、旧Snapshot／Grant、表示投影と実Writeの混同。未観測はnot-provenと明示し、「不実行を観測した」という負の証拠とも区別する。
 
 本節は既存の実Go基線と研究をつなぐ検査設計である。新Goテスト・実Provider・Windows・正式Targetの追加実行を完了したものではなく、再生成可能な狭い処理から反証可能性を高める。
+
+## 28. 抽象経路の検査を、既存実装へ渡す最小単位にする（2026-11-16）
+
+§27ではメソッド名に依存しない通過点と状態不変条件を定義した。次は検査項目を増やすより、**既存の検証結果をどこまで受け継げるか**、**別の実装を選んだとき何を新たに証明する必要があるか**を、一つの試行の中で明確にする。ここでは同一Ruleの評価と生成、Operator実装の切替、型付きPort／Adapter、抽象Relationの検査を共通の検収方法に接続する。
+
+### 28.1 検収票は三層に分ける
+
+| 層 | 問い | 必要な証拠と停止線 |
+| --- | --- | --- |
+| **意味の同一性** | 何を実行することにしたか | Canonical ID、選択Reader／Role、Meaning Revision、Rule／Relation／Functionの型と適用Phase。図上の同名ラベルや生成Goシンボルだけでは対象を特定しない |
+| **実現の履行** | 選んだ処理を本当に通ったか | Operator／Generator／Provider Selection、Sourceと実Parameter、Build Intent・実配置byte、実Call ID。IとGの値が同じでも、旧実装への到達は失格 |
+| **状態の保持と受領** | 必要な値と資格を保って通ったか | Input Presence、Identity、粒度・多重度・Read Coverage、Snapshot、型変換、現在Grant、Result、必要時のCommit／Effect／Consumer Receipt。観測できない下流は未受理 |
+
+「宣言が存在する」「実装候補がある」「Buildが通った」「実Callerが選んだ」「Consumerが受け取った」は別の段階である。各段階を省略して一枚の成功票にまとめない。ただし、これらを収容する新しい常設Evidence Storeも作らず、既存#1180／#2514のScenario、Source Index、Builder／Providerの証拠を**対象の問いに応じて参照**する。
+
+### 28.2 既存成果から着手する二つの短い検証経路
+
+**経路A：一Ruleの実現選択と旧成果物の失効。** 現行mainにある正値Ruleの製品Reader、`validationeval.Evaluate`、`validationgen.GeneratePositive`、通常`tei self-build`の限定試験を基線とする。正値・0・負値・NULL・未取得の結果およびRead回数を独立Expectedで確認したうえで、実装選択の鮮度だけを一因子で変える。
+
+並行PR [#5114](https://github.com/hat47x/tei-platform/pull/5114)は、Operator実装A→Bの切替後に古い生成Scenario Command／Planを拒否する修正候補である。**PRがmainへ統合され、当該HEADの試験が確認できるまでは、現行mainの成立済み機能には数えない。** それが成立しても、「実装選択の旧Planを拒否できること」と「選択されたP/G方式が正式Targetで実際に呼ばれること」は別の資格である。
+
+最初の実装Packetは、同じMeaningと独立Expectedを維持し、A選択→B選択→元のA再選択を異なる試行として扱う。古いCommand／Planの再利用を拒否し、再生成したものだけを新しい実装選択へ接続する。Source byte一致や出力一致で、古い実行許可を復活させない。実Builderが消費した入力、実Invoker、Runtimeでの選択結果を観測できない場合は、その境界を`not-proven`と記載する（#2600／#951／#1251）。
+
+**経路B：一Relationの意味を保つ型付き接続。** 並行PR [#5115](https://github.com/hat47x/tei-platform/pull/5115)は組織C1の実Sourceから、Membership→OrgUnitのRelation ID・Key・向きとQueryの対象を検査する局所回帰の候補である。これもmain統合とHEADの確認前には実績へ算入しない。実際のRelation traversalや実Provider Readまで同じ経路を通過したとは主張しない。
+
+ノード・Plugin間のPortをつなぐ場合も、型が一致するだけでは経路Bの意味が保たれない。**複合型全体、Fieldごとの接続、明示Adapter**のいずれであっても、Identity、粒度、多重度、値の欠損・NULL、必要集合の完全性、時点、公開範囲を確認する。必要な変換が未定義なら自動的に「似た型」を選ばず停止する。この検査は既存[Service Flowの型付き配線設計](SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)と[#5121](https://github.com/hat47x/tei-platform/pull/5121)の検討を参照するもので、新しいCore Port型やGraph Runtimeを要求しない。
+
+### 28.3 最初に拒否することを決める
+
+| Case | 一因子の変更 | 期待する判定 | 既存の担当 |
+| --- | --- | --- | --- |
+| **AP-01** | 選択A→B、Meaning・出力結果は同じ | A時代の生成Command／Planを実行前に拒否。新Bの実Call証拠は別に確認 | #951／#2600／#1180 |
+| **AP-02** | A→B→Aで選択が元に戻る | 過去Aの資格をByte一致だけで復活させない。新Attemptの実装選択を再確認 | #2595／#2600／#2514 |
+| **AP-03** | Relation表示名だけ変更 | Canonical ID・Key・向き・多重度が変わらなければ業務意味は維持。元Sourceの変更資格は別に検査 | #1124／#2497／#2514 |
+| **AP-04** | PortのField Mappingだけ変更 | 型だけでなくIdentity／grain／Coverageを照合し、必要なRead集合の欠落を拒否 | #951／#1251／#2622 |
+| **AP-05** | 指定した実Callerだけ別実装へ変更 | 値が一致しても選択と実Callの不一致を拒否。実Call未観測なら未証明 | #4495／#1180／#2514 |
+| **AP-06** | Save PhaseをDisplay Phaseへ変更 | 計算値が一致しても表示投影を永続化・Commit Receiptとして扱わない | #1129／#1174／#2586 |
+
+APは新しい独立Expectedの体系ではなく、§27のAR、§26のEPを**製品Ownerへ渡すための試行差分**である。AR-01〜03で既に確認したpure Ruleの判定とRead回数を重複実装せず、AP-01〜06の未実証部分だけに試験を追加する。実装のMethod名や図表の見た目を固定するのではなく、同じ意味ID、必要な通過点、不変条件、実消費・実受領の証拠を固定する。
+
+**優先順位**：最初にAP-01を既存Scenario修正で実証し、次にAP-05を通常CLIの実Provider／独立Consumerと接続する。AP-03／04はSource／型付き配線の局所検査で進め、AP-06の保存・表示の実Provider差はその後に扱う。正式`*.tei.md` Reader→実Builderの出典束縛とStudio Stage1→Stage2 Windowsセルフビルドを後回しにせず、追加Hard Gateも設けない。
+
+**検証状態**：ここに追加したのは、現行mainの局所実Go基線、並行PRの提案、既存設計を区別して構成した実装Packetである。本節による新Go／PostgreSQL／Windows実行、正式Providerの採用、Ownerの意味受理は行っていない。

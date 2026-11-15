@@ -506,3 +506,11 @@ TEI自身のValidation宣言の構造をData表で記述する並行PR #5097は�
 ScenarioのOperator選択Pinを追加する並行PR #5114は、データ経路の構造適合とは独立の資格を扱う。同PRがこのdogfooding文書の§16を使用するため、データ様式側は**§17**として衝突を回避する。ただし#5114は未統合であり、これを既存mainの機能とは記述しない。選択A→B→Aの出力や指紋が以前と一致しても旧資格の自動復活を認めず、World／Model／Artifact／Evidenceそれぞれの失効を既存#2600へ引き渡す。
 
 直近の最小実装は、選択済みData表＋Ruleのread-only要求／保証票を実Sourceに束縛し、正常例・不足Field・Presence未確定を独立Expectedで判別することに限定する。その先のSource→生成Go→実Builder同一Attempt、正式Provider／通常CLI・独立Consumer、Windows Studio Stage1→Stage2は別の検収を維持する。
+
+### 17.5 実行済みの狭い回帰を再利用し、足りない契約だけを増やす
+
+mainの[PR #5118](https://github.com/hat47x/tei-platform/pull/5118)は、`internal/operations/inspect_markdown_data_table_rule_binary_parity_test.go`で、`tei.authoring/v1`の項目表→Rule→P/G実Binaryの結果・失敗・Read回数・**Read対象Attribute ID**を比較する。同じ結果を返す別AttributeへGだけ差し替える負例もある。これは`go build`したテスト用Binaryであり、正式`tei self-build`のR2-Pや実Providerに拡張して認定しない。
+
+mainの[PR #5129](https://github.com/hat47x/tei-platform/pull/5129)は、元Markdownの説明byteをBuild Plan確定後に変更して旧Planを拒否する。生成Goの変更による拒否とは別の一因子であり、出典の復帰・Artifact再利用・実装選択A→B→A後の資格を一つの判定にしない。
+
+したがって次のコード差分は、既存の実Read回帰やself-build失効を複製せず、**選択済みData／RuleからProducerの保証とConsumerの要求、Presenceの未確定、元Source位置を記録するread-only票**だけを追加する。DPC-01／02／05を独立Expectedで検証し、実Readをまだ観測していないなら`unqualified`とする。正式Builderの出典閉包、Provider／二Consumer、Windows Studio Stage1→Stage2は従来どおり独立P0とする。

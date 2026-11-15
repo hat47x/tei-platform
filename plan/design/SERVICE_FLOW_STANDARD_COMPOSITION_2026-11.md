@@ -400,3 +400,11 @@ A→B→Cを検討する際、次の順序を守る。
 最初の独立ExpectedはDPC-01／02／05を対象とし、全体RecordとFieldの接続、Decimal型と意味Lawの違い、`required`と明示NULL／missing／unfetched／withheldの違いを確認する。次にDPC-08でNode Viewを展開・折畳みしてもMapping Identity・生成物・Read回数を変更しないことを確認する。Graph多重辺・取得閉包・HTTP公開を扱うDPC-03／04／07は各Ownerの独立試験へ接続し、DPC-06はSource改版と実装選択改版を**別の失効条件**として扱う。
 
 誤成功を検出するMutantとして、`missing→NULL`、`partial→complete`、多重Edgeの合併、非公開FieldのHTTP転送、古い実装選択Pinの受理を固定する。判定結果だけでなく**どの保証が不足したか**を独立Expectedへ記録し、実装から期待値を生成しない。並行PR #5097（自己記述）と#5114（Scenarioの選択Pin）は、そのexact HEADが受理されるまではmainの実績へ算入しない。
+
+### 12.6 実Readの一致と元Sourceの現在性を、型付き経路の証拠にする
+
+main統合済み[PR #5118](https://github.com/hat47x/tei-platform/pull/5118)では、Data項目表とRuleを同じSourceから選択してP（既存Evaluator）とG（生成Goの別Process Binary）を比較し、結果・失敗・Read回数だけでなく**実際に読んだAttribute ID**を確かめる。Gだけ別Fieldを読むよう改変し、そのFieldが同じ値を返してもRead ID不一致として拒否する。この回帰はDPC-02／06で参照する。ただしテスト用Sourceと通常`go build`の実Binaryであり、正式R2-Pや実DB Providerの一貫した実証ではない。
+
+main統合済み[PR #5129](https://github.com/hat47x/tei-platform/pull/5129)は、Build Plan確定後に元Markdownの説明だけを変更し、生成Goのbyteが不変でも、既存Planを使う実`tei self-build`が成果物生成前に拒否することを検証対象にした。Source byte現在性と生成Goの現在性は別であり、さらに実装選択・現在Grant・Owner受理とも区別する。
+
+最初のread-only接続検収票では「**予定しているRead**」と「**実際のRead**」を別の根拠として示す。未実行なら実Read欄は`未観測`とし、モデルから補完しない。既存#1180／#2514の独立Expectedを利用し、同じ結果でも違うRead IDを不適合とする。新しいTrace StoreやRuntimeを先行導入しない。

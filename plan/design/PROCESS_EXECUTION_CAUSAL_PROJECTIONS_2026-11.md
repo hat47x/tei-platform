@@ -1033,3 +1033,84 @@ AP-01〜08は**既存実装と対応させる検収索引**であり、新しい
 **採否の判断**：同じ抽象Pathを、汎用Evaluatorと生成Goで異なるメソッド構成にしても同じ不変条件で検収できるなら、TEIの標準Operation／Ruleによる抽象化がテストにも有効という根拠になる。反対に、実入力範囲やEffect、Relation多重性が表現できなければ、その不足は既存Data／Operation／Law／Bindingのどこで定義すべきかOwnerへ戻す。表示を作るためだけに新Core要素を増やさない。
 
 **現時点の資格**：mainで確認できたのは#5087の限定Evaluator対生成Binary回帰、#5056のGo配置byte不一致拒否、#5059の実TEI CLI起点の生成Workbench N2と実Windows受領までである。ただし後者も正式な非Plugin Stage1→Stage2の製品セルフビルドではない。旧Scenario選択Pin #5054、HTTP Adapter #5096、Workbench統一 #5105は審査中のため未実装・未受理の範囲を明示する。今回の追補によって新Go／DB／Windows試験や正式Provider／Effectの実行を行ったとは主張しない。通常CLI actual Providerと非Plugin Studio Stage1→Stage2実WindowsのP0を維持する。
+
+## 53. 同じ結果でも、読んだ対象が違えば同じ経路ではない
+
+§48〜52では、生成後のメソッド名に依存しない抽象経路の検査を定義した。その基準を一歩進める。**結果の値とRead回数が一致しても、実際に読んだAttribute／Relationが違えば、同じ業務判断を実行したとは言えない。**
+
+main統合済み#5118の`TestMarkedDataTableRuleRealGoAndEvaluatorReadParity`が、これを実Goバイナリを用いて検証する足場になった。元のRuleは`organization.transfer_request.allocation_positive`で、期待する読取先は`organization.transfer_request.allocation`である。試験では、生成Goが参照する属性だけを`organization.transfer_request.person_id`へ差し替え、Fixtureが同じ値を返すことで**結果が一致し、Readも一回なのに、読取先だけが違う**状況を作っている。
+
+| 比較するもの | 意味上の同値を判断する条件 | この条件だけでは確かめられないこと |
+| --- | --- | --- |
+| Result／Error | 同じRuleのLaw、入力条件、NULL／未取得の分類に適合 | 同じ対象を読んだこと、Effectがないこと |
+| 実Readの対象 | Qualified Attribute／RelationのID、向き、必要なPath・Scopeが一致 | 実DB Snapshotの完全性、現在のProvider選択 |
+| 実Readの回数と順序 | 契約が回数や順序を要求する場合に一致。pureな式では不要な内部差を固定しない | 同じ値が異なる属性から得られたか |
+| Source／Binding | Workspace・Source Index・型・Readerの対象版が一致 | 実Generatorや実Builderがそのbyteを消費したこと |
+| 実現方式 | 汎用Evaluator、生成Go、選択Providerのどれが実際に動いたか区別 | 一方の局所試験が他方式のRuntime実受領を保証すること |
+
+したがって抽象経路の照合では、**`Read Footprint`を、単なる件数ではなく意味上の参照先を含む集合または順序付き列として扱う**。全Readの順序を強制するのは、順序が意味・Effect・障害結果に影響する場合だけとする。SQL等の最適化や評価の並列化を、意味上不要な読取順固定で妨げない。
+
+この試験のSourceはテスト用のNumber実装であり、実DB ProviderのReadを観測したものではない。またGoのビルドは一時Packageの通常`go build`であって、正式な`tei self-build`のBuild Intent→Builder→Artifact受入ではない。#5087の別Fixtureで実施した通常`tei self-build`と、#5118の別Ruleに対する読取先一致の検証を、**同一Source・同一Attemptの製品E2Eとして合算しない**。
+
+## 54. 経路の不変条件を、定義と実観測の両側から確かめる
+
+抽象経路をUIのNode線やGo Call Graphへ固定すると、意味は同じなのに内部実装が変わっただけで試験が壊れ得る。反対に、単なる最終Resultだけを期待値とすると、誤ったReadや過剰なEffectを見逃す。そこで、検証対象となる関係を**定義上の要求**と**実際の観測**の二面から結ぶ。
+
+```mermaid
+flowchart TB
+  S["選択したMarkdown Data表・RuleとSource Index"] --> L["型付き属性・Rule・Readの意味上の要求"]
+  L --> P["既存Evaluatorで実Read／Resultを観測"]
+  L --> G["GeneratorのGo byteを固定"]
+  G --> B["別Processの実BinaryでRead ID／Resultを観測"]
+  P --> J{"同じ対象・入力条件・Law・取得範囲か"}
+  B --> J
+  J -->|一致を検証| Q["その範囲の抽象経路は整合"]
+  J -->|不一致| X["Sourceまたは実装のBindingを不一致とする"]
+  J -->|不足| U["実Provider／Snapshot／Artifactは未確認"]
+  Q -. "別の資格" .-> C["正式Builder／実Provider／Consumer"]
+```
+
+Sourceに書かれた参照属性をExpectedとする場合も、そのExpectedが**同じ実装の出力から機械的に複写されたものではないか**確認する。独立Expectedは既存#1180／#2514の責任範囲に置き、実装中のGoコード・生成後のメソッド名・Graph配置から自動的に正解を作らない。
+
+検査の結果を一つのBooleanへ畳まず、少なくとも次の違いを説明できるようにする。
+
+- **不一致**：Observed Readが`person_id`なのに、選択Ruleは`allocation`を要求する。Resultが一致しても不合格。
+- **未確認**：Ruleと生成Goは一致したが、BuilderやProviderの実入力が観測されていない。未実行と断定しない。
+- **範囲内で整合**：テスト用Sourceで実Evaluatorと生成BinaryのRead対象・Result・失敗が一致した。ただし外部Host／実DBには一般化しない。
+- **対象外**：pureなRule評価に存在しないCommit／通知を、検収のために架空の必須段階として追加しない。
+
+## 55. Plugin・Node・APIで経路をつなぐとき、保証を落とさない
+
+#5101は複合型全体、Field単位、明示Adapterを**型付きMappingの異なる扱い**として整理した。ここに、並行#5121の「Portごとの適合から経路全体の適格性は導けない」という検討を重ねる。
+
+接続が複数Edgeにまたがる場合、最初のPortが保証していたものが、途中のAdapterや表示上の折畳みで失われていないか、**経路を通した不変条件**として確かめる。
+
+| 例 | 検証する経路 | 見落としてはいけない状態 |
+| --- | --- | --- |
+| 複合Recordをそのまま渡す | Producerの型付きRecord → ConsumerのPort | 必須Field、機密FieldのDisclosure、Scope、Collectionの取得範囲 |
+| 二つのFieldを一つにまとめる | Field Path二本 → Mapper → Result Record | 同名だけの誤接続、二重Binding、NULL／未取得、多重度、Mapping identity |
+| 明示Adapterを挟む | JPY Amount → 単位・精度のLaw → 変換後Port | 丸め・Overflow・Loss、型だけ同じ別Law、追加Read／Effect |
+| Node Viewを折り畳む | 同じConnectionを全体Port表示↔Field表示 | 実Mapping ID、実Call回数、Effect／Receipt、業務上の向きは変わらない |
+| CLIとStudioから同じ読取を要求 | CLI direct／実CLI別Process／Studio Host → 同じ共通Operation | Canonical／Source／Authorityの意味は保持しつつ、Workspace allowlistとAudienceは入口別に評価 |
+
+最後の行は、mainに既にあるCLIと直接Operationの同値試験に、未マージ#5119がStudio Hostを追加しようとしている段階である。**CLIとStudioの内容が一致しても、HTTP公開・非Builtin Provider実Call・現在Grantが成立したことにはならない。** #5096のWails HTTP公開はこれとは別に検収する。API Pluginの本体をWails固有のServiceやCLIからのHTTP自己呼出しへ固定しない。
+
+複数Consumerへの値のFan-outと、Effectful Producerの複数回呼出しも区別する。AdapterやNodeの見た目だけから実Call数を推定しない。Port間の参照整合→意味・Scope→選択実装→実Call／Effect／受領という段階は§35〜36を再利用し、第二のGraph Engineや接続証拠Storeを作らない。
+
+## 56. 次の小さな実装差分を、結果が同じ誤経路の拒否へ寄せる
+
+新しい実装票は、AP-01〜08と#5118の実Go試験を重複実装するのでなく、**現在確認できていない一つの接続**を独立Expectedとともに絞り込む。
+
+| 次の検収 | 既存の実装資産／進行中のPR | 合格に必要な追加根拠 |
+| --- | --- | --- |
+| **Q-1：同じ値・違うReadの拒否** | main #5118。Data表→Rule→P/Gの別Process実Binary | 現状はテスト用Source上の読取ID比較。実Query/ProviderでAttributeと取得Snapshotを確かめる場合は別Ownerの試験 |
+| **Q-2：抽象Relationの安定性** | 審査中#5115。組織Membership→OrgUnitの型付きRelation／Query | Symbol改名に耐え、Relation Key・向き・多重性・Query IDの差を拒否する。実DB traversalとは分離 |
+| **Q-3：実装選択の鮮度** | 審査中#5114（旧#5054から継承）。Scenario生成／Run／参照Plan | World・Fixture・結果は不変でも、A→Bの旧コマンドを実Call前に拒否。Provider版／GrantやA→B→A履歴復活は別受入 |
+| **Q-4：CLI・Studioの読取境界** | 審査中#5119。実`tei inspect`／直接Operation／非Wails Studio Host | 同一SubjectのSource／Authorityと、存在しないCapability・禁止Workspaceの拒否分類を照合。HTTP／実Providerは別 |
+| **Q-5：Port／Adapterの非干渉** | main #5101のMapping設計、審査中#5121のDPC候補 | 一つのFixtureで全体Port⇄Field表示を変えてもMappingと実行対象が変わらない。秘密Fieldや不完全な入力を黙って補完しない |
+
+Q-1〜5は既存Ownerへ渡す**受入パケット**であり、新しい製品機能の完成表ではない。#5114／#5115／#5119／#5121の審査・CI結果を確認したうえで、通過した範囲だけをmainの到達点へ更新する。未マージの提案を製品の既定挙動として説明しない。
+
+**実装順**：最初は同一Data表・Ruleの実Source→P/G読取先一致を#5118のFixtureから読み取り専用で提示する。その後、型付きRelation・Adapter・CLI/Studioの各境界を一件ずつ足し、通常CLIの公開pure Function→実Provider→独立Consumer、正式Source→BuilderのR2-P、非Plugin Studio Stage1→Stage2実Windowsという独立したP0へつなぐ。目的は「実行できる線を増やす」ことではなく、**誤った経路を結果の一致で見逃さないこと**にある。
+
+**本追補の状態**：§53〜56はmain済み#5118の実Goテストと他レーンの未統合PRを照合した設計・計画更新。今回新たにGo／DB／Windows試験、実Provider／HTTP公開、Owner意味受理を実施したものではない。

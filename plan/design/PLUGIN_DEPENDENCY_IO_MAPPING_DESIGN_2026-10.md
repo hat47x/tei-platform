@@ -1019,3 +1019,48 @@ StudioとCLIは同じ型付き接続検収票を異なる表現で見せる。�
 PIO-01〜10は既存#1180／#2514に渡す**独立Expected候補**であり、Go・Windows・実DBを今回実行した結果ではない。まずT0で「一括接続が成立する条件」と「細分化が必要な条件」を一つのFixture上で反証できることを優先する。実験の結果、既存TypeRef／Mappingで十分なら新しいPort DSL／型変換エンジンを追加しない。実装差分が増えず、Source変更による修正が局所化するかも比較して、抽象化の有効性を判断する。
 
 **状態**：§19は既存設計とコードを踏まえた型付き配線の方式選定・受入計画。製品Runtime間の汎用I/O配線、実AdapterのProduction選択、実Host／実ConsumerおよびOwner意味受理は**NOT RUN／NOT ACCEPTED**。
+
+## 20. 型が合う接続と、実際に読まれた情報の一致を分けて検証する（2026-11-15）
+
+### 20.1 入出力の接続に必要なのは、値の一致だけではない
+
+§19の「全体Record／Field Mapping／明示Adapter」を一つの型付き接続として扱う際、**接続候補の適合**と**実行時に消費した値の出典**を区別する。前者はSourceのTypeRef・Semantic Role・Cardinality・Scope・Law・Disclosure等で判定する。後者は、選択したProvider／実現方式と同じAttemptにおいて、どのFieldやRelationを読み、何をConsumerへ渡したかを観測する。
+
+[main統合済みPR #5118](https://github.com/hat47x/tei-platform/pull/5118)の製品Go回帰は、この分離に直接使える。`tei.authoring/v1`によって同じMarkdownのData項目定義表と正値Ruleを読み、型付きRuleを既存の直接Evaluator（P）と生成Go（G）に渡し、Gを別Processの実Binaryとして起動する。入力は`2.5／0／-1／-0／NULL／未取得`を独立Expectedと比較し、結果・エラーだけでなく、読取先のIDと呼出回数も照合する。生成Goの読取Attributeを別の項目に変える負例では、値と結果が同じでも**読取先の不一致を検出**する。これは最初の`PIO-T0/T1`の受入条件を具体化する実績である。
+
+ただし、このBinaryはテスト用`go build`であり、正式`tei self-build`のBuild Intent／正式Builder／選択Runtime Providerを通した証拠ではない。[main統合済みPR #5109](https://github.com/hat47x/tei-platform/pull/5109)の「BuildPlan解決後にGoを差し替えると拒否する」検査とも別の受入単位である。どちらの試験もSource・意味・Artifact・Providerの全経路を単独では成立させない。
+
+### 20.2 型付きMappingの各辺で必要な証拠を明示する
+
+| 局面 | 接続を認めるための照合 | 受理してはいけない短絡 |
+| --- | --- | --- |
+| **Source → Mapping** | Consumerが要求するField／Relation Path、型、意味Role、時点、Cardinality、必要Context、Source版・Scope | 同名・同値だけで項目を結び、未取得をNULL扱いする |
+| **Mapping → 実装** | 全体／Field／Adapterの具体的選択、接続ID・契約版・実現方式（P・G・外部Provider）、選択の現在性 | Portを展開しただけで別Bindingや二回のCallを作る |
+| **実装 → 実Read** | 実ReadしたField ID／Relation identity、必要なら読取回数・順序、取得完全性・失敗分類・Attempt | 同じ結果値が返ったので正しい項目を読んだとみなす |
+| **実Read → 出力** | 必須Fieldの充足、値・NULL・missing・unfetchedの区別、単位・精度・Lossと独立Expected | Adapterで暗黙の補完、端数丸め、属性間の取り違えを許す |
+| **出力 → Consumer** | 実際に渡した投影とAudience／Disclosure、Selected ProviderとActual Call、現在Grant、Target | テスト用Binaryやread-only Inspectを公開API・実Pluginの稼働証明へ転用する |
+
+読取回数は全Operatorで必ず同じである必要はない。Readが純粋であれば複数回の評価が適法な契約もある。**一回だけ読む義務がある場合**、または追加ReadにAuthority・Effect・課金・機密開示上の意味がある場合に、回数差を不適合と判定する。単に観測回数が異なることと契約違反を混同しない。
+
+### 20.3 型付き全体接続と項目接続は、実現方式を共有する
+
+最初のコード差分`PIO-T0`は、既存の型付きFixtureを用いて、複合値の直結と、必要な二FieldだけをMappingする方式の**受入条件の違い**をread-onlyで観測する。全体Recordに非開示Fieldが含まれる場合、Field単位で表示しただけでは開示済み値が縮小したことにならない。実際のProjection／Deliveryが必要である。
+
+続く`PIO-T1`では、一つのpureな明示Adapterについて、元Field→変換入力→変換結果→受取FieldのRefと、NULL・unfetched・精度・Lossを一試行で照合する。P/Gどちらの実現方式でも同じRequired Shapeと業務Lawを満たすことを要求するが、生成GoのRead ID不一致、Adapterの実装選択A/B、実Provider Callや再Buildの資格は**別々に検査**する。Outputだけ等しいからといって勝手にP↔Gへ切り替えない。
+
+`PIO-T2`のNode Viewは、Record全体のPortをFieldに展開しても同じ接続IDを表示し、実CallerやEffect回数を増やさない。`PIO-T3`では、既存のCLIから選択した非Builtin Providerへ到達した証拠を最初に取り、Wails／WebのHTTP公開はHostの公開資格と別に検収する。CLIを使うためにHTTP listenerやWailsプロセスを要求しない。Studio Stage1→Stage2の実Windows受領は従来の並行P0とする。
+
+### 20.4 追加の一因子反証と採用判断
+
+| Case | 一因子の差 | 期待する判断 |
+| --- | --- | --- |
+| **PIO-11** | 生成GがReadするField IDだけ変更し、返る値・結果は同じ | 実Readの不一致を検出。`#5118`の局所試験を足場とするが正式Provider合格にはしない |
+| **PIO-12** | 同じ値を返すが、Required Context内の一項目が未取得 | 必須集合を満たさない。明示NULLや空Collectionとして補完しない |
+| **PIO-13** | 二方式のRead回数だけ違う | 契約に一回Read・追加Read禁止などの義務があれば拒否。それ以外は差分として記録 |
+| **PIO-14** | Adapterの結果は同じで、丸めLaw／対象の精度・単位だけ異なる | 型・結果一致のみではLaw適合を受理しない |
+| **PIO-15** | 実装選択A→Bだが出力値は同じ | 生成済みCommandの選択Pin（[PR #5114](https://github.com/hat47x/tei-platform/pull/5114)・未統合時点）と実Calledの照合を分ける |
+| **PIO-16** | BuildPlan確定後に生成Goの入力byteだけ変更 | 旧Plan／Artifactを無条件に再利用しない。`#5109`で成立した局所証拠を利用する |
+
+PIO-11〜16は既存#1180／#2514のIndependent Expectedへ引き渡し、独立した第二Test Registryは追加しない。**次のProduct差分はPIO-T0／T1の一対象・一つのMapping・一つのAdapterで完結させる**。新しいFlow Runtime、万能Mapping Router、Plugin HostやSnapshot Storeは作らない。正式な意味受理、Wails／HTTP公開、実Provider／Effect、Stage2受領を説明上の接続成功へ含めない。
+
+本節はmainの限定的な実Binary回帰と既存設計を横断Pluginの検収へ反映したもの。新たなMapping実装・Go試験・実Windows／DB試験、Ownerの新しい意味受理は、この更新だけでは実施していない。

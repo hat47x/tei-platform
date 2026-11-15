@@ -1957,3 +1957,36 @@ mainの`cmd/tei/scenario.go`が生成Scenarioコマンドへ固定するのは�
 この比較が成立すれば、同じ標準OperatorをNode／Flow／CLI／Studioで再利用する価値を、見た目や生成行数ではなく**TEIが責任を持つ判断の移転**として評価できる。一方、純粋な正値判定を既存汎用関数で安定して実行できるなら、Targetコードを生成しない選択も正当である。生成を選ぶのは、配布Target・静的性能・型安全性・外部Host制約など、具体的な利益を実証できる場合に限る。
 
 **実装上の優先順位**は変えない。元Rule Source／Reader／Generatorを正式Builderの実入力へ束縛するR2-P、公開pure Function→選択Provider→通常CLI／独立ConsumerのR3、StudioのStage1→Stage2実セルフビルドを並行P0とする。API／Wails Hostの公開・Node配線・B2C商品Headの結果をそれぞれ別Consumer／Target資格で受け入れ、P/G実験の局所成功を転用しない。これらの評価は設計と実装引渡しの更新であり、M1〜M3の実行PASS、製品Builder／Provider／Stage2全体、Ownerの新たな意味受理を**今回新規に実証するものではない**。
+
+### 16.49 生成メソッド名ではなく、意味上の経路と状態不変条件を検証する
+
+[自己記述の抽象経路 #5110](https://github.com/hat47x/tei-platform/pull/5110)、[アプリケーション抽象のテスト #5111](https://github.com/hat47x/tei-platform/pull/5111)、[プロセス実行図の検証 #5112](https://github.com/hat47x/tei-platform/pull/5112)はmainに統合され、Goの生成関数名やUI上のNode名を試験の安定識別子にしない方針が揃った。コード生成が分割・統合・インライン化しても、専門家が要求した**判断の経路**と**途中で保持すべき条件**は変わらないためである。
+
+最小の検収票は、既存Scenario／Independent Expectedの中で、**Test ID、SubjectのCanonical ID、入力とPhase、必須／禁止する抽象通過点、適用ScopeとRead対象、選択実現方式と実際のCall、途中で保つ状態、出力／Effect、証拠のAttempt**を対応付ける。これは新しい製品Path DSLやTrace Engineの定義ではなく、既存のSource Index／Typed Meaning／Operator／BuildPlan／実Caller／Resultを照合する順番である。
+
+「経路を確かめた」を四つに分ける。(1) **構造**：型付きRef／Relation／Portの接続可能性、(2) **実通過**：そのSubject／Inputに対するActual CallとRead対象、(3) **状態保存**：Reader・Generator・Operator選択・Scope・欠損／取得完全性・現在Grantの条件、(4) **実受領**：独立したConsumerが同じArtifact／Invocationから結果やEffectを受け取った事実。静的なGraphが描けたことを実通過と呼ばず、実行結果が合ったことを出典や途中の状態保存の証明へ昇格させない。実行できない範囲は`unknown`として残す。
+
+### 16.50 結果が同じでも失敗となる反例を、既存の実Go試験から育てる
+
+次の反例は、新しい検査基盤を作るための一覧ではない。**既存試験で既に観測した事実**と、**次の受入に残る仮説**を分け、[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)へそのまま渡せるようにする。
+
+| 反例と意味上の違い | 実Goの到達点・未達 | 次に守る条件 |
+| --- | --- | --- |
+| **AX-01** Plan解決後に生成Goへコメントを追記。正値判定は同じ | [#5109](https://github.com/hat47x/tei-platform/pull/5109)はmainにGo回帰を収録。旧Planでの通常`self-build`拒否とArtifact非生成を要求 | 判断結果の同値と、実Builderが消費したbyte／Attemptの一致を分ける |
+| **AX-02** 同じ値を返す別属性を読んだため、結果は同じ | [#5118](https://github.com/hat47x/tei-platform/pull/5118)はmainにData表由来Ruleの汎用評価／生成Go実Binary・Read ID／回数比較を収録。読取先だけを`allocation`から`person_id`へ替える負例あり | Resultだけでなく、要求した属性ID／一回のRead／NULL／未取得を照合する。実DB Providerの全件取得とは区別 |
+| **AX-03** 宣言とWorldは同じまま、Operatorの実装選択A→B | [#5114](https://github.com/hat47x/tei-platform/pull/5114)は現在審査中。旧生成Scenarioコマンドを実行前に拒否し、参照Planとの同値を回復する実装候補 | World Revisionと実装選択の現在性を別に照合。旧argvの偶然の結果一致を許さない |
+| **AX-04** `non-negative`を要求したが`non-zero`を選択。入力5なら結果が同じ | [#5113](https://github.com/hat47x/tei-platform/pull/5113)は審査中。宣言の近くの例表で入力0などの区別可能な値を検査する候補 | 例の合格は有限個の反証を通過した証拠であり、全入力・Owner意味受理の証明ではない |
+| **AX-05** 組織Relationの表示名を保ち、Target／Key／適用時点だけを変える | [#5115](https://github.com/hat47x/tei-platform/pull/5115)の型付き抽象経路試験は審査中 | 表示名や生成メソッド名ではなく、Relation identity・向き・多重度・Query／時点／Result属性を照合 |
+| **AX-06** Go/Node子Processが実際に起動し、生成Workbenchが実画面へ届く | [#5059](https://github.com/hat47x/tei-platform/pull/5059)のN2はmainに統合済み | N2の実Child証拠を、TEI生成Stage1自身によるStage2再構築／実Windows受領へ転用しない |
+
+AX-01／02の**main収録**と、実行したexact HEAD／対象TestのPASSは別に扱う。AX-03〜05は審査中の変更であり、そのPRの変更を今回のmain実装として記載しない。AX-04の例は期待を記述する根拠の一つだが、型付きOperator Lawそのものを有限行のテスト表で置き換えない。成功例だけで検証しにくい場合は、結果が一致する入力と結果が異なる入力を両方含める。
+
+### 16.51 最初の製品実験を増やさず、抽象経路の検収を三つのOwnerに引き渡す
+
+**第一にBuilder**。AX-01／02を既存R2-Pの根拠とし、元Rule／Reader／Generator、選択したGo、BuildPlan、実Builder入力、Artifactを**同じAttempt**に束縛する。二段階の改変負例（配置前のbyte取り違えとPlan解決後の差替え）を残し、A→B→AやGenerator版変更で旧Source資格を復活させない。担当は[#2595](https://github.com/hat47x/tei-platform/issues/2595)／[#4544](https://github.com/hat47x/tei-platform/issues/4544)／[#2600](https://github.com/hat47x/tei-platform/issues/2600)。
+
+**第二に実行・意味適合**。AX-03の実装選択Pinと、AX-04の有限な区別例を**独立した検査**として扱う。選択した実装の現在性、Actual Call、Operator契約への意味適合、現在Grantをそれぞれ確かめ、公開pure Function→通常CLI→実Provider→独立ConsumerのR3へ進める。抽象経路を表示する際も`Declared／Selected／Invoked／Observed`を結んでよいのは実証できた関係だけとする。担当は[#951](https://github.com/hat47x/tei-platform/issues/951)／[#1251](https://github.com/hat47x/tei-platform/issues/1251)／[#4495](https://github.com/hat47x/tei-platform/issues/4495)。
+
+**第三に自己記述とDesktop**。AX-05の型付き経路を、TEI自身のRequired Shape検査の一箇所置換（M1→M2）へ適用する。安定するのはSubject／義務／前提／不変条件であり、生成Goのメソッド名ではない。置換した判断を次のTEIが実使用したこと（M3）は、Studio Stage1→Stage2の再入と独立Consumerで受け入れる。担当は[dogfooding計画](../design/IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md)、[#2831](https://github.com/hat47x/tei-platform/issues/2831)／[#4583](https://github.com/hat47x/tei-platform/issues/4583)。
+
+いずれも、**新しいRuntime、Path Engine、テスト正本、Plugin Registry、Hostを先に作らない**。直接解釈P、生成G、Provider委譲Dのうち、現行の一Ruleで既に成立した証拠を再利用する。QueryのBag／Grain／NULL、組織の二時点、Nodeの同名別Occurrence、APIの開示Scopeを第二例として適用する場合は、最初のRuleと異なる**反証**を一件追加できることをCore昇格の判断材料にする。今回の研究計画統合で、正式R2-P／R3、Ownerの意味受理、Windows Stage2、AX-03〜05のPR統合や実行PASSを新たに主張しない。
