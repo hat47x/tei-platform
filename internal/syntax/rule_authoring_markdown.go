@@ -32,6 +32,13 @@ func ParseRuleAuthoringMarkdown(src string) ([]RuleAuthoringMarkdownRegion, erro
 	if err != nil {
 		return nil, err
 	}
+	return ParseRuleAuthoringRegions(src, regions)
+}
+
+// ParseRuleAuthoringRegions reads the given fenced regions of src as rule
+// authoring. It is the part of ParseRuleAuthoringMarkdown after the scan, for
+// a caller that scanned the document itself.
+func ParseRuleAuthoringRegions(src string, regions []MarkdownRegion) ([]RuleAuthoringMarkdownRegion, error) {
 	out := make([]RuleAuthoringMarkdownRegion, 0, len(regions))
 	seen := map[core.CanonicalID]Anchor{}
 	seenOperators := map[core.CanonicalID]Anchor{}
