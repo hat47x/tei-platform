@@ -205,7 +205,6 @@ Node-RED型のノード編集やマッシュアップは今後の有力なConsum
 
 同時進行の#2621正式Reader、#4495通常CLI実Provider、#2831/#4583非Plugin Stage1→Stage2を**主線**とし、W1のUI方式比較をそれらのブロッカーにしない。#4515 Pin、#2516 Disclosure、#951/#1016 Plugin/Kit、#993特殊Canvas、#1180/#2514独立ExpectedのOwnerを変更しない。業務Actionの認可、実Provider Effect、Receipt、Ownerの意味受理は必ず元Ownerへ返す。
 
-
 ## 12. Web UIと型付きFlowの共同受入（2026-11-15追加）
 
 ### 12.1 共通にするのは意味と接続契約であり、編集画面ではない

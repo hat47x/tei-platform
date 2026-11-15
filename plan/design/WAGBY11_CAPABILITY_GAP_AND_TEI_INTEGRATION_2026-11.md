@@ -272,3 +272,147 @@ Wagbyの機能一覧は利用者が目的の機能を探すための分類であ
 - 共有テーブルを意味的に異なるDataの乱立で表し、DB物理テーブル一致をIdentity同一視する方式。
 
 必要な業務の違いは削除せず、異なるFacet／適用先／時点／Effectと明示して残す。**アウフヘーベンは単なる統合や簡略化ではなく、既存の実務機能を保ったまま、意味の重複と責務の混乱を減らすこと**として評価する。
+
+
+## 11. X-TEAのFunction独立性を軸にした再配置：Data・Function・BusinessとTable Script（2026-11-15）
+
+> **位置づけ**：利用者の追加指摘を受け、前章の「意味上の受け皿」のうち、データに機能を従属させるように読める箇所を精密化した設計・試験候補。以下の名称は既存のTEI Function Data Context／Data Operations／Data Derivation／Process・State／Pluginの責務を説明するもので、新しいCore Objectや文法を採用する決定ではない。X-TEA原典の実際の実装挙動は#940/#1125で照合する。旧来の資料や対話由来の理解だけで原典仕様を確定しない。
+
+### 11.1 まず存在論を固定する：DataにFunctionを従属させない
+
+Data Modelは「存在するもの、識別、属性、関係、制約」、Function Modelは「実現すること、入出力、対象Context、操作・表示」、Business Modelは「なぜ、誰が、いつ行い、どの状態・責任へ至るか」を別視点から記述する。三要素の関係はTyped Referenceで追跡し、**Data→Functionの単方向包含・自動所有ではない**。Functionは複数Dataを統合しても、一つも業務DBに触れなくても成立する。Business ProcedureはFunctionや手作業・外部作用を参照するが、Function成功を業務完了へ自動昇格させない。
+
+- X-TEAを参考にした既存のFunction分類（Action／View／他Function呼出し等）は維持する。Functionを抽象的な単一万能Objectに押し込めず、既存#2506/#2507/#1158が保持する用途と型付き参照で扱う。機能の同一性はUI画面ID、DBテーブル、Queryファイル名とは異なる。
+- Data-firstの即時CRUD／検索は、Dataと利用可能なOperationから生成する**初期利用向けの導出機能**と位置付ける。明示Functionが存在する環境で、それと競合する別の更新規則・権限・意味の正本を自動生成しない（#1127）。Dataしかない段階と、Functionが明示された段階の共存・置換は検証対象である。
+- Function ModelのViewは「機能が必要とする情報を利用者へ提示すること」、Query／SQLのViewは「取得・変換されるデータ集合」、PresentationのViewは「描画・操作形式」を指す。**同じ『View』という言葉でも異なる責務**であり、SQL VIEWや表示部品を新しいData Modelと自動同一視しない。
+- 既存のData/Function/Businessの参照は関係として保持し、Relationが存在するだけでFunctionの入出力集合を暗黙拡大しない。Functionが要求するScopeと、Providerが実際に返したScope／Completenessを区別する。
+
+### 11.2 Wagby 11で見える機能をTEIの各モデルと実現機構へ割り付ける
+
+| Wagbyでの設定・機能 | 第一の意味上の責務 | Functionから使う要素／実現方式 | 排除すべき重複 |
+| --- | --- | --- | --- |
+| データ型、主キー、項目、親子・多対多 | **Data**の型・Identity・Relation・FD | Table Scriptの局所Rule、DB Providerの物理Mapping | Tableごとに機能View/業務Operationを所有させる |
+| 項目拡張定義、仮想項目、書式 | **Data**の値域・存在・保存性・型とFacet | Derived RuleへのID参照、Presentationへ表示型を委譲 | 項目に埋めたDSLとTable Scriptの二重実行 |
+| 取得時・保存時の計算、入力チェック | **Data**のConstraint／Derivationの適用先と時点 | 型付きOperator、Table lifecycle Rule (#1129/#1637) | 画面・SQL・Tableごとの別式意味 |
+| 検索条件、名前付き検索、複数一覧 | **Function**のView／入力・結果Context | Query/SQL、Relation Path、Function Data Context (#2506/#2586) | 画面の数だけData Modelを複製 |
+| 横断検索、複数表の集計、ダッシュボード | **Function**の集合・集約・粒度・表示用途 | Query/SQL/2waySQL・型付きOperator、Chart等のProjection | Query/GroupByをデータモデルの属性へ押し込む |
+| 一覧・詳細・カレンダー・マップ | **Function View**が求める情報・選択・操作 | 共通ContextのPresentation／UI Kit／Target | 表示器へ業務意味・行Identity・書込み資格を複写 |
+| 登録・更新・承認・取消 | **Function Action**とBusiness側の状態・責任 | Data Operations／State Transition／実Provider | Data CRUDへの全機能の従属、承認専用DB意味モデル |
+| イベント、承認経路、代理、業務手順 | **Business**のProcedure／Event／State／Actor | Trigger→Function Entry／Operation、標準Process Flow | Process図のNodeとFunction実体の無条件同一視 |
+| メール・帳票・MCP・Batch | 既存Function／Operationの結果・Effect | 選択Adapter／Template／Target Generator | 媒体ごとの第二のFunction/Rule/Authority |
+
+Wagby 11の[共有テーブル](https://wagby.com/manual11/relations-shared-table.html)は、TEIでは主として**一つのDataと複数Function Context／Projection**で吸収できる。一方、物理テーブルと複数の本当に異なる業務実体が対応する場合は、それぞれのIdentity/RoleをDataとして明示する。物理Tableの一致だけから同じ業務実体とも別実体とも断定しない。
+
+### 11.3 Function Contextを中心に検索・ビュー・SQLを構成する
+
+Functionは、利用者から見た入出力契約と必要なデータ集合を宣言する。既存のFunction Data Context（Definition／Instance／Result Slice）の想定に沿って、Query／SQLから得る列・Relation・複数Dataset、粒度、Identity、時点、取得条件、必要範囲、完全性、参照元、現在Authorityを明示する。
+
+1. **検索機能**：Function Viewが必要な結果集合、検索入力、固定条件と追加条件、sort/pageを定める。Queryはその要求を評価し、Providerで実行する。名前付き検索は別Data Modelではなく、同じFunctionへの特定の入口・Context Patternである。
+2. **複数検索・集計・グラフ**：Dataを増やさず、一つ／複数のFunctionで複数Contextを利用する。QueryのJOINで明細行が増幅されてもEntity個数と同一視しない。Aggregation後のResult Grainと編集元Entityは別。
+3. **SQLとDSLの分担**：通常のRelation Traverse／Filter／Aggregate／Sortは既存型付きQuery/Operatorを第一候補とし、複雑なSQLやProvider固有のクエリはNative SQL Sourceを保持する。SQL→標準表現への変換はQuery解析・診断・Target再生成の範囲を明示し、Native SQLとDSLの双方を同時に編集する第二正本にしない。2waySQLは別の新Query EngineでなくNative SQL Bindingと適用部分の検証案として扱う。
+4. **Function内の表示・編集**：Table/Form/Chart/Map等はContextの異なるProjection。ユーザーの変更から実データへの更新Intentを導けるかは#2500で評価する。非可逆な集計棒の値を、特定の明細へ勝手に逆写像しない。
+5. **認可**：固定検索条件はAuthorityの代替でない。ProviderとHostで現在のRead/Write/Disclosureを判定し、Query OptimizerにPolicyのPushdownが可能でも「Filterがあるから許可」と推定しない。
+
+**重要な性能・正しさの制約**：Table Scriptが導出する仮想項目をFunctionのFilter／Sort／Group／Limitで使う場合、取得した一部の行に対して後からスクリプトを実行するだけでは正しい結果にならない。#1640の既存Query計画がDerivationの依存と順序を認識し、SQL Pushdownが意味保存できれば利用する。できない場合は必要範囲を完全取得してから評価するか、\`unsupported\`にする。Wagbyの「表示時計算項目は検索条件・ソート項目にできない」という制限は、TEIの機能境界としてそのまま採用するのではなく、**導出値を検索可能にするための計画・性能・完全性の検証課題**として扱う。
+
+### 11.4 項目拡張定義には意味と参照を、Table Scriptには処理を集約する
+
+推奨する初期方針は、利用者が挙げた**後者**を基本とする。ただし「すべてをTable Scriptへ入れる」ではなく、**Dataに局所的な処理はTable Script／Data Rule、Function固有のデータ取得・変換はFunction Context／Query、複数箇所で再利用する純粋計算は型付きOperator／共通Function、業務状態変更はFunction Action／Business側**と役割を切る。
+
+| 置き場 | 記述すること | 記述しないこと |
+| --- | --- | --- |
+| Data／項目拡張定義 | 型、単位、値域、NULL、保存／仮想、表示向けFacet、業務上の属性ID、導出・検証Ruleへの**安定参照** | 実行可能な汎用DSL本体、イベントの順序、任意の外部Effect |
+| Table Script／Data Rule | 行／Table局所の導出、検証、入力正規化、old/draft/new、read／change／before-writeなどの適用Phase、依存・読み書き集合 | 機能全体の画面・Query集合、組織承認手順、外部APIのEntry契約 |
+| 共通Operator／Function | 汎用計算、共通判定、型・単位・丸め・NULLの法則を持つ純粋ロジック | 同じ式の画面・Tableへのコピー |
+| Function Model／Context | 機能の利用者・入出力・Query／SQL・複数集合・粒度・Presentation・操作とその適用条件 | 物理Tableの正本、Dataの普遍的制約の重複定義 |
+| Business／State／Operation | Task／Procedure、Event、状態遷移、Actor・責任・権限、永続化と外部Effectの意図 | 項目の表示書式や行計算の複製 |
+
+**項目拡張定義からはRule IDを辿れるようにするが、同じ式を二か所へ保存しない。** 例えば\`orderLine.amount\`を「非保存のDecimal／金額」と宣言し、Table Scriptの導出Rule \`orderLine.calculateAmount\`を参照可能にする。このIDの所有・解決は既存Subject/Rule/Source Indexを使い、新たなFormula Registryを作らない。項目画面で式を編集する体験を将来提供する場合も、更新先は**そのRuleを記述したScriptの原文**であり、項目定義に別の式をコピーしない。原文への逆編集が安全でなければプレビュー止まりとする。
+
+ただし、単純な必須・値域・キー等の**宣言的Constraint**はData Model側に残す。型とDB一意性などの契約をスクリプトでしか読めないものにはしない。Constraintを実行するときは、Table Scriptと同じ型付きOperatorを使い、複数のValidation Engineを作らない。
+
+#### 同一の属性に対する計算の帰属
+
+- **Dataに普遍的な値**：\`lineAmount = quantity × agreedUnitPrice\`のような行局所の導出はData RuleとしてTable Scriptにまとまって記述。複数のFunctionで同じ計算を使う。
+- **Functionに固有の値**：\`customerOutstandingAmount\`のように複数表、ユーザー、期間、取得範囲で変わる集計はFunction Context／Queryで計算。Data Modelの属性を無理に増やさない。
+- **業務上確定した値**：受注確定時の合計金額・単価など、後のマスター変更でも変えない値はAction／Transactionが保存。純粋な導出やキャッシュと区別する（#1641）。
+- **外部Effect**：書込み後のメール・在庫予約・連携はTable Scriptの読取Phaseで実行しない。Operation／Host／ProviderとReceiptを通す（#1129/#1174）。
+
+この境界により、**スクリプトが集約される利点**と、**機能モデルがデータから独立する利点**を両立する。Function固有の集計までTable Scriptへ入れるとDataがFunctionへ逆従属するため、意図的に避ける。
+
+### 11.5 Table Scriptのイベントは業務Eventと同一ではない
+
+Table ScriptのPhaseは「行を取得した／Draftを変更した／保存前を検証した／DB確定後の結果を受けた」などの**Data lifecycle接点**である。Business Modelの「申請された／承認された」、Functionの「検索を開始した」、Hostの「HTTP Requestを受け付けた」とは別種類の契機として既存Trigger／OperationへBindingする。
+
+読み取りで行う純粋導出と保存前の書込み検証は、副作用の有無も必要なContextも異なる。同じScript原文内に複数のRuleを置けても、Phase、Read-set／Write-set、型、適用先、再入、評価順、粒度、トランザクション境界を識別可能にする。イベント名の順だけで評価順を自動保証しない。依存が循環する場合は検出し、変更された行／属性に必要なRuleのみ評価できるかを検証する。
+
+初期設計で要求する区別は以下のとおり。
+
+| Phase上の目的 | 例 | 許される効果・注意 |
+| --- | --- | --- |
+| Context取得／読取側の導出 | 入力行から仮想金額を求める | Pure。全件判定にはQuery計画との接続が必要 |
+| Draft変更時 | 数量変更で仮計算・画面再表示 | Draftの一時値のみ。DB確定ではない |
+| Before-write | 入力正規化、計算、制約、旧行Version確認 | 宣言したTable／Transaction内の処理だけ。実AuthZとHost Commitは別 |
+| After-commit結果の扱い | 保存Receiptから通知を要求 | 実配送は別Effect／Outbox。再試行・二重配送・unknownを区別 |
+| Function／Business Event | 申請・承認で状態遷移を依頼 | 現在Actor/委任・State Guard・Operation Grantを再検査 |
+
+これは厳密な共通Hook列挙型を新設する提案ではない。実Phaseと名称・順序・利用可能Contextは既存#1129/#4198/#4495および選択Providerの実契約に照らして決める。
+
+### 11.6 受注・明細の例で一つの正本を保持する
+
+下記は**意味の配置を説明する表であり、採用済みのTEI DSLではない**。
+
+| 定義対象 | 一次の記述位置 | Functionからの利用 |
+| --- | --- | --- |
+| Product／Order／OrderLine、Relation、複合キー | Data Model | 複数Functionで参照 |
+| OrderLine.amount：仮想か保存か、Decimal／通貨 | Dataの項目拡張 | フォーム・一覧・帳票へ項目情報を投影 |
+| \`calculateLineAmount\`：数量×取引時点単価、NULL／丸め | OrderLineのTable Script（局所Rule） | 作成・編集・Queryで**同じ導出意味**を参照 |
+| 商品の現在価格の取得 | 商品Relation＋Query | 受注入力FunctionのContextで参照 |
+| 受注一覧（担当者別・期間別） | Function View＋Context Query | 同じOrder Dataから複数結果を取得 |
+| 受注確定時の単価Snapshotと合計保存 | Function Action＋Data Operation | DB Commit・Receiptを明示 |
+| 受注承認の段階・承認者・代理 | Business／State Transition／Organization | Function Actionを入口として呼ぶ |
+| UI、API、MCP、帳票 | Presentation／Transport／Target | 同じFunction／Context／RuleへBinding |
+
+**例外を無理に隠さない**：受注一覧の検索時に非保存の行金額が必要なら、計算順の正しさを#1640で確認する。保存済み金額だけを使う場合でも元データ・時点・単位を照合する。複数Provider横断で原子的な保存が保証できない場合は、保存成功に見せず部分確定・unknownをそのまま返す。
+
+### 11.7 独立Expected候補：Functionをデータ従属へ戻さない
+
+| ID | 反例・検証内容 | 期待・帰属 |
+| --- | --- | --- |
+| W11-FM-01 | 同じOrderデータに受注検索・明細編集・売上集計・帳票の各Function | Dataを複製せず、各Functionが別Context／操作契約を持つ |
+| W11-FM-02 | 外部APIと計算だけで成立するFunction、DB対象0件 | Data Modelが先にないとFunctionが作れない設計を拒否 |
+| W11-FM-03 | Dataから暫定CRUD生成後、明示Functionへ移行 | 同じ業務Operationが二重実行・二重正本にならない |
+| W11-FM-04 | 項目拡張に式A、Table Scriptに異なる式B | 単一Rule IDへの帰属衝突として診断。暗黙の実行順で解決しない |
+| W11-FM-05 | 画面入力中の計算と通常CLI保存時の計算 | 両者で同じRuleを利用、Draft値とCommit値を別に観測 |
+| W11-FM-06 | 仮想導出値で検索／並べ替え／ページ分割 | 不正な早期Limitを拒否。SQL Pushdown・完全取得・unsupportedを条件付き選択 |
+| W11-FM-07 | 2子行と別集合3行をJOINし集計 | JOIN後6行を業務明細6件と誤認しない、元行Identity・粒度維持 |
+| W11-FM-08 | 一つのFunction ViewをTable／Map／Chartへ投影 | 表示を変えてもFunction Meaningが増えず、集計値への不可逆更新は拒否 |
+| W11-FM-09 | 一つの承認ActionをWeb／CLI／Nodeから起動 | 状態遷移、Actor、現在Grant、実Receiptが一致する契約を使う |
+| W11-FM-10 | Table Scriptの読取Phaseで外部配送を実行しようとする | Pure/Effect境界で拒否、Operation/Providerへ正しく移管 |
+| W11-FM-11 | 商品単価の変更後に受注を再読込 | 取引時Snapshotを保存事実として保持し、現在参照Projectionだけ変化 |
+| W11-FM-12 | Native SQLとDSLが同じQueryを別正本として編集 | 正本Sourceと派生表示を識別し、競合・Lossを検出 |
+
+これらは新しい独立Test Suiteを立てるものではない。W11-AH-01〜12と一部重なるものは**別のテストデータやRuleを複製せず同じ既存Scenarioへ参照で束ねる**。検証時の合格・未実行・未対応の分類は#1180/#2514に従う。
+
+### 11.8 既存担当への分配と実装順
+
+| 論点 | 既存Owner・成果を利用する場所 | 追加する最小差分 |
+| --- | --- | --- |
+| Data／Function独立、三要素の関係 | #1125、#1031、#1126、#2506、#2507 | FunctionなしData／DataなしFunctionを含む対応・不整合診断 |
+| Function Contextの検索／集計／SQL | #2387、#2506、#2586、#1640、#2500 | Function別QueryとView・集計・更新逆写像の同一意味検証 |
+| Table Script／Derived Field／時点 | #1129、#1637、#1640、#1641、#2622 | Field metadata=意味／参照、Script=Phase別局所Ruleの競合診断 |
+| 項目拡張の型・Facet・表示 | #3816、#2495、#2497、#3278 | 仮想・保存・型・表示・Rule参照の分離 |
+| 業務Event／State／Process Flow | #4198、#2386、#4490、#1158、#4495 | Table event／Function Trigger／Business Transitionの区別 |
+| データ操作・多Provider・実Effect | #2622、#1127、#1174、#2597/#2598 | 同一Function／Operationの実Provider・Effect資格 |
+| Authoring・実Generator・セルフビルド | #2621、#1018、#988、#2831、#4583 | 既存Reader/Builderの選択と実消費。新Grammar・新P0なし |
+
+**段階順は変更しない**：先に一つの正式Source／Query／Function Data Contextからの実Read・限定Derived Rule→Go生成・通常CLI実Providerを通す。その後にTable Scriptのイベント付き仮想値、検索用導出最適化、親子保存／業務状態遷移へ広げる。Studio Stage1→Stage2のP0は並行する。
+
+### 11.9 未決の設計判断を狭く残す
+
+1. **ScriptのAuthoring粒度**：Table単位のScriptを一つのファイルにまとめるか、Ruleごとに別ファイルでTable配下に参照するか。いずれも式の一次定義元は一つ。StudioでTableのScriptを一覧・追跡できれば物理ファイル数は意味上の問題ではない。
+2. **項目拡張からの参照記法**：Fieldが\`derived-by\`相当の参照を明記するか、Table Scriptの書込先から逆引きするか。両方向を独立編集させず、Source spanと一意性・診断を比較して選ぶ。
+3. **Function固有RuleとData Ruleの合成順**：共有計算とFunction専用補正の競合を暗黙の上書き順にしない。適用Phase／依存／優先・失敗／読み書き集合を反例で決める。
+4. **SQL Pushdown対象の拡大**：同じRuleをSQL／Go／外部Providerで実現できる場合の型・NULL・丸め・権限・完全性一致を限定試験する。利用できない場合に見かけの全件検索を返さない。
+
+この4点は実装済みの意味契約・受入条件が揃うまで候補として保持する。**方向性としては「FunctionはDataに従属させない」「Dataに普遍的な導出はTable Script／Data Ruleへ集約する」「Field拡張へ別の実行DSLを複製しない」の3点を基準にする。**
