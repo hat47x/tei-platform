@@ -1854,7 +1854,7 @@ CLI・Studio・生成Goから再利用する際も、**単一の受理済みSour
 | ORG-BT-04 片軸だけ外れた時点 | 第三版のvalid終了・known終了、valid開始前では元の新版だけに戻る | 区間端点の排他を曖昧にしない |
 | ORG-BT-05 所属と人物の粒度 | 異なるMembership IDや同一Personの兼務は、上記の単一Occurrenceの版競合とは別に数える | Membership版数・Membership数・Person実人数を同一視しない |
 
-`TestOrgAxisAsOfBitemporalRectangleCandidateOptIn`は既存の隔離PostgreSQL `tei_org_axis_e2e` に接続し、トランザクション内の一時テーブルでORG-BT-01〜04を検証する。既存製品のPersistence・Query・Ruleや正本fixtureは変更しない。CIでは試験名の明示PASSを必須とし、未実行（SKIP）を実証済みにしない。ORG-BT-05は人物の正式Relation/Owner意味受理が必要なため、今回のSQL試験には含めない。
+`TestOrgAxisAsOfBitemporalRectangleCandidateOptIn`は既存の隔離PostgreSQL `tei_org_axis_e2e` に接続し、トランザクション内の一時テーブルでORG-BT-01〜04を検証する。既存製品のPersistence・Query・Ruleや正本fixtureは変更しない。CIでは試験名の明示PASSを必須とし、未実行（SKIP）を実証済みにしない。ORG-BT-05のうち、**別Membership occurrenceが同一validAt/knownAtで共存する正例**を隔離DBで確認する。複数Membershipを同一Personに対応付けて実人数を計数する検証は、人物の正式Relation/Owner意味受理が必要なため今回のSQL試験には含めない。
 
 ### 39.3 物理実装前に分ける判断
 
