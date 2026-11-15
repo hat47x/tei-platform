@@ -844,6 +844,28 @@ P0の優先順位は**Desktop Stage1→Stage2／通常`tei`実Provider／正式R
 
 **実装とCIの実観測（2026-11-15）**：[Draft PR #4842](https://github.com/hat47x/tei-platform/pull/4842)のexact HEAD `b38e0058`にはこの純粋投影、7つのNode回帰と標準`npm test`への登録がある。[Workbench embedded bundle CI #43676020851](https://github.com/hat47x/tei-platform/actions/runs/43676020851)のログでは、新設したS-LOC **7件はすべてPASS**。ただし同Workflowは既存のPin Product Reader Fixtureに`authorityLimits`が欠けること、`main.ts`と`index.html`のPinボタンIDが異なることなどから**overall FAIL**。Windows CI #43676020844も、`internal/jsonl.ReadBytes`二重宣言と静的Workbench固定版不一致でFAIL。二重宣言は後続[PR #4844](https://github.com/hat47x/tei-platform/pull/4844)がmainへマージして修正したが、**#4842の旧HEADに遡ってCI成功を付与しない**。現行Pin Fixture／UI接続と生成・埋込資産は別の修正・検収対象とし、総合CI成功または製品S-LOC完了をここでは主張しない。
 
+
+#### 0.18.8 一つの実SourceからStudioの実Consumerへ：固定対象と配布版を分けて検収する（2026-11-15）
+
+**次の縦切りは、すでに存在する `semantic-capability:sales.order.submit` 一件を固定して、原典→Host Inspect→S-LOC→Pin→正規配布Workbench→実Wails Consumerをつなぐ。** 新しい画面FrameworkやSource Open APIを先に足さない。実行モデル図解 [#4853](https://github.com/hat47x/tei-platform/pull/4853) がmainに追加したGo回帰は、`reference/workspace`の実Source `semantic/sales/order.tei`、Canonical Capability ID、Source Indexの元byte範囲・Artifact指紋、`TraceSubjectSources`の参照対応を検査する。このGoテストのmain収録と、そのHEADでの全体CI成功や正式意味受理は別資格である。
+
+**既知の不整合を減らした順に、同一HEADで検収する。**
+
+| 検収段階 | 既存実装と最小作業 | 合格に必要な観測／不合格となる例 |
+| --- | --- | --- |
+| **P-01 Goの元Source照合** | `InspectSubject`と`TraceSubjectSources`を実Workspace・一Capabilityへ実行。CanonicalはSourceの有無から逆算せず、先に実Worldで解決 | Kind/ID、Source Index Fingerprint、raw byteの識別子位置、Role/Artifact Fingerprint一致。未宣言Capabilityは`SUBJECT_NOT_FOUND`であり、Traceの空集合を不存在の証明にしない |
+| **P-02 S-LOC純粋投影** | main収録済み`source-locations.ts`を実`InspectSubject.sources`に適用。複数参照・20件省略・Go nil配列・UTF-8 byte位置を失わない | mainの7件の合成Node試験と、**P-01実HostのJSONを入力とした別Expected**の双方。合成データの成功だけで実Host同型・Disclosure適格としない |
+| **P-03 Pinと表示Source** | main `readInspection`の四つの`authorityLimits`をPin読取にも必須化。WorkBenchが**閲覧中のB**と**固定対象A**を別レーンで保持。参照HTMLのPinボタンIDを実`main.ts`と同一にする | [#4869](https://github.com/hat47x/tei-platform/pull/4869)はFixtureの修正と欠落拒否をmainへマージ済み。Node24の当該HEADではPIN-PRODUCTとPIN-READER試験がPASS、ただしPIN-WIRING-03は別失敗。[#4876](https://github.com/hat47x/tei-platform/pull/4876)の二ID修正を別検収。A→B→Aと旧ReplyでBのEditor/Graph/DOMを変えない |
+| **P-04 正規の配布資産** | **現行の**`reference/tei-studio-workbench/main.ts`／`index.html`／`style.css`と依存Lockを入力に、Node24 `npm ci`→`npm test`→`typecheck`→`build`。生成`dist`から`cmd/tei-studio/assets/workbench/`を同期し、既存Static CompositionのSource pinを**現行の依存byte閉包**で更新 | Go `//go:embed`で読まれるHTML/JS/CSS/第三者通知のbyte一致と配信JS一致。pinを無効化する、期待を現在HEADに合わせて緩める、古い[#4812](https://github.com/hat47x/tei-platform/pull/4812)のJSだけを転用することはFAIL |
+| **P-05 実Wails Consumer** | 同一HEADの通常／生成Desktop exe、実Windows WebView2、同一Service/Workspace/Subject/Source版で実`CatalogWorkspace`→`InspectSubject`→S-LOC参照位置とPinのDOM/ARIAを確認 | Bridge実Call、実配布JS digest、Pin Aの後着結果に対するBの非干渉、旧版／権限不足／未取得での拒否。正規Bundle一致、Reference Node成功、普通版Windows起動だけを合算しない |
+| **P-06 Stage1→Stage2** | #2831/#4583の正式Build Intentと実BuilderがStage1 TEIの実ProcessからN0〜N3を実起動し、生成された**Stage2 exe自身**でP-05を再実行 | Build Execution/ArtifactSet/実起動主体/Process/Go・Wails Toolchain/Source/JS byte/Windowを同じAttemptで照合。P-01〜05成功だけではStage2セルフビルドを名乗らない |
+
+**UI／権限上の停止線**：現mainの`cmd/tei-studio/assets/workbench/main.js`／`index.html`は、参照用TypeScriptが持つPin UIをまだ配信していない。実`main.ts`は`unpin-current`／`inspect-pinned`を参照する一方、参照HTMLには旧`pin-release`／`pin-check`が残っていた。IDはSourceとして修正できても、**P-04の配布Bundle生成とP-05の実DOM受領の代わりにならない**。表示する`Artifact.path`／byte位置や`authorityLimits`は現在Grantや開示可否を証明しない。AI/Harness、SHO/SUI、Plugin公開ManualへSourceパス・本文を渡す場合は、既存#2516のRecipient/Disclosureを送信直前に別途確認する。
+
+**最小のOwner分担**：P-01は#1124/#3788と実行モデル、P-02/03は#1824/#4515、P-04/05は#1824/#3421/#4583、P-06は#2831/#4583、Expectedは#1180/#2514へ戻す。S-OPENの実Raw再読取、正式`*.tei.md` Readerの言語受理、通常CLIの実Provider/Plugin Invokeは別Ownerの並行P0・後続段階とする。第二のSource Registry／Desktop専用Host／万能Approval Gateを追加しない。
+
+**証拠の上限**：本節は現在のSourceと実試験が示す未接続箇所を具体的な工程へ振り分けた設計更新であり、新しいNode/Windows/Stage2/Source Open/Grant/Meaningの合格を宣言するものではない。PR #4876の最新CI・マージ状態は、その検証時点の実結果で更新する。
+
 ## 1. 位置づけと判断済み前提
 
 - **TEI Studio**はData/Function/Business三視点、Data Context、Source/Meaning、DBクライアント、Plugin、テスト、SHO文書機能への統合Workbench。
