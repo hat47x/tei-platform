@@ -920,6 +920,30 @@ S0〜S4を一度に実装しない。**固定6入力に対するGraph/RuleのGo�
 
 ここで確認するのは**現行の選択と消費の断点**であり、Graph対象の新Registry、別Parser/Runtime、第二Acceptance、全Markdown構文対応、Studio依存のHard Gateを新設する理由にはならない。独立Expectedの採否は既存#1180/#2514に委ねる。
 
+<!-- tei-declarative-implemented-rule-to-product-selection-20261115 -->
+#### 実装済みの低ノイズRule候補を、製品Language選択から切り離して評価する
+
+[main統合済み #4405](https://github.com/hat47x/tei-platform/pull/4405)で、`rule <id>: <attribute> is positive`／`is unique per <relation>` の**低ノイズ構文候補**が、`internal/syntax/rule_authoring.go`の`ParseRuleAuthoringFile`、`rule_authoring_validation.go`の`RuleNamespace`、`rule_authoring_anchor.go`の`ParseRuleAuthoringAnchored`として実装された。候補は既存`semantic.Validation`へ写され、既存Validator/Evaluatorを使う独立Expectedとの局所比較・元byte span・明示Formatterの意味不変検査がある。旧`validation`のParserは変更されず、`rule`の正式Grammar採用、`Workspace.Load`での新Frontend選択、OwnerのMeaning受理、実Generator／Host実行は**行われていない**。旧HEAD #4405のRepository Health／Cacheはfailure、focused Go等の成功を最新mainの全体PASSに読み替えない。
+
+ここで混同しやすい**別の二つの入口**を、同じタスクで実装済みにしない。
+
+| 入り口 | 現在確かめられること | 次の実装責務 |
+| --- | --- | --- |
+| `*.tei`向け低ノイズ`rule`候補 | 直接呼ばれた専用候補Parser→従来`semantic.Validation`、単一ParseからのAnchor、局所Evaluator／Formatter比較 | 正式構文の採否は#4359。Language／`formatVersion`と従来Loaderへの参加を決めるまで、通常Sourceで自動受理しない |
+| `*.tei.md`のGraph／Rule／Window候補 | Manifest／Pinned Root／Source IndexのS0-Pと限定Graph/Rule生成、Window5原本のbyte追跡 | **最初の製品S0-AはGraph／Rule一Source**。実`Workspace.Load`で受理済みLanguage Selectionに基づくReaderを呼び、同じbyte／Span／Indexを照合する |
+| Language Plugin選択の限定Reference | `reference/dsl-language-plugin/selection.go`の`ParseSelected`は、**既に受理されたexact Selection**とProvider候補を比較できる | 製品Manifest／既存Plugin Contract／LockからそのSelectionを得るOwner接続は未実装。Referenceの`Resolve`を製品Registryだと仮定しない |
+
+**最初のコードPRをさらに小さく分割する**（[自己記述§47.5](../design/ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md)、#988/#1018/#2621、第二Resolverは作らない）。
+
+- **A0：実選択の供給元を確定**。Workspace／Source Root／pathに対し、既存の受理済みLanguage Contract・Provider実装・版／Lockを現在の製品APIから取得できるかを調べる。供給不能・競合・版不一致なら`TEI_MD_PARSER_UNBOUND`または明示unsupportedで停止する。新しいManifest fieldや暫定auto-selectは採用しない。
+- **A1：同一Load内のSource実消費**。A0が成立した**選択済みGraph／Rule一原本**のみ、既存`scanManagedFiles`／Pinned Root／`ReadByLoader`の区別を保ち、製品Readerへ元byteを渡す。テスト専用`readPinnedWorkspaceFile`の呼出しはS0-Pに留まる。
+- **A2：意味候補と元位置**。同じLoadのSource Index／byte rangeと、Parserが実際に読んだNode／Edge／Ruleの候補を照合する。Source Indexの`Format=md`、`RoleDefinition`等を選択済みLanguageや業務Meaning受理へ昇格させない。
+- **A3：負例と旧版回帰**。未選択／同名の管理外Draft／Provider版不一致／Fence中の例示／重複ID／旧Index／A→B→Aを個別拒否し、既存`*.tei`の正常Loadを回帰する。失敗時に部分的な`World`や実行可能Subjectを返さない。
+
+**手戻りを防ぐ優先順**：先にA0の**実製品APIの不足**を明らかにし、未解決ならそこで停止してOwnerへ戻す。A0を突破できないことを理由にReference Parserを`Workspace.Load`へ直接結線しない。A1〜A3の後に、同じ独立Expectedを使って正式Meaning→一Ruleの実Go分岐→実Builder Source member／Artifact／通常CLI・Plugin／別Consumerへ進む（#4544/#2595/#1251）。[main #4822](https://github.com/hat47x/tei-platform/pull/4822)のNULL・0・行不在で同じ集計値になる実DB負例は、後続のQuery／意味同値検収へ回し、A0〜A3の新Hard Gateにはしない。
+
+**評価の軸**：読者の「対象→条件→判断→結果」という認知順、記述量・重複、既存Validationとの意味同値、元位置・診断の品質、製品Loaderでの実消費と、変更時に手書き処理が減った割合を**別々に記録**する。構文が短いだけで自己構築済みとは数えない。全体P0のWindows Stage1→Stage2と通常`tei`実Provider／独立Consumerを独立して継続する。
+
 #### S0予備検証と正式Reader接続を分け、生成物の実消費までつなぐ（2026年11月15日）
 
 **S0-Pはmainに統合済み、S0-Aは未実装（2026年11月15日更新）。** [#4751](https://github.com/hat47x/tei-platform/pull/4751)では、実Workspace Manifestの`semantic` Root、未宣言`drafts`の除外、同一Pinned Rootからの元byte、固定されたGraph/Rule候補、既存Source IndexのFingerprint/Span、原文変更時の旧Index拒否を**テスト専用の事前検査**として接続した。旧[#4745](https://github.com/hat47x/tei-platform/pull/4745)は未マージでクローズされ、同内容の実Go試験が#4751からmainへ入った。現行の`Workspace.Load`は未選択`*.tei.md`に`TEI_MD_PARSER_UNBOUND`を返し続ける。これは意図した安全な境界であって、予備検査の成功により製品Readerを解放する理由にはならない。
