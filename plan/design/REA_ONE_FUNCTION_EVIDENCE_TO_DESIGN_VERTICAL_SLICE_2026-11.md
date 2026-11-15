@@ -451,3 +451,15 @@ Graphの構造的全件性、Function Read/Write、Owner受理、Source Patchの
 
 この修正はread-onlyのWire Projectionに限る。JSONにSourceが存在すること自体も、Sourceの**現在性・編集可能なSlot・Owner意味受理・Current Grant**を示すものではない。SourceのRaw digestと派生digest、Application GraphとSemantic Graph、関係の多重度／時間条件を引き続き分離し、下流Consumerは未知Schema/Statusと相手側Source欠落をfail-closedで扱う。正式`*.tei.md` Reader、Windows Wails JS実受領、実Provider Function Read/Write、Source Apply/Save/ReRead、SHO、Plugin自己構築は別の検証であり、P0の優先順位は維持する。
 
+## 19. 旧CLIの無条件「変更なし」判定と入力情報漏出を停止する（2026-11-15）
+
+現行の`tei three-element rea-intake -before`には、以前のReviewPacketをJSONとして読んだだけで、実際の候補対応を検査せず、3つの固定Candidate IDをすべて`unchanged`と出力する経路があった。§16〜18で整備した`reacandidate.CompareCandidateSets`は、この旧CLIの`-before`経路では**呼ばれていない**。候補IDの一致や同じJSON構造は、Provider観測事実の変化・外部Occurrenceの再採番・Source A→B→A・Owner受理の継続を証明しない。旧CLIの出力を受けるConsumerが`unchanged`を自動採用すると危険である。
+
+**今回の実装判断**：旧CLIにもう一つの独立したComparatorを作らず、`-before`の比較要求は実装済み`reacandidate`とのSource-backedな接続ができるまで**`REA_COMPARISON_UNAVAILABLE`（終了コード2）で拒否**する。以前のReviewPacketが同一、変更済み、空のJSON Objectのいずれでも`unchanged`を捏造しない。壊れたJSON・存在しないファイル・`null`は`BEFORE_SET_READ_FAILED`を返す。拒否時に`-output`へ成功ReviewPacketを書かない。通常の`rea-intake -evidence`の既存read-only Previewは維持し、この修正自体を完全な三要素受理とは呼ばない。
+
+同じCLIの`candidateSetFingerprint`は、`fmt.Sprintf("%x", evidence)`で原本Byte全体を16進文字列化していた。これはハッシュではなく、原本そのものの可逆表現である。今回`sha256:<hex>`の**原本入力byte digest**へ変更する。`fingerprintBasis: raw-evidence-bytes-not-candidate-identity`を明示し、既存フィールド名だけから正式CandidateSetの内容識別やProviderの資格が確定したと誤読しない。SHA256一致だけでSourceの現在性、外部観測内容、問別のEvidence充足、Owner Decisionや編集許可を復活させない。
+
+回帰は旧CLIの実Go handler経由で、同じ原本と変更済み/空の過去Review、無効JSON／欠落／`null`、`-output`の未生成、入力byte digestが正しいことを確かめる。これは`tei`バイナリを独立起動した第二Consumerの証拠ではない。以降は既存`reacandidate` Reader・Comparator・ReviewPacketと、`three-element rea-intake`の入口を無理に統合せず、実Evidenceから実候補へ渡る一経路の同一性／Effect／Provenanceを先に確かめる。その検収まで`-before`を有効化しない。
+
+**製品P0の優先は変更しない**。正式`*.tei.md` Reader／Studio Stage1→Stage2 Windows実受領（#4583/#2831）と通常CLI→実Provider→実Function Context（#2586）は継続し、新しいHost／Parser／Comparator／Meaning Store／独立Expectedを追加しない。Source-backedな正式Writer/SHO Save・Owner受理・Native JS第二Consumer（#4661）は別資格のままとする。
+
