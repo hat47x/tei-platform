@@ -779,4 +779,21 @@ Solver・実験計画法は、同じ計算契約・観測・受理の分離を�
 
 ## 24. 確認できたことと未実証のこと
 
-この文書は、2026年11月14日時点の既存Issue・設計資料と分野横断の検討を踏まえた**設計・検証計画**である。SQLite方言のCTE・Windowによる限定的なGo回帰テストは[PR #4670](https://github.com/hat47x/tei-platform/pull/4670)でmainへ統合され、対象HEADのSQL Dialect Plugin CIが成功した。また、生成器選抜には受理済み`positive` ValidationからGo成果物を作るReference実装がある。ただし、現在の`*.tei.md` Workspace読込はReader未束縛を明示拒否しており、これら既存Referenceは数理Windowの意味受理、正式Reader、TEI自身のコード生成、通常CLI/MCPの実利用、NoSQLや科学計算Providerとの同等性を保証しない。今回のMarkdown表や数値・単位・Backend選択の反例は**設計候補・独立Expected**であり、新しいGo／R／Python／Windows／科学計算の実行、専門家レビュー、市場調査を行ったわけではない。数値計算やSolver、実験計画法、専門Toolkitが製品として完成したとは判断せず、採否は既存OwnerのIssue／ADR／実Evidenceへ戻す。
+2026年11月15日時点で、数理ツールキットは**原文を追跡する試験専用S0-P**と、**固定入力・生成SQL・実DB・独立Expectedを照合するC0**までを、それぞれ段階的に実証した。両者はまだ正式な`*.tei.md` Readerから連続して実行された一つの製品経路ではない。現行`Workspace.Load`は、選択されたMarkdownでもReaderが未束縛なら`TEI_MD_PARSER_UNBOUND`として拒否する。
+
+実証の到達点は次のように区別する。
+
+| 対象 | main統合済みの実証 | まだ主張できないこと |
+| --- | --- | --- |
+| Source選択・原本 | [#4776](https://github.com/hat47x/tei-platform/pull/4776)、[#4792](https://github.com/hat47x/tei-platform/pull/4792)：Manifest管理Root、Pinned原文、五つの候補のSHA-256・元byte位置・旧Index失効、管理外draftの隔離 | Markdown表の正式Role/Cell抽出、重複ID・派生表示不一致の意味診断、Owner受理 |
+| 入力と固定Expected | [#4754](https://github.com/hat47x/tei-platform/pull/4754)：七つの観測ID、系列、順序、整数、B2の明示NULLと三種のWindow結果を別々に照合 | 固定JSONが正式Readerの選択した意味であること、外部Sourceの全件取得・一意性 |
+| 実SQLと入力変更 | [#4760](https://github.com/hat47x/tei-platform/pull/4760)、[#4822](https://github.com/hat47x/tei-platform/pull/4822)：七行の実SQLite表へのバインド、Frame変更、A3更新、B2のNULL→0→行削除で同じ生成SQLの結果と入力閉包を比較 | 標準QueryのWindow意味、製品Providerの実Call、現在のデータSnapshot／実行許可 |
+| 生成コードと資格の境界 | [Graph／Rule #4758](https://github.com/hat47x/tei-platform/pull/4758)：限定Reference生成物から候補構造指紋を実照会。[WindowのOpaque拒否 #4731](https://github.com/hat47x/tei-platform/pull/4731)：未対応SQLを意味欠落したSQLへ変換しない | 正式Target Generator、意味受理の継承、Plugin二Consumer、Studio Stage1→Stage2 |
+
+特に[#4822](https://github.com/hat47x/tei-platform/pull/4822)では、B2をNULLから0に変更するとB3の累積RANGE平均は10から`20/3`に変わり、B2行を削除すると**平均は10へ戻るのに入力が七行から六行へ減る**。これは[BRMS決定分析 #4765](https://github.com/hat47x/tei-platform/pull/4765)で整理した部分観測と同じ問題である。**集計値の一致は、元データの同一性、取得の完全性、現在の意味・実行資格を証明しない**。元Source／候補構造／受理済みMeaning／生成Artifact／実Dataset／Observationの版・資格を、既存のEvidence／Build契約に従って区別する。
+
+検証結果の範囲も維持する。#4754と#4760では対象HEADの全体健全性を含むCIの成功を確認済み。#4776は8件のCIが成功している。#4792はmainへ統合されたが、対象HEADの全体Healthには**別のDesktop設計書のMarkdown escape不備による失敗**があり、その後のmainで該当不備が修正されたことと当時の合格判定を混同しない。#4822は対象HEADの**SQL Dialect Pluginと増分Cache CI成功を確認して統合**したが、統合時点で全体Healthは待機中だったため合格を先取りしない。これらは別々のHEAD・Attemptの証拠であり、成功結果を寄せ集めて一つの製品E2E受入にはしない。
+
+次の最小接続は、既存#2621/#988の製品S0-Aにおいて、**Manifestで選択した同じPinned Sourceを正式Frontendが実消費し、どの表・Cellからどの型付き意味候補を作ったか**を確認することにある。Graph／Ruleを先行し、次にWindowの観測・Frame／Partition／Order／NULLを受理済み意味から生成SQLへLoweringし、通常CLI→実Provider／独立Consumerまで照合する。Studio Desktop Stage1→Stage2の実セルフビルドは全体P0として維持する。
+
+数学・統計・Solver、実験計画法、専門科学Provider、NoSQLとの意味同等性、R／Python等の外部実行は本節の局所回帰によって完成したわけではない。新しいReader、専用Runtime／Host、Scenario正本や一括Hard Gateは追加せず、型・精度・作用範囲・ライセンスを含む採否判断は既存OwnerのIssue／ADRと実Evidenceへ引き渡す。
