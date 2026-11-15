@@ -1,0 +1,6 @@
+workspace: tei_md_self_description
+formatVersion: 1
+sources:
+  - semantic
+languages:
+  - tei.authoring/v1
