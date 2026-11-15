@@ -102,12 +102,14 @@ test('current Inspect candidate pins its UI and presentation dependencies', asyn
   const graphSource = await readFile(new URL('reference/tei-studio-graph/graph.ts', root), 'utf8');
   const htmlSource = await readFile(new URL('reference/tei-studio-workbench/index.html', root), 'utf8');
   const presentationSource = await readFile(new URL('reference/tei-studio-workbench/presentation.ts', root), 'utf8');
+  const embeddedHtml = await readFile(new URL('cmd/tei-studio/assets/workbench/index.html', root), 'utf8');
   assert.equal(pinnedWorkbenchRevision(source), pin);
   assert.equal(inspectPinnedDependencies(pin, commandSource, responsesSource, graphSource, htmlSource, presentationSource), true);
   assert.throws(() => pinnedWorkbenchRevision(source + '\n'), /workbench_revision_mismatch/);
   assert.throws(() => inspectPinnedDependencies(pin, commandSource, responsesSource, graphSource, htmlSource + '\n', presentationSource), /html_revision_mismatch/);
   assert.throws(() => inspectPinnedDependencies(pin, commandSource, responsesSource, graphSource, htmlSource, presentationSource + '\n'), /presentation_revision_mismatch/);
   assert.ok(htmlSource.includes('id="inspection-limits"'));
+  assert.equal(gitBlobSHA(embeddedHtml), pin.htmlBlob, 'embedded UI must match the qualified HTML');
   assert.ok(connectWorkbenchSource(source).includes('showInspectionLimits(view.authorityLimits)'));
 });
 

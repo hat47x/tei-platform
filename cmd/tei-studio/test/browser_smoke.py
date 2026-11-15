@@ -176,6 +176,8 @@ def smoke_workbench(browser, base_url):
         "document.querySelector('#notice')?.textContent?.includes('検証') === true",
         timeout=10_000,
     )
+    assert page.locator("#inspection-limits-state").inner_text() == "実際のInspect結果に付随する制限"
+    assert page.locator("#inspection-limits li").count() > 0
 
     for path in ("/workbench/main.js", "/workbench/style.css", "/wails/runtime.js"):
         assert path in assets, "Workbench did not load " + path
