@@ -3,7 +3,7 @@
 - **位置付け**：2026-11-16の横断設計・実装引渡し案。既存のContract／Provider、標準Data／Process、Build、Host Authority、独立Expectedを接続する。新しいCore列挙、Registry、Host、Graph Runtime、万能Adapterや実行許可の正本は提案しない。
 - **対象**：Language Reader／Operator／Data Provider／Target Generator／API公開／Studio表示など、一つのPackageに同居し得る複数の貢献。
 - **優先事項**：通常製品CLIからの実Provider Call（#4495）、正式Sourceから実Builder入力までのR2-P（#2595／#4544）、Studio Stage1からStage2実Windows WebView2の再構築（#2831／#4583）を止めない。
-- **接続する既存設計**：[プラグイン入出力Mapping](PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md)、[役割別合成§25〜26](PLUGIN_ROLE_COMPOSITION_AND_STUDIO_REENTRY_2026-11.md)、[接続Evidence](PLUGIN_CONNECTION_EVIDENCE_AND_COMPOSITION_SLICE_2026-11.md)、[標準Flowの型付きPort](SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)、[Studio／CLIの配置](STUDIO_CLI_BACKEND_PROCESS_DISTRIBUTION_UPDATE_2026-11.md)、[図表の実現方式](DIAGRAM_TO_REALIZATION_STRATEGY_AND_HOOKS_2026-11.md)。
+- **接続する既存設計**：[プラグイン入出力Mapping](PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md)、[役割別合成§25〜26](PLUGIN_ROLE_COMPOSITION_AND_STUDIO_REENTRY_2026-11.md)、[接続Evidence](PLUGIN_CONNECTION_EVIDENCE_AND_COMPOSITION_SLICE_2026-11.md)、[標準Flowの型付きPort](SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)、[Studio／CLIの配置](STUDIO_CLI_BACKEND_PROCESS_DISTRIBUTION_UPDATE_2026-11.md)、[図表の実現方式PR #5070](https://github.com/hat47x/tei-platform/pull/5070)。
 
 ## 1. 移植可能なのは、実行ファイルではなく受理済みの機能契約である
 
