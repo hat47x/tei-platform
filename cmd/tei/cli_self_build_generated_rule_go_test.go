@@ -138,7 +138,7 @@ func TestSelectedRuleGoThroughRealCLISelfBuild(t *testing.T) {
 	if err := requireSelectedGeneratedGo(generatedPath, generated); err != nil {
 		t.Fatalf("selected generated Go was not staged: %v", err)
 	}
-	other := append(append([]byte(nil), generated...), []byte("\\n// changed implementation byte sequence\\n")...)
+	other := append(append([]byte(nil), generated...), []byte("\n// changed implementation byte sequence\n")...)
 	if err := os.WriteFile(generatedPath, other, 0o600); err != nil {
 		t.Fatal(err)
 	}
