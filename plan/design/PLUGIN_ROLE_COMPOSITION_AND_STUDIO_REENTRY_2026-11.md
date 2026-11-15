@@ -1483,3 +1483,23 @@ HG-10/11（Guard前実Callと二重Call）、HG-13/14/17（内側のEffect不明
 **採用・縮小条件**：既存のContract／Operation／Hook／Graphで接続点のOwner・対象・順序・実Callを表せるなら、新しい横断Interceptor基盤は導入しない。どうしても表現できない欠落は一件のTarget／業務例と独立Expectedを先に示し、既存Ownerに必要な差分だけ返す。出力コードの行数、実Runtime依存、実起動時間、更新時の再構築範囲を最小例で測定し、最初から「Pluginだから軽量・高性能」とは主張しない。
 
 **現在の証拠**：既存計画・mainの限定実装・Issueの静的照合をもとにした設計／実装引渡し。XCJ-01〜09の新規Go／Windows／外部Host試験、実DB Effect、Ownerによる新しい意味受理は**NOT RUN／NOT ACCEPTED**。
+
+---
+
+## 26. 接続検収票を現行Sourceと実Consumerへ下ろす（2026-11-15・実装パケット）
+
+[横断Pluginの接続証拠と最小縦断](PLUGIN_CONNECTION_EVIDENCE_AND_COMPOSITION_SLICE_2026-11.md)で、前節の「型付き接続点」を**実際に存在するReader／Inventory／Service／Builderのどの事実から導けるか**まで細分化した。Node Viewの配線を先に実行可能にせず、まずHeadlessの一対象・一問・一つの読み取り専用接続検収票を作る。
+
+| 順 | 検収する最初の一辺 | 根拠のない成功と区別するもの |
+| --- | --- | --- |
+| W0 | 製品`InspectSubject`→Source Index→Rule／生成Go候補 | Plugin Inventoryの旧Resolver事実、`composition.Selection`試作、現行Host Grant、実Build／実Consumerは別欄のまま |
+| W1 | Rule R2-Pの正式Builder byte実消費と、別のpure Function R3の正式Entry→実Provider Callをそれぞれ検収 | 二つが別Functionなら、一本のE2E経路に合成しない。Ruleから公開Entryを暗黙に生成しない |
+| W2 | 同じSubject／Workspace／版の結果を実Studio Stage2 Consumerで再確認 | Test Bridge・CLI JSONの画面表示を実Windows WebView2の受領とみなさない |
+| W3 | EffectfulなHookをGuard→単一Caller→Commit→独立Observationへ限定接続 | Guard前Call、重複Call、効果不明時のwarn継続・無条件Retryを拒否 |
+
+現行`plugin/management.Row`の`Resolved`と`composition.Selection`は、同名のPlugin／Providerでも**相互に資格を譲渡しない**。後者の`Service.Invoke`が返すBindingも、実際のHostの現在Grantや実Artifact資格ではない。対応するOwnerの実証が届かない辺は`unknown`と表し、「観測がない」ことを「呼出し不存在」に変換しない。
+
+CPW-01〜10は**複数Ownerの証拠の接合に特有な反例**として、既存#1180／#2514へ引き渡す。最初はCPW-01／03／04／05（Workspace混同、実Call不一致、Legacy選択の誤昇格、Source A→B→A）に絞る。再資格化は#2600、実Providerは#951／#1251／#4495、標準Graphは#1124／#4198、Stage2は#2831／#4583が担当する。二つ目のResolver・Graph Runtime・権限正本は増やさない。
+
+この段階の成果は接続条件と実装・検収手順の確定であり、W0〜W3の新Go／Windows／実DB試験やOwnerの意味受理は行っていない。**CLI先行の意味あるCodegen／Plugin自己構築とStudio Stage1→Stage2の既存最優先は維持**する。
+
