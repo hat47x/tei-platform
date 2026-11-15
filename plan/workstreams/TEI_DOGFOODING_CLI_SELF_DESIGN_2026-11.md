@@ -2655,3 +2655,51 @@ $ git rev-list --count 716fb3612..origin/main           -> 157
 **「赤が常態化する」危険を名指しした回**である。第76ラウンドで私はこの2件を「main でも同じ」として切り捨てた。**切り捨てが続くと赤が常態化する。** その正体を確定させ、判断を所有者に返した。
 
 なお **plan-check は第76〜77ラウンドの修正で緑になった**（今回は赤ではなかった）。
+
+## 80. 第79ラウンド（2026-11-12）: application の database 要件が bind されていなくても `ok`
+
+目的文の「再びドッグフーディングに戻る」を実行した。2つ目の application `reporting` を CLI だけで設計し、全成果物を読み返した。生出力は[第79ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND79_UNBOUND_DATABASE_2026-11-12/README.md)にある。
+
+### 設計（3往復）
+
+| Attempt | 応答 | 学んだこと |
+| --- | --- | --- |
+| 1 | `ok` | `application X { uses semantic Y }` だけでも通る |
+| 2 | `ok` | `database` ブロック ＋ `bind` で完結。bind は `environment` の中 |
+
+契約の検査は実在した（`contract ... ^99` → `DATABASE_CONTRACT_VERSION_UNSATISFIED`、存在しない契約 → `UNKNOWN_DATABASE_CONTRACT`）。
+
+### 見つけた穴
+
+`reporting.sales` の `bind` を**全部消して** `validate` を実行した。
+
+```text
+$ tei validate -workspace <ws>
+ok
+```
+
+**application の database 要件がどの environment でも bind されていないのに `ok`。** 既存の `UNBOUND_DATASOURCE` は **query の datasource** だけを見ており、application の `database` ブロックは見ていなかった。`ACTIVE_RELEASE_DATASOURCE_UNBOUND` は**展開済みリリース**の話で、現在の定義には効かない。
+
+### 修正
+
+`UNBOUND_DATABASE_REQUIREMENT`（warning）を足した。名前は既存の `unboundDatasourceHint` を再利用し、**その作業場所が実際に宣言している instance** を名指しする。
+
+### 誤検出を1回出して、絞った
+
+最初の実装は **18ワークスペース中5つで警告**した。調べると**どれも environment を1つも宣言していない**（`environments=0`, `bind lines=0`）。**bind できない作業場所で「bind しろ」と言うのは雑音**である。
+
+```go
+warnsAboutBindings := len(w.Environments) > 0
+```
+
+この門を足して **0 / 18** になった。**既存の query 側 `UNBOUND_DATASOURCE` はこの門を持たない**（`examples/xtea-lowcode` では1件出る）。差は意図的で、その旨をコードのコメントに書いた。
+
+### 試験と変異
+
+3試験（未 bind を報告・bind 済みは出さない・**environment が無い作業場所では黙る**）と変異2種。
+
+**M1 は最初「壊れた変異」だった**（テキスト削除で構文エラー）。`if false &&` に置き換えて作り直した（**壊れた変異に気づくのは5回目**: 61・67・72・74・79）。
+
+### 位置付け
+
+**「片方だけ見ていた」を揃えた回**である。query の datasource は検査されていたが、application の `database` ブロックは検査されていなかった。**同じ概念（datasource の bind）に2つの入口があり、片方だけ守られていた。**
