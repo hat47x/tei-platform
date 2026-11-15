@@ -296,3 +296,15 @@ R0の入口にも、実Providerと同じ「選択された実装だけが入力�
 このため、従来`.tei`の`rule`を検出した場合は単に「不明な宣言」とするのではなく、**定義したファイルと対象語の原byte範囲を示したうえで、Rule Authoringの選択条件と置き場所を案内する**。エラーの改善は、Readerの自動選択・意味の受理・旧構文の暗黙変換ではない。未知語は引き続き未知語として拒否し、構文の未受理を半分だけ読み込んだモデルに変えない。
 
 負例は既存`internal/syntax/rule_placement_test.go`と`internal/workspace/rule_placement_source_diagnostic_test.go`で扱い、選択・未選択・従来構文の回帰は既存`tei_md_source_guard_test.go`と製品Readerのテストを流用する。CIの監視対象も**現在存在する`rule_authoring_markdown_loader.go`／`parser.go`／実テスト**と一致させ、廃止した旧guardファイルへの参照で失敗させない。これによってR0の診断品質を改善しても、R2-Pの実Builder選抜、R3の正式Provider実Call、Stage1→Stage2 Windowsの実証を合格扱いしない。
+
+### 14.10 生成Ruleを通常CLIのBuild Intent経路で実ビルドする
+
+参照Builderを直接呼ぶ§14.4の回帰に加えて、`cmd/tei/cli_self_build_generated_rule_go_test.go`では、選択済みRuleの正値判断Goを一時的なGo commandとして置き、**通常の`tei self-build`のBuild Intent解決と実Builder起動**を一つの試行に通す。CLIとBuilderは新設せず、既存`writeFullChainDeclaration`、`authorGoCommandCatalog`、`buildintent.Resolve`、`reference-go-build-from-plan`を利用する。
+
+入力は実Fixtureの`tei.rule-authoring/v0`が読み込んだ`quantity_positive`と、解決した属性型`std.decimal`に限る。`GeneratePositive`の実byteをGo packageに保存し、そのpackageと実依存closure、`go.mod`、`go.sum`をBuild IntentのSourcesに列挙する。Go package名をアルファベット順にした場合に`definitionSource: pkg0`がEntryを表すとは限らないため、既存テスト用宣言生成ヘルパーでは**実EntrypointのSource IDを選択する**。これは実BuildPlanを正しく導出するためのテスト修正であって、第二Resolverの追加ではない。
+
+CLI側の独立観測は、実Entry内でのIntent解決、BuilderのPlanとの照合、Artifact Binding、同じPlanからの再現性、隔離Go Source閉包と実Binaryの生成を別々に要求する。最後に**CLIが出力したBinaryそのもの**を起動し、正値・ゼロ・負値・NULL・未取得を一回ずつ読み取る結果に照合する。`go run`だけの検査や、子Builderの成功自己申告だけでは合格にしない。
+
+この回帰で証明できるのは「製品CLIの通常`self-build`経路が、選択されたRule由来のGo bytesをコンパイルし、そのBinaryが判断する」という限定的なR2-Pの一部である。**Rule原文、Reader版、Generator実装版と生成Goを同一Build Intentの受理済みSourceとして束縛したわけではない**。Authoring→Generatorの出典失効、通常製品が受理したBuilderのAuthority、正式公開Function、選択Provider実Invocation、現在GrantとOwner意味受理、Windows Stage1→Stage2は引き続き独立資格として残る。試験はLinux/amd64の既存参照Catalogで行い、ほかのTargetの適合を主張しない。
+
+次の実装差分は、新しいGeneratorやBuilderを導入することではなく、**同一Attemptで選択したRule／Generatorの資格と、通常CLIが実際に消費したBuildPlan／Artifactの資格を結合すること**に絞る。その後、§14.7の正式Function公開Entryと実Provider Callに結合し、選択B／収録A、生成Go改版／旧Entry実行、同値結果だけの誤受理をそれぞれ拒否する。
