@@ -222,3 +222,11 @@ Node-RED／Enebular型のプログラミング、ESPStudioのようなNode UI、
 Source変更A→B→A、生成器版変更、Build時だけの依存、入力取得の不完全性、実行時の現在Grant・Effect／Receipt、Studio Stage1→Stage2 Windowsは別の資格を維持する。**R2のDoneは実Builderによるbyte受領と実Artifactの成立まで、R3のDoneは通常製品入口での選択Provider実Call・独立Consumerの受領まで**と定める。R2の完了をStudioセルフビルドの代わりにしない。
 
 本節は現在mainで確認できたR1の実装とGoの境界をもとにした計画であり、R2／R3を新たに実装・検証したという報告ではない。
+
+### 14.4 既存参照Builderに生成Goを渡す一試行（PR #4927の後継）
+
+実Builder入力の照合は、BuildPlanの型を説明するだけでは検証できない。`tools/reference-go-build-from-plan/validationgen_build_binding_test.go` に、実 `Workspace.Load` → 選択Rule・Source Index → `validationgen.GeneratePositive` → 一時Go package → 既存 `DirSourceResolver`／`plugin.BuildPlan` → 既存 `reference-go-build-from-plan` の `-isolate` 実行 → Artifact Digest・BuildArtifactLock照合 → **Builderが生成した実Binaryの独立Expected**という試験を加える。
+
+この試験では生成Goを計画確定後に書き換え、古い計画がコンパイル前に拒否されることも確かめる。Goモジュール文脈と、生成Goが参照する既存 `core/identity`、`internal/core`、`internal/semantic`、`internal/semantic/validationeval` を計画Sourceとして明示する。ReaderのSource ID／Attribute型、BuildPlanの実入力Digest、Binaryの実挙動は別々に照合し、一致結果だけを根拠にしない。
+
+**受入範囲は既存Reference Builderでの一回の実Go消費に限る。** この試験で作ったBuildPlanはテスト用であり、正式製品 `tei` が選択したBuilder／Plugin Runtimeを証明しない。製品Build Intentから実ProviderのEntryまでの接続と、Stage1→Stage2 Windows実再入は、それぞれ既存#4544／#4495／#2831／#4583に残す。PRのマージとexact HEADのGo／CI成功も区別する。
