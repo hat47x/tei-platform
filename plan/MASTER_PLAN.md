@@ -10,6 +10,8 @@
 
 関連文書は次のとおりです。
 
+- [Rule Authoringから実Plugin・製品CLIへ進む第一縦断](design/PLUGIN_RULE_PRODUCT_VERTICAL_SLICE_2026-11.md)：mainで実装された内蔵Rule Authoring Readerを出発点に、まずReaderの選択・Source失効を製品回帰で確認し、次に受理Ruleの比較・分岐をGoへ実生成してBuilderの実入力、選択済みProviderの通常CLI実Call、独立Consumerへつなぐ。静的Go合成を製品の第一候補とし、独立Process・外部Hostへの生成は契約を共有する代替方式として比較する。PLV-01〜12は既存#1180/#2514へ引き渡す反証候補であり、実行済みとは扱わない。**Studio Desktop Stage1→Stage2 Windows実再入 #2831/#4583は引き続き並行する最上位P0**。第二Resolver／Runner／Host／証拠正本は追加しない。
+
 - [Wagby 11の機能体系からTEIへ取り込む設計課題](design/WAGBY11_CAPABILITY_GAP_AND_TEI_INTEGRATION_2026-11.md)：2026-11-15の公開機能一覧／マニュアルを照合し、参照値の時点・親子複合キーの原子保存・入力Patchの非送信とNULL・検索条件とAuthZ・人数承認／委任・一括取込／帳票／Outbox／移行を横断的な実務受入題材として整理した。W11-01〜18は独立Expectedの**候補**であり、製品実装・正式受理の実績ではない。既存Data／SmartDB／BRMS／組織／Lifecycle／Target Generator／#1180・#2514へ接続し、新Host／Rule Engine／Registryを作らない。**P0は正式Reader #2621/#1018、通常CLI実Provider #4495、Studio Stage1→Stage2 #2831/#4583を維持**し、第一縦断を受注親子・保存単価・合計のW11-01〜04へ絞る。
 
 - [TEI Desktop製品契約（第18次統合・§0.18.8）](design/TEI_DESKTOP_PRODUCT_CONTRACT_2026-11.md)：**最優先は#2831/#4583のStage1実TEI→Stage2実Windows WebView2**、並行して正式`*.tei.md` Reader→実Go生成→通常CLI実Providerを進める。S-LOC-0の`source-locations.ts`／7件回帰はmainへ収録済みだが、Source位置表示・原文再取得S-OPENは別資格。§0.18.8では実`semantic-capability:sales.order.submit`（`semantic/sales/order.tei`、main #4853）を固定し、**P-01〜06**：実Go Inspect/Trace→S-LOC純粋投影→Pin/現在閲覧B非干渉→現行SourceからNode24で正規Bundle/Go embed同期→実Windows WebView2→Stage1実ProcessによるStage2再構築、を一つの受入経路に整理。Pin Fixtureはmain #4869でHostの四制限へ修正され局所Reader試験PASS、HTML ID修正は#4876で別検収。mainの現行埋込HTML/JSはPinをまだ配信せず、旧#4812の成功・旧生成Assetを再利用しない。現在Root/Source版、意味受理、開示許可、実Provider/Effectは別々に確認する。既存#1124/#3788/#1824/#4515/#2516/#1180/#2514を再利用し、S-OPEN・Updater・MobileをStage2の新Hard Gateにしない。
