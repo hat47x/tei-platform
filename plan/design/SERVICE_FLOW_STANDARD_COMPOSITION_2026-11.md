@@ -211,3 +211,92 @@ Providerの選択は既存[#951](https://github.com/hat47x/tei-platform/issues/9
 | PV-10 | 部分取得・非開示・古いTraceを現在の実配線と区別する | Traceが無いことを未呼出しの証拠とする |
 
 PV-01〜10は既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)に渡す反例候補であり、現時点で実行済みの検証ではない。最初の実装差分は**CLIでのPlugin関係read-only投影**に限定する。これとOperator FlowのN0/N1は共通のGraph表示契約を利用するが、互いを先行必須条件にせず並行して検証する。
+
+## 10. 接続できることの意味を、構成と実行の両側から検証する（2026-11-15横断統合）
+
+### 10.1 次の目標は配線そのものではなく、配線の成立条件を説明すること
+
+§9でノードビューの共通化を整理した後、宣言的な構文・標準データ構造とFacet、成果物要求からの計算合成、Pluginの実接続証拠、Processの因果表示が他の設計で進んだ。これらを別のGraphや契約へ複製せず、**「この接続は何を保証でき、何が未確認で、どこまで実現されたか」**に、同じ対象について答えられるようにする。
+
+| 段階 | 確認すること | 成立しても主張できないこと |
+| --- | --- | --- |
+| 候補の発見 | 必要なOperation／Capabilityに提供候補があるか | 契約適合、選択済み、実行資格 |
+| 意味の適合 | 出力が次の入力の要求を満たすか。型・Role・粒度・時間・完全性・演算則を照合 | 成果物への収録、現在Grant |
+| 構成の実現 | 既存Profile／Resolver／Lock／Generator／Builder／Targetで何を選び実装したか | 実際のEntry／Provider呼出し |
+| 実行の受領 | 実Call、Attempt、Result、Receipt、独立Consumerの受領が一致するか | 別の時点・Audience・Targetの現在資格 |
+
+これらは新しい永続Schemaや検証Engineではなく、既存Ownerの結果を問相対に照合するための検収の切り方である。例えばPortの型が一致しても、月次集計を日次明細として使うこと、部分取得を全件として使うこと、Pluginの提供候補を選択済みとして描くことは認めない。正の不一致はmismatch／rejected、必要な証拠が不足すればunknown／unqualifiedとして区別する。
+
+### 10.2 接続には供給側の保証と利用側の要求がある
+
+接続候補A.out → B.inについて、Aが提供できる保証とBの要求を既存の型・Facet・Role・Operation契約から取り出し、以下の観点を必要な範囲で比較する。これはPortの新Core型や万能制約Solverの採用宣言ではない。
+
+| 観点 | 比較する内容 | 不適合の例 |
+| --- | --- | --- |
+| 型・構造 | Record／Collection、単位、必要Field、値域、数量の尺度 | 同じDecimalでも単位や丸めが異なる |
+| 同一性・粒度 | Subject、業務キー、Occurrence、Cardinality、Bag | 注文明細を一注文として扱い、重複を消す |
+| 時間・版 | 有効時点、取得時点、Event Time、Snapshot、Source Revision | 過去Snapshotで現在の在庫を判断する |
+| Presence・Coverage | NULL、欠損、未取得、非開示、partial、否定依存 | 一部しか取得していないのに不存在を確定する |
+| 評価 | 必要Read、短絡、失敗、評価順序、決定性 | 同じ結果でも不要な外部Readを追加する |
+| Effect・Trust | 読取／書込、公開Scope、通信境界、Secret、再試行 | HTTP入力を無許可でDB更新へ送る |
+
+接続検査は**問相対**である。純粋な数値比較に不要な全時系列情報を要求すると再利用性が下がる。一方、存在しないことを確定するOperationには取得範囲と完全性が必要である。未宣言のFacetに暗黙の既定値を補わず、その問いに必要なら不足とする。
+
+**A→BとB→Cが局所的に適合しても、A→Cの意味保存を無条件には主張しない。** Bが粒度・順序・失敗・開示範囲を変え得るためである。Subgraphを一部品として公開するときも、内部を隠すことと、外部向けの保証・Effect・Failureを省略することは異なる。既存のMapping契約（#2497）で保存・損失・逆編集資格を検査する。
+
+### 10.3 Adapterは自動配線の抜け道にしない
+
+JSONから型付きRecord、RESTからOperation、RecordからAPI Responseなどの明示的なAdapterを候補として示せるようにする。ただし、形を変えられることと、情報・意味・権限を保てることは異なる。
+
+最初は既存のOperatorまたはProviderが公開する**一段の明示Adapter**に絞る。複数段の最短経路探索、任意Providerの生成・インストール、外部Endpointへの自動公開は後続判断とする。候補を見せるだけで実ProfileやSourceを変更しない。Adapterを挿入した場合は、それ自体のOperation／Provider ID、Mapping、追加Read、変換による損失、Effect、Target境界を追跡し、直結と同等だったと扱わない。
+
+### 10.4 同じ読み取りサービスを三つの面から見て一つの縦断例にする
+
+§6の注文統合照会を利用し、業務上の新しい意味受理や実HTTPサービスの完成は主張せず、同じ対象に対する複数の問いを検証する。
+
+| 表示面 | ノード／接続 | 最初に説明すること |
+| --- | --- | --- |
+| 処理 | Order Lookup→顧客・配送Lookup→Join／Result Mapping | 型、粒度、欠損、partial、必要Read、Error |
+| Plugin構成 | LookupのCapability要求→候補Provider→選択Provider | exact版、Scope、Profile、選択の曖昧さ、工程別同梱 |
+| 公開サービス | HTTP Trigger／Entry→Operation→Response | 公開契約候補、認可・開示、Target／Consumerの未確認箇所 |
+
+三つの独立した意味正本を作るのではなく、標準Data／Function／Operation／Plugin／Processの別投影とする。ノードを選ぶと契約、Source位置、Resolver結果、Artifact、Traceに進めるが、型適合からProvider選択やHTTP公開資格を推定しない。
+
+同じLookupをCLIとHTTPで再利用しても、呼出主体、行・項目Scope、応答・Secretの開示は入口ごとに異なる。CLI成功をHTTP公開の受理に、HTTPのMock成功を実Providerへの到達に変換しない。API仕様へ投影する際は実対応範囲だけを明示する。
+
+### 10.5 コード生成と汎用Operatorの解釈を選び分ける
+
+すべてのノードを個別にコード生成する必要はない。小さな純粋FilterやMapping、診断用のGraph走査は、型付きパラメータを**既存の汎用Operator**へ渡して実行できる。一方、静的結合、性能、外部Target、必要なProvider集合の固定が必要な部分は、既存GeneratorでTarget-nativeコードにする価値がある。
+
+| 実現 | 向く条件 | 確かめること |
+| --- | --- | --- |
+| 汎用Operatorを解釈 | 既存の受理済みOperatorで足り、実Hostがその能力を提供する | 実装版、入力・出力・失敗、実Provider呼出し |
+| Target-native生成 | 静的Closure、性能、Target固有API／配布が重要 | 意味・Generator→生成byte→実Builder入力→Artifact→Consumer |
+| 明示的な混合 | 一部は生成、一部は汎用Operator、外部接続はProvider | 境界ごとの型・Effect、生成と委譲の区別 |
+
+**汎用解釈は新しいTEI Hostを増やす提案ではない。** 既存Operationと選択されたTargetの実現方法を選ぶ話である。解釈方式ではコード生成工程を省けても、Version、Grant、結果、独立Consumerの検証は省けない。生成方式では手書きGoへ単純委譲した箇所をTEI自身の生成実績と数えない。両方式の比較では値だけでなく、Read、Failure、Effect、観測Scopeを独立Expectedで照合する。
+
+### 10.6 最初の実装Packetと採否
+
+**NW-Q0（CLI-first・read-only）**：一つの既存Operationと一つのPlugin接続候補について、同じScopeの根拠が揃うかを見る。InspectSubject／Rule Reader／management.Report／composition.Selectionを既存の責務のまま参照する。Legacy InventoryとComposition Selectionを名前やResolvedフラグだけで結ばず、不足する関係はunknownにする。専用Registry、Graph Compiler、CLI Flagは作らない。
+
+**NW-Q1（純粋変換の合成）**：既存のquantity_positiveと実在する純粋Operatorを対象に、型・Read Footprint・結果と、Go生成または汎用評価の検証可能な範囲を照合する。表示だけの変更、参照Attributeの変更、実装A→Bの選択変更で失効すべき資格を分ける。旧生成CLIの選択失効は既存[#5054](https://github.com/hat47x/tei-platform/pull/5054)のOwnerに任せる。
+
+**NW-Q2（サービスへ接続）**：read-only API Facadeの契約候補→固定Fixture／Mock→実HTTP Host→選択Provider→独立HTTP Consumerの順に証拠を増やす。Secrets、外部認証、Webhook、非冪等Effectを初期の必須条件としない。部分取得、未選択Provider、Scope不足では黙って実行を続けない。
+
+| Case | 独立Expected候補 | 不合格とする誤実装 |
+| --- | --- | --- |
+| NW-01 | 型一致でも粒度違いの接続を拒否 | Record型だけで適合と判定 |
+| NW-02 | partialな結果からNotFoundを確定しない | 空集合から不存在と判断 |
+| NW-03 | 必要Facetが未提供なら不足と表示 | 時点・順序を無断補完 |
+| NW-04 | Adapterの前後でRead／Loss／Effectを比較 | 形式変換を無損失とみなす |
+| NW-05 | B/C候補・選択B・実Call Aを区別 | 結果一致でProviderも一致とする |
+| NW-06 | 同一OperationでもCLI／HTTPのAudience／Scopeを別にする | CLIで読めるからHTTPでも公開 |
+| NW-07 | LayoutとPort／契約変更で失効先を変える | 座標変更で全Build、意味変更は無視 |
+| NW-08 | 実装選択A→Bの旧実行資格を拒否 | World FPが同じなので旧Commandを許可 |
+| NW-09 | 汎用演算と生成Goの比較でRead／Failureを保持 | 値が同じなら全面的な同値とする |
+| NW-10 | Graph→Tree／折畳みのLossと編集対象を区別 | 描画線から業務Relationを書換え |
+
+NW-01〜10は既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)へ渡す**未実行の反証候補**である。[Plugin接続の証拠](PLUGIN_CONNECTION_EVIDENCE_AND_COMPOSITION_SLICE_2026-11.md)、[宣言とNode表現](DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md)、[成果物要求と計算合成](DECLARATIVE_RESULT_PROCESS_COMPOSITION_2026-11.md)の既存契約を用い、新しいValidator／Expected正本を増やさない。
+
+正式なCore Port型、万能Adapter探索、自動配線編集の採用判断は、少なくとも二つの異なる実Consumerで再利用と誤接続検出を確認してから行う。CLI実Provider・Studio実Windows Stage1→Stage2の既存P0を、この追加検討の先行条件として止めない。
