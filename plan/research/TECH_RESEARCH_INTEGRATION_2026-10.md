@@ -1895,3 +1895,42 @@ mainの`cmd/tei/scenario.go`が生成Scenarioコマンドへ固定するのは�
 これらをひとつの巨大な結合試験へ直ちにまとめない。既存のREA Verifier、隔離PostgreSQL試験、Scenarioの選択Pinと共通Operationを各Ownerで検収し、**既に合格した限定経路に不足する接続**だけを追加する。標準Graph、Source Index、独立Expected、Build Attempt／Receiptを再利用し、新たなRelation Engine、Temporal Engine、実装選択Registry、Graph Runner、認可器を作らない。
 
 **優先順位は据え置く。** 製品Ruleからの生成Goを実Builderの入力と結ぶR2-P（[#2595](https://github.com/hat47x/tei-platform/issues/2595)／[#4544](https://github.com/hat47x/tei-platform/issues/4544)）、通常CLIと実ProviderのR3（[#2586](https://github.com/hat47x/tei-platform/issues/2586)／[#4495](https://github.com/hat47x/tei-platform/issues/4495)）、TEI StudioのStage1→Stage2実Desktop再構築（[#2831](https://github.com/hat47x/tei-platform/issues/2831)／[#4583](https://github.com/hat47x/tei-platform/issues/4583)）を並列P0とする。本節は**mainの実装と検証の静的照合による研究・検収計画**であり、XR-01〜06すべての製品実装・実行PASS、正式Graph DSL、組織業務意味のOwner受理、Windows Stage2の完成を示さない。
+
+### 16.44 解釈実行と生成実行の比較は、表示のOccurrenceから独立させる
+
+[宣言的構文§27](../design/DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md)で、既存汎用Operatorによる**パラメータ実行P**、Targetコード生成G、外部実装委譲Dを分けた。さらに[成果物中心の構成§11〜12](../design/DECLARATIVE_RESULT_PROCESS_COMPOSITION_2026-11.md)で、同一の型付き意味から直接評価／Go生成／Query Pushdown／外部Hostという複数の実現先を比較する順序が明確になった。ここで統合すべきなのは「どの画面から呼んだか」ではなく、**何の意味を、どのBindingと実装で、どこまで実行したか**である。
+
+同じRuleをMarkdownの説明、表の条件欄、Node Viewの一Occurrence、CLIのInspect結果として表示できても、**同じSource byteや同じ編集Slotを持つとは限らない**。また、同じOperatorに属する二つのNode occurrenceは、別のPort binding・Input・実行時点を持ち得る。Data／Interpretation／Functionと、Tree／Graph／Table／Canvas上の表示Occurrenceを分離し、標準構造を増殖させず、次の対応だけを既存のSource Index・Meaning・Graph・Operationへ保持する。
+
+| 対応する事実 | 同じである必要がある条件 | 同一視しないもの |
+| --- | --- | --- |
+| **Subject／Meaning** | RuleのCanonical ID、Kind、型、独立Expectedが指定する意味 | 同名Node・表示ラベル、表やMermaidの座標、元Source位置 |
+| **Occurrence／Binding** | 対象、Port／Attribute／Parameter、Role、多重度、適用時点・Scope | Operator定義そのもの、別Occurrenceの入力、Graph Edgeの見た目 |
+| **実現方式** | Pの実Operator／選択版・実Call、Gの実Generator／生成byte・Builder消費、委譲先の実Provider | 生成Goが存在するだけ、Pの引数説明だけ、SelectedとActualの値一致 |
+| **Consumer／Evidence** | 同一対象・版・入力に関する独立Expected、Sourceの現在性、実Result／Error | CLIとStudioの表示一致からの自動Grant、原文同梱からの無断開示 |
+
+この対応を一つの新たなMeta Schemaとして採用するのではなく、**最初の比較試験で必要な既存証拠の照合順**として用いる。判断表やGraphの意味属性を追加する場合も、実装に必要な気づきとして表現を豊かにする一方、業務意味・Target配置・Source開示・UIレイアウトを同じ属性へ押し込まない。
+
+### 16.45 並走するG／P試験は、同じ成功を重複計上せず実装段階へ配置する
+
+2026-11-15時点の並行実装には、目的の近い三つの経路がある。**PRの審査・CI結果・main統合を区別し、以下の役割へ整理した上で採用する。** 状態は確認時点のSnapshotであり、後続の統合時に再取得する。
+
+| 先行・並行する経路 | 独自に証明できるもの | その試験だけでは証明できないもの |
+| --- | --- | --- |
+| [PR #5073](https://github.com/hat47x/tei-platform/pull/5073)（Draft、並行審査） | 選択された同一Markdown Rule／`semantic.Validation`を既存Evaluatorと**参照Transform Generator**へ分け、別Process生成Binaryと独立Expectedを対照する候補 | 製品`GeneratePositive`自体の実Builder組込み、製品R2-PのGenerator資格 |
+| [PR #5074](https://github.com/hat47x/tei-platform/pull/5074)（並行審査） | 製品`validationgen.GeneratePositive`と既存`validationeval.Evaluate`を、同じ選択済みRule・入力・Read footprintで対照する候補 | 別TargetのProvider選択、Source→正式Build Intent→実Consumerの一Attempt閉包 |
+| [PR #5080](https://github.com/hat47x/tei-platform/pull/5080)（並行審査） | 印付きMarkdown Data表とRuleが同一Workspace Loadで解決され、**既存評価器とGo生成関数へ意味を渡す**候補 | 生成Goの実Build・別Process実行、Data表の完全な逆編集・実所属データの取込 |
+| [PR #5056](https://github.com/hat47x/tei-platform/pull/5056)（main統合） | 選択済み生成Goと実Builderに配置したGoのbyte取り違えを**Builder前に拒否**するGo回帰 | 元Reader／Generator版・Source Revision／正式Build Intentの全閉包 |
+| [PR #5059](https://github.com/hat47x/tei-platform/pull/5059)（main統合） | 実`tei self-build`からNode/esbuild子Processを起動する生成Workbench N2経路 | TEI生成Stage1自身によるStage2 Desktop再構築、全Targetの実現方式 |
+
+採用順は**製品GeneratorのP/G同一入力比較（#5074）を基準の一件に絞る**。参照Transform（#5073）は異なるGeneratorを実際に選べたかの独立比較として保持し、表由来（#5080）は別のSource表現でも同じ型付き意味を実現できるかの第二入力として扱う。これらの試験がともにPASSしても**一つの正式R2-PやR3を完成させたとは数えない**。また試験の重複を理由に、異なるRead footprint／Adapterの失敗分類／Source byte照合を無条件で削除しない。製品Ownerの受理とexact HEADのCIを確認して各成果を残す。
+
+### 16.46 比較試験の出口を「同じ結果」だけでなく、再利用できる設計判断にする
+
+第一の実験は`sales.order_line.quantity_positive`の`std.decimal`を固定し、**正値／ゼロ／負値／NULL／未取得**を共通の独立Expectedへ照合する。実Readは要求されたAttributeに限定し、数値が返ったことと必要なRead集合が満たされたことを分ける。P経路では実評価関数・Binding・Param Revision、G経路では実Generator・生成判断Go・実Builder入力、双方で失敗理由／実Resultを確認する。PとGのエラー名やJSON Adapterの差は、観測範囲と対応付けて評価し、文字列完全一致を無根拠に同値条件へ採用しない。
+
+次に**同じMeaningを二つの異なる表現で指す**試験を加える。従来Rule Markdownと項目定義表から得る型付きValidationが対応しても、Source File・原byte位置・Reader版・意味受理状態は別である。表示の座標・説明のみを改めた場合は、意味結果の不変とSource Indexの再資格化を別々に検査する。Graphで同名Nodeを二個配置した場合は、二つのOccurrenceとEdge IDを保存し、宣言したOperatorが一種類だからという理由でBindingを統合しない。
+
+最後にQuery Pushdownや別Targetを比較する場合は、**Resultの粒度・重複・順序、NULL／missing、時間とScope、Provider実選択、現在Grant**のうち用途に必要な意味を保てることを先に検査する。SQLが同じ数値を返しても、部分取得・JOIN fanoutやDB依存演算が異なればP/Gの代替として受理しない。Query／PushdownのOwnerは[#2622](https://github.com/hat47x/tei-platform/issues/2622)／[#2586](https://github.com/hat47x/tei-platform/issues/2586)、Graphは[#4198](https://github.com/hat47x/tei-platform/issues/4198)、独立Expectedは[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)を再利用する。
+
+**次の製品差分の受入単位は増やさない**。#5056の生成Go取り違え負例を基線として、元RuleのSource／Reader／Generator資格と通常Builderの実消費を同じAttemptへ結ぶR2-P（[#2595](https://github.com/hat47x/tei-platform/issues/2595)／[#4544](https://github.com/hat47x/tei-platform/issues/4544)）を最初に閉じる。実Provider→通常CLI／独立ConsumerのR3（[#4495](https://github.com/hat47x/tei-platform/issues/4495)）と、非Plugin Studio Stage1→Stage2（[#2831](https://github.com/hat47x/tei-platform/issues/2831)／[#4583](https://github.com/hat47x/tei-platform/issues/4583)）は並列P0のまま。**今回の節は既存PRの受入整理であり、新しい製品G/Pテスト、Graph Reader、DB／Windows試験やOwnerの正式受理を実施したものではない。**
