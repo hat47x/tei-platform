@@ -6,6 +6,8 @@
 
 期限は設けません。優先順位は実装量ではなく、**TEIの中心価値に関する不確実性をどれだけ減らせるか**を基準に見直します。
 
+- [文書手法からアプリケーション抽象へ：意味を保った構成の横断設計](design/APPLICATION_ABSTRACTION_DOCUMENT_METHOD_WEAVING_2026-11.md)：見出し・表・図・引用・判断理由・変更履歴が持つスコープ、役割、写像、再利用、変更という抽象能力を、既存Data／Role・Facet／Function／Process／Projection／Pluginへ割り当てる。構造・意味・表現・実現・現在資格を別々に検査し、DW-01〜10の独立Expected候補を#1180/#2514と各Ownerへ接続する。**最初の実装は内蔵Markdown Rule Reader一件の引用／定義の区別、原文保持、条件変更の失効差**に限定し、生成Go→実Builder→通常CLI実ProviderおよびStudio Stage1→Stage2の並行P0を変更しない。新しい文書Engine・Core Schema・Host・正本は先行採用しない（実装前設計）。
+
 過去の判断を本文に重ねて記すのではなく、現在の計画の基準を示します。以前の判断とその理由は、Gitの履歴、設計判断記録、課題からたどれます。
 
 
