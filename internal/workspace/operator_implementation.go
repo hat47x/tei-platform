@@ -1,7 +1,11 @@
 package workspace
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"sort"
 
 	"tei/internal/core"
 	"tei/internal/ir"
@@ -53,4 +57,24 @@ func checkOperatorImplementationSelections(selections []OperatorImplementationSe
 		}
 	}
 	return nil
+}
+
+// FingerprintOperatorImplementationSelections records the exact manifest choice
+// independently from the Canonical World or the Plugin Lock. Ordering of
+// distinct declarations is presentation only; callers use validated selections
+// from Workspace.Load. The empty selection has one canonical representation.
+func FingerprintOperatorImplementationSelections(selected []OperatorImplementationSelection) (string, error) {
+	ordered := append(make([]OperatorImplementationSelection, 0, len(selected)), selected...)
+	sort.Slice(ordered, func(i, j int) bool {
+		if ordered[i].Operator != ordered[j].Operator {
+			return ordered[i].Operator < ordered[j].Operator
+		}
+		return ordered[i].Implementation < ordered[j].Implementation
+	})
+	payload, err := json.Marshal(ordered)
+	if err != nil {
+		return "", fmt.Errorf("fingerprint selected Operator implementations: %w", err)
+	}
+	digest := sha256.Sum256(payload)
+	return hex.EncodeToString(digest[:]), nil
 }
