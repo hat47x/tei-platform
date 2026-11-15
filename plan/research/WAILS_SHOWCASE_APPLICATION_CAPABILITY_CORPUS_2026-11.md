@@ -1,6 +1,6 @@
 # Wailsショーケース40件をTEIの能力検証へ接続する
 
-> **状態：外部事例の調査と既存計画への接続案（2026-11-15）。製品採用、実装、実OS検証、Ownerによる意味受理は未実施。**
+> **状態：外部事例の調査と既存計画への接続案（2026-11-15）。このコーパスに基づく新Pluginの製品採用・実装・実OS検証、Ownerによる意味受理は未実施。既存TEI実装の個別検証結果は§11で区別する。**
 >
 > 出典：[Wails公式ショーケース](https://wails.io/ja/community/showcase/) と各個別紹介。40件は当日の調査スナップショットであり、サイトの永久的な掲載件数を保証しない。前回の個別紹介調査を整理したもので、全リポジトリのソース監査や実機ベンチマークではない。
 
@@ -193,16 +193,17 @@ Pluginの表示上の有効化と、Contractの正当な公開、Providerの選�
 
 ## 11. 実際のTEI到達点と、未接続の部分を区別する
 
-比較を開始する前に、既にmainで確認できた実物から進める。外部ショーケースに高度な機能があることは、TEI側でその機能が実現された証拠ではない。
+比較を開始する前に、現行の製品コードと検証票で確認できた実物から進める。外部ショーケースの機能、TEIに存在するテストコード、該当HEADでのテスト成功、Ownerが受理した製品機能は、それぞれ別の事実である。
 
-| 現在の足場 | 確認できた範囲 | 次に埋める欠落 |
+| 現在の足場 | 現行コード・既存証拠で確認できる範囲 | 次に埋める欠落 |
 | --- | --- | --- |
-| Rule→生成Go→通常`tei self-build`（#5009、計画整理#5033） | 一つの選択済みRuleから生成Goを製品CLIでBuildし、Binaryを起動する限定試験 | 原Markdown byte・Reader/Generator版とBuild Intent/Builder実入力を同一Attemptで照合する正式R2-P。公開Function Entryからのactual ProviderはR3 |
-| Operator実装選択（#5007、計画整理#5035） | Workspace Manifestで選んだOperatorを合成Scenarioから呼ぶ限定経路 | Manifest改版後に旧Scenario Commandを再利用できてしまう残差、実Plugin Lock、業務的Law適合・現在Grant |
-| 実Wails WebView2のPin表示（#5012/#5025、計画整理#5029） | Pin A保持中にBのCaret/Graph/診断を汚さない試験、同じWorkspace再読込による旧Pin資格失効・明示再確認 | 別WorkspaceのA→B→A、生成Desktopの`workbench_revision_mismatch`、可編集Buffer、Stage1→Stage2再入 |
-| Node/Flowの横断設計 | 既存Data/Function/ProcessからNode/Port/Edgeを投影する設計・局所試験 | 型付きFlowを製品CLIの実Generator/Consumerへ渡す独立試験。GUI配線だけで完了扱いしない |
+| Rule→Go→通常`tei self-build`（#5009/#5051） | 製品`Workspace.Load`から選択したRuleの生成Goと原Markdownのbyte同一コピーを一つのGo packageへ入れ、既存BuilderでBinaryを生成し、Binary自身の原文SHA-256を照合する回帰をmainへ収録。Goコードが同じでも原文コピーの説明byte変更でBuild Planが変わる負例を追加 | 元Source Locator、Reader/Generatorの実装版、実GoコピーとBuilder入力を一Attemptで正式束縛するR2-P全体。公開Function Entryのactual Provider CallはR3。ソースに試験があることと全CI合格を同一視しない |
+| Markdown Dataの製品Inspector（#5043） | 選択済み`tei.authoring/v1`のData定義表・項目セル・隣接Ruleを同一原文位置へ照合し、非定義の例表を誤読しないread-onlyのGo回帰をmainへ追加 | 別Consumerとしての実Studio同一Subject表示、二表現での取得完全性、編集Intentと保存効果。Readerの選択・Source位置から権限を推測しない |
+| Operator実装選択（#5007/#5053、実装候補#5054） | Workspace Manifestで選んだ組込みOperatorを合成Scenarioから呼ぶ既存経路。実装選択A→BでWorld/Plugin Lockが同じでも旧生成Commandを拒否する契約は#5053の計画としてmainに反映 | `operatorSelectionSha256`をPlan/CLIへPinする#5054は確認時点でOpen。exact HEADの試験・統合後に限り実装済みとする。実装Artifactや現在Grantまで保証するものではない |
+| 実Wails WebView2（#5012/#5025/#5042/#5052） | Pin A保持中のBのCaret/Graph非干渉、再読込後の旧Pin失効に加え、固定した現行11ファイルのSource/Lockから構成した生成PoC Bと通常Desktopが、exact HEAD `00b92d3b6685834cab3a90595e449553e80d0d15` の[Windows run 43722212784](https://github.com/hat47x/tei-platform/actions/runs/43722212784)で両Job成功。生成資産不一致を許す改修ではない | 既存固定PoC Bの実Consumer成功を、TEIが実Build SubjectからStudio Stage1→Stage2へ再生成した証拠としない。別Workspace A→B→A、Dirty Buffer、実Provider、配布更新も別検収 |
+| Graph/Node配線の参照整合（#5038と標準Flow設計） | 受領したREA GraphからNode/Relationを選ぶとき、両者が同一Graphの端点で結ばれているかを調べる実Verifier修正をmainへ収録 | 端点一致は業務意味、Graphの時間条件、Plugin Provider選択、実Call/Effectの証明ではない。型付きFlow→実Generator/Consumerの独立試験を要する |
 
-これらは別々の実証結果であり、一つが成立しても残りの資格に自動昇格しない。今後ショーケースの機能を追加する際にも、「機能が見える」「モデルが読める」「実生成した」「実Providerが作用した」「別Consumerで受領した」を区別して記録する。
+これらは別々の証拠であり、一つが成立しても残りの資格に自動昇格しない。「機能が見える」「モデルが読める」「実生成した」「実Providerが作用した」「別Consumerで受領した」を区別し、Source改版・実装選択変更・生成Artifact変更の失効範囲をそれぞれ観測する。
 
 ## 12. 追加する反証と採否の判断
 
@@ -218,3 +219,29 @@ Pluginの表示上の有効化と、Contractの正当な公開、Providerの選�
 **採否の評価軸**は、共通の意味を増やしたか、実装の重複を減らせたか、生成・変更の範囲が説明可能か、既存Hostの権限を迂回しないか、実Consumerと失効試験を通ったか、の五つとする。二用途で共通化できなかった機能は失敗ではなく専門Plugin／Host Adapterとして残せる。標準化のために表現力を落とす必要はない。
 
 **直近の一手**は三種類のGraph UIを実装することではなく、既存の`quantity_positive`の型付きSource/Rule/Operationを、テキスト表現とread-onlyのNode/Process投影へ結び、製品CLIで生成したGoと同じ対象を指すか確認すること。その後にUI側の固定Subject/失効と実Windows表示へ進む。最小の反証を#1180/#2514へ渡し、実装Ownerを#988/#1121/#1824/#997および標準Flowに分担する。新たなCore Grammar、Runner、Host、第二の試験正本は先行導入しない。
+
+## 13. ショーケースからセルフビルドへつなぐ次の一実証
+
+40件から個別アプリの実装を始めるのではなく、実在する二つの正式Source――`organization.transfer_request`のMarkdown Data表と、`sales.order_line.quantity_positive`のMarkdown Rule――を**互いに別Workspace・別Subjectのまま**利用する。二つのデータを同一業務モデルとみなすのではない。共通化したいのは、Sourceの原文と版から意味上の対象を解決し、表現・生成・実行へつなぐ道筋である。
+
+### 13.1 先行する一本目（Source → read-only二表現）
+
+- 最初は`organization.transfer_request`のData／Attribute／Ruleを、製品の既存`InspectionFromLoad`で取得する。`Data`の表表示と、各項目のSource定義位置へ移動できるread-onlyツリー表示を同じSubject Identity/Source Revisionから組み立てる。表・ツリーのどちらから選択しても、定義でない例表を新Subjectとして採用しない。
+- Studio上では、Workspace/epoch、固定対象、Readerが明示したAuthority Limits、表示に使った原文Fingerprintを保持する。UIだけの描画IDと正式Subject IDは分離する。別Workspace・元Sourceの説明改版・古い応答が混じったときは表示の資格を再照合する。
+- **成功の下限**は、同じSourceとSubjectをCLIのread-only Inspectorと実Studio Consumerが読み、Data/AttributeのIDと定義位置、NULL/欠損/partialの区別、制限表示が一致すること。実StudioのConsumer確認前に「二入口で受理済み」とは呼ばない。最初から編集・Native SQLの相互変換を実装しない。
+
+### 13.2 二本目（Rule → 生成 → 実Builder）
+
+- `sales.order_line.quantity_positive`は、既存の正式Rule Reader／生成Go／`tei self-build`の経路を継続する。Sourceを示すread-only Node投影を追加する場合、Node occurrence/Portの表示と生成した判断Goの出典を**同じ選択済みRule/Revision**に結ぶ。
+- `#5051`で追加された原MarkdownのBinary内コピー確認を足場とし、次は生成元の原Source Locator・Reader/Generator版と、実際にBuilderが読んだGo package／Artifactを同一Attemptで比較する。元Markdownの説明だけの変更や、生成Goだけを差し替えた場合に、どの再利用資格が失効するかを別票で記録する。
+- **成功の下限**は、生成Goが条件判断そのものを実装し、原Rule・型付きMeaning・生成Go・実Build入力・実Binaryの観測を互いに取り違えず説明できること。手書きDriverの残存率を別計測し、実Provider／Owner意味受理／Stage2成功へは昇格しない。
+
+### 13.3 三本目（宣言・選択・構築・呼出・観測の五段階を可視化）
+
+MQ Studio型のCapability Driverと、Plugin間配線用Node Viewに共通するのは、**何ができると宣言されたかと、何が実際に起きたかの差**である。Graphには`declared`／`selected`／`built`／`invoked`／`observed`の相互に異なる辺・証拠を表現できるようにする。
+
+- `declared`：定義が要求する契約と対象の宣言。`selected`：Manifest/ProfileとCurrent Lockで選ばれたProvider／Operator。`built`：どのSourceと生成器を消費したArtifactか。`invoked`：実際に呼ばれた対象・入口・Attempt。`observed`：独立Read/Receiptや実Consumerが確認した内容。
+- 当初は上記五段階を**読み取り専用の標準Graph投影**とし、各辺に「何の証拠があるか」「未取得・未受理は何か」を表示する。元の端点IDが一致しても、Relation occurrence、現在Grant、実行Effectまでは保証しない。
+- `operatorSelectionSha256`（#5054）は`selected`の現在性を検証する候補であり、`built/invoked/observed`やBusiness Meaningの資格を補完しない。実装PRが未受理なら、図でも「計画された接続」と表示する。
+
+**引渡しと採否**：一本目は#1124/#997/#1824、二本目は#2621/#1121/#4544/#4495、三本目は#951/#1158と標準Flow/Nodeの既存Ownerに渡し、WC-03/05/09/13/14/15/17/18の独立Expectedは#1180/#2514の既存枠組みへ接続する。段階間で新しい正本・Runner・Registry・Gateは作らない。各段階で、実装量ではなく**既存の標準要素を再利用した範囲、削減した手書き部分、実Consumerの同値と失効試験**を記録する。
