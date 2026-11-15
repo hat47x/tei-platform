@@ -240,6 +240,17 @@ func TestGeneratedPositiveASTHasTraceableReadAndDecision(t *testing.T) {
 	if _, err := observeGeneratedPositiveGo(mutated); err == nil {
 		t.Fatal("modified threshold was incorrectly observed as strict positive")
 	}
+
+	// A syntactic nil check is not sufficient: the guarded branch must
+	// actually return an error, otherwise a diagram would invent failure
+	// behavior that the generated implementation no longer guarantees.
+	droppedError := bytes.Replace(generated, []byte("fmt.Errorf("), []byte("fmt.Sprintf("), 1)
+	if bytes.Equal(droppedError, generated) {
+		t.Fatal("error-return mutant was not applied")
+	}
+	if _, err := observeGeneratedPositiveGo(droppedError); err == nil {
+		t.Fatal("a nil guard without an error return was accepted as failure handling")
+	}
 }
 
 func TestGeneratorSourceAndGeneratedDecisionRemainDistinct(t *testing.T) {
