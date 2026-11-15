@@ -1694,3 +1694,14 @@ R2では、`GeneratePositive(rule, attributeType, packageName)`の戻りbyteだ�
 | **Runtime閉包** | 選択Providerと実Entry、許可された入力Read、結果・Effect/Receipt、通常製品CLIと独立Consumerの実観測 | Build成功やGenerated Goの単独`go run`を実Provider Callへ昇格 |
 
 現在のmainには`tools/reference-go-build-from-plan/validationgen_build_binding_test.go`もあり、生成Goの実byteを既存の**参照BuildPlan Builder**が読み込む試験を収録している。[#4978対象HEADのRepository Health](https://github.com/hat47x/tei-platform/actions/runs/43699354375)では`tei/tools/reference-go-build-from-plan`のパッケージ試験が成功した。これはR2の前段となる実消費の根拠であり、**製品CLIが選んだ正式Builder／Build Intent・Plugin Lock／Runtime Providerの資格ではない**。初回の正式R2はpureな数量判定一件に限定する。新Registry／Host／独自Runner／第二意味正本を増やす前に、既存Build Intentから生成byte／Source版／Generator版／選択Builder／実Artifactをどこまで一Attemptで束縛できるかをOwner #4544／#1121へ返す。R2の実ArtifactとR3の実Provider/CLI、R4のStudio Stage1→Stage2はそれぞれ実消費の証拠を持つ。Node Flowや簡易APIも同じOperator/Function/Processの投影として後続で検証し、初回Rule生成PRのHard Gateへは追加しない。
+
+<!-- tei-dogfood-rule-placement-diagnostic-product-boundary-20261115 -->
+### 15.69 Ruleの書き間違いを「別の言語が必要」と説明し、意味を勝手に受け入れない
+
+内蔵`tei.rule-authoring/v0`は、Manifestが選択した`semantic/`配下の`*.tei.md`にある`tei`コードフェンスだけをRule Sourceとして読む。一方、従来の`*.tei`を読む`syntax.ParseSemanticFile`は`validation`宣言などを解析し、`rule`宣言は受け付けない。この二つは出力先の型付き`semantic.Validation`を共有するが、**読み取り入口と原文の責任は別**である。
+
+既存の製品テスト`internal/syntax/rule_placement_test.go`と`internal/workspace/rule_placement_source_diagnostic_test.go`では、通常の`*.tei`に`rule`を書いた場合、単なる未知キーワードではなく`rule`の誤配置であること、正しい文書の置き場所、元Sourceの`rule`四byteを指すRangeを要求している。過去のmain CIでは一般的な「expected type, data, ...」に落ちて失敗していた。対応は新しい文法や自動移動ではなく、既存Parserの拒否地点から**明示選択されたMarkdownの入口へ誘導する診断**に限定する。未知語は従来どおり一般診断とし、Ruleとして受け入れない。
+
+この改善の完了条件は、(1) 通常の`*.tei`で`rule`を受け入れない、(2) DiagnosticがReader/Manifest/Source形式を説明する、(3) Sourceの位置・四byte範囲が変わらない、(4) 正しい`*.tei.md`での既存Reader実回帰が悪化しない、の四点とする。実CLIの正式Builder消費や外部Language Plugin一般化は伴わず、Sourceが読めたことだけでOwner受理・実Provider呼出し・Artifact再利用資格を昇格しない。exact HEADのfocused Go testと全体Healthを別々に記録する。
+
+次の広いOperator/Node/Graph構文を導入する際も、**どの言語がどの場所を読んだか**を既存ManifestとSource Indexで確定し、未知記法の黙殺や他言語の意味型への暗黙変換を拒否する。診断の使い勝手を改善するだけで、Language PluginのContractや標準型の新採用を推定しない。
