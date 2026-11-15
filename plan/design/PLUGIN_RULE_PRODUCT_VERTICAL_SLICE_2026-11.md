@@ -1,6 +1,6 @@
 # Rule Authoringから実Plugin・製品Consumerまでの第一縦断：実装と検収の接続計画
 
-- **状態**：2026年11月15日の設計・実装引渡し。R1の限定的な正値Rule→Go生成をPR #4911で実装検証中。正式Builder／実Plugin呼出し、Windows Stage2の受入は主張しない。
+- **状態**：2026年11月15日の設計・実装引渡し。R1の限定的な正値Rule→Go生成は[PR #4911](https://github.com/hat47x/tei-platform/pull/4911)でmainに統合済み。Rule改版による再生成・別Process実行を追加検証する段階であり、正式Builder／実Plugin呼出し、Windows Stage2は未受理。
 - **優先対象**：内蔵Rule Authoring Markdown Readerで読み取った一つのpureなValidationを、生成Goの判断処理、実Builder、選択済みProvider、通常製品CLIまでつなぐ。
 - **前提となる実装事実**：mainの[7921b005](https://github.com/hat47x/tei-platform/commit/7921b005a44d325983d24ca2b8b58b0737dd778d)で、明示選択されたtei.rule-authoring/v0を内蔵ReaderがWorkspace Loadの原文から読み、semantic.ValidationとSource anchorへ投影する経路が追加された。これは外部Language Pluginや正式Graph Readerの製品受入ではない。
 - **既存の正本**：[Pluginの役割・合成・Stage2再入](PLUGIN_ROLE_COMPOSITION_AND_STUDIO_REENTRY_2026-11.md)、[Plugin-firstの実運用検証](PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md)、[自己記述](ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md)、[製品完成計画](../workstreams/PRODUCT_COMPLETION_PLAN.md)を維持する。本書は一機能の実装差分を決める補助計画であり、第二のContract、Resolver、Meaning、Builder、Runner、Evidence Storeを作らない。
@@ -41,7 +41,7 @@ Goの動的Pluginロードを標準の更新・配布機構として前提にし
 
 **R0：Readerの製品回帰（#2621／#1018）。** 既存内蔵Readerで、選択済みSourceの同一Load byte、Source anchor、旧tei定義の互換性を検査する。2026年11月15日にmain統合済みの[PR #4890](https://github.com/hat47x/tei-platform/pull/4890)は実Load、二Rule、Source Indexの元byte位置、説明文変更による旧Index失効、未選択・契約版違いをGo試験へ追加し、[PR #4891](https://github.com/hat47x/tei-platform/pull/4891)は同じLoadからInspector／TraceへRuleの定義位置を照合する試験を追加した。**両PRの統合と試験コードの存在は確認済みだが、当該新HEADのCI成功は別途確認する。** 実装欠落、複数候補、管理外Draft、Source A→B→A、既存tei定義の互換性など、未確認の条件は個別に残す。内蔵Readerの成功を外部Language Pluginのexact Resolver／Lockの受入へ昇格させない。
 
-**R1：受理Meaningから判断Goを生成（#1121／#4544）。** 同じSource occurrenceの一Ruleについて、入力の型と欠損を明示し、条件を含むGo実装を出力する。実際に生成したSourceと選択Generatorの版、受理Rule、実生成箇所を結ぶ。業務上のMeaning受理が欠ければ、その資格はunknownのままにする。
+**R1：型付きMeaningから判断Goを生成（#1121／#4544）。** mainの[PR #4911](https://github.com/hat47x/tei-platform/pull/4911)で、実選択したMarkdownの正値Rule（`std.decimal`）から`value.Sign() > 0`を含むGoを生成し、別Go Processで数値／NULL／欠損を検査する局所実装が入った。ただし正式Builderによる生成byteの採用、Generator版の配布資格、Ownerの意味受理、実Plugin／Providerは**未検収**のままとする。
 
 <!-- rule-read-target-mutation-vs-generation-qualification-20261115 -->
 **R0→R1を結ぶ実Read変更の対照**：mainの[#4890](https://github.com/hat47x/tei-platform/pull/4890)／[#4891](https://github.com/hat47x/tei-platform/pull/4891)／[#4901](https://github.com/hat47x/tei-platform/pull/4901)で、選択済みRuleの実Loader・Source Index・既存Evaluatorの局所Readまで到達した。次の[Go回帰](../../internal/operations/selected_rule_markdown_mutation_test.go)は、**同じRule IDと`positive`を保ったまま、参照Attributeを`quantity`から`line_number`へ一箇所だけ変更**し、再Loadされた`semantic.Validation`、Evaluatorが実際に要求する`Number`の引数、判断結果、旧Source Indexの失効と新Indexの成立を一組で比較する。判断結果の差にはテスト専用の合成数値（数量2、明細番号0）を用いるため、実DBのProvider ReadやCoverageの成立ではない。Rule ID一致・旧Source指紋・旧評価結果を理由に生成Goの再利用を許可しない。R1では、このSource変更に対して**生成器が実際に作ったGo判断箇所の変更**を追加で検証し、R2では実Builderの消費byte、R3では通常CLIの実Provider／別Consumerまで同じ因果関係を接続する。意味受理は引き続きOwner判断である。
