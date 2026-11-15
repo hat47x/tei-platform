@@ -75,12 +75,12 @@ func ParseDataTable(table MarkdownTable) (DataTableAuthoring, error) {
 	if err != nil || strings.Contains(namespaceWord.Text, ".") {
 		return out, cellError(namespaceWord, "the namespace of a Data item table must be a top-level canonical id")
 	}
+	if strings.Contains(symbol.Text, ".") {
+		return out, cellError(symbol, "write the Data name without a namespace; the namespace follows \"in\"")
+	}
 	segment, err := core.SymbolToSegment(symbol.Text)
 	if err != nil {
 		return out, cellError(symbol, err.Error())
-	}
-	if strings.Contains(symbol.Text, ".") {
-		return out, cellError(symbol, "write the Data name without a namespace; the namespace follows \"in\"")
 	}
 	dataID, err := core.ParseCanonicalID(string(namespace) + "." + segment)
 	if err != nil {
