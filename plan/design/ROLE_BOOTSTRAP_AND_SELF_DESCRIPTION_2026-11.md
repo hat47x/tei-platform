@@ -3278,7 +3278,7 @@ PR #5007で、同一Operator宣言に対してmanifestだけを切り替え、�
 
 ### 51.1 今回の実装はM2ではなく、M1/M2を判定するための独立基線である
 
-第50節では自己記述からRequired Shape検査を生成する方式Cを第一候補とした。その前段として、現行validationgen.GeneratePositiveが受理するpositive一規則の**固定された期待形**をGoの focused 回帰として追加する。対象はinternal/semantic/validationgen/positive_shape_obligation_baseline_test.goのTestPositiveLoweringShapeIndependentBaseline。正常な「Rule ID・単一Attribute・Relationなし・std.decimal・Go package名」を固定し、ID欠損・Attribute欠損・余分なRelation・非対応Kind・型違い・未解決型・不正package名を、それぞれ一因子だけ変えて拒否する。拒否した入力からGoを出力しないことも調べる。
+第50節では自己記述からRequired Shape検査を生成する方式Cを第一候補とした。その前段として、現行validationgen.GeneratePositiveが受理するpositive一規則の**固定された期待形**をGoの focused 回帰として追加する。対象はinternal/semantic/validationgen/positive_shape_obligation_baseline_test.goのTestPositiveLoweringShapeIndependentBaseline。正常な「Rule ID・単一Attribute・Relationなし・std.decimal」を固定し、ID欠損・Attribute欠損・余分なRelation・非対応Kind・型違い・未知型の六つを一因子ずつ拒否する。Go package名の不正はDSLの形ではなく、Target Lowering固有の条件として別の負例で拒否する。拒否した入力からGoを出力しないことも調べる。
 
 この試験は、生成する検査器のExpectedを**既存Generatorから動的に作らない**ための基線である。現在のGoの正答をすべて受理済みの業務Lawとみなさず、後続のOwner評価に渡す。元Ruleの製品Reader・Source位置・生成Go実行・実Builder消費は既存の別試験が担当する。したがって、focused testがPASSしても**M0の説明／M1のDescriptor由来検査／M2のGo分岐置換は一つも新たに実装されたことにはならない**。新しい形の検査器に入る際は、この独立基線の正常・負例を使って比較し、Go手書きの該当一義務が本当に減ったかを確認する。
 
