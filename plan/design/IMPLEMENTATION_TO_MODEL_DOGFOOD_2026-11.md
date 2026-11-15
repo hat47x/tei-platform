@@ -459,3 +459,33 @@ M1には生成型・解釈型の両方を許すが、**M3のセルフビルド�
 **実装担当**：#2620/#4359（Shape／Role）、#2621/#988/#1018（Reader）、#1121/#4544（Generator）、#943/#951/#1251（Plugin）、#2595/#2831（実Build）、#2600（失効）、#1180/#2514（独立Expected）。#5056の生成Goと実入力の取り違え拒否、#5054のOperator選択後の旧Scenario失効は別PRとして扱う。新Host・Registry・万能Meta Interpreter・独立Expected正本は増やさない。
 
 **現状**：手書きGoのShape検査、独立基線、Rule生成Goの実CLI Buildは存在する。M1〜M3の移行、Generator自身のTEI実セルフビルド、定義簡素化の実測、正式R3 Provider／Windows Studio Stage2の成立をこの追補では主張しない。
+
+## 16. Scenarioの実装選択を生成コマンドの資格として固定する（2026-11-15・製品差分）
+
+### 16.1 Sourceの意味と実装選択は別の資格である
+
+[横断Plugin接続§8](PLUGIN_CONNECTION_EVIDENCE_AND_COMPOSITION_SLICE_2026-11.md)のCPW-11を、既存`tei scenario generate`／`run`／`check`へ具体化する。Workspace manifestの`implementations`はOperatorそのものの意味ではなく、評価に用いる実装の選択である。Rule・World・Fixture・Plugin Lockが同じでも、実装A→Bで旧生成コマンドの実行資格が変わる。
+
+生成Planとargvに、選択集合を順序によらず正規化した`operatorSelectionSha256`を追加し、評価前に現在のWorkspaceと照合する。未Pinの探索的実行と、完全Pinを持つ生成Commandは従来どおり区別する。生成Commandから実装選択Pinだけを削ったものを正常なPin付き実行として扱わない。選択変更時に旧Commandを暗黙に修復しない。
+
+同じ計算を`workspace.FingerprintOperatorImplementationSelections`として共有し、製品CLIと既存`reference-change-assurance`のread-only Plan照合に用いる。読み取り専用参照側へ第二の選択規則や実行権限を持たせない。
+
+### 16.2 独立した反証と未成立の資格
+
+| 比較対象 | 期待する観測 | そこからは言えないこと |
+| --- | --- | --- |
+| Rule・World・Lock・Fixtureを保って実装A→B | 旧Aの生成argv／保存Planを拒否し、新Bの実Callを区別 | 結果が同じならProviderも同じ、とは言えない |
+| manifestの選択順だけ変更／実装ID変更 | 前者は指紋不変、後者は指紋変更 | A→B→Aの履歴失効まで成立したわけではない |
+| 生成argvの実装選択Pinを削除／改変 | 完全Pinの欠落・不一致を拒否 | 未Pinの探索モードを廃止したわけではない |
+| CLI生成Planと別のread-only照合 | 同じWorkspace選択正規化で比較 | 一致だけで業務Owner受理やHost Grantは成立しない |
+| 旧argvを独立した`tei scenario run`プロセスで実行 | 実評価前に失効理由を報告 | 単体関数の呼出しだけで実CLI受入としない |
+
+回帰の出発点は既存`cmd/tei/scenario_operator_implementation_test.go`と`tools/reference-change-assurance/scenario_binding_test.go`である。変更の有無だけでなく、結果がどちらも`satisfied`になる入力でのA/B区別を確認する。新しいParser／Resolver／Registry／Test Runnerは作らない。本節の記述だけでexact-HEAD CI成功や製品への統合を主張しない。
+
+### 16.3 型付き入出力と実現方式を次の受入へつなぐ
+
+[Plugin入出力Mapping§19](PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md)では、Record全体・一部Field・明示Adapterを選択できる。PIO-T0/T1では、同じ型付きFixtureを基に必須Field、欠損とNULL、Scope、単位・精度と情報損失を別々に検査する。Portの全体／Field表示を切り替えてもConnection Identityは変えず、表示だけから実CallやGrantを発生させない。
+
+[実現方式の選定](PLUGIN_REALIZATION_AND_OPTIMIZATION_REQUIREMENTS_2026-11.md)は、同じ型付き意味を既存Evaluatorで直接評価するか、Goコードを生成するかを分ける。ただし、実装選択の現在性、必要入力の取得完全性、実Provider／Consumerの証拠はどちらにも必要である。R2-P原Source→Generator→Builder、R3公開pure Function→正式選択Provider→通常CLI、Studio Stage1→Stage2の実Windows検収は引き続き独立したP0とする。API PluginのWails HTTP公開は共通OperationのHost Adapterとして別途扱い、CLIの直接実行にHTTP／Wailsを要求しない。
+
+**現状の受入上限**：このGo差分が扱うのは組込みOperator実装選択の旧Scenarioコマンド失効だけであり、正式Plugin選択、実Binaryの出典、業務意味の受理、Current Grant、A→B→Aの旧資格復活防止、effectful Hook、Stage2自身による再構築は別の検証対象である。
