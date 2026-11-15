@@ -1797,12 +1797,12 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 <!-- org-c1-brms-actual-coverage-20261115 -->
 ### 2026-11-15 組織C1の候補判断を決定表・Rule生成・実Read完全性へ接続する（補遺§29）
 
-[組織C1横断受入補遺§29](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)に、[BRMS決定表・説明・依存分析の提案PR #4723](https://github.com/hat47x/tei-platform/pull/4723)を、**現実の組織判断に適用する最初の小ケース**として受入仕様化した。BRMSは本日時点で**設計候補・PR未統合**であり、組織専用Engineや正式Decision Table Schemaは採用しない。
+[組織C1横断受入補遺§29](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)に、[main統合済みのBRMS設計PR #4765](https://github.com/hat47x/tei-platform/pull/4765)を、**現実の組織判断に適用する最初の小ケース**として受入仕様化した。BRMSは**設計文書がmainに統合済み、製品機能・意味受理は別検証**であり、組織専用Engineや正式Decision Table Schemaは採用しない。
 
 - **モデルとRule**：合成D1/R1に対し、RoleAssignment(Person/Role)とResponsibility(Person/OrgUnit)が同じPerson IDを指す場合に限って候補とする。Role/Duty/Case/valid/knownの正式意味、Current Grantは別。Rule表OR-D01〜05は**説明用**であり、表示表の単純unique-hitや行順で人物・権限を決定しない。対象Person単位の結合・distinct Person・Relation Occurrence Path・No Matchと複数候補を区別する。
 - **実Readerの限界と優先反例**：現`internal/functioncontext/functioncontext.go`は`Rowset.FullyRead=true`と`CoverageUnestablished`/`EmptyJustified=false`を同時に保持する。可視1件でも必要Readがpartial/unestablishedなら「唯一」を判定しない。非出力依存、RLS/Limit/Join/Scopeを必要集合へ含める。最重要反例はODR-3＝同じP1可視行でcomplete-oneとunknownの分離。
 - **実Codegenへの引渡し**：main統合済み[限定Markdown Graph Reader #4722](https://github.com/hat47x/tei-platform/pull/4722)に加え、[Graph Rule→Go実分岐→別Go Process実行 #4729](https://github.com/hat47x/tei-platform/pull/4729)がReferenceで成立。ただし正式`*.tei.md` Loader/Meaning/Target Generator/Plugin/通常CLI、**組織の二Relation Join・候補の完全性**には未接続。採用済みRuleの狭い条件をSource→型付き式→実Go判断→独立Consumer/Expectedへ広げるS1〜S4の残差を分離し、Go Delegate-onlyをTEI実装へ計上しない。
-- **Ownerと試験**：#4490のBEH-01/02（時点・非出力依存・取得完全性）を先に検収し、CR-00〜08とODR-1〜10の合成判断／競合／NULL/欠測／RoleとGrant分離を既存#1180/#2514へ追加する。BRMS一般分析の採否は#988/#1637/#1129/PR #4723、Source/Generator #2621/#1121/#951、実Provider/FunctionContext #2586/#4495。新Expected Storeや横断Gateは作らない。
+- **Ownerと試験**：#4490のBEH-01/02（時点・非出力依存・取得完全性）を先に検収し、CR-00〜08とODR-1〜10の合成判断／競合／NULL/欠測／RoleとGrant分離を既存#1180/#2514へ追加する。BRMS一般分析の採否は#988/#1637/#1129/PR #4765（旧Draft #4723）、Source/Generator #2621/#1121/#951、実Provider/FunctionContext #2586/#4495。新Expected Storeや横断Gateは作らない。
 
 **P0不変**：Studio Stage1→Stage2 #2831/#4583と通常製品CLI実Provider Read #2586/#1251を優先し、組織決定表の実装をBlockerにしない。**本項はDocs-only**。実Rowset/Rule、生成Go、CLI、Plugin、Host/Windows、Owner採用はNOT RUN/NOT ACCEPTED。
 
@@ -1836,6 +1836,19 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 - **Owner/禁止事項**：組織意味の採否は#2386、Rule/Readは#4490、Product Providerは#2586/#4495、生成は#2621/#1121、Case/Effectは#4501/#1174、Expectedは#1180/#2514。組織専用Core/Resolver/Rule Runtime/Host/二重Evidence基盤は増設しない。
 
 **P0維持**：通常製品`tei` CLIの実Provider Read #2586とStudio Stage1→Stage2セルフビルド #2831を優先。§31は**計画文書のみ**で、新Go/PG/Windows/Host/CLI/Studio E2E、Owner Meaning AcceptanceはNOT RUN/NOT ACCEPTED。
+
+
+<!-- org-c1-brms-accepted-source-product-line-20261115 -->
+### 2026-11-15 組織C1：BRMS・業務説明・Mock・生成コードを同じAccepted Sourceからつなぐ（補遺§32）
+
+[組織C1補遺§32](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)へ、[main統合済みのBRMS設計 #4765](https://github.com/hat47x/tei-platform/pull/4765)の有限Unique／部分観測の判断、ほぼ直訳可能な業務説明、契約付きMockシミュレーションと実Go生成を接続。Person/RoleAssignment/Responsibility・時点・Rule・Required Readの意味を共有し、**同一Sourceから説明／テスト／コードを派生させる**ことを最小実験の目的とする。
+
+- **組織固有の受入**：正のRelation一致と全候補の閉包、業務適格性、Case責任、Current Grant/Effectを別資格とする。二Context合成Go Draft #4737は実Provider/同一Snapshotの実証ではなく、#4490 BEH-01/02と§31 OCC-01〜10を先に接続する。r7のPerson Link/二時点DB共存、C1のCase意味採用は#2386 Ownerへ明示的に返す。
+- **段階実証**：採用済みRule一件について正式 `*.tei.md` Reader（#2621/#988）→型付きMeaning／既存Generator（#1121/#4544）→生成Goの実分岐と独立Expected（#1180/#2514）→実Query/Context/独立Consumer（#2586/#4495）→説明とMockの同値を試す。Sourceの原byte/spanと候補構造指紋、生成Artifact、実Read Cohort、Consumer開示を別票に記録。Graph Reference #4729/#4733、Pinned Source予備試験 #4751の局所実績を製品資格へ流用しない。
+- **編集・影響**：所属・Role・責任Occurrenceの多重性と二時点をTree/Graph/Tableで保存し、曖昧な投影から自動で逆編集しない。説明のみの変更／Rule意味変更／Generator版変更／Plugin Lock・現在Grant変更を別に再評価し、A→B→Aで旧Receiptを復活させない。Go delegateだけの自己生成は完了に数えない。
+- **責務境界**：意味#2386、Read/候補#4490、BRMS設計#4765、生成#2621/#1121、Expected#1180/#2514、Case/Host#4501/#1174、Studio/SHO#1124/#2516。第二Rule/Simulation Engine、第二Source/Expected/Scenario正本、組織専用Hostは追加しない。
+
+**実行状況**：組織C1の正式Reader→生成Go→実Provider/CLI→二Consumer/Host→Studio一巡、Owner Meaning Acceptanceは未達。今回の追記は**設計文書のみ**。優先P0の通常`tei` CLI実Read #2586とStage1→Stage2 Desktop #2831は独立維持する。
 
 ## 先に固定しないもの
 
