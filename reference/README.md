@@ -171,6 +171,17 @@ go run ./tools/reference-deployment-attempt
 
 `validate`が通ることは、宣言が読めて型名が実在することを示すだけです。能力の出力型と次の入力型の接続は検査しません。`cmd/tei`のGo試験`TestProductContractsReferenceWorkspaceValidates`が、`go test ./cmd/tei`で`validate`の成否を確認します。`worldFingerprint`の固定値は試験に埋め込みません。全PRへの必須検査は増やしません([#2409](https://github.com/hat47x/tei-platform/issues/2409))。
 
+## SUI参照のCanonical定義
+
+`reference/sui-reference/`は、SUIのread-only参照が運ぶ構造を`.tei`の型として宣言した参照workspaceです。containmentとaffiliationを別Relationにし、Tree階層と本文・題名を宣言しないことを、試験で観測できる形にしています。instanceの取込・保存・Canonical昇格は扱いません。
+
+```bash
+go run ./cmd/tei validate -workspace reference/sui-reference/workspace
+go test ./reference/sui-reference/... -count=1
+```
+
+位置づけと未決は[README](sui-reference/README.md)にあります。移行タスクの分解は[SUI→TEI移行 実装パケット](../plan/design/SUI_TEI_MIGRATION_IMPLEMENTATION_PACKET_2026-11.md)のM2です。
+
 ## 技術検証用サンプルの構成
 
 検証用資産を、業務系システムで頻出するが素朴な設計では破綻しやすい要件(ピーキーな要件)を一つの作業の流れで同時に起こし、基盤に技術的な設計圧力をかける題材として、十一の技術検証用サンプルへ再編する案があります。要件の目録、資産の割当て、各サンプルの失敗注入と通しの完了条件は、[技術検証用サンプルの統合設計](../plan/design/TECH_VALIDATION_SAMPLES_2026-10.md)にまとめています。この設計は採用前の提案で、資産の移動や削除はしておらず、この文書の以降の記述は現在の配置のままです。一方、通しの検証は、`order-workflow`を除く十のサンプルについて、入口の`reference/<サンプルの識別子>/README.md`と実装の`tools/reference-*`が`main`に統合されています。いずれも合成データ、同種のDB、模擬の提供元での確認で、実環境での確認ではありません。サンプルごとの範囲と未成立の事項は、設計文書の[7.3節](../plan/design/TECH_VALIDATION_SAMPLES_2026-10.md#73-段階2-通しの検証の追加)と各入口のREADMEを参照してください。

@@ -1,0 +1,7 @@
+namespace sui
+
+data Island {
+    attribute islandId type sui.island_id
+    attribute titleReviewState type sui.review_state
+    relation parent to sui.island one
+}
