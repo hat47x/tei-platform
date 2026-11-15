@@ -2,6 +2,7 @@ package management
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"tei/internal/environment"
@@ -101,5 +102,134 @@ func TestDocumentReadPreflightFailsClosedOnUnqualifiedStates(t *testing.T) {
 				t.Fatalf("preflight = %+v; want %q and no document authority", got, tc.want)
 			}
 		})
+	}
+}
+
+// TestDocumentReadPreflightReportsOnlyDirectUpstream checks an actual
+ // Catalog -> Resolver -> Lock -> Report chain. The lower Plugin C may
+ // discover B as its direct requirement, but not silently treat A as a
+ // direct or publishable document source.
+func TestDocumentReadPreflightReportsOnlyDirectUpstream(t *testing.T) {
+	a := builtinPlugin(t, "fixture.graph.base")
+	a.Version = "1.4.2"
+	b := builtinPlugin(t, "fixture.graph.extension")
+	b.Requires = []plugin.Requirement{{Plugin: a.ID, CompatibleMajor: 1}}
+	c := builtinPlugin(t, "fixture.graph.consumer")
+	c.Requires = []plugin.Requirement{{Plugin: b.ID, CompatibleMajor: 1}}
+	plugins := []plugin.Definition{a, b, c}
+	env := baseEnvironment(t, string(c.ID))
+	lock, err := plugin.BuildLock(plugin.Catalog{Plugins: plugins}, []environment.Environment{env})
+	if err != nil {
+		t.Fatalf("build actual dependency lock: %v", err)
+	}
+
+	report, err := Derive(Input{World: world(plugins, env), Environment: env.ID, Lock: &lock})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		pluginID    string
+		upstreamID  string
+		upstreamVer string
+	}{
+		{string(c.ID), string(b.ID), b.Version},
+		{string(b.ID), string(a.ID), a.Version},
+	} {
+		got := InspectDocumentReadPreflight(report, tc.pluginID)
+		if got.SelectionStatus != DocumentSelectionExactPinned || len(got.Upstream) != 1 {
+			t.Fatalf("direct upstream for %s: %+v", tc.pluginID, got)
+		}
+		up := got.Upstream[0]
+		if up.PluginID != tc.upstreamID || up.CompatibleMajor != 1 ||
+			up.SelectionStatus != DocumentSelectionExactPinned || up.ResolvedVersion != tc.upstreamVer ||
+			up.LockPinned == nil || !*up.LockPinned {
+			t.Fatalf("upstream for %s: %+v", tc.pluginID, up)
+		}
+		if got.SourceBinding != "unbound" || got.Disclosure != "not-checked" ||
+			got.ReadEligibility != "not-assessed" {
+			t.Fatalf("upstream selection must not authorize a Document read: %+v", got)
+		}
+		raw, err := json.Marshal(got)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, forbidden := range []string{`"documentBody"`, `"documentId"`, `"sourcePath"`, `"audience"`, `"permissionGranted"`} {
+			if strings.Contains(string(raw), forbidden) {
+				t.Fatalf("unexpected manual disclosure: %s", raw)
+			}
+		}
+	}
+	if got := InspectDocumentReadPreflight(report, string(a.ID)); len(got.Upstream) != 0 {
+		t.Fatalf("A has no direct Requires; cannot invent one: %+v", got.Upstream)
+	}
+
+	unlocked, err := Derive(Input{World: world(plugins, env), Environment: env.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := InspectDocumentReadPreflight(unlocked, string(c.ID))
+	if got.SelectionStatus != DocumentSelectionLockUnknown ||
+		len(got.Upstream) != 1 || got.Upstream[0].SelectionStatus != DocumentSelectionLockUnknown ||
+		got.Upstream[0].ResolvedVersion != b.Version || got.Upstream[0].LockPinned != nil {
+		t.Fatalf("compatible major must not invent a locked exact selection: %+v", got)
+	}
+}
+
+func TestDocumentReadPreflightUpstreamFailureStates(t *testing.T) {
+	yes, no := true, false
+	parent := Row{
+		PluginID: "fixture.graph.extension", Version: "1.0.0", Declared: true,
+		EnvSelected: true, Resolved: true, LockPinned: &yes,
+		Requires: []Requirement{{Plugin: "fixture.graph.base", CompatibleMajor: 1}},
+	}
+	base := Row{
+		PluginID: "fixture.graph.base", Version: "1.4.2", Declared: true,
+		EnvSelected: true, Resolved: true, LockPinned: &yes,
+	}
+	for _, tc := range []struct {
+		name   string
+		mutate func(*Report)
+		want   string
+	}{
+		{"missing", func(r *Report) { r.Rows = r.Rows[:1] }, DocumentSelectionNotInInventory},
+		{"undeclared", func(r *Report) { r.Rows[1].Declared = false }, DocumentSelectionNotDeclared},
+		{"unselected", func(r *Report) { r.Rows[1].EnvSelected = false }, DocumentSelectionNotSelected},
+		{"unresolved", func(r *Report) { r.Rows[1].Resolved = false }, DocumentSelectionResolverUnbound},
+		{"invalid-version", func(r *Report) { r.Rows[1].Version = "invalid" }, DocumentSelectionVersionUnknown},
+		{"major-mismatch", func(r *Report) { r.Rows[1].Version = "2.0.0" }, DocumentSelectionVersionMismatch},
+		{"lock-unknown", func(r *Report) { r.Rows[1].LockPinned = nil }, DocumentSelectionLockUnknown},
+		{"lock-mismatch", func(r *Report) { r.Rows[1].LockPinned = &no }, DocumentSelectionLockMismatch},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			report := Report{
+				Environment: "development", ScanState: ScanComplete,
+				Resolver: ResolverOutcome{Resolved: true}, Rows: []Row{parent, base},
+			}
+			tc.mutate(&report)
+			got := InspectDocumentReadPreflight(report, parent.PluginID)
+			if got.SelectionStatus != DocumentSelectionExactPinned ||
+				len(got.Upstream) != 1 || got.Upstream[0].SelectionStatus != tc.want ||
+				got.ReadEligibility != "not-assessed" {
+				t.Fatalf("dependent Plugin must not be treated as Document source: %+v", got)
+			}
+			if tc.want == DocumentSelectionVersionMismatch && got.Upstream[0].ResolvedVersion != "" {
+				t.Fatalf("an incompatible dependency may not report an accepted exact version: %+v", got.Upstream[0])
+			}
+		})
+	}
+
+	// A failed parent selection, incomplete scan, or absent Plugin must not
+	// expose upstream identity as if it were a qualified selection.
+	report := Report{
+		Environment: "development", ScanState: ScanPartial,
+		Resolver: ResolverOutcome{Resolved: true}, Rows: []Row{parent, base},
+	}
+	if got := InspectDocumentReadPreflight(report, parent.PluginID); len(got.Upstream) != 0 {
+		t.Fatalf("partial inventory must not publish upstream claims: %+v", got)
+	}
+	report.ScanState = ScanComplete
+	report.Rows[0].Resolved = false
+	if got := InspectDocumentReadPreflight(report, parent.PluginID); len(got.Upstream) != 0 {
+		t.Fatalf("unresolved parent must not publish upstream claims: %+v", got)
 	}
 }
