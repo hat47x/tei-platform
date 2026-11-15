@@ -190,6 +190,10 @@ G／P／Dの分類は図表実現の解釈・生成・混合・Hookの配置方�
 
 **次の独立した小PR**は、AP-1（#5096）のWails Server`InspectSubject`一Routeである。許可されたWorkspace ID／Source Revisionの正常Readと、別AudienceのSource位置非開示・未許可Workspace・旧Revision拒否を、現行CLIの結果とは別のHost Admissionで検査する。**HTTPの成功は非Builtin Providerの実Callではない**。B0（#4635）は実Peer／nonce／SessionとCancellationを持つ子Backendを、N2 Build子起動（main #5059）とは区別して比較する。SL-1の実Function／Provider #4495とStudio非Plugin Stage1→Stage2 #2831/#4583はP0として独立・並行させる。LA-01〜08は既存#1180/#2514のIndependent Expectedへ渡し、第二Resolver／Runtime／Hostを増やさない。
 
+**SL-0→AP-1→実Providerを通す際の時点固定（[起動契約§34](../design/STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)）**：実装の検収は、Source選択（S）・BuildPlan確定から実Builder入力（B）・実Provider呼出し直前（I）・Consumer受領（C）の四時点を区別する。main #5129では、BuildPlan確定後に同梱原Markdownの**説明だけ**を変えた場合も通常`tei self-build`が旧PlanでのBuildを拒否しArtifactを残さないことを試験に追加した。main #5109の生成Go変更後拒否とは別の負例であり、いずれも正式R2-Pの全出典閉包や実Providerを保証しない。LA-09〜15は既存#1180/#2514へ渡し、説明を戻したA→B→Aのハッシュ一致を以前のOwner受理／Grantの復活根拠にしない。
+
+**次の着手**：#5119の実CLI／直接Operation／Studio Host三入口はexact HEADのGo CI確認を先に閉じる。AP-1 #5096ではHTTPの公開Audience／Scope／Source位置を呼出し時と返答時に確認し、同じ結果を返せることと開示してよいことを分離する。B0 #4635では実Process世代／Peer／旧Replyの比較を行う。実Provider #4495および非Plugin Stage1→Stage2 #2831/#4583のP0を優先維持し、UIのFocus／Pin／Dirty Bufferに残る古い結果の取扱いはDesktop後継#5122へ渡す。新AdmissionTicket Schema／第二Runtime／汎用Ready APIは追加しない。
+
 ### SL-1の最初の実コード差分と、受理可能な証拠（2026年11月15日）
 
 Script Launch §25、ADR-0048、#4495に基づき、最初は**公開済みのpure Function一件を直接Go APIから実Go Providerへ呼ぶ**差分を閉じる。次に、同じ意味契約を通常の製品tei実行ファイルの別OSプロセスから呼ぶ。これは二つの独立Attemptであり、プロセス・Request IDが同じであると仮定しない。Stage1→Stage2セルフビルド、実PostgreSQL Function Read、Studio子Backend/IPC、MCP、外部Effectはそれぞれの別Gateに残す。
