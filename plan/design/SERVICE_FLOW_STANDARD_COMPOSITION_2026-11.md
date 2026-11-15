@@ -4,6 +4,7 @@
 - **目的**：ノードフロー、APIマッシュアップ、Webhook、イベント連携、簡易サービスを、TEIの標準データ構造・汎用型・Function／Operation／Processの組合せで記述し、CLI・Web・Desktop・Batchから再利用できるようにする。
 - **優先順位**：既存の製品P0（正式Source→実コード生成→通常CLIの実Provider、および非Plugin Studio Stage1→Stage2の実Windows受領）を維持する。サービス管理基盤の実装を先行必須条件にしない。
 - **主なOwner**：標準Data／Facet [#2495](https://github.com/hat47x/tei-platform/issues/2495)、構造変換 [#2497](https://github.com/hat47x/tei-platform/issues/2497)、Operator [#988](https://github.com/hat47x/tei-platform/issues/988)、Process／Application [#1158](https://github.com/hat47x/tei-platform/issues/1158)、実Entry [#4495](https://github.com/hat47x/tei-platform/issues/4495)、Plugin解決 [#951](https://github.com/hat47x/tei-platform/issues/951)、実受領 [#2514](https://github.com/hat47x/tei-platform/issues/2514)。Ownerの判断を本書で代行しない。
+- **成果物中心の設計との接続**：[成果物要求と実現方式の選択](DECLARATIVE_RESULT_PROCESS_COMPOSITION_2026-11.md#11-一つの意味モデルから複数の実現方式を選ぶ2026-11-15追補) §11。NodeのOperator出現と、直接解釈・Go生成・DB委譲・外部Providerの選択は別の関係とする。最初は既存Rule一件のEvaluator／生成Goを独立Expectedで照合し、Plugin配線のPV-N0とは共通Graph表示契約を使いつつ別々に検収する。図上の接続から実行方法・現在Grant・実Callを推測しない（実装前設計）。
 - **参照する設計**：[起動・イベント・応答の意味](PROCESS_LIFECYCLE_TRIGGER_OPERATION_SEMANTICS_2026-11.md)、[実行モデルの投影](PROGRAM_EXECUTION_MODEL_PROJECTIONS_2026-11.md)、[Webの読込・書込API](WEB_READ_WRITE_API_ADAPTER_DESIGN.md)、[ETL・Batchの汎用化](ETL_BATCH_FUNCTION_COMPOSITION_DESIGN_2026-11.md)、[Ruleから実Builder・Providerへの縦断](PLUGIN_RULE_PRODUCT_VERTICAL_SLICE_2026-11.md)、[Web UIとフローの実装境界](WEB_STANDARD_COMPONENT_AND_AGENT_HARNESS_2026-11.md)。
 
 ## 1. 結論：フロー専用モデルではなく、標準要素の合成にする
