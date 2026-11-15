@@ -1579,7 +1579,7 @@ WindowのS0-Pは[main統合済みPR #4792](https://github.com/hat47x/tei-platfor
 | **Window S0-P**：main [#4792](https://github.com/hat47x/tei-platform/pull/4792) | 正常・重複ID・旧派生表示を含む5原文の管理Root選択、Pinned byte、Source位置、Index失効。無効な定義もSource追跡から落とさない | 5例すべてで正式Loaderは未束縛を拒否する。選択Frontend・意味解釈・製品Queryは別検収 |
 | **REA候補比較**：main [#4805](https://github.com/hat47x/tei-platform/pull/4805) | 同じCandidate ID・申告Source DigestでもStructuralFactsが変化すれば observed-facts-changed と判定する | 申告digestの一致だけでは意味受理、観測の不変、外部REA全件取得、Current Grantを保証しない |
 | **Plugin文書の前提検査**：main [#4800](https://github.com/hat47x/tei-platform/pull/4800) | 実Plugin Inventoryの選択状態、正確な版・Lockの一致と不一致をread-onlyで判別 | exact-version-pinnedでもSource Bindingは未束縛、Disclosureは未確認、readEligibilityは未評価。本文・隠れたID・件数は公開しない |
-| **Studio Inspector**：main [#4806](https://github.com/hat47x/tei-platform/pull/4806) | Workbenchの実装SourceでauthorityLimitsの保持・表示、型不正や古いReplyを拒否する処理を追加 | Sourceコードの検査だけでは正規生成Bundle・Wails埋込資産・実Windows WebView2の表示まで保証しない。構成同期は[PR #4812](https://github.com/hat47x/tei-platform/pull/4812)の別検証 |
+| **Studio Inspector**：main [#4806](https://github.com/hat47x/tei-platform/pull/4806) | Workbenchの実装SourceでauthorityLimitsの保持・表示、型不正や古いReplyを拒否する処理を追加 | Sourceコードの検査だけでは正規生成Bundle・Wails埋込資産・実Windows WebView2の表示まで保証しない。構成同期の試行[PR #4812](https://github.com/hat47x/tei-platform/pull/4812)は未マージでclosed。配布Bundleと実WebView2受領は引き続き別検収 |
 | **Graph/Rule生成**：main [#4758](https://github.com/hat47x/tei-platform/pull/4758)・[#4761](https://github.com/hat47x/tei-platform/pull/4761) | 候補からのGo処理生成と、Binaryが申告する構造指紋だけでは実ロジックの正しさを証明できない負例 | 受理Meaning、実Builderの入力、外部測定Artifact、通常CLIの選択CallとConsumer受領を別に確認 |
 
 #### 39.6.1 統合する五つの負例と担当
@@ -1594,4 +1594,46 @@ WindowのS0-Pは[main統合済みPR #4792](https://github.com/hat47x/tei-platfor
 
 この五例に共通するのは、**ある層の有効な証拠を次の層の受入へ自動昇格させない**ことである。ただしSource、REA、Plugin、UI、Generatorの意味・権限を同じ一つのCore型に押し込まない。第39.3節の正式Graph S0-A、実Provider→独立Consumer、Studio Stage1→Stage2は引き続き別々のP0作業とする。
 
-**今回の状態**：新たな製品E2Eではなく、mainの限定実装と進行中#4812を区別した設計・検収の引渡し。実Markdown Reader、受理Meaning→製品Generator/Provider、Wails実Consumer、Stage2、Owner正式受理は本差分では未検収。
+**当初の状態（2026-11-15、第39.6節追記時点）**：新たな製品E2Eではなく、mainの限定実装と、当時進行中だった#4812を区別した設計・検収の引渡し。実Markdown Reader、受理Meaning→製品Generator/Provider、Wails実Consumer、Stage2、Owner正式受理は本差分では未検収。
+
+
+<!-- data-forms-presence-carrier-evidence-20261115 -->
+### 39.7 同じ結果でも、同じ入力・同じ証拠とは限らない（2026-11-15）
+
+第38節の「問いに必要な根拠」を、mainに統合された[Window実SQLite負例 #4822](https://github.com/hat47x/tei-platform/pull/4822)と[REA原本の二入口回帰 #4816](https://github.com/hat47x/tei-platform/pull/4816)に基づき具体化する。両者に共通する教訓は、**演算結果の一致、入力集合の同一性、原文の同一性、判断に必要な観測の充足は別々に確かめる**ということである。新しい標準型・Query Engine・Evidence Storeを追加しない。
+
+#### 39.7.1 Windowの実入力：NULL・0・行不在を一つの値に畳まない
+
+[固定Window入力と独立Expected候補](../../testdata/tei-md-window/README.md)のB2について、SQLiteの同じ生成SQLを使い、値と行の存在だけを変える。
+
+| B2の入力状態 | 観測行数 | B3の累積RANGE平均 | 意味保存の判定 |
+| --- | ---: | ---: | --- |
+| **明示NULL** | 7 | 10 | B2のObservation IDと行は存在するが、AVGの数値入力には加わらない |
+| **数値0** | 7 | 20/3 | B2は値0を持つ観測であり、NULLではない |
+| **B2行なし** | 6 | 10 | 平均値は初期値に戻るが、Observation ID集合と行数が異なる |
+
+同じ値10が得られる最初と最後でも、**集合の構成要素が違う**。この違いはデータ様式のPresence、Identity、Multiplicity、Input Closureの差であり、単なる平均値の差分では検出できない。SQL/NoSQLのResult Slice、Tree/Graphのノード数、組織の人数、BRMSのNo Matchや唯一性でも同じ誤りを避ける。集計対象に必要な行・期間・粒度・非出力依存を宣言し、値に加えて存在・欠損・NULL・0・Coverageを比較する。
+
+#4822は固定JSON候補から実SQLite表に行を渡した**C0のGo回帰**である。正式Markdown Reader、Product Window Query/Provider、通常CLI/独立Consumerへ接続した試験ではない。別のExpected正本に昇格させず、#1180/#2514の既存試験へ「値が一致してもIdentity/Closureが違う」負例を引き渡す。
+
+#### 39.7.2 REAの原本と派生入力：同じ観測対象でもraw byteは別
+
+[main #4816](https://github.com/hat47x/tei-platform/pull/4816)では、保存済みREA 6.8.0のUTF-16LE/BOM原本と、三要素取込み用のUTF-8派生入力を、既存の二つのread-only CLI入口で照合している。**原本のdigestと派生入力のdigestを取り違えたPin要求は拒否**し、意味グラフとアプリケーショングラフ、外部Relation IDと候補ID、同じ端点を持つ二本の辺も区別する。
+
+ただし、同じ保存済みProducer Evidenceを手がかりに二入口を比較できても、二つが同じraw byteを消費したこと、同じ原子的Read Attemptであったこと、Graph全体を取得したこと、Functionが実際にDataを読んだことは証明されない。保存原文→変換入力→候補→正式Meaning→実Consumerは、それぞれ実際に消費したbyte・識別規則・Loss・Attemptで追跡する。modelrefなど下流のCarrierに外部Edge IDを保持できない場合はLossを明示し、並行Relationの個別編集を許可しない。
+
+#4816はCLIのGo handler回帰であり、通常teiバイナリの独立プロセス起動、現在のREA外部再解析、Native WebView2第二Consumer、Ownerの意味受理を含まない。初回の実装を一FunctionのSource/Relationに絞る方針（REA§12〜14、#4661）を維持する。
+
+#### 39.7.3 次に見るべき差分とOwnerへの引渡し
+
+| 差分の種類 | 再評価が必要なClaim | 判定しないこと |
+| --- | --- | --- |
+| **値だけ変更**（NULL→0） | Presence/値・演算結果、適用するRuleの入力、Consumer表示 | 行集合やSource意味が変わらないから結果も不変、とはみなさない |
+| **行を削除**（NULL行→行なし） | Observation/Relation Identity集合、Input Closure・粒度・Coverage、演算結果 | 同じ平均から入力の同一性・全件取得を導かない |
+| **原本から別文字コードへ派生** | 原本digest・派生byte・変換契約・Span対応・Source参照位置 | 派生側のPinで原本の版やReader資格を証明したとしない |
+| **同じCandidate IDで観測変更** | StructuralFacts・Attempt・現在の受理・Source Revision | ID/申告digest一致だけでunchangedにしない（#4805） |
+| **画面上でSource参照を選択** | Locator・現在Root/Revision/Scope・再取得byte・開示権限 | read-only位置表示を、原文の再Read・Source Patch・実編集許可と混同しない（[Desktop #4823](https://github.com/hat47x/tei-platform/pull/4823)） |
+
+最初の製品PRは第39.3節の**Graph一入力のS0-A正式Reader**のまま、Window C0とREAの二入口を新しい着手条件にしない。実Provider→Function Data Context→独立Consumerは#2586/#2506、Source安全編集は#1124/#2500、Studio Stage1→Stage2は#2831/#4583へ、それぞれ既存Expectedを参照して引き渡す。
+
+**検証状態**：#4822/#4816の限定Go回帰はmain統合済み。本節は設計と受入条件への反映のみで、正式Reader・Product Provider・実第二Consumer・Owner意味受理を新たに検証したものではない。先行する[docs PR #4820](https://github.com/hat47x/tei-platform/pull/4820)のexact HEADではCache CIが成功した一方、Repository HealthはPluginのgofmt不一致とWorkbench固定版不一致で失敗した。gofmt修正は[main #4818](https://github.com/hat47x/tei-platform/pull/4818)へ入ったが、その過去HEADのHealthを成功に読み替えない。Workbench修正#4812はclosed/unmergedのため、実配布・実WebView2確認は引き続き未受理である。
