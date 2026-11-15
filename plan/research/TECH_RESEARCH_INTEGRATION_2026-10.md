@@ -1434,7 +1434,7 @@ Pluginの[main #3337](https://github.com/hat47x/tei-platform/pull/3337)は、宣
 
 ### 16.5 採用・差戻し・マージの基準
 
-- 同じ意味要素が**業務と研究の異なる二用途**で実Providerまたは実Consumerに再利用されて初めて、標準Operatorや表現型への昇格を検討する。似た構造のモック二例では不足。
+- 異なる用途で同じ意味要素を実Providerまたは実Consumerに再利用できることは、汎用Coreへの昇格を検討する有力な根拠となる。ただし、似た構造のモック二例では不足する。単一分野に固有の要件は、まず専門OperatorやPluginで実現可能かを確認する。
 - 元Sourceの逆参照・NULL／空集合・時間／粒度・選択Provider・現在Grantが欠落した場合、見かけの一致があってもR2を認めない。
 - 新しいRuntime／Host／Registry／受理機関が必要だという提案は、既存Plugin・Generator・外部Providerで解けない理由を独立に比較する。
 - GitHub上では古いDraftを重複Mergeしない。現mainへ最小差分で移し、CI・差分・Readbackを確認して短期で統合する。研究で得た結論とOwnerによる製品採用は別の記録とする。
