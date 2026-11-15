@@ -101,13 +101,14 @@ func commandCatalog() cliCommandCatalog {
 		{Name: "knowledge-review-handoff", Effect: "read-only", Required: []string{"-workspace", "-subject-kind", "-subject-id", "-qualification-requirements"}, Optional: []string{"-expected-review-handoff-fingerprint"}, Output: "json", SchemaVersion: "tei.cli.knowledge-review-handoff/v0", JSONContract: "enveloped", Modes: []string{"handoff"}},
 		{Name: "knowledge-review-disclose", Effect: "read-only", Required: []string{"-workspace", "-subject-kind", "-subject-id", "-review-handoff"}, Optional: []string{"-expected-review-handoff-fingerprint", "-expected-disclosure-fingerprint"}, Output: "json", SchemaVersion: "tei.cli.knowledge-review-disclose/v0", JSONContract: "enveloped", Modes: []string{"disclosure"}},
 		{Name: "knowledge-data-design-candidate-review", Effect: "read-only", Required: []string{"-workspace", "-subject-kind", "-subject-id", "-data-design-candidate-kind", "-data-design-candidate-fingerprint"}, Optional: []string{"-expected-data-design-fingerprint", "-expected-data-design-candidate-evidence-requirement-fingerprint", "-expected-data-design-candidate-review-fingerprint"}, Output: "json", SchemaVersion: "tei.cli.knowledge-data-design-candidate-review/v0", JSONContract: "enveloped", Modes: []string{"review"}, ArgumentValues: valueSets("knowledge-data-design-candidate-review"), ArgumentType: valueTypes("knowledge-data-design-candidate-review")},
-		{Name: "three-element", Effect: "read-only", Required: []string{"a subcommand: validate|crud|cross-reference|diff", "-model (validate, crud, cross-reference)"}, Optional: []string{"-before and -after with diff"}, Output: "json", SchemaVersion: "tei.cli.three-element/v0", JSONContract: "enveloped"},
+		{Name: "three-element", Effect: "read-only", Required: []string{"a subcommand: validate|crud|cross-reference|diff|rea-intake|rea-candidates|rea-compare"}, Optional: []string{"flags are specific to each subcommand; consult its help"}, Output: "json", SchemaVersion: "tei.cli.three-element/v0", JSONContract: "enveloped"},
 		{Name: "validate", Effect: "read-only", Required: []string{"exactly one of -workspace or -world"}, Optional: []string{"-json"}, Output: "text; json when -workspace -json", SchemaVersion: "tei.cli.validate/v0", JSONContract: "enveloped"},
 		{Name: "world", Effect: "read-only", Required: []string{"exactly one of -workspace or -world"}, Output: "json", JSONContract: "raw"},
 		{Name: "requirements", Effect: "read-only", Required: []string{"exactly one of -workspace or -world"}, Output: "json", SchemaVersion: "tei.cli.requirements/v0", JSONContract: "enveloped", ResultShape: "array"},
 		{Name: "plugin-lock", Effect: "read-only", Required: []string{"exactly one of -workspace or -world"}, Optional: []string{"-environment"}, Output: "json", SchemaVersion: "tei.cli.plugin-lock/v0", JSONContract: "enveloped", Modes: []string{"", "environment"}},
 		{Name: "plugin-resolve", Effect: "read-only", Required: []string{"exactly one of -workspace or -world", "-environment"}, Optional: []string{"-plugin-lock", "-diagnostic-candidates"}, Output: "json", SchemaVersion: "tei.cli.plugin-resolve/v0", JSONContract: "enveloped", Modes: []string{"", "unvalidated-candidates"}},
 		{Name: "plugin-runtime-plan", Effect: "read-only", Required: []string{"exactly one of -workspace or -world", "-environment", "-plugin-lock"}, Output: "json", SchemaVersion: "tei.cli.plugin-runtime-plan/v0", JSONContract: "enveloped"},
+		{Name: "plugin-inventory", Effect: "read-only", Required: []string{"exactly one of -workspace or -world", "-environment"}, Optional: []string{"-plugin-lock", "-plugin", "-diagnose"}, Output: "json; current environment inventory is a read-only projection, not runtime authorization", SchemaVersion: "tei.cli.plugin-inventory/v0", JSONContract: "enveloped", Modes: []string{"", "detail", "diagnose"}},
 		{Name: "rea-evidence", Effect: "read-only", Required: []string{"-analysis-output"}, Optional: []string{"-provider-version", "-view", "-request", "-expected-evidence-id", "-expected-evidence-fingerprint", "-expected-source-revision", "-request-out", "-tool-path"}, Output: "json", SchemaVersion: "tei.cli.rea-evidence/v0", JSONContract: "enveloped", Modes: []string{"evidence", "request", "view", "request-view"}, WriteFlags: []string{"-request-out"}},
 	}
 	fillFlagNameSets(commands)
@@ -125,6 +126,9 @@ var selfParsedFlagNames = map[string]struct {
 	required []string
 	optional []string
 }{
+	// The parent command dispatches to per-subcommand parsers before the shared
+	// FlagSet exists. It has no global flag grammar; see each subcommand's help.
+	"three-element": {nil, nil},
 	"external-candidates":      {[]string{"evidence-path", "tool-version", "observation-id", "relation-id"}, []string{"expected-evidence-id", "expected-received-digest", "expected-source-revision"}},
 	"model catalog":            {[]string{"workspace"}, []string{"namespace"}},
 	"model locate":             {[]string{"workspace", "subject-kind", "subject-id"}, []string{"limit"}},
