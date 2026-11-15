@@ -1,0 +1,6 @@
+workspace: tei_md_data_table
+formatVersion: 1
+sources:
+  - semantic
+languages:
+  - tei.authoring/v1
