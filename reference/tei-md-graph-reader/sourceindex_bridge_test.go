@@ -1,6 +1,7 @@
 package teimdreader
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 
@@ -84,6 +85,102 @@ func TestRuleCandidateByteSpansUseExistingSourceIndex(t *testing.T) {
 				return changed, nil
 			}); err == nil {
 				t.Fatal("stale Source Index artifact was accepted after byte change")
+			}
+		})
+	}
+}
+
+// TestSourceIndexRevisionDoesNotInheritCandidateShapeFingerprint checks that a
+// normalized reference Graph/Rule shape never substitutes for raw Source
+// identity. It proves neither Workspace Frontend selection nor Meaning approval.
+func TestSourceIndexRevisionDoesNotInheritCandidateShapeFingerprint(t *testing.T) {
+	const path = "semantic/graph.tei.md"
+	original := fixtureSource(t, "baseline.tei.md")
+	base, err := ParseRuleCandidate(original)
+	if err != nil {
+		t.Fatal(err)
+	}
+	baseShape, err := CandidateShapeFingerprint(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	baseGenerated, err := GenerateGo(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	baseArtifact, err := sourceindex.NewArtifact(path, original)
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldIndex := sourceindex.Index{Artifacts: []sourceindex.Artifact{baseArtifact}}
+
+	cases := []struct {
+		name      string
+		bytes     []byte
+		sameShape bool
+	}{
+		{
+			name:      "display layout changes, not Graph Rule",
+			bytes:     fixtureSource(t, "layout-only.tei.md"),
+			sameShape: true,
+		},
+		{
+			name:      "explanation changes, not Graph Rule",
+			bytes:     append(append([]byte(nil), original...), []byte("\nAdditional explanation only\n")...),
+			sameShape: true,
+		},
+		{
+			name:      "Edge direction changes",
+			bytes:     fixtureSource(t, "edge-reversed.tei.md"),
+			sameShape: false,
+		},
+		{
+			name:      "Rule predicate changes",
+			bytes:     fixtureSource(t, "rule-by-target.tei.md"),
+			sameShape: false,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			parsed, err := ParseRuleCandidate(tc.bytes)
+			if err != nil {
+				t.Fatal(err)
+			}
+			candidateShape, err := CandidateShapeFingerprint(parsed)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := candidateShape == baseShape; got != tc.sameShape {
+				t.Fatalf("same reference structure = %t, want %t", got, tc.sameShape)
+			}
+			generated, err := GenerateGo(parsed)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := bytes.Equal(generated, baseGenerated); got != tc.sameShape {
+				t.Fatalf("same reference generated Go = %t, want %t", got, tc.sameShape)
+			}
+			artifact, err := sourceindex.NewArtifact(path, tc.bytes)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if artifact.Fingerprint == baseArtifact.Fingerprint {
+				t.Fatal("a changed Source was reported as the same byte revision")
+			}
+			readChanged := func(requested string) ([]byte, error) {
+				if requested != path {
+					return nil, fmt.Errorf("unexpected Source %q", requested)
+				}
+				return tc.bytes, nil
+			}
+			// Even for the same candidate shape, a stale raw Source Index is
+			// not permitted to validate the changed authored Markdown.
+			if err := oldIndex.Validate(readChanged); err == nil {
+				t.Fatal("stale raw Source Index passed after byte change")
+			}
+			currentIndex := sourceindex.Index{Artifacts: []sourceindex.Artifact{artifact}}
+			if err := currentIndex.Validate(readChanged); err != nil {
+				t.Fatalf("current raw Source Index rejected its own bytes: %v", err)
 			}
 		})
 	}
