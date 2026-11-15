@@ -442,6 +442,20 @@ func requireSelectedGeneratedGo(path string, selected []byte) error {
 	return nil
 }
 
+// requireSelectedGeneratedGo is a test-only byte boundary between the
+// selected Generator output and the Go package supplied to Build Intent.
+// It does not establish Reader/Generator authority or runtime Grant.
+func requireSelectedGeneratedGo(path string, selected []byte) error {
+	staged, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	if !bytes.Equal(staged, selected) {
+		return fmt.Errorf("staged generated Go differs from the selected Generator output")
+	}
+	return nil
+}
+
 const generatedRuleDriver = "package main\n\nimport (\n\t\"errors\"\n\t\"fmt\"\n\t\"math/big\"\n\t\"tei/internal/core\"\n)\n\ntype ruleNumber struct { value *big.Rat; missing bool; reads int }\n\nfunc (s *ruleNumber) Number(id core.CanonicalID) (*big.Rat, error) {\n\tif id != \"sales.order_line.quantity\" { return nil, errors.New(\"wrong attribute\") }\n\ts.reads++\n\tif s.missing { return nil, errors.New(\"unavailable\") }\n\treturn s.value, nil\n}\n\nfunc (s *ruleNumber) RelationKeys(_, _ core.CanonicalID) ([]string, error) {\n\treturn nil, errors.New(\"unexpected relation read\")\n}\n\nfunc main() {\n\tfor _, tc := range []struct { name, number string; missing bool }{\n\t\t{\"positive\", \"2.5\", false},\n\t\t{\"zero\", \"0\", false},\n\t\t{\"negative\", \"-1\", false},\n\t\t{\"null\", \"\", false},\n\t\t{\"missing\", \"\", true},\n\t} {\n\t\tvar value *big.Rat\n\t\tif tc.number != \"\" {\n\t\t\tvalue = new(big.Rat)\n\t\t\tif _, ok := value.SetString(tc.number); !ok { panic(tc.number) }\n\t\t}\n\t\tsource := &ruleNumber{value: value, missing: tc.missing}\n\t\tresult, err := EvaluateSelected(source)\n\t\tif err != nil {\n\t\t\tfmt.Printf(\"%s:error:%d\\n\", tc.name, source.reads)\n\t\t} else {\n\t\t\tfmt.Printf(\"%s:%s:%d\\n\", tc.name, result, source.reads)\n\t\t}\n\t}\n}\n"
 
 // generatedRuleProvenance is an intentionally small Go source carried in the
