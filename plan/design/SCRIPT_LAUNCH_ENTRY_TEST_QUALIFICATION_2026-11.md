@@ -1397,7 +1397,7 @@ TEIの業務DSLには、業務担当者が読む順序で、対象・入力・�
 
 ### 29.4 横断設計との接続と今回の停止線
 
-#4824のdogfoodingのD-A〜D-E（正式Reader→実Go処理→実Plugin/通常CLI→Stage1再構築→Windows Consumer）は**同じ意味Sourceを最後まで追う別の縦断**である。最初の公開pure Entryの実Provider呼出しは、その完了まで待たせない。現在の`*.tei.md`は正式Reader未接続の範囲を明示し、既存`*.tei`の受理済みFunctionを利用可能な場合に限る。Graph/Rule参照GoやMockの成功をProduct Entryの実Callへ転用しない。
+#4824のdogfoodingのD-A〜D-E（正式Reader→実Go処理→実Plugin/通常CLI→Stage1再構築→Windows Consumer）は**同じ意味Sourceを最後まで追う別の縦断**である。最初の公開pure Entryの実Provider呼出しは、その完了まで待たせない。現在の製品Loaderは、Manifestで`tei.rule-authoring/v0`を明示選択した`semantic` Rootの`*.tei.md`を、内蔵Rule Readerで既存`semantic.Validation`へ読み込める。ただし、この限定Readerを公開Function Entryや汎用Graph／外部Language Readerの完成とみなさず、最初のpure Function起動は受理済みEntryと実Go Providerの別資格で検収する。Graph/Rule参照GoやMockの成功をProduct Entryの実Callへ転用しない。
 
 Studio Inspectorの参照制限表示（#4806）も、製品Build／実Wails埋込資産／現在Host実行許可とは別資格。Source・Provider・Target・Resultを同じ欄に並べて表示する場合も、各欄の取得時点・資格とunknownを維持する。#4821の実行モデル図解、#4827の横断Plugin計画、#1180/#2514の独立Expectedを共用し、別のTrace StoreやScenario正本を追加しない。
 
@@ -1422,3 +1422,21 @@ Studio Inspectorの参照制限表示（#4806）も、製品Build／実Wails埋�
 その後、既存Hostで公開Entry・Current Grant・exact Provider/Artifactを照合してから実Callへ進む。読み取り時点と実行時点のSource／Selection／権限が異なる場合は停止・再評価する。A→B→Aで同じbyteへ戻っても、過去の受理とGrantを自動復活させない。結果画面には、Source確認・Owner意味受理・Entry公開・Host Admit・actual Provider Call・Consumer受領を、**取得時点が異なる別資格**として表示し、未確認をPASSへ変換しない。
 
 製品の最短順は、(a) 正式に受理されたpure EntryのSourceとtyped Input、(b) Hostの現在入場資格と実Provider、(c) 通常`tei` CLIの別OS Processと独立Consumerである。#4853のHeadless回帰を再実装したり、汎用Entry InspectorやSource Readerを新設したりしない。正式`*.tei.md` ReaderのA0〜A3とStudioのWindows Stage1→Stage2は別のP0であり、いずれの局所成功も相互に代替しない。本節は実装引渡しであって、Product pure Entryの実Go／CLI E2E、外部Effect、Owner意味受理を新たに合格と判定しない。
+
+### 29.7 内蔵Rule Markdown Readerの実装を、公開Function起動の資格に読み替えない
+
+2026-11-15時点の製品`Workspace.Load`には、内蔵`tei.rule-authoring/v0` Readerが実装されている（[実装統合コミット 7921b005](https://github.com/hat47x/tei-platform/commit/7921b005a44d325983d24ca2b8b58b0737dd778d)）。`tei.workspace.yaml`の`languages: tei.rule-authoring/v0`を、ビルド済み`tei`に組み込まれた`tei.builtin.rule-authoring-markdown`と厳密に照合する。対象は`semantic` Rootの`*.tei.md`で、文書中の`tei` fenced code blockだけを規則定義として解釈し、本文や`text` fenced blockから実規則を生成しない。
+
+選択された原文の同一Load byteを`ParseRuleAuthoringMarkdown`へ渡し、受理候補を既存`semantic.Validation`とSource Indexの原byte anchorへ結び付ける。未選択、実装欠落、複数実装、重複Rule ID、読み取れない定義は停止する。これは**製品Source Readerの一つの実装例**であり、外部Language Pluginの実Resolver/Lock、汎用Graph表／Mermaid Reader、Authoring文書の自動的な意味受理、Functionの公開Entry、Host現在Grant、Go Provider実Call、Studio Stage2を証明しない。
+
+同一LoadでのRule／Capabilityの対照は、[製品Rule検証 #4890](https://github.com/hat47x/tei-platform/pull/4890)と[Inspector元位置検証 #4891](https://github.com/hat47x/tei-platform/pull/4891)の既存テストを拡張して行い、同じSourceの確認を別テストに複製しない。
+
+さらに、[意味同値回帰 #4900](https://github.com/hat47x/tei-platform/pull/4900)は従来の`validation`と選択済みMarkdown Ruleが、Rule ID／Kind／Attribute／Relationを含む同じ型付き`semantic.Validation`へ合流することと、同一Rule IDの二重宣言拒否を検査する。[実Evaluator回帰 #4901](https://github.com/hat47x/tei-platform/pull/4901)は同じ製品Ruleから既存`validationeval.Evaluate`へ進み、数量・明細番号の正負八例と実際に要求したAttribute／RelationのRead Footprintを照合する。これは**製品Reader→型付きMeaning→既存EvaluatorのGo経路**が実在する証拠である。ただし、Evaluatorへ渡す数値と関係の集合はテスト用の合成`Source`が返したものであり、実DB・Providerの取得完了やScopeの全件性、Hostの現在Grantを証明しない。
+
+最初の公開Function Entryへの接続では、この先行実績から「Rule ID＝Entry ID」「Evaluator結果＝実Provider結果」を推測しない。必要なら別途Ownerが受理したFunction契約にRuleを結び、実TargetのReader／Providerがどの行・属性・関係・時点を取得したかを、Evaluatorが要求したRead Footprintと比較する。未取得と空集合、NULLと0を区別できない場合は実Call前に停止またはunknownとして扱う。固定Expectedを既存#1180/#2514から参照し、合成Evaluatorと実Target双方の成功を一つのPASSへ合算しない。
+
+最初のScript Launchでは、`semantic-validation`のSourceが読めることと、`semantic-capability`の公開実行資格を混同しない。実Fixture`internal/workspace/testdata/tei-md-rule`は`sales.order_line.quantity_positive`等のRuleを持つが、RuleのCanonical IDをそのまま起動可能FunctionのEntry IDへ昇格させない。既存の`workspace.Load`／`BuildSourceIndexFromLoad`／`operations.InspectionFromLoad`でRuleのCanonical IDと元Markdown byte位置を同一Snapshotから検査し、同じIDのCapabilityが公開されたと推論しないというHeadless負例を、#4495のPrepare段階へ追加する。確認後も、Ownerが別途受理したpure FunctionのInput/Output/Effectと現在Entry/Providerを検証して初めてA→B→Cへ進む。
+
+[Source改版回帰 #4870](https://github.com/hat47x/tei-platform/pull/4870)では、Canonicalが同じでも改行のみの編集でSource／Index／Artifact Fingerprintが変わり、A→B→Aで見かけのFingerprintが戻る反例がmainへ入った。将来Ruleを含む文書を生成や起動へ渡す場合も、Canonical同値や再計算したbyte一致だけで旧Meaning受理／実行Grantを復活させない。Rule Readerが同じLoadで得た`AuthoringSources`の言語・定義件数は**読取り観測**であり、Provider呼出しやConsumer受領のReceiptではない。
+
+今回の限定Go回帰は、選択済みRule Markdownの`semantic-validation`→実Source anchorと、同名`semantic-capability`不存在を確認する。独立ExpectedやOwner受理は#1180/#2514、Reader拡張は#2621、生成Plugin・Function実起動は#1121/#1251/#4495、非Plugin Studio Stage1→Stage2は#2831/#4583が担当する。新しいLanguage Registry、Script Runner、Function合成規則は追加しない。
