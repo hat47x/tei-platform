@@ -1,6 +1,6 @@
 # TEIのビジネスルール分析・決定表統合（設計候補）
 
-- 状態：**未採用の横断設計・検証計画**。Graph／一行RuleからのGo生成・Pinned Source予備検証は限定Referenceとしてmainに存在するが、一般Decision Analysisおよび正式製品接続は未実装・未受理
+- 状態：**一般Decision Analysisは未採用の横断設計**。限定的な製品実装として、内蔵Markdown Rule Reader→型付きValidation→Go判断処理生成→通常`tei self-build`による実Binary生成・実行まで進展した。ただし正式な生成元束縛、一般Unique決定表、公開Function→実Provider、Studio Stage1→Stage2は別資格。現在の実装・優先順位は§47〜49を参照。
 - 役割：BRMSの有用な機能を、TEI既存のData Script／Validation／Derivation／Operator／Function／Graph／コード生成へ重ねる横断案。新しい製品要件、Gate、Runtime、権限、Canonical schemaを採用する文書ではない。
 - 対応先：#988（DSL・Operator）、#1637（導出）、#1129（効果規則）、#1180（テスト）、#2495/#2497（構造と表現の意味保持）、#2831（self-build）、#4495（製品Function Entry）。変更と受入は各Ownerの既存経路に返す。
 - 上位の現在主線：TEI CLIを起点に、*.tei.md の業務定義から実コードを生成して動作を確認し、Pluginにも適用する。Studio Stage1→Stage2、通常teiからの実Provider呼出し・独立Consumerの検収を妨げない。
@@ -266,13 +266,13 @@ A→B→AとSourceが戻っても、World Fingerprint／Model Revision／Artifac
 | 条件分岐のGo生成 | GenerateGoが実際のe.from／e.to判定を生成し、Go子Processで結果を検証する | 型付きAccepted Meaningからの正式Target Generatorによる実生成 |
 | 同じ生成Binaryの動作 | rule_test.goがビルド済みBinaryのSHA-256不変を確かめつつNode IDを変えて複数回呼ぶ | 製品tei CLIのFunction Entry／選択Provider／独立Consumer |
 | Source位置の照合 | sourceindex_bridge_test.goでRangeFromOffsetsと元byteのFingerprintを照合する | Source IndexへのSemantic Role／Rule意味Referenceの正式登録 |
-| 未接続を明示する境界 | internal/workspace/tei_md_source_guard.goにTEI_MD_PARSER_UNBOUNDの拒否が残る | Workspaceが明示選択した*.tei.mdを製品として読めること |
+| 未接続を明示する境界（当時の記録） | 旧`tei_md_source_guard.go`による全面拒否から、現行は`rule_authoring_markdown_loader.go`で明示選択した内蔵Rule／Data表Readerを許容。未選択や未対応のSourceは拒否する | Graph／Windowと外部Language Pluginの正式入場、および一般Decision Tableの意味受理は別 |
 
 実証対象の固定例はtestdata/tei-md-graph/baseline.tei.md等の6入力。表示名が同じNode二つ（n-1／n-2）、同じ端点を持つ二つのEdge（e-1／e-2）、辺の反転、Ruleの起点→終点切替、表示図だけの変更を区別する。期待値はindependent-expected.candidate.jsonで**提案用**と明示され、#1180／#2514で正式な独立Expectedを受理した証拠にはならない。
 
 Source Index橋渡し試験の合格は「元byte位置の共有」を示すだけである。NewArtifactは*.tei.mdを現時点では一般のmdとして分類し、接尾辞からRoleを確定しない。Workspace選択・Language Plugin／Role・受理済みMeaning・製品Generator・実Provider・独立Consumerへの接続が次の本当の欠落部分である。
 
-既存の[Graph Reader参照実装（main統合済み）](https://github.com/hat47x/tei-platform/blob/main/reference/tei-md-graph-reader/README.md)、[固定6入力](../../testdata/tei-md-graph/README.md)、[正式Reader接続検討PR #4704](https://github.com/hat47x/tei-platform/pull/4704)、[製品完成計画](../workstreams/PRODUCT_COMPLETION_PLAN.md)を参照する。PR #4704は検討中であり、採用済み製品Readerとはみなさない。
+既存の[Graph Reader参照実装（main統合済み）](https://github.com/hat47x/tei-platform/blob/main/reference/tei-md-graph-reader/README.md)、[固定6入力](../../testdata/tei-md-graph/README.md)、[正式Reader接続検討PR #4704](https://github.com/hat47x/tei-platform/pull/4704)、[製品完成計画](../workstreams/PRODUCT_COMPLETION_PLAN.md)を参照する。PR #4704は当時の設計検討であり、現行の内蔵`tei.rule-authoring/v0`実装・製品回帰（#4890／#4900）とは時点と対象を分ける。
 
 ## 23. D1を二つの資格に分解する：限定Referenceと製品への接続
 
@@ -665,3 +665,50 @@ main統合済み[Pluginの事前選択・Lock検査 #4800](https://github.com/ha
 **最初の実装対象は引き続き一つのGraph／Rule Sourceの正式S0-A入場**である。C-01〜08のために汎用Decision Engine、全DMN／FEEL、組織専用Join、第二のRegistry、Studioの別Runtimeを先行実装しない。Product Reader #2621／#988、型付きOperator #1637、実生成 #4544／#2595、取得範囲 #2506／#4490、検証 #1180／#2514、Provider／Consumer #4495／#2586へ分割して引き渡す。
 
 採用上の停止線も同じである。実装済みなのはGraph／Ruleの限定Reference、WorkspaceによるS0-P取得追跡、実SQLite Window入力の限定検証、Plugin Lockの事前検査など**個別に確認できた範囲だけ**である。正式`*.tei.md` Reader・受理Meaningからの製品Generator／実Builder消費・通常製品CLIの実Provider受領・Studio Stage1→Stage2・独立ExpectedのOwner受理は、この文書更新で成立したとはいわない。
+
+
+## 47. 実装の到達点を更新する：内蔵Ruleから実Binaryまで（2026-11-15）
+
+第29〜46節の「正式Readerをこれから作る」という順序は、**当時の開発段階を示す履歴**として読む。現在のmainには、限定した業務規則を通常製品経路で読む・評価する・生成する・ビルドするための実装がある。一般の決定表、外部Plugin、業務上の権限まで実装したという意味ではない。
+
+| 実際の到達点 | mainで確認するコード・回帰 | そこから推論しないこと |
+| --- | --- | --- |
+| **内蔵Source入場** | `tei.rule-authoring/v0`をManifestで明示選択。実`Workspace.Load`から`semantic.Validation`と同一Loadの元byte／Source Index。未選択・契約版不一致・同一ID二重宣言を拒否（#4890／#4900）。`tei.authoring/v1`は印付きData項目表にも対応（#5043） | Markdownの任意表・Graph・Window・外部Language Pluginすべてが解釈可能、Ownerが業務意味を受理済み |
+| **評価と選択** | 選択Ruleを既存`validationeval.Evaluate`へ接続し、数値・RelationのRead要求を合成Sourceで観測（#4901）。Workspaceの`implementations:`から組込みOperator実装を選びScenarioで実呼出し（#5007） | 実DB／Providerの取得完全性、選択Plugin Lock、組込みOperatorの意味上の正当性、Host Grant |
+| **判断を生成する** | `validationgen.GeneratePositive`は、選択された一つの`semantic.Validation`と解決済み`std.decimal`から`value.Sign() > 0`を含むGoを生成。0・負値・NULL・未取得を分けて別Process検証（#4911） | 任意のIF／Unique決定表・複数Rule・Java／SQLへの同値生成 |
+| **通常CLIでの実Build** | 選択Rule由来Goを実`tei self-build`→Build Intent→参照Builder→実Binaryへ通す（#5009）。選択元Markdown原文のbyte同一コピーをGo packageへ追加し、完成Binaryから原文Digestを照合する限定検証（#5051） | 元ファイルLocator／Reader・Generator実装版の正式な同一Attempt束縛、全Source／Toolchain認証、公開Function Entry→実Provider |
+| **読取り用Consumer** | 製品`tei inspect`の別Process結果と共通Operationの読取り結果を同一Workspaceで比較（#5037／#5058）。Generated Windows Desktop PoC Bの実WebView2受領は別途観測済み（#5042／#5052） | 独立な業務期待結果、編集・実行Grant、同じRuleが実Plugin Providerとして呼ばれたこと、Stage1自身のStage2完全再構築 |
+
+ここでのR0／R1／R2前段は一括の成功扱いにしない。特に、元Markdownのbyte列をBinaryに**同梱したこと**と、Reader／Generatorが**その原文から正しい判断処理を生成したこと**は別の証拠である。同梱はテスト用の公開可能な固定Fixtureに限り、非公開の業務Sourceを配布Binaryへ自動収録する製品方針にはしない。
+
+同じ理由で、選択実装AからBへ変更しても両者が同じ値を返す場合、旧Scenarioの実行を許してよいとは限らない。[Operator選択の失効修正PR #5054](https://github.com/hat47x/tei-platform/pull/5054)は確認時点で審査中であり、`operatorSelectionSha256`の製品実装済みを前提にしない。対象がWorld・Rule・Plugin Lock・Operator選択・生成Source・現在Grantのどれなのかを、既存の証拠で分ける。
+
+## 48. 有限Unique決定表を、例示ではなく反例付きの領域検証へ進める
+
+従来のU-01〜10は重要な境界試験だが、9,999円と10,000円の二点を試すだけでは、広い金額範囲に重複・漏れが存在しないという**全域の証明**にはならない。最初の限定的な解析対象は、会員区分の有限集合と、`std.decimal`の大小比較からなる**受理済みの単純な区間述語**に絞る。
+
+判断対象を固定した上で、各条件行を会員区分ごとの区間集合として比較する。例えば基準の三行は、`standard`について`[0,10000)`と`[10000,+∞)`、`premium`について`[0,+∞)`である。対象Domainは二つの会員区分と非負の金額とする。区分外の文字列、負値、NULL、未取得を「条件に合致しないためNo Match」とは即断せず、型・Domain・取得資格の問題として別に扱う。
+
+| 調べる性質 | 限定領域での検証方法 | 出力する根拠 |
+| --- | --- | --- |
+| **重複（Overlap）** | 同じ区分・Scope・Rule版・時点で、異なる二行の条件区間の共通部分が空でないことを示す | Rule ID二件、共通区間、必要なら境界を満たす具体的な入力。出力が同値でもUnique違反 |
+| **適用漏れ（Gap）** | 明示Domainから全行の区間和を差し引き、残る区間または一点があることを示す | 対象区分、未被覆範囲、境界の開閉と根拠Rule集合 |
+| **到達不能候補** | 明示した評価方式で、行の条件がDomainと交差しないことを示す。行順に依存するFirstの影響はUniqueと区別 | Rule ID、Domainとの交差が空である理由 |
+| **未証明** | 一般Function、Native SQL、時間条件、外部の未確定Relation、非線形条件、未受理の型など、区間演算だけでは扱えない部分を区別 | どの条件／入力／Rule版／Readの資格が足りないか。推測でfalseにしない |
+
+区間の端点は**開／閉を保持**し、全候補を有限な区切り点と隣接区間として論理的に扱う。区間内の整数や小数を無作為にサンプルして「全域で漏れなし」としない。計算に使う精度・単位・比較Operatorの意味が受理されていなければ証明を保留する。有限な区間演算だけで済む場合は既存の型付きOperatorとテストへ投影し、新しい汎用SolverやRule Runtimeを必須にはしない。
+
+ただし第44節の**Rule集合の確定**と**必要入力の充足**という二つの条件は、区間計算の成功によって自動的に成立しない。静的にRuleの区間を網羅したことと、実Providerから取得した対象の事実が完全であることを分ける。区間分析で得た反例は、独立ExpectedとCLI／Studioのread-only診断へ渡す候補であり、決定表を新たな意味正本にしない。
+
+## 49. 次の最小の実装と、見落としてはならない負例
+
+製品Readerから初めて作り直すのではなく、**すでに動いている内蔵Rule `sales.order_line.quantity_positive`の一試行を、生成元から実Builderの消費まで結び直すこと**を先に行う。既存の`TestSelectedRuleGoThroughRealCLISelfBuild`、`validationgen.GeneratePositive`、Source Index、Build Intent、Artifact Receiptと独立Expectedをそのまま利用する。
+
+1. **元Sourceと生成の対応**：選択したWorkspaceのLocator／元byte／Source Index、Reader実装と版、受理済み型付きRule、Generator実装と版を確認し、実生成Goとの関係を同じAttempt内で追跡する。これは説明用の原文コピーを成果物へ埋め込む操作とは別である。
+2. **選択Goと実Build入力の対応**：Generatorが出したGo byteと、既存BuildPlan／Builderが実際に読み取る`generated.go`を比べる。**コンパイルでき、判定値も偶然同じだが別byteのGoへ差し替える**負例を拒否する。差し替え後のBuilder成功やBinaryの自己申告を、そのまま正しいGenerator使用の証拠にしない。これは審査中の[#5056](https://github.com/hat47x/tei-platform/pull/5056)の担当とし、BRMS側で重複するGo試験は作らない。
+3. **実装選択の現在性**：同じRule／入力であっても`implementations:`のA→B変更を別の資格変更として扱い、旧生成Scenario Commandの無効化を[#5054](https://github.com/hat47x/tei-platform/pull/5054)と既存Scenario Ownerへ引き渡す。WorldやPlugin Lockが不変でも、古い選択実装の実行を自動許可しない。
+4. **公開・実Consumerの資格**：公開pure Function→実選択Provider→通常製品CLI→独立ConsumerのR3を#4495／#1251／#2586で、正式DesktopのStage1→Stage2実Windows再構築を#2831／#4583で別途検収する。StudioのPoC B成功と同じRuleの実Plugin Callを混同しない。
+
+有限Unique区間の最初の検収候補は、①二行の同じ出力でも競合、②境界10,000円の開閉の違い、③区間を削った版でのGap、④未選択Rule／欠損ReadではNo Matchを確定しない、⑤静的証明と入力時点を分ける、という五つに絞る。期待結果の実装／受理は既存#1180／#2514、有限Rule解析は#988／#1637へ戻す。**R3やStudio Stage2の着手条件として、一般Decision Table Editorや全DMN対応を要求しない。**
+
+採否を決める問いは「BRMSという別機構が必要か」ではなく、**同じ型付き条件・出典・操作資格から、より少ない手書き実装で判断・コード・説明・テストを派生させられたか**である。効果が得られなければ区間解析はread-onlyの限定検査にとどめ、独立Rule Runtimeや専用Source形式を追加しない。
