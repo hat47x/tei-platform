@@ -185,3 +185,76 @@ Batchを大きくするとThroughputが改善しても、最初の結果まで�
 **検証順**：まず#1145/#2390の単発TransportでINV-01/03/09を比較。#2622の実Providerがある場合だけINV-06/08、#1130/#2827の実Batchがある場合だけINV-04/07/10を接続。Resource上限とEffect Fenceは#2504/#1174の実証範囲を越えない。
 
 **撤回条件**：単発Invokeで既に予算を満たす、Batch効果が小さい/逆効果、正しい相関・部分失敗・取消を維持できない場合、最適化案そのものを撤回する。**新しいBatch Wire Contract、Scheduler、Streaming ABIは独立二Consumerの不足が実証されるまで作らない**。
+---
+
+<!-- tei-plugin-evaluate-vs-generate-20261115 -->
+## 10. 型付き意味を解釈するか、コードへ生成するかを機能ごとに選ぶ（2026-11-15横断統合）
+
+### 10.1 「生成しない実現」も正規の選択肢とする
+
+TEIの図表・宣言・Ruleを扱う際、すべてをソースコードへ生成する必要はない。受理済みの型付き意味を、標準Operatorと汎用関数が**そのまま評価する**方が簡潔な場合がある。一方、配布用の単一Goバイナリ、独立した外部Hostでの利用、静的な処理特化にはコード生成が有利になり得る。
+
+**共通にするのは意味契約と入力条件であって、実現手段ではない。** どちらを採る場合も、Authoring Source→型付き意味→必要Context→選択した実装→実結果の関係を失わない。解釈／生成の違いを、新しいCore PluginKindやもう一つの意味正本として表さない。
+
+| 実現方法 | 適した場面 | 必要な検査と制約 |
+| --- | --- | --- |
+| **型付きモデルの直接評価** | Studioの即時Preview、頻繁に変わるRule、小規模なread-only計算、汎用Validator・Query処理 | 検証済みの型付き入力だけを受け取る。現在のModel Revision・実装選択・必要Readを各評価に対応させ、未取得を正常値にしない |
+| **意味からコード生成** | Go単一バイナリへ特化した判断の収録、外部Host用のTarget-native実装、静的リンク・再現性が重要な処理 | Source／Generator／Toolchain→実Builder入力→Artifact／実Entryの出典を固定。生成Goが実際の意味処理を担うことを確認 |
+| **一部を生成し、残りを汎用関数で評価** | データ取得や型付き入出力は共通化し、固有の判断だけ静的生成する構成 | 生成部分と実行時部分の境界を明示。必要Read・時点・Failure・Effectを分割しても消さず、旧版の混用を拒否 |
+| **Targetが既に持つ実装へ接続** | 既存DBのQuery、Java/.NET Library、外部Process／Serviceを活用する場合 | 明示したProvider／AdapterとHostの現在資格を確認。TEI独自Hostや無検証の意味変換を強制しない |
+
+これは単一の「Interpreterモード」を新設する案ではない。既存 `semantic.Validation` と `validationeval.Evaluate` は**限られたValidationを型付きモデルから直接評価する実例**であり、`validationgen.GeneratePositive` は同じ `positive` Ruleの判断をGoへ生成する実例である。前者から全TEI DSLの汎用Interpreter完成を、後者から製品R2-P／公開Entry／実Provider完成を主張しない。
+
+### 10.2 実現方法の選択と、Providerの選択を混同しない
+
+実現方法はまず**そのFunction／Operationの要求**に対して選ぶ。判断の順序を次のようにする。
+
+1. **意味と実行条件**：Rule／Operatorの版、入力型・NULL／欠損／未取得、関係の多重性、必要Read・Snapshot、Effectの有無、ScopeとTargetを確定する。意味が未受理なら候補の比較に留める。
+2. **既存能力の適合**：一つの型付きEvaluatorで足りるか、既存Operatorの合成が使えるかを確認する。足りるなら専用コード生成を義務化しない。ただしEvaluatorへの対象Rule・実装IDのBindingを曖昧にしない。
+3. **Targetの実現可能性**：静的Go、Java/.NETの既存Host、別Process、Wasm等の条件を照合する。型付きEvaluatorを実行先へ**含められること**と、Modelのbyte・版を実際に**届けたこと**は別に確認する。
+4. **選択と資格**：既存#951／#1016のContract→Provider選択、#2595のBuild Input、#4495の公開EntryとHost Authorityに委ねる。要求する実現方法のProviderが不在なら`unsupported`。生成失敗時に別Evaluatorへ黙って切り替えない。
+5. **コストと変更容易性**：両方式がMeaning/Failure・実Consumerの条件を満たして初めて、起動、繰返し評価、再Build、配布、保守、診断の費用を測る。性能の優劣を実装手法の名前だけで決めない。
+
+**重要な帰結**：コード生成を省略しても、Artifactの再構築や配布の要否が自動的に消えるわけではない。モデルをDesktopで都度読み取る場合は現在Sourceの再Load／型検査が必要であり、モデルをGoバイナリへ埋め込む場合は**モデルbyteをBuild入力として固定**し、更新時の再Buildまたは別資産の再配布を検収する。Runtimeでモデルを受け取る方式でも、現在の受理・Scope・開示・改版はHostと既存Ownerが扱う。
+
+### 10.3 最小の同条件比較：positive Rule一件
+
+第一例は既存の `sales.order_line.quantity_positive` に固定する。次の二つを**同じ型付きRule・同じ`validationeval.Source`契約・同じ数値入力**で比較する。
+
+- **直接評価**：既存 `validationeval.Evaluate(rule, source)`。`positive` 分岐が参照Attributeを読み、`value.Sign()>0` を評価する。
+- **生成評価**：既存 `validationgen.GeneratePositive(rule, "std.decimal", "main")` が生成した `EvaluateSelected(source)` を別Go Processで実行する。判断は生成Goが担い、既存 `Evaluate` へ委譲していないことを検査する。
+
+ここで比較するのは、**生成側が受け付けるShape（ID、Attribute、Relationなし、Kind=positive、解決済みstd.decimal）に限る**。現在の直接Evaluatorは生成器と同じShape／型事前検査を内部で行うわけではないため、未検証のRuleを両者に与えて「同じ実装前提」と扱わない。
+
+正例・負例は少なくとも正値／0／負値、nil値、取得失敗、参照Attribute不一致、ReaderのSource改版を含む。結果の`satisfied/not-satisfied`だけでなく、ReadしたAttribute／回数・エラーと未評価の区別を照合する。既存 `positive_product_test.go`、Source変更回帰、Rule自己記述の独立Shape基線を再利用し、新しい期待値の正本を作らない。生成Goの型付き実験から、外部Pluginや公開Functionの実Callを推論しない。
+
+**三つ目の比較**は、現行の `validationeval.EvaluateWithOperators` に対して、Workspaceで選択したOperator実装が別Lawを持つ場合。入力の数値型が一致しても`non-negative`と`non-zero`は0に対する判定が異なる。直接Evaluatorの`positive`結果を、Operator実装の自由な置換許可に転用しない。選択A→B→AではWorld/Sourceが同じでも選択の現在性・旧Scenario Command・実Callを再検査する（#5054、正式Plugin Lockは別）。
+
+### 10.4 コード生成を見送ってよい条件と、生成を選ぶ条件
+
+| 問い | 直接評価を先に試す条件 | 生成を先に試す条件 |
+| --- | --- | --- |
+| 実行場所 | 選択した既存EvaluatorがTarget内に存在し、型付きモデルを安全に渡せる | TargetにEvaluatorを同梱できない／同梱を避ける明確な理由がある |
+| 変更頻度 | 頻繁なモデル変更で再生成・再Buildの費用が支配的 | モデルは固定、繰返し実行や配布時の構成縮小が有利 |
+| 実行契約 | 評価する都度Model/実装版と必要Readを固定できる | Source・Generator・Build・Artifactを一つの有効な依存閉包へ固定できる |
+| 実装の複雑さ | 適格な汎用処理で意味を十分に実現できる | 明示した固有の分岐・変換・Target APIを生成した方が保守が簡潔 |
+| 検証可能性 | 実CallerとRead Footprint、独立Expectedを確認できる | 実Builder入力、実Entry、独立Consumerまでの証拠を確認できる |
+
+**「常に生成する」「常に解釈する」と決めない。** 初回のデスクトップ製品とTEI自身のセルフビルドでは、**Go単一バイナリへの意味ある生成と実使用の証明を最優先**する。一方、読取り専用PreviewやRuleの探索的な反復では、既存の型付きEvaluatorを自然な第一候補とする。この選択により、自己記述M1→M2の「手書き検査一箇所の生成置換」（自己記述§50）を撤回・延期しない。**自己記述の検査生成**と**業務Ruleの直接評価**は対象・義務が違うためである。
+
+### 10.5 既存独立Expectedへ渡す反証と最小PR
+
+| Case | 変更する一因子 | 合格／拒否条件 |
+| --- | --- | --- |
+| **RZM-01** | 同じ受理済みpositive Rule、直接評価／生成評価のみ切替 | 独立Expected、Read先・回数、評価不成立・入力Errorの区別が一致する。同値Resultだけで実選択を推定しない |
+| **RZM-02** | 型が同じ、Operator実装Lawだけ変更（0を入力） | Law不一致を検出。形の適合を意味適合へ昇格しない |
+| **RZM-03** | モデルの説明文のみ変更し生成Goは同Byte | 再Build省略の余地とSource証拠の再確認を分離。古い元byteを現在Sourceと扱わない |
+| **RZM-04** | Interpreterを選択したが実際は旧生成Goを呼ぶ／逆も同様 | Result一致でも実現選択と実Calledを不一致として拒否 |
+| **RZM-05** | Runtimeで解釈するモデルが未選択／旧版／未取得 | 誤ったdefault・無音fallbackを拒否。実Callerへ到達させない |
+| **RZM-06** | モデルをAssetとして別配布したが、元Build／Hostの版と不一致 | 実Consumerに届いたモデルbyte・Contract/Scopeを照合し、旧受理を流用しない |
+| **RZM-07** | 固有Go生成へ切替えても、Consumerの現在Grant／Effectが未確認 | 生成成功から実行権限・Effect確定を推定しない |
+| **RZM-08** | 生成／解釈が同条件で合格し、性能／保守費だけ異なる | Target別実測に基づき採用。性能改善で適合不良を覆さない |
+
+**実装の最短順**：第一差分として `internal/semantic/validationgen/positive_realization_modes_test.go` に、製品Workspaceが選んだpositive Ruleを既存Evaluatorと生成Goの両方で実行し、正値／ゼロ／負値／nil／取得失敗・Read回数を固定期待値へ照合するGo回帰を追加した。**テストSourceの追加と、exact HEADでの実CI成功は別資格**であり、今回のRZM-01全体やProduct実Providerの完成とはみなさない。#1180／#2514を独立ExpectedのOwner、#1121／#4544を実装担当とし、新しいCompiler／Interpreter／Selectorを作らない。続いてRZM-04で明示選択と実呼出しの対応を既存[接続検収票§9](PLUGIN_CONNECTION_EVIDENCE_AND_COMPOSITION_SLICE_2026-11.md)へ載せ、RZM-03／06でSource→Artifact・Model配布の差分失効を#2600／#2595へ渡す。実行時の切替を行う場合は#951／#1251の現在Hostに選択を明示し、長寿命Target以外へ動的切替機構を強制しない。
+
+**到達条件**：一Functionで直接評価と生成評価のどちらも、同じMeaning・Context・独立Expected・実Consumerを持ち、選択した実装と実際に使った実装の対応を追跡できた時に限り、二方式の相互代替を主張できる。その後で最適化・外部Targetへ拡大する。今回の変更ではRZM-01の限定GoテストSourceを追加した。**CI exact HEADの合否は別確認**であり、RZM-02〜08・実Windows／実Provider／独立Target Consumer・正式二方式の製品選択・Owner意味受理は**NOT RUN／NOT ACCEPTED**。
