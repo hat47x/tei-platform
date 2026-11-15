@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 	"tei/internal/buildintent"
 	"tei/internal/core"
 	"tei/internal/semantic"
+	"tei/internal/semantic/validationeval"
 	"tei/internal/semantic/validationgen"
 	"tei/internal/sourceindex"
 	"tei/internal/workspace"
@@ -246,6 +248,68 @@ func TestSelectedRuleGoThroughRealCLISelfBuild(t *testing.T) {
 	if string(out) != want {
 		t.Fatalf("CLI-built generated Go changed its decision/read footprint:\n%s\nwanted:\n%s", out, want)
 	}
+
+	// The same selected semantic.Validation also has a parameter-driven
+	// evaluator. It is an alternative realization, not another Meaning source.
+	// The generated binary was checked against independent Expected above;
+	// now require the existing generic evaluator to agree on both its result
+	// and the number of Source reads. No Runtime Provider is claimed here.
+	for _, tc := range []struct {
+		name, number, expected string
+		missing                bool
+	}{
+		{"positive", "2.5", "satisfied", false},
+		{"zero", "0", "not-satisfied", false},
+		{"negative", "-1", "not-satisfied", false},
+		{"null", "", "error", false},
+		{"missing", "", "error", true},
+	} {
+		t.Run("generic-vs-generated-"+tc.name, func(t *testing.T) {
+			var value *big.Rat
+			if tc.number != "" {
+				value = new(big.Rat)
+				if _, ok := value.SetString(tc.number); !ok {
+					t.Fatalf("bad independent input %q", tc.number)
+				}
+			}
+			source := &documentRuleNumber{value: value, missing: tc.missing}
+			result, evalErr := validationeval.Evaluate(selected, source)
+			observed := string(result)
+			if evalErr != nil {
+				observed = "error"
+			}
+			if observed != tc.expected || source.reads != 1 {
+				t.Fatalf("generic evaluation: got %s, reads=%d, err=%v; want %s, reads=1",
+					observed, source.reads, evalErr, tc.expected)
+			}
+			generatedLine := fmt.Sprintf("%s:%s:%d\n", tc.name, observed, source.reads)
+			if !bytes.Contains(out, []byte(generatedLine)) {
+				t.Fatalf("CLI-built generated Rule differs from generic evaluation: %q not in %q",
+					generatedLine, out)
+			}
+		})
+	}
+}
+
+type documentRuleNumber struct {
+	value   *big.Rat
+	missing bool
+	reads   int
+}
+
+func (s *documentRuleNumber) Number(id core.CanonicalID) (*big.Rat, error) {
+	if id != "sales.order_line.quantity" {
+		return nil, fmt.Errorf("unexpected attribute %s", id)
+	}
+	s.reads++
+	if s.missing {
+		return nil, fmt.Errorf("number unavailable")
+	}
+	return s.value, nil
+}
+
+func (s *documentRuleNumber) RelationKeys(relation, attribute core.CanonicalID) ([]string, error) {
+	return nil, fmt.Errorf("unexpected relation read %s / %s", relation, attribute)
 }
 
 const generatedRuleDriver = "package main\n\nimport (\n\t\"errors\"\n\t\"fmt\"\n\t\"math/big\"\n\t\"tei/internal/core\"\n)\n\ntype ruleNumber struct { value *big.Rat; missing bool; reads int }\n\nfunc (s *ruleNumber) Number(id core.CanonicalID) (*big.Rat, error) {\n\tif id != \"sales.order_line.quantity\" { return nil, errors.New(\"wrong attribute\") }\n\ts.reads++\n\tif s.missing { return nil, errors.New(\"unavailable\") }\n\treturn s.value, nil\n}\n\nfunc (s *ruleNumber) RelationKeys(_, _ core.CanonicalID) ([]string, error) {\n\treturn nil, errors.New(\"unexpected relation read\")\n}\n\nfunc main() {\n\tfor _, tc := range []struct { name, number string; missing bool }{\n\t\t{\"positive\", \"2.5\", false},\n\t\t{\"zero\", \"0\", false},\n\t\t{\"negative\", \"-1\", false},\n\t\t{\"null\", \"\", false},\n\t\t{\"missing\", \"\", true},\n\t} {\n\t\tvar value *big.Rat\n\t\tif tc.number != \"\" {\n\t\t\tvalue = new(big.Rat)\n\t\t\tif _, ok := value.SetString(tc.number); !ok { panic(tc.number) }\n\t\t}\n\t\tsource := &ruleNumber{value: value, missing: tc.missing}\n\t\tresult, err := EvaluateSelected(source)\n\t\tif err != nil {\n\t\t\tfmt.Printf(\"%s:error:%d\\n\", tc.name, source.reads)\n\t\t} else {\n\t\t\tfmt.Printf(\"%s:%s:%d\\n\", tc.name, result, source.reads)\n\t\t}\n\t}\n}\n"
