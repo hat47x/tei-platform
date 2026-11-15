@@ -7,7 +7,6 @@ import (
 	"go/parser"
 	"go/token"
 	"os"
-	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -46,6 +45,20 @@ func selectorName(expr ast.Expr, receiver, method string) bool {
 
 func observedReturn(expr ast.Expr, result string) bool {
 	return selectorName(expr, "validationeval", result)
+}
+
+func bodyReturnsError(body *ast.BlockStmt) bool {
+	for _, stmt := range body.List {
+		ret, ok := stmt.(*ast.ReturnStmt)
+		if !ok || len(ret.Results) != 2 {
+			continue
+		}
+		call, ok := ret.Results[1].(*ast.CallExpr)
+		if ok && selectorName(call.Fun, "fmt", "Errorf") {
+			return true
+		}
+	}
+	return false
 }
 
 func observeGeneratedPositiveGo(src []byte) (observedPositiveGo, error) {
@@ -105,22 +118,24 @@ func observeGeneratedPositiveGo(src []byte) (observedPositiveGo, error) {
 				malformed = fmt.Errorf("Source.Number has no exact generated Go byte span")
 				return false
 			}
-		case *ast.BinaryExpr:
-			if id, ok := n.X.(*ast.Ident); ok {
-				if other, ok := n.Y.(*ast.Ident); ok && other.Name == "nil" {
+		case *ast.IfStmt:
+			cmp, ok := n.Cond.(*ast.BinaryExpr)
+			if !ok {
+				break
+			}
+			if id, ok := cmp.X.(*ast.Ident); ok {
+				if other, ok := cmp.Y.(*ast.Ident); ok && other.Name == "nil" && bodyReturnsError(n.Body) {
 					switch {
-					case id.Name == "source" && n.Op == token.EQL:
+					case id.Name == "source" && cmp.Op == token.EQL:
 						observed.SourceNilGuard = true
-					case id.Name == "value" && n.Op == token.EQL:
+					case id.Name == "value" && cmp.Op == token.EQL:
 						observed.ValueNilGuard = true
-					case id.Name == "err" && n.Op == token.NEQ:
+					case id.Name == "err" && cmp.Op == token.NEQ:
 						observed.ReadErrorGuard = true
 					}
 				}
 			}
-		case *ast.IfStmt:
-			cmp, ok := n.Cond.(*ast.BinaryExpr)
-			if !ok || cmp.Op != token.GTR {
+			if cmp.Op != token.GTR {
 				break
 			}
 			call, ok := cmp.X.(*ast.CallExpr)
@@ -235,7 +250,7 @@ func TestGeneratorSourceAndGeneratedDecisionRemainDistinct(t *testing.T) {
 		t.Fatal(err)
 	}
 	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, filepath.Base("positive.go"), src, 0)
+	file, err := parser.ParseFile(fset, "positive.go", src, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
