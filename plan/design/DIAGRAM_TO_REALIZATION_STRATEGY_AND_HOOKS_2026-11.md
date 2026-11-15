@@ -1,8 +1,8 @@
-# 図表から実装へ：解釈実行・コード生成・フック拡張の選択設計
+# 図表から実装へ：解釈実行・コード生成・委譲・フック拡張の選択設計
 
 - **状態**：設計・検収計画。2026-11-15。新しいDSL構文・汎用Runtime・Placement APIの採用、実Targetでの動作、業務意味のOwner受理は主張しない。
-- **目的**：`*.tei.md`の図表と定義から、必要に応じて既存の汎用Functionによる解釈実行、Targetコード生成、両者の合成を選ぶ。生成物は原則ノータッチとし、既存アプリケーションには契約で定めた接続点を通して取り込む。
-- **関連**：[図表→Build縦断](TEI_MD_DOMAIN_DIAGRAM_TO_BUILD_LOWERING_2026-11.md)、[Critical Lowering](CRITICAL_LOWERING_CONTRACT_DESIGN.md)、[生成器契約の境界](GENERATOR_CONTRACT_BOUNDARIES_DESIGN_2026-10.md)、[Generator選抜](AI_GENERATOR_AUTHORING_STANDARD_2026-11.md)、[意味と宣言的合成](DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md)、[実装→モデルdogfooding](IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md)、[Pluginの第一縦断](PLUGIN_RULE_PRODUCT_VERTICAL_SLICE_2026-11.md)、[Studio部品生成](../../tools/reference-studio-part-generator/README.md)、[ADR-0045（提案中）](../adr/0045-generator-artifact-lifecycle-and-evidence.md)。
+- **目的**：`*.tei.md`の図表と定義から、必要に応じて既存の汎用Functionによる解釈実行、Targetコード生成、DBや外部Providerへの委譲、その組合せを選ぶ。生成物は原則ノータッチとし、既存アプリケーションには契約で定めた接続点を通して取り込む。
+- **関連**：[図表→Build縦断](TEI_MD_DOMAIN_DIAGRAM_TO_BUILD_LOWERING_2026-11.md)、[Critical Lowering](CRITICAL_LOWERING_CONTRACT_DESIGN.md)、[生成器契約の境界](GENERATOR_CONTRACT_BOUNDARIES_DESIGN_2026-10.md)、[Generator選抜](AI_GENERATOR_AUTHORING_STANDARD_2026-11.md)、[意味と宣言的合成](DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md)、[成果物要求の複数実現](DECLARATIVE_RESULT_PROCESS_COMPOSITION_2026-11.md)、[Plugin実現と最適化](PLUGIN_REALIZATION_AND_OPTIMIZATION_REQUIREMENTS_2026-11.md)、[実装→モデルdogfooding](IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md)、[Pluginの第一縦断](PLUGIN_RULE_PRODUCT_VERTICAL_SLICE_2026-11.md)、[Studio部品生成](../../tools/reference-studio-part-generator/README.md)、[ADR-0045（提案中）](../adr/0045-generator-artifact-lifecycle-and-evidence.md)。
 - **Ownerとの境界**：Reader/Languageは#2621/#988、Semantic/Roleは#2619/#2620、Loweringは#1121/#4544、Plugin/Contract/Hookは#951/#1016/#4198、Generator選抜とSource束縛は#2595、BuildとSelf-buildは#943/#2831、独立Expectedは#1180/#2514、Studio実Consumerは#1824/#4583。第二Parser、第二Semantic、別のBuild/Plugin Registry、TEI独自Hostを設けない。
 
 ## 1. 結論：実装方法の選択も、設計の一部である
@@ -15,9 +15,10 @@
 | --- | --- | --- | --- |
 | **I：解釈実行** | 既存の標準Function／Evaluatorが、受理済み定義のパラメータを読み動作する | 演算・型・失敗・性能・Target・作用境界を既存Function契約で満たせる | 個別の業務判断用ソースコード |
 | **G：静的生成** | 受理済み意味をTarget-nativeなコード・設定・ResourceへLoweringする | 専用最適化、コンパイル時結合、Target固有API、配布時の定義非同梱等が必要 | 実行時に共通Evaluatorが毎回構造を解釈する処理 |
-| **H：混合** | 頻用・安定領域は生成し、変動しやすい部分は共通Function／設定で解釈する | 境界・契約・コストを明示し、両者を別々に検証できる | 全領域を一律に生成／一律に解釈する必要性 |
+| **D：委譲** | DB、外部Process、API、Plugin等を契約で呼び出す | Target側で型・精度・時点・完全性・権限・Effectを満たせる | 委譲先の判断ロジックのTEIでの実装 |
+| **H：混合** | 解釈・生成・委譲をFunction／Operationの境界で合成する | 境界を越えて型・粒度・Scope・Failure・Effectを保存できる | 全領域を一律の方式に揃える必要性 |
 
-**既定候補はIを先に評価するが、Iが常に最適とはしない。** 生成器を開発する前に既存の標準Functionで十分か確かめる。Iで要件を満たすならGを作らず、Gの方が運用・性能・配布条件に適うなら根拠を残して選ぶ。Gも意味の正しさを自動保証しない。IとGが同じ振る舞いを示しても、どちらが業務上正しいかは別に受理する。
+**既存Evaluatorは早めに調べるが、自動採用の既定値にはしない。** 選択順は(1)Meaning／Scope／Effect／型など必須条件への適合、(2)Targetと実Providerの解決、(3)性能・更新・配布・保守費の比較とする。Iで十分なら個別Generatorは不要だが、DやGが適するケースもある。複数候補が残る場合、費用順位で暗黙選択せず既存Resolverに戻す。未対応を別方式へ黙って切り替えず、候補の存在も意味の正しさの証明にはしない。
 
 「生成工程を飛ばす」のは**業務判断のコード生成**である。必要に応じて、定義の正規化、実行用パラメータ束のPackaging、Pluginの静的収録、既存TargetのBuild・配置は残る。Iを選んだからTEI常駐Hostが必要になるわけではない。Go単一バイナリには既存Evaluatorを静的に組み込み、外部Java/.NET HostにはTarget-nativeな標準Library／Adapterを配布できる。
 
@@ -27,15 +28,16 @@
 *.tei.md（原文、図表、表、明示的な定義領域）
   → 選択済みReader / Source Index / typed Meaning / Acceptance
   → 対象Operation・FunctionとRequired Contractを解決
-  → 実現方式の選択（I / G / H、Target・Provider・保証・コストを照合）
+  → 実現候補の適合・実体・費用を照合（I/G/D/Hは設計用の分類）
      ├─ I：標準Function＋版付きパラメータ束
      ├─ G：Generator → 対象言語の生成物 → Placement
-     └─ H：生成された接続部＋解釈実行の標準Function
+     ├─ D：Query／外部Provider → 実Call
+     └─ H：各方式の明示的な合成と接続境界の検証
   → 既存Composition / Build Intent / Artifact / 実Target
   → 実ConsumerでのRead・Decision・Failure・Effectを観測
 ```
 
-分岐前のAccepted Meaningを共用し、実行方法の差で別の業務正本を作らない。Iは「解釈器が自動的に意味を正本化する」経路ではない。定義やParameterが新しくなれば、実際に読み込んだ版と実行主体を照合する。GではGenerator Source、生成物、Builderが読んだbyteを別々に固定する。Hでは両経路の接続点を固定する。
+分岐前のAccepted Meaningを共用し、実行方法の差で別の業務正本を作らない。Iは「解釈器が自動的に意味を正本化する」経路ではない。定義やParameterが新しくなれば、実際に読み込んだ版と実行主体を照合する。GではGenerator Source、生成物、Builderが読んだbyteを別々に固定する。Dでは変換したQuery／公開Contractと実Provider、入力Scope・時点・Effectを別々に照合する。Hでは各経路の接続点を固定する。
 
 ## 3. 図表の属性は、発見された要件の置き場所を確認してから増やす
 
@@ -64,7 +66,7 @@
 ```text
 Rule: sales.order_line.quantity_positive
 Meaning: quantity is positive
-Implementation choice: interpret | generate | hybrid
+Implementation choice: interpret | generate | delegate | hybrid
 Requirement: decimal with missing / null / error preserved
 Binding: selected validation contract and provider
 Extension: declared validate hook (optional)
@@ -126,7 +128,7 @@ Patternは**適用前の設計候補**、Skillは**進め方のナレッジ**、
 - **P-FLOW**：Process／Lifecycle。Graphは順序・条件を記述するが、実行は既存Operation／Guard／Providerへ接続。無条件に万能Graph Runtimeを設けない。
 - **P-PLUGIN**：Plugin配線。型・Contract・Phase・Effectを比較し、静的収録／既存Process Providerの選択はCompositionに委ねる。
 
-## 7. IとGの意味保存を値の一致より広く試す
+## 7. 複数の実現方式の意味保存を値の一致より広く試す
 
 共通の独立Expectedを先に固定し、IとGをそれぞれ**実Consumer**で検査する。I/G両者の結果が一致しただけでは正しさの証明にならない。
 
@@ -145,7 +147,7 @@ Patternは**適用前の設計候補**、Skillは**進め方のナレッジ**、
 | RG-11 | Gは正しくBuildされたが実Targetは別Providerを呼んだ | 結果が一致しても選択実装の接続失敗 |
 | RG-12 | 解釈用設定を実行中に変更、処理中のInvocationがある | 実行ごとの解決版をPinし、処理途中の意味差替えを避ける |
 
-さらに同じ入力分布・Targetで、起動時間、初回／反復応答、メモリ、ビルド時間、配布物、更新頻度、障害回復を測る。I/Gの採否は「コード生成の有無」ではなく、**必要保証・性能・保守費・説明可能性**の合計で判断する。測定の対象と環境が異なる数値を並べて一般的な勝敗を主張しない。
+さらに同じ入力分布・Targetで、起動時間、初回／反復応答、メモリ、ビルド時間、配布物、更新頻度、障害回復を測る。I/G/D/Hの採否は「コード生成の有無」ではなく、**必要保証・性能・保守費・説明可能性**の合計で判断する。測定の対象と環境が異なる数値を並べて一般的な勝敗を主張しない。
 
 ## 8. 実装と計画への引渡し
 
@@ -162,6 +164,47 @@ Patternは**適用前の設計候補**、Skillは**進め方のナレッジ**、
 
 ## 9. 今回の確定範囲
 
-本書で**設計上の推奨方針**として整理したのは、(a) 方式I/G/Hを同じAccepted Meaningから選ぶ、(b) 設計の実装属性を発見として評価し意味／保証／Target／表示／ナレッジへ分ける、(c) 生成コードはノータッチで契約済みHookを通して拡張する、(d) 既存のOwner・Evidence・Builderへ接続する、という四点である。
+本書で**設計上の推奨方針**として整理したのは、(a) 方式I/G/D/Hを同じAccepted Meaningから比較する、(b) 設計の実装属性を発見として評価し意味／保証／Target／表示／ナレッジへ分ける、(c) 生成コードはノータッチで契約済みHookを通して拡張する、(d) 既存のOwner・Evidence・Builderへ接続する、という四点である。
 
-これらは現行Reader、Generator、Extension Pointの実装事実を拡大した**設計案**であり、正式な新DSL、汎用解釈器、Hook注入Runtime、任意図表からのコード生成、実Host上でのI/G同値はまだ実証していない。
+これらは現行Reader、Generator、Extension Pointの実装事実を拡大した**設計案**であり、正式な新DSL、汎用解釈器、Hook注入Runtime、任意図表からのコード生成、実Host上でのI/G/D/H同値はまだ実証していない。
+
+## 10. 他チャットの成果との統合：実現の選択と実使用の照合
+
+I/G/D/Hは理解のための**比較分類**であり、新しいCore列挙型、汎用Execution Engine、Generator Registryではない。実装選択は既存Contract／Capability Resolution／Build／Providerが担う。同じ意味を別のノードに表示しても、図のEdgeからProviderの選択や実行許可を確定しない。
+
+### 10.1 一つの照合票で追跡する
+
+| 段階 | 見るべき根拠 | 取り違えないこと |
+| --- | --- | --- |
+| **Declared** | 実Readerが選択したSource／Role、Canonical Subject、受理されたMeaning | Markdown説明や図形だけで実行意味を作らない |
+| **Candidate** | 標準Evaluator／Generator／DB Adapter／外部Providerの契約と未対応条件 | Generatorがあれば全Targetへ適合すると決めない |
+| **Selected** | 既存Resolverが選んだ実装・版・明示Binding | Nodeの配線だけでProviderを決めない |
+| **Built／Packaged** | Gの生成byteとBuilder実入力、IのEvaluatorとParameter束の実収録、Dの必要Artifact | Gのファイル存在、Iの設定読取りだけを実Artifact受領としない |
+| **Invoked** | 実際に呼んだEvaluator／Go Entry／DB SQL／外部Provider、現在の入力・Grant | 選択Bなのに実Call Aで、偶然結果が同じでも合格にしない |
+| **Observed** | 独立Expected、Result・Failure・Read Scope・実Consumer、必要なReceipt | 判定の値一致を副作用・開示・権限の一致に拡張しない |
+
+**選べる候補がないことと、まだ検査していないことは別**。対象のMeaningを設計・表示することはできても、選択した方式と実Callを証明できなければ実行可能とは宣言しない。
+
+### 10.2 解釈方式でも消えない依存と失効
+
+Iには、ParameterをBuild時に静的同梱する方式と、実行環境で版付きParameterを読む方式がある。前者では業務判断のGoを再生成しなくてもBundle更新が必要になり得る。後者では、実Invocationが参照したModel／Parameter／Evaluator版を固定し、処理途中で異なる版を混ぜない。
+
+「解釈なので再Build不要」という一律判断はしない。Parameter版、選択Operator、実TargetのLibrary／Plugin、Build Artifact、Current Grantをそれぞれ照合する。Hの一部にDB委譲を含む場合も、DBのSnapshot、NULL、Decimal、Collation、丸めの位置、Join多重度と入力Scopeを保持する。
+
+### 10.3 ノータッチ生成物の所有とHook接続
+
+生成器が所有するPath・Symbol・Moduleを一意に定め、そこへの手動変更を再生成時に検出する。案件固有の実装は独立ファイルまたはProvider Bindingに置く。HookはID／版／Phase／型／順序／許される実装数／Failure／Effect／欠落時の既定を明示し、暗黙の列挙順で複数候補を選ばない。任意Hookの欠落は宣言済み既定へ、必須Hookの欠落は接続不足として扱う。
+
+Ownerが明示していない生成ファイルへのAST／文字列パッチは行わない。例外として必要な構文編集は、Target Symbolの一意性、編集前版、コメント等の保存性、変更Previewと競合拒否を条件とする。Effectful HookはGuard／Authority／Commit／Receiptの既存境界を越えて呼ばない。これらをGeneratorの独自Runtimeで解決せず、既存Extension Point／Plugin契約に接続する。
+
+### 10.4 コードから図表へ戻す際に、受理を逆算しない
+
+Go ASTから条件・Read・Failureを抽出して図表やSourceへ戻す場合、得られるのは**実装の観測と意味の候補**である。元のSource上のOccurrenceや業務意味の受理を、Goの分岐から推測して確定しない。
+
+最初の自己置換は`GeneratePositive`のRequired Shape検査一件で、[実装→モデルdogfooding](IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md)のM0〜M3を再利用する。M1はTEI由来の検査が実際に判定し、M2は製品経路の旧Go条件を減らし、M3は次のTEIで実使用されたことを確かめる。既存Goに委譲しただけの処理は、意味ロジックをTEIへ移した実績に数えない。
+
+### 10.5 重複する試験体系を作らない
+
+本書のRG-01〜12は**設計上の点検項目**であり、独立Expectedの新Registryではない。実検収では[結果要求のLC-01〜12](DECLARATIVE_RESULT_PROCESS_COMPOSITION_2026-11.md)、[宣言的合成のGP-01〜06](DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md)、既存#1180/#2514を参照する。
+
+最初に同一Ruleの直接Evaluatorと生成Goを別実装として呼び、固定Independent Expectedと照合する。PR #5009の限定的な通常CLIビルド、PR #5056の実Builder入力とのbyte不一致拒否を既存基線とし、Source／Generator／実Build入力の出典閉包を次に接続する。続いて通常CLIの**選択Providerと実Call**、DB委譲での差異、Studio Stage1→Stage2を独立に確かめる。対象ごとの証拠がそろうまでは、これらを製品全体の実証に合算しない。
