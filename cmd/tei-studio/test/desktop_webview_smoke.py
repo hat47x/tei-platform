@@ -1563,6 +1563,134 @@ import('/wails/runtime.js').then(async (runtime) => {
             "failure_code": host_failure["code"], "relative_path_echoed": False,
             "earlier_result_cleared": True,
         }
+        # A same-Workspace reload is a new Workspace epoch, not a new Grant.
+        # The old Pin intent may survive, but its previous Reader observation
+        # must not silently become qualified again when Catalog reloads.
+        choose_a_script = """
+const button = Array.from(document.querySelectorAll('#subjects button.subject'))
+  .find(item => item.querySelector('small')?.textContent?.trim() === 'semantic-data · sales.order');
+if (!button) throw Error('Original Pin A is absent from the actual Catalog list');
+button.click();
+return true;
+"""
+        webdriver_request(
+            base_url, "POST", f"/session/{driver_session}/execute/sync",
+            {"script": choose_a_script, "args": []},
+        )
+        select_a_deadline = time.monotonic() + 12
+        while time.monotonic() < select_a_deadline:
+            selected_a = webdriver_request(
+                base_url, "POST", f"/session/{driver_session}/execute/sync",
+                {"script": inspect_script, "args": []},
+            ).get("value", {})
+            if (
+                selected_a.get("subjectTitle") == "sales.order"
+                and selected_a.get("editor") == page_state.get("editor")
+                and selected_a.get("pinCurrentDisabled") is False
+            ):
+                break
+            time.sleep(0.2)
+        else:
+            raise RuntimeError("Native Catalog could not select the original Pin A before reload")
+
+        click_native_pin("pin-current")
+        pin_again_deadline = time.monotonic() + 12
+        while time.monotonic() < pin_again_deadline:
+            pin_again_state = webdriver_request(
+                base_url, "POST", f"/session/{driver_session}/execute/sync",
+                {"script": inspect_script, "args": []},
+            ).get("value", {})
+            if (
+                pin_again_state.get("pinSubject") == pin_a
+                and pin_again_state.get("pinStatus", "").startswith("読取り済み。")
+                and pin_again_state.get("pinVersion") == expected_pin_version
+            ):
+                break
+            time.sleep(0.2)
+        else:
+            raise RuntimeError("Original Pin A could not be qualified before Workspace reload")
+
+        reload_script = """
+const button = document.querySelector('#commands button[data-command-id="refresh"]');
+if (!button || button.disabled) throw Error('Workspace refresh action is unavailable');
+button.click();
+return true;
+"""
+        webdriver_request(
+            base_url, "POST", f"/session/{driver_session}/execute/sync",
+            {"script": reload_script, "args": []},
+        )
+        stale_pin_status = "作業領域を再読込しました。以前の観測は無効です。再確認してください。"
+        reload_deadline = time.monotonic() + 20
+        reloaded_state: dict[str, Any] = {}
+        while time.monotonic() < reload_deadline:
+            reloaded_state = webdriver_request(
+                base_url, "POST", f"/session/{driver_session}/execute/sync",
+                {"script": inspect_script, "args": []},
+            ).get("value", {})
+            if (
+                reloaded_state.get("subjectTitle") == "sales.order"
+                and reloaded_state.get("pinSubject") == pin_a
+                and reloaded_state.get("pinStatus") == stale_pin_status
+                and reloaded_state.get("pinVersion") == "未取得"
+                and reloaded_state.get("pinRecheckDisabled") is False
+                and reloaded_state.get("editor") == page_state.get("editor")
+            ):
+                break
+            time.sleep(0.2)
+        else:
+            raise RuntimeError("Native Workspace reload silently revived the previous Pin observation")
+
+        # Requalification is a user action after reload. No old reply or
+        # identical Source fingerprint alone requalifies this new epoch.
+        reload_recheck = click_native_pin("inspect-pinned")
+        if (
+            reload_recheck.get("pinSubject") != pin_a
+            or reload_recheck.get("pinVersion") != "未取得"
+            or reload_recheck.get("selectedTitle") != "sales.order"
+        ):
+            raise RuntimeError("Recheck after Workspace reload did not start from invalidated evidence")
+        reloaded_recheck_deadline = time.monotonic() + 12
+        while time.monotonic() < reloaded_recheck_deadline:
+            reloaded_recheck_state = webdriver_request(
+                base_url, "POST", f"/session/{driver_session}/execute/sync",
+                {"script": inspect_script, "args": []},
+            ).get("value", {})
+            if (
+                reloaded_recheck_state.get("pinSubject") == pin_a
+                and reloaded_recheck_state.get("pinStatus", "").startswith("読取り済み。")
+                and reloaded_recheck_state.get("pinVersion") == expected_pin_version
+                and reloaded_recheck_state.get("editor") == page_state.get("editor")
+            ):
+                break
+            time.sleep(0.2)
+        else:
+            raise RuntimeError("Explicit recheck after Workspace reload failed to requalify original A")
+
+        cleared_after_reload = click_native_pin("unpin-current")
+        if (
+            cleared_after_reload.get("pinSubject") != "固定対象はありません。"
+            or cleared_after_reload.get("pinVersion") != "未取得"
+            or cleared_after_reload.get("selectedTitle") != "sales.order"
+        ):
+            raise RuntimeError("Unpin after Workspace reload did not clear the intent")
+        facts["pin_workspace_reload"] = {
+            "workspace_id": "workspace-1",
+            "original_subject": "sales.order",
+            "catalog_source_identity_preserved": True,
+            "old_pin_observation_rejected": True,
+            "explicit_recheck_required": True,
+            "recheck_qualified_by_real_host": True,
+            "released": True, "different_workspace_switch_tested": False,
+            "late_in_flight_reply_forced": False,
+        }
+        record(
+            "native-webview2-pin-workspace-reload-requalification-verified",
+            workspace_id="workspace-1", original_subject="sales.order",
+            old_observation_rejected=True, explicit_recheck_required=True,
+            different_workspace_switch_tested=False,
+        )
+
         page_state.update({"graphSelection": graph_state, "validationDisplay": validate_state, "bridgeEnvelopes": bridge_response, "graphInspectResponse": graph_response, "observeXeadUi": xead_state, "observeXeadBridge": observe_envelope, "observeXeadEmptyUi": empty_state, "observeXeadEmptyBridge": empty_envelope, "observeXeadMissingUi": missing_state, "observeXeadMissingBridge": missing_envelope})
         write_json(evidence_dir / "page-state.json", page_state)
         record("workbench-catalog-inspect-validate-verified", pathname=page_state["pathname"], catalog_entries=len(entries), initial_subject="sales.order", inspected_subject=child.get("id"), validation_summary=expected_summary, displayed_findings=len(validation_findings))
