@@ -151,3 +151,38 @@ Data RuleとFunction固有Ruleの双方が関係する場合は、安易に「Ta
 | V-D06 | 非保存の導出値でFilter→Sort→Limitを適用。必要な全件性やSQL Pushdown同等性を証明できなければunsupportedとする | #1640 |
 
 これらは#1180/#2514の既存Scenarioへ参照で束ねる候補であり、新しいRule Runtime、Query Engine、テスト正本、Hard Gateを増やさない。Go/Provider/実DB/Studioの製品受入は別段階で検証する。
+
+
+## 追補：規則宣言から実呼出しまでを、別々の証拠で閉じる（2026-11-15／設計案）
+
+前節は**どの時点・どの集合で評価するか**を扱った。本節の追加論点は、**記述済みの規則が本当に実装され、適切な実行経路で呼ばれ、所期の結果を生んだか**である。どちらも既存のRule Definition／Attachment、Source Index、Plugin／Operator Contract、生成器、Operation／Provider、Effect Receiptを利用する。第二のRule Catalog、Runtime、Hostは作らない。
+
+型付きRuleの存在や、生成された説明文・実装先一覧だけでは、そのRuleが実行されたことにならない。逆に、手書き実装が動作しても、どのSource・受理された意味に対応するか分からなければ、再生成時に同じ業務規則を保持できたと判断できない。**宣言と実装、実装と呼出し、呼出しと実効果、実効果と利用者の観測を明示的に分離する。**
+
+| 照合する段階 | その段階で必要な証拠 | まだ言えないこと |
+| --- | --- | --- |
+| Source／Meaning | 選択Sourceの実byte・位置、Rule ID、Operator版、型・NULL・依存、受理状態 | 生成コードが対応している |
+| Rule Attachment | 適用先（Field／Function／Business Action）、Phase、Read／Write集合、必要Scope | 指定Phaseで実装可能である |
+| Plugin／Generator Binding | 解決したContract-Provider、選択版、Rule IDと実装入口の一意な対応、対象Targetでの能力 | 実Generatorが生成し、Builderが使った |
+| Generated Artifact／Build | 実生成byte・Manifest・Builderが読んだ入力byte、契約／実装Version | 実HostのInvocationが発生した |
+| Invocation／Provider | Trigger、対象Operation、Caller、現在Grant、実際に選択されたProvider、実Callの受領 | DB Commit、対象外の副作用ゼロ |
+| Commit／Effect | Transaction結果・失敗・unknown、確定した保存内容、Outbox登録、再実行ID | 通知配送や別Consumerの業務受理 |
+| Independent Observation | 別のReadback・外部Consumerの受領と、Source・実Artifact・Receiptの対応 | 業務Ownerによる意味受理を自動代行できる |
+
+**保存後のHookという名称を、Commit後の契機と同一視しない。** DB書込み後でもTransactionの確定前なら、そのHookで作成した関連レコードはRollbackし得る一方、直接送信したメールや外部APIへの依頼は同じように取り消せない。保存前／保存後の局所HookはData lifecycleのAttachment、外部への通知はOperation／Outbox／Effectとして分ける。必要に応じて一つの業務Functionから双方を合成し、表や画面やNodeごとに独自の通知規則を複製しない。
+
+また、**Ruleが定義されたことと、対応するPluginメソッドが実装されたことは別**。Generated ContractのID・版・Phaseが合っても、手書きメソッドの分岐やDB更新先が正しいとまでは保証しない。既存#951/#988/#1121/#4495のBinding・Generator・実Provider確認と、#1129/#1174の実DB Effect／独立Readbackを段階別に通す。実装が見当たらない、複数候補が同一Ruleを名乗る、古いArtifactへ誤Bindingする場合は、Providerを推測で選んで成功扱いしない。
+
+### 同じ既存Scenarioで追加する反証候補（未実行）
+
+| ID | 誤った成功判定 | 期待する区別 |
+| --- | --- | --- |
+| RBE-01 | Rule宣言と実装先一覧だけがあり、生成Go・実Provider呼出しがない | Source/Attachmentは確認できても実行は未確認 |
+| RBE-02 | Rule IDは一致するが実装Contract版・Hook Phaseが不一致 | Candidate Bindingを拒否し、別Phaseへ無断移行しない |
+| RBE-03 | 一つのRule IDを別Pluginが重複して実装 | 実装候補の曖昧性を診断。Plugin順で意味を選ばない |
+| RBE-04 | Builderが旧生成byteを使ったのにSource版だけが新しい | 実Artifact入力を突き合わせ、現在意味への適合を主張しない |
+| RBE-05 | DB書込み後Hookから直接通知し、Transactionが後にRollback | 内部保存と不可逆な外部Effectを分離。Outbox/Receiptに帰属 |
+| RBE-06 | Commit要求後にACK喪失。実装が「失敗」と返したので二重登録 | unknownを維持し、Operation IDと独立Readbackで確定を照合 |
+| RBE-07 | バッチ・CLI・画面・Nodeが同名Ruleを別実装で呼ぶ | 同一の意味参照・適用先・実Provider適合を検証し、必要なら不適合を明示 |
+
+Owner：#1637（Rule意味）、#1129（Data lifecycle）、#951/#988（Plugin/Operator）、#4495（通常CLI実Provider）、#1174（Effect）、#1180/#2514（独立Expected）。正式Reader→実Go生成→Builder実消費→通常CLI Provider→実ConsumerのP0と、Studio Stage1→Stage2の並行P0は従来どおり。これは設計・テスト候補であって、実Go／DB／Windowsの試験や意味の受理完了を主張しない。
