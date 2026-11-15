@@ -43,6 +43,9 @@ Goの動的Pluginロードを標準の更新・配布機構として前提にし
 
 **R1：受理Meaningから判断Goを生成（#1121／#4544）。** 同じSource occurrenceの一Ruleについて、入力の型と欠損を明示し、条件を含むGo実装を出力する。実際に生成したSourceと選択Generatorの版、受理Rule、実生成箇所を結ぶ。業務上のMeaning受理が欠ければ、その資格はunknownのままにする。
 
+<!-- rule-read-target-mutation-vs-generation-qualification-20261115 -->
+**R0→R1を結ぶ実Read変更の対照**：mainの[#4890](https://github.com/hat47x/tei-platform/pull/4890)／[#4891](https://github.com/hat47x/tei-platform/pull/4891)／[#4901](https://github.com/hat47x/tei-platform/pull/4901)で、選択済みRuleの実Loader・Source Index・既存Evaluatorの局所Readまで到達した。次の[Go回帰](../../internal/operations/selected_rule_markdown_mutation_test.go)は、**同じRule IDと`positive`を保ったまま、参照Attributeを`quantity`から`line_number`へ一箇所だけ変更**し、再Loadされた`semantic.Validation`、Evaluatorが実際に要求する`Number`の引数、判断結果、旧Source Indexの失効と新Indexの成立を一組で比較する。判断結果の差にはテスト専用の合成数値（数量2、明細番号0）を用いるため、実DBのProvider ReadやCoverageの成立ではない。Rule ID一致・旧Source指紋・旧評価結果を理由に生成Goの再利用を許可しない。R1では、このSource変更に対して**生成器が実際に作ったGo判断箇所の変更**を追加で検証し、R2では実Builderの消費byte、R3では通常CLIの実Provider／別Consumerまで同じ因果関係を接続する。意味受理は引き続きOwner判断である。
+
 **R2：実BuilderとPlugin Contributionを接続（#943／#951／#1016）。** Build-only GeneratorとRuntime Providerの閉包を分ける。現在のBuild Intentに対象を表せない場合は、既存Build Execution／ArtifactSetへ最小の適合Adapterを検討し、架空のPlugin Subjectや第二Builderで穴を埋めない。実Builderがどのbyteを読んだかをArtifact Digestと区別して記録する。
 
 **R3：実Providerを通常製品CLIから一度呼ぶ（#1251／#4495／#1158）。** CLIの公開操作は既存のTyped Application Operationの投影とし、別の意味Dispatcherを作らない。選択Provider Bに対してAが動いた場合は、結果が同じでも失格。初回はpure／read-onlyとし、実作用のあるProviderの許可には進まない。
