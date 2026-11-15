@@ -1361,3 +1361,13 @@ A0に実装対象のProviderがなければ、設計のための仮Providerや�
 各PRで「受理した業務判断の数」「TEIから実生成された判断処理の数」「手書きまたはdelegateのみの処理の数」「変更後に手修正が必要だった箇所」「実際に受領したConsumerの数」を分けて記録する。これは数値目標を先に決めるためでなく、TEI自身によるPlugin実装の範囲が広がり、Markdown定義の記述が簡素になったかを追跡するためである。初回は固定の一例で十分であり、BRMS/REA/組織/Window/公開Doc/Updaterの完成を新たなP0依存にしない。
 
 本節は現行mainの実証と未接続の実装順を整えるdocs-onlyの追補であり、S0-A、生成Plugin、Provider実Call、Stage2、Ownerの業務意味受理を新たに実証したものではない。
+
+### 24.5 製品Rule Authoring Readerの初回実装を実績へ切り替える（2026-11-15）
+
+mainのマージコミット [7921b005](https://github.com/hat47x/tei-platform/commit/7921b005a44d325983d24ca2b8b58b0737dd778d) で、内蔵Language Implementationによる **Rule Authoring Markdownの製品読取り経路** が収録された。したがって第24.2節のA0〜A3を「すべて未実装」とは扱わない。ただし、製品の実装と独立したE2E受入は別である。
+
+- **A0の内蔵実装**：Workspace Manifestのlanguagesで明示されたtei.rule-authoring/v0と、実Binaryに収録されたtei.builtin.rule-authoring-markdownが正確に対応する場合にだけReaderを選択する。実装なし・複数実装・未選択Sourceは拒否する。これは**外部PluginのResolver/Lockを通したProvider選択ではない**。
+- **A1/A2の内蔵実装**：同じLoadの原文バイト列からsemantic配下の定義領域を読み、従来のsemantic.Validationに投影する。定義したRule IDの位置をSource IndexのためのSource anchorとして保持する。読取不能な領域、重複ID、解決不能参照を部分的な意味として採用しない。AuthoringSourcesはLoadで観測した件数であり、Ownerによる意味受理の記録ではない。
+- **残る製品検収**：明示選択の正例と拒否例を実WorkspaceのGo試験と通常CLIで確認し、独立Expected、Source A→B→A、管理外Draft、旧tei定義の後方互換を検査する。Graphの多重有向辺を同じ実装が正式に読むこと、外部Language PluginをPlugin管理のexact Lockから解決すること、生成したGo Pluginの実呼出し、Studio Stage1→Stage2、文書Disclosureは**未受理の別Gate**である。
+
+実装計画では、**次のS0A差分を「最初のReaderをゼロから用意する」から「内蔵Rule ReaderのA0〜A3を製品で独立検収し、外部Plugin選択との未接続を特定する」へ更新する**。それに続くPLG差分で、読み取れたRule一件を生成Goの実動作、実Artifact/Provider、通常CLIの独立Consumerへ接続する。新しいLanguage Registryや第二Meaningモデルは作らない。今回の文書追記自体はGo/CLI/Windowsの新規試験を行っていない。
