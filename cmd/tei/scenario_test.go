@@ -574,7 +574,7 @@ func TestScenarioCLIRejectsWrongGeneratedEnvironmentFingerprint(t *testing.T) {
 	if len(plan.Commands) != 6 {
 		t.Fatalf("generated commands=%d", len(plan.Commands))
 	}
-	for _, target := range []string{"-world-sha256", "-plugin-lock-sha256", "-fixture-sha256"} {
+	for _, target := range []string{"-world-sha256", "-plugin-lock-sha256", "-operator-selection-sha256", "-fixture-sha256"} {
 		args := append([]string(nil), plan.Commands[2].Argv[2:]...)
 		matched := false
 		for i := range args {
