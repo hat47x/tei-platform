@@ -1292,7 +1292,7 @@ Webの要求、CLIの起動、タイマー、Message、画面操作には、そ�
 <!-- tei-product-shape-independent-baseline-source-disclosure-20261115 -->
 ### 自己記述の実装移管に必要な独立Expectedを先に固定する（2026年11月15日）
 
-[自己記述設計§51](../design/ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md)に従い、positive一規則の必須ID・Attribute・Relation禁止・解決型・Go package名について、**固定の正常・負例**をfocused Goで追加した。これは現行手書きGeneratorの受入形を反証可能にするための基線であり、M1のDescriptor由来検査やM2の実装置換そのものではない。次はこの基線を保持したまま、TEI定義から検査を一条件生成し、そのGo手書き分岐を実使用経路から取り除く。
+[自己記述設計§51](../design/ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md)に従い、positive一規則の必須ID・Attribute・Relation禁止・解決型について、**固定の正常・負例**をfocused Goで追加した。Go package名は業務DSLの条件に含めず、Target Lowering固有の不正入力として別に検査する。これは現行手書きGeneratorの受入形を反証可能にするための基線であり、M1のDescriptor由来検査やM2の実装置換そのものではない。次はこの基線を保持したまま、TEI定義から検査を一条件生成し、そのGo手書き分岐を実使用経路から取り除く。
 
 mainのRule生成Go CLIビルド回帰は、選択Markdown原文のコピーをGo embedで同梱し、完成Binaryが算出する原文Hashまで観測する段階へ進んだ。これを正式R2-Pの「元Source／Reader／Generator資格を同一Attemptに束縛した」実証に読み替えない。原文をBinaryに収録するかは**開示資格を持つ公開可能なFixture**に限定して検証し、製品・Plugin・Studio・AI配布への原byte同梱は既存DisclosureのOwner判断なしに一般化しない。
 
