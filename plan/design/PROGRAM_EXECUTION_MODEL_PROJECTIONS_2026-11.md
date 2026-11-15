@@ -1213,3 +1213,11 @@ Workbenchの局所Pin、選択epoch、後着Replyの拒否は**画面の対象�
 `internal/operations/inspect_capability_source_evidence_test.go`に、既存の`reference/workspace`のCapability `sales.order.submit`を対象とした実Go回帰試験を追加する。実`InspectSubject`で`semantic-capability`を解決し、Canonical IDと`read-only`/`authorityLimits`、`semantic/sales/order.tei`のReference Role、Workspace相対Path、元byte上の識別子span・Artifact Fingerprintを照合する。続いて実`TraceSubjectSources`の結果と照合し、存在しないCapabilityについてTraceの空集合からCanonical存在を推測せず、`InspectSubject`の`SUBJECT_NOT_FOUND`を確認する。
 
 **この試験が合格しても**、Source原文を現在のHost権限で開くS-OPEN、正式Markdown Reader（S0-A）、Owner意味受理、公開Entry／実Provider呼出し、独立Consumer、Windows Stage2は未受理である。テスト自体の実行結果とexact HEADのCI判定はPRに記録し、追加したコードを根拠に自動でPASSを宣言しない。これ以降のUI変更は、S-LOCのOwnerがこの実Headless結果とWorkbenchの版・Audienceを照合してから進める。
+
+### 63.2 Sourceだけの改版とA→B→Aを、Capabilityの実読取で検査する（2026-11-15）
+
+`ReadWorkspaceSubject`は一度のWorkspace読取から、`Inspection`と管理対象Source集合の`ModelRevision`を返す。第63.1節の`InspectSubject`／`TraceSubjectSources`は各操作が独立にWorkspaceを読むため、静的Fixture上で値が一致しても、**並行編集時の単一Snapshotを証明するものではない**。Source-backedなEditor/Workbench表示の再資格化には、同じ読み取り境界で取得した参照情報と管理対象Source版が必要である。
+
+Go回帰`TestCapabilitySourceOnlyEditInvalidatesPinnedRevision`では、既存の製品Workspace用テストFixtureに正式`.tei`のCapabilityを宣言して`ReadWorkspaceSubject`を呼び、末尾の改行を一つ追加した場合を比較する。**Canonical ID・意味に基づくWorld Fingerprintが同じでも、Model Revision・Source Index Fingerprint・Artifact byte Fingerprintは変わる**ことを検査する。識別子Source Rangeはそのままでよく、元の位置だけを現在資格の根拠にしない。元バイトへ戻すA→B→Aでは記述的Fingerprintも復帰するが、途中改版の不存在や失効Grantの復活を証明しない。
+
+これは**同一Workspaceの一件のread-only回帰**である。単一読取がすべての並行ファイル更新を原子的に観測する保証ではなく、S-LOC-0 TypeScript Presenterの実Go応答受領やS-OPENの現在権限・Raw再取得、実Host/ProviderのCallを実装したわけではない。Goパッケージ単位の試験合格、総合Repository Healthの合格、Windows実Consumerの受領は別票に置く。既存#1124/#3788/#1824/#4515/#1180/#2514へ手渡し、Stage1→Stage2とProduct pure EntryのP0を止めない。
