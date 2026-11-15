@@ -30,7 +30,8 @@ func ParseRuleCandidate(source []byte) (RuleCandidate, error) {
 		return RuleCandidate{}, err
 	}
 	const section = "## 算定規則の定義"
-	selected, fence := false, false
+	selected := false
+	var fence markdownCodeFence
 	count, rows := 0, 0
 	var rule GraphRule
 	for _, ln := range sourceLines(source) {
@@ -41,12 +42,13 @@ func ParseRuleCandidate(source []byte) (RuleCandidate, error) {
 		if strings.HasPrefix(line, ">") {
 			continue
 		}
-		if strings.HasPrefix(line, "```") {
-			fence = !fence
+		if fence.skip(ln) {
+			// Code-fenced Rule tables are examples, not selected candidates.
 			selected = false
 			continue
 		}
-		if fence {
+		if strings.HasPrefix(ln.text, "    ") || strings.HasPrefix(ln.text, "\t") {
+			selected = false
 			continue
 		}
 		if strings.HasPrefix(line, "#") {
