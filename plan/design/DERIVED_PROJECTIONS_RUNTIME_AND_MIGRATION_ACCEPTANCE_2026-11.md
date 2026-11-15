@@ -146,6 +146,7 @@ Migrationの最初の受入は**隔離DBのread-only観測とDry-run**で、旧�
 - **保留**：新Core型・新Grammar・Graph Compiler・Workflow Host・Migration Engine・Outbox Store・独立テスト実行基盤・万能Registry・AIによる自動業務意味受理は、この段階で追加しない。
 
 **検証上限**：ここまでの§7〜10は既存成果の設計統合と次の実装パケットである。新たなGo/Node/Windows/DB/MCP実行試験、業務Ownerの意味受理、製品の完全適合は本追補では未実施。
+
 ## 11. 同じ意味モデルでも実装選択と現在性が違う：実Go回帰からの再整理（2026-11-15）
 
 ### 11.1 既に実証した範囲を起点にする
