@@ -322,3 +322,81 @@ Node Viewの初期表示は、Record／Sequence／Graphなどの**型付きの�
 最初のUIはread-onlyの**全体Port⇄Field表示**から始め、既存の同一Contract直結と一つの項目Mapping、純粋Adapter一つの3例をCLIの検収票に対応付ける。接続をドラッグしてもProposalを作るだけとし、Source Apply・Builder再生成・Runtime Provider選択・Grant・Effectは既存Ownerで独立に確認する。Producerの一値を複数Consumerへ配ることとProducerを複数回呼ぶことも区別する。
 
 実装順は§10のNW-Q0／Q1を流用し、PIO-01〜10を#1223／#951／#2497／#1180／#2514へ渡す。新しいPort Core型、万能型変換検索、第二Graph Runtimeは不要と判断できる限り導入しない。Studio Stage1→Stage2実WindowsとCLI実Providerの独立P0を変更しない。**本節は設計・実装引渡しであり、新しいNode View／Adapter実装の受入ではない**。
+---
+
+<!-- data-form-path-conformance-20261116 -->
+## 12. 型付き接続を経路として検証する：データ様式の保存条件（2026-11-16）
+
+### 12.1 単一Portの適合から、経路全体の適合へ
+
+§11で定めた「型全体を渡す／Fieldを結ぶ／明示Adapterを挟む」は、同じ標準Dataを異なる粒度で受け渡すための三つの操作である。**一辺ごとに型が合っても、複数の辺を通った結果が正しいとは限らない。** 例えば、Record全体の型が一致しても途中で未開示項目をHTTP向けのDataに加えることはできない。GraphのNodeをTableへ投影するとき、同じ端点を持つ複数のEdgeを一行へ畳めば、元のRelation occurrenceは復元できなくなる。
+
+ここで共通化するのは新しい「Port値」や実行Engineではなく、**既存のMapping／Projection契約を各辺に適用し、その主張が最終Consumerまで成り立つかを問う検収方法**である。PortはData／Function Data Contextに束縛された入出力の接点、NodeはOperation／Process／Pluginの配置上の出現、Edgeは宣言された接続とする。表示上のEdge IDから意味上のRelation IDや実呼出し済みの証拠を作らない。
+
+| 問い | 各辺で確認すること | 経路で改めて確認すること |
+| --- | --- | --- |
+| 型・意味 | 標準型と構造Facet、OperatorのShape／Law／Binding | 最終Consumerの要求を全段で充足し、途中の変換・変名が意味を変えていないか |
+| 識別・粒度 | Subject／Occurrence／Version、Field／Relation Path、入出力grain | 集約・結合・fanoutの後に元個体を再特定できると誤認していないか |
+| 順序・多重度 | ordered／bag／set、Relationの向きとEdge ID | 重複除去・並べ替え・投影で失われたものを後段が必要としていないか |
+| 値の状態 | present／explicit NULL／missing／unfetched／withheld／empty | 途中で「ゼロ」「空」「存在しない」へ無言で置き換えていないか |
+| 取得範囲 | Context、Scope、Snapshot、coverageと否定依存 | 部分取得から「全件」「該当なし」「唯一」を結論していないか |
+| 時間・数量 | valid／knownなどの時点、domain／observation、単位・尺度・丸め | 時点・単位の異なる変換を、名称・数値一致だけでつなげていないか |
+| 出典・資格 | Source版、Mapping／Operator／Provider選択、根拠のbyte位置 | 現在のSourceから実Builder／実Call／Consumerへ到達した証拠があるか |
+| 権限・公開 | 機密項目・Audience・Disclosure、現在Grant、Effect境界 | 中間段の権限や「読める」という事実を最終公開・更新資格へ流用していないか |
+
+判定には既存#2497／#4350の語彙 **preserved／lossy／rejected／unqualified／unknown** を使い、新しい適合Enumを増やさない。型の候補一致は接続の提案には使えるが、Meaning受理・実現選択・現在Grantを含む「実行可能」の宣言には使えない。
+
+### 12.2 経路合成の原則
+
+A→B→Cを検討する際、次の順序を守る。
+
+1. **要求から逆に調べる。** Cが必要とするField・粒度・時点・Read完全性・Lawを列挙し、Bが保証できる範囲を確認する。Bの出力型がCの入力型と同名であるだけでは十分でない。
+2. **各Mappingの保存・損失を接続する。** A→Bで失ったOccurrenceやFieldは、B→Cで型が一致しても自動復元しない。変換で新しい事実を取得した場合は追加Read・Source・時点・権限が別途必要である。
+3. **非単射の逆写像を禁止する。** 集計一行、Treeへ折り畳んだ多重Graph、先頭要素抽出、欠落Fieldを含むRecordから、元の一意な更新対象を推定しない。明示Actionは逆写像の代用品ではなく、別に対象確定・Expected State・Grantを要する。
+4. **出典と実行を別に証明する。** Source Indexの現在性、Readerで解決した型、Operator／Plugin Lock、生成GoとBuilderの実消費、Provider実Call、Consumer受領、Effect receiptは別の観測である。結果の数値が同じことだけで間を埋めない。
+5. **表示操作は経路を変更しない。** Node ViewのPort折畳み／展開・配線のハイライトはProjectionの変更であり、Mapping ID、Read回数、実行回数、モデル版を変化させない。配線の編集はまずProposalとし、Source変更・再検証・再実現を別に行う。
+
+特に、**Adapterを挿入するだけでは権限は増えない**。通貨・温度の点と差・CRS・日時の変換には、必要な変換Law、時点、精度、Loss、選択Providerを明示する。AdapterがIOやEffectを伴うなら純粋変換と同一の扱いにしない。型適合、業務的な意味適合、実装の選択、呼出し資格は互いに独立である。
+
+### 12.3 最初の検証対象と独立Expected
+
+最初の検証は**read-onlyの経路検収票**で行い、既存のPIO-01〜10／XMAP-01〜10／NW-Q0〜Q1のExpectedを参照する。下記はそれらを経路として組み合わせる追加の判別例であり、第二のExpected正本ではない。
+
+| ID | 固定する差分 | 検収で拒否または区別するもの |
+| --- | --- | --- |
+| DPC-01 | 型付きRecord全体の接続と、同じRecordの必要Fieldだけの接続 | 必須Field不足、任意Fieldの未取得を無条件に同値扱いすること |
+| DPC-02 | Decimal項目の純粋な正値検査と、単位・尺度の異なる同じDecimal | 基本型の一致だけで正値Lawや単位変換を認めること |
+| DPC-03 | Graphの同一端点を持つ多重EdgeからTable／Treeへ投影 | Edge occurrenceの消失を隠し、表示行から更新対象を逆算すること |
+| DPC-04 | 七行の部分取得を集計し、後段で該当なし／唯一を判定 | Read閉包を欠いた否定・一意性の断定 |
+| DPC-05 | 明示NULL・missing・unfetched・withheldをField接続で通す | 0、空文字、false、非存在へ黙って正規化すること |
+| DPC-06 | Adapterを含む三辺接続でSourceだけ改版、または実OperatorをA→B→Aへ変更 | 出力byte一致を旧Source Index・旧実現資格の復活へ読み替えること |
+| DPC-07 | 内部Recordの項目をread-only CLIと公開HTTPへ投影 | 型一致・CLI可読性から非開示Fieldの公開Grantを推定すること |
+| DPC-08 | Node Viewを全体PortからField表示へ切り替える | 表示だけでSource変更・Mapping変更・追加実Callが起きること |
+
+**検証順**：まず既存Source／Data／Rule／Mapping・Node投影の情報だけでDPC-01／02／05／08のread-only票を作り、保存・拒否・未検証を表示する。次にDPC-03／04／06／07を、既存のGraph／Query／Plugin／APIのOwnerへ反例として渡す。製品Parser、Core Port型、Registry、実行Runnerを追加する前に、既存の表現できない条件を具体的に記録する。
+
+実装上の入口は#2495（Facet）、#2497／#2500（Mapping・逆写像）、#2506／#2586（Data Context・Read）、#951／#1251（Plugin選択）、#1121／#4544（実現）、#1180／#2514（独立Expected）、#1124（Node View）とする。DPCの表は受入候補であり、新しいGoテスト・Provider実Call・Owner意味受理を実施したことを意味しない。
+
+**優先順位は変えない。** 製品P0はSource→生成Go→実Builderの閉包、通常CLIから選択Providerを呼ぶ実Read、非Plugin Studio Stage1→Stage2の実Windows受領である。経路検収票はそれらを説明しやすくするために追加するのであって、新たな先行Gateではない。
+
+### 12.4 Producerの保証とConsumerの要求を経路全体で照合する
+
+一つのPortが提供する型と、利用側が必要とする情報は同じではない。**Producerの保証、Consumerの要求、Adapterによる変換の前提・結果・損失**を個別に取り出し、A→B→Cの経路で必要条件が充足するかを確認する。各辺で型が一致しても、途中で失った情報は後段の型一致によって復元しない。
+
+例えば内部Operationの`OrderSummary`をHTTPで公開するとき、Record全体の型が一致していても`internalNote`の公開が認められるとは限らない。公開に必要なFieldだけを明示的に射影し、Audience・Disclosure・Scopeと現在Grantを別途検証する。多重GraphのEdgeをTreeへ畳んで表示する場合も、表示が成功したことと元Edge occurrenceを一意に更新できることは異なる。部分取得した7行から求めた集計値が正しくても、全件の該当なし・唯一性を主張するには取得閉包の証拠を要する。
+
+| 段階 | 判定対象 | 不適格・未立証の扱い |
+| --- | --- | --- |
+| 構成可能性 | Field・型・構造Facet・Multiplicity・Shape／Law／Bindingが利用側の要求を満たすか | 不整合は`rejected`、必要な宣言や根拠が足りなければ`unqualified`／`unknown` |
+| 情報の保存 | Identity・Occurrence・Presence・Coverage・grain・時点が最終Consumerの要求範囲で残るか | 明示的な損失のあるread-only Projectionは`lossy`。失った情報を使う否定・逆編集は拒否 |
+| 実現・利用 | 現在のSource・実装選択・Builder入力・Provider実Call・実Consumer受領がそれぞれ確かめられたか | 表示結果や型の一致から、実呼出し・公開・Effectの資格を作らない |
+
+`preserved`は**当該Consumerが要求する観測範囲での保存**であり、元Dataの全制約が無損失という意味ではない。Adapterが変換のため追加ReadやEffectを必要とする場合は、純粋な型変換と同等には扱わず、依存・選択・失敗・Grantを別票にする。
+
+### 12.5 最小のread-only接続検収票と反証
+
+最初のコード差分では新しいFlow EngineやCore Port型を作らず、既存の`Workspace.Load`で選択したData表・Attribute・Ruleの**一つのSource版**から、読み取り専用の検収票を得る。票に記録するのは、対象ID、原Source byte位置、Producer保証、Consumer要求、Mapping／Adapter、保存・損失、根拠の不足、判定と理由である。Readerが返した項目定義を、実Occurrence・実値・全件取得の証拠として使わない。
+
+最初の独立ExpectedはDPC-01／02／05を対象とし、全体RecordとFieldの接続、Decimal型と意味Lawの違い、`required`と明示NULL／missing／unfetched／withheldの違いを確認する。次にDPC-08でNode Viewを展開・折畳みしてもMapping Identity・生成物・Read回数を変更しないことを確認する。Graph多重辺・取得閉包・HTTP公開を扱うDPC-03／04／07は各Ownerの独立試験へ接続し、DPC-06はSource改版と実装選択改版を**別の失効条件**として扱う。
+
+誤成功を検出するMutantとして、`missing→NULL`、`partial→complete`、多重Edgeの合併、非公開FieldのHTTP転送、古い実装選択Pinの受理を固定する。判定結果だけでなく**どの保証が不足したか**を独立Expectedへ記録し、実装から期待値を生成しない。並行PR #5097（自己記述）と#5114（Scenarioの選択Pin）は、そのexact HEADが受理されるまではmainの実績へ算入しない。
