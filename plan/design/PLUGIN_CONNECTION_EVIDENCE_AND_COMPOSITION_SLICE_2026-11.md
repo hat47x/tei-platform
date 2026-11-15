@@ -297,3 +297,59 @@ WorkspaceのOperator実装だけをA→Bに切り替え、World／Rule／入力�
 **実装の最初の一歩**は、#5054の旧Scenario拒否が実HEADで合格した場合の、既存`Scenario Result`→read-only検収票の局所ProjectionとCPW-17／20である。#5054が未統合なら先行するP0-Aを止めず、既存#5007の局所Callを観測する範囲で設計・負例だけ先に確定する。正式Generator入力閉包は#1121／#4544／#2595、Plugin Provider／R3は#951／#4495、Node／Studioの別Consumerは#1124／#1824／#2831／#4583、独立Expectedは#1180／#2514に引き継ぐ。
 
 **受入の上限**：本節は接続の条件と製品実装順を更新した文書である。CPW-17〜22の新Go／Windows／DB試験、正式Plugin Runtime Provider、R2-P／R3の全経路、Ownerの意味受理は新たに実行・完了していない。全体Healthに既知の失敗が残っていても、局所成功を全体合格へ昇格しない。
+
+
+<!-- tei-plugin-connection-closure-disclosure-20261115 -->
+## 10. 接続の成立条件を「必要な情報の充足」と「配布先の資格」まで広げる（2026-11-15）
+
+### 10.1 Pluginが提供する機能より、利用側が必要とするものから判定する
+
+横断Pluginの役割は、機能一覧から適当にProviderを選んで線を引くことではない。利用側のFunction／Operation／Process Portが要求する入力と意味を先に確定し、それを満たすContributionだけを候補とする。必要条件の集合と実際に確認できた条件を、**問い合わせ対象と時点を揃えて**比べる。
+
+| 検収する条件 | 必要な照合 | 成立していないときの扱い |
+| --- | --- | --- |
+| **Data Context** | Required Attribute／Relation、業務Keyと物理Key、粒度、多重度、NULL／missing／未取得、Decimal精度、validAt／knownAt、取得対象全集合 | 一部しか取得していない場合は`partial`。未観測をNULLや0件に置換しない |
+| **意味と適合** | Rule／OperatorのLaw、Queryの結果意味、Native方言、Read・Transformの順序、独立Expected | 型だけ同じ、SQLが実行できた、Graphの端点が合った、というだけでは`unknown` |
+| **選択と実使用** | Workspace／Environment／Target、Contract版・Scope、選択Provider、実Binding／Entry・Attempt、Artifact・Toolchain資格 | 組込みOperator選択、Plugin Inventoryの`Resolved`、`Service.Invoke`のBindingを相互に代用しない |
+| **実作用と現在権限** | Read／Write権限の区別、現在Grant、Guard、更新Key・Version、Commit状態／Effect Receipt | 読み取れることから更新できると推定しない。`effectUnknown`を正常終了としない |
+| **配布と受領** | Build-only／Runtime／Deliveryの別、必要な実Image・Target、Consumer／Audience、Disclosureの現在資格 | Build成功をRuntime収録や公開許可とせず、PoCの別Consumer結果を転用しない |
+
+これらは単一の`ready`値ではなく、個別に根拠と不足を示す**問相対の接続条件**である。必要な根拠がない場合は`unknown`、実測で矛盾が見つかった場合は`mismatch`、当該Operationが要求しない条件のみ`not-applicable`とする。未取得の必須項目があるのに「Providerの能力は揃っている」と判断しない。
+
+DB横断の設計では、既存[Data Provider適合計画](DATA_PROVIDER_CROSS_DB_CONFORMANCE_2026-11.md)のD0（PostgreSQLで実Function→Rowset→Data Context→通常CLI）を、**Data Providerが必要Contextを満たすか**の最初の製品実証として共有する。D1以降のSQLite、Document、Key/Index、Graphについては、Read結果の部分性・順序・重複・時点・能力制限をそれぞれ照合し、無断Full Scan／Local fallbackを新たな共通Providerの親切機能にしない。正式D0が閉じる前にD1〜D4の検証候補を作ることは妨げないが、P0の完成条件には加えない。
+
+### 10.2 生成・同梱・公開を同じ資格にしない
+
+main統合済み[#5051](https://github.com/hat47x/tei-platform/pull/5051)の`//go:embed`による原Markdownのbyte同一コピーは、生成Goの実Binaryが**特定の原文を含む**ことを検証する有用な試験である。しかし、この事実から、その原文が業務上受理されたこと、実行時に解釈されたこと、配布先に開示してよいことは導けない。[自己記述§51](ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md)と同じ判断をPluginのBuild／Delivery境界へ適用する。
+
+**Build時の出典の証明**は、必要に応じてSource ID・Reader／Generator資格・byte digest・生成Attemptと実Builder入力の照合で残す。一方、**配布物への原文同梱**は独立した公開判断とする。特にWorkspaceの未公開Rule、DB定義、業務データ、Plugin Manual、添付を、再現性のためという理由だけでRuntime Binary・Web asset・外部HostのPackageに埋め込まない。Digestも情報量が小さい秘密値の開示資格を自動で与えない。
+
+| 同じBuildからの出力 | 必要な別判定 |
+| --- | --- |
+| Builder側だけで使う元Source／Generator | Build入力として正しく読んだか。Runtime／Deliveryに自動収録しない |
+| Runtimeに必要な生成GoとProvider Entry | 選択した実装版・実Image・Targetに実収録したか。Host Grantと実Callは別 |
+| Source原byte・Manual・証拠票の公開 | Audience／Scope／現在Disclosureを満たすか。必要最小の出典参照と全文同梱を区別 |
+| Studio／Web／MCP／外部Hostで表示・実行するもの | 別Consumerが何を受け取ったか、現在Grantがあるか。WailsのPinや画面表示だけで実行権限を与えない |
+
+特に生成DesktopのN2工程は、[#5042](https://github.com/hat47x/tei-platform/pull/5042)で実Windows PoC Bの生成Bundle受領を確認した一方、`tei self-build`からのN2起動は[#5059](https://github.com/hat47x/tei-platform/pull/5059)が実装・検証中である。**仮にN2のProcess／Artifact照合が合格しても、Seedから起動した子Processである限りStage1自身のStage2再構築ではない。** この差はUIの種類ではなく、誰が選択し、何を実Buildし、どの実Image／Consumerが受け取ったかという接続の証拠で判定する。
+
+### 10.3 最初の製品差分を変えずに、各Provider族へ展開する
+
+最初は既存[#5007](https://github.com/hat47x/tei-platform/pull/5007)の一Operator Ruleについて**宣言→選択→局所実Call**をread-onlyで示す。旧生成Scenarioコマンドの実装選択Pinは[#5054](https://github.com/hat47x/tei-platform/pull/5054)の合格・統合を確認してから現行仕様として参照する。別Resolver／Runtime／Graph Storeを作らず、既存Scenario Evidence／Inspectorの薄いProjectionで検証する。
+
+その接続票を、別の実Functionの実DB Read（#2586/#4496）、正式R2-PのSource→Generator→実Builder、公開pure FunctionのR3実Provider（#4495）、実Windows Stage1→Stage2（#2831/#4583）へ**それぞれ独立に**適用する。同一Contract・Source・AttemptであることをOwnerが確認できた接続だけをあとから合流する。純粋変換、DB Provider、信頼境界を越えるEffectful Providerの三例で必要な証拠を比較し、静的合成／動的ロード／外部Processの方式を最初から一つに固定しない。Go単一バイナリの標準配布は維持する。
+
+次の独立Expected候補は既存#1180／#2514へ渡す。
+
+| Case | 一因子を変えた反証 | 必ず残す判定 |
+| --- | --- | --- |
+| **CPW-23** | 必須Relationの取得が`partial`に変化。ProviderのDeclared能力は同じ | 充足せず`unknown`。未観測を0件やNULLにせず、問別Required/Loaded/Consumedを表示 |
+| **CPW-24** | Source digestと実Binaryの埋込み原文一致。ただしTargetへの原文Disclosureがない | 出典の限定成功と公開不可を分離。Binary同梱から開示権限を導かない |
+| **CPW-25** | RDBからDocument／Key/Index Providerへ変え、結果の見かけ上の行数は同じ | missing、ページ終端、順序、整合性、Scan条件、実Callを比較。異なるProviderを同値と決めつけない |
+| **CPW-26** | 生成Windows PoCのN2をCLI経由で起動できたが、Stage1のBuild Subject／実Builder閉包がない | 一工程の実起動とStage1→Stage2セルフビルドを区別 |
+| **CPW-27** | 同じRelation ID／Node端点、validAt／knownAtだけ異なる | 参照整合が成立しても時点・業務意味・現在Grantは独立判定 |
+| **CPW-28** | 旧Consumerへ実装A、現ConsumerへBを配信。値は同じ、Provider epochだけ異なる | 実CallのAttempt・選択世代・実Imageを混同せず、遅着応答で現在Pinを復活させない |
+
+**実装と計画の優先順位**：W0の一Operator Rule read-only接続票→D0 PostgreSQL一Function実Read／R2-PとR3の個別実Provider資格→Studio Stage1→Stage2実受領を**並列P0として維持**し、その後にNode View、外部Host、Effectful Hookへ接続する。CPW-23〜28は横断固有の反証候補であり、正式Meaning、Provider選択、Data操作、Disclosure／Grant、実Buildの第二正本を新設しない。
+
+**検証境界**：この節は、mainの限定実装と進行中のPRを区別した設計・引渡しである。CPW-23〜28の新しいGo／DB／Windows試験、DB横断Provider実接続、正式R2-P／R3の全経路、Stage1→Stage2再帰セルフビルド、Owner意味・開示受理は**今回新たに検収していない**。
