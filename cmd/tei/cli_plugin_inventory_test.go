@@ -170,6 +170,25 @@ func TestPluginInventoryEnvelopeAndModes(t *testing.T) {
 		t.Fatalf("a missing lock is not a false lock or a public Doc grant: %+v", unlockedDoc)
 	}
 
+	// A declaration visible in the catalogue is not a Plugin selected by
+	// this environment, and must not be treated as a public Document owner.
+	inactive := run(0, "plugin-inventory", "-workspace", reference, "-environment", "production",
+		"-plugin", "tei.editor.intelligence.sql")
+	var inactiveShape map[string]json.RawMessage
+	if err := reMarshal(inactive.Result, &inactiveShape); err != nil {
+		t.Fatal(err)
+	}
+	var inactiveDoc struct {
+		SelectionStatus string `json:"selectionStatus"`
+		ReadEligibility string `json:"readEligibility"`
+	}
+	if err := reMarshal(inactiveShape["documentReadPreflight"], &inactiveDoc); err != nil {
+		t.Fatal(err)
+	}
+	if inactiveDoc.SelectionStatus != "not-selected" || inactiveDoc.ReadEligibility != "not-assessed" {
+		t.Fatalf("declared but unselected Plugin is not a Document owner: %+v", inactiveDoc)
+	}
+
 	if row.RuntimeBoundary != "in-process" {
 		t.Fatalf("a builtin plugin runs in-process, got %q", row.RuntimeBoundary)
 	}
