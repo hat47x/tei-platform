@@ -110,6 +110,16 @@ Pは既存validationevalで正値・0・負値・NULL・未取得の五入力と
 
 DC-39〜40を既存#1180／#2514の独立Expectedへ接続し、DC-41は実BinaryとのRead Footprint一致を要求する次段候補とする。元宣言→Generator→実Builder入力→Artifactの正式R2-P、通常CLI実ProviderのR3、Studio Stage1→Stage2 Windows受領は並行P0であり、Pの評価成功をGの自己生成達成率へ加算しない。対象HEADでGoテストとRepository Healthを確認するまで新たなPASSを主張しない。
 
+### P1：Data表のRuleを実Binaryまで二方式で照合する（2026年11月15日）
+
+[宣言的構文の合成契約§29](../design/DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md)の最小実証として、印付きMarkdown Data項目表のallocationと隣接Ruleを同一Workspace Load／Source Indexから選択し、既存汎用Evaluator（P）と、既存生成器が作ったGoの実Binary（G）の正値・0・負値・負の0・NULL・未取得を独立Expectedで照合するFocused試験を追加する。実装票：internal/operations/inspect_markdown_data_table_rule_binary_parity_test.go。
+
+**結果の一致と読取対象の一致を分ける。** 生成Goの参照先だけをallocationからperson_idへ変更し、同じテスト値を返した場合でも、Binaryが観測したNumberの読取ID不一致で同値を拒否する。これはGraph・Plugin配線の型付きPortを接続する際にも重要な反証である。ただし、今回のSourceはテスト用のpure Sourceであり、実Provider・DB・開示範囲を検証したものではない。
+
+G／P／Dの分類は図表実現の解釈・生成・混合・Hookの配置方法とは別軸に置き、方式切替え後の旧Artifact再利用、現在Grant、Ownerの意味受理を同じPASSへ統合しない。DC-42〜45を既存#1180／#2514へ接続し、今回の実行可能な対象はDC-42／43のみとする。**追加テストのGoビルドとCI合格はexact HEADで別途確認**する。
+
+次の受入は正式Build Intent→Builder実入力→Artifact→独立Consumerの同一Attemptと、通常CLIの公開Entry→実Provider、Studio Stage1→Stage2の実Windows再構築である。新しいInterpreter／Graph Runner／第二意味正本やP0 Hard Gateを増やさない。
+
 ### P1で接続する業務判断・設計入力・数式（2026年11月15日）
 
 これらは新しい製品P0の前提ではなく、既存の標準Data/Rule/Expression・Function Data Context・表現型を実案件に近づける**受入作業**とする。詳細な正負例とOwner境界は[横断統合受入境界§14〜17](../design/CROSS_CUTTING_ACCEPTANCE_BOUNDARIES_2026-11-12.md)を参照。
