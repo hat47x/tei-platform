@@ -45,13 +45,26 @@ func TestTEIMDWindowManifestPinnedSourcePressure(t *testing.T) {
 		pins[c.File] = "sha256:" + c.SourceSHA256
 	}
 
-	for _, candidate := range []struct {
-		file  string
-		frame string
+	// All five sources are selectable at the physical S0-P layer, even when
+	// their proposed meaning is invalid or their derived display is stale.
+	// The product Reader remains unbound for every one of them.
+	candidates := []struct {
+		file, frame, extraWitness string
 	}{
-		{"baseline.tei.md", "ROWS BETWEEN 2 PRECEDING AND CURRENT ROW"},
-		{"frame-narrowed.tei.md", "ROWS BETWEEN 1 PRECEDING AND CURRENT ROW"},
-	} {
+		{"baseline.tei.md", "ROWS BETWEEN 2 PRECEDING AND CURRENT ROW", ""},
+		{"frame-narrowed.tei.md", "ROWS BETWEEN 1 PRECEDING AND CURRENT ROW", ""},
+		{"layout-only.tei.md", "ROWS BETWEEN 2 PRECEDING AND CURRENT ROW", ""},
+		{"duplicate-observation-id.tei.md", "ROWS BETWEEN 2 PRECEDING AND CURRENT ROW", "| A3 | A | 3 | 35 |"},
+		{"derived-view-stale.tei.md", "ROWS BETWEEN 1 PRECEDING AND CURRENT ROW", "| A3 | 20 |"},
+	}
+	if len(pins) != len(candidates) {
+		t.Fatalf("expected a closed five-case Window Source inventory, got %d", len(pins))
+	}
+	for _, candidate := range candidates {
+		if pins[candidate.file] == "" {
+			t.Fatalf("missing independent Source pin for %s", candidate.file)
+		}
+		t.Run(candidate.file, func(t *testing.T) {
 		t.Run(candidate.file, func(t *testing.T) {
 			original, err := os.ReadFile(filepath.Join(fixtureRoot, candidate.file))
 			if err != nil {
@@ -165,6 +178,24 @@ func TestTEIMDWindowManifestPinnedSourcePressure(t *testing.T) {
 				}
 				if string(actual[span.Start.Offset:span.End.Offset]) != literal {
 					t.Fatalf("Source Index byte span did not preserve original %q", literal)
+				}
+			}
+
+			// Invalid/obsolete candidates must still be retrievable and
+			// attributable to their original bytes. Their extra witness
+			// remains lexical evidence, never an accepted Meaning claim.
+			if candidate.extraWitness != "" {
+				literal := []byte(candidate.extraWitness)
+				if bytes.Count(actual, literal) != 1 {
+					t.Fatalf("negative candidate lacks its unique byte witness %q", literal)
+				}
+				at := bytes.Index(actual, literal)
+				span, err := sourceindex.RangeFromOffsets(actual, at, at+len(literal))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := span.Validate(actual); err != nil {
+					t.Fatal(err)
 				}
 			}
 
