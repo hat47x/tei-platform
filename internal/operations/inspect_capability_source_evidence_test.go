@@ -104,3 +104,76 @@ func TestInspectCapabilitySourceEvidenceFromWorkspace(t *testing.T) {
 	_, err = InspectSubject(root, missing)
 	inspectionCode(t, err, InspectionNotFound)
 }
+// A stable Canonical Capability is not a Source revision token. This fixture
+// uses the same product Workspace reader as document projections; a trailing
+// newline must invalidate Source-bound views without inventing new business
+// meaning or claiming that a runtime call took place.
+func TestCapabilitySourceOnlyEditInvalidatesPinnedRevision(t *testing.T) {
+	root := documentDraftFixture(t)
+	file := filepath.Join(root, "semantic", "sales", "order.tei")
+	base, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The base Workspace declares sales.order; this adds a real Capability
+	// referring to that Data, with the same syntax as reference/workspace.
+	capability := []byte("\ncapability sales.order.submit {\n    input order sales.order\n    output sales.order\n}\n")
+	original := append(append([]byte(nil), base...), capability...)
+	if err := os.WriteFile(file, original, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	subject := sourceindex.Subject{Kind: "semantic-capability", ID: "sales.order.submit"}
+	before, err := ReadWorkspaceSubject(root, subject)
+	if err != nil {
+		t.Fatalf("read Capability before Source-only edit: %v", err)
+	}
+	if before.Inspection.Subject != subject || before.Inspection.SourceStatus != "indexed" ||
+		before.ModelRevision == "" || before.Inspection.SourceIndexFingerprint == "" ||
+		len(before.Inspection.Sources.References) == 0 {
+		t.Fatalf("missing pinned Capability evidence: %+v", before)
+	}
+
+	// This change is semantically neutral, but it produces different managed
+	// Source bytes. An existing Source-bound view cannot silently stay current.
+	edited := append(append([]byte(nil), original...), '\n')
+	if err := os.WriteFile(file, edited, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	after, err := ReadWorkspaceSubject(root, subject)
+	if err != nil {
+		t.Fatalf("read Capability after Source-only edit: %v", err)
+	}
+	if before.ModelRevision == after.ModelRevision ||
+		before.Inspection.SourceIndexFingerprint == after.Inspection.SourceIndexFingerprint {
+		t.Fatal("Source-only change did not invalidate Source revision and Index fingerprint")
+	}
+	if before.Inspection.WorldFingerprint != after.Inspection.WorldFingerprint ||
+		string(before.Inspection.Canonical) != string(after.Inspection.Canonical) ||
+		before.Inspection.Subject != after.Inspection.Subject {
+		t.Fatal("Source-only change unexpectedly changed the Canonical Capability")
+	}
+	oldRefs, newRefs := before.Inspection.Sources.References, after.Inspection.Sources.References
+	if !reflect.DeepEqual(oldRefs, newRefs) {
+		t.Fatalf("trailing newline moved a Capability identifier: before=%+v after=%+v", oldRefs, newRefs)
+	}
+	if len(before.Inspection.Sources.Artifacts) != 1 || len(after.Inspection.Sources.Artifacts) != 1 ||
+		before.Inspection.Sources.Artifacts[0].Fingerprint == after.Inspection.Sources.Artifacts[0].Fingerprint {
+		t.Fatal("edited Source bytes did not change the indexed artifact fingerprint")
+	}
+
+	// Returning to the old bytes can restore the descriptive fingerprint;
+	// it does not prove that there was no intermediate revision (A->B->A) or
+	// restore any edit, disclosure or execution grant.
+	if err := os.WriteFile(file, original, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	restored, err := ReadWorkspaceSubject(root, subject)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if restored.ModelRevision != before.ModelRevision ||
+		restored.Inspection.SourceIndexFingerprint != before.Inspection.SourceIndexFingerprint ||
+		string(restored.Inspection.Canonical) != string(before.Inspection.Canonical) {
+		t.Fatal("A-B-A bytes failed to recover the descriptive Source/Meaning state")
+	}
+}
