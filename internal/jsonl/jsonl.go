@@ -14,8 +14,10 @@ package jsonl
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 )
@@ -58,8 +60,22 @@ func Read[T any](path, label string, decode func([]byte) (T, error)) ([]T, error
 		return nil, fmt.Errorf("open %s %s: %w", label, path, err)
 	}
 	defer file.Close()
+	raw, err := io.ReadAll(file)
+	if err != nil {
+		return nil, fmt.Errorf("read %s %s: %w", label, path, err)
+	}
+	return ReadBytes(raw, label, decode)
+}
+
+// ReadBytes is Read over bytes the caller already holds. It exists because a
+// received file is not always read from disk by this package: the external
+// analysis intake fingerprints the bytes as they arrived and then classifies
+// them, and a second copy of the line rules there would be the drift this
+// package was created to stop. The rules are the same ones Read documents; the
+// label stands in for the path, which the caller already knows.
+func ReadBytes[T any](raw []byte, label string, decode func([]byte) (T, error)) ([]T, error) {
 	var records []T
-	scanner := bufio.NewScanner(file)
+	scanner := bufio.NewScanner(bytes.NewReader(raw))
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	for line := 1; scanner.Scan(); line++ {
 		text := scanner.Bytes()
@@ -68,12 +84,12 @@ func Read[T any](path, label string, decode func([]byte) (T, error)) ([]T, error
 		}
 		record, err := decode(text)
 		if err != nil {
-			return records, fmt.Errorf("%s %s line %d: %w", label, path, line, err)
+			return records, fmt.Errorf("%s %s line %d: %w", label, "bytes", line, err)
 		}
 		records = append(records, record)
 	}
 	if err := scanner.Err(); err != nil {
-		return records, fmt.Errorf("read %s %s: %w", label, path, err)
+		return records, fmt.Errorf("read %s %s: %w", label, "bytes", err)
 	}
 	return records, nil
 }
