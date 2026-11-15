@@ -826,6 +826,10 @@ Source/Authoring Graph → Resolved/Lowered Graph → Targetの実行・観測�
 
 **CI資格の別管理**：#3320最終headの[Repository Health](https://github.com/hat47x/tei-platform/actions/runs/42621314472)と#3742最終headの[Repository Health](https://github.com/hat47x/tei-platform/actions/runs/42620907618)は成功。#4239はmain統合済みだが、確認時の後続[Repository Health #42956637232](https://github.com/hat47x/tei-platform/actions/runs/42956637232)は進行中、[govulncheck #42956637183](https://github.com/hat47x/tei-platform/actions/runs/42956637183)はGo標準ライブラリ`GO-2026-6859`（Go1.26.10）で失敗し、[Issue #4276](https://github.com/hat47x/tei-platform/issues/4276)が別途追跡する。Mergeとexact-head全CI PASSを混同しない。
 
+**合成判定Fixtureへの接続（2026-11-11）**：既存の[`verify_claim_requalification.py`](../../plan/fixtures/business-completion-claims/verify_claim_requalification.py)は、再利用可否を判定する正式Engineでなく、13件のsynthetic pressureを持つ**判定表**。 [Draft #4393](https://github.com/hat47x/tei-platform/pull/4393) では、`dependencies_closed`（独立Required集合）と`consumption_closed`（実消費の観測閉包）を**別々の仮定**として入力し、どちらかが未知なら`unresolved-impact`にする4件の負例・対照を追加する。このboolは**fixture作者が与える値であってReaderから取得していない**。既存Role/Source/CLI-MCPの一致結果をこのboolへ自動変換してはならず、合格しても`reuse-candidate-for-this-change`はAffected Claimの再レビュー候補に限る。Business Meaning受理、現在Policy・Grant、業務Targetへの実行許可は別判断。新fixture/検証正本は作らない。**PR #4393のexact-head直接Python実行とCIは確認前**。
+
+**セキュリティCIの時点更新**：#4239のGo1.26.10に対する`GO-2026-6859`の失敗は歴史的結果として保持する。2026-11-11 main `2202baa96e5e845c996da62c8f8df27e00d45c43`の`go.mod`は1.26.11となり、[#4276](https://github.com/hat47x/tei-platform/issues/4276)はClosed。ただし特定実行の更新後govulncheck PASSはここでは未取得なので、Issue Closedだけを現在のScan成功に読み替えない。
+
 **次の最小実証**：#4191の一つのRead-only Business Functionについて、独立したRequired Role/Rule/Source一覧と二Consumerが実際に受信・使用した入力を同一revision/Scopeで突き合わせる。完全なRequiredがない場合は`unknown`で停止。次に初めて旧実装／受理意味／生成Targetの独立Expectedを用いた三角検収へ進む。実ETL/旧Java/.NET/別Target/DB Writerの動作結果、現在のOwner/Grant、全Source closureは**NOT RUN/NOT PROVEN**。
 
 ## 18. 大プラグイン主義：緩やかな公開・依存者責任・明示的保証（2026-11-07／調査・採用前）

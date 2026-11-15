@@ -3,8 +3,10 @@
 
 This is a decision-table fixture, NOT a TEI revalidation engine. A 'reuse'
 label means only that this *observed change* does not require re-examining that
-claim under the explicitly closed synthetic dependencies. It never means that
-business completion, execution authority, or current disclosure is accepted.
+claim only when independent Required-set closure AND actual consumption
+coverage are both assumed complete in this synthetic fixture. Neither is
+discovered here. Business completion, execution authority or disclosure
+is never accepted by this fixture.
 """
 from __future__ import annotations
 
@@ -21,7 +23,9 @@ class Claim:
     name: str
     subject: str
     depends_on: frozenset[str]
-    dependencies_closed: bool
+    # Synthetic assumptions, not evidence from actual Workspace readers.
+    dependencies_closed: bool  # Independent Required-set closure
+    consumption_closed: bool = False  # Actual consumed-input closure
 
 
 @dataclass(frozen=True)
@@ -34,25 +38,25 @@ class Change:
 
 HISTORICAL_EFFECT = Claim(
     "historical-effect-K1", "order-1001",
-    frozenset({"receipt-integrity", "effect-causality"}), True,
+    frozenset({"receipt-integrity", "effect-causality"}), True, True,
 )
 CURRENT_CONFIRMATION = Claim(
     "currently-usable-confirmation", "order-1001",
-    frozenset({"cohort-history", "owner-rule", "provider-route"}), True,
+    frozenset({"cohort-history", "owner-rule", "provider-route"}), True, True,
 )
 CURRENT_DISCLOSURE = Claim(
     "current-consumer-disclosure", "order-1001",
-    frozenset({"disclosure-grant", "consumer-artifact", "source-role"}), True,
+    frozenset({"disclosure-grant", "consumer-artifact", "source-role"}), True, True,
 )
 SUBMIT_ELIGIBILITY = Claim(
     "current-submit-eligibility", "order-1001",
-    frozenset({"cohort-history", "owner-rule", "provider-route", "action-binding", "host-grant"}), True,
+    frozenset({"cohort-history", "owner-rule", "provider-route", "action-binding", "host-grant"}), True, True,
 )
 
 
 def requalification(claim: Claim, change: Change) -> str:
     """Return only the review impact of one synthetic change, not truth/allow."""
-    if not claim.dependencies_closed or change.category is None:
+    if not claim.dependencies_closed or not claim.consumption_closed or change.category is None:
         return UNRESOLVED
     if change.category not in claim.depends_on:
         return REUSE_CANDIDATE
@@ -127,6 +131,36 @@ class TestClaimRelativeRequalification(unittest.TestCase):
         change = Change("receipt-integrity", "order-1001", "same")
         self.assertEqual(requalification(HISTORICAL_EFFECT, change), RECHECK)
         self.assertEqual(requalification(CURRENT_CONFIRMATION, change), REUSE_CANDIDATE)
+
+    def test_r14_matching_tax_type_does_not_prove_required_closure(self):
+        # Historical X-TEA A/B preserves tax-value/std.decimal locally, not
+        # the independent Required inventory of the entire Tax function.
+        tax = Claim("tax-meaning", "master.tax_rate",
+                    frozenset({"tax-rate", "calendar-rule"}), False, True)
+        changed = Change("numbering-rule", "master.tax_rate", "same")
+        self.assertEqual(requalification(tax, changed), UNRESOLVED)
+
+    def test_r15_closed_requirements_without_consumption_cannot_skip(self):
+        # A declared Required closure cannot replace evidence that the actual
+        # Reader/Consumer consumed precisely the claimed inputs.
+        tax = Claim("tax-meaning", "master.tax_rate",
+                    frozenset({"tax-rate", "calendar-rule"}), True, False)
+        changed = Change("numbering-rule", "master.tax_rate", "same")
+        self.assertEqual(requalification(tax, changed), UNRESOLVED)
+
+    def test_r16_both_closed_assumptions_permit_only_a_reuse_candidate(self):
+        tax = Claim("tax-meaning", "master.tax_rate",
+                    frozenset({"tax-rate", "calendar-rule"}), True, True)
+        changed = Change("numbering-rule", "master.tax_rate", "same")
+        self.assertEqual(requalification(tax, changed), REUSE_CANDIDATE)
+        # This is not a Business Meaning or execution-eligibility decision.
+        self.assertNotEqual(REUSE_CANDIDATE, "business-meaning-accepted")
+
+    def test_r17_changed_required_tax_source_still_needs_recheck(self):
+        tax = Claim("tax-meaning", "master.tax_rate",
+                    frozenset({"tax-rate", "calendar-rule"}), True, True)
+        changed = Change("tax-rate", "master.tax_rate", "same")
+        self.assertEqual(requalification(tax, changed), RECHECK)
 
 
 if __name__ == "__main__":

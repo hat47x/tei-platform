@@ -95,6 +95,11 @@ if [[ "$fast" == false ]]; then
   run_step "go test -count=1 -timeout 60m ./..." go test -count=1 -timeout 60m ./...
 fi
 run_step "tei validate -workspace reference/workspace" workspace_valid
+# Requalification is a synthetic decision-table fixture, not a live Source/
+# Consumer closure probe. Run it directly so its negative controls cannot
+# silently disappear behind the Go-only repository checks.
+run_step "claim requalification synthetic fixture (R01-R17)" \
+  python3 -B plan/fixtures/business-completion-claims/verify_claim_requalification.py
 run_step "ADR index matches plan/adr/0*.md" go run ./tools/reference-adr-index-check .
 
 echo >&2
