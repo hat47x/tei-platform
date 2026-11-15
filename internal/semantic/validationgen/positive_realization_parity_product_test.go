@@ -21,9 +21,6 @@ import (
 // does not claim an actual Provider, a selected deployment mode, an external
 // Host, or business acceptance.
 func TestSelectedPositiveRuleInterpretedAndGeneratedRealizations(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Go toolchain execution required for realization parity")
-	}
 	if _, err := exec.LookPath("go"); err != nil {
 		t.Skipf("Go toolchain unavailable: %v", err)
 	}
