@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"tei/internal/buildintent"
+	"tei/internal/plugin"
 )
 
 // The plan does not name the Go toolchain. These tests pin the record that tells
@@ -42,7 +43,7 @@ func TestObserveChildToolchainComparesTheReportWithTheFile(t *testing.T) {
 		{"the reported file is gone", &selfBuildChildToolchain{GoExecutable: filepath.Join(dir, "absent"), GoExecutableDigest: actual}, toolchainObservationUnreported, "could not read"},
 	}
 	for _, tc := range cases {
-		record := observeChildToolchain(tc.reported)
+		record := observeChildToolchain(tc.reported, "", false)
 		if record.State != tc.wantState {
 			t.Fatalf("%s: state = %q (%s)", tc.name, record.State, record.Reason)
 		}
@@ -52,9 +53,52 @@ func TestObserveChildToolchainComparesTheReportWithTheFile(t *testing.T) {
 		if record.NamedByPlan {
 			t.Fatalf("%s: the record says the plan names the toolchain; it does not", tc.name)
 		}
-		if !strings.Contains(record.Boundary, "The plan does not name a toolchain") || !strings.Contains(record.Boundary, "not that the builder ran it") {
+		if !strings.Contains(record.Boundary, "When the plan names none") || !strings.Contains(record.Boundary, "not that the builder ran it") {
 			t.Fatalf("%s: the boundary does not state the limits: %s", tc.name, record.Boundary)
 		}
+	}
+}
+
+// Decision 3 (#2831): when the plan names a toolchain, the builder's report is
+// compared with it, independently of the executable re-read.
+func TestObserveChildToolchainComparesTheReportWithThePlan(t *testing.T) {
+	const planned = "sha256:" + "aa"
+	reported := &selfBuildChildToolchain{GoExecutable: "/absent/go", GoExecutableDigest: "sha256:00", ClosureDigest: planned}
+
+	same := observeChildToolchain(reported, planned, true)
+	if !same.NamedByPlan || !same.MatchesPlan || same.PlannedClosureDigest != planned || same.PlanReason != "" {
+		t.Fatalf("the planned toolchain was reported but not matched: %+v", same)
+	}
+
+	other := observeChildToolchain(&selfBuildChildToolchain{ClosureDigest: "sha256:bb"}, planned, true)
+	if other.MatchesPlan || !strings.Contains(other.PlanReason, "the builder reported sha256:bb") {
+		t.Fatalf("another toolchain was not named: %+v", other)
+	}
+
+	silent := observeChildToolchain(nil, planned, true)
+	if silent.MatchesPlan || !strings.Contains(silent.PlanReason, "did not report the toolchain") {
+		t.Fatalf("a silent builder was not named: %+v", silent)
+	}
+
+	unnamed := observeChildToolchain(reported, "", false)
+	if unnamed.NamedByPlan || unnamed.MatchesPlan || unnamed.PlanReason != "" {
+		t.Fatalf("a plan without a toolchain was treated as naming one: %+v", unnamed)
+	}
+}
+
+func TestPlannedPlanParameterReadsTheReceiptPlan(t *testing.T) {
+	receipt := &PlanReceipt{ReceiptJSON: `{"plan":{"parameters":[{"name":"other","value":"x"},{"name":"go.toolchain.closureDigest","value":"sha256:cc"}]}}`}
+	if value, ok := plannedPlanParameter(receipt, "go.toolchain.closureDigest"); !ok || value != "sha256:cc" {
+		t.Fatalf("value=%q ok=%v", value, ok)
+	}
+	if _, ok := plannedPlanParameter(receipt, "absent"); ok {
+		t.Fatal("an absent parameter was found")
+	}
+	if _, ok := plannedPlanParameter(&PlanReceipt{ReceiptJSON: "{"}, "go.toolchain.closureDigest"); ok {
+		t.Fatal("an unreadable receipt yielded a parameter")
+	}
+	if _, ok := plannedPlanParameter(nil, "go.toolchain.closureDigest"); ok {
+		t.Fatal("no receipt yielded a parameter")
 	}
 }
 
@@ -159,10 +203,6 @@ func TestSamePlanBuiltByTwoToolchainsIsToldApartOnlyByTheRecord(t *testing.T) {
   "profile": "release"
 }
 `
-	intentPath := filepath.Join(root, "intent.json")
-	if err := os.WriteFile(intentPath, []byte(intentBody), 0o600); err != nil {
-		t.Fatal(err)
-	}
 	catalogBytes, err := os.ReadFile(catalogPath)
 	if err != nil {
 		t.Fatal(err)
@@ -171,25 +211,33 @@ func TestSamePlanBuiltByTwoToolchainsIsToldApartOnlyByTheRecord(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	intent, err := buildintent.ParseIntent([]byte(intentBody))
-	if err != nil {
-		t.Fatal(err)
-	}
-	receipt, err := buildintent.Resolve(intent, buildintent.NewBuildContext(repoRoot, catalog))
-	if err != nil {
-		t.Fatalf("derive the plan: %v", err)
-	}
-	planJSON, err := json.Marshal(receipt.Plan)
-	if err != nil {
-		t.Fatal(err)
+	writePlan := func(name, body string) (string, string) {
+		intentFile := filepath.Join(root, name+"-intent.json")
+		if err := os.WriteFile(intentFile, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		intent, err := buildintent.ParseIntent([]byte(body))
+		if err != nil {
+			t.Fatal(err)
+		}
+		receipt, err := buildintent.Resolve(intent, buildintent.NewBuildContext(repoRoot, catalog))
+		if err != nil {
+			t.Fatalf("derive the plan: %v", err)
+		}
+		planJSON, err := json.Marshal(receipt.Plan)
+		if err != nil {
+			t.Fatal(err)
+		}
+		planFile := filepath.Join(root, name+"-plan.json")
+		if err := os.WriteFile(planFile, planJSON, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return intentFile, planFile
 	}
 	// One plan file, read by both builds: the toolchain is the only thing varied.
-	planPath := filepath.Join(root, "plan.json")
-	if err := os.WriteFile(planPath, planJSON, 0o600); err != nil {
-		t.Fatal(err)
-	}
+	intentPath, planPath := writePlan("unpinned", intentBody)
 
-	run := func(name, goExe string) toolchainChainReport {
+	attempt := func(name, goExe, intentPath, planPath string) (toolchainChainReport, string) {
 		out := filepath.Join(root, name)
 		if err := os.MkdirAll(out, 0o755); err != nil {
 			t.Fatal(err)
@@ -220,8 +268,15 @@ func TestSamePlanBuiltByTwoToolchainsIsToldApartOnlyByTheRecord(t *testing.T) {
 		if report.Qualified {
 			t.Fatalf("%s: the attempt was reported as qualified", name)
 		}
-		if !report.OK || report.L2B == nil || !report.L2B.Claimed {
-			t.Fatalf("%s: the build with %s did not satisfy the five conditions: l2b=%+v error=%+v\n%s", name, goExe, report.L2B, report.Error, stderr.String())
+		if report.L2B == nil || report.ToolchainObservation == nil {
+			t.Fatalf("%s: the report is incomplete: %s\n%s", name, stdout.String(), stderr.String())
+		}
+		return report, stderr.String()
+	}
+	run := func(name, goExe string) toolchainChainReport {
+		report, stderr := attempt(name, goExe, intentPath, planPath)
+		if !report.OK || !report.L2B.Claimed {
+			t.Fatalf("%s: the build with %s did not satisfy the conditions: l2b=%+v error=%+v\n%s", name, goExe, report.L2B, report.Error, stderr)
 		}
 		if report.ToolchainObservation == nil || report.ToolchainObservation.State != toolchainObservationMatched {
 			t.Fatalf("%s: toolchainObservation = %+v", name, report.ToolchainObservation)
@@ -237,10 +292,9 @@ func TestSamePlanBuiltByTwoToolchainsIsToldApartOnlyByTheRecord(t *testing.T) {
 	if first.PlanReceipt == nil || second.PlanReceipt == nil || first.PlanReceipt.PlanFingerprint != second.PlanReceipt.PlanFingerprint {
 		t.Fatalf("the plan was meant to be the same for both builds: %+v / %+v", first.PlanReceipt, second.PlanReceipt)
 	}
-	// The current contract: the plan is silent on the toolchain, so both attempts
-	// hold all five conditions while producing different bytes. If a plan ever
-	// names its toolchain, the second build must be refused instead, and this
-	// expectation changes with that decision.
+	// A plan that is silent on the toolchain: both attempts hold every condition
+	// while producing different bytes. Naming the toolchain is optional (#2831
+	// decision 3), so this stays true for such plans.
 	if first.ChildRun.ArtifactDigest == second.ChildRun.ArtifactDigest {
 		t.Fatalf("two toolchains produced the same artifact (%s); the measurement this test keeps no longer holds", first.ChildRun.ArtifactDigest)
 	}
@@ -250,4 +304,39 @@ func TestSamePlanBuiltByTwoToolchainsIsToldApartOnlyByTheRecord(t *testing.T) {
 	t.Logf("plan %s: artifact %s with %s, artifact %s with %s", first.PlanReceipt.PlanFingerprint,
 		first.ChildRun.ArtifactDigest, first.ToolchainObservation.Reported.GoExecutable,
 		second.ChildRun.ArtifactDigest, second.ToolchainObservation.Reported.GoExecutable)
+
+	// The same declaration, now naming the first toolchain (#2831 decision 3).
+	// The name is a plan parameter, so the plan fingerprint changes with it.
+	pinnedBody := strings.Replace(intentBody, `"profile": "release"`,
+		`"profile": "release",
+  "parameters": [{"name": "`+plugin.BuildParameterGoToolchainClosureDigest+`", "value": "`+first.ToolchainObservation.Reported.ClosureDigest+`"}]`, 1)
+	if pinnedBody == intentBody {
+		t.Fatal("the declaration could not be extended with the toolchain parameter")
+	}
+	pinnedIntent, pinnedPlan := writePlan("pinned", pinnedBody)
+
+	withNamed, stderr := attempt("pinned-first", firstGo, pinnedIntent, pinnedPlan)
+	if !withNamed.OK || !withNamed.L2B.Claimed {
+		t.Fatalf("the toolchain the plan names was refused: l2b=%+v error=%+v\n%s", withNamed.L2B, withNamed.Error, stderr)
+	}
+	if !withNamed.ToolchainObservation.NamedByPlan || !withNamed.ToolchainObservation.MatchesPlan {
+		t.Fatalf("toolchainObservation = %+v", withNamed.ToolchainObservation)
+	}
+	if withNamed.PlanReceipt.PlanFingerprint == first.PlanReceipt.PlanFingerprint {
+		t.Fatal("naming the toolchain did not change the plan fingerprint")
+	}
+
+	withOther, _ := attempt("pinned-second", secondGo, pinnedIntent, pinnedPlan)
+	if withOther.OK || withOther.L2B.Claimed {
+		t.Fatalf("a build with another toolchain than the plan names was accepted: ok=%v l2b=%+v", withOther.OK, withOther.L2B)
+	}
+	if !withOther.ToolchainObservation.NamedByPlan || withOther.ToolchainObservation.MatchesPlan {
+		t.Fatalf("toolchainObservation = %+v", withOther.ToolchainObservation)
+	}
+	if !strings.Contains(strings.Join(withOther.L2B.Unmet, "\n"), "did not report the Go toolchain the plan names") {
+		t.Fatalf("unmet does not name the toolchain: %v", withOther.L2B.Unmet)
+	}
+	if withOther.ChildRun != nil && withOther.ChildRun.ArtifactDigest != "" {
+		t.Fatalf("the builder produced an artifact with a toolchain the plan does not name: %s", withOther.ChildRun.ArtifactDigest)
+	}
 }

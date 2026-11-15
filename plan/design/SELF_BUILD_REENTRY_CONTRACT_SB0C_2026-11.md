@@ -1606,7 +1606,7 @@ in-processを既定にするには、**entryがcatalogを自分で選ぶ**必要
 | 計画と違うfingerprintを申告する | 条件3で不一致 |
 | 成果物と違うdigestを申告する | 条件4（ディスクとの比較）で不一致 |
 | 同じバイトを二回出さない | 条件5で不一致 |
-| 二回の間に実行物を差し替える | 条件5の**builder同一性**（**`-child`に名指ししたファイルのbyte**。そのファイルが別の実行物を起動するプロキシだと、背後での差し替えは止まらない——[実測](../evidence/TEI_GO_SELF_BUILD_CHILD_IDENTITY_SCOPE_2026-11-10.md)） |
+| 二回の間に実行物を差し替える | 条件5の**builder同一性**（**`-child`に名指ししたファイルのbyte**。そのファイルが別の実行物を起動するプロキシだと、背後での差し替えは止まらない——[実測](../evidence/TEI_GO_SELF_BUILD_CHILD_IDENTITY_SCOPE_2026-11-10.md)）。**計画が宣言しないファイルを起動した時点で、builder照合がL2-bを保留する**（§4.56） |
 | `-state`を無視して同じstateで二回buildする | 条件5の**state分離**——childが実際と違う値を申告すれば止まり、そうでなくても**entryが事後に**「2回目が渡したstateを作ったか」「1回目のstateの一覧が変わっていないか」を見る（`entry-post-hoc`。**渡したパスに空ディレクトリを作るchildは通る**——[実測](../evidence/TEI_GO_SELF_BUILD_STATE_SEPARATION_POSTHOC_2026-11-13.md)。下の「検査で止められないもの」3と対になる）。**空ディレクトリを作るだけのchildを含め、各回が渡したstateへファイルを残したかは`stateObservation`に出す**（§4.55） |
 | **計画と違うdefinitionを読んでbuildする** | childが**成果物を作る前に停止**（§4.36） |
 
@@ -2472,6 +2472,34 @@ PR #4254 の head `289d3eeb2d5696ed3ac3ca07c11ddcfb946fc541` に対する [Run 4
 - **builder同一性。** 計画が選んだbuilderのdigestと起動したファイルのdigestを比べる検査は、[#4114](https://github.com/hat47x/tei-platform/pull/4114)が実装したが`main`に入っていない（`cmd/tei`に`builderBinding`は無い）。本節は扱わない
 - **G4の材料としての十分性。** §4.52の「再構築」行は、二回の独立性がchildの申告に依っている。`qualified`は`false`のままである
 
+### 4.56 持ち主判断3件の代理決定と実装（2026-11-16）
+
+§4.37・§4.55・§6に残っていた持ち主の判断3件を、Ownerの委任により代理で決めた（[決定の記録](https://github.com/hat47x/tei-platform/issues/2831#issuecomment-6897386985)）。**どれもG4の判定ではない。** `qualified`は`false`のままである。
+
+| 決定 | 内容 | 実装 |
+| --- | --- | --- |
+| 1. builder照合 | 計画の`builder.artifactDigest`と、entryが起動前に読んだ`-child`のdigestを比べ、違えば**L2-bを保留する**（試行は失敗にしない）。[#4114](https://github.com/hat47x/tei-platform/pull/4114)は「取り込み済み」として閉じられていたが、そのコミットは`main`の祖先ではなく、取り込まれていなかった | #4114の`builderBinding`をそのまま戻し、`assessL2B`の条件に加えた |
+| 2. 条件5と`stateObservation.kind` | **条件に入れない。** 判定は[#4486](https://github.com/hat47x/tei-platform/issues/4486)の`stateSeparation`（S1の事後検査、S2の境界）に任せ、`stateObservation`は記録のまま残す。G4の材料として「二回が独立だった」に数えるのは`stateSeparation.basis = host-boundary`の試行だけ | コードの変更なし |
+| 3. toolchainの名指し | 既存の`BuildPlan.parameters`に予約名`go.toolchain.closureDigest`（`plugin.BuildParameterGoToolchainClosureDigest`）で名指せる。名指した計画では、builderが別のtoolchainならビルドを始めずに止まり、entryはbuilderの申告と計画を比べて違えば試行を失敗にしL2-bを保留する。**名指しは任意**（名指さない計画は従来どおり記録のみ）。G4の材料に数えるのは名指した試行だけ | builder・entry・`plugin`に実装。型は足していない |
+
+#### 何が変わるか
+
+| 起動したもの・計画 | 変更前 | 変更後 |
+| --- | --- | --- |
+| 計画が宣言するbuilderを起動 | Claimあり | Claimあり |
+| 宣言されていないラッパー・プロキシ・別の版のbuilder | **Claimあり** | **Claimなし**（`builder ... (mismatched)`） |
+| 宣言されたファイル自身が別の実行物を起動する | Claimあり | Claimあり（照合はファイルのbyteまで。§4.37の限界は残る） |
+| toolchainを名指さない計画を、別のtoolchainでビルド | 両方Claimあり | 両方Claimあり（記録で区別するだけ） |
+| toolchainを名指した計画を、そのtoolchainでビルド | — | Claimあり（`toolchainObservation.matchesPlan = true`） |
+| toolchainを名指した計画を、別のtoolchainでビルド | — | builderがビルド前に停止。`ok = false`、Claimなし |
+
+#### この節が言っていないこと
+
+- **プロセスイメージとの一致。** `processImage`は記録のみ（linuxのみ）で、条件ではない
+- **toolchainの信頼。** 名指しは「どのtoolchainだったか」を固定するだけで、Seed Trustを確立しない
+- **entryによるtoolchain全体の検査。** entryが読み直すのは実行ファイルだけで、`closureDigest`の比較はbuilderのハッシュに依る
+- **linux以外での境界**（決定2）。G4の対象Targetを決めるときに改めて決める
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
@@ -2522,11 +2550,11 @@ PR #4254 の head `289d3eeb2d5696ed3ac3ca07c11ddcfb946fc541` に対する [Run 4
 - ~~`builder.contract`・`compatibleMajor`の照合~~ → **§4.19で実装済み**（対応規則はresolverに既にあり、`BuilderContractVersion`として一箇所に定義した）
 - ~~`secretRequirements`の照合~~ → **§4.20でS-1（childで照合しない）に決定**。保証が増えないため、childの入力契約も`plugin.BuildPlan`も広げない
 - `-self-digest`の取得方法（実行ファイル自身のdigestをどう自己参照するか）
-- **toolchainを計画の入力にするか**。`-go`はchildの引数で、計画にも五条件にも現れない。同じ計画を別のtoolchainでビルドすると別のバイトになり、どちらも`l2b.claimed`が立つ（[実測](../evidence/TEI_GO_SELF_BUILD_SEED_REACH_2026-11-13.md)）。現在はbuilderの申告とentryの読み直しを`toolchainObservation`に**記録するだけ**である
+- ~~toolchainを計画の入力にするか~~ → **§4.56で決定**（`go.toolchain.closureDigest`で任意に名指す。名指した計画は別のtoolchainで止まる。G4では名指しを必須とする）
 - 出力のschemaVersionと、既存`tei.cli.*`との命名一貫性
 - Seed Trustの扱い（stage0のGoは外部seed。TEI自身によるGoコンパイラのself-hostingではない）
-- 条件5に`stateObservation.kind`を入れるか（§4.55。現在は記録だけで、空ディレクトリを作るchildは`declared-only`でも`l2b.claimed`が立つ）
-- [#4114](https://github.com/hat47x/tei-platform/pull/4114)のbuilder照合を`main`へ戻すか（「取り込み済み」として閉じられたが、`main`に無い）
+- ~~条件5に`stateObservation.kind`を入れるか~~ → **§4.56で決定**（入れない。G4の材料には`host-boundary`の試行だけを数える）
+- ~~[#4114](https://github.com/hat47x/tei-platform/pull/4114)のbuilder照合を`main`へ戻すか~~ → **§4.56で戻した**（L2-bの条件）
 
 ## 7. この文書の終了条件
 

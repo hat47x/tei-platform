@@ -18,7 +18,7 @@ import "fmt"
 // declaration was interpreted into the plan that produced the artifact). This is
 // the L2-b predicate.
 
-const l2bClaimBoundary = "this attempt read the declaration, interpreted it into a plan itself, matched the builder's declaration bytes to the ones it held, saw the builder report the same plan, and reproduced the artifact from that plan (that the two builds used separate state is the builder's report unless stateSeparation says effect-observed, and even then shared state is not excluded: SB-C0 §4.55); that is L2-b for this attempt on the host that ran it, with these binaries. Observed on linux/amd64, windows/amd64 (§4.25) and linux/arm64 under emulation (§4.37, plan/evidence/TEI_GO_SELF_BUILD_ARM64_L2B_CHAIN_2026-11-10.md); arm64 was not observed on hardware, and no other host has been proven. It is not acceptance, not Runtime Authority, not a statement about the catalog's correctness, not a trust judgement about the supply, and not L2-c or L3"
+const l2bClaimBoundary = "this attempt read the declaration, interpreted it into a plan itself, matched the builder's declaration bytes to the ones it held, saw the builder report the same plan, found the file it started to have the bytes of the builder the plan declares, reproduced the artifact from that plan and, when the plan names a Go toolchain, saw the builder report that toolchain (that the two builds used separate state is the builder's report unless stateSeparation says effect-observed, and even then shared state is not excluded: SB-C0 §4.55); that is L2-b for this attempt on the host that ran it, with these binaries. Observed on linux/amd64, windows/amd64 (§4.25) and linux/arm64 under emulation (§4.37, plan/evidence/TEI_GO_SELF_BUILD_ARM64_L2B_CHAIN_2026-11-10.md); arm64 was not observed on hardware, and no other host has been proven. Builder identity means the bytes of the file named by -child, read before each start; the process image is recorded separately (processImage, linux only) and is not a condition. When the plan names no toolchain, the artifact is the plan's output only relative to whichever toolchain -go named. It is not acceptance, not Runtime Authority, not a statement about the catalog's correctness, not a trust judgement about the supply, and not L2-c or L3"
 
 // selfBuildL2BClaim is the combined claim, with the conditions it failed.
 type selfBuildL2BClaim struct {
@@ -93,6 +93,25 @@ func assessL2B(report selfBuildOuterEvidence) selfBuildL2BClaim {
 			state = report.ArtifactReproducibility.State
 		}
 		unmet("the artifact was not reproduced from the plan (%s)", state)
+	}
+
+	// The plan declares its builder by digest; the entry digested the file it
+	// started. Reproduction compares that file with itself across two runs; this
+	// compares it with the plan. Without it, a wrapper or proxy named as -child
+	// satisfies every other condition while the declared builder is never shown to
+	// have been the file that ran (#2831 decision 1, restoring #4114).
+	if report.BuilderBinding == nil || report.BuilderBinding.State != builderBindingBound {
+		state := "unperformed"
+		if report.BuilderBinding != nil {
+			state = report.BuilderBinding.State
+		}
+		unmet("the file this entry started was not shown to be the builder the plan declares (%s)", state)
+	}
+
+	// A plan that names its Go toolchain describes a build with that toolchain
+	// only. A plan that names none adds no condition here (#2831 decision 3).
+	if report.ToolchainObservation != nil && report.ToolchainObservation.NamedByPlan && !report.ToolchainObservation.MatchesPlan {
+		unmet("the builder did not report the Go toolchain the plan names: %s", report.ToolchainObservation.PlanReason)
 	}
 
 	if report.ArtifactReproducibility != nil && report.ArtifactReproducibility.StateObservation != nil {

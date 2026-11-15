@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"tei/internal/buildintent"
+	"tei/internal/plugin"
 	"tei/internal/validation"
 	"tei/internal/workspace"
 )
@@ -75,6 +76,11 @@ type selfBuildOuterEvidence struct {
 	// still say false, because no single observation is the claim; this record
 	// answers whether all of them hold together and names every one that did not.
 	L2B *selfBuildL2BClaim `json:"l2b,omitempty"`
+	// BuilderBinding compares the digest of the file this entry started with the
+	// builder artifact digest the entry's own plan declares. Both values are the
+	// entry's; a wrapper or proxy named as -child does not match (#2831 decision 1,
+	// restoring #4114).
+	BuilderBinding *selfBuildBuilderBinding `json:"builderBinding,omitempty"`
 	// ToolchainObservation is the builder's statement of the Go toolchain it ran,
 	// beside this entry's own reading of that executable. The plan does not name
 	// a toolchain, so this is a record, not a condition.
@@ -634,6 +640,13 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 		if definitionBinding.State == definitionBindingFailed {
 			appendSelfBuildFailure(&evidence, definitionBinding.Reason)
 		}
+
+		// The plan declares its builder by digest. Compare that with the file this
+		// entry started. A mismatch does not fail the attempt — the child ran and its
+		// artifact was checked — but it withholds the L2-b claim, because the plan is
+		// not shown to have been built by the builder it declares.
+		builderBinding := bindBuilderToPlan(report.PlanReceipt, evidence.Invoked.ExecutableDigest)
+		report.BuilderBinding = &builderBinding
 	}
 
 	// §4.21: a second independent build answers §4.8(c) — whether the artifact on
@@ -673,7 +686,11 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 	}
 	report.ArtifactReproducibility = &reproducibility
 	report.ChildIsolation = readChildIsolation(evidence.ChildIsolation)
-	report.ToolchainObservation = observeChildToolchain(evidence.ChildToolchain)
+	plannedToolchain, planNamesToolchain := plannedPlanParameter(report.PlanReceipt, plugin.BuildParameterGoToolchainClosureDigest)
+	report.ToolchainObservation = observeChildToolchain(evidence.ChildToolchain, plannedToolchain, planNamesToolchain)
+	if report.ToolchainObservation.NamedByPlan && !report.ToolchainObservation.MatchesPlan {
+		appendSelfBuildFailure(&evidence, report.ToolchainObservation.PlanReason)
+	}
 	report.OK = evidence.CrossCheckOK && evidence.FailureCause == ""
 	if !report.OK {
 		report.Error = &cliFailure{Code: "SELF_BUILD_CHILD_FAILED", Message: evidence.FailureCause}

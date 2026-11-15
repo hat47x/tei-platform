@@ -41,8 +41,8 @@ func TestObserveToolchainTellsTwoToolchainsApart(t *testing.T) {
 		if record.NotObserved != "" || record.GoExecutableDigest == "" || record.ClosureDigest == "" || record.GoRoot == "" {
 			t.Fatalf("a complete toolchain was not fully observed: %+v", record)
 		}
-		if !strings.Contains(record.Boundary, "the plan does not name a toolchain") {
-			t.Fatalf("the boundary does not say the toolchain is outside the plan: %s", record.Boundary)
+		if !strings.Contains(record.Boundary, "when it does not, this is a report of what was used") {
+			t.Fatalf("the boundary does not say what happens when the plan names no toolchain: %s", record.Boundary)
 		}
 	}
 	if first.GoExecutableDigest == second.GoExecutableDigest || first.ClosureDigest == second.ClosureDigest {
@@ -65,6 +65,31 @@ func TestObserveToolchainSeesAChangedCompilerBehindTheSameCommand(t *testing.T) 
 	}
 	if before.ClosureDigest == after.ClosureDigest {
 		t.Fatal("the compiler changed and the closure digest did not")
+	}
+}
+
+// Decision 3 (#2831): a plan that names a toolchain stops a build with any other;
+// a plan that names none never stops one here.
+func TestCheckPlannedToolchainStopsAnotherToolchain(t *testing.T) {
+	record := observeToolchain(fakeGoRoot(t, "go1.0.1"))
+	if reason := checkPlannedToolchain("", false, record); reason != "" || record.PlannedClosureDigest != "" || record.MatchesPlan {
+		t.Fatalf("a plan without a toolchain stopped the build or was recorded as naming one: %q %+v", reason, record)
+	}
+
+	matching := observeToolchain(fakeGoRoot(t, "go1.0.1"))
+	if reason := checkPlannedToolchain(matching.ClosureDigest, true, matching); reason != "" || !matching.MatchesPlan {
+		t.Fatalf("the toolchain the plan names was refused: %q %+v", reason, matching)
+	}
+
+	other := observeToolchain(fakeGoRoot(t, "go1.0.2"))
+	reason := checkPlannedToolchain(matching.ClosureDigest, true, other)
+	if reason == "" || other.MatchesPlan || !strings.Contains(reason, "a build with another toolchain") {
+		t.Fatalf("another toolchain was not refused: %q %+v", reason, other)
+	}
+
+	unreadable := observeToolchain(filepath.Join(t.TempDir(), "absent"))
+	if reason := checkPlannedToolchain(matching.ClosureDigest, true, unreadable); reason == "" || !strings.Contains(reason, "could not hash") {
+		t.Fatalf("an unhashable toolchain was not refused: %q", reason)
 	}
 }
 

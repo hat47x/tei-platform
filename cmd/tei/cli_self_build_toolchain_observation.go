@@ -1,6 +1,9 @@
 package main
 
-import "strings"
+import (
+	"encoding/json"
+	"strings"
+)
 
 // This file records which Go toolchain a build used (SB-C0 §6, toolchain as an
 // input the plan does not name).
@@ -23,7 +26,7 @@ const (
 	toolchainObservationUnreported = "unreported"
 )
 
-const toolchainObservationBoundary = "the builder reported the Go toolchain it ran and this entry re-read the executable at that path; matched means the file there has the bytes the builder reported, not that the builder ran it. The plan does not name a toolchain, so nothing here is checked against a declaration, and two attempts with the same plan and different toolchains are told apart only by this record. It is not one of the five conditions, and it is not trust in the toolchain"
+const toolchainObservationBoundary = "the builder reported the Go toolchain it ran and this entry re-read the executable at that path; matched means the file there has the bytes the builder reported, not that the builder ran it. When the plan names a toolchain (go.toolchain.closureDigest), the builder's reported closure digest is compared with it: this entry re-reads the executable, not the whole toolchain, so the closure comparison rests on the builder's hashing. When the plan names none, nothing is checked against a declaration and two attempts with the same plan and different toolchains are told apart only by this record. It is not trust in the toolchain"
 
 // selfBuildChildToolchain is the builder's own statement, copied from its report.
 type selfBuildChildToolchain struct {
@@ -44,20 +47,38 @@ type selfBuildToolchainObservation struct {
 	// EntryGoExecutableDigest is this entry's own reading of the file at the
 	// reported path.
 	EntryGoExecutableDigest string `json:"entryGoExecutableDigest,omitempty"`
-	// NamedByPlan is always false today: it is here so a reader does not have to
-	// know the plan's shape to learn that the toolchain is outside it.
+	// NamedByPlan is true when the plan carries go.toolchain.closureDigest. A plan
+	// that does not leaves the toolchain outside what the plan describes.
 	NamedByPlan bool `json:"namedByPlan"`
+	// PlannedClosureDigest is the value the plan names; MatchesPlan is true only
+	// when the builder reported that closure digest. PlanReason says why not.
+	PlannedClosureDigest string `json:"plannedClosureDigest,omitempty"`
+	MatchesPlan          bool   `json:"matchesPlan"`
+	PlanReason           string `json:"planReason,omitempty"`
 	// Reason says why the state is not matched.
 	Reason   string `json:"reason,omitempty"`
 	Boundary string `json:"boundary"`
 }
 
-// observeChildToolchain compares the builder's statement with the file on disk.
-func observeChildToolchain(reported *selfBuildChildToolchain) *selfBuildToolchainObservation {
+// observeChildToolchain compares the builder's statement with the file on disk
+// and, when the plan names a toolchain, with the plan.
+func observeChildToolchain(reported *selfBuildChildToolchain, planned string, planNames bool) *selfBuildToolchainObservation {
 	record := &selfBuildToolchainObservation{
 		State:    toolchainObservationUnreported,
 		Reported: reported,
 		Boundary: toolchainObservationBoundary,
+	}
+	if planNames {
+		record.NamedByPlan = true
+		record.PlannedClosureDigest = planned
+		switch {
+		case reported == nil || strings.TrimSpace(reported.ClosureDigest) == "":
+			record.PlanReason = "the plan names Go toolchain " + planned + ", but the builder did not report the toolchain it ran"
+		case reported.ClosureDigest != planned:
+			record.PlanReason = "the plan names Go toolchain " + planned + ", but the builder reported " + reported.ClosureDigest
+		default:
+			record.MatchesPlan = true
+		}
 	}
 	switch {
 	case reported == nil:
@@ -80,4 +101,29 @@ func observeChildToolchain(reported *selfBuildChildToolchain) *selfBuildToolchai
 	}
 	record.State = toolchainObservationMatched
 	return record
+}
+
+// plannedPlanParameter reads one parameter out of the receipt's plan object, the
+// same bytes the plan fingerprint was recomputed from.
+func plannedPlanParameter(receipt *PlanReceipt, name string) (string, bool) {
+	if receipt == nil || receipt.ReceiptJSON == "" {
+		return "", false
+	}
+	var parsed struct {
+		Plan struct {
+			Parameters []struct {
+				Name  string `json:"name"`
+				Value string `json:"value"`
+			} `json:"parameters"`
+		} `json:"plan"`
+	}
+	if err := json.Unmarshal([]byte(receipt.ReceiptJSON), &parsed); err != nil {
+		return "", false
+	}
+	for _, param := range parsed.Plan.Parameters {
+		if param.Name == name {
+			return param.Value, true
+		}
+	}
+	return "", false
 }
