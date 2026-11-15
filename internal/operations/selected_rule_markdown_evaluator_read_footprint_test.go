@@ -224,6 +224,11 @@ func TestSelectedMarkdownRuleEditChangesActualEvaluatorRead(t *testing.T) {
 			len(inspection.Sources.Artifacts) != 1 {
 			t.Fatalf("Rule lacks one exact Source occurrence: %+v", inspection.Sources)
 		}
+		const markdownPath = "semantic/sales/order-line-rules.tei.md"
+		if inspection.Sources.References[0].ArtifactPath != markdownPath ||
+			inspection.Sources.Artifacts[0].Path != markdownPath {
+			t.Fatalf("selected Rule came from another Source: %+v", inspection.Sources)
+		}
 		return inspection, sourceindex.ModelRevision(index)
 	}
 	evaluate := func(inspection SubjectInspection, wantAttribute core.CanonicalID, want validationeval.Result) {
