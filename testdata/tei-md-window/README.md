@@ -60,6 +60,14 @@ S0-PのWorkspace試験は、基準・Frame変更の二文書から、**候補五
 
 ただし、Source Indexのbyte位置が正しいことは、重複IDの意味上の拒否や、派生表示の不一致を製品Readerが判断した証拠ではない。現行`Workspace.Load`はどの候補も`TEI_MD_PARSER_UNBOUND`で拒否し、読み取った原文から勝手にMeaning／実Queryを生成しない。正式Readerは既存#2621/#988の担当へ引き渡す。
 
+## NULL・ゼロ・行不在で同じ平均になる負例
+
+`window_bound_input_test.go`では、B2の明示NULLを実SQLiteで0へ更新し、同じ生成済みWindow SQLを再実行する。B2自身の移動平均は5から2.5へ変わり、B3の累積RANGE平均は10から`20/3`へ変わる。
+
+続けてB2行を削除すると、B3の累積RANGE平均は元の10へ戻る。しかし入力の閉包は7行ではなく6行であり、B2の元行を取得できない。**数値結果が元に戻っても、欠損値のある行と行そのものの欠落は同一ではない**。元の独立ExpectedもMarkdownの原文も変更せず、元Sourceと現在のDataset状態を区別した回帰として扱う。
+
+これは既存SQLite方言・実表を使うC0の負例であり、製品Readerの意味診断や外部Providerの取得完全性を立証しない。
+
 ## 既存の実証との接続
 
 `internal/database/sqlgen/sqlite/window_reference_test.go`と`window_frame_change_test.go`では、既存`SelectOptions`から生成したSQLite SQLを実DBで評価している。固定された七行の入力と期待値の照合は**C0／SQL方言**の検証である。今回追加するテストも、このJSONの基準・変更例を使ったC0の照合にとどまる。
