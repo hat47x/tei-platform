@@ -146,5 +146,8 @@ D案を選んでも、失敗時JSONをstderrでなくstdoutへ出す現在のC1�
 - `world`は2026-11-02のOwner判断で外部契約の対象外とし、生の`ir.World`出力を維持する。エンベロープ化する場合は、`tools/reference-critical-path-evidence-audit/live-r1-smoke.mjs`の生バイト証跡照合（`derivedWorldSha256`）を先に再設計する。`plugin-lock`はlock形式の`formatVersion: 2`を正本として扱い、`tei.cli.plugin-lock/v0`の`result`内に保持する。
 - schemaVersionを足す場合の、v0のまま足すか、新契約としてv1を新設するか。既存の出力を包む場合は読み手への告知が必要で、告知の要否と時期を含めてIssueで決める。
 - 一覧の表と実装の一致は、2026-11-07から`cmd/tei/cli_contract_doc_test.go`が機械検査する。`tei commands`が広告するenvelopedの各コマンドが、§4の表に同じ`schemaVersion`で載っていること、表が広告にないコマンドを載せていないことを検査する。表の行を増減したときは、この試験が対応を保つ。`tei commands`の`output`欄と実装の対応も別の試験で保たれている。
+- **発見と実呼出しの区別**：`tei commands` が返す `plugin-inventory` は、Workspace／Environmentから導出した選択状態・不足条件の読取り専用の投影であり、Provider実Entryの実行や権限の発行ではない。`-plugin`による明細と`-diagnose`による診断は、同じ既存Plugin解決結果を異なる形で見るだけとする。生成GoやBuildPlanが一致しても、通常CLIから現在選択されたProviderへ実Callした証拠は別途必要となる（Rule→Builder→Provider縦断のR2／R3）。
+- **親コマンドと個別文法の区別**：`three-element` は最初の引数でサブコマンドを選び、その後はサブコマンドごとのFlagSetが解釈する。`tei commands` の親レコードは共通の`requiredFlags`／`optionalFlags`を持たず、`tei three-element <subcommand> -h` で該当文法を確かめる。親コマンドに存在しない共通の`-model`／`-before`／`-after`を広告しない。この扱いはNode／Graph／文書の異なる投影を同一Meaningと取り違えない方針にも従う。
+- **Evidenceの受領と意味受理の区別**：`rea-evidence` が返す解析結果とその出典を、後続の意味モデルや外部効果の正当性へ昇格させない。`-request-out` のファイル書込みは正本変更でもOwnerの受理でもないが、呼出し側は`writeFlags`として事前に判定できる。CLIのフラグ一致試験は、既知だが無関係なフラグを黙って無視しないことも検査する。
 - 実測は参照作業領域と失敗例の一組だけである。大規模な作業領域での出力の形（配列の空のときの`null`/`[]`の違いなど）は確認していない。
 
