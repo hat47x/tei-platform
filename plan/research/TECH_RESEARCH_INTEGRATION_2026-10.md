@@ -1739,7 +1739,7 @@ Studio側のR4は[#2831](https://github.com/hat47x/tei-platform/issues/2831)／[
 
 第二は**編集の責任の保存**。read-only投影が見られることと、そこから正本を編集できることは別である。編集候補を許すのは、対象のCanonical ID／Source occurrence、正本Revision、局所byte span、元表現へ戻せる一意Slot、現在の編集権限がそろった場合だけとする。複数のSourceが同じモデルへ写る場合、表示側から元Sourceを勝手に選ばない。変更提案→Review→安全なSource Patch→再Load→再投影→実生成の順を保ち、Dirty buffer・別版Pin・Layout-only更新を同じ操作にしない。文書編集の扱いは[#2621](https://github.com/hat47x/tei-platform/issues/2621)、投影損失は[#2497](https://github.com/hat47x/tei-platform/issues/2497)、Studioは[#1824](https://github.com/hat47x/tei-platform/issues/1824)を正本とする。
 
-この二条件を**成果物要求と計算粒度**にも適用する。[Batch／ETLの成果物要求・粒度の横断設計](../design/ETL_BATCH_FUNCTION_COMPOSITION_DESIGN.md)と[標準Service Flow](../design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)の比較では、同じ値が一行に出ても「明細ごと」「受注ごと」「期間ごと」は異なる結果契約であり、FlowのPort結合／Window／帳票へ同じOperatorを再利用する際にはGrain・Partition・入力範囲を固定する。図表／文書の見やすさが計算の完全性を保証するわけではない。
+この二条件を**成果物要求と計算粒度**にも適用する。[標準Service Flow](../design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)をBatch／ETLの成果物要求に照らすと、同じ値が一行に出ても「明細ごと」「受注ごと」「期間ごと」は異なる結果契約であり、FlowのPort結合／Window／帳票へ同じOperatorを再利用する際にはGrain・Partition・入力範囲を固定する。図表／文書の見やすさが計算の完全性を保証するわけではない。
 
 ### 16.29 次の実験を二つの独立した縦断へ分ける
 
