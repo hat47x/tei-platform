@@ -45,6 +45,31 @@ func TestBuiltinRuleMarkdownProductAdmissionAndSourceIndex(t *testing.T) {
 		t.Fatal("selected Markdown was managed but not read by the product loader")
 	}
 
+	// The authored predicates must reach the existing typed semantic model,
+	// not merely be counted as parsed Markdown regions.
+	expected := map[string]struct{ kind, attribute, relation string }{
+		"sales.order_line.quantity_positive": {"positive", "sales.order_line.quantity", ""},
+		"sales.order.lines.line_number_unique": {"relation-unique", "sales.order_line.line_number", "sales.order.lines"},
+	}
+	seen := map[string]bool{}
+	for _, ns := range result.World.Semantics {
+		if string(ns.ID) != "sales" {
+			continue
+		}
+		for _, rule := range ns.Validations {
+			id := string(rule.ID)
+			want, ok := expected[id]
+			if !ok || seen[id] || string(rule.Kind) != want.kind ||
+				string(rule.Attribute) != want.attribute || string(rule.Relation) != want.relation {
+				t.Fatalf("product loader changed an authored validation: %+v", rule)
+			}
+			seen[id] = true
+		}
+	}
+	if len(seen) != len(expected) {
+		t.Fatalf("product loader yielded %d expected typed validations, want %d", len(seen), len(expected))
+	}
+
 	index, err := BuildSourceIndexFromLoad(root, result)
 	if err != nil {
 		t.Fatalf("product Load byte snapshot did not produce a Source Index: %v", err)
