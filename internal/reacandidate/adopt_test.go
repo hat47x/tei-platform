@@ -308,25 +308,36 @@ func TestCompareCandidateSetsParallelRenumberingRequiresOccurrenceMapping(t *tes
 	firstRenumbered.id = "edge-order-line-new-1"
 	secondRenumbered := changed.edges[0]
 	secondRenumbered.id = "edge-order-line-new-2"
-	// Deliberately reverse input order to expose positional fallback.
 	changed.edges = []edgeFixture{secondRenumbered, firstRenumbered}
 	after := mustGenerate(t, changed)
 
 	comparison := CompareCandidateSets(before, after)
-	renumbered := 0
+	ambiguousBefore, ambiguousAfter := 0, 0
 	for _, entry := range comparison.Entries {
-		if entry.Status != ComparisonRenumbered {
+		if entry.Status == ComparisonRenumbered {
+			t.Fatalf("parallel edges were given a fabricated one-to-one mapping: %+v", entry)
+		}
+		if entry.Status != ComparisonAmbiguousStructural {
 			continue
 		}
-		renumbered++
 		if !hasString(entry.Notes, "structural-key-multiple-occurrences-cannot-identify-individual-relation") ||
 			!hasString(entry.Notes, "source-backed-occurrence-mapping-is-required-before-edit") ||
-			!hasString(entry.Notes, "a-renumbered-candidate-requires-fresh-owner-review") {
-			t.Fatalf("parallel edge gained an unqualified individual identity: %+v", entry)
+			!hasString(entry.Notes, "fresh-owner-review-is-required") {
+			t.Fatalf("parallel edge lost review limits: %+v", entry)
+		}
+		switch {
+		case entry.BeforeAttemptID != "" && entry.AfterAttemptID == "" &&
+			entry.BeforeSource.ArtifactPath != "" && entry.AfterSource.ArtifactPath == "":
+			ambiguousBefore++
+		case entry.AfterAttemptID != "" && entry.BeforeAttemptID == "" &&
+			entry.AfterSource.ArtifactPath != "" && entry.BeforeSource.ArtifactPath == "":
+			ambiguousAfter++
+		default:
+			t.Fatalf("fabricated a before/after counterpart: %+v", entry)
 		}
 	}
-	if renumbered != 2 {
-		t.Fatalf("renumbered = %d, want two candidate-only review hints: %+v", renumbered, comparison.Entries)
+	if ambiguousBefore != 2 || ambiguousAfter != 2 {
+		t.Fatalf("ambiguous entries before=%d after=%d, want 2 each: %+v", ambiguousBefore, ambiguousAfter, comparison.Entries)
 	}
 }
 
@@ -372,14 +383,12 @@ func TestCompareCandidateSetsAsymmetricParallelKeyRemainsUnverified(t *testing.T
 		return f
 	}
 	for _, tc := range []struct {
-		name    string
-		before  []string
-		after   []string
-		added   int
-		removed int
+		name   string
+		before []string
+		after  []string
 	}{
-		{name: "one-to-two", before: []string{"old-1"}, after: []string{"new-1", "new-2"}, added: 1},
-		{name: "two-to-one", before: []string{"old-1", "old-2"}, after: []string{"new-1"}, removed: 1},
+		{name: "one-to-two", before: []string{"old-1"}, after: []string{"new-1", "new-2"}},
+		{name: "two-to-one", before: []string{"old-1", "old-2"}, after: []string{"new-1"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			before := mustGenerate(t, fixture(tc.before...))
@@ -387,19 +396,34 @@ func TestCompareCandidateSetsAsymmetricParallelKeyRemainsUnverified(t *testing.T
 			current.evidenceID = "ev-asymmetric-" + tc.name
 			after := mustGenerate(t, current)
 			comparison := CompareCandidateSets(before, after)
-			statuses := map[string]int{}
+			beforeCount, afterCount := 0, 0
 			for _, entry := range comparison.Entries {
-				statuses[entry.Status]++
-				if entry.Status != ComparisonRenumbered {
+				if entry.Status == ComparisonRenumbered || entry.Status == ComparisonAdded ||
+					entry.Status == ComparisonRemoved {
+					if hasString(entry.Notes, "structural-key-multiple-occurrences-cannot-identify-individual-relation") {
+						t.Fatalf("ambiguous relation was classified as a definite change: %+v", entry)
+					}
+				}
+				if entry.Status != ComparisonAmbiguousStructural {
 					continue
 				}
 				if !hasString(entry.Notes, "structural-key-multiple-occurrences-cannot-identify-individual-relation") ||
 					!hasString(entry.Notes, "source-backed-occurrence-mapping-is-required-before-edit") {
-					t.Fatalf("asymmetric structural key was treated as a unique relation: %+v", entry)
+					t.Fatalf("asymmetric key was treated as a unique relation: %+v", entry)
+				}
+				if entry.BeforeAttemptID != "" && entry.AfterAttemptID == "" &&
+					entry.BeforeSource.ArtifactPath != "" && entry.AfterSource.ArtifactPath == "" {
+					beforeCount++
+				} else if entry.AfterAttemptID != "" && entry.BeforeAttemptID == "" &&
+					entry.AfterSource.ArtifactPath != "" && entry.BeforeSource.ArtifactPath == "" {
+					afterCount++
+				} else {
+					t.Fatalf("ambiguous candidate gained a fabricated counterpart: %+v", entry)
 				}
 			}
-			if statuses[ComparisonRenumbered] != 1 || statuses[ComparisonAdded] != tc.added || statuses[ComparisonRemoved] != tc.removed {
-				t.Fatalf("unexpected asymmetric matching statuses: %+v; entries=%+v", statuses, comparison.Entries)
+			if beforeCount != len(tc.before) || afterCount != len(tc.after) {
+				t.Fatalf("lost one-to-many candidates: before=%d after=%d, want %d/%d",
+					beforeCount, afterCount, len(tc.before), len(tc.after))
 			}
 		})
 	}
