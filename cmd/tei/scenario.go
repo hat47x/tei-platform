@@ -16,6 +16,7 @@ import (
 	"tei/internal/core"
 	"tei/internal/driver"
 	"tei/internal/scenariotest"
+	"tei/internal/semantic/validationeval"
 	"tei/internal/workspace"
 )
 
@@ -27,7 +28,10 @@ type scenarioStepEvidence struct {
 	EvidenceNature    string            `json:"evidenceNature"`
 	RowCount          int               `json:"rowCount,omitempty"`
 	ValidationResults map[string]string `json:"validationResults,omitempty"`
-	ObservationResult any               `json:"observationResult,omitempty"`
+	// ValidationImplementations names, per rule decided by a declared
+	// operator, the implementation that was called to decide it.
+	ValidationImplementations map[string]string `json:"validationImplementations,omitempty"`
+	ObservationResult         any               `json:"observationResult,omitempty"`
 }
 
 func runScenarioCommand(args []string, output io.Writer) error {
@@ -291,11 +295,15 @@ func runScenarioCommand(args []string, output io.Writer) error {
 			}
 			if evidence[i].Operation == "evaluate-validations" {
 				st := stepsByID[evidence[i].StepID]
-				results, err := executeScenarioValidations(resolver, applicationID, st, validationFixtures[st.ID])
+				results, implementations, err := executeScenarioValidations(resolver, applicationID, st, validationFixtures[st.ID],
+					scenarioImplementationSelections(loaded.OperatorImplementations), validationeval.BuiltinImplementations())
 				if err != nil {
 					return fmt.Errorf("step %s: %w", st.ID, err)
 				}
 				evidence[i].ValidationResults = results
+				if len(implementations) != 0 {
+					evidence[i].ValidationImplementations = implementations
+				}
 				evidence[i].Verified = true
 				evidence[i].EvidenceNature = "canonical-validations-synthetic-input-evaluated"
 				continue

@@ -7,7 +7,9 @@ import (
 	"tei/internal/core"
 	"tei/internal/driver"
 	"tei/internal/scenariotest"
+	"tei/internal/semantic"
 	"tei/internal/semantic/validationeval"
+	"tei/internal/workspace"
 )
 
 type scenarioValidationSource struct {
@@ -43,7 +45,47 @@ func (s *scenarioValidationSource) RelationKeys(relation, attribute core.Canonic
 
 // executeScenarioValidations never accepts a rule list from the Scenario.
 // Only the Application's existing Canonical selection can supply rules.
-func executeScenarioValidations(resolver driver.Resolver, appID core.CanonicalID, step scenariotest.Step, fixture scenariotest.ValidationFixture) (map[string]string, error) {
+//
+// A rule decided by a declared operator is evaluated with the implementation
+// the Workspace selected. The second result names, per rule, the
+// implementation that was actually called; a rule of a built-in kind has no
+// entry.
+func executeScenarioValidations(resolver driver.Resolver, appID core.CanonicalID, step scenariotest.Step, fixture scenariotest.ValidationFixture, selections []validationeval.ImplementationSelection, available []validationeval.NamedImplementation) (map[string]string, map[string]string, error) {
+	results, called, err := evaluateScenarioValidations(resolver, appID, step, fixture, selections, available)
+	return results, called, err
+}
+
+func evaluateScenarioValidations(resolver driver.Resolver, appID core.CanonicalID, step scenariotest.Step, fixture scenariotest.ValidationFixture, selections []validationeval.ImplementationSelection, available []validationeval.NamedImplementation) (map[string]string, map[string]string, error) {
+	var calls []validationeval.ImplementationCall
+	implementations, err := validationeval.ResolveImplementations(selections, available, func(call validationeval.ImplementationCall) {
+		calls = append(calls, call)
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	operators := validationeval.Operators{Declared: resolver.Operators(), Implementations: implementations}
+	called := map[string]string{}
+	results, err := runScenarioValidations(resolver, appID, step, fixture, func(rule semantic.Validation, source validationeval.Source) (validationeval.Result, error) {
+		before := len(calls)
+		got, err := validationeval.EvaluateWithOperators(rule, source, operators)
+		if err != nil {
+			return "", err
+		}
+		if rule.Kind == semantic.ValidationOperator {
+			if len(calls) != before+1 || calls[before].Operator != rule.Operator {
+				return "", fmt.Errorf("Canonical Validation %s was decided without calling the implementation selected for operator %s", rule.ID, rule.Operator)
+			}
+			called[string(rule.ID)] = calls[before].Implementation
+		}
+		return got, nil
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	return results, called, nil
+}
+
+func runScenarioValidations(resolver driver.Resolver, appID core.CanonicalID, step scenariotest.Step, fixture scenariotest.ValidationFixture, evaluate func(semantic.Validation, validationeval.Source) (validationeval.Result, error)) (map[string]string, error) {
 	rules, err := resolver.ResolveApplicationValidations(appID)
 	if err != nil {
 		return nil, err
@@ -58,7 +100,7 @@ func executeScenarioValidations(resolver driver.Resolver, appID core.CanonicalID
 		if !ok {
 			return nil, fmt.Errorf("Scenario has no expected result for Canonical Validation %s", rule.ID)
 		}
-		got, err := validationeval.Evaluate(rule, source)
+		got, err := evaluate(rule, source)
 		if err != nil {
 			return nil, err
 		}
@@ -71,4 +113,16 @@ func executeScenarioValidations(resolver driver.Resolver, appID core.CanonicalID
 		return nil, fmt.Errorf("Validation Fixture has unused numeric or relation inputs")
 	}
 	return results, nil
+}
+
+// scenarioImplementationSelections carries the Workspace's choices to the
+// evaluator unchanged.
+func scenarioImplementationSelections(selected []workspace.OperatorImplementationSelection) []validationeval.ImplementationSelection {
+	out := make([]validationeval.ImplementationSelection, 0, len(selected))
+	for _, selection := range selected {
+		out = append(out, validationeval.ImplementationSelection{
+			Operator: core.CanonicalID(selection.Operator), Implementation: selection.Implementation,
+		})
+	}
+	return out
 }
