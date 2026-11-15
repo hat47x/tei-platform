@@ -175,6 +175,7 @@ func (p ReviewPacket) Summary() []string {
 	if p.AdoptionPreviewed {
 		lines = append(lines, "adoption-preview: in-memory only, not written")
 	}
+	lines = append(lines, comparisonSummary(p.ComparedWithBefore, p.Comparison)...)
 	for _, element := range p.ThreeElement.Elements {
 		line := "three-element: " + element.Element + "=" + element.Status
 		if element.Status == ElementUnsupported {
@@ -184,6 +185,58 @@ func (p ReviewPacket) Summary() []string {
 	}
 	for _, fact := range p.Carrier.MissingFacts() {
 		lines = append(lines, "carrier-gap: "+fact)
+	}
+	return lines
+}
+
+// comparisonSummary exposes read-only review states without printing candidate
+// identities, source paths, unknown status strings, or a presumed counterpart.
+// Unknown/invalid states must never disappear into an "unchanged" total.
+func comparisonSummary(attempted bool, comparison *CandidateSetComparison) []string {
+	if !attempted && comparison == nil {
+		return []string{"comparison: not-attempted"}
+	}
+	if !attempted || comparison == nil {
+		return []string{"comparison: inconsistent-section (review required)"}
+	}
+	if comparison.SchemaVersion != "tei.rea.candidate-set-comparison/v0" ||
+		comparison.Effect != EffectReadOnly {
+		return []string{"comparison: unsupported-contract (review required)"}
+	}
+	lines := []string{"comparison: read-only; no owner acceptance or source-edit authority"}
+	statuses := []string{
+		ComparisonAmbiguousStructural,
+		ComparisonObservedFactsChanged,
+		ComparisonRevisionChanged,
+		ComparisonRenumbered,
+		ComparisonAdded,
+		ComparisonRemoved,
+		ComparisonSameBytesNewAttempt,
+		ComparisonUnchanged,
+	}
+	counts := make(map[string]int, len(statuses))
+	unknown := 0
+	for _, entry := range comparison.Entries {
+		switch entry.Status {
+		case ComparisonAmbiguousStructural, ComparisonObservedFactsChanged,
+			ComparisonRevisionChanged, ComparisonRenumbered,
+			ComparisonAdded, ComparisonRemoved, ComparisonSameBytesNewAttempt,
+			ComparisonUnchanged:
+			counts[entry.Status]++
+		default:
+			unknown++
+		}
+	}
+	if len(comparison.Entries) == 0 {
+		lines = append(lines, "comparison: empty (not proof of absence)")
+	}
+	for _, status := range statuses {
+		if counts[status] != 0 {
+			lines = append(lines, "comparison: "+status+"="+itoa(counts[status]))
+		}
+	}
+	if unknown != 0 {
+		lines = append(lines, "comparison: unknown-status="+itoa(unknown)+" (review required)")
 	}
 	return lines
 }

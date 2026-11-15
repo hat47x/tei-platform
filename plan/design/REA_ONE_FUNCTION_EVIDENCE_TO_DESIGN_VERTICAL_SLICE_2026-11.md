@@ -431,3 +431,15 @@ CIについては、前回PR #4816の対象HEADでRepository Healthが失敗し�
 
 この実装では既存REA CandidateSetとread-only ReviewPacketのみを使う。Native Wails JSの独立Consumer、正式`*.tei.md` Source Apply/Save/ReRead、実PG ProviderとFunction Read、TEI-native Plugin生成、Studio Stage1→Stage2 Windows実受領は別の製品資格。#2586/#4583/#2831のP0を新しいHard Gateで遅らせない。
 
+## 17. 比較結果を要約で見落とさないための受入（2026-11-15）
+
+前節の`ambiguous-structural-match`はJSONの`comparison.entries`に保存されていたが、既存`ReviewPacket.Summary()`には比較欄がなく、要約だけを読む利用者へ曖昧な関係の再確認が伝わらなかった。詳細JSONが正しくても、利用する側の表示が意味の喪失点になる。
+
+**今回の小さな改善**：既存のread-only`Summary()`が、比較を行わなかった場合は`comparison: not-attempted`、比較済みの場合は各既知Statusの**件数**を固定順で表示する。特に`ambiguous-structural-match`を最初に示し、旧新のRelationを一意に結び付けない。未知Statusは勝手に`unchanged`へ読み替えず`unknown-status=N (review required)`、比較有無と実データが矛盾する場合は`inconsistent-section`、Schema/Effectが非対応の場合は`unsupported-contract`として明示する。未知Statusの原文字列、候補ID、Source Path、Source Byteは要約へ出さない。これは既存ReviewPacketの新しいMeaning資格や承認欄ではなく、**現行JSONを要約するGoの読み取り専用Projection**である。
+
+回帰では、旧二辺→再採番新二辺の4件が`ambiguous-structural-match=4`と表示されること、任意の一対一対応`external-identity-renumbered`が出ないこと、未知状態や壊れたComparison契約を成功表示へ丸めないことを検査する。未実行と空の比較結果も分け、空を業務上の不存在証明にしない。
+
+この表示は**Goの`ReviewPacket.Summary()`の出力に限る**。通常`tei`バイナリ別プロセスの応答、Studioの実Window/JS/WebView2、SHOの保存/再読取、他のConsumerの状態解釈までは検証しない。製品側ではこの要約を参考にするだけでなく、未知Status／現行Grant／Source Slotの一意性を独立検査して個別編集を拒否する必要がある。#1124/#2497/#2514/#4661へ引き渡す。
+
+Graphの構造的全件性、Function Read/Write、Owner受理、Source Patchの成功を混同せず、実Provider/CLIとStudio Stage1→Stage2のP0（#2586/#4583/#2831）は独立して継続する。新しいReader、Meaning Store、権限Engine、第二Expectedを設けない。
+
