@@ -24,17 +24,17 @@ const (
 // pluginInventoryDetail is one plugin's row plus the report-level context a
 // reader needs to judge it.
 type pluginInventoryDetail struct {
-	SchemaVersion   string                     `json:"schemaVersion"`
-	Environment     string                     `json:"environment"`
-	ScanState       string                     `json:"scanState"`
-	Confirmed       bool                       `json:"confirmed"`
-	SettingsVersion *string                    `json:"settingsVersion"`
-	Resolver        management.ResolverOutcome `json:"resolver"`
-	Row             management.Row             `json:"row"`
+	SchemaVersion         string                           `json:"schemaVersion"`
+	Environment           string                           `json:"environment"`
+	ScanState             string                           `json:"scanState"`
+	Confirmed             bool                             `json:"confirmed"`
+	SettingsVersion       *string                          `json:"settingsVersion"`
+	Resolver              management.ResolverOutcome       `json:"resolver"`
+	Row                   management.Row                   `json:"row"`
 	DocumentReadPreflight management.DocumentReadPreflight `json:"documentReadPreflight"`
-	Message         string                     `json:"message"`
-	NotModelled     []string                   `json:"notModelled"`
-	AuthorityLimits []string                   `json:"authorityLimits"`
+	Message               string                           `json:"message"`
+	NotModelled           []string                         `json:"notModelled"`
+	AuthorityLimits       []string                         `json:"authorityLimits"`
 }
 
 // pluginInventoryJSON serves `plugin-inventory`. It derives the inventory from
@@ -97,17 +97,17 @@ func pluginInventoryJSON(out io.Writer, workspacePath, worldPath, environmentID,
 				fmt.Errorf("plugin %s does not appear in environment %s", pluginID, environmentID)), 2)
 		}
 		detail := pluginInventoryDetail{
-			SchemaVersion:   report.SchemaVersion,
-			Environment:     report.Environment,
-			ScanState:       report.ScanState,
-			Confirmed:       report.Confirmed,
-			SettingsVersion: report.SettingsVersion,
-			Resolver:        report.Resolver,
-			Row:             row,
+			SchemaVersion:         report.SchemaVersion,
+			Environment:           report.Environment,
+			ScanState:             report.ScanState,
+			Confirmed:             report.Confirmed,
+			SettingsVersion:       report.SettingsVersion,
+			Resolver:              report.Resolver,
+			Row:                   row,
 			DocumentReadPreflight: management.InspectDocumentReadPreflight(report, pluginID),
-			Message:         management.DetailMessage(row),
-			NotModelled:     report.NotModelled,
-			AuthorityLimits: report.AuthorityLimits,
+			Message:               management.DetailMessage(row),
+			NotModelled:           report.NotModelled,
+			AuthorityLimits:       report.AuthorityLimits,
 		}
 		return emitResult(out, resultEnvelopeWithWorkspace("plugin-inventory", pluginInventoryModeDetail, detail, identity), 0)
 	}
