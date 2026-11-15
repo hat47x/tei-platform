@@ -268,3 +268,55 @@ UIの入力不可は、画面から当該項目を送らない挙動を実現で
 **P0への影響なし**：正式`*.tei.md` Reader→生成Go→実Builderの出典束縛（PQ-A）、Operator選択の鮮度（PQ-B）、通常CLI→実Providerの実Read、Studio Stage1→Stage2 Windows実セルフビルドを優先する。PWの広範な実Write適合、環境Migration、全文検索・帳票・MCP書込みをP0の新しいHard Gateにしない。
 
 **検証上限**：§15〜17は既存計画・公開製品マニュアルから得た意味上の反例を一般化した設計追補である。ここで書いたケースの新Go／DB／Wails／API実証や、業務Ownerの意味受理は実施していない。
+
+## 18. 確定・反映・利用を別々に検収する（2026-11-15横断追補）
+
+§15〜17は入口ごとの更新Intentと実DBへの反映を分けた。さらに、**同じ保存済みDataから派生する検索結果・帳票・承認操作・通知が、同じ時点の状態を見ているとは限らない**。この差を新しい一律の「成功」「最新」状態に押し込まず、既存のData Context、Rule Phase、Process Instance、Effect Receipt、Query／Artifact Projection、現在Disclosureへ対応付ける。
+
+### 18.1 一つの操作を、異なる資格を持つ八つの観測に分解する
+
+| 観測位置 | 必要なWitness／入力 | そこからは言えないこと |
+| --- | --- | --- |
+| ① Source／実装選択 | Original Source、Meaning／Rule、Phase、Reader／Operator／Plugin選択・版 | 実Builderが当該実装を消費した、実Hostでロードされた |
+| ② Read／開示 | Qualified Data／Relation、Scope、取得範囲・Snapshot・欠損、Audience・現在Grant | 全件取得、書込み可、別Audienceへも開示可 |
+| ③ Draft／送信準備 | 全子集合の追加・削除予定を含む変更差分、Codec、Patch Presence | Preview計算がDBに保存済み、画面表示値が送信済み |
+| ④ 書込み前判定 | 現DBの対象Key／Version、実行主体、Rule条件、許可されたEffect | 入力時の判定が現在も有効、実Commitに成功した |
+| ⑤ Transaction内処理 | 依存Ruleの計算順、保存前後Hookの実Call、同一Tx内の変更・Outbox要求 | 「保存後」Hookの実行だけで耐久的なCommit済み、外部配送済み |
+| ⑥ 確定と回復 | Commit Receipt、行／業務Operation ID、独立Readback、unknown／partial | Batch全件確定、外部API／Outbox配送、採番同期まで成功 |
+| ⑦ 非同期Projection | 元Data Revisionと対象集合、索引水位、添付解析の完備性、Job／Template／Artifact版 | 検索可能＝最新の全件を索引化済み、帳票生成＝現在取得可能 |
+| ⑧ Consumer利用 | 実ロードUI／API／Plugin／設定、取得時Audience・Grant、結果byte／受領観測 | 実行要求受付＝業務意味の受理、過去のGrantで現在も閲覧可 |
+
+必要な時点とWitnessは**問いに応じて選ぶ**。すべてのData Rowへ一律に八種類のタイムスタンプや証明テーブルを作る提案ではない。存在しないProvider能力や未観測の段階は、ほかの段階の成功で補完せず、`unsupported`／`unknown`／`partial`を区別する。
+
+### 18.2 RuleとProcess／ノード表現を分け過ぎず、混ぜ過ぎない
+
+Ruleの意味定義は一つでよいが、**適用Phase・評価可能な入力・依存Read・副作用・有効な権限**はAttachmentごとに確かめる。入力中の親子再計算、DB保存前の制約、Transaction内の保存後処理、Commit後のOutbox配送、検索索引更新は別Phaseである。Transaction内Hookの「after」を「commit後」と解釈しない。Outboxが同一DB Transactionに参加できないProviderでは、原子的な通知・配送を保証するかのように表示しない。
+
+業務Processの申請時Route Snapshot・必要承認人数・実績履歴と、組織の現在状態／委任／参照Grantも分ける。申請時に候補だった者が現在も承認できるとは限らず、代理操作では**委任元と実Actor**を別のIdentityとして記録する。Graph／Node View／プロセスフロー／標準UIはこの関係のProjectionであり、独立した承認状態Storeや第二Rule Engineを作る契機にはしない（#1129／#2386／#2497）。
+
+索引や帳票の出力を扱うSUI／SHO／KON等のConsumerには、元Data Revision、取得Coverage、派生Artifact Revision、現在開示を投影する。ただし索引の準備完了、Job完了、Model Fingerprint一致を、元Dataの現行性、実ロード版の一致、取得時Grantの代用にしない。配備済みUI、REST、MCP、外部Hostの現在性も別々に観測する（#2250／#2600／#3267）。
+
+## 19. 一つの受注例を固定し、必要な辺だけ反証する
+
+**固定Fixture案**：複合キーの受注一件と子明細二件（明細A=200、B=300）、合計500、二つの画面タブ、保存時Rule一件。子Aを削除予定にするとDraft計算は300になる。別の操作ではその受注を申請し、承認候補3人・必要2人とする。帳票・検索索引は独立Consumerとして接続する。これは**合成ケースの提案**であり、現行TEI製品の一連の実走行ではない。
+
+| ケース | 一因子差分と独立Expected | 誤った昇格／既存の担当 |
+| --- | --- | --- |
+| **EV-01 Draft範囲** | Aを削除予定にし、表示はBタブだけ。Draft合計300、DBには未確定。Commit時に全子行とKey／Versionを再検証 | 表示中の子だけを全件と見なす、Draft値を保存済みにする。#1129／#2585／#1180 |
+| **EV-02 Tx後処理** | Transaction内の保存後Hookを意図的に失敗させる。同一TxのDB変更／Outbox要求が巻戻ったかを**独立Read**で確認する | Hook実Call＝Commit成功、DB Rollback＝外部配送も取消済み。#1129／#1174／#2514 |
+| **EV-03 索引水位** | DBは受注改版済み、全文索引は旧版、添付解析は待機中。検索応答に版／Coverageの不足を残す | 検索0件⇒元DBに存在しない、索引が検索可能⇒添付本文も完備。#2622／#2516 |
+| **EV-04 経路と現在資格** | 3候補中1人承認済み・必要2人。残る候補のGrantを失効させる。経路・過去実績を保存しつつ、現資格で進行可否を判定 | 申請時候補＝現在操作可、委任＝参照許可。#1129／#2386／#1174 |
+| **EV-05 帳票利用** | 帳票Job完了後に元Data／Template／取得権限のうち一つを変更する。Artifact版・無効化・現在の取得結果を別々に照合 | Job成功＝取得成功・内容一致、旧Grantを無期限に流用。#1130／#1158／#2514 |
+| **EV-06 実ロード版** | 同じMeaning Fingerprintのまま、生成済みPlugin／埋込UI／Configの実ロード版だけを変える | Model一致だけで実ConsumerのRule／画面／権限が同一と認定。#2250／#3267／#2831 |
+
+EV-02は、Outboxを**同一DB Transactionへ投入できる実装を選んだ場合**の期待値であり、どのProviderにも同じ保証を仮定しない。EV-04は有効時点の資格を実際に再観測する条件付きのExpectedであり、時刻経過やDB直変更を全経路で自動検知できるとはみなさない。EV-05はTemplate変更・Data変更・Grant変更を同時に混ぜず、各々を独立した試行で検証する。
+
+## 20. 実装計画への最小引渡しと停止線
+
+**着手順は追加の大規模基盤開発ではなく、既存の二つの細い経路へ載せる。** まず§17のPW-01〜03（Read／Disclosure／Patch Intent）の固定一Fieldから、§18の①〜④を**read-onlyの時点別照合票**として既存Reader／Operationに接続する。Source位置・選択済みOperator／Provider・Scope・必要Readの閉包・現在Grantが不明なら実Write候補を発行しない。独立Expectedは#1180／#2514の既存Scenarioに置き、本書を別Scenario SSOTにしない。
+
+次に、#2586の通常CLI一Function→**実Provider Read→Data Context→独立Consumer**の同じ対象で、EV-01（Draftと実Readの差）を一つだけ具体化する。実Write／DB Transactionが接続できた段階でEV-02に進み、非同期索引・帳票・申請／委任は各Ownerの実能力を確認してから順に増やす。#1251のPlugin、#951／#2831のセルフビルド、#3270のWorkbench、#2600のEvidence失効には**その実証で消費した辺だけ**を報告する。公開Design Context、Graph／Node View、SUI・SHO・KON、MCPは後続のConsumer候補であり、P0の追加必須前提としない。
+
+**優先順位は不変更**：PQ-A（正式Source→選択Reader／Generator→生成Go→実Builderの出典束縛）、PQ-B（Operator選択A→B→旧Scenario失効）、#2586通常CLI実Read、#2831 Stage1→Stage2 Windows実セルフビルドを先行する。EV-01〜06は新しい判定段階や横断Hard Gateではない。
+
+**今回の証拠上限**：§18〜20は既存設計・公開仕様記述の照合から得た受入計画であり、EVケースのGo／実DB／実OS／検索索引／帳票／承認／配送を新たに実行していない。外部仕様の読解をTEIの実Provider適合・Ownerの業務意味受理へ昇格させない。
