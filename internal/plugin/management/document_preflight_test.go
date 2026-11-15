@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	"tei/internal/plugin"
 	"tei/internal/environment"
+	"tei/internal/plugin"
 )
 
 func TestDocumentReadPreflightUsesExistingResolverSelection(t *testing.T) {
@@ -67,37 +67,38 @@ func TestDocumentReadPreflightFailsClosedOnUnqualifiedStates(t *testing.T) {
 			ScanState:   ScanComplete,
 			Resolver:    ResolverOutcome{Resolved: true},
 			Rows: []Row{{
-				PluginID: "tei.database.postgres",
-				Version: "1.0.0",
-				Declared: true,
+				PluginID:    "tei.database.postgres",
+				Version:     "1.0.0",
+				Declared:    true,
 				EnvSelected: true,
-				Resolved: true,
-				LockPinned: &trueValue,
+				Resolved:    true,
+				LockPinned:  &trueValue,
 			}},
 		}
 	}
-	cases := []struct{
-		name string
+	cases := []struct {
+		name   string
 		mutate func(*Report)
-		want string
+		want   string
 	}{
-		{"partial-scan",func(r *Report){r.ScanState=ScanPartial},DocumentSelectionScanIncomplete},
-		{"unrun-scan",func(r *Report){r.ScanState=ScanNotRun},DocumentSelectionScanIncomplete},
-		{"not-declared",func(r *Report){r.Rows[0].Declared=false},DocumentSelectionNotDeclared},
-		{"not-selected",func(r *Report){r.Rows[0].EnvSelected=false},DocumentSelectionNotSelected},
-		{"resolver-failed",func(r *Report){r.Resolver.Resolved=false},DocumentSelectionResolverUnbound},
-		{"row-unresolved",func(r *Report){r.Rows[0].Resolved=false},DocumentSelectionResolverUnbound},
-		{"unparseable-version",func(r *Report){r.Rows[0].Version="a.b.c"},DocumentSelectionVersionUnknown},
-		{"missing-lock",func(r *Report){r.Rows[0].LockPinned=nil},DocumentSelectionLockUnknown},
-		{"mismatched-lock",func(r *Report){r.Rows[0].LockPinned=&falseValue},DocumentSelectionLockMismatch},
+		{"partial-scan", func(r *Report) { r.ScanState = ScanPartial }, DocumentSelectionScanIncomplete},
+		{"unrun-scan", func(r *Report) { r.ScanState = ScanNotRun }, DocumentSelectionScanIncomplete},
+		{"not-declared", func(r *Report) { r.Rows[0].Declared = false }, DocumentSelectionNotDeclared},
+		{"not-selected", func(r *Report) { r.Rows[0].EnvSelected = false }, DocumentSelectionNotSelected},
+		{"resolver-failed", func(r *Report) { r.Resolver.Resolved = false }, DocumentSelectionResolverUnbound},
+		{"row-unresolved", func(r *Report) { r.Rows[0].Resolved = false }, DocumentSelectionResolverUnbound},
+		{"unparseable-version", func(r *Report) { r.Rows[0].Version = "a.b.c" }, DocumentSelectionVersionUnknown},
+		{"missing-lock", func(r *Report) { r.Rows[0].LockPinned = nil }, DocumentSelectionLockUnknown},
+		{"mismatched-lock", func(r *Report) { r.Rows[0].LockPinned = &falseValue }, DocumentSelectionLockMismatch},
 	}
 	for _, tc := range cases {
-		t.Run(tc.name,func(t *testing.T){
-			r:=base()
+		t.Run(tc.name, func(t *testing.T) {
+			r := base()
 			tc.mutate(&r)
-			got:=InspectDocumentReadPreflight(r,"tei.database.postgres")
-			if got.SelectionStatus!=tc.want || got.DocumentReadable || got.SourceBinding!="unbound" || got.Disclosure!="not-checked" {
-				t.Fatalf("preflight = %+v; want %q and no document authority",got,tc.want)
+			got := InspectDocumentReadPreflight(r, "tei.database.postgres")
+			if got.SelectionStatus != tc.want || got.DocumentReadable ||
+				got.SourceBinding != "unbound" || got.Disclosure != "not-checked" {
+				t.Fatalf("preflight = %+v; want %q and no document authority", got, tc.want)
 			}
 		})
 	}
