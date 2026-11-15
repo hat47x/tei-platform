@@ -308,3 +308,11 @@ CLI側の独立観測は、実Entry内でのIntent解決、BuilderのPlanとの�
 この回帰で証明できるのは「製品CLIの通常`self-build`経路が、選択されたRule由来のGo bytesをコンパイルし、そのBinaryが判断する」という限定的なR2-Pの一部である。**Rule原文、Reader版、Generator実装版と生成Goを同一Build Intentの受理済みSourceとして束縛したわけではない**。Authoring→Generatorの出典失効、通常製品が受理したBuilderのAuthority、正式公開Function、選択Provider実Invocation、現在GrantとOwner意味受理、Windows Stage1→Stage2は引き続き独立資格として残る。試験はLinux/amd64の既存参照Catalogで行い、ほかのTargetの適合を主張しない。
 
 次の実装差分は、新しいGeneratorやBuilderを導入することではなく、**同一Attemptで選択したRule／Generatorの資格と、通常CLIが実際に消費したBuildPlan／Artifactの資格を結合すること**に絞る。その後、§14.7の正式Function公開Entryと実Provider Callに結合し、選択B／収録A、生成Go改版／旧Entry実行、同値結果だけの誤受理をそれぞれ拒否する。
+
+### 14.11 Rule生成Goの実CLI検査を、個別の検収対象として維持する
+
+PR #5009で追加した`TestSelectedRuleGoThroughRealCLISelfBuild`は、既存の`tei self-build`を経由して生成Goの実Binaryを構築・実行する回帰である。PR #5009はmainへ統合済みだが、従来のSelf-build全鎖CIが成功しただけでは、この新規テストを実行したことにはならない。そこで既存のSelf-build実証ワークフローへ**このテスト名を指定した実行ステップ**を設け、結果を独立して確認する。
+
+Build Intentの`definitionSource`はGo依存パッケージの先頭ではなく、実際のEntrypointを含むPackageへ対応付ける。結果確認では、CLIから導出したPlan、Builderが読んだPlan、再現されたArtifact、完成Binaryの正値・ゼロ・負値・NULL・未取得の判断を分ける。これは**既存の参照Builderと製品CLIの組合せ**による限定的な実証であり、生成器・Rule原文のSource資格、正式なBusiness Function Entry、実行時の選択Provider／Grant、Windows Stage2を自動受理しない。
+
+また、並行マージ時に本計画の日本語が文字化けした事例を再発防止対象とする。正常な§14.10までの内容をGit履歴の元byte列から復旧し、Repository Plan Checkで不正なUTF-8、置換文字、Markdownに不適切な制御文字を拒否する。これは文書の自然さすべてを機械判定するものではなく、**原文を破壊するエンコーディング事故を確実に検出する下限**である。読める日本語の保持と、Source／Meaning／Build／Invocationの受入資格の維持を別々に検査する。
