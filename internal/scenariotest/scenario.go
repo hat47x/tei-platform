@@ -159,13 +159,17 @@ type Command struct {
 }
 
 type Plan struct {
-	SchemaVersion    string            `json:"schemaVersion"`
-	ScenarioID       string            `json:"scenarioId"`
-	ScenarioSHA256   string            `json:"scenarioSha256"`
-	WorldSHA256      string            `json:"worldSha256,omitempty"`
-	PluginLockSHA256 string            `json:"pluginLockSha256,omitempty"`
-	FixtureSHA256    map[string]string `json:"fixtureSha256,omitempty"`
-	Commands         []Command         `json:"commands"`
+	// OperatorSelectionSHA256 is separate from World and Plugin Lock: the
+	// manifest can change an operator's selected implementation without
+	// changing either of those fingerprints.
+	SchemaVersion           string            `json:"schemaVersion"`
+	ScenarioID              string            `json:"scenarioId"`
+	ScenarioSHA256          string            `json:"scenarioSha256"`
+	WorldSHA256             string            `json:"worldSha256,omitempty"`
+	PluginLockSHA256        string            `json:"pluginLockSha256,omitempty"`
+	OperatorSelectionSHA256 string            `json:"operatorSelectionSha256,omitempty"`
+	FixtureSHA256           map[string]string `json:"fixtureSha256,omitempty"`
+	Commands                []Command         `json:"commands"`
 }
 
 // RejectDuplicateJSONMembers rejects repeated keys at every object depth.
