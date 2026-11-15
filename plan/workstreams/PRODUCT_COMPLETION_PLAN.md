@@ -54,6 +54,8 @@ P0は引き続き、#4495の公開pure Entry→actual Provider→通常CLIの実
 
 ### 宣言の役割を見分けるP1（2026年11月15日）
 
+[文書手法からアプリケーション抽象への横断設計§8〜10](../design/APPLICATION_ABSTRACTION_DOCUMENT_METHOD_WEAVING_2026-11.md)に、他レーンの実Product Inspector（#5058）、原文を含む実Go Binary（#5051）、独立Shape基線（#5064）を接続した。次のP1は、**記述上のRole／意味上のShape・Law／実装のBindingを分けたまま、同じ正値Ruleの汎用評価と生成Goを五入力・Read回数で比較する**ことから始める。これは方式間の限定的な同値確認であり、正式R2-Pの出典閉包、通常CLI R3の実Provider呼出し、Studio Stage1→Stage2を達成したものではない。DW-11〜16は#2621/#2497/#4544/#1180/#2514へ既存の試験責務として引き渡し、新EngineやP0の追加Gateは設けない。
+
 [宣言的構文の合成契約§18〜20](../design/DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md)の実装引渡しは、**表面が同じでも定義・事実・要求・実現選択・実観測を混ぜない**ことから始める。最初の対象は、選択済みMarkdown Rule一件と、その元Source・型・論理Readである。Data項目定義表のPR #5010は採用・統合確認後に対照へ使い、業務記録の表を自動的にData定義へ変えない。
 
 | 小さな受入単位 | 得るもの | 失格となる短絡 |
