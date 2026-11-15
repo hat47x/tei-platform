@@ -540,6 +540,14 @@ Window候補5件はSHA-256で元ファイルと結び付いているが、**候�
 
 また[入れ子Opaqueの拒否修正 #4755](https://github.com/hat47x/tei-platform/pull/4755)はレビュー中である。標準QueryがWindowを意味表現できないままNative SQLの一部を取り落とす経路は引き続き拒否する。今回のテストで扱う既存SQLite方言のWindow直接生成を、標準QueryのWindow対応やNative SQLの実行許可として受理しない。
 
+### NULL、ゼロ、行不在を実データで区別する
+
+計算結果の一致だけでは、入力がすべて揃っていたとは言えない。既存[Window実表バインド試験 #4760](https://github.com/hat47x/tei-platform/pull/4760)へ、**B2の明示NULLを0へ変更し、その後B2行を削除する負例**を追加する。いずれも元の候補JSONや生成済みSQLを変更せず、同じ実SQLite表の内容と計算結果だけを観測する。
+
+B2がNULLのとき、B3の累積RANGE平均は10である。B2を0へ変更すると、同順位を含む平均は`20/3`へ変化する。さらにB2を削除すると、B3の平均は**元と同じ10**へ戻るが、取得できる観測は7行から6行へ減る。したがって、**同じ平均値が得られても、「NULLを含む七行」と「一行欠落した六行」を同じデータ・同じ観測資格として扱わない**。ROWSとRANGEの計算範囲、同順位、明示NULL、行の不在、Source取得完全性を区別する。
+
+この負例は[BRMSの部分観測・否定判定 #4765](https://github.com/hat47x/tei-platform/pull/4765)と[標準データ様式のGraph／Window共通Source入場 #4807](https://github.com/hat47x/tei-platform/pull/4807)の受入条件を補強する。計算の一致、Node／観測行の同定、取得閉包、元Source・Meaning・実Dataset版、Providerの現在資格を別の証拠として記録する。実SQLiteのテストでB2を削除できたことは、製品のReaderや正式Queryで欠落を検出できたことではない。独立Expected候補は`proposal-only`のままであり、数理専用Reader／Runtime／新しい完全性Gateは設けない。
+
 ### Windowの固定原文を、既存Workspaceが選択するSourceとして扱うS0-P
 
 [Graph／RuleのManifest/Pinned Root S0予備試験 #4751](https://github.com/hat47x/tei-platform/pull/4751)に倣い、`internal/workspace/tei_md_window_pinned_source_test.go`を追加する。基準とFrame変更の二つの`*.tei.md`候補を、実一時WorkspaceのManifestが宣言する`semantic` Rootに置く。同じ拡張子の`drafts`は宣言外に置き、既存の`scanManagedFiles`が選択済みSourceだけを管理対象として列挙することを確かめる。
