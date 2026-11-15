@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"math/big"
 	"strings"
@@ -149,23 +150,26 @@ func TestTEIMDOperatorWorldWithoutOperatorsIsUnchanged(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, ns := range loaded.World.Semantics {
-		fingerprint, err := semantic.Fingerprint(ns)
-		if err != nil {
-			t.Fatal(err)
-		}
-		stripped := ns
-		stripped.Operators = nil
-		for i := range stripped.Validations {
-			stripped.Validations[i].Operator = ""
-		}
-		again, err := semantic.Fingerprint(stripped)
-		if err != nil || again != fingerprint {
-			t.Fatalf("namespace %s fingerprint depends on absent operator data: %s vs %s (%v)", ns.ID, fingerprint, again, err)
-		}
-		if len(ns.Operators) != 0 {
-			t.Fatalf("namespace %s gained operators: %+v", ns.ID, ns.Operators)
-		}
+	raw, err := json.Marshal(loaded.World.Semantics)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), `"operators"`) || strings.Contains(string(raw), `"operator"`) {
+		t.Fatalf("a Workspace that declares no operator serializes operator fields: %s", raw)
+	}
+	// With an operator the same serialization does carry it, so the check
+	// above is not passing because the fields are never written.
+	withOperator, err := Load(teiMDOperatorWorkspace(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err = json.Marshal(withOperator.World.Semantics)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), `"operators":[{"id":"sales.non_negative"`) ||
+		!strings.Contains(string(raw), `"operator":"sales.non_negative"`) {
+		t.Fatalf("operator data is missing from the serialized World: %s", raw)
 	}
 }
 
