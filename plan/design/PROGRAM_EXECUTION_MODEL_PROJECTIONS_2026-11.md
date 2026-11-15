@@ -1148,3 +1148,60 @@ TEI内評価・契約付きMock・実Providerを同じ業務意味から生成�
 実装PRの最小報告は、変更した実ファイル、正のWitnessと反例、テストを走らせたexact HEAD、使用したBuilder/Provider/Consumer、未実装の継ぎ目、Owner受理の有無とする。CI未完了や旧PRのPASSは新HEADのPASSへ流用しない。既存の独立Expected/Source Index/Evidence/Receiptを使用し、新しいScenario正本やPX番号を追加しない。
 
 **今回の範囲**：§57〜60は現行コード・並行PRからの設計と実装引渡しであり、製品S0-A、実Providerの通常CLI End-to-End、新Studioの実ブラウザ・実Windows、Stage1→Stage2、業務Effect/Recovery、Owner意味受理の新しい合格を主張しない。
+
+## 61. 実行図の最初の一歩は、実在するInspectorの対象から始める（2026-11-15追補）
+
+§57〜60で整理した証拠の連鎖を製品へ接続する際、最初から「公開Functionを選んで、すべての実行経路を表示できる」と仮定しない。現行`internal/operations/inspect.go`の`InspectSubject`は、`Workspace.Load`から正規化Worldを読み、**先にCanon­ical Subjectを解決してから**`BuildSourceIndex`へ進む。対象種別は`InspectionSubjectKinds`の閉じた集合であり、`semantic-capability`には対応するが、任意のFunction/Entry/実行Attemptを自由に参照するAPIではない。
+
+したがって最初のread-only検証は、**実在する一件の`semantic-capability`とそのSource参照の照合**へ限定する。「Capabilityの定義をInspectできる」と「公開Entryから実Providerが呼ばれた」を別の問いとして表示し、前者の成功だけで後者を有効化しない。対象種別が未対応なら、表示名やGraphの描画Nodeから代用のCanonical IDを合成せず、既存`UNSUPPORTED_SUBJECT_KIND`を返す。
+
+| 実行図で見せたい情報 | 実在する入手先 | 初回に表示してよい内容と限界 |
+| --- | --- | --- |
+| 対象の定義 | `InspectSubject`の`subject`と`canonical` | 対象Kind＋正確なID、受理済みWorldの参照投影。業務Functionの実Callを主張しない |
+| 対象の出典 | `SubjectInspection.sources`：`artifacts[]`と`references[]` | SourceのWorkspace相対Path、Role、範囲、元ArtifactのFingerprint。未選択Sourceや非表示範囲を補完しない |
+| 参照可能性の限界 | `sourceStatus`、`sourceIndexFingerprint`、`authorityLimits` | 位置表示、意味の受理、書込み、外部送出の資格を分ける。World Fingerprintは現行Revision Tokenではない |
+| Providerの選択 | 既存Plugin／Entryの選択・Lockの別の検査 | 別Subject/Targetの証拠が一致するまで「未照合」。Inventoryの`exact-version-pinned`は実Calledではない |
+| 実際の呼出し・作用 | #4495/#4502の実Attempt、#1174のReceipt等 | 初回Inspectorには存在しないため「未観測／未対応」。疑似TraceやMockで補わない |
+
+`internal/operations/trace.go`の`TraceSubjectSourcesFromIndex`も、Source参照を返す**読み取り専用操作**であり、参照があることからCanonical Subjectの存在を証明するものではない。このため、InspectorとTraceの情報を合わせる際も、同じSubject/Workspace/Source Index版であることを確認し、Trace単独のSource位置から意味受理を逆算しない。
+
+## 62. S-LOCとS-OPENを実行図で取り違えない
+
+[Desktop製品契約§0.18.6](TEI_DESKTOP_PRODUCT_CONTRACT_2026-11.md)の**S-LOC**は、Sourceの参照位置を読み取り専用で示す段階であり、**S-OPEN**はその原文をHostが現在のRoot／Scope／Source Revision／実バイトで開き直す段階である。これらを実行図上で明確に区別する。
+
+```mermaid
+flowchart TD
+  Q["固定したWorkspace・Subject"] --> I["既存InspectSubject"]
+  I --> C{"対応Kind／Canonicalを解決できたか"}
+  C -->|不可| N["拒否／未対応を説明"]
+  C -->|可| L["S-LOC：Source位置と出典を表示"]
+  L --> R{"現在のHostによる原文再読取能力・開示資格はあるか"}
+  R -->|なし／不明| X["位置表示のみ／Open不可"]
+  R -->|ある| O["S-OPEN：元byte・Range・Fingerprintを再確認"]
+  O -->|不一致| D["失効・再選択／適用しない"]
+  O -->|一致| V["許可された原文をread-onlyで表示"]
+```
+
+`sourceindex.PositionAt`は行・列を**原文のbyteを数えて**算出する。UTF-8日本語、CRLF、BOMを含むOffsetを、Rendererの文字数やEditor列番号へ無検証で変換しない。Source Indexの`Reference`は`subject`／`artifactPath`／`range`／`role`、`Artifact`はWorkspace相対`path`／`format`／`fingerprint`を持つ。実行図はそれらのIdentityと元位置を保持し、同名PathのSource改版、同Subject別Occurrence、同じ表示名の別IDをまとめない。
+
+表示時の上限（最初のS-LOCは最大20参照）、省略数、Index未作成、部分的な取得、Audienceへの非開示は、存在しないことの証明に転用しない。実Source位置を知らせること自体がDisclosureを要する場合は、Hostの公開範囲に従って参照情報の送出を制限する。Rendererで`file://` URLや絶対Pathを構築せず、Hostの安全なOpen能力が正式に受け入れられるまではOpen操作を無効にする。
+
+Workbenchの局所Pin、選択epoch、後着Replyの拒否は**画面の対象同一性**を守るが、Open時の現行GrantやRaw byteの一致を証明しない。原文を開いた後も、その内容を自動保存・意味受理・外部AI送信・Business Operation実行へ結び付けない。Stage1→Stage2で実表示した証拠も、Node/TypeScript試験、正規Bundle/Embedded Asset、一つの実Windows WebView2 Consumerとして別に取る（#4812/#2831/#4583）。
+
+## 63. 最初のGo／Workbench検証PRの引渡しを一問に絞る
+
+現状の最短実装は、図解専用の新APIを足すことではない。既存`InspectSubject`を使い、「**この正規化済みCapability定義は、どの原Sourceから確認できるか**」という一問に、元Sourceと資格の限界を示して答える。
+
+| 手順 | 実装担当が提出する最小の証拠 | 不合格・停止条件 |
+| --- | --- | --- |
+| ① Headlessで固定 | 対象Workspace Root、`semantic-capability`の実Kind/ID、実`InspectSubject`応答と既存独立Expected | 同名の別Kind/ID、Subject欠落・重複・未対応、別Rootへのすり替え |
+| ② Sourceの対応 | `references[]`の複数Occurrence/Role、`artifacts[]`のPath/Fingerprint、byte offsetとSource Index版 | 参照の先頭だけ採用、BOM/CRLFの文字列列番号化、参照0を全Workspaceの不存在と表示 |
+| ③ Workbenchで表示 | 既存`InspectSubject`の結果と`authorityLimits`、Pin/Workspace epochの維持、現在生成/配布Assetの版 | 別Subjectの遅延Reply、権限表示欠落、未一致の埋込Bundle。実DOM/Windowsは別検収 |
+| ④ 利用できない経路を明示 | Function Entry/Selected Provider/actual Call/Receiptの各欄を、根拠が未接続なら未確認と表示 | Inspect成功やSourceを見つけたことを「実行済み」にする。Mockによる埋め合わせ |
+| ⑤ 次のOwnerへ渡す | S0-A正式Reader（#2621）と実pure Entry→実Go Provider→通常CLI（#4495）への不足辺、試験したexact HEAD、観測範囲 | テスト専用S0-P、Reference Go、`tei view -execute`を製品の同一E2Eと称する |
+
+最初のOwnerはInspector/Source Indexの#1124/#3788とWorkbenchの#1824/#3421、独立Expectedの#1180/#2514を維持する。正式Reader、公開Entry、Runtime Provider、DB Effect、Windows Stage2は各担当が**この最初の問いとは別に並行**して進める。特にStage1→Stage2の実セルフビルド（#2831/#4583）と公開pure Entryの実Provider（#4495）を全体P0から外さず、S-LOCや実行図全体の完成を新しい前提にしない。
+
+達成と呼べるのは、既存Inspectorが返した**一つの現在の対象・元Source・参照限界**を、Headlessと実Consumerの各段階で取り違えずに表示できた範囲までである。Sourceへ安全に開き直すS-OPEN、業務Functionの実Call/Effect、Studio Stage2の実完成は別の受入票とする。新しいRuntime、Execution Registry、Graph Compiler、Mock Engine、Claim Store、独立Expected正本、PX番号やHard Gateは導入しない。
+
+**本追補は設計・実装引渡しである。** 今回のPRにおいて新しいGo/TypeScript/Windows/実Providerのテスト実行、S-OPEN実実装、正式`*.tei.md` ReaderやOwner意味受理、Stage1→Stage2の製品検収を行ったものではない。
