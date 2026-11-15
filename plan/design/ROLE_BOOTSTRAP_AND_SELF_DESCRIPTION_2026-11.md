@@ -3009,7 +3009,7 @@ mainに存在する`internal/workspace/tei_md_rule_product_read_test.go`（#4890
 
 | 並行して通す小さな縦断 | 次に確認する実成果 | 合格と呼ばないもの |
 | --- | --- | --- |
-| **R：内蔵Rule→実Go判断**（#4359/#1121/#4544/#2595） | **最初は`quantity_positive`一規則**に限り、既存`semantic.Validation`の`positive`判定を含むGoを生成する。0・正値・負値・NULL・未取得を独立Expectedで照合し、実Builderが消費したSource、生成Artifact digest、独立Consumerの実結果を同一試行で確認。次に`relation-unique`を、Relationの取得範囲の完全性を含む別試験で追加する | 実Evaluatorを合成入力で呼んだ試験、既存Evaluatorへ全面委譲した薄いGo、生成Sourceだけの比較、未取得行を空集合と扱う成功 |
+| **R：内蔵Rule→実Go判断**（#4359/#1121/#4544/#2595） | main #4911では`quantity_positive`一規則・解決済み`std.decimal`を実条件分岐`value.Sign() > 0`のGoにLoweringし、別Processで正値・0・負値・NULL・未取得を合成入力で検査するR1まで実装済み。**次は元Markdownの編集→再Load→生成Goと結果の追随**、その後に既存Builderが実際に消費したSource・Artifact digest・独立Consumerを一試行で確認する | R1の`go run`を正式Build／Plugin実選択／通常CLI実Provider／Owner意味受理へ読み替えない。`relation-unique`は取得Scopeの完全性を別検収 |
 | **G：Graphの正式Reader→Rule→生成**（#2621/#988/#1018/#951） | 同Labelの別Node ID、同端点の多重有向Edge、起点／終点の条件切替、重複Edge ID拒否を、Manifestで**別Languageとして選択した実製品Source**から出典付きで生成へ渡す | 内蔵`tei.rule-authoring`による表の黙認、Reference単体の`GenerateGo`、Root外DraftのRead、未選択時の空World |
 | **L：外部Language Pluginの実選択**（#988/#1018/#1251） | 既存Pluginの契約／Lockからexact実Implementationを決め、Source→Readerの実ロード資格を照合。必要なCapabilityが未実装ならその段階で明示停止 | 組込ProviderのID一致、Reference`ParseSelected`の合成Pin、Plugin一覧でのresolvedだけ |
 
@@ -3033,17 +3033,37 @@ RとGは同一のRuntime Hostや第二Generatorを要求しない。Rでは最�
 
 ### 47.13 実Go生成を最小の一規則から始め、集合を使うRuleは取得範囲の検収後へ分ける
 
-次の製品Go差分は、`sales.order_line.quantity_positive`を一つ選んだ実`Workspace.Load`から始める。`semantic.Validation`と元Rule ID位置を同じSource Indexへ結び、既存のTarget Generator／Builderの入口に渡す。生成したGoは**正値と0・負値の条件を実コードで判定**し、NULL／未取得／型不適合は独立Expectedに照らしてそれぞれ決められた結果または明示的な拒否を返す。必要な入力を取得していないのに「検証合格」と返さない。
+当初の最小対象`quantity_positive`から**実判定Goを生成するR1はmain #4911で実装済み**である。製品`Workspace.Load`で得た`semantic.Validation`と同じLoadのSource Index、解決済みAttribute型`std.decimal`を照合し、`GeneratePositive`が`value.Sign() > 0`を含むGoを出力する。既存`validationeval.Source/Result`を再利用し、生成コードを別Processの`go run`で実行する局所検査も存在する。ただし**製品Builder／正式Generator選択・Lock／ArtifactSet／通常CLI実Providerには接続していない**。入力のNULL／未取得は明示的な評価不能として保ち、生成関数が正式な業務意味・実行Authorityを獲得したとは扱わない。
 
 比較対象は①現在の既存Go／Evaluator、②TEI宣言を読んで既存Evaluatorへ委譲するだけの薄いGo、③TEIのRuleから判定条件を生成したGoの三つとする。①②③の出力一致だけで③の自前生成を認めず、**生成された条件分岐の実Byte、実Builderに渡したByte、Toolchain、Artifact digest、別Process Consumerの実結果**を揃える。Sourceの条件のみを変更して生成Goと結果に差が現れる正例、説明文のみ変更してSourceの改版だけが発生する対照、生成Binaryが古い実装のまま指紋だけ合わせた負例を既存#1180/#2514のExpectedへ接続する。
 
-`sales.order.lines.line_number_unique`は別段階とする。Relationの全対象行・キー・時間条件が揃ったと分からなければ、重複が見つからない結果は合格ではない。完全空集合と取得不能を別物として保つ`47.12のProbeを基線に、実Providerがどの範囲を読んだかを独立Consumerで確認してから生成対象を広げる。これにより、最初の`positive`の生成・Buildを不必要に遅らせず、集合閉包の難しさも隠さない。
+`sales.order.lines.line_number_unique`は別段階とする。Relationの全対象行・キー・時間条件が揃ったと分からなければ、重複が見つからない結果は合格ではない。完全空集合と取得不能を別物として保つ第47.12節のProbeを基線に、実Providerがどの範囲を読んだかを独立Consumerで確認してから生成対象を広げる。これにより、最初の`positive`の生成・Buildを不必要に遅らせず、集合閉包の難しさも隠さない。
 
 ### 47.14 Ruleの存在から公開Function／Capabilityを自動生成しない
 
-`semantic-validation:sales.order_line.quantity_positive`がSource IndexとInspectorで見えることは、同名の`semantic-capability`、公開Function Entry、実Provider、現在Grantの存在を意味しない。後継PR #4902は、この別Subjectの`SUBJECT_NOT_FOUND`を**同一Loadの負例**で確認する担当であり、Source文字列検索で実行入口を合成しない。PRの存在・Goファイルの部分編集・旧HEADの合格を、当該負例の製品受理として数えない。
+`semantic-validation:sales.order_line.quantity_positive`がSource IndexとInspectorで見えることは、同名の`semantic-capability`、公開Function Entry、実Provider、現在Grantの存在を意味しない。mainにある`internal/operations/inspect_rule_markdown_source_evidence_test.go`（#4902の後継負例）は、**同一Load・Source Indexで別KindのSource参照0件と`SUBJECT_NOT_FOUND`を確認するGo試験**を持つ。Source文字列検索で実行入口を合成しない。このGo試験の存在・過去HEADの結果を、実Providerや公開Capabilityの合格として扱わない。
 
 公開Function／CLIへの実接続は#4495/#1251が、現行のContract/Provider/Grantを使って独立に実証する。全体P0のStudio Stage1自身によるStage2 Windows起動（#2831/#4583）、Graphの正式Reader（#2621/#1018）、外部Language PluginのLock（#988/#1018）も従来どおり並行する。
 
 **今回の検収範囲**はmainに現存するRule型付き同値・合成入力によるEvaluator読取のGo回帰と、次の製品Go実装順の計画化である。新たなGo生成、DB Providerの実Read、通常CLI／独立二Consumer、Studio Stage2、OwnerのMeaning受理は**この変更ではNOT RUN／NOT PROVEN**。
+
+
+<!-- tei-self-description-positive-code-rebuild-from-source-20261115 -->
+### 47.15 R1は実Go生成済み。次の正負対照は原文変更から生成結果までを貫く
+
+現行mainの`internal/semantic/validationgen/positive.go`は、新しい汎用Rule Engineではなく、製品`semantic.Validation`と解決済み`std.decimal`に限定した`GeneratePositive`を持つ。条件分岐をGoへ生成し、`validationeval.Evaluate`への単純な委譲を避ける。`positive_product_test.go`（#4911）は実`Workspace.Load`からRule・型・Source位置を確かめ、生成Goを別Processで実行して正値／0／負値／NULL／未取得と一回の読取を比較する。**ここまでがR1の限定的な実装事実**であり、正式Builderがそのbyteを使用したことは未確認である。
+
+並行mainの#4913では、同じRule ID・同じ入力値のまま、Source本文のAttribute参照を`quantity`から`line_number`へ変更すると、旧Source Indexが失効し、既存EvaluatorのRead先と結果が変わる負例を追加した。これは**Reader→型付き意味→既存Evaluator**の変更追随である。`GeneratePositive`の既存テストにある「型付きValidationのAttributeを直接変更すると生成Goが変わる」は、その手前のSourceを再Loadしたわけではない。両方の局所試験を組み合わせてR1→R2の縦断が完成したと扱わない。
+
+この間を一件で検査する追加回帰は`internal/semantic/validationgen/positive_source_edit_test.go`とする。既存の選択済みRule Fixtureを隔離し、同じ`std.decimal`型の第二Attributeだけをテスト準備時に追加する。その後は原文を一因子ずつ変更する。
+
+| 変更条件 | Source Indexと型付きRule | 生成Goと実行観測 |
+| --- | --- | --- |
+| **初期**：`quantity is positive` | 選択Manifest→同じLoadのRule ID／元byte位置・Decimal型 | 生成Goが`Number(quantity)`を一回読み、合成quantity=0で不成立 |
+| **説明文だけを変更** | 旧Indexは失効。再Loadした型付きRuleは同一 | 再生成Goのbyteは同一。古いIndexの再利用は不可 |
+| **Ruleの参照先だけ変更**：`discount is positive` | Rule IDは維持。再Loadで`Number(discount)`へ参照変更、直前のIndexも失効 | 再生成Goのbyteと読取先が変わり、同じ合成入力quantity=0／discount=2で成立へ変化 |
+
+この追加試験も`go run`する生成Goは**テスト専用入力を持つ別Process**であり、独立した正式Builder／業務Provider／製品CLI Consumerではない。今後R2では、このR1で生成したGoのbyteを既存BuildIntent／Builderへ引き渡し、ビルド時の実入力・Toolchain・Artifact digest・受領したConsumerの実結果を同一Attemptに束縛する。R3では通常`tei` CLIから選択Providerの実呼出しへ進み、Current GrantとInput Scopeを別資格で照合する。Studio Stage1→Stage2 Windowsは並行P0のまま維持し、Graph/外部Language PluginやNode Flow用の新RunnerをR2の前提に追加しない。
+
+**今回の追加試験と計画の境界**：GoテストをGitHubへ置いたことを合格とはみなさず、該当PRのexact HEAD CIで検証する。実Builder・Provider・CLI・Windows・Owner Meaning受理について新しいPASSはない。
 
