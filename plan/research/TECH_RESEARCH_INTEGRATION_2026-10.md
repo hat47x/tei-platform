@@ -1729,7 +1729,7 @@ Studio側のR4は[#2831](https://github.com/hat47x/tei-platform/issues/2831)／[
 | 実行結果同値 | 実Artifact／実Providerの呼出し、Input集合・時点、独立Expected | 同じ生成元・同じGrant・永続Effect／外部受領 |
 | 表現・編集同値 | 対象・Role・Source Slot・Loss、Projectionの変更可能範囲 | 表示IDやGraph配置から元意味を一意に逆算できること |
 
-最初の対照は次の三組とする。**(E1)** 明示選択したMarkdown Ruleと従来の`.tei` Validationを別々にProduct Loadし、解決済みRule・属性型・生成Goが同値でもSource指紋・位置は独立に保持する。**(E2)** Markdownの説明文だけを変えると、旧Source Indexは失効するが、再Loadした意味・生成Goは変化しない。**(E3)** Ruleの参照属性や条件を変えた場合は、実Read先・生成分岐・独立Expectedの関係が変わる。E1／E2の製品Go回帰は[PR #4973](https://github.com/hat47x/tei-platform/pull/4973)として提案中であり、**この時点では未マージ／exact HEAD検収未了**。E3の一因子生成・Read先の拡張も[PR #4970](https://github.com/hat47x/tei-platform/pull/4970)の別提案であり、計画上の成立と区別する。
+最初の対照は次の三組とする。**(E1)** 明示選択したMarkdown Ruleと従来の`.tei` Validationを別々にProduct Loadし、解決済みRule・属性型・生成Goが同値でもSource指紋・位置は独立に保持する。**(E2)** Markdownの説明文だけを変えると、旧Source Indexは失効するが、再Loadした意味・生成Goは変化しない。**(E3)** Ruleの参照属性や条件を変えた場合は、実Read先・生成分岐・独立Expectedの関係が変わる。**実装状況の更新（§16.30）**：E1／E2の回帰は`internal/semantic/validationgen/positive_surface_identity_test.go`、E3の型付きRule→Read先変更・別Process対照は`positive_mutation_product_test.go`等として**現在のmainにファイルが存在する**。先行PR #4973／#4970は未マージのまま終了しているため、それらのPRを「統合済み」とは扱わない。main収録と、対象試験のexact HEAD実行・成功は別途確認する。
 
 ここでSourceの字句差異が無条件に「意味不変」となるのではない。**同じ意味と判定できるReader／Role／型・Scopeの契約が固定されているときだけ**、該当する生成物の再利用候補とする。Sourceの改訂やA→B→Aが起きた後のOwner受理・Grant・実Attemptは、出力Go byteが同じでも自動復活しない。
 
@@ -1743,10 +1743,50 @@ Studio側のR4は[#2831](https://github.com/hat47x/tei-platform/issues/2831)／[
 
 ### 16.29 次の実験を二つの独立した縦断へ分ける
 
-**縦断A：既存Goの責務をTEIへ戻す。** 現行`validationgen.GeneratePositive`（コード生成Function）と、その出力`EvaluateSelected`（判断Function）を区別して、AST／参照型／実Read Footprintからの**候補抽出**→既存Validation／Operatorへの意味対応→専門家が読めるMarkdown・表・Graphの投影→独立Expected→再生成比較と進める。動的Dispatch／IO／権限・Effectで静的抽出できない部分はOpaqueとして保持し、AIの推測で確定しない。確認する価値は「DSLに置き換えた行数」ではなく、手書き判断の削減、変換後のSourceの読みやすさ、総定義量、変更時の修正箇所、テスト判別力である。採否と実装は[ドッグフーディングI2M-0〜4](../design/IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md)に返す。
+**縦断A：既存Goの責務をTEIへ戻す。** 現行`validationgen.GeneratePositive`（コード生成Function）と、その出力`EvaluateSelected`（判断Function）を区別する。mainには`positive_ast_projection_test.go`として実生成GoのGo ASTからRead対象・一回の呼出し・正値分岐・Error Guard・元byte範囲を抽出する**I2M-0相当のread-only観測コード**が入った（§16.30）。これはまだ自動Diagram／DSL生成ではない。次はこの観測→既存Validation／Operatorへの意味対応→専門家が読めるMarkdown・表・Graphの投影→独立Expected→再生成比較と進める。動的Dispatch／IO／権限・Effectで静的抽出できない部分はOpaqueとして保持し、AIの推測で確定しない。確認する価値は「DSLに置き換えた行数」ではなく、手書き判断の削減、変換後のSourceの読みやすさ、総定義量、変更時の修正箇所、テスト判別力である。採否と実装は[ドッグフーディングI2M-0〜4](../design/IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md)に返す。
 
 **縦断B：TEI定義から実製品の成果物を作る。** §16.23のR2-Pに沿い、選択済み`quantity_positive`→実生成Go byte→既存製品Builder実入力→ArtifactSet→別Consumer結果を一つのBuild Attemptで証明する。その後、公開pure FunctionのR3（型付きEntry／現在Grant／実Provider／通常CLI）を別に成立させ、最後に接合する。参照Builderの成功は足場であり、正式R2の完了としない。Studioの正規埋込Assetは[PR #4945](https://github.com/hat47x/tei-platform/pull/4945)でmainに収録されたが、W0-BのSource／配布byte照合、Windows実画面のW0-C、Stage1→Stage2のW0-Dは別受入であり、生成Go縦断と合算しない。
 
 **統合の判断**：AとBを同じRule ID・Independent Expected・変更ケースで比較し、モデルからの再生成を増やすほど、手書き責務が実際に減るのか、逆にPlugin・設定・Target別例外が増えていないかを確認する。Graph／Window／組織／REA／API／B2Cへ拡張する前に、既存Rule一件のE1〜E3と製品R2の「意味保存・証拠非同一・実消費」の三条件を満たす。実証が不足していれば専門Plugin／read-only Viewにとどめ、Coreへの昇格は[#2495](https://github.com/hat47x/tei-platform/issues/2495)／[#4350](https://github.com/hat47x/tei-platform/issues/4350)へ具体的な反例を返す。
 
 **状態・優先度**：既存研究統合計画の実装判断を更新するのみ。二本の新しいGo／Windows／DB試験、Ownerの意味受理、正式Builder／Provider／Stage2は**今回NOT RUN／NOT PROVEN**。全体P0のStudio実セルフビルドと通常CLI実Provider／独立Consumerを変更せず、追加のHard Gate、新Host・Runner・Meaning Store・Verifier・Generator Registryを設けない。
+
+### 16.30 実Go・製品CLI・文書抽象の接続を現在のmainで再確認する（2026-11-15）
+
+前節までの研究案に対応する次の**コードの収録**をmainで確認した。旧PRのClosed／Unmerged表示と、同趣旨のGoファイルが別の経路でmainに収録された事実を混同しない。コードがmainに存在することと、CI・業務Meaning・Target適格性は別である。
+
+| 収録済みの最小Witness | mainで確認したファイル・内容 | 資格の上限 |
+| --- | --- | --- |
+| **異表現→同一Go・出典別** | [`positive_surface_identity_test.go`](../../internal/semantic/validationgen/positive_surface_identity_test.go)：`*.tei.md`と従来`.tei`を別々にProduct Load→型付きValidationを比較→`GeneratePositive`出力byteを比較。説明文変更では旧Source Index失効・Go byte不変を検査 | 意味同値／Source非同一の**Go試験コード**。双方のOwner受理・生成Artifactの再資格化ではない |
+| **Rule変更→実判断変更** | [`positive_mutation_product_test.go`](../../internal/semantic/validationgen/positive_mutation_product_test.go)：同じRule IDの参照属性を一因子変更し、生成Goと別Process結果・Read先を対照 | R1改版追随の局所検証。製品Build／実Provider呼出しではない |
+| **実Go→構造候補** | [`positive_ast_projection_test.go`](../../internal/semantic/validationgen/positive_ast_projection_test.go)：実生成GoのASTを解析し、`Source.Number`、`Sign()>0`、NULL／Read Error Guard、元Go byte範囲を観測。説明コメント変更・Attribute変更・`>=0`改変等を反証 | **I2M-0／C0構文観測**。構造を業務Meaningに受理、Graph／DSLへ自動逆変換、実Builderへ配備した証拠ではない |
+| **製品CLIの公開境界** | [`cli_inspect_rule_markdown_process_test.go`](../../cmd/tei/cli_inspect_rule_markdown_process_test.go)、[PR #4980](https://github.com/hat47x/tei-platform/pull/4980)：実`tei inspect`別ProcessでRule Source／位置を照合し、同名Capabilityと説明用Ruleを`SUBJECT_NOT_FOUND`で拒否 | read-only Inspectの入口。公開Function Entry・実Invocation・Host Grant／Effectの証拠ではない |
+
+とくにI2M-0のAST観測は、**生成器のGoコード**と、**生成されたGo判断Function**を異なる対象として扱っている。局所的な`if`や呼出しの存在を実行経路の網羅性や業務意味の保証へ昇格させない。新しい正本・Go解析Engineを先行導入せず、[I2Mドッグフーディング](../design/IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md)のI2M-1（型付き対応候補）→I2M-2（表現・再生成）→I2M-3以降（実Consumer）の各Ownerへ橋渡しする。
+
+**CIの読み方**：[PR #4980](https://github.com/hat47x/tei-platform/pull/4980)のexact HEADではAction Surface実CLI、Cacheなど複数のWorkflowがsuccessだがRepository HealthとDesktop Smokeはfailure。個々のテスト名が実行・PASSしたかはジョブの実ログとHEADで確認し、上表を全体Greenとしない。直接mainに収録されたAST試験についても、旧[PR #4986](https://github.com/hat47x/tei-platform/pull/4986)の未マージ状態をそのまま成功票にしない。
+
+### 16.31 「対象を読めたか」を意味の等価性と独立した契約にする
+
+[PR #4981](https://github.com/hat47x/tei-platform/pull/4981)では、Data Derivationの読取り専用Referenceで、`AsScalar`が`optional-one`の未取得0件をNULL扱いできる問題が修正された。現実の関係先が存在しないことと、**そもそも必要な集合を観測していないこと**は違う。修正は既存`Completeness == complete`を要求し、`unfetched`／`partial`を`ErrIncomplete`で拒否する範囲に限る。正式DB／実Provider／Consumerでの全件取得が確立したとは主張しない。
+
+| 読取条件 | 単値／任意1件・集約を評価する判断 | 検証上の短絡 |
+| --- | --- | --- |
+| complete、0件（optional-one） | 契約上のNULLを返し得る | 必須1件の参照と混同しない |
+| partial、0件／1件 | 単値・集計の成立を主張しない | 目の前の行だけで「一意」「不存在」と断定しない |
+| unfetched、0件 | NULLではなく未取得を保持 | 未取得を0件の観測結果に変換しない |
+| complete、複数件 | 対象OperatorのCardinality・重複意味で判定 | Bag／Set／Relationの違いを暗黙に潰さない |
+
+この入力閉包は、Ruleだけでなく、Window、Node Port、API Mashup、Data Context、組織・REA、B2Cの結果へ共通する**検証上の必要条件**とする。ただし全Domainへ同じNULL／集約規則を押し付けず、各Operator／Relation／FunctionのGrain・Scope・時点・Cardinalityと組み合わせる。これらの結果を同一の標準データ構造で表現できても、対象集合と観測資格が異なれば同値としない。責務は[#1706](https://github.com/hat47x/tei-platform/issues/1706)／[#1637](https://github.com/hat47x/tei-platform/issues/1637)／[#2586](https://github.com/hat47x/tei-platform/issues/2586)と独立Expected[#2514](https://github.com/hat47x/tei-platform/issues/2514)に返す。
+
+### 16.32 次に閉じる製品の一件はR2-Pの実Build入力であり、I2M-0やInspectを代用しない
+
+**現時点の最短の未接続点は、Product選択済みRule→実Generator→既存製品Builderの実Read→ArtifactSetを一つのAttemptへ束縛すること**である。参照Builderが生成Goを`-isolate`で読んだテスト、ASTが判断処理を見つけたテスト、実製品CLIの`inspect`がSourceを表示したテストは、互いに補強し合うが**三つを足しても製品R2-P／R3の成立にはならない**。
+
+第一実装PRで、既存のSource Index／Generation Intent／BuildIntent／ArtifactSet／Evidenceを使い、`Rule Source byte／Reader pin／Rule ID・Type／実Generator identity／生成Go byte／実Builderが読んだSource／Toolchain／成果物`を、**実際に消費された入力**で突き合わせる。これらは新しいメタモデルの属性案ではなく、既存Witnessの照合項目である。
+
+受入の反例は次の五つへ絞る。B1：選択したRuleと別Ruleから生成したGoを混入、B2：説明文だけ変更した旧Source資格を自動復活、B3：Rule条件改版後も古い生成Goを収録、B4：Generator／Pluginの選択Bに対し実Call A、B5：実Builderが生成Goを読まず手書き実装へ委譲。実Artifactと独立Expectedが一致してもB1／B4／B5は不合格。最小R2-Pは[#2595](https://github.com/hat47x/tei-platform/issues/2595)／[#4544](https://github.com/hat47x/tei-platform/issues/4544)、変更失効は[#2600](https://github.com/hat47x/tei-platform/issues/2600)へ引き渡す。
+
+**並行P0を維持する**：R3の公開pure Function→現在Grant→実Provider→通常製品CLI／独立Consumer（[#4495](https://github.com/hat47x/tei-platform/issues/4495)／[#1251](https://github.com/hat47x/tei-platform/issues/1251)）はR2と独立に進め、後で両者を接合する。Studioは[W0-B埋込Asset再同期 #4983](https://github.com/hat47x/tei-platform/pull/4983)と、通常Wails WebView2の限定成功を記した[#4989](https://github.com/hat47x/tei-platform/pull/4989)を別資格とする。生成DesktopのPin不一致、Stage1→Stage2実再構築（[#2831](https://github.com/hat47x/tei-platform/issues/2831)／[#4583](https://github.com/hat47x/tei-platform/issues/4583)）は未解決のまま明示する。
+
+本節の更新は**main実コードの静的再読取と研究→実装Ownerへの検収手渡し**であり、新しいGo／DB／Wails／正式Builderの実行結果やOwnerの意味受理は今回**NOT RUN／NOT PROVEN**である。
