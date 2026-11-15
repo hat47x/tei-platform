@@ -1922,7 +1922,7 @@ func (p *Parser) ParseSemanticFile() (semantic.Namespace, error) {
 			// Keep the invalid declaration rejected and point to the actual
 			// source format, rather than expanding this parser's grammar.
 			if t.Text == "rule" {
-				return ns, p.errAt(t, "\\"rule\\" starts a rule authoring declaration; declare it in its own file under semantic/<namespace>/*.tei.md inside a tei code fence, with tei.rule-authoring/v0 selected in the Workspace manifest")
+				return ns, p.errAt(t, `"rule" starts a rule authoring declaration; declare it in its own file under semantic/<namespace>/*.tei.md inside a tei code fence, with tei.rule-authoring/v0 selected in the Workspace manifest`)
 			}
 			// A top-level keyword from another domain (an application, a
 			// migration) is a placement mistake, not a typo. Name it, then fall
