@@ -4,6 +4,7 @@
 
 この下の一覧は、このディレクトリの**全計画文書**を載せています（`README.md` を除く）。`tools/repository-plan-check` の `TestPlanReadmesMentionEveryEntry` が一致を検査します。
 
+- [図表から解釈実行・生成・Hook組込みへ進む実証計画](DIAGRAM_REALIZATION_REFERENCE_EXECUTION_2026-11.md)（I/G/D/Hを共通Meaningから比較し、既存Owner・実Builder・Consumer・セルフビルドへ段階的に引き渡す）
 - [AI大量並列開発と要件ポートフォリオ：外部要求からTEIの共通構造を育てる計画](AI_HIGH_THROUGHPUT_REQUIREMENTS_AND_PLUGIN_EXPANSION_2026-11.md)（2026-11-01の実行計画案。正式なメタモデル・業務意味・受入条件の採用ではない）
 - [クリティカルパスの暫定代行判断（2026-10-23）](TEI_PROVISIONAL_DELEGATED_DECISIONS_2026-10-23.md)（所有者の指示により開発エージェントが代行した判断の記録。所有者の確認で覆せる）
 - [TEI技術調査Phase A: 一改訂の実行・観測証拠の受渡し](TEI_RESEARCH_PHASE_A_EVIDENCE_HANDOFF_2026-10-16.md)（実施準備・未認定）
