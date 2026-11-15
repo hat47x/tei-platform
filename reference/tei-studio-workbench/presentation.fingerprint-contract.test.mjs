@@ -30,6 +30,12 @@ function inspection(fingerprint) {
     worldFingerprint: `world-${fingerprint}`,
     sourceIndexFingerprint: `source-${fingerprint}`,
     sourceStatus: 'indexed',
+    authorityLimits: [
+      'inspection-is-a-derived-read-only-projection',
+      'source-location-is-not-semantic-acceptance',
+      'source-location-is-not-write-authority',
+      'local-read-is-not-disclosure-permission',
+    ],
   };
 }
 
