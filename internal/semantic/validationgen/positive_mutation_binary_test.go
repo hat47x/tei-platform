@@ -161,12 +161,10 @@ func main() {
 	p := &probe{}
 	result, err := EvaluateSelected(p)
 	if err != nil {
-		fmt.Printf("error:%s:%d
-", p.requested, p.reads)
+		fmt.Printf("error:%s:%d\n", p.requested, p.reads)
 		return
 	}
-	fmt.Printf("%s:%s:%d
-", p.requested, result, p.reads)
+	fmt.Printf("%s:%s:%d\n", p.requested, result, p.reads)
 }
 `
 	// Work under the real module so Go's internal import rule is respected.
@@ -191,8 +189,7 @@ func main() {
 		cmd.Dir = buildRoot
 		cmd.Env = append(os.Environ(), "GOWORK=off")
 		if output, err := cmd.CombinedOutput(); err != nil {
-			t.Fatalf("generated %s could not be built: %v
-%s", name, err, output)
+			t.Fatalf("generated %s could not be built: %v\n%s", name, err, output)
 		}
 		binary, err := os.ReadFile(binaryPath)
 		if err != nil {
@@ -202,8 +199,7 @@ func main() {
 		run.Dir = buildRoot
 		out, err := run.CombinedOutput()
 		if err != nil {
-			t.Fatalf("generated %s binary failed: %v
-%s", name, err, out)
+			t.Fatalf("generated %s binary failed: %v\n%s", name, err, out)
 		}
 		if string(out) != want {
 			t.Fatalf("generated %s consumer output=%q, want %q", name, out, want)
@@ -212,8 +208,7 @@ func main() {
 	}
 
 	beforeGo, beforeIndex := selectAndGenerate()
-	beforeBinary := buildAndExecute("before", beforeGo, "sales.order_line.quantity:satisfied:1
-")
+	beforeBinary := buildAndExecute("before", beforeGo, "sales.order_line.quantity:satisfied:1\n")
 
 	ruleBytes, err := os.ReadFile(ruleSourcePath)
 	if err != nil {
@@ -242,8 +237,7 @@ func main() {
 		!bytes.Contains(afterGo, []byte("sales.order_line.secondary_quantity")) {
 		t.Fatal("changed product meaning did not change generated Go")
 	}
-	afterBinary := buildAndExecute("after", afterGo, "sales.order_line.secondary_quantity:not-satisfied:1
-")
+	afterBinary := buildAndExecute("after", afterGo, "sales.order_line.secondary_quantity:not-satisfied:1\n")
 	if beforeBinary == afterBinary {
 		t.Fatal("different generated rule behaviors produced identical compiled binary bytes")
 	}
