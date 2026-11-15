@@ -1616,3 +1616,45 @@ OCCは**既存#4490 ORG-BEH-01/02/04、#4501 CX、#1180/#2514の検査観点の�
 **計画上の完了ライン**：一つの受理された業務Ruleについて、出典・必要Read・候補Path/判断保留理由・説明/Mock/生成コードを追跡でき、実Readと実Actionの不足を過大評価しないこと。使い回したGo実装や画面ごとの二重Ruleを削減できるかも計測する。
 
 **現在の資格**：#4765は設計がmainに統合済み、#4729/#4733のReference生成は限定実績、#4737は合成入力Go Draftで製品実Read Cohortを立証していない。本節で新しい実Go/PG/CLI/Windows/Host/Studio試験とOwner Meaning Acceptanceは**NOT RUN / NOT ACCEPTED**。全体P0は #2586 と #2831 のまま変更しない。
+
+<!-- org-c1-read-cohort-first-product-20261115 -->
+## 33. 正の候補経路から実データに基づく判断へ移る最小の製品試験（2026-11-15）
+
+### 33.1 合成Go回帰を、到達点と未達点の両方から評価する
+
+既存の[組織候補コードDraft #4737](https://github.com/hat47x/tei-platform/pull/4737)では、実WorkspaceのRelation Keyと、二つの**合成Read**を実製品関数`functioncontext.From`へ投影した結果を、独立したテスト用Consumerで検査した。人物IDのNULLを「該当者なし」に変えないこと、同一人物への複数経路を別人物として数えないこと、partialの正の一致があっても唯一性を確定しないことを検証対象としている。一方、同一DB Snapshotや必要Readの閉包は試験内の仮定にとどまる。初回HEAD `4f0ea3e`のRepository Healthは全Go TestとvetがPASS、整形検査がFAIL（組織テスト自身と、当時mainにあった別のSQLiteファイル）。後続の組織テスト整形修正は**新しいHEADのCIで独立判定**し、古い結果から合格を継承しない。
+
+この成果を「実組織の判断機能が完成した」とは表現しない。次の製品試験は、単に実SQLを2回呼ぶのでなく、**観測された業務Relationと、その観測から言える結論の範囲**を同じAttemptで示す。
+
+### 33.2 実Queryへの最短接続と選択基準
+
+最初は、既存の実Providerと`functioncontext.From`を使い、**一つの選択されたDB環境で一つの業務Queryを実行する**。実際のRoleAssignment/Responsibilityを読むためのQuery、引数、Scope、実行時点、Rowset、Relation Occurrence IDとPerson Keyを、Readerと別Consumerへ同一Attemptで引き渡す。通常の`tei` CLIからの実選択・実Invokeは#2586/#4495がOwnerであり、先行する受注Queryの成功を組織の成功とは数えない。
+
+二つの関係を読む実装方式は、次の順に比較する。
+
+1. **一つのQueryの中で条件を閉じる案**：RDBで対象の関係を結合・絞り込み、同じSQL評価内の行を得る。ただしQueryそのもののSnapshot整合と、RLS・Limit・否定条件・有効時点を含む母集団の完全性は別に確かめる。Inner Joinで不可視・欠落した片側Relationを、存在しないことの証明にしてはいけない。
+2. **二つのQueryを同じ読取範囲にそろえる案**：Providerの実接続・トランザクション隔離・Snapshot・選択環境・時点・Scopeが共通であることを証拠に残し、片側だけ再読取・RLS差・途中変更の反例を作る。トランザクション名や二つのQueryのSource Digestをそろえるだけでは同一Snapshotを証明しない。
+3. **共通の観測範囲を保証できない案**：観測した正の一致経路は、出典が確かな範囲でそのまま残す。ただし、全件候補・唯一性・「誰もいない」という判断は`unknown`に止める。型付きResultを新設せず、既存Function ContextのCoverage/Claimと独立Expectedで区別する。
+
+最初の正例に採用する方式は実Providerの能力とQueryの意味に応じてOwnerが選ぶ。単一Query方式も全件性の万能な証明ではない。Native SQLで結果が得られた事実を、業務上のRequired Setが閉じた証拠へ格上げしない。
+
+### 33.3 判断に必要なものを先に宣言し、説明を後から作る
+
+判断する内容を「D1に対するR1の正の関係を持つ人物の列挙」に限定した場合と、「C1を承認できる人物の確定」に広げた場合では、**必要な読取集合も受理Ownerも異なる**。後者にはCase→OrgUnit/Responsibilityの正式な意味、時点・委任・除外・職務分離・承認禁止条件・現在Grantが必要になり得る。その採否は#2386および#4490/#1174へ返し、Rule表やAIの説明から暗黙補充しない。
+
+決定表、自然な業務説明、Mock、生成Goは、**受理された業務上の意味と必要Read集合を共有する派生物**にする。例えば「P1に正の関係がある」と「P1が唯一の承認者である」は異なる文であり、partial/未取得条件の下では後者の説明を生成しない。人が読める説明文の修正だけで実際のRule・生成コードを変更せず、Rule変更なら生成Goの分岐と独立Expectedに差が現れることを検査する。
+
+SourceのRaw byte、候補の構造指紋、採用Meaning、生成Sourceの実Builder消費、実行時のQuery/Provider/Rowset、Current Grant/Effect/Receiptは別の証拠である。どれか一つのSHA一致や画面の同一表示で残りを代用しない。A→B→Aの再出現でも旧Read/Grant/Effectを無条件に再利用しない。
+
+### 33.4 次の最小PRと受入票
+
+| 実装単位 | 既存Owner | 受入時に必要な対照 | 不合格・保留条件 |
+| --- | --- | --- | --- |
+| **実Read-1**：一つのOrg Queryを実Provider→Context→独立read-only Consumerへ | #2586/#4495/#4490 | 選択Environment/Instance、実SQL/args、実Rowset、Source/時点/Scope/Attempt、NULL・0行・拒否の独立Expected | Mockや参考ツールのReadを通常製品CLIの実Readと数える |
+| **実Read-2**：二Relationの一致経路とCoverageを同じ観測範囲で検査 | #4490/#2506/#2386 | OCC-01〜08の0/1/2人、同一人物の複数Occurrence、partialと完全、RLS/Limit、非出力依存、Snapshotずれ | 同名PersonやCursor終端だけで同一性・全件性を認定 |
+| **生成-1**：選定した一つの正の関係Ruleを正式Reader→型付きMeaning→生成Goで実行 | #2621/#988/#1121/#4544 | Rule・Edge方向・有効時点の変更と生成条件・独立結果を対応付け、Builderが生成Sourceを実消費 | Goにルールを二重記述しただけのdelegate成功 |
+| **表示-1**：判断理由とSourceをCLI・Studio/SHO向けに再投影 | #1124/#2516/#4501 | Sourceに戻れるRelation ID、時点、Coverage、未受理Case接続の保留、現在の開示Scope | 不完全な候補を確定者として表示、Private件数・理由の漏えい |
+
+これらは新しいExpected/Scenario体系を作るためのIDではなく、§31のOCP-0〜4とOCC-01〜10を**実コードPRに渡す作業単位**である。既存#1180/#2514の独立ExpectedとDriver Scenarioを再利用する。
+
+**停止条件とP0**：正式Person/Case関係が受理されていない、DB版が共存しない、観測範囲を保証できない、または現在Grantが未確認なら、それぞれ該当する段階で保留する。最初から全ての組織業務機能を一度に実装しない。通常製品`tei` CLIの初回実Provider Read #2586とStudio Stage1→Stage2 #2831の優先順位は不変。ここに書いた実組織DB/CLI/Reader/Host/Studio試験は**未実施**で、Owner Meaning Acceptanceも**未受理**である。
