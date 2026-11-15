@@ -290,3 +290,18 @@ UI-P1の公開選択Eventは、利用者が何を見ようとしているかを�
 **最初の作業は表示前のread-only ViewModelのFit/Gapである。** 既存Inspectorの契約で不足する列（Sourceの完全性、対応する生成物、実Build資格）は「未取得／未接続」と表示できればよい。新しいHost APIやGo ASTを直接ブラウザへ公開することは受入条件ではない。正式Readerの全表現採用・Code-to-DSL自動変換・CEM生成・Litの製品採用をこの小差分の前提条件にせず、既存#1824/#1124/#2621/#1180/#2514へ検証を返す。
 
 必要な負例は、(a)同じGo byteを持つ別Sourceを同一の出典として表示、(b)説明文変更後に旧Source Indexを保持、(c)古いepochの選択Eventで別Subjectを上書き、(d)部分Indexを完全な不存在と表示、(e)生成Goの実行成功をR2/R3/Stage2合格と表示、である。この五つを検出できない段階で、図やDSLを編集可能にすることはしない。
+
+## 15. I2M-1の観測結果をInspectorに表示する前に（2026-11-15）
+
+[実装→標準モデルのdogfooding§10](IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md)で整理した二つの限定Go回帰は、現行mainに存在する。ただし、テスト内で得たGo AST構造を製品Hostが返せるわけではない。**テストの観測能力と、公開されたProduct Inspectの能力を混同しない**ことを次のUI-P1受入に加える。
+
+| 表示に必要な列 | 現在の接続点 | 次の実装判断 |
+| --- | --- | --- |
+| Workspace／選択Intent | `inspector-selection.ts`の公開EventとWorkspace epoch | 認可の代用にせず、今の選択に対するReaderを使う |
+| Sourceと適格性 | `presentation.ts`、`source-locations.ts`、`pin-state.ts`の既存read-only投影 | bounded Indexを全件とみなさず、二つの異なる原Sourceを別々に追跡 |
+| 元DSLと生成Goの結合 | mainの`positive_surface_identity_test.go`／`positive_ast_projection_test.go`は試験として存在 | Product APIでは未接続。出典／生成Go側Span／意味上の対応を想像で補完しない |
+| Build／実行資格 | 既存R2／R3／W0／Stage2のOwner別Evidence | Go test、Browser、Windowsの結果はそれぞれの実Consumerで独立に確認 |
+
+次の変更は、**現行Inspectorが実際に返すデータだけを使ったread-only PresenterのFit/Gap**に限定する。Subjectの選択、Hostが返した結果、Sourceの現在性、表示要素、Pin/Focus、開示範囲を別の寿命として扱い、未接続の生成結果には「未取得」と明示する。C0のGo AST回帰をそのままWebViewへ送るための新ServiceやHost Bridgeを追加しない。
+
+その後、I2M-1が同一Source/Rule/生成Goの対応を独立Expectedで示せた段階で、既存Provider/Studioの適切な公開点へ投影する可否を判断する。Framework選定（Vanilla TS／Lit TS／Lit JS）、Component Manifest、編集可能なGraph／Node Viewは独立した後続判断であり、**正式Reader→実ProviderとStudio Stage1→Stage2の主線を止めない**。元Sourceへ戻る矢印が一意でない場合は編集操作を提供しない。
