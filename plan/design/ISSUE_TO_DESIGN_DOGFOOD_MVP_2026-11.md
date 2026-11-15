@@ -1723,3 +1723,19 @@ R2では、`GeneratePositive(rule, attributeType, packageName)`の戻りbyteだ�
 | **Desktop継続** | Stage1が生成した**同一Artifact**をStage2 Windows WebView2で起動し、配信Bundle／Inspectorの実消費を確認する | 旧Bundle／別exeのUI成功をStage2セルフビルドの合格へ足す |
 
 実装順は、既存の`Scenario`生成CLIにおけるOperator選択の失効負例、Source→BuildPlan束縛、正式Function Providerの実Callを、独立した検収単位として並行させる。新しいDSL構文、第二Generator、独自HostやRegistryは先に増やさない。Designerが読みやすいMarkdown/Ruleから実装へ至る道筋と、Ownerが意味を受理する道筋を同じとみなさず、証拠が成立するまで保留する。
+
+<!-- tei-dogfood-operator-selection-generated-scenario-pin-20261115 -->
+### 15.71 Operator実装選択が変わった後、古い生成Scenarioを実行しない
+
+[実装選択による規則評価 #5007](https://github.com/hat47x/tei-platform/pull/5007)は、Manifestの`implementations:`で選択した組込みOperator実装をScenarioの規則評価へ渡し、実際に呼んだ実装を`validationImplementations`へ記録する。一方、現行の生成Scenario Commandが照合するScenario、World、Plugin Lock、Fixtureの指紋だけでは、**Operator実装の選択がAからBへ変わっても古いCommandが実行できる**。選択はCanonical Worldと別であり、組込み実装の選択はPlugin Lockの変更を必ずしも伴わない。
+
+最小の修正は、`Scenario`の既存Plan／CLI Pin経路へ`operatorSelectionSha256`を追加し、**同じWorkspace.Loadの実装選択一覧を正規順序に並べたbyte**をSHA-256で束縛することである。生成したCommandには`-operator-selection-sha256`を含め、`scenario run`は既存のScenario／World／Plugin Lock／Fixtureとあわせ、評価処理に入る前に一致を確認する。`scenario check`は保存済みPlanと再生成Planの比較で古い選択を拒否する。片方のPinだけを付けた疑似的な「生成済み実行」は拒否する。従来の明示的な未Pinの探索実行は、区別できる`exploratory-unpinned`として残す。
+
+| 独立Expected | 確認する内容 | 合格してはならない状態 |
+| --- | --- | --- |
+| 選択A→B | 同じScenario／World／Plugin Lock／Fixture、同じ入力値2で両実装が`satisfied`を返しても、旧Aの生成CommandはBを呼ぶ前に失効 | 出力結果が同じだから旧Commandを受理 |
+| Pin完全性 | 正しく再生成したBのCommandのみBの呼出し証拠を返す。選択Pinを欠落・改変したCommandは拒否 | 新しいPinなしで`generated-pinned`と主張 |
+| Plan再生成 | Aで保存したPlanはBのWorkspaceで`scenario check`に失敗し、Bで再生成したPlanは通る | World Revisionだけを根拠に旧Planを再利用 |
+| 正規化 | Manifestの実装選択一覧の順番だけなら識別値の集合が同一であるため、同じPinを再生成する | リストの並び順を意味変更と誤認 |
+
+これは**選択識別値の現在性だけ**を証明する。実装バイナリのbyte、Plugin Lockの厳密な実装受理、Providerの実Invocation、Host Grant／Effect／Receipt、Ownerの業務意味受理は別の資格である。Source A→B→Aで過去の受理票が自動復活しないことも、同じ選択指紋だけでは保証できず、Source RevisionとAttempt IDの管理を引き続き必要とする。追加のResolver、Registry、Evaluator、意味Storeは作らない。正式R2-PのSource→Generator→Build Intent同一試行と、R3の公開Function→Provider実Call、Windows Stage1→Stage2は優先順位を維持する。
