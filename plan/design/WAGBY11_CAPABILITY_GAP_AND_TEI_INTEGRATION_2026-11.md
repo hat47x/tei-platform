@@ -416,3 +416,60 @@ Table ScriptのPhaseは「行を取得した／Draftを変更した／保存前�
 4. **SQL Pushdown対象の拡大**：同じRuleをSQL／Go／外部Providerで実現できる場合の型・NULL・丸め・権限・完全性一致を限定試験する。利用できない場合に見かけの全件検索を返さない。
 
 この4点は実装済みの意味契約・受入条件が揃うまで候補として保持する。**方向性としては「FunctionはDataに従属させない」「Dataに普遍的な導出はTable Script／Data Ruleへ集約する」「Field拡張へ別の実行DSLを複製しない」の3点を基準にする。**
+
+
+## 12. DataとFunctionの独立性を支える境界を検収可能にする（2026-11-15）
+
+この節は§10〜11で定めたアウフヘーベンの**実装時の判定基準**を明確にする。規則をどこへ配置するか、同じデータに複数のFunctionが関わるときに何を共有するかは、[データ導出規則の最小意味契約：配置基準の追補](DATA_DERIVATION_REFERENCE_CONTRACT.md)を一次の設計Ownerとし、ここではWagbyの機能比較から見えた利点・欠点と検証順を整理する。
+
+### 12.1 失ってはならないX-TEAの利点と、その代償
+
+**Data、Function、Businessはいずれも独立して存在できる。** 一つのFunctionは複数Dataを扱え、Dataを永続化しない計算やAPI集約でも成立する。逆に、一つのDataを複数Functionから利用できる。BusinessはFunctionだけでなく手作業や外部主体を含む。参照可能性は包含・所有関係を意味しない。
+
+この方式には意図的に引き受けるコストがある。データモデルだけから機能の全入力・出力・検索範囲を推定できないため、Function Data Contextと型付きRelation Bindingが必要になる。単に抽象化の名称を増やすのではなく、**Functionが何を必要とするかを宣言し、Providerが何を取得したかを別に観測する**既存#2506/#2586へ寄せる。
+
+| 独立性によって生じる課題 | TEIで吸収する既存の仕組み | 機械的に確定してはいけないこと |
+| --- | --- | --- |
+| Functionが利用するData／Relationがわかりにくい | Function Data Contextの型付きMapping、Relation Path、ScopeとLineage | Relationがあるだけで入力集合へ自動採用 |
+| 一つのDataを複数Functionで使うため、規則の置き場が揺れる | Dataに普遍的なRule＝Table Script、機能固有＝Function Context、共通純粋演算＝Operator | UI／CRUD／Functionそれぞれで同じ式を再定義 |
+| 検索と編集の対象が一致しない | Query Result Grain、Identity、#2500のViewChange→Operation Intent | JOIN行や集計結果を実体や書込み対象に直接変換 |
+| FunctionがDataなしでも成立し得る | 型付きI/O、Function／Application Operation／Provider契約 | 物理TableのないFunctionを不正とする |
+| Data中心の即時CRUDが業務Functionと競合し得る | #1127の標準CRUD候補と明示Function Actionの区別 | 自動CRUDの存在から業務更新の許可・意味を確定 |
+| 複数Source/Providerを横断すると取得・保存が不完全になる | #2622のData Operations、ContextのCompleteness、#1174のEffect/Receipt | 非原子的API Batchを原子Commitとみなす |
+| 仮想計算がSQL検索・ソートの前に必要 | #1640のDerivation依存とQuery Plan、適格なPushdown | 取得後の一部行だけを計算して正しい上位N件と宣言 |
+
+### 12.2 規則配置の判断を「不変である範囲」から始める
+
+- **Dataに帰属するRule**：そのData／Relation、必要な時点・完全性、Rule版が同じなら、利用するFunction・画面・担当者によらず、値や制約の意味が変わらないもの。少なくとも共有Attributeの導出・制約はTable Script／Data Ruleへ集約する。ただし関係集合の全件が必要ならその依存を明示し、行だけで済むと偽装しない。
+- **Functionに帰属するRule**：「今月の」「担当者が見られる」「検索条件Aの中で」「この処理の入力だけ」など、Function Contextの入力・期間・取得集合・選択・適用目的によって変わるもの。Dataが持つ汎用属性へ押し込まない。
+- **Businessに帰属するRule**：組織上の担当、申請・承認・差戻し、責任の移動、業務状態とその時点を対象にするもの。Functionから参照できても、Functionの画面やData Tableだけで業務プロセスの意味を確定しない。
+- **共通Operatorに帰属するRule**：対象Data／Functionに依存しない型付き演算や判断の法則。実装や言語別の関数を業務定義へ露出せず、複数の適用先で再利用する。
+
+これは一つのRuleを必ずどれか一つにしか置けないという分類ではない。**Ruleの一次定義元**と、DataやFunctionやBusinessへの**適用先のBinding**を分ける。前者は一つ、後者は複数あり得る。同じ条件を使うData Constraintと承認Guardは、適用先・拒否の意味・現在Grantを別にする。
+
+### 12.3 Table Scriptを集約点にしても、Functionを下位に置かない
+
+Table Scriptは「Dataのライフサイクルに属する振る舞いを一覧できるAuthoring面」であり、データモデルが所有する汎用業務Processや別Engineではない。項目拡張定義は型、値域、単位、保存性、仮想属性、表示Facet、Ruleへの参照を持つ。計算式は原則としてTable Scriptの一次Sourceに一つだけ存在させる。項目編集画面でその式を見せても、二箇所にコピーして保存しない。
+
+ただし**すべてのRuleをTable Scriptへ集めることはしない**。Function固有の期間別・利用者別集計をテーブルに記述すると、FunctionがDataの内側へ再び押し込められる。Table Script内で得られる値とFunction Contextの結果に、同じ名前の「仮想項目」を無条件に付けない。後者には結果集合の粒度・取得Scope・編集可否を持たせる。
+
+Table Scriptのread/draft/before-writeに適用するRuleと、Business Eventの申請／承認、および外部通知Effectは別の責務である。必要なイベントから同じFunction Action／OperationへBindingする。RuleをどのPhaseで評価するかはRead/Write依存や実Provider能力にも左右され、Source内の並び順・画面での表示順で決めない。
+
+### 12.4 一つの受注データで三つの異なるFunctionを使う縦断
+
+第一の検証題材は、既存W11-01〜04の受注・明細をそのまま使う。新しいモデル一式を増やさない。
+
+| 縦断の対象 | Data／Function／Businessの役割 | 受入の焦点 |
+| --- | --- | --- |
+| 受注入力Function | Order/LineをData Contextで利用。保存前に共通の行金額Ruleを適用 | 同じData RuleをUI／通常CLIで使う。DraftとDB Commitを区別 |
+| 売上集計Function | 同じOrder/Lineを期間／担当／部門で検索・集約する別Context | Table Scriptに売上画面専用式を増やさず、Query grain・Scopeを保持 |
+| 受注承認Function | 同じOrderを参照するが、承認ActionとBusiness State／Actorを別に保持 | 承認の資格をField型・画面read-only・Data Ruleだけで決めない |
+| Dataを持たない価格試算Function | 型付き入力と共通Operator／外部価格Providerだけで結果を返す | 物理Tableの存在をFunctionの登録・生成条件にしない |
+
+最初は**実際の選択済みSource→一つの純粋Rule→実Generator／Builder消費→通常CLI Provider／独立Consumer**という既存製品P0に接続できる範囲から着手する。Function集計・Table ScriptのEffect・複数Provider・Windows Studioセルフビルドをこの一回の実行の必須条件へ追加しない。後続のP1受入ではW11-FM-01〜12／W11-AH-01〜12を重複なしに束ね、Dataのみ／Functionのみ／双方あり／取得不完全／旧Source／競合Ruleを確認する。独立Expectedは既存#1180/#2514へ渡す。
+
+### 12.5 この段階で確定できることと、残すこと
+
+**設計上の基準として維持するもの**は、(1)Functionの存在はDataに依存しない、(2)Fieldの拡張定義は処理DSLの第二正本にならない、(3)Data共通RuleはTable Script／Data Ruleに集約する、(4)Function固有QueryとContextはData Modelの別コピーにしない、(5)Business Event／Data lifecycle／Host Triggerは別、の五つ。
+
+**実証してから決めるもの**は、Scriptファイルの物理的な分割、Rule IDのField側明示参照か安全な逆引きか、Relation全件を前提とするData RuleのProvider適合、複数Ruleの合成／衝突診断、SQL PushdownのTarget別同等性である。設計文書の一致を、Ownerによる意味受理や実行済みの製品機能と混同しない。
