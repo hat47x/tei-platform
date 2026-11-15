@@ -145,8 +145,8 @@ jobs:
             ./tools/reference-expected-state-update | tee -a "$log"
           go test -count=1 -v -timeout 10m -run 'TestScopedPostgres|TestScopedTenantPostgres' \
             ./reference/web-api-contract | tee -a "$log"
-          # Native .tei as-of Query: actual physical valid/known/quantity predicates.
-          go test -count=1 -v -timeout 10m -run '^TestOrgAxisAsOfActualPostgresOptIn$' \
+          # Native as-of Query and isolated revision-key candidate probe; both must execute.
+          go test -count=1 -v -timeout 10m -run '^TestOrgAxisAsOf(ActualPostgres|RevisionKeyCandidate)OptIn$' \
             ./internal/operations | tee -a "$log"
 
       - name: SKIPとFAILの検証
@@ -183,6 +183,7 @@ jobs:
             'TestScopedPostgresDefaultOrderRevealsUnpublishedOrderedAt'
             'TestScopedTenantPostgresDefaultOrderRevealsUnpublishedOrderedAt'
             'TestOrgAxisAsOfActualPostgresOptIn'
+            'TestOrgAxisAsOfRevisionKeyCandidateOptIn'
           )
           for name in "${required[@]}"; do
             grep -Eq -- "^[[:space:]]*--- PASS: ${name} \(" "$log" || { echo "required test did not PASS: ${name}" >&2; exit 1; }

@@ -1440,7 +1440,7 @@ Pluginの[main #3337](https://github.com/hat47x/tei-platform/pull/3337)は、宣
 - GitHub上では古いDraftを重複Mergeしない。現mainへ最小差分で移し、CI・差分・Readbackを確認して短期で統合する。研究で得た結論とOwnerによる製品採用は別の記録とする。
 - 改善指標は論文件数やDSL行数ではなく、ドメイン専門家が記述する負担、意味を持つ生成割合、独立に検出した欠陥、Source変更から実Consumer確認までの所要時間。まず基準値を測り、改善率は実測後に判断する。
 
-**未達**：正式Markdown Readerの製品縦断、意味を担うGo生成、実Providerと二Consumerの同一Attempt、Studio全体のStage2セルフビルド、CSW作者採否、VSクマGodot実連携、業務Ownerの正式意味受理は、本節の追記だけでは成立しない。
+**未達・再基準化**：内蔵Rule Readerの限定的なSource→Validation接続は§16.9で区別する。正式Graph／Markdown表／Window Reader、意味を担うGo生成、実Providerと二Consumerの同一Attempt、Studio全体のStage2セルフビルド、CSW作者採否、VSクマGodot実連携、業務Ownerの正式意味受理は、この計画更新では成立しない。
 
 ### 16.6 何を共通化するか――意味・表現・実行を分けて考える
 
@@ -1487,3 +1487,59 @@ DSL自己記述、三要素Modeler、REA、組織、BRMS、Lifecycle Graph、SUI
 - SUI／SHOは追加のread-only Consumer候補、CSW・VSクマは不足を検出する独立Pressure、Python／Solver／DOEは後続Target・Operator候補とする。いずれも当面のProduct P0を止めない。
 
 **次の実装判断**：まずS0-A正式Readerで一Sourceの実消費を確認し、A／B／Cの同一Expected比較へ進む。CがAより複雑で実動作や変更追随の改善を示せなければ、共通化を広げずSource Fidelity・Generator・Provider資格の不足を直す。比較が成立しても、Stage2全体・業務Owner意味受理・外部Effectの合格は別途必要である。
+
+### 16.9 製品Rule Readerの成立点を研究計画の基線にする（2026-11-15）
+
+[main 7921b005](https://github.com/hat47x/tei-platform/commit/7921b005a44d325983d24ca2b8b58b0737dd778d)に統合された内蔵Language Readerを、§16.4のP0-Sに対する**最初の限定的な製品実装**として位置付ける。実コード（internal/workspace/authoring_language.go、rule_authoring_markdown_loader.go、internal/syntax/rule_authoring_markdown.go）で確認できる経路は、Workspace manifestの言語選択→ちょうど一つの内蔵実装を選択→同じLoadで得た原文からteiコードフェンスを解析→既存semantic.Validationへの登録→Source Indexの原文byte範囲の保持である。
+
+未選択ReaderはTEI_MD_PARSER_UNBOUND、複数のReaderによる取り合いはTEI_MD_PARSER_AMBIGUOUSとし、規則ID重複・解析不能・未解決参照を曖昧な成功へ変換しない。PlanRuleSubjectEdit／ApplyTextEditの局所編集は原文Fingerprintとbyte範囲を照合して古い編集を拒否するが、**ファイルを保存したこと、意味が受理されたこと、生成物と実行を更新したこと**までは保証しない。
+
+| 限定的に確認した実装 | 同じものとみなさない未成立事項 |
+| --- | --- |
+| 内蔵tei.rule-authoring/v0の明示選択・同一Load読取 | 外部Language PluginのLock解決・実ロード・実選択 |
+| teiコードフェンス内の規則→既存Validation | Markdown表・Mermaid Graph全体の正式Reader、Window/SQL意味型 |
+| 原文byte範囲・Source Index・局所編集計画 | Ownerの意味受理、保存後再取得、すべての表現形式の可逆編集 |
+| Rule Sourceの構造的な照合 | Rule→Go生成、実Provider呼出し、CLI・Studio二Consumer、Stage2セルフビルド |
+
+従前の「正式Readerの製品縦断は全面未実証」という記述は、この限定的成立点で読み替える。一方、§16.3のR2全体、P0-G／P0-R／P0-B、Graph Reader、Owner Meaning受理は未成立のまま保持する。既存[#2621](https://github.com/hat47x/tei-platform/issues/2621)、[#988](https://github.com/hat47x/tei-platform/issues/988)、[#1018](https://github.com/hat47x/tei-platform/issues/1018)が次のReader受入を担当し、新しいReader Registryや第二の意味正本を設けない。
+
+### 16.10 A／B／C比較の第一実験を「変更に何が追随するか」で判定する
+
+§16.7のA＝Go直接実装、B＝TEI記述＋Go委譲、C＝TEIから意味を持つGo生成を、まず既存Rule一件で比較する。AはTEI Sourceを消費しない対照であり、三方式の公平な共通条件は**同じ期待動作・入力・独立Expected・Target条件**である。B/Cだけは同じ選択済みTEI Source byte・意味ID・Reader版を固定する。Ruleは初回の生成差分と実動作を測るために使い、Graphの多重辺とWindowの移動集計は別の第二実験として扱う。
+
+| 変更と負例 | Source／意味の予想される関係 | 実測で判定すること |
+| --- | --- | --- |
+| T1 説明や配置だけの変更 | 原文byteは変わり得る。受理済みRuleの意味変更とは限らない | 意味に無関係な変更で生成動作が変わらないか。Artifact再利用資格は別に確認 |
+| T2 Ruleの対象属性・条件変更 | 意味変更候補 | Cで生成処理・独立Expectedの判定結果が追随するか。変更したbyte範囲から逆参照できるか |
+| T3 入力Dataだけの変更 | Source／生成SQL・Goを変える必要がない場合がある | 同じArtifactで異なる実Resultを観測できるか。Read Scopeと時点を記録 |
+| T4 同じ名前の別Subject・同端点の別Edge | 同じ表示名でも意味ID・関係Occurrenceが違う | 同一化・非表示を理由に誤ったRule／Relationを選ばないか |
+| T5 Provider・Plugin版／現在Grantの変更 | Sourceが同じでも実行資格が変わり得る | 実際のselected／loaded／invoked／authorizedを別々に照合するか |
+| T6 Source移動・内容変更後に元へ戻す | 同一byteになっても変更履歴と実Attemptが同じとは限らない | Source再解決と依存更新・再資格化を別票で確認できるか |
+| T7 Reader未選択／曖昧、Rule二重定義 | 対象Sourceが確定できない | 部分的なLoadを成功として扱わず、明示的に拒否するか |
+| T8 Stage1生成物とStage2実Processの不一致 | Buildの観測版が違う | 二回Build一致や別試行の実行結果をセルフビルド成功に合算しないか |
+
+**計測項目**は、専門家が更新する意味の記述量、意味を担う生成済みRuleの件数／対象Rule総数、委譲の範囲、Source位置から生成処理・実行結果まで追跡できる割合、変更後の再検証時間、Mutantの検出件数／評価対象数、生成・実行の資源消費とする。分母が未知なら割合を算出せず、部分測定と表示する。同一結果が出たことだけでは、同じSource／選択Provider／作用を経由した証明にはならない。
+
+標準Scenario正本は[#1180](https://github.com/hat47x/tei-platform/issues/1180)、独立Expectedと判別力は[#2514](https://github.com/hat47x/tei-platform/issues/2514)、Source失効は[#2600](https://github.com/hat47x/tei-platform/issues/2600)、Generatorは[#1121](https://github.com/hat47x/tei-platform/issues/1121)が担当する。この表は既存Ownerへの受入候補であり、新しいテスト実行基盤を採用するものではない。
+
+### 16.11 調査範囲が不完全なときに証明できること
+
+BRMSのUnique／No Match、組織二時点Query、REA関係、Windowの集計結果は、いずれも**規則・関係の対象集合**と**入力Dataの取得範囲**を区別しなければならない。ここで必要なのは、巨大な共通Closed World Engineではなく、既存Function Data ContextとRead Resultのどの欄が不明なのかを明示することである。
+
+- 観測済みの二つの適用Ruleが確定し、両方が独立に検証できれば、その範囲で競合の存在を証明できる場合がある。ただしRule集合全体が不明なまま、唯一該当・該当なしを断定しない。
+- 一件のRowを取得できても、全件集計やWindowのFrameに必要なRowが揃ったとは限らない。TOP1やページ取得をCompleteと呼ばず、必要集合と取得根拠を別に記録する。
+- 既存[#4660](https://github.com/hat47x/tei-platform/issues/4660)のSQLite Window回帰は、生成したSQLと実DB結果の独立Expectedを照合するC0の証拠である。Windowを正式Markdownから意味解析し、生成SQLへLoweringしたC1/C2ではない。
+- 実行結果の一致とSource同一性、Provider選択と実呼出し、Receipt取得とResourceの独立再読込、表示済みと操作可能な配布UIは、それぞれ別のClaimで扱う。資料やPRに成功と書かれていても、exact HEAD／実Attemptと現在版を結び付けてから利用する。
+
+必要Ruleの母集団、必要Input集合、対象時点、取得結果の粒度、未知／欠損／非開示、実Consumerへ届いた情報を既存[#2586](https://github.com/hat47x/tei-platform/issues/2586)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)の評価に添付する。情報が不十分な判定はunknown／partialのままにし、「不存在」「同値」「完了」を推測で作らない。
+
+### 16.12 第一受入と第二受入を分ける実行順
+
+1. **第一受入（Rule）**：内蔵tei.rule-authoring/v0の選択済みSourceについて、Load時の原文、Rule ID、意味Role、Source Index、局所変更、既存Validationの実評価を一つの固定Workspaceと負例で照合する。まずReaderが実際に何を消費したかを確定し、その後にCのRule→Go実生成を追加する。
+2. **第二受入（Window）**：[#4660](https://github.com/hat47x/tei-platform/issues/4660)の既存七行SQLite C0をそのままExpectedとして使う。正式な表／WindowのRoleとPartition・Order・Frame・NULLの意味が受理された場合に限り、生成SQL／実SQLite／結果表への接続を検収する。ReaderがRuleしか読まない現状をWindow C1達成としない。
+3. **第三受入（独立Consumer）**：[#1251](https://github.com/hat47x/tei-platform/issues/1251)・[#2586](https://github.com/hat47x/tei-platform/issues/2586)により、通常CLIの実Provider・実Consumerへ接続する。Studioのread-only Inspectorは同一Source／Scopeの独立表示として対照する。SUI・SHO・MCPは必要性が実証されるまでP0のHard Gateにしない。
+4. **Desktopの別受入**：[#2831](https://github.com/hat47x/tei-platform/issues/2831)・[#4583](https://github.com/hat47x/tei-platform/issues/4583)で、生成Inspector・配布Asset・Wails WebView2実画面・Stage1→Stage2を一つのexact HEAD／実行根拠へ接続する。Reader／Window研究の成果をStage2の完了証拠に合算しない。
+
+**停止条件**：BとCの差が「Go呼出しを生成した」だけにとどまり、TEI Sourceの意味変更が生成処理と独立検証結果へ反映されない場合は、Cの研究評価を保留する。範囲・時点・対象集合・選択Providerが不明ならR2へ昇格せず、最小の不足を既存Ownerへ返す。
+
+**今回追記の状態**：製品内蔵Rule Readerと既存SQLite C0のコード・履歴を根拠に、研究計画を再基準化する。A/B/C比較の実測、Rule→Go生成とProduct Consumer同一Attempt、Window C1/C2、全体CIの成功、Studio Stage2、Owner Meaning受理はこの文書追記では**NOT RUN／NOT PROVEN**である。
