@@ -81,6 +81,8 @@
 - AIが一度Generator／案件Hookを実装する工程と、固定Generatorが毎回決定的に生成する工程を別の工数・適合試験として計上すること。
 - 成功率の数値を先に掲げず、対象Pattern／Target／負例母集団と試行記録を揃えた後で評価すること。
 
+**反復する課題の切出しは[限定生成のProduct Skill候補](../../skills/yi-tei-realization-scope/SKILL.md)にまとめ、最初の実証ではSkill本文だけで成功を宣言しない。**
+
 **既存の確認済み基線**：PR #5009 の限定的なRule→生成Go→通常CLI Build、PR #5056 の生成GoとBuilder配置byteの取り違え拒否を再利用する。一連のSource出典・正式Provider／Host・Studio Stage1→Stage2が合格したとは主張しない。
 
 ## 進める順序の補正
