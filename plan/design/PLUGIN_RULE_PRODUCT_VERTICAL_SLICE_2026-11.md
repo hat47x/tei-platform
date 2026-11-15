@@ -175,6 +175,9 @@ Node-RED／Enebular型のプログラミング、ESPStudioのようなNode UI、
 4. Flowの表示を変更してもRuleの意味と生成Goは変化せず、Ruleの参照Attribute変更では生成物と実Callが変わる。
 5. 静的Go生成の第一経路で実Consumerへ到達後、HTTP Trigger／API公開／外部Service Adapterを追加する。API公開時にはHost認証・現在Grant・外部送信先・Rate Limitを別途明示的に受理する。
 
+
+**UI実装との接点**：Web標準UI設計[§12](WEB_STANDARD_COMPONENT_AND_AGENT_HARNESS_2026-11.md)では、こちらのN0〜N4とStudioのW0〜W4を同じMeaning/Operation/Sourceからの二つのConsumerとして整理する。UI-P1はread-only Inspectorの公開EventとAdapterの境界、FLOW-P1は既存Ruleの型付きPort/Graph→生成Goであり、片方の製品検収をもう片方のPASSに数えない。新Graph Engine／Renderer／Registryは導入しない。
+
 実装順は**N0（既存Rule／OperatorをNodeとしてread-only投影）→N1（型付きPort／Flow検証と一つの分岐のGo生成）→N2（実Builder／実Provider／CLIを通した一Request）→N3（Studio Node GUIで同じFlowを開き、変更と再生成を検収）**とする。外部Trigger／Cloud APIはその後のN4とし、N1のために独立Flow DSL・汎用Stream Runner・SaaS前提のTEI常駐Hostを導入しない。
 
 **独立反証候補（#1180／#2514）**：NG-01 同じNode名に別Occurrence ID、NG-02 同じ端点に多重Edge、NG-03 Portの型不一致、NG-04 部分取得を正常な空集合と誤認、NG-05 Graph layoutだけ変更して業務Goが変化、NG-06 Rule変更でも古い生成Goを実行、NG-07 API Publish権限と実外部送信許可を混同、NG-08 Effect不明なのに再試行して二重送信、をそれぞれ独立に拒否・失効・隔離する。
