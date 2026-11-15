@@ -66,38 +66,13 @@ jobs:
           "$RUNNER_TEMP/tei" version -json
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
 
-      # Prove the distinction at the shipped CLI boundary, not only at
-      # operations.InspectionFromLoad. Keep this exact-head Go test isolated
-      # from unrelated repository-health / REA fixture failures.
+      # Preserve exact-HEAD evidence independently of unrelated Health failures.
       - name: Qualify selected Markdown Rule versus unpublished Capability via actual CLI
         shell: bash
         run: |
           set -euo pipefail
           test -z "$(gofmt -l cmd/tei/cli_inspect_rule_markdown_process_test.go)"
-          go test ./cmd/tei -run '^TestProductInspectCLISelectedMarkdownRuleIsNotCapability
-        shell: bash
-        run: |
-          set -euo pipefail
-          gofmt -d internal/driver/action_surface_handoff_test.go
-          test -z "$(gofmt -l internal/driver/action_surface_handoff_test.go)"
-          go test ./internal/driver -run '^TestActionSurfaceToBoundRequestWrongTarget$' -count=1 -v
-
-      - name: Run OB-01/02 and file-effect negative witness
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 -B plan/fixtures/action-surface-cli/verify_real_cli.py \
-            --binary "$RUNNER_TEMP/tei" \
-            --workspace reference/standard-crud/workspace
-
-      - name: Ensure candidate source remains unchanged
-        if: always()
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
-          test -z "$(git status --porcelain=v1 --untracked-files=all)"
- -count=1 -v
+          go test ./cmd/tei -run '^TestProductInspectCLISelectedMarkdownRuleIsNotCapability$' -count=1 -v
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
 
       - name: Check Go characterization formatting and run the real Driver handoff
