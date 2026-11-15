@@ -3090,3 +3090,48 @@ RとGは同一のRuntime Hostや第二Generatorを要求しない。Rでは最�
 
 R2を受け取るOwnerは#4544／#2595／#943、Providerの実Callと通常CLI・独立Consumerは#4495／#1251、正式Language／Pluginの版選択は#988／#1018、独立Expectedは#1180／#2514を維持する。全体最優先のStudio Stage1→Stage2 Windows（#2831／#4583）は別の実証であり、R2完了の代用にならない。ここでの追記は**mainのコード・CIログを計画へ反映したもの**で、新しい製品Builder接続、実Provider、Windows Consumerを実行して合格にしたものではない。
 
+
+<!-- tei-self-description-meta-replacement-gate-20261115 -->
+## 48. 2026-11-15 自己記述を「仕様の説明」から「手書き意味処理の置換」へ進める（実装引継ぎ・未検証）
+
+### 48.1 次の判断：何を自己記述したかではなく、何を自己記述から実現したかを検収する
+
+現在mainにある`internal/workspace/authoring_language.go`の組込Language選択、`rule_authoring_markdown_loader.go`の同一Load byte・Source Index、`internal/semantic/validationgen/positive.go`の`std.decimal`限定Go生成、および生成Goを実バイナリにするR1.5／参照Builderの検証は、それぞれ異なる限定的成果である。特に`GeneratePositive`の`ValidationPositive`判別、Attribute必須、Relation禁止、型`std.decimal`限定は現状**Goの手書き判定**であり、Descriptorの文章をTEI Sourceに書き写すだけでは自己記述から生成された処理とは呼ばない。
+
+自己記述の次の小さな対象を**既存の`sales.order_line.quantity_positive`一規則の「Required Shape／診断／Lowering適合条件」**に固定する。ここに新Core、共通Meta Interpreter、第二Parser/Registry、Runtimeを先行追加しない。既存の標準Value／Record／Sequence／Typed Refと型付き`semantic.Validation`を使って表せない情報は`unsupported`として残し、意味RoleやOperatorの新たな権限を捏造しない。
+
+| 区別する到達点 | 当面の検収内容 | この段階で主張しないこと |
+| --- | --- | --- |
+| **M0 説明できる** | 同一選択済みRuleのID・Kind・Attribute・Relation・解決型・Source Anchorを既存データ／Inspectorからread-onlyで表示する | 表示Descriptorが意味の正本であること、実装の自己生成 |
+| **M1 検査に使える** | 明示PinされたDescriptor候補のRequired Shapeから既存型付きRuleを検査し、独立Expectedと比較する | 既存Goの検査分岐を削除できたこと、Owner意味受理 |
+| **M2 実装を置換できる** | 採用した記述から検査／診断の**実処理**を生成・選択し、該当する手書き意味分岐を一箇所減らす。手書き比較器を残す場合は実利用経路から分離する | 全Ruleの一般化、`positive`判定Go自体の全面自己生成、実Provider利用 |
+| **M3 製品が実使用する** | 製品側の選択Generator／既存Build Intentから生成byte→実Builder入力→Artifact→独立Consumerを一Attemptで辿る | 説明用のfingerprintや参照Builder実行による製品資格の代行 |
+| **M4 自身の次版を組み立てる** | 改版したDescriptorの採用結果が、次段のTEI CLI／Pluginの実判断と独立Expectedを変える。最後にStage1→Stage2 Studioの実利用を別途検収 | 同一コードを二度Go Buildしただけの自己ホスティング認定 |
+
+M0→M2では、`Syntax Source`／`Typed Meaning`／`実装選択`を必ず分離する。M2の生成物は既存Language/Role/Operatorの宣言からしか正式選択されず、Meta-Descriptor自身の文字列`trusted`・`pure`・`allowed`でHost Grant、公開Entry、Owner受理を生まない。M3は第47.17節と`PLUGIN_RULE_PRODUCT_VERTICAL_SLICE_2026-11.md` §14の**同じR2-P**を使用する。専用のセルフビルドBuildPlanを作らない。
+
+### 48.2 有限Seedの縮退を安全に測る
+
+自己記述の再帰を全面化するのでなく、B0が必ず担う`原byte取得→有限の構造デコード→明示Selection→循環検出`を保持したまま、B1〜B4の**置換可能な手書き意味判断**を順に狭める。Seedと生成された検査処理は同一Oracleにしない。新旧比較で双方が同じ誤りを通す事態を防ぐため、受理済みの独立Expected・異常系・実Consumerを残す。実行に先立ち必要なeager依存は有向非循環であることを確認し、Graphや`Ref<Node>`の遅延参照循環とは区別する。記述されたDescriptorが自身の受理資格を発行する循環も拒否する。
+
+**最初の変更単位**は`positive`一種に限り、以下の順とする。
+
+1. 実Product `Workspace.Load` と解決済み`semantic.Validation`／Source Indexから、M0のread-only契約投影を既存Inspector上で取得する。ここでは新しい文法版を採用しない。
+2. Shapeを既存標準構造のデータとして表せる範囲だけ固定し、現在の`GeneratePositive`と別に、exact Pin・型・必須項目・禁止項目・診断範囲を検査する**限定的なM1試作**を行う。参照テスト成功だけで製品Selectionを称さない。
+3. 独立Expectedで正負を照合し、型検査／診断の重複する手書き分岐が本当に減らせると確認できた一箇所だけM2へ切り替える。新旧意味が同値でも、Source／Generator実装Pinと生成Go digestは別々に記録する。
+4. M2の生成結果を既存製品R2-Pの実Builder・Consumerへ渡し、Source改版／Provider不一致／古いArtifactの再利用を拒否する。Studio Stage2と外部Language Plugin全体はこれに先立つHard Gateとしない。
+
+### 48.3 最初の独立反例と終了条件
+
+| 一因子差 | 必ず観測・判定すること |
+| --- | --- |
+| Ruleが`positive`、Attributeが`std.decimal`、Relationなし | M0の契約表示とM1のShape検査が一致。生成判定は既存R1の期待値と独立に比較 |
+| Attribute欠損／Relation余分／型が非Decimal | 原Source位置付き拒否。未決値を0やNULLへ補完しない。M1の許容集合を手書きGoだけから自己追認しない |
+| Required Shapeだけを改版し、実Generator／検査器は旧版 | Descriptor版の一致だけで実装切替を認めず、旧Artifactを現在の検査資格へ流用しない |
+| Markdown説明文のみ変更 | Source／Indexは失効。型付き意味・生成Goが同じ可能性と、旧Evidence／編集資格の失効を別判定 |
+| Rule参照Attributeの変更／生成Goだけ差替え | Typed Meaning→生成判断→実Builder入力→実Consumerの変更追随と改変拒否を独立に検査 |
+| eager自己依存／未選択実装／同ID競合 | 説明データとしての読取可能性と、解釈可能・実行可能の資格を分離して停止。deferred Ref閉路は即座に違法としない |
+
+**Owner／既存正本**：#2620はM0〜M2の切り分け、#988/#1018はLanguage/Providerの厳密選択、#1180/#2514は独立Expected、#2595/#4544とPlugin Rule製品縦断計画はM3、#2831/#4583はM4のStage2受入を担当する。DSLの完全Grammar、新`formatVersion`、汎用Graph Schema、Meta Interpreter、Go以外のTarget生成方式はこの追補で採用しない。評価指標は**置換して削除できた手書き意味分岐・重複契約・変更時の手動修正数**と、回帰の独立性。行数やDescriptor件数は代替指標にしない。
+
+**状態**：設計と実装引継ぎのみ。M0の新Projection、M1/M2の生成検査処理、M3製品R2-P、M4 Stage2は**この変更ではNOT RUN／NOT PROVEN**。既存mainにある限定R1／R1.5と参照Builderの局所結果を昇格させない。
