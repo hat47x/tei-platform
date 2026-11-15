@@ -70,6 +70,9 @@ func TestSameRuleFromTwoProductSurfacesGeneratesIdenticalGoButDistinctSourceEvid
 	type witness struct {
 		rule              semantic.Validation
 		code              []byte
+		ast               observedPositiveGo
+		sourceStart       int
+		sourceEnd         int
 		index             sourceindex.Index
 		sourceFingerprint string
 		modelRevision     string
@@ -155,7 +158,12 @@ func TestSameRuleFromTwoProductSurfacesGeneratesIdenticalGoButDistinctSourceEvid
 			bytes.Contains(goSource, []byte("validationeval.Evaluate(")) {
 			t.Fatal("Go generator no longer implements the selected read and decision")
 		}
-		return witness{rule: rule, code: goSource, index: index,
+		ast, err := observeGeneratedPositiveGo(goSource)
+		if err != nil || ast.ReadAttribute != string(rule.Attribute) || ast.ReadCount != 1 {
+			t.Fatalf("selected typed Rule does not match generated Go AST: %+v / %v", ast, err)
+		}
+		return witness{rule: rule, code: goSource, ast: ast,
+			sourceStart: start, sourceEnd: end, index: index,
 			sourceFingerprint: fingerprint, modelRevision: sourceindex.ModelRevision(index)}
 	}
 
@@ -165,8 +173,16 @@ func TestSameRuleFromTwoProductSurfacesGeneratesIdenticalGoButDistinctSourceEvid
 		t.Fatalf("different authoring syntax changed canonical business meaning: markdown=%+v, traditional=%+v",
 			markdown.rule, traditional.rule)
 	}
-	if !bytes.Equal(markdown.code, traditional.code) {
-		t.Fatal("same canonical Rule and resolved type did not generate byte-identical Go")
+	if !bytes.Equal(markdown.code, traditional.code) ||
+		!reflect.DeepEqual(markdown.ast, traditional.ast) {
+		t.Fatal("same typed Rule from different Source did not produce equivalent Go and AST")
+	}
+	// An AST byte span addresses the generated Go, not either authored Rule.
+	if markdown.sourceStart >= markdown.sourceEnd ||
+		traditional.sourceStart >= traditional.sourceEnd ||
+		markdown.ast.ReadStart >= markdown.ast.ReadEnd ||
+		markdown.ast.ConditionStart >= markdown.ast.ConditionEnd {
+		t.Fatal("authored and generated Go ranges are not independently observable")
 	}
 	if markdown.sourceFingerprint == traditional.sourceFingerprint ||
 		markdown.modelRevision == traditional.modelRevision {
@@ -186,11 +202,37 @@ func TestSameRuleFromTwoProductSurfacesGeneratesIdenticalGoButDistinctSourceEvid
 	prose := build(markdownRoot, markdownPath, true)
 	if !reflect.DeepEqual(markdown.rule, prose.rule) ||
 		!bytes.Equal(markdown.code, prose.code) ||
+		!reflect.DeepEqual(markdown.ast, prose.ast) ||
 		prose.sourceFingerprint == markdown.sourceFingerprint ||
 		prose.modelRevision == markdown.modelRevision {
 		t.Fatal("prose-only edit did not separate Source freshness from generated Go semantics")
 	}
 	if !bytes.Equal(prose.code, traditional.code) {
 		t.Fatal("prose-only edit altered equivalence with the traditional authoring surface")
+	}
+
+	// A generated-code mutation can preserve the same syntactic shape while
+	// binding to a *different* Attribute. The authored Rule must not silently
+	// inherit that new read target just because the Go parser accepts it.
+	readMutant := bytes.Replace(markdown.code,
+		[]byte("source.Number(\"" + attributeID + "\")"),
+		[]byte("source.Number(\"sales.order_line.discount\")"), 1)
+	if bytes.Equal(readMutant, markdown.code) {
+		t.Fatal("read-target mutant was not applied")
+	}
+	observedMutant, err := observeGeneratedPositiveGo(readMutant)
+	if err != nil {
+		t.Fatalf("read-target mutant should remain structurally observable: %v", err)
+	}
+	if observedMutant.ReadAttribute == string(markdown.rule.Attribute) {
+		t.Fatal("mutant generated Go was incorrectly bound to its original authored Rule")
+	}
+	thresholdMutant := bytes.Replace(markdown.code, []byte("value.Sign() > 0"),
+		[]byte("value.Sign() >= 0"), 1)
+	if bytes.Equal(thresholdMutant, markdown.code) {
+		t.Fatal("threshold mutant was not applied")
+	}
+	if _, err := observeGeneratedPositiveGo(thresholdMutant); err == nil {
+		t.Fatal("non-strict threshold was accepted as the original positive Rule")
 	}
 }

@@ -260,3 +260,36 @@ Markdown表・Graphviz・Node ViewのProjectionは、それぞれ省略した情
 判断の移転は、生成コード行数や図面数ではなく、**TEI定義で表現・変更・独立検証できるようになった実装上の義務**の増加と、残る手書きGo／差分調整／レビュー費用で測る。二つ目の異質Domainで有益性が確認できるまでは、汎用Go解析器や新Core型を採用しない。
 
 実装のOwnerは#2621（Reader）、#1121（Generator）、#4544（Builder）、#4495（Provider）、#1824（Studio）、#1180／#2514（独立Expected）。**正式Reader→実Builder→通常CLI実Provider、および非Plugin Studio Stage1→Stage2 WindowsのP0を優先**し、I2M-1を新たなHard Gateにしない。
+
+## 11. I2M-1の実回帰と製品CLIビルドの到達点（2026-11-15）
+
+### 11.1 第一回帰を既存Reader・AST観測器の合成として実装する
+
+前章で計画したI2M-1を、`internal/semantic/validationgen/positive_surface_identity_test.go`の限定Go回帰として追加する（既存テストにAST照合を追加する変更。**exact HEADのCIと独立レビューが済むまでは合格未確認**）。
+
+テストは、既存`Workspace.Load`／`BuildSourceIndexFromLoad`／`GeneratePositive`と、I2M-0のテスト内観測器`observeGeneratedPositiveGo`を使用する。**新しい製品Reader・AST Engine・一般化されたViewModelではない**。比較の一試行に、選択Reader、Rule IDと型、元SourceのDefinition Span・Fingerprint／Model Revision、生成Go byte、AST上のRead先・呼出回数・分岐条件とGo Spanを含める。
+
+| 独立した反証 | 実際の期待結果 | 判断を広げない範囲 |
+| --- | --- | --- |
+| Markdownと従来`validation` | 実Loadした型付きRule・生成Go・ASTの構造は一致し、原Source path／指紋／Revisionは別 | Readerの出典を一本化・元Sourceへ自動逆編集しない |
+| 説明文の追記 | 旧Source Indexを拒否し、再Load後の意味／生成Go／ASTが不変 | 旧Source Grant・旧Attempt・旧Build資格を復活させない |
+| 生成GoのRead先を別Attributeへ改変 | Go ASTによる構造観測はできても、選択RuleとのBinding不一致を検出 | Goが構文上正しいことを業務上の正当性にしない |
+| 生成Goの`> 0`を`>= 0`へ改変 | 正の値のみを成立とする元Ruleの説明として採用しない | 局所AST検査で全Control Flowを証明したと主張しない |
+
+一つのローカルなGo testで全機能の資格を証明しない。とくにSource Indexがない／partial、同名異Subject、Host側の現在Disclosure、実Builder選択B／実Image A、実DB、Windows Wails Stage2は、各Ownerの別試験へ渡す。共通Expectedの採否は#1180／#2514に戻し、検証不能な列を`PASS`にしない。
+
+### 11.2 通常tei CLIの実ビルドは前進。ただしR2の出典閉包が残る
+
+[PR #5009](https://github.com/hat47x/tei-platform/pull/5009)がmainへマージされ、`cmd/tei/cli_self_build_generated_rule_go_test.go`が存在する。同回帰は`tei.rule-authoring/v0`が選択した`quantity_positive`／`std.decimal`から意味付きGoを生成し、**通常製品`tei self-build`のBuild Intent経路**でGoの成果物を構築、完成したBinaryを起動して正・ゼロ・負・NULL・未取得の5例を比較する。既存Catalog/Builderを利用し、Entrypoint Sourceの選択も実Packageに合わせて修正している。
+
+これは参照Builderに生成Goを渡すだけだった段階より進んだ、**製品CLIによる限定的R2-Pの証人**である。ただしテストはLinux/amd64の既存Catalog条件へ限定され、対象外OSではSkipする。さらに、生成GoをBuild Intentの入力として明示しても、**元のRule Markdown Source、選択Reader、Generator実装・版、生成Go、選択Builderの実入力が一つの正式Build Intent／Attemptで完全に束縛された**ことまでは実証していない。これらを満たす正式R2-Pは引き続き#4544等のOwnerである。
+
+実行されたBinaryが業務上の判断を返したことと、**公開Function Entryが正式選択Providerのactual Invokeを受けたこと（R3）**、現在Grant／業務Ownerの意味受理、実Studio Stage1→Stage2 Windowsは、さらに別の資格である。CLI実行の合格をこれらへ加算しない。
+
+### 11.3 次の検収は「I2M-1の結合」から「R2正式出典閉包」へ
+
+I2M-1回帰が対象HEADで成立した場合の次の一件は、`sales.order_line.quantity_positive`を変更した同一Attemptで、**原Source/Reader/Generator→生成Go→BuildIntentに選ばれたSource→実Builder消費Byte→Artifact／実Image**の対応を既存#4544に引き渡す。別のAnalyzerやBuilderを増やすのではなく、既存BuildIntent、Source Index、実CLI・ArtifactSetの不足する束縛だけを補う。
+
+変異は、(1)同じ生成Go・別Source、(2)説明のみ改版、(3)Ruleが参照するAttribute改版、(4)選択生成物B／実Build A、(5)同一DigestでもAttempt・Generator版が異なる、を別々に判定する。この五件を一つの「再利用可否」へ丸めず、World/Model／Artifact／Current Authorityを分ける。
+
+成功指標は、**手書きのGoへ委譲せずTEIの定義から実生成された判断が、どの製品実行段階で実際に消費されたか**と、その判断を変更したときの修正点・独立検査・負例検出数である。StudioのPresenter分離、Node Editorや外部API公開は既存Consumer側へ段階的に接続し、これらをR2／R3／非Plugin Stage1→Stage2の新Hard Gateにしない。
