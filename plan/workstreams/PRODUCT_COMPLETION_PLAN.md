@@ -1320,4 +1320,4 @@ mainのRule生成Go CLIビルド回帰は、選択Markdown原文のコピーをG
 
 コード生成を省略する場合も、モデルを実行先へ届けるByte／版と現在の取得・開示条件を確認する。モデルをBinaryへ埋め込むなら、その変更に必要なBuild／配布の再資格化は残る。RZM-01〜08は#1180／#2514へ、評価と生成の比較は#1121／#4544へ、実使用は#951／#1251／#4495へ引き渡す。**既存のP0（公開pure Entryの実Provider、Studio Stage1→Stage2）は変更しない。**
 
-**状態**：この追記は実装・検証の分担を定める計画であり、実二方式の新Go試験・Target実Consumer試験・Owner意味受理は未実施。
+**限定実装**：`internal/semantic/validationgen/positive_realization_modes_test.go` に直接評価と生成Goを同じ固定Expectedで比べるGo回帰Sourceを追加した。実CIの成否は正確なHEADで別確認する。正式な実現方式選択、独立Target Consumer、R2-P／R3、Owner意味受理は未検収。
