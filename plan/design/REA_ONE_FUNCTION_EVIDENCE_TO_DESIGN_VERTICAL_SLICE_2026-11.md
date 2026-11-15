@@ -398,3 +398,18 @@ main #4751/#4756/#4733/#4777とも、**Source選択→実Reader→Meaning candid
 テストはCLIのGo handlerを直接呼ぶ。通常teiバイナリの独立起動、Native Wails JS/WebView2による第二Consumer、Source Save/ReRead、SHO Save/Reopen、実Provider/DB、Owner意味受理、生成Plugin実使用、REA外部ツールの新しい実行は、今回の証拠に含めない。R3-Cは引き続き[#4661](https://github.com/hat47x/tei-platform/issues/4661)で検収する。
 
 **統合後の引継ぎ**：Draft #4693の同じテストファイルと#4805の実装は二重マージせず、端点再採番と1対多／多対1の曖昧性、独立Sourceに戻れない個別Relation編集など未完了項目だけを現行mainへ再基準化する。他媒体のEvidence候補Draft #4716は別レーン。追加のParser、Host、Meaning Store、Expected Engine、Source書戻し機構は設けない。
+
+## 15. 比較処理の並行統合に伴う重複の解消と再採番の資格（2026-11-15）
+
+前回の独立PR [#4805](https://github.com/hat47x/tei-platform/pull/4805) は、同じCandidate ID／申告Source DigestでもObservedKindなどの構造事実が変わり得る不備を修正した。その後、別レーンから再採番・並行Relationの説明とGo回帰がmainへ統合された結果、`internal/reacandidate/adopt.go`に`ComparisonObservedFactsChanged`の定数が**重複定義**され、`comparePair`でも同じ差分Noteを**二度追加**する状態になった。定数の重複はGoのコンパイルを阻害する。
+
+この修正では、`ComparisonObservedFactsChanged`を既存の比較Status定数群に一つだけ残し、`comparePair`の`StructuralFacts`差分検出を一度だけ実行する。**申告Sourceが同じ場合は`observed-facts-changed`、Sourceも変わった場合は`revision-changed`を維持**し、それぞれのNoteを重複なく出す。回帰`TestCompareCandidateSetsSameSourceChangedObservedRelation`では、別Attempt／Attempt ID再利用／Source変更併発の3ケースで、差分Noteが各1回だけ現れることを確認する。
+
+最新mainの`TestCompareCandidateSetsReversedEdgeNeedsEndpointMapping`、`TestCompareCandidateSetsParallelRenumberingRequiresOccurrenceMapping`、`TestCompareCandidateSetsAsymmetricParallelKeyRemainsUnverified`などは、別レーンにより**すでに追加されている**。この成果を再実装したり、旧Draft #4693の同名処理を重ねたりしない。
+
+一方、現行の`CompareCandidateSets`は再採番候補を構造キーと順序で仮対応する実装であり、結果が`external-identity-renumbered`でも正式な個別Relationの同一性を証明するわけではない。複数Occurrenceや端点変更はNoteでSource-backedな再確認を求め、Editor/Studio側の個別書戻しはOwnerの意味受理・Source Slotの一意性が確立するまで止める。**構造比較の成功と編集資格は別のClaim**とする。なお、現在の並行Relation検査は注意Noteの存在を確認するもので、順序による仮対応自体を廃止したわけではない。これを自動採用と表示しない。
+
+CIについては、前回PR #4816の対象HEADでRepository Healthが失敗したことを確認した。ログで特定できたのは`internal/plugin/management/document_preflight.go`のgofmt不一致と、Studio静的CompositionのNode UI`workbench_revision_mismatch`であり、REAテスト固有の失敗ではない。この2件が現行mainで修正済みかどうかは最新HEADで別に確かめる。旧CI結果を今回の成功へ転用しない。
+
+この修正はGo比較処理と回帰試験の整合を回復するもので、正式`*.tei.md` Reader、Native Wails第二Consumer、旧新Provider Effect、SHO保存、Owner受理、Plugin自己構築の完成を意味しない。#2514/#1180の既存Expectedを利用し、追加のHost・Meaning Store・Runnerを設けない。
+
