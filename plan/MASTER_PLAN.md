@@ -2,6 +2,9 @@
 
 ## 目的
 
+- [RDB・SQL・NoSQLの横断適合と製品実証計画](design/DATA_PROVIDER_CROSS_DB_CONFORMANCE_2026-11.md)：既存Data Operations／Query IR／Provider／Workbench／Effect Fenceへ責務を割り付け、PostgreSQL実Product Readを最優先に、SQLite比較・MongoDB階層・DynamoDB Index・Neo4j Graph・更新／Migrationを段階検証する。Native Query原文、NULL／missing／partial、Identity／粒度、実Grant／Receiptを保持し、別Query Engineや分散Txを先行導入しない。新Provider実接続・二DB同一Function・Studio E2Eは未実施。#2622/#3270/#2586/#4496/#2387/#1174/#2831へ接続する。
+
+
 この文書は、TEI（鼎／テイ）の製品価値と要求を開発上の作業領域へ整理し、優先する作業と並行できる作業を示します。
 
 期限は設けません。優先順位は実装量ではなく、**TEIの中心価値に関する不確実性をどれだけ減らせるか**を基準に見直します。
