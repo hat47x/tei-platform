@@ -89,8 +89,14 @@ func TestCompareCandidateSetsSameSourceChangedObservedRelation(t *testing.T) {
 					"observed-structural-facts-changed-under-reused-candidate-id",
 					"source-backed-re-evaluation-is-required-before-meaning-or-edit",
 				} {
-					if !hasString(entry.Notes, want) {
-						t.Fatalf("missing %q in %v", want, entry.Notes)
+					count := 0
+					for _, note := range entry.Notes {
+						if note == want {
+							count++
+						}
+					}
+					if count != 1 {
+						t.Fatalf("note %q occurred %d times, want once: %v", want, count, entry.Notes)
 					}
 				}
 				if tt.changeSource && !hasString(entry.Notes, "fresh-owner-review-is-required") {
