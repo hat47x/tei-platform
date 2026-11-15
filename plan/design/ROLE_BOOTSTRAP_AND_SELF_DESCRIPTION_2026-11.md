@@ -2973,11 +2973,11 @@ S0-A、PDC-1、E-READは**同一Subject/Revision/Scopeを安全に説明でき�
 <!-- tei-self-description-e1-product-rejection-regression-20261115 -->
 ### 47.7 Referenceの選択成功を製品のReader受理と誤認しない回帰
 
-次の製品S0-Aへ進む前に、限定Referenceと通常Workspaceの境界を**同一Graph/Rule原文を用いた実Goテスト**として固定する。対象は `reference/dsl-language-plugin/workspace_admission_boundary_test.go`。固定した `baseline.tei.md` について、明示した合成PinのE1 `ParseSelected` がGraph/Rule候補と元byte位置を返しても、実 `workspace.Load` は選択済みLanguage/実装契約が**製品側に渡されていない**ため `TEI_MD_PARSER_UNBOUND` で拒否することを前後二回確認する。
+Graphの製品S0-Aへ進む際は、限定Referenceと通常Workspaceの境界を**同一Graph/Rule原文を用いた実Goテスト**として固定する。対象は `reference/dsl-language-plugin/workspace_admission_boundary_test.go`。固定した `baseline.tei.md` について、明示した合成PinのE1 `ParseSelected` がGraph/Rule候補と元byte位置を返しても、実 `workspace.Load` は選択済みLanguage/実装契約が**製品側に渡されていない**ため `TEI_MD_PARSER_UNBOUND` で拒否することを前後二回確認する。
 
-同じテストで未指定Pin、異なる実装Fingerprint、Provider重複は、いずれもReference Parserを呼ばずに拒否する。これは**A0欠落の検出用回帰**であって、合成Pinを受理済み契約として発行したり、製品の新Reader／Meaningを実装したりするものではない。
+同じテストで未指定Pin、異なる実装Fingerprint、Provider重複は、いずれもReference Parserを呼ばずに拒否する。これは**このGraph SourceのA0欠落を検出する回帰**であって、合成Pinを受理済み契約として発行したり、製品の新Reader／Meaningを実装したりするものではない。
 
-将来A0〜A3が本実装された際は、このテストを無効化して済ませず、**未選択／競合／誤Pinでは拒否し、製品自身が正しく選択した一Sourceだけを同一Load時byteとSource Indexで扱う**正負対照へ置き換える。E1側の成功をそのまま製品の受理証拠に移してはならない。
+Graph／外部LanguageのA0〜A3が本実装された際は、このテストを無効化して済ませず、**未選択／競合／誤Pinでは拒否し、製品自身が正しく選択した一Sourceだけを同一Load時byteとSource Indexで扱う**正負対照へ置き換える。E1側の成功をそのまま製品の受理証拠に移してはならない。
 
 **この追補の範囲**：新しいGo回帰と設計上の引継ぎ。Goテストの合否は該当PRのexact HEAD CIで判定する。Reader実接続、業務Meaning受理、実Provider/CLI Consumer、Studio Stage1→Stage2について、新たな製品合格を主張しない。
 
