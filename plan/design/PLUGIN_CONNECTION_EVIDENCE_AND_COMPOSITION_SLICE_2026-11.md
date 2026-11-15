@@ -373,4 +373,4 @@ main統合済み[#5051](https://github.com/hat47x/tei-platform/pull/5051)の`//g
 
 最初に追加する反証は§10のRZM-01／04。独立Expectedは#1180／#2514、実現方式の比較は#1121／#4544、実Provider選択は#951／#1251、Build／差分失効は#2595／#2600に委ねる。新たな汎用Interpreter、第二Resolver／Runner、全Target同値を前提にしない。Studio Stage1→Stage2 Windowsと公開pure Function R3の優先順位は変更しない。
 
-**状態**：照合方法とRZM-01の限定GoテストSourceを追加した。実CIの成否、正式な製品実現方式の選択、実Providerと独立二Consumerの検収は別に確認する。
+**状態**：main `84c335b` に収録された同一Ruleの汎用評価／生成Go比較を再利用する設計引渡しであり、重複するGo回帰は追加しない。RZM-04の正式な実現方式選択と実Callの不一致負例、実Provider・独立二Consumerは未検収。
