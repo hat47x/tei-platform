@@ -19,6 +19,7 @@ on:
       - 'internal/operations/org_axis_bitemporal_rectangle_candidate_test.go'
       - 'internal/operations/org_axis_bitemporal_exclusion_candidate_test.go'
       - 'internal/operations/org_axis_bitemporal_two_writer_candidate_test.go'
+      - 'internal/operations/org_c1_abstract_route_contract_test.go'
       - '.github/workflows/tei-postgres-unrun-suites-ci.yml'
       - 'go.mod'
       - 'go.sum'
@@ -35,6 +36,7 @@ on:
       - 'internal/operations/org_axis_bitemporal_rectangle_candidate_test.go'
       - 'internal/operations/org_axis_bitemporal_exclusion_candidate_test.go'
       - 'internal/operations/org_axis_bitemporal_two_writer_candidate_test.go'
+      - 'internal/operations/org_c1_abstract_route_contract_test.go'
       - '.github/workflows/tei-postgres-unrun-suites-ci.yml'
       - 'go.mod'
       - 'go.sum'
@@ -118,7 +120,8 @@ jobs:
             internal/operations/org_axis_asof_postgres_integration_test.go \
             internal/operations/org_axis_bitemporal_rectangle_candidate_test.go \
             internal/operations/org_axis_bitemporal_exclusion_candidate_test.go \
-            internal/operations/org_axis_bitemporal_two_writer_candidate_test.go | tee "$RUNNER_TEMP/org-asof-gofmt.diff"
+            internal/operations/org_axis_bitemporal_two_writer_candidate_test.go \
+            internal/operations/org_c1_abstract_route_contract_test.go | tee "$RUNNER_TEMP/org-asof-gofmt.diff"
           test ! -s "$RUNNER_TEMP/org-asof-gofmt.diff"
 
       # The suites create their own tables and drop their own schemas; separate
@@ -143,8 +146,8 @@ jobs:
           done
           log="$RUNNER_TEMP/go-test.log"
           : > "$log"
-          # Only the DSN-gated tests run: naming them keeps the job short and
-          # makes "no SKIP" mean something about these tests rather than about
+          # Named DB probes and the source/IR contract keep the job short and
+          # make "no SKIP" mean something about these tests rather than about
           # every unrelated skip in the package.
           go test -count=1 -v -timeout 25m -run 'TestStorePersistsStagesAcrossReconnect|TestRowLockBlocksASecondWriter|TestTwoProcessesCannotBothDispatch|TestTwoProcessesCannotBothTakeOver' \
             ./internal/command/lifecyclepg | tee -a "$log"
@@ -154,8 +157,8 @@ jobs:
             ./tools/reference-expected-state-update | tee -a "$log"
           go test -count=1 -v -timeout 10m -run 'TestScopedPostgres|TestScopedTenantPostgres' \
             ./reference/web-api-contract | tee -a "$log"
-          # Native as-of Query and isolated revision-key candidate probe; both must execute.
-          go test -count=1 -v -timeout 10m -run '^TestOrgAxisAsOf(ActualPostgres|RevisionKeyCandidate|BitemporalRectangleCandidate|ExclusionConstraintCandidate|TwoWriterExclusionCandidate)OptIn$' \
+          # Native as-of Query, isolated DB probes, and source/IR route contract must execute.
+          go test -count=1 -v -timeout 10m -run '^(TestOrgAxisAsOf(ActualPostgres|RevisionKeyCandidate|BitemporalRectangleCandidate|ExclusionConstraintCandidate|TwoWriterExclusionCandidate)OptIn|TestOrgC1AbstractUnitReadPathUsesStableSemanticIDs)$' \
             ./internal/operations | tee -a "$log"
 
       - name: SKIPとFAILの検証
@@ -196,6 +199,7 @@ jobs:
             'TestOrgAxisAsOfBitemporalRectangleCandidateOptIn'
             'TestOrgAxisAsOfExclusionConstraintCandidateOptIn'
             'TestOrgAxisAsOfTwoWriterExclusionCandidateOptIn'
+            'TestOrgC1AbstractUnitReadPathUsesStableSemanticIDs'
           )
           for name in "${required[@]}"; do
             grep -Eq -- "^[[:space:]]*--- PASS: ${name} \(" "$log" || { echo "required test did not PASS: ${name}" >&2; exit 1; }

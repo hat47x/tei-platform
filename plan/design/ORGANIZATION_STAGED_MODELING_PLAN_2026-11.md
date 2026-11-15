@@ -1073,10 +1073,32 @@ S3の有効期間・認識期間は、§10.13のProvider/Consumer・REA・AI/SHO
 <!-- org-two-writer-stage-s3-20261115 -->
 ### 10.17 S3の二時点制約を、一つの接続から同時Writerまで段階的に検収する
 
-[組織C1補遺§42](ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)は、保存時の競合防止について、**一つのトランザクション内で正負例を判定できた**段階と、**別のDB接続から同時に書かれても制約を破れない**段階を分ける。[PR #5063](https://github.com/hat47x/tei-platform/pull/5063)の隔離PostgreSQL run #43724543096 は前者の明示PASS。一方、後者は新しい二Writer候補試験のCI結果を確認してから合否を更新する。正式`*.tei` Persistenceへの採用はさらに後のOwner判断と製品実装を要する。
+[組織C1補遺§42](ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)は、保存時の競合防止について、**一つのトランザクション内で正負例を判定できた**段階と、**別のDB接続から同時に書かれても制約を破れない**段階を分ける。[PR #5063](https://github.com/hat47x/tei-platform/pull/5063)の隔離PostgreSQL run #43724543096 は前者の明示PASS。後者も[PR #5099](https://github.com/hat47x/tei-platform/pull/5099)でmain統合済みとなり、[隔離PostgreSQL run 43727567803](https://github.com/hat47x/tei-platform/actions/runs/43727567803) の `TestOrgAxisAsOfTwoWriterExclusionCandidateOptIn` が明示PASSした。別接続のLock待機、第一Commit後の23P01拒否、正当な隣接版と別Membershipの保存が**候補方式でObserved**となった。正式`*.tei` Persistenceへの採用はさらに後のOwner判断と製品実装を要する。
 
 S3の最小受入は、単一所属Occurrence・Assertion revision・物理行の三つを同じIDとして扱わず、validAtとknownAtがともに交差する競合だけを拒否し、正当な認識訂正と有効期間の切替、別Membershipの共存を維持すること。DB制約のSQLSTATE 23P01は保存時の競合という**技術的観測**であり、業務上の異動承認、現在Grant、実Host Effectの完了票ではない。
 
 次の製品試験は、意味Ownerが単一値性とPerson Relationを受理したあと、正式Sourceの版ID・物理Mapping・Migration→実Providerの旧新二版保存→再起動後の二時点再読込→Function Contextと二Consumerの同一Read Cohortへ進める。Ruleは必要Read集合とpartial/欠測を別資格で確認する。API/Plugin/Studioは実選択・実呼出し・現在Grantを分け、Node表示のEdgeと元Relation occurrenceを混同しない。
 
 隔離PGでの局所成功を別Providerの採用判断や製品MVR-02/03合格へ昇格させない。S1で歴史を必要としないDataに二時点Engineを強制せず、通常CLI実Read #2586とDesktopセルフビルド #2831の先行P0を維持する。
+
+
+<!-- org-stable-abstraction-paths-20261116 -->
+### 10.18 S3〜S5の縦断受入は、生成された関数名ではなく型付き経路と状態で識別する
+
+[組織C1補遺§43](ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)を、標準Data/Function/Business/CaseとPlugin配線、Studio/SHO投影を横断する共通のテスト設計へ接続する。**何というGoメソッドが呼ばれたか**よりも、**受理済みのSourceと意味IDから、どの型付きRelation/Queryを通り、何が変わらず、何を拒否したか**を検収する。
+
+| 段階 | 維持する条件 | 最初に使う現行資産 |
+| --- | --- | --- |
+| S3 Source/IR | Membership occurrence / Revision / validAt / knownAt、Relation ID・Key・向き・多重性、Query ID・Datasource・必要属性。表示ラベルの変更は無関係 | `org-staged-axis` 実Workspace、`organization.membership.unit`、`org_axes_view.as_of_membership` |
+| S3 Provider | 生成・解釈どちらの方式でも、同じ意味上のQueryと実パラメータ、完全なRead Cohortを追跡 | #2586/#2622、既存Query Binder・Evidence |
+| S4 Context/Rule | Membership件数・distinct Person・FTE・候補/責任を別Claimとして維持し、unknown/partialを確定値に潰さない | #4490/#2514、既存BRMS・Function Context |
+| S5 Consumer/Plugin | Graph/Table/Tree/文書、Pluginの基本型/複合型port/Adapterで、元Relation occurrence・Source revision・受信Scopeを保持 | #1124/#2516/#4515、既存Standard Data/Projection |
+| Host境界 | 意味上の承認候補、現在のPrincipal/Grant、実Effect/Receiptは別資格 | #1174/#2499 |
+
+最初の局所Goテスト `TestOrgC1AbstractUnitReadPathUsesStableSemanticIDs` は、現状の実Source→型付きRelation IR→Query Result属性の対応だけを固定する。正例はMembership→OrgUnitの宣言、表示Symbolの改名に対する安定性。負例はPersonへのTargetすり替え、Keyの向き違い・欠落、Datasource/Query違い、名前付き入力の欠落・型違い、Result属性の欠落・誤対応。宣言順だけの変更は合格とする。**これはGenerator実行やRelation traversalのE2Eではない**。次の受入は同じExpectedを用いて実Builder/Artifact→実Provider→Function Context→二Consumerへ段階的に拡張し、候補の根拠と実行資格を独立に検査する。
+
+経路と不変条件は既存Scenario/Expected・Source位置・Evidenceの属性として保持し、新しい汎用Trace DB・組織専用Runtimeは増やさない。データ構造の見た目が同じでも、型付きRelation/Scopeが異なれば接続不可または明示Adapterが必要。S1の単純なProfileにS3の履歴を強制せず、通常CLI実Read #2586とStudio Desktopセルフビルド #2831のP0を維持する。
+
+**三つの検査を混同しない**：まずSource/型付きIRの静的経路成立、次に同じAttemptで実Builder・実Providerを通った事実、最後にFunction Contextから二Consumerまでの状態不変性を検査する。抽象経路を特定の条件で通るべきことと、実際に通ったことは別資格である。Generatorと汎用Evaluatorの同値性は、別レーンの[PR #5077](https://github.com/hat47x/tei-platform/pull/5077)・[PR #5087](https://github.com/hat47x/tei-platform/pull/5087)を手法上の先例とし、組織データへは改めて適用する。
+
+**検収票の対応**：既存のScenario/Test IDを起点にSource/World Revision、Relation・Query ID、Port型／Adapter、Generator・Artifact、実Call-site、Read Cohort、途中のOccurrence/knownAt/validAt/unknownを照合する。Goの生成メソッド名は経路の意味的な同一性の代わりにしない。AR-1の局所テストをAR-2〜5の完了として扱わない。

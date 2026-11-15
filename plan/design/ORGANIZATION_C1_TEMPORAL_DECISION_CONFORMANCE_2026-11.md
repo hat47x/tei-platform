@@ -1996,7 +1996,7 @@ PostgreSQLには、スカラーMembership IDの等値比較と二つの時間Ran
 
 二接続のため試験用テーブルをセッション専用TEMP TABLEにはできない。専用Schemaの作成前に**既存Schemaがないことを検査**し、テスト終了時に削除する。PostgreSQLの`btree_gist`を使用するのは検証用の隔離DBだけであり、正式DBへのExtension導入・Migration・制約採否を意味しない。
 
-隔離PGの専用CIには新テストを明示指定し、実行がSKIPになっていないこと、Go整形、固定Test名のPASS、テスト後の変更がないことを確認する。**固定PR HEADに対するCIでPASSするまでは、ここで述べた結果はExpectedであってObservedではない。**
+隔離PGの専用CIには新テストを明示指定し、実行がSKIPになっていないこと、Go整形、固定Test名のPASS、テスト後の変更がないことを確認する。**実測更新**：[PR #5099](https://github.com/hat47x/tei-platform/pull/5099)はmain統合済み（squash commit `347d7d244d4f3c2d08f94d582d82f097e842c377`）。[隔離PostgreSQL run 43727567803](https://github.com/hat47x/tei-platform/actions/runs/43727567803) で `TestOrgAxisAsOfTwoWriterExclusionCandidateOptIn` と二つのサブテストが明示PASSした。第二WriterのLock待ち、第一Writer確定後の23P01拒否、勝者のみ残存、境界で接する訂正版・独立Membership共存は**隔離DBの候補方式でObserved**となった。製品Migration/正式Provider/他DBでの保証やOwner受理は未達のまま。
 
 ### 42.3 競合防止が成功した後も残る四つの意味境界
 
@@ -2013,3 +2013,64 @@ PostgreSQLには、スカラーMembership IDの等値比較と二つの時間Ran
 ①隔離PGで二Writerの競合を実測する、②Ownerが同一点単一値性の対象を選ぶ、③正式`*.tei` Persistenceの版IDとProvider・Migrationに採用方式を反映する、④二版保存／訂正／同時Writerを正式Product経路で再実測する、⑤同一World/Read CohortからFunction Context→二Consumerの一致、必要Readの閉包とBRMS／Hostの別資格を検査する。
 
 この順序は[ORG-W1〜5](../workstreams/PRODUCT_COMPLETION_PLAN.md)とO-P1〜5に接続する。実PostgreSQLの特定方式を全Providerの標準DDLとして固定せず、読みやすい宣言的DSLにDB固有のIndex/Extension構文を強制しない。標準Data・Relation・Queryで表した意味を起点に、必要な物理制約はProviderが実装する。新しいTemporal Core、別Host、組織専用ACL、Expected Storeは作らず、通常CLI実Read #2586とDesktopセルフビルド #2831の独立P0を維持する。
+
+
+<!-- org-abstract-route-ids-20261116 -->
+## 43. 生成コードの名前ではなく、業務上の経路と保持すべき状態を検査する（2026-11-16）
+
+### 43.1 抽象経路をテスト単位として使う理由
+
+組織C1では、所属履歴のQueryから人数や担当候補を得るまでに、標準Data・Relation・Query、Function Data Context、Rule、Pluginの型付き入出力、Studio表示、外部Host実行が段階的に関わる。テスト対象を**生成されたGoのメソッド名やSQLの別名**に固定すると、GeneratorやTargetが変わるだけでテストが壊れ、逆に必要なRelationや時間条件が落ちてもメソッドの呼出し自体は成功し得る。
+
+そこで検査単位を、**意味上の出発点と到達点、通るべき型付きの辺、経路を通る前後で保持すべき条件**として記述する。これは標準Data/Function/Business/CaseとGraph/Node/Pluginで共有する受入観点であり、新しい業務実行Engineや固定ASTを増やす提案ではない。既存#1180/#2514/#4490のScenario/Expectedに経路条件を添える。
+
+| 経路で照合する要素 | 組織C1の例 | 換用してはいけないもの |
+| --- | --- | --- |
+| Source上の意味ID・版 | `organization.membership`、Occurrence A2、Assertion revision、Source/World revision | Goメソッド名、UIラベル、RDBの物理行ID |
+| 型付きRelationと入出力 | `organization.membership.unit` → `organization.org_unit`、関係キー、向き・多重性。Pluginのport接続は端点型と必要ならAdapterを検証 | 同じフィールド名・似た表示形状というだけの配線 |
+| Query/Functionの選択 | `org_axes_view.as_of_membership`、Datasource `org_read`、`valid_at` / `known_at` / `allocation_min` と結果属性 | 対象を問わない任意のQuery、たまたま同じ3列を返すSQL |
+| 読取と判断の状態 | 同じScope/Read Cohort、完全性、validAt/knownAt、Rule revision、partial/unknown、候補0/1/複数 | 一行取得・同じデータ画面・ソート先頭を唯一候補とすること |
+| 編集・実行の境界 | 元Relation occurrence、Source span/selection epoch、現行Grant、Effect/Receipt | Graph上のEdge、AIの推定Link、古い承認候補、生成ファイルの一致 |
+
+**重要な限界**：現行の `as_of_membership` は所属データの3属性を返すだけであり、OrgUnit行へのRelation traversal自体は実行していない。上の「所属→部門」は**現Sourceに宣言された型付き経路の前提**であって、Queryが自動JOINした証拠でも、Membership→Person、責任移管やGrantの証拠でもない。
+
+### 43.2 最初のGo回帰はSource→型付きIR→Query投影だけを測る
+
+`internal/operations/org_c1_abstract_route_contract_test.go` の `TestOrgC1AbstractUnitReadPathUsesStableSemanticIDs` は、実際の `reference/org-staged-axis` を通常のWorkspace Loaderで読み、次を照合する。
+
+1. 宣言済みMembershipの型付き `unit` Relationが、OrgUnitへ正しい向き・多重性・Semantic Keyで向かうこと。
+2. 実 `as_of_membership` QueryのID・Datasource、三つの**名前付き入力と型**、三つの**生列名→Semantic属性**の対応を照合すること。入力と結果の宣言順だけの変更は許容する。
+3. Relationの表示向けSymbolだけを変更しても、意味IDで識別する経路の合否が変わらないこと。
+4. TargetをPersonへ変更、Relation Keyを逆転・脱落、結合方式を変更、Query ID・Datasource・knownAtの型を変え、非出力依存のallocation_minと出力のallocationを脱落・誤対応させた場合に、経路検査が**失敗する**こと。
+5. MembershipからPersonへの未受理Linkは引き続き存在しないこと。部門への正の経路から、人物同定や実行権限を導出しないこと。
+
+これは**候補の局所的なIR契約テスト**。Compiler/Generatorの出力、Builderへの実入力バイト、DB実呼出し、Function Contextへの受信、Studio/SHO/Hostの実受領は測っていない。CIが未実行ならPASSを記載せず、Go単体のPASS後も製品の抽象経路全体を完了としない。
+
+### 43.3 生成・解釈の双方に同じExpectedを使うための受入順
+
+| Witness段階 | 実証したい性質 | 反例・停止条件 |
+| --- | --- | --- |
+| AR-1 Source/IR | 元のSemantic/Relation/Query ID・型・多重性・KeyとSource位置が一致する | ラベルの同名化、Relationの向き違い、未受理Person Link |
+| AR-2 実現方式 | Generatorによるコード生成でも図表パラメータの汎用解釈でも、選択したFunction/Queryと入力・非出力依存の対応を追える | メソッド名だけ同じ、委譲Goが動いただけ、Generator版／入力を特定できない |
+| AR-3 実Provider | 実SQL/実パラメータ/Result Mapping/必要RelationのRead Cohortと完全性がExpectedに一致する | Query別名で成功、Limit/partial/旧Replicaで0/1を誤確定 |
+| AR-4 状態の保持 | A2のOccurrence・版、validAt/knownAt、Source/Rule revision、unknown/partialがFunction Contextと二Consumerで変質しない | View/Treeへの非単射投影、Target差で人物数・FTEや責任を暗黙変更 |
+| AR-5 業務判断とEffect | Rule根拠、候補の多重性、現行Grant、Host Effect/Receiptを独立した観測として照合する | 単一候補=承認、過去の上長=現行Grant、Commit不明の無条件再実行 |
+
+**検査項目は経路条件に結び付け、生成実装のメソッド名には依存させない**。実装で生成コードのどの箇所を観測するかは、現行Build/Artifact/Evidenceの逆参照・Source MapやOperatorの実選択情報を利用する。標準のMeaningとは別のTrace正本を作らず、実際の生成物と入力・生成器資格を検証してから結び付ける。
+
+この型付き経路検査は、Graphの同名Node/多重Edge、Node-RED型のPlugin配線、BRMSのRule前提、REAからの観測候補、Studio/SHOの可視化にも適用可能である。ただし**推論上の類似性と業務OwnerのRelation採用は別**。同じTEI Worldでモデル・実Read・表示・Effectの各資格を独立に合格させ、#2586通常CLI実Readと#2831 Desktopセルフビルドを優先P0のまま保つ。
+
+### 43.4 静的な経路、実行時に通った経路、途中状態の保持を別々に検収する
+
+別レーンの[Markdown項目定義表から型付きRuleと生成Goを検証したPR #5077](https://github.com/hat47x/tei-platform/pull/5077)、[汎用評価と生成Goの同値性を検査したPR #5087](https://github.com/hat47x/tei-platform/pull/5087)はmain統合済み。これらから組織C1へ引き継ぐのは、生成メソッド名ではなく、**同じ意味定義と条件を、異なる実現方式に対する独立Expectedで検収する手法**である。各PRの局所試験を組織C1のProvider実行証拠に合算しない。
+
+| 資格 | 保持する条件 | 今回の受入範囲 |
+| --- | --- | --- |
+| 静的な経路成立 | Source由来のSemantic ID、Relation Keyの方向・多重性、Query ID・Datasource、名前付きInputとResult Mapping | AR-1の局所Goテスト。実JOINを通ったとはいえない |
+| 実際に通った経路 | 選択したGenerator/Interpreter・Build Artifact、Query実パラメータ・Provider実Call-site・Read Cohort | AR-2/3は未検証。同じAttemptでの実Source→実Provider経路を#2586等の既存仕組みで検収 |
+| 途中状態の保持 | Membership occurrence、Assertion revision、validAt/knownAt、Source/Rule revision、partial/unknown、Scope | AR-4は未検証。Source/IR一致だけで途中状態が維持されたと判定しない |
+| 実現方式の同値性 | 汎用関数評価と生成Goが、NULL・欠損・時点境界・件数・エラー分類で同じExpectedを満たす | PR #5087は手法の先例。組織C1で実Rowと二Consumerを改めて試験する |
+
+既存Scenario/Test ID・Source位置・Canonical ID・入力版・選択実現方式・使用Artifact・Expected/Observedを受入票へ対応付ける。生成メソッド名は診断用の派生情報であり、テストのPrimary IDにはしない。ある条件で通るべき経路が**必要な状態を保ったまま**通ったことと、経路が静的に存在することは別の合格資格である。部分失敗・Reader未接続・A→B→Aを、局所成功だけで合格にしない。
+
+型付きportを使うPlugin/Nodeにもこの検査を再利用できる。明示Adapterによる型変換、Graphでの関係宣言、Studioでの表示、実行時のData Flowは、それぞれ別の証拠として扱う。
