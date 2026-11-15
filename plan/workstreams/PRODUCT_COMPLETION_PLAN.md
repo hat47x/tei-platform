@@ -961,7 +961,9 @@ A0を製品に接続する変更では、既存の拒否証拠を消すのでは
 
 #### S0予備検証と正式Reader接続を分け、生成物の実消費までつなぐ（2026年11月15日）
 
-**S0-Pはmainに統合済み、S0-Aは未実装（2026年11月15日更新）。** [#4751](https://github.com/hat47x/tei-platform/pull/4751)では、実Workspace Manifestの`semantic` Root、未宣言`drafts`の除外、同一Pinned Rootからの元byte、固定されたGraph/Rule候補、既存Source IndexのFingerprint/Span、原文変更時の旧Index拒否を**テスト専用の事前検査**として接続した。旧[#4745](https://github.com/hat47x/tei-platform/pull/4745)は未マージでクローズされ、同内容の実Go試験が#4751からmainへ入った。現行の`Workspace.Load`は未選択`*.tei.md`に`TEI_MD_PARSER_UNBOUND`を返し続ける。これは意図した安全な境界であって、予備検査の成功により製品Readerを解放する理由にはならない。
+**S0-Pはmainに統合済み。S0-Aは内蔵Rule Authoringの限定読取りが実装済みで、正式Graphと外部Language Pluginは未検収（2026年11月15日更新）。** [#4751](https://github.com/hat47x/tei-platform/pull/4751)では、実Workspace Manifestの`semantic` Root、未宣言`drafts`の除外、同一Pinned Rootからの元byte、固定されたGraph/Rule候補、既存Source IndexのFingerprint/Span、原文変更時の旧Index拒否を**テスト専用の事前検査**として接続した。旧[#4745](https://github.com/hat47x/tei-platform/pull/4745)は未マージでクローズされ、同内容の実Go試験が#4751からmainへ入った。内蔵`tei.rule-authoring/v0`はManifestで明示選択された場合に限りWorkspace.Loadが読めるようになった。未選択`*.tei.md`は引き続き`TEI_MD_PARSER_UNBOUND`で拒否し、外部Language PluginのResolver/Lockからの選択、正式Graph、Owner意味受理は未証明。これは意図した安全な境界であって、予備検査の成功により製品Readerを解放する理由にはならない。
+
+**実装後の次の検収**：内蔵Readerについて、Manifestの正確なLanguage/Contract版→一意の静的Implementation→同一Load時byte→既存semantic.Validation／Source anchorを実Workspaceの正負ケースで照合する。BuildSourceIndexFromLoadはImport全体や原子的な複数ファイルSnapshotの保証ではない。Plugin Management/Lockを通る外部Languageの接続は別Gateとし、Rule集合と評価入力の完全性、生成Goの実判断と通常CLI実Provider Callも独立に検査する。横断設計§24.5〜25へ引き渡す。
 
 **CIの資格も分ける**：#4751のexact HEAD（`699ac0bd025a953d2a7a0e7dea2dbe9f1c19a67f`）では複数のWorkflowが成功した一方、[Repository Health](https://github.com/hat47x/tei-platform/actions/runs/43644037417)は失敗している。旧#4745の[Repository Healthログ](https://github.com/hat47x/tei-platform/actions/runs/43641434912)はSQLite Window試験の`gofmt`ずれと`SeverityUnsupported`の旧TODOを示したが、**旧HEADの原因や成功を、新HEADや最新mainに無条件転用しない**。最新main全体の状態は同一HEADのCIで別途判定し、修正済み・全体合格の主張を先取りしない。
 
@@ -970,7 +972,7 @@ A0を製品に接続する変更では、既存の拒否証拠を消すのでは
 | 段階 | 入力と実際の証拠 | 現在の資格と次の断点 |
 | --- | --- | --- |
 | **S0-P：Pinned Source予備検査** | Manifest `semantic` Root、非宣言`drafts`除外、Pinned Root読取り、候補Graph/Rule、Source Index fingerprint/Span、変更後の旧Index拒否 | [main #4751](https://github.com/hat47x/tei-platform/pull/4751)へテストが統合済み。ただし読取りはテスト側で明示しており、製品LoaderのFrontend選択は未接続 |
-| **S0-A：製品Reader Admission** | 実`Workspace.Load`の同一Attemptに対して、型付きで選択されたFrontend/版、Manifest Root、実際にReaderが消費したbyte/Span、Source Index Artifact/必要なRole候補を対応付ける | **未実装**。未選択は従来どおり拒否。管理済み≠Read済み≠Parse済み≠Qualified≠Owner受理 |
+| **S0-A：製品Reader Admission** | 実`Workspace.Load`の同一Attemptに対して、選択Language/契約版、Manifest Root、実際にReaderが消費したbyte/Span、Source Index Artifact/必要なRole候補を対応付ける | **内蔵Ruleのみ限定実装**（main 7921b005）。外部Language Pluginの選択・Lock、正式Graph Reader、全体の独立Expectedは未検収。未選択は拒否。管理済み≠Read済み≠Parse済み≠Qualified≠Owner受理 |
 | **S1/S2：意味Go・実Plugin** | Owner受理済みMeaning/Rule→Target Generatorの条件ロジック→生成Go→実Builder/Target→選択Pluginの組込み/Call→実Consumer | 限定ReferenceのGo条件分岐と同一Binary実入力は成功済みだが、製品Targetでの実消費は未成立 |
 | **Artifactの再入力／Studio** | 生成Source Memberが次Buildの**実入力byte**になり、生成JS等がWails埋込みへ渡る場合も、Builder/ArtifactSetの同じAttemptと子Process/受領先を照合 | [Generator契約Draft #4748](https://github.com/hat47x/tei-platform/pull/4748)の未実証Fit/Gapに接続。生成物の存在だけで次工程が消費したとみなさない |
 
