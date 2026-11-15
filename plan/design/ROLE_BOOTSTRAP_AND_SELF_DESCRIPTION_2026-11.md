@@ -3135,3 +3135,67 @@ M0→M2では、`Syntax Source`／`Typed Meaning`／`実装選択`を必ず分�
 **Owner／既存正本**：#2620はM0〜M2の切り分け、#988/#1018はLanguage/Providerの厳密選択、#1180/#2514は独立Expected、#2595/#4544とPlugin Rule製品縦断計画はM3、#2831/#4583はM4のStage2受入を担当する。DSLの完全Grammar、新`formatVersion`、汎用Graph Schema、Meta Interpreter、Go以外のTarget生成方式はこの追補で採用しない。評価指標は**置換して削除できた手書き意味分岐・重複契約・変更時の手動修正数**と、回帰の独立性。行数やDescriptor件数は代替指標にしない。
 
 **状態**：設計と実装引継ぎのみ。M0の新Projection、M1/M2の生成検査処理、M3製品R2-P、M4 Stage2は**この変更ではNOT RUN／NOT PROVEN**。既存mainにある限定R1／R1.5と参照Builderの局所結果を昇格させない。
+
+<!-- tei-self-description-selected-operator-closure-20261115 -->
+## 49. 2026-11-15 自己記述を宣言・実装選択・実呼出しの一貫性へ接続する（横断設計）
+
+### 49.1 今回の進歩と残された断点
+
+本節は§48のM0〜M4を置き換えず、別の性質を持つOperatorにも同じ評価基準を適用する。現行mainでは、Ruleの製品Load・型付き解釈・限定Go生成（R1/R1.5）に加え、PR #5007によってOperator宣言→Workspace manifestでの実装選択→Scenario評価関数による選択済み組込み実装の実呼出しが接続された。後者は internal/workspace/operator_implementation.go、internal/semantic/validationeval/operator_selection.go、cmd/tei/scenario_operator_implementation_test.go に実装されている。
+
+ただし、両者は**異なるSemantic subjectと実証経路**であり、局所的な成功を足して「同じRuleが自己記述で生成され、Pluginとして実行された」とは主張しない。
+
+| 既存の実証 | 活用できる成熟成果 | 残る接続 |
+| --- | --- | --- |
+| quantity_positive：Rule→型付きValidation→Go生成→実Binary | Required Shape・診断・Lowering適合条件を手書きGoから移すM1/M2の比較基線 | Descriptor由来の実検査、正式Builder／Provider |
+| sales.non_negative：宣言→manifestのimplementations選択→組込み判定実Call | 宣言・選択・使用が別であること。入力0でnon-negativeとnon-zeroの結果が分かれる独立反証 | 外部Plugin Lock／実装byteの固定、宣言意図との適合、通常のシナリオCLI全体 |
+| 二表層Rule／生成GoのAST観測 | 同じ型付きRuleとGo byteでも出典は別。Go構造のRead先と分岐を観測可能 | 任意Goからの自動DSL化、元Sourceと生成Goの位置の統合 |
+
+特にOperator実装を non-negative から non-zero に選び直しても、読込まれたWorldは同一であり得る。一方、0に対する結果と実Callの対象は変わる。自己記述では「何を定義したか」「どの実装を選んだか」「実際に誰が判定したか」「どの入力で何が返ったか」を別々に説明する。値の一致や型の一致だけで、選択された実装が宣言の意味を実現しているとは認めない。
+
+### 49.2 共通化するのはDescriptorの保存形式ではなく、必要な根拠の対応
+
+M0/M1の説明・検査票は、既存の標準データ構造・型付き意味・選択・Builder・Consumerの記録を**読み取り専用で対応付ける**。新Core MetaSchema、第二Registry、共通Evidence Store、万能Ready APIは作らない。
+
+| 確認したい問い | 必要な根拠と区別 | 不足時の停止線 |
+| --- | --- | --- |
+| 定義は何か | 元Source occurrence／byte／span、ID、型、Role/Operator、NULL・欠損・単位・粒度 | 未Read・未対応を空集合や不在と決めない |
+| 何を要求するか | Required Shape、入力/出力、評価範囲、意味契約、必要Read、Effect | 型やPortの形が合っても業務上の適合とはしない |
+| 何が選択されたか | Manifestの選択、Contract版、実装ID、既存Lock、実装Fingerprint／依存（提供された範囲） | 組込み名を外部Pluginのexact Pinとみなさない |
+| 何が実際に使われたか | ImplementationCall、生成byte、Builder実入力、Provider Entry、Consumer受領を段階別に照合 | SelectedとInvoked、GeneratedとBuiltを同一視しない |
+| 現在も使えるか | Source／Selection／Model／Artifactの各改版、現在Grant／Disclosure、必要ならEffect Receipt | A→B→Aや旧Result一致で資格を復活させない |
+
+宣言的合成設計§14〜17の「成立を裏付ける／矛盾／判定材料が不足」を**構造・評価意味・Source・Build・現在権限・Effect／Consumerの軸ごと**に扱う。全軸を単一の真偽値へ圧縮しない。純粋なRuleの説明にDelivery Receiptを要求するなど、問いに無関係な資格を新しい共通Hard Gateにはしない。
+
+### 49.3 最初の二つの実装Packetは並行できる
+
+**SD-M1：自己記述に基づく形の検査。** 既存quantity_positive一規則に限定し、ID必須・Attribute必須・Relation禁止・解決済みstd.decimal型を、標準構造のRequired Shape候補として既存Inspectorからread-onlyで示す。GoのGeneratePositiveが持つ現行の手書き条件と、別の独立Expectedによる欠損・余分なRelation・型不一致・Descriptor改版を比較する。説明をTEI側に移すだけではM2ではない。**実際の検査分岐を一箇所置換し、手書きの重複が消えた場合にだけ、狭いM2成功**と認める。
+
+**SD-O1：Operator実装選択の変更追随。** PR #5007の同じ宣言・同じ入力0のまま、manifestの選択だけを tei.number.non-negative から tei.number.non-zero に変える。World同値、選択先、実Call、判定結果をそれぞれ照合する。さらに**生成済みScenarioコマンドは現状manifestの実装選択変更を失効条件に含めていない**という未解決点を、旧コマンドを使う負例で固定する。必要入力閉包を既存のScenario／#2600のOwnerへ渡し、新しいFingerprint体系は追加しない。
+
+| 反証ID | 一因子変更 | 必須の観測・停止 |
+| --- | --- | --- |
+| SD-49-01 | positiveのAttribute欠損／Relation余分／非Decimal | 既存検査とM1候補を独立Expectedで比較。Go手書き削減前にM2合格としない |
+| SD-49-02 | Markdown説明文のみ／Rule参照Attributeのみ変更 | 前者はSource Index失効、後者は意味・生成Go・Read先変更。旧資格を継承しない |
+| SD-49-03 | Operator選択non-negative→non-zero、入力0 | World同値でも選択・実Call・結果が変化。実装の業務意味適合は別 |
+| SD-49-04 | 選択を変えて旧生成Scenarioコマンドを利用 | manifest版が生成コマンドの資格に含まれない現状を検出。修復前に正常とはしない |
+| SD-49-05 | 未選択、同名実装二件、入力種別のみ一致 | 未選択・競合を拒否。Input種別一致を意味適合と取り違えない |
+| SD-49-06 | Graphの同名別Node・多重Edgeの表示／配線変更 | ID・方向・多重性を保持。Node Viewの線から実行順・Providerを作らない |
+| SD-49-07 | 生成GoのRead先、比較条件 >0 を >=0 へ変更 | ASTによるGo側の位置・実構造を確認。元DSLの位置や意味受理を捏造しない |
+| SD-49-08 | Rule結果をOperation Triggerへ接続 | 元Ruleに追加された因果・公開・Effectを別受理。現在Grantと実Providerを別に確認 |
+
+反証は既存#1180／#2514のIndependent Expectedに割り当て、第二のテスト正本は作らない。SD-M1とSD-O1の局所成功は、Graph製品Reader、外部Pluginの完全Lock、正式製品R2／R3、StudioのStage2再入の代用ではない。
+
+### 49.4 Node・文書・Studio・ドッグフーディングへ適用する境界
+
+同じSource・型付き意味からCLI Inspector／Studio／SHO向けの表・Tree・Graph・文章を投影する。Node ViewのDeclared／Selected／Built／Observedは**表示上の層**であり、業務RelationやRuntimeの新たな正本ではない。編集はSource occurrenceと対象Slotの一意性、Lossのない写像、現在Revisionと既存Writer資格が揃う場合だけ認める。AI Skillは実Schema・選択版・現在の開示範囲を超えて利用可能と説明しない。
+
+I2Mでは元DSLのSource spanと生成Go AST spanを**異なる座標**として保持する。生成GoのASTからRead先・判定を観測できても、自動の逆DSL編集やOwnerによる意味受理へ昇格させない。Graphの同名別Nodeと多重Edge、QueryのBag／NULL、組織・REAの時点／業務Keyは、第二Domain以降の反証として利用するが、SD-M1の前提作業にはしない。
+
+### 49.5 実装順とOwner
+
+(1) SD-M1の形・診断のread-only表示と独立Expected、(2) SD-O1のmanifest選択改版・Actual Call負例、(3) 手書き検査一箇所の実置換（M2）、(4) 既存R2-Pで生成byte→正式Builder入力→Artifactの同一Attempt、(5) 受理済みpure Functionの公開Entry→実Provider→独立Consumer（R3）、(6) Stage1→Stage2 CLI／Studioの実再入。R2-PとR3は相互の完了を待たずに進める。最優先の非Plugin Studio Desktop Windows実受領は変えない。
+
+#2620／#4359はSD-M1と読みやすい構文、#988／#1018はLanguage・Operatorの選択と外部Plugin、#2600とScenario OwnerはSD-O1の失効、#2497／#1124はProjection／安全編集、#1121／#4544／#2595はBuilder、#4495／#1251は実Provider、#2831／#4583はStage2、#1180／#2514は独立Expectedを担当する。
+
+**状態**：既存製品Go・局所試験に基づく横断設計と実装引継ぎ。新しいDescriptor検査、手書き処理置換、生成Scenarioの失効修正、外部Plugin、正式Builder／Provider、Stage2実Windowsはこの変更ではNOT RUN／NOT PROVEN。
