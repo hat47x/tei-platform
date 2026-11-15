@@ -878,3 +878,64 @@ flowchart TD
 X0〜X3は既存#4198／#1124／#2497、#988／#1121／#4544／#2595、#951／#4359、#1180／#2514へ引き渡す。X4のP0は独立に優先し、X0〜X3の完成を新しい必須前提にしない。構造・意味・実装・実運用の不足は各Ownerが採否を決める。**仕様上の方式比較を、製品としての方式自動選択・Interpreter追加・性能優位の宣言には昇格させない。**
 
 この追補は設計と実装引渡しの更新であり、Go／Node／Windows／PostgreSQLの新しい実測、Ownerの業務意味受理、外部Hostの正式適合を行ったものではない。
+
+## 45. Sourceから実Binary、さらに画面までの「受渡し」を四つに分解する
+
+#5009に続き、main統合済み#5051では、選択したRuleの元Markdownを同一LoadのSource Indexで検査し、**原byteのコピーを生成Goと一緒にBuild Sourceへ収録**した。Goの`//go:embed`を使い、完成したBinary自身が埋め込みbyteのSHA-256を算出して元ファイルと照合する。説明文のみの変更でもBuild IntentのSource Closureが変わる負例を加えている。
+
+ただし、この成功を「業務言語の全出典が正式Build Planへ束縛された」とは言わない。受渡しの証拠を次の四箇所に分ける。
+
+| 受渡し | mainの実装・現在の候補 | 成立条件と残る穴 |
+| --- | --- | --- |
+| **A：原Source → 配置した原文コピー** | #5051の`Workspace.Load`、同一LoadのSource Index、Definition Range／元byte、`source.tei.md`の配置 | コピーと元原文のbyte一致は試験が確認するが、Source Locator／Reader版／Generator資格を正式Build Planが自身で受理するものではない |
+| **B：実Generator出力 → Builder入力** | #5009の`GeneratePositive`と`generated.go`配置。#5056はbyte取り違えをBuilder前に拒否する試験の**未マージPR** | 生成Go byteが実packageで置換されていないことが必要。Build成功・同じResultだけではbyte一致の証明にならない |
+| **C：Build Source → 実Artifact／Binary** | #5009/#5051の通常`tei self-build`、Build Intent／Plan、隔離Builder、Artifact Binding／再現性、実Binary | テスト用手書きDriverと生成Rule Functionの責務を分ける。Binaryが返したHashは実際に収録したbyteの証拠であって、Sourceの業務意味や実行許可の証明ではない |
+| **D：実Artifact／Bundle → Consumer** | #5042/#5052の通常・生成PoC Bに対する実Windows WebView2検収。生成Workbenchの11依存Source／Lockをbyteで固定 | 固定された生成UIが実Windowsで表示された証拠。TEIの正式Stage1→Stage2自己再構築、公開pure Functionのactual Provider、任意Studio/ブラウザーへの移植を証明しない |
+
+AとCが別々にPASSしてもBの取り違えは残り得る。CとDも、Rule Binaryと生成Workbenchが**同じArtifact／Target／Consumer**を共有していない以上、一つの縦断E2Eには結ばない。テスト用に原文を同梱できた事実を、すべてのTargetで元Sourceや秘密情報をBinaryへ必ず同梱する配布方針へ一般化しない。**配布すべき証拠と、配布してよい情報の範囲**は別に検査する。
+
+実務上の最短の進め方は、#5056で生成Goと実Builder入力の取り違えを先に閉じ、次に元Sourceの実Locator・Reader／Generator資格とBuild Receiptを元Ownerの正式契約へ結ぶことである。`go-command`の`definitionSource`を元Markdownへ付け替えない。実Entrypoint Go packageを指す現行Build Intentの意味を保持する。
+
+## 46. Processの実行段階を、データの受渡しと業務作用の受渡しに分ける
+
+データ編集や承認の一連の処理を図示するときも、「バリデーションが通った」だけで保存・Commit・通知をまとめない。Wagby型の業務画面、X-TEA由来のTable Script、Node Flow、API・バッチに共通する**検査する位置**を、既存Process／Operation／Hook／Effect契約へ対応付ける。
+
+| 段階 | 観測・検査するもの | 前段から受け取っただけでは足りないもの |
+| --- | --- | --- |
+| **定義・Load** | Source・Rule・型・実Provider候補、適用する版 | 現在Hostで選択された実装、実データ |
+| **取得・表示** | 実Readの値・NULL／欠損・取得範囲・Disclosure | 画面に見えた値が更新対象値と同じであること |
+| **入力・編集** | 利用者が確定した入力、元値、変更差分、Dirty状態 | 入力を受け取るAuthority、Commit適格性 |
+| **保存前検証** | 現行Rule／Guard・版・Actor・対象Operation・入力Snapshot | 実DB制約成功、他Actorの同時更新がないこと |
+| **トランザクション** | 実Provider選択、DB操作・競合・一意性・制約、Rollback | APIの正常応答だけから永続化済みであること |
+| **Commitの確定** | Commit Receipt、必要なら独立Readback・Operation identity | 外部通知が配送されたこと、利用者に開示できること |
+| **非同期処理・通知** | 配送要求／実配送／ACK／重複・Retry／Effect unknown | ACK消失を未Commitとみなした無条件Retry |
+| **提供・Consumer受領** | 実Consumer／Audience、現在GrantとDisclosure、受領時点 | Local readや描画の成功を他Consumerへの許可とすること |
+
+この八段階は新しい固定Workflow Runtimeではない。処理によっては編集や外部Effectが存在せず、段階自体が非該当になる。Node図、シーケンス図、Markdown表、テスト票には**実際に観測した境界**だけを表示する。画面・API・VUIで同じ業務Operationを使う場合も、入口の違いで保存前Guardや現在Grantを迂回してはならない。
+
+プロセスの中断・再開では、保存前検証の再実行、確定済みCommitの照会、外部通知の再配送を同じ「再試行」にまとめない。履歴上のReceiptを保持し、現在の認可・受入と別に判定する。
+
+## 47. 一つの「連続した証拠」を要求する実装検収票
+
+次の実装PRに渡す票は、同じ名前のファイルや同じ結果値を列挙するものではなく、**互いに対応付けられる実体だけを順番に結ぶもの**とする。まず`quantity_positive`のSource／Go／Buildと、独立の`non_negative` Operator選択・Windows Consumerを**別票**として扱う。初期からこれらを合成して「TEI全体の一往復が通った」と記さない。
+
+| 反例 | 最初の実証で確かめること | 不合格となる取り違え／Owner |
+| --- | --- | --- |
+| **EC-01：同じRule ID、別Source** | 同名IDを別Workspaceで読み、原byte・Reader・Workspaceの照合がなければSource Edgeをつながない | 名前だけで同一Source。#2621/#1124 |
+| **EC-02：同じ生成Go、別Markdown説明** | Source Indexの旧位置・指紋は失効。一方で生成Go byteの同一性とArtifact再利用可否は別判定 | 内容一致から旧Sourceの現在性が復活。#2621/#2600 |
+| **EC-03：Goの入替え** | 実生成Goを配置後に同じGoとしてコンパイル可能な別byteへ置換し、Builder前照合で拒否 | Build成功・Result一致でB受渡しを認定。#5056/#4544 |
+| **EC-04：実装A→BでResultは同じ** | `discount=2`でA/Bの結果が`satisfied`でも旧生成Scenarioの選択Pinを拒否 | Result一致から旧Commandが現在適格。#5054/#4359 |
+| **EC-05：Binaryの原文Hashは正しい** | Binaryが同梱byteを検出しても、元Locator・Reader／Generator版・Source Ownerの独立資格がないことを示す | Hashを業務意味受理・公開Grantに昇格。#5051/#2595 |
+| **EC-06：生成Workbenchの旧依存** | 11依存Source／Lockを一因子変更し、PoC Bの既定の固定候補を拒否 | 旧Bundleと新Sourceの混在をUI合格にする。#5042/#4583 |
+| **EC-07：実Runtime方式が異なる** | 同じRuleを汎用Evaluatorと生成Goで比較し、NULL・欠損・Read error・正値境界と実Calledを独立に確認 | 値一致を実行方式・副作用・Host資格の同一性にする。#1121/#4495 |
+| **EC-08：Commit後のACK消失** | Operation identityとReceiptを照会し、結果不明の間は盲目的に再実行しない | タイムアウトを未実行扱い。#1129/#1174 |
+
+EC-01〜08は既存#1180／#2514へ渡す**反例候補**であり、今回新しく合格した製品試験の番号ではない。現時点では#5051／#5042の範囲と、#5056／#5054の未マージ状態を分けて記録する。新しいEvidence Store、普遍的な証明状態Enum、第二のExpectedリポジトリを設けない。
+
+### 47.1 既存の実装経路への引渡し
+
+初期の反証は、#5051の原Markdown→実Binary内Digest（EC-02／EC-05）、#5056の生成Go／Builder入力取り違え（EC-03）、#5054のOperator選択A→Bと旧Command（EC-04）を、各PRのexact HEAD・実Producer・独立Expectedへ接続する。既存の§44 X0〜X4を置き換える別の作業管理を作らず、**どの断線を実際に閉じたか**を同じ受入票へ記録する。#5056／#5054が未マージなら実装済みと表示しない。
+
+続いて既存Evaluatorと生成Goの一Rule比較（EC-07）を進める。性能・対象Host・実Provider・Effect・Audienceまで等価と断定しない。公開pure FunctionのR3実Provider／独立Consumerと、非Plugin Stage1→Stage2実WindowsセルフビルドのP0は独立に優先し、実行図P1を新たなHard Gateにしない。
+
+**検証状態**：§45〜47は実装・検収の引渡しである。本追補でGo／Node／Windows／DB試験、正式Builder／ProviderのE2E、Effect確定、Owner意味受理を実施していない。
