@@ -512,7 +512,7 @@ S0〜S4を一度に実装しない。**固定6入力に対するGraph/RuleのGo�
 | **Mermaidの表示配置のみ** | 元Sourceの変更は記録しつつ、意味不変なら生成Goは同byteであることを比較 | Source再確認をせず旧Evidenceを無条件再利用、図のラベルを意味IDへ昇格 |
 | **選択Plugin/Target/Host/Consumer** | 同じRuleでも選択・同梱・Load・Invoke・現在Grant・実Consumerを別証拠で検査 | 参照BinaryのSHA-256不変や出力一致を実Providerの呼出し証拠にする |
 
-**Readerの負例もGraphとRuleを一緒に扱う。** [Draft #4725](https://github.com/hat47x/tei-platform/pull/4725)は、限定ReferenceのGraph表だけでなく、**Rule表の抽出にも共通のFence判定を利用する修正と負例**を提案している。バッククォート/チルダ、長いFence、インデントコードの例示表を実Ruleとして取得しないこと、未閉鎖Fenceを成功にしないことを、両方の表で同じ元byteを使って検証する。このPRはまだDraftであり、修正済みの正式製品Markdown Readerと主張しない。将来の製品Frontend接続時も、この区別を保持して既存#2621/#988/#4704の受入へ引き渡す。
+**Readerの負例もGraphとRuleを一緒に扱う。** [main統合 #4725](https://github.com/hat47x/tei-platform/pull/4725)は、限定ReferenceのGraph表だけでなく、**Rule表の抽出にも共通のFence判定を利用する修正と負例**を提案している。バッククォート/チルダ、長いFence、インデントコードの例示表を実Ruleとして取得しないこと、未閉鎖Fenceを成功にしないことを、両方の表で同じ元byteを使って検証する。この修正は限定ReferenceのGo試験としてmainに統合済みだが、正式製品Markdown Readerの合格とは扱わない。将来の製品Frontend接続時も、この区別を保持して既存#2621/#988/#4704の受入へ引き渡す。
 
 **今後の引渡し**：#4733によって「Caller入力が生成Goの実際の判断を変える」部分はReferenceで確認できた。したがって次の製品コードPRではこのReferenceを再発明せず、**明示的に選択した`*.tei.md`の実Read→元byte/span→既存Source Index/Role候補**の断点を先に解消する。正式Meaning・Operator/Rule適合、Product GeneratorへのLowering、Plugin A/Bの実選択・呼出しは別PR・別Attemptで証拠を取る。試験IDと採否は#1180/#2514のIndependent Expectedに従い、第二のExpected正本を作らない。
 
@@ -560,7 +560,7 @@ S0〜S4を一度に実装しない。**固定6入力に対するGraph/RuleのGo�
 
 S0-Aで最初に提示すべき**独立した正負**は、同一Source Snapshotからの1選択・1Reader・1Artifact整合、未選択Frontend・Root外ファイル・未対応構文・旧`*.tei`への退行・原文変更後の旧証拠再利用・暗黙のReader fallback拒否である。Rootを固定して読んだことは、複数Sourceの**原子的Snapshotを保証するわけではない**ため、取得したbyteと検証に使った版が一致する範囲だけをClaimとする。Owner意味受理前のGraph/Rule候補IDはSource Indexの正式Subjectへ勝手に登録しない。
 
-この順序を守れば、Pluginの説明文書や使用例の資格も整理できる。[Plugin公開文書の後継PR #4750](https://github.com/hat47x/tei-platform/pull/4750)の`-node`例は、現状では**限定Reference Binary向け**であり、通常の`tei` CLIで呼べる公開Operationではない。将来A PluginのManual/ContractをB Pluginが参照する場合、Source/Doc/Contract/Plugin版の一致、現在のDisclosure、実選択・実Builder消費・実Invocationを分けて検収する。公開文書を読めることを、Pluginが同梱されたことや実行できる資格とみなさない。
+この順序を守れば、Pluginの説明文書や使用例の資格も整理できる。[main統合済みのPlugin公開文書計画 #4750](https://github.com/hat47x/tei-platform/pull/4750)の`-node`例は、現状では**限定Reference Binary向け**であり、通常の`tei` CLIで呼べる公開Operationではない。将来A PluginのManual/ContractをB Pluginが参照する場合、Source/Doc/Contract/Plugin版の一致、現在のDisclosure、実選択・実Builder消費・実Invocationを分けて検収する。公開文書を読めることを、Pluginが同梱されたことや実行できる資格とみなさない。
 
 **P0/P1の扱い**：本件は#2621/#988/#4704の正式Reader・Source Index接合を進めるP1の小縦断として扱う。全体P0のStudio Stage1→Stage2実Windows再構築（#2831/#4583）と、通常`tei`から実Provider→独立二Consumer（#2586/#1251）を遅らせる新Hard Gateを作らない。S0-Pの参考実装をそのまま製品の第二Loader/第二Registryに発展させず、S0-Aの差だけ既存のWorkspace契約へ移す。GC/GQの既存Expected・受入Ownerを再利用する。
 
@@ -575,13 +575,13 @@ S0-Aで最初に提示すべき**独立した正負**は、同一Source Snapshot
 | **Generated Go／Binary byte** | 実Generator/Toolchain/Build入力・出力に依存する実ファイルの変化 | どの実Source/意味受理から作成したか、次Builderや実Consumerが選択・使用したか |
 | **現在の意味・実行資格** | Subject/受理済みRole、Source/World/Model・Artifact Revision、Plugin/Host Grant、Disclosure、実Target/Consumerの状態 | 一つのハッシュには包含されない。既存Authority・Build Evidenceで個別に確認 |
 
-**限定的な構造同値と元Source失効の衝突を実負例にする**：[Go回帰Draft #4759](https://github.com/hat47x/tei-platform/pull/4759)は既存`sourceindex_bridge_test.go`へ、(a)基準と`layout-only`、(b)原文説明だけの追記は**Source fingerprintが変わるがCandidate Shapeは同じ**、(c)Edge方向／Rule条件の変更は両方変わる、を追加する。さらに各入力から生成する**Goソースの実byte**も比較し、候補構造が同じ場合は生成Goが一致し、Edge・Ruleを変えた場合には生成Goも変化することを要求する。いずれも**旧Source Indexは失効**し、新byteで作るIndexだけを検証できることを期待する。このPRは未マージの候補試験であり、正式Readerや通常CLIを実行したとは記載しない。
+**限定的な構造同値と元Source失効の衝突を実負例にする**：[main統合済みのGo回帰 #4759](https://github.com/hat47x/tei-platform/pull/4759)は既存`sourceindex_bridge_test.go`へ、(a)基準と`layout-only`、(b)原文説明だけの追記は**Source fingerprintが変わるがCandidate Shapeは同じ**、(c)Edge方向／Rule条件の変更は両方変わる、を追加する。さらに各入力から生成する**Goソースの実byte**も比較し、候補構造が同じ場合は生成Goが一致し、Edge・Ruleを変えた場合には生成Goも変化することを要求する。いずれも**旧Source Indexは失効**し、新byteで作るIndexだけを検証できることを期待する。この試験はmain統合済みの限定Reference回帰であり、正式Readerや通常CLIの実証ではない。
 
 **差分Buildの判断を二段階に分ける**：最初に実消費Raw Sourceと現在のSelection/Role/Owner資格を検証し、続いて生成器が実際に使う**受理済み意味・Rule・Plugin/Target依存閉包**が不変かを調べる。Referenceの候補構造指紋は、後者の局所的な補助観測にはなり得るが、**それだけでGo再生成のskip、Artifact／Evidenceの再利用、A→B→A後のGrant復活を許可しない**。逆にMarkdownの表示や説明だけが変わったときに、実生成ロジックまで常に作り直す必要があるかは既存[#2600](https://github.com/hat47x/tei-platform/issues/2600)の実消費入力と計測で判定する。
 
 この考え方はGraph以外のDeclarative DSLにも適用する。ただし、業務のラベル、数量・単位、NULLと欠損、時間・対象Scopeなどが**意味に関係するDomain**では、#4758の限定指紋の除外項目を流用しない。既存[#4359](https://github.com/hat47x/tei-platform/issues/4359)／[宣言的構文の統合Draft #4756](https://github.com/hat47x/tei-platform/pull/4756)のOwnerが各表層と受理済み意味を明示し、Markdown/Graphviz/Mermaid/数式/Native SQLの意味上の選択と表示変更を分離する。新しい万能構造Fingerprint、意味正本、再利用判定器をこのために設けない。
 
-**Plugin・Studioへの引渡し**：[mainのPlugin Manual計画 #4750](https://github.com/hat47x/tei-platform/pull/4750)はReference `-node`と製品`tei`のコマンドを別資格とし、[Plugin公開文書のA/B Fixture PR #4757](https://github.com/hat47x/tei-platform/pull/4757)は公開範囲・版・Sourceを検査する限定候補である。文書や構造指紋の一致からPluginの選択・Build同梱・Load・Invoke・現在Disclosureを推測しない。Studio編集では元byte・Source位置の再解決を先に行い、Graph図のレイアウトと実Relation IDを混同しない。次の正式Reader S0-A／Product Generator S1／Plugin S2／Artifact GQ-06／Studio Stage2の**既存段階とP0順**を維持する。
+**Plugin・Studioへの引渡し**：[mainのPlugin Manual計画 #4750](https://github.com/hat47x/tei-platform/pull/4750)はReference `-node`と製品`tei`のコマンドを別資格とし、[main統合済みのPlugin公開文書A/B Fixture #4757](https://github.com/hat47x/tei-platform/pull/4757)は公開範囲・版・Sourceを検査する限定候補である。文書や構造指紋の一致からPluginの選択・Build同梱・Load・Invoke・現在Disclosureを推測しない。Studio編集では元byte・Source位置の再解決を先に行い、Graph図のレイアウトと実Relation IDを混同しない。次の正式Reader S0-A／Product Generator S1／Plugin S2／Artifact GQ-06／Studio Stage2の**既存段階とP0順**を維持する。
 
 #### 次の製品実装PRで確定すること
 
@@ -595,7 +595,7 @@ S0-Aで最初に提示すべき**独立した正負**は、同一Source Snapshot
 | --- | --- | --- |
 | **Graphの同名Node・多重Edge・Source span** | #4722の限定read-only Reference | #2621/#988/#4704：製品Workspace選択済みSourceの実byte/spanとLoader/Index結果 |
 | **Ruleの起点／終点による生成Goの分岐** | #4729の限定Go生成・別Process実行 | #2620/#951：受理済みMeaning/Operatorからの正式Target GeneratorとPlugin実Call |
-| **Markdown表示・規則・不正構文の境界** | 6 Fixture＋候補Expected。Fenceの未対応経路は#4725で修正検討 | #2621/#2514：参照Readerの否定例と製品Reader/SourceIndexの差、未選択拒否 |
+| **Markdown表示・規則・不正構文の境界** | 6 Fixture＋候補Expected。Fence負例は#4725で限定Referenceに統合済み | #2621/#2514：参照Readerの否定例と製品Reader/SourceIndexの差、未選択拒否 |
 | **Selectorの全件適用・Bundle実現** | mainのProgram Execution Model §33〜39およびGQ-06は設計/受入候補 | #4198/#3509/#2600：Route Universeの閉包、Hook Binding、実Bundle Member、実Consumer |
 | **AI/Studioの設計対象引渡しと編集** | #4515/#267/#1124の限定選択とProposal/Review契約 | PinとFocusの区別、古い非同期応答の棄却、受理前候補の生成混入拒否 |
 
