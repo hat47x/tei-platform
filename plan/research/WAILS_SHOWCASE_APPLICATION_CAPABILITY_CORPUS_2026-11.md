@@ -199,10 +199,12 @@ Pluginの表示上の有効化と、Contractの正当な公開、Providerの選�
 | --- | --- | --- |
 | Rule→Go→通常`tei self-build`（#5009/#5051/#5056） | 製品`Workspace.Load`から選択したRuleの生成Goと原Markdownのbyte同一コピーを一つのGo packageへ入れ、既存BuilderでBinaryを生成し、Binary自身の原文SHA-256を照合する回帰をmainへ収録。Goコードが同じでも原文コピーの説明byte変更でBuild Planが変わる負例を追加 | #5056で生成GoとBuilderに配置したGoのbyte不一致拒否回帰がmainへ追加された。ただし元Source Locator、Reader/Generatorの実装版、生成Goの実消費を一Attemptで正式束縛するR2-P全体は未受理。公開Function Entryのactual Provider CallはR3。ソースに試験があることと全CI合格を同一視しない |
 | Markdown Dataの製品InspectorとCLI（#5043/#5058） | 選択済み`tei.authoring/v1`のData定義表・項目セル・隣接Ruleを同一原文位置へ照合。別Processの実`tei inspect`と直接`operations.InspectSubject`の結果を比較する回帰もmainへ収録。非定義の例表や同名Capabilityを誤って受け入れない | CLIと共通Operationは同じ製品Reader系統を使うため、結果の一致を独立業務Expectedと呼ばない。実Studioでの二表現、編集Intent、実Provider/Effectの受入は別 |
-| Operator実装選択（#5007/#5053、実装候補#5054） | Workspace Manifestで選んだ組込みOperatorを合成Scenarioから呼ぶ既存経路。実装選択A→BでWorld/Plugin Lockが同じでも旧生成Commandを拒否する契約は#5053の計画としてmainに反映 | `operatorSelectionSha256`をPlan/CLIへPinする#5054は確認時点でOpen。exact HEADの試験・統合後に限り実装済みとする。実装Artifactや現在Grantまで保証するものではない |
+| Operator実装選択（#5007/#5053、後継候補#5114） | Workspace Manifestで選んだ組込みOperatorを合成Scenarioから呼ぶ経路。実装選択A→BでWorld/Plugin Lockが同じでも旧生成Commandを拒否する契約は#5053としてmainの計画に反映 | 旧Go PR #5054は未マージでClosed。現在の後継#5114はCLIと参照Planの共通指紋を補正するOpen PRであり、実装受入前は現在の製品保証として記録しない。Artifact/Grantは別資格 |
 | 実Wails WebView2（#5012/#5025/#5042/#5052） | Pin A保持中のBのCaret/Graph非干渉、再読込後の旧Pin失効に加え、固定した現行11ファイルのSource/Lockから構成した生成PoC Bと通常Desktopが、exact HEAD `00b92d3b6685834cab3a90595e449553e80d0d15` の[Windows run 43722212784](https://github.com/hat47x/tei-platform/actions/runs/43722212784)で両Job成功。生成資産不一致を許す改修ではない | 既存固定PoC Bの実Consumer成功を、TEIが実Build SubjectからStudio Stage1→Stage2へ再生成した証拠としない。別Workspace A→B→A、Dirty Buffer、実Provider、配布更新も別検収 |
-| Plugin接続の資格整理（#5061） | Shape／Law／Binding／Realization／Admission・Effect／Consumerの問いを分け、既存Operator選択とRule原文同梱を別Subjectの実績として整理した設計がmainへ収録 | Contract/Providerの実適合や業務Law、実Call/Grantは未実証。#5054のOperator選択失効は未マージの実装候補 |
+| Plugin接続の資格整理（#5061/#5101/#5116） | Shape／Law／Binding／Realization／Admission・Effect／Consumerを分離し、Whole/Field/明示Adapterの型付きMappingを既存契約に統合。Ownerの意味受理と現在Grantを副作用Callより前に確認する順序を計画へ追加 | 型付き接続が描けることは、Law適合・現在Grant・実ProviderのCall・独立Effect観測の実証ではない。旧Scenario選択失効は後継#5114で審査中 |
 | 生成Workbench N2のTEI CLI起動（#5059/#5090） | 既存PoC Bの実Windows成功に加え、Seedでビルドした製品TEI CLIからNode/esbuild子Processを起動し、Child Image Pin／生成JS Receipt・Digest／実WebView2受領を照合する限定経路をmainへ収録。exact HEAD `5fcd9e2e92afe8266cb7710fe56f54c27a54ca17`の[Windows run 43724133016](https://github.com/hat47x/tei-platform/actions/runs/43724133016)では通常版・生成版ジョブとも成功 | 正式な非Plugin BuildIntent／選択Builder／Source・Toolchain全閉包と、生成Stage1自身によるStage2再構築は未受理。子Processを起動できたことだけでStage2完成としない |
+| Data表由来のG/P実Binary同値（#5118） | 同じ`allocation_positive`のP評価とG生成→テスト用Go Binaryを、結果・失敗・読取先ID・読取回数まで比較するFocused回帰がmainへ収録。生成Goの読取先だけを差し替え、結果だけ同じでも違う読み取りであると拒否する負例を持つ | Goの通常`go build`による隔離テストであり、正式`tei self-build`／実Provider Read／Host Grant／別Consumerの全保証ではない。追加試験のexact HEAD実行結果は別票で確認 |
+| BuildPlan解決後のSource変更（#5109） | 生成GoをPlan解決後・Builder実消費前に変更すると、判断結果が同じでも旧Planの通常self-buildを拒否しArtifactを残さない回帰がmainへ収録 | 元DSL→Reader/Generatorの正式同一Attempt束縛、実行Grant、再受理までを保証するものではない |
 | Graph/Node配線の参照整合（#5038と標準Flow設計） | 受領したREA GraphからNode/Relationを選ぶとき、両者が同一Graphの端点で結ばれているかを調べる実Verifier修正をmainへ収録 | 端点一致は業務意味、Graphの時間条件、Plugin Provider選択、実Call/Effectの証明ではない。型付きFlow→実Generator/Consumerの独立試験を要する |
 
 これらは別々の証拠であり、一つが成立しても残りの資格に自動昇格しない。「機能が見える」「モデルが読める」「実生成した」「実Providerが作用した」「別Consumerで受領した」を区別し、Source改版・実装選択変更・生成Artifact変更の失効範囲をそれぞれ観測する。
@@ -244,7 +246,7 @@ MQ Studio型のCapability Driverと、Plugin間配線用Node Viewに共通する
 
 - `declared`：定義が要求する契約と対象の宣言。`selected`：Manifest/ProfileとCurrent Lockで選ばれたProvider／Operator。`built`：どのSourceと生成器を消費したArtifactか。`invoked`：実際に呼ばれた対象・入口・Attempt。`observed`：独立Read/Receiptや実Consumerが確認した内容。
 - 当初は上記五段階を**読み取り専用の標準Graph投影**とし、各辺に「何の証拠があるか」「未取得・未受理は何か」を表示する。元の端点IDが一致しても、Relation occurrence、現在Grant、実行Effectまでは保証しない。
-- `operatorSelectionSha256`（#5054）は`selected`の現在性を検証する候補であり、`built/invoked/observed`やBusiness Meaningの資格を補完しない。実装PRが未受理なら、図でも「計画された接続」と表示する。
+- `operatorSelectionSha256`（後継PR #5114）は`selected`の現在性を検証する候補であり、`built/invoked/observed`やBusiness Meaningの資格を補完しない。実装PRが未受理なら、図でも「計画された接続」と表示する。
 
 **引渡しと採否**：一本目は#1124/#997/#1824、二本目は#2621/#1121/#4544/#4495、三本目は#951/#1158と標準Flow/Nodeの既存Ownerに渡し、WC-03/05/09/13/14/15/17/18の独立Expectedは#1180/#2514の既存枠組みへ接続する。段階間で新しい正本・Runner・Registry・Gateは作らない。各段階で、実装量ではなく**既存の標準要素を再利用した範囲、削減した手書き部分、実Consumerの同値と失効試験**を記録する。
 
@@ -288,12 +290,12 @@ Updaterは、更新前に閉包・署名／出典と対象Platformを照合し�
 | --- | --- | --- |
 | WC-19 | 同一正式Ruleを直接評価とGo生成→実Binaryで比べる | #5073で対応するFocused回帰をmainへ収録。独立Expected・NULL/欠損／負のゼロ／型不適合の観測を足場に、実Provider Read、Runtime Grant、二つの独立Consumerは追加で受入を要する |
 | WC-20 | 固定PoC BのFrontend Source/Lock 11件の一つだけを更新する | 実Generator/配信Bundleの再資格化を要する。旧Windows PASSで新HEAD・Stage2を受理しない |
-| WC-21 | Plugin/Operator実装A→Bへ変更し、WorldとPlugin LockとRuleの見た目を保つ | 旧生成Commandを評価前に拒否する。#5054のexact HEAD受入前は現行mainで成立済みと表示しない |
+| WC-21 | Plugin/Operator実装A→Bへ変更し、WorldとPlugin LockとRuleの見た目を保つ | 旧生成Commandを評価前に拒否する。#5114のexact HEAD受入前は現行mainで成立済みと表示しない |
 | WC-22 | D2 Standaloneの一部Pluginまたは設定だけ旧版で復元し、残りを更新済みとする | Release Closureの整合・Target適合を再検証し、古いBundleの一部から実行資格を復元しない |
 | WC-23 | 別Workspace/別Roleに同名Subjectがあり、Node配線の端点IDだけ一致する | Source/Workspace/Revisionと意味Relation occurrenceを確認し、単なる端点参照一致から編集・実行を許可しない |
 | WC-24 | StudioでPin A→B→Aと戻し、原文ハッシュも以前と同じになるが、その間に選択Providerまたは現在Grantが変わる | 古いPin/Selection/実行権限を復帰させない。Source同値と意味受理、Provider Selection、Grant、実Effectを別票で再資格化 |
 
-**実装順序**：P0の正式Stage1→Stage2 Windows再入とR2-P/R3の実Providerを止めない。WC-19は#5073/#5087の二方式実物を基線として独立Consumer・実Provider観測へ進める。WC-20は#5059のN2実CLI起動／実Windows受領を維持して正式Stage2のSource Closureへ進め、WC-21は#5054の未統合実装を既存Ownerで検収する。WC-22は配布実証着手時、WC-23/24は既存Graph/Studio/SUIのModel/PinのOwnerへ戻す。FocusedコードやPRがmainにあっても、各新条件の独立Expectedが全部実行済みとはしない。
+**実装順序**：P0の正式Stage1→Stage2 Windows再入とR2-P/R3の実Providerを止めない。WC-19は#5073/#5087の二方式実物を基線として独立Consumer・実Provider観測へ進める。WC-20は#5059のN2実CLI起動／実Windows受領を維持して正式Stage2のSource Closureへ進め、WC-21は後継#5114の未統合実装を既存Ownerで検収する。WC-22は配布実証着手時、WC-23/24は既存Graph/Studio/SUIのModel/PinのOwnerへ戻す。FocusedコードやPRがmainにあっても、各新条件の独立Expectedが全部実行済みとはしない。
 
 ## 17. 外部ショーケースの検証粒度と出典の健全性
 
@@ -352,3 +354,63 @@ Wails側のAPI・連結図は同一WorkBenchの複数表現として提供し、
 **今回の採否**：WC-19を「同一Ruleの二方式が未実装」のまま据え置かず、#5073の実回帰を基線に差し替える。WC-20は#5059による実N2 Child起動と旧CI直呼びの差を対象に更新する。WC-25/26は#5101が示すT0/T1の純粋Mappingから始め、WC-27は#5096が正式に受理されるまでHTTP機能の実装済み表示をしない。WC-28は#5102の提案と同じOwnerへ渡す。
 
 この順番で第13節のReferenceを深める際、**型・出典・接続・実現・実Call・再利用・開示の資格を結ぶ最短の実物**を一つずつ実証する。P0のStudio非Plugin Stage1→Stage2 Windowsと通常CLIの正式Provider R3は継続して優先し、研究事例を理由に第二意味モデル、万能Runner、別Graph Store、別Build Gateを新設しない。
+
+## 21. 抽象経路を、生成メソッド名に依存しない検査対象とする
+
+WailsショーケースのXenSQL（Query）、MQ Studio（Operation/Provider）、Larvyn（Diff/Test）、WailsTerm（Host）に共通するのは、ユーザーが操作した後で何が起きたかを、UI上のボタン名や生成コードの関数名だけでは確定できないことである。**正式なSubject、通過すべき意味経路、途中で保持すべき状態、禁止すべき副作用**を先に決める。
+
+同じSubjectをGUIの表・ツリー・Node ViewとCLIから扱うとき、受入試験は次の同じ情報を保持する。これらは追加Core Schemaではなく、既存Source/Operation/Process/Evidenceに対する検査票である。
+
+| 検査票の項目 | 独立した確認 |
+| --- | --- |
+| **Subject/Contract** | Workspace、Qualified ID、Subject Kind、Source/Model Revision、型とRule ID。表示Labelや生成`func`名で代用しない |
+| **Path** | Source/Reader→Typed Meaning→実現Selection→Read/Transform→Consumer。静的に接続できることと、実際にその辺を通過したことを区別 |
+| **Invariant** | 入力Scope・Field Read ID/回数・NULL/Unknown・時点・数量単位・Relation occurrence・Disclosure／現在Grantを、対象のPhaseごとに保持 |
+| **Evidence** | 実際に選ばれた実装／Build Artifact／Invocation Attempt／Readbackを独立記録。Originが異なる二つの証拠をbyte一致だけで接合しない |
+| **Expected** | 正例と一因子負例を既存#1180/#2514へ接続。禁止したProvider Callは0回、Effect Unknownは再試行の許可と区別 |
+
+段階は**構造的な到達可能性→実際の通過→状態不変→Effect/Consumerの受領**とする。#5110/#5111/#5112でmainに入った抽象経路の受入計画を再利用し、名前に依存しない専用Test Runnerを新設しない。
+
+最初の具体例は既存Data表の`allocation_positive`である。#5118の同一Rule G/P実Binary比較では、**同じ判定値でも違う属性を読んだこと**を負例として観測する。これをNode Viewへ見せる際、実際に通過したRead IDと単に配置した接続線を分けて描画する。組織C1のMembership→OrgUnitの意味ID・向き・多重性・as-of Queryについては、別の抽象経路試験#5115がOpenであり、既に通過試験が成立したとはしない。
+
+## 22. WorkbenchのFocus・Pin・Dirty・Build資格を分けて進める
+
+Modal File Manager、LTools、Larvyn、WailsTermから得るべき価値は、画面パーツの再現ではなく、複数の対象や実行結果が並ぶ際にも**操作対象を間違えないWorkBench**である。
+
+- **Focus**：現在見えているEditor／File／Graphの表示・入力状態。Caret、IME、Undo/Redoはこのlaneで保持する。
+- **Pin**：Inspectorや証拠票で明示的に固定したSource-backed Subject。Focusが別タブへ移っても、Pinの意味上の対象を勝手に切り替えない。
+- **Dirty Source**：未保存Bufferは正式なSource RevisionでもAccepted Meaningでもない。Source保存にはWorkspace/RevisionのCASと衝突確認を要し、Previewの結果で正式Artifactを上書きしない。
+- **Build/Run**：選択されたBuilder、Toolchain、実Source byte、生成Frontend/Backend Artifact、実Consumerは別々の資格。#5059の実TEI CLI→N2→生成JS→Windows/WebView2成功を保持する一方、正式な非Plugin BuildIntentからStage1自身がStage2を再構築したとはしない。
+- **AI/他Worktree**：提案、Apply、Commit、Review、Mergeを混同しない。複数の変更が揃って初めて対象HEADの検証が成立する場合、片方のPRのPASSで統合受理済みと表示しない。
+
+#5105の後継#5122（Workbench状態・API境界・Stage2受入）は現在Openである。第13節のread-only二表現試験では、Focus A→B→AとSource A→B→Aを区別する。表示を元へ戻してもReader/Provider/Grantの現在資格は自動回復しない。また非Plugin Stage1→Stage2の正式な証拠を、BuildIntent→実Builder選択→実入力／Invoker／Artifact→Stage2実起動→Windows受領の順に求める。新しいStudio Hostや別のBuild Engineは設けない。
+
+## 23. 標準化の効果を「TEIへ移せた判断」から測る
+
+ショーケースから機能数を増やすだけでは、TEI自体が優れた開発基盤になったとはいえない。**一つの意味上の判断義務を標準データ／Rule／Processへ移し、実装の重複を減らせるか**で採否を判断する。
+
+測定対象は、生成Goの行数ではなく、手書きコードから実際に取り除けた判断分岐、維持すべきDSL/Target設定/Hook、独立Expectedの数、Targetを変更したときの波及、CLI/Studio/外部Hostへの再利用、実Consumerでの受領である。
+
+最初のDogfoodingは、既存`GeneratePositive`が受理するRequired Shape（ID、Attribute、Relation適合）のうち**最小の一条件**を、正式なTEI定義で表し、旧Go実装から移したことを実証する。#5123はこのM0〜M3・D-0〜D-4の実装Packetを整理するOpen PRであり、判断分岐の製品置換やStage2再入が済んだとはしない。
+
+| 段階 | 受入すべき実物 | 失格例 |
+| --- | --- | --- |
+| M0：独立Expected | 元Go実装が受理・拒否する形を一因子負例で固定 | Generator自身の出力をそのまま正解として保存 |
+| M1：TEI記述を読む | 正式Data／Ruleの型・Source位置・制約をReaderから解決 | Data表があるだけで実検査Ruleが働くとみなす |
+| M2：実判断を移す | 同じ意味上の制約をTEIから実現し、旧Go判断分岐を一つ削除して別テストで確認 | 新生成Goが旧Goの分岐を`delegate`するだけ |
+| M3：再入・再利用 | 変更後のTEIが同じ義務を実行・検査し、別Consumerへの再利用と履歴失効を独立確認 | 手書きDriverの起動だけで自己構築完了とする |
+
+この検証は、TEI Studioの非Plugin Stage1→Stage2 Windows受入を置き換えない。M2ができても実Plugin Provider／R3、正式R2-P、Studio Stage2は独立に検収する。
+
+## 24. 追加する独立反証の最小集合
+
+| ID | 一因子を変える場面 | 求める観測 |
+| --- | --- | --- |
+| WC-29 | 同じRule・同じ入力値を保ちながら生成Goの読取Fieldだけを変更 | 結果が一致してもRead ID/回数の違いを検出。#5118の実試験を基線とし実DB Providerへの外挿はしない |
+| WC-30 | BuildPlanを解決した後で生成Goに意味を変えないコメントを追加 | 旧PlanでのBuilder実行を拒否してArtifactを残さない。#5109の実回帰を基線とする |
+| WC-31 | Node Viewのラベルと生成Goメソッド名だけを変更するが意味IDとPathは維持 | 抽象経路の適格性が表示名変更だけで壊れない。一方、必須のRelation方向・型・Read Scope変更は検出する |
+| WC-32 | StudioでFocusだけBへ移動し、遅延したAのInspect応答が届く | Pin Aの資格を明示確認し、BのCaret・Dirty Buffer・診断・Undo/IMEを上書きしない |
+| WC-33 | 同じOperationをCLI Directで呼んだ後、Wails HTTP側へ異なるAudience/Grantを付ける | 内蔵InspectorのTransport同値だけでHTTP公開／非Builtin Providerの実Callや許可範囲を保証しない。#5096は未統合 |
+| WC-34 | TEI自身の一検査条件を生成Goへ移したが、旧手書き分岐は残る | 二重実装を「判断移管済み」とせず、旧分岐除去・独立Expected・再実行した製品Binaryを確認する |
+
+**実装の優先順位**は、新しいWC-29/30の独立試験を重複実装せず既存証拠へ結び、WC-31/32を既存Source/Studio Ownerの小さいread-only受入に落とすこと。WC-33は#5096のAP-1/2、WC-34は#5123のM1→M2実装パケットへ渡す。正式P0は引き続き**R2-P→通常CLI actual Provider（R3）**および**Studio非Plugin Stage1→Stage2 Windows**であり、Wailsアプリ個別再実装を優先課題にはしない。
