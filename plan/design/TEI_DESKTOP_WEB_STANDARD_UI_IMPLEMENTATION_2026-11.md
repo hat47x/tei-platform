@@ -22,7 +22,7 @@ Goの共通Application OperationとSource/Meaning/Grantの所有権は従来ど�
 | `reference/tei-studio-workbench/tsconfig.json` | `strict: true`、`noEmit: true`、DOM型を有効化 | 新UI部品も同等以上の静的検査を維持。JavaScriptを試すときはJSDocと型検査の実効範囲を比較 |
 | `reference/tei-studio-workbench/main.ts` | Host返信のPresenter、Focus/Pin、応答世代を管理 | 新コンポーネントが独自にHost/Grant/Sourceを解決しない |
 | `reference/tei-studio-workbench/source-locations.ts` | S-LOCのread-only位置情報を純粋投影する | 第一候補の小部品に安全な表示モデルとして渡す |
-| `cmd/tei-studio/assets/workbench/index.html` | 参照WorkbenchにあるPin操作用DOMが、配布用HTMLにはまだない | 参照画面の成功と配布Desktopの成功を分離。古いAssetコピーは使わない |
+| `cmd/tei-studio/assets/workbench/index.html` | 参照Workbenchと配布HTMLの両方にPin操作のDOM（pin-current／inspect-pinned／unpin-current）が存在し、確認したmainでは両HTMLのbyteが一致する | 現在の静的Source一致と、各変更HEADの正規Bundle・実WebView2受領・Stage2再入は独立に検収する |
 | `cmd/tei-studio/go.mod` | Go 1.26.11／Wails v3.0.0-beta.29の既存再現基線 | Wails v3.1.0への移行・正式配布資格を別の実OS比較とする |
 
 この表はSourceの静的確認であり、すべての記載が当該mainの全CI成功・実Wails画面合格であるという意味ではない。実装担当はPRの**exact HEAD**で状況を更新する。
@@ -329,3 +329,34 @@ Node Viewは標準データ構造、Process Flow、Operation／Plugin Bindingの
 **性能と採否**：入力遅延p95／p99、初回操作可能時刻、メモリ、Host往復、Build待ちを現行TypeScriptと同一Fixtureで実測する。Web Components／Lit、子Backend、Go／WASMは改善を反証可能な場合に局所採用し、Go単一バイナリ配布と共通Operationの独立性を優先する。
 
 **本§16〜17の状態**：設計と実装引渡しのみ。新Go／Node／Windows／実DB／実API／Stage2の検収、Owner意味受理、正式製品採用は行っていない。
+
+## 18. Desktopで「意味の経路」を検査する（2026-11-16、既存テストへの実装引渡し）
+
+### 18.1 見た目と実装名ではなく、要求された経路をたどる
+
+StudioのEditor・表・Graph・Node・Inspectorは、同じ意味要素の異なる表現である。利用者が「この規則はどこで定義され、どのデータを読み、どの実装で評価され、何が確認できたか」を調べるとき、生成Goのメソッド名、UI DOM ID、描画座標、ノードの見かけのラベルを同一性の根拠にしない。
+
+抽象経路は「対象Source／qualified kind・意味ID・Role → 型付き意味・実装義務 → 選択された実現方法／Operator・Plugin／Builder → 実際に呼ばれた入口と入力 → 結果／独立観測 → 現在のConsumer」の必要な区間を、**既存のSource Index・Operation・Build／Execution／Receipt・Consumer証拠から読み取る観点**とする。新しいTrace Engine、意味経路専用の永続Schema、第二Test DSLを設けない。画面がまだ実際に観測していない区間は、図で線をつないでも「未確認」とする。
+
+| 確認する不変条件 | 変更してよいもの | 検査すべき違反 |
+| --- | --- | --- |
+| qualified Subject／Source occurrence／Roleと必要な参照の結び付き | 表示名・配置・タブ構成・生成メソッド名 | 同名別Subject、Relationの向き・Key・多重度・Source版の取り違え |
+| 実装義務と型付きInput／Output／Read Footprint／Effectの対応 | Generate／Interpret／Delegateの実現方式 | 必須Field欠落、NULL・missing・unknownの縮約、別Operator／Provider選択 |
+| 選択されたBuilder／Pluginと実Input・Artifact／Invokerの一致 | 実装先の言語、最適化、内部関数の分割 | 選択B・実A、旧Source／Toolchain／生成JS、未観測の依存を一致扱い |
+| Hostで受理した現在のSource・Scope・GrantとConsumerへの開示 | CLI／Desktop／Webの表示方法 | A→B→A旧Reply復活、別Workspace／Worktreeへの漏洩、UI活性を実行資格へ昇格 |
+
+**実現方式の比較**：Generateは選択した意味を実Sourceから読み、実Builderが生成物を消費したことまで確認する。Interpretは同じ意味から既存Evaluatorを実呼出しし、選択された読取属性・判断を照合する。Delegateは外部実装への委譲境界と実Providerを確かめる。三方式は同じ独立Expectedに照らして比較できるが、方式ごとの実使用・契約閉包は別に記録する。単に生成Goが起動したことや、Go関数が正しい値を返したことは、DSLがその判断を担った証拠ではない。
+
+### 18.2 先にread-onlyの一経路を通す
+
+最初の固定対象は、既存の選択済みRule Markdown Fixtureでよい。正規Workspace Load／Source Indexから読めたRuleを、通常製品CLIの実Process、共通operations.InspectSubject、Wails非依存studiohost.NewReadOnlyで比較し、次に既存Wails Bridgeから表示まで追う。先行する#5108の三入口テストは**未マージの実装候補**として取り込み、既存Fixtureを使う。CLIのInspectとHostの応答が同値でも、WebView／実Windows／Stage2を検査したことにはならない。
+
+同じFixtureに「非TEI Fenceに書かれた偽Rule」「同名だが異Kind」「許可外Workspace」「実Sourceの一文字改版」「Ruleが読めても公開Function Entryにはならない」を置く。Source位置が一意でない場合はJump／Quick Fixを保留し、PreviewはSource byteを変更しない。実編集へ進む際は、§16のBuffer・Disk Source・Owner Acceptanceを区別し、保存時の実byte照合、再Inspect、診断への戻りを検証する。見かけのGraph選択やAI提案を自動修正・自動受理の根拠にしない。
+
+### 18.3 受入結果を利用者に見せる粒度
+
+ProblemsとInspectorは、少なくとも「Sourceを読んだ」「Meaningを解決した」「実装を選択した」「実Provider／Builderが呼ばれた」「結果をConsumerが受け取った」の**実際に裏付けのある段階だけ**を説明できるようにする。これらは既存証拠の表示観点であり、製品共通の新Status列挙や万能な合否点数ではない。Sourceのバイトが一致してもOwnerの意味受理を示さず、実行結果が同値でも実際に選択した実装が一致したことにはならない。部分取得、Read failure、制限付き情報は秘密側の存在・件数を公開DOM／ARIA／AI Contextへ漏らさない。
+
+**最小検収**：CLI／studiohostのRule Inspectが一致し、誤Kind・別Workspaceの拒否分類が一致することを第一段とする。次にWails上の同じ対象について、Focus／Pinの後着失効、Sourceの実Open、read-only Diagramと原文の往復、診断から一意SourceへのJumpを段階的に追加する。Generate／Interpretの同じ意味・異方式比較は#2620／#1121、実Providerは#4495／#2586、実Stage2は#2831／#4583が担当し、Desktopの最初のread-only検証の追加Hard Gateとしない。独立Expectedは#1180／#2514の既存Packetへ接続する。
+
+**現状**：上記は仕様と既存テストへの引渡しであり、#5115の組織C1抽象経路テスト、#5108のCLI／Studio Host同値、Plugin Mapping #5101の成果を参考にしたもの。新しいDesktop実IPC／Windows／編集保存／Provider実Call／Stage2の試験は本追補では実施していない。
