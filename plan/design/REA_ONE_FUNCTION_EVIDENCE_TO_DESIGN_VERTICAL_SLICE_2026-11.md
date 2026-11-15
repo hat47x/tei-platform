@@ -413,3 +413,21 @@ CIについては、前回PR #4816の対象HEADでRepository Healthが失敗し�
 
 この修正はGo比較処理と回帰試験の整合を回復するもので、正式`*.tei.md` Reader、Native Wails第二Consumer、旧新Provider Effect、SHO保存、Owner受理、Plugin自己構築の完成を意味しない。#2514/#1180の既存Expectedを利用し、追加のHost・Meaning Store・Runnerを設けない。
 
+## 16. 再採番された関係の曖昧な対応付けを禁止する（2026-11-15）
+
+前回までの実装は、同一の構造キーを持つ並行Relationが複数ある場合、注意Noteを付けてもCandidate ID順に旧候補と新候補を一対一に組み合わせていた。この組合せを後続Consumerが正式な個別Relationの継続性と解釈すると、誤ったSourceへ編集を誘導するおそれがある。これはUI表示で注意書きを添えるだけでは解消しない。
+
+**今回の限定変更**：既存の`CompareCandidateSets`で、同一Candidate IDは従来どおり比較する。Candidate IDが変化した場合、構造キーが旧新それぞれ**1件ずつ**に限って、従来の`external-identity-renumbered`を「Ownerによる確認待ち」の仮対応として返す。一方、旧新いずれかに同じ構造キーの候補が複数ある場合には、位置やIDの順序による組合せを**作らない**。旧候補、新候補をそれぞれ`ambiguous-structural-match`として返し、`StructuralKey`によって同じ候補群に属することだけを残す。各Entryにはその側のSource/Attemptのみを載せ、未証明の相手側Source/Attemptは設定しない。新しいMeaning・Source正本や照合Engineは追加しない。
+
+| 対照 | 比較結果 | 承認しないこと |
+| --- | --- | --- |
+| 外部IDと構造が一意に対応（1対1） | `external-identity-renumbered`とfresh Owner Review Note | 正式Relation IDや現在の編集権限 |
+| 同構造キーの並行二辺→再採番二辺（2対2） | 旧2件・新2件を別の`ambiguous-structural-match`として残す | Candidate ID順の一対一対応、Source書戻し |
+| 同構造キーが1対2／2対1 | 旧新の各候補を`ambiguous-structural-match`として残す | 任意の1件だけをrenumbered、残りをadded/removedと断定 |
+| 同じCandidate IDだが観測事実に差がある | 既存`observed-facts-changed`／Sourceも変われば`revision-changed` | 旧Owner受理やGrantの継続 |
+| 構造キーが一致しない | 従来どおり`added`／`removed` | 取得Scope外の不存在証明 |
+
+既存`internal/reacandidate/adopt_test.go`の並行Relation・非対称一致を、相手側のSource/Attemptを捏造しない独立Expectedへ改訂する。新Statusを受領するStudio/CLI/SHOの表示・編集では、**未知状態や曖昧状態を`unchanged`に丸めずread-onlyで保留**することを、#1124/#2497/#4661/#2514に引き渡す。Graphの描画Edge ID、外部Occurrence、Candidate ID、正式Relation IDを取り違えない。再採番が1対1でもSource-backedなIdentity適合、Owner受理、Current Grantの検証が必要である。
+
+この実装では既存REA CandidateSetとread-only ReviewPacketのみを使う。Native Wails JSの独立Consumer、正式`*.tei.md` Source Apply/Save/ReRead、実PG ProviderとFunction Read、TEI-native Plugin生成、Studio Stage1→Stage2 Windows実受領は別の製品資格。#2586/#4583/#2831のP0を新しいHard Gateで遅らせない。
+
