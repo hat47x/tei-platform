@@ -1,0 +1,125 @@
+# TEI MVP dogfooding：判断の移管から次世代の自己構築まで
+
+- **状態**：2026-11-16の実装・受入パケット。既存のM0〜M3、AW-0〜3、R2-P／R3、Desktop P0を具体的につなぐ計画であり、新しい製品実行の合格報告ではない。
+- **対象**：既存 `internal/semantic/validationgen/positive.go` に残るRequired Shape判断を一条件ずつTEIの定義・実装へ移し、最終的にTEI自身の次の版がそれを使用して再構築されること。
+- **既存の設計**：[実装→モデルdogfooding](../design/IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md) §13〜15、[自己記述](../design/ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md) §51〜53、[図表→実装の選択](../design/DECLARATIVE_RESULT_PROCESS_COMPOSITION_2026-11.md)、[製品完成計画](PRODUCT_COMPLETION_PLAN.md)。
+
+## 1. MVPで証明する価値を一つに絞る
+
+TEIで記述されたアプリが動くことと、TEI自身をTEIで作れることは異なる。最初のdogfoodingの主張を、**既存Goが担当していた判断をTEIが実際に引き受け、その判断の変更が次世代の製品実行へ届く**ことに限定する。
+
+ここでの「一義務」は、単に関数や生成Goの一行ではない。対象Subject、受理する入力、拒否する入力、失敗の区別、要求される実経路、独立Expectedを固定した判断の単位である。メソッド名、Graphの描画ノード名、Target側Symbolは、その義務の正本IDにならない。
+
+同じ意味に対して汎用Functionによる直接評価（P）、Target Go生成（G）、外部Providerへの委譲（D）、混合（H）を比較できる。しかし**各Targetで実際に選択・使用した方式**は別の事実である。Pで十分な一般業務機能に生成を強制しない一方、セルフビルドM3には、意味を持つ生成物が実Builderに消費される経路を少なくとも一つ求める。
+
+## 2. 現行mainの実証と、まだ存在しない接続を分ける
+
+| 現在の足場 | 実コード・受入上限 | 次に閉じる辺 |
+| --- | --- | --- |
+| 型付きRuleと生成Go | `internal/semantic/validationgen/positive.go`、[PR #5077](https://github.com/hat47x/tei-platform/pull/5077)のData表＋Rule回帰。選択した型・Read先からGoを生成 | この検査器自身のShape条件をTEIから実行するM1 |
+| 独立基線 | `positive_shape_obligation_baseline_test.go`。正常形と形状・型の拒否、Go package名拒否を別対照 | 後続の生成器・判定器がExpectedを自己生成しない |
+| 実CLI Build | `cmd/tei/cli_self_build_generated_rule_go_test.go`、[PR #5009](https://github.com/hat47x/tei-platform/pull/5009)／[PR #5087](https://github.com/hat47x/tei-platform/pull/5087)。生成Goを通常 `tei self-build` でBinary化し、正値・ゼロ・負値・NULL・未取得とRead一回を直接Evaluatorと比較 | M2の手書きShape分岐置換、元Source・Generator・Builderの正式な同一Attempt閉包 |
+| Build差替え拒否 | [PR #5056](https://github.com/hat47x/tei-platform/pull/5056)はPlan解決前の生成Go byte取り違えを拒否。Plan解決後の生成Go変異拒否も[PR #5109](https://github.com/hat47x/tei-platform/pull/5109)としてmainへ統合済み | 別Attempt・時間差差替えの反証を実Runnerまで通す |
+| 自己記述Data | `tei.authoring/v1`でDataとして表現するFixtureは[PR #5097](https://github.com/hat47x/tei-platform/pull/5097)で提案中 | Dataを読めることを実Shape契約の判定と混同しない |
+| 抽象経路の指定 | [PR #5110](https://github.com/hat47x/tei-platform/pull/5110)のAW-0〜3は計画としてmainへ統合 | 経路の存在・実通過・状態保存を別の実行証拠で確認 |
+
+**現在の停止線**：`GeneratePositive`のGoには、`ID`・`Attribute`の非空と`Relation`の空をまとめて確かめる手書き分岐が残る。M1〜M3の製品実置換、PR #5097のexact HEAD合格、正式R2-P／R3、Studio Stage1→Stage2の新たな完了を主張しない。PRの状態と現行mainでの実機能の有無は分離して照合する。
+
+## 3. 最初の判断移管を失敗させ得る条件
+
+`GeneratePositive`の複合条件は、実装移管の計測では次の**三つの原子的義務**へ分ける。組としてのRequired Shapeを一件と呼んでも、完了数の分母を曖昧にしない。
+
+| 義務 | 独立した反例 | 誤った代替 |
+| --- | --- | --- |
+| SH-1：Rule IDが必要 | `ID=""`を拒否 | 名前付きGo Functionの存在をRule IDの保証とする |
+| SH-2：参照Attributeが必要 | `Attribute=""`を拒否 | `std.decimal`だけでRead対象が一意とみなす |
+| SH-3：positive RuleではRelationを指定しない | `Relation`に有効なIDを指定しても拒否 | Data表の`required=no`を`forbidden`と読み替える |
+
+`Kind=positive`の適用条件、解決済み`std.decimal`、生成Goのpackage名、NULL／未取得／Read失敗時の評価は**別の義務**として維持する。SH-1〜3を移したことをもって、positive Law全体やTarget適合の移管完了とはしない。
+
+採用すべき既存標準Data／Facet／Role／Operatorの表現が不足する場合は「未表現の条件」と不足した接続を明記し、Readerへ説明表の意味を密かに埋め込まない。最初のPRではSH-1〜3のうち**実際に型付き意味として受理し、実行できる一条件だけ**を選ぶ。新Grammar、第二Meta Interpreter、試験専用Runner、Hostは作らない。
+
+## 4. 実装PRを分ける境界
+
+| Packet | 変更と照合する製品経路 | 合格条件・停止条件 |
+| --- | --- | --- |
+| **D-0：固定基線**（M0、既存） | `Workspace.Load`→Source Index→選択Rule・解決型→旧`GeneratePositive`／Independent Expected | 各拒否例、元byte／選択Reader、比較用旧Goを固定。旧GoをOwner意味受理としない |
+| **D-1：一条件のTEI実判定**（M1、最初の新コードPR） | 既存のReaderと意味を選択→既存Operatorの直接評価または既存Generatorで検査を実行 | SH-1〜3の選択条件について正例と拒否例が独立Expectedに一致し、**どのTEI入力・実装が判断したか**を示す。説明DataやDescriptorだけなら失格 |
+| **D-2：製品の旧分岐を置換**（M2、別PR） | 本来の`GeneratePositive`製品経路がD-1の実判定を使い、対応するGo手書き条件を削除 | 同義のGo条件を二重保持しない。D-1を呼ばない通常製品経路、黙った旧Goフォールバック、テストだけの配線は失格 |
+| **D-3：生成元と実消費の閉包**（R2-P、既存Owner） | 原Markdown／Reader／Generator版→生成Go byte→Go Entrypoint BuildIntent→実Builder入力→Artifact→実Binary | `definitionSource`を原DSLと誤置換しない。選択G／実P、生成B／配置A、Plan解決後の差替え、旧Source／Plugin版を拒否。現行の既存Recipe・Builder・Catalogを使用 |
+| **D-4：次世代での実使用**（M3、Desktop P0） | Stage0 Seed→Stage1実TEIのProcess／実Builder呼出し→Stage2実TEIが検査を使う | Stage1自身が選択Sourceと実Generatorを用いStage2を生んだ因果を確認。Seedによる二重ビルド、Stage2の旧検査器利用は失格。正式Studio Windows受領は#2831/#4583の別合格 |
+
+**PRの順序**：D-1で実行可能な条件を確定するまでD-2の製品分岐は削除しない。D-2の差分は検査器の追加だけでなく、**既存の手書き条件を実際に減らすこと**を必須にする。D-3は既存RuleのR2-P検証と並行してよいが、D-2で生成器自身が移管した判断の実使用を証明するには、当該移管を含む同一Build Attemptが必要である。D-4のWindows資格はD-1の先行条件にしない。
+
+## 5. 抽象経路・型付き接続・変更前後の検収
+
+同じSubjectのテストで識別するのは **`Subject + 義務 + 前提 + 要求経路 + 不変条件 + 独立Expected + Attempt`** である。Go関数名・Designerの表示ノード・GraphのEdgeラベルが変わってもSubjectを乗り換えない。
+
+| 反証 | 観測する証拠 | 合格しないときの扱い |
+| --- | --- | --- |
+| **Q-1 選択G、実CallerはP** | Selected implementation／Target／実Call先と入口を別取得。結果値が一致しても拒否 | #951／#4495／#2514へ。旧実装へ黙って退避しない |
+| **Q-2 定義内容を実変更** | SH-1〜3の選択一条件を変えた前後のTEI Source、判定結果／生成Go、Stage2が実使用する版 | 旧Expectedを改定せずに変更後を合格扱いしない。Meaning変更はOwner受理と新Expectedが必要 |
+| **Q-3 説明・レイアウトのみ変更** | 原byte／Source Indexと判断Go、UI Resource／Bundle Artifactを別照合 | 旧出典を再利用しない。業務判断のGo再生成・再ビルドは実依存が同じなら機械的に強制しない |
+| **Q-4 生成元とBuilderが不一致** | 実Generator byte、staged `generated.go`、Plan解決後の実Builder読取、Resultの出所 | 出力が正しくても旧Plan／旧Inputを拒否。PR #5056／#5109と重複実装しない |
+| **Q-5 Source A→B→A／Operator差替え** | Source Revisionと選択Pin、Generator版、旧Attempt、現在の実Call | byte一致だけで旧Evidence・現在Grantを復活させない |
+| **Q-6 型付きPlugin配線／Hook** | Whole／Field／明示AdapterのInput/Output型、Multiplicity、必須性、単位、Loss、Effect境界 | Nodeの配線表示を適格性とみなさない。型不一致・必須欠落・無断Field公開を拒否 |
+| **Q-7 実Callは成功、Consumer未受領** | Actual Provider、Effect／Receipt／独立Consumer、Studio WebView2実Imageを別記録 | 実行図やCLIの成功から外部公開・業務確定・Stage2 Windowsへ昇格しない |
+
+Q-1〜7は新しいTest RegistryのIDではなく、[自己記述§53](../design/ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md)のSD-53反証、[既存の独立Expected](https://github.com/hat47x/tei-platform/issues/2514)へつなぐ**作業票の見出し**である。Source／Reader、Meaning／Law、実現選択、Build、実受領の五層を一つのPASSへ畳み込まない。
+
+## 6. 維持負担の計測と次の採否
+
+対象をSH-1〜3の**三条件**に固定し、D-1／D-2の改訂前後で、次を同一Scenario・Target・Expectedで比較する。
+
+1. TEI自身が実際に判定した条件数／3、旧Goに残る条件数／3、外部実装へ委譲した条件数／3（判断の二重保持は別記）。
+2. 定義・Generator・Hook・Target設定・手書きGoの変更ファイル数と箇所、レビューに必要な手作業、独立Expectedの追加／変更点。
+3. Source変更→診断→プレビュー→生成→実Builder→Consumerの各所要時間、再Buildの必要性、再利用したArtifactと再資格化が必要なEvidence。
+4. 専門家が読む順序（入力→対象→条件→結果→評価不能）と、表示Projectionから元Sourceへ安全に戻れる範囲。
+
+**採用判断**：生成Go行数・図の数・テストGreen件数は成果の分子にしない。M2まで達しても手書き判断が減らない、SourceやGeneratorの保守が増える、既存汎用Functionの直接解釈の方が単純である場合は、その方式を採用する理由を再評価する。保守費が勝る場合は一部をOpaque Goとして維持し、TEIが引き受けなかった義務を明示する。
+
+## 7. Owner・並行P0・マージ条件
+
+- **Language／意味**：#2620／#2621／#988／#1018。`*.tei.md` の専門家可読性を守り、Go構文をDSLへ露出しない。
+- **Generator・Build／Plugin**：#1121／#4544／#2595／#943／#951／#1251。Go単一バイナリ、外部Host、CLIとWails非依存の共通Operationを維持する。
+- **独立Expected／変更失効**：#1180／#2514／#2600。選択・実使用・出典・Owner受理を分ける。
+- **外側の最優先実証**：#2586の通常CLI→実Provider Read、#2831／#4583の非Plugin Studio Stage1→Stage2／Windows WebView2は**独立P0として並行**する。D-1が完了するまで両P0を停止しない。
+
+各PRは同一Issueの未解決義務を一つ減らす差分に限定し、mainと対象PRの**exact HEADのrequired CI**、最新mainのRepository Health、変更ファイルの競合、別のOwnerのIndependent Expectedを確認してから統合する。未実行のGo試験、ドラフト文書、別HEADの成功を合格根拠に流用しない。Generator／Reader／Stage2の実証が不足する部分は、不足する辺を明示したまま次のPacketへ返す。
+
+## 8. M1の成立を先に確かめる：Data定義と実際の検査は別物
+
+最初の実装PRを始める前に、現行Reader／Operator／型付きMappingで次の三つを区別できるかを実コードで確認する。
+
+| 元Goが検査する条件 | Data項目表だけで言えること | M1に必要な残りの意味 |
+| --- | --- | --- |
+| `rule.ID != ""` | `required=yes`なら項目の存在が必要だと表現できる | **空文字列の拒否**。Fieldの欠落・NULL・空文字列を同じものとして扱わない。現在のGoは厳密に`""`との比較であり、空白だけのIDに別の規則を加えない |
+| `rule.Attribute != ""` | 参照項目を必須として記述できる | **空の参照IDの拒否**と、実際の`semantic.Validation.Attribute`への型付きBinding。型`std.decimal`の解決結果だけでは参照先の存在を保証しない |
+| `rule.Relation == ""` | `required=no`は「なくてもよい」の意味 | **positive Ruleに限ってRelationを禁止する**という条件。optionalを禁止に読み替えず、Rule Kindの条件付き適用を保つ |
+
+既存の`ValidationDeclaration` Dataを正しく読み込むこと（D1／D2自己記述）と、**実際のValidationインスタンスにこの条件を適用して受理・拒否すること**（M1）は別である。Data表だけでは未実現の条件が残る場合、`M1=unsupported`として不足する「型付きインスタンスへのBinding」または「既存Operatorの適用能力」を明示する。暫定的なGo手書き`if`をTEI Checkerと命名して合格にしない。
+
+**独立反証の入力境界**も分ける。元`*.tei.md`の製品Readerが空IDを文法段階で拒否するなら、そこから不正な`semantic.Validation`が選択されたと偽装してはいけない。Source選択の正例は製品`Workspace.Load`で確認し、`GeneratePositive`の型付き入力に対する不正Shape負例は既存`positive_shape_obligation_baseline_test.go`のように明示的に与える。双方の証拠を連結しない限り、Raw Sourceからの全経路でM1が成立したとは認定しない。
+
+最初の**実装可能性判定票**は、`対象条件 / 既存の定義表現 / Instance Binding / 実Checker・Operator / 元Goとの差 / 既存Independent Expected / 選択・実使用 / 未実装の辺`を一行にする。SH-1〜3のいずれかで元Goと**同じ真偽と拒否理由**を実現できた場合だけ、D-1でその一条件を実行する。存在・空・禁止のどれも表現できない場合は、専用メタRuntimeを追加せず、#2620／#988／#1121へ必要な最小能力を戻す。
+
+## 9. CLIとStudioでTEI自身を検査する一往復
+
+M1〜M3は生成器側の自己置換であり、**利用者がTEI自身の設計を扱えること**は別のdogfoodingで検証する。両者は同じSource、正規Subject、Operationを共有するが、CLI／Wails／Designerそれぞれに業務意味の正本を複製しない。
+
+| 段階 | 最初に使用する実経路 | 認める到達点と次の反証 |
+| --- | --- | --- |
+| **U-0 read-only inspect** | 実`tei inspect`別OSプロセスと直接`operations.InspectSubject`で同じ`quantity_positive`を読む。Studio側はWails非依存の`studiohost.NewReadOnly`を使う[PR #5119](https://github.com/hat47x/tei-platform/pull/5119)の独立検収を待つ | 型付きRule／元byte位置／Source状態／AuthorityLimitsと失敗分類を一致させる。同名の非公開Capability、存在しないRule、非許可Workspaceを拒否。読み取れたことは実行Grantではない |
+| **U-1 controlled change** | テスト用WorkspaceのRule説明文だけ、次に参照Attributeだけを一因子ずつ変更し、通常CLI inspect／生成器を再実行 | 説明変更ではSource Indexを取り直し判断は保持。属性変更では型・Read先・Go・独立Expectedの関係を再判定。古いStudio選択Event／別Workspace epochから編集対象を復活させない |
+| **U-2 実Buildと実受領** | 現行の`tei self-build`／BuildIntent／実Builder／別プロセスBinaryを使い、U-1で選択した意味の出所と生成byteを結ぶ | Source位置だけの一致、Go単体実行、手書きDriverの成功ではR2-P／R3に昇格しない。Plan解決後の差替えはmain済み#5109の反証を再利用 |
+| **U-3 Desktop自己再入** | 生成Workbench／Inspectorを含むStage1実TEI→Stage2 DesktopのBuilderとWindows WebView2実Consumer | N2実CLI起動・生成部品のWindows受領と、Stage1自身がStage2を生んだ因果を分ける。#2831／#4583の既存Desktop P0で独立検収 |
+
+**次のUI実装を増やさない判断**：U-0は[PR #5119](https://github.com/hat47x/tei-platform/pull/5119)のGoテストと重複実装しない。Studioの選択EventはIntentでありAuthorityではない。Graph／Node Viewは正規Data／Relation／Processの投影であって、同名Nodeや多重Edgeを単純化しても元SourceやMappingを編集しない。PluginのWhole／Field／Adapter接続も、型・粒度・多重度・時点・開示・部分取得の全経路適格性が確かめられるまで、図で配線されたことを実Call成功に数えない。
+
+**優先度**：D-1の最小の実判定と、U-0のread-only三入口一致は**独立した並行Packet**。U-1からU-2への橋渡しは、既存のSource Index・生成Go・Builderを再利用して検証する。CLIにWails依存を持ち込まず、Wails ServerをProviderとして扱わない。API Pluginを公開する場合も共通Operationに対する認証済みAdapterの追加として扱い、実Host・現在Grant／Disclosureは別Ownerとする。
+
+## 10. マージと次の着手判断
+
+この計画自体のCI・文書リンク・現行mainとの競合が解消した時点でdocs-only PRを統合する。D-1実装はそのPRに混ぜず、**現行Reader／Operator／MappingにM1条件を厳密に表現・実Callできるか**の判定を先に提出する。実現できる条件が一つあれば、その一条件に絞ったGo実装PRを作る。できなければ不足した意味能力だけを既存Ownerに返し、`required`を`nonempty`や`forbidden`へ自動的に読み替える修正はしない。
+
+計画の統合は製品実装の検収ではない。現行の通常CLI→実Provider Read #2586とStudio Stage1→Stage2 Windows #2831／#4583をP0に維持し、ドッグフーディングの便利な画面表示や生成Goのbyte一致だけでP0を完了にしない。
