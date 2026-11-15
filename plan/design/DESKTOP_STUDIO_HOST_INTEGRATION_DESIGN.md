@@ -1131,3 +1131,34 @@ AIが参照するPlugin/Operatorの利用法は、#951のContract/依存とPlugi
 **最小実装順**：C0 現在のCLIで一SubjectのCatalog／Inspect／Source/Reader／Required Coverageを照合 → C1 UIローカルの明示Subject Pin（#4515、read-only）とSourceへ戻る操作 → C2 用途別Contextを同じOperationからCLI／MCP／Harnessへ投影して送出・受領・開示を分離 → C3 AI Proposalを既存Preview／Reviewと接続。**C0はStudio GUI不在でも可能で、C1〜C3をnon-Plugin Stage1→Stage2 Desktop製品P0の前提にしない**。
 
 **状態**：この節は現行main Workbench/CLI Bridgeと既存Issueの静的照合に基づく設計案。新Subject Pin、Harness Context API／MCP Tool、実LLM送信、Disclosure E2E、Source Patch Apply、Owner受理は**NOT RUN**。read-only `inspect`等が既存することは、CLIとStudioの同一Consumer資格やAIへの送出許可の証明ではない。
+
+## 20. PinからAIへの一往復を受け入れる順序（2026-11-15、実行前）
+
+**位置付け**：本節は§12のFocus/Pin分離と§19のC0〜C3を、[YICでmainへ統合された最初の実行票](https://github.com/hat47x/tai-pleroma/blob/main/docs/yi-constellation/tei-selection-harness-first-vertical-slice-2026-11-15.md)および[複数UI・外部Harnessの横断計画](https://github.com/hat47x/tai-pleroma/blob/main/docs/yi-constellation/harness-cross-ui-session-probe-2026-11-14.md)へ引き渡すための**受入順と未確認事項**である。文書群はTAI [#648](https://github.com/hat47x/tai-pleroma/pull/648)・[#650](https://github.com/hat47x/tai-pleroma/pull/650)でmain統合済み。TEI Workbenchの現mainには明示Pin UIは未実装。実装は競合を抱えるDraft [#4597](https://github.com/hat47x/tei-platform/pull/4597)にあり、テスト・埋込Bundle・Windows実Consumerを正式に検収していない。
+
+### 20.1 三つの寿命と五つの資格を混ぜない
+
+- **閲覧**：Focus／Graph選択／Editor・Dirty Buffer（現在見ているB）。表示の世代と応答レーンで管理する。
+- **固定**：Pin Intent（A、Workspace、Qualified Kind/ID、固定したCatalogの版、要求世代）。一時選択の変化では自動移動しない。A→B→AやUndo後も、旧Observation・旧Grantは自動復活させない。
+- **外部処理**：元Task／Activity／Harness Session／実Attempt／Tool Reply／Proposal。PinとSessionを同一の権限や保存単位にしない。
+
+資格は①現在のSubject解決・一意性、②Source/RootとRevisionの現在性・取得範囲、③必要なContextの完全性、④送出先Audienceと現在Disclosure、⑤外部Tool実送受信・元Taskへの帰着・Owner Reviewを別々に記録する。**CatalogのModel Revision／World Fingerprint／Source Index Fingerprintが一致しても、Rootの同一性・現在Grant・開示可能性は証明されない。** 現Catalog型には正規Root Originがなく、同一ID・同一表示名のみから真の元Sourceを推定しない。版の空値やSource unavailable／partialは資格未取得として扱い、完全性を捏造しない。問合せ0件も全件不存在の証拠にはしない。
+
+### 20.2 最初の一Subject、一Attemptの検収
+
+| 段階 | 観測対象／通過条件 | 通過したと見なさない事項 |
+| --- | --- | --- |
+| **R0：現在の製品CLI** | 現在の管理Workspaceから実Catalog→一Qualified SubjectのInspect／Source照合を一回取得。元byte、Source/Model/Worldの版、Current Scopeと不足をそれぞれ記録する | 文書・固定Fixture・合成結果だけを実Provider／開示済みContextの取得実績とはしない |
+| **R1：WorkbenchのPin** | 最新mainに再統合したSourceをNode 24で`npm test`・型検査・build。Pin A裏Inspect中も表示中BのEditor／Graph／Focus／Noticeを不変に保つ。Unpin、遅延Reply、A→B→A、同ID別改訂、未知の版をそれぞれ拒否する | Source-level/V8隔離テストの成功だけで実DOM／Wails動作合格とはしない |
+| **R2：実配布Consumer** | **同一HEAD・同一Toolchain**でWorkBench生成JSとDesktop収録JSのbyteを比較。実Wails/Windows WebView2から実Hostを呼び、一Subjectの成功／拒否／後着を観測する | 別Branchの生成Assetをコピーして一致を作らない。生成JSだけの成功、旧CI・server画面の成功を流用しない |
+| **R3：外部AI連携** | 現在のRoot/Revision、Required Contextのcomplete/partial/unknown、Audience、Disclosureを改めて検証し、**許可範囲だけ**既存CLI/MCP/外部Harnessへ送る。Tool Reply全体の受領、元Request・Task・Pin世代への帰着を独立に記録する | Prompt作成、通信開始、途中切断、結果テキストの存在を完全受領・意味受理としない |
+| **R4：提案のレビュー** | 返答を元Subject/Sourceの候補として表示。古い版、別Workspace、権限不明なら未適用。既存Preview/Diff・Owner Review・条件付きWriter／独立再読取を後段へ渡す | Focus Bや未保存Bufferへの自動Apply、AI説明の意味受理、実Effect完了を宣言しない |
+
+### 20.3 既存Owner・P0とマージ判断
+
+R0〜R4は既存[#4515](https://github.com/hat47x/tei-platform/issues/4515)（Pin／Focus）、[#1824](https://github.com/hat47x/tei-platform/issues/1824)（Desktop実Consumer）、[#3262](https://github.com/hat47x/tei-platform/issues/3262)（Required Context）、[#2516](https://github.com/hat47x/tei-platform/issues/2516)（Disclosure）、[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#2514](https://github.com/hat47x/tei-platform/issues/2514)（独立Expected）、TAI [#168](https://github.com/hat47x/tai-pleroma/issues/168)（実Harness）への検収項目であり、第二のScenario・Context Store・Resolver・Host・Agent Loopを新設しない。現行Wails同一Processを基線とし、将来の子Backend／Web Session／Go-WASMは別資格のままにする。
+
+**主線のP0は変更しない。** [#2831](https://github.com/hat47x/tei-platform/issues/2831)/[#4583](https://github.com/hat47x/tei-platform/issues/4583)の非Plugin Studio Stage1実TEI→Stage2 Windows Desktop→Stage2自身のWebView2実消費、および[#2586](https://github.com/hat47x/tei-platform/issues/2586)の通常製品CLI→実Provider→独立Consumerを先に完了させる。Pin、外部AI、Markdown Reader、子Backendを新たなHard Gateにしない。
+
+**統合の扱い**：本節のみをdocs-onlyでmainへ入れることは受入手順の共有であり、製品コードの適合を意味しない。Draft #4597はmainとの競合を解消して**そのHEAD自身**でNode24／正規Bundle／実Windows Hostを検収した後に統合する。競合が長期化する場合は最新mainへ必要なReader/State/UI/テストだけを再適用し、旧Draftの記載を一括コピーしない。人間・AIで同じSourceに戻る設計は[協業UX Draft #4721](https://github.com/hat47x/tei-platform/pull/4721)の議論を踏まえるが、同Draftの旧MASTER_PLANを巻き戻さない。
+

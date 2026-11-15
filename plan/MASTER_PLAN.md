@@ -184,6 +184,8 @@ Gate C — PAS-04 Evidence — Ready
 
 **Subject選択→CLI/MCP/AIへ渡す経路（§19）**：C0は既存CLIで一SubjectのCatalog/Inspect/Source/Required Contextを実読取する。C1はUIローカルの明示PinとFocus・Dirty Buffer分離。C2は用途と開示先の現在資格を確認し、CLI/MCP/Harnessへread-only Contextを完全受領させる。C3はAI提案を差分ReviewとSource再検査を経て既存Acceptanceへ接続する。Pinは操作意図であり、現在Grant・Source受理・外部送信許可ではない。描画用Edgeや同名Nodeは正式Relation Identityにならず、Workspace/Revision/Source A→B→A、partial、Reader未束縛、8,192byteの途中切断、非公開情報を独立負例で拒否する。
 
+**Pin実装の受入順序（2026-11-15）**：[Desktop Host設計 §20](design/DESKTOP_STUDIO_HOST_INTEGRATION_DESIGN.md)へ、Pin Intent／Focus／Harness Attemptの寿命、Source・Required Context・Disclosure・Tool完全受領の別資格と、R0 CLI実Read→R1 Pin非干渉→R2実Windows配布→R3外部Harness→R4候補Reviewの検収順を統合する。YICの実行票はmain統合済み（[#648](https://github.com/hat47x/tai-pleroma/pull/648)、[#650](https://github.com/hat47x/tai-pleroma/pull/650)）。**Pin実装 #4597はDraft／main競合／実Node24・生成Bundle一致・実WebView2未検収**であり、文書をmainへ入れても製品合格とはしない。TEI #4583のセルフビルド／#2586の実Provider／TAI #168は引き続き独立P0とする。
+
 **優先度とOwner**：C0はGUI未完成でも並行可能。#4515/#1824はPin/GUI、#3262はRequired Context、#2516/#1178はDisclosure、#1158は型付き操作、#951はPlugin文書、#1180/#2514はExpectedを担当する。新Host/Source Resolver/Harness/汎用Bridgeは作らない。正式non-Plugin BuildIntent→実Stage1→Stage2→Windows WebView2をP0に維持し、C1〜C3を追加Hard Gateにしない。現段階はdocs-onlyで、新MCP/AI送信、実Windows E2E、Owner受理はNOT RUN。
 
 
