@@ -226,6 +226,7 @@ const (
 	ComparisonSameBytesNewAttempt  = "same-current-bytes-different-attempt"
 	ComparisonObservedFactsChanged = "observed-facts-changed"
 	ComparisonRenumbered           = "external-identity-renumbered"
+	ComparisonAmbiguousStructural  = "ambiguous-structural-match"
 )
 
 // ComparisonAuthorityLimits states what a comparison does not establish.
@@ -237,18 +238,16 @@ func ComparisonAuthorityLimits() []string {
 		"revision-change-requires-fresh-owner-review",
 		"external-identity-renumbering-requires-fresh-owner-review",
 		"structural-key-is-a-review-hint-not-an-identity-proof",
+		"ambiguous-structural-match-never-assigns-an-individual-counterpart",
 		"unchanged-candidate-id-and-current-bytes-do-not-prove-unchanged-external-facts",
 		"comparison-does-not-accept-or-write",
 	}
 }
 
-// CompareCandidateSets compares two candidate sets in three passes:
-//
-//  1. candidates with the same identity are compared as the SAME candidate;
-//  2. the remaining candidates are matched by structural key, which catches a
-//     provider that renumbered its external identities over the same
-//     structure;
-//  3. whatever is left is genuinely added or removed.
+// CompareCandidateSets preserves identical IDs, then compares only unique
+// structural-key pairs as tentative renumberings. When a structural key is
+// repeated on either side, it reports independent before/after candidates as
+// ambiguous rather than inventing a one-to-one source relationship.
 func CompareCandidateSets(before, after CandidateSet) CandidateSetComparison {
 	comparison := CandidateSetComparison{
 		SchemaVersion:   "tei.rea.candidate-set-comparison/v0",
@@ -269,9 +268,8 @@ func CompareCandidateSets(before, after CandidateSet) CandidateSetComparison {
 		}
 	}
 
-	// Pass 2: structural-key matching for renumbered identities. Both sides
-	// are grouped so several structurally identical candidates match in a
-	// deterministic order rather than one of them absorbing the rest.
+	// Pass 2: only a unique structural key on both sides can be paired
+	// as a tentative renumbering. Repeated keys are review-only groups.
 	beforeByKey := map[string][]string{}
 	for _, candidate := range before.Candidates {
 		if matchedBefore[candidate.CandidateID] {
@@ -300,7 +298,7 @@ func CompareCandidateSets(before, after CandidateSet) CandidateSetComparison {
 		}
 		key := structuralKey(candidate)
 		pending := beforeByKey[key]
-		if len(pending) == 0 {
+		if len(pending) == 0 || beforeKeyCounts[key] != 1 || afterKeyCounts[key] != 1 {
 			continue
 		}
 		pairings[candidate.CandidateID] = pending[0]
@@ -325,14 +323,6 @@ func CompareCandidateSets(before, after CandidateSet) CandidateSetComparison {
 			entry.Notes = append(entry.Notes,
 				"same-structure-with-a-new-external-identity",
 				"a-renumbered-candidate-requires-fresh-owner-review")
-			// A deterministic choice among repeated structural matches is not
-			// evidence of individual relation continuity, even with equal spans.
-			if candidate.Kind == CandidateKindCrossReference &&
-				(beforeKeyCounts[entry.StructuralKey] > 1 || afterKeyCounts[entry.StructuralKey] > 1) {
-				entry.Notes = append(entry.Notes,
-					"structural-key-multiple-occurrences-cannot-identify-individual-relation",
-					"source-backed-occurrence-mapping-is-required-before-edit")
-			}
 			// The structural fallback deliberately ignores producer IDs. A pair
 			// with changed endpoints might be benign renumbering, a reversal,
 			// or an unprovable collision. It cannot authorize relation editing.
@@ -344,14 +334,26 @@ func CompareCandidateSets(before, after CandidateSet) CandidateSetComparison {
 					"relation-endpoint-mapping-is-unverified",
 					"source-backed-endpoint-mapping-is-required-before-edit")
 			}
+		} else if beforeKeyCounts[entry.StructuralKey] > 0 &&
+			(beforeKeyCounts[entry.StructuralKey] > 1 || afterKeyCounts[entry.StructuralKey] > 1) {
+			// No individual before candidate may be chosen by arbitrary order.
+			entry.Status = ComparisonAmbiguousStructural
+			entry.Notes = append(entry.Notes, "structural-key-nonunique-no-identity-proof",
+				"ambiguous-structural-match-after-candidate",
+				"fresh-owner-review-is-required")
+			if candidate.Kind == CandidateKindCrossReference {
+				entry.Notes = append(entry.Notes,
+					"structural-key-multiple-occurrences-cannot-identify-individual-relation",
+					"source-backed-occurrence-mapping-is-required-before-edit")
+			}
 		} else {
 			entry.Status = ComparisonAdded
 		}
 		comparison.Entries = append(comparison.Entries, entry)
 	}
 
-	// Pass 3: before candidates that matched neither by identity nor by
-	// structural key are genuinely removed.
+	// Pass 3: report unmatched before candidates. Those in ambiguous groups
+	// are not called removed, because no individual correspondence was proven.
 	renumberedBefore := map[string]bool{}
 	for _, partner := range pairings {
 		renumberedBefore[partner] = true
@@ -360,13 +362,26 @@ func CompareCandidateSets(before, after CandidateSet) CandidateSetComparison {
 		if matchedBefore[candidate.CandidateID] || renumberedBefore[candidate.CandidateID] {
 			continue
 		}
-		comparison.Entries = append(comparison.Entries, CandidateComparisonEntry{
+		entry := CandidateComparisonEntry{
 			CandidateID:     candidate.CandidateID,
 			Status:          ComparisonRemoved,
 			StructuralKey:   structuralKey(candidate),
 			BeforeSource:    candidate.SourceRevision,
 			BeforeAttemptID: before.Attempt.EvidenceID,
-		})
+		}
+		if afterKeyCounts[entry.StructuralKey] > 0 &&
+			(beforeKeyCounts[entry.StructuralKey] > 1 || afterKeyCounts[entry.StructuralKey] > 1) {
+			entry.Status = ComparisonAmbiguousStructural
+			entry.Notes = append(entry.Notes, "structural-key-nonunique-no-identity-proof",
+				"ambiguous-structural-match-before-candidate",
+				"fresh-owner-review-is-required")
+			if candidate.Kind == CandidateKindCrossReference {
+				entry.Notes = append(entry.Notes,
+					"structural-key-multiple-occurrences-cannot-identify-individual-relation",
+					"source-backed-occurrence-mapping-is-required-before-edit")
+			}
+		}
+		comparison.Entries = append(comparison.Entries, entry)
 	}
 
 	sort.Slice(comparison.Entries, func(i, j int) bool {
