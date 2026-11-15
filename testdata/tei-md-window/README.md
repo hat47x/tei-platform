@@ -46,6 +46,14 @@ Sourceを修正する場合、ハッシュの再計算は必要だが**ハッシ
 
 現行の`Source`→`JSON候補`は正式Readerで選択・受理された経路ではなく、`SQLite`はTEIの通常Provider／CLI／Studio Consumerではない。型付き入力候補から実DBへ渡す段階までがC0であり、これが成功しても`*.tei.md`の受理・標準QueryのWindow意味・製品セルフビルドは未成立である。
 
+## Workspaceが選択した原文のS0-P予備試験
+
+`internal/workspace/tei_md_window_pinned_source_test.go`は、固定された基準・Frame変更の二文書を、既存`tei.workspace.yaml`の`semantic`管理Rootへ配置する。宣言外の`drafts`は管理対象に含めず、Pinned Rootから実際に読んだ元バイトを`sourceSHA256`と`Source Index`で照合する。B2の明示NULL行と、`moving` Frameの行を既知の字句としてバイト位置まで確認し、A3を書き換えれば旧Indexが失効することも検査する。
+
+**この試験は、通常の`Workspace.Load`が`TEI_MD_PARSER_UNBOUND`を返すことを前提にしている。** 管理対象として見つかっただけでは、Markdown表や計算条件がTEIの正式な意味として受理されたことにはならない。実DBへ固定JSONの七行を渡す`window_bound_input_test.go`とも、まだ製品Reader経由では接続していない。
+
+七行の閉包は固定テストデータとしての検査であり、外部Sourceの読み取り完了や全Datasetの完全性を示すものではない。未読データ・未選択の表・部分取得があれば、正式な入力Datasetとしての受理は保留する。新しいWindow Reader・Source Index・Expected正本は作らない。
+
 ## 既存の実証との接続
 
 `internal/database/sqlgen/sqlite/window_reference_test.go`と`window_frame_change_test.go`では、既存`SelectOptions`から生成したSQLite SQLを実DBで評価している。固定された七行の入力と期待値の照合は**C0／SQL方言**の検証である。今回追加するテストも、このJSONの基準・変更例を使ったC0の照合にとどまる。
