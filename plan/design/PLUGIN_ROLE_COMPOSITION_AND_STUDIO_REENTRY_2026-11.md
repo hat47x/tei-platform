@@ -1238,3 +1238,65 @@ AとBの成功も、Graph/Ruleの製品意味受理やPlugin自身のセルフ�
 5. **P2-E** #1129/#1174/#4198：Guard/Call回数/Effect unknown/Receiptの負例を通してから、可変Graphの実作用適用を拡張する。
 
 各PRは最新mainに対する小差分、exact HEADのCI・mergeability、実行したGo/CLI/Windows/DBの区別、Ownerの意味受理状態を残す。**本節はdocs-onlyの設計と受入順であり、実Provider／Product Doc Reader／正式Graph Compiler／Stage2／DB Effectの新規試験や製品受理を主張しない。**
+
+---
+
+<!-- plugin-contribution-selfbuild-closure-20261115 -->
+## 23. Pluginの貢献単位を自己生成・実利用・再資格化につなぐ（2026-11-15横断統合）
+
+### 23.1 Packageではなく、実際に提供された機能を検収する
+
+第22章は選択Providerから実Consumerまでの資格を分けた。本章は、複数Pluginが同じApplicationに貢献するときの最小実装単位を明確にする。Packageは配布単位だが、貢献単位はSource Reader、意味/Rule、Operator、Data Provider、Generator、Presentation、実行Adapter、検証・説明などのRole/Contractへの実装である。単一Packageで複数Roleを提供してもよいが、Packageの導入だけで全Roleの採用・実行資格を与えない。
+
+既存#951のContract/Provider、#1016のApplication選択、#2600の局所失効、#3267のVerified Composition BOMを唯一の正本とする。本章の貢献票は既存Source Reference・Build ArtifactSet・Attempt・Receiptを参照するread-only Projectionであり、新Registry/Lock/Resolver/Core enumを設けない。未選択Runtime Member/Secretは同梱せず、実Provider欠落を同値結果で隠さない。
+
+### 23.2 RoleごとにSourceからConsumerへ何を保証できるか
+
+| 貢献 | 受け取る契約・Source | 最初に実測する事実 | 次の段階で別に必要な資格 |
+| --- | --- | --- | --- |
+| Reader/Language | 明示Frontend、管理Root、同一Load時byte、Language版 | 元byte/Spanを保持した候補 | Owner意味受理・生成 |
+| 意味/Rule/Operator | Element/Edge/Rule ID、型・Context・依存 | 対象Identityと条件・候補差分 | 採用判断・実作用 |
+| Generator/Build | Accepted Meaning、実Generator/Toolchain、入力member | 実生成された判断処理・Artifact | Runtime Providerの実呼出し |
+| Provider/Data | exact Contract/Lock、Host、Resource/Grant | 実EntryとRead範囲・Failure | Commit、別Target、開示 |
+| UI/Workbench/VUI/MCP | 型付きOperation、UI Asset版、実Consumer | 同じResult世代の実受領 | 編集許可・Target横断適格 |
+| Manual/Harness Skill | 明示Doc帰属、適用契約版、現在Disclosure | 許可Audienceで取得した説明と実在Command | 実機能や業務意味の受理 |
+
+Source byte、候補構造指紋、Accepted Meaning、生成物SHA、契約/Lock、Manual byte、WorkbenchのHTML/JS/CSS、実Consumer世代を一種類のハッシュや一つのreadyフラグへまとめない。
+
+### 23.3 最初のGraph/Rule Pluginを通す実装順
+
+1. **C0 実Source選択・Reader接合**（#1018/#988/#2621）：明示選択したGraph/Ruleの同一Workspace.Load byteから、Element/Relation ID・Span・Source Indexを照合。未選択tei.mdは従来の未束縛診断で止め、同名Draftへfallbackしない。Graphの多重辺とWindowのNULL/時間窓は個別Language/Roleの判断に残す。
+2. **C1 意味受理**（#267/#1121）：OwnerがRule/Graphの対象・必要Context・独立Expectedを採用する。Reference指紋・Source Index一致・AIの候補から自己承認しない。外部部品はTODO＋Mock/Contract Testで全体のシミュレーションを先行できるが、Mockを本番部品の完成扱いにしない。
+3. **C2 生成コードの実体**（#1121/#2831）：Node/Edge/Ruleの変更に応じて振る舞いが変わるGo処理を実生成。TEIが生成した分岐・検証・Bindingと、単純に外部Goへdelegateした部分、手書き固定部分を区別。行数だけでなく、意味を含む生成処理範囲と変更後の手修正量を測る。
+4. **C3 実Provider二入口**（#1251/#4495/#4583）：通常製品CLIから選択済みProviderのactual entryと独立Expectedを照合し、Studio/Wailsの独立Consumerでも契約・Result世代を確認。正式な非Plugin Studio Stage1→Stage2とWindows WebView2は別のP0 Gateであり、生成Reference BinaryのCLI結果を流用しない。
+5. **C4 公開知識とAI協業**（#4714/#4679/#1124）：Plugin Inventoryのexact選択から公開Manual一件のSource-backed取得と現在Disclosureを検証し、read-only Inspector/YIC Harnessへ許可された版だけを渡す。手引きにだけ現れる未実装Commandを案内しない。編集はPreview→Resolve→Admit→Commit→独立再Readに委ねる。
+6. **C5 実作用を持つ拡張**（#1129/#1174/#4198）：Guardの順序、実Call回数、現在Grant、Receipt/unknownを検証した後に適用範囲を広げる。C0〜C4の成功からDB更新・通知の実行資格を推定しない。
+
+最短の次の製品差分はC0の一Graph/Rule Sourceとする。C1〜C5を一PRに詰め込まない。Window・REA・組織・BRMSの事例は、同じSource選択/追跡境界の反証を独立Ownerに渡してから適用する。
+
+### 23.4 配布・更新の工程別依存と再資格化
+
+Go単一Binaryの静的構成を標準とし、Build専用Generator、Runtime Provider、Desktopへ埋め込むUI資産、公開Manualは工程別に必要な集合を算出する。単一Packageだからという理由で全成果物へ一括同梱しない。外部Host/プロセス分離は更新頻度・隔離・権限が必要になった場合に限る。
+
+更新時には、(a) Contract/Providerのexact選択、(b)実Builder/Toolchain/生成Artifact、(c) 配布Imageと実埋込Assetのbyte版、(d) Manual/Source/現在Disclosure、(e) 実ConsumerのReply/Grantを分けて検査する。Updaterの取得・配置・Process切替・旧Clientからの受領は別の資格。D2更新/切戻しは既存Backend Lifecycle計画のOwnerへ渡し、Wails v3系UpdaterやMobile試作をStudio P0のHard Gateにしない。
+
+### 23.5 既存Scenarioへ差分だけを引き渡す反証候補
+
+| 反証 | 変える一因子 | Expectedの要点 | 既存Owner |
+| --- | --- | --- | --- |
+| PCG-01 | 未選択tei.mdを同名の別Readerで読む | Reader Pin不一致を拒否し、候補をAccepted Meaningにしない | #2621 S0-A |
+| PCG-02 | 同名Graphの多重Edge一本の方向を変える | Edge ID/向きの差が生成判断とExpectedへ伝わる | #1121/#1180 |
+| PCG-03 | Graph Layoutだけ変える | Raw Source再照合と構造同値を分離し、不要な再生成を避ける | #2600/#4781 |
+| PCG-04 | 選択Generator Bと実Binary内実装Aが食い違う | 同値結果でも実Builder/収録Member/実Call不一致でFAIL | #1251/#3267 |
+| PCG-05 | WorkbenchのJS/Presenterだけ旧Revision | UI Assetと実WebView2受領の不一致を検出、Stage2未受理 | #4583/#4817 |
+| PCG-06 | Manual適用版または閲覧Scopeを変える | Doc/Contract/Disclosureを再確認、非公開情報は漏らさない | #4714/#4679 |
+| PCG-07 | 自動Hook Callと実装内Callで作用が二重 | Guard/回数/Receiptが未検証ならeffectful Target不適格 | #1129/#1174 |
+| PCG-08 | Seed/Reader/Generatorが自己出力だけで成功申告 | 独立Expectedと外部Consumerが無ければself-build未受理 | #1018/#2831/#2514 |
+
+PCGは新しいScenario正本ではない。#1180/#2514が既存HG/PLC/PDC/PDKと照合し、重複しないExpectedだけを採用する候補である。
+
+### 23.6 計画の優先順と統合条件
+
+**P0-S正式Reader S0-A、P0-R通常CLIからの実Provider、P0-B非Plugin Studio Stage1→Stage2 Windowsを並行**させる。C4公開Doc、C5実作用、Release D2はこれらの新しいHard Gateにしない。最初のGo製品差分はC0、次にC2/C3の実生成・実Callを絞り、公開Docは#4714の別PRとする。
+
+Docs-only差分ではOwner/権限/Scenarioの責務を変更しない。PRは最新main基点、変更path、exact HEAD、CI結果（元から存在する失敗は切り分け）、必要なOwner受理を明示し、mainが進んだ場合は再基点化して現HEADを検証する。**本文は実装計画であり、製品Reader・Plugin生成・Stage2・DB/Hook作用の新規受入を意味しない。**
