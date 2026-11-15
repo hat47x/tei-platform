@@ -148,3 +148,21 @@ C0/C1は人とAIの分析支援としてすぐ利用できる。C2/C3は、対�
 | Studioのモデル・図・DSL相互参照 | Stable SubjectとSource byte範囲、表示損失と編集可能範囲 | Lossのある図からの自動逆編集 |
 
 この対応表をI2M-0〜4の提出物へ追加する。**図が何を省略したか、どの意味上の義務を引き受けたか、どの実Targetでは未確認か**を同じ対象で比較し、図の簡潔さやGoの生成行数だけで成果を測らない。実装は既存#2619/#2620、#1124、#1121、#4495、#1180/#2514の担当に接続し、追加のCore型・Runner・Acceptance正本は作らない。
+
+<!-- tei-implementation-ast-observation-i2m0-20261115 -->
+## 9. 実コードから始める最小の観測：Go ASTの出典付き判断構造
+
+I2M-0の最初の実装対象は、汎用Go解析器ではなく、現行の`GeneratePositive`が出力する`EvaluateSelected`一関数とする。既存の[製品Rule生成R1](../../internal/semantic/validationgen/positive.go)と、第3節の手書きGraphvizを実コードと照合し、図の内容が元Goから確認できる部分だけを抽出する。
+
+新しい`internal/semantic/validationgen/positive_ast_projection_test.go`は、Go標準の`go/parser`／`go/ast`で**生成されたGoの構文木を実際に読み**、`Source.Number(Attribute)`が一度呼ばれること、`value.Sign() > 0`の厳密な条件、成立／不成立の返却、NULL・Read失敗の拒否経路を検査する。Readと条件の**元Go byte範囲**を同じParserから得て、実ソースの切片と一致させる。生成器自身の`positive.go`も別のASTとして解析し、Go生成Functionと生成された評価Functionを異なる実装として扱う。
+
+| 一因子変更 | 期待する構造観測 | 本試験だけでは言えないこと |
+| --- | --- | --- |
+| Goの先頭コメントのみ変更 | 元byte位置は動くが、読み取るAttributeと分岐・返却の構造は同じ | ソースRevisionが同じ、再利用・受理資格が維持された |
+| RuleのAttribute参照のみ変更 | 生成Goの`Source.Number`に埋め込まれた参照先が変わる | 業務Ownerが新しい意味を受理した、実Providerがその値を取得した |
+| 生成Goの`> 0`を`>= 0`へ改変 | ASTの厳密な正値条件としては**拒否**する | 静的AST検査だけで全入力・全分岐の意味同値を証明できた |
+
+この試験は**C0のread-only構造観測**である。観測結果を新しい標準Meaning、受理済みDSLや編集可能なNode Graphへ昇格させず、ソース位置と読み取れた構造を既存のI2M-1候補へ引き渡す。Goの変数名・制御分岐・例外処理が変わると抽出できる範囲も変わるため、対象Functionを明示した限定テストとして開始し、対応外は自動補完しない。
+
+**次の分離された検収**は、I2M-1で型・Read・FailureとCanonical Ruleへの対応をOwnerが確認すること、I2M-2で既存の生成Go別Process試験・独立Expectedと突き合わせること、I2M-3で製品の正式Builderが実際に読んだbyteへ結び付けることである。I2M-0のコードをmainに置いた事実やGoテストの一部成功を、製品Builder／実Provider／Studio Stage2の合格とは数えない。
+
