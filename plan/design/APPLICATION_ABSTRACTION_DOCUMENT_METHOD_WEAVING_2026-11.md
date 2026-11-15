@@ -136,7 +136,7 @@ Markdownの原文順、列揃え、注釈、フェンス、空白はAuthoring So
 | `internal/semantic/validationgen/positive_shape_obligation_baseline_test.go`（#5064） | Required Shapeについて、手書き分岐の現行挙動を独立Expectedに固定する | 自己記述から検査を構成するM1、手書き分岐の実置換M2 |
 | `internal/semantic/validationeval/evaluator.go`と`validationgen/positive.go` | 一つの`semantic.Validation`を、既存の汎用評価関数で解釈する経路と、Goへ生成する経路が存在する | 同一Rule・同一入力に対する評価の対応、両方式の選抜・配布・Effectの契約 |
 
-したがって、従来のD0〜D4をもう一度最初から実行する必要はない。**次の一歩は、同じ受理済み意味候補を複数の実現方式で扱ったときに、どの同等性を主張できるかを狭く確かめること**である。局所試験の合格を、正式R2-P、通常CLI R3、Studio Stage1→Stage2に加算しない。
+したがって、従来のD0〜D4をもう一度最初から実行する必要はない。**次の一歩は、同じ意味定義を複数の方式で実現したときに、どの同等性を主張できるかを狭く確かめること**である。局所試験の合格を、正式R2-P、通常CLI R3、Studio Stage1→Stage2に加算しない。
 
 ### 8.1 文書の役割と演算の役割は異なる
 
@@ -159,6 +159,8 @@ Markdownの原文順、列揃え、注釈、フェンス、空白はAuthoring So
 | **既存実装へ束縛** | 専門機能や外部Providerの既存実装に業務上の意味を委ねられる | Shape適合とLaw適合を別に評価し、選択済み実装と実Call、Grant、Effectを区別する | 既存Operator実装選択、Plugin／Service契約 |
 
 いずれも**同じ受理済みMeaningを参照する**ことを原則とし、方式別に別の業務Rule正本を作らない。必要な場合はTarget固有のLowering・評価関数・Providerを持たせるが、TEI専用の常駐Hostや万能な実行Engineを前提にしない。生成方式と解釈方式を一つの生成物へ混在させる場合も、どの部分を何が実現したかは追跡できるようにする。
+
+原Markdownを完成Artifactへ同梱する方式では、Build入力として正しく収録できたことと、**その原文を対象Consumerへ開示してよいこと**も別に判断する。説明文や引用に機微情報が入る可能性を、意味が同じだからという理由で無視しない。
 
 どちらがよいかは、手書きの分岐・設定量、生成物の量、性能、起動時の更新可能性、必要な依存物、検証の容易さ、外部効果の境界を比較して決める。**「生成されたコードの行数が多い」「汎用関数が短い」というだけでは採否を決めない。**
 
