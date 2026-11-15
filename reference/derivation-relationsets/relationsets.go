@@ -137,21 +137,25 @@ func Bind(ref SetRef) error {
 
 // AsScalar binds a set to a scalar argument. A Many or Aggregate set is
 // rejected; there is no implicit first-row pick or implicit reduction.
+// Even a single optional relation must be completely fetched: zero observed
+// rows in an unfetched or partial result do not establish a missing relation.
 func AsScalar(ref SetRef) (derivationref.Input, error) {
 	if err := Bind(ref); err != nil {
 		return derivationref.Input{}, err
 	}
-	switch ref.Shape {
-	case Scalar:
-		return ref.Rows[0].Amount, nil
-	case OptionalOne:
-		if len(ref.Rows) == 0 {
-			return derivationref.Input{State: derivationref.Null}, nil
-		}
-		return ref.Rows[0].Amount, nil
-	default:
+	if ref.Shape != Scalar && ref.Shape != OptionalOne {
 		return derivationref.Input{}, fmt.Errorf("%w: many relation bound to a scalar argument", ErrShape)
 	}
+	if ref.Completeness != Complete {
+		return derivationref.Input{}, fmt.Errorf("%w: %s is %s", ErrIncomplete, ref.RelationID, ref.Completeness)
+	}
+	if ref.Shape == Scalar {
+		return ref.Rows[0].Amount, nil
+	}
+	if len(ref.Rows) == 0 {
+		return derivationref.Input{State: derivationref.Null}, nil
+	}
+	return ref.Rows[0].Amount, nil
 }
 
 // Sum reduces a Many/Aggregate set to one value. An incomplete or unfetched
