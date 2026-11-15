@@ -385,3 +385,4 @@ S1 realistic intent / candidate frontier
 - [組織データ保護の境界（2026-11）](ORGANIZATION_DATA_PROTECTION_BOUNDARY_2026-11.md)
 
 - [Studio・CLI・WebのBackend起動、Plugin構成、配布・更新](STUDIO_CLI_BACKEND_PROCESS_DISTRIBUTION_UPDATE_2026-11.md)：現行P0基線と子Backendの将来候補を分け、既存Application API・Plugin管理・配布更新へ接続する設計案。
+- [Studio・CLI Backendの起動・互換性・更新復旧とRelease Closure](STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)：Bootstrapの最小責務、子Backendの比較、Wails UpdaterとD2／D3配布、Plugin Lock・設定Schema・実Imageの閉包検証、Mobile実験、独立Expected BRC-01〜09を扱う設計案。
