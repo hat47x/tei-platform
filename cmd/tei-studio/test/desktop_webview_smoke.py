@@ -319,15 +319,12 @@ def main() -> int:
         print(f"{event}: {json.dumps(values, ensure_ascii=False, sort_keys=True)}", flush=True)
 
     try:
-        facts["os_version"] = subprocess.run(
-            ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", "[System.Environment]::OSVersion.VersionString"],
-            check=True,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=15,
-        ).stdout.strip()
+        # OS metadata must not gate the WebView2 smoke on a second PowerShell
+        # process. On overloaded Windows runners that process may time out
+        # before the Desktop itself is launched.
+        os_version = sys.getwindowsversion()
+        facts["os_version"] = f"{os_version.major}.{os_version.minor}.{os_version.build}"
+        facts["os_version_source"] = "python.sys.getwindowsversion"
         facts["python_version"] = sys.version
         facts["go_version"] = subprocess.run(["go", "version"], check=True, capture_output=True, text=True, timeout=15).stdout.strip()
         facts["checkout_sha"] = subprocess.run(["git", "rev-parse", "HEAD"], check=True, capture_output=True, text=True, timeout=15).stdout.strip()
@@ -631,6 +628,49 @@ return {
             raise RuntimeError(f"Workbench did not load all embedded runtime assets: {page_state.get('assets')!r}")
         if page_state.get("editorEditable") != "false" or page_state.get("graphLabel") != "読取り専用グラフ":
             raise RuntimeError("Workbench source or graph is not marked read-only")
+
+        # Opt-in in the generated-native-Desktop CI job only. The ordinary
+        # Wails Desktop smoke retains its existing behavior and requirements.
+        # Match the actual same-origin resource served inside the native WebView2
+        # to the bytes pinned before the generated Desktop binary was built.
+        expected_bundle_digest = os.environ.get("TEI_GENERATED_WORKBENCH_BUNDLE_SHA256")
+        if expected_bundle_digest:
+            if not re.fullmatch(r"[0-9a-f]{64}", expected_bundle_digest):
+                raise RuntimeError("The generated Workbench bundle digest is not a lowercase SHA-256")
+            bundle_probe_script = """
+const done = arguments[arguments.length - 1];
+(async () => {
+  const response = await fetch('/workbench/main.js', { cache: 'no-store' });
+  if (!response.ok) throw Error(`Workbench resource status ${response.status}`);
+  const raw = await response.arrayBuffer();
+  const digest = await crypto.subtle.digest('SHA-256', raw);
+  const sha256 = Array.from(new Uint8Array(digest))
+    .map(v => v.toString(16).padStart(2, '0')).join('');
+  done({ sha256, bytes: raw.byteLength, pathname: new URL(response.url).pathname });
+})().catch(error => done({ error: String(error) }));
+"""
+            bundle_response = webdriver_request(
+                base_url,
+                "POST",
+                f"/session/{driver_session}/execute/async",
+                {"script": bundle_probe_script, "args": []},
+                timeout_seconds=30,
+            ).get("value", {})
+            facts["generated_workbench_bundle"] = {
+                "expected_sha256": expected_bundle_digest,
+                "webview_response": bundle_response,
+            }
+            if bundle_response.get("error") or (
+                bundle_response.get("pathname") != "/workbench/main.js"
+                or bundle_response.get("sha256") != expected_bundle_digest
+            ):
+                raise RuntimeError("Native WebView2 served a different Workbench bundle than the generated input")
+            record(
+                "generated-workbench-asset-verified",
+                sha256=expected_bundle_digest,
+                bytes=bundle_response.get("bytes"),
+                pathname=bundle_response.get("pathname"),
+            )
 
         # Opt-in in the generated-native-Desktop CI job only. The ordinary
         # Wails Desktop smoke retains its existing behavior and requirements.
