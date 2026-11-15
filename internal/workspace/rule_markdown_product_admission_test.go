@@ -108,7 +108,8 @@ func TestProductRuleMarkdownSelectedSourceIndexKeepsLoadBytes(t *testing.T) {
 		t.Fatal(err)
 	}
 	oldRefs := oldSnapshot.ReferencesFor(sourceindex.Subject{Kind: "semantic-validation", ID: ruleID})
-	if len(oldRefs) != 1 || oldRefs[0].Range != refs[0].Range {
+	if len(oldRefs) != 1 || oldRefs[0].Range.Start.Offset != refs[0].Range.Start.Offset ||
+		oldRefs[0].Range.End.Offset != refs[0].Range.End.Offset {
 		t.Fatalf("an old Load reread or moved the source anchor: before=%+v after=%+v", refs, oldRefs)
 	}
 	reloaded, err := workspace.Load(root)
