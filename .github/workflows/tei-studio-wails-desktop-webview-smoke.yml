@@ -240,6 +240,8 @@ jobs:
             npm run typecheck
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           } finally { Pop-Location }
+          node --test tools/reference-studio-static-composition/build-generated-workbench.test.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           # The generated PoC B formerly ran Node/esbuild directly from this CI
           # step. Give the existing TEI self-build CLI the actual N2 child launch
           # and cross-check its report against the output on disk.
@@ -283,7 +285,9 @@ jobs:
           }
           $digest = (Get-FileHash -LiteralPath $bundle -Algorithm SHA256).Hash.ToLowerInvariant()
           "TEI_GENERATED_WORKBENCH_BUNDLE_SHA256=$digest" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          foreach ($p in @($bundle, $source, $goService, 'tools/reference-studio-static-composition/fixture.json')) {
+          foreach ($p in @($bundle, $source, $goService, 'tools/reference-studio-static-composition/fixture.json',
+              'tools/reference-studio-static-composition/build-generated-workbench.mjs',
+              'reference/tei-studio-workbench/package-lock.json')) {
             $hash = (Get-FileHash -LiteralPath $p -Algorithm SHA256).Hash.ToLowerInvariant()
             "${p}=$hash" | Add-Content -Path (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'generation-provenance.txt') -Encoding utf8
           }
