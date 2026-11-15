@@ -3,6 +3,7 @@ package operations
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -40,6 +41,21 @@ func TestOrgStagedAsOfQuery(t *testing.T) {
 		}
 		if names["valid_from"] || names["known_from"] {
 			t.Fatalf("query parameters should not be named as row interval boundaries: %+v", q.Inputs)
+		}
+
+		// Verify the same native Workspace Query's declared Inputs against
+		// every named SQL parameter. Checking only expected WHERE fragments
+		// would miss an additional stale/undeclared placeholder.
+		placeholders := map[string]bool{}
+		for _, token := range regexp.MustCompile(`:[a-zA-Z_][a-zA-Z0-9_]*`).FindAllString(q.Source, -1) {
+			name := token[1:]
+			if !names[name] {
+				t.Fatalf("undeclared SQL placeholder %q in Query %s", name, q.ID)
+			}
+			placeholders[name] = true
+		}
+		if len(placeholders) != len(q.Inputs) {
+			t.Fatalf("native Query Inputs do not match SQL placeholders: declared=%+v used=%v", q.Inputs, placeholders)
 		}
 	}
 	if !found {
