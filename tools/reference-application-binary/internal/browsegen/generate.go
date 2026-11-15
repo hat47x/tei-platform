@@ -23,7 +23,7 @@ type lit struct{ Literal string }
 type genData struct {
 	GeneratorID, FunctionID, SourceRevision, ModelDigest string
 	FunctionIDLiteral, BoundSQLLiteral, UsageLiteral     string
-	Params, Columns                                      []lit
+	Params, Columns, ParamKinds                          []lit
 }
 
 // Manifest is what the binary embeds as its provenance. It names every input
@@ -50,8 +50,9 @@ func Generate(p *Plan, outDir string) (*Manifest, error) {
 	d := genData{GeneratorID: GeneratorID, FunctionID: p.FunctionID, SourceRevision: p.SourceRevision, ModelDigest: p.ModelDigest,
 		FunctionIDLiteral: strconv.Quote(p.FunctionID), BoundSQLLiteral: strconv.Quote(p.BoundSQL)}
 	usage := ""
-	for _, n := range p.Params {
+	for i, n := range p.Params {
 		d.Params = append(d.Params, lit{strconv.Quote(n)})
+		d.ParamKinds = append(d.ParamKinds, lit{strconv.Quote(p.ParamKinds[i])})
 		usage += " --" + n + "=<value>"
 	}
 	d.UsageLiteral = strconv.Quote(usage)

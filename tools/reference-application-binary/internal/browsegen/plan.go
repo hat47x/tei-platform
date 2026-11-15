@@ -62,6 +62,7 @@ type Plan struct {
 	Params           []string     `json:"params"`
 	InputDeclaration string       `json:"inputDeclaration"`
 	DeclaredInputs   []string     `json:"declaredInputs,omitempty"`
+	ParamKinds       []string     `json:"paramKinds"`
 	Columns          []Column     `json:"columns"`
 	Omissions        []Omission   `json:"omissions"`
 	SourceFiles      []SourceFile `json:"sourceFiles"`
@@ -145,6 +146,19 @@ func NewPlan(workspaceRoot, applicationID, patternID, target string) (*Plan, err
 		}
 		p.InputDeclaration = "declared"
 	}
+	// The declared type is the authority for the value; an undeclared parameter
+	// is passed through as text and the database decides.
+	declared := map[string]string{}
+	for _, in := range q.Inputs {
+		declared[string(in.Name)] = string(in.Type)
+	}
+	for _, n := range params {
+		kind, err := inputKind(declared[n])
+		if err != nil {
+			return nil, fmt.Errorf("input %s of %s: %w", n, q.ID, err)
+		}
+		p.ParamKinds = append(p.ParamKinds, kind)
+	}
 	if len(q.ResultColumns) == 0 {
 		return nil, fmt.Errorf("Query %s declares no result columns", q.ID)
 	}
@@ -194,9 +208,25 @@ func NewPlan(workspaceRoot, applicationID, patternID, target string) (*Plan, err
 	sort.Slice(p.SourceFiles, func(i, j int) bool { return p.SourceFiles[i].Path < p.SourceFiles[j].Path })
 	b, _ := json.Marshal(struct {
 		F, Q, D, S string
-		P          []string
+		P, K, I    []string
 		C          []Column
-	}{p.FunctionID, p.QueryID, p.Dialect, p.SourceSQL, p.Params, p.Columns})
+	}{p.FunctionID, p.QueryID, p.Dialect, p.SourceSQL, p.Params, p.ParamKinds, p.DeclaredInputs, p.Columns})
 	p.ModelDigest = "sha256:" + sha(b)
 	return p, nil
+}
+
+// ErrInputTypeUnsupported is returned before anything is written when a Query
+// input declares a type this generator cannot check.
+var ErrInputTypeUnsupported = errors.New("INPUT_TYPE_UNSUPPORTED")
+
+// inputKind maps a declared input type to the check the generated binary runs
+// before contacting the database. "" (undeclared) stays text.
+func inputKind(declaredType string) (string, error) {
+	switch declaredType {
+	case "":
+		return "text-undeclared", nil
+	case "std.datetime":
+		return "datetime", nil
+	}
+	return "", fmt.Errorf("%w: %q", ErrInputTypeUnsupported, declaredType)
 }
