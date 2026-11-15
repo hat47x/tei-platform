@@ -1172,6 +1172,26 @@ D1の独立負例は、(1)未選択Plugin、(2)同名別Doc、(3)CompatibleMajor
 
 **資格**：第20・21章は、現行mainの第15〜18章を維持しながら、生成プラグインの一機能とPlugin説明の利用時適合を切り出した**設計・検収案**である。正式 *.tei.md Reader、新Generator、実Plugin E2E、Plugin Help API、実AI Harness、Owner受理を今回実装・実測したわけではない。
 
+
+### 21.10 実Pluginの選択から文書の公開可否を確認するまで（2026年11月15日・統合版）
+
+[main統合済みのPR #4800](https://github.com/hat47x/tei-platform/pull/4800)で、製品の`plugin-inventory -plugin`詳細結果に`documentReadPreflight`が加わった。既存Inventoryが確定したPlugin ID、Environment、解決した正確な版、Lockの一致状況を**同じReportから**確認する。新たなResolverを呼び直す処理ではない。未選択、部分Scan、Resolver未解決、版不明、Lock未提示・不一致などを区別でき、`exact-version-pinned`もその一状態にすぎない。選択に成功していても、結果は`sourceBinding=unbound`、`disclosure=not-checked`、`readEligibility=not-assessed`のままである。**Pluginを選択できたことと、その文書を閲覧できることを同一視しない。**
+
+[main統合済みのPR #4804](https://github.com/hat47x/tei-platform/pull/4804)では、合成Fixture PDC-0についてGraph／Ruleの候補構造、生成Go、Graph原文、公開Manual原文を別々に照合するGo回帰試験が成立した。配置や説明だけを編集した場合でも、変更された元ファイルのバイト指紋は再検証が必要である。公開Manualだけが変わった場合は、Graphの意味が変わらなくてもManual自身のSource Revisionが更新対象となる。ただし、このFixtureは引き続き`proposal-only`であり、製品で選択されたDocumentや現在のDisclosureを証明するものではない。
+
+**次に実装する一件の縦断**は、既存[#4714](https://github.com/hat47x/tei-platform/issues/4714)・[#4679](https://github.com/hat47x/tei-platform/issues/4679)が担当する。受理済みのPlugin→Document帰属契約から一つの安定Document ID、適用Contract版、管理SourceRefを解決し、実Source byte／Revisionと現在のAudience・Disclosureを**同じ読取り試行**で確認して、許可された部分だけを返す。正式な帰属契約が未定なら、同名ファイルやGraph候補から推測せず`unsupported`として止める。
+
+| 検収する状態 | 次の実製品テストで求めること |
+| --- | --- |
+| 未選択Plugin、版不一致、Lock欠落、Resolver失敗 | Doc参照へ進まず、既存Inventoryの結果を根拠とする |
+| 正式Doc帰属なし、Doc/Contract版不一致 | 候補JSONやファイル名を正本として補完せず、未対応を明示する |
+| Source差替え、A→B→A、部分取得、後着応答 | 古い指紋・過去の開示資格を復活させず、取得範囲と現在版を再確認する |
+| 非公開・Audience未確認、未実装のManual記載Operation | 本文、非公開ID・件数・Digestを漏らさず、実在しない操作を実行しない |
+
+**CIと製品受入も分離する。** [整形修正 #4818](https://github.com/hat47x/tei-platform/pull/4818)はmain統合済みだが、その対象HEADのRepository Healthは別件のStudio Workbench固定版不一致（`workbench_revision_mismatch`）で失敗した。これはPlugin事前検査の文書公開権限が検証されたことを意味しないし、失敗を伏せて全体Greenとする理由にもならない。P0のWorkbench実Build／Consumerの対応は[#2831](https://github.com/hat47x/tei-platform/issues/2831)・[#4583](https://github.com/hat47x/tei-platform/issues/4583)の既存Ownerへ返す。
+
+通常Markdownの公開Manualの読取りに、業務意味用の正式`*.tei.md` Reader（S0-A）の完成を新しい前提として課さない。逆に、そのManualから参照するGraph／Ruleを製品で意味解釈・生成・実行する場合は、[#2621](https://github.com/hat47x/tei-platform/issues/2621)・[#988](https://github.com/hat47x/tei-platform/issues/988)のReader選択とMeaning受理を別に要求する。第二のDocument Registry、Graph Runtime、Grant正本やHard Gateは作らず、第22章のPlugin合成と現行P0の順序を維持する。
+
 ---
 
 <!-- plugin-cross-surface-closure-20261115 -->
