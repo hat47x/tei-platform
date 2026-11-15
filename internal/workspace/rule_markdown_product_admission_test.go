@@ -136,6 +136,34 @@ func TestProductRuleMarkdownSelectedSourceIndexKeepsLoadBytes(t *testing.T) {
 	if !foundNew {
 		t.Fatal("new Source Index lost selected Markdown")
 	}
+
+	// A -> B -> A makes the raw bytes equal again. This is a new Load
+	// attempt, not an automatic restoration of any former Owner decision.
+	// Source Index can attest bytes; it cannot grant meaning or permission.
+	writeSource(t, root, path, before)
+	restoredLoad, err := workspace.Load(root)
+	if err != nil {
+		t.Fatalf("restored source could not be loaded: %v", err)
+	}
+	restoredIndex, err := workspace.BuildSourceIndexFromLoad(root, restoredLoad)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := restoredIndex.Validate(readCurrent); err != nil {
+		t.Fatalf("restored raw bytes must validate as current bytes: %v", err)
+	}
+	foundRestored := false
+	for _, artifact := range restoredIndex.Artifacts {
+		if artifact.Path == path {
+			foundRestored = true
+			if artifact.Fingerprint != artifactFingerprint {
+				t.Fatalf("A->B->A failed to restore raw byte fingerprint: %s", artifact.Fingerprint)
+			}
+		}
+	}
+	if !foundRestored {
+		t.Fatal("restored Load lacks Markdown source artifact")
+	}
 }
 
 func TestProductRuleMarkdownRequiresExactLanguageSelection(t *testing.T) {
