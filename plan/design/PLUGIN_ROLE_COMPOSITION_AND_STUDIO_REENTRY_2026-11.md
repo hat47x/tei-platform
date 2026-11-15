@@ -1169,3 +1169,70 @@ D1の独立負例は、(1)未選択Plugin、(2)同名別Doc、(3)CompatibleMajor
 実装Ownerは[#4701](https://github.com/hat47x/tei-platform/issues/4701)（候補Fixture）、[#4714](https://github.com/hat47x/tei-platform/issues/4714)（最初の製品一件Read）、[#4679](https://github.com/hat47x/tei-platform/issues/4679)（共通公開Doc契約）、[#2621](https://github.com/hat47x/tei-platform/issues/2621)（業務意味Reader）、[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)（独立検証）を維持する。製品の最優先は引き続きStudio Stage1→Stage2（#2831/#4583）と通常CLI→実Provider→独立Consumer（#1251/#4495）であり、このPDC-1を新しいP0 Hard Gateにはしない。
 
 **資格**：第20・21章は、現行mainの第15〜18章を維持しながら、生成プラグインの一機能とPlugin説明の利用時適合を切り出した**設計・検収案**である。正式 *.tei.md Reader、新Generator、実Plugin E2E、Plugin Help API、実AI Harness、Owner受理を今回実装・実測したわけではない。
+
+---
+
+<!-- plugin-cross-surface-closure-20261115 -->
+## 22. 横断Pluginの合成を実Consumerの資格まで一件ずつ閉じる（2026-11-15横断統合）
+
+### 22.1 追加する判断と、既存契約の再利用
+
+他チャットのDesktopセルフビルド、宣言的構文・標準データ様式、Lifecycle Graph・Table Hook、YIC Harness、Plugin公開知識の結論を照合した。Plugin導入や単体テストの成功と、必要Targetへの収録、実Provider呼出し、業務上の作用、公開文書と結果の受領は別の資格である。§12のT0〜T4/S0〜S5、§14の工程別依存閉包、§19〜21の公開文書、既存#1180/#2514の独立Expectedを継承する。
+
+**今回の最小単位は、一つのApplication Operation・一つの選択済みProvider・一つの実Consumerの接続検収票**とする。新しいRegistry／Resolver／Host／証拠Schemaを作らず、既存のSource Reference、Contract/Lock、Build ArtifactSet、Attempt、Effect Receiptを同じ試行から参照するread-only Projectionとして構成する。Plugin名や表示ラベルの一致ではなく、Source/Contract/Implementation/Artifact/AttemptのIDと版を固定する。
+
+### 22.2 接続検収票の照合面
+
+| 照合面 | 実際に確かめるもの | そこから推定してはいけないもの |
+| --- | --- | --- |
+| Source・Meaning | 原byteと位置、意味ID・Graph Edge ID、Rule版とOwner採用範囲 | Parse成功＝意味受理 |
+| Requirement・Contract | Operationの型・Scope・Effect・Failure、契約exact版・fingerprint | 宣言＝Provider適合 |
+| Composition・Lock | 案件・Targetに選択されたProvider ID/版/実装、必要な依存閉包 | 導入済み＝実収録 |
+| Build・Delivery | 実Builder、工程別Member、Artifact/配置物・Resourceの版 | 同梱＝実呼出し |
+| Invocation・Authority | Hostの現在Grant、対象Identity/expected version、実Entry | 呼出し＝Commit |
+| Effect・Result | Read完全性、Failure/unknown、Receiptと独立再照会 | Result＝全員へ開示可 |
+| Documentation・Disclosure | 明示Doc帰属・契約版、管理Source、現在Audience/Disclosure | Manual読取り＝意味受理 |
+| Consumer | CLI、実Windows WebView2、MCP/VUIなどの受領入口と結果世代 | 一入口PASS＝他入口PASS |
+
+各行の状態は、未実施・不明・部分取得・拒否・非対応を区別する。Provider、Doc、Source、Artifact、Grantの更新世代が異なるため、「現在有効」を単一の真偽値にまとめない。
+
+### 22.3 最初に通す二つの縦断
+
+**A：実Providerの二入口利用（並行P0）。** #1251/#4495の一つのread-only Application Operationを、実製品CLIとStudio/Wailsの独立Consumerから呼ぶ。ProfileがBを選び、実TargetへBを収録し、実EntryでBを呼ぶことを別に照合する。B選択なのにAを呼んで同値結果を返してもFAIL。Stage1→Stage2正式BuildとWindows WebView2での実受領は#2831/#4583の独立P0であり、CLIのみの成功から推定しない。
+
+**B：一Plugin・一公開Docの取得（P1、Aと独立）。** main統合済みのPDC-0 #4757はGraph/Rule・Manualの合成Fixture監査であり、製品Doc Readerではない。PDC-1 #4714は実製品のcommands・plugin-inventoryで選択IDとexact版／Lockを固定し、Ownerが明示したDoc ID・適用Contract版・管理SourceRef・現在Audience/Disclosureを照合して、公開Markdown一件をread-onlyの型付きOperationで取得する。Doc帰属・開示資格が未接続なら理由付きunsupported／拒否／partialとする。同名ファイル、CompatibleMajor、合成Fixtureのvisibilityから文書の帰属や許可を推定しない。正式な業務用 *.tei.md Readerや未実装のPlugin文書専用コマンドは先行条件にしない。
+
+AとBの成功も、Graph/Ruleの製品意味受理やPlugin自身のセルフビルド成功ではない。#2621/#1121で正式Reader→Meaning→生成Go→生成Binary内の実処理→実Consumerを段階検証し、Goへの委譲だけを生成比率に算入しない。YIC Harness/AI Skillは実在するOperation/Contract/文書だけを案内し、第二の権限や操作正本は持たない。
+
+### 22.4 更新時は影響する資格だけを失効させる
+
+- **Manual・説明だけの変更**：Raw Source/Doc Revisionと開示・受領を再照合。意味や生成物の無条件失効は避ける。ただし旧Manualと新Contractの混用は拒否する。
+- **Graphの配置変更**：Source byteは変わり得るが、意味Graph/Ruleが不変なら生成Goの再生成は不要。構造指紋一致をOwner意味受理の更新としない。
+- **Graph Edge方向・Rule・Contract変更**：意味、依存Provider、生成Artifact、適用Scenarioを再評価する。A→B→Aで旧Grant/Receiptを復活させない。
+- **Provider・Generator・Toolchain変更**：実装ID、実Builder、収録Artifactと実Consumerの適格性を再判定。同じ値・同じ生成byteだけでは代替資格を与えない。
+- **Audience・Grant・Target変更**：再生成を要しない場合も現在の実行・開示資格を再検証。Local Studioのno-authを共有Targetへ伝播しない。
+
+この影響範囲判定は#2600／Verified Composition BOM（#3267）へ引き渡す。工程別に必要なGeneratorとRuntime Providerを分離し、未選択Pluginの不要な同梱を避ける。
+
+### 22.5 既存の独立Expectedへ戻す反証候補
+
+| 条件を一つ変える反証 | 期待する観測・停止 | 既存Owner |
+| --- | --- | --- |
+| B選択でAを実Callし、値は同一 | 選択／実Call不一致をFAIL | #1251、PLC-05 |
+| Build時Generatorは必要、Runtime Providerは未収録 | Generatorの不必要なRuntime同梱をせず、Provider欠落の呼出しは不可 | #3267/#4583 |
+| Manual更新後に旧文書の応答が遅延到着 | Doc/Contract/Audience/Consumer世代不一致を拒否 | #4714、PHD/PDC |
+| Layoutのみ変更／Edge方向を反転 | 前者は必要なbyte資格のみ、後者は意味・生成を再評価 | #4758/#4781、PDK-04 |
+| Hook自動Callと実装内Callで同じ作用Providerへ到達 | Guard前到達・二重Callの可能性を実作用Targetの停止条件とする | #1129、HG-10/11 |
+| Commit後ACK喪失またはGrant失効 | unknown・lookup-first・現在Authorityへ戻し、無条件再試行を拒否 | #1129/#1174 |
+
+この表は#1180/#2514の独立Expectedの**採用前候補**であり、テストの第二正本にはしない。既存HG/PLC/PHD/PDKとの重複テスト実装を避ける。
+
+### 22.6 実装順・統合条件
+
+1. **P0-S** #2831/#4583：正式非Plugin Desktop BuildのStage1→Stage2と実Windows WebView2受領。
+2. **P0-P** #1251/#4495：実製品CLIと独立Consumerからselected＝included＝invokedを別観測で確認。
+3. **P1-D** #4714/#4679：実選択Plugin一件から公開Doc一件をSource/Contract/Disclosure付きでread-only取得。P0のHard Gateにはしない。
+4. **P1-G** #2621/#1121：正式Frontend、意味受理、Graph/Ruleからの生成・実行、Plugin自身のTEI生成比率を測る。
+5. **P2-E** #1129/#1174/#4198：Guard/Call回数/Effect unknown/Receiptの負例を通してから、可変Graphの実作用適用を拡張する。
+
+各PRは最新mainに対する小差分、exact HEADのCI・mergeability、実行したGo/CLI/Windows/DBの区別、Ownerの意味受理状態を残す。**本節はdocs-onlyの設計と受入順であり、実Provider／Product Doc Reader／正式Graph Compiler／Stage2／DB Effectの新規試験や製品受理を主張しない。**
