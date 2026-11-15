@@ -1696,3 +1696,14 @@ Plugin状態は**宣言／導入可能／有効設定／Composition／Build包�
 **最初のread-only照合票**は、Subject／Pinned Source、選択ContractとProvider、必要Runtime Member、実Process Image、現在Grant、実InvocationとResult、使用したSource Indexを別欄で扱う。存在しないinstall／enable／init-failure／effect状態は管理実装の`notModelled`を保持し、`ready=true`を新たに判定しない。StudioとCLIは同じOperation／Reasonを利用するが、画面FocusとPinned Subject、Backend構成世代とInvocation Attemptを独立させる。
 
 P0-S/R/Bは互いに別の到達資格であり、適格な小差分から並行着手する。D3子Server／Wake／Mobile、AI Harnessの新Agent Loop、Plugin自己記述B4は、このP0に新たなHard Dependencyを課さない。設計上の引渡しであって、正式Reader・Provider、実Stage2、Windows/Updater試験の新PASSではない。
+
+## 2026-11-15 継続パケット：Plugin公開文書の事前検査とStudio資産の実消費（§27）
+
+[Bootstrap実装契約§27](../design/STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)へ、main統合済み[#4800](https://github.com/hat47x/tei-platform/pull/4800)／[#4806](https://github.com/hat47x/tei-platform/pull/4806)／[#4792](https://github.com/hat47x/tei-platform/pull/4792)を接続する。これまでのP0-S（正式Reader）、P0-R（実Provider）、P0-B（Studio再構築）を置換せず、**最終的に使われたSource・UI資産・実Imageが一致するか**の証拠だけを追加する。
+
+- **P0-D（公開説明、独立）**：#4800の`documentReadPreflight`は選択とLockの事前検査まで。#4714/#4679が実Plugin→Document SourceRef／Disclosure→一DocumentのReadを担当。文書の公開は正式業務`*.tei.md` Readerや実ProviderのHard Gateにしない。
+- **P0-W（画面資産、P0-Bの内訳）**：#4812が参照Workbenchの`index.html`／`presentation.ts`→正規HTML/JS/CSS→`cmd/tei-studio/assets/workbench`→実Windows WebView2の一致を検証する。#4806のAuthority LimitsのPresenter試験や旧PR1 Bundleだけでは、配布される画面の資格としない。**P0-WはP0-Bの同一Build Intentへ取り込む成果であり、別の製品Gateではない**。
+- **P0-Sの維持**：#4792のWindow 5例が元byte・Spanを保持できても、製品`Workspace.Load`で正式`*.tei.md`を解釈できたとは扱わない。S0-P／S0-Aを別々に検収する。
+- **失効の共通負例**：Lock pinnedでもDocument不在／Disclosure未確認、HTMLだけ更新／旧JS使用、旧Backend Reply／旧Client世代、Subject A→B→A、実Builder入力未宣言。既存PDC／BRC／DG0／DT／PINのExpectedへ不足分を追加し、新しいTest RunnerやRegistryを設けない。
+
+これらを利用する最初の横断レポートは**Sourceを読んだ、Providerを選んだ、UIを生成した、Wailsに収録した、実Consumerが受け取った**を別欄で表示するread-onlyの検収票とする。結果の無い欄は不明のままで、単一の`READY`やOwner意味受理へ昇格しない。現時点では計画変更のみであり、実Stage2、製品Doc Read、正式Reader、実Provider、Updaterの新PASSを主張しない。

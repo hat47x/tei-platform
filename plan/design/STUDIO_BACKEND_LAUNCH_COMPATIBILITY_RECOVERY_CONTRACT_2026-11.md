@@ -711,3 +711,56 @@ CLIの短命実行、StudioのWails Bridge、比較候補の子Backend、Remote�
 - 依存Pluginの公開図解・文書は、公開ScopeとSourceRef／Contract版を守る範囲で継承できる。上位のSource編集権限や実行Grantまで継承しない。
 - Build成功、Release署名、Runtime初期化、Provider実Call、Consumer受領の資格を区別し、**独立Expectedで未確認の箇所は未確認のまま残す**。
 - 本章は既存設計・コードの照合による実装引渡しである。新しい製品Reader、Plugin導入管理、実Provider、Desktop Stage2、Wails更新、OS配布、Owner意味受理の新PASSは主張しない。
+
+## 27. 起動前検査から画面・公開文書・実Consumerまでの受入境界（2026-11-15）
+
+### 27.1 今回の接続点：Plugin選択と画面表示の実装が前進した
+
+[#4800](https://github.com/hat47x/tei-platform/pull/4800)はmain統合済み。既存 `internal/plugin/management/document_preflight.go` は、Plugin Inventoryから選択とexact版Lockを**再解決なしで**検査し、`plugin-inventory -plugin`の`documentReadPreflight`に投影する。一方、`sourceBinding: "unbound"`、`disclosure: "not-checked"`、`readEligibility: "not-assessed"`を維持し、本文を読めるとは主張しない。
+
+[#4806](https://github.com/hat47x/tei-platform/pull/4806)はmain統合済み。Workbenchの参照側`presentation.ts`は`InspectSubject.authorityLimits`の必須条件を確認し、欠落・不正型を`INVALID_INSPECTION_RESPONSE`で拒否する。表示は、現在のInspect Replyに限定し、Workspace／Subject選択変更・取得中・拒否・版不一致で過去の制限表示を消去する。ただし#4806の時点ではWailsに組み込む`cmd/tei-studio/assets/workbench`側の再生成／同期が未了であり、**参照Workbenchの合格を実配布画面の合格としない**。
+
+[#4812](https://github.com/hat47x/tei-platform/pull/4812)は、旧PR1 Fixtureを保持しつつ現在のHTML／Presenterを含む固定版、正規Bundle、実Windows Smokeまで整合させる実装PR。**当該PRの統合・新HEADの合格と、製品全体のStage2セルフビルドは別資格**として扱う。[#4792](https://github.com/hat47x/tei-platform/pull/4792)はWindow 5例のPinned Source S0-Pをmainへ統合したが、5例とも製品`Workspace.Load`の正式Reader未接続拒否を維持している。これらを理由にS0-Aの未完了判定を解除しない。
+
+### 27.2 四つの「参照可」を別々に判定する
+
+| 問い | 現行の証拠と必要な追加確認 | 誤って主張してはいけないこと |
+| --- | --- | --- |
+| **Pluginが選択されているか** | `management.Report`／exact版／Lock。Scanがpartialなら不確定、Lock不一致なら拒否 | `exact-version-pinned`は文書開示・Runtime Grantではない |
+| **公開説明を読めるか** | 実Plugin→Document Ref／元Source／適用Contract版／現行Audience・Disclosure／実Readの検査は#4714/#4679の後続 | 本文・SourceRefが未束縛のままPluginマニュアルを「取得済み」にしない |
+| **業務`*.tei.md`を解釈できるか** | 管理Root／Manifest／明示Language・実装Pin→同じ`Workspace.Load`時の元byteを正式Frontendが消費し位置つき候補を返すS0-A | S0-Pで元byte／Spanが一致しただけで意味受理・実Provider選択としない |
+| **Inspect制限を製品画面で表示できるか** | Go Reply→参照Presenter→正規JS/CSS/HTML→Wails埋込byte→実Windows WebView2の同一対象・生成版を別々に照合 | TypeScript試験、配布Bundle一致、実WebView受領、Stage2実行を合算して一つのPASSにしない |
+
+公開Pluginの通常Markdown Manualと業務`*.tei.md`は異なるSource契約であり、相互を不要なHard Gateにしない。文書の表示を許す操作も、業務Providerの実行を許す操作も、それぞれ現在のAuthorityを確認する。既存`documentReadPreflight`に仮のDocument IDやGrantを足して未実装経路を埋めない。
+
+### 27.3 Bootstrapから画面までを一つのReleaseへ収束する際の同一性
+
+D2の選択済みRelease候補では、少なくとも次の**独立した照合**を行う。
+
+1. **起動検証**：実Image Digest／Release Manifest／標準Pluginの選択済みLock／設定Schema。ここでBOOTSTRAP_READYを診断できてもWORKSPACE_READY、OPERATION_READYとはならない。
+2. **Source・Provider**：Workspace内の元byteと選択済みFrontend／Providerの実Pin、Source Index／Meaning候補、実Invocation。Source・Graphの候補指紋が一致しても実Go判断処理が一致するとは限らない（#4761）。
+3. **画面生成**：編集した`reference`側のWorkbench Source、ビルドに実消費された`index.html`・`presentation.ts`・依存ファイル、正規`dist`のHTML/JS/CSS/NOTICEと、`cmd/tei-studio/assets/workbench`のbyte一致。古い固定版・片側だけのHTML更新・古いJSを拒否する（#4812）。
+4. **実Consumer**：Studioの実Wails WebView2で現在のReplyに対応した制限表示を確認。旧Reply、無効な`authorityLimits`、Subject A→B／A→B→A、保存前Bufferを理由に旧画面・旧表示へ戻さない。
+5. **製品自己再構築**：上記画面を使うDesktopをStage1自身が**非Plugin Build Subject**として再生成し、そのStage2の実Processと生成Source／ArtifactSet／WebView2での受領を同一Build Intentの証拠へ結び付ける（#2831/#4583）。#4812の通常Windows Smokeが成功しても、この段は未成立でよい。
+
+Wails Updateの署名／Stagingが成功しても、Client資産とBackendのContract世代が混在する場合は起動・操作を制限する。旧ClientのCacheや別Processの旧ReleaseをCurrent Grantとして扱わない。D3別ServerやMobileへの更新権限をBootstrapから自動継承しない。
+
+### 27.4 画面に出すべき不足と、出してはいけない情報
+
+Studio／CLI／Harnessのread-only診断は、選択済みのSubject／Source・版と、その操作で確認した制限を説明する。例えば`documentReadPreflight.selectionStatus == exact-version-pinned`であっても、文書取得結果は「出典・公開範囲は未確認」とする。書込み・意味受理・実行Grantを有効にするボタンは、このread-only結果だけでは開放しない。
+
+実Inspectの`authorityLimits`を表示する場合は、Go Replyが返した制限を勝手に削減しない。Hostから受けた文字列は安全なテキストとして表示し、追加制限も保つ。Referenceでその表示が成功しても、実Wails Embedded Assetが旧版なら配布済みとは扱わない。秘密・非公開Doc ID／Path・内部Plugin情報を、Plugin Inventoryの事前検査結果から推測・表示しない。
+
+### 27.5 実装パケットと最小の反例
+
+| 既存OwnerとPR | 最小の反例・独立Expectedへ加える判定 | 完了の上限 |
+| --- | --- | --- |
+| #2044／#4714／#4679、#4800 | Scan partial、未選択、Resolver不一致、Lock unknown/mismatch、exact pinnedを区別し、最後でもDoc Source・Audience・Disclosureは未確認 | Plugin選択事前検査まで。PDC-1 Doc Readは別 |
+| #1824／#4812、#4806 | Presenterが受理した制限が実HTML／JSに無い、旧`main.js`、不正Reply、別Source版、旧Reply | 現行Workbenchの生成・埋込・実Wails資格まで。Stage2は別 |
+| #2621／#1018、#4751／#4792 | 未選択`*.tei.md`、Managed Root外、同名異byteのdraft、負例Windowを含むS0-Pと実Load S0-Aの区別 | 正式Reader選択と元byte消費の製品S0-Aまで |
+| #4495／#1251、#1180／#2514 | Providerは選択・Lock済みだが実Entry不在、別Process／Target、Current Grant失効 | 実Provider呼出しと独立Consumer。Mock・Doc表示は代替不可 |
+| #2831／#4583、#2600 | 正規Bundleは一致するがBuild Planに入力が未宣言、Stage1がStage2を作らず別Goが代行、古いexeを実Wailsが起動 | 非Plugin Stage2 Desktop／実使用Artifactまで |
+
+実装順は、進行中#4812の生成／埋込一巡を元のOwnerで閉じる一方、#4714の公開Doc一件のSource／Disclosure実Read、#2621のS0-A、#4495の実Provider、#4583の非Plugin Stage2を**それぞれ独立した並行作業**として維持する。D2の署名付きInstaller/Updater本格導入、D3 Wake/MobileはP0に昇格させない。
+
+**検収資格の上限**：本節はmainの実Go／参照UI／Plugin管理実装と関連PRの現況を照合した計画の更新である。新しいReader、PDC-1文書Reader、実Provider、Stage2、Wails Updater、実OSへの追加変更やOwner意味受理を実施したわけではない。
