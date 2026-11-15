@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"tei/internal/core"
@@ -186,11 +185,11 @@ func TestMarkedDataTableRuleRealGoAndEvaluatorReadParity(t *testing.T) {
 		t.Fatalf("generated Go binary failed: %v stderr=%q stdout=%q", err, stderr.String(), stdout.String())
 	}
 	type actual struct {
-		Mode    string
-		Name    string
-		Result  string
-		Error   bool
-		Reads   int
+		Mode      string
+		Name      string
+		Result    string
+		Error     bool
+		Reads     int
 		Attribute string
 	}
 	records := map[string]actual{}
@@ -206,7 +205,7 @@ func TestMarkedDataTableRuleRealGoAndEvaluatorReadParity(t *testing.T) {
 		records[key] = got
 	}
 	cases := []struct {
-		name, value, want string
+		name, value, want    string
 		missing, wantError bool
 	}{
 		{"positive", "2.5", "satisfied", false, false},
