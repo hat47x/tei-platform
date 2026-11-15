@@ -126,6 +126,292 @@ Script Launch §25、ADR-0048、#4495に基づき、最初は**公開済みのpu
 - **順序と証拠の上限**：#2586の実Function→実Query/Provider→Rowset→Function Data Context→ConsumerをP0に維持し、B0-Sの完成をHard Gateとしない。#4350 DF-X06は標準表現/Nativeの異質Consumerの同一意味を検査。#4496/#4515は固定Subject/Scope/Read epoch/操作資格を所有し、#4507/#4514のSource-only driftでは同byteの復帰とSource/Authorityの現行性を区別する。B1a実Native Consumer、B1b実Commerce Effect/別Read、B2実配信/Exposure/Consent、B3のCVR・利益因果評価は**別の未実証資格**。
 - **性能・プラグイン・Evidence**：#2018でH0 Native単独/H1 TEIのBuild時契約/H2任意Experiment Adapterを、同じ変更・独立Expectedと導入/改訂/運用費用で比較する。#951/#4198/#3278のProvider/Graph/Traitは実選択と実呼出しを照合。#4307/#2516に従い非公開Evidence・その存在情報をGitHubや外部Harnessへ必須送出しない。公開の権限、Consent/Grant、現在価格、実注文Effect、売上改善をB0で宣言しない。
 
+<!-- b2c-b1a-principal-scope-20261113 -->
+## G49 B1a：独立Native Consumerに実データを渡す際の主体と対象範囲（2026-11-13）
+
+**最初の対象を実Functionの意味に合わせる。** main [#4539](https://github.com/hat47x/tei-platform/pull/4539)は`order_entry.recent_orders`の実PG Read→Function Data Contextに限定し、main [#4540](https://github.com/hat47x/tei-platform/pull/4540)は申告されたNative PDPの`order-id`項目→Semantic Source一項目の束縛に限定する。両者を同じ実Frontend Functionとみなさない。B1aの最小候補は非公開の合成データによる**read-only注文履歴Consumer**とし、Function/Query Input/Result列・出典・用途・実Consumer受領の対応を[#2586](https://github.com/hat47x/tei-platform/issues/2586)の同一Attemptで検証する。商品詳細PDPを構築するときは、その目的に適した受理済み商品Data/Queryを別途必要とする。
+
+**B2C利用者と組織所属を分ける。** 公開閲覧者・ログイン済み消費者・ゲスト購入者・業務運用者が、必ずしもOrg Membershipを持つとは限らない。組織モデルをB2C利用の必須条件にせず、案件が必要とする場合に限り[#2386](https://github.com/hat47x/tei-platform/issues/2386)へ結び付ける。認証方法/本人の出所は[#3412](https://github.com/hat47x/tei-platform/issues/3412)、Browser Session/要求保護は[#1043](https://github.com/hat47x/tei-platform/issues/1043)、読み取り用途・行/列Scopeは[#1656](https://github.com/hat47x/tei-platform/issues/1656)、現在の実行Authority/Effectは[#1174](https://github.com/hat47x/tei-platform/issues/1174)、用途別開示は[#2516](https://github.com/hat47x/tei-platform/issues/2516)を既存Ownerとする。TEI Coreに第二のUser/Identity/Tenant台帳を追加しない。**`:from`日時条件やFrontendが指定したcustomerIdは、利用者本人の注文を選別する認可根拠ではない。** Host側の実Principal/業務Subject対応とRead Grant/行範囲が確認できない注文データを一般向けAPIへ公開しない。
+
+**順序・検証資格**：製品`tei`/既存Application経路から実Provider/Raw Resultを読み、独立Native Consumerが同じ値・Presence・Scope/Completeness・版を受領したことを確かめる。Public/Privateの実Hostアクセス、Guest/Checkout、Consent/Experiment、旧Clientの契約版と価格の再確認は後続の独立資格で検査する。既存B0-S1 [#4518](https://github.com/hat47x/tei-platform/issues/4518)を新しい公開APIの前提Gateにしない。独立Expected候補BC-43〜48と担当・停止線は[親Issueの引渡し](https://github.com/hat47x/tei-platform/issues/3509#issuecomment-6847438801)を参照し、別のテスト正本を作らない。
+
+**状態**：B1a Product CLI→実Native Consumer、顧客単位の実Grant/Read、公開Browser、Commerce/売上効果の検証は**NOT RUN / NOT ACCEPTED**。Studio Desktopセルフビルド[#2831](https://github.com/hat47x/tei-platform/issues/2831)の最優先を変えず、Runtime-zeroを選べるHeadless/外部Frontend方式を維持する。
+
+<!-- b2c-b1a-qualified-consumer-20261113 -->
+### G49 B1aの受入を二段化する（2026-11-13）
+
+**B1a-I（非公開・隔離した機能結線）**：最初は受理範囲が明示された合成注文履歴のread-only Consumerでよい。既存製品`tei` CLI／型付きApplication Operationから、選択した実Provider、実Queryと宣言済みの型付き入力、実Rowset、Function Data Contextを同一Attemptでつなぎ、**別プロセスのNative Consumer自身が受領した内容**を独立に確認する。DB Reader間の値一致、Reference CLIの成功、宣言Native FieldのSource束縛は、それぞれ異なる証拠であり合算しない。`order_entry.recent_orders`の`:from`は現状Query側の入力宣言を満たしたと認定されておらず、日時条件は本人の注文Scopeも与えない。Query入力・物理列・Function/Result Fieldの対応が未受理なら`unmapped/unsupported`として止める。
+
+**B1a-P（一般消費者への公開資格）**：B1a-Iの成功とは別に、Hostが検証した認証Principal（Issuer/Subject/Session）と業務Customerの対応、対象注文との所有関係、現在Read Grant、行・列・用途別の許可済みProjection、Cache/旧Client/失効の整合を既存Ownerで確認する。公開閲覧者、ログイン済みConsumer、Guest、運用者は同じ主体・権限ではない。消費者に組織Membershipを一律要求せず、Cookie、Frontend指定customerId、メール一致、匿名ID、日時フィルターから権限を導かない。Guest→登録済みConsumerの履歴結合も、選択したCommerce/Hostの明示的なLink・許可なしに行わない。認証だけでは開示資格にならず、診断用ContextのConnection/Provider等をNativeレスポンスやログへそのまま流さない。
+
+**表示・Cacheの受入**：`NULL`／未取得／非開示／RLS・Mask／0行／partial／completeをConsumerまで区別し、Claimに必要な完全性が確立していないとき「全注文を表示」「購入履歴なし」を断定しない。公開資格を確認できない場合は注文内容を返さず、画面側にも無根拠な「0件」成功を表示させない。本人専用レスポンスを匿名CDN/共有Cacheへ混在させず、Client・SSR・Edgeで版、Scope、失効を別々に検証する。実験割当・分析識別子は認証Subject/業務Customerと自動統合せず、Consent/目的・保持条件を別途扱う。
+
+**受領票と停止線**：`Attempt / Source・Function・Query revision / typed parameter declaration / selected→actual provider / Rowset・Context presence / Scope・Completeness / Native receipt / Current Grant / allowed disclosure / cache・release / independent expected / status`を、観測済み・未観測・非開示ごとに分けて記録する。BC-43〜54の独立Expected候補は[親#3509](https://github.com/hat47x/tei-platform/issues/3509)から[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#2514](https://github.com/hat47x/tei-platform/issues/2514)へ帰属し、新たなテスト正本は作らない。B1a-Iは[#2586](https://github.com/hat47x/tei-platform/issues/2586)の製品実Read・独立Consumer、B1a-Pは[#3412](https://github.com/hat47x/tei-platform/issues/3412)/[#1043](https://github.com/hat47x/tei-platform/issues/1043)/[#1656](https://github.com/hat47x/tei-platform/issues/1656)/[#2516](https://github.com/hat47x/tei-platform/issues/2516)のHost・認可・開示を利用する。H0 Native単独／H1任意の型付き契約／H2任意の実験Adapterの費用・実測比較は後続B3へ置き、B1a-PやB2C専用Pluginを[#2831](https://github.com/hat47x/tei-platform/issues/2831) Desktop Self-Buildの新Hard Gateにしない。**製品CLI→実Native受領、公開認可、Browser/Cache、Consent、Commerce/売上効果はNOT RUN / NOT ACCEPTED**。
+
+<!-- b2c-crosslane-acceptance-20261114 -->
+### G49 横断適合：変更・配布・利用者・実作用の境界（2026-11-14）
+
+B1a-I/Pの二段受入を維持しつつ、独自Frontendを「TEIが制約しない」と認定するための比較対象を明示する。業務上の正本は受理済みSemantic/Function/Action、実行権限はHost/Providerに残し、Frontend・CMS・Edge・実験・検索等の実装先は案件が選ぶ。Journey/Experiment/Releaseは既存の型付きGraph・Operation・Artifact/Scenarioの**投影とAdapter**で扱い、B2C専用のIdentity台帳、Analytics正本、実行Host、Lifecycle/Graph Engineを増やさない。
+
+| 境界・既存担当 | 同じ実Consumerで確認する最小の正負対照 | 判定上限 |
+| --- | --- | --- |
+| **B1a-Iの値・型・Consumer受領** [#2586](https://github.com/hat47x/tei-platform/issues/2586)/[#2497](https://github.com/hat47x/tei-platform/issues/2497) | 選択した実Providerと実Invoke、Queryの宣言されたTyped Param、Raw Rowset→一個のContext→別プロセスNative/標準表示の受領を対応付ける。NULL・欠損・0行、投影後の同値重複と業務Identity、金額の単位・精度を区別し、同型Fieldからの暗黙Mappingを拒否 | 現在の#4539実PG参照と#4540宣言Native Fieldは**別Attempt**。通常`tei` CLIと実Native受領は未実証 |
+| **個人データの開示非干渉** [#1656](https://github.com/hat47x/tei-platform/issues/1656)/[#2516](https://github.com/hat47x/tei-platform/issues/2516)/[#1043](https://github.com/hat47x/tei-platform/issues/1043) | 同一公開資格・公開Sliceで、W0/W1の**非公開の注文行だけ**を変更。HTTP Body/metadata、件数・aggregate・sort/page、diagnostic・digest・ログ・Cache key・Tool応答に秘密由来の差が出ないことをConsumerまで比較。private注文はHost検証済みPrincipal↔Customerと現在Grant/行列/用途Projectionが揃ったときだけ返す | Sourceの参照可能性や`Disclosure.Rows/Columns`欄の存在、Reader成功は実Policy適用の証明ではない。比較していない媒体・Timing等は保証しない |
+| **変更影響とAI編集の対象** [#4518](https://github.com/hat47x/tei-platform/issues/4518)/[#2582](https://github.com/hat47x/tei-platform/issues/2582)/[#4515](https://github.com/hat47x/tei-platform/issues/4515) | R0でのみ存在した旧依存辺を消したR1、Required Consumerと無関係な旧辺、C0文言内の実効価格/Consent変更を対照。必要上流は失効対象へ残し、無関係なRelease/Consumerは過剰失効させない。AIの旧Source/Pin、未保存Dirty Buffer、現在選択・実際のBuild入力を区別し、無音Applyしない | #4591は申告Graph局所、#4592は修正提案。実Source全Universe・Source読取り時点・Current Grantの証明に拡大しない |
+| **配布・Plugin実消費と撤去可能性** [#1016](https://github.com/hat47x/tei-platform/issues/1016)/[#951](https://github.com/hat47x/tei-platform/issues/951)/[#2604](https://github.com/hat47x/tei-platform/issues/2604) | H0=Native単独、H1=任意の型付き契約/生成Adapter、H2=任意のExperiment Adapterを、同じFrontend・機能・変更で比較。Selected→実Artifact同梱→実Invoke→Consumer受領、未選択Plugin除去、旧Client/SSR/Edge/Service Worker/Cacheの残存と実公開版を別観測 | 「Runtime-zero」はTEI標準UI/常駐JS/Router/Gatewayを必須としない選択であり、外部API/認証/運用コストがゼロという意味ではない。完全静的Compositionは#1016後続P1 |
+| **注文Effect・実験計測** [#1174](https://github.com/hat47x/tei-platform/issues/1174)/[#1129](https://github.com/hat47x/tei-platform/issues/1129)/[#1180](https://github.com/hat47x/tei-platform/issues/1180) | Click/Intent→Cart/Checkoutの外部Provider実Call→確定Outcome/Receipt→独立Readを分ける。Timeout/ACK喪失/Hookの`effectUnknown`・`lookup_first`を成功や安全な再送へ降格しない。Assignment≠Exposure≠Outcome、Consent/欠測/SRM/返品等のguardrailを別に観測 | B1b実Commerce、B2実験、B3 CVR/粗利益の因果主張は後段。現在のHook局所Draftを二重購入防止の実証にしない |
+
+**実行順・費用比較**：①#2586の製品`tei`入口からB1a-Iの**同一Attempt実Consumer受領**を一件成立させる、②B1a-PのPublic/Private・W0/W1負例を既存Host/Projectionで実行する、③B2の旧配布版・Effect Unknown・Experimentを段階的に追加し、④#2018でH0/H1/H2の初期実装時間、変更時間、追加JS/Request/TTFB/CWV、誤検出・欠測、Provider/運用費用を同じ独立Expectedで比較する。計測していないCVR改善やRuntime overheadの不存在を主張しない。
+
+**証拠管理・優先順位**：Source/Context/Consumer/Release/Grant/Effect/測定の観測時点と受領媒体を分け、同じID・digestでも現在性や許可を推測しない。非公開注文、Session、内部接続先、非公開Sourceの存在・件数・HashをGitHub/外部AIへ必須送出しない。独立Expectedは[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#2514](https://github.com/hat47x/tei-platform/issues/2514)の既存Scenarioへ返し、新しいCase台帳は作らない。#2831/#4583のStudio Desktop Self-Build（B1 BuildIntent→B2 Stage1再入→B3 Stage2実Windows受領）を全体P0に据えたまま、B2Cは並行する異質Consumer試験とする。**本節は設計・検証計画であり、各実Target・公開認可・Commerce/Experimentの新しい実行結果を含まない**。
+
+<!-- b2c-b1ai-executable-handoff-20261114 -->
+### G49 B1a-I 最初の実行可能な一往復：実装受渡しと停止条件（2026-11-14）
+
+**固定する対象**：`order_entry.recent_orders`の意味に合う、**非公開・使い捨て合成注文履歴のread-only表示**だけを選ぶ。商品詳細PDP用の`native-pdp.order-id`申告Binding（main #4540）はこのQueryへのFunction/Result Mappingではない。注文を一般ユーザーへ公開しない。現在の`:from`は実行用のtyped値を渡せても、Query Source側の`input`宣言・意味束縛が未受理なので、宣言不足を暗黙defaultで埋めない。
+
+| 一Attempt内の検証箇所（既存Owner） | 最小の実Witness | 不合格・不明の場合の扱い |
+| --- | --- | --- |
+| **A. 対象と入力**（#2586/#4518） | 同一Workspace Load、実Canonical Function/Query Subject、Source occurrenceと版、`:from`のQuery宣言・型・Runtime値・物理SQL選択を照合する | Subject不在を参照0件と扱わず、Queryのinput未宣言ならTyped Contractは`unmapped`。製品`source-index`の不存在拒否はmain [#4584](https://github.com/hat47x/tei-platform/pull/4584)で修正済みだが、Function→Queryの意味受理は別 |
+| **B. 製品入口と実Provider**（#2586/#1251/#951） | 通常の実`tei`プロセスまたは既存Product Application Entry、選択Provider/Instanceと**実Call**、実SQL/param shape、物理DB/Session/RLS・Reader時点の観測を区別する | `tools/reference-browse-read`のみ、Provider B選択→A実Call、別物理DBで偶然同値なら製品接続PASSにしない |
+| **C. 一つのResult/Context**（#2506/#2497） | 同じ実Rowset→同じContext identity/epoch/Result Sliceから、列Attribute、Presence（missing/NULL/value）、Decimal scale、Grain、Scope、Coverage、完受（EOF/End marker）を保持する | DB cursor完走でも業務母集団/RLSの`complete`は導かない。masked NULL/SQL `NULL AS`/未取得を合算しない |
+| **D. 独立Consumerの実受領**（#2586/#2516） | 同じContextを標準表示と独立Native read-only表示の**二Receiver**へ渡し、受信側でAttribute ID・行/Cell・Result revision/ScopeをReadback。Nativeへは事前に許可した投影だけを渡す | 二度のDB Read一致、DB Readerだけの照合、Reference JSON全項目のNative返却はConsumer資格としない。Connection/User/内部Instanceや非公開存在情報を出さない |
+| **E. 独立Expectedと結果票**（#1180/#2514/#1163） | 事前固定の正常3行/期間境界/0行、列欠落・NULL/RLS、Provider不一致、Response途中切断を既存Scenarioで比較し、`declared / selected / invoked / consumed / verified`を分けて記録する | 一部局所PASSをB1a-I全体PASSにしない。未実行はNOT RUN、契約不支持はUNSUPPORTED、未確立はUNKNOWNのまま保持 |
+
+**対象外を明示**：ここではPublic APIの認証、本人の顧客ID連携、現在Read Grant、共有CDN/Browser Cache、安全なGuest→会員結合、Cart/Checkout、公開Release/Experiment、CVRを合格とみなさない。B1a-Pでは、許可済みAudience/ScopeのPublic Sliceを先に確定してから、W0/W1で非公開注文だけを変え、Body/DOM/ARIA/metadata/count/sort/aggregate/diagnostic/log/cacheの許可外差分を実Host・Consumerで確認する。情報を伏せたことによる存在・件数の漏えいにも注意するが、Timingや外部経路を未測定のまま非干渉完了とは主張しない。
+
+**変更・配布と次段の接続**：B0-RのR0-only辺／R1 Required上流は[#4592](https://github.com/hat47x/tei-platform/pull/4592)（未統合候補）と#2582へ、Source Root実在性が構造Fingerprint不変でも変わる負例は[#4616](https://github.com/hat47x/tei-platform/pull/4616)の限定提案へ接続する。Desktop側の[#4587](https://github.com/hat47x/tei-platform/pull/4587)ではTEI実CLI `self-build` primitive子起動→Inspector TS→実Windows WebView2まで限定成功したが、正式BuildIntentとStage1→Stage2は未実証。この成功をB1a-IのProduct Read/Native Consumer実証に合算しない。H0/H1/H2の実際の時間・通信/JS・運用費用比較は#2018で別々に採点する。**新CLI名・Host・Identity/Analytics/Commerce正本・Scenario台帳・Hard Gateは作らない**。
+
+<!-- b2c-bridge-entry-temporal-20261114 -->
+### G49の実装境界：Query Read・公開Entry・履歴と現在資格を分離する（2026-11-14）
+
+**B1a-I最初の不足辺は公開Functionの新設ではない。** 現行の[Script Launch §12〜13 Draft #4618](https://github.com/hat47x/tei-platform/pull/4618)のSource照合では、製品`cmd/tei/cli_commands.go`に公開Function起動Verbはまだない。既存`semantic/capabilityinvoke.BusinessResult`の単一Output/Outcome区分はあるが、Outputの型/NULL/単位を自動的に全検証するわけではなく、`command.Result`は業務Command/Effect側の契約である。したがって、Read-onlyなB1a-Iではまず#2586の**既存Product Query/Function Data Contextの型付きOperation**を実Providerへ結び、その実Resultを検査する。次に、合意したCLI契約の**薄いAdapter**から同じOperationを呼ぶ。公開Business Entryの発見・発行、pure Functionの正式起動、Command/Effectは[#4495](https://github.com/hat47x/tei-platform/issues/4495)/[#3422](https://github.com/hat47x/tei-platform/issues/3422)の別資格であり、B1a-Iへ公開Entry/Action実行エンジンを偽装・新設しない。
+
+**A〜Eの前段差分と独立Expected**：①現行`order_entry.recent_orders`の`:from`をQuery Sourceで型付き宣言できないなら`unmapped`を維持し、実行時paramだけから公開Operationと認定しない。②同じResult bodyを返しても、選択Provider B→実Invoke A、別物理DB・別RLS Session、欠落したCompletion/Consumer Readbackは不合格。③`source-index`のCanonical存在成功とStudioのPinが成立していても、公開Entry・Provider・現在Grant・実Consumerは未検証。④実ReadのContextは、`Connection.User/Database/Instance`等の内部診断を含むため、Native用の許可済みProjectionだけを配信する。これらは#2586/#1251/#1180/#2514に既存の判別票として引き渡し、新CLI Verb/Schema/Runner/正本をここで確定しない。
+
+**履歴と現在時点の分離**：[組織C1二時点補遺 Draft #4622](https://github.com/hat47x/tei-platform/pull/4622)の`validAt/knownAt/observedAt/effectAt`区分を、B2Cでは必要な場合にだけ採用する。注文履歴の`ordered_at >= :from`は検索期間条件であり、**購入時点の商品価格・注文確定Fact、後日の訂正/返品・現時点の商品価格、現在の本人Read Grant/顧客Link**を保証しない。業務上の履歴値は当該Source/Providerの履歴・訂正契約に従い、Grant/Disclosure/Sessionは**閲覧時**に再評価する。W0（同じ注文内容、現在Grantあり）とW1（同じ注文内容、閲覧前にGrant失効）、または履歴価格同一・現在価格のみ変更を独立対照とし、0行・同byte・以前のReceiptを「購入なし」「現在許可」「現在価格」に昇格させない。全B2Cに二時点テーブルや組織Membershipを強制しない。実Host/DB・販売履歴の二時点試験はNOT RUN。
+
+**Source現在性と配布の独立実証**：[main統合 #4616](https://github.com/hat47x/tei-platform/pull/4616)はWorld/Model revisionを変えずに未モデル化Source Rootの実在が変わり、Catalog/Map/Locate/Validateの判定が変化する局所Go試験を通した。これをNativeの現在Source/Validation再確認へ引き継ぐが、実Source全依存閉包、原子的Snapshot、現在Grantは未証明。Studio側は[#4623](https://github.com/hat47x/tei-platform/pull/4623)でCaller Pinに加え**Opt-inのResolved Builder→起動前Digest照合**を提案し、[#4624](https://github.com/hat47x/tei-platform/pull/4624)で宣言とResolver応答の不一致拒否を局所Goテストで検証した。ただし両PRはDraft・未mainで、B2C Frontendの正式BuildIntent/ArtifactSet、OS Loader TOCTOU、Stage1→Stage2、実B2C Provider受領の保証ではない。全体P0は[#2831](https://github.com/hat47x/tei-platform/issues/2831)/[#4583](https://github.com/hat47x/tei-platform/issues/4583)のB1→B2→B3を維持する。
+
+<!-- b2c-h1-distribution-consumer-witness-20261114 -->
+### G49 H0/H1/H2：実成果物・Consumer受領・変更後資格の判定票（2026-11-14）
+
+**B1a-Iの後にH1へ追加するのはビルド時の任意契約であり、TEI標準RendererやBrowser Runtimeではない。** H0 Native単独はこの追加受入の対象外とし、H1/ H2の適用先だけで、案件が選んだContract/Provider/Builder/Memberと実際の生成・配布・受領を同一対象・版・用途で比較する。Plugin管理InventoryやBuilder Resolverの「解決済み」、署名済みReleaseの「検証済み」だけでは、公開画面・注文Effect・現在Grantの資格にならない。
+
+| 検証対象 | 必須の正負対照／不足の場合の停止線 | 現在の実証と担当 |
+| --- | --- | --- |
+| **H1-A 選択と実Build** | Application/Target Profileが選んだContract・Provider/Builder Aに対して、Resolver応答B・実子image C・必要Artifact Memberを分離。同digest/同値でもID/契約/Target不一致、必須依存欠落は拒否。未選択Pluginの追加・非選択は既存H0成果物と契約選択を勝手に変更しない | [#4624](https://github.com/hat47x/tei-platform/pull/4624)はBuildIntent宣言対Resolverの局所修正（Goテスト確認・Draft）、[#4623](https://github.com/hat47x/tei-platform/pull/4623)は実子Builderの起動前pinと選択Bindingの候補（Draft）。B2C実TargetはNOT RUN。#951/#1016/#1080/#1097を再利用 |
+| **H1-B 外部Releaseの独立受領** | H1の生成Member/契約版R1を選んだら、Consumerが実取得したRelease Envelopeと各Member Body/Hash/Targetを独立照合。署名R1なのにBody R0、欠落Member、旧Client/SSR/Edge/Cacheが版混在の場合は**そのReleaseの受領資格なし**。署名確認だけで現在配信・撤去・信頼失効を証明しない | [#4617](https://github.com/hat47x/tei-platform/pull/4617)は別Node ProcessのHTTP署名Release＋実Body取得の限定ReferenceでE1専用CI成功。Draft・固定鍵/localhostなので本番Release/Origin/Trust/CDNはNOT RUN。#2589/#2604/#2516へ |
+| **H1-C Nativeの閲覧と編集** | Native FieldのQualified Subject/Sourceと、Data Contextの実Row Identity/Version/Grainは別。表示できても、Projectionがnon-injective・集計・多重Edge・Slot不明ならNative/AIからの自動Source/DB逆編集は禁止。明示Slotだけを変更する場合も現在Source span・OwnerのWriter資格・業務Operationの独立検査を要求 | [#4619](https://github.com/hat47x/tei-platform/pull/4619)は同一製品計画ファイルに別DraftとしてSlot相対のread/edit適格性を提案。#2497/#1124/#2500/#2514がOwner。B2C実Edit/WriterはNOT RUN |
+| **B1a-P/B2 現在認可・切替** | W0とW1で注文値同一・Grantだけ失効、または旧Client/R1・新Release/R2・変更後の現在価格/Consentを比較。表示済みの値、Cache、Variant Assignment、Checkout Intentは現在Grantや確定注文/Exposure/Outcomeを代行しない。Plugin/Provider旧世代in-flightと新世代選択、Effect Unknownでは再送前Receipt/現在権限を別照会 | #1043/#1656/#2516（Read/Disclosure）、#1174（Effect/Receipt）、#2044/#1223（Plugin更新）、#2604（Release）、#3509（B2C）。公開Host/切替/Commerce/Experimentの実E2EはNOT RUN |
+
+**評価と作業順**：B1a-I（#2586）を先に実Provider/同一Context/独立Native受領で成立させ、H1-A〜Cは選択して採用したTarget/Pluginに限り局所追加する。B1a-Pの現在Read Grant/W0W1は独立した公開資格、B2の実験はAssignment/Exposure/Consent/Outcomeを別に試す。#2018では同じ変更シナリオをH0 Nativeのみ・H1選択Contract・H2選択Experiment Adapterに適用し、正しい結果・Build/更新時間・JS/通信/Cache・レビュー工数と実費を比較する。H1/H2の自動採用・売上向上を事前に主張しない。新配布Host・Builder/Policy/Graph Engine・Analytics/Identity台帳・Test SSOTを設けない。**この節は既存DraftとReferenceを横断した受入設計であり、新規B2C実行・製品採用はNOT RUN**。
+
+<!-- b2c-b1ai-first-missing-edge-20261114 -->
+### G49実装引渡し：B1a-Iの最初の欠落辺を一つずつ埋める（2026-11-14）
+
+**先に未成立の一辺を特定する。** main [#4539](https://github.com/hat47x/tei-platform/pull/4539)のEnvironment→実PG Read→Function Data Contextと、main [#4540](https://github.com/hat47x/tei-platform/pull/4540)の申告Native Field→Source occurrenceは**別の契約・別Attempt**。製品CLI未結線、Query `:from`の`declaredByQuery=false`、Product Function/Query/Resultの正式対応、二Receiverの実受領という欠落を、変更前の固定Workspace/Source/Contract版で区別する。すべてを一PRで修正することを要件にしない。
+
+| 実装Slice（既存Owner） | 最初に固定する最小の実成果と独立負例 | 合格上限・次への引渡し |
+| --- | --- | --- |
+| **R-A 型付きProduct Read Operation**（#2586/#2506/#2622） | 既存Sourceの`order_entry.recent_orders`と実SQL/`:from`の**宣言・型・Runtime value**を照合し、実Provider選択→実Invoke→一つのFunction Contextの行/列/Scope/PresenceをProduct経路で観測。必要なQuery `input`宣言がなければOwnerへ不足箇所を戻し、暗黙の文字列paramで適合扱いしない。別SQL/別DB・RLS role・Provider A/B取り違えを負例にする | **このSliceだけの局所Product Read**。実ContextであってもCurrent Grant、全母集団、Native受領、正式Business Entry公開は未合格 |
+| **R-B 製品CLIへの薄い接続**（#2586/#3422/#1251） | R-Aと**同じProduct Operation**を、通常`tei`実バイナリの子プロセスから呼び、Source/contract/実Provider/Context/CLI exit・stdoutを区別してReadback。正式VerbやWireはCLI Owner判断後に決める。未知Verb/未公開対象/不正入力は副作用・秘密stdoutなしで失敗とする | [Draft #4625](https://github.com/hat47x/tei-platform/pull/4625)は既存`operations.ExternalCandidates`をRead-only CLIへ薄く投影した**別領域の参考実装**。ローカルREA Evidence PathやTool Present、実Process成功をB2C PG Read/現在認可の証拠へ流用しない |
+| **R-C 同一Contextから独立Receiverへ**（#2586/#2497/#2516/#3509） | **一度だけ**実Query→Contextを生成し、同じResult/Context identity・epoch・Source/Query/Provider版の許可Projectionを標準表示Aと独立Native read-only表示Bへ配送。受領側プロセスが双方でAttribute ID、セルのvalue/NULL/missing/withheld、行数・grain・Scope/partial/unsupportedを確認する。別々にPGを2回読んで同じ数値を得る方式やPublisher receiptだけでは不可 | Aだけ成功・Bへの配送途中切断・旧Context混入・内部`Connection.User/Database/Instance`のWire漏えい・`COUNT`や`SUM`の未宣言精度/NULLを独立Expectedで拒否。Context ID一致だけでは同一原子的DB SnapshotもGrant受理も保証しない |
+| **R-D B1a-Pを別票で資格化**（#1043/#1656/#2516/#1174） | 公開Hostが検証した現在Principal↔Customer/Order、Read Grant、Audience/用途別Projection、Private Cache partitionと失効を確認。注文値同一でGrantだけ失効したW0/W1、別Customerの注文増減、旧Client/ReleaseのCacheを負例にする | R-A〜CがPASSでも非公開合成Readerの資格のみ。自動的なBrowser公開、Guest Link、Checkout Effect、Consent/Exposure/CVRは未合格 |
+
+**選択・配布の横断Witness**：今後H1契約を選択した案件では、[Draft #4624](https://github.com/hat47x/tei-platform/pull/4624)のBuildIntent宣言⇄Resolver整合と、[Draft #4623](https://github.com/hat47x/tei-platform/pull/4623)の**実ResolveしたBuilder digest⇄起動前Child image**を別々に照合する。2026-11-14確認時点で、#4623 exact HEAD `f1e219a`はGitHub Actions 8件すべてsuccess、#4624 exact HEAD `2d403f4`は取得できた5件すべてsuccess。ただし**どちらもDraft・未main、Plugin主体の限定BuildPlan／非Plugin Studio全工程は未受入**。Builder一致は成果物のメンバー実同梱・実配信・Runtime受領でもない。[Draft #4617](https://github.com/hat47x/tei-platform/pull/4617)のtest-only HTTP署名Release/Node Consumer検証とも、同じB2C実Releaseだと合算しない。H0 Native単独にはこれらを必須化しない。
+
+**用途と写像の交差検収**：並行[Draft #4619](https://github.com/hat47x/tei-platform/pull/4619)のD0〜D3、P/J/Q（局所観測・異種Evidence Join・問い相対閉包）を、このR-Cでは**読み取る側の必要条件**として参照する。表・集計・Graphで同じ表示が成立しても、JOIN fanout/重複投影、同Label別Identity、non-injective Map、非表示列や否定条件のUnknownを消さない。表示・閲覧適格性、Slot局所編集候補、現在Writer/Effect Grantは別。#4619のG08等の原文は**同一ファイルを編集する別Draft**に残し、このG49節はB2C実受領への引渡しだけを所有する。採用時は両方の最新main差分を照合し、内容を欠落・二重化しない。
+
+**最小の証拠票と停止条件**：既存#1180/#2514/#1163で`Exact HEAD / Workspace・Source・Function・Query Revision / typed-input declared? / selected→invoked Provider・DB Session / actual Rowset+Context ID・epoch・Scope・Coverage / A,B各Consumer delivered・received Body / allowed Projection・Grant qualification / independent Expected / PASS|FAIL|NOT RUN|UNSUPPORTED|UNKNOWN`を別列管理する。Consumerへ送らない内部接続・個人情報や非公開Source ID/件数/ダイジェストをGitHub/外部Harnessへ必須送信しない。最初に不足した辺を修正し、局所成功を次Sliceの成功へ昇格させない。**この節自体はdocs-only、R-A〜Dの新実行とOwner意味受理はNOT RUN**。
+
+<!-- b2c-ra-source-to-executor-failclosed-20261114 -->
+### G49 R-AのCode適合ギャップ：既存Query.Inputsを実Provider呼出し前に束縛する（2026-11-14）
+
+**今回のmain Source静的照合（成果の上限：実装着手点の確定）**：
+- `internal/query/model.go`に既存`query.Input {Name core.LocalName, Type core.CanonicalID}`と`query.EmbeddedSQL.Inputs []Input`がある。したがってQueryの型付き引数を表す**新しい公開Model/Core型は不要**。
+- `reference/workspace/applications/order-entry/queries/recent_orders.tei`には`query order_entry.recent_orders`、`datasource sales`、SQL source・Result mappingがあるが、**`input from`の宣言がない**。同ディレクトリの`recent_orders.sql`は`WHERE o.ordered_at >= :from`を使用する。Reference WorldのDriver testが通ることと、Query入力意味受理は異なる。
+- `internal/driver/browse_query_environment.go`の`ExecuteBrowseQueryInEnvironment`は、Environment/Instance/ProviderとExecutorの照合後に、`map[string]any`を`r.ExecuteBrowseQuery`へ渡す。**Query.Inputsの必須性/型/未知パラメータを、この入口で実Executor呼出し前に検査していない**。Registry側の物理接続が同一Instanceかはhost-assertedで、実Read Scope/現在Grantも別資格。
+- `tools/reference-browse-read/main.go`の`parseParams`はCLI引数`from=time:RFC3339`を`time.Time`にする一方、`DeclaredByQuery`を**SQL/Executor実行後**のContext構築前に照合する。したがって参照CLIのtyped tag成功、実PG3行取得、`declaredByQuery=false`をProduct契約適合へ昇格しない。
+
+**Owner #2586/#2622/#3422への実装PR分割案（新Command/APIの採用ではない）**：
+1. **RA-0 Source/Parser/型選択**：現行Query DSL Loaderが受け付ける`input`構文とCanonical time型を、既存Reader・Role/型Contractから確認する。採用済み構文・意味へ沿って`recent_orders.tei`へ`:from`を宣言し、再Loadした`Query.Inputs`に**名前・型・Source出典**が実際に反映されることをGo独立Expectedで固定。見た目だけの新DSLや、SQL placeholderからの推測による暗黙宣言はしない。型・構文が未受理なら`UNMAPPED`で止める。
+2. **RA-1 Provider前の強制検査**：同じSource/Queryと実Invocationの引数セットを比較し、必須`:from`欠落、型違い、未宣言名、explicit NULL/未取得の不許可、時刻のoffset/precision変換、別Query同名を独立負例にする。**拒否時は既存Counting Executorの実Call 0、Result/成功Receiptなし**。Mapの重複キー表現不可はCLI raw flags段の既存重複拒否と区別する。互換な既存Query/DSLへ一律のBreaking変更を加える前に対象Scope/ContractをOwnerが決める。
+3. **RA-2 一Attemptの実Value**：宣言成功かつType適合後だけ、既存#4539の隔離PostgreSQL read-only/REPEATABLE READ Fixtureに実引数を渡し、O-003/O-002/O-001の全3行・10:05境界2行・後方0行、Decimal scale2、Result Scope/0行の`unestablished`を独立Expectedへ照合。`selected provider`・実Executor・SQL byte/params・物理DB/Session/RLSとFunction Contextを同じ実Attemptで記録。選択と実Call一致なし/違うDBで偶然同じ行はFAIL。
+4. **RA-3 R-B/R-Cへ引渡し**：受理済み型付きOperationのResultを薄い製品`tei`入口へ渡した後、**同一Context**を標準/Native二Receiverへ配信。Draft [#4625](https://github.com/hat47x/tei-platform/pull/4625)の`external-candidates`は、既存Operation→実CLI childの別領域の**構造参照例のみ**。その実CLIが起動できてもB2C実PGやNative受領ではない。
+
+**Readと更新の境界**：同じ注文が3行返った事実、`:from`の時刻、ProviderのSessionを、全顧客の母集団・本人所有・現在Read Grant・注文確定Effectには読み替えない。非公開合成Readの単一Contextを、必要なAudience/用途の投影を通してからNative Consumerへ渡す。動的依存/Dirty保持/Source A→B→A、二Consumer・二Provider snapshotのCoherenceは移植したG08〜G13データ様式節の#2582/#2597/#1708へ委譲し、B2C用Reactive Engine/中央Snapshot Coordinatorを作らない。
+
+**現行の実コードと受入資格（2026-11-14）**：RA-0 [Draft #4626](https://github.com/hat47x/tei-platform/pull/4626) HEAD `9eecf2b9`は、既存構文`input from std.datetime`を採用し、現在のWorld/Golden/Fingerprintを更新した。歴史RunnerではSHA-256固定の旧Queryだけを隔離Frozen Worktree内で再現する。**同HEADのHealth・歴史Self-buildを含め18 CI中17成功**、API実成果物の`sqlgen`依存検査1件は[#1182](https://github.com/hat47x/tei-platform/issues/1182)の別不合格であり、PR全体は未受入。RA-1 [Draft #4631](https://github.com/hat47x/tei-platform/pull/4631)は既存`Resolver.ExecuteBrowseQuery`で宣言済み入力と実Go値をExecutor前に照合する。`std.datetime`→`time.Time`のみを適格として、欠落・NULL・文字列・未知キー等は実Call 0で拒否し、歴史的に入力宣言のない合成Replayを型付きProduct資格へ昇格させない。**修正RA-0をbaseとした統合[Draft #4644](https://github.com/hat47x/tei-platform/pull/4644) HEAD `b5c23044`では、RA-1のGo/旧Web回帰、RA-2Rの空2 DBを使った実PG16参照Reader親＋7ケース非SKIP、設計検査の3 Workflowがすべて成功**。ただし通常製品`tei` CLIから選択Provider/実Connection/SQL/Params/Rowsetを同一Attemptで受けるRA-2P、標準・独立Native Consumer二者のRA-3、現在Principal/Host GrantのB1a-Pは未実証である。これらのDraftはmain未統合。Stage1→Stage2 Studio Desktopセルフビルド#2831/#4583が全体P0、Product Read#2586が並行P0。
+
+<!-- b2c-ra0-historical-revision-ci-20261114 -->
+**Source改訂が他Targetへ波及したときの資格（実CI由来）**：[RA-0 Draft #4626](https://github.com/hat47x/tei-platform/pull/4626)の初回HEAD `1b12c833`では、固定Web Targetの歴史Source受入Fixtureが、新しいQuery InputによりWorld Revision不一致を検出して停止した。これは単なるノイズではなく、**今のSourceが変更された証拠**である。元の受入Fixtureは現在Sourceで自動再受理せず、別のScratch内だけで旧Query byte SHAを照合して復元する変更をHEAD `4f238139`へ追加した。この隔離テストが成功しても、新しいQuery Inputを持つ現行SourceのOwner意味受理・Web/G1資格は得られない。また別Workflowで`tei/internal/database/sqlgen`の予期しないAPIバイナリリンクが見つかった。Query宣言の変更が原因と決めつけず、実API成果物の依存検査Ownerが独立調査し、Allowlist緩和で隠さない。**#4626最新HEAD `4f238139`では歴史Fixture差分の2つのWeb/固定World Workflowは再実行でsuccess**。一方、実APIバイナリの`go tool nm`で`tei/internal/database/sqlgen`が2 symbol出る[E1依存除外failure](https://github.com/hat47x/tei-platform/issues/1182#issuecomment-6869938385)は継続し、セルフビルド系もそのHEADで失敗。Browser Asset側の走査PASSと、E1全体の成功を混同しない。Go/Windows/PGの他WorkflowやRA-1の最新CIを別に確認するまで**PR全体CI PASSは保留**。
+
+
+<!-- g49-ra1-driver-studio-server-witness-20261114 -->
+**Studio Server→B2C公開Hostの連携上限**：[Draft #4627](https://github.com/hat47x/tei-platform/pull/4627)は現行Wails Server Bridgeのexported 15 methodを実Go型・ASTで棚卸しし、非ReadのCommand/外部Child Processも登録されていることを局所検査した。現時点のServerはloopback PoCであり、B1a-Pの公開Host/複数Actor/Workspace隔離/現在Read Grantの実資格ではない。将来のSaaSで必要なread-only façadeと許可済みProjection、WebSocket受信・配信の認可は[#1824](https://github.com/hat47x/tei-platform/issues/1824)/[#3421](https://github.com/hat47x/tei-platform/issues/3421)/[#1043](https://github.com/hat47x/tei-platform/issues/1043)の責務に置く。RA-0/RA-1やStudioセルフビルドのHard Gateへ多利用者Webを追加しない。
+
+<!-- b2c-ra1-gateb-studio-n2n3-capability-preflight-20261114 -->
+### G49 横断の実行前拒否とDesktop使用実証を区別する（2026-11-14、実コード・実CI照合）
+
+**共通する設計上の規則は「実実行者へ渡す前に、選択済み契約に照らして拒否できること」であり、すべての操作を単一Runnerへ集約することではない。** 対象・Authority・受入票を次のように区別する。
+
+| 実行境界／Owner | 今回照合した観測 | Product採用へ残る条件 |
+| --- | --- | --- |
+| **Browse Query入力 #2586** | Draft [#4626](https://github.com/hat47x/tei-platform/pull/4626)の`input from std.datetime`に、積上げDraft [#4631](https://github.com/hat47x/tei-platform/pull/4631)で`Query.Inputs`対`time.Time`をExecutor前照合。最初の実Go CIはGate Bの`:from`欠落を検出してFAILし、Scenarioを修正。旧R0の合成Replayは型付き資格を持たない | 最新HEADのGo/旧Web PASS、Environment選択→実Provider→Function Contextの同Attempt、未宣言/型違い/NULLの実Call 0、通常`tei` CLI・独立Native Receiver |
+| **Capability Result契約 #4495/#3422** | [PR #4629](https://github.com/hat47x/tei-platform/pull/4629)は**main統合済み**。不正なResult contractを`capabilityinvoke`の実Adapter前で拒否し、不正6例でCall 0。事前Context cancelと正しいBusiness Outcomeを維持。Exact PR HEADでは9 Workflow success | 公開Entry/選択・実呼出し一致、Owner受理、Current Grant、実Host Effect・Product CLIは**別資格**。Queryの`:from`判定もここへ移管しない |
+| **Studio生成WebView2 #4583** | [Draft #4587](https://github.com/hat47x/tei-platform/pull/4587) HEAD `0fcb7b62`は同一HEADで12 Workflow success。WindowsのN2 esbuild出力（`workbench.bundle`）→N3 Go`EmbedFiles`のSHA・role・Attemptをpre/post照合し、変更byteを拒否。実WebView2配信も対応 | 正式`BuildIntent.Resolve`/Builder選択→実`ArtifactSet`、N0→N2接続、**Stage1 TEI生成→Stage2 Wails再構築・Windows実使用**。N2/N3のbyte一致をセルフビルド全体成功へ昇格しない |
+| **Studio Server/Web公開 #1824/#3421/#1043** | [Draft #4627](https://github.com/hat47x/tei-platform/pull/4627)はWails ServerのService/公開メソッドを棚卸しし、CommandやSHO Child起動も存在することを確認 | Local loopback PoCと公共Webを分け、Read-only Facade、Actor/Workspaceごとの現在Grant、WS受信者別開示を別検証。Server従属プロセス＋Named Pipe/UDS案は性能・障害回復・配布の**実測前は方式未確定** |
+
+**切替条件**：現在のSource/Query契約と実引数に合致すること、実Providerへ正しい引数が渡されたこと、Function ContextをConsumerが実受領したこと、公開Hostに現在Grantがあることは**4枚の別票**。Result contractの事前拒否やStudioのN2/N3 byte固定は各票を強めるが相互代替しない。#4629のmain成功・#4587のWindows限定成功を#4631の不合格Runへ加算しない。適格な集計Law/粒度は前節のD1.2、Studioは依然P0 #2831/#4583。新Host・Registry・Measure Engine・全工程を待つ巨大Gateは追加しない。
+
+<!-- g49-ra2-reference-pg-and-shared-actual-consumption-20261114 -->
+### G49 RA-2の実DB証拠：参照Reader 7ケース全PASSとProduct受入の欠落辺（2026-11-14）
+
+**新たな実行結果**：[積上げDraft PR #4638](https://github.com/hat47x/tei-platform/pull/4638) HEAD `0ce3a52f070314741f72462982ff940a1f791a28`、base [RA-1 #4631](https://github.com/hat47x/tei-platform/pull/4631) HEAD `02af8339`。専用[実PostgreSQL Workflow #43553849861](https://github.com/hat47x/tei-platform/actions/runs/43553849861) は**completed/success（1/1 Job）**。実PR merge SHA `05ab66fae60aa349900c93f306c605d7a819e697`と実HEAD親を照合し、PostgreSQL 16の空DB 2つとReader Roleで、既存`TestBrowseReadAgainstDisposablePostgreSQL`の親・A/B/C/D/E/G/Fの全7 subtestを**非SKIP・全PASS**で実行。これは`tools/reference-browse-read`の実Connection/SQL/Rowsetを使った証拠で、手書き期待値と独立DB readerを維持。Reference用の第二Fixture正本は追加していない。
+
+| 受入対象と資格 | 今回の実観測 | なお未成立の条件（既存Owner） |
+| --- | --- | --- |
+| **RA-0** Source宣言 | [#4626](https://github.com/hat47x/tei-platform/pull/4626)新HEAD `9eecf2b9`：`input from std.datetime`、Current World/Golden/Fingerprintと旧Frozen Query rawを分離し、旧HEAD `94876821`の未使用`reflect` importによるGo test/vet失敗も修正。旧HEAD `94876821`で16/18成功・HealthとAPI E1不合格は履歴票 | 同じ`9eecf2b9`の全体CI 18系統を[実Run](https://github.com/hat47x/tei-platform/pull/4626/checks)で再検査。E1は依然`sqlgen`のAPIリンク異常として[#1182](https://github.com/hat47x/tei-platform/issues/1182)に独立不合格。Current GoldenとFrozen Historyの意味受理・main採用・他レーンのCIはこの修正だけでは確定しない |
+| **RA-1** Go typed preinvoke | [#4631](https://github.com/hat47x/tei-platform/pull/4631) HEAD `02af8339`で[Go回帰CI #43548961899](https://github.com/hat47x/tei-platform/actions/runs/43548961899) completed/success。Gate Bの欠落`:from`をScenarioの`time.Time`入力に直し、防護を緩めなかった | 実Environment-bound Product入口の毎回適用、全型/NULL契約、旧R0のuntyped ReferenceをProduct Readerへ通さない。最新main/RA-0更新後は**積上げ差分を再検証** |
+| **RA-2 実PG参照** | [#4638](https://github.com/hat47x/tei-platform/pull/4638)は2 DB／RLS／Source変更・JOIN重複／0行／NULL／列権限／時刻境界を一つの隔離PG Attemptで観測。全7 Case success | **正式Product `tei` CLIから実Operation→実Provider→Context**のSame Attemptと、選択Provider A／実Call B負例、実Consumed SourceとSession Scope/epochの記録は未成立。参照CLIのpassをProduct E2Eへ昇格しない |
+| **RA-3/本件R-C** 実受領 | 参照Contextは実読取の結果だが、Receiver間の同一Context deliveryには未接続 | **同一Context ID・epochを持つ標準Display A＋独立Native Bの各受領Body**、Source/Scope/NULL/partial/projection、Expected独立照合。AggregateはD1.2の別受入 |
+| **B1a-P** Current Grant | 参照DB Read・RLS Roleの結果は確認できたが、Public Principal/Customer所有のAuthorityではない | Host current Grant、Audience Projection、失効W0/W1、Cache隔離とRelease/旧Clientの別票 |
+
+<!-- b2c-ra0-current-golden-historical-byte-pin-20261114 -->
+**RA-0 Source改訂をCurrent/Historyに分離した修正候補（2026-11-14）**：[Draft #4626](https://github.com/hat47x/tei-platform/pull/4626) HEAD `94876821f784d5fa9f71b15a05ac4156221b2bc8`で、旧HEADの[Repository Health #43544373270](https://github.com/hat47x/tei-platform/actions/runs/43544373270)および[セルフビルド #43544373386](https://github.com/hat47x/tei-platform/actions/runs/43544373386)で実際に失敗した契約を4ファイルで修正した。
+
+| 修正箇所 | 観測済みの旧失敗→修正の意味 | 実装後の受入停止線 |
+| --- | --- | --- |
+| `examples/data-source-workbench/query_route_separation_test.go` | SQL `:from`は宣言なしという旧Expectedが、実Loader宣言後にも`want [from]`として残っていた。新Sourceには`input from std.datetime`を要求し、未宣言入力集合は空へ更新 | SQL字面の静的検知は実PG Parameter Binderの証明ではない。XTEA別Workspaceの`:status`をこのQueryへ混入しない |
+| `reference/world.json` | Canonical current Worldの`order_entry.recent_orders`に`inputs:[{name:from,type:std.datetime}]`が欠け、`workspace.Load`とのWorld同一性でFAIL | 旧受理Worldを新Sourceと同一扱いしない。新Goldenは変更後Current Worldに限定 |
+| `internal/workspace/load_listing_fingerprint_test.go` | 旧Fingerpint `61ebb5ca...`に対しGo実CIで`435b687e...`を観測。値の来歴とCurrent World意味改訂を注記し、測定済み新値を固定 | この文字列の更新単体はOwner意味受理や過去のSource履歴保証にならない。最新HEAD Loadを実Testで再検証 |
+| `tools/reference-plugin-self-build/historical_runner_parity_e2e_test.go` | 旧RunnerのLoaderは新しい`input`行を解析できず実セルフビルドでFAIL。Frozen Worktreeだけに**実git commit `e888bb8f...`の旧Query raw bytes**を戻す。SHA-256 `a7c1c4f6...`と新Sourceとの差を独立検査し、Frozen Diffは旧Manifest 2件＋旧Query 1件の3パス限定 | **現WorkspaceのQueryから宣言を消さない**。旧RunnerがFrozen版を通過しても、現Worldの新Queryを受理したことにはしない |
+
+**再検査**：[#4626最新HEADのCI](https://github.com/hat47x/tei-platform/pull/4626/checks)はexact HEAD `9eecf2b9`で**18/18 Workflow完了（17 success、1 failure）**。[全体Health #43558268996](https://github.com/hat47x/tei-platform/actions/runs/43558268996)と[歴史Self-build #43558269076](https://github.com/hat47x/tei-platform/actions/runs/43558269076)はsuccess。残るAPI実依存E1 failureは別Owner #1182であり、PR全体PASSではない。別[Browser→JSON API実経路](https://github.com/hat47x/tei-platform/actions/runs/43544373457)の旧HEAD失敗はAPIの`tei/internal/database/sqlgen`2シンボル検出（Browser byte自体の走査成功）で、RA-0による因果は不明。#1182に別の実依存調査を残し、許可リストを黙って拡張しない。新RA-0 HEADの合格を確認したあとRA-1 #4631・RA-2 #4638の**積上げbaseが更新された事実**を明記して新Checkoutで再検証する。旧HEADのRA-1 Go成功、RA-2実PG 7/7成功を新baseのPASSとして再利用しない。
+
+<!-- g49-current-windows-e1c-buildintent-heads-20261114 -->
+**他レーンの最新実態を受入順に同期（2026-11-14）**：
+- **Desktopの実使用**：[Draft #4587](https://github.com/hat47x/tei-platform/pull/4587) はHEAD `9b58533d`で[Windows WebView2 Workflow #43572235468](https://github.com/hat47x/tei-platform/actions/runs/43572235468)の**通常Desktop・生成Desktopの両Jobが成功**し、同HEADの12系統のCIもすべて成功した。旧HEAD `357345d7`のOS版取得に伴うタイムアウトは、Pythonの`sys.getwindowsversion()`による測定へ変更して解消した。これは両Desktopの限定的な実WebView2検証であり、**Stage1のTEI StudioがStage2のStudio実行ファイルを生成し、その実行ファイルを利用した**というセルフビルド一往復の証明ではない。全体P0 #2831/#4583は維持する。
+- **Builder選択／実Child pin**：[Draft #4634](https://github.com/hat47x/tei-platform/pull/4634) 最新HEAD `7d6a1238` は**8/8 Workflow completed/success**。BuildIntent宣言→Resolver応答／選択Builder→起動前Image SHAを同じCheckoutで検証したが、Plugin主体の限定BuildPlanであり、非Plugin Desktop `N0〜N3`・OS Loader read-time byte/外部依存閉包、Stage2生成Desktop完成ではない。
+- **署名Release独立HTTP受領**：[PR #4617](https://github.com/hat47x/tei-platform/pull/4617)は**main統合済み**。外部Node Processがテスト用loopback HTTPから署名Releaseと2 Member bytesを取得し、正常1／拒否9を検査。実GitHub Releases/外部Assetの配布・現在Trust・Audience Grant/Availabilityとは別であり、[Draft #4640](https://github.com/hat47x/tei-platform/pull/4640)の外部Release readback（GET 200/302、混入、Issuer差、実Body digest）は設計上の次工程。G49 H0 NativeにPlugin/JS/外部Releaseを必須条件として追加しない。
+- **Script Launch**：[PR #4639](https://github.com/hat47x/tei-platform/pull/4639)はmain統合済みの計画改訂で、`#4636`の宣言preflightを現行設計に反映。Query RA-0/RA-1/RA-2のProduct Read、実Go Provider Entry/Effect、Studio Stage2のQualified Passには流用しない。
+
+<!-- g49-currentworld-integrated-ra012-and-provider-identity-20261114 -->
+### G49 RA-0〜RA-2Rの一体再検収とRA-2Pの実Provider境界（2026-11-14、最新他レーン整合）
+
+**修正後Current Worldで再検証するための独立Draft**：[PR #4644](https://github.com/hat47x/tei-platform/pull/4644) HEAD `b5c23044ebaf8671d73a140da92fc9c4d74edff4` は、[#4626 RA-0](https://github.com/hat47x/tei-platform/pull/4626) HEAD `9eecf2b9`を**base**とし、[#4631 RA-1](https://github.com/hat47x/tei-platform/pull/4631) のGo本体・検査と[#4638 RA-2R](https://github.com/hat47x/tei-platform/pull/4638) の実PG16 Workflowを同一checkoutへ組み合わせた。旧RA-1の変更前Go blobと新RA-0上のblobが5ファイルすべて一致していることを事前検査し、RA-1のGo実装とテストおよびGo CIは**byte同一**。RA-2R CIは本PRでも起動するため`pull_request.branches`にRA-0 branchを追加したのみで、試験値やExecutor/DB契約は変更していない。元DraftはOwner正本として保持し、本統合PRは競合解消・merge順決定の代行ではない。
+
+| 同一HEADの検収票 | 現時点に存在する証拠 | 失効・未成立の条件 |
+| --- | --- | --- |
+| **RA-0 Current/History** | `9eecf2b9`の18 Workflowは実起動、exact HEADの18 Workflowは**17 completed/success、1 completed/failure、未完了0**。実[Health #43558268996](https://github.com/hat47x/tei-platform/actions/runs/43558268996)と[歴史セルフビルド #43558269076](https://github.com/hat47x/tei-platform/actions/runs/43558269076)が両方success。旧 `94876821` は未使用`reflect`でHealth失敗、新HEADで除去済み | Current World/Golden/Fingerprintと歴史Frozen Runnerの**限定Go/実セルフビルド回帰は成功**。ただしBrowser→JSON APIの`sqlgen`2-symbol E1 failureは[#1182](https://github.com/hat47x/tei-platform/issues/1182)の別Ownerで、**PR全体は不合格・Draft未main**。Health合格を業務Owner Meaning/Current Grantへ昇格しない |
+| **RA-0/1同一checkout** | [統合Draft #4644](https://github.com/hat47x/tei-platform/pull/4644)のRA-1 Go／旧Web回帰 Workflow [#43558633790](https://github.com/hat47x/tei-platform/actions/runs/43558633790)が**completed/success**。統合PRの3 Workflowは**同一HEADで3/3 completed/success**（RA-1 Go回帰、RA-2実PG、Issue-to-Design）。Go Driver/Query/Syntax/Validation・旧Web Target・参照Readerと`cmd/tei`の既存Goテスト・`go vet`をPR merge-to-head/clean照合つきで完走 | 旧#4631の[成功Run #43548961899](https://github.com/hat47x/tei-platform/actions/runs/43548961899)は**旧RA-0 base**の限定Go票。新仮統合HEADで`Query.Inputs`／Actual `time.Time`の正常1 Call・不正0 Callを再検証し、仮統合PASSをmain merge合格にしない |
+| **RA-2R実PG16同一checkout** | 新Draftの[PostgreSQL Workflow #43558633773](https://github.com/hat47x/tei-platform/actions/runs/43558633773)は**completed/success、空2 DB/RLS/親＋7 subtestが非SKIP・全PASS**。仮統合SHA `fbf8fe55b92f2537cd4197e3c81df077d6f9ba1c`とPR HEAD `b5c23044...`を実Logで照合した。旧[#4638の実Run #43553849861](https://github.com/hat47x/tei-platform/actions/runs/43553849861)では隔離2 DB/RLS/7 subtest全PASS・非SKIP | **修正RA-0を含む同一Checkoutで実PG全7ケース非SKIP成功を確認済み**。ただし本当の通常製品`tei` CLIからのQuery Provider実選択・実呼出しではなく、**参照Readerのみ**の資格 |
+| **RA-2P Product Operation** | 既存`ExecuteBrowseQueryInEnvironment`／`BrowseQueryExecutorMap`を利用できる。Provider・Instance選択などの**宣言値**と、実DBが返したByte/Rowsetは区別可能な受入票を作れる | **通常`tei` CLI→実選択Provider→実DB/Role/SQL/Params/Rowset→Function Data Context**の同一Attemptは未実装・未検証。Context実二ConsumerはRA-3、現在GrantはB1a-Pの別資格 |
+
+**RA-2Pの実装を進める前の所有境界（データ様式Draft #4619の最新検討を採用）**：`DatabaseProviderBoundBrowseQueryExecutor.DatabaseProvider()`はExecutorの**自己申告**、`BrowseQueryEnvironmentExecution.Instance`は宣言側の束縛、`QuerySourceSHA256`は渡したQuery Source byteのDigestであり、**実Connection先PG16のDatabase/Role・実消費SQL/Params・Session/Scopeを保証する情報ではない**。製品PRでは既存DriverとEnvironmentの選択をそのまま使い、正例を`selected A→actual A`、負例を`selected A→actual B`／同名異Root・SQL・別DBへ分ける。事前拒否できる失格ParamはDB/Executor Call 0、**接続後に判別した別DBや権限Scopeの違いは不適格Resultとして成功Contextを返さない**。同一Attemptで確認できない項目は`unknown`と記録する。新しいProvider Registry/Host/Source正本/Reactive Engineは作らず、#2586/#2514/#1180へ実結果を渡す。
+
+**並行する他チャットの最新適格性**：[#4642](https://github.com/hat47x/tei-platform/pull/4642)は**main統合済みのScript Launch計画更新（docs-only）**。[#4641](https://github.com/hat47x/tei-platform/pull/4641)はBuilderの**論理Graph→物理Build→実Artifact Consumer**対応とGCX-01〜08を整理した設計Draftで、非PluginのStage1→Stage2 Windows実成功ではない。[#4640](https://github.com/hat47x/tei-platform/pull/4640)は署名Release test-only loopbackで得た実GET証拠を、**実GitHub Releases Asset GET 200/302・署名Issuer/リダイレクト・実Body・現在Trust**へ継ぐ条件を置いた設計Draft。両者はG49のProvider/Native Readをブロックする追加Hard Gateにしない。Studio Desktopセルフビルド#2831/#4583が全体P0、Product Read #2586が並行P0であり、旧版の合格を同じ受入票へ加算しない。
+
+<!-- g49-cross-lane-acquisition-migration-toolchain-20261114 -->
+### G49 実際の受領結果に結び付ける追加条件（2026-11-14）
+
+**一つの受注履歴の読取り**は、型付きQueryが実Providerを呼ぶことだけでは成立しない。Sourceと実行対象の対応、現在の利用者に対する読取り範囲、取得結果の被覆、生成したアプリがDBへ及ぼす作用、利用側で受け取った本文までを区別する。この整理は[main統合済みの横断Consumer設計 #4653](https://github.com/hat47x/tei-platform/pull/4653)のDefinition→Binding→Authority→Execution→Acquisition→Delivery→Acceptanceに従う**既存受入票の補足**であり、新しい共通Runner、権限管理機構、永続Evidence正本を追加しない。
+
+| 境界 | 成熟した成果と、今回計画へ追加する条件 | Ownerが引き続き検収すること |
+| --- | --- | --- |
+| **取得できた範囲**（D1／RA-2P） | [取得条件観測Draft #4647](https://github.com/hat47x/tei-platform/pull/4647) HEAD `a962a3f6`は7系統のCI成功。実PG16でRLS、LIMIT、宣言外JOIN、ViewやPartitionによる制限を観測できる範囲では`partial`として理由を運び、通常のNative SQLでは`native-sql-predicate-not-closed`を`open`に残す。**制限が見えない状態は`complete`でも不存在証明でもない**。0行と未取得・非開示を区別し、会員自身の履歴に別会員の存在を推測させる表示を作らない | #2586／#2514。W4の実列OID・NULLの保存元、実DBと宣言Instanceの一致、Source現在性、Grantは未実証。#4647の参照Readを通常`tei` CLIのRA-2P成功へ加算しない |
+| **業務操作によるDB変更**（G13／G25） | [生成アプリ修正Draft #4662](https://github.com/hat47x/tei-platform/pull/4662) HEAD `095c5a11`は、生成された`query`／`command`／`validate`でMigrationを暗黙実行しないコード候補と、生成バイナリの別Process負例を追加。Repository Health／Cache／既知脆弱性の**3系統CI成功**。通常Queryは既存DBを読取専用で開き、Commandは既存DBに限り更新し、ValidateはDBなしで実行する。**DB未存在・Schema不適合で業務操作が勝手にDDLやDB作成を行わないこと**を製品側の安全条件とする | #4657／#4234／#4125。これはSQLite単一Provider向けのRB0安全停止候補。実Schema/History/Release検証、明示Init/Upgrade、複数DB・PostgreSQL移行、旧新ClientのCutoverは未完成。DB接続成功を移行適格・現在Grantと同一視しない |
+| **再現可能なビルド**（Studio P0） | [Toolchain観測Draft #4648](https://github.com/hat47x/tei-platform/pull/4648) HEAD `64fb0f9a`は8系統CI成功。Go 1.26.11／1.27.0の実測で同じBuild計画でも生成バイトが異なる例を確認し、`toolchainObservation.matched`と`namedByPlan=false`を区別する。前者は申告されたファイルの読戻し一致で、実際にそのToolchainを起動した証明ではない | #2831／#4583。ToolchainをBuild Intentの正式入力に含めるか、Build子Processの実起動とStage1→Stage2成果物受領をどう束縛するかはOwner判断。現時点のSeed Trust／Stage2完成を宣言しない |
+| **Desktopでの利用** | [Windows再検証Draft #4587](https://github.com/hat47x/tei-platform/pull/4587) HEAD `9b58533d`は12/12 CI成功。通常版と生成版のWebView2実Jobが両方成功した | B0の実使用に限定。正式な非Plugin Build Subject→実ArtifactSet→Stage1再生成→Stage2起動→WebView2利用を同じ実行で結ぶB2/B3は未達。計画優先順位は変更しない |
+| **専門Toolkit・Plugin** | [数理・統計・科学Toolkit #4663](https://github.com/hat47x/tei-platform/pull/4663)の**設計文書はmain統合済み**。これはWindow集計やPERT等の計算機能が実装済みという意味ではない。[役割別Plugin構成 #4664](https://github.com/hat47x/tei-platform/pull/4664)は未統合で、HEAD `dcb694cd`のRepository Healthに失敗が残る。二つの計画の実装資格は別に検証する。統計Window／WBS・PERT／科学計算等の独立Expected、Studioと他Targetの受領条件を整理した | 新Core型・専用DSL・科学Runtime・第二Plugin Hostは先行採用しない。P0のQuery実Read・Studioセルフビルドを待たせず、外部Runtime不要の小さなWindow集計から既存Operator/Consumerで適合性を測る |
+
+**実装順**：最初に[RA-0〜RA-2R一体検証Draft #4644](https://github.com/hat47x/tei-platform/pull/4644)の実Go／参照PG成功を維持したまま、RA-2Pで**通常製品`tei` CLI→実Provider/実DB・Role・SQL・typed Params→Function Data Context**を一つのAttemptとして検査する。取得範囲を`complete`へ推測昇格せず、通常操作が暗黙DDLを実行しない負例も別Ownerへ渡す。RA-3で標準Displayと独立Native Consumerの受領本文を独立に照合し、B1a-Pで会員・匿名・運用者ごとの現在Grantと開示範囲を別途確認する。Studioは非Plugin DesktopのStage1→Stage2一往復を優先し、Toolkit・Migration本格適用・公開Web共同編集をその完成の前提にしない。
+
+**次に実装する一本の最短経路**：#2586 Ownerが`RA-0 main適格化→RA-1 exact base再検証`を先に行い、RA-2参照PGで既に観測した同じQuery/Input/Resultを**正式Product Operation→通常`tei` CLI（同一Subprocess）→実Context→Receiver A/B**へ接続する。Providerは既存Environment/Registryを選択し、Actual Executor/SQL bytes/Session/Rowsetと独立Expectedが同一Attemptで照合できる場合に限りD1 Productの限定受理を検討する。新Host・第二Resolver・暗黙SQL Placeholder推論・新Measure Engine・関数型DSLの表面露出はしない。RA-2のPG Fixtureから再利用するのは**試験手順と観測上限**であって、Reference入口自体を本番Runnerへ名前変更しない。
+
+**横断的停止線**：main統合された[#4636](https://github.com/hat47x/tei-platform/pull/4636)のCapability Input/Effect宣言preflight、[#4634](https://github.com/hat47x/tei-platform/pull/4634)のResolver→Child Pin、[#4637](https://github.com/hat47x/tei-platform/pull/4637)のREA Host固定Selector byte readは、各別OwnerのDraft・限定CI成功であり、Query/Persist/Native HostのGrantを代替しない。共有するのは`Source/Declaration→Selection→Actual Call/Consumed Bytes→Actual Receiver→Independent Expected→Owner Acceptance`の**受入票の構造**のみ。Web/Wails公開は#1824/#3421へ、Studio Desktopセルフビルド#2831/#4583は全体P0のまま。
+
+**計画統合状況**：同一計画ファイルを変更する並行[PR #4600](https://github.com/hat47x/tei-platform/pull/4600)の「問い相対旧依存辺N16/N17」「Studio Windows B0とBuildIntentギャップ」の二行を、本Draftにも**内容を欠落させず**取り込んだ。双方はまだ別Branch/未mainであり、#4600の採否・閉鎖、mainへの実マージ、競合解消を代行したものではない。新実行試験・Owner Meaning受理はNOT RUN。
+
+<!-- g49-b1ap-trust-scope-matrix-20261114 -->
+## G49 B1a-P：B2Cの本人・公開・計測を別資格として検収する（2026-11-14）
+
+**位置づけ**：B1a-IのRA-0〜RA-2Rは、[統合Draft #4644](https://github.com/hat47x/tei-platform/pull/4644)の限定同一checkoutでGo引数拒否・参照PostgreSQL 7ケースが成功したにすぎない。現在の製品入口RA-2P、同じContextの独立二Consumer受領RA-3、実公開HostでのB1a-Pは**未成立**。公開資格を得るために新しいTEI Host・Identity台帳・専用Frontend SDK/Runtimeを設けない。実Hostが既存の認証・認可責務を持ち、TEIの型付きOperationとProviderは業務意味・データ取得・結果構造を共有する。
+
+| 利用場面 | 必要な本人・対象資格 | 開示と操作の境界 | 最小の独立反例 |
+| --- | --- | --- | --- |
+| **匿名の商品閲覧** | 認証主体を要求しないPublic Scope。公開済み商品・価格の「版」と有効期間は区別する | Publicに分類されたField/Artifactだけ。個人価格、会員在庫予約、運用情報は混入させない | Public CacheへPrivate Projectionを保存、旧公開版だけが残る |
+| **ゲストのカート** | 一時Session/所有証拠。認証済み顧客や組織Membershipへ自動昇格しない | 仮CartはOrder確定でもPayment受領でもない。Session回復・紐付け時は別の実Host判定 | 別Guest Sessionから同じCart IDを読める／ログイン時に他人のCartへ誤結合 |
+| **本人の注文履歴** | 実Hostで検証した現在Principalと、対象Customer/Orderとの権威ある対応、閲覧時点の現在Grant。期間入力`:from`は絞り込みであって認可ではない | Row Scope＋Field/Column Projection＋用途に沿う説明を独立判定。実DBのRLS/Maskは有効な防御層だが、Customer本人の資格そのものではない | 同じ注文値・同じ`:from`でW0許可→W1失効、他人の注文ID、RLSが0件を返すが全件0と誤認 |
+| **運用者・サポート** | 別の運用者Principal、用途・対象・必要な現在権限。一般利用者としてのGrantやOrg Membershipを流用しない | 特権閲覧・訂正・代理操作を混在させず、利用目的と監査を実Hostの契約で判定 | 会員向けPublic/Private Cacheへ運用者の補助列・件数・診断を返す |
+| **分析・実験計測** | Consent/目的/有効版を実計測時点で検査。Experiment Allocation IDを本人Customer IDと同一視しない | Assignment・実Exposure・Action Intent・業務Effect・Outcomeを別証拠とする。Consentなし・取得不能を非購入に変換しない | 未同意Event送出、露出のない割当をCVへ計上、母集団/欠測を落としたCVR改善主張 |
+
+**B1a-Pの最小実行順**（R-Dの内部受入手順であり、RA-2P/RA-3の前提Gateにはしない）：
+
+1. **P-A Host identity / audience**：既存Hostで受領したPrincipal・Session/Guest・Audienceの出所を確認。Frontendの自己申告Header、Query、DOM選択、旧Cookieだけでは現在の業務本人としない。匿名Publicはその旨を明示する。
+2. **P-B Subject link / Grant**：Customer↔Orderの実関係と操作用途・時点・Scopeを突合。照合不能、permission denied、旧Grant、部分Sourceはunknown/deniedを区別して拒否または限定返却とする。公開向けResponseの許可判定は実返却直前に再確認する。
+3. **P-C Actual projection / delivery**：選択Query/Providerだけでなく実SQL/DB Role/実Rowset、Row/Column/Relation/COUNT/SUM/診断Metaの実開示、Serializer/HTTP Response、Cache・旧Clientまで**同一Attempt**で検査。内部DSN、Source Root、秘匿列名、件数などがError/Timing/Cacheから推知できる経路を否定対照に含める。
+4. **P-D Revocation / independent readback**：W0閲覧成功→W1 Grant失効、別Principal、旧CDN/Browser Cache、別Tab、Client再送で再試行。実Hostの現在認可と独立受領を確認し、保存済み旧証拠やResult byte一致で権限を復活させない。強い全層原子公開は暗黙の必須要件にせず、残存旧配信を検出・遮断・説明する。
+
+**公開資格票**は `Principal source / customer link / purpose / current Grant / row scope / column projection / actual receiver / response version / cache audience / revocation check / independent Expected / Owner acceptance` を列として持つ。原データが0件、Field NULL、RLSによる部分集合、列Mask、データSource欠落では`empty`と`complete`を同一視せず、取得範囲と不明理由を記録する。既存[#2506](https://github.com/hat47x/tei-platform/issues/2506) Context、[#1656](https://github.com/hat47x/tei-platform/issues/1656)/[#2516](https://github.com/hat47x/tei-platform/issues/2516)開示、[#1043](https://github.com/hat47x/tei-platform/issues/1043)/[#3412](https://github.com/hat47x/tei-platform/issues/3412)本人/Session、[#3271](https://github.com/hat47x/tei-platform/issues/3271)/[#2604](https://github.com/hat47x/tei-platform/issues/2604)失効、[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#2514](https://github.com/hat47x/tei-platform/issues/2514)独立Expectedへ委譲する。
+
+**先行順位を維持**：全体P0はStudio Desktop Stage1→Stage2セルフビルド[#2831](https://github.com/hat47x/tei-platform/issues/2831)/[#4583](https://github.com/hat47x/tei-platform/issues/4583)。並行P0は[#2586](https://github.com/hat47x/tei-platform/issues/2586) RA-2P通常`tei` Product Read→RA-3二Consumer。B1a-Pはその**外部公開への追加資格**。B1b Cart/Order/Payment副作用、B2 Variant/Experiment、B3 H0/H1/H2の費用・性能比較、B4予約/Subscriptionへの拡張を初回ReadのHard Gateにしない。成功資格はSource宣言、局所Go、参照PG、製品CLI、Native、公開Host、Business Effect、実験効果で別々に記録。本文は設計・受入計画であり、実公開認証・Commerce・Browser E2E・CVR実証を行った意味ではない。
+
+<!-- g49-b1b-effect-measurement-separation-20261114 -->
+## G49 B1b〜B3：購入の確定・公開切替・計測の資格を連結せず照合する（2026-11-14）
+
+**採る判断**：B2Cの差別化は新しいCheckout/Analytics Engineを作ることではなく、既存の型付きOperation/Effect/Receiptと、独自Frontend/Commerce/Flag/Analyticsの**異なる正本の間で、何が実際に確定したかを取り違えず変更できること**にある。B1a-Iの正式Product Read（RA-2P→RA-3）とB1a-PのCurrent Grantはそれぞれ未成立のまま。以下はその後段の**実施手順・独立Expected候補**であり、実Commerce・Browser・Field実験の完了を表さない。新StateMachine/Host/決済処理/統計Engine/必須Client SDKは設けず、[#1174](https://github.com/hat47x/tei-platform/issues/1174)、[#1129](https://github.com/hat47x/tei-platform/issues/1129)、[#3503](https://github.com/hat47x/tei-platform/issues/3503)、[#951](https://github.com/hat47x/tei-platform/issues/951)、[#1180](https://github.com/hat47x/tei-platform/issues/1180)を再利用する。
+
+| 一つの購入導線の観測点 | 正本と許される主張 | 禁止する昇格・必須反例 |
+| --- | --- | --- |
+| **① Product/Offer表示** | Product/Price/Promotionの公開版・通貨・有効時刻・Audience、SSR/Edge/Client/Cacheで実表示したVariantを別票に記録。表示は見積りまたは案内である | 古いCDN/Clientの割引表示を現在の販売価格とみなさない。C0の文言変更に実効Coupon/Disclosure/Consent変更を混入させない |
+| **② Cart/Checkout Intent** | 同一操作対象・選択Customer/Guest・数量・Quote版、二重送信を判別できるOperation Identity。Optimistic UIは仮状態に限る | 画面上の「完了」、FlagのAssignment、Click/IntentをOrder・Payment確定とみなさない。Guest→会員結合は現在Hostで別判定 |
+| **③ 実Provider確定境界** | 権威あるServer/Commerce Providerが現在の価格・税・Coupon・在庫・対象・実行権限を再評価し、選択Providerと実呼出しProvider・送信要求・応答・Commitを突合 | 旧VariantのOffer、旧Grant、A選択→B実Call、Hookのbefore/after成功だけでCommit成功としない。実Provider能力を超えるexactly-onceを宣言しない |
+| **④ Effect/Receiptの確定** | 同じOperation IdentityでReceipt・再照会可能なOrder/Payment Outcome・独立Readを分ける。重複要求はProviderの冪等契約に従い再照合する | Timeout/応答喪失/unknown commitでは**未確定**のまま。安全な自動再送と仮定せずlookup first、照会不能はunknownを維持。Client UIの成功表示やAnalytics Eventで補完しない |
+| **⑤ Experiment/Analytics** | Assignment、実際のExposure、許可されたEvent、Action、業務Effect、Outcomeを異なる観測とし、母集団・欠測・Consent版・割当版・観測時刻を記録 | Exposure未観測を非露出確定、計測不能を非購入、Order確定を因果upliftに変換しない。SRM、返品・取消・粗利益等のguardrailは既存分析/Providerを利用 |
+| **⑥ Release/撤回** | UI/Creative/Flagのロールバックと、既存Order/Paymentの訂正・返金は**別操作**。旧SSR/Edge/Client/Service Worker・Private Cacheの生存と現在Backend受理条件を照合 | Flag巻戻しで既存の注文Effectを消したと扱わない。既配信・オフライン保存済みbyteを遡及的に消去できる保証はしない。失効後の**新規配信**を現在Grantで抑止し、残存配信は別途検出・運用対処する |
+
+**B1bの最小縦切り**：公開の本番決済ではなく、隔離したCommerce Sandboxを一つ選ぶ。正常Cart→Checkoutだけでなく、同じOperation IDによる重複送信、Commit前拒否、Commit後ACK喪失、旧Quote/旧Grant、Provider選択と実Callの不一致を各一組の正負対照にする。外部Effectについては、Client表示・実Call・Provider Receipt・独立Order再読込みを別列に残す。Writeの効果や権限を証明できないときは`unknown`とし、既存[#1174](https://github.com/hat47x/tei-platform/issues/1174)/[#1129](https://github.com/hat47x/tei-platform/issues/1129)へ未成立を返す。B1a-Pの公開Host合格をSandbox内のEffect実装の着手条件にせず、外部公開の認定には別途現在Grantを要求する。
+
+**B2の最小縦切り**：既存Experiment/Flag Providerを任意選択し、**一つの既存Native画面**でAssignment→SSR実表示→Hydration→Exposure→任意Analytics送出→Checkout Outcomeを時点と版付きで追跡。Variant混在、旧Client復帰、未同意、計測欠落、遅延Event、既存注文取消後のOutcome誤計上を反例にする。Payload/集計で個人識別情報・顧客関係・DSN・内部Evidence位置を無断露出しない。結果の`consent-denied`、`not-observed`、`unavailable`をゼロEvent／ゼロ購入と同一視しない。
+
+**変更影響／失効への引渡し**：Native Frontend・CMS/Creative・Flag/Allocation・Target Build/Release・業務Rule・Provider/Contract・Current Grant/Consent・Source Relationの実効差分から、既存[#4518](https://github.com/hat47x/tei-platform/issues/4518)/[#3271](https://github.com/hat47x/tei-platform/issues/3271)/[#2582](https://github.com/hat47x/tei-platform/issues/2582)/[#2600](https://github.com/hat47x/tei-platform/issues/2600)の必要上流・実消費・失効候補を照合する。ファイル種別が文言/画像でも価格/同意へ影響するなら軽い変更レーンで逃がさない。旧Graphから削除されたRequired辺、A→B→A、Provider/Generator版変更、Audience/時点切替を「byte一致だから安全」と判断しない。逆に無関係なNative Routeや未選択H2 Adapterを巻き込む過剰失効も検出する。Graph/Source Universeがpartial/unavailableなら`no impact`と断定しない。
+
+**B3の比較条件**：[#2018](https://github.com/hat47x/tei-platform/issues/2018)の既存比較に、H0=Nativeのみ、H1=選択した型付きContract/Build-time Adapter、H2=さらに任意Experiment Adapterを、**同じNative Frontend・同じ実Provider/Scenario・同じ機能・同じ変更・同じ測定条件**で投入する。正確性を独立Expectedで先に判定し、初回実装工数・変更時間・Review/復旧工数・追加JS/HTTP Request/TTFB/INP/LCP/CLS・Provider/運用費・発見した不正/欠測を別票に採る。初期値は未測定。H0にTEI JS/DOM/Router/Runtimeを強制しない。H1/H2の費用が便益を超えるときは**Plugin非採用・撤去を正式な合格選択肢**とする。CVR/粗利益の因果効果は標本、割付、Consent、追跡欠測、期間、統計的不確かさを確認した実Experimentがなければ`not measured`とする。
+
+**順序と責務**：全体P0は[#2831](https://github.com/hat47x/tei-platform/issues/2831)/[#4583](https://github.com/hat47x/tei-platform/issues/4583) Stage1→Stage2 Desktop Self-build。並行P0の[#2586](https://github.com/hat47x/tei-platform/issues/2586) RA-2P/RA-3からB1a-Iを実Consumerへ接続。B1a-Pは[#1043](https://github.com/hat47x/tei-platform/issues/1043)/[#1656](https://github.com/hat47x/tei-platform/issues/1656)/[#2516](https://github.com/hat47x/tei-platform/issues/2516)の実Host開示で別検収。B1bは#1174/#1129/#951、B2は#3503/#2604/#3271、B3は#2018へ受入を返す。すべて[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#2514](https://github.com/hat47x/tei-platform/issues/2514)の既存Independent Expectedに追記し、**B2C専用の第二Scenario/Effect/Analytics正本を作らない**。本文は設計と検収順の更新であり、新規Go/PG/Browser/Commerce/実験試験とOwner意味受理は`NOT RUN / NOT ACCEPTED`。
+
+## プロセス・イベント・応答を共通の意味から説明する（設計候補）
+
+Webの要求、CLIの起動、タイマー、Message、画面操作には、それぞれ異なるHost・起動方式がある。ここで標準化を検討するのは一つのイベントループではなく、**Trigger→型付きInvocation→Function/Rule→State/Effect→Outcome→Response／Consumer受領**という意味の対応である。長寿命Processの起動・停止と、一件の処理の成功・失敗も混同しない。
+
+初期の受入は、受注受付の説明用Fixtureを使い、HTTP/CLIの二入口が同じ意味Operationへ至るかをHeadlessで照合する。期限の境界、現在Grant、DB Commit後の通知結果不明、重複・逆順Event、未実装のTimer Providerを負例にする。外部部品はContractとTODOを先に記述し、既存Driver ScenarioのMockと独立Expectedで基本設計からシミュレーションする。ただし、Mockの成功は実DBやBrokerの実行証拠にならない。
+
+詳細は[Lifecycle・Trigger・Operationの共通意味設計](../design/PROCESS_LIFECYCLE_TRIGGER_OPERATION_SEMANTICS_2026-11.md)を参照する。Ownerは[共通Application API #1158](https://github.com/hat47x/tei-platform/issues/1158)、[Script Launch #4495](https://github.com/hat47x/tei-platform/issues/4495)等の既存Issueに分け、新Runtime・Dispatcher・Schedulerを前提にしない。**現行P0のStudio Stage1→Stage2と通常CLIの実Readには、新しい先行依存を追加しない。**
+
+
+<!-- g49-lifecycle-process-invocation-acceptance-20261114 -->
+### G49の読取りと業務確定を、同じ意味モデルから別々に検証する
+
+[共通実行モデルの設計 #4665](https://github.com/hat47x/tei-platform/pull/4665)と[Lifecycle・Triggerの設計 #4666](https://github.com/hat47x/tei-platform/pull/4666)はmain統合済みである。ただし、両方とも**設計上の対応関係**を定めたもので、共通Event Loop、Scheduler、Graph Compiler、Host、正式DSL構文の新規採用ではない。G49では、Processの生存状態と、利用者による一件のInvocationが成功したかを別に扱う。
+
+**最初は二種類のOperationを混ぜずに試す。** `order_entry.recent_orders`は指定日時以降の注文履歴を読み取るOperationであり、RA-0〜RA-2Rでは型付き入力と使い捨てPGの参照読取りまでを検証している。受注確定`submit`はDB Commit・Receipt・通知などの外部作用が関係し、読取りが成功してもその資格を引き継がない。どちらも、元のSourceにあるSubject・Guard・入力・Output/Outcome・必要なEffectを意味の対応元とし、説明文・処理図・Scenarioを派生表現として生成する。生成した説明文や図を第二の業務意味正本にはしない。
+
+| 段階 | 最小の確認 | 必ず区別する反例 | Owner |
+| --- | --- | --- | --- |
+| **LifecycleとTrigger** | CLI起動とHTTP要求が同じ意味Operationを指せるか。単発CLIに常駐Loopを要求しない | Triggerの宣言を、実Schedulerの発火や現在の実行許可と混同しない（PL-01/02/06） | [#1158](https://github.com/hat47x/tei-platform/issues/1158)・[#4495](https://github.com/hat47x/tei-platform/issues/4495) |
+| **Typed InvocationとRead** | `from`の宣言・実引数・選択Provider・実Connection・取得したRowsetとCoverageが同一Attemptに対応するか | 選択A／実B、型違い、RLSの`partial`、0行を全件不存在と誤認する場合（PL-01/10、PX-10） | [#2586](https://github.com/hat47x/tei-platform/issues/2586)・[#2514](https://github.com/hat47x/tei-platform/issues/2514) |
+| **意味評価と実作用** | 受注確定のGuard、期限と現在Grant、提案されたState/EffectをContractとMock／独立Expectedで先に対照する | Mockの受注確定を実DB Commitと呼ぶ、期限の発生時刻と判定時刻を取り違える（PL-03/07） | [#1129](https://github.com/hat47x/tei-platform/issues/1129)・[#1174](https://github.com/hat47x/tei-platform/issues/1174) |
+| **EffectとOutcome** | Commit成功・通知送信・通知受領・結果不明を別Receiptで検証する | Commit後のACK喪失を未実行と誤認し、無条件再送で注文を重複確定する（PL-04/05/09、PX-03/04） | [#1174](https://github.com/hat47x/tei-platform/issues/1174)・[#1129](https://github.com/hat47x/tei-platform/issues/1129) |
+| **Responseと実Consumer** | HTTP/CLI/Nativeへ同じ対象・版・結果の適切なProjectionが届いたか。必要な現在Grantを受領時にも照合する | HTTP 200、CLI終了コード0、表示成功をConsumerの意味受理／業務確定と同一視する（PL-10、PX-01/11） | [#1251](https://github.com/hat47x/tei-platform/issues/1251)・[#3509](https://github.com/hat47x/tei-platform/issues/3509) |
+| **図解・Target移植** | 同じ意味からLifecycle／Control／Effect／Traceの図を読取専用で投影し、Source位置と安定IDを保持する | 図の配置変更で意味Revisionが変わる、同期→非同期移植で順序・期限・Effect保証を落とす（PX-05/06/12） | [#4198](https://github.com/hat47x/tei-platform/issues/4198)・[#1124](https://github.com/hat47x/tei-platform/issues/1124) |
+
+<!-- g49-source-diagnostic-four-layers-20261114 -->
+**宣言を編集した時点と実行時の検査も分ける。** [DSLの四層計画 #4652](https://github.com/hat47x/tei-platform/pull/4652)と[引継ぎ・索引修正 #4659](https://github.com/hat47x/tei-platform/pull/4659)はmain統合済み。A＝Source構文・位置、B＝Workspace全体の意味整合、C＝Adapter前の構造拒否、D＝公開Entry・現在Grant・実Consumerの受領を、それぞれ独立に確認する。[実Sourceからの拒否テストDraft #4654](https://github.com/hat47x/tei-platform/pull/4654)はA/C、[同名Capability入力のWorkspace診断Draft #4655](https://github.com/hat47x/tei-platform/pull/4655)はB/CのGo実装候補だが、**両PRとも現HEADのRepository Healthに失敗が残り、main未統合**。ログ上の`gofmt`差分を修正してから同HEADで再試験し、Source位置のないRuntime診断に架空の字句位置を付けない。Parserが受理したことだけで実行許可を付与せず、Bで見つけた違反をCのAdapter call 0と照合する。Dの公開・現在Grant・実Providerは別Ownerで未実証である。
+
+**実現順**は、既存のProduct Read RA-2PとStudio Stage1→Stage2を先に完結させ、共通Lifecycleの最初の読取り専用Projectionをその結果へ結び付ける。TODO・Mockで外部部品を置き換える設計段階では、入力・結果・欠損・副作用・実装未接続を明示し、Mockと本番Providerを同一の成功票にしない。実Targetへの移植は、実際のInvocation、作用、Response、Consumerの受領を比較してから判断する。**この節は設計とScenarioの引渡しであり、新たなGo／DB／Windows／Scheduler実験の完了ではない。**
+
 ## 最新の作業単位へ接続する
 
 2026年11月11日のmain `9d31f82486b2eac42791f4f3bc5cd588d69cb4fc`と関連Issueを照合した。以下は着手先の更新であり、Issueの起票・限定Reference・候補Parserを製品の完成へ数えない。以後の進捗は各Issueと[実装状況](../../docs/status.md)から再取得する。
