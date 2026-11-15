@@ -82,6 +82,17 @@ DC-27〜32は#1180／#2514の既存独立Expectedへ引き渡す。最初に実�
 
 このP1の次段は、Product Inspectorが実際に返せるSourceと意味の列だけを使ったread-only診断である。R2-Pの元宣言→実Builderへの出典束縛、R3の公開Entry→実Provider、Studio Stage1→Stage2実Windowsは従来の並行P0とする。新たなGrammar／Reader Registry／Graph Runtime／Writerは前提にしない。
 
+
+### P1：Data定義表の実CLIと共通Operationを一致させる（2026年11月15日追補）
+
+[宣言的構文設計§25〜26](../design/DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md)の具体化として、cmd/tei/cli_inspect_markdown_data_table_process_test.goに**実OS Processでのtei inspect→既存operations.InspectSubject結果との一致**を検査するGo試験を追加する。main済み#5037のRule実CLI／直接Operation照合と対になる、別表層Data項目定義表の最初の製品Consumer確認である。
+
+試験ではData／Attribute／RuleのCanonical、Source Roleと原byte位置、権限制約を照合する。印のない例表やRuleと同じIDのCapabilityはNot Foundで拒否し、説明文だけを変更した後は同じMeaningのまま新Source Fingerprintを返す。**CLIのread-only出典と、公開Function／Plugin Providerの実Callは別資格**とし、Studioが実行・編集・外部開示を許されたと推測しない。
+
+並行する#5051は選択元Markdownのbyteコピーを生成Goの実Build入力に含める限定試験、#5052は生成PoC Bの実Windows WebView2成功を記録したもの。前者は正式R2-Pの元ファイルLocator・Reader・Generator出典閉包全体を、後者は非Plugin Studio Stage1→Stage2セルフビルドを保証しない。次に製品として受け入れる一件は、**元宣言→実Build入力と実Consumerの対応を同じAttemptで証明**することであり、通常CLI実Provider／Stage2を並行P0に保つ。
+
+この追補に伴う新試験の実合否はexact HEADのCIで別途確認する。DC-33〜38は既存#1180／#2514の独立Expected候補へ引き渡し、新しいGrammar／Graph Runtime／Registry／Hostは作らない。
+
 ### P1で接続する業務判断・設計入力・数式（2026年11月15日）
 
 これらは新しい製品P0の前提ではなく、既存の標準Data/Rule/Expression・Function Data Context・表現型を実案件に近づける**受入作業**とする。詳細な正負例とOwner境界は[横断統合受入境界§14〜17](../design/CROSS_CUTTING_ACCEPTANCE_BOUNDARIES_2026-11-12.md)を参照。
