@@ -67,10 +67,14 @@ func CheckCloseRequirement(requirement PeriodRequirement, from, to PeriodState, 
 	if requirement.Capability == "" {
 		return nil
 	}
-	// Only the step that completes the close is guarded. Moving open to closing is
-	// the run; moving closing to closed finishes it, and that step needs the same
-	// capability to have run. Both steps require it, so a caller cannot reach
-	// "closed" by way of an unrun close.
+	// The close capability applies only while closing. A closed-to-open reopen
+	// is a correction and must be checked by CheckReopenRequirement instead.
+	// Requiring both capabilities for a reopen would make it impossible when
+	// close-requires and correction name different capabilities.
+	if !(from == PeriodOpen && to == PeriodClosing) &&
+		!(from == PeriodClosing && to == PeriodClosed) {
+		return nil
+	}
 	if ranCapability == requirement.Capability {
 		return nil
 	}

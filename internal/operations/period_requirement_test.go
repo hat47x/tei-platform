@@ -70,3 +70,41 @@ func TestCheckCloseRequirementLeavesAnUndeclaredPeriodAlone(t *testing.T) {
 		t.Fatalf("a period with no requirement was refused: %v", err)
 	}
 }
+
+// TestClosingRequirementDoesNotPreventCorrectionReopen keeps the two
+ // independently declared capabilities on their respective transitions.
+ // The command supplies one capability name per step; a different close and
+ // correction capability must not make the reopen impossible.
+func TestClosingRequirementDoesNotPreventCorrectionReopen(t *testing.T) {
+	requirement := operations.PeriodRequirement{
+		Period: "sales.month", Capability: "sales.period.close",
+		Correction: "sales.period.correct",
+	}
+	if err := operations.CheckCloseRequirement(requirement,
+		operations.PeriodClosed, operations.PeriodOpen, "sales.period.correct"); err != nil {
+		t.Fatalf("close requirement incorrectly blocked a correction reopen: %v", err)
+	}
+	if err := operations.CheckReopenRequirement(requirement,
+		operations.PeriodClosed, operations.PeriodOpen, "sales.period.correct"); err != nil {
+		t.Fatalf("declared correction capability should permit reopen: %v", err)
+	}
+	if err := operations.CheckReopenRequirement(requirement,
+		operations.PeriodClosed, operations.PeriodOpen, "sales.period.close"); !errors.Is(err, operations.ErrRequirementNotRun) {
+		t.Fatalf("close capability must not stand in for correction: %v", err)
+	}
+	for _, step := range []struct {
+		from, to operations.PeriodState
+	}{
+		{operations.PeriodOpen, operations.PeriodClosing},
+		{operations.PeriodClosing, operations.PeriodClosed},
+	} {
+		if err := operations.CheckCloseRequirement(requirement, step.from, step.to,
+			"sales.period.correct"); !errors.Is(err, operations.ErrRequirementNotRun) {
+			t.Fatalf("correction cannot replace close capability for %s -> %s: %v", step.from, step.to, err)
+		}
+		if err := operations.CheckCloseRequirement(requirement, step.from, step.to,
+			"sales.period.close"); err != nil {
+			t.Fatalf("declared close capability was rejected for %s -> %s: %v", step.from, step.to, err)
+		}
+	}
+}
