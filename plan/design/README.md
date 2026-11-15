@@ -29,6 +29,7 @@
 
 | 文書 | 対象 |
 | --- | --- |
+| [`DIAGRAM_TO_REALIZATION_STRATEGY_AND_HOOKS_2026-11.md`](DIAGRAM_TO_REALIZATION_STRATEGY_AND_HOOKS_2026-11.md) | 図表の実装属性を意味・保証・Target設定・Patternへ分類し、解釈実行／静的生成／外部委譲／混合と、生成コードを触らないHook接続を選ぶ設計・検収計画。 |
 | [`DERIVED_PROJECTIONS_RUNTIME_AND_MIGRATION_ACCEPTANCE_2026-11.md`](DERIVED_PROJECTIONS_RUNTIME_AND_MIGRATION_ACCEPTANCE_2026-11.md) | 設計書・関係図・帳票のProjection、実ロード版、DB移行、Web／CLI／API／MCP Entryを別資格で受入する横断計画（未採用・未実装）。 |
 | [`APPLICATION_ABSTRACTION_DOCUMENT_METHOD_WEAVING_2026-11.md`](APPLICATION_ABSTRACTION_DOCUMENT_METHOD_WEAVING_2026-11.md) | 文書のスコープ・Role・引用・図表・履歴を既存Data／Function／Projection／Pluginへ編み込み、構造・意味・表現・実現・現在資格の合成判定と独立Expected DW-01〜10を定める横断設計（実装前）。 |
 | [`CROSS_CUTTING_ACCEPTANCE_BOUNDARIES_2026-11-12.md`](CROSS_CUTTING_ACCEPTANCE_BOUNDARIES_2026-11-12.md) | 業務意味・生成・実Call・Effect・Consumerの受入資格、失効、Owner間の受渡しを整理する横断検収記録。 |
