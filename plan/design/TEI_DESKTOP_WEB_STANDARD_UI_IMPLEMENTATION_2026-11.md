@@ -90,3 +90,79 @@ AI実装の一変更は、**対象Component → UI Intent/表示モデル → �
 **最初に切る実装PR**は、S-LOCの表示モデルを受け取る一つのread-only UI部品（選定比較）と、現Workbenchの正規HTML/JS/CSS収録・現Pin UIの実Consumer回復を分離する。方式変更を見た目の改善や既存UIの単純再記述で終わらせず、静的検査・契約の局所化・AI修正の回帰検出という実益が出た範囲で採用する。
 
 参考：[Wails v3のフロントエンド規約](https://v3.wails.io/ja/guides/dev/frontend-frameworks/)、[LitのWeb Components](https://lit.dev/docs/)、[LitのShadow DOM・Style](https://lit.dev/docs/components/shadow-dom/)。
+
+## 8. 開発用Sourceと実配布Consumerの同一性（2026-11-15追補）
+
+他レーンのDesktop Bootstrap、非Plugin Self-build、Plugin公開文書、Pin／AI対象引渡しの議論を突き合わせると、UI方式の変更より前に**現在のSourceが実配布物に入っているか**を確定する必要がある。今のWorkbenchは参照HTMLと埋込HTMLに差があり、S-LOCの純粋関数もまだ実画面に接続されていない。これらは別の問題として扱う。
+
+現在の[Workbench Embedded Bundle CI](../../.github/workflows/tei-studio-workbench-embed-ci.yml)は、Node **24.21.0**を使って`npm ci`、`npm test`、型検査、ビルドを実行したあと、`index.html`、`main.js`、`style.css`、`THIRD_PARTY_NOTICES.txt`の**四つのbyte一致**を調べる。ビルド時に生じる`dependencies.json`は監査用であり、埋込ディレクトリへ入れない条件も既にある。これは正しい出発点なので、もう一つのBundle整合検査や新たなManifest正本を作らない。
+
+| 観測点 | 使用する既存Producer／Consumer | 停止線 |
+| --- | --- | --- |
+| **Source** | 現行`main.ts`・`index.html`・`style.css`、`package-lock.json`、部品の実Source | 前回生成した`dist`や旧Draft #4812のJS／HTMLをSourceの代用品にしない |
+| **Generated Asset** | `build.mjs`が生成した`dist`の四ファイルと`dependencies.json` | 生成成功だけではWails収録済みとしない。通知・依存閉包の欠落を見逃さない |
+| **Embedded Asset** | `cmd/tei-studio/assets/workbench/`の四ファイル、既存CIの`cmp` | 四つのうち一つでも不一致ならP-04 FAIL。生成した差分を理由なく手修正しない |
+| **Actual Consumer** | `//go:embed assets`、通常／生成Desktopの実Binary、Windows WebView2、Wails Serviceの実応答 | byte一致、通常Desktop起動、生成Desktop起動、Inspector／PinのDOM実使用は**それぞれ別の観測** |
+| **Recursive Builder** | #2831/#4583の既存BuildIntent／BuildExecution／ArtifactSetとStage1の実TEI Process | Stage0のスクリプトが二回Go Buildを呼んだだけではStage1→Stage2成立としない |
+
+**次のコード変更はW0の回復を先行**する。現行Sourceから正規ビルドし、Pin用DOMと`main.ts`のHandlerが一致した結果を収録する。参照UIに新Componentを追加する比較実験は、W0回復と競合させない。埋込四ファイルの差分に不審な箇所があれば、コピーして整えるのではなく、Source／Generator／Lockのどの違いによるものかを特定する。
+
+W0の実行指示（修正予定のPRの**同じHEAD**で実施）は以下を基線とする。現状は既存CIにこれらの工程が記述されているという意味であり、ここで実行済みと主張しない。
+
+```sh
+cd reference/tei-studio-workbench
+npm ci --no-audit --no-fund
+npm test
+npm run typecheck
+npm run build
+cd ../..
+for file in index.html main.js style.css THIRD_PARTY_NOTICES.txt; do
+  cmp "reference/tei-studio-workbench/dist/$file" \
+      "cmd/tei-studio/assets/workbench/$file"
+done
+test ! -e cmd/tei-studio/assets/workbench/dependencies.json
+```
+
+この後に、同じHEADの実Windows Wails Desktopを起動し、実Bridge経由のCatalog／InspectとPin表示をWebView2から確認して初めてP-05へ進む。**旧Sourceと現行main、Node専用の成功とWindowsの成功、通常DesktopとStage2 Desktopを加算しない。** 実Binary・配信JS・Workspace・Subject・Revision・試行IDを別々に記録する。成功させるためにPinや`authorityLimits`の検査を外さない。
+
+## 9. 選択・固定・原文・Ruleを同じ画面で扱う際の境界
+
+StudioはSource、意味モデル、Graph／Table、設計文書、生成Artifactを**一つの表示体系に投影**する。ただし、UIで見えること、Sourceを正確に参照できること、その意味を受理できること、変更できることは独立している。以下を共通Component契約とする。
+
+| 表示対象・操作 | Presenterが保持・伝えるもの | UIが推測してはいけないこと |
+| --- | --- | --- |
+| Subject Focus／Pin | Workspace、qualified Kind/ID、対象世代、Catalog／Sourceの現在性、不足の理由 | Focus変更がPinを移動したこと、同名表示が同一Subjectであること |
+| S-LOC／参照移動 | Artifact相対Path、Role、byte範囲・指紋、最大表示件数と観測件数、Coverage | pathが現在安全に開けること、表示0件が完全な参照0件であること |
+| S-OPEN／Editor | Hostが現在Root・Scope・Revision・Raw byteを再確認した場合のみ原文を開く。未保存Bufferは別版 | DOM側のfile URL・位置変換・Editor表示がSource Write／意味受理を許可したこと |
+| Graph／Table／三要素Modeler | Semantic Subject ID、Source occurrenceと表示用Node/Edge IDの対応状況・多重性・Loss | 同じラベル・端点や表示Edge IDが正式Relation identityであること |
+| Rule・Function・Plugin | 正式に選択したReader／Contract、実取得された意味・Source anchor、Providerの使用状況と未確認範囲 | Readerの成功だけで生成Go・実Provider Call・Effect／Owner受理が成立したこと |
+| AI Harnessへ渡す対象 | Pin Intentの再解決、Required Context、Disclosure、Sink、実Tool受領と元Taskの対応 | 見えている情報全部を渡せること、AI Proposalを自動Applyできること |
+
+2026-11-15のmainには、**内蔵`tei.rule-authoring/v0` Reader**が`Workspace.Load`を通して選択され、定義領域内のRuleを`semantic.Validation`とSource anchorへ接続する限定実装がある（[Bootstrap設計§29.7](STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)）。前章までの「`*.tei.md`はすべて未Reader」という前提は更新する。一方、未選択Sourceの拒否、外部Language Plugin、Graph／Windowの一般Reader、生成Goと実Provider、通常CLIの実行資格、Owner受理は個別に確認する。StudioのUIはこの限定成立を表示できても、未検収部分を`complete`へ丸めない。
+
+**Componentの外部EventはIntentのみ**とする。たとえばGraphで選択したIDやSourceの相対Pathは、現在のHostに再解決を依頼する入力であって、操作・送信の許可ではない。古いReplyの後着、Workspace A→B→A、未保存Bufferの改版、Reader未対応、権限による非公開のいずれも、Source表示・Pin Intent・AI文脈送出の現在性を自動復活させない。ARIA／DOM／Graph Tooltipに非公開のPath、ID、件数を埋め込まない。
+
+## 10. Desktopの起動・配布・更新とUIの責務
+
+[Bootstrap／更新設計](STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)と[Desktop製品契約](TEI_DESKTOP_PRODUCT_CONTRACT_2026-11.md)を、Frontend実装に対する依存順として読む。
+
+- **D1：現行の比較基線**。Wails親Process内で既存Go Application OperationとFrontendを動かす。別Hostを設けない。現在のWails `v3.0.0-beta.29`は再現用固定版であり、正式配布の採用資格を意味しない。安定版への移行はService、Origin、IPC、外部Navigation、実OSを別PRで比較する。
+- **D2：単一Imageを標準候補にしたRelease Closure**。WailsのUpdaterが扱う単位に沿い、StandaloneではFrontend・必要なGo Backend・選択済みPlugin／設定Schemaを**同じReleaseに束縛**する。標準Pluginは静的に収録可能なものを優先するが、利用者の設定や外部DB・NASまで原子的に更新できるとは主張しない。更新前の互換性・署名・旧版とのデータ移行・復旧経路を製品側で別検収する。
+- **D3：子Backend／外部Processの必要性を実測で判断**。プロセス隔離、失敗回復、独立更新、資源制限など実際の理由がある場合だけ選択する。Child image、Protocol/Operation契約、IPC handshake、起動停止、更新整合性、部分的なEffect Unknownを独立検証する。単一ImageのUpdaterだけで複数Processの同時切替を保証しない。
+- **Web／SaaS**は同じOperationを再利用する別の配備形態であり、DesktopのWindowに公開Hostの認証・セッション隔離を付け足すだけでは適格化できない。Wails Server Build・loopbackの成功をそのまま外部公開へ転用しない。
+- **Android／iOSは実験レーン**。Wailsの対応状況、依存SDK、実機操作、配布・更新・権限境界の検証が揃うまで正式サポートに含めず、Desktop P0の依存にしない。
+
+UIが保持する一時表示・Pin・Dirty Bufferと、Release後も必要なWorkspace／Draft／ユーザー設定／Secret handleの保存資格は別である。再起動・更新後に同じ名前のWorkspaceが見えても、以前のSource revision・Grant・未完了Effectがそのまま有効とはみなさない。実行結果不明時は既存Receipt／lookup-firstの回復契約に従い、FrontendのリトライでDB更新・Plugin実Effectを二重化しない。
+
+## 11. 直近の差分を増やさない実装引渡し
+
+| 順序 | 実装担当へ渡す変更 | 受け入れられる範囲／停止条件 |
+| --- | --- | --- |
+| **W0：配布資産を現在のSourceへ戻す** | #1824／#3421。既存Embed CIで四ファイルを照合し、実Pin DOM・Inspector制限をWindowsへ届ける | 既存Sourceの正規生成がPASSすること。見栄えだけ一致／古い生成JS／別HEADのPASSはFAIL |
+| **W1：最初のWeb Component比較** | #1824／#4515。S-LOC表示だけを、同じPresenterと同じ独立Expectedでplain TS、Vanilla、Litの候補比較 | Host/Grant/Source処理を移植せず、IME/ARIA・静的検査・bundle差分・AI修正の再現性を比較。Lit全面採用は未判断 |
+| **W2：実SourceとRuleを同じConsumerへ** | #1124／#2621／#3788。実`InspectSubject`のSource位置・内蔵Rule Readerの限定Resultを現在資格付きで表示 | S-OPEN、Source Write、Graph Reader、外部Providerを完了扱いしない |
+| **W3：Pin→AI Proposalの受領** | #4515／#3262／#2516／TAI。Pinを現在Hostで再解決し、Recipient／Disclosure／Tool Reply完全性を確認してProposalへ戻す | Focus Bに旧AのProposalを自動Applyしない。実送出・Owner Reviewは別受入 |
+| **主線：非Pluginセルフビルド** | #2831／#4583。既存BuildExecutionへ正式non-Plugin Subjectと実Builder・Stage1→Stage2のProcess/Artifactを接続する | W1〜W3の完成をHard Gateにしない。同じHEADのStage2自身のWebView2使用まで検証 |
+| **並行：通常CLI実Provider** | #2586／#4495。内蔵Rule Reader・Plugin選択と実Provider Invocation／独立Consumerを区別して検収する | Studioの画面に出たことをProvider実行・業務Effectの証拠にしない |
+
+すべて既存Issueと#1180／#2514の独立Expectedに引き渡す。新しいTest Runner、Source Store、Frontend Registry、万能Approval APIは追加しない。**次回はW0の実コードPRとそのexact HEADのEmbed CI／Windows CIを進捗指標にする。** この追補は実装順・責務・拒否条件を統合したものであり、ここで新たなNode／Windows／Updater／Mobile／Stage2試験を実行したわけではない。
