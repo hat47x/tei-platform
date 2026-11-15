@@ -274,3 +274,7 @@ Ruleは他のFunction、標準Operator、Table Script／Data Rule、Node Flowか
 結合検査の最小反証は、**RE-01** Rule正本は存在するがFunction Entryが未公開、**RE-02** Entryの引数名・型がFunction／Data Contextと不一致、**RE-03** NULLと未取得の扱いがProviderで潰れる、**RE-04** R2-Pが生成実装Bを収録したのにR3が旧実装Aを呼ぶ、**RE-05** Rule変更後に旧Artifactと旧Consumer結果を流用する、である。これらは新しいScenario／権限正本を作らず、既存#1180／#2514へ負例の追加として渡す。
 
 最初のR3でpure Functionの実呼出しを閉じる間も、**Studio Stage1実TEI→Stage2実Windows WebView2**（#2831／#4583）は独立した最上位P0とする。本節は製品で実在するRule・Reference Builder・Entry拒否テストを踏まえた設計・引渡しであり、正式製品BuilderとRule由来Functionの統合実行を新たに受理したという報告ではない。
+
+**実装プロファイルの誤用を防ぐ。** 現行 `internal/plugin/implementation/model.go` の `static-response-v1` はDeployment Executorの固定応答向けであり、Rule／Functionの汎用実装Contractではない。ここへ期待する判定JSONを置いても、生成Goを選択Providerが実行した証拠にはならない。`composition.Selection` は宣言上の選択、`composition.Service.Invoke` が返すBindingは実装を追跡する観測であり、どちらもHostの現在Grantではない。R3の最小実装は、既存の共通Application APIと正式なProvider選択の接続を先に確認する。
+
+**製品CLIの現在の基線。** `cmd/tei/main.go` の未宣言 `dbIntrospectSemanticFlag` で実CLIがビルド不能だった問題は[PR #4940](https://github.com/hat47x/tei-platform/pull/4940)で修復してmainへ統合した。同PRのexact HEADではAction Surfaceの実CLI、独立Node Catalog、Source→Web E1-A、製品Skill、Cache、脆弱性確認が成功。一方、Studio／Issue-to-Design／Self-buildの失敗は残り、全体Healthの成功も確認していない。これらのCI結果を、正式R2のBuilder実選択、R3の公開Entry実Provider Call、Studio Stage2の受入と混同しない。
