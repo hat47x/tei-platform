@@ -31,7 +31,16 @@ type DeclaredBrowseRelations struct {
 	Status     DeclaredRelationsStatus `json:"status"`
 	Tables     []string                `json:"tables,omitempty"`
 	PrimaryKey []core.CanonicalID      `json:"primaryKey,omitempty"`
-	Note       string                  `json:"note,omitempty"`
+	// Columns are the declared physical columns of the declared relation, by Semantic
+	// attribute. They are what a result column's provenance is compared against.
+	Columns []DeclaredColumn `json:"columns,omitempty"`
+	Note    string           `json:"note,omitempty"`
+}
+
+// DeclaredColumn is one Persistence Mapping column declaration.
+type DeclaredColumn struct {
+	Attribute core.CanonicalID `json:"attribute"`
+	Column    string           `json:"column"`
 }
 
 // DeclaredBrowseRelations resolves the declared storage of a browse Pattern's Data in the
@@ -60,6 +69,9 @@ func (r Resolver) DeclaredBrowseRelations(applicationID, patternID core.Canonica
 		out.Status = DeclaredRelationsResolved
 		out.Tables = []string{matches[0].Table}
 		out.PrimaryKey = append([]core.CanonicalID(nil), matches[0].PrimaryKey...)
+		for _, column := range matches[0].Columns {
+			out.Columns = append(out.Columns, DeclaredColumn{Attribute: column.Attribute, Column: column.Column})
+		}
 	default:
 		out.Status = DeclaredRelationsAmbiguous
 		out.Note = fmt.Sprintf("%d件のPersistence MappingがData %sをDatabase %sへ束縛しています", len(matches), out.Data, out.Database)

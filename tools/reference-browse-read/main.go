@@ -157,6 +157,8 @@ func run(args []string, out io.Writer, getenv func(string) string) int {
 	if err != nil {
 		return fail("OBSERVATION_FAILED", err)
 	}
+	// Described on a second connection; the lock held by tx keeps the names stable meanwhile.
+	provenance, provenanceNote := postgresquery.ObserveColumnProvenance(ctx, db, pattern.Query.Source, values)
 	observed, err := postgresquery.ObserveConnection(ctx, tx)
 	if err != nil {
 		return fail("OBSERVATION_FAILED", err)
@@ -185,6 +187,7 @@ func run(args []string, out io.Writer, getenv func(string) string) int {
 	fc, err := functioncontext.From(functioncontext.Input{
 		Execution: execution, Connection: observed, Parameters: shapes,
 		Declared: declaredRelations, Acquisition: &acquisition,
+		Provenance: provenance, ProvenanceNote: provenanceNote,
 	})
 	if err != nil {
 		return fail("CONTEXT_FAILED", err)

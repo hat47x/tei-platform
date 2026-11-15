@@ -37,10 +37,16 @@ type acqResponse struct {
 		Message string `json:"message"`
 	} `json:"error"`
 	Context *struct {
-		Rows  [][]cliCell `json:"rows"`
-		Grain struct {
+		Rows    [][]cliCell `json:"rows"`
+		Columns []struct {
+			Raw        string `json:"raw"`
+			Provenance string `json:"provenance"`
+		} `json:"columns"`
+		NullOrigin string `json:"nullOrigin"`
+		Grain      struct {
 			Scan        string `json:"scan"`
 			DeclaredKey string `json:"declaredKey"`
+			Level       string `json:"level"`
 			Dup         int    `json:"exactDuplicateRows"`
 		} `json:"grain"`
 		Coverage struct {
@@ -90,6 +96,14 @@ func acqIDs(r acqResponse) []string {
 		ids = append(ids, row[0].Value.(string))
 	}
 	return ids
+}
+
+func acqProvenance(r acqResponse) map[string]string {
+	out := map[string]string{}
+	for _, column := range r.Context.Columns {
+		out[column.Raw] = column.Provenance
+	}
+	return out
 }
 
 func acqHas(list []string, want string) bool {
@@ -220,6 +234,78 @@ func TestAcquisitionObservationAgainstDisposablePostgreSQL(t *testing.T) {
 		if !reflect.DeepEqual(acqIDs(r), []string{"O-003", "O-002", "O-001"}) {
 			t.Fatalf("ids=%v", acqIDs(r))
 		}
+		// W4: every result column is the declared physical column; rows are entity rows.
+		for column, got := range acqProvenance(r) {
+			if got != "declared-column" {
+				t.Errorf("column %s provenance=%s", column, got)
+			}
+		}
+		if c.Grain.Level != "entity" || c.NullOrigin != "no-null" {
+			t.Fatalf("level=%s nullOrigin=%s", c.Grain.Level, c.NullOrigin)
+		}
+	})
+
+	t.Run("a stored NULL is stored", func(t *testing.T) {
+		acqExec(t, db, `ALTER TABLE public.orders ALTER COLUMN total_amount DROP NOT NULL; UPDATE public.orders SET total_amount = NULL WHERE order_id = 'O-002'`)
+		defer acqExec(t, db, `UPDATE public.orders SET total_amount = 0.00 WHERE order_id = 'O-002'; ALTER TABLE public.orders ALTER COLUMN total_amount SET NOT NULL`)
+		r := acqRun(t, bin, dsn, ws)
+		if !r.OK {
+			t.Fatalf("%+v", r.Error)
+		}
+		// Hand-fixed: O-002 (second row, newest first) has the NULL amount.
+		if got := r.Context.Rows[1][4]; got.State != "null" {
+			t.Fatalf("row 1 = %+v", r.Context.Rows[1])
+		}
+		if r.Context.NullOrigin != "stored" {
+			t.Fatalf("nullOrigin=%s", r.Context.NullOrigin)
+		}
+	})
+
+	t.Run("NULLs that are not a stored value are never reported as stored", func(t *testing.T) {
+		// 1. an expression: every amount is NULL, none is stored.
+		expr := acqWorkspaceWithSQL(t, root, "SELECT o.order_id, o.customer_id, o.ordered_at, o.status, NULL::numeric(12,2) AS total_amount\nFROM public.orders AS o\nWHERE o.ordered_at >= :from ORDER BY o.ordered_at DESC")
+		r := acqRun(t, bin, dsn, expr)
+		if !r.OK {
+			t.Fatalf("%+v", r.Error)
+		}
+		if got := acqProvenance(r)["total_amount"]; got != "computed" || r.Context.NullOrigin != "unestablished" {
+			t.Errorf("expression: provenance=%s nullOrigin=%s", got, r.Context.NullOrigin)
+		}
+		// 2. a column aliased to another's name: values are real but the identity is not.
+		swap := acqWorkspaceWithSQL(t, root, "SELECT o.customer_id AS order_id, o.order_id AS customer_id, o.ordered_at, o.status, o.total_amount\nFROM public.orders AS o\nWHERE o.ordered_at >= :from ORDER BY o.ordered_at DESC")
+		r = acqRun(t, bin, dsn, swap)
+		if !r.OK {
+			t.Fatalf("%+v", r.Error)
+		}
+		p := acqProvenance(r)
+		if p["order_id"] != "other-column" || p["customer_id"] != "other-column" || r.Context.Grain.Level != "unestablished" {
+			t.Errorf("alias swap: provenance=%v level=%s", p, r.Context.Grain.Level)
+		}
+		// 3. an outer join: the declared column, NULL because no row matched.
+		acqExec(t, db, `CREATE TABLE public.order_lines(order_id text, line_no int); INSERT INTO public.order_lines VALUES ('O-001',1),('O-999',1)`)
+		defer acqExec(t, db, `DROP TABLE public.order_lines`)
+		outer := acqWorkspaceWithSQL(t, root, "SELECT o.order_id, o.customer_id, o.ordered_at, o.status, o.total_amount\nFROM public.order_lines AS l LEFT JOIN public.orders AS o ON o.order_id = l.order_id\nWHERE (o.ordered_at >= :from OR o.ordered_at IS NULL) ORDER BY o.ordered_at DESC")
+		r = acqRun(t, bin, dsn, outer)
+		if !r.OK {
+			t.Fatalf("%+v", r.Error)
+		}
+		sawNull := false
+		for _, row := range r.Context.Rows {
+			if row[0].State == "null" {
+				sawNull = true
+			}
+		}
+		if !sawNull {
+			t.Fatalf("premise: the unmatched order line must produce a NULL row: %+v", r.Context.Rows)
+		}
+		for column, got := range acqProvenance(r) {
+			if got != "declared-column" {
+				t.Errorf("outer join: column %s provenance=%s (the declared column behind a join)", column, got)
+			}
+		}
+		if r.Context.NullOrigin != "unestablished" || r.Context.Grain.Level != "unestablished" || r.Context.Grain.Scan != "multi-relation" {
+			t.Errorf("outer join: nullOrigin=%s level=%s scan=%s", r.Context.NullOrigin, r.Context.Grain.Level, r.Context.Grain.Scan)
+		}
 	})
 
 	t.Run("PINNED LIMITATION: a function that drops rows leaves every observation clean", func(t *testing.T) {
@@ -238,6 +324,17 @@ func TestAcquisitionObservationAgainstDisposablePostgreSQL(t *testing.T) {
 		c := r.Context
 		if !reflect.DeepEqual(c.Acquisition.Observation.PlanRelations, []string{"public.orders"}) || c.Coverage.Visibility != "rls-inactive" {
 			t.Fatalf("the observations were expected to stay clean: %+v", c.Acquisition.Observation)
+		}
+		// Hand expectation: columns read through a set-returning function are function
+		// results, not table columns, so they are not "declared-column" and no entity claim
+		// is made. This is the only trace the function leaves.
+		for column, got := range acqProvenance(r) {
+			if got != "computed" {
+				t.Errorf("function column %s provenance=%s", column, got)
+			}
+		}
+		if c.Grain.Level != "unestablished" {
+			t.Errorf("an entity grain was claimed through a function: %s", c.Grain.Level)
 		}
 		// The ceiling is the whole point: clean observations must NOT read as complete.
 		if c.Coverage.Status != "unestablished" || len(c.Coverage.Reasons) != 0 || c.Coverage.EmptyJustified ||
@@ -327,6 +424,16 @@ func TestAcquisitionObservationAgainstDisposablePostgreSQL(t *testing.T) {
 		}
 		if c.Coverage.Status != "partial" {
 			t.Fatalf("coverage=%+v", c.Coverage)
+		}
+		// The view hides the amount as NULL. Its columns belong to a view, so the NULLs are
+		// not reported as stored values, and no entity grain is claimed.
+		for column, got := range acqProvenance(r) {
+			if got != "non-table-relation" {
+				t.Errorf("view column %s provenance=%s", column, got)
+			}
+		}
+		if c.NullOrigin != "unestablished" || c.Grain.Level != "unestablished" {
+			t.Errorf("nullOrigin=%s level=%s", c.NullOrigin, c.Grain.Level)
 		}
 	})
 
