@@ -1,6 +1,6 @@
 # Rule Authoringから実Plugin・製品Consumerまでの第一縦断：実装と検収の接続計画
 
-- **状態**：2026年11月15日の設計・実装引渡し。新しいGo生成器、実Plugin呼出し、Windows Stage2の受入をこの文書では主張しない。
+- **状態**：2026年11月15日の設計・実装引渡し。R1の限定的な正値Rule→Go生成をPR #4911で実装検証中。正式Builder／実Plugin呼出し、Windows Stage2の受入は主張しない。
 - **優先対象**：内蔵Rule Authoring Markdown Readerで読み取った一つのpureなValidationを、生成Goの判断処理、実Builder、選択済みProvider、通常製品CLIまでつなぐ。
 - **前提となる実装事実**：mainの[7921b005](https://github.com/hat47x/tei-platform/commit/7921b005a44d325983d24ca2b8b58b0737dd778d)で、明示選択されたtei.rule-authoring/v0を内蔵ReaderがWorkspace Loadの原文から読み、semantic.ValidationとSource anchorへ投影する経路が追加された。これは外部Language Pluginや正式Graph Readerの製品受入ではない。
 - **既存の正本**：[Pluginの役割・合成・Stage2再入](PLUGIN_ROLE_COMPOSITION_AND_STUDIO_REENTRY_2026-11.md)、[Plugin-firstの実運用検証](PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md)、[自己記述](ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md)、[製品完成計画](../workstreams/PRODUCT_COMPLETION_PLAN.md)を維持する。本書は一機能の実装差分を決める補助計画であり、第二のContract、Resolver、Meaning、Builder、Runner、Evidence Storeを作らない。
@@ -144,3 +144,39 @@ UI実装におけるTypeScript・Web標準技術・Wailsの選択は#1824の担�
 - **実行先**：初回の観測は実製品CLIの型付きOperationから選択されたGo Providerへ到達すること。専用のReference runnerを正式な実行入口と呼ばない。成功後にStudioのInspect／Graph表示や他Targetへ展開する。
 
 このFixtureはReader・Inspectorを通した**意味候補の出発点**であり、生成用の正式なRule Operator／Provider Contract／入力のNULL意味がOwner受理済みであるとは限らない。足りない契約は#1121／#4544／#4495の既存担当で確定させ、対象を増やす前に一RuleのSourceから実Consumerまでを閉じる。
+
+## 12. R1の最初の実装差分：生成Goに判断させる
+
+[PR #4911](https://github.com/hat47x/tei-platform/pull/4911)は、既存Readerが正規化した一Ruleから**条件式を含むGo Sourceを生成する**限定実装である。読取り済みの `semantic.Validation` と解決済みのAttribute型 `std.decimal` を受け、`value.Sign() > 0` を含む関数を生成する。生成先の入力・結果は既存 `validationeval.Source`／`validationeval.Result` に従う。`validationeval.Evaluate` への単なる委譲でも、固定JSONの出力でもない。
+
+実Goテストでは、製品の `Workspace.Load` が選択したRule IDとAttribute型を再照合し、同一LoadのSource Indexが指す原文IDを確認してからLoweringする。生成されたGoを別Processで `go run .` し、`2.5`、`0`、`-1`、NULL、未取得について独立Expectedで判断結果と読取回数を検証する。未対応Rule kind、未解決型、`std.money`、余分なRelation、無効なGo package名は拒否し、Ruleの参照Attributeを変えた時は生成コードの読取先が変化することを確かめる。
+
+ただし**生成関数に受理済みSourceやOwner権限を自動的に付与するものではない**。現段階ではGenerator選択版のLock、生成元から実Builder入力までのDigest、正式Plugin Contribution、通常CLIが呼ぶ実Provider、Studioの実Windows Consumerを繋いでいない。PR #4911の試験コードの存在とそのexact HEADでのCI成功も分けて記録する。R1局所試験が通ったら、別のテスト専用Generatorへ拡張するのでなく、#4544の既存Build入口へこの生成Byteを渡すR2を優先する。
+
+## 13. ノード型FlowとPluginを、同じ標準モデルから展開する
+
+Node-RED／Enebular型のプログラミング、ESPStudioのようなNode UI、データ連携・マッシュアップ・簡易APIに向けても、**Flow専用の別Meaning／Runnerを作らない**。既存の標準データ構造、Operator Contract、Function／Process Flow、Capability Invocationを組み合わせ、GUIのNodeはその投影として扱う。[研究統合`16.18〜16.21](../research/TECH_RESEARCH_INTEGRATION_2026-10.md)の議論と方向を合わせるが、現行Plugin第一縦断R1〜R3より先に新しい実行基盤を導入しない。
+
+| 一つのFlowを構成する要素 | 標準モデルで保持するもの | Node画面だけに持たせるもの |
+| --- | --- | --- |
+| Operator／Service／Function定義 | Contract、入力／出力の型と意味、Provider候補、作用・読取範囲・認可要求 | 表示名、ノードの外観、アイコン |
+| Node occurrence | Flow内の固有ID、選択Operatorと版、Port Binding、パラメータ、出典・変更元 | 画面座標、開閉、ズーム |
+| Edge occurrence | 独立Edge ID、端点Port、Data／Control／Event／Effect等の関係Role、向き・多重性 | 曲線の配置・色・線幅 |
+| Process／Flow | 入出力、分岐・結合、順序、Trigger、失敗・再試行・補償、State・Receipt契約 | キャンバスのグループ、折畳み・表示密度 |
+| 実行と公開 | 静的生成先のGo／外部Host、同一Application API、実Provider・AuthZ・入出力Scope | Studio、Web、CLI、MCP等の操作投影 |
+
+ノードを「データ取得」「変換」「判断」「外部API」「出力」「通知」などで分類できるが、これは**Catalogの検索・表示用Facet**であって、Coreへ新しい排他的なPlugin Role enumを増やすものではない。一つの部品はCLI／DSL／Function Chain／Graphのいずれからも同じContractで利用できる。Flowが一時的な状態を持つ場合も、現在のState／Lifecycle／Effect境界に委ね、GUI実行エンジンに秘密の状態表を持たせない。
+
+### 最小の検証例：数量判定の簡易API
+
+1. 入力データ `OrderLine.quantity`（Decimal）を受ける。
+2. 型付き入力の欠損・NULLを区別し、既存の `quantity_positive` Ruleを判断Nodeとして使用する。
+3. 結果が成立なら正常応答、不成立なら業務上の不成立を返し、入力未取得・型不適合は評価不能として分離する。
+4. Flowの表示を変更してもRuleの意味と生成Goは変化せず、Ruleの参照Attribute変更では生成物と実Callが変わる。
+5. 静的Go生成の第一経路で実Consumerへ到達後、HTTP Trigger／API公開／外部Service Adapterを追加する。API公開時にはHost認証・現在Grant・外部送信先・Rate Limitを別途明示的に受理する。
+
+実装順は**N0（既存Rule／OperatorをNodeとしてread-only投影）→N1（型付きPort／Flow検証と一つの分岐のGo生成）→N2（実Builder／実Provider／CLIを通した一Request）→N3（Studio Node GUIで同じFlowを開き、変更と再生成を検収）**とする。外部Trigger／Cloud APIはその後のN4とし、N1のために独立Flow DSL・汎用Stream Runner・SaaS前提のTEI常駐Hostを導入しない。
+
+**独立反証候補（#1180／#2514）**：NG-01 同じNode名に別Occurrence ID、NG-02 同じ端点に多重Edge、NG-03 Portの型不一致、NG-04 部分取得を正常な空集合と誤認、NG-05 Graph layoutだけ変更して業務Goが変化、NG-06 Rule変更でも古い生成Goを実行、NG-07 API Publish権限と実外部送信許可を混同、NG-08 Effect不明なのに再試行して二重送信、をそれぞれ独立に拒否・失効・隔離する。
+
+**資格の区別**：現時点でR1の実装PRは存在するが、N0〜N4、HTTP API実公開、クラウドConnectorの製品受入を実装済みとは扱わない。R2／R3が正式な実消費になっていない段階でNodeの可視化だけを「高度な実行機構」として宣言しない。
