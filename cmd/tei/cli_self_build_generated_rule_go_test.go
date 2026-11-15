@@ -168,6 +168,26 @@ func TestSelectedRuleGoThroughRealCLISelfBuild(t *testing.T) {
 	if err != nil {
 		t.Fatalf("actual product Build Intent cannot resolve: %v", err)
 	}
+	// A prose-only byte change in the packaged original must change the exact
+	// BuildPlan even when the generated Go has not changed. The final build
+	// uses the restored original; its Source Index qualification is separate.
+	packagedSource := filepath.Join(pkgDir, "source.tei.md")
+	modified := append(append([]byte(nil), original...), []byte("\nAdditional prose only.\n")...)
+	if err := os.WriteFile(packagedSource, modified, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	changed, err := buildintent.Resolve(intent, buildintent.NewBuildContext(repoRoot, catalog))
+	if err != nil {
+		t.Fatalf("resolve changed packaged Source: %v", err)
+	}
+	if changed.PlanFingerprint == receipt.PlanFingerprint ||
+		changed.SourceClosureFingerprint == receipt.SourceClosureFingerprint {
+		t.Fatal("a changed original Markdown byte sequence reused the previous BuildPlan")
+	}
+	if err := os.WriteFile(packagedSource, original, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
 	planRaw, err := json.Marshal(receipt.Plan)
 	if err != nil {
 		t.Fatal(err)
