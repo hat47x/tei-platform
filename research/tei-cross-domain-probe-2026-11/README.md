@@ -33,7 +33,7 @@ CSW（Cultural Substrate Weaving）とVSクマ（VS Bear Simulator）を独立�
 | `csw/anchor_test.go` | CSWの帰属4値を`SKILL.md`の4区分の一文へ逐語で結ぶ転記照合 |
 | [`CSW_01_ANCHOR_UPDATE.md`](CSW_01_ANCHOR_UPDATE.md) | CSW-01の補足節をgit公開したあとのanchor更新手順（確定版） |
 | [`BEAR_01_SYNC_DRAFT.md`](BEAR_01_SYNC_DRAFT.md) | BEAR-01保留中の同期手順草案（3点：列挙一致・境界値同期・上流追跡） |
-| [`vocabulary_prototype/`](vocabulary_prototype/README.md) | VOC-01aの最小プロトタイプ。`range`宣言のパースと境界値検査（研究物。製品パーサは未変更） |
+| [VOC-01aの検証語彙設計案](VALIDATION_VOCABULARY.md) | 範囲・有限性・列挙値の研究案。`vocabulary_prototype/README.md`は現行mainに存在せず、プロトタイプの実装や試験が収録済みとは扱わない |
 | [`ANCHOR_POLICY.md`](ANCHOR_POLICY.md) | 外部Repository転記の照合下限と、実際に照合した証跡（実施日・上流commit・件数・skip数） |
 
 ## 実行
