@@ -70,26 +70,20 @@ func TestOrgAxisAsOfExclusionConstraintCandidateOptIn(t *testing.T) {
 	const insert = "INSERT INTO org_membership_exclusion_candidate " +
 		"(membership_id, revision_id, valid_from, valid_to, known_from, known_to) " +
 		"VALUES ($1, $2, $3::timestamptz, $4::timestamptz, $5::timestamptz, $6::timestamptz)"
-	type version struct {
-		membership, revision, validFrom string
-		validTo                         any
-		knownFrom                       string
-		knownTo                         any
-	}
-	add := func(v version) {
+	add := func(membership, revision, validFrom string, validTo any, knownFrom string, knownTo any) {
 		t.Helper()
-		if _, err := tx.ExecContext(ctx, insert, v.membership, v.revision, v.validFrom, v.validTo, v.knownFrom, v.knownTo); err != nil {
-			t.Fatalf("insert %s should coexist: %v", v.revision, err)
+		if _, err := tx.ExecContext(ctx, insert, membership, revision, validFrom, validTo, knownFrom, knownTo); err != nil {
+			t.Fatalf("insert %s should coexist: %v", revision, err)
 		}
 	}
 	// Same valid period, adjacent known periods: legitimate correction.
-	add(version{"A2", "A2-old", "2027-01-01", nil, "2027-04-01", "2027-07-03"})
-	add(version{"A2", "A2-new", "2027-01-01", nil, "2027-07-03", nil})
+	add("A2", "A2-old", "2027-01-01", nil, "2027-04-01", "2027-07-03")
+	add("A2", "A2-new", "2027-01-01", nil, "2027-07-03", nil)
 	// Same known period, adjacent valid periods: legitimate effective change.
-	add(version{"A3", "A3-early", "2027-01-01", "2027-06-01", "2027-04-01", nil})
-	add(version{"A3", "A3-later", "2027-06-01", nil, "2027-04-01", nil})
+	add("A3", "A3-early", "2027-01-01", "2027-06-01", "2027-04-01", nil)
+	add("A3", "A3-later", "2027-06-01", nil, "2027-04-01", nil)
 	// Different Membership occurrence, same (validAt, knownAt): legitimate.
-	add(version{"A4", "A4-independent", "2027-01-01", nil, "2027-07-03", nil})
+	add("A4", "A4-independent", "2027-01-01", nil, "2027-07-03", nil)
 
 	const asOf = "SELECT revision_id FROM org_membership_exclusion_candidate " +
 		"WHERE membership_id = $1 " +
@@ -149,5 +143,18 @@ func TestOrgAxisAsOfExclusionConstraintCandidateOptIn(t *testing.T) {
 		check(t, "A2", "2027-07-01", "2027-07-04", []string{"A2-new"})
 		check(t, "A2", "2027-05-15", "2027-07-02", []string{"A2-old"})
 		check(t, "A3", "2027-06-01", "2027-07-04", []string{"A3-later"})
+	})
+	// A new correction must close the previous known interval first. This is
+	// a transaction-local ordering probe, not a crash recovery or Host commit.
+	add("A5", "A5-old", "2027-01-01", nil, "2027-04-01", nil)
+	if _, err := tx.ExecContext(ctx,
+		"UPDATE org_membership_exclusion_candidate SET known_to = $1::timestamptz WHERE revision_id = $2",
+		"2027-07-03", "A5-old"); err != nil {
+		t.Fatalf("close old known interval before correction: %v", err)
+	}
+	add("A5", "A5-new", "2027-01-01", nil, "2027-07-03", nil)
+	t.Run("old known interval closes before a correction is inserted", func(t *testing.T) {
+		check(t, "A5", "2027-05-15", "2027-07-02", []string{"A5-old"})
+		check(t, "A5", "2027-05-15", "2027-07-03", []string{"A5-new"})
 	})
 }
