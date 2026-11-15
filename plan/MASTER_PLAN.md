@@ -2013,6 +2013,32 @@ Studio／SHO／SUI／AIが同じ意味候補を提示しても、編集資格は
 
 本追補は新仕様・新Hard Gateの採用ではなく、既存Ownerへの実装引渡し案である。[#4771](https://github.com/hat47x/tei-platform/pull/4771)のデータ様式計画がmain統合済みであることと、自己記述§45の成熟結果を参照する。新しい製品Reader、Rule／Plugin生成、実Provider／CLI／StudioのE2E、Owner業務意味受理は本書の追補によって**実装・実証済みにならない**。
 
+<!-- tei-declarative-lawful-composition-20261115 -->
+### 宣言を合成しても、意味と作用が変わらない条件を明らかにする
+
+次の実装では、短いRuleや関数チェーンを増やすことより、**その記述を別の表現やTargetへ移してよい条件**を先に確認する。宣言的構文の汎化は、見かけ上の式の一致を理由に、判断の適用範囲・結果の多重度・失敗・外部作用を変えてよいという意味ではない。
+
+**最初に区別する三つの操作**：
+
+- **読み取り・判定**：Graphの関係探索、Validation、計算、Queryなど。受理済みSourceとData Context、型・NULL／未取得、Operator契約の下で値と診断を評価する。出力値があっても、外部Effectの実行を意味しない。
+- **変換・最適化**：Filter／Map／Aggregate／Join／Pipelineの組み替え、SQL方言へのLowering、GraphのView生成など。同じ入力で値が一致するだけでなく、Bag多重度、順序、精度・単位、Unknown、エラーの発生、Sourceへの追跡が保存される範囲だけ認める。未証明の変換は行わず、必要なら原表層／Opaqueを保持する。
+- **状態変更・外部作用**：業務Operation、Transition、DB Commit、通知など。明示されたTrigger、事前条件、実Providerと現在のGrant、Effect／Failure／Receiptの契約に従う。Ruleが真と評価されたことや図に矢印が描かれたことだけで、自動実行や成功を認定しない。
+
+**特に避ける変換**：`distinct`を暗黙に挿入して多重辺やSQLのBagを集合へ変えること、NULLや未取得をFalse／0にすること、順序が必要なWindow／LIMITを未規定の順序で処理すること、結果が部分取得の`count=0`を不存在とみなすこと、失敗・丸めがあるMapとFilterを無条件に入れ替えること、未対応のNative SQL部分式を落として残りだけを再生成すること。また、Mermaidの線・PERTの依存・Process図の縦位置を、受理済みの因果／先行条件なしに実行順へ変換しない（[実行モデル§45〜50](design/PROGRAM_EXECUTION_MODEL_PROJECTIONS_2026-11.md)）。
+
+| 最初に比較する一因子差 | 独立Expectedで確かめること | 次の引渡し |
+| --- | --- | --- |
+| 同名二Node・多重Edgeから別の表示を生成 | ID・向き・多重性は意味として保存し、表示配置は実装の処理順としない | #2497／#4359 |
+| 同じ一Ruleを表／短いDSL／Go生成で表す | 対象・条件・Unknown・診断と元byte位置を比較。Goへ委譲するだけの成果は分ける | #4359／#2621／#4544 |
+| Filter／Map／Joinの並べ替え | NULL・重複行・順序・エラーを含む反例で、同値といえる範囲だけ採用 | #2387／#988 |
+| 部分取得の決定表と集計 | 確認済みのConflictと、全件性が必要な唯一性・不存在・総数を区別 | #1180／#2514／#2506 |
+| Rule判定後のDB／通知とACK欠落 | 判定・実Call・Effect・Receipt・Consumer受領を分け、結果不明なら自動再送しない | #1174／#1129／#2586 |
+| Go／SQL／Java等への別Target生成 | 型・NULL／欠損・丸め・例外・時間条件の意味を、Target別の独立Expectedで照合 | #4544／#2387／#2514 |
+
+**着手順**：[#4359](https://github.com/hat47x/tei-platform/issues/4359) S0では、この比較を正式構文の採否資料に限定する。S0-Aの最初の製品PRは引き続き選択`*.tei.md`の実Reader／Role／Source Index接続だけを対象とし、最適化器や新しいRule Runtimeを先行実装しない。その次に受理済み一Ruleの生成コードで、同一Contextの評価結果・失敗・実使用を照合する。Effectを含む実証は通常CLI→実Providerと独立Consumerで別に受け入れ、Studio Stage1→Stage2のP0を妨げない。
+
+この節は構文・Operator・Targetの**合成可能性に対する実装引渡し**であり、新たな式文法・代数Optimizer・Process Engine・Target同等性の正式採用ではない。正負のケースは既存#1180／#2514へ渡す。ここで整理した反例をGo／DB／Windowsの実行試験として実施したことにはしない。
+
 **現在の証拠と停止線**：mainの限定ReferenceにはGraph／Rule→条件分岐Go生成・同一Binaryへの実行時Node入力・Source Indexのbyte検査がある。一方、製品の正式Reader／選択Role／Accepted Meaning→通常Generator・Plugin・CLI実Call→Stage2実再構築は別の未達資格である。[PR #4744](https://github.com/hat47x/tei-platform/pull/4744)はMarkdown-firstと三要素図面の統合Draftであり、同PRや本節のdocs-only変更を製品機能の採用・Owner意味受理と読み替えない。
 
 
