@@ -125,3 +125,15 @@ go run ./cmd/tei plugin-inventory -workspace reference/workspace -environment pr
 - 実行境界は `pluginruntime.BuildPlan` の結果を写す。管理側で境界を決めない。
 - 権限は `BuildPlan` の `CapabilityRuntime` に対する `permission.Missing` を写す。別の権限エンジンを作らない。
 - `tools/` の参照実装は仕様であり、製品importしない（依存試験で固定）。
+
+## S2〜S5への接続：起動・配布・更新と管理状態（2026-11-15、設計引渡し）
+
+[Studio／CLI／Web Backend・配布更新統合設計](STUDIO_CLI_BACKEND_PROCESS_DISTRIBUTION_UPDATE_2026-11.md) §11〜17を参照する。Desktopの子Backendが`CORE_READY`であることは、個々のPluginがInstalled／Enabled／Activeであることを意味しない。Studio・CLI・Webは管理契約の同じInventory／Planを投影し、未知の状態は`notModelled`のまま返す。
+
+- **S2 #4377**：Plugin更新と本体更新の候補について、依存Closure、必要な停止・再起動、対象UI Asset、Source不変、現在Grant／実Providerへの影響を計画できるようにする。計画で導入・有効化を確定しない。
+- **S3 #4378**：Installed／Enabled等の設定源・settingsVersion・操作履歴をSourceの正本から分離する。Plugin更新のStagingと有効世代の切替は別操作とし、実行中のInvocationを旧・新構成へ混合しない。
+- **S4 #4379**：Studio画面とCLIから同じ状態・診断・構成版を参照する。GUIはControllerではなくAdapterであり、Remote CLIはServer側の選択済み構成を使用する。CLI引数から未選択Providerを自動で採用しない。
+- **S5 #4380**：無効化・実装削除・Plugin保持データ削除・形式変換・外部Effectは別操作。更新前の旧Artifactへ戻しても、DB Migration・確定済みEffectは元に戻らない。
+- **説明文書とSkill**：Plugin Package／Releaseが公開するContract、Manual、Example、短いAI Skill、上位依存の文書参照をVersion／Digest／公開範囲で辿る。文書からの実行Grant継承や秘密情報の無断開示を認めない。
+
+現時点で`install`・`enable`・`init-failure`を実装したという主張ではない。受入Ownerは引き続き#2044とS1〜S5の各Issueであり、新しい管理Resolverや更新状態の第二正本は設けない。
