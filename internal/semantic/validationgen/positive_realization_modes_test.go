@@ -51,6 +51,8 @@ func TestSelectedPositiveRuleDirectAndGeneratedEvaluation(t *testing.T) {
 				rule = candidate
 			}
 		}
+	}
+	for _, ns := range loaded.World.Semantics {
 		for _, data := range ns.Data {
 			for _, attribute := range data.Attributes {
 				if attribute.ID == rule.Attribute {
