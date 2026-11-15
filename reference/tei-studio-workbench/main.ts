@@ -4,6 +4,9 @@ import { mountReadonlyGraph } from "../tei-studio-graph/graph.ts";
 import { mountCommandPanel } from "../tei-studio-command/command.ts";
 import { createReadOnlyClient } from "../../cmd/tei-studio/assets/client.mjs";
 import { createResponseScope } from "./responses.ts";
+import {
+  INSPECTOR_SELECTION_EVENT, emitInspectorSelection, inspectorSelectionFromEvent,
+} from "./inspector-selection.ts";
 import { readPinnedSubject, catalogIdentity } from "./pin-reader.ts";
 import {
   initialPinState, pinSubject, unpinSubject, invalidatePin,
@@ -65,7 +68,9 @@ const graph = mountReadonlyGraph(
   {
     onSelect(key) {
       const entry = entries.find((e) => subjectKey(e.subject) === key);
-      if (entry) void inspect(entry.subject).catch(showFailure);
+      if (entry) emitInspectorSelection(element("graph"), {
+        workspaceId: workspace.value, workspaceEpoch, subject: entry.subject,
+      });
     },
   },
 );
@@ -306,7 +311,9 @@ function renderList() {
     button.append(name, detail);
     button.addEventListener(
       "click",
-      () => void inspect(entry.subject).catch(showFailure),
+      () => emitInspectorSelection(button, {
+        workspaceId: workspace.value, workspaceEpoch, subject: entry.subject,
+      }),
     );
     return button;
   });
@@ -515,6 +522,15 @@ const panel = mountCommandPanel(element("commands"), {
       };
     }
   },
+});
+// The UI event is a request, not an authorization or a direct Host operation.
+// Only the two known local surfaces may initiate a read-only selection.
+document.addEventListener(INSPECTOR_SELECTION_EVENT, (event) => {
+  const target = event.target;
+  if (!(target instanceof Node) ||
+      (!list.contains(target) && !element("graph").contains(target))) return;
+  const subject = inspectorSelectionFromEvent(event, workspace.value, workspaceEpoch);
+  if (subject) void inspect(subject).catch(showFailure);
 });
 workspace.addEventListener("change", () => {
   search.value = "";
