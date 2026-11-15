@@ -233,7 +233,12 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 // Two present keys that are equal settle the rule as not satisfied whatever
 // else is unknown: no unread row and no empty value can undo a duplicate that
 // was seen. Without such a pair, the rule is satisfied only if every row was
-// read and every key is present.
+// read, at most one row holds no value, and no key is unread beside another
+// row.
+//
+// The rule does not say whether two rows without a value share a key. Read
+// either way, one such row shares its key with no other row, so it does not
+// keep the rule from being decided; two or more do.
 func decideRelationUnique(rule semantic.Validation, source StatefulSource) (Decision, error) {
 	reading, err := source.ReadRelationKeys(rule.Relation, rule.Attribute)
 	if err != nil {
@@ -243,7 +248,7 @@ func decideRelationUnique(rule semantic.Validation, source StatefulSource) (Deci
 		return Decision{}, fmt.Errorf("semantic validation %s: the reader reports relation %s with the unknown coverage %q", rule.ID, rule.Relation, reading.Coverage)
 	}
 	seen := make(map[string]struct{}, len(reading.Keys))
-	duplicate, notFetched, null := false, false, false
+	duplicate, notFetched, nulls := false, false, 0
 	for _, key := range reading.Keys {
 		switch key.State {
 		case ValuePresent:
@@ -256,7 +261,7 @@ func decideRelationUnique(rule semantic.Validation, source StatefulSource) (Deci
 				return Decision{}, fmt.Errorf("semantic validation %s: the reader reports a key of relation %s as %s together with a value", rule.ID, rule.Relation, key.State)
 			}
 			if key.State == ValueNull {
-				null = true
+				nulls++
 			} else {
 				notFetched = true
 			}
@@ -268,13 +273,14 @@ func decideRelationUnique(rule semantic.Validation, source StatefulSource) (Deci
 	case duplicate:
 		return decided(ResultNotSatisfied)
 	// What reading more could settle is reported before what it could not.
-	case notFetched:
+	case notFetched && len(reading.Keys) > 1:
+		// A key that was not read can only collide with another row.
 		return undecided(UndecidedRelationKeyNotFetched, rule.Relation, rule.Attribute)
 	case reading.Coverage == CoveragePartial:
 		return undecided(UndecidedRelationPartiallyRead, rule.Relation, rule.Attribute)
-	case null:
-		// Whether "unique" also speaks about rows without a value is not
-		// stated by the rule, so it is not guessed either way.
+	case nulls > 1:
+		// Whether rows without a value count as sharing a key is not stated
+		// by the rule, so it is not guessed either way.
 		return undecided(UndecidedRelationKeyNull, rule.Relation, rule.Attribute)
 	default:
 		return decided(ResultSatisfied)
