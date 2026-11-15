@@ -127,3 +127,44 @@ XCJ-01〜09と既存HG／RE／DCの負例を繰り返さず、「異なるOwner�
 
 **引渡し**：W0は#1124/#3262/#1251、W1は#951/#2595/#4544/#4495、W2は#1824/#2831/#4583/#4515、W3は#1129/#1174/#4198。独立Expectedは#1180/#2514、再資格化は#2600。本書は設計と実装パケットの統合であり、CPWの新Go／実Windows／実DB試験、正式Product Service選択・Owner意味受理は**NOT RUN／NOT ACCEPTED**。
 
+
+<!-- tei-plugin-w0-evidence-cut-20261115 -->
+## 7. W0の最初の実装を「根拠のない接続を作らない」検収から始める（2026-11-15）
+
+### 7.1 現行Goの責務をそのまま使い、結合できない箇所を残す
+
+`internal/operations/inspect.go`の`InspectSubject`／`SubjectInspection`は、Workspace・正規化済みSubject・Source Indexをread-onlyに投影する。`SourceIndexFingerprint`も`WorldFingerprint`も、意味受理やProvider選択を示さない。`internal/plugin/management/inventory.go`の`management.Report`は既存Plugin Resolverから得たLegacyの宣言・選択・Lockを表示する。`internal/composition/selection.go`の`Selection`は別のService Contract・Scope・Providerの宣言Snapshotであり、`internal/composition/service.go`の`Service.Invoke`だけが、そのServiceについて実Bindingを返す。
+
+**これらは、それぞれ正しい情報であっても、同じWorkspace／Rule／Functionを指しているとは限らない。** 初手で必要なのは新しい統合Registryでも万能Evidence Graphでもなく、既存の問いに必要な情報をOwner別に並べ、結合を許す根拠がない箇所を切断したまま示すread-only Projectionである。
+
+| 接続する候補 | 取得元と最初に表示できる事実 | 接続を確定させるために別途必要なもの |
+| --- | --- | --- |
+| Subject → Source | `InspectSubject`が実読取したWorkspace identity、Subject kind/ID、Source evidence、各fingerprint | 現在の同一対象・版。意味受理／編集資格は別 |
+| Rule → Function／Contract | `semantic.Validation`と明示的に受理されたFunction側の利用宣言 | どのFunction／Operationが当該Ruleを必要とするかを示す型付き利用関係。Rule IDや表示名の一致は不可 |
+| Contract → Provider | `composition.Selection`のContract ID/version/shape、Scope、Provider ID、Epoch | 適切なApplication／Target／Environmentの選択に帰属すること。Legacy `Inventory.Resolved`と自動結合しない |
+| Provider → Invocation | `Service.Invoke`の戻りBinding、Hostの実Caller・実Attemptにおける観測 | 同じService／選択世代・Entry・実Consumerの照合。戻り値が同じでもProvider A/Bを取り違えない |
+| Generated Go → Artifact → Consumer | R1生成Go／参照Builderの限定正例と、R2-P／R3の別Owner実証 | 製品Builderの実読取・Artifact member、公開Entryと実選択Provider Call。別Function／別Attemptの成功を連結しない |
+
+最初の出力に必要な表示状態は、(a)根拠が揃った局所事実、(b)根拠不足で`unknown`、(c)正の不一致が観測された`mismatch`、(d)対象契約に明示的に含まれない`not-applicable`である。`unknown`を`false`へ、`mismatch`を`unknown`へ、`not-applicable`を「権限不要」へ変換しない。観測が部分的なとき、未観測の呼出しやSourceの不存在を断言しない。名称は暫定的な検収表示語彙であり、新Core enumの採用ではない。
+
+### 7.2 最初の差分とテストを4つの小単位に分ける
+
+1. **W0-A：Sourceの根拠のみを確定する。** 一Workspace・選択済み`sales.order_line.quantity_positive`に限定し、既存`InspectSubject`と製品Rule ReaderのSource位置・型を照合する。Workbench／CLIから同じ対象へnavigateできる場合でも、実Providerや公開Entryは`unknown`のままにする。新Source Readerを作らない。
+2. **W0-B：Plugin InventoryとService選択を並置する。** 既存`management.Report`のEnvironment・Lock・Scan Stateと、`composition.Selection`のContract／Scope／Epochを別区画に投影する。両者の間にOwnerが保証する対応関係が無ければ、**接続線を描かない**。余分なProviderを選び直したり、表示側で`Registry.Select`を再実行したりしない。
+3. **W0-C：実Callerのいる一箇所だけ実行証拠を追加する。** R3では明示公開済みの別のpure Functionを既存の通常製品CLI→型付きServiceで一回呼び、選択Binding・実Binding・実Consumerを一Attemptで照合する。実行可能なCall Siteが未接続なら`unknown`と報告し、W0のための仮Hostや独自実行入口を追加しない。Rule R2-Pの製品Builder接続は並行する独立受入にする。
+4. **W0-D：正式な利用関係が受理されてから初めて線を結ぶ。** Rule→Function／Contract、選択Provider、Build Member、実Callerが同一対象・意味・版・Target・Attemptの下で証明できた辺だけ、標準Graphの型付きRelationへ投影する。図のEdge ID・方向・多重性を保ち、Viewの座標変更や手動配線から生成・実行・Grantを発生させない。
+
+W0-A/Bは**read-onlyの同じ画面に情報が出たこと**が目標ではない。原典／選択／呼出しの間で、実際には接続がない箇所を**誤って接続済みとしないこと**が最初の合格条件となる。最初の実装場所は`operations`の既存Readと`management`／`composition`の既存結果を受けるCLI/Inspector側の薄いProjectionを比較し、依存方向を逆転させず決める。`composition`が`operations`やStudio表示に依存する形へ移さない。
+
+### 7.3 最初に固定する反証とOwner引渡し
+
+| 既存Case | 最初の反証 | 合格として扱える範囲 |
+| --- | --- | --- |
+| CPW-01 | 異なるWorkspaceの同じSubject IDを提示 | Source位置・指紋の同値だけで同一対象へ結ばない |
+| CPW-04 | `management.Row.Resolved=true`だがServiceの`Selection`は得られない | Inventoryは表示できるが、Service選択は`unknown`。新しいResolverで穴埋めしない |
+| CPW-03 | Bを選択した記録に対し実Call A、または実Call証拠がない | Aの観測があれば`mismatch`、未観測なら`unknown`。同値Resultで救済しない |
+| CPW-05 | SourceがA→B→A、旧読取と現byteが一致 | 旧Attemptの現在性を復活させない。必要な再読取・再資格化は元Ownerが決める |
+
+まず既存Goのread-only負例を#1124／#3262／#1251へ、正式Builder／公開EntryのCallは#2595／#4544／#4495へ、Source版と局所失効は#2600へ引き渡す。実Hook／Effectは#1129／#1174／#4198の先行Guardと単一Caller検収後に限る。独立Expectedの置き場所は従来どおり#1180／#2514とし、ここに第二のScenario正本を作らない。
+
+**今回確認した実装の範囲**：上記4つのGo実装の存在と責務をSourceから静的に確認した。W0-A〜Dの新しい製品Go Test、通常CLI実R3、Rule R2-P正式Builder、Windows Stage2、Effectの統合試験は本追補では**NOT RUN**。この節によって、既存PRの部分的成功を横断E2Eの合格へ昇格させない。
