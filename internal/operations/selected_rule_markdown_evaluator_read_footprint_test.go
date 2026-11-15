@@ -73,12 +73,12 @@ func TestSelectedMarkdownRulesDriveEvaluatorReadFootprint(t *testing.T) {
 	// They are not generated from the canonical output being checked.
 	cases := []struct {
 		name, id, kind, attribute, relation string
-		number *big.Rat
-		keys []string
-		complete bool
-		want validationeval.Result
-		wantRead string
-		wantError bool
+		number                              *big.Rat
+		keys                                []string
+		complete                            bool
+		want                                validationeval.Result
+		wantRead                            string
+		wantError                           bool
 	}{
 		{"positive-two", "sales.order_line.quantity_positive", "positive",
 			"sales.order_line.quantity", "", big.NewRat(2, 1), nil, true,
@@ -86,6 +86,9 @@ func TestSelectedMarkdownRulesDriveEvaluatorReadFootprint(t *testing.T) {
 		{"positive-zero", "sales.order_line.quantity_positive", "positive",
 			"sales.order_line.quantity", "", big.NewRat(0, 1), nil, true,
 			validationeval.ResultNotSatisfied, "Number:sales.order_line.quantity", false},
+		{"positive-null", "sales.order_line.quantity_positive", "positive",
+			"sales.order_line.quantity", "", nil, nil, true,
+			"", "Number:sales.order_line.quantity", true},
 		{"positive-missing", "sales.order_line.quantity_positive", "positive",
 			"sales.order_line.quantity", "", nil, nil, false,
 			"", "Number:sales.order_line.quantity", true},
@@ -95,6 +98,9 @@ func TestSelectedMarkdownRulesDriveEvaluatorReadFootprint(t *testing.T) {
 		{"unique-duplicate", "sales.order.lines.line_number_unique", "relation-unique",
 			"sales.order_line.line_number", "sales.order.lines", nil, []string{"1", "1"}, true,
 			validationeval.ResultNotSatisfied, "RelationKeys:sales.order.lines/sales.order_line.line_number", false},
+		{"unique-empty-complete", "sales.order.lines.line_number_unique", "relation-unique",
+			"sales.order_line.line_number", "sales.order.lines", nil, []string{}, true,
+			validationeval.ResultSatisfied, "RelationKeys:sales.order.lines/sales.order_line.line_number", false},
 		{"unique-scope-unknown", "sales.order.lines.line_number_unique", "relation-unique",
 			"sales.order_line.line_number", "sales.order.lines", nil, nil, false,
 			"", "RelationKeys:sales.order.lines/sales.order_line.line_number", true},
@@ -121,7 +127,9 @@ func TestSelectedMarkdownRulesDriveEvaluatorReadFootprint(t *testing.T) {
 			probe := &evaluatorReadProbe{
 				attribute: core.CanonicalID(tc.attribute),
 				relation:  core.CanonicalID(tc.relation),
-				number: tc.number, keys: tc.keys, complete: tc.complete,
+				number:    tc.number,
+				keys:      tc.keys,
+				complete:  tc.complete,
 			}
 			got, err := validationeval.Evaluate(rule, probe)
 			if (err != nil) != tc.wantError {
