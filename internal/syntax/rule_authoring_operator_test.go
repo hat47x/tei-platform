@@ -137,6 +137,9 @@ func TestFormatRuleAuthoringRefusesOperatorsInsteadOfDroppingThem(t *testing.T) 
 	for _, src := range []string{
 		ruleAuthoringWithOperator,
 		"namespace sales\nrule sales.r: sales.a.b is sales.op\n",
+		// A declaration next to a built-in rule: nothing else would stop the
+		// formatter from rendering the rule and losing the declaration.
+		"namespace sales\noperator sales.op: takes number\nrule sales.r: sales.a.b is positive\n",
 	} {
 		if out, err := syntax.FormatRuleAuthoring(src); !errors.Is(err, syntax.ErrRuleFormatUnsupported) {
 			t.Fatalf("formatted %q, err=%v", out, err)
