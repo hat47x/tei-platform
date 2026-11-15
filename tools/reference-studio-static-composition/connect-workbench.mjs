@@ -71,6 +71,11 @@ export function gitBlobSHA(text) {
   const normalized = text.replaceAll('\r\n', '\n');
   return createHash('sha1').update('blob ' + Buffer.byteLength(normalized) + '\0').update(normalized).digest('hex');
 }
+// This historical Host client is stored with BOM and mixed CRLF/LF bytes in
+// Git. Normalizing it would no longer validate the actual committed blob.
+function exactGitBlobSHA(text) {
+  return createHash('sha1').update('blob ' + Buffer.byteLength(text) + '\0').update(text).digest('hex');
+}
 export function inspectWorkbenchImports(source) {
   if (source.includes('ui.generated.mjs')) throw new Error('workbench_already_connected');
   for (const entry of [graphImport, commandImport]) {
@@ -102,8 +107,12 @@ export function inspectPinnedDependencies(pin, commandSource, responsesSource, g
         Object.keys(closureSources).sort().join('\\0') !== expected.join('\\0'))
       throw new Error('workbench_closure_missing_or_extra');
     for (const path of expected) {
+      // The committed client.mjs has mixed line endings; compare its exact
+      // source bytes, not the line-ending-normalized Workbench TS digest.
+      const actualBlob = path === 'cmd/tei-studio/assets/client.mjs'
+        ? exactGitBlobSHA(closureSources[path]) : gitBlobSHA(closureSources[path]);
       if (typeof closureSources[path] !== 'string' ||
-          gitBlobSHA(closureSources[path]) !== pin.closureBlobs[path])
+          actualBlob !== pin.closureBlobs[path])
         throw new Error('workbench_closure_revision_mismatch:' + path);
     }
   }
