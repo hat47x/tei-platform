@@ -117,8 +117,8 @@ def derive_request(evidence_bytes, path):
 
 
 def verify_common(binary, evidence_path, version, selection, report):
-    """The contract every mode verifies: receive, inspect, derive, validate,
-    project."""
+    """Receive and validate saved bytes in every mode; project only when
+    producer-reported IDs are present in the same Evidence."""
     receipt = tei_json(binary, ["rea-evidence", "-analysis-output", str(evidence_path),
                                 "-provider-version", version])
     body = receipt.get("result", {}).get("receipt", {})
@@ -155,40 +155,72 @@ def verify_common(binary, evidence_path, version, selection, report):
         require(validated.get("ok") is True,
                 "a request derived from the Evidence must validate")
 
-        candidates = tei_json(binary, ["rea-evidence", "-analysis-output", str(evidence_path),
-                                       "-provider-version", version,
+        report["checks"].append({"receipt": digest(evidence_path),
+                                 "evidenceId": body["evidence"]["id"],
+                                 "derivedRequestValidated": True})
+        if selection is None:
+            report["notRun"].append(
+                f"{version}: semantic_graph has no observed node/relation ID pair; "
+                "external-candidates projection NOT RUN")
+            return
+
+        # This is the existing, distinct CLI contract. rea-evidence only
+        # receives a whole Receipt; it never accepts -observation-id/-relation-id.
+        candidates = tei_json(binary, ["external-candidates",
+                                       "-evidence-path", str(evidence_path),
+                                       "-tool-version", version,
                                        "-observation-id", selection["nodeID"],
                                        "-relation-id", selection["relationID"]])
-        view = candidates.get("result", {}).get("candidates")
-        require(view is not None, "the candidate projection must answer")
-        require(view["observation"]["nodeId"] == selection["nodeID"],
+        require(candidates.get("ok") is True and
+                candidates.get("schemaVersion") == "tei.cli.external-candidates/v0",
+                "the external-candidates CLI must return a successful typed envelope")
+        view = candidates.get("result")
+        require(isinstance(view, dict) and
+                view.get("schemaVersion") == "tei.operations.external-candidates/v0" and
+                view.get("effect") == "read-only",
+                "the R2 projection must preserve its typed read-only contract")
+        require(view.get("observation", {}).get("nodeId") == selection["nodeID"],
                 "the projection must carry the producer's node identity")
-        require(view["relation"]["relationId"] == selection["relationID"],
+        require(view.get("relation", {}).get("relationId") == selection["relationID"],
                 "the projection must carry the producer's relation identity")
+        require(view.get("attempt", {}).get("receivedDigest") == "sha256:" + digest(evidence_path),
+                "the selected candidates must belong to the same saved input bytes")
         for limit in ("external-candidate-is-not-accepted-meaning",
                       "external-identity-is-not-a-tei-semantic-subject"):
-            require(limit in view["authorityLimits"],
+            require(limit in view.get("authorityLimits", []),
                     f"the projection must state {limit}")
-        report["checks"].append({"evidence": digest(evidence_path),
+        report["checks"].append({"selection": digest(evidence_path),
                                  "observation": selection["nodeID"],
-                                 "relation": selection["relationID"]})
+                                 "relation": selection["relationID"],
+                                 "effect": view["effect"]})
 
 
 def selection_from_evidence(evidence_path):
-    """Name one observation and one relation the Evidence actually carries.
-    A version that states no relation identity has no selection to project, so
-    the caller is told instead of being handed a derived handle it cannot use."""
+    """Return a producer-reported observation/relation pair, or None.
+    Missing Graph/IDs are recorded as NOT RUN; an invented ID is never used."""
     envelope = json.loads(decode(Path(evidence_path).read_bytes()))
-    graph = envelope["data"]["normalized_result"]["semantic_graph"]
+    data = envelope.get("data") or {}
+    normalized = data.get("normalized_result") or {}
+    require(isinstance(normalized, dict), "normalized_result must be an object")
+    graph = normalized.get("semantic_graph")
+    if graph is None:
+        # Captured 6.8.0 receipts can have normalized_result={} with no
+        # Graph. They are still real receipt bytes, but NOT candidate evidence.
+        return None
+    require(isinstance(graph, dict), "semantic_graph must be an object")
     nodes = graph.get("nodes") or []
     relations = graph.get("relations") or []
-    require(nodes, "the Evidence carries no observation to select")
-    relation_id = None
-    for relation in relations:
-        if relation.get("relation_id"):
-            relation_id = relation["relation_id"]
-            break
-    return {"nodeID": nodes[0]["node_id"], "relationID": relation_id}
+    require(isinstance(nodes, list) and isinstance(relations, list),
+            "semantic_graph node/relation collections must be arrays")
+    node_id = next((n.get("node_id") for n in nodes
+                    if isinstance(n, dict) and isinstance(n.get("node_id"), str)
+                    and n["node_id"]), None)
+    relation_id = next((r.get("relation_id") for r in relations
+                        if isinstance(r, dict) and isinstance(r.get("relation_id"), str)
+                        and r["relation_id"]), None)
+    if node_id is None or relation_id is None:
+        return None
+    return {"nodeID": node_id, "relationID": relation_id}
 
 
 def verify_fixture_mode(binary, report):
@@ -203,9 +235,6 @@ def verify_fixture_mode(binary, report):
         require(digest(analysis) == recorded[f"rea-{version}/analysis.json"]["sha256"],
                 f"the captured {version} Evidence no longer matches its recorded digest")
         selection = selection_from_evidence(analysis)
-        if selection["relationID"] is None:
-            report["notRun"].append(f"{version}: the producer states no relation identity")
-            continue
         verify_common(binary, analysis, version, selection, report)
         inspected = tei_json(binary, ["rea-evidence", "-analysis-output", str(analysis),
                                       "-view", str(view), "-provider-version", version])
@@ -256,10 +285,7 @@ def verify_real_mode(binary, version, report, tool_prefix=None):
                     f"the terminal record must be metadata: {terminal.get('type')}")
 
         selection = selection_from_evidence(analysis)
-        if selection["relationID"] is None:
-            report["notRun"].append(f"{version}: the producer states no relation identity")
-        else:
-            verify_common(binary, analysis, version, selection, report)
+        verify_common(binary, analysis, version, selection, report)
         inspected = tei_json(binary, ["rea-evidence", "-analysis-output", str(analysis),
                                       "-view", str(view), "-provider-version", version])
         body = inspected.get("result", {}).get("receipt", {})
