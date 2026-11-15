@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -154,6 +155,16 @@ func TestGeneratedScenarioCommandInvalidatesOperatorSelectionChange(t *testing.T
 		!strings.Contains(err.Error(), "Operator Selection fingerprint differs") ||
 		output != "" {
 		t.Fatalf("old generated command executed B after selection A was pinned: output=%q err=%v", output, err)
+	}
+	// An independently launched product CLI must reject the same old argv,
+	// not only the test's direct call into runScenarioCommand.
+	if !testing.Short() {
+		args := append([]string{"run", ".", "scenario"}, oldPlan.Commands[0].Argv[2:]...)
+		cmd := exec.Command("go", args...)
+		output, err := cmd.CombinedOutput()
+		if err == nil || !bytes.Contains(output, []byte("Operator Selection fingerprint differs")) {
+			t.Fatalf("real tei CLI accepted stale selection: output=%s err=%v", output, err)
+		}
 	}
 	// A newly generated plan does use B, although it produces the *same*
 	// independent expected result on 2. Equal results are not provenance.
