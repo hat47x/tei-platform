@@ -25,9 +25,9 @@ import (
 // confer Owner acceptance, runtime authority, or product Builder selection.
 func TestSameRuleFromTwoProductSurfacesGeneratesIdenticalGoButDistinctSourceEvidence(t *testing.T) {
 	const (
-		ruleID         = "sales.order_line.quantity_positive"
-		attributeID    = "sales.order_line.quantity"
-		markdownPath   = "semantic/sales/order-line-rules.tei.md"
+		ruleID          = "sales.order_line.quantity_positive"
+		attributeID     = "sales.order_line.quantity"
+		markdownPath    = "semantic/sales/order-line-rules.tei.md"
 		traditionalPath = "semantic/sales/validation.tei"
 	)
 	markdownFixture := filepath.Join("..", "..", "workspace", "testdata", "tei-md-rule")
@@ -68,9 +68,9 @@ func TestSameRuleFromTwoProductSurfacesGeneratesIdenticalGoButDistinctSourceEvid
 	write(filepath.Join(traditionalRoot, filepath.FromSlash(traditionalPath)), read(traditionalFixture))
 
 	type witness struct {
-		rule             semantic.Validation
-		code             []byte
-		index            sourceindex.Index
+		rule              semantic.Validation
+		code              []byte
+		index             sourceindex.Index
 		sourceFingerprint string
 		modelRevision    string
 	}
