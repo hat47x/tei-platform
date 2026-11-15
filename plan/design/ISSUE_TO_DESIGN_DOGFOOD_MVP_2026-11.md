@@ -1672,3 +1672,25 @@ Studioでは[Desktop契約 #4879](https://github.com/hat47x/tei-platform/pull/48
 現行CLIの起動阻害に対しては、既存`runDBIntrospect`への接続と`-provider`／`-dsn`必須検査を採用し、未使用`-semantic`宣言を単に消す案[#4895](https://github.com/hat47x/tei-platform/pull/4895)とは一つに絞る。実DBの物理Schema取得／意味候補投影ができたという受入には、別の実行試験を要求する。新しいRunner・第二の意味Store・独自Resolverを設けず、現行`AGENTS.md`の「変更範囲に必要な検査」と各Ownerの独立Expectedへ返す。
 
 この追補ではmainへ入ったGoテストと旧HEADのCIログを根拠として記録した。**新しいPR HEADのGo test／実DB／通常CLI実Provider／Windows Stage2／Owner意味受理を今回実行したものではない**。統合する場合も、その差分によるCLI起動回復と、現在mainに残る失敗を区別する。
+
+<!-- tei-dogfood-generated-rule-edit-and-build-handoff-20261115 -->
+### 15.67 局所的な実Go生成の成立を受け、Source改訂→生成結果の因果を試す
+
+mainに[実Go生成 #4911](https://github.com/hat47x/tei-platform/pull/4911)が統合された。既存の内蔵Rule Readerで選択した`quantity_positive`から、解決済み`std.decimal`と型付き`semantic.Validation`を入力に、実際の`value.Sign() > 0`を含むGoを生成する`internal/semantic/validationgen.GeneratePositive`が加わった。別Go Processで正値／0／負値／NULL／欠損を実行する試験コードも存在する。未対応Kind／型／Relationを拒否し、既存`validationeval.Source/Result`を用いるため、第二EvaluatorやDSLへのGo構文露出を増やさず、**単なる手書きEvaluatorへの委譲を越えるR1の局所実装**となった。ただし、PRのマージと、その正確なHEADに対するGoテスト成功、製品Builderによる生成物消費は別資格である。
+
+元のR1試験では、型付きRuleの`Attribute`をテストコード内で直接差し替えた際にGo Sourceが変わることを確認している。次の一因子試験では、**テスト用WorkspaceのMarkdown原文そのものを編集**し、同じManifest/Language選択・同じRule IDのまま`Workspace.Load`をもう一度通す。その際、変更前のSource Index失効、変更後の型解決、再生成されたGoの`Number`呼出し先、固定した二入力での別Go Process実行結果をひと続きで照合する。元のFixtureは編集せず、変更先も`std.decimal`の独立属性として一時Workspaceにだけ追加する。型が`std.integer`や`std.money`の項目へ変更された場合は、暗黙の型変換や疑似的な成功で隠さず未対応として拒否する。
+
+この新しい回帰が成功しても、実SourceのReaderと実Go生成器を**テスト関数が接合した**という範囲までである。Generatorを製品の正式Builderが選択したこと、Build Intentに実Source/Toolchain/Targetを束縛したこと、Plugin Runtimeに入れたこと、通常製品CLIでProviderが呼ばれたこと、Ownerが業務意味を受理したことには拡張しない。実Goテストの合否は、新PRのexact HEADで個別に記録する。
+
+### 15.68 R2へ渡す最小の実装契約と、失格になる再利用
+
+R2では、`GeneratePositive(rule, attributeType, packageName)`の戻りbyteだけで実装を採用しない。この関数は現在、**Readerの選択元、Source occurrence、Language/Generator版、Owner受理、実Build Contextを引数に持たない純粋Lowering**である。この簡潔さは維持し、選択・権限・Buildの責務を生成関数へ重複させず、既存Builder/Build Intentの呼出し側で証拠を結び付ける。
+
+| R2に必要な実証 | 確認する内容 | 失格となる条件 |
+| --- | --- | --- |
+| **入力閉包** | 選択Manifest/Language版、管理Sourceの原byteと位置、Rule／Attributeの型、独立Expected、TargetとGenerator版を実Builderの入力として固定 | テストで合成した`semantic.Validation`だけを製品生成元と呼ぶ |
+| **生成・Build閉包** | 実`GeneratePositive`のbyteとdigest、Builderが読んだ同じbyte、Goコンパイラ／依存版、生成ArtifactとWorld／Model／Artifact Revisionを別々に記録 | 同値別Go、旧生成物、手作業で置いた`generated.go`を生成済みとして再利用 |
+| **変更追随** | 条件・参照Attribute変更なら実Go判断・Read Scope・実Consumer結果を再検収。Markdown説明文の変更ならSourceの再確認と意味不変を別票にする | Source A→B→Aで古い受理票・Grant・Build資格を自動復活 |
+| **Runtime閉包** | 選択Providerと実Entry、許可された入力Read、結果・Effect/Receipt、通常製品CLIと独立Consumerの実観測 | Build成功やGenerated Goの単独`go run`を実Provider Callへ昇格 |
+
+初回のR2はpureな数量判定一件に限定する。既存Builderに差し込む際に新Registry／Host／独自Runner／第二意味正本を必要とするなら、共通部品を増やす前に**既存Build Intentのどの入力契約が足りないか**をOwner #4544／#1121へ返す。R2の実ArtifactとR3の実Provider/CLI、R4のStudio Stage1→Stage2はそれぞれ実消費の証拠を持つ。Node Flowや簡易APIも同じOperator/Function/Processの投影として後続で検証し、初回Rule生成PRのHard Gateへは追加しない。
