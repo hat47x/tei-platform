@@ -1483,3 +1483,52 @@ Readerが1件通った次のPRで、§15.38の固定Fixture（同Labelの別Node
 まず**D-Aの正式Readerで一件を通し、並行してD-Dに必要な全Childのpin伝播と非Plugin Subjectを実装する**。そのうえでD-B→D-C→D-Dを接続し、最後にD-Eの実Desktopで確かめる。これまでの#1163 Evidence Packet、#1180 Scenario、#2514 Independent Expectedをそのまま使い、Source/Meaning/Build/Runtime/Consumerの担当Ownerへ試験を返す。試験は原則として同一Source版、選択、Toolchain、実Process、Artifact、Attemptを照合し、外部Consumerの観測を残す。
 
 本節の追補は、mainの実Go Sourceと統合済みPR・並行PRを確認した**設計・計画更新のみ**である。新たなGo/Node/Windows/実PostgreSQLの実行、正式`*.tei.md` Parser、製品Plugin Invoke、Stage1→Stage2 Desktop、現在Grant、Ownerによる業務意味の受理は**今回実施していない**。個別Reference試験の成功を製品資格へ転用せず、実装PRごとにexact HEADのCIと独立Expectedを確認する。
+
+<!-- tei-dogfood-20261115-reader-product-exit -->
+### 15.51 一つのReader差分に必要な実装・試験・証拠を固定する
+
+§15.46〜15.50は[PR #4824](https://github.com/hat47x/tei-platform/pull/4824)でmainへ統合された。本節では同じ工程を増やさず、最初のD-A（S0-A）を**実装PRとして完了できる大きさ**に落とす。目標は、管理対象の`*.tei.md`を見つけたという報告ではなく、**明示的に選んだGraph/Rule一件の原文が、実Workspaceの読取境界を通って、元位置を保った型付き候補へ到達した**という実証である。正式な意味受理と生成物の実使用は、さらに別の受入とする。
+
+現在の`internal/workspace/tei_md_source_guard.go`は、管理Rootに現れた`*.tei.md`を`TEI_MD_PARSER_UNBOUND`で停止する。これは黙って読み飛ばすより安全な挙動であり、全面的に解除してはならない。既存の`readPinnedWorkspaceFile`／Managed Source／Source Indexの読取実体と、Language/Role/Parserの明示選択を接続する最小差分を、#2621/#988/#1018/#2823へ渡す。
+
+| 実装境界 | 通過したと認める最小の観測 | 止める入力 |
+| --- | --- | --- |
+| **選択** | Workspaceの管理Source一覧から、指定した一ファイルとそのRole・Language/Parser版を一意に解決 | 未選択、複数一致、Parserが未束縛、管理外Draftを暗黙に昇格 |
+| **読取** | 同一Loadで得た原byte列、正規化前の位置、実Source Revisionを保持し、Parserが受け取ったbyteとの一致を外部から照合 | 検査時と解析時で別byte、同名ファイル差替え、古いSource Indexの再利用 |
+| **解釈** | Node ID・有向Edge ID・RuleのRoleを、既存の型付き候補へLossを明示して渡す | 同じ表示名のNodeの融合、多重Edge消失、説明文・図を無断で実行用宣言に変換 |
+| **Source復帰** | 候補の出典を現在のRoot/Revisionと照合し、元byteの範囲へ戻れる | CRLF/BOM/非ASCII位置の混同、Source位置だけの一致を現在の原文再取得と偽称 |
+| **後段への引渡し** | 実Buildに渡した入力memberと選択候補の対応を記録する。まだBuilderを呼んでいない場合は「未実行」と明示 | Candidate生成だけでAccepted Meaning・Product Generator・Build資格を立てる |
+
+試験には既存`testdata/tei-md-graph/`の同Label・多重有向Edge・逆向きEdgeを使い、Root外のDraft、未選択Source、旧`*.tei`の現行Consumer、旧新同Subject衝突を負例に含める。新しいMarkdown Grammarを独断で標準化しない。**最初の実装PRの終了条件は「選択一件が既存Load経路から候補とSource位置まで実際に通り、それ以外は正しく止まる」**である。Product Provider Invokeや正式Meaning受理の合格をこのPRに含めない。
+
+### 15.52 出力が一致しても「同じSourceから正しく生成した」証拠にはならない
+
+他のレーンから得た反証を、初回GraphのGenerator・Builder検収にそのまま適用する。Mainの[#4758](https://github.com/hat47x/tei-platform/pull/4758)は候補構造指紋を生成Binaryから照会できるようにし、[#4759](https://github.com/hat47x/tei-platform/pull/4759)は構造が同じでもSource Indexの旧Revisionを拒否した。[#4761](https://github.com/hat47x/tei-platform/pull/4761)では、Binaryが同じ候補指紋を自己申告していてもGoの実判定が変わり得ることを確認した。したがって**Raw Source、解釈された候補、生成Go、Builderが実際に読んだmember、Binary、Consumerが得た結果**を、相互に置換できる指紋として扱わない。
+
+| 一因子変更 | 独立に確かめる結果 | それだけでは言えないこと |
+| --- | --- | --- |
+| Graphの配置・表示だけを変更 | Raw byte版は変わり、出辺の意味・生成判断・Consumer結果は不変 | 元Sourceの再確認を省略できること |
+| `E2: A→B`を`B→A`へ変更 | 基準の`A={E1,E2}`、`B={E3}`から、`A={E1}`、`B={E2,E3}`へ変化 | 生成Goの差分だけで実Plugin呼出しも済んだこと |
+| 生成Goの条件を事後改変 | 自己申告の候補指紋が一致しても、実Binary digest・結果が異なれば不一致を検出 | Binaryの自己申告によって実行ロジックが保証されること |
+| 公開Manualだけを変更 | Manualの元Sourceは失効し、Graph候補の処理は必要以上に再生成しない | 選択Pluginの版・Lockが一致すればManualを開示できること |
+| WindowのNULLを0または行欠落へ変更 | 行ID・NULL/0/不在・取得件数を別々に検査する。Mainの[#4822](https://github.com/hat47x/tei-platform/pull/4822)は平均値が同じでも入力が欠け得ることを実DBで示した | 結果値の同値によって入力集合・Coverageが完全だったこと |
+
+この比較に使うFixtureと独立Expectedは#1180/#2514に一つだけ保持する。Generator検収#4544は、**TEI意味から判断処理を生成したか**を確認する。生成したJSONの表示、Go Wrapperによる手書き関数への委譲、実行されない生成物は生成範囲へ算入しない。正式Readerから生成した結果と、限定Referenceだけで生成した結果も別のClaimにする。
+
+### 15.53 Product CLIと自己再構築に必要な因果の証拠を一行ずつ残す
+
+初回Graph Pluginの実使用は、「選択した」「ビルドした」「呼び出した」を分けて確かめる。#951/#1251の既存Resolver/Providerと#2595/#2831のBuild Executionを利用し、同じSource/Generator/Target/Toolchain/Artifactの選択が、**実際のInvokerとConsumerで使われた**ことを確認する。選択B／実起動A、旧Pluginの使い回し、同じ出力を返す別Binaryは、結果が正しくても失敗である。
+
+Stage1→Stage2でも同じ方法を使う。固定した外部SeedはStage0として明示し、Stage1の**実行Process image・起動引数・発行したBuild要求・全Childへのpin・実Builder・生成Stage2 ArtifactSet・Stage2 Consumer結果**を一つのAttemptに結ぶ。再現性確認の二度目のChildにもpinが届かなかった#4634の問題を未解決の負例として保持する。Stage0が二度Buildした事実や、同じbyteのStage2が存在することだけではStage1再入と判定しない。
+
+現行`BuildIntent`には`go-command` Recipeと`go-package` Source Kindがある一方、non-Plugin Studio Subjectの正式なBuild処理には断線が残る。#4583では架空のPluginを登録して回避せず、既存Build Execution/ArtifactSetの正式な非Plugin Subjectに接続する。N0生成TS→N2実esbuild→N3 Go/Wails実exe→Windows WebView2の各入力memberと実使用を照合する。これはCLI先行のGraph Plugin実証と**並行して進める製品P0**であり、GUIの完成をD-A〜D-Dの着手条件にはしない。
+
+Plugin文書については、mainの[#4800](https://github.com/hat47x/tei-platform/pull/4800)と[#4826](https://github.com/hat47x/tei-platform/pull/4826)から実選択版・Lock・直接上位Pluginの選択を確認できる。しかし文書の帰属SourceRef、本文、Audience、現在Disclosure、Grantはまだ別資格である。#4714/#4679の通常Markdown Manual一件の読取を、業務`*.tei.md`の正式Reader完了に従属させない。
+
+### 15.54 人間・AIの一往復と、main統合を認める品質の境界
+
+Studioで元のSource位置を表示するS-LOCと、現在のWorkspace/Source Revision/Disclosureを照合して**原文を開き直すS-OPEN**は別作業である。Main統合済みの[Desktop Source復帰設計 #4823](https://github.com/hat47x/tei-platform/pull/4823)を利用し、Locatorの表示成功をSourceの再取得・編集許可へ昇格させない。AI OFFの読取操作を先に成立させ、HarnessやSHO/SUIへ渡す場合も、固定した対象・開示範囲・実受領を別々に確認する。GUI上の表示名、描画用Edge ID、後着した古いReplyを意味IDとして採用しない。
+
+**CIと統合の扱いもdogfoodingの一部とする。** [PR #4824](https://github.com/hat47x/tei-platform/pull/4824)はmain統合済みだが、当該HEADのRepository Healthはfailureで、ログには`internal/plugin/management/document_preflight.go`のgofmt差分と`workbench_revision_mismatch`がある。前者の修正[#4818](https://github.com/hat47x/tei-platform/pull/4818)はmain統合済み。後者の修正候補[#4812](https://github.com/hat47x/tei-platform/pull/4812)は**closed/unmerged**であり、同PRの過去CIを現在mainの成功とみなさない。ここでHealthの失敗を、docs-onlyだからといって合格へ書き換えない。
+
+次のコードPRはD-Aの「選択一件・同一byte・候補とSource位置・負例」だけとし、Ownerの#2621/#988/#2823へ渡す。Generatorは#4544、実Pluginは#951/#1251、自己再構築は#2831/#4583、実PG Function Readは#2586/#4495がそれぞれ責任を持つ。各PRの実行可否は**そのPRのexact HEAD、現在mainとの競合、独立Expectedと実Consumer**で判断する。本文の追加だけでは実Go/Windows/実DB/正式Reader/実Plugin/Stage2/Owner意味受理を新たに合格としない。新Host・第二Parser/Resolver/Registry・Scenario正本を増やさない。
