@@ -72,6 +72,7 @@ go test -count=1 ./tools/repository-plan-check
 - **標準HTML・CSS・DOM・Web Componentsを優先**し、独自レイアウトのJavaScriptや特定Frameworkへの過剰な依存を避ける。既存React Starter、CodeMirror、SUI Canvasは適切な用途で維持する。Lit+TypeScriptは比較候補であって採用済みの唯一方式ではない。
 - HTMLは意味とキーボード操作を持つネイティブ要素を先に利用する。CSS Grid/Flexbox、Container Queries、Custom Propertiesと意味別Design Tokensを基本とする。Shadow DOMは選択的に使い、公開Parts/Slots/Eventsの契約を明記する。
 - コンポーネントから直接業務権限・Operation/Effectを確定しない。Wails/Go連携は型付きAdapterを通し、後着返信・Pin/Workspace変更・A→B→A・現在Disclosureの失効を考慮する。
+- Studioで扱うGraph/Process/ノードの描画ID・配置・ラベルを、正式なData/Relation/Functionの識別子と同一視しない。UIの状態変更、保存済みSource、Builderが読んだSource、実Wails表示、業務実行を別々に検証する。
 - 新しいCSS/Web APIを採用する際は、対象WebView（Windows WebView2、macOS WebKit、Linux WebKitGTK）の対応状況とフォールバックを確かめる。Google Modern Web Guidanceは**知識の参照先**であり、採否や検査の代替ではない。
 - JavaScript/TypeScriptの型検査、Lint、CSS検査、公開部品契約、アクセシビリティ・ブラウザ試験、実Wails検査を変更範囲に応じて行う。**参照WorkbenchのSource→正規Build→埋込Assetを一系統として扱い、生成済みAssetを単独で編集しない。**
 - 詳細と受入負例は[Web標準UIとAIハーネス設計](plan/design/WEB_STANDARD_COMPONENT_AND_AGENT_HARNESS_2026-11.md)を参照。
