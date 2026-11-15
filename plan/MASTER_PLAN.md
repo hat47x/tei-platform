@@ -2056,6 +2056,18 @@ Studio／SHO／SUI／AIが同じ意味候補を提示しても、編集資格は
 
 **優先順位**：最初の製品実Read #2586、Desktop Stage1→Stage2 #2831を独立P0として維持。今回の節は設計・作業引渡しであり、実組織Provider/CLI/Host/Windows/Studio E2EやOwner意味受理の新しい実行は**NOT RUN / NOT ACCEPTED**。
 
+
+<!-- org-cross-view-rea-case-identity-20261115 -->
+### 2026-11-15 組織・REA・案件をまたぐ主体同定と責任判断の安全な再利用（組織C1補遺§34）
+
+[組織C1補遺§34](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)へ、REA・三要素分析・BRMS部分観測・Studioの判断理由Inspector・安全編集の成果を接合した。組織Person/Role/Responsibility、REA Economic Agent/Participation、Case Handling Unit/Handoff/Current Grantは**同名・同ID文字列・同じ画面表示だけでは業務上同一とみなさない**。Owner受理済みLink・Source/時点/Scope・Required Readがない限り、一つの承認者や業務担当へ短絡しない。
+
+- **四つの異なる資格**：validAt、knownAt、実ProviderのRead Cohort/Attempt、現在Grantを別欄で照合。knownAtが同じでも同一DB Snapshotとは限らず、正の関係経路が見えても全件性・承認適格・実行権限を保証しない。Case移管やA→B→Aで旧Grant/Effectを復活させない。
+- **反証・試験 OXV-01〜08**：未受理Person⇄REA Agent同定、二時点ずれ、Snapshot/Scopeずれ、同一人物の多重Occurrence、未取得否定条件、Case移管後の旧Grant、構造Dataだけに基づくFunction利用断定、Studio/SHOからの非公開理由・件数漏えい。これらは#1180/#2514の既存Expectedへ渡し、第二Result Schema/Engineは増やさない。
+- **実装順**：§33の実Read-1/2（#2586/#4490）→組織意味Owner（#2386）とREA意味Owner（#3394）の最小Link受理→正式Reader/Rule/Generator（#2621/#988/#1121）→Case/Host実行の独立検収（#4501/#1174）→Studio/SHOの安全なread-only Projection（#1124/#2516）。Source→意味→生成物→実Read→開示→Effectは別Evidence。編集はPreview→Resolve→Admit→Commit→独立再Readへ委譲し、曖昧な逆編集を拒否する。
+
+**現在の資格**：上記は採用前の受入契約であり、組織とREAの同一実DB世界・正式意味Link、組織の実Query→生成Go→CLI/Studio/Hostの一巡は未受理。#2586/#2831の独立P0を維持。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
