@@ -124,3 +124,63 @@ Markdownの原文順、列揃え、注釈、フェンス、空白はAuthoring So
 - **判定と証拠**：#1180／#2514。新しいScenario SSOTや受理Gateを作らない。
 
 **見直し条件**：D1の時点でRole判定やSource位置が既存Readerで区別できない、D2で生成された判断が本体の実Builderへ結び付かない、または二つの異質Domainで共通抽象が却って複雑になる場合は、全体的な一般化を停止し、失敗した境界に限って設計を修正する。
+
+## 8. 実装済みの足場から設計の問いを絞る（2026-11-15追補）
+
+前節のDW-01〜10は、独立Expectedを作るための**横断的な問い**である。現行mainと他レーンの成果を照合すると、すでに局所実装で扱える部分がある。未実装という理由で同じReader／Inspector／Builderを作り直さず、残った接続条件へ試験対象を移す。
+
+| 既存の実物 | 確認済みの限定的な範囲 | なお別に必要なこと |
+| --- | --- | --- |
+| `cmd/tei/cli_inspect_markdown_data_table_process_test.go`（#5058） | `tei.authoring/v1`で印を付けたData／Attribute／Ruleを、実製品CLI `inspect`と直接`InspectSubject`で比較。印のない例表や同名の非定義を拒否し、説明追記によるMeaningとSource証拠の差を観測する | Roleの一般的な競合・付け替え、表からの安全な編集、全DomainのDSL解釈 |
+| `cmd/tei/cli_self_build_generated_rule_go_test.go`（#5051） | 選択したRuleから正値判断を含むGoを生成し、選択元Markdownのbyte同一コピーを通常`tei self-build`の実入力へ含め、完成Binaryの読み取りで確認する | Reader／Generatorの実装byteと元Sourceの正式Build閉包、公開Entry→実Provider呼出し |
+| `internal/semantic/validationgen/positive_shape_obligation_baseline_test.go`（#5064） | Required Shapeについて、手書き分岐の現行挙動を独立Expectedに固定する | 自己記述から検査を構成するM1、手書き分岐の実置換M2 |
+| `internal/semantic/validationeval/evaluator.go`と`validationgen/positive.go` | 一つの`semantic.Validation`を、既存の汎用評価関数で解釈する経路と、Goへ生成する経路が存在する | 同一Rule・同一入力に対する評価の対応、両方式の選抜・配布・Effectの契約 |
+
+したがって、従来のD0〜D4をもう一度最初から実行する必要はない。**次の一歩は、同じ受理済み意味候補を複数の実現方式で扱ったときに、どの同等性を主張できるかを狭く確かめること**である。局所試験の合格を、正式R2-P、通常CLI R3、Studio Stage1→Stage2に加算しない。
+
+### 8.1 文書の役割と演算の役割は異なる
+
+一つのMarkdownには、説明文、例示用の表、明示的なData定義、Ruleの宣言が同居できる。そのうちどれが**定義として選ばれたか**は文書内の印、選択されたLanguage Reader、実Sourceの位置で決まる。定義として選ばれた後に、そのRuleが**どの演算を意味し、どの実装を使うか**を別に解決する。
+
+この二段階は、最近の自己記述設計で整理した`Shape`（形・参照先）、`Law`（意味的な判断）、`Binding`（具体的な実装選択）と対応する。ただし、文書上の「説明」「引用」「例」という記述の働きを、`semantic.Validation`のKindやOperator IDに直接写してはいけない。文書の論述上の役割と、アプリケーションで意味を持つRoleは、対応付けの前後で別物である。
+
+図に矢印が描かれた、表に「実行」と書かれた、説明文に「必須」と書かれたという理由だけでは、Relation、Effect、Grant、実Providerを成立させない。これはNode View／Plugin接続／外部Evidence／組織関係にも共通する。
+
+## 9. 「解釈して動かす」と「コードを生成する」を同じ選択の下に置く
+
+標準データ構造の内容を実際の振る舞いへ移す手段は、コード生成だけではない。小さなRule、図表のパラメータ、関数の組合せは、**Target側に備わる汎用関数が型付き定義を直接評価する**ほうが単純な場合もある。一方、静的に展開した方が性能、配布、診断、自己構築に適する場合もある。
+
+実現方式を固定された製品階層とはせず、受理対象の意味・Targetの制約・性能・変更頻度に応じた**選択結果**として扱う。
+
+| 実現方式 | 向く条件 | 守る条件 | 初回に用いる既存資産 |
+| --- | --- | --- | --- |
+| **汎用関数で解釈** | 演算の種類が限定され、パラメータで十分に表現できる。実行先へその評価関数を含めてよい | 評価時の型・NULL／欠損、Operator版、実装選択、実Callを追える。読めない入力を正常結果へ変えない | `validationeval.Evaluate`／`EvaluateWithOperators` |
+| **コード生成** | Targetへ静的に展開したい、コンパイル時の最適化や自己構築で手書きを減らしたい | 生成された判断が意味を持ち、生成器・原Source・Builder入力・Artifact・Consumerを別資格で照合する | `validationgen.GeneratePositive`＋`tei self-build` |
+| **既存実装へ束縛** | 専門機能や外部Providerの既存実装に業務上の意味を委ねられる | Shape適合とLaw適合を別に評価し、選択済み実装と実Call、Grant、Effectを区別する | 既存Operator実装選択、Plugin／Service契約 |
+
+いずれも**同じ受理済みMeaningを参照する**ことを原則とし、方式別に別の業務Rule正本を作らない。必要な場合はTarget固有のLowering・評価関数・Providerを持たせるが、TEI専用の常駐Hostや万能な実行Engineを前提にしない。生成方式と解釈方式を一つの生成物へ混在させる場合も、どの部分を何が実現したかは追跡できるようにする。
+
+どちらがよいかは、手書きの分岐・設定量、生成物の量、性能、起動時の更新可能性、必要な依存物、検証の容易さ、外部効果の境界を比較して決める。**「生成されたコードの行数が多い」「汎用関数が短い」というだけでは採否を決めない。**
+
+### 9.1 第一の実測は正値Rule一件に限定する
+
+同一`Workspace.Load`から選んだ`sales.order_line.quantity_positive`について、既存`validationeval.Evaluate`と、`validationgen.GeneratePositive`から通常`tei self-build`で生成した実Binaryの判断を比較する。入力は正値・ゼロ・負値・明示NULL・未取得の五つとし、**結果とNumberの読取り回数**を独立Expectedで固定する。
+
+このPRの`TestSelectedRuleGoThroughRealCLISelfBuild`には、既存の実Binaryの結果照合に加え、同じ選択済みRuleを汎用評価関数へ渡す局所比較を追加する。双方が同じ結果でも、**別Processの局所評価と実Builderが使った生成Goの同値**だけを主張する。実Providerの選択・呼出し、正式Plugin Lock、Owner受理、Studio実OSでの受領は未証明のままとする。Goの実行経路を持たないTargetに、この五件の結果を一般化しない。
+
+## 10. 文書の抽象化を進めるための追加反証
+
+汎用評価と生成の局所同値を確かめても、文書の説明や図から、任意の定義を安全に実行できるようになったわけではない。そこでDW-01〜10の問いを、次の**差分一件ずつの検収候補**へ絞る。番号はこの計画内の索引であり、新しいScenario正本ではない。
+
+| ケース | 意図した一因子差分 | 確かめる不合格条件と引渡し先 |
+| --- | --- | --- |
+| DW-11 文書Roleの範囲 | 印のない説明用表へ定義らしい列名を追加 | Language Readerが印なし表から意味定義を作成したら不合格。#2621／#2620、既存#5058の否定例を拡張 |
+| DW-12 同じShape・違うLaw | Ruleの入力型と参照項目は同一、`> 0`から`>= 0`へ変更 | 型一致や正値での同一結果を根拠に意味同等としたら不合格。#2544／#988／#2514 |
+| DW-13 解釈と生成の同値上限 | 意味・入力を固定し、評価方式だけ変更 | 結果・Read回数が異なる、またはRuntime Provider実証へ飛躍したら不合格。#4544／#1180／#2514 |
+| DW-14 出典の独立失効 | 意味は同じまま、説明文だけ変更 | Source証拠の改版を無視する、または無条件で業務意味改版としたら不合格。#2621／#2595 |
+| DW-15 Graphの情報損失 | 同じ二端点に同名の二Edgeを持つGraphをTreeへ投影 | Edge ID・向き・多重性を失ったTreeから一意の更新対象を推定したら不合格。#2497／#4198 |
+| DW-16 選択済み実装の鮮度 | Rule形状は同じで、Operatorの実装選択だけA→B→A | 過去のAで得た実Call／Grant／Scenarioの資格を復活させたら不合格。#951／#1180／#2514 |
+
+**実装順は二経路に分ける。** 製品CLIで確認できるDW-11／12／14は、既存MarkdownのReader・Inspector・Source Indexへ一因子の負例を追加する。DW-13は前節の正値Ruleの汎用評価・生成Go比較から始め、Target変更は後続へ残す。DW-15／16は既存のGraph・Plugin選択のOwnerが持つ試験に渡す。すべてを満たす新しい横断Runnerや共通Gateは作らない。
+
+文書・業務・Graphの異質な三題材を比較して、`Shape`、`Law`、`Binding`が有効な問いとして保てるか確かめる。結果が揃わなければ、標準データ構造を増やす前に**どの意味を失ったために合成できなかったか**を説明できる状態へ戻す。現時点の受入済み機能を広げる根拠は、設計書の増加ではなく、反例を検出できる実装と独立Expectedである。
