@@ -1089,12 +1089,16 @@ S3の最小受入は、単一所属Occurrence・Assertion revision・物理行�
 
 | 段階 | 維持する条件 | 最初に使う現行資産 |
 | --- | --- | --- |
-| S3 Source/IR | Membership occurrence / Revision / validAt / knownAt、Relation ID・Key・向き・多重性、Query ID・Datasource・必要属性。表示ラベルの変更は無関係 | \`org-staged-axis\` 実Workspace、\`organization.membership.unit\`、\`org_axes_view.as_of_membership\` |
+| S3 Source/IR | Membership occurrence / Revision / validAt / knownAt、Relation ID・Key・向き・多重性、Query ID・Datasource・必要属性。表示ラベルの変更は無関係 | `org-staged-axis` 実Workspace、`organization.membership.unit`、`org_axes_view.as_of_membership` |
 | S3 Provider | 生成・解釈どちらの方式でも、同じ意味上のQueryと実パラメータ、完全なRead Cohortを追跡 | #2586/#2622、既存Query Binder・Evidence |
 | S4 Context/Rule | Membership件数・distinct Person・FTE・候補/責任を別Claimとして維持し、unknown/partialを確定値に潰さない | #4490/#2514、既存BRMS・Function Context |
 | S5 Consumer/Plugin | Graph/Table/Tree/文書、Pluginの基本型/複合型port/Adapterで、元Relation occurrence・Source revision・受信Scopeを保持 | #1124/#2516/#4515、既存Standard Data/Projection |
 | Host境界 | 意味上の承認候補、現在のPrincipal/Grant、実Effect/Receiptは別資格 | #1174/#2499 |
 
-最初の局所Goテスト \`TestOrgC1AbstractUnitReadPathUsesStableSemanticIDs\` は、現状の実Source→型付きRelation IR→Query Result属性の対応だけを固定する。正例はMembership→OrgUnitの宣言、表示Symbolの改名に対する安定性。負例はPersonへのTargetすり替え、Key欠落、Query/Datasource違い、Result属性の欠落。**これはGenerator実行やRelation traversalのE2Eではない**。次の受入は同じExpectedを用いて実Builder/Artifact→実Provider→Function Context→二Consumerへ段階的に拡張し、候補の根拠と実行資格を独立に検査する。
+最初の局所Goテスト `TestOrgC1AbstractUnitReadPathUsesStableSemanticIDs` は、現状の実Source→型付きRelation IR→Query Result属性の対応だけを固定する。正例はMembership→OrgUnitの宣言、表示Symbolの改名に対する安定性。負例はPersonへのTargetすり替え、Keyの向き違い・欠落、Datasource/Query違い、名前付き入力の欠落・型違い、Result属性の欠落・誤対応。宣言順だけの変更は合格とする。**これはGenerator実行やRelation traversalのE2Eではない**。次の受入は同じExpectedを用いて実Builder/Artifact→実Provider→Function Context→二Consumerへ段階的に拡張し、候補の根拠と実行資格を独立に検査する。
 
 経路と不変条件は既存Scenario/Expected・Source位置・Evidenceの属性として保持し、新しい汎用Trace DB・組織専用Runtimeは増やさない。データ構造の見た目が同じでも、型付きRelation/Scopeが異なれば接続不可または明示Adapterが必要。S1の単純なProfileにS3の履歴を強制せず、通常CLI実Read #2586とStudio Desktopセルフビルド #2831のP0を維持する。
+
+**三つの検査を混同しない**：まずSource/型付きIRの静的経路成立、次に同じAttemptで実Builder・実Providerを通った事実、最後にFunction Contextから二Consumerまでの状態不変性を検査する。抽象経路を特定の条件で通るべきことと、実際に通ったことは別資格である。Generatorと汎用Evaluatorの同値性は、別レーンの[PR #5077](https://github.com/hat47x/tei-platform/pull/5077)・[PR #5087](https://github.com/hat47x/tei-platform/pull/5087)を手法上の先例とし、組織データへは改めて適用する。
+
+**検収票の対応**：既存のScenario/Test IDを起点にSource/World Revision、Relation・Query ID、Port型／Adapter、Generator・Artifact、実Call-site、Read Cohort、途中のOccurrence/knownAt/validAt/unknownを照合する。Goの生成メソッド名は経路の意味的な同一性の代わりにしない。AR-1の局所テストをAR-2〜5の完了として扱わない。
