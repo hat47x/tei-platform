@@ -1924,6 +1924,13 @@ func (p *Parser) ParseSemanticFile() (semantic.Namespace, error) {
 			// admission boundary. Keep the source range at the keyword.
 			return ns, p.errAt(t, `"rule" starts a rule authoring declaration, which is not admitted in a legacy semantic .tei file; declare it in its own file as a selected tei.rule-authoring/v0 .tei.md source (for example semantic/<namespace>/<name>.tei.md), or use the legacy validation syntax`)
 		default:
+			// A rule in a plain .tei semantic file is not an unknown keyword:
+			// rule authoring is selected for fenced *.tei.md sources only.
+			// Keep the invalid declaration rejected and point to the actual
+			// source format, rather than expanding this parser's grammar.
+			if t.Text == "rule" {
+				return ns, p.errAt(t, `"rule" starts a rule authoring declaration; declare it in its own file under semantic/<namespace>/*.tei.md inside a tei code fence, with tei.rule-authoring/v0 selected in the Workspace manifest`)
+			}
 			// A top-level keyword from another domain (an application, a
 			// migration) is a placement mistake, not a typo. Name it, then fall
 			// back to the declaration list this namespace actually accepts (#4169).
