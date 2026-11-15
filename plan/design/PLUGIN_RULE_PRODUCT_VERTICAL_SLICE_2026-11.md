@@ -225,8 +225,33 @@ Source変更A→B→A、生成器版変更、Build時だけの依存、入力取
 
 ### 14.4 既存参照Builderに生成Goを渡す一試行（PR #4934）
 
-実Builder入力の照合は、BuildPlanの型を説明するだけでは検証できない。[PR #4934](https://github.com/hat47x/tei-platform/pull/4934)で、`tools/reference-go-build-from-plan/validationgen_build_binding_test.go` に、実 `Workspace.Load` → 選択Rule・Source Index → `validationgen.GeneratePositive` → 一時Go package → 既存 `DirSourceResolver`／`plugin.BuildPlan` → 既存 `reference-go-build-from-plan` の `-isolate` 実行 → Artifact Digest・BuildArtifactLock照合 → **Builderが生成した実Binaryの独立Expected**という試験を加える。
+実Builder入力の照合は、BuildPlanの型を説明するだけでは検証できない。PR #4934はclosed／unmergedだが、現在のmainでは統合コミット [`c2cf3fe8`](https://github.com/hat47x/tei-platform/commit/c2cf3fe883de7653ef1e0fdb3cf43bd42dcecbcc)を経て `tools/reference-go-build-from-plan/validationgen_build_binding_test.go` が収録されている。この試験には、実 `Workspace.Load` → 選択Rule・Source Index → `validationgen.GeneratePositive` → 一時Go package → 既存 `DirSourceResolver`／`plugin.BuildPlan` → 既存 `reference-go-build-from-plan` の `-isolate` 実行 → Artifact Digest・BuildArtifactLock照合 → **Builderが生成した実Binaryの独立Expected**という手順が実装されている。**mainのファイル収録と、特定HEADのCI成功・Owner受理は別の事実である。**
 
 この試験では生成Goを計画確定後に書き換え、古い計画がコンパイル前に拒否されることも確かめる。Goモジュール文脈と、生成Goが参照する既存 `core/identity`、`internal/core`、`internal/semantic`、`internal/semantic/validationeval` を計画Sourceとして明示する。ReaderのSource ID／Attribute型、BuildPlanの実入力Digest、Binaryの実挙動は別々に照合し、一致結果だけを根拠にしない。
 
 **受入範囲は既存Reference Builderでの一回の実Go消費に限る。** この試験で作ったBuildPlanはテスト用であり、正式製品 `tei` が選択したBuilder／Plugin Runtimeを証明しない。製品Build Intentから実ProviderのEntryまでの接続と、Stage1→Stage2 Windows実再入は、それぞれ既存#4544／#4495／#2831／#4583に残す。PRのマージとexact HEADのGo／CI成功も区別する。
+
+### 14.5 製品Builderから公開Entryへ渡す際に、残る断線を一つずつ閉じる
+
+参照Builderのテストで成立したのは、選択済みRuleからGoを生成し、既存`plugin.BuildPlan`／`DirSourceResolver`が宣言したbyteを実際に取り込み、隔離GoコンパイルでArtifact Digest・BuildArtifactLockを照合し、その実Binaryから独立Expectedを受け取る経路である。計画確定後に`generated.go`を改変した場合、コンパイル前に拒否する負例もある。**これは単なるファイル名やDigestの自己申告ではなく、限定的な実Builder消費である。** ただしテストが作ったPlanとConsumerは参照用であり、実製品が選択したBuilder・Plugin・公開Entryではない。
+
+次の実装は、これまでのReaderやGo Loweringを再実装せず、既存#943／#2595の製品Build Intentで同じRuleから生成したGoを受け取り、#951／#1016の実選択結果に従うRuntime ContributionをArtifactへ含める**R2-P（製品への実収録）**とする。そこから#4495／#1251の**R3（正式なEntryを通じた実Provider呼出し）**へ進む。
+
+| 境界 | 参照試験で成立したこと | 製品で新たに実証すること | 反証 |
+| --- | --- | --- | --- |
+| 生成Input→Build Intent | 同一LoadのRule・型・Source Indexから生成Goを作り、`BuildPlan`の入力として実読取り | 製品Build Intentが選択したGenerator／Source／Toolchainの閉包、同じAttemptのReader・生成物・Builder入力 | 別Attemptの同名Go、選択Bと実使用A、同じSourceでGeneratorだけ変更 |
+| Build→Artifact | 隔離実BuilderがArtifactとLockを生成し、古い`generated.go`を拒否 | 正式なArtifactSetにRuntime Providerを収録し、実製品Binaryで必要なEntryが利用可能か照合 | Build-only GeneratorのRuntime混入、旧Artifactの流用、別Toolchain同byte |
+| Rule→Function／Entry | Ruleの正式Subjectは`semantic-validation`。同一IDの`semantic-capability`が存在するとは扱わない（mainの`inspect_markdown_rule_entry_boundary_test.go`） | 受理済みのFunction／公開Entryと、そのFunctionが参照するRuleを明示的に結び、入力名・型・必須性、公開範囲、Effect宣言を照合 | Rule IDから同名Entryを自動公開、未宣言の引数別名を採用、NULLと未取得を同値とする |
+| Entry→Invocation→Consumer | 参照用Go Binaryを独立プロセスで実行した | 製品の共通Application APIと通常`tei` CLIの両入口で、**現在選択された実Providerのactual entry**と入力Binding、結果、Consumer受領を観測 | Selected B／Called A、CLI内の固定値、現在Grant不明のまま実行成功扱い |
+
+公開Entryは、単なるRuleのID変換ではない。**Data Modelは属性・型・Relation、Function Modelは入力・判断・処理、Business Modelは業務状態・遷移を所有する**。RuleはFunction／Operationの内部から再利用できるが、読めるRuleを自動的に外部実行可能なFunctionに昇格させない。これはData／Function／Businessの独立性、表スクリプト／Data Ruleの再利用、Process／Node Flowの共通Operator化にも適用する。ノード画面上でRuleを配置できることは、公開Entryと現在Grantが存在することではない。
+
+#### 最短の製品コード差分と検収先
+
+**R2-P（#943／#2595／#4544／#951）**：既存の製品Build Intent／選択Plugin経路に、`quantity_positive`の生成Goと必要なGoモジュール依存を一件だけ渡す。選択済みSource／Generator／Toolchain／実Read／ArtifactSet／実Runtime収録の各値を一回のBuildで照合する。参照BuildPlan試験が通ることを理由に製品Builderの未接続を回避しない。Goの`internal` import制約を守り、外部Host用はTarget-native Adapterの別検証へ送る。
+
+**R3（#1251／#4495／#1158）**：受理済みFunctionに既存の型付きEntry公開契約を適用し、選択Providerに束縛した実Invocationを、共通Application APIと通常`tei` CLIから呼ぶ。`quantity=2.5`・`0`・`-1`と、欠損・NULL・型不適合を独立Expectedで比較する。入力の取得完全性、現在Grant、Entryの公開可否は別判定とし、評価不明を`false`に潰さない。
+
+**並行P0（#2831／#4583）**：Stage1の実TEIがStage2を生成し、実Windows Wails/WebView2で受領する。R2-P／R3のGo局所成功をこれに加算しない。公開Manual、外部Host、Node GUI、HTTP Trigger、Effectを伴うHookは、この最初のpure Ruleの先行条件にしない。
+
+実装担当は既存Owner、Independent Expectedは#1180／#2514、証拠は#1163に帰属する。新しいEntry Registry、Builder、Host、Scenario正本、認可経路を追加しない。**この追補は現行コードの実在と次の受入境界の更新であって、新しい製品R2-P／R3の実行結果ではない。**
