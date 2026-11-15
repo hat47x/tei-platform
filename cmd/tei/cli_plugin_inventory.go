@@ -31,6 +31,7 @@ type pluginInventoryDetail struct {
 	SettingsVersion *string                    `json:"settingsVersion"`
 	Resolver        management.ResolverOutcome `json:"resolver"`
 	Row             management.Row             `json:"row"`
+	DocumentReadPreflight management.DocumentReadPreflight `json:"documentReadPreflight"`
 	Message         string                     `json:"message"`
 	NotModelled     []string                   `json:"notModelled"`
 	AuthorityLimits []string                   `json:"authorityLimits"`
@@ -103,6 +104,7 @@ func pluginInventoryJSON(out io.Writer, workspacePath, worldPath, environmentID,
 			SettingsVersion: report.SettingsVersion,
 			Resolver:        report.Resolver,
 			Row:             row,
+			DocumentReadPreflight: management.InspectDocumentReadPreflight(report, pluginID),
 			Message:         management.DetailMessage(row),
 			NotModelled:     report.NotModelled,
 			AuthorityLimits: report.AuthorityLimits,
