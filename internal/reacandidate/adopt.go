@@ -1,6 +1,7 @@
 package reacandidate
 
 import (
+	"reflect"
 	"sort"
 	"strings"
 
@@ -216,6 +217,9 @@ type CandidateComparisonEntry struct {
 }
 
 // Comparison statuses.
+// A reused candidate identity does not imply its observed facts stayed the same.
+const ComparisonObservedFactsChanged = "observed-facts-changed"
+
 const (
 	ComparisonUnchanged           = "unchanged"
 	ComparisonAdded               = "added"
@@ -357,6 +361,12 @@ func comparePair(before, after StructureCandidate, beforeAttempt, afterAttempt s
 	}
 	sameBytes := before.SourceRevision.ArtifactPath == after.SourceRevision.ArtifactPath &&
 		before.SourceRevision.Fingerprint == after.SourceRevision.Fingerprint
+	factsChanged := !reflect.DeepEqual(before.Facts, after.Facts)
+	if factsChanged {
+		entry.Notes = append(entry.Notes,
+			"observed-structural-facts-changed-under-reused-candidate-id",
+			"source-backed-re-evaluation-is-required-before-meaning-or-edit")
+	}
 	switch {
 	case !sameBytes:
 		entry.Status = ComparisonRevisionChanged
@@ -364,6 +374,8 @@ func comparePair(before, after StructureCandidate, beforeAttempt, afterAttempt s
 			"the-analyzed-bytes-differ-between-the-two-sets",
 			"a-returning-fingerprint-does-not-prove-no-intermediate-revision",
 			"fresh-owner-review-is-required")
+	case factsChanged:
+		entry.Status = ComparisonObservedFactsChanged
 	case beforeAttempt == afterAttempt:
 		entry.Status = ComparisonUnchanged
 	default:
