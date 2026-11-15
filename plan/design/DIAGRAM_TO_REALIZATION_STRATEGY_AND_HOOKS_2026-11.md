@@ -208,3 +208,79 @@ Go ASTから条件・Read・Failureを抽出して図表やSourceへ戻す場合
 本書のRG-01〜12は**設計上の点検項目**であり、独立Expectedの新Registryではない。実検収では[結果要求のLC-01〜12](DECLARATIVE_RESULT_PROCESS_COMPOSITION_2026-11.md)、[宣言的合成のGP-01〜06](DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md)、既存#1180/#2514を参照する。
 
 最初に同一Ruleの直接Evaluatorと生成Goを別実装として呼び、固定Independent Expectedと照合する。PR #5009の限定的な通常CLIビルド、PR #5056の実Builder入力とのbyte不一致拒否を既存基線とし、Source／Generator／実Build入力の出典閉包を次に接続する。続いて通常CLIの**選択Providerと実Call**、DB委譲での差異、Studio Stage1→Stage2を独立に確かめる。対象ごとの証拠がそろうまでは、これらを製品全体の実証に合算しない。
+
+
+## 10. 生成する文脈を絞り、生成対象をボイラープレートに近づける
+
+**目標は、生成AIに自由度の高い業務実装を毎回任せることではない。** 図表／Patternの意味とTargetの責務を先に確定し、コード生成が既知の変換規則・型・接続点から定型的に実現できる部分に限定されるよう、設計側で文脈を狭める。ここでいう「ボイラープレート」はコードが冗長という意味ではなく、**出力の選択肢が契約で十分に絞られ、独立試験で合否を決められる作業**を指す。
+
+受入済みの業務Ruleや計算の本質を、もっともらしい定型コードへすり替えてはいけない。意味の決定はSemantic／Owner、実現方法の決定は既存Resolver／Composition、生成したコードの照合は既存Generator／Builder／Evidenceの責務として保つ。AIが案を出す工程と、確定したGeneratorを再実行する工程も分ける。
+
+### 10.1 生成対象の「閉じた文脈」
+
+Generator／生成AIへ渡すContextは、巨大なWorkspaceや過去の会話の全文ではなく、次の**必要な参照と値だけを含む最小の実現課題**とする。
+
+| 固定する情報 | 最小の内容 | 未確定ならどうするか |
+| --- | --- | --- |
+| **意味と入力** | 選択したCanonical ID、Accepted Meaning／必要属性、元Source参照と版、型、NULL・欠落・空集合、入力粒度・時点・Scope | 補完せずMeaning／Reader Ownerへ返す |
+| **出力** | Target言語と版、実現するContract、公開関数・型・Resourceの必要集合、失敗／Effect境界 | 未対応または別実現方式として比較する |
+| **接続点** | 既存Module／Package／Registration／Hook ID・版、所有者、呼出位相、Buildに含める配置方法 | 曖昧なSymbol／書込み先へ挿入しない |
+| **変換規則** | 選択済みPattern／Template／Operatorと版、許可された変換・依存・Importの一覧 | 新しい変換案としてレビューへ返す |
+| **試験・許容差** | 生成器から独立したExpected、正常・境界・負例、許可される非決定性、性能・配布要件 | 「ほぼ確実」とせず試験可能な範囲を先に確定する |
+| **実行資格** | Generator候補の出所・digest、Builder／Target能力、試験時の隔離条件 | 受理・Provider Grant・本番配備を推定しない |
+
+**閉じてよいのは実装上の自由度だけ**であり、業務的な未確定事項を隠して「生成可能」と判定しない。グラフの辺・表の列・Hookの存在を推測した場合は、提案としてSourceに戻す。元のMarkdownや図表の全文を毎回詰め込む必要はないが、出典へ戻れるAnchorとSource Revisionは必須である。GeneratorはReferenceの独立Expectedを入力にして正解を写してはならない。
+
+Contextの範囲は過不足なく固定する。過剰な候補列挙や無関係なSourceはAI実装の揺れを増やす一方、必要な型やEffectを隠した短いContextは誤りを招く。**小ささ自体ではなく、必要十分であること**を評価する。
+
+### 10.2 方式の選択を「何がまだ自由か」で判定する
+
+1. 既存の**汎用Function／Operator**だけで意味・Effect・性能を満たす場合はIを選び、業務判断コードを生成しない。
+2. 同じ意味を既存の**定型Pattern／Generator**で決定的に展開できる場合はGを選ぶ。AIを実行のたびに呼ばず、固定Generatorで生成する。
+3. 定型部分はGenerator、対象固有の変動は解釈パラメータで受けられる場合はHを選ぶ。
+4. DBの同じScope・精度・NULL規則で実現できると確認できれば、既存のQuery／Providerへ委譲する。外部EffectはProvider／Hostの契約に従う。これらはI/G/Hの別の権威ではなく、既存の[成果物・計算方式比較](DECLARATIVE_RESULT_PROCESS_COMPOSITION_2026-11.md#11-一つの意味モデルから複数の実現方式を選ぶ2026-11-15追補)にある実現候補である。
+5. **特殊な判断の大部分をAIが推測しなければならない**、または独立Expectedが準備できない場合は、生成を自動適用しない。設計の詳細化、Patternの抽出、限定した手書き実装、未対応という選択肢を残す。
+
+選択順は「契約への適合→実体の存在→保守・実行コスト」である。AIの生成しやすさを理由に、Targetへの適合や受理済み業務意味を下げない。
+
+### 10.3 生成AIに任せる部分と、機械的に確定させる部分
+
+| 対象 | AIの役割 | 最終的な確定手段 |
+| --- | --- | --- |
+| 図表から不足条件を発見する | Pattern候補、質問、実現属性の分類を提案 | Source Writer／Semantic Owner／受理 |
+| 新しいGenerator・Templateを作る | 閉じたContextの中で候補ソースと負例案を作る | 独立Fixture、静的解析、再現試験、レビューによる候補選抜 |
+| 既知Generatorを日々適用する | 原則不要。必要なら失敗診断の補助 | 版固定した決定的Generator、実Builder入力照合 |
+| 案件固有の拡張を実装する | 許可されたHook契約と別ファイルの範囲内で候補を作る | Hookの独立適合試験、Guard／Effect／実Providerの別検証 |
+| 未解決の業務判断 | 正答を推測して埋め込まない | Ownerへ戻す。未受理のまま公開・実行しない |
+
+生成AIが書いたTargetコードを直接正本にするのではなく、**AIが定型Generatorや案件拡張の候補を作り、TEIがその版・適合・実消費を管理する**方式を主軸とする。これは[既存のGenerator Source設計](AI_GENERATOR_AUTHORING_STANDARD_2026-11.md)のA（決定的な変換）とB（外部Source実行）を使い分けるもので、メタGeneratorの無条件実装を要求しない。
+
+### 10.4 「ほぼ確実」を観測可能な受入条件へ置き換える
+
+生成AIの成功確率を主観で宣言しない。あるPatternとTargetを**定型自動生成に適格**と呼ぶには、少なくとも以下を揃える。
+
+- **閉じた入力集合**：型、契約版、Target、Hook、書込み可能範囲が明示され、未知の組合せを拒否できる。
+- **事前に固定したOracle**：正常・境界・NULL／欠落・拒否・失効・互換・回復のExpectedを、Generator／AI候補と独立に管理する。
+- **変種耐性**：名称・Source配置・順序・入力値などを一因子ずつ変え、対象が変わる場合と変わらない場合を分離する。
+- **生成再現性**：選抜したGenerator Sourceを固定して再実行し、規定した同一条件下で成果物byteや正規化された実結果を照合する。AIが再回答して同一コードを出すことは要求しない。
+- **配置・拡張の安全性**：生成ファイルの外でHookを実装でき、差分Preview・所有範囲照合・直接編集の検出・再生成時のno-opと競合停止ができる。
+- **実使用証拠**：対象Builderが消費したbyte、実Entry／Provider／Consumerの観測、失敗時の区別を得る。生成成功やCompile PASSだけで満たさない。
+
+深刻な負例を一つでも通してしまう場合、対象Patternを自動適用の対象から外す。何件成功すれば確率的に「ほぼ確実」と言えるかは、適用母集団・負例設計・実Targetを定める前に数値化しない。成功事例の増加だけで未試験の分岐を保証しない。
+
+### 10.5 最初の「閉じた文脈」実証
+
+**同一のRule** `sales.order_line.quantity_positive` に対して、次の2種類の生成課題を区別する。
+
+- **課題A（定型化に適する）**：既存`semantic.Validation`のID、Field、型、positive判定、既存Go Target／Hook契約を固定し、判定・Adapter・Bindingを既存Generatorから生成する。既存の[通常CLI実ビルド](IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md#11-i2m-1の実回帰と製品cliビルドの到達点2026-11-15)と生成Go／Builder byte取違え拒否を基線にする。
+- **課題B（まだ定型化しない）**：Rule表の説明だけを根拠に、任意のデータ取得・複数表更新・外部通知・トランザクション回復までAIに一括実装させる。Read Scope、Authority、Effect／Receipt、Host Providerが未確定なので、仕様補完や自動注入を拒否する。
+
+これに加えて、**同名ノード・多重有向辺を持つGraph**を第二の異質な題材とし、辺の向き・ID・複数辺・描画順を変える。Graphviz/Mermaidの見た目を意味受理に使わず、選択されたGraph Readerが返した型付き意味からだけ生成する。現行の限定Graph Readerを正式な全図表Parserと取り違えない。
+
+初回の完了条件は、Aで固定Contractからの実生成と実消費までを確認し、Bで未解決を拒否できること。**自動化を増やすより、いつ生成しないかを確実に判断できることを先に示す。**
+
+## 11. 既存の進捗と今回の未実証範囲
+
+2026-11-15の現行mainには、限定的なMarkdown Rule→生成Go→通常CLI `self-build` 経路（PR #5009）と、選択された生成GoとBuilderに置くbyteの取り違え負例（PR #5056）がある。これらは今後のA課題の基線として使える。一方、同一の`*.tei.md`の任意図表をReaderが解釈し、I/G/Hを自動選択し、Hookを実Targetへ配置して、StudioのStage1→Stage2まで再入場する**一つの完成経路**はまだ成立していない。
+
+本書は既存のGenerator／Evaluator／Plugin実装のOwnerに候補比較と負例を渡すものであり、採用済みDSL文法・保証された生成AI成功率・自動運用権限を新設するものではない。
