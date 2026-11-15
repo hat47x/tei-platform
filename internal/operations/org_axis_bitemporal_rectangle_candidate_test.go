@@ -72,6 +72,7 @@ func TestOrgAxisAsOfBitemporalRectangleCandidateOptIn(t *testing.T) {
 		{"A2", "A2-new", "2027-01-01", nil, "2027-07-03", nil, "0.90"},
 		{"A3", "A3-early", "2027-01-01", "2027-06-01", "2027-04-01", nil, "0.40"},
 		{"A3", "A3-later", "2027-06-01", nil, "2027-04-01", nil, "0.80"},
+		{"A4", "A4-independent", "2027-01-01", nil, "2027-07-03", nil, "0.50"},
 	} {
 		if _, err := tx.ExecContext(ctx, insert, r.id, r.rev, r.validFrom, r.validTo, r.knownFrom, r.knownTo, r.allocation); err != nil {
 			t.Fatalf("insert %s: %v", r.rev, err)
@@ -113,6 +114,10 @@ func TestOrgAxisAsOfBitemporalRectangleCandidateOptIn(t *testing.T) {
 	t.Run("corrected A2 before and at known boundary", func(t *testing.T) {
 		check(t, "A2", "2027-05-15", "2027-07-02", []string{"A2-old"})
 		check(t, "A2", "2027-05-15", "2027-07-03", []string{"A2-new"})
+	})
+	t.Run("different membership occurrences coexist at the same bitemporal point", func(t *testing.T) {
+		check(t, "A2", "2027-05-15", "2027-07-04", []string{"A2-new"})
+		check(t, "A4", "2027-05-15", "2027-07-04", []string{"A4-independent"})
 	})
 	// A third physical revision is permitted by the candidate PK, and its
 	// valid and known periods BOTH overlap A2-new at the same query point.
