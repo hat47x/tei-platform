@@ -129,6 +129,25 @@ func TestScenarioPlanRejectsStaleFixtureScenarioAndTamperedCommands(t *testing.T
 				t.Fatal(err)
 			}
 		}},
+		{"modified-operator-selection-pin", func(t *testing.T, scenarioPath, planPath string) {
+			t.Helper()
+			raw, err := os.ReadFile(planPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var plan scenariotest.Plan
+			if err := json.Unmarshal(raw, &plan); err != nil {
+				t.Fatal(err)
+			}
+			plan.OperatorSelectionSHA256 = strings.Repeat("f", 64)
+			changed, err := json.Marshal(plan)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(planPath, changed, 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}},
 		{"modified-generated-command", func(t *testing.T, scenarioPath, planPath string) {
 			t.Helper()
 			raw, err := os.ReadFile(planPath)
