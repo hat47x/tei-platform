@@ -301,3 +301,24 @@ JSONから型付きRecord、RESTからOperation、RecordからAPI Responseなど
 NW-01〜10は既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)へ渡す**未実行の反証候補**である。[Plugin接続の証拠](PLUGIN_CONNECTION_EVIDENCE_AND_COMPOSITION_SLICE_2026-11.md)、[宣言とNode表現](DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md)、[成果物要求と計算合成](DECLARATIVE_RESULT_PROCESS_COMPOSITION_2026-11.md)の既存契約を用い、新しいValidator／Expected正本を増やさない。
 
 正式なCore Port型、万能Adapter探索、自動配線編集の採用判断は、少なくとも二つの異なる実Consumerで再利用と誤接続検出を確認してから行う。CLI実Provider・Studio実Windows Stage1→Stage2の既存P0を、この追加検討の先行条件として止めない。
+---
+
+## 11. Portの全体接続と項目接続を切り替える：型付き配線の具体化（2026-11-15）
+
+[プラグイン入出力Mapping設計§19](PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md)では、「複合型全体を一度に渡す」「必要な基本型・Fieldだけつなぐ」「型変換用Adapterを間に置く」を、**受渡し粒度と変換の有無の組合せ**として整理した。
+
+Node Viewの初期表示は、Record／Sequence／Graphなどの**型付きの値全体**を一つのPortとして扱ってよい。細部を編集する場合だけField／Relation Pathを展開し、入力側の必須項目と利用できる出力Fieldを照合する。全体型が合う場合は必ずしも個別Field配線を求めず、個別Fieldを組み合わせられる場合は必ずしも新しい複合Typeを定義させない。途中にAdapterを入れても、元のProducer／ConsumerやSourceの意味を新たに複写しない。
+
+| UIでの操作 | 型付き構成における意味 | Preview／診断 |
+| --- | --- | --- |
+| 全体Port同士をつなぐ | 同一／受理済み互換のContract全体の受渡し候補 | 必須保証、非開示Field、Scope、Collectionの完全性を確認 |
+| 出力Portを展開してFieldをつなぐ | 一つのSource Field／Relation Pathから入力Itemへの明示Mapping | 同名推測をしない。未接続の必須項目、重複入力、欠損と多重度を表示 |
+| 複数Fieldを一つの入力Recordにまとめる | 構築するRecordの項目集合とMapper／Operatorの入力閉包 | 不足Field、Parent＋Child二重指定、競合時の優先順不明を拒否 |
+| Adapterを挿入する | 明示的な型付き変換（純粋Operatorまたは別Provider） | Source→Adapter→Sinkの型・Law・Loss・追加Read／Effect・実選択を個別に検査 |
+| Portを折畳む・展開する | 同一Mappingの表示粒度のみ変更 | Mapping ID、生成物、実行回数は変化しない |
+
+**型一致だけで接続済みとはしない**。例えば`Decimal`を円／米ドル双方に流用するには単位・意味Lawが足りず、`OrderSummary`全体が型適合でも非公開の`internalNote`をHTTP応答へ転送してよいとは限らない。配列の先頭だけを選ぶこと、Graph辺の多重度を潰すこと、丸め・通貨変換は明示Operator／Adapterの意味を要する。
+
+最初のUIはread-onlyの**全体Port⇄Field表示**から始め、既存の同一Contract直結と一つの項目Mapping、純粋Adapter一つの3例をCLIの検収票に対応付ける。接続をドラッグしてもProposalを作るだけとし、Source Apply・Builder再生成・Runtime Provider選択・Grant・Effectは既存Ownerで独立に確認する。Producerの一値を複数Consumerへ配ることとProducerを複数回呼ぶことも区別する。
+
+実装順は§10のNW-Q0／Q1を流用し、PIO-01〜10を#1223／#951／#2497／#1180／#2514へ渡す。新しいPort Core型、万能型変換検索、第二Graph Runtimeは不要と判断できる限り導入しない。Studio Stage1→Stage2実WindowsとCLI実Providerの独立P0を変更しない。**本節は設計・実装引渡しであり、新しいNode View／Adapter実装の受入ではない**。
