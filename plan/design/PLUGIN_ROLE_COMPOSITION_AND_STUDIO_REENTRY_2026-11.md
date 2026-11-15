@@ -1332,7 +1332,7 @@ Docs-only差分ではOwner/権限/Scenarioの責務を変更しない。PRは最
 第23章のC0〜C5は工程を分けるための地図である。次の実装PRでは、**一つの選択済みGraph/Rule Source、一つの業務判断、一つの選択Provider、一つの実Consumer**を対象に、各工程が同じSource occurrenceと契約に由来することを既存のEvidenceへ記録する。これを新しい保存モデルや横断実行エンジンにはしない。
 
 - **mainで観測可能**：#4758/#4804はReferenceのGraph/Rule候補・生成Goと原文改変を別資格で試験する。#4826は実Plugin選択の直接上位exact版・Lockを表示する。#4853はsales.order.submitの実InspectorからCanonical ID、Source Index、元byte位置、TraceSubjectSourcesとの対応をGo回帰で照合する。#4850はREAで同じ構造キーの候補が多対多・一対多の場合、個別Relationの相手を勝手に確定しない。
-- **まだ実証していない接続**：これらを結ぶ正式のMarkdown Reader S0-A、Ownerが受理したGraph/Ruleの業務意味、製品Builderに収録された生成Plugin、通常CLIの実Provider呼出し、Stage1→Stage2 Windowsの同一Attempt、現在Audienceに許された公開Manualの製品Read。先行Goテストの成功を一括してこの欠落のPASSとしない。
+- **更新後も閉じていない接続**：内蔵Rule Markdown Readerの製品Load／Source Index、旧構文との型付き意味同値、実Evaluatorの入力Read Footprint、正値RuleのGo Loweringまでは個別の実装とGo回帰がmainにある（§24.5）。未接続なのは正式Graph/Window Reader、外部Language PluginのResolver/Lock選択、業務Ownerの意味受理、実Builderによる生成Go byteの収録、通常CLIの選択Provider実呼出し、Studio Stage1→Stage2 Windows受領、現在Audienceに許された公開Manual Readである。先行成果を一括して製品完成と呼ばない。
 
 ### 24.2 最小実装パケット：A0〜A3を製品Go側で先に閉じる
 
@@ -1355,9 +1355,33 @@ A0に実装対象のProviderがなければ、設計のための仮Providerや�
 
 ### 24.4 次の二つのPRと完了の定義
 
-- **製品PR-S0A**（Owner #2621）：A0〜A3の最小Graph/Rule一件。実選択Implementationが存在するなら同じLoad byteからSource Indexへ接続し、ないならA0未実装を明示して最小Selection配線から着手。#4853のInspector/Trace Go回帰を検査の入口として再利用する。未選択拒否、Source A→B→A、曖昧候補、既存定義後方互換の負例を既存Expectedへ渡す。
+- **製品PR-S0A**（Owner #2621）：内蔵RuleのA0〜A3は製品実装と限定Go回帰があるため、正負Fixture、旧`.tei`との意味同値、Source失効を基線にする。Graph/Window・外部Language Implementation選択の未接続を別差分に残し、未選択拒否・曖昧候補・A→B→Aを既存Expectedに渡す。
 - **製品PR-PLG**（Owner #1121/#1251/#4495）：S0Aが受理した一Ruleだけを生成Goの実動作へ結び、実Builder/Artifactの同一性と通常CLI→選択Provider→独立Expectedを検査する。Studio Stage2の実Windows Consumerは#2831/#4583の並行P0として別途検収し、CLIの局所合格を代用しない。
 
 各PRで「受理した業務判断の数」「TEIから実生成された判断処理の数」「手書きまたはdelegateのみの処理の数」「変更後に手修正が必要だった箇所」「実際に受領したConsumerの数」を分けて記録する。これは数値目標を先に決めるためでなく、TEI自身によるPlugin実装の範囲が広がり、Markdown定義の記述が簡素になったかを追跡するためである。初回は固定の一例で十分であり、BRMS/REA/組織/Window/公開Doc/Updaterの完成を新たなP0依存にしない。
 
 本節は現行mainの実証と未接続の実装順を整えるdocs-onlyの追補であり、S0-A、生成Plugin、Provider実Call、Stage2、Ownerの業務意味受理を新たに実証したものではない。
+
+### 24.5 実製品RuleからGo生成までの現在資格（2026-11-15）
+
+内蔵`tei.rule-authoring/v0` ReaderはManifestで選択した`tei.builtin.rule-authoring-markdown`を同じ`Workspace.Load`の原byteへ結び、従来の`semantic.Validation`とSource anchorを得る。製品Go回帰は、Source Index／Inspector、旧`.tei`との意味同値、重複Canonical IDの拒否を照合する。#4901は既存Evaluatorの実Callと、数値属性・Relation Keyへの入力Read Footprintを検査するが、入力を返すのは**テスト専用Source**であり実DB／Providerではない。さらにmain `468e1dc8` はRule参照先を変更した後の再Load、Evaluator Read先の変化、古いSource指紋の失効を確認する。
+
+main `eeafd9cb` は`internal/semantic/validationgen.GeneratePositive`を追加した。実製品Readerが選んだ`sales.order_line.quantity_positive`と解決済み`std.decimal`から、`source.Number`を実際に呼び、正値を`value.Sign() > 0`で判定する**Goの比較・分岐**を出力する。Go回帰には生成コードの別プロセス実行（正・ゼロ・負・NULL・欠損）と、対象Attribute変更で生成byteが変わる検査がある。単なるWrapper生成や既存Evaluatorへの委譲ではない。ただし**限定的な生成器と試験コードの収録**であり、当該HEADのCI合格、Ownerの意味受理、製品Artifactへの採用、実Provider呼出しを自動的に証明しない。
+
+| 工程 | 現時点の実装・回帰 | 次に必要な独立した証拠 |
+| --- | --- | --- |
+| A0〜A3／Reader | 内蔵Ruleの選択、元byte、Source Index、旧構文との意味同値 | 外部Language Pluginの実Resolver／exact Lock、Graph/Window Reader、未検証の全境界条件 |
+| Evaluator／Read | 選択Ruleの正数／ゼロ／NULL／欠損、Relation Keyの重複・空集合・範囲不明、Rule変更後のRead先 | 実Providerの入力全件性・取得時点・現在Grant |
+| R1／Go Lowering | 選択済みPositive＋解決済みDecimalからの実比較・分岐生成、生成Goの実Process試験 | 同じMarkdown Sourceの変更→再Load→型解決→Go再生成→実結果までの一連の差分、独立ExpectedとOwner判断 |
+| R2／R3／実Product | 未実証 | 実Builderが生成byteを入力に取り込んだArtifactSet、実選択Provider Entryの通常`tei` CLI Call、別Consumerの受領 |
+| Studio／公開Doc／Effect | 独立した既存計画で管理 | Stage1→Stage2実Windows、現在AudienceでのDoc Read、Guard／Grant／Receipt |
+
+### 24.6 内蔵Readerと外部Language Pluginの分離、次の実装順
+
+内蔵`builtinAuthoringLanguageProviders`による静的実装選択と、外部Language PluginのContract／Resolver／Lock／実Binary収録は別経路である。外部実装を選べなければ`unsupported`で停止し、内蔵Readerへ黙ってfallbackしない。既存#951/#1016の選択・工程別Build閉包を用い、第二Registry／Language Hostを新設しない。`BuildSourceIndexFromLoad`は単一Loadで保持したbyteの追跡であり、Import全体や複数ファイルの原子的Snapshotを保証しない。
+
+最短の後続差分は、[Rule製品第一縦断](PLUGIN_RULE_PRODUCT_VERTICAL_SLICE_2026-11.md)の`sales.order_line.quantity_positive`を固定し、(1)同じMarkdown定義を変更して生成Goと実結果まで差を伝える、(2)実BuilderがそのGo byteを正しい契約・Toolchainで消費する、(3)通常製品CLIから選択済みProviderのactual entryを一度呼び独立Expectedと比べる、の順に閉じる。Rule集合の全件読取りと、評価に必要なData／Relation／時点の全件取得は別資格である。現在GrantやEffect／ReceiptをReader・Evaluator・生成Goの合格から推測しない。
+
+Node-RED型のノードFlowや簡易APIへ展開する場合も、新しい意味モデルを作らず、既存の標準データ構造・Operator/Function・Process Flow・型付きOperationへ接続する。Nodeは部品のPresentationにとどまらず、Portの型・条件・必要Context・副作用と実Consumerを既存契約から説明できることを検収する。ただし最初のR2／R3をGraph全般／Node UI／API公開の完成待ちにしない。**Studio Stage1実TEI→Stage2実Windows WebView2は引き続き独立した最上位P0**とする。
+
+本節はmainに実在する実装と未接続の工程を分ける文書追補であり、ここで新たなGo／Windows／実DB試験やOwnerの業務意味受理を行ったものではない。
