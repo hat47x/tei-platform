@@ -30,6 +30,15 @@
 | 文書 | 対象 |
 | --- | --- |
 | [`APPLICATION_ABSTRACTION_DOCUMENT_METHOD_WEAVING_2026-11.md`](APPLICATION_ABSTRACTION_DOCUMENT_METHOD_WEAVING_2026-11.md) | 文書のスコープ・Role・引用・図表・履歴を既存Data／Function／Projection／Pluginへ編み込み、構造・意味・表現・実現・現在資格の合成判定と独立Expected DW-01〜10を定める横断設計（実装前）。 |
+| [`CROSS_CUTTING_ACCEPTANCE_BOUNDARIES_2026-11-12.md`](CROSS_CUTTING_ACCEPTANCE_BOUNDARIES_2026-11-12.md) | 業務意味・生成・実Call・Effect・Consumerの受入資格、失効、Owner間の受渡しを整理する横断検収記録。 |
+| [`DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md`](DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md) | 宣言的な構文、共通の意味合成、ノード／Port／Relationの投影と型付き接続を横断する設計。 |
+| [`GUI_CUI_PINNED_CONTEXT_WORKBENCH_2026-11.md`](GUI_CUI_PINNED_CONTEXT_WORKBENCH_2026-11.md) | GUI/CUIでの対象固定、Source／Selection／Contextの寿命、非同期応答の失効と引継ぎを扱う設計。 |
+| [`HUMAN_AI_COLLABORATIVE_STUDIO_UX_2026-11.md`](HUMAN_AI_COLLABORATIVE_STUDIO_UX_2026-11.md) | 人間と生成AIが共通操作・対象固定・差分提案・検証を介してStudioで協業するためのUX設計。 |
+| [`IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md`](IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md) | TEI自身の実装から意味あるData／Function／Rule／Processを抽出し、図・DSL・生成と照合するdogfooding計画。 |
+| [`PLUGIN_CONNECTION_EVIDENCE_AND_COMPOSITION_SLICE_2026-11.md`](PLUGIN_CONNECTION_EVIDENCE_AND_COMPOSITION_SLICE_2026-11.md) | Pluginの接続、構成、実行・検証証拠を一つの小さな実証に結び付ける設計。 |
+| [`PLUGIN_CONTRACT_TO_ACTUAL_USE_HANDOFF_2026-11.md`](PLUGIN_CONTRACT_TO_ACTUAL_USE_HANDOFF_2026-11.md) | Pluginの契約・選択・生成・起動・実使用・受領の資格を分離する横断引渡し設計。 |
+| [`REA_EXTERNAL_EVIDENCE_INTAKE_2026-11.md`](REA_EXTERNAL_EVIDENCE_INTAKE_2026-11.md) | 外部逆解析Evidenceを入力元のbyteと由来を保持して受領し、候補の意味受理と区別する設計。 |
+| [`REA_T1A_EXTERNAL_OBSERVATION_ADMISSION_2026-11.md`](REA_T1A_EXTERNAL_OBSERVATION_ADMISSION_2026-11.md) | 外部ObservationとRelationの受領・型付きread-only投影に関するFit/Gapと段階的な実証手順。 |
 | [`PROCESS_EXECUTION_CAUSAL_PROJECTIONS_2026-11.md`](PROCESS_EXECUTION_CAUSAL_PROJECTIONS_2026-11.md) | プロセス実行図を因果関係と独立Evidenceの照合として生成するread-only契約。定義・選択・実Call・Effect／Consumer、観測閉包、CLI／Studio共通Projectionと既存PX／SF／EL反例の接続（実装前）。 |
 | [`DECLARATIVE_RESULT_PROCESS_COMPOSITION_2026-11.md`](DECLARATIVE_RESULT_PROCESS_COMPOSITION_2026-11.md) | 成果物要求から計算・集約単位、依存構造、複数出力の共有、物理計画を導出する横断設計。Batch／Node Flowを標準Data・Operator・Processに接続する（実装前）。 |
 | [`SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md`](SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md) | 標準Data／Facet・Operation・Processから型付きノード、APIマッシュアップ、Webhook／イベント・軽量サービスを構成する横断契約。ServiceとGraph、Entryと配備、認可・取得完全性・Effectを分離し、既存Flow N0〜N4へ受入候補を引き渡す（実装前設計）。 |
