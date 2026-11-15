@@ -14,11 +14,11 @@ import (
 // Required Shape experiment. It is NOT a generated contract, a second semantic
 // authority, product Inspector evidence, or a claim that M1/M2 is complete.
 //
-// The valid shape has an identity, one numeric Attribute, no Relation, and a
-// strictly positive decision. Each negative changes exactly one obligation.
+// The valid Rule has an identity, one numeric Attribute, no Relation, and a
+// strictly positive decision. The Go target package is checked separately.
 // Changing the handwritten generator to silently accept a malformed shape
 // must fail this test before the obligation is moved to generated checking.
-func TestPositiveLoweringShapeIndependentBaseline(t *testing.T) {
+func TestPositiveRuleShapeIndependentBaseline(t *testing.T) {
 	base := semantic.Validation{
 		ID:        "sales.order_line.quantity_positive",
 		Kind:      semantic.ValidationPositive,
@@ -39,7 +39,6 @@ func TestPositiveLoweringShapeIndependentBaseline(t *testing.T) {
 		name        string
 		change      func(*semantic.Validation)
 		typeRef     core.CanonicalID
-		packageName string
 		wantError   string
 	}{
 		{
@@ -76,14 +75,9 @@ func TestPositiveLoweringShapeIndependentBaseline(t *testing.T) {
 			wantError: "requires resolved std.decimal",
 		},
 		{
-			name:      "unresolved attribute type",
+			name:      "unrecognized attribute type",
 			typeRef:   "unknown.type",
 			wantError: "requires resolved std.decimal",
-		},
-		{
-			name:        "invalid Go package name",
-			packageName: "not-a-go-identifier",
-			wantError:   "invalid Go package name",
 		},
 	}
 	for _, tc := range cases {
@@ -96,11 +90,7 @@ func TestPositiveLoweringShapeIndependentBaseline(t *testing.T) {
 			if tc.typeRef != "" {
 				attributeType = tc.typeRef
 			}
-			packageName := "main"
-			if tc.packageName != "" {
-				packageName = tc.packageName
-			}
-			got, err := validationgen.GeneratePositive(rule, attributeType, packageName)
+			got, err := validationgen.GeneratePositive(rule, attributeType, "main")
 			if err == nil || !strings.Contains(err.Error(), tc.wantError) {
 				t.Fatalf("want rejection containing %q, got error %v", tc.wantError, err)
 			}
@@ -109,4 +99,11 @@ func TestPositiveLoweringShapeIndependentBaseline(t *testing.T) {
 			}
 		})
 	}
+	// A Go package is a Target-lowering parameter, not a TEI Rule shape.
+	t.Run("invalid target package name", func(t *testing.T) {
+		got, err := validationgen.GeneratePositive(base, "std.decimal", "not-a-go-identifier")
+		if err == nil || !strings.Contains(err.Error(), "invalid Go package name") || len(got) != 0 {
+			t.Fatalf("invalid Target package passed: generated=%d bytes, error=%v", len(got), err)
+		}
+	})
 }
