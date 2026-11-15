@@ -297,3 +297,23 @@ WorkspaceのOperator実装だけをA→Bに切り替え、World／Rule／入力�
 **実装の最初の一歩**は、#5054の旧Scenario拒否が実HEADで合格した場合の、既存`Scenario Result`→read-only検収票の局所ProjectionとCPW-17／20である。#5054が未統合なら先行するP0-Aを止めず、既存#5007の局所Callを観測する範囲で設計・負例だけ先に確定する。正式Generator入力閉包は#1121／#4544／#2595、Plugin Provider／R3は#951／#4495、Node／Studioの別Consumerは#1124／#1824／#2831／#4583、独立Expectedは#1180／#2514に引き継ぐ。
 
 **受入の上限**：本節は接続の条件と製品実装順を更新した文書である。CPW-17〜22の新Go／Windows／DB試験、正式Plugin Runtime Provider、R2-P／R3の全経路、Ownerの意味受理は新たに実行・完了していない。全体Healthに既知の失敗が残っていても、局所成功を全体合格へ昇格しない。
+---
+
+## 10. 解釈と生成を別の実現候補として、接続検収票へ加える（2026-11-15）
+
+[Pluginの実現・最適化契約§10](PLUGIN_REALIZATION_AND_OPTIMIZATION_REQUIREMENTS_2026-11.md)では、受理された型付きモデルを既存汎用関数で直接評価する方法と、同じ意味からTarget向けコードを生成する方法を、**互いに競合し得る実現候補**として整理した。これは本書§9のShape／Law／Binding／Realization／Admission・Effect／Consumerの枠組みを増やすものではなく、**Realizationの実体が異なる**例である。
+
+最初の `quantity_positive` では、既存 `validationeval.Evaluate` と `validationgen.GeneratePositive` が生成したGoの `EvaluateSelected` を同じ型付きRule・独立Expectedで比較する。生成の入力検査とRuntime評価の前提は同一でないため、まず生成器が受け付けるShapeへ対象を絞り、正値・ゼロ・負値／nil・取得失敗／Read先と回数を判定する。ここで結果が一致しても、生成版／解釈版の**どちらが製品で選択・実呼出しされたか**を別に確認する。
+
+| 接続検収票の欄 | 直接評価の証拠 | 生成評価の証拠 |
+| --- | --- | --- |
+| Meaning／Context | 選択済みRule・Model revision・必要Read／Sourceの取得範囲 | 同じRule／型に加え、Generator入力と選択Target |
+| Realization | 実Evaluatorの識別、Target内での利用可能性、実Calledの記録 | 生成器版・生成Go byte・実Builder入力・Artifactと実Entry |
+| Consumer／資格 | 実CallerのResult／Failure・現在のHost条件 | 実Consumerの同一Contract結果・現在Grant／Effectの別判定 |
+| 改版 | Runtime側へ届いたモデルbyteと選択版の再確認 | Generator／Toolchain／Builder／Artifact・Consumerの依存失効 |
+
+**コード生成省略は再配布省略を意味しない。** Goバイナリに型付きモデルを同梱するならそのbyteの実収録と改版を確認し、Studioから動的に読むなら現在のSource／選択実装・取得時点を確認する。無条件の生成→直接評価fallbackは、選択Providerの不一致を隠すため認めない。
+
+最初に追加する反証は§10のRZM-01／04。独立Expectedは#1180／#2514、実現方式の比較は#1121／#4544、実Provider選択は#951／#1251、Build／差分失効は#2595／#2600に委ねる。新たな汎用Interpreter、第二Resolver／Runner、全Target同値を前提にしない。Studio Stage1→Stage2 Windowsと公開pure Function R3の優先順位は変更しない。
+
+**状態**：照合方法の追加のみ。直接評価／生成評価の製品選択や実二Consumerの試験は未実施。
