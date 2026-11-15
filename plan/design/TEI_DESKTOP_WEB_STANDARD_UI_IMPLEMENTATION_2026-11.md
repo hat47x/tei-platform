@@ -22,7 +22,7 @@ Goの共通Application OperationとSource/Meaning/Grantの所有権は従来ど�
 | `reference/tei-studio-workbench/tsconfig.json` | `strict: true`、`noEmit: true`、DOM型を有効化 | 新UI部品も同等以上の静的検査を維持。JavaScriptを試すときはJSDocと型検査の実効範囲を比較 |
 | `reference/tei-studio-workbench/main.ts` | Host返信のPresenter、Focus/Pin、応答世代を管理 | 新コンポーネントが独自にHost/Grant/Sourceを解決しない |
 | `reference/tei-studio-workbench/source-locations.ts` | S-LOCのread-only位置情報を純粋投影する | 第一候補の小部品に安全な表示モデルとして渡す |
-| `cmd/tei-studio/assets/workbench/index.html` | 参照WorkbenchにあるPin操作用DOMが、配布用HTMLにはまだない | 参照画面の成功と配布Desktopの成功を分離。古いAssetコピーは使わない |
+| `cmd/tei-studio/assets/workbench/index.html` | 参照Workbenchと配布HTMLの両方にPin操作のDOM（pin-current／inspect-pinned／unpin-current）が存在し、確認したmainでは両HTMLのbyteが一致する | 現在の静的Source一致と、各変更HEADの正規Bundle・実WebView2受領・Stage2再入は独立に検収する |
 | `cmd/tei-studio/go.mod` | Go 1.26.11／Wails v3.0.0-beta.29の既存再現基線 | Wails v3.1.0への移行・正式配布資格を別の実OS比較とする |
 
 この表はSourceの静的確認であり、すべての記載が当該mainの全CI成功・実Wails画面合格であるという意味ではない。実装担当はPRの**exact HEAD**で状況を更新する。
@@ -218,3 +218,145 @@ Node-RED型の視覚的プログラミング、業務プロセス、マッシュ
 P1でのStudioの役割は、既存#1124の三要素Modelerと#4198のLifecycle Graphから**同じ標準要素を異なる図法で投影・操作できるか**を比較することとする。ノード単位の汎用部品はCanvas以外の表・API生成へも再利用できるように設計するが、独立した第二Rule Engine／フローRuntimeを前提にしない。最初の一Node/EdgeのSource→表示→選択→read-only Inspectまでを証明してから、ノード部品群・クラウドマッシュアップ・生成APIの用途を拡張する。
 
 このP1は探索・設計の採否条件であり、W0-A〜Dや通常製品CLIの実ProviderというP0の新Hard Gateではない。実装・独立Expectedは既存#1124/#2497/#1180/#2514へ引き渡す。
+
+## 14. Desktop Workbenchを共通の作業面として確定する（2026-11-16、設計・実装引渡し）
+
+### 14.1 一つの対象を、複数の表現で扱う
+
+Studioの中心は特定の図法やエディタではなく、**現在のSourceに裏付けられた対象を発見し、その構造を見て、変更の影響を確認できる作業面**とする。画面の構成は次の四領域を基準にし、表示・非表示や幅は利用者が調整できるようにする。
+
+| 領域 | 最初に扱うもの | 守る境界 |
+| --- | --- | --- |
+| Project／対象一覧 | Workspace、Source（`*.tei.md`・通常Markdown・旧`*.tei`）、Data／Function／Process／Plugin等の分類、検索結果 | ファイル拡張子だけで意味読取済みとしない。WorkspaceとSourceの現在性が不明なら、その旨を示す |
+| 中央の作業面 | Source Editor、表、Graph／Node、Process Flow、文書、生成Artifactのタブ。表示は同じ対象への別Projection | 図上の配置や一時的なNode IDを意味IDへ昇格しない。表現できない向き・多重辺・時点・NULL・順序を省略せず、Lossを示す |
+| Inspector／固定対象 | Focus中の対象と、明示Pinした対象を別々に表示。Source位置、型、参照関係、診断、読取範囲を開く | Focus移動でPinを変えない。Pinを実行権限・AI送信許可・書込み資格として扱わない |
+| 診断・実行結果 | 検証結果、差分Preview、テスト、Buildの選択と実消費、Artifact、実Consumerの観測 | `unknown`／`partial`／`unsupported`／`not run`を「問題なし」に変えない。CI上の生成成功とDesktopでの実使用を分ける |
+
+タブやPaneは対象の種類ごとに別の意味管理機構を持たず、既存のCatalog／Inspect／Source Indexと標準データ構造を受け取る。Sourceに戻れない派生表示は、その理由と取得元を表示する。Source Editorの未保存Buffer、Diskに保存されたSource、受理済みMeaning、Build入力、生成Artifact、実行中のConsumerは**それぞれ別の版**として追跡する。切替や再読込で、未保存Bufferの内容を受理済みMeaningへ自動昇格させない。
+
+### 14.2 共通の選択・移動・変更契約
+
+画面間で共有するのは、既存Operationが解決できる**Workspace／qualified kind・ID／Source occurrenceへの参照意図**である。選択イベント自体にRead権限や編集資格を持たせず、必要な時点でHostが対象を再解決する。表示の更新は閲覧用のFocus lane、明示固定した対象の再読取はPin専用laneとする。片方の応答がもう片方のEditor・Caret・Graph・Noticeを変更してはならない。
+
+原文・表・Graph・Node View・Process Viewの移動は、次の順序を共通にする。
+
+`対象を選ぶ → Hostで現在のSubjectをInspect → Source occurrence／意味IDとの対応を表示 → 必要なら元Sourceを開く → 編集候補をPreview／Diffで比較 → 既存WriterとOwner受理へ明示的に渡す`
+
+- 読取専用の選択と参照移動は早期実装できる。Sourceへ戻す位置はbyte offsetとSource Revisionを保ち、Editorの文字位置・IME・CRLFへの変換は別検査とする。
+- 「変更可能」は表示Widgetの種類で決めない。Source変更、意味モデル変更、生成物の再Build、実Providerへの作用は、それぞれ既存のOwner・現在資格・条件付き更新経路が必要である。確定できないRelationやSource occurrenceはread-onlyにとどめる。
+- Node配線は、基本型の個別Port同士、構造化型同士、型付きAdapterを介した接続を同じ標準型契約で表す。Portの向き・多重度・必須性・型変換時の情報損失は独立に検査する。線を描けることは、Operator選択・実行順・副作用許可が成立したことを意味しない。
+- AI／CLI／SHOへの引渡しは同じ対象参照を出発点にできるが、必要Contextの完全性、Audience、Disclosure、実Tool Replyの完全受領、Owner Reviewは別々に確認する。AIを使わなくても閲覧・基本編集・検証を利用できるようにする。
+
+### 14.3 入力遅延と非干渉を最初の品質指標にする
+
+中央のEditorには、IME変換・選択範囲・Caret・未保存Buffer・Undo/Redoの即応性を優先して残す。長時間のIndex／Build／Plugin／外部Harnessからの後着結果は、操作開始時のWorkspace・Subject・Source／Buffer世代と現在表示を照合して採用する。背景のPin再確認でFocusを奪わず、特定Pluginが遅延・停止しても基本の編集と診断はできるだけ維持する。
+
+性能は冷間起動、最初の操作可能時刻、入力遅延p95/p99、表示更新、Provider応答、Build待機、合計メモリを分けて測る。P0で架空の数値目標を固定せず、同じFixtureと実OS／WebViewで現行plain TypeScript基線と比較する。Web Components／Lit導入、子Backend分離、WASM化は、UIの応答・分離・保守に有意な利益が確認できた範囲で段階採用する。
+
+## 15. 生成Desktopを「実際に使った一巡」で受け入れる（2026-11-16、P0の次段）
+
+### 15.1 現在成立している辺と、次の断線
+
+[main統合済み #5059](https://github.com/hat47x/tei-platform/pull/5059)のexact HEAD `5fcd9e2e92afe8266cb7710fe56f54c27a54ca17`、[Windows run 43724133016](https://github.com/hat47x/tei-platform/actions/runs/43724133016)では、**実TEI CLI→NodeのN2子Process→生成JS digest照合→通常／生成Wails WebView2**という限定した経路の両Job成功が確認されている。これはN2の呼出元と実配布Consumerを確かめた成果であり、正式な非Plugin BuildIntentの選択済みBuilder、入力閉包、生成Stage1自身がStage2を構築した資格を含まない。
+
+次の実装は新しいBuild Engineを作るのではなく、既存`BuildIntent.Resolve`／Builder Catalog／BuildExecution／ArtifactSet／Subject Bindingと、今あるN0 Generator・N2 Adapter・N3 Go/Wails Buildを接続する。CI Workflowのコマンド列は**実行手順の観測元**にはなるが、そのまま製品の意味契約や正式Recipeとはしない。
+
+| 段階 | 実装で結ぶ最小の辺 | その段階での停止線 |
+| --- | --- | --- |
+| **D1：選択** | 非Plugin Studio Build Subject→既存Resolverが返したBuilder／TargetとPlan Fingerprint | CLI引数の`-child`と起動前Digestだけでは「選択済みBuilder」としない。未表現の工程は`unsupported`を維持 |
+| **D2：入力** | N0生成Source、N2のTS・Node／lock、N3のGo module・build tag・Wails資産を、実際に消費した集合へ対応付ける | Selected／Consumed／Observedを区別。外部module、OS／SDK、環境変数の欠落を全閉包PASSにしない |
+| **D3：実行** | 選択Builderと実Invoker image／argv／Attempt、N0→N2→N3のArtifact依存を既存Executionへ束縛 | 宣言B／実行A、Plan外esbuild、旧JSの埋込み、上書き再Buildを拒否 |
+| **D4：再入** | Windows上で実行した**生成Stage1 TEI自身**がStage2用Buildを選択・開始し、生成したStage2 Imageへ到達する | CI ShellやSeedの二度目のGo Build、別OSの局所再入はL3の代替にならない |
+| **D5：実Consumer** | D4のStage2 Image／埋込JS digestに結び付けた実Windows WebView2からCatalog／Inspect／Pinを受領する | 先行PoC Bで起動したWindowや旧AttemptをStage2として数えない |
+
+### 15.2 最初の実装・検収パケット
+
+まず**D1→D3の一成果物だけ**を現在のBuild実行契約へ接続し、`Resolve`が選択したBuilder Bを実Invoker Aにすり替える負例、N2が報告したJSとN3に埋め込まれたJSが異なる負例、Build中のSource／lock改版、未知の依存を成功へ丸める負例を独立Expectedで固定する。実際に接続できない工程を一つの巨大な`child`内部へ隠して、見かけのBuildPlan完全性を作らない。
+
+D1→D3が同じAttemptで成立した後、D4のStage1実ProcessとD5のStage2 Windowを接続する。受入票には、Sourceと実入力Byte、Model／World・Build／Artifact Revision、Builder選択、OS／Go／Node／Wails版、実Invoker／Child／Stage1／Stage2各Image digest、実WebViewが受け取ったJS、失敗・未実施項目を**独立列**で記録する。byte一致は意味受理ではなく、Stage2起動は外部Providerの実Effect受理ではない。
+
+実装Ownerは[#2831](https://github.com/hat47x/tei-platform/issues/2831)（Build・再入）・[#4583](https://github.com/hat47x/tei-platform/issues/4583)（Studio一巡）・[#1824](https://github.com/hat47x/tei-platform/issues/1824)（Window／UI）、負例は[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)。§14のUI統合、実Provider Read、Node表示、AI協業、Wails子Backendの比較は並行可能だが、**D1〜D5と通常製品CLI→実Providerの二本のP0を新しいUI技術選定の完了待ちにしない**。
+
+**今回の変更は仕様・受入条件の追補のみ。** 新Go／Node／Windows／Provider／Stage2の実行とOwnerの製品受理は行っていない。旧runの成功を本追補のHEADに移し替えない。
+
+## 16. Desktopセッションの現在性と編集・保存の一巡（2026-11-16、設計・受入条件）
+
+### 16.1 画面の状態と、業務上の状態を混同しない
+
+Workbenchは一つのWorkspaceを大きな可変オブジェクトとして扱わない。UIの**閲覧位置**、編集中の**未保存Buffer**、Hostが読み直した**実Source**、Ownerが受理した**Meaning**、Build／Operationの**実Attempt**を分ける。一画面で複数の版を見られることと、それらが同じ版であることは別である。新しい中央State Storeや製品共通のStatus enumを設けず、既存のEditor・Presenter・Application Operation・Source／Build／Run Evidenceの所有範囲を保持する。
+
+| 対象 | 所有と持続性 | 更新・失効の基準 |
+| --- | --- | --- |
+| Window／Tab／Pane／Focus | UIの局所表示状態。配置の復元はDesktop設定 | 閲覧先の切替だけではSourceやPinを更新しない |
+| Pinと最後に確認したInspection | 明示的な閲覧意図とread-onlyのHost応答 | Root、Workspace、対象、Source／World、要求世代の不一致は現在の観測として採用しない |
+| Editor Buffer／Caret／Undo | 各Editorが持つ未保存の作業状態 | Disk保存・Meaning受理・後着結果から独立。IME確定前の文字列と保存済みbyteを取り違えない |
+| Disk上のSource／Source occurrence | Workspaceと既存Source Ownerが持つ原文 | 保存直前に実byte、Path／Root、対象Revisionと競合を再検査。Watcher通知は競合の証明ではない |
+| 受理済みMeaning／Preview | 既存Reader・Acceptance Ownerと、根拠を持つ派生表示 | Buffer保存では自動受理しない。再読込・再検証後に投影 |
+| Build／Operation／Provider結果 | 既存BuildExecution／Run／Receiptと実Consumer | UI再接続や完了通知を実行成功・再実行許可にしない |
+
+**最小のEditor操作順**：Sourceを開く→Bufferで編集→差分を確認→既存Writerの保存入口で実Sourceのbyteと現在権限を照合→保存結果を再読込→既存Validation／ReviewでMeaning受理を別に判断→必要なら現在のBuild Intentから再構築する。保存と受理を同時に扱う既存Operationでも、結果・失敗は分けて表示する。保存失敗でBufferを捨てず、復元Draftは候補として扱い、自動受理・外部Effectの再送はしない。
+
+### 16.2 非同期応答の宛先を、開始時と表示直前に照合する
+
+非同期Readには既存のWorkspace／Root、qualified Subject、Source Revision、Focus／Pinのlane、操作世代を対応付ける。後着応答は**結果を受領した事実**として診断に残せても、表示先の現在性と一致しない限りEditor本文・Caret・Focus・Graph・現在の実行資格を書き換えない。A→B→Aで名前が戻っても、前のAの応答は自動復活しない。Pinの読取中にBを編集している場合、Pinの結果をBの未保存Buffer・Undo・IME・ARIA更新へ流さない。
+
+異なるWindow・Worktree・Database Bindingも同様に、表示タブ名やDB aliasではなく、Hostが解決したRoot／Source版とEnvironment／Provider routeを操作ごとに照合する。Local Workspaceの認証不要という原則を守り、Connected／Hybridの期限切れGrantをローカル権限へ置き換えない。複数Windowの競合はUIタブの排他ではなくSource実byteと既存Acceptanceの条件付き更新で判断する。
+
+### 16.3 既存の受入票へ渡す負例
+
+既存#1824／#4515／#1529／#1124／#1180／#2514のFixtureを用い、①A→B→Aの後着Focus／Pin、②Pin A裏応答中のBのIME・Caret・Undo不変、③Buffer保存後も古いMeaningとBuild入力が自動更新されない、④外部編集／Symlink差替え／Source競合で保存拒否、⑤復元DraftからAccept／外部Effectが発火しない、⑥同名Subjectの2 Worktreeと同aliasの2 DB Bindingを取り違えない、を独立Expectedで確認する。現行Windows Pin閲覧の限定成功を、Dirty Buffer・複数Worktree・実Providerの合格に算入しない。
+
+## 17. Wailsから独立した共通操作とPlugin接続（2026-11-16、設計・引渡し）
+
+### 17.1 API PluginをDesktop Host内へ閉じ込めない
+
+Studio Wails Bridgeは**共通Application OperationのDesktop輸送Adapter**とする。API向けPluginも同じOperation／Capability／標準型の契約を使い、**CLIから直接呼べる**ことを実装条件とする。Wails ServerはそのAdapterを利用できる実行形態の一つであり、API Pluginの意味正本、認可判断、Plugin Loader、業務状態の所有者ではない。DesktopだけのためにAPI実装がWails packageやWebView lifecycleをimportしない。
+
+依存の向きは「UI／CLI／Web Adapter → 共通Operation／Capability → 選択Plugin／Provider → 実Target」。各入口は型付きInput・Result・Failure／Provenanceを共有するが、Caller、Scope、Resource Lease、Disclosure、現在Grantは入口と実呼出しごとに確認する。Wails Serverで登録された全公開Methodをブラウザー向けAPIへそのまま公開しない。Local loopbackの成功を外部公開・多利用者認可・配布の安全性に読み替えない。
+
+### 17.2 Node ViewはPluginの配線を可視化する表現型
+
+Pluginの入出力には標準型を用い、**構造全体の接続**、**Fieldごとの接続**、**明示Adapterによる変換**を選べるようにする。Node／Port／Edgeは一意Identity、向き、必須性、多重度、粒度、単位・精度、NULL／missing／unknown、秘密区分、順序・時間条件を必要な範囲で保持する。UIが隠したField、型変換で失う要素、未接続の必須PortはPreviewに表す。折り畳まれた線や単純な型一致だけで有効なMappingとしない。
+
+Node Viewは標準データ構造、Process Flow、Operation／Plugin Bindingの**Projection**であり、線の描画・型一致・Preview合格は実Operator選択、実Provider実行、外部Effect、Source逆編集資格を与えない。新しいFlow Runtime／Node Registry／Desktop専用Plugin Managerを作らず、まず一つのSource-backed Node／EdgeをCLI InspectとStudioで同じ意味として読めることを確かめる。既存#2497／#951／#1223／#1180へ引き渡す。
+
+### 17.3 実装の優先順と停止線
+
+**P0は二本を維持する。** 第一は§15のD1→D3（非Plugin Build Subject／選択Builder／実Invoker／ArtifactSetの同一Attempt）→D4（生成Stage1自身がStage2を構築）→D5（そのStage2を実Windows WebView2が受領）。第二は受理済みpure Function→通常製品CLI→選択実ProviderのRead→独立Consumerである。いずれもUI Frameworkや子Backendの導入を先行条件にしない。
+
+**並行するUI／APIの小PR**は、(a)既存Pin／Focusの非干渉、(b)一SourceのBuffer→保存時の実byte照合→再Inspect／Review、(c)CLIとWails Bridgeの同一read-only Operation／失敗分類、(d)一組の型付きPortとAdapterのread-only表示を対象とする。書込み・外部API公開・実Provider Effectは各Ownerの独立受入後に拡張する。
+
+**性能と採否**：入力遅延p95／p99、初回操作可能時刻、メモリ、Host往復、Build待ちを現行TypeScriptと同一Fixtureで実測する。Web Components／Lit、子Backend、Go／WASMは改善を反証可能な場合に局所採用し、Go単一バイナリ配布と共通Operationの独立性を優先する。
+
+**本§16〜17の状態**：設計と実装引渡しのみ。新Go／Node／Windows／実DB／実API／Stage2の検収、Owner意味受理、正式製品採用は行っていない。
+
+## 18. Desktopで「意味の経路」を検査する（2026-11-16、既存テストへの実装引渡し）
+
+### 18.1 見た目と実装名ではなく、要求された経路をたどる
+
+StudioのEditor・表・Graph・Node・Inspectorは、同じ意味要素の異なる表現である。利用者が「この規則はどこで定義され、どのデータを読み、どの実装で評価され、何が確認できたか」を調べるとき、生成Goのメソッド名、UI DOM ID、描画座標、ノードの見かけのラベルを同一性の根拠にしない。
+
+抽象経路は「対象Source／qualified kind・意味ID・Role → 型付き意味・実装義務 → 選択された実現方法／Operator・Plugin／Builder → 実際に呼ばれた入口と入力 → 結果／独立観測 → 現在のConsumer」の必要な区間を、**既存のSource Index・Operation・Build／Execution／Receipt・Consumer証拠から読み取る観点**とする。新しいTrace Engine、意味経路専用の永続Schema、第二Test DSLを設けない。画面がまだ実際に観測していない区間は、図で線をつないでも「未確認」とする。
+
+| 確認する不変条件 | 変更してよいもの | 検査すべき違反 |
+| --- | --- | --- |
+| qualified Subject／Source occurrence／Roleと必要な参照の結び付き | 表示名・配置・タブ構成・生成メソッド名 | 同名別Subject、Relationの向き・Key・多重度・Source版の取り違え |
+| 実装義務と型付きInput／Output／Read Footprint／Effectの対応 | Generate／Interpret／Delegateの実現方式 | 必須Field欠落、NULL・missing・unknownの縮約、別Operator／Provider選択 |
+| 選択されたBuilder／Pluginと実Input・Artifact／Invokerの一致 | 実装先の言語、最適化、内部関数の分割 | 選択B・実A、旧Source／Toolchain／生成JS、未観測の依存を一致扱い |
+| Hostで受理した現在のSource・Scope・GrantとConsumerへの開示 | CLI／Desktop／Webの表示方法 | A→B→A旧Reply復活、別Workspace／Worktreeへの漏洩、UI活性を実行資格へ昇格 |
+
+**実現方式の比較**：Generateは選択した意味を実Sourceから読み、実Builderが生成物を消費したことまで確認する。Interpretは同じ意味から既存Evaluatorを実呼出しし、選択された読取属性・判断を照合する。Delegateは外部実装への委譲境界と実Providerを確かめる。三方式は同じ独立Expectedに照らして比較できるが、方式ごとの実使用・契約閉包は別に記録する。単に生成Goが起動したことや、Go関数が正しい値を返したことは、DSLがその判断を担った証拠ではない。
+
+### 18.2 先にread-onlyの一経路を通す
+
+最初の固定対象は、既存の選択済みRule Markdown Fixtureでよい。正規Workspace Load／Source Indexから読めたRuleを、通常製品CLIの実Process、共通operations.InspectSubject、Wails非依存studiohost.NewReadOnlyで比較し、次に既存Wails Bridgeから表示まで追う。先行する#5108の三入口テストは**未マージの実装候補**として取り込み、既存Fixtureを使う。CLIのInspectとHostの応答が同値でも、WebView／実Windows／Stage2を検査したことにはならない。
+
+同じFixtureに「非TEI Fenceに書かれた偽Rule」「同名だが異Kind」「許可外Workspace」「実Sourceの一文字改版」「Ruleが読めても公開Function Entryにはならない」を置く。Source位置が一意でない場合はJump／Quick Fixを保留し、PreviewはSource byteを変更しない。実編集へ進む際は、§16のBuffer・Disk Source・Owner Acceptanceを区別し、保存時の実byte照合、再Inspect、診断への戻りを検証する。見かけのGraph選択やAI提案を自動修正・自動受理の根拠にしない。
+
+### 18.3 受入結果を利用者に見せる粒度
+
+ProblemsとInspectorは、少なくとも「Sourceを読んだ」「Meaningを解決した」「実装を選択した」「実Provider／Builderが呼ばれた」「結果をConsumerが受け取った」の**実際に裏付けのある段階だけ**を説明できるようにする。これらは既存証拠の表示観点であり、製品共通の新Status列挙や万能な合否点数ではない。Sourceのバイトが一致してもOwnerの意味受理を示さず、実行結果が同値でも実際に選択した実装が一致したことにはならない。部分取得、Read failure、制限付き情報は秘密側の存在・件数を公開DOM／ARIA／AI Contextへ漏らさない。
+
+**最小検収**：CLI／studiohostのRule Inspectが一致し、誤Kind・別Workspaceの拒否分類が一致することを第一段とする。次にWails上の同じ対象について、Focus／Pinの後着失効、Sourceの実Open、read-only Diagramと原文の往復、診断から一意SourceへのJumpを段階的に追加する。Generate／Interpretの同じ意味・異方式比較は#2620／#1121、実Providerは#4495／#2586、実Stage2は#2831／#4583が担当し、Desktopの最初のread-only検証の追加Hard Gateとしない。独立Expectedは#1180／#2514の既存Packetへ接続する。
+
+**現状**：上記は仕様と既存テストへの引渡しであり、#5115の組織C1抽象経路テスト、#5108のCLI／Studio Host同値、Plugin Mapping #5101の成果を参考にしたもの。新しいDesktop実IPC／Windows／編集保存／Provider実Call／Stage2の試験は本追補では実施していない。

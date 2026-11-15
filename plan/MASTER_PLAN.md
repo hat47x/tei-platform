@@ -257,9 +257,16 @@ Gate C — PAS-04 Evidence — Ready
 
 ### Studio Desktopセルフビルドを最優先にする現行の実証順（2026-11-14更新）
 
+
+**Desktop Workbench・実行経路の横断統合（2026-11-16、設計・受入引渡し）**：[Desktop Web標準UI実装指針 §§14〜17](design/TEI_DESKTOP_WEB_STANDARD_UI_IMPLEMENTATION_2026-11.md)で、一つのSource-backed対象をEditor／表／Graph／Node／Process／Inspectorから参照する画面構成、Focus／Pinの非干渉、Buffer／実Source／Meaning／Build入力／実Consumerの版分離、保存時の実byte照合と復旧、CLIとWails Bridgeに共通なApplication Operation、標準型を使うPlugin接続を一本化する。第二Parser、意味正本、Plugin Loader、Flow Runtime、Desktop独自Host／Policy Engineは増やさない。
+
+**次の実装と優先順位**：製品P0は引き続き (1) 非Plugin Studio BuildIntent→実選択Builder→N0／N2／N3同一Attempt→生成Stage1自身によるStage2 Build→そのStage2のWindows WebView2実受領（#2831／#4583／#1824）、(2) 通常CLI→受理済みpure Function→actual Provider Read→独立Consumer（#2586／#4495）の二本。UI側は#4515の後着／Pin、#1529／#1124の一Source Buffer→保存時競合→再Inspect、#1158のCLI／Wails read-only同値、#2497／#951の型付きPort／Adapter表示を並列の小PRとする。新§16〜17は**docs-only／未実行**であり、先行するPinや生成PoCの限定成功を正式Stage2／実Provider／Owner受理へ合算しない。
+
+**Desktopの抽象経路を検査する（2026-11-16、設計・試験引渡し）**：[Desktop Web標準UI指針 §18](design/TEI_DESKTOP_WEB_STANDARD_UI_IMPLEMENTATION_2026-11.md)で、表示名・生成メソッド名・DOM IDから離れ、qualified Subject／Source occurrence／Role・型付き義務・実装選択・実Invoker・実Consumerを既存Evidenceから追う観点を定める。最初は実Rule MarkdownのCLI Inspect／共通Operation／Wails非依存Studio Hostの同値と、異Kind／許可外Workspace／Source改版の拒否を#5108・#1180・#2514で確認する。続いてWails実UIのFocus/Pin・原文への往復を検収し、Generate／Interpret／Delegateの実現方式比較（#2620／#1121）は別の実使用証拠とする。#5115の抽象経路試験、#5101の型付きMappingは参考にするが、既存Ownerの結果をDesktop製品E2Eへ昇格させない。P0のStage1→Stage2と通常CLI実Providerを優先したまま進める。**本追補はdocs-only／新実装・実機試験NOT RUN**。
+
 **Desktop統合仕様の引継ぎ（2026-11-14）**：[Desktop Host設計 §§11〜23](design/DESKTOP_STUDIO_HOST_INTEGRATION_DESIGN.md)に、Wails/CLI、SourceとMeaning、Graph、Dirty Buffer、起動・復旧、生成Inspectorの変異試験、CLI先行の実質的セルフビルド、設計対象のAIへの引渡しを集約する。個別PRの古いHEADやCI成功は最新の製品合格へ加算しない。§14〜19のケースは#1180/#2514への引渡し候補であり、第二Scenario正本ではない。
 
-**DesktopのWeb標準UI開発（2026-11-15追補）**：[実装・検収指針](design/TEI_DESKTOP_WEB_STANDARD_UI_IMPLEMENTATION_2026-11.md)で、現行TypeScript＋esbuild＋CodeMirrorを基線とし、S-LOCのread-only部品だけをVanilla Web Components／Lit＋TypeScript／Lit＋JSDocで比較する。Design Tokens・CSS Layer・Grid/Flex・Shadow DOMの選択、TypeScript/Lint/DOM/IME/ARIA・正規Bundleと実WebView2の検査を一つのFixtureで評価し、優位が確認できる範囲で採用する。現行配布用HTMLにPin UIが収録されていない問題は別の製品検収として残し、Framework選定やCSS刷新を#2831/#4583のStage1→Stage2 P0と#2586/#4495の実Provider P0に追加しない。
+**DesktopのWeb標準UI開発（2026-11-15追補）**：[実装・検収指針](design/TEI_DESKTOP_WEB_STANDARD_UI_IMPLEMENTATION_2026-11.md)で、現行TypeScript＋esbuild＋CodeMirrorを基線とし、S-LOCのread-only部品だけをVanilla Web Components／Lit＋TypeScript／Lit＋JSDocで比較する。Design Tokens・CSS Layer・Grid/Flex・Shadow DOMの選択、TypeScript/Lint/DOM/IME/ARIA・正規Bundleと実WebView2の検査を一つのFixtureで評価し、優位が確認できる範囲で採用する。現行配布HTMLにはPin UIが存在する。現在の静的HTML一致と実WebView2での検収、さらにStage2再入を分け、Framework選定やCSS刷新を#2831/#4583のStage1→Stage2 P0と#2586/#4495の実Provider P0に追加しない。
 
 **Desktop配布Sourceの回復と製品引渡し（2026-11-15）**：[Web標準UI指針 §§8〜11](design/TEI_DESKTOP_WEB_STANDARD_UI_IMPLEMENTATION_2026-11.md)に、現行Embed CIで照合するHTML／JS／CSS／第三者通知の四ファイル、Go埋込→実Windows WebView2→Stage1→Stage2の独立した受領、内蔵Rule Readerの限定成立、Pin／S-LOCとAI文脈の権限境界、D1現行・D2単一Image＋Updater・D3子Backendの導入判断をまとめた。次に閉じる実コード差分はW0の現行Source→正規Bundleと実Pin DOMの受領であり、Lit導入・Mobile・子Backend・S-OPENをP0の新Hard Gateにしない。既存#1824/#2831/#4583/#1180/#2514の受入を利用する（設計追補、当該変更の製品E2EはNOT RUN）。
 
