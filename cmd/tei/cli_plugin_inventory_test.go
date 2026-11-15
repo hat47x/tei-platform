@@ -129,6 +129,47 @@ func TestPluginInventoryEnvelopeAndModes(t *testing.T) {
 	if row.LockPinned == nil || !*row.LockPinned {
 		t.Fatalf("the supplied lock pins this plugin: %+v", row)
 	}
+	var docPreflight struct {
+		PluginID        string `json:"pluginId"`
+		Environment     string `json:"environment"`
+		SelectionStatus string `json:"selectionStatus"`
+		ResolvedVersion string `json:"resolvedVersion"`
+		LockPinned      *bool  `json:"lockPinned"`
+		SourceBinding   string `json:"sourceBinding"`
+		Disclosure      string `json:"disclosure"`
+		ReadEligibility string `json:"readEligibility"`
+	}
+	if err := reMarshal(detailShape["documentReadPreflight"], &docPreflight); err != nil {
+		t.Fatalf("document preflight: %v", err)
+	}
+	if docPreflight.PluginID != row.PluginID ||
+		docPreflight.SelectionStatus != "exact-version-pinned" ||
+		docPreflight.ResolvedVersion != "1.0.0" ||
+		docPreflight.LockPinned == nil || !*docPreflight.LockPinned ||
+		docPreflight.SourceBinding != "unbound" ||
+		docPreflight.Disclosure != "not-checked" || docPreflight.ReadEligibility != "not-assessed" {
+		t.Fatalf("selected plugin is not a qualified Document read: %+v", docPreflight)
+	}
+	// Exact resolver selection and a matching lock do not provide a Doc
+	// binding or an Audience grant. With no lock the selection is unknown.
+	unlocked := run(0, "plugin-inventory", "-workspace", reference, "-environment", "development",
+		"-plugin", "tei.database.postgres")
+	var unlockedDoc struct {
+		SelectionStatus string `json:"selectionStatus"`
+		LockPinned      *bool  `json:"lockPinned"`
+		ReadEligibility string `json:"readEligibility"`
+	}
+	var unlockedShape map[string]json.RawMessage
+	if err := reMarshal(unlocked.Result, &unlockedShape); err != nil {
+		t.Fatal(err)
+	}
+	if err := reMarshal(unlockedShape["documentReadPreflight"], &unlockedDoc); err != nil {
+		t.Fatal(err)
+	}
+	if unlockedDoc.SelectionStatus != "lock-unknown" || unlockedDoc.LockPinned != nil || unlockedDoc.ReadEligibility != "not-assessed" {
+		t.Fatalf("a missing lock is not a false lock or a public Doc grant: %+v", unlockedDoc)
+	}
+
 	if row.RuntimeBoundary != "in-process" {
 		t.Fatalf("a builtin plugin runs in-process, got %q", row.RuntimeBoundary)
 	}
