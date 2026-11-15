@@ -1534,3 +1534,25 @@ Studioで元のSource位置を表示するS-LOCと、現在のWorkspace/Source R
 **CIと統合の扱いもdogfoodingの一部とする。** [PR #4824](https://github.com/hat47x/tei-platform/pull/4824)はmain統合済みだが、当該HEADのRepository Healthはfailureで、ログには`internal/plugin/management/document_preflight.go`のgofmt差分と`workbench_revision_mismatch`がある。前者の修正[#4818](https://github.com/hat47x/tei-platform/pull/4818)はmain統合済み。後者の修正候補[#4812](https://github.com/hat47x/tei-platform/pull/4812)は**closed/unmerged**であり、同PRの過去CIを現在mainの成功とみなさない。ここでHealthの失敗を、docs-onlyだからといって合格へ書き換えない。
 
 次のコードPRはD-Aの「選択一件・同一byte・候補とSource位置・負例」だけとし、Ownerの#2621/#988/#2823へ渡す。Generatorは#4544、実Pluginは#951/#1251、自己再構築は#2831/#4583、実PG Function Readは#2586/#4495がそれぞれ責任を持つ。各PRの実行可否は**そのPRのexact HEAD、現在mainとの競合、独立Expectedと実Consumer**で判断する。本文の追加だけでは実Go/Windows/実DB/正式Reader/実Plugin/Stage2/Owner意味受理を新たに合格としない。新Host・第二Parser/Resolver/Registry・Scenario正本を増やさない。
+
+<!-- tei-dogfood-20261115-actual-reader-and-ci-triage -->
+### 15.55 Reader選択を作り込みすぎず、二つの実利用経路を先に開通する
+
+§15.51のA0〜A3は、自己記述[#4834](https://github.com/hat47x/tei-platform/pull/4834)の「Reference `ParseSelected`は製品Language Provider選択を行わない」という実コード確認を前提とする。最初から汎用Language Registryや第二Parserを作るのではなく、既存のContract／Profile／Lock／Workspaceをどこまでつなげば**選択された一Readerだけ**を利用できるかを調べる。構文・Roleが未確定なら、その部分は候補または`unsupported`として残す。専門家にとって読みやすいMarkdownの記述形式を、初期のGeneratorやGo内部型に合わせて固定しない。
+
+**最初のReader PR**は、選択Sourceの原byteとReaderが実際に受け取ったbyteの同一性、Source位置とRole、GraphのNode/Edge IDおよび方向と多重性、未選択・重複・非管理の拒否に範囲を絞る。読めた候補をOwner受理済みMeaningと同一視せず、`*.tei.md`を管理対象にしただけで旧Guardを無条件に解除しない。Builderへの入力接続とコード生成は次の別PRにする。
+
+Readerの実装が完了する前でも、二つの仕事は独立して前へ進められる。
+
+- **実CLI/Providerの一往復**（#4495/#1251）：公開された一つのpure Entryに対して、現在のSelection／型付きInput／Provider実体／実Invocation／Consumer結果を同一Attemptで検証する。Mainの既存Capability InvocationやHost Carrierをそのまま業務Entryの公開・認可と読み替えない。[Script Launch検討 #4837](https://github.com/hat47x/tei-platform/pull/4837)は実装箇所の案であり、製品実Callの合格ではない。
+- **Studioの生成・実受領**（#2831/#4583）：既存の生成Inspector/Workbenchを非Plugin Build Subjectで扱い、N0→N2→N3の実入力member、Stage1の次Stage要求、実Windows WebView2受領を別々に追う。[Bootstrap整理 #4839](https://github.com/hat47x/tei-platform/pull/4839)のとおり、#4812は旧HEADで実CIが成功していても**closed/unmerged**である。Assetを現行mainへ取り込む作業と実Consumerの受入は分ける。
+
+そのうえでGraph/Rule生成を、限定Referenceの成功から正式Reader由来の実Builder／実Providerへ接続する。BRMSのUnique判断は[main設計 #4835](https://github.com/hat47x/tei-platform/pull/4835)に従い、**Rule集合が確定したか**と**条件に必要なData/Relationが取得できたか**を別に検証する。局所的な矛盾検出はできても、未取得のRuleがある状態で唯一解・該当なしを保証しない。Windowで見つかったNULL／0／行不在の違いも同じ「出力だけでは必要な入力を証明できない」という反証に利用する。
+
+### 15.56 dogfooding計画自身も、失敗を原因別に追える形で統合する
+
+[PR #4836](https://github.com/hat47x/tei-platform/pull/4836)の初回HEAD `9d191fc` では、差分は本設計書への追記だけで、Cache Full/Incrementalは成功、Issue-to-DesignとRepository Healthは失敗した。実ログで確かめた原因には、`internal/jsonl.ReadBytes`の重複宣言、Studioの`workbench_revision_mismatch`、Workflowの版／concurrency設定、設計索引とMarkdown相対リンクの不整合がある。このPRの追記を検証済み製品実装と取り違えない一方、既存mainの失敗を「計画だけだから無視」とも扱わない。
+
+重複`ReadBytes`は[PR #4844](https://github.com/hat47x/tei-platform/pull/4844)で、既存`jsonl.go`の実装を残して重複ファイルを削除し、main統合された。これはコンパイル上の一障害の修正であり、WorkbenchやWorkflow／索引の別障害まで修正した証拠ではない。#4812の未統合Workbench修正を旧版から無条件にコピーしない。今後のCLI検収では、実バイナリのBuild失敗をSource/Meaning/Providerの不合格と混同せず、まず阻害した工程と実際に起動できた工程を分けて残す。
+
+**docs-onlyの統合判断**では、対象HEADの差分が既存計画の追記だけであること、既存§15.1〜15.54を保持すること、Markdown見出し・表・リンクが整合すること、既存mainの失敗と変更に起因する新しい失敗を区別することを確認する。全体CIの不合格をPASSに書き換えず、必要な修正を各Ownerへ返す。実装PRの資格はこれより厳しく、対象HEADでReaderの実Source読取、独立Expected、実CLI／Provider／Consumer、Stage1→Stage2実Processをそれぞれ検査し、未実行は未実行のまま示す。計画をマージすることは、それらを製品として受理することではない。
