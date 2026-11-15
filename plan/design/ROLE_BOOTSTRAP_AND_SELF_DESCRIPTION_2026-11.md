@@ -2688,7 +2688,7 @@ R0〜R4はこの節での**検収の見通し**であり、[製品計画 #4676](
 
 ### 45.1 新たに固定する判断：自己記述の五つの到達点は同一ではない
 
-本節は第1〜44節の設計を置き換えず、`44のGraph→Rule→生成Pluginの実証を、TEI DSL自身の自己記述／自己拡張／自己生成／CLI再入へ接続するための**実装順と合否**を明確にする。Studio Desktop Stage1→Stage2（#2831/#4583）と通常`tei` CLIからの実Provider Read（#2586）のP0は変更しない。新たな汎用Interpreter、Parser Registry、Semantic正本、Build Runner、Host、横断Gateは追加しない。
+本節は第1〜44節の設計を置き換えず、第44節のGraph→Rule→生成Pluginの実証を、TEI DSL自身の自己記述／自己拡張／自己生成／CLI再入へ接続するための**実装順と合否**を明確にする。Studio Desktop Stage1→Stage2（#2831/#4583）と通常`tei` CLIからの実Provider Read（#2586）のP0は変更しない。新たな汎用Interpreter、Parser Registry、Semantic正本、Build Runner、Host、横断Gateは追加しない。
 
 - **D1 記述可能**：Language/Role/Operator/PluginのRequired Shape、契約版、依存、診断を既存標準データ構造で記せる。記述可能でもParserが採用したことにはならない。
 - **D2 解釈可能**：B0の有限Seedと既存Selection/Extension Lockで実Providerを固定し、元SourceとAnchorを保持したTyped Candidateを得られる。自己申告の`trusted`／`pure`から意味受理や権限を作らない。
@@ -2754,7 +2754,7 @@ P0-A/BとP1の実行はStudio GUIやMCP Serverの完成を待たない。CLIで�
 <!-- tei-self-description-generated-decision-readset-20261115 -->
 ### 45.7 他レーンの成熟した成果を「一つの実証」に収束する
 
-11月15日時点でmainに統合された[BRMS決定表統合設計](BRMS_DECISION_ANALYSIS_INTEGRATION_2026-11.md)を踏まえ、`45.4のGraph/Validationに加える第三の大型モデルを先に作らず、**一つのRuleのSource→型付き意味→実生成Go→実Consumer→独立Expected**を横断の基準とする。BRMSは判断の競合・部分観測を、#4544は生成器の実装由来とConformanceを、#4583は非Plugin Studioの実Build工程を、それぞれ所有する。自己記述レーンはこれらの証拠を同一Subject/Revisionで参照し、各Ownerの仕様を複製しない。
+11月15日時点でmainに統合された[BRMS決定表統合設計](BRMS_DECISION_ANALYSIS_INTEGRATION_2026-11.md)を踏まえ、第45.4節のGraph/Validationに加える第三の大型モデルを先に作らず、**一つのRuleのSource→型付き意味→実生成Go→実Consumer→独立Expected**を横断の基準とする。BRMSは判断の競合・部分観測を、#4544は生成器の実装由来とConformanceを、#4583は非Plugin Studioの実Build工程を、それぞれ所有する。自己記述レーンはこれらの証拠を同一Subject/Revisionで参照し、各Ownerの仕様を複製しない。
 
 第一の製品差分として、現在実在するCLIのSource/Selection/診断入口を棚卸しし、正式に選ばれたLanguage/Role/OperatorとそのSource occurrenceを**読取り専用で辿れるか**を確認する。新しい`tei self-description`コマンドや万能Descriptor Readerを先に増設しない。`*.tei.md`は現行Product Readerの未接続区間を`unsupported`とし、限定Referenceの事前変換を正式採用の証拠に数えない。文法の評価は「専門家が対象→条件→判定→結果の順で読める」「Go宣言を露出しない」「Sourceの糖衣を保存できる」を優先し、Frontendの構文候補とBackendのGo生成方式を混同しない（#4359/#988/#2621）。
 
@@ -2781,4 +2781,4 @@ PluginのDescriptorがTEIで書けても、実際のValidator/Generator処理が
 
 標準Prelude（`std.*`）については、現在Go内にある固定Primitiveの自己記述とSource-backed定義への移行を**B0のSeed最小化候補**として継続検証する。Preludeを同名の`.tei`へコピーするだけではSource・Meaning・fingerprint・Reader資格は保存されない。移行は#2620と既存Source/Format VersionのOwnerが有限Seed→候補Standard Source→独立意味比較→Owner切替の順で進め、初回Graph/Rule生成やStudio Desktop P0の前提条件にはしない。
 
-**採用と実行の境界**：本第45.7〜45.8節は成熟した他レーンの契約を`45の実装順へ接続する計画更新のみ。SDX-24〜31、新`*.tei.md` Product Reader、新Go/Plugin実生成・実呼出し、Studio Stage2、Source安全書戻し、Owner意味受理の新実証は**NOT RUN**。既存mainの限定Referenceや別HEADで成立したWindows CIを同一Attemptの製品PASSへ合算しない。
+**採用と実行の境界**：本第45.7〜45.8節は成熟した他レーンの契約を第45節の実装順へ接続する計画更新のみ。SDX-24〜31、新`*.tei.md` Product Reader、新Go/Plugin実生成・実呼出し、Studio Stage2、Source安全書戻し、Owner意味受理の新実証は**NOT RUN**。既存mainの限定Referenceや別HEADで成立したWindows CIを同一Attemptの製品PASSへ合算しない。
