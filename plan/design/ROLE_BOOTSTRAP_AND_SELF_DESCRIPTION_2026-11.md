@@ -3065,5 +3065,28 @@ RとGは同一のRuntime Hostや第二Generatorを要求しない。Rでは最�
 
 この追加試験も`go run`する生成Goは**テスト専用入力を持つ別Process**であり、独立した正式Builder／業務Provider／製品CLI Consumerではない。今後R2では、このR1で生成したGoのbyteを既存BuildIntent／Builderへ引き渡し、ビルド時の実入力・Toolchain・Artifact digest・受領したConsumerの実結果を同一Attemptに束縛する。R3では通常`tei` CLIから選択Providerの実呼出しへ進み、Current GrantとInput Scopeを別資格で照合する。Studio Stage1→Stage2 Windowsは並行P0のまま維持し、Graph/外部Language PluginやNode Flow用の新RunnerをR2の前提に追加しない。
 
-**今回の追加試験と計画の境界**：GoテストをGitHubへ置いたことを合格とはみなさず、該当PRのexact HEAD CIで検証する。実Builder・Provider・CLI・Windows・Owner Meaning受理について新しいPASSはない。
+**この回帰の現在位置**：`positive_source_edit_test.go`はmainに入り、PR #4935の対象HEAD `9755a51487fe108ae97c310fba457a269a7ad8e7`に対するRepository Healthログでは`tei/internal/semantic/validationgen`パッケージのGoテストが成功した。ただし、全体Healthは別パッケージのコンパイル・テスト・整形等で失敗している。局所Goテストの成功を正式Builder・Provider・CLI・Windows・Owner Meaning受理のPASSにはしない。
+
+
+<!-- tei-self-description-r1_5-reference-builder-product-r2-20261115 -->
+### 47.16 生成コードから実バイナリまでの検証が進んだ範囲
+
+現在のmainには、第47.15節の「説明文だけ変えるとGoの生成byteは不変、Ruleの参照先を変えると読取先・実結果が変わる」という回帰に加え、次の二つの段階がある。
+
+| 検証経路 | 実コードによる観測 | まだ確認していないこと |
+| --- | --- | --- |
+| **R1.5：直接Go Build** | `internal/semantic/validationgen/positive_mutation_binary_test.go`。同じRule IDのAttribute参照を変更し、選択済みProduct Sourceから異なるGoを再生成。Goツールチェーンで**二つの実バイナリ**を作成して別々に実行し、読取先・判断・生成物の差分を確認する | TEI製品が選択したBuild Intent／Builderの実入力であること |
+| **R2の参照実証：既存BuildPlan Builder** | `tools/reference-go-build-from-plan/validationgen_build_binding_test.go`（#4934）。Product `Workspace.Load`→型付きRule／Source Index→`GeneratePositive`→既存`DirSourceResolver`と`plugin.BuildPlan`→参照Builderの`-isolate`実行。実Source Digest、Artifact Digest、`BuildArtifactLock`、生成Binaryの五つの出力を照合し、Plan確定後の生成Go改変をBuild前に拒否する | 正式製品CLIが選択したBuilder／Generator Lock、公開Pluginの収録、実Provider・独立Consumerの受領 |
+
+これらは、手書きGoに判断を委譲せず、生成したbyteが実行される範囲を広げた重要な証拠である。一方、**実Goツールチェーン／既存参照Builderがコンパイルした事実と、製品の正式なBuilder選択・Artifact採用は同一ではない**。参照試験のPlanはテスト自身が組み立てており、そのまま製品のBuild入力閉包や現在の実行資格に昇格しない。詳しい試験とR2受入票は既存の[Plugin Rule製品縦断計画§12・§14.2〜14.4](PLUGIN_RULE_PRODUCT_VERTICAL_SLICE_2026-11.md)を正本とし、ここに第二のBuild設計は作らない。
+
+**CIの確認済み範囲**：PR #4935のexact HEADのRepository Healthでは、`tei/internal/semantic/validationgen`が`ok`、`tei/tools/reference-go-build-from-plan`もパッケージとして`ok`、Cache検証は成功した。他方、全体Healthとセルフビルドは失敗した。主な別原因には`cmd/tei/rea_evidence_test.go`の旧フィールド・`Candidates`参照によるコンパイル停止、別ツールの未解決Import、他パッケージのテスト・Go整形不一致が含まれる。**このHEADが後続の参照Builder追加試験を実際に含んでいたとは、パッケージの`ok`だけでは断定しない**。PR #4934の厳密な実試験合格はその試験を含む対象HEADのログで別に判定する。
+
+### 47.17 次のR2は「製品が選んだBuilderによる使用」を一件で示す
+
+次の実装PRは新しいBuilderを作るのではなく、第47.16節の**同じ生成Go byte**を、製品の現行Build Intent／Builder選択経路に引き渡す最小接続とする。正式に選択したGenerator実装・版と、同じAttemptのSource／Manifest識別、Build計画の実Source member・Toolchain、実Builderが再読したbyte、生成Artifactと受領側の観測をつなぐ。NameやDigestを二箇所で自己申告して一致させるだけでは足りず、生成Sourceの差替え・旧Artifact再利用・選択Builderと実Builderの不一致を拒否できる必要がある。
+
+特に、製品の`workspace.BuildSourceIndexFromLoad`は**一つのLoadに由来する管理対象ファイルのbyteを保持するが、Workspace全ファイルの原子的Snapshotではない**。ImportsのSourceはこの経路では束縛されず、Manifest自体のIdentityも別である。したがって、R1側の「同一Load」だけでR2の全Build入力閉包が成立したと判定しない。既存`buildintent.DirSourceResolver`による実対象Source集合の検証、Manifest／Imports、必要な依存・生成器資格を製品の既存Planに結び、足りない条件は明示して停止する。生成Goは現状`tei/internal/semantic/validationeval`をImportするため、最初は**TEI Goモジュール内部の静的合成**に限定する。外部Host向け公開API／Target変換は別の受入とする。
+
+R2を受け取るOwnerは#4544／#2595／#943、Providerの実Callと通常CLI・独立Consumerは#4495／#1251、正式Language／Pluginの版選択は#988／#1018、独立Expectedは#1180／#2514を維持する。全体最優先のStudio Stage1→Stage2 Windows（#2831／#4583）は別の実証であり、R2完了の代用にならない。ここでの追記は**mainのコード・CIログを計画へ反映したもの**で、新しい製品Builder接続、実Provider、Windows Consumerを実行して合格にしたものではない。
 
