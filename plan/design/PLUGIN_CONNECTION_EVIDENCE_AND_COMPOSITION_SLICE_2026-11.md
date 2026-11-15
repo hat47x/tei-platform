@@ -168,3 +168,58 @@ W0-A/Bは**read-onlyの同じ画面に情報が出たこと**が目標ではな�
 まず既存Goのread-only負例を#1124／#3262／#1251へ、正式Builder／公開EntryのCallは#2595／#4544／#4495へ、Source版と局所失効は#2600へ引き渡す。実Hook／Effectは#1129／#1174／#4198の先行Guardと単一Caller検収後に限る。独立Expectedの置き場所は従来どおり#1180／#2514とし、ここに第二のScenario正本を作らない。
 
 **今回確認した実装の範囲**：上記4つのGo実装の存在と責務をSourceから静的に確認した。W0-A〜Dの新しい製品Go Test、通常CLI実R3、Rule R2-P正式Builder、Windows Stage2、Effectの統合試験は本追補では**NOT RUN**。この節によって、既存PRの部分的成功を横断E2Eの合格へ昇格させない。
+
+
+<!-- tei-cross-plugin-selected-operator-evidence-20261115 -->
+## 8. 選択済みOperatorと生成Goの実証を、横断Pluginの接続検収へ組み込む（2026-11-15）
+
+### 8.1 新しい局所実証と、なお残る境界
+
+直近の実装により、横断Pluginを構想上のGraphにとどめず、**実Sourceを読んだもの・選択した実装・実際に評価したもの・生成して起動した成果物**の差として比較できるようになった。完了した局所実証の範囲は次のとおり。
+
+| 実装・出典 | 今回の判断に使える事実 | まだ引き継げない資格 |
+| --- | --- | --- |
+| [#5007](https://github.com/hat47x/tei-platform/pull/5007)／`internal/workspace/operator_implementation.go`、`internal/semantic/validationeval/operator_selection.go`、`cmd/tei/scenario_validation.go` | Workspace manifestの`implementations`で宣言済みOperatorに組込み実装を指定し、規則評価で実際に利用した実装を局所記録できる。未束縛は拒否 | 選択をPlugin Resolver／Lockに結ぶ経路、正式Conformance／Meaning、生成済みScenarioコマンドへの選択版束縛、通常`tei scenario run`全体E2E |
+| [#5009](https://github.com/hat47x/tei-platform/pull/5009)／`cmd/tei/cli_self_build_generated_rule_go_test.go` | 実Workspace Loadから選択されたRule由来のGoを通常の`tei self-build`／Build Intent経路でビルドし、完成Binaryを起動して独立Expectedと比較した | 元Markdown byteとGenerator実装資格の正式BuildPlan閉包、当該実装の公開Function Entry、選択済みRuntime Provider実Call、Studio Stage2 |
+| [#4995](https://github.com/hat47x/tei-platform/pull/4995)・[#5002](https://github.com/hat47x/tei-platform/pull/5002) | 通常Studioの実Windows WebView2でPin A→B選択→A再確認→解除を限定的に検収した | 非Plugin StudioをStage1自身が生成したStage2である証拠、Plugin配線の実GUI受領、現在Grant／Effect |
+
+同じ「選択済み」の語でも、Rule Readerが選んだ`*.tei.md` Frontend、Workspace manifestが選んだ組込みOperator実装、Plugin Catalogが選んだexact Provider、Build Intentが選んだBuilder、Hostが入場を認めたRuntime Bindingは**別の選択**である。まず各Ownerの識別子・Scope・版・Actual Callを保存し、対応が正式に存在するときだけ関係を結ぶ。#5007を「Plugin選択の完成」と呼ばず、#5009を「正式R2-P全体の完成」と呼ばない。
+
+### 8.2 標準GraphとNode Viewへ投影する最小単位
+
+横断Pluginの共通単位は巨大な`PluginNode`でも共通`before/after` Hookでもない。既存Data／Function／Operation／Processが要求する**型付きの貢献**と、各Ownerが発行した**型付き関係**である。Node ViewはそのProjectionとする。
+
+| 関係 | この段階で確認できる内容 | 対応が未確認なら表示すること |
+| --- | --- | --- |
+| `declares / requires` | WorkspaceのOperator宣言、RuleのRequired Context／評価時点 | Sourceと意味Ownerが同じかどうかを保留 |
+| `selects / resolves` | manifestの組込み実装選択、または別OwnerのPlugin Selection／Lock | 片方からもう片方を推論せず、別欄で`unknown` |
+| `generated-from / consumed-by` | 選択済みRule→生成Go→実Builderが読んだGo byte→Binary | 元Markdown／Generatorの完全Build閉包は部分証拠と表示 |
+| `invokes / observed-by` | 局所規則評価時の実装呼出し、あるいは正式Hostのactual Entry／Receipt | 別Function／別Attempt／別SurfaceならE2E線を引かない |
+| `projected-as` | CLIの根拠票、標準Node View、通常Studioのread-only Inspect | Runtime呼出し・Source編集・Current Grantの許可は付けない |
+
+同端点・同ラベルの複数RelationはEdge IDとSource occurrenceを保持する。Portの型だけでなく粒度、時間、完全性、NULL・欠損・未取得、Effect、必要Scopeを**対象のOperatorが要求する範囲**で検査する。表示用の座標／折畳み変更は選択・生成物・実行の資格を変更しない。一方、選択実装・利用Contract・データ取得Scopeの変更は、見た目が同じでも影響先を再資格化する。
+
+すなわち「横断性」は同じ図で描けることではなく、**同一の貢献を複数のFunction／Surfaceで使い、その適合と実利用を独立に反証できること**で判定する。宣言文・Markdown表・Graph・Node Flow・CLI／Studio表示は共通Sourceからの別Projectionとし、Sourceへ戻せない線はread-onlyに留める。[#4957](https://github.com/hat47x/tei-platform/pull/4957)のNode View論点は既に[標準ノード構成§9](SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)へ取り込まれており、同PRの未マージ状態とmainの文書内容を混同しない。
+
+### 8.3 次に作るコード差分：選択実装の鮮度を一件だけ保証する
+
+**C0／現在の実証を固定**：#5007の`validationImplementations`は局所評価で「何を呼んだか」を示すが、Plugin Lock／Runtime Authorityではない。#5009の実Binary正例は、Builderが消費した生成Goと独立Expectedの範囲で保持する。いずれも別Attemptの成功を足さない。
+
+**C1／最優先の負例**：同じOperator宣言・Rule・入力値のまま、manifestの`use`だけを組込み実装AからBに変更する。旧生成済みScenarioコマンドがAを呼び続けるなら、選択現在性に反する。既存のSelection/Build/Evidence失効Ownerへ「実装選択の版／指紋が生成入力に入っていない」という欠落を渡し、生成済みコマンドを失効・拒否または明示再構築させる。Runtimeに新しいRouter／解決正本を作らない。実装選択の変更は業務意味の自動変更でもない。
+
+**C2／read-only接続票**：既存の`InspectSubject`とWorkspace Operator選択・局所Actual Callを一対象・一問で照合し、Plugin Inventory／正式`composition.Selection`は別欄に置く。現時点のContractが両方を結ばないならEdgeを作らない。既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)の独立Expectedに一因子負例を加え、結果値の一致で選択ミスマッチを覆さない。CLI JSON／Studio表示は既存Application API／InspectorのPresentationとして提供し、新しい横断CLI正本を設けない。
+
+**C3／正式な横断実利用**：公開pure Function→正確に選択されたRuntime Provider→通常製品CLIの実Call（R3）、Rule由来Goの正式な原Source／Generator／Builder閉包（R2-P）を**別々に**閉じてから、同一Function／Contract／Artifactを持つ場合に限り結合する。別ConsumerのStudio Stage2は#2831/#4583の独立Windows実証を使う。単なる生成GoのGo関数委譲やReference BuilderだけでPlugin自己構築の実現比率を算入せず、TEI定義へ移した判断の量を計測する（[自己記述§48](ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md)、[実装からモデルへの折返し](IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md)）。
+
+### 8.4 独立Expectedと統合の判断
+
+| Case | 一因子変更・意図的な故障 | 期待 |
+| --- | --- | --- |
+| **CPW-11** | Operator宣言は同じでmanifestの実装選択だけA→B。旧生成済みScenarioコマンドを利用 | 旧Artifactの実装選択資格を失効。現在のBとして成功表示しない。実呼出しA/Bの両者を区別 |
+| **CPW-12** | Workspaceの組込み実装選択は成立。別のLegacy Plugin Inventoryにも同名`Resolved`がある | 組込み実装の局所選択と、PluginのResolver／Lock資格を自動結合しない |
+| **CPW-13** | Rule A/Bから同じ生成Go結果を作り、実BuilderはGoだけを消費する | Binaryの判断結果は保持しても、元Markdown／Generator byteを含む正式R2-P閉包は追加証拠なしに受理しない |
+| **CPW-14** | 通常StudioのPin／Inspectorは実WebView2で成功し、Plugin配線・Stage2実行は未観測 | 現在の通常Desktop Consumerの局所PASSのみ。Plugin配線の実受領・Stage1→Stage2を合格にしない |
+
+最初の実装対象は**CPW-11を検出する生成済みScenario選択鮮度の製品Go回帰**とする。CPW-12〜14は既存read-only Ownerの照合票を先に固定し、追加Core型の要否は実際に表せない一箇所で判断する。実装OwnerはOperator／DSL #4359/#988、生成と失効 #1063/#2595/#2600、Provider #951/#1251/#4495、Graph／Studio #1124/#4198/#1824/#2831/#4583、独立Expected #1180/#2514。#5007/#5009に既にあるGoテストを別形式で重複実装しない。
+
+**この節の新規資格**は設計・実装順・反証対象の更新のみ。CPW-11〜14の新Go試験、正式Plugin Runtime Provider、全Contextの実Read、非Plugin Studio Stage2、Owner Meaning受理は**NOT RUN／NOT ACCEPTED**。Go単一バイナリ静的合成と外部Host責務分離の方針を保ち、Universal Hook／第二Resolver／Graph Runtime／新Host／第二Expected正本は導入しない。
