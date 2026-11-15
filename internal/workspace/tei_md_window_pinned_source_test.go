@@ -65,7 +65,6 @@ func TestTEIMDWindowManifestPinnedSourcePressure(t *testing.T) {
 			t.Fatalf("missing independent Source pin for %s", candidate.file)
 		}
 		t.Run(candidate.file, func(t *testing.T) {
-		t.Run(candidate.file, func(t *testing.T) {
 			original, err := os.ReadFile(filepath.Join(fixtureRoot, candidate.file))
 			if err != nil {
 				t.Fatal(err)
