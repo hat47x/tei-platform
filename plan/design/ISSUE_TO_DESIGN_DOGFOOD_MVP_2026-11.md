@@ -1707,3 +1707,19 @@ R2では、`GeneratePositive(rule, attributeType, packageName)`の戻りbyteだ�
 3. **実装到達と試験結果を分ける**：既存`internal/syntax/rule_placement_test.go`と`internal/workspace/rule_placement_source_diagnostic_test.go`のfocused Go試験に加え、修正された`tei-md-parser-unbound-ci.yml`の**正確なHEAD**で結果を照合する。CI設定の修正・PRのマージだけでは、正式R2 Builder選択、R3実Provider/CLI、Stage1→Stage2、Ownerの意味受理は成立しない。
 
 これは[Plugin縦断設計§14.9](PLUGIN_RULE_PRODUCT_VERTICAL_SLICE_2026-11.md)のR0入口に対応する**dogfooding上の検収索引**であり、新しいLanguage Registry、Reader、意味Store、Error体系を作る計画ではない。今後のGraph/Node/Windowや文書表現へ広げる際も、選択されたSourceのみに正式意味を与え、宣言として読めない部分を黙って成功させない。
+
+<!-- tei-dogfood-real-cli-build-and-operator-pins-20261115 -->
+### 15.70 実CLIから生成Goをビルドできた次に、出典と実装選択を同じ試行へ束縛する
+
+[PR #5009](https://github.com/hat47x/tei-platform/pull/5009)がmainへ統合され、実`Workspace.Load`で選択した`tei.rule-authoring/v0`の`quantity_positive`を`GeneratePositive`へ渡し、生成Goを**通常の`tei self-build`入口**でビルドする回帰が追加された。既存`buildintent.Resolve`、`reference-go-build-from-plan`、実Build Catalog、Plan Cross-check、Artifact Binding、再現性、隔離Go依存閉包を通し、完成Binaryを実起動して正／ゼロ／負／NULL／未取得の独立期待に照合する。これは「テストから参照Builderを直接呼ぶ」段階を越えるが、**テストが生成Goを一時packageへ配置し、そのbyteをBuild Intentへ渡している**点が重要である。元Markdown原byteと選択Reader／Generatorの版・資格が同一Build Intentの入力として証明されたわけではない。実行条件はLinux/amd64であり、試験の追加・マージとexact HEADでのGoテスト成功は別に扱う。
+
+また、[PR #5007](https://github.com/hat47x/tei-platform/pull/5007)で、宣言済みOperatorの実装選択をWorkspaceの`implementations:`から`scenario evaluate-validations`へ接続した。選択された組込み数値実装の呼出しが証拠の`validationImplementations`に現れ、0に対する`non-negative`と`non-zero`で別の判断を返す。これは**選択がWorldの業務意味と同一ではない**ことの実例でもある。現在の生成Scenario CommandはScenario／World／Plugin Lock／Fixtureを照合するが、Operator実装の選択だけを変更しても旧Commandが失効する保証は未実装である。名称と実際の呼出しの一致だけで、実装の業務意味受理や現在Grantを認めない。
+
+| 次の検収 | 同一Attemptで確かめること | 拒否すべき負例 |
+| --- | --- | --- |
+| **R2の入力出典** | 選択したRuleのRaw byte・Source位置・Language版・型付きMeaningとGenerator版を、`GeneratePositive`の出力byteおよび製品BuildPlanのInput Closureへ接続する | RuleだけA→B→A、旧Source receiptで同じ生成Goを流用、別Generatorで同一Go byteを資格共有 |
+| **生成Commandの現在性** | Operator実装の選択・実装識別値／版を、Scenarioの生成時と実行時に一致させる。既存のManifest/Lock/Command Pin機構を再利用する | WorldとPlugin Lockが同じまま実装A→Bに変わる、旧argvでBを実行して旧Expectedの合格にする |
+| **R3の実Call** | 選択した公開Function Entry／Provider実装と、実際のCLI/Consumer Call・Read Scope・結果を同一Artifactまで追う | Build済みBを置いたのにEntryが旧Aを呼ぶ、`static-response-v1`の固定応答を業務判定とみなす |
+| **Desktop継続** | Stage1が生成した**同一Artifact**をStage2 Windows WebView2で起動し、配信Bundle／Inspectorの実消費を確認する | 旧Bundle／別exeのUI成功をStage2セルフビルドの合格へ足す |
+
+実装順は、既存の`Scenario`生成CLIにおけるOperator選択の失効負例、Source→BuildPlan束縛、正式Function Providerの実Callを、独立した検収単位として並行させる。新しいDSL構文、第二Generator、独自HostやRegistryは先に増やさない。Designerが読みやすいMarkdown/Ruleから実装へ至る道筋と、Ownerが意味を受理する道筋を同じとみなさず、証拠が成立するまで保留する。
