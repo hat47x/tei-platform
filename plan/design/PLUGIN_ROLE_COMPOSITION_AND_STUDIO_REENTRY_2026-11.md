@@ -4,6 +4,7 @@
 - **確認日**：2026-11-13。GitHub上の現行mainの実装と、統合済みPRおよび進行中のDraftを静的に照合した。新たなGo/Node/Windows実行試験、Stage2 Desktopの自己再構築、業務Ownerの意味受理は行っていない。
 - **優先目標**：TEI Studio DesktopをTEI自身の定義から再生成・再構築し、生成した実行ファイルの実Consumerまで確認すること。既存の[#2831](https://github.com/hat47x/tei-platform/issues/2831)／[#4583](https://github.com/hat47x/tei-platform/issues/4583)を実装Ownerとする。
 - **関連する正本**：[#951](https://github.com/hat47x/tei-platform/issues/951)（Contract/Provider）、[#1016](https://github.com/hat47x/tei-platform/issues/1016)（Application選択）、[#1251](https://github.com/hat47x/tei-platform/issues/1251)（Plugin-first CLI/Studio）、[#3278](https://github.com/hat47x/tei-platform/issues/3278)（Trait履行）、[#3267](https://github.com/hat47x/tei-platform/issues/3267)（BOM）、[#2600](https://github.com/hat47x/tei-platform/issues/2600)（増分再利用）、[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)（Scenario／独立Expected）。
+- **共通Node View／Plugin配線**：[標準Graph表現とPlugin関係の接続契約](SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md#9-ノードビューをプラグインの関係配線にも共用する2026-11-15追補) §9。Package／Capability／ProviderとBuild／Runtime／実Callの関係をread-only投影するPV-N0を、既存Resolver／Lock／工程別BOMの受入へ接続する。表示線の追加だけでProvider選択・配備・実行を確定させない。
 - **併読**：[Plugin-first実装・dogfooding](PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md)、[原子的Trait](TRAIT_ATOMIC_COMPOSITION_AND_FULFILLMENT_2026-11.md)、[Hook／Lifecycle Graph](https://github.com/hat47x/tei-platform/pull/4589)、[Desktop統合計画](https://github.com/hat47x/tei-platform/pull/4593)。
 
 ## 1. 中心となる設計判断
