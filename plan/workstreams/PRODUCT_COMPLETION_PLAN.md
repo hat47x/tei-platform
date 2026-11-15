@@ -1310,3 +1310,14 @@ Webの要求、CLIの起動、タイマー、Message、画面操作には、そ�
 mainのRule生成Go CLIビルド回帰は、選択Markdown原文のコピーをGo embedで同梱し、完成Binaryが算出する原文Hashまで観測する段階へ進んだ。これを正式R2-Pの「元Source／Reader／Generator資格を同一Attemptに束縛した」実証に読み替えない。原文をBinaryに収録するかは**開示資格を持つ公開可能なFixture**に限定して検証し、製品・Plugin・Studio・AI配布への原byte同梱は既存DisclosureのOwner判断なしに一般化しない。
 
 並行するScenario実装選択A→Bによる旧生成Command失効はPR #5054と既存#2600に委ね、Go修正を重複させない。生成Studioの通常／生成Windows WebView2両Job成功（#5042／#5052）は製品PoCとして採用するが、Stage1→Stage2の実再入（#2831／#4583）とR3のactual Provider（#4495／#1251）は独立P0のままとする。Go focused回帰のCI合否、手書き検査の実削減、原文配布の開示受理を別の検収票で確認する。
+
+<!-- tei-product-realization-choice-20261115 -->
+### 型付きモデルの直接評価とコード生成を、同じRuleで比較する（2026年11月15日）
+
+[Plugin実現方式§10](../design/PLUGIN_REALIZATION_AND_OPTIMIZATION_REQUIREMENTS_2026-11.md)の最初の作業は、製品`Workspace.Load`から選択済みの `sales.order_line.quantity_positive` を用い、**既存`validationeval.Evaluate`による直接評価**と**`validationgen.GeneratePositive`が生成した実Goの評価**を、同じ`validationeval.Source`と独立Expectedで比較する一件である。正常・不成立・nil／取得失敗・Read先／回数を対象とし、生成器が受け付けるRule Shapeへ入力を限定する。新Interpreter、第二Meaning、追加の公開CLI入口を作らない。
+
+この比較は**実現方法を選ぶための局所Conformance**であり、正式Providerの実Selection、Builderの元Markdown／Generator出典閉包、公開Entry、実Windows Consumerの合格ではない。初回の生成コードの意味ある自己構築（SD-M2／R2-P）を維持しながら、Studio Previewや小規模Ruleは直接評価の適合性を検討する。実現方式を切り替えるときは対象Model／実装ID／Artifact／実Callerを照合し、失敗時の無音fallbackを認めない。
+
+コード生成を省略する場合も、モデルを実行先へ届けるByte／版と現在の取得・開示条件を確認する。モデルをBinaryへ埋め込むなら、その変更に必要なBuild／配布の再資格化は残る。RZM-01〜08は#1180／#2514へ、評価と生成の比較は#1121／#4544へ、実使用は#951／#1251／#4495へ引き渡す。**既存のP0（公開pure Entryの実Provider、Studio Stage1→Stage2）は変更しない。**
+
+**状態**：この追記は実装・検証の分担を定める計画であり、実二方式の新Go試験・Target実Consumer試験・Owner意味受理は未実施。
