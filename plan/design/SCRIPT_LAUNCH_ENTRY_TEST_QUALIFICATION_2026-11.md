@@ -1478,4 +1478,6 @@ FunctionはDataと独立した公開契約である。[Data／Functionの分担�
 
 この正負対照は、**「Sourceを読めるRule」と「公開されているFunction Entry」の資格差を製品CLIの境界で保持できるか**を問う。CLIからInspectorを呼べたことは、選択済み実Providerの`Service.Invoke`、Hostの現在Grant、実Binder入力、Effect／Receipt、Independent Consumer受領を何一つ実証しない。取得したSource位置やFingerprintを公開Entryの証拠に流用しない。
 
+**独立した実行証拠の入口**：既存`.github/workflows/action-surface-real-cli.yml`はPRのexact HEADをCheckout・照合し、通常製品CLIをBuildしている。この同じWorkflowに既存`TestProductInspectCLISelectedMarkdownRuleIsNotCapability`を`-run`で単独実行するStepを設ける。元テストのファイルBlob、`gofmt`、実CLI別OSプロセスの正負例とsource byte対照、試験前後のcleanを同一Attemptの証拠として残す。これによりRepository Healthの独立したREA／CLI Catalog等の失敗と、この製品CLI Subject Kind負例の実行結果を切り分ける。**この試験のPASSは読み取り専用の境界だけ**に適用し、Function Entry公開・現在Grant・selected／actual Provider実Call・Effect／Receipt・独立Consumer受領には拡張しない。
+
 次の実装は、このread-only入口をFunction起動用に改造することではない。#4495／#1158で別途Owner受理済みのpure Functionを選び、Function契約→typed Request→現在公開Entry／Host Grant→選択Providerとactual Provider→通常製品`tei`からの**実Invocation**を、同じ対象の独立Expectedと受領結果で照合する。R2-Pの生成Go実Builder消費は#4544／#2595で並行検収する。Node／StudioのInspector可視化、Source Open、Windows Stage1→Stage2は別のConsumer／権限境界として扱う。

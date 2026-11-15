@@ -48,6 +48,7 @@ jobs:
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
           echo "actual-head=$EXPECTED_HEAD"
           echo "cli-test-blob=$(git rev-parse HEAD:plan/fixtures/action-surface-cli/verify_real_cli.py)"
+          echo "inspect-test-blob=$(git rev-parse HEAD:cmd/tei/cli_inspect_rule_markdown_process_test.go)"
 
       - name: Set up Go from candidate go.mod
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
@@ -63,6 +64,15 @@ jobs:
           go version
           go build -o "$RUNNER_TEMP/tei" ./cmd/tei
           "$RUNNER_TEMP/tei" version -json
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+
+      # Preserve exact-HEAD evidence independently of unrelated Health failures.
+      - name: Qualify selected Markdown Rule versus unpublished Capability via actual CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(gofmt -l cmd/tei/cli_inspect_rule_markdown_process_test.go)"
+          go test ./cmd/tei -run '^TestProductInspectCLISelectedMarkdownRuleIsNotCapability$' -count=1 -v
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
 
       - name: Check Go characterization formatting and run the real Driver handoff
