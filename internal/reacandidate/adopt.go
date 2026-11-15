@@ -221,12 +221,13 @@ type CandidateComparisonEntry struct {
 const ComparisonObservedFactsChanged = "observed-facts-changed"
 
 const (
-	ComparisonUnchanged           = "unchanged"
-	ComparisonAdded               = "added"
-	ComparisonRemoved             = "removed"
-	ComparisonRevisionChanged     = "revision-changed"
-	ComparisonSameBytesNewAttempt = "same-current-bytes-different-attempt"
-	ComparisonRenumbered          = "external-identity-renumbered"
+	ComparisonUnchanged            = "unchanged"
+	ComparisonAdded                = "added"
+	ComparisonRemoved              = "removed"
+	ComparisonRevisionChanged      = "revision-changed"
+	ComparisonSameBytesNewAttempt  = "same-current-bytes-different-attempt"
+	ComparisonObservedFactsChanged = "observed-facts-changed"
+	ComparisonRenumbered           = "external-identity-renumbered"
 )
 
 // ComparisonAuthorityLimits states what a comparison does not establish.
@@ -238,6 +239,7 @@ func ComparisonAuthorityLimits() []string {
 		"revision-change-requires-fresh-owner-review",
 		"external-identity-renumbering-requires-fresh-owner-review",
 		"structural-key-is-a-review-hint-not-an-identity-proof",
+		"unchanged-candidate-id-and-current-bytes-do-not-prove-unchanged-external-facts",
 		"comparison-does-not-accept-or-write",
 	}
 }
@@ -280,8 +282,18 @@ func CompareCandidateSets(before, after CandidateSet) CandidateSetComparison {
 		key := structuralKey(candidate)
 		beforeByKey[key] = append(beforeByKey[key], candidate.CandidateID)
 	}
+	beforeKeyCounts := map[string]int{}
 	for key := range beforeByKey {
 		sort.Strings(beforeByKey[key])
+		beforeKeyCounts[key] = len(beforeByKey[key])
+	}
+	// The structural fallback can be non-injective. Count both sides before
+	// consuming any positional pairing so the review exposes that ambiguity.
+	afterKeyCounts := map[string]int{}
+	for _, candidate := range after.Candidates {
+		if _, matched := beforeByID[candidate.CandidateID]; !matched {
+			afterKeyCounts[structuralKey(candidate)]++
+		}
 	}
 	pairings := map[string]string{} // after candidate id -> before candidate id
 	for _, candidate := range after.Candidates {
@@ -315,6 +327,25 @@ func CompareCandidateSets(before, after CandidateSet) CandidateSetComparison {
 			entry.Notes = append(entry.Notes,
 				"same-structure-with-a-new-external-identity",
 				"a-renumbered-candidate-requires-fresh-owner-review")
+			// A deterministic choice among repeated structural matches is not
+			// evidence of individual relation continuity, even with equal spans.
+			if candidate.Kind == CandidateKindCrossReference &&
+				(beforeKeyCounts[entry.StructuralKey] > 1 || afterKeyCounts[entry.StructuralKey] > 1) {
+				entry.Notes = append(entry.Notes,
+					"structural-key-multiple-occurrences-cannot-identify-individual-relation",
+					"source-backed-occurrence-mapping-is-required-before-edit")
+			}
+			// The structural fallback deliberately ignores producer IDs. A pair
+			// with changed endpoints might be benign renumbering, a reversal,
+			// or an unprovable collision. It cannot authorize relation editing.
+			if candidate.Kind == CandidateKindCrossReference &&
+				previous.Facts.Direction != nil && candidate.Facts.Direction != nil &&
+				(previous.Facts.Direction.FromExternalID != candidate.Facts.Direction.FromExternalID ||
+					previous.Facts.Direction.ToExternalID != candidate.Facts.Direction.ToExternalID) {
+				entry.Notes = append(entry.Notes,
+					"relation-endpoint-mapping-is-unverified",
+					"source-backed-endpoint-mapping-is-required-before-edit")
+			}
 		} else {
 			entry.Status = ComparisonAdded
 		}
@@ -384,6 +415,17 @@ func comparePair(before, after StructureCandidate, beforeAttempt, afterAttempt s
 			"the-current-bytes-are-identical-in-a-different-attempt",
 			"identical-current-bytes-are-not-evidence-that-nothing-changed-in-between",
 			"no-prior-review-grant-or-acceptance-is-revived")
+	}
+	// An unchanged CandidateID and source digest do not imply the external
+	// observation has the same contents: a later provider/tool version may
+	// reinterpret identical bytes, and an attempt ID may have been reused.
+	if !reflect.DeepEqual(before.Facts, after.Facts) {
+		entry.Notes = append(entry.Notes,
+			"observed-structural-facts-changed-under-reused-candidate-id",
+			"source-backed-re-evaluation-is-required-before-meaning-or-edit")
+		if sameBytes {
+			entry.Status = ComparisonObservedFactsChanged
+		}
 	}
 	return entry
 }

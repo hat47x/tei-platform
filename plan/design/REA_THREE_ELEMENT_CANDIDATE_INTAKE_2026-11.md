@@ -265,7 +265,7 @@ Observationは`data-element`候補へ、有向Relationは`cross-reference`候補
 
 二入口には**異なる目的と異なる解析単位**がある。R2のExternalCandidateViewは選択済みのObservation 1件とRelation 1件の投影であり、reacandidate.GenerateCandidatesが求める一Attempt全体のGraphではない。これをそのまま正式な一Functionの解析済みGraphとして渡してはならない。逆に、三要素ReviewPacketの候補集合をR2のProducer ReceiptやNative Hostの安全なByte取得の代わりにしてはならない。
 
-両者を結ぶ最初の実証は、新しい変換器ではなく、**同じ公開可能な保存済みRawを、二入口がそれぞれ実際に読んだことを照合する受入テスト**とする。各入口のInput Raw digest、Producer Evidence ID、申告Source revision、外部Node/Relation ID、向き、Schema/Tool版を比べ、一方にない情報は「一致」ではなくunavailable/unsupportedと記録する。二回の別CLI実行を同一原子的Attemptにしてはならない。現在のSourceを別途読み直す場合も、旧解析時にそのByteが実消費された証明にはしない。
+両者の最初の実証では、新しい変換器を作るのではなく、**同じ外部解析の保存成果物について、それぞれの入力契約と実消費Byteを別々に確認する**。R2はsemantic_graphから選んだObservationとRelationを返し、rea-intakeはapplication graphの全体から候補を作るため、二つのGraph IDやNode/Relation IDが一致するとは仮定しない。元Rawをそのまま共有できるかは入力形式による。Rawを正規化した場合は変更前後のDigestを分け、Evidence IDが同じでも同一Byte受領・同一Invocationとしない。Producer Tool版、Evidence内Provider版、申告Source revision、Coverageの対象を別々に比較する。一方にない情報は一致ではなくunavailable/unsupportedとして記録する。現在のSourceの再読取も旧解析時の実消費証明にはしない。
 
 ### 10.3 関係の識別は、既存の型ごとに保存できる範囲が異なる
 
@@ -290,7 +290,7 @@ Observationは`data-element`候補へ、有向Relationは`cross-reference`候補
 
 | 確認 | 正例・負例 | 最初の完成条件・担当 |
 | --- | --- | --- |
-| **J-01 二入口のRaw整合** | 同じ保存Raw/別Raw、Producer申告が同じでも取得Byteが変化、選択1本だけ | Inputの実Byte・Receipt・Coverageを出典別に比較。R2の選択済みPartial Viewを全Graphにしない（#3394/#2514） |
+| **J-01 二入口の入力適合・受領帰属** | 実保存RawはUTF-16LE/BOM、外部候補入口は元Byteを受理。三要素intakeは明示変換したUTF-8 JSONを受理し、UTF-16LE原本は拒否。原本Digestで変換後ByteをPinするとR2拒否 | 原本と変換後の二つの実受領Digestを区別。semantic_graph選択1本とapplication graph候補群の外部IDを混同せず、共通Evidence IDからRelation同一性を作らない（#3394/#2514） |
 | **J-02 Relation identityと意味損失** | 同名異ID、同端点同種の二辺、片方の向きのみ反転、外部ID再採番 | Candidate/Preview/GraphそれぞれのIDを保存できる範囲とLossを記録。編集先が曖昧なら拒否（#1124/#1120/#2497） |
 | **J-03 問い相対の不完全性** | Graph completeでもFunction/Business unsupported、未取得Plugin、手作業、動的参照 | Dataの陽性構造だけを回答し、Function全体の未使用・更新なし・削除可能を出さない（#3394/#3262） |
 | **J-04 Native Product受領** | 通常CLIの実Resultと、Windows Wails Service→JSの独立実Value/Recipient、Server公開面 | Host内Readerやテスト用子OS Processだけでは合格にしない。公開範囲とCurrent Grantを別試験（#4661/#2516） |

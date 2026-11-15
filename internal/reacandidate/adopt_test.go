@@ -138,6 +138,42 @@ func TestCompareCandidateSetsSameBytesDifferentAttempt(t *testing.T) {
 	}
 }
 
+// One provider may report a changed relation label for the very same source
+// bytes and external edge ID. Neither that ID nor a reused attempt ID proves
+// that the observed facts are unchanged.
+func TestCompareCandidateSetsSameBytesChangedObservedRelation(t *testing.T) {
+	before := mustGenerate(t, defaultEvidence())
+	for _, tc := range []struct {
+		name      string
+		attemptID string
+	}{
+		{name: "new-attempt", attemptID: "ev-observation-corrected"},
+		{name: "reused-attempt-id", attemptID: "ev-minimal-1"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			changed := defaultEvidence()
+			changed.evidenceID = tc.attemptID
+			changed.edges[0].rel = "requires"
+			after := mustGenerate(t, changed)
+			comparison := CompareCandidateSets(before, after)
+			changedCount := 0
+			for _, entry := range comparison.Entries {
+				if entry.Status != ComparisonObservedFactsChanged {
+					continue
+				}
+				changedCount++
+				if !hasString(entry.Notes, "observed-structural-facts-changed-under-reused-candidate-id") ||
+					!hasString(entry.Notes, "source-backed-re-evaluation-is-required-before-meaning-or-edit") {
+					t.Fatalf("relation label changed but reviewer was not warned: %+v", entry)
+				}
+			}
+			if changedCount != 1 {
+				t.Fatalf("changed observed facts = %d, want one; %+v", changedCount, comparison.Entries)
+			}
+		})
+	}
+}
+
 // A changed source revision keeps the candidate identity and is reported as a
 // revision change that requires fresh review.
 func TestCompareCandidateSetsRevisionChange(t *testing.T) {
@@ -226,6 +262,146 @@ func TestCompareCandidateSetsExternalIdentityRenumbering(t *testing.T) {
 		if !hasString(entry.Notes, "a-renumbered-candidate-requires-fresh-owner-review") {
 			t.Fatalf("entry %s does not require fresh review: %v", entry.CandidateID, entry.Notes)
 		}
+	}
+}
+
+// Structural fallback may pair a reversed edge as a possible external-ID
+// renumbering. That comparison is only a review hint: it must explicitly
+// identify the unverified endpoints, not quietly qualify Source editing.
+func TestCompareCandidateSetsReversedEdgeNeedsEndpointMapping(t *testing.T) {
+	before := mustGenerate(t, defaultEvidence())
+	reversed := defaultEvidence()
+	reversed.evidenceID = "ev-reversed-edge"
+	reversed.edges[0].from, reversed.edges[0].to = reversed.edges[0].to, reversed.edges[0].from
+	after := mustGenerate(t, reversed)
+	comparison := CompareCandidateSets(before, after)
+	var paired int
+	for _, entry := range comparison.Entries {
+		if entry.Status != ComparisonRenumbered {
+			continue
+		}
+		paired++
+		if !hasString(entry.Notes, "relation-endpoint-mapping-is-unverified") ||
+			!hasString(entry.Notes, "source-backed-endpoint-mapping-is-required-before-edit") ||
+			!hasString(entry.Notes, "a-renumbered-candidate-requires-fresh-owner-review") {
+			t.Fatalf("reversed edge received an unqualified renumber claim: %+v", entry)
+		}
+	}
+	if paired != 1 {
+		t.Fatalf("reversed edge pairing = %d, want one qualified review hint: %+v", paired, comparison.Entries)
+	}
+}
+
+// A deterministic structural-key pairing is still ambiguous when two
+// independent parallel occurrences share the same source span and label.
+// A renumbered ID cannot silently nominate one of them for Source editing.
+func TestCompareCandidateSetsParallelRenumberingRequiresOccurrenceMapping(t *testing.T) {
+	old := defaultEvidence()
+	second := old.edges[0]
+	second.id = "edge-order-line-parallel"
+	old.edges = append(old.edges, second)
+	before := mustGenerate(t, old)
+
+	changed := defaultEvidence()
+	changed.evidenceID = "ev-parallel-renumbered"
+	firstRenumbered := changed.edges[0]
+	firstRenumbered.id = "edge-order-line-new-1"
+	secondRenumbered := changed.edges[0]
+	secondRenumbered.id = "edge-order-line-new-2"
+	// Deliberately reverse input order to expose positional fallback.
+	changed.edges = []edgeFixture{secondRenumbered, firstRenumbered}
+	after := mustGenerate(t, changed)
+
+	comparison := CompareCandidateSets(before, after)
+	renumbered := 0
+	for _, entry := range comparison.Entries {
+		if entry.Status != ComparisonRenumbered {
+			continue
+		}
+		renumbered++
+		if !hasString(entry.Notes, "structural-key-multiple-occurrences-cannot-identify-individual-relation") ||
+			!hasString(entry.Notes, "source-backed-occurrence-mapping-is-required-before-edit") ||
+			!hasString(entry.Notes, "a-renumbered-candidate-requires-fresh-owner-review") {
+			t.Fatalf("parallel edge gained an unqualified individual identity: %+v", entry)
+		}
+	}
+	if renumbered != 2 {
+		t.Fatalf("renumbered = %d, want two candidate-only review hints: %+v", renumbered, comparison.Entries)
+	}
+}
+
+// A unique source-backed structural candidate does not need the parallel
+// ambiguity marker, although it still requires a fresh Owner review.
+func TestCompareCandidateSetsUniqueEdgeRenumberingNoParallelAmbiguity(t *testing.T) {
+	before := mustGenerate(t, defaultEvidence())
+	afterFixture := defaultEvidence()
+	afterFixture.evidenceID = "ev-single-renumbered"
+	afterFixture.edges[0].id = "edge-order-line-renumbered"
+	after := mustGenerate(t, afterFixture)
+	comparison := CompareCandidateSets(before, after)
+	matched := 0
+	for _, entry := range comparison.Entries {
+		if entry.Status != ComparisonRenumbered {
+			continue
+		}
+		matched++
+		if hasString(entry.Notes, "structural-key-multiple-occurrences-cannot-identify-individual-relation") {
+			t.Fatalf("unique edge incorrectly marked as parallel: %+v", entry)
+		}
+		if !hasString(entry.Notes, "a-renumbered-candidate-requires-fresh-owner-review") {
+			t.Fatalf("single renumbering lost review requirement: %+v", entry)
+		}
+	}
+	if matched != 1 {
+		t.Fatalf("renumbered = %d, want one: %+v", matched, comparison.Entries)
+	}
+}
+
+// A one-to-many or many-to-one key match cannot name the individual
+// occurrence that continued, even if the remaining candidate is unique.
+func TestCompareCandidateSetsAsymmetricParallelKeyRemainsUnverified(t *testing.T) {
+	fixture := func(ids ...string) evidenceFixture {
+		f := defaultEvidence()
+		original := f.edges[0]
+		f.edges = nil
+		for _, id := range ids {
+			edge := original
+			edge.id = id
+			f.edges = append(f.edges, edge)
+		}
+		return f
+	}
+	for _, tc := range []struct {
+		name    string
+		before  []string
+		after   []string
+		added   int
+		removed int
+	}{
+		{name: "one-to-two", before: []string{"old-1"}, after: []string{"new-1", "new-2"}, added: 1},
+		{name: "two-to-one", before: []string{"old-1", "old-2"}, after: []string{"new-1"}, removed: 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			before := mustGenerate(t, fixture(tc.before...))
+			current := fixture(tc.after...)
+			current.evidenceID = "ev-asymmetric-" + tc.name
+			after := mustGenerate(t, current)
+			comparison := CompareCandidateSets(before, after)
+			statuses := map[string]int{}
+			for _, entry := range comparison.Entries {
+				statuses[entry.Status]++
+				if entry.Status != ComparisonRenumbered {
+					continue
+				}
+				if !hasString(entry.Notes, "structural-key-multiple-occurrences-cannot-identify-individual-relation") ||
+					!hasString(entry.Notes, "source-backed-occurrence-mapping-is-required-before-edit") {
+					t.Fatalf("asymmetric structural key was treated as a unique relation: %+v", entry)
+				}
+			}
+			if statuses[ComparisonRenumbered] != 1 || statuses[ComparisonAdded] != tc.added || statuses[ComparisonRemoved] != tc.removed {
+				t.Fatalf("unexpected asymmetric matching statuses: %+v; entries=%+v", statuses, comparison.Entries)
+			}
+		})
 	}
 }
 
