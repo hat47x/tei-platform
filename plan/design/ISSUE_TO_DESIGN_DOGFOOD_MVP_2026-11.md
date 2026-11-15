@@ -1694,3 +1694,16 @@ R2では、`GeneratePositive(rule, attributeType, packageName)`の戻りbyteだ�
 | **Runtime閉包** | 選択Providerと実Entry、許可された入力Read、結果・Effect/Receipt、通常製品CLIと独立Consumerの実観測 | Build成功やGenerated Goの単独`go run`を実Provider Callへ昇格 |
 
 現在のmainには`tools/reference-go-build-from-plan/validationgen_build_binding_test.go`もあり、生成Goの実byteを既存の**参照BuildPlan Builder**が読み込む試験を収録している。[#4978対象HEADのRepository Health](https://github.com/hat47x/tei-platform/actions/runs/43699354375)では`tei/tools/reference-go-build-from-plan`のパッケージ試験が成功した。これはR2の前段となる実消費の根拠であり、**製品CLIが選んだ正式Builder／Build Intent・Plugin Lock／Runtime Providerの資格ではない**。初回の正式R2はpureな数量判定一件に限定する。新Registry／Host／独自Runner／第二意味正本を増やす前に、既存Build Intentから生成byte／Source版／Generator版／選択Builder／実Artifactをどこまで一Attemptで束縛できるかをOwner #4544／#1121へ返す。R2の実ArtifactとR3の実Provider/CLI、R4のStudio Stage1→Stage2はそれぞれ実消費の証拠を持つ。Node Flowや簡易APIも同じOperator/Function/Processの投影として後続で検証し、初回Rule生成PRのHard Gateへは追加しない。
+
+<!-- tei-dogfood-rule-language-boundary-after-r0-product-20261115 -->
+### 15.69 宣言を読めないときも、言語選択・Source位置・修正先を区別する
+
+[Rule Reader専用CIと誤配置診断の修正 #4997](https://github.com/hat47x/tei-platform/pull/4997)がmainに統合された。通常の`*.tei`に`rule`を書いた際、従来は「type、data等を期待」という汎用構文エラーだけだったが、`syntax.ParseSemanticFile`が**Rule Authoringの宣言を誤配置した**と語句位置つきで説明する。正しい入口は、Manifestで`tei.rule-authoring/v0`を明示選択した`semantic/`配下の`*.tei.md`と`tei`コードフェンスである。既存`validation`へ勝手に変換したり、未選択Readerで解釈したりしない。廃止された`tei_md_source_guard.go`を参照していた専用CIも、現行`rule_authoring_markdown_loader.go`とParser／実テストへ更新された。
+
+この到達点を三つの義務として次の受入へ残す。
+
+1. **認識できないことを説明する**：Syntax Errorと配置ミスを分け、管理対象Sourceのpath・原byteの`rule`四字・読み取るべきLanguage/Versionを診断する。未知トークンをRule候補に格上げせず、従来の未知語診断も保つ。
+2. **意味保存を推定しない**：旧`validation`とMarkdown `rule`が同じ型付き`semantic.Validation`になり得ても、原文とSource Indexの版は異なる。診断からQuick Fixを提案する将来のStudioでは、ユーザー確認の前にファイルを移動・改稿せず、再Load・旧Index失効・独立Expectedを改めて検査する。
+3. **実装到達と試験結果を分ける**：既存`internal/syntax/rule_placement_test.go`と`internal/workspace/rule_placement_source_diagnostic_test.go`のfocused Go試験に加え、修正された`tei-md-parser-unbound-ci.yml`の**正確なHEAD**で結果を照合する。CI設定の修正・PRのマージだけでは、正式R2 Builder選択、R3実Provider/CLI、Stage1→Stage2、Ownerの意味受理は成立しない。
+
+これは[Plugin縦断設計§14.9](PLUGIN_RULE_PRODUCT_VERTICAL_SLICE_2026-11.md)のR0入口に対応する**dogfooding上の検収索引**であり、新しいLanguage Registry、Reader、意味Store、Error体系を作る計画ではない。今後のGraph/Node/Windowや文書表現へ広げる際も、選択されたSourceのみに正式意味を与え、宣言として読めない部分を黙って成功させない。
