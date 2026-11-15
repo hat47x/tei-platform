@@ -335,3 +335,11 @@ I2M-1回帰が対象HEADで成立した場合の次の一件は、`sales.order_l
 次の**一つの実装Packet**は、A・B・CのSource/Generator出典を同一Attemptの`Build Intent`に正しく束縛し、Dで選択した入力の一致を確かめる限定回帰とする。現状の`definitionSource`は生成GoのEntrypointを示すため、**これを原DSL Source IDへ差し替えることはしない**。Entrypointと生成元は別の参照義務として保持し、既存Resolver／Builderのどの欄で結べるかを実コードで検証してから、最小差分を実装する。
 
 その後、公開したpure Function Entry→正式Providerのactual Invoke（R3）と、TEI定義によるStudio Stage1→Stage2／Windows実Consumer（G6）を**別の独立受入**として進める。Builderの試験に無関係なREA、Node Editor、SUI、Wailsの失敗をこの作業で便宜上修正・無視したことにしない。新たなGraph Runtime、別Host、逆解析Writer、意味・権限の第二正本は追加しない。
+
+### 12.4 手書きの試験Driverを自己構築の成果に数えない
+
+現在の`cli_self_build_generated_rule_go_test.go`は、`GeneratePositive`が生成した実判断Goと、試験用に手書きした`generatedRuleDriver`を一つのGo packageへ配置し、既存Build Intentでバイナリ化する。**生成できたのはRule由来の評価Functionであり、Driver、Application Composition、公開Function Entry、ProviderやStudioまでTEIから生成したわけではない。**
+
+dogfoodingの進捗は、(1)対象の判断義務、(2)元TEI定義、(3)生成が担ったGoの範囲、(4)依然として手書き／試験Driverが担う範囲、(5)実BuilderとConsumerが受領した範囲、(6)独立Expectedの範囲を一件ずつ対応付ける。表現・図面・生成Goの行数が増えても、**手書きの業務判断が実際に減らなければ自己構築の前進として加算しない**。
+
+G6のStudio Stage1→Stage2では、同じ原則を非Plugin Desktopへ適用し、TEIで定義した部品がStage2に実際に組み込まれ、実Windows WebView2のConsumerで受領された範囲だけを評価する。RuleのCLIバイナリをStage2の実証へ流用しない。
