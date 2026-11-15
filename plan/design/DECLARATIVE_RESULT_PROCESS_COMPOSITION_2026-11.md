@@ -149,3 +149,115 @@ Studioは少なくとも「結果定義表」「データ・依存Graph」「手
 - #2831/#4583：C6は既存Studio Stage1→Stage2の後続。先行Hard Gateにしない。
 
 本稿は設計案であり、正式語彙の追加や推奨Physical Planの製品採用を宣言しない。採否は代表Corpusの比較結果、Owner判断、ADRで確定する。
+
+
+## 10. 成果物要求・ノード・運用の共通計算モデル（2026-11-15追補）
+
+### 10.1 「何を得たいか」「何を計算するか」「どう実行するか」を別々に編集する
+
+新たなデータ処理の要求が生まれたとき、最初に作業ノードを並べなくてもよいようにする。ただし、すべてのProcessを結果定義から自動で導けると考えるのも誤りである。人による承認、外部通知、例外対応などは、結果の値だけから実行順序や副作用を導けない。
+
+そこで、同じ標準データとOperationを少なくとも次の四つの観点で扱う。
+
+| 観点 | 利用者が決めること | 導出・編集できること | 正本と混同しないもの |
+| --- | --- | --- | --- |
+| **結果要求** | 必要な表・帳票・API応答・状態、列と粒度、対象期間、品質、利用範囲 | 達成に必要なData/Relation/Ruleの候補を引く | Resultを作る具体的な実行順序 |
+| **計算の意味** | 参照関係、式、分類、計算単位、集約単位、NULL/精度、時間、業務規則 | 型付きOperatorの合成、影響分析、妥当な計算依存Graph | 特定DBや中間ファイルの配置 |
+| **操作・制御** | 分岐、反復、時間差、確認、外部Effect、実行の前提 | Node/Port/Edgeの配線、Subprocess、起動・エラー経路 | データ依存だけから推測した副作用順序 |
+| **物理実行** | 実Target、Provider、予算、保管期間、権限、回復可能性 | SQL/Go/外部Hostの生成、融合・分離・並列化・Materialize候補 | 受理済み業務意味と実行許可 |
+
+これらを接続する基本要素は既存のData、Attribute、Relation、Function/Capability、Operator、RunPlan、Period、Plugin Contractとする。`Desired Result`、`Evaluation Scope`、`Materialization`などは当面**既存要素が担う意味上の役割**であり、新たなCore型や予約語を直ちに追加するものではない。
+
+### 10.2 計算の粒度を実行区分から切り離す
+
+同じ「集計」でも次の五つは異なる。
+
+- **Source Grain**：入力の一件を何で特定するか。例：伝票行。
+- **Evaluation Scope**：式をどの単位で評価するか。例：伝票行ごとの金額。
+- **Aggregation Scope**：評価結果をどの単位にまとめるか。例：伝票ごとの課税対象金額。
+- **Result Grain**：成果物の一件が何を表すか。例：店舗×営業日。
+- **Execution Partition**：並列化・再実行・転送のための区分。例：日付範囲やハッシュ区間。
+
+これらを独立させると、出力粒度だけでは復元できない計算の段階が保てる。たとえば、各伝票行が15円の二行に対して税率10%・四捨五入を適用すると、行ごとの丸め後合計は4円だが、伝票合計30円に対する丸めは3円となる。丸める単位を変えた計画は、最終的なGroup Keyが同じでも同値ではない。
+
+分類・次元については、カテゴリ同士の関係を単なるTreeに固定せず、Sourceに束縛されたRelationとして扱う。同一商品が二つの分類に所属する場合、排他的分類、二重計上、配賦、未確定のどれかを選ぶのは業務側である。階層の表示形だけで上位合計を確定しない。金額・比率・在庫残高等は加法性が異なるため、集計可能な次元を演算・指標ごとに確認する。
+
+複数キーの全組合せを自動生成することも既定とはしない。キーがn個なら非空部分集合は`2^n - 1`通りとなり、メモリ・出力数・実行時間が増える。必要な組合せだけをResult要求から選び、探索の予算上限を設ける。
+
+### 10.3 依存Graphは値の経路だけでは完結しない
+
+Data/Relation/OperatorをGraphへ投影するときは、**何のために参照されているか**を辺のRoleとして保持する。値を生み出す演算だけでなく、抽出条件、Join条件、業務日付、適用Rule、分類版、品質判定、利用者の可視範囲も成果物に影響する。
+
+| 依存のRole候補 | 例 | 省略すると起きる問題 |
+| --- | --- | --- |
+| Value | 入力金額→算出金額 | 値の生成元が追えない |
+| Condition | 取引状態→採用・除外の判定 | 条件列が変わっても再計算対象にならない |
+| Relation / Join | 明細→伝票→店舗 | 多重度や欠損を保持できない |
+| Classification | 商品→分類体系・適用期間 | 旧分類で作った出力を新分類へ取り違える |
+| Temporal | 前営業日の残高→当日残高 | 有効な時間シフトと無条件循環を混同する |
+| Control / Trigger | 締め済み→公表処理の起動 | Data接続だけから不正な起動を推測する |
+| Effect / Recovery | 外部書込→Receipt確認 | 実行終了を業務確定に取り違える |
+| Provenance / Authority | Input Snapshot・開示Scope→出力 | 別Tenant/旧版の中間結果を不正に再利用する |
+
+Roleは新しいGraph種別の乱立ではなく、既存標準GraphのIdentity/方向/多重性/関係属性へ載せる候補とする。Node図の線ID、Relation ID、Operation出現ID、データ項目ID、実Step/Attempt IDを一つにまとめない。表示上は同じ矢印に見えても、意味上の依存と物理I/Oは別の投影である。
+
+特に、`data(t) -> data(t+1)`という依存と`data(t) -> data(t)`の循環は区別する。前者は初期状態、基準日、業務カレンダー、期間締め、訂正を明示した反復として成立し得る。後者を無条件に実行可能なDAGへ変換してはならない。収束計算にはさらに停止条件、上限回数、誤差・丸め規則を必要とする。
+
+### 10.4 Operatorが持つ性質を、最適化の根拠として検査する
+
+同じ式やOperationでも、結合・交換・融合・分割に耐えるとは限らない。Operator/Plugin Contractに記載する候補の性質は次のとおり。
+
+| 性質 | 使える最適化 | 反例／停止条件 |
+| --- | --- | --- |
+| pure / deterministic | 計算再利用、融合、並列化 | 現在時刻、乱数、外部書込、版未固定Lookup |
+| associative / identity | 部分集計後の結合 | 途中丸め、浮動小数点の再結合、状態依存 |
+| commutative / ordered | 処理順の変更・並列化 | first/last、累積計算、順序付きWindow |
+| distributive / monotone | Filter・集計の押込み、増分更新 | 非加法指標、Delete、分類・条件の変更 |
+| null/precision/collation semantics | DB側Query Pushdown | ProviderによるNULL、数値桁、時刻、照合順の差 |
+| idempotent / compensatable | 安全な再入・復旧 | 外部Commit unknown、ACK消失、二重送信 |
+
+性質は名前から推定してはならない。Provider/Targetによって同値範囲が変わるため、能力宣言・版・独立Expectedで検証できた組合せに限りRewriteする。未知の性質は`unsupported`または未確認と記し、最適化成功を宣言しない。専用の全自動Optimizerを先行実装せず、**融合法・分離法の候補と採用・棄却理由を比較するread-only Planner**から始める。
+
+### 10.5 Node Flowは同じOperationの「配置図」であり、結果要求の代用品ではない
+
+ノードは標準OperationをFlowの中で利用した**出現**である。Node/Port/Edgeは簡易API、Webhook、メッセージ処理、Plugin間の配線、データ処理の途中経路の編集に向く。一方、月次マート、帳票、複数粒度の集計のように結果の定義が先にある作業は、結果表・計算表・分類図から着手した方が余計な処理ノードを要求しない。
+
+二つの編集経路を次のように整合させる。
+
+1. **結果定義表→計算Graph→実行候補**：ユーザーが出力粒度、指標、期間を宣言し、既存Data/Ruleから必要な演算と複数の計画候補を導く。
+2. **Node/Portの配線→Operation Graph→結果・サービス契約**：ユーザーが入出力・エラー・外部サービスを接続し、型・粒度・効果を検査してFunctionに結ぶ。
+
+この二経路が共有するのは、型付きData、Operation、Relation、Process、Plugin、およびSource位置とIdentityである。結果定義表、Graphviz、ノード図、関数チェーン、SQL、Traceのいずれも独立した意味正本にしない。変換前後で保持できない情報がある投影からの逆編集は、Lossを表示し、明示確認またはread-onlyへ留める。
+
+Node Flowの`Retry`や`Delay`などは描画ノードとして存在しても、意味上はTrigger/Process/OperationのPolicyであり得る。Node専用Runtimeに実体を閉じ込めず、CLI、Web/Desktop、外部Hostと同じ意味を用いる。
+
+### 10.6 生成物の共有・公開・復旧は「結果が等しい」だけでは成立しない
+
+同じ入力を複数のResultが使う場合でも、共通計算を共有してよいかはSnapshot、業務評価時点、現在のScope、分類・Rule版、完全性、精度・丸め、データ公開範囲とConsumerで異なる。物理実行時に各Consumerの資格を検査し、共通中間結果を不正な権限拡張に利用しない。
+
+Materialization候補には少なくとも入力Revision、意味Revision、Operator/Target版、出力Grain、対象期間、保管期限、再計算条件、公開・可視範囲を紐づける。成果物の`generated`、独立に`verified`、正式に`published`、Consumerが`observed`した状態は別に持つ。Sourceの版が同一でも実データの値が更新され得るので、Source fingerprint、データSnapshot、実Run、出力Generationを混同しない。
+
+データの事前保存に基づく復旧、Checkpointからの純粋変換再開、DBのCommit/Transaction、外部API送信の補償は異なる操作である。失敗直前の旧データがあっても外部Effectの取消しは保証できない。現在のGrant、元Operation/Attempt、Source/Artifact、実Provider Receiptを照合し、Commitの成否不明時は照会優先で無条件再送しない。
+
+### 10.7 既存C0〜C6とN0〜N4に接続する反例
+
+新たな第二の実装計画や独立Expected正本は作らず、下記を既存[#1130](https://github.com/hat47x/tei-platform/issues/1130)、[#2622](https://github.com/hat47x/tei-platform/issues/2622)、[#1180](https://github.com/hat47x/tei-platform/issues/1180)、[#2514](https://github.com/hat47x/tei-platform/issues/2514)の候補とする。
+
+| 反例 | 比較する差 | 期待する診断・意味 |
+| --- | --- | --- |
+| CRP-01 | 同じ入力から異なる粒度の二出力 | 一物理Jobへの融合は任意。各Result Grainを維持 |
+| CRP-02 | 伝票行丸めと伝票丸め | 同一出力Keyでも非同値を検出 |
+| CRP-03 | 分類の多重所属・期間更新 | 配賦未定義なら結果を確定しない。旧結果を再利用しない |
+| CRP-04 | 3キーの一部の組合せだけ要求 | 不要な集計群を生成せず、計画候補を比較 |
+| CRP-05 | Filterだけが参照する列を変更 | Value Lineage以外のCondition依存で影響を検出 |
+| CRP-06 | 同端点・同ラベル二Edge、二Union | Identity・多重性・二つの寄与経路を保持 |
+| CRP-07 | 前日残高を翌日に利用／同日の無条件閉路 | 時間シフトありの反復のみ候補化 |
+| CRP-08 | 同じ集計式を別Scope/Tenantで利用 | 不許可な中間結果の共用を禁止 |
+| CRP-09 | SQL実行とGo実行でNULL/Decimalが異なる | Rewrite棄却、Provider能力未確認はunsupported |
+| CRP-10 | 外部更新後にACKのみ消失 | Commit unknownのまま盲目的なRetryを拒否 |
+| CRP-11 | ノード配置のみ変更／式・粒度変更 | View変更と意味変更を別に失効 |
+| CRP-12 | Source→生成Go→Builder→CLI→別Consumer | Mock／説明／Artifact存在だけの成功を認めない |
+
+**優先順位**：既存のC0→C1は一入力・二Resultの意味照合、C2→C3は粒度・分類・Scope・演算性質の負例と候補計画比較に限定する。C4は既存の実Reader/Go Generator/Builder/CLI/Provider/Consumerの経路に接続、C5で時間シフトと回復、C6でStudioの表・Graph・Node・Trace表示をつなぐ。N0→N4は同じOperation/Port契約のノード投影とサービス接続に用いる。**Studio Stage1→Stage2および現行CLI/PluginのP0を新Gateで妨げない。**
+
+最初の差分で導入するのは正式な新DSLでも大規模Plannerでもなく、既存Source/標準Data/Operationを読んだ結果要求とNode投影の**照合票**および独立したExpectedである。業務意味の採用、Source編集資格、実Targetの適合、生成されたコードの実受領は引き続き別々に確認する。
