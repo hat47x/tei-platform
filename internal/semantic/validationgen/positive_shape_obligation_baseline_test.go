@@ -71,14 +71,14 @@ func TestPositiveLoweringShapeIndependentBaseline(t *testing.T) {
 			wantError: "unsupported generated kind",
 		},
 		{
-			name:        "non numeric resolved type",
-			typeRef:     "std.text",
-			wantError:   "requires resolved std.decimal",
+			name:      "non numeric resolved type",
+			typeRef:   "std.text",
+			wantError: "requires resolved std.decimal",
 		},
 		{
-			name:        "unresolved attribute type",
-			typeRef:     "unknown.type",
-			wantError:   "requires resolved std.decimal",
+			name:      "unresolved attribute type",
+			typeRef:   "unknown.type",
+			wantError: "requires resolved std.decimal",
 		},
 		{
 			name:        "invalid Go package name",
