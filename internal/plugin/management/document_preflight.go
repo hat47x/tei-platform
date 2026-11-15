@@ -6,12 +6,6 @@ import (
 	"tei/internal/plugin"
 )
 
-// DocumentReadPreflight projects the existing inventory's selection evidence
-// into the first prerequisite for a source-backed public document read.
-//
-// It does not discover a Document, read its bytes, check Audience/Disclosure,
-// or grant publication. Until a Plugin -> Document binding is accepted, the
-// result does not assess document eligibility.
 // DocumentUpstreamSelection reports the *existing resolver's* selected exact
 // identity for a directly required Plugin. This is not an upstream document
 // reference, authorization, or a choice of which version to use.
@@ -23,14 +17,20 @@ type DocumentUpstreamSelection struct {
 	LockPinned      *bool  `json:"lockPinned"`
 }
 
+// DocumentReadPreflight projects the existing inventory's selection evidence
+// into the first prerequisite for a source-backed public document read.
+//
+// It does not discover a Document, read its bytes, check Audience/Disclosure,
+// or grant publication. Until a Plugin -> Document binding is accepted, the
+// result does not assess document eligibility.
 type DocumentReadPreflight struct {
-	PluginID        string `json:"pluginId"`
-	Environment     string `json:"environment"`
-	SelectionStatus string `json:"selectionStatus"`
-	ResolvedVersion string `json:"resolvedVersion,omitempty"`
-	LockPinned      *bool  `json:"lockPinned"`
-	SourceBinding   string `json:"sourceBinding"`
-	Disclosure      string `json:"disclosure"`
+	PluginID        string                      `json:"pluginId"`
+	Environment     string                      `json:"environment"`
+	SelectionStatus string                      `json:"selectionStatus"`
+	ResolvedVersion string                      `json:"resolvedVersion,omitempty"`
+	LockPinned      *bool                       `json:"lockPinned"`
+	SourceBinding   string                      `json:"sourceBinding"`
+	Disclosure      string                      `json:"disclosure"`
 	ReadEligibility string                      `json:"readEligibility"`
 	Upstream        []DocumentUpstreamSelection `json:"upstreamSelection,omitempty"`
 }
