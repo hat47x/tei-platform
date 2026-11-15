@@ -950,7 +950,7 @@ W0の次の**一つのコードPR**は、現在の`main.ts`／`index.html`／Pin
 
 R2の受入で必要なのは、独立Expectedと生成Goの型付き判断、Generator/Toolchain exact版、実Builderが読み込んだSource、成果物byteの実証である。生成結果をそのまま手書き判断へ委譲しただけ、Mockで条件を代行しただけ、生成器が自己申告したFingerprintしかない、という場合は未受理とする。**R3の次PR**で既存Plugin/Provider選択・実Go Artifactを通常製品`tei` CLIと独立Consumerへ接続する。Ruleが存在するだけで同名`semantic-capability`／公開Function Entryを自動発行しない（負例候補[#4902](https://github.com/hat47x/tei-platform/pull/4902)、統合未確定）。
 
-**CLIビルド停止は別Ownerへ返す。** 現mainの`acceptedCommands`には`db-introspect`があり、`runDBIntrospect`と`-semantic`フラグ宣言も存在するが、`cmd/tei/main.go`の実Dispatchが欠けて`dbIntrospectSemanticFlag`未使用コンパイル失敗を生む。`#4895`は宣言除去、`#4896`は既存公開CommandへのDispatch接続という**競合する修正候補**である。CLI担当は現在のCommand Discovery／公開引数／実Runner／否定的試験を照合し、**一方だけを実CLIビルド・別Process負例の実結果で採用**する。既存公開Commandを残したまま入口だけなくす・フラグだけを使ったことにする、という一見Greenの修正は避ける。ビルド失敗による全体CIの`inconclusive`を、Ruleの新テストFAILやCLI/Stage2のPASSへ読み替えない。
+**CLIビルド停止は別Ownerへ返す。** 現mainの`acceptedCommands`には`db-introspect`があり、`runDBIntrospect`と`-semantic`フラグ宣言も存在するが、`cmd/tei/main.go`の実Dispatchが欠けて`dbIntrospectSemanticFlag`未使用コンパイル失敗を生む。`#4895`は宣言除去、`#4896`は既存公開CommandへのDispatch接続という**競合する修正候補**である。現行の公開Commandと既存Runnerを維持する方針なら、**#4896のDispatch接続が整合的な第一候補**であり、#4895のフラグ削除だけでは公開済みCommandが実行できない矛盾を解消しない。CLI担当はCommand Discovery／公開引数／実Runner／否定的試験を照合し、**一方だけを実CLIビルド・別Process負例の実結果で採用**する。既存公開Commandを残したまま入口だけなくす・フラグだけを使ったことにする、という一見Greenの修正は避ける。ビルド失敗による全体CIの`inconclusive`を、Ruleの新テストFAILやCLI/Stage2のPASSへ読み替えない。
 
 **W0は並行P0のまま**、[#4876](https://github.com/hat47x/tei-platform/pull/4876)の二つのボタンIDをまず参照HTMLの`main.ts`と揃え、既存Nodeテストを通し、**当該HEADの正規dist→四配布Asset→Go embed→実Windows WebView2受領**を順に閉じる。その次が非Plugin Studio Stage1自身によるStage2再Buildである。Reader/Ruleの進展やUIの局所成功を、Stage2実再入のPASSへ合算しない。
 
