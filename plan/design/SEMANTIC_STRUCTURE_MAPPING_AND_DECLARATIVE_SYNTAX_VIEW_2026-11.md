@@ -1531,7 +1531,7 @@ WindowのS0-Pは[main統合済みPR #4792](https://github.com/hat47x/tei-platfor
 
 ### 39.3 最初の製品PRの入場・終了条件を狭く固定する
 
-**最初の製品実装で閉じるのはGraph S0-Aへの入口**である。ただし現行の`reference/dsl-language-plugin/selection.go`にある`ParseSelected`は、あらかじめ受理されたSelectionを入力とする限定Referenceであり、製品のManifest／Contract／LockからLanguage Providerを選抜するAPIではない。まず既存#2621/#988/#1018の製品Loader・Language／RoleとSource Indexを調べ、製品Selectionが成立しなければ明示拒否する。新Parser Registryや万能Markdown Semantic Parserは先行しない。具体的なA0〜A3の順序は第39.8節にまとめる。
+**次の製品縦断で閉じるのはGraphを含むS0-Aの未接続部分**である。mainには[内蔵Rule Markdown Reader（コミット7921b005）](https://github.com/hat47x/tei-platform/commit/7921b005a44d325983d24ca2b8b58b0737dd778d)が入り、Manifestで明示された`tei.rule-authoring/v0`について製品`Workspace.Load`が同じ原byteから既存`semantic.Validation`とSource Indexの元位置まで接続する。一方、Graph固有のNode/Edge/多重辺を読む正式Languageは未接続であり、内蔵Ruleの成功をGraphの受理には流用しない。`reference/dsl-language-plugin/selection.go`の`ParseSelected`も、外部Language Pluginの製品Resolverではない。次の実装は、この**既存内蔵経路との差分**をA0〜A3で明示し、新Parser Registryや万能Markdown Semantic Parserを先行させない（第39.8節・第39.10節）。
 
 1. 管理Rootにある`baseline.tei.md`一件だけを明示選択し、Manifest/Pinned Sourceの版、Reader・Role選択と**実ManagedFile／Loaderが消費したbyte**を対応付ける。別途`os.ReadFile`したfixtureの一致だけでは製品Readの証拠にならない。
 2. Node/Edge/Ruleの候補から、正式に適格としたSource SlotだけをSource Indexの元byte Spanへ結ぶ。宣言外の引用・Mermaid・コメントをParserに昇格させず、曖昧なRole、Reader未束縛、同名別ID・重複IDは位置付き診断または明示`unsupported`で止める。
@@ -1643,18 +1643,18 @@ WindowのS0-Pは[main統合済みPR #4792](https://github.com/hat47x/tei-platfor
 <!-- data-forms-s0a-rule-input-closure-20261115 -->
 ### 39.8 最初の製品Readerを選抜から実読取へ分解し、判断の二つの閉包を保つ（2026-11-15）
 
-第39.3節の「正式Readerにつなぐ」という表現を、現行Go Sourceと[自己記述の実装計画 #4834](https://github.com/hat47x/tei-platform/pull/4834)に合わせて具体化する。既存`reference/dsl-language-plugin/selection.go`の`ParseSelected`は**受理済みSelectionが渡された後**の限定Referenceであり、製品Manifest・Contract・LockからProviderを選択していない。現`internal/workspace/tei_md_source_guard.go`は未束縛`*.tei.md`を明示拒否する。この事実を、最初の製品Go PRの停止線にする。
+本節は[自己記述の実装計画 #4834](https://github.com/hat47x/tei-platform/pull/4834)の時点で、製品Markdown Readerが未接続だった状況から作った受入手順である。その後、mainのコミット`7921b005`で`internal/workspace/authoring_language.go`と`rule_authoring_markdown_loader.go`が追加され、**内蔵`tei.rule-authoring/v0`に限るA0〜A2の製品経路が実装された**。旧`internal/workspace/tei_md_source_guard.go`は現mainには存在せず、未選択・不在・曖昧なLanguageの拒否は新しい選択・入場処理が担う。一方、`reference/dsl-language-plugin/selection.go`の`ParseSelected`は依然としてReferenceであり、外部Language Pluginの実Contract/Fingerprint/Lock選抜やGraph意味受理の完成を表さない。詳細な現況と残作業は第39.10節にまとめる。
 
 #### 39.8.1 A0を飛ばしてA1を成功にしない
 
 | 接続 | 最初の実装者が調べる既存のもの | 合格条件・失敗時の扱い |
 | --- | --- | --- |
-| **A0／選抜** | Workspace Manifestと受理済みLanguage Contract／Plugin Lock、現在の解決責務（#988/#1018/#2621） | 選択Sourceに対するLanguage ID、契約Version/Fingerprint、実装ID/Fingerprintを既存の製品経路から一意に取得。まだ供給できなければ`TEI_MD_PARSER_UNBOUND`相当で停止し、拡張子・登録順・Referenceの選択で補わない |
+| **A0／選抜** | Workspace Manifestの`languages:`と内蔵Providerの正確なLanguage ID／Contract版、外部Pluginは既存Resolver／Lock（#988/#1018/#2621） | **内蔵Ruleは製品経路で選択実装済み**。未選択Sourceは`TEI_MD_PARSER_UNBOUND`、実装不在は`TEI_LANGUAGE_UNAVAILABLE`、重複実装は`TEI_LANGUAGE_AMBIGUOUS`等で拒否。Graphや外部Languageは契約Fingerprint・実装Pin・Lockとの接続を別検収。拡張子や登録順で補わない |
 | **A1／同一Loadで読取** | 実`Workspace.Load`のManagedFile、Pinned RootとReaderが消費したbyte | 選抜済みReader一件が同じLoad Attemptの原byteを消費し、ReaderとSourceを帰属付ける。別途Fixtureを読んで成功したReference試験や`ReadByLoader`だけで意味受理したとしない |
 | **A2／元位置** | `sourceindex.NewArtifact`、`RangeFromOffsets`、Source Revision、候補Occurrence | 定義表の元byte Spanと候補IDを対応付ける。正式Subjectが未受理ならArtifactの存在とCandidateだけを報告し、物理`Format=md`からMeaning Roleを推測しない |
 | **A3／安全な拒否** | Graph/Rule固定六入力、未選択Draft、旧`*.tei`、不正Fence、重複ID、改版後の旧Index | 不正・未対応・曖昧なSourceを「空のWorld成功」にしない。既存`*.tei` Loaderを破壊せず、拒否の理由と位置を独立Expectedへ返す |
 
-**初回の製品差分はA0で既存APIが実際に利用できるかを確定し、その結果に応じてA1〜A3へ進む。** A0が未実装であることを隠すために新しい共通Registry、仮のManifest文法、任意Providerの自動発見を導入しない。A0〜A3の成功はAccepted Business Meaning、製品Generator／Builder、通常CLI実Provider、Windows Stage2の合格を含まない。
+**内蔵RuleはA0〜A2の既存製品経路を再利用し、Graphは選択すべき正確なLanguage契約と実装の有無をA0で確定してからA1〜A3へ進む。** 未対応のGraphを内蔵Ruleへ強引に読み替えたり、Referenceの選択で成功を偽装したりしない。内蔵Ruleの`semantic.Validation`生成も、Ownerの業務意味受理・実Generator／Builder・通常CLI実Provider・Windows Stage2の合格を含まない。
 
 #### 39.8.2 Rule集合の閉包とInputの閉包を別々に確認する
 
@@ -1676,11 +1676,11 @@ WindowのS0-Pは[main統合済みPR #4792](https://github.com/hat47x/tei-platfor
 
 #### 39.8.3 一つの担当へ一つの不足だけを返す
 
-次のGo実装に渡す順序は、**A0：製品Provider選択の有無を実コードで確定 → A1：Graph一入力の同一Load実Reader → A2：Source位置 → A3：負例・互換性**とする。別レーンの#4544/#1251は受理Meaning→実生成・Builder入力、#2586/#2506は実Query/Provider→独立Consumer、#2831/#4583は非Plugin Studio Stage1→Stage2実Windows Consumerを担当する。
+次のGo実装に渡す順序は、**内蔵Rule ReaderのA0〜A2を現在の製品基準として再検証 → Graph固有LanguageのA0選択契約を確定 → Graph一入力のA1同一Load読取 → A2元位置 → A3多重辺・負例・旧形式互換**とする。別レーンの#4544/#1251は受理Meaning→実生成・Builder入力、#2586/#2506は実Query/Provider→独立Consumer、#2831/#4583は非Plugin Studio Stage1→Stage2実Windows Consumerを担当する。
 
 補助的な証拠として[Studio S-LOC試作 #4842](https://github.com/hat47x/tei-platform/pull/4842)のSource位置投影や[Plugin実CLI Discovery試作 #4845](https://github.com/hat47x/tei-platform/pull/4845)を利用する場合も、**現時点では別PRの審査対象**であり、正式Reader／原文の現在再Read／Manual公開／実Consumerの完了には数えない。組織の二時点Query引数とBinderの不一致を修正する[PR #4843](https://github.com/hat47x/tei-platform/pull/4843)も別Ownerの進行中修正であり、別時点・別人物間の意味同一性を保証するものではない。
 
-**本節の資格**：実コードとmainの限定Go回帰、主線計画を照合した実装引渡しであり、A0〜A3の製品Reader、正式Rule集合、Provider二Consumer、Windows実受領をこの文書更新で新たに通したものではない。独立Expectedは#1180/#2514、最初の製品P0はReader・実Provider・Studioセルフビルドの三系統を維持する。
+**本節の資格**：内蔵`tei.rule-authoring/v0`については製品Readerコードがmainに存在する。一方、Graph固有A0〜A3、外部Language Plugin、Ownerの正式Rule集合、Provider二Consumer、Windows実受領の成立は本節の追補だけでは証明しない。独立Expectedは#1180/#2514、最初の製品P0はReader・実Provider・Studioセルフビルドの三系統を維持する。
 
 <!-- tei-data-forms-identity-asof-inspector-conformance-20261115 -->
 ### 39.9 Sourceの参照先・関係の個別対応・評価時点を、別々に確定する（2026-11-15）
@@ -1724,3 +1724,50 @@ main [#4847](https://github.com/hat47x/tei-platform/pull/4847)は、組織C1のN
 以上の実証は**局所Go回帰の存在・役割を確認したもの**であり、各PRのRepository HealthやWindows/PG試験が一律に成功したと主張するものではない。特に、mainに試験ファイルがあることと、その試験の全体CIが合格したことは別。新しい独立Expected、Schema、Host、Graph Matcher、Temporal Engineは設けず、#1180/#2514の既存Ownerへ正負対照を引き渡す。
 
 初回P0は前節どおりGraphのA0→A1〜A3正式Reader、並行する通常CLI→実Provider→独立Consumer、Studio非Plugin Stage1→Stage2である。REA・組織・Inspectorの横断反例を、Graph一件を実際に読むための新たな必須条件にはしない。
+
+
+---
+
+<!-- data-forms-builtin-rule-reader-temporal-20261115 -->
+### 39.10 内蔵Rule Readerの実装を基準に、異種データ様式の次の一往復を設計する（2026-11-15）
+
+第39.3・39.8節で設計したS0-Aの入口は、main [コミット7921b005](https://github.com/hat47x/tei-platform/commit/7921b005a44d325983d24ca2b8b58b0737dd778d)により**内蔵Rule Authoringに限って製品コードとして前進した**。汎用Graph／Tree／Window Readerが完成したわけではない。拡張する前に、どの契約が再利用でき、どの意味解釈が固有かを次のように固定する。
+
+#### 39.10.1 製品内でつながった箇所を正確に使う
+
+| 接続先 | mainの実コードと確認できる動作 | 残る資格 |
+| --- | --- | --- |
+| ManifestとLanguage | `imports.go`の`languages:`で`tei.rule-authoring/v0`を明示選択。内蔵`authoring_language.go`の`resolveAuthoringLanguages`／`admitTEIMarkdownSources`は対象Root、拡張子、契約版、実装の一意性を検査。未選択・不在・曖昧なものは拒否 | この選抜は**内蔵実装の契約ID／版に限定**。外部Language PluginのContract Fingerprint／実装Digest／Lockを正式に解決した証拠ではない |
+| 実LoadとMeaning構造 | `loader.go`の既存Loadにおいて、同じ管理原byteを選択済みReaderへ渡す。`rule_authoring_markdown_loader.go`が`tei`定義領域のRuleを既存`semantic.Validation`へ変換し、Namespaceへ登録 | Ruleの形が読めたことをOwnerの業務適格性・Rule集合の完全性・生成Targetの実行適格性と同一視しない |
+| Source位置と拒否 | 同ReaderのID Spanを`sourceAnchors`に記録し、`BuildSourceIndexFromLoad`は**読み取った元byte**からRangeを作る。複数領域や既存RuleとのID重複、不適格な定義は空Worldとして成功させない | Markdownの説明領域・未知Graphノード・Graph多重辺を暗黙にRule定義として読むものではない |
+| 限定編集プレビュー | `internal/syntax/rule_authoring_markdown_edit.go`の`PlanRuleSubjectEdit`／`ApplyTextEdit`はRuleの型付き変更を元byte RangeとFingerprintに束縛し、古い原文に対する適用を拒否 | Byte列を返す操作であり、製品WorkspaceへのSave、Owner受理、現在Grant、実編集後の独立ReReadを実装した証拠ではない |
+
+実際の固定入力は`internal/workspace/testdata/tei-md-rule/`にあり、通常の`order.tei`でDataを宣言し、選択された`order-line-rules.tei.md`の二つのRule（数量正値・受注明細番号一意）を読み込む。説明用の`text` Fenceは定義として扱わない。これは**同じWorkspaceへ異なる表層の意味を取り込む最小の正例**として用いるが、GraphのEdge ID／向き／多重性、SQL Window、REAのRelation IdentityまでRuleの構文へ押し込まない。
+
+#### 39.10.2 次のGraph拡張は、Reader登録の増加ではなく意味損失の検証で判断する
+
+製品Graph一入力のS0-A（#2621/#988/#1018）では、内蔵Ruleがすでに満たした**明示選択、同一Load原byte、Source Index元Span、未束縛拒否**を作り直さない。Graph固有のNode IDと表示Label、別Edge IDの多重有向辺、向き、関係属性、Ruleの評価対象をTyped Candidateへ保ち、既存Meaning/受入Ownerへ渡せるかが本来の差分である。既存`reference/tei-md-graph-reader`の`ParseCandidate`はあくまで候補Readerで、製品のGraph Languageとして無断登録しない。
+
+次の実装PRの合格は、選択済みGraph Source一入力について、(1)正確なLanguage/実装選択、(2)同一Load時byte、(3)Node/Edgeの安定IDとSpan、(4)重複・向き反転・配置のみ変更・Source A→B→Aの診断を、既存#1180/#2514の独立Expectedと照合した範囲に限る。**生成Go／Plugin実消費・通常CLI／実Provider・Stage2は別試行**とする。
+
+#### 39.10.3 共通物理表と履歴版は、論理Identityを物理主キーへ縮約しない
+
+[Wagby 11の比較設計§3.1.1〜3.2](WAGBY11_CAPABILITY_GAP_AND_TEI_INTEGRATION_2026-11.md)は、複数モデルで共有する物理表、複合キーの中間表、多段Lookupを、実務上の反証としている。TEIでは(1)業務上のObject／Relation occurrence、(2)読取専用Projection、(3)物理表・複合キー・Index、(4)UI表示を区別する。同じ物理行を読む二つのViewから、業務上の二つの正本が存在すると断定しない。逆に複合キーの一部を捨てて結合したり、表示Viewの選択から元Sourceの安全な更新位置を推定したりしない。
+
+組織C1の[隔離PostgreSQL実測（設計§37.4）](ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)では、同じMembership IDの訂正版を現行の単独PKへ追加するとSQLSTATE `23505`で拒否され、元の一行が残る。固定HEAD `8cf10feb`の実PG試験は成功しているが、**成功したのは履歴版を保存できないという負例**である。正式なMembership→Person Link、保存Version ID、複合PKか履歴表かの採否は#2386/#1126の意味Ownerに残す。MVR-02の正例は、旧新版を同時保存し、同じ`valid_at`で異なる`known_at`を指定してそれぞれを再Readしたときに初めて成立する。
+
+| 変更・照合 | 同一にしてよいもの | 別の証拠が必要なもの |
+| --- | --- | --- |
+| Rule Markdownの説明だけ変更 | Ruleの受理済み評価意味は同値の可能性がある | Raw/Span/Source Indexの失効、Edit Planの再作成、現Grant |
+| GraphのEdgeを一本追加／方向反転 | Node Labelと見た目の一部 | Edge Occurrence ID・向き・Multiplicity、Rule対象、生成判断 |
+| 共有表の読取Viewを追加 | 物理行の参照先 | Logical Subject、Projection Scope、現在Disclosure、元表へのWrite対象 |
+| 複合Keyの子を保存 | 親の業務Occurrence | 親キー全成分、子のRelation Key、トランザクション・Receipt |
+| Membershipの既知時点を進める | 同じ業務所属の可能性 | 物理版共存・Person Link・Read Cohort・Ownerの時点判断 |
+
+新しい共通Identity Registryや全履歴共通エンジンを作らず、現在のData／Relation／Persistence Mapping、Function Data Context、Provider、Source Indexの契約を使う。ここでの表は**実証条件の引渡し**であり、Wagbyの機能やMVR-02正例をTEIがすでに実装したという主張ではない。
+
+#### 39.10.4 引渡しを短く保つ
+
+製品Readerは**内蔵Ruleという局所達成を再利用し、Graph固有意味の未接続に集中**する（#2621）。並行してRule→実Go Generator/Builderへの一往復は#1121/#4544、実Provider→独立Consumerは#2586/#2506、Windows Studio Stage1→Stage2は#2831/#4583へ渡す。共有表／複合キー／履歴版の反例は#2495/#2497/#2386/#1126へ戻す。Ownerの独立Expectedは#1180/#2514を維持する。
+
+**この追補の資格**：mainの内蔵Rule Reader・原文に対する限定編集計画の製品コード、Wagby比較文書、PostgreSQLの失敗実証を照合した計画更新。新しいGraph製品Reader、外部Language Plugin、Graph→Go実生成／CLI実Call、履歴版の正例、Wails Stage2をこのPRで実装・検証したものではない。
