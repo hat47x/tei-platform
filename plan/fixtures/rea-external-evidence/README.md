@@ -5,7 +5,7 @@
 
 ## 何をするか
 
-`verify_real_rea_intake.py` は、外部逆解析ツール（REA）の**実CLI**を使って受領契約を検証する。合成のinert fixture（`index.js`は実行されると即座にthrowする）を解析し、bounded viewを投影し、Issueに記録された負例（受理しない`source.kind`・応答包装をEvidence本体として渡す）を実走し、その結果を`tei`バイナリで受領・検査・投影して突き合わせる。
+`verify_real_rea_intake.py` は、外部逆解析ツール（REA）の**実CLI**を使って受領契約を検証する。合成のinert fixture（`index.js`は実行されると即座にthrowする）を解析し、bounded viewを投影し、Issueに記録された負例（受理しない`source.kind`や応答の包装をEvidence本体として渡す操作）を実走し、その結果を`tei`バイナリで受領・検査・投影して突き合わせる。
 
 **この検証は解析結果の正しさ・TEI意味の受理・SHO・Target・実DB観測の資格ではない。**
 
@@ -41,10 +41,10 @@ python3 -B plan/fixtures/rea-external-evidence/verify_real_rea_intake.py \
 ## 検証していること
 
 1. 受領: `state` がwhole（`complete`/`tool-absent`）で、Evidence ID・**受領bytesのdigest**・`promotion`が全false。候補の可否に関係なくReceiptと派生Requestを確認し、保存Graphの欠落を受領失敗と混同しない。
-2. 派生入力: `source.kind=inline`にEvidence recordをembedし、**応答包装をembedしない**。派生请求は受領Evidenceに対してvalidateできる。
-3. 候補投影: 原本の`normalized_result.semantic_graph`にProducer自身のNode IDとRelation IDの両方がある場合に限り、既存`tei external-candidates -evidence-path ... -observation-id ... -relation-id ...`へ渡す。`rea-evidence`はReceipt専用であり選択フラグは持たない。原本にGraphやIDがなければ`notRun`に残し、候補を捏造しない。
+2. 派生入力: `source.kind=inline`にEvidence recordをembedし、**応答包装をembedしない**。派生リクエストは受領Evidenceに対してvalidateできる。
+3. 候補投影: 原本の`normalized_result.semantic_graph`にProducer自身のNode IDとRelation IDがあり、かつ**選択Relationのsource/target端点と観測Node IDが一致する場合に限り**、既存`tei external-candidates -evidence-path ... -observation-id ... -relation-id ...`へ渡す。`rea-evidence`はReceipt専用であり選択フラグは持たない。原本にGraphやIDがなければ`notRun`に残し、候補を捏造しない。
 4. 配送検査: 捕捉/新鮮なview配送が各版のframingでwhole。
-5. 負例: 工具が受理しない`source.kind`と、応答包装をEvidence本体として渡す請求を、**工具が**拒否する（intakeが代わりに拒否するのではない）。
+5. 負例: 工具が受理しない`source.kind`と、応答の包装をEvidence本体として渡すリクエストを、**工具が**拒否する（intakeが代わりに拒否するのではない）。
 
 ## 版の再資格化（T0-06相当）
 

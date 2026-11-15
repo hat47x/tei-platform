@@ -160,7 +160,7 @@ def verify_common(binary, evidence_path, version, selection, report):
                                  "derivedRequestValidated": True})
         if selection is None:
             report["notRun"].append(
-                f"{version}: semantic_graph has no observed node/relation ID pair; "
+                f"{version}: semantic_graph has no connected node/relation ID pair; "
                 "external-candidates projection NOT RUN")
             return
 
@@ -197,7 +197,7 @@ def verify_common(binary, evidence_path, version, selection, report):
 
 def selection_from_evidence(evidence_path):
     """Return a producer-reported observation/relation pair, or None.
-    Missing Graph/IDs are recorded as NOT RUN; an invented ID is never used."""
+    Missing Graph/IDs or unconnected endpoints are NOT RUN; no ID is invented."""
     envelope = json.loads(decode(Path(evidence_path).read_bytes()))
     data = envelope.get("data") or {}
     normalized = data.get("normalized_result") or {}
@@ -212,15 +212,33 @@ def selection_from_evidence(evidence_path):
     relations = graph.get("relations") or []
     require(isinstance(nodes, list) and isinstance(relations, list),
             "semantic_graph node/relation collections must be arrays")
-    node_id = next((n.get("node_id") for n in nodes
-                    if isinstance(n, dict) and isinstance(n.get("node_id"), str)
-                    and n["node_id"]), None)
-    relation_id = next((r.get("relation_id") for r in relations
-                        if isinstance(r, dict) and isinstance(r.get("relation_id"), str)
-                        and r["relation_id"]), None)
-    if node_id is None or relation_id is None:
-        return None
-    return {"nodeID": node_id, "relationID": relation_id}
+    # An arbitrary node and an arbitrary relation do not form a pair.
+    # Select only a producer-identified relation touching an observed node.
+    # The other endpoint may be unresolved; this is a bounded projection,
+    # never proof of a complete graph or accepted business meaning.
+    node_ids = [node["node_id"] for node in nodes
+                if isinstance(node, dict)
+                and isinstance(node.get("node_id"), str) and node["node_id"]]
+    relation_ids = [relation["relation_id"] for relation in relations
+                    if isinstance(relation, dict)
+                    and isinstance(relation.get("relation_id"), str)
+                    and relation["relation_id"]]
+    require(len(node_ids) == len(set(node_ids)),
+            "semantic_graph has duplicate producer node IDs")
+    require(len(relation_ids) == len(set(relation_ids)),
+            "semantic_graph has duplicate producer relation IDs")
+    observed = set(node_ids)
+    for relation in relations:
+        if not isinstance(relation, dict):
+            continue
+        relation_id = relation.get("relation_id")
+        if not isinstance(relation_id, str) or not relation_id:
+            continue
+        for endpoint in ("source_node_id", "target_node_id"):
+            node_id = relation.get(endpoint)
+            if isinstance(node_id, str) and node_id in observed:
+                return {"nodeID": node_id, "relationID": relation_id}
+    return None
 
 
 def verify_fixture_mode(binary, report):
