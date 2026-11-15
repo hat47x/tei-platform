@@ -571,6 +571,69 @@ P/G両経路を実行できる対象では、同じSourceの受理済みMeaning�
 
 **導入順**：既存RuleのGをR2-P正式Builderへ接続する最優先と、TEI Studio Stage1→Stage2セルフビルド、通常CLI実ProviderのR3は変更しない。この比較は[#1121](https://github.com/hat47x/tei-platform/issues/1121)（Lowering）、[#4544](https://github.com/hat47x/tei-platform/issues/4544)（Generator）、[#988](https://github.com/hat47x/tei-platform/issues/988)／[#951](https://github.com/hat47x/tei-platform/issues/951)（Operator／Plugin）、[#4198](https://github.com/hat47x/tei-platform/issues/4198)（Graph）、[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)（独立Expected）、[#2831](https://github.com/hat47x/tei-platform/issues/2831)／[#4583](https://github.com/hat47x/tei-platform/issues/4583)（セルフビルド）へ既存差分として渡す。**新しいDSL Grammar／Runner／自動Execution Grant／Runtime Registryは追加しない。**
 
+
+### 27.4 図表の実装属性は、意味上の項目と混ぜない
+
+設計図の詳細化によって「どの列をIndexにするか」「どのSQLをTargetに選ぶか」「どのPortをコンパイル時に束縛するか」が見えてくることは自然な設計の進展である。しかし、そのために業務Dataのすべての宣言へGoの型・関数・インポートやTarget固有のパラメータを露出させない。
+
+図表の項目は、**業務上の意味・標準データ構造の制約・Provider／Targetの実現選択・表示設定**のどこに属するかをまず区別する。業務上のRuleやRelationのキーは既存Canonical、実現方法の情報は既存Target Generator／Plugin／Provider契約へ接続する。未対応の設定はCandidateとして残し、新しいCore属性や無制限の`key=value`袋へ自動採用しない。
+
+例えば、ER図の「FK」は、明示されたRelationとキー対応の代用にならない。物理Indexの有無は論理Relationの同一性と別であり、Mermaidの矢印や線種、ノード画面の配線順から生成SQL・実Call順を推測してはいけない。実装属性を設計の知識として再利用できるようにすることと、図形から意味を推論することは異なる。
+
+### 27.5 解釈と生成の同値性は、比較する観測面を指定する
+
+現行の`validationeval.Evaluate`は`semantic.Validation`を純粋に評価し、`Source.Number`／`RelationKeys`へ**論理Read要求**を出す。他方、既存の参照`deterministic-transform-v1`は選択されたValidationと明示契約からGoを生成し、JSONアダプタを通して別OSプロセスで動く。両者は同一のCanonical IDと条件を共有できるが、入出力の外形は同じではない。
+
+「同じ結果」の検査を次の範囲に分ける。
+
+| 比較対象 | 一致と呼べる条件 | 今回の試験で主張しないこと |
+| --- | --- | --- |
+| **値・判定** | 同じ受理済みRule、型／評価時点／Scope、明示入力について`satisfied`／`not-satisfied`が独立期待値に一致 | JSONの全形式、SQL方言の全同値性、すべてのOperator |
+| **評価不能** | NULL・未取得・型不適合を正常な`not-satisfied`へ押し込まない | InterpreterのGo errorと生成Goの`unevaluable`／診断コードの完全一致 |
+| **Read／順序** | Interpreterが要求したField／Relationと、その必要集合・短絡を記録する | 生成Goの物理DB Read回数、RLS、未公開Dataの無取得 |
+| **実現とビルド** | 生成Goの実byte、外部Buildと実Binaryの入出力を確認する | 製品Builderが同一Attemptでそのbyteを消費したこと、実Provider Call |
+| **Effect／現在資格** | 実Provider、Operation、Receipt、Grantを各Ownerの実観測で確認 | 純粋判定の試験からの実行許可、成功したCommitの推定 |
+
+今回`tools/reference-generator-selection/selected_markdown_rule_rebind_test.go`へ追加する`TestSelectedRuleInterpretedAndGeneratedRealizationsAgree`は、**同じ選択済みMarkdown Rule、同じ`semantic.Validation`と固定Expected**で、直接Evaluatorと既存Transform Generatorの生成Goを照合する。正値、小数、0、負数、負の0、明示NULL、未取得、型不適合をそれぞれ別Caseにする。生成Goは一度ビルドして同じBinaryに別入力を渡す。参照名が違うFieldを与えても黙って採用しない。
+
+この試験のInterpreter側では、NULL・未取得・型不適合が同じ`nil`の数値として現れるため、**評価不能という粗い分類まで**を比較する。一方、生成GoのJSON Adapterは`null`／`missing`／`type-mismatch`の区別を独立に検査する。両者のエラー表現を文字列単位で等価と宣言したり、両者で物理Read Footprintが等しいと主張したりしない。対象となるデータ取得契約は実Provider／Context Ownerが別途検収する。
+
+この「実現方式を変えても、何を保存したかを言える」性質は、宣言的構文汎化の中核的な検収条件になる。最終結果だけ一致して余分な非公開Fieldを先読みするDecision表への書換えは、評価順・Read／Disclosure契約の比較では不一致となり得る。結果一致を万能な変換許可へ昇格させない。
+
+### 27.6 標準データ様式とノード表現への展開
+
+構文を増やすよりも先に、**既存の一つのMeaningに対して、適用可能な実現方式と必要な不変条件を説明できること**を目指す。これにより、Node-RED型のFlow、ODIP型の大規模加工、業務Function、Rule／BRMS、Studio内部のPlugin配線を、用途ごとに異なる実現方式でつなぎ、無理に同じ実行モデルへ揃えずに済む。
+
+表現の共通化には同じNode／Edgeを描画できることだけでなく、次を要求する。
+
+- **構造**：GraphのNode・Edge ID、方向、多重性、端点、属性と、Tree／Tableへの投影損失が分かること。表示用EdgeとCanonical Relationを別に扱う。
+- **評価**：入力の粒度、集約Scope、時点、NULL／欠損、データ取得の完全性、順序が分かること。ポートの型が同じだけでは結線を確定しない。
+- **実行**：Data flow、判定、前提条件、Trigger、Effect、Plugin Implementationの選択が別の関係として追えること。選択されたProviderと実際のCall先を一致検証する。
+- **出典と編集**：同じSourceの原byteとSelection、Meaning、表示由来のLossを保持すること。一意に逆対応できるSlot以外はread-onlyとする。
+- **成果物**：解釈実行と生成コードのいずれでも、必要なSource・Contract版・Builder／Provider実消費・Consumer結果を問いに応じて取得できること。
+
+Node Viewはこれらの情報への**共通の入口**であり、単一の実行Schedulerではない。画面からの編集やドラッグ配線は、既存Source Writerで一意の変更候補を作り、Preview→Resolve→Owner受理→Consumer再読取を通過できる範囲だけで認める。実際のSource書込み、権限・Effect、Bundle更新は既存Ownerが担う。
+
+同じことはドキュメントにも当てはまる。Markdownの本文・小表・Mermaid・コードFenceを、専門家の理解順に配置できることを優先し、説明のための図・引用・表を自動的に実行可能な意味へ昇格させない。Graphviz、KaTeX、決定表、関数チェーンはそれぞれの適した表層を維持し、どのMeaningを表しているかと、必要な損失を明示する。
+
+### 27.7 既存実装への引渡しと最小の次工程
+
+現行mainでは、明示選択した`tei.authoring/v1`の項目定義表と同じMarkdown中のRuleを、製品`tei inspect`と共通`operations.InspectSubject`で読む試験が追加された（#5058）。旧Validation／選択Markdown Ruleの型付き一致、Generatorへの一因子変更、Rule由来の生成Goを通常`tei self-build`へ渡す試験（#5009）や原文byteの埋め込み確認（#5051）、生成WorkbenchのWindows PoC B（#5052）も存在する。**個別に成立した経路を、一つの製品Stage2セルフビルドや実Provider Invocationとして合算しない**。
+
+次の最小工程では、既存のNode／Rule／Query／Plugin Viewに新しい共通Run Engineを追加せず、一Ruleのread-only照合票に次の列を一度だけ置く。
+
+| 列 | 値の出どころ | 未確認の扱い |
+| --- | --- | --- |
+| Source／Role／Meaning | 製品Workspace、既存Source Index、Inspector | Sourceの位置が古ければ再読取。二重Definitionなら拒否 |
+| 実現方式 | 既存EvaluatorまたはGenerator／Provider契約、実選択 | Interpreter・Generator・Pluginが選択不能なら未対応 |
+| 評価契約 | 既存Validation／Operator、独立Expected、Read要求 | NULL、完全性、粒度、短絡が不明なら値同値だけを表示 |
+| Artifact／Effect | 実Build Intent、Builder入力、Artifact、Provider、Receipt | 結果値だけでビルド消費・Commit・Grantを成功扱いしない |
+| Consumer／編集 | 実CLI・Windows／Studioの受領、Source Writer資格 | GUIに表示できてもSource書込み・Stage2実現を主張しない |
+
+試験の優先順は、**今回の「解釈 vs 生成」の一Rule同値検査 → #5056の生成GoとBuilder入力の取り違え拒否の統合判定 → Rule原文・Generator版・実Artifactの同一Attempt束縛 → 通常CLIから選択済み実ProviderへのCall／Readback → Studio Stage1→Stage2**である。PR #5056はこの追補時点では未マージであり、検収結果を先取りしない。標準データ構造・表現型・ノードUIの拡張を製品P0の新Hard Gateにはしない。
+
+**終了条件**：新試験がexact HEADのGo／CIでPASSした範囲だけを認定し、実現方式の選択・契約の手作業調整・Reader／Generator実装の版固定・Provider Read・Owner受理・実Builder消費の各残差を明記する。新DSL Grammar、第二Semantic／Expected Store、独自Graph Runtime、TEI専用Hostは導入しない。
+
 ## 28. Data表と隣接Ruleの二実現方式を製品Loadから検証する（2026-11-15）
 
 ### 28.1 §27のG／P／D判断を一つの既存Fixtureへ適用する
