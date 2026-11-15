@@ -2854,7 +2854,9 @@ PluginのDescriptorがTEIで書けても、実際のValidator/Generator処理が
 
 ### 46.2 P0の最初のGo変更はGraph S0-Aの一件に限定する
 
-製品接続の最初のGo PRは、`#1018/#988/#2621`の既存Language Selectionと`Workspace.Load`・Source Indexの入口を接続する**一つの選択済みGraph/Rule Source**を対象にする。やることは「新しいGraph構文を採用」ではなく、**Reader選択→同じLoad時の原Source byte→候補とSource span→Source Indexへの記録**が途切れないことの実証である。
+製品接続の最初のGo PRは、`#1018/#988/#2621`の既存Language Selectionと`Workspace.Load`・Source Indexの入口を接続する**一つの選択済みGraph/Rule Source**を対象にする。
+
+**現時点の実装上の断点**：`reference/dsl-language-plugin/selection.go`の`Selection`／`ParseSelected`は、受理済み契約・実装のexact Pinを**入力として受け取る限定Reference**であり、製品のLanguage RegistryでもManifest→Provider解決でもない。一方、`internal/workspace/loader.go`は管理対象`*.tei.md`を`rejectUnboundTEIMarkdownSources`で一律拒否している。したがって、既存の選択APIが製品で利用可能であるかのようにGuardを解除してはならない。まずOwner #988/#1018が、現在のAccepted Source／既存Selection・Lockから**どの情報を製品Loaderが実際に受け取れるか**を確認し、受け取れない部分は`unsupported`として明示する。やることは「新しいGraph構文を採用」ではなく、**Reader選択→同じLoad時の原Source byte→候補とSource span→Source Indexへの記録**が途切れないことの実証である。
 
 1. 現行`rejectUnboundTEIMarkdownSources`は、Providerが不在・未選択・競合・版不一致の場合の**拒否条件として保持**する。suffixや`Format=md`による暗黙のParser採用、Reference Readerへの無条件fallbackはしない。
 2. 管理対象のPath・Root・Manifestを固定し、実際に選ばれたLanguage/Providerの契約・実装pinを既存解決経路で検証する。実装側に必要な選択情報が欠ける場合は、新しい独立Registryを作らず`unsupported`で停止する。
@@ -2942,4 +2944,29 @@ Studio／CLI／SHO／AIに提示する説明は、用途ごとの質問に必要
 **E-READ（Studio参照制限）の製品検収も独立**。#4806/#4809/#2831/#4583の既存経路で、現在のInspector Replyと拒否条件→正規UI Build→実埋込byte→Windows WebView2を段階別に確認する。公開説明や編集提案の成功をStudio Stage1→Stage2セルフビルドの成功へ昇格させない。
 
 S0-A、PDC-1、E-READは**同一Subject/Revision/Scopeを安全に説明できるための異なる入口**であり、相互の先行Hard Gateではない。全体製品P0のStudio Stage1→Stage2、並行P0の通常`tei` CLI→実Provider Read→独立Consumer、Rule→Go実生成Pluginの検証を妨げない。今回は新しいProduct Reader／実Doc取得／正式Studio実表示／実Plugin・Owner意味受理／Windows Stage2を追加実装したものではなく、**設計の受入とOwner引継ぎのみ**である。
+
+
+<!-- tei-self-description-product-selection-gap-20261115 -->
+### 47.5 製品Readerの最初の実装PRを、選択の成立とSourceの実消費に分ける
+
+`46.2の選択経路はまだ製品に存在しないため、S0-Aを「Markdownを読んで成功を返す関数」として先行実装しない。Product Goの最小差分は**選択された一つのSourceを製品のLoad Attemptに正しく参加させること**であり、次の順に不足を解消する。
+
+| 接続点 | 最小限のGo変更とテスト | 失敗時の扱い |
+| --- | --- | --- |
+| **A0 選択** | 既存Manifest/Accepted Contract/Lockから、一Sourceに対するLanguage ID・Contract Version/Fingerprint・Implementation ID/Fingerprintを取得できるか確認。E1 Referenceの`ParseSelected`を製品Registryとして移植せず、#988/#1018の現在の解決責務に接続する | 未取得・競合・Pin不一致は`TEI_MD_PARSER_UNBOUND`等で明示拒否。拡張子や登録順から補わない |
+| **A1 実Reader** | 明示された一Providerだけが、`Workspace.Load`のPinned Rootと同じLoad時のbyteを消費する。候補・Raw Source／Range・実Readを紐付ける | Sourceを再オープンして別版を取り込まない。`ReadByLoader`だけをParse／意味受理に昇格させない |
+| **A2 出典** | 既存`sourceindex.NewArtifact`／`RangeFromOffsets`で元byte・位置を照合。Semantic Referenceに必要なSubjectがまだ受理されていなければ、Artifactのみと明示して止める | 物理`Format=md`や表示名から業務Role／対象Subjectを推測しない |
+| **A3 既存の拒否と互換** | 六つのGraph/Rule固定原文、未選択Draft、旧`*.tei`、不正Fence、同名・多重Edge、Load後のSource変更を一因子ずつ比較 | 不正・未選択Sourceを成功した空Worldとして扱わない。既存のGuardテストは選択／非選択の対照に更新する |
+
+SourceとResultの形式、Language Pinの供給元、Product Readerの接続箇所は**A0で製品の既存APIを調べてから確定**する。新しいManifest構文、独立Resolver、Graph専用の正式意味モデル、万能Parserをこの文書から勝手に採用しない。設計の検収項目だけでは正式Readerの合格にならない（#2621/#988/#1180/#2514）。
+
+### 47.6 自己記述の次の圧力試験をPluginの「選択済み」と、Windowの「結果一致」に置く
+
+**Plugin**：main #4800の`documentReadPreflight`、後続#4826の`upstreamSelection`は、既存Resolver/Lockから**選択された直接依存先の正確な版**を示すためのGo実装である。しかし依存先のDocument ID、元Manual byte、現在のAudience/Disclosure、閲覧許可、実Provider呼出しまで取得してはいない。自己記述の説明に「Plugin Aの版が分かる」と書けても、**「Aのマニュアルを公開できる」にはならない**。次の製品PDC-1は#4714の一件Source-backed Document Readで独立検収する。
+
+**Window**：main #4822の実SQLite負例は、入力値を`NULL`→`0`→行削除と変えると、集計結果の見かけが同じ値に戻っても、元の行集合とNULLの意味は同一ではないことを示す。GraphのCandidate Shapeと同様、Windowでも**観測結果が一致したことと、必要な原本・行・時点をすべて取得したこと**を分ける。この反例はGraphのS0-Aの追加前提にせず、`46の第二圧力試験から#4660/#2586/#2514の独立Expectedに引き渡す。
+
+**最優先のまま維持すること**：製品S0-Aの明示選択→同一Load byte→候補と出典、通常`tei` CLIの実Provider Read／独立Consumer、Studioの非Plugin Stage1→Stage2 Windows実ビルドは三つの別資格である。E1 Reference、Plugin Preflight、Window C0の局所PASSを合わせても、この三つの製品合格にはならない。
+
+今回追加したのは現行Go Sourceと統合済みPRに基づく**接続条件と計画上の訂正**のみ。新しいProduct Go実装、正式Language/Meaning受理、Manual本文取得、Stage2再入およびHost/DBの実受領は**NOT RUN／NOT PROVEN**。
 
