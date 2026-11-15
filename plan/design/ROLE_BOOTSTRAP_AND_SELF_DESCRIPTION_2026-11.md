@@ -2949,7 +2949,7 @@ S0-A、PDC-1、E-READは**同一Subject/Revision/Scopeを安全に説明でき�
 <!-- tei-self-description-product-selection-gap-20261115 -->
 ### 47.5 製品Readerの最初の実装PRを、選択の成立とSourceの実消費に分ける
 
-`46.2の選択経路はまだ製品に存在しないため、S0-Aを「Markdownを読んで成功を返す関数」として先行実装しない。Product Goの最小差分は**選択された一つのSourceを製品のLoad Attemptに正しく参加させること**であり、次の順に不足を解消する。
+第46.2節の選択経路はまだ製品に存在しないため、S0-Aを「Markdownを読んで成功を返す関数」として先行実装しない。Product Goの最小差分は**選択された一つのSourceを製品のLoad Attemptに正しく参加させること**であり、次の順に不足を解消する。
 
 | 接続点 | 最小限のGo変更とテスト | 失敗時の扱い |
 | --- | --- | --- |
@@ -2964,9 +2964,21 @@ SourceとResultの形式、Language Pinの供給元、Product Readerの接続箇
 
 **Plugin**：main #4800の`documentReadPreflight`、後続#4826の`upstreamSelection`は、既存Resolver/Lockから**選択された直接依存先の正確な版**を示すためのGo実装である。しかし依存先のDocument ID、元Manual byte、現在のAudience/Disclosure、閲覧許可、実Provider呼出しまで取得してはいない。自己記述の説明に「Plugin Aの版が分かる」と書けても、**「Aのマニュアルを公開できる」にはならない**。次の製品PDC-1は#4714の一件Source-backed Document Readで独立検収する。
 
-**Window**：main #4822の実SQLite負例は、入力値を`NULL`→`0`→行削除と変えると、集計結果の見かけが同じ値に戻っても、元の行集合とNULLの意味は同一ではないことを示す。GraphのCandidate Shapeと同様、Windowでも**観測結果が一致したことと、必要な原本・行・時点をすべて取得したこと**を分ける。この反例はGraphのS0-Aの追加前提にせず、`46の第二圧力試験から#4660/#2586/#2514の独立Expectedに引き渡す。
+**Window**：main #4822の実SQLite負例は、入力値を`NULL`→`0`→行削除と変えると、集計結果の見かけが同じ値に戻っても、元の行集合とNULLの意味は同一ではないことを示す。GraphのCandidate Shapeと同様、Windowでも**観測結果が一致したことと、必要な原本・行・時点をすべて取得したこと**を分ける。この反例はGraphのS0-Aの追加前提にせず、第46節の第二圧力試験から#4660/#2586/#2514の独立Expectedに引き渡す。
 
 **最優先のまま維持すること**：製品S0-Aの明示選択→同一Load byte→候補と出典、通常`tei` CLIの実Provider Read／独立Consumer、Studioの非Plugin Stage1→Stage2 Windows実ビルドは三つの別資格である。E1 Reference、Plugin Preflight、Window C0の局所PASSを合わせても、この三つの製品合格にはならない。
 
 今回追加したのは現行Go Sourceと統合済みPRに基づく**接続条件と計画上の訂正**のみ。新しいProduct Go実装、正式Language/Meaning受理、Manual本文取得、Stage2再入およびHost/DBの実受領は**NOT RUN／NOT PROVEN**。
+
+
+<!-- tei-self-description-e1-product-rejection-regression-20261115 -->
+### 47.7 Referenceの選択成功を製品のReader受理と誤認しない回帰
+
+次の製品S0-Aへ進む前に、限定Referenceと通常Workspaceの境界を**同一Graph/Rule原文を用いた実Goテスト**として固定する。対象は `reference/dsl-language-plugin/workspace_admission_boundary_test.go`。固定した `baseline.tei.md` について、明示した合成PinのE1 `ParseSelected` がGraph/Rule候補と元byte位置を返しても、実 `workspace.Load` は選択済みLanguage/実装契約が**製品側に渡されていない**ため `TEI_MD_PARSER_UNBOUND` で拒否することを前後二回確認する。
+
+同じテストで未指定Pin、異なる実装Fingerprint、Provider重複は、いずれもReference Parserを呼ばずに拒否する。これは**A0欠落の検出用回帰**であって、合成Pinを受理済み契約として発行したり、製品の新Reader／Meaningを実装したりするものではない。
+
+将来A0〜A3が本実装された際は、このテストを無効化して済ませず、**未選択／競合／誤Pinでは拒否し、製品自身が正しく選択した一Sourceだけを同一Load時byteとSource Indexで扱う**正負対照へ置き換える。E1側の成功をそのまま製品の受理証拠に移してはならない。
+
+**この追補の範囲**：新しいGo回帰と設計上の引継ぎ。Goテストの合否は該当PRのexact HEAD CIで判定する。Reader実接続、業務Meaning受理、実Provider/CLI Consumer、Studio Stage1→Stage2について、新たな製品合格を主張しない。
 
