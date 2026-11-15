@@ -450,6 +450,45 @@ Webの要求、CLIの起動、タイマー、Message、画面操作には、そ�
 
 **実現順**は、既存のProduct Read RA-2PとStudio Stage1→Stage2を先に完結させ、共通Lifecycleの最初の読取り専用Projectionをその結果へ結び付ける。TODO・Mockで外部部品を置き換える設計段階では、入力・結果・欠損・副作用・実装未接続を明示し、Mockと本番Providerを同一の成功票にしない。実Targetへの移植は、実際のInvocation、作用、Response、Consumerの受領を比較してから判断する。**この節は設計とScenarioの引渡しであり、新たなGo／DB／Windows／Scheduler実験の完了ではない。**
 
+<!-- g49-effective-placement-evidence-reconciliation-20261115 -->
+### G49 横断機能の実効適用：Graphの対象選択から利用側の受領まで（2026-11-15）
+
+**判断の要点**：アプリケーションの構造Graphで「対象を選べた」ことと、その機能が**生成・配布・表示・送信・受領**されたことは別である。全ページ共通の計測、アクセシビリティ補助、監査、キャンペーン挿入などの横断機能に対し、既存のSource/Meaning→Graph索引→Plugin/Hook→Builder→Target→実Consumerという受渡しを、**適用義務単位の照合**として検証する。新しいAspect Weaver、Graph Compiler、常駐Browser SDK、Host、Analytics Engineは追加しない。詳細の受入Ownerは[高度B2C #3509の追補](https://github.com/hat47x/tei-platform/issues/3509#issuecomment-6891903592)、共通Graph/Hookは[#4198](https://github.com/hat47x/tei-platform/issues/4198)・[#3503](https://github.com/hat47x/tei-platform/issues/3503)・[統合設計 #4681](https://github.com/hat47x/tei-platform/pull/4681)とする。
+
+**Graphと意味の分離**：原Sourceを上書きする新しいGraph正本は持たない。NodeはQualified Subject/Role/Scope/Revision、Edgeは方向・関係Role・発生箇所・安定した出現Identityを区別し、同端点間の多重辺を潰さない。Graphの描画座標・折り畳み・視覚的グループ化は意味を変えない。Selectorの対象Universeには、**現在一致したNodeだけでなく、今後一致し得る公開Route・Variant・Plugin公開Facetと未探索依存**を含める。静的なTEI RouteだけでNative Framework、外部CMS、旧CDN/Clientの本番全域を閉じたと主張しない。未観測の外部要素は問い相対のunknownとして持ち、無関係な部分を不必要に失効させない（#2495/#2497/#2582/#3262/#4518）。
+
+| 別々に検収する段階 | 実際に確認するWitness | 誤って認定してはならないこと |
+| --- | --- | --- |
+| **U：対象と義務** | Subject/Route/公開条件、必須・任意の別、Universeと探索範囲、対象版、除外・未解決 | 宣言Routeを列挙しただけで「本番の全Pageを網羅」 |
+| **S：選択** | matched / excluded / undetermined、Selector/Plugin公開Facetと依存版 | matchedだから生成済み、閲覧可能だから実行可能 |
+| **G：生成・梱包** | Role付きGraphの対象→Hook Slot/Placement→Builderの実入力→Artifact Member/BOM | 生成ソースに文字列があるだけで配布済み |
+| **D：配布・取得** | Release/Response/SSR・Edge・CDN・Cache・旧Clientの実バイト列と時点 | 最新Builderの成功を、利用者の最新Release受領と同一視 |
+| **V：利用・露出** | Navigation種別、実表示、Variant、可視化、Consent、実ブラウザ観測 | Feature Flag割付や評価を、実際のExposureと同一視 |
+| **R：外部受領・Effect** | Collectorの受領、外部OperationのReceiptと独立Readを別々に照合 | 送信しただけで分析に反映、クリックしただけで購入確定 |
+
+この表は**新しいCore state/API/永続Evidence正本ではない**。U/S/G/D/V/Rは既存の#951/#1016（Composition）、#3278（Trait/Hook）、#1121/#2090（Target/再生成保持）、#2600/#3271（版・Cache）、#2516/#1174（開示・権限・Effect）、#1180/#2514（独立Expected）の観測欄として使う。1 Route→複数Variant/Artifact、1 Asset→複数Route、SSR＋SPA→重複通知があり得るため、**Node件数やScript件数の単純な一致を合格条件にしない**。必要な適用範囲、出現多重度、未観測範囲を明示する。
+
+**表現と工程の再利用**：標準データ構造のGraph/Relation/SequenceとプロセスのTrigger→Invocation→Function/Rule→Outcomeを接合するが、Webページ遷移（Interaction）、販促・実験（Experience）、購入・注文確定（Business Effect）は別Flowのまま対応付ける。Graphは読み取り・変換・生成の共通入力であり、画面の内部状態・業務トランザクション・購買の正本ではない。REAの経済Eventは必要なら業務Outcomeを説明するRoleとして使用し、Analytics EventやFlag Evaluationと同じ実体にしない。Node ViewはPlugin配線、Data Flow、Journey、Lifecycleを別Projectionで表示できるが、Canvasの線をそのまま実Provider Invoke/Grantに昇格させない。Bindingは公開されたContract/Slot/Revisionの範囲だけを継承する（#2619/#4350/#4198/#951/#2386）。
+
+**適用される場所を固定しない**：B2C向けの上位PluginはDistribution（配布・切替）、Authoring（Journey/Rule記述）、Composition（公開Contract/Slot選択）、Organization（担当・承認の責務）、Runtime（任意Providerの実処理）、Disclosure（Audience/用途/同意）の各Scopeへ**分離して実現**する。Pluginを選択しただけで全Scopeの能力・現在のGrantを得ない。H0＝Nativeのみ、H1＝任意ContractとBuild時生成、H2＝任意の実験/計測Adapterは正規の三方式とし、H0/H1はTEI固有Browser JS/DOM/Router/通信Proxyを必須としない。B2Cへの進出を標準Rendererの採用率で評価しない（#2018/#951/#1016）。
+
+**同意と試験母集団を守る**：Assignment（割付）／Flag Evaluation／Rendered・Visible Exposure／User Action／Authoritative Business Effect／Measured Outcomeを分ける。Evaluation回数≠表示回数、計測欠損≠非購入である。未同意の計測送信を「欠測修復」で自動再送せず、実験ID・Targeting Keyから業務Customerや認証Principalを推定しない。公開情報・非公開情報、行列Scope、Cookie/Cache、外部Egress、ログ/診断/集計・件数の漏えいも用途別に区別する。OpenFeatureのEvaluation Context/Hook、Webのbfcache `pageshow.persisted`、WCAG 2.2、Core Web Vitalsは**外部の比較基準**であり、採用済み実装や実適合の証拠ではない（#1043/#1656/#2516/#3412）。
+
+#### 次の実装差分と独立Expectedへの引渡し
+
+| 順番・既存Owner | 最初に固定する一つの試験 | 成立条件と実装しないもの |
+| --- | --- | --- |
+| **EP-0：read-only Scope/Selector** #4198/#3509/#4518 | 既存Subject・公開Route一つと、未取得Native/CMS Routeを含むUniverseを宣言してGraph/Selectorのmatched・undeterminedを比較 | 実Source/ScopeとDeclarationを区別。静的範囲の一致から全サイトcompleteを発行しない |
+| **EP-1：生成物Member照合** #951/#1121/#2090 | EP-0で選択した一つのHook Slotから、既存Builderが実際に含めたMemberを同一Source/World/Generator版でReadback。生成ソースあり・BOM欠落を負例にする | SelectorのPASSだけでは合格にしない。新Graph Engineや全Native Scannerなし |
+| **EP-2：配布版とBrowser** #2600/#3271/#3509 | 一Targetの静的ページまたはSSRで、実Response/旧Cache版とBrowserの実Navigation・可視化を別観測 | Release成功からClient受領を推論しない。NativeだけのH0を破壊しない |
+| **EP-3：同意/二重送信・効果** #3503/#2516/#1174 | SSR→SPA、bfcache、Consent拒否、Analytics受領と注文Receiptを別々に観測 | 未同意送信ゼロ、必要な多重度の検証、Effect unknown時のlookup-first。実PaymentをMockで置換した合格なし |
+| **EP-4：価値の比較と採用** #2018/#3796/#3509 | H0/H1/H2で同じTarget/要求/Provider/独立Expected、変更1回とRollback1回を比較 | 手書き残差、対象漏れ、再生成破壊、JS/通信・Core Web Vitals、検証工数、復旧時間・運用費を測る。CVR改善は適切な実験以外から推論しない |
+
+**負例の固定（新しいScenario正本を作らない）**：既存#3509のAX/GQ/BC、#1180/#2514に `G49-EP-01`〜`G49-EP-10` の参照名で引き渡す。①未探索動的Page、②Member未収録、③SSR/SPA二重通知、④Consent拒否、⑤bfcache復帰・prerender、⑥旧CDN/Client、⑦割付のみで未露出、⑧購入ACK喪失、⑨H0/H1/H2のJS/通信差分、⑩見た目だけの変更に偽装した価格・同意の実効変更を一因子ずつ対照する。前回Issue追補の短縮名`PL-01〜10`は他のProcess/Lifecycle試験名と衝突し得るため、**このG49固有参照名を使い、別のテスト番号体系として採用しない**。
+
+**作業順序と証拠の上限**：全体P0はStudio Stage1→Stage2セルフビルド（#2831/#4583）、並行P0は通常製品`tei`→実Provider→Function Data Context→独立二Consumer（#2586/#1251）。EP-0/1はその足場を再利用する小さなread-only/Builder試験として並走できるが、B1a-P公開Grant、B1b Commerce Effect、B2 Exposure/Consent、B3性能・開発費の実測をP0の前提にしない。B0限定Inspectorと既存Source/Graph設計はmainにあるが、**本節で計画した新たなGo/CLI/Builder/Native Browser/配布/同意/Collector/Commerce実試験、Owner Meaning受理、CVR改善はNOT RUN / NOT ACCEPTED**。
+
+
 ## 最新の作業単位へ接続する
 
 2026年11月11日のmain `9d31f82486b2eac42791f4f3bc5cd588d69cb4fc`と関連Issueを照合した。以下は着手先の更新であり、Issueの起票・限定Reference・候補Parserを製品の完成へ数えない。以後の進捗は各Issueと[実装状況](../../docs/status.md)から再取得する。
