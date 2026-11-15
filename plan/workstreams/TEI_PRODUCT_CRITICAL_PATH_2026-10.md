@@ -1770,7 +1770,7 @@ mainの`7921b005`で製品`workspace.Load`に内蔵`tei.rule-authoring/v0` Reade
 | --- | --- | --- |
 | **R2（次のコードPR）** | #1121/#4544/#2595：`sales.order_line.quantity_positive`を現行`workspace.Load`／型付き`semantic.Validation`から実Go判断に生成し、実Builderの入力Source/Toolchain/Artifact byteを残す | 数量1／0／-1、NULL・欠損の未確定扱い、Rule条件改版による生成判断差。Handwritten Goへの条件委譲、古いSource/Artifactの黙認、合成Fixtureの結果だけは不合格 |
 | **R3（R2の後）** | #951/#1251/#4495：選択済み実Go Providerを通常`tei` CLIの公開Entryから別Process実呼出しし、独立Consumerへ渡す | Selected B／Actual Aの拒否、実入力/Row Coverage/Null/Scope、Host現在Grant・Effect unknownの独立票。Rule IDからCapability/Entryを暗黙作成しない（#4902） |
-| **CLIのコンパイル阻害（R2/R3と並行修正）** | CLI Owner：`db-introspect`が既にCommand Discoveryにあり、実Runnerも存在することを踏まえ、競合する#4895（`-semantic`宣言削除）と#4896（既存Dispatch接続）を**両方マージしない**。一案を選び実Goビルド＋別Process負例で検収 | `dbIntrospectSemanticFlag`未使用のまま・既存公開Commandの呼出し不可・DB接続前に拒否すべき不正引数が通る状態を拒否。旧CIの失敗は新RuleテストのFAILとは区別 |
+| **CLIのコンパイル阻害（R2/R3と並行修正）** | CLI Owner：`db-introspect`が既にCommand Discoveryにあり、実Runnerも存在することを踏まえ、競合する#4895（`-semantic`宣言削除）と#4896（既存Dispatch接続）を**両方マージしない**。既存公開Command／Runnerを維持するなら#4896を第一候補とし、実Goビルド＋別Process負例で検収 | `dbIntrospectSemanticFlag`未使用のまま・既存公開Commandの呼出し不可・DB接続前に拒否すべき不正引数が通る状態を拒否。旧CIの失敗は新RuleテストのFAILとは区別 |
 | **W0／Stage2（最上位P0）** | #1824/#4583：#4869のPin Fixture合格後、#4876の参照DOM ID → Node24正規Bundle → Go Embed Assetの4ファイルbyte一致 → 実Windows WebView2受領 → Stage1自身がStage2を構築 | 旧#4812の別HEAD Greenや現行参照画面の成功、単なるStage0からの二回BuildをStage2合格にしない |
 
 Raw Sourceの説明文のみの改版はSource Indexを失効させるが、意味版・Artifact再利用は#2600で別に判定する。Rule条件改版、同Labelで別Subject、Generator/Toolchain改版、Provider選択改版、現在Grant失効を一つの`ready`値へ潰さない。**R2/R3が進んでも外部Language Plugin／Graph・Window Reader／Plugin Doc Read／Updaterを新Hard Gateにしない。**
