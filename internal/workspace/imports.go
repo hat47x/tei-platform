@@ -47,6 +47,10 @@ type workspaceManifest struct {
 	// as written. An empty list selects none: a *.tei.md source then stays
 	// unread and Load refuses it.
 	Languages []AuthoringLanguageSelection
+	// OperatorImplementations are the implementations this Workspace selected
+	// for operators it declares, exactly as written. Selecting one does not
+	// declare the operator and does not change any meaning.
+	OperatorImplementations []OperatorImplementationSelection
 }
 
 // parseWorkspaceManifestYAML accepts the existing small workspace YAML subset
@@ -71,6 +75,8 @@ func parseWorkspaceManifestYAML(src string) (workspaceManifest, error) {
 	section := ""
 	current := -1
 	languagesDeclared := false
+	implementationsDeclared := false
+	currentImplementation := -1
 	for n, raw := range strings.Split(src, "\n") {
 		line := manifestLine(raw)
 		if line == "" {
@@ -114,6 +120,14 @@ func parseWorkspaceManifestYAML(src string) (workspaceManifest, error) {
 		case "imports:":
 			section = "imports"
 			continue
+		case "implementations:":
+			if implementationsDeclared {
+				return workspaceManifest{}, fmt.Errorf("line %d: duplicate implementations section", n+1)
+			}
+			implementationsDeclared = true
+			section = "implementations"
+			currentImplementation = -1
+			continue
 		case "languages:":
 			if languagesDeclared {
 				return workspaceManifest{}, fmt.Errorf("line %d: duplicate languages section", n+1)
@@ -123,6 +137,30 @@ func parseWorkspaceManifestYAML(src string) (workspaceManifest, error) {
 			continue
 		}
 		switch section {
+		case "implementations":
+			switch {
+			case strings.HasPrefix(line, "- operator:"):
+				operator, err := manifestScalar(strings.TrimPrefix(line, "- operator:"))
+				if err != nil {
+					return workspaceManifest{}, fmt.Errorf("line %d: implementation operator: %w", n+1, err)
+				}
+				out.OperatorImplementations = append(out.OperatorImplementations, OperatorImplementationSelection{Operator: operator})
+				currentImplementation = len(out.OperatorImplementations) - 1
+			case strings.HasPrefix(line, "use:"):
+				if currentImplementation < 0 {
+					return workspaceManifest{}, fmt.Errorf("line %d: an implementation entry must begin with '- operator:'", n+1)
+				}
+				if out.OperatorImplementations[currentImplementation].Implementation != "" {
+					return workspaceManifest{}, fmt.Errorf("line %d: duplicate implementation use", n+1)
+				}
+				use, err := manifestScalar(strings.TrimPrefix(line, "use:"))
+				if err != nil {
+					return workspaceManifest{}, fmt.Errorf("line %d: implementation use: %w", n+1, err)
+				}
+				out.OperatorImplementations[currentImplementation].Implementation = use
+			default:
+				return workspaceManifest{}, fmt.Errorf("line %d: unsupported implementation entry %q", n+1, line)
+			}
 		case "languages":
 			if !strings.HasPrefix(line, "-") {
 				return workspaceManifest{}, fmt.Errorf("line %d: unsupported workspace manifest entry %q", n+1, line)
@@ -206,6 +244,9 @@ func parseWorkspaceManifestYAML(src string) (workspaceManifest, error) {
 	}
 	if len(out.Sources) == 0 {
 		return workspaceManifest{}, fmt.Errorf("sources must contain at least one source root")
+	}
+	if err := validateOperatorImplementationSelections(out.OperatorImplementations); err != nil {
+		return workspaceManifest{}, err
 	}
 	aliases := make(map[string]bool, len(out.Imports))
 	namespaces := make(map[string]bool, len(out.Imports))

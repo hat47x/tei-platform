@@ -56,6 +56,16 @@ func (r Resolver) ResolveApplicationValidations(applicationID core.CanonicalID) 
 	return resolved, nil
 }
 
+// Operators returns every operator contract the World declares, so an
+// evaluation can check a rule's operator against its declaration.
+func (r Resolver) Operators() []semantic.Operator {
+	var out []semantic.Operator
+	for _, namespace := range r.world.Semantics {
+		out = append(out, namespace.Operators...)
+	}
+	return out
+}
+
 func (r Resolver) validationByID(id core.CanonicalID) (semantic.Validation, error) {
 	var found semantic.Validation
 	count := 0

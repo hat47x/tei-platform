@@ -58,6 +58,11 @@ type Result struct {
 	// AuthoringSources lists the TEI Markdown sources a selected authoring
 	// language read in this Load. It is an observation, not an acceptance.
 	AuthoringSources []AuthoringSourceRead
+	// OperatorImplementations are the implementation selections of the
+	// manifest. Every selected operator is declared in World; whether the
+	// running tei carries the named implementation is decided where a rule is
+	// evaluated, not by Load.
+	OperatorImplementations []OperatorImplementationSelection
 
 	// Exact declaration ranges recorded by the Load-time parse of sources whose
 	// language is not the native .tei grammar. Keyed like Sources.
@@ -201,6 +206,7 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 	var roots []string
 	var imports []WorkspaceImport
 	var languages []AuthoringLanguageSelection
+	var operatorImplementations []OperatorImplementationSelection
 	var manifestID ManifestIdentity
 	var manifestRaw []byte
 	manifestName := ""
@@ -228,6 +234,7 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 		manifestFormatVersion = manifest.FormatVersion
 		manifestName = manifest.Name
 		roots, imports, languages = manifest.Sources, manifest.Imports, manifest.Languages
+		operatorImplementations = manifest.OperatorImplementations
 		manifestID = ManifestIdentity{Path: "tei.workspace.yaml", SHA256: sourceindex.Fingerprint(src)}
 		manifestRaw = append([]byte(nil), src...)
 	} else if src, legacyErr := readPinnedWorkspaceFile(sourceRoot, "tei.workspace.tei"); legacyErr == nil {
@@ -384,6 +391,13 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 	if err := captureManagedExtra(&r); err != nil {
 		return Result{}, err
 	}
+	// An implementation may be selected only for an operator the loaded model
+	// declares. A selection for anything else would sit in the manifest
+	// looking effective while deciding nothing.
+	if err := checkOperatorImplementationSelections(operatorImplementations, r.World); err != nil {
+		return Result{}, fmt.Errorf("%s: %w", manifestYAML, err)
+	}
+	r.OperatorImplementations = operatorImplementations
 	markManagedFilesReadByLoader(&r)
 	// Only now is ReadByLoader known, so the unread-source report has to come
 	// after the marking rather than with the other managed-file findings.
