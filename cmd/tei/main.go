@@ -306,6 +306,21 @@ func main() {
 		os.Exit(code)
 	}
 
+	// db-introspect observes a database directly. Like dbcheck it does not
+	// require a TEI Workspace or a derived World. The optional semantic
+	// projection is a candidate view of physical schema, not accepted meaning.
+	if command == "db-introspect" {
+		if fs.NArg() != 0 || *providerName == "" || *dbCheckDSNFlag == "" {
+			fmt.Fprintln(os.Stderr, "db-introspect requires -provider and -dsn and accepts no positional arguments")
+			os.Exit(2)
+		}
+		if err := runDBIntrospect(context.Background(), *providerName, *dbCheckDSNFlag, os.Stdout, *dbIntrospectSemanticFlag); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	// dbcheck needs neither a workspace nor a world: it reports whether a
 	// database can be used, so it runs before those requirements apply.
 	if command == "dbcheck" {
