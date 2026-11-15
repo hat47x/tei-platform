@@ -218,3 +218,63 @@ Node-RED型の視覚的プログラミング、業務プロセス、マッシュ
 P1でのStudioの役割は、既存#1124の三要素Modelerと#4198のLifecycle Graphから**同じ標準要素を異なる図法で投影・操作できるか**を比較することとする。ノード単位の汎用部品はCanvas以外の表・API生成へも再利用できるように設計するが、独立した第二Rule Engine／フローRuntimeを前提にしない。最初の一Node/EdgeのSource→表示→選択→read-only Inspectまでを証明してから、ノード部品群・クラウドマッシュアップ・生成APIの用途を拡張する。
 
 このP1は探索・設計の採否条件であり、W0-A〜Dや通常製品CLIの実ProviderというP0の新Hard Gateではない。実装・独立Expectedは既存#1124/#2497/#1180/#2514へ引き渡す。
+
+## 14. Desktop Workbenchを共通の作業面として確定する（2026-11-16、設計・実装引渡し）
+
+### 14.1 一つの対象を、複数の表現で扱う
+
+Studioの中心は特定の図法やエディタではなく、**現在のSourceに裏付けられた対象を発見し、その構造を見て、変更の影響を確認できる作業面**とする。画面の構成は次の四領域を基準にし、表示・非表示や幅は利用者が調整できるようにする。
+
+| 領域 | 最初に扱うもの | 守る境界 |
+| --- | --- | --- |
+| Project／対象一覧 | Workspace、Source（`*.tei.md`・通常Markdown・旧`*.tei`）、Data／Function／Process／Plugin等の分類、検索結果 | ファイル拡張子だけで意味読取済みとしない。WorkspaceとSourceの現在性が不明なら、その旨を示す |
+| 中央の作業面 | Source Editor、表、Graph／Node、Process Flow、文書、生成Artifactのタブ。表示は同じ対象への別Projection | 図上の配置や一時的なNode IDを意味IDへ昇格しない。表現できない向き・多重辺・時点・NULL・順序を省略せず、Lossを示す |
+| Inspector／固定対象 | Focus中の対象と、明示Pinした対象を別々に表示。Source位置、型、参照関係、診断、読取範囲を開く | Focus移動でPinを変えない。Pinを実行権限・AI送信許可・書込み資格として扱わない |
+| 診断・実行結果 | 検証結果、差分Preview、テスト、Buildの選択と実消費、Artifact、実Consumerの観測 | `unknown`／`partial`／`unsupported`／`not run`を「問題なし」に変えない。CI上の生成成功とDesktopでの実使用を分ける |
+
+タブやPaneは対象の種類ごとに別の意味管理機構を持たず、既存のCatalog／Inspect／Source Indexと標準データ構造を受け取る。Sourceに戻れない派生表示は、その理由と取得元を表示する。Source Editorの未保存Buffer、Diskに保存されたSource、受理済みMeaning、Build入力、生成Artifact、実行中のConsumerは**それぞれ別の版**として追跡する。切替や再読込で、未保存Bufferの内容を受理済みMeaningへ自動昇格させない。
+
+### 14.2 共通の選択・移動・変更契約
+
+画面間で共有するのは、既存Operationが解決できる**Workspace／qualified kind・ID／Source occurrenceへの参照意図**である。選択イベント自体にRead権限や編集資格を持たせず、必要な時点でHostが対象を再解決する。表示の更新は閲覧用のFocus lane、明示固定した対象の再読取はPin専用laneとする。片方の応答がもう片方のEditor・Caret・Graph・Noticeを変更してはならない。
+
+原文・表・Graph・Node View・Process Viewの移動は、次の順序を共通にする。
+
+`対象を選ぶ → Hostで現在のSubjectをInspect → Source occurrence／意味IDとの対応を表示 → 必要なら元Sourceを開く → 編集候補をPreview／Diffで比較 → 既存WriterとOwner受理へ明示的に渡す`
+
+- 読取専用の選択と参照移動は早期実装できる。Sourceへ戻す位置はbyte offsetとSource Revisionを保ち、Editorの文字位置・IME・CRLFへの変換は別検査とする。
+- 「変更可能」は表示Widgetの種類で決めない。Source変更、意味モデル変更、生成物の再Build、実Providerへの作用は、それぞれ既存のOwner・現在資格・条件付き更新経路が必要である。確定できないRelationやSource occurrenceはread-onlyにとどめる。
+- Node配線は、基本型の個別Port同士、構造化型同士、型付きAdapterを介した接続を同じ標準型契約で表す。Portの向き・多重度・必須性・型変換時の情報損失は独立に検査する。線を描けることは、Operator選択・実行順・副作用許可が成立したことを意味しない。
+- AI／CLI／SHOへの引渡しは同じ対象参照を出発点にできるが、必要Contextの完全性、Audience、Disclosure、実Tool Replyの完全受領、Owner Reviewは別々に確認する。AIを使わなくても閲覧・基本編集・検証を利用できるようにする。
+
+### 14.3 入力遅延と非干渉を最初の品質指標にする
+
+中央のEditorには、IME変換・選択範囲・Caret・未保存Buffer・Undo/Redoの即応性を優先して残す。長時間のIndex／Build／Plugin／外部Harnessからの後着結果は、操作開始時のWorkspace・Subject・Source／Buffer世代と現在表示を照合して採用する。背景のPin再確認でFocusを奪わず、特定Pluginが遅延・停止しても基本の編集と診断はできるだけ維持する。
+
+性能は冷間起動、最初の操作可能時刻、入力遅延p95/p99、表示更新、Provider応答、Build待機、合計メモリを分けて測る。P0で架空の数値目標を固定せず、同じFixtureと実OS／WebViewで現行plain TypeScript基線と比較する。Web Components／Lit導入、子Backend分離、WASM化は、UIの応答・分離・保守に有意な利益が確認できた範囲で段階採用する。
+
+## 15. 生成Desktopを「実際に使った一巡」で受け入れる（2026-11-16、P0の次段）
+
+### 15.1 現在成立している辺と、次の断線
+
+[main統合済み #5059](https://github.com/hat47x/tei-platform/pull/5059)のexact HEAD `5fcd9e2e92afe8266cb7710fe56f54c27a54ca17`、[Windows run 43724133016](https://github.com/hat47x/tei-platform/actions/runs/43724133016)では、**実TEI CLI→NodeのN2子Process→生成JS digest照合→通常／生成Wails WebView2**という限定した経路の両Job成功が確認されている。これはN2の呼出元と実配布Consumerを確かめた成果であり、正式な非Plugin BuildIntentの選択済みBuilder、入力閉包、生成Stage1自身がStage2を構築した資格を含まない。
+
+次の実装は新しいBuild Engineを作るのではなく、既存`BuildIntent.Resolve`／Builder Catalog／BuildExecution／ArtifactSet／Subject Bindingと、今あるN0 Generator・N2 Adapter・N3 Go/Wails Buildを接続する。CI Workflowのコマンド列は**実行手順の観測元**にはなるが、そのまま製品の意味契約や正式Recipeとはしない。
+
+| 段階 | 実装で結ぶ最小の辺 | その段階での停止線 |
+| --- | --- | --- |
+| **D1：選択** | 非Plugin Studio Build Subject→既存Resolverが返したBuilder／TargetとPlan Fingerprint | CLI引数の`-child`と起動前Digestだけでは「選択済みBuilder」としない。未表現の工程は`unsupported`を維持 |
+| **D2：入力** | N0生成Source、N2のTS・Node／lock、N3のGo module・build tag・Wails資産を、実際に消費した集合へ対応付ける | Selected／Consumed／Observedを区別。外部module、OS／SDK、環境変数の欠落を全閉包PASSにしない |
+| **D3：実行** | 選択Builderと実Invoker image／argv／Attempt、N0→N2→N3のArtifact依存を既存Executionへ束縛 | 宣言B／実行A、Plan外esbuild、旧JSの埋込み、上書き再Buildを拒否 |
+| **D4：再入** | Windows上で実行した**生成Stage1 TEI自身**がStage2用Buildを選択・開始し、生成したStage2 Imageへ到達する | CI ShellやSeedの二度目のGo Build、別OSの局所再入はL3の代替にならない |
+| **D5：実Consumer** | D4のStage2 Image／埋込JS digestに結び付けた実Windows WebView2からCatalog／Inspect／Pinを受領する | 先行PoC Bで起動したWindowや旧AttemptをStage2として数えない |
+
+### 15.2 最初の実装・検収パケット
+
+まず**D1→D3の一成果物だけ**を現在のBuild実行契約へ接続し、`Resolve`が選択したBuilder Bを実Invoker Aにすり替える負例、N2が報告したJSとN3に埋め込まれたJSが異なる負例、Build中のSource／lock改版、未知の依存を成功へ丸める負例を独立Expectedで固定する。実際に接続できない工程を一つの巨大な`child`内部へ隠して、見かけのBuildPlan完全性を作らない。
+
+D1→D3が同じAttemptで成立した後、D4のStage1実ProcessとD5のStage2 Windowを接続する。受入票には、Sourceと実入力Byte、Model／World・Build／Artifact Revision、Builder選択、OS／Go／Node／Wails版、実Invoker／Child／Stage1／Stage2各Image digest、実WebViewが受け取ったJS、失敗・未実施項目を**独立列**で記録する。byte一致は意味受理ではなく、Stage2起動は外部Providerの実Effect受理ではない。
+
+実装Ownerは[#2831](https://github.com/hat47x/tei-platform/issues/2831)（Build・再入）・[#4583](https://github.com/hat47x/tei-platform/issues/4583)（Studio一巡）・[#1824](https://github.com/hat47x/tei-platform/issues/1824)（Window／UI）、負例は[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)。§14のUI統合、実Provider Read、Node表示、AI協業、Wails子Backendの比較は並行可能だが、**D1〜D5と通常製品CLI→実Providerの二本のP0を新しいUI技術選定の完了待ちにしない**。
+
+**今回の変更は仕様・受入条件の追補のみ。** 新Go／Node／Windows／Provider／Stage2の実行とOwnerの製品受理は行っていない。旧runの成功を本追補のHEADに移し替えない。
