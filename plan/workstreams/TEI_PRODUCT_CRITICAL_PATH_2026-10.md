@@ -1702,8 +1702,24 @@ P0-S/R/Bは互いに別の到達資格であり、適格な小差分から並行
 [Bootstrap実装契約§27](../design/STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)へ、main統合済み[#4800](https://github.com/hat47x/tei-platform/pull/4800)／[#4806](https://github.com/hat47x/tei-platform/pull/4806)／[#4792](https://github.com/hat47x/tei-platform/pull/4792)を接続する。これまでのP0-S（正式Reader）、P0-R（実Provider）、P0-B（Studio再構築）を置換せず、**最終的に使われたSource・UI資産・実Imageが一致するか**の証拠だけを追加する。
 
 - **P0-D（公開説明、独立）**：#4800の`documentReadPreflight`は選択とLockの事前検査まで。#4714/#4679が実Plugin→Document SourceRef／Disclosure→一DocumentのReadを担当。文書の公開は正式業務`*.tei.md` Readerや実ProviderのHard Gateにしない。
-- **P0-W（画面資産、P0-Bの内訳）**：#4812が参照Workbenchの`index.html`／`presentation.ts`→正規HTML/JS/CSS→`cmd/tei-studio/assets/workbench`→実Windows WebView2の一致を検証する。#4806のAuthority LimitsのPresenter試験や旧PR1 Bundleだけでは、配布される画面の資格としない。**P0-WはP0-Bの同一Build Intentへ取り込む成果であり、別の製品Gateではない**。
+- **P0-W（画面資産、P0-Bの内訳）**：closed／unmergedの#4812は最終HEADで9系統のCI成功を確認した履歴であり、現行mainの実装済みとは扱わない。#1824/#4583は必要差分を最新mainに移す後継PRで、参照Workbenchの`index.html`／`presentation.ts`→正規HTML/JS/CSS→`cmd/tei-studio/assets/workbench`→実Windows WebView2を新HEADで再検証する。#4806のAuthority LimitsのPresenter試験や旧PR1 Bundleだけでは、配布される画面の資格としない。**P0-WはP0-Bの同一Build Intentへ取り込む成果であり、別の製品Gateではない**。
 - **P0-Sの維持**：#4792のWindow 5例が元byte・Spanを保持できても、製品`Workspace.Load`で正式`*.tei.md`を解釈できたとは扱わない。S0-P／S0-Aを別々に検収する。
 - **失効の共通負例**：Lock pinnedでもDocument不在／Disclosure未確認、HTMLだけ更新／旧JS使用、旧Backend Reply／旧Client世代、Subject A→B→A、実Builder入力未宣言。既存PDC／BRC／DG0／DT／PINのExpectedへ不足分を追加し、新しいTest RunnerやRegistryを設けない。
 
 これらを利用する最初の横断レポートは**Sourceを読んだ、Providerを選んだ、UIを生成した、Wailsに収録した、実Consumerが受け取った**を別欄で表示するread-onlyの検収票とする。結果の無い欄は不明のままで、単一の`READY`やOwner意味受理へ昇格しない。現時点では計画変更のみであり、実Stage2、製品Doc Read、正式Reader、実Provider、Updaterの新PASSを主張しない。
+
+## 2026-11-15 実装回収の最小順：旧HEADの合格を新Releaseへ移転しない（Bootstrap §28）
+
+[Bootstrap実装契約§28](../design/STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)で、既存のP0-S/R/BとP0-D/Wの位置付けは維持しながら、**現行mainへ実成果を収録する作業**と**実Consumerが使ったことを証明する作業**を分離する。
+
+| 順序 | 最初に変更するもの | 独立受入と停止条件 |
+| --- | --- | --- |
+| **W0：Workbench修正の回収（P0-Bの一部）** | #4812のclosed/unmerged差分を現行mainと照合し、必要な固定版・正規Bundle・埋込資産・Windows検査だけを後継PRへ移す（#1824/#4583） | #4812最終HEADの9系統CI成功は歴史的根拠。新PR HEADの実Node／Go／Wails Embed／Windows試験で再取得するまでmain製品PASSにはしない |
+| **S0-A：正式Reader** | 選択済み`*.tei.md`一件について`Workspace.Load`の同一元byteを正式Frontend・Source Index・Typed Candidateへ結ぶ（#2621/#1018） | 未選択／曖昧／管理外Sourceは拒否。#4792 Window S0-PもSource読取候補に過ぎない |
+| **R0：実Provider・文書Readの別PR** | #4495/#1251の実Go Providerを通常CLIから呼ぶ。独立して#4714/#4679が一Plugin・一MarkdownのSource-backed Readと現行Disclosureを調べる | #4800 Lock事前検査をDoc Read／実Provider呼出しに昇格しない。直接上位版の追加投影#4826はDraft、未統合 |
+| **B1〜B3：Studio再入** | 非Plugin Studio Build SubjectにFrontend TS／esbuild／Go embed／Wails実Builderと実消費入力を接続し、Stage1→Stage2生成（#2831/#4583） | Stage1の実Process→Stage2 exe digest→**そのexe**の実Windows WebView2／Inspect受領を一系列で確認。別HEADの通常Desktop Smokeを合算しない |
+| **U1：D2更新比較（P1）** | 現行Wails `v3.0.0-beta.29`の固定基線と、公式安定版v3.1.0のexact Pin候補を別Branchで比較。署名・UI資産・標準Plugin・設定Schemaを対象ごとに検査（#1824/#2044） | Wails公式Updaterは単一対象の交換。D3複数Image、DB migration、現在Grant、Effect unknownは別Owner／独立Expected。P0-S/R/BのHard dependencyにはしない |
+
+**再確認が必要な変更の境界**：Source A→B→A、Lock入替え、選択Provider変更、Toolchainまたは実Child Builder変更、UI HTMLだけの更新、旧Reply、User Grantの失効、Backend Restartを一因子ずつ変え、既存BRC／PCC／DG0-NP／E-READ／PIN試験へ差分assertとして割り当てる。成功は`Source/Selection→actual consumed Build member→actual process/operation→actual consumer result`の必要な節を**同一Subject・Revision・Attemptとexact HEAD**で確認した範囲に限る。独立Expectedの正本は#1180/#2514に置き、新たな状態機械・試験基盤・製品Gateは増やさない。
+
+**今回の状況**：この追加は設計と実装引渡しであり、#4812の成果物のmain収録、S0-A、実Provider／Doc Read、Stage2、v3.1.0移行、Updater／OS検収を新たに実施したものではない。

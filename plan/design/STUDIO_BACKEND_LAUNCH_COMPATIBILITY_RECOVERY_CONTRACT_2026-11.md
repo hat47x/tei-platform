@@ -720,7 +720,7 @@ CLIの短命実行、StudioのWails Bridge、比較候補の子Backend、Remote�
 
 [#4806](https://github.com/hat47x/tei-platform/pull/4806)はmain統合済み。Workbenchの参照側`presentation.ts`は`InspectSubject.authorityLimits`の必須条件を確認し、欠落・不正型を`INVALID_INSPECTION_RESPONSE`で拒否する。表示は、現在のInspect Replyに限定し、Workspace／Subject選択変更・取得中・拒否・版不一致で過去の制限表示を消去する。ただし#4806の時点ではWailsに組み込む`cmd/tei-studio/assets/workbench`側の再生成／同期が未了であり、**参照Workbenchの合格を実配布画面の合格としない**。
 
-[#4812](https://github.com/hat47x/tei-platform/pull/4812)は、旧PR1 Fixtureを保持しつつ現在のHTML／Presenterを含む固定版、正規Bundle、実Windows Smokeまで整合させる実装PR。**当該PRの統合・新HEADの合格と、製品全体のStage2セルフビルドは別資格**として扱う。[#4792](https://github.com/hat47x/tei-platform/pull/4792)はWindow 5例のPinned Source S0-Pをmainへ統合したが、5例とも製品`Workspace.Load`の正式Reader未接続拒否を維持している。これらを理由にS0-Aの未完了判定を解除しない。
+[#4812](https://github.com/hat47x/tei-platform/pull/4812)は、旧PR1 Fixtureと新しいHTML／Presenterの固定版、正規Bundle、実Windows Smokeを揃えた**検証済みの未統合PR（closed／unmerged）**である。最終HEAD `5035ef82d2dbddbff9209a68f9bf6e61755ab767` の9系統CIは成功したが、**その差分が現行mainに含まれることやStage2セルフビルドを証明しない**。現行mainから必要な差分を抽出・再適用する際は、新HEADで生成資産と実Windows試験をやり直す。[#4792](https://github.com/hat47x/tei-platform/pull/4792)はWindow 5例のPinned Source S0-Pをmainへ統合したが、5例とも製品`Workspace.Load`の正式Reader未接続拒否を維持している。これらを理由にS0-Aの未完了判定を解除しない。
 
 ### 27.2 四つの「参照可」を別々に判定する
 
@@ -764,3 +764,64 @@ Studio／CLI／Harnessのread-only診断は、選択済みのSubject／Source・
 実装順は、進行中#4812の生成／埋込一巡を元のOwnerで閉じる一方、#4714の公開Doc一件のSource／Disclosure実Read、#2621のS0-A、#4495の実Provider、#4583の非Plugin Stage2を**それぞれ独立した並行作業**として維持する。D2の署名付きInstaller/Updater本格導入、D3 Wake/MobileはP0に昇格させない。
 
 **検収資格の上限**：本節はmainの実Go／参照UI／Plugin管理実装と関連PRの現況を照合した計画の更新である。新しいReader、PDC-1文書Reader、実Provider、Stage2、Wails Updater、実OSへの追加変更やOwner意味受理を実施したわけではない。
+
+## 28. Bootstrapの実装引渡しを「現行版への収録」と「実操作の観測」で閉じる（2026-11-15）
+
+### 28.1 今回解消する判断のずれ
+
+§25〜27は、Source・Plugin・Release・実UI・Invocationの同一性と受入上限を定めた。残る作業は新たな状態モデルを設計することではない。**既存PRで検証した成果が、いま配布する実バイナリと、そこから実際に呼ばれたOperationへ連続しているか**を確認することである。
+
+- **Workbench**：#4812は`5035ef82d2dbddbff9209a68f9bf6e61755ab767`でRepository Health、Cache、Workbench Embedded Bundle、Windows WebView2 Smoke等9系統のCIが成功したが、PRは**closed／unmerged**。過去HEADの成功を現行mainの製品機能として計上しない。関連する#4806のReference表示はmain実装済み。
+- **Plugin文書**：main #4800の`documentReadPreflight`は対象Pluginの選択版とLockを確認するだけ。直接の上位Pluginの**実選択版・Lock**を表示する#4826はDraft／未統合で、`compatibleMajor`から上位の厳密版を推定しない。現行mainに上位依存の文書開示資格があるとは扱わない。
+- **Source**：#4792のWindow S0-Pは正負5入力の元byte・出典位置を検査するが、製品`Workspace.Load`は`TEI_MD_PARSER_UNBOUND`のまま。正式Readerの接続は#2621／#1018のS0-Aで別に閉じる。
+- **Desktop配布**：現行`cmd/tei-studio/go.mod`はGo 1.26.11／Wails `v3.0.0-beta.29`を固定する。上流には`v3.1.0`（2026-11-01公開）と`app.Updater`があるが、**アップグレードの実施や当該版でのCI成功は未確認**。安定版移行は#1824/#2044の後続P1に留め、現行P0の実Stage2より先行させない。
+
+### 28.2 最初の一巡に必要な情報を既存の記録だけで結ぶ
+
+新しい永続`BootstrapReceipt`、Plugin Registry、Universal Ready APIは設けない。既存のSource Index、Resolver/Lock、Build Execution／ArtifactSet、Host／Invocation、Consumer／Independent Expectedを**同じ検証票で参照する**。表示すべき欄は、少なくとも次のとおり。
+
+| 観測対象 | 必要な具体的情報 | それだけでは確定しないこと |
+| --- | --- | --- |
+| 現行Source | Managed Root、実選択Language/Parser Pin、Read時のraw digest/byte span、Source Indexの版 | 業務MeaningのAccepted判定 |
+| 現行Plugin | Contract ID/Version、exact Provider、Lock/Artifact Digest、直接Requiredの選択とTarget対応 | Document公開、Host Grant、実Entryの呼出し |
+| 実Build | Build Subject（Studioは非Plugin）、selected Builder/Toolchain、実消費input/member、生成UIとArtifact/実Image digest | Stage1の再入、実起動したStage2 |
+| 起動環境 | Target/OS、実Process Image、Release/Protocol/Operation版、Bootstrap/Core/Workspaceの検査結果 | 操作ごとの現在権限・外部Effect |
+| 実操作 | Pinned Subject、現在のGrant/Disclosure、呼出したProvider Entry、Invocation Attempt、実Consumer受領とCoverage | Owner意味受理、未観測結果の自動的な否定 |
+| 出典／診断 | 観測を行ったHEAD・Attempt・時点・Qualifier、未解決項目のReason | 他HEADや別Workspaceへの資格移転 |
+
+この表は利用者向けに新しく保存する「万能証明書」ではない。各Ownerが保持する既存の証拠参照を、同一対象とAttemptで突合するための**作業票・read-only Projection**である。P0-BのStage1がStage2を生成する場合は親子Attemptの因果関係を追い、同じSource SHAや同じ候補形状だけで別Processを同定しない。生成したHTMLがWails埋込資産に存在することと、実WebViewでその資産が表示されたことも別票に残す。
+
+### 28.3 失効・故障時の判定順を固定する
+
+Bootstrapの起動検査が成功した後であっても、Workspace切替、Source差替え、Frontend/Provider変更、Lock変更、Grant失効、Backend再起動、更新中の世代混在があれば、**影響を受ける対象・Operationの資格だけ**を再確認する。すべてを再Buildする必要はないが、旧結果を自動承認することもない。
+
+1. **呼出し前の拒否**：現在選択したContract/Provider・Source Revision・Grant・Protocolが一致しなければ、実Providerを呼ばず、既存の理由コードを返す。`notModelled`や部分観測を`enabled`／`ready`へ写さない。
+2. **呼出し後の失敗**：実Callが始まった後のTimeout/Crash/Result違反は、呼出し前の拒否や未実行とは違う。副作用の可能性がある場合はReceipt照会・結果不明・lookup-firstを#1174の契約に委ね、安易に再送しない。
+3. **UI側の後着結果**：Pin AのままFocus Bへ移動した場合、旧Workspace／旧Image／旧RevisionのReplyは表示へ採用しない。SourceのA→B→Aでbyteが戻っても現在のGrantや以前の実Consumer資格を復活させない。
+4. **Release更新**：Wails Updaterの単一対象swapが成功しても、UI/BackendのContract世代、標準Plugin/Lock、User OverrideとDB互換を再検査する。互換性が失われた場合は操作を止め、診断可能なread-only状態を優先。RemoteからLocal、実ProviderからMockへの暗黙Fallbackはしない。
+5. **依存Pluginの説明**：上位の`compatibleMajor`は実選択版ではない。現在選択した直接依存を既存Resolverから解決し、文書のSource・再公開権限は別Ownerが認可する。親PluginのGrant／編集権限を子へ継承しない。
+
+### 28.4 D2配布の最小閉包はWailsのUpdaterの単位に合わせる
+
+Wails公式Updaterの`app.Updater`は、設定した公開鍵による署名検証、ダウンロード・Staging、**単一対象の交換**を扱う。ZIP/TAR.GZはトップレベルEntryがちょうど一つでなければならず、Desktopと別Serverと外付けPluginを同列に置いたArchiveの一括Activationはできない（公式 https://wails.io/guides/updater/ ）。したがって以下の三方式を混ぜない。
+
+| 製品配布 | Bootstrap／更新の責務 | 優先順 |
+| --- | --- | --- |
+| **D1 現行**：Wails＋Go同一Process／CLI Direct | 今のビルド・起動・診断を実証基線とし、生成UIと実Imageの一致を確認 | P0の比較基線 |
+| **D2 静的Release**：標準Pluginと既定資産をGo製品Imageに内包 | Release ClosureでTarget/Artifact/Lock/設定Schemaと実Imageを照合。署名付き単一Imageの更新→実起動→Read一往復を別資格にする | P1第一候補 |
+| **D3 別Server**：複数実Image／Process | Installer/DeploymentがBundle内の複数Image、切替、Handshake、Drain、Rollbackの責任を持つ。Updaterの単一swapだけを二Processの原子的更新と呼ばない | 必要性の実測後 |
+
+上流`v3.1.0`の採用評価では、現行beta固定Fixtureを維持した比較ブランチを使い、Go/Wails/Node版、Generated Binding、UI Bundle、Windows WebView2、実Plugin Lockの差を独立に測る。最新版へ追従するだけのアップデートを行わず、採用版をexactにPinする。Updater設計・Mobile/Wake実験・D3採用はP0-S/R/BのHard dependencyではない。
+
+### 28.5 次の四つの小差分へ引き渡す
+
+| 実装単位 | 現行で再利用するもの | 次の具体的な受入・Owner |
+| --- | --- | --- |
+| **W0 未統合Workbenchの回収** | #4806 Reference、#4812の最終HEADと9系統CI、#1824の実Windows検収 | #4812の未統合差分を最新mainに照合し、必要最小のコード／生成Bundleだけを後継PRへ移す。新HEADでNode/Go/Embed/Windowsを再試験。**旧HEADのCIは参照資料であり新HEADのPASSではない** |
+| **S0-A 正式Source Reader** | #4751/#4792のPinned Source予備試験、#4801のGraph/Window Source契約 | #2621/#1018が選択Frontend→同一`Workspace.Load` byte→出典つき候補／Indexを一Sourceで実証。暗黙Fallbackと管理外Draftを拒否 |
+| **R0 実Provider／公開Doc** | #4800のDocument Preflight、既存Plugin Resolve/Lock、#4826 Draftの直接上位選択検査 | #4495/#1251の実Provider→通常CLI/独立Consumerと、#4714/#4679の公開Manual一Source-backed Readを**別成果**で進める。Doc Preflight≠Doc Read≠実Provider |
+| **B1〜B3 非Plugin Studioセルフビルド** | #4583の既存生成Inspector・Builder pin・Workbench資産、W0の配布資産整合 | #2831/#4583でBuildIntentにTS/esbuild/Go embed/Wails Windows実入力を宣言・実消費し、Stage1→Stage2の実Process連鎖とStage2 WebView2の受領を同一HEADで立証 |
+
+四つとも、既存#1180/#2514の独立Expectedに不足する負例だけを渡す。#4827の横断Plugin設計・#4824のdogfooding計画・#4825の公開文書計画は、**並行する未統合の引渡し文書**として参照し、実コードのOwnerや完成宣言を重複させない。
+
+**今回の検収上限**：§28は現行mainとPR／上流ドキュメントの再確認に基づく設計・計画差分である。PR #4812はclosed/unmerged、#4826はDraftであり、現行mainへのWorkBench修正、上位Plugin選択投影、新製品Reader／実Provider／Stage2／Wailsアップグレード／Updater導入の成功を主張しない。
