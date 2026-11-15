@@ -151,6 +151,14 @@ func TestMarkedDataTableRuleRealGoAndEvaluatorReadParity(t *testing.T) {
 	if bytes.Equal(generated, misbound) || !bytes.Contains(misbound, []byte(otherCall)) {
 		t.Fatal("wrong-read negative was not produced")
 	}
+	// A Target symbol may change without changing the selected semantic Rule.
+	// Keep the meaning and observed Read constant while renaming only the Go
+	// entry. A future Test ID must not be keyed to this generated function name.
+	renamed := bytes.Replace(generated, []byte("func EvaluateSelected("), []byte("func EvaluateRenamed("), 1)
+	if bytes.Equal(generated, renamed) || !bytes.Contains(renamed, []byte("func EvaluateRenamed(")) ||
+		!bytes.Contains(renamed, []byte(selectedCall)) {
+		t.Fatal("method-rename positive was not produced without changing the Read")
+	}
 
 	repoRoot, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
@@ -165,6 +173,7 @@ func TestMarkedDataTableRuleRealGoAndEvaluatorReadParity(t *testing.T) {
 	// code's existing tei/internal import. It is not a delivered artifact.
 	for name, data := range map[string][]byte{
 		"generated.go": generated,
+		"renamed.go":   renamed,
 		"misbound.go":  misbound,
 		"main.go":      []byte(markedDataParityDriver),
 	} {
@@ -219,8 +228,8 @@ func TestMarkedDataTableRuleRealGoAndEvaluatorReadParity(t *testing.T) {
 		{"null", "", "", false, true},
 		{"not-obtained", "", "", true, true},
 	}
-	if len(records) != len(cases)*2 {
-		t.Fatalf("binary returned %d records, want %d", len(records), len(cases)*2)
+	if len(records) != len(cases)*3 {
+		t.Fatalf("binary returned %d records, want %d", len(records), len(cases)*3)
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -236,6 +245,14 @@ func TestMarkedDataTableRuleRealGoAndEvaluatorReadParity(t *testing.T) {
 				got.Result != tc.want || got.Error != tc.wantError ||
 				got.Reads != 1 || got.Attribute != attributeID {
 				t.Fatalf("G outcome or Read disagrees with independent P contract: %+v", got)
+			}
+			// Identical semantic subject, judgment, and Read remain valid when
+			// a regenerated Target uses a different Go method name.
+			renamedGot := records["renamed/"+tc.name]
+			if renamedGot.Mode != "renamed" || renamedGot.Name != tc.name ||
+				renamedGot.Result != tc.want || renamedGot.Error != tc.wantError ||
+				renamedGot.Reads != 1 || renamedGot.Attribute != attributeID {
+				t.Fatalf("Target symbol rename changed the semantic Rule outcome or Read: %+v", renamedGot)
 			}
 			wrong := records["misbound/"+tc.name]
 			if wrong.Mode != "misbound" || wrong.Name != tc.name ||
@@ -304,11 +321,11 @@ func main(){
 	}
 	enc:=json.NewEncoder(os.Stdout)
 	for _,tc:=range cases {
-		for _,mode:=range []string{"generated","misbound"}{
+		for _,mode:=range []string{"generated","renamed","misbound"}{
 			src:=&probe{value:tc.value,missing:tc.missing}
 			var got validationeval.Result
 			var err error
-			if mode=="generated" {got,err=EvaluateSelected(src)}else{got,err=EvaluateMisbound(src)}
+			if mode=="generated" {got,err=EvaluateSelected(src)} else if mode=="renamed" {got,err=EvaluateRenamed(src)} else {got,err=EvaluateMisbound(src)}
 			record:=result{Mode:mode,Name:tc.name,Result:string(got),Error:err!=nil,Reads:len(src.reads)}
 			if len(src.reads)>0 {record.Attribute=src.reads[0]}
 			if err:=enc.Encode(record);err!=nil{panic(err)}
