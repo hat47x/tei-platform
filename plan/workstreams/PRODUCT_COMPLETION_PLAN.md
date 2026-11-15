@@ -1240,6 +1240,12 @@ S0-Aで最初に提示すべき**独立した正負**は、同一Source Snapshot
 
 **現時点の資格**：現行mainにはRuleから生成したGoを通常TEI CLIのBuild経路で実Binaryへ収録する限定的な実証と、原文コピーの実BinaryによるHash照合がある。一方、同一意味のGraphを生成型・解釈型で実比較した結果、Generator自身のTEIによる実再構築、正式Function Entry→選択Providerの製品実Call、Stage1→Stage2のTEI CLI／Windows Studio完全セルフビルド、定義簡素化の定量実測は本節では**NOT RUN／NOT ACCEPTED**。この追補は実装方式を選ぶための計画であり、達成済みという主張ではない。
 
+### 検査義務を一つTEIへ移し、次のTEIで使う（2026年11月15日）
+
+[実装からモデルへのdogfooding `14](../design/IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md)に、`GeneratePositive`の**ID／Attribute必須・Relation禁止のRequired Shape一義務**を、既存標準構造・Ruleによる検査へ移す最初の自己置換手順を定めた。M0（出典・独立基線）→M1（TEI由来の実検査）→M2（実製品経路の旧Go分岐削減）→M3（Stage1実TEIによるStage2構築・当該機能の実利用）を**別々の合格**として扱う。M1は生成・解釈のどちらでもよいが、セルフビルドの実証には意味あるコード生成と実Builder消費を別途要求する。Target固有のGo package名検査やNULL評価のLawを初回の一義務へ混ぜない。
+
+次の実装PRは**M1の一条件だけ**に絞り、既存`TestPositiveRuleShapeIndependentBaseline`の独立Expectedを守る。TEIによる実検査と旧Go分岐の二重保守、旧実装への黙ったfallbackは前進と数えない。追加後は実Goからの判断削減と定義・確認負担を比較してM2へ進む。Graphの6入力、正式Reader未接続、#5054/#5056の別PR、R3実Provider、Windows Studio Stage2は各Ownerの独立検収を維持する。**計画のみであり、M1〜M3と簡素化の実測は未実施。**
+
 ### 既存Expectedへ引き渡す負例
 
 SBX-01：図のレイアウト変更では意味が変わらず、関係の向きや多重度を変更すれば生成内容・結果が正しく変わる。SBX-02：TEIの表の条件を変えてもGoの固定処理しか動かない場合は「委譲のみ」として失格。SBX-03：生成GoのDigestが一致しても、Builderが別Sourceや未選択Pluginを実消費すれば失格。SBX-04：Stage0が別々に二つのBinaryをBuildしただけではStage1→Stage2再入不適格。SBX-05：Plugin A→B→Aの後に旧Binding／Grant／Receiptが自動復活すれば失格。SBX-06：定義を短くした結果、NULL／欠損／評価順／Effect・Failureが変われば不適格。これらは[#1180](https://github.com/hat47x/tei-platform/issues/1180)・[#2514](https://github.com/hat47x/tei-platform/issues/2514)の既存Independent Expectedへ渡し、新しいScenario正本は作らない。
