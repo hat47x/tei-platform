@@ -1639,7 +1639,7 @@ Studioでは[Desktop契約 #4879](https://github.com/hat47x/tei-platform/pull/48
 <!-- tei-dogfood-cli-introspect-reader-ci-20261115 -->
 ### 15.64 実Readerの回帰を集約し、CLIの起動阻害を製品単位で解消する
 
-[内蔵Rule Readerの製品Go対照 #4891](https://github.com/hat47x/tei-platform/pull/4891)はmainに統合された。`workspace.Load`の選択結果を既存`semantic.Validation`とSource Index／Inspector／Traceへ結び付け、説明用`text`フェンス内のRuleを未宣言として扱う。この局所的な**実コード・実試験の収録**と、そのHEADでの全体CI成功やOwnerの意味受理は別資格である。並行する[Workspace回帰 #4890](https://github.com/hat47x/tei-platform/pull/4890)と[#4893](https://github.com/hat47x/tei-platform/pull/4893)は、内蔵Readerの二定義・未選択拒否・Source Index失効に対象が重なる。旧試験を無条件に複製せず、**現行mainの一つの正負Fixtureと既存Expectedに統合**して進める。Graphと外部Language Pluginの正式Readerは未検収のままとする。
+[内蔵Rule Readerの製品Go対照 #4891](https://github.com/hat47x/tei-platform/pull/4891)はmainに統合された。`workspace.Load`の選択結果を既存`semantic.Validation`とSource Index／Inspector／Traceへ結び付け、説明用`text`フェンス内のRuleを未宣言として扱う。この局所的な**実コード・実試験の収録**と、そのHEADでの全体CI成功やOwnerの意味受理は別資格である。[Workspace回帰 #4890](https://github.com/hat47x/tei-platform/pull/4890)はmain統合済みで、内蔵Readerの二定義・未選択と版不一致の拒否・Source Index失効を実Go試験へ追加した。ただしそのHEADの実行結果は別途確認する。類似範囲を扱う[#4893](https://github.com/hat47x/tei-platform/pull/4893)はDraftであり、同じ正負試験を無条件に重複マージせず、**mainの既存Fixtureと独立Expectedへ固有の検証だけを戻す**。Graphと外部Language Pluginの正式Readerは未検収のままとする。
 
 [前回dogfooding PR #4881](https://github.com/hat47x/tei-platform/pull/4881)のexact HEADでは、Issue-to-Designの製品CLIビルドが`cmd/tei/main.go`の未使用`dbIntrospectSemanticFlag`で止まった。コードを照合すると、既存の`db-introspect`はコマンドとして認識され、`runDBIntrospect`にはPostgreSQL／SQLiteの物理Schema読取りと、明示`-semantic`時の`schematosemantic.Project`が実装されている一方、正規`main`から呼ぶ分岐が欠けていた。そこで本作業では、未使用フラグを削って機能を隠すのではなく、**既存のread-only処理をWorkspace／Worldロード前に接続**する。必須Provider／DSNと余分な位置引数を先に検査し、未指定ならDBへ接続せず拒否する。
 
