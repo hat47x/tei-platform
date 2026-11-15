@@ -146,6 +146,6 @@ main統合済みのGraph／Rule候補構造指紋[#4758](https://github.com/hat4
 最初の製品縦断は既存#1824のS0-R→S0-UによるWails v3.1.0実Read、#2831/#4583の実セルフビルド、D2単一ImageのRelease/Plugin/設定の照合で進める。D3 Wake/InstallerとAndroid・iOSは独立した比較・探索である。**正式`*.tei.md` Reader S0-A／実Providerは別Ownerの並行P0であり、完成待ちの新Hard Gateにしない**。失効・同梱・実行資格と四つの最小検証は[実装契約§24](STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)にまとめる。
 ## 16. BootstrapとPlugin配布をRelease Closureで整合させる（2026-11-15）
 
-[実装契約§25](STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md#25-bootstraprelease-closureplugin実行資格の統合2026-11-15)では、起動時に検査するRelease実Image／UI Asset／標準Plugin／既定設定Schemaと、操作時に確認する実Provider／Current Grant／Effect Receiptを分けた。D2単一Imageへの静的内包を標準候補とし、D3別Serverの複数成果物切替はWails Updaterが自動で保証するものとは扱わない。Bootstrapは診断・復旧をPlugin初期化前に実行できる最小経路を維持し、第二Resolver／Host／Registry／Updaterは作らない。
+[実装契約§25](STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)では、起動時に検査するRelease実Image／UI Asset／標準Plugin／既定設定Schemaと、操作時に確認する実Provider／Current Grant／Effect Receiptを分けた。D2単一Imageへの静的内包を標準候補とし、D3別Serverの複数成果物切替はWails Updaterが自動で保証するものとは扱わない。Bootstrapは診断・復旧をPlugin初期化前に実行できる最小経路を維持し、第二Resolver／Host／Registry／Updaterは作らない。
 
 Wails公式UpdaterのArchiveは原則として最上位Entryを一つに制限する。外部Plugin／Serverの実行世代、利用者設定、DB Migrationは別の管理責任とする。BRC-01〜09を既存#1180/#2514の独立Expected候補とし、優先度はCLI-first実生成・Studio Stage1→Stage2・通常CLI実ProviderをP0、Wails安定版とD2更新をP1、D3／Mobile探索をP2のまま維持する。この追加は設計・検証項目であり、新しいGoコード・配布・Windows・Android/iOSのPASSではない。
