@@ -251,6 +251,7 @@
 | [`reference-type-reorg-impact/`](reference-type-reorg-impact/) | 意味の型の統合案が及ぼす影響を一覧する読取り専用の参照（#1806） |
 | [`reference-model-search/`](reference-model-search/) | 意味の名称を横断して検索し、置換を変更案として出す読取り専用の参照（#1804） |
 | [`reference-semantic-mapping-check/`](reference-semantic-mapping-check/) | 意味の定義と物理項目の対応について、定義へ遡る道が一つか、未記入の要素、複数の定義に一致する要素、定義の追加で変わる要素の範囲を検査する参照。合成データのみで、実在のデータ辞書とは未接続（#2095） |
+| [`reference-projection-edit-check/`](reference-projection-edit-check/) | Property/Table行の編集を、既存`reference-shared-acceptance`の手前で判定する参照。行がSource Identityとspan・Revisionを持ち、`APPLIED`以外ではSourceを1byteも変えない。損失のある写像は逆編集の門で閉じる。書込・Acceptanceは既存のものだけを使い、実UI・実Provider・Owner受理は示さない（#2497） |
 | [`reference-facet-mapping-check/`](reference-facet-mapping-check/) | 標準データ構造と標準表現型の間の写像を、12列の写像契約と両側のFacetで突き合わせ、保持・損失・不適合・不明を判定する参照。読み取りの成功を編集逆写像の成功から分け、証拠のない保存主張は`unknown`へ落とす。合成fixtureのみで、実Provider・実Renderer・業務意味の受理は示さない（#4351 / #4350 S1） |
 | [`reference-facet-structure-check/`](reference-facet-structure-check/) | 標準データ構造の族ごとに、直交Facetの記述で載るか・現行Sourceに場所が無い意味は何か・どの採用先（基礎型／合成型／意味Facet／標準Plugin／表現型）へ返すかをread-onlyで判定する参照。Core型の採用は判定せず`core-type`を拒否してADRへ戻す。多重度・単位は推定しない。合成descriptorのみで、実Provider・Owner意味受理は示さない（#4352 / #4350 S2） |
 | [`reference-representation-binding-check/`](reference-representation-binding-check/) | 意味を伴う表現インスタンスが1つのFunction Data Contextに所有され、Scope・grain・軸role・Selection・操作資格へ束縛されているかをread-onlyで検査する参照。Context外の配置、layoutを意味とする主張、SelectionをIdentityとする主張、Domain TimeとPlayback Timeの同一視、集約点の逆写像を拒否する。合成descriptorのみで、実Renderer・実Media再生・業務意味の受理は示さない（#4353 / #4350 S3） |
