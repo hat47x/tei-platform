@@ -309,3 +309,78 @@ D0〜D3の説明UIは**元Sourceに到達でき、分からない境界を分か
 最初の実装PRに必要なものは、(a)固定したWorkspace/Subject/Source Revisionと質問文、(b)既存Go APIから得た実際のDefinition・Source参照、(c)各欄に根拠を提供するProducer/取得範囲、(d)未接続を「未確認」とした出力、(e)一因子変更・同名異ID・部分取得の独立Expected、(f)実際に試験したexact HEADとConsumerの六点とする。
 
 Graph→Goをいきなり万能化せず、まず定義→図→Sourceのread-only整合と、既存Rule→実Go→Builderという**既に狭く実証を積んでいる縦断**を接続する。設計図の成功が実Runtime成功を証明しないこと自体を、最初の図で説明できなければならない。
+
+
+## 16. 異なる実行方式をつなぐ境界で、保証がどう変わるかを表す
+
+Rule、Node Flow、Batch、業務Process、Plugin Hookを共通のGraphに載せても、**同じPortを接続できることと、次の処理を正しく実行できることは別**である。既存のData／Function／Operation／Event／Effectの契約と、Targetが実際に保証する範囲を照合し、接続時に増える義務を明示する。ここでいう境界は、新しい共通Runtime／Adapter ABIではなく、既存のOperator・Provider・Hostの受入時に確認する条件である。
+
+| 境界の例 | 受け渡すものと、受け渡せないもの | 接続時に必要な確認 |
+| --- | --- | --- |
+| Data／Query → Rule／BRMS | 値だけでなく型・NULL/欠損・粒度・取得範囲を受け渡す。部分取得を「条件不成立」に変換しない | 判定に必要なAttribute、Snapshot、Read Footprint、Rule競合・未判定 |
+| Rule → Process Guard | 判断結果と理由・適用条件を受け渡す。真偽の一致を実行許可へ変換しない | Definition／Instanceの版、現在Actor・Host Grant、失効・再評価条件 |
+| Process → Message／Event | 発行意図とEvent occurrenceを分離する。業務Eventと配送Messageを同じIDにしない | 発行時点、Operation identity、Correlation、重複・順序・配送保証 |
+| Event → Batch／Aggregate | 起点の多重性、時間窓、Watermark相当の締切り条件を保つ。受信件数を業務上の全件数にしない | 入力集合の閉包、再配送・遅延、Group Key、時点、途中集計・再計算 |
+| Batch／Operation → 外部Effect | 計算結果とCommand Intentを分離する。成功ResultをCommitへ読み替えない | 現在Grant、Tx境界、操作の冪等性、fence、Receipt、部分失敗・補償 |
+| Effect → Response／Consumer | 確定した業務作用と返答・通知・受領を分離する。配送ACKを業務確定へ読み替えない | Audience／Disclosure、受領先と世代、Delivery Receipt、独立Readback |
+
+たとえば、Ruleがtrueを返しても承認Instanceの現在Actor資格が失効していればOperationへ進めない。Eventが到着しても、再配送と未着が区別できなければ「当日分の全注文が揃った」とは判断できない。Targetが必要な時間・重複・順序・作用保証を表現できない場合は、都合のよいDefaultへ丸めず**unsupported／未確認の接続**とする。実HostのAdmission・Effect判断をGraph Rendererへ移さない。
+
+この表は[標準ノード・軽量サービスの設計](SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)、[プロセスの起動・状態・操作](PROCESS_LIFECYCLE_TRIGGER_OPERATION_SEMANTICS_2026-11.md)、[成果物要求・Batch計算](DECLARATIVE_RESULT_PROCESS_COMPOSITION_2026-11.md)にある既存の意味義務を、**一つの接続で失われるかもしれない情報**から読み直したものである。分野固有の詳細は各Ownerに残す。
+
+## 17. 時間順の図と、因果が証明された図を分ける
+
+非同期・並列処理を含む図では、時刻の前後と「その出来事が次を引き起こした」という主張を区別する。最低限、(a)同じAttempt内の確かな先行、(b)Message/Receipt/Operation identityで接続された別Attempt間の因果、(c)時刻が近いだけで関係が不明、を分ける。Clock順に並んだ二つのSpanだけで業務上の先後関係や、失われたMessageの不存在を推定しない。
+
+以下は受注後の集計と通知を例にした**説明用の仮想図**であり、製品E2Eの成功経路ではない。
+
+```mermaid
+flowchart LR
+  I["受注確定Intent"] --> G{"現在のGrant・Guard"}
+  G -->|拒否| X["拒否：Effect未要求"]
+  G -->|許可| C["DB確定要求"]
+  C --> V{"Effectの結果"}
+  V -->|確定の根拠あり| E["業務Effect確定"]
+  V -->|ACK喪失等| U["Effect unknown／照会"]
+  E --> M["通知Message生成"]
+  E --> B["集計入力Event生成"]
+  M --> D["配送Attempt・受領の別確認"]
+  B --> A["締切り条件・重複を検査して集計"]
+  U --> T["同一OperationのReceipt照会・fence確認"]
+  T --> H["現在Grantと再送可否を別判定"]
+```
+
+図のE→MとE→Bは**設計上の発生条件**であり、MとBの配信・実実行の順序を保証しない。実際のCommit・Outbox・Broker・Consumerから対応する証拠が得られなければ、該当線は「要求された関係」のままにする。U→Cの破線は無条件の再実行ではなく、照会・同一Operation identity・fence・現在Grantの確認後にだけ再試行可否を決める境界である。
+
+また、承認や長期ProcessではDefinitionの改版と実行中Instanceの経路を混ぜない。**Instanceで固定された経路、処理時のGrant、観測時の外部状態は別時点**であり、一つの現在時刻へ正規化しない。「最終的に同じ状態に見える」だけで、誤ったActorによる遷移や二重Effectを合格にしない。
+
+## 18. 図が答えてよい問いを、証人と閉包から決める
+
+表示する結論は、対象NodeやTraceの数からではなく、**その問いに必要な証人と、調査できた集合の閉包**から決める。既存のRequired／Consumed、Source Index、Build入力、Read Coverage、Attempt、Receipt、独立Expectedを使う。下表は説明用の照合順であり、新たな永続Claim台帳や汎用判定Enumを定めない。
+
+| 問い | 最小の肯定根拠 | 否定・全件判断で追加して必要な根拠 |
+| --- | --- | --- |
+| このRuleは指定Attributeを読んだか | 同一Rule版・Attemptに束縛された実Read | 「他を読まない」には全Callsite／分岐・観測範囲の閉包 |
+| このPluginのProvider Bが使われたか | 実Image・Invocationのactual Called Bと選択Bの対応 | 「Aを使っていない」には実Call集合と動的Dispatch・観測欠落の検査 |
+| このBatchで必要データが揃ったか | 個別レコードとgrain・範囲を示す取得根拠 | Source集合・期間窓・再配送・未取得・権限の閉包 |
+| このOperationは確定したか | 同一Operation identityのCommit／Receiptと必要な実照合 | 「未実行」「再試行してよい」にはEffect unknown・fence・外部照会の解消 |
+| この応答はConsumerへ届いたか | Audience／開示条件を満たす実Consumerの受領証拠 | 「全Consumerが受領」には対象集合と各受領の閉包 |
+| 生成方式AとBは同等か | 固定Source/Meaning・Inputで値／Failure／Readなどを独立Expectedと比較 | 効果・時間・権限・順序まで必要ならTarget別の保証と実証を追加 |
+
+**局所的な不一致の証明は、全件取得なしでも成立することがある**。選択Bなのに実Aを呼んだ証拠が同一Attemptで確かなら不一致といえる。他方、TraceからAが見つからないだけではAを呼ばなかったといえない。結果の欄には、観測したProducer、対象範囲、既知の不足、Source位置・版、独立Expectedの所在を伴わせる。Unknownを空集合・NULL・正常に置き換えず、未許可の出典をStudioやHarnessに展開しない。
+
+## 19. 一問ずつ実装するための小さな反証と引渡し
+
+実装は二つの独立した題材から始める。一つ目は**実在する選択済みMarkdown Rule** `sales.order_line.quantity_positive` のread-only説明であり、現在の `Workspace.Load`／Source Index／`semantic.Validation`／`validationeval`／`validationgen.GeneratePositive` に接続する。二つ目は**合成されたEffect unknown事例**であり、DB／Queue／通知の製品E2Eを行ったことにはしない。両者の証拠を、一つの業務Operationが製品で通ったかのように結合しない。
+
+| 順番 | 既存資産を使う最小の作業 | 独立Expectedで落とす反例・受け渡し先 |
+| --- | --- | --- |
+| **C0：一Ruleの問いを固定** | Qualified Rule ID、同一LoadのSource byte/span、参照Attribute、型、Readの観測範囲をCLI/Headlessへread-only表示 | 同名別ID、partial Sourceを全件と誤認、古いPin。#1124/#2621/#4198 |
+| **C1：一因子変更を比較** | RuleのAttribute変更と、表示だけの変更を別に試し、Read Footprint／生成Go／説明版の失効先を照合 | Rule ID不変を意味不変と誤認、Go byte一致を実Builder使用と誤認。#988/#1121/#2600 |
+| **C2：異種境界の欠損を表示** | Rule結果→Process Guard、Event→Batch、Effect→通知の必要義務を、まず小さな合成Fixtureの照合票で試す | 現在Grantなし、入力集合partial、配送ACKだけでCommit確定。#4198/#1130/#1174 |
+| **C3：再送・観測の反例** | 選択Provider B／実A、Commit後ACK喪失、旧Attemptの後着を別々に注入し、結論を限定する | 結果値一致による実Provider誤認、Effect unknownの盲目再送、旧Source A→B→Aの資格復活。#4495/#1129/#2514 |
+| **C4：実Consumerとの照合** | C0〜C1のread-only結果を実CLIとStudioの同一Subjectへ投影し、実Builder／Provider／Stage2は各実装Ownerの証拠を別票にする | 別HEADのCI、参照Go/Mock、閲覧できた図を製品実受領と誤認。#1251/#2831/#4583 |
+
+C0〜C4は新しいSprint順や製品Hard Gateではない。最初の成果物は**「問い一つ／対象一つ／現在のSource・Meaning／表示された事実／不足の理由／独立Expectedへの参照」**を持つ小さなJSON・図・表の同一内容で足りる。既存PX／SF／EL／BRMS／REAの負例・既存Ownerへ引き渡し、第二のScenario正本、Graph Runner、Trace Store、業務承認Engineを追加しない。
+
+**現時点の資格**：§16〜19は設計と検証手順の追補であり、異種境界の製品実装、Go／DB／Queue／Windowsの新試験、実Effect、通常CLI actual Providerの同一製品試行、Ownerによる意味受理を**実施・合格したものではない**。全体P0のStudio Stage1→Stage2 Desktop実セルフビルドと並行P0の公開Entry→実Provider二入口は従来どおり優先する。
