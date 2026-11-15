@@ -276,6 +276,17 @@ jobs:
           TEI_SELF_BUILD_FULL_CHAIN=1 go test -count=1 -timeout 30m \
             -run TestSelfBuildFullChainOnTheRealSubject ./cmd/tei
 
+      # 製品CLIのBuild Intent経路が生成Ruleを実際にビルドし、
+      # 生成したBinaryの判断結果まで到達することを個別に記録する。
+      # cmd/tei全鎖試験とは異なる検収単位。
+      - name: 選択済みRule生成Goの通常CLIビルドと実Binary判断を検査
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          go test -count=1 -timeout 25m -v \
+            -run '^TestSelectedRuleGoThroughRealCLISelfBuild$' ./cmd/tei
+
       - name: 変更範囲のGo試験
         shell: bash
         run: |
