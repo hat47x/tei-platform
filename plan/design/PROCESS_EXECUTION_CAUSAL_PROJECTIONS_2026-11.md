@@ -579,3 +579,120 @@ CLI JSON、StudioのInspector／Node View、AIの自然文説明は、同じSubj
 既存の担当は、Source/Rule＝#2621/#988、Graph・Inspector＝#1124/#4198、Generator/Builder＝#1121/#4544/#2595、Provider＝#4495、Studio＝#1824/#4583、独立Expected＝#1180/#2514とする。**非Plugin Studio Stage1→Stage2実Windowsセルフビルドと、通常CLI actual Provider／実ReadのP0を維持**し、実行図を新しいHard Gateにしない。
 
 **状態**：本節は実在するコードと検証資産に接続した設計・引渡しである。今回、Go／Node／Windows／DBの新試験、正式Builder／Providerの同一Attempt証明、実Effect、業務Ownerの意味受理は実施していない。
+
+## 30. 実行図の基線を、新しく実証された二つの経路へ更新する
+
+2026年11月15日にmainへ統合された#5007と#5009は、§25〜29の図を実装へ進める際の重要な基線となる。ただし、**同じ一つのRuleを両方の経路で通したわけではない**。証拠の接合を増やすときも、この違いを残す。
+
+| 経路 | mainに存在する実装と試験 | 確認できる範囲 | 依然として未確認の関係 |
+| --- | --- | --- | --- |
+| **Operatorの選択と評価**（#5007） | Workspace Manifestの`implementations:`、`workspace.Result.OperatorImplementations`、`validationeval.ResolveImplementations`、`cmd/tei/scenario_operator_implementation_test.go` | 文書で宣言した`sales.non_negative`の実装をManifestで選び、シナリオ評価が選択した実装を呼んだことを局所試験で観測 | 生成済みScenario Commandの選択版、Plugin Resolver/Lock、公開Function Entry、製品CLI全経路、実Host Grant |
+| **RuleのGo生成と実バイナリ化**（#5009） | `Workspace.Load`、`validationgen.GeneratePositive`、`TestSelectedRuleGoThroughRealCLISelfBuild`、通常製品`tei self-build`／Build Intent | `quantity_positive`由来の生成GoをBuild Intentで実Buildし、実行バイナリの正値・0・負値・NULL・欠損を試験用Driverで照合する実装 | 元Markdown byte／Generator版の正式Build Plan束縛、公開Function実Provider、Owner受理、Stage2 Windows |
+| **製品Inspectorの読取り**（#4980） | 通常`tei inspect`を別OS Processから実行し、`semantic-validation`と同名の未公開`semantic-capability`を正負対照 | 正式に選択したMarkdown Ruleの原Source／型付き意味／参照位置を表示できる | そのRuleのビルド・実Call・Effect・独立Consumer受領 |
+
+ここでの「実装」はmainに統合されたコード・試験を指す。各試験の今回のexact HEADでの再実行や、三つの経路が同一Attemptで接続されたことは主張しない。#5009では**生成されたのは評価Functionであり、Goの起動Driverは手書きの試験用コード**である。生成Functionの出力と、その出力を動かすApplication CompositionをTEIが両方生成したとは数えない。
+
+```mermaid
+flowchart TB
+  subgraph S["定義・選択されたもの"]
+    Q["quantity_positive：Rule Markdown"]
+    O["sales.non_negative：Operator宣言"]
+    M["Manifest：実装A/Bを選択"]
+  end
+  subgraph W["今回別々に確認できる現行製品経路"]
+    Q --> G["GeneratePositive：Go生成"]
+    G --> B["tei self-build：実Build"]
+    B --> X["試験用Driverで実Binaryの結果を照合"]
+    O --> V["シナリオ用の型付き評価"]
+    M --> V
+    V --> C["選択した実装のCallを局所観測"]
+  end
+  X -. "同じRule/Attemptの根拠なし" .-> C
+  C -. "公開Entryと実Host資格の根拠なし" .-> H["実Function Provider"]
+```
+
+この図の破線は**現時点で結合を認めない場所**を示す。新しいGraph Engineや計測系を追加せず、既存の実証同士がまだつながっていないことを示すだけでよい。
+
+## 31. 同じMeaningでも、実装選択が変われば実行経路が変わる
+
+#5007の実テストが示した重要な性質は、**WorkspaceのMeaningが同じでも、選択したOperator実装が違えば判断結果が変わり得る**ことである。入力`0`に対して、`tei.number.non-negative`は真、`tei.number.non-zero`は偽を返す。反対に入力`1`では両方が真となるため、結果値だけを見てもどちらを実行したかは判定できない。
+
+したがって実行図では、次の関係を別々のEdgeとして扱う。
+
+| 関係 | 何で確かめるか | そのEdgeが証明しないこと |
+| --- | --- | --- |
+| **定義**：RuleがOperatorを参照 | 選択済み文書のQualified Rule／Operator、元byte／span | 実装A/Bが選ばれたこと |
+| **選択**：Manifestが実装名を指定 | Workspaceの現在の`OperatorImplementations`、選択に用いた対象版 | 実装が組み込まれたこと、呼ばれたこと |
+| **解決**：選択名が一つの実装に対応 | `ResolveImplementations`の一意性、利用可能な実装集合 | Plugin LockやTargetの実配布、Functionの公開資格 |
+| **呼出し**：実際にその実装を使った | `ImplementationCall`、該当Rule・実評価Attempt、Resultと独立Expected | 他Attempt／別Process／実Providerが同じ実装を使ったこと |
+| **製品配布**：生成物をTargetが使った | 実Builderの入力byte、Artifact／Image、実Consumer | 現在のHost権限、業務Owner受理 |
+
+現行`ResolveImplementations`には、ビルトインの`tei.number.non-negative`と`tei.number.non-zero`が入っている。しかし、**これはPlugin RegistryやPlugin Lockを通じて実装を選択した証拠ではない**。`WorldFingerprint`が同じでも実装選択は変化し得るため、Worldの一致を実行方式の現在性と同じにしない。
+
+最初に固定する負例は、**Manifestの選択をAからBへ変更したあと、旧選択で生成されたScenario Commandを再利用する事例**とする。#5007のPRには、生成済みコマンドがManifestの選択を固定せず、選択だけの改版で古いコマンドを検知できないという残課題が明記されている。これを「図の表示だけ古い」問題として済ませず、**次に実行するOperator実装の選択が古い**という実行資格の問題として扱う。
+
+受入では、Rule文書を変更せず、(1)選択Aで生成したコマンド、(2)現在の選択B、(3)コマンドが実際に参照する選択版と実Called、(4)0で異なるExpectedを同じ照合票へ置く。旧コマンドが選択Aの資格で動けてしまう場合は、**警告表示で合格にせず、不適格な生成物として再解決・再生成を要求する**。失効単位と検査方法の実装は#4359／#951／#2600のOwnerへ返す。第二の選択Registryや新しいProcess Runnerを作らない。
+
+## 32. 因果図の証拠を、四つの異なる変更から再資格化する
+
+同じ画面で「変化した」と表示する場合も、変更の影響は一種類ではない。現行のWorld／Model／Artifact Revisionと元Source・Selection・Host Grant・Consumerを、それぞれのOwnerの根拠として保持する。
+
+| 変更 | 再確認すべき対象 | 不必要に取り消さないもの |
+| --- | --- | --- |
+| **説明文・図の配置だけを変更** | 元byteを引用するSource Indexの現在性、View／説明の改版とLoss | 影響しないRuleの業務Meaningと生成Goの内容。同byteなら実消費資格まで自動承認するわけではない |
+| **Ruleの参照属性や条件を変更** | 型付き判断、Read Footprint、生成Go、独立Expected、Build依存 | 変更の及ばない別Rule／別Artifactの受理 |
+| **Manifestの実装選択だけを変更** | 選択版、Resolver結果、生成済みCommand、actual Called、必要なBuild／配布 | Source文書が不変ならそのCanonical Meaning。World一致で旧Callを認定しない |
+| **Host Grant／Audience／Instance状態を変更** | 今回のInvocation／Disclosure／再配送／承認候補の現在資格 | 過去に確定したOperation・Receiptを無かったことにしない |
+
+**失効した資格と、保持される事実は別**である。例えば、旧Manifestを使った実Called Aという履歴は削除しないが、現在の選択Bでの呼出しと主張しない。元byteのA→B→A復帰も、過去の適格性を復活させない。逆に画面のNode座標だけを変えたことで、採用済みのRule全件を意味再受理へ戻すこともしない。
+
+このルールはBRMSのRule集合、REAのObservation／Relation、Batchの集計期間、Plugin配線、StudioのPin、AI作業票を横断して再利用する。ただし**何が業務上のMeaning変更かは各Ownerが決め、図解の汎用Diff処理で決めない**。
+
+## 33. 履歴を扱うプロセス図では、有効時点と「知っていた時点」を分ける
+
+組織・承認・REA・BRMS・データマートをつなぐ際に、単一の`timestamp`では原因を説明できない。少なくとも次の時点を取り違えない。
+
+| 時点 | 質問 | その時点だけでは分からないこと |
+| --- | --- | --- |
+| **validAt** | どの業務期間に有効な関係か | その情報を当時の組織／システムが知っていたか |
+| **knownAt** | どの認識時点で把握していた版か | DBが実際に記録した時刻／第三者が観測した時刻 |
+| **recordedAt** | Providerがいつ記録したか | 業務上の有効性、先行する認識の成立 |
+| **observedAt** | 外部Evidence／Consumerがいつ観測したか | 業務状態の確定と認可がその瞬間に有効だったか |
+| **evaluatedAt／attempt** | どのRule／入力Context／Grantで評価したか | Ruleの有効時点、Commit／通知の受領完了 |
+
+例として、組織Membership A2について、**2027年5月15日を対象に2027年7月2日に知っていた版**と、**同じ業務日を2027年7月3日に認識した訂正版**は異なる。独立したMembership A4が同じ二時点で並存することと、一つのMembership A2で矛盾する履歴版が同じ二時点に重なることも違う。これは現行の隔離PostgreSQL用**候補試験**の意味であり、正式なTEI組織履歴モデルの製品受理を示すものではない（#5008／未完了の#5027）。未実行／未受理の試験を実DBのPASSとして引用しない。
+
+```mermaid
+flowchart TB
+  S["申請した時点の所属・Role"] --> D["申請時に固定されたProcess Instance／経路"]
+  V["業務有効時点 validAt"] --> H["所属履歴を二時点で照合"]
+  K["認識時点 knownAt"] --> H
+  H --> G{"今回のActor・Stageで現在Grantがあるか"}
+  D --> G
+  G -->|確認できた| I["今回の承認Attempt"]
+  G -->|未確認・不適格| R["操作を保留／拒否（PolicyのOwnerで決定）"]
+  I --> E["Commit／Receiptを独立確認"]
+  E --> N["通知／Consumer受領は別証拠"]
+```
+
+申請時の経路固定と、現在の操作資格は同じではない。委任・兼務・N_OF_M承認も、申請時に必要だった人数、過去の承認者、現時点で資格のある候補を混同しない。BRMSのDecision Tableなら**適用Rule集合の閉包**と**入力集合の閉包**が両方必要であり、所属履歴の一行を見つけただけで「全候補が承認済み」「唯一の判断が確定」とは言えない。
+
+## 34. 次の実装を既存の小さな試験へ割り当てる
+
+§25〜29の読取専用一Rule照合は維持し、その後の実行証拠は**別々の小さな検収**として扱う。今回の設計追補によって作業の先行順やP0のHard Gateを追加しない。
+
+| 作業 | 現行基線と最初の反例 | 完了と呼べる最小範囲 |
+| --- | --- | --- |
+| **E0：Sourceの図解** | 実`tei inspect`の`semantic-validation`、同名の非公開Capability、旧Pinの後着 | 同じQualified Subject／Source版のread-only投影。実Builder・Providerは未確認と表示 |
+| **E1：選択Operatorの鮮度** | #5007のManifest A→BでWorldが不変、0の判断が変わる。古い生成Scenario Command | 選択版・実Calledを一試行で照合し、旧コマンドの再利用を拒否または再資格化。#4359／#951 |
+| **E2：生成Goの実Build** | #5009の`TestSelectedRuleGoThroughRealCLISelfBuild`を独立した製品試験として再実行 | 実Build Intent→Binary→判断の正負。元Rule byte／Generator→正式Build Planの束縛は次のR2-Pへ引き渡す。#4544／#2595 |
+| **E3：二時点の業務判断** | validAtは同じ、knownAtは異なる訂正前後／別Membership並存／同Occurrenceの競合 | 隔離PostgreSQL候補の実PASSが確認できた範囲だけを説明。正式Query・業務Meaning／Host Grantは別受入 |
+| **E4：複数Consumerの照合** | CLI InspectorとStudio Pinで同名異Workspace、旧Reply、Windows埋込世代が異なる | 実受領したConsumer・Source／Session／Audienceの一致と、不足・非開示を区別。#1824／#4583 |
+
+最も先に解消すべき実装上の穴は、**実装選択だけが変更されても旧Scenario Commandが実行対象として残る問題**である。E1を既存の#4359と横断Plugin設計のCPW-11へ引き渡し、試験名、選択A/B、現在のManifest版、実Called、独立Expectedと拒否理由を明示する。#5015はこれを扱う並行PRであり、同じ実装を重複して本書から新設しない。
+
+その次に、Rule→Go→Buildの証拠を束ねる。#5009の成果は通常製品CLIによるビルドと実バイナリの判断という重要な前進である。しかし、**Source／Generator資格とBuilder実消費を同一Build Planへ束縛する正式R2-P全体**は別の検収であり、公開pure FunctionのR3／実Provider／実Consumer、Studio Stage1→Stage2とは合算しない。外部Host用のGo package境界とTarget Adapterも、現在の`tei/internal`依存を前提とした試験から自動的に一般化しない。
+
+**引渡し単位**は「問い・Qualified Subject・Source／選択Revision・実Producer／Attempt・独立Expected・現在確認できる関係・不足理由・次のOwner」の一票で十分である。DSL／Graphviz／Markdown表はこれを読みやすくする表現型として導出し、Sourceの編集・業務Meaning受理・実行許可を図面へ移さない。実証できた範囲の広さだけでなく、**TEIから生成して置き換えられた判断義務と、残る手書きDriver／Hostの責務**も計測する。
+
+**現時点の資格**：§30〜34は2026年11月15日の現行mainと並行PRから抽出した設計・実装引渡しである。本追補でGo／PostgreSQL／Windowsの新試験や実Function Providerの起動、Effectの確定、Owner意味受理を実施したものではない。Studio実Windows Stage1→Stage2と通常CLI actual Providerの最優先P0を維持する。

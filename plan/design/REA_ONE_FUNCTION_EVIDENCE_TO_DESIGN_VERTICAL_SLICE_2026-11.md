@@ -584,3 +584,40 @@ REAという略称は、ここでは二つの別概念を指す。外部の **Re
 
 この追補は**設計判断と受入計画の更新**であり、業務REA Roleの製品実装、実REA Graph付き受領、Owner受理、Go生成・Provider/Effect、Windows Stage2の新しい実証ではない。製品の独立P0は、通常CLI実ProviderとStudio Stage1→Stage2のまま維持する。
 
+## 29. Producerの関係端点に基づく一組の選択を、実REA入口で保証する（2026-11-15）
+
+§25〜28でいう「Graph付きEvidenceが届けば最初の一問を試せる」には、選択した観測NodeとRelationが**同じGraphに存在するだけでなく、Producerが表明した関係端点を共有すること**が必要である。従来の`verify_real_rea_intake.py`は最初の`node_id`と最初の`relation_id`を独立に拾っており、Graphの先頭NodeがそのRelationに無関係でも、TEIの`external-candidates`へ二つのIDを渡せた。Node/Relationそれぞれの存在を確認しても、組としての参照整合性は確認したことにならない。
+
+既存の`selection_from_evidence`で、Graph内のProducer発行`node_id`集合と`relation_id`集合を読み、**選択Relationの`source_node_id`または`target_node_id`のいずれかと一致する観測Nodeだけ**を一組として返す。Source端点を先に試すが、未観測ならTarget端点を使える。どちらにも観測Nodeが無ければ候補投影はNOT RUNとし、Receiptと派生Requestの検証を続ける。同種Producer IDの重複は曖昧な選択として拒否する。これらの判定は**実Graphの取得成功や業務上の関係受理の証明ではない**。Source/Target双方の完全性やRelationの真偽は、別の必要根拠・Coverage・Owner資格で判断する。
+
+**固定反例（REA-PAIR-01〜04）**：
+
+| 反例 | 期待する選択・拒否 |
+| --- | --- |
+| PAIR-01：先頭Node n0は無関係、Relation r1はn1→n2 | n0+r1の見かけ上の組を作らず、n1+r1を選ぶ |
+| PAIR-02：Relationの両端は未観測のID | Receiptを捨てず、候補投影のみNOT RUN |
+| PAIR-03：Source端点は未観測、Target端点n2は観測 | n2+r1を選べるが、Source側の完備を断定しない |
+| PAIR-04：Node IDまたはRelation IDが同一Graph内で重複 | 任意のOccurrenceを選ばず、検証を失敗させる |
+
+これらは既存VerifierのPython transport mockに限定した試験である。外部REA 6.7/6.8の実再実行、Graph付き正例、TEI CLIの実バイナリ第二Consumer、Native JS、正式三要素Function/Business、Source Apply、実Provider/Effectを本変更の合格へ合算しない。保存済み6.8.0原本の`normalized_result={}`は変更せず、引き続き「ReceiptはあるがGraph選択はNOT RUN」の対照例とする。
+
+**他領域へ再利用する判断**：この「関係の双方の端点が同じ文脈に載るか」という技術的保証と、Relation occurrenceの識別、Ownerが受理した意味Link、Processの実Call/Effectは別の資格である。Node Flowの配線、Plugin依存、三要素CRUD、業務REAのEvent/Participation、組織Person/Agent、Studio Graph/Source逆編集にも、最初の**端点参照整合**の後で意味・時点・権限を順に検証する。表示上のEdge IDや同名LabelをProducer Relation IDに見立てず、失われたIdentityを新たな万能Graph Coreで補わない。
+
+**次の製品R0**は実Toolの`analyze-javascript-application`→保存Evidence→`inspect-analysis-view`という一Attemptを観測し、Graphの具体的な配置・端点ID・Scopeを現物で確かめること。保存元とViewの同一Evidence/Raw/派生Digestを別々に確認し、配送GraphがなければProducer・Selectorのどちらが不足したかを報告する。REA-XQ-01〜08の独立Expected（#1180/#2514）と、Native実受領（#4661）を飛ばさない。製品P0の通常CLI実Provider（#2586/#4495）およびStudio Stage1→Stage2 Windows（#2831/#4583）は並行して継続する。
+
+## 30. 実REA 6.7/6.8の同一CI実行から、次の断点を確定する（2026-11-15）
+
+[PR #5038](https://github.com/hat47x/tei-platform/pull/5038) の`REA external evidence intake`、[run 43721894737](https://github.com/hat47x/tei-platform/actions/runs/43721894737)（PR HEAD `35896dec6333e6f8af21744a083476180ca05586`）を、既存の**保存済み6.8.0原本**と明確に区別して読む。今回は外部REAを実際に起動した`real-tool`二系統で、各々別の新規Evidence/Raw DigestとProducer発行Node/Relation IDを観測できた。Graph付きの新規実解析と`normalized_result={}`の過去保存原本は、矛盾する結果ではなく**異なる取得Attempt**である。
+
+| 実行 | 実行記録で確認した事実 | 引き続き未確認の部分 |
+| --- | --- | --- |
+| REA 6.7.0 real-tool | `completed`、checks=4、notRun=[]。Evidence受領・派生Request、Producer発行端点に接続するObservation/Relationの`external-candidates` read-only投影、工具自身の二種類の不正リクエスト拒否を確認 | Business/Function意味受理、正式TEI Source/実DB Read/Effect、Native独立Consumer |
+| REA 6.8.0 real-tool | 失敗Receiptでも`checks`に**原本受領と実Graph関係選択の成功2件**が記録され、`notRun=[]`、解析/Viewの捕捉Digestは別々に残った | その後の`tei rea-evidence -analysis-output … -view … -provider-version 6.8.0`がexit 1。配送全体の合格、失敗原因の分類、後段の不正リクエスト二件は未確認 |
+| Python Verifierの局所Contract | 新規4反例を含む10件PASS。無関係Nodeの誤選択、両端未観測、片側のみ、重複Producer IDを判別 | 実ProducerのGraph全件性・Source現在性・独立Windows Consumer |
+| Go contract job | Pythonの10件PASSと別に、既存`TestExternalCandidatesRefusesWhatItCannotProject`が`error-source-kind.jsonl`を読めず失敗 | Go contract job全体の成功。Fixtureの出典・正しい負例実体を別Ownerで確認する |
+
+6.7と6.8で表示されたNode IDとRelation IDは同じ文字列でも、Evidence IDとRaw Digestは異なる。**ID文字列一致を同一Attemptや同一Sourceの版同一性として使わない**。6.8は関係選択の成功を証明できたが、後段のView受領不合格を消してはならない。6.7の完全成功も6.8の不足を代替しない。
+
+**次の最小R0-B実装**は6.8の`-view`受領である。検証器が保存したanalysisとviewのByte、Requestの`source.kind`、REA側JSONL framing／terminal metadata、TEI側View Readerの版条件を同一Attemptで照合し、**どの判定でexit 1になったかを型付きの失敗記録として残す**。その際、旧保存FixtureをGraph付きに書き換える、6.8のProvider版を6.7として受理する、不完全なViewをcompleteに変換する、外部Node/Relationを意味Subjectへ昇格させる方法は取らない。必要な変更を既存Reader/Verifierに限定し、実Tool→受領→View→候補の再試験を行う。
+
+並行するR1は、今回成立した構造Candidateを正式三要素・業務REAへ即採用するのでなく、既存`reacandidate`の型付き候補とReview/Source/Questionへどう渡せるかFit/Gapを明確にする。Node/Relation同定の成功、Candidateの三要素分類、OwnerのMeaning受理、正式Source保存、生成Go/Builder実消費、実Provider/Effect、Studio Native独立Consumerを段階別の受入に保つ。製品のP0（通常CLIの実ProviderとDesktop Stage1→Stage2）には新しいHard Gateを加えない。

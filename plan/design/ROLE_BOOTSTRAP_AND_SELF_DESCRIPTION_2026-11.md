@@ -3199,3 +3199,76 @@ I2Mでは元DSLのSource spanと生成Go AST spanを**異なる座標**として
 #2620／#4359はSD-M1と読みやすい構文、#988／#1018はLanguage・Operatorの選択と外部Plugin、#2600とScenario OwnerはSD-O1の失効、#2497／#1124はProjection／安全編集、#1121／#4544／#2595はBuilder、#4495／#1251は実Provider、#2831／#4583はStage2、#1180／#2514は独立Expectedを担当する。
 
 **状態**：既存製品Go・局所試験に基づく横断設計と実装引継ぎ。新しいDescriptor検査、手書き処理置換、生成Scenarioの失効修正、外部Plugin、正式Builder／Provider、Stage2実Windowsはこの変更ではNOT RUN／NOT PROVEN。
+
+<!-- tei-self-description-conformance-and-build-handoff-20261115 -->
+## 50. 2026-11-15 自己記述を実契約・実装の適合・製品実消費へ進める（第49節の次段）
+
+### 50.1 現行の実装に合わせて、初回対象を狭く更新する
+
+第48〜49節のM0〜M4とSD-M1／SD-O1は維持する。最新mainでは、明示的に選んだ組込みMarkdown ReaderによりRuleに加えて**印付きData項目定義表**も既存の型付きsemantic.Dataへ変換できる。実装はinternal/syntax/data_table_authoring.goとinternal/workspace/tei_md_data_table_test.goにあり、組込み言語はtei.rule-authoring/v0とtei.authoring/v1から一つを選ぶ。両者を同じSourceへ同時選択すると曖昧さとして拒否する。表の印がない実例や業務記録を定義として読まない。
+
+これとは別に、PR #5009のcmd/tei/cli_self_build_generated_rule_go_test.goは、製品Workspaceが選択したpositive Ruleから生成したGoを**通常tei self-buildのBuild Intent経路で実ビルドし、生成Binaryの判断を確認する限定回帰**である。PR #5020では同じ原RuleのSource位置と生成Go ASTのRead／分岐を一つの試行で照合する回帰がmainに入った。これらを従来の「参照Builderだけ」の段階に戻して説明しない。一方、**元Markdown・Reader・Generator実装の出典とBuild Intentの実入力を同一Attemptで束縛した正式R2-P全体**はまだ成立していない（実装Ownerは#4544／#2595、詳細はPlugin Rule製品縦断§14・I2M§12）。
+
+この進歩から分かるのは、単に自己記述DSLの表記形式を増やしても最後の断点を埋められないということである。次に増やすべきなのは新Grammarではなく、**定義された契約のどの義務が実装によって果たされ、実際のConsumerまで届いたかを、同じ問い・同じ試行で確認する能力**である。
+
+### 50.2 形の自己記述と、演算の意味の自己記述を分ける
+
+意味Roleを付けられる標準データ構造は共通化する。ただし、対象の形を定義できることと、選択した演算が業務上正しいことは同じではない。
+
+| 自己記述する内容 | 既存の正本／確認先 | 成立を示す最小の条件 |
+| --- | --- | --- |
+| **Shape**：ID・Attribute・Relation・型・必須性 | semantic.Validation／semantic.Data、Source Index、型Validator | 必須項目・禁止項目・型解決を元Source位置付きで説明できる。印付きData表はDataの形であり、Runtimeの実データではない |
+| **Law**：positiveは厳密に0より大きい、non-negativeは0以上などの判断意味 | 既存Rule／Operator契約と#1180／#2514の**独立Expected** | 0・負値・正値、NULL／欠損、エラーで差が出る例を、実装の返値から逆算せず用意する |
+| **Binding**：どの実装を使用するか | Workspace manifest、Language／Operator選択、既存Plugin Resolver／Lock | 同じWorldでも選択変更で使う実装が変わり得る。選択IDだけを外部Pluginの実byte Pinとしない |
+| **Realization**：判断や検査を何が生成・実行したか | GeneratePositive、実Build Intent、Builder実入力、Artifact、実Call | 生成・実ビルド・実受領を区別し、Reader／Generator／Sourceの出典連続性を別途照合する |
+
+ここで、tei.authoring/v1のData項目定義表を**メタ契約DSLの完成した構文**として流用しない。現行の表はDataの型・属性を宣言するもので、Validationの禁止Relation、OperatorのLaw、実装のEffect／現在Grantを表現するものではない。必要な情報を既存型付き意味からread-onlyで投影できる範囲を先に評価する。表現できない要件はunsupportedとし、同じ列名の表を置いただけでRuntimeへ意味を追加しない。
+
+### 50.3 M1からM2へ進む判定：手書きの検査を実際に減らす
+
+最初の一件は既存のsales.order_line.quantity_positiveから動かさない。実現方式を次の三案で比較し、**Cを第一候補**とする。
+
+| 案 | 長所 | 採用判断 |
+| --- | --- | --- |
+| A：新しい汎用Meta Interpreterを導入 | 様々なDescriptorに対応しやすい可能性 | 現状の一件に対して二重の選択／意味／実行経路が必要となる。初回は採らない |
+| B：Goの手書き検査を維持し、Markdownへ説明だけ追加 | 安定した既存経路を保てる | M0止まり。手書き意味判断の保守を減らさず、M2として採用しない |
+| **C：既存の型付きRule／標準構造から、限定的な検査処理を生成して差し替える** | Reader・Semantic・Buildの既存契約を利用し、置換した一義務を特定できる | 最初にID必須／Attribute必須／Relation禁止／std.decimal型のうち、独立Expectedで検証できる一義務だけを置換する。生成器自身のGoやB0の最小Kernelは残す |
+
+M1の実装は、既存Inspector／Typed Meaningから**読取り専用のRequired Shape候補と不足理由**を返すところまで。M2へ進むときは、選択された契約から検査に寄与する実コードが生成され、既存のGoの同じ義務を担当する分岐を**実利用経路から一箇所取り除けること**を要求する。検査の元となる契約を、その検査結果自身で正当化しない。独立Expectedは旧Goの出力を複製するだけでなく、対象となる正負条件を別に固定する。検査の失敗はモデル上の不成立やfalseへ変換しない。
+
+生成検査の入力となった型付きRule、契約の版・実装Pin、適用先のSource occurrenceは、既存のSelectionとSource Indexへ結ぶ。もし現行構造でRequired Shapeを十分表現できなければ、その項目を未実装のまま残し、新しいSource構文や二番目の意味モデルを条件付きで導入することはしない。
+
+### 50.4 R2-Pの最後の断点を、自己記述でも実証する
+
+生成Goの通常tei self-build成功を尊重し、次は一つのAttemptで次の対応を証明する。
+
+1. **A／Authoring**：Workspaceの明示Language選択、Rule原文の実byteとSource Index、型解決、必要なManifest／Imported Sourceの範囲を確認する。単一Loadで全Workspaceが原子的Snapshotになったとは主張しない。
+2. **B／Generation**：選択したRuleとGenerator実装版からGoを生成し、生成Goの実byteと元Source・Generatorへの関係を照合する。GoのAST Spanは原Markdown Spanの代わりにしない。
+3. **C／Build**：既存Build Intentの正規go-package／go-module memberとして実Goを渡す。元Markdownをビルドが読まないgo-packageに偽装せず、**Authoring→Generatorの依存証拠**を既存OwnerのAttemptと突き合わせる。
+4. **D／Observe**：選択したBuilderが実際に読んだGo byte、Artifactと実Binary、独立Consumerの結果を確認する。生成関数のDigest自己申告だけでは不十分とする。
+
+A〜Dは検査項目を一度に合格させるための新しいEvidence DBではなく、**同一Attemptに属する既存証拠を照合する作業順**である。実際のSourceの一条件変更、説明文だけの変更、Generatorだけの更新、選択したBuilderと実Builderの食い違いを別々の負例にする。生成結果のbyte一致が得られてもSource Indexの現行性・Owner受理・実行Grantは復活させない。
+
+### 50.5 演算実装の適合と生成Commandの鮮度は、別の証明
+
+PR #5007で、同一Operator宣言に対してmanifestだけを切り替え、組込みnon-negative／non-zeroを呼び分けられる。これは選択・実Callの証拠であり、**業務上のLawへの適合**ではない。入力0では前者true・後者falseなので、単にnumber型を受け取ることを根拠に両者を同値と認めない。
+
+さらに生成済みScenario Commandは現在manifestの実装選択改版を固定していない。元のRule・Worldが同じでも実装Bを選んだ後に旧Command Aを使える状態を、再利用資格の欠落として扱う。現在のmanifest選択を実行時に使ったか、生成時に選択を束縛したか、現在の実装版・実Callが何かを別に観測し、旧Commandの無条件な正当化をやめる。修正は既存のScenario／#2600のCurrent Selection入力閉包へ渡し、新Fingerprint体系や第二Resolverを作らない。
+
+### 50.6 独立反例と完了条件（既存Expectedへ引渡し）
+
+| ID | 一因子変更 | 合格させるもの／止めるもの |
+| --- | --- | --- |
+| SD-50-01 | 同じMarkdownに印付きData定義表と無印の記録表 | 選択tei.authoring/v1だけが定義を読取り、無印の記録行をData宣言へ昇格しない |
+| SD-50-02 | 同一Sourceへv0とv1の二Language選択 | 先勝ち・後勝ちしない曖昧拒否。旧構文の黙ったfallbackもしない |
+| SD-50-03 | positiveのRelation追加、属性欠損、非Decimal | M1候補と既存Go／独立Expectedを分離照合し、実分岐削減までM2を認定しない |
+| SD-50-04 | Operatorの意味Lawはnon-negative、実装だけnon-zero | 入力0の型／Call成功とLaw不適合を区別し、業務意味の受理を拒否する |
+| SD-50-05 | Worldを変えずmanifest実装選択A→B→A | 古い生成Scenario Command・旧実装Pin・旧Grantを現在資格へ自動復活しない |
+| SD-50-06 | 原RuleのAttributeのみ改変し、生成Go／Buildを旧版で実行 | 元Source→型付き意味→生成Go→実Builder入力の連鎖が不一致なら停止 |
+| SD-50-07 | 説明文のみ改変／Generator実装のみ改版 | Source現行性・意味同値・Artifact再利用・Generator資格を個別に再判定 |
+| SD-50-08 | Go内のRead先や正値比較だけを改変 | Go ASTの差分と原Rule／独立Expectedとの不整合を見つける。元Source Spanへ誤結合しない |
+| SD-50-09 | Studio／Node View／SHOのread-only表から逆編集 | LossのないSource Slot・現在Revision・既存Writer/Grantがなければ書戻しを認めない |
+
+この反証は#1180／#2514の既存Expectedへ割り当てる候補であり、この文書の追加だけで試験を実施したことにはならない。**最初のGo実装PacketはSD-50-03のM1 read-only候補、並行してSD-50-05のScenario Selection鮮度**。正式R2-Pの出典閉包は#4544／#2595、公開pure FunctionのR3は#4495／#1251、Stage1→Stage2の実Windows Studioは#2831／#4583で並行する。Data表のSyntaxとLanguageは#988／#1018／#2621、I2M位置照合は#1121／#1824、書戻しは#2497／#1124が担当する。
+
+**この追補の資格**：現存Go／テストの到達点と未接続の境界を更新した設計・実装引継ぎ。新しいM1/M2の実装、Scenario Command鮮度修正、A〜Dの正式Build同一Attempt束縛、実Provider、Owner意味受理、Stage2 Desktopの新しい完了を主張しない。

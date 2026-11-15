@@ -164,15 +164,18 @@
 
 | 時間 | 意味 | 標準構造での置き方 |
 | --- | --- | --- |
-| valid-time | 業務上有効な期間 | `validFrom`/`validTo` 属性（半開区間 [from,to) を採用する場合は明示） |
-| recorded-at | レコードをProviderが記録・更新した時刻 | `knownFrom`/`knownTo` 属性。valid-time と同一視しない |
-| evaluated-at | 評価・再評価を行った時刻 | Rule/Query 実行の記録。対象Dataの属性にしない |
-| Rule revision | その時点で採用されていた規則版 | Rule の版。現在のRuleを過去データへ遡及適用しない |
+| valid-time | 関係・属性が業務上有効な期間 | `validFrom`/`validTo`。採用した区間境界の意味を明記 |
+| known-time | ある事実がいつ認識されていたかという期間 | `knownFrom`/`knownTo`。同じvalidAtに対してknownAtを変え、訂正前後の認識を再現 |
+| recorded-at | Providerがレコードや訂正を保存・更新した時刻 | 物理書込みの記録・Provider Receipt。known-timeの始点と自動同一視しない |
+| observed-at | 外部Evidenceや取得元を実際に観測した時刻 | Source取得・Reader/Providerの観測記録。Source自身のknown-timeへ無条件に置き換えない |
+| evaluated-at | Query/Ruleが判断した時刻 | 評価Attemptの記録。validAt・knownAtという問合せ入力とは区別 |
+| Rule revision | その時点で採用されていた規則版 | Ruleの版。現行Ruleを過去の判断に自動遡及適用しない |
 | confirmed fact | 過去に実行・送信・確定した事実 | Effect/Receipt（#1174）。履歴解釈の変更で消えない |
 
 - 遡及訂正は**同一 occurrence ID を保つ**。訂正は「訂正後の履歴解釈」を変えるが、過去の実Commit・送信・Receipt は消えず、旧Receiptを現在有効化しない。
 - 辞令（`Directive`）は複数の関係変更を束ねる**原因・発効日・出典**として保持する。イベントは現在の所属でも権限でもない。
 - 発効前は旧体制、発効後は新体制として、整合した単一revisionを表示する。遅延・部分取込・中断時の半端な状態を正式版として公開しない。
+- 同じ所属の版が競合するかは、業務Ownerが「指定validAt×knownAtで単一値」と受理した場合に限り、**valid区間とknown区間の両方が交差するか**を確認する。known区間の重なりだけで、隣接した異動履歴を不正にしない（組織C1補遺§39）。物理PKと二軸の非重複は別制約である。
 
 ### 3.5 責任・代理・承認・権限の接続
 
@@ -224,7 +227,7 @@
 | Identity | occurrence ID は訂正を通して不変（`A2` のまま）。版は `MembershipVersion` 等の別Data、または属性組で表現 |
 | Relation | S2 と同じ。履歴は Relation 定義を変えず occurrence と属性で持つ |
 | Cardinality | S2 と同じ。期間重複の可否は Cardinality ではなく Rule |
-| Time | valid-time・recorded-at・evaluated-at・Rule revision・confirmed fact を別物として保持。辞令（`Directive`）は原因・発効日・出典 |
+| Time | valid-time・known-timeを独立の区間として保持し、recorded-at・observed-at・evaluated-at・Rule revision・confirmed factと分ける。辞令（`Directive`）は原因・発効日・出典。両時間区間の重なり検査は業務Ruleの意味受理後（補遺§39） |
 | Validation | 半開区間の重複、同一occurrenceの同時有効版が2件、未来発効の混在は**現行Validationでは表現できない**。表現案は提案として分離し、Owner判断に委ねる |
 | Query | `EmbeddedSQL.Inputs` に as-of（valid）と known を**別引数**として明示。analyzer の `Lineage`・`Coverage` で非出力依存を保持（ORG-QD-01〜12 の再利用） |
 | 表示形式 | 時点別組織表、異動前後の差分表、対象件数・保留件数 |
@@ -1021,3 +1024,36 @@ D0/D2の判定では**同じ成果物が存在する**ことと**TEI自身がそ
 **停止・撤回条件**：所属によるTenantの自動同一視、同姓同名によるAccount統合、配布=実Load=現行Grantという短絡、B2Cに標準UI/共通Hostを強制、保護項目の表示非表示だけでExport安全宣言、partial/permission deniedを0件と解釈、旧Receipt/Grantを現在へ復活させる、合成fixture PASSを実Host E2Eへ昇格する場合は、該当Claimを不適格としてOwnerへ返す。
 
 **状態**：本節は§10.1〜10.11を横断する**受入設計の追補**であり、新しい六Scope Core、Model/Plugin Writer、B2C実Consumer、組織C1実Provider、実Multi-Tenant/IdP/Host/Effect、CI実行、Ownerの業務意味受理は **NOT RUN / NOT ACCEPTED**。最優先のTEI Desktopセルフビルドおよび #2586 の実Readを阻害する新しいHard Gateにはしない。
+
+<!-- org-known-recorded-temporal-crosslane-20261115 -->
+### 10.14 二時点履歴と外部観測・Rule判断・Studio表示を同一の時刻に潰さない（2026-11-15）
+
+S3の有効期間・認識期間は、§10.13のProvider/Consumer・REA・AI/SHO・実Host接続で使われる**観測時刻や実行時刻とは異なる**。既存の[組織C1横断受入補遺§35〜39](ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)が示す版の保存制約を、時間軸の読み替えで回避しない。以下はOwner間の受入対照であり、Time Engineや新しい常設Evidence Schemaの設置要求ではない。
+
+| 接続先 | 時点・版の最小契約 | 負例と判定 |
+| --- | --- | --- |
+| **通常Data/Query/Provider（#2386/#1126/#2586）** | 元Membership occurrence、版識別、validAt・knownAt、受理されたRelation、実読取Source/Scope/Snapshotを対応付ける。Providerの保存時刻をknownFromの代用品にしない | 同じA2訂正前後の保存、異なるknownAtでの復元、二軸重複の検出をそれぞれ別PASSにする。実PKが単独IDのままなら共存は未成立 |
+| **外部REA・CSV・写真・文字起こし（#3394/#2510）** | 外部のSource発行時刻、取得・観測時刻、TEIの意味受理時点、業務上の有効期間を別欄に保持。外部Agent/Personは受理済みLinkがあるときだけ接続 | 取得が新しいから業務上も新規所属、あるいは以前から認識されていたと推定しない。Candidateは正式Membershipではない |
+| **BRMS・責任・Case（#4501/#1174）** | Case基準時点、Queryが評価するvalidAt/knownAt、Rule revision、現在のPrincipal/Grant epoch、Effect Receipt時点を区別 | 過去の所属候補が存在しても現在の承認Grantは生まれない。異動後の旧Receiptも現在の許可へ復活させない |
+| **Studio/SHO/AI（#1124/#2516/#4515）** | 表示・説明にはSource revision、validAt/knownAt、表示epoch、取得の不確実性、元Relation occurrence/版を保持。二時点の変更はPreviewと独立再Readへ接続 | 図が同じでもknownAtが違うなら結果の再利用資格を再審査。Graphの親選択や画面更新から業務意味受理/保存Commitを推定しない |
+| **Plugin/B2C/外部Host（#2903/#3509/#2499）** | Distribution/Composition/Organization/Runtime/Disclosureの範囲と時点を分離。公開版の履歴QueryはConsumerごとの許可済みSliceで評価 | 所属・Tenant・Account・Principalを同一視しない。履歴Read成功から外部Hostの実行権限を導出しない |
+
+**受入順**：①§39の独立ORG-BT-01〜05を隔離PostgreSQLで検査、②#2386/#1126がOccurrence・訂正・異動・単一値性と版IDを判断、③採用した`*.tei` Persistence/Queryを実Providerと手書きExpectedで検査、④同一World/Read Cohortの二ConsumerへContextを渡す、⑤業務Rule・Studio/SHO・Hostを別資格で接続する。既存#1180/#2514/#4490のExpectedを再利用し、二つ目の正本を作らない。
+
+**現況と停止線（2026-11-15更新）**：PR #5008とコンパイル修正#5011はmain統合済み。後続PR #5027もmainに統合され、[隔離PostgreSQL run 43707188012](https://github.com/hat47x/tei-platform/actions/runs/43707188012)で実Query・複合版キー候補・二軸版競合の各試験が明示PASSした。§39のORG-BT-01〜05は試験可能な範囲で進んだが、**実験用一時テーブルのPASSは正式Persistenceの二版保存、Person Link、業務Rule・Host受理にはならない**。全体Repository Healthは別票でfailure。CLI実Read #2586とDesktopセルフビルド #2831は先行P0のままとする。
+
+<!-- org-c1-prod-gate-alignment-20261115 -->
+### 10.15 実DBの成功を、正式なSource・Function・Consumerの検収へ引き渡す
+
+[組織C1設計補遺§40](ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)を製品化の実装基準とする。段階S1〜S5の設計を増やすのではなく、**S3の正式な保存・読取を一往復で立証してから、S4の業務RuleとS5のStudio/SHO投影へ進む**。
+
+| 接続点 | 先に確定するもの | Ownerと完了票 |
+| --- | --- | --- |
+| **意味の同一性** | Membership occurrence / Assertion revision / Provider row とPerson Link。訂正・異動・再所属の区別と単一値制約の適用範囲 | #2386/#1126。採否未決のまま複合PKやPerson列を標準へ入れない |
+| **正式Sourceへの反映** | 現行の単独membership_id主キーと3列Resultから、業務Ownerが採用した履歴版と人物関係へ段階的に変更。物理DDL/Result Mapping/Query入力が同一Source版に対応すること | #2622/#2586/#4490。MVR-02/03の旧新版再読込、validAt/knownAtと取得完全性 |
+| **決定・プロセス・REA** | 必要Read集合、Rule版、候補の根拠、欠測／競合、責任移管と現在Grant。外部REA Agent/Personの結び付きには受理済みLinkが必要 | #1125/#2499/#1174/#3394。構造Relation→業務候補→実Effectの資格を独立 |
+| **Studio・SHO・AI・Plugin** | 一つのAccepted SourceからTable/Graph/Tree/説明文へ投影。元Relation ID・履歴版・Source位置・表示損失・固定編集対象・Consumer Disclosureを維持 | #1124/#2497/#2516/#4515。見た目の一致を業務の同一性や編集可能性へ昇格しない |
+
+まず手書きExpected付きの**同一A2の旧新二版保存→二時点Query→Function Context→二Consumer**を一つのWorldと実Read Cohortで検査する。合成r7と隔離PG候補の異なる日付・配賦を便宜上Joinせず、出典・粒度・時点・単位・Scopeを明示する。二版保存と取得完全性が欠ける間は、候補解決や人数/FTE集計を正式な判断へ流さない。
+
+組織の通常Dataには組織専用ACLを課さず、必要な保護対象の特定項目と外部Host実行Grantだけを既存の対応Ownerへ渡す。新Temporal Engine、組織固有のBRMS/Workflow Runtime、新しいExpected Store、独自Hostは作らない。全体P0の#2586/#2831を新Hard Gateで妨げない。

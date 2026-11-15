@@ -316,3 +316,23 @@ PR #5009で追加した`TestSelectedRuleGoThroughRealCLISelfBuild`は、既存�
 Build Intentの`definitionSource`はGo依存パッケージの先頭ではなく、実際のEntrypointを含むPackageへ対応付ける。結果確認では、CLIから導出したPlan、Builderが読んだPlan、再現されたArtifact、完成Binaryの正値・ゼロ・負値・NULL・未取得の判断を分ける。これは**既存の参照Builderと製品CLIの組合せ**による限定的な実証であり、生成器・Rule原文のSource資格、正式なBusiness Function Entry、実行時の選択Provider／Grant、Windows Stage2を自動受理しない。
 
 また、並行マージ時に本計画の日本語が文字化けした事例を再発防止対象とする。正常な§14.10までの内容をGit履歴の元byte列から復旧し、Repository Plan Checkで不正なUTF-8、置換文字、Markdownに不適切な制御文字を拒否する。これは文書の自然さすべてを機械判定するものではなく、**原文を破壊するエンコーディング事故を確実に検出する下限**である。読める日本語の保持と、Source／Meaning／Build／Invocationの受入資格の維持を別々に検査する。
+
+### 14.12 生成元と実ビルド入力を別の閉包として照合する
+
+[dogfooding設計§13](IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md)では、現行`BuildIntent.Sources`、`DirSourceResolver`、`go-command`の`definitionSource`を実コードと照合し、R2-Pの次の実装を**生成元の閉包と実コンパイル入力の閉包の接合**に絞った。
+
+現行の`definitionSource`はGo Entrypoint packageを示す。元Rule MarkdownやGeneratorをこの欄へ入れ替えると、Buildの定義と生成元の役割が壊れる。また、Resolverがファイル／ディレクトリの実byteをFingerprintへ取り込めることだけでは、その原文が選択済み`tei.rule-authoring/v0`のReaderで実際に解釈されたこと、GeneratorがそのRuleを使ったこと、Builderが生成されたGo byteを消費したことは証明できない。
+
+既存`TestSelectedRuleGoThroughRealCLISelfBuild`を基線に、同じ試行の`Workspace.Load`／Source Index・型付きRule／Generator・生成Go／実Entrypoint Source・Plan／Builder実入力・Artifactを**別々の由来を保ったまま照合**する。第一差分はテスト内のread-only対応表と一因子の負例で十分であり、新Source Kind・Resolver・Receipt schemaの正式採用はOwnerの検証後に判断する。
+
+最初の負例は**生成Goとして選択したBと試験packageに置いたAが異なる場合**とし、既存のBuilder／Artifact照合に届く前に差異を検出する。次に原文説明のみの変更ではSource Evidenceだけが失効すること、Generator版変更で出力byteが不変でも生成資格は別に受け直すことを検査する。実際のBuilderが読んだbyteを観測できなければ、形式上のDigest一致から正式R2-P合格を主張しない。R3実Provider・Windows Stage2・Owner意味受理は引き続き別列とする。
+
+### 14.13 原文byte列もBuildPlanの入力へ含め、実Binaryから読取りを確認する
+
+既存のRule生成Go→通常`tei self-build`回帰では、生成GoをBuildPlanで収録して判断できる一方、選択元Markdownの原文byte列がそのBuildPlanの入力に入っていなかった。そこで既存`TestSelectedRuleGoThroughRealCLISelfBuild`を拡張し、同一`Workspace.Load`で得たSource Indexの位置・選択Readerと、現行原文byte列を照合してから、生成Goの隣に原文の**byte同一コピー**を置く。既存のGo `//go:embed`を利用して原文を最終Binaryに収録するため、第二のReaderやBuilderは不要である。
+
+Build Intentは、その原文を含むGo Packageを実Source閉包として列挙し、参照Builderは選択したSourceの現行digestとの一致を確認して隔離ビルドする。テストはBuilderの成功報告だけで合格とせず、`tei self-build`から得た**実Binary自身**が埋め込んだ原文のSHA-256を計算した結果を、テスト側で選択元ファイルから独立に求めた値と照合する。従来の正値・ゼロ・負値・NULL・未取得の期待結果もそのまま確認する。Source Indexが失効した状態で古い意味モデルに新しい原文を結び付けることは拒否する。
+
+これは「選択されたRule原文のコピーと生成Goが、一つのGo Package Sourceとして実Builderに読まれ、完成Binaryに達した」という限定的な**R2-P原文消費の証拠**である。元ファイルのWorkspace相対LocatorやReader・Generatorの実装byte列まで同一Build Intentに正規のDependencyとして束縛したわけではなく、コピーの正当性は検査コード側の観測に依存する。Generator改版、原文A→B→AでのRevision失効、生成Goと原文の意味適合、正式Function公開Entry→選択Provider実Call、Owner受理、現在Grant、Windows Stage1→Stage2の証明は引き続き別の検収とする。
+
+次の段階では、この実績を根拠に新たなBuildPlanやRegistryを作るのではなく、既存のBuild Intent Source／Build Receiptに、Reader・Generator・原文の資格と実消費結果を同一Attemptで紐付ける。その際、元Sourceが編集されても生成Goが偶然同値なら旧Source Evidenceは失効し、Build Artifact自体の再利用可否は独立判断とする。
