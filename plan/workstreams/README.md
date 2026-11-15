@@ -36,3 +36,4 @@
 - [TEI自身の設計をCLIで扱うドッグフーディング 第2ラウンド](TEI_DOGFOODING_CLI_SELF_DESIGN_2026-11.md)（#3149。現行main `4fd88c2b1` の実行物で再実測し、D-1・D-2・D-4〜D-8 が閉じたことと、D-3・D-9・D-10 が残ることを確認。MCP入口は未実装のため CLI 経路のみ実測）
 - [Script/Macroの製品化と実証計画](TEI_SCRIPT_MACRO_PRODUCT_PLAN_2026-11.md)
 - [理想の利用像を製品の受入へつなぐ計画](PRODUCT_COMPLETION_PLAN.md)
+- [Pluginの型付き貢献をCLI・Wails・生成物へつなぐ最小検収計画](PLUGIN_PORTABLE_CONTRIBUTION_EXECUTION_2026-11.md)（PC-0〜5。実製品の小PR・独立Expected・統合条件を整理する未実施の計画）
