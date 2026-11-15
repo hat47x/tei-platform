@@ -621,3 +621,15 @@ REAという略称は、ここでは二つの別概念を指す。外部の **Re
 **次の最小R0-B実装**は6.8の`-view`受領である。検証器が保存したanalysisとviewのByte、Requestの`source.kind`、REA側JSONL framing／terminal metadata、TEI側View Readerの版条件を同一Attemptで照合し、**どの判定でexit 1になったかを型付きの失敗記録として残す**。その際、旧保存FixtureをGraph付きに書き換える、6.8のProvider版を6.7として受理する、不完全なViewをcompleteに変換する、外部Node/Relationを意味Subjectへ昇格させる方法は取らない。必要な変更を既存Reader/Verifierに限定し、実Tool→受領→View→候補の再試験を行う。
 
 並行するR1は、今回成立した構造Candidateを正式三要素・業務REAへ即採用するのでなく、既存`reacandidate`の型付き候補とReview/Source/Questionへどう渡せるかFit/Gapを明確にする。Node/Relation同定の成功、Candidateの三要素分類、OwnerのMeaning受理、正式Source保存、生成Go/Builder実消費、実Provider/Effect、Studio Native独立Consumerを段階別の受入に保つ。製品のP0（通常CLIの実ProviderとDesktop Stage1→Stage2）には新しいHard Gateを加えない。
+
+## 31. REA 6.8のJSONL終端形式を、実際の配送内容に合わせて受領する（2026-11-16）
+
+§30の実REA検証では、6.8.0の新規Analysis/実Graph候補選択まで成功した後、`tei rea-evidence -view`だけが終了1となった。既存`internal/externalanalysis/view.go`を調べると、保存済み6.8.0の`view.jsonl`に含まれる旧式`$rea=jsonl/v1,type=metadata,emitted=7,source_count=1`という終端行と、データ7件を固定的に想定していた。一方、現行REAのJSONL出力では、`{"$rea":"jsonl/v1","type":"metadata","records":{...},"context":{...}}`という**構造化された終端レコード**を出力する。旧Fixtureを更新せず、二つの配送形式を別に検証する必要がある。
+
+**今回の実装境界**：既存`Receipt.WithView`に現行の終端JSONオブジェクトを読む分岐を追加し、`records.path`、`records.emitted`、任意の`records.source`、`context.evidence_id`をViewに保持する。実データ行数と`emitted`が一致して初めてwholeと判定する。終端欠落・不正JSON・未知control/type・負数・`source < emitted`・申告件数不一致は既存StateのPartial/Mismatchへ落とす。現行出力に対して保存済みFixtureの固定7行を一律に要求しない。6.7.0の単一JSONL行と、6.8.0の旧式`$rea=`終端は従来どおり検査する。
+
+**同一性を増やさない**：`context.evidence_id`は受領View自身が申告するIDであり、元AnalysisのEvidence IDと一致すると仮定しない。`ParentLinked`は独立した連結根拠がない限りfalseのままとする。`source`は配送側の対象件数であり、全Graph/Function/Businessに対する観測の完全性ではない。Viewをwholeと判定できても、Raw AnalysisのSource現在性や独立Owner Meaning、編集権限を証明しない。
+
+**最小受入**：既存`TestInspectRealSavedViewIsComplete`による旧Fixture正例に加え、現行JSONメタデータのdata件数2/申告2/総数10、data0件の明示完了、終端なし、件数矛盾、未知type、未知protocol、emitted欠落、source件数矛盾、壊れたdata行を局所Go回帰にする。実際の6.8.0を呼ぶ既存REA専用CIで`tei rea-evidence -view`と後続の工具負例2件まで到達できた場合だけ、R0-Bを実Toolの完了として記録する。過去のrun 43721894737の失敗を新実装の成功へ読み替えない。
+
+**横断適用**：標準データ構造・SQL集計・Plugin Flow・Node Viewでも、配送のレコード数（`emitted`）と元集合の粒度・列挙範囲（`source`/Coverage）は別の情報である。部分集合2件の受領が正常でも「業務FunctionのReadが2件だけ」「他のResource/Eventが存在しない」とは答えない。Source/Meaning/Builder/Provider/Effectの次の資格は既存#1180/#2514、#3394、#2586、#4661へ引き渡す。実行系と業務REAの新Core・意味正本・Hostは増やさず、Stage1→Stage2 Windowsと通常CLI実Providerという製品P0を維持する。

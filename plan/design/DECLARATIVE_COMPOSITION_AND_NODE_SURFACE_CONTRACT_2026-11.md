@@ -660,3 +660,74 @@ Node Viewはこれらの情報への**共通の入口**であり、単一の実�
 DC-39〜40は**試験ファイルへ記述した期待条件**であり、exact HEADの実Goテスト成功はCIで確認する。DC-41は未実装の独立Expected候補で、#1180／#2514のOwnerへ渡す。
 
 次の製品検証は、PとGを同一入力・同一型付きRule・同一Source revisionで**実際に呼び出し**、値だけでなくRead／Errorと実Attemptを比較すること。単純な汎用関数が既存実装で足りるときは生成を省く。一方、外部Targetへの納品やTEI自身の実装生成には正式R2-Pの実Builder・Artifact・独立Consumerが必要である。R3の公開Function→実Provider、Studio Stage1→Stage2実Windows受領は並行P0に保つ。新Executor／Resolver／第二Meaning／第二Expected Storeは作らない。
+
+## 29. 値の一致と実際の読取対象の一致を分ける（2026-11-15）
+
+### 29.1 G／Pの二方式をData表から実Binaryまで照合する
+
+§28の回帰は、Markdown項目定義表と隣接するRuleを同じ型付きMeaningとして選択し、P（既存Evaluator）の実判断とG（既存Go生成器）の生成Sourceを別に確かめた。しかし生成コードの見た目だけでは、**実際に動いた生成Binaryが正しいAttributeを読んだか**は証明できない。
+
+今回の追加試験は、internal/operations/inspect_markdown_data_table_rule_binary_parity_test.go である。製品が明示選択したtei.authoring/v1から異動申請のallocation（std.decimal）とallocation_positive Ruleを、同一Load／Source Index／Inspectorで取り出す。同じ型付きValidationを既存EvaluatorとGeneratePositiveへ渡し、生成Goを実コンパイルして別OS Processから実行する。
+
+| 観測 | P：既存汎用Evaluator | G：生成Go実Binary |
+| --- | --- | --- |
+| **意味と出典** | 同じ選択済みRule・属性ID・型・元SourceのRoleとFingerprint | 同じ型付きRuleから生成したGo。正式Build Intentはまだ使わない |
+| **独立Expected** | 2.5／0／-1／-0／NULL／未取得の六入力を評価 | 六入力で判断とError有無を比較 |
+| **Read契約** | Numberの読取先ID・呼出回数を観測 | Binary内部のSourceが実際に受け取ったID・回数をJSONで返す |
+| **反証** | 正しいallocationへのReadを固定 | 生成GoのRead先だけperson_idへ変更。同じ値を返せても実ReadのID不一致で拒否 |
+| **未確認** | 実DB／実Plugin ProviderのRead、Host Grant | 製品tei self-build、正式R2-PのBuilder／Artifact閉包、外部Consumer |
+
+**同じ判断結果が出ても、読んだ対象が違えば意味上の置換許可は成立しない。** SourceのRole、Type、Input、Read、Effect、実行資格をそれぞれ確認する。この区別はPluginの複合型Port・Field単位・明示Adapterにも適用可能だが、本試験からGraph多重性、時点、取得完全性、開示条件の合格を推定しない。
+
+### 29.2 方式分類と実現配置は直交する
+
+§27のG（生成）／P（既存関数のパラメータ評価）／D（外部委譲）は**実現方式の分類**である。図表からの解釈・生成・混合やHookは、同じ業務意味をどの実装へ配置するかという別の判断軸である。「Pだから常駐Interpreterを新設する」「Gなら必ず納品Targetで実行された」「Hookを選べば選択Providerを実Callした」とは認定しない。
+
+方式の切替えは、SourceとMeaningが同じだけで自動受入されるものではない。型・粒度・時点・入力完全性・Read／Disclosure・Effect・Targetを比較する。確認できない契約は未観測、非対応の方式はunsupportedとし、別方式への無音Fallbackを禁止する。Artifact再利用、Source鮮度、現在Grant、Owner受理も別票とする。
+
+新しい共通RunnerやRealization Registryを追加せず、既存のRule・Source Index・Generator・Evaluator・Builder・Provider・Consumerの資格と、その接続の不足だけを示す。
+
+### 29.3 独立Expectedの引渡し
+
+| ID | 一因子反証 | 判定すること |
+| --- | --- | --- |
+| **DC-42** | 同じData表／Ruleと六入力をP／生成Go実Binaryへ渡す | 値／Error／Read ID・回数を独立Expectedと一致させる |
+| **DC-43** | GのNumber参照先だけ別Attributeにし、テストSourceは同じ値を返す | 結果が同じでも実Read IDが違えば同値を拒否 |
+| **DC-44** | Provider実体、時点、取得範囲またはAudienceだけ変更 | このFocused試験では未観測。実Provider／ConsumerのOwnerへ渡す |
+| **DC-45** | GからPへ変更し、旧ArtifactやGrantを再利用する | 実現選択とArtifact再利用／実行受理の資格を分ける |
+
+DC-42／43は新Go試験の受入対象とし、ファイル収録とexact HEADのGo／CI成功を混同しない。DC-44／45は#1180／#2514の独立Expected候補で、未実装の段階では未実施と扱う。次段は正式Build Intent→選択Builder入力→Artifact→独立Consumerと、公開Entry→選択Provider Callを別経路で実証する。Studio Stage1→Stage2も独立P0を維持し、速度向上やコード量削減を未計測のまま数値化しない。
+
+## 30. BuildPlan確定後の元宣言改版を、実self-buildで拒否する（2026-11-15）
+
+### 30.1 生成Goと元Markdownは、別々に変化し得るBuilder入力である
+
+§29で検証対象にしたG／Pの結果・Read一致に加え、**元宣言の記述的な改版が、生成Goのbyteを変えない場合**を扱う。業務判断が変わらなくても、Source資格とBuildPlanが同一であるとは限らない。既存の選択Markdown Rule（sales.order_line.quantity_positive）と、通常のtei self-build CLI・Build Intent・Go Builderをそのまま使う。
+
+既存のcmd/tei/cli_self_build_generated_rule_go_test.goでは、(1)元Markdownの説明変更でBuildPlanのSource Closureが変わること、(2)BuildPlan確定後にgenerated.goを変更した際は旧Planでの通常self-buildを拒否すること、(3)戻した入力から実Binaryを生成して判断・同梱原文Digestを照合することを個別に確認している。今回、その隙間に**元MarkdownだけをPlan確定後に変更するケース**を追加する。
+
+| 変更・時点 | 既存／今回の実検証 | 許されない短絡 |
+| --- | --- | --- |
+| 元Markdownの説明だけを変更し、BuildPlanを再解決 | Source Closure／Plan Fingerprintの違いを確認（既存） | 判断結果が同じだからSource改版を無視 |
+| **Planを固定した後、生成Goはそのままで同梱Markdownのみ変更** | **旧plan.jsonを使った通常tei self-buildを実行し、失敗・L2-b非Claim・成果物未公開を要求（今回）** | 新Sourceを旧Plan・旧Artifactの資格でビルド |
+| Planを固定した後、生成Goのみ変更 | 旧Planを使った通常self-buildを拒否（#5109） | Goがコンパイル可能なら旧入力を許容 |
+| 元Markdownと生成Goを復元した後 | BuildPlanの記述的Fingerprint一致を再確認し、既存の実Builder・Binary判断へ進む | A→B→Aで旧Grant／業務意味受理まで自動復活 |
+
+新しいGo回帰は既存テスト内への一因子追加であり、Generator・Reader・Builder・Hostを増やさない。BuildPlanの一致・拒否は**ビルド入力の一致に関する技術的証拠**である。元MarkdownのLocator／Reader版／Generator版・契約を一つの正式Attemptへ完全束縛したR2-Pの証明、現在Grant、業務Ownerの受理、R3実Provider Callは引き続き別の資格とする。
+
+### 30.2 G／P／Dと型付きPlugin配線への引渡し
+
+Gの既存Artifactを再利用する判断と、Pの再評価を行う判断は別である。Sourceが変わってもCanonical Meaningが同じなら、意味の再評価・生成Go再生成・Artifact再ビルドを必ず一括実行する必要はない。しかし、**必要なSource資格・Builder消費・Provider実選択・Audience・Effectの根拠を取り直す前に**旧証拠をそのまま流用してはならない。
+
+Plugin間の複合型全体／Field／明示Adapter（#5101）では、型の一致と実際に渡した項目・取得範囲・開示の証拠を分ける。Operator実装切替時のScenario Pin（#5114は別PRで審査対象）も、同じ「実現選択の鮮度」の問題だが、今回の元Markdown byte差と混合しない。Sourceの宣言内容と、実際に利用したImplementationの選択が独立に変化するためである。
+
+| ID | 一因子反証 | 今回の受入範囲 |
+| --- | --- | --- |
+| **DC-46** | 生成Goを固定し、BuildPlan解決後に同梱元Markdownの説明だけ変更 | 旧Planの通常CLIビルドは拒否、L2-bを主張せずArtifactなし |
+| **DC-47** | 生成GoだけをBuildPlan解決後に変更 | #5109の独立既存検証。元Source変更の証拠に合算しない |
+| **DC-48** | SourceをA→B→Aに戻し、旧Grant／Owner受理を再利用 | 記述的Fingerprintの復帰と資格・歴史の復帰を区別（未実装のOwner反証） |
+| **DC-49** | Gの実Build入力とPの意味判断が一致しても、選択Provider／Disclosureが異なる | 実Provider・独立Consumerによる別検証（未実装） |
+
+DC-46は今回のFocused Go試験に記述する期待条件で、**exact HEADのGo／CI合格は別途確認**する。DC-47は既存#5109の結果と混同せず、DC-48〜49は#1180／#2514およびSource／Builder／ProviderのOwnerへ引き渡す。生成・汎用処理の選び分けを理由に第二Evidence Store、Source Writer、Runtime、Registry、新P0 Hard Gateを導入しない。
+
+**P0は従来どおり**、通常CLI公開Entry→実Provider→別Consumerと、Studio Stage1→Stage2の実Windows再構築である。

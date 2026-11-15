@@ -100,6 +100,55 @@ func TestInspectRealSavedViewIsComplete(t *testing.T) {
 	}
 }
 
+// New REA 6.8 output reports a JSON metadata record and an actual
+// emitted count. Legacy captured fixtures used "$rea=..." with seven rows.
+func TestInspectREA68StructuredJSONLMetadata(t *testing.T) {
+	raw := fixture(t, "rea-6.8.0/analysis.json")
+	framing, ok := FramingFor("6.8.0")
+	if !ok {
+		t.Fatal("missing REA 6.8 framing")
+	}
+	const rows = "{\"name\":\"one\"}\n{\"name\":\"two\"}\n"
+	const good = `{"$rea":"jsonl/v1","type":"metadata","records":{"path":["normalized_result","rows"],"emitted":2,"source":10},"context":{"evidence_id":"ev-fresh-view"}}`
+	for _, tc := range []struct {
+		name    string
+		content string
+		state   State
+		control string
+	}{
+		{"current-json-metadata", rows + good + "\n", StateComplete, "metadata"},
+		{"zero-records-with-explicit-metadata", `{"$rea":"jsonl/v1","type":"metadata","records":{"path":["normalized_result","rows"],"emitted":0,"source":0},"context":null}` + "\n", StateComplete, "metadata"},
+		{"missing-terminal", rows, StatePartial, "none"},
+		{"truncated-delivery", rows + `{"$rea":"jsonl/v1","type":"metadata","records":{"path":["normalized_result","rows"],"emitted":3,"source":10}}` + "\n", StatePartial, "metadata"},
+		{"wrong-type", rows + `{"$rea":"jsonl/v1","type":"error","records":{"path":["normalized_result","rows"],"emitted":2,"source":10}}` + "\n", StateMismatch, "metadata"},
+		{"unsupported-protocol", rows + `{"$rea":"jsonl/v9","type":"metadata","records":{"path":["normalized_result","rows"],"emitted":2,"source":10}}` + "\n", StateMismatch, "metadata"},
+		{"missing-emitted", rows + `{"$rea":"jsonl/v1","type":"metadata","records":{"path":["normalized_result","rows"],"source":10}}` + "\n", StateMismatch, "metadata"},
+		{"source-less-than-emitted", rows + `{"$rea":"jsonl/v1","type":"metadata","records":{"path":["normalized_result","rows"],"emitted":2,"source":1}}` + "\n", StateMismatch, "metadata"},
+		{"malformed-data-line", "NOT JSON\n" + good + "\n", StateMismatch, "metadata"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			receipt := Receive(raw, Tool{Name: "rea", Version: "6.8.0", Present: true}, testTime).
+				WithView([]byte(tc.content), framing)
+			if receipt.State != tc.state {
+				t.Fatalf("state=%s want=%s reason=%s", receipt.State, tc.state, receipt.Reason)
+			}
+			if receipt.View == nil || receipt.View.Control != tc.control {
+				t.Fatalf("view/control=%+v want=%s", receipt.View, tc.control)
+			}
+			if tc.name == "current-json-metadata" {
+				if receipt.View.Records != 2 || receipt.View.Emitted != 2 || receipt.View.SourceCount != 10 ||
+					receipt.View.EvidenceID != "ev-fresh-view" ||
+					len(receipt.View.Collection) != 2 || receipt.View.Collection[0] != "normalized_result" {
+					t.Fatalf("structured metadata not preserved: %+v", receipt.View)
+				}
+				if receipt.View.ParentLinked {
+					t.Fatalf("view identity was promoted to an unproven parent link: %+v", receipt.View)
+				}
+			}
+		})
+	}
+}
+
 func TestViewMissingTerminalIsPartialFor68(t *testing.T) {
 	raw := fixture(t, "rea-6.8.0/analysis.json")
 	view := fixture(t, "rea-6.8.0/view.jsonl")

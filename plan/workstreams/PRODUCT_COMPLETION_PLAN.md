@@ -26,13 +26,15 @@
 
 ### 図解のP1：定義・生成・実Attemptを証拠つきで比較する（2026年11月15日）
 
-[プロセス実行図の因果・意味保存・証拠照合](../design/PROCESS_EXECUTION_CAUSAL_PROJECTIONS_2026-11.md)の§10〜52に、他の標準Data・Node／Plugin配線・業務Process／REA・Rule・セルフビルドの議論を接続した。異なる図を一つの実行エンジンで統一するのではなく、**Sourceからの投影、Targetへの生成、実際の呼出し、独立した受領の間にどの根拠が必要か**を、対象に応じて切り出す。部分取得から「不存在」や「すべて成功」と推測する図は不合格とする。
+[プロセス実行図の因果・意味保存・証拠照合](../design/PROCESS_EXECUTION_CAUSAL_PROJECTIONS_2026-11.md)の§10〜56に、他の標準Data・Node／Plugin配線・業務Process／REA・Rule・セルフビルドの議論を接続した。異なる図を一つの実行エンジンで統一するのではなく、**Sourceからの投影、Targetへの生成、実際の呼出し、独立した受領の間にどの根拠が必要か**を、対象に応じて切り出す。部分取得から「不存在」や「すべて成功」と推測する図は不合格とする。
 
 **方式の選択と証拠の表示（§40〜44）**：既存の型付きRuleを評価する汎用Functionと、RuleからGoを生成する方式は対立しない。判断・実Read・NULL／未取得・エラーが同じ意味を守れる範囲で比較し、解釈ならEvaluatorの実装版と今回読んだモデル、コード生成ならGenerator／Build Input／実Artifact、外部Providerなら実Called／Grant／Effectを別に確認する。最初は固定`quantity_positive`の一Ruleで既存`validationeval.Evaluate`と`validationgen.GeneratePositive`の局所結果・Read先を比較する。main済み#5051の原文同梱・#5058の実CLI inspectは限定成果として保持し、選択鮮度#5054は未統合であり、Builder入力取り違え#5056とN2実TEI起動#5059はmainに統合済みとして各々の受入範囲を分ける。**新Interpreter／Optimizer／Hostを製品P0へ追加しない**。
 
 **実装用の反証と保存・通知の段階（§45〜47）**：main済み#5051で実Source byteを原文コピーとしてBuild Sourceへ収録し、実Binary内Hashまで確認できた事実と、main済み#5056の生成Go／Builder入力の取り違え拒否、#5042/#5052の11依存Sourceを固定した生成Workbench実Windows Consumerを、**別々の受渡しの証拠**として扱う。原文コピーの正しさ、Builder実消費、Binary内同梱byte、Consumerが実際に利用したArtifactの同一性を確認するまでは一つのE2Eに結ばない。画面・保存処理は定義→取得・表示→編集→保存前検査→トランザクション→Commit→非同期→開示をProcess／Operation／Effectで説明し、段階を跨ぐGrantやReceiptを捏造しない。EC-01〜08の反例（別Source、説明改版、生成Go差替え、同Resultでの実装変更、Binary Hashの資格、旧Workbench依存、汎用評価との差、ACK喪失）を既存#1180/#2514と該当Ownerへ渡す。新Engine／Graph Store／Expected正本を作らず、通常CLI実Provider R3・正式Builder R2-P・Stage1→Stage2実WindowsのP0を優先する。
 
-**抽象経路による不変条件検査（§48〜52）**：生成後の関数名やNodeの描画IDではなく、既存#1180/#2514の安定Test ID、Qualified Subject、Guard／Preconditions、経路上のInvariants、独立Expectedからテスト対象を定める。まずmain済み#5087の`quantity_positive`に対する汎用Evaluatorと生成Go Binaryの五入力・実Read一回、および#5056の生成Go／Builder配置不一致拒否をAP-01〜08へ読み取り専用で対応付け、同じ試験を再実装しない。到達可能性、実際の通過、状態・Effectの保存、実Consumer受領を分離し、静的GraphやASTだけで未観測の作用を成功・不在と判定しない。次に#5101の複合Port／Field／AdapterのIdentityと秘匿範囲、#5103の粒度・分類・完全性の変化を、同一抽象経路の不変条件として既存Fixtureで検査する。旧生成Scenario選択の拒否は未マージ#5054のexact HEAD受入を待ち、Studioの正式Stage1→Stage2／通常CLIのactual Providerを別P0とする。新Test Runner、Graph Engine、メソッド名Registry、Trace Store、第二Expected正本を設けない。
+**抽象経路による不変条件検査（§48〜52）**：生成後の関数名やNodeの描画IDではなく、既存#1180/#2514の安定Test ID、Qualified Subject、Guard／Preconditions、経路上のInvariants、独立Expectedからテスト対象を定める。まずmain済み#5087の`quantity_positive`に対する汎用Evaluatorと生成Go Binaryの五入力・実Read一回、および#5056の生成Go／Builder配置不一致拒否をAP-01〜08へ読み取り専用で対応付け、同じ試験を再実装しない。到達可能性、実際の通過、状態・Effectの保存、実Consumer受領を分離し、静的GraphやASTだけで未観測の作用を成功・不在と判定しない。次に#5101の複合Port／Field／AdapterのIdentityと秘匿範囲、#5103の粒度・分類・完全性の変化を、同一抽象経路の不変条件として既存Fixtureで検査する。旧生成Scenario選択の拒否は未マージの後継#5114（旧#5054）のexact HEAD受入を待ち、Studioの正式Stage1→Stage2／通常CLIのactual Providerを別P0とする。新Test Runner、Graph Engine、メソッド名Registry、Trace Store、第二Expected正本を設けない。
+
+**実Read対象を含む経路資格（§53〜56）**：main済み#5118では、`tei.authoring/v1`のData項目定義表と隣接Ruleを同じLoad／Source Indexから選び、汎用Evaluatorと通常`go build`でコンパイルした生成Goの別Process Binaryを比較した。正値・0・負値・負の0・NULL・未取得についてResult・Error・Read ID・回数を観測し、**同じResultと同じRead回数でも、`allocation`ではなく`person_id`を読んだ実装は不合格**とする負例を設けた。この限定的な実証を#5087の別Ruleに対する`tei self-build`実証と一つのE2Eへ合算しない。次はQ-1〜5として、実Read IDと独立Expected、組織の型付きRelation（審査中#5115）、Operator選択鮮度（審査中#5114）、CLI／Studio Hostの拒否・Workspace allowlist（審査中#5119）、全体Port／Field／Adapterの取得ScopeとDisclosure（main #5101／審査中#5121）を既存Ownerの小さな反証へ分ける。P1の照合図は確認済み／不一致／不足を区別し、実Provider／正式Builder／Audience／Effectを偽装しない。追加のRead Trace Storeや万能Graph Runtimeを設けず、正式R2-P、通常CLI実Provider R3、非Plugin Studio Stage1→Stage2実WindowsのP0を優先する。
 
 最初の実装担当は#1124／#2497／#4198（読取専用図解）と#988／#1121（選択済みRule・Go生成）である。固定した一Ruleの現在のSource／型／Read範囲をCLI/Headlessで表示し、未接続のBuilder・Provider・Effectを未確認のまま示す。同じ入力・Rule IDで参照Attributeを一因子変更し、生成Go／実Read／判断と旧Evidenceの失効を既存#1180／#2514へ返す。Generator自身のGo構造をTEIの意味候補へ戻すP1 dogfoodingは別Subjectとして進める。**Go AST・図の一致、Mock、別HEADのCI成功を、通常CLIの実Provider／Stage2実Windows受領へ加算しない。**
 
@@ -112,6 +114,24 @@ Pは既存validationevalで正値・0・負値・NULL・未取得の五入力と
 
 DC-39〜40を既存#1180／#2514の独立Expectedへ接続し、DC-41は実BinaryとのRead Footprint一致を要求する次段候補とする。元宣言→Generator→実Builder入力→Artifactの正式R2-P、通常CLI実ProviderのR3、Studio Stage1→Stage2 Windows受領は並行P0であり、Pの評価成功をGの自己生成達成率へ加算しない。対象HEADでGoテストとRepository Healthを確認するまで新たなPASSを主張しない。
 
+### P1：Data表のRuleを実Binaryまで二方式で照合する（2026年11月15日）
+
+[宣言的構文の合成契約§29](../design/DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md)の最小実証として、印付きMarkdown Data項目表のallocationと隣接Ruleを同一Workspace Load／Source Indexから選択し、既存汎用Evaluator（P）と、既存生成器が作ったGoの実Binary（G）の正値・0・負値・負の0・NULL・未取得を独立Expectedで照合するFocused試験を追加する。実装票：internal/operations/inspect_markdown_data_table_rule_binary_parity_test.go。
+
+**結果の一致と読取対象の一致を分ける。** 生成Goの参照先だけをallocationからperson_idへ変更し、同じテスト値を返した場合でも、Binaryが観測したNumberの読取ID不一致で同値を拒否する。これはGraph・Plugin配線の型付きPortを接続する際にも重要な反証である。ただし、今回のSourceはテスト用のpure Sourceであり、実Provider・DB・開示範囲を検証したものではない。
+
+G／P／Dの分類は図表実現の解釈・生成・混合・Hookの配置方法とは別軸に置き、方式切替え後の旧Artifact再利用、現在Grant、Ownerの意味受理を同じPASSへ統合しない。DC-42〜45を既存#1180／#2514へ接続し、今回の実行可能な対象はDC-42／43のみとする。**追加テストのGoビルドとCI合格はexact HEADで別途確認**する。
+
+次の受入は正式Build Intent→Builder実入力→Artifact→独立Consumerの同一Attemptと、通常CLIの公開Entry→実Provider、Studio Stage1→Stage2の実Windows再構築である。新しいInterpreter／Graph Runner／第二意味正本やP0 Hard Gateを増やさない。
+
+### P1：BuildPlan確定後のMarkdown改版を実self-buildで拒否する（2026年11月15日）
+
+[宣言的構文の合成契約§30](../design/DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md)の実装として、既存の選択済みRule→生成Go→通常tei self-buildの縦断回帰に、**BuildPlan解決後に同梱元Markdownの説明だけを変更する**一因子の負例を追加する。生成Goのbyteは固定し、旧plan.json／Intentを用いた実CLIがビルドを拒否し、L2-bを主張せず、成果物も公開しないことを検証する。元Markdownを戻したらSource Closure／Plan Fingerprintの記述的な一致を再確認し、既存の正常な実Builder・実Binary確認へ進む。
+
+この追加は、#5109の「Plan確定後にgenerated.goだけを変更する」試験とは独立の検証である。Sourceだけ変わる場合と生成Goだけ変わる場合の**二つの異なる失効原因**を区別する。生成Gと既存Evaluator Pが同じ結果を返しても、旧Planで現在のBuild入力を消費してよいとはしない。型付きPluginのWhole／Field／Adapter配線、実装選択のPin、外部開示・現在Grantも別途確認する。
+
+**今回のGo試験の合否はexact PR HEADのCIで判定**する。正式R2-Pに必要な元Locator／Reader／Generator版の完全なAttempt閉包、R3の通常CLI公開Entry→実Provider、Studio Stage1→Stage2実Windowsは未解決の独立P0を維持する。DC-46〜49のうち今回追加する実回帰はDC-46のみ。DC-48／49は#1180／#2514へ渡し、新Builder／Runtime／Evidence Storeを作らない。
+
 ### P1で接続する業務判断・設計入力・数式（2026年11月15日）
 
 これらは新しい製品P0の前提ではなく、既存の標準Data/Rule/Expression・Function Data Context・表現型を実案件に近づける**受入作業**とする。詳細な正負例とOwner境界は[横断統合受入境界§14〜17](../design/CROSS_CUTTING_ACCEPTANCE_BOUNDARIES_2026-11-12.md)を参照。
@@ -156,6 +176,15 @@ DC-39〜40を既存#1180／#2514の独立Expectedへ接続し、DC-41は実Binar
 **起動時に選択する実装と実際に使った実装の照合（[起動契約§31](../design/STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)）**：main統合済み#5051は選択Ruleの原Markdownを生成Goと同じBuild入力に収録し、実BinaryのSHA-256が元byteと一致した限定実証である。#5054はOperator実装A→B変更後に旧Scenarioコマンドを拒否する修正候補であり、未マージのまま製品資格に加算しない。起動後の実選択Provider・現行Grant・実CallをSource／生成byteの一致から推測しない。定義済みRuleを**既存Evaluatorで解釈する**方式と**Goを生成する**方式は、同じ意味と独立Expectedで比較できるが、前者を自己コード生成の成果と数えない。#5042/#5052の生成PoC B Windows実受領と、非Plugin Stage1→Stage2実再構築も別に検収する。新Interpreter／Hostを作らず、B0とR3を独立Ownerへ引き渡す。
 
 **SL-0のCLI／Studio Host三入口基線（[起動契約§32](../design/STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)）**：既存#5037の通常製品`tei inspect`別OS Processと`operations.InspectSubject`の同値試験に、Wailsに依存しない`studiohost.ReadOnly.InspectSubject`を追加する。同じ内蔵Markdown Ruleについて、正規化意味・元Source／Workspace Identity／`authorityLimits`を含む`SubjectInspection`全体を照合。同名非公開Capabilityと偽Ruleの`SUBJECT_NOT_FOUND`、未許可Workspaceの`WORKSPACE_NOT_ALLOWED`、`business_rejection`／`not_retryable`／`effectUnknown=false`を実Go試験で確認する。これは**Studio Host Go境界の検証**であってWebView／HTTP公開・現在Grant／正式Provider Callではない。#5096のAPI Pluginは次段AP-1でWails Serverの薄い公開Adapterに接続し、CLIへのWails・HTTP依存を加えない。LoopbackへのbindのみでSourceの開示許可を得たとは扱わない。#5059のN2実CLI子Process／Windows成功はBuild一往復の実証であり、B0常駐Backendや正式Stage1→Stage2の成立と区別する。今回の追加試験の合否は対象HEAD CIを独立に確認し、P0のStudio再入#2831/#4583・通常CLI実Provider#4495を維持する。
+
+
+**SL-0から実Provider／実公開へ進む検収列（[起動契約§33](../design/STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)）**：最初のGo差分は[PR #5119](https://github.com/hat47x/tei-platform/pull/5119)の内蔵Rule`inspect`三入口同値であり、**exact HEADの実CIが成功するまで実証未受理**とする。main統合済み#5118は異動申請Data表の型付きRuleを既存Evaluatorと生成Go実Binaryで比較し、値が等しくてもRead ID／回数が異なる負例を検出する。main統合済み#5109は実`tei self-build`のBuildPlan確定後のGo byte変更を旧Planで拒否する。両者は実Rule／Buildにおける局所的な証拠であり、正式Provider選択・HTTP Disclosure・Studio Stage1→Stage2の完了ではない。実装選択A→Bの旧Scenario失効は後継#5114のCIとmain統合を別に確認する。
+
+**次の独立した小PR**は、AP-1（#5096）のWails Server`InspectSubject`一Routeである。許可されたWorkspace ID／Source Revisionの正常Readと、別AudienceのSource位置非開示・未許可Workspace・旧Revision拒否を、現行CLIの結果とは別のHost Admissionで検査する。**HTTPの成功は非Builtin Providerの実Callではない**。B0（#4635）は実Peer／nonce／SessionとCancellationを持つ子Backendを、N2 Build子起動（main #5059）とは区別して比較する。SL-1の実Function／Provider #4495とStudio非Plugin Stage1→Stage2 #2831/#4583はP0として独立・並行させる。LA-01〜08は既存#1180/#2514のIndependent Expectedへ渡し、第二Resolver／Runtime／Hostを増やさない。
+
+**SL-0→AP-1→実Providerを通す際の時点固定（[起動契約§34](../design/STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)）**：実装の検収は、Source選択（S）・BuildPlan確定から実Builder入力（B）・実Provider呼出し直前（I）・Consumer受領（C）の四時点を区別する。main #5129では、BuildPlan確定後に同梱原Markdownの**説明だけ**を変えた場合も通常`tei self-build`が旧PlanでのBuildを拒否しArtifactを残さないことを試験に追加した。main #5109の生成Go変更後拒否とは別の負例であり、いずれも正式R2-Pの全出典閉包や実Providerを保証しない。LA-09〜15は既存#1180/#2514へ渡し、説明を戻したA→B→Aのハッシュ一致を以前のOwner受理／Grantの復活根拠にしない。
+
+**次の着手**：#5119の実CLI／直接Operation／Studio Host三入口はexact HEADのGo CI確認を先に閉じる。AP-1 #5096ではHTTPの公開Audience／Scope／Source位置を呼出し時と返答時に確認し、同じ結果を返せることと開示してよいことを分離する。B0 #4635では実Process世代／Peer／旧Replyの比較を行う。実Provider #4495および非Plugin Stage1→Stage2 #2831/#4583のP0を優先維持し、UIのFocus／Pin／Dirty Bufferに残る古い結果の取扱いはDesktop後継#5122へ渡す。新AdmissionTicket Schema／第二Runtime／汎用Ready APIは追加しない。
 
 ### SL-1の最初の実コード差分と、受理可能な証拠（2026年11月15日）
 
@@ -590,7 +619,8 @@ Webの要求、CLIの起動、タイマー、Message、画面操作には、そ�
 
 **既存の独立Expectedへ渡す最短の反例**：①静的Head MemberがSelectorで選ばれたのに実Bundleへ入らない、②同じ公開RuleのG/Pで値が一致してもPだけ非公開情報を先読み、③Pの入力/演算子Pinが古いのに結果だけ同じ、④Gの旧Release/Edge Cacheが現在版と混在、⑤ConsentなしにD側Collectorへ送出、⑥価格をC0文言扱いで変更しDの再検証を省略、⑦H0にTEI JSを必須注入、⑧選択Aと実Provider Bを同一と扱う。新たなScenario正本を作らず、#3509のBC/AX/GQ/G49-EPと#1180/#2514へ対応付ける。値一致、Browser表示、Analytics成功、実注文Effect、CVR因果改善を一票に合算しない。
 
-**次の引渡し**：EP-0/1はread-only/静的生成の最小縦断として#4198/#951/#1121/#2090、G/P意味比較は#5069/#988/#1121/#2514、Targetへの配信・旧版・Consentは#2600/#3271/#3503/#2516、Commerce Effectは#1174/#1129へ戻す。[型付き配線 #5075](https://github.com/hat47x/tei-platform/pull/5075)と[Plugin充足設計 #5076](https://github.com/hat47x/tei-platform/pull/5076)は**main統合済みの設計**であり、製品Connector実Callや開示・適用の受理ではない。[Plugin実現方式 #5095](https://github.com/hat47x/tei-platform/pull/5095)もmain統合済み。B1a-I（通常`tei`→実Provider→Function Context→独立Consumer）とStudio Stage1→Stage2の製品P0は維持。**本節は設計・実装順の更新であり、新Go/Builder/実Browser/Commerce/実験、Owner意味受理はNOT RUN / NOT ACCEPTED**。
+**次の引渡し**：EP-0/1はread-only/静的生成の最小縦断として#4198/#951/#1121/#2090、G/P意味比較は#5069/#988/#1121/#2514、Targetへの配信・旧版・Consentは#2600/#3271/#3503/#2516、Commerce Effectは#1174/#1129へ戻す。#5075の型付き配線、#5076のPlugin充足設計は現時点では別の**未統合提案**として参照し、完成済みのConnector適合とは扱わない。B1a-I（通常`tei`→実Provider→Function Context→独立Consumer）とStudio Stage1→Stage2の製品P0は維持。**今回の追加は設計・実装順の更新のみで、新Go/Builder/実Browser/Commerce/実験、Owner意味受理はNOT RUN / NOT ACCEPTED**。
+
 
 <!-- g49-b2c-typed-placement-minimal-witness-20261115 -->
 ### G49 EP-0→EP-1：実際のB2C成果物へ至る型付き配置の最小契約（2026-11-15）
@@ -645,6 +675,26 @@ Webの要求、CLIの起動、タイマー、Message、画面操作には、そ�
 **公開情報の有効時点を同一視しない**：公開用説明文のBuild時Snapshot、Route/URLとVariant、Product/Offerの配信時Snapshot、Checkoutの現在価格・在庫、本人注文履歴のHost開示を別の判断とする。[Google Search Central](https://developers.google.com/search/docs/appearance/structured-data/merchant-listing)がProduct構造化データの初期HTML掲載を推奨するのは、古い価格の静的固定を認めることではない。会員価格、通貨、Variant、販促期間を変えた場合は表示HTML・構造化データ・現在Commerceの差を独立確認する。表面上の文言修正でも実効の価格・同意・公開範囲が変われば軽い変更区分に格下げしない。FlagのEvaluation ContextやHookは[OpenFeature](https://openfeature.dev/specification/sections/evaluation-context/)のProvider Adapter候補であり、AssignmentとBrowser Exposureを同一視しない。
 
 **初回の停止線**：EP-0で既存TargetのRoute/Head Slotが未接続なら`unbound/unsupported`を記録し、#1121/#2090へ要求を返す。実Slotが見つかった場合だけEP-1の実Builder一Memberを試す。途中で該当Targetを作り足して「当初から利用可能」と扱わない。#5096のCLI/HTTP検証や#5119のHost試験をB2C用の新しいHard Gateにしない。独立Expectedは#3509の既存BC/G49-EPを#1180/#2514へ返し、新しいScenario正本を立てない。全体P0はStudio Stage1→Stage2（#2831/#4583）、並行P0は通常製品`tei`の実Provider Read→独立二Consumer（#2586/#1251）で不変。**この節は設計・実装順の追記のみで、B2Cの新Go/Builder/Browser/Commerce/Consentの実験とOwner受理はNOT RUN / NOT ACCEPTED**。
+
+<!-- g49-b2c-real-read-and-builder-witness-20261116 -->
+### G49 EP-0/1：実際の読取先と生成時点を照合する負例（2026-11-16）
+
+**追加判断**：Headに正しい文字列が出ても、必要な公開Sourceを読んだことの証明にはならない。同じ`meta description`の値を異なる属性から取り出せる場合、公開に使ってよい属性・Source occurrence・実Read IDを識別し、選択時に宣言された読取先と実際の読取先を照合する。これは[main #5118](https://github.com/hat47x/tei-platform/pull/5118)の「Data表RuleでG/Pの結果と読取回数が同じでも、Read IDが異なれば不適合」という限定Go回帰をB2C向け検証に転用する**試験設計**であり、B2C Head自体で成立した証拠ではない。[main #5130](https://github.com/hat47x/tei-platform/pull/5130)のPlugin Mapping検収とも共通の判断を使う。
+
+**最初に調べる既存実装**：`tools/reference-first-web-target`は同一CommandをHTML/JSON/Custom UIへ投影する**診断Reference**、`internal/artifact`は既存Artifact/Manifestの契約、`internal/buildintent`はSource/Builderの解決契約を持つ。現状、確認したWeb ReferenceのGoテンプレートやArtifact Manifestを**そのまま公開商品ページの汎用Head Slotとみなす根拠はない**。EP-0では実装済みTargetの公開可能なRoute/Slot/Builder Contractを発見・不在判定する。Referenceの一部を専用改造して作った疑似Slotは当初の実装済み能力として数えず、必要なTarget追加は既存#1121/#2090へ別途戻す。
+
+| 一因子の独立対照 | EP-0 / EP-1で必要な結果 |
+| --- | --- |
+| 正しい公開説明文と、同じ値を返す別Attribute | 出力値だけで合格しない。選択したSource occurrence・Read ID・必要Read Footprintと実Consumed Inputを別々に突合する |
+| Source A→B→A、Workspace rootまたは対象Revisionの変更 | 同じbyte/値が再出現しても、古い選択・Acceptance・Grantが自動で現在有効になると認定しない。現行の受理挙動自体は#4558の別Ownerで検査 |
+| BuildPlan確定後に元`*.tei.md`の説明文だけ変更 | [main #5129](https://github.com/hat47x/tei-platform/pull/5129)の正式`tei self-build`局所負例を基線に、旧BuildPlan再利用とArtifact生成を拒否する。B2Cでの実Builder利用は別に確認 |
+| 公開用の説明文を生成する処理が、非公開Order/Customer情報を余分に読む | 結果へ秘密が出ないだけでは適格とせず、Readの必要性・開示・外部送出を検査。必要なRead Footprintが不明なら公開適格とはしない |
+| Head Slot欠落、同一Slot重複、任意Analytics停止、未知CMS Route | 必須Memberの未収録は不適合。重複と未探索を診断し、任意Analytics未採用だけで必須業務処理を失敗としない |
+| Memberを生成できたが実Bundle/配信Responseに無い | 実Builderの入力→Artifact Member/BOMまでをEP-1の限定受入とし、配信Response/Browser露出はEP-2として未成立に残す |
+
+**実装Packetと停止条件**：一つの合成公開Route、一つのSource occurrence、一つの説明文Member、選択された既存Builder/Targetだけを対象に、(a)Source/Route/Slotの実在、(b)型・意味・locale・Presence・Scope・Read ID、(c)Builder Pin・BuildPlanのSource/World版、(d)実Consumed Input/Artifact Member/Manifest Readbackを記録する。新しいPacket正本は設けず、#1180/#2514の既存独立Expectedへ引き渡す。Slotが無ければEP-0で`unbound/unsupported`として止める。実Builderを呼べなければEP-1は`NOT RUN`、生成物が無ければ不適合であり、Reference Goの成功で代用しない。G/Pを比較する場合も、Source/Read/NULL・未取得/失敗/時点を含めて評価し、単なる値一致から同値性を主張しない。新Host、SEO Engine、Graph Runtime、Browser常駐SDK、受理台帳を追加しない。
+
+**事業効果との距離**：SEO HeadのMember適合から、検索エンジンへの実登録、表示順位、購入・売上・CVRを認定しない。これらは配布・受領・測定の別段階で検証する。今回の追加は設計・試験順の更新に限り、B2C実Go/Browser/Commerce/Consent、業務Owner受理は未実施。製品P0のStudio Stage1→Stage2と通常`tei`の実Provider Readを変更しない。
 
 ## 最新の作業単位へ接続する
 
@@ -1519,3 +1569,17 @@ mainのRule生成Go CLIビルド回帰は、選択Markdown原文のコピーをG
 **Source所有の原則**：DSL正本、Studio／SHOのDesigner投影、Resource、Generator定義、Generated Source、Custom Hook、Build Artifactを役割で区別する。Visual StudioのDesigner・Resource分離は参考とするが、TEIの新しい拡張子をこの段階では採用しない。生成物を手編集して正本化せず、案件固有の処理は既存Hook／Plugin契約で接続する。
 
 **現在の資格**：PR #5073／#5087のP/G比較と#5101のMapping整理を基線にした設計・試験引継ぎのみ。PR #5097は確認時点で未マージであるため、自己記述Fixtureの実行PASSをmainの成立条件へ算入しない。AW-0〜3の新しい抽象経路テスト、自己記述M2処理置換、正式R2-P、実Provider、Studio Stage1→Stage2をこの文書で検収済みとは扱わない。
+
+<!-- tei-product-semantic-subject-target-symbol-witness-20261115 -->
+### 生成Goの名前に依存せず、実Readと出典を検収する（2026年11月15日）
+
+[自己記述設計§54](../design/ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md)を、既存のRule実行比較テストへ接続する。mainのPR #5118で、Markdown Data項目表→型付きRule→P（直接評価）／G（Go実Binary）の六入力とRead先を検証できるようになった。今回のGo差分は、同テストに**Target関数名だけ変えた正例**を追加し、もともとある「結果が同じでもRead先が違う」負例と同時に照合する。
+
+| 検収すること | 今回の具体的な条件 | 今後の担当 |
+| --- | --- | --- |
+| **意味IDとTarget名の分離** | 同じRule・同じ入力を、原生成関数／名前だけ変えた関数／誤Read関数へ通し、Result・Error・Read Attribute・回数を固定Expectedで比較。名前変更だけでは別Ruleとしない | #2620／#1121／#1180／#2514 |
+| **Artifactの現在性** | 名前変更はGo byteを変える。PR #5109の旧BuildPlan拒否と区別し、意味同値だけで以前のArtifactを流用しない | #4544／#2595 |
+| **自己記述の実置換** | PR #5097のData表Reader回帰は独立に受理し、optionalと禁止を区別してRequired Shapeの一義務を実生成・実使用。旧Go分岐を削除できて初めてM2 | #2620／#988／#1121 |
+| **製品上の実経路** | テストDriverの明示的な三関数呼分けをRuntime実現選択とみなさず、実選択→実Call、正式R2-P、公開Function→Provider→Consumer、Studio Stage1→Stage2を別検収 | #951／#4495／#2831／#4583 |
+
+今回のGoテスト追加は既存のRead観測を利用し、SourceやMeaningの第二正本、独自Test DSL、Generator、Build Runtimeを増やさない。**新Go差分の実行成否はこのPRのexact HEAD CIで判定する。** ProductのRuntime方式選択とTEI自身による検査分岐の置換は、この時点では未実装である。
