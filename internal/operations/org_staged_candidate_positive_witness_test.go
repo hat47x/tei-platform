@@ -144,11 +144,11 @@ func TestOrgStagedPositiveCandidatePartialIsNotComplete(t *testing.T) {
 	d1 := orgPositiveDuty{id: "RS1", person: "P1", unit: "D1"}
 	d2 := orgPositiveDuty{id: "RS2", person: "P2", unit: "D1"}
 	cases := []struct {
-		name              string
-		roles             []orgPositiveRole
-		duties            []orgPositiveDuty
+		name               string
+		roles              []orgPositiveRole
+		duties             []orgPositiveDuty
 		roleRead, dutyRead orgPositiveRead
-		want              orgPositiveEvidence // Hand-authored literals, not copied from the probe.
+		want               orgPositiveEvidence // Hand-authored literals, not copied from the probe.
 	}{
 		{"closed zero", []orgPositiveRole{r1}, []orgPositiveDuty{{id: "RS0", person: "P1", unit: "D2"}}, closed, closed,
 			orgPositiveEvidence{persons: []string{}, paths: []string{}, claim: "complete-none"}},
