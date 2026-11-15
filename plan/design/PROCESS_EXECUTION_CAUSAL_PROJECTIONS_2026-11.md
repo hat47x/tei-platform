@@ -696,3 +696,107 @@ flowchart TB
 **引渡し単位**は「問い・Qualified Subject・Source／選択Revision・実Producer／Attempt・独立Expected・現在確認できる関係・不足理由・次のOwner」の一票で十分である。DSL／Graphviz／Markdown表はこれを読みやすくする表現型として導出し、Sourceの編集・業務Meaning受理・実行許可を図面へ移さない。実証できた範囲の広さだけでなく、**TEIから生成して置き換えられた判断義務と、残る手書きDriver／Hostの責務**も計測する。
 
 **現時点の資格**：§30〜34は2026年11月15日の現行mainと並行PRから抽出した設計・実装引渡しである。本追補でGo／PostgreSQL／Windowsの新試験や実Function Providerの起動、Effectの確定、Owner意味受理を実施したものではない。Studio実Windows Stage1→Stage2と通常CLI actual Providerの最優先P0を維持する。
+
+## 35. 図の線を結ぶ前に、「同じものを見た」根拠を確かめる
+
+§1〜34で区別したSource／Selection／Build／Invocation／Effect／Consumerは、別々の実装と時点で得られる。今後、実行図を製品機能として組み立てる際の中心課題は、新しい線種を増やすことではなく、**二つの証拠を同じ因果関係として結んでよい条件**を明らかにすることである。
+
+次の照合条件は新しい共通Evidence Schemaではない。**一つの問いに答えるため、既存のProducerの返却情報から確認する事項**であり、元Ownerが保持するID・版・Receiptを置き換えない。
+
+| 照合する条件 | 必要な根拠 | 根拠が欠けたとき |
+| --- | --- | --- |
+| **何についてか** | Workspace／Target／Qualified Subject／Kind、必要ならOccurrence・Relationの向きと多重性 | 同名Node・別Workspace・同端点二Edgeを結合しない |
+| **どの定義・構成か** | 元Source byte／Model Revision／Language、Operator・Pluginの選択／Lock、Generator／Buildの対象と版 | World Fingerprintや結果値が同じでも、選択が同じとは言わない |
+| **何が実際に生じたか** | 実Producer、実Reader／Builder入力、実Called Provider、Invocation／Attempt／Receipt／実受領 | 定義された・生成された・選択された、を実Callに格上げしない |
+| **いつ・どこまでか** | 有効時点・認識時点・実Read Snapshot、取得範囲とNULL／partial／unavailable、Operation identityと順序 | 部分観測を全件正常・不存在としない。異なる時計の値を先後関係として結ばない |
+| **誰に見せてよいか** | 現在のAudience／Disclosure／必要なGrant、観測結果の公開範囲 | 読取できることを他Consumerへの開示権限としない |
+
+**照合が一致した**と表示できるのは、その問いに必要な条件を実証した範囲だけである。IDやHashが一致しても、両方が同じ一次Sourceから導出されていれば「相互に整合する二つの投影」として扱い、**独立した確認者が同じ事実を確かめた**とは表現しない。独立性を主張するときは、Expectedの由来、実Reader・実Consumer、検証対象とProducerの依存関係を別に確かめる。
+
+この区別は、今後のStudioの証拠付きEdge、CLIの説明表、AIの出典説明に共通して必要になる。一方、照合表そのものをAuthorityやMeaningの第二正本にしない。
+
+## 36. 「つながる」「一致する」「証明できる」を別の段階にする
+
+二つの証拠を同じ図に載せるとき、見た目の接続可能性から業務上の成立までを一度に判定しない。次の順に、**どこまで言えるか**を停止位置として表現する。
+
+1. **参照整合**：Node／Relation／Source／Qualified Subjectの参照先が定まるか。片端点が未観測なら、その側の関係は未確認とする。
+2. **意味・時点の整合**：業務Relation／Rule／粒度／単位／有効時点・認識時点に矛盾がないか。技術的なID一致だけでは業務意味を受理しない。
+3. **実現方式の整合**：今回選択したOperator／Plugin／Generator／Builderが、実際に配布・呼出しされた方式と一致するか。選択名と実Calledを別に保持する。
+4. **作用と受領の整合**：実Invocation／Operation identity、Effect／Receipt、Consumer受領、現在のDisclosureに必要な根拠があるか。Read-onlyな対象には該当しない作用を要求しない。
+
+各段階で説明する結果は、**確認済み／根拠のある不一致／未確認／対象外**を区別する。ここでの表現は説明用であり、全Ownerに共通の永続Enumや一律Ready判定を追加する意図ではない。根拠のある不一致と未確認を区別する点が重要である。
+
+たとえば、Provider Bの選択に対して同一InvocationでAが呼ばれた証拠があれば「不一致」と判断できる。しかし、ProviderのTraceが存在しないだけなら、観測閉包が保証されない限り「未確認」である。同様に、ReceiptのないEffectを未実行と断定することもできない。
+
+```mermaid
+flowchart TD
+  Q["問い：選択した業務処理が実際に使われたか"] --> S{"対象・出典・版が対応するか"}
+  S -->|未確認| U["接続未確認：不足する出典を表示"]
+  S -->|矛盾を確認| M["不一致：根拠と両当事者を表示"]
+  S -->|確認できた| R{"選択と実Callが同一Attemptで対応するか"}
+  R -->|未観測| U2["実Call未確認：実Producerへ照会"]
+  R -->|異なる| M
+  R -->|対応を確認| E{"問いにEffect／Consumer受領が必要か"}
+  E -->|不要| P["確認範囲のResultを提示"]
+  E -->|必要・根拠不足| U3["Effect／受領は未確認"]
+  E -->|必要・独立根拠あり| C["必要範囲の受領まで確認"]
+```
+
+これは照合順序の説明であって、全Processに適用する実行前Gateではない。途中まで確認できた根拠は保持し、欠けた一段を図の読み手へ明示する。新しい中央Orchestratorを設けず、各段階の不足は元Ownerへ返す。
+
+## 37. 最新の実装基線から、四つの誤結合を検証する
+
+2026年11月15日現在のmainと並行PRに、上記の区別を反証できる具体例がある。
+
+| 題材 | 実際に使える根拠 | 誤って引いてはいけない線 | 次の受入 |
+| --- | --- | --- | --- |
+| **CLIと共通Operation** | main統合済み#5037の`TestProductInspectCLISelectedMarkdownRuleIsNotCapability`は、別OS Processでの`tei inspect`と`operations.InspectSubject`の`SubjectInspection`全体、負例のError Codeを比較する | 共通のInspector実装から得た一致を、異種Provider／独立Expected／子Backend／現在Grantの受領とみなす | 同一Workspace／SubjectのReader経路の同値と、別Host／別Consumerによる独立受領を別票にする。#4635／#1251 |
+| **REAのNodeとRelation** | main統合済み#5038は、外部EvidenceのRelationの`source_node_id`／`target_node_id`を、同じGraphで観測したNodeへ結ぶ。無関係なNode・片端点だけ・ID重複を反証する | 端点が技術的につながるだけで業務Relationの意味・向きの受理、全Graph取得、Effectを認定する | 原Source byte／Producer発行Relation／Coverageと、Meaning・Owner受理を別に検証。#3394／#2497 |
+| **組織の二時点関係** | main統合済み#5027は、隔離PostgreSQLの候補テーブルで異なるMembership A2/A4の並存と、同じA2の版競合を試験する | 二つの行があるだけで二人と数える、`knownAt`を`validAt`や`recordedAt`と混同する、候補を正式Queryと呼ぶ | Occurrence identity・valid/knownの条件と、単一値性を受理する業務Scopeを分ける。#2386／#1126 |
+| **Studioの実WebView2 Pin** | main統合済み#5025は、同一Workspaceを再読込するとPinの意図を残しながら旧観測を失効させ、明示再確認で実Host Readerを読み直す | 古いPinが表示されているだけで現在版・別Workspace・Source更新後の内容・実Windows Stage2成功とする | Source／Workspace／UI世代・実Readerの再資格化と、独立Consumer／Audienceを分ける。#1824／#4583 |
+
+ここに示したのは**mainに統合された実装・試験コードが対象とする範囲**であり、本追補で同じexact HEADのすべての試験を再実行したという主張ではない。#5027がmainに統合されたため、§33〜34で「未完了の#5027」と記した当時の状況は更新された。ただし、実PostgreSQLの候補試験を正式な組織履歴・権限・製品Queryに自動昇格させない。
+
+### 37.1 Operator選択の新しいPinを既定の成功としない
+
+§31〜34で指摘した、ManifestのA→B変更後に旧生成Scenario Commandが動いてしまう問題には、現在**Go実装修正PR #5054**がある。現時点では審査中であり、main済みとは記さない。#5054の提案は既存Scenario PlanとCLIへ`operatorSelectionSha256`を別資格で加え、World／Plugin Lock／Fixtureが不変でも、古い生成Commandを評価前に拒否するものである。
+
+ここから次に検証すべきことは、Pinが追加されたという文字列の存在ではなく、**実際の生成→実Run→Manifest変更→旧Run拒否→新生成Run→旧Plan拒否が、同じ対象・固定HEADで成立したか**である。A/Bが同じResultを返す`discount=2`の事例で旧Commandを拒否できることが特に重要である。
+
+仮に#5054の局所試験が合格しても、Pinは**選択した実装ID集合の現在性**を検査するにとどまる。実装バイナリbyte・Plugin Lockによる供給経路、正式Builder消費、公開Functionのactual Provider、Host Grant、Source A→B→Aの受理履歴は別資格である。#5053の文書による受入条件がmainに入ったことと、#5054のGo実装がmainに入ったことも区別する。
+
+## 38. 因果関係の検証を、変更の影響範囲と一緒に表す
+
+実行図が役に立つのは、現在の状態を見せるだけでなく、**Sourceや構成が変更されたとき、何を再確認すればよいか説明できる**場合である。ここでも、すべてを一括失効させない。
+
+| 起きた変更 | 維持できる過去の事実 | 現在性の再確認が必要な関係 |
+| --- | --- | --- |
+| Sourceの説明・レイアウトのみ | 実行済みAttemptとReceipt、影響しない意味・生成GoのContent一致 | 元Sourceのbyte範囲・Index・表示・逆編集対象 |
+| Ruleの参照属性／Operatorの契約変更 | 旧Attemptで実際に読んだ入力と旧Result | 型・Read・期待値・生成Go・Builder適格性 |
+| ManifestのOperator選択A→B | Aを実Calledした過去の記録、Canonical Worldの意味 | 現在の選択、生成Scenario Command／Plan、actual Called、関連するBuild・配布 |
+| Plugin／Generator／Toolchain更新 | 過去のBuild・実配布のReceipt | 同一Targetの再Build資格、Artifact再利用・実Provider一致 |
+| Process Instanceの所属・委任・Grant変更 | 申請時Route、旧承認Attempt・確定Effect | 現在Actorの操作資格、残る候補集合、同一Operationの再実行可否 |
+| Workspace再読込／Pin再確認 | Pin対象のIntent、既に観測したSourceとその時点 | 現在Inspector応答、Model Revision・UI epoch・現在Audience |
+
+**履歴として存在した証拠**と**今それを根拠として使う資格**を分離する。旧Pinや旧Sourceを削除して問題を見えなくするのではなく、失効理由と必要な再照会先を示す。A→B→Aで元byteが戻っても、旧AttemptのGrantや選択適格性は戻さない。
+
+一方、Ruleの生成Go byteが同じであることを示す局所試験は、元Sourceの意味受理・実Builderの消費資格が維持された証拠とは異なる。World／Model／Artifact Revisionはそれぞれの再利用判断に用い、便利だからと単一の「全体最新フラグ」に置き換えない。
+
+## 39. 最小の製品実装は「証拠が足りない線」を正しく表示すること
+
+次のP1を、すべての実行を観測するTrace画面へ広げない。**既存の一つのRuleのInspector結果から、根拠のある線と不足した線だけを示すread-only照合**として実装する。
+
+実装の出発点は次のとおり。
+
+- **現行の同値基線**：#5037の製品`tei inspect`と`operations.InspectSubject`を、同じWorkspace／Subjectで比較する。両者の一致は「Transportを越えたread-only投影の同値」であり、独立業務意味の確認ではない。
+- **同一Loadでの版の取得**：必要な作業に限り、現行`ReadWorkspaceSubject`／`InspectionFromLoad`／Source Indexを使い、`ModelRevision`と`worldFingerprint`・`sourceIndexFingerprint`の差を保持する。既存CLIの公開JSONにない版を勝手に宣言しない。
+- **表示での制限**：Rule→Attributeは型付き関係として表示し、Source byteと元位置へ戻れるようにする。Builder／Provider／Effectの実証がなければ、Edgeを「観測済み」にはしない。Node座標や同名IDからSourceへの編集可能性を推測しない。
+- **Producer別の反証**：REAの未接続端点、Scenarioの選択A→B、Windows Pinの再読込、組織二時点版競合を、最初の一Ruleの合格結果と**足し合わせず**各Ownerの検証票へ引き渡す。
+
+最初の受入票は「何を問うか／対象のQualified IDとWorkspace／読取版／使用したProducerと対象Attempt／どの関係を確認できたか／何が未取得・対象外・不一致か／次に確認するOwner／実Consumer」の項目で足りる。この票は記録様式の提案であり、第二の証拠保管DBや常時動く証明Engineではない。
+
+**検証済みと表示してはならない負例**は、(1)Sourceを読めただけでProvider Callを既成事実とする、(2)CLI/Operationの同一実装比較を独立Expectedとする、(3)片端点のREA Relationを全Graph関係へ拡張する、(4)二時点の別Occurrenceを同一人物数へ畳む、(5)Pin再読込後の古い応答を現在版へ復活させる、(6)未マージの#5054を既定のPin保護として扱う、の六つである。
+
+この正負を**既存のSource・Inspection・Graph・Studio・Scenarioテスト**で再利用し、新たな中央Writer／Graph Runtime／Host／独立Expected Storeを作らない。正式Source→生成Go→製品Builder→通常CLI actual Providerと、非Plugin Studio Stage1→Stage2実Windowsセルフビルドは引き続きP0であり、図解P1を新しい前提にしない。
+
+**状態**：§35〜39は現行mainの実装と進行中PRを照合した設計・引渡し。今回の文書更新で新Go／DB／Windowsの試験、正式R2-P/R3の縦断受入、Effect確定、Owner意味受理は実施していない。
