@@ -3,12 +3,14 @@ package operations
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"tei/internal/driver/queryresult"
 	postgresquery "tei/internal/driver/queryruntime/postgres"
@@ -93,6 +95,29 @@ func TestOrgAxisAsOfActualPostgresOptIn(t *testing.T) {
 			t.Fatalf("insert %s: %v", r[0], err)
 		}
 	}
+	// The source mapping's primary-key is membership_id only. Keep the
+	// original A2 row and attempt a later known-time correction with the
+	// SAME occurrence identity. A different allocation/known_from cannot
+	// be stored beside A2 under this physical key. This is a measured
+	// negative case, not a proposed revision schema or a Person link.
+	t.Run("same membership occurrence cannot co-store known-time revisions", func(t *testing.T) {
+		_, err := db.ExecContext(ctx, insert,
+			"A2", "D1", "0.90", date("2027-01-01"), nil, date("2027-07-03"), nil)
+		var pgErr *pgconn.PgError
+		if !errors.As(err, &pgErr) || pgErr.Code != "23505" {
+			t.Fatalf("duplicate A2 version must fail with PostgreSQL unique_violation (23505), got: %v", err)
+		}
+		var total, original int
+		if err := db.QueryRowContext(ctx,
+			"SELECT COUNT(*), COUNT(*) FILTER (WHERE allocation = 0.60 AND known_from = DATE '2027-04-01') FROM public.org_memberships WHERE membership_id = $1",
+			"A2").Scan(&total, &original); err != nil {
+			t.Fatal(err)
+		}
+		if total != 1 || original != 1 {
+			t.Fatalf("rejected revision must not alter original A2: total=%d original=%d", total, original)
+		}
+	})
+
 	loaded, err := workspace.Load(filepath.Join("..", "..", "reference", "org-staged-axis"))
 	if err != nil {
 		t.Fatal(err)
