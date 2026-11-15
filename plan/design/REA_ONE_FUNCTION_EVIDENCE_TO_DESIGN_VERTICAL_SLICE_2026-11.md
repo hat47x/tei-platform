@@ -443,3 +443,11 @@ CIについては、前回PR #4816の対象HEADでRepository Healthが失敗し�
 
 Graphの構造的全件性、Function Read/Write、Owner受理、Source Patchの成功を混同せず、実Provider/CLIとStudio Stage1→Stage2のP0（#2586/#4583/#2831）は独立して継続する。新しいReader、Meaning Store、権限Engine、第二Expectedを設けない。
 
+## 18. 個別Relationの未確認SourceをJSONに出さない（2026-11-15）
+
+§16では、並行Relationの旧新が一意に対応しない場合、Candidate ID順で相手を仮決定せず、旧新それぞれを`ambiguous-structural-match`として残すようにした。しかし`CandidateComparisonEntry`の`BeforeSource`/`AfterSource`はGoの値構造体だったため、`json:"...,omitempty"`だけではゼロ値の構造体が省略されず、JSONに`beforeSource: {"binding":""}`等の**存在しない相手側Source**が表示されていた。Consumerが「プロパティがある」を「Sourceの相手方が確認された」に読み替えると、§16の安全策がシリアライズ時に失われる。
+
+**実装範囲**：Go公開フィールドと比較Status、`tei.rea.candidate-set-comparison/v0`を維持し、`CandidateComparisonEntry.MarshalJSON`だけでゼロ値のSource側を省略する。Source情報のある側は既存のbyte-backed出典をそのまま出し、未確認側のSourceは**キー自体を出さない**。StatusやOccurrence IDから欠けている相手を推測しない。ReviewPacket全体のJSONについても、旧2件・新2件の曖昧な比較で、旧候補は`beforeSource`のみ、新候補は`afterSource`のみを持つことをテストする。1対1の再採番では両側、追加・削除では片側を保持する。
+
+この修正はread-onlyのWire Projectionに限る。JSONにSourceが存在すること自体も、Sourceの**現在性・編集可能なSlot・Owner意味受理・Current Grant**を示すものではない。SourceのRaw digestと派生digest、Application GraphとSemantic Graph、関係の多重度／時間条件を引き続き分離し、下流Consumerは未知Schema/Statusと相手側Source欠落をfail-closedで扱う。正式`*.tei.md` Reader、Windows Wails JS実受領、実Provider Function Read/Write、Source Apply/Save/ReRead、SHO、Plugin自己構築は別の検証であり、P0の優先順位は維持する。
+
