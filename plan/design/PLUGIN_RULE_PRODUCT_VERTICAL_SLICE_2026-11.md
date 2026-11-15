@@ -238,3 +238,33 @@ Source変更A→B→A、生成器版変更、Build時だけの依存、入力取
 既存テストが作るBuildPlanには、元MarkdownのRule Source／選択Language・Generator版／Owner意味受理までを製品Builderの入力として束縛する一貫した契約はまだ示されていない。実装の次の最小単位は、#4544／#2595の**既存製品Build入口**で次の連鎖を再現することに絞る。`選択済みSource（現在版）→解決済み型付きMeaning→選択Generator実装と版→生成Go byte→実Builder入力byte→Build Artifact`。各要素のFingerprintや版を一つの「全部OK」に潰さず、変更・旧版再利用・Selected B／Actual Aを原因ごとに拒否する。構文上の同値とOwner受理、同一生成GoとSourceの現行性、署名・供給資格とGoコンパイル成功を区別する。製品CLIに新しい参考コマンドを足さず、Builderの重複実装も行わない。
 
 Data Rule／Table Script／Field拡張はデータ意味の側へ、独立したFunctionとData Contextは公開Entryの側へ収める（#4937）。Node Flowは同じRule／Operator／Sourceからread-onlyに投影し、公開・実行はHostの実権限とProviderを要する別ゲートとする（#4924）。最初のR3対象はこのR2を先行条件にしない受理済みpure Function一件とし、#4495の実Providerと通常製品CLIのConsumerを並行して完成させる。
+
+## 15. R2とR3を並行させ、生成Ruleと実Providerを最後に合流させる
+
+### 15.1 待たせる必要のない仕事は並行する
+
+`14.5で確定した通り、**正式製品BuilderへのRule生成物の収録（R2）と、公開Entryから実Providerを呼び出す経路の確立（R3）は独立に進める。** R2の対象は現在の `sales.order_line.quantity_positive`（`std.decimal`）でよい。一方、R3の最初の対象は#4495のOwnerが選ぶ**受理済みの副作用のないFunction一件**であり、未受理のRuleを公開Functionとして作り替えることを前提にしない。
+
+これにより、R2はSource→生成→Buildの責務を、R3は公開Entry→選択Provider→Invocation→実Consumerの責務を、それぞれ一件の実装で閉じられる。二つを結合する段階で初めて、**R2で生成した業務判断が、R3で通過した公開経路の実装になっているか**を独立に照合する。この合流は新しいGate Engineではなく、既存のBuild／Provider／Driver Scenarioの観測を結び付ける検収である。
+
+| 経路 | 今ある足場 | 次に実装する最小差分 | 合格を主張できないもの |
+| --- | --- | --- | --- |
+| **R2：生成・収録** | 選択済みRule Markdown Reader、`semantic.Validation`、`validationgen.GeneratePositive`、既存Reference BuildPlan Builderによる実Go消費 | #4544／#2595が正式な製品Build入口からSource現行版・選択Generator／Toolchain・生成byte・実Builder入力・Artifactを一Attemptに束縛 | 参照Builderの成功だけでは製品のBuilder選択、Owner意味受理、Plugin公開／実Call |
+| **R3：公開・起動** | `semantic.Capability`、`application.InteractionCommand`、`composition.Selection`／`Service`、既存共通Application API | #4495／#1251／#1158が**受理済みpure Functionの公開Entry一件**を、共通APIと通常の `tei` CLI実Processから同一選択Providerへ呼び出す | FunctionやRuleの存在だけでは公開Entry、Lock一致だけでは現在Grant、結果一致だけでは実Provider Identity |
+| **R2・R3の合流** | 上記二つの独立した実証 | R2生成の判断Goを、R3で実証した型付きEntryの選択実装へ収録し、Source変更→Artifact更新→実Provider呼出し結果まで確認 | 同値の手書きGoへの委譲、古いBinaryの流用、別Attemptの結果を寄せ集めた自己受理 |
+
+### 15.2 公開Entryを増やす前に守る意味境界
+
+`semantic.Validation` のRule IDと、Hostが公開したFunction／EntryのIDは同一ではない。Ruleの宣言、`EvaluateSelected` という生成Go関数、Pluginの定義・Lockも、それ自体は起動可能なEntryではない。既存 `internal/plugin/implementation` の `static-response-v1` はDeployment Executorの固定応答用なので、Ruleの固定JSON応答を入れて「実装済み」にしない。Rule専用の新Capability enum、第二Resolver／Runner／Rule Engineも設けない。既存Contractでは不足する点が実際に見つかった場合に限り、#951／#4495のOwnerが最小拡張を審査する。
+
+最初のR3では、Entryの入力・結果・失敗、公開対象Host／Scope、Provider選択B、実Artifact、実Instance、現在Grant、実CallのBinding、Consumer受領を**それぞれ別欄**で確認する。`composition.Selection` は宣言上の選択、`Service` が返すBindingは実装識別の観測であり、どちらもHostのGrantではない。業務Outcomeの `satisfied`／`not-satisfied` と、NULL／欠損／未取得による評価不能も区別する。これらに異なる正式エラーコードを割り当てる判断は、受理した公開契約に従う。
+
+### 15.3 同じEntryを二つの入口から検収する
+
+初回のR3受入は**一つのpure Function、一つの選択Provider、共通Application APIと通常製品CLIの二入口**に絞る。API側とCLI側で別の業務処理を持たせず、通常のCLIは共通OperationのAdapterとする。必要な反証は、選択B・実Call A（結果は同じ）、未公開Entryの暗黙呼出し、別Scopeでの成功、実Providerなしの固定CLI応答、正常な不成立と評価不能の混同である。既存#1180／#2514の独立Expectedや#4495の起動負例へ接続し、テスト正本を増殖させない。
+
+続く合流では、同一Rule IDの参照Attributeだけを変えた版、Source変更後の古い生成Binary、Builderだけ差し替えた版を反例とする。生成GoのByteが違うことと、実Consumerが正しい実装を呼んだことを別々に検査する。Node Flow／簡易API／Studio／YIC HarnessはそのEntryの別投影であり、Canvas上の選択やPlugin Inventoryを公開・実行の許可へ昇格させない。
+
+### 15.4 CLI障害の解消と残る製品P0
+
+未宣言の `dbIntrospectSemanticFlag` によりCLI全体がビルド不能だった問題は、[PR #4940](https://github.com/hat47x/tei-platform/pull/4940)で `db-introspect -semantic` の宣言を復元しmainへマージした。同PRのexact HEADでは実CLI Action Surface、独立Node Catalog、E1-A、製品Skill、Cache、脆弱性検査が成功した。一方、Studio・Issue-to-Design・Self-buildの失敗や全体Healthは別件として扱い、**R2正式製品Builder／R3実Provider／Studio Stage1→Stage2の完成とはしない**。Windows Wails/WebView2のStage2（#2831／#4583）は引き続き独立した最上位P0である。
