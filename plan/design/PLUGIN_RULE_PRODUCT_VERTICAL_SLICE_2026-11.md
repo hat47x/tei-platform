@@ -281,7 +281,7 @@ Ruleは他のFunction、標準Operator、Table Script／Data Rule、Node Flowか
 
 ### 14.8 異なる宣言表現から同じGoを生成し、出典の資格は別に残す
 
-[実Go回帰の提案 PR #4969](https://github.com/hat47x/tei-platform/pull/4969)では、同じ `sales.order_line.quantity_positive` を、明示選択した `tei.rule-authoring/v0` のMarkdownと従来の `validation` 構文から、それぞれ独立して `Workspace.Load` → 型解決 → `GeneratePositive` に通す。Canonicalを片方からコピーせず、同一の `semantic.Validation` と解決済み型 `std.decimal` であることを確認したうえで、生成Goのbyte完全一致を判定する。**これは作成中の製品回帰であり、exact HEADのCI合格はまだ未確認**である。
+[実Go回帰の提案 PR #4973](https://github.com/hat47x/tei-platform/pull/4973)では、同じ `sales.order_line.quantity_positive` を、明示選択した `tei.rule-authoring/v0` のMarkdownと従来の `validation` 構文から、それぞれ独立して `Workspace.Load` → 型解決 → `GeneratePositive` に通す。Canonicalを片方からコピーせず、同一の `semantic.Validation` と解決済み型 `std.decimal` であることを確認したうえで、生成Goのbyte完全一致を判定する。**これは作成中の製品回帰であり、exact HEADのCI合格はまだ未確認**である。
 
 ただし、生成Goが等しいからといって二つの原Sourceの資格を統合しない。選択されたReader、Source Indexの定義位置、ファイル原byte指紋、Model Revisionはそれぞれ保持する。Markdownの説明文だけを変更した場合、意味と生成Goは不変であっても古いSource Indexの現行性は失効する。旧Source Evidenceの再確認と、生成Artifactの再利用の可否は分けて判断する。逆に、Rule条件・参照先を変えた時は意味と生成Goの両方を再検証する。
 
