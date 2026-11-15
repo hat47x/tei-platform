@@ -1096,4 +1096,42 @@ main統合済み[PR #4742](https://github.com/hat47x/tei-platform/pull/4742)で�
 
 **検収資格の境界**：#4729/#4733は限定Referenceでの実Go生成・実Binary・独立Expectedを示す。現行製品の`*.tei.md` Loaderは`TEI_MD_PARSER_UNBOUND`で拒否しており、公開Manualの型付き製品取得、Plugin A/Bの正式開示、製品Target Generatorと通常CLI、Studioの自己再構築は未実証である。第21.7節はそれらを結ぶ**実装順と既存Expectedの適用先**を具体化したもので、Go製品機能を追加した記録ではない。
 
+
+### 21.8 Source・候補構造・生成物・公開文書の識別を混同しない
+
+<!-- tei-plugin-pdc-source-shape-artifact-disclosure-handoff-20261115 -->
+
+[main統合PR #4758](https://github.com/hat47x/tei-platform/pull/4758)では、既存の限定Graph／Rule参照生成器が解釈した**候補構造**をSHA-256で識別できるようになった。Node ID、Edge IDと起点・終点、Rule IDと条件だけを正規化し、表示名、表の順序、Markdown装飾、Mermaid、元Sourceのbyte位置を含めない。生成した同一Reference Binaryから`-candidate-shape`で照会でき、`-node`との同時指定は拒否する。この引数は**Reference生成プログラムだけ**のものであり、正式な製品`tei`コマンドではない。
+
+この成果をPluginの公開文書へ結び付けるとき、次の値を一つの「同じハッシュ」へまとめない。
+
+| 識別・受理の対象 | 既存の根拠／次の実装で確認すること | 一致しても保証しないこと |
+| --- | --- | --- |
+| **Graph／Rule Sourceの原byte** | main #4742/#4751のPinned SourceとSource Index Fingerprint／元Span | 正式Language/Role・意味受理・Plugin公開資格 |
+| **候補構造** | main #4758の`tei-md-graph-reference/shape-v1`による`CandidateShapeFingerprint` | 元Sourceの同一性、選択された正式Meaning、Toolchain・生成物の同一性 |
+| **実生成Artifact** | main #4733/#4758の実Binary SHA-256と実Consumerによる照会 | 選択Provider、実Builderの消費Source、Owner受理、実行Grant |
+| **公開／非公開Manualの原byte** | PDC-0候補の各Doc Source SHA-256／ID／適用Contract版と、明示Doc参照 | 開示資格、再公開権限、Source-backed Product Readの成立 |
+| **現在のPluginと利用資格** | 実`plugin-inventory`のID・正確な版・Lock／現在のAudience・Disclosure／要求Consumer | 上記どのハッシュ一致からも自動導出できない。実Provider Callはさらに別資格 |
+
+**併用するFixtureを固定する。** [PDC-0 Issue #4701](https://github.com/hat47x/tei-platform/issues/4701)の[PR #4757](https://github.com/hat47x/tei-platform/pull/4757)は、Plugin A（`fixture.graph-base`）／B（`fixture.graph-extension`）／C、公開Manualと非公開Manual、現在のGraph／Rule Sourceを**複製せず参照**する合成入力である。Rule表追加後の実Raw Source SHA-256へ更新され、13候補ケースと14種類の改変をGoで監査する。PR #4757のexact HEADの全体健全性・増分・依存検査は成功しているが、**Draftのため未マージ**。そのJSONの`sourceRefStatus: candidate-unbound`／`adoption: proposal-only`は正式なDoc参照・公開Schema・AuthZの受理ではない。
+
+#### 変更に応じた必要な再確認
+
+- **説明文だけ変更**：文書の原byteとRevision、引用された使用例、開示資格を再確認する。Graph／Rule候補構造が変わらない場合でも、以前のSource Index Artifactを新しい原文の証拠として再利用しない。生成Goの意味・実Buildの再実行が不要と断定するには、実Consumed ClosureとGenerator版の確認が別途必要。
+- **Mermaidの配置だけ変更**：表示を再確認する。Node/Edge/Ruleが同じならReference候補構造指紋は不変となるが、Source byteは変わる。配置を意味Ruleへ黙って昇格しない。
+- **Edgeの向き・Rule条件変更**：候補構造指紋が変わる。正式Meaningを受理した後に初めて関連生成ArtifactとConsumerの再検証を判定する。候補指紋だけでどのBuilderを省略するか決めない。
+- **Toolchain／Generator版変更**：候補指紋が同じでも、生成Artifactと実消費・配布資格は再確認する。
+- **Plugin Lock／Doc版／Audience変更、A→B→A**：旧いDocument Replyと開示の成功を復活させない。公開文書のパスやDigestが一致しても、非公開の本文・ID・件数・Digestを未許可Consumerへ返さない。
+
+#### 実装引継ぎを二段に限定する
+
+**PDC-0（[#4701](https://github.com/hat47x/tei-platform/issues/4701)）**は合成Fixtureと独立Expected候補の監査を担当する。Draft #4757がmainに統合され、該当HEADの実Go試験結果とOwnerのExpectedレビューを確認するまでは、正式な文書取得や開示判定の成功へ数えない。
+
+**PDC-1（[#4714](https://github.com/hat47x/tei-platform/issues/4714)）**の最初の製品Go PRは、選択済みPlugin一件・公開Document一件について、**実Workspaceの管理Sourceから読んだ現在の原byte／SourceRefと、選択済みPlugin ID・正確な版・Contract・Lock・Audienceを、既存のread-only Application Operationで照合する**ところまでとする。既存のPlugin Inventory自体に文書Readerを組み込まず、採用前Fixture JSONを正式Plugin Manifestへ流用しない。Denied・Partial・未ロード・版不一致・曖昧な対象は理由を区別し、許可のない文書本文やメタデータを返さない。Manual記載の`tei commands`と、Reference Binary固有の`-candidate-shape`／`-node`は実在する入口を別々に検査する。
+
+**最初の検収票**：`Source byte/Span`、`Doc SourceRef/版`、`Selected Plugin/Lock`、`Current Disclosure`、`Read-only Consumer Reply`を同一Attemptで示す。候補構造指紋と実Binary SHA-256は**別欄のReference Witness**であり、製品Target Generator、実Provider二Consumer、Studio Stage1→Stage2やOwner意味受理を代用しない。新たなDoc Registry、第二Resolver、Source Snapshot Engine、検証番号やHard Gateは作らず、既存PDC-00〜08、PHD、#1180/#2514を再利用する。
+
+**資格**：#4758は実Go生成・同一Reference Binary照会までmainに存在する。#4757はDraftでCI成功・未マージ、PDC-1の製品文書読取りは未実装。第21.8節はこれらの実際の状態を照合した計画・検収方針であり、製品実装と正式Owner受理の記録ではない。
+
+
 **資格**：第20・21章は、現行mainの第15〜18章を維持しながら、生成プラグインの一機能とPlugin説明の利用時適合を切り出した**設計・検収案**である。正式 *.tei.md Reader、新Generator、実Plugin E2E、Plugin Help API、実AI Harness、Owner受理を今回実装・実測したわけではない。
