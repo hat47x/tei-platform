@@ -2982,3 +2982,14 @@ SourceとResultの形式、Language Pinの供給元、Product Readerの接続箇
 
 **この追補の範囲**：新しいGo回帰と設計上の引継ぎ。Goテストの合否は該当PRのexact HEAD CIで判定する。Reader実接続、業務Meaning受理、実Provider/CLI Consumer、Studio Stage1→Stage2について、新たな製品合格を主張しない。
 
+
+<!-- tei-e1-reader-ci-product-boundary-20261115 -->
+### 47.8 予備ReaderのGo回帰と製品S0-Aの受入を、CIの失敗段階ごとに分ける
+
+mainに存在する`reference/dsl-language-plugin/workspace_admission_boundary_test.go`は、同じGraph／Rule原文について、**E1の合成PinによるReference Readerの成功**と、**現行製品`Workspace.Load`の`TEI_MD_PARSER_UNBOUND`拒否**を意図的に対照する回帰である。未指定Pin、違う実装指紋、Providerの重複は参照Parserを呼ぶ前に拒否する。これは「未束縛のまま空の成功にしない」という負例であって、正式A0のFrontend選択を受理した証拠ではない。
+
+[当該Go回帰の元PR #4857](https://github.com/hat47x/tei-platform/pull/4857)では増分検証が成功した一方、Repository Healthなどは失敗した。[対象HEADのRepository Healthログ](https://github.com/hat47x/tei-platform/actions/runs/43676914600)には、当時の`cmd/tei/cli_self_build_outer.go`でのBuilder digest変数の未使用、Workbenchの`workbench_revision_mismatch`、Workflowの並列実行とGo版の不一致、Markdown索引の不整合など、**それぞれ独立した失敗原因**が記録されている。現在mainではBuilder digestが`driveSelfBuild`へ渡されているが、**コードの存在や他HEADの成功を、元HEADの全体CI成功へ読み替えない**。
+
+[CI契約修正PR #4871](https://github.com/hat47x/tei-platform/pull/4871)は、既存WorkflowのRA-1同時実行制御とREAの`go.mod`参照を統一する範囲に限る。全体のCIをGreenにするために、Workbench Pin、Source/Result、独立Expectedの安全条件を緩めたり、Reader試験をskipしたりしない。
+
+**次の製品A0〜A3の受入**は、選択されたLanguage ID・契約版・実装指紋が実Workspaceへ渡されること、選ばれた一Sourceを**同じLoadで消費したbyteと既存Source IndexのRange**に束縛すること、未選択・Pin不一致・重複Provider・管理Root外・不正Fenceを引き続き拒否することを、正負対照で検証する。Meaning Owner受理、実Target Generator、Plugin Invoke、通常CLIのProvider／独立Consumer、Studio Stage1→Stage2は別々の工程であり、Reference E1のGoテストをその完成条件に流用しない。
