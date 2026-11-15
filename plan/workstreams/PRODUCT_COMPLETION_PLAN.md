@@ -28,6 +28,8 @@
 
 [プロセス実行図の因果・意味保存・証拠照合](../design/PROCESS_EXECUTION_CAUSAL_PROJECTIONS_2026-11.md)の§10〜39に、他の標準Data・Node／Plugin配線・業務Process／REA・Rule・セルフビルドの議論を接続した。異なる図を一つの実行エンジンで統一するのではなく、**Sourceからの投影、Targetへの生成、実際の呼出し、独立した受領の間にどの根拠が必要か**を、対象に応じて切り出す。部分取得から「不存在」や「すべて成功」と推測する図は不合格とする。
 
+**方式の選択と証拠の表示（§40〜44）**：既存の型付きRuleを評価する汎用Functionと、RuleからGoを生成する方式は対立しない。判断・実Read・NULL／未取得・エラーが同じ意味を守れる範囲で比較し、解釈ならEvaluatorの実装版と今回読んだモデル、コード生成ならGenerator／Build Input／実Artifact、外部Providerなら実Called／Grant／Effectを別に確認する。最初は固定`quantity_positive`の一Ruleで既存`validationeval.Evaluate`と`validationgen.GeneratePositive`の局所結果・Read先を比較する。main済み#5051の原文同梱・#5058の実CLI inspectは限定成果として保持し、選択鮮度#5054、Builder入力取違え#5056、N2実TEI起動#5059は未統合のまま検収を待つ。**新Interpreter／Optimizer／Hostを製品P0へ追加しない**。
+
 最初の実装担当は#1124／#2497／#4198（読取専用図解）と#988／#1121（選択済みRule・Go生成）である。固定した一Ruleの現在のSource／型／Read範囲をCLI/Headlessで表示し、未接続のBuilder・Provider・Effectを未確認のまま示す。同じ入力・Rule IDで参照Attributeを一因子変更し、生成Go／実Read／判断と旧Evidenceの失効を既存#1180／#2514へ返す。Generator自身のGo構造をTEIの意味候補へ戻すP1 dogfoodingは別Subjectとして進める。**Go AST・図の一致、Mock、別HEADのCI成功を、通常CLIの実Provider／Stage2実Windows受領へ加算しない。**
 
 **今回の実装引渡し**：§16〜19では、Rule→Guard、Event→Batch、Effect→通知という異種境界で、型・粒度・時点・配送・現在Grant・Receiptの保証を勝手に繰り上げない。C0/C1は既存Rule読取・生成Goの一因子変更、C2/C3は合成のpartial入力・Effect unknown・Provider取り違えを反証、C4は同じSubjectをCLI/Studioへ読み取り専用で投影する。最初の票は一問・一Subject・現在のSource/観測範囲と不足の理由に限定する。合成のEffect反例は実DB Commitや実通知の成功根拠にしない。既存#4198/#1130/#1174/#4495/#1180/#2514へ受入を返す。

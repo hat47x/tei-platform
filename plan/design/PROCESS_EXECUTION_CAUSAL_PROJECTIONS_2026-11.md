@@ -800,3 +800,81 @@ flowchart TD
 この正負を**既存のSource・Inspection・Graph・Studio・Scenarioテスト**で再利用し、新たな中央Writer／Graph Runtime／Host／独立Expected Storeを作らない。正式Source→生成Go→製品Builder→通常CLI actual Providerと、非Plugin Studio Stage1→Stage2実Windowsセルフビルドは引き続きP0であり、図解P1を新しい前提にしない。
 
 **状態**：§35〜39は現行mainの実装と進行中PRを照合した設計・引渡し。今回の文書更新で新Go／DB／Windowsの試験、正式R2-P/R3の縦断受入、Effect確定、Owner意味受理は実施していない。
+
+## 40. 「どう実現するか」と「何が成立したか」を別々に選ぶ（2026-11-15 第10次統合）
+
+前節までの実行図は、定義・実装選択・実呼出し・Effect・Consumerの関係を説明してきた。ここに、コード生成研究で出たもう一つの選択肢を加える。**処理のすべてを都度コード生成する必要はない。** 標準データ構造と型付きOperationの組合せを、既存の汎用Functionがパラメータとして読み取って動作できる場合は、その方が簡潔である。逆に、実行性能、配布先、静的な型保証、外部Hostの制約が求めるときはコード生成が適する。
+
+同じ意味から複数の方式を選べることを目標にするが、意味の定義も実行資格も方式に従属させない。
+
+| 実現方法 | 適する条件・利点 | 別に確認すること |
+| --- | --- | --- |
+| **コード生成** | 対象Targetでの静的コンパイル、反復処理の高速化、生成物の単独配布。TEIではGo単一バイナリを第一経路とする | Generatorの版と入力、生成byte、実Builderの消費、Artifact、実Process／Consumer |
+| **標準Functionによる解釈・評価** | 既存の型付きOperationやRuleを汎用関数に渡せる場合。簡単な構成変更に再Buildを要しない | **実際に評価されたモデルの版、Function／Evaluatorの実装版、実Read、実結果、実Hostの入場資格**。モデルの存在だけを実評価としない |
+| **既存Provider／外部Hostへ委任** | DB固有処理や外部サービス・装置への実作用。TEI専用Hostを増やさず、既存の公開Contractに合わせる | Providerの正確な選択／実呼出し、Target適合、Current Grant、Effect／Receipt、外部Consumer |
+
+ここでいう「解釈」は**新しい万能Interpreter／Workflow Engineの新設を意味しない**。例えば、現行`validationeval.Evaluate`は選択済み`semantic.Validation`と`Source`から結果を導く既存の限定評価関数である。`validationgen.GeneratePositive`は同じ狭い契約に対するGoの判断式を生成する。二つの方式を比較するには、同じRule ID・Attribute・型・Input Scope・独立Expectedに加え、実Read先・NULL／取得不能・失敗を確認する。選択Providerや実DBを使っていなければ、そのことを明示する。
+
+**実行方式の比較と製品受入は別の問い**である。解釈方式が正しく動いたからといって、正式R2-P（Source→生成Go→実Builder）やR3（通常CLI→選択Provider→独立Consumer）を完了扱いしない。逆にコード生成の単独Go実行成功だけで、Evaluator／Providerを実際に選択して呼んだとみなさない。
+
+## 41. 最適化と解釈方式の選択は、契約を保持できる範囲に限る
+
+方式選択で先に見るのは、どちらが「高度」かではなく、対象の意味・実行条件・配布制約を満たせるかである。次のように比較する。
+
+| 比較軸 | 確認する基準 | 初期段階の扱い |
+| --- | --- | --- |
+| 専門家にとっての記述負担 | Rule・表・図・関数チェーンが、Goの`struct`/`func`を見せずに理解できるか | DSLは業務概念を優先。実装方式の切替設定を常に表へ露出させない |
+| 意味の保存 | 型、単位、粒度、NULL／missing／unfetched、評価順、失敗、Read／Effectの差がないか | 独立Expectedと実Readの一因子比較を先に作る |
+| 実現可能性 | Targetが必要な型、精度、並行性、権限、Host APIを満たすか | 未対応を`unsupported`とし、別方式への黙った切替を禁止 |
+| 実装・更新費用 | Generator・Evaluator・Providerの保守、ビルド時間、モデル改版後の更新範囲 | 初期は単純な比較。大規模Optimizerを作らない |
+| 実行性能 | 立上り、メモリ、反復呼出し、DB往復、処理件数あたりの遅延 | 固定Corpusと実Targetで測る。単一合成例から優劣を断定しない |
+| 配布と開示 | Source原文や機密データを生成Artifactへ埋め込んでよいか、実ConsumerのAudienceは誰か | `//go:embed`で原文byteを収録できたことと、公開許可を分ける |
+
+複雑な集計では、同じ値を返すだけでも計算粒度・丸め位置・時点・入力集合の完全性が違えば同値ではない。Plugin／Hookの場合は、選択、Guard、呼出し順、作用回数が加わる。**実行方式が変わっても保持すべき意味の差分を、Domainごとの小さな適合票で明示する**。新しい単一の万能Execution Profileや自動Plannerを正本にはしない。
+
+設計時には明示されていなかった実装条件が見つかることも、単なる設計の複雑化ではない。例えば、ある式をSQLへ押し込むために必要な丸め位置・NULL意味・集合の粒度は、本来の意味モデルで検討すべき性質である。一方、特定Driverの一時的な制約はTarget Bindingの条件でよい。前者を標準Data／Operatorの属性・制約に取り込み、後者をPlugin／Targetの実装知識として再利用する。経験した条件を、必要以上にDSL構文へ追加するのではなく、**再利用可能なパターン・検証例・生成器の能力情報**へ変換する。
+
+## 42. 実行図に表示するのは「達成率」ではなく、確認できた範囲と残る断線
+
+ある問いについて、Ruleの原文と実Buildの証拠がある一方、公開Function／Providerの実Callが未確認なら、図上の後半を空白の成功経路で補わない。必要な関係を一つずつ照合し、**どの関係まで確認できたか、次の確認に何が不足するか**を返す。
+
+例えば次の三つは別の結論になる。
+
+1. **不一致**：選択したGoとBuilderが読もうとするGoのbyteが異なる。現在の候補Buildを拒否できる。
+2. **未確認**：生成Goの原文SourceとGeneratorの実版を同じBuild Attemptで結ぶ証拠がない。下流のBuilderが動いても正式R2-P全体を認定できない。
+3. **範囲内で確認**：指定したRule・入力に対して選択済みEvaluatorの実ReadとResultが独立Expectedに合う。ただし実DB Providerと業務Effectは対象外である。
+
+不一致を見つけたら下流の履歴を消すのではなく、**旧版に対する観測事実と、現在の資格として再利用できない理由**を残す。観測が欠けている場合は、CollectorのないTargetまで実呼出しがなかったと判定しない。
+
+この表示は、新しいProof Engineや中央Claim Storeの要求ではない。既存のInspection、Source Index、BuildPlan／Receipt、Plugin選択、Scenario／Runtime Evidence、Windows Consumerを、**問いと版を固定して関連付けたread-onlyの説明**である。抽出した図をCLI JSON、Studio、SHOの設計文書へ投影するときも、Audienceに開示できないSource／Path／秘密の値はHost側のDisclosure契約に従う。証拠を隠した結果、判定に足りなくなった場合は「未確認」と表示し、非開示情報から不存在を推測させない。
+
+## 43. 現行mainの実成果を、違う資格のまま図に載せる
+
+2026-11-15に確認した実装・PRの範囲を、説明図の入力として次のように整理する。ここで「main収録済み」はコードと履歴の状態であり、**今回のGo／Windows／DB試験を新たに実行した**という意味ではない。
+
+| 現行の証拠 | 説明できること | 追加で確かめること |
+| --- | --- | --- |
+| #5037／#5058（main） | 選択したMarkdown Rule/Dataを実`tei inspect`別Processと直接Operationの同じ契約から読める。出典・型・拒否理由の差を確認する | 同一実装の二入口であり、別Providerや独立した業務計算の証明ではない |
+| #5007（main） | 内蔵OperatorのManifest選択と局所の実呼出しを区別して確認できる | 実装A→B後の生成済みScenario Commandの失効。#5054は**未マージの実装PR**として扱う |
+| #5051（main） | 限定Rule原文byteをGoのBuild入力へコピーし、実Binaryへ埋め込んだ原文と照合できる | 公式の原文Locator→Reader／Generator→実Buildの全入力閉包・配布時のDisclosure。#5056は**未マージの負例PR** |
+| #5038（main） | REAのProducer発行RelationとNodeの端点を対応付け、無関係なIDや重複を検出できる | REA業務意味・時間条件・書込みEffect、実6.8 View受領の完了 |
+| #5027（main） | 隔離PostgreSQL候補の二時点関係を照合する試験がある | DBでの競合版の除外制約は#5063の**未マージ候補**。正式組織Meaning／Providerではない |
+| #5025／#5042（main） | Source／Pinの限定再確認と、生成Desktop PoCの実Windows WebView2試験の証拠を参照できる | 実N2の起動元と正規Build Intentを一緒に確認し、Stage1自身がStage2を生成する必要がある。#5059は**進行中** |
+
+これらを一本につなぐ際には、**別Subject、別Attempt、別Targetの証拠を同じ製品試験に足し合わせない**。特に、Sourceを保持したまま実装A/Bを入れ替えた場合は、RuleのCanonical IDやWorld Fingerprintが同じでも、生成済みコマンドの選択鮮度を再検査する。元Rule原文の埋込みは有力な出典情報だが、それ自体が現行GrantやGeneratorの正当性を保証するものではない。
+
+## 44. 最初の実装と既存計画の更新順
+
+新しい図面専用APIや別のRuntimeを先に作るのではなく、**既存製品の限定された実観測を正確に伝えること**を第一差分とする。
+
+| 作業単位 | 実装・検証内容 | 受入の境界 |
+| --- | --- | --- |
+| **X0：表示契約** | 一つの`semantic-validation`とWorkspace/Model Revisionを固定し、Source、型付きRule、実Readの有無、生成物・Provider／Consumerの未確認を既存Inspectorからread-onlyで出す | 原Source byte／Kind・ID、取得範囲、権限制限、別Workspaceの同名Subjectを取り違えない |
+| **X1：二方式の局所比較** | 既存`validationeval.Evaluate`と`validationgen.GeneratePositive`→別Process Goを、固定した`std.decimal`一Ruleで比較する | 値だけでなく実Read先、NULL／未取得、Rule参照先の一因子変更を独立Expectedで照合。旧テストの重複を避ける |
+| **X2：生成元とBuilderの接合** | #5051で成立した原文同梱・実Binaryの局所証拠に、選択済みSource／Generator実版／生成Goの実byteとBuilderの実入力を一Attemptで束縛する | #5056のBuilder入力取違え負例を再利用。正式R2-Pは各Ownerの資格がそろった範囲で認定 |
+| **X3：実装選択の現在性** | #5054の旧Scenario Command拒否がmainへ入ったら、その正負をSourceとOperator選択・actual Calledの図へ渡す | マージ前は「保護済み」と表示しない。世界指紋一致だけで現在の実装を判断しない |
+| **X4：独立Consumer** | #4495の通常CLI／actual Providerと、#2831/#4583のStage1→Stage2実Windowsを、それぞれ既存実行証拠へ照合する | 別Subject・別Build／Attemptで得た成功は一つのE2Eにしない |
+
+X0〜X3は既存#4198／#1124／#2497、#988／#1121／#4544／#2595、#951／#4359、#1180／#2514へ引き渡す。X4のP0は独立に優先し、X0〜X3の完成を新しい必須前提にしない。構造・意味・実装・実運用の不足は各Ownerが採否を決める。**仕様上の方式比較を、製品としての方式自動選択・Interpreter追加・性能優位の宣言には昇格させない。**
+
+この追補は設計と実装引渡しの更新であり、Go／Node／Windows／PostgreSQLの新しい実測、Ownerの業務意味受理、外部Hostの正式適合を行ったものではない。
