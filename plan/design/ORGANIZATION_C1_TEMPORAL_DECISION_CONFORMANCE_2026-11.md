@@ -1883,7 +1883,7 @@ CLI・Studio・生成Goから再利用する際も、**単一の受理済みSour
 
 同じPRの全体Repository Health [run 43707188006](https://github.com/hat47x/tei-platform/actions/runs/43707188006) は failure。他のREA・Studio・各領域の失敗を含む。**対象の実PG PASSと全体Healthの不合格を両方記録し、互いに読み替えない**。
 
-### 40.2 三つの同一性と四つの時計を分ける
+### 40.2 三つの同一性と五つの時点を分ける
 
 | 区別 | 意味・受入上の要点 |
 | --- | --- |
