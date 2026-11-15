@@ -8,6 +8,7 @@
 - [クリティカルパスの暫定代行判断（2026-10-23）](TEI_PROVISIONAL_DELEGATED_DECISIONS_2026-10-23.md)（所有者の指示により開発エージェントが代行した判断の記録。所有者の確認で覆せる）
 - [TEI技術調査Phase A: 一改訂の実行・観測証拠の受渡し](TEI_RESEARCH_PHASE_A_EVIDENCE_HANDOFF_2026-10-16.md)（実施準備・未認定）
 - [参照モデルRelationship移植: Type固有構造・CrossView・証拠接合の実証計画](TEI_RMT_RELATION_CROSSVIEW_ASSURANCE_PLAN_2026-11.md)（計画はmain統合済み。新追補は提案）
+- [図表から解釈実行・生成・Hook組込みへ進む実証計画](DIAGRAM_REALIZATION_REFERENCE_EXECUTION_2026-11.md)（I/G/D/Hを共通Meaningから比較し、既存Owner・実Builder・Consumer・セルフビルドへ段階的に引き渡す）
 - [設計可読性・意味Authoring・標準Consumerの横断接続計画](TEI_SEMANTIC_AUTHORING_CONSUMER_INTEGRATION_2026-11.md)（Draft。新しいCanonical schema等の採用ではない）
 - [Data・Function・Businessの意味整合と移植・変更管理の受入引渡し](TRIAD_MEANING_AND_CROSSLANE_ACCEPTANCE_HANDOFF_2026-11.md)（既存Ownerへ渡す計画候補。業務意味の採用やGate合格ではない）
 - [X-TEA知見の移行計画](XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)（計画案・未採用）
