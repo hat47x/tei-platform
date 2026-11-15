@@ -1598,7 +1598,7 @@ Cの成立には、**変更したRuleの意味から少なくとも一つの判�
 
 ### 16.17 次の最小PRとCIの取扱い
 
-**次に閉じる一件**は、第一Ruleの実Source→選択Reader→既存Validation→Generatorの入力と出力Go→独立Expectedの照合である。既存Generator候補[#2016](https://github.com/hat47x/tei-platform/issues/2016)／[#4544](https://github.com/hat47x/tei-platform/issues/4544)を再利用し、汎用Generator DSLや新Selectorを先に作らない。生成Goを通常CLI／実Providerへ繋ぐPRと、Studio Stage1→Stage2のPRは、第一Ruleの静的検証から分けて実行してよい。両経路を一本の成功に合算する前にSource／Toolchain／Artifact／Provider／Consumerの対応を実測する。
+**次に閉じる一件（§16.22〜16.23で更新）**は、main #4911の局所Rule→生成Goを、既存Builderの実消費とArtifact／独立Expectedへ接続するR2である。既存Generator候補[#2016](https://github.com/hat47x/tei-platform/issues/2016)／[#4544](https://github.com/hat47x/tei-platform/issues/4544)を再利用し、汎用Generator DSLや新Selectorを先に作らない。生成Goを通常CLI／実Providerへ繋ぐPRと、Studio Stage1→Stage2のPRは、第一Ruleの静的検証から分けて実行してよい。両経路を一本の成功に合算する前にSource／Toolchain／Artifact／Provider／Consumerの対応を実測する。
 
 **停止線**：Readerだけ通ってGeneratorが選択されない、Goのdelegateしか生成しない、元Rule改訂と出力の対応が分からない、Unknown/partialの必要条件を満たしていない、実Providerが未呼出し、独立Expectedの由来がない、これらの場合は不成立の段を明記して次のOwnerへ返す。Studioの正式Wails配布Asset・Windows画面・Stage2実Processは別の製品Exitであり、研究評価のために全体P0を変更しない。
 
@@ -1654,3 +1654,59 @@ Graphには構造上のEdgeと意味上のEdgeを混同させない。少なく�
 5. **N4 外部Trigger／API／クラウドサービスへ展開**：[#4495](https://github.com/hat47x/tei-platform/issues/4495)のEntry／Trigger／Invocation、[#3422](https://github.com/hat47x/tei-platform/issues/3422)の共通API・Host受理、[#951](https://github.com/hat47x/tei-platform/issues/951)／[#1251](https://github.com/hat47x/tei-platform/issues/1251)のPlugin実選択に接続する。Webhook／MQTT／Scheduler／DB書込みは必要なProvider・認可・Effect／Retry資格が証明されたものから採用。Node-REDやenebularに似たサービス機能を最初からTEI内蔵Cloud Hostとして実装しない。
 
 **評価と採否**：別用途（APIマッシュアップ、IoT、B2C、科学実験、業務Workflow）を拡大するのは、N1／N2で同じ標準OperatorがNode外から再利用でき、型・対象・権限・Effectの不一致を独立に検出できた後とする。第二のRunner／Registry／Scheduler／Hostを新設する提案は、既存のOperator、Target Generator、Plugin Provider、外部Hostで解決できない最小反例を示してから検討する。N0〜N4は**研究から製品へ渡す段階案**であり、正式Node Flow DSL・Runner・Editor・Cloud Hostの実装完了を示さない。
+
+### 16.22 Rule生成Goの実装を研究評価の基線へ昇格する
+
+[main統合済みPR #4911](https://github.com/hat47x/tei-platform/pull/4911)（merge `eeafd9cbea42b2dd430029c628ac0a5e3cf292d1`）により、§16.14の「C：TEIの意味を担うGo生成」は、**一種類のRuleに限って実装が存在する**状態となった。実装は`internal/semantic/validationgen/positive.go`の`GeneratePositive`で、製品`Workspace.Load`が選択・正規化した`semantic.Validation`と解決済みの`std.decimal`型を引数に、`value.Sign() > 0`という判断処理を含むGo Sourceを生成する。既存`validationeval.Source/Result`を共有し、`validationeval.Evaluate`を呼ぶだけの委譲ではない。
+
+同PRのGo試験は、既存の選択済みMarkdown SourceからRule ID・元byte範囲・属性型を照合し、生成Goを別Processの`go run`で実行して、正値／ゼロ／負値／NULL／欠損を固定Expectedと比較する設計である。属性の変更で生成Goが変わること、未対応Kind／型／Relationを拒否することも試験対象に含む。**コードと試験のmain統合は確認済みだが、当該exact HEADの全体CIとFocused Testの成功は別途確認する。** PR実装が出現しただけで実試験PASSやR2を宣言しない。
+
+| 到達点 | 現在の範囲 | 混同しない次の資格 |
+| --- | --- | --- |
+| R0 Product Source／意味 | `tei.rule-authoring/v0`選択、正規化Validation、Source Index、Inspectorの限定経路 | Ownerが業務意味を正式受理したという主張 |
+| R1 局所Go Lowering | `positive`＋`std.decimal`の判断分岐生成、別Process試験コード | 製品Builderへの収録、選択Generator／Pluginの実使用 |
+| R2 製品Build | **未確認**：実BuildIntent→Generator→Generated Source→ArtifactSet | 外部の試験用`go run`のみでBuild済みとする主張 |
+| R3 通常CLIと実Provider | **未確認**：Entry・実選択Provider・実Invocation・Result | 参照Source／模擬Providerだけで製品実行完了とする主張 |
+| R4 Studio／Stage2 | **未確認**：配布Asset、実Windows、Stage1→Stage2再入 | Go単体・別CIのUI成功を合算する主張 |
+
+このR0〜R4は**研究縦断の作業段階**であり、§16.3の研究資格や[#1119](https://github.com/hat47x/tei-platform/issues/1119)の正式製品Gateを置き換えない。
+
+### 16.23 R2で必要なものを「生成コードが使われた証拠」に絞る
+
+次の最小実装は、別のGeneratorや専用Runnerの作成ではなく、**既存Builderに`GeneratePositive`の出力を実際に消費させる一往復**とする。対象を`sales.order_line.quantity_positive`一件、Sourceを既存の選択済み`internal/workspace/testdata/tei-md-rule`に固定し、以下の証拠を同じBuild Attemptにまとめる。
+
+| 証拠 | 必要な観測 | 拒否する偽陽性 |
+| --- | --- | --- |
+| Source／Meaning | ManifestのLanguage ID／版、読取時の原文SHA・byte span、Rule ID／属性型、意味受理状態 | ファイルが存在するだけ／別時点のParse結果を流用 |
+| Generator選抜 | 選択Candidate ID／版、実呼出し実装、InputにしたValidation、未対応Kindの拒否 | 選択Bだが実際はAを呼ぶ、手書きGoにすり替える |
+| Build入力 | 生成したGoの実byte・hash、Builderへ渡したfile／package／依存閉包、Toolchain版 | 生成しただけでBuilderが読まない、別SourceをBuild |
+| Artifact／実行 | Builderのactual read、成果物byte・Build Attempt、別Processによる生成処理の呼出し | 同等の値を返す別実装／前回Artifactを成功とする |
+| 独立Expected | 正値・ゼロ・負値・NULL・欠損、および意味を変えたMutantの検出 | 実装からExpectedを生成する、試験が0件／SkipでもPASS扱い |
+
+**一因子の変化**は、(1) 説明文だけの変更、(2) 対象属性の変更、(3) Generator版のみの変更、(4) SourceをA→B→Aと戻す、(5) 実Artifactを古いbyteへ差し替える、の五つを最初に固定する。原文Indexが失効しても意味上同じ場合があるが、再利用資格が自動復活するわけではない。変更によって必要なBuilder／Artifactだけが再評価されるかを[#2600](https://github.com/hat47x/tei-platform/issues/2600)へ渡す。Build入力とSource Closureは[#2595](https://github.com/hat47x/tei-platform/issues/2595)、Loweringは[#1121](https://github.com/hat47x/tei-platform/issues/1121)、生成器候補の構成は[#4544](https://github.com/hat47x/tei-platform/issues/4544)を正本とする。
+
+**R2合格条件**は、実Builderが選択済みRuleから生成したGo byteをそのBuild Attemptで消費し、そのArtifactから実行した判断が独立Expectedを満たし、Source／Generator改訂時の失効と再生成を実測できること。StoreへのPutやCode Generation Previewは、実Buildの代替にはならない。未解決のTarget／Provider／Lockを黙って補完せず、必要な最小不足を返す。
+
+### 16.24 R3／R4へ進む際も、業務機能とUI／Nodeの入口を増やさない
+
+R2が成立したら、既存[#4495](https://github.com/hat47x/tei-platform/issues/4495)の公開Entry／型付きInvocation、[#1251](https://github.com/hat47x/tei-platform/issues/1251)のPlugin／Provider実選択、[#2586](https://github.com/hat47x/tei-platform/issues/2586)のFunction Data Context／実Readを通じて、**通常`tei` CLIがその生成Artifactを使った**ことを確認する。内部Ruleが読めることと外部に公開できることは別であり、未公開のRuleを自動的にAPI／Webhook Entryへ昇格しない。選択・ロード・実呼出し・現在Grant・実Resultを各々観測し、通信成功・業務判断・永続Effectを取り違えない。
+
+Node-RED型Graph、BRMSの判断表、Wagby型の入力検査、三要素Modeler上のRule表示は、**同じ意味契約への異なるAuthoring／Projection／Composition**として扱う。ノード構成で使うために第二Rule Engine、保存用の新意味正本、専用HTTP Host、別の認可器を増設しない。Node Flowの最小受入N1／N2（§16.20〜16.21）では、このR2／R3の実行契約を再利用する。Graph用Readerや動的Event配送・Cloud APIは、既存Rule Generatorの成功から自動的には成立しない。
+
+Studio側のR4は[#2831](https://github.com/hat47x/tei-platform/issues/2831)／[#4583](https://github.com/hat47x/tei-platform/issues/4583)が既存の非Plugin Stage1→Stage2に沿って検収する。生成Workbench・埋め込みAsset byte・実Windows WebView2・Stage1実ProcessのStage2再入を同一対象版へ結ぶ。新Rule生成機能をStudio構築の追加Hard Gateとはせず、採用する場合に必要なSource／Generator／Artifactの追跡義務を既存Buildへ渡す。
+
+### 16.25 他分野への反映は「先に責務を収め、次に比較する」
+
+他領域で新しく必要とされた能力は、表現形式や製品名によって別の正本を作らない。例えば[Wagby 11機能とのアウフヘーベン PR #4907](https://github.com/hat47x/tei-platform/pull/4907)の責務分類を横断研究に適用し、重複を避ける。
+
+| 需要 | まず収める既存責務 | 新方式が必要になる場合の反証 |
+| --- | --- | --- |
+| 入力規則、条件付き必須、BRMS決定表 | Validation／Rule、Expression、Data Context、独立Expected | 単なる表示制御では実判定・取得範囲が表現できない |
+| Node Flowの結線・Web API公開 | 標準Graph＋Role、Function／Entry、Operation／Provider | 既存契約でPortの型・Scope・実行順・Effectが失われる |
+| REA・組織・時点・複合参照 | Entity／Relation／Occurrence、時点Facet、Mapping／Query | 同じキーでも異なるOccurrence／時点の意味が失われる |
+| UI・帳票・KaTeX／Markdown表 | 意味モデルからのProjection、元Sourceへ戻る編集契約 | Rendererの都合で業務意味や数式評価が変化する |
+| Studio・SHO・SUI・MCP | 共有Operation／Read-only Inspect、各Consumerの適正なAuthority | 同一対象・版・Scopeなのに入口別に検証を迂回できる |
+
+最初にCoreへ昇格させるのではなく、既存のStandard Type／Role／Operator／Pluginで説明できる範囲と損失を、[#2495](https://github.com/hat47x/tei-platform/issues/2495)／[#4350](https://github.com/hat47x/tei-platform/issues/4350)へ具体的な反例として返す。数学・統計Toolkit、Nodeサービス、Wagby比較の別途P0を増やさない。
+
+**今回の受入状態**：PR #4911で局所Go Loweringのコード・試験はmainへ入ったが、当該exact HEADの全CI、R2／R3／R4、正式Graph Reader、実Provider／外部Effect、Ownerの意味受理、異分野での汎用Core採用は**NOT PROVEN**。その不足を埋める次の差分は、新しい形式の追加より**既存Builderが実生成Goを読んだか**の実証を優先する。
