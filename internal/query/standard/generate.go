@@ -10,15 +10,14 @@ func StandardToSQL(q *StandardQuery) (string, []Diagnostic) {
 	if q == nil {
 		return "", []Diagnostic{{Code: "EMPTY_QUERY", Message: "query is nil"}}
 	}
-	// Opaque stores the exact unsupported native SQL for review; it is not a
-	// structured query that StandardToSQL may silently discard or recompose.
-	for _, n := range q.Nodes {
-		if _, opaque := n.(*Opaque); opaque {
-			return "", []Diagnostic{{
-				Code: "OPAQUE_QUERY_UNSUPPORTED", Message: "opaque native SQL cannot be regenerated from StandardQuery",
-				Severity: SeverityUnsupported,
-			}}
-		}
+	// Opaque stores unsupported native SQL for review. A nested Opaque
+	// must also stop SQL generation: expression and FROM subquery emitters
+	// do not propagate child diagnostics to this caller.
+	if queryContainsOpaque(q, map[*StandardQuery]bool{}) {
+		return "", []Diagnostic{{
+			Code: "OPAQUE_QUERY_UNSUPPORTED", Message: "opaque native SQL cannot be regenerated from StandardQuery",
+			Severity: SeverityUnsupported,
+		}}
 	}
 	var diags []Diagnostic
 	var sb strings.Builder
@@ -461,4 +460,115 @@ func exprSQL(e Expr, subqueries map[string]*Subquery) string {
 		return "(<subquery>)"
 	}
 	return fmt.Sprintf("<%T>", e)
+}
+
+func queryContainsOpaque(q *StandardQuery, seen map[*StandardQuery]bool) bool {
+	if q == nil || seen[q] {
+		return false
+	}
+	seen[q] = true
+	for _, cte := range q.CTEs {
+		if queryContainsOpaque(cte.Query, seen) {
+			return true
+		}
+	}
+	for _, n := range q.Nodes {
+		switch v := n.(type) {
+		case *Opaque:
+			return true
+		case *Subquery:
+			if queryContainsOpaque(v.Query, seen) {
+				return true
+			}
+		case *CTE:
+			if queryContainsOpaque(v.Query, seen) {
+				return true
+			}
+		case *Filter:
+			if exprContainsOpaque(v.Condition, seen) {
+				return true
+			}
+		case *Join:
+			if exprContainsOpaque(v.Condition, seen) {
+				return true
+			}
+		case *Project:
+			for _, item := range v.Items {
+				if exprContainsOpaque(item.Expr, seen) {
+					return true
+				}
+			}
+		case *Aggregate:
+			for _, group := range v.Grouping {
+				if exprContainsOpaque(group, seen) {
+					return true
+				}
+			}
+			for _, item := range v.Items {
+				if exprContainsOpaque(item.Expr, seen) {
+					return true
+				}
+			}
+		case *Sort:
+			for _, key := range v.Keys {
+				if exprContainsOpaque(key.Expr, seen) {
+					return true
+				}
+			}
+		case *Values:
+			for _, row := range v.Rows {
+				for _, expr := range row {
+					if exprContainsOpaque(expr, seen) {
+						return true
+					}
+				}
+			}
+		}
+	}
+	return false
+}
+
+func exprContainsOpaque(e Expr, seen map[*StandardQuery]bool) bool {
+	switch v := e.(type) {
+	case *BinaryOp:
+		return exprContainsOpaque(v.Left, seen) || exprContainsOpaque(v.Right, seen)
+	case *UnaryOp:
+		return exprContainsOpaque(v.Operand, seen)
+	case *FunctionCall:
+		for _, arg := range v.Args {
+			if exprContainsOpaque(arg, seen) {
+				return true
+			}
+		}
+	case *IsNull:
+		return exprContainsOpaque(v.Expr, seen)
+	case *InList:
+		if queryContainsOpaque(v.Subquery, seen) || exprContainsOpaque(v.Expr, seen) {
+			return true
+		}
+		for _, item := range v.List {
+			if exprContainsOpaque(item, seen) {
+				return true
+			}
+		}
+	case *Between:
+		return exprContainsOpaque(v.Expr, seen) ||
+			exprContainsOpaque(v.Low, seen) || exprContainsOpaque(v.High, seen)
+	case *Exists:
+		return queryContainsOpaque(v.Query, seen)
+	case *Cast:
+		return exprContainsOpaque(v.Expr, seen)
+	case *Case:
+		if exprContainsOpaque(v.Value, seen) || exprContainsOpaque(v.Else, seen) {
+			return true
+		}
+		for _, when := range v.Whens {
+			if exprContainsOpaque(when.Cond, seen) || exprContainsOpaque(when.Then, seen) {
+				return true
+			}
+		}
+	case *SubqueryExpr:
+		return queryContainsOpaque(v.Query, seen)
+	}
+	return false
 }
