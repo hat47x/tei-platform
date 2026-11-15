@@ -7,16 +7,16 @@ import "tei/internal/plugin"
 //
 // It does not discover a Document, read its bytes, check Audience/Disclosure,
 // or grant publication. Until a Plugin -> Document binding is accepted, the
-// result always says that the document cannot be read.
+// result does not assess document eligibility.
 type DocumentReadPreflight struct {
-	PluginID         string `json:"pluginId"`
-	Environment      string `json:"environment"`
-	SelectionStatus  string `json:"selectionStatus"`
-	ResolvedVersion  string `json:"resolvedVersion,omitempty"`
-	LockPinned       *bool  `json:"lockPinned"`
-	SourceBinding    string `json:"sourceBinding"`
-	Disclosure       string `json:"disclosure"`
-	ReadEligibility  string `json:"readEligibility"`
+	PluginID        string `json:"pluginId"`
+	Environment     string `json:"environment"`
+	SelectionStatus string `json:"selectionStatus"`
+	ResolvedVersion string `json:"resolvedVersion,omitempty"`
+	LockPinned      *bool  `json:"lockPinned"`
+	SourceBinding   string `json:"sourceBinding"`
+	Disclosure      string `json:"disclosure"`
+	ReadEligibility string `json:"readEligibility"`
 }
 
 const (
@@ -37,12 +37,12 @@ const (
 // SelectionStatus is exact-version-pinned.
 func InspectDocumentReadPreflight(report Report, pluginID string) DocumentReadPreflight {
 	out := DocumentReadPreflight{
-		PluginID:         pluginID,
-		Environment:      report.Environment,
-		SelectionStatus:  DocumentSelectionScanIncomplete,
-		SourceBinding:    "unbound",
-		Disclosure:       "not-checked",
-		ReadEligibility:   "not-assessed",
+		PluginID:        pluginID,
+		Environment:     report.Environment,
+		SelectionStatus: DocumentSelectionScanIncomplete,
+		SourceBinding:   "unbound",
+		Disclosure:      "not-checked",
+		ReadEligibility: "not-assessed",
 	}
 	if report.ScanState != ScanComplete {
 		return out
