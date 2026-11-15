@@ -10,6 +10,7 @@ import {
   WORKBENCH_CURRENT_HEAD, WORKBENCH_CURRENT_MAIN_BLOB,
   WORKBENCH_MAIN_CONSUMER_HEAD, WORKBENCH_MAIN_CONSUMER_BLOB,
   WORKBENCH_PR1_HEAD, WORKBENCH_PR1_BLOB,
+  WORKBENCH_INSPECTION_HEAD, WORKBENCH_INSPECTION_BLOB,
 } from './connect-workbench.mjs';
 
 const graph = 'import { mountReadonlyGraph } from "../tei-studio-graph/graph.ts";\n';
@@ -28,22 +29,26 @@ test('historical Workbench pins and exact PR1 candidate reject unknown revisions
     'c55ad2285268533f5f1c90fbc9fe766bae57f009',
     WORKBENCH_MAIN_CONSUMER_HEAD,
     WORKBENCH_PR1_HEAD,
+    WORKBENCH_INSPECTION_HEAD,
   ]);
   assert.deepEqual(WORKBENCH_PINS.map(pin => pin.mainBlob), [
     '2a65a9f70245068bf2455248d98d280b382b01e4',
     'cc2644e5a9167dbc3a0b5368ff270276a2ba1b67',
     WORKBENCH_MAIN_CONSUMER_BLOB,
     WORKBENCH_PR1_BLOB,
+    WORKBENCH_INSPECTION_BLOB,
   ]);
   assert.deepEqual(WORKBENCH_PINS.map(pin => pin.commandHead), [
     '26f47772ed49f5c4a9e1c50026c335783bc5e153',
     '01f5022240fd86c6ac38c1107310e299a1615b48',
     WORKBENCH_MAIN_CONSUMER_HEAD,
     WORKBENCH_MAIN_CONSUMER_HEAD,
+    WORKBENCH_MAIN_CONSUMER_HEAD,
   ]);
   assert.deepEqual(WORKBENCH_PINS.map(pin => pin.commandBlob), [
     '4e0d5484f82944d5b7d3b0b8431f3a9a1eaa7081',
     '6c6ee81288c9857ca2f1c282639ba49f059f5535',
+    'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
     'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
     'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
   ]);
@@ -72,7 +77,7 @@ test('qualified PR1 Workbench candidate binds exact Command, responses and Graph
   assert.equal(pin.mainBlob, WORKBENCH_PR1_BLOB);
   assert.notEqual(pin.mainBlob, WORKBENCH_MAIN_CONSUMER_BLOB);
   const root = new URL('../../', import.meta.url);
-  const source = await readFile(new URL('reference/tei-studio-workbench/main.ts', root), 'utf8');
+  const source = await readFile(new URL('./testdata/pr1-workbench-main.ts', import.meta.url), 'utf8');
   const commandSource = await readFile(new URL('reference/tei-studio-command/command.ts', root), 'utf8');
   const responsesSource = await readFile(new URL('reference/tei-studio-workbench/responses.ts', root), 'utf8');
   const graphSource = await readFile(new URL('reference/tei-studio-graph/graph.ts', root), 'utf8');
@@ -86,6 +91,24 @@ test('qualified PR1 Workbench candidate binds exact Command, responses and Graph
   assert.equal((connected.match(/ui.generated.mjs/g) ?? []).length, 1);
   assert.ok(connected.includes('mountCommandPanel('));
   assert.ok(connected.includes('mountReadonlyGraph('));
+});
+
+test('current Inspect candidate pins its UI and presentation dependencies', async () => {
+  const pin = WORKBENCH_PINS.find(value => value.head === WORKBENCH_INSPECTION_HEAD);
+  const root = new URL('../../', import.meta.url);
+  const source = await readFile(new URL('reference/tei-studio-workbench/main.ts', root), 'utf8');
+  const commandSource = await readFile(new URL('reference/tei-studio-command/command.ts', root), 'utf8');
+  const responsesSource = await readFile(new URL('reference/tei-studio-workbench/responses.ts', root), 'utf8');
+  const graphSource = await readFile(new URL('reference/tei-studio-graph/graph.ts', root), 'utf8');
+  const htmlSource = await readFile(new URL('reference/tei-studio-workbench/index.html', root), 'utf8');
+  const presentationSource = await readFile(new URL('reference/tei-studio-workbench/presentation.ts', root), 'utf8');
+  assert.equal(pinnedWorkbenchRevision(source), pin);
+  assert.equal(inspectPinnedDependencies(pin, commandSource, responsesSource, graphSource, htmlSource, presentationSource), true);
+  assert.throws(() => pinnedWorkbenchRevision(source + '\n'), /workbench_revision_mismatch/);
+  assert.throws(() => inspectPinnedDependencies(pin, commandSource, responsesSource, graphSource, htmlSource + '\n', presentationSource), /html_revision_mismatch/);
+  assert.throws(() => inspectPinnedDependencies(pin, commandSource, responsesSource, graphSource, htmlSource, presentationSource + '\n'), /presentation_revision_mismatch/);
+  assert.ok(htmlSource.includes('id="inspection-limits"'));
+  assert.ok(connectWorkbenchSource(source).includes('showInspectionLimits(view.authorityLimits)'));
 });
 
 test('Command revision and current response-scope are mandatory source pins', () => {

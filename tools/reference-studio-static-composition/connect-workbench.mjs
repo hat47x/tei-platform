@@ -18,6 +18,9 @@ export const WORKBENCH_MAIN_CONSUMER_BLOB = '11815ab583dbcf6bb28baab83d7854389c1
 // #1124 PR1 candidate: retain historical evidence and reject unknown revisions.
 export const WORKBENCH_PR1_HEAD = 'dc7b44750279d8f9e4c4e4b797c054b865021c1a';
 export const WORKBENCH_PR1_BLOB = '9582c85db4c27c1f89d8594f5b212984d755c9c0';
+// Current Inspect-limits candidate; all newly changed companion assets are pinned.
+export const WORKBENCH_INSPECTION_HEAD = '15e9b5d56e21f1f4984a5b8a962710f8e49e2805';
+export const WORKBENCH_INSPECTION_BLOB = '9aa4939fdd4860e66632fef4d39a1f0e4257c893';
 export const WORKBENCH_PINS = Object.freeze([
   Object.freeze({head: WORKBENCH_HEAD, mainBlob: WORKBENCH_MAIN_BLOB,
     commandHead: '26f47772ed49f5c4a9e1c50026c335783bc5e153',
@@ -36,6 +39,13 @@ export const WORKBENCH_PINS = Object.freeze([
     commandBlob: 'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
     responsesBlob: 'e1fa0d6b8e07af1158416d6c6d2469a408f64495',
     graphBlob: '436c7d07c56802dbbc6d1dfeb1251470fca75cf6'}),
+  Object.freeze({head: WORKBENCH_INSPECTION_HEAD, mainBlob: WORKBENCH_INSPECTION_BLOB,
+    commandHead: WORKBENCH_MAIN_CONSUMER_HEAD,
+    commandBlob: 'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
+    responsesBlob: 'e1fa0d6b8e07af1158416d6c6d2469a408f64495',
+    graphBlob: '436c7d07c56802dbbc6d1dfeb1251470fca75cf6',
+    htmlBlob: '6bec9ee3b8a21d063ab39f2a1720a49986650fb7',
+    presentationBlob: '034e983aa9ba85009cfacbd47d67239b12807c46'}),
 ]);
 const graphImport = 'import { mountReadonlyGraph } from "../tei-studio-graph/graph.ts";\n';
 const commandImport = 'import { mountCommandPanel } from "../tei-studio-command/command.ts";\n';
@@ -62,7 +72,7 @@ export function pinnedWorkbenchRevision(source) {
 }
 // Verify actual source assets in the snapshot, not only their documented
 // commit labels. The new Workbench requires Command's context-aware API.
-export function inspectPinnedDependencies(pin, commandSource, responsesSource, graphSource) {
+export function inspectPinnedDependencies(pin, commandSource, responsesSource, graphSource, htmlSource, presentationSource) {
   if (!WORKBENCH_PINS.includes(pin)) throw new Error('workbench_revision_mismatch');
   if (gitBlobSHA(commandSource) !== pin.commandBlob)
     throw new Error('command_revision_mismatch');
@@ -70,6 +80,10 @@ export function inspectPinnedDependencies(pin, commandSource, responsesSource, g
     throw new Error('responses_revision_mismatch');
   if (pin.graphBlob && gitBlobSHA(graphSource ?? '') !== pin.graphBlob)
     throw new Error('graph_revision_mismatch');
+  if (pin.htmlBlob && gitBlobSHA(htmlSource ?? '') !== pin.htmlBlob)
+    throw new Error('html_revision_mismatch');
+  if (pin.presentationBlob && gitBlobSHA(presentationSource ?? '') !== pin.presentationBlob)
+    throw new Error('presentation_revision_mismatch');
   return true;
 }
 export function connectWorkbenchSource(source) {
@@ -121,7 +135,9 @@ async function main() {
   const graphSource = pin.graphBlob
     ? await readFile(resolve(dirname(sourcePath), '../tei-studio-graph/graph.ts'), 'utf8')
     : undefined;
-  inspectPinnedDependencies(pin, commandSource, responsesSource, graphSource);
+  const htmlSource = pin.htmlBlob ? await readFile(join(dirname(sourcePath), 'index.html'), 'utf8') : undefined;
+  const presentationSource = pin.presentationBlob ? await readFile(join(dirname(sourcePath), 'presentation.ts'), 'utf8') : undefined;
+  inspectPinnedDependencies(pin, commandSource, responsesSource, graphSource, htmlSource, presentationSource);
   inspectGeneratedAssets(moduleSource, declarations, JSON.parse(rawMeta));
   const connected = connectWorkbenchSource(original);
   let existing;
