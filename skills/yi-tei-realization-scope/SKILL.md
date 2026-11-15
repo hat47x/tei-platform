@@ -75,3 +75,9 @@ description: >-
 - [Generator Sourceを固定する方式](../../plan/design/AI_GENERATOR_AUTHORING_STANDARD_2026-11.md)
 - [生成物のOwnership／Extension Point](../../plan/design/GENERATOR_CONTRACT_BOUNDARIES_DESIGN_2026-10.md)
 - [現行のRule→Builder実証](../../plan/design/PLUGIN_RULE_PRODUCT_VERTICAL_SLICE_2026-11.md)
+
+## 抽象経路と実使用を確認する際の追加記入項目（2026-11-16）
+
+生成されたGoのメソッド名・UIの表示名・Nodeのラベルだけを業務経路の識別子にしない。タスク票の既存「検証」「証拠」には、必要な場合、**Meaning/Rule ID、選択実現と実Called ID、対象Attribute・RelationのRequired Read ID、Observed Read ID・回数、値／Presence、Snapshot／Scope**を明示する。新しいManifestフィールドを要求するものではない。
+
+正例は「生成関数名だけ変更しても対象MeaningとReadが同じ」。負例は「生成関数名・返却値が同じでも異なるAttributeをRead」「選択実装A→B後に旧Planを使用」「Builderが新Sourceでなく旧byteを消費」。いずれも既存の独立Expectedを先に固定し、判定の結果だけでなく実Readと実Callを比較する。実ProviderやConsumerの証拠がない部分を、ローカルGoのPASSで補完しない。詳細は[図表実現方式の設計§14](../../plan/design/DIAGRAM_TO_REALIZATION_STRATEGY_AND_HOOKS_2026-11.md)に置く。
