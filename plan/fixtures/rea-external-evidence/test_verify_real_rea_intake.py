@@ -125,6 +125,24 @@ class RealREAVerifierBoundaryTests(unittest.TestCase):
             with self.assertRaisesRegex(AssertionError, "semantic_graph must be an object"):
                 verifier.selection_from_evidence(path)
 
+    def test_failed_real_verification_still_writes_a_failure_record(self):
+        with tempfile.TemporaryDirectory() as directory:
+            report_path = Path(directory) / "failed-intake.json"
+            with mock.patch.object(verifier, "verify_real_mode",
+                                   side_effect=AssertionError("selection rejected")):
+                with mock.patch.object(verifier.sys, "argv", [
+                    "verify_real_rea_intake.py", "--binary", "tei",
+                    "--version", "6.8.0", "--report", str(report_path),
+                ]):
+                    with self.assertRaisesRegex(AssertionError, "selection rejected"):
+                        verifier.main()
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+            self.assertEqual(report["status"], "failed")
+            self.assertEqual(report["failure"]["type"], "AssertionError")
+            self.assertEqual(report["checks"], [])
+            self.assertEqual(report["notRun"], [])
+            self.assertEqual(report["version"], "6.8.0")
+
     def test_captured_receipt_does_not_invent_a_semantic_graph(self):
         path = (Path(__file__).resolve().parents[3] /
                 "internal/externalanalysis/testdata/rea-6.8.0/analysis.json")
