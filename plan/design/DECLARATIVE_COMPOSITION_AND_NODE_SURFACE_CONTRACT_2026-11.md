@@ -529,3 +529,40 @@ DC-27〜32は新規テスト実施を表さず、#1180／#2514の独立Expected�
 | DC-38 | Data配線の見た目だけをProcess Triggerへ変更 | 表現の編集が実行意味やGrantを自動生成しない |
 
 DC-33〜35は追加Go回帰の観測対象と重なる。DC-36〜38は**未実装の独立Expected候補**であり、新しいExpected正本を作らず既存#1180／#2514へ渡す。追加Go試験のファイル収録とCI exact HEADのPASS、実Windows／Providerの実観測はそれぞれ別に報告する。
+
+## 27. 汎用Evaluatorと生成Goを同じ型付きRuleから選ぶ（2026-11-15）
+
+### 27.1 記述と実現方式を切り離す
+
+他領域の検討から、**図表やDSLのパラメータを汎用関数へ渡すだけで足りる処理では、必ずしもコードを生成しなくてよい**という結論を取り込む。ただし、実現方式を別々の業務意味モデルへ分裂させない。どちらも選択済みSource→既存Data／Validation→型・Rule契約を通る。UIやMarkdownの表層が生成／解釈を暗黙に指定する仕組みは作らない。
+
+| 実現方式 | 適用の目安 | 合格と呼べる条件 | まだ主張しないこと |
+| --- | --- | --- | --- |
+| **既存汎用Evaluator** | 固定契約のpureな判断を即時に評価し、診断やプレビューを優先する場合 | 受理済みの型付きRule、必要なRead、NULL・欠落・失敗、独立Expectedに対する結果 | 正式Provider／Host Grantなしで外部の情報・Effectを操作できること |
+| **生成Go** | 配布するTargetの実コード、静的検査、独立した実BinaryやBuilderを必要とする場合 | 同じ型付きRule、実Generatorの対応byte、実Builder入力、Artifact、独立Consumerの判断を照合 | 同じRule IDや生成Goの外観だけで元Source／Generatorの正式資格が証明されたこと |
+| **未対応** | 解決型・入力・Operatorの要求／保証が不足する場合 | 解釈と生成を別の契約に取り替えず、どの方式が何を理由に拒否したかを示す | 一方の未対応を他方の成功で隠すこと |
+
+**実現方式の選択は、Meaningを変える選択ではない。** Target要件、必要な応答・配布単位、現在実装の対応範囲、実Providerとの結合条件で選ぶ。両方式が対応する領域では、同じSource snapshot・同じ入力・同じRead Footprint／失敗分類を独立に照合し、不一致なら同値を主張しない。両方式の完全な同値性や自動最適化を先に採用しない。
+
+### 27.2 具体例：印付きData表と隣接するRule
+
+既存の異動申請のMarkdownには、allocationをstd.decimalとする項目定義表と、allocation_positiveという正値Ruleが共存する。今回のFocused Go試験（internal/operations/inspect_markdown_data_table_rule_evaluation_test.go）は、追加Readerや生成用DSLなしで以下を一つの製品Loadに収める。
+
+1. 明示したtei.authoring/v1から同じ原SourceのAttribute・Validationを取得し、Source Index／Inspectorの定義Role・byte位置・型を照合する。
+2. 同じtyped Validationを既存validationeval.Evaluateへ渡し、正値／0／負値／NULL／未取得の五入力を、厳密なNumber Read一回と独立Expectedで観測する。値のない入力をfalseに補完しない。
+3. 同じtyped ValidationとAttribute型を既存validationgen.GeneratePositiveへ渡し、生成GoのSource.Numberの参照先とvalue.Sign()>0の分岐を検査する。**この試験では生成Goを実ビルドしていない**ため、実Binaryの同値検証は別の#5009／#5051等の証拠と混同しない。
+4. 表のallocation型だけをstd.decimal→std.textに変更する。元RuleのID／本文は同じでも既存Validatorは非数値型の正値Ruleを拒否し、生成器もGoを出力しない。変更前のSource Index／Worldを再利用しない。
+
+| 反証候補 | 一因子変更 | 拒否・保存する意味 |
+| --- | --- | --- |
+| **DC-39** | 同一表・Ruleの値を正値→0→負値→NULL→未取得とする | 解釈されたRuleの結果・Error・Number Readが独立Expectedと一致し、未取得をfalseへ落とさない |
+| **DC-40** | Ruleを変えず、Data表の参照Attribute型だけをdecimal→textにする | Sourceの版とData意味を更新し、評価受入・Go生成を拒否する。Readerの成功から実行成功を推定しない |
+| **DC-41** | 結果値の同じ解釈／生成処理で、実GoのRead先だけを別のAttributeへ変える | 結果だけの一致で二方式を同値としない。AST・実Read／出典を比較する（別途独立Expected） |
+
+DC-39〜40はこのGo回帰に対応する候補で、**exact HEADのCI合格は別判定**。DC-41は未実装の一因子反証であり、既存#1180／#2514に引き渡す。型・構造・評価・出典を一つの第二Engineへ吸収するのではなく、Source #2621、Meaning #988、Evaluator／Generator #1121、Builder #4544、Provider #4495の既存Ownerで検収する。
+
+### 27.3 製品受入の順序は変えない
+
+最小の選択判断は「実行方式が何か」ではなく、**このRuleで要求される結果と入力範囲を、どの方式がどの資格で保証できるか**である。最初はpureな一Ruleで解釈と生成の同一入力性を確かめる。表示・Runtime・Plugin配線・SQL／NoSQL・実Effectに広げる際は別の要求／保証が加わるため、対応するOwnerの実証を受けてから適用する。
+
+並行中の#5054（Operator選択変更時の旧Scenario失効）、#5056（生成Goと実Builder入力の取り違え拒否）、#5059（生成Workbench N2の実tei CLI起動）は互いに代替しない。いずれもGo試験／CIの合格と正式製品受入を区別し、**通常CLIの公開Entry→実Provider→独立Consumer、Studio Stage1→Stage2の実Windows受領**を引き続きP0とする。新Executor、Engine、Registry、第二意味正本は追加しない。
