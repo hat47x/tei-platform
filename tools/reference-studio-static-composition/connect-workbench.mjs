@@ -18,6 +18,24 @@ export const WORKBENCH_MAIN_CONSUMER_BLOB = '11815ab583dbcf6bb28baab83d7854389c1
 // #1124 PR1 candidate: retain historical evidence and reject unknown revisions.
 export const WORKBENCH_PR1_HEAD = 'dc7b44750279d8f9e4c4e4b797c054b865021c1a';
 export const WORKBENCH_PR1_BLOB = '9582c85db4c27c1f89d8594f5b212984d755c9c0';
+// Exact native Workbench revision verified by the ordinary WebView2 consumer
+// (#5025, run 43706898173). Generated PoC B is independently requalified;
+// the source closure is not inferred from whichever main branch is checked out.
+export const WORKBENCH_NATIVE_HEAD = '646dc64f746377c73c28d5112dc5c0793af4018c';
+export const WORKBENCH_NATIVE_MAIN_BLOB = 'bdcceb73e6113c15162637b3ef5909252459a9fe';
+const WORKBENCH_NATIVE_CLOSURE = Object.freeze({
+  'reference/tei-studio-editor/editor.ts': '146c4fb631a55913a3f0e0aeb82043096f5b118e',
+  'reference/tei-studio-editor/codemirror.ts': '61dddbc2df6708830e86d344782dec7207463bec',
+  'reference/tei-studio-editor/codemirror-coordinates.ts': '686a54a685e0078975623e2ed130b2c33f33bc89',
+  'cmd/tei-studio/assets/client.mjs': '2153f2ad67387032487763d68dec23aa016776fe',
+  'reference/tei-studio-workbench/presentation.ts': '034e983aa9ba85009cfacbd47d67239b12807c46',
+  'reference/tei-studio-workbench/inspector-selection.ts': 'e6b2d53d6bcf69c04bb4976ea33a483407f856d8',
+  'reference/tei-studio-workbench/pin-reader.ts': 'bf8e1af9cd583fe115d6089ab6fe6b6c119c8c2b',
+  'reference/tei-studio-workbench/pin-state.ts': 'cec97c75f92b406435eac0ac60cc679ec5f36aa3',
+  'reference/tei-studio-workbench/keyboard.ts': 'fdf5cc9d619fcf3a187a19342af6edba925ddb61',
+  'reference/tei-studio-workbench/package.json': '55c30d71161b0318f33313389a6455348916a771',
+  'reference/tei-studio-workbench/package-lock.json': '0dc26032126a8a3ab5ed874d3d47d9cd550aa475',
+});
 export const WORKBENCH_PINS = Object.freeze([
   Object.freeze({head: WORKBENCH_HEAD, mainBlob: WORKBENCH_MAIN_BLOB,
     commandHead: '26f47772ed49f5c4a9e1c50026c335783bc5e153',
@@ -36,6 +54,12 @@ export const WORKBENCH_PINS = Object.freeze([
     commandBlob: 'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
     responsesBlob: 'e1fa0d6b8e07af1158416d6c6d2469a408f64495',
     graphBlob: '436c7d07c56802dbbc6d1dfeb1251470fca75cf6'}),
+  Object.freeze({head: WORKBENCH_NATIVE_HEAD, mainBlob: WORKBENCH_NATIVE_MAIN_BLOB,
+    commandHead: WORKBENCH_MAIN_CONSUMER_HEAD,
+    commandBlob: 'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
+    responsesBlob: 'e1fa0d6b8e07af1158416d6c6d2469a408f64495',
+    graphBlob: '436c7d07c56802dbbc6d1dfeb1251470fca75cf6',
+    closureBlobs: WORKBENCH_NATIVE_CLOSURE}),
 ]);
 const graphImport = 'import { mountReadonlyGraph } from "../tei-studio-graph/graph.ts";\n';
 const commandImport = 'import { mountCommandPanel } from "../tei-studio-command/command.ts";\n';
@@ -62,7 +86,7 @@ export function pinnedWorkbenchRevision(source) {
 }
 // Verify actual source assets in the snapshot, not only their documented
 // commit labels. The new Workbench requires Command's context-aware API.
-export function inspectPinnedDependencies(pin, commandSource, responsesSource, graphSource) {
+export function inspectPinnedDependencies(pin, commandSource, responsesSource, graphSource, closureSources) {
   if (!WORKBENCH_PINS.includes(pin)) throw new Error('workbench_revision_mismatch');
   if (gitBlobSHA(commandSource) !== pin.commandBlob)
     throw new Error('command_revision_mismatch');
@@ -70,6 +94,19 @@ export function inspectPinnedDependencies(pin, commandSource, responsesSource, g
     throw new Error('responses_revision_mismatch');
   if (pin.graphBlob && gitBlobSHA(graphSource ?? '') !== pin.graphBlob)
     throw new Error('graph_revision_mismatch');
+  if (pin.closureBlobs) {
+    // Missing or unexpected files are not an acceptable replacement for the
+    // exact browser source + build-lock closure qualified with this candidate.
+    const expected = Object.keys(pin.closureBlobs).sort();
+    if (!closureSources ||
+        Object.keys(closureSources).sort().join('\\0') !== expected.join('\\0'))
+      throw new Error('workbench_closure_missing_or_extra');
+    for (const path of expected) {
+      if (typeof closureSources[path] !== 'string' ||
+          gitBlobSHA(closureSources[path]) !== pin.closureBlobs[path])
+        throw new Error('workbench_closure_revision_mismatch:' + path);
+    }
+  }
   return true;
 }
 export function connectWorkbenchSource(source) {
@@ -121,7 +158,11 @@ async function main() {
   const graphSource = pin.graphBlob
     ? await readFile(resolve(dirname(sourcePath), '../tei-studio-graph/graph.ts'), 'utf8')
     : undefined;
-  inspectPinnedDependencies(pin, commandSource, responsesSource, graphSource);
+  const closureSources = pin.closureBlobs
+    ? Object.fromEntries(await Promise.all(Object.keys(pin.closureBlobs).map(async path =>
+        [path, await readFile(resolve(dirname(sourcePath), '../..', path), 'utf8')])))
+    : undefined;
+  inspectPinnedDependencies(pin, commandSource, responsesSource, graphSource, closureSources);
   inspectGeneratedAssets(moduleSource, declarations, JSON.parse(rawMeta));
   const connected = connectWorkbenchSource(original);
   let existing;
