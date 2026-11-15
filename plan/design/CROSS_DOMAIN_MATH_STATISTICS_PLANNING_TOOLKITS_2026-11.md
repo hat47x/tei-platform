@@ -540,6 +540,16 @@ Window候補5件はSHA-256で元ファイルと結び付いているが、**候�
 
 また[入れ子Opaqueの拒否修正 #4755](https://github.com/hat47x/tei-platform/pull/4755)はレビュー中である。標準QueryがWindowを意味表現できないままNative SQLの一部を取り落とす経路は引き続き拒否する。今回のテストで扱う既存SQLite方言のWindow直接生成を、標準QueryのWindow対応やNative SQLの実行許可として受理しない。
 
+### Windowの固定原文を、既存Workspaceが選択するSourceとして扱うS0-P
+
+[Graph／RuleのManifest/Pinned Root S0予備試験 #4751](https://github.com/hat47x/tei-platform/pull/4751)に倣い、`internal/workspace/tei_md_window_pinned_source_test.go`を追加する。基準とFrame変更の二つの`*.tei.md`候補を、実一時WorkspaceのManifestが宣言する`semantic` Rootに置く。同じ拡張子の`drafts`は宣言外に置き、既存の`scanManagedFiles`が選択済みSourceだけを管理対象として列挙することを確かめる。
+
+**選択したWorkspaceのPinned Rootから読み込んだ実バイト列**を、候補JSON v2の`sourceSHA256`と既存`sourceindex.NewArtifact`で照合する。B2の明示NULL行と、基準／変更後の`moving` Frame行について、`RangeFromOffsets`が元バイト範囲を正しく返すことを確認する。A3の元データを書き換えると旧Indexは失効し、変更の前後で`Workspace.Load`は引き続き`TEI_MD_PARSER_UNBOUND`を返す。**これらはテスト専用S0-Pの選択・原文取得・鮮度検査であり、製品Readerの意味受理を解除する変更ではない。**
+
+この接続が重要なのは、前段の[Window実表バインド試験 #4760](https://github.com/hat47x/tei-platform/pull/4760)が、現時点では固定JSON候補をSQLiteへ直接渡しているためである。S0-Pで元文書が選べることと、実表へ期待どおりの値を渡せることは**別々の成功**であり、まだ同一Attemptとして接続していない。次のS0-Aは#2621/#988の正式Frontendが**同じPinned Source**から選択した観測表とWindow条件を型付き候補にし、例示・派生表示・未選択のRootを実定義へ昇格させず、Owner受理へ引き渡すところを最小実装とする。Window専用Readerや第二Workspace Loaderを追加しない。
+
+[BRMS決定分析 #4765](https://github.com/hat47x/tei-platform/pull/4765)で明確になった部分観測の境界も同様に適用する。**期待値候補に七行あることは、製品のSource取得が完全だった証拠ではない**。未読Sourceや未解決Cellが残る間は、観測された行の整合を言えても、他に行がないこと・全件の唯一性・結果の現在性を保証しない。Source閉包、入力Datasetの版、生成SQL/Artifact、実行観測、Owner受理を既存のEvidenceとRevisionで区別し、同じSource指紋から結果再利用の資格を自動導出しない。
+
 ### 正式Readerが未接続である現状から、最小の実読取りへ進む
 
 2026-11-14時点の`internal/workspace/loader.go`は、管理Sourceを走査したあと、`rejectUnboundTEIMarkdownSources`で管理対象の`*.tei.md`を**`TEI_MD_PARSER_UNBOUND`として明示拒否**する。現在の`loadSemantics`が呼ぶ`syntax.NewParser(...).ParseSemanticFile()`は従来形式のParserであり、Markdownの表・フェンス・本文のRoleを実際に解釈した証拠ではない。`ManagedFile`の列挙、`ReadByLoader`の真偽、Parserでの解釈、意味の受理、Buildでの実消費はそれぞれ別の事実である。
