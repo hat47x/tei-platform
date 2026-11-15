@@ -293,3 +293,45 @@ I2M-1回帰が対象HEADで成立した場合の次の一件は、`sales.order_l
 変異は、(1)同じ生成Go・別Source、(2)説明のみ改版、(3)Ruleが参照するAttribute改版、(4)選択生成物B／実Build A、(5)同一DigestでもAttempt・Generator版が異なる、を別々に判定する。この五件を一つの「再利用可否」へ丸めず、World/Model／Artifact／Current Authorityを分ける。
 
 成功指標は、**手書きのGoへ委譲せずTEIの定義から実生成された判断が、どの製品実行段階で実際に消費されたか**と、その判断を変更したときの修正点・独立検査・負例検出数である。StudioのPresenter分離、Node Editorや外部API公開は既存Consumer側へ段階的に接続し、これらをR2／R3／非Plugin Stage1→Stage2の新Hard Gateにしない。
+
+## 12. I2M-1から正式R2-Pへ渡す出典・実消費の検収票（2026-11-15）
+
+### 12.1 合格した単位を起点に、まだ閉じていない一辺を選ぶ
+
+現行mainの`internal/semantic/validationgen/positive_surface_identity_test.go`には、I2M-1で追加した「実WorkspaceのRule出典→型付きRule→生成GoのAST上のReadと条件」の照合がある。**コミット`68af02259129f2f415f07a33d2186ab876c5ca32`に対するActionsのRepository Health実行ログでは、`tei/internal/semantic/validationgen`パッケージがPASS**している。一方、Repository Health全体はFAILで、Go整形差分、REA・Studio構成・Schema Coverage等の別領域の失敗が残る。Goパッケージ一件の成功から製品全体の健全性を主張しない。記録の正本は[該当Actions実行](https://github.com/hat47x/tei-platform/actions/runs/43707552248)とexact SHAとする。
+
+また[PR #5009](https://github.com/hat47x/tei-platform/pull/5009)でmainに入った`cmd/tei/cli_self_build_generated_rule_go_test.go`は、選択したMarkdown Ruleから生成Goを作り、通常の`tei self-build`／既存Build Intent・Catalog・`buildintent.Resolve`経由で実Builderを起動し、生成バイナリの正値・ゼロ・負値・NULL・未取得を判定する**Linux/amd64限定の試験実装**である。コードには`definitionSource`が実EntrypointのGo packageを指すこと、Plan Cross-check、Artifact Binding、L2-b、再現性、隔離されたGo依存Closureを検査する条件がある。テストが存在することと、今回のmainで対象テスト単独のexact HEAD PASSを観測したことは別の資格である。
+
+この二つの実装の間で残る中心課題は、**Ruleの原文・Reader・生成器を、実Builderが選択したGo入力と同じBuild Attemptの証拠へ結び付けること**である。現在のCLI試験は生成したGo packageをBuild Intentの入口に置くが、元のMarkdown ReaderとGenerator実装の出典が同じ正式Build Intentへ束縛されたことまでは検査していない。したがって「生成Goの実ビルド」と「Authoringからの正式な再現可能ビルド」を混同しない。
+
+### 12.2 最小の実装引渡し：別資格を一枚で照合する
+
+次のR2-P作業票は新しい製品Schemaや中央Evidence Storeを導入せず、既存`Source Index`、`Build Intent`／`ResolvedBuildReceipt`、Plan／Artifact照合、CLI実行結果を**同じ対象・同じ試行の出典付き列**で比較する。原文や生成器のメタ情報を後から説明文に追記しただけでは、実Builderの入力閉包を受理しない。
+
+| 経路 | 現在の実観測 | 次に照合するもの | 未達なら表示する結果 |
+| --- | --- | --- | --- |
+| **A 原文選択** | `Workspace.Load`と選択済み`tei.rule-authoring/v0`、原文byte／Definition Range、Source Index指紋 | 実際に生成へ渡したRule・解決型・Reader版と同一のRoot／World・Model Revision | Source未取得・失効・選択不一致 |
+| **B 意味からGoへ** | `semantic.Validation`と`GeneratePositive`の実Go byte／ASTのRead・分岐 | AのRuleとGenerator版／Target／生成物Digestが現在の選択と一致 | 生成元不明・条件不一致 |
+| **C Build Intentへ** | 実`definitionSource`・`IntentSource`・依存Go Closure、`buildintent.Resolve` | A・Bの入力と生成Goを実Build Intentがどう参照し、どのbyteをBuilderへ渡すか | 原文・生成器の未束縛、選択A／消費B |
+| **D Builder実消費** | Plan Cross-check・Artifact Binding・ChildRun・再現性・隔離情報 | 同一Attemptの選択Plan、実Builder入力、完成Artifact／Image Digest | 実消費未観測、別Attempt、旧Artifact |
+| **E 実Consumer** | Linux/amd64の完成バイナリを起動する限定試験 | 同一Imageから観測した正・ゼロ・負・NULL・未取得と独立Expected | 未起動・他Target・別Binary |
+| **F 公開・Desktop** | R3公開Entry／actual ProviderとStage2 Windowsは別Owner | 現在Grant・実Provider Call／Receipt、Windows実Desktopの再構築と受領 | **未受理**。A〜Eの結果で代用しない |
+
+この表にある「一致」「失効」「不一致」「未取得」は**報告上の判定**であって、新しい共通Result enumやHost APIの追加を要求するものではない。特に、字面が同じ`Rule ID`や同一Go byteを、別Root・別Reader・別Generator・別Attemptの代替資格としない。
+
+### 12.3 失敗を作り分け、再利用可否を一つの真偽値にしない
+
+独立Expectedは既存#1180／#2514に紐付け、次の一因子変更を順に検証する。
+
+| 変更・反例 | 失効・拒否すべき資格 | 変わらない可能性のあるもの |
+| --- | --- | --- |
+| Markdown説明文のみ改版 | 旧Source Index・以前の取得事実 | 型付きRule、生成Go byte、Artifactの内容 |
+| Ruleの参照Attributeまたは`positive`条件を変更 | 型付き意味の前提、生成Go、Build依存、独立Expected | 表示部品の共通Contract |
+| 元DSLは同じでGenerator実装／版を変更 | 旧Generator受理・生成資格・Build入力証拠 | 偶然同じ生成Go byte |
+| 正しいGo package Bを宣言し、実Builderが旧Aを消費 | 選択Plan→実入力→Artifact Binding | 単体Goテストの結果 |
+| Workspace A→B→A、または同名別Sourceで再実行 | 旧Index・旧Attempt・現在Grantへの自動復帰 | Source／生成Goの内容一致 |
+| 同じDigestの成果物が異なるTarget／Attemptで現れる | 実Consumer／配送資格・現在実行の主張 | byte一致それ自体 |
+
+次の**一つの実装Packet**は、A・B・CのSource/Generator出典を同一Attemptの`Build Intent`に正しく束縛し、Dで選択した入力の一致を確かめる限定回帰とする。現状の`definitionSource`は生成GoのEntrypointを示すため、**これを原DSL Source IDへ差し替えることはしない**。Entrypointと生成元は別の参照義務として保持し、既存Resolver／Builderのどの欄で結べるかを実コードで検証してから、最小差分を実装する。
+
+その後、公開したpure Function Entry→正式Providerのactual Invoke（R3）と、TEI定義によるStudio Stage1→Stage2／Windows実Consumer（G6）を**別の独立受入**として進める。Builderの試験に無関係なREA、Node Editor、SUI、Wailsの失敗をこの作業で便宜上修正・無視したことにしない。新たなGraph Runtime、別Host、逆解析Writer、意味・権限の第二正本は追加しない。
