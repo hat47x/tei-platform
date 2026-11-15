@@ -1238,3 +1238,12 @@ Webの要求、CLIの起動、タイマー、Message、画面操作には、そ�
 それぞれの観測は異なるSubjectに属するため、成功を単純加算して全体セルフビルドの合格にしない。後続は既存の**R2-P：生成Go byte→正式Builder入力→Artifact**、並行する**R3：受理済みpure Function→公開Entry→実Provider→独立Consumer**、さらに**Studio Stage1→Stage2のWindows実受領**へ渡す。Node View／Graph／文書／AI向け説明は既存Meaning・Source・版を読み取り専用で投影し、意味受理・実行権限・逆編集権限を自動付与しない。新Core・Registry・Runtime・横断Hard Gateは導入しない。
 
 **状態**：現存のGo実装とPR #5007の限定試験を前提にした受入計画。新Descriptor検査／Go分岐置換、生成Scenarioコマンドの失効修正、外部Plugin、正式Builder、通常CLI actual Provider、Studio Stage2の新検証はNOT RUN。
+
+<!-- tei-product-projection-requalification-20261115 -->
+### 設計Projection・実装選択・生成物を同じ成功へ畳まない（2026年11月15日）
+
+[横断受入計画§11〜14](../design/DERIVED_PROJECTIONS_RUNTIME_AND_MIGRATION_ACCEPTANCE_2026-11.md)を製品完成の評価へ接続する。mainにある**実Rule→Go→通常CLIの限定Build（#5009）**、**文書Operator→Workspace選択→Scenario実Call（#5007）**、**二Source→Go AST／元byte位置（#5020）**、**Windows Pin再読込試験のコード（#5025）**は、同じFunctionが全経路で動作した根拠として加算しない。
+
+まずPQ-Aで原RuleのSource／Reader／Generatorと実Builder入力Go byte・Artifactを同一Build Attemptへ束縛し、PQ-Bで同じWorldでも`implementations:`切替後の旧Scenario選択・結果の無条件再利用を拒否する。両者の意味・実装・時点を独立に確認した後、正式Function一件の`入力→Rule→実Provider→独立Consumer`へ段階的に接続する。期待値は既存#1180/#2514を使用し、別のテスト正本を作らない。
+
+次の最上位P0は**通常CLI→実Provider実Read**と**Stage1→Stage2実Windows WebView2**のままとする。Studio Pin試験コードの存在や単独Self-build CI成功をStage2成立としない。業務Snapshot、現在Grant、移行先DB、帳票の実取得はOwner/Host/Providerが持つ別資格を実証するまで未完了。新規Framework／常駐Host／Runtime／Migration Engineは前提にしない。
