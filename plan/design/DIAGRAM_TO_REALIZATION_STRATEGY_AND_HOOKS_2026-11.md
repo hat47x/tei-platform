@@ -380,3 +380,23 @@ StudioのプロジェクトExplorerで一つの`*.tei.md`を開いたとき、So
 | **FL-08** | Source A→B→A、生成器・外部依存だけ更新、Artifact byteは同一 | byte同値は現在のAcceptance・Generator資格・Build Evidence・Host Grantを復活させない |
 
 まずFL-02／03／04を既存Extension Point参照とRuleの製品Builder入力試験に重ね、FL-05をStudio生成部品の実Consumer試験へ引き渡す。**新しい汎用Project Schema、拡張子、ビルドエンジン、Resources Registryは設けず、対象の足りない一辺だけを既存Ownerへ戻す。**
+
+## 14. 型付き意味経路の実証を、図表からの実現方式選択へ返す（2026-11-16）
+
+第7節のI/G比較は、単に二つの実装が同じ値を返すという検査では足りない。**対象にした意味ID、必要なReadのID・回数、対象のSnapshot、実際に呼ばれた実装を同じ試行で区別する**。ここではメソッドの名前と業務上の意味を切り離し、既存の実コードが到達した地点から次の不足へ進める。
+
+### 14.1 実績として使える範囲
+
+- main統合済み[#5118](https://github.com/hat47x/tei-platform/pull/5118)は、選択済みData表由来のRuleを既存Evaluator（I/P）と生成Go（G）で評価し、結果だけでなく数値Readの対象ID・回数も比較する。別Attributeを読んでも同じ結果を返す負例は拒否する。ただし生成Goはテスト用packageでの実Buildであり、正式R2-P全閉包や実DB Providerの資格ではない。
+- main統合済み[#5132](https://github.com/hat47x/tei-platform/pull/5132)は、生成Goの関数名だけを変更した正例と、対象Attributeをすり替える負例を同一実Binaryで検査する。**Generated Symbolは追跡情報にはなっても、業務上の経路の安定IDにはしない**。手書きDriverによる明示呼分けであり、製品Runtimeの自動実現選択は未実証。
+- main統合済み[#5109](https://github.com/hat47x/tei-platform/pull/5109)・[#5129](https://github.com/hat47x/tei-platform/pull/5129)は、BuildPlan確定後に生成Goだけ、または同梱元Markdownだけを変更して旧Planで起動することを拒否する。ここで示したのは**Build入力の現在性**であり、意味上の同値や現在のRuntime Grantの保証ではない。
+
+並行[#5114](https://github.com/hat47x/tei-platform/pull/5114)は、Operator実装選択A→Bに伴う旧Scenario Command／Planの拒否を追加する候補であり、**未統合の間は既存mainの機能と数えない**。これらの負例は、同じ結果なのに「読取先が違う」「生成関数名だけ違う」「元Sourceが古い」「実装選択が古い」という四つの**異なる不一致**を扱うため、一つの抽象的な合否に丸めない。
+
+### 14.2 図表・Node・Pluginへ広げる条件
+
+既存[抽象経路の検査§27〜28](DERIVED_PROJECTIONS_RUNTIME_AND_MIGRATION_ACCEPTANCE_2026-11.md)のMeaning→選択実現→実Call→状態・受領を、Diagram Occurrence／Node Port／Plugin Mappingの表示へ投影する。Portの型が一致しても、Identity、粒度、多重度、Presence、Read Coverage、時間条件、Audienceが失われれば適合しない。複合型全体、Fieldごとの接続、明示Adapterのいずれを選んでも、この要件は変わらない。Mappingの詳細と実Read証拠は既存[Pluginの入出力設計](PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md)の検収を参照し、第二のGraph Runtime・Port正本を作らない。
+
+最初の受入は**一Rule・一Field・二つの実現経路**に限定する。独立ExpectedにRule ID、Attribute ID、値／Presence、Readの必要集合・観測集合、選択実現、同一Attemptの実Callを含める。SourceやGeneratorの位置、実Builderが読んだbyte、実Consumer受領は**取得できた境界だけ**記録する。後段が未観測ならnot-provenとし、生成GoテストのPASSで埋めない。第7節のRG、第13節のFL、[既存検収のAP-01〜06](DERIVED_PROJECTIONS_RUNTIME_AND_MIGRATION_ACCEPTANCE_2026-11.md)を再利用し、新しいExpected正本や自動Trace Engineは設けない。
+
+**次の実装分担**：#1121／#4544はSource→Generator→Builder、#951／#1251は実現選択と型付きMapping、#2586／#4495は通常CLI→実Provider→独立Consumer、#2831／#4583はWindowsのStudio Stage1→Stage2。生成AIの候補採用は第11節の閉じた文脈に限り、必要ReadやEffectを推測で補完しない。本節の新規Go／Provider／Windows実証・Owner意味受理は**未実施**である。
