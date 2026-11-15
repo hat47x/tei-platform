@@ -1962,6 +1962,19 @@ Graph／Ruleの候補構造指紋を生成Binaryから照会する[PR #4758](htt
 
 **現在の証拠と停止線**：mainの限定ReferenceにはGraph／Rule→条件分岐Go生成・同一Binaryへの実行時Node入力・Source Indexのbyte検査がある。一方、製品の正式Reader／選択Role／Accepted Meaning→通常Generator・Plugin・CLI実Call→Stage2実再構築は別の未達資格である。[PR #4744](https://github.com/hat47x/tei-platform/pull/4744)はMarkdown-firstと三要素図面の統合Draftであり、同PRや本節のdocs-only変更を製品機能の採用・Owner意味受理と読み替えない。
 
+
+<!-- org-c1-first-product-read-cohort-20261115 -->
+### 2026-11-15 組織C1：正の一致経路から実Provider Readへ進む最小契約（補遺§33）
+
+[組織C1設計補遺§33](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)で、[コードDraft #4737](https://github.com/hat47x/tei-platform/pull/4737)の実Workspace Relation Key／合成二Context→テストConsumerによる候補Pathと、実DB Read Cohort・正式判断Rule・生成Go・現在Grantの**未接続部分**を整理した。既存Source、Function Context、Query/Provider、生成器、Expectedを再利用する。
+
+- **実Read-1**：#2586/#4495で一つの選択済みOrg Queryを実Provider→実Rowset→Function Context→独立Consumerへ同一Attemptで接続する。Source/時点/Scope/Environment/Instance/SQL/args/NULL/拒否を照合。先行する受注Queryの成功とは別資格。
+- **実Read-2**：#4490 BEH-01/02/04を先行条件として、二Relationの人物同定・validAt/knownAt・必要ReadとCoverage・実Snapshot/Scopeを比較する。一Query内の結合と、二Queryを同じRead範囲で実行する方式の両方を評価。RLS、Limit、否定例外、二時点Gapの反例が残れば唯一・全件・該当なしは保留する。partialでも確認済みの異人物2本の正経路は一意性の反証に利用できるが、承認適格の全件結論とはしない。
+- **生成-1／表示-1**：#2621/#988/#1121/#4544の正式Reader→Accepted Meaning→Generator→実Builderで一Ruleを再生成し、説明・Mock・生成Go・独立Expectedを比較。#1124/#2516でCLI/Studio/SHOへSource・理由・Coverageを表示する際は開示資格を再判定。Case移管・Host Current Grant/Effectは#4501/#1174の独立検収へ委譲。
+- **Owner・結果**：#2386がPerson/Role/責任・Case Linkの意味選択、#4490がRead/候補、#1180/#2514がExpected。新Rule Runtime、第二Source/Expected/Scenario正本、組織専用Host/DBは作らない。#4737はGo整形修正の新HEAD CIで再判定し、既存の合成Contextと実Providerの資格を混ぜない。
+
+**優先順位**：最初の製品実Read #2586、Desktop Stage1→Stage2 #2831を独立P0として維持。今回の節は設計・作業引渡しであり、実組織Provider/CLI/Host/Windows/Studio E2EやOwner意味受理の新しい実行は**NOT RUN / NOT ACCEPTED**。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
