@@ -1272,6 +1272,11 @@ S0-Aで最初に提示すべき**独立した正負**は、同一Source Snapshot
 
 **既存の担当と次の差分**：#2620/#988/#1018がSource/Roleの読取り、#1121/#4544が生成、#951/#1251が実Plugin選択・呼出し、#943/#2831がBuildとStage再入、#1180/#2514が独立Expected、#2600が失効・再利用、#4583がWindows Desktopを受け持つ。次の実装はGraph生成型と解釈型を別Targetで並行構築することではなく、**同じ固定Graph／Ruleの意味IDから二方式を選び、既存Operator／Generator／Providerの実出力と最小負例を比較**する小さな差分にする。MCP／Studioは同じ型付きOperationの投影とし、CLI先行・Go単一バイナリ・外部Hostを独自に置き換えない。新しい万能Interpreter、Graph Compiler、Host、Registry、第二Build Engineを初回の前提にしない。
 
+<!-- tei-product-direct-generated-first-experiment-20261115 -->
+**既存実装の再利用**：[Plugin実現方式§10](../design/PLUGIN_REALIZATION_AND_OPTIMIZATION_REQUIREMENTS_2026-11.md)の第一例 `sales.order_line.quantity_positive` は、main `84c335b` の `cmd/tei/cli_self_build_generated_rule_go_test.go` で、**汎用評価と通常`tei self-build`による生成Goの実結果を、同一Rule・正値／ゼロ／負値／nil／取得不能の固定ExpectedとRead回数で比較**する局所実装まで進んだ。このGo回帰を新しいテストへ複写せず、既存の意味契約を直接評価する場合とコード生成する場合の基線として活用する。なお、main収録とexact HEAD CIの成功・正式Builder入力閉包・実Providerの選択資格は別の判定である。
+
+**次の検収**は、同じRule／Functionについて、実現方式Aを選んでいるのに実CallerがBへ到達する不一致を、値が同じでも拒否できるか（RZM-04）。コード生成を省く場合も、Runtimeで使用するモデルbyte・版・Scope・必要Contextの現在性を確認する。#951/#1251が実選択／実呼出し、#2595がBuild入力、#1180/#2514が独立Expectedを担当する。**R2-P出典閉包、R3公開Entry、Studio Stage1→Stage2のP0は引き続き独立**とし、全域用のInterpreter／第二Resolverを設けない。
+
 **現時点の資格**：現行mainにはRuleから生成したGoを通常TEI CLIのBuild経路で実Binaryへ収録する限定的な実証と、原文コピーの実BinaryによるHash照合がある。一方、同一意味のGraphを生成型・解釈型で実比較した結果、Generator自身のTEIによる実再構築、正式Function Entry→選択Providerの製品実Call、Stage1→Stage2のTEI CLI／Windows Studio完全セルフビルド、定義簡素化の定量実測は本節では**NOT RUN／NOT ACCEPTED**。この追補は実装方式を選ぶための計画であり、達成済みという主張ではない。
 
 ### 検査義務を一つTEIへ移し、次のTEIで使う（2026年11月15日）

@@ -353,3 +353,24 @@ main統合済み[#5051](https://github.com/hat47x/tei-platform/pull/5051)の`//g
 **実装と計画の優先順位**：W0の一Operator Rule read-only接続票→D0 PostgreSQL一Function実Read／R2-PとR3の個別実Provider資格→Studio Stage1→Stage2実受領を**並列P0として維持**し、その後にNode View、外部Host、Effectful Hookへ接続する。CPW-23〜28は横断固有の反証候補であり、正式Meaning、Provider選択、Data操作、Disclosure／Grant、実Buildの第二正本を新設しない。
 
 **検証境界**：この節は、mainの限定実装と進行中のPRを区別した設計・引渡しである。CPW-23〜28の新しいGo／DB／Windows試験、DB横断Provider実接続、正式R2-P／R3の全経路、Stage1→Stage2再帰セルフビルド、Owner意味・開示受理は**今回新たに検収していない**。
+
+---
+
+## 11. 解釈と生成を別の実現候補として、接続検収票へ加える（2026-11-15）
+
+[Pluginの実現・最適化契約§10](PLUGIN_REALIZATION_AND_OPTIMIZATION_REQUIREMENTS_2026-11.md)では、受理された型付きモデルを既存汎用関数で直接評価する方法と、同じ意味からTarget向けコードを生成する方法を、**互いに競合し得る実現候補**として整理した。これは本書§9のShape／Law／Binding／Realization／Admission・Effect／Consumerの枠組みを増やすものではなく、**Realizationの実体が異なる**例である。
+
+最初の `quantity_positive` では、既存 `validationeval.Evaluate` と `validationgen.GeneratePositive` が生成したGoの `EvaluateSelected` を同じ型付きRule・独立Expectedで比較する。生成の入力検査とRuntime評価の前提は同一でないため、まず生成器が受け付けるShapeへ対象を絞り、正値・ゼロ・負値／nil・取得失敗／Read先と回数を判定する。ここで結果が一致しても、生成版／解釈版の**どちらが製品で選択・実呼出しされたか**を別に確認する。
+
+| 接続検収票の欄 | 直接評価の証拠 | 生成評価の証拠 |
+| --- | --- | --- |
+| Meaning／Context | 選択済みRule・Model revision・必要Read／Sourceの取得範囲 | 同じRule／型に加え、Generator入力と選択Target |
+| Realization | 実Evaluatorの識別、Target内での利用可能性、実Calledの記録 | 生成器版・生成Go byte・実Builder入力・Artifactと実Entry |
+| Consumer／資格 | 実CallerのResult／Failure・現在のHost条件 | 実Consumerの同一Contract結果・現在Grant／Effectの別判定 |
+| 改版 | Runtime側へ届いたモデルbyteと選択版の再確認 | Generator／Toolchain／Builder／Artifact・Consumerの依存失効 |
+
+**コード生成省略は再配布省略を意味しない。** Goバイナリに型付きモデルを同梱するならそのbyteの実収録と改版を確認し、Studioから動的に読むなら現在のSource／選択実装・取得時点を確認する。無条件の生成→直接評価fallbackは、選択Providerの不一致を隠すため認めない。
+
+最初に追加する反証は§10のRZM-01／04。独立Expectedは#1180／#2514、実現方式の比較は#1121／#4544、実Provider選択は#951／#1251、Build／差分失効は#2595／#2600に委ねる。新たな汎用Interpreter、第二Resolver／Runner、全Target同値を前提にしない。Studio Stage1→Stage2 Windowsと公開pure Function R3の優先順位は変更しない。
+
+**状態**：main `84c335b` に収録された同一Ruleの汎用評価／生成Go比較を再利用する設計引渡しであり、重複するGo回帰は追加しない。RZM-04の正式な実現方式選択と実Callの不一致負例、実Provider・独立二Consumerは未検収。
