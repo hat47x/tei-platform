@@ -135,11 +135,18 @@ func buildExpectedScenarioPlan(scenarioPath, workspacePath string, loaded worksp
 		return empty, scenariotest.Scenario{}, fmt.Errorf("read current Plugin Lock: %w", err)
 	}
 	plan.PluginLockSHA256 = sha256Hex(lock)
+	// The Workspace's Operator implementation choice can change without
+	// changing either the Canonical World or the Plugin Lock.
+	plan.OperatorSelectionSHA256, err = workspace.FingerprintOperatorImplementationSelections(loaded.OperatorImplementations)
+	if err != nil {
+		return empty, scenariotest.Scenario{}, err
+	}
 	for i := range plan.Commands {
 		command := &plan.Commands[i]
 		command.Argv = append(command.Argv,
 			"-world-sha256", plan.WorldSHA256,
-			"-plugin-lock-sha256", plan.PluginLockSHA256)
+			"-plugin-lock-sha256", plan.PluginLockSHA256,
+			"-operator-selection-sha256", plan.OperatorSelectionSHA256)
 		if digest, exists := plan.FixtureSHA256[command.StepID]; exists {
 			command.Argv = append(command.Argv, "-fixture-sha256", digest)
 		}
@@ -148,7 +155,8 @@ func buildExpectedScenarioPlan(scenarioPath, workspacePath string, loaded worksp
 }
 
 // reviewScenarioPlanDiff verifies that a previously generated, persisted CLI
-// plan still matches the current Scenario, Fixture, World and Plugin Lock,
+// plan still matches the current Scenario, Fixture, World, Plugin Lock and
+// selected Operator implementation,
 // while retaining the prior two-snapshot Source Index review. Matching pins
 // do NOT prove the Scenario's independent expectations, actual execution,
 // Evidence Packet trust, original Source authenticity or runtime authority.
