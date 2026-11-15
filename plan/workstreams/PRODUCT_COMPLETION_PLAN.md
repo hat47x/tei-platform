@@ -26,11 +26,13 @@
 
 ### 図解のP1：定義・生成・実Attemptを証拠つきで比較する（2026年11月15日）
 
-[プロセス実行図の因果・意味保存・証拠照合](../design/PROCESS_EXECUTION_CAUSAL_PROJECTIONS_2026-11.md)の§10〜19に、他の標準Data・Node／Plugin配線・業務Process／REA・Rule・セルフビルドの議論を接続した。異なる図を一つの実行エンジンで統一するのではなく、**Sourceからの投影、Targetへの生成、実際の呼出し、独立した受領の間にどの根拠が必要か**を、対象に応じて切り出す。部分取得から「不存在」や「すべて成功」と推測する図は不合格とする。
+[プロセス実行図の因果・意味保存・証拠照合](../design/PROCESS_EXECUTION_CAUSAL_PROJECTIONS_2026-11.md)の§10〜24に、他の標準Data・Node／Plugin配線・業務Process／REA・Rule・セルフビルドの議論を接続した。異なる図を一つの実行エンジンで統一するのではなく、**Sourceからの投影、Targetへの生成、実際の呼出し、独立した受領の間にどの根拠が必要か**を、対象に応じて切り出す。部分取得から「不存在」や「すべて成功」と推測する図は不合格とする。
 
 最初の実装担当は#1124／#2497／#4198（読取専用図解）と#988／#1121（選択済みRule・Go生成）である。固定した一Ruleの現在のSource／型／Read範囲をCLI/Headlessで表示し、未接続のBuilder・Provider・Effectを未確認のまま示す。同じ入力・Rule IDで参照Attributeを一因子変更し、生成Go／実Read／判断と旧Evidenceの失効を既存#1180／#2514へ返す。Generator自身のGo構造をTEIの意味候補へ戻すP1 dogfoodingは別Subjectとして進める。**Go AST・図の一致、Mock、別HEADのCI成功を、通常CLIの実Provider／Stage2実Windows受領へ加算しない。**
 
 **今回の実装引渡し**：§16〜19では、Rule→Guard、Event→Batch、Effect→通知という異種境界で、型・粒度・時点・配送・現在Grant・Receiptの保証を勝手に繰り上げない。C0/C1は既存Rule読取・生成Goの一因子変更、C2/C3は合成のpartial入力・Effect unknown・Provider取り違えを反証、C4は同じSubjectをCLI/Studioへ読み取り専用で投影する。最初の票は一問・一Subject・現在のSource/観測範囲と不足の理由に限定する。合成のEffect反例は実DB Commitや実通知の成功根拠にしない。既存#4198/#1130/#1174/#4495/#1180/#2514へ受入を返す。
+
+**新たに明確にした受入条件（§20〜24）**：次のOperationを「実行可能」と表示する前に、定義・入力Contextの取得範囲・選択Provider・現在Grant・先行Effect・Audienceを各Ownerの根拠に照合する。非同期のJoin／Batchでは業務時点、Read Snapshot、実Attempt、受領時点を混同せず、問いに必要な原因がそろった範囲だけを説明する。中断後は純粋計算の再評価、Checkpointからの継続、外部Effectの照会と再試行、補償、結果の再配送を別の操作とする。**最初の製品差分はC0〜C1のRule一件**で、同一Source・型・Read・生成Goのread-only照合と一因子変更の反証を既存CLI／Inspectorへ加える。C2〜C3の部分入力・Provider不一致・Effect unknownはまず合成Fixtureで止め、実DB／通知成功へ昇格させない。C4の実Consumer受領は#4495/#1251/#1824/#2831/#4583へ分けて検収する。独立Expectedは#1180/#2514を用い、新Scenario正本・Runner・全般Ready APIは追加しない。
 
 P0は引き続き、#4495の公開pure Entry→actual Provider→通常CLIの実二入口と、#2831/#4583のStage1実TEI→Stage2実Windows WebView2を優先する。図解・編集・REA・BRMS・ETLの全対象対応をP0の新しい前提にしない。
 
