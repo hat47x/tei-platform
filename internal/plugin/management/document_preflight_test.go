@@ -41,7 +41,7 @@ func TestDocumentReadPreflightUsesExistingResolverSelection(t *testing.T) {
 		got.ResolvedVersion != "1.0.0" || got.Environment != "development" {
 		t.Fatalf("exact selection must reuse the inventory's resolved identity: %+v", got)
 	}
-	if got.SourceBinding != "unbound" || got.Disclosure != "not-checked" || got.DocumentReadable {
+	if got.SourceBinding != "unbound" || got.Disclosure != "not-checked" || got.ReadEligibility != "not-assessed" {
 		t.Fatalf("selection is never Document source or disclosure authority: %+v", got)
 	}
 	raw, err := json.Marshal(got)
@@ -96,7 +96,7 @@ func TestDocumentReadPreflightFailsClosedOnUnqualifiedStates(t *testing.T) {
 			r := base()
 			tc.mutate(&r)
 			got := InspectDocumentReadPreflight(r, "tei.database.postgres")
-			if got.SelectionStatus != tc.want || got.DocumentReadable ||
+			if got.SelectionStatus != tc.want || got.ReadEligibility != "not-assessed" ||
 				got.SourceBinding != "unbound" || got.Disclosure != "not-checked" {
 				t.Fatalf("preflight = %+v; want %q and no document authority", got, tc.want)
 			}
