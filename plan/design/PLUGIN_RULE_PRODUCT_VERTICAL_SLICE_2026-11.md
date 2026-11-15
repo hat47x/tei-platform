@@ -255,3 +255,22 @@ Data Rule／Table Script／Field拡張はデータ意味の側へ、独立した
 **最初に通す二つの負例**は、(1) Rule原文を意味が変わるように変更したのに旧Go／旧BuildPlanを使おうとする試行、(2) 説明文のみの変更後に、生成Goの再利用可否とSource-backed Evidenceの再確認を混同する試行とする。Go BuilderへMarkdownを読ませる暫定対応ではなく、実生成AttemptからBuilderの実入力へ至る証拠の橋渡しを#4544／#2595で実装する。R3の通常`tei` CLIからの選択Provider actual Call、R4の独立Consumer、Studio Stage1→Stage2 Windowsの実再入は並行P0のまま残す。
 
 **現状の判定**：R1.5のテストはmain収録済み、参照Builderの一連の検査コードもmainに存在する。製品R2で必要なRule→Go生成Attempt→実Builder入力の連鎖、R3の実Provider、Stage2 Windows、Ownerの業務意味受理は未検収である。この節は実装と要求の境界を定めるものであり、Go／CLI／Windows／DB試験を新規に実行した記録ではない。
+
+### 14.7 Ruleと公開Entryの境界を明確にしてから合流する
+
+mainの製品Go回帰`internal/operations/inspect_markdown_rule_entry_boundary_test.go`では、選択済み`tei.rule-authoring/v0`が`semantic-validation`として正しいSourceを持っていても、**同じIDの`semantic-capability`が存在するわけではない**ことを確認する。したがって`sales.order_line.quantity_positive`を生成して実行できても、それだけで呼出し可能な公開Entryは生まれない。Data側のRule／型／Relation、Function側の入力・判断・公開、Business側の状態／遷移という既存の責務を維持する。
+
+**二つの実装レーンを独立して閉じる。** R2-P（#943／#2595／#4544／#951）は、選択済みRule・Generator／Toolchain・生成Goの実byteを既存製品Build Intentへ渡し、Runtimeへ必要なContributionがArtifactに収録されたことを実Builderで検証する。R3（#4495／#1251／#1158）は、**既に受理されたpure Function一件**について公開Entry→現在選択したProvider→実Invocation→通常`tei` CLI／独立Consumerを先行検証できる。R3をR2-Pの完成待ちにしない。両方の資格が揃ってから、Rule由来の生成実装をそのFunctionが実際に呼ぶ**結合検査**を追加する。
+
+| 接続点 | 成立に必要な対応 | 合格にしてはいけない例 |
+| --- | --- | --- |
+| Rule→Function | Functionが参照するRule ID・版、業務上の用途、評価に必要なData Context／取得範囲を明示 | 同名Rule IDを公開Function／CapabilityのIDとして自動登録 |
+| Function→公開Entry | 正式に公開するEntry ID、入力の名前・意味型・必須性、欠損／NULL／未取得、Target／Scopeとpure／effect宣言を対応付ける | DSL項目名とCLI／Provider引数名の不一致、未宣言別名、部分取得から勝手に既定値0を補完 |
+| Entry→Provider実Call | 既存#951の選択結果（Contract・実装・Lock・Artifact）に、Hostの現在Grantと実Entry呼出しを照合 | Selected B／Actual A、Plugin Inventoryの発見だけ、旧Grant・旧Binaryからの成功推測 |
+| 実結果→Consumer | 同じAttemptで実Providerの入力・実Outcome・独立Expected・受領先を対応付ける | CLIの期待値固定出力、同じ結果の手書き実装、Reference Binaryを製品Consumerとして算入 |
+
+Ruleは他のFunction、標準Operator、Table Script／Data Rule、Node Flowからも**再利用可能な判断部品**である。ただしRuleの正本をFunctionやNodeへ複製しない。NodeのPort名・型とFunction Entryの入力名を結ぶ場合も、画面の配線やLabelだけをBindingの根拠にせず、型付きOperationの入出力と必要Contextに投影する。API公開・外部Trigger・Effectful Hookについては、明示的な公開資格・現在Grant・Effect／Receiptを後続で検収する。
+
+結合検査の最小反証は、**RE-01** Rule正本は存在するがFunction Entryが未公開、**RE-02** Entryの引数名・型がFunction／Data Contextと不一致、**RE-03** NULLと未取得の扱いがProviderで潰れる、**RE-04** R2-Pが生成実装Bを収録したのにR3が旧実装Aを呼ぶ、**RE-05** Rule変更後に旧Artifactと旧Consumer結果を流用する、である。これらは新しいScenario／権限正本を作らず、既存#1180／#2514へ負例の追加として渡す。
+
+最初のR3でpure Functionの実呼出しを閉じる間も、**Studio Stage1実TEI→Stage2実Windows WebView2**（#2831／#4583）は独立した最上位P0とする。本節は製品で実在するRule・Reference Builder・Entry拒否テストを踏まえた設計・引渡しであり、正式製品BuilderとRule由来Functionの統合実行を新たに受理したという報告ではない。
