@@ -17990,7 +17990,7 @@ var CodeMirrorCoordinates = class {
   constructor(source) {
     if (typeof source !== "string") throw new Error("INVALID_EDITOR_SOURCE_TEXT");
     const pieces = source.split("\n");
-    const normalized = [];
+    const normalized2 = [];
     let sourceStart = 0;
     let viewStart = 0;
     for (let i = 0; i < pieces.length; i++) {
@@ -18001,11 +18001,11 @@ var CodeMirrorCoordinates = class {
       this.sourceStarts.push(sourceStart);
       this.viewStarts.push(viewStart);
       this.contentLengths.push(line.length);
-      normalized.push(line);
+      normalized2.push(line);
       sourceStart += originalLine.length + (hasNextLine ? 1 : 0);
       viewStart += line.length + (hasNextLine ? 1 : 0);
     }
-    this.text = normalized.join("\n");
+    this.text = normalized2.join("\n");
     this.sourceLength = source.length;
     this.viewLength = this.text.length;
     if (sourceStart !== source.length || viewStart !== this.text.length) {
@@ -18716,6 +18716,39 @@ function createResponseScope() {
   };
 }
 
+// inspector-selection.ts
+var INSPECTOR_SELECTION_EVENT = "tei:inspector-selection-request";
+function normalized(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const request = value;
+  const subject2 = request.subject;
+  if (!subject2 || typeof subject2 !== "object" || Array.isArray(subject2)) return null;
+  const entry = subject2;
+  if (typeof request.workspaceId !== "string" || !request.workspaceId || !Number.isSafeInteger(request.workspaceEpoch) || request.workspaceEpoch < 0 || typeof entry.kind !== "string" || !entry.kind || typeof entry.id !== "string" || !entry.id) return null;
+  return {
+    workspaceId: request.workspaceId,
+    workspaceEpoch: request.workspaceEpoch,
+    subject: { kind: entry.kind, id: entry.id }
+  };
+}
+function emitInspectorSelection(target, request) {
+  const detail = normalized(request);
+  if (!detail) throw Error("INVALID_INSPECTOR_SELECTION_REQUEST");
+  target.dispatchEvent(new CustomEvent(INSPECTOR_SELECTION_EVENT, {
+    detail,
+    bubbles: true,
+    composed: true,
+    cancelable: false
+  }));
+}
+function inspectorSelectionFromEvent(event, currentWorkspaceId, currentWorkspaceEpoch) {
+  if (event.type !== INSPECTOR_SELECTION_EVENT || !(event instanceof CustomEvent))
+    return null;
+  const request = normalized(event.detail);
+  if (!request || request.workspaceId !== currentWorkspaceId || request.workspaceEpoch !== currentWorkspaceEpoch) return null;
+  return request.subject;
+}
+
 // presentation.ts
 var MAX_XEAD_TABLES = 200;
 var MAX_XEAD_FIELDS = 2e3;
@@ -19037,7 +19070,11 @@ var graph = mountReadonlyGraph(
   {
     onSelect(key) {
       const entry = entries.find((e) => subjectKey(e.subject) === key);
-      if (entry) void inspect(entry.subject).catch(showFailure);
+      if (entry) emitInspectorSelection(element("graph"), {
+        workspaceId: workspace.value,
+        workspaceEpoch,
+        subject: entry.subject
+      });
     }
   }
 );
@@ -19269,7 +19306,11 @@ function renderList() {
     button.append(name2, detail);
     button.addEventListener(
       "click",
-      () => void inspect(entry.subject).catch(showFailure)
+      () => emitInspectorSelection(button, {
+        workspaceId: workspace.value,
+        workspaceEpoch,
+        subject: entry.subject
+      })
     );
     return button;
   });
@@ -19466,6 +19507,12 @@ var panel = mountCommandPanel(element("commands"), {
       };
     }
   }
+});
+document.addEventListener(INSPECTOR_SELECTION_EVENT, (event) => {
+  const target = event.target;
+  if (!(target instanceof Node) || !list.contains(target) && !element("graph").contains(target)) return;
+  const subject2 = inspectorSelectionFromEvent(event, workspace.value, workspaceEpoch);
+  if (subject2) void inspect(subject2).catch(showFailure);
 });
 workspace.addEventListener("change", () => {
   search.value = "";
