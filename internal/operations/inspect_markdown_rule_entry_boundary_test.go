@@ -51,6 +51,19 @@ func TestSelectedRuleMarkdownSourceIsNotAnExecutableCapability(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	matchedArtifact := false
+	for _, artifact := range inspection.Sources.Artifacts {
+		if artifact.Path != sourcePath {
+			continue
+		}
+		if artifact.Fingerprint != sourceindex.Fingerprint(raw) {
+			t.Fatalf("indexed Rule bytes differ from Source: %s", sourcePath)
+		}
+		matchedArtifact = true
+	}
+	if !matchedArtifact {
+		t.Fatalf("selected Rule has no indexed Markdown artifact: %s", sourcePath)
+	}
 	found := false
 	for _, ref := range inspection.Sources.References {
 		if ref.Subject != subject || ref.Role != sourceindex.RoleDefinition {
