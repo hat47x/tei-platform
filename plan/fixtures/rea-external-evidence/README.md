@@ -36,13 +36,13 @@ python3 -B plan/fixtures/rea-external-evidence/verify_real_rea_intake.py \
     --binary /tmp/tei --fixtures-only --report /tmp/intake-fixture.json
 ```
 
-`--report` のJSONが実行記録である。`mode`・`checks`・`captured`（digest）・`notRun`を読む。
+`--report` のJSONが実行記録である。`status`（`completed`/`failed`）・`mode`・`checks`・`captured`（digest）・`notRun`を読む。実ツールがAnalysis/Viewを出力した後で検証に失敗しても、捕捉済みDigestと失敗理由を記録してCI成果物に残す。失敗を成功扱いに変更するものではない。
 
 ## 検証していること
 
-1. 受領: `state` がwhole（`complete`/`tool-absent`）で、Evidence ID・**受領bytesのdigest**・`promotion`が全false。
+1. 受領: `state` がwhole（`complete`/`tool-absent`）で、Evidence ID・**受領bytesのdigest**・`promotion`が全false。候補の可否に関係なくReceiptと派生Requestを確認し、保存Graphの欠落を受領失敗と混同しない。
 2. 派生入力: `source.kind=inline`にEvidence recordをembedし、**応答包装をembedしない**。派生请求は受領Evidenceに対してvalidateできる。
-3. 投影: 1 Observation＋1 directed Relationを、Producer自身のnode/relation identityで受領し、`authorityLimits`が非昇格を表明する。
+3. 候補投影: 原本の`normalized_result.semantic_graph`にProducer自身のNode IDとRelation IDの両方がある場合に限り、既存`tei external-candidates -evidence-path ... -observation-id ... -relation-id ...`へ渡す。`rea-evidence`はReceipt専用であり選択フラグは持たない。原本にGraphやIDがなければ`notRun`に残し、候補を捏造しない。
 4. 配送検査: 捕捉/新鮮なview配送が各版のframingでwhole。
 5. 負例: 工具が受理しない`source.kind`と、応答包装をEvidence本体として渡す請求を、**工具が**拒否する（intakeが代わりに拒否するのではない）。
 

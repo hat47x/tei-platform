@@ -46,6 +46,7 @@ jobs:
       - name: Run the intake contract tests
         run: |
           set -euo pipefail
+          python3 -B -m unittest discover -s plan/fixtures/rea-external-evidence -p 'test_*.py' -v
           go test ./internal/externalanalysis/ ./internal/jsonl/ -count=1
           go test ./internal/operations/ -run TestExternalCandidate -count=1
           go test ./cmd/tei/ -run 'TestReaEvidence|TestDiscoveryModes|TestCommandCatalogFlags|TestContractDocument' -count=1
