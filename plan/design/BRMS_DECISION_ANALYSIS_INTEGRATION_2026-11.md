@@ -560,3 +560,54 @@ BRMSでは、差分を受け取るたびに次の三つを別々に判定する�
 設計で決めた条件をCLIやStudioで説明する場合には、元Rule行、明示Scope・時点、入力の取得範囲、判断できたことと未確定なことを自然な日本語で示す。業務説明・テスト表・Mockでのシミュレーションは同じSourceから派生させ、実Providerの成功、外部Effect Receipt、現在のHost Grantを偽装しない。説明や図表の更新は必要な再検査を起こし得るが、説明自体を第二Meaning正本へ昇格させない。
 
 この作業は**すでにある#4765設計の継続**であり、新しい全体P0・独立BRMS Engine・承認Server・共通Result Enum・Hard Gateの導入ではない。StudioのStage1→Stage2セルフビルドと通常`tei` CLI→実Provider→独立Consumerを優先する。今後のCI・Owner受理・実際のTargetコード生成・Windows実行は、この文書更新とは別の証拠で検収する。
+
+
+## 41. 同じ業務判断を一件だけ追跡する：Source入場と判断の受理を分ける
+
+[標準データ様式の設計（§39）](SEMANTIC_STRUCTURE_MAPPING_AND_DECLARATIVE_SYNTAX_VIEW_2026-11.md)は、Graph／RuleとWindowで共通化する対象を、Manifest／Pinned Root／Reader選択／Source Index／Roleの**製品S0-A入場条件**へ限定した。Graph／Ruleの意味をWindowの型付きQueryへ揃える必要はない。この分離をBRMSでも維持し、最初は固定の`baseline.tei.md`の一つのRuleを正式経路へ載せる。
+
+最初の製品接続は、次の四つを**一つずつ、同じSource／Selection／Attemptを参照して**検収する。既存のテスト専用S0-Pで成功した原文取得を、正式S0-Aの合格にはしない。
+
+| 段階 | 具体的に照合するもの | 合格と扱わない例 |
+| --- | --- | --- |
+| 1. 選択された原文 | Workspace ManifestのManaged Root、明示Frontend／Role、Pinned Source byte、元のRule ID／条件セルspan、Source Index | 拡張子からの自動認定、Root外の草稿・コードFence内の表、先行試験が別途読んだ原文 |
+| 2. 型付きの意味 | 同じRule IDの条件を、既存Operatorの型・意味・Scope／時点、Ownerの受理版に結び付ける | Reference Candidateの成功やSource Indexの `md` FormatをMeaning Roleへ昇格 |
+| 3. 生成した判断処理 | その受理意味が実Generatorの入力となり、Rule条件の変更で生成Goの実分岐が変化し、実Builderが生成Source memberを読む | 手書きGoへの委譲、Binaryの候補指紋の自己申告、未利用の生成ファイル |
+| 4. 製品での判断 | 実Artifact byteとProvider／Invocation、同じBinaryへの実行時入力、独立Expected、通常`tei` CLI／Consumer受領 | 参照Go子Process、Mock、固定JSONの一致だけで製品受領と見なす |
+
+**最初に許す差分は第1段階だけ**とする。ここに同時に新しいDecision Engineや一般Markdown Parserを実装せず、Reader／Workspace Owner #2621／#988／#1018の既存契約へ返す。第2〜4段階は先行実装の証拠を受け取ってから同じRuleで進める。Graph／Ruleの固定6入力やWindowの負例5入力に関するS0-PのGo試験は既存資産として再利用し、同じGo試験の複製をBRMSへ作らない。
+
+## 42. Ruleの一致、業務適格性、実行許可は別の主張である
+
+組織C1／REAや[実行モデルの設計](PROGRAM_EXECUTION_MODEL_PROJECTIONS_2026-11.md)を踏まえ、判断の評価結果を後続Operationの許可へ直接つなげない。例えば「注文の承認担当候補」を選ぶ場合、**対象Personが組織関係に現れること**、**指定時点で承認条件を満たすこと**、**現在のHost Grantで実際に操作できること**は異なる。
+
+ここでは、既存モデルで検証する順序だけを定める。
+
+1. **Ruleと対象の確定**：業務Subject、同一Decision／Scope、Rule版、有効時点（validAt）と情報確認時点（knownAt）を固定。組織のPerson、REA Agent、外部候補Identityは同名・同IDだけで結合せず、受理済みのQualified Mappingを必要とする。
+2. **入力の充足**：肯定条件の成立に必要な行・Relation Pathと、否定条件・全件性・有効期間を確かめるためのRequired Readを区別。異なる二つの完全な一致行が同じDecision／Scopeで成立すればUniqueの競合は確定できるが、行集合・適用Scope・時点が不明なら競合と断定しない。
+3. **判断の確定**：前節の`confirmed`／`possible`は、受理済みRuleの有限なDomainの中でのみ解釈する。Source、Provider、Snapshotの取得資格が不足していれば、唯一性や不在の判断を保留する。明示NULL、部分取得、権限拒否、未対応型、評価失敗を「不一致」へまとめない。
+4. **操作の許可**：判断で選ばれたRoleや担当候補と、Hostの現在のGrant／Capability・Audienceを別に確認する。Responsibilityや業務上の承認可能性だけからHost Grantを発行しない。
+5. **外部効果の確認**：Commit／通知／再送はOperation・Effect・Receiptで実際の試行と結果を確認する。Mockが値を返したこと、事前条件が満たされたことを実DB commitや外部Effectの完了に昇格させない。
+
+これらは新しい承認プロセスエンジンや中央Policy Registryの段階ではない。業務の説明・設計図・CLI診断・Studio／SHOの表示は、既存Source・Typed Meaning・Function Context・Operation／Evidenceを使った**読取り用の投影**とする。権限を持たない利用者に対して非公開Ruleの名称、存在件数、出典指紋まで開示しない。判断の理由は「確認できたこと」と「確認できない理由」を自然な日本語で示し、AIが補った推測を元規則として表示しない。
+
+## 43. 次の独立Expectedへ渡す、有限な検証組合せ
+
+最初のUnique決定表の例（standard／premium、非負JPYの購入額、0％／5％／10％）を、正式なMarkdown表構文の採用前でも**手で型付けした有限Fixture**として検査できるようにする。ここでは入力集合と検査義務だけを固定し、第二のExpected Storeや新しいRule Result Enumを作らない。
+
+| 検証候補 | 固定する入力／変化 | 証明すること・失敗させること |
+| --- | --- | --- |
+| U-01 | standard、9,999 JPY、Rule三行、完全な入力 | D01のみ一致し0％。D02／D03の不成立も確認 |
+| U-02 | standard、10,000 JPY、同じRule版 | 境界でD02のみ一致し5％。9,999と10,000の区間にGap／Overlapがない |
+| U-03 | premium、0 JPY、同じRule版 | D03のみ一致し10％。金額0を未取得とみなさない |
+| U-04 | standard、5,000 JPYに重複する追加行を設ける | 出力値が同じでも、異なる二行の確定一致ならUniqueのConflict |
+| U-05 | D01の条件は成立、追加行の必須Fieldが未取得 | 一行成立が確認できても一意性は未証明。未取得をfalseに置換しない |
+| U-06 | 明示したDomain内で全行不成立と確定できる入力 | No Match。値のNULL／不適格／未取得と別の結果として扱う |
+| U-07 | 観測できたRule／Relationがpartialで、否定条件のReadが未取得 | 該当行0件や一人の候補を全域の不在・唯一に昇格させない |
+| U-08 | 同一Personへの二Occurrenceと、別Personへの二経路を対比 | 経路数と人物数を区別し、業務適格者数・Grantは別検査 |
+| U-09 | Sourceの説明追記、Mermaidのみ変更、Ruleの条件変更 | 原文の失効、候補構造／生成Goの差、意味受理を再検証する範囲を分離 |
+| U-10 | 候補指紋を維持したまま生成Goの条件を改変 | 自己申告指紋では実Binaryの判断ロジックを保証できない。実Artifact／出力で差を観測 |
+
+U-01〜10は**本設計から既存#1180／#2514へ提出する検収候補**であり、テストが新しく実装・実行・Owner受理されたことを意味しない。特にU-06は、Domainを非負JPY・二区分に固定した場合、三行が全域を覆う基準決定表では構成できない。**試験用に一部の区間を意図的に削除した別のRule版**を使い、基準表のまま「No Match」になる入力を捏造しない。U-05の追加行も既存三行だけでは成立せず、未取得Fieldに依存する試験専用行を明示する。
+
+実装・検証のOwnerは、有限解析 #988／#1637、Source選択 #2621／#1018、Generator／Builder #4544／#2595、Function Context／組織Query #2506／#4490、実CLI／Provider #4495／#2586、独立Expected #1180／#2514とする。全体の最優先はStudio Stage1→Stage2 #2831／#4583および製品CLIからの実Provider・独立Consumerであり、Rule全般の仕様統一や一般的なDMN Runtimeを前提にはしない。
