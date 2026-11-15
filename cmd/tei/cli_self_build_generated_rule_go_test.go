@@ -106,9 +106,13 @@ func TestSelectedRuleGoThroughRealCLISelfBuild(t *testing.T) {
 	workspace := outerWorkspace(t, root)
 	intentPath, memberCount := writeFullChainDeclaration(t, repoRoot, entry, root)
 	raw, err := os.ReadFile(intentPath)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	intent, err := buildintent.ParseIntent(raw)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	// The first alphabetical dependency may be core/identity, not the
 	// generated package. The Build Intent definition must be the actual entry.
 	found := false
@@ -121,20 +125,32 @@ func TestSelectedRuleGoThroughRealCLISelfBuild(t *testing.T) {
 		t.Fatalf("definitionSource is not the generated Rule's actual Go package: %+v", intent.Subject)
 	}
 	catalogRaw, err := os.ReadFile(catalogPath)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	catalog, err := buildintent.ParseBuildCatalog(catalogRaw)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	receipt, err := buildintent.Resolve(intent, buildintent.NewBuildContext(repoRoot, catalog))
-	if err != nil { t.Fatalf("actual product Build Intent cannot resolve: %v", err) }
+	if err != nil {
+		t.Fatalf("actual product Build Intent cannot resolve: %v", err)
+	}
 	planRaw, err := json.Marshal(receipt.Plan)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	planPath := filepath.Join(root, "plan.json")
-	if err := os.WriteFile(planPath, planRaw, 0o600); err != nil { t.Fatal(err) }
+	if err := os.WriteFile(planPath, planRaw, 0o600); err != nil {
+		t.Fatal(err)
+	}
 	args, err := json.Marshal([]string{
 		"-plan", planPath, "-intent", intentPath, "-repo", repoRoot,
 		"-go", goExe, "-isolate",
 	})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	artifact := filepath.Join(root, "rule-command")
 	cmd := exec.Command(cli,
 		"self-build",
