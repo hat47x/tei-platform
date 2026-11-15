@@ -336,12 +336,12 @@ Node View／Flowは標準Data型・Direction・Multiplicity・Presence・Coverag
 
 ## 17. Web方式の次の一巡を小さく検証する（2026-11-16、P1）
 
-初回の実装対象は新しいWeb Serverではなく、mainに存在する \`reference/tei-studio-workbench/inspector-selection.ts\` の公開read-only Eventと、\`presentation.ts\` のReader／Presenter、\`main.ts\` のHost接続である。既存の \`inspector-selection.test.mjs\` はWorkspace epoch、A→B→A、偽Grant／Effectの除去を局所試験している。まずこの既存試験を退行させず、同じSubjectについて **Host非依存の表示入力 → 表示結果 → 選択Intent** を検査する。Wails Bridgeが返せる範囲以上のSource／Generation／GrantをViewModelへ捏造しない。
+初回の実装対象は新しいWeb Serverではなく、mainに存在する `reference/tei-studio-workbench/inspector-selection.ts` の公開read-only Eventと、`presentation.ts` のReader／Presenter、`main.ts` のHost接続である。既存の `inspector-selection.test.mjs` はWorkspace epoch、A→B→A、偽Grant／Effectの除去を局所試験している。まずこの既存試験を退行させず、同じSubjectについて **Host非依存の表示入力 → 表示結果 → 選択Intent** を検査する。Wails Bridgeが返せる範囲以上のSource／Generation／GrantをViewModelへ捏造しない。
 
 | Packet | 作業と実測 | 独立反証・止める場所 |
 | --- | --- | --- |
 | **WEB-P1：表示とHost境界**（#1824／#997／#1158） | Inspector一部品を現行Vanilla TSで分離し、同じ入力・EventでWeb向け薄いAdapterとDesktop Adapterを比較。Nodeの型検査・試験・正規Bundle・実Windowsを別々に記録 | A→B→A旧Reply、Pin/Focus干渉、Reader errorを空集合へ変換、未保存Buffer消失、偽Grant Event。ブラウザだけでDesktop PASSとしない |
-| **WEB-P2：read-only API公開**（#1158／#951／#1251） | 既存\`InspectSubject\`でCLI direct／Studio Hostの結果を基線に、選択済み同一OperationへHTTP Adapterから実到達する最小Consumerを比較。Method／Route／Actor・Scopeを記録 | HTTP route登録のみでProvider呼出しと主張、CLIが暗黙にWailsを起動、異なるAudienceで内部Field漏出、古いSession／Grant再利用。実HTTP未実装ならNOT RUN |
+| **WEB-P2：read-only API公開**（#1158／#951／#1251） | 既存`InspectSubject`でCLI direct／Studio Hostの結果を基線に、選択済み同一OperationへHTTP Adapterから実到達する最小Consumerを比較。Method／Route／Actor・Scopeを記録 | HTTP route登録のみでProvider呼出しと主張、CLIが暗黙にWailsを起動、異なるAudienceで内部Field漏出、古いSession／Grant再利用。実HTTP未実装ならNOT RUN |
 | **WEB-P3：公開Route一件**（#3509／#997／#1016） | 公開可能な説明Facetを一つ選び、Source→Head／表示Slot→実Builder入力→生成Asset Member→外部閲覧を追う。静的説明と動的Offerを別途管理 | 未選択Slotへの暗黙配置、非公開Field混入、生成Assetの旧版利用、単なるHTML生成を実Consumer受領と誤認 |
 
 WEB-P1〜P3は並列の**P1候補**であり、正式なStudio非Plugin BuildIntent→Stage1→Stage2実Windows（#2831／#4583）と、通常CLI→実Provider Read→独立Consumer（#2586／#4495）の二本のP0へ新しいHard Gateを追加しない。新しいWeb Framework、HTTP Runner、第二のOperation Registry、テスト正本は導入しない。反例は既存#1180／#2514の独立Expectedと、各OwnerのIssueへ引き渡す。現段階は設計・実装Packetの定義であり、WEB-P2/P3の製品E2E、Web向け認証・開示、SSR、オフライン編集、別OSでの実受領は未検収である。
