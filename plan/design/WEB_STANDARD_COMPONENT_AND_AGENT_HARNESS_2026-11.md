@@ -270,3 +270,23 @@ W0〜W4／N0〜N4の統合方針を実コードに接続する最初の小差分
 イベント入口が一つになっても、`main.ts`には`readInspection`の結果をEditor、Source status、Authority limits、Noticeへ表示する処理が残る。次のUI-P1差分は、現在のReaderで検証した**読み取り専用の表示データ**と、DOMへの配置処理を分ける。選択のIntentと検証済みのInspect結果は別の型・寿命にし、Source Indexの`partial`／`null`、不明な現在Grant、Pin中のSubjectと現在Focusの違いを失わせない。現在の`main.ts`を全面コンポーネント化せず、失敗・保留・後着の出力を既存の入力・IME回帰へ接続する。
 
 その後、同じ公開契約を使ってVanilla TS／Lit TS／Lit JSを比較する。UI Frameworkの優劣やCEM採用は独立Expectedの結果で判断し、Node EditorのFLOW-P1/N1〜N2はその選定を待たない。**既存の#2621/#4544/#4495と#2831/#4583の実Reader・実Provider・セルフビルドを、Web UI方式の追加Hard Gateで止めない。**
+
+## 14. 実コードと二つの記述表現をInspectorに照合する（2026-11-15）
+
+UI-P1の公開選択Eventは、利用者が何を見ようとしているかを伝えるための仕組みである。これに業務意味・出典証拠・実行資格を入れ直さず、[実装からモデルへのdogfooding](IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md)§9の**同一判断／別Source／同一生成結果／別資格**を、既存read-only Presenterに段階的に表示する。Node View・Markdown・Graphvizは同じ構造からの候補Projectionとし、画面ごとの第二正本を作らない。
+
+最初の一Subjectは`sales.order_line.quantity_positive`とする。表示は以下の順に分離する。
+
+| Inspectorの表示対象 | 受け取る根拠 | 別扱いすること |
+| --- | --- | --- |
+| 選択中のSubject | 既存`tei:inspector-selection-request`とWorkspace/epoch | EventはIntentでありHost Inspect成功ではない |
+| 受理前のSource候補 | 既存Loader／Source Index、各Reader、path/byte spanと部分取得の状況 | 別表記で同じGoでも元Sourceの位置・現在性を合成しない |
+| 型付きRuleと生成Go | 既存`semantic.Validation`の型、`GeneratePositive`と実生成byte | 実Builderが選択・消費したArtifactとは区別 |
+| 図・DSL候補 | Go ASTのRead/Branch/Failureと元Sourceへの対応、欠損・Loss | 図が示さないEffect、逆編集不可範囲を隠さない |
+| 実行・現在資格 | R2実Builder、R3通常CLI/Provider、Stage2 Windowsの各Attemptを取得できた場合だけ表示 | UIイベントやR1生成成功からGrant・Receipt・業務受理を補完しない |
+
+既存の`presentation.ts`／`source-locations.ts`／`pin-state.ts`を利用し、対象がA→B→Aと切り替わった場合やPinとFocusが異なる場合、古いEvidenceを現在Subjectの証明として再利用しない。Sourceが二表記に分かれるときは別々の出典として開き、どちらが編集可能かを無条件に選ばない。編集機能や保存操作はまだ追加しない。
+
+**最初の作業は表示前のread-only ViewModelのFit/Gapである。** 既存Inspectorの契約で不足する列（Sourceの完全性、対応する生成物、実Build資格）は「未取得／未接続」と表示できればよい。新しいHost APIやGo ASTを直接ブラウザへ公開することは受入条件ではない。正式Readerの全表現採用・Code-to-DSL自動変換・CEM生成・Litの製品採用をこの小差分の前提条件にせず、既存#1824/#1124/#2621/#1180/#2514へ検証を返す。
+
+必要な負例は、(a)同じGo byteを持つ別Sourceを同一の出典として表示、(b)説明文変更後に旧Source Indexを保持、(c)古いepochの選択Eventで別Subjectを上書き、(d)部分Indexを完全な不存在と表示、(e)生成Goの実行成功をR2/R3/Stage2合格と表示、である。この五つを検出できない段階で、図やDSLを編集可能にすることはしない。
