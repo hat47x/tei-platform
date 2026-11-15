@@ -624,6 +624,28 @@ Webの要求、CLIの起動、タイマー、Message、画面操作には、そ�
 
 **止める条件と進める条件**：初回は既存Route/Slotの機械的探索を行い、無ければ `unbound/unsupported` を固定票として#1121/#2090に返す。公開静的説明の一Memberが実Targetに存在し、SourceとWorld/Generator/Toolchainが束縛され、実Builderから読み戻せた場合だけEP-1の限定PASSを認める。外部公開、Crawler受理、現在の商品価格、Commerce、CVRは引き続き未検証とする。この設計差分は#3509の正本、#1180/#2514の独立Expectedに引き渡す。Google/OpenFeatureの仕様記載は外部の比較資料であって、TEI実装の動作証拠ではない。
 
+
+<!-- g49-b2c-crosschat-portability-and-evidence-20261116 -->
+### G49：B2Cの表現・接続・実現・公開を分離する横断受入（2026-11-16）
+
+**設計の収束点**：B2Cで必要なものは第二のWeb HostやB2C専用DSLではなく、標準データ構造・Role付きGraph、型付きOperation、Pluginの能力宣言、Target配置と実Consumerに至る証拠の接合である。Node View、Journey、SEO、Experimentは**既存モデルの用途別Projection**であり、画面上の配線だけで実Providerの選択・呼出し・認可が成立するわけではない。#4198/#4350/#951/#5075/#5076のモデルと、#5095/#1121のG（生成）・P（既存評価）・D（外部委譲）を再利用する。新しいB2C Runtime・第二Resolver・独立Graph Compiler・必須Browser SDKを追加しない。
+
+**一つの意味を異なる入口へ渡す**：共通OperationのRequest/Result/Error/Effect契約を、(a)通常製品`tei`のCLI、(b)Wailsに依存しないGo Operation、(c)案件側Web/HTTP Adapterから利用できる構成を目指す。Wails Serverは(c)のHost Adapter候補であってOperationの正本ではなく、Web側がCLIプロセスをshell実行することを標準方式にしない。B2CのH0 Native-onlyは共通Operationも採用しない対照構成として残し、H1では型付きContractと任意Build-time生成、H2では実験/計測Adapterを追加できる。**同じOperationの意味**と**各入口に許される開示・現在Grant**を分けるため、内部CLI出力をそのまま公開HTTPレスポンスへ転送しない。API PluginのCLI直結/Wails公開は別Owner [#5096](https://github.com/hat47x/tei-platform/pull/5096)、三入口の限定実Go試験は[#5119](https://github.com/hat47x/tei-platform/pull/5119)が進行中であり、いずれもB2C Web実Consumerの検証済み実装とは扱わない。
+
+**Bindingは粒度と用途の両方で適合させる**：複合型のPort接続、個々のField接続、明示Adapterを同じFlowの選択肢とする。Source/Port/EdgeのIdentity、Direction、Multiplicity、Unit/Precision、Time、locale、NULL/未取得/非開示、Actor/Disclosure、可逆性を保持し、画面上の見た目や型名の一致のみで同値としない。B2CのProduct/OfferやCart/Orderは意味のある業務データとし、`assignment`・`exposure`・`analytics event`は別Roleの観測データにとどめる。REAの業務Eventを計測イベントに置き換えず、Node Viewの表示位置をSource編集の対象確定に使わない（#3503/#2497/#1174/#1124）。
+
+| 実証順（既存のOwner） | 最小の正例と失敗例 | 成立したと認める範囲 |
+| --- | --- | --- |
+| **EP-0 / #4198・#951・#4350** | 合成商品ページ一件の公開`meta description` Source→実Route/Slotを型と開示範囲込みで選択。Slot不在、未探索CMS Route、複合型の明示変換不足、重複Edgeを対照 | 実際に探索できたSource UniverseとSelector結果だけ。未取得を全対象適用済みとしない |
+| **EP-1 / #1121・#2090・#2600** | 同一World/Source/Generator/Toolchainで選択した一Memberを実BuilderのConsumed Inputと生成Artifact/BOMからReadback。Member欠落、旧Revision、非公開入力混入を注入 | 一Memberの実生成・収録まで。外部配信・Crawler・Browserの受領は別資格 |
+| **B1a-I/P / #2586・#1251・#5096** | 通常`tei`の同一Typed Operationを独立Consumerが受領。CLI/HTTP/Host各入口で正値・未公開Field・現在Grant失効・欠損/NULLを比較 | 実Consumer・開示資格を入口ごとに検証。APIの見た目、内蔵InspectやReferenceだけで非Builtin Plugin/Commerceが成立したとしない |
+| **EP-2 / #3271・#3503** | Native SSR/SPA/旧Clientの実Responseを照合。静的説明文、Route/canonical、配信時の価格/在庫Snapshotを別時点で扱う | 表示/配信の観測に限定。価格/在庫の最終確定と混同しない |
+| **EP-3〜4 / #2516・#1174・#1180・#2018** | Flag割付だけで露出無し、Consent拒否、注文Commit後応答喪失、同じ変更のH0/H1/H2比較 | 未同意送信禁止、unknown Effectのlookup-first、工数/性能/回復差の実測。因果的CVR改善は独立の実験が必要 |
+
+**公開情報の有効時点を同一視しない**：公開用説明文のBuild時Snapshot、Route/URLとVariant、Product/Offerの配信時Snapshot、Checkoutの現在価格・在庫、本人注文履歴のHost開示を別の判断とする。[Google Search Central](https://developers.google.com/search/docs/appearance/structured-data/merchant-listing)がProduct構造化データの初期HTML掲載を推奨するのは、古い価格の静的固定を認めることではない。会員価格、通貨、Variant、販促期間を変えた場合は表示HTML・構造化データ・現在Commerceの差を独立確認する。表面上の文言修正でも実効の価格・同意・公開範囲が変われば軽い変更区分に格下げしない。FlagのEvaluation ContextやHookは[OpenFeature](https://openfeature.dev/specification/sections/evaluation-context/)のProvider Adapter候補であり、AssignmentとBrowser Exposureを同一視しない。
+
+**初回の停止線**：EP-0で既存TargetのRoute/Head Slotが未接続なら`unbound/unsupported`を記録し、#1121/#2090へ要求を返す。実Slotが見つかった場合だけEP-1の実Builder一Memberを試す。途中で該当Targetを作り足して「当初から利用可能」と扱わない。#5096のCLI/HTTP検証や#5119のHost試験をB2C用の新しいHard Gateにしない。独立Expectedは#3509の既存BC/G49-EPを#1180/#2514へ返し、新しいScenario正本を立てない。全体P0はStudio Stage1→Stage2（#2831/#4583）、並行P0は通常製品`tei`の実Provider Read→独立二Consumer（#2586/#1251）で不変。**この節は設計・実装順の追記のみで、B2Cの新Go/Builder/Browser/Commerce/Consentの実験とOwner受理はNOT RUN / NOT ACCEPTED**。
+
 ## 最新の作業単位へ接続する
 
 2026年11月11日のmain `9d31f82486b2eac42791f4f3bc5cd588d69cb4fc`と関連Issueを照合した。以下は着手先の更新であり、Issueの起票・限定Reference・候補Parserを製品の完成へ数えない。以後の進捗は各Issueと[実装状況](../../docs/status.md)から再取得する。
