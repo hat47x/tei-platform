@@ -918,3 +918,88 @@ ER図のEntityを上から並べる場合、次のSource要因に注意する。
 **実装の最短順**：まず既存`*.tei.md`移行のReader入口に照合し、`TEI_MD_PARSER_UNBOUND`を通過できると偽らずに、固定Mermaid Fixtureを既存Sourceに対応付けられるか確認する。次に型付きEntity／Relation／Keyの**read-only投影**と、同版SourceでのHeadless配置・独立Expectedを実行する。その後、一意のEntity Slotに限定したGUI選択→Preview→Source Patch→再Parseを試し、通常製品のModeler／Studio実Consumerへ接続する。Mermaid Reader未実装の時点で合成Fixtureを検査しても、それを実製品の正式Reader資格へ読み替えない。
 
 この系列は#1124／#1126／#2497に引き渡す**P1相当の製品価値検証**とし、#2831の**Stage1→Stage2セルフビルド**と#2586の**通常CLI→実Provider→独立Consumer**を新しい前提でブロックしない。Source-faithfulなModeler転写は、製品Stage2の合否とも別に評価する。追加のGraph Compiler、Mermaid専用Meaning Store、Editor Writer、独自Renderer Hostは今回採用しない。
+
+---
+
+<!-- data-forms-product-qualification-20261115 -->
+## 37. 標準データ様式から実際の処理・表現へ進む最小の一往復（2026-11-15）
+
+### 37.1 既存の成果を踏まえた実装上の焦点
+
+データ様式の設計は、型の種類を増やす段階から、**受理された意味をどこまで失わずに実装・説明・表示へ渡せるか**を検証する段階へ移す。ここでいうデータ様式は、値の型だけではなく、Identity、構成、関係、多重度、順序、数量、時間、取得状態などを説明するFacetと、その構造をConsumerに渡す写像の契約を指す。Facetの分類は[#2495](https://github.com/hat47x/tei-platform/issues/2495)、演算法則と束縛は[#2544](https://github.com/hat47x/tei-platform/issues/2544)、写像と損失は[#2497](https://github.com/hat47x/tei-platform/issues/2497)が正本を持つ。本節は新しい型体系や意味正本を定めない。
+
+すでに[#4350](https://github.com/hat47x/tei-platform/issues/4350)のS1〜S3はmainへ統合済みで、Facet/Mapping、構造Fit/Gap、15表現型とFunction Data Contextの束縛をread-onlyで検査できる。また、[PR #4758](https://github.com/hat47x/tei-platform/pull/4758)までに、`testdata/tei-md-graph/`の固定6入力を対象に、限定ReaderでGraph/Rule**候補**を読み、条件を実際のGo分岐として生成し、別Processで実行するReferenceがmainに入った。この成果は「図が飾りでないこと」と「Goへの単純委譲ではない処理生成」の限定的な実証である。
+
+ただし、これらを加算しても、製品の`*.tei.md`正式Reader・Semantic Role受理、製品Generator、通常`tei` CLIの実Provider呼出し、独立した第二Consumer、Studio Stage1→Stage2の完成にはならない。現行Workspaceの`TEI_MD_PARSER_UNBOUND`を、Referenceの成功を根拠に解除しない。次の差分は**Reader→受理Meaning→既存Generator/Builder→実Consumer**の欠けた接続を一つずつ埋める作業に限定する。
+
+### 37.2 データ構造・意味解釈・表現の三層を一つの定義から追跡する
+
+| 層 | 記録するもの | 他の層から推定してはいけないもの |
+| --- | --- | --- |
+| **Data topology** | Node/Edge/Relationの正式ID、向き、重複、キー、時間条件、結果のgrainと取得範囲 | 表示ラベル、行番号、Canvas座標からの業務Identity |
+| **Interpretation** | Role、Operator/Rule、演算束縛、入力・出力・条件、意味受理、必要な権限と副作用契約 | Graphの矢印だけからの業務因果、順序、認可、実行許可 |
+| **Representation** | Table/Tree/Graph/Markdown/KaTeX/Chart等のSlot・Axis・Selection、表示Scope、情報損失 | 表示上の一意性からの逆編集資格、同一byteからの同一World |
+
+三層を別々のRegistryへ複製しない。Source上のどのOccurrenceがどの候補・意味要素に結び付くかは既存Source IndexとLanguage/Roleの契約を使い、Function Data ContextのScope/grain/Result Sliceを経て表現へ束縛する。構造の「表せる／表せない」と、用途に「適する／適さない」、実Targetで「動いた／動いていない」、操作の「許可された／されない」は別々に判定する。
+
+### 37.3 最初の製品縦断は、既存Graph/Ruleをそのまま使う
+
+既存の6つの固定入力と独立Expected候補を再利用し、新しい実装専用Fixture正本は作らない。
+
+| 対照 | 変わるべきこと | 変わってはいけないこと・停止条件 |
+| --- | --- | --- |
+| 基準：同じ表示名のNode二つ、同端点のEdge二本 | 別IDのNodeとEdgeを保ち、出辺ID二件を生成処理が返す | 表示名一致をEntity同一性にしない |
+| `edge-reversed.tei.md` | 反転したEdgeの所属する出辺集合が変わる | Mermaidの表示から表由来の正式関係を上書きしない |
+| `rule-by-target.tei.md` | 「起点」から「終点」へのRule条件変更が生成Goの判定に反映される | 日本語の見出しや説明文を暗黙の実行文法とみなさない |
+| `layout-only.tei.md` | Source raw byteと表示用情報には差分が生じる | 意味Graph、生成処理の結果、候補構造指紋は不変 |
+| `duplicate-edge-id.tei.md` | 重複IDを元位置付きで拒否する | 黙って一つのEdgeへまとめない |
+| `diagram-stale.tei.md` | 図の古さを診断し、差分をPreviewに示す | 表と図のどちらも暗黙に書き換えない |
+
+**入口を二つに区別する。** (a)既存のReference Reader/Go生成・`-node`/候補指紋照会は、候補に対する限定実証として維持する。(b)製品のManifest選択→`*.tei.md` Reader/Source Index→受理済みMeaning/Role→既存Target Generator/Builder→通常CLIの実受領は、別の実装・独立検収とする。同じ生成Reference Binaryを複数の引数で呼んだ結果を、二つの独立した製品Consumerの受領と呼ばない。
+
+### 37.4 処理説明と契約テストを、業務意味の導出物として扱う
+
+人間が読む説明は、対象・前提・条件・計算・結果・例外の順で、受理済みRule/Operationから規則的に生成する。自然言語のもっともらしさは意味適格性の証拠ではない。例えば「指定したNodeから、起点が一致するEdgeのIDを列挙する」という文は、対象Node、比較条件、Edge ID集合、重複の保持という契約をそのまま説明できる場合にだけ、処理説明として提示する。
+
+未知の計算や外部Providerを含む場合は、TEIの型付き入出力・前提・NULL/失敗・精度・副作用契約を残してTODOとし、契約に従うMockで全体のシミュレーションを先に通せるようにする。ただし、Mock成功と実Provider選択・実呼出し・Commit/Receiptは別の検収である。表形式のCaseと独立Expectedを、説明・モック・生成Target・実Providerの共通参照に利用し、Expected自体を生成結果から作らない（#1180/#2514）。
+
+### 37.5 実データを使う第二の一往復は並行して進める
+
+Graph/Ruleのpure生成経路とは独立に、[#2586](https://github.com/hat47x/tei-platform/issues/2586)/[#2506](https://github.com/hat47x/tei-platform/issues/2506)の実Provider Readを、**一つのFunction、固定したScope/Source Revision、同一Attempt**で検証する。Rowset/Document/Graphが別の物理形式でも、Subject、Relation、grain、取得完全性、順序、重複、値のPresence、開示範囲を同じ判断軸で記録する。
+
+最初はRead-onlyのTableとForm、またはCLIと独立した表示Consumerへ投影し、次を確認する。
+
+- NULL、未取得、欠損、非開示、false、0行、部分取得を混同しない。JOINによる行増殖は元Collectionの実体件数へ昇格しない。
+- あるConsumerの集計値・表示順・Tree上の重複Nodeから、元Entity/Relationの一意な更新対象を推測しない。
+- 二つのConsumerで比較可能なのは、同じSubject・grain・Scope・Snapshot/Revision・Observerを共有するClaimだけとする。表示byteが一致しても同一Worldとは限らない。
+- SQL/NoSQLのProviderごとに実行可能な演算と取得限界を示し、Native SQLの逆解析から元のモデル正本を上書きしない。完全性が未証明なら、否定依存の「存在しない」を確定しない。
+
+SUIのCanvas occurrence、SHOの文書出現、StudioのSelectionと、元MeaningのIdentityは分ける。開示権限や実Operation Grantを表現型・上位Pluginの公開説明から継承しない。
+
+### 37.6 変更と再利用は五つの判定に分ける
+
+| 変更 | Raw Source再確認 | 意味の再評価 | 生成/Buildの再実行 | Evidenceの現在資格 | 操作Grant |
+| --- | --- | --- | --- | --- | --- |
+| Mermaidの配置だけ | 必要 | 意味不変を照合 | 実Consumed Closureで省略候補を判断 | 旧Raw証拠を流用しない | 別途確認 |
+| Edgeの向き／Rule条件 | 必要 | 必要 | 影響するTargetを再生成 | 旧意味/生成Evidenceは再審査 | 別途確認 |
+| 説明文だけ | 必要 | 影響するRole/Sourceを確認 | 意味不変だけでは省略断定しない | 原文版が変わる | 別途確認 |
+| Parser／Generator／Plugin版 | 必要な利用範囲を照合 | 解釈契約に従い判定 | 正確なGenerator/Builder資格を確認 | 同byteでも旧資格を復活しない | 別途確認 |
+| Source A→B→A／Context epoch変更 | 必要 | 現行Revisionと受理を確認 | Artifact再利用と実Build省略を分離 | 旧受理・古いReplyは復活しない | 必ず現在値で判定 |
+
+Source byte、Reference候補構造指紋、Model Revision、Artifact Revision、World Fingerprint、実Binary digest、Plugin Lock、Consumerの現在Grantは異なる目的の値である。同一ハッシュや同じ画面から一括して再利用適格と判定しない（#2595/#2600/#2250/#2255）。
+
+### 37.7 既存Ownerへの引渡しと完了条件
+
+| 優先 | 担当する既存領域 | この節で追加して要求する観測 |
+| --- | --- | --- |
+| **P0-A：CLIの欠けた接続** | #2621/#988（`*.tei.md` Reader/Role）、#2831/#951/#1251（Target Generator/Builder/実Call） | 選択Source→受理Meaning→実生成→通常CLI実Consumerの同一Attemptと、Referenceでないことを示すCall-site |
+| **P0-B：実Provider Read** | #2586/#2506/#2497 | 実Provider→Context→独立Consumerの受領。取得範囲と情報損失の独立Expected |
+| **P0-C：正式Studioセルフビルド** | #2831/#4583/#1824 | Stage1の実TEI ProcessがStage2のStudio Artifactを再構築し、Windows WebView2 Consumerが受領。CLI限定成果と混同しない |
+| **後続：限定編集** | #2500/#1124/#2621 | 一意なSource SlotへのPreview→局所Patch→別Readerによる再読込。非単射・版不一致・不明Grantは停止 |
+| **後続：専門領域** | #2495/#2544/#2498およびREA・組織・BRMS・数理の各Owner | Quantityのpoint/delta、所属期間、Ruleの副作用、Named Dimensions、CRS、媒体時間軸等を異質な二用途で比較。共通Core増設はADR判断まで保留 |
+
+**全体の優先順位を変更しない。** Studio Stage1→Stage2の実セルフビルドと、通常CLI→実Provider→独立Consumerが引き続きP0である。A・Bは並行して進められるが、Graphの正式Readerや数理Toolkitの完成を、Studio Desktop検収の新しいHard Gateにしない。新規のType Registry、Graph Compiler、Parser、Projection Engine、Host、Expected正本も設けない。
+
+検収の単位は「どのSource/Revisionの、どのSubjectとOperationが、どのPlugin/Generator/Providerの実Callを通って、どのConsumerへ届き、何を失ったか」という一つのClaimである。既存[#4350](https://github.com/hat47x/tei-platform/issues/4350)のDF-X01〜08と[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#2514](https://github.com/hat47x/tei-platform/issues/2514)の独立Expectedへ追補し、第二の検査体系にはしない。
+
+**本節の状態**：既存mainのReference成果を踏まえた設計・実装引渡し。ここで正式Reader、製品Codegen/Provider、第二Consumer、GUI編集、Stage2完成を新たに実装・実測したとは主張しない。
