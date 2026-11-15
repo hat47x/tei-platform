@@ -2797,4 +2797,11 @@ Studio／SHO／SUI／AIが同じ意味候補を提示しても、編集資格は
 
 [組織C1設計§39](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)に、複合主キーの版保存だけでは区間競合が防げない§38の実測を引き継ぎ、**valid期間とknown期間がともに重なる場合の版競合**と、**known期間が重なってもvalid期間が隣接する正当な変更**を区別するORG-BT-01〜05を追加した。単一Occurrenceに一版しか成立しないかは業務Ownerの選択であり、Personの兼務・別Membershipとの重なりを禁止しない。
 
-隔離PostgreSQLの一時テーブルで二軸の正負例を比較する `TestOrgAxisAsOfBitemporalRectangleCandidateOptIn` を用意し、専用CIの必須PASS対象に加えた。**この計画記述だけでは実PG試験のPASS・Owner意味受理・製品Persistenceへの採用を意味しない。** #2386/#1126の訂正と異動・版IDの意味判断後に、#1180/#2514/#4490のMVR-02/03を実Provider→二Consumerで検収する。#2586の通常CLI実Readと#2831のDesktop Stage1→Stage2は引き続き独立P0とする。
+隔離PostgreSQLの一時テーブルで二軸の正負例を比較する `TestOrgAxisAsOfBitemporalRectangleCandidateOptIn` を用意し、専用CIの必須PASS対象に加えた。**隔離PGでの対象試験は後続PR #5027の固定run 43707188012で明示PASSしたが、Owner意味受理・製品Persistenceへの採用を意味しない。** #2386/#1126の訂正と異動・版IDの意味判断後に、#1180/#2514/#4490のMVR-02/03を実Provider→二Consumerで検収する。#2586の通常CLI実Readと#2831のDesktop Stage1→Stage2は引き続き独立P0とする。
+
+
+### 2026-11-15 組織C1：実PostgreSQLの確認結果を正式Sourceの受入順へ接続（補遺§40）
+
+[組織C1補遺§40](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)と[段階計画§10.15](design/ORGANIZATION_STAGED_MODELING_PLAN_2026-11.md)に、二時点の履歴版・人物との関係・正式Query・二Consumerの検収を具体化した。PR [#5027](https://github.com/hat47x/tei-platform/pull/5027)はmain統合済み（commit `a8d3c4f8`）。[隔離PostgreSQL run 43707188012](https://github.com/hat47x/tei-platform/actions/runs/43707188012)で、単独PKの版保存拒否、試験用複合PKの旧新版保存と区間重複、**有効期間×認識期間の二軸競合と別Membershipの同時共存**が明示PASS。一時テーブルでの物理比較であり、正式Persistenceの履歴保存・Person Link・実Cohort/Consumer・業務Ruleを受理したものではない。全体Repository Healthの失敗は別票。
+
+**次の受入順**：#2386/#1126がOccurrence/Revision/Person Link・訂正と異動・単一値性を選択→受理した正式`*.tei` Persistence/Queryで同じA2の旧新二版を保存・再読込（MVR-02）→同じvalidAt/異なるknownAtとSource/Scope/Coverageを実Providerで照合（MVR-03）→Function Context/二Consumerの同版一致→BRMS/Case・Studio/SHO・Host Effectへ別資格で引渡し。外部REA/AIの候補、known-timeとrecorded-at/observed-at、通常Data閲覧と実Host Grantはそれぞれ独立のまま。**優先P0の通常CLI実Read #2586とDesktopセルフビルド #2831を妨げる新EngineやGateを追加しない**。
