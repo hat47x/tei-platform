@@ -229,7 +229,7 @@ const INSPECTION_LIMIT_LABELS: Record<string, string> = {
   "local-read-is-not-disclosure-permission": "ローカルで読めても、外部への開示が許可されたとは限りません。",
 };
 export function readInspection(raw: unknown, expected: Subject, catalog: Catalog) {
-  const v = record(raw);
+  const v = record(raw), limits = v.authorityLimits;
   if (
     v.effect !== "read-only" ||
     subjectKey(subject(v.subject)) !== subjectKey(expected) ||
@@ -237,9 +237,9 @@ export function readInspection(raw: unknown, expected: Subject, catalog: Catalog
     typeof v.worldFingerprint !== "string" ||
     typeof v.sourceIndexFingerprint !== "string" ||
     typeof v.sourceStatus !== "string" ||
-    !Array.isArray(v.authorityLimits) ||
-    !v.authorityLimits.every((limit: unknown) => typeof limit === "string") ||
-    !INSPECTION_REQUIRED_LIMITS.every((limit) => v.authorityLimits.includes(limit))
+    !Array.isArray(limits) ||
+    !limits.every((limit: unknown) => typeof limit === "string") ||
+    !INSPECTION_REQUIRED_LIMITS.every((limit) => limits.includes(limit))
   )
     throw Error("INVALID_INSPECTION_RESPONSE");
   if (!catalog ||
@@ -254,7 +254,7 @@ export function readInspection(raw: unknown, expected: Subject, catalog: Catalog
     sourceIndexFingerprint: v.sourceIndexFingerprint,
     // Display limits returned by the actual read-only Host operation, not a
     // client-side guess at grants or the current acceptance state.
-    authorityLimits: (v.authorityLimits as string[]).map(
+    authorityLimits: (limits as string[]).map(
       (limit) => INSPECTION_LIMIT_LABELS[limit] ?? `追加の利用制限：${limit}`,
     ),
   };
