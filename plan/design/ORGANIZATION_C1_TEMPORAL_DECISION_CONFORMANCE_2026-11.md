@@ -1394,7 +1394,7 @@ OCIは**補遺の検査観点ラベルに過ぎず、新規Scenario／第二Expe
 
 ## 29. 候補判断を決定表で説明し、実Reader・実生成Goで検証する（2026-11-15）
 
-> **適用範囲：§26 CR-00〜08と§27 ORXを、TEI既存のRule/Function/Sourceへつなぐ実装用受入仕様。** [BRMS統合設計PR #4723](https://github.com/hat47x/tei-platform/pull/4723)のDecision Table、重複/未網羅診断、説明・依存・生成を組織固有の使用例として利用する。このPRは現時点で未マージの設計候補であり、製品機能として採用済みとは扱わない。第2のRule Engine/Decision Store/認可Runtime/DSL Parserは追加しない。
+> **適用範囲：§26 CR-00〜08と§27 ORXを、TEI既存のRule/Function/Sourceへつなぐ実装用受入仕様。** [BRMS統合設計（main統合済みPR #4765）](https://github.com/hat47x/tei-platform/pull/4765)の決定表、重複・未網羅診断、説明・依存・生成を組織固有の使用例として参照する。設計文書の統合は製品機能や業務意味の採用を示すものではない。第2のRule Engine/Decision Store/認可Runtime/DSL Parserは追加しない。
 
 ### 29.1 「関係を取得できた」と「業務上の判断ができる」を別票にする
 
@@ -1435,7 +1435,7 @@ OCIは**補遺の検査観点ラベルに過ぎず、新規Scenario／第二Expe
 | **ODR-9** | Markdown表のRule/Relationの意味行を変更し、Mermaidのレイアウトだけも別に変更 | 意味行は実生成Go分岐・独立Expectedを変え、レイアウトだけでは変えない。Go Delegate-onlyは不合格 |
 | **ODR-10** | CLI読取、Studio表示、AI説明で一つのSource/Rule/Contextを使う | 同じMeaning版を参照しつつ、各Consumerの実受領・開示範囲・Source Pin一致は別に検収 |
 
-ODRは**既存#4490 ORG-BEH-04、#1180/#2514、BRMS #4723のT1〜T8、Graph Fixture #4709への引渡し用参照名**であり、新しいExpected SSOT・Schema・Engineを定義するものではない。Case C1とr7を実データとして一つに結合する受入ではない。
+ODRは**既存#4490 ORG-BEH-04、#1180/#2514、BRMS設計（#4765、旧Draft #4723）のT1〜T8、Graph Fixture #4709への引渡し用参照名**であり、新しいExpected SSOT・Schema・Engineを定義するものではない。Case C1とr7を実データとして一つに結合する受入ではない。
 
 ### 29.4 最初の実コード変更を、入力が変わるとGoの判断が変わる一点に絞る
 
@@ -1445,7 +1445,7 @@ ODRは**既存#4490 ORG-BEH-04、#1180/#2514、BRMS #4723のT1〜T8、Graph Fixt
 4. **S3（実Product Consumer）**：通常`tei` CLI・独立ConsumerでSource/Rule/Plugin Artifactと結果/理由を実受領する。Studio/AI/SHOはSource Pin・開示・実受領を独立に確認。Capability/Host Grant/Effectは別Ownerの実契約へ渡す。
 5. **S4（汎化と自己生成）**：同じ条件の表から別のDomainのIF/Constraintへ展開し、TEI生成／外部Delegate／手書きGo／未対応の義務分母と、定義簡素化を同じ独立Expectedで評価する。CLI Stage1→Stage2とDesktop Stage2の受入を混同しない。
 
-**優先度**：製品主線のStudio Stage1→Stage2（#2831/#4583）および通常`tei` CLI実Provider/独立Consumer（#2586/#4495）がP0。BRMS本体の横断採否は[#4723](https://github.com/hat47x/tei-platform/pull/4723)で進行中の設計候補、TEI-native Graph/Rule生成は#2621/#951/#1121のCLI-first実証。組織Ruleは**第二の実用例**とし、P0を妨げる新Hard Gateを設けない。
+**優先度**：製品主線のStudio Stage1→Stage2（#2831/#4583）および通常`tei` CLI実Provider/独立Consumer（#2586/#4495）がP0。BRMSの設計文書は[#4765](https://github.com/hat47x/tei-platform/pull/4765)でmain統合済みだが、製品実装と業務意味の採否は別判断、TEI-native Graph/Rule生成は#2621/#951/#1121のCLI-first実証。組織Ruleは**第二の実用例**とし、P0を妨げる新Hard Gateを設けない。
 
 **停止条件／証拠上限**：本節はドキュメントのみ。正式Decision Table Schema・hit policy・Rule Language・Reader/Generator・実組織Provider/CLI・Host Effect・Owner意味受理は実装済みと主張しない。Caseに不存在な承認規則、Rule/RoleからのGrant、Nullable/Partialの無言でのfalse化、Page図面からの業務意味決定、DecisionだけでのDB Commitを禁止する。
 
@@ -1569,9 +1569,50 @@ OCCは**既存#4490 ORG-BEH-01/02/04、#4501 CX、#1180/#2514の検査観点の�
 - **OCP-0：コードDraftの資格確定**。#4737の最新固定HEADで局所Go Test・全体CIを分けて確認。既存の合成二Contextは正経路・NULL・CoverageのReference証拠に限定する。失敗したHEADの結果を後続へ持ち越さない。
 - **OCP-1：BEH-01/02を先行**（#4490）。正式なPerson Link/履歴版、as-of条件、非出力依存、必要ReadとCoverageを選定する。現SourceのMembership→Person、Occupancy→Person、RoleAssignment/ResponsibilityのTemporal Gapは#2386 Ownerの採否を待ち、仮の結合を正式Sourceへ書き込まない。
 - **OCP-2：実Read Cohortを一つ実証**（#2586/#4495/#4490）。実Provider/SQLの一往復で、Source→選択Query→params/Rowset→`functioncontext.From`→独立read-only Consumerを同じAttemptに記録する。単一Query構成と二Query同一Snapshot構成を比較し、証拠のない方式は`unestablished`のまま停止する。
-- **OCP-3：生成側の同値**（#2621/#1121/#4729/#4733、#4723）。採用済みのRelation/RuleだけをTEI-native Sourceから型付き条件・Go分岐へつなぎ、Rule変更・Relationの向き変更で生成Codeと結果が変わり、レイアウト変更だけなら意味が変わらないことを検査する。単なるGo Delegateは達成に含めない。
+- **OCP-3：生成側の同値**（#2621/#1121/#4729/#4733、BRMS設計#4765）。採用済みのRelation/RuleだけをTEI-native Sourceから型付き条件・Go分岐へつなぎ、Rule変更・Relationの向き変更で生成Codeと結果が変わり、レイアウト変更だけなら意味が変わらないことを検査する。単なるGo Delegateは達成に含めない。
 - **OCP-4：Case/Host/表示へ段階送達**（#4501/#1174/#2516/#1124）。同じ受理された判断結果をCLI・Studio/SHOのread-only投影と照合してから、Case Revision、Current Grant、Effect、ACKを各Ownerの別ゲートで検証する。複数画面で同じ候補を表示できても実行資格を与えない。
 
 **完了条件**：一つの選択済み業務Sourceに対し、二つのRelationの人物同定・時点・取得範囲・否定依存が説明でき、OCC-01〜10で「観測事実」「全件候補判断」「現在の実行資格」を混同しないこと。実データReadが未成立なら、その原因と不足証拠を同一Attemptに残して停止する。
 
 **資格と優先順位**：ここで追加したのは設計・検査計画だけ。PR #4737の合成Function Context実装は実Provider/同一Snapshot/受理Rule/Host Effectの証拠ではない。今回の新Go/PG/CLI/Windows/Studio/Host試験とOwner Meaning Acceptanceは**NOT RUN / NOT ACCEPTED**。全体P0の通常製品`tei` CLI初回実Provider Read #2586とStudio Stage1→Stage2セルフビルド #2831は独立維持し、組織C1を新しいHard Gateにしない。
+
+<!-- org-c1-decision-explain-simulation-20261115 -->
+## 32. 業務判断の説明・事前シミュレーション・実行を同じ意味に結ぶ（2026-11-15）
+
+### 32.1 BRMSの設計統合を、組織C1の実装資格と混同しない
+
+[BRMS統合設計#4765](https://github.com/hat47x/tei-platform/pull/4765)はmain統合済みで、部分観測下のUnique判断、業務説明、Mockによる早期シミュレーション、型付きMeaningからのコード生成を整理した。これを§31の組織Read Cohort契約へ適用する。ただし、**BRMS設計がmainにあること、Graph Rule ReferenceがGoへ生成できること、組織の合成Contextが二つ作れたこと**は、組織C1の業務判断が製品経路で完成したことを意味しない。
+
+初期業務例は、合成D1/R1の「ある組織に対して必要な役割と責任の両方が確認された人物の一致経路を列挙する」とする。人物とRelation Occurrenceの識別、Role・OrgUnitのKey、時点条件、対象Tenant/Scope、必要Readの閉包、否定例外、業務判断の出力を**同じAccepted Sourceから解釈・生成**する。ここで「正の一致経路を列挙する」ことと「承認できる人物を決定する」ことは、まだ別の業務仕様である。Case C1固有のResponsibility RuleやPerson Linkが正式Sourceにない間は、説明・Mock・Rule表のいずれでも推定して埋めない。
+
+三要素分析法では、**データモデル**がPerson/RoleAssignment/Responsibility/Relation occurrenceと時点の意味を、**機能モデル**がRequired Query/候補判断/理由の導出を、**業務モデル**が対象Case・職務・後続アクションの責任を、それぞれ示す。Studio/SHOの図表と文章は同じ意味モデルのProjectionであって、独立の正本ではない。SUIや会議・画像・CSVから抽出された候補は、Source/Scope/位置・意味Ownerの採用が済むまで組織事実に昇格しない。
+
+### 32.2 一つの業務Sourceから得る成果と、それぞれの判定
+
+| 同じ意味モデルから派生させる成果 | まず証明すること | 成立したと扱わないこと |
+| --- | --- | --- |
+| 業務説明・判断理由 | Rule ID、参照したRelation/時点/欠測、元Source位置を追える | 推測で補った説明の正式受理、現在の実行資格 |
+| 決定表・Gap/Overlap診断 | 有限Domainと必要入力に限定した一致・矛盾・不足 | 未取得の候補がいないこと、全Tenant・全時点への一般化 |
+| 事前シミュレーション | 契約が明記されたMockと独立Expectedで0/1/複数/partial/NULLを区別 | 実ProviderのSnapshot/Row Scope、実DB保存・外部Effect |
+| 生成Go・Target結果 | Accepted Rule変更が生成条件と結果を変えることを同一Source/Generator版・別Processで確認 | Sourceから手書きGoへdelegateしただけのセルフビルド達成 |
+| CLI・Studio・SHO表示 | 同一Source/Attempt/判断理由の用途別Projectionと非開示条件が保たれる | 図面選択がCase移管やHost Grantを発生させること |
+| Hostへの実Action | Case RevisionとCurrent Principal/Grant、実Effect Receipt、必要ACKを照合 | 旧Revision・旧Grant・事前Mock結果による再実行許可 |
+
+説明文は規則と業務の記述をほぼ直訳できる範囲で作り、独立した自然文の意味正本は設けない。説明とテスト結果が一致していても、元Source・採用Meaning・生成器入力が食い違えば不合格とする。新しいRule Server/Simulation Engine/Scenario Storeや日本語DSLを増設しない。
+
+### 32.3 変更の伝播と再受入の境界
+
+**変更の種類を区別する**。Source説明・図の配置のみ変更した場合、原byte/Source Indexの再検証は必要だが、業務Ruleの意味が不変である可能性を残す。Relationの向き、Person Key、時点、Decision Rule、Provider/Operator版を変えた場合は、該当する意味依存・生成物・Consumer/独立Expectedを再資格化する。Case Revision、Current Grant、Document Disclosure、Plugin Lockは、その現在資格を別に確認する。World Fingerprint／Model Revision／Artifact Revisionを混同しない。A→B→Aで旧Receiptや旧受入を自動復活させない。
+
+**Studioの編集資格も同様**である。同じP2が複数のMembership/Role/Responsibility Occurrenceを持っていても、Tree/Graph/Table/Temporal Viewでそれらを一つの行へ潰さない。逆編集はSourceへの一意の対応付けと版の確認を要し、表示候補や集計を直接書き戻さない。
+
+### 32.4 次の作業を小さなProduct試験へ集約する
+
+- まず#4490のBEH-01/02を満たすRead条件と#2386 OwnerによるPerson/Role/責任の意味選定を確定する。これは通常製品CLI初回実Read #2586を妨げない。
+- #4737の正のPathと二Context合成回帰を、**一つの実Provider Read Cohort・実Context・独立Consumer**に段階接続する。OCC-01〜10では、実Source/Query/DB Snapshot/Scope/Required Set/時点を明示できないとき、判断をunknownのまま保持する。
+- #4765のBRMS説明/有限Unique分析と#4729/#4733の限定Go生成を、正式な `*.tei.md` Reader・採用Meaning・既存Generatorへつなぐ最小一Ruleで比較する。説明・Mock・Go実行の三者が同じRule/Sourceを使うことを測り、生成器の実コード消費と単なるdelegateを分ける。
+- 同じ判断理由をCLIと将来のStudio/SHOへ用途別に提示する。現在のRead/Disclosure Grantを確認せず非公開Person/件数/理由を出力しない。Case C1の移管と承認実行は#4501/#1174の別検収とする。
+
+**計画上の完了ライン**：一つの受理された業務Ruleについて、出典・必要Read・候補Path/判断保留理由・説明/Mock/生成コードを追跡でき、実Readと実Actionの不足を過大評価しないこと。使い回したGo実装や画面ごとの二重Ruleを削減できるかも計測する。
+
+**現在の資格**：#4765は設計がmainに統合済み、#4729/#4733のReference生成は限定実績、#4737は合成入力Go Draftで製品実Read Cohortを立証していない。本節で新しい実Go/PG/CLI/Windows/Host/Studio試験とOwner Meaning Acceptanceは**NOT RUN / NOT ACCEPTED**。全体P0は #2586 と #2831 のまま変更しない。
