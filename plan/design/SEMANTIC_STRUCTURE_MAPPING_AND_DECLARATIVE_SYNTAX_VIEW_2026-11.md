@@ -1531,7 +1531,7 @@ WindowのS0-Pは[main統合済みPR #4792](https://github.com/hat47x/tei-platfor
 
 ### 39.3 最初の製品PRの入場・終了条件を狭く固定する
 
-**最初の実装PRで閉じる一辺はGraph S0-A**である。既存#2621/#988/#1018の製品Loader／Language／RoleとSource Indexを用いて、次を同じ`Workspace.Load`に関連付ける。新Parser Registryや万能Markdown Semantic Parserは先行しない。
+**最初の製品実装で閉じるのはGraph S0-Aへの入口**である。ただし現行の`reference/dsl-language-plugin/selection.go`にある`ParseSelected`は、あらかじめ受理されたSelectionを入力とする限定Referenceであり、製品のManifest／Contract／LockからLanguage Providerを選抜するAPIではない。まず既存#2621/#988/#1018の製品Loader・Language／RoleとSource Indexを調べ、製品Selectionが成立しなければ明示拒否する。新Parser Registryや万能Markdown Semantic Parserは先行しない。具体的なA0〜A3の順序は第39.8節にまとめる。
 
 1. 管理Rootにある`baseline.tei.md`一件だけを明示選択し、Manifest/Pinned Sourceの版、Reader・Role選択と**実ManagedFile／Loaderが消費したbyte**を対応付ける。別途`os.ReadFile`したfixtureの一致だけでは製品Readの証拠にならない。
 2. Node/Edge/Ruleの候補から、正式に適格としたSource SlotだけをSource Indexの元byte Spanへ結ぶ。宣言外の引用・Mermaid・コメントをParserに昇格させず、曖昧なRole、Reader未束縛、同名別ID・重複IDは位置付き診断または明示`unsupported`で止める。
@@ -1637,3 +1637,47 @@ WindowのS0-Pは[main統合済みPR #4792](https://github.com/hat47x/tei-platfor
 最初の製品PRは第39.3節の**Graph一入力のS0-A正式Reader**のまま、Window C0とREAの二入口を新しい着手条件にしない。実Provider→Function Data Context→独立Consumerは#2586/#2506、Source安全編集は#1124/#2500、Studio Stage1→Stage2は#2831/#4583へ、それぞれ既存Expectedを参照して引き渡す。
 
 **検証状態**：#4822/#4816の限定Go回帰はmain統合済み。本節は設計と受入条件への反映のみで、正式Reader・Product Provider・実第二Consumer・Owner意味受理を新たに検証したものではない。先行する[docs PR #4820](https://github.com/hat47x/tei-platform/pull/4820)のexact HEADではCache CIが成功した一方、Repository HealthはPluginのgofmt不一致とWorkbench固定版不一致で失敗した。gofmt修正は[main #4818](https://github.com/hat47x/tei-platform/pull/4818)へ入ったが、その過去HEADのHealthを成功に読み替えない。Workbench修正#4812はclosed/unmergedのため、実配布・実WebView2確認は引き続き未受理である。
+
+---
+
+<!-- data-forms-s0a-rule-input-closure-20261115 -->
+### 39.8 最初の製品Readerを選抜から実読取へ分解し、判断の二つの閉包を保つ（2026-11-15）
+
+第39.3節の「正式Readerにつなぐ」という表現を、現行Go Sourceと[自己記述の実装計画 #4834](https://github.com/hat47x/tei-platform/pull/4834)に合わせて具体化する。既存`reference/dsl-language-plugin/selection.go`の`ParseSelected`は**受理済みSelectionが渡された後**の限定Referenceであり、製品Manifest・Contract・LockからProviderを選択していない。現`internal/workspace/tei_md_source_guard.go`は未束縛`*.tei.md`を明示拒否する。この事実を、最初の製品Go PRの停止線にする。
+
+#### 39.8.1 A0を飛ばしてA1を成功にしない
+
+| 接続 | 最初の実装者が調べる既存のもの | 合格条件・失敗時の扱い |
+| --- | --- | --- |
+| **A0／選抜** | Workspace Manifestと受理済みLanguage Contract／Plugin Lock、現在の解決責務（#988/#1018/#2621） | 選択Sourceに対するLanguage ID、契約Version/Fingerprint、実装ID/Fingerprintを既存の製品経路から一意に取得。まだ供給できなければ`TEI_MD_PARSER_UNBOUND`相当で停止し、拡張子・登録順・Referenceの選択で補わない |
+| **A1／同一Loadで読取** | 実`Workspace.Load`のManagedFile、Pinned RootとReaderが消費したbyte | 選抜済みReader一件が同じLoad Attemptの原byteを消費し、ReaderとSourceを帰属付ける。別途Fixtureを読んで成功したReference試験や`ReadByLoader`だけで意味受理したとしない |
+| **A2／元位置** | `sourceindex.NewArtifact`、`RangeFromOffsets`、Source Revision、候補Occurrence | 定義表の元byte Spanと候補IDを対応付ける。正式Subjectが未受理ならArtifactの存在とCandidateだけを報告し、物理`Format=md`からMeaning Roleを推測しない |
+| **A3／安全な拒否** | Graph/Rule固定六入力、未選択Draft、旧`*.tei`、不正Fence、重複ID、改版後の旧Index | 不正・未対応・曖昧なSourceを「空のWorld成功」にしない。既存`*.tei` Loaderを破壊せず、拒否の理由と位置を独立Expectedへ返す |
+
+**初回の製品差分はA0で既存APIが実際に利用できるかを確定し、その結果に応じてA1〜A3へ進む。** A0が未実装であることを隠すために新しい共通Registry、仮のManifest文法、任意Providerの自動発見を導入しない。A0〜A3の成功はAccepted Business Meaning、製品Generator／Builder、通常CLI実Provider、Windows Stage2の合格を含まない。
+
+#### 39.8.2 Rule集合の閉包とInputの閉包を別々に確認する
+
+[BRMSの第44〜46節（main #4835）](BRMS_DECISION_ANALYSIS_INTEGRATION_2026-11.md)で成熟した結論を、標準データ様式の受入観点へ接続する。
+
+- **Rule集合の閉包**：どの受理済みSource、Rule ID、版、Scope、Tenant、適用時点を評価対象としたか。未選択文書・未読表・競合Role・未受理候補が残ると、Rule集合全体のUniqueやNo Matchは確定しない。
+- **Inputの閉包**：対象Ruleの条件を評価するField／Relation、非出力依存、否定条件、観測時点、Query predicate、ProviderのSnapshot／Coverageを満たしているか。`FullyRead`やCursor EOFだけでは母集団全件を証明しない。
+- **局所的に確定する事実**：同一の受理済みDecision／Scopeについて異なる二行が成立した陽性Witnessは、部分観測でもUnique違反の根拠になり得る。ただしそれは「すべてのRuleを確認した」という主張ではない。
+- **全体の結論**：唯一一致やNo Matchは、Rule集合と必要Inputの双方が閉じ、条件の適格性・版・対象範囲が確認された場合にだけ対象範囲内で確定できる。NULL、未取得、非開示、評価失敗を単純な不一致へ変換しない。
+
+| Rule集合 | Inputの必要範囲 | 言えること | 確定してはいけないこと |
+| --- | --- | --- | --- |
+| 未確定 | 充足 | 観測したRuleの局所判定 | Decision全体のUnique、No Match、Gapなし |
+| 確定 | 未充足 | 証明済みの陽性や二行Conflict | 未取得条件を含めた唯一性・不存在 |
+| 確定 | 充足 | 受理済みScope内の一意／該当なしを検査可能 | 別Tenant・時点・未受理Sourceへの一般化 |
+| 未確定 | 未充足 | 候補と未確定理由を示せる範囲 | 業務Decisionや操作可能の確定 |
+
+この二つの閉包を**新しい共通BoolやRule Result Enumにせず**、既存のSource/Role選択・Meaning・Function Data Context／Result Slice・独立Expectedから再構成する。Windowの`NULL→0→行削除`（main #4822）は入力存在・集計の負例であり、Rule集合の閉包を検証したものではない。組織の合成Function Context（main #4796）も、実Providerが同一Read Cohortを成立させた証拠ではない。REA二入口のraw別入力（main #4816）から未解析Functionの不存在は証明しない。
+
+#### 39.8.3 一つの担当へ一つの不足だけを返す
+
+次のGo実装に渡す順序は、**A0：製品Provider選択の有無を実コードで確定 → A1：Graph一入力の同一Load実Reader → A2：Source位置 → A3：負例・互換性**とする。別レーンの#4544/#1251は受理Meaning→実生成・Builder入力、#2586/#2506は実Query/Provider→独立Consumer、#2831/#4583は非Plugin Studio Stage1→Stage2実Windows Consumerを担当する。
+
+補助的な証拠として[Studio S-LOC試作 #4842](https://github.com/hat47x/tei-platform/pull/4842)のSource位置投影や[Plugin実CLI Discovery試作 #4845](https://github.com/hat47x/tei-platform/pull/4845)を利用する場合も、**現時点では別PRの審査対象**であり、正式Reader／原文の現在再Read／Manual公開／実Consumerの完了には数えない。組織の二時点Query引数とBinderの不一致を修正する[PR #4843](https://github.com/hat47x/tei-platform/pull/4843)も別Ownerの進行中修正であり、別時点・別人物間の意味同一性を保証するものではない。
+
+**本節の資格**：実コードとmainの限定Go回帰、主線計画を照合した実装引渡しであり、A0〜A3の製品Reader、正式Rule集合、Provider二Consumer、Windows実受領をこの文書更新で新たに通したものではない。独立Expectedは#1180/#2514、最初の製品P0はReader・実Provider・Studioセルフビルドの三系統を維持する。
