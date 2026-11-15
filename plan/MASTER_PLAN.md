@@ -2091,6 +2091,19 @@ Studio／SHO／SUI／AIが同じ意味候補を提示しても、編集資格は
 
 **現在の資格**：上記は採用前の受入契約であり、組織とREAの同一実DB世界・正式意味Link、組織の実Query→生成Go→CLI/Studio/Hostの一巡は未受理。#2586/#2831の独立P0を維持。
 
+
+<!-- org-c1-person-revision-product-gap-20261115 -->
+### 2026-11-15 組織C1：人物との関係・訂正版の保存・実Readを三段で検証する（補遺§35）
+
+[組織C1補遺§35](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)で、合成r7の時点別人数/FTEと、実`org-staged-axis`のMembership/Person Link・物理保存・Readの間に残る二つの断線を具体化した。①現行MembershipにPersonへの正式Linkがなく実人数を確定できない、②物理`membership_id`単独PKのままでは同じ所属の訂正旧新版を同じテーブルに共存させられない。#4633のGAP試験と#4567の二時点Query/使い捨てPostgreSQL試験は**どちらもDraftであり、保存・意味受理・通常製品CLIを完成したことにしない**。
+
+- **先に意味Owner**：#2386/#1126がMembership→Personを直接またはEmployment/Affiliation経由で解決するか、業務IDと履歴版をどう識別するか、兼務・複合キー・有効区間を決める。履歴非必須アプリには二時点Schemaを強制しない。
+- **次にProduct**：#4633の「欠落を確認する」GAP特性試験を採用契約の正例に置き換え、#4567のphysical Query/Mappingと同一Membership旧新版を隔離DBで保存・再読込する検査を接続。その後#2586/#4495/#4490で同一Attemptの実Provider→Function Context→独立ConsumerとvalidAt/knownAt・Required Read/Snapshot/Coverageを証明する。
+- **MVR-01〜05**：人物Link・版共存・二時点の実Result・複合Key/NULL・RoleAssignment/Responsibility/Caseとの同一World連結を既存#1180/#2514の独立Expectedへ渡す。合成r7と別Case Fixtureを同じWorldとして便宜的に結合しない。
+- **Go回帰の統合条件**：#4796の合成二Context・正Path/partial/NULL回帰は現行mainへの追随と`gofmt`・Repository Healthのexact HEAD再検証後に統合。旧HEADの全Goテストや別領域CIの成功は転用しない。正式Reader→Rule意味受理→実Go生成／Builderは#2621/#988/#1121/#4544の別Product資格。
+
+**P0**：通常`tei` CLI初回実Provider Read #2586およびStage1→Stage2 Desktop #2831は独立に継続。本文は採用前の設計・実装計画であり、新しい実組織DB/CLI/Host/Studio検証・Owner意味受理は未達。新Core/Temporal Engine/Host/Expected正本を追加しない。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
