@@ -1816,11 +1816,11 @@ Studio側のR4は[#2831](https://github.com/hat47x/tei-platform/issues/2831)／[
 
 ### 16.35 文書表をData定義へ使う条件と、実記録の表を混同しない
 
-[未マージで閉じた提案PR #5010](https://github.com/hat47x/tei-platform/pull/5010)では、`*.tei.md`の明示`<!-- tei: data … -->`領域にある**項目定義表**を、既存`semantic.Data`へ読込む`tei.authoring/v1`が提案されている。題材は組織の異動申請`TransferRequest`で、`personId`等の項目・型・必須・表示・説明をMarkdownで記述する。表は**レコードの形を定める定義**であり、実際の所属・異動履歴の一行一行を保存するデータではない。後者は既存Data Provider／Query／Temporal契約の対象である。これは「文書の表を標準データ構造に使える」ことと「表の行を業務データとして自動取込みできる」ことを区別する具体例となる。
+元の[PR #5010](https://github.com/hat47x/tei-platform/pull/5010)は未マージで閉じたが、現在のmainには組込み`tei.authoring/v1`の選択経路、`data_table_authoring.go`とその試験が存在する。`*.tei.md`の明示`<!-- tei: data … -->`領域にある**項目定義表**を、既存`semantic.Data`へ変換する限定的な製品読込経路が進んだ。題材は組織の異動申請`TransferRequest`で、`personId`等の項目・型・必須・表示・説明をMarkdownで記述する。表は**レコードの形を定める定義**であり、実際の所属・異動履歴の一行一行を保存するデータではない。後者は既存Data Provider／Query／Temporal契約の対象である。これは「文書の表を標準データ構造に使える」ことと「表の行を業務データとして自動取込みできる」ことを区別する具体例となる。
 
 採否は[#2621](https://github.com/hat47x/tei-platform/issues/2621)／[#988](https://github.com/hat47x/tei-platform/issues/988)／[#1018](https://github.com/hat47x/tei-platform/issues/1018)へ返す。比較すべきは、従来の`data`宣言との型付き意味同値、`display`／`description`の表現上のRole、セル原byte範囲・診断位置、明示Reader版の拒否、Scope／Identityの保持、未対応`immutable`／`role`／`value`／Relation／候補キーの欠落である。**定義内容が部分的にしか書けない表を、従来Dataの完全な逆編集形式とみなさない**。Featureを表へ追加するときは、同一Source・同一意味・再読込・安全なSlot・複合キー等の反例が成立してから拡張する。
 
-#5010は確認時点でClosed／未マージであり、提案ブランチのローカルGo試験の申告をmain採用・Linux CI・実Query／DB／Generator受入へ昇格しない。元の`tei.rule-authoring/v0`と`tei.authoring/v1`が二系統の名前になる点も、早期に一律統合せず、既存Readerとの選択・互換・Source Indexの差を対照してからOwnerが判断する。
+#5010のPR自体はClosed／未マージだが、同趣旨のReader／Parser／試験ファイルはmainに収録済みである。**ファイルの存在、選択済みLanguage経路の実装、対象Goテストのexact HEAD PASS、Query／DB／Generator／Ownerの正式受理はそれぞれ別資格**とする。元の`tei.rule-authoring/v0`と`tei.authoring/v1`が二系統の名前になる点も、早期に一律統合せず、既存Readerとの選択・互換・Source Indexの差を対照してからOwnerが判断する。
 
 ### 16.36 研究の次段は「完成した限定経路の未接続だけ」を実装する
 
@@ -1829,3 +1829,36 @@ Studio側のR4は[#2831](https://github.com/hat47x/tei-platform/issues/2831)／[
 次の実装順は並列三本とし、新しい横断P0を増やさない。**Builder：** #5009の実CLI self-buildから、Markdown Reader／Rule／Generatorの資格を既存Build Attemptへ束縛してR2-Pを閉じる。**実行：** #5007の組込みOperator選択・実Callを参照しつつ、受理されたpure Functionの公開Entry・実Provider・現在Grant・通常CLI／独立ConsumerをR3として別に閉じる。**Desktop：** 通常W0-Cを基線に、正規埋込Assetの版とStage1→Stage2の実Windows再入を閉じる。三本を合流したあとに限って、標準Node Flow／文書表／Plugin自己記述を製品の第二異種Consumerとして使えるかを評価する。
 
 **停止条件**：手書きGoや参照Builderの結果を正式Source資格にすり替える、Operator実装の呼出し一致を意味Conformanceへ読み替える、Markdown表の項目定義と実記録を混同する、旧Windows成功を別HEADのStage2へ転用する場合は進めない。本節は**研究から既存Ownerへ渡す判断**であり、新Go／Windows／DB／正式Providerの実行やOwnerの意味受理は今回**NOT RUN／NOT PROVEN**である。
+
+### 16.37 I2M-1の実装は原文と生成Goを対応付けたが、意味受理と再生成の同値性は残る
+
+[PR #5020](https://github.com/hat47x/tei-platform/pull/5020)は、mainの`positive_surface_identity_test.go`に、同一Workspace Loadから得たRule原文のDefinition Range・Fingerprint、型付きValidation、`GeneratePositive`の生成Goと`observeGeneratedPositiveGo`のRead先・厳密な正値判定・Go側byte spanを**一試行で照合するI2M-1回帰**を加えた。Markdownと従来`.tei`を独立ロードし、同じ意味・生成Goでも原Source／位置・版が別であることを保持する。Go側だけのAttribute改変と`>0`→`>=0`の偽対応を拒否する。
+
+この実証で証明できたのは、**一つのRuleについて、原文・型・生成Goの構造を根拠付きで結び付けられること**である。任意Goからの業務意味逆解析、Graph／DSLの安全な書戻し、Ownerの意味受理、製品Builderが元SourceとGeneratorを同じAttemptに束縛したことは未成立。次のI2M-2は既存[dogfooding計画](../design/IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md)の正本を使用し、読込元のRole・Source位置を失わないread-only Projectionと、独立Expectedでの再生成比較から始める。
+
+### 16.38 実装選択が変われば、意味Worldが変わらなくても実行資格は失効する
+
+mainの`cmd/tei/scenario.go`が生成Scenarioコマンドへ固定するのは、現在のScenario、型付きWorld、Plugin Lock、Fixtureの各指紋である。一方、[PR #5007](https://github.com/hat47x/tei-platform/pull/5007)の`implementations:`によるOperator選択は意味Worldの外にあり、同一Worldのまま`tei.number.non-negative`から`tei.number.non-zero`へ変更できる。入力0に対する結果は異なる。**選択した実装の変更を旧生成コマンドの失効条件に含めない現在の断点**を、[自己記述§49のSD-O1](../design/ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md)・[#2600](https://github.com/hat47x/tei-platform/issues/2600)の具体的な次実装として引き渡す。
+
+| 変更・観測 | 合格条件 | 禁止する短絡 |
+| --- | --- | --- |
+| Manifest実装選択A→B、Rule／World／Fixture不変 | 旧生成Scenarioコマンドの現在資格を拒否。再生成してB実Call・入力0の結果差を観測 | World Hash不変だから旧コマンド可とする |
+| 選択B、実Call A | 実Callerで選抜と呼出しが不一致と判明し、結果が偶然同じでも拒否 | Result一致を実選択の証拠にする |
+| 選択B、実Call B、業務Operator意味に不適合 | 型・実Callの成立とは別に、Owner／独立ExpectedのConformanceを拒否 | `takes number`だけで業務正当性を推測 |
+| A→B→A、旧Receipt・Artifact再利用 | 現在の選択・対象・版・Attemptを再照合 | 同じ値やbyteへ戻れば旧資格が復活する |
+
+既存Scenario／Lock／Build Intentの適切な入力閉包をOwnerが決める。**Model Revisionへ実装選択を混ぜて意味版を偽装しない**。新Fingerprint体系・別Registryを作らず、実行資格と意味同値を独立に追跡する。変更への追随は[#988](https://github.com/hat47x/tei-platform/issues/988)／[#951](https://github.com/hat47x/tei-platform/issues/951)／[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)に返す。
+
+### 16.39 異なる読込表現・実画面・時点モデルへ広げる際の停止条件
+
+**Markdown Data表**は内蔵`tei.authoring/v1`の読込と従来Data文法との型付き比較を足場とする。項目定義の行を実業務記録として扱わず、表で欠けるRelation／候補キーや安全な逆編集は未対応と表示する。新言語を旧`tei.rule-authoring/v0`の別名として無条件に統合せず、manifestで両方を選んだときの競合拒否を維持する。追加の普通コメント拒否・設計§15は[PR #5030](https://github.com/hat47x/tei-platform/pull/5030)で別途審査中であり、PRの未マージと本体Reader収録を分離する。
+
+**StudioのPin**は[PR #5025](https://github.com/hat47x/tei-platform/pull/5025)の同一Workspace再読込→旧観測失効→明示再確認を、通常Windows W0-Cの限定テストとして扱う。別WorkspaceのA→B→A、遅着Reply、実Source改版、Stage1→Stage2の成立と混同しない。**組織の二時点**は実試験が進んでも、valid-timeとknown-timeの交差、Providerのrecorded-at、観測時刻、業務判断時点を同じ一つの「現在」へ潰さない。組織C1のOwnerが単一値性を受理するまでTemporal Engineの仕様へ昇格しない。
+
+**Wailsショーケース**の40事例を標準表現／Capability候補として整理する[PR #5034](https://github.com/hat47x/tei-platform/pull/5034)は、第三者アプリの機能調査とTEI本体の実装証拠を区別して評価する。Node／Plugin／Canvasの表現を既存Graph／Operator／Operationに接続する反証資料として扱い、新しいHost／Runner／専用Graph EngineやStudioセルフビルドの追加P0を正当化しない。
+
+### 16.40 日本語の設計正本を壊さず、研究判断を継続して更新する
+
+[PR #5021](https://github.com/hat47x/tei-platform/pull/5021)はRule縦断設計書の文字化けを原byteから復元し、既存`tools/repository-plan-check`にUTF-8／制御文字の負例検査を追加した。同じ事故で研究の判断・検証条件が読めなくなることを防ぐため、今回**研究統合計画自身**にも既存`readableMarkdownBytes`を再利用したGo回帰を追加する。日本語の文書タイトル・§16の連番／一意性を確認するが、本文全体の文章品質や意味の正しさをこの自動検査だけで保証するとは主張しない。
+
+**残る最優先**は、(1)元Rule・Reader・Generator資格と通常`tei self-build`が消費したGo／Artifactを同じAttemptに束縛するR2-P、(2)受理済みpure Functionの公開Entry→選択済み実Provider→通常CLI・独立ConsumerのR3、(3)TEIによるStage1→Stage2 Desktop実再構築。Scenario選択鮮度とI2M-2は既存Ownerへ並行引渡しとし、新しい横断Gate、Runtime、Meaning Store、Plugin Registryを導入しない。**今回追加するのは研究計画とその文書健全性回帰だけ**であり、Go製品コード・Windows／DB・実Providerの新しい機能検証は行わない。
