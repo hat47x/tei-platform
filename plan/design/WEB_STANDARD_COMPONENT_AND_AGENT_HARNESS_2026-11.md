@@ -247,6 +247,8 @@ UI-P1が現在の入力保持・キーボード・IME・Source表示を悪化さ
 
 ## 13. UI-P1の最小実装と次の検証段階（PR #4949）
 
+2026-11-15の現行mainを照合すると、Pin配線の限定修正は[#4920](https://github.com/hat47x/tei-platform/pull/4920)で統合済み、Ruleから判断Goを生成するR1は[#4911](https://github.com/hat47x/tei-platform/pull/4911)で統合済みである。一方、既存BuilderへのR2の一試行[#4934](https://github.com/hat47x/tei-platform/pull/4934)は**closed／unmerged**であり、実Builder消費を製品受入済みとは扱わない。UI-P1はこの境界を壊さず、現在の読み取り専用表示へ接続する。
+
 ### 13.1 読み取り専用の選択要求を表示部品から切り離す
 
 W0〜W4／N0〜N4の統合方針を実コードに接続する最初の小差分は、現行Workbenchの**モデル一覧とGraphノードの選択要求を一つのUIイベントに収束**させる。対象は[PR #4949](https://github.com/hat47x/tei-platform/pull/4949)の `reference/tei-studio-workbench/inspector-selection.ts`、`main.ts`、関連試験であり、新しいHost・業務Operation・Graph Engine・UI Frameworkは導入しない。
