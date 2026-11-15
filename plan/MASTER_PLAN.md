@@ -10,6 +10,8 @@
 
 関連文書は次のとおりです。
 
+- [DSL自己記述を実生成・自己拡張・セルフビルドへつなぐ実装計画](design/ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md#45-2026-11-15-自己記述を読める仕様から再構築できる実装へ接続する最小契約計画実証待ち)：自己記述をD1〜D5（記述／解釈／拡張／実生成／再構築）の別資格に分け、既存B0〜B4 Seed/Selection/Parse/Meaning/Realizationから実Plugin生成とCLI再入へつなぐ。P0-A/B→P1→P2→P3でGraph・Validationの独立Expectedを共用し、Go委譲とTEI生成を区別する。**計画追補であり、新たな製品実装・Stage2実証ではない**。Desktop Stage1→Stage2と通常CLI実Provider ReadのP0を維持する。
+
 - [業務ルールの統合・決定表の検証](design/BRMS_DECISION_ANALYSIS_INTEGRATION_2026-11.md)：独立BRMS／Hostを新設せず、IF・Markdown表・Graph・型付きOperatorから判断を生成し、競合・適用漏れ・判断不能・変更影響を検証する。Graph／一行Rule→Goの限定ReferenceとWorkspace Pinned SourceのS0予備検証はmainにあり（#4729/#4751）、**正式Reader／Meaning Binding／製品Generator／実Providerは別の未達**。次は#2621/#988で一Ruleを正式に受け、#4544の実生成Source消費を検収する。Unique決定表ではpartialでも完全に証明した二行の競合は確定できる一方、一行のみ・零件では母集団の完全性なしに唯一性・不存在を断定しない（#1180/#2514）。自然な業務説明とMockシミュレーションは同じSourceに従属させ、実Effect・実Consumerと区別する。Studio Stage1→Stage2と製品CLI→実ProviderのP0は維持する。
 
 - [Studio／CLI／WebのBackend子プロセス・Plugin管理・配布更新の統合設計](design/STUDIO_CLI_BACKEND_PROCESS_DISTRIBUTION_UPDATE_2026-11.md)：現行Desktop P0は同一Process方式Aを基準とし、将来候補としてWails親からローカル子BackendへのIPC接続を比較する。CLIはWails非依存の共通Backendを直接／自己子起動／再利用Sessionで比較する。WebはServer配信Clientと認証済みAPIを分離し、遠隔CLIはServer側のPlugin構成を使用する。G0〜G6は既存#1158/#1824/#2044/#2589/#2831/#4583の実装Ownerに接続し、**CLI子起動の既定化・共有Daemon・Updater製品採用は実測とOwner判断待ち**とする。Studio Stage1→Stage2セルフビルドのP0を変更しない。
