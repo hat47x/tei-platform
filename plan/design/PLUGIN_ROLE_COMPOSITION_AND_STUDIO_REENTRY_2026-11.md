@@ -1361,3 +1361,66 @@ A0に実装対象のProviderがなければ、設計のための仮Providerや�
 各PRで「受理した業務判断の数」「TEIから実生成された判断処理の数」「手書きまたはdelegateのみの処理の数」「変更後に手修正が必要だった箇所」「実際に受領したConsumerの数」を分けて記録する。これは数値目標を先に決めるためでなく、TEI自身によるPlugin実装の範囲が広がり、Markdown定義の記述が簡素になったかを追跡するためである。初回は固定の一例で十分であり、BRMS/REA/組織/Window/公開Doc/Updaterの完成を新たなP0依存にしない。
 
 本節は現行mainの実証と未接続の実装順を整えるdocs-onlyの追補であり、S0-A、生成Plugin、Provider実Call、Stage2、Ownerの業務意味受理を新たに実証したものではない。
+
+
+### 24.5 製品Rule Authoring Readerの初回実装を実績へ切り替える（2026-11-15）
+
+mainのマージコミット [7921b005](https://github.com/hat47x/tei-platform/commit/7921b005a44d325983d24ca2b8b58b0737dd778d) で、内蔵Language Implementationによる **Rule Authoring Markdownの製品読取り経路** が収録された。したがって第24.2節のA0〜A3を「すべて未実装」とは扱わない。ただし、製品の実装と独立したE2E受入は別である。
+
+- **A0の内蔵実装**：Workspace Manifestのlanguagesで明示されたtei.rule-authoring/v0と、実Binaryに収録されたtei.builtin.rule-authoring-markdownが正確に対応する場合にだけReaderを選択する。実装なし・複数実装・未選択Sourceは拒否する。これは**外部PluginのResolver/Lockを通したProvider選択ではない**。
+- **A1/A2の内蔵実装**：同じLoadの原文バイト列からsemantic配下の定義領域を読み、従来のsemantic.Validationに投影する。定義したRule IDの位置をSource IndexのためのSource anchorとして保持する。読取不能な領域、重複ID、解決不能参照を部分的な意味として採用しない。AuthoringSourcesはLoadで観測した件数であり、Ownerによる意味受理の記録ではない。
+- **残る製品検収**：明示選択の正例と拒否例を実WorkspaceのGo試験と通常CLIで確認し、独立Expected、Source A→B→A、管理外Draft、旧tei定義の後方互換を検査する。Graphの多重有向辺を同じ実装が正式に読むこと、外部Language PluginをPlugin管理のexact Lockから解決すること、生成したGo Pluginの実呼出し、Studio Stage1→Stage2、文書Disclosureは**未受理の別Gate**である。
+
+実装計画では、**次のS0A差分を「最初のReaderをゼロから用意する」から「内蔵Rule ReaderのA0〜A3を製品で独立検収し、外部Plugin選択との未接続を特定する」へ更新する**。それに続くPLG差分で、読み取れたRule一件を生成Goの実動作、実Artifact/Provider、通常CLIの独立Consumerへ接続する。新しいLanguage Registryや第二Meaningモデルは作らない。今回の文書追記自体はGo/CLI/Windowsの新規試験を行っていない。
+
+
+---
+
+## 25. 内蔵Languageの成功を外部Pluginの適格性に飛躍させない（2026-11-15契約境界）
+
+### 25.1 現在成立している製品能力
+
+内蔵tei.rule-authoring/v0の読取経路は、Manifestで宣言したLanguage ID／Contract Versionを、現在のGo製品Binaryに静的収録されたReaderへ対応させる。選択された一つのReaderだけが同じWorkspace.Loadの原byteから定義領域を解析し、既存semantic.Validation・Source anchorへ投影する。管理Sourceのsuffixだけ、Pluginの表示名だけ、ReferenceのParseSelectedだけでReaderを決めない。
+
+この実装が達成したのは**内蔵Languageの一意選択と限定Rule読取り**であって、任意のLanguage Pluginの発見／導入／依存Lock解決、Graph全般の意味、Owner受理、Runtime Provider実Callではない。AuthoringSourcesはどの実装が何領域を読んだかのLoad観測値であり、Meaningの承認票でもRead権限でもない。
+
+### 25.2 外部Language Pluginへつなぐには、独立した三つの問いを解く
+
+| 問い | 現在の根拠 | 実装で必要になる照合 | 未適格時の扱い |
+| --- | --- | --- | --- |
+| 契約の選択 | ManifestのLanguage IDとContract版 | 既存Plugin Management/Resolverの選択済みProvider、Implementation ID、exact版・Lockとの一致。内蔵Providerならその静的収録を別証拠で示す | 選択不明・多重・欠落を拒否。内蔵実装への暗黙fallbackなし |
+| 読取対象と帰属 | Workspace管理Root、実Load byte、Source occurrence | 一つの対象Sourceを一つの選択実装が読んだこと、Reader種別ごとのRole/Source Indexが元byte範囲と整合すること | 部分取得、Importの未追跡、曖昧な構造候補を成功・正式Subjectにしない |
+| 生成物とConsumer | 静的BuildのArtifactSet、Plugin InventoryとProduct Operation | Runtime/Build-only/Delivery-onlyの工程別収録、実Provider Call・現在Grant、別Consumerでの受領をそれぞれ照合 | Package選択や候補指紋だけなら未呼出し・未検証のまま |
+
+外部Pluginの契約を結ぶ際も既存#951/#1016のRole/ContractとSelection/Lockを利用する。Workspace内部へ第二のPlugin Registry、暫定Loader、独立Graph Compilerを導入しない。静的Go合成を既定とし、動的ロード／独立プロセスは更新頻度・隔離・権限上の必要性を具体的事例で確認してから選ぶ。
+
+**Source Indexの証拠上限**：BuildSourceIndexFromLoadは、Loadで取得したbyteの再利用を可能にするが、複数ファイルの完全に原子的なSnapshotを保証しない。Importを含むWorkspaceは未束縛条件で停止する。元Sourceの指紋一致だけで外部依存の全件性や、新しいAttemptの受理資格まで主張しない。
+
+### 25.3 Ruleと入力の完全性を分け、Hook副作用を止める
+
+内蔵Rule ReaderがあるNamespaceのValidationを読み取れたことは、その業務で適用すべきRule集合の**全件読取り**や、評価に必要なData/Relation/Time Contextの**全件取得**の保証ではない。BRMSのNo Match、Unique Match、競合なし等の全体結論には、Rule集合と入力集合それぞれの範囲・時点・欠落状態を明示した独立Expectedを要する。部分取得や未解決参照があるならunknown／incompleteとして停止する。
+
+Lifecycle/Hookでも宣言上のGuardや条件の真偽を、Current GrantやDB/通知Effectの実行許可に変えない。実Call回数、重複呼出し、Commit前後、Receipt/unknown、再試行時の同一Operation identityを別証拠とする。最初の生成Pluginはpure/read-onlyの一Ruleに絞り、実作用を持つHook拡張は#1129/#1174/#4198のOwnerによる負例受入後とする。
+
+### 25.4 既存Ownerへ渡す最小の反証
+
+| ケース | 一因子変更と観測すべき違い | 引渡し先 |
+| --- | --- | --- |
+| LPX-01 | Manifestが選択していないtei.mdは引き続きTEI_MD_PARSER_UNBOUND。選択ありの正例を増やしても負例を消さない | #988/#2621 |
+| LPX-02 | Manifestで選択したLanguage/Contractに実Binary内のImplementationがない、または二つある場合は実Load前に拒否 | #1018/#2621 |
+| LPX-03 | 外部Pluginのexact版/Lockと実Builderが収録したImplementationが食い違う場合は、同じRule結果でも不適格 | #951/#1251/#3267 |
+| LPX-04 | Load後のA→B→A／管理外同名Draft／Import未束縛では、旧Source Indexや過去の資格を再利用しない | #2600/#2514 |
+| LPX-05 | Rule集合だけ全件、入力Dataは一部欠落（または逆）の場合、No Match/Uniqueを全体結論として返さない | #1121/#1180 |
+| LPX-06 | 自動Hookと手書き呼出しで同じEffectを二重実行、Receipt不明なら再実行成功扱いしない | #1129/#1174 |
+| LPX-07 | Referenceの生成Go／CLIは成功したが、製品実ProviderやStudioの埋込Assetが旧版なら実Consumer資格は不成立 | #4495/#4583 |
+
+LPXは新しいTest Runnerやシナリオ正本ではなく、既存#1180/#2514への差分提案である。Ownerが採否と期待値を定めるまで、ここにある反証を製品の合格実績へ数えない。
+
+### 25.5 依存関係と実装順
+
+1. **S0-Aの内蔵Reader資格を確定**：#2621が実Workspace Load・Reader一意選択・Source anchor・未選択拒否・従来tei互換・A→B→Aを独立試験で検収する。外部Language Pluginの完成を待たない。
+2. **外部Language Providerの接続を小さく検討**：既存Plugin Selection/Lockから選択したImplementationが、静的Go Binaryの実Readerと同じと確認できる最小一例を設計・検証する。選択だけ／収録だけ／Readだけを分け、現行実装が未対応の経路はunsupportedとする。
+3. **Rule→生成Go→実Product Provider/CLI**：#1121/#1251/#4495で同一Ruleの条件変更が実Binaryの判断を変えること、ArtifactSetと実Call、独立Expectedを検収する。手書き委譲だけではself-build完了としない。
+4. **Studio・Doc・Effectは別の並行/後続Gate**：非Plugin Stage1→Stage2 Windows #2831/#4583をP0並行、公開Manual Read #4714/#4679、作用Hookを後続とする。新Updater/Hostや全Plugin動的ロードはこの最小Sliceの先行条件にしない。
+
+本節と第24.5節は最新製品Sourceを踏まえた設計・計画の修正であり、外部Language Plugin、全Graph Reader、実Provider/Consumer、BRMS全件評価、Effect、Owner意味受理の新規試験・製品合格を報告するものではない。
