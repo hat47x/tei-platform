@@ -1489,9 +1489,9 @@ Readerが1件通った次のPRで、§15.38の固定Fixture（同Labelの別Node
 
 §15.46〜15.50は[PR #4824](https://github.com/hat47x/tei-platform/pull/4824)でmainへ統合された。本節では同じ工程を増やさず、最初のD-A（S0-A）を**実装PRとして完了できる大きさ**に落とす。目標は、管理対象の`*.tei.md`を見つけたという報告ではなく、**明示的に選んだGraph/Rule一件の原文が、実Workspaceの読取境界を通って、元位置を保った型付き候補へ到達した**という実証である。正式な意味受理と生成物の実使用は、さらに別の受入とする。
 
-現在の`internal/workspace/tei_md_source_guard.go`は、管理Rootに現れた`*.tei.md`を`TEI_MD_PARSER_UNBOUND`で停止する。これは黙って読み飛ばすより安全な挙動であり、全面的に解除してはならない。さらにmain統合済みの[自己記述設計 #4834](https://github.com/hat47x/tei-platform/pull/4834)が確認したとおり、`reference/dsl-language-plugin/selection.go`の`ParseSelected`は**選択済みの入力を解釈するReference**であり、製品のManifest/LockからLanguage Providerを選ぶ入口ではない。存在しない製品選択機能を前提にGuardを外すことはできない。
+本節を起草した時点では`internal/workspace/tei_md_source_guard.go`が管理Rootの`*.tei.md`を`TEI_MD_PARSER_UNBOUND`で停止していた。その後、内蔵Rule Readerが製品Loaderへ接続され、この旧Guardは廃止された。現在の選択・未束縛拒否は`internal/workspace/authoring_language.go`で扱う。実装済みの範囲と次工程は§15.61に整理する。さらにmain統合済みの[自己記述設計 #4834](https://github.com/hat47x/tei-platform/pull/4834)が確認したとおり、`reference/dsl-language-plugin/selection.go`の`ParseSelected`は**選択済みの入力を解釈するReference**であり、製品のManifest/LockからLanguage Providerを選ぶ入口ではない。存在しない製品選択機能を前提にGuardを外すことはできない。
 
-したがって最初のコード変更は、**A0：現行製品に受理済みContract/LockからReader Selectionを得る経路が存在するか確認し、なければ理由付き`unsupported`で止める**ことから始める。A0が成立した場合に限り、A1：`readPinnedWorkspaceFile`等の同一Load時原byteを実Readerに渡す、A2：Source Indexで元位置を照合する、A3：未選択拒否と旧`*.tei`互換を検査する。新しい選択RegistryやManifest構文を便宜的に作らない。この小さな分割は#4834のS0-Aと一致させ、#2621/#988/#1018/#2823へ実装を引き渡す。
+当初のA0は、**製品がLanguageと実装を明示選択できるか確認し、選択がなければ理由付きで止める**という問題だった。内蔵`tei.rule-authoring/v0`ではManifest選択が実装済みだが、外部Language PluginのResolver/Lock接続やGraph Readerの正式選択は別途必要となる。A0が成立した場合に限り、A1：`readPinnedWorkspaceFile`等の同一Load時原byteを実Readerに渡す、A2：Source Indexで元位置を照合する、A3：未選択拒否と旧`*.tei`互換を検査する。新しい選択RegistryやManifest構文を便宜的に作らない。この小さな分割は#4834のS0-Aと一致させ、#2621/#988/#1018/#2823へ実装を引き渡す。
 
 | 実装境界 | 通過したと認める最小の観測 | 止める入力 |
 | --- | --- | --- |
@@ -1538,7 +1538,7 @@ Studioで元のSource位置を表示するS-LOCと、現在のWorkspace/Source R
 <!-- tei-dogfood-20261115-actual-reader-and-ci-triage -->
 ### 15.55 Reader選択を作り込みすぎず、二つの実利用経路を先に開通する
 
-§15.51のA0〜A3は、自己記述[#4834](https://github.com/hat47x/tei-platform/pull/4834)の「Reference `ParseSelected`は製品Language Provider選択を行わない」という実コード確認を前提とする。最初から汎用Language Registryや第二Parserを作るのではなく、既存のContract／Profile／Lock／Workspaceをどこまでつなげば**選択された一Readerだけ**を利用できるかを調べる。構文・Roleが未確定なら、その部分は候補または`unsupported`として残す。専門家にとって読みやすいMarkdownの記述形式を、初期のGeneratorやGo内部型に合わせて固定しない。
+§15.51のA0〜A3は、自己記述[#4834](https://github.com/hat47x/tei-platform/pull/4834)の「Reference `ParseSelected`は製品Language Provider選択を行わない」という実コード確認を出発点とした。後に内蔵`tei.rule-authoring/v0`のManifest選択とLoadがmainに実装されたため、今後は内蔵Readerと外部Language Pluginを分けて判定する（§15.61）。最初から汎用Language Registryや第二Parserを作るのではなく、既存のContract／Profile／Lock／Workspaceをどこまでつなげば**選択された一Readerだけ**を利用できるかを調べる。構文・Roleが未確定なら、その部分は候補または`unsupported`として残す。専門家にとって読みやすいMarkdownの記述形式を、初期のGeneratorやGo内部型に合わせて固定しない。
 
 **最初のReader PR**は、選択Sourceの原byteとReaderが実際に受け取ったbyteの同一性、Source位置とRole、GraphのNode/Edge IDおよび方向と多重性、未選択・重複・非管理の拒否に範囲を絞る。読めた候補をOwner受理済みMeaningと同一視せず、`*.tei.md`を管理対象にしただけで旧Guardを無条件に解除しない。Builderへの入力接続とコード生成は次の別PRにする。
 
@@ -1568,7 +1568,7 @@ Readerの実装が完了する前でも、二つの仕事は独立して前へ�
 | **限定Referenceの正例** | `testdata/tei-md-graph/baseline.tei.md`を、明示した合成Language PinとE1 `ParseSelected`で候補として読み、Node/Edge ID・Ruleの元byte位置を確認する | 製品Manifest/LockによるReader選択、WorkspaceへのMeaning受理 |
 | **現行製品の拒否例** | 同じGraph Markdownを管理Rootに置き、製品`workspace.Load`が`TEI_MD_PARSER_UNBOUND`で止まることと、未管理Draftを意味入力に数えないことを確認する | Product S0-Aの正例成立 |
 
-最後の二つを同一Graph原文で照合する試験案は[PR #4857](https://github.com/hat47x/tei-platform/pull/4857)にある。ただし同PRは**closed/unmerged**であり、Go回帰がmainに存在するという実績には数えない。既存Fixtureとテスト期待値の持ち主を確認したうえで、必要な最小Go試験だけを最新mainから別PRに切り出す。Reference解析の成功をもって製品Guardを解除しない。製品選択元のA0を先に確定できなければ、意図的な`unsupported`で止める。
+最後の二つを同一Graph原文で照合する試験案は[PR #4857](https://github.com/hat47x/tei-platform/pull/4857)にある。ただし同PRは**closed/unmerged**である一方、`reference/dsl-language-plugin/workspace_admission_boundary_test.go`のGoファイル自体は現在のmainに存在する。**PRのマージ状態、Blobの収録、対象HEADでのGoテストPASSは別の事実**として記録する。内蔵Ruleの正例を追加するときも、外部Graph Markdownの未選択拒否を消さない。Reference解析の成功をもって製品Guardを解除しない。製品選択元のA0を先に確定できなければ、意図的な`unsupported`で止める。
 
 ### 15.58 Sourceの位置・正式な同一性・編集対象を一つのIDへ押し込まない
 
@@ -1580,7 +1580,7 @@ Readerの実装が完了する前でも、二つの仕事は独立して前へ�
 
 ### 15.59 次の製品実装PRは、境界一つにつき独立して検証する
 
-ReaderのA0を調べるPRでは、現在の製品Manifest/Contract/Lock/Language実装の**どの具体的APIが選択を供給するか**を明示する。E1 Referenceの`Selection`を合成して成功させるだけでは不十分である。A0が未実装と確定したら、未束縛を維持したまま必要な最小の製品契約接続をOwnerへ返し、独自のResolverや選択Registryを追加しない。A1〜A3は、A0で実際に選択された一件について次を通す。
+Readerの次のPRでは、内蔵`tei.rule-authoring/v0`のManifest選択・同一Load読取りという成立済みの経路と、外部Language PluginのContract/Lock選択という未接続の経路を分け、**実際に選択を供給するAPIと入力版**を明示する。E1 Referenceの`Selection`を合成して成功させるだけでは不十分である。A0が未実装と確定したら、未束縛を維持したまま必要な最小の製品契約接続をOwnerへ返し、独自のResolverや選択Registryを追加しない。A1〜A3は、A0で実際に選択された一件について次を通す。
 
 - Readerへ渡った原byteがWorkspaceの同一Loadで取得されたものであること。Source Index、候補の元byte範囲、同Label別Nodeと多重EdgeのID・方向を照合する。
 - 選択Sourceを欠く、未束縛、複数選択、選択版不一致、旧新同Subject競合、Source A→B→A、Root外Draftの各拒否が実際に働くこと。通常`*.tei`の現行読取は退行させない。
@@ -1597,3 +1597,41 @@ Plugin文書の実CLI対照は[#4845](https://github.com/hat47x/tei-platform/pul
 Studioも同様に、非Pluginの実Build Subject→Stage1自身のBuild要求→全Child/Builder pin→Stage2 ArtifactSet→Windows WebView2受領へ進める。未統合S-LOC投影や古いWorkbench Bundleの合格を、この経路の代用にしない。P0-S（Reader）、P0-R（実Provider）、P0-B（Stage1→Stage2）は相互に必要な共通機構を使うが、初回の実証を阻む新Hard Dependencyとして結合しない。
 
 **統合時の品質判断**は、対象HEADと現在mainの比較、差分が意図した範囲だけであること、実行した試験と実行していない試験の区別、独立Expectedの改変有無を一組として残す。mainのHealthが既存障害で失敗する場合も失敗を隠さず、変更に起因した新しい問題と切り分ける。コードPRで製品の実Call/Consumerを要求する場合は、全体Healthの説明だけで実試験を省かない。この追補自体は設計・計画であり、新しいGo/Node/Windows/DB検証、正式Reader、Owner意味受理の完了を意味しない。
+
+<!-- tei-dogfood-builtin-rule-reader-product-rebaseline-20261115 -->
+### 15.61 製品に入った最初の内蔵Rule Readerを基線とし、未実装の領域を狭める
+
+2026年11月15日のmain統合コミット[`7921b005`](https://github.com/hat47x/tei-platform/commit/7921b005a44d325983d24ca2b8b58b0737dd778d)によって、製品`workspace.Load`が`*.tei.md`を一律拒否する段階は終了した。現在の`internal/workspace/loader.go`と`internal/workspace/authoring_language.go`には、**Workspace Manifestの`languages:`で`tei.rule-authoring/v0`を選び、組込みの`tei.builtin.rule-authoring-markdown`で読む経路**がある。従前の§15.51〜15.60は検討・実装に至る履歴として保持するが、現状判断は本節を優先する。
+
+実装が確立した境界は次のとおりである。
+
+| 段階 | 現行製品で確認できる実装 | 残す検収 |
+| --- | --- | --- |
+| **A0：明示選択** | ManifestのLanguage ID／Contract Versionを受け、内蔵実装を一意に解決する。未選択・実装欠落・重複選択・複数実装による曖昧性は拒否する | 外部Language Pluginの実Resolver／Lock／実装digestまでの版拘束 |
+| **A1：同一Loadの原文** | 管理Rootの`*.tei.md`一件を選択Readerへ渡す。定義領域は正確な`tei`コードフェンスだけ。Markdown本文・表・例示用フェンスを意味へ変換しない | Graph/Decision Table/KaTeXなど別Roleの正式Reader、外部Provider実Load |
+| **A2：型付きRuleとSource位置** | `ParseRuleAuthoringMarkdown`→既存`semantic.Validation`へ接続し、`AuthoringSources`に読取観測を残す。Source IndexはLoad時のbyte anchorを使い二度目の異なるParseを避ける | 独立Expectedによる正負・版失効、実BuilderのInput member確認 |
+| **A3：旧形式と拒否** | 未選択Markdownは`TEI_MD_PARSER_UNBOUND`。誤ったLanguage版、競合するRule ID、読めない定義領域は成功として通さない。旧`*.tei`のLoaderは残す | BOM／CRLF／非ASCII byte位置、同名・同ID競合、A→B→Aの製品回帰 |
+
+`languages:`で指定できることは、Ownerが業務意味や実行権限を受理したことを示さない。`AuthoringSources`の件数は**読んだ定義領域・定義数の観測**であり、業務データ・Rule集合・必要Relationをすべて取得したという意味ではない。実装済みのReaderは**内蔵Rule表記の限定経路**であって、外部Language Pluginの一般機構やGraphの正式Markdown Readerではない。
+
+### 15.62 次の製品PRを「実Loader回帰」と「意味付き生成」に分ける
+
+直近の優先PRは、新しいLanguage Registryの構想ではなく**実際に収録された内蔵Readerの縦断回帰**とする。既存のManifest／Rule Markdown Fixtureを使用し、通常`workspace.Load`の実Result、`AuthoringSources`、`World.Semantics.Validations`、Source Indexのbyte rangeを同一Loadで突き合わせる。別に、Language未指定・誤版・重複Provider・二重Rule・閉じない定義フェンス・Markdown例示との混同で成功させない。外部GraphのReference正例と未束縛の製品拒否も**別Fixtureのまま保持**する。
+
+その次のPRでは、内蔵Readerから得た一つのRuleを**実Target Generatorが読んだ入力**へ接続し、意味を含むGo判定ロジックを生成する。比較対象は次の三方式であり、少なくとも同一の機能例、独立Expected、Toolchain／Target、Source版、Consumer条件を揃える。
+
+- **A：Goを直接実装**。既存方式の性能・可読性・保守量の基準値とする。
+- **B：TEIで宣言してGo実装へ委譲**。宣言できた範囲と手書きGoへ依存する範囲を分離する。
+- **C：TEIの意味からGo判定を生成**。生成コードの分岐を実Consumerが利用し、Rule変更に伴う差分と再生成を測定する。
+
+[研究統合 #4872](https://github.com/hat47x/tei-platform/pull/4872)の比較を採用するが、Cの文字数や生成ファイル数だけで優位性を決めない。**業務記述の読みやすさ、手書き実装から移せた判断、変更後の修正箇所、検証工数、実行性能、正しい再生成・失効**を測る。同じ入力から生成しただけのJSON、生成Goからの手書き処理の単純委譲、実行されないコードを自己生成の実績へ算入しない。新しいGenerator専用Hostや第二Expected正本は作らない。
+
+### 15.63 横断成果を「次に進めるための負例」へ変換する
+
+Sourceの変更については、mainの[Capability回帰 #4870](https://github.com/hat47x/tei-platform/pull/4870)が、改行のみを変えてもCanonical/Worldが不変な一方でSource Revision/Index/Artifactが変わり、A→B→Aで同じbyteに戻っても旧Grantが復活しないことを検証対象とした。この**Source版と意味版の分離**をRule Markdown読取り・生成物再利用・Studio Pinにも適用する。Source位置があるだけでは現在のRaw Openや開示を許可しない。
+
+REAの[Review要約修正 #4863](https://github.com/hat47x/tei-platform/pull/4863)は、曖昧な多重Relationを要約からも落とさず、未知Statusを成功へ丸めない。組織の[実PG負例 #4877](https://github.com/hat47x/tei-platform/pull/4877)は、同一Membershipの訂正版を保存・再読込できるという**正例ではなく、現制約の拒否**を確認した。Wagby比較の[共有表・複合キー整理 #4874](https://github.com/hat47x/tei-platform/pull/4874)と合わせ、**業務Identity／関係Occurrence／物理PK／表示Edge／訂正履歴**をGraphの一つのIDや物理行に押し込まない。初回Rule GeneratorのHard Gateにはせず、既存#1180/#2514へ拡張時の反証として残す。
+
+Studioでは[Desktop契約 #4879](https://github.com/hat47x/tei-platform/pull/4879)が、実Capability→Inspect/Trace→S-LOC→Pin→正規Bundle→Windows WebView2→Stage1→Stage2を段階分離した。#4869のHost制限Fixture修正はmain統合済みで、Pin解除／再確認ボタンIDの修正[#4876](https://github.com/hat47x/tei-platform/pull/4876)は審査中。参照TypeScriptの成功を、埋込`main.js`／`index.html`の一致や実Windowsでの動作に昇格しない。**Studioセルフビルドと通常CLIの実Provider呼出しは内蔵Readerの追加検収を待たずに並行P0を継続**する。
+
+この追補はmain上のGo Sourceとマージ履歴を読んで反映した**計画更新**であり、新Go/Node/Windows/PGの実行、内蔵Readerのexact HEAD回帰成功、正式Graph Reader、外部Language Plugin、Generator・Provider実Call、Stage2、Owner意味受理は本変更では実施していない。CIの不合格は別Ownerの原因を分類し、文書のマージを製品の受入票に転用しない。
