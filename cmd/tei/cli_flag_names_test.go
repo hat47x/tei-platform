@@ -99,6 +99,7 @@ func TestSelfParsedFlagNames(t *testing.T) {
 		"model overview":           {[]string{"workspace"}, []string{"limit"}},
 		"model document-draft":     {[]string{"workspace", "subject-kind", "subject-id"}, []string{"relation-id", "title", "document-kind", "application", "frozen", "section", "model"}},
 		"model document-reconcile": {[]string{"workspace", "draft"}, nil},
+		"three-element":            {nil, nil},
 	}
 	for name, expect := range want {
 		record := catalogRecord(t, name)
