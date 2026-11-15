@@ -90,6 +90,47 @@ UI資産は現行のReference Source→Node build→Wails埋込資産という�
 | **P2-A 生成** | TEI定義→UI構造／CSS／動作／テストと実生成物を照合。CLI先行の最小部品からStudioに再入 | #2831/#4583/#2621。単純delegateとStage2再構築を区別 |
 | **P2-B 発展** | 高密度Canvas・表／複数Window・Mobile探索を対象能力に応じて別受入 | #993/#259/#2044。P0のHard dependencyにしない |
 
+## 8. TEI Studioの実Sourceから実表示までを一つの変更で検収する
+
+UIの品質はCSS・型の合格だけでは決まらない。Studioで必要なのは、**同じ実Sourceから、宣言的な表示構造、対象コンポーネントの契約、生成Asset、実OS WebView上のDOMまでが一貫していること**である。これは既存のStudio #1824、Desktop製品契約 #4498、Self-build #2831/#4583、UI構成キット #997、検証 #1180/#2514に分担し、UI専用の第二ParserやAuthorityを作らない。
+
+### 8.1 五つの成果と四つの停止線
+
+| 受領するもの | 同一性と観測範囲 | 異なるまま保持する条件 |
+| --- | --- | --- |
+| **S: Source** | Workspace Root、元byteとSpan、選択Frontend、Source/Model版、Saved/Dirty | 参照Source表示≠現在の未保存Buffer≠意味受理 |
+| **C: Component Contract** | 公開Property/Event/Slot/Part、Target、exact Component/Plugin版、CEM導出 | CEM生成成功≠TEI Actionの意味・Grantの受理 |
+| **B: Build Asset** | 生成されたHTML/CSS/JS、Token版、Lock、入力・出力Digest、Build Toolchain | CSSコンパイル成功≠生成物の配布・利用 |
+| **R: Runtime Image** | Wails Binary/Go Embed/Target OS・WebView版、Release閉包 | Source build成功≠実Windows Window起動 |
+| **D: Display/Interaction** | 現在のSubject/Selection/Pin/Request、表示されたDOM/ARIA、Consumer受領 | 表示成功≠実Provider Effect≠Owner Business Verified |
+
+最初の実証では、既存`semantic-capability:sales.order.submit`の読み取り専用Inspectorを題材に、現在のCLI Inspect/Source Trace→Studio Presenter→正規Workbench build→Go埋込Asset→実Windows WebView2の**同一Subject/版の往復**を観測する。現在mainでSource Locationの純粋な投影が成立していても、S-OPEN（原Sourceの再読取）や実配布HTMLのPin対応まで合格したことにはしない。ここでは新しい実行Operationを追加しない。
+
+**停止線**：SとCの接続不一致なら候補UI生成を停止、CとBの不一致なら古いComponent資産を配布しない、BとRが異世代ならDesktop受入不可、RとDで現在のWorkspace/Pinが一致しなければ結果の採用を止める。失敗を`not-run`や`unknown`へ丸めず、どこまで観測できたかを残す。
+
+### 8.2 未保存状態とAI編集の境界
+
+Studioの編集には、(1)保存済みCanonical Source、(2)未保存Buffer、(3)Source位置付きInspector/Graph、(4)実Builderが消費した入力、(5)起動中Windowの表示という別の寿命がある。AIがCSSやコンポーネントを変更しても、未保存Bufferを黙って保存しない。編集対象のWorkspace/Subject/OccurrenceとSource Revisionを固定してからDiffを示し、採用前に版を再照合する。Pin中の表示対象と作業中のFocusは別に管理し、古い非同期返信で現在の表示や入力値を上書きしない。
+
+CEMやLayoutが導出された場合も、手動で変更した案件Layerの所有権を保持する。再生成は`provide/replace/decorate`の明示拡張点とexact parent版の差分に従う。Plugin／Token／Generatorの更新によるUI変更が、accepted Data/Function/Procedureや実行Authorityの変更と見なされないよう、変更の種類別に失効範囲を切り分ける。
+
+### 8.3 比較試作の独立Expectedと段階判定
+
+PoCを漫然と横展開しないため、まず一つのInspectorについて次の独立Expectedを固定する。
+
+- **同じ仕様**：Properties/Events/Slots/Parts、アクセシビリティ、狭幅・拡大時の表示、Workspace切替中の非同期結果をVanilla TS／Lit TS／Lit JS/JSDocに同じ条件で要求する。
+- **同じ検査**：実行可能なCompiler/Node試験・必要なStylelint/ESLintを比較し、未導入Lintは`NOT RUN`として明示する。CEMの公開情報と既存TEI Action/Adapter契約を別検証する。
+- **同じ変更課題**：独立したエージェントに「項目追加」「画面幅の変化」「旧応答の到着」の三変更を与え、差分の範囲、手修正、検出できたKnown Mutant、依存増分とビルド再現性を記録する。
+- **同じConsumer**：ブラウザ試験だけでなく、正規Source→Bundle→実Wails Windowに必要な範囲を確認し、実OS未実行なら当該列を`NOT RUN`とする。
+
+選定の判断は「短い実装」のみでなく、元のTEIモデルと公開契約の可読性、変更後の安全性、生成コード量をどれだけ減らせたかに基づく。採用前は現行Reference Workbench/CodeMirrorを一括置換しない。既存UI構成キット#1000のReact Starterは同じ業務契約で比較する別Consumerであり、Web Componentの内部実装方式を強制しない。
+
+### 8.4 P0への具体的な接続
+
+最初の差分は**ドキュメントの整備を完了条件にせず**、現行Workbenchの一つのPresenter/Inspectorに限定する。対象の属性・イベント・Styleを契約として固定し、同一InputのVanilla/Lit比較Fixtureを作成する。コンパイラと既存`npm test/typecheck/build`で再現性を確認した後、必要なStylelint/ESLintとブラウザ試験を小さく足し、実OS Windows受領は既存#1824/#4583の縦断に接続する。
+
+この作業をStudio Stage1→Stage2セルフビルドの新しい前提条件にはしない。並行P0は、正式`*.tei.md` Reader一件の実消費→TEI-native Go生成→通常CLI実Provider一往復である。**UIをTEIで定義する利点が、委譲したコードの増加ではなく定義の簡素化と生成範囲の拡大として観測されること**を、後続の採否条件とする。
+
 ### 確定事項・未確定事項
 
 **設計上の基線**：標準HTML/CSSの優先、Web Componentsの公開契約、React/Nativeの共存、意味とUIの分離、実Hostの別検証、独立Expected、既存P0の維持。
