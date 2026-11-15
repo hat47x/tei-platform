@@ -255,6 +255,8 @@ TEIの図表・宣言・Ruleを扱う際、すべてをソースコードへ生�
 | **RZM-07** | 固有Go生成へ切替えても、Consumerの現在Grant／Effectが未確認 | 生成成功から実行権限・Effect確定を推定しない |
 | **RZM-08** | 生成／解釈が同条件で合格し、性能／保守費だけ異なる | Target別実測に基づき採用。性能改善で適合不良を覆さない |
 
-**実装の最短順**：第一差分として `internal/semantic/validationgen/positive_realization_modes_test.go` に、製品Workspaceが選んだpositive Ruleを既存Evaluatorと生成Goの両方で実行し、正値／ゼロ／負値／nil／取得失敗・Read回数を固定期待値へ照合するGo回帰を追加した。**テストSourceの追加と、exact HEADでの実CI成功は別資格**であり、今回のRZM-01全体やProduct実Providerの完成とはみなさない。#1180／#2514を独立ExpectedのOwner、#1121／#4544を実装担当とし、新しいCompiler／Interpreter／Selectorを作らない。続いてRZM-04で明示選択と実呼出しの対応を既存[接続検収票§9](PLUGIN_CONNECTION_EVIDENCE_AND_COMPOSITION_SLICE_2026-11.md)へ載せ、RZM-03／06でSource→Artifact・Model配布の差分失効を#2600／#2595へ渡す。実行時の切替を行う場合は#951／#1251の現在Hostに選択を明示し、長寿命Target以外へ動的切替機構を強制しない。
+**先行する実証**：main `84c335b27d0853a99a24f0e43bc109d2ac8b6ecd` は、`cmd/tei/cli_self_build_generated_rule_go_test.go` に、**同じ製品選択済みRuleと五入力（正値・0・負値・nil・取得失敗）**について、汎用 `validationeval.Evaluate` の結果・Read回数と、通常`tei self-build`で構築した生成Goの結果を独立Expectedに照合するGo回帰を統合した。単純な結果一致テストを新たに作り直さず、この実装をRZM-01の**限定的な比較基線**として利用する。main収録と当該試行のCI実行成否は別に確認し、Providerの実現方式選択や現在Grantを保証したとは扱わない。
 
-**到達条件**：一Functionで直接評価と生成評価のどちらも、同じMeaning・Context・独立Expected・実Consumerを持ち、選択した実装と実際に使った実装の対応を追跡できた時に限り、二方式の相互代替を主張できる。その後で最適化・外部Targetへ拡大する。今回の変更ではRZM-01の限定GoテストSourceを追加した。**CI exact HEADの合否は別確認**であり、RZM-02〜08・実Windows／実Provider／独立Target Consumer・正式二方式の製品選択・Owner意味受理は**NOT RUN／NOT ACCEPTED**。
+**次の実装順**：①RZM-04「選択した実現Aと実Called Bの不一致」を、既存[接続検収票§9〜11](PLUGIN_CONNECTION_EVIDENCE_AND_COMPOSITION_SLICE_2026-11.md)の一Operator／一Ruleへ読み取り専用で投影する。②RZM-03／05／06で、モデルをRuntimeへ届ける場合のSource改版・モデルbyte・Host Scope、生成コードのBuilder依存閉包の差を#2600／#2595へ引き渡す。③Target別の性能・保守量は、両方式が必要な独立Expected／Consumerを通過した後で計測する。新しいInterpreter／Resolver／Runner／Selectorを増やさず、#1180／#2514を独立Expected、#951／#1251を実選択・実Call、#1121／#4544を生成、#2595をBuildのOwnerとする。
+
+**到達条件**：一Functionで直接評価と生成評価のどちらも同じMeaning・Context・独立Expected・実Consumerを持ち、選択された実現と実際に呼んだ実現の対応を追跡できて初めて、二方式の製品上の相互代替を主張する。今回の変更は**既存の実Go比較に基づく設計・実装引渡し**であり、RZM-04〜08の新Go／Windows／実Provider試験、正式二方式の製品選択やOwnerの意味受理は**NOT RUN／NOT ACCEPTED**。
