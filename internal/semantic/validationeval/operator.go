@@ -87,6 +87,12 @@ func EvaluateWithOperators(rule semantic.Validation, source Source, operators Op
 		if implementation.Number == nil {
 			return "", fmt.Errorf("the implementation of operator %s cannot take a number", rule.Operator)
 		}
+		// The contract's own examples come first. An implementation that
+		// answers one of them differently is not an implementation of this
+		// operator, so it is not asked about real data.
+		if err := checkOperatorCases(contract, implementation); err != nil {
+			return "", err
+		}
 		value, err := source.Number(rule.Attribute)
 		if err != nil {
 			return "", fmt.Errorf("semantic validation %s cannot evaluate attribute %s: %w", rule.ID, rule.Attribute, err)
@@ -106,4 +112,31 @@ func EvaluateWithOperators(rule semantic.Validation, source Source, operators Op
 	default:
 		return "", fmt.Errorf("operator %s declares input %q, which has no evaluator", rule.Operator, contract.Input)
 	}
+}
+
+// checkOperatorCases asks the implementation about every example the contract
+// states and refuses the implementation at the first different answer.
+func checkOperatorCases(contract semantic.Operator, implementation OperatorImplementation) error {
+	for _, example := range contract.Cases {
+		value, err := semantic.ParseOperatorCaseValue(example.Value)
+		if err != nil {
+			return fmt.Errorf("operator %s has an unreadable example: %w", contract.ID, err)
+		}
+		got, err := implementation.Number(value)
+		if err != nil {
+			return fmt.Errorf("the implementation of operator %s could not decide the contract's example %s: %w", contract.ID, example.Value, err)
+		}
+		if got != example.Satisfied {
+			return fmt.Errorf("TEI_OPERATOR_IMPLEMENTATION_MISMATCH: the contract of operator %s states that %s is %s, but the selected implementation answers %s",
+				contract.ID, example.Value, operatorCaseWord(example.Satisfied), operatorCaseWord(got))
+		}
+	}
+	return nil
+}
+
+func operatorCaseWord(satisfied bool) Result {
+	if satisfied {
+		return ResultSatisfied
+	}
+	return ResultNotSatisfied
 }

@@ -211,6 +211,9 @@ type Operator struct {
 	ID     core.CanonicalID `json:"id"`
 	Symbol string           `json:"symbol"`
 	Input  OperatorInput    `json:"input"`
+	// Cases are the examples the contract states. An implementation that
+	// answers any of them differently does not implement this operator.
+	Cases []OperatorCase `json:"cases,omitempty"`
 }
 
 // Validationは、Semantic上の業務ruleを機械可読な形で保持する。

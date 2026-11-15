@@ -107,6 +107,30 @@ func validateSemanticBusinessValidations(w ir.World) []Diagnostic {
 					ns.ID,
 				))
 			}
+			for i, example := range operator.Cases {
+				if _, err := semantic.ParseOperatorCaseValue(example.Value); err != nil {
+					out = append(out, errFor(
+						operatorSubject,
+						"INVALID_SEMANTIC_OPERATOR_CASE",
+						"semantic operator %s has an example whose value %q is not a decimal number",
+						operator.ID,
+						example.Value,
+					))
+					continue
+				}
+				for _, prior := range operator.Cases[:i] {
+					if semantic.SameOperatorCaseValue(prior.Value, example.Value) {
+						out = append(out, errFor(
+							operatorSubject,
+							"DUPLICATE_SEMANTIC_OPERATOR_CASE",
+							"semantic operator %s states the example value %s more than once",
+							operator.ID,
+							example.Value,
+						))
+						break
+					}
+				}
+			}
 			if !operator.Input.Valid() {
 				out = append(out, errFor(
 					operatorSubject,

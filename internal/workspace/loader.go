@@ -67,6 +67,9 @@ type Result struct {
 	// Exact declaration ranges recorded by the Load-time parse of sources whose
 	// language is not the native .tei grammar. Keyed like Sources.
 	sourceAnchors map[string]loadSourceAnchor
+	// Case tables read during Load, attached to their operators once every
+	// source is read. Empty in a returned Result.
+	pendingOperatorCases []pendingOperatorCases
 
 	// Private, transient read provenance. Not part of Canonical World or a
 	// serialized Source Index; only Load may populate this snapshot.
@@ -374,6 +377,9 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 		}
 	}
 	if err := loadWorkspaceImports(root, imports, &r, visiting); err != nil {
+		return Result{}, err
+	}
+	if err := attachOperatorCases(&r); err != nil {
 		return Result{}, err
 	}
 	if r.syntaxErrors != nil && len(r.syntaxErrors.Errors) > 0 {
