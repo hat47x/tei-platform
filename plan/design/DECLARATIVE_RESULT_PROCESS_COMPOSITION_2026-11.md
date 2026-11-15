@@ -261,3 +261,216 @@ Materialization候補には少なくとも入力Revision、意味Revision、Oper
 **優先順位**：既存のC0→C1は一入力・二Resultの意味照合、C2→C3は粒度・分類・Scope・演算性質の負例と候補計画比較に限定する。C4は既存の実Reader/Go Generator/Builder/CLI/Provider/Consumerの経路に接続、C5で時間シフトと回復、C6でStudioの表・Graph・Node・Trace表示をつなぐ。N0→N4は同じOperation/Port契約のノード投影とサービス接続に用いる。**Studio Stage1→Stage2および現行CLI/PluginのP0を新Gateで妨げない。**
 
 最初の差分で導入するのは正式な新DSLでも大規模Plannerでもなく、既存Source/標準Data/Operationを読んだ結果要求とNode投影の**照合票**および独立したExpectedである。業務意味の採用、Source編集資格、実Targetの適合、生成されたコードの実受領は引き続き別々に確認する。
+
+
+## 11. 一つの意味モデルから複数の実現方式を選ぶ（2026-11-15追補）
+
+### 11.1 結論：コード生成と直接解釈は対立する方式ではない
+
+成果物中心の記述とノード中心の記述が同じData・Function・Operator・Processを参照するなら、次に必要なのは**処理の意味を変えず、実行先に応じて実現方法を選ぶ仕組み**である。
+
+ある演算は、選択済みの型付き定義を既存の汎用関数がそのまま解釈すれば足りる。別の演算は、専用コードへ展開した方が扱いやすい。大量のデータを既に保持するDBへ計算を委譲する方が合理的な場合もある。外部作用を伴う操作は、実行権限・回復・隔離の契約を満たすHostやProviderでなければ動かせない。
+
+いずれも**Accepted Meaningを実現する手段**であり、個別の業務ルールを四か所へ重複定義するものではない。定義の直接解釈を使うからといって、TEIに常駐する万能Runtimeや新しいScript Engineを必要とするわけでもない。既存のOperation、型、Evaluator、Query IR、Generator、Target／Provider Contractを組み合わせ、何を解釈し、何を生成し、何を外部に渡すかを段階的に決める。
+
+| 実現経路 | 主に適する条件 | 実行で固定・確認するもの | 不適合とする例 |
+| --- | --- | --- | --- |
+| **既存Evaluator・汎用関数による直接解釈** | 純粋で範囲の定まった式、検証、簡易集計。既存の型・Operatorで意味を失わずに解釈可能 | 実Loadされた定義byte・選択Reader/Operator・Evaluator版・入力範囲、実呼出しと結果 | 未対応演算を黙って無視する／Target側の異なるNULL規則に合わせて解釈する |
+| **Target向けコード生成・静的合成** | Go単一バイナリへの収録、反復利用する専門演算、静的依存・型検査、Target別の表現が有効 | 生成元閉包、選択Generator、生成byte、Builder実消費、Artifact、実Entry/Consumer | 既存の手書きGoへ委譲するだけで生成した判断がない／生成時と実行時のSource版が異なる |
+| **DB Queryへの委譲** | Relational QueryをTargetが必要な精度・NULL・順序・時点で実現でき、データ移動を減らせる | Query IRとTarget SQL、Dialect/Provider能力、Snapshot/Scope、実DB結果 | SQL方言差を無視したPushdown／集計・丸め境界の変更／行スコープの漏れ |
+| **外部Host・Process／Pluginへの委任** | 外部API・DB更新・分離実行・専門ライブラリ・非同期実行など、個別のAuthority/Recoveryが必要 | Contract、選択Provider、actual Image/Invocation、現在Grant、Effect/Receipt、実Consumer受領 | Providerの宣言があるだけで呼出し済みとする／Effect unknownで無条件再送する |
+
+この分類はCoreの固定列挙型でも、ユーザーが必ず記述する実行モードでもない。一つのFunctionの一部をDBへ委譲し、別の純粋な計算をGoに生成するような**混成方式も候補**である。ただし各境界で、キー・粒度・時点・順序・完全性・情報公開範囲・効果の意味を保存できなければ分割しない。
+
+### 11.2 何を固定し、何を選択可能にするか
+
+業務の記述には、その結果を決める情報を残す。たとえば「伝票単位で丸める」は業務意味であり、物理実行のヒントへ移してはいけない。一方、「DBへ押し込む」「処理を融合する」「並列数を増やす」は、意味の保存が証明できる範囲で変更できる実現方法である。
+
+| 記述の性格 | 例 | 保存先の考え方 |
+| --- | --- | --- |
+| **業務意味として必要** | 出力のGrain、算出式、分類版、丸め位置、業務時点、承認条件 | 元の表・DSL・GraphとAccepted Meaning。人が読める認知順を維持 |
+| **必要な実行制約** | 最大遅延、実行地域、開示Scope、外部Effect可否、必要な再開安全性 | Function/Process/Operationの要求とTargetの適合検査 |
+| **実装方式の希望** | 生成・直接解釈・Query委譲、計算共有、Materialization、並列度 | Build/Deployment/Provider選択の候補・Hintとして保持。意味の変更にはしない |
+| **開発知識・パターン** | 特定の分類集計の展開手順、型変換の検証、よく使うOperator群 | Pattern/Skill/Generatorの再利用候補。業務DSLにGoの構文を持ち込まない |
+| **図表の表示設定** | Node位置・線種、Markdownの表現、折り畳み | 表示Projection。意味・生成Artifactの無用な失効を起こさない |
+
+図表に実装上の属性を追加すること自体は後退ではない。**どこまでを業務意味に取り込み、どこからを再利用可能な実装知識として分離できるかが明確になる**という設計の前進である。ただし、実行計画の都合だけで業務DSLを複雑にせず、必要な場合にInspectorで詳細を展開できる構成とする。具体的な構文や属性名は、実例・型付きSourceへの対応・Ownerの採否が確認されるまで固定しない。
+
+### 11.3 実装経路を比較するときの証明対象
+
+選択した経路が変わっても同じ意味を実現することは、結果の一件だけが一致したことからは証明できない。最小限、次の単位を揃えて比較する。
+
+1. **意味の同一性**：対象Sourceの原byteとOccurrence、選択Reader、受理されたFunction/Ruleと必要なInput/Output・各Revision。
+2. **入力の同一性**：業務対象とKey、Snapshotまたは取得範囲、完全性、NULL/欠損、分類の有効時点、開示Scope。異なるInputを同じ条件の比較にしない。
+3. **変換の同値性**：Operatorの精度、丸め、三値論理、順序、Window、例外・評価不能、部分取得。表現できない場合は`unsupported`を残す。
+4. **実現方法の同定**：生成なら生成byte・実Builder/Artifact、直接解釈なら実Load定義と実Evaluator/Operator、DBなら実Dialect/SQL/Provider、外部委任なら実Image/Entry。全経路に存在しない生成Sourceを架空に補わない。
+5. **実行・受領の同定**：独立Expected、実Attempt/actual Provider、実Result bodyとConsumerの取得。外部EffectがあるときはReceiptを追加し、純粋変換の同値試験だけでは安全性を保証しない。
+
+同一の評価関数を二度呼んで「二方式が一致した」とする試験は無効である。直接解釈と生成経路の独立性を確かめるには、少なくとも実行された二つの実装を区別し、さらに**どちらからも生成していない独立Expected**を用いる。実Targetによる丸め・Collation・日時の差は、同値になるよう暗黙変換せず、不適合と明示する。
+
+### 11.4 Node View・Plugin選択・実装経路の接続
+
+同じOperationのノードを複数のFlowやResultへ置けても、Nodeの接続は物理Providerの選択や実行許可を確定しない。
+
+- **Logical Operation**：何を計算／実行するか。Function/Operatorと版、型、粒度、効果を参照する。
+- **Node occurrence / Port**：一つのFlowでの配置と入力束縛。業務対象IDやPlugin package IDとは分ける。
+- **Implementation candidate**：Interpreter、Generator、DB Adapter、外部Providerが公開する契約上の候補。同じFunctionへ複数候補があってよい。
+- **Resolved／Built／Invoked**：選択済みProvider／Lock、実Buildへの収録、実Hostからの呼出しをそれぞれ異なる関係として示す。
+
+共通Graph Canvasは、結果要求から導いた計算依存Graphと、ユーザーが作ったNode Flow、PluginのDeclared／Selected／Built／Observed関係を**表示上で切り替える**。描画に使うEdge、元の業務Relation、Plugin Contract Binding、実Attemptの因果関係は異なるIdentityとする。
+
+PluginのPortを結び替える操作は、Source Revisionと唯一の編集対象を確定した型付きPatch案に変換する。Provider候補が複数、実Sourceの書戻し位置が曖昧、または権限が不足する場合はread-onlyに留める。既存[Node共通表現契約](SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md#9-ノードビューをプラグインの関係配線にも共用する2026-11-15追補)と[#951](https://github.com/hat47x/tei-platform/issues/951)を利用し、新しい配線Resolverを作らない。
+
+### 11.5 二つの出力と二つの実装経路を、一つのFixtureで確認する
+
+初回は、現行の内蔵Markdown Rule Reader、型付きValidation、生成Go、既存Evaluator、固定入力・期待値を再利用する。公開mainに統合された[PR #5009](https://github.com/hat47x/tei-platform/pull/5009)の「選択済みRuleの生成Goを通常CLIでビルドする限定経路」は、実生成・ビルドの基点となる。ただしその事実は、任意のBatch/Graphや実DB Providerへの接続、同一意味の全実現方式の受入を証明しない。
+
+**第一段：既存Rule一件での限定比較。** 同じ原文Rule・型付き属性を、既存Evaluatorによる直接評価と、生成Goの別Process実行へそれぞれ渡す。正値／0／負値／NULL／欠損・参照Attribute変更を独立Expectedで比較する。両経路の選択実装・実際のInput・Source/Artifact Revisionを記録し、生成Goが判断を実装していることを確認する。
+
+**第二段：一入力・二出力の純粋計算。** 既存[#4410](https://github.com/hat47x/tei-platform/issues/4410)の固定入力（取得→Filter→Convert→Aggregate）に、明細と集計など**粒度の異なる二つの結果要求**を結び付ける。新しい専用Batch DSLではなく既存Data/Query/Operatorへ落とす。最初は分離計画で独立Expectedと比較し、共有計画が同じMeaning、Snapshot、Scopeを満たすときだけ融合の候補にする。
+
+**第三段：DB側とGo側の同値性比較。** 同じ型付き演算をDBへ委譲できる最小一例を選ぶ。実SQL生成・実Provider Read・独立Consumerを確認し、NULL、Decimal、NULL群への集約、丸め、Order/Collation、Join多重度の不一致を負例とする。通常製品CLI/ProviderのP0に接続し、比較のために第二Query Engineを作らない。
+
+**第四段：増分・継続処理の適用条件。** 最初の二出力が正しく成立した後に、変更／削除・遅着・訂正・多重所属を追加する。時間窓からの暫定出力と、業務として確定した出力を同一視しない。Window、Watermark、再計算対象範囲、Source Revision、Consumerが求める完全性を保存できない方式は採用しない。外部Effectの再実行は既存のReceipt-first回復に委ねる。
+
+### 11.6 具体的な独立Expected候補と段階
+
+| ケース | 一つだけ変える条件 | 期待する区別／停止条件 |
+| --- | --- | --- |
+| **LC-01** | 同じ正値Ruleを既存Evaluator／生成Goへ渡す | 二実装の結果と第三の独立Expectedが一致。GeneratorのWrapperだけでは合格しない |
+| **LC-02** | Ruleの参照Attributeを変更する | 両経路で現行Sourceを反映。旧Generated Artifact／旧解釈Cacheは失効 |
+| **LC-03** | 一入力から明細と集計の二結果を作る | 二つのGrainを保持。計画を融合しなくても成立 |
+| **LC-04** | 税額の丸め単位だけを変える | 融合やPushdownの結果が変われば非同値と判定 |
+| **LC-05** | 実装経路に未対応の演算を含める | unsupportedと棄却理由。空結果や別意味へ黙って代替しない |
+| **LC-06** | Providerだけを切り替え、SQLのNULL/精度意味を変える | 実Target差を検出し、無条件Pushdownを拒否 |
+| **LC-07** | 同一Resultを異なるTenant/Scopeから要求する | 共通Materializationを無断再利用しない |
+| **LC-08** | Source A→B→A／Generator・Evaluator版を更新する | World/Model/Artifactの失効を個別判定。古い承認・実装を復活させない |
+| **LC-09** | Node Layoutだけ変更／Plugin接続先を変更する | View変更は意味を失効させず、接続変更はResolver/Build/Consumerで再検査 |
+| **LC-10** | 外部Effect後に応答のみ消失する | pureな演算経路の再実行可能性を流用せず、Receipt照会・unknown維持 |
+| **LC-11** | 生成コードが既存Goへ委譲するだけの構成に変更 | 意味あるコード生成・Plugin自己構築として計上しない |
+| **LC-12** | 候補計画の処理費が低いがGrant／完全性が不足 | 安さを理由に不適合な計画を採用しない |
+
+LC-01〜12の独立Expectedは既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)へ引き渡す。**優先する最小差分はLC-01/02**とする。実Evaluatorと生成Goを一つの比較票で照合した後、LC-03を既存C0→C1へ重ねる。NodeのPlugin配線は既存PV-N0/N1に、Studio実ConsumerはW0〜W4、外部サービスはN0〜N4にそれぞれ接続する。
+
+### 11.7 セルフビルドの到達度をどう評価するか
+
+モデルが実装をどれだけ担うようになったかを、単なるDSL行数や生成ファイル数だけでは測らない。最低限、次を継続比較する。
+
+- **実装された判断の比率**：明示的な業務Rule・式・分岐・集約のうち、TEIのSourceに根拠を持ち生成実装または適格な汎用Operatorへ移せた割合。未モデル化領域を分母から隠さない。
+- **Pluginの自己構築範囲**：Pluginの契約・構成・Data/Process・Generator入力のうち、`*.tei.md`と既存標準要素から実現できる部分。選択・収録・実呼出しを区別する。
+- **重複と変更コスト**：同じ規則をGo／SQL／Graph／Nodeへ手書きで繰り返す箇所の減少、変更時の影響分析・再生成・再検証が必要な範囲。
+- **実受領の到達範囲**：Source→生成／解釈→実BuilderまたはRuntime→実Entry/Provider→独立Consumerまで同じ対象・版・Attemptで確認できた範囲。
+
+単純なGo delegateを何件増やしてもセルフビルドの進展とは数えない。一方、定義パラメータを解釈する**汎用Operator自体が正しくモデル化・再利用**され、個別の手書きコードや重複設定を減らすなら、それもTEIの有効な成果である。必ずしも毎回のコード生成を目標にしない。
+
+## 12. 既存計画への引渡し（2026-11-15）
+
+| Owner／既存計画 | 今回追加する最小の作業 | 追加しないもの |
+| --- | --- | --- |
+| #1130／#4410・C0〜C3 | 二Result・二粒度・同じOperatorの合成、融合／分離の比較 | 別Batch Engine、万能Optimizer、独立Scheduler |
+| #2622／#988 | 実装経路が要求する型、粒度、精度、完全性、Operator性質・Unsupportedの照合 | 新しい基本型やOperator体系の無条件拡張 |
+| #4544／#5009・R1→R2-P | 同じRuleのEvaluatorと生成Go比較、Builder消費byte・実Callの閉包 | Go関数呼出しだけの「生成達成」 |
+| #951／#1016・PV-N0 | Operator／Pluginの候補、選択、Build収録、実呼出しを別Relationとして投影 | 図上の線からの自動Provider選択 |
+| #1124／#2497・N0／W0 | 結果表・Flow・Plugin Graphを同じ意味Sourceへ読み取り専用で関連付け | 可逆性未確認のSource書戻し |
+| #4497／#1129／#1174 | 起動契約と時間依存、ResultとEffect/Receiptの分離 | 無条件再送・汎用のexactly-once保証 |
+| #1180／#2514 | LC-01〜12の独立Expected候補を既存Corpusへ統合 | 第二のExpected Registry |
+| #2831／#4583 | 現行の非Plugin Desktop Stage1→Stage2と実Windows受領のP0を維持 | 上記LCの全面実装を先行Hard Gateにすること |
+
+既存のCLI実生成・実ProviderとStudio Stage1→Stage2を優先する。ここで提案する実装経路の選択、計画同値条件、テスト候補は、正式DSL・実行契約・製品機能の完成を宣言するものではない。最初に一つの意味が**二つの実装で独立Expectedに合う**ことを示し、その成功範囲から設計と実装を広げる。
+
+
+## 13. 成果物の変更影響を、再計算できる範囲まで追う（2026-11-15）
+
+### 13.1 次に共通化すべきものは、処理そのものではなく「結果を維持する条件」
+
+複数の成果物を同じData／Operationから構成できても、データや分類が変わるたびに全件再計算するだけでは、大規模バッチ・長期運用・データマートには十分でない。他方、入力の追加分だけを処理すれば済むとも限らない。業務ルール、分類体系、期間、利用者のScope、演算子の意味が変更された場合、以前の結果を安全に使えるかは入力レコードの差分だけで決まらない。
+
+ここでは**Resultを正しく維持できる条件と、条件が崩れたときに必要な再計算範囲を説明する能力**を検討する。これは新しいジョブ実行エンジンではなく、既存のDependency／Data／Query／Source Revision／Artifact／Period／Pluginを照合する**読み取り専用の計画**から始める。
+
+結果要求を評価する際に必要なのは少なくとも次の五つである。
+
+| 観点 | 結果に結び付ける内容 | 「変わっていない」といえる条件 |
+| --- | --- | --- |
+| **Meaning** | 算出式、粒度・分類、丸め・NULL、必要なFunction/Rule版 | 結果に寄与する定義の意味が保たれ、変更された部分の非寄与を確認できる |
+| **Input population** | 対象集合、Key、Snapshot、業務評価時点、取得範囲 | 対象集合の包含・欠落・重複とSource改版を区別して確認できる |
+| **Dependencies** | 値・Filter条件・Join／分類・時間・状態・Effect／権限 | 変更された要素から当該Resultへの寄与経路がない、または再計算により解消した |
+| **Realization** | 選択Operator／Generator／Evaluator／Provider・Target能力と実Build/Run | 変更後の実装も必要な意味契約を満たすことを独立に検証できる |
+| **Publication** | 出力Generation、独立検証、公開先、利用者Scope、実Consumer | 現在の公開資格とConsumer要件を満たす。出力Digest一致だけでは足りない |
+
+「式は変わっていない」と「集計対象のデータは変わっていない」を同一視しない。Sourceの原byteが同じでも、DBの実値やCurrent Grantは変化し得る。World／Model／Artifact Revision、入力Snapshot、Materialization Generation、実Attemptを別々に扱う。
+
+### 13.2 増分計算の可否は、更新の種類と演算の性質で判断する
+
+差分更新は、演算式を一度使い回せることではなく、**旧結果と入力差分から新結果を再構成できること**を要する。対象集合の完全性と業務意味を保存できなければ、局所再計算ではなく全件再構築、保留、または適用不可を選ぶ。
+
+| 入力・意味の変化 | 局所更新が成立する可能性 | 決め手と停止条件 |
+| --- | --- | --- |
+| 完全性の確認された集合への追加 | 加法的なSUM／COUNTなどは候補 | 同じ粒度・Key・期間・精度で、重複なく追加部分を列挙できる。途中丸めを移動しない |
+| 既存行の訂正・削除 | 旧寄与分を除去できる演算だけ候補 | 旧値・旧所属・旧時間窓を取得できるか。再計算に必要な履歴がなければ全件／対象範囲再構築 |
+| AVG／DISTINCT／MIN／MAX | 合成可能な**中間状態**を持つ場合に限る | AVGは(sum,count)、COUNT DISTINCTは重複を追える正確な状態、最大値の削除時は次点の情報が必要 |
+| Join・外部結合・存在否定条件 | 追加だけでも旧結果を取り消す場合がある | Anti-join、NULL補完、多重度が変わるか。単調性を仮定しない |
+| 分類体系・対応関係の改版 | 影響する旧所属と新所属を列挙できれば候補 | 多重所属・有効期間・配賦の規則を確認。単なる現行コード表との差分だけでは過去Resultを更新できない |
+| 抽出・検証・算出Ruleの変更 | 原則として変更対象の影響範囲を再評価 | **従来出力から除外された行**も採用候補になり得る。出力済み行のLineageだけでは不足 |
+| 時間窓・業務締め・遅着 | 再計算範囲を閉じて列挙できる場合に限る | Windowの確定条件、前期残高の繰越、過去期間訂正と後続期間の因果関係を確認 |
+| 取得権限／開示Scopeの変更 | 値が同じでも従前Materializationを使えないことがある | 現在のRead／Disclosure適格性を照合。権限緩和時も旧Scopeの結果は自動的に完全とはしない |
+
+変化を`insert/update/delete`だけに絞らず、**Meaning変更、Reference変更、時間窓変更、実装選択変更、Authority変更**もそれぞれ異なる原因として残す。データの変更履歴が得られない場合、Sourceの改版だけからCDCの完全性を推測しない。
+
+変更の伝播は、既存Graph／Relationの**型付き依存辺を前方へ辿る**候補として表現する。ただし、寄与経路があることは「値が必ず変わる」ことを意味しない。逆に、値の寄与が見えないだけでは非影響を証明できない。Filter／Join／Securityの条件として使われた項目を含め、影響を「要検証」として扱う。
+
+### 13.3 再利用・局所再計算・全件再構築・保留を、実行計画ではなく判断の候補にする
+
+各Result／区分について、既存の契約で表現できる範囲から次を比較する。
+
+| 判断候補 | 前提 | 判断できない場合 |
+| --- | --- | --- |
+| **Reuse** | 入力・Meaning・実装・Scopeの必要な閉包が一致するか、変更の非寄与を根拠付きで示せる | 単なるArtifact Digest一致を根拠に使わない |
+| **Scoped recompute** | 対象区分・旧新寄与・必要な中間状態を列挙でき、局所更新後の意味が保存される | 対象区分の完全性・更新順序・撤回可能性が不足すれば棄却 |
+| **Full rebuild** | 対象集合の全体を、同じ評価時点・現在の権限で読み直せる | 全件取得が不可能な状態を「0件」や完全再構築成功と表示しない |
+| **Hold / require review** | 計算根拠、現在Scope、外部Effect、時間上の確定条件が不明 | 不確かな部分を空集合として埋めたり、安全な再実行とみなしたりしない |
+
+これは新しいRuntime State enumや一元Job Tableの提案ではない。各候補を**既存Source・Dependency・Artifact・Providerの証拠に基づく説明票**として生成する。選んだ計画に基づく実行・権限・公開は既存Host／Provider／Effect/Consumerで別に検収する。
+
+**全体完全性と部分集合の完全性**を区別する。たとえば「特定伝票の明細はすべて取得した」ことと、「その営業日の全伝票を取得した」ことは異なる。部分取得から存在を確認できても、不存在、一意性、総額、期間を跨ぐ合計を確定できるとは限らない。Windowの早期出力も最終結果として公開できるとは限らない。
+
+### 13.4 計算・制御・保存の三つを切り離し、必要な範囲だけ結び付ける
+
+- **Calculation**：型、粒度、Expression、分類、時間窓、Operator Lawの意味。宣言的な結果定義表または明示的なNode/Operation合成から導く。
+- **Coordination**：対象期間の列挙、Trigger、Process依存、実行条件、並列・再入・期限。業務日付と実際の起動時刻は独立。
+- **Materialization**：Output Generation／Manifest／Snapshot／Partition／中間状態の保持、再計算・失効・検証・公開。共有したいからといって必ず同じ物理中間ファイルへ集約しない。
+
+Result-firstとNode-firstは、この三者へ至る**異なる編集入口**である。Node表現はCalculationのOperation配置にもCoordinationの手順にも使えるが、Data EdgeとControl／Effect Edgeを同一視しない。結果表から「人が承認する」「送金を実行する」等の外部Effectを自動生成しない。実行制御のScheduler／Job管理は既存Host、OS、外部Providerで必要なものを選ぶ。
+
+こう整理すると、データマート、月次締め、計算科学の反復、バックフィル、APIのキャッシュ更新、画面の再計算を**同じ変更影響と成果物維持の問い**で扱える。ただし、継続データのWindow、非可逆Effect、業務確定では必要な契約が異なるため、すべてを同じ実行保証へ変換しない。
+
+### 13.5 最小Fixture：二つの結果と二種類の変更を用意する
+
+既存の固定TSV／型付きRule・Operationを用い、**同じ入力から伝票税額表と店舗日次表**を生成する。税率10%・端数四捨五入（0.5切り上げ）を採用した人工例で、伝票Aの明細金額が15円と15円なら、各明細行で丸めてから合計すると4円、伝票合計30円に対して丸めると3円になる。これを変換の非同値を示す独立Expectedとする（実業務の税制を表すものではない）。
+
+次に一因子ずつ変える。
+
+1. **追加入力**：伝票Bの明細を増やす。Bの追加のみで済むか、全店日次の再計算範囲がどこかを、完全な元集合と重複規則を固定して比較する。
+2. **従来除外されていた行の採用**：Filterの条件を変更する。旧出力には現れない明細の存在を示すCondition依存がなければ、再利用安全とは判定しない。
+3. **分類改版**：店舗→地域の所属期間を変更する。旧期間・新期間のどちらに寄与するかを判別し、旧集計への再利用を説明可能にする。
+4. **入力の一部欠落**：一伝票の一明細だけ未取得にする。伝票の確定税額も日次総額も確定結果へ昇格させない。
+5. **実装方式だけを変更**：同じMeaningから直接Evaluator／生成Go／DB委譲のうち、実際に実装されている経路だけを比較する。未実装Providerを実測済みとしない。
+
+このFixtureの原入力・出力・期待値・失敗条件は既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)のCorpusとして管理する。本稿に第二の試験正本を作らない。
+
+## 14. 既存実装の到達点を踏まえた着手順（2026-11-15）
+
+同じ型付きRuleの**既存Evaluatorと生成Go実Binaryを五入力・Read回数で比較する限定的な回帰**は、main統合済み[PR #5087](https://github.com/hat47x/tei-platform/pull/5087)に含まれる。Source／Rule／型を参照して生成Goを得る局所経路は[PR #5077](https://github.com/hat47x/tei-platform/pull/5077)にも含まれる。これらは新たなSource→正式Builder全閉包や通常CLI実Provider、汎用Batchの適合を実証したものではない。**新しい第一歩として同じ五入力試験を別実装しない。**
+
+次に不足している実装の単位を以下へ絞る。
+
+| 段階 | 最小の作業 | 合格の上限・Owner |
+| --- | --- | --- |
+| **R-0：read-only要求・影響票** | 一入力・二Resultを既存Data／Rule／Query／Operator参照へ写し、出力Grain、Value/Condition/Classification/Temporal依存と入力完全性を表示 | 構造と根拠の照合まで。#1130／#2497／#2622 |
+| **R-1：再計算範囲の対照** | 上記FixtureでRebuild／Scoped recompute／Holdの候補と棄却理由を作り、独立Expectedで照合 | 純粋計算・固定入力に限る。#1130／#1180／#2514 |
+| **R-2：二実装経路への接続** | 現行mainのRule・Data項目定義→生成Go／既存Evaluatorを、同一Source・入力閉包で二Resultの一部に適用 | 一Ruleの限定受入をバッチ全体へ拡張しない。#4544／#4410 |
+| **R-3：実Query/Provider** | 元Query意味とTarget SQL、実DB Snapshot／Result Body／独立Consumerを照合し、追加・訂正・削除のうち表現できる差だけ採用 | 実Provider・Current Grant・Resultの証拠を別にする。#2622／#2586／#4495 |
+| **R-4：Studio／Node／外部実行** | 同じSource・意味IDから結果表・Node View・依存Graph・再計算の理由を読み取り専用で表示 | Stage1→Stage2実Windowsと外部Effectは独立。#1124／#2831／#4583／#4497 |
+
+R-0/R-1は既存C0→C3の狭い拡張として扱う。R-2/R-3はP0の正式Source→生成Go→Builder／通常CLI実Providerへ合流し、別Pipelineを並走させない。R-4は既存N0〜N4／W0〜W4を用いる。新しいGenerator本体・Batch Runner・Scheduler・常駐Host・統一Job Registry・Optimizer・第二Expected正本は導入しない。
+
+**見直し条件**：実例で必要な粒度／時間／不在・部分取得／更新寄与が既存Data/Relation/Operatorに表現できない場合のみ、その**欠落した意味**を具体的な反例として既存Ownerへ戻す。新しい型を作る前にSource/Role/Facet／構成／Pluginのどこに置くべきか比較する。最適化や増分更新は、正しく再計算できることを検証してから採否を決める。

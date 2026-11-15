@@ -3278,7 +3278,7 @@ PR #5007で、同一Operator宣言に対してmanifestだけを切り替え、�
 
 ### 51.1 今回の実装はM2ではなく、M1/M2を判定するための独立基線である
 
-第50節では自己記述からRequired Shape検査を生成する方式Cを第一候補とした。その前段として、現行validationgen.GeneratePositiveが受理するpositive一規則の**固定された期待形**をGoの focused 回帰として追加する。対象はinternal/semantic/validationgen/positive_shape_obligation_baseline_test.goのTestPositiveLoweringShapeIndependentBaseline。正常な「Rule ID・単一Attribute・Relationなし・std.decimal」を固定し、ID欠損・Attribute欠損・余分なRelation・非対応Kind・型違い・未知型の六つを一因子ずつ拒否する。Go package名の不正はDSLの形ではなく、Target Lowering固有の条件として別の負例で拒否する。拒否した入力からGoを出力しないことも調べる。
+第50節では自己記述からRequired Shape検査を生成する方式Cを第一候補とした。その前段として、現行validationgen.GeneratePositiveが受理するpositive一規則の**固定された期待形**をGoの focused 回帰として追加する。対象はinternal/semantic/validationgen/positive_shape_obligation_baseline_test.goのTestPositiveRuleShapeIndependentBaseline。正常な「Rule ID・単一Attribute・Relationなし・std.decimal」を固定し、ID欠損・Attribute欠損・余分なRelation・非対応Kind・型違い・未知型の六つを一因子ずつ拒否する。Go package名の不正はDSLの形ではなく、Target Lowering固有の条件として別の負例で拒否する。拒否した入力からGoを出力しないことも調べる。
 
 この試験は、生成する検査器のExpectedを**既存Generatorから動的に作らない**ための基線である。現在のGoの正答をすべて受理済みの業務Lawとみなさず、後続のOwner評価に渡す。元Ruleの製品Reader・Source位置・生成Go実行・実Builder消費は既存の別試験が担当する。したがって、focused testがPASSしても**M0の説明／M1のDescriptor由来検査／M2のGo分岐置換は一つも新たに実装されたことにはならない**。新しい形の検査器に入る際は、この独立基線の正常・負例を使って比較し、Go手書きの該当一義務が本当に減ったかを確認する。
 
@@ -3316,3 +3316,118 @@ M2を急ぐあまり新しいGrammarや汎用Meta Interpreterを設けるので�
 今回の反証IDをSD-51-01（Shape単一不正のGo出力拒否）、SD-51-02（原文同梱・Generator不一致）、SD-51-03（原文の無断Disclosure）、SD-51-04（Operator旧選択実行）、SD-51-05（生成Windows PoC B成功をStage2再帰と誤認）として既存#1180／#2514へ引き渡す。#2620／#4359がM1/M2、#1121／#4544／#2595がR2-P、#988／#1018／#2600が実装選択、#1124／#1824が表示、#4495／#1251が実Provider、#2831／#4583がStage2のOwnerを維持する。
 
 **今回の実装上限**：追加したGoは固定されたShapeの検査基線のみ。元Sourceをビルドする既存試験、Windowsの成功、Scenario鮮度改善をこのGoテストの成果に加算しない。M1/M2製品実装、Generator版の正式Build束縛、実Provider、現在Grant、Stage1→Stage2の再帰的Self-buildは未実証。
+
+<!-- tei-self-description-validation-data-witness-20261115 -->
+## 52. 2026-11-15 TEIでTEIの検査規則を記述する最小実験と、その意味上の限界
+
+### 52.1 最初の自己記述資産を、現行製品Readerで読める形にする
+
+第51節で独立Expectedを固定した後、次に確かめることを**「TEIが自分自身の検査規則の構造を、普段使うData表現で説明できるか」**へ絞る。初回は新Grammar、Role Interpreter、自己解釈Hostを作らない。既存の組込み言語 tei.authoring/v1、印付きMarkdown項目定義表、semantic.Data、Source Indexをそのまま使用する。
+
+実装Fixtureは internal/workspace/testdata/tei-md-self-description/semantic/tei/validation-declaration.tei.md、Go回帰は internal/workspace/tei_md_self_description_test.go の TestTEIValidationDeclarationSelfDescriptionIsOnlyData とする。ここではRuleの**定義を記録するDataの形**として、規則ID／種類／対象属性を必須、対象関係を任意と記述する。実Workspace.LoadがReaderの選択と一つの定義領域を観測し、既存Validatorがそのsemantic.Dataを検査でき、各項目のSource位置に戻れることを確かめる。
+
+| 何ができるか | 今回の実証で確認すること | そこからは言えないこと |
+| --- | --- | --- |
+| **自己記述D1：表現** | 自分の検査規則のメタデータの形を、TEIのData項目定義表で記述できる | TEI CoreのValidation型定義を正式に置換したこと |
+| **通常のDataとしての解釈** | 選択Reader→既存semantic.Data→Validator／Source Indexが働く | 記述したDataが自動的にValidationのメタ契約として採用されたこと |
+| **読取と表示** | 元Sourceの項目位置とCanonical IDを読み取り専用で追跡できる | Sourceの編集・開示・実行、独立Expectedへの自動昇格 |
+| **制約の表現限界** | required=yes/noとTypeRefが記述できる | Relation指定禁止、positiveの厳密な0超過、Operator Law、NULL／欠損、時点・Grantを検査できること |
+
+特に**「Relationが必須でない」と「Relationを指定してはいけない」は異なる**。現行Data表のrequired=noを禁止制約へ読み替えると、誤って不正なpositive Ruleを受理する。この違いを理由に初回から新しい否定制約DSLや汎用Meta Evaluatorを設けるのではなく、表で表現できる範囲と未表現の義務を別々に記録する。
+
+また、自己記述したDataを**通常の業務Recordと混同しない**。そのData型の定義をLoadしただけでは、個々のRule宣言の実行時RecordやValidator実装は作られない。対象となるsemantic-validationやsemantic-capabilityが自動生成されていないことを負例にする。
+
+### 52.2 二つの自己記述を一つの成熟度に足さない
+
+本例の到達点は「TEI表層で自分自身のSchema相当の一部を宣言でき、既存Data Readerが扱える」ことである。先行するquantity_positiveは「独立Expectedで形を固定し、現行の手書きGeneratorが実Goの判断を出力できる」ことである。**別々の機能について別々の事実を示しただけ**であり、両者を組み合わせた「自己記述から実装生成済み」という評価はしない。
+
+次の実装は、新Data表に独自の実行意味を足す前に、既存の標準Data／Facet／Validation／Operator表現のどれで、対象Attributeの必須性・Relation禁止・型解決の独立条件を記述できるかを確認する。未表現の条件をGo手書きに残す場合は、残した義務数と理由を記録する。いずれかの一条件をTEIで表現し、**その定義を実Readerが読み、その契約から検査コードが生成され、既存GeneratePositiveの重複するGo分岐が実際に消えた**場合だけ、その条件についてM2と認める。標準のデータ様式を表現するために、業務専門家へGoのstruct／func／型引数やGeneratorの内部構造を見せない。
+
+### 52.3 次に再利用する三つの異質な反証
+
+| 反証 | 一因子変更 | Ownerへ渡す問い |
+| --- | --- | --- |
+| SD-52-01 | Data表のrelationIdをoptionalにする | optionalがforbiddenへ誤変換されず、positiveのRelation禁止は未実装のまま表示できるか |
+| SD-52-02 | 印なしの説明表を置く、または未選択Languageを使う | 文書の説明／定義／業務記録を混ぜず、選択Readerがない場合に黙って受理しないか |
+| SD-52-03 | Self-description表のSourceを改版し、旧Index・旧生成Go・旧Commandを残す | Source改版／型付きMeaning／生成Artifact／実装選択の失効を分離できるか |
+| SD-52-04 | Graphの多重Edge／組織の二時点関係／Operatorの変更を追加する | 一つのData表で表せない関係・粒度・Lawを無理に押し込んでいないか |
+
+SD-52-01〜04は既存#1180/#2514の独立Expectedへ渡す候補とする。本例のfocused GoはData読込・出典・非Rule化だけを対象とし、これらのすべてを実行した証拠とはしない。Reader・Language版は#988/#1018/#2621、意味役割とMeta構造は#2620/#4359、Generatorの実置換は#1121、Builder消費は#4544/#2595、Studio／SHO／Node投影は#1124/#1824/#2497へ渡す。実Providerと非Plugin Studio Stage1→Stage2は従来どおり独立P0。
+
+**今回の受入上限**：TEIのData表でTEI検査規則の一部を記述し、既存製品ReaderとSource Indexで扱う**小さな自己記述実験**。positive RuleのRequired Shapeをその表から自動検査する製品M1、Goの手書き分岐を置き換えたM2、実Plugin契約、実Provider、再帰的Studioセルフビルドは未達。表を収録したことも、CIの実行結果を確認するまではテストPASSを意味しない。
+
+<!-- tei-self-description-obligation-path-witness-20261115 -->
+## 53. 2026-11-15 自己記述した実装義務を、抽象経路と状態不変条件で検収する（横断統合）
+
+### 53.1 自己記述の対象は「どのメソッドか」より「どの義務を果たしたか」
+
+第48〜52節のD1／M0〜M4に対し、今回追加する中心概念は**実装義務の検収経路**である。TypeやRuleの定義をTEIで表現できても、実現方式が違えば呼出し先・生成関数名・Goファイル位置・実行方法が変わる。そのためテストの意味上の識別子にTargetメソッド名を使わない。基準とするのは**正規Subject（Kind＋Canonical ID）、義務の識別、前提、通過すべき意味上の境界、保持すべき不変条件、独立Expected、観測された実Attempt**である。
+
+メソッド名やGo ASTの位置は、特定Targetで確認できた実装上の対応先として記録する。生成時に名前が変わっても意味上の対象を移動させず、一方で元Ruleと違うRead先を生成した場合は対象の対応が破綻したと判断する。Graph Node／Edgeは同名であっても occurrence identityを保持し、Node Viewの表示IDをCanonical Subjectと同じものにしない。業務OperationのIDと、その一回のInvocation／Build Attemptも同一視しない。
+
+この検収の最初の表は既存#1180／#2514のIndependent Expected、Source Index、Scenario／Operation／Build証拠を**一問に合わせて参照する一時的な試験仕様**とする。新しいPath DSL、Core Test ID型、汎用Trace Engine、第二のExpected Registryを導入しない。必要な経路が現製品で観測できない場合は、その辺を未観測として残す。
+
+### 53.2 経路の三つの問いを別々に検査する
+
+| 検査する問い | 具体的な意味 | 誤認・未成立時の扱い |
+| --- | --- | --- |
+| **静的な接続** | 明示選択したSourceから型付きRule／Operator／Portを解決し、要求と保証が適合するか | 同名・同型だけで接続しない。Schema・Cardinality・粒度・NULL／Unknown・Read Scopeを別に照合 |
+| **実際の通過** | 選んだ直接解釈P、コード生成G、Provider委譲Dの経路で、所定の実装／Builder／Consumerが呼び出されたか | 値が一致しても選択A／実Call B、生成したが未Build、未選択Adapterを拒否する |
+| **通過中の不変条件** | Subject、入力Snapshot／時点、必要なRead Footprint、評価Law、作用の有無、開示Scopeが指定どおり保持されたか | 余分なRead、partialを完全とする変換、Data EdgeをTriggerへ読み替える変換、旧資格の復活を拒否する |
+
+「必ず通る抽象経路」は固定のGo呼出し階層ではなく、**用途に応じた意味上の経由点の集合と順序制約**と定義する。たとえばPは選択済みTyped Rule→現行Evaluator→結果・Read観測、Gは同じTyped Rule→選択Generator→生成byte→Builder実入力→完成Binary→結果・Read観測でよい。両方式が同じメソッドや同じ中間ファイルを通る必要はない。順序を求めない依存Graphと、順序を要求するProcess／Effectを同じEdgeとして扱わない。
+
+### 53.3 最初の一例：positive RuleのP経路とG経路
+
+最初の検収対象は sales.order_line.quantity_positive 一規則だけとする。既存PR #5073／#5087の直接Evaluatorと生成Go Binaryの比較、および#5009／#5056の通常CLI／生成Go配置byteの実証を再利用する。新しく比較するのは、**同じ評価対象を選択した後に、どの抽象経路を実際に通ったかという証拠**であり、既存の結果一致テストを複製しない。
+
+| 項目 | 固定するもの |
+| --- | --- |
+| 意味上の対象 | semantic-validation の正規ID、対応するSource occurrence、選択Reader／Source Revision |
+| 前提 | Attributeの解決型はstd.decimal、Relationなし、選択済みRuleのShape適合、入力の取得状態が明示されている |
+| Pの経路 | 製品Load→型付きValidation→既存validationeval.Evaluate→Result／Number Read観測 |
+| Gの経路 | 同じ型付きValidation→GeneratePositive→生成Go実byte→既存tei self-build→実Binary→Result／Number Read観測 |
+| 共有の不変条件 | 同じRule／入力Snapshot、評価対象Attribute、Read一回、Relation Readなし、NULL／未取得をfalseとしない、判定以外のEffectなし |
+| 独立Expected | 正値ならsatisfied、ゼロ／負値ならnot-satisfied、NULL／未取得はそれぞれ評価不能・失敗として区別する |
+| 証拠上限 | 現存するP/G比較は局所試験・論理Read／限定CLI Build。正式R2-P全閉包、実Provider、現在Grant、Stage1→Stage2は別の受入 |
+
+この一RuleでPとGの結果が等しくても、**実現方式の選択A→実際の使用B**を検出する試験は別に必要である。実装方式は業務意味の正本に埋めず、Target／配布／選択構成から決める。既存のRule評価を使えば済む場面では生成を省略できるが、生成が必要な義務やTEI Studioセルフビルドまで省略できたと認定しない。第48〜52節で第一候補とした**M2の生成検査一箇所置換**は引き続き実装課題とする。将来、同じ義務の手書きGoが選択済み汎用Evaluatorへの実束縛で不要になった場合も、削除した分岐と実利用の証拠を示せる範囲だけ別方式の置換候補として検討する。
+
+### 53.4 型付きPlugin接続を通る場合は、Mappingそのものの義務を検査する
+
+他チャットのPlugin配線では、複合型を丸ごと受け渡す方法、必要Fieldだけ接続する方法、明示Adapterで変換する方法を、標準Data／Mappingの**受渡し粒度と変換方式の別軸**として整理した（PR #5101）。Node Viewの全体Port展開・折畳みは同じMappingの異なる表示であり、実配線の書換えではない。
+
+抽象経路検査は、**PortのShape→Mappingの対応先→Adapterの選択／実Call→Consumerが読んだ値と範囲**を別の観測点とする。WholeとChildの二重Binding、必須Field欠損、非公開Fieldの漏洩、Collection/GraphのLoss、単位・精度／NULL・Unknownの暗黙変換を負例にする。純粋Adapterの評価成功は、Effectfulな外部Providerの実呼出しや現在Grantとは別資格である。初回は#5101のT0／T1 read-only契約検査を再利用し、今回新しいPort Runtimeを要求しない。
+
+### 53.5 Source・Designer・Resource・Generator・生成物を、拡張子ではなく所有責務で分ける
+
+Visual Studio/.NETのSource／Designer／Resource／Generated Source分離から採るのは、**編集の正本、表示用の投影、外部資源、生成規則、生成出力、案件固有の拡張、配布Artifactを混同しない**という原則である。TEIの標準拡張子を増やすことや、.NETのDesignerファイル方式を採用する決定ではない。
+
+| 役割 | TEIでの扱い | 検収上の禁止事項 |
+| --- | --- | --- |
+| **Authoritative Source** | 既存 .tei／*.tei.md と選択Language／Source Index、元byte | 説明文・図の表示だけで意味を受理しない |
+| **Designer／Projection** | Studio／SHO／Node Viewが既存Meaning・Sourceを用途別に表示 | Lossのある表示を原Sourceへ無条件に逆編集しない |
+| **Resource／Asset** | Targetが必要とする静的AssetとDisclosure、版・実消費 | 原文埋込みと公開許可を同一視しない |
+| **Generator Definition** | 既存のGenerator実装・契約版・選択をOwnerが管理 | 実際に使用した生成器と生成Goの出典が未接続でも成功にしない |
+| **Generated Source／Build Artifact** | 既存生成出力・Build Intent・実Builder入力・Artifactを段階別に照合 | 生成ファイルを手編集の正本にせず、旧Artifactを現行とみなさない |
+| **Custom Extension** | 既存Plugin／Hook／Adapterの明示契約・実選択で接続 | 再生成時に任意の後書き修正や無許可Effectを注入しない |
+
+生成AIに任せるのも、入力・型・Target・Extension Point・独立Expectedが固定された**閉じた定型的な実装課題**に限る。これはPR #5070の図表実現方式・Hook・Skillと整合させる対象であり、同PRがまだmainへ統合されていない場合にその提案を採用済み契約とみなさない。
+
+### 53.6 実証順、反証、終了条件
+
+| ID | 意図した一因子変更 | 求める判断 |
+| --- | --- | --- |
+| SD-53-01 | 同じRule／入力でPとGだけを切替 | 結果・Read数・NULL／Errorの保証を比較し、通った実経路は別に観測する |
+| SD-53-02 | Gを選択したがPを呼ぶ、またはその逆 | 結果が一致しても選択と実Calledの不一致を拒否する |
+| SD-53-03 | 生成GoのFunction名だけ変更しRule ID・判断は保持 | Target名変更を新しい業務Ruleとしない。実Entry連携の破損は別に検出する |
+| SD-53-04 | G経路の生成Goだけ旧byte／別Read先へ差替え | 結果値が偶然同じでもSource・Generator・Builderの出典不一致を拒否する |
+| SD-53-05 | 型付きPortをWhole→Field Mappingへ変更 | Required／Disclosure／Multiplicity／Snapshotの保証を欠落・二重割当てさせない |
+| SD-53-06 | DataからTriggerへ図のEdgeを変更 | 静的な配線適格と実行因果・Grant・Effectの追加義務を区別する |
+| SD-53-07 | 同じ意味を保つ原Markdown説明変更／Generator版更新 | Source・意味・実装資格・Artifact再利用可否を別判定。A→B→Aで旧受理を復活させない |
+| SD-53-08 | 同じメソッド名の別Target／同名二Node・多重Edge | Target Symbol／表示ラベル一致で別Subject・別Occurrenceを混同しない |
+| SD-53-09 | Assetや元DSLをBinaryへ同梱し別Consumerへ配布 | byte内包と実際の使用・Disclosure・現在Grantを別検収する |
+
+**実装順**：第一Packetは既存Rule比較試験からSubject／入力／PとGの論理Read・実観測を一問の表へ集約し、SD-53-02の選択と実使用不一致を負例にする。第二Packetは#5097の自己記述Data Fixtureが独立CIで受理された後にだけ、そこで記述されたShapeとpositiveのRequired Shapeを比較する。required=noをRelation禁止と見なさず、生成された検査一義務で実際の手書き分岐を削除して初めてM2へ進む。第三Packetは既存R2-P／R3とStudio Stage1→Stage2の別P0を結ぶ。
+
+独立Expectedは#1180／#2514、Source/Languageは#988／#2621、Rule／Generatorは#1121／#4544、Port／Pluginは#951／#1223、実Builderは#2595、実Providerは#4495、UI編集は#2497／#1124、Windows Stage2は#2831／#4583へ渡す。**今回の状態は設計・引継ぎのみ**。新しい実経路検査、M1/M2実置換、型付きPort Runtime、正式R2-P全閉包、実Provider、Stage2再帰実行をこの文書追記で完成としない。

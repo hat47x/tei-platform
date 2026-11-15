@@ -336,3 +336,11 @@ Build Intentは、その原文を含むGo Packageを実Source閉包として列�
 これは「選択されたRule原文のコピーと生成Goが、一つのGo Package Sourceとして実Builderに読まれ、完成Binaryに達した」という限定的な**R2-P原文消費の証拠**である。元ファイルのWorkspace相対LocatorやReader・Generatorの実装byte列まで同一Build Intentに正規のDependencyとして束縛したわけではなく、コピーの正当性は検査コード側の観測に依存する。Generator改版、原文A→B→AでのRevision失効、生成Goと原文の意味適合、正式Function公開Entry→選択Provider実Call、Owner受理、現在Grant、Windows Stage1→Stage2の証明は引き続き別の検収とする。
 
 次の段階では、この実績を根拠に新たなBuildPlanやRegistryを作るのではなく、既存のBuild Intent Source／Build Receiptに、Reader・Generator・原文の資格と実消費結果を同一Attemptで紐付ける。その際、元Sourceが編集されても生成Goが偶然同値なら旧Source Evidenceは失効し、Build Artifact自体の再利用可否は独立判断とする。
+
+### 14.14 選択した生成Goと実ビルド配置先の取り違えを先に拒否する
+
+§14.12の最初の負例を、既存の通常CLIセルフビルド試験へ追加する。選択済みRuleから現行Generatorが返したGoのbyte列を、実際にBuilderへ渡すGo Package内の`generated.go`と読み戻して照合する。**選択した生成結果Bに対し、配置先だけをコンパイル可能な別byte列Aへ変えた場合は、Build Intentの解決やBuilderの起動に進む前に拒否する**。元のbyte列に復元した場合だけ後続の実CLI／実Binary検査へ進める。
+
+この検査は、新たな意味受理機構ではなく、同じ試行におけるGenerator出力とステージングされた実入力の取り違えを防ぐ最小の境界である。変更後のGoが同じ判断結果を返しても、byte不一致を見逃さない。反対に、byte一致だけを根拠としてReader／GeneratorのAuthority、元RuleのRevision、正式Providerの選択、現在Grant、Owner受理を昇格させない。
+
+次の負例は、**元Rule原文をA→B→Aと戻したときのSource Revision失効**と、**Generator実装版を変えても生成Goが同一となる場合の生成資格失効**である。既存のSource Index、Build Intent、Receiptの各責務を維持し、再ビルドの必要性と意味受理の必要性を別々に記録する。

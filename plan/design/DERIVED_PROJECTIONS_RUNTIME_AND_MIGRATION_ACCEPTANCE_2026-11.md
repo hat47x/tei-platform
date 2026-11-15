@@ -320,3 +320,115 @@ EV-02は、Outboxを**同一DB Transactionへ投入できる実装を選んだ�
 **優先順位は不変更**：PQ-A（正式Source→選択Reader／Generator→生成Go→実Builderの出典束縛）、PQ-B（Operator選択A→B→旧Scenario失効）、#2586通常CLI実Read、#2831 Stage1→Stage2 Windows実セルフビルドを先行する。EV-01〜06は新しい判定段階や横断Hard Gateではない。
 
 **今回の証拠上限**：§18〜20は既存設計・公開仕様記述の照合から得た受入計画であり、EVケースのGo／実DB／実OS／検索索引／帳票／承認／配送を新たに実行していない。外部仕様の読解をTEIの実Provider適合・Ownerの業務意味受理へ昇格させない。
+
+
+## 21. 同じ定義をコード生成と汎用関数のどちらで実現するか（2026-11-15）
+
+従来の比較では、モデルからGo／Java等のソースを生成する経路を主に扱ってきた。しかし、定義された表・図・Ruleのパラメータを既存の型付き汎用関数で解釈すれば、**生成コードを増やさずに業務動作を実現できる場合**もある。これを生成方式に対する例外や暫定実装と決め付けず、**同じ受理済み意味を実現する二つの方法**として比較する。
+
+ここで共通化するのはData／Function／Business、型・Rule・Relation、適用Phaseと入出力・失敗・副作用の契約である。実現方法は、選択されたOperator／Generator／Providerと実行環境の組合せとして持ち、**モデル上の二重正本は作らない**。
+
+| 判断する点 | 汎用関数による解釈 | Targetコード生成 |
+| --- | --- | --- |
+| 向く範囲 | 既存Operatorで意味を不足なく表せる純粋計算・検証、宣言的な表示や単純なData操作 | 固定Targetの最適化、複数言語への配布、複雑な業務制約、実行先に合わせた静的合成 |
+| 更新と観測 | 定義・実行器の版、選択された実装、実Callと入力Scopeを毎回区別する | Reader・Generator版・生成byte・Builder入力・実ロードArtifactを区別する |
+| 主な落とし穴 | 汎用関数にない意味を黙って近似する、未選択実装へのfallback、解釈器の現行版と定義版の不一致 | 生成結果が元Ruleを参照せず別実装へ委譲する、古い成果物の再利用、TargetごとのNULL・精度差 |
+| 共通の検収 | 対象Identity・値／NULL／未取得・Read集合・結果・失敗・現在Scope | 同左。さらに原Source→生成物→実Builder／Consumerの資格を確認する |
+
+**実現方式は業務意味でも、配布Packageの固定属性でもない。** 同じRuleをGoの生成コードで動かす場合とGo単一バイナリ内の型付き関数で解釈する場合がある。外部.NET／Java Hostを選ぶ場合も、Hostが受け取るBindingとその実行資格を別に検証する。コード生成・解釈のいずれも、業務上の副作用を実行するときは既存のOperation／Provider／Effect／Receiptと現在Grantを省略できない。
+
+### 21.1 まず「型付きValidation一件」で可否を見極める
+
+最初の比較対象は、製品Workspaceが選択した `tei.rule-authoring/v0` 由来の `sales.order_line.quantity_positive` とする。このRuleを同じ`semantic.Validation`から二通りに実行する。
+
+1. **解釈経路**：既存`validationeval.Evaluate`が定義済みの比較を、合成Sourceの`Number`から読み取って実施する。
+2. **生成経路**：既存`validationgen.GeneratePositive`が、判断条件を埋め込んだGoを生成し、実際にGoツールチェーンでビルド・実行する。生成処理は`validationeval.Evaluate`へ判断を丸投げしない。
+
+実行結果だけでは同じ実装を二度呼んだことを見落とすため、生成Goの比較処理と、二経路で実際に呼ばれた`Source.Number`の対象・回数を観測する。正値、ゼロ、負値、明示NULL、値の未取得を同じ入力表で比較し、エラーを業務上の`not-satisfied`へ変換しない。基準となる期待値は実装出力から自動生成しない。
+
+この比較は**形式が同じなら実現可能性まで同じだと証明するものではない**。現状、Go生成が対応するのは限定したRule Kind・型であり、未対応の指定を汎用関数へ黙って切り替えない。型・Phase・Read集合・依存Provider・Targetを含む適合は、対象ごとに確かめる。
+
+## 22. 現行mainの実装を基線に、重複しない検収を進める
+
+§21で選んだ一Ruleの二方式比較は、並行する実装で**すでに局所的なGo試験へ到達した**。同じ比較を別のGoテストとして増やすより、何が実際につながったかを確認し、残る別の辺を検収する。
+
+- `cmd/tei/cli_self_build_generated_rule_go_test.go` の `TestSelectedRuleGoThroughRealCLISelfBuild`：製品のRule Readerから正値Ruleを選び、既存`validationgen.GeneratePositive`でGoを生成する。通常の`tei self-build`によるGo Binaryの出力を独立Expectedで確認した後、同じ型付きRuleを既存`validationeval.Evaluate`で評価し、正値・ゼロ・負値・NULL・未取得の五値と、対象FieldのRead回数を照合する。**生成Binary内の判断と、テスト側のEvaluatorが一つの実Provider／Contextを共有したという証拠ではない。**
+- `tools/reference-generator-selection/selected_markdown_rule_rebind_test.go` の `TestSelectedRuleInterpretedAndGeneratedRealizationsAgree`：別のGenerator選択経路で同じ製品Ruleを読み、型・原文参照・生成されたGoを隔離Buildしたうえで、正値・小数・ゼロ・負値・負のゼロ・NULL・未取得・型不適合を比較する。JSON Adapterでの診断の粒度と、Evaluatorが評価不能として返すGo errorは別の観測である。
+- `internal/semantic/validationgen/positive_product_test.go`：限定した正値Ruleについて、生成Goが比較・Field Readを実装し、単に既存Evaluatorへ委譲するだけではないことを検査する。生成成功はOwner意味受理を含まない。
+
+これらは**互いに異なるReader／Generator／Build／Consumerの試行**である。片方の実Binaryで得た正値判定と、もう片方のGo Evaluatorの結果を合わせて、正式なP/G実装選択、現在Grant、実DB Provider、外部Hostの相互代替可能性まで認めてはいけない。並列した局所試験に合わせて独立のExpected Store、第二の実行選択器、類似のGoテストを追加しない。
+
+**次の不足は実装選択の履行にある**。同じFunction Context／型・Snapshot／Phaseを固定した一Attemptで、選択されたP/G実現と実Called ID・Reader／Builder／Providerの資格を別々に照合する。選択GなのにPへ無断fallbackした例、選択Pなのに古い生成Binaryを呼んだ例は、出力値が一致しても失格とする。ここでの一Attemptは将来の実証条件であり、現行mainにそのRuntime選択機能が実装済みだとは主張しない。現時点の不足は`unknown`のまま既存#1180／#2514と#951／#1251／#2586へ渡す。
+
+## 23. 次段階では「実現方式の差」だけを増やす
+
+現行mainで確認した五値比較を基線として、同じCanonical Ruleのまま**一因子だけを変える**。新しいテスト正本は設けず、既存#1180／#2514の独立Expectedへ追加する。
+
+| 比較候補 | 固定する条件／変更する一点 | 不合格にする挙動と既存Owner |
+| --- | --- | --- |
+| RV-01 | 入力Source／型／値を固定し、汎用関数と生成Goを選び替える | 結果が偶然同じでも実Called ID不明、Read先や例外の不一致（#2621／#1121／#2514） |
+| RV-02 | 意味を変えず説明文だけ改版する | 原Sourceの旧位置・改版証拠を残したまま「再確認不要」とする。意味・Artifactの無関係な一律再ビルドも避ける（#2600／#2250） |
+| RV-03 | Ruleの参照Attributeだけを変更し、旧生成物または旧解釈用Indexを再利用する | 旧SourceからのRead対象や旧判断を新定義の結果へ昇格（#2621／#2600） |
+| RV-04 | Ruleの適用PhaseをDraftから保存前へ変更する | 同じ計算結果だけで、取得完全性、現在Grant、原子性と実DB保存を同じ資格にする（#1129／#1174／#2586） |
+| RV-05 | 実装の対応型・Provider Capabilityが欠ける | 無断fallback、NULL／partialの丸め、対象外Read、Write可能なふりをする（#1251／#2622／#2516） |
+
+**実装の順序**：今回のGo二経路比較を局所回帰として先行し、正式Rule Source→実BuilderのPQ-A、Operator実装選択と旧版失効のPQ-B、通常CLI→実Provider Read（#2586）へ結果を**別々の資格として**引き渡す。その後、同じFunctionへの接合が実際に成立した場合に限って、親子Draft、Transaction内Hook、Outbox、索引水位、帳票等のEV-01〜06を選択する。いずれもP0のStudio Desktop Stage1→Stage2セルフビルドを妨げる新しい必須条件にはしない。
+
+判断基準は方式の好みではなく、**人が書く定義をどれだけ簡潔に保てるか、意味を失わずに実行できるか、生成／解釈の実装と版を正確に追跡できるか**である。計画の合意と実Provider／配備の検証を同じ達成報告へまとめない。
+
+## 24. 同じ式を使っても評価場面が違えば同じ動作にはならない（2026-11-15追補）
+
+§21〜23では一つの型付きRuleに対する解釈と生成を比較した。しかし、「同じRuleを実行できる」という事実から「どの入口・どの時点でも同じ結果を保存できる」とは言えない。ここでは他の設計で進めたRule Attachment、Data Operation、標準UI／API入口、SmartDB／Queryの議論を、実現方式の比較に接続する。
+
+### 24.1 式・評価時点・保存先を別の選択として扱う
+
+| 使用場面 | 評価に使う情報 | 処理の位置付け | 混同しないこと |
+| --- | --- | --- | --- |
+| **画面の初期候補** | その画面を初期化した時点の入力・利用者Context | UI Draftの初期値 | 入力後の自動再計算、API／Batchにも必ず設定される保存値 |
+| **Draftの再計算** | 編集中の明細と削除予定を含む必要な全Scope | 未確定の候補 | 保存済みDB値、表示中タブだけでの全件性 |
+| **登録・更新時の計算** | 現DB Version、送信Intent、Ruleが必要とするRead | 永続化前の検査・導出 | フォームを開いたときの古い値や判定、Commit済みReceipt |
+| **表示時の導出** | 現在の参照値・Audience・取得時点 | 非保存のResult Projection | 元DBへ保存済み、DB側検索・ソートにも当然利用可能 |
+| **検索・一括取込** | Query Predicate、Codec、Source Coverage、実Provider能力 | 独立したEntry／Data Operation | 画面初期候補と同じ自動補完、検索0件から元Data不存在の断定 |
+
+これらは**異なる式言語を追加する理由にはならない**。共通の式やRuleが利用できるかを、Evaluation AttachmentごとのRequired Read／Context／Phase／Type／Persistence／Provider Capabilityで確かめる。例えば初期候補と保存時計算に同じ算術式を指定しても、適用時点が違えば値が異なることが正常な場合もある。対象時点の情報が揃わなければ「正しい値」と仮定せず、未検証のまま止める。
+
+**実現方式の比較条件を補正する**：§21の汎用関数Pと生成コードGの同値性は、同じ型付きRule、同じAttachment、同じ入力Snapshot／Read集合、同じTarget精度・失敗契約を満たした**問いの範囲**でだけ評価する。同じGo述語を返すという局所試験から、フォーム初期化・保存・表示の全経路で動作が等しいと推論しない。AIが新しい実装を生成する場合も、入出力と既存Operatorの組合せを限定し、独立Expectedで反証できる定型処理から拡張する。
+
+### 24.2 初期値・保存時Rule・APIは同じ「書込み機能」ではない
+
+UI初期値は入力支援であり、保存時に必須な値の保証や、API／CLI／Batchの更新規則を置き換えない。複数入口に対して必須の導出がある場合は、既存Function／Data Ruleが保存時の責任を持つかを確認する。入口によって再計算を行わない場合は、その差を仕様として表示し、保存値を勝手に補完しない。
+
+画面で入力したDraft、送信したPatch Presence、保存前の現在Version／Grant、実Provider Commit、独立Readbackを§15〜18と同じ順序で分離する。保存時Ruleを表示用Projectionの生成器へ流用するときは、逆方向のPutbackが一意に決まるかを別に検証する（#2500／#2585）。表示に成功した値を無条件に保存対象にする経路は認めない。
+
+## 25. 参照値の保存方式と、参照経路の現在性を分ける
+
+同じ商品・顧客などの関係から得た名称であっても、**取得時点の値を保存する**、**最終参照先のIdentityを保存する**、**表示時に現在の関係をたどる**の三方式は同じ意味ではない。新しい固定Core型を増やす前に、既存のData Field、Relation path、Persistence Mapping、Query／Derived Attribute、時点付きResult ProjectionとMigrationを用いて表せるかを検証する。
+
+| 保持方式 | 永続化するもの | 参照先が変わったときの要点 |
+| --- | --- | --- |
+| 取得時点の値 | 確定時に取得した名称・金額等のSnapshot | 元マスターが更新されても過去の取引値は自動同期しない |
+| 最終参照先のIdentity | Relationをたどって到達した実体のKey | 中間の経路が変わっても保存したKeyが自動的に付け替わるとは限らない |
+| 現在の関係による導出 | 当該項目には値・Keyを保存しない | 取得時のRelationと現在Grantを使うため結果が変わり得る |
+
+この区別は参照元と参照先の**Stable Identity／Qualified Relation／Occurrence／有効時点・観測時点**に結び付ける。特に「同じラベル」「同じ表示値」「同じ参照元Key」だけでは、保存済みの最終先Keyと現在の参照経路が一致するとは断定できない。Graph／ER／Node Viewは、その差を表示しても、保存値を暗黙に書き換えない。
+
+保存方式を値からKeyへ変更する場合は、モデル属性の修正だけで完結させず、**既存格納値と正しいKeyの対応づけ、物理列型、移行前後の実Readback**を別票として検証する。表示値が偶然Keyに似ていても、意味上のKeyと認定しない。復元できない値・曖昧な対応・存在しない参照先は未解決として残し、変換後の参照に応じて現在の開示も判断する（#1121／#1174／#3270）。
+
+## 26. 最初の受入例と実装順への接合
+
+既存のScenario／独立Expected（#1180／#2514）への差分候補を、これまでのPW／EV／RVと重複しない**評価場面・保存方式の反例**に絞る。次の全件は現時点で**未実行**である。
+
+| 反例 | 同じものを維持して変える一因子 | 見落としてはいけない結果 |
+| --- | --- | --- |
+| **EP-01** | 初期候補表示後に入力値だけ変更 | 初期候補は当時の値。自動再計算されるとの誤解を拒否 |
+| **EP-02** | 同じDataへ画面以外のEntryから登録 | UI初期候補が存在してもAPIの保存値を保証しない。保存時Ruleの責務を別に評価 |
+| **EP-03** | 非保存の表示用導出を検索・ソートへ要求 | Query／Providerの対応がなければ対応済みとしない |
+| **EP-04** | 商品マスターの名称のみ更新 | 保存Snapshotは維持し、現在参照値だけが変わり得る |
+| **EP-05** | 多段Relationの中間辺だけ変更 | 保存済み終端Keyと現在経路の終端を別Identityとして追跡 |
+| **EP-06** | 参照値保存から終端Key保存へ方式変更 | 現Schema／履歴／実データのMigration受理がなければ適用不可 |
+
+**実装順**：まず§21〜23のRule P/G比較を既存製品コード上で確認し、同一Ruleの適用Phase・Snapshot・Read集合が異なる場合の不一致を示すread-onlyの対照（EP-01）を追加する。次いで通常CLI一Function→実Provider Read（#2586）の受入経路で、EP-04／05の取得範囲・Identity・時点を説明する。EP-02／03／06の書込み・Query実対応・Migrationは、実ProviderのCapability／Owner受理が確認できたときだけ進める。
+
+生成AIによるコード生成は、当面、**入力Shape・参照先・Phase・NULL／欠損・結果・副作用が厳密に指定できる狭い定型処理**から適用する。生成コードがボイラープレートとして確実に再現可能かを、生成器を入れ替える負例、実Buildと独立Expectedで測り、自然言語で似ているという理由だけで新しい業務判断を自動実装へ昇格させない。コード生成を省略した場合も、選択した汎用関数の版・実Call・適用Phaseを追跡する。
+
+**現在の証拠上限**：本追補は既存の標準Data／Process／Rule／Query／移行計画と外部公開文書の比較を整理した設計案である。新しいGo／実DB／MCP／Windows／移行適用は実行していない。正式Source→BuilderのPQ-A、実装選択鮮度PQ-B、通常CLI実Provider、Studio Stage1→Stage2 WindowsセルフビルドというP0の順序を変更せず、新たなParser／Runtime／Registry／Host／Rule Engineを追加しない。

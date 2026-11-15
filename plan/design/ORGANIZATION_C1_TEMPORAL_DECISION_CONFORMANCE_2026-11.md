@@ -1925,3 +1925,91 @@ O-P2/3の合格をO-P4/5へ昇格させない。通常CLIの初回実Provider Re
 - **REA／AI／SHO**：外部Candidate、Source位置、observed-at、Owner採否を分け、Person/REA Agent/Account/Principalを自動同一視しない。図の表示優先やAI提案は業務上の本務・責任・Grantを作らない。
 
 既存#1180/#2514/#4490のExpected/Scenario/Attemptを利用し、二つ目のExpected Store、新しい組織Core、Temporal Engine、Workflow/Authorization Runtimeを増やさない。新しい受入票ではSource/World版、Occurrence/Revision、validAt/knownAt、Provider/Snapshot/Scope/Coverage、Consumer、Expected/Observed、Owner意味受理と実Effect資格を別欄に保持する。
+
+<!-- org-two-axis-exclusion-20261115 -->
+## 41. 二時点の単一値制約をDBで守る方式と、Provider間の受入境界（2026-11-15）
+
+### 41.1 読取時の曖昧さ検出と、保存時の競合防止は別の能力
+
+§39〜40の実PostgreSQL検証では、一つの所属A2に対して有効時点と認識時点の両方が交差する第三版を**読取時に複数行として発見**できた。しかし、複合主キーだけではその版の挿入を防げない。保存側で単一値性を保証するには、Ownerが受理した「同じMembership occurrenceでは、任意の validAt と knownAt の組に対して高々一版」という業務Ruleを、Providerの同時Writerを含めてどう守るかを決めなければならない。
+
+PostgreSQLには、スカラーMembership IDの等値比較と二つの時間Rangeの重なりを組み合わせる **GiST EXCLUDE制約** がある（[PostgreSQL公式Range Types](https://www.postgresql.org/docs/current/rangetypes.html)）。今回の候補は btree_gist と tstzrange を使い、半開区間の「境界で接する二版」を許しつつ、**同一Membershipの valid区間・known区間がともに交差する挿入**をSQLSTATE 23P01（exclusion_violation）で拒否する。
+
+この制約の採否は、実装可能性とは独立した業務Owner #2386/#1126の判断である。単一値性が不要な関係・別Occurrenceの兼務・複数の関係軸へ一律に適用しない。org-staged-axis の正式Persistence、共通DSL、Graph Core、認可機構にはこの実験から新しい制約を自動追加しない。
+
+### 41.2 隔離PostgreSQLの追加候補試験と期待する差分
+
+新しい TestOrgAxisAsOfExclusionConstraintCandidateOptIn は、既存CIの使い捨て tei_org_axis_e2e DB内で、rollbackされる単一トランザクションを用いる。トランザクション内で btree_gist を準備し、TEMP TABLEと二軸EXCLUDE制約を定義する。正式テーブル・既存Data・拡張の永続インストールは行わない。
+
+| 試験 | 独立期待 | 取り違えてはならない意味 |
+| --- | --- | --- |
+| A2の訂正 | 同じvalid区間でもknown期間が境界で接すれば旧版・新版を保存し、knownAtで読み分ける | 旧版の物理行消去や別Occurrence発行ではない |
+| A3の有効期間交替 | 同じknown期間でもvalid期間が隣接すれば保存し、validAtで読み分ける | known期間だけの重複を一律禁止しない |
+| 別所属A4 | A2と同じ二時点で別Membershipが存在しても拒否しない | 異なる所属を同一人として確定したわけではない |
+| A2の第三版 | 同一Occurrenceで二軸がともに交差する版を投入すると、制約名付き23P01で拒否する | 23505（単なる重複PK）や任意のProvider失敗と混同しない |
+| 失敗後の再読込 | SAVEPOINTを戻した後、旧新の正しい版が残り、Queryが動く | 実HostのACK/Receiptや障害復旧を立証したわけではない |
+| A5の訂正更新 | 同じDBトランザクション内で旧known区間を閉じ、境界から新版を追加すると両版が保存可能 | 正式業務処理のCommit、別接続同時更新・再試行の安全性は未実測 |
+
+対象CIにはこの候補を必須PASSとして追加する。実行しなかったTestのskipを成功として扱わず、Go formatting・DB名確認・実SQLSTATE・受理された行の再読込を別々に検査する。**PRの固定HEADにおける実CI成功が確認されるまでは、この表はExpectedでありObservedではない。**
+
+### 41.3 Provider中立の意味と、PostgreSQL固有の制約を混ぜない
+
+| 方式 | 利点と制約 | 採否を決める観測 |
+| --- | --- | --- |
+| 候補A：DB-native EXCLUDE | PostgreSQLの競合排除機構を使える。btree_gistの有無・DDL/Migration・GiST Index・同時Writer/lock・メンテナンスを伴う | 同一時点の競合防止、正当な境界許容、同時コミット、訂正順序、SQLSTATEと復旧。Provider限定で明示採用するか |
+| 候補B：Provider/Operationの事前読取→検証 | Provider種別をまたぎやすいが、読取後から書込までに別Writerが挿入できる。単なるSELECT後INSERTでは競合を防げない | SERIALIZABLE/対象範囲Lock等で競合を閉じる実証、lost update・再試行・Receiptの扱い |
+| 候補C：版保存とSnapshot投影を別テーブル・文書に分割 | 監査履歴と現在表示を区別しやすいが、二重正本・部分更新・再計算の失敗が発生し得る | Transaction/Outbox/再構築・対象キー・二Consumerの同一Snapshotを確認 |
+
+どの方式でも、**意味的に単一値であること**、**物理保存に競合が入らないこと**、**Read Cohortが必要な全版を取得したこと**、**Ruleの判断に利用してよいこと**は独立している。Queryで0/1件になってもRLSやpartial取得を通じて欠けた版がないとは言えず、当該集合の完全性を別に立証する。SQLのORDER BY/LIMIT 1によって業務上の競合を解消したことにはしない。
+
+### 41.4 BRMS・REA・標準Graph・Studioへの引渡し
+
+- **Rule/BRMS**：Uniqueな担当・承認者・部署を求めるRuleは、所属関係の単一版制約だけでは合格しない。Personへの正式Relation、必要Read集合、Rule版、単位・粒度、部分取得・permission-deniedと現在のHost Grantを別に判定し、0件・1件・複数・未取得／競合を区別する。User-facing説明で複数候補をソート先頭の一人へ黙って縮約しない。
+- **標準Graph/ノード表示**：Membership occurrence、Assertion revision、Provider row、投影上のNode/Edge IDは別。表示で一つの部署へ集約されても、元Relation、複数経路、訂正前後とSourceを失わない。Treeへの投影で第二の親を消去しない。
+- **REA/外部Source**：取得時点（observed-at）と業務側のknown-timeを同一視せず、外部Agentの同名・ID一致でPersonへLinkしない。外部候補は正式Relationの意味受理を経て初めて製品Sourceへ接続する。
+- **Studio/SHO/AIとPlugin**：表・図・説明が同じvalidAt/knownAt/Source版を表していても、それだけで実行GrantやCommit/Effectの資格を作らない。Source pin、Provider/Rule版、配布と実Composition、対象Consumer・開示Sliceを固定し、変更時は既存Preview・再読込の手順を利用する。
+
+この方式比較は§40のO-P1〜5に従属する。次の製品実装はOwnerが意味を選択した正式Persistenceで旧新二版を保存し、実Provider→Function Context→二Consumerへ同じWorld/Read Cohortから渡すこと。DB-nativeの実験がPASSしても、TEI専用Temporal Engine・独自Host・業務専用Authorization・第二Expected Storeを導入しない。#2586の通常CLI実Readと#2831のDesktopセルフビルドを独立P0のまま維持する。
+
+
+<!-- org-two-writer-acceptance-20261115 -->
+## 42. 同時更新で二時点制約が破られないことを、別接続の実PostgreSQLで確かめる（2026-11-15）
+
+### 42.1 前回の検証で確定した範囲
+
+[PR #5063](https://github.com/hat47x/tei-platform/pull/5063)はmainへ統合済み（squash `27a0baf89200485e1fdb50ebab4e2099b4453d69`）。固定HEADの[隔離PostgreSQL CI #43724543096](https://github.com/hat47x/tei-platform/actions/runs/43724543096)で、`TestOrgAxisAsOfExclusionConstraintCandidateOptIn` とその正負のサブテストが**明示PASS**した。Cache Full vs Incrementalも成功したが、全体Repository Healthは別領域の失敗を含むため成功していない。
+
+この試験で確認したのは、同一DBトランザクション内で二時点の除外制約（Membership IDの等値条件、有効期間・認識期間の両方の重なり）が競合版の挿入を拒否し、正当な訂正、期間交替、別Membershipの共存を許すことである。SQLSTATE 23P01、失敗後のSAVEPOINT復旧、旧認識期間を先に閉じた場合の新版追加も確認した。
+
+ただし**接続をまたぐ同時Writer、互いの未確定行への待機、片方のCommit後の競合判定**は、PR #5063の一接続・一トランザクション内試験の合格範囲外である。現行の正式`org_store.membership`への採用やHostのCommit／Receiptも引き続き未受理。
+
+### 42.2 別接続での二Writer競合を、使い捨てDBだけで検収する
+
+次の候補 `TestOrgAxisAsOfTwoWriterExclusionCandidateOptIn` は、CIで明示確認した `tei_org_axis_e2e` DBに限定する。二つの独立したSQL接続で同じ所属A2へvalid×knownの両期間が重なる版を書き込み、一方の行が未確定の間にもう一方がDB内のLock待機へ入ったことを`pg_stat_activity`で観測する。最初のWriterをCommitし、第二Writerが**除外制約のSQLSTATE 23P01で拒否**されることを独立Expectedとする。
+
+| 一因子対照 | 期待する結果 | 合格とみなさないもの |
+| --- | --- | --- |
+| 同一A2、両時間区間が重複、別接続の二Writer | 第二WriterのLock待ちを実観測し、第一Commit後に除外制約名つき23P01。Commit済みA2は一行のみ | 単に二つのGo goroutineを開始しただけ、同じSQL文の別名、同一Tx内の二INSERT |
+| 競合に負けたWriterのRollback | DBの当該所属に勝者一版だけ残り、失敗した版の行は存在しない | Hostの外部副作用取消、ACK喪失、再試行Receiptの同一性 |
+| 正しい境界に接する認識期間 | 同じA2の新版を別Transactionで追加でき、二時点Queryで旧新を読み分けられる | 未確定のビジネス単一値性、歴史的に正しい訂正のOwner受理 |
+| 別Membership A4 | 同じ二時点で共存できる | A4とA2のPerson同一性、業務兼務の意味受理 |
+
+二接続のため試験用テーブルをセッション専用TEMP TABLEにはできない。専用Schemaの作成前に**既存Schemaがないことを検査**し、テスト終了時に削除する。PostgreSQLの`btree_gist`を使用するのは検証用の隔離DBだけであり、正式DBへのExtension導入・Migration・制約採否を意味しない。
+
+隔離PGの専用CIには新テストを明示指定し、実行がSKIPになっていないこと、Go整形、固定Test名のPASS、テスト後の変更がないことを確認する。**固定PR HEADに対するCIでPASSするまでは、ここで述べた結果はExpectedであってObservedではない。**
+
+### 42.3 競合防止が成功した後も残る四つの意味境界
+
+**業務上の同一性**：二つのWriterが同じ`membership_id`を使ったからといって、それが業務上同一Occurrenceかは別。再所属・兼務・異動・訂正、PersonとのLink、単一値性の適用範囲は#2386/#1126が判断する。時点付きFDの意味と、DBの除外制約は対応させて検収するが、一律に同一視しない。
+
+**取得の閉包**：DBで競合が保存されない場合でも、Read Cohort、Alias/Replica、RLS、Providerのpartial、必要Field・Relation、非出力Filterを読み切ったとは言えない。二時点Queryの一行は承認RuleでのUnique候補の証拠ではない。
+
+**現在の実行資格**：WriterのCommitを確認できても、業務Guard→Host Grant→外部Effect→Receiptまで成功したとは限らない。DB制約違反と一時的なDB技術障害、通信途絶・Commit ACK Unknownを区別し、既存のEffect Fenceと再試行契約を使う。
+
+**各Consumerの説明と再確認**：Studio/SHO/Graph/AIが示すMembership occurrence・版・Source Revision・有効／認識時点・Rule版と、実ProviderのObservedを結び付ける。Graphで線を引くこと、Node名が一致すること、外部REA Agentが同名であることを、Source変更・Person Link・現在Grantの成立としない。
+
+### 42.4 製品化の実装順
+
+①隔離PGで二Writerの競合を実測する、②Ownerが同一点単一値性の対象を選ぶ、③正式`*.tei` Persistenceの版IDとProvider・Migrationに採用方式を反映する、④二版保存／訂正／同時Writerを正式Product経路で再実測する、⑤同一World/Read CohortからFunction Context→二Consumerの一致、必要Readの閉包とBRMS／Hostの別資格を検査する。
+
+この順序は[ORG-W1〜5](../workstreams/PRODUCT_COMPLETION_PLAN.md)とO-P1〜5に接続する。実PostgreSQLの特定方式を全Providerの標準DDLとして固定せず、読みやすい宣言的DSLにDB固有のIndex/Extension構文を強制しない。標準Data・Relation・Queryで表した意味を起点に、必要な物理制約はProviderが実装する。新しいTemporal Core、別Host、組織専用ACL、Expected Storeは作らず、通常CLI実Read #2586とDesktopセルフビルド #2831の独立P0を維持する。

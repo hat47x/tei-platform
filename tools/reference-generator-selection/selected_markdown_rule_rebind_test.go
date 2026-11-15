@@ -253,3 +253,105 @@ func TestSelectedMarkdownRuleRefusesTextRebind(t *testing.T) {
 		t.Fatalf("non-numeric Rule/contract mismatch reached generator: %v", err)
 	}
 }
+
+// selectedRuleValueSource models only the pure evaluator's logical numeric
+// input. It is intentionally not a DB Provider, query reader, or authorization
+// source. A nil value represents unevaluable data at this narrow boundary.
+type selectedRuleValueSource struct {
+	attribute core.CanonicalID
+	value     *big.Rat
+	calls     []core.CanonicalID
+}
+
+func (p *selectedRuleValueSource) Number(attribute core.CanonicalID) (*big.Rat, error) {
+	p.calls = append(p.calls, attribute)
+	if attribute != p.attribute {
+		return nil, fmt.Errorf("unexpected numeric read: %s", attribute)
+	}
+	return p.value, nil
+}
+
+func (p *selectedRuleValueSource) RelationKeys(relation, attribute core.CanonicalID) ([]string, error) {
+	return nil, fmt.Errorf("unexpected relation read: %s/%s", relation, attribute)
+}
+
+// The same selected Markdown Rule must agree across two *different* pure
+// realizations: validationeval.Evaluate interprets semantic.Validation, whereas
+// a deterministic Transform Generator emits Go that a different OS process
+// executes. The independent table is fixed below, rather than derived from
+// either evaluator's output. This does not compare physical Provider reads.
+func TestSelectedRuleInterpretedAndGeneratedRealizationsAgree(t *testing.T) {
+	const ruleID = "sales.order_line.quantity_positive"
+	const inputName = "quantity"
+	workspaceRoot, _ := copySelectedRuleWorkspace(t, inputName)
+	loaded, err := workspace.Load(workspaceRoot)
+	if err != nil {
+		t.Fatalf("read selected Markdown Rule: %v", err)
+	}
+	rule, exists := findValidation(loaded.World, ruleID)
+	if !exists || rule.Attribute != "sales.order_line.quantity" || rule.Kind != semantic.ValidationPositive {
+		t.Fatalf("unexpected typed Rule: %+v exists=%t", rule, exists)
+	}
+	generatorSource := filepath.Join(validationTestPaths(t).generators, generatorSources["go-positive"])
+	contractPath := selectedRuleContract(t, workspaceRoot, inputName)
+	candidateDir := filepath.Join(t.TempDir(), "candidate")
+	if _, err := GenerateFromTransformSource(TransformGeneratorOptions{
+		ID: "go-positive",
+		WorkspaceDir: workspaceRoot,
+		ContractPath: contractPath,
+		GeneratorSourcePath: generatorSource,
+		OutDir: candidateDir,
+	}); err != nil {
+		t.Fatalf("generate Rule implementation: %v", err)
+	}
+	if err := VerifyTransformCandidate(candidateDir, workspaceRoot, contractPath); err != nil {
+		t.Fatalf("generated Candidate does not reproduce the recorded Source: %v", err)
+	}
+	binary := filepath.Join(t.TempDir(), "selected-rule")
+	cmd := exec.Command("go", "build", "-trimpath", "-o", binary, filepath.Join(candidateDir, "main.go"))
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("build generated Go as independent OS process: %v\n%s", err, output)
+	}
+
+	// "missing" and "null" have different generated-JSON adapter codes, but
+	// both map to an evaluator error, never to a successful false predicate.
+	// No rounding, exponent coercion, or implicit field substitution is used.
+	cases := []struct {
+		name      string
+		input     map[string]any
+		number    *big.Rat
+		state     string
+		code      string
+		available bool
+	}{
+		{name: "positive", input: map[string]any{inputName: "2"}, number: big.NewRat(2, 1), state: "satisfied", available: true},
+		{name: "positive-fraction", input: map[string]any{inputName: "0.01"}, number: big.NewRat(1, 100), state: "satisfied", available: true},
+		{name: "zero", input: map[string]any{inputName: "0"}, number: big.NewRat(0, 1), state: "not-satisfied", available: true},
+		{name: "negative", input: map[string]any{inputName: "-1"}, number: big.NewRat(-1, 1), state: "not-satisfied", available: true},
+		{name: "negative-zero", input: map[string]any{inputName: "-0"}, number: big.NewRat(0, 1), state: "not-satisfied", available: true},
+		{name: "explicit-null", input: map[string]any{inputName: nil}, state: "unevaluable", code: "null"},
+		{name: "absent", input: map[string]any{}, state: "unevaluable", code: "missing"},
+		{name: "wrong-type", input: map[string]any{inputName: true}, state: "unevaluable", code: "type-mismatch"},
+	}
+	attribute := core.CanonicalID("sales.order_line.quantity")
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			source := &selectedRuleValueSource{attribute: attribute, value: tc.number}
+			interpreted, evalErr := validationeval.Evaluate(rule, source)
+			if len(source.calls) != 1 || source.calls[0] != attribute {
+				t.Fatalf("interpreter changed the logical Read requirement: %+v", source.calls)
+			}
+			if tc.available {
+				if evalErr != nil || string(interpreted) != tc.state {
+					t.Fatalf("interpreted state=%q err=%v; want %q", interpreted, evalErr, tc.state)
+				}
+			} else if evalErr == nil || interpreted != "" {
+				t.Fatalf("unevaluable input became a valid predicate: state=%q err=%v", interpreted, evalErr)
+			}
+			selectedRuleRun(t, binary, tc.input, tc.state, tc.code)
+		})
+	}
+	// A wrong key may carry a valid number but cannot satisfy the selected
+	// contract; the generated Program must not silently read it.
+	selectedRuleRun(t, binary, map[string]any{"threshold": "2"}, "unevaluable", "missing")
+}
