@@ -234,7 +234,7 @@ Source変更A→B→A、生成器版変更、Build時だけの依存、入力取
 <!-- tei-rule-builder-origin-qualification-20261115 -->
 ### 14.5 参照Builderの実消費と、Ruleからの生成資格を分離する
 
-R1.5の実Go試験[ `positive_mutation_binary_test.go`](../../internal/semantic/validationgen/positive_mutation_binary_test.go)と[ `positive_mutation_product_test.go`](../../internal/semantic/validationgen/positive_mutation_product_test.go)が、mainにそれぞれ収録された。固定した二つのDecimal入力を用い、選択済みMarkdown Ruleの参照属性を変えると、生成Goの読取先と結果が変わることを検査する。前者は二つの実コンパイル済みバイナリとSHA差分、後者は原文・Model Revision・Source Indexを含む照合を担当する。**二つの試験が存在しても、両方のexact HEADでCIに合格した事実にはならない。** 同じ因果を三本目の独立Fixtureで複製しない。
+R1.5の実Go試験[`positive_mutation_binary_test.go`](../../internal/semantic/validationgen/positive_mutation_binary_test.go)と[`positive_mutation_product_test.go`](../../internal/semantic/validationgen/positive_mutation_product_test.go)が、mainにそれぞれ収録された。固定した二つのDecimal入力を用い、選択済みMarkdown Ruleの参照属性を変えると、生成Goの読取先と結果が変わることを検査する。前者は二つの実コンパイル済みバイナリとSHA差分、後者は原文・Model Revision・Source Indexを含む照合を担当する。**二つの試験が存在しても、両方のexact HEADでCIに合格した事実にはならない。** 同じ因果を三本目の独立Fixtureで複製しない。
 
 その後の参照Builder試験では、製品`Workspace.Load`と`Source Index`でRuleを選び、`GeneratePositive`のGo byteを一時的なGo packageへ書き、既存`DirSourceResolver`が解決した`BuildPlan`から`-isolate`でビルドする。計画確定後に**生成Goそのもの**を改変すると、既存のSource Digest照合でコンパイル前に拒否する。実バイナリ、`BuildArtifactLock`、依存Package coverageと独立Expectedを照合する試験コードがmainにある。これを**参照BuilderのBuild入力証拠**と位置付ける。正式な製品Builder／Plugin実装の受理ではなく、実行試験の合否も別に記録する。
 
@@ -242,7 +242,7 @@ R1.5の実Go試験[ `positive_mutation_binary_test.go`](../../internal/semantic/
 
 このため、**生成GoのSource Digestが一致しただけでは「現在選ばれているRuleから生成されたGoである」ことはまだ証明されない**。Rule原文の変更後に古い`generated.go`とBuildPlanをそのまま残せば、Go Builder単独にはRuleの変更が見えない。これは参照Builderの失敗というより、**Reader／Generatorの出力証拠をBuild Intentへ引き渡す製品側の結合が未実装**であることを示す。
 
-### 14.6 製品R2の最小一件と、二種類の変更を扱う
+### 14.6 製品R2の最小一件と、意味変更・説明文変更の扱い
 
 次の製品R2は、現行のpureな`GeneratePositive`やGo Builderへ権限・Source解釈を重複実装するのではなく、**既存の選択・生成・Build境界を呼ぶ製品側の一連の処理**として実装する。まず`Workspace.Load`で確定した管理Source、Language版、Rule／型、Source IndexとWorld／Model Revisionを取得する。次に同じ選択版からGoを生成し、**生成Attemptの入力指紋・Generator実装と版・出力Go digest**を実Builderへ引き渡す。Builderは従来どおり実Go入力とToolchain／依存を独立に検査し、結果のArtifact digest・Build lock・Consumerを生成Attemptへ結び付ける。必要な受渡し形式は既存#943／#2595／#4544の契約上で決め、新しい汎用Source kindや第二BuildPlan、Evidence正本を新設しない。
 
