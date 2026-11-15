@@ -497,3 +497,85 @@ flowchart LR
 **着手順**は、実在するRuleの読み取り専用照合→一因子の失効反証→合成の部分入力・Effect unknown反例→実Builder・実Provider・実Consumerの独立照合とする。Studio Stage1→Stage2の正式Desktopセルフビルド、通常CLIからのactual Provider／実Readは引き続き**並行する最上位P0**であり、この図解を新Hard Gateにしない。
 
 **実施状況**：§20〜24は採用前の設計・引渡し条件。新たなGo／Node／DB／Queue／Windows実試験、製品での異種接続・復旧、Owner意味受理、独立Consumerの同一Attempt受領は今回の文書変更では実施していない。
+
+## 25. 製品CLIの実在する読取境界を、図の起点にする
+
+実行図の最初の対象は、既存の`tei inspect`が正式に読み取れるMarkdown Rule一件とする。現行mainには`internal/operations/inspect.go`の`InspectSubject`、`workspace_subject_read.go`の`ReadWorkspaceSubject`／`InspectionFromLoad`、`cmd/tei/cli_inspect.go`の`tei.cli.inspect/v0`が存在する。さらに、PR #4980でmainに入った`cmd/tei/cli_inspect_rule_markdown_process_test.go`は、実際にビルドした製品CLIを別OSプロセスで起動して正負対照を行う。**今回はその既存コード・試験内容を確認したのであって、新たにGo試験を実行したわけではない。**
+
+| 現在の根拠 | 製品の項目・対象 | そこからは言えないこと |
+| --- | --- | --- |
+| 正式に選択されたRuleの存在 | `semantic-validation:sales.order_line.quantity_positive`と`SubjectInspection.Subject`／`canonical` | 同IDの公開`semantic-capability`／Function Entryが存在すること |
+| 元Sourceへの到達 | `sources.references`のDefinition Role・元byte範囲、`sources.artifacts`のPath・Fingerprint | Builderや実Providerがそのbyteを消費したこと |
+| 読取専用の結果 | `tei.cli.inspect/v0`の`ok/result/error`、`sourceStatus=indexed`、`authorityLimits` | 意味のOwner受理、書込み・公開・再配布・実行の権限 |
+| 読取内容の識別 | `worldFingerprint`、`sourceIndexFingerprint`、`workspace` | 現在のHost Grant、Model Revision、実行Attempt、分散Snapshotの一致 |
+
+現行試験の負例では、同じIDを`semantic-capability`として指定すると`SUBJECT_NOT_FOUND`で拒否される。また、通常の`text` Fenceに文字列として登場するだけの別Ruleも正式な`semantic-validation`にはならない。「Sourceを読めた」と「公開したFunctionを起動できる」の間にある境界を、そのまま図に残す。
+
+`ReadWorkspaceSubject`は同じLoadから`ModelRevision`も取得できるが、**現在のCLI `tei.cli.inspect/v0`がこの項目を公開しているわけではない**。二つのFingerprintをModel Revisionの代わりに扱わない。CLIとStudioが同じSource時点を表示したと主張するには、両方の実Consumerで取得できる版・対象のFit／Gapから確認する。
+
+```mermaid
+flowchart LR
+  A["選択されたMarkdown Rule"] --> B["製品Workspace.Load"]
+  B --> C["Canonical Rule・Source Index"]
+  C --> D["tei inspect: read-only"]
+  D --> E["元SourceとRuleの説明"]
+  C -. "Builder実消費は別証拠" .-> F["生成Go・Artifact"]
+  F -. "Provider実Callは別証拠" .-> G["Invocation"]
+  G -. "受領は別証拠" .-> H["Consumer"]
+```
+
+この図の実線は製品コードの経路を説明するもの、破線は**追加の証拠が必要な結合**である。図示したこと自体を、今回の製品E2Eの成功とみなさない。
+
+## 26. 一つの問いから「証拠のある線」と「未確認の線」を引く
+
+最初の問いは「このRuleについて、元定義・評価に必要な入力・生成Go・実利用をどこまで確認できたか」とする。全Workspaceを網羅したGraphを先に作らず、次の**独立した主張**を同じQualified Subjectのもとに並べる。
+
+| 主張 | 既存Producer・検証 | 追加の根拠がなければ |
+| --- | --- | --- |
+| **S：Sourceから正式に読めた** | `Workspace.Load`、`InspectSubject`、実CLI正負試験#4980 | 別Workspace・未選択Language・別版のRuleとは未結合 |
+| **R：入力を実際に読んで評価した** | 既存`validationeval`合成SourceのRead Footprintと一因子変更回帰 | 実DB Read・未観測分岐まで証明しない |
+| **G：そのRuleからGoを生成した** | `validationgen.GeneratePositive`、生成byte／判断条件の局所検証 | 別構文で同じGoが出ても原Sourceを統合しない |
+| **B：製品Builderが生成Goを使った** | #4544／#2595の実Build入力・Artifact証拠 | 局所Go生成のPASSからBuildを合格にしない |
+| **I：選択Providerを実Callした** | #4495／#1251の公開Function Entry・actual Provider・Invocation | Rule Inspectorの成功からFunction公開・呼出しを推定しない |
+| **E：Effect／受領が成立した** | #1129／#1174のReceipt、Consumer・Audienceの実受領 | Pure Ruleでは対象外、外部作用は別Attemptと別資格 |
+
+SとRとGを一枚に並べても、それぞれの試験・実入力・実Build Attemptが同一だったとは限らない。結合するには**Producer、Qualified Identity、Source／Artifactの版、入力とAttempt、取得範囲**が一致するか、明示された対応証拠が必要である。この表は新しいEvidence Store、Runner、永続Status enumではなく、既存の読取結果の投影を作るための検収票である。
+
+## 27. CLI・Studio・AIで同じ説明をするときの停止線
+
+CLI JSON、StudioのInspector／Node View、AIの自然文説明は、同じSubjectを指しても情報を省略する範囲が異なる。そこで、**表示を共通化する前に、同一性・出典・失われる意味・現在開示の条件を明示する**。
+
+| 表示 | 最初に使う情報 | 省略・推定してはならないもの |
+| --- | --- | --- |
+| CLI JSON／表 | 現行InspectのSubject・Canonical・Source参照・Authority Limits、取得したSource版 | `SUBJECT_NOT_FOUND`を全Universeの不存在に拡大、旧Revisionを現在値と断定 |
+| Studio Node View | Rule→参照Attributeの型付き関係、元SourceへのNavigation、未接続のBuilder／Provider欄 | 表示用Edge IDを意味Relation IDに昇格、古いPinや後着Replyを現在欄へ適用 |
+| AI／SHOの説明候補 | どこまで読めたか、どの判断が根拠つきか、次に必要な証拠 | 非公開情報の漏洩、推測した意味の自動受理、説明文の完成＝実行許可 |
+
+参照Workbenchには`tei:inspector-selection-request`、`workspaceEpoch`／`inspectionEpoch`、Pin・後着応答を扱う処理がある。ただし**選択EventはIntentであり、Model Revisionの証明でもHost Grantでもない**。参照UIにある機能が正規Bundle、Go Embed、Windows WebView2で実際に同一版を表示したかは別に検証する。画面上の選択や図のレイアウトをSourceの逆編集権限にしない。
+
+## 28. 間違った説明を防ぐための短い反例
+
+| 反例 | 根拠つきで表示できる結論 | 不合格となる結論 |
+| --- | --- | --- |
+| RuleのInspectは成功、同名Capabilityは未登録 | Ruleを読めた／指定Capabilityは対象読取で見つからない | 公開Entryが完成した・呼べる |
+| `text` FenceにRule名があるだけ | 定義済みRuleとしては不検出 | 名前を見つけたので正式Rule |
+| Goの生成byteはあるがBuilder読取不明 | 生成は局所的に観測／製品消費未確認 | Byteがあるので実製品に収録済み |
+| 選択Provider B・実Called Aを同一Attemptで確認 | 選択と実Callの**矛盾** | Resultが同じなのでBが呼ばれた |
+| TraceにAの記録がない | 観測閉包がなければ呼出しの有無は未確認 | Aを呼んでいない |
+| A→B→AのSource復帰後、旧PinのReplyが遅着 | 元byte一致と旧Attemptの現在性を分離 | 最終byte一致なので旧Grantも有効 |
+| Providerが不整合なInspect結果を返す | 既存`INSPECTION_PROVIDER_INVALID`を保持 | Providerの私有エラー本文をそのまま外部へ公開 |
+| Commit後ACK喪失 | Effectの照会・Receipt確認待ち | 未実行とみなして無条件再送 |
+
+一件の不一致を示すには局所的な正の証人で足りる場合があるが、**全件正常や未呼出し・不存在には、その問いに必要な集合の閉包が要る**。`SUBJECT_NOT_FOUND`も、指定Workspace・Kind・現行Readerの対象範囲内の否定である。意味の未受理、未取得、非開示、未対応を「エラーなし」と読み替えない。独立Expectedは#1180／#2514の既存資産を使う。
+
+## 29. 次の一件を製品実装へ渡す
+
+次のP1実装は、既存の`tei inspect`が返す**一つのRuleの出典と判断義務を、元のSourceへ戻れるread-only説明として示す**ところまでに限定する。Source Reader、Runtime、Host、Compiler、Graph Storeをこの差分で新設しない。
+
+第一の提出物は、(1)選択済みRuleの実Inspect応答、(2)原byte・Source位置と版／取得範囲、(3)Rule→Attributeの型付き関係、(4)未接続のBuilder／Provider／Effectを明示した表または小さな図、(5)同名異Kind・部分取得・一因子変更・旧Pinの独立Expected、(6)exact HEADと実入口／受領先、の六点とする。`ReadWorkspaceSubject`が持つModel Revisionと現行CLI応答との差はFit／Gapに記録し、存在しないJSON項目を想像で追加しない。
+
+この一件が通ったら、同じRuleのAttribute変更を実Evaluator・生成Goへつなぐ。その後に正式Builderのbyte消費、公開pure Functionの実Provider二入口、独立Consumer、Effect／復旧の**別々の製品受入**へ進む。成功を別Attempt・別HEADから足し合わせない。
+
+既存の担当は、Source/Rule＝#2621/#988、Graph・Inspector＝#1124/#4198、Generator/Builder＝#1121/#4544/#2595、Provider＝#4495、Studio＝#1824/#4583、独立Expected＝#1180/#2514とする。**非Plugin Studio Stage1→Stage2実Windowsセルフビルドと、通常CLI actual Provider／実ReadのP0を維持**し、実行図を新しいHard Gateにしない。
+
+**状態**：本節は実在するコードと検証資産に接続した設計・引渡しである。今回、Go／Node／Windows／DBの新試験、正式Builder／Providerの同一Attempt証明、実Effect、業務Ownerの意味受理は実施していない。
