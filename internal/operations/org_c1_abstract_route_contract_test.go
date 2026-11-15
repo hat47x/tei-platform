@@ -1,49 +1,65 @@
 package operations
 
 import (
-	"encoding/json"
 	"path/filepath"
 	"reflect"
-	"strings"
 	"testing"
 
+	"tei/internal/query"
 	"tei/internal/semantic"
 	"tei/internal/workspace"
 )
 
-// This is a Source -> typed IR -> Query-projection witness only.
-// A generated Go method name, an actual Provider read, the runtime call path,
-// and an Owner-accepted Person link are deliberately NOT part of this test.
-// It defines a stable, domain-level path for future generated/interpretive
-// implementation conformance without adopting a new Org-specific runtime.
-func orgC1StableUnitReadPath(rel semantic.Relation, queryID, datasource string, attributes []string) bool {
+// This tests a Source -> typed IR -> Query-interface contract, not execution.
+// The business path is identified by semantic IDs, explicit join keys and
+// named inputs/outputs, never by a generated Go function or UI label.
+func orgC1StableUnitReadPath(rel semantic.Relation, q query.EmbeddedSQL) bool {
 	if rel.ID != "organization.membership.unit" ||
 		rel.Target != "organization.org_unit" ||
 		rel.Cardinality != semantic.CardinalityOne ||
+		rel.JoinTable != "" ||
 		len(rel.Keys) != 1 ||
-		queryID != "org_axes_view.as_of_membership" ||
-		datasource != "org_read" {
+		rel.Keys[0].SourceAttribute != "organization.membership.org_unit_id" ||
+		rel.Keys[0].TargetAttribute != "organization.org_unit.org_unit_id" ||
+		q.ID != "org_axes_view.as_of_membership" ||
+		q.Datasource != "org_read" {
 		return false
 	}
-	// Check the *typed key* rather than matching Relation.Symbol, generated
-	// method name, SQL table alias, or display label. JSON is used here only
-	// to inspect the IR's field IDs without introducing a new Key schema.
-	keys, err := json.Marshal(rel.Keys)
-	if err != nil ||
-		!strings.Contains(string(keys), "organization.membership.org_unit_id") ||
-		!strings.Contains(string(keys), "organization.org_unit.org_unit_id") {
+	// Parameters are named: rearranging their authoring order must not change
+	// the contract, but losing a non-output dependency must invalidate it.
+	actualInputs := make(map[string]string, len(q.Inputs))
+	for _, in := range q.Inputs {
+		name := string(in.Name)
+		if _, duplicate := actualInputs[name]; duplicate {
+			return false
+		}
+		actualInputs[name] = string(in.Type)
+	}
+	if !reflect.DeepEqual(actualInputs, map[string]string{
+		"valid_at":       "std.datetime",
+		"known_at":       "std.datetime",
+		"allocation_min": "std.decimal",
+	}) {
 		return false
 	}
-	return reflect.DeepEqual(attributes, []string{
-		"organization.membership.membership_id",
-		"organization.membership.org_unit_id",
-		"organization.membership.allocation",
+	// The raw column labels and semantic attributes must both match. This
+	// does NOT inspect the actual SELECT/WHERE predicates or run the Provider.
+	actualResults := make(map[string]string, len(q.ResultColumns))
+	for _, col := range q.ResultColumns {
+		if _, duplicate := actualResults[col.Column]; duplicate {
+			return false
+		}
+		actualResults[col.Column] = string(col.Attribute)
+	}
+	return reflect.DeepEqual(actualResults, map[string]string{
+		"membership_id": "organization.membership.membership_id",
+		"org_unit_id":   "organization.membership.org_unit_id",
+		"allocation":    "organization.membership.allocation",
 	})
 }
 
 func TestOrgC1AbstractUnitReadPathUsesStableSemanticIDs(t *testing.T) {
-	root := filepath.Join("..", "..", "reference", "org-staged-axis")
-	loaded, err := workspace.Load(root)
+	loaded, err := workspace.Load(filepath.Join("..", "..", "reference", "org-staged-axis"))
 	if err != nil {
 		t.Fatalf("load actual .tei organization Workspace: %v", err)
 	}
@@ -69,55 +85,150 @@ func TestOrgC1AbstractUnitReadPathUsesStableSemanticIDs(t *testing.T) {
 		}
 	}
 	if !membershipFound || !relationFound || personPathCount != 0 {
-		t.Fatalf("actual Membership path changed: membership=%v unit=%v personPaths=%d", membershipFound, relationFound, personPathCount)
+		t.Fatalf("actual Membership changed: membership=%v unit=%v personPaths=%d", membershipFound, relationFound, personPathCount)
 	}
 
-	for _, query := range loaded.World.Queries {
-		if query.ID != "org_axes_view.as_of_membership" {
+	for _, q := range loaded.World.Queries {
+		if q.ID != "org_axes_view.as_of_membership" {
 			continue
 		}
 		queryFound = true
-		var selected []string
-		for _, column := range query.ResultColumns {
-			selected = append(selected, string(column.Attribute))
+		if !orgC1StableUnitReadPath(unit, q) {
+			t.Fatalf("real Source does not satisfy typed Relation and Query interface: relation=%+v query=%+v", unit, q)
 		}
-		if !orgC1StableUnitReadPath(unit, string(query.ID), string(query.Datasource), selected) {
-			t.Fatalf("actual typed Relation and Query projection no longer describe one accepted unit-read path: relation=%+v query=%s sourceColumns=%v",
-				unit, query.ID, selected)
-		}
-
-		// A UI/compiler target may rename a visible Relation symbol without
-		// changing the qualified identity, cardinality, key, or Query contract.
-		renamed := unit
-		renamed.Symbol = "unitPresentationRenamed"
-		if !orgC1StableUnitReadPath(renamed, string(query.ID), string(query.Datasource), selected) {
-			t.Fatal("a surface-only symbol rename changed the abstract path")
-		}
-
-		wrongTarget := unit
-		wrongTarget.Target = "organization.person"
-		if orgC1StableUnitReadPath(wrongTarget, string(query.ID), string(query.Datasource), selected) {
-			t.Fatal("swapping OrgUnit for Person must not preserve this typed path")
-		}
-		missingJoin := unit
-		missingJoin.Keys = nil
-		if orgC1StableUnitReadPath(missingJoin, string(query.ID), string(query.Datasource), selected) {
-			t.Fatal("dropping the explicit Relation key must invalidate the path")
-		}
-		if orgC1StableUnitReadPath(unit, "org_axes_view.other_query", string(query.Datasource), selected) {
-			t.Fatal("unrelated Query IDs must not inherit this path's evidence")
-		}
-		if orgC1StableUnitReadPath(unit, string(query.ID), "other_provider", selected) {
-			t.Fatal("changing datasource alias requires a separate read qualification")
-		}
-		if orgC1StableUnitReadPath(unit, string(query.ID), string(query.Datasource), selected[:2]) {
-			t.Fatal("dropping the allocation projection must invalidate this specific read contract")
+		t.Run("presentation rename preserves semantic route", func(t *testing.T) {
+			renamed := unit
+			renamed.Symbol = "unitPresentationRenamed"
+			if !orgC1StableUnitReadPath(renamed, q) {
+				t.Fatal("display symbol rename changed the semantic route")
+			}
+		})
+		t.Run("input declaration order does not change named bindings", func(t *testing.T) {
+			reordered := q
+			reordered.Inputs = append([]query.Input(nil), q.Inputs...)
+			reordered.Inputs[0], reordered.Inputs[1] = reordered.Inputs[1], reordered.Inputs[0]
+			if !orgC1StableUnitReadPath(unit, reordered) {
+				t.Fatal("named parameter reordering changed the route")
+			}
+		})
+		t.Run("result declaration order does not change named mappings", func(t *testing.T) {
+			reordered := q
+			reordered.ResultColumns = append([]query.ResultColumnMapping(nil), q.ResultColumns...)
+			reordered.ResultColumns[0], reordered.ResultColumns[1] = reordered.ResultColumns[1], reordered.ResultColumns[0]
+			if !orgC1StableUnitReadPath(unit, reordered) {
+				t.Fatal("named result column reordering changed the route")
+			}
+		})
+		for _, tc := range []struct {
+			name  string
+			rel   semantic.Relation
+			query query.EmbeddedSQL
+		}{
+			{
+				name: "substitute Person as Relation target",
+				rel: func() semantic.Relation {
+					r := unit
+					r.Target = "organization.person"
+					return r
+				}(),
+				query: q,
+			},
+			{
+				name: "reverse Relation key direction",
+				rel: func() semantic.Relation {
+					r := unit
+					r.Keys = append([]semantic.RelationKey(nil), unit.Keys...)
+					r.Keys[0].SourceAttribute, r.Keys[0].TargetAttribute =
+						r.Keys[0].TargetAttribute, r.Keys[0].SourceAttribute
+					return r
+				}(),
+				query: q,
+			},
+			{
+				name: "remove Relation key",
+				rel: func() semantic.Relation {
+					r := unit
+					r.Keys = nil
+					return r
+				}(),
+				query: q,
+			},
+			{
+				name: "change Relation to join table",
+				rel: func() semantic.Relation {
+					r := unit
+					r.JoinTable = "unexpected_join"
+					return r
+				}(),
+				query: q,
+			},
+			{
+				name: "change Query identity",
+				rel: unit,
+				query: func() query.EmbeddedSQL {
+					changed := q
+					changed.ID = "org_axes_view.other_query"
+					return changed
+				}(),
+			},
+			{
+				name: "change datasource",
+				rel: unit,
+				query: func() query.EmbeddedSQL {
+					changed := q
+					changed.Datasource = "other_provider"
+					return changed
+				}(),
+			},
+			{
+				name: "remove non-output allocation filter parameter",
+				rel: unit,
+				query: func() query.EmbeddedSQL {
+					changed := q
+					changed.Inputs = append([]query.Input(nil), q.Inputs[:2]...)
+					return changed
+				}(),
+			},
+			{
+				name: "change knownAt input type",
+				rel: unit,
+				query: func() query.EmbeddedSQL {
+					changed := q
+					changed.Inputs = append([]query.Input(nil), q.Inputs...)
+					changed.Inputs[1].Type = "std.decimal"
+					return changed
+				}(),
+			},
+			{
+				name: "drop allocation result",
+				rel: unit,
+				query: func() query.EmbeddedSQL {
+					changed := q
+					changed.ResultColumns = append([]query.ResultColumnMapping(nil), q.ResultColumns[:2]...)
+					return changed
+				}(),
+			},
+			{
+				name: "map allocation to wrong semantic attribute",
+				rel: unit,
+				query: func() query.EmbeddedSQL {
+					changed := q
+					changed.ResultColumns = append([]query.ResultColumnMapping(nil), q.ResultColumns...)
+					changed.ResultColumns[2].Attribute = "organization.membership.org_unit_id"
+					return changed
+				}(),
+			},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				if orgC1StableUnitReadPath(tc.rel, tc.query) {
+					t.Fatal("semantic route changed but contract remained true")
+				}
+			})
 		}
 	}
 	if !queryFound {
-		t.Fatal("actual as-of Query is absent; no path witness can be asserted")
+		t.Fatal("actual as-of Query absent; no semantic route witness can be asserted")
 	}
-
-	// A valid Membership -> OrgUnit path does not imply Membership -> Person,
-	// a complete Read Cohort, a BRMS candidate, or an executable Host Grant.
+	// Even a passed Source/IR contract does not show a runtime join,
+	// completed Read Cohort, Person identity, Rule decision or Host Grant.
 }
