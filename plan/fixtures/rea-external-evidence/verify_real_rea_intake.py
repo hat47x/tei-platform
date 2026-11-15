@@ -274,6 +274,10 @@ def verify_real_mode(binary, version, report, tool_prefix=None):
         run(rea, ["inspect-analysis-view", request_path, "--format", "jsonl"],
             stdout_path=view)
 
+        # Record captured hashes as soon as both external commands have
+        # returned, even if later parsing/selection fails. The workflow's
+        # always() artifact step needs a failure receipt, not an empty folder.
+        report["captured"] = {"analysis": digest(analysis), "view": digest(view)}
         payload = decode(view.read_bytes())
         records = [json.loads(line) for line in payload.split("\n") if line.strip()]
         control = [record for record in records if record.get("$rea") == "jsonl/v1"]
@@ -319,10 +323,6 @@ def verify_real_mode(binary, version, report, tool_prefix=None):
             report["checks"].append({"negative": name,
                                      "code": diagnostic.get("code"),
                                      "category": diagnostic.get("category")})
-        # The digests are taken while the captured bytes still exist: the
-        # record is the evidence that these bytes were received, and a digest
-        # taken after the workspace is gone would prove nothing.
-        report["captured"] = {"analysis": digest(analysis), "view": digest(view)}
     report["mode"] = "real"
     return report
 
@@ -339,18 +339,29 @@ def main():
     args = parser.parse_args()
 
     report = {"version": args.version, "binary": str(args.binary), "checks": [],
-              "notRun": []}
-    if args.fixtures_only:
-        verify_fixture_mode(args.binary, report)
-    else:
-        verify_real_mode(args.binary, args.version, report, tool_prefix=args.tool_prefix)
-    if args.report:
-        Path(args.report).write_text(
-            json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps({"mode": report["mode"], "version": report["version"],
-                      "checks": len(report["checks"]),
-                      "notRun": report["notRun"]}, ensure_ascii=False))
-    return 0
+              "notRun": [], "status": "not-run"}
+    try:
+        if args.fixtures_only:
+            verify_fixture_mode(args.binary, report)
+        else:
+            verify_real_mode(args.binary, args.version, report, tool_prefix=args.tool_prefix)
+        report["status"] = "completed"
+        print(json.dumps({"mode": report["mode"], "version": report["version"],
+                          "checks": len(report["checks"]),
+                          "notRun": report["notRun"]}, ensure_ascii=False))
+        return 0
+    except Exception as exc:
+        # Keep a bounded diagnostic in the run record. The exception still
+        # propagates, so a failed verifier can never become a passing CI job.
+        report["status"] = "failed"
+        report["failure"] = {"type": type(exc).__name__,
+                             "message": str(exc)[:350]}
+        raise
+    finally:
+        if args.report:
+            Path(args.report).write_text(
+                json.dumps(report, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8")
 
 
 if __name__ == "__main__":
