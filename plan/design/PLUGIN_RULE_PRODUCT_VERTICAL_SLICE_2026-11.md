@@ -155,7 +155,7 @@ UI実装におけるTypeScript・Web標準技術・Wailsの選択は#1824の担�
 
 ## 13. ノード型FlowとPluginを、同じ標準モデルから展開する
 
-Node-RED／Enebular型のプログラミング、ESPStudioのようなNode UI、データ連携・マッシュアップ・簡易APIに向けても、**Flow専用の別Meaning／Runnerを作らない**。既存の標準データ構造、Operator Contract、Function／Process Flow、Capability Invocationを組み合わせ、GUIのNodeはその投影として扱う。[研究統合`16.18〜16.21](../research/TECH_RESEARCH_INTEGRATION_2026-10.md)の議論と方向を合わせるが、現行Plugin第一縦断R1〜R3より先に新しい実行基盤を導入しない。
+Node-RED／Enebular型のプログラミング、ESPStudioのようなNode UI、データ連携・マッシュアップ・簡易APIに向けても、**Flow専用の別Meaning／Runnerを作らない**。既存の標準データ構造、Operator Contract、Function／Process Flow、Capability Invocationを組み合わせ、GUIのNodeはその投影として扱う。[研究統合§16.18〜16.21](../research/TECH_RESEARCH_INTEGRATION_2026-10.md)の議論と方向を合わせるが、現行Plugin第一縦断R1〜R3より先に新しい実行基盤を導入しない。
 
 | 一つのFlowを構成する要素 | 標準モデルで保持するもの | Node画面だけに持たせるもの |
 | --- | --- | --- |
