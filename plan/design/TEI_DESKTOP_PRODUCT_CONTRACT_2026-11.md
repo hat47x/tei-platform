@@ -842,6 +842,8 @@ P0の優先順位は**Desktop Stage1→Stage2／通常`tei`実Provider／正式R
 
 **配布境界の更新**：[PR #4812](https://github.com/hat47x/tei-platform/pull/4812)の最後のHEAD `5035ef82`では9種のCIがsuccessだったが、同PRは**未マージでclosed**。その後mainのWorkbench SourceはPin UIの実装で変更され、#4812の古い`main.js`／`index.html`をそのままmainへ移すと最新の描画・Pinを壊す可能性がある。正式なWails配信は**現mainの最新Sourceから毎回再生成し、同じHEADの埋込byte／Browser／Windows WebView2を独立検査する**。S-LOC-0はその前段であり、S-LOC画面・S-OPEN・Current Grant・正式`*.tei.md` Reader／Stage1→Stage2は各Ownerの後続検収として維持する。
 
+**実装とCIの実観測（2026-11-15）**：[Draft PR #4842](https://github.com/hat47x/tei-platform/pull/4842)のexact HEAD `b38e0058`にはこの純粋投影、7つのNode回帰と標準`npm test`への登録がある。[Workbench embedded bundle CI #43676020851](https://github.com/hat47x/tei-platform/actions/runs/43676020851)のログでは、新設したS-LOC **7件はすべてPASS**。ただし同Workflowは既存のPin Product Reader Fixtureに`authorityLimits`が欠けること、`main.ts`と`index.html`のPinボタンIDが異なることなどから**overall FAIL**。Windows CI #43676020844も、`internal/jsonl.ReadBytes`二重宣言と静的Workbench固定版不一致でFAIL。二重宣言は後続[PR #4844](https://github.com/hat47x/tei-platform/pull/4844)がmainへマージして修正したが、**#4842の旧HEADに遡ってCI成功を付与しない**。現行Pin Fixture／UI接続と生成・埋込資産は別の修正・検収対象とし、総合CI成功または製品S-LOC完了をここでは主張しない。
+
 ## 1. 位置づけと判断済み前提
 
 - **TEI Studio**はData/Function/Business三視点、Data Context、Source/Meaning、DBクライアント、Plugin、テスト、SHO文書機能への統合Workbench。
