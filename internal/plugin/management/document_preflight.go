@@ -9,14 +9,14 @@ import "tei/internal/plugin"
 // or grant publication. Until a Plugin -> Document binding is accepted, the
 // result always says that the document cannot be read.
 type DocumentReadPreflight struct {
-	PluginID        string `json:"pluginId"`
-	Environment     string `json:"environment"`
-	SelectionStatus string `json:"selectionStatus"`
-	ResolvedVersion string `json:"resolvedVersion,omitempty"`
-	LockPinned      *bool  `json:"lockPinned"`
-	SourceBinding   string `json:"sourceBinding"`
-	Disclosure      string `json:"disclosure"`
-	DocumentReadable bool  `json:"documentReadable"`
+	PluginID         string `json:"pluginId"`
+	Environment      string `json:"environment"`
+	SelectionStatus  string `json:"selectionStatus"`
+	ResolvedVersion  string `json:"resolvedVersion,omitempty"`
+	LockPinned       *bool  `json:"lockPinned"`
+	SourceBinding    string `json:"sourceBinding"`
+	Disclosure       string `json:"disclosure"`
+	DocumentReadable bool   `json:"documentReadable"`
 }
 
 const (
