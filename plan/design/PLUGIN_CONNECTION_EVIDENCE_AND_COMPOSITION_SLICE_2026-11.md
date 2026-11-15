@@ -229,3 +229,71 @@ Go単一バイナリは必要なContributionだけを静的に合成し、Build�
 Ownerは#4359/#988（OperatorとDSL）、#1063/#2595/#2600（生成・失効）、#951/#1251/#4495（実Provider）、#1124/#4198（Graph／Operation）、#1824/#2831/#4583（Studio）、#1180/#2514（独立Expected）を再利用する。[#5035](https://github.com/hat47x/tei-platform/pull/5035)のProjection受入、[自己記述§49](ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md)のSD-O1とも目的が重なるため、**試験ケースや実装責務は二重化せず、ここでは横断接続に固有の反証を追加する**。新しい万能Hook／Resolver／Evidence Store／Graph Runtimeは採用しない。
 
 **今回の更新は設計と実装引渡しである。** CPW-11〜16の新規Go／Windows／実Provider試験、正式R2-P全体、R3実Call、Stage1→Stage2の製品受領、Owner意味受理は、この追補によって新たに成立したものではない。
+
+
+<!-- tei-plugin-join-proof-v1-20261115 -->
+## 9. 型付き貢献の適合と「実際につながった」証拠を別々に確定する（2026-11-15）
+
+### 9.1 横断Pluginを、共通Runtimeではなく貢献の検収として成立させる
+
+標準Data／Function／Process／Node Flowにまたがって同じ機能を使えることと、すべてを共通Hostで実行することは別である。各領域のOwnerが公開する**型付き接続点**に対し、Operator／Reader／Generator／Provider／Observerなどが何を提供できるかを表し、その採用・実使用を問いごとに検査する。
+
+検収上は、次の判断を混同しない。
+
+| 判断する層 | 問いと必要な証拠 | これだけでは足りないもの |
+| --- | --- | --- |
+| **Shape** | Portの型、入出力、単位・精度、NULL／欠損・未取得、粒度、時点、Scope、取得完全性を満たすか | 同じ`takes number`という宣言は判断規則の等価性を証明しない |
+| **Law** | 業務規則・演算の意味が、受理された仕様と独立Expectedに適合するか | 実装名・Plugin自己申告・一回の正常終了では受理できない |
+| **Binding** | 対象Workspace／環境／Target／Contract版・形状について、**何を選んだか**。構成版／Lockは何か | 組込み`implementations`選択は、正式Plugin Resolver／Lockの選択ではない |
+| **Realization** | 生成した実コード、Builder実入力、Artifact member、実Provider Entry／Callが**何だったか** | 同じ結果値やソース名だけでは、選択B→実Call Aを正当化できない |
+| **Admission／Effect** | 現在のHost Grant／Audience、先行Guard、Commit・Receipt、再試行条件を満たすか | 過去のSelectionやBuild成功、UIでの配線から現在権限は導けない |
+| **Consumer／Projection** | 対象・版・Attemptが一致する実CLI／Windows／外部Hostの受領証拠を持つか | 表示用Graphの完成、PoC実受領と正式Studio Stage2は同じではない |
+
+この表は新Coreの六種Schemaや万能`ready`判定の提案ではない。各Ownerの既存Contract、Source Index、Scenario、Build Intent、Invocation、Evidenceを**必要な問いにだけ**照合する表示・検収の順序である。何の受理が欠けているかを答えられること自体が最初の価値となる。
+
+### 9.2 mainの二つの縦断を、誤って一本へ結ばない
+
+**Operator実行側**では、[#5007](https://github.com/hat47x/tei-platform/pull/5007)の実`Workspace.Load`→manifest選択→`validationeval.ResolveImplementations`→Scenario評価→`validationImplementations`を使う。`tei.number.non-negative`と`tei.number.non-zero`はどちらもNumberを受け取れるが、入力`0`で結果が異なる。この区別はShapeが同じでもLawが同じではないという具体例になる。現行の実Call証拠はScenario評価の**組込み実装**についてのもの。正式Plugin Providerの選択、実Binary digest、Current Grantは未接続である。
+
+**生成・Build側**では、[#5009](https://github.com/hat47x/tei-platform/pull/5009)／[#5020](https://github.com/hat47x/tei-platform/pull/5020)のRule元位置→型付き判断→生成Go AST→通常`tei self-build`を土台にする。さらにmain統合済み[#5051](https://github.com/hat47x/tei-platform/pull/5051)は、原Markdownとbyte同一のコピーを`//go:embed`で生成Go側Packageへ含め、実Binaryが計算した原文digestを照合する限定回帰を加えた。これは原文の**複製後の実消費**を示すが、選択元Workspace path／Reader版・Generator版・元原文からコピーまでを正式Buildの同一Attemptで証明したわけではない。Build Planへ元Markdownを架空の`go-package`として追加せず、[R2-Pの生成元・消費閉包](PLUGIN_RULE_PRODUCT_VERTICAL_SLICE_2026-11.md)を実Go byteの受渡し点で結ぶ。
+
+二例のRule／OperatorとBuild Subjectは現在同じ正式Function Entryではない。したがって、局所実行成功・生成Binary成功・参照Workbenchの実Windows成功を並べても、**Ruleから公開Functionへ至るPlugin E2Eは成立していない**。正式な利用宣言と公開Entryを確認した後にのみ合流させる。
+
+### 9.3 次に成立させる「一問一対象」の接続検収票
+
+最初の問いを「Workspaceで宣言された一Operator Ruleについて、現在の実装選択と、局所で実呼び出しされた実装は一致するか」に限定する。既存APIの観測を利用し、次の列を独立に残す。
+
+| 記録欄 | 実在する取得元 | 接合に必要な条件 |
+| --- | --- | --- |
+| 定義 | Workspace／RuleのSource Index、Subject・定義範囲、Model Revision | 同じWorkspace／Source occurrence、正しいReader選択 |
+| 適用 | Applicationが利用するRule／Operator ID、型、入力の必要範囲 | Rule IDを公開Entryへ自動昇格しない。必要Data Contextの完全性を確認 |
+| 選択 | manifest`implementations`のOperator ID→実装ID、後続で選択指紋 | 正確な選択集合の現在性。Plugin Lockとは別欄 |
+| 実Call | Scenarioの`validationImplementations`と選択Step／評価結果 | 同じOperator、Rule、実行試行。未観測を未呼出しと断定しない |
+| Build／Artifact | 生成Rule Go、実Builder入力、Artifact digest | **別Rule／別Attemptのため、現時点では本Operatorに未接続** |
+| 正式Plugin | Inventory、`composition.Selection`／`Service.Invoke` | 共通のContract・Scope・世代・実Entry対応が未実証なら`unknown` |
+| 表示／公開 | CLI／Inspectorの対象、現在Audience、別Consumer | 表示・Source閲覧・実行Grantを同一視しない |
+
+読み取り専用の結合は、Ownerの証拠が**同一対象・同一版・同一Scope・同一Attemptを支持する辺ごと**に行う。`unknown`（根拠不足）、`mismatch`（実証された不一致）、`not-applicable`（対象契約外）は別に扱う。閉じた観測範囲を証明できない限り、記録にないCallやRelationを「存在しない」として扱わない。[Node View §9](SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)は同じ接続票のread-only Projectionとし、標準GraphのEdge identity・方向・多重性を保つ。線のドラッグでResolverの選択やSourceの変更を確定させない。
+
+### 9.4 再資格化と横断機能の拡張順
+
+WorkspaceのOperator実装だけをA→Bに切り替え、World／Rule／入力を据え置いた場合、**生成済みScenarioコマンドの選択資格は変わる**。この不足に対するGo修正は後継[PR #5054](https://github.com/hat47x/tei-platform/pull/5054)にあり、本書では実装を複製しない。#5054の選択指紋が成立した後も、それは実装IDの一致であって実装コードのdigest・正式Plugin Lock・Law受理ではない。A→B→Aで指紋が元に戻っても、途中の実行Attempt／Grant／Source再読取の資格を復活させない。
+
+次のコード差分は、その後に**一つのOperator Ruleについて「定義→選択→実Call」の接続をread-onlyで照合し、未接続のBuild／Plugin／公開Entryを欠落として示す**ものとする。`cmd/tei/scenario_validation.go`の局所Callを再実行する別Runnerは作らず、既存Operation／Scenario結果のProjectionとして扱う。別々に検収したR2-Pの生成元・消費閉包、R3の正式Function→Provider実Call、通常Studioと生成PoC Bの実Windows Consumerは、対応するFunction／Artifact／Attemptが**正式に同じ場合だけ**この票へ追加する。[#5042](https://github.com/hat47x/tei-platform/pull/5042)／[#5052](https://github.com/hat47x/tei-platform/pull/5052)の生成Desktop PoC B成功もStage1自身が生成したStage2の実受領とは区別する。
+
+将来は、同じ型付き接続の規則をAPIマッシュアップ、Node Flow、Event、VUI、データ変換へ広げられる。しかし、外部Trigger・非同期配送・更新操作・Guard／Effect／Receiptはそれぞれ追加の証拠を要する。Wailsショーケースの能力分類は検証対象を選ぶ資料であり、Web ComponentやWails Bridgeを業務Pluginの新Runtimeにしない。新しいHost／Registry／Universal Hook／Graph Engineを導入せず、既存#951／#1124／#1251／#2600／#4198へ返す。
+
+### 9.5 独立Expectedの追加候補と最小実装単位
+
+| Case | 一因子の差と期待する扱い |
+| --- | --- |
+| **CPW-17** | Operatorの入力Shapeは同じ、Numberに対するLawだけ違う（0を含む）。型適合だけで意味同等としない |
+| **CPW-18** | 生成Goの判断とBinary結果は同じ、元Markdownの説明文byteだけ変更。出典の再確認と実Artifactの再利用を別に判定する |
+| **CPW-19** | 実Binaryが埋込みコピーのdigestを返すが、元WorkspaceのReader／Generator版とコピーの対応がない。正式R2-P出典閉包を不成立のまま保持 |
+| **CPW-20** | 選択済み組込み実装と同名のPlugin Inventory行／別ContractのProvider候補を提示。明示Bindingなしに実Plugin選択のEdgeを作らない |
+| **CPW-21** | 同端点・同ラベルの二Edge、あるいは片端点だけ実観測したGraphを表示。別Identityを潰さず、不足端点から意味受理や実Callを推定しない |
+| **CPW-22** | 同じ実装選択指紋に戻るA→B→A、または別Workspaceの同名Rule。古いAttempt、Grant、Source現行性を復活させない |
+
+**実装の最初の一歩**は、#5054の旧Scenario拒否が実HEADで合格した場合の、既存`Scenario Result`→read-only検収票の局所ProjectionとCPW-17／20である。#5054が未統合なら先行するP0-Aを止めず、既存#5007の局所Callを観測する範囲で設計・負例だけ先に確定する。正式Generator入力閉包は#1121／#4544／#2595、Plugin Provider／R3は#951／#4495、Node／Studioの別Consumerは#1124／#1824／#2831／#4583、独立Expectedは#1180／#2514に引き継ぐ。
+
+**受入の上限**：本節は接続の条件と製品実装順を更新した文書である。CPW-17〜22の新Go／Windows／DB試験、正式Plugin Runtime Provider、R2-P／R3の全経路、Ownerの意味受理は新たに実行・完了していない。全体Healthに既知の失敗が残っていても、局所成功を全体合格へ昇格しない。

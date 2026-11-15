@@ -475,3 +475,57 @@ DC-27〜32は新規テスト実施を表さず、#1180／#2514の独立Expected�
 次のP1は一問一Subjectのread-only説明表示である。先にReadWorkspaceSubjectとInspectionFromLoadの既存列を再利用し、将来の表示列はProduct Inspectorの公開契約に存在するかを検査してから追加する。Ruleの論理Read Footprintは別の既存評価観測が必要であり、ここでData項目定義から推測して埋めない。原宣言→Generator→Build Intentの正式R2-P、実ProviderのR3、WindowsのStage1→Stage2は別P0で維持する。
 
 この節は**実装回帰の根拠と次の受入条件**であり、Data項目定義表の全構文採用、Query／Persistence／型付き逆編集の完成、Sourceへの書戻し、実Provider Callの証明ではない。
+
+## 25. Markdownの定義を実CLIから同じMeaningで読む（2026-11-15製品追補）
+
+### 25.1 二つの異なる表層で、同じInspect契約を検証する
+
+これまでの製品Inspector回帰は、選択済みRuleの実CLI経路と、Data項目定義表の同一Load内の出典照合に分かれていた。main統合済み[PR #5037](https://github.com/hat47x/tei-platform/pull/5037)では、前者について、実OS Processで起動したtei inspectと既存operations.InspectSubjectを比較する試験がある。
+
+これをData項目定義表にも広げる最小差分が、cmd/tei/cli_inspect_markdown_data_table_process_test.goである。既存のtei.authoring/v1を明示選択したWorkspaceを読み、追加のCLIやReaderを作らず、実Go製品バイナリをビルドしてinspectを別Processで呼ぶ。
+
+| 確認点 | 一件の試験が比較する内容 | 意味の範囲 |
+| --- | --- | --- |
+| **実CLIとApplication Operation** | Data／Attribute／Ruleをkind＋厳密IDで取得し、CLIのResult全体を直接InspectSubject結果と比較 | Readerが選んだ既存Semanticのread-only表示であり、外部Providerの実Callではない |
+| **原Source** | 三SubjectのRoleDefinition、同一Markdown Source Path、原byte Fingerprint、Data名・セル・Rule名の範囲 | 同一表示名や字面を別KindのSubjectへ自動転用しない |
+| **非定義の拒否** | 印なしの記録例から架空Dataを作らず、Rule IDを使うCapability読取りもSUBJECT_NOT_FOUNDで拒否 | Sourceに文字があることと、公開可能なOperationの存在は別 |
+| **変更の再取得** | 説明文のみ追記後、CLIのWorld／Canonicalが同一でもSource Index／Artifact Fingerprintが変わることを確認 | 新Source版が見えたことは、Grant・Artifact・Owner受理を更新しない |
+
+この回帰の対象は**内蔵CLIのdirect inspect経路**である。選択した外部Inspector Provider、Studio Bridge、MCP、独立した実Host、DBとAPI Consumerを一度に試験したと扱わない。特に同じJSONが出ても、実際に選ばれた実装が違えば、実行資格の同値はまだ成立しない。
+
+### 25.2 Sourceの状態とMeaningの状態を別の証拠として表示する
+
+同じData定義が、従来DSLとMarkdown表の両方から構築されても、**型付きMeaningの一致は一つの比較**、Reader契約・Source位置・Source改版の一致は別の比較である。Sourceだけの変更に対してWorld Fingerprintまで必ず失効させる実装は避ける。ただし、Source位置に基づくPin・編集・開示判断は独立に再資格化する。
+
+当面のread-only説明欄は、Product Inspectorが返せるSubject Kind・厳密ID、Canonical、Workspace、World Fingerprint、Source Index Fingerprint、Source Status、Source Reference／Artifact、AuthorityLimitsを基線とする。Reader ID／Versionは現行のLoader記録から試験で照合できるが、Inspectorの公開JSONにないため、そこへ架空の列を付けない。
+
+これにより、Studioのノード図、Markdown表、CLI一覧を**同じSubjectの異なる投影**と説明できる。ただしData参照線、評価条件線、Process Trigger、Plugin依存、実Provider Callの線は混同しない。Node Viewへ持ち込むのはこの区別を表現できるようになってからであり、新しいノード実行Engineを先行させない。
+
+## 26. DSL→生成Go→Studioへの接続で何を証拠にするか
+
+並行チャットでは、main統合済み[PR #5051](https://github.com/hat47x/tei-platform/pull/5051)により、選択元Rule MarkdownのbyteコピーをGo packageへ配置し、go:embedでBinaryに収録してDigestを照合する限定試験が追加された。これは§23の生成元閉包と消費閉包を近づける成果である。一方、**元ファイルのLocator・Reader・Generator資格まで正式なBuild Intentと一Attemptに束縛したR2-P全体**ではない。
+
+また、[PR #5052](https://github.com/hat47x/tei-platform/pull/5052)は生成Workbench PoC BについてWindows WebView2の通常Job／生成Jobの成功を整理した。これは生成UIの実Consumerとして重要だが、**TEI自身が非PluginのStudio Stage1を使ってStage2 Desktopを再構築する製品セルフビルド**の完了ではない。
+
+このため、宣言的構文の製品成熟度は次の**三つの独立した実物**で測る。
+
+| 実物 | 次に確認する独立の成立条件 | 担当する既存経路 |
+| --- | --- | --- |
+| **宣言の読取結果** | 選択WorkspaceでRule／DataがInspector・CLIから同じMeaningとSourceへ解決される | #2621／#988／#1124／#1824 |
+| **生成・Buildの結果** | 元DSLの正本／実Generator／実生成byteと、実Builderが消費したGo＋DSLの対応を同一Attemptで証明する | #1121／#4544／#1180／#2514 |
+| **利用先の実結果** | Studio／公開Entry／通常CLIのどのConsumerが、どのArtifact／選択Providerを本当に使ったかを独立に観測する | #4495／#951／#2831／#4583 |
+
+最初の一問はData表の実CLI Inspector、次はRuleの実Builder出典、並行P0はStudio Stage1→Stage2の実再構築と実Provider／独立Consumerである。CLIから読めたこと、生成Sourceが同じこと、PoCのWindows UIが起動したことを、ひとつの万能なPASSへ合成しない。
+
+### 26.1 既存独立Expectedに渡す負例
+
+| ID | 一因子変更 | 失格とする短絡 |
+| --- | --- | --- |
+| DC-33 | Markdown Data定義の元Sourceを変えず、CLI inspectを直接Operationと比較 | JSONのSubject、Source、Authorityの一部だけ一致しても全面同値と呼ばない |
+| DC-34 | 同じMarkdownにRuleがあっても、kindだけsemantic-capabilityへ変更 | 文字列IDが一致するだけで公開Functionとして取得しない |
+| DC-35 | 宣言の後へ説明文だけを追記して再度CLI inspect | Worldが一致するからと古いSource Index／Pinを流用しない |
+| DC-36 | 同じ正値Rule Goに別の原文を同梱してBuildし、結果値は同じ | 実生成・原文byte・Builder入力の同一性を結果値だけで確定しない |
+| DC-37 | Studio生成PoCが正常起動するが、Stage1からStage2を再構築していない | 生成PoCのConsumer PASSをStudioセルフビルドPASSと呼ばない |
+| DC-38 | Data配線の見た目だけをProcess Triggerへ変更 | 表現の編集が実行意味やGrantを自動生成しない |
+
+DC-33〜35は追加Go回帰の観測対象と重なる。DC-36〜38は**未実装の独立Expected候補**であり、新しいExpected正本を作らず既存#1180／#2514へ渡す。追加Go試験のファイル収録とCI exact HEADのPASS、実Windows／Providerの実観測はそれぞれ別に報告する。
