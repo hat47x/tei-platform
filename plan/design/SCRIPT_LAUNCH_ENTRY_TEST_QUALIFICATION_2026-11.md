@@ -1440,3 +1440,22 @@ Studio Inspectorの参照制限表示（#4806）も、製品Build／実Wails埋�
 [Source改版回帰 #4870](https://github.com/hat47x/tei-platform/pull/4870)では、Canonicalが同じでも改行のみの編集でSource／Index／Artifact Fingerprintが変わり、A→B→Aで見かけのFingerprintが戻る反例がmainへ入った。将来Ruleを含む文書を生成や起動へ渡す場合も、Canonical同値や再計算したbyte一致だけで旧Meaning受理／実行Grantを復活させない。Rule Readerが同じLoadで得た`AuthoringSources`の言語・定義件数は**読取り観測**であり、Provider呼出しやConsumer受領のReceiptではない。
 
 今回の限定Go回帰は、選択済みRule Markdownの`semantic-validation`→実Source anchorと、同名`semantic-capability`不存在を確認する。独立ExpectedやOwner受理は#1180/#2514、Reader拡張は#2621、生成Plugin・Function実起動は#1121/#1251/#4495、非Plugin Studio Stage1→Stage2は#2831/#4583が担当する。新しいLanguage Registry、Script Runner、Function合成規則は追加しない。
+
+### 29.8 Ruleから生成したGoを、製品Entryの実Providerとして受け入れるまで
+
+[Go生成の実装 #4911](https://github.com/hat47x/tei-platform/pull/4911)は、製品`Workspace.Load`で選択された`sales.order_line.quantity_positive`と、解決済みの`std.decimal`型を`validationgen.GeneratePositive`へ渡し、`source.Number("sales.order_line.quantity")`の実読取と`value.Sign() > 0`の判断を含むGoを生成する。テストでは生成したソースを別OSプロセスの`go run .`で動かし、正値・0・負値・NULL・未取得の固定Expectedを照合する。生成Goが既存`validationeval.Evaluate`を単に呼び出して済ませていないことも検査する。**これはR1の局所的なGo Loweringであり、製品Builderの採用、生成Pluginの選択、公開Function Entry、実Providerの起動ではない。**
+
+[Rule変更の実Evaluator回帰 #4913](https://github.com/hat47x/tei-platform/pull/4913)は、同じRule IDと合成入力を維持して参照先を`quantity`から`line_number`へ変更したとき、既存Evaluatorの実Read先・判断・Source／World版が変化することを示した。しかし#4911の生成差分負例は、メモリ上の`semantic.Validation.Attribute`だけを直接変えた試験であり、**編集した`*.tei.md`の原文から再Loadして生成Goが更新されたという縦断試験にはまだなっていない**。次のR1回帰は、同一Workspaceを編集前後それぞれ実Loadし、実Source Index→型解決→生成Goのbyte差分→別プロセスの判断まで一連で対照する。RuleのIDが同じでも、参照先・型・Source Revisionが変われば旧生成物を黙って再利用しない。単なる説明文変更は意味と生成Goの不必要な変更を起こさず、Sourceの現在性だけを別に再確認する。
+
+次の製品接続は、既存[Plugin Rule縦断計画](PLUGIN_RULE_PRODUCT_VERTICAL_SLICE_2026-11.md)のR2／R3と、公開pure Functionの#4495のA／B／Cを**同じ受入票で照合するが、同一の実装とはみなさない**。
+
+| 対象 | 次の実装・検査 | 通してはならない対照 |
+| --- | --- | --- |
+| R1：Sourceから再生成 | 同一Loadの型付きRule・型・Source Rangeを実生成Goへ渡し、正値判断とRead要求が原文変更に追随することを確認 | Rule ID／結果が同じだからSource再読取や型解決を省略 |
+| R2：実Builderの消費 | 実Builderが生成Goのbyte列と生成器版をBuild入力として取り込み、Artifact・Bundle／Evidenceの同一性を残す | 手元の`go run`が成功しただけで製品Artifactと認める。旧Source／旧GeneratorのGoを再利用 |
+| A／B：公開EntryとProvider | Ownerが受理したFunction／Entry、現在Host Grant、typed Request→実Binder引数、selected／actual Go Providerを同じAttemptで照合して実Callする | Rule IDをFunction Entry IDとして自動公開。Mock／別Providerの同値結果へフォールバック |
+| C：通常CLIと受領 | ビルド済み製品`tei`の別OSプロセスでEntryを呼び、独立Expected／Consumerで結果を照合する | 生成Goを別プロセスで実行しただけで製品CLIのEntry実行成功とする |
+
+初回pure Functionの起動は、Ruleを公開可能なCapabilityへ自動変換することを前提にせず、既存`semantic-capability`／Function Contractの受理済み一件を使って並行に進める。Rule生成のR2完了を待つ必要はない。逆にR1の局所Generatorへ未整備のHostやRegistryを付け足して起動成功を作らない。生成器・Provider・Targetの境界は#1121/#1251/#4495、独立Expectedは#1180/#2514、Studio Stage1→Stage2は#2831/#4583の既存Ownerに残す。
+
+**実証の上限**：ここで確認したのはmainの製品Reader、型付きRule、Evaluatorの合成Read、限定的な生成Goと別プロセス実行のコード・試験の存在であり、R1再Load縦断／R2実Builder／R3公開Provider・通常製品CLI／Windows実Consumerの新しいPASSではない。
