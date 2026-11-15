@@ -1825,3 +1825,12 @@ CLI・Studio・生成Goから再利用する際も、**単一の受理済みSour
 同じ隔離DBの`TestOrgAxisAsOfRevisionKeyCandidateOptIn`は**実験用の一時テーブル**だけを使い、トランザクション終了時にはロールバックする。独立Expectedは（1）同じA2の二版が保存される、（2）境界前後では各一版を返す、（3）区間の重なる第三版を加えると二つの異なる配賦が同時に該当する、の三条件である。SQL実行に成功しても、正式`*.tei.md`のMeaning、Product Persistence/Query生成、Person Link、実Provider Read Cohort、Host Grantには受理を広げない。
 
 試験が実CIで成功した後、意味Ownerの選択に沿って**製品`*.tei`のPersistenceとQueryを更新し、同じvalidAt・異なるknownAtから二版を実Provider経由で独立Consumerへ渡す正例**へ進める。複合PK採用を試験結果だけで固定しない。Product CLI初回実Read #2586、Desktop Stage1→Stage2 #2831は引き続き独立P0とする。
+
+<!-- org-c1-revision-probe-pass-20261115 -->
+### 38.4 実PostgreSQLでの比較結果と、採用をまだ決めない理由（2026-11-15）
+
+[PR #4880](https://github.com/hat47x/tei-platform/pull/4880)をmainへ統合（`c6ebebf273b4f3aa4bfc5c694d4f28f0537ff9c4`）。固定HEAD `6fe73a1a8344ddc415f80b2f1ca402657d8bff45`の[隔離PostgreSQL専用CI run 43684287479](https://github.com/hat47x/tei-platform/actions/runs/43684287479)は**completed/success**。ログに`TestOrgAxisAsOfRevisionKeyCandidateOptIn`と境界前／境界一致の2サブケースが明示PASSし、試験本体内で二版共存と重複時点の異なる二版の検出も成功した。既存の実Query試験、対象Goの`gofmt`、明示必須PASSチェックも通った。Cache Full vs Incrementalは[run 43684287449](https://github.com/hat47x/tei-platform/actions/runs/43684287449)で成功。全体Repository Healthの合否と実Provider→Consumerは別に判断する。
+
+**得られた結論**：単独PKの保存拒否に対し、複合キー候補は一時表上で二版を保存し境界で読み分けられた。しかし重なる第三版も格納でき、knownAtだけでは一版に定まらない。つまり複合キーが十分条件ではない。Ownerが訂正、取消、再所属、時点区間の非重複または競合の表示・解消方法を受理する前に、標準のPersistence Mappingへ反映しない。
+
+次の製品差分は、意味Ownerが選んだ方式と制約を実`*.tei` Source/物理Mapping/Queryへ反映した**同一Membershipの二版保存・実Provider Read・独立Consumer正例**である。今回の実験の一時テーブルやSQLをそのまま製品実装として流用しない。
