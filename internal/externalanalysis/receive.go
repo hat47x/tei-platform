@@ -116,19 +116,19 @@ func parseDocument(text []byte) (*document, evidenceProblems, error) {
 	}
 
 	var envelope struct {
-		OK    bool            `json:"ok"`
+		OK    *bool           `json:"ok"`
 		Data  json.RawMessage `json:"data"`
 		Meta  json.RawMessage `json:"meta"`
 		Error json.RawMessage `json:"error"`
 	}
-	if err := json.Unmarshal(text, &envelope); err == nil && !envelope.OK && len(envelope.Error) > 0 {
+	if err := json.Unmarshal(text, &envelope); err == nil && envelope.OK != nil && !*envelope.OK && len(envelope.Error) > 0 {
 		failure, err := decodeProducerFailure(envelope.Error)
 		if err != nil {
 			return &document{}, evidenceProblems{invalid: []string{"REA JSON失敗応答: " + err.Error()}}, nil
 		}
 		return &document{Failure: &failure, Raw: text}, evidenceProblems{}, nil
 	}
-	if err := json.Unmarshal(text, &envelope); err == nil && envelope.OK && len(envelope.Data) > 0 {
+	if err := json.Unmarshal(text, &envelope); err == nil && envelope.OK != nil && *envelope.OK && len(envelope.Data) > 0 {
 		record, problems := parseEvidenceRecord(envelope.Data)
 		return &document{
 			Meta:     envelope.Meta,
