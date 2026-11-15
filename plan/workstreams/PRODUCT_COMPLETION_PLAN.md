@@ -1197,6 +1197,28 @@ S0-Aで最初に提示すべき**独立した正負**は、同一Source Snapshot
 
 **資格**：比較方法と次の実装順の追補であり、Graph/Validationの製品Go生成、実Plugin呼出し、Generatorの自己構築、CLI Stage1→Stage2、定義削減、Studio Stage2の新実測ではない。
 
+### 図表の実現方法を比較し、TEIが担う意味を増やす（2026年11月15日）
+
+セルフビルドで増やしたいのは**生成されたGoの行数**ではなく、TEIの図表・Rule・標準データ構造が責任を持つ**実装上の判断**である。別のコード生成設計では、図表のパラメータを既存の汎用関数が直接解釈する方が簡潔な場合もある。この選択肢は保持し、コード生成をすべての演算に強制しない。ただし「図表を解釈して動作した」と「図表からコードを生成して構築した」は別々に検収する。
+
+| 実現方法 | TEI側に保持すべきもの | 合格として記録する範囲 |
+| --- | --- | --- |
+| **生成型** | 型付きData／Graph／Rule、意味Role、Operator契約、Generator入力と版 | TEIから出力した実判断コードをBuilderが消費し、選択されたArtifact／Consumerの動作がSource変更に追随した義務。**コード生成・Self-buildの証拠** |
+| **解釈型** | 同じ意味のGraph／Ruleと、版固定した汎用Interpreter／Evaluatorの契約 | 固定したGraphの辺の向きやRuleの閾値を変えると、手書きGoの変更なしに実結果が変わる義務。**TEIモデル駆動の証拠**だが、コード生成の証拠ではない |
+| **委譲型** | 外部Go／SDK／ProviderへのInput・Output・Failure・Effect・Capability契約 | TEI側で呼出し・構成・観測できたこと。処理の判断条件が外部の手書き実装にあるなら、**意味ロジックのTEI化率には算入しない** |
+
+この三方式は優劣の固定順ではなく、**同じ意味契約の異なる実現手段**である。生成型と解釈型を比べる場合は、同じ受理済みSubject、独立Expected、入力・NULL／欠損・失敗・Effectの条件を使う。生成型が対象Sourceの変更による再Buildを必要とするのに対し、解釈型は一般にその変更をデータの再読込みで扱える。ただし、InterpreterやOperatorの変更、古い選択版、現在Grantの失効を「Build不要」と混同しない。実装方式に応じてSource/Meaning/Artifact/実ConsumerのRevisionを別々に照合する。
+
+**最初の比較は既存の二題材に限る。** 同名Nodeと多重有向Edgeの出辺選択は、既存Graphの一つのMeaningから(a)生成Goによる出辺処理、(b)共通Evaluatorによる同じ出辺処理を作り、Edge反転・削除・レイアウト変更・ID重複の対照で実結果と再構築範囲を比較する。数量のpositive Ruleは、現行の生成Goから実CLI Build・Binaryまで到達した[PR #5009](https://github.com/hat47x/tei-platform/pull/5009)を**限定基線**とし、型・NULL・ゼロ・負値・未取得の既存Expectedを使う。両題材の差を通じて、共通Operator／Providerを再利用できたか、Graphだけの特別実装を増やしていないかを判断する。既存の[Source原文同梱と実Binary照合](../design/PLUGIN_RULE_PRODUCT_VERTICAL_SLICE_2026-11.md#1413-原文byte列もbuildplanの入力へ含め実binaryから読取りを確認する)は「原文の実消費」であって、Reader／Generatorの意味受理や本番配布への原文公開許可ではない。
+
+**方式の採否は機能ごとに測る。** 同じテストで実際に修正したTEI定義／補助Go／設定の箇所数、手動で直した生成物の有無、独立検収までの作業、cold/warmの生成・起動・評価時間、Target依存、再利用できるPlugin契約を残す。実速度や保守負担を測らずに、必ず生成型が速い、または必ず解釈型が簡単とは決めない。可読な図表・表の表現を保持し、意味を隠す一行マクロを単純化の成功に数えない。
+
+**Plugin自身にも同じ区分を適用する。** DescriptorやBuildPlanの生成、Pluginの実判断処理の生成、生成器の自己記述、Pluginを利用した次段のBuildはそれぞれ別の実装義務である。特に、解釈型で動くPluginをTEIが構成できたことだけから、Generator自身の自己ビルドが成立したとは判定しない。最初のセルフビルド合格には**意味のあるコード生成の実経路を少なくとも一つ**残し、Stage1のTEI実ProcessがStage2を構築して同じPluginを実利用したことを別に確認する。Source変更で生成Goと実Builder入力を取り違える負例は[PR #5056](https://github.com/hat47x/tei-platform/pull/5056)の独立検証が統合・再検収されるまで既存達成に数えない。
+
+**既存の担当と次の差分**：#2620/#988/#1018がSource/Roleの読取り、#1121/#4544が生成、#951/#1251が実Plugin選択・呼出し、#943/#2831がBuildとStage再入、#1180/#2514が独立Expected、#2600が失効・再利用、#4583がWindows Desktopを受け持つ。次の実装はGraph生成型と解釈型を別Targetで並行構築することではなく、**同じ固定Graph／Ruleの意味IDから二方式を選び、既存Operator／Generator／Providerの実出力と最小負例を比較**する小さな差分にする。MCP／Studioは同じ型付きOperationの投影とし、CLI先行・Go単一バイナリ・外部Hostを独自に置き換えない。新しい万能Interpreter、Graph Compiler、Host、Registry、第二Build Engineを初回の前提にしない。
+
+**現時点の資格**：現行mainにはRuleから生成したGoを通常TEI CLIのBuild経路で実Binaryへ収録する限定的な実証と、原文コピーの実BinaryによるHash照合がある。一方、同一意味のGraphを生成型・解釈型で実比較した結果、Generator自身のTEIによる実再構築、正式Function Entry→選択Providerの製品実Call、Stage1→Stage2のTEI CLI／Windows Studio完全セルフビルド、定義簡素化の定量実測は本節では**NOT RUN／NOT ACCEPTED**。この追補は実装方式を選ぶための計画であり、達成済みという主張ではない。
+
 ### 既存Expectedへ引き渡す負例
 
 SBX-01：図のレイアウト変更では意味が変わらず、関係の向きや多重度を変更すれば生成内容・結果が正しく変わる。SBX-02：TEIの表の条件を変えてもGoの固定処理しか動かない場合は「委譲のみ」として失格。SBX-03：生成GoのDigestが一致しても、Builderが別Sourceや未選択Pluginを実消費すれば失格。SBX-04：Stage0が別々に二つのBinaryをBuildしただけではStage1→Stage2再入不適格。SBX-05：Plugin A→B→Aの後に旧Binding／Grant／Receiptが自動復活すれば失格。SBX-06：定義を短くした結果、NULL／欠損／評価順／Effect・Failureが変われば不適格。これらは[#1180](https://github.com/hat47x/tei-platform/issues/1180)・[#2514](https://github.com/hat47x/tei-platform/issues/2514)の既存Independent Expectedへ渡し、新しいScenario正本は作らない。
