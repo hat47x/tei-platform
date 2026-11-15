@@ -22,7 +22,7 @@
 
 この6入力を解釈する**read-onlyのGo参照Readerと限定Go生成実装**は[reference/tei-md-graph-reader](../../reference/tei-md-graph-reader/README.md)に置く。表のセル位置と独立Expectedの一致は検証対象だが、製品Workspace Loadへの接続や意味受理を表すものではない。
 
-この5入力を解釈する**read-onlyのGo参照実装**は[reference/tei-md-graph-reader](../../reference/tei-md-graph-reader/README.md)に置く。表のセル位置と独立Expectedの一致は検証対象だが、製品Workspace Loadへの接続や意味受理を表すものではない。
+この6入力を解釈する**read-onlyのGo参照Readerと限定Go生成実装**は[reference/tei-md-graph-reader](../../reference/tei-md-graph-reader/README.md)に置く。表のセル位置と独立Expectedの一致は検証対象だが、製品Workspace Loadへの接続や意味受理を表すものではない。
 
 ## 最初の実装に渡す範囲
 
