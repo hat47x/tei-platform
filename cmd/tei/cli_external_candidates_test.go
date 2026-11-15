@@ -2,8 +2,10 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -25,16 +27,19 @@ func TestExternalCandidatesR3AActualCLIProcess(t *testing.T) {
 		t.Fatalf("build tei CLI: %v\n%s", err, out)
 	}
 
-	fixture := filepath.Join("..", "..", "internal", "externalanalysis", "testdata", "rea-6.8.0", "analysis.json")
-	if _, err := os.Stat(fixture); err != nil {
-		t.Fatalf("REA captured fixture: %v", err)
+	// The selected Graph exists only in this explicit synthetic contract
+	// fixture. The original captured 6.8.0 file is receipt-only.
+	fixture := filepath.Join("..", "..", "internal", "operations", "testdata", "rea_external_candidates_synthetic.json")
+	raw, err := os.ReadFile(fixture)
+	if err != nil {
+		t.Fatalf("synthetic REA graph fixture: %v", err)
 	}
 	const (
-		nodeID     = "jsrg_node_237478f2a27c9614a522cbfc7ab60fa96943a458d164945d25af634f1240b652"
-		relationID = "jsrg_relation_0f6757a241c56fd84ecaec91f538d8297d222eb5625e4cdbcb2de7603f330718"
-		evidenceID = "ev_a88c70bcd066b2f04fdf97cb349369f0779b9c68cc4ac6c0e5f38f3539477a93"
-		digest     = "sha256:7ea3780d8dc23d00c380145af62d63bf194e39decbaefab3d82c5a3b4134bba9"
+		nodeID     = "synthetic-node-selected"
+		relationID = "synthetic-relation-selected"
+		evidenceID = "ev-synthetic-operations-graph-v1"
 	)
+	digest := fmt.Sprintf("sha256:%x", sha256.Sum256(raw))
 	base := []string{"external-candidates", "-evidence-path", fixture, "-tool-version", "6.8.0",
 		"-observation-id", nodeID, "-relation-id", relationID}
 	run := func(argv ...string) (int, externalCandidatesCLIResponse, string, string) {
