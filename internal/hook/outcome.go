@@ -92,6 +92,11 @@ func commandOutcomeName(code command.ReferenceFailureCode) string {
 // OutcomeOf は、フックのエラーが持つ結末名を返す。`NotSatisfied` でなければ
 // false を返し、実行の失敗を業務上の結末として読ませません。
 func OutcomeOf(err error) (string, bool) {
+	// An uncertain Command effect is never a clean business outcome, even
+	// when an inner NotSatisfied is still reachable through error unwrapping.
+	if _, uncertain := uncertainFailure(err); uncertain {
+		return "", false
+	}
 	var notSatisfied *NotSatisfied
 	if !errors.As(err, &notSatisfied) {
 		return "", false

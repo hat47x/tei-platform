@@ -351,9 +351,8 @@ func (r Runner) runReachable(ctx context.Context, applicationID, patternID core.
 			continue
 		}
 		report.Refused = phase
-		var notSatisfied *NotSatisfied
-		if errors.As(err, &notSatisfied) {
-			report.Outcome = notSatisfied.Outcome
+		if outcome, ok := OutcomeOf(err); ok {
+			report.Outcome = outcome
 		}
 		return report, err
 	}

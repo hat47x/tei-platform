@@ -45,6 +45,11 @@ func (e *Error) FailureCause() error { return e.Cause }
 
 // Kind classifies the business meaning of the failure.
 func (e *Error) Kind() failure.Kind {
+	// The called capability may already have applied an effect. An outer hook
+	// refusal must not reclassify that uncertainty as a clean business rejection.
+	if underlying, uncertain := uncertainFailure(e.Cause); uncertain {
+		return underlying.Kind()
+	}
 	switch e.Code {
 	case "HOOK_PATTERN_NOT_FOUND",
 		"HOOK_PATTERN_NOT_RECORD",
@@ -62,6 +67,9 @@ func (e *Error) Kind() failure.Kind {
 // Retryable reports whether the caller may safely retry the same operation
 // identity after this failure.
 func (e *Error) Retryable() failure.RetryPolicy {
+	if _, uncertain := uncertainFailure(e.Cause); uncertain {
+		return failure.LookupFirst
+	}
 	switch e.Code {
 	case "HOOK_PATTERN_NOT_FOUND",
 		"HOOK_PATTERN_NOT_RECORD",
@@ -76,10 +84,24 @@ func (e *Error) Retryable() failure.RetryPolicy {
 	}
 }
 
-// HasEffectUnknown reports whether the failure may have left partial effects
-// applied. Hook failures are always clean refusals or technical errors with
-// no side effects, so this is always false.
-func (e *Error) HasEffectUnknown() bool { return false }
+// HasEffectUnknown returns the cause's uncertainty when an invoked capability
+// may already have applied an effect. Hook-local refusals without such a cause
+// are still clean, and retain the existing false default.
+func (e *Error) HasEffectUnknown() bool {
+	underlying, uncertain := uncertainFailure(e.Cause)
+	return uncertain && underlying.HasEffectUnknown()
+}
+
+// uncertainFailure inspects the existing shared failure contract; it is not a
+// second failure classifier. A lookup-first instruction also blocks retry even
+// if the implementation did not mark its effect as unknown.
+func uncertainFailure(err error) (failure.Failure, bool) {
+	underlying, ok := failure.AsFailure(err)
+	if !ok {
+		return nil, false
+	}
+	return underlying, underlying.HasEffectUnknown() || underlying.Retryable() == failure.LookupFirst
+}
 
 // Warningは、on-failure warnのフックが失敗したことを表す。
 // 呼出し側はWarningを確認して処理を続けるかを決める。
