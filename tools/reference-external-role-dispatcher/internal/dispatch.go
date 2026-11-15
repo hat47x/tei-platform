@@ -4,19 +4,28 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"os/exec"
 	"time"
 )
+
+// Harness is the common execution interface for DSH/StepCode.
+type Harness interface {
+	Execute(ctx context.Context, task string, modelID string) (*RunResult, error)
+	IsAvailable(ctx context.Context) bool
+	SetDryRun(v bool)
+}
 
 // Dispatcher orchestrates role-based work acquisition, execution, and handoff.
 type Dispatcher struct {
 	cfg     Config
 	store   *LeaseStore
 	github  *GitHubAdapter
-	harness *DSHAdapter
+	harness Harness
 }
 
 // NewDispatcher wires config and adapters together.
-func NewDispatcher(cfg Config, store *LeaseStore, gh *GitHubAdapter, harness *DSHAdapter) *Dispatcher {
+func NewDispatcher(cfg Config, store *LeaseStore, gh *GitHubAdapter, harness Harness) *Dispatcher {
 	return &Dispatcher{cfg: cfg, store: store, github: gh, harness: harness}
 }
 
@@ -98,6 +107,101 @@ func (d *Dispatcher) RunClaim(ctx context.Context, claim *Claim, task string) (*
 	_ = d.store.UpdateState(ctx, claim.IssueNumber, "review")
 	_ = d.github.TransitionToReview(ctx, claim.IssueNumber)
 	return result, nil
+}
+
+// RunClaimAsync starts a task for a claimed issue and returns immediately.
+// It records the execution metadata to lease store for later monitoring.
+// Note: This is a best-effort async implementation; actual async depends on CLI support.
+func (d *Dispatcher) RunClaimAsync(ctx context.Context, claim *Claim, task string) (*RunResult, error) {
+	if claim == nil {
+		return nil, errors.New("claim is nil")
+	}
+
+	// Use the first available async-capable worker if configured.
+	// Currently falls back to synchronous execution with process tracking.
+	cmd := buildAsyncCommand(d.cfg, claim, task)
+	if cmd == nil {
+		return d.RunClaim(ctx, claim, task)
+	}
+
+	workDir := cmd.Dir
+	if workDir == "" {
+		workDir, _ = os.Getwd()
+	}
+	executionID := fmt.Sprintf("exec-%d-%d", claim.IssueNumber, time.Now().UnixNano())
+
+	// Update lease with execution metadata
+	_ = d.store.UpdateHeadSHA(ctx, claim.IssueNumber, "")
+	_ = d.store.UpdateState(ctx, claim.IssueNumber, "working")
+
+	result := &RunResult{
+		Harness:   claim.Harness,
+		ModelID:   claim.ModelID,
+		DryRun:    d.github.IsDryRun(),
+		SessionID: executionID,
+		Stdout:    fmt.Sprintf("[async] started %s for issue %d in %s", cmd.Path, claim.IssueNumber, workDir),
+	}
+
+	if d.github.IsDryRun() {
+		return result, nil
+	}
+
+	if err := cmd.Start(); err != nil {
+		result.ErrorMessage = fmt.Sprintf("failed to start async worker: %v", err)
+		result.ExitCode = 1
+		return result, nil
+	}
+
+	result.ProcessID = cmd.Process.Pid
+	return result, nil
+}
+
+func buildAsyncCommand(cfg Config, claim *Claim, task string) *exec.Cmd {
+	// For now, only build async commands when not in dry-run mode.
+	if cfg.Harness.DefaultHarness == "" || cfg.GitHub.Repo == "" {
+		return nil
+	}
+
+	switch claim.Harness {
+	case "step-code":
+		stepCfg := cfg.Harness.StepCode
+		if stepCfg.CLI == "" {
+			stepCfg.CLI = "step"
+		}
+		args := []string{"--json", "--task", task}
+		if stepCfg.Profile != "" {
+			args = append(args, "--profile", stepCfg.Profile)
+		}
+		if stepCfg.Plan != "" {
+			args = append(args, "--plan", stepCfg.Plan)
+		}
+		if stepCfg.WorkDir != "" {
+			cmd := exec.Command(stepCfg.CLI, args...)
+			cmd.Dir = stepCfg.WorkDir
+			return cmd
+		}
+		return exec.Command(stepCfg.CLI, args...)
+	case "dsh":
+		fallthrough
+	default:
+		dshCfg := cfg.Harness.DSH
+		if dshCfg.CLI == "" {
+			dshCfg.CLI = "dsh"
+		}
+		args := []string{"--profile", dshCfg.Profile, "--json", "--task", task}
+		if claim.ModelID != "" {
+			args = append(args, "--model", claim.ModelID)
+		}
+		if dshCfg.TaskTimeout != "" {
+			if ttl, err := time.ParseDuration(dshCfg.TaskTimeout); err == nil {
+				timeoutCtx, cancel := context.WithTimeout(context.Background(), ttl)
+				defer cancel()
+				cmd := exec.CommandContext(timeoutCtx, dshCfg.CLI, args...)
+				return cmd
+			}
+		}
+		return exec.Command(dshCfg.CLI, args...)
+	}
 }
 
 // RequestPRReview creates a PR and requests review from the specified review role.

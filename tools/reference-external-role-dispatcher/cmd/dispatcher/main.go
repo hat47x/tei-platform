@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	dispatch "tei/tools/reference-external-role-dispatcher/internal"
@@ -13,7 +14,7 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: dispatcher <claim|release|run|sweep|model> [options]")
+		fmt.Fprintln(os.Stderr, "usage: dispatcher <claim|release|run|run-async|sweep|model> [options]")
 		os.Exit(2)
 	}
 	command := os.Args[1]
@@ -23,6 +24,7 @@ func main() {
 	role := fs.String("role", "", "required role for claim/run/model")
 	issue := fs.Int64("issue", 0, "issue number for release/run")
 	task := fs.String("task", "", "task description for run")
+	harness := fs.String("harness", "", "override harness: dsh|step-code")
 	_ = fs.Parse(os.Args[2:])
 
 	cfg, err := dispatch.LoadConfig(*configPath)
@@ -37,8 +39,16 @@ func main() {
 	}
 	defer store.Close()
 
-	harness := dispatch.NewDSHAdapter(cfg.Harness.DSH.Profile, cfg.Harness.DSH.CLI, cfg.Harness.DSH.DefaultDryRun, 5*time.Minute)
-	d := dispatch.NewDispatcher(cfg, store, gh, harness)
+	taskTimeout, _ := time.ParseDuration(cfg.Harness.DSH.TaskTimeout)
+	if taskTimeout <= 0 {
+		taskTimeout = 5 * time.Minute
+	}
+
+	runner, err := buildHarness(cfg, *harness, taskTimeout, *dryRun)
+	if err != nil {
+		fail(err)
+	}
+	d := dispatch.NewDispatcher(cfg, store, gh, runner)
 
 	ctx := context.Background()
 
@@ -89,6 +99,29 @@ func main() {
 			os.Exit(1)
 		}
 		emit(map[string]any{"event": "run_completed", "issue": *issue, "result": sanitizeResult(result)})
+	case "run-async":
+		if *role == "" {
+			fail(fmt.Errorf("-role is required"))
+		}
+		if *issue == 0 {
+			fail(fmt.Errorf("-issue is required"))
+		}
+		if *task == "" {
+			fail(fmt.Errorf("-task is required"))
+		}
+		claim, err := store.GetClaim(ctx, *issue)
+		if err != nil {
+			fail(fmt.Errorf("get claim: %w", err))
+		}
+		if claim == nil {
+			fail(fmt.Errorf("no active claim for issue %d", *issue))
+		}
+		result, err := d.RunClaimAsync(ctx, claim, *task)
+		if err != nil {
+			emit(map[string]any{"event": "run_async_failed", "issue": *issue, "error": err.Error(), "result": sanitizeResult(result)})
+			os.Exit(1)
+		}
+		emit(map[string]any{"event": "run_async_started", "issue": *issue, "result": sanitizeResult(result)})
 	case "sweep":
 		expired, err := d.SweepExpiredLeases(ctx)
 		if err != nil {
@@ -107,6 +140,33 @@ func main() {
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command %q\n", command)
 		os.Exit(2)
+	}
+}
+
+func buildHarness(cfg dispatch.Config, harnessOverride string, taskTimeout time.Duration, dryRun bool) (dispatch.Harness, error) {
+	target := strings.TrimSpace(strings.ToLower(cfg.Harness.DefaultHarness))
+	if harnessOverride != "" {
+		target = harnessOverride
+	}
+	switch target {
+	case "step-code", "step":
+		stepCfg := cfg.Harness.StepCode
+		if stepCfg.CLI == "" {
+			stepCfg.CLI = "step"
+		}
+		stepTaskTimeout, _ := time.ParseDuration(stepCfg.TaskTimeout)
+		if stepTaskTimeout <= 0 {
+			stepTaskTimeout = taskTimeout
+		}
+		adapter := dispatch.NewStepCodeAdapter(stepCfg, stepTaskTimeout)
+		adapter.SetDryRun(dryRun)
+		return adapter, nil
+	case "dsh", "":
+		adapter := dispatch.NewDSHAdapter(cfg.Harness.DSH.Profile, cfg.Harness.DSH.CLI, cfg.Harness.DSH.DefaultDryRun, taskTimeout)
+		adapter.SetDryRun(dryRun)
+		return adapter, nil
+	default:
+		return nil, fmt.Errorf("unsupported harness %q", target)
 	}
 }
 

@@ -66,6 +66,13 @@
       "cli": "dsh",
       "defaultDryRun": true,
       "taskTimeout": "5m"
+    },
+    "stepCode": {
+      "cli": "step",
+      "defaultDryRun": true,
+      "taskTimeout": "10m",
+      "profile": "headless",
+      "workDir": ".tei/dispatcher/workdirs"
     }
   },
   "lease": {
