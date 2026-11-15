@@ -137,7 +137,7 @@ func TestPluginInventoryEnvelopeAndModes(t *testing.T) {
 		LockPinned       *bool  `json:"lockPinned"`
 		SourceBinding    string `json:"sourceBinding"`
 		Disclosure       string `json:"disclosure"`
-		DocumentReadable bool   `json:"documentReadable"`
+		ReadEligibility string `json:"readEligibility"`
 	}
 	if err := reMarshal(detailShape["documentReadPreflight"], &docPreflight); err != nil {
 		t.Fatalf("document preflight: %v", err)
@@ -147,7 +147,7 @@ func TestPluginInventoryEnvelopeAndModes(t *testing.T) {
 		docPreflight.ResolvedVersion != "1.0.0" ||
 		docPreflight.LockPinned == nil || !*docPreflight.LockPinned ||
 		docPreflight.SourceBinding != "unbound" ||
-		docPreflight.Disclosure != "not-checked" || docPreflight.DocumentReadable {
+		docPreflight.Disclosure != "not-checked" || docPreflight.ReadEligibility != "not-assessed" {
 		t.Fatalf("selected plugin is not a qualified Document read: %+v", docPreflight)
 	}
 	// Exact resolver selection and a matching lock do not provide a Doc
@@ -157,7 +157,7 @@ func TestPluginInventoryEnvelopeAndModes(t *testing.T) {
 	var unlockedDoc struct {
 		SelectionStatus  string `json:"selectionStatus"`
 		LockPinned       *bool  `json:"lockPinned"`
-		DocumentReadable bool   `json:"documentReadable"`
+		ReadEligibility string `json:"readEligibility"`
 	}
 	var unlockedShape map[string]json.RawMessage
 	if err := reMarshal(unlocked.Result, &unlockedShape); err != nil {
@@ -166,7 +166,7 @@ func TestPluginInventoryEnvelopeAndModes(t *testing.T) {
 	if err := reMarshal(unlockedShape["documentReadPreflight"], &unlockedDoc); err != nil {
 		t.Fatal(err)
 	}
-	if unlockedDoc.SelectionStatus != "lock-unknown" || unlockedDoc.LockPinned != nil || unlockedDoc.DocumentReadable {
+	if unlockedDoc.SelectionStatus != "lock-unknown" || unlockedDoc.LockPinned != nil || unlockedDoc.ReadEligibility != "not-assessed" {
 		t.Fatalf("a missing lock is not a false lock or a public Doc grant: %+v", unlockedDoc)
 	}
 
