@@ -137,3 +137,84 @@ Expectedの管理・受入票は既存#1180/#2514に委ねる。この文書を�
 - [Wails v3 Release](https://wails.io/ja/blog/wails-v3-released/)
 - [共通Application API/TransportのADR](../adr/0048-shared-application-api-and-transport-adapters.md)
 - [UI構成キット](https://github.com/hat47x/tei-platform/issues/997)／[Capability Contract](https://github.com/hat47x/tei-platform/issues/951)／[Studio](https://github.com/hat47x/tei-platform/issues/1824)／[実行方式比較](https://github.com/hat47x/tei-platform/issues/4635)
+## 8. 実証から逆算する三つのReference
+
+ショーケースを機能ごとの実装リストにすると、40製品に40個の専用Pluginを作りがちである。まず**一つの能力を別の用途でも使えたか**に着目し、次の三つを既存Ownerが利用する試験台にする。
+
+### R-A：データの取得から編集まで（XenSQL／Redis Viewer／October）
+
+最初の検証では、正式な対象と取得条件を持つ`Read`の結果を、表、ツリー、ドキュメント上の引用・注釈へ投影する。SQL/NoSQLのQuery構文や結果の性質は無理に同じにしない。共通化するのは、対象のIdentity、型、順序・粒度、NULL／欠損／未取得／partial、Source/Revision、表示に必要な取得範囲の宣言である。
+
+編集は第二段階とする。SQLのセル修正やGraph上の辺編集をすぐDB更新へ写さず、対象を確定した`Mutation Intent`、型・制約・現在Grantの再確認、実Provider Call、独立Readbackへ分ける。UIの「保存しました」をCommit Evidenceに代用しない。原SQLやドキュメントの記述は、共通モデルへ投影しても原byte・Source位置を保持する。
+
+**最小実物**：既存Studioのread-only InspectorとCLIの同じSubject／Query結果を、表とツリーで開く。巨大集合は実Providerのpartial取得を明示し、空集合と区別する。異なるProvider間のSQL意味の同値は、この段階では要求しない。Owner：#997、#1124、#1180/#2514と既存DB/Query Provider。
+
+### R-B：操作宣言から実際の作用まで（MQ Studio／Wombat／ScriptBar／ESP Studio）
+
+`Function/Operation`を意味上の正本とし、HTTP、gRPC、Message Queue、IoTはProvider/Transport側へ配置する。Node表示では接続する`Port`の型・多重性・Event/Control/Dataの違いを明示する。操作メニューの表示（Offer）、実行の要求（Intent）、現在許可（Grant）、実際に選ばれたProvider、Effect/Receiptを混ぜない。
+
+最初は**read-onlyの二入口**（CLIとGUI、またはCLIとMCP）で同じ型付き操作を確認する。次に書込み・消去・再送を加える場合は、対象Scopeと実Effectの差、障害後の不明な結果、再試行の可否を別々の試験にする。Node-RED型の視覚表現を追加しても、新たなRunnerや認可機構を作らない。
+
+**最小実物**：一つの型付きread-only OperationをテキストのProcess/Flow投影とノード図で表示し、同じProviderをCLIから実際に呼ぶ。GUIの表示成功と実Providerの成功は別の検収とする。Owner：#951、#1158、#3421/#3422、#1174、既存標準Flow設計。
+
+### R-C：開発Workbenchから生成物へ（LTools／Larvyn／Modal File Manager／WailsTerm）
+
+Workbenchに必要なのは、Plugin Catalog、Subject固定、Terminal、ファイル操作、Harness Session/Task、Worktree/Diff/Testを**同じWorkspaceと版のもとで扱うこと**である。ただし、未保存Editor Buffer／Caret／IME・SelectionはClient側、Source/Meaning・Operation/Authorityは既存TEI Application API側、PTY/Native Menu/ClipboardはWails Host Adapter側に置く。
+
+Pluginの表示上の有効化と、Contractの正当な公開、Providerの選択、実行許可、静的リンク／バンドルを同じ状態として扱わない。AIによる変更提案からPRのMergeまでを一画面で見せても、人間の意味受理・現在Grant・CIのexact HEAD照合を自動的に成立したと表示しない。
+
+**最小実物**：StudioのPin Aを保ったまま別のBを選び、BのEditor/Caret/Graphを汚さず、同じWorkspaceを再読込した際には旧Pinの観測を失効させる。既存Windows WebView2実試験の一部は#5012/#5025として実証されているが、AIセッション統合やStage1→Stage2は別受入。Owner：#1824/#4515/#4635、#2831/#4583、YIC Harness、#1180/#2514。
+
+## 9. 「ノードのつながり」を三種類に分ける
+
+ノードビューをProcessとPlugin間配線に共用することは重要だが、同じ線の見た目に異なる意味を与えてはならない。
+
+| つながり | 何を表すか | 実行・編集できる条件 |
+| --- | --- | --- |
+| **業務・データのRelation** | 正式Subject同士の関係。向き、多重辺、意味属性、時点を持ちうる | 対象Relation occurrenceの正式IDとSource/Revisionが確定して初めて編集候補にできる |
+| **Process／Service Flow** | 型付きOperation NodeのData/Control/Event/State/Error接続。Node occurrenceと意味上のFunctionを区別 | Portの入出力型・必須性・Cardinality・Effect、Processの制御と失敗遷移を既存Validatorで検査。配線図だけで実行可能とはしない |
+| **Plugin／Hostの構成依存** | Capability Contractに対するProvider、Generator、Renderer、Target、Host Adapterの依存・選択関係 | Contract Authority、Provider Conformance、選択Profile、Lock、Target互換性を解決。接続線を描いたことだけで実Grantは生まれない |
+
+同じUIは三種類のGraphを切り替えたり重ねたりできるが、内部のEntity ID、Edge occurrence ID、Connection Contract、描画IDとレイアウト状態はそれぞれ保持する。たとえば「MQのNodeをHTTPへつなぐ」という編集が、依存Pluginの追加なのか、Message→HTTP変換のFlowなのか、単なる画面上の配置なのかを明示的に識別する。
+
+初期実装ではNode/Port/Edgeを新Core種別として増やさず、既存Data／Function／Businessと標準Graph／Processの**型付き投影**として使う。純粋変換から始め、実外部副作用のあるNodeはProvider資格とReceiptが揃うまで未実証とする。
+
+## 10. Wails v3の実装方式に依存させない
+
+2026年11月時点のWails公式v3リリースでは、アプリケーション、Window、Go Service、Event、Native Menu/Dialog等の責務が明示され、v2からの移行は単なるバージョン更新ではない。Go Serviceから生成されたJavaScript/TypeScript Bindingは便利だが、その存在はTEIのOperation意味や現在Grantを保証しない。
+
+- **Wails Service**はDesktopでの接続・ライフサイクル・Native機能の入口。**TEI Plugin**はContract/Provider/Target合成の単位。名前が似ても一対一対応を強制しない。
+- 複数WindowはUI配置と局所状態の選択肢。Workspace境界をまたぐSource/Grantや別HarnessのSessionを自動共有しない。
+- Wails Native／同一実行ファイルWorker／別Server子プロセスは#4635の比較対象。通信が高速でもSource・Build・Effectの資格は別に証明する。
+- Wails v3のフロント資産・サービス同梱はTEI Pluginの配布を検討する材料にできるが、既定のGo単一バイナリ配布方針、更新中の版不一致、Plugin依存閉包、生成資産と実WebView表示の一致は別に判定する。
+- Wails Mobileは検証対象として残し、Desktopと同じAPI・OS権限・安定性を前提に正式Targetを採用しない。
+
+参照：[Wails v3.0.0リリース](https://wails.io/blog/wails-v3-released/)、[Wails v3の拡張とService](https://v3.wails.io/ja/contributing/extending-wails/)、[Desktop実行方式の既存比較](https://github.com/hat47x/tei-platform/issues/4635)。
+
+## 11. 実際のTEI到達点と、未接続の部分を区別する
+
+比較を開始する前に、既にmainで確認できた実物から進める。外部ショーケースに高度な機能があることは、TEI側でその機能が実現された証拠ではない。
+
+| 現在の足場 | 確認できた範囲 | 次に埋める欠落 |
+| --- | --- | --- |
+| Rule→生成Go→通常`tei self-build`（#5009、計画整理#5033） | 一つの選択済みRuleから生成Goを製品CLIでBuildし、Binaryを起動する限定試験 | 原Markdown byte・Reader/Generator版とBuild Intent/Builder実入力を同一Attemptで照合する正式R2-P。公開Function Entryからのactual ProviderはR3 |
+| Operator実装選択（#5007、計画整理#5035） | Workspace Manifestで選んだOperatorを合成Scenarioから呼ぶ限定経路 | Manifest改版後に旧Scenario Commandを再利用できてしまう残差、実Plugin Lock、業務的Law適合・現在Grant |
+| 実Wails WebView2のPin表示（#5012/#5025、計画整理#5029） | Pin A保持中にBのCaret/Graph/診断を汚さない試験、同じWorkspace再読込による旧Pin資格失効・明示再確認 | 別WorkspaceのA→B→A、生成Desktopの`workbench_revision_mismatch`、可編集Buffer、Stage1→Stage2再入 |
+| Node/Flowの横断設計 | 既存Data/Function/ProcessからNode/Port/Edgeを投影する設計・局所試験 | 型付きFlowを製品CLIの実Generator/Consumerへ渡す独立試験。GUI配線だけで完了扱いしない |
+
+これらは別々の実証結果であり、一つが成立しても残りの資格に自動昇格しない。今後ショーケースの機能を追加する際にも、「機能が見える」「モデルが読める」「実生成した」「実Providerが作用した」「別Consumerで受領した」を区別して記録する。
+
+## 12. 追加する反証と採否の判断
+
+| ID | 意図的に崩す条件 | 失敗として観測すべきこと |
+| --- | --- | --- |
+| WC-13 | Plugin依存Graphの線を一本追加したが、Capability PublisherまたはProviderの版が不適合 | 見た目の配線から選択・権限が成立せず、未解決の接続として表示 |
+| WC-14 | Operation FlowのPortの方向・型・多重度を変更し、旧ノードUIの配置だけ残す | 実Flowの接続資格が失効する。配置図のbyte一致やNode labelでは回復しない |
+| WC-15 | Wailsの生成Bindingは残ったが、TEI Product Source、選択Plugin、現在Grantのどれかが変化 | 呼び出し可能な関数が存在することだけで現在実行可能と表示しない |
+| WC-16 | AIが生成したUI差分とProvider差分が別Worktreeにあり、片方のPRのTestだけPASS | 統合対象HEAD、依存差分、実行時選択、受理された意味が一致するまで「製品で受理済み」としない |
+| WC-17 | 表・ツリー・Node Viewで同じSubjectを見せるが、片方のRendererだけ旧Source版を参照 | Source改版・取得完全性・開示状態を再照合し、古い投影の現在資格を失効させる |
+| WC-18 | `*.tei.md`から生成したGoが実Buildされたが、意味あるRule/Process/UIは手書きのままdelegateされている | ビルド成功は認めても標準モデルで再利用・単純化した比率としては数えない |
+
+**採否の評価軸**は、共通の意味を増やしたか、実装の重複を減らせたか、生成・変更の範囲が説明可能か、既存Hostの権限を迂回しないか、実Consumerと失効試験を通ったか、の五つとする。二用途で共通化できなかった機能は失敗ではなく専門Plugin／Host Adapterとして残せる。標準化のために表現力を落とす必要はない。
+
+**直近の一手**は三種類のGraph UIを実装することではなく、既存の`quantity_positive`の型付きSource/Rule/Operationを、テキスト表現とread-onlyのNode/Process投影へ結び、製品CLIで生成したGoと同じ対象を指すか確認すること。その後にUI側の固定Subject/失効と実Windows表示へ進む。最小の反証を#1180/#2514へ渡し、実装Ownerを#988/#1121/#1824/#997および標準Flowに分担する。新たなCore Grammar、Runner、Host、第二の試験正本は先行導入しない。
