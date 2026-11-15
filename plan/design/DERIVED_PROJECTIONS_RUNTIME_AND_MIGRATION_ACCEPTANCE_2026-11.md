@@ -348,20 +348,21 @@ EV-02は、Outboxを**同一DB Transactionへ投入できる実装を選んだ�
 
 この比較は**形式が同じなら実現可能性まで同じだと証明するものではない**。現状、Go生成が対応するのは限定したRule Kind・型であり、未対応の指定を汎用関数へ黙って切り替えない。型・Phase・Read集合・依存Provider・Targetを含む適合は、対象ごとに確かめる。
 
-## 22. 実コードで確かめた一辺と残る欠落
+## 22. 現行mainの実装を基線に、重複しない検収を進める
 
-次のGo回帰を、既存の製品Read・生成コードの経路をつなぐ**限定的な比較**として追加する。
+§21で選んだ一Ruleの二方式比較は、並行する実装で**すでに局所的なGo試験へ到達した**。同じ比較を別のGoテストとして増やすより、何が実際につながったかを確認し、残る別の辺を検収する。
 
-- `internal/semantic/validationgen/positive_realization_parity_product_test.go` の `TestSelectedPositiveRuleInterpretedAndGeneratedRealizations`：実`Workspace.Load`で選択した同一RuleをJSONで実Consumerへ渡し、解釈実行と生成Goを**同じGo Process内で別々に呼ぶ**。正値／ゼロ／負値／NULL／未取得の5入力について、独立した期待値と、各経路で1回だけ行うReadを照合する。異なる型のGo生成要求は拒否し、未選択の代替処理へ自動切替えしない。
-- このGo試験は、既存`validationeval.Source`・`semantic.Validation`・`validationgen.GeneratePositive`だけを利用する。第二のInterpreter、Runner、Compiler Service、Evidence Store、DSL構文は追加しない。
+- `cmd/tei/cli_self_build_generated_rule_go_test.go` の `TestSelectedRuleGoThroughRealCLISelfBuild`：製品のRule Readerから正値Ruleを選び、既存`validationgen.GeneratePositive`でGoを生成する。通常の`tei self-build`によるGo Binaryの出力を独立Expectedで確認した後、同じ型付きRuleを既存`validationeval.Evaluate`で評価し、正値・ゼロ・負値・NULL・未取得の五値と、対象FieldのRead回数を照合する。**生成Binary内の判断と、テスト側のEvaluatorが一つの実Provider／Contextを共有したという証拠ではない。**
+- `tools/reference-generator-selection/selected_markdown_rule_rebind_test.go` の `TestSelectedRuleInterpretedAndGeneratedRealizationsAgree`：別のGenerator選択経路で同じ製品Ruleを読み、型・原文参照・生成されたGoを隔離Buildしたうえで、正値・小数・ゼロ・負値・負のゼロ・NULL・未取得・型不適合を比較する。JSON Adapterでの診断の粒度と、Evaluatorが評価不能として返すGo errorは別の観測である。
+- `internal/semantic/validationgen/positive_product_test.go`：限定した正値Ruleについて、生成Goが比較・Field Readを実装し、単に既存Evaluatorへ委譲するだけではないことを検査する。生成成功はOwner意味受理を含まない。
 
-**区別する証拠**：既存のSource位置とReader選択、生成器のGo byte、二つの関数の実Call、Go試験Consumerの受領は、同じものを別名で数えてはいけない。試験がPASSした場合でも「一つの合成Sourceで二つのGo実現の結果とRead回数が一致した」とまで述べる。正式`tei self-build`経由のArtifact適格性、実DB／本番Provider、外部Host、非同期索引／帳票、Web／Studioの現在Grant、業務Owner受理は別資格である。
+これらは**互いに異なるReader／Generator／Build／Consumerの試行**である。片方の実Binaryで得た正値判定と、もう片方のGo Evaluatorの結果を合わせて、正式なP/G実装選択、現在Grant、実DB Provider、外部Hostの相互代替可能性まで認めてはいけない。並列した局所試験に合わせて独立のExpected Store、第二の実行選択器、類似のGoテストを追加しない。
 
-新Go試験のCI結果が確認されるまで、本節を**追加試験の実証完了**と読まない。既存の`TestSelectedRuleGoThroughRealCLISelfBuild`は生成Go→通常製品CLI Buildの別証拠、`TestScenarioDecidesAnOperatorRuleWithTheSelectedImplementation`は選択Operatorの実Callという別証拠であり、三つの試験を同一実行時のEnd-to-endとして加算しない。
+**次の不足は実装選択の履行にある**。同じFunction Context／型・Snapshot／Phaseを固定した一Attemptで、選択されたP/G実現と実Called ID・Reader／Builder／Providerの資格を別々に照合する。選択GなのにPへ無断fallbackした例、選択Pなのに古い生成Binaryを呼んだ例は、出力値が一致しても失格とする。ここでの一Attemptは将来の実証条件であり、現行mainにそのRuntime選択機能が実装済みだとは主張しない。現時点の不足は`unknown`のまま既存#1180／#2514と#951／#1251／#2586へ渡す。
 
 ## 23. 次段階では「実現方式の差」だけを増やす
 
-最初の五値比較が通った後は、同じCanonical Ruleのまま**一因子だけを変える**。新しいテスト正本は設けず、既存#1180／#2514の独立Expectedへ追加する。
+現行mainで確認した五値比較を基線として、同じCanonical Ruleのまま**一因子だけを変える**。新しいテスト正本は設けず、既存#1180／#2514の独立Expectedへ追加する。
 
 | 比較候補 | 固定する条件／変更する一点 | 不合格にする挙動と既存Owner |
 | --- | --- | --- |
