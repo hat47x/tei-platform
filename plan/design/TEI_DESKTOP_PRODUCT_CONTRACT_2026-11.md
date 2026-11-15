@@ -742,6 +742,58 @@ D1/D2/D3の番号・意味は#4705 §22に合わせる。Studio Native/SHO Stand
 
 **現時点の検収上限**：本節は設計と担当の接続のみ。Go/Node/Windows/CLI/Provider/DB/Updater/Mobile/外部Harnessを新実行したものではなく、Stage1→Stage2／正式Reader／Owner意味受理は未達。CI・PRマージは各exact HEADで改めて判定する。
 
+
+### 0.18 第18次統合：利用者が確認できるSource→Meaning→Artifact→Consumerの根拠（2026-11-15）
+
+#### 0.18.1 次の一画面は「何ができるか」より「どこまで確認できたか」を示す
+
+第17次統合のD-SOURCE／D-UX／D-BUILDを連結する、最初の**read-only根拠Inspector**を定義する。最初に実装するのは新しいGraph EditorやAI Chatではない。既存Operationの実応答から、**一つのSubjectに関する実Source・意味の解釈範囲・生成物とConsumerの観測範囲**を順に読み、元Sourceへ戻る操作である。
+
+現mainの`internal/operations/inspect.go`の`SubjectInspection`は、`subject`・`canonical`・`worldFingerprint`・`sourceIndexFingerprint`・`sourceStatus`・`workspace`・`sources`・`authorityLimits`を既に持つ。**World Fingerprintは説明用であり、Revision TokenでもAcceptance Grantでもない**。現`cmd/tei-studio/assets/client.mjs`の`inspectSubject`は`main.StudioBridge.InspectSubject`を呼び、`{ok,value}`／`{ok:false,failure}`のTransport境界を検査している。初回のInspectorはこの既存契約から始め、Studio専用の意味解析・権限判定・履歴Storageを実装しない。
+
+**提示する区分は独立している**。画面全体を一つの「有効」「成功」にしない。将来、Plugin／Build／Effectの詳細を加える場合も、Ownerが実観測していない欄は成功とせず、`未確認`／`未対応`／`取得不可`／`部分的`等の既存結果をそのまま使う。以下の見出しはUI上の表示区分であり、新しいCanonical enumではない。
+
+| 表示区分 | 実際に提示できる根拠 | 提示してはいけない判断 |
+| --- | --- | --- |
+| **Source** | Workspace/root、Source occurrence、管理対象か、実Loader読取の有無、元byte位置とSource Index版・取得範囲 | 拡張子が管理下にあるだけで「解釈・受理済み」。説明文の同一byteでOwner受理復活 |
+| **Meaning** | Catalog/Inspectの実Canonical、型・Relation identity、診断、受理済みの範囲／候補という由来 | Reference候補・Graph描画Edge ID・候補構造指紋を正式Model Revision/Accepted Meaningへ昇格 |
+| **Build** | 実Build Subject、実入力・Builder/Toolchain、Artifact role/digest、実生成Attempt、独立Expected | Generatorの存在だけで選択Builderが実起動したと判断、N0/N2/N3局所成功をStage2 Desktop完成と判断 |
+| **Plugin** | Inventory/Lock、選択Contract/実Artifact、実ロード・Provider呼出し・Current Grantの**それぞれ観測済みの範囲** | 説明文や選択済みPluginを、実行済み・許可済み・Effect観測済みと表示 |
+| **Consumer/Effect** | 同じAttemptで観測された実Image／呼出し入力、結果/Failure/Receipt、実CLIまたはWebView2の受領 | Exit 0、Reference Test success、HTTP 200、Window表示、取消をBusiness Verified／Commit／Rollbackへ昇格 |
+
+**対象の実際の操作可否**は現在Host/Grant/選択Provider/TargetとExpected Revisionを既存Ownerが解決して決める。Inspectorに表示した情報や`authorityLimits`は許可を付与しない。利用者に表示できないSourceやPlugin文書は、開示前に#2516のDisclosureを適用する。参照数や未使用候補も完全なIndex/Coverageが確認されない限り確定的に表示しない。
+
+#### 0.18.2 最初の利用シナリオとClient側の状態
+
+**一つの既存正式Workspace／正式`*.tei` Source**を初回fixtureにし、AI OFF・外部Provider OFFでも次の操作を行えるようにする。まだGuardがある`*.tei.md`は独立したReader検証として維持し、最初の実Wails Inspectorの先行条件にしない。
+
+1. **選択**：Workspace AのSubject IDをCatalogで一意に選び、Hostが`InspectSubject`を実実行。表示するSourceと`authorityLimits`を実Resultから取得する。Subject未発見/曖昧/unsupported/失敗を、空の成功として扱わない。
+2. **原典復帰**：元Sourceの保存済み位置へ移動し、返却された`workspace`・`sources`・Source Indexと現在Readerの参照先を再確認する。Sourceへのリンクをクリックした事実を、原文byte・対象一意性・現在Grantの証明にしない。
+3. **固定と並行編集**：Pin Aを保持したままFocus/Tab/Dirty BufferをBへ移す。AのInspectorはread-onlyの独立Pane/Activityへ表示してよいが、BのEditor/DOM/ARIA/保存・Build Preview・現在Grantを更新しない。
+4. **再確認**：Workspace A→B→A、同ID別Revision、Source A→B→A、空のModel Revision／World Fingerprint／Source Index Fingerprintのケースは旧Pin資格を復活させない。[#4597](https://github.com/hat47x/tei-platform/pull/4597)の保守的なModel/World/Source Index三条件は利用前の拒否に利用できるが、Fingerprint一致は現在Root/Authorityの肯定ではない。実Hostが採用時に確認できない場合は`再確認が必要`を示し、明示的な新Pinへ誘導する。
+5. **Evidenceへの接続**：Build／Provider／実Consumerの実証がまだない対象では、該当区分を「未検証」とし、クリックしても偽の詳細を作らない。実Artifact/Receiptがある場合だけ、そのOwnerのRole/Attempt/byteを表示し、後着結果は元のAttemptへ保持する。
+
+**即応性の境界**：IME/Caret、Drag、Focus、Dirty Buffer、Undo、ScrollはClient側。Source再解決、権限、外部Plugin/DBアクセス、Build/EffectはOwnerを持つHost側。Requestの発行時だけでなく**応答の採用時**にもWorkspace/Pin Generation/Model・World・Source Index/Current Scopeが適格か確認する。旧Replyの表示無視と、外部Effectの実取消・完了は別の契約である。
+
+#### 0.18.3 他チャットの成熟成果をこの画面に接続する条件
+
+- **Graph／Rule候補指紋（main #4758）**：元SourceのRaw Byte Fingerprint、Reference候補構造指紋、Accepted Meaning/Model Revision、生成Go/実Binary digestを別欄へ。Edgeの向きやRule条件が変われば構造候補を再評価し、layout-only変更でもSource Revisionは変わる。候補指紋が同じでも正式Reader/Owner受理は成立しない。main #4751のPinned Source/Source Index試験も正式`*.tei.md` Loaderの完了ではない。
+- **BRMS（main #4765）**：Unique決定表において、完全に証明できた二行の競合と、部分取得では決められない唯一性／不存在を区別する。Studioの診断や説明文は、同じSource/Ruleと観測範囲からのProjectionとし、Mockシミュレーションを実Effectと混同しない。
+- **Plugin説明（main #4750、#4679）**：依存Pluginの公開文書・型付き図表・短いSkillは選択した契約／SourceRef／許された開示範囲から参照する。Manualが存在するだけではRuntimeに組み込まれたProviderの証明にならず、実Call-site/Artifactの観測は別途必要。
+- **SHO/SUI・人間／AIの協業**：選択したSubject・Source occurrenceを同じOrigin/Revisionで参照しつつ、Sourceの意味受理、SHOの文書Save、SUIのキャンバス配置、HarnessへのContext送出、実Host操作を互いに別のAttemptとする。三視点→Source→SHOはread-onlyの短い一巡を先行。AIはProposal/Diffの作成者であり、UIの候補をOwner受理や現在の実行許可へ昇格させない。
+
+#### 0.18.4 実装を三つの小さなPacketにする
+
+| 先に進める差分 | 既存入口と新たに確認する事項 | 完了資格と返却先 |
+| --- | --- | --- |
+| **E-READ：Source-backed Inspector** | 現`SubjectInspection`と`client.mjs`を再利用し、同一SubjectのDirect Operation/CLI／Wails実IPC/DOMへSource・`authorityLimits`・不明状態を投影。新Core enum/Readerなし | #1824/#3421/#2514：実Fixtureの正常・不在・曖昧・部分・Source改版を検査。API Test／Node24 npm／Bundle embed／実Windowsを独立票とする |
+| **E-PIN：非干渉と再資格化** | #4515/#4597の既存Pin試作を**最新mainに適合**させ、Pin A＋Focus/Dirty B、旧Reply、空Revision、A→B→Aを同一実WebView2で観測 | #4515/#1824：実DOM・ARIA、Editor B不変、Sourceへ戻る、現在のRoot/Grant失効を別に確認。隔離V8成功だけでmainマージしない |
+| **E-TRACE：Generator/Plugin/Consumer到達の表示** | #2831/#4583のBuildExecution/ArtifactSetと#4495/#1251の実Provider/CLI受領に、実装済みの範囲だけ薄く接続。Graph/Rule候補はReferenceと表示 | #2831/#4583/#4495：実選択Builder/Providerと実Call-site/Artifact Digest/実Consumer/Expectedを別資格で照合。E-READを完成させる前に全Source形式やPluginを実装しない |
+
+P0の優先順位は**Desktop Stage1→Stage2／通常`tei`実Provider／正式Reader**のまま。E-READ/E-PIN/E-TRACEはそれらの実証を阻害しない読み取り・表示・Ownerへの引継ぎである。ADR-0048 T01〜T13、既存DT/PIN/ED/BD、#1180/#2514のExpectedを再利用し、第二のEvidence Registry/Host／万能Workflow Runnerを追加しない。
+
+**この節は設計・実装引継ぎであり**、今回の変更から新Go/Node/Windows/CLI/実DB/外部Harness試験の成功、Pin製品受理、正式`*.tei.md` Loader/Plugin Provider、Stage1→Stage2製品完了を主張しない。
+
 ## 1. 位置づけと判断済み前提
 
 - **TEI Studio**はData/Function/Business三視点、Data Context、Source/Meaning、DBクライアント、Plugin、テスト、SHO文書機能への統合Workbench。
