@@ -1197,6 +1197,9 @@ Webの要求、CLIの起動、タイマー、Message、画面操作には、そ�
 
 
 **SL-1の実CLI Inspect／非Entry対照（2026年11月15日、[Script Launch §29.10](../design/SCRIPT_LAUNCH_ENTRY_TEST_QUALIFICATION_2026-11.md)）**：新規`cmd/tei/cli_inspect_rule_markdown_process_test.go`で、実ビルドした通常`tei inspect`を別OSプロセスから実行する。選択済みMarkdown Ruleのread-only Canonical／Source byte Range／Artifact Fingerprint一致、同名`semantic-capability`と非`tei`文書Fence内の見せかけRuleの`SUBJECT_NOT_FOUND`を、固定Expectedと実exit codeで照合する。Go内部Inspectorの既存#4902を複製するのでなく、**CLI境界がKindと出典を保ったまま失敗を公開するか**を追加検収する。既存Action Surface実CLI WorkflowでこのGoテストだけをexact HEADに対して独立実行し、全体Healthの他パッケージ失敗と切り分けて記録する。これは公開Function Entryの実行、Host Grant、actual Go Provider Callや独立Consumerの受領ではない。次の実行側P0は#4495、Builder側R2-Pは#4544／#2595、Studio Stage1→Stage2は#2831／#4583。
+
+**SL-1の通常self-buildとOperator実装選択の接合（2026年11月15日、[Script Launch §29.11](../design/SCRIPT_LAUNCH_ENTRY_TEST_QUALIFICATION_2026-11.md)）**：[PR #5009](https://github.com/hat47x/tei-platform/pull/5009)で、選択Rule→実生成Go→`buildintent.Resolve`→通常製品`tei self-build`→隔離Builder→実Binary判断という経路のGoテストがmainへ統合された。既存セルフビルド専用CIで`TestSelectedRuleGoThroughRealCLISelfBuild`を単独実行し、Linux/amd64、実Entrypoint Source ID、Plan／Artifact Bind、再現性と五つの固定Expectedを検収する。[PR #5007](https://github.com/hat47x/tei-platform/pull/5007)のOperator選択はMeaningではなくWorkspace Compositionであり、変更後の古いScenario Command再資格化・実装Lock・Product CLI全体の呼出しが残る。**Builderが実際に読んだ生成Goの資格と、元Rule／Generator／選択実装の現在版を同じBuild Intentで束縛すること**を次のR2-Pの受入単位にし、R3のOwner受理済みpure Function実Provider Invokeと区別する。Studio Stage1→Stage2のP0は維持する。
+
 ## 進行の記録と完了条件
 
 各G項目には、対象と版、既存の足場、次の作業、独立した正例・反例、依存、担当Issue、得た結果または未実施の理由を残す。状態は定義済み、実装候補、局所試験、通常入口での実行、利用側確認、案件受入を用途に応じて記す。Issueをclosedにしただけで、別の組合せや実行先が成立したと扱わない。
