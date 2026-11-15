@@ -1212,7 +1212,7 @@ Workbenchの局所Pin、選択epoch、後着Replyの拒否は**画面の対象�
 
 `internal/operations/inspect_capability_source_evidence_test.go`に、既存の`reference/workspace`のCapability `sales.order.submit`を対象とした実Go回帰試験を追加する。実`InspectSubject`で`semantic-capability`を解決し、Canonical IDと`read-only`/`authorityLimits`、`semantic/sales/order.tei`のReference Role、Workspace相対Path、元byte上の識別子span・Artifact Fingerprintを照合する。続いて実`TraceSubjectSources`の結果と照合し、存在しないCapabilityについてTraceの空集合からCanonical存在を推測せず、`InspectSubject`の`SUBJECT_NOT_FOUND`を確認する。
 
-**この試験が合格しても**、Source原文を現在のHost権限で開くS-OPEN、正式Markdown Reader（S0-A）、Owner意味受理、公開Entry／実Provider呼出し、独立Consumer、Windows Stage2は未受理である。テスト自体の実行結果とexact HEADのCI判定はPRに記録し、追加したコードを根拠に自動でPASSを宣言しない。これ以降のUI変更は、S-LOCのOwnerがこの実Headless結果とWorkbenchの版・Audienceを照合してから進める。
+**この試験が合格しても**、Source原文を現在のHost権限で開くS-OPEN、Graph/Window等の未接続Markdown Reader、Owner意味受理、公開Entry／実Provider呼出し、独立Consumer、Windows Stage2は未受理である。テスト自体の実行結果とexact HEADのCI判定はPRに記録し、追加したコードを根拠に自動でPASSを宣言しない。これ以降のUI変更は、S-LOCのOwnerがこの実Headless結果とWorkbenchの版・Audienceを照合してから進める。
 
 ### 63.2 Sourceだけの改版とA→B→Aを、Capabilityの実読取で検査する（2026-11-15）
 
@@ -1221,3 +1221,37 @@ Workbenchの局所Pin、選択epoch、後着Replyの拒否は**画面の対象�
 Go回帰`TestCapabilitySourceOnlyEditInvalidatesPinnedRevision`では、既存の製品Workspace用テストFixtureに正式`.tei`のCapabilityを宣言して`ReadWorkspaceSubject`を呼び、末尾の改行を一つ追加した場合を比較する。**Canonical ID・意味に基づくWorld Fingerprintが同じでも、Model Revision・Source Index Fingerprint・Artifact byte Fingerprintは変わる**ことを検査する。識別子Source Rangeはそのままでよく、元の位置だけを現在資格の根拠にしない。元バイトへ戻すA→B→Aでは記述的Fingerprintも復帰するが、途中改版の不存在や失効Grantの復活を証明しない。
 
 これは**同一Workspaceの一件のread-only回帰**である。単一読取がすべての並行ファイル更新を原子的に観測する保証ではなく、S-LOC-0 TypeScript Presenterの実Go応答受領やS-OPENの現在権限・Raw再取得、実Host/ProviderのCallを実装したわけではない。Goパッケージ単位の試験合格、総合Repository Healthの合格、Windows実Consumerの受領は別票に置く。既存#1124/#3788/#1824/#4515/#1180/#2514へ手渡し、Stage1→Stage2とProduct pure EntryのP0を止めない。
+
+### 63.3 内蔵Rule Markdownの製品読取を、実行図の別の出発点にする（2026-11-15）
+
+本節の実装状況を、mainに新たに収録された**内蔵Language Reader `tei.rule-authoring/v0`**に合わせて更新する。以前の§57〜63の「製品`*.tei.md` Readerは未接続」は、Graph表・Window表や任意のMarkdownについては引き続き成り立つが、**選択した`tei`定義領域内のRuleだけには当てはまらない**。この狭い実装を、外部Pluginの入場、あらゆるMarkdownの意味受理、実Provider呼出しまで一般化しない。
+
+実装済みの結合は次のとおりである。
+
+```mermaid
+flowchart LR
+  M["Workspace manifest: languages"] --> S["選択: tei.rule-authoring/v0"]
+  S --> L["実Workspace.Load / 内蔵Reader"]
+  L --> C["既存semantic.Validation"]
+  L --> A["同一Loadに記録したSource byte anchor"]
+  C --> I["既存InspectionFromLoad"]
+  A --> X["BuildSourceIndexFromLoad"]
+  X --> I
+  I --> V["read-only: 定義と位置の照合"]
+  V -. "実Provider/Grantの証拠ではない" .-> U["公開Entry・業務実行"]
+```
+
+製品Fixture `internal/workspace/testdata/tei-md-rule`の`tei.workspace.yaml`は`languages: tei.rule-authoring/v0`を明示し、`semantic/sales/order-line-rules.tei.md`の二つの`tei`コード領域を選択する。読み取った二件は`semantic.Validation`となる。説明用の`text`領域に書かれた規則はDefinitionとして取り込まれない。選択Language ID、Contract Version、Implementation ID、読取領域数・定義数は、`workspace.Result.AuthoringSources`に**実Loadの観測結果**として残るが、Ownerの意味受理やPlugin Selection Grantではない。
+
+新設するGo回帰`TestInspectSelectedRuleMarkdownFromSameLoad`は、独立のReference Parserではなく、実`workspace.Load`で選択したRuleを起点とする。同じ`loaded`を`BuildSourceIndexFromLoad`と`InspectionFromLoad`へ渡し、二つの正規化済み`semantic-validation`のID・Kind・Attribute/Relation、原MarkdownのID byte span、Workspace相対Path・Role・Artifact Fingerprint、`TraceSubjectSourcesFromIndex`の一致を調べる。引用しただけの第三のRuleは`InspectionNotFound`とSource参照0件を**別々に検査**する。別Loadや別Windowから偶然一致したWorld/Source指紋を集めて「同じ実行」とは扱わない。
+
+最初の製品照合を、二つの独立した正例へ分ける。
+
+| 正例 | 現行Goで照合する範囲 | 次に必要な別資格 |
+| --- | --- | --- |
+| 既存`*.tei` Capability（§63.1〜63.2） | Canonical Capability、元Source、Source改版・A→B→A | 実Entry公開、選択Provider/Grant、通常CLI実Callと独立Consumer |
+| 選択済みRule `*.tei.md`（§63.3） | 実Language選択→同一Loadの既存Validation→元byte/Source Index→Inspector | Rule集合・入力Readの閉包、独立ExpectedによるEvaluator、業務Effectと実Providerの独立確認 |
+
+Ruleが型付きMeaningへ変換されたことと、そのRuleが**実際の入力集合で評価されたこと**を分離する。Unique判定に必要なRule集合の選択と入力の取得完全性は別の根拠であり、Ruleが一件だけ見えたことを「競合なし」の全称根拠にしない（#988/#2514）。次のProduct PRでは同じSource/Subjectの定義・実Reader・独立Expected・実Provider/Consumerを段階接合する。S-LOC-0の純粋PresenterもこのGo結果を実Host Replyとして受け取るまでは製品S-LOC表示の成立とはいえない。
+
+**現状の停止線**：内蔵Rule Readerは限定実装であり、Graph/Windowの製品Reader、外部Language Pluginのexact Lock→実Load、生成Go Plugin/通常CLI実Provider、現在Grant/Disclosure、実Windows WebView2およびStage1→Stage2の資格は別に確認する。このPRが追加するのはGo回帰と既存計画への引渡しである。テスト合格、Owner意味受理、業務実行E2Eは**当該HEADの実Runで確認されるまで未認定**とする。新しいHost・Registry・Runner・Source Store・第二のExpected正本は設けない。
