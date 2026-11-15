@@ -47,6 +47,24 @@ description: >-
 
 **許容するまとめ方**：「選択済みのpositive Rule一件を、既存Go Generator／Validation Contractに従って別ファイルへ生成し、指定のBuild入口で実消費を確認する。生成コードは変更せず、独立ExpectedのNULL／0／負値／Source参照変更を試験する」。これは現在の製品で一般化された実行コマンドを提供するという意味ではない。
 
+## ファイルとデザイナーの役割を固定する
+
+対象が複数のソース・リソース・派生物へ展開される場合は、[ファイル役割とBuild手順](../../plan/design/DIAGRAM_TO_REALIZATION_STRATEGY_AND_HOOKS_2026-11.md#13-source・designer・resource・生成物をファイルの役割として分離する2026-11-15追補)を参照する。
+
+タスク票の「許可範囲」には、必要に応じて次を追記する。
+
+| 役割 | 指定すること |
+| --- | --- |
+| Authoring Source | `*.tei.md`の選択Role／Canonical ID・改訂、元の編集箇所 |
+| Designer | 元Sourceへの可逆な編集候補かread-only投影か |
+| Resource Input | 画像・文言・CSS／JSON等の使用先とSource byte参照 |
+| Generator Definition | 固定済みTemplate／Transform IR／Target Generator版 |
+| Generated Output | 人・AIが編集しない対象ファイルと、実Builderへの配置先 |
+| Custom Source／Hook | 編集を許す別ファイル、Hook ID／版・Input／Output・Effect |
+| Build Intermediate／Bundle | 生成→配置→Compile／Bundle→埋込み→実Consumerを検証する順序 |
+
+`*.generated.go`や`*.generated.ts`などの命名はTargetの慣例であり、**拡張子だけで正本性・所有権・上書き権限を判断しない**。生成ファイルに手で追記する依頼は、Hookまたは非生成ファイルで実現できるか先に確認する。Goの通常の`go build`は生成を自動実行しないので、生成Goの実配置・コンパイル入力は独立に確かめる。Studio Designer上の変更は、対象が一意に特定できない限り元Sourceへ書き戻さない。
+
 ## 合格の限界
 
 「ほぼ確実に自動実装できる」は、対象とTarget、要求保証、固定Fixture、反例を決めた後でのみ測定する。AIが同じコードを再回答する確率を前提にしない。重大な反例を通す候補、選択Provider／Builder入力が不一致な候補、未受理Meaning／不明Effectが残る候補は不適格とする。成功したデモを汎用Generatorの完成や現在Grantの証拠へ昇格させない。
