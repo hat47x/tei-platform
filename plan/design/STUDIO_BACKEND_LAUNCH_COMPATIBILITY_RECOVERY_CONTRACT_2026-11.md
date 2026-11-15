@@ -1164,3 +1164,46 @@ LA-01〜08は既存#1180/#2514への**独立Expected候補**である。新し�
 4. **P0並行**：#4495の通常製品CLIからのactual Provider、#2831/#4583の非Plugin Studio Stage1→Stage2実Windows再入を優先する。#5059のN2子起動、#5118のG/P実Binary、#5109のPlan失効の局所合格を、実ProviderやStage2のPASSへ合算しない。
 
 本節は既存実コードと並行PRを、**何が実証済みで何が未実証か**に沿って接続した設計・計画の追補である。新しいGo／Windows／HTTP／DBの実行試験、正式Owner意味受理、Wails Updater／D2更新の合格はここでは行っていない。
+
+## 34. 起動後の受理を、Source・実装・Host・Consumerの各時点で再確認する（2026-11-15）
+
+### 34.1 「一致した」をいつ確認したのかを記録する
+
+§33までで整理したSource／Build／Provider／Host／Consumerの一致は、**一度確認すれば起動中ずっと有効になる性質ではない**。特に、Sourceを読んだ後にBuildPlanが確定し、実Builderがファイルを読むまでの間、またはHostがOperationを選択してから実Providerを呼ぶまでの間には、それぞれ別の変更機会がある。
+
+main統合済み[PR #5129](https://github.com/hat47x/tei-platform/pull/5129)はこの前半を実コードで検査した。生成Goのbyteを変更しなくても、Plan確定後に**同梱元Markdownの説明文だけ**を書き換えると、旧`plan.json`／Intentで通常`tei self-build`を進められず、L2-bの受領やArtifactを残さない。一方、[PR #5109](https://github.com/hat47x/tei-platform/pull/5109)は生成Go自体のPlan確定後改版を拒否する。変更箇所が異なるため二つの負例を一件にまとめない。両PRの**mainへの統合は確認済み**だが、個々の変更HEADのCI成功は別に確認する。
+
+Sourceの説明文変更は業務Meaningを変えない場合がある。それでも**旧Planの入力閉包を使ってよい根拠にはならない**。反対に、入力ハッシュが元のAへ戻っても、A→B→Aの途中で失われたOwner意味受理や現在Grantが自動復活するわけではない。
+
+### 34.2 起動と実行の間に置く四つの検査点
+
+| 検査点 | 実際に固定・再確認するもの | 不一致時の扱い |
+| --- | --- | --- |
+| **S：Sourceを選ぶとき** | Workspace実Root、Subject／Source Role・原byteと位置、Model Revision、選択Language／Operator | 古いIndex・選択を破棄して再読取。旧意味受理やGrantを流用しない |
+| **B：Buildするとき** | 同一Build Intent／Plan、生成Goと同梱原文の実byte、Builder実Image／実消費入力 | 改版後の旧Planを拒否し、未受理のArtifactを公開しない。再Buildの可否は別判断 |
+| **I：Providerを呼ぶ直前** | Hostが認めたOperation／Contract、選択Provider実Image、必要Data Context、現在Grant、Attempt | 未選択／失効／不一致なら実Call前に拒否。解釈・生成・委譲を黙って切り替えない |
+| **C：結果を渡すとき** | 対象Consumer、Disclosure／Scope、Source・Service／Session世代、Result・Failure、Effect Receipt | 旧世代応答を現在の画面・外部Clientへ採用しない。作用後の不明状態は照会を優先 |
+
+これは既存のSource Index／Build Intent／Plugin Lock／Operation Context／Failure・Receiptを**どの時点で照合するか**の整理であり、横断`AdmissionTicket`型・別のReady API・新たな永続台帳を追加する要求ではない。実行中に必要な識別子は既存のAttempt／InvocationとHost管理の現在状態に結び、確認時点と対象を検収票へ記録する。
+
+### 34.3 競合を含む、具体的な反証を追加する
+
+| ID | 一因子だけ変えること | 観測する停止線 |
+| --- | --- | --- |
+| **LA-09：元Markdown改版** | BuildPlan固定後、同梱`source.tei.md`の説明だけ変更し、生成Goは同一 | 旧Planによる通常self-buildを拒否し、L2-b／Artifactなし（main #5129） |
+| **LA-10：生成Go改版** | BuildPlan固定後、`generated.go`にコメントを追加し、元Markdownは同一 | 旧Planによる通常self-buildを拒否（main #5109） |
+| **LA-11：A→B→A** | 元byteまたはOperator選択を一度変更して元に戻す | ハッシュ再一致とSource Revision／Owner受理の継続を区別。旧Grantを再付与しない |
+| **LA-12：選択Providerすり替え** | 型・Resultを維持したまま選択実装と実Call対象を変える | 選択B／実Call Aを拒否。現行#5114は未統合候補であり実Provider資格の代用としない |
+| **LA-13：受領直前のAudience変更** | ReadしたSubjectは同じで公開Scopeだけ変える | HTTP利用側へ旧ScopeのSource／内部項目を開示しない。API公開は#5096で別実証 |
+| **LA-14：Effect後の通信断** | 実Call後にACKだけ失う | `effectUnknown`／`lookup_first`を維持し、自動再送・Local fallbackを禁止 |
+| **LA-15：Workbenchの遅延応答** | Focus／Pin／Dirty Buffer／Workspace世代を返信待ち中に変更 | 旧Resultを新しい編集・Pinの正本へ取り込まない。[Desktop後継PR #5122](https://github.com/hat47x/tei-platform/pull/5122)の別資格 |
+
+LA-09〜15は既存#1180／#2514の**独立Expected候補**として渡す。すでに実証された#5109／#5129のTestを再実装せず、残りの未実装反例だけを追加する。型付きFlowのPort／Field／Adapterが型として適合しても、Identity／grain／Presence／Coverage／実Read先／Audienceの保証が欠ければ、Nodeの線を「実行可能」と表示しない。
+
+### 34.4 次の検収順序と、結果の表示
+
+最初に[PR #5119](https://github.com/hat47x/tei-platform/pull/5119)の**実CLI／直接Operation／Studio Host三入口**についてexact HEADのGo CIと差分を確認し、合格した範囲だけをSL-0へ反映する。次に#5096のAP-1でWails Serverのread-only HTTP公開を実Audience・Disclosure込みで検査し、別に#4635のB0 Child実IPCを検証する。
+
+それと並行して、通常製品`tei`から実Provider／実Readを呼ぶ#4495/#1251（R3）と、Stage1自身が生成して再入するStage2の実Windows #2831/#4583（P0）を優先する。main #5059のN2 Child、#5118のG/P実Binary、#5109/#5129のBuildPlan失効は**P0を構成する限定された証拠**であり、それらを足し合わせて正式Stage2・Providerを成功とすることはできない。
+
+検収結果の表現は「**何を見て、どの時点の版に対して、どの入口で、どの拒否を確認したか**」へ揃える。成功／未受理／失効／Outcome Unknownを、単一の`ready`や`passed`にまとめない。**本節は既存mainの実証と次の設計・試験引渡しであり、この追補自体の新しいGo／HTTP／Windows実行試験ではない。**
