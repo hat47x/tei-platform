@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -187,6 +188,101 @@ func TestCTKWindowTypedCandidateInputsDriveRealSQLiteRows(t *testing.T) {
 				}
 				if !foundA3 {
 					t.Fatal("mutated input A3 not found in generated SQL output")
+				}
+
+				// Distinguish explicit SQL NULL from the numeric zero without
+				// modifying the query or the independent candidate oracle.
+				// AVG ignores NULL but counts zero, including RANGE peers.
+				result, err = db.ExecContext(ctx, "UPDATE observations SET value = ? WHERE obs_id = ?", int64(0), "B2")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if affected, err := result.RowsAffected(); err != nil || affected != 1 {
+					t.Fatalf("B2 NULL-to-zero mutation affected %d rows: %v", affected, err)
+				}
+				rows, err = db.QueryContext(ctx, generated.Statement, generated.Args...)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var foundB2, foundB3 bool
+				for rows.Next() {
+					var group, id string
+					var sequence int64
+					var value sql.NullInt64
+					var moving, runningRows, runningRange float64
+					if err := rows.Scan(&group, &id, &sequence, &value, &moving, &runningRows, &runningRange); err != nil {
+						t.Fatal(err)
+					}
+					switch id {
+					case "B2":
+						foundB2 = true
+						if !value.Valid || value.Int64 != 0 || moving != 2.5 {
+							t.Errorf("B2 zero was not counted in ROWS average: value=%+v, moving=%g", value, moving)
+						}
+					case "B3":
+						foundB3 = true
+						if math.Abs(runningRange-20.0/3.0) > 1e-12 ||
+							runningRange == expected[id].CumulativeRange {
+							t.Errorf("B3 RANGE peers did not include numeric zero: got=%g, before=%g",
+								runningRange, expected[id].CumulativeRange)
+						}
+					}
+				}
+				if err := rows.Err(); err != nil {
+					t.Fatal(err)
+				}
+				if err := rows.Close(); err != nil {
+					t.Fatal(err)
+				}
+				if !foundB2 || !foundB3 {
+					t.Fatalf("NULL-to-zero mutation lost peer rows: B2=%v B3=%v", foundB2, foundB3)
+				}
+
+				// Deleting a NULL/zero observation is not the same as retaining
+				// a row with NULL. B3's mean can match the original 10 again,
+				// although the input row-set is incomplete (6 instead of 7).
+				result, err = db.ExecContext(ctx, "DELETE FROM observations WHERE obs_id = ?", "B2")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if affected, err := result.RowsAffected(); err != nil || affected != 1 {
+					t.Fatalf("B2 deletion affected %d rows: %v", affected, err)
+				}
+				rows, err = db.QueryContext(ctx, generated.Statement, generated.Args...)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var gotRows int
+				foundB2 = false
+				foundB3 = false
+				for rows.Next() {
+					var group, id string
+					var sequence int64
+					var value sql.NullInt64
+					var moving, runningRows, runningRange float64
+					if err := rows.Scan(&group, &id, &sequence, &value, &moving, &runningRows, &runningRange); err != nil {
+						t.Fatal(err)
+					}
+					gotRows++
+					if id == "B2" {
+						foundB2 = true
+					}
+					if id == "B3" {
+						foundB3 = true
+						if runningRange != expected[id].CumulativeRange {
+							t.Errorf("B3 RANGE should match baseline despite B2 row deletion: got=%g", runningRange)
+						}
+					}
+				}
+				if err := rows.Err(); err != nil {
+					t.Fatal(err)
+				}
+				if err := rows.Close(); err != nil {
+					t.Fatal(err)
+				}
+				if gotRows != len(expected)-1 || foundB2 || !foundB3 {
+					t.Fatalf("deleted B2 did not reduce input closure: rows=%d, B2=%v, B3=%v",
+						gotRows, foundB2, foundB3)
 				}
 			}
 		})
