@@ -2,7 +2,7 @@
 
 - 状態: 実装前の提案（未採用）。Product runtime・Canonical意味の変更ではない
 - 日付: 2026-11-11
-- 対象: [SUI→TEI移行 実装パケット](../design/SUI_TEI_MIGRATION_IMPLEMENTATION_PACKET_2026-11.md) の M2
+- 対象: [SUI→TEI移行 実装パケット](../../plan/design/SUI_TEI_MIGRATION_IMPLEMENTATION_PACKET_2026-11.md) の M2
 - 根拠: SUI #3401、SUI PR #3428 / #3429、SUI `02_Architecture/api.md` §2.18、SUI ADR-0116
 - 主張しないこと: SUIがTEIへ移管されること、この定義が製品の正式意味契約になること、instanceをCanonical objectへ昇格させること
 
