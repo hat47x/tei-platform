@@ -305,3 +305,76 @@ UI-P1の公開選択Eventは、利用者が何を見ようとしているかを�
 次の変更は、**現行Inspectorが実際に返すデータだけを使ったread-only PresenterのFit/Gap**に限定する。Subjectの選択、Hostが返した結果、Sourceの現在性、表示要素、Pin/Focus、開示範囲を別の寿命として扱い、未接続の生成結果には「未取得」と明示する。C0のGo AST回帰をそのままWebViewへ送るための新ServiceやHost Bridgeを追加しない。
 
 その後、I2M-1が同一Source/Rule/生成Goの対応を独立Expectedで示せた段階で、既存Provider/Studioの適切な公開点へ投影する可否を判断する。Framework選定（Vanilla TS／Lit TS／Lit JS）、Component Manifest、編集可能なGraph／Node Viewは独立した後続判断であり、**正式Reader→実ProviderとStudio Stage1→Stage2の主線を止めない**。元Sourceへ戻る矢印が一意でない場合は編集操作を提供しない。
+
+
+## 16. Webの開発方式を「公開形態・実行場所・UI表現」に分けて選ぶ（2026-11-16、設計・実装引渡し）
+
+### 16.1 WebとDesktopで共有するもの、共有しないもの
+
+[Desktop実装指針](TEI_DESKTOP_WEB_STANDARD_UI_IMPLEMENTATION_2026-11.md)、[共通Application APIのADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)、[標準Service Flow](SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)を前提に、Webアプリケーションを「Web専用の業務実行方式」とは定義しない。共有するのは、受理済みのData／Function／Rule／Process、Operationの入力・出力・Failure・Effect、UIへのProjection、型付きPort／Mapping、Source／Build／Providerの資格である。画面を描く方法と、どこで操作を実行・公開するかは独立に決める。
+
+- **静的公開**：公開が許されたSource/Meaningからページ・Assetを生成する。説明文・言語別URL・Head等は静的成果物に向くが、Build時に公開可能だったことは公開時点のGrantや最新情報の保証ではない。非公開Field、Secret、実行可能な内部操作を静的Bundleへ含めない。
+- **対話型Web**：ブラウザは入力、閲覧、局所状態と操作要求を担い、権限を要するRead・Command・Effectは現在のServer側Operation／Providerで扱う。ブラウザから呼べるAPIを列挙できることと、実Providerが選択・収録・実行されたことは別に確認する。
+- **ServerでのHTML生成**：初期表示・公開検索・多言語ルートなどで必要な場合に選ぶ実現方式。画面の意味契約を二重化せず、同じData／UI Projectionから初期HTMLと後続の対話処理を構成する。SSR／SSG／Client描画の選択はRouteごとに可能とし、全画面への一律適用を前提にしない。
+- **Desktop／組込みWebView**：Workbenchと共通の表示部品・Projectionを利用できるが、Wails Bridgeとローカル権限はWeb公開APIの代用品ではない。対象OS／WebViewでの実動作、Go埋込Asset、Releaseの版を別々に検収する。
+
+この四つは排他的な製品種別ではなく、一つのApplication内でもRoute／Entry／Targetごとに組み合わせ得る**実現・配備の選択肢**である。選択結果は既存のTarget／Build Intent／Plugin Closure／公開Contributionと照合し、Web独自のMeaning正本、万能Router、SSR Engine、BFFを先に新設しない。選んだ実現方式がG（コード生成）、P（既存Operator等の限定解釈）、D（外部Providerへの委譲）のどれかもOperation／構成単位で記録し、同じ結果が返っただけで実Callの同値やEffectの安全性を推定しない。
+
+### 16.2 API PluginをWailsから切り離し、Webの公開責任を明示する
+
+採用済みの[ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)と、審査中の[API Plugin／CLI直結設計 PR #5096](https://github.com/hat47x/tei-platform/pull/5096)で提案されている「Operation ProviderとAPI公開Contributionの分離」を、Webの受入候補として具体化する。通常のローカルCLIはApplication Operationへ直接到達し、HTTP listener、WebView、Wailsを必要としない。WebではHTTP Adapterが認証済みActor・Audience・Disclosure・入力の完全性・実Provider選択を評価し、Wails Serverは利用できるHostの一つとして扱う。Browserからの要求やHTTP Route名をOperationの意味ID・Grantの正本としない。
+
+公開の適格性は **Operation契約 → Provider選択 → Targetへの収録 → Route公開 → 今回の認可・開示 → 実Call → Consumer受領** の順に確認する。型が一致しても内部用RecordのFieldをそのまま外部へ渡さず、全体Record／Field単位／明示AdapterのどのBindingで何が失われ、何が公開されるかを既存Mapping・Disclosureに示す。URLや表示上のアクセス制御だけで秘密を守らない。外部Browser向けには少なくともOrigin／CORS、CSRF、Cookie／Session、CSP、認証・認可、キャッシュの共有範囲をTarget別に検査し、Secretと内部CredentialをHTML／JS／Source Map／ログへ含めない。
+
+Clientは入力中の値、Caret、Focus、Pin、編集中のBufferを局所的に保持する。一方、保存済みSource、現在のMeaning、Provider Read、Build入力、Command／Effect ReceiptはHostが保持する版と資格を使用する。Workspace A→B→A、Account切替、Route再利用、古い非同期Reply、再接続では表示用epochだけでなく、対象・Source／要求版・現在Disclosureを再照合する。通信途絶でEffectが不明な操作をClientが自動再送しない。オフライン編集やPWAは将来の比較候補とし、競合解決・資格の失効・再送の契約が整うまでは暗黙の機能としない。
+
+### 16.3 B2C・ノード／マッシュアップ・SUIへの適用
+
+[B2C対応方針 #3509](https://github.com/hat47x/tei-platform/issues/3509)の公開Headや多言語URLは、公開可能なFacetをRoute／Slotへ結び付けるProjectionとして扱う。静的SEOの説明情報と、価格・在庫・申込等の時点依存のCommerce情報は同じ静的更新周期に固定しない。既存TargetにHead Slotがなければ「未接続」と報告し、専用SEO Generatorを追加したことにしない。
+
+Node View／Flowは標準Data型・Direction・Multiplicity・Presence・Coverage・Disclosureを保った接続の表示とし、Canvas上の配線がHTTP公開・実行可能性・副作用許可を成立させたことにはしない。SUIの高密度Canvas、StudioのCodeMirror、React Starter、Web Components、Litの使い分けは、**共通するOperationと公開Component Contractを維持できるか**で判断する。Native Canvasの描画性能を理由に、意味モデルや実行器までNative専用化しない。
+
+## 17. Web方式の次の一巡を小さく検証する（2026-11-16、P1）
+
+初回の実装対象は新しいWeb Serverではなく、mainに存在する `reference/tei-studio-workbench/inspector-selection.ts` の公開read-only Eventと、`presentation.ts` のReader／Presenter、`main.ts` のHost接続である。既存の `inspector-selection.test.mjs` はWorkspace epoch、A→B→A、偽Grant／Effectの除去を局所試験している。まずこの既存試験を退行させず、同じSubjectについて **Host非依存の表示入力 → 表示結果 → 選択Intent** を検査する。Wails Bridgeが返せる範囲以上のSource／Generation／GrantをViewModelへ捏造しない。
+
+| Packet | 作業と実測 | 独立反証・止める場所 |
+| --- | --- | --- |
+| **WEB-P1：表示とHost境界**（#1824／#997／#1158） | Inspector一部品を現行Vanilla TSで分離し、同じ入力・EventでWeb向け薄いAdapterとDesktop Adapterを比較。Nodeの型検査・試験・正規Bundle・実Windowsを別々に記録 | A→B→A旧Reply、Pin/Focus干渉、Reader errorを空集合へ変換、未保存Buffer消失、偽Grant Event。ブラウザだけでDesktop PASSとしない |
+| **WEB-P2：read-only API公開**（#1158／#951／#1251） | 既存`InspectSubject`でCLI direct／Studio Hostの結果を基線に、選択済み同一OperationへHTTP Adapterから実到達する最小Consumerを比較。Method／Route／Actor・Scopeを記録 | HTTP route登録のみでProvider呼出しと主張、CLIが暗黙にWailsを起動、異なるAudienceで内部Field漏出、古いSession／Grant再利用。実HTTP未実装ならNOT RUN |
+| **WEB-P3：公開Route一件**（#3509／#997／#1016） | 公開可能な説明Facetを一つ選び、Source→Head／表示Slot→実Builder入力→生成Asset Member→外部閲覧を追う。静的説明と動的Offerを別途管理 | 未選択Slotへの暗黙配置、非公開Field混入、生成Assetの旧版利用、単なるHTML生成を実Consumer受領と誤認 |
+
+WEB-P1〜P3は並列の**P1候補**であり、正式なStudio非Plugin BuildIntent→Stage1→Stage2実Windows（#2831／#4583）と、通常CLI→実Provider Read→独立Consumer（#2586／#4495）の二本のP0へ新しいHard Gateを追加しない。新しいWeb Framework、HTTP Runner、第二のOperation Registry、テスト正本は導入しない。反例は既存#1180／#2514の独立Expectedと、各OwnerのIssueへ引き渡す。現段階は設計・実装Packetの定義であり、WEB-P2/P3の製品E2E、Web向け認証・開示、SSR、オフライン編集、別OSでの実受領は未検収である。
+
+
+## 18. 宣言的UIの共通部分を、表現方式と実行場所から独立させる（2026-11-16、設計補遺）
+
+### 18.1 UI定義は「どの意味を、どこに、どう見せるか」の組合せにする
+
+[標準構造とUI投影の横断設計](SEMANTIC_STRUCTURE_MAPPING_AND_DECLARATIVE_SYNTAX_VIEW_2026-11.md)、[共通APIのADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)と、[Desktop Workbench指針](TEI_DESKTOP_WEB_STANDARD_UI_IMPLEMENTATION_2026-11.md)の責務を守る。TEIのUI定義はGoの構文や特定Frameworkのコンポーネント木を記述するものではない。人が読む宣言の中心を、利用者が確認・操作する情報の順序に置く。必要な情報は既存のMeaning／Projection／Binding／UI Kitの公開契約へ割り当て、新しいUI専用意味正本・AST・Registryは増やさない。
+
+| 関心事 | 残すべき情報 | 保持する場所と制約 |
+| --- | --- | --- |
+| 対象・データ | qualified Subject、Field／Relation、単位・粒度、NULL／欠損／部分取得、Source occurrence | 標準Data／意味・参照契約。画面ラベルや配列位置を意味IDに代用しない |
+| 操作 | 読取り、編集意図、検証、保存要求、実行要求と型付きResult／Failure | 共通Operation。UIイベントは意図の通知であり、GrantやEffectの成立ではない |
+| 表示 | Group／Field／Table／Tree／Graph等の表現選択、順序、可視条件、アクセシビリティ上の意味 | UI Projection／Component Contract。CSSやDOMへ業務Ruleを複製しない |
+| 配置・外観 | Flex／Grid、必要なCanvas座標、密度、Token、狭幅時の配置 | Target別Renderer／案件UI Layer。Source Meaningとは独立に変更可能とする |
+| 配信・接続 | 静的／対話型／Server側描画、Browser／WebView、操作のTransport、公開可能なField | Target／公開Contribution／Host Adapter。HTTPやWails固有名を安定Operation IDにしない |
+
+この分担はコード生成の停止線でもある。たとえば表のField順、ラベル、入力制約、OperationへのBindingを受理済み定義から生成できても、認可やデータ保存をブラウザ生成コードへ委任しない。逆に単に手書きのTypeScript関数名を宣言から呼ぶだけでは、TEIが意味あるUI構造を生成できた成果と数えない。Web ComponentsのCEMは公開形状の派生物であり、元定義へ無条件に逆変換できるものとは扱わない。
+
+### 18.2 画面状態は「編集しているもの」と「確かめたもの」を分ける
+
+WebとDesktopの表示部品が共有するのは、Hostによる解決前の選択Intent、Hostが今回返した公開可能なViewModel、利用者が編集している局所Bufferである。Workspace／Subject／Source occurrence、Request epoch、Scope、開示範囲が変わったら、古い結果を再利用できるかをHostと表示側でそれぞれ判定する。FocusとPinは別の閲覧laneとして保ち、Pinの再確認でEditorのCaret・Undo・IME・Dirty状態を変更しない。
+
+SSRや静的HTMLから対話画面へ移行する際も、初期HTMLに含めたSnapshotと、Clientが後から得たRead結果を「同じ画面だから同じ資格」としない。初期描画の公開情報、最新Readの取得範囲、現在のActor／Audience／Disclosure、保留中の編集入力、Build Assetの版を区別する。Hydrationによる再描画で入力中の値が消えたり、サーバーで開示を拒否したFieldが古いHTML・キャッシュ・Source Mapから見えたりする場合は不合格とする。
+
+状態の寿命が違うため、UI技術比較でも「DOMを再利用できるか」だけを比較しない。入力保持、非同期の後着拒否、Partialと空集合の区別、Source改版後の再Inspect、操作が許可されない場合の説明を、Vanilla／Lit／React／Desktopで同じ独立Expectedに照合する。
+
+### 18.3 作業を小さく切り、セルフビルドの主線を妨げない
+
+WEB-P1では最初から宣言的UIの新構文を追加しない。現行の `inspector-selection.ts`、`presentation.ts`、`source-locations.ts` と `main.ts` に対し、既存の一つのread-only Subjectについて、(a)Hostが検証した入力、(b)純粋な表示Projection、(c)UIが発する選択Intent、(d)Host Adapterでの再Inspectの境界を、現行型とテストで示す。Rendererの差し替えやLit採用は、この分離が確認できてから判断する。
+
+続くWEB-P2は同じOperationのCLI directとHTTP公開を、WEB-P3は一つの公開FacetのSource→Builder→Asset Member→外部Consumerを、それぞれ独立した実証にする。UI生成を進める場合は、定義の記述量、生成された構造・入力制約・Binding、手書きのTarget固有コード、再生成時の差分を同じFixtureで計測する。CodeMirrorや高密度Canvasなど、手書きの方が合理的な部分を無理に生成対象へ含めない。
+
+**反証対象**：同名異Subjectの取り違え、部分取得を「該当なし」にする表示、旧Requestの後着反映、Pin確認によるDirty入力の消去、SSR初期HTMLからの開示漏れ、Componentの表示だけでCommand実行可能とする誤判定、Layoutだけの変更で生成業務コードが変化する差分、生成器改版後の旧Asset使用。既存#1180／#2514のExpectedと#997／#1158／#1824／#2831のOwnerに割り当てる。ここで列挙したものは**受入候補であり、新しいテストPASSを表さない**。
