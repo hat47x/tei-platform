@@ -301,3 +301,65 @@ Observationは`data-element`候補へ、有向Relationは`cross-reference`候補
 **完了判定と残作業**：J-01〜03はHeadlessの限定受入、J-04は実Native独立Consumer、J-05はOwner受理・Source保存・実Provider/Target/SHOを含む別Owner受入。これらを別PR・別Attemptの成功から寄せ集めずに段階的に繋ぐ。非Plugin Studio DesktopのStage1→Stage2実Windowsセルフビルド（#4583/#2831）、通常tei CLIによる実PG Read→Function Context→独立Consumer（#2586）は引き続き**製品P0**であり、J-04/J-05を新たな着手前提に追加しない。
 
 **この§10の状態**：mainへ統合された実コードと既存設計の**静的照合・実装/Expectedの引渡し**。J-01〜05を新たに実Go/Windows/DB/SHOで通したものでも、正式Meaning/Plugin自己構築のOwner受理でもない。実装済みの旧局所試験と統合後の新しい縦断成功を混同しない。
+
+<!-- tei-multichannel-model-intake-20261115 -->
+## 11. 画像・会話・表データからのモデル候補を、同じレビューへ接続する（2026-11-15追補）
+
+### 11.1 現場の入力は複数あるが、「証拠」と「受理された設計」は一つではない
+
+要件定義の現場では、三要素分析法を使ったホワイトボードの図を撮影してからModelerで清書することがある。そのほかに、顧客の口頭説明・会議の文字起こし、CSVやExcelの実データ、帳票見本、既存システムの画面、DBや既存プログラムの解析結果など、モデルの手掛かりは異なる経路から入る。**それぞれを生成AIで支援するが、同じ確からしさの「完成モデル」として扱わない。**
+
+本書が既に扱う[REAの外部解析](#10-main統合後の再整理観測と意味候補を二重に実装しない2026-11-14)は、そのうち**実Sourceからの構造観測**という一チャネルである。写真や会話をREAの構造出力に偽装して読み込ませたり、REA専用Candidate／ReviewPacketを全入力の万能Schemaに作り替えたりしない。既存[#3394](https://github.com/hat47x/tei-platform/issues/3394)の「外部Evidence→構造候補→三要素Review」という区別を、他のInput Adapterと共有できる**レビュー上の対応関係**として利用する。
+
+| 取り込みチャネル | 抽出する候補と出典 | ここだけでは確定できないこと |
+| --- | --- | --- |
+| **ホワイトボード写真・手描き図** | 図形・文字・線・矢印・囲み・位置、原写真のImage/Revisionと領域。手描き三要素図のNode/Relation/Function候補 | 重なった線の接続先、同名Nodeの同一性、Cardinality、矢印の業務意味、撮影外の議論 |
+| **口頭説明・会議文字起こし** | 発話、話者・時刻・参照箇所、行為・対象・条件・例外・否定・未決事項の候補 | 話者の発言を組織として受理した決定、同音異義語、発言されなかった手順、承認権限 |
+| **CSV・Excel・実データ** | 列・セル・型・値域・重複/欠損・候補キーとRelation、ファイル/Sheet/Range/行ID | 標本だけでの全件制約、業務上のPK・意味的Relation、NULLと未取得の同一視、更新規則 |
+| **帳票・伝票・既存画面** | 項目・ラベル・表示順・グループ・繰返し領域、帳票ページ/画面領域 | UIの見た目から実DB構造、実処理・副作用・隠れた権限・画面外の操作 |
+| **既存DB・SQL・ソース／REA等** | 実テーブル・制約・Query・依存と観測Graph、Tool/Source/Raw/取得範囲 | 物理FKからの業務関係、コード上の分岐からの顧客承認済み業務規則、partialからの未使用断定 |
+| **既存のMarkdown・Mermaid・設計書** | 明示された記述・表・図・Source位置と、その文書での宣言/説明の区別 | 読める文章・図を正式TEI Grammar/Roleとして解釈できたこと、派生図の編集資格 |
+
+同じ名称が複数チャネルに現れても、それらは**一致の候補**であり、同じCanonical Subjectだと自動決定しない。逆に同じ対象が異なる名称で呼ばれていても、根拠なしに別物として確定しない。線と箱の視覚的近さ、表の列名一致、画面ラベル一致、生成AIの高い確信度だけではRelation/Keyの正式受理にならない。
+
+### 11.2 既存のEvidenceとCandidateを流用し、複数の観測を失わず照合する
+
+各チャネルのAdapterは、**実際に受領した原本を再発見できる参照**を提供し、抽出結果はGraph/Tree/Table/Function/Businessの**意味候補**として扱う。必要な照合項目は、既存のSource/Evidence/Provenance/Review/Qualificationで表現可能な範囲を優先し、欠けている欄が実証されるまで新しい共通Intake Schemaや専用AI Hostを作らない。
+
+- **原本**：画像・音声/文字起こし・Excel/CSV・帳票PDF・Web画面・REA Rawなどの媒体、実取得byte/digest・Revision、取得時刻・範囲、現在参照できるか。秘密資料は既存の保存先と現在の開示範囲を尊重し、外部AIへ無条件送出しない。
+- **位置**：画像内の領域、発話の時刻と文字範囲、ExcelのSheet/Cell Range、CSV行の候補業務ID、帳票のPage/Field、Source CodeのSpan、WorkspaceのSource occurrence。**位置と意味IDは別物**である。
+- **抽出と対応**：候補Node/Edge/Role・向き・多重性・時点/数量/単位、抽出方法とTool版、元Occurrenceへの逆参照、可逆性/意味損失、未確認・競合・取得不能。取得できない範囲を空集合や「関係なし」にしない。
+- **レビュー**：複数の独立Evidenceが同じ候補を支持するか、矛盾するか、どの問いに対して十分か、Reviewerが何を選択/保留/却下したか。候補の自動ランキングはReviewを助けるだけで、Ownerによる意味受理へ昇格しない。
+- **実利用**：受理後の対象をどの正式`*.tei.md`/現行TEI Sourceへ対応付け、実Parser/Role、Artifact/Consumerが**どのSourceを実際に読んだか**を別に検査する。Review画面の完成とGo生成やDB書込みの成功は別。
+
+必要なモデル投影は、**Data／Function／Businessを別のSubjectとして区別しながら関係を辿れること**である。三要素分析法のDiagram、Mermaid、渡辺式ER、自動配置View、SHO文書やStudio Inspectorは、同じ候補と受理済みMeaningから用途別に提示する。画像を清書したという事実を、Source/意味Revisionの保存・実Provider呼出し・Targetでの動作と混同しない。
+
+### 11.3 「多くの資料を読めた」より、候補を人が正しく選べることを先に確かめる
+
+最初に作るのは万能な画像OCR/会議議事録Parserではない。**一つの業務上の問いを、異なる二種類の原本から参照できるRead-only Review**である。
+
+仮の問いは「この受注確定の処理は、どのデータを読み書きするか」。ホワイトボード写真が「受注→在庫」の矢印を示し、会議文字起こしが「在庫を確認するが、引当は承認後」と発言していた場合、**矢印一本から在庫更新というEffectを確定しない**。図の向きと発言の時点/否定の根拠を別々に表示し、Data依存・Function処理・State更新のどれかをReviewerが選べるようにする。
+
+異なるチャネルの証拠が食い違う場合、最後に取り込んだものやAIの確信度が高いものを自動的な勝者にしない。Candidate/Contradiction/Unknownを保ち、源資料へジャンプできる状態でOwner判断へ渡す。一次資料とAI要約も区別し、別のAIに渡した要約が元の観測と独立した二件目の根拠になったかのように数えない。
+
+[Graph固定Fixture #4709](https://github.com/hat47x/tei-platform/pull/4709)の同名別ID二Node・平行二Edgeを**構造保持の対照**に流用することはできる。ただし実際の写真や会議音声がまだ提供されていないため、これを写真／音声からのExtraction実証済みと呼ばない。初回は公開・合成資料を使い、後続の実顧客資料は現在の権限と開示範囲で別途検収する。
+
+### 11.4 初回の検収と実装の引渡し
+
+| ID | 対照 | 独立Expectedに渡す判定 |
+| --- | --- | --- |
+| **MI-01** | ホワイトボードの同名二Node・二矢印 | Node/Edgeを表示名や画素位置で統合せず、線端の曖昧さ・未解決Edgeを残す |
+| **MI-02** | 同じFunctionへの会議発言（肯定／否定／保留） | 話者・時刻・否定/時点を保持。書込Effectの承認済み規則を自動生成しない |
+| **MI-03** | CSV/Excelの列重複・NULL/空文字/欠損、途中行のみ取得 | 候補Keyと実観測を分け、partialから全件一意・行数0・Relation不在を確定しない |
+| **MI-04** | 帳票／画面の表示フィールドと実モデルが不一致 | 見た目をModel変更として即時反映せず、Source-backedな差分候補を提示 |
+| **MI-05** | 二種類の資料が同じRelationを支持／矛盾 | 出典Occurrence・媒体・取得版を分離し、候補の支持と矛盾の両方を提示 |
+| **MI-06** | 原本取得不能、権限失効、資料A→B→A | 以前のAI要約/Cache/ReviewPacketで現在の閲覧・実装資格を復活させない |
+| **MI-07** | Reviewで採用するがWriterの対象が一意でない | Accepted Meaningの候補と編集できるSource Slotを分け、曖昧な逆編集/自動保存を拒否 |
+| **MI-08** | 清書したMermaid／三要素図から通常TEIをBuild | 正規`*.tei.md` Reader未対応なら`TEI_MD_PARSER_UNBOUND`等で止め、図表示・提案成功を実コード生成の成功へ昇格させない |
+
+**初回P1の順番**は、(a)既存のREA/外部Source側にあるEvidence→Candidate→ReviewPacketの契約を一件read-onlyで調べる、(b)公開合成の図面一件と文字起こし一件について、原本の特定位置→二つの候補→競合Reviewを**Headlessで表示**する、(c)同じGraph候補のRead-only投影を三要素図/Inspectorで確かめる、までに限る。写真の自動読取り、音声認識、Excel/帳票解析、実Studio ConsumerやAI自動候補生成は、個別Adapterの実力が確認できた順に付け足す。**新しい全チャネル対応Coreや独立の第二Meaning/Expected Storeは作らない。**
+
+**Ownerと製品P0の接続**：外部Evidence/REA・Reviewは[#3394](https://github.com/hat47x/tei-platform/issues/3394)、三要素図のMeaning/Viewは[#1120](https://github.com/hat47x/tei-platform/issues/1120)/[#1124](https://github.com/hat47x/tei-platform/issues/1124)、Graph identity/逆編集は[#2497](https://github.com/hat47x/tei-platform/issues/2497)、Authoring/正式Markdown Readerは[#2621](https://github.com/hat47x/tei-platform/issues/2621)/[#988](https://github.com/hat47x/tei-platform/issues/988)、DB/CSV Reverseは[#3270](https://github.com/hat47x/tei-platform/issues/3270)、Current Disclosureは[#2516](https://github.com/hat47x/tei-platform/issues/2516)、独立Expectedは[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#2514](https://github.com/hat47x/tei-platform/issues/2514)を使う。全体P0は**TEI Studio Stage1→Stage2実Windows Desktop**（#2831/#4583）、並行P0は通常`tei` CLI→実Provider→独立Consumer（#2586/#1251）。多チャネル取込みを新しいP0 Hard Gateにしない。
+
+**状態**：本節は現場入力チャネルの設計整理と既存Code/Ownerへの引渡し。画像解析・音声文字起こし・Excel解析・多チャネルEvidence取得、Headless/Studioでの新しいReview実装、正式`*.tei.md`のRole読取、Owner意味受理、生成Plugin/Stage2受領は**今回NOT RUN / NOT ACCEPTED**。正式な共通Intake形式やAI利用手順を、実装済みとして宣言しない。
+
