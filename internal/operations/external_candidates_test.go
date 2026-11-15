@@ -42,6 +42,47 @@ func candidateFixture(t *testing.T) string {
 	return path
 }
 
+// TestCapturedREAReceiptCannotSupplyAbsentSemanticGraph keeps the actual
+// captured REA bytes as evidence, without adding synthetic observations to
+// its normalized_result. A complete Receipt is not a candidate selection.
+func TestCapturedREAReceiptCannotSupplyAbsentSemanticGraph(t *testing.T) {
+	captured := filepath.Join("..", "externalanalysis", "testdata", "rea-6.8.0", "analysis.json")
+	raw := mustReadFile(t, captured)
+	before := fmt.Sprintf("sha256:%x", sha256.Sum256(raw))
+	receipt := externalanalysis.Receive(raw,
+		externalanalysis.Tool{Name: "rea", Version: "6.8.0", Present: true},
+		candidateReadAt)
+	if receipt.State != externalanalysis.StateComplete || receipt.Evidence == nil {
+		t.Fatalf("real saved Evidence is not a complete Receipt: %+v", receipt)
+	}
+	if receipt.Raw.Fingerprint != before {
+		t.Fatalf("real raw digest changed: got %s want %s", receipt.Raw.Fingerprint, before)
+	}
+	if receipt.Promotion.AcceptedMeaning || receipt.Promotion.CanonicalWorld || receipt.Promotion.DatabaseObservation {
+		t.Fatalf("receipt wrongly promoted original bytes: %+v", receipt.Promotion)
+	}
+	if _, err := externalanalysis.ReadCandidates(receipt.EvidenceBody()); err == nil {
+		t.Fatal("captured normalized_result={} must not produce a semantic graph")
+	}
+	view, err := operations.ExternalCandidates(operations.ExternalCandidateRequest{
+		EvidencePath: captured,
+		ToolVersion: "6.8.0",
+		ObservationID: candidateNodeID,
+		RelationID: candidateRelationID,
+		Tool: externalanalysis.Tool{Name: "rea", Present: true},
+	}, candidateReadAt)
+	var candidateErr *operations.ExternalCandidateError
+	if !errors.As(err, &candidateErr) || candidateErr.Code != operations.ExternalCandidateUnusable {
+		t.Fatalf("real receipt-only capture must refuse candidate selection: view=%+v err=%v", view, err)
+	}
+	if view.Observation != nil || view.Relation != nil {
+		t.Fatalf("real receipt-only capture fabricated graph candidates: %+v", view)
+	}
+	if current := fmt.Sprintf("sha256:%x", sha256.Sum256(mustReadFile(t, captured))); current != before {
+		t.Fatal("receipt-only test mutated saved actual REA bytes")
+	}
+}
+
 // TestExternalCandidatesProjectsOneObservationAndOneRelation is the T1-A
 // vertical slice: one external Observation and one directed Relation from the
 // same attempt, received losslessly.
