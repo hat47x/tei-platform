@@ -2751,3 +2751,35 @@ P0-A/BとP1の実行はStudio GUIやMCP Serverの完成を待たない。CLIで�
 
 **状態（2026-11-15）**：本節はGitHub既存Issue・設計資料と他領域の判断を結んだ**計画追補のみ**。新Parser/Role Interpreter、正式`*.tei.md` Reader、Rule由来Plugin実生成、TEI→TEI再入、Studio Desktop Stage2、独立Expected実行、Owner意味受理はこの追補で**NOT RUN / NOT PROVEN**。`#1119`の既存GateとDesktop P0を変更しない。
 
+
+<!-- tei-self-description-generated-decision-readset-20261115 -->
+### 45.7 他レーンの成熟した成果を「一つの実証」に収束する
+
+11月15日時点でmainに統合された[BRMS決定表統合設計](BRMS_DECISION_ANALYSIS_INTEGRATION_2026-11.md)を踏まえ、`45.4のGraph/Validationに加える第三の大型モデルを先に作らず、**一つのRuleのSource→型付き意味→実生成Go→実Consumer→独立Expected**を横断の基準とする。BRMSは判断の競合・部分観測を、#4544は生成器の実装由来とConformanceを、#4583は非Plugin Studioの実Build工程を、それぞれ所有する。自己記述レーンはこれらの証拠を同一Subject/Revisionで参照し、各Ownerの仕様を複製しない。
+
+第一の製品差分として、現在実在するCLIのSource/Selection/診断入口を棚卸しし、正式に選ばれたLanguage/Role/OperatorとそのSource occurrenceを**読取り専用で辿れるか**を確認する。新しい`tei self-description`コマンドや万能Descriptor Readerを先に増設しない。`*.tei.md`は現行Product Readerの未接続区間を`unsupported`とし、限定Referenceの事前変換を正式採用の証拠に数えない。文法の評価は「専門家が対象→条件→判定→結果の順で読める」「Go宣言を露出しない」「Sourceの糖衣を保存できる」を優先し、Frontendの構文候補とBackendのGo生成方式を混同しない（#4359/#988/#2621）。
+
+**最小の実証票（独立Expectedは#1180/#2514の既存正本へ接続）**：
+
+| ID | 一つの実測・変更 | 合格するClaimと停止条件 |
+| --- | --- | --- |
+| **SDX-24** | 同一Source occurrenceを実Reader→Parser→Source Index→Typed Candidateで追う | 同一ID・Type・Role/Operator exact Pin・元Source位置を保持。未読込・未対応・競合を「存在しない」「空集合」と断定しない |
+| **SDX-25** | 二表層（DSL／表・Graph）から同じ型付きRuleを読む | 意味同値性を型・粒度・NULL・順序・Effectまで比較。表の行順やGraph labelから隠れた優先順位・Node identityを作らない |
+| **SDX-26** | Ruleの一条件／Edgeの方向だけ変更 | 実生成コードの**判断部分**とCLIから実呼出しした結果が独立Expectedに従い変化。固定JSON、Go delegate、表示だけの更新は不合格 |
+| **SDX-27** | Unique判定でcompleteな二行の競合／partialな一行一致・零件を比較 | 確定した二行の競合は検出可能。一行だけ・零件は取得完全性の証拠なしにUnique／不存在と確定しない。No-match／Unavailable／NotSatisfied／Errorを潰さない |
+| **SDX-28** | Descriptor／Generator／Toolchain／Source pathのうち一因子だけ変更 | Model意味が不変でもBuild資格・Artifact／Readerの現在資格を独立再判定。A→B→Aや実選択B・実呼出しAを旧PASSで通さない |
+| **SDX-29** | Editorの表示からSourceの一箇所だけ変更し、保存後に別Readerで再読込 | Source occurrence/Revision/Role option spanの一意性がなければzero-write。Draft保存／Preview／Meaning受理／Target実装採用を段階別に記録 |
+| **SDX-30** | Plugin Aの公開契約・文書をPlugin Bから参照 | 実選択版／Source／開示範囲／実Consumerを固定。古い文書やAIの説明だけで現在のCapability/実行権限を主張しない |
+| **SDX-31** | Stage1生成CLIとStage2 CLI、さらにStage2 Studio Windows EXEを別々に実利用 | 同一Attemptの実Builder/argv/input/ArtifactとConsumerを照合。Stage1が起動していない外部Build・未宣言Node/esbuild・Plugin偽装によるDesktop Buildは不合格 |
+
+SDX-24〜31は**既存の独立Expectedに対応付ける候補名**であり、新Runner、新Scenario正本、全件一括Hard Gateを作らない。初回の最短縦断ではSDX-24/26を優先し、同じSource/PinのままSDX-27のBRMS反証・SDX-28の生成器反証を追加する。#4544にある`line-amount`と#2016のGenerator Referenceは第二Validationの再利用候補であり、契約・精度・丸めの整合を確認してから使う。
+
+### 45.8 自己記述率ではなく、実装責務と保守負担の移動を検収する
+
+PluginのDescriptorがTEIで書けても、実際のValidator/Generator処理が手書きのままなら「実装まで自己生成」とはしない。機能ごとに、**(a) TEIのRuleから生成される判断、(b) 標準Operatorの実利用、(c) 外部Go等への委譲、(d) 保守する手書き実装、(e) 未実装**を別々に集計する。ビルドを二回実行した件数や生成Goの行数だけを自己生成の進捗率にしない。
+
+一つの意味変更に対して、編集したTEI定義、修正した手書き意味分岐、重複する契約、再生成とレビューの手間、予期しないSource差分、独立Expected合否を変更前後で比べる。先にTEI生成可能となった範囲が小さくても、**同じ意味を保って手書き判断の保守を減らせたか**を改善の根拠とする。逆にTEI定義が増え、説明用のGoラッパーと別正本の実装も増えたなら改善とは呼ばない。
+
+標準Prelude（`std.*`）については、現在Go内にある固定Primitiveの自己記述とSource-backed定義への移行を**B0のSeed最小化候補**として継続検証する。Preludeを同名の`.tei`へコピーするだけではSource・Meaning・fingerprint・Reader資格は保存されない。移行は#2620と既存Source/Format VersionのOwnerが有限Seed→候補Standard Source→独立意味比較→Owner切替の順で進め、初回Graph/Rule生成やStudio Desktop P0の前提条件にはしない。
+
+**採用と実行の境界**：本`45.7〜45.8は成熟した他レーンの契約を`45の実装順へ接続する計画更新のみ。SDX-24〜31、新`*.tei.md` Product Reader、新Go/Plugin実生成・実呼出し、Studio Stage2、Source安全書戻し、Owner意味受理の新実証は**NOT RUN**。既存mainの限定Referenceや別HEADで成立したWindows CIを同一Attemptの製品PASSへ合算しない。
