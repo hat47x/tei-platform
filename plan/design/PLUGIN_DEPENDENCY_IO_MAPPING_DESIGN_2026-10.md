@@ -919,3 +919,103 @@ Source/Authoring Graph → Resolved/Lowered Graph → Targetの実行・観測�
 **着手順**：P-1 read-onlyで現Contract/Source/APIのOpen候補とRequired/Observedを照合 → P0で上流無変更＋下流Adapterの2つのPluginを実現・依存Optional/Versionの対照 → P1で実Go静的Build/Actual Invokeと独立Conformance → P2で外部Hostや副作用付きPluginを選択的に検証。#1119のG1/G2/G4を増設したり、既存IssueのOwnerを移さない。
 
 **状態**：外部公式資料の静的比較と設計・受入案のみ。新Production Schema、CLI、公開Registry、二版実Link、上流無変更Adapter、AI自動修復、実Host/DB/OS/外部Consumer、正式Owner受理は**NOT RUN／未採用**。Open-by-defaultの意味を「公開者が発行・許諾済みの利用可能面での保証非強制」と限定し、未許可データの外部公開自動化へ拡張しない。
+---
+
+<!-- tei-plugin-typed-connection-granularity-20261115 -->
+## 19. 入出力接続の粒度を選べるようにする：値全体・項目単位・明示Adapter（2026-11-15横断設計）
+
+### 19.1 複雑さを配線へ持ち込まず、標準データ構造と対応付けへ委ねる
+
+Plugin Aの出力をPlugin Bの入力に渡す際、**中身を全項目に分解して接続することを義務にしない**。同じ型付き値をそのまま受け渡す場合も、必要な数項目だけを別の入力へ対応付ける場合も、その間に型変換用Adapterを挟む場合もある。粒度を使い分けられることは、Pluginごとに専用の接続形式を設計しなくてよいという意味で重要である。
+
+ここで共通にすべきものは「万能のPort型」ではなく、既存の標準Data／Semantic Type／契約項目、型付きRef、構造保存Mappingを用いて**どの値を何として渡したかを説明できること**である。Portは利用側・提供側のContract境界の投影であり、単なるGraph上の端子の図形ではない。
+
+接続の粒度と変換の有無は、**直交する二軸**として扱う。
+
+| 受渡しの粒度 | 変換なし | 明示変換あり |
+| --- | --- | --- |
+| **値全体** | 同一の型／契約を満たすRecord、Sequence、Graph、Valueをまとめて渡す | Record全体を別のRecordへ写像する純粋Adapter／Provider |
+| **項目・部分構造** | 出力の一つのField／型付きRelation Pathを入力項目へ渡す | 取り出したFieldを単位・値域・構造等に従って変換し、入力へ組み立てる |
+| **混合** | 型の合う部分構造をまとめて使い、不足項目のみ個別Mapping | 一部のFieldだけ明示Adapterを通す。変換を含む部分の証拠を独立に保持 |
+
+この表は採用済み製品Syntaxや固定PluginKindではない。型付きPortに表示する接続方式の比較票であり、既存§6の「同一契約接続／宣言的対応付け／変換Provider／Provider内部」の分類を置き換えない。**粒度は何を渡すか、§6は誰がその対応・変換を所有するか**という別の問いである。
+
+### 19.2 具体例：一つの注文Recordから複数の入力へ
+
+次のような型付きデータを想定する（説明用の概念表記であり、正式DSLではない）。
+
+```text
+Producer.out : OrderSummary@v1
+  orderId      : OrderId
+  customer     : CustomerRef { id: CustomerId; name: Text }
+  total        : Money<JPY> { value: Decimal; currency: JPY }
+  internalNote : PrivateText
+
+Consumer A.in : OrderSummary@v1
+Consumer B.in : { customerId: CustomerId; totalYen: Decimal }
+Consumer C.in : { customer: CustomerRef; amountMinor: JPYMinorUnit }
+```
+
+**全体を渡す**：Aが同じ正確なContractとScopeを要求し、許された値全体を受け取れるなら、`Producer.out → A.in`という一接続を使う。Record全体が適合していても、`internalNote`をAへ開示する資格がないなら直接の全体受渡しは成立しない。画面上の一線が実際の全Field転送を正当化しない。
+
+**要素ごとに渡す**：Bには`Producer.out.customer.id → B.in.customerId`と`Producer.out.total.value → B.in.totalYen`を明示する。ただし`JPY`という通貨・単位が同じ契約の前提として保証されなければ、`Decimal`の一致のみで`totalYen`へ対応付けない。受け手が必要とする項目だけを構築し、`internalNote`などの余分なFieldを暗黙に混入させない。
+
+**Adapterを挟む**：Cの`amountMinor`へは、`Money<JPY> → JPYMinorUnit`の明示Adapterを使う。小数桁、丸め、オーバーフロー、異常値の扱いが契約で決まる場合に限り純粋変換にできる。為替レート取得や顧客照会を伴う場合は純粋な値変換でなく、外部データ取得・必要Context・権限を持つOperation／Providerである。変換前後の値型が一致しても、その業務Lawを省略しない。
+
+### 19.3 全体接続・部分接続の適合条件
+
+**全体接続**を認めるのは、選択された型／契約と必要保証がConsumerの要求を満たす場合である。同名の型、同じJSON Schema風の見かけ、構造的なField名の一致だけでAccepted意味版の一致とはしない。構造的な包含を許す場合でも、必要なFieldが全て受渡し可能であること、全体転送で不要・非開示の値を漏らさないことを別に示す。構造的に余分なFieldが存在する場合、**余分なFieldが消去されたProjection**と、Producerの値全体を丸ごと運ぶことは別操作である。
+
+**項目単位接続**では、受け手が要求する項目とその安定した型付きRef／Source occurrenceを参照し、各項目について型、意味Role、NULL／missing／unfetched／partial、Cardinality、単位・精度、時点、序列、Source Scopeを照合する。項目を一つずつ接続しても、受け手のRecord全体が構築できたとは限らない。必須項目の欠落、同じ行き先への二重Binding、Parent全体へのBindingとChild個別Bindingの重複、任意の優先順による上書きを拒否する。明示したMerge／Overlay Operatorが別途受理された場合だけ、衝突の扱いをその契約で定められる。
+
+**部分構造**はGraphのRelation経路・Sequence／Bag・TableのField集合も対象とする。ただし配列から先頭一件を選ぶ、重複を除く、親子関係を平坦化する、時系列を最新値へ置き換える操作は単なる配線ではなく意味あるOperator／Mappingである。Graphでは同名Node・同端点多重EdgeのIdentity、向き、関係属性を失わせない。
+
+**同じ出力を二箇所へ配線すること**は、すでに確定した一つの値を分配することと、上流のEffectful Operationを二回呼ぶことを意味上区別する。Fan-outの表示から実Call回数や重複副作用を推測せず、Caller／Attempt／Result／Receiptを既存Lifecycle Ownerで検収する。
+
+### 19.4 Adapterの適格性は「変換できる」以上を求める
+
+AdapterはPluginの一形態であってよいが、単なる型変換宣言だけで万能の自動連結器にはしない。既存Contract／OperatorまたはProviderで次を照合する。
+
+| 観点 | 確かめること |
+| --- | --- |
+| 入出力の型とLaw | TypeRef／Semantic Set／単位・精度、NULL・欠損・エラー、Mappingの値域と明示Loss |
+| 実現と版 | Adapterの実装ID／版、Target、選択・Lock、純粋解釈／Go生成／外部Providerの実現方式 |
+| 必要Contextと作用 | 参照Scope・Source Snapshot、追加Read、Current Grant、Effect、時間条件、機密の開示 |
+| 接合の検収 | 元入力→Adapterへの実Call・Adapter出力→Consumerの実受領。各段のAttemptとRead／Failure |
+| 変化への対応 | Field・型・Law／Adapter実装変更時の影響先。A→B→Aやbyte同一でも旧Grantは復活しない |
+
+最初は**一段の明示Adapter**だけを候補とし、Node Viewには「直接」「項目Mapping」「Adapter経由」を選べるPreviewを示す。候補検索は許すが、最短Adapter連鎖の自動発見・自動採用、名前・型の近さによる無断接続、実行時の無音Fallbackはしない。Adapterを表示用の小Nodeに展開しても、そのSource・Provider・Contract Identityは変わらない。
+
+### 19.5 Node View：まとめたPortと展開したFieldは同一の接続を指す
+
+Node Viewでは、最初はContract名と全体Portだけを見せ、必要に応じてRecordのField、Relation Path、Collection要素まで展開する。**折畳み・展開は表示上の操作**であり、接続を再生成したり、全体PortとField Portの両方から同じ作用を二回起動したりしない。全体接続を展開表示するときは、その一つのMappingからどのFieldの受渡しが保証されるかを導出する。未保証のFieldを、見かけだけ接続済みにしない。
+
+StudioとCLIは同じ型付き接続検収票を異なる表現で見せる。編集可能な接続は、Sourceへ戻れるMappingと対象Port／Field occurrenceが一意になり、Ownerが提案を受理した後だけApplyできる。単にEdgeをドラッグして生じた候補はSource変更にもHost Grantにもならない。Adapter挿入前後の生成物の失効・必要な再Build・公開先の開示範囲をPreviewする。
+
+### 19.6 小さく実証する順序と独立Expected候補
+
+既存E2の局所型照合、[サービス／Node View §10](SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)、[標準Mapping](EXPLICIT_FUNCTION_DATA_MAPPING_AND_STANDARD_ROLES_2026-11.md)、[二段MappingのLoss](COMPOSED_REPRESENTATION_MAPPING_QUALIFICATION_2026-11.md)を再利用する。新Core Port enum、第二型体系、全自動Adapter Router、万能Graph実行器を初回に作らない。
+
+| 順 | 最小実証 | 担当・受入 |
+| --- | --- | --- |
+| **T0** | exactなRecord全体接続と、同じ出力から二つのFieldだけを選んで入力を組み立てる接続を、同じ既存型付きFixtureでread-only比較 | #1223／#951／#2497。Schema・項目Ref・拒否理由を確認。既存E2の実測範囲は越えない |
+| **T1** | 純粋な一Field Adapterを明示挿入し、型／Law／NULL／精度・Lossを独立Expectedで照合 | #988／#1121／#1180／#2514。解釈・生成の二方式は既存計画§10を利用 |
+| **T2** | Node Viewで全体Port⇄Field Portの折畳み、Adapter Nodeの表示を実Bindingと照合 | #1124／#2497／#1824。表示変更はSource／Buildを失効させない |
+| **T3** | 既存CLI／実Provider／独立Consumerへ同一Mappingを渡し、選択・Build・実Called・Deliveryを別々に確認 | #1251／#4495／#2595。Stage1→Stage2 Windowsは別P0 |
+
+| Case | 一因子の差 | 拒否／確認条件 |
+| --- | --- | --- |
+| **PIO-01** | exactな型とScope一致の全体接続／同名だが意味版違い | 前者は候補適合、後者は明示互換性なしに拒否 |
+| **PIO-02** | Bの必須Fieldを二つともMapping／一つのみMapping | 後者は未充足。空・NULL・unfetchedで自動補完しない |
+| **PIO-03** | 全体接続とChild接続を同時に指定 | 明示Overlayの意味なしには二重Bindを拒否 |
+| **PIO-04** | 公開可能なFieldだけ投影／秘密Fieldを含むRecord全体を送信 | 全体の型一致だけではDisclosureを許さない |
+| **PIO-05** | JPY小数をminor unitへ変換、丸め法あり／なし | 明示Law・精度・オーバーフロー検査がなければ変換不適格 |
+| **PIO-06** | 同じSequenceをBagへ／先頭一件へ縮約 | Order・MultiplicityのLossを隠す接続は拒否 |
+| **PIO-07** | 一出力を二Consumerへ渡す／Effectful Producerを二回呼ぶ | Fan-outの見た目と実Call回数を分離。Receiptを流用しない |
+| **PIO-08** | Adapterの型は同じ、Provider実装A→BでLawだけ異なる | 型適合だけで旧Binding／生成物／Resultを再利用しない |
+| **PIO-09** | 同じMappingを全体Port／展開Fieldで表示 | 表示を変えても一つのConnection Identityと現在の実Call数は不変 |
+| **PIO-10** | Read-only Adapterに外部Read／Effectが追加される | 追加Context／Host Grant／Effectが不明ならpure変換として受理しない |
+
+PIO-01〜10は既存#1180／#2514に渡す**独立Expected候補**であり、Go・Windows・実DBを今回実行した結果ではない。まずT0で「一括接続が成立する条件」と「細分化が必要な条件」を一つのFixture上で反証できることを優先する。実験の結果、既存TypeRef／Mappingで十分なら新しいPort DSL／型変換エンジンを追加しない。実装差分が増えず、Source変更による修正が局所化するかも比較して、抽象化の有効性を判断する。
+
+**状態**：§19は既存設計とコードを踏まえた型付き配線の方式選定・受入計画。製品Runtime間の汎用I/O配線、実AdapterのProduction選択、実Host／実ConsumerおよびOwner意味受理は**NOT RUN／NOT ACCEPTED**。

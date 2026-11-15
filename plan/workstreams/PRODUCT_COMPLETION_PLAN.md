@@ -1262,6 +1262,8 @@ S0-Aで最初に提示すべき**独立した正負**は、同一Source Snapshot
 | **解釈型** | 同じ意味のGraph／Ruleと、版固定した汎用Interpreter／Evaluatorの契約 | 固定したGraphの辺の向きやRuleの閾値を変えると、手書きGoの変更なしに実結果が変わる義務。**TEIモデル駆動の証拠**だが、コード生成の証拠ではない |
 | **委譲型** | 外部Go／SDK／ProviderへのInput・Output・Failure・Effect・Capability契約 | TEI側で呼出し・構成・観測できたこと。処理の判断条件が外部の手書き実装にあるなら、**意味ロジックのTEI化率には算入しない** |
 
+[型付きPlugin入出力Mapping§19](../design/PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md)では、**複合型全体をまとめて渡す／必要なFieldだけつなぐ／明示Adapterで変換する**ことを、実現方式とは別の接続設計として扱う。最初は同じRecordで全体接続と二Field Mappingのread-only適格性を比較し、その後に一つの純粋Adapterを確認する。全体Portの折畳みとField展開は同一Mappingの表示であり、二重Callerや非公開Fieldの配送を許可しない。PIO-01〜10を既存#1180/#2514に引き渡し、#1223/#951/#2497の既存型・対応付けを再利用する。**この検討をStudio Stage1→Stage2／通常CLI実Providerの新しい先行Gateにはしない。**
+
 この三方式は優劣の固定順ではなく、**同じ意味契約の異なる実現手段**である。生成型と解釈型を比べる場合は、同じ受理済みSubject、独立Expected、入力・NULL／欠損・失敗・Effectの条件を使う。生成型が対象Sourceの変更による再Buildを必要とするのに対し、解釈型は一般にその変更をデータの再読込みで扱える。ただし、InterpreterやOperatorの変更、古い選択版、現在Grantの失効を「Build不要」と混同しない。実装方式に応じてSource/Meaning/Artifact/実ConsumerのRevisionを別々に照合する。
 
 **最初の比較は既存の二題材に限る。** 同名Nodeと多重有向Edgeの出辺選択は、既存Graphの一つのMeaningから(a)生成Goによる出辺処理、(b)共通Evaluatorによる同じ出辺処理を作り、Edge反転・削除・レイアウト変更・ID重複の対照で実結果と再構築範囲を比較する。数量のpositive Ruleは、現行の生成Goから実CLI Build・Binaryまで到達した[PR #5009](https://github.com/hat47x/tei-platform/pull/5009)を**限定基線**とし、型・NULL・ゼロ・負値・未取得の既存Expectedを使う。両題材の差を通じて、共通Operator／Providerを再利用できたか、Graphだけの特別実装を増やしていないかを判断する。既存の[Source原文同梱と実Binary照合](../design/PLUGIN_RULE_PRODUCT_VERTICAL_SLICE_2026-11.md#1413-原文byte列もbuildplanの入力へ含め実binaryから読取りを確認する)は「原文の実消費」であって、Reader／Generatorの意味受理や本番配布への原文公開許可ではない。
