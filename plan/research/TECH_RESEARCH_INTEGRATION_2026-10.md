@@ -1862,3 +1862,36 @@ mainの`cmd/tei/scenario.go`が生成Scenarioコマンドへ固定するのは�
 [PR #5021](https://github.com/hat47x/tei-platform/pull/5021)はRule縦断設計書の文字化けを原byteから復元し、既存`tools/repository-plan-check`にUTF-8／制御文字の負例検査を追加した。同じ事故で研究の判断・検証条件が読めなくなることを防ぐため、今回**研究統合計画自身**にも既存`readableMarkdownBytes`を再利用したGo回帰を追加する。日本語の文書タイトル・§16の連番／一意性を確認するが、本文全体の文章品質や意味の正しさをこの自動検査だけで保証するとは主張しない。
 
 **残る最優先**は、(1)元Rule・Reader・Generator資格と通常`tei self-build`が消費したGo／Artifactを同じAttemptに束縛するR2-P、(2)受理済みpure Functionの公開Entry→選択済み実Provider→通常CLI・独立ConsumerのR3、(3)TEIによるStage1→Stage2 Desktop実再構築。Scenario選択鮮度とI2M-2は既存Ownerへ並行引渡しとし、新しい横断Gate、Runtime、Meaning Store、Plugin Registryを導入しない。**今回追加するのは研究計画とその文書健全性回帰だけ**であり、Go製品コード・Windows／DB・実Providerの新しい機能検証は行わない。
+
+### 16.41 関係を「線が引けたこと」と同一視しない――REA・組織・Node Flowの共通点
+
+[REA実Evidence検証 #5038](https://github.com/hat47x/tei-platform/pull/5038)（main統合 `c5e09384`）では、Graph中の任意のNode IDとRelation IDを組にする誤りを修正した。現在の`selection_from_evidence`は、Producerが発行したRelationの`source_node_id`／`target_node_id`と、**同じGraphで観測したNode ID**が一致するときだけ、限定的な観測対象を選ぶ。どちらの端点も観測できない場合やGraph自体がない場合、候補投影は`NOT RUN`とし、存在しない関係を補わない。重複するNode／Relation IDも拒否する。これは**参照整合の改善**であり、REA業務意味の受理・Graph全件取得・実View受領の成功ではない。
+
+同じ失敗は異なる姿で起こる。標準Node Flowでは「同名のNodeがある」と「そのOccurrenceのPortへ特定RoleのEdgeが接続している」は異なる。組織モデルでは「同じMembership IDがある」と「指定した`validAt`・`knownAt`でその関係版が有効」は異なる。[隔離PostgreSQL検証 #5027](https://github.com/hat47x/tei-platform/pull/5027)（main統合 `a8d3c4f8`）が確認したのは、旧新版の共存と二軸の重なり・別Membershipの同時成立という**試験用の物理候補**であり、正式な履歴Persistenceではない。Plugin配線では「Operatorを宣言した」「実装Bを選択した」「実装Bを呼んだ」「宣言した業務意味に適合した」の四つが別の事実である。Manifest選択変更後の旧Scenarioコマンド拒否は[PR #5054](https://github.com/hat47x/tei-platform/pull/5054)で審査中であり、製品完成とは記さない。
+
+この違いを新しい万能Graph型に押し込まず、既存Data／Relation、標準GraphのOccurrence／Edge Role、Function／Operator、Query／Context、Provider／Host Authorityの**どの契約が何を証明するか**を分ける。Graph上のEdgeの存在から、実行順、業務上の帰属、現在Grant、外部Effectの発生を自動推論しない。
+
+### 16.42 横断的な反例を「参照の成立→適用範囲→意味→実行」に分解する
+
+| 反例 | 成立するもの／不足するもの | 最初に結果を確かめる既存の場所 |
+| --- | --- | --- |
+| XR-01 無関係なNodeとRelationが同じGraph内にある | IDは双方存在するが端点接続なし。観測対象の組としては不成立 | [#5038](https://github.com/hat47x/tei-platform/pull/5038)のVerifier／反例。Graph一般化は[#4198](https://github.com/hat47x/tei-platform/issues/4198) |
+| XR-02 同名二Node、多重Edge、片端点だけ観測 | Occurrence／Edge IDは別。片端点の観測だけでは全Graphや不存在を証明できない | [#2495](https://github.com/hat47x/tei-platform/issues/2495)・[#4350](https://github.com/hat47x/tei-platform/issues/4350)、§16.20 NF-01 |
+| XR-03 同一Membershipの二版、二時点区間の重なり | 行の保存／時点指定の一致だけでは単一の有効関係を証明しない。別Membershipの兼務は一律に拒否しない | [#2386](https://github.com/hat47x/tei-platform/issues/2386)・[#1126](https://github.com/hat47x/tei-platform/issues/1126)の意味判断、[#5027](https://github.com/hat47x/tei-platform/pull/5027)の隔離DB |
+| XR-04 ManifestのOperator実装をA→Bへ変更 | RuleとWorldが同じでも旧実行資格は変わる。実呼出しBでも宣言意味への適合は別 | [#5054](https://github.com/hat47x/tei-platform/pull/5054)／[#2600](https://github.com/hat47x/tei-platform/issues/2600)、[#951](https://github.com/hat47x/tei-platform/issues/951) |
+| XR-05 CLIと共通Operationが同じInspectionを返す | read-onlyな対象・出典・結果の同値は示せるが、子Backendの本人性、現行Grant、Build／Effectは未証明 | [#5037](https://github.com/hat47x/tei-platform/pull/5037)（main統合 `eb0ccf05`）、[#4635](https://github.com/hat47x/tei-platform/issues/4635) |
+| XR-06 Graphの線から公開EntryとEffectを推定 | Edgeの型と接続が正しくても、公開資格・現在認可・実Provider／Effect Receiptは別 | [#4495](https://github.com/hat47x/tei-platform/issues/4495)・[#3422](https://github.com/hat47x/tei-platform/issues/3422)、§16.20 NF-08／09 |
+
+受入票では、少なくとも **(a) 主体と関係の識別、(b) 観測した範囲と欠落、(c) Role・型・多重度、(d) 有効／認識時点、(e) 独立Expectedに対する意味適合、(f) 版・選択実装・実呼出し、(g) Hostの現在許可と実Effect**を、該当する用途に限って別々に照合する。全用途へ七欄を必須実装するのではない。該当しない欄は「成功」と偽装せず非適用、必要なのに取得できない欄は未確立として扱う。**NULL／空集合／未取得／権限拒否／観測範囲外を同じ『無い』へ潰さない。**
+
+### 16.43 既存の実装を三つの縦断で再利用し、新しい共通Engineは作らない
+
+第一縦断は**Relationの限定的な観測**である。REA #5038の実Verifierが拒否した無関係な端点・重複IDを、Node Flowの標準Graphへ一般化するときの反例に使う。Node／Edge／Port／Roleの意味契約を[#4198](https://github.com/hat47x/tei-platform/issues/4198)の既存Ownerへ戻し、read-onlyなGraphの二表現が同じOccurrenceを指せるかを照合する。Producerが示していない端点、作用、業務意味を補わない。
+
+第二縦断は**時点を伴うRelationの判定**である。#5027の隔離DB結果を[#2386](https://github.com/hat47x/tei-platform/issues/2386)／[#1126](https://github.com/hat47x/tei-platform/issues/1126)の受理待ちケースとして保持し、同一Membershipの旧新二版を正式Persistenceへ保存・再読込し、`validAt`／`knownAt`を指定した実Provider→独立Consumerまで進める。行の`recorded-at`、外部観測の`observed-at`、Owner判断時点は、Queryの二時点と混同しない。
+
+第三縦断は**意味に適合する実呼出し**である。#5054の選択実装鮮度を検証した後でも、`non-negative`の宣言へ`non-zero`実装を結ぶ反例（入力0）を[#951](https://github.com/hat47x/tei-platform/issues/951)／[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)の独立Expectedで拒否できるか、実Provider実行の縦断と分けて確かめる。CLI／Studio／Node Viewの表示結果が一致しても、Provider選択と意味適合の証拠を合算しない。
+
+これらをひとつの巨大な結合試験へ直ちにまとめない。既存のREA Verifier、隔離PostgreSQL試験、Scenarioの選択Pinと共通Operationを各Ownerで検収し、**既に合格した限定経路に不足する接続**だけを追加する。標準Graph、Source Index、独立Expected、Build Attempt／Receiptを再利用し、新たなRelation Engine、Temporal Engine、実装選択Registry、Graph Runner、認可器を作らない。
+
+**優先順位は据え置く。** 製品Ruleからの生成Goを実Builderの入力と結ぶR2-P（[#2595](https://github.com/hat47x/tei-platform/issues/2595)／[#4544](https://github.com/hat47x/tei-platform/issues/4544)）、通常CLIと実ProviderのR3（[#2586](https://github.com/hat47x/tei-platform/issues/2586)／[#4495](https://github.com/hat47x/tei-platform/issues/4495)）、TEI StudioのStage1→Stage2実Desktop再構築（[#2831](https://github.com/hat47x/tei-platform/issues/2831)／[#4583](https://github.com/hat47x/tei-platform/issues/4583)）を並列P0とする。本節は**mainの実装と検証の静的照合による研究・検収計画**であり、XR-01〜06すべての製品実装・実行PASS、正式Graph DSL、組織業務意味のOwner受理、Windows Stage2の完成を示さない。
