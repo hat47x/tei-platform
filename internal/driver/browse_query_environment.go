@@ -118,6 +118,12 @@ func (r Resolver) ExecuteBrowseQueryInEnvironment(
 	if err != nil {
 		return BrowseQueryEnvironmentExecution{}, err
 	}
+	// A real Environment-bound Provider must not receive parameters from a
+	// Query that has no typed input contract. The generic Browse path keeps
+	// historical synthetic fixtures readable but never qualifies them here.
+	if len(resolved.Query.Inputs) == 0 && len(parameters) != 0 {
+		return BrowseQueryEnvironmentExecution{}, fmt.Errorf("Query %s has no declared inputs for the supplied parameters", resolved.Query.ID)
+	}
 	executor, ok := registry.ExecutorForBrowseQuery(environmentID, instance.ID)
 	if !ok {
 		return BrowseQueryEnvironmentExecution{}, fmt.Errorf(

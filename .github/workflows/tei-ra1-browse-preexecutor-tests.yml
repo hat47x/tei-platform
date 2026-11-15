@@ -1,0 +1,78 @@
+name: TEI RA-1 Browse Query pre-executor tests
+
+on:
+  pull_request:
+    branches:
+      - feat/b2c-recent-orders-declared-from-20261114
+    paths:
+      - '.github/workflows/tei-ra1-browse-preexecutor-tests.yml'
+      - 'internal/driver/**'
+      - 'internal/query/**'
+      - 'internal/validation/**'
+      - 'reference/workspace/**'
+      - 'tools/reference-first-web-target/**'
+
+permissions:
+  contents: read
+
+jobs:
+  ra1-driver-preflight:
+    name: Exact PR code - Go Driver and historical Web reference
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout PR merge code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Verify exact PR merge-to-head relation and clean checkout
+        shell: bash
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          [[ "$GITHUB_REF" =~ ^refs/pull/[0-9]+/merge$ ]]
+          read -r merge base head extra < <(git rev-list --parents -n 1 HEAD)
+          test -z "${extra:-}"
+          test "$merge" = "$GITHUB_SHA"
+          test "$head" = "$PR_HEAD_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+      - name: Set up Go from module
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Check Go format for RA-1 changed Go sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            internal/driver/query_execution.go
+            internal/driver/query_execution_test.go
+            internal/driver/query_invocation_parameter_test.go
+            internal/driver/browse_query_environment.go
+            internal/driver/browse_query_environment_test.go
+          )
+          test -z "$(gofmt -l "${files[@]}")"
+      - name: Run RA-1 typed path and Source/Loader Go tests
+        run: |
+          set -euo pipefail
+          go test -count=1 ./internal/driver ./internal/query ./internal/syntax ./internal/validation
+      - name: Run older First Web Target fixture regression
+        run: |
+          set -euo pipefail
+          go test -count=1 ./tools/reference-first-web-target
+      - name: Run reference Reader and product CLI tests without claiming PG E2E
+        run: |
+          set -euo pipefail
+          go test -count=1 ./tools/reference-browse-read ./cmd/tei
+      - name: Go vet changed runtime and test consumers
+        run: |
+          set -euo pipefail
+          go vet ./internal/driver ./tools/reference-first-web-target ./tools/reference-browse-read
+
+# This is a candidate-branch-only test; it proves only the checked-out code.
+# Disposable PostgreSQL, Native Consumer, accepted Source, Owner authority and
+# production Host/Studio Stage2 require independent witnesses.

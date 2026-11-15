@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"strings"
 	"testing"
+	"time"
 
 	"tei/internal/application"
 	"tei/internal/core"
@@ -88,7 +89,7 @@ func TestBrowseQueryInEnvironmentRunsOnlyTheExecutorRegisteredForTheResolvedInst
 	}
 
 	got, err := resolver.ExecuteBrowseQueryInEnvironment(
-		context.Background(), browseEnvDev, browseApp, browsePat, registry, map[string]any{"from": "x"})
+		context.Background(), browseEnvDev, browseApp, browsePat, registry, typedBrowseFrom())
 	if err != nil {
 		t.Fatalf("実行できません: %v", err)
 	}
@@ -228,7 +229,7 @@ func TestBrowseQueryInEnvironmentRefusesBeforeCallingAnyExecutor(t *testing.T) {
 			resolver := driver.NewResolver(worldWithEnvironments(t, tc.mutate))
 			exec := &countingBrowseExecutor{}
 			_, err := resolver.ExecuteBrowseQueryInEnvironment(
-				context.Background(), tc.env, browseApp, browsePat, tc.registry(exec), map[string]any{"from": "x"})
+				context.Background(), tc.env, browseApp, browsePat, tc.registry(exec), typedBrowseFrom())
 			if err == nil {
 				t.Fatal("拒否されるべき構成が受理されました")
 			}
@@ -247,7 +248,7 @@ func TestBrowseQueryInEnvironmentAcceptsExecutorDeclaringTheMatchingProvider(t *
 	exec := &countingBrowseExecutor{provider: environment.ProviderPostgres}
 	registry := mapFor(browseEnvDev, browseInst, providerDeclaringExecutor{exec})
 	if _, err := resolver.ExecuteBrowseQueryInEnvironment(
-		context.Background(), browseEnvDev, browseApp, browsePat, registry, map[string]any{"from": "x"}); err != nil {
+		context.Background(), browseEnvDev, browseApp, browsePat, registry, typedBrowseFrom()); err != nil {
 		t.Fatal(err)
 	}
 	if exec.calls != 1 {
@@ -259,7 +260,7 @@ func TestBrowseQueryInEnvironmentIsRefusedForAWorkspaceWithoutEnvironments(t *te
 	resolver := driver.NewResolver(worldWithEnvironments(t, func([]environment.Environment) []environment.Environment { return nil }))
 	exec := &countingBrowseExecutor{}
 	_, err := resolver.ExecuteBrowseQueryInEnvironment(
-		context.Background(), browseEnvDev, browseApp, browsePat, mapFor(browseEnvDev, browseInst, exec), map[string]any{"from": "x"})
+		context.Background(), browseEnvDev, browseApp, browsePat, mapFor(browseEnvDev, browseInst, exec), typedBrowseFrom())
 	if err == nil || exec.calls != 0 {
 		t.Fatalf("Environmentが無いWorkspaceは拒否されるべきです: err=%v calls=%d", err, exec.calls)
 	}
@@ -267,4 +268,49 @@ func TestBrowseQueryInEnvironmentIsRefusedForAWorkspaceWithoutEnvironments(t *te
 
 func mapFor(env, instance core.CanonicalID, executor driver.BrowseQueryExecutor) driver.BrowseQueryExecutorRegistry {
 	return driver.BrowseQueryExecutorMap{{Environment: env, Instance: instance}: executor}
+}
+
+// A declared std.datetime input must enter the common Browse path as time.Time.
+func typedBrowseFrom() map[string]any {
+	return map[string]any{"from": time.Date(2026, 11, 7, 0, 0, 0, 0, time.UTC)}
+}
+
+func TestBrowseQueryInEnvironmentRejectsLegacyUndeclaredArguments(t *testing.T) {
+	w := referenceWorld(t)
+	for i := range w.Queries {
+		if w.Queries[i].ID == browsePat {
+			w.Queries[i].Inputs = nil
+		}
+	}
+	exec := &countingBrowseExecutor{}
+	registry := mapFor(browseEnvDev, browseInst, exec)
+	_, err := driver.NewResolver(w).ExecuteBrowseQueryInEnvironment(
+		context.Background(), browseEnvDev, browseApp, browsePat, registry, typedBrowseFrom())
+	if err == nil || !strings.Contains(err.Error(), "no declared inputs") || exec.calls != 0 {
+		t.Fatalf("untyped Environment input should never invoke Provider: err=%v calls=%d", err, exec.calls)
+	}
+}
+
+func TestBrowseQueryInEnvironmentRejectsInvalidTypedValues(t *testing.T) {
+	cases := []struct {
+		name   string
+		params map[string]any
+	}{
+		{"missing", nil},
+		{"timestamp as string", map[string]any{"from": "2026-11-07T09:00:00Z"}},
+		{"timestamp as integer", map[string]any{"from": int64(42)}},
+		{"explicit NULL", map[string]any{"from": nil}},
+		{"extra name", map[string]any{"from": time.Date(2026, 11, 7, 9, 0, 0, 0, time.UTC), "status": "accepted"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			exec := &countingBrowseExecutor{}
+			registry := mapFor(browseEnvDev, browseInst, exec)
+			got, err := driver.NewResolver(referenceWorld(t)).ExecuteBrowseQueryInEnvironment(
+				context.Background(), browseEnvDev, browseApp, browsePat, registry, tc.params)
+			if err == nil || exec.calls != 0 || got.QuerySourceSHA256 != "" {
+				t.Fatalf("invalid typed input reached Environment Executor or returned evidence: err=%v calls=%d got=%+v", err, exec.calls, got)
+			}
+		})
+	}
 }

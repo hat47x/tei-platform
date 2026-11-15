@@ -147,7 +147,7 @@ func TestBrowseQueryExecutionKeepsExecutionFailureSeparateFromEmptyBusinessData(
 			"order_entry",
 			"order_entry.recent_orders",
 			executor,
-			nil,
+			map[string]any{"from": time.Date(2026, 11, 7, 0, 0, 0, 0, time.UTC)},
 		)
 		if err == nil {
 			t.Fatalf("Executor障害が正常なQuery結果になっています: %#v", execution)
@@ -173,7 +173,7 @@ func TestBrowseQueryExecutionKeepsExecutionFailureSeparateFromEmptyBusinessData(
 			"order_entry",
 			"order_entry.recent_orders",
 			executor,
-			nil,
+			map[string]any{"from": time.Date(2026, 11, 7, 0, 0, 0, 0, time.UTC)},
 		); err == nil {
 			t.Fatal("不完全なraw resultを正常なSemantic resultとして扱っています")
 		}
