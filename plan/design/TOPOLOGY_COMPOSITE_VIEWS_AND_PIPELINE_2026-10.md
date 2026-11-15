@@ -529,3 +529,359 @@ Else absence remains unknown; no universal closed-world assumption.
 ### 15.3 優先順位と他チャットの成果
 
 #1124のM0実CLI→同一Workbench M1四入口／M2 stale UI・Grantを直接P0とし、本PRのNode側をWorkbenchの受入に流用しない。#2831はBuildのDeclared／Selected／ActuallyConsumedとStage1生成物の再入を別に実証。#2542/#2827はTransfer/ImportのReceipt・ACKと外部Effectを独立判定する。#2620のRole自己記述と#2972の公開三視点は独立Producer/Policyの資格を持ち、今回のSourceNavigation Key検証を役割意味・開示保証へ昇格しない。複合図表研究に新Resolver、Host、Policy Engine、Writer、関係の第二正本を導入しない。
+
+## 16. 2026-11-12：Studioの問い相対な判断可能性・操作適格性（設計・受入候補）
+
+**状態**：既存のScript-first Studio、Everything is Data、三視点／複合図表、Intent／Realization／Assessment、Current Disclosureを同一Consumerの利用判断へ接続する設計候補。新Core enum、全機能共通Verifier、Proof Store、第二Source・Graph・Resolver・Host・Runner・Acceptanceは導入しない。Ownerの採否判断・製品実装・E2E完了を主張しない。参照先は[#1124](https://github.com/hat47x/tei-platform/issues/1124)、[#2497](https://github.com/hat47x/tei-platform/issues/2497)、[Model View横断資格](../research/MODEL_VIEW_CROSS_CONSUMER_QUALIFICATION_2026-11.md)、[#2516](https://github.com/hat47x/tei-platform/issues/2516)とし、既存のGate／受入番号を置換しない。
+
+### 16.1 表現できる・判断できる・操作できるは別Claim
+
+- **表現可能性**：Value／Record／Sequence／Relation／Graph／Expression／Typed RefとRoleからGraph／Table／Tree／式／Sourceへ投影できる。Authoritative Sourceから解析したCanonical Worldと表示Occurrenceを別Identityとする。投影できた事実は、Required Source閉包とOwner意味受理を意味しない。
+- **判断可能性**：問い Q ごとの対象、Scope、時点、Relation種、Universe、必要Reader・Source・Provider、partial／unresolved／opaqueを識別する。存在の限定陽性Witnessと、不存在を認定する全件閉包は非対称。全称を否定する一件の適格な反例と、全称成立を認定する適格な全件検証／不変条件も非対称。少数の正常SampleやGraphの線の欠落から不存在・全称を主張しない。
+- **操作適格性**：一意なSource anchor・現在Revision、可逆性と保存条件、現在のDisclosure／Grant、Owner／Shared Acceptance、Target／Effect Authorityを操作単位で独立照合する。Mapのresolved、Catalogのvalidation OK、CI PASS、Artifact digestを編集・実行・業務受理へ昇格させない。
+
+この三分類は新しい製品資格Schema／一括Verifiedフラグではない。**問い・Subject・Consumerを固定しない「図が完全」というグローバル表示は避ける。** 非公開Relationの有無、件数、Source pathや理由を低権限AudienceへGraph・DOM／ARIA・診断・Tool JSON・AI Contextから漏らさない。公開可能な「判断不能／この表示は対象外」と内部の不足理由を分離する。
+
+### 16.2 同一Consumerでの最小Evidence Join（概念上の評価文脈。新APIではない）
+
+| 分けて保持する項目 | 防ぎたい偽の短絡 |
+| --- | --- |
+| Q／Purpose、qualified Subject（kind＋id＋Source-owned scope）、表示Occurrence、caller-supplied scope | 同名異scope、表示位置／名称を正本Identityと取り違える |
+| Workspace／Manifest、Source byte／Anchor、World／Index／Model Revision、Reader Attempt、selection・render epoch | Fingerprint一致／別Loadを原子的Snapshotと見なす。Source-only変更／ABAで旧位置を再利用する |
+| Qに必要なRule／Relation／Source／Provider、Required・Declared・Selected・Actually Consumed、coverage／omitted／opaque | 未読込Writer、未選択Plugin、隠れたBuild工程、部分ETLを「存在しない」とする |
+| Intent／Accepted Meaning、Resolved Realization、Artifact／Effect／Observation、独立Expected | 宣言・選択・実行・観測・意味受理を一つの成功段階へ畳む |
+| Audience／Current Disclosure／Grant／Purposeと操作別Authority | 内部で読めることをSHO／AI／MCPへの現在開示許可に変える |
+
+Catalog／Validate／Map／Locate等が同一fixtureを別Loadする場合、Fingerprintが一致しても同じ物理Root、同一Reader Attempt、同一Principal、現在Grantの証明にはならない。型付きModel Map M0のcoverageは部分投影であり、Event／Effect／Function／Business全体の不存在は未証明。[Draft #4392](https://github.com/hat47x/tei-platform/pull/4392)のSource-root-only errorとMap埋込Validation不一致はProducer側の既存修正候補を再利用し、Studioに第二Validatorを作らない。
+
+### 16.3 操作導線と、表示済み情報・後着応答の独立失効
+
+1. **View／Navigate**：現行の許可された範囲だけread-only表示。Occurrenceからqualified Subjectを解決してSourceへnavigate。未知のRole／Pluginでは汎用inspect／診断を優先し、未解釈ならunknownのままにする。
+2. **Proposal／Preview**：一意かつ可逆なSource変更だけをtyped candidate化し、差分・影響・Source Revision・必要Validationを提示。Derived／集約／多対一／Macro／不明Providerの逆編集は拒否し、Source navigateに戻す。
+3. **Accept／Apply**：既存Owner／Shared Acceptanceと現在Grantを通した場合のみApply。Sourceを再Readしてreprojectし、Source変更済み／Decision ledger失敗のpartial successは別readbackし自動再Acceptしない。実EffectとReceiptも別Ownerが観測する。
+4. **Invalidate**：Source byte／位置、Plugin／Reader Pin、Disclosure／Grant、selection／render epochの変化を独立扱いする。失効を観測した際は、旧応答の後着拒否と**既表示DOM・ARIA・Graph・AI Contextの旧資格撤回を別々にassert**する。別Scopeの許可済み表示は不必要に全停止しない。変化をConsumerが観測できない期間の即時失効は保証しない。
+
+### 16.4 他領域の問いを同じ標準Viewで扱う
+
+| 対象 | 限定的に表示できるもの | 表示から推定してはならないもの／Owner |
+| --- | --- | --- |
+| 三視点・TEA | Source根拠のRelation／CRUD候補、Function／Businessへの関係 | 未読Function・外部Writerなし、Physical FKがOwner意味受理済み。#1124／#4487 |
+| Subsystem分割 | 宣言済direct CUD、must-linkと制約相対の候補評価 | unknown＝越境CUDゼロ、最適Partition＝業務最適／Effect移管。#3250 |
+| Plugin／Trait | Declared／Required／Selected／Resolved／実呼出の差 | 継承＝代替可能、宣言＝実Provider使用、Session間のGrant継承。#3279／#1251 |
+| Self-build | 宣言Graph、実Consumed Input、実Build Attempt、Artifact digest | Artifact一致＝工程完全閉包、Stage収束＝Seed信頼。#2831 |
+| ETL／Batch／MFT | Flow、Transfer Attempt、ACK、Import Unit、Business Receiptの別ID | ACK＝業務受理、partial＝全件完了、mixed-generation＝一式公開。#2542 |
+| AI／Harness | 限定Selection Context、Diff、独立Expected | 選択文字列からSource／Grant推測、自己生成Expectedによる自己採点、自動Apply。#3262／#2514 |
+
+### 16.5 既存Ownerに渡す最小反証（本節ではすべて NOT RUN）
+
+| ケース | 変異・対照 | 独立Expected／既存担当 |
+| --- | --- | --- |
+| STQ-01 | Source-root-only errorとwarning-onlyを別Workspaceで比較 | transport OKとValidation OKを区別し、Catalog／Map／typed Validateで不一致を残さない。#4392 |
+| STQ-02 | 同WorldでSource移動・byte変更・A→B→A、旧Inspect応答後着 | 現在Anchorを再資格化し、後着拒否と既表示失効を別assert。#1124／#2497 |
+| STQ-03 | Public Slice同一、Private Relationのみ異なる二世界 | 公開Graph／件数／診断／Tool／AI ContextがPrivate有無を漏らさない。#2516 |
+| STQ-04 | 宣言外Build工程あり、生成Artifact byteは一致 | 全Graph／実現一致を認定しない。Consumed／ObservedとPlanを照合。#2831 |
+| STQ-05 | ETL二Memberの片方だけ新Generation、転送ACKは成功 | 一式・Import・業務完了を誤昇格しない。#2542／#2604 |
+| STQ-06 | Subsystem direct CUDゼロ、未読Writer／間接Effectあり | 越境更新ゼロのClaimを保留し、疑似最適をOwner受理へ変えない。#3250 |
+| STQ-07 | 非可逆Derived Relationの編集、または同名異Scope選択 | 変更対象を推測せず編集拒否。許可済みSource navigateのみ。#2497／#1124 |
+| STQ-08 | AI Context作成後にGrant／Source Revision／Plugin Pin変更 | 旧Contextの現在資格を撤回しProposal→Applyを停止。#3262／#2516 |
+
+**実証順**：P0は#4392のexact-head CIと#1124の実Workbenchでの旧画面・後着応答拒否を既存担当で継続。P1は実Catalog／Map／Locate／Traceの同一Source対照から、上記の問い相対のread-only表示・限定Evidence JoinをConsumerに接続する。Build・ETL・Subsystemは既存Ownerが実取得したEvidenceだけを再利用。P2は[#2018](https://github.com/hat47x/tei-platform/issues/2018)の同一Task／独立Expectedで、正答・false-qualified・Unknown保持、調査／編集／再試験時間、人手／Tool費用を比較する。Studioの図表完成を業務実Read／実Provider選択・Invoke／Self-buildの新Hard Gateにしない。抽象化で認知・検証負担が増えるなら限定read-onlyへ戻す。
+
+**資格の上限**：この章は設計候補で、STQの成功、実Studio／Wails・Production Disclosure／Grant、実Provider／DB、Owner Meaning、認知負荷削減は未実証。既存PRの異なる局所PASSを一つの製品E2E成功に合算しない。
+
+### 16.6 2026-11-12 実StudioのProducer→Consumer切断点（main静的照合）
+
+**固定main** ea9e4560a835323c1d6d748486216b9ea011a965。確認対象：internal/operations/model_location.go、model_map.go、model_catalog.go、cmd/tei-studio/main.go、assets/client.mjs／main.js／preview-scope.mjs、internal/studiohost/command.go。この節は設計・受入候補であり、コード変更・実画面実証ではない。
+
+- **既存Producer**：operations.LocateWorkspaceはloadCatalogReadの一回のWorkspace LoadからSubject／親・子・兄弟／typed Incoming・Outgoing、Total／Omitted、Coverage.Derived／NotDerived、Validation／Attention、World・Index・ModelRevisionを返す。これは他Operationとの同一Read Attempt・FS原子的Snapshotではない。operations.MapWorkspaceは別のread-only部分投影で、Coverageはpartial-projection。
+- **切断点**：現StudioBridge／assets/client.mjsが公開するのはCatalog／Validate／Inspect／View／Command等で、MapWorkspaceとLocateWorkspaceの公開メソッドはない。assets/main.jsにも対応する実表示入口がない。Operationの存在だけで実Studio受信を主張しない。**初回はLocate-first**で一つの実Relationをread-only表示し、Graph Rendererや第二Model Storeを先行実装しない。
+- **Validation**：現mainのMapWorkspaceはCatalogWorldの後にValidationを設定しないため、Map埋込Catalogの初期値をValidation失敗・成功の実根拠にしない。[Draft #4392](https://github.com/hat47x/tei-platform/pull/4392)が既存Producer側の修正担当。Locateは一回のcatalogWorkspaceLoadedでValidationを構成するが、それでも外部Provider・Owner Meaning・現在Grantを証明しない。
+- **鮮度**：assets/preview-scope.mjsのcontext／sequenceは、画面の入力・Workspace変更で旧Promiseのpublishを拒否する仕組みであり、外部Source／Plugin／Policy／Grant変更の自動観測ではない。既描画DOM／ARIA／AI Contextも自動撤回しない。観測不能期間の即時失効を保証せず、再読取と別Ownerが提供する有効な失効通知を区別する。
+- **Commandの資格**：StudioBridgeにはPlan／Execute系が存在する。internal/studiohost/command.goが扱うのはreference executorと非永続MemoryStoreで、画面由来allowed一覧に対するreference authorizer（空一覧ならreference-allow-all）を使う。ReadOnlyという実装名や画面のExecute成功を、正式な本番Grant／実DB Commit／Business Completeの証拠にしない。mode／durability／Effect／Receiptを別々に表示する。
+
+### 16.7 同一Workbenchでの最初の縦切り（既存Ownerへ渡す受入）
+
+**対象**：公開reference/workspaceの semantic-relation:sales.order.lines 一件。既存[#3865](https://github.com/hat47x/tei-platform/pull/3865) Model Locateと[#3866](https://github.com/hat47x/tei-platform/pull/3866)のtyped Map限定照合を再利用。Ownerは[#1124](https://github.com/hat47x/tei-platform/issues/1124)のConsumer実接続、[#1824](https://github.com/hat47x/tei-platform/issues/1824)の既存Workbench技術資産。Pin／Focus／Transient Selectionの契約は[Draft #4473](https://github.com/hat47x/tei-platform/pull/4473)／[Draft #4479](https://github.com/hat47x/tei-platform/pull/4479)に委譲し、第二Storeを設けない。
+
+1. **Transport**：既存許可Workspace IDから既存rootを解決する薄いread-only Locate Adapterを使う。任意のfilesystem path・新Hostを公開せず、Subject kind/idとlimitを正確に渡し、失敗を既存分類へ委譲する。実CLI／Go Operationで応答できたことと、実Wails/Browser Consumerが同一要求・結果を受領したことを別に記録する。Hostは現実のAdapterであり、TEI全体の必須アーキテクチャにしない。
+2. **View**：親Data→Relation→参照先Data、SourceStatus、typed role、Validation／Attention、Coverage.NotDerived、Total／Omitted、観測Revisionをread-only表示。Catalog Validation NGでも観察は許すが、編集・実行権限に昇格しない。公開可能なSource／診断だけを表示し、privateな存在・件数を漏らさない。
+3. **Staleness**：Workspace／選択／Qの変更による旧応答後着拒否と、既表示の資格撤回は別assert。Source移動／A→B→A／Grant失効をProducerから実観測した場合の再資格化も別assert。実観測のない変更はunknownのまま、「常に最新」を名乗らない。
+4. **Editing**：一意のSource Anchor／Revision、可逆なtyped patch、Preview、Shared Acceptance、適用後の独立Readbackが成立するまでは図面編集を完成扱いしない。実Business Effect／SHO Writer／AI外部送出は別Ownerで検証。
+
+| Case（新規試験は全てNOT RUN） | 仕込み | 独立Expected／担当 |
+| --- | --- | --- |
+| STQ-09 | Go Locate成功、Studio BridgeにLocate未公開 | Producer成功と実Workbench受領を混同しない。#1124／#1824 |
+| STQ-10 | Locate limit=1、未導出のQuery依存あり | Omitted／NotDerivedを保持し、非表示の辺を不存在としない。#3865／#1124 |
+| STQ-11 | TypeRef Validation NG、Relationはindexed | Navigation成功＋Validation NGを並記し、編集・実行不可を維持。#4392／#1124 |
+| STQ-12 | Source移動またはGrant失効を観測、旧Locate応答が後着 | 後着拒否と既描画撤回を独立検証。未観測期間の即時失効は未証明。#1124／#2516 |
+| STQ-13 | Reference Commandのallowed入力／MemoryStoreを変更 | reference mode・非永続性を保持し本番認可・実DB Effectを主張しない。#2997／#1124 |
+
+**資格と優先**：P0は#4392の既存Validation修正のexact-head照合と#1124の安全なSelection、P1は上記Locate-firstの実Consumer受領、P2はSource逆編集と問別の認知負担を検証する。実Wails／WebView／実DB・Provider、Current Disclosure／Owner Acceptance、原子的な複数Read、Source watcher、STQ-09〜13の新試験はNOT RUN／NOT PROVEN。別Graph正本、Runner、Host必須化、Verifier、Registryを追加しない。
+
+### 16.8 2026-11-12：旧Sourceの無ID要素を扱うStudioの選択・逆編集境界
+
+**Ownerの区別**：[旧X-TEA source-faithful accounting #1031](https://github.com/hat47x/tei-platform/issues/1031)、[構造・原典Fit/Gap Draft #4473](https://github.com/hat47x/tei-platform/pull/4473)、[ReadWorkspaceSubjectの同offset別Subject負例 Draft #4504](https://github.com/hat47x/tei-platform/pull/4504)、[固定対象の状態管理 Draft #4479](https://github.com/hat47x/tei-platform/pull/4479)を再利用。本節はStudioの **source navigate→一時選択→Pinの現在資格→Source編集** の誤昇格防止だけを所有する。
+
+#1031の固定Source accounting v1ではTaskAction 148件のうちID属性なし35件、属性あり空文字113件、非空ID 0件である。これは固定旧Sourceでの観測であり、全製品・全X-TEAのID状況の一般化ではない。**Source token、XPath、文字offset、同名・同Function、画面位置を永続的な業務Semantic IDへ自動昇格しない**。
+
+| Studioでの操作 | 限定的にできること | 自動的に許されないこと |
+| --- | --- | --- |
+| 旧Sourceを読む／navigate | Origin・Source token/Span・親文脈・Observation版を示すread-only照合 | Located＝現在のStable Semantic Subject |
+| 表示Occurrenceを選択 | そのViewとReader Attempt内でのSelection Identityを区別 | 別版・別Workspace・同名Actionへの無断再束縛 |
+| 固定対象Pinを再利用 | 旧意図と未解決を保全し、現Source/Scope/Grantを再資格化 | Pin表示が残る＝送信・編集・意味受理の現在資格 |
+| TEI Sourceへ書き戻す | 正式Readerで解析した一意Source Anchor、現在Revision、可逆Patchと既存Acceptanceがある場合のみ案内 | Legacy XML・非可逆Graph・Raw Draftから自動Patch |
+
+[Authoring #2621](https://github.com/hat47x/tei-platform/issues/2621)の最新方針はTEI向け新規Authoring Sourceを *.tei.md とし旧 *.tei を段階的に移行すること。ただし[統合済み移行計画 #3030](https://github.com/hat47x/tei-platform/pull/3030)の方針を保持しつつ、[統合済みGuard #3031](https://github.com/hat47x/tei-platform/pull/3031)は未束縛Readerを拒否する。正式Reader/Parser/Source Span/意味受入が製品経路で成立するまでは、**拡張子やMarkdown保存成功だけではLoaded/Parsed/Accepted/Build入力とは表示しない**。未管理のRaw Draftを失わず保存・再開することと、管理Rootでの正式TEI Loader拒否、TEI意味受理を区別する。SHO Writer／Authoring Parserの二重実装はしない。
+
+### 16.9 旧観測 L／目標受理 D／新観測 T の問い相対なStudio比較
+
+**意味上の正本**：[TEA Draft #4487 §34.11〜34.13](https://github.com/hat47x/tei-platform/pull/4487)の L=Legacy Observed Actual、D=Desired Accepted Meaning、T=Target Observed Actualをそのまま利用。Data／Function／Businessは分析モデルの三観点、L/D/Tは観測・受理文脈の三種であり、27個の新Canonical/総合Equivalentフラグは増設しない。Studioが追加で担うのは、一つの問いQに対する **限定比較・出典への逆参照・提案可能な変更の境界** のみ。
+
+**最小用途**：「旧業務モデルの承認Actionに対応する新Functionが、Targetで実際に履行されたか」。
+
+| 比較欄 | 要求する独立した参照 | 判断の停止線 |
+| --- | --- | --- |
+| L（旧観測） | 固定旧Source・ActionのOccurrence・旧Function参照、旧実行ログがあればその実Attempt | Function-level CRUD UだけならAction固有の実Updateは未観測 |
+| L→D（対応候補／意図的変更） | 旧Occurrenceから目標Qualified SubjectへのMapping、差分、Owner採否 | 多対多・無ID・未受理差分を同一業務意味とみなさない |
+| D（目標意味） | 現在のOwner Accepted Meaning、Rule/Key/Function/Business Step、独立Expected | Raw Draft・定義候補をAcceptedと偽らない |
+| D→T（実現） | 実Consumed Plugin／Provider／Artifact、実Attempt／Effect／独立Readback | Generator PASS／ACK／同Byteから実業務達成を断定しない |
+| T（新観測） | 実Target Scope・Time/Rowset/Failure/Receipt、必要Coverage | LとのSnapshot・RLS・母集団の違いを消さず、partialなら比較不能 |
+
+StudioはQとL/D/Tの元参照を示し、対応候補・受理した意図的差分・未対応・比較不能を理由の許可範囲内で区別してSourceへ戻す。**L→DのMappingが存在し、D→Tが表示上一致しても、旧新の業務的実動作同値性を推移的に結論しない**。また意図的改善によりLとDが異なる場合のL≠Tを一律のFAILにしない。実Target／Owner判断は[#4125](https://github.com/hat47x/tei-platform/issues/4125)／[#1174](https://github.com/hat47x/tei-platform/issues/1174)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)に委譲する。
+
+Source改版・同offset別Subject・Workspace別Manifest、Rule/Method版、Provider/Artifact、Audience/Grantの変化では、過去の観測履歴を無条件で消す必要はない。しかし**現在の選択・開示・編集・実行・比較Claimの再利用は必要依存に相対的**であり、不明依存はunknownのままとする。選択的再検証・反例Ownerは[Draft #4509](https://github.com/hat47x/tei-platform/pull/4509)。新しいEvidence CacheやVerifier、全件一括再Buildを作らない。
+
+### 16.10 最小Studio反証（STQ-14〜19：全て新試験NOT RUN）
+
+| ケース | 差を加える対照 | Studio Consumerの独立Expected・担当 |
+| --- | --- | --- |
+| STQ-14 | 同名・同Function・無IDの旧TaskAction A/Bの間に新Action Xを挿入 | 旧BをA/Xへ自動Pin・Patchしない。旧Source位置だけならread-only・再確認。#1031/#1124/#4479 |
+| STQ-15 | Source同offsetを別Semantic Subjectで再使用 | 旧Semantic IDに再束縛しない。実Product Readerの同位置反例はDraft #4504を再実装しない |
+| STQ-16 | World/Index/ModelRevision同一だがWorkspace Manifestが異なる | 別WorkspaceのPin・Owner判断・編集権限を混同しない。#4504/#1120 |
+| STQ-17 | 旧Action→Function→CRUD Uを新Sourceへ再現、双方のAction実Effectは未観測 | 宣言・導出の一致と実Effectを別Claimにし、Unknownを保持。#1031/#4487/#1174 |
+| STQ-18 | Lと受理済みDで仕様が明示的に異なり、TがDに一致 | L≠Tを一律FAILにせず、受理済み差分と不意の損失を独立比較。#4487/#4125 |
+| STQ-19 | Raw *.tei.md 草稿は保存成功、TEI Parserは未束縛 | 草稿保存のみを成功と表示。Load/Meaning/Buildを未成立として扱う。#2621/#3030 |
+
+**最短接続**：既存Locate-firstで公開旧Sourceの一要素をread-only表示→D候補との対応をSource限定で確認→実Consumed／Targetは既存Ownerの観測を読込→一意な正式TEI Sourceだけを既存Preview／Acceptance／独立Readbackへ渡す。旧XMLのEditor・全TEA比較UI・外部Harness・Plugin/BOM・DB Cutoverは初回のP0要件にしない。#2586実Readと#1251実Plugin Invokeの優先を維持する。
+
+**未実証**：今回の追加は設計候補のみ。実Studio GUI/Wails、正式 *.tei.md Reader、旧XML Editor、L/D/T比較の製品Consumer、外部Source/Provider/DB、Owner意味受理、STQ-14〜19の実試験は全てNOT RUN／NOT PROVEN。新Core、Identity Registry、Host必須化、第二Source/Writerを導入しない。
+
+### 16.11 2026-11-12：問いに相対的な表現選択と変更後のClaim表示（Studio Consumer契約）
+
+**対象の境界**：標準構造／表現の適合判定は[#4350](https://github.com/hat47x/tei-platform/issues/4350)・[#2497](https://github.com/hat47x/tei-platform/issues/2497)・[Draft #4464](https://github.com/hat47x/tei-platform/pull/4464)、Derived Claimの変更影響は[#2582](https://github.com/hat47x/tei-platform/issues/2582)・[Draft #4335](https://github.com/hat47x/tei-platform/pull/4335)、再利用・省略検証は[#2600](https://github.com/hat47x/tei-platform/issues/2600)がOwner。本節は **Studioで利用者が実際に見るViewの用途・損失・現在性・編集誘導を整合させること** に限定する。新Projection Matrix、Change-impact Engine、共通Status、Graph SSOT／Cache／Hostを設けない。
+
+[#4464](https://github.com/hat47x/tei-platform/pull/4464)のReferenceは4構造×8表現型の32組中11組を合成fixtureで判定し、残る21組はuncoveredである。判定はpreserved／lossy／unqualified／unknown／rejectedとinverseを区別するが、実Renderer／Product Consumerの保証ではない。行のbestは**検査した表現候補間の局所的な最良判定**であり、問いQや全表現の世界最適、編集・実行許可を意味しない。特にpreservedな投影も直ちに可逆な編集ではない。用途を問わない自動Best View選択は見送る。
+
+**Qを先に固定する利用導線**：一つのQualified SubjectとScopeで「元の関係を調べる／第二の親や書込みが存在しないか／変更を検討する／過去・目標・Target実現を比較する」などの目的を分け、必要なIdentity・Relation direction/multiplicity・grain・order・presence/NULL・unit・time・Coverage・Disclosureを**既存のTask/Source/Facet/Context**から参照する。User Queryを新DSLで正本化しない。表示候補は、(a)必要な観点を保てる、(b)許容Lossを明示したread-only説明に限る、(c)未検証/未カバー、(d)拒否の4つの使い道へ整理し、Producerの5判定をUIで上書きしない。
+
+**図中になければ無い**の境界：本人が問うQに必要な辺／Source／Provider／未観測・省略を覆う閉包があり、Audienceに許可された範囲で「対象全件を表した」と立証できるときだけ、限定された範囲の不存在を扱う。多重Graph→Treeの参考投影は、別の親／edge-multiplicity／hidden-edgeを失うので「このTreeの親が1つ」という表示から「他の親は存在しない」としてはならない。非公開Relationの存在や件数そのものは低権限Viewerに漏らさない。完全性が認定できない場合の既定表示は、利用者が必要に応じて展開する**限定根拠＋対象外/未確認の表示**とし、大量のProof項目を常時画面へ置かない。
+
+### 16.12 変化の伝播：内容の再利用・Source位置・表示内容・操作許可は独立
+
+[Draft #4335](https://github.com/hat47x/tei-platform/pull/4335) のread-only純関数AssessChangeImpactは、Producerが明示した一つのDerivedIRとSource occurrence→Context bindingを入力としてretain／recheck／unknownを返す。**retainは元からあった適格性を保つだけで、新たな完全性や更新権限を与えない**。opaque／未束縛・partial lowering／非単調演算／未完全LEFT JOIN／Predicate副問合せでは依存閉包と否定命題に注意する。現DraftのoperationEligibilityはnot-evaluatedであり、実Provider/DB/Host GrantやStudioの再描画に接続済みと主張しない。
+
+| 変化・問い | 読取／内容の現在性 | Studioの別途再資格化対象 |
+| --- | --- | --- |
+| 無関係D2変更、QはD1だけ、Declared/Consumedの必要閉包が完備 | 限定したQの既存read-only Claimをretain候補にできる | Source Anchor・Selection・現在Disclosure/Grant・実受信は別。無条件Current/Editableへ昇格しない |
+| D2の変更がJOIN/集約/NOT EXISTSを通る、または負例となるWriterが追加 | 関係するClaimはrecheck。非単調処理では以前の表示行が撤回され得る | 再取得前の古い結果を現在の全称/不存在や編集根拠に使わない |
+| 依存閉包がopaque/partial/未受領・Producer/Reader不一致 | unknown。安全な再取得省略や「変化なし」を主張しない | 表示の取得時点・必要Sourceを示せる範囲でread-only、受入や実行は保留 |
+| Source byte／移動だけ変化、World構造や画面値は同じ | 意味構造の履歴は保持し得る | Source Locator・ModelRevision・引用・旧Pin/Undo/逆編集の現在資格は再検査。#4504/#4514に委譲 |
+| Reader/Provider実装・Plugin選択／BOM・Artifact変更、表示bytesは同じ | 旧Artifactや歴史Receiptは保全可能 | 必要実Consumed経路とBuild/Invoke/Effect/Evidenceを再資格化。#1251/#2586/#2831に委譲 |
+| Grant／Audience／Purpose／Policyだけ変化 | Accepted Meaningの履歴や公開可能な無関係Claimまで消す必要はない | 現在開示／旧DOM・ARIA・AI Context・外部送出許可を再評価。#2516、既存Pin #4515 |
+
+**同一画面での原則**：Source位置を再確認すべきこと、表示値がread-onlyとして再利用できること、検証がunknownであること、操作が現在許可されることを、ひとつの緑チェックにまとめない。表示できる根拠の不足を「データなし」と解釈せず、逆に影響を受けない一つのClaimのために無関係な全View/全Buildを無条件失効させない。影響の探索は**方向付きの実依存**に従い、逆方向ナビゲーションから逆向きの意味依存を推論しない（[#1143](https://github.com/hat47x/tei-platform/issues/1143)）。
+
+### 16.13 最小Consumer反証・評価（新規STQ-20〜25、全てNOT RUN）
+
+| ケース | 独立に変える入力 | Studio ConsumerのExpectedとOwner |
+| --- | --- | --- |
+| STQ-20 | 順序付き明細→Tableはpreserved、Source変更直後はAnchor未再読 | 表現の保存判定を表示してもSource逆編集／現在Grantを有資格へ昇格しない。#4464/#1124 |
+| STQ-21 | 多重有向Graph→Treeで同一Childに別Parentと多重Edgeがある | Treeは損失を持つ参考表示。対象Parent以外なしと断定せず、元Relationを無根拠に編集しない。#4464/#2497 |
+| STQ-22 | 4構造×8表現の未カバー21セル中の組を指定 | safe/bestやimpossibleを捏造せず未判定を返し、既存Source/Generic Inspectへの代替を示す。#4350/#4464 |
+| STQ-23 | 独立Context D2だけ改版。D1のみのClaimとD1+D2 JOIN Claimを同じViewに表示 | 前者は閉包が証明できる場合だけretain、後者はrecheck。全View一律PASS／一律失効を避ける。#4335/#2600 |
+| STQ-24 | Queryは同じだがPredicate副問合せ／opaque／partial lowerが変更Contextを読み得る | unknownをretainに丸めず、未確定な非存在・Update資格と区別。#4335/#2582 |
+| STQ-25 | Source移動／A→B→A・Grantのみ変更。Rendered値と構造WorldFPは同じ | Source navigate・Pin再解決・現在開示・編集許可の独立再資格化。歴史Claimを全廃しないが旧権限を復活させない。#4504/#4514/#4515/#2516 |
+
+**実施順**：P0の実Function→Provider→Rowset→Consumer [#2586](https://github.com/hat47x/tei-platform/issues/2586) とPlugin selected→actual invoked [#1251](https://github.com/hat47x/tei-platform/issues/1251) は先行のまま。Studio P1は既存Locate-firstの一Subjectで、Qの限定範囲・NotDerived・Source跳躍・Viewのlossy判定を**別Observer**から示せるか対照する。P2で既存Query/Providerの実依存が得られたClaimだけ選択的再確認し、編集/公開/Target作用のGateは別のまま維持。認知負荷測定は[#2018](https://github.com/hat47x/tei-platform/issues/2018)と[#1124](https://github.com/hat47x/tei-platform/issues/1124)の同一Task・独立Expectedで、誤った不存在・誤った編集・不要な再確認・操作時間を対照する。
+
+**資格**：#4464はReferenceの合成Matrix、#4335はDraftのread-only純関数であり、Studio内の実Context/Current Grant/実Renderer/差分Refreshが出来上がったという意味ではない。本節は設計候補。STQ-20〜25、実Studio/Provider/DB/Owner意味受理、利用者実測はNOT RUN。新Schema・第二判定器・Universal Cache・Host/Registry/Readerを導入しない。
+
+### 16.14 2026-11-12：初回の製品実装を Inspect-first に補正（Locate は並行）
+
+**固定main**：487f1235e39341091a3f9d415afd7803fea20293。§16.6〜16.7 の Locate-first は「Sourceの関係を辿る高度なModeler投影」の候補であり、**最初のSubject Pinを止める前提条件ではない**。現行の実Workbench Sourceは reference/tei-studio-workbench/main.ts／presentation.ts／responses.ts。旧Bootstrap画面の cmd/tei-studio/assets/main.js だけを現製品Workbenchの代表としない。生成済みassets/workbench/main.jsは直接編集せず、TypeScript Source→既存build.mjsを利用する。
+
+現mainのWorkbenchにはCatalogから一意なSubjectを選ぶ inspectEligibility、既存Host InspectSubject、Subject/WorldFP/IndexFPを合わせる readInspection、workspaceEpoch／inspectionEpoch／responseScopeの後着拒否がある。一方、明示Pin/Unpinを保持するWorkbench-local State、外部Source／Grant watcher、正式なRelation IDによるEdge Pinは**ない**。responseScopeは表示順序Guardであり、Host実行の取消や現在権限の判定ではない。
+
+| 並列の作業単位 | 現時点で成立・不成立が確認できる範囲 | 既存Ownerと出口 |
+| --- | --- | --- |
+| **A Subject Pin（最初のStudio製品UI）** | Catalog→Inspectは現行Sourceに存在。Pin操作、Focus/IME/Undo、実DOM/ARIA・Grant失効試験はまだ未実装/未実証 | [#4515](https://github.com/hat47x/tei-platform/issues/4515)／[#1824](https://github.com/hat47x/tei-platform/issues/1824)、既存Inspectを用いた一Subjectの明示Pin |
+| **B 実Model Map/Locate（Go Producer）** | [Draft #4521](https://github.com/hat47x/tei-platform/pull/4521) は公開Sourceの semantic-relation:sales.order.lines に対する親・Target・typed link・partial coverageの比較テストを追加。別LoadでありAtomic Snapshotではない | #4521／#3865/#3866。Go内部の一致をGUI受領へ昇格しない |
+| **C Source RelationをStudioで実表示** | 現BridgeにMap/Locateは公開されていない。WorkbenchのGraph parent:描画EdgeはMeaning Relation IDではない | #1124／#1824。Aの後にQualified Relationのread-only Adapterと実Consumer Payload照合を接続 |
+| **D 逆編集・実Effect** | Sourceの一意な逆写像、現在Revision、Disclosure/Grant、既存Shared Acceptance、独立Readbackが不足 | #2497/#2621/#267/#1174。Cが描画成功しても編集・実行は許可しない |
+
+**CIの非昇格**：[PR #4521のhead 134a92dc](https://github.com/hat47x/tei-platform/pull/4521) では他の多数のCheckが成功したが、[Repository Health run #43232810923](https://github.com/hat47x/tei-platform/actions/runs/43232810923) はcompleted/failure。原因はこの調査では特定できず、テスト欠陥とも環境由来とも推測しない。各Ownerが失敗Step/新headを確認する。Issue #4515の起票はPin実装/実GUI受入を意味しない。各成功を別経路のE2E成功へ合算しない。
+
+### 16.15 一つの実Workbench受入パケット（既存Expectedを再利用）
+
+**同じ公開Workspace、二つの異なるSubject**：semantic-data:sales.order を最初に**明示Pinする主対象**とし、semantic-relation:sales.order.lines は**親/Targetを辿る別の正式Subject**とする。Graphの parent: 描画Edgeから後者の正式Relation同一性を自動導出しない。初回のPinはCatalog/Inspectだけを用い、Model Locate/三要素分析法全図/外部DB/Harnessを必須化しない。
+
+| 操作・故障注入 | 実Consumerで別々に観測するもの | Expectedと既存Owner |
+| --- | --- | --- |
+| Catalog→Inspect→明示Pin→別NodeにFocus移動／IME・Esc・空白クリック | WorkspaceRef、Pin Intentのkind/id、Transient Selection、Inspect要求・受領 | Pin保持、一時選択は変化可、未確認Grantをauthorized表示しない。#4515 PIN-S0-01、STQ-09 |
+| 同端点異RelationとGraphの parent: 描画Edgeを選択 | Canvas用Edge IDとCanonical Relation IDの有無 | Sourceで一意なRelation IDを確認できなければRelation Pinはunsupported。Node Pinは継続。#4515 PIN-S0-04、STQ-07 |
+| R10 Inspect開始後にR11へSource移動、R10の成功が遅れて到着 | 応答epoch、旧Replyの新規表示、既描画DOM/ARIAの現在性/開示撤回 | 後着拒否と旧表示失効を別assert。変更未観測ならunknown、即時撤回の保証なし。#1124、STQ-02/12 |
+| 別Workspace同FP、同offset別Subject、Source A→B→A | Pin Intentの元Workspace/Subject、現在のOriginとSource locator | 別対象への自動再束縛0、旧資格の自動復活0。#4504、STQ-15/16、PIN-S0-02/03 |
+| Source不変でGrant/Disclosure変更、二世界のprivate差 | 公開DOM/ARIA/Tool/件数/エラー、通知受領、無関係Scopeの表示継続 | Private存在を漏らさず、無関係の許可済み対象を全停止させない。実Policy判定は#2516。STQ-03/08/25 |
+| Go Map/Locateで実Relationを読んでUIへ表示候補として渡す | Producerのtyped Relation・SourceStatus・NotDerivedと、Bridge/Browserの実受領を別記録 | Map一致だけで実Workbench受領や全Graph閉包を保証しない。#4521、STQ-10/21 |
+
+**実装者用の最小実行順**：#4515はまず既存Workbench Source TypeScriptへ小さく変更し、公開合成Fixtureに1正例＋1最危険負例を加える。既存Node 24前提のtypecheck/test/buildと実Browser RPC/DOMを同じheadで照合し、skipped/未起動をPASSとしない。Graph/List/Initial/Commandの四入口および旧DOM操作は#1124の既存受入へ返し、独立Expectedは#1180/#2514を参照して別Fixture SSOTを作らない。#4521のGoテスト、#4392 Validation、#4504 Source同一性、#2516 Policyとは実装Path・Ownerを分ける。
+
+**Claimの停止線**：Aだけ成立したら「read-only Subject Pin UI」、Bだけなら「Go Map/Locateの実Source局所一致」、AとBが別PRで成功してもCの**同一Consumer実受領**を証明したことにならない。DはSource Proposal→Preview→Shared Acceptance→独立Readbackと現在Grant/実Effectの別資格。P0の実Function Provider Read #2586／実Plugin Invoke #1251、Self-build Fit/Gap #2831を新Pin UIの前提待ちにしない。新Host、Graph正本、Resolver、Registry、Editor/Policy Engineを追加しない。本節は設計・受入案のみ。実Wails GUI/Go新試験/実Grant/Source Write/Owner受理は今回NOT RUN。
+
+### 16.16 2026-11-13：実装済みの局所証拠から、Studioの未接続Edgeを特定する
+
+**照合main**：`1a2271d8c8586e928a8ed90fb516ec573118c9f9`。この節は§16.6/16.14の**2026-11-12時点の静的観測を上書きする、現在の引継ぎ状態**であり、新Gate/第二正本ではない。前版のPR状態やCI失敗を「現在も未修正」としない。
+
+| 項目 | 最新の実証・統合済み範囲 | Studioの**次に欠ける実Consumer Edge**とOwner |
+| --- | --- | --- |
+| Model Map/Catalog/Locate | [merged #4392](https://github.com/hat47x/tei-platform/pull/4392)はMap/Catalogのtyped Validation結果を整合。別[Draft #4521](https://github.com/hat47x/tei-platform/pull/4521) head `a849471e05e3146c01d5b544ff6440c542c1baf5` は公開 sales.order.lines のGo Map/Locate試験と**exact headの全18 Check success**。別Loadなので単一原子的Snapshotの証明ではない | 正式RelationのSource Locator→同じWorkbench Reader/画面への実受領は未実証（#1124/#1824）。`parent:`描画Edgeを意味Relationとしない。Subject Pinは既存Inspect-first（#4515）で独立着手 |
+| StudioのSource現在性 | [merged #4514](https://github.com/hat47x/tei-platform/pull/4514) はDocumentDraftの`sourceFingerprint`により構造FP不変・原文だけ変更した場合のstale判定を補強。A→B→A・Current Grant・Policyは別 | Wails/Browserの旧Reply拒否と**既表示DOM/ARIA撤回**、実Source/Policy変更を観測できたときの再資格化は#1124/#2516。DocumentDraftのstaleをWorkbench UI済みとしない |
+| 三要素分析法の構造・CRUD | [merged #4513](https://github.com/hat47x/tei-platform/pull/4513)、[#4524](https://github.com/hat47x/tei-platform/pull/4524)、[#4534](https://github.com/hat47x/tei-platform/pull/4534)、[#4551](https://github.com/hat47x/tei-platform/pull/4551) はData lookup、同Kind同ID曖昧拒否、構造OK/CRUDレビュー要の分離、明示CRUD-only/Unused Dataを局所改善 | 汎用Studioの実三視点表示・Sourceへの安全な逆書込・Owner意味受理は別。Conflictの`review-required`を構造不適合や実Effect成功の一つのboolにしない（#1124/#4472/#267） |
+| 実Function Data Context | [merged #4539](https://github.com/hat47x/tei-platform/pull/4539)で `order_entry.recent_orders` → Environment/Query/実PostgreSQL16→`internal/functioncontext`→**tools/reference-browse-read**の限定CLI受領を実測。0行でも`EmptyJustified=false`、Coverageは`unestablished`、RLS/NULL起源はunknownのまま | **通常製品`tei` CLI→独立Product Consumer／Studioへ同一結果を実入力**するEdgeは未実証（#2586/#4495/#1824）。別XTEA Query・別DB Seedを同一Fixtureへ合成しない |
+| Property/TableのSource逆編集 | [Draft #4538](https://github.com/hat47x/tei-platform/pull/4538) が既存`syntax.ParseSemanticFileAnchored`と`preview→review→accept`で`set-attribute-type`一操作を隔離Workspaceへ適用、別Read・再Parse・再Projectionを局所検証。新Writer/Acceptanceはなし | **このReferenceの行判定→実Workbench UI→同一Owner Current Source/Grant→実Save/Readback**は未実証。実GUI、任意Graph/Chart逆編集、業務意味受理へ昇格しない（#2497/#1124/#267） |
+
+**読み方**：各行の緑のCIは、そのProducer／Reference／局所Go APIの範囲に限る。実Studioに配送される入力、Hostが解決した許可WorkspaceRef、実Role/Disclosure、Functionの実Consumed Provider、Owner Accepted Meaning、Effectを**異なるAttemptのPASSから結合して補完しない**。特に継続的なSource Readerの現在性は単なる`WorldFingerprint`やSource digest一致で保証できない。必要なReason・Scope・Revision・Reader Attempt・Consumerを保持する。
+
+### 16.17 Product上の最短三経路：接続点を実行可能な粒度で切り分ける
+
+| 経路 | 第一段の実装単位 | 最初の独立Expected（既存Caseを再利用） | 不成立なら保留するClaim |
+| --- | --- | --- | --- |
+| **P：Workbenchで特定Subjectを保持** | #4515が既存TypeScript `catalogWorkspace→inspectSubject` に明示Pin/Unpinを追加。既存Source/WorkspaceのPresenterを再利用し第二Storeを作らない | PIN-S0-01〜07、ESD-73の**同Manifest・同byte・別Host許可Root**。同kind/id/全FPが一致してもPinの元WorkspaceRefに無断再束縛しない | 正式RelationのPin、現在のGrant、AI外部送信・Editor資格 |
+| **R：実Readを通常製品入口へ届ける** | #2586の実Environment/Provider→Function Data Contextを、既存#1158/#4495のCLI/Adapter契約へ段階接続。AdapterでDB/Query/Providerを再実装しない | 実Source/Environment/SQL SHA・args・Rows・Coverageの受信が同じAttemptのResultに属すること。RLSの2/3行や0行をcomplete/不存在へ昇格しない。対応する独立Expectedは#2514 | Studioの実Read受領、全件取得、Current Disclosure、業務完了 |
+| **W：可逆な単一Source変更をStudio操作にする** | #4538の行（Qualified Subject＋Source span＋Revision）→`Judge`→既存Acceptance/Readbackを、#1124の実UI編集候補へ薄く接続。正式なSlot粒度判断は#4351/#2497へ委譲 | 同名別Identityの誤更新0、Source R10→R11で旧Patch拒否、`WITHHELD`/unsupportedなら未変更。可逆なTable一行の正例とGraph→Tree非単射の拒否例を区別 | 一般Graph編集、Actual DB DDL/Apply、Owner業務意味受理 |
+
+**情報損失の粒度に関する新たなFit/Gap**：#4538のReferenceでは、Graph→Tree全体のMappingが`lossy/ineligible`の場合、特定Nodeの型属性だけを編集したい場合にも全面拒否になる。**全体のlossyから全Slotの不可能を演繹しない**一方、安全な局所逆写像を勝手に許可もしない。編集操作が実際に読む/書く`Slot`、必要Relation/Identity、Source Anchor、非単射性の影響が明示されたときに限って、既存Mapping CheckerのOwner #4351/#2497が局所適格性を判定する。現時点では`unsupported`のままが安全。新Slot逆写像EngineをStudioで実装しない。
+
+**GUIでの表現**：利用者には必要なときだけ「現在Inspect可／Source要再確認／Read結果の被覆未確立／Change候補のみ／編集拒否・理由」を示し、内部でSource identity・Scope・Reader/Provider/Consumerを追えるようにする。図中の見えない辺・Writer・Sourceは、必要Closed Worldが有資格な場合だけ不存在と結論する。Private差をCounts、Graph note、DOM/ARIA、Tool/AI Contextへ漏らさない。
+
+### 16.18 最上位製品目標との接続と非ブロッキング優先
+
+**最上位はStudio Desktop実利用とTEI自身によるDesktop再構築**。[Draft #4541 §26](https://github.com/hat47x/tei-platform/pull/4541)のDS0（既存Wails実起動）→DS1（標準構造に基づくread-only部品一つを実Desktopで消費）→DS2（TEI Build Intent→実Desktop Builder入力）→DS3（Stage1実ProcessがStage2 DesktopをBuild）を**独立実証段階**として尊重する。本Studio設計はDS0/DS1の「実Consumerで同じQualified Subjectを読む」出口を担当し、DS2/DS3のBuild Input・Artifact・Toolchain・OS Closureは#2831/#4541/#4486へ委譲する。Source/Build/Consumer三閉包を見た目の一つのPipelineへ潰さない。既存の「図中になければ無い」は**申告した有資格Source/入力/依存閉包の範囲内の理想**であり、隠れたBuild工程/非公開Scopeの不存在を宣言しない。
+
+**順序**：直近の製品価値に関しては、P（Subject Pin）とR（実Function→通常製品Read）は互いの完成待ちにせず並列、W（実Source編集）は既存Referenceの限定条件を保って独立で進める。DS0/DS2のDesktop/Buildレーンも並行。WをRやMeta-Generatorが完了するまで全面停止しないが、実StudioのEdit ApplyはSource/逆写像/Grant/Acceptance未確定なら明示拒否。Role自己記述[#4536](https://github.com/hat47x/tei-platform/issues/4536)、生成器自己記述[#4544](https://github.com/hat47x/tei-platform/issues/4544)は両者のContract Fitを評価する**並列レーン**で、全StudioのHard Dependencyではない。三要素分析法は原典忠実な**選択可能Method**であり、TEI汎用Graph/Source構造の唯一の正本モデルではない。
+
+**資格**：§16.16〜18は新しいコード・GUI・CLI接続やIndependent Scenarioを実行していない設計追補。実Wails Subject Pin、通常`tei` CLI実DB Read、Reference Editの実UI再接続、Role/Generator二用途、Desktop Stage2、Owner意味受理は**NOT RUN／NOT PROVEN**。本節で旧CIを再実行したとは主張しない。新Runtime Host、Policy、DB Executor、Graph/Artifact Store、Runner/Resolver/Registry、第二Validation/Acceptance/Scenarioを設けない。
+
+### 16.19 2026-11-13 夜：生成Inspector／三視点Plugin／固定Pinの実Consumer資格を分ける
+
+**固定main：f3b58e7b580f0ecbea1d2feb156f52c2147f63a7。** §16.16〜18 の設計Gapに対して、同日後半の実コード・PRを次のように反映する。異なるDraft headのGREENを合算した「同一Desktop機能完成」は認めない。ここでいう三視点は三要素分析法の**選択可能なMethod実装**であって、TEI汎用Coreの必須モデルにしない。
+
+| 実在する経路 | 固定した観測結果／資格上限 | 同じ製品で未確認の接続 |
+| --- | --- | --- |
+| **Workbenchの生成Inspector** | [Draft #4587](https://github.com/hat47x/tei-platform/pull/4587) exact head 8480bdcd1dcb27f6333adefcb179d12048b631f6 のWindows 生成版／通常版WebView2、Repository Health・Embed等15 checkは成功。N0生成TS→N2実esbuildが選択した24入力と出力byte→N3 Wails exe→実WebView2の**指定ファイル・実配信**まで同一Jobで観測。[Draft #4572](https://github.com/hat47x/tei-platform/pull/4572)のInspector Reader自体は一つのread-only部品 | 実Toolchain・Required Sourceのread-time全閉包、N0〜N3の正式BuildIntent駆動、Stage1自身のWindows Stage2、Current Grantは未証明。[#4583](https://github.com/hat47x/tei-platform/issues/4583)のB1-B/B2/B3へ |
+| **三視点のStandalone Studio Page** | [Draft #4570](https://github.com/hat47x/tei-platform/pull/4570) head 8d8f1439d260a3ebb0a633c2f2e040ab25b20cc4のexact-head Checkは18件成功。合成SourceのBusiness→Function→CRUD→Sourceを **/three-view/** とStudio Bridge/Headless経由でread-only表示、Windowsの機械的smokeも含む | 既存 **/workbench/** への入口、通常Pinとの対象／現在性共有、人による受入、実X-TEA Source、受理済みMeaningは別。Contract v0はAccepted Meaningを運ばない。[#4613](https://github.com/hat47x/tei-platform/issues/4613)/[#4615](https://github.com/hat47x/tei-platform/issues/4615)へ |
+| **Workbench-local Subject Pin状態** | [Draft #4597](https://github.com/hat47x/tei-platform/pull/4597) head 247a6ba6579d8feab618419c100a1e16bb1fe65a はpin-intent-contract専用2 check成功。他方、build-and-match-embedded-bundleおよびRepository Healthはfailure。純粋なPin/Undo/Workspace ABA/後着状態遷移の証拠 | 現Workbench main.tsの表示・選択・Inspector/Graph・Browser DOMへの配線は未実装。Pin成功と旧JS埋込Bundle不一致を併記し、Desktop受入を保留。[#4515](https://github.com/hat47x/tei-platform/issues/4515)へ |
+
+**二種類のPinを混同しない**：#4570のcaller-supplied fixed targetが同名・再選択後も保持されたことは、#4597のWorkbench-local Pin Intentが同じWorkspaceRef／Kind＋ID・現Source Revision／Grantで資格化されたことを証明しない。特にX-TEA原Sourceの無ID ActionはSource byte offset／同名ラベルから新規Canonical Subject IDへ昇格しない。三視点のOccurrenceもSource内の位置であり、永続Identityではない。Graphの parent:描画IDを意味Relationへ変換しない。#4570の現在の固定Provider import/選択は、[#4601](https://github.com/hat47x/tei-platform/pull/4601)が扱うApplication Profileによる選択済みPluginの物理閉包・未選択Plugin除外の証明でもない。
+
+### 16.20 同一headへの合流を、既存の3観測で最小検収する
+
+**初回の操作は read-only のまま**、許可済み合成Workspaceについて、(1) /workbench/で一Qualified SubjectのInspectと明示Pin、(2)別Subject Bを閲覧中のPin Aの再確認でもBのEditor/Graph/選択とDirty Bufferを変えないこと、(3)必要な場合にのみ /three-view/へ移動しSource backedな別のSubject・Relationを参照、を観測する。現在のProductに(1)〜(3)が同一HEADで接合済みとは主張しない。UIのB非干渉は[Draft #4605](https://github.com/hat47x/tei-platform/pull/4605)の既存UX-23へ、Pin正負例は#4515/PIN-S0-01〜07へ、同一Source/対象の独立Expectedは#1180/#2514へ委譲する。
+
+| 反例の注入／比較 | 失敗させなければならない無根拠Claim | 参照先 |
+| --- | --- | --- |
+| Pin A保持中にBをInspect、旧A Replyを遅延着信、別Workspace A→B→A | Pin IntentとTransient Selection混線、旧Reply再資格化、Bの現在Editor/Graph/Dirty Bufferの意図しない上書き | #4597、#4515、#4605 UX-23 |
+| 同名異Subject、同Offset別Subject、描画上の同一端点に複数意味Relation | Source位置・Graph Edge・Function CRUDをAction固有Effect/編集可能なRelation IDとして自動昇格 | #4570、#4524、#1031、#1124 |
+| Source-only改版／Grant-only失効、旧DOM・ARIAや公開Tool Resultが残存 | 旧表示の継続公開、Digest一致で旧Grant復活、非公開対象の存在・件数の露出 | #4514、#4504、#2516、#1124 |
+| N0 Sourceと生成TSは変わったがN2旧JSまたはN3旧embedを配信 | 生成されたという記録だけで「実Desktopが使った」をPASS | #4587 B0、#4583 B1-A/B |
+| 実Windows生成Desktop B0は成功、BuildIntent未接続、Stage1からのWindows Stage2実再入なし | 全工程のL2/L3、図中以外のBuilder/入力の不存在、セルフビルド完成 | #4583、#2831、#4486 |
+
+**実務上の合流順**：#4587は同一headの生成・実配信の基線である。#4597のPin Stateはmain.ts/UIに未接続で、#4587と **reference/tei-studio-workbench/package.json** に変更パスが重なるため、単純cherry-pickで両方のテストを加算せず、Source TSの依存とtest scriptsを統合して**生成済みBundleを再構築**し、generated/ordinary両WebView2実Consumerを検査する。#4570は別 **/three-view/**/Studio Bridgeと独立Ownerを維持し、#4613がGUI入口／人による受入を追加する際に同じWorkspace・Pin資格・Source Scope/Disclosureを明示照合する。新Common Pin Registry、別Policy、Method専用Core、Host必須化を導入しない。
+
+### 16.21 Desktop自己再構築への接続優先と本追補の限界
+
+**最優先の実装Gapは#4583 B1-B**：N0変換、N2選択Input/Output、N3埋込Desktopという現在実在する**各工程**を、既存Build Execution／ArtifactSet／Builder・BuildIntentの型とActual Invokerでどこまで表現・実行できるか、同一Build Attemptで適合照合する。実行できない工程はunsupported/unknownと明示する。別Runnerや万能Meta-Interpreterを先行しない。成功したB1の後にB2（**WindowsのStage1 TEI実Process**によるStage2 Desktop生成）とB3（そのStage2 exeの実WebView2）を別々に受け入れる。Linuxの局所Generator Stage2再入をWindows Desktop L3に足し合わせない。Build入力閉包と実Browser Consumerを一つのResult Boolへ統合しない。
+
+StudioのMethod（#4570）、固定PinのUI接続（#4597/#4515）、Function→実Provider→通常Consumer（#2586）、可逆Source Writer（#4538）は**並行**し、B1-BのHard Dependencyにしない。特にMethod/プラグイン/表現図面を増やした成果そのものを、ユーザーの認知負荷低下と取り違えない。Source/Graph位置・Unknown説明・誤った不存在判定・操作回数/時間を、同じタスクで汎用InspectとMethod Viewの対照として評価する（#4487/#2514）。
+
+**証拠上限**：#4587/#4570/#4597の結果はそれぞれの固定headと合成/CI条件に限定。今回の追補は既存PR/CI/Sourceの静的照合・設計編集であり、同一headの新三者統合・実OS再入・新Browser試験・実X-TEA Source・正式Meaning/Grant・Owner受理はNOT RUN。CI失敗のPRは拒否理由を区別して保持し、修正前headの成功や他PRの成功を転用しない。
+
+### 16.22 2026-11-13：Workbench の Pin 再確認は通常 Inspect の「表示副作用」を再利用しない
+
+**固定照合**：main f3b58e7b580f0ecbea1d2feb156f52c2147f63a7／[Draft #4597](https://github.com/hat47x/tei-platform/pull/4597) head 247a6ba6579d8feab618419c100a1e16bb1fe65a／[Draft #4587](https://github.com/hat47x/tei-platform/pull/4587) head 001b40ce40a6cacddfe75a1e06405958962dd9a8。実装は [#4515](https://github.com/hat47x/tei-platform/issues/4515)、独立ExpectedのOwnerは #1180/#2514、UXは[Draft #4605](https://github.com/hat47x/tei-platform/pull/4605)のUX-23とする。本追補は既存仕様の**実コード上の切断点**を示すだけで、新Pin State／Reader／Approval／Hostを定義しない。
+
+現 main の reference/tei-studio-workbench/main.ts の inspect(subject) は、RPCを始める前に selected、title、renderList、editor.setDocument(pending)、relatedGraph→graph.update、graph.setSelectedNode、source-status を**直ちに変更**する。返信後もEditor・source-status・noticeを更新する。したがって「Pin Aを再資格化するため通常inspect(A)を呼ぶ」実装は、利用者が現在Bを閲覧している場合、**現行read-only表示Bの選択・Editor/Graphの非干渉に反する**（未保存Dirty Bufferは将来のWriter/Editorで別実証）。既存responses.tsのlane/epoch Guardは後着返信の可視化を守るが、開始前に実行したこれらの同期副作用を取り消さない。
+
+#4597 pin-state.tsのPinIntentは workspaceId／workspaceEpoch／Subject kind+id／generationを保持し、acceptPinObservationは要求のgeneration/Workspace/Subjectを照合する。ただしSource RevisionやCurrent Grantの検証は**呼出元の責任**。#4587が生成した readInspection はSubject・WorldFP・SourceIndexFPとread-only effectを照合するが、Source-only Drift、Workspace Root/Grantの現行性、Audience Disclosure、実操作Authorityは成立させない。また生成Readerの document.documentElement.dataset へのProvenance/Calls記録は「この実Generated Readerが使用された」観測であり、**Pin A／表示Bのどのlaneで呼ばれたかを単独で識別するReceiptではない**。
+
+**最小Consumer配線案（設計、未実装）**：
+1. Pin Aの独立Requestを #4597 の pinRequest で固定し、既存CatalogのInspect eligibilityを確認する。RPCは既存StudioBridge.inspectSubjectを利用する。表示Bのselectedを切り替えたり、通常inspect(A)を経由しない。
+2. 応答を現在のPin Requestにのみ適用する前に、既存readInspectionの検証とworkspaceEpoch／generationの整合を確認する。Source Revision/Manifest Root/Disclosureの現行性が実Readerで立証できなければ、Pin Intentは保持しつつ observationを needs-requalification / unqualified のままにする。「FP一致＝authorized」にはしない。
+3. 成功・拒否・後着のいずれもAのPin表示領域だけを更新する。Bの現行read-only Editor Document/選択/Graph/Graph Note/通常Notice・Undo（将来のDirty Bufferは編集可能Editor成立時に追加検証）を変更せず、再確認のためのAI Context送出・Save・Effect 0とする。検証できる場合のみPinカードの限定read-only観測をinspectedにする。
+4. 同じBrowserで生成Readerが呼ばれたことと、**どのPin Requestが受理されたか**は独立観測とし、全体dataset呼出回数だけから「Aを再確認した」と断言しない。
+
+| 既存受入IDへ接続する故障注入 | 独立に観測する期待結果 |
+| --- | --- |
+| UX-23／PIN-S0-01：AをPinしBをInspectして表示・カーソル位置を確定（Dirty編集は未実装）、Aだけ裏再読取 | Bの選択・read-only Editor文書/カーソル位置・Graph node/edge・Noticeはbefore/afterで不変。Pinだけ限定資格更新 |
+| PIN-S0-02/03・ESD-73：同Content/同Fingerprintだが別許可WorkspaceRefへ切替、A→B→A、旧A Replyが後着 | generation/Workspace比較で再束縛0。Source再読取・Grantなしでinspected/currentへ復活しない |
+| STQ-02/12・#4514：Source-only変更でWorldFPは同じ、Catalog/ReaderのFPが一致 | FPだけでは現在Sourceを保証しない。変更を観測できればPin再資格化し、通知未実証なら即時検出を主張しない |
+| #4587 / #4583：Generated Readerの使用回数が増え、A/BいずれかのInspectで同じ契約digestを表示 | 使用回数は実Generated Part利用の証拠、Pin Aの正しいqualified reply受理やBの非干渉は別Expectedで判定 |
+
+**合流の物理条件**：#4597の既存Pin状態モジュールは現在 main.ts に未接続。#4587は生成Inspector readerと生成済みBundle/CIを変更し、#4597とは reference/tei-studio-workbench/package.json が重複する。両PRの**既存test scriptを包含**してSource TypeScriptで接合し、generated artifactを正規手順で再生成・byte照合する。新たなPin実UI・表示非干渉、将来のDirty Buffer保全、通常/生成両Windows WebView2は同一headで実行するまで NOT RUN。#4570の独立 /three-view/ との固定対象共有・Human Acceptanceは別[#4613](https://github.com/hat47x/tei-platform/issues/4613)へ委譲する。
+
+### 16.23 B1 の新しい観測結果と、Studio が提供する判定の上限
+
+[Draft #4587](https://github.com/hat47x/tei-platform/pull/4587)のhead 001b40ce40a6cacddfe75a1e06405958962dd9a8 は**15件のexact-head Checkがcompleted/success**。[Windows CI #43426489587](https://github.com/hat47x/tei-platform/actions/runs/43426489587)では生成版と通常版のWebView2 Jobがともに成功し、N2 esbuild選択入力24件、N3 Go選択Source303件、生成JS実配信 byte 682,327／SHA-256 755e5e85f8487d4e5361fe4262c77595c3ebc048068f2647b0b27862de804299 を記録した。これらは**Toolchainが申告する選択集合とBuild前後の指定byte観測**であり、actual read-timeの完全なSource/Toolchain/Module Cache依存閉包、外部Runner/Env/OS/ABI、BuildIntentが実Builderを選択・起動したことを保証しない。
+
+現main internal/buildintent/intent.go の BuildIntent.Validate() は Intent Subject kind=pluginだけを許し、BuildIntent自体は一つのSubject/Builder/Recipe/Outputを宣言する。cmd/tei/cli_self_build_outer.go は宣言／実Child／artifactを照合するが、一つのChildの内部でN0→N2→N3を隠しただけでは全工程のDeclared/Consumed/Effectを表現したことにならない。**Studio Desktop exeを偽Pluginとして登録しない**。#4583 B1-Bは、既存Build Execution／ArtifactSetと適合する**まず一つのN2 JS→N3 Wails埋込み境界**で「指定したOutput artifact digest／実Consumerが読んだbyte／実Builder selection・Invocation」を照合し、Source required closureとToolchainの未証明範囲をunknownのまま報告することを先行案とする。Shell step間変数の持ち越しが失敗した#4587の旧headを反例として、引渡しは明示Artifact/Receiptで行う。新共通DAG/Runner、Stage2専用Host、隠れbuild hookを導入しない。
+
+**2026-11-14 時点のB1接続実証（先行行の古いheadと区別）**：[Draft #4587](https://github.com/hat47x/tei-platform/pull/4587) head `0fcb7b6265d7dfc5b5e93017e5c99e296eb13134` の**20件のexact-head Checkはすべてsuccess**。同Windows Jobで、通常TEI CLIのprimitive `self-build` がN0 Generatorを実Childとして起動し、N2 esbuild生成JSのProducer Receipt／DigestとN3 Goの`EmbedFiles`実選択・ビルド前後ディスクbyteを照合し、改変コピーを拒否。Goのリポジトリ内選択Source数は**312件**、実WebView2配信JSは682,327 bytesでN2 digest `755e5e85...`と同じ。[独立Draft #4623](https://github.com/hat47x/tei-platform/pull/4623) head `f1e219a25976946bcc8a19ef57f5490333ec8a84` は**11件のexact-head Check success**で、Plugin主体の`BuildIntent.Resolve`が選んだ単一BuilderのArtifactDigestを同一TEI CLI Attemptで子exec前SHA検査へ渡し、Selected B/Actual Aを起動前拒否。**両PRともDraft・未統合、互いの成功を全Desktop BuildIntentの成立へ加算しない**。#4587のN1/N2/N3は依然Workflow直起動、#4623のBuilder Planは非Plugin Desktop未対応。B1-Bの残りは**非Plugin Studio Targetの正式Plan→実Invoker/ArtifactSet**、その後B2生成Stage1実Process→Stage2 Wails、B3そのStage2実WebView2。Read-time全依存閉包、OS Loader TOCTOU、現在Authority/Owner意味受理は未証明。
+
+**優先順位**：P0は#4583 B1-B→B2実Windows Stage1 TEI→Stage2 Desktop→B3そのexeの実WebView2。並行して#4515（Pinを実Workbench UIへ）、#4613（三視点のWorkbench入口）、#2586（通常Product Consumerへの実Read）を進める。#4570の三要素Method全部、AI協業、Plugin Profile全閉包、実DB書込をP0のHard Gateにしない。B0 CI成功も、Source Editor・Current Grant・Owner Meaning・L2/L3/G4への自動資格移譲にしない。
+
+**本節のEvidence**：既存Source、PR/Issue、exact-head CIの確認および設計文書の更新だけ。新Go/Node/Windows/Browser試験、実Pin UI、実BuildIntent N2→N3、一つの共通ConsumerとOwner意味受理はNOT RUN。実装と実行証拠はそれぞれの既存Ownerに保持する。
+
+### 16.24 2026-11-13 夜：検証NGでも読めるWorkspaceと、実Workbenchが捨てている資格情報
+
+**新main固定**：3b3fa7ccb7b3b01596abaa573f896ece08dabb6c。[merged #4557](https://github.com/hat47x/tei-platform/pull/4557)の実装/試験は同mainへ統合。mainに紐づく16件のCheckはcompleted/success。内部`model_catalog_validation_test.go`の二つの実Workspace反例は、(a)意味属性の未定義TypeRef、(b)manifestに宣言したSource Rootの欠落。両方とも CatalogWorkspace／MapWorkspace／LocateWorkspaceは**read-onlyでナビゲーション可能**な一方、Validationは`ok=false,errorCount=1`で一致し、Mapは`partial-projection`、Locateはquery-data-dependencyを`notDerived`に残す。3操作は**別々にLoad**しているため同一原子的Snapshotの証明ではない。正常公開RelationのMap/Locate対応は別[Draft #4521](https://github.com/hat47x/tei-platform/pull/4521)が所有し、両試験のCI合格を同一Studio Consumer受領に合算しない。
+
+**実Consumerコードで確認した情報落ち**：現在の`internal/operations.ModelCatalog`は`validation`（`ok/errorCount/warningCount`）と`workspace`（Workspace Identity）および`authorityLimits`等を返せるが、`reference/tei-studio-workbench/presentation.ts`の`Catalog`型と`readCatalog()`は`entries/modelRevision/worldFingerprint/sourceIndexFingerprint`だけを返し、これらの資格メタデータを保持しない。画面の`main.ts`は初回Inspectの**後で独立した`validateWorkspace`**を実行し診断表示するため、Validationが未取得の間にもInspectは閲覧できる。この実装はread-only閲覧の許可として合理的だが、初回の「投影を表示しています」を**構造OK・意味Accepted・現在Grant**と読ませてはならない。
+
+**最小Consumer修正候補（既存Owner #1124/#4515に委譲、未実装）**：`readCatalog`で現在Go Producerが届ける`validation`と`workspace`の形・Scopeを検査し、少なくとも「read-onlyで閲覧可能」「Workspace構造OK／NG／未確認」「Source/Grant/Meaning/Effect未認定」を**別軸**で表示できるようにする。後着の詳細`validateWorkspace`は診断本文であり、Catalog内の短いVerdictを勝手に上書き・別Workspaceへ転用しない。Payloadで`validation`が欠落・曖昧なら`unknown/not-evaluated`、ゼロ値を`ok=true`へ補完しない。閲覧できることを理由にAccepted/editable/executableと表示せず、Validation NGを理由に原因調査に必要なread-only Locate/Inspect自体を無条件禁止しない。OwnerのSource/Auth/DisclosureをUIが複製せず、非公開診断/件数はCurrent Disclosureの範囲内だけで扱う。
+
+| 既存Ownerへ渡す反証（新Case ID・別Expected正本なし） | 期待（Consumerでの独立観測。現時点ではNOT RUN） |
+| --- | --- |
+| [#4557](https://github.com/hat47x/tei-platform/pull/4557)の未定義TypeRef／欠落Root → Catalog→Inspect→Validate | Invalidでも同一Scopeでread-onlyのSource手掛かりを見られ、`validation.ok=false`は隠れない。編集/Apply/実行資格=未確認 |
+| #4557の別Load後にSource/Workspaceが変わる、Validateだけが旧返信で後着 | CatalogのValidationは現在の取得元に紐づき、旧返信が新WorkspaceのOKへ昇格しない。Fingerprint一致だけで現在Source Revisionを断定しない |
+| Goから`validation`を除いた旧/不完全Payloadと`ok=false`のPayloadを比較 | 前者はunknownであり後者はNG。欠損をOKとしない。UI表示可とOwner意味受理・現在Grantは独立 |
+| Partial Map／Locateの`notDerived`家族に対して関連Edgeが0本 | `no relation exists`やWriterなしとは結論しない。未導出範囲をユーザーの問いに相対的に示す（STQ-08/21） |
+
+**Validationの現在性をContent Fingerprintから切り離す（MV-13実証へ更新、2026-11-14）**：Goの`catalogValidation(loaded)`はWorld診断に加え`SourceRootFindings`も評価する。main統合済み[PR #4616](https://github.com/hat47x/tei-platform/pull/4616)は、**同一Manifest／同一Semantic Source／同一Workspace**の宣言済`future` Rootを欠落→空ディレクトリ実在に変え、独立LoadのCatalog/Map/Locate/ValidateでValidationが**error 1→warning 1（OK）**へ変わる一方、World/Source Index Fingerprint・Model Revision・Workspace identity・Map Linksが**すべて不変**であることを実Go Product API回帰で確認した（exact head `80bf7420334d57f42c871eb7a071ec21fdda7ec5`、CI全Check success）。これにより、内容FPから現在Validationを推論できない**実反例が成立**。一般の全Root/Import/Providerへ拡張せず、原子的Multi-Reader Snapshot・Watcher・実Workbench表示・Current Grantは未実証。
+
+**既存Consumerへ渡す残る反例（Product実証とUI未実証を分離）**：固定公開WorkspaceでPR #4616と同じRoot欠落→実在を繰り返し、現在の`readCatalog`が`workspace`・`validation`を失わず、後着の別Workspace/別AttemptのValidate Replyを採用しないことを**実Workbenchで別試験**する。Root変更を通知する手段がない間は、UIが旧OKを「現在OK」と表示し続けないための**再読取契機・unknown表示のOwner判断**が必要であり、自動検出済みと主張しない。Source/Grant/DisclosureをFP一致で再資格化しない。#4557は一時点の検証NG保持、#4616は二時点のFP不変・判定変化という**異なるGo試験**。既存#1180/#2514 Expectedへこの差分のみ引き継ぎ、新Watcher・Snapshot Coordinator・第二Validator・新Case IDを作らない。
+
+**横断資格への転用禁止**：`Catalog validation`の再取得が成功しても、#2586の実Provider Required/Consumed入力、#4583のN2/N3 Builder実Consume、#4529の配布Artifact HTTPバイト／署名・現在Publisher、#4515のPinのSource/Grant/Disclosureを自動再資格化しない。それぞれの現在のConsumerとOwnerが、自分のPurpose/Attempt/Scopeで再照合する。Studio P0は#4583 B1-B→B2→B3のまま。
+**Editorの実装上限も訂正**：本mainの`reference/tei-studio-editor/editor.ts`は`createReadOnlyTextEditor`であり、**現在のWorkbenchにDirty Bufferや保存可能な編集操作は存在しない**。§16.22〜23の「Pin A再読取はBに干渉しない」の現時点の実証対象はread-only `EditorSnapshot`のdocumentId/version/text/selection、Graph、通常Inspect応答とDOM/ARIAである。Dirty Buffer・Undo/Save保護は[Draft #4538](https://github.com/hat47x/tei-platform/pull/4538)等の編集縦断を実Studioに接続した**後の受入条件**であり、現行機能を装わない。
+
+**開発順**：#4583 B1-B→B2→B3は最優先のまま、#4515 Workbench Pin UI、#4613三視点入口、#2586実Provider Readは並行。#4557の負例を理由にBuildIntentへ新Validator/Gateを追加しない。新Reader、共通Selection Store、Policy、Host、Engineを作らない。本追補は既存Source/Go Test/CI静的照合と文書修正のみ。新Go/Node/Windows/GUI/Grant/Owner意味受理は**NOT RUN**。
+
+### 16.25 2026-11-14：実N0/N2/N3を非PluginのBuild Executionへ対応付ける最小の型境界
+
+**実SourceでのFit**（main `e051895b03bfbd7b4a08d30aa3193465b9ab1bd0`）：製品`internal/buildintent/intent.go::BuildIntent.Validate`は現在`subject.kind=plugin`だけを受理する。`go-command` Recipeと`go-package`定義Sourceがあっても非Plugin Desktop主体を自動受理しない。`internal/buildintent/resolve.go`は`plugin.BuildPlan`（Plugin identity付き）を導出する。一方、`tools/reference-build-execution-binding/main.go`の`BuildExecutionPlan{Sources,Builder,Recipe,OutputContract,Target,Dependencies}`、`ArtifactSet{Members[Role,Format,Digest,Locator]}`、`BuildExecutionResult{ExecutionPlanFingerprint,ArtifactSetFingerprint}`は**Plugin identityと独立**している。ただし`package main`のReferenceであり、正式Product Contract／実Invokerではない。Desktop exeを偽Pluginにせず、この既存形のどの部分を製品型へ引き上げるかだけを#1080/#1097/#2831/#4583のOwnerが選ぶ。
+
+| 実工程とOutput Role（候補、正式ID未採用） | 既存モデルへ対応できる観測 | 残るGap |
+| --- | --- | --- |
+| N0→N2：生成Inspector TS `inspector.reader.source` | N0実Childと生成TS byteを`ArtifactMember`として固定。N2の`BuildExecutionPlan.Sources`と実metafile選択inputをdigest比較 | primitive `tei self-build -child`は正式Resolverが選んだN0 Builderではない。esbuildのread-time全閉包は不明 |
+| N2→N3：Workbench JS `workbench.bundle` | N2 Producer Role/digest/lengthとN3のGo `EmbedFiles`実選択、Go Build前後byteを同一Windows Attemptで比較（#4587 H1） | N2実Builderが製品BuildIntentで起動されず、Node/Go Toolchain外部依存は閉じていない |
+| N3→exe：Windows Wails実行ファイル（Roleは今後定義） | `BuildExecutionPlan`のBuilder/Target/RecipeとExe `ArtifactSet`／実Processを対応付け可能 | 現`plugin.BuildPlan`に非Plugin Desktop Subjectはなく、Stage0 Workflow Builderは生成Stage1ではない |
+| 生成Stage1→Stage2→B3 | Stage1の実image/argvとStage2 exe digest、当該Stage2自身が配信するJS/Inspectorを別Receiptで照合 | Stage2 Artifact存在だけではB2/B3は成立せず、CI Launcherによる二重BuildもStage1再入でない |
+
+**型の実際の不足**：Reference `tools/reference-build-execution-binding/graph.go::BuildGraphInputBinding`が検証するInput Kindは現在`builder`と`dependency`の2種類だけ。N0 TS Output Member→N2 Source InputやN2 JS Output Member→N3 Embed Inputを表す**source-member role対応の直接Edgeは存在しない**。`BuildExecutionPlan.Sources`に正しいbyteを記録できても、それだけで「Graph上の工程間受渡しを検証済み」とは呼べない。実Version付き`BuildDependency`として適切に扱える場合のみ既存dependency edgeのFitを試し、無理な場合は**unsupportedな辺を図と受入票へ明示**する。実需要が示されるまで新DSL/Runner/共通Graph変換を設けない。
+
+**Result identityとAttempt Evidenceも分離**：Reference `BuildExecutionResult`は同じPlan／ArtifactSetなら異なる実行でも同一fingerprintとなる。これをCI runや実Builder Invocationを識別するAttempt IDとして転用しない。外部Observationには実Invoker image/argv、Source/選択member pre/post digest、OS/Toolchain、Actual Artifact、WebView2 Consumer、時点とrun IDを別に保持する。
+
+**2026-11-14 exact-head状況**：[統合Builder Draft #4634](https://github.com/hat47x/tei-platform/pull/4634) head `7d6a1238`は**11 checks completed/success**。宣言→Resolver整合・実Child起動前pinはPlugin主体に限定。[Desktop H0/H1 Draft #4587](https://github.com/hat47x/tei-platform/pull/4587) head `357345d7`は[Windows run #43554075677](https://github.com/hat47x/tei-platform/actions/runs/43554075677)で生成Desktop Job成功・通常Desktop Job**失敗**。後者は`desktop_webview_smoke.py`のOSVersion取得外部PowerShellが15秒Timeoutし、UI試験未到達。ログの原因位置と安全な取得経路への変更候補を[PR #4587のOwnerへ報告](https://github.com/hat47x/tei-platform/pull/4587#issuecomment-6871564183)済み。通常Jobは製品欠陥確定でも単なる環境問題確定でもなく、修正後の同一HEADで生成/通常両Jobを再検収する。
+
+**P0の次の一辺**：`workbench.bundle`一つから、正式宣言→実N2 Invoker→出力ArtifactSet→N3実Embed Readerの同一Attempt照合を既存Product実行契約に接続し、非Plugin適格化に必要なAdapterだけを選ぶ。Reference `BuildGraph`丸ごとのProduct移植・新Host/Runner・Plugin Subject偽装はしない。その後B2（生成Stage1自身がStage2 Wailsを構築）、B3（そのStage2の実WebView2）を独立検収。Pin UI、三視点、実Provider Read、Web/IPC/WASMは並行。
+
+**本節は設計のみ**：既存Source/PR/CI/失敗ログの照合とOwnerへの引渡しは実施。新しい非Plugin Product Builder、Graph Edge、新Windows実行、Stage2、Owner受理は**NOT RUN／未証明**。

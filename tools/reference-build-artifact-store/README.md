@@ -229,3 +229,20 @@ go test -count=1 -v ./tools/reference-build-artifact-store \
 専用CI：[`plugin-registry-e1-local-handoff.yml`](../../.github/workflows/plugin-registry-e1-local-handoff.yml)。P0-AのGo/Nodeテストと、この別Process Readbackの試験を同じGit候補版で実行する。PRの`pull_request`イベントでは**merge candidate**を測り、PR Headの直接試験と同一視しない。試験で使用するテスト鍵／Policyは本番用ではない。
 
 **保証上限**：CはPublisherとは**別OS Process／別Read Attempt**だが、Store ReaderのGo実装は共通である。別言語Reader、別ホスト・別Storage、実GitHub Release、GitHub Repository所有者とIssuerの現在Trust、Version CAS、公開Namespace登録、Origin/Disclosure、同時更新のABA耐性、実Plugin Load／業務Effectは**未実証**。固定Releaseの署名・Attestationの妥当性は別のP0-A試験が評価し、このCAS試験単独では検証しない。過去のPublisher Receiptは現在のC取得・現在Authorityを保証しない。
+
+
+## Registry E1-B：HTTP Loopback配布面→別Process Consumer C（transport-only）
+
+既存のE1-AテストでPublicator PがLocal CASの全必須Roleを公開・実readbackした後、`registry_e1_http_test.go`では同じCASを**試験限定のループバックHTTP Handler**で提供し、別のOSプロセスCが独立したHTTP GETで固定Releaseの各Byteを取得する。**新Store/Registry APIを作らず**、既存`GetBytes`を配布側で再利用する。
+
+- Cはテスト用`fixture.json`を再読込し、固定Release Digest・Role/Member Digestを基準に取得。PのCAS Receiptやメモリ上のByteは渡さない。
+- 取得URLは`http://127.0.0.1:<port>`のみを許可。HTTP Redirectを自動追跡せず、Proxyは無効化、Timeoutと最大1 MiBのレスポンス境界を設ける。ETagやHTTP 200の自己申告だけで受理せず、**実レスポンスBodyを再ハッシュし、Roleごとの期待Byteに一致すること**を要求する。
+- 局所の受理ケース7件：完全取得、公開後member欠落（404）、CAS破損によるHTTP取得不能（503）、Digest Locator R1へ別Memberを返す世代混入（Digest不一致）、外部Redirect拒否、Body上限超過拒否、Role/Digest入替拒否。
+- PのPublication Receipt、Cの別Attempt、HTTPの転送事実は、それぞれ別のEvidenceである。CのHTTP取得成功は**継続的な世代固定、Origin所有権、Trust/Grant、実Runtime LoadやPublisherの秘密開示許可**を証明しない。
+
+```sh
+go test -count=1 -v ./tools/reference-build-artifact-store \
+  -run '^(TestRegistryE1HTTPConsumerChild|TestRegistryE1HTTPTransportToSeparateProcess)$'
+```
+
+専用CIの[`plugin-registry-e1-local-handoff.yml`](../../.github/workflows/plugin-registry-e1-local-handoff.yml)が既存E0-S/WおよびE1-Aと同じGit候補で実行する。**同じMachineのloopbackであり、GitHub Releases・実NAS/S3・遠隔TLS・別Host／別言語Readerは試験していない。** 配布先の現在のPublisher Authority、HTTP TLS証明書、Redirect後のIdentity/Disclosure、実E2/E3は後続Gateとし、試験用Hostを製品用Serverへ昇格させない。

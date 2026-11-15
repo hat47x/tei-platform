@@ -204,3 +204,90 @@ func TestUnsoundWorkspaceCatalogInspectAndTraceKeepValidationDistinct(t *testing
 		t.Fatal("Source navigation must not upgrade failed validation")
 	}
 }
+
+// An invalid Workspace remains navigable, but all real read-only projections
+// must carry the *same failed validation verdict*. An indexed Subject or a
+// structurally resolved Map link is not an acceptance or execution grant.
+// This complements the valid public Relation test owned by #4521.
+func TestInvalidWorkspaceModelMapAndLocateKeepValidationSeparateFromNavigation(t *testing.T) {
+	cases := []struct {
+		name    string
+		extra   string
+		rootGap bool
+		subject sourceindex.Subject
+	}{
+		{
+			name:    "invalid semantic attribute type",
+			extra:   "namespace scn\n\ndata X {\n    attribute a type scn.nothere\n}\n",
+			subject: sourceindex.Subject{Kind: "semantic-data", ID: "scn.x"},
+		},
+		{
+			name:    "missing declared source root only",
+			extra:   "namespace scn\n\ndata X {\n    attribute a type std.text\n}\n",
+			rootGap: true,
+			subject: sourceindex.Subject{Kind: "semantic-data", ID: "scn.x"},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := writeValidationWorkspace(t, tc.extra)
+			if tc.rootGap {
+				manifest := "workspace: scn\nformatVersion: 1\nsources:\n  - semantic\n  - nonexistent\n"
+				if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte(manifest), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			catalog, err := operations.CatalogWorkspace(root, "")
+			if err != nil {
+				t.Fatalf("catalog: %v", err)
+			}
+			mapped, err := operations.MapWorkspace(root)
+			if err != nil {
+				t.Fatalf("map: %v", err)
+			}
+			located, err := operations.LocateWorkspace(root, tc.subject, 1)
+			if err != nil {
+				t.Fatalf("locate canonical invalid Subject: %v", err)
+			}
+			validated, err := operations.ValidateWorkspace(root)
+			if err != nil {
+				t.Fatalf("validate: %v", err)
+			}
+			if !validated.HasErrors() || catalog.Validation.OK ||
+				catalog.Validation.ErrorCount != 1 ||
+				mapped.Catalog.Validation != catalog.Validation ||
+				located.Validation != catalog.Validation {
+				t.Fatalf("navigation must not promote invalid Source to valid: catalog=%+v map=%+v locate=%+v typed=%+v",
+					catalog.Validation, mapped.Catalog.Validation, located.Validation, validated)
+			}
+			if mapped.Effect != "read-only" || located.Effect != "read-only" ||
+				mapped.Coverage != "partial-projection" ||
+				located.Subject.Subject != tc.subject || located.Subject.Ambiguous ||
+				located.Subject.SourceStatus != "indexed" {
+				t.Fatalf("invalid Source must remain bounded/read-only/navigation-only: map=%+v locate=%+v", mapped, located)
+			}
+			if catalog.WorldFingerprint == "" || catalog.SourceIndexFingerprint == "" ||
+				mapped.Catalog.WorldFingerprint != catalog.WorldFingerprint ||
+				located.WorldFingerprint != catalog.WorldFingerprint ||
+				mapped.Catalog.SourceIndexFingerprint != catalog.SourceIndexFingerprint ||
+				located.SourceIndexFingerprint != catalog.SourceIndexFingerprint ||
+				catalog.Workspace == nil || mapped.Catalog.Workspace == nil ||
+				located.Workspace == nil ||
+				!reflect.DeepEqual(*catalog.Workspace, *mapped.Catalog.Workspace) ||
+				!reflect.DeepEqual(*catalog.Workspace, *located.Workspace) {
+				t.Fatal("independent Map/Locate/Catalog reads diverged on their observed Source context")
+			}
+			notDerived := false
+			for _, family := range located.Coverage.NotDerived {
+				if family == "query-data-dependency" {
+					notDerived = true
+				}
+			}
+			if !notDerived {
+				t.Fatal("Locate must retain its nonderived families even for indexed invalid Source")
+			}
+			// Agreement across separate Load calls is not an atomic
+			// cross-operation snapshot or a Current Grant.
+		})
+	}
+}

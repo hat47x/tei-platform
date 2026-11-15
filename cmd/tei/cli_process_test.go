@@ -107,6 +107,26 @@ func TestCLIProcessJSONContract(t *testing.T) {
 	if absent.OK || absent.Error == nil || absent.Error.Code != "SUBJECT_NOT_FOUND" {
 		t.Fatalf("wrong missing subject result: %+v", absent)
 	}
+	// A Source Index trace is not canonical existence. Verify the actual
+	// process argv, JSON envelope and exit code agree with inspect on
+	// a missing Subject, while an existing Query remains usable.
+	var missingSource cliResultEnvelope
+	if err := json.Unmarshal(run(1, "source-index", "-workspace", reference,
+		"-subject-kind", "semantic-data", "-subject-id", "sales.not_found"), &missingSource); err != nil {
+		t.Fatalf("source-index missing subject must be JSON: %v", err)
+	}
+	if missingSource.OK || missingSource.Error == nil ||
+		missingSource.Error.Code != "SUBJECT_NOT_FOUND" || missingSource.Result != nil {
+		t.Fatalf("source-index falsely qualified missing Subject: %+v", missingSource)
+	}
+	var existingSource cliResultEnvelope
+	if err := json.Unmarshal(run(0, "source-index", "-workspace", reference,
+		"-subject-kind", "query", "-subject-id", "order_entry.recent_orders"), &existingSource); err != nil {
+		t.Fatalf("source-index existing subject must be JSON: %v", err)
+	}
+	if !existingSource.OK || existingSource.Mode != "subject" || existingSource.Result == nil {
+		t.Fatalf("existing Source Index subject regressed: %+v", existingSource)
+	}
 	var invalidInspect cliInspectionReport
 	if err := json.Unmarshal(run(2, "inspect", "-workspace", reference, "-subject-kind", "semantic-data"), &invalidInspect); err != nil {
 		t.Fatalf("inspect invalid argument not JSON: %v", err)

@@ -139,6 +139,91 @@ func TestOutcomeCannotBeReturnedForSingleOutputCapability(t *testing.T) {
 	}
 }
 
+// Post-dispatch Result contract failures are not proof of non-execution.
+//
+// An effectful Provider could have performed work before returning a malformed
+// result. This boundary can reject the result but must not claim rollback,
+// effect absence, or eligibility for automatic retry (#4495, EL-12).
+func TestPostDispatchContractErrorPreservesAdapterCallEvidence(t *testing.T) {
+	capability := referenceCapability(t, "security.authenticate")
+	tests := []struct {
+		name   string
+		result capabilityinvoke.BusinessResult
+		want   string
+	}{
+		{
+			name: "undeclared outcome",
+			result: capabilityinvoke.BusinessResult{
+				Capability: capability.ID,
+				Mode:       capabilityinvoke.ResultOutcome,
+				Outcome:    "not_declared",
+				Payload:    "unexpected",
+			},
+			want: "does not define outcome",
+		},
+		{
+			name: "different capability",
+			result: capabilityinvoke.BusinessResult{
+				Capability: "wrong.capability",
+				Mode:       capabilityinvoke.ResultOutcome,
+				Outcome:    "denied",
+				Payload:    "unexpected",
+			},
+			want: "different Capability",
+		},
+		{
+			name: "wrong result mode",
+			result: capabilityinvoke.BusinessResult{
+				Capability: capability.ID,
+				Mode:       capabilityinvoke.ResultOutput,
+				Payload:    "unexpected",
+			},
+			want: "named-outcome contract",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			calls := 0
+			adapter := adapterFunc(func(context.Context, core.CanonicalID, any) (capabilityinvoke.BusinessResult, error) {
+				calls++
+				return tt.result, nil
+			})
+			result, err := capabilityinvoke.Invoke(context.Background(), capability, adapter, nil)
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("post-dispatch contract violation was not rejected: result=%#v err=%v", result, err)
+			}
+			if calls != 1 {
+				t.Fatalf("post-dispatch result violation must remain a call=1 case, got %d", calls)
+			}
+			if result.Capability != "" || result.Mode != "" || result.Outcome != "" || result.Payload != nil {
+				t.Fatalf("invalid result was returned as accepted business output: %#v", result)
+			}
+		})
+	}
+}
+
+// Cancellation returned by an Adapter occurs after dispatch. The invocation
+// must preserve error identity without converting the result into a business
+// Outcome or misclassifying this as the pre-dispatch call=0 case.
+func TestPostDispatchCancellationKeepsAdapterCallEvidence(t *testing.T) {
+	capability := referenceCapability(t, "sales.order.submit")
+	calls := 0
+	adapter := adapterFunc(func(context.Context, core.CanonicalID, any) (capabilityinvoke.BusinessResult, error) {
+		calls++
+		return capabilityinvoke.BusinessResult{}, context.Canceled
+	})
+	result, err := capabilityinvoke.Invoke(context.Background(), capability, adapter, nil)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("Adapter cancellation identity was lost: result=%#v err=%v", result, err)
+	}
+	if calls != 1 {
+		t.Fatalf("Adapter cancellation after dispatch must remain a call=1 case, got %d", calls)
+	}
+	if result.Capability != "" || result.Mode != "" || result.Outcome != "" || result.Payload != nil {
+		t.Fatalf("post-dispatch cancellation produced a business outcome: %#v", result)
+	}
+}
+
 // Cancellation known before dispatch is a non-execution result, even for
 // effectful single-output Capabilities. No Adapter invocation is permitted.
 func TestCancelledContextDoesNotDispatchCapabilityAdapter(t *testing.T) {
@@ -180,6 +265,224 @@ func TestAdapterCancellationErrorDoesNotBecomeBusinessOutcome(t *testing.T) {
 	}
 	if result.Outcome != "" || result.Mode != "" || result.Payload != nil {
 		t.Fatalf("adapter failure became business result: %#v", result)
+	}
+}
+
+// A malformed Capability must not reach an Adapter: checking only the returned
+// BusinessResult would be too late for a potentially effectful implementation.
+func TestMalformedResultContractRefusedBeforeAdapterDispatch(t *testing.T) {
+	base := referenceCapability(t, "security.authenticate")
+	cases := []struct {
+		name    string
+		corrupt func(*semantic.Capability)
+		want    string
+	}{
+		{
+			name:    "missing identity",
+			corrupt: func(c *semantic.Capability) { c.ID = "" },
+			want:    "identity is missing",
+		},
+		{
+			name: "no result",
+			corrupt: func(c *semantic.Capability) {
+				c.Outcomes = nil
+			},
+			want: "has no result contract",
+		},
+		{
+			name: "mixed output and outcome",
+			corrupt: func(c *semantic.Capability) {
+				c.Output = core.MustCanonicalID("std.text")
+			},
+			want: "both a single output and named outcomes",
+		},
+		{
+			name: "empty outcome name",
+			corrupt: func(c *semantic.Capability) {
+				c.Outcomes[0].Name = ""
+			},
+			want: "incomplete named outcome",
+		},
+		{
+			name: "empty outcome payload",
+			corrupt: func(c *semantic.Capability) {
+				c.Outcomes[0].Payload = ""
+			},
+			want: "incomplete named outcome",
+		},
+		{
+			name: "duplicate outcome name",
+			corrupt: func(c *semantic.Capability) {
+				c.Outcomes[1].Name = c.Outcomes[0].Name
+			},
+			want: "duplicate outcome",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			capability := base
+			capability.Outcomes = append([]semantic.Outcome(nil), base.Outcomes...)
+			tc.corrupt(&capability)
+			calls := 0
+			adapter := adapterFunc(func(context.Context, core.CanonicalID, any) (capabilityinvoke.BusinessResult, error) {
+				calls++
+				return capabilityinvoke.BusinessResult{
+					Capability: capability.ID,
+					Mode:       capabilityinvoke.ResultOutcome,
+					Outcome:    "authenticated",
+					Payload:    map[string]string{"subjectId": "not-reached"},
+				}, nil
+			})
+			result, err := capabilityinvoke.Invoke(context.Background(), capability, adapter, nil)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("malformed result contract was not rejected: result=%#v err=%v", result, err)
+			}
+			if calls != 0 {
+				t.Fatalf("malformed result contract dispatched Adapter %d times", calls)
+			}
+			if result.Capability != "" || result.Mode != "" || result.Outcome != "" || result.Payload != nil {
+				t.Fatalf("malformed contract produced a business result: %#v", result)
+			}
+		})
+	}
+}
+
+func TestDirectBusinessResultValidationRejectsMixedResultContract(t *testing.T) {
+	capability := referenceCapability(t, "security.authenticate")
+	capability.Output = core.MustCanonicalID("std.text")
+	result := capabilityinvoke.BusinessResult{
+		Capability: capability.ID,
+		Mode:       capabilityinvoke.ResultOutput,
+		Payload:    "appears valid in output mode",
+	}
+	if err := capabilityinvoke.ValidateBusinessResult(capability, result); err == nil {
+		t.Fatal("direct validation accepted a Capability with contradictory result modes")
+	}
+}
+
+// The generic invocation layer cannot infer whether a single-output type is
+// nullable. Payload shape/presence is checked against accepted meaning by the
+// product-specific Adapter, not by this structural result-mode checker.
+func TestSingleOutputPayloadPresenceIsNotInferredFromResultMode(t *testing.T) {
+	capability := referenceCapability(t, "sales.order.submit")
+	result := capabilityinvoke.BusinessResult{
+		Capability: capability.ID,
+		Mode:       capabilityinvoke.ResultOutput,
+	}
+	if err := capabilityinvoke.ValidateBusinessResult(capability, result); err != nil {
+		t.Fatalf("result-mode validation claimed to know the output's nullability: %v", err)
+	}
+}
+
+// Malformed declared inputs and effects are a pre-dispatch concern even when
+// the result contract itself is valid. This test does not assert that the
+// incoming input value is typed, authorized, or bound to a published Entry.
+func TestMalformedInputOrEffectDeclarationNeverDispatchesAdapter(t *testing.T) {
+	base := referenceCapability(t, "security.authenticate")
+	cases := []struct {
+		name   string
+		mutate func(*semantic.Capability)
+		want   string
+	}{
+		{
+			name: "input name missing",
+			mutate: func(c *semantic.Capability) {
+				c.Inputs = []semantic.Parameter{{Name: "", Type: "std.text"}}
+			},
+			want: "incomplete input",
+		},
+		{
+			name: "input type missing",
+			mutate: func(c *semantic.Capability) {
+				c.Inputs = []semantic.Parameter{{Name: "token", Type: ""}}
+			},
+			want: "incomplete input",
+		},
+		{
+			name: "duplicate input names",
+			mutate: func(c *semantic.Capability) {
+				c.Inputs = []semantic.Parameter{
+					{Name: "token", Type: "std.text"},
+					{Name: "token", Type: "std.text"},
+				}
+			},
+			want: "duplicate input",
+		},
+		{
+			name: "unsupported data effect",
+			mutate: func(c *semantic.Capability) {
+				c.Effect = &semantic.DataEffect{Kind: "unknown", Data: "sales.order"}
+			},
+			want: "unsupported data effect",
+		},
+		{
+			name: "effect data identity missing",
+			mutate: func(c *semantic.Capability) {
+				c.Effect = &semantic.DataEffect{Kind: semantic.DataEffectCreate}
+			},
+			want: "unsupported data effect",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			capability := base
+			tc.mutate(&capability)
+			calls := 0
+			adapter := adapterFunc(func(context.Context, core.CanonicalID, any) (capabilityinvoke.BusinessResult, error) {
+				calls++
+				return capabilityinvoke.BusinessResult{
+					Capability: capability.ID,
+					Mode:       capabilityinvoke.ResultOutcome,
+					Outcome:    "authenticated",
+					Payload:    map[string]string{"subjectId": "unexpected"},
+				}, nil
+			})
+			result, err := capabilityinvoke.Invoke(context.Background(), capability, adapter, nil)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("malformed declaration was admitted: result=%#v err=%v", result, err)
+			}
+			if calls != 0 {
+				t.Fatalf("malformed declaration reached Go Adapter %d times", calls)
+			}
+			if result.Capability != "" || result.Mode != "" || result.Outcome != "" || result.Payload != nil {
+				t.Fatalf("malformed declaration returned BusinessResult: %#v", result)
+			}
+		})
+	}
+}
+
+func TestNilContextNeverDispatchesCapabilityAdapter(t *testing.T) {
+	capability := referenceCapability(t, "sales.order.submit")
+	calls := 0
+	adapter := adapterFunc(func(context.Context, core.CanonicalID, any) (capabilityinvoke.BusinessResult, error) {
+		calls++
+		return capabilityinvoke.BusinessResult{
+			Capability: capability.ID, Mode: capabilityinvoke.ResultOutput,
+			Payload: "unexpected",
+		}, nil
+	})
+	result, err := capabilityinvoke.Invoke(nil, capability, adapter, nil)
+	if err == nil || !strings.Contains(err.Error(), "no context") {
+		t.Fatalf("nil context was not rejected: result=%#v err=%v", result, err)
+	}
+	if calls != 0 {
+		t.Fatalf("nil context reached Go Adapter %d times", calls)
+	}
+}
+
+func TestResultOnlyValidatorDoesNotClaimInputOrEffectAcceptance(t *testing.T) {
+	capability := referenceCapability(t, "sales.order.submit")
+	capability.Inputs = []semantic.Parameter{
+		{Name: "token", Type: "std.text"},
+		{Name: "token", Type: "std.text"},
+	}
+	result := capabilityinvoke.BusinessResult{
+		Capability: capability.ID,
+		Mode:       capabilityinvoke.ResultOutput,
+		Payload:    "a result mode, not input publication",
+	}
+	if err := capabilityinvoke.ValidateBusinessResult(capability, result); err != nil {
+		t.Fatalf("result-only validation unexpectedly became input/Entry authority: %v", err)
 	}
 }
 

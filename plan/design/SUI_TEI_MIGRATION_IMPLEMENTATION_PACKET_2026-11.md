@@ -15,10 +15,12 @@
 | Source状態・文書単位の開示制限・多重Edgeの`parallel` | 統合済み | SUI PR #3429、merge `5be212ca`、ADR-0116 | 変更しない |
 | TEI側のM0〜M6設計 | 統合済み | TEI PR #4298、merge `d9aecac4` | 本書を入口にする |
 | M2 Canonical定義とprobe | 統合済み | TEI PR #4346、merge `ef0921c1`（`reference/sui-adoption/workspace-m2`、`tools/reference-sui-canonical-probe`） | 実Consumerの入力として使う |
-| P7 TEI側の参照consumer | 提案中 | TEI PR #4390 | レビュー・統合判断 |
-| Owner判断8点 | 未決 | 設計 §7、本書 §7 | 各PRで判断を記録 |
+| P7 TEI側の参照consumer | 統合済み | TEI PR #4390、merge `60e7185d`（`tools/reference-sui-reference-consumer`） | 変更しない |
+| M3・M4・M5 record投影・開示投影・Source権威 | 統合済み | TEI PR #4445、merge `1fb55456`（`tools/reference-sui-record-projection`、試験15件） | 変更しない |
+| M6 scope conformance | 統合済み | TEI PR #4440、merge `c7e71abb`（`tools/reference-scope-isolation-matrix`、`reference/sui-adoption/scope-isolation-matrix.v1.json`） | 変更しない |
+| Owner判断 O-01〜O-08 | 一部を暫定代行 | 本書 §7、PR #4445本文 | 正式判断はOwner |
 
-M0は「SUI側のconsumerが動く」ところまでで、TEI側のproducer契約は未完了である。M0・M2の統合を理由に、M1のproducer契約・M3以降の受入を省略しない。
+M0・M2・M3〜M6・P7は統合済みですが、**実Provider・実HTTP・実PostgreSQL・Owner意味受理は未検証（NOT RUN）**です。統合済みを理由に、実環境の合格や意味受理を主張しません。
 
 ## 2. 不変条件（全Work Packet共通）
 
@@ -206,6 +208,8 @@ reference-local validatorを追加する場合は、そのパッケージの`go 
 
 ### M3 record/string投影
 
+**状態**: 統合済み（TEI PR #4445、merge `1fb55456`）。実装は`tools/reference-sui-record-projection/`にあり、以下の候補は実装前の記録である。実装では `generator.carriesContent=false` を固定し、本文・題名を運ばない。
+
 **目的**: 受理済みのSUI意味から、DocumentV1相当のrecordを生成できるようにし、consumerが二度書くコストを下げる。M3は#2488のOwner判断を先取りしない。
 
 **提案する出力（`SuiDocumentRecordV0`、consumer envelope）**:
@@ -321,6 +325,8 @@ SourceStatus {
 
 ### M6 scope conformance
 
+**状態**: 統合済み（TEI PR #4440、merge `c7e71abb`）。実装は`tools/reference-scope-isolation-matrix/`と`reference/sui-adoption/scope-isolation-matrix.v1.json`にあり、以下は実装前の記録である。
+
 **目的**: SUIの越境試験を言語非依存の契約として書き、実装の書き換えを急がずに不足を観測する。
 
 **要件**:
@@ -404,13 +410,13 @@ tools/reference-sui-reference-consumer/
 
 | ID | 判断 | 判断前の既定 | 担当 | 状態 |
 | --- | --- | --- | --- | --- |
-| O-01 | `source.status`と文書開示をproducer契約にするか | `unknown`で動く | SUI Owner / producer | 未決 |
-| O-02 | Card本文・題名を業務面へ出すか | 出さない | SUI #3369 | 未決 |
-| O-03 | `revoked`を参照無効かSource削除か | 参照無効として409 | SUI Owner | 未決 |
-| O-04 | digestと保存revisionの関係を契約にどう載せるか | 別欄、同一視しない | SUI / TEI | 未決 |
-| O-05 | Tree閲覧状態をCanonicalへ入れるか | 入れない | TEI #2497 | 未決 |
+| O-01 | `source.status`と文書開示をproducer契約にするか | `unknown`で動く | SUI Owner / producer | 未決（実装は`unknown`既定） |
+| O-02 | Card本文・題名を業務面へ出すか | 出さない | SUI #3369 | 暫定代行: 出さない（PR #4445） |
+| O-03 | `revoked`を参照無効かSource削除か | 参照無効として409 | SUI Owner | 未決（実装は参照無効） |
+| O-04 | digestと保存revisionの関係を契約にどう載せるか | 別欄、同一視しない | SUI / TEI | 暫定代行: 別欄・同一値は拒否（PR #4445） |
+| O-05 | Tree閲覧状態をCanonicalへ入れるか | 入れない | TEI #2497 | 未決（M2も宣言しない） |
 | O-06 | Canvas polygon/placardをCanonicalへ入れるか | native assetのまま | TEI #993 | 未決 |
-| O-07 | review attributionをDataに持つか | 持たない（unknown） | SUI / TEI #2516 | 未決 |
+| O-07 | review attributionをDataに持つか | 持たない（unknown） | SUI / TEI #2516 | 暫定代行: unknownのまま（PR #4445） |
 | O-08 | SUI語彙を一般化するか | `sui.*`のreference-local | TEI #2497 | 未決 |
 
 判断が決まったら、この表ではなく該当Issue/PRへ記録する。本書は状態の正本にしない。

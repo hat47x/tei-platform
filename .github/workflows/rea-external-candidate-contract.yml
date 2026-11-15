@@ -1,0 +1,51 @@
+name: REA external candidate contract (pinned Go)
+
+on:
+  push:
+    branches: ['feat/rea-candidate-*']
+    paths:
+      - '.github/workflows/rea-external-candidate-contract.yml'
+      - 'internal/externalanalysis/**'
+      - 'internal/operations/external_candidates*'
+      - 'internal/jsonl/**'
+  pull_request:
+    branches: [main, 'feat/rea-receiver-current-main-20261113']
+    paths:
+      - '.github/workflows/rea-external-candidate-contract.yml'
+      - 'internal/externalanalysis/**'
+      - 'internal/operations/external_candidates*'
+      - 'internal/jsonl/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rea-candidate-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Setup pinned Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Require gofmt (show exact diff on mismatch)
+        run: |
+          set -euo pipefail
+          files="$(gofmt -l internal/operations/external_candidates.go internal/operations/external_candidates_ambiguity_test.go internal/operations/external_candidates_pin_test.go internal/operations/external_candidates_test.go)"
+          if [ -n "$files" ]; then
+            gofmt -d internal/operations/external_candidates.go internal/operations/external_candidates_ambiguity_test.go internal/operations/external_candidates_pin_test.go internal/operations/external_candidates_test.go
+            exit 1
+          fi
+      - name: Test exact candidate and shared reader
+        run: |
+          set -euo pipefail
+          go test -count=1 -timeout=10m ./internal/jsonl ./internal/externalanalysis ./internal/operations

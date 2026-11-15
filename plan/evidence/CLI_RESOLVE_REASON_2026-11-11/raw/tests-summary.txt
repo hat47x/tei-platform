@@ -1,0 +1,7 @@
+=== RUN   TestPluginResolveFailureCarriesTheResolverReason
+--- PASS: TestPluginResolveFailureCarriesTheResolverReason (0.00s)
+=== RUN   TestAnOrdinaryErrorCarriesNoResolveReason
+--- PASS: TestAnOrdinaryErrorCarriesNoResolveReason (0.00s)
+=== RUN   TestTheReasonIsOmittedFromJSONWhenAbsent
+--- PASS: TestTheReasonIsOmittedFromJSONWhenAbsent (0.00s)
+ok  	tei/cmd/tei	0.207s

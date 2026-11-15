@@ -1,0 +1,23 @@
+== the new field on the CLI failure ==
+  type cliFailure struct {
+  	Code    string `json:"code"`
+  	Message string `json:"message"`
+  	// ResolveReason is the resolver's own classification (plugin.ResolveCode)
+  	// when the failure came from plugin resolution. It is narrower than Code and
+  	// lets a caller tell a dependency cycle from a missing plugin without
+  	// matching the message text. Omitted when the failure did not come from the
+  	// resolver, including INVALID_PLUGIN_LOCK.
+  	ResolveReason string `json:"resolveReason,omitempty"`
+  }
+
+== the one helper both resolve call sites now use ==
+  func pluginResolveFailure(code string, cause error) *cliFailure {
+  	return &cliFailure{
+  		Code:          code,
+  		Message:       cause.Error(),
+  		ResolveReason: plugin.ResolveCode(cause),
+  	}
+  }
+
+== the CLI codes are unchanged ==
+  66:	resultCodePluginResolveFailed = "PLUGIN_RESOLVE_FAILED"

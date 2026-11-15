@@ -89,6 +89,12 @@ MV-01の次の一手として、既存`internal/operations/model_catalog_validat
 
 ## 5. 2026-11-11：Source-root-onlyエラーを跨ぐValidation資格の整合（小さい実装修正候補）
 
+### 2026-11-13 実装追跡と負例の追加
+
+- この節の **MV-10/11の修正候補は実装済み**。[#4392](https://github.com/hat47x/tei-platform/pull/4392)をmainに統合し（merge `a8e7e01dccca4f5feed60707122ddb52236832b3`）、**統合コミットに紐づく16/16 checks成功**を確認した。現行mainの`WorkspaceValidation.HasErrors()`はSource-root errorを含み、`MapWorkspace`は同一`workspace.Load`結果で`catalogValidation(loaded)`を埋込Catalogへ渡す。下の2026-11-11の「候補」「未設定」は**当時の発見履歴**であり現行実装状態ではない。
+- **MV-10/11の接続負例（独立Draft）**：[PR #4557](https://github.com/hat47x/tei-platform/pull/4557)は、検証NGでも実Workspaceの`CatalogWorkspace`／`MapWorkspace`／`LocateWorkspace`が同じ不合格・read-only・partial/NotDerivedを保つかを**未定義型**と**欠落したmanifest Root**の2条件で照合。最初のhead `8e01a54b7588ab860a68d23a49d4cc51eb72dc00`は、`RuleCandidate`を誤ったCanonical IDでLocateしたテストfixtureの指定ミスによりRepository Health失敗。新head `bb08dbda934382b3174b2aa7bcc7d2e871905b7b`へ明示的に宣言した`scn.x`へ直したfixtureを載せ、現mainに非強制マージして**CI再検証中**。失敗した旧headや#4392の成功を新headの合格に代用しない。
+- [#4521](https://github.com/hat47x/tei-platform/pull/4521)は実公開Relationの正常Map／Locate対応を担当する別Draftであり、この検証NG負例と混合しない。両者の結果の合算はStudio/Provider／Meaning／編集資格の統合証拠ではない。低水準`CatalogWorld`が直接呼ばれた場合の未実施Validationも引き続き別契約。
+
 **更新した事実**：[#3808](https://github.com/hat47x/tei-platform/pull/3808)の検証NG WorkspaceによるCatalog／Validate／Inspect／Source Trace回帰と[#3543](https://github.com/hat47x/tei-platform/pull/3543)の実Workbench A/J限定結線は**main統合済み**。[#4239](https://github.com/hat47x/tei-platform/pull/4239)の歴史Source A/B→実CLI/MCP受領、[#4279](https://github.com/hat47x/tei-platform/pull/4279)のOperationSurface代表Bindingの非完全性負例もmain統合済み。ただし成功した各試験は同一Provider/Attempt/Owner業務意味のEnd-to-end証拠ではない。[旧Draft #3518](https://github.com/hat47x/tei-platform/pull/3518)はそれ自体**未統合でclosed**だが、後継[#3866](https://github.com/hat47x/tei-platform/pull/3866)の型付きModel Map M0は[統合PR #4079](https://github.com/hat47x/tei-platform/pull/4079)でmainへ移植済み（`internal/operations/model_map.go`）。M0の`Coverage=partial-projection`は維持され、業務三視点・実Effect・現在権限の完成を意味しない。
 
 ### MV-10：同じ実Workspaceで、manifestの存在しないRootだけがerror
@@ -137,6 +143,22 @@ MV-01の次の一手として、既存`internal/operations/model_catalog_validat
 
 **次に引き渡す反例**：同じ基礎Workspaceで`validation.ok=true`／Map links不変の状態から、Consumer Fingerprint外のProviderを改版する。Catalog/MapのValidation表示は直ちに「業務Claim現在有効」へ昇格せず、RequiredにProviderが含まれる場合は#4329の`unknown`、実Consumedを未観測なら#4393の`unresolved-impact`相当として**別々に停止**させる。公開UIに出す内訳はCurrent Disclosureに従い、Private Providerの存在を表示漏洩しない。実Studioでの失効／旧DOM拒否は#1124のOwnerに残す。
 
-**計画上の優先順**：P0は#4392の新headについて局所試験と全Healthの失敗原因を分離して確定する。P1は#4329/#4393のRequired・Consumed証拠を各Ownerが独立に測定できる場合だけConsumerへ移す。P2は同じ条件で#4396の実CLI→Node/三視点と#1124の実Workbenchへ接続し、正しいUnknown・旧証拠失効・操作拒否を検証する。P3はセルフビルドの選択／実消費ArtifactやETL/MFTのManifest／Receiptに類似の証拠要件が反復した場合に、個別実行のOwnerへ**評価票だけ**を引き渡す。第二Reader/Runner/Host/Proof Storeや共通の`verified`状態は追加しない。
+**計画上の優先順（2026-11-13更新）**：P0の#4392はmain統合・統合コミット16/16成功まで確定。次は#4557の検証NGの二負例と#4521の正常Relationの各exact-head結果を別々に確認し、失敗したテストFixtureをProductの失敗と誤認しない。P1は#4329/#4393のRequired・Consumed証拠を各Ownerが独立に測定できる場合だけConsumerへ移す。P2は同じ条件で#4396の実CLI→Node/三視点と#1124の実Workbenchへ接続し、正しいUnknown・旧証拠失効・操作拒否を検証する。P3はセルフビルドの選択／実消費ArtifactやETL/MFTのManifest／Receiptに類似の証拠要件が反復した場合に、個別実行のOwnerへ**評価票だけ**を引き渡す。第二Reader/Runner/Host/Proof Storeや共通の`verified`状態は追加しない。
 
 **資格**：この節は既存の他担当Draftの記録・コード・CI上限を整理した研究計画。横断MV-12実行、Providerの真正な閉包、現行Policy、Studioの実UI、実Build/ETL業務Effect、Owner受理および認知負荷比較は **NOT RUN / NOT PROVEN**。
+
+## 7. 2026-11-13：モデル指紋とRoot実在の検証資格は別（MV-13）
+
+**新しい反証候補**：同じManifest・同じSemantic Source・同じcanonical subjectを固定し、Manifestに宣言した**未解釈の空Source Root**を「欠落」から「実在」にだけ変える。現在のLoader契約では欠落はerror、未知だが存在するRootはwarning。内容由来のWorld／Source Index／ModelRevisionが不変でも、**現在のValidation判定が変化するか**を実Go Product APIで直接試験する。
+
+| 意図的な変化 | 独立Expected | 誤った結論 |
+| --- | --- | --- |
+| `future`がManifestで宣言済みだが実ディレクトリなし | `Catalog/Map/Locate.validation.ok=false`、Root-only error、indexed Subjectのread-only閲覧は可能 | Catalogが読めた・Mapが描けたのでValidation合格 |
+| Manifest／Semantic byteは同一、空の`future`ディレクトリだけ追加 | `validation.ok=true`でunknown-root warning、構造的なModel MapのLinkは同じ | World/Index/ModelRevision FPが変わらないから、以前のValidation NGをそのまま表示 |
+| A/Bの構造・Source Identityが同値 | 対象Subject/Map Linkの**構造的な比較結果は保持可能** | Validation変化に連動して無関係なRelation／Identity／業務Effectまで改変 |
+
+**受入**：[#4616](https://github.com/hat47x/tei-platform/pull/4616) の`TestModelViewRootAvailabilityChangesValidationWithoutStructuralDrift`が既存`CatalogWorkspace`・`MapWorkspace`・`LocateWorkspace`・`ValidateWorkspace`を別Loadとして照合する。**現時点はCI実証待ちの研究・試験候補**。Fingerprint同値の実証は当該exact headでPASSした場合だけ成立とする。実UI／Watcher／Current Grantの実装をこのPRでは追加しない。
+
+**Studioへの引継ぎ**：#4510/#4515は、Pin/Inspectorで**構造の同一性**と**Validationの現在性**を別判定とし、旧表示値を無条件維持しない。実Source/Rootが変化したことを検知・再読取する手段が未証明なら、UIは現在のValidation OKを主張できない。原子的Loadと複数ConsumerのObservation/Disclosureは#1124/#2516の既存Ownerが別に評価する。
+
+**閉包と資格の限界**：存在する未知Rootは現Loaderに**未解釈**であり、その内容/Provider/Required/Consumedが完全であるとの意味ではない。warning-onlyのValidation合格を「全Source／全Role・Business Meaning／Effect合格」に昇格しない。対象外：自動Watcher、編集逆変換、新Proof Store、第二Validator/Reader/Host、正式なグローバルEpoch。実StudioとETL/セルフビルドの試験は **NOT RUN / NOT PROVEN**。

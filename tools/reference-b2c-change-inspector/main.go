@@ -35,6 +35,7 @@ type input struct {
 	DeclaredScopeClosed bool     `json:"declaredScopeClosed"`
 	Nodes               []node   `json:"nodes"`
 	Edges               []edge   `json:"edges"`
+	BaseOnlyEdges       []edge   `json:"baseOnlyEdges,omitempty"`
 	Changed             []string `json:"changed"`
 	Required            []string `json:"required"`
 	Unobserved          []string `json:"unobserved"`
@@ -77,8 +78,8 @@ func inspect(in input) (report, error) {
 	if in.Scope == "" || in.BaseRevision == "" || in.CandidateRevision == "" {
 		return report{}, errors.New("scope and both revisions are required")
 	}
-	if len(in.Changed) == 0 {
-		return report{}, errors.New("explicit changed subjects are required")
+	if len(in.Changed) == 0 && len(in.BaseOnlyEdges) == 0 {
+		return report{}, errors.New("explicit changed subjects or base-only edges are required")
 	}
 	byID := make(map[string]node, len(in.Nodes))
 	for _, n := range in.Nodes {
@@ -109,10 +110,12 @@ func inspect(in input) (report, error) {
 			missing[id] = true
 		}
 	}
+	candidateEdges := map[edge]bool{}
 	for _, e := range in.Edges {
 		if e.From == "" || e.To == "" {
 			return report{}, errors.New("edge endpoints must not be empty")
 		}
+		candidateEdges[e] = true
 		outgoing[e.From] = append(outgoing[e.From], e.To)
 		incoming[e.To] = append(incoming[e.To], e.From)
 		// Unknown edge endpoints matter if they touch the explicitly
@@ -129,6 +132,24 @@ func inspect(in input) (report, error) {
 			}
 		}
 	}
+	// The caller-declared R0-only edges are not present in candidate
+	// reachability. Keep their reverse links for the question's Required
+	// universe, not as a request to invalidate all unrelated consumers.
+	baseOnlyIncoming := map[string][]string{}
+	seenBaseOnly := map[edge]bool{}
+	for _, e := range in.BaseOnlyEdges {
+		if strings.TrimSpace(e.From) == "" || strings.TrimSpace(e.To) == "" {
+			return report{}, errors.New("base-only edge endpoints must not be empty")
+		}
+		if candidateEdges[e] {
+			return report{}, fmt.Errorf("base-only edge %q -> %q also occurs in candidate", e.From, e.To)
+		}
+		if seenBaseOnly[e] {
+			return report{}, fmt.Errorf("duplicate base-only edge %q -> %q", e.From, e.To)
+		}
+		seenBaseOnly[e] = true
+		baseOnlyIncoming[e.To] = append(baseOnlyIncoming[e.To], e.From)
+	}
 	for _, id := range in.Unobserved {
 		if strings.TrimSpace(id) == "" {
 			return report{}, errors.New("unobserved subject must not be empty")
@@ -140,8 +161,9 @@ func inspect(in input) (report, error) {
 	// consumer depends on a known intermediate node, unknown inputs further
 	// upstream are still gaps in that requested consumer's declared closure.
 	// The previous direct-neighbor check alone silently missed such gaps.
-	// Traverse only upstream from Required: following downstream siblings
-	// would unnecessarily invalidate independent consumer questions.
+	// Traverse the union of R0-only and R1 candidate upstream edges.
+	// This retains an entire deleted chain toward Required while excluding
+	// unrelated deleted branches and downstream sibling consumers.
 	seenUpstream := map[string]bool{}
 	upstreamQueue := append([]string(nil), in.Required...)
 	for len(upstreamQueue) > 0 {
@@ -154,33 +176,55 @@ func inspect(in input) (report, error) {
 		n, exists := byID[id]
 		if !exists || n.Layer == "unknown" {
 			missing[id] = true
-			continue
 		}
 		upstreamQueue = append(upstreamQueue, incoming[id]...)
+		upstreamQueue = append(upstreamQueue, baseOnlyIncoming[id]...)
+	}
+
+	// A deleted edge changes its old dependent only within the selected
+	// consumer's declared dependency universe (R0 union R1).
+	baseOnlyDependents := []string{}
+	for _, e := range in.BaseOnlyEdges {
+		if seenUpstream[e.To] {
+			baseOnlyDependents = append(baseOnlyDependents, e.To)
+		}
 	}
 
 	visited := map[string]bool{}
 	lanes := map[string]bool{}
-	queue := append([]string(nil), in.Changed...)
-	for len(queue) > 0 {
-		id := queue[0]
-		queue = queue[1:]
-		if visited[id] {
-			continue
+	walk := func(queue []string, requiredOnly bool) {
+		for len(queue) > 0 {
+			id := queue[0]
+			queue = queue[1:]
+			if requiredOnly && !seenUpstream[id] {
+				continue
+			}
+			if visited[id] {
+				continue
+			}
+			visited[id] = true
+			n, exists := byID[id]
+			if !exists {
+				missing[id] = true
+				continue
+			}
+			if lane := laneForLayer[n.Layer]; lane != "" {
+				lanes[lane] = true
+			} else {
+				missing[id] = true
+			}
+			for _, dependent := range outgoing[id] {
+				if !requiredOnly || seenUpstream[dependent] {
+					queue = append(queue, dependent)
+				}
+			}
 		}
-		visited[id] = true
-		n, exists := byID[id]
-		if !exists {
-			missing[id] = true
-			continue
-		}
-		if lane := laneForLayer[n.Layer]; lane != "" {
-			lanes[lane] = true
-		} else {
-			missing[id] = true
-		}
-		queue = append(queue, outgoing[id]...)
 	}
+	// Explicit changes retain their ordinary forward-reachability meaning.
+	walk(append([]string(nil), in.Changed...), false)
+	// An R0-only change, unlike an explicit Changed node, is relevant only
+	// to the selected consumer's input closure. Do not chase R1 siblings.
+	walk(baseOnlyDependents, true)
 
 	impacted := map[string]bool{}
 	for id := range visited {
