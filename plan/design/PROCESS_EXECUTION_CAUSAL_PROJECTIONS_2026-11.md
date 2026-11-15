@@ -939,3 +939,97 @@ EC-01〜08は既存#1180／#2514へ渡す**反例候補**であり、今回新�
 続いて既存Evaluatorと生成Goの一Rule比較（EC-07）を進める。性能・対象Host・実Provider・Effect・Audienceまで等価と断定しない。公開pure FunctionのR3実Provider／独立Consumerと、非Plugin Stage1→Stage2実WindowsセルフビルドのP0は独立に優先し、実行図P1を新たなHard Gateにしない。
 
 **検証状態**：§45〜47は実装・検収の引渡しである。本追補でGo／Node／Windows／DB試験、正式Builder／ProviderのE2E、Effect確定、Owner意味受理を実施していない。
+
+## 48. 抽象経路を、生成後のメソッド名に依存しないテスト対象にする
+
+アプリケーションの抽象化は、設計書を読みやすくするだけでなく、**特定の条件で通るべき処理経路と、その前後で保たれるべき状態を検査する**ためにも使える。Go等へのコード生成後は関数の分割・統合・改名・インライン化が起き得るため、手書きのメソッド名を業務テストの識別子にしない。
+
+テスト対象は「この業務上の判断・Operationが、どの入力条件で、どの意味上の経路を通り、何を変更せず、何を確定させるか」という**観測可能な契約**として識別する。
+
+| 固定するもの | 目的 | 混同しないもの |
+| --- | --- | --- |
+| **Test Case ID／期待義務** | 同じ反例をCLI・Studio・Go・SQL・Providerで参照するための安定した識別子 | Goの`Test...`名、生成された関数名、UIのNode表示ラベル |
+| **Qualified Subject／Operation** | 元Rule・業務操作の意味上の対象を定める | 表示用Node ID、同名別Workspace、個別Invocation ID |
+| **入力条件と取得範囲** | Guard、NULL／未取得、粒度、Snapshot、Actor／Audienceを固定する | Fixtureに書いた入力の存在と、実Providerが完全に読んだ事実 |
+| **期待する抽象経路** | どのGuard／Read／Operation／Resultへ進むべきかを指定する | 生成されたCall Graphの全メソッド、実行順序を無条件に確定する矢印 |
+| **経路の不変条件** | 通過前後で保持する値・ID・版・多重性、許される変更、Effectの禁止／許可を示す | 同じ出力値だけから推測した状態保存 |
+| **実測の証人と結果** | 実Read、Called、Builder、Receipt、Consumerから、どの条件まで証明したかを説明する | Sourceに書かれているだけの期待と、実際に起きた証拠 |
+
+識別子は既存#1180／#2514のTest／独立Expectedで管理し、本書に新しいScenario正本や永続Test Registryを設けない。Goのテスト名は実行・検索のための**派生したLocator**にとどめ、Targetごとのメソッド名が異なっても同じ義務を参照できるようにする。
+
+## 49. 到達したか、実際に通ったか、状態を保ったかを分けて検査する
+
+抽象経路の検証を一つの`covered`／`passed`へ畳まない。少なくとも次の四層に分ければ、Go生成・汎用評価・外部委譲を同じ意味から比較できる。
+
+| 段階 | 検査すること | 必要な根拠と停止線 |
+| --- | --- | --- |
+| **P0：構造上の到達可能性** | 意味Graph／Operation／Guard上、期待する経路が成立し得るか | Sourceと型付き関係の静的確認。実行した証拠ではない |
+| **P1：実際の経路通過** | 指定条件で期待するRead、分岐、Selected→Calledが起きたか | 実Evaluator／Generated Binary／Providerの該当Attempt。単なるAST一致や別Attemptの結果は不可 |
+| **P2：状態と作用の保存** | 入力版、未変更項目、Relationの多重性、Result、失敗時のEffectが期待どおりか | 前後Snapshot、Write Set、Receipt、独立Expected。未観測の状態を「不変」としない |
+| **P3：消費者への成立** | 実Consumerが許可された対象と版の結果を受領したか | 配布Artifact、Consumer identity、Audience・Disclosure、受領記録。P1／P2だけでは成立しない |
+
+ここでのP0〜P3は**抽象経路テスト内の検査層**であり、製品ロードマップのP0優先度や既存の受入ラベルと同一ではない。実装上は既存のSource Index／Inspection、Scenario、Go/Builder試験、Effect／Consumer Evidenceを使い、各結果を読み取り専用で照合する。
+
+状態の検査では特に、(a)元の値と今回のInput Snapshot、(b)評価中の一時値、(c)業務状態への変更要求、(d)確定したCommit、(e)外部通知・Consumer受領を分ける。**評価Functionがpureであること**と**Hostが外部Effectを一度も起こさなかったこと**は同じ主張ではない。「呼ばれなかった」を断定できるのは、必要な観測範囲が閉じているときだけである。
+
+```mermaid
+flowchart LR
+  S["Qualified Rule／Operation"] --> G{"入力条件・Guard"}
+  G -->|成立| P["期待する抽象Path"]
+  G -->|不成立／不明| R["拒否・未判定・別Path"]
+  P --> O["実Read／Called／Resultの観測"]
+  O --> I{"前後の不変条件を検証"}
+  I -->|保持| E["確認済み範囲を提示"]
+  I -->|違反／証拠不足| X["不一致／未確認を区別"]
+  E -. "必要な場合のみ" .-> C["実Effect／独立Consumer受領"]
+```
+
+## 50. 最初の一Ruleで抽象経路を反証できるようにする
+
+実装の第一候補は、新しいFlow Interpreterではなく、mainにある`quantity_positive`の既存回帰を**業務上の経路と状態不変条件**から読み直すことである。#5087は`validationeval.Evaluate`と`validationgen.GeneratePositive`から通常`tei self-build`で作ったBinaryを、正値・0・負値・NULL・未取得の五入力と`Number`の読取回数で比較する試験を追加した。#5056は生成Goと実Builderへ配置されたGo byteの取り違えを検出する負例をmainへ追加した。**今回、同じ五入力の別テストを増設しない**。
+
+| Test義務候補 | 入力・通るべき抽象経路 | 保持する条件と独立Expected |
+| --- | --- | --- |
+| **AP-01 正値の評価** | Decimal 2.5 → `Number`を一度Read → Positive Guard成立 | `satisfied`、Read一回、別Attribute／Relationを読まない |
+| **AP-02 境界値** | 0 → Read → Positive Guard不成立 | `not-satisfied`。`>= 0`への誤変更を検出 |
+| **AP-03 負値** | -1 → Read → Positive Guard不成立 | `not-satisfied`。値一致に加えて参照先を確認 |
+| **AP-04 明示NULL** | Number Readは成功、値がNULL → 評価エラー | `error`とRead一回。NULLを0や未取得へ変換しない |
+| **AP-05 未取得** | Number Readが取得不能エラー → 評価エラー | `error`とRead一回。NULLと理由を混同しない |
+| **AP-06 同じ判断の別実現** | 同じRuleを既存Evaluatorと生成Goへ渡す | 五入力のResult／Read Footprintを比較。Target方式・実Function Providerまで同じとはしない |
+| **AP-07 実装選択の変更** | Operator実装A→Bで入力2のResultが同じ | 旧生成Scenario Commandを現在の選択で実行しない。未マージ#5054のexact HEAD検証へ委譲 |
+| **AP-08 Sourceは同じでGoを取り違える** | 正しいRule→生成Go、Builder配置だけ別byteに差し替え | Builder前の一致検査で拒否。#5056の製品テストを根拠にし、現行GrantやOwner受理へ飛躍しない |
+
+AP-01〜08は**既存実装と対応させる検収索引**であり、新しいGoテストを八件実装済みと主張しない。既存Goテストの主張の上限を明示し、追加が必要な負例だけ#1180／#2514へ渡す。#5054は現在未マージのため、AP-07の拒否をmainの実装済み保護とはしない。実Goのテスト関数名が変わっても、AP-01〜08の業務判断とExpectedは変えない。
+
+## 51. Pluginの型付き配線と業務Processにも同じ検査原則を適用する
+
+一Ruleで経路と状態を確認できたら、同じ枠組みをNode View・PluginのPort接続、承認・保存、Batchの部分再計算へ拡張する。ただしすべてを単一のGraph実行器へ押し込まない。
+
+| 拡張対象 | 期待する抽象経路 | 通過しても保たれるべき条件 |
+| --- | --- | --- |
+| **Plugin／NodeのPort** | 複合Record全体、個別Field、明示AdapterのいずれかでProducer→Consumerへ | 型／単位／粒度、必須Field、Relation identity、未取得、秘匿Field、Mapping ID。折畳み表示では実Call数が変化しない（#5101／PIO-01〜10） |
+| **承認・保存Process** | 受付→Guard→実Provider選択→Transaction→Commit→必要な通知 | Actor／現在Grant、Snapshot、Operation identity、同一書込みの重複防止、Receipt、開示Scope。失敗後のRetryが二重Commitを起こさない（#4198／#1174） |
+| **結果要求・Batch** | Source→Filter／Join→計算→Aggregation→Result | Source Grain／Result Grain、丸め・NULL、分類版、対象集合の完全性、時間条件。適格な範囲だけ再計算し、それ以外はHold（#5103） |
+| **Studio／CLI／API** | 同じOperationをCLI directまたはWails側の薄いHost Adapterから利用 | 読取対象と意味は保つが、実Principal／Host Grant／Audienceは入口ごとに独立。HTTP経由にしただけで実ProviderやPlugin公開を認定しない（#5037／審査中#5096） |
+
+全体PortとField Portの表示を切り替えても、**型付きMappingの意味上のIdentityと作用回数が変わらないこと**が不変条件となる。逆に、全体RecordをHTTPへ渡したとき機密Fieldが増えるなら、型が合っていても不変条件に違反する。単位変換Adapterが必要な経路では、変換を通ったというTraceだけでなく、Law・精度・丸め・LossとExpectedを検査する。
+
+業務Processでは、定義時に到達可能だった経路が、実行時にも適格とは限らない。組織Membershipの`validAt`／`knownAt`、現在Grant、Process Instanceの版・委任・効果の既確定性を同じAttemptの前提に結び、いずれかを変更した負例を用意する。静的Pathが存在することを、実行許可と表示しない。
+
+## 52. 製品へ渡す最小実装と、次に棄却すべき仮定
+
+実行図P1で最初に必要なのは、抽象Pathのあらゆる内部メソッドを追跡するTrace Collectorではない。**既存の型付きSourceと実試験から、試験が要求した関係・実際に観測した関係・まだ観測していない関係を分けて示す小さな読取専用の照合**である。
+
+最初の実装票は既存#1180／#2514のCorpusへ置き、次の情報を同一の検証対象に結び付ける。
+
+1. Qualified SubjectとWorkspace、Source Revision、必要なContext／取得範囲。
+2. 安定したTest IDとPreconditions、期待する抽象Path・Guard、維持すべきInvariants。
+3. 実行されたTargetと実Provider／Evaluator／Builderの選択・実Calledを示す証拠、実Attempt。
+4. 各InvariantのExpected／Actual／不足理由、独立Expectedの由来。
+5. 結果の限界、Effect／Consumerの受領資格、失効が必要となるSource／Selection／Grant変更。
+
+**着手順**は、(i) AP-01〜06を既存#5087/#5056のテストと一対一に対応付け、欠けたRead／状態の証拠を列挙、(ii) #5054の選択Pinが実mainに入った場合に限りAP-07の旧Command拒否を確認、(iii) #5101の全体型／Field／Adapterを一つの既存Mapping上で投影、(iv) 保存・外部Effectは実ProviderとReceiptの独立検証を待ってから拡張する、の順とする。ここに新しい汎用Test Driver・メソッド名Registry・Trace Store・Graph Runtimeを設けない。
+
+**採否の判断**：同じ抽象Pathを、汎用Evaluatorと生成Goで異なるメソッド構成にしても同じ不変条件で検収できるなら、TEIの標準Operation／Ruleによる抽象化がテストにも有効という根拠になる。反対に、実入力範囲やEffect、Relation多重性が表現できなければ、その不足は既存Data／Operation／Law／Bindingのどこで定義すべきかOwnerへ戻す。表示を作るためだけに新Core要素を増やさない。
+
+**現時点の資格**：mainで確認できたのは#5087の限定Evaluator対生成Binary回帰、#5056のGo配置byte不一致拒否、#5059の実TEI CLI起点の生成Workbench N2と実Windows受領までである。ただし後者も正式な非Plugin Stage1→Stage2の製品セルフビルドではない。旧Scenario選択Pin #5054、HTTP Adapter #5096、Workbench統一 #5105は審査中のため未実装・未受理の範囲を明示する。今回の追補によって新Go／DB／Windows試験や正式Provider／Effectの実行を行ったとは主張しない。通常CLI actual Providerと非Plugin Studio Stage1→Stage2実WindowsのP0を維持する。

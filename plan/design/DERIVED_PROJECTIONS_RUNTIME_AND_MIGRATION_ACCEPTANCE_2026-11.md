@@ -432,3 +432,93 @@ UI初期値は入力支援であり、保存時に必須な値の保証や、API
 生成AIによるコード生成は、当面、**入力Shape・参照先・Phase・NULL／欠損・結果・副作用が厳密に指定できる狭い定型処理**から適用する。生成コードがボイラープレートとして確実に再現可能かを、生成器を入れ替える負例、実Buildと独立Expectedで測り、自然言語で似ているという理由だけで新しい業務判断を自動実装へ昇格させない。コード生成を省略した場合も、選択した汎用関数の版・実Call・適用Phaseを追跡する。
 
 **現在の証拠上限**：本追補は既存の標準Data／Process／Rule／Query／移行計画と外部公開文書の比較を整理した設計案である。新しいGo／実DB／MCP／Windows／移行適用は実行していない。正式Source→BuilderのPQ-A、実装選択鮮度PQ-B、通常CLI実Provider、Studio Stage1→Stage2 WindowsセルフビルドというP0の順序を変更せず、新たなParser／Runtime／Registry／Host／Rule Engineを追加しない。
+
+## 27. 生成メソッド名に依存しない「意味経路と状態」の検査（2026-11-16横断統合）
+
+§21〜26で扱った同一Ruleの直接評価／Go生成、評価Phase、参照値の保存方式を、他チャットの「抽象レイヤーにおける経路検査」へ接続する。TargetやGeneratorの版によってGoのメソッド名・分割・呼出順序は変わり得る。テストを生成メソッド名へ直接結び付けると、業務意味が変わらない再生成で偽の失敗が生じる。逆に結果値だけを比較すると、選択されていない実装を通った誤動作まで合格する。
+
+**検査の中心は、Entryから結果・Effectまでに必要な意味上の通過点、禁止する通過点、その点で守るべき状態不変条件である。** 内部の全Call Graphではなく、既存Semantic ID、Rule Attachment／Phase、Source Index、Read Scope、Provider／Builder／ConsumerのReceiptで観測できる境界に限る。新しいTrace Engine、独立Expected Store、固定的な経路DSLを先行導入しない。
+
+### 27.1 ひとつの試行で照合する情報
+
+| 検査面 | 必要な確認 | 誤った合格 |
+| --- | --- | --- |
+| Entry／選択 | Operation・RuleのCanonical ID、AttachmentとPhase、選択したP/G/委譲実現、版とCaller | 同名の画面操作・Go関数を通っただけで同じ経路と認める |
+| 開始状態 | 入力値とPresence、Snapshot、必要Read集合・Coverage、Record Version、Audience／Grant | 画面表示値が同じなのでDB取得範囲や権限も同じと仮定 |
+| 必須通過点 | 型付きRuleの実評価、対象Field／Relationの実Read、必要な次段への引渡し | Source宣言・ログ・生成コードの存在を実Callとみなす |
+| 禁止通過点 | 選択外Field、旧実装、無許可Effect、非保存表示値の暗黙Write | 出力が一致すれば余計なRead/Writeも許す |
+| 終了状態 | 判定・評価不能・Intent、該当時のみ実Commit／独立Readback／実Consumer | 戻り値をDB確定・外部配送・Owner受理に昇格 |
+
+必須・禁止・未観測を区別する。外部Providerの内部通過点が見えない場合、実API呼出しと受領結果は証明できても、内部で特定Ruleを評価したとは言えない。その点はunknown／unsupportedのまま残す。禁止したEffectが「見えなかった」だけでは、Effect不存在の証明にもならない。
+
+### 27.2 既存の実Go試験を重複させず、対象を広げる
+
+最初の題材は既存の型付き正値Rule sales.order_line.quantity_positiveに固定する。現行mainのcmd/tei/cli_self_build_generated_rule_go_test.goとtools/reference-generator-selection/selected_markdown_rule_rebind_test.goで得たReader・生成Go・汎用評価の局所比較を再利用する。これらの実証は別々のBuild・Callerの範囲であり、同一Runtimeの実現選択が完全に接続したことを意味しない。
+
+| ケース | 守る状態・抽象経路 | 確認状況 |
+| --- | --- | --- |
+| **AR-01 正値** | quantity=2.5、指定Rule→同一Quantityの一回Read→satisfied、選択外Readなし | pure RuleのRead／判定だけ既存Go試験で局所確認 |
+| **AR-02 非正値** | 0・負値でも同一Field一回Read、not-satisfied | pure RuleのRead／判定だけ局所確認 |
+| **AR-03 NULL／未取得** | 不明な値をfalseへ丸めず評価不能。保存成功へ短絡しない | pure Ruleのエラーまで局所確認。Commitは未実証 |
+| **AR-04 実装選択変更** | 同じ結果でもG→P切替後の旧生成Binary呼出しを拒否 | 選択と実Callerの同一Attempt照合は未検収 |
+| **AR-05 評価Phase変更** | 同じ式でもForm Init／Before Save／Displayの通過先と保存責任を区別 | 入り口とAttachmentの実証は未検収 |
+| **AR-06 Relation変更** | 保存済み最終Keyと現在のRelation経路の終端を別Identityとして追跡 | 実DB Query／独立Readbackは未検収 |
+
+§26のEP-01〜06は評価時点や保存方式の意味差を検証する題材であり、AR-01〜06はそれらを**どの通過点・状態で確かめるかという検査方法**である。既存#1180／#2514のScenarioと独立Expectedへ対応付け、第二のScenario正本は作らない。
+
+### 27.3 実装へ落とす際の順序と停止線
+
+**第一段階**：正値Ruleに限り、Rule／Field ID、Phase、Required Read、一回の評価と結果を既存Go試験からread-onlyの検収票へ投影する。Goメソッド名は追跡の補助情報であり、業務テストの安定IDではない。
+
+**第二段階**：実Source→Generator→実Builderが消費したGo Byteと、Manifest／Operator選択A→Bに伴う旧Build資格失効を同一Attemptへ結ぶ（PQ-A/B、#1121／#4544／#2600）。結果が合っていても古い実装を呼べば不合格とする。
+
+**第三段階**：通常CLI→実Provider Read→Function Context→独立Consumer（#2586）でScope／Snapshot／現在Grantを検査。Before Saveの判定、Commit Receipt、非同期配送を別の観測とし、結果判定だけでEffectの成立を主張しない（#1129／#1174）。
+
+**第四段階**：Node／Diagram Occurrence、Port／Role、複合DataとAdapter、Wails／Desktopの実ロード版へ同じ観測を投影するが、同名ラベルを同一Meaning IDとみなさない（#951／#1251／#4198／#2831）。Studio Stage1→Stage2実Windowsセルフビルドは独立P0を維持する。
+
+**停止条件**：対象EntryとRuleの対応不明、必須ReadのCoverage不足、実Caller／宣言Selection不一致、実Builder／Provider未観測、旧Snapshot／Grant、表示投影と実Writeの混同。未観測はnot-provenと明示し、「不実行を観測した」という負の証拠とも区別する。
+
+本節は既存の実Go基線と研究をつなぐ検査設計である。新Goテスト・実Provider・Windows・正式Targetの追加実行を完了したものではなく、再生成可能な狭い処理から反証可能性を高める。
+
+## 28. 抽象経路の検査を、既存実装へ渡す最小単位にする（2026-11-16）
+
+§27ではメソッド名に依存しない通過点と状態不変条件を定義した。次は検査項目を増やすより、**既存の検証結果をどこまで受け継げるか**、**別の実装を選んだとき何を新たに証明する必要があるか**を、一つの試行の中で明確にする。ここでは同一Ruleの評価と生成、Operator実装の切替、型付きPort／Adapter、抽象Relationの検査を共通の検収方法に接続する。
+
+### 28.1 検収票は三層に分ける
+
+| 層 | 問い | 必要な証拠と停止線 |
+| --- | --- | --- |
+| **意味の同一性** | 何を実行することにしたか | Canonical ID、選択Reader／Role、Meaning Revision、Rule／Relation／Functionの型と適用Phase。図上の同名ラベルや生成Goシンボルだけでは対象を特定しない |
+| **実現の履行** | 選んだ処理を本当に通ったか | Operator／Generator／Provider Selection、Sourceと実Parameter、Build Intent・実配置byte、実Call ID。IとGの値が同じでも、旧実装への到達は失格 |
+| **状態の保持と受領** | 必要な値と資格を保って通ったか | Input Presence、Identity、粒度・多重度・Read Coverage、Snapshot、型変換、現在Grant、Result、必要時のCommit／Effect／Consumer Receipt。観測できない下流は未受理 |
+
+「宣言が存在する」「実装候補がある」「Buildが通った」「実Callerが選んだ」「Consumerが受け取った」は別の段階である。各段階を省略して一枚の成功票にまとめない。ただし、これらを収容する新しい常設Evidence Storeも作らず、既存#1180／#2514のScenario、Source Index、Builder／Providerの証拠を**対象の問いに応じて参照**する。
+
+### 28.2 既存成果から着手する二つの短い検証経路
+
+**経路A：一Ruleの実現選択と旧成果物の失効。** 現行mainにある正値Ruleの製品Reader、`validationeval.Evaluate`、`validationgen.GeneratePositive`、通常`tei self-build`の限定試験を基線とする。正値・0・負値・NULL・未取得の結果およびRead回数を独立Expectedで確認したうえで、実装選択の鮮度だけを一因子で変える。
+
+並行PR [#5114](https://github.com/hat47x/tei-platform/pull/5114)は、Operator実装A→Bの切替後に古い生成Scenario Command／Planを拒否する修正候補である。**PRがmainへ統合され、当該HEADの試験が確認できるまでは、現行mainの成立済み機能には数えない。** それが成立しても、「実装選択の旧Planを拒否できること」と「選択されたP/G方式が正式Targetで実際に呼ばれること」は別の資格である。
+
+最初の実装Packetは、同じMeaningと独立Expectedを維持し、A選択→B選択→元のA再選択を異なる試行として扱う。古いCommand／Planの再利用を拒否し、再生成したものだけを新しい実装選択へ接続する。Source byte一致や出力一致で、古い実行許可を復活させない。実Builderが消費した入力、実Invoker、Runtimeでの選択結果を観測できない場合は、その境界を`not-proven`と記載する（#2600／#951／#1251）。
+
+**経路B：一Relationの意味を保つ型付き接続。** 並行PR [#5115](https://github.com/hat47x/tei-platform/pull/5115)は組織C1の実Sourceから、Membership→OrgUnitのRelation ID・Key・向きとQueryの対象を検査する局所回帰の候補である。これもmain統合とHEADの確認前には実績へ算入しない。実際のRelation traversalや実Provider Readまで同じ経路を通過したとは主張しない。
+
+ノード・Plugin間のPortをつなぐ場合も、型が一致するだけでは経路Bの意味が保たれない。**複合型全体、Fieldごとの接続、明示Adapter**のいずれであっても、Identity、粒度、多重度、値の欠損・NULL、必要集合の完全性、時点、公開範囲を確認する。必要な変換が未定義なら自動的に「似た型」を選ばず停止する。この検査は既存[Service Flowの型付き配線設計](SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)と[#5121](https://github.com/hat47x/tei-platform/pull/5121)の検討を参照するもので、新しいCore Port型やGraph Runtimeを要求しない。
+
+### 28.3 最初に拒否することを決める
+
+| Case | 一因子の変更 | 期待する判定 | 既存の担当 |
+| --- | --- | --- | --- |
+| **AP-01** | 選択A→B、Meaning・出力結果は同じ | A時代の生成Command／Planを実行前に拒否。新Bの実Call証拠は別に確認 | #951／#2600／#1180 |
+| **AP-02** | A→B→Aで選択が元に戻る | 過去Aの資格をByte一致だけで復活させない。新Attemptの実装選択を再確認 | #2595／#2600／#2514 |
+| **AP-03** | Relation表示名だけ変更 | Canonical ID・Key・向き・多重度が変わらなければ業務意味は維持。元Sourceの変更資格は別に検査 | #1124／#2497／#2514 |
+| **AP-04** | PortのField Mappingだけ変更 | 型だけでなくIdentity／grain／Coverageを照合し、必要なRead集合の欠落を拒否 | #951／#1251／#2622 |
+| **AP-05** | 指定した実Callerだけ別実装へ変更 | 値が一致しても選択と実Callの不一致を拒否。実Call未観測なら未証明 | #4495／#1180／#2514 |
+| **AP-06** | Save PhaseをDisplay Phaseへ変更 | 計算値が一致しても表示投影を永続化・Commit Receiptとして扱わない | #1129／#1174／#2586 |
+
+APは新しい独立Expectedの体系ではなく、§27のAR、§26のEPを**製品Ownerへ渡すための試行差分**である。AR-01〜03で既に確認したpure Ruleの判定とRead回数を重複実装せず、AP-01〜06の未実証部分だけに試験を追加する。実装のMethod名や図表の見た目を固定するのではなく、同じ意味ID、必要な通過点、不変条件、実消費・実受領の証拠を固定する。
+
+**優先順位**：最初にAP-01を既存Scenario修正で実証し、次にAP-05を通常CLIの実Provider／独立Consumerと接続する。AP-03／04はSource／型付き配線の局所検査で進め、AP-06の保存・表示の実Provider差はその後に扱う。正式`*.tei.md` Reader→実Builderの出典束縛とStudio Stage1→Stage2 Windowsセルフビルドを後回しにせず、追加Hard Gateも設けない。
+
+**検証状態**：ここに追加したのは、現行mainの局所実Go基線、並行PRの提案、既存設計を区別して構成した実装Packetである。本節による新Go／PostgreSQL／Windows実行、正式Providerの採用、Ownerの意味受理は行っていない。
