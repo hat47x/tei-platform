@@ -83,7 +83,8 @@ func TestReviewPacketWithoutOptionalSections(t *testing.T) {
 		t.Fatal("packet carries a nil section as data")
 	}
 	joined := strings.Join(packet.Summary(), "\n")
-	if !strings.Contains(joined, "binding: not-attempted") {
+	if !strings.Contains(joined, "binding: not-attempted") ||
+		!strings.Contains(joined, "comparison: not-attempted") {
 		t.Fatalf("summary:\n%s", joined)
 	}
 }
@@ -242,5 +243,90 @@ func TestProjectionsNameTheirSchemaVersions(t *testing.T) {
 		if item.got != item.value {
 			t.Errorf("%s schemaVersion = %q, want %q", item.label, item.got, item.value)
 		}
+	}
+}
+
+// The candidate set comparison is not merely present in JSON: a read-only
+// reviewer seeing only Summary must still notice unmatched parallel relations.
+func TestReviewSummaryReportsUnpairedParallelRelations(t *testing.T) {
+	beforeFixture := defaultEvidence()
+	parallel := beforeFixture.edges[0]
+	parallel.id = "edge-parallel-2"
+	beforeFixture.edges = append(beforeFixture.edges, parallel)
+	before := mustGenerate(t, beforeFixture)
+
+	afterFixture := defaultEvidence()
+	afterFixture.evidenceID = "ev-summary-renumbered"
+	first := afterFixture.edges[0]
+	first.id = "edge-renumbered-1"
+	second := first
+	second.id = "edge-renumbered-2"
+	afterFixture.edges = []edgeFixture{second, first}
+	after := mustGenerate(t, afterFixture)
+
+	comparison := CompareCandidateSets(before, after)
+	packet := BuildReviewPacket(after, nil, nil, &comparison)
+	joined := strings.Join(packet.Summary(), "\n")
+	for _, want := range []string{
+		"comparison: read-only; no owner acceptance or source-edit authority",
+		"comparison: ambiguous-structural-match=4",
+		"accepted-meaning: false",
+		"owner-decision: pending",
+	} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("review summary lost %q:\n%s", want, joined)
+		}
+	}
+	if strings.Contains(joined, "comparison: external-identity-renumbered=") {
+		t.Fatalf("summary claimed a definite relation counterpart:\n%s", joined)
+	}
+}
+
+// Unknown statuses or inconsistent comparison sections remain visible rather
+// than being silently treated as unchanged by a summary-only consumer.
+func TestReviewSummaryDoesNotCoerceUnknownOrInvalidComparison(t *testing.T) {
+	set := mustGenerate(t, defaultEvidence())
+	comparison := CandidateSetComparison{
+		SchemaVersion: "tei.rea.candidate-set-comparison/v0",
+		Effect: EffectReadOnly,
+		Entries: []CandidateComparisonEntry{
+			{CandidateID: "first", Status: ComparisonUnchanged},
+			{CandidateID: "second", Status: "future-private-status-value"},
+		},
+	}
+	packet := BuildReviewPacket(set, nil, nil, &comparison)
+	joined := strings.Join(packet.Summary(), "\n")
+	for _, want := range []string{
+		"comparison: unchanged=1",
+		"comparison: unknown-status=1 (review required)",
+	} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("review summary lost %q:\n%s", want, joined)
+		}
+	}
+	if strings.Contains(joined, "future-private-status-value") {
+		t.Fatalf("unknown status leaked into review summary:\n%s", joined)
+	}
+	packet.Comparison = nil
+	if !strings.Contains(strings.Join(packet.Summary(), "\n"), "comparison: inconsistent-section") {
+		t.Fatal("missing comparison silently accepted as complete")
+	}
+	packet.ComparedWithBefore = false
+	packet.Comparison = &comparison
+	if !strings.Contains(strings.Join(packet.Summary(), "\n"), "comparison: inconsistent-section") {
+		t.Fatal("unreported comparison silently accepted as not attempted")
+	}
+	packet.ComparedWithBefore = true
+	invalid := comparison
+	invalid.SchemaVersion = "tei.rea.candidate-set-comparison/v999"
+	packet.Comparison = &invalid
+	if !strings.Contains(strings.Join(packet.Summary(), "\n"), "comparison: unsupported-contract") {
+		t.Fatal("unknown comparison contract silently accepted")
+	}
+	invalid = comparison
+	invalid.Effect = "write"
+	packet.Comparison = &invalid
+	if !strings.Contains(strings.Join(packet.Summary(), "\n"), "comparison: unsupported-contract") {
+		t.Fatal("write effect was described as read-only")
 	}
 }
