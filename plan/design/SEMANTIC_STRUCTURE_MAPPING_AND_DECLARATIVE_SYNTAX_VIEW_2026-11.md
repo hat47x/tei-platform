@@ -1803,12 +1803,48 @@ main [#4847](https://github.com/hat47x/tei-platform/pull/4847)は、組織C1のN
 
 八ケースの`Read Footprint`は、**Ruleの要求先と合成Inputの観測**を証明するためのもの。元Sourceを読んだこと、実入力が存在すること、評価を実行したこと、実Effectが生じたことは別のClaimとする。未取得を空集合や暗黙のFalseに変換しないことは、第39.7〜39.8節のPresenceと二重閉包の実装側の反証となる。
 
-#### 39.11.3 次の一件は生成Goの判断部分とRead Footprintの変更追随で閉じる
+#### 39.11.3 局所Go生成の到達点と、実Builderによる生成物消費を分ける
 
-既存[Rule→実Plugin製品縦断計画](PLUGIN_RULE_PRODUCT_VERTICAL_SLICE_2026-11.md)に従い、内蔵Readerから読んだ数量正値一規則を**既存Generatorの実Target入力**へ渡す。最初のProduct実装差分は、(1)同じ型付き`Validation`と正確なSource Revisionを受理、(2)条件判断・対象AttributeのRead要求そのものを生成Goに含める、(3)生成Sourceを実BuilderがコンパイルしたBinaryから呼ぶ、(4)既存Evaluatorの限定八ケースのうち該当ケースを独立Expectedで比較、(5)Ruleの条件・参照先を一因子変更して生成Go・Artifact・実行結果・Read Footprintの失効と変更を観測、に限定する。
+本節の原案では、数量正値一規則から判断Goを生成することを最初の未実装課題としていた。その後mainの[PR #4911](https://github.com/hat47x/tei-platform/pull/4911)により、**選択済みRuleの型付き`Validation`を直接`GeneratePositive`へ渡し、比較・分岐を含むGoを別Processで実行する限定R1**が実装された。次は、同じ型付きRule・Source Revision・実際に解決したAttribute型を、**製品の既存Generator/Builder入力**へ接続し、実Artifactと独立Consumerで使用を検収する。既存Evaluatorの八ケースと生成Goの該当ケースを比較し、元Ruleの一因子変更により再Load・再生成・Read Footprint・実行結果が追随することを確認する（具体的な型の制約とR2条件は第39.12節）。
 
 手書き`validationeval.Evaluate`の単なる呼出しWrapper、名前だけの生成Go、自己申告Fingerprint一致を「意味を生成した」と数えない。生成Binaryを実Consumerが呼んだ証拠も、Artifactが生成された証拠とは分ける。後続で実Providerの`Function Data Context`／Coverage、通常製品`tei`の別Process、独立Consumerへ接続するが、最初のGo生成PRを実DB・Wails・Graph Readerの実装でブロックしない。
 
 一方、REAの[Wire投影修正 #4883](https://github.com/hat47x/tei-platform/pull/4883)では、同定できない関係の相手側Sourceを空のJSON Objectとして表さず**キー自体を出さない**回帰がmainに入った。これはデータ様式の「不存在」と「空の値」を混同しない具体例である。新しいResult Enumや第二のEvidence Storeを作るのではなく、個別Producer／Consumerの既存契約と#1180/#2514のExpectedで意味の欠落を検出する。
 
-**現在の資格**：#4900/#4901/#4883はmainへコードが統合済み。ただし#4900のexact HEAD CIは未完了、#4901のexact HEAD CIは別レーンの失敗を含み、これらのGo回帰を一律にCI Greenとは判定しない。正式Graph Reader、Rule→生成Goの実Builder消費、実DB／CLI Provider、外部開示、Studio Stage1→Stage2、Owner意味受理は本節で新たに実行していない。各Ownerは#2621/#1121/#4544/#4495/#2586/#2506/#2831/#4583、独立Expectedは#1180/#2514を維持する。
+**現在の資格**：#4900/#4901/#4883に加え、#4911の局所Go生成・別Process実行はmainに統合済み。各PRのexact HEAD CIや実装した範囲を混同しない。正式Graph Reader、Rule生成Goの**製品Builderによる実消費**、実DB／CLI Provider、外部開示、Studio Stage1→Stage2、Owner意味受理は本節で新たに実行していない。各Ownerは#2621/#1121/#4544/#4495/#2586/#2506/#2831/#4583、独立Expectedは#1180/#2514を維持する。
+
+<!-- data-forms-r1-local-r2-builder-and-evidence-20261115 -->
+### 39.12 局所的な意味付きGo生成から、実Builder消費へ進むための不足を確定する（2026-11-15）
+
+第39.11節の次工程は、main [#4911](https://github.com/hat47x/tei-platform/pull/4911)の実装により一部達成された。同時にmain [#4908](https://github.com/hat47x/tei-platform/pull/4908)・[#4913](https://github.com/hat47x/tei-platform/pull/4913)で、原文のRule対象を変えると**既存EvaluatorのRead先と結果が変わる**ことが、別の固定入力で検査された。これらを「同じ一連の製品Attemptで、生成Goが原文変更に追随した」と合算しない。
+
+#### 39.12.1 R1で実装できたものと、まだ接続していないもの
+
+| 実在するGoの経路 | 確認対象 | この経路だけでは証明しないこと |
+| --- | --- | --- |
+| `internal/semantic/validationgen/positive.go`の`GeneratePositive` | 正値`semantic.Validation`、属性型`std.decimal`から、`source.Number(attribute)`と`value.Sign() > 0`を含むGo Sourceを生成。既存`validationeval.Source`／`Result`を用い、単なる`validationeval.Evaluate`呼出しへ委譲しない | 全種類のRule、全数値型、外部Language Plugin、製品Target選択・Builder資格 |
+| `positive_product_test.go` | 内蔵Ruleの実`Workspace.Load`→同Load Source Indexと原文ID Span→型解決→Go生成→一時ディレクトリの`go run .`で正値・0・負値・NULL相当・未取得の五例を照合。`Number`はそれぞれ一回 | 正規TEI Builder/BuildPlanがそのGo byteを入力にしたこと、署名済みArtifact、通常製品`tei` CLI/Provider/独立Consumerの受領 |
+| main #4908／#4913の既存Evaluator回帰 | Rule IDを維持し、`quantity`から`line_number`へ元Markdownを変更。再LoadでSource Indexの失効、型付き参照属性、実EvaluatorのRead先・判断が変化 | この変更を`GeneratePositive`が生成・実行できること、実DB Snapshot／全件性、Ownerの意味受理 |
+
+**重要な型境界**：製品Fixtureの`quantity`は`std.decimal`、`line_number`は`std.integer`、価格属性`unitPrice`は`std.money`である。現`GeneratePositive`は`std.decimal`に限定され、後二者を拒否する。したがってEvaluatorの`quantity→line_number`変更試験を、そのまま「生成Goの変更追随に成功した例」として扱えない。現在のGo生成器は属性型を引数で受け取るため、**呼出し側が実Worldの対象Attribute ID・型・選択Sourceを一つの受理経路から解決すること**が必須である。未解決型を適当な`std.decimal`として渡して生成が成功することは合格としない。
+
+#### 39.12.2 R1の変更追随を一つのWorkspaceから閉じ、R2では生成Byteの消費を立証する
+
+追加する最小の正負対照を二段に分ける。新しいWriterや第二Generatorを設けず、既存Fixtureの**隔離コピー**と`GeneratePositive`、Source Index、既存Builder／独立Expectedを使う。
+
+| 段階 | 同じ入力から得るべき証拠 | やってはいけない代用 |
+| --- | --- | --- |
+| **R1-M（変更追随）** | 原文のRule ID・Kindと評価用の値集合を固定。隔離FixtureのDataへ別の`std.decimal`属性を**比較前に追加して固定**し、元`quantity`からその属性へRuleの参照だけを一箇所変更。各々実`Workspace.Load`→型解決→生成Go→別Process評価を行い、Read先・生成Byte・期待結果を対にする。旧Source Index／旧Edit Planは失効 | `std.integer`を`std.decimal`と申告する、Generatorに手書き`Validation`だけを渡す、旧Goを実行して新Ruleの結果と呼ぶ |
+| **R1-F（拒否）** | 変更先が現行`std.integer`／`std.money`、型未解決、Relation付きRule、別Kindである場合、未対応として拒否し生成物なし | 対応していない意味を数値へ暗黙変換し「実行できた」と扱う |
+| **R2（実Builder消費）** | 受理済みTarget／Generator／Toolchain・同じBuild Attemptを明記し、実Builderが消費した生成Go byteのdigest、外から測ったBinary digest、生成した判断部分への実呼出しと独立Expectedを一組で収集。変更後のBuilder再実行も同じ方式で比較 | 生成Goを試験内で`go run`したことだけを正式Builderの実入力やBundleの現在資格に読み替える |
+| **R3（通常CLI・Provider）** | 明示選択したProvider実装・版・Invocation・入力Closure／Coverage・独立Consumerの受領を通常製品`tei`別Processで確認 | 合成`validationeval.Source`の五／八ケースを実DB読取・Provider実Invocationの証拠にする |
+
+型付きRuleをScript Launchの公開`semantic-capability`へ自動変換しない。[#4902](https://github.com/hat47x/tei-platform/pull/4902)の同名Capability不存在の負例は別PRの検収対象であり、Rule読取成功からPublic Entryや現在Grantを発行しない。最優先は**R1-M→R2の同一Ruleの実Byte消費**であり、Graph/Window ReaderとWindows Stage1→Stage2を新しいHard Gateで止めない。
+
+#### 39.12.3 Sourceの同じ見かけと、根拠のない比較結果を製品Wireへ流さない
+
+mainの[REA旧CLI修正 #4912](https://github.com/hat47x/tei-platform/pull/4912)では、従来の`rea-intake -before`が過去Reviewを読むだけで`unchanged`を無条件に返していた問題を修正し、**既存Comparatorへ正式接続するまでは`REA_COMPARISON_UNAVAILABLE`で拒否**するようになった。さらに入力byteを可逆な全hex列として`candidateSetFingerprint`へ入れる方式を改め、`sha256:`形式のraw Evidence digestと「Candidateの同一性ではない」というBasisを区別した。
+
+この実例を第39.6〜39.9節のSourceと結果の受入へ戻す。**Source byte digestが一致すること**、**候補のStructure Keyが一致すること**、**同じRelation occurrenceが存在すること**、**意味が受理済みであること**は別。未実装のComparatorや解析できない過去Packetから`unchanged`を創作したり、元Evidenceを可逆にした文字列を公開JSONへ露出させたりしない。検証不能なら明示的な`unavailable`へ止め、秘密性・現在Grant・Owner受理・編集対象確定は別票で扱う。
+
+**今回の受入資格**：mainのR1局所Go生成、既存Evaluatorの原文変更追随、REA実CLIの安全な拒否を実装事実として参照する。#4911のexact HEADではCache成功でもRepository Healthは確認時点で進行中、別のStudio/Issue-to-Design CIは失敗を含む。全体GreenやR2/R3、Graph正式Reader、実Wails Stage2の完了を宣言しない。担当はR1-M/R2が#1121/#4544/#1251、R3が#4495/#2586/#2506、Graphが#2621、Studioが#2831/#4583、独立Expectedが#1180/#2514とする。
