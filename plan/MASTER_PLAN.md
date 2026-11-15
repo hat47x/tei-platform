@@ -9,7 +9,7 @@
 
 期限は設けません。優先順位は実装量ではなく、**TEIの中心価値に関する不確実性をどれだけ減らせるか**を基準に見直します。
 
-- [文書手法からアプリケーション抽象へ：意味を保った構成の横断設計](design/APPLICATION_ABSTRACTION_DOCUMENT_METHOD_WEAVING_2026-11.md)：見出し・表・図・引用・判断理由・変更履歴が持つスコープ、役割、写像、再利用、変更という抽象能力を、既存Data／Role・Facet／Function／Process／Projection／Pluginへ割り当てる。構造・意味・表現・実現・現在資格を別々に検査し、DW-01〜10の独立Expected候補を#1180/#2514と各Ownerへ接続する。**最初の実装は内蔵Markdown Rule Reader一件の引用／定義の区別、原文保持、条件変更の失効差**に限定し、生成Go→実Builder→通常CLI実ProviderおよびStudio Stage1→Stage2の並行P0を変更しない。新しい文書Engine・Core Schema・Host・正本は先行採用しない（実装前設計）。
+- [文書手法からアプリケーション抽象へ：意味を保った構成の横断設計](design/APPLICATION_ABSTRACTION_DOCUMENT_METHOD_WEAVING_2026-11.md)：見出し・表・図・引用・判断理由・変更履歴が持つスコープ、役割、写像、再利用、変更という抽象能力を、既存Data／Role・Facet／Function／Process／Projection／Pluginへ割り当てる。構造・意味・表現・実現・現在資格を別々に検査し、DW-01〜10の独立Expected候補を#1180/#2514と各Ownerへ接続する。**現行mainの実Product CLI inspect（#5058）、元Markdownの実Go Binary同梱・実Builder（#5051）、独立Shape基線（#5064）を足場**に、§8〜10では文書の記述Roleと演算のShape／Law／Bindingを分離した。新しい最小検証は同じ正値Ruleを既存汎用関数と生成Goで評価する五入力・Read回数比較と、DW-11〜16の一因子負例である。通常CLI実ProviderとStudio Stage1→Stage2の並行P0は変更しない。新しい文書Engine・Core Schema・Host・正本は先行採用しない（実装前設計）。
 
 - [設計Projection・実ロード版・データ移行の横断受入](design/DERIVED_PROJECTIONS_RUNTIME_AND_MIGRATION_ACCEPTANCE_2026-11.md)：既存Data／Function／BusinessとRule／Graphから、設計書・Go・帳票・API・DB移行への投影を一つの受注機能で照合する。§7〜10ではLookupの取得時点、Draft／Commit、承認経路Snapshot／現在Grant、Builder・Runtime・Consumerの資格を分離。§11〜14ではmainの実Rule CLI Build #5009、Operator選択 #5007、Source/AST #5020、Studio Pin #5025の**異なる試験・Subject**を混同せず、PQ-A（原Rule／Reader／Generatorと実Buildの束縛）・PQ-B（実装A→B後の旧Scenario失効）に具体化する。既存#1180/#2514へ引き渡し、通常CLI実ProviderとStudio Stage1→Stage2を並行P0として維持。新Host・第二Canonical・新Gateは作らない（設計統合、追加E2E未実施）。
 
