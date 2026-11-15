@@ -2041,6 +2041,27 @@ Studio／SHO／SUI／AIが同じ意味候補を提示しても、編集資格は
 
 この節は構文・Operator・Targetの**合成可能性に対する実装引渡し**であり、新たな式文法・代数Optimizer・Process Engine・Target同等性の正式採用ではない。正負のケースは既存#1180／#2514へ渡す。ここで整理した反例をGo／DB／Windowsの実行試験として実施したことにはしない。
 
+<!-- tei-declarative-evidence-projections-20261115 -->
+### 宣言の解釈結果を、CLIとStudioで安全に確認できるようにする
+
+宣言的構文を汎化した成果は、Parserが候補を返した時点ではなく、**利用者と実装担当が「確認できたこと／まだ確認していないこと」を同じSourceと版で追えること**で評価する。既存のSource Index、Plugin Inventory、Subject Inspect、Builder／Artifact／Operationの証拠を読み取り専用に投影し、新しいEvidence Store、権限エンジン、共通Status enumを増やさない。
+
+実装の足場として、main統合済み[#4800](https://github.com/hat47x/tei-platform/pull/4800)の`plugin-inventory -plugin`には、実選択PluginのVersion／Lockだけを判定する`documentReadPreflight`がある。たとえ`selectionStatus=exact-version-pinned`でも、`sourceBinding=unbound`、`disclosure=not-checked`、`readEligibility=not-assessed`のままであり、文書本文の存在・読取・開示を認定しない。main統合済み[#4806](https://github.com/hat47x/tei-platform/pull/4806)では、参照用Workbenchが`InspectSubject`の`authorityLimits`を落とさずに扱う実装を追加したが、現時点で生成・埋込済みWails資産の利用まで実証したものではない。両者は**共通の受入原則を異なるConsumerへ投影する実装**であり、直接結合する新しい製品APIを要求しない。
+
+| 見えた事実 | そこから認められること | 追加の照合がなければ認めないこと |
+| --- | --- | --- |
+| Manifest管理SourceをPinned Rootから読める | そのbyte列とSource Indexを照合できる。Graph／WindowのS0-P負例にも適用 | 正式Readerの解析・Role確定・Owner意味受理（S0-A） |
+| Pluginのexact版とLockが一致 | その環境での既存Resolverの選択結果を確認できる | Document帰属、Source閲覧、現在Disclosure、Provider実Call |
+| `InspectSubject`の対象とSource位置が返る | 現在Replyのread-only表示と根拠への参照 | 編集・公開・実行権限、Model Revisionの受理 |
+| 候補Graph／Rule指紋や生成Goが一致 | 限定Reference上の構造・生成物を比較できる | 実Builderが使用したSource memberやArtifact／実Binaryの同一性 |
+| 実Consumerが値や診断を返す | 実際に受け取ったResponseと独立Expectedを比較できる | 完全なRead Coverage、外部Effect確定、別Audienceへの開示 |
+
+**最小の製品検収**は、同じWorkspace／Subject／Source Revisionを選んで、CLIのSource／Plugin選択結果とStudio Inspectorのread-only表示を比較する一件から始める。Studio側でWorkspace／選択／Sourceが変わった場合には旧Replyと旧`authorityLimits`を新しい対象へ持ち越さない。欠損した制限フィールドや不適格なResponseは表示側で拒否し、非公開のSource、件数、識別子、理由が別Audienceへ漏れないかを二世界の負例で確かめる。**未観測**を「存在しない」「利用可能」と表示せず、Source未読取、Plugin未選択、Coverage不完全、権限未照合を区別する。
+
+**既存の引渡し先**：製品S0-AのSource／Frontend／Roleは#2621/#988/#1018、Plugin文書のSource-backed一件取得とDisclosureは#4714/#4679、WorkbenchのE-READ／E-PIN／E-TRACEと実資産照合は#1824/#4515/#4583、生成物の実消費は#4544/#2600、独立Expectedは#1180/#2514に戻す。WorkbenchのTypeScriptテスト成功から実`cmd/tei-studio/assets/workbench`／Wails埋込／Windows WebView2をPASSとせず、正規Build出力と埋込byte、実起動したConsumerを順に照合する。
+
+この追補は**限定的な実装済みread-only機能を製品受入へ接続する設計案**である。正式`*.tei.md` Reader、現在Disclosureの実判定、Plugin Document読取、実Provider／Stage2 Desktop、業務Ownerの意味受理を実装済みに繰り上げない。Studio Stage1→Stage2と通常CLI実Provider ReadのP0を維持する。
+
 **現在の証拠と停止線**：mainの限定ReferenceにはGraph／Rule→条件分岐Go生成・同一Binaryへの実行時Node入力・Source Indexのbyte検査がある。一方、製品の正式Reader／選択Role／Accepted Meaning→通常Generator・Plugin・CLI実Call→Stage2実再構築は別の未達資格である。[PR #4744](https://github.com/hat47x/tei-platform/pull/4744)はMarkdown-firstと三要素図面の統合Draftであり、同PRや本節のdocs-only変更を製品機能の採用・Owner意味受理と読み替えない。
 
 
