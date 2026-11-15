@@ -54,6 +54,12 @@ Sourceを修正する場合、ハッシュの再計算は必要だが**ハッシ
 
 七行の閉包は固定テストデータとしての検査であり、外部Sourceの読み取り完了や全Datasetの完全性を示すものではない。未読データ・未選択の表・部分取得があれば、正式な入力Datasetとしての受理は保留する。新しいWindow Reader・Source Index・Expected正本は作らない。
 
+## 拒否される文書もSourceの取得と診断位置を失わない
+
+S0-PのWorkspace試験は、基準・Frame変更の二文書から、**候補五文書すべて**へ対象を広げる。重複A3の観測行と、古いmoving表示の行は、いずれも候補Sourceの一部として元byte位置を保持する。これらが管理対象から漏れたり、未宣言の`drafts`へ紛れ込んだりしても、計算テストだけが合格する構成にはしない。
+
+ただし、Source Indexのbyte位置が正しいことは、重複IDの意味上の拒否や、派生表示の不一致を製品Readerが判断した証拠ではない。現行`Workspace.Load`はどの候補も`TEI_MD_PARSER_UNBOUND`で拒否し、読み取った原文から勝手にMeaning／実Queryを生成しない。正式Readerは既存#2621/#988の担当へ引き渡す。
+
 ## 既存の実証との接続
 
 `internal/database/sqlgen/sqlite/window_reference_test.go`と`window_frame_change_test.go`では、既存`SelectOptions`から生成したSQLite SQLを実DBで評価している。固定された七行の入力と期待値の照合は**C0／SQL方言**の検証である。今回追加するテストも、このJSONの基準・変更例を使ったC0の照合にとどまる。
