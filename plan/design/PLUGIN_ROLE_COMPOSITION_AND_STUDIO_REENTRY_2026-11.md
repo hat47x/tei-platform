@@ -1169,3 +1169,22 @@ D1の独立負例は、(1)未選択Plugin、(2)同名別Doc、(3)CompatibleMajor
 実装Ownerは[#4701](https://github.com/hat47x/tei-platform/issues/4701)（候補Fixture）、[#4714](https://github.com/hat47x/tei-platform/issues/4714)（最初の製品一件Read）、[#4679](https://github.com/hat47x/tei-platform/issues/4679)（共通公開Doc契約）、[#2621](https://github.com/hat47x/tei-platform/issues/2621)（業務意味Reader）、[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)（独立検証）を維持する。製品の最優先は引き続きStudio Stage1→Stage2（#2831/#4583）と通常CLI→実Provider→独立Consumer（#1251/#4495）であり、このPDC-1を新しいP0 Hard Gateにはしない。
 
 **資格**：第20・21章は、現行mainの第15〜18章を維持しながら、生成プラグインの一機能とPlugin説明の利用時適合を切り出した**設計・検収案**である。正式 *.tei.md Reader、新Generator、実Plugin E2E、Plugin Help API、実AI Harness、Owner受理を今回実装・実測したわけではない。
+
+
+### 21.10 実選択Pluginの事前検査と公開文書取得の間に残る契約（2026年11月15日）
+
+[main統合済み #4800](https://github.com/hat47x/tei-platform/pull/4800) により、従来の実`plugin-inventory -plugin`詳細レスポンスへ `documentReadPreflight` が追加された。この値は、**同じInventory ReportとRowで既に確定した選択結果**を再利用し、別ResolverやDocument Registryを起動しない。`Plugin ID`、`Environment`、`ResolvedVersion`、`LockPinned`と、`scan-incomplete`／`not-selected`／`resolver-unbound`／`version-unknown`／`lock-unknown`／`lock-mismatch`／`exact-version-pinned`などの選択状態を区別できる。ただし、`exact-version-pinned`を返しても、`sourceBinding=unbound`、`disclosure=not-checked`、`readEligibility=not-assessed`のままである。**プラグインの版とLockが一致することは、そのプラグインが持つ文書の存在や閲覧許可の証明ではない。**
+
+[main統合済み #4804](https://github.com/hat47x/tei-platform/pull/4804) は、[PDC-0 #4757](https://github.com/hat47x/tei-platform/pull/4757)の採用前Fixtureに対し、実Graph/Ruleの候補構造指紋、生成Goの元byte、Graph原文とManual原文それぞれの指紋を横断して検査する。Mermaid配置や説明だけを編集した場合は候補構造と生成Goが同一でも**編集された原文の指紋は失効**し、Manualだけの改訂ならGraph側のSourceは不変のままManualの版だけを再確認する。#4804のexact HEADではRepository Health、Full/Incremental、既知脆弱性確認が成功した。しかしこれはあくまで**候補Fixtureを用いたReference監査**で、実Pluginの正式Doc帰属、DisclosureやProvider Callは検査していない。
+
+| 入口と現在の証拠 | 成立した上限 | 次の製品変更の受入条件 |
+| --- | --- | --- |
+| **D1-0：`plugin-inventory -plugin`（#4800）** | 実Inventoryの選択Plugin/Environment/厳密Version・Lockを利用した**事前検査**。本文なし、再Resolverなし | 旧Lock・未選択・部分Scan・Resolver不成立を理由付きで扱う。これだけで`readEligibility=true`やDoc IDを生成しない |
+| **PDC-0：GraphとManualの採用前Fixture（#4804）** | 原文バイト・候補構造・生成Goを独立に比較するGo回帰。採用状態は`proposal-only` | 独立ExpectedのOwner受理と製品の一文書Readは別検証。候補Graph ID/Docの同名から正式SourceRefを推測しない |
+| **D1-1：正式なDoc帰属（未達）** | 製品`plugin.Definition`に受理済みのDocument/Disclosure Bindingがまだない | #4679のOwnerが既存Plugin/Contractから一文書の安定ID・適用契約版・管理SourceRefを明示する。未成立は`unsupported`のまま止める |
+| **D1-2〜4：実読取り・公開範囲・使用例（未達）** | Source IndexとCLI Discoveryは各々別の足場で、同一Attemptの製品公開文書取得をまだ証明しない | 実Source byte/Revisionと現在Audience/Disclosureを照合し、許可された範囲だけ返信。途中取得・旧版・非公開・未知Operationは正文書や秘密Metadataを返さない |
+
+**CIおよび自己再構築の停止線**：#4800はmainへ統合されたものの、そのexact HEADのRepository Healthは`internal/plugin/management/document_preflight.go`の**gofmt不一致**で失敗した。新しい[修正PR #4818](https://github.com/hat47x/tei-platform/pull/4818)は整形だけの差分であり、**そのHEADのCIとmain統合の結果を別途確認する**。#4800の別Workflowで`TEI セルフビルド実証`やWails smokeが成功したことを、Windows Studio Desktop Stage1→Stage2の製品受入へ加算しない。
+
+**次の一件の検証**は[#4714](https://github.com/hat47x/tei-platform/issues/4714)が担当する。実選択済みPluginの一Documentを受理済みBindingから選び、既存Workspace管理Sourceをread-onlyで取得し、現在のDisclosureを同じ受信試行で照合して初めて本文を返す。取得前に既存の契約・選択・公開資格が揃わなければ、候補Fixtureの`permission-denied`を実Host拒否の代替にせず、理由を記録して**本文・非公開Doc ID・件数・Digestを開示しない**。通常Markdown Manualの読取りに業務意味用`*.tei.md`の正式S0-Aを新しい必須条件として課さない。後者は#2621/#988のOwner、実Provider二ConsumerとStudio Stage1→Stage2は現行P0のままとする。
+
