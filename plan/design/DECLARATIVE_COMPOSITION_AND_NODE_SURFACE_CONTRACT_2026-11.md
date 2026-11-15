@@ -196,9 +196,9 @@ B0固定Bootstrap→B1選択Language→B2自己記述候補→B3独立受理→B
 
 現行`main`には、選択済み内蔵`tei.rule-authoring/v0`を使う実`Workspace.Load`、元byteを保持するSource Index、`semantic.Validation`への接続、`validationeval.Source`でのRead要求、参照用の`deterministic-transform-v1`→Go生成器が**別々に存在**する。これらは同じ製品レベルのBuilder／Provider資格として連結済みではない。
 
-本ブランチのFocused Go試験は、現行の固定Workspaceを複製し、両方の版に`quantity`と`approvedQuantity`という`std.decimal`属性を用意する。正規のRule IDは変えず、Markdown内の`quantity is positive`だけを`approved_quantity is positive`へ変更する（Source上のCamelCaseとCanonical ID上のsnake_caseを区別）。変更に対応する外部Generator契約の入力AttributeとJSON入力Keyも明示的に更新し、**既存`GenerateFromTransformSource`に渡す**。これらの契約修正はSource差分を受けた必要な調整であり、暗黙の推論ではない。
+本ブランチのFocused Go試験は、現行の固定Workspaceを複製し、両方の版に`quantity`と`approvedQuantity`という`std.decimal`属性を用意する。正規のRule IDは変えず、Markdown内の`quantity is positive`だけを`approved_quantity is positive`へ変更する（データ属性宣言のCamelCaseとCanonical IDのsnake_caseを区別）。変更に対応する外部Generator契約の入力AttributeとJSON入力Keyも明示的に更新し、**既存`GenerateFromTransformSource`に渡す**。これらの契約修正はSource差分を受けた必要な調整であり、暗黙の推論ではない。
 
-今回の局所試験では、同一JSONにある正数（`quantity=2`）と負数（`approvedQuantity=-2`）を独立Expectedとして固定し、実Evaluatorが要求したAttributeと生成Goの別プロセス実行が参照先変更に追随することを確かめる。変更前のGenerator入力契約を使い回した場合は、生成前に拒否する。**0・NULL・欠落、旧入力だけを渡す実行時Fallback検査は次の追加試験に残す**。`threshold`を`std.text`に変えた場合は、参照契約と型が一致しないため生成前に拒否する。生成Go byteが異なることは検査しても、Compilerの出力が業務意味を受理したことにはしない。
+今回の局所試験では、同一JSONにある正数（`quantity=2`）と負数（`approvedQuantity=-2`）を独立Expectedとして固定し、実Evaluatorが要求したAttributeと生成Goの別プロセス実行が参照先変更に追随することを確かめる。変更前のGenerator入力契約を使い回した場合は、生成前に拒否する。**0・NULL・欠落、旧入力だけを渡す実行時Fallback検査は次の追加試験に残す**。`item_name`（`std.text`）への変更は、正数判定に適した型ではないため既存ValidatorとGenerator契約で拒否する。生成Go byteが異なることは検査しても、Compilerの出力が業務意味を受理したことにはしない。
 
 **この試験の資格の上限**は、製品の選択済みMarkdown Reader→型付きValidationと、既存**参照用**Generator→外部Go Build／別Process実行の局所接合である。契約が自動再生成されるわけではなく、現実のProvider Read、実ProviderへのFunction Entry、製品Plugin実装選択、製品Builderの消費、Windows、Studio Stage1→Stage2は別途未実証とする。CIとexact HEADが確認されるまでは新Go試験自体をPASSと記録しない。
 
