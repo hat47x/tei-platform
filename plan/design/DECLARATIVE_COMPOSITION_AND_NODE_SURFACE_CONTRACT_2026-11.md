@@ -570,3 +570,30 @@ P/G両経路を実行できる対象では、同じSourceの受理済みMeaning�
 セルフビルドの計測では、(a) **TEI由来の生成処理が実装する義務**、(b) **TEIが型付きパラメータで駆動した既存汎用処理の義務**、(c) **外部実装への委譲**、(d) **未対応**を分け、分母は対象義務を事前固定する。Pが優れている機能を不必要にコード生成しない一方、Pの利用数をGのコード生成・Plugin自己生成の実証率へ加算しない。再生成に伴う定義の簡素化・変更負担は別の指標として評価する。
 
 **導入順**：既存RuleのGをR2-P正式Builderへ接続する最優先と、TEI Studio Stage1→Stage2セルフビルド、通常CLI実ProviderのR3は変更しない。この比較は[#1121](https://github.com/hat47x/tei-platform/issues/1121)（Lowering）、[#4544](https://github.com/hat47x/tei-platform/issues/4544)（Generator）、[#988](https://github.com/hat47x/tei-platform/issues/988)／[#951](https://github.com/hat47x/tei-platform/issues/951)（Operator／Plugin）、[#4198](https://github.com/hat47x/tei-platform/issues/4198)（Graph）、[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)（独立Expected）、[#2831](https://github.com/hat47x/tei-platform/issues/2831)／[#4583](https://github.com/hat47x/tei-platform/issues/4583)（セルフビルド）へ既存差分として渡す。**新しいDSL Grammar／Runner／自動Execution Grant／Runtime Registryは追加しない。**
+
+## 28. Data表と隣接Ruleの二実現方式を製品Loadから検証する（2026-11-15）
+
+### 28.1 §27のG／P／D判断を一つの既存Fixtureへ適用する
+
+§27の**G：生成／P：汎用パラメータ実行／D：外部委譲**という分類を、別のDSLや判断エンジンを設けず、既存の製品実装で確かめる。対象は、選択済みtei.authoring/v1で読む異動申請のMarkdownである。印付きData項目表のallocation（std.decimal）と、隣接するallocation_positive Ruleを同じWorkspace.Loadで取得し、Source Index／InspectorのAttribute・Ruleの出典位置を確認する。
+
+今回のFocused Go試験はinternal/operations/inspect_markdown_data_table_rule_evaluation_test.goに置く。**二つの実現方式が同じ型付きRuleを受け取る範囲だけ**を検証し、プレビュー可能なP経路をGのセルフビルド実績として数えない。
+
+| 段階 | 実際の確認対象 | 到達点の上限 |
+| --- | --- | --- |
+| **Meaning** | Data項目表→既存semantic.Attribute（decimal）と隣接Rule→semantic.Validation。元byteとRoleDefinitionを一Loadで照合 | Reader成功・型一致は実データ取得／Ownerの業務意味受理を保証しない |
+| **P：汎用評価** | 既存validationeval.Evaluateへ同じValidationを渡し、正値／0／負値／NULL／未取得の五入力とNumber Read一回を独立Expectedで検証 | テスト用の厳密なSourceであり、製品DB／実Providerを呼んだ証拠ではない |
+| **G：Go生成** | 同じValidationとAttribute型を既存validationgen.GeneratePositiveへ渡し、生成SourceのNumber参照先と正値分岐を照合 | このFocused試験はGoのコンパイル・実Binary同値を検証しない。#5009／#5051等の別の実証を合算しない |
+| **一因子の型変更** | Data項目表のallocationだけをdecimal→textへ変更。Rule本文・Rule IDは維持し、Validatorの非数値拒否とGo生成拒否を確認 | 不適合をP／Gどちらかの暗黙Fallbackで隠さず、旧Source Index／Worldの現在性も流用しない |
+
+### 28.2 反証と次の一手
+
+| 対象 | 一因子変更 | 失格となる短絡 |
+| --- | --- | --- |
+| **DC-39／GP-04** | 同じRuleの入力を正値→0→負値→NULL→未取得へ | 未取得をfalseとして受理したり、異なるAttributeを読んで結果を合わせたりする |
+| **DC-40／GP-01** | Ruleをそのままに、表の対象Attribute型だけをdecimal→textへ | Rule ID／Source位置の一致で不適合な解釈・生成を許す |
+| **DC-41（次段）** | 同じ結果を返すPとGで、実Read先が異なる | 値一致だけで実Binary／Read Footprintの同値を宣言する |
+
+DC-39〜40は**試験ファイルへ記述した期待条件**であり、exact HEADの実Goテスト成功はCIで確認する。DC-41は未実装の独立Expected候補で、#1180／#2514のOwnerへ渡す。
+
+次の製品検証は、PとGを同一入力・同一型付きRule・同一Source revisionで**実際に呼び出し**、値だけでなくRead／Errorと実Attemptを比較すること。単純な汎用関数が既存実装で足りるときは生成を省く。一方、外部Targetへの納品やTEI自身の実装生成には正式R2-Pの実Builder・Artifact・独立Consumerが必要である。R3の公開Function→実Provider、Studio Stage1→Stage2実Windows受領は並行P0に保つ。新Executor／Resolver／第二Meaning／第二Expected Storeは作らない。
