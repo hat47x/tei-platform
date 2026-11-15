@@ -1635,3 +1635,40 @@ REAの[Review要約修正 #4863](https://github.com/hat47x/tei-platform/pull/486
 Studioでは[Desktop契約 #4879](https://github.com/hat47x/tei-platform/pull/4879)が、実Capability→Inspect/Trace→S-LOC→Pin→正規Bundle→Windows WebView2→Stage1→Stage2を段階分離した。#4869のHost制限Fixture修正はmain統合済みで、Pin解除／再確認ボタンIDの修正[#4876](https://github.com/hat47x/tei-platform/pull/4876)は審査中。参照TypeScriptの成功を、埋込`main.js`／`index.html`の一致や実Windowsでの動作に昇格しない。**Studioセルフビルドと通常CLIの実Provider呼出しは内蔵Readerの追加検収を待たずに並行P0を継続**する。
 
 この追補はmain上のGo Sourceとマージ履歴を読んで反映した**計画更新**であり、新Go/Node/Windows/PGの実行、内蔵Readerのexact HEAD回帰成功、正式Graph Reader、外部Language Plugin、Generator・Provider実Call、Stage2、Owner意味受理は本変更では実施していない。CIの不合格は別Ownerの原因を分類し、文書のマージを製品の受入票に転用しない。
+
+<!-- tei-dogfood-cli-introspect-reader-ci-20261115 -->
+### 15.64 実Readerの回帰を集約し、CLIの起動阻害を製品単位で解消する
+
+[内蔵Rule Readerの製品Go対照 #4891](https://github.com/hat47x/tei-platform/pull/4891)はmainに統合された。`workspace.Load`の選択結果を既存`semantic.Validation`とSource Index／Inspector／Traceへ結び付け、説明用`text`フェンス内のRuleを未宣言として扱う。この局所的な**実コード・実試験の収録**と、そのHEADでの全体CI成功やOwnerの意味受理は別資格である。[Workspace回帰 #4890](https://github.com/hat47x/tei-platform/pull/4890)はmain統合済みで、内蔵Readerの二定義・未選択と版不一致の拒否・Source Index失効を実Go試験へ追加した。ただしそのHEADの実行結果は別途確認する。類似範囲を扱う[#4893](https://github.com/hat47x/tei-platform/pull/4893)はDraftであり、同じ正負試験を無条件に重複マージせず、**mainの既存Fixtureと独立Expectedへ固有の検証だけを戻す**。Graphと外部Language Pluginの正式Readerは未検収のままとする。
+
+[前回dogfooding PR #4881](https://github.com/hat47x/tei-platform/pull/4881)のexact HEADでは、Issue-to-Designの製品CLIビルドが`cmd/tei/main.go`の未使用`dbIntrospectSemanticFlag`で止まった。コードを照合すると、既存の`db-introspect`はコマンドとして認識され、`runDBIntrospect`にはPostgreSQL／SQLiteの物理Schema読取りと、明示`-semantic`時の`schematosemantic.Project`が実装されている一方、正規`main`から呼ぶ分岐が欠けていた。そこで本作業では、未使用フラグを削って機能を隠すのではなく、**既存のread-only処理をWorkspace／Worldロード前に接続**する。必須Provider／DSNと余分な位置引数を先に検査し、未指定ならDBへ接続せず拒否する。
+
+ただし`db-introspect -semantic`が返すのは**物理DB Schemaから推定した意味候補**であって、Ownerが受理したData/Relation/業務Keyではない。実DBの観測・Read Scope・Snapshot・部分取得・時点、SourceとTargetへの対応、現在Grantを別々に記録する。CLIが起動することと、実DBの成功・業務Meaning・Graph/Rule生成・実Provider・Windows Stage2を混同しない。
+
+この小修正の受入は、(1) 対象HEADで`cmd/tei`がコンパイルされる、(2) 通常CLIで`db-introspect`がWorkspaceなしに既存関数へ到達する、(3) 引数不備・非対応Providerで正しく拒否する、(4) `-semantic`の指定なしに意味投影しない、の四点に限定する。他パッケージの既存CI障害は失敗のまま切り分け、#2621内蔵Reader、#4495実Provider、#2831/#4583非Plugin Stage1→Stage2の並行P0を変更しない。
+
+<!-- tei-dogfood-rule-evaluation-meaning-generation-20261115 -->
+### 15.65 同じ意味の二表記とEvaluatorの実Readから、生成Goの最初の義務を固定する
+
+[製品Go回帰 #4900](https://github.com/hat47x/tei-platform/pull/4900)では、旧`validation`宣言と内蔵Markdown `rule`宣言が**同じ型付き`semantic.Validation`**へ収束することを、`quantity_positive`と`line_number_unique`のID・Kind・Attribute・Relationを含めて検査する。Source Indexのbyte範囲と文書の出典は表記ごとに残し、旧新二重宣言は拒否する。これは「表記を変えても意味が等しい」という基線であって、生成コードが動いた証拠ではない。
+
+[実Evaluator接続 #4901](https://github.com/hat47x/tei-platform/pull/4901)では、実Workspaceで選択したRuleを同じLoadのInspector/Source Indexで照合し、既存`validationeval.Evaluate`へ渡すGo試験がmainに入った。数量の正値／0／NULL／未取得と、明細番号の非重複／重複／明示された空集合／未取得Scopeという**8つのExpected**を用いて、`Number`／`RelationKeys`が要求した読取りを確かめる。ただし値を供給するのはテスト専用の合成Sourceであり、実DB／Providerから取得した保証にはならない。これらの試験コードのmain収録と、exact HEADの全体CI PASSも別々に記録する。
+
+次のR1製品実装を、同一RuleのSource→型付きValidation→Generator→実Go判断の**一本の経路**に限定する。入力値だけを変える試験では生成コードを固定し、読取の不在・NULL・0・正値で判定が変わることを照合する。Rule条件を変える試験では入力とToolchainを固定し、**生成Goの判断箇所と実Consumerの結果がともに変わること**を確かめる。検収では次を分ける。
+
+| 比較対象 | 固定するもの | 独立に確かめるもの |
+| --- | --- | --- |
+| **旧表記とMarkdown表記** | Ruleの意味ID、型、必須Read、対象Consumer | 同じ生成意味と実結果。ただしRaw SourceとSource Indexは別版 |
+| **同じRuleで入力のみ変更** | 受理Meaning、生成Go、Toolchain | 値・NULL・欠損・空集合とRead Footprint、独立Expectedへの一致 |
+| **同じ入力でRule条件のみ変更** | Source対象、Target、入力、Toolchain | 生成判断と結果の双方の差分、旧Artifactの正しい失効 |
+| **Provider／Consumer接続** | 契約IDと版、選択Artifact、Read Scope | 実Provider呼出し、実Readの充足、別Consumer受領。合成Evaluatorでは代用不可 |
+
+この義務は[Plugin縦断計画 #4887](https://github.com/hat47x/tei-platform/pull/4887)のR1〜R3へ返し、生成Goの行数・手書き処理への委譲・単なる値の一致を自己生成成果に数えない。Graph／Windowの正式Reader、外部Language Plugin、Stage1→Stage2は引き続き独立P0／後続検収とする。
+
+### 15.66 CIの失敗を、現行のどの境界が止まったかで分類する
+
+前回の`db-introspect`実行入口PR[#4896](https://github.com/hat47x/tei-platform/pull/4896)では、Goビルドを含むAction SurfaceとThree-viewの**実CLI試験が当該HEADで成功**した。Cacheと依存脆弱性チェックも成功した一方、Issue-to-DesignとRepository Healthは失敗した。実ログでは`cmd/tei/rea_evidence_test.go`が現行`reaEvidenceOuterArgs`／`reaEvidenceResult`にない`observationID`、`relationID`、`Candidates`を参照しており、同じpackageのGo testをコンパイルできない。さらに`tools/reference-application-binary`の旧module importなど、別原因がある。**新しいCLIテスト5ケースは未実行であり、実CLIビルド成功からそのPASSを推定しない。**
+
+現行CLIの起動阻害に対しては、既存`runDBIntrospect`への接続と`-provider`／`-dsn`必須検査を採用し、未使用`-semantic`宣言を単に消す案[#4895](https://github.com/hat47x/tei-platform/pull/4895)とは一つに絞る。実DBの物理Schema取得／意味候補投影ができたという受入には、別の実行試験を要求する。新しいRunner・第二の意味Store・独自Resolverを設けず、現行`AGENTS.md`の「変更範囲に必要な検査」と各Ownerの独立Expectedへ返す。
+
+この追補ではmainへ入ったGoテストと旧HEADのCIログを根拠として記録した。**新しいPR HEADのGo test／実DB／通常CLI実Provider／Windows Stage2／Owner意味受理を今回実行したものではない**。統合する場合も、その差分によるCLI起動回復と、現在mainに残る失敗を区別する。
