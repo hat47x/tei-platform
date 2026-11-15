@@ -211,3 +211,27 @@ func TestDataTableRefusals(t *testing.T) {
 		t.Fatalf("a description with a double quote was accepted: %v", err)
 	}
 }
+
+// An ordinary one-line comment is not a mark. The table after it stays
+// documentation, and the comment does not disturb a marked table later on.
+func TestOrdinaryCommentsDoNotMarkATable(t *testing.T) {
+	src := "<!-- 編集メモ: 後で見直す -->\n" +
+		"| attribute | type |\n| --- | --- |\n| notDefined | std.text |\n" +
+		"\n<!-- teika: これも印ではない -->\n" +
+		"\n<!-- tei: data Note in sales -->\n" +
+		"| attribute | type |\n| --- | --- |\n| body | std.text |\n"
+	document, err := syntax.ScanTEIMarkdownDocument(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(document.Tables) != 1 {
+		t.Fatalf("tables=%d, want only the table under the tei mark", len(document.Tables))
+	}
+	parsed, err := syntax.ParseDataTable(document.Tables[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if parsed.Value.ID != "sales.note" || len(parsed.Value.Attributes) != 1 || parsed.Value.Attributes[0].ID != "sales.note.body" {
+		t.Fatalf("read the wrong table: %+v", parsed.Value)
+	}
+}
