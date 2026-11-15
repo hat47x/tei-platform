@@ -1489,7 +1489,9 @@ Readerが1件通った次のPRで、§15.38の固定Fixture（同Labelの別Node
 
 §15.46〜15.50は[PR #4824](https://github.com/hat47x/tei-platform/pull/4824)でmainへ統合された。本節では同じ工程を増やさず、最初のD-A（S0-A）を**実装PRとして完了できる大きさ**に落とす。目標は、管理対象の`*.tei.md`を見つけたという報告ではなく、**明示的に選んだGraph/Rule一件の原文が、実Workspaceの読取境界を通って、元位置を保った型付き候補へ到達した**という実証である。正式な意味受理と生成物の実使用は、さらに別の受入とする。
 
-現在の`internal/workspace/tei_md_source_guard.go`は、管理Rootに現れた`*.tei.md`を`TEI_MD_PARSER_UNBOUND`で停止する。これは黙って読み飛ばすより安全な挙動であり、全面的に解除してはならない。既存の`readPinnedWorkspaceFile`／Managed Source／Source Indexの読取実体と、Language/Role/Parserの明示選択を接続する最小差分を、#2621/#988/#1018/#2823へ渡す。
+現在の`internal/workspace/tei_md_source_guard.go`は、管理Rootに現れた`*.tei.md`を`TEI_MD_PARSER_UNBOUND`で停止する。これは黙って読み飛ばすより安全な挙動であり、全面的に解除してはならない。さらにmain統合済みの[自己記述設計 #4834](https://github.com/hat47x/tei-platform/pull/4834)が確認したとおり、`reference/dsl-language-plugin/selection.go`の`ParseSelected`は**選択済みの入力を解釈するReference**であり、製品のManifest/LockからLanguage Providerを選ぶ入口ではない。存在しない製品選択機能を前提にGuardを外すことはできない。
+
+したがって最初のコード変更は、**A0：現行製品に受理済みContract/LockからReader Selectionを得る経路が存在するか確認し、なければ理由付き`unsupported`で止める**ことから始める。A0が成立した場合に限り、A1：`readPinnedWorkspaceFile`等の同一Load時原byteを実Readerに渡す、A2：Source Indexで元位置を照合する、A3：未選択拒否と旧`*.tei`互換を検査する。新しい選択RegistryやManifest構文を便宜的に作らない。この小さな分割は#4834のS0-Aと一致させ、#2621/#988/#1018/#2823へ実装を引き渡す。
 
 | 実装境界 | 通過したと認める最小の観測 | 止める入力 |
 | --- | --- | --- |
