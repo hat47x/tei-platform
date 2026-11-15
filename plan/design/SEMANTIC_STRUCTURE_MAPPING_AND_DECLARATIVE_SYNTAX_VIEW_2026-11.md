@@ -1070,3 +1070,70 @@ Source byte、Reference候補構造指紋、Model Revision、Artifact Revision�
 各Ownerの受入票には、**確認できた陽性事実／必要な全件性／未観測の依存／取得・開示の資格／意味受理／実Consumer／未実行の辺**を別列で記す。既存Reference／Corpus／Expectedの再実装、新しい共通Result Schema、Graph/Rule Runtime、Universal Query Planner、追加Host、全体P0へのHard Gateは作らない。
 
 **検証状況（この節の追加時点）**：#4765/#4780/#4767/#4756の計画はmain統合済み。#4758の限定Reader＋Go生成・実Binary照会もmain統合済み。実Graph/組織/REA/BRMSを同じ製品Function・同一Attemptで連結した証拠、正式`*.tei.md` Reader、横断Consumer、実編集、Studio Stage2、Owner意味受理は、この追補では**NOT RUN／NOT ACCEPTED**。
+
+---
+
+<!-- data-forms-executable-acceptance-packet-20261115 -->
+## 39. 共通Source契約と異なるデータ様式を、一つの実行可能な受入手順にまとめる（2026-11-15）
+
+### 39.1 共通化するのはSourceの入場条件であり、GraphとWindowの意味ではない
+
+前節までの「意味保存」「問いに必要な根拠」「実Consumerの資格」を、**既存の固定Fixtureと実製品の不足部分**へ結び付ける。自己記述設計[§46](ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md)および[宣言的構文の実装計画](../MASTER_PLAN.md)が確認したように、Graph/RuleとWindowは異なるデータ様式だが、製品に取り込む前のSource選択・読取・版固定・位置追跡には同じ契約を利用できる。
+
+- **共通Source契約**：Manifest／管理Rootと選択対象、明示Language／Role／Provider、実Workspace Loaderが同じLoadで読んだraw byte、元Span/Occurrence、Source Indexへの対応、現行Revisionと現在のOwner受理範囲。表示するだけのMarkdown、未選択Draft、派生図、独立Expected候補はMeaningへ自動昇格させない。
+- **個別意味契約**：GraphではNode/Edge ID、向き、多重度、Rule条件、表示IDと意味ID。WindowではObservation ID、系列、順序、明示NULL、FrameとROWS/RANGE、集計精度と丸め。共通Readerが両者の意味を統合する必要はない。
+- **意味と証拠の利用契約**：正式なOperation/Operator pin、Function Data Contextのgrain・Scope・Coverage・Snapshot、選択Generator/Providerと実Consumed Closure、Result・Disclosure・現在Grant。Reference Candidateの指紋や生成Binary自身の申告だけを製品受理の根拠にしない。
+
+`internal/workspace/tei_md_source_guard.go`の`TEI_MD_PARSER_UNBOUND`は、管理対象の未束縛`*.tei.md`を明示拒否する現行の安全境界である。**S0-P**（Manifest/Pinned Sourceの予備読取）から**S0-A**（選択した正式Frontendが実Workspace.Loadの同じByteを実消費し、Role/Source Indexに結ぶ）へ進むまでは、Reference Readerを試験内で呼んだだけでGuardを解除しない。未対応ファイルでも原文の保存・追跡は可能だが、意味採用と生成への入場を拒否する。
+
+### 39.2 実在する二つの固定Fixtureを、違う役割で使う
+
+| 固定Source／Expected候補 | 現行の実測として使えること | 製品化時に追加する一つの観測 | 失敗を必ず残す対照 |
+| --- | --- | --- | --- |
+| `testdata/tei-md-graph/baseline.tei.md`（6例の基準） | 限定Graph/Rule Readerが別IDの2 Node・2 Edgeを読み、実Goの分岐へ生成、別Process・同Binaryの入力別実行を照合 | **まずこの一件**をManifest→同一Workspace Load byte→正式Role/Meaning→既存Generator/Builder→通常CLIへ段階接続 | `duplicate-edge-id`を黙認しない。Graph表示ラベルでNode IDを合併しない |
+| 同`edge-reversed`／`rule-by-target`／`layout-only`／`diagram-stale` | Source／候補構造／生成実装／派生図の変更影響を限定Referenceで分離 | 製品Meaning版・Generator実入力・実Consumerの変化を**同一Attempt**で独立Expectedと照合 | 図だけの変更でRuleを変えない。古い図から元Relationを自動書換えしない |
+| `testdata/tei-md-window/baseline.tei.md`／`frame-narrowed.tei.md` | Window候補の7観測・Frame・明示NULLを独立Expectedで比較。実SQLite表へ候補行をBindしたSQL結果も確認 | Graphと**同じSource入場条件**だけを別の形式で再利用し、Window固有のFrame/NULL/順序は別Operator/Providerで検査 | `A3`のmoving値は基準20、Frame変更後25。派生表や説明で定義を上書きしない |
+| 同`layout-only`／`duplicate-observation-id`／`derived-view-stale` | 固定候補の閉包と原文／Expectedの整合をRead-only試験で監査 | 形式上無効なSourceもRoot・原byte・位置の追跡から脱落させず、意味受理／生成は止める | 重複観測ID、古い派生表、B2の明示NULLを欠測・0・正常値へ読み替えない |
+
+**現在の検証範囲**：[Graph/Rule限定Go生成 #4758](https://github.com/hat47x/tei-platform/pull/4758)、候補構造が同じでも旧Source Indexを拒否する[#4759](https://github.com/hat47x/tei-platform/pull/4759)、生成Binaryの候補指紋自己申告を信用できない[#4761](https://github.com/hat47x/tei-platform/pull/4761)、Window SQLの実表値変更（生成SQL不変でも結果が変化）を試す[#4760](https://github.com/hat47x/tei-platform/pull/4760)はmainへ統合済み。ただし、これらは**それぞれ限定したReference／SQLite回帰**であり、正式`*.tei.md` Reader・製品Query/Provider・実CLI Consumerの同一Attemptを証明していない。
+
+WindowのS0-Pは現mainで少なくとも基準とFrame変更の二入力を検査している。負例を含む五入力すべてへの拡張は[PR #4792](https://github.com/hat47x/tei-platform/pull/4792)の進行中の作業として別管理し、正式Reader受理やmain実績に算入しない。期待値JSONはいずれも`adoption=proposal-only`であり、#1180/#2514のOwner正式受理を代替しない。
+
+### 39.3 最初の製品PRの入場・終了条件を狭く固定する
+
+**最初の実装PRで閉じる一辺はGraph S0-A**である。既存#2621/#988/#1018の製品Loader／Language／RoleとSource Indexを用いて、次を同じ`Workspace.Load`に関連付ける。新Parser Registryや万能Markdown Semantic Parserは先行しない。
+
+1. 管理Rootにある`baseline.tei.md`一件だけを明示選択し、Manifest/Pinned Sourceの版、Reader・Role選択と**実ManagedFile／Loaderが消費したbyte**を対応付ける。別途`os.ReadFile`したfixtureの一致だけでは製品Readの証拠にならない。
+2. Node/Edge/Ruleの候補から、正式に適格としたSource SlotだけをSource Indexの元byte Spanへ結ぶ。宣言外の引用・Mermaid・コメントをParserに昇格させず、曖昧なRole、Reader未束縛、同名別ID・重複IDは位置付き診断または明示`unsupported`で止める。
+3. **S0-A合格はここまで**とする。Accepted Meaning、生成Go、実Provider／CLI、Stage1→Stage2の資格は、次の既存Generator/Builder/Ownerの試行で追加する。未選択Draftを無理にエラーにせず、選択済み未対応Sourceは従来どおりfail-closedに保つ。
+
+この正例に、(a)管理外Draft、(b)選択済み未束縛Source、(c)同名Nodeと別IDの二Node、(d)ID重複、(e)Source A→B→A、(f)古い派生図を並べる。**Sourceを選べたこと**、**Sourceの意味候補を読めたこと**、**正式Meaningが受理されたこと**を一つのbooleanに畳まない。
+
+### 39.4 第二段階では、変化した入力と結論を分離する
+
+正式Readerを通過した後、製品Generator/Builderの実Consumed Closure、生成Goの判断部分、Artifactの外部測定digest、通常CLIの呼出先と受領値を独立Expectedで照合する。候補Shape Fingerprintの一致やBinaryの自己申告指紋が一致しても、実コードの分岐やToolchain資格は保証されない（#4761）。同様にWindowでは、生成SQLが同じでも**実DB入力値の変更で計算結果が変わる**（#4760）。したがってSource→Artifactの再利用と、実入力→Resultの再利用は別判断にする。
+
+続く実Providerの一Functionでは、**問いが何を要求するか**を最初に固定する。対象Identity・必要Relation・時点・粒度・否定条件・Provider Coverage・開示範囲を明示し、次を区別する。
+
+- **存在の陽性**：確認済み一件のWitnessがあれば、同じScope/時点における「少なくとも一件」は成立し得る。
+- **二件の陽性／Conflict**：別IDのWitness二件や条件を満たすUnique決定表の異なる二行は、部分取得でも「少なくとも二件」やConflictを確定できる。
+- **唯一・不在・No Match**：一件／0件の観測からは導けない。Domain、Predicate、非出力依存、RLS/Limit/ページング、ReaderとProviderの完全性、Snapshotが閉じて初めて確定できる。
+- **業務適格・Effect**：組織の候補PersonやREAの候補Relationが存在することと、正式役割・責任・委任・現行Grant・外部Effectの成功は別Claimである。
+
+組織C1については、同一Read CohortでRoleAssignmentとResponsibilityを実Providerから読み、二つのConsumerに渡す設計は[組織§33](ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)を参照する。合成Function Contextの正のPathを検査する[PR #4796](https://github.com/hat47x/tei-platform/pull/4796)は、実SQL／同一DB Snapshot／通常CLI E2Eとは別の限定試験。REAの一Functionで「旧FunctionがDataを実際に読んだか」を答える場合も、構造上の参照があることと実Read観測を分ける（[REA§12](REA_ONE_FUNCTION_EVIDENCE_TO_DESIGN_VERTICAL_SLICE_2026-11.md)）。
+
+### 39.5 各段階で一枚だけ残す検収票と、実装担当
+
+既存Evidenceを参照する**表示上の表**であり、新しい永続Schema、型、受入Runnerは作らない。
+
+| 同一Attemptの要素 | 必ず記録する区別 | Ownerと受入先 |
+| --- | --- | --- |
+| Source | 実Loaderが消費したbyte、選択Language/Role、raw/Span/Revision、無効・未選択・未対応の別 | #2621/#988/#1018、既存Source Index |
+| Meaning | CandidateとAccepted Subject/Edge/Operator、適用Scope、独立Expectedの正式Owner | #2495/#2544/#2497、#1180/#2514 |
+| Generator | 実入力のClosureと版、生成判断・生成Artifact、Builder/Toolchainの実消費、外部測定値 | #4544/#951/#1121/#1251/#2600 |
+| Provider／Result | 実選択Provider、Query/Args、Snapshot・Coverage・grain、部分失敗と帰属 | #2586/#2506/#4495 |
+| Consumer／Operation | 実受領者・開示範囲、同一Claimの比較条件、現在Grant、実Effect/Receipt有無 | #2516/#1124/#4583、各Host Owner |
+
+最初に着手するのは**Graph S0-A一入力の正式Read**であり、Window全五例、一般BRMS決定表、REA/組織の完全性、GUI編集をそのPRの新しいHard Gateにはしない。次にGraph/Ruleの実Generated Function→通常CLI、実Provider Read→Function Data Context→独立Consumer、Studio Stage1→Stage2実Windows WebView2の各Ownerで不足する一辺を順に埋める。Sourceと実Consumerの間で新たな完了Claimを得るまで、`NOT RUN`を成功に書き換えない。
+
+**この節の資格**：main統合済みの限定試験・設計と、進行中のPRを区別した実装引渡し。Graph製品S0-A、Accepted Meaning、製品Codegen／Provider、実二Consumer、Studio Stage2、Writer／Owner正式受理をここで実装・検収したものではない。全体P0と既存Ownerの独立Expected正本は変更しない。
