@@ -1856,6 +1856,100 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 
 **実行状況**：組織C1の正式Reader→生成Go→実Provider/CLI→二Consumer/Host→Studio一巡、Owner Meaning Acceptanceは未達。今回の追記は**設計文書のみ**。優先P0の通常`tei` CLI実Read #2586とStage1→Stage2 Desktop #2831は独立維持する。
 
+## 2026-11-15 宣言的構文の汎化を製品の受入へ接続する（設計案・実装未受理）
+
+**方針**：TEIで汎化するのは一つの巨大な文法ではなく、Data／Function／Businessと標準データ構造、Relation／Rule／Query／Operationへつながる**意味の契約**である。Markdown、表、Mermaid、式、関数チェーン、Native SQLは用途別の記述形式として残す。文法の違いを理由に第二のSemantic Engine／Parser選択基盤／汎用Host／Rule Runtime／Expected正本を作らない。構文の正式採否と式の範囲は[#4359](https://github.com/hat47x/tei-platform/issues/4359)のS0比較・Owner判断に帰属し、MarkdownのSource選択・Role解釈は[#2621](https://github.com/hat47x/tei-platform/issues/2621)／[#1018](https://github.com/hat47x/tei-platform/issues/1018)へ戻す。
+
+**区別する五つの資格**：
+
+1. **Source**：選択された原文byte・Revision・Source span・Language/Profile／文書内Roleを固定する。単なる`*.tei.md`という拡張子、Manifestへの登録、Source Indexへの格納はReader成功や意味受理ではない。
+2. **Meaning candidate / Accepted Meaning**：表／図／式／Ruleが既存の型・参照・粒度・単位・NULL／未取得・空集合／partial policyへ写せるか確認する。AI候補やParser成功をOwnerの受理へ昇格させない。同じ形のGraph／Table／Queryでも評価と変更の意味が一致するとは限らない。
+3. **Generation**：Accepted Meaningと固定Operator／Generator／Targetの契約から、条件分岐・Data Operation・制約・UI・Plugin等の実装に寄与する生成物を作る。Goコードへ単純に処理を委譲しただけの場合、自己記述・セルフビルドの達成とはしない。
+4. **Execution**：Definition／Rule／Edge／Generator版の変更と、同じ生成Binaryへ渡す実行時入力の変更を分ける。Providerは選択・組込み・実呼出し・認可・Effect観測を別資格で照合し、CLI／MCP／Studioや外部Hostの成功をReferenceの成功から推定しない。
+5. **Provenance / Reuse**：意味の同値、Source byte位置、World Fingerprint、Model Revision、Artifact Revision、実行入力、現在のEvidence／Grant資格を混同しない。Mermaidの配置だけの変更とRuleの変更を区別し、誤再利用と不要な再生成の両方を検査する。
+
+**直近の実装順（既存P0を置き換えない）**：
+
+| 順序 | 接続する実装・検査 | 主なOwner・受入 |
+| --- | --- | --- |
+| 1 | [#4359](https://github.com/hat47x/tei-platform/issues/4359) S0の旧`validation`／低ノイズ`rule`／宣言Role付きMarkdown表／Operator pinを、同じ二規則・独立Expectedで比較する。S1以降の実装は正式構文をOwnerが選んでから進める | #4359、#988、#2514 |
+| 2 | 選択された`*.tei.md`のManifest／Pinned Sourceを**製品`Workspace.Load`の同一Attempt**で正式Reader・Role・既存Source Indexへ接続する。予備試験S0-Pと製品受入S0-Aを分ける | #2621、#1018、[PR #4751](https://github.com/hat47x/tei-platform/pull/4751)、[PR #4730](https://github.com/hat47x/tei-platform/pull/4730) |
+| 3 | 実Graph／RuleのSourceから、受理済み意味→既存Generator→生成Go／Pluginを接続し、二Consumerと独立Expectedで正負を照合する | #1121、#1251、#2586、#1180 |
+| 4 | 生成された構造・制約・Pluginを次のBuilderが本当に利用したか追跡し、CLI先行→Studio Stage1→Stage2・Windows実Consumerへ進める | #2831、#4583 |
+| 5 | 上の縦断で得たFit／Gapを、Graph／Tree／Table、BRMS、Query／Native SQL、Data Context、数理Toolkit、Studio／SHO／SUIの表示・限定Patchへ戻す。表示・逆編集・実Providerの資格はそれぞれ別に判定する | #2495、#2497、#1124、#4660 |
+
+**判別すべき負例**：NULLと未取得の混同、空集合とpartialの混同、同名Node・多重Edgeの消失、曖昧参照の先勝ち、同一Rule IDの二重正本、説明用Code Fenceの誤実行、SQLのBag／NULL／Join差の消去、Mermaid配置変更による不要な再生成、Rule変更後の旧生成Binary再利用、AI候補の無受理実行、未選択Pluginの呼出し、生成物未使用の見かけ上のセルフビルド成功。独立ExpectedとScenarioは既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)の正本へ渡す。
+
+### 記述形式と意味の同値性を分けて検収する
+
+**構文の採否を決める条件**：読みやすさ・短さだけでなく、同じ業務意味に対応するかを、(1)構造、(2)評価、(3)変更の三軸で独立に確認する。GraphをTreeやMarkdownへ投影して同じNodeが見えても、Edge ID・向き・多重辺を失えば構造は同値ではない。集計結果が一致しても、SQLのBag多重度・NULL三値論理・Windowの順序とFrame・JOIN粒度が違えば評価は同値とはいえない。派生Viewを表示できても、そのViewから元Sourceの共有属性や関係を一意に変更できるとは限らない。形式が異なる場合は、同値と保証できる**範囲**を明示し、損失した意味はunknown／unsupportedに止める。
+
+**意味へ昇格できる条件**：ファイルの拡張子やMarkdown見出しではなく、Workspace／Language Profileの選択・exact pin・文書内のRole指定・元byte span・型付き参照・明示された評価条件から決める。説明文、引用、Code Fence、非選択Source、AIの候補が、近接しているRuleやDataと暗黙に同じAuthorityを得ることはない。同じRule IDが表とDSLに併記されている場合は、どちらが正本か明示するか、重複として拒否する。MermaidをSourceとして解釈する図と、型付きモデルから生成した表示図も別資格とする。
+
+式を短く表す構文は[#4359](https://github.com/hat47x/tei-platform/issues/4359)のA3ハイブリッド候補（宣言骨格＋限定的な式位置）を比較対象に残すが、Goの`struct`／`func`／`package`を日常DSLへ持ち込まない。関数チェーンは既存Operator契約の読みやすい表層であり、新しい実行Engineではない。Native SQLは原文とDialectを保持し、解析不能なOpaqueや入れ子の未対応Queryを意味を落として再生成しない（[#4752](https://github.com/hat47x/tei-platform/pull/4752)）。数値の未指定・明示NULL・0・未取得を分け、整数精度、指数表記、単位、時点、集計範囲を勝手に補完しない。
+
+### 同一Attemptの受渡しと自己記述への到達を検収する
+
+製品の次の最小接続は、現在の`TEI_MD_PARSER_UNBOUND`を根拠なく解除することではない。**選択された一件の`*.tei.md`**について、Manifest／Pinned Root／Frontend選択・契約版／元byte／`readByLoader`／選択されたDocument Role／既存Source Index Artifactとbyte spanを、**同一Load Attempt**の結果として対応付ける。SourceIndexの役割（出典追跡）とMeaning Role（業務上の役割）を区別し、未実装のFrontend選択はunsupportedのままにする。これは[#4751](https://github.com/hat47x/tei-platform/pull/4751)でmainに入った**テスト専用S0-P**を、製品受入**S0-A**へ接続する差分であり、単なる予備検証の再実装ではない。
+
+正例は、選択Root内のGraph／Rule一件を原文・Role・Spanとともに読み、読み込まれたSourceだけに由来する候補を確認する。負例は、Root外や未選択draft、引用・Code Fence内の偽見出し、未閉Fence・裸`|`行、重複ID、未知端点、Source改版による旧Index、旧`*.tei`互換、未選択／版不一致Frontendを、独立Expectedで検査する。[#4725](https://github.com/hat47x/tei-platform/pull/4725)のReference負例は採否と実装範囲を確認して移植し、Reference試験だけで製品の合格とはしない。
+
+その後、意味の受理→Rule条件を反映する生成Go→生成Pluginの**実Build入力**→通常CLI/MCP・別Consumerの**実Call**→Studio Stage1自身によるStage2実再入へ進める。自己記述B0〜B4（[#2620](https://github.com/hat47x/tei-platform/issues/2620)／[PR #4744](https://github.com/hat47x/tei-platform/pull/4744)）と、実BuildのN0〜N3／B1-A〜C（[#4583](https://github.com/hat47x/tei-platform/issues/4583)）は担当別に照合する。Seed／固定Interpreterが新版の言語定義を読むこと、生成Parser・Operatorの機能、生成Pluginの次Builderでの実利用、Windows上のStage2 Desktop再構築を、互いに代替する証拠として扱わない。Pluginの選択・包含・実呼出し・公開・認可・Effect観測も別々に記録する。
+
+### 差分に応じた再利用の判定
+
+| 一因子だけを変える変更 | 必ず区別する結果 |
+| --- | --- |
+| 同一生成Binaryに渡すNode IDだけ変更 | 定義と生成物を保持したまま入力別結果を検査。実行結果や実呼出しEvidenceは新たに取得 |
+| Mermaidの配置・Sourceの説明だけ変更 | Raw Source byteとSpanは変わり得る。業務上の候補構造が同じか確認し、実装再生成の要否を別判定 |
+| GraphのEdge向き／多重性、Ruleの条件変更 | 候補構造と評価が変わるため、旧Meaning／Artifactを無条件に再利用しない |
+| Operator／Generator／Pluginの版・指紋変更 | Sourceが同じでも生成器・意味契約・選択資格を再検証する |
+| SourceのA→B→A | byteや局所的意味候補の一致はあり得るが、以前のOwner受理・Current Grant・外部Effect Evidenceは自動復活しない |
+| 部分取得0行／明示NULL／不明・非開示 | 完全空集合や0と同一視しない。既存EmptyPolicy／Coverage／CompletionStateとSource資格で結果を分ける |
+
+Graph／Ruleの候補構造指紋を生成Binaryから照会する[PR #4758](https://github.com/hat47x/tei-platform/pull/4758)は、上表の一部を検証する**main統合済みの限定Reference実装**である。Raw Source SHA-256、候補Structure Fingerprint、Accepted Meaning Revision、Artifact SHA-256、実行入力、現在のAuthority／Evidenceは別物であり、候補指紋の一致を製品Bundle・Provider・実行許可の資格へ昇格させない。
+
+**main統合済み負例の受渡し（2026-11-15）**：[Graph Source再読込み #4759](https://github.com/hat47x/tei-platform/pull/4759)は、説明／Mermaid Layoutだけの変更では候補構造指紋・限定Reference生成Goが同じでも、Raw Source byteが違えば旧Source Indexは無効であることを実Go回帰で固定した。[実Binary照合 #4761](https://github.com/hat47x/tei-platform/pull/4761)は、候補指紋の定数を変えず生成Goの判定条件だけ改変すると、同じ指紋を申告する二BinaryのSHA・実行結果が異なる負例を実Go回帰へ追加した。いずれも限定Referenceの合格であり、正式Language/Role/Meaning・実Builder Source member・通常CLIの実ConsumerやHost認可の合格ではない。次の製品縦断では、旧Indexの拒否と生成物の実Build入力・実Binaryの外部照合を、同一Source／Subject／Target／Attemptで独立に検査する。新しい証明機構や第二Evidence Storeは設けない。
+
+### 宣言的構文の品質とセルフビルドへの寄与を測る
+
+最低限、同じFixtureを従来`validation`と低ノイズ`rule`で書き、専門家が読む順序、重複参照、曖昧性診断、byte位置、原文無変更保存を比較する。次にGraph／Rule・数値集計・判断表・Function/Operation各一件について、独立Expectedと負例から、生成された**条件分岐・型付き関係・制約・UI／Plugin構造**が実動作へ寄与したか確認する。
+
+測定対象は、(a)業務仕様として記述する量、(b)手書きのTargetコードと重複定義の残量、(c)実際に生成・Buildへ包含・呼出された構造／処理の割合、(d)意味変更の際の手修正・再生成範囲、(e)初回から実Consumer受領までの失敗・修正・所要時間とする。数値目標を先に固定せず、同一機能の旧実装との比較で効果を評価する。Goに全処理をdelegateしただけの薄い`*.tei.md`、使われない生成ファイル、合成Mock成功はセルフビルド達成として数えない。
+
+**Ownerと次の引渡し**：構文選定・read-only Validationは#4359、Source／Readerは#2621/#1018、Role／自己記述は#2620、構造と限定Patchは#2495/#2497/#1124、実ProviderとQueryは#2586/#2387、Pluginの選択・公開文書は#951/#4679、独立Expected／Scenarioは#2514/#1180、Stage1→Stage2は#2831/#4583の既存正本を維持する。各段階の未受理理由を次Ownerへ渡し、全体P0に新しいHard Gateを追加しない。
+
+### 意味契約の適用範囲を固定し、RuleとQueryを同じ基準で評価する
+
+一つの宣言を意味候補として比較する際には、**対象の識別、参照経路、評価範囲、時点・版、入力の完全性、演算の契約、結果とEffect**を確認する。これらは新しい共通SchemaやCore enumではなく、既存Data／Function／Business・Facet／Role／Data Context・Operator／Query／Rule／Lifecycleの契約を同じFixtureで突き合わせるための**確認観点**である。型が同じで結果の表示が似ていても、以下のいずれかが不明なら全面的な意味同値を主張しない。
+
+| 観点 | Rule／Decisionで確認する意味 | Query／Graph／Timeで確認する意味 |
+| --- | --- | --- |
+| 対象とIdentity | 判断対象の業務キー・Scope、同名Ruleの正本 | Node／Edge ID・業務キー／複合キー／Source occurrence |
+| 関係と粒度 | 条件が参照するRelation path、多重度、集約前後 | JOIN粒度・Bag・Edge向きと多重性・Window partition |
+| 時点と適用期間 | ルール有効期間、申請・承認・観測の時点 | Snapshot／transaction time／計画時刻と実観測時刻 |
+| 入力の資格 | NULL・未取得・非開示・partialを区別した評価可能性 | 0件でも完全取得か、結果範囲・欠測・単位・精度 |
+| Operator／Provider | Rule版・Hit Policy・純粋判断とEffectの区別 | SQL方言・Native/Opaque・Window frame・能力とpin |
+| OutcomeとAuthority | satisfied／not-satisfied／unverified／conflict、受理と実行Grant | Resultと実Effect・Receipt、現在のConsumer資格 |
+
+**限定的な確定と不確定の境界**：Unique決定表で、同じScopeの二つの確認済み行が同時一致すると証明できれば、取得済み資料がpartialでも**競合が存在する**という局所結論は成立し得る。一方、一行だけの一致や零件から、必要なRule集合が完全である証拠なしに「唯一の決定」「該当なし」とは断定しない。未取得と明示NULL、Rule非一致とアクセス拒否、空集合と不完全な取得を混同しない（[BRMS統合設計](design/BRMS_DECISION_ANALYSIS_INTEGRATION_2026-11.md)／#1180／#2514）。これは全ケースを新Rule Engineへ集約する提案ではなく、既存Rule／Evaluation／Coverage／Source資格で判別する境界である。
+
+**反映先を限定する**：REAのResource／Event／Agentや組織の責任移管は、時間条件・Identity／Relationの適格性を確認する専門圧力ケースにする。SUIのKJ配置とWBS依存DAG、Studio/SHOの図解と業務意味、テスト用Mockと実Provider Effectはそれぞれ区別する。構文汎化がこれらを単一のGraph／Rule形式へ強制する理由にはならない。未対応のNative SQLをTEI標準Queryとして再生成せず、入れ子Opaqueの明示拒否（mainへ統合された[#4752](https://github.com/hat47x/tei-platform/pull/4752)）を守る。
+
+### 一つの小さな製品縦断で、宣言の有効性を確認する
+
+次の一件を、既存[#4359](https://github.com/hat47x/tei-platform/issues/4359)のS0比較と[#2621](https://github.com/hat47x/tei-platform/issues/2621)の正式Readerで共有する。**同じGraph/Ruleを異なるSource表層で表し、同じ独立Expectedを使用するが、元byte位置・表示・保存は同じにしない**。
+
+1. `*.tei.md`の宣言済みRoleから同名二Node・多重有向Edge・単一Ruleをread-onlyで取得し、Sourceと候補の一対一対応を照合する。未選択・引用・Fence内の偽規則は拒否／無視の規約を区別して検査する。
+2. Ruleの条件で生成されたGoの分岐を、元のRuleと**独立したExpected**で照合する。既存Referenceの`-node`・`-candidate-shape`は製品CLIの仕様とはしない。明示Role、Meaning受理、選択Operator、Target Generatorの資格を次Ownerでつなぐ。
+3. 生成Sourceを実Builderが読み、選択したGo/PluginとArtifact、実行したBinaryを同一Build Attemptへ束縛する。候補構造FingerprintとBinaryの自己申告だけでは実コードの正しさを保証しない。[#4758](https://github.com/hat47x/tei-platform/pull/4758)はmainの限定Reference、改変したGoが同じ候補指紋を申告する[#4761](https://github.com/hat47x/tei-platform/pull/4761)はmain統合済みの限定Reference負例として扱う。
+4. 実行時Node変更、Edge方向変更、Rule条件変更、説明・Mermaid配置のみ、Generator／Plugin版変更を一因子ずつ試し、Source再読込・意味再検証・実装再生成・実呼出しEvidenceを必要な範囲だけ更新する。Artifactが生成されてもBuilderの入力にならなければ未達とする。
+5. 次に同じ契約の`validation`正負二規則、Unique決定表のpartial／競合、SQL WindowのNULL・順序・Frameを**追加の比較対象**にする。Graph実証の成功をDecision／SQLの全面同値やDB実Consumerの合格へ転用しない。
+
+**実行順**は、製品Source Reader S0-A → Accepted Meaningの限定一Rule → 通常Generatorと実Builder入力 → 通常CLIからの実呼出し・別Consumer → Stage1→Stage2 Desktopである。独立ExpectedとScenarioのIDは既存#1180／#2514で管理し、本文の比較表は仕様・検収手順の索引にとどめる。Grammarの追加、標準Data型の採否、Hit Policy、SQLの変換可否は各Ownerで決定する。全体P0を変更せず、正式Reader未対応時にはSource候補の段階でunsupportedとして停止する。
+
+**現在の証拠と停止線**：mainの限定ReferenceにはGraph／Rule→条件分岐Go生成・同一Binaryへの実行時Node入力・Source Indexのbyte検査がある。一方、製品の正式Reader／選択Role／Accepted Meaning→通常Generator・Plugin・CLI実Call→Stage2実再構築は別の未達資格である。[PR #4744](https://github.com/hat47x/tei-platform/pull/4744)はMarkdown-firstと三要素図面の統合Draftであり、同PRや本節のdocs-only変更を製品機能の採用・Owner意味受理と読み替えない。
+
 ## 先に固定しないもの
 
 - 最初のWeb向け実行先で用いる開発基盤
