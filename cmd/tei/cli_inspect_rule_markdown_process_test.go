@@ -13,6 +13,7 @@ import (
 
 	"tei/internal/operations"
 	"tei/internal/sourceindex"
+	"tei/internal/studiohost"
 )
 
 // This calls the actual product CLI from a separate OS process. A selected
@@ -74,6 +75,20 @@ func TestProductInspectCLISelectedMarkdownRuleIsNotCapability(t *testing.T) {
 	if !reflect.DeepEqual(*seen, direct) {
 		t.Fatalf("actual CLI process diverged from direct inspect Operation:\nCLI: %+v\nDirect: %+v", *seen, direct)
 	}
+	// The Wails-independent Studio Host must project the same meaning and
+	// Source as the real CLI. This checks its typed Host boundary, not a
+	// WebView or HTTP transport, and grants no disclosure or write authority.
+	studio, err := studiohost.NewReadOnly([]string{root})
+	if err != nil {
+		t.Fatalf("create read-only Studio Host: %v", err)
+	}
+	studioRead := studio.InspectSubject("workspace-1", subject.Kind, subject.ID)
+	if !studioRead.OK || studioRead.Value == nil || studioRead.Failure != nil {
+		t.Fatalf("Studio Host could not inspect selected Rule: %+v", studioRead)
+	}
+	if !reflect.DeepEqual(*seen, *studioRead.Value) {
+		t.Fatalf("CLI and Studio Host returned different inspection projections:\nCLI: %+v\nStudio: %+v", *seen, *studioRead.Value)
+	}
 	if seen.Subject != subject || seen.Effect != "read-only" ||
 		seen.SourceStatus != "indexed" || len(seen.AuthorityLimits) == 0 {
 		t.Fatalf("CLI Rule inspection lost subject/source/authority: %+v", seen)
@@ -123,10 +138,27 @@ func TestProductInspectCLISelectedMarkdownRuleIsNotCapability(t *testing.T) {
 			missing.Error.Code != operations.InspectionNotFound {
 			t.Fatalf("inspect %s:%s must fail closed: %+v", tc.kind, tc.id, missing)
 		}
+		studioFailure := studio.InspectSubject("workspace-1", tc.kind, tc.id)
+		if studioFailure.OK || studioFailure.Value != nil || studioFailure.Failure == nil ||
+			studioFailure.Failure.Code != missing.Error.Code ||
+			studioFailure.Failure.Kind != "business_rejection" ||
+			studioFailure.Failure.Retryable != "not_retryable" ||
+			studioFailure.Failure.EffectUnknown {
+			t.Fatalf("Studio Host must preserve CLI refusal class without claiming an effect: %+v; CLI=%+v", studioFailure, missing)
+		}
 		_, directErr := operations.InspectSubject(root, sourceindex.Subject{Kind: tc.kind, ID: tc.id})
 		var classified *operations.InspectionError
 		if !errors.As(directErr, &classified) || classified.Code != missing.Error.Code {
 			t.Fatalf("inspect %s:%s direct/CLI failure mismatch: direct=%v CLI=%+v", tc.kind, tc.id, directErr, missing.Error)
 		}
 	}
+	// A browser-supplied workspace ID does not become an authorized root,
+	// even when the Subject exists in a different allowed Workspace.
+	denied := studio.InspectSubject("workspace-2", subject.Kind, subject.ID)
+	if denied.OK || denied.Value != nil || denied.Failure == nil ||
+		denied.Failure.Code != "WORKSPACE_NOT_ALLOWED" ||
+		denied.Failure.Kind != "business_rejection" || denied.Failure.EffectUnknown {
+		t.Fatalf("unlisted Studio Workspace must fail before inspection: %+v", denied)
+	}
+
 }
