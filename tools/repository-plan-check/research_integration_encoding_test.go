@@ -28,12 +28,12 @@ func TestResearchIntegrationPlanReadableAndSequential(t *testing.T) {
 	nextSection := 1
 	for _, line := range strings.Split(body, "\n") {
 		if !strings.HasPrefix(line, "### 16.") {
-		    continue
+			continue
 		}
 		number, _, hasTitle := strings.Cut(strings.TrimPrefix(line, "### 16."), " ")
 		section, err := strconv.Atoi(number)
 		if !hasTitle || err != nil || section != nextSection {
-		    t.Fatalf("section sequence is missing, duplicated or out of order at %q: want 16.%d", line, nextSection)
+			t.Fatalf("section sequence is missing, duplicated or out of order at %q: want 16.%d", line, nextSection)
 		}
 		nextSection++
 	}
