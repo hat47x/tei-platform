@@ -8,6 +8,19 @@
 
 一つのAccepted Meaningから、(I)既存標準Evaluatorによる解釈、(G)Target-native生成、(D)DB／外部Providerへの委譲、(H)混合の候補を比較できる。図表の詳細化で見つかった業務上の制約はMeaningへ、実現方法だけの選択はTarget側へ、反復する判断はPattern／Skillへ収められる。生成ソースを直接編集せず、明示HookとBuildへのBindingで実Consumerへ接続できる。
 
+## DRI-G0：生成AIへ渡す前の文脈限定
+
+[実現範囲を定めるProduct Skill](../../skills/yi-tei-realization-scope/SKILL.md)を、生成器候補やHook実装の依頼に使う場合の**作業前確認**として位置づける。Skill自体はMeaning受理・実行資格・製品Generatorではなく、候補を作る際の判断を再利用する手順である。
+
+- 対象を**一つのCanonical Subject／一つの選択Target／一つの実装義務**に絞り、実Readerが受理するRoleとSource版を固定する。
+- Required Contract、入力・型・NULL・粒度・時点・Read Scope、Failure・Effectを確かめ、未確定な値は未確定としてOwnerへ返す。
+- I／G／D／Hを「適合性→実装の実在→費用」で比較し、生成に必要なTarget、Source、独立Expected、許可された非生成ファイル、Hook ID／版を明示する。
+- 生成AIが作るのは限定された**候補**であり、生成物への直書き・不可逆な外部作用・未受理意味の補完を認めない。合格を判定するのは元から独立したExpectedと実Builder／Consumerである。
+
+**負例**：同名Nodeが二つある、SourceのDefinition Roleが不明、Target Packageの書込み権限がない、HookのEffect／順序が未確定、既存Providerが複数で選択不能、独立Expectedが生成出力から逆算されている。これらは任意のTemplateで解消したことにせず、read-onlyまたは`unsupported`で止める。
+
+これは既存DRI-0/1の入口を具体化したものであり、新しいHard GateやRun Engineを追加しない。Stage1→Stage2のP0は継続する。
+
 ## 作業単位と引渡し
 
 | 段階 | 入力・既存の担当 | 最小の証拠と完了条件 | 結果を渡す先 |
