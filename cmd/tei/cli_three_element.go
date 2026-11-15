@@ -31,7 +31,7 @@ func writeThreeElementResponse(out io.Writer, response threeElementResponse, exi
 
 func runThreeElementCommand(args []string, out io.Writer) (int, error) {
 	if len(args) == 0 {
-		return failThreeElement("INVALID_ARGUMENT", "three-element requires a subcommand: validate|crud|cross-reference|diff|rea-intake|rea-compare", 2, out)
+		return failThreeElement("INVALID_ARGUMENT", "three-element requires a subcommand: validate|crud|cross-reference|diff|rea-intake|rea-candidates|rea-compare", 2, out)
 	}
 	sub := args[0]
 	switch sub {
@@ -46,9 +46,11 @@ func runThreeElementCommand(args []string, out io.Writer) (int, error) {
 	case "rea-intake":
 		// The legacy intake remains independent and fails closed on -before.
 		return runThreeElementReaIntake(args[1:], out)
+	case "rea-candidates":
+		// Decode the external attempt using the existing typed REA reader.
+		return runThreeElementREACandidates(args[1:], out)
 	case "rea-compare":
-		// Only canonical read-only CandidateSet/v0 JSON reaches the shared
-		// comparator. This is not an external evidence Reader or writer.
+		// Only typed read-only CandidateSet/v0 JSON reaches the comparator.
 		return runThreeElementREACompare(args[1:], out)
 	default:
 		return failThreeElement("INVALID_ARGUMENT", fmt.Sprintf("unknown three-element subcommand %q", sub), 2, out)

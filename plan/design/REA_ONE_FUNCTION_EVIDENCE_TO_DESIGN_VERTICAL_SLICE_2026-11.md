@@ -475,3 +475,13 @@ Graphの構造的全件性、Function Read/Write、Owner受理、Source Patchの
 
 **残る資格**：このPRが証明するのはGo CLI Dispatcher→既存Comparator→既存ReviewPacketへのread-only接合まで。外部REAツールをもう一度実行した証拠、Raw/UTF-8派生Byteの受領、実製品バイナリを別プロセス起動した独立Consumer、Wails JS受領、正式`*.tei.md`からFunction Read/Write、Source Patch/Save/ReRead、Owner受理、Pluginの自己構築、Studio Stage1→Stage2実Windows受領は引き続き別Expected。既存#1180/#2514/#4661/#2586/#4583/#2831を用い、新Host・Runner・意味正本・万能Readiness Gateを設けない。
 
+## 21. 既存REA Readerから型付き候補を生成し、二時点CLI比較につなぐ（2026-11-15）
+
+§20の`rea-compare`は型付き`CandidateSet/v0`の二件比較まで到達したが、実`tei` CLIから原本REAの受領Byteを既存`reacandidate.DecodeAttemptEvidence`→`GenerateCandidates`へ通し、そのまま比較対象として保存する**前段の入口**がなかった。これは旧`three-element rea-intake`の固定候補と混同せず、同じReader/Generatorを二度作らないことを優先する。
+
+**今回の製品入口**：`tei three-element rea-candidates -evidence analysis.json [-output candidates.json]`を通常CLIの同じ`three-element`振分けに追加する。raw Byte列を読んでSHA-256ダイジェストを残し、既存REA decoderとGeneratorのみでSource-backed CandidateSetとread-only ReviewPacketを生成する。標準出力にはCandidateSet、ReviewPacket、Summary、受領したraw Byteのdigestを包み、`-output`には後続の`rea-compare`が直接読める**型付きCandidateSet JSONのみ**を新規保存する。Sourceや既存出力を上書きしない。明示的な`-output`がなければファイルを書かない。
+
+受入試験では、同じREA形式の実入力から`rea-candidates`を経て`rea-compare`へ二度の時点を渡す。合成同端点・同labelの並行Relationを旧二辺／再採番新二辺として与え、Source-backedな候補Identityが保持され、比較では旧2・新2を`ambiguous-structural-match`とし、要約は4件、JSONでは根拠のない相手側Sourceが存在しないことを確認する。独立したRaw digestとCandidateSet Fingerprintを区別し、旧`rea-intake -before`のfail-closedを維持する。入力失敗・不正JSON・Source外部表明の欠落、既存出力ファイルへの上書き拒否も確認する。Go構造体テストに残っていた`ReviewStatus`/`Resolution`二重記述を正し、**テスト自身がコンパイルできない**状態を解消する。
+
+これはGo CLI振分けから既存Reader→既存Generator→JSON CandidateSet→既存Comparator→ReviewPacketを通す、製品コードの**読み取り専用・型付き一往復**である。外部Tool再実行や受領Byteの独立Capture、原Sourceの現在性・生成物の表示/編集資格、Owner意味受理、Wails JS第二Consumer、正式`*.tei.md` Source Apply/Save/ReRead、実Provider Function Read/Write、Plugin自己構築、Studio Stage1→Stage2実Windowsは検収していない。新Host／第二Reader／第二Comparator／意味正本／万能Gateは設けず、既存#1180/#2514/#4661/#2586/#4583/#2831へ分けて引き渡す。
+
