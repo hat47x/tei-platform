@@ -1446,3 +1446,19 @@ mainのRule生成Go CLIビルド回帰は、選択Markdown原文のコピーをG
 [自己記述設計§52](../design/ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md)の小さな縦断を追加する。組込みtei.authoring/v1の**印付き項目定義表**を使い、検査規則の識別子・種類・対象属性・任意の関係という**定義情報の形**を既存semantic.Dataへ読み込む。実Workspace.Load／型付きData／既存Validator／元byteのSource Indexを同じFixtureで照合し、同名のsemantic-validationや公開Capabilityを自動生成しないことを負例にする。追加Goはinternal/workspace/tei_md_self_description_test.go。これは新Grammarやメタ専用Runtimeを要しない自己記述D1と通常Data Readerの実消費であり、positive Ruleに対するM1契約解釈ではない。
 
 **特に禁止する誤解**：Data表のoptionalはforbiddenを意味しない。relationIdがrequired=noでも「positiveではRelationを指定できない」とは検査できない。最初のM1/M2は、既存のpositiveの固定独立Expectedに対して、未表現の義務を明示したうえで一条件の検査コードをTEIから実生成し、手書きGoの重複分岐を消すところへ進める。元MarkdownのGo embed（#5064以前の§51参照）も原文とGeneratorの意味適合、Disclosure、R3／Stage2を証明しない。CI合格は本テストのexact HEADで確認する。#2620/#988/#1018/#1121/#1180/#2514が担当し、通常CLI実ProviderとWindows Stage1→Stage2のP0を維持する。
+
+<!-- tei-product-self-description-abstract-path-witness-20261115 -->
+### 自己記述の実装義務を、実現方式をまたぐ抽象経路で検収する（2026年11月15日）
+
+[自己記述設計§53](../design/ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md)では、テストをGoメソッド名へ紐付けず、**正規Subject／実装義務／前提／要求経路／不変条件／独立Expected／実Attempt**の組で対象を特定する。以下は独立Expected #1180／#2514への実装引継ぎであり、新しいTest DSL・Oracle・Trace Storeは設けない。
+
+| 先に検証するもの | 実装Packetと合格の境界 | 既存Owner |
+| --- | --- | --- |
+| **AW-0：二方式の局所対照** | 既存quantity_positiveを直接Evaluatorと生成Go Binaryで同じ入力／Source／Read一回／NULL・未取得の条件で比較。既存テストの成功と、静的な経路の存在・実際の経由先・状態保存を別々に表示する | #2620／#1121／#1180／#2514 |
+| **AW-1：選択と実経路の不一致** | Gを選択したのにPが呼ばれた、別Builder byteを使った、同じ結果を返す別Operatorを呼んだ反例を作る。メソッド名変更だけで業務Subjectは変えないが、実Entry／Export契約の破損は検出する | #951／#2595／#2600／#4544 |
+| **AW-2：型付きPlugin Mappingの保存** | PR #5101のWhole／Field／明示Adapterを既存標準型とMappingからread-onlyで比較。必須欠落・二重Binding・秘密Fieldの漏洩・粒度／単位変換のLossを拒否。Node表示の折畳みはSource変更にしない | #1223／#2497／#951／#1180 |
+| **AW-3：TEI自身の検査義務へ再入** | 自己記述Data FixtureのGo実証PR #5097は独立検収後に利用し、Relation optionalと禁止を区別。契約から検査一義務を実現し、該当Go手書き分岐の削除と実Callを確認して初めてM2。正式R2-P元Source閉包／R3／Studio Stage2は別資格 | #2620／#988／#4544／#4495／#2831／#4583 |
+
+**Source所有の原則**：DSL正本、Studio／SHOのDesigner投影、Resource、Generator定義、Generated Source、Custom Hook、Build Artifactを役割で区別する。Visual StudioのDesigner・Resource分離は参考とするが、TEIの新しい拡張子をこの段階では採用しない。生成物を手編集して正本化せず、案件固有の処理は既存Hook／Plugin契約で接続する。
+
+**現在の資格**：PR #5073／#5087のP/G比較と#5101のMapping整理を基線にした設計・試験引継ぎのみ。PR #5097は確認時点で未マージであるため、自己記述Fixtureの実行PASSをmainの成立条件へ算入しない。AW-0〜3の新しい抽象経路テスト、自己記述M2処理置換、正式R2-P、実Provider、Studio Stage1→Stage2をこの文書で検収済みとは扱わない。
