@@ -47,8 +47,20 @@ func EvaluateWithOperators(rule semantic.Validation, source Source, operators Op
 	if source == nil {
 		return "", fmt.Errorf("no Source is specified to evaluate semantic validation %s", rule.ID)
 	}
+	decision, err := decide(rule, legacySource{source}, operators, true)
+	if err != nil {
+		return "", err
+	}
+	return decision.Result, nil
+}
+
+// selectOperatorImplementation finds the one implementation an operator rule
+// is decided with and checks it against the contract's examples. It reads no
+// real data.
+func selectOperatorImplementation(rule semantic.Validation, operators Operators) (OperatorImplementation, error) {
+	none := OperatorImplementation{}
 	if rule.Operator == "" {
-		return "", fmt.Errorf("semantic validation %s names no operator", rule.ID)
+		return none, fmt.Errorf("semantic validation %s names no operator", rule.ID)
 	}
 
 	var declared []semantic.Operator
@@ -59,9 +71,9 @@ func EvaluateWithOperators(rule semantic.Validation, source Source, operators Op
 	}
 	switch {
 	case len(declared) == 0:
-		return "", fmt.Errorf("semantic validation %s uses operator %s, which is not declared", rule.ID, rule.Operator)
+		return none, fmt.Errorf("semantic validation %s uses operator %s, which is not declared", rule.ID, rule.Operator)
 	case len(declared) > 1:
-		return "", fmt.Errorf("semantic validation %s uses operator %s, which is declared %d times", rule.ID, rule.Operator, len(declared))
+		return none, fmt.Errorf("semantic validation %s uses operator %s, which is declared %d times", rule.ID, rule.Operator, len(declared))
 	}
 	contract := declared[0]
 
@@ -73,44 +85,29 @@ func EvaluateWithOperators(rule semantic.Validation, source Source, operators Op
 	}
 	switch {
 	case len(implementations) == 0:
-		return "", fmt.Errorf("semantic validation %s uses operator %s, which has no selected implementation", rule.ID, rule.Operator)
+		return none, fmt.Errorf("semantic validation %s uses operator %s, which has no selected implementation", rule.ID, rule.Operator)
 	case len(implementations) > 1:
-		return "", fmt.Errorf("semantic validation %s uses operator %s, which has %d implementations; exactly one must be selected", rule.ID, rule.Operator, len(implementations))
+		return none, fmt.Errorf("semantic validation %s uses operator %s, which has %d implementations; exactly one must be selected", rule.ID, rule.Operator, len(implementations))
 	}
 	implementation := implementations[0]
 	if implementation.Input != contract.Input {
-		return "", fmt.Errorf("operator %s is declared to take %s, but its implementation takes %s", rule.Operator, contract.Input, implementation.Input)
+		return none, fmt.Errorf("operator %s is declared to take %s, but its implementation takes %s", rule.Operator, contract.Input, implementation.Input)
 	}
 
 	switch contract.Input {
 	case semantic.OperatorInputNumber:
 		if implementation.Number == nil {
-			return "", fmt.Errorf("the implementation of operator %s cannot take a number", rule.Operator)
+			return none, fmt.Errorf("the implementation of operator %s cannot take a number", rule.Operator)
 		}
 		// The contract's own examples come first. An implementation that
 		// answers one of them differently is not an implementation of this
 		// operator, so it is not asked about real data.
 		if err := checkOperatorCases(contract, implementation); err != nil {
-			return "", err
+			return none, err
 		}
-		value, err := source.Number(rule.Attribute)
-		if err != nil {
-			return "", fmt.Errorf("semantic validation %s cannot evaluate attribute %s: %w", rule.ID, rule.Attribute, err)
-		}
-		if value == nil {
-			// No value is not zero. The implementation is not asked.
-			return "", fmt.Errorf("semantic validation %s has no evaluable number for attribute %s", rule.ID, rule.Attribute)
-		}
-		satisfied, err := implementation.Number(new(big.Rat).Set(value))
-		if err != nil {
-			return "", fmt.Errorf("operator %s could not decide semantic validation %s: %w", rule.Operator, rule.ID, err)
-		}
-		if satisfied {
-			return ResultSatisfied, nil
-		}
-		return ResultNotSatisfied, nil
+		return implementation, nil
 	default:
-		return "", fmt.Errorf("operator %s declares input %q, which has no evaluator", rule.Operator, contract.Input)
+		return none, fmt.Errorf("operator %s declares input %q, which has no evaluator", rule.Operator, contract.Input)
 	}
 }
 

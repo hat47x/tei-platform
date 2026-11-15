@@ -18,29 +18,68 @@ type scenarioValidationSource struct {
 	relationReads map[string]bool
 }
 
-func (s *scenarioValidationSource) Number(attribute core.CanonicalID) (*big.Rat, error) {
+// The Fixture says for each input whether a value is there and, if not, why.
+// The source hands that state to the evaluator unchanged; it never turns a
+// missing value into zero or a partly read relation into a whole one.
+
+func (s *scenarioValidationSource) ReadNumber(attribute core.CanonicalID) (validationeval.NumberReading, error) {
 	id := string(attribute)
+	if state, stated := s.fixture.NumberStates[id]; stated {
+		if _, both := s.fixture.Numbers[id]; both {
+			return validationeval.NumberReading{}, fmt.Errorf("Validation numeric Attribute %s has both a value and the state %s", id, state)
+		}
+		s.numberReads[id] = true
+		switch state {
+		case scenariotest.ValidationStateNull:
+			return validationeval.NumberReading{State: validationeval.ValueNull}, nil
+		case scenariotest.ValidationStateNotFetched:
+			return validationeval.NumberReading{State: validationeval.ValueNotFetched}, nil
+		default:
+			return validationeval.NumberReading{}, fmt.Errorf("invalid state %q of Validation numeric Attribute %s", state, id)
+		}
+	}
 	value, ok := s.fixture.Numbers[id]
 	if !ok {
-		return nil, fmt.Errorf("missing Validation numeric Attribute %s", id)
+		return validationeval.NumberReading{}, fmt.Errorf("missing Validation numeric Attribute %s", id)
 	}
 	s.numberReads[id] = true
 	n, ok := new(big.Rat).SetString(value)
 	if !ok {
-		return nil, fmt.Errorf("invalid Validation numeric Attribute %s", id)
+		return validationeval.NumberReading{}, fmt.Errorf("invalid Validation numeric Attribute %s", id)
 	}
-	return n, nil
+	return validationeval.NumberReading{State: validationeval.ValuePresent, Value: n}, nil
 }
 
-func (s *scenarioValidationSource) RelationKeys(relation, attribute core.CanonicalID) ([]string, error) {
+func (s *scenarioValidationSource) ReadRelationKeys(relation, attribute core.CanonicalID) (validationeval.RelationReading, error) {
 	key := string(relation) + "\x00" + string(attribute)
 	for _, declaration := range s.fixture.RelationKeys {
-		if declaration.Relation == string(relation) && declaration.Attribute == string(attribute) {
-			s.relationReads[key] = true
-			return append([]string(nil), declaration.Keys...), nil
+		if declaration.Relation != string(relation) || declaration.Attribute != string(attribute) {
+			continue
 		}
+		s.relationReads[key] = true
+		reading := validationeval.RelationReading{Coverage: validationeval.CoverageComplete}
+		switch declaration.Coverage {
+		case "", scenariotest.ValidationCoverageComplete:
+		case scenariotest.ValidationCoveragePartial:
+			reading.Coverage = validationeval.CoveragePartial
+		default:
+			return validationeval.RelationReading{}, fmt.Errorf("invalid coverage %q of Validation Relation input %s/%s", declaration.Coverage, relation, attribute)
+		}
+		if declaration.NullKeys < 0 || declaration.NotFetchedKeys < 0 {
+			return validationeval.RelationReading{}, fmt.Errorf("negative key count of Validation Relation input %s/%s", relation, attribute)
+		}
+		for _, present := range declaration.Keys {
+			reading.Keys = append(reading.Keys, validationeval.KeyReading{State: validationeval.ValuePresent, Key: present})
+		}
+		for i := 0; i < declaration.NullKeys; i++ {
+			reading.Keys = append(reading.Keys, validationeval.KeyReading{State: validationeval.ValueNull})
+		}
+		for i := 0; i < declaration.NotFetchedKeys; i++ {
+			reading.Keys = append(reading.Keys, validationeval.KeyReading{State: validationeval.ValueNotFetched})
+		}
+		return reading, nil
 	}
-	return nil, fmt.Errorf("missing Validation Relation input %s/%s", relation, attribute)
+	return validationeval.RelationReading{}, fmt.Errorf("missing Validation Relation input %s/%s", relation, attribute)
 }
 
 // executeScenarioValidations never accepts a rule list from the Scenario.
@@ -50,6 +89,10 @@ func (s *scenarioValidationSource) RelationKeys(relation, attribute core.Canonic
 // the Workspace selected. The second result names, per rule, the
 // implementation that was actually called; a rule of a built-in kind has no
 // entry.
+//
+// A rule that cannot be decided from what the Fixture says was read stops the
+// step with TEI_VALIDATION_UNDECIDED and the reason. It is not reported as
+// satisfied or as not satisfied, and it cannot be expected as either.
 func executeScenarioValidations(resolver driver.Resolver, appID core.CanonicalID, step scenariotest.Step, fixture scenariotest.ValidationFixture, selections []validationeval.ImplementationSelection, available []validationeval.NamedImplementation) (map[string]string, map[string]string, error) {
 	results, called, err := evaluateScenarioValidations(resolver, appID, step, fixture, selections, available)
 	return results, called, err
@@ -65,12 +108,16 @@ func evaluateScenarioValidations(resolver driver.Resolver, appID core.CanonicalI
 	}
 	operators := validationeval.Operators{Declared: resolver.Operators(), Implementations: implementations}
 	called := map[string]string{}
-	results, err := runScenarioValidations(resolver, appID, step, fixture, func(rule semantic.Validation, source validationeval.Source) (validationeval.Result, error) {
+	results, err := runScenarioValidations(resolver, appID, step, fixture, func(rule semantic.Validation, source validationeval.StatefulSource) (validationeval.Result, error) {
 		before := len(calls)
-		got, err := validationeval.EvaluateWithOperators(rule, source, operators)
+		decision, err := validationeval.Decide(rule, source, operators)
 		if err != nil {
 			return "", err
 		}
+		if decision.Undecided != nil {
+			return "", fmt.Errorf("TEI_VALIDATION_UNDECIDED: Canonical Validation %s is neither satisfied nor not-satisfied: %s", rule.ID, decision.Undecided)
+		}
+		got := decision.Result
 		if rule.Kind == semantic.ValidationOperator {
 			// The implementation is asked about the contract's examples first
 			// and about the fixture value last, so one rule makes one or more
@@ -95,7 +142,7 @@ func evaluateScenarioValidations(resolver driver.Resolver, appID core.CanonicalI
 	return results, called, nil
 }
 
-func runScenarioValidations(resolver driver.Resolver, appID core.CanonicalID, step scenariotest.Step, fixture scenariotest.ValidationFixture, evaluate func(semantic.Validation, validationeval.Source) (validationeval.Result, error)) (map[string]string, error) {
+func runScenarioValidations(resolver driver.Resolver, appID core.CanonicalID, step scenariotest.Step, fixture scenariotest.ValidationFixture, evaluate func(semantic.Validation, validationeval.StatefulSource) (validationeval.Result, error)) (map[string]string, error) {
 	rules, err := resolver.ResolveApplicationValidations(appID)
 	if err != nil {
 		return nil, err
@@ -119,7 +166,7 @@ func runScenarioValidations(resolver driver.Resolver, appID core.CanonicalID, st
 		}
 		results[string(rule.ID)] = string(got)
 	}
-	if len(source.numberReads) != len(fixture.Numbers) || len(source.relationReads) != len(fixture.RelationKeys) {
+	if len(source.numberReads) != len(fixture.Numbers)+len(fixture.NumberStates) || len(source.relationReads) != len(fixture.RelationKeys) {
 		return nil, fmt.Errorf("Validation Fixture has unused numeric or relation inputs")
 	}
 	return results, nil

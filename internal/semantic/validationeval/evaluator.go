@@ -35,36 +35,9 @@ func Evaluate(rule semantic.Validation, source Source) (Result, error) {
 	if source == nil {
 		return "", fmt.Errorf("no Source is specified to evaluate semantic validation %s", rule.ID)
 	}
-
-	switch rule.Kind {
-	case semantic.ValidationPositive:
-		value, err := source.Number(rule.Attribute)
-		if err != nil {
-			return "", fmt.Errorf("semantic validation %s cannot evaluate attribute %s: %w", rule.ID, rule.Attribute, err)
-		}
-		if value == nil {
-			return "", fmt.Errorf("semantic validation %s has no evaluable number for attribute %s", rule.ID, rule.Attribute)
-		}
-		if value.Sign() > 0 {
-			return ResultSatisfied, nil
-		}
-		return ResultNotSatisfied, nil
-
-	case semantic.ValidationRelationUnique:
-		keys, err := source.RelationKeys(rule.Relation, rule.Attribute)
-		if err != nil {
-			return "", fmt.Errorf("semantic validation %s cannot evaluate relation %s / attribute %s: %w", rule.ID, rule.Relation, rule.Attribute, err)
-		}
-		seen := make(map[string]struct{}, len(keys))
-		for _, key := range keys {
-			if _, exists := seen[key]; exists {
-				return ResultNotSatisfied, nil
-			}
-			seen[key] = struct{}{}
-		}
-		return ResultSatisfied, nil
-
-	default:
-		return "", fmt.Errorf("kind %q of semantic validation %s has no corresponding Evaluator", rule.ID, rule.Kind)
+	decision, err := decide(rule, legacySource{source}, Operators{}, false)
+	if err != nil {
+		return "", err
 	}
+	return decision.Result, nil
 }
