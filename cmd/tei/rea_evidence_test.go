@@ -468,101 +468,61 @@ func mustReadText(t *testing.T, path string) string {
 	return string(raw)
 }
 
-// TestReaEvidenceProjectsTheSelectedCandidates: the CLI entry is the read-only
-// consumer the T1-A exit asks for — it receives one observation and one directed
-// relation from the same attempt, losslessly, and says what it does not grant.
-func TestReaEvidenceProjectsTheSelectedCandidates(t *testing.T) {
+// The saved 6.8.0 analysis is genuine receipt evidence, but its captured
+// normalized_result is an empty object. It cannot establish an observed graph
+// or justify selecting a specific Observation/Relation. Keep that distinction
+// visible in both product CLI routes instead of requiring imaginary fields on
+// reaEvidenceOuterArgs/reaEvidenceResult.
+func TestReaEvidenceCapturedReceiptDoesNotInventCandidates(t *testing.T) {
 	evidence := filepath.Join("..", "..", "internal", "externalanalysis", "testdata", "rea-6.8.0", "analysis.json")
-
-	code, report := runReaEvidence(t, reaEvidenceOuterArgs{
-		evidencePath:    evidence,
-		providerVersion: "6.8.0",
-		observationID:   "jsrg_node_237478f2a27c9614a522cbfc7ab60fa96943a458d164945d25af634f1240b652",
-		relationID:      "jsrg_relation_0f6757a241c56fd84ecaec91f538d8297d222eb5625e4cdbcb2de7603f330718",
-	})
-	if code != 0 {
-		t.Fatalf("code=%d error=%+v", code, report.Error)
-	}
-	if report.Mode != "candidate" {
-		t.Fatalf("mode=%s", report.Mode)
-	}
-	raw, err := json.Marshal(report.Result)
+	raw, err := os.ReadFile(evidence)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var result reaEvidenceResult
-	if err := json.Unmarshal(raw, &result); err != nil {
+	code, report := runReaEvidence(t, reaEvidenceOuterArgs{
+		evidencePath:    evidence,
+		providerVersion: "6.8.0",
+	})
+	if code != 0 || report.Mode != "evidence" {
+		t.Fatalf("receipt CLI: exit=%d mode=%s error=%+v", code, report.Mode, report.Error)
+	}
+	receipt := receiptOf(t, report)
+	if receipt.Evidence == nil ||
+		receipt.Evidence.ID != "ev_a88c70bcd066b2f04fdf97cb349369f0779b9c68cc4ac6c0e5f38f3539477a93" ||
+		receipt.Raw.Bytes != len(raw) || receipt.Raw.Fingerprint == "" {
+		t.Fatalf("captured receipt lost its byte and identity evidence: %+v", receipt)
+	}
+	if receipt.Promotion != (externalanalysis.Promotion{}) {
+		t.Fatalf("receipt promoted unsupported meaning: %+v", receipt.Promotion)
+	}
+	reportRaw, err := json.Marshal(report.Result)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Candidates == nil {
-		t.Fatal("the candidate projection is missing")
+	var reportWire map[string]json.RawMessage
+	if err := json.Unmarshal(reportRaw, &reportWire); err != nil {
+		t.Fatal(err)
 	}
-	view := result.Candidates
-	if view.Attempt.EvidenceID != "ev_a88c70bcd066b2f04fdf97cb349369f0779b9c68cc4ac6c0e5f38f3539477a93" {
-		t.Fatalf("attempt evidence id=%s", view.Attempt.EvidenceID)
-	}
-	if view.Attempt.ReceivedDigest == "" {
-		t.Fatal("the attempt must name the digest of the bytes that were read")
-	}
-	if view.Observation == nil || view.Relation == nil {
-		t.Fatal("both candidates must be projected")
-	}
-	if view.Relation.Derived {
-		t.Fatal("the producer states its own relation identity; a derived handle must not replace it")
-	}
-	if view.Coverage == nil || len(view.Unknowns) == 0 {
-		t.Fatalf("coverage=%+v unknowns=%d: the producer's unknowns must survive the projection", view.Coverage, len(view.Unknowns))
-	}
-	for _, want := range []string{
-		"external-candidate-is-not-accepted-meaning",
-		"external-identity-is-not-a-tei-semantic-subject",
-	} {
-		if !containsLimit(view.AuthorityLimits, want) {
-			t.Fatalf("authorityLimits=%v want %s", view.AuthorityLimits, want)
-		}
+	if _, exists := reportWire["candidates"]; exists {
+		t.Fatalf("receipt-only CLI invented a candidate projection: %s", reportRaw)
 	}
 
-	// A selection the Evidence does not carry is exit 1 with a named failure,
-	// not a silent empty projection.
-	code, report = runReaEvidence(t, reaEvidenceOuterArgs{
-		evidencePath:    evidence,
-		providerVersion: "6.8.0",
-		observationID:   "jsrg_node_absent",
-		relationID:      "jsrg_relation_absent",
-	})
-	if code != 1 || report.Error == nil {
-		t.Fatalf("code=%d error=%+v", code, report.Error)
+	// A successful evidence receipt is not proof that the selected Graph was
+	// included in that delivery. This saved file has normalized_result: {}.
+	// Candidate generation must fail closed without creating an output file.
+	output := filepath.Join(t.TempDir(), "must-not-write-candidates.json")
+	code, candidateReply := runREACandidatesCLI(t, evidence, output)
+	if code != 2 || candidateReply.OK || candidateReply.Result != nil ||
+		candidateReply.Error == nil || candidateReply.Error.Code != "GRAPH_MISSING" {
+		t.Fatalf("graph-free capture accepted as a CandidateSet: exit=%d reply=%+v", code, candidateReply)
 	}
-	if !strings.Contains(report.Error.Message, "jsrg_node_absent") {
-		t.Fatalf("message=%s: the failure must name what was not found", report.Error.Message)
+	if _, err := os.Stat(output); !os.IsNotExist(err) {
+		t.Fatalf("missing graph created candidate output: %v", err)
 	}
-
-	// The projection needs a declared version, and it needs both selections.
-	code, report = runReaEvidence(t, reaEvidenceOuterArgs{
-		evidencePath:  evidence,
-		observationID: "jsrg_node_absent",
-		relationID:    "jsrg_relation_absent",
-	})
-	if code != 2 || report.Error == nil || report.Error.Code != "INVALID_ARGUMENT" {
-		t.Fatalf("code=%d error=%+v", code, report.Error)
+	after, err := os.ReadFile(evidence)
+	if err != nil || !bytes.Equal(raw, after) {
+		t.Fatal("captured source bytes were changed during read-only intake")
 	}
-	code, report = runReaEvidence(t, reaEvidenceOuterArgs{
-		evidencePath:    evidence,
-		providerVersion: "6.8.0",
-		observationID:   "jsrg_node_absent",
-	})
-	if code != 2 || report.Error == nil || report.Error.Code != "INVALID_ARGUMENT" {
-		t.Fatalf("code=%d error=%+v", code, report.Error)
-	}
-}
-
-func containsLimit(limits []string, want string) bool {
-	for _, limit := range limits {
-		if limit == want {
-			return true
-		}
-	}
-	return false
 }
 
 func mustJSONText(t *testing.T, value any) string {
