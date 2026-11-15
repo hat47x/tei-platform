@@ -1703,3 +1703,42 @@ SourceのRaw byte、候補の構造指紋、採用Meaning、生成Sourceの実Bu
 Studio/SHOは、同じSource位置・時点・判断理由・欠測の区別を表示する**読取側のProjection**として始める。安全な編集はPreview→Resolve→Admit→Commit→独立再Readを既存UI/操作Ownerへ返し、候補Graphからの不可逆な逆編集を禁止する。Sourceの説明文・構造指紋・生成Go・実Read・Runtime Grant・Effect Receiptは別の証拠で扱う。
 
 **計画上の停止線**：この§34はREA・組織・案件の既存設計を横断する採用前の検収条件である。現時点で同一実DB Worldからの統合実Read、REA AgentとPersonのOwner Link受理、Case C1の正式Rule、Product `*.tei.md` Reader、生成Go、実Host Grant、Studio E2Eを実証・受理したわけではない。全体P0の#2586・#2831は維持する。
+
+<!-- org-c1-person-record-version-20261115 -->
+## 35. 人物との関係と履歴版を先に確定し、組織の実Readを検証可能にする（2026-11-15）
+
+### 35.1 「二時点Queryが書ける」と「同じ所属の改訂版を保存できる」は別の達成
+
+組織の合成例 `org-synthetic-r7` は、同じ有効時点について認識時点を変えるとMembership数・FTEが変わること、P2が複数の所属経路を持つことを独立Expectedとして示す。しかし、**保存する行の同一性と版の同一性はまだ製品で解決されていない**。既存の[履歴GAP特性試験Draft #4633](https://github.com/hat47x/tei-platform/pull/4633)は、現在のMembershipがPersonへの正式Linkを欠くこと、物理Persistenceの単独 `membership_id` 主キーでは同一所属の訂正前後を共存させられないこと、現行Queryの結果だけでdistinct Personを確定できないことを検査する。これは問題の**検出**であり、解決済みとの主張ではない。
+
+[二時点Query・物理Mapping修正Draft #4567](https://github.com/hat47x/tei-platform/pull/4567)は、物理表 `public.org_memberships`、有効時点・認識時点の半開区間、`valid_to` / `known_to` の対応を試す。使い捨てPostgreSQLでのopt-in試験も用意しているが、Draftの局所的なSQL実行が通っても、同じMembership occurrenceの複数認識版が保存できたことや、Personと結び付いた人数・FTEの計算の正しさは保証しない。#4566と#4567を独立した二つの正本として採用しない。
+
+### 35.2 三つの意味判断を先にOwnerへ返す
+
+| 判断すること | 最小の選択肢・確認点 | 選択前に禁止する推論 |
+| --- | --- | --- |
+| **MembershipとPersonの関係** | Membership→Personの直接関係、またはEmployment/Affiliationを介した関係。複合キー・有効期間・多重性・兼務の扱いを#2386/#1126で受理する | Membershipを数えただけで実人数とすること、Person列が存在すると仮定すること |
+| **Membership occurrenceと訂正版の識別** | 業務上のMembership IDと行・版のIDを分けるか、複合キー／履歴表などを用いるか。訂正・削除・再入と時間区間の重なりを明記する | `membership_id`単独PKのまま同じIDの旧新2行を共存できると宣言すること |
+| **Queryが必要とするReadの閉包** | 必要なPerson Link、関連する全Membership版、validAt/knownAt、Tenant/Scope、非出力依存・RLS・Limit・Snapshotを一つのAttemptで示す | Cursor EOFや単独SQLの0行から「所属なし」「承認者なし」と断定すること |
+
+採用する具体的な物理方式は現段階で固定しない。単純な一時点所属だけを必要とするアプリに、全履歴Schemaや新Temporal Engineを一律に強制しない。正式採用はMeaning Ownerが行い、AIの提案・Graphの可視化・テスト用Fixtureを採否の代わりにしない。
+
+### 35.3 次の一巡で比較する独立Expected
+
+| 検証 | 必要な証拠 | 未達のときの扱い |
+| --- | --- | --- |
+| **MVR-01：人物同定** | 実Workspaceの受理済みPerson LinkとSource位置、複数MembershipでもPersonを重複計数しない対照 | 行数のみはMembership数。実人数は判定保留 |
+| **MVR-02：旧新版の共存** | 同一Membership occurrenceの訂正前／後の行を隔離DBに保存し、両版を独立に再読込できる | SQLの時点条件のみの成功は履歴保存PASSにしない |
+| **MVR-03：二時点結果** | 同一validAtでknownAtを変えた実Provider結果を、r7独立ExpectedのMembership/FTE/Personへ対照 | 合成Go計算や別Snapshotの結果を流用しない |
+| **MVR-04：物理・業務Keyの衝突** | 同一業務ID・別履歴版、複数所属・複数Person、NULL、重複行を一因子ごとに試す | 未受理のJoinを自動補完しない |
+| **MVR-05：業務判断への接続** | 上記と§33 RoleAssignment/ResponsibilityのRead Cohortを同じ採用World/時点に束縛 | 合成r7とCase C1の別Sourceを便宜上Joinしない |
+
+MVRは既存#1180/#2514および#4490のBEHに渡す**試験観点**であり、新しいExpected Storeや永続Result Schemaではない。
+
+### 35.4 実装順とブランチ統合の停止線
+
+最初に#2386/#1126で関係と版識別を受理し、#4633のGAP検査を「存在しないことを確認する試験」から「採用された関係・保存・再読取が成立する試験」へ置き換える。続いて#4567のQuery/Mappingと使い捨てDB実行を現在のmain上で再検証し、実Provider→Function Context→独立Consumer（#2586/#4495）と二Relationの同一Read Cohort（#4490）へ接続する。型付きRuleと実Go生成・実Builderの接続は正式Reader Owner（#2621/#988/#1121/#4544）へ渡す。
+
+[組織候補Go後継PR #4796](https://github.com/hat47x/tei-platform/pull/4796)は、合成二Contextの正のPath・partial・NULLを調べる試験として別扱いにする。対象HEADの全体健全性は整形不一致と旧main上の文書検査で失敗しており、**現行mainへの前方移植、整形修正、exact HEADの再検証が済むまでコードをマージしない**。#4633/#4567についてもDraftを事実上のmain実装と扱わない。
+
+**優先順位と限界**：通常`tei` CLIの初回実Read #2586とStudio Stage1→Stage2 #2831は独立P0として維持する。§35は未解決の意味・物理保存・受入経路を収束させる計画であり、今ここで新しいDB版保存、実組織Provider E2E、正式業務Rule、Host Grant、Owner Acceptanceを実装・受理したものではない。
