@@ -180,3 +180,33 @@ Node-RED／Enebular型のプログラミング、ESPStudioのようなNode UI、
 **独立反証候補（#1180／#2514）**：NG-01 同じNode名に別Occurrence ID、NG-02 同じ端点に多重Edge、NG-03 Portの型不一致、NG-04 部分取得を正常な空集合と誤認、NG-05 Graph layoutだけ変更して業務Goが変化、NG-06 Rule変更でも古い生成Goを実行、NG-07 API Publish権限と実外部送信許可を混同、NG-08 Effect不明なのに再試行して二重送信、をそれぞれ独立に拒否・失効・隔離する。
 
 **資格の区別**：現時点でR1の実装PRは存在するが、N0〜N4、HTTP API実公開、クラウドConnectorの製品受入を実装済みとは扱わない。R2／R3が正式な実消費になっていない段階でNodeの可視化だけを「高度な実行機構」として宣言しない。
+
+## 14. R2で実Builderの生成Go消費を閉じる（2026年11月15日）
+
+### 14.1 R1の実装を、R2の完了と誤認しない
+
+現行mainの `internal/semantic/validationgen/positive.go` は、選択済みの `semantic.Validation` と解決済み `std.decimal` を受け取り、`validationeval.Source.Number` の呼出しと `value.Sign() > 0` の判断を含むGo Sourceを生成する。`positive_product_test.go` は、そのGoをリポジトリ配下の一時的なGo packageとして `go run .` でコンパイル・実行し、正値・ゼロ・負値・NULL・欠損と未対応Rule／型の拒否を検査する。これは**実Go判断生成の証拠**であり、既存Builderが同じbyteを入力として受領し、配布するArtifactに含めた証拠ではない。
+
+生成Goは現状、`tei/internal/semantic/validationeval` に依存する。Goの `internal` import境界を越える別モジュール／外部Hostへ、生成ファイルをそのまま移しても一般には利用できない。**第一経路はTEI Goモジュール内での静的合成**に固定し、外部Host向けは意味契約に適合する公開API／Target-native Adapterを別に生成・検証する。Go `internal` の公開化や第二RuntimeをR2の前提として進めない。
+
+### 14.2 Builderへ引き渡すのはファイル名ではなく、同一Attemptの実入力である
+
+| 確認箇所 | 初回一件で要求する証拠 | 停止・失格の条件 |
+| --- | --- | --- |
+| Ruleの選択 | `internal/workspace/testdata/tei-md-rule/semantic/sales/order-line-rules.tei.md` の `sales.order_line.quantity_positive` と `order.tei` の型を同一 `Workspace.Load` から取得。Source Indexのbyte位置も照合 | Parserを直接呼んだ候補、別版のRule、同名の未管理Draftを正式入力にしない |
+| 意味とGenerator | `semantic.Validation`、解決済み `std.decimal`、実際に選択した `GeneratePositive` 相当の実装と版、Target用package名・Toolchainを区別 | Owner意味受理の不在をBuilderが補完しない。未対応kind／型／packageは生成前拒否 |
+| 生成byteとBuilder入力 | R1が生成したGo byteのDigestと、既存Build Intent／Builderが**実際に読み込んだbyte**のDigestを比較。生成SourceはBuilder所有の選択済み入力集合へ接続 | 同じpathを申告していてもbyte相違、別Attempt、古いGenerator、別Toolchainなら失格。Builderの自己申告だけで一致としない |
+| Artifactと収録 | Builderが生成した実Go Binary／ArtifactSet Memberを取得し、実コンパイル対象となったSourceの閉包とResultを検査 | 生成元Goがディスクに存在するだけ、参照GoテストのPASS、正しい名前の空Artifactを収録成功としない |
+| Providerへの引渡し | 選択Contract／Lockと実Artifactに含まれるProvider実装を確認し、共通Application APIのtyped Entryへ接続する | Build-only Generatorを無条件にRuntimeへ混入しない。選択B・収録A、同値結果での不一致は失格 |
+
+この表の各項目は既存#943／#2595のBuild入力閉包、#951／#1016のPlugin Selection／Lock、#1121／#4544のTarget Lowering、#1163のEvidenceと#1180／#2514の独立Expectedを**参照するだけの引渡し票**である。新しいBuilder API、Generator Registry、Artifact正本、万能PASS状態は提案しない。実Builderが生成byteを受け取れないと判明した場合は、その既存入口の最小AdapterをOwnerが定め、暫定のReference Runnerで合格にしない。
+
+### 14.3 R2→R3の一件の反証と実装単位
+
+最初のR2差分では `quantity_positive` だけを、TEI内蔵Reader→解決済み型→実Go生成→現行Builderの入力→Goコンパイルまで接続する。次のR3差分で通常 `tei` CLIの型付きOperationから**現在選択されたProvider**を実呼出しする。CLIの専用テスト入口や、同じ結果を返す手書きGoに委譲して成功とはしない。
+
+独立Expectedに渡す負例は、**R2-01** ReaderのRule／型改版後も古いGoをBuild、**R2-02** Go byteは更新したがBuilderが旧Sourceを実読取、**R2-03** 選択GeneratorまたはToolchainだけ変更し以前のArtifactを無検証再利用、**R2-04** `internal` importを利用できないTargetへ同じGoを配布、**R3-01** 選択Provider Bと実Call Aの食い違い、**R3-02** Providerのactual call無しでCLIの固定Expectedだけ一致、の六つとする。既存シナリオに重複するものは新IDの別試験を作らず、差分の観測項目だけ足す。
+
+Source変更A→B→A、生成器版変更、Build時だけの依存、入力取得の不完全性、実行時の現在Grant・Effect／Receipt、Studio Stage1→Stage2 Windowsは別の資格を維持する。**R2のDoneは実Builderによるbyte受領と実Artifactの成立まで、R3のDoneは通常製品入口での選択Provider実Call・独立Consumerの受領まで**と定める。R2の完了をStudioセルフビルドの代わりにしない。
+
+本節は現在mainで確認できたR1の実装とGoの境界をもとにした計画であり、R2／R3を新たに実装・検証したという報告ではない。
