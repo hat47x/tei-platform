@@ -2580,7 +2580,7 @@ Graph／Ruleの候補構造指紋を生成Binaryから照会する[PR #4758](htt
 | **Operation／Effect** | Input／Output、pure／外部Effect、認可主体と用途・Tenant Scope | 実Provider／Hostの現在Grant、呼出し、部分効果、Receiptを別に検収する。宣言された操作を自動実行しない |
 | **Trait／Plugin能力** | 契約が要求する機能、版・依存・選択条件 | Traitの宣言だけで実装済みとはしない。実装義務の充足、生成物のBuilder実消費、通常CLI・別Consumerの実Callを確認する |
 
-**自己記述の責務境界**：[#2620](https://github.com/hat47x/tei-platform/issues/2620)と[自己記述設計§45](design/ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md)のD1記述可能→D2解釈可能→D3拡張可能→D4生成可能→D5再構築可能、および有限Seed B0〜B4を基準とする。Language／Role／Operator／Traitを`*.tei.md`に書けても、実Parser／Resolverが読んだことや生成したことにはならない。**選択・読取・解釈・採用・生成・利用・再構築**の実消費連鎖を満たす範囲だけ合格とし、手書きGoへのDelegateや使われないGenerator出力を自己実装に数えない。Studio Stage1→Stage2の実Windows再入はPlugin単体成功と独立に確認する（#2831/#4583）。
+**自己記述の責務境界**：[#2620](https://github.com/hat47x/tei-platform/issues/2620)と[自己記述設計§45・§48](design/ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md)のD1記述可能→D2解釈可能→D3拡張可能→D4生成可能→D5再構築可能、および有限Seed B0〜B4を基準とする。Language／Role／Operator／Traitを`*.tei.md`に書けても、実Parser／Resolverが読んだことや生成したことにはならない。**選択・読取・解釈・採用・生成・利用・再構築**の実消費連鎖を満たす範囲だけ合格とし、手書きGoへのDelegateや使われないGenerator出力を自己実装に数えない。Studio Stage1→Stage2の実Windows再入はPlugin単体成功と独立に確認する（#2831/#4583）。 **§48のM0〜M4**は、既存Ruleの説明→契約による検査→手書き意味分岐の実置換→製品Builder/Consumer実使用→次段TEIの再構築を別々に検収する。最初の対象を`positive`一規則のRequired Shape／診断／Lowering適合条件に限定し、独立Expectedと実消費を満たさないDescriptor件数の増加を進捗として数えない。
 
 ### Data Contextと時点を、構文に埋め込まないまま明示的に束縛する
 
