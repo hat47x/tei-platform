@@ -270,6 +270,57 @@ func TestSelectedRuleGoThroughRealCLISelfBuild(t *testing.T) {
 		t.Fatalf("restored generated Go does not match the selected Rule: %v", err)
 	}
 
+
+	// The original Markdown is also a real member of the selected Go package.
+	// A prose-only edit *after* the BuildPlan was fixed must invalidate that
+	// attempt even though generated.go and the pure Rule decision are unchanged.
+	// This is separate from the earlier changed-Source re-Resolve check: it
+	// exercises the normal self-build CLI and the original stale plan.json.
+	if err := os.WriteFile(packagedSource, modified, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	staleSourceArtifact := filepath.Join(root, "late-changed-source-command")
+	staleSourceCmd := exec.Command(cli,
+		"self-build",
+		"-workspace", workspace,
+		"-intent", "tei.command.tei",
+		"-intent-file", intentPath,
+		"-build-catalog", catalogPath,
+		"-build-catalog-digest", catalogDigest,
+		"-build-source-root", repoRoot,
+		"-child", builder,
+		"-child-arg", string(args),
+		"-state", filepath.Join(root, "late-changed-source-state"),
+		"-output", staleSourceArtifact,
+	)
+	var staleSourceStdout, staleSourceStderr bytes.Buffer
+	staleSourceCmd.Stdout, staleSourceCmd.Stderr = &staleSourceStdout, &staleSourceStderr
+	staleSourceErr := staleSourceCmd.Run()
+	var staleSourceReport l2bGoBuildResult
+	if err := json.Unmarshal(staleSourceStdout.Bytes(), &staleSourceReport); err != nil {
+		t.Fatalf("stale-original CLI did not return JSON: run=%v decode=%v\n%s\n%s",
+			staleSourceErr, err, staleSourceStdout.String(), staleSourceStderr.String())
+	}
+	if staleSourceErr == nil || staleSourceReport.OK ||
+		(staleSourceReport.L2B != nil && staleSourceReport.L2B.Claimed) {
+		t.Fatalf("post-plan change in original Markdown was accepted: run=%v report=%+v\nstderr=%s",
+			staleSourceErr, staleSourceReport, staleSourceStderr.String())
+	}
+	if _, err := os.Stat(staleSourceArtifact); !os.IsNotExist(err) {
+		t.Fatalf("failed stale-original attempt left a publishable artifact: %v", err)
+	}
+	if err := os.WriteFile(packagedSource, original, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	restored, err := buildintent.Resolve(intent, buildintent.NewBuildContext(repoRoot, catalog))
+	if err != nil {
+		t.Fatalf("restored original Source does not resolve: %v", err)
+	}
+	if restored.PlanFingerprint != receipt.PlanFingerprint ||
+		restored.SourceClosureFingerprint != receipt.SourceClosureFingerprint {
+		t.Fatal("restored original Source did not restore the descriptive BuildPlan")
+	}
+
 	artifact := filepath.Join(root, "rule-command")
 	cmd := exec.Command(cli,
 		"self-build",

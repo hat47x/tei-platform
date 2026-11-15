@@ -124,6 +124,14 @@ G／P／Dの分類は図表実現の解釈・生成・混合・Hookの配置方�
 
 次の受入は正式Build Intent→Builder実入力→Artifact→独立Consumerの同一Attemptと、通常CLIの公開Entry→実Provider、Studio Stage1→Stage2の実Windows再構築である。新しいInterpreter／Graph Runner／第二意味正本やP0 Hard Gateを増やさない。
 
+### P1：BuildPlan確定後のMarkdown改版を実self-buildで拒否する（2026年11月15日）
+
+[宣言的構文の合成契約§30](../design/DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md)の実装として、既存の選択済みRule→生成Go→通常tei self-buildの縦断回帰に、**BuildPlan解決後に同梱元Markdownの説明だけを変更する**一因子の負例を追加する。生成Goのbyteは固定し、旧plan.json／Intentを用いた実CLIがビルドを拒否し、L2-bを主張せず、成果物も公開しないことを検証する。元Markdownを戻したらSource Closure／Plan Fingerprintの記述的な一致を再確認し、既存の正常な実Builder・実Binary確認へ進む。
+
+この追加は、#5109の「Plan確定後にgenerated.goだけを変更する」試験とは独立の検証である。Sourceだけ変わる場合と生成Goだけ変わる場合の**二つの異なる失効原因**を区別する。生成Gと既存Evaluator Pが同じ結果を返しても、旧Planで現在のBuild入力を消費してよいとはしない。型付きPluginのWhole／Field／Adapter配線、実装選択のPin、外部開示・現在Grantも別途確認する。
+
+**今回のGo試験の合否はexact PR HEADのCIで判定**する。正式R2-Pに必要な元Locator／Reader／Generator版の完全なAttempt閉包、R3の通常CLI公開Entry→実Provider、Studio Stage1→Stage2実Windowsは未解決の独立P0を維持する。DC-46〜49のうち今回追加する実回帰はDC-46のみ。DC-48／49は#1180／#2514へ渡し、新Builder／Runtime／Evidence Storeを作らない。
+
 ### P1で接続する業務判断・設計入力・数式（2026年11月15日）
 
 これらは新しい製品P0の前提ではなく、既存の標準Data/Rule/Expression・Function Data Context・表現型を実案件に近づける**受入作業**とする。詳細な正負例とOwner境界は[横断統合受入境界§14〜17](../design/CROSS_CUTTING_ACCEPTANCE_BOUNDARIES_2026-11-12.md)を参照。
