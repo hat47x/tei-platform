@@ -807,7 +807,7 @@ Wails公式Updaterの`app.Updater`は、設定した公開鍵による署名検�
 
 | 製品配布 | Bootstrap／更新の責務 | 優先順 |
 | --- | --- | --- |
-| **D1 現行**：Wails＋Go同一Process／CLI Direct | 今のビルド・起動・診断を実証基線とし、生成UIと実Imageの一致を確認 | P0の比較基線 |
+| **A 現行の実行基線**：Wails＋Go同一Process／CLI Direct | 今のビルド・起動・診断を実証基線とし、生成UIと実Imageの一致を確認。配布形態D1（Remote接続Client）とは別軸 | P0の比較基線 |
 | **D2 静的Release**：標準Pluginと既定資産をGo製品Imageに内包 | Release ClosureでTarget/Artifact/Lock/設定Schemaと実Imageを照合。署名付き単一Imageの更新→実起動→Read一往復を別資格にする | P1第一候補 |
 | **D3 別Server**：複数実Image／Process | Installer/DeploymentがBundle内の複数Image、切替、Handshake、Drain、Rollbackの責任を持つ。Updaterの単一swapだけを二Processの原子的更新と呼ばない | 必要性の実測後 |
 
@@ -955,3 +955,79 @@ R2の受入で必要なのは、独立Expectedと生成Goの型付き判断、Ge
 **W0は並行P0のまま**、[#4876](https://github.com/hat47x/tei-platform/pull/4876)の二つのボタンIDをまず参照HTMLの`main.ts`と揃え、既存Nodeテストを通し、**当該HEADの正規dist→四配布Asset→Go embed→実Windows WebView2受領**を順に閉じる。その次が非Plugin Studio Stage1自身によるStage2再Buildである。Reader/Ruleの進展やUIの局所成功を、Stage2実再入のPASSへ合算しない。
 
 **既存Owner・合格条件を再利用する。** Reader/Language #2621/#1018、Generator #1121/#4544/#2595、Plugin #951/#1251、通常CLI/Provider #4495、Workbench #1824、Stage2 #2831/#4583、独立Expected #1180/#2514。Plugin公開Doc一件の実Read、S-OPEN、Wails安定版／Updater、外部Language Plugin、Graph多重辺Readerは別スライスとし、新Host／Registry／Rule Runtime／Evidence Store／Hard Gateを追加しない。本節は設計・実装引渡しであり、追加のGo／CLI／Node／Windows製品E2E・Owner意味受理を実施したという主張ではない。
+
+## 30. 起動契機・実行資格・表示・配布を一つの操作で照合する（2026-11-15、横断検討の実装引渡し）
+
+### 30.1 「起動」をHostから独立した業務操作の入口として捉える
+
+CLI、Wails Desktop、Browser、定時処理、外部イベント、AI Harnessは、同じApplication Operationを呼び得る。ただし共通なのは**何を誰の権限で試み、何を結果として確認するか**であり、実行ファイルの起動、待受、配送、画面、ジョブ管理はそれぞれのHostが担う。起動の契機を増やしてもTEI独自の常駐Runtime Hostを生成アプリへ要求しない（ADR-0043／ADR-0048）。
+
+| 起動契機の例 | Hostが引き受けるもの | 共通Operationへ渡す前に確定するもの | 転用してはいけない資格 |
+| --- | --- | --- | --- |
+| 通常`tei` CLI | argv、作業領域、入出力とexit、必要時のプロセス起動 | 明示されたWorkspace、正規化したSubject、対応Operation Contract | 引数のactor／Plugin名をHostのGrantや実Provider選択とみなさない |
+| Wails Desktop | Window／WebView、未保存Buffer、Focus／Pin、ユーザー操作 | Hostで許されたWorkspace ID、現在SubjectとRevision、読取り範囲 | DOMの選択・表示済みPinから編集権限を作らない |
+| Web／Remote CLI／MCP | 認証、Sessionと配送、再接続、Client資産世代 | Server側で検証済みPrincipal／Scope／Deployment世代 | Clientに保存したPlugin・旧GrantをServer側の許可とみなさない |
+| 定時処理・外部イベント（将来の入口） | Triggerの信頼性、配送・再実行、Jobの所有 | 対象Operation、入力Snapshot、時点・実行主体、冪等性の条件 | 時刻到来・イベント受信だけで業務の承認や実行許可を得ない |
+| AI Harness／協業操作 | Session・Worktree・Diff・Test・Reviewの受渡し | 現在のSource・Disclosure範囲、操作種別、Proposalの対象版 | AIの候補、Diff生成、review成功をApply／Merge／Meaning受理に変えない |
+| Wails Updater補助起動 | 更新Helperの起動・交換・再実行 | 検証済みUpdate状態・Helper Role、対象実Image | Worker用起動引数やPlugin起動経路へ誤分岐しない |
+
+この表は新しいTrigger DSLやUniversal Dispatcherを制定するものではない。既存のProcess／Operation／Host Adapter／Execution Contextを**一つの利用例から参照する観測用の対応表**とする。正式なTrigger記述を生成する必要が生じた場合も、標準ProcessのEntry／入力／実行条件へ接続し、入口別の第二意味モデルを増やさない。
+
+### 30.2 起動可能・操作可能・結果確認済みは異なる
+
+起動時に判定できるのは実Image、Release Closure、Bootstrap診断能力、Workspaceの読み込み状況などの一部に限られる。既存§25のBOOTSTRAP_READY／CORE_READY／WORKSPACE_READYと、個別Operationの現在資格を同一の真偽値にしない。Plugin管理で実装されていない`install`／`enable`／`init`／`actual invocation`は`notModelled`のままにする。
+
+読取り専用`inspect`を例にすると、実Inputは「Workspaceの現在の物理RootとRevision」「Kind＋Canonical Subject ID」「現在のSource Index」「採用したOperation Contract」で確定する。**World Fingerprint一致はWorkspace同一性やModel Revisionの代用ではない**。Hostをまたぐ比較では、結果のCanonical・Source参照・Failureを一致させつつ、別ProcessのPIDやInvocation Attemptを同じIDだと仮定しない。
+
+変更操作ではさらに、現在のHost Grant、受理済みMeaning、選択Providerと実Call、外部EffectとReceipt、独立Consumerの受領を分ける。起動前に拒否した場合は「未実行」、実Call後の切断・ACK喪失は「結果不明」とし、後者を空の成功や無条件再送へ変換しない（#1174）。read-onlyの再実行でも、Workspace切替・Disclosure変更・古いReplyがあれば現在版を再読込してから表示へ採用する。
+
+### 30.3 Node View・Studio・Harnessの共通表示を正本から導出する
+
+標準データ構造とProcessの関係を、**Trigger→Entry→Operation→選択Provider→Effect→Consumer**という因果関係として表示できるようにする。Node ViewはPlugin配線、APIマッシュアップ、Script Launch、BRMS／Rule、Studio診断、AI Harnessの確認にも再利用するが、描画ノードや配線のIDをSourceのCanonical ID、Graphの業務Edge ID、Provider Identityへ流用しない。図形位置・折畳み・Focusは表示状態であり、Sourceとモデルの意味は既存Ownerが保持する。
+
+最小の共通表示は、(a)現在固定したWorkspace／Subject／Source Revision、(b)実行を試みるEntry／Operationと効果区分、(c)Hostで実際に選ばれたProvider・Plugin Lock・実Artifact、(d)未実行／呼出し中／結果受領／結果不明、(e)現Consumerが確認した結果と未確認の範囲を**別欄**にする。画面は既存の型付きApplication APIのRead Projectionを受け取り、操作の意味・許可・Expectedを独自実装しない。
+
+Studioでは編集の即応性を保つため、IME／カーソル／Dirty Buffer／FocusはClientに残し、Pinned Subjectの再資格化はHostの現在Source／許可範囲によって行う。AIには許可されたSourceとその版だけを渡し、AIのProposal／DiffからのApplyやBranch Mergeは現在版に対する人の確認と既存Writerを経る。SUI／SHOへ情報を引き渡す場合も、閲覧・再公開・編集を別に判定し、未取得部分を不存在と表現しない。
+
+### 30.4 「実行構成」と「配布形態」を交差させて判断する
+
+| 独立した軸 | 選択肢 | 採用判断の材料 |
+| --- | --- | --- |
+| **実行構成** | A＝Wails Native／CLI Direct、B0＝同一exe子Worker、B1＝別Wails Server＋HTTP/WS、B2＝別Server＋Pipe/UDS | 実Operation同値、起動時間、p50/p95/p99、Peak／合計RSS、Crash隔離、Peer、Cancel、実OS |
+| **配布形態** | D1＝Remote接続Desktop、D2＝標準PluginとUIを内包したStandalone単一Image、D3＝別Server等の複数Image同梱 | Releaseの実byte／署名、Plugin Lock、設定Schema、Installer／Updater所有、復旧可能性 |
+| **Operationの実行先** | Local／明示Remote／Hostが許した別Execution Target | 現在のProvider／Grant／Source／DB／Effectを**実行先で**検証。暗黙Local fallbackは禁止 |
+
+従来§28.4の「D1 現行」は**実行構成Aの現行基線**を指していたが、§22のD1はRemote接続Desktopという**配布形態**である。本節で両者を分離し、§28.4の行名もAへ訂正した。AとD2は両立し、B0もD2単一Imageと両立し得る。B0はGo Runtimeが二つになるため、単一Binaryというだけで高速・省メモリとは決めない。B1/B2は別Process・別成果物としてReleaseとInstallerの検証が必要。
+
+### 30.5 Wails Updaterと子Workerを同居させる際の停止条件
+
+Wails公式`app.Updater.Restart`は、同じ実行Imageを補助モードで再実行し、`application.New`が更新Helperを識別したうえで交換・再起動を進める（公式[Updater](https://wails.io/guides/updater/)）。そのためB0で`main`の早期Worker分岐を追加するときは、**通常GUI・許可されたBackend Worker・更新Helperの三Roleが誤って交差しないこと**を実OSで確かめる。Updater専用の環境変数名・起動順序にアプリ固有の推測を持ち込まず、採用したWails exact版の仕様と実Codeに照合する。
+
+- Worker起動の外部flagだけでは本人確認にならない。親が指定した実Image、専有通信、nonce、接続相手、許可されたWorkspaceとOperationを確認し、GUI初期化や第三者によるWorker誤起動を防ぐ。
+- Update Helperの起動をWorkerが誤って奪わない。逆にWorker要求や通常GUIで不意にUpdaterの交換動作へ入らない。継承した環境変数・Child PID・作業中Sessionを含めて試験する。
+- D2の単一Image交換が成功しても、旧Plugin Lock、埋込UI、設定Schema、現在Grantは再検査する。User Override、Secret、DB Migration、実行済み外部Effectは更新対象の交換で上書き・取消ししない。D3の複数ImageはInstaller／Deploymentで別に活性化する。
+- 現行`cmd/tei-studio/go.mod`の`v3.0.0-beta.29`から安定版へ移す比較は#1824のS0-R→S0-Uで行う。Version、生成Bindings、Workbench Bundle、Windows WebView2と実Lockをexact Pinし、Mobile／Wake探索を同じ製品受入に含めない。
+
+### 30.6 最初の実証は「一つのread-only操作」から広げる
+
+2026-11-15の[PR #5037](https://github.com/hat47x/tei-platform/pull/5037)は、既存`cmd/tei/cli_inspect_rule_markdown_process_test.go`に、実`tei inspect`を別OS Processで起動した結果と`operations.InspectSubject`直接呼出しの**`SubjectInspection`全体**を比較する検査を追加した。正常な内蔵Markdown Ruleの元Source／AuthorityLimitsと、同名の未公開Capability・非`tei` Fenceだけの偽Ruleに対する`SUBJECT_NOT_FOUND`分類を対照する。最新試験HEAD `6a14d21b`の[Action Surface actual Go CLI witness](https://github.com/hat47x/tei-platform/actions/runs/43722004973)で対象Go試験が**SUCCESS**、その後mainへsquash merge `eb0ccf05`済み。**これは現行CLI Directの実Process基線であり、子Backend／IPC／Wailsや公開Functionの実Callの証明ではない**。
+
+次は既存#4635／#1158の受入を四つの小差分に限定する。
+
+| 実装差分 | 同じ検査で実際に確認するもの | 止める条件 |
+| --- | --- | --- |
+| **L1：CLI B0 一往復** | 同じ`inspect`で実Parent→ChildのImage Digest、Handshake（Peer／Transport／Operation版）、Result／Failure、exit、Timeout／Cancel、孤児なしを実測。既存PR #5037のDirect Resultと独立Expectedで比較 | stdoutへ診断が混ざる、旧Child／未許可Workspaceが通る、意味・Source・Failureが変わる |
+| **L2：Studio B0 Bridge** | Windowsの実Wails Window→薄いGo Client→子Backend→`InspectSubject`を使い、現在のPin／Source、後着Replyを検査。ClientのDirty／Focusを失わない | 実画面が受領していない、旧Workspaceへ返信が戻る、Go＋WebViewの別資格を混合 |
+| **L3：配布・更新** | D2単一Imageの実Plugin／UI Asset Closure、Updater補助起動とWorker分岐、更新・停止・再起動後のRead。D3は別にInstaller実験 | 単一Imageの成功からD3の原子的交換を推測する、Secrets／DBを無断更新 |
+| **L4：実Provider／実Consumer** | Owner受理済みpure Entry→実選択Go Provider→通常`tei`の実Callと独立Consumer、結果不明時のReceipt照会 | `inspect`やRuleのread-only成功を実Providerの成功と誤認 |
+
+L1〜L3はP1比較であり、L4は既存#4495の並行P0に属する。**最上位P0は非Plugin StudioのStage1→Stage2を実Windows WebView2で受領する#2831/#4583**のまま。L1のためにStage2へ子Backend前提を導入しない。L1を通した後もA→B0への製品既定変更は、#4635の速度・メモリ・復旧とOwner判断を待つ。
+
+受入票にはSource／Model Revision／World Fingerprint、Parent／Child実Image、Operation Contract、選択Provider・Artifact、Host Grant、Attempt、結果・Failure・Effect、実Consumer、CI exact HEADと実OSを**別項目**として記録する。記録先は既存#1180/#2514のExpectedと各OwnerのEvidenceであり、新しい包括的Receipt／Runner／Host／Registryを作らない。
+
+### 30.7 この追補で到達した範囲
+
+**完了**：現行CLI read-only基線のGo試験拡張とmain統合、起動契機と実行資格の分離、Node／Harness表示、A/B0/B1/B2とD1/D2/D3の軸整理、Updater Helperとの競合に関する実装・試験の引渡し。
+
+**未受理**：実B0子Backend／IPC、実Wails Bridge切替、選択したWails安定版への移行、Updaterによる配布・復旧、実Providerの公開Function呼出し、AI Proposalの製品Apply、非Plugin Stage1→Stage2 Windows実再構築。今回の文書追加を製品完成の証拠へ昇格しない。
+
