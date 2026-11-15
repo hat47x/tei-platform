@@ -70,6 +70,43 @@ func validateSemanticBusinessValidations(w ir.World) []Diagnostic {
 		return false
 	}
 
+	// Operator contracts are data. A rule may refer only to a declared one, and
+	// a declaration decides what the rule reads.
+	operators := map[core.CanonicalID]semantic.Operator{}
+	for _, ns := range w.Semantics {
+		for _, operator := range ns.Operators {
+			operatorSubject := subject.Subject{Kind: "semantic-operator", ID: string(operator.ID)}
+			if _, exists := operators[operator.ID]; exists {
+				out = append(out, errFor(
+					operatorSubject,
+					"DUPLICATE_SEMANTIC_OPERATOR",
+					"semantic operator %s is declared more than once",
+					operator.ID,
+				))
+				continue
+			}
+			operators[operator.ID] = operator
+			if !strings.HasPrefix(string(operator.ID), string(ns.ID)+".") {
+				out = append(out, errFor(
+					operatorSubject,
+					"SEMANTIC_OPERATOR_NAMESPACE_MISMATCH",
+					"semantic operator %s is declared in semantic namespace %s",
+					operator.ID,
+					ns.ID,
+				))
+			}
+			if !operator.Input.Valid() {
+				out = append(out, errFor(
+					operatorSubject,
+					"INVALID_SEMANTIC_OPERATOR_INPUT",
+					"semantic operator %s has invalid input %q",
+					operator.ID,
+					operator.Input,
+				))
+			}
+		}
+	}
+
 	seenValidationIDs := map[core.CanonicalID]core.CanonicalID{}
 	for _, ns := range w.Semantics {
 		for _, rule := range ns.Validations {
@@ -131,7 +168,44 @@ func validateSemanticBusinessValidations(w ir.World) []Diagnostic {
 				))
 			}
 
+			if rule.Kind != semantic.ValidationOperator && rule.Operator != "" {
+				out = append(out, errFor(
+					ruleSubject,
+					"SEMANTIC_VALIDATION_OPERATOR_NOT_ALLOWED",
+					"%s semantic validation %s does not accept an operator",
+					rule.Kind,
+					rule.ID,
+				))
+			}
+
 			switch rule.Kind {
+			case semantic.ValidationOperator:
+				if rule.Relation != "" {
+					out = append(out, errFor(ruleSubject, "SEMANTIC_VALIDATION_RELATION_NOT_ALLOWED", "operator semantic validation %s does not accept a relation", rule.ID))
+				}
+				operator, declared := operators[rule.Operator]
+				if !declared {
+					out = append(out, errFor(
+						ruleSubject,
+						"UNKNOWN_SEMANTIC_VALIDATION_OPERATOR",
+						"semantic validation %s refers to undeclared semantic operator %q",
+						rule.ID,
+						rule.Operator,
+					))
+					continue
+				}
+				if operator.Input == semantic.OperatorInputNumber && attributeExists && !isNumericType(attribute.TypeRef) {
+					out = append(out, errFor(
+						ruleSubject,
+						"SEMANTIC_VALIDATION_OPERATOR_REQUIRES_NUMERIC_ATTRIBUTE",
+						"semantic validation %s uses operator %s, which takes a number, but %s has type %s",
+						rule.ID,
+						rule.Operator,
+						rule.Attribute,
+						attribute.TypeRef,
+					))
+				}
+
 			case semantic.ValidationPositive:
 				if rule.Relation != "" {
 					out = append(out, errFor(ruleSubject, "SEMANTIC_VALIDATION_RELATION_NOT_ALLOWED", "positive semantic validation %s does not accept a relation", rule.ID))
