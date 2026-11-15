@@ -50,6 +50,8 @@
 
 **証拠の照合資格と現行製品の受入（§35〜39）**：次の実行図P1は、既存`tei inspect`のQualified Subject・Source byte／位置・型・Authority Limitsから、確実に言えるEdgeと未確認Edgeを区別するread-only表示に限定する。#5037の実CLIと直接Operationの結果一致は共通ReaderのTransport同値であり、独立ExpectedやProvider実Callではない。#5038のREA実Evidence端点照合は技術的参照整合であって業務Relation／Effectの受理ではない。#5027の組織二時点隔離PG候補はOccurrence／validAt／knownAtを区別し、正式Query・Grantを代行しない。#5025の実WebView2 Pin再読込負例は現在観測の再資格化を示すが、Stage1→Stage2受領ではない。**選択A→Bで旧生成Scenarioを拒否するGo実装は#5054が審査中**のため、mainでの既定保護として数えない。新規共通証拠Store・万能Status APIを作らず、同一Load・同一Subject・実Producer・取得範囲・選択鮮度・Audienceを既存Ownerの証拠から照合する。検収結果は既存#1180/#2514と#4198/#1124/#951/#1824へ返し、通常CLI R3／正式R2-P／Stage2実Windowsの既存P0を優先する。
 
+**実現方式と証拠の受渡し（§40〜44）**：標準Rule／型付きSourceは、既存`validationeval.Evaluate`による汎用評価と、`validationgen.GeneratePositive`による生成Goの二経路を別々に実証できる。コード生成が必要な場合と単純なパラメータ評価で足りる場合を選べる余地を残すが、これを口実に新Evaluator／Runner／DSL選択構文を先行しない。main済み#5051では原Markdown byteの同一Load検査、`//go:embed`付きSource Closure、実Binary内SHA-256の確認まで到達した。ただし元LocatorとReader／Generator実装資格の正式Build Plan束縛は未受理。生成Goをコンパイル可能な別byteへ入れ替える#5056と、選択A→B後に旧Scenario Commandを拒否する#5054は**未マージPR**として継続し、mainの合格としない。#5042/#5052の11依存Source／Lockを固定した生成Workbench PoC Bの実Windows受領は限定的に検証されたが、Rule Binaryと同一Artifactの一往復でも正式Stage1→Stage2でもない。次の実装差分は既存テスト内部のEC-01〜08（別Source、同Go／説明改版、生成Go／実Builder不一致、同Resultの実装切替、Binary原文Hashの限界、UI旧依存、汎用評価との比較、Effect unknown）を#1180/#2514へ渡し、定義→Read→編集→保存前→DB操作→Commit→通知→開示を別資格として表す小さなread-only照合票を作る。Source出典の再確認・Artifact再利用・現在Grantを分離し、正式R2-P／R3とWindows Stage2を引き続きP0とする。
+
 P0は引き続き、#4495の公開pure Entry→actual Provider→通常CLIの実二入口と、#2831/#4583のStage1実TEI→Stage2実Windows WebView2を優先する。図解・編集・REA・BRMS・ETLの全対象対応をP0の新しい前提にしない。
 
 ### TEI自身の実装をモデル・図・DSLへ折り返すdogfooding（P1、既存P0と並行）
