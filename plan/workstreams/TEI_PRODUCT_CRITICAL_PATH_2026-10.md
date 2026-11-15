@@ -1761,3 +1761,18 @@ mainの`7921b005`で製品`workspace.Load`に内蔵`tei.rule-authoring/v0` Reade
 - **独立後続**：Plugin一DocumentのSource-backed Read/現在Disclosure #4714/#4679、S-LOC画面/S-OPEN、安定版Wails/D2 Updateは正式Reader/実Provider/Stage2の新Hard Gateにしない。
 
 **検収の上限**：この追補は製品`workspace.Load`に入った限定Readerという実装済み能力へP0計画を更新したもの。新GoテストはCI確認前の受入候補であり、Owner意味受理、実生成Go/CLI Provider、Stage2/Windowsの追加合格は未確認。
+
+### Rule製品実装を生成Goと実CLIへ接続する最短経路（Bootstrap §29.8）
+
+現在mainの実装済み範囲は、内蔵Rule Markdownの製品Load・元byte/Source Index／Inspector（#4890/#4891）、従来Validationとの型付き意味同値と二重宣言拒否（#4900）、**既存`validationeval.Evaluate`の合成SourceによるRead要求8条件**（#4901）まで。PR統合・テストコードの存在と、各exact HEADのCI成功は別に記録する。Product Readerをもう一つ作らず、次の**一Rule→生成判断→実Builder→実Provider→通常CLI／別Consumer**を既存[Plugin Rule縦断計画](../design/PLUGIN_RULE_PRODUCT_VERTICAL_SLICE_2026-11.md)§11へ引き渡す。
+
+| 優先 | Ownerと最小差分 | 独立Expected／失格にするもの |
+| --- | --- | --- |
+| **R2（次のコードPR）** | #1121/#4544/#2595：`sales.order_line.quantity_positive`を現行`workspace.Load`／型付き`semantic.Validation`から実Go判断に生成し、実Builderの入力Source/Toolchain/Artifact byteを残す | 数量1／0／-1、NULL・欠損の未確定扱い、Rule条件改版による生成判断差。Handwritten Goへの条件委譲、古いSource/Artifactの黙認、合成Fixtureの結果だけは不合格 |
+| **R3（R2の後）** | #951/#1251/#4495：選択済み実Go Providerを通常`tei` CLIの公開Entryから別Process実呼出しし、独立Consumerへ渡す | Selected B／Actual Aの拒否、実入力/Row Coverage/Null/Scope、Host現在Grant・Effect unknownの独立票。Rule IDからCapability/Entryを暗黙作成しない（#4902） |
+| **CLIのコンパイル阻害（R2/R3と並行修正）** | CLI Owner：`db-introspect`が既にCommand Discoveryにあり、実Runnerも存在することを踏まえ、競合する#4895（`-semantic`宣言削除）と#4896（既存Dispatch接続）を**両方マージしない**。一案を選び実Goビルド＋別Process負例で検収 | `dbIntrospectSemanticFlag`未使用のまま・既存公開Commandの呼出し不可・DB接続前に拒否すべき不正引数が通る状態を拒否。旧CIの失敗は新RuleテストのFAILとは区別 |
+| **W0／Stage2（最上位P0）** | #1824/#4583：#4869のPin Fixture合格後、#4876の参照DOM ID → Node24正規Bundle → Go Embed Assetの4ファイルbyte一致 → 実Windows WebView2受領 → Stage1自身がStage2を構築 | 旧#4812の別HEAD Greenや現行参照画面の成功、単なるStage0からの二回BuildをStage2合格にしない |
+
+Raw Sourceの説明文のみの改版はSource Indexを失効させるが、意味版・Artifact再利用は#2600で別に判定する。Rule条件改版、同Labelで別Subject、Generator/Toolchain改版、Provider選択改版、現在Grant失効を一つの`ready`値へ潰さない。**R2/R3が進んでも外部Language Plugin／Graph・Window Reader／Plugin Doc Read／Updaterを新Hard Gateにしない。**
+
+**この追記は現行Goと並行PRからの実装引渡しであり、新しいGo、CLI実Provider、Windows Stage2の実行結果は含まない。** 必要な正負例は既存#1180/#2514へ戻し、Runner/Host/Registryを増設しない。
