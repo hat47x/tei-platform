@@ -677,7 +677,7 @@ main統合済み[Pluginの事前選択・Lock検査 #4800](https://github.com/ha
 | **評価と選択** | 選択Ruleを既存`validationeval.Evaluate`へ接続し、数値・RelationのRead要求を合成Sourceで観測（#4901）。Workspaceの`implementations:`から組込みOperator実装を選びScenarioで実呼出し（#5007） | 実DB／Providerの取得完全性、選択Plugin Lock、組込みOperatorの意味上の正当性、Host Grant |
 | **判断を生成する** | `validationgen.GeneratePositive`は、選択された一つの`semantic.Validation`と解決済み`std.decimal`から`value.Sign() > 0`を含むGoを生成。0・負値・NULL・未取得を分けて別Process検証（#4911） | 任意のIF／Unique決定表・複数Rule・Java／SQLへの同値生成 |
 | **通常CLIでの実Build** | 選択Rule由来Goを実`tei self-build`→Build Intent→参照Builder→実Binaryへ通す（#5009）。選択元Markdown原文のbyte同一コピーをGo packageへ追加し、完成Binaryから原文Digestを照合する限定検証（#5051） | 元ファイルLocator／Reader・Generator実装版の正式な同一Attempt束縛、全Source／Toolchain認証、公開Function Entry→実Provider |
-| **読取り用Consumer** | 製品`tei inspect`の別Process結果と共通Operationの読取り結果を同一Workspaceで比較（#5037／#5058）。Generated Windows Desktop PoC Bの実WebView2受領は別途観測済み（#5042／#5052） | 独立な業務期待結果、編集・実行Grant、同じRuleが実Plugin Providerとして呼ばれたこと、Stage1自身のStage2完全再構築 |
+| **読取り用Consumer** | 製品`tei inspect`の別Process結果と共通Operationの読取り結果を同一Workspaceで比較（#5037／#5058）。Generated Windows Desktop PoC Bの実WebView2受領は別途観測済み（#5042／#5052）。後続#5059では生成WorkbenchのN2（Node/esbuild）を実`tei self-build`で起動する限定経路を追加した | 独立な業務期待結果、編集・実行Grant、同じRuleが実Plugin Providerとして呼ばれたこと、Stage1自身のStage2完全再構築 |
 
 ここでのR0／R1／R2前段は一括の成功扱いにしない。特に、元Markdownのbyte列をBinaryに**同梱したこと**と、Reader／Generatorが**その原文から正しい判断処理を生成したこと**は別の証拠である。同梱はテスト用の公開可能な固定Fixtureに限り、非公開の業務Sourceを配布Binaryへ自動収録する製品方針にはしない。
 
