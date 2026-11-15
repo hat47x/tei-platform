@@ -331,7 +331,7 @@ main統合済み[#5051](https://github.com/hat47x/tei-platform/pull/5051)の`//g
 | Source原byte・Manual・証拠票の公開 | Audience／Scope／現在Disclosureを満たすか。必要最小の出典参照と全文同梱を区別 |
 | Studio／Web／MCP／外部Hostで表示・実行するもの | 別Consumerが何を受け取ったか、現在Grantがあるか。WailsのPinや画面表示だけで実行権限を与えない |
 
-特に生成DesktopのN2工程は、[#5042](https://github.com/hat47x/tei-platform/pull/5042)で実Windows PoC Bの生成Bundle受領を確認した一方、`tei self-build`からのN2起動は[#5059](https://github.com/hat47x/tei-platform/pull/5059)が実装・検証中である。**仮にN2のProcess／Artifact照合が合格しても、Seedから起動した子Processである限りStage1自身のStage2再構築ではない。** この差はUIの種類ではなく、誰が選択し、何を実Buildし、どの実Image／Consumerが受け取ったかという接続の証拠で判定する。
+特に生成DesktopのN2工程は、[#5042](https://github.com/hat47x/tei-platform/pull/5042)で実Windows PoC Bの生成Bundle受領を確認した一方、`tei self-build`からのN2起動を追加した[#5059](https://github.com/hat47x/tei-platform/pull/5059)もmainへ統合され、同PRのexact HEADのWindows通常／生成Desktop両Jobが成功した。**このN2のProcess／Artifact照合が成功しても、Seedから起動した子Processである限りStage1自身のStage2再構築ではない。** この差はUIの種類ではなく、誰が選択し、何を実Buildし、どの実Image／Consumerが受け取ったかという接続の証拠で判定する。
 
 ### 10.3 最初の製品差分を変えずに、各Provider族へ展開する
 
