@@ -360,3 +360,22 @@ RQは#1180/#2514へ不足Assertを引き渡す**索引のみ**。#4693（関係�
 main #4751/#4756/#4733/#4777とも、**Source選択→実Reader→Meaning candidate／受理済み意味→生成→実Invoke／Consumer→Evidence**を別々に証明する方針で整合する。製品P0はStudio Stage1→Stage2 Windowsセルフビルド#4583/#2831と、通常tei CLIの実Provider→Function Context→独立Consumer#2586のまま維持する。第二Host/Parser/Graph Compiler/Meaning Store/Scenario Runnerを新設しない。
 
 **証拠上限**：現行Go型・既存CLIと他レーンの実装状態を静的照合した設計・試験引継ぎ。今回の新Go/Windows/PG試験、正式Owner意味受理、Source Apply、SHO保存、Target実EffectやTEI-native Plugin生成は未実施。
+
+## 13. 同一Candidate IDで観測事実だけが変わる場合の比較（2026-11-15）
+
+現行`internal/reacandidate/adopt.go`の`CompareCandidateSets`は、同じCandidate IDを持つ二つの構造候補について、主に`SourceRevision.ArtifactPath/Fingerprint`と`Attempt.EvidenceID`で状態を判定していた。ところが`CandidateID`はRelationラベル等の`StructuralFacts`全体を含むわけではない。同じ外部Occurrenceと申告Source Digestのまま`imports`から`requires`へ観測Kindが変わっても、以前は`unchanged`または`same-current-bytes-different-attempt`となり得た。
+
+**限定修正**：同一Candidate IDの`StructuralFacts`全体を比較し、事実差分を検知した場合は理由と再評価要求をNoteへ残す。申告Source Path/Fingerprintが同じときの分類を`observed-facts-changed`とする。Sourceも変わっていれば従来の`revision-changed`を優先し、観測事実も変わったことをNoteに併記する。Attempt IDをProducerが再利用していても事実差分を隠さない。
+
+| 試験 | 独立Expected | この差分では認めない資格 |
+| --- | --- | --- |
+| RQ-05a：同じ外部Relation ID／申告Source、別AttemptでKind変更 | `observed-facts-changed`＋再評価Note | 旧Sourceの現在性、業務Meaningの変更確定 |
+| RQ-05b：Attempt IDまで再利用したKind変更 | `unchanged`へ丸めない | Producer Attemptの真正性・継続性 |
+| RQ-05c：申告Source DigestとObservedKindが同時に変化 | `revision-changed`＋観測差分Note | 差分原因の断定、旧Approval/Grantの自動更新 |
+
+これらを`internal/reacandidate/compare_observed_facts_test.go`のGo回帰に固定する。検出は**read-onlyの比較結果**であり、Source-backedな再観測・正式Meaning受理・Source Patch・Windows Consumerを行わない。Source Digest自体はProducer申告の値であり、同じDigestだから実Sourceが同じと保証するものでもない。外部のRelation occurrence IDと正式TEI Relation IDを同一視せず、再採番の多対多対応や各辺の意味をこの修正で確定しない。
+
+既存Draft [#4693](https://github.com/hat47x/tei-platform/pull/4693)にも同種の差分案があるため、**この小PRを先にmainへ統合した場合、#4693では重複する`adopt.go`・テスト・状態語彙を差し引いて現行mainへ再基準化する**。J-01のUTF-16LE/BOM実二入口、J-02の並行Relation・再採番、J-03のCoverageなどの残作業を完了扱いしない。新しいComparison Statusを読むCLI/Studio/SHOの未知状態対応は、#1124/#2514/#4661の独立Consumer検収として残す。
+
+**証拠上限**：実Go回帰のCI結果は対象HEADで別に確認する。今回の修正は外部Producerの実再解析試験、Owner意味受理、実Provider／Target実Effect、Native Wails JS受領、TEI-native Plugin自己構築の完了を意味しない。
+
