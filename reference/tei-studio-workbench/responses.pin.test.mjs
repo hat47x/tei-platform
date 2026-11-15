@@ -93,6 +93,12 @@ const inspection = {
   worldFingerprint: "world-v1",
   sourceIndexFingerprint: "source-v1",
   sourceStatus: "indexed",
+  authorityLimits: [
+    "inspection-is-a-derived-read-only-projection",
+    "source-location-is-not-semantic-acceptance",
+    "source-location-is-not-write-authority",
+    "local-read-is-not-disclosure-permission",
+  ],
 };
 
 test("PIN-READER-01: read-only Product projection qualifies the original Pin", async () => {
@@ -134,4 +140,22 @@ test("PIN-READER-02: wrong Subject or stale Source is not a qualified Pin observ
     assert.equal(accepted, true);
     assert.equal(pin.observation.state, "needs-requalification");
   }
+});
+
+test("PIN-READER-03: missing Host limits reject the reply without qualifying Pin", async () => {
+  const scope = createResponseScope();
+  let pin = pinSubject(initialPinState(), "workspace-a", 1, A);
+  const request = pinRequest(pin);
+  assert.ok(request);
+  const reply = { ...inspection, authorityLimits: undefined };
+  const accepted = await scope.run("pinned-inspection", async () => reply,
+    value => {
+      readInspection(value, request.subject, catalog);
+      pin = acceptPinObservation(pin, request, { state: "inspected" });
+    }, error => {
+      assert.match(String(error), /INVALID_INSPECTION_RESPONSE/);
+      pin = acceptPinObservation(pin, request, { state: "needs-requalification" });
+    });
+  assert.equal(accepted, true);
+  assert.equal(pin.observation.state, "needs-requalification");
 });
