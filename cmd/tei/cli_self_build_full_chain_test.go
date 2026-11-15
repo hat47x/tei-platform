@@ -94,12 +94,22 @@ func writeFullChainDeclaration(t *testing.T, repoRoot, entry, dir string) (strin
 	}
 	// Only locators go in the declaration: the resolver derives the digests.
 	sources := make([]source, 0, len(ordered)+2)
+	entryRef := strings.TrimPrefix(filepath.ToSlash(entry), "./")
+	definitionSource := ""
 	for i, d := range ordered {
 		rel, err := filepath.Rel(repoRoot, d)
 		if err != nil {
 			t.Fatal(err)
 		}
-		sources = append(sources, source{Kind: "go-package", ID: "pkg" + itoa(i), Ref: filepath.ToSlash(rel)})
+		ref := filepath.ToSlash(rel)
+		id := "pkg" + itoa(i)
+		sources = append(sources, source{Kind: "go-package", ID: id, Ref: ref})
+		if ref == entryRef {
+			definitionSource = id
+		}
+	}
+	if definitionSource == "" {
+		t.Fatalf("the command's definition package %q was not among its actual Go dependencies", entry)
 	}
 	sources = append(sources,
 		source{Kind: "go-module", ID: "go.mod", Ref: "go.mod"},
@@ -110,7 +120,7 @@ func writeFullChainDeclaration(t *testing.T, repoRoot, entry, dir string) (strin
 	body := map[string]any{
 		"formatVersion": 1,
 		"subject": map[string]any{
-			"kind": "plugin", "id": "tei.command.tei", "version": "0.0.0", "definitionSource": "pkg0",
+			"kind": "plugin", "id": "tei.command.tei", "version": "0.0.0", "definitionSource": definitionSource,
 		},
 		"sources":    sources,
 		"builder":    map[string]any{"contract": "tei.plugin-build", "compatibleMajor": 1},
