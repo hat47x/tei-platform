@@ -18,6 +18,14 @@ const inspection = {
   canonical: { privateDetails: "not handed off by this reader" },
   worldFingerprint: "world-1", sourceIndexFingerprint: "index-1",
   sourceStatus: "fresh",
+  // The real Go InspectSubject supplies these read-only limits. A Pin must not
+  // weaken that contract or accept a fixture with a silently missing Grant.
+  authorityLimits: [
+    "inspection-is-a-derived-read-only-projection",
+    "source-location-is-not-semantic-acceptance",
+    "source-location-is-not-write-authority",
+    "local-read-is-not-disclosure-permission",
+  ],
 };
 
 function clientWith(result) {
@@ -106,4 +114,15 @@ test("PIN-PRODUCT-07: blank revision is unknown, not a qualified Catalog identit
     }
   }
   assert.ok(catalogIdentity(catalog));
+});
+
+test("PIN-PRODUCT-08: a Host reply missing authority limits never qualifies Pin", async () => {
+  for (const limits of [undefined, [], inspection.authorityLimits.slice(1)]) {
+    const reply = { ...inspection, authorityLimits: limits };
+    const client = clientWith({ ok: true, value: reply });
+    await assert.rejects(readPinnedSubject(client, request, catalog),
+      /INVALID_INSPECTION_RESPONSE/);
+    assert.deepEqual(client.calls,
+      [["reference-workspace", "semantic-data", "sales.order"]]);
+  }
 });
