@@ -955,6 +955,16 @@ TEIのセルフビルドは、最終的にはTEI Studio Desktopを含むTEI開�
 
 最初から大きなDSL処理系を作らず、既存Markdown・Markdown表・Mermaid（必要に応じてGraphviz）・標準データ構造・Language／Operator／Target Generatorの機能をできるだけ使う。図の座標や説明文を実行意味の第二正本にはしない。外部で実装する部品はTEI側に型付きInput／Output／Effect／Failure／Provider契約とTODO／Mockを持たせるが、Mock成功と実Provider成功は区別する。Coreに新しい共通Runner、第二Resolver、専用Hostを増やさない。
 
+### 同じ宣言を実現する方式は、生成Goと既存の汎用Operatorから選ぶ（2026年11月15日）
+
+**TEI定義を実際の動作へ変換する手段は、コード生成だけではない。** 標準Graphの出辺列挙、表の型付き変換、既存Ruleの評価など、受理された意味・型・パラメータを既存の汎用Operatorが実行できる場合、Modelを入力としてそのOperatorを呼べば、用途ごとのGoソース生成・コンパイルを省ける。ただし、宣言の構文を読めたことと、正しいパラメータを渡して製品の実Operatorが動いたことは別の資格である。Targetに該当Operatorが存在しなければ、新Engineを自動生成したことにせず、Target向けGo生成／明示委譲／unsupportedから選ぶ。
+
+SB-2の**実コード生成**はセルフビルドにおける独立した必須の実証対象として維持する。一方、通常のアプリ生成では「生成G」「既存汎用Operatorによるパラメータ実行P」「外部コード委譲D」を、対象の機能上の義務ごとに区分する。Pで意味ある処理ができたことはTEIの機能対応範囲へ数えてよいが、**生成した実装の比率やPlugin自身の自己構築率には加算しない**。GとPは同じSource／型付きMeaning／独立Expectedで比較し、PはBinary不変のパラメータ改版、Gは生成Go・実Builder・Artifactの改版をそれぞれ実際に観測する。更新・再Buildの時間、性能、保守負担、Target適合と失効範囲を測り、一律にGを選ばない。
+
+最初の比較は、mainに限定実装がある`sales.order_line.quantity_positive`について、`GeneratePositive`で生成するGと既存`validationeval`系で型付きValidationを実行するPを同じ5入力（正値、0、負値、NULL、欠損）で対照する。これは**今後の比較計画**であり、Pの製品実CallとG/Pの同一Attempt E2Eを実証済みとは扱わない。Node/Edge/PortのGraph汎用関数は別の候補であり、正式Reader／実Operatorが未対応ならunsupportedを維持する。方式別の受入条件とGP-01〜06は[宣言的構文・Node表現の設計§27](../design/DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md)を正本とする。
+
+**実装順は変更しない**：第一にRuleの生成Goを正式R2-P Builderへ接続し、並行して通常CLI実ProviderのR3と非Plugin Studio Stage1→Stage2を進める。P/Gの比較は既存Operator／Build／Scenario／Expectedの実装Ownerへ渡し、第二Runner・Host・Registryを追加しない。
+
 ### 最初の実装PRを、一つのGraph／Ruleから始める
 
 S0〜S4を一度に実装しない。**固定6入力に対するGraph/RuleのGo生成と別Process実行は限定Referenceとしてmainで実証済み**である。次の製品コードPRはS0の正式なSource選択・Reader・Source Index接続に絞り、製品Meaningからの生成（S1）、選択Plugin実呼出し（S2）、Stage再構築と定義変更による再生成（S3/S4）は同じFixtureで別に検証する。
