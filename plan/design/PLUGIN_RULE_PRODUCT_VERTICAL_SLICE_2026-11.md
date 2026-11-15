@@ -1,6 +1,6 @@
 # Rule Authoringから実Plugin・製品Consumerまでの第一縦断：実装と検収の接続計画
 
-- **状態**：2026年11月15日の設計・実装引渡し。R1の限定的な正値Rule→Go生成は[PR #4911](https://github.com/hat47x/tei-platform/pull/4911)でmainに統合済み。Rule改版による再生成・別Process実行を追加検証する段階であり、正式Builder／実Plugin呼出し、Windows Stage2は未受理。
+- **状態**：2026年11月15日の設計・実装引渡し。R1（正値Rule→実判断Go生成）は[PR #4911](https://github.com/hat47x/tei-platform/pull/4911)でmain統合済み。R2の既存参照Builder回帰は製品の正式Builder選択とは別資格。実Plugin呼出し、通常CLIの業務Entry、Windows Stage2は未受理。
 - **優先対象**：内蔵Rule Authoring Markdown Readerで読み取った一つのpureなValidationを、生成Goの判断処理、実Builder、選択済みProvider、通常製品CLIまでつなぐ。
 - **前提となる実装事実**：mainの[7921b005](https://github.com/hat47x/tei-platform/commit/7921b005a44d325983d24ca2b8b58b0737dd778d)で、明示選択されたtei.rule-authoring/v0を内蔵ReaderがWorkspace Loadの原文から読み、semantic.ValidationとSource anchorへ投影する経路が追加された。これは外部Language Pluginや正式Graph Readerの製品受入ではない。
 - **既存の正本**：[Pluginの役割・合成・Stage2再入](PLUGIN_ROLE_COMPOSITION_AND_STUDIO_REENTRY_2026-11.md)、[Plugin-firstの実運用検証](PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md)、[自己記述](ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md)、[製品完成計画](../workstreams/PRODUCT_COMPLETION_PLAN.md)を維持する。本書は一機能の実装差分を決める補助計画であり、第二のContract、Resolver、Meaning、Builder、Runner、Evidence Storeを作らない。
