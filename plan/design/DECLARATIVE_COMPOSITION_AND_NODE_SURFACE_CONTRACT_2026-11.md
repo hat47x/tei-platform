@@ -114,3 +114,16 @@ DC-01〜12は**テスト計画上の名前**に限る。第二Expected Storeや�
 **全体のP0は変更しない**：Studio Stage1→Stage2実再構築と、通常`tei` CLIの実Entry→実Provider→独立Consumerを優先する。ノード画面・万能構文・Graph Compiler・Native SQLの全方言化・横断Schedulerはその前提にしない。
 
 **この文書の完了判定**：対象と合成禁止条件、具体的な一因子反証、実装Owner、R1-M→R2→最初のread-only Viewの順を、既存計画へ渡せたこと。新しいParser／GUI／DB／実Target／CIを動かしたという証拠にはならない。
+
+
+## 8. R1-Mの最初の製品Reader→参照Generator接合候補（2026-11-15）
+
+[Draft PR #4970](https://github.com/hat47x/tei-platform/pull/4970) は、§7の「参照先一因子変更」を既存製品コードに対して回帰試験にする作業である。`tools/reference-generator-selection/rule_markdown_one_factor_generator_test.go` が扱う範囲は次のとおり。
+
+- **比較対象を固定**：同一`sales.order_line.quantity_positive`、同一Language選択`tei.rule-authoring/v0`、同一`std.decimal`二属性、同一生成器Sourceを用い、MarkdownのRule参照先だけを`quantity`→`approved_quantity`に変更する。二属性の定義は両Workspaceであらかじめ同一にしておく。
+- **製品側の読取を使う**：実`workspace.Load`→選択済みReader→既存`semantic.Validation`→型Validator→同一LoadのSource Indexを通し、Rule IDと元byte位置の整合を検査する。候補がParser単体で読めただけなら合格にしない。
+- **意味と論理Readを同時に照合**：既存`validationeval.Evaluate`のSource interfaceで、元Ruleは`Number(quantity)`・`satisfied`、変更後は`Number(approved_quantity)`・`not-satisfied`を独立に確認する。実Providerの物理Read・完全取得・現在Grantを証明したことにはならない。
+- **生成へ明示的に接合**：既存Referenceの`GenerateFromTransformSource`／`VerifyTransformCandidate`を使い、変更後のTyped Ruleと明示更新したGenerator入力契約の一致、生成Go byte変化、別Process`go build`と同一JSON入力での出力変化を調べる。古い入力契約の流用と`std.text`への非数値変更は拒否する。
+- **証拠の分割**：`semantic.Validation`の参照先変更、Raw Markdownの変更、Generator入力契約変更、生成Go変更、別Processの結果変更をそれぞれ記録する。Goを一度コンパイルできたことや同じRule IDを保ったことは、Product Builder実消費・業務意味の継続受理・実Provider効果の証明ではない。
+
+**受入上限**：PRのexact HEADでfocused Go testとRepository Healthの実行結果を確認するまで、R1-Mは**候補／未検収**。実Builderの消費MemberとArtifact byte、同一Build Attempt、独立Consumerは次の**R2**に残す。read-only Node Viewを作るときは、このRuleの参照線を意味／論理Readの線として表示し、実行・Provider呼出し・編集可能配線に見せない。新しい共通Core Port型、Graph Runtime、第二Expected Storeは導入しない。
