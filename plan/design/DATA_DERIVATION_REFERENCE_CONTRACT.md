@@ -118,3 +118,36 @@ Data RuleとFunction固有Ruleの双方が関係する場合は、安易に「Ta
 これらは既存の受注・明細に関するScenario／Fixtureへ統合する候補である。専用の新Test SSOTを増やさず、#1180/#2514へ渡す。
 
 **未決**：Table Scriptをファイル単位でどう分割するか、項目拡張からRule IDを明示するか逆引きするか、関係を横断するData Ruleの完全性条件、FunctionとDataのRule Attachment競合の診断契約。これらは既存Source Index／型付きOperator／Data Operationsで実証してから決め、現段階で新DSL文法を固定しない。
+
+
+## 追補：規則の評価時点・取得範囲・Function Contextをまたぐ正しさ（2026-11-15）
+
+既存のRule Definition／Attachmentの分離を、日常的な業務画面とデータ保存にまで適用するときの判定基準を整理する。**処理の配置は式の構文や参照テーブル数ではなく、何を対象とし、どの時点・母集団で意味が確定するかによって決める。** 業務FunctionはDataに従属せず、Dataに普遍的な規則はどのFunctionからも参照できる。
+
+| 利用場面 | 参照できる入力・保証する意味 | Owner |
+| --- | --- | --- |
+| フォームの初期値 | 入力の候補をFunction開始／Draft生成時に求める。途中変更で自動再計算するとは限らない | Function Context／Presentation |
+| 入力中の純粋導出 | 明示したDraftのField・Relation集合から計算し、UIで再表示する。DBの保存事実ではない | Data Rule／FunctionのDraft |
+| 非保存属性の読取導出 | 指定したRead Scope／時点で求める。検索・整列・Limit前に必要な場合はQuery計画へ依存関係を渡す | #1637→#1640 |
+| 保存前の再計算・検証 | 現在Grant・旧Version・対象Relation集合・old/newの差に基づき再評価する。UIで表示された金額を無条件に信用しない | #1129／#1174 |
+| 取引時点に確定した値 | 採用した価格・税額・業務上の確定時点を保存事実として保持。現在マスターの更新で暗黙再計算しない | #1641／Function Action |
+| 機能固有の期間別・担当者別集計 | Query結果の母集団・粒度・完全性・利用者・期間をFunction Data Contextに保持 | #2506／#2586／#2622 |
+
+**関係をたどる値は三つに分ける。** (a)取得時点の値を保存したSnapshot、(b)参照先のEntity Keyを保存して現在の値を投影するRead、(c)今のRelation Pathを辿る非保存Projectionである。親の参照キーが同じでも中間Relationが変化すれば(c)は別のEntityへ到達し得る。(b)が保存する最終Entity Keyをいつ更新するかは別のAction／Rule条件で決める。Lookupの存在だけでSnapshotの自動同期や業務上の変更を起こさない。
+
+**親子の入力中計算と保存時計算は共通Ruleを使っても、取得完全性と効果は異なる。** 入力中に変更していない既存子行、別タブの子行、削除予定の子行を含む変更集合の定義を固定し、当該集計に必要なRelation集合が揃っているかを確認する。保存前にはOwner Transactionの確定対象を再取得・再計算し、Versionと現在AuthZを検査する。Draft側での成功はDB Commitの成功でも、ファイル添付や外部Effectの原子性でもない。
+
+**規則は利用目的ごとに許されるOperator/Functionの集合が異なり得る。** 計算・Initial Value・Business Guardが同じ式言語を使っても、Purpose・入力Kind・副作用許否・時間情報・再現性の制限を型付きで評価する。Guardで同じ述語を利用できることと、承認資格のGrantを得ることを混同しない。処理不能なPhase・循環依存・未取得集合を「別Phaseで試したら成功した」ことで隠さない。
+
+### 独立Expectedへ追加する具体的な負例（提案、未実行）
+
+| 観点 | 必須の区別・期待 | 既存Owner |
+| --- | --- | --- |
+| V-D01 | 単価の採用Snapshot／保存した最終参照キー／現在のRelation Path。中間所属変更後の三結果が異なる場合に旧確定値を上書きしない | #1637／#1641 |
+| V-D02 | フォームDraftは全子集合、削除予定除外・未変更既存行を含む。部分的な表示行から保存合計を断定しない | #1129／#2622 |
+| V-D03 | 子行の計算後に親合計を再計算して保存。複合親キー全体とversionを検証し、子一行の失敗で親・全子の確定を拒否 | #1129／#2500 |
+| V-D04 | 機能固有の月次集計がDataの共通Rule／Attributeと誤って同一化されず、Function Contextが期間・Scope・Actorを所有 | #2506／#2586 |
+| V-D05 | Guard用に不適格なOperator、NULL／未取得、未承認の式変更を黙って許容しない。共通Operatorの意味は複製しない | #988／#1637／#4198 |
+| V-D06 | 非保存の導出値でFilter→Sort→Limitを適用。必要な全件性やSQL Pushdown同等性を証明できなければunsupportedとする | #1640 |
+
+これらは#1180/#2514の既存Scenarioへ参照で束ねる候補であり、新しいRule Runtime、Query Engine、テスト正本、Hard Gateを増やさない。Go/Provider/実DB/Studioの製品受入は別段階で検証する。
