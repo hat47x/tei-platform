@@ -55,6 +55,13 @@ type Result struct {
 	// or missing root has no Canonical Subject.
 	SourceRootFindings  []WorkspaceSourceRootFinding
 	SourceContributions []SourceContribution
+	// AuthoringSources lists the TEI Markdown sources a selected authoring
+	// language read in this Load. It is an observation, not an acceptance.
+	AuthoringSources []AuthoringSourceRead
+
+	// Exact declaration ranges recorded by the Load-time parse of sources whose
+	// language is not the native .tei grammar. Keyed like Sources.
+	sourceAnchors map[string]loadSourceAnchor
 
 	// Private, transient read provenance. Not part of Canonical World or a
 	// serialized Source Index; only Load may populate this snapshot.
@@ -164,6 +171,9 @@ type loadHooks struct {
 	collectSyntax bool
 	afterPin      func()
 	afterParse    func()
+	// authoringProviders replaces the built-in authoring language
+	// implementations. Production callers leave it nil.
+	authoringProviders []authoringLanguageProvider
 }
 
 func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) (Result, error) {
@@ -190,6 +200,7 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 	manifestTEI := filepath.Join(root, "tei.workspace.tei")
 	var roots []string
 	var imports []WorkspaceImport
+	var languages []AuthoringLanguageSelection
 	var manifestID ManifestIdentity
 	var manifestRaw []byte
 	manifestName := ""
@@ -216,7 +227,7 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 		}
 		manifestFormatVersion = manifest.FormatVersion
 		manifestName = manifest.Name
-		roots, imports = manifest.Sources, manifest.Imports
+		roots, imports, languages = manifest.Sources, manifest.Imports, manifest.Languages
 		manifestID = ManifestIdentity{Path: "tei.workspace.yaml", SHA256: sourceindex.Fingerprint(src)}
 		manifestRaw = append([]byte(nil), src...)
 	} else if src, legacyErr := readPinnedWorkspaceFile(sourceRoot, "tei.workspace.tei"); legacyErr == nil {
@@ -241,10 +252,20 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 	if err != nil {
 		return Result{}, err
 	}
-	// .tei.md is the intended TEI authoring suffix, but this loader still
-	// dispatches native declarations from .tei. Fail closed until an exact
-	// language/parser binding can consume .tei.md and preserve its provenance.
-	if err := rejectUnboundTEIMarkdownSources(managedFiles); err != nil {
+	// .tei.md is the TEI authoring suffix. A file is read only by the one
+	// implementation of a language the manifest selected; the suffix alone
+	// selects nothing. Every other .tei.md file stops the Load here, before a
+	// domain loader could leave it unread behind a successful result.
+	authoringProviders := hooks.authoringProviders
+	if authoringProviders == nil {
+		authoringProviders = builtinAuthoringLanguageProviders()
+	}
+	selectedLanguages, err := resolveAuthoringLanguages(languages, authoringProviders)
+	if err != nil {
+		return Result{}, fmt.Errorf("%s: %w", manifestYAML, err)
+	}
+	admittedAuthoring, err := admitTEIMarkdownSources(managedFiles, selectedLanguages)
+	if err != nil {
 		return Result{}, err
 	}
 	// Classify declared roots after the physical boundary is verified, so a
@@ -256,7 +277,13 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 	if err != nil {
 		return Result{}, err
 	}
-	sourceRootFindings = append(sourceRootFindings, CheckWorkspaceManagedFileNames(managedFiles)...)
+	for _, finding := range CheckWorkspaceManagedFileNames(managedFiles) {
+		// A source admitted to a selected language is read; the native-suffix
+		// near-miss warning does not apply to it.
+		if _, admitted := admittedAuthoring[finding.File]; !admitted {
+			sourceRootFindings = append(sourceRootFindings, finding)
+		}
+	}
 	r := Result{
 		Sources:                     map[string]SourceLocation{},
 		PluginImplementationSources: map[string]SourceLocation{},
@@ -327,6 +354,11 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 			}
 		default:
 			// Other source roots are accepted for forward-compatible workspace layout.
+		}
+		// Selected authoring languages read their sources after the native
+		// loader of the same root, so a rule can constrain Data the root declares.
+		if err := loadAuthoringSources(root, &r, sourceRoot, admittedAuthoring); err != nil {
+			return Result{}, err
 		}
 	}
 	if r.syntaxErrors == nil || len(r.syntaxErrors.Errors) == 0 {

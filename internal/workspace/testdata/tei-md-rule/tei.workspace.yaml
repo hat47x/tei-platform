@@ -1,0 +1,6 @@
+workspace: tei_md_rule
+formatVersion: 1
+sources:
+  - semantic
+languages:
+  - tei.rule-authoring/v0

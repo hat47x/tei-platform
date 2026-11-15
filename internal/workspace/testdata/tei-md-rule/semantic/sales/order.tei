@@ -1,0 +1,16 @@
+namespace sales
+
+type OrderLineId from std.identifier
+
+data Order {
+    attribute orderId type std.identifier
+    relation lines to sales.order_line many
+}
+
+data OrderLine {
+    attribute orderLineId type sales.order_line_id
+    attribute lineNumber type std.integer
+    attribute quantity type std.decimal
+    attribute unitPrice type std.money
+    attribute itemName type std.text
+}
