@@ -1765,3 +1765,29 @@ CLI・Studio・生成Goから再利用する際も、**単一の受理済みSour
 今回のコード修正は、既存`*.tei` Queryと既存Go回帰の引数を一致させる**限定的な製品修正**である。§35の意味Owner選択（Membership→Person）と版識別・同一Occurrenceの実DB二版保存は依然未完了。#2586の通常CLI実Provider受領、#4490の二Relation同一Cohort、#2621/#988の正式`*.tei.md` Reader→Rule生成Go、#2831のStudio Stage2を自動達成したとしない。独立Expectedは既存#1180/#2514を利用し、新Query Engine、Alias Registry、第二テスト正本を作らない。
 
 **実装の合格条件**：修正後の固定HEADでGo構造試験・実バインダ試験・使い捨てPostgreSQL opt-in試験の実行結果を分けて報告する。Go静的検査や一般のRepository Health成功だけで後者をPASSとしない。使い捨てDBを用意できなければDB実証は未実施と記す。
+
+<!-- org-c1-real-pg-duplicate-revision-20261115 -->
+## 37. 同じ所属の訂正前後を保存できない現行主キーの限界を、実DBで確認する（2026-11-15）
+
+### 37.1 実測する対象を「二時点検索」と「履歴版の共存」に分ける
+
+§36の隔離PostgreSQL試験は、`valid_at/known_at`と半開区間による**別々のMembership occurrence**の検索を実証した。一方、§35のMVR-02は、**同一Membership occurrenceの訂正前後を保存したまま、異なる認識時点から再読込できること**を要求している。現行の`membership_id`単独主キーでは両者は同じ達成ではない。
+
+ここでは、製品の`org-staged-axis`が示す単独主キーと一致した隔離DBに、まず所属A2（配賦0.60、認識開始2027-04-01）を保存する。次に**同じA2**として後の認識版（配賦0.90、認識開始2027-07-03）を追加しようとし、PostgreSQLの`unique_violation`（SQLSTATE `23505`）で拒否されること、元のA2が変更されず一行だけ残ることを独立に検査する。単に「エラーになった」だけでは、接続障害等を主キー制約違反と誤認するため、SQLSTATEも照合する。
+
+### 37.2 正例・負例を異なる資格として保持する
+
+| 検証 | 実際に確認すること | そこから認めない結論 |
+| --- | --- | --- |
+| **Query宣言／SQL照合** | 実Workspaceが読み込んだInput集合とSQL Placeholder集合が一致し、未宣言の追加Placeholderを拒否する | SQL全方言での構文解析／実DBのRow Coverage |
+| **隔離DB二時点検索** | 異なるMembership IDの行がvalidAt/knownAtの各境界で絞り込まれる | 人物の実人数、同一Membershipの旧新版保存 |
+| **隔離DB版共存の負例** | A2を同一IDで二度挿入すると`23505`で拒否され、旧行は残る | 履歴機構の完成、版の識別方式の決定 |
+| **将来のMVR-02正例** | 意味Ownerが受理した識別・保存方式で旧新版を両方再読込できる | そのままCase承認・実Host Grantまで許可 |
+
+負例の成功は「**現在の保存方式では訂正版を共存できない**」ことの実測であり、「訂正履歴に対応した」という合格ではない。時点別に異なるデータを見せたいからといって、業務Membership IDに適当な枝番を付け、同一の所属かどうかを曖昧にしない。変更後の行だけ残す上書きも、過去の認識を再現する履歴保存とは異なる。
+
+### 37.3 次に受理すべき設計と実装順
+
+#2386/#1126は、Membership occurrenceの業務同一性、訂正・取消・再所属、Person Link、兼務・多重性を先に選択する。物理化は、業務IDと版IDを分離する方式、複合キー、履歴表等を比較し、採用方式に応じてQuery・Persistence Mapping・独立Expectedを同時に更新する。特定の保存方式や全アプリへの二時点Schema義務化は、Owner受理前に決めない。
+
+既存#1180/#2514/#4490のMVR-01〜05、#2586の実Provider→Function Context→Consumer、正式Reader/Generator、Studio Stage1→Stage2は引き続き別票とする。今回の追加試験は既存の隔離DB opt-in Workflowを利用する。CIが`SKIP`した場合やGoビルドで停止した場合は、**この負例を実測済みと報告しない**。全体Repository Healthが他領域で失敗しても、試験単位の実PASSと製品全体のPASSは分離する。
