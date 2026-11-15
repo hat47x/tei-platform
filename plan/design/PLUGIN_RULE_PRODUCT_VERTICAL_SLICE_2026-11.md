@@ -344,3 +344,22 @@ Build Intentは、その原文を含むGo Packageを実Source閉包として列�
 この検査は、新たな意味受理機構ではなく、同じ試行におけるGenerator出力とステージングされた実入力の取り違えを防ぐ最小の境界である。変更後のGoが同じ判断結果を返しても、byte不一致を見逃さない。反対に、byte一致だけを根拠としてReader／GeneratorのAuthority、元RuleのRevision、正式Providerの選択、現在Grant、Owner受理を昇格させない。
 
 次の負例は、**元Rule原文をA→B→Aと戻したときのSource Revision失効**と、**Generator実装版を変えても生成Goが同一となる場合の生成資格失効**である。既存のSource Index、Build Intent、Receiptの各責務を維持し、再ビルドの必要性と意味受理の必要性を別々に記録する。
+
+### 14.15 変更後の再利用判断を、出典・成果物・実行資格に分ける
+
+Ruleの原文と生成Goを同じBuild入力へ収録できても、**入力の同一性、生成物の再利用、業務上の受理、実行許可は別の判断**である。§14.14の配置先照合を足場に、変更の種類ごとに失効する資格と、再利用を検討できる対象を分ける。
+
+| 変更・事象 | Source／生成資格 | Build Artifact | 実行・意味受理 |
+| --- | --- | --- | --- |
+| 原文の説明文だけを変更 | 旧Source Evidenceは失効。新しい原文位置・Revisionを再確認 | 生成Goと実Build閉包が同一なら再利用を検討。ただし原文を同梱する現行実証ではBuild閉包が変わる | 説明が業務意味を変えないかOwnerが判断。旧Grantを自動復活させない |
+| 原文をA→B→Aと編集 | 最終byteがAでも旧Revisionの資格は復活しない | 最終Build入力が同じならArtifact再利用を別途判断 | 過去の受理を変更履歴の代わりに用いない |
+| Generator版を変更し、出力Goは同一 | 旧Generator資格は失効。新しい版の選択と実消費を確認 | Go閉包が同じなら再ビルド不要となる余地がある | 新Generatorによる意味適合は独立に受理する |
+| Readerまたは選択Pluginを変更 | 選択したReader／Plugin Lockを再解決。旧解釈資格は失効 | byte一致だけで新しい意味解釈の正当性を推定しない | 選択Provider・Authority・Grantを再確認 |
+| 生成Goと配置先Goが不一致 | 同一Attemptの対応付けに失敗 | Builder起動前に拒否し、旧Artifactへ無言で切り替えない | 実行不可。Owner受理へ進めない |
+| Operator選択をA→B→Aと変更 | 現行選択と履歴を照合。旧選択資格は復活しない | Artifactが同じでも実行対象の選択は別 | 旧CLI／旧Grantの無条件再利用を拒否 |
+
+**判定順序**は、(1) 現行Sourceと選択Reader／Generator／Plugin Lockを確定し、(2) 生成出力と実配置先のbyte列を照合し、(3) Build Intentが列挙した実入力とArtifactの対応を検証し、(4) 正式Entryから選択ProviderへのInvocationと現在Grantを確認し、(5) 必要な業務意味をOwnerが受理する、という順にする。途中で失敗した場合は、後段の成功履歴で埋め合わせない。
+
+この表は**実装済み機能の一覧ではなく、次の負例と受入票の判定基準**である。現行のSource IndexとBuild Intentだけで編集履歴A→B→AやGenerator版の全資格を証明できるとは主張しない。まず既存のRevision／Receipt／Plugin Lockで保持できる観測値を調べ、不足が確認された項目だけを既存契約へ追加する。新たな万能Registryや別系統のBuild機構は設けない。
+
+実装順は、原文A→B→Aの失効を示す独立負例、Generator版変更でGo byteが同じ場合の資格分離、正式Entry→Provider実Callの順とする。直接解釈するOperatorについても、生成Goの代わりに**選択したモデルと実際に解釈されたモデル**を照合し、生成方式と直接解釈方式を同じ受入票で比較する。Windows Studio Stage2、R3、Owner受理はそれぞれ独立した検収のまま維持する。
