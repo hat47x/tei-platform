@@ -170,7 +170,14 @@ func resolveRuleExamples(r *Result) error {
 			example.Rows = append(example.Rows, cells)
 		}
 
+		// A rule column is one statement about the rule. What is wrong with
+		// it is reported once, not once for every row that uses it.
+		refused := map[core.CanonicalID]bool{}
 		for _, expectation := range table.Expectations {
+			if refused[expectation.Rule] {
+				continue
+			}
+			refused[expectation.Rule] = true
 			rule, known := rules[expectation.Rule]
 			if !known {
 				if err := reject(expectation.RuleSpan, fmt.Sprintf("the example expects an answer of rule %s, but no source declares that rule", expectation.Rule)); err != nil {
@@ -203,6 +210,7 @@ func resolveRuleExamples(r *Result) error {
 				}
 				continue
 			}
+			refused[expectation.Rule] = false
 			example.Expectations = append(example.Expectations, RuleExampleExpectation{
 				Rule: expectation.Rule, Row: expectation.Row, Expect: expectation.Expect, Range: sourceRange(expectation.ExpectSpan),
 			})
