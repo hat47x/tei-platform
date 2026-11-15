@@ -2,6 +2,8 @@
 
 > **位置付け**：Desktop製品契約 [§0.13.5](TEI_DESKTOP_PRODUCT_CONTRACT_2026-11.md) と [§0.18.8](TEI_DESKTOP_PRODUCT_CONTRACT_2026-11.md)、[Desktop Host設計](DESKTOP_STUDIO_HOST_INTEGRATION_DESIGN.md)を実装へつなぐ指針。方式の比較・採用条件を整理したものであり、Litの正式採用や製品E2E合格を意味しない。技術選定によってStudioセルフビルドのP0を増やさない。
 
+**共通規約とDesktop固有契約の分担（2026-11-15）**：実装エージェントの必読規約、ディレクトリの正本、実行する検査の選び方は[AGENTS.md](../../AGENTS.md)に従う。Web Components、CSS、Custom Elements Manifest、Lit比較、アクセシビリティ、AI開発ハーネスの分野横断設計は[Web標準UI・コンポーネント・AI開発ハーネス設計](WEB_STANDARD_COMPONENT_AND_AGENT_HARNESS_2026-11.md)を参照する。本書は**Studio Desktop固有のSource→配布Asset→Wails実Consumer、起動と再構築の停止線**を具体化する。共通規則を本書にも複製して独立更新しない。現在Workbenchの`package.json`には`lint`等のScriptがないため、採用候補の静的検査を実行済みの検査と混同しない。
+
 ## 1. 採用する原則
 
 TEI Studio DesktopのUIは、HTML、DOM、CSS、Web Componentsを軸に構成する。**現行plain TypeScript＋esbuild＋CodeMirrorを比較の基線**とし、独立した部品に限ってWeb Componentsを試す。状態・再描画・テンプレートの複雑さを実測で削減できる場合、**Lit＋TypeScriptを第一候補**とする。Litそのものは業務意味の正本でも、Application Operationの入口でもない。
@@ -166,3 +168,40 @@ UIが保持する一時表示・Pin・Dirty Bufferと、Release後も必要なWo
 | **並行：通常CLI実Provider** | #2586／#4495。内蔵Rule Reader・Plugin選択と実Provider Invocation／独立Consumerを区別して検収する | Studioの画面に出たことをProvider実行・業務Effectの証拠にしない |
 
 すべて既存Issueと#1180／#2514の独立Expectedに引き渡す。新しいTest Runner、Source Store、Frontend Registry、万能Approval APIは追加しない。**次回はW0の実コードPRとそのexact HEADのEmbed CI／Windows CIを進捗指標にする。** この追補は実装順・責務・拒否条件を統合したものであり、ここで新たなNode／Windows／Updater／Mobile／Stage2試験を実行したわけではない。
+
+## 12. W0の実装を小さく閉じる：現行Sourceと実Desktopの検収パケット（2026-11-15）
+
+### 12.1 現行mainで再現できる最初の不一致
+
+実装着手時の状態は、[Workbenchの`main.ts`](../../reference/tei-studio-workbench/main.ts)、[参照`index.html`](../../reference/tei-studio-workbench/index.html)、[配布用`index.html`](../../cmd/tei-studio/assets/workbench/index.html)、[既存Pin配線テスト](../../reference/tei-studio-workbench/pin-wiring.contract.test.mjs)の**同じHEAD**を比較して判定する。
+
+- 現行`main.ts`のPin解除・再確認Handlerは`unpin-current`と`inspect-pinned`を参照するが、参照HTMLは`pin-release`と`pin-check`を残している。既存`PIN-WIRING-03`は、この二つのID不一致を検出できる。修正専用[Draft #4876](https://github.com/hat47x/tei-platform/pull/4876)は現時点で**未マージ**であり、未統合の差分を現行製品に算入しない。
+- 配布`assets/workbench/index.html`には、参照HTMLのPin領域そのものが収録されていない。参照HTMLの二つのIDを合わせただけでは、`//go:embed`された旧HTML・JSの不一致は解消しない。
+- 内蔵Rule Markdownについては、main統合済み[製品Load/Source Index #4890](https://github.com/hat47x/tei-platform/pull/4890)、[Inspect/Trace #4891](https://github.com/hat47x/tei-platform/pull/4891)、[旧Validationとの意味同値・重複拒否 #4900](https://github.com/hat47x/tei-platform/pull/4900)、[既存Evaluatorと合成Read Footprint #4901](https://github.com/hat47x/tei-platform/pull/4901)を実コードの到達点とする。ただしGoテストがmainにあることと、当該HEADのCI成功は分けて確認する。実DB Provider・公開Capability Entry・生成Go・Windows UI使用は別資格のまま。
+
+### 12.2 W0-A／B／C／Dの統合順
+
+| 単位 | 実装範囲と既存の検査 | 合格とみなす境界 |
+| --- | --- | --- |
+| **W0-A 参照SourceのPin整合** | #4876のOwner変更を取り込み、Pinの二つのIDと`main.ts`を揃える。現行`npm test`の`PIN-WIRING-03`とPin Reader/State回帰を変更せず実行 | 該当HEADでテストが実際にPASSすること。古いFixtureや`authorityLimits`条件を弱めない。これは参照UI Sourceの検査まで |
+| **W0-B 正規Bundleの同期** | 同じHEADの`npm ci`→`npm test`→`npm run typecheck`→`npm run build`。生成`dist`の四ファイルを`cmd/tei-studio/assets/workbench/`へ同期し、[Embed CI](../../.github/workflows/tei-studio-workbench-embed-ci.yml)の`cmp`を実行 | HTML／JS／CSS／THIRD_PARTY_NOTICESの全byte一致、`dependencies.json`非埋込、元のSource・Lock・Toolchainの記録。旧#4812の配布物の無検証流用はFAIL |
+| **W0-C 実Wails画面** | [既存Windows WebView2 Smoke](../../.github/workflows/tei-studio-wails-desktop-webview-smoke.yml)を同一HEADで実行。通常Desktopの実Window→Service→Catalog／Inspect、Pin領域のDOM/ARIA・後着Replyを観測できるよう、必要なAssertだけOwnerへ引き渡す | 実Window/IPC、配布JSの使用、AをPinしてBを閲覧した際の非干渉を**別々に**確認。PinのHTMLが配布されただけ、WebDriverのProcessが起動しただけでは不合格 |
+| **W0-D 実Stage2** | #2831/#4583が、選択済み非Plugin Build SubjectからStage1の実TEI Process→実Builder→Stage2 Imageへ接続し、Stage2自身からW0-Cの操作を再検証 | 既存BuildExecution／ArtifactSet／実起動主体／Go・Node・Wails入力とArtifactの一致。通常Desktopが成功しても自己再構築の合格へ転用しない |
+
+**実装の分割基準**：Aを単独PRにする場合、Bundle未同期に起因する既存CI失敗を消したことにはしない。BとCを一つのPRで検証する場合でも、各検査の結果を別に記録する。Bの正規生成は独立したJavaScript/CSS／Licenseファイル群の改版として扱い、手で整えた見かけの一致、pin検査無効化、Go Embedの期待値緩和でPASSを作らない。W0-Dは既存Self-build Ownerの作業に残し、Frontend担当へ新Builderを作らせない。
+
+### 12.3 必要最小限の反証と報告
+
+実装Ownerは#1180／#2514の独立Expectedに、現在のFixtureで確認できる負例を接続する。(1)参照HTMLのPin IDだけを旧値へ戻す、(2)配布HTMLのみ旧版へ戻す、(3)配布JSを旧版にする、(4)Pin Aの遅延ReplyをBのDOMへ反映する、(5)Source IndexのReferenceが0件のとき完全な不存在と表示する、(6)Stage2でStage0がBuilderを起動しただけなのにStage1による再構築と判定する、の**異なる失敗原因**を混同しない。入力Workspace・Subject ID、Root/Source版、Build Profile、UI Asset SHA、実Process/WindowとAttempt、テストのPASS/FAIL/SKIP/NOT RUNを必要な範囲で記録する。
+
+特に**検査の非実行を合格にしない**。PR HEADのActionsがqueued/in_progressなら未判定のままとし、別HEADの緑色結果を流用しない。mainに存在するGo回帰やNodeのテスト記述は実行可能な資産であり、当該版の製品受入結果とは異なる。CI全体が別件で停止した場合は、到達した工程と止まった工程を区別して次の小PRへ引き渡す。
+
+## 13. ノード／フロー編集をDesktopへ導入するときの共通モデル境界（P1の採否条件）
+
+Node-RED型の視覚的プログラミング、業務プロセス、マッシュアップ／APIの接続フローをStudioに導入する場合も、**新しいノード専用の意味正本やDesktop固有のフロー実行機構は作らない**。標準データ構造・標準表現型（#2495/#2497/#4350）に、Node/Port/Edgeの一意Identity、型付き入出力、順序・多重性、Source occurrence、Rule、Function、Operation、Provider、Process Flowとの対応をそれぞれ表現し、Canvas／SVG／Tree／表はそのProjectionとする。
+
+最初に検証するのは**同名の二Node、同じ端点を持つ異意味の二有向Edge、一つの型不適合Port**を含む固定Fixtureである。表示用Edge IDや座標を正式Relation IDに昇格させず、Edgeの向き・多重性・入出力型と接続先を表示から再確認できることを確かめる。Graphからプロセスフローへ変換する場合は、順序・条件・非同期・EffectのLossを明示し、表現できないものは`unsupported`とする。Runtime実行、外部API公開、Source逆編集の権限は、それぞれ既存Function/Entry・Provider/Host・Writer/Ownerの受入が必要である。
+
+P1でのStudioの役割は、既存#1124の三要素Modelerと#4198のLifecycle Graphから**同じ標準要素を異なる図法で投影・操作できるか**を比較することとする。ノード単位の汎用部品はCanvas以外の表・API生成へも再利用できるように設計するが、独立した第二Rule Engine／フローRuntimeを前提にしない。最初の一Node/EdgeのSource→表示→選択→read-only Inspectまでを証明してから、ノード部品群・クラウドマッシュアップ・生成APIの用途を拡張する。
+
+このP1は探索・設計の採否条件であり、W0-A〜Dや通常製品CLIの実ProviderというP0の新Hard Gateではない。実装・独立Expectedは既存#1124/#2497/#1180/#2514へ引き渡す。
