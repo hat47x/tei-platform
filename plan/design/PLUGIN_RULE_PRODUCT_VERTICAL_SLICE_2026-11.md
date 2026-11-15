@@ -39,7 +39,7 @@ Goの動的Pluginロードを標準の更新・配布機構として前提にし
 
 ## 4. 実装パケットと一Attemptの証拠
 
-**R0：Readerの製品回帰（#2621／#1018）。** 既存内蔵Readerで、選択済みSourceの同一Load byte、Source anchor、旧tei定義の互換性を検査する。未選択、実装欠落、複数候補、管理外Draft、Source A→B→Aの各拒否を入れる。内蔵Readerの成功は外部Language Pluginのexact Resolver／Lockの成功として報告しない。
+**R0：Readerの製品回帰（#2621／#1018）。** 既存内蔵Readerで、選択済みSourceの同一Load byte、Source anchor、旧tei定義の互換性を検査する。2026年11月15日にmain統合済みの[PR #4890](https://github.com/hat47x/tei-platform/pull/4890)は実Load、二Rule、Source Indexの元byte位置、説明文変更による旧Index失効、未選択・契約版違いをGo試験へ追加し、[PR #4891](https://github.com/hat47x/tei-platform/pull/4891)は同じLoadからInspector／TraceへRuleの定義位置を照合する試験を追加した。**両PRの統合と試験コードの存在は確認済みだが、当該新HEADのCI成功は別途確認する。** 実装欠落、複数候補、管理外Draft、Source A→B→A、既存tei定義の互換性など、未確認の条件は個別に残す。内蔵Readerの成功を外部Language Pluginのexact Resolver／Lockの受入へ昇格させない。
 
 **R1：受理Meaningから判断Goを生成（#1121／#4544）。** 同じSource occurrenceの一Ruleについて、入力の型と欠損を明示し、条件を含むGo実装を出力する。実際に生成したSourceと選択Generatorの版、受理Rule、実生成箇所を結ぶ。業務上のMeaning受理が欠ければ、その資格はunknownのままにする。
 
@@ -90,3 +90,42 @@ RuleのMeaningの正本は#2620／#988、Language選択は#1018、Target Lowerin
 **計測**：固定した機能義務を分母に、TEIから生成した判断、委譲、手書き、未実装を別々に記録する。同じ義務の改訂前後で、保守するRule数、手書き変更箇所、重複する定義、独立検収までの作業とConsumer数を比較する。Plugin数や生成Go行数の増加だけをセルフビルドの進展とはしない。
 
 この文書は実装計画である。mainのReader実装を超えるGo／CLI／Plugin／Windowsの新実行は行っておらず、Ownerによる意味受理も未確認である。
+
+## 8. 他領域と共通化するのは「対象と資格の受渡し」である
+
+Plugin、Studio、SHO、SUI、YIC Harnessの議論を通じて、同じ情報を受け渡すために巨大なContextや独自Agent Runtimeを作る必要はないと整理された。まず一つのSubjectについて、**何を選び、どの版のどの情報を読み、どの操作を依頼し、どこまで観測できたか**を共通の型付きOperationと既存Evidenceで表す。AIへの説明やSkillは、この確実に確認した部分から必要に応じて構成する。
+
+| 受渡しに必要な閉包 | 確認する内容 | 不適格な状態 |
+| --- | --- | --- |
+| Subject／Information | Workspace・Canonical Subject・Role・Source occurrence・Required／Loaded／Boundの対応と取得範囲 | 別Workspaceの同名Subject、Source A→B→A、partialを完全読取と誤認 |
+| Instruction／Documentation | 実CLIの発見結果、選択ContractとPlugin版、Source-backedの公開Manual、必要時取得した短いSkill | 旧コマンド、合成Fixtureの仮想操作、未確認文書を実行手順として提示 |
+| Capability／Authority | 選択実装と実Artifact、実Provider Entry、Hostの現在Grant、Effectの実観測、Consumerの受領 | exact Lockだけで実行許可／開示資格があると誤認 |
+
+既存の[共通Application API](https://github.com/hat47x/tei-platform/blob/main/plan/adr/0048-shared-application-api-and-transport-adapters.md)を入口に、CLI、MCP、Studio、Webは同じ型付き意味操作の別投影とする。MCPが必要なら同じOperationをTool／Resourceへ公開するが、独自Agent Loopや常駐TEI Hostを追加する理由にはしない。公開文書についても、Plugin InventoryのID・Lock一致と、文書SourceRefを実読取りし現在Audienceに開示してよいことは別判定である。#4679／#4714へ帰属させ、R0〜R3の新しい先行条件にはしない。
+
+## 9. 操作対象・表示・Source編集は同じ識別子ではない
+
+StudioのWails／WebComponents、SHOの図表、SUIのカードやKJ空間、AI Harnessからの対象引渡しを考えると、**意味上の対象IDと描画ID、Source位置、現在の編集対象**を分ける必要がある。
+
+Graphの同じ表示名のNode二件、同一端点の多重有向Edge、業務上のRelation IDは、それぞれ独立した同一性を保持する。Sourceを表示できても、編集すべき一つのRelationが確定したことにはならない。明示Pinは対象選択の意図であり、現在Grantや外部送信許可ではない。複数候補が残った場合は候補を示し、AIにも一意の編集対象として渡さない。
+
+Frontendは業務データの受理済み意味と表示の糖衣を分離する。Markdown表、Graphviz、Mermaid、Web Componentsの構造やCSSレイアウトは、原文を保存しながら複数の表示を可能にする。ただし、図の配置やCSS変更を業務Ruleの変更として扱わない。逆にEdgeの向き、Ruleの条件、FieldのNULL扱いが変わる場合は、表示上の差だけに押し込めず、生成コードと独立Expectedまで追跡する。
+
+UI実装におけるTypeScript・Web標準技術・Wailsの選択は#1824の担当とし、このPlugin設計は**Target-neutralな表示・操作契約と、必要な実行資格を持つConsumer**までを定義する。生成したStudio Componentが実WebViewへ収録されたことは、Source生成やNode側のテストとは別に、正規Bundle・Go embed・Windows実Consumerで確かめる。
+
+## 10. 次に着手する差分を、現在の製品到達点に合わせて絞る
+
+内蔵Rule Readerとその実Load回帰がmainへ入ったことで、製品の第一作業は「汎用Markdown Readerを新設する」ことではなくなった。**第一実装PRは既存Readerで受理候補となる一Ruleを固定し、その条件が生成したGoの判断処理を決めること**に絞る。生成器の自己記述・外部Language Resolver・全Graph／Window・公開Manual・Wails Updaterは、初回の成功条件へ載せない。
+
+検収では、同じRuleの入力だけを変えたケースと、Rule定義自体を変えたケースを区別する。前者は型・NULL／欠損・0・境界値で結果がどう変わるか、後者は**生成コードの分岐そのものが変わるか**を調べる。どちらも、生成器が返す値をExpectedの根拠にせず、既存#1180／#2514の独立Expectedと照合する。
+
+次のPRではBuilderがこのGoを実消費し、選択されたProviderの実Entryを通常CLIの共通Application APIから呼ぶ。実Callが成立した段階で、別Targetに同じContractを実現させる圧力試験を検討する。**Studio Desktopの正式なStage1実TEI→Stage2実Windows Wails/WebView2は、引き続き独立かつ最上位の製品P0**である。開発用CLIが二度起動した事実、ReferenceのGo成功、旧PRのGreen CIを寄せ集めてStage2成功にしない。
+
+### 追加の反証（既存Independent Expectedに引き渡す）
+
+- **PLV-13**：PinされたSubjectと実CLIの操作対象が別Workspaceの同名IDになる。結果一致でも受領不適格。
+- **PLV-14**：製品InventoryのLockは一致するが、実ManualのSourceRef／Audienceが未確認。Skillの使用手順は現行実装の保証にならない。
+- **PLV-15**：同じ意味Graphに対して表示用Edge IDと正式Relation IDを混同する。編集対象未確定のままPatchを行わない。
+- **PLV-16**：生成TSとNode側試験は新しくてもWailsに埋め込まれたAssetが古い。実Consumer資格は成立しない。
+
+**記録上の注意**：PR #4890／#4891のmain統合は製品Reader回帰の進展であって、外部Language Plugin、生成Plugin／実Provider、Studio Stage2、Owner意味受理の成功ではない。本追補は文書のみであり、追加したPLV-13〜16の試験実行や新しい製品実装を含まない。
