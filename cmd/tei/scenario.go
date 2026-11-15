@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
 
 	"tei/internal/core"
@@ -55,6 +56,7 @@ func runScenarioCommand(args []string, output io.Writer) error {
 	expectedScenarioSHA := flags.String("scenario-sha256", "", "required Scenario revision of generated command")
 	expectedWorldSHA := flags.String("world-sha256", "", "required resolved World fingerprint of generated command")
 	expectedLockSHA := flags.String("plugin-lock-sha256", "", "required plugin lock fingerprint of generated command")
+	expectedOperatorSelectionSHA := flags.String("operator-selection-sha256", "", "required selected Operator implementation fingerprint of generated command")
 	expectedFixtureSHA := flags.String("fixture-sha256", "", "required synthetic Fixture fingerprint of generated command")
 	if err := flags.Parse(args[1:]); err != nil {
 		return err
@@ -75,12 +77,12 @@ func runScenarioCommand(args []string, output io.Writer) error {
 	if (*planPath != "") != (action == "check") {
 		return fmt.Errorf("-plan is required only for check")
 	}
-	if action != "run" && (*expectedScenarioSHA != "" || *expectedWorldSHA != "" || *expectedLockSHA != "" || *expectedFixtureSHA != "") {
+	if action != "run" && (*expectedScenarioSHA != "" || *expectedWorldSHA != "" || *expectedLockSHA != "" || *expectedOperatorSelectionSHA != "" || *expectedFixtureSHA != "") {
 		return fmt.Errorf("generated-command fingerprint flags are valid only for run")
 	}
-	pinsSupplied := *expectedScenarioSHA != "" || *expectedWorldSHA != "" || *expectedLockSHA != "" || *expectedFixtureSHA != ""
-	if action == "run" && pinsSupplied && (*stepID == "" || *expectedScenarioSHA == "" || *expectedWorldSHA == "" || *expectedLockSHA == "") {
-		return fmt.Errorf("generated Scenario run requires complete Scenario, World, Plugin Lock pins and one Step")
+	pinsSupplied := *expectedScenarioSHA != "" || *expectedWorldSHA != "" || *expectedLockSHA != "" || *expectedOperatorSelectionSHA != "" || *expectedFixtureSHA != ""
+	if action == "run" && pinsSupplied && (*stepID == "" || *expectedScenarioSHA == "" || *expectedWorldSHA == "" || *expectedLockSHA == "" || *expectedOperatorSelectionSHA == "") {
+		return fmt.Errorf("generated Scenario run requires complete Scenario, World, Plugin Lock and Operator Selection pins and one Step")
 	}
 	if action == "translate" {
 		markdownSource, err := os.ReadFile(strings.TrimSpace(*scenarioMarkdown))
@@ -252,11 +254,28 @@ func runScenarioCommand(args []string, output io.Writer) error {
 	}
 	lockDigest := sha256.Sum256(lockSource)
 	plan.PluginLockSHA256 = hex.EncodeToString(lockDigest[:])
+	// Operator implementation selection is not part of Canonical World or
+	// Plugin Lock. Canonically order the selected identities so manifest entry
+	// reordering cannot invalidate a semantically identical generated command.
+	selections := scenarioImplementationSelections(loaded.OperatorImplementations)
+	sort.Slice(selections, func(i, j int) bool {
+		if selections[i].Operator != selections[j].Operator {
+			return selections[i].Operator < selections[j].Operator
+		}
+		return selections[i].Implementation < selections[j].Implementation
+	})
+	selectionBytes, err := json.Marshal(selections)
+	if err != nil {
+		return fmt.Errorf("fingerprint selected Operator implementations: %w", err)
+	}
+	selectionDigest := sha256.Sum256(selectionBytes)
+	plan.OperatorSelectionSHA256 = hex.EncodeToString(selectionDigest[:])
 	for i := range plan.Commands {
 		command := &plan.Commands[i]
 		command.Argv = append(command.Argv,
 			"-world-sha256", plan.WorldSHA256,
-			"-plugin-lock-sha256", plan.PluginLockSHA256)
+			"-plugin-lock-sha256", plan.PluginLockSHA256,
+			"-operator-selection-sha256", plan.OperatorSelectionSHA256)
 		if expected, ok := plan.FixtureSHA256[command.StepID]; ok {
 			command.Argv = append(command.Argv, "-fixture-sha256", expected)
 		}
@@ -274,6 +293,9 @@ func runScenarioCommand(args []string, output io.Writer) error {
 		}
 		if *expectedLockSHA != "" && *expectedLockSHA != plan.PluginLockSHA256 {
 			return fmt.Errorf("generated CLI command is stale: Plugin Lock fingerprint differs")
+		}
+		if *expectedOperatorSelectionSHA != "" && *expectedOperatorSelectionSHA != plan.OperatorSelectionSHA256 {
+			return fmt.Errorf("generated CLI command is stale: Operator Selection fingerprint differs")
 		}
 		if *expectedFixtureSHA != "" {
 			if *stepID == "" || *expectedFixtureSHA != plan.FixtureSHA256[*stepID] {
