@@ -6,8 +6,8 @@ import (
 	"errors"
 	"os"
 	"os/exec"
-	"reflect"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"testing"
 
