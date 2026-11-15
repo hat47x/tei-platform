@@ -944,6 +944,21 @@ S0〜S4を一度に実装しない。**固定6入力に対するGraph/RuleのGo�
 
 **評価の軸**：読者の「対象→条件→判断→結果」という認知順、記述量・重複、既存Validationとの意味同値、元位置・診断の品質、製品Loaderでの実消費と、変更時に手書き処理が減った割合を**別々に記録**する。構文が短いだけで自己構築済みとは数えない。全体P0のWindows Stage1→Stage2と通常`tei`実Provider／独立Consumerを独立して継続する。
 
+<!-- tei-a0-reference-negative-to-product-positive-20261115 -->
+**A0の実装で更新する正負テスト（既存Reference回帰を継承）**：現行mainの[Language境界Goテスト](../../reference/dsl-language-plugin/workspace_admission_boundary_test.go)は、`baseline.tei.md`を実Manifestの管理Rootに置き、合成Pinで`ParseSelected`がGraph/RuleのNode二件・別ID Edge二件・元byte spanを読めても、同じ原文に対する製品`Workspace.Load`は`TEI_MD_PARSER_UNBOUND`で拒否することを検証している。Pin欠落、実装指紋不一致、同一Pinの重複ProviderではReferenceのParser呼出し自体を拒否する。このテストの存在を正式A0実装やProduct Reader成功とみなさない。原PR #4857はclosed/unmergedであり、今回確認したのは**mainに実ファイルが存在すること**である。
+
+A0を製品に接続する変更では、既存の拒否証拠を消すのではなく、**選択なしのWorkspaceと、受理済み選択ありのWorkspaceを別入力として**次の結果を確かめる。
+
+| 既存証拠から変える一因子 | 製品に必要な結果 | 誤ったPASSの例 |
+| --- | --- | --- |
+| 同じ管理Source、正式Language選択なし | `Workspace.Load`は従来の未束縛拒否を維持する | Referenceの合成Pinを製品選択として流用 |
+| 同じSource、実Workspaceに対応する受理済みLanguage/実装Pinあり | **実Loader**から選ばれたReaderが同じLoadの元byteを消費し、Source位置・Indexへ接続する | TestがReaderを直呼びし、Productの`ReadByLoader`を推定する |
+| 同じSource、実装欠落・版/指紋不一致・複数Provider | 解析前に拒否し、部分的に受理済みのWorldや実行資格を返さない | 先に見つかったProviderや旧選択へfallback |
+| Source/Manifest・Selection・Load Attemptの一つだけ変更 | 古い候補とIndex/Reader消費の対応を再確認し、旧AcceptanceやGrantを自動再利用しない | 元byte一致やReference指紋一致だけで再受理 |
+| 管理外Draftと従来`*.tei`を同時に置く | Draftの同名原文を読まず、従来`*.tei`の正常Loadを維持する | ファイル名・拡張子による暗黙のFrontend選択 |
+
+**移行時のテスト方針**：最初のReader実装で従来の一律拒否が条件付き拒否へ変わるなら、既存の負例は「未選択の世界」に残し、正式に選択された世界の肯定例を**同じFixtureを共有する別テスト**で追加する。拒否テストの一括削除や`TEI_MD_PARSER_UNBOUND`の全面解除はしない。A0のSelection供給は#1018/#988、A1〜A3の実読取・Source Indexは#2621/#1017/#1180/#2514へ引き渡す。新Registry、暫定Manifest拡張、第二Reader、独立Expected正本を作らず、Studio Stage1→Stage2と通常CLI実Providerの独立P0を維持する。
+
 #### S0予備検証と正式Reader接続を分け、生成物の実消費までつなぐ（2026年11月15日）
 
 **S0-Pはmainに統合済み、S0-Aは未実装（2026年11月15日更新）。** [#4751](https://github.com/hat47x/tei-platform/pull/4751)では、実Workspace Manifestの`semantic` Root、未宣言`drafts`の除外、同一Pinned Rootからの元byte、固定されたGraph/Rule候補、既存Source IndexのFingerprint/Span、原文変更時の旧Index拒否を**テスト専用の事前検査**として接続した。旧[#4745](https://github.com/hat47x/tei-platform/pull/4745)は未マージでクローズされ、同内容の実Go試験が#4751からmainへ入った。現行の`Workspace.Load`は未選択`*.tei.md`に`TEI_MD_PARSER_UNBOUND`を返し続ける。これは意図した安全な境界であって、予備検査の成功により製品Readerを解放する理由にはならない。
