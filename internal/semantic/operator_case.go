@@ -40,7 +40,9 @@ func ParseOperatorCaseValue(text string) (*big.Rat, error) {
 			return nil, fmt.Errorf("%q is not a decimal number; write digits with an optional minus sign and fraction, for example -0.01", text)
 		}
 	}
-	if !seenDigit || seenPoint && fractionDigits == 0 {
+	// "007" might be meant as 7, as an octal number, or as a code. Refuse it.
+	leadingZero := len(digits) > 1 && digits[0] == '0' && digits[1] != '.'
+	if !seenDigit || seenPoint && fractionDigits == 0 || leadingZero {
 		return nil, fmt.Errorf("%q is not a decimal number; write digits with an optional minus sign and fraction, for example -0.01", text)
 	}
 	value, ok := new(big.Rat).SetString(text)

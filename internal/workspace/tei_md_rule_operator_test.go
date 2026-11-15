@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"math/big"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -84,7 +85,7 @@ func TestTEIMDOperatorDeclaredInADocumentDecidesARule(t *testing.T) {
 
 	want := semantic.Operator{ID: "sales.non_negative", Symbol: "non_negative", Input: semantic.OperatorInputNumber}
 	declared := operatorsOf(loaded)
-	if len(declared) != 1 || declared[0] != want {
+	if len(declared) != 1 || !reflect.DeepEqual(declared[0], want) {
 		t.Fatalf("operators=%+v, want %+v", declared, want)
 	}
 	rule := loadedValidation(t, loaded, "sales.order_line.discount_non_negative")
