@@ -456,3 +456,22 @@ CLI／Studio共通のread-only表示は、既存のInspect結果を入口とし�
 DC-27〜32は新規テスト実施を表さず、#1180／#2514の独立Expectedへの**引渡し候補**とする。既存#988／#1018（Language／Operator）、#2621（Source）、#1121／#4544（Generator／Builder）、#951／#4495（Plugin／Entry）、#1124／#1824（Inspector）、#2831／#4583（Stage2）へ担当の問いとして戻す。
 
 **優先順位は従来どおり**、通常CLIでの実Providerと、Stage1が再構築したStudio Stage2の実Windows受領をP0とする。本追補によって新Grammar、横断Runtime、第二Meaning／Evidence Store、全面的なSource Writerを前提条件にしない。
+
+## 24. Data定義表を既存の製品Inspectorで確認する最初の差分（2026-11-15）
+
+§20〜23の「定義／事実を分け、同じSourceと意味IDを追う」を、構文数を増やさず実コードで確かめる。現行のinternal/workspace/testdata/tei-md-data-tableには、明示選択したtei.authoring/v1、印付きData項目定義表、印のない記録例、隣接するRuleが**一つのMarkdown Source**にある。Workspace.Loadでの型付き意味の同値は既存のinternal/workspace/tei_md_data_table_test.goが別に検証する。
+
+最初の追加試験internal/operations/inspect_markdown_data_table_source_evidence_test.goは、**既存InspectionFromLoad／ReadWorkspaceSubjectを使い、Product Inspectorまで到達すること**を検証対象とする。新しいReader・Inspector schema・CLIサブコマンドは作らない。
+
+| 検証対象 | 独立して固定する観測 | 資格の上限 |
+| --- | --- | --- |
+| **選択ReaderとDefinition** | Reader tei.authoring/v1が一つのSourceを読み、Data／Attribute／Ruleの三Subjectを既存の意味IDで解決する | Language選択とSource traceは業務意味のOwner受理ではない |
+| **Source Span／Role** | 原byteとIndexのFingerprint、Data名・項目セル・Rule名のbyte開始位置、RoleDefinitionを一Loadから照合する | span一致だけで元Sourceへの編集資格は付与しない |
+| **非定義の境界** | 印のない例表から架空Dataを生成せず、Ruleを公開Capabilityへ変換しない | 読取・Rule定義が外部Function／Provider呼出しを意味しない |
+| **説明文のみの改版** | Canonical Data／World fingerprintは不変、Source Index／Model Revisionは変化する。A→B→Aでは記述的Fingerprintだけが復帰する | 古いPin、Grant、Artifact／Effectの証拠は復活しない |
+
+この小実証が成立すれば、**Source Role→既存Meaning→Inspector→位置の検証**というP1の最小経路を、Ruleだけでなく異種のData表にも広げたと判断できる。ただし実装済みとはGoコードがmainへ収録された範囲であり、exact HEADのGo試験成功はCIの個別結果で確かめる。InspectorはAuthoringSourcesにあるReader選択を独立した公開列としては返さないため、Loader内の実読取記録とInspectorのSource traceを**同じ一Loadの試験で照合**する。Studioで選択Languageが表示できるという主張はしない。
+
+次のP1は一問一Subjectのread-only説明表示である。先にReadWorkspaceSubjectとInspectionFromLoadの既存列を再利用し、将来の表示列はProduct Inspectorの公開契約に存在するかを検査してから追加する。Ruleの論理Read Footprintは別の既存評価観測が必要であり、ここでData項目定義から推測して埋めない。原宣言→Generator→Build Intentの正式R2-P、実ProviderのR3、WindowsのStage1→Stage2は別P0で維持する。
+
+この節は**実装回帰の根拠と次の受入条件**であり、Data項目定義表の全構文採用、Query／Persistence／型付き逆編集の完成、Sourceへの書戻し、実Provider Callの証明ではない。
