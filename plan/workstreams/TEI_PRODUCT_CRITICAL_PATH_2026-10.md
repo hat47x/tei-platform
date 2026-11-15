@@ -1716,10 +1716,25 @@ P0-S/R/Bは互いに別の到達資格であり、適格な小差分から並行
 | --- | --- | --- |
 | **W0：Workbench修正の回収（P0-Bの一部）** | #4812のclosed/unmerged差分を現行mainと照合し、必要な固定版・正規Bundle・埋込資産・Windows検査だけを後継PRへ移す（#1824/#4583） | #4812最終HEADの9系統CI成功は歴史的根拠。新PR HEADの実Node／Go／Wails Embed／Windows試験で再取得するまでmain製品PASSにはしない |
 | **S0-A：正式Reader** | 選択済み`*.tei.md`一件について`Workspace.Load`の同一元byteを正式Frontend・Source Index・Typed Candidateへ結ぶ（#2621/#1018） | 未選択／曖昧／管理外Sourceは拒否。#4792 Window S0-PもSource読取候補に過ぎない |
-| **R0：実Provider・文書Readの別PR** | #4495/#1251の実Go Providerを通常CLIから呼ぶ。独立して#4714/#4679が一Plugin・一MarkdownのSource-backed Readと現行Disclosureを調べる | #4800 Lock事前検査をDoc Read／実Provider呼出しに昇格しない。直接上位版の追加投影#4826はDraft、未統合 |
+| **R0：実Provider・文書Readの別PR** | #4495/#1251の実Go Providerを通常CLIから呼ぶ。独立して#4714/#4679が一Plugin・一MarkdownのSource-backed Readと現行Disclosureを調べる | #4800 Lock事前検査をDoc Read／実Provider呼出しに昇格しない。直接上位版の追加投影#4826はmain統合済み（ただしDoc公開権限は未確認） |
 | **B1〜B3：Studio再入** | 非Plugin Studio Build SubjectにFrontend TS／esbuild／Go embed／Wails実Builderと実消費入力を接続し、Stage1→Stage2生成（#2831/#4583） | Stage1の実Process→Stage2 exe digest→**そのexe**の実Windows WebView2／Inspect受領を一系列で確認。別HEADの通常Desktop Smokeを合算しない |
 | **U1：D2更新比較（P1）** | 現行Wails `v3.0.0-beta.29`の固定基線と、公式安定版v3.1.0のexact Pin候補を別Branchで比較。署名・UI資産・標準Plugin・設定Schemaを対象ごとに検査（#1824/#2044） | Wails公式Updaterは単一対象の交換。D3複数Image、DB migration、現在Grant、Effect unknownは別Owner／独立Expected。P0-S/R/BのHard dependencyにはしない |
 
 **再確認が必要な変更の境界**：Source A→B→A、Lock入替え、選択Provider変更、Toolchainまたは実Child Builder変更、UI HTMLだけの更新、旧Reply、User Grantの失効、Backend Restartを一因子ずつ変え、既存BRC／PCC／DG0-NP／E-READ／PIN試験へ差分assertとして割り当てる。成功は`Source/Selection→actual consumed Build member→actual process/operation→actual consumer result`の必要な節を**同一Subject・Revision・Attemptとexact HEAD**で確認した範囲に限る。独立Expectedの正本は#1180/#2514に置き、新たな状態機械・試験基盤・製品Gateは増やさない。
 
 **今回の状況**：この追加は設計と実装引渡しであり、#4812の成果物のmain収録、S0-A、実Provider／Doc Read、Stage2、v3.1.0移行、Updater／OS検収を新たに実施したものではない。
+
+## 2026-11-15 Bootstrap実行証拠の最小統合：三経路・四つの直近PR（§29）
+
+既存[Bootstrap契約§29](../design/STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)を、現在mainの実Go・進行中PRと照合した。Plugin選択だけで文書・Runtimeの`ready`を推論せず、**本当に実Consumerが受け取った成果**まで一つずつ接続する。
+
+| 作業Owner／直近PR | 現行事実と次に閉じる1差分 | 追加する既存Expectedの観測点 |
+| --- | --- | --- |
+| **L／#4714・#4845** | main #4800/#4826で`documentReadPreflight`は選択Pluginのexact版・Lockと直接上位だけを実`management.Report`から投影。#4844のJSONL全体コンパイル障害はmain修正済み。#4845は実`tei commands`／`plugin-inventory`／`plugin-lock`の同一実CLIバイナリでの照合を行う未統合PR | Product選択の無い合成Pluginを拒否、Lock unknown/exactを区別。SourceBinding/Disclosure/ReadEligibilityは未確認のまま。実一Doc Readは#4714/#4679の別PR |
+| **S／#1824・#4583・#4842** | #4812は9系統CI成功でもclosed/unmerged。Source/Bundle/埋込資産の必要差分を現行main後継PRへ回収し、新HEADで実Wails検査。#4842はSource位置を純粋ProjectionするDraftであり、元Source Open/GUI/実Consumerは別 | 旧`index.html`と新`main.js`の混在拒否、現在Replyの`authorityLimits`保持、Source Indexのbyte RangeとPinの旧応答拒否 |
+| **B／#2621・#4495・#4583** | 製品S0-A選択`*.tei.md`同一Load byte→実生成Go→通常CLI実Provider／独立Consumer、並行して非Plugin Studio BuildIntent→Stage1→Stage2実Windows | 実Builder/Toolchainと消費Source、生成・埋込Assetの実byte、実Stage2 Image/ProcessとWindows受領を別資格で照合。生成器自己申告／別HEADの成功は代替不可 |
+| **U／#1824・#2044（P1）** | 現行Wails `v3.0.0-beta.29`の固定基線と、次に採用する安定版のexact Pin候補を比較。単一対象UpdaterとD2 Release Closureを検証 | 署名と実Image、標準Plugin/設定Schema/ユーザー設定、更新後再起動・互換Handshake、現行Grantを別Expected。D3複数Processの原子切替は非対象 |
+
+**引渡し順**：まずLの未統合PRの実CI／Code Review、Sの後継Bundle回収、S0-Aの正式Source Reader、R0の実Provider、Bの非Plugin Stage2を**依存のある部分だけ直列・その他は並行**で進める。LのDoc Read、SのS-LOC/Source Open、UのUpdaterをStage2の新Hard Gateにしない。既存#1180/#2514/#2600のExpectedとEvidenceへ一因子変更の差分を足し、新Runner・Host・Registry・Policy Engineを増やさない。
+
+**今回の資格**：現行mainに実在する#4826/#4844と未統合#4845/#4842/#4812の作業資格を区別した設計・実装引渡し。新Go/Node/Windows/正式Reader／実Provider／実Doc／Stage2の製品実行、Owner意味受理、Updater試験はNOT RUN。
