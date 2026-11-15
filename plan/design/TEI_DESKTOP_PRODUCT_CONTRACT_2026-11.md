@@ -794,6 +794,17 @@ P0の優先順位は**Desktop Stage1→Stage2／通常`tei`実Provider／正式R
 
 **この節は設計・実装引継ぎであり**、今回の変更から新Go/Node/Windows/CLI/実DB/外部Harness試験の成功、Pin製品受理、正式`*.tei.md` Loader/Plugin Provider、Stage1→Stage2製品完了を主張しない。
 
+
+#### 0.18.5 E-READの第一実装：Hostが返した「参照の限界」を画面に残す（2026-11-15）
+
+**最初の製品寄与を、既存Workbenchの実コードへ限定する。** mainの`internal/operations/inspect.go`は`SubjectInspection.authorityLimits`に四つのread-only契約を明示しているが、先行Workbenchの`readInspection`はその値を表示用投影へ受け渡さず、画面は`sourceStatus`とJSONモデルだけを見せていた。Sourceの位置を表示するだけで受理済みの意味や編集許可を連想させないため、以下を第一変更として採る。
+
+- **既存Presenterのみ拡張**：`reference/tei-studio-workbench/presentation.ts`の`readInspection`がHostの`authorityLimits`に必須の四要素があることを確認し、元の制限を日本語のread-only説明へ投影する。必須要素欠落、非配列、非文字列、`sourceStatus`非文字列は`INVALID_INSPECTION_RESPONSE`で拒否する。想定外の追加制限も消さず、コードを含めて表示する。Client側の独自Grant判定や新しい意味正本は作らない。
+- **Inspectorの表示と非干渉**：既存Workbenchの右側へ「参照結果が保証しないこと」を一欄追加。`main.ts`は既存`responses.run("inspection")`の成功した現在Replyだけを表示し、選択不能、取得中、取得失敗、Workspace再読込では旧Limit表示を消去する。描画は`textContent`で行い、Source/Backend由来文字列をHTMLとして解釈しない。Focus/Pin/Dirtyの新しい状態正本は足さない。
+- **独立回帰**：`presentation.test.mjs`で正常・欠落・型不整合・旧Source Index・read-only違反・追加制限の保持を検査し、既存`presentation.fingerprint-contract.test.mjs`のA/A正常、A/B拒否を現行Host形へ更新する。正規Node24の`npm test`／`test:p0-presenter`／`typecheck`／`build`を実行し、実Bundle→Go embed byte一致とWindows実WebView2は**別の資格**として記録する。
+
+**この一変更の受入上限**：Hostの実`authorityLimits`をPresenter/DOMで失わないことは、Sourceの原byteを再解決したこと、Ownerが意味を正式受理したこと、Current Grant/Disclosureが有効なこと、生成Builder/Providerが実呼出しされたことを**一切証明しない**。E-READの次の差分は同じSource/Subject/Revisionの実Wails Browser受領と元Source復帰。E-PINは#4515の同一HEAD Node24/npm・埋込byte・実Windows B非干渉の採否条件を変えず、E-TRACEは#2831/#4583のStage1→Stage2最優先条件を変更しない。
+
 ## 1. 位置づけと判断済み前提
 
 - **TEI Studio**はData/Function/Business三視点、Data Context、Source/Meaning、DBクライアント、Plugin、テスト、SHO文書機能への統合Workbench。
