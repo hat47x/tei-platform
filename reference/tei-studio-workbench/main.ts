@@ -311,7 +311,6 @@ function renderList() {
     return button;
   });
   list.replaceChildren(...nodes);
-  renderPin(pinReader.current());
   if (!nodes.length) {
     const empty = document.createElement("p");
     empty.textContent = "該当する要素はありません。";
@@ -517,17 +516,6 @@ const panel = mountCommandPanel(element("commands"), {
     }
   },
 });
-element("pin-current").addEventListener("click", () => {
-  const subject = selected;
-  if (!subject || !client || !workspace.value || disposed) return;
-  void pinReader.pin(workspace.value, workspaceEpoch, subject).catch(showFailure);
-});
-element("pin-check").addEventListener("click", () => {
-  if (disposed) return;
-  void pinReader.recheck(workspace.value, workspaceEpoch).catch(showFailure);
-});
-element("pin-release").addEventListener("click", () => pinReader.release());
-renderPin(pinReader.current());
 workspace.addEventListener("change", () => {
   search.value = "";
   void loadWorkspace().catch(showFailure);
