@@ -120,3 +120,14 @@ DRI-0の直後に**DRI-G0**を行う。ここで「Iで充分／Gに適格／H�
 ## 統合単位
 
 本計画・設計の整合を確認した文書変更は、実装待ちで保留せず独立PRとして扱える。製品実装はDRI-0/1、DRI-2/3、DRI-4、DRI-5の順に分け、既存Ownerを維持する。受入未確認を既存Gateの成功へ昇格せず、`main`の健全性を確認してから統合する。
+
+## 次の一試行：意味経路の必要Readと実Calledを別に照合する（2026-11-16）
+
+[設計§14](../design/DIAGRAM_TO_REALIZATION_STRATEGY_AND_HOOKS_2026-11.md)と[抽象経路の受入§27〜28](../design/DERIVED_PROJECTIONS_RUNTIME_AND_MIGRATION_ACCEPTANCE_2026-11.md)を、DRI-0/1/4の**一つの限定Packet**として引き渡す。新しいScenario体系ではない。
+
+- **事前に固定するもの**：対象は既存Data表のpositive Rule一件。Rule／AttributeのCanonical ID、選択ReaderとSource範囲、入力（正値／0／負値／NULL／未取得）、独立Expected、Required Read IDと回数、選択Target、実現候補P／Gを同じ試行に対応付ける。
+- **既存の実績**：mainの#5118はPと生成Goの実BinaryのRead ID・回数を比較し、#5132は生成関数名の変更を許しつつ誤ったRead先を拒否する。#5109／#5129はPlan確定後の生成Go／同梱Markdownの変更を旧Planで拒否する。**それぞれの試験が成立した範囲だけを再利用する**。実DB Read・正式R2-P・Targetの自動選択は合格に含めない。
+- **追加が必要な一辺**：現行の実装選択Pinと実Callの一致。選択A→Bで旧Scenario Planを拒否する並行#5114の実験結果を調べ、採用後はP/Gそれぞれの実Call IDを同一Attemptで比較する。選択が未観測なら結果が同じでもnot-provenとする。
+- **配線とConsumer**：複合型全体・Field別・明示Adapterの型付きPortで、Identity／粒度／多重度／Presence／Coverageと必要なRead集合を失わないことを既存#951／#1251へ渡す。通常CLI実Provider→独立Consumerは#2586、Studio Stage1→Stage2は#2831に置き、どちらも別P0を維持する。
+
+**停止線**：生成名の変更を業務意味改版と誤認する、同じ値でも違うAttributeを読む、Sourceが変わって旧BuildPlanを流用する、選択BなのにAを実Callする、Partial Readを全件と扱う、HookからGuard前にEffectを出す。独立Expectedの保管は#1180／#2514の既存契約に従い、新Runner／Evidence DB／全体Hard Gateは作らない。
