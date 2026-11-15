@@ -45,8 +45,8 @@ func TestRuleVerticalSlicePlanHasReadableUTF8(t *testing.T) {
 
 func TestReadableMarkdownBytesRejectsMergeEncodingDamage(t *testing.T) {
 	for _, tc := range []struct {
-		name string
-		data []byte
+		name  string
+		data  []byte
 		valid bool
 	}{
 		{"ordinary-Japanese", []byte("# Ruleから生成Goまで\n説明を読む。\n"), true},
