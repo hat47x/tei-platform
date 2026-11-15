@@ -71,6 +71,7 @@ func TestAdvertisedFlagNamesAreTheAcceptedSet(t *testing.T) {
 	selfParsed := map[string]bool{
 		"model catalog": true, "model locate": true, "model overview": true,
 		"model document-draft": true, "model document-reconcile": true,
+		"three-element": true,
 	}
 	for _, record := range commandCatalog().Commands {
 		if selfParsed[record.Name] {
