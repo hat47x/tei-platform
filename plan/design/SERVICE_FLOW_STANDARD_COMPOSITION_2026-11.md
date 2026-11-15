@@ -137,3 +137,77 @@ HTTPの公開では、既存のWeb Read/Write契約に従い、許可された�
 4. 配備環境・Secrets・Tenant別のBindingを、既存Plugin Lock／Application Profile／Host設定のどこに置くか。
 
 いずれもOwnerの実Consumer観測とADRによって決める。現時点では構想を正式な製品機能の完成、外部Hostへの適合、業務Meaning受理として扱わない。
+
+## 9. ノードビューをプラグインの関係・配線にも共用する（2026-11-15追補）
+
+### 9.1 表現型を共通化し、関係の意味は共通化し過ぎない
+
+**Node Viewはプログラミング専用画面ではなく、型付きGraphを見せ、参照し、適格な接続だけを編集する標準表現型**とする。Operatorフロー、業務Process、Plugin合成、API／Service、UI構成、SUIの関係図、Build依存、実行Traceを同じ描画・選択・レイアウト部品で扱えるようにする。ただし、図に含まれる意味と編集操作は各モデルの契約に従う。SUIの自由な線を自動的に実行フローへ、Pluginの依存線を自動的にRuntime呼出しへ変換しない。
+
+表示用のNodeやPortを新しい業務データ型・意味の正本にしない。標準GraphのSubject／Relation／Occurrenceと、そのPort・Edge Roleを投影する。原データの方向・多重性・同端点の複数Edge・識別子を保持し、グループ化や階層表示で省略したものは明示的な損失とする。Layout／折り畳み／ズーム／配色はView側の設定であり、これだけを変えてもPlugin Lockや生成コードの意味受理をやり直す理由にはならない。
+
+| Node Viewの利用領域 | Nodeとして表示する対象 | Edge／Portで示す意味 | 正本・制御 |
+| --- | --- | --- | --- |
+| Operation Flow | Operator定義／Node occurrence／Subflow | Data・Control・Event・State・Effect | Function／Operation／Process、各契約 |
+| Plugin Composition | Plugin package／貢献単位／Contract／Capability／Provider | requires・provides・implements・selects・resolves | 既存Plugin Contract、Application Profile、Resolver、Lock |
+| Build／Delivery | Generator／Build recipe／Artifact member／Target | consumes・generates・includes・excludes | Build Intent、工程別BOM、Artifact／Toolchain証拠 |
+| Runtime Wiring | Entry／Host／selected Provider／Operation／Hook | binds・invokes・subscribes・handles・observes | 実Host Binding、現在Grant、Trace／Receipt |
+| Service／API | Trigger／Endpoint／Operation／Data Source | routes・maps・publishes・responds | Service／Application Operation、API Adapter |
+| SUI／Studio | モデル要素／参照／表示用グループ | relation・reference・selection | 標準Data／Graph、Sourceと表示Projection |
+
+同一のPluginが二つのTargetで異なるProvider選択を持ってよい。同じContractに複数の候補Providerが存在してもよい。**一枚の図で「要求している」「選択した」「成果物に含まれた」「実際に呼ばれた」を一本の確定線に畳まない。**
+
+### 9.2 Plugin配線は、宣言・解決・実現・観測を切り替えて見る
+
+Plugin Nodeは少なくともPackage／Contribution／Contract／Implementation／Bindingの識別を区別する。必要に応じてBuild専用Generator、実製品に含めるRuntime Provider、Language Plugin、Data Provider、Target Generator、UI部品、Hookを表示する。Pluginの名前が同じでも版・提供Contract・環境・Targetが違えば、同一実装として束ねない。
+
+| 接続面 | 表示すること | その線だけでは主張できないこと |
+| --- | --- | --- |
+| Declared | Plugin AがContract Xを要求し、Plugin Bが実装候補を提供する | Bが選択済みである |
+| Selected／Resolved | Application／Environmentの選択と既存Resolverの確定結果、exact版・Lock | Build成果物への同梱、実呼出し |
+| Built／Delivered | Build専用とRuntime用の依存、収録されたImage／Asset／Artifact | 実Hostで呼出し可能、現在Grantを満たす |
+| Invoked／Observed | 具体的なEntry／Provider Call／Hookの呼出し、Attempt／Trace／Receipt | 結果が業務意味として受理された、効果が確定した |
+
+この四面は同じ図に色や線種で重ねることも、別々のレイヤーとして表示することもできる。ただし**重ね合わせに必要なSource Revision、Selection Scope、Plugin Lock、Artifact Revision、Attempt、観測完全性**を常に表示し、取得できない関係は「未確認」「部分取得」とする。Declared関係が無いことと、実際の呼出しが無いことも別である。
+
+Providerの選択は既存[#951](https://github.com/hat47x/tei-platform/issues/951)・[#1016](https://github.com/hat47x/tei-platform/issues/1016)に委ねる。Node View上で矢印を引く操作が新しいResolverとなったり、単に線がつながったという理由でProvider／Permissionを有効化したりしない。工程別の依存集合は[#3267](https://github.com/hat47x/tei-platform/issues/3267)、実呼出しは[#1251](https://github.com/hat47x/tei-platform/issues/1251)、Hook／Lifecycleは[#4198](https://github.com/hat47x/tei-platform/issues/4198)、影響する部分だけの再検証は[#2600](https://github.com/hat47x/tei-platform/issues/2600)を利用する。
+
+### 9.3 配線操作の契約
+
+**閲覧**と**配線の変更**は別の権限で扱う。初期段階では、現在のContract／Plugin Lock／Build BOM／実Callをread-onlyで投影する。編集を許す場合は、線のドラッグ操作を「どのSourceのどの設定をどう変更するか」という型付きPatch候補に翻訳する。
+
+1. 接続元と接続先の安定ID、Port Role、正確なContract版、環境・Target・工程、必要なTrait／Capabilityを確定する。型適合だけでなく、単一・複数の接続数、循環制約、実行位置、Trust境界、Side Effectを検査する。
+2. 意図を既存Application Profile／Plugin選択／Operation／Processのうち該当する**唯一の正本**への差分として提示する。どこへ書き戻すか確定できない図、複数Sourceへまたがる曖昧な関係、read-onlyのTraceにはPatchを作らない。
+3. 変更対象のSource Revision、OwnerのMeaning、現在Grant、既存選択・Lockを再検査する。表示上のドラッグやAIの接続提案から自動で実効化・インストール・通信・配備しない。
+4. 保存後は既存Resolver／Buildで再評価し、Declared→Selected→Built→Invokedのどの面まで確認できたかを表示する。接続の変更・ロック版変更・外部Endpoint変更は影響先だけを失効させ、Layoutだけの変更は意味を失効させない。
+
+必要なProviderが未選択ならPortを未接続として示す。複数候補があれば候補を並べて表示し、任意の一つへ自動配線しない。Build時にだけ必要なGeneratorがRuntime成果物へ存在しないことは正常になり得る。一方、Runtimeで必要なProviderが収録されない構成は、不足として診断する。異なるTransportやTargetをまたぐ接続はAdapter／Boundaryを明示する。
+
+### 9.4 StudioとAI協業のUI
+
+共通CanvasではNode／Edgeを選ぶと、対応するSource位置、契約、Lock、Build member、TraceをInspectorで横断表示する。複雑なPlugin構成では、Package単位→Capability単位→Provider実装／Port単位の順に展開し、環境・Target・工程・版で絞り込めるようにする。接続候補の検索や不適合箇所のハイライトは、GraphエディタだけでなくPlugin管理画面、サービス構築画面にも共通提供する。
+
+人間とAIは同じ固定された対象（Workspace／Subject／Element／Occurrence／Selection／Source Revision）を参照する。AIが配線を提案した場合、**変更する契約・入力Source・想定する差分・再生成対象・必要な権限**をPreviewし、現在の選択と比較してから適用する。Pinは閲覧対象の固定であり、古いLockやGrantを復活させるものではない。
+
+標準Node Viewの実装は既存Web UI／Canvasの比較Consumerとして扱う。表示用Web ComponentとGo側の契約・Rendererを一体化させず、実Windows WebView2での受領はStudio W0〜W4の別資格を使う。
+
+### 9.5 既存計画へ渡す二つの最小検証
+
+**PV-N0（CLI-first、read-only）**：合成Plugin AがContract Xを要求し、BとCがそのProvider候補であるFixtureを用意する。既存Plugin Inventory／Resolver／Lockから、A→X（要求）・B/C→X（提供候補）・X→B（環境ごとの選択結果）をそれぞれ別の型付きRelationとして投影する。Build-only Generator DとRuntime Provider Bを同じGraphに配置し、Dの非同梱とBの同梱を区別する。元のResolver結果と投影で選択結果・未選択・曖昧さが一致しなければ停止する。既存[#951](https://github.com/hat47x/tei-platform/issues/951)／[#1016](https://github.com/hat47x/tei-platform/issues/1016)／[#3267](https://github.com/hat47x/tei-platform/issues/3267)へ引き渡す。
+
+**PV-N1（編集資格は後続）**：同じGraphをStudioでread-only表示し、契約のPortを選ぶと選択済み実装・Source・Lockへ移動できることを確認する。正式な配線編集は、Application Profile上の一設定を実際に更新できるSource Mappingと、変更前後のResolver／Artifact／Consumerの受領が揃うまで保留する。既存[#1124](https://github.com/hat47x/tei-platform/issues/1124)／[#1824](https://github.com/hat47x/tei-platform/issues/1824)へ引き渡す。
+
+| Case | 独立Expected候補 | 失格とする誤り |
+| --- | --- | --- |
+| PV-01 | Plugin packageとCapability／Providerを別Node Identityにする | 同名で統合して必要な実装を隠す |
+| PV-02 | 複数候補B/Cと、選択されたBを別のEdgeとして表す | 候補があるだけでCも選択済みとする |
+| PV-03 | Environmentを変えるとBindingとLockが正しく切り替わる | 古い選択・古い版を現在表示する |
+| PV-04 | Build-only DはRuntime非同梱、Runtime Bは同梱が必要 | 全Pluginを一括同梱、またはB欠落を合格とする |
+| PV-05 | 同じResultでも、選択B／実Call Aを不一致とする | 結果一致から実Provider一致を推測する |
+| PV-06 | Layout変更とContract／Provider変更の失効範囲を分ける | 座標変更で業務Meaningを再受理／実接続変更を無視 |
+| PV-07 | 参照GraphのEdge ID・Role・多重性を保つ | 同端点の二Edgeを一本にまとめる |
+| PV-08 | Portの型は適合してもGrant／Effect／Trust境界が未確認なら実行不可 | UIで接続できたことを実行許可とみなす |
+| PV-09 | 必要なSource Mappingが曖昧ならread-onlyのままにする | 描画線から元Sourceを推測して書き換える |
+| PV-10 | 部分取得・非開示・古いTraceを現在の実配線と区別する | Traceが無いことを未呼出しの証拠とする |
+
+PV-01〜10は既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)に渡す反例候補であり、現時点で実行済みの検証ではない。最初の実装差分は**CLIでのPlugin関係read-only投影**に限定する。これとOperator FlowのN0/N1は共通のGraph表示契約を利用するが、互いを先行必須条件にせず並行して検証する。
