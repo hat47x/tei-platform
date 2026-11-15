@@ -1,0 +1,55 @@
+commit=8c80dbff0b30e80d4b3e1bd18cf3ffb9c81715d4 host=Linux x86_64 date=2026-11-12T23:55:20Z
+seed X = go1.26.11 bin/go=95499375c24b610cdc9e3684cec920174ec4c4f3f66d35b4332107f0f7d3d27d moduleZip=e1edb778de0aa08c8e827f5a873b35a46afe680fb241482c531725b2355e470d ziphash=h1:KyINmJ/FQdKRmDYGuTAAXkumyeR2DyUlSNHZj7XaLFg=
+seed Y = go1.27.0 bin/go=1db869c560a193573a71be466a34e0d4abb7792d78165c6102cdda069276a3a8 moduleZip=ce4a7364345051434fe65c8ae3804ddde5826d7776bfca3fa72868f1ce79c79c ziphash=h1:fVts2HjYwzBWrJtkf1B9HRDAuCZcZLexWI6ZX6Ls/IU=
+
+== rebuild go1.26.11 from source with go1.27.0 as bootstrap
+make.bash exit=0 seconds=368
+rebuilt module zip   = ace302b3bdab8783cdd4d0fc839e0ef3ab1e836e309c47ef1c6bf1b9be604a20
+distributed module zip = e1edb778de0aa08c8e827f5a873b35a46afe680fb241482c531725b2355e470d
+moduleZipEqual=false
+  differs or missing: bin/go
+  differs or missing: pkg/tool/linux_amd64/asm
+  differs or missing: pkg/tool/linux_amd64/cgo
+  differs or missing: pkg/tool/linux_amd64/compile
+  differs or missing: pkg/tool/linux_amd64/cover
+  differs or missing: pkg/tool/linux_amd64/fix
+  differs or missing: pkg/tool/linux_amd64/link
+  differs or missing: pkg/tool/linux_amd64/preprofile
+  differs or missing: pkg/tool/linux_amd64/vet
+toolBinaries equal=1 different=9 (bin/go, bin/gofmt, pkg/tool/linux_amd64/*)
+
+== rebuild go1.27.0 from source with go1.26.11 as bootstrap
+make.bash exit=0 seconds=297
+rebuilt module zip   = 3c211f258b23451e2f4135859a568e5fa1ab05902e419d570c36e35615e2beb6
+distributed module zip = ce4a7364345051434fe65c8ae3804ddde5826d7776bfca3fa72868f1ce79c79c
+moduleZipEqual=false
+  differs or missing: bin/go
+  differs or missing: pkg/tool/linux_amd64/asm
+  differs or missing: pkg/tool/linux_amd64/cgo
+  differs or missing: pkg/tool/linux_amd64/compile
+  differs or missing: pkg/tool/linux_amd64/cover
+  differs or missing: pkg/tool/linux_amd64/fix
+  differs or missing: pkg/tool/linux_amd64/link
+  differs or missing: pkg/tool/linux_amd64/preprofile
+  differs or missing: pkg/tool/linux_amd64/vet
+toolBinaries equal=1 different=9 (bin/go, bin/gofmt, pkg/tool/linux_amd64/*)
+
+== driver sets (tei + builder + authoring tools), one per seed
+driver set X: tei=67690bf0f6344e5d2035ae72ac33a3fd9132b5ac21343c668129a28db013cb51 builder=87fb1d59309349e5a60e1f0c2add4c45382f774af627481f73d35503db65c70b
+driver set Y: tei=3889193e83ba8bdd8ceaf5e8c591555dc8372735134d4ad65d11b0203e7acac0 builder=3b9199b4a14f9c905b0dc1f1e23fa8eb1821ef0c928fe47a9dd9670485481efa
+intent=3cedea9ec0a453c67decc369a49c0f56cbd049b61976866a6b40156050bb3bd4
+
+== 2x2: driver seed x compiling toolchain (real tei self-build, ./cmd/tei)
+cell driver=X compile=X exit=0 seconds=61 ok=True qualified=False l2b.claimed=True unmet=None reproducibility=reproduced invoker=67690bf0f6344e5d plan=072a3b314d592b4a artifact=sha256:67690bf0f6344e5d2035ae72ac33a3fd9132b5ac21343c668129a28db013cb51
+cell driver=X compile=Y exit=0 seconds=63 ok=True qualified=False l2b.claimed=True unmet=None reproducibility=reproduced invoker=67690bf0f6344e5d plan=072a3b314d592b4a artifact=sha256:3889193e83ba8bdd8ceaf5e8c591555dc8372735134d4ad65d11b0203e7acac0
+cell driver=Y compile=X exit=0 seconds=62 ok=True qualified=False l2b.claimed=True unmet=None reproducibility=reproduced invoker=3889193e83ba8bdd plan=a054533a7acba6f5 artifact=sha256:67690bf0f6344e5d2035ae72ac33a3fd9132b5ac21343c668129a28db013cb51
+cell driver=Y compile=Y exit=0 seconds=73 ok=True qualified=False l2b.claimed=True unmet=None reproducibility=reproduced invoker=3889193e83ba8bdd plan=a054533a7acba6f5 artifact=sha256:3889193e83ba8bdd8ceaf5e8c591555dc8372735134d4ad65d11b0203e7acac0
+
+== comparisons
+compile=X: artifact(driver X) == artifact(driver Y): true
+compile=X: stage2 artifact == stage1 tei (seed build of driver X): true
+compile=Y: artifact(driver X) == artifact(driver Y): true
+compile=Y: stage2 artifact == stage1 tei (seed build of driver Y): true
+driver=X: artifact(compile X) == artifact(compile Y): false
+
+done 2026-11-13T00:12:20Z
