@@ -459,3 +459,34 @@ M1には生成型・解釈型の両方を許すが、**M3のセルフビルド�
 **実装担当**：#2620/#4359（Shape／Role）、#2621/#988/#1018（Reader）、#1121/#4544（Generator）、#943/#951/#1251（Plugin）、#2595/#2831（実Build）、#2600（失効）、#1180/#2514（独立Expected）。#5056の生成Goと実入力の取り違え拒否、#5054のOperator選択後の旧Scenario失効は別PRとして扱う。新Host・Registry・万能Meta Interpreter・独立Expected正本は増やさない。
 
 **現状**：手書きGoのShape検査、独立基線、Rule生成Goの実CLI Buildは存在する。M1〜M3の移行、Generator自身のTEI実セルフビルド、定義簡素化の実測、正式R3 Provider／Windows Studio Stage2の成立をこの追補では主張しない。
+---
+
+<!-- data-form-path-dogfood-20261116 -->
+## 16. 標準データ様式を実装の接続証拠へ折り返す（2026-11-16）
+
+### 16.1 採用するのは新しいモデルではなく、既存の接続契約
+
+[標準フロー設計§12](SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)で、Record全体・Field・Adapterの各接続を通じて、型以外に保持しなければならない条件を整理した。TEIのdogfoodingでは、これを新しい汎用Port型・Flow Engineとして作るのではなく、現行の型付きRuleと生成Go、既存のData Context／Mapping／Operator／Buildの根拠へ照合する。**「同じ型でつながる」「同じ結果を返す」「選択された実装が実際に使われた」を分ける**ことが狙いである。
+
+最初の対象は既存のTransferRequest項目定義表と allocation_positive Ruleとする。現行の製品Readerは、同じMarkdown Sourceから属性型とRuleを選び、生成Goの局所Loweringでその型を使う。ここへ別の項目定義言語や全用途の変換Engineを持ち込まず、標準データ様式に必要な境界だけを検査する。
+
+| 観点 | 既存の観測可能な足場 | まだ主張できないこと |
+| --- | --- | --- |
+| 構造と型 | 項目定義表→semantic.Data／Attribute、同じSourceのRule、Decimal型からのGo生成（PR #5077） | 実Recordの取得、全FieldのValue／Presence、業務Keyの確定 |
+| 二方式の実現 | 同じRuleを既存Evaluatorと生成Go実Binaryで比較する限定回帰（PR #5087） | 任意のAdapter・Graph変換・Provider族の意味同値 |
+| 出典とBuilder | 原Source／Index改版、生成Goと実Build入力の限定照合 | 「表＋Rule→生成→正式Builder→通常CLI実Provider」を一Attemptで閉じること |
+| 配線と公開 | 既存Node View／Plugin接続票、CLI directのOperationという設計上の入口 | Product CLIとHTTP公開の同一権限、非Builtin Provider／Consumerの実Call |
+
+### 16.2 最小の実装Packet
+
+既存の[§13〜15](IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md)を維持し、まず **DPC-01／02／05のread-only判別票を、実Workspace.Loadから得た一つのSource版に束縛する**。属性型・Rule ID・Required条件・元byte範囲と、呼出し側が必要とするValue／Presenceを別列で示す。Dataの「定義表」を実Recordと誤認していれば不合格にする。
+
+その後、同一Ruleの生成Go・汎用Evaluator比較に接続する。正値／ゼロ／負値／NULL／未取得を独立Expectedで判定し、Read先と回数、Source改版、型変更を確認する。直結とAdapter経由で同一の結果になるケースでも、Adapterの選択とその実Law・Source・Lossの証拠が無ければ「接続確定」としない。DPC-08はGraph描画を新実装せず、表示を折り畳むだけでMappingやRead数が変わらないという既存Projectionの契約から始める。
+
+この最小Packetが進む順番は、**read-only接続票 → 独立Expectedによる拒否 → 既存Ruleの実Build消費を同一Attemptで照合 → 通常CLI実Provider／独立Consumer → Studio read-only Node投影** とする。最初の二段は型付きモデルとRead閉包の検査であり、実Provider実行済みと報告しない。後段は既存#1121／#4495／#2586／#2831へ引き渡す。
+
+### 16.3 保存される条件を測る
+
+成果は新しいDSLの行数やNode数ではなく、**同じ業務判断を説明するために残った手書きの分岐、二重の契約、欠落した根拠、実際に削れた変換・検証作業**で比較する。Sourceの説明だけが変わって生成Goが同じなら、Source Indexは改版に追随させ、Artifact再利用可否は別に判定する。型やOperatorが変わった場合は再適合を求める。外部Providerや更新を扱う場合はScope・Grant・Effectと失敗後の再読取を別票にする。
+
+**採否を見直す条件**：既存の標準Data／Facet／Mapping／Operatorでは、DPCのどの条件も表現できず、同じ欠落が異なる二Consumerで実測されたときのみ、最小のCore拡張または標準Pluginの責務を比較する。Graph／SQL／時間・数量・N次元などの構造族をCoreに一括追加しない。実装済み部分は現行mainのPRと試験を根拠に記述し、DPC-01〜08の新規実装・独立Expected検証、正式R2-P／R3、Studio Stage2の成立は未検収とする。
