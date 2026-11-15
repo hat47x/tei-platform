@@ -71,6 +71,15 @@ P0は引き続き、#4495の公開pure Entry→actual Provider→通常CLIの実
 
 DC-27〜32は#1180／#2514の既存独立Expectedへ引き渡す。最初に実装するのは既存Reader／Ruleの検査可能な経路であり、汎用Node Editor、Markdown表の全面Writer、第二のPlugin Resolverは作らない。全体のP0は通常CLIの公開pure Function→実Provider→独立Consumerと、Stage1によるStage2 Desktop実Windows再構築のままとする。
 
+
+### P1：Data定義表の製品Inspectを最小実装で確認（2026年11月15日）
+
+[宣言的構文設計§24](../design/DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md)を受け、既存Data項目定義表のWorkspace Loadから**一つのSource、三つのSubject（Data／Attribute／Rule）、製品Inspector、Source Indexの原byte位置**までを追加のGo回帰で照合する。内部のReader選択記録とInspectorの出典表示を同じLoadから確認し、Studioがまだ公開していないLanguage列を架空のUI機能として扱わない。
+
+実装票はinternal/operations/inspect_markdown_data_table_source_evidence_test.go。印のない例表からDefinitionを生成しないこと、Ruleから公開Capabilityを推測しないこと、説明段落だけを変えた場合に型付き意味を保ちながらSource revisionが変わること、A→B→Aで旧Grantを復元できないことを独立の問いとして扱う。テストファイルの存在とexact HEADのCI合格を区別し、他のReader・SQL／Query・Persistence・生成Artifact・外部Providerへ合格を拡大しない。
+
+このP1の次段は、Product Inspectorが実際に返せるSourceと意味の列だけを使ったread-only診断である。R2-Pの元宣言→実Builderへの出典束縛、R3の公開Entry→実Provider、Studio Stage1→Stage2実Windowsは従来の並行P0とする。新たなGrammar／Reader Registry／Graph Runtime／Writerは前提にしない。
+
 ### P1で接続する業務判断・設計入力・数式（2026年11月15日）
 
 これらは新しい製品P0の前提ではなく、既存の標準Data/Rule/Expression・Function Data Context・表現型を実案件に近づける**受入作業**とする。詳細な正負例とOwner境界は[横断統合受入境界§14〜17](../design/CROSS_CUTTING_ACCEPTANCE_BOUNDARIES_2026-11-12.md)を参照。
