@@ -1,7 +1,9 @@
 package main
 
 import (
+	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -307,8 +309,15 @@ func TestThreeElementReaIntakeWritesReviewPacket(t *testing.T) {
 	if written["acceptedMeaning"] != false || written["ownerDecision"] != "pending" {
 		t.Fatalf("written packet claims an acceptance: %v %v", written["acceptedMeaning"], written["ownerDecision"])
 	}
-	if written["candidateSetFingerprint"] == "" {
-		t.Fatal("written packet lost the candidate set fingerprint")
+	expectedDigest := fmt.Sprintf("sha256:%x", sha256.Sum256(reaIntakeFixture(t)))
+	if written["candidateSetFingerprint"] != expectedDigest {
+		t.Fatalf("fingerprint = %v, want raw input digest %q", written["candidateSetFingerprint"], expectedDigest)
+	}
+	if written["fingerprintBasis"] != "raw-evidence-bytes-not-candidate-identity" {
+		t.Fatalf("missing raw-byte fingerprint qualification: %v", written["fingerprintBasis"])
+	}
+	if len(expectedDigest) != 71 {
+		t.Fatalf("bad digest length: %q", expectedDigest)
 	}
 	unresolved, ok := written["unresolved"].([]any)
 	if !ok || len(unresolved) == 0 {
@@ -316,12 +325,14 @@ func TestThreeElementReaIntakeWritesReviewPacket(t *testing.T) {
 	}
 }
 
-// -before compares two candidate sets: the same bytes in a new attempt are
-// reported, and no review is revived.
-func TestThreeElementReaIntakeComparesWithPreviousSet(t *testing.T) {
+// -before used to issue "unchanged" for every synthetic candidate regardless
+// of the contents of the previous packet. A CLI consumer must not receive a
+// success or false equality while the source-backed comparison is unbound.
+func TestThreeElementReaIntakeBeforeRefusesFabricatedUnchanged(t *testing.T) {
 	root := t.TempDir()
 	evidencePath := filepath.Join(root, "analysis.json")
 	previousPath := filepath.Join(root, "previous.json")
+	outputPath := filepath.Join(root, "would-write.json")
 	if err := os.WriteFile(evidencePath, reaIntakeFixture(t), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -330,39 +341,81 @@ func TestThreeElementReaIntakeComparesWithPreviousSet(t *testing.T) {
 		t.Fatalf("first run: code=%d err=%v out=%s", code, err, first.String())
 	}
 	response := decodeReaIntake(t, first.String())
-	raw, err := json.Marshal(response.Result)
+	original, err := json.Marshal(response.Result)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(previousPath, raw, 0o644); err != nil {
+	var changed map[string]any
+	if err := json.Unmarshal(original, &changed); err != nil {
 		t.Fatal(err)
 	}
+	changed["candidateSetFingerprint"] = "sha256:other-source"
+	changed["candidates"] = []any{map[string]any{"candidateId": "unrelated", "status": "pending"}}
+	changedBytes, err := json.Marshal(changed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name     string
+		previous []byte
+	}{
+		{name: "identical-previous-review", previous: original},
+		{name: "changed-source-and-candidates", previous: changedBytes},
+		{name: "unqualified-object", previous: []byte("{}")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := os.WriteFile(previousPath, tc.previous, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			var out strings.Builder
+			code, err := runThreeElementCommand([]string{"rea-intake", "-evidence", evidencePath, "-before", previousPath, "-output", outputPath}, &out)
+			if err != nil || code != 2 {
+				t.Fatalf("expected fail-closed exit 2: code=%d err=%v out=%s", code, err, out.String())
+			}
+			response := decodeReaIntake(t, out.String())
+			if response.OK || response.Result != nil || response.Error == nil || response.Error.Code != "REA_COMPARISON_UNAVAILABLE" {
+				t.Fatalf("fabricated equality was not refused: %+v", response)
+			}
+			if _, err := os.Stat(outputPath); !os.IsNotExist(err) {
+				t.Fatalf("refused comparison wrote an output packet: %v", err)
+			}
+		})
+	}
+}
 
-	var out strings.Builder
-	code, err := runThreeElementCommand([]string{"rea-intake", "-evidence", evidencePath, "-before", previousPath}, &out)
-	if err != nil {
-		t.Fatalf("command error: %v", err)
+func TestThreeElementReaIntakeBeforeMalformedOrMissing(t *testing.T) {
+	root := t.TempDir()
+	evidencePath := filepath.Join(root, "analysis.json")
+	previousPath := filepath.Join(root, "previous.json")
+	if err := os.WriteFile(evidencePath, reaIntakeFixture(t), 0o644); err != nil {
+		t.Fatal(err)
 	}
-	if code != 0 {
-		t.Fatalf("expected exit 0, got %d: %s", code, out.String())
-	}
-	packet := decodeReaIntake(t, out.String()).Result.(map[string]any)
-	if packet["comparedWithBefore"] != true {
-		t.Fatal("comparison was not reported")
-	}
-	comparison, ok := packet["comparison"].(map[string]any)
-	if !ok {
-		t.Fatal("comparison section missing")
-	}
-	entries := comparison["entries"].([]any)
-	if len(entries) == 0 {
-		t.Fatal("comparison has no entries")
-	}
-	for _, raw := range entries {
-		entry := raw.(map[string]any)
-		if entry["status"] != "unchanged" {
-			t.Fatalf("same attempt compared as %q", entry["status"])
-		}
+	for _, tc := range []struct {
+		name  string
+		prior []byte
+		write bool
+	}{
+		{name: "missing", write: false},
+		{name: "malformed", prior: []byte("{invalid"), write: true},
+		{name: "null", prior: []byte("null"), write: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_ = os.Remove(previousPath)
+			if tc.write {
+				if err := os.WriteFile(previousPath, tc.prior, 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			var out strings.Builder
+			code, err := runThreeElementCommand([]string{"rea-intake", "-evidence", evidencePath, "-before", previousPath}, &out)
+			if err != nil || code != 2 {
+				t.Fatalf("invalid before did not fail: code=%d err=%v out=%s", code, err, out.String())
+			}
+			resp := decodeReaIntake(t, out.String())
+			if resp.OK || resp.Error == nil || resp.Error.Code != "BEFORE_SET_READ_FAILED" {
+				t.Fatalf("invalid previous packet was not rejected: %+v", resp)
+			}
+		})
 	}
 }
 
