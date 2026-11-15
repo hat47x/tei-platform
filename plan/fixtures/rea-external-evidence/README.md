@@ -43,7 +43,7 @@ python3 -B plan/fixtures/rea-external-evidence/verify_real_rea_intake.py \
 1. 受領: `state` がwhole（`complete`/`tool-absent`）で、Evidence ID・**受領bytesのdigest**・`promotion`が全false。候補の可否に関係なくReceiptと派生Requestを確認し、保存Graphの欠落を受領失敗と混同しない。
 2. 派生入力: `source.kind=inline`にEvidence recordをembedし、**応答包装をembedしない**。派生リクエストは受領Evidenceに対してvalidateできる。
 3. 候補投影: 原本の`normalized_result.semantic_graph`にProducer自身のNode IDとRelation IDがあり、かつ**選択Relationのsource/target端点と観測Node IDが一致する場合に限り**、既存`tei external-candidates -evidence-path ... -observation-id ... -relation-id ...`へ渡す。`rea-evidence`はReceipt専用であり選択フラグは持たない。原本にGraphやIDがなければ`notRun`に残し、候補を捏造しない。
-4. 配送検査: 捕捉/新鮮なview配送が各版のframingでwhole。
+4. 配送検査: 捕捉/新鮮なview配送が各版のframingでwhole。6.7.0の単一JSONL行、保存済み6.8.0の旧式`$rea=...`終端、現行6.8.0の`{"$rea":"jsonl/v1","type":"metadata",...}`終端を区別する。現行形式は`records.emitted`と実data行数の一致を確認し、`records.source`を全Graphの完全性へ読み替えない。
 5. 負例: 工具が受理しない`source.kind`と、応答の包装をEvidence本体として渡すリクエストを、**工具が**拒否する（intakeが代わりに拒否するのではない）。
 
 ## 版の再資格化（T0-06相当）
