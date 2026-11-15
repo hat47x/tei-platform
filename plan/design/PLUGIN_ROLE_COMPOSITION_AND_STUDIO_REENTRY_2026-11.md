@@ -1467,7 +1467,7 @@ HG-10〜19、RE-01〜05、PLC-01〜09を複写せず、**横断的な配線／�
 | XCJ-08 | 同じEntryをCLIで同期実行／イベント・VUIから候補起動 | partial引数、ACK、発話の確認を実行済みと扱わない。未対応の配送・期限・取消の意味は`unsupported` |
 | XCJ-09 | 業務Commit成功後、外部通知に失敗／ACKが不明 | Commit成否と通知Effectを独立表示。確認なしの自動再送・見かけ上のrollbackをしない |
 
-HG-10/11（Guard前実Callと二重Call）、HG-13/14/17（内側のEffect不明）、HG-15（0行と未取得）は**実作用Pluginの先行ゲート**として維持する。[#4602](https://github.com/hat47x/tei-platform/issues/4602)の限定Failure修復があっても、HG-10/11や本表の実Consumerが証明済みになるわけではない。
+HG-10/11（Guard前実Callと二重Call）、HG-13/14/17（内側のEffect不明）、HG-15（0行と未取得）は**実作用Pluginの先行ゲート**として維持する。[PR #4602](https://github.com/hat47x/tei-platform/pull/4602)の限定Failure修復があっても、HG-10/11や本表の実Consumerが証明済みになるわけではない。
 
 ### 25.5 実装順と、横断性を主張できる範囲
 
