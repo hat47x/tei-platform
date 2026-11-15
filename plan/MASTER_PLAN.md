@@ -2469,6 +2469,9 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 <!-- data-forms-identity-asof-inspector-plan-20261115 -->
 **実装済みの異質な反証への引渡し**：標準データ様式[§39.9〜39.10](design/SEMANTIC_STRUCTURE_MAPPING_AND_DECLARATIVE_SYNTAX_VIEW_2026-11.md)では、(1)実`InspectSubject`のCanonical/元Source byte位置の一致とS-OPEN未実施（main #4853）、(2)REAの構造キー一致が複数ある場合は個別Relationの対応を捏造しない（main #4850）、(3)組織二時点Queryの評価入力`valid_at/known_at`と物理区間列`valid_from/known_from`を混同せずBinderの旧名呼出しを拒否（main #4847）、(4)ReferenceのGraph読取とProduct Language未束縛拒否を別に観測、という四つの局所Go検査を次Ownerへ渡す。個別試験の存在・成功と、正式`*.tei.md` Reader／実Read Cohort／Source編集許可／Wails実Consumerの製品受入を分け、#2621/#988・#2497/#1124・#2586/#2506・#1824/#4583へ既存Expectedで引き継ぐ。これらを初回Graph S0-Aの新しいHard Gateにはしない。
 
+<!-- data-forms-product-rule-meaning-evaluator-plan-20261115 -->
+**内蔵Ruleから生成実行へ進む次の不足**：[データ様式§39.11](design/SEMANTIC_STRUCTURE_MAPPING_AND_DECLARATIVE_SYNTAX_VIEW_2026-11.md)では、main [#4900](https://github.com/hat47x/tei-platform/pull/4900)の旧`validation`とMarkdown`rule`の実製品Load同士による型付き`semantic.Validation`同値（原byte／Span／選択資格は別）と、main [#4901](https://github.com/hat47x/tei-platform/pull/4901)の既存Evaluatorによる数量・一意性8件の**合成InputへのRead Footprint**を区別した。次は一Ruleの条件分岐・読取対象を実Go Generatorから生成し、実Builderが消費したBinaryと独立Expected・変更後Read Footprintを対照する（#1121/#4544/#1251）。合成Sourceの成功を実DB Provider／通常CLI／Owner意味受理に転用しない。REA main [#4883](https://github.com/hat47x/tei-platform/pull/4883)のJSON未観測Sourceキー省略を、未確認を空オブジェクトにしないWire負例として既存#1180/#2514に渡す。Graph Reader、実Provider、Studio Stage1→Stage2の並行P0を維持する。
+
 ### 記述形式と意味の同値性を分けて検収する
 
 **構文の採否を決める条件**：読みやすさ・短さだけでなく、同じ業務意味に対応するかを、(1)構造、(2)評価、(3)変更の三軸で独立に確認する。GraphをTreeやMarkdownへ投影して同じNodeが見えても、Edge ID・向き・多重辺を失えば構造は同値ではない。集計結果が一致しても、SQLのBag多重度・NULL三値論理・Windowの順序とFrame・JOIN粒度が違えば評価は同値とはいえない。派生Viewを表示できても、そのViewから元Sourceの共有属性や関係を一意に変更できるとは限らない。形式が異なる場合は、同値と保証できる**範囲**を明示し、損失した意味はunknown／unsupportedに止める。

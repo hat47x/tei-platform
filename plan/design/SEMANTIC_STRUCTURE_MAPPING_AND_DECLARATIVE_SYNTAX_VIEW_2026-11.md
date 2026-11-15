@@ -1768,6 +1768,47 @@ main [#4847](https://github.com/hat47x/tei-platform/pull/4847)は、組織C1のN
 
 #### 39.10.4 引渡しを短く保つ
 
-製品Readerは**内蔵Ruleという局所達成を再利用し、Graph固有意味の未接続に集中**する（#2621）。並行してRule→実Go Generator/Builderへの一往復は#1121/#4544、実Provider→独立Consumerは#2586/#2506、Windows Studio Stage1→Stage2は#2831/#4583へ渡す。共有表／複合キー／履歴版の反例は#2495/#2497/#2386/#1126へ戻す。Ownerの独立Expectedは#1180/#2514を維持する。
+製品Readerは**内蔵Ruleという局所達成を再利用し、Graph固有意味の未接続に集中**する（#2621）。その後mainに入った製品二表層の型付き意味比較（#4900）と既存Evaluatorの合成Read要求（#4901）も再利用し、Rule→実Go Generator/Builderへの一往復は#1121/#4544、実Provider→独立Consumerは#2586/#2506、Windows Studio Stage1→Stage2は#2831/#4583へ渡す。共有表／複合キー／履歴版の反例は#2495/#2497/#2386/#1126へ戻す。Ownerの独立Expectedは#1180/#2514を維持する。
 
 **この追補の資格**：mainの内蔵Rule Reader・原文に対する限定編集計画の製品コード、Wagby比較文書、PostgreSQLの失敗実証を照合した計画更新。新しいGraph製品Reader、外部Language Plugin、Graph→Go実生成／CLI実Call、履歴版の正例、Wails Stage2をこのPRで実装・検証したものではない。
+
+
+---
+
+<!-- data-forms-product-meaning-evaluator-closure-20261115 -->
+### 39.11 同じRuleの型付き意味を共通にし、Source・読取要求・生成実行は個別に検収する（2026-11-15）
+
+内蔵Rule Markdown Readerの製品実装に対して、mainに統合された[二表層同値のGo回帰 #4900](https://github.com/hat47x/tei-platform/pull/4900)と[EvaluatorへのRead要求のGo回帰 #4901](https://github.com/hat47x/tei-platform/pull/4901)が追加された。いずれも**実製品Loader／既存Evaluatorのコードを通る限定的な試験**であり、Target生成や実DBからのデータ受領まで通ったわけではない。両者を異なる形式へ広げるための基準として活用する。
+
+#### 39.11.1 意味の同値と、同じ原文を読んだことを混同しない
+
+`internal/workspace/tei_md_rule_surface_equivalence_test.go`では、選択済み`tei.rule-authoring/v0`の実`Workspace.Load`と従来の`validation`を使う別Workspaceの実`Load`を比較する。対象は数量正値`sales.order_line.quantity_positive`と明細番号一意`sales.order.lines.line_number_unique`の二規則である。
+
+- **同値とする範囲**：`semantic.Validation`のID・Symbol・Kind・Attribute・Relationを含む型付き値。単にRule数や計算結果が一致したことを意味同値の根拠にしない。
+- **別のまま保持するもの**：Markdown原文と旧`.tei`原文、それぞれの`Source Index`・定義IDのbyte Span・`AuthoringSources`。正規化した意味構造が同じでも、編集位置やReaderの選択資格は共有しない。
+- **重複した正本を拒否する例**：同一Workspaceで旧`validation`とMarkdown`rule`に同じIDが現れた場合、登録順で先勝ちにせず拒否する。同じ意味を記したことが二つのAuthoritative Sourceを同時に許す理由にはならない。
+
+これは二つの**限定Fixture**の型付き意味同値であり、すべてのMarkdown記法、Graph、Window、BRMS表現が同値だという主張ではない。評価時点・Function Data Context・実Provider Snapshot・Owner採否は別途確定する。
+
+#### 39.11.2 Ruleを読めた後は、Evaluatorが何を読もうとしたかを検収する
+
+`internal/operations/selected_rule_markdown_evaluator_read_footprint_test.go`では、同じ製品`Workspace.Load`の`semantic.Validation`と`BuildSourceIndexFromLoad`／Inspectorを起点に、既存`validationeval.Evaluate`を実呼出しする。入力源は、要求された`Number(attribute)`または`RelationKeys(relation, attribute)`を一回だけ記録し、予想外の参照先を拒否する**テスト専用の合成Source**である。
+
+| 規則と入力 | 独立Expectedに渡す事実 | 言えないこと |
+| --- | --- | --- |
+| 数量正値：2／0 | 指定属性`Number`一回と、充足／不充足の判定 | 実DBの入力値・現在認可を読んだこと |
+| 数量正値：NULL相当／未取得 | テスト用Sourceからエラーを返し、不明入力を成功の正値にしない | 現行Evaluatorが実ProviderのNULL／欠損をすべて識別できること |
+| 明細番号一意：非重複／重複 | 指定Relation／Attributeの`RelationKeys`一回と、充足／違反の判定 | 必要な業務母集団を実Providerから全件取得したこと |
+| 明細番号一意：完全と宣言した空集合／未取得Scope | 合成Scopeが完全な空集合と、取得できずエラーになった場合を分離 | 実ProviderのCursor EOF・部分取得で全件性が成立すること |
+
+八ケースの`Read Footprint`は、**Ruleの要求先と合成Inputの観測**を証明するためのもの。元Sourceを読んだこと、実入力が存在すること、評価を実行したこと、実Effectが生じたことは別のClaimとする。未取得を空集合や暗黙のFalseに変換しないことは、第39.7〜39.8節のPresenceと二重閉包の実装側の反証となる。
+
+#### 39.11.3 次の一件は生成Goの判断部分とRead Footprintの変更追随で閉じる
+
+既存[Rule→実Plugin製品縦断計画](PLUGIN_RULE_PRODUCT_VERTICAL_SLICE_2026-11.md)に従い、内蔵Readerから読んだ数量正値一規則を**既存Generatorの実Target入力**へ渡す。最初のProduct実装差分は、(1)同じ型付き`Validation`と正確なSource Revisionを受理、(2)条件判断・対象AttributeのRead要求そのものを生成Goに含める、(3)生成Sourceを実BuilderがコンパイルしたBinaryから呼ぶ、(4)既存Evaluatorの限定八ケースのうち該当ケースを独立Expectedで比較、(5)Ruleの条件・参照先を一因子変更して生成Go・Artifact・実行結果・Read Footprintの失効と変更を観測、に限定する。
+
+手書き`validationeval.Evaluate`の単なる呼出しWrapper、名前だけの生成Go、自己申告Fingerprint一致を「意味を生成した」と数えない。生成Binaryを実Consumerが呼んだ証拠も、Artifactが生成された証拠とは分ける。後続で実Providerの`Function Data Context`／Coverage、通常製品`tei`の別Process、独立Consumerへ接続するが、最初のGo生成PRを実DB・Wails・Graph Readerの実装でブロックしない。
+
+一方、REAの[Wire投影修正 #4883](https://github.com/hat47x/tei-platform/pull/4883)では、同定できない関係の相手側Sourceを空のJSON Objectとして表さず**キー自体を出さない**回帰がmainに入った。これはデータ様式の「不存在」と「空の値」を混同しない具体例である。新しいResult Enumや第二のEvidence Storeを作るのではなく、個別Producer／Consumerの既存契約と#1180/#2514のExpectedで意味の欠落を検出する。
+
+**現在の資格**：#4900/#4901/#4883はmainへコードが統合済み。ただし#4900のexact HEAD CIは未完了、#4901のexact HEAD CIは別レーンの失敗を含み、これらのGo回帰を一律にCI Greenとは判定しない。正式Graph Reader、Rule→生成Goの実Builder消費、実DB／CLI Provider、外部開示、Studio Stage1→Stage2、Owner意味受理は本節で新たに実行していない。各Ownerは#2621/#1121/#4544/#4495/#2586/#2506/#2831/#4583、独立Expectedは#1180/#2514を維持する。
