@@ -1440,7 +1440,7 @@ Pluginの[main #3337](https://github.com/hat47x/tei-platform/pull/3337)は、宣
 - GitHub上では古いDraftを重複Mergeしない。現mainへ最小差分で移し、CI・差分・Readbackを確認して短期で統合する。研究で得た結論とOwnerによる製品採用は別の記録とする。
 - 改善指標は論文件数やDSL行数ではなく、ドメイン専門家が記述する負担、意味を持つ生成割合、独立に検出した欠陥、Source変更から実Consumer確認までの所要時間。まず基準値を測り、改善率は実測後に判断する。
 
-**未達**：正式Markdown Readerの製品縦断、意味を担うGo生成、実Providerと二Consumerの同一Attempt、Studio全体のStage2セルフビルド、CSW作者採否、VSクマGodot実連携、業務Ownerの正式意味受理は、本節の追記だけでは成立しない。
+**未達・再基準化**：内蔵Rule Readerの限定的なSource→Validation接続は§16.9で区別する。正式Graph／Markdown表／Window Reader、意味を担うGo生成、実Providerと二Consumerの同一Attempt、Studio全体のStage2セルフビルド、CSW作者採否、VSクマGodot実連携、業務Ownerの正式意味受理は、この計画更新では成立しない。
 
 ### 16.6 何を共通化するか――意味・表現・実行を分けて考える
 
