@@ -1916,6 +1916,13 @@ func (p *Parser) ParseSemanticFile() (semantic.Namespace, error) {
 				return ns, err
 			}
 			ns.RunPlans = append(ns.RunPlans, plan)
+		case "rule":
+			// The legacy .tei semantic parser cannot select a Rule Authoring
+			// implementation. The Markdown reader is only used when the
+			// Workspace manifest explicitly selects tei.rule-authoring/v0;
+			// interpreting this token as a validation here would bypass that
+			// admission boundary. Keep the source range at the keyword.
+			return ns, p.errAt(t, `"rule" starts a rule authoring declaration, which is not admitted in a legacy semantic .tei file; declare it in its own file as a selected tei.rule-authoring/v0 .tei.md source (for example semantic/<namespace>/<name>.tei.md), or use the legacy validation syntax`)
 		default:
 			// A top-level keyword from another domain (an application, a
 			// migration) is a placement mistake, not a typo. Name it, then fall
