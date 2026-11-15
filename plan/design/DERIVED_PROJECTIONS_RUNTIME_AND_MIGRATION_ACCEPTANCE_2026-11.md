@@ -218,3 +218,53 @@ PQ-A／Bの期待値は既存Driver Scenario SSOT #1180と独立Expected #2514�
 計画の成熟度は、モデルや文書の数でなく、**人が維持する定義の削減、誤った実装選択や古い成果物の拒否、局所再検証の精度、実行結果まで到達した割合**で評価する。特に同じMeaningでも実装選択を変えた時に旧版の再利用を止められるかを優先して測る。
 
 **この§11〜14は現行Source／統合済みPRとの静的照合と設計上の実装引渡しであり、新しいGo・Windows・DB・MCP試験、Ownerの業務意味受理は本追補で実行していない。** 既存PRのマージや一部CI成功を、この追加計画のPASSとしない。
+
+## 15. 画面・API・一括取込で「更新の意思」を失わない（2026-11-15追補）
+
+前節までは、Source／生成物／実利用の対応を中心に検討した。ここでは一つの業務項目を複数の入口から扱う際に、**表示された値、送信された値、書き換えたい値、書込みを許される値**を分ける。Data／Function／Businessの一次定義を増やさず、既存Data Operation・Function Context・Patch／Record Projection・Provider／Grantの契約へ対応付ける。
+
+### 15.1 一つの項目が持つ四つの異なる状態
+
+| 位置 | 保持する情報 | 同一視してはいけないもの |
+| --- | --- | --- |
+| **元DataとRead結果** | Field Identity、元Value／NULL／不存在、取得範囲と時点 | 欠損、非開示、表示上の空欄 |
+| **Consumerへの開示** | Audience・Role・Scope、表示値／マスク／非表示 | マスク文字列と保存値、非表示と元データの不存在 |
+| **Draft・入力UI** | 一時編集値、操作可能・入力不可・読取専用、未保存かどうか | Draft値と送信済みPatch、UI制御とサーバ認可 |
+| **更新Intentと実Effect** | Field Presence、明示NULL／値指定／変更なし、ExpectedVersion、Current Grant、実Write Receiptと独立Readback | 送信省略とNULL、許可された候補と実Commit |
+
+更新Intentの最小判別は**項目省略・明示的な変更なし・明示NULL・値指定**の四者とする。省略と変更なしは更新後の値が一致することがあるが、更新要求の経緯、登録時の扱い、既定値適用、入力検証にまで意味同一性を広げない。通常の空文字・空欄はInput Codecの規則に従ってから解釈し、NULLや変更なしと決め付けない。
+
+UIの入力不可は、画面から当該項目を送らない挙動を実現できる。しかし任意のAPI／CLI／Batch Consumerに対する更新権限の拒否ではない。サーバ側は保存済みレコード状態、対象Key／Version、操作Actor、現在Grant、対象FieldとRuleを**実書込み前に再評価**する。画面を開いた時の編集可否や、検証のみの結果をそのまま権限として流用しない。
+
+### 15.2 入口の表現を統一しても、同じ操作が行われたとは限らない
+
+- **Web／Desktop**：表示中に値を変更した後、当該Fieldを入力不可にした場合、Draftは残り得るがPatchへ値を含めない。送信された値がないことを「NULLを送った」に変換しない。
+- **REST／CLI／MCP**：同じData Fieldを操作する入口であっても、公開されたOperation、入力Schema、実Providerの更新方式と現在Grantを確認する。Tool Discoveryやread-only応答から書込みを生成しない。
+- **CSV／TSV／XLSX・外部File**：raw byte、文字コード／BOM、列の有無、空欄、NULL指定、値保持指定、日付／数値の書式、複合キー解釈を順に確定してから型付きPatch候補を作る。Input Codecを経ない文字列値をそのまま業務Meaningにしない。
+- **部分取得されたDocument**：秘匿Fieldや未取得Columnがあるとき、限定PATCHを提供するProviderと全件置換のみのProviderは同等ではない。後者へ現在見えている項目だけを送り全レコードを置換する操作を自動生成しない（既存Workbench WB-16、#2585）。
+
+すべてのEntryが同じ要求を必ず実現できる必要はない。必要な更新能力・元Dataの完全性・対象Identity／Version・Current Grantがそろわなければ、実行可能でなく`unsupported`／`unverified`と診断する。
+
+## 16. 検証・確定・採番同期とデータ移行の再開条件を分ける
+
+一括取込では、**検証のみ・全件原子確定・正常行だけの確定**を別のCommit Policyとして維持する。検証結果のError CSVには元入力値や列位置が含まれ得るため、公開可能なエラー件数と、入力値を含む出力Artifactの現在Disclosureを別に判定する。部分確定後の再実行は行Operation ID／Receipt／Keyと現在DB状態を確認し、無条件のファイル再投入を禁止する。
+
+移行用に元のIDを保存する操作と、移行先の**次の採番位置を安全な値へ進める操作**は、別の実行・回復単位である。DBへの行確定後に採番同期だけが不明／失敗なら、書込み済みの行を「なかったこと」にせず、独立Readと採番状態を照合して同期の再実行要否を判断する。通常の新規登録再開も、別の受入条件とする（既存データ取込DI-X05／#1130／#3270／#1174）。
+
+入力FileのValidationが成功しても、その後に参照先・行Version・Grant・DB列型が変わる可能性がある。**反映は新しいAttempt**として再検証する。検証のみの外部副作用が実際にゼロであることは実Provider／Hookを確認して判定し、設計上のモード名から保証を推定しない。新しいImport Engine、全Provider共通のSequence ManagerやReceipt Storeは追加しない。
+
+## 17. 小さな反証と実装への引渡し
+
+| ID | 一因子差分と独立Expected | 不合格にする短絡／Owner |
+| --- | --- | --- |
+| **PW-01** | 保存値15、Draftで25へ変更後に入力不可。実送信は項目省略、Provider側の更新意図なし、独立Readは15。対照は明示NULLと値25 | 画面のDraft値を保存した／省略をNULLへ変換。#1129／#2585／#2500 |
+| **PW-02** | 同じRecordを異なるScopeで開示。hidden／masked／NULL／未取得を区別し、マスク文字列の書戻しを拒否 | マスク表示＝実値、非表示＝不存在、表示できる＝書込める。#2516／#3262／#1174 |
+| **PW-03** | 同じ入力列の「列なし・空欄・明示NULL・変更なし・値」を、選択Codecで型付き更新Intentへ変換 | Fileの空欄を一律NULL／変更なしにする、部分取得を全置換に使う。#1130／#2622／#2585 |
+| **PW-04** | 検証のみが成功→参照先またはVersion／Grant変更→反映Attempt。更新前のDB状態と実Provider結果を再観測 | 古いValidationをCommit許可へ昇格。#1129／#1174／#1180 |
+| **既存DI-X05** | 移行IDの行確定後、採番位置同期だけ失敗。行Receiptと次採番状態を別に判定 | ファイル全件再送／通常登録を無検査で再開。#1130／#3270／#2514 |
+
+この表は**新しいScenario正本ではなく既存#1180／#2514の差分候補**。PW-01〜03の最初の一歩は、固定したRecord／Role／一Field／Codecを既存ReaderとOperationへ通し、送信前IntentとRead Disclosureの**read-only照合票**を作ることに限定する。実Write、全入口の同値、実DB Commitはその次の独立Provider試験とする。DI-X05は既存ケースを再利用し、試験番号を重複させない。
+
+**P0への影響なし**：正式`*.tei.md` Reader→生成Go→実Builderの出典束縛（PQ-A）、Operator選択の鮮度（PQ-B）、通常CLI→実Providerの実Read、Studio Stage1→Stage2 Windows実セルフビルドを優先する。PWの広範な実Write適合、環境Migration、全文検索・帳票・MCP書込みをP0の新しいHard Gateにしない。
+
+**検証上限**：§15〜17は既存計画・公開製品マニュアルから得た意味上の反例を一般化した設計追補である。ここで書いたケースの新Go／DB／Wails／API実証や、業務Ownerの意味受理は実施していない。
