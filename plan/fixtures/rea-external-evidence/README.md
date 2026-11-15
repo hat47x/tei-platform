@@ -36,7 +36,7 @@ python3 -B plan/fixtures/rea-external-evidence/verify_real_rea_intake.py \
     --binary /tmp/tei --fixtures-only --report /tmp/intake-fixture.json
 ```
 
-`--report` のJSONが実行記録である。`mode`・`checks`・`captured`（digest）・`notRun`を読む。
+`--report` のJSONが実行記録である。`status`（`completed`/`failed`）・`mode`・`checks`・`captured`（digest）・`notRun`を読む。実ツールがAnalysis/Viewを出力した後で検証に失敗しても、捕捉済みDigestと失敗理由を記録してCI成果物に残す。失敗を成功扱いに変更するものではない。
 
 ## 検証していること
 
