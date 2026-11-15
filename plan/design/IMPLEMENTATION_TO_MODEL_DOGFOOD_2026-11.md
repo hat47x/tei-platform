@@ -389,3 +389,30 @@ G6のStudio Stage1→Stage2では、同じ原則を非Plugin Desktopへ適用し
 [宣言的構文・Operator選択の横断設計](DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md)§22〜23と[派生Projection・Runtime・移行の受入](DERIVED_PROJECTIONS_RUNTIME_AND_MIGRATION_ACCEPTANCE_2026-11.md)§13のPQ-A／PQ-Bは、この表の別々の行・Ownerに対応する。P0の**正式pure Functionの公開Entry→実Provider→独立Consumer**と、**非Plugin Studio Stage1→Stage2 Windows WebView2**は引き続き並行する。自分自身をGoでビルドできた事実を、生成Pluginの正規配布・Studio全体の自己生成に拡大しない。
 
 新たに確定したのは**「Source解決が存在する」ことと「業務言語の出典が正式Buildに連続している」ことの差**である。後者が確かめられるまでは正式R2-Pの完了とはしない。
+
+## 14. Data表からRule生成Goへの接続を、最初の実装差分として数える（2026-11-15）
+
+### 14.1 一つの定義ファイルを、型付きRuleと生成処理の共通入力にする
+
+既存`tei.authoring/v1`は`*.tei.md`の項目定義表を`semantic.Data`として読み、同じ文書にあるRuleを`semantic.Validation`として読める。これまでの実装はネイティブDataとの意味同値性とSource位置、限定したRule→Go loweringを**別々に**実証していた。
+
+新しい[Data表のGo回帰](../../internal/workspace/tei_md_data_table_test.go) `TestTEIMDDataTableRuleGoLoweringAndSourceRevision`は、一回の実`workspace.Load`が返したData属性の型と、その属性を参照するRuleを選び、既存`GeneratePositive`へ渡す。生成Goの判断分岐、参照先、Data・Attribute・Ruleの元Source位置を照合する。設計図や表を二重のMeaningへコピーせず、**表をそのまま型付き生成の入力にできる領域**を一つ広げる。
+
+### 14.2 次のR2-Pは「生成コードが同じ」と「Build入力が現在のSourceを使用した」を分ける
+
+| 段階 | 今回の実装・証拠 | なお必要な次の実証 |
+| --- | --- | --- |
+| A：入力選択 | `tei.authoring/v1`がData表とRuleを一つの`*.tei.md`から読み、独立したIDと位置を返す | 他の形式／外部Pluginを暗黙に同一契約へ昇格しない |
+| B：意味／型／Lowering | 現在のAttribute TypeRefがDecimalならGoを生成、Textなら拒否 | 新しいOperatorやDatatypeの受理は別 |
+| C：Source改版 | 説明のみの改版でGo byteが同じでも旧Index失効 | Generator資格・Plan再利用可否とArtifact再利用可否は別 |
+| D：実Build | 既存Rule由来Goを`tei self-build`等で受け取る局所試験は存在 | **Data表＋Ruleの同じLoadの原byte・Generator・Build Intent・Builder実消費を一つのAttemptで閉じる** |
+| E：実Consumer | 既存参照Binaryでの判断例がある | 選択したProviderの通常CLI実Callと独立Consumerを別に検証 |
+| F：Studioセルフビルド | 生成Desktop PoCの限定Windows試験は進展 | 正式Studio Stage1→Stage2の自己再生成・実Windows受領は別 |
+
+**次の小さな実装パケット**は、既存Builder・Build Intent・CLIの経路を改造する前に、今回の表由来の生成Goと原Sourceを、その経路に必要な既存Plan Source／消費byteの中へ束縛できるかを固定Fixtureで調べることとする。Bindingができない理由は、不足する辺の名前で記録する。結果一致だけのGo testや、別のネイティブRuleから生成したGoを、この一辺の完了とは呼ばない。
+
+### 14.3 セルフビルドの価値として測るもの
+
+今回の追加で数えられるのは、**Data項目表とRuleという二つの宣言が、一つの正式Reader／Meaningを通じて生成Goの判断へ至った**という狭い範囲である。全体のGo行数削減、Plugin自己生成率、手書きDriver削減、Builder／Runtimeからのdelegate排除まで達成したとはしない。今後は同じ機能について、定義量・生成量・手書きの責務・実行時に解釈される範囲を改訂前後で比較し、コード生成と汎用関数による直接実行のどちらが単純かを機能ごとに選ぶ。
+
+独立Expectedは#1180/#2514、構文／型のOwnerは#2621/#2495、Builder/CLIは#1121/#4495、Studioは#2831/#4583、設計上の受入は#4350へ引き渡す。この追補は新しいBuild Gate、Generator Registry、Graph Runtime、Hostの導入やOwnerの意味受理を決定するものではない。DFG-02〜04のGo回帰はPR #5077のexact HEADで確認するまで合格扱いにしない。
