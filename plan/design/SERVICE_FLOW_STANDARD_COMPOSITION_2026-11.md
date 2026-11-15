@@ -378,3 +378,25 @@ A→B→Cを検討する際、次の順序を守る。
 実装上の入口は#2495（Facet）、#2497／#2500（Mapping・逆写像）、#2506／#2586（Data Context・Read）、#951／#1251（Plugin選択）、#1121／#4544（実現）、#1180／#2514（独立Expected）、#1124（Node View）とする。DPCの表は受入候補であり、新しいGoテスト・Provider実Call・Owner意味受理を実施したことを意味しない。
 
 **優先順位は変えない。** 製品P0はSource→生成Go→実Builderの閉包、通常CLIから選択Providerを呼ぶ実Read、非Plugin Studio Stage1→Stage2の実Windows受領である。経路検収票はそれらを説明しやすくするために追加するのであって、新たな先行Gateではない。
+
+### 12.4 Producerの保証とConsumerの要求を経路全体で照合する
+
+一つのPortが提供する型と、利用側が必要とする情報は同じではない。**Producerの保証、Consumerの要求、Adapterによる変換の前提・結果・損失**を個別に取り出し、A→B→Cの経路で必要条件が充足するかを確認する。各辺で型が一致しても、途中で失った情報は後段の型一致によって復元しない。
+
+例えば内部Operationの`OrderSummary`をHTTPで公開するとき、Record全体の型が一致していても`internalNote`の公開が認められるとは限らない。公開に必要なFieldだけを明示的に射影し、Audience・Disclosure・Scopeと現在Grantを別途検証する。多重GraphのEdgeをTreeへ畳んで表示する場合も、表示が成功したことと元Edge occurrenceを一意に更新できることは異なる。部分取得した7行から求めた集計値が正しくても、全件の該当なし・唯一性を主張するには取得閉包の証拠を要する。
+
+| 段階 | 判定対象 | 不適格・未立証の扱い |
+| --- | --- | --- |
+| 構成可能性 | Field・型・構造Facet・Multiplicity・Shape／Law／Bindingが利用側の要求を満たすか | 不整合は`rejected`、必要な宣言や根拠が足りなければ`unqualified`／`unknown` |
+| 情報の保存 | Identity・Occurrence・Presence・Coverage・grain・時点が最終Consumerの要求範囲で残るか | 明示的な損失のあるread-only Projectionは`lossy`。失った情報を使う否定・逆編集は拒否 |
+| 実現・利用 | 現在のSource・実装選択・Builder入力・Provider実Call・実Consumer受領がそれぞれ確かめられたか | 表示結果や型の一致から、実呼出し・公開・Effectの資格を作らない |
+
+`preserved`は**当該Consumerが要求する観測範囲での保存**であり、元Dataの全制約が無損失という意味ではない。Adapterが変換のため追加ReadやEffectを必要とする場合は、純粋な型変換と同等には扱わず、依存・選択・失敗・Grantを別票にする。
+
+### 12.5 最小のread-only接続検収票と反証
+
+最初のコード差分では新しいFlow EngineやCore Port型を作らず、既存の`Workspace.Load`で選択したData表・Attribute・Ruleの**一つのSource版**から、読み取り専用の検収票を得る。票に記録するのは、対象ID、原Source byte位置、Producer保証、Consumer要求、Mapping／Adapter、保存・損失、根拠の不足、判定と理由である。Readerが返した項目定義を、実Occurrence・実値・全件取得の証拠として使わない。
+
+最初の独立ExpectedはDPC-01／02／05を対象とし、全体RecordとFieldの接続、Decimal型と意味Lawの違い、`required`と明示NULL／missing／unfetched／withheldの違いを確認する。次にDPC-08でNode Viewを展開・折畳みしてもMapping Identity・生成物・Read回数を変更しないことを確認する。Graph多重辺・取得閉包・HTTP公開を扱うDPC-03／04／07は各Ownerの独立試験へ接続し、DPC-06はSource改版と実装選択改版を**別の失効条件**として扱う。
+
+誤成功を検出するMutantとして、`missing→NULL`、`partial→complete`、多重Edgeの合併、非公開FieldのHTTP転送、古い実装選択Pinの受理を固定する。判定結果だけでなく**どの保証が不足したか**を独立Expectedへ記録し、実装から期待値を生成しない。並行PR #5097（自己記述）と#5114（Scenarioの選択Pin）は、そのexact HEADが受理されるまではmainの実績へ算入しない。
