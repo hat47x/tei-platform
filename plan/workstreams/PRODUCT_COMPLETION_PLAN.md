@@ -964,6 +964,11 @@ A0を製品に接続する変更では、既存の拒否証拠を消すのでは
 
 次の一歩は新しい普遍Parserではなく、**この実装を一つの契約として確実に検収したうえで**、(a)外部Language Pluginの実Resolver/Lockとの連携、(b)Graph/Windowの異なるSource様式、(c)受理済みMeaningから製品Generatorによる一Rule実Go生成と実Builder／通常CLI Consumerを、それぞれ別のOwnerへ渡すこと。Readerが型付きValidationを作ったことは、業務Ownerの意味受理・Plugin選択・実Provider/Effect・Windows Stage2を意味しない。新Registry／Host／Expected正本は増設しない。
 
+<!-- tei-rule-native-markdown-semantic-equivalence-20261115 -->
+**次のS0検収は異なる書式から同じ意味へ至ることを確かめる**：内蔵Rule Markdownの製品入場後は、「二件読めた」だけではなく、**従来の`validation`と`rule`の表記が、同じ`semantic.Validation`へ収束するか**を実`Workspace.Load`同士で比較する。[Go回帰](../../internal/workspace/tei_md_rule_surface_equivalence_test.go)は既存の`reference/workspace/semantic/sales/validation.tei`と内蔵Ruleの実Fixtureを用い、二つのRule IDについてSymbol・Kind・Attribute・Relationを含む型付き値を独立に照合する。同じMeaningでも表層ごとのSource Artifact／元byte範囲／Language選択記録は異なり、同じWorkspaceで両表層から同一IDを二重宣言すれば、読み順で一方を採らず拒否する。
+
+ここから次の二つを切り分ける。(1) **構文上の意味同値**：正の数量検査と受注明細番号の一意性が、旧・新表層のどちらでも同じ型付きValidationになること。(2) **製品としての利用資格**：言語Contractと具体的なSourceが選択され、既存のSource Indexで原文位置を追跡し、Ownerが意味を受理した後に生成器が実際に利用すること。前者のテスト成功だけで後者をPASSにしない。これを#4359のS0比較と#2621/#988のReader受入に戻し、次は#4544/#2595で一Ruleの実Go分岐を生成・実Builderへ渡す。新しいRule Engine、第二Parser／Expected正本を作らず、全体P0の実Provider二ConsumerとStudio Stage1→Stage2を維持する。
+
 #### S0予備検証と正式Reader接続を分け、生成物の実消費までつなぐ（2026年11月15日）
 
 **S0-PのGraph／Window予備検査はmain統合済み。内蔵`tei.rule-authoring/v0`については、選択された`*.tei.md`の製品Loadと`semantic.Validation`／Source anchorへの接続がmainに実装された（2026年11月15日更新）。** ただし、Graph／Windowの製品Reader、外部Language Pluginの実選抜／Lock、Ownerによる意味受理、生成Pluginの実使用は未成立。 [#4751](https://github.com/hat47x/tei-platform/pull/4751)では、実Workspace Manifestの`semantic` Root、未宣言`drafts`の除外、同一Pinned Rootからの元byte、固定されたGraph/Rule候補、既存Source IndexのFingerprint/Span、原文変更時の旧Index拒否を**テスト専用の事前検査**として接続した。旧[#4745](https://github.com/hat47x/tei-platform/pull/4745)は未マージでクローズされ、同内容の実Go試験が#4751からmainへ入った。現行の`Workspace.Load`は未選択`*.tei.md`に`TEI_MD_PARSER_UNBOUND`を返し続ける。これは意図した安全な境界であって、予備検査の成功により製品Readerを解放する理由にはならない。
