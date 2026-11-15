@@ -146,7 +146,7 @@ jobs:
           go test -count=1 -v -timeout 10m -run 'TestScopedPostgres|TestScopedTenantPostgres' \
             ./reference/web-api-contract | tee -a "$log"
           # Native as-of Query and isolated revision-key candidate probe; both must execute.
-          go test -count=1 -v -timeout 10m -run '^TestOrgAxisAsOf(ActualPostgres|RevisionKeyCandidate)OptIn
+          go test -count=1 -v -timeout 10m -run '^TestOrgAxisAsOf(ActualPostgres|RevisionKeyCandidate)OptIn$' \
             ./internal/operations | tee -a "$log"
 
       - name: SKIPとFAILの検証
