@@ -12,9 +12,9 @@ import (
 	"tei/internal/operations"
 )
 
-// The captured REA document is deliberately mutated only inside its producer
-// semantic graph. This exercises the real saved-Evidence receiver, not a
-// different mock candidate parser.
+// This fixture is explicitly synthetic: the archived 6.8.0 captured bytes
+// contain no semantic graph. Mutate only copies of the synthetic graph to
+// prove ambiguous producer/derived IDs are rejected by the actual receiver.
 func ambiguousCandidateFixture(t *testing.T, mutate func(map[string]any)) string {
 	t.Helper()
 	text := strings.TrimPrefix(candidateText(t), "\ufeff")
@@ -51,8 +51,8 @@ func duplicateFirstRelation(graph map[string]any, removeProducerID bool) {
 	graph["relations"] = append(relations, duplicate)
 }
 
-// The real REA payload contains more than one distinct node. Duplicating a
-// single node ID is an invalid producer identity even when the label matches.
+// The synthetic graph has distinct nodes. Duplicate one selected node ID
+// to check that the receiver does not infer an individual occurrence.
 func duplicateSelectedObservation(t *testing.T, graph map[string]any) {
 	t.Helper()
 	nodes := graph["nodes"].([]any)
