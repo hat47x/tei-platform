@@ -1,6 +1,6 @@
 # Rule Authoringから実Plugin・製品Consumerまでの第一縦断：実装と検収の接続計画
 
-- **状態**：2026年11月15日の設計・実装引渡し。R1の限定的な正値Rule→Go生成をPR #4911で実装検証中。正式Builder／実Plugin呼出し、Windows Stage2の受入は主張しない。
+- **状態**：2026年11月15日の設計・実装引渡し。R1の限定的な正値Rule→Go生成はPR #4911でmainへ統合済み。生成Byteを既存の参照BuildPlan Builderで実消費する局所回帰を追加検証中。正式な製品Build Intent／Plugin実選択・呼出し、Windows Stage2の受入は主張しない。
 - **優先対象**：内蔵Rule Authoring Markdown Readerで読み取った一つのpureなValidationを、生成Goの判断処理、実Builder、選択済みProvider、通常製品CLIまでつなぐ。
 - **前提となる実装事実**：mainの[7921b005](https://github.com/hat47x/tei-platform/commit/7921b005a44d325983d24ca2b8b58b0737dd778d)で、明示選択されたtei.rule-authoring/v0を内蔵ReaderがWorkspace Loadの原文から読み、semantic.ValidationとSource anchorへ投影する経路が追加された。これは外部Language Pluginや正式Graph Readerの製品受入ではない。
 - **既存の正本**：[Pluginの役割・合成・Stage2再入](PLUGIN_ROLE_COMPOSITION_AND_STUDIO_REENTRY_2026-11.md)、[Plugin-firstの実運用検証](PLUGIN_FIRST_TOOLING_RUNTIME_DOGFOOD_2026-11.md)、[自己記述](ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md)、[製品完成計画](../workstreams/PRODUCT_COMPLETION_PLAN.md)を維持する。本書は一機能の実装差分を決める補助計画であり、第二のContract、Resolver、Meaning、Builder、Runner、Evidence Storeを作らない。
@@ -155,7 +155,7 @@ UI実装におけるTypeScript・Web標準技術・Wailsの選択は#1824の担�
 
 ## 13. ノード型FlowとPluginを、同じ標準モデルから展開する
 
-Node-RED／Enebular型のプログラミング、ESPStudioのようなNode UI、データ連携・マッシュアップ・簡易APIに向けても、**Flow専用の別Meaning／Runnerを作らない**。既存の標準データ構造、Operator Contract、Function／Process Flow、Capability Invocationを組み合わせ、GUIのNodeはその投影として扱う。[研究統合`16.18〜16.21](../research/TECH_RESEARCH_INTEGRATION_2026-10.md)の議論と方向を合わせるが、現行Plugin第一縦断R1〜R3より先に新しい実行基盤を導入しない。
+Node-RED／Enebular型のプログラミング、ESPStudioのようなNode UI、データ連携・マッシュアップ・簡易APIに向けても、**Flow専用の別Meaning／Runnerを作らない**。既存の標準データ構造、Operator Contract、Function／Process Flow、Capability Invocationを組み合わせ、GUIのNodeはその投影として扱う。[研究統合§16.18〜16.21](../research/TECH_RESEARCH_INTEGRATION_2026-10.md)の議論と方向を合わせるが、現行Plugin第一縦断R1〜R3より先に新しい実行基盤を導入しない。
 
 | 一つのFlowを構成する要素 | 標準モデルで保持するもの | Node画面だけに持たせるもの |
 | --- | --- | --- |
@@ -180,3 +180,22 @@ Node-RED／Enebular型のプログラミング、ESPStudioのようなNode UI、
 **独立反証候補（#1180／#2514）**：NG-01 同じNode名に別Occurrence ID、NG-02 同じ端点に多重Edge、NG-03 Portの型不一致、NG-04 部分取得を正常な空集合と誤認、NG-05 Graph layoutだけ変更して業務Goが変化、NG-06 Rule変更でも古い生成Goを実行、NG-07 API Publish権限と実外部送信許可を混同、NG-08 Effect不明なのに再試行して二重送信、をそれぞれ独立に拒否・失効・隔離する。
 
 **資格の区別**：現時点でR1の実装PRは存在するが、N0〜N4、HTTP API実公開、クラウドConnectorの製品受入を実装済みとは扱わない。R2／R3が正式な実消費になっていない段階でNodeの可視化だけを「高度な実行機構」として宣言しない。
+
+## 14. R2の前段：既存BuildPlan Builderが生成Goを実際に消費したか
+
+R1の別Process `go run .` だけでは、BuildPlanで選択した入力をBuilderが読み、どのArtifactを作ったかは確認できない。[本PRの検証](https://github.com/hat47x/tei-platform/blob/main/tools/reference-go-build-from-plan/validationgen_build_binding_test.go)では、次の区間を**既存の** `tools/reference-go-build-from-plan` へ直接通す。新しいBuilderやGoモジュールを定義しない。
+
+1. `Workspace.Load`が明示的に選択した内蔵Rule Markdown Readerから、`quantity_positive`と `std.decimal`を取得する。Source Indexに記録されたRule IDの元byte範囲を確認する。
+2. `validationgen.GeneratePositive`が生成したGo Sourceと、その比較・分岐を呼ぶ小さなGo commandを一時的なGo packageとして配置する。Commandは特別なPlugin Runtimeを持たず、テストだけのConsumerとする。
+3. 既存 `DirSourceResolver` と `plugin.BuildPlan` で、生成Goを含む package、依存する既存Go package、`go.mod`／`go.sum` の**実Source digest**を固定する。生成Goを計画確定後に書き換える負例は、Buildに入る前に拒否する。
+4. 既存のBuilderを `-isolate` で実行し、隔離木のsource closure、計画fingerprint、出力Binary SHA-256、Builder自身が検証したBuildArtifactLockを相互照合する。最後にBuilderが作ったそのBinaryを別Processで実行し、正値／ゼロ／負値／NULL／欠損と読取回数の独立Expectedに一致することを確認する。
+
+この段階で得られるのは**参照Builderによる実Go消費の局所証拠**である。Builderの実行前に読んだ計画と成果物が結び付いても、製品 `tei` のBuild Intentから同じBuilderが正式に選択されたことや、Generatorの実装版・Source変更失効を世界全体で受理したことは別である。計画に載っていない外部サービスの読み込みや、実Providerの選択、Runtime Grant、Stage2への配備も検証対象外とする。
+
+次は既存 `cmd/tei` のBuild Intent／選択Builderへの公開入口で同じ生成Byteを渡す。**合格条件**は、期待する生成GoでビルドしたArtifact Aに対し、別の生成Goや別Builderを選んだArtifact Bで結果が一致しても、実選択の不一致を拒否できること。Go Builderのローカルテストだけではこの資格を満たさない。
+
+### 他領域へ展開する条件
+
+ノード型Flow、簡易API、SHOの図表、SUIキャンバス、YIC Harness向けSkillは、このR2実消費が閉じた後も**別のConsumer資格**を必要とする。Nodeの配置・文書の自然文・AIの説明・Plugin InventoryのLockだけでBuild結果や実行権限を判断しない。標準Operatorの再利用は促進しつつ、対象Subject／選択Source／BuildしたArtifact／実Entry／現在Grantの継ぎ目ごとに独立Expectedを用意する。
+
+**状態**：PRのコード差分は検証用Goテストと計画追記。新しいGenerator公開API、Plugin Registry、Runtime Provider、Windows製品Binaryを実装したものではない。exact HEADのテスト結果を別途確認する。
