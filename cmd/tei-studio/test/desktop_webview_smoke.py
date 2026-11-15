@@ -590,6 +590,7 @@ return {
   resourceTimingBufferFull: window.__teiResourceTimingBufferFull === true,
   nativeKeyEvents: window.__teiNativeKeyEvents ? window.__teiNativeKeyEvents.slice() : null,
   graphLabel: document.querySelector('#graph svg')?.getAttribute('aria-label') ?? '',
+  graphMarkup: document.querySelector('#graph svg')?.outerHTML ?? '',
   graphNodes: Array.from(document.querySelectorAll('#graph g[role="button"]')).map((item) => item.getAttribute('aria-label')),
   diagnosticRows: Array.from(document.querySelectorAll('#commands [aria-label="診断一覧"] li[data-severity]')).map((item) => ({severity:item.dataset.severity,text:item.textContent})),
   xeadStatus: document.querySelector('#xead-status')?.textContent ?? '',
@@ -867,6 +868,66 @@ const [kind, subjectId] = arguments;
         ):
             raise RuntimeError("Selecting B changed or silently requalified pinned A")
 
+        # The selected B has a real caret/selection inside the read-only Editor.
+        # A background Pin recheck may repaint the Pin panel only: it must not
+        # change B's editor text, DOM graph, ARIA, diagnostics or focus/caret.
+        focus_b_editor = """
+const editor = document.querySelector('#editor .cm-content');
+if (!editor) throw Error('Selected B has no read-only Editor');
+editor.focus();
+const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
+let node = walker.nextNode();
+while (node && !(node.textContent ?? '').length) node = walker.nextNode();
+if (!node) throw Error('Selected B has no selectable editor text');
+const selection = window.getSelection();
+if (!selection) throw Error('Selection API unavailable');
+const range = document.createRange();
+range.setStart(node, 0);
+range.setEnd(node, Math.min(node.textContent.length, 4));
+selection.removeAllRanges();
+selection.addRange(range);
+return {
+  focused: document.activeElement === editor,
+  selected: selection.toString(),
+  contained: editor.contains(selection.anchorNode) && editor.contains(selection.focusNode)
+};
+"""
+        focus_b = webdriver_request(
+            base_url, "POST", f"/session/{driver_session}/execute/sync",
+            {"script": focus_b_editor, "args": []},
+        ).get("value", {})
+        if (
+            focus_b.get("focused") is not True
+            or focus_b.get("contained") is not True
+            or not focus_b.get("selected")
+        ):
+            raise RuntimeError("Native B Editor focus and caret selection were not established")
+        protected_b = webdriver_request(
+            base_url, "POST", f"/session/{driver_session}/execute/sync",
+            {"script": inspect_script, "args": []},
+        ).get("value", {})
+        protected_fields = [
+            "subjectTitle", "editor", "sourceStatus", "graphLabel",
+            "graphMarkup", "graphNodes", "diagnosticSummary", "diagnosticRows",
+            "editorFocused", "editorSelection", "editorSelectionWithinEditor",
+        ]
+        if not protected_b.get("graphMarkup") or not protected_b.get("editorFocused"):
+            raise RuntimeError("B graph and active Editor were not present at the Pin protection baseline")
+        if protected_b.get("editorSelection") != focus_b.get("selected"):
+            raise RuntimeError("Native B caret selection changed before Pin recheck")
+
+        def verify_b_untouched(stage: str) -> None:
+            snapshot = webdriver_request(
+                base_url, "POST", f"/session/{driver_session}/execute/sync",
+                {"script": inspect_script, "args": []},
+            ).get("value", {})
+            changed = [
+                field for field in protected_fields
+                if snapshot.get(field) != protected_b.get(field)
+            ]
+            if changed:
+                raise RuntimeError(f"Pin {stage} changed selected B view/ARIA/caret: {changed}")
+
         # Recheck must explicitly invalidate A's previous observation before
         # accepting a new read. Neither step may replace B's Editor or Graph.
         recheck_click = click_native_pin("inspect-pinned")
@@ -878,6 +939,7 @@ const [kind, subjectId] = arguments;
             or recheck_click.get("editor") != graph_state.get("editor")
         ):
             raise RuntimeError("Explicit Pin A recheck did not invalidate the prior observation or preserve B")
+        verify_b_untouched("recheck-invalidated")
         rechecked_a_state: dict[str, Any] = {}
         recheck_deadline = time.monotonic() + 12
         while time.monotonic() < recheck_deadline:
@@ -900,6 +962,7 @@ const [kind, subjectId] = arguments;
             or rechecked_a_state.get("editor") != graph_state.get("editor")
         ):
             raise RuntimeError("Native Pin A recheck did not return a qualified read while B stayed selected")
+        verify_b_untouched("recheck-completed")
 
         released_a_state = click_native_pin("unpin-current")
         if (
@@ -912,6 +975,7 @@ const [kind, subjectId] = arguments;
             or released_a_state.get("editor") != graph_state.get("editor")
         ):
             raise RuntimeError("Unpin did not release A or changed the selected B Inspector")
+        verify_b_untouched("unpin")
         facts["pin_readonly"] = {
             "workspace_id": "workspace-1", "pinned_subject": "sales.order",
             "viewed_subject": child.get("id"), "host_revision_qualified": True,
@@ -919,12 +983,14 @@ const [kind, subjectId] = arguments;
             "recheck_requalified_original_subject": True,
             "unpin_preserved_selected_subject": True, "released": True,
             "native_webview2": True, "external_disclosure_qualified": False,
+            "selected_b_graph_aria_focus_caret_unchanged": True,
         }
         record(
             "native-webview2-pin-a-select-b-recheck-release-verified",
             pinned_subject="sales.order", viewed_subject=child.get("id"),
             host_revision_qualified=True, selection_preserved=True,
             old_observation_invalidated=True, released=True,
+            selected_b_graph_aria_focus_caret_unchanged=True,
         )
 
         # This ordinary Wails Host uses the existing Inspector path. Its
