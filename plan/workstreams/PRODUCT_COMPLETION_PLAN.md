@@ -1391,6 +1391,12 @@ S0-Aで最初に提示すべき**独立した正負**は、同一Source Snapshot
 
 **現時点の資格**：現行mainにはRuleから生成したGoを通常TEI CLIのBuild経路で実Binaryへ収録する限定的な実証と、原文コピーの実BinaryによるHash照合がある。一方、同一意味のGraphを生成型・解釈型で実比較した結果、Generator自身のTEIによる実再構築、正式Function Entry→選択Providerの製品実Call、Stage1→Stage2のTEI CLI／Windows Studio完全セルフビルド、定義簡素化の定量実測は本節では**NOT RUN／NOT ACCEPTED**。この追補は実装方式を選ぶための計画であり、達成済みという主張ではない。
 
+### Pluginの型付き貢献を、実現方式と配置から独立に検収する（2026年11月16日）
+
+[Pluginの貢献・配置・適格性設計](../design/PLUGIN_PORTABLE_CONTRIBUTION_CONFORMANCE_2026-11.md)と[PC-0〜5の小PR計画](PLUGIN_PORTABLE_CONTRIBUTION_EXECUTION_2026-11.md)に、全体Port／Field Mapping／明示Adapter、解釈／生成／委譲、静的Go／独立Process／Remote、CLI direct／Wails公開を**別軸**として接続した。まず既存Rule／Inspectのread-onlyな接続票から始め、正式Builderと通常CLI actual Providerの成立をそれぞれ確かめる。HTTPの公開資格、Audience、Grant、実Consumerはその次の別票とする。
+
+PCON-01〜09は既存#1180／#2514へ渡す未実行の独立Expected候補であり、Node Viewの線から実行を作る、Plugin Packageを一つのRuntime単位に固定する、第二Resolver／Host／Registryを追加することはしない。**Stage1→Stage2 Windows実受領、R2-Pの実Builder、R3の通常CLI実ProviderというP0を維持**し、プラグイン自身のTEI化は「一つの意味ある義務が生成Go／実Provider／次段Buildで実際に使われたか」で段階判定する。API Pluginの未統合PR #5096のCIや別HEADの成果を達成済みとして算入しない。
+
 ### 検査義務を一つTEIへ移し、次のTEIで使う（2026年11月15日）
 
 [実装からモデルへのdogfooding §15](../design/IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md)に、`GeneratePositive`の**ID／Attribute必須・Relation禁止のRequired Shape一義務**を、既存標準構造・Ruleによる検査へ移す最初の自己置換手順を定めた。M0（出典・独立基線）→M1（TEI由来の実検査）→M2（実製品経路の旧Go分岐削減）→M3（Stage1実TEIによるStage2構築・当該機能の実利用）を**別々の合格**として扱う。M1は生成・解釈のどちらでもよいが、セルフビルドの実証には意味あるコード生成と実Builder消費を別途要求する。Target固有のGo package名検査やNULL評価のLawを初回の一義務へ混ぜない。

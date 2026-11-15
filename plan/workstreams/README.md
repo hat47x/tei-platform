@@ -38,3 +38,4 @@
 - [Script/Macroの製品化と実証計画](TEI_SCRIPT_MACRO_PRODUCT_PLAN_2026-11.md)
 - [TEI MVP dogfooding：判断の移管から次世代の自己構築まで](MVP_DOGFOOD_DECISION_TRANSFER_2026-11.md)（既存M0〜M3・AW-0〜3を一つの検査義務と実受入の作業順へ接続。計画・未実証）
 - [理想の利用像を製品の受入へつなぐ計画](PRODUCT_COMPLETION_PLAN.md)
+- [Pluginの型付き貢献をCLI・Wails・生成物へつなぐ最小検収計画](PLUGIN_PORTABLE_CONTRIBUTION_EXECUTION_2026-11.md)（PC-0〜5。実製品の小PR・独立Expected・統合条件を整理する未実施の計画）
