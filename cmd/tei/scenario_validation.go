@@ -14,6 +14,7 @@ import (
 
 type scenarioValidationSource struct {
 	fixture       scenariotest.ValidationFixture
+	dateReads     map[string]bool
 	numberReads   map[string]bool
 	relationReads map[string]bool
 }
@@ -48,6 +49,34 @@ func (s *scenarioValidationSource) ReadNumber(attribute core.CanonicalID) (valid
 		return validationeval.NumberReading{}, fmt.Errorf("invalid Validation numeric Attribute %s", id)
 	}
 	return validationeval.NumberReading{State: validationeval.ValuePresent, Value: n}, nil
+}
+
+func (s *scenarioValidationSource) ReadDate(attribute core.CanonicalID) (validationeval.DateReading, error) {
+	id := string(attribute)
+	if state, stated := s.fixture.DateStates[id]; stated {
+		if _, both := s.fixture.Dates[id]; both {
+			return validationeval.DateReading{}, fmt.Errorf("Validation date Attribute %s has both a value and the state %s", id, state)
+		}
+		s.dateReads[id] = true
+		switch state {
+		case scenariotest.ValidationStateNull:
+			return validationeval.DateReading{State: validationeval.ValueNull}, nil
+		case scenariotest.ValidationStateNotFetched:
+			return validationeval.DateReading{State: validationeval.ValueNotFetched}, nil
+		default:
+			return validationeval.DateReading{}, fmt.Errorf("invalid state %q of Validation date Attribute %s", state, id)
+		}
+	}
+	value, ok := s.fixture.Dates[id]
+	if !ok {
+		return validationeval.DateReading{}, fmt.Errorf("missing Validation date Attribute %s", id)
+	}
+	s.dateReads[id] = true
+	date, err := semantic.ParseCalendarDate(value)
+	if err != nil {
+		return validationeval.DateReading{}, fmt.Errorf("invalid Validation date Attribute %s: %w", id, err)
+	}
+	return validationeval.DateReading{State: validationeval.ValuePresent, Value: date}, nil
 }
 
 func (s *scenarioValidationSource) ReadRelationKeys(relation, attribute core.CanonicalID) (validationeval.RelationReading, error) {
@@ -150,7 +179,7 @@ func runScenarioValidations(resolver driver.Resolver, appID core.CanonicalID, st
 	if len(rules) != len(step.ExpectValidations) {
 		return nil, fmt.Errorf("Scenario expects %d Validations but Application declares %d", len(step.ExpectValidations), len(rules))
 	}
-	source := &scenarioValidationSource{fixture: fixture, numberReads: map[string]bool{}, relationReads: map[string]bool{}}
+	source := &scenarioValidationSource{fixture: fixture, dateReads: map[string]bool{}, numberReads: map[string]bool{}, relationReads: map[string]bool{}}
 	results := make(map[string]string, len(rules))
 	for _, rule := range rules {
 		expected, ok := step.ExpectValidations[string(rule.ID)]
@@ -168,6 +197,9 @@ func runScenarioValidations(resolver driver.Resolver, appID core.CanonicalID, st
 	}
 	if len(source.numberReads) != len(fixture.Numbers)+len(fixture.NumberStates) || len(source.relationReads) != len(fixture.RelationKeys) {
 		return nil, fmt.Errorf("Validation Fixture has unused numeric or relation inputs")
+	}
+	if len(source.dateReads) != len(fixture.Dates)+len(fixture.DateStates) {
+		return nil, fmt.Errorf("Validation Fixture has unused date inputs")
 	}
 	return results, nil
 }

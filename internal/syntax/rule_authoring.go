@@ -41,6 +41,15 @@ const (
 	// whose predicate is a qualified reference to a declared operator, such as
 	// `is sales.non_negative`. The reference is kept in RuleAuthoring.Operator.
 	RulePredicateOperator RulePredicate = "operator"
+	// RulePredicateNotAfter is written as the two words `not after`, followed
+	// by the attribute the subject is compared with:
+	//
+	//	rule organization.membership.period_in_order:
+	//	  organization.membership.starts_on is not after organization.membership.ends_on if present
+	//
+	// `if present` states that a record without the second date satisfies
+	// the rule. It is never assumed: without it such a record is not decided.
+	RulePredicateNotAfter RulePredicate = "not-after"
 )
 
 // OperatorInputWord is a word of an operator declaration after `takes`. A
@@ -109,6 +118,12 @@ type RuleAuthoring struct {
 	// Scope is set only when the source wrote `per <relation>`. A nil pointer
 	// means the source did not state a scope; it is never defaulted.
 	Scope *RuleReference
+	// Compared is set only for `not after`: the attribute the subject is
+	// compared with.
+	Compared *RuleReference
+	// IfPresent is true only when the source wrote `if present` after the
+	// compared attribute.
+	IfPresent bool
 
 	// Spans of the parts an editor or diagnostic points at.
 	DeclarationSpan Anchor
@@ -310,7 +325,57 @@ func (p *Parser) parseRuleAuthoring(namespace core.CanonicalID) (RuleAuthoring, 
 	}
 	predicate := RulePredicate(predTok.Text)
 	var operator *RuleReference
-	if strings.Contains(predTok.Text, ".") {
+	var compared *RuleReference
+	ifPresent := false
+	lastTok := predTok
+	if predTok.Text == "not" {
+		// `not after <attribute>` and, optionally, `if present`.
+		afterTok, err := p.next()
+		if err != nil {
+			return RuleAuthoring{}, err
+		}
+		if afterTok.Kind != TokenIdent || afterTok.Text != "after" {
+			at := afterTok
+			if afterTok.Kind == TokenEOF {
+				at = predTok
+			}
+			return RuleAuthoring{}, p.errAt(at, "expected \"after\" after \"not\"; the predicate is written \"not after <attribute>\"")
+		}
+		comparedTok, err := p.next()
+		if err != nil {
+			return RuleAuthoring{}, err
+		}
+		if comparedTok.Kind != TokenIdent || comparedTok.Text == "if" || ruleAuthoringDeclarationEnds(comparedTok) {
+			at := comparedTok
+			if comparedTok.Kind != TokenIdent {
+				at = afterTok
+			}
+			return RuleAuthoring{}, p.errAt(at, "expected the attribute to compare with after \"not after\"")
+		}
+		predicate = RulePredicateNotAfter
+		compared = &RuleReference{Text: comparedTok.Text, Anchor: tokenAnchor(comparedTok)}
+		lastTok = comparedTok
+		ifTok, err := p.peek()
+		if err != nil {
+			return RuleAuthoring{}, err
+		}
+		if ifTok.Kind == TokenIdent && ifTok.Text == "if" {
+			_, _ = p.next()
+			presentTok, err := p.next()
+			if err != nil {
+				return RuleAuthoring{}, err
+			}
+			if presentTok.Kind != TokenIdent || presentTok.Text != "present" {
+				at := presentTok
+				if presentTok.Kind == TokenEOF {
+					at = ifTok
+				}
+				return RuleAuthoring{}, p.errAt(at, "expected \"present\" after \"if\"; the only condition is \"if present\"")
+			}
+			ifPresent = true
+			lastTok = presentTok
+		}
+	} else if strings.Contains(predTok.Text, ".") {
 		// A qualified name after `is` refers to a declared operator. Whether
 		// it is declared is not decided here: like an attribute reference, it
 		// is resolved against the whole Workspace by the validator.
@@ -329,7 +394,9 @@ func (p *Parser) parseRuleAuthoring(namespace core.CanonicalID) (RuleAuthoring, 
 		Subject:         RuleReference{Text: subjectTok.Text, Anchor: tokenAnchor(subjectTok)},
 		Predicate:       predicate,
 		Operator:        operator,
-		DeclarationSpan: Anchor{Start: keyword.Start, End: predTok.End},
+		Compared:        compared,
+		IfPresent:       ifPresent,
+		DeclarationSpan: Anchor{Start: keyword.Start, End: lastTok.End},
 		IDSpan:          tokenAnchor(nameTok),
 		SubjectSpan:     tokenAnchor(subjectTok),
 		PredicateSpan:   tokenAnchor(predTok),
@@ -358,6 +425,10 @@ func (p *Parser) parseRuleAuthoring(namespace core.CanonicalID) (RuleAuthoring, 
 	if predicate == RulePredicatePositive && rule.Scope != nil {
 		return RuleAuthoring{}, p.errAtSpan(rule.ScopeSpan,
 			"predicate \"positive\" accepts no scope; declare the constrained attribute instead")
+	}
+	if predicate == RulePredicateNotAfter && rule.Scope != nil {
+		return RuleAuthoring{}, p.errAtSpan(rule.ScopeSpan,
+			"predicate \"not after\" compares two dates of one record and accepts no scope")
 	}
 	if predicate == RulePredicateOperator && rule.Scope != nil {
 		return RuleAuthoring{}, p.errAtSpan(rule.ScopeSpan,
@@ -411,7 +482,7 @@ func ruleAuthoringIdentity(namespace core.CanonicalID, symbol string) (core.Cano
 // missing predicate one token too late.
 func rejectRuleKeywordAsSubject(t Token) error {
 	switch t.Text {
-	case "is", "per", "rule", "namespace", "operator", "takes":
+	case "is", "per", "rule", "namespace", "operator", "takes", "not", "after":
 		return fmt.Errorf("%q cannot be a rule subject; declare the constrained attribute before \"is\"", t.Text)
 	}
 	// A predicate word in the subject position means the clauses were written
@@ -429,6 +500,7 @@ func validRulePredicatesText() string {
 	for _, predicate := range rulePredicates {
 		words = append(words, string(predicate))
 	}
+	words = append(words, "not after <attribute>")
 	return strings.Join(words, ", ")
 }
 

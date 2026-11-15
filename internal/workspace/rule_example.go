@@ -35,6 +35,9 @@ type RuleExampleItem struct {
 	// exact decimals, and two cells with the same number are the same value
 	// however they are written.
 	Numeric bool
+	// Date is true when the item is a calendar date. Its cells were read as
+	// YYYY-MM-DD.
+	Date bool
 }
 
 // RuleExampleCell is one value as written. An empty Text means the record
@@ -75,6 +78,24 @@ func numericSemanticType(types map[core.CanonicalID]semantic.Type, id core.Canon
 	seen := map[core.CanonicalID]bool{}
 	for id != "" && !seen[id] {
 		if id == "std.integer" || id == "std.decimal" || id == "std.money" {
+			return true
+		}
+		seen[id] = true
+		typ, known := types[id]
+		if !known || typ.Kind != semantic.TypeAlias {
+			return false
+		}
+		id = typ.Underlying
+	}
+	return false
+}
+
+// dateSemanticType reports whether a type is a calendar date, following
+// aliases. A moment in time (std.datetime) is not one.
+func dateSemanticType(types map[core.CanonicalID]semantic.Type, id core.CanonicalID) bool {
+	seen := map[core.CanonicalID]bool{}
+	for id != "" && !seen[id] {
+		if id == "std.date" {
 			return true
 		}
 		seen[id] = true
@@ -148,7 +169,8 @@ func resolveRuleExamples(r *Result) error {
 				continue
 			}
 			example.Items = append(example.Items, RuleExampleItem{
-				Attribute: found.ID, Symbol: found.Symbol, Numeric: numericSemanticType(types, found.TypeRef),
+				Attribute: found.ID, Symbol: found.Symbol,
+				Numeric: numericSemanticType(types, found.TypeRef), Date: dateSemanticType(types, found.TypeRef),
 			})
 		}
 		if rejected {
@@ -161,6 +183,13 @@ func resolveRuleExamples(r *Result) error {
 				if cell.Text != "" && example.Items[i].Numeric {
 					if _, err := semantic.ParseOperatorCaseValue(cell.Text); err != nil {
 						if err := reject(cell.Anchor, fmt.Sprintf("item %s is a number: %v", example.Items[i].Symbol, err)); err != nil {
+							return err
+						}
+					}
+				}
+				if cell.Text != "" && example.Items[i].Date {
+					if _, err := semantic.ParseCalendarDate(cell.Text); err != nil {
+						if err := reject(cell.Anchor, fmt.Sprintf("item %s is a date: %v", example.Items[i].Symbol, err)); err != nil {
 							return err
 						}
 					}
@@ -200,6 +229,12 @@ func resolveRuleExamples(r *Result) error {
 			}
 			if !itemOf[rule.Attribute] {
 				if err := reject(expectation.RuleSpan, fmt.Sprintf("rule %s reads %s, which is not an item of data %s", rule.ID, rule.Attribute, table.Data)); err != nil {
+					return err
+				}
+				continue
+			}
+			if rule.Compared != "" && !itemOf[rule.Compared] {
+				if err := reject(expectation.RuleSpan, fmt.Sprintf("rule %s reads %s, which is not an item of data %s", rule.ID, rule.Compared, table.Data)); err != nil {
 					return err
 				}
 				continue

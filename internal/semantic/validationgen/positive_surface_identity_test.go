@@ -215,7 +215,7 @@ func TestSameRuleFromTwoProductSurfacesGeneratesIdenticalGoButDistinctSourceEvid
 	// binding to a *different* Attribute. The authored Rule must not silently
 	// inherit that new read target just because the Go parser accepts it.
 	readMutant := bytes.Replace(markdown.code,
-		[]byte("source.Number(\"" + attributeID + "\")"),
+		[]byte("source.Number(\""+attributeID+"\")"),
 		[]byte("source.Number(\"sales.order_line.discount\")"), 1)
 	if bytes.Equal(readMutant, markdown.code) {
 		t.Fatal("read-target mutant was not applied")

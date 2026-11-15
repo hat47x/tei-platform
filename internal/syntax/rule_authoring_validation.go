@@ -42,6 +42,8 @@ func RuleValidationKind(predicate RulePredicate) (semantic.ValidationKind, bool)
 		return semantic.ValidationRelationUnique, true
 	case RulePredicateOperator:
 		return semantic.ValidationOperator, true
+	case RulePredicateNotAfter:
+		return semantic.ValidationNotAfter, true
 	default:
 		return "", false
 	}
@@ -126,6 +128,25 @@ func ruleToValidation(rule RuleAuthoring) (semantic.Validation, *RuleConversionI
 		return semantic.Validation{}, &RuleConversionIssue{
 			RuleID: rule.ID, Span: rule.Operator.Anchor,
 			Msg: fmt.Sprintf("%s accepts no operator reference, but %q was authored", kind, rule.Operator.Text),
+		}
+	}
+	if kind == semantic.ValidationNotAfter {
+		if rule.Compared == nil {
+			return semantic.Validation{}, &RuleConversionIssue{
+				RuleID: rule.ID, Span: rule.PredicateSpan,
+				Msg: "not-after requires an attribute to compare with; none was authored",
+			}
+		}
+		compared, issue := ruleCanonicalReference(rule, *rule.Compared, "compared attribute")
+		if issue != nil {
+			return semantic.Validation{}, issue
+		}
+		validation.Compared = compared
+		validation.IfPresent = rule.IfPresent
+	} else if rule.Compared != nil || rule.IfPresent {
+		return semantic.Validation{}, &RuleConversionIssue{
+			RuleID: rule.ID, Span: rule.PredicateSpan,
+			Msg: fmt.Sprintf("%s accepts no attribute to compare with", kind),
 		}
 	}
 	if kind == semantic.ValidationRelationUnique {

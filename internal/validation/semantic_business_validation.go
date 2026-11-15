@@ -70,6 +70,27 @@ func validateSemanticBusinessValidations(w ir.World) []Diagnostic {
 		return false
 	}
 
+	// A calendar date is std.date or an alias of it. A moment in time
+	// (std.datetime) is not: ordering moments needs a time zone.
+	isDateType := func(id core.CanonicalID) bool {
+		seen := map[core.CanonicalID]struct{}{}
+		for id != "" {
+			if id == "std.date" {
+				return true
+			}
+			if _, cycle := seen[id]; cycle {
+				return false
+			}
+			seen[id] = struct{}{}
+			typ, ok := types[id]
+			if !ok || typ.Kind != semantic.TypeAlias {
+				return false
+			}
+			id = typ.Underlying
+		}
+		return false
+	}
+
 	// Operator contracts are data. A rule may refer only to a declared one, and
 	// a declaration decides what the rule reads.
 	operators := map[core.CanonicalID]semantic.Operator{}
@@ -204,6 +225,15 @@ func validateSemanticBusinessValidations(w ir.World) []Diagnostic {
 				))
 			}
 
+			if rule.Kind != semantic.ValidationNotAfter && (rule.Compared != "" || rule.IfPresent) {
+				out = append(out, errFor(
+					ruleSubject,
+					"SEMANTIC_VALIDATION_COMPARED_ATTRIBUTE_NOT_ALLOWED",
+					"%s semantic validation %s does not compare its attribute with another one",
+					rule.Kind,
+					rule.ID,
+				))
+			}
 			if rule.Kind != semantic.ValidationOperator && rule.Operator != "" {
 				out = append(out, errFor(
 					ruleSubject,
@@ -254,6 +284,61 @@ func validateSemanticBusinessValidations(w ir.World) []Diagnostic {
 						rule.ID,
 						rule.Attribute,
 						attribute.TypeRef,
+					))
+				}
+
+			case semantic.ValidationNotAfter:
+				if rule.Relation != "" {
+					out = append(out, errFor(ruleSubject, "SEMANTIC_VALIDATION_RELATION_NOT_ALLOWED", "not-after semantic validation %s does not accept a relation", rule.ID))
+				}
+				if rule.Compared == "" {
+					out = append(out, errFor(ruleSubject, "SEMANTIC_VALIDATION_COMPARED_ATTRIBUTE_REQUIRED", "not-after semantic validation %s requires an attribute to compare with", rule.ID))
+					continue
+				}
+				compared, comparedExists := attributes[rule.Compared]
+				if !comparedExists {
+					out = append(out, errFor(
+						ruleSubject,
+						"UNKNOWN_SEMANTIC_VALIDATION_COMPARED_ATTRIBUTE",
+						"semantic validation %s compares with unknown semantic attribute %s",
+						rule.ID,
+						rule.Compared,
+					))
+					continue
+				}
+				if !attributeExists {
+					continue
+				}
+				if rule.Compared == rule.Attribute {
+					out = append(out, errFor(
+						ruleSubject,
+						"SEMANTIC_VALIDATION_NOT_AFTER_SAME_ATTRIBUTE",
+						"not-after semantic validation %s compares attribute %s with itself",
+						rule.ID,
+						rule.Attribute,
+					))
+					continue
+				}
+				if attributeOwners[rule.Attribute] != attributeOwners[rule.Compared] {
+					out = append(out, errFor(
+						ruleSubject,
+						"SEMANTIC_VALIDATION_NOT_AFTER_REQUIRES_SAME_DATA",
+						"not-after semantic validation %s compares %s with %s, which belongs to another data",
+						rule.ID,
+						rule.Attribute,
+						rule.Compared,
+					))
+				}
+				if !isDateType(attribute.TypeRef) || !isDateType(compared.TypeRef) {
+					out = append(out, errFor(
+						ruleSubject,
+						"SEMANTIC_VALIDATION_NOT_AFTER_REQUIRES_DATE_ATTRIBUTES",
+						"not-after semantic validation %s requires two calendar dates but %s has type %s and %s has type %s",
+						rule.ID,
+						rule.Attribute,
+						attribute.TypeRef,
+						rule.Compared,
+						compared.TypeRef,
 					))
 				}
 

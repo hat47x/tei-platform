@@ -69,6 +69,20 @@ type StatefulSource interface {
 	ReadRelationKeys(relation, attribute core.CanonicalID) (RelationReading, error)
 }
 
+// DateReading is one calendar date and its state. Value is a date exactly
+// when State is ValuePresent, and the zero value otherwise.
+type DateReading struct {
+	State ValueState
+	Value semantic.CalendarDate
+}
+
+// StatefulDateSource is implemented by a reader that can read calendar
+// dates. A rule over dates is not evaluated with a reader that cannot: the
+// rule is refused, it is not decided from another representation.
+type StatefulDateSource interface {
+	ReadDate(attribute core.CanonicalID) (DateReading, error)
+}
+
 // UndecidedReason names why a rule could not be decided.
 type UndecidedReason string
 
@@ -204,6 +218,9 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 	case rule.Kind == semantic.ValidationRelationUnique:
 		return decideRelationUnique(rule, source)
 
+	case rule.Kind == semantic.ValidationNotAfter:
+		return decideNotAfter(rule, source)
+
 	case rule.Kind == semantic.ValidationOperator && withOperators:
 		implementation, err := selectOperatorImplementation(rule, operators)
 		if err != nil {
@@ -285,4 +302,65 @@ func decideRelationUnique(rule semantic.Validation, source StatefulSource) (Deci
 	default:
 		return decided(ResultSatisfied)
 	}
+}
+
+// readDate reads one date and refuses a reading that contradicts itself.
+func readDate(rule semantic.Validation, source StatefulDateSource, attribute core.CanonicalID) (DateReading, error) {
+	reading, err := source.ReadDate(attribute)
+	if err != nil {
+		return DateReading{}, fmt.Errorf("semantic validation %s cannot evaluate attribute %s: %w", rule.ID, attribute, err)
+	}
+	switch reading.State {
+	case ValuePresent:
+		if reading.Value.IsZero() {
+			return DateReading{}, fmt.Errorf("semantic validation %s: the reader reports attribute %s as present without a value", rule.ID, attribute)
+		}
+	case ValueNull, ValueNotFetched:
+		if !reading.Value.IsZero() {
+			return DateReading{}, fmt.Errorf("semantic validation %s: the reader reports attribute %s as %s together with a value", rule.ID, attribute, reading.State)
+		}
+	default:
+		return DateReading{}, fmt.Errorf("semantic validation %s: the reader reports attribute %s in the unknown state %q", rule.ID, attribute, reading.State)
+	}
+	return reading, nil
+}
+
+// decideNotAfter decides "the date of Attribute is not after the date of
+// Compared" for one record.
+//
+// With IfPresent, a record that holds no Compared date satisfies the rule
+// whatever its other date is: the rule speaks only about records that have
+// one. In every other case both dates are needed. A date that was not read
+// leaves the rule undecided, and so does an empty date the rule does not
+// speak about.
+func decideNotAfter(rule semantic.Validation, source StatefulSource) (Decision, error) {
+	dates, readsDates := source.(StatefulDateSource)
+	if !readsDates {
+		return Decision{}, fmt.Errorf("semantic validation %s compares calendar dates, which this reader cannot read", rule.ID)
+	}
+	if rule.Compared == "" {
+		return Decision{}, fmt.Errorf("semantic validation %s names no attribute to compare with", rule.ID)
+	}
+	subject, err := readDate(rule, dates, rule.Attribute)
+	if err != nil {
+		return Decision{}, err
+	}
+	compared, err := readDate(rule, dates, rule.Compared)
+	if err != nil {
+		return Decision{}, err
+	}
+	switch {
+	case compared.State == ValueNull && rule.IfPresent:
+		return decided(ResultSatisfied)
+	// What reading more could settle is reported before what it could not.
+	case subject.State == ValueNotFetched:
+		return undecided(UndecidedValueNotFetched, "", rule.Attribute)
+	case compared.State == ValueNotFetched:
+		return undecided(UndecidedValueNotFetched, "", rule.Compared)
+	case subject.State == ValueNull:
+		return undecided(UndecidedValueNull, "", rule.Attribute)
+	case compared.State == ValueNull:
+		return undecided(UndecidedValueNull, "", rule.Compared)
+	}
+	return decided(satisfiedResult(subject.Value.Compare(compared.Value) <= 0))
 }

@@ -7,6 +7,8 @@ import (
 	"io"
 	"math/big"
 	"strings"
+
+	"tei/internal/semantic"
 )
 
 // ValidationFixture is test-only input for existing Canonical Validation rules.
@@ -18,6 +20,11 @@ type ValidationFixture struct {
 	// "null" (the record holds no value) or "not-fetched" (the Attribute was
 	// not read). An Attribute is stated in Numbers or here, never in both.
 	NumberStates map[string]string `json:"numberStates,omitempty"`
+	// Dates holds calendar dates of Attributes, written YYYY-MM-DD.
+	Dates map[string]string `json:"dates,omitempty"`
+	// DateStates names date Attributes that have no value, with the words of
+	// NumberStates. An Attribute is stated in Dates or here, never in both.
+	DateStates map[string]string `json:"dateStates,omitempty"`
 }
 
 // The words a Fixture may use for a value that is not there, and for how much
@@ -76,6 +83,25 @@ func ParseValidationFixture(source []byte) (ValidationFixture, error) {
 		}
 		if _, both := f.Numbers[id]; both {
 			return ValidationFixture{}, fmt.Errorf("Validation number %s has both a value and the state %s", id, state)
+		}
+	}
+	for id, value := range f.Dates {
+		if strings.TrimSpace(id) == "" {
+			return ValidationFixture{}, fmt.Errorf("Validation date has empty Attribute")
+		}
+		if _, err := semantic.ParseCalendarDate(value); err != nil {
+			return ValidationFixture{}, fmt.Errorf("Validation date %s: %w", id, err)
+		}
+	}
+	for id, state := range f.DateStates {
+		if strings.TrimSpace(id) == "" {
+			return ValidationFixture{}, fmt.Errorf("Validation date state has empty Attribute")
+		}
+		if state != ValidationStateNull && state != ValidationStateNotFetched {
+			return ValidationFixture{}, fmt.Errorf("Validation date state %s is %q; write null or not-fetched", id, state)
+		}
+		if _, both := f.Dates[id]; both {
+			return ValidationFixture{}, fmt.Errorf("Validation date %s has both a value and the state %s", id, state)
 		}
 	}
 	seen := make(map[string]bool, len(f.RelationKeys))

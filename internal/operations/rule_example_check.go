@@ -65,6 +65,25 @@ func (s exampleSource) ReadNumber(attribute core.CanonicalID) (validationeval.Nu
 	return validationeval.NumberReading{State: validationeval.ValuePresent, Value: value}, nil
 }
 
+func (s exampleSource) ReadDate(attribute core.CanonicalID) (validationeval.DateReading, error) {
+	if s.row < 0 {
+		return validationeval.DateReading{}, fmt.Errorf("a rule about all the rows asked for the single value %s", attribute)
+	}
+	column, written := s.column(attribute)
+	if !written {
+		return validationeval.DateReading{State: validationeval.ValueNotFetched}, nil
+	}
+	cell := s.example.Rows[s.row][column]
+	if cell.Text == "" {
+		return validationeval.DateReading{State: validationeval.ValueNull}, nil
+	}
+	date, err := semantic.ParseCalendarDate(cell.Text)
+	if err != nil {
+		return validationeval.DateReading{}, err
+	}
+	return validationeval.DateReading{State: validationeval.ValuePresent, Value: date}, nil
+}
+
 func (s exampleSource) ReadRelationKeys(relation, attribute core.CanonicalID) (validationeval.RelationReading, error) {
 	if s.row >= 0 {
 		return validationeval.RelationReading{}, fmt.Errorf("a rule about one record asked for the rows of relation %s", relation)
