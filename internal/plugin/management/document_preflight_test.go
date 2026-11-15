@@ -10,7 +10,7 @@ import (
 
 func TestDocumentReadPreflightUsesExistingResolverSelection(t *testing.T) {
 	env := baseEnvironment(t, "tei.database.postgres")
-	plugins := []plugin.Definition{builtinPlugin(t, "tei.database.postgres"), builtinPlugin(t, "tei.unselected")}
+	plugins := []plugin.Definition{builtinPlugin(t, "tei.database.postgres", databaseProviderCapability(t, "database.postgres", environment.ProviderPostgres)), builtinPlugin(t, "tei.unselected")}
 
 	report, err := Derive(Input{World: world(plugins, env), Environment: env.ID})
 	if err != nil {
