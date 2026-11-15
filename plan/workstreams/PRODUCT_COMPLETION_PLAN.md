@@ -564,6 +564,29 @@ Webの要求、CLIの起動、タイマー、Message、画面操作には、そ�
 **作業順序と証拠の上限**：全体P0はStudio Stage1→Stage2セルフビルド（#2831/#4583）、並行P0は通常製品`tei`→実Provider→Function Data Context→独立二Consumer（#2586/#1251）。EP-0/1はその足場を再利用する小さなread-only/Builder試験として並走できるが、B1a-P公開Grant、B1b Commerce Effect、B2 Exposure/Consent、B3性能・開発費の実測をP0の前提にしない。B0限定Inspectorと既存Source/Graph設計はmainにあるが、**本節で計画した新たなGo/CLI/Builder/Native Browser/配布/同意/Collector/Commerce実試験、Owner Meaning受理、CVR改善はNOT RUN / NOT ACCEPTED**。
 
 
+<!-- g49-gpd-placement-mode-20261115 -->
+### G49：横断機能の実現方式を選び、実際に使われた成果まで照合する（2026-11-15）
+
+**今回加える判断**：前節のU（対象）→S（選択）→G（生成）→D（配布）→V（実表示）→R（受領）は、どの横断機能でも必ず同じ実行経路を通るという意味ではない。[宣言的実装のG/P/D比較 #5069](https://github.com/hat47x/tei-platform/pull/5069)と[共通Process実現の整理 #5071](https://github.com/hat47x/tei-platform/pull/5071)を受け、**同じ受理済み意味を、対象の場所と時点に応じてどこで実現するか**を先に判断する。Graphの対象選択は共通でも、すべてをGo/JS生成または常駐TEI Interpreterへ通さない。方式はアプリケーション全体に一つではなく、個々のBinding/Placementごとに選ぶ。選択した方式の実証と、別方式への置換可能性は異なる資格である。
+
+| 実現方式 | B2Cで適する例と必要な性質 | 必ず別に確認する事実 |
+| --- | --- | --- |
+| **G：Targetコード・静的成果物の生成** | 公開可能なSEOメタ情報、静的文言、型付きClient/Server Adapter、変更の少ないHead/Section部品。SEOや初回描画を妨げず、BrowserでのTEI実行を要求しない | Source/Meaning/生成器Pin→実Builder入力→Artifact Member→実配布。コード生成に成功しても公開済み・表示済みではない |
+| **P：既存の型付きOperator・汎用Functionによる評価** | 既存RuleやProfileのパラメータに基づく限定判断、Request/Session単位の出し分け。新しい汎用Interpreterを足すのではなく**選択済みの既存評価処理**を適用する | 演算子版、入力の粒度・NULL/未取得、評価時点、Read Footprint、Targetに許される利用範囲。値だけ一致しても不要な秘匿Readや失敗の差は不適合 |
+| **D：外部Host/Providerへ委譲** | 最新の価格・在庫・税/クーポン、Cart/Checkout/Payment、現在Grant、外部Flag/Analytics/CMSの権威ある処理 | Selected Providerとactual Call、現在Grant/Consent、外部Effect/Receipt/独立Read。委譲の成功をTEI生成実装の割合へ算入しない |
+| **H0：Native実装のみ** | ブランド独自Router/DOM/CSS/状態管理、FrameworkのSSR/SPA/Hydration、手書きFrontend | 型付きContractを使わない場合も正規比較対象。**必須TEI Browser JS/DOM wrapper/Proxyは0**。存在しないTEI経路にG/P/Dの証拠を要求しない |
+
+この節の**方式G/P/D**（コード生成／既存評価／外部委譲）と前節の**段階G/D**（生成物の確認／配布の確認）は、略号が同じでも別の分類である。またH0/H1/H2は、TEI導入と任意プラグイン利用を比較する**構成**であり、方式G/P/Dとは直交する。一つのRouteでHeadはG、Request時の限定表示判断はP、購入確定はD、ブランドの画面はNativeで構成できる。Pで実行した関数がDのProviderを呼ぶ場合には、純粋なPの成功とは別にDの実Call/Effectを確認する。どの方式でもBrowser/Server/Edge/Build-timeの配置はPluginの公開CapabilityとTarget条件から決め、実行先の不適合を暗黙Fallbackで埋めない。
+
+**Bindingの最小検収票（新しいCore schemaではない）**：対象のQualified Source/Meaning・Source occurrence、適用するRoute/Section/Operation/Hook Slot、選択条件とUniverse、配置先とLifecycle phase、必要な多重度、G/P/D選択と実装Pin、利用側のRequired Data Context/Scope/時点、Actual Member/実Invoke、実Consumer、現在の開示・実行資格を**別欄**で記録する。Fragment/Markdown/Graphの見た目やPlugin名だけでBindingの同一性を決めない。Providerの選択と実呼出し、参照したPage集合と未探索の動的Route集合は一致を仮定しない。Requiredな横断適用でScopeが未観測なら全件成功を認定せず、任意の計測・広告が止まっただけで業務Operationを停止させない（#951/#1016/#2497/#3262/#3278/#3503/#4198）。
+
+**実装を急ぐ範囲を限定する**：まず既存[positive Ruleの生成と評価方式](https://github.com/hat47x/tei-platform/pull/5069)を、同じ入力・独立Expectedに対するGとPの差の説明に使う。ただしpositive Ruleの局所結果はB2CのRoute/Hook、実Browserや公開Grantの資格ではない。続けて**公開してよい合成の一Route/一Head Slot**を選び、U/Sの実Source・公開FacetとGの実Builder Memberを同じ版で照合する（EP-0→EP-1）。実Targetの該当Slotがなければ `unbound` と報告し、架空のRouteや生成器を製品の標準機能として追加しない。Generatorのテスト成功から配信D/V/Rを認定しない。[Windowsの実TEI CLI→生成Workbench N2 #5059](https://github.com/hat47x/tei-platform/pull/5059)は子Processと成果物の限定実証であり、**B2C Target生成にもStudio Stage1→Stage2全体にも転用しない**。
+
+**既存の独立Expectedへ渡す最短の反例**：①静的Head MemberがSelectorで選ばれたのに実Bundleへ入らない、②同じ公開RuleのG/Pで値が一致してもPだけ非公開情報を先読み、③Pの入力/演算子Pinが古いのに結果だけ同じ、④Gの旧Release/Edge Cacheが現在版と混在、⑤ConsentなしにD側Collectorへ送出、⑥価格をC0文言扱いで変更しDの再検証を省略、⑦H0にTEI JSを必須注入、⑧選択Aと実Provider Bを同一と扱う。新たなScenario正本を作らず、#3509のBC/AX/GQ/G49-EPと#1180/#2514へ対応付ける。値一致、Browser表示、Analytics成功、実注文Effect、CVR因果改善を一票に合算しない。
+
+**次の引渡し**：EP-0/1はread-only/静的生成の最小縦断として#4198/#951/#1121/#2090、G/P意味比較は#5069/#988/#1121/#2514、Targetへの配信・旧版・Consentは#2600/#3271/#3503/#2516、Commerce Effectは#1174/#1129へ戻す。#5075の型付き配線、#5076のPlugin充足設計は現時点では別の**未統合提案**として参照し、完成済みのConnector適合とは扱わない。B1a-I（通常`tei`→実Provider→Function Context→独立Consumer）とStudio Stage1→Stage2の製品P0は維持。**今回の追加は設計・実装順の更新のみで、新Go/Builder/実Browser/Commerce/実験、Owner意味受理はNOT RUN / NOT ACCEPTED**。
+
+
 ## 最新の作業単位へ接続する
 
 2026年11月11日のmain `9d31f82486b2eac42791f4f3bc5cd588d69cb4fc`と関連Issueを照合した。以下は着手先の更新であり、Issueの起票・限定Reference・候補Parserを製品の完成へ数えない。以後の進捗は各Issueと[実装状況](../../docs/status.md)から再取得する。
