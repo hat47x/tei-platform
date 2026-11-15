@@ -167,6 +167,11 @@ G／P／Dの分類は図表実現の解釈・生成・混合・Hookの配置方�
 
 **SL-0のCLI／Studio Host三入口基線（[起動契約§32](../design/STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)）**：既存#5037の通常製品`tei inspect`別OS Processと`operations.InspectSubject`の同値試験に、Wailsに依存しない`studiohost.ReadOnly.InspectSubject`を追加する。同じ内蔵Markdown Ruleについて、正規化意味・元Source／Workspace Identity／`authorityLimits`を含む`SubjectInspection`全体を照合。同名非公開Capabilityと偽Ruleの`SUBJECT_NOT_FOUND`、未許可Workspaceの`WORKSPACE_NOT_ALLOWED`、`business_rejection`／`not_retryable`／`effectUnknown=false`を実Go試験で確認する。これは**Studio Host Go境界の検証**であってWebView／HTTP公開・現在Grant／正式Provider Callではない。#5096のAPI Pluginは次段AP-1でWails Serverの薄い公開Adapterに接続し、CLIへのWails・HTTP依存を加えない。LoopbackへのbindのみでSourceの開示許可を得たとは扱わない。#5059のN2実CLI子Process／Windows成功はBuild一往復の実証であり、B0常駐Backendや正式Stage1→Stage2の成立と区別する。今回の追加試験の合否は対象HEAD CIを独立に確認し、P0のStudio再入#2831/#4583・通常CLI実Provider#4495を維持する。
 
+
+**SL-0から実Provider／実公開へ進む検収列（[起動契約§33](../design/STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)）**：最初のGo差分は[PR #5119](https://github.com/hat47x/tei-platform/pull/5119)の内蔵Rule`inspect`三入口同値であり、**exact HEADの実CIが成功するまで実証未受理**とする。main統合済み#5118は異動申請Data表の型付きRuleを既存Evaluatorと生成Go実Binaryで比較し、値が等しくてもRead ID／回数が異なる負例を検出する。main統合済み#5109は実`tei self-build`のBuildPlan確定後のGo byte変更を旧Planで拒否する。両者は実Rule／Buildにおける局所的な証拠であり、正式Provider選択・HTTP Disclosure・Studio Stage1→Stage2の完了ではない。実装選択A→Bの旧Scenario失効は後継#5114のCIとmain統合を別に確認する。
+
+**次の独立した小PR**は、AP-1（#5096）のWails Server`InspectSubject`一Routeである。許可されたWorkspace ID／Source Revisionの正常Readと、別AudienceのSource位置非開示・未許可Workspace・旧Revision拒否を、現行CLIの結果とは別のHost Admissionで検査する。**HTTPの成功は非Builtin Providerの実Callではない**。B0（#4635）は実Peer／nonce／SessionとCancellationを持つ子Backendを、N2 Build子起動（main #5059）とは区別して比較する。SL-1の実Function／Provider #4495とStudio非Plugin Stage1→Stage2 #2831/#4583はP0として独立・並行させる。LA-01〜08は既存#1180/#2514のIndependent Expectedへ渡し、第二Resolver／Runtime／Hostを増やさない。
+
 ### SL-1の最初の実コード差分と、受理可能な証拠（2026年11月15日）
 
 Script Launch §25、ADR-0048、#4495に基づき、最初は**公開済みのpure Function一件を直接Go APIから実Go Providerへ呼ぶ**差分を閉じる。次に、同じ意味契約を通常の製品tei実行ファイルの別OSプロセスから呼ぶ。これは二つの独立Attemptであり、プロセス・Request IDが同じであると仮定しない。Stage1→Stage2セルフビルド、実PostgreSQL Function Read、Studio子Backend/IPC、MCP、外部Effectはそれぞれの別Gateに残す。
