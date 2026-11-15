@@ -131,6 +131,13 @@ DC-27〜32は#1180／#2514の既存独立Expectedへ引き渡す。最初に実�
 
 **優先順位と判定上限**：全体P0のStudio Stage1→Stage2、並行P0の実DB Function Read、CLI先行のTEI意味Codegenは変えない。SL-1の製品pure Entryは#4495の並行課題とし、SL-2〜4の子Backend比較・Session復旧を先行Hard Gateにはしない。今回の追補は計画・実装引渡しのみであり、Child IPC／Session再接続／Product Function実Call／Plugin更新／CLI2再構築の新しい試験は**NOT RUN／NOT ACCEPTED**。
 
+**起動契機から実受領までの横断接続（2026年11月15日、[起動契約§30](../design/STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)）**：Script Launchは、CLI／Desktop／Web／定時処理／AI Harnessなどの**入口が異なっても、受理する業務Entry・現在のOperation資格・実Provider・Effect／Consumerを別々に確かめる**計画とする。Trigger到着・Window表示・AI Proposal・Plugin Discoveryだけで実行許可を与えず、現行Pin／Source Revision・DisclosureとHost側の現在Grantを照合する。Node Viewと標準Processは関係を読みやすく表すProjectionとして再利用し、描画Edge IDやAIの候補を業務Meaningの正本にしない。実証上は2026-11-15にmain統合済みの[PR #5037](https://github.com/hat47x/tei-platform/pull/5037)がSL-0の`inspect`正常／拒否を直接Operationと実CLI別Processで一致させた。該当HEADのAction Surface実CLI workflowはSUCCESS。ただし**子Backend・実Provider・変更操作・Stage2を実証したものではない**。
+
+**配置・配布の採否を分ける**：SL-2のA／B0／B1／B2はProcess／IPC方式、D1 Remote接続・D2単一Image・D3別Server同梱はRelease形態であり、実行方式Aを「D1」と呼ばない。まずSL-0のResult／Failure基線を用い、#4635がCLI B0 read-only一往復→Windows Wails Bridgeを独立に比較する。B0 WorkerとWails Updater Helperは同じexeの別Roleになり得るため、#1824で通常GUI／Worker／Helperの誤分岐、実Image・Peer／Session、旧Reply、Update中の未知Effect、User設定非上書きを負例として確かめる。Wails beta.29→安定版へのexact Pin移行、D2署名付き更新・D3配布・Mobile探索はSL-1の公開Function実呼出しや非Plugin Stage1→Stage2の**先行条件にしない**。必要な独立Expectedは既存#1180/#2514へ差分を渡す。
+
+
+**起動時に選択する実装と実際に使った実装の照合（[起動契約§31](../design/STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)）**：main統合済み#5051は選択Ruleの原Markdownを生成Goと同じBuild入力に収録し、実BinaryのSHA-256が元byteと一致した限定実証である。#5054はOperator実装A→B変更後に旧Scenarioコマンドを拒否する修正候補であり、未マージのまま製品資格に加算しない。起動後の実選択Provider・現行Grant・実CallをSource／生成byteの一致から推測しない。定義済みRuleを**既存Evaluatorで解釈する**方式と**Goを生成する**方式は、同じ意味と独立Expectedで比較できるが、前者を自己コード生成の成果と数えない。#5042/#5052の生成PoC B Windows実受領と、非Plugin Stage1→Stage2実再構築も別に検収する。新Interpreter／Hostを作らず、B0とR3を独立Ownerへ引き渡す。
+
 ### SL-1の最初の実コード差分と、受理可能な証拠（2026年11月15日）
 
 Script Launch §25、ADR-0048、#4495に基づき、最初は**公開済みのpure Function一件を直接Go APIから実Go Providerへ呼ぶ**差分を閉じる。次に、同じ意味契約を通常の製品tei実行ファイルの別OSプロセスから呼ぶ。これは二つの独立Attemptであり、プロセス・Request IDが同じであると仮定しない。Stage1→Stage2セルフビルド、実PostgreSQL Function Read、Studio子Backend/IPC、MCP、外部Effectはそれぞれの別Gateに残す。
