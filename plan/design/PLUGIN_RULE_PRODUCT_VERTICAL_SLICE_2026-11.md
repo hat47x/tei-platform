@@ -144,3 +144,19 @@ UI実装におけるTypeScript・Web標準技術・Wailsの選択は#1824の担�
 - **実行先**：初回の観測は実製品CLIの型付きOperationから選択されたGo Providerへ到達すること。専用のReference runnerを正式な実行入口と呼ばない。成功後にStudioのInspect／Graph表示や他Targetへ展開する。
 
 このFixtureはReader・Inspectorを通した**意味候補の出発点**であり、生成用の正式なRule Operator／Provider Contract／入力のNULL意味がOwner受理済みであるとは限らない。足りない契約は#1121／#4544／#4495の既存担当で確定させ、対象を増やす前に一RuleのSourceから実Consumerまでを閉じる。
+
+## 12. 実EvaluatorとRule変更追随の次に生成Goを検証する（2026年11月15日）
+
+前節のFixtureは製品Readerにとどまらず、mainの製品Go回帰で**旧`.tei`とMarkdownの同じ型付きRule意味への収束**（`b89209a2`）、**既存Evaluatorでの入力Read Footprintと評価結果の照合**（#4901／`61dbab7f`）まで進んだ。以下は実装と未完成部分を混ぜないための更新であり、この文書で新しいコード実行を行ったわけではない。
+
+| 工程 | 現在の確認範囲 | 次に採る証拠 |
+| --- | --- | --- |
+| R0 Reader | 明示選択の`tei.rule-authoring/v0`、同一Load原byte／Source Index、未選択・契約版違いの拒否。旧構文との`semantic.Validation`同値と同一Canonical IDの重複拒否 | A→B→A等の残余負例を既存#1180/#2514と照合 |
+| R0.5 実Evaluator | `quantity_positive`の正数／ゼロ／NULL／未取得、`line_number_unique`の重複／全件空集合／範囲不明を、既存Evaluator＋**テスト用Source**で照合。要求した属性／Relation KeyのRead先も観測 | 実Providerによる入力全件性と時点、実DB／Driverの取得・欠損、Owner意味受理は別 |
+| R1 判断Go生成 | 未実証。main `468e1dc8` のRule参照先変更→再Load→Evaluator Read先変更・旧Source失効のGo回帰も、生成Goが変化した証明ではない | 型付きSource Ruleから比較・分岐を生成し、Rule条件変更で生成byte・実動作がともに変化 |
+| R2〜R3 実Builder／CLI | 未実証。Reference Go、生成器の自己申告、実Evaluator回帰は代替にできない | 実ArtifactのBuilder入力と収録Member、選択Providerのactual entry、通常製品`tei` CLIと独立Expected |
+| R4 Studio／Stage2 | 未実証。Workbench版・Asset版・実Windows Consumerを別に確認 | Stage1実ProcessがStage2を生成し、実WebView2で受領 |
+
+R1の次の一件は`sales.order_line.quantity_positive`に固定する。`sales.order_line.quantity`は既存の`std.decimal`として解決し、入力1・0・-1とNULL／欠損／型不適合の扱いを独立Expectedで先に確定する。**入力値だけの変更**はEvaluatorの照合、**Rule条件そのものの変更**は生成Goと実Binaryへの追随を検査する。後者を行わず、同じ手書きGo関数を呼ぶWrapperのみを生成しても、TEIで判断を実装したことにはならない。
+
+内蔵Languageの静的選択と外部Language Pluginのexact Contract／Lock選抜を別に維持する。現行の`BuildSourceIndexFromLoad`はImportを含むWorkspaceや複数ファイルの原子的Snapshotの証明にはならない。Source Revision、業務意味、Rule／Inputの全件性、現在Grant、実Call、Consumer受領、Effect／Receiptは既存Evidenceと独立Expectedへの別の参照として扱い、万能な一つの成功状態を新設しない。#1121/#4544がR1、#951/#1016がR2、#1251/#4495がR3、#2831/#4583が並行最上位P0のOwnerである。
