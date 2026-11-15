@@ -1867,3 +1867,61 @@ CLI・Studio・生成Goから再利用する際も、**単一の受理済みSour
 候補SQLの実測後は、#2386/#1126による単一値性・訂正と異動・Occurrence/版IDの意味受理を条件として、採用方式を正式`*.tei`の保存・Queryへ反映し、同一A2の旧新二版を実Provider→Function Context→二Consumerで同一World/Snapshotから再読込するMVR-02/03正例へ進める。競合の検出だけでなく、**正しい履歴が拒否されず、実際の競合が黙殺されない**ことを両面から確認する。
 
 この§39は比較試験と受入条件の拡張であり、採用済みTemporal Engine、組織別Authorization、製品MVR-02合格、Owner意味受理、Studio/Host E2Eを意味しない。通常CLI実Providerの#2586とDesktopセルフビルド#2831を先行P0に保つ。
+
+<!-- org-c1-realpg-product-gates-20261115 -->
+## 40. 実PostgreSQLの検証結果から、正式な所属履歴と業務判断へ進む（2026-11-15）
+
+### 40.1 合格した範囲を確定する
+
+[PR #5027](https://github.com/hat47x/tei-platform/pull/5027) は main に統合済み（squash commit a8d3c4f8ef47f1ca4ffc431165d9f4d52c943a5f）。[隔離PostgreSQL run 43707188012](https://github.com/hat47x/tei-platform/actions/runs/43707188012) は completed/success であり、次の3テストが同じrunに明示PASSした。
+
+- TestOrgAxisAsOfActualPostgresOptIn：現行単独membership_id主キーでは同一所属A2の訂正前後を保存できず、SQLSTATE 23505で拒否される。一方、既存の二時点Queryで異なる所属IDの半開区間を読める。
+- TestOrgAxisAsOfRevisionKeyCandidateOptIn：試験用複合キーでは旧新二版を共存させられるが、認識期間が重なる第三版まで自動的に拒否されない。
+- TestOrgAxisAsOfBitemporalRectangleCandidateOptIn：known期間が重なりvalid期間が隣接する正当な交替、同じA2の訂正境界、別所属A4の同時共存、二軸が交差する版競合、片軸の交差が消えた時点を区別できる。
+
+**ただし二版共存・二軸競合の正負例は隔離DBの一時テーブルによる物理実験**である。正式なTEI Persistence/Queryが二版保存を実現したわけではない。現行の reference/org-staged-axis/databases/org-store/persistence/membership.tei は membership_id 単独主キー、as_of_membership.tei は valid_at / known_at / allocation_min を受け、結果は membership_id / org_unit_id / allocation の3列のまま。Personへの正式Link、履歴版ID、distinct Person・FTEの製品実計数は未実証。
+
+同じPRの全体Repository Health [run 43707188006](https://github.com/hat47x/tei-platform/actions/runs/43707188006) は failure。他のREA・Studio・各領域の失敗を含む。**対象の実PG PASSと全体Healthの不合格を両方記録し、互いに読み替えない**。
+
+### 40.2 三つの同一性と四つの時計を分ける
+
+| 区別 | 意味・受入上の要点 |
+| --- | --- |
+| Membership occurrence | 一つの業務上の所属関係。兼務、異動、再所属を同一・別Occurrenceのどちらとするかは業務Ownerが選ぶ。Person/部門IDや表示行を代用しない |
+| Assertion/record revision | 同じ所属について、どの認識時点に何を主張していたかの版。旧新の訂正履歴を同じ業務IDに結ぶ |
+| Provider physical row | RDB/APIの物理保存場所・PK・版列。物理行の同一性だけで業務上の所属の同一性を確定しない |
+| valid-time | 関係が業務上いつ有効か |
+| known-time | その内容がいつ認識されていたか |
+| recorded-at | Providerが実際に書き込んだ時刻。known-timeの開始ではない |
+| observed-at / evaluated-at | 外部Sourceの取得・観測と、Query/Ruleの評価時刻。業務上の有効期間とも現在Grantとも異なる |
+
+この区別はS3など履歴を使うProfileに適用し、S1の簡潔な組織モデルへ全列・履歴Engineを強制しない。validAtとknownAtの評価点で単一値を期待するという制約も、適用する関係とScopeをOwnerが受理した場合だけ用いる。
+
+### 40.3 業務単一値性と読取結果の全件性は別条件
+
+同じMembershipの二版について、valid区間とknown区間が**ともに交差する場合**、同じ評価点で競合し得る。ただし区間非重複はPKだけでは保証されない。PostgreSQLのrange/exclusion constraintはDB Provider側の比較候補だが、技術的に書ける制約をそのままTEI標準DDLや全組織の業務規則へ昇格させない（[PostgreSQL Range Types](https://www.postgresql.org/docs/current/rangetypes.html)）。
+
+また、実Providerから一版だけ取得しても、別版が存在しないとは限らない。Source Revision、Provider Alias、Snapshot/Cohort、Scope/RLS、必要なRelation・Field、Filter、Limit、Cursor、非出力依存の取得と完全性を照合する。SQLの1行／0行、Cursor EOF、LIMIT 1、同一表示のいずれも、単一候補・不存在・唯一の承認者を確定する証拠ではない。
+
+### 40.4 次の製品縦断を一つの業務世界で検収する
+
+| Gate | 実際に結ぶもの | 独立した完了条件 |
+| --- | --- | --- |
+| O-P1 業務意味 | #2386/#1126、Membership→Personと訂正・異動・再所属、Occurrence ID・版ID、単一値性 | Ownerが関係・多重性・時間条件を受理。直接Person LinkかEmployment/Affiliation経由かを暗黙補完しない |
+| O-P2 永続履歴 | 正式なTEI Persistence/Schema差分・Migration・実Provider | 同じA2の旧新二版を正式Sourceに基づいて同時保存し、再起動後に両版を読み戻す。実験用一時テーブルを流用しない |
+| O-P3 二時点Query | 正式as_of_membership、Postgres Binder/Result Mapping、Function Context | 同じvalidAt・異なるknownAtで独立Expectedに一致。Source版・Scope・Read Cohort・Coverage・allocation_min等の非出力依存を照合 |
+| O-P4 二Consumerと業務Rule | #2586/#2506のFunction Context、#2497/#2516の投影、既存BRMS/Case Owner | CLI・Studio・SHO等の異なるConsumerへ同じ受理済み関係・版・未確定を渡す。候補の0/1/複数・partial・競合を区別し、判断理由を追える |
+| O-P5 実行 | #2499/#1174のHost Authority・Effect/Receipt | 候補・通知・委任・現行Grant・実操作対象・Commit/Receiptを別資格で実測。過去の組織版から現在の許可を導出しない |
+
+O-P2/3の合格をO-P4/5へ昇格させない。通常CLIの初回実Provider Read #2586とStudio Desktopセルフビルド #2831は並列の先行P0に保ち、組織C1の高度機能を新たなHard Gateにしない。
+
+### 40.5 次に必ず残す反例とExpected
+
+- **MVR-02/03**：同一所属の旧新二版を正式Persistenceへ保存・再読込する。org-synthetic-r7のA2（既存の2027-07-02境界）と隔離PG候補のA2（2027-07-03境界）を混合せず、それぞれのSourceと独立Expectedを保持。
+- **ORG-BT-02/03/05**：known期間だけが重なる正当な交替、二軸が重なる版競合、異なるMembershipの同時共存。候補PG成功後、正式QueryとProviderへ移した時点で再検証。
+- **取得漏れ**：partial、RLS、別Alias/Replica、未取得Person Link、NULL、Limitにより0件・1件だけ見えていても、唯一性や人物不存在を確定しない。
+- **計数の粒度**：Membership件数、distinct Person、配賦FTE、役職在任、Case責任は別の値。二つの所属にいるP2を二人と数えない。
+- **変更影響**：knownAt、validAt、allocation_min、非表示Filter、Source/Rule revision、Read Cohortが変われば旧Claimの再利用資格を再判定する（#2582/#2600）。
+- **REA／AI／SHO**：外部Candidate、Source位置、observed-at、Owner採否を分け、Person/REA Agent/Account/Principalを自動同一視しない。図の表示優先やAI提案は業務上の本務・責任・Grantを作らない。
+
+既存#1180/#2514/#4490のExpected/Scenario/Attemptを利用し、二つ目のExpected Store、新しい組織Core、Temporal Engine、Workflow/Authorization Runtimeを増やさない。新しい受入票ではSource/World版、Occurrence/Revision、validAt/knownAt、Provider/Snapshot/Scope/Coverage、Consumer、Expected/Observed、Owner意味受理と実Effect資格を別欄に保持する。
