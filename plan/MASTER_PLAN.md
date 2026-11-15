@@ -2850,6 +2850,8 @@ Studio／SHO／SUI／AIが同じ意味候補を提示しても、編集資格は
 
 [組織C1補遺§43](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)と[段階計画§10.18](design/ORGANIZATION_STAGED_MODELING_PLAN_2026-11.md)で、コード生成と図表解釈の両経路に共通する**型付き抽象経路の検収**を追加。識別基準は生成Goメソッド名ではなく、Source/World Revision、Semantic Data/Relation ID、Relation Key・方向・多重性、Query/Function ID、必要なSource/Rule/Read Cohort/Scopeと不変条件。結果として残すのは、経路の途中で保持すべきOccurrence/Assertion revision/validAt/knownAtとpartial/unknown、さらに各Consumerの受信と現行Host Grantを混同しなかった証拠。
 
-第一段階のGo回帰は \`TestOrgC1AbstractUnitReadPathUsesStableSemanticIDs\` で実 \`org-staged-axis\` を読み、Membership→OrgUnitの宣言上の型付き辺とas-of Query結果の対応を検査する。表示Symbolの改名は意味不変、Target/Key/Query/Datasource/Resultのすり替えは拒否する。**IRテスト単体ではGenerator/実Provider/Relation traversal/二Consumerの実接続は未証明**。次は既存#1180/#2514/#4490のExpectedへ経路条件を加え、同じWorldの実Builder→実Provider→Function Context→二Consumerへ検査範囲を拡張する。
+第一段階のGo回帰は `TestOrgC1AbstractUnitReadPathUsesStableSemanticIDs` で実 `org-staged-axis` を読み、Membership→OrgUnitの宣言上の型付き辺とas-of Query結果の対応を検査する。表示Symbolの改名は意味不変、Target/Key/Query/Datasource/Resultのすり替えは拒否する。**IRテスト単体ではGenerator/実Provider/Relation traversal/二Consumerの実接続は未証明**。次は既存#1180/#2514/#4490のExpectedへ経路条件を加え、同じWorldの実Builder→実Provider→Function Context→二Consumerへ検査範囲を拡張する。
 
 Pluginのport連結は基本型だけでなく複合Data・Relationの型も照合し、必要な変換は明示Adapterで表す。Studio/SHO/REA/AIのProjectionにおいて別Person・別Relation occurrence・別時点・別認可を同名表示から推定しない。新しいTrace Store/専用Test Engineを設けず、#2586通常CLI実Readと#2831 Desktopセルフビルドを独立P0に保つ。
+
+**今回の検査を強化**：Relation Keyは文字列の包含判定ではなくSource/Targetの型付きCanonical IDを厳密照合する。QueryのInput名・型、Resultの生列名→Semantic属性も検査し、宣言順の変更は許容、方向逆転・非出力依存の欠落・誤対応は拒否する。Source/IRの静的到達可能性と実行時の通過、途中状態不変性は別資格。汎用評価と生成Goの同値検証の先例としてmain統合済み[PR #5077](https://github.com/hat47x/tei-platform/pull/5077)・[PR #5087](https://github.com/hat47x/tei-platform/pull/5087)を参照し、組織C1のGenerator/Provider/二Consumerは別途実測する。
