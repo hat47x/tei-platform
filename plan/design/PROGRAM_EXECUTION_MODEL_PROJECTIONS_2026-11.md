@@ -1206,4 +1206,10 @@ Workbenchの局所Pin、選択epoch、後着Replyの拒否は**画面の対象�
 
 達成と呼べるのは、既存Inspectorが返した**一つの現在の対象・元Source・参照限界**を、Headlessと実Consumerの各段階で取り違えずに表示できた範囲までである。Sourceへ安全に開き直すS-OPEN、業務Functionの実Call/Effect、Studio Stage2の実完成は別の受入票とする。新しいRuntime、Execution Registry、Graph Compiler、Mock Engine、Claim Store、独立Expected正本、PX番号やHard Gateは導入しない。
 
-**本追補は設計・実装引渡しである。** 今回のPRにおいて新しいGo/TypeScript/Windows/実Providerのテスト実行、S-OPEN実実装、正式`*.tei.md` ReaderやOwner意味受理、Stage1→Stage2の製品検収を行ったものではない。
+**本追補の設計時点では**新しいGo/TypeScript/Windows/実Providerのテスト実行、S-OPEN実実装、正式`*.tei.md` ReaderやOwner意味受理、Stage1→Stage2の製品検収を行っていない。以下の局所Go試験はその後の独立した実装作業として扱う。
+
+### 63.1 最初のHeadless証拠の実装（2026-11-15）
+
+`internal/operations/inspect_capability_source_evidence_test.go`に、既存の`reference/workspace`のCapability `sales.order.submit`を対象とした実Go回帰試験を追加する。実`InspectSubject`で`semantic-capability`を解決し、Canonical IDと`read-only`/`authorityLimits`、`semantic/sales/order.tei`のReference Role、Workspace相対Path、元byte上の識別子span・Artifact Fingerprintを照合する。続いて実`TraceSubjectSources`の結果と照合し、存在しないCapabilityについてTraceの空集合からCanonical存在を推測せず、`InspectSubject`の`SUBJECT_NOT_FOUND`を確認する。
+
+**この試験が合格しても**、Source原文を現在のHost権限で開くS-OPEN、正式Markdown Reader（S0-A）、Owner意味受理、公開Entry／実Provider呼出し、独立Consumer、Windows Stage2は未受理である。テスト自体の実行結果とexact HEADのCI判定はPRに記録し、追加したコードを根拠に自動でPASSを宣言しない。これ以降のUI変更は、S-LOCのOwnerがこの実Headless結果とWorkbenchの版・Audienceを照合してから進める。
