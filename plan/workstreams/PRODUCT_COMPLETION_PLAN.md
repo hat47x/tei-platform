@@ -1287,3 +1287,13 @@ Webの要求、CLIの起動、タイマー、Message、画面操作には、そ�
 印付きData項目表はtei.authoring/v1で既存Data意味へ入る**別の読みやすい表現**として検収し、Runtime RecordやMeta契約の正式文法とみなさない。Operatorの実装選択を説明できても、対象Lawの適合・外部Pluginの実byte Lock・実行Grantは別途確認する。**変更した手書き意味分岐の数、固定した実装義務の分母、再生成・Review負担**を比較し、Descriptor件数や生成Go行数を実装置換率にしない。
 
 **状態**：既存製品の限定成果を次の作業へ結んだ計画のみ。新M1／M2実コード、正式R2-Pの原文閉包、Scenarioコマンド失効修正、R3実Provider、Stage2 Windows新受領はこの更新で実行・完了していない。
+
+
+<!-- tei-product-shape-independent-baseline-source-disclosure-20261115 -->
+### 自己記述の実装移管に必要な独立Expectedを先に固定する（2026年11月15日）
+
+[自己記述設計§51](../design/ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md)に従い、positive一規則の必須ID・Attribute・Relation禁止・解決型・Go package名について、**固定の正常・負例**をfocused Goで追加した。これは現行手書きGeneratorの受入形を反証可能にするための基線であり、M1のDescriptor由来検査やM2の実装置換そのものではない。次はこの基線を保持したまま、TEI定義から検査を一条件生成し、そのGo手書き分岐を実使用経路から取り除く。
+
+mainのRule生成Go CLIビルド回帰は、選択Markdown原文のコピーをGo embedで同梱し、完成Binaryが算出する原文Hashまで観測する段階へ進んだ。これを正式R2-Pの「元Source／Reader／Generator資格を同一Attemptに束縛した」実証に読み替えない。原文をBinaryに収録するかは**開示資格を持つ公開可能なFixture**に限定して検証し、製品・Plugin・Studio・AI配布への原byte同梱は既存DisclosureのOwner判断なしに一般化しない。
+
+並行するScenario実装選択A→Bによる旧生成Command失効はPR #5054と既存#2600に委ね、Go修正を重複させない。生成Studioの通常／生成Windows WebView2両Job成功（#5042／#5052）は製品PoCとして採用するが、Stage1→Stage2の実再入（#2831／#4583）とR3のactual Provider（#4495／#1251）は独立P0のままとする。Go focused回帰のCI合否、手書き検査の実削減、原文配布の開示受理を別の検収票で確認する。
