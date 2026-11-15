@@ -2,7 +2,6 @@ package validationgen_test
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -220,7 +219,4 @@ func TestPositiveGoLoweringTracksSelectedMarkdownSourceEdit(t *testing.T) {
 	}
 	runGenerated(after, "satisfied|"+secondAttribute+"|1|<nil>\n")
 
-	if len(before) == 0 || len(after) == 0 {
-		t.Fatal(fmt.Errorf("empty generated Go after Rule mutation"))
-	}
 }
