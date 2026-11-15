@@ -37,7 +37,7 @@ func TestExternalCandidateFromBytesMatchesLocalR2Projection(t *testing.T) {
 	if !reflect.DeepEqual(fromBytes, fromFile) {
 		t.Fatalf("Host-owned bytes and local file disagree\nbytes=%+v\nfile=%+v", fromBytes, fromFile)
 	}
-	if fromBytes.Attempt.EvidenceID != candidateEvidenceID || fromBytes.Attempt.ReceivedDigest != candidateDigest ||
+	if fromBytes.Attempt.EvidenceID != candidateEvidenceID || fromBytes.Attempt.ReceivedDigest != candidateDigest(t) ||
 		fromBytes.Observation == nil || fromBytes.Observation.NodeID != candidateNodeID ||
 		fromBytes.Relation == nil || fromBytes.Relation.RelationID != candidateRelationID ||
 		fromBytes.Coverage == nil || len(fromBytes.Unknowns) == 0 ||
