@@ -26,11 +26,13 @@
 
 ### 図解のP1：定義・生成・実Attemptを証拠つきで比較する（2026年11月15日）
 
-[プロセス実行図の因果・意味保存・証拠照合](../design/PROCESS_EXECUTION_CAUSAL_PROJECTIONS_2026-11.md)の§10〜47に、他の標準Data・Node／Plugin配線・業務Process／REA・Rule・セルフビルドの議論を接続した。異なる図を一つの実行エンジンで統一するのではなく、**Sourceからの投影、Targetへの生成、実際の呼出し、独立した受領の間にどの根拠が必要か**を、対象に応じて切り出す。部分取得から「不存在」や「すべて成功」と推測する図は不合格とする。
+[プロセス実行図の因果・意味保存・証拠照合](../design/PROCESS_EXECUTION_CAUSAL_PROJECTIONS_2026-11.md)の§10〜52に、他の標準Data・Node／Plugin配線・業務Process／REA・Rule・セルフビルドの議論を接続した。異なる図を一つの実行エンジンで統一するのではなく、**Sourceからの投影、Targetへの生成、実際の呼出し、独立した受領の間にどの根拠が必要か**を、対象に応じて切り出す。部分取得から「不存在」や「すべて成功」と推測する図は不合格とする。
 
-**方式の選択と証拠の表示（§40〜44）**：既存の型付きRuleを評価する汎用Functionと、RuleからGoを生成する方式は対立しない。判断・実Read・NULL／未取得・エラーが同じ意味を守れる範囲で比較し、解釈ならEvaluatorの実装版と今回読んだモデル、コード生成ならGenerator／Build Input／実Artifact、外部Providerなら実Called／Grant／Effectを別に確認する。最初は固定`quantity_positive`の一Ruleで既存`validationeval.Evaluate`と`validationgen.GeneratePositive`の局所結果・Read先を比較する。main済み#5051の原文同梱・#5058の実CLI inspectは限定成果として保持し、選択鮮度#5054、Builder入力取違え#5056、N2実TEI起動#5059は未統合のまま検収を待つ。**新Interpreter／Optimizer／Hostを製品P0へ追加しない**。
+**方式の選択と証拠の表示（§40〜44）**：既存の型付きRuleを評価する汎用Functionと、RuleからGoを生成する方式は対立しない。判断・実Read・NULL／未取得・エラーが同じ意味を守れる範囲で比較し、解釈ならEvaluatorの実装版と今回読んだモデル、コード生成ならGenerator／Build Input／実Artifact、外部Providerなら実Called／Grant／Effectを別に確認する。最初は固定`quantity_positive`の一Ruleで既存`validationeval.Evaluate`と`validationgen.GeneratePositive`の局所結果・Read先を比較する。main済み#5051の原文同梱・#5058の実CLI inspectは限定成果として保持し、選択鮮度#5054は未統合であり、Builder入力取り違え#5056とN2実TEI起動#5059はmainに統合済みとして各々の受入範囲を分ける。**新Interpreter／Optimizer／Hostを製品P0へ追加しない**。
 
-**実装用の反証と保存・通知の段階（§45〜47）**：main済み#5051で実Source byteを原文コピーとしてBuild Sourceへ収録し、実Binary内Hashまで確認できた事実と、未マージ#5056で対処する生成Go／Builder入力の取り違え、#5042/#5052の11依存Sourceを固定した生成Workbench実Windows Consumerを、**別々の受渡しの証拠**として扱う。原文コピーの正しさ、Builder実消費、Binary内同梱byte、Consumerが実際に利用したArtifactの同一性を確認するまでは一つのE2Eに結ばない。画面・保存処理は定義→取得・表示→編集→保存前検査→トランザクション→Commit→非同期→開示をProcess／Operation／Effectで説明し、段階を跨ぐGrantやReceiptを捏造しない。EC-01〜08の反例（別Source、説明改版、生成Go差替え、同Resultでの実装変更、Binary Hashの資格、旧Workbench依存、汎用評価との差、ACK喪失）を既存#1180/#2514と該当Ownerへ渡す。新Engine／Graph Store／Expected正本を作らず、通常CLI実Provider R3・正式Builder R2-P・Stage1→Stage2実WindowsのP0を優先する。
+**実装用の反証と保存・通知の段階（§45〜47）**：main済み#5051で実Source byteを原文コピーとしてBuild Sourceへ収録し、実Binary内Hashまで確認できた事実と、main済み#5056の生成Go／Builder入力の取り違え拒否、#5042/#5052の11依存Sourceを固定した生成Workbench実Windows Consumerを、**別々の受渡しの証拠**として扱う。原文コピーの正しさ、Builder実消費、Binary内同梱byte、Consumerが実際に利用したArtifactの同一性を確認するまでは一つのE2Eに結ばない。画面・保存処理は定義→取得・表示→編集→保存前検査→トランザクション→Commit→非同期→開示をProcess／Operation／Effectで説明し、段階を跨ぐGrantやReceiptを捏造しない。EC-01〜08の反例（別Source、説明改版、生成Go差替え、同Resultでの実装変更、Binary Hashの資格、旧Workbench依存、汎用評価との差、ACK喪失）を既存#1180/#2514と該当Ownerへ渡す。新Engine／Graph Store／Expected正本を作らず、通常CLI実Provider R3・正式Builder R2-P・Stage1→Stage2実WindowsのP0を優先する。
+
+**抽象経路による不変条件検査（§48〜52）**：生成後の関数名やNodeの描画IDではなく、既存#1180/#2514の安定Test ID、Qualified Subject、Guard／Preconditions、経路上のInvariants、独立Expectedからテスト対象を定める。まずmain済み#5087の`quantity_positive`に対する汎用Evaluatorと生成Go Binaryの五入力・実Read一回、および#5056の生成Go／Builder配置不一致拒否をAP-01〜08へ読み取り専用で対応付け、同じ試験を再実装しない。到達可能性、実際の通過、状態・Effectの保存、実Consumer受領を分離し、静的GraphやASTだけで未観測の作用を成功・不在と判定しない。次に#5101の複合Port／Field／AdapterのIdentityと秘匿範囲、#5103の粒度・分類・完全性の変化を、同一抽象経路の不変条件として既存Fixtureで検査する。旧生成Scenario選択の拒否は未マージ#5054のexact HEAD受入を待ち、Studioの正式Stage1→Stage2／通常CLIのactual Providerを別P0とする。新Test Runner、Graph Engine、メソッド名Registry、Trace Store、第二Expected正本を設けない。
 
 最初の実装担当は#1124／#2497／#4198（読取専用図解）と#988／#1121（選択済みRule・Go生成）である。固定した一Ruleの現在のSource／型／Read範囲をCLI/Headlessで表示し、未接続のBuilder・Provider・Effectを未確認のまま示す。同じ入力・Rule IDで参照Attributeを一因子変更し、生成Go／実Read／判断と旧Evidenceの失効を既存#1180／#2514へ返す。Generator自身のGo構造をTEIの意味候補へ戻すP1 dogfoodingは別Subjectとして進める。**Go AST・図の一致、Mock、別HEADのCI成功を、通常CLIの実Provider／Stage2実Windows受領へ加算しない。**
 
@@ -1448,3 +1450,19 @@ mainのRule生成Go CLIビルド回帰は、選択Markdown原文のコピーをG
 [自己記述設計§52](../design/ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md)の小さな縦断を追加する。組込みtei.authoring/v1の**印付き項目定義表**を使い、検査規則の識別子・種類・対象属性・任意の関係という**定義情報の形**を既存semantic.Dataへ読み込む。実Workspace.Load／型付きData／既存Validator／元byteのSource Indexを同じFixtureで照合し、同名のsemantic-validationや公開Capabilityを自動生成しないことを負例にする。追加Goはinternal/workspace/tei_md_self_description_test.go。これは新Grammarやメタ専用Runtimeを要しない自己記述D1と通常Data Readerの実消費であり、positive Ruleに対するM1契約解釈ではない。
 
 **特に禁止する誤解**：Data表のoptionalはforbiddenを意味しない。relationIdがrequired=noでも「positiveではRelationを指定できない」とは検査できない。最初のM1/M2は、既存のpositiveの固定独立Expectedに対して、未表現の義務を明示したうえで一条件の検査コードをTEIから実生成し、手書きGoの重複分岐を消すところへ進める。元MarkdownのGo embed（#5064以前の§51参照）も原文とGeneratorの意味適合、Disclosure、R3／Stage2を証明しない。CI合格は本テストのexact HEADで確認する。#2620/#988/#1018/#1121/#1180/#2514が担当し、通常CLI実ProviderとWindows Stage1→Stage2のP0を維持する。
+
+<!-- tei-product-self-description-abstract-path-witness-20261115 -->
+### 自己記述の実装義務を、実現方式をまたぐ抽象経路で検収する（2026年11月15日）
+
+[自己記述設計§53](../design/ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md)では、テストをGoメソッド名へ紐付けず、**正規Subject／実装義務／前提／要求経路／不変条件／独立Expected／実Attempt**の組で対象を特定する。以下は独立Expected #1180／#2514への実装引継ぎであり、新しいTest DSL・Oracle・Trace Storeは設けない。
+
+| 先に検証するもの | 実装Packetと合格の境界 | 既存Owner |
+| --- | --- | --- |
+| **AW-0：二方式の局所対照** | 既存quantity_positiveを直接Evaluatorと生成Go Binaryで同じ入力／Source／Read一回／NULL・未取得の条件で比較。既存テストの成功と、静的な経路の存在・実際の経由先・状態保存を別々に表示する | #2620／#1121／#1180／#2514 |
+| **AW-1：選択と実経路の不一致** | Gを選択したのにPが呼ばれた、別Builder byteを使った、同じ結果を返す別Operatorを呼んだ反例を作る。メソッド名変更だけで業務Subjectは変えないが、実Entry／Export契約の破損は検出する | #951／#2595／#2600／#4544 |
+| **AW-2：型付きPlugin Mappingの保存** | PR #5101のWhole／Field／明示Adapterを既存標準型とMappingからread-onlyで比較。必須欠落・二重Binding・秘密Fieldの漏洩・粒度／単位変換のLossを拒否。Node表示の折畳みはSource変更にしない | #1223／#2497／#951／#1180 |
+| **AW-3：TEI自身の検査義務へ再入** | 自己記述Data FixtureのGo実証PR #5097は独立検収後に利用し、Relation optionalと禁止を区別。契約から検査一義務を実現し、該当Go手書き分岐の削除と実Callを確認して初めてM2。正式R2-P元Source閉包／R3／Studio Stage2は別資格 | #2620／#988／#4544／#4495／#2831／#4583 |
+
+**Source所有の原則**：DSL正本、Studio／SHOのDesigner投影、Resource、Generator定義、Generated Source、Custom Hook、Build Artifactを役割で区別する。Visual StudioのDesigner・Resource分離は参考とするが、TEIの新しい拡張子をこの段階では採用しない。生成物を手編集して正本化せず、案件固有の処理は既存Hook／Plugin契約で接続する。
+
+**現在の資格**：PR #5073／#5087のP/G比較と#5101のMapping整理を基線にした設計・試験引継ぎのみ。PR #5097は確認時点で未マージであるため、自己記述Fixtureの実行PASSをmainの成立条件へ算入しない。AW-0〜3の新しい抽象経路テスト、自己記述M2処理置換、正式R2-P、実Provider、Studio Stage1→Stage2をこの文書で検収済みとは扱わない。
