@@ -506,10 +506,14 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 		childArgs = append(childArgs, "-supply", parsed.Supply)
 	}
 	childArgs = append(childArgs, "-artifact-out", parsed.Output, "-state", parsed.State)
+	// §4.55: read the state directory before and after the first run, so the
+	// reproduction record can say what this entry saw rather than what it was told.
+	firstState := stateDirBefore(parsed.State)
 	evidence, err := driveSelfBuild(parsed.Child, childArgs, parsed.Output, "")
 	if err != nil {
 		return 1, err
 	}
+	firstState = stateDirAfter(firstState)
 	report.ChildRun = &evidence
 	// §4.8: read the child's own report of what it read. Only a matching
 	// declaration digest plus matching fingerprints make the check performed;
@@ -617,6 +621,7 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 			parsed.State,
 			evidence.ChildStateDir,
 			parsed.Output,
+			firstState,
 		)
 		switch reproducibility.State {
 		case reproducibilityMismatched:
