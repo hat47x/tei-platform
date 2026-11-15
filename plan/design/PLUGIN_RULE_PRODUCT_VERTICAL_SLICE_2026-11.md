@@ -255,3 +255,7 @@ Data Rule／Table Script／Field拡張はデータ意味の側へ、独立した
 **最初に通す二つの負例**は、(1) Rule原文を意味が変わるように変更したのに旧Go／旧BuildPlanを使おうとする試行、(2) 説明文のみの変更後に、生成Goの再利用可否とSource-backed Evidenceの再確認を混同する試行とする。Go BuilderへMarkdownを読ませる暫定対応ではなく、実生成AttemptからBuilderの実入力へ至る証拠の橋渡しを#4544／#2595で実装する。R3の通常`tei` CLIからの選択Provider actual Call、R4の独立Consumer、Studio Stage1→Stage2 Windowsの実再入は並行P0のまま残す。
 
 **現状の判定**：R1.5のテストはmain収録済み、参照Builderの一連の検査コードもmainに存在する。製品R2で必要なRule→Go生成Attempt→実Builder入力の連鎖、R3の実Provider、Stage2 Windows、Ownerの業務意味受理は未検収である。この節は実装と要求の境界を定めるものであり、Go／CLI／Windows／DB試験を新規に実行した記録ではない。
+
+## 15. R2とR3を並行させ、生成Ruleと実Providerを最後に合流させる
+
+#
