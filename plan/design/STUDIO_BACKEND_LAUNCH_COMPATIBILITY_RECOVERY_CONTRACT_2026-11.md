@@ -772,7 +772,7 @@ Studio／CLI／Harnessのread-only診断は、選択済みのSubject／Source・
 §25〜27は、Source・Plugin・Release・実UI・Invocationの同一性と受入上限を定めた。残る作業は新たな状態モデルを設計することではない。**既存PRで検証した成果が、いま配布する実バイナリと、そこから実際に呼ばれたOperationへ連続しているか**を確認することである。
 
 - **Workbench**：#4812は`5035ef82d2dbddbff9209a68f9bf6e61755ab767`でRepository Health、Cache、Workbench Embedded Bundle、Windows WebView2 Smoke等9系統のCIが成功したが、PRは**closed／unmerged**。過去HEADの成功を現行mainの製品機能として計上しない。関連する#4806のReference表示はmain実装済み。
-- **Plugin文書**：main #4800の`documentReadPreflight`は対象Pluginの選択版とLockを確認するだけ。直接の上位Pluginの**実選択版・Lock**を表示する#4826はDraft／未統合で、`compatibleMajor`から上位の厳密版を推定しない。現行mainに上位依存の文書開示資格があるとは扱わない。
+- **Plugin文書**：main #4800の`documentReadPreflight`は対象Pluginの選択版とLockを確認するだけ。直接の上位Pluginの**実選択版・Lock**を表示する#4826はmainへ統合済みであり、`compatibleMajor`から厳密版を推測せず、選択済みRowを再利用している。ただし上位DocumentのSource・Audience・Disclosure・再公開資格は確認していない。
 - **Source**：#4792のWindow S0-Pは正負5入力の元byte・出典位置を検査するが、製品`Workspace.Load`は`TEI_MD_PARSER_UNBOUND`のまま。正式Readerの接続は#2621／#1018のS0-Aで別に閉じる。
 - **Desktop配布**：現行`cmd/tei-studio/go.mod`はGo 1.26.11／Wails `v3.0.0-beta.29`を固定する。上流には`v3.1.0`（2026-11-01公開）と`app.Updater`があるが、**アップグレードの実施や当該版でのCI成功は未確認**。安定版移行は#1824/#2044の後続P1に留め、現行P0の実Stage2より先行させない。
 
@@ -819,9 +819,74 @@ Wails公式Updaterの`app.Updater`は、設定した公開鍵による署名検�
 | --- | --- | --- |
 | **W0 未統合Workbenchの回収** | #4806 Reference、#4812の最終HEADと9系統CI、#1824の実Windows検収 | #4812の未統合差分を最新mainに照合し、必要最小のコード／生成Bundleだけを後継PRへ移す。新HEADでNode/Go/Embed/Windowsを再試験。**旧HEADのCIは参照資料であり新HEADのPASSではない** |
 | **S0-A 正式Source Reader** | #4751/#4792のPinned Source予備試験、#4801のGraph/Window Source契約 | #2621/#1018が選択Frontend→同一`Workspace.Load` byte→出典つき候補／Indexを一Sourceで実証。暗黙Fallbackと管理外Draftを拒否 |
-| **R0 実Provider／公開Doc** | #4800のDocument Preflight、既存Plugin Resolve/Lock、#4826 Draftの直接上位選択検査 | #4495/#1251の実Provider→通常CLI/独立Consumerと、#4714/#4679の公開Manual一Source-backed Readを**別成果**で進める。Doc Preflight≠Doc Read≠実Provider |
+| **R0 実Provider／公開Doc** | #4800のDocument Preflight、既存Plugin Resolve/Lock、main統合済み#4826の直接上位選択検査 | #4495/#1251の実Provider→通常CLI/独立Consumerと、#4714/#4679の公開Manual一Source-backed Readを**別成果**で進める。Doc Preflight≠Doc Read≠実Provider |
 | **B1〜B3 非Plugin Studioセルフビルド** | #4583の既存生成Inspector・Builder pin・Workbench資産、W0の配布資産整合 | #2831/#4583でBuildIntentにTS/esbuild/Go embed/Wails Windows実入力を宣言・実消費し、Stage1→Stage2の実Process連鎖とStage2 WebView2の受領を同一HEADで立証 |
 
-四つとも、既存#1180/#2514の独立Expectedに不足する負例だけを渡す。#4827の横断Plugin設計・#4824のdogfooding計画・#4825の公開文書計画は、**並行する未統合の引渡し文書**として参照し、実コードのOwnerや完成宣言を重複させない。
+四つとも、既存#1180/#2514の独立Expectedに不足する負例だけを渡す。#4827の横断Plugin設計・#4824のdogfooding計画・#4825の公開文書計画はmainへ統合済みの**既存Ownerへの引渡し文書**として参照する。設計マージを実ProviderやStage2の製品合格へ昇格させない。
 
-**今回の検収上限**：§28は現行mainとPR／上流ドキュメントの再確認に基づく設計・計画差分である。PR #4812はclosed/unmerged、#4826はDraftであり、現行mainへのWorkBench修正、上位Plugin選択投影、新製品Reader／実Provider／Stage2／Wailsアップグレード／Updater導入の成功を主張しない。
+**今回の検収上限**：§28は現行mainとPR／上流ドキュメントの再確認に基づく設計・計画差分である。PR #4812はclosed/unmerged。#4826の上位Plugin選択投影はmainにあるが、現行mainへのWorkbench修正、上位文書Read／Disclosure、新製品Reader／実Provider／Stage2／Wailsアップグレード／Updater導入の成功は主張しない。
+
+## 29. 起動前の選択証拠を実CLI・Studio・Releaseの消費証拠へ接続する（2026-11-15）
+
+### 29.1 統合するのは状態名ではなく、実際に結び付いた証拠
+
+§25〜28はBootstrap、Plugin Resolver、Source、Build、Release、Invocationの責任を分離した。今回の実装上の進展を踏まえ、次は**「あるPluginが選択された」というCLI表示を、実Providerの起動や公開文書の取得と誤認しないまま、現行製品の観測へつなぐ**。
+
+- [#4826](https://github.com/hat47x/tei-platform/pull/4826)はmain統合済み。実`internal/plugin/management/document_preflight.go`は`documentReadPreflight.upstreamSelection`に、対象の`Requires`で示された**直接の依存先だけ**を安定順序で投影する。既存`Report`のexact Version・CompatibleMajor照合・Lock・選択失敗を再利用し、二度目のResolverを呼ばない。A→B→Cの連鎖があっても、Cの結果を自動的な推移的Doc/Grant閉包とみなさない。
+- [#4844](https://github.com/hat47x/tei-platform/pull/4844)は`internal/jsonl.ReadBytes`の重複宣言を解消してmain統合済み。これはGoビルド障害の修正であり、実Plugin文書ReadやRuntimeを新たに受理したものではない。
+- [#4845](https://github.com/hat47x/tei-platform/pull/4845)は実ビルド済み`tei`を用いて`tei commands`、`plugin-inventory`、`plugin-lock`を通す後継テストPR（現時点で未統合）。合成Doc候補の存在と、実Product Workspaceで選択された`tei.database.postgres`の状態を**別Subjectとして**検査する。公開候補がCLIへ登録された、または文書を閲覧できる、とは主張しない。
+- [#4842](https://github.com/hat47x/tei-platform/pull/4842)はS-LOC-0のDraft。既存`SubjectInspection.sources`から元Sourceの相対位置・Role・byte範囲を**純粋なread-only Projection**で検証する計画・実装候補であり、原文の再取得（S-OPEN）、GUI表示、Wails埋込資産、現在Disclosure、意味受理は別資格である。
+- [#4824](https://github.com/hat47x/tei-platform/pull/4824)、[#4825](https://github.com/hat47x/tei-platform/pull/4825)、[#4827](https://github.com/hat47x/tei-platform/pull/4827)はmain統合済みのdogfooding／Plugin引渡し設計である。D-A〜D-E、PDC-1 D1-1〜4、Plugin一Operation・一Provider・一Consumerの既存Owner・既存Expectedを再利用する。
+
+上記のどの成功も`sourceBinding:"unbound"`、`disclosure:"not-checked"`、`readEligibility:"not-assessed"`を勝手に`allowed`へ変えない。Bootstrapの資格は選択・整合性を診断する資格であり、実行と公開の許可ではない。
+
+### 29.2 最初に閉じる三本の小さな因果経路
+
+「万能な証拠票」を先に製品化せず、いま実在するProducerとConsumerを三本に絞る。同じSourceやPlugin名を使っていても、**対象と版を明示し、別の経路のPASSを持ち込まない**。
+
+| 経路 | 現行の最小入口 | 実際に確かめること | 終点と未受理事項 |
+| --- | --- | --- | --- |
+| **L：Plugin説明** | 既存`plugin-inventory -plugin`の選択版・直接上位版・Lock | 一つの実`tei` Binaryから`tei commands`→`plugin-inventory`→`plugin-lock`を順に呼び、実選択／未選択／Lock不明・一致を比較。候補Manualは元byte・SourceRefを別に保持 | #4845は実CLIと事前検査まで。#4714/#4679のDocument Binding→現在Disclosure→一Doc Source-backed Readは別実装 |
+| **S：Studio読取** | 現行`InspectSubject`、Source Index、`authorityLimits` | Pinned Subject・Workspace/Source Revision・現在Replyを照合し、Source位置のローカル投影（#4842）は未実装のS-OPENと区別。生成Presenter→実Wails埋込byte→実Windows Consumerを一連の証拠で確認 | #4812の旧HEAD CIは合格でもclosed/unmerged。最新mainへの回収と再試験、S-LOC表示・Source Openは未完了 |
+| **B：TEI-native生成・再入** | 既存二Node／二Edge／一Rule Fixture、BuildExecution／ArtifactSet | 明示選択`*.tei.md`の同一Load byte→受理済み意味→実生成Goの判断→実Builder消費→選択された実Artifact／Plugin→通常CLI Consumerを順次観測。非Plugin Studio BuildはStage1→Stage2実Processを独立に追う | #2621/#4495/#2831/#4583のP0。Reference生成、Mock、生成器自己申告指紋、通常Desktop Smokeだけでは不可 |
+
+**重要な依存関係**：Lの公開文書ReadをS0-A製品業務ReaderのHard Gateにしない。SのS-LOC／S-OPENをBのStage1→Stage2 BuildのHard Gateにしない。Bの実Provider CallをLのマニュアル読取許可へ転用しない。
+
+### 29.3 変更を一因子ずつ加え、失効範囲を厳密にする
+
+既存#2600と#1180/#2514の試験へ、追加の新番号ではなく**以下の具体的な差分assert**を渡す。
+
+| 変更する一因子 | 保持してよいもの | 再確認・拒否すべきもの |
+| --- | --- | --- |
+| 下位Pluginの`Requires`先の版またはLockが変わる | 既に保存した旧Report・旧Build履歴 | 現在の直接`upstreamSelection`／Provider選択／必要Member。互換Major一致だけではexact版を決めない |
+| Manualの説明だけが変わり、実Contractは不変 | 旧Artifactの生成実績と無関係なBuild作業 | 文書Source/Disclosure、表示する説明の版・出典。前の公開権限を持ち越さない |
+| `*.tei.md`のLayoutだけが変わる | 意味候補・実生成の再利用可能性は**独立に評価** | Raw SourceとSource Index、位置・Anchor。再利用可否をSource SHAの一致だけで決めない |
+| Go GeneratorまたはToolchainだけが変わる | 同じOwner Accepted Meaningの版 | 実消費Source／Builder identity／Artifactと実Consumer。生成器が返した候補形状だけでは同一性を証明しない |
+| 参照`index.html`だけが変わる | 前回HEADの成功履歴 | 正規Bundle→Wails Embedded Asset→実Windows受領を新HEADで照合。旧JSでの成功を採用しない |
+| Subject A→B→A／Grant失効／旧Replyが遅着 | 旧履歴の改ざん不要性 | 現在Pinned Subject・Epoch／Grant／Invocation／Disclosure。byte復帰や同Labelだけで旧操作資格を復活させない |
+| 実Call後のTimeoutまたは子Backend停止 | 検証済みの過去Receipt | Outcome・Effectを`unknown`として#1174の照会へ。再送の自動許可はしない |
+
+否定的な結果では「不存在」「未選択」「未走査」「取得範囲が部分的」「データ値NULL」「実呼出し後の結果不明」を別に扱う。Windowの実SQLite負例[#4822](https://github.com/hat47x/tei-platform/pull/4822)が示すように、集計値の一致は**入力行の完全性・NULLと0・行IDの一致を保証しない**。対象を全件読めていない場合に否定的な業務判断を解放しない。
+
+### 29.4 Releaseの閉包を「実バイト・実Process・実Consumer」で確認する
+
+現行Wails単一Process（D1）とGo CLI Directを基線に、D2の静的Release Closureは次の手順で受け入れる。
+
+1. **Release候補の収録**：Target OS/Arch、実Image Digest、標準Pluginの選択済み必要Member/Lock、生成UI Assetと設定Schemaを既存Build Artifactと突合する。DocumentのSourceはRuntimeの必須依存と混同せず、必要な公開範囲のみに含める。
+2. **実起動**：Release候補の実Imageを起動してProcess Identity・Protocol/Operation Contractを観測する。宣言されたMemberがない、旧FrontendとBackendの世代が違う、Unsupported Targetが混じる場合は原因を分けて拒否する。
+3. **Read一往復**：実Wailsで`InspectSubject`の現在`authorityLimits`と結果を受領する。CLIの実Provider Readは別Subject/Attemptで検収し、同一操作だと偽装しない。
+4. **自己再構築**：Build Intentを解釈したStage1の実Processが、選択Builderを呼びStage2 Desktopを生成したことを親子Attemptと実成果物で確認する。Stage2がそのImageから実Windows WebView2を起動した観測までを別の合格条件とする。
+5. **更新と復旧（P1）**：Wails `v3.0.0-beta.29`の現行Fixtureと安定版をexact Pinして比較し、署名検証・単一対象交換・旧起動経路・User Override・DB互換性を別々に試す。D3複数ProcessをUpdaterの単一交換で原子的に切り替えたとは主張しない。
+
+**中止条件**：実Resourceに対し二つ目のHost・Registry／独立Policy Engine・汎用Evidence Storeを新設しなければ成立しない場合、全体の抽象化を延期して一Operation／一Provider／一Consumerへ縮小する。
+
+### 29.5 次の作業はコード差分とOwner受領に限定する
+
+- **#4845／#4714（Plugin Doc）**：現在の実CLI Discoveryと選択・Lock・直接上位版のテスト結果を確認する。その後、一Plugin→明示Document Ref→現行Audience/Disclosure→許可されたread-only本文一件を**別コードPR**で閉じる。
+- **#1824／#4583（Studio Workbench）**：closed/unmerged #4812の必要なSource/Bundle資産だけを現在mainへ持ち込み、正規生成＋同一HEADのWindows WebView2を再試験する。S-LOC-0 #4842は純粋Projectionとして並行させる。
+- **#2621／#1018（正式Source）**：S0-Pの予備検査を製品`Workspace.Load`へつなぎ、選択されない`*.tei.md`の拒否と同一元byte読取の肯定を一PRで検証する。
+- **#4495／#1251（実Provider）、#2831／#4583（Stage2）**：実呼出しと独立ConsumerをCLI側で検収し、非Plugin Studio BuildのStage1→Stage2→Windows実受領を別の同一HEADで検収する。
+
+この節を理由にP0の優先順位・Hard Gateを増やさない。#4824/#4825/#4827の既存計画はOwnerごとの正本として利用し、重複した仕様書・新Test Runnerを作らない。
+
+**今回の上限**：§29は現行mainのGo実装・関連PR・設計の読み合わせに基づく実装引渡しであり、新たな`*.tei.md`製品Reader／文書Reader／Wails Embedded Asset修正／実Provider／Stage2／Updaterの実装・実OS合格は主張しない。
