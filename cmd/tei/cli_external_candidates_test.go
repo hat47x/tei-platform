@@ -90,6 +90,25 @@ func TestExternalCandidatesR3AActualCLIProcess(t *testing.T) {
 		}
 	})
 
+	// The captured producer output is a real Receipt with no semantic Graph.
+	// The independent CLI must reject selection rather than converting it
+	// into a synthetic positive witness.
+	t.Run("captured receipt with no graph fails closed", func(t *testing.T) {
+		actualCapture := filepath.Join("..", "..", "internal", "externalanalysis",
+			"testdata", "rea-6.8.0", "analysis.json")
+		argv := append([]string{}, base...)
+		argv[2] = actualCapture
+		exit, response, _, stderr := run(argv...)
+		if exit != 1 || response.OK || response.Error == nil ||
+			response.Error.Code != "EXTERNAL_CANDIDATE_UNUSABLE" || stderr != "" {
+			t.Fatalf("actual captured receipt wrongly provided candidates: exit=%d response=%+v stderr=%q",
+				exit, response, stderr)
+		}
+		if response.Result != nil {
+			t.Fatalf("real receipt without Graph produced an Operation view: %+v", response.Result)
+		}
+	})
+
 	t.Run("matching pins", func(t *testing.T) {
 		argv := append(append([]string{}, base...), "-expected-evidence-id", evidenceID,
 			"-expected-received-digest", digest)
