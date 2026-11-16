@@ -129,6 +129,7 @@
 - [フック範囲の実行時適用の確認](XTEA_LOWCODE_HOOK_SCOPE_RUN_2026-11.md)（参照実装の試験記録。適用できない範囲を拒否し、D-9の形の欠陥を作り直さない）
 - [行範囲（scope row）の適用の確認](XTEA_LOWCODE_HOOK_ROW_SCOPE_2026-11.md)（参照実装の試験記録。行ごとの繰り返し・行を名指す拒否。item/headerは未実装）
 - [行範囲を到達可能な実行へ配線した確認](XTEA_LOWCODE_HOOK_ROW_SCOPE_WIRING_2026-11.md)（参照実装の試験記録。`RunReachable`の行ごと適用。行集合を供給する呼出し側は未実装）
+- [行範囲フックへ行集合を渡す呼出し側の入口](XTEA_LOWCODE_HOOK_ROW_SCOPE_CALLER_2026-11.md)（参照実装の試験記録。CLI/Studioに入口を追加し、行ごと適用・拒否行の名指し・行なしskipを試験で固定。供給元のデータ源は未実装）
 - [行範囲の宣言を通す修正の確認](XTEA_LOWCODE_HOOK_ROW_SCOPE_DECLARABLE_2026-11.md)（参照実装の試験記録。`row`が宣言できず死んだコードだった矛盾の修正。実行経路の配線は未実装）
 - [フック範囲の貫通試験の確認](XTEA_LOWCODE_HOOK_SCOPE_THROUGH_2026-11.md)（参照実装の試験記録。宣言→検証→実行を1本で通し、修正を戻すと落ちることを確認）
 - [パッケージ契約（適合試験・投影）の検査の確認](XTEA_LOWCODE_PACKAGE_CONFORMANCE_2026-11.md)（参照実装の試験記録。適合試験名と投影を検査。適合試験の実行は未実装）
