@@ -363,3 +363,6 @@
 
 # Ledger self-audit output is hashed as raw bytes.
 /plan/evidence/DSH_LEDGER_SELF_AUDIT_2026-11-18/** -text
+
+# Later-run recovery observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_LATER_RUN_RECOVERY_2026-11-18/** -text
