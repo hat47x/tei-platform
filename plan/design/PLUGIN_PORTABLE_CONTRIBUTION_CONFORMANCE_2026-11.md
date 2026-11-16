@@ -110,3 +110,21 @@ Stage1がビルドで使用したGeneratorは、Stage2に必ず含めるもの�
 次に、PC-1bで既存のContract／Mapping Ownerによる**明示Field ID・要求型・取得範囲・Audience**の照合を同じFixtureに接続する。PC-1cで一段のpure Adapterの単位・精度・NULL・Lossを検査する。名称が一致してもContract IDが異なる場合や、Readerが部分取得だった場合は、出力が同じでも不適格とする。これらをPC-2のBuildやPC-3のactual Providerへ先取りして加算しない。
 
 また、mainに統合された[PR #5147](https://github.com/hat47x/tei-platform/pull/5147)はPlugin Resolverの診断コードについて、定数宣言も被覆検査の対象にし、拒否の負例を追加した限定的な改善である。未被覆例を理由付き許可リストへ残す点と、全Pluginの実行契約に適合したこととは区別する。失敗分類を返す接続の検収では、エラー文字列の一致だけでなく、既存の**診断コード**を固定する。
+
+## 9. 部分取得と判定可能性を、Portの型適合から切り離す（2026-11-16）
+
+main統合済み[Plugin I/O設計PR #5162](https://github.com/hat47x/tei-platform/pull/5162)と[標準Data設計PR #5163](https://github.com/hat47x/tei-platform/pull/5163)によって、接続の適格性と業務Ruleの判断可能性を、より正確に分けられる。既存`internal/semantic/validationeval.Decide`は`present`／`null`／`not-fetched`、Relationの`complete`／`partial`、および`satisfied`／`not-satisfied`／`undecided`と理由を表す。これらを`transform.Value`のNULLに押し込まない。
+
+Consumerに渡せるかを考えるとき、以下の三層は別の問いである。
+
+| 層 | 判定内容 | 適格性を誤認する例 |
+| --- | --- | --- |
+| **接続可能性** | Contractの項目ID、意味Role、型、Cardinality、Mapping、必要Contextの一致 | `amount`という名前だけを合わせ、別のContractを暗黙接続する |
+| **判断可能性** | 実Readの値状態・Relation取得範囲・Ruleの種類に照らし、未取得部分があっても結論が不変か | partialを一律エラーとする、または未観測の重複が無いと断定する |
+| **配送可能性** | 目的Consumerと現在Grant・Disclosure・Target・実Called Providerに対する許可 | 二Fieldに投影できることを根拠に、HTTP公開も許可されたと解釈する |
+
+**判定不能はPluginの失敗と同義ではない。** 数値の正値Ruleに未取得があると、`undecided(value-not-fetched)`が妥当となる。部分取得のRelationでは、既知の重複から不成立を確定できる場合もある。他方、現時点で重複が見つからないことから一意性の成立を確定するには、Ruleの必要範囲が満たされなければならない。読取状態に矛盾があれば、判定不能ではなくReaderのエラーとして拒否する。
+
+この区別をPC-1bへ渡す際、新しいStateful Port型やPlugin専用Evaluatorは作らない。Sourceの意味ID／Field Ref・Read Footprint・Requirement／Result・現在資格は既存Ownerが保持し、Node Viewは根拠を**読み取り専用で投影**する。公開可能なFieldが決まって初めて明示Projectionを検討するが、ProjectionはHostの認可判定を代行しない。明示Adapterの単位・丸め・Lossはさらに別のPC-1cで検収する。
+
+追加の独立Expectedは既存[PIO-17〜23](PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md#21-型付き接続で判定できないを保持し読取の充足を検証する2026-11-16)と[DPC-09〜13](SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)に結び付け、新しい検収ID群を増やさない。PR #5162／#5163の文書統合をPlugin Portや実Providerの製品PASSへ昇格させない。
