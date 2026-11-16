@@ -58,6 +58,7 @@
 | `plugin-resolve` | `tei.cli.plugin-resolve/v0` | `result`に`plugin.ResolvedSet` | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`、`UNKNOWN_ENVIRONMENT`、`INVALID_PLUGIN_LOCK`、`PLUGIN_RESOLVE_FAILED`） | いいえ（投影型。#2354第一陣） |
 | `plugin-runtime-plan` | `tei.cli.plugin-runtime-plan/v0` | `result`に`pluginruntime.EnvironmentPlan` | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`、`UNKNOWN_ENVIRONMENT`、`INVALID_PLUGIN_LOCK`、`PLUGIN_RUNTIME_PLAN_FAILED`。構築失敗は終了コード1） | いいえ（投影型。#2354第一陣） |
 | `plugin-inventory` | `tei.cli.plugin-inventory/v0` | `result`に`management.Report`（`-plugin`で`mode=detail`、`-diagnose`で`mode=diagnose`） | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`、`UNKNOWN_ENVIRONMENT`、`INVALID_PLUGIN_LOCK`、`PLUGIN_RESOLVE_FAILED`） | いいえ（投影型。診断は許可を与えない） |
+| `plugin-plan` | `tei.cli.plugin-plan/v0` | `result`に`operations.Plan`（`-action`で`disable`/`remove`/`delete-data`/`convert-data`/`update`。適用は含まない） | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`、`UNKNOWN_ENVIRONMENT`、`INVALID_PLUGIN_LOCK`） | いいえ（読取り専用の変更計画。確定・適用は別の適格操作） |
 
 観測の補足:
 
