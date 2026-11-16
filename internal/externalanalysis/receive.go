@@ -87,7 +87,7 @@ func Receive(raw []byte, tool Tool, acquiredAt time.Time) Receipt {
 type document struct {
 	Meta     json.RawMessage `json:"meta"`
 	Evidence *evidenceRecord
-	Failure  *Failure `json:"failure"`
+	Failure  *Failure        `json:"failure"`
 	Envelope bool
 	Raw      []byte
 }
