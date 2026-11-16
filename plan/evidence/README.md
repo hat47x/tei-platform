@@ -491,6 +491,7 @@
 - [期間の要件を `tei view` へ投影する確認（2026-11）](XTEA_LOWCODE_PERIOD_REQUIREMENT_VIEW_2026-11.md)
 - [為替の粒度宣言と採番例の行データの設計判断](XTEA_LOWCODE_OPEN_DECISIONS_2026-11.md)（現行コードの読解に基づく設計判断。粒度宣言は任意のまま欠落を観測し、採番の行はテストフィクスチャに置く。判断は仮承認）
 - [改ページの見出し繰返しが宣言されるが効いていない](XTEA_LOWCODE_REPEAT_HEADER_INERT_2026-11.md)（`repeat-header`は受理・投影されるが描画に効かない。D-9の変種。修正は未了）
+- [XF110の部分成功とpartial_successの接続](XTEA_LOWCODE_PARTIAL_SUCCESS_CONNECTION_2026-11.md)（設計判断の候補。`PartialError`は実在するがCommand境界でコードを返さない。実装は未了）
 - [行スコープのフックへ渡す行集合の変換](XTEA_LOWCODE_ROW_ROWS_CONVERSION_2026-11.md)（参照実装の試験記録。driver結果から行集合への変換を hook 側に置いた。ホストの配線は未実装）
 - [行スコープのフックを browse で使えるようにするか](XTEA_LOWCODE_ROW_HOOK_DECLARATION_SITE_2026-11.md)（設計判断を保留。`interaction`はrecord限定のため一覧で行フックを宣言できない。既定案は`Hook`へ行の出所を足す）
 - [例のWorkspaceで期間の要件を宣言する確認](XTEA_LOWCODE_EXAMPLE_PERIOD_REQUIREMENT_2026-11.md)（参照実装の試験記録。例で宣言・検証・投影・実行が一致。宣言時に矛盾検査が実例で発火し、`closed-rejects`を狭めた）
