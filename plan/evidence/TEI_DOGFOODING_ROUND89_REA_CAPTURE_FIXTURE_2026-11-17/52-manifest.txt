@@ -1,0 +1,16 @@
+manifest.json declared, before:
+
+  rea-6.8.0/analysis.json   520 bytes / 7ea3780d...   (actual 829 / 6c84cfb3...)
+  rea-6.8.0/view.jsonl      618 bytes / dd936b0c...   (actual 929 / 561e927d...)
+  rea-6.7.0/analysis.json   516 bytes                 (actual 829)
+  rea-6.7.0/view.jsonl      152 bytes                 (actual 125)
+
+Note 520 bytes next to 7ea3780d... - that digest belongs to the 78000-byte
+capture, so the entry contradicted itself.
+
+Now every entry matches its file; captured-delivery.json is listed too.
+Inconsistencies: 0.
+
+Mutations:
+  M1 point back at the stub  -> FAIL not the recorded UTF-16LE BOM delivery
+  M2 change the capture BOM  -> FAIL same assertion
