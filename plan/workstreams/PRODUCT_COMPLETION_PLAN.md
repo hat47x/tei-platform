@@ -1599,3 +1599,12 @@ mainのRule生成Go CLIビルド回帰は、選択Markdown原文のコピーをG
 **D-1の実装適格性**：[実行パケット§8](MVP_DOGFOOD_DECISION_TRANSFER_2026-11.md)で、Dataの`required=yes`と元Goの`!= ""`、`required=no`とRelationの`== ""`を区別した。自己記述された項目定義と実ValidationインスタンスのBinding、既存Operatorによる厳密な受理・拒否ができないならM1は`unsupported`とする。元Markdownを正常にLoadできる試験と、不正な型付きValidationを拒否する単体試験も別資格として扱う。
 
 **利用者側の最小dogfooding**：[実行パケット§9](MVP_DOGFOOD_DECISION_TRANSFER_2026-11.md)では、CLI実`tei inspect`と直接`operations.InspectSubject`の同値回帰を基線に、Wails非依存Studio Hostの三入口比較[PR #5119](https://github.com/hat47x/tei-platform/pull/5119)（Draft）を重複実装せず待つ。次はテスト用Ruleの説明変更／参照先変更→再Inspect→生成Go→実Buildという一往復を試す。Sourceの表示・編集Intent・実Provider・Windows Stage2の権限と証拠は混ぜない。
+
+<!-- product-rule-read-eligibility-20261116 -->
+### 状態付きRuleを実Readへつなぎ、解釈と生成の対応範囲を誤認しない（2026年11月16日）
+
+[図表実現方式の設計§14](../design/DIAGRAM_TO_REALIZATION_STRATEGY_AND_HOOKS_2026-11.md)と[実証計画DRI-R1〜R5](DIAGRAM_REALIZATION_REFERENCE_EXECUTION_2026-11.md)へ、mainで進んだ値の状態別評価（#5142）、記録例による独立期待との照合（#5143）、暦日の順序Rule（#5146）を接続する。既存のpositive RuleのP／生成G実Binary比較（#5118）を一般的なRule生成へ拡大せず、Ruleの種類・Readの状態／完全性・実Target・実Callerごとに適合を確認する。
+
+**最初に実装する不足辺**は、実Queryが返した値の出典・Presence・Relation Coverageを、既存Function Contextと状態付きRuleへ渡せる範囲の確定である。単に返却値が正しいだけでは足りない。重複のように既知の反例が不成立を確定する場合と、未知の行が残るため成立が未決定の場合を区別する。native SQLの列由来観測を検討した#5144は未マージであり、現行製品のRead Coverageをcompleteへ昇格させる根拠にはしない。期間非重複Ruleの#5148も独立の検証対象として扱う。
+
+**優先P0は維持**する。正式Reader→Builder入力→Artifactの同一Attempt検証、通常CLI→実Provider Read→独立Consumer #2586、Studio Stage1→Stage2 Windows #2831／#4583、および自己記述した検査一条件の手書きGo分岐置換は、それぞれ別の完了条件である。本追補は既存の実装試験に続く作業順を定めたもので、新Go・実DB・Windows受領・Owner意味受理を追加実証したものではない。
