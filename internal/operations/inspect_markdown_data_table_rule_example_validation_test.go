@@ -104,7 +104,7 @@ func TestMarkedDataTableRuleExampleDiagnosesAnExpectedCellWithoutChangingMeaning
 		t.Fatal(err)
 	}
 	for _, comparison := range []struct {
-		name string
+		name          string
 		before, after workspaceSubjectReadView
 	}{
 		{"data", workspaceSubjectReadView{beforeData.Inspection.Canonical, beforeData.Inspection.WorldFingerprint,
@@ -175,6 +175,26 @@ func TestMarkedDataTableRuleExampleDiagnosesAnExpectedCellWithoutChangingMeaning
 		mismatch.SourceIndexFingerprint != currentRule.Inspection.SourceIndexFingerprint {
 		t.Fatal("example correction changed Meaning or retained stale Source Index")
 	}
+
+	// A written empty cell is NULL, which is a different reason from a
+	// column absent from the table altogether.
+	const nullExpected = "| | undecided |"
+	const nullWrongExpectation = "| | satisfied |"
+	if bytes.Count(validSource, []byte(nullExpected)) != 1 {
+		t.Fatal("one explicitly empty allocation cell is required")
+	}
+	nullWrong := bytes.Replace(validSource, []byte(nullExpected), []byte(nullWrongExpectation), 1)
+	if err := os.WriteFile(destination, nullWrong, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	nullFinding, err := ValidateWorkspace(root)
+	if err != nil || !nullFinding.HasErrors() || len(nullFinding.Diagnostics) != 1 ||
+		nullFinding.Diagnostics[0].Diagnostic.Code != RuleExampleMismatchCode ||
+		!strings.Contains(nullFinding.Diagnostics[0].Diagnostic.Message, "value-null") ||
+		nullFinding.WorldFingerprint != afterRule.Inspection.WorldFingerprint {
+		t.Fatalf("written empty value was not reported as NULL: %+v err=%v", nullFinding, err)
+	}
+
 	// A column left out of the example is not a NULL cell. Both may make
 	// the Rule undecided, but the reported reason must preserve what was
 	// actually authored and read.
