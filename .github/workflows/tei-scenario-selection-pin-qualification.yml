@@ -61,7 +61,8 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
-          test -z "$(gofmt -l cmd/tei/scenario.go cmd/tei/scenario_operator_selection_pin_test.go internal/workspace/operator_implementation.go tools/reference-change-assurance/scenario_binding.go)"
+          gofmt -l cmd/tei/scenario.go cmd/tei/scenario_operator_selection_pin_test.go internal/workspace/operator_implementation.go tools/reference-change-assurance/scenario_binding.go | tee "$RUNNER_TEMP/gofmt-drift.txt"
+          test ! -s "$RUNNER_TEMP/gofmt-drift.txt"
           go vet ./cmd/tei ./internal/workspace ./tools/reference-change-assurance
           echo "candidate=$EXPECTED_HEAD"
 
