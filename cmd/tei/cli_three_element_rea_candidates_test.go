@@ -150,6 +150,94 @@ func TestREACandidatesCLIToTypedComparisonKeepsParallelRelationsUnpaired(t *test
 	}
 }
 
+// A targeted CLI question is an exact producer-edge selection over the
+// already-generated review; an "imports" edge cannot become an accepted
+// Function→Data Read/Write merely because the caller asks that question.
+func TestREACandidatesCLISelectsOneRelationWithoutInventingFunctionRead(t *testing.T) {
+	dir := t.TempDir()
+	input := filepath.Join(dir, "analysis.json")
+	output := filepath.Join(dir, "candidates.json")
+	raw := parallelREAAttemptFixture(t, "ev-one-question", "edge-first", "edge-second")
+	if err := os.WriteFile(input, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var out strings.Builder
+	code, err := runThreeElementCommand([]string{
+		"rea-candidates", "-evidence", input, "-relation-id", "edge-second", "-output", output,
+	}, &out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response := decodeReaIntake(t, out.String())
+	if code != 0 || !response.OK {
+		t.Fatalf("question CLI failed: code=%d response=%+v", code, response)
+	}
+	result := response.Result.(map[string]any)
+	question, ok := result["relationQuestion"].(map[string]any)
+	if !ok {
+		t.Fatalf("explicit relation question missing: %+v", result)
+	}
+	relation := question["relation"].(map[string]any)
+	facts := relation["facts"].(map[string]any)
+	direction := facts["direction"].(map[string]any)
+	if facts["externalOccurrenceId"] != "edge-second" ||
+		facts["observedKind"] != "imports" ||
+		direction["fromExternalId"] != "node-order" || direction["toExternalId"] != "node-line" ||
+		len(question["fromObservations"].([]any)) != 1 ||
+		len(question["toObservations"].([]any)) != 1 {
+		t.Fatalf("question lost observed edge occurrence/endpoint: %+v", question)
+	}
+	if question["functionDataClaim"] != "not-established-by-external-structure" ||
+		question["acceptedMeaning"] != false || question["ownerDecision"] != "pending" ||
+		question["effect"] != "read-only" {
+		t.Fatalf("question promoted imports into Function read: %+v", question)
+	}
+	packet := result["reviewPacket"].(map[string]any)
+	coverage := packet["threeElementCoverage"].(map[string]any)
+	for _, item := range coverage["elements"].([]any) {
+		element := item.(map[string]any)
+		if element["element"] == "function" && element["status"] != "unsupported" {
+			t.Fatalf("function gained meaning from static graph: %+v", element)
+		}
+	}
+	set, err := readREAComparisonCandidateSet(output)
+	if err != nil {
+		t.Fatalf("existing saved CandidateSet contract rejected: %v", err)
+	}
+	if len(set.Candidates) != 4 {
+		t.Fatalf("question selection incorrectly replaced the full CandidateSet: %+v", set.Candidates)
+	}
+	if _, exists := map[string]any(result)["rawEvidenceFingerprint"]; !exists {
+		t.Fatal("one-question result omitted the original raw-byte digest")
+	}
+}
+
+func TestREACandidatesCLIRefusesUnobservedRelationBeforeWritingOutput(t *testing.T) {
+	dir := t.TempDir()
+	input := filepath.Join(dir, "analysis.json")
+	output := filepath.Join(dir, "must-not-create.json")
+	if err := os.WriteFile(input, reaIntakeFixture(t), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, relationID := range []string{"imports", "missing-edge-id", "node-order"} {
+		var out strings.Builder
+		code, err := runThreeElementCommand([]string{
+			"rea-candidates", "-evidence", input, "-relation-id", relationID, "-output", output,
+		}, &out)
+		if err != nil {
+			t.Fatal(err)
+		}
+		response := decodeReaIntake(t, out.String())
+		if code != 2 || response.OK || response.Error == nil ||
+			response.Error.Code != "RELATION_SELECTION_UNAVAILABLE" {
+			t.Fatalf("%q invented an available relation: code=%d response=%+v", relationID, code, response)
+		}
+		if _, err := os.Stat(output); !os.IsNotExist(err) {
+			t.Fatalf("%q created output for unavailable relation: %v", relationID, err)
+		}
+	}
+}
+
 func TestREACandidatesCLIRefusesInvalidEvidenceWithoutOutput(t *testing.T) {
 	dir := t.TempDir()
 	evidencePath := filepath.Join(dir, "invalid.json")
