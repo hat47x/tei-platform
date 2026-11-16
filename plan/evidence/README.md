@@ -494,4 +494,5 @@
 
 - [「成果物と違うdigestを申告する」は、ディスクとの比較で止まる](TEI_GO_SELF_BUILD_ARTIFACT_DIGEST_STOPS_2026-11-11.md)（§4.37の条件5で、entryが自分で確かめる側を実測。childが書いた成果物と違う`artifactDigest`を申告すると**exit 1・`ok:false`・`claimed:false`**になった。**直近2周で測った「止まらない」2件と対になり、表の非対称が実測に基づくことを示す。** #2831）
 - [CLI が解決の拒否理由を、prose の外へ出せるようになった](CLI_RESOLVE_REASON_2026-11-11/README.md)（#4245でresolverが返すcodeに呼出し元が0件だったので、cliFailureへresolveReason（omitempty）を足し、plugin-resolveとplugin-runtime-planの両地点が同じhelperを通るようにした。CodeとMessageとINVALID_PLUGIN_LOCKの扱いは変えない。理由が無いときはJSONに欄が出ないことを試験で固定した。tei commandsの広告と連鎖の出力は変えていない）
+- [壊れた版番号は「互換なpluginが無い」と読めるが、managementは区別している](PLUGIN_VERSION_GATE_2026-11-17/README.md)（CompatibleMajorは解析エラーをfalseに畳むので、壊れたVersionは不在と同じ診断になる。managementはversion-unknownとversion-mismatchを既に分けているが、resolverの語彙には前者が無い。現行挙動を4試験で固定し、負値は解析自体が失敗することを実測。語彙を揃えるかは未決）
 - [新しい語彙が試験に現れずplan-checkが3件赤](TEI_DOGFOODING_ROUND80_COVERAGE_DEBT_2026-11-16/README.md)（再開時に過去7ラウンドの修正を呼び出し側で点検し全生存を確認。#4455は後続統合で解消済み。新語彙11件（設計文書2・schema 1・文字列定数8）に試験と索引を追加し、変異4件で捕捉を確認。製品コードは変更せず。Step Code CLIは未導入のためDSHで実施）
