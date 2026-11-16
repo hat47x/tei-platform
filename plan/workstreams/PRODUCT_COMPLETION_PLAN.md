@@ -1452,6 +1452,8 @@ PCON-01〜09は既存#1180／#2514へ渡す未実行の独立Expected候補で�
 
 **並行設計の取り込み（11月16日）**：main済み#5162／#5163の「未取得部分があっても結論を確定できる場合と、保留すべき場合」の区別を[PC-1bの一因子Fixture](PLUGIN_PORTABLE_CONTRIBUTION_EXECUTION_2026-11.md)へ結び付ける。接続可能性・Ruleの判断可能性・Consumerへの配送可能性を三段階として示し、PIO-17〜23／DPC-09〜13の既存Expectedを再利用する。ここでの文書接合とPC-1aのpure Transformテストを、実Runtime Provider／Host公開・正式Builder・Stage2の達成とは数えない。
 
+**PC-1bの最初の負例（11月17日）**：[実装計画§7](PLUGIN_PORTABLE_CONTRIBUTION_EXECUTION_2026-11.md)へ、任意Fieldの欠落が`transform`上はNULLへ写る一方、状態付きRuleでは`not-fetched`と明示NULLを別の理由で保留するGo回帰を接続する。実Source Ref、Relation Coverage、実ProviderとConsumerの同一Attemptを要求する後続の受入条件はこの局所試験で達成したことにしない。新しい状態型・Plugin Binder・第二Runnerは追加せず、正式R2-P／R3とWindows Studio Stage2の既存P0を維持する。
+
 ### 検査義務を一つTEIへ移し、次のTEIで使う（2026年11月15日）
 
 [実装からモデルへのdogfooding §15](../design/IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md)に、`GeneratePositive`の**ID／Attribute必須・Relation禁止のRequired Shape一義務**を、既存標準構造・Ruleによる検査へ移す最初の自己置換手順を定めた。M0（出典・独立基線）→M1（TEI由来の実検査）→M2（実製品経路の旧Go分岐削減）→M3（Stage1実TEIによるStage2構築・当該機能の実利用）を**別々の合格**として扱う。M1は生成・解釈のどちらでもよいが、セルフビルドの実証には意味あるコード生成と実Builder消費を別途要求する。Target固有のGo package名検査やNULL評価のLawを初回の一義務へ混ぜない。
