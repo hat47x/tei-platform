@@ -3,6 +3,7 @@
 - 対象Issue: [#2515](https://github.com/hat47x/tei-platform/issues/2515)の`H6-E2`と`#2509`の経路網羅。機密境界の正本は[TAI #232](https://github.com/hat47x/tai-pleroma/issues/232)。
 - 実行日: 2026-11-10（Asia/Tokyo）
 - 実行環境: Windows 11 Pro `10.0.26100`（AMD64）、DSH `0.2.2-rc.1`（`dsh --profile headless`）、Node `24.21.0`
+- **版の注意（2026-11-17追記）**: 本記録は **`0.2.2-rc.1`** の観測であり、**`server/discover`を送らないという結果は`rc.1`の事実**である。**`rc.3`ではstdioでも`server/discover`が送られた**（[stdioの子Processの死](../DSH_MCP_STDIO_CHILD_DEATH_2026-11-17/README.md)）。**版が違えば経路の観測も変わる**ため、現在の版へそのまま当てはめない。
 - 状態: **ローカルの合成MCPサーバーのみ**。実MCPサーバーへの接続は**NOT RUN**。
 - 先行記録: [MCPの設定形](../DSH_MCP_CONFIGURED_2026-11-10/README.md)・[MCPの`tools/call`](../DSH_MCP_TOOL_CALL_2026-11-10/README.md)。本記録は、そこで未確定とした「**stdio transport**」を埋める。
 
@@ -16,7 +17,7 @@
 
 | # | method | 備考 |
 | --- | --- | --- |
-| 1 | **`initialize`** | `protocolVersion: 2025-11-25`、`clientInfo: dsh-mcp-client` |
+| 1 | **`initialize`** | 163 bytes（**本記録は`method`・`id`・`bytes`・SHA-256のみ保存**しており、**`protocolVersion`や`clientInfo`の値は記録していない**） |
 | 2 | **`notifications/initialized`** | — |
 | 3 | **`tools/list`** | — |
 
