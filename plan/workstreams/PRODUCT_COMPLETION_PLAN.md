@@ -158,6 +158,14 @@ Focused試験 internal/operations/inspect_markdown_data_table_date_rule_realizat
 
 今回のDC-50〜52はFocused Go試験へ、DC-53〜54は#1180／#2514の独立Expected候補へ引き渡す。現行Pの評価能力、製品Gの生成能力、外部Dの選択・実Call・現在Grantを独立した欄として扱い、P成功によるG／Dへの無音Fallbackを禁止する。実Builder／正式R2-P、通常CLI実Providerと独立Consumer、Studio Stage1→Stage2は引き続き別P0とし、追加のRule種別を新P0 Hard Gateにしない。
 
+### P1：同じMarkdownの定義・記録例・診断を別の証拠として扱う（2026年11月16日）
+
+[宣言的構文の合成契約§32](../design/DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md)に従い、既存の異動申請のData項目定義表＋正値Ruleと同じMarkdownへ、記録例と期待値を明示して追加するFocused Go回帰を置く。実装票は`internal/operations/inspect_markdown_data_table_rule_example_validation_test.go`であり、新しいReader／Generator／Runtimeは作らない。
+
+対象の4行は、正値・0・NULL・負値。記録例を追加しても**既存Data／RuleのCanonical WorldとDefinitionの位置は変わらない**こと、Source Indexは元byteの変更として更新されること、期待を0の1セルだけ誤らせると`RULE_EXAMPLE_MISMATCH`を例の期待セルへ返すことを検証する。さらに、値が空のNULLと、項目列を持たない未取得は別の判定不能理由として扱う。CLI／Studioが同じ診断を表示する場合も、Rule定義の編集位置と例の期待値の位置を混ぜない。
+
+DC-55〜57をFocused試験のExpected、DC-58を#1180／#2514へ渡す。今回の判定範囲は実製品のReader、Source Index、Inspector、Rule例の評価と診断であり、実DB Reader、外部Provider、Gの実生成・Build、Dの実Call、取得範囲・Audience・現在Grant、Studioの実編集／Stage2を成功とはしない。並行する期間Rule／Contract Query Reader／Operator選択／Plugin Field投影のPRは、main統合と実Consumer確認後にだけ計画上の到達済みへ移す。通常CLI実ProviderとStage1→Stage2のP0を維持する。
+
 ### P1で接続する業務判断・設計入力・数式（2026年11月15日）
 
 これらは新しい製品P0の前提ではなく、既存の標準Data/Rule/Expression・Function Data Context・表現型を実案件に近づける**受入作業**とする。詳細な正負例とOwner境界は[横断統合受入境界§14〜17](../design/CROSS_CUTTING_ACCEPTANCE_BOUNDARIES_2026-11-12.md)を参照。
@@ -1423,6 +1431,10 @@ S0-Aで最初に提示すべき**独立した正負**は、同一Source Snapshot
 [Pluginの貢献・配置・適格性設計](../design/PLUGIN_PORTABLE_CONTRIBUTION_CONFORMANCE_2026-11.md)と[PC-0〜5の小PR計画](PLUGIN_PORTABLE_CONTRIBUTION_EXECUTION_2026-11.md)に、全体Port／Field Mapping／明示Adapter、解釈／生成／委譲、静的Go／独立Process／Remote、CLI direct／Wails公開を**別軸**として接続した。まず既存Rule／Inspectのread-onlyな接続票から始め、正式Builderと通常CLI actual Providerの成立をそれぞれ確かめる。HTTPの公開資格、Audience、Grant、実Consumerはその次の別票とする。
 
 PCON-01〜09は既存#1180／#2514へ渡す未実行の独立Expected候補であり、Node Viewの線から実行を作る、Plugin Packageを一つのRuntime単位に固定する、第二Resolver／Host／Registryを追加することはしない。**Stage1→Stage2 Windows実受領、R2-Pの実Builder、R3の通常CLI実ProviderというP0を維持**し、プラグイン自身のTEI化は「一つの意味ある義務が生成Go／実Provider／次段Buildで実際に使われたか」で段階判定する。API Pluginの未統合PR #5096のCIや別HEADの成果を達成済みとして算入しない。
+
+**PC-1の最初の実コード差分**：既存`internal/plugin/transform`による全体Record／二Fieldだけの出力を比較するGo回帰を作り、内部項目の非選択・必須項目の欠損拒否・明示NULL保持までを検査する（[PC-1a〜c](PLUGIN_PORTABLE_CONTRIBUTION_EXECUTION_2026-11.md)）。これは出力Valueの整形試験であり、Contract Field ID、取得完全性、HostのDisclosure／Grant、通常CLIからの非Builtin Provider呼出しを証明しない。PC-1bの型・取得範囲、PC-1cの明示Adapterを別Ownerと独立Expectedへ渡す。main済み#5147のPlugin Resolver診断コード負例も再利用し、新しい診断正本を作らない。
+
+**並行設計の取り込み（11月16日）**：main済み#5162／#5163の「未取得部分があっても結論を確定できる場合と、保留すべき場合」の区別を[PC-1bの一因子Fixture](PLUGIN_PORTABLE_CONTRIBUTION_EXECUTION_2026-11.md)へ結び付ける。接続可能性・Ruleの判断可能性・Consumerへの配送可能性を三段階として示し、PIO-17〜23／DPC-09〜13の既存Expectedを再利用する。ここでの文書接合とPC-1aのpure Transformテストを、実Runtime Provider／Host公開・正式Builder・Stage2の達成とは数えない。
 
 ### 検査義務を一つTEIへ移し、次のTEIで使う（2026年11月15日）
 
