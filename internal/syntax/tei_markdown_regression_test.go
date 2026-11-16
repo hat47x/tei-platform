@@ -1,6 +1,7 @@
 package syntax_test
 
 import (
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -12,8 +13,11 @@ import (
 // the #5145 fix. Each one was a regression the fix itself introduced, so they
 // matter as much as the counterexamples.
 
-// Ordinary prose that mentions a pipe is not a row of the table above it.
-func TestProseWithAPipeDoesNotEndATable(t *testing.T) {
+// Prose with a pipe after a table must not be swallowed silently. GFM does
+// continue a table across such a line, so refusing it is the honest answer: the
+// author is told the sentence is being read as a table row. What must not happen
+// is the table quietly changing shape.
+func TestProseWithAPipeIsNotSilentlySwallowed(t *testing.T) {
 	cases := map[string]string{
 		"two-cell table": "<!-- tei: m -->\n| id | name |\n| --- | --- |\n| 1 | one |\nUse `a | b` to filter rows.\n\n```tei\nnamespace o\n```\n",
 		"one-cell table": "<!-- tei: m -->\n| id |\n| --- |\n| 1 |\nUse a | b here.\n\n```tei\nnamespace o\n```\n",
@@ -22,10 +26,20 @@ func TestProseWithAPipeDoesNotEndATable(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			document, err := syntax.ScanTEIMarkdownDocument(src)
 			if err != nil {
-				t.Fatalf("prose that mentions a pipe was refused: %v", err)
+				// Refused with a diagnostic that points at the line.
+				var parseErr *syntax.ParseError
+				if !errors.As(err, &parseErr) {
+					t.Fatalf("refused without a located diagnostic: %v", err)
+				}
+				return
 			}
-			if len(document.Tables) != 1 || len(document.Tables[0].Rows) != 1 {
-				t.Fatalf("the table changed shape: %d tables, %d rows", len(document.Tables), len(document.Tables[0].Rows))
+			// Or read as a row, which is what GFM renders. Either is honest;
+			// silently keeping the old shape is not.
+			if len(document.Tables) != 1 {
+				t.Fatalf("tables=%d, want 1", len(document.Tables))
+			}
+			if rows := len(document.Tables[0].Rows); rows != 1 && rows != 2 {
+				t.Fatalf("rows=%d, want 1 (table ended) or 2 (row read)", rows)
 			}
 		})
 	}

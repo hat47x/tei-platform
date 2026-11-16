@@ -158,7 +158,7 @@ func scanTEIMarkdown(src string, readTables bool) (MarkdownDocument, error) {
 			case !isRow:
 				// A line that is still a row of this table is read, not
 				// dropped: CommonMark renders a row with or without the
-				// surrounding pipes (#5145).
+				// leading pipe (#5145).
 				if table.stage == 2 {
 					if detached, ok, err := markdownTableRowDetached(text, at, len(table.table.Header)); err != nil {
 						return MarkdownDocument{}, err
@@ -166,6 +166,12 @@ func scanTEIMarkdown(src string, readTables bool) (MarkdownDocument, error) {
 						table.table.Rows = append(table.table.Rows, detached)
 						consumed = true
 						break
+					}
+					// A line that renders as a row but cannot be read is
+					// reported, so it is not lost the way the defect describes.
+					if markdownRendersAsRow(text, len(table.table.Header)) {
+						return MarkdownDocument{}, &ParseError{Pos: lineSpan.Start, End: lineSpan.End,
+							Msg: fmt.Sprintf("this line renders as a row of the marked table above, but it has %d cells where the header has %d; write the missing cells, or end the table with a blank line", strings.Count(strings.TrimSpace(text), "|")+1, len(table.table.Header))}
 					}
 				}
 				if err := finishTable(); err != nil {
@@ -436,26 +442,55 @@ const rawHTMLBlockBlankLine = "\x00blank-line"
 func rawHTMLBlockTag(body string) string {
 	lowered := strings.ToLower(body)
 	for _, tag := range []string{"pre", "script", "style", "textarea"} {
-		open := "<" + tag
-		if !strings.HasPrefix(lowered, open) {
+		if !opensRawHTMLTag(lowered, tag) {
 			continue
 		}
 		// `<pre>` and `<pre class="x">` open a block; `<pre>example</pre>`
 		// closes on its own line and does not.
-		rest := lowered[len(open):]
+		rest := lowered[len(tag)+1:]
 		if end := strings.IndexByte(rest, '>'); end >= 0 && strings.Contains(rest[end:], "</"+tag+">") {
 			return ""
 		}
 		return "</" + tag + ">"
 	}
-	// Block-level elements that are not raw text end their block at a blank
-	// line. A mark inside them is still not rendered as a table.
-	for _, tag := range []string{"div", "table", "section", "article", "aside", "header", "footer", "nav", "main", "figure", "details", "ul", "ol", "form", "blockquote"} {
-		if strings.HasPrefix(lowered, "<"+tag) {
+	// Block-level elements are not raw text, so they end at a blank line. A
+	// mark inside them is still not rendered as a table.
+	for _, tag := range []string{
+		"address", "article", "aside", "blockquote", "body", "caption", "center", "col", "colgroup",
+		"dd", "details", "dialog", "dir", "div", "dl", "dt", "fieldset", "figcaption", "figure",
+		"footer", "form", "frame", "frameset", "h1", "h2", "h3", "h4", "h5", "h6", "head", "header",
+		"hr", "html", "iframe", "legend", "li", "link", "main", "menu", "menuitem", "nav", "noframes",
+		"ol", "optgroup", "option", "p", "param", "section", "source", "summary", "table", "tbody",
+		"td", "tfoot", "th", "thead", "title", "tr", "track", "ul",
+	} {
+		if opensRawHTMLTag(lowered, tag) {
 			return rawHTMLBlockBlankLine
 		}
 	}
 	return ""
+}
+
+// opensRawHTMLTag reports whether body starts with `<tag` and the tag name ends
+// there, as CommonMark requires: a space, a tab, `>`, or `/>` must follow.
+//
+// Without the delimiter check `<table-of-contents>` would be read as `<table>`,
+// opening a block that never ends and refusing a later legitimate mark.
+func opensRawHTMLTag(lowered, tag string) bool {
+	open := "<" + tag
+	if !strings.HasPrefix(lowered, open) {
+		return false
+	}
+	rest := lowered[len(open):]
+	if rest == "" {
+		return true
+	}
+	switch rest[0] {
+	case ' ', '\t', '>', '\r', '\n':
+		return true
+	case '/':
+		return strings.HasPrefix(rest, "/>")
+	}
+	return false
 }
 
 // stripMarkdownListMarker removes a leading list marker and the spaces after
@@ -487,6 +522,29 @@ func stripMarkdownListMarker(body string) (rest string, consumed int, ok bool) {
 		return body, 0, false
 	}
 	return body[digits+2:], digits + 2, true
+}
+
+// markdownRendersAsRow reports whether CommonMark would render text as a row of
+// a table with the given number of cells: it carries at least one pipe and is
+// not a block-level start.
+//
+// Such a line is what a reader loses when it stops at the first line that
+// `markdownTableRow` does not accept, so it is reported instead of becoming an
+// ordinary paragraph.
+func markdownRendersAsRow(text string, cells int) bool {
+	indent, body := markdownIndent(text)
+	if indent > 3 {
+		return false
+	}
+	trimmed := strings.TrimSpace(body)
+	if trimmed == "" || !strings.Contains(trimmed, "|") {
+		return false
+	}
+	switch trimmed[0] {
+	case '#', '<', '`', '~', '>':
+		return false
+	}
+	return true
 }
 
 // markdownTableRowDetached reads a row that does not start with `|`.
