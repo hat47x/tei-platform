@@ -1,0 +1,11 @@
+main = 207fb095b
+
+  go build ./...                        rc=0
+  plan-check: TestPlanReadmesMentionEveryEntry                 FAIL (2)
+              TestSchemaVersionLiteralsHaveATest               FAIL (1)
+              TestExportedStringConstantsHaveATestOrAnEntry    FAIL (8)
+
+  cmd/tei discovery suites (the round-78 orphan tests)         ok
+    - rea-evidence now exists: cmd/tei/rea_evidence.go present
+      internal/externalanalysis present
+    So #4455 is resolved by a later merge.

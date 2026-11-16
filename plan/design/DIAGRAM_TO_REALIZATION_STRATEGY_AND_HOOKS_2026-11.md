@@ -380,3 +380,39 @@ StudioのプロジェクトExplorerで一つの`*.tei.md`を開いたとき、So
 | **FL-08** | Source A→B→A、生成器・外部依存だけ更新、Artifact byteは同一 | byte同値は現在のAcceptance・Generator資格・Build Evidence・Host Grantを復活させない |
 
 まずFL-02／03／04を既存Extension Point参照とRuleの製品Builder入力試験に重ね、FL-05をStudio生成部品の実Consumer試験へ引き渡す。**新しい汎用Project Schema、拡張子、ビルドエンジン、Resources Registryは設けず、対象の足りない一辺だけを既存Ownerへ戻す。**
+
+## 14. 部分的な読取りから規則を実現する際の判断と証拠（2026-11-16追補）
+
+図表のI／G／D／H選択では、同じRuleから同じ値が得られるかだけでなく、**その入力から結論を確定してよいか**を先に確かめる必要がある。規則の意味、読取った範囲、実現方式、実際の呼出しは別々の契約である。とくに欠損、NULL、部分取得を単一の「値なし」にまとめると、誤った成立・不成立が生じる。
+
+### 14.1 既存製品で確認できるところ
+
+- [#5142](https://github.com/hat47x/tei-platform/pull/5142)で、既存の評価器に、値の present／null／not-fetched と関係の complete／partial を申告する読み手向けの判定入口が加わった。読取範囲が部分的でも、すでに見つけた重複が一意性を否定するときは不成立と判断できる。一方、重複が見つからないだけでは、未読の行がある以上成立と断定できない。
+- [#5143](https://github.com/hat47x/tei-platform/pull/5143)で、記録の例と期待結果を文書に記述し、規則の判定と照合できるようになった。例は意味モデルや現在の実データ取得資格を置き換えない。例の合格は実Providerの全件取得や業務保存の実行許可ではない。
+- [#5146](https://github.com/hat47x/tei-platform/pull/5146)で、一件の記録における暦日二項目の前後を評価できるようになった。終了日が空の場合の扱いは明示された条件に従い、未取得を空値と同一視しない。複数行の期間重複を扱う[#5148](https://github.com/hat47x/tei-platform/pull/5148)は確認時点で未マージであり、同PRの追加テストや全体の適合は未確定である。
+- [生成Goの限定実証](https://github.com/hat47x/tei-platform/pull/5118)は、選択されたpositive Ruleを既存Evaluatorと生成Binaryで照合し、結果が同じでもRead IDが異なる負例を拒否した。ただし現行の GeneratePositive は positive と解決済み std.decimal に限られ、上記の状態付き判断、日付規則、期間規則の生成を一般に提供するものではない。
+
+したがって「Ruleを製品で読める」「Ruleの評価器が対応する」「指定Targetへ生成できる」「本番の読取元から入力を得られる」「実際に選ばれた実装が通った」を一続きの合格とは扱わない。未対応kindを暗黙にpositiveへ変換したり、Gが使えないのでIへ無言で切り替えたりしない。対象TargetとContractごとに、対応した入口と不足する保証を示す。
+
+### 14.2 決定可能性は、情報の不足と規則の形で決まる
+
+| 規則と読取状態 | 決定の境界 | 必要な出典 |
+| --- | --- | --- |
+| 正値判定、対象数値がpresent | その値に関する規則は評価できる。無関係なRelationの部分取得を理由に一律停止しない | Rule ID、数値のAttribute ID、値と状態、実Read |
+| 正値判定、nullまたはnot-fetched | 0や不成立へ丸めず、値がない理由を残す | 保存されたNULLか、まだ読んでいないかを区別した読取結果 |
+| 関係の一意、既読行に確定した重複がある | 未読行があっても不成立。追加の行が重複を取り消すことはない | 同じRelation／Groupの行ID・比較Key・読取対象 |
+| 関係の一意、既読行に重複がない | 必要な行集合をすべて読んだことが未確認なら成立は未決定 | Relationの必要集合、完全性、Scope、時点 |
+| 日付の順序、終了日がnull | 明示された if present の意味に従う。not-fetchedとは別 | 二つの暦日Attribute、条件、読取状態 |
+| 期間の非重複 | 同じ比較Groupの確定した重複は不成立の証拠。重複なしの成立には必要な期間集合の完全性が要る | 両端・端点の包含、Group Key、多重度、期間の読取Coverage |
+
+**部分取得であることは、すべての規則を必ず未決定にする理由ではない。** 未読の値がどのように補われても答えが変わらないときに限り、その答えを確定できる。一方、Readerが取得範囲を証明していないのに complete を補うことは許さない。失敗の理由には少なくとも、不正な入力宣言、評価不能、業務上の不成立、実装未対応を区別して渡す。
+
+### 14.3 実DB取得・Function Context・生成方式へ進む停止線
+
+同じQueryを実行しても、SQLで返った値の由来と、必要な行がすべて返ったことは別である。現行[Function Context](../../internal/functioncontext/functioncontext.go)は、native SQLの読取りから complete や justified empty を確定しない。[PR #5144](https://github.com/hat47x/tei-platform/pull/5144)はPostgreSQL列の由来を限定的に観測し、保存NULLと行粒度を一定条件下で確定する試みだったが、確認時点では**クローズ・未マージ**である。提案が正しくても、関数の判定へ渡せる状態の全てが製品で確定したわけではない。外部結合によるNULLや集約・計算列、別接続の観測、Tenant／Grant、行集合の完全性を推定で補わない。
+
+最初の接続実験は、**一件の型付きRuleを、明示された読取状態とRequired Read集合の下で評価する**ことに限定する。Source→選択Reader→Rule ID／Phase→実Provider Read→状態付き評価→独立Consumerという経路を、既存のScenario／独立Expectedへ結び付ける。現行のG実装とI実装が同じ対象を扱える場合に限って同値性を比較する。対応できないRuleはGを未対応と報告し、実DB取得のProofをFixtureの値や文書例で代用しない。
+
+生成Goの出典byteとBuildPlanの現在性、Operator実装選択、Builderの実消費、実Providerの選択と実Call、結果・Effectの受領は、それぞれ別の証拠として残す。自己構築では、出力一致に加えて旧Go判断が実際に減ったことと次世代の実使用を検査する。既存の[抽象経路・受入計画](DERIVED_PROJECTIONS_RUNTIME_AND_MIGRATION_ACCEPTANCE_2026-11.md)と[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)へ引き渡し、第二のRule Engine、Trace Store、Expected正本は作らない。
+
+**受入の上限**：本節は新しい実装を追加しない。実Provider由来の状態付きRule入力、一般的なG/P同値、実DBの完全性、外部Effect、正式R2-P／R3、Studio Stage1→Stage2のWindows再入、Owner意味受理は未検証であり、既存の優先P0を変更しない。
