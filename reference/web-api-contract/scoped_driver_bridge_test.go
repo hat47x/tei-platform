@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 
 	"tei/internal/application"
 	"tei/internal/core"
@@ -43,6 +44,11 @@ func bridgeWorld(t *testing.T) driver.Resolver {
 	return driver.NewResolver(loaded.World)
 }
 
+// fixtureFromTime is the std.datetime the query declares for `from`.
+// The Driver accepts only time.Time for that type, so the fixture and the
+// expectation share one value.
+var fixtureFromTime = time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+
 func TestRealDriverRequiresScopedProviderAndProjectsOnlyPublishedColumns(t *testing.T) {
 	pub := scopedPublication(t)
 	ctx := TrustedReadContext{
@@ -72,7 +78,7 @@ func TestRealDriverRequiresScopedProviderAndProjectsOnlyPublishedColumns(t *test
 			actual.ScopeID != ctx.RowScopeID || actual.PolicyRevision != ctx.PolicyRevision ||
 			actual.Filter == nil || actual.Filter.Operator != "gt" ||
 			actual.Order == nil || actual.Order.FieldID != "orderId" ||
-			actual.Limit != 2 || parameters["from"] != "fixture-query-parameter" {
+			actual.Limit != 2 || parameters["from"] != fixtureFromTime {
 			t.Fatalf("Driver did not pass the trusted plan or canonical Query: q=%+v scope=%+v datasource=%+v", q.ID, actual, datasource)
 		}
 		// The fixture provider is explicitly pretending it has physically
@@ -87,7 +93,7 @@ func TestRealDriverRequiresScopedProviderAndProjectsOnlyPublishedColumns(t *test
 		}}, nil
 	})
 	out, err := ExecuteScopedCanonicalRead(context.Background(), bridgeWorld(t), pub, plan,
-		scopedSupport(pub, plan), provider, map[string]any{"from": "fixture-query-parameter"})
+		scopedSupport(pub, plan), provider, map[string]any{"from": fixtureFromTime})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,7 +210,7 @@ func TestScopedProviderCannotMutateAuthorizedResponseProjection(t *testing.T) {
 		}}, nil
 	})
 	out, err := ExecuteScopedCanonicalRead(context.Background(), bridgeWorld(t), pub, plan,
-		scopedSupport(pub, plan), provider, nil)
+		scopedSupport(pub, plan), provider, map[string]any{"from": fixtureFromTime})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -239,7 +245,7 @@ func TestScopedDriverRejectsProviderReturningMoreThanAuthorizedTop(t *testing.T)
 		}}, nil
 	})
 	out, err := ExecuteScopedCanonicalRead(context.Background(), bridgeWorld(t), pub, plan,
-		scopedSupport(pub, plan), provider, nil)
+		scopedSupport(pub, plan), provider, map[string]any{"from": fixtureFromTime})
 	if !errors.Is(err, ErrScopedQueryContract) || len(out.Columns) != 0 || len(out.Rows) != 0 {
 		t.Fatalf("Provider exceeded Top but its result escaped: result=%+v err=%v", out, err)
 	}
