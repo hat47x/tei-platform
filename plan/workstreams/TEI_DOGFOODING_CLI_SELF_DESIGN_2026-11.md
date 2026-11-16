@@ -2807,3 +2807,61 @@ STEP 3 ExternalCandidatesFromBytes error: Evidenceにsemantic graphの宣言が�
 ### 位置付け
 
 **「意図的な変更」と「更新漏れ」を分けた回**である。fixture の差し替え自体は正しく、**読む側を直さなかったこと**が欠陥だった。refactor を巻き戻すのではなく、consumer 側に必要な fixture を持たせた。
+
+## 83. 第82ラウンド（2026-11-16）: main の `internal/operations` がコンパイルできない
+
+前ラウンドで起票した [#5191](https://github.com/hat47x/tei-platform/issues/5191) を解消した。生出力は[第82ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND82_OPERATIONS_BUILD_2026-11-16/README.md)にある。
+
+### 実測
+
+```text
+$ go vet ./internal/operations
+# tei/internal/operations [tei/internal/operations.test]
+inspect_markdown_data_table_rule_example_validation_test.go:85:34:
+    invalid operation: loaded.RuleExamples[0].Data != dataSubject.ID
+    (mismatched types core.CanonicalID and string)
+```
+
+導入は `b71f8be10 (#5181)`。**パッケージ内の全テストが実行不能**だった。
+
+### どちらの型に合わせるかを、コードで決めた
+
+推測せず、**同じパッケージの既存の書き方**を探した。
+
+```go
+// internal/operations/selected_rule_markdown_evaluator_read_footprint_test.go:239
+if rule.ID != core.CanonicalID(subject.ID) ||
+```
+
+`RuleExample.Data` は `core.CanonicalID`、`sourceindex.Subject.ID` は `string` なので、**subject 側を canonical に揃える**のが既存の規約に一致する。
+
+### 実測（修正後）
+
+| 対象 | 修正前 | 修正後 |
+| --- | --- | --- |
+| `go vet ./internal/operations` | **build failed** | 0 errors |
+| パッケージのテスト | **0件しか走らない** | 全件走る（FAIL は1件のみ） |
+| `TestMarkedDataTableRuleExample...` | 実行不可 | **PASS** |
+
+### 変異試験
+
+| # | 変えた箇所 | 結果 |
+| --- | --- | --- |
+| M1 | 元の壊れた比較に戻す | `mismatched types core.CanonicalID and string`（**起票した症状を再現**） |
+| M2 | 期待値を `core.CanonicalID("totally.wrong.id")` に変える | FAIL `the example's independent authoring role was not retained` |
+
+**M2 が重要**である。cast は飾りではなく、**この行が実際に Data の同一性を検査している**ことを示す。
+
+### ビルドが通って初めて見えた別の失敗
+
+```text
+--- FAIL: TestOrgCaseExplicitPersistenceEnablesReadCandidateOnly
+    Query org_view.case_read input case_id has unsupported runtime binding
+    for type organization.case_record_id
+```
+
+**型ではなく runtime binding の対応表の話**で、独立した欠陥。本ラウンドの範囲外とした。
+
+### 位置付け
+
+**「ビルドできない」を「走る」に戻した回**である。テストの失敗ではなく**コンパイルの失敗**だったので、パッケージ内の全テストが沈黙していた。**型の不一致は1行だが、影響は「そのパッケージが存在しないのと同じ」**だった。

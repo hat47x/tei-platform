@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"tei/internal/core"
 	"tei/internal/semantic/validationeval"
 	"tei/internal/sourceindex"
 	"tei/internal/workspace"
@@ -82,7 +83,7 @@ func TestMarkedDataTableRuleExampleDiagnosesAnExpectedCellWithoutChangingMeaning
 		t.Fatalf("record example was treated as a Definition or wrong Reader selected: %+v", loaded.AuthoringSources)
 	}
 	if len(loaded.RuleExamples) != 1 ||
-		loaded.RuleExamples[0].Data != dataSubject.ID ||
+		loaded.RuleExamples[0].Data != core.CanonicalID(dataSubject.ID) ||
 		loaded.RuleExamples[0].File != markedExampleSource ||
 		len(loaded.RuleExamples[0].Rows) != 4 ||
 		len(loaded.RuleExamples[0].Expectations) != 4 {
