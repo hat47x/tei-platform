@@ -15,14 +15,32 @@ func validateWorkspace(out io.Writer, root string) (int, error) {
 		return 2, err
 	}
 	if result.Direct != nil {
-		printSourceDiagnostic(out, *result.Direct)
-		// The run stopped at this file, so every other file is unexamined. The
-		// JSON form already says so with `incomplete`; without this line the text
-		// form reads as "there is one problem" (#4178).
-		fmt.Fprintf(out, "%s\t%s\t%s\n",
-			"note", "VALIDATION_INCOMPLETE",
-			fmt.Sprintf("the run stopped at the first syntax error in %s; files other than that one were not examined",
-				result.Direct.Source.ArtifactPath))
+		// The validation load collects independent syntax findings instead of
+		// stopping at the first one, so every collected finding is printed. The
+		// JSON form already reports all of them with `incomplete`; printing only
+		// Direct read as "there is one problem" (#4178).
+		directs := append([]workspace.SourceDiagnostic{*result.Direct}, result.AdditionalDirect...)
+		for _, direct := range directs {
+			printSourceDiagnostic(out, direct)
+		}
+		if result.InspectionIncomplete {
+			// Collected run: the findings above are every file that failed to
+			// parse. What stays unverified is syntax coverage beyond those files
+			// (imports and sources depending on the failed load) and semantic
+			// validation, which never ran because no World loaded. Saying "other
+			// files were not examined" here would be false, because they were.
+			fmt.Fprintf(out, "%s\t%s\t%s\n",
+				"note", "VALIDATION_INCOMPLETE",
+				fmt.Sprintf("%d件の構文の指摘を同じ読み込みで集めました。構文検査の網羅は未確認で、意味検証は実行していません",
+					len(directs)))
+		} else {
+			// Fail-fast projection: this run really did stop at the one file, so
+			// the original sentence stays true.
+			fmt.Fprintf(out, "%s\t%s\t%s\n",
+				"note", "VALIDATION_INCOMPLETE",
+				fmt.Sprintf("the run stopped at the first syntax error in %s; files other than that one were not examined",
+					result.Direct.Source.ArtifactPath))
+		}
 		return 1, nil
 	}
 	hasSourceRootError := false
