@@ -97,3 +97,40 @@ func TestValidationFixtureStateWordsAreFixed(t *testing.T) {
 		}
 	}
 }
+
+// Dates are stated like numbers: a value written YYYY-MM-DD, or a state.
+func TestValidationFixtureStatesDates(t *testing.T) {
+	got, err := ParseValidationFixture([]byte(`{"numbers": {}, "relationKeys": [],
+  "dates": {"organization.membership.starts_on": "2026-04-01"},
+  "dateStates": {"organization.membership.ends_on": "null", "organization.membership.left_on": "not-fetched"}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := ValidationFixture{
+		Numbers: map[string]string{}, RelationKeys: []ValidationRelation{},
+		Dates:      map[string]string{"organization.membership.starts_on": "2026-04-01"},
+		DateStates: map[string]string{"organization.membership.ends_on": "null", "organization.membership.left_on": "not-fetched"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got=%+v", got)
+	}
+
+	cases := []struct{ name, members, mention string }{
+		{"a date with slashes", `"dates": {"a.b.c": "2026/04/01"}`, "is not a calendar date"},
+		{"a date with a time", `"dates": {"a.b.c": "2026-04-01T00:00:00Z"}`, "is not a calendar date"},
+		{"a day the calendar does not have", `"dates": {"a.b.c": "2026-02-30"}`, "is not a calendar date"},
+		{"a JSON null in place of a date", `"dates": {"a.b.c": null}`, "is not a calendar date"},
+		{"a date without an attribute", `"dates": {" ": "2026-04-01"}`, "empty Attribute"},
+		{"an unknown state word", `"dateStates": {"a.b.c": "open"}`, "write null or not-fetched"},
+		{"a state without an attribute", `"dateStates": {"": "null"}`, "empty Attribute"},
+		{"a value and a state for one attribute", `"dates": {"a.b.c": "2026-04-01"}, "dateStates": {"a.b.c": "null"}`, "both a value and the state"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := ParseValidationFixture([]byte(`{"numbers": {}, "relationKeys": [], ` + tc.members + `}`))
+			if err == nil || !strings.Contains(err.Error(), tc.mention) {
+				t.Fatalf("got=%+v err=%v, want an error mentioning %q", got, err, tc.mention)
+			}
+		})
+	}
+}
