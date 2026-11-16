@@ -1104,13 +1104,105 @@ Sourceに書かれた参照属性をExpectedとする場合も、そのExpected�
 | 次の検収 | 既存の実装資産／進行中のPR | 合格に必要な追加根拠 |
 | --- | --- | --- |
 | **Q-1：同じ値・違うReadの拒否** | main #5118。Data表→Rule→P/Gの別Process実Binary | 現状はテスト用Source上の読取ID比較。実Query/ProviderでAttributeと取得Snapshotを確かめる場合は別Ownerの試験 |
-| **Q-2：抽象Relationの安定性** | 審査中#5115。組織Membership→OrgUnitの型付きRelation／Query | Symbol改名に耐え、Relation Key・向き・多重性・Query IDの差を拒否する。実DB traversalとは分離 |
-| **Q-3：実装選択の鮮度** | 審査中#5114（旧#5054から継承）。Scenario生成／Run／参照Plan | World・Fixture・結果は不変でも、A→Bの旧コマンドを実Call前に拒否。Provider版／GrantやA→B→A履歴復活は別受入 |
-| **Q-4：CLI・Studioの読取境界** | 審査中#5119。実`tei inspect`／直接Operation／非Wails Studio Host | 同一SubjectのSource／Authorityと、存在しないCapability・禁止Workspaceの拒否分類を照合。HTTP／実Providerは別 |
-| **Q-5：Port／Adapterの非干渉** | main #5101のMapping設計、審査中#5121のDPC候補 | 一つのFixtureで全体Port⇄Field表示を変えてもMappingと実行対象が変わらない。秘密Fieldや不完全な入力を黙って補完しない |
+| **Q-2：抽象Relationの安定性** | 現行mainの`org_c1_abstract_route_contract_test.go`。組織Membership→OrgUnitの型付きRelation／Query | Symbol改名に耐え、Relation Key・向き・多重性・Query IDの差を拒否する。実DB traversalとは分離 |
+| **Q-3：実装選択の鮮度** | 現行mainのScenario Plan／CLIにある`OperatorSelectionSHA256`・`-operator-selection-sha256`。旧PR #5114自体のマージ状態と分ける | World・Fixture・結果は不変でも、A→Bの旧コマンドを実Call前に拒否。Provider版／GrantやA→B→A履歴復活は別受入 |
+| **Q-4：CLI・Studioの読取境界** | 現行mainの`TestProductInspectCLISelectedMarkdownRuleIsNotCapability`にある実`tei inspect`／直接Operation／非Wails Studio Host | 同一SubjectのSource／Authorityと、存在しないCapability・禁止Workspaceの拒否分類を照合。HTTP／実Providerは別 |
+| **Q-5：Port／Adapterの非干渉** | mainの型付きMapping設計#5101と`SERVICE_FLOW_STANDARD_COMPOSITION`§12のDPC候補 | 一つのFixtureで全体Port⇄Field表示を変えてもMappingと実行対象が変わらない。秘密Fieldや不完全な入力を黙って補完しない |
 
-Q-1〜5は既存Ownerへ渡す**受入パケット**であり、新しい製品機能の完成表ではない。#5114／#5115／#5119／#5121の審査・CI結果を確認したうえで、通過した範囲だけをmainの到達点へ更新する。未マージの提案を製品の既定挙動として説明しない。
+Q-1〜5は既存Ownerへ渡す**受入パケット**であり、新しい製品機能の完成表ではない。かつて未マージと記した#5114／#5115／#5119／#5121の一部成果は現行mainのコード／設計へ別経路で収録されている。PRのマージ状態と現在の実コード、試験の実行結果は別に確認する。コードの存在だけから正式Provider・HTTP・Owner受理を導かない。
 
 **実装順**：最初は同一Data表・Ruleの実Source→P/G読取先一致を#5118のFixtureから読み取り専用で提示する。その後、型付きRelation・Adapter・CLI/Studioの各境界を一件ずつ足し、通常CLIの公開pure Function→実Provider→独立Consumer、正式Source→BuilderのR2-P、非Plugin Studio Stage1→Stage2実Windowsという独立したP0へつなぐ。目的は「実行できる線を増やす」ことではなく、**誤った経路を結果の一致で見逃さないこと**にある。
 
 **本追補の状態**：§53〜56はmain済み#5118の実Goテストと他レーンの未統合PRを照合した設計・計画更新。今回新たにGo／DB／Windows試験、実Provider／HTTP公開、Owner意味受理を実施したものではない。
+
+## 57. 抽象経路の検査を「何が分かっているか」にまで拡張する
+
+§53〜56のRead ID照合は、対象を取り違えないための必要条件だった。ただし、正しいAttributeを読んでも、**実際には値がないのか、まだ読んでいないのか、関係の一部だけを読んだのか**によって、業務Ruleの結論は変わる。
+
+main統合済み#5142は既存の`validationeval`へ状態付きの読取入口`Decide`を追加した。Number／Key／Dateの読取状態（`present`、`null`、`not-fetched`）と関係の取得範囲（`complete`、`partial`）を、Ruleが判断する根拠として使う。判断できる場合は`satisfied`／`not-satisfied`、できない場合は理由付きの`Undecided`を返す。読取契約に矛盾がある場合はRuleの「不成立」や「未決」とせず、Readerのエラーとして扱う。
+
+| 区分 | 観測した事実 | 抽象経路で確認すること |
+| --- | --- | --- |
+| 値がある（`present`） | 指定Attributeの型に合う値を読んだ | 実Read ID、値の型・精度、入力Scope、実際に呼ばれたEvaluator |
+| 値がない（`null`） | 対象を読んだが値がなかった | 「0」「未取得」「空集合」へ変換しない。Ruleに明示された例外条件を適用 |
+| 未取得（`not-fetched`） | 対象の値をまだ知らない | 値がないとは断言せず、追加Readで結論が変わるかを判断 |
+| 部分取得（`partial`） | 関係の一部だけを読んだ | 観測した確定違反と、全体の正常性を同じ確実さで説明しない |
+| 全件取得（`complete`） | 対象RelationをRuleの範囲で読んだ | 対象範囲・Snapshot・Authorityも対応するときだけ全件に関する結論を評価 |
+| Readerの矛盾・障害 | `present`なのに実値がない、不正な状態、読取エラー | 業務上の不成立にも未決にも吸収せず、実Producerの失敗として表示 |
+
+従来の`Evaluate`は既存Sourceとの互換入口として残るが、そこから`null`と`not-fetched`の違いが自動的に復元されるわけではない。新しい`Decide`の三値の判断を、そのまま生成Goや通常CLIの実Providerへ移植済みと推測しない。§50の既存P/G比較は**値が得られた限定Ruleの同値**を示すものであり、現在の状態付きReader全体の同値試験ではない。
+
+## 58. 確定した違反と、まだ証明できない正常性を非対称に扱う
+
+部分取得における結論は一律「未決」ではない。**残りの入力がどのような値でも結果を覆せない**なら、その結論は確定できる。そうでなければ、取得不足を理由とともに残す。これは新しい汎用Inference Engineを作るという意味ではなく、各Ruleの意味に沿った判定条件を検査するものである。
+
+| Ruleと観測 | この範囲で言えること | 不適格な結論 |
+| --- | --- | --- |
+| Relationの一意性：取得済み二行に同じ確定キー | 取得範囲が部分的でも、違反は確定（`not-satisfied`） | 未取得行のため「違反も不明」とする |
+| Relationの一意性：見えたキーは全部異なるが取得は部分的 | `undecided`。未取得行に重複があり得る | 取得済み行だけで全体の`satisfied`を宣言 |
+| 正値Rule：対象Numberが`null`または`not-fetched` | それぞれ別の理由で`undecided` | 空欄を0に置き換え`not-satisfied`とする |
+| 日付の`not-after if present`：比較先の日付を読み、`null`と確定 | そのRuleが明示した条件により`satisfied`。開始日の値によらない | 省略された`if present`を勝手に補う |
+| 同じRuleで比較先日付が`not-fetched` | `undecided`。未取得は「終了日がない」ではない | 欠落を「終了日なし」と解釈して`satisfied`とする |
+| 不正な読取状態・型の不一致 | Reader／Validationの失敗 | 失敗を「不成立」や「未取得」の都合のよい状態に丸める |
+
+この区別を図に投影するとき、**確定した違反を示す実Witness**と、**正常だと断定するために必要なCoverage**を分けて示す。前者は実際に観測した二行・キー・Rule版などで支える。後者は業務上の対象範囲と実Read Snapshotを要する。Coverageの`complete`が何に対して完全かを省くと、部署内だけの完全性を全組織の完全性へ誤拡張し得る。
+
+```mermaid
+flowchart TD
+  R["Rule・Qualified Subject・Read Scope"] --> K{"今回の観測で結果が確定するか"}
+  K -->|確定違反のWitnessあり| N["不成立：WitnessとScopeを記録"]
+  K -->|必要な値と範囲が揃う| Y["成立／不成立：観測範囲の結果"]
+  K -->|追加Readで変わる| U["未決：null／not-fetched／partialを区別"]
+  K -->|Readerが矛盾| E["技術的エラー：Ruleの結果へ畳まない"]
+  N --> C["Source・Attempt・現在Grantを別に照合"]
+  Y --> C
+  U --> C
+  E --> C
+```
+
+## 59. 規則の例、意味定義、実行時の受入を別々に保持する
+
+main統合済み#5143では、Markdownの記録例に、期待するRuleの答えを記述できるようになった。`tei validate`が定義の検査後に例を評価し、不一致なら期待を書いた位置へ診断を返す。**規則の例は意味定義の外に置かれ、業務上の期待を確認するための材料**である。
+
+| 観点 | 実装済みの限定的な根拠 | ここからは言えないこと |
+| --- | --- | --- |
+| 定義と原文 | `tei.authoring/v1`のRule・型・例表、Source位置、選択済みWorkspace | 例の行を正式な業務DB行や実Read Snapshotとみなす |
+| Expected | 例表で明記した`satisfied`／`not-satisfied`／`undecided` | 例から自動推論した答えを独立Expectedとみなす |
+| 例表の範囲 | 当該表の全行がその例における関係全体であるという約束 | 実DB・ページング・外部ProviderのCoverageが`complete`であるとみなす |
+| 値のない理由 | 空の値セルは`null`。表にないAttributeは未取得 | 空のセルを0にする、未定・不明の理由を暗黙の型へ押し込む |
+| 実行・配布 | `tei validate`で診断を確認できる | Scenario Run、Build、Provider実Callが自動的に同じ例を必須Gateに使う |
+
+例は実装の反証に使えるが、例だけをSourceのMeaning正本にしてはならない。一方、元Markdownの説明や例が変更された場合は、その原byteに依存したSource Index／ビルド閉包の再検証が要ることもある。**意味モデルが変わるか、Artifactの再Buildが必要か、過去のEvidenceを再利用できるかは別々の判断**であり、既存#5109／#5129が検証するBuildPlan確定後の原文・生成Go改変拒否を再利用する。
+
+## 60. 日付の前後、関係の期間、二時点履歴を一つにしない
+
+main統合済み#5146は、一件の記録にある二つの暦日へ`not-after`と`if present`を適用する限定Ruleを追加した。**同じ日付を許すか、終了日のない行を対象に含めるか**を文書から読み取れるようにし、`std.datetime`への暗黙変換はしない。
+
+これに対し、関係に属する**複数行の期間が重ならないこと**は別のRuleであり、#5148が審査中である。mainに一部の関係期間評価コードが存在しても、当該PRの全検収・Owner受理が成立したとは扱わない。さらに、組織の業務履歴を検査する際には、所属の`validAt`／`knownAt`、Source改版、実Read Snapshot、判定Attemptを別の軸として持つ。
+
+| 区別するもの | 初期の検証題材 | 失格となる短絡 |
+| --- | --- | --- |
+| 一記録内の暦日比較 | 開始日が終了日以下、両日同じ、`if present`の有無 | 終了日が未取得なのに「終了日なし」と扱う |
+| 関係行間の期間 | 同一Relation Scope・同一Group Keyの期間重複、終了端の扱い、部分取得 | 異なる部署の兼務を同一グループの期間重複とする |
+| 業務上の二時点 | `validAt`と`knownAt`、Occurrence、改訂・訂正 | 認識時点を有効日とし、現在の所属人数へ加算する |
+| 実行・証拠の時点 | Source Revision、選択実装、実Read Snapshot、実Build／Provider Attempt | A→B→Aで旧資格が自動復活したと扱う |
+
+期間重複の検証では、**同じ組の二行が重なる確定証拠は、未取得行が残っていても消えない**一方、観測した範囲で重複が見つからないことは全件正常を意味しない。この非対称性は§58の一般原則と対応するが、#5148がmainで製品受入されるまでは正式な`no-overlap`の一般機能として表示しない。実DBのRelationを読むProvider、生成Go、外部Hostへの適合も独立して受理する。
+
+## 61. 製品化の順番を、知識の範囲を守る小さな試験に絞る
+
+次の実装は新しいRule Runnerや全般Proof Statusの導入ではなく、**同じ選択済みSourceを、読取範囲と期待条件を固定して検証する**小さな試験を既存Ownerの場所へ足す順序とする。
+
+| 検収単位 | 独立Expectedと反例 | 使用する既存資産／Owner |
+| --- | --- | --- |
+| **KD-01：値の不在理由** | `null`と`not-fetched`は両方`undecided`でも理由が異なる。Readerの矛盾はエラーとして拒否 | main #5142の`Decide`／Reader回帰、#1180／#2514 |
+| **KD-02：部分取得の確定違反** | 一意性Ruleの重複二行は`partial`でも`not-satisfied`。重複なしの`partial`は`undecided` | 既存`decideRelationUnique`の独立Oracle、#988／#2621 |
+| **KD-03：例表の役割** | 期待だけ変更→期待位置で不一致。規則Meaning・Runtime実Call・Build許可を例で書き換えない | main #5143の`CheckRuleExamples`、#1180／#2514 |
+| **KD-04：日付の条件** | 比較先`null`で`if present`ありなら成立、なしなら未決。`not-fetched`は別 | main #5146の`not-after`、#988／#2621 |
+| **KD-05：関係行の期間** | 同一Groupの確定重複と、部分取得で正常を言い切れない例を分ける | #5148は審査中。独立レビューと実Targetの適合待ち |
+| **KD-06：生成／汎用評価の差** | 生成関数名を変更してもMeaningとRead IDは同じ。対象Ruleや実入力が変われば拒否 | main #5118／#5132、実Builder #5109／#5129。新Rule種別の生成対応は未受理 |
+| **KD-07：実Providerへの接続** | テスト用Reader／例表の取得範囲を、実DBのSnapshotやHost Grantとして転用しない | #2586／#4495／#1251、独立Consumer #1180／#2514 |
+
+最初に接合する実装差分は、`Read Footprint`に **ID・値の状態・Coverage・読取対象のScope** を添えて、RuleのExpected／Observed／Undecided理由をread-onlyで照合するところまでとする。元SourceのRevision・Generator実版・Build Input・現在Grantは、その結果の外側にある別の資格として接続する。今ある`Decide`や例の結果から、未知の事実を推測して補完する新Schemaや第二Expected正本は作らない。
+
+**優先順位**：通常CLIの公開pure Function→actual Provider→独立Consumer、正式Source→BuilderのR2-P、非Plugin Studio Stage1→Stage2実WindowsのP0は従来どおり独立して進める。KD-01〜07をP0全体の新Hard Gateにはしない。今回の§57〜61は現行mainの実コードと進行中のPRを踏まえた設計・検収計画の更新であり、新しいGo／DB／Windows試験、正式Providerの実行、Ownerの業務意味受理を行ったものではない。

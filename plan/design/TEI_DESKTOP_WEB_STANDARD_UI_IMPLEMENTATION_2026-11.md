@@ -74,7 +74,7 @@ AI実装の一変更は、**対象Component → UI Intent/表示モデル → �
 
 | 段階 | 実験で行うこと | 現時点の状態・停止線 |
 | --- | --- | --- |
-| **U0 現行基線** | plain TSの現Component/Pinと配布Bundleの未同期を実検査。現在の`typecheck/test/build`・生成byteを記録 | 参照TSと埋込HTMLが違う。最新mainの実DOM・Windows PASSとはしない |
+| **U0 現行基線** | plain TSの現Component/Pinと配布Bundleの同期を実検査。現在の`typecheck/test/build`・生成byteを記録 | 現行確認版では参照HTMLと配布HTMLのPin操作が一致する。実JS・Go埋込・Windowsでの受領は同一HEADで別に確認する |
 | **U1 小部品の比較** | 同じS-LOC View Modelでplain TS・Vanilla Custom Element・Lit/TS（必要ならLit/JSDoc）を実装。Host/Presenterは共有 | 規模、差分局所性、Type/Lint検出、メモリ、DOM/IME/ARIA、保守変更の再現性で採否を判断 |
 | **U2 配布同一性** | Node24正規生成、収録HTML/JS/CSS、Go Embedと実配信byteを同一HEADで照合 | 旧bundle・参照画面だけ成功・Pin DOM欠落はFAIL。採用前でも既存P-04の回復を優先 |
 | **U3 実Windows** | Wails実Window/IPCで正常・拒否・後着を実DOM受領。必要時WebKit系を追加比較 | WebView2成功とWebKitGTK/WKWebView対応を混同しない。正式版Wails移行は別のSecurity/版検収 |
@@ -95,7 +95,7 @@ AI実装の一変更は、**対象Component → UI Intent/表示モデル → �
 
 ## 8. 開発用Sourceと実配布Consumerの同一性（2026-11-15追補）
 
-他レーンのDesktop Bootstrap、非Plugin Self-build、Plugin公開文書、Pin／AI対象引渡しの議論を突き合わせると、UI方式の変更より前に**現在のSourceが実配布物に入っているか**を確定する必要がある。今のWorkbenchは参照HTMLと埋込HTMLに差があり、S-LOCの純粋関数もまだ実画面に接続されていない。これらは別の問題として扱う。
+他レーンのDesktop Bootstrap、非Plugin Self-build、Plugin公開文書、Pin／AI対象引渡しの議論を突き合わせると、UI方式の変更より前に**現在のSourceが実配布物に入っているか**を確定する必要がある。過去版では参照HTMLと埋込HTMLに差があった。現行確認版ではPin操作のDOMは一致しているが、S-LOCのSource Openと実編集・保存まで含む製品一巡は未検収である。これらは別の問題として扱う。
 
 現在の[Workbench Embedded Bundle CI](../../.github/workflows/tei-studio-workbench-embed-ci.yml)は、Node **24.21.0**を使って`npm ci`、`npm test`、型検査、ビルドを実行したあと、`index.html`、`main.js`、`style.css`、`THIRD_PARTY_NOTICES.txt`の**四つのbyte一致**を調べる。ビルド時に生じる`dependencies.json`は監査用であり、埋込ディレクトリへ入れない条件も既にある。これは正しい出発点なので、もう一つのBundle整合検査や新たなManifest正本を作らない。
 
@@ -107,9 +107,9 @@ AI実装の一変更は、**対象Component → UI Intent/表示モデル → �
 | **Actual Consumer** | `//go:embed assets`、通常／生成Desktopの実Binary、Windows WebView2、Wails Serviceの実応答 | byte一致、通常Desktop起動、生成Desktop起動、Inspector／PinのDOM実使用は**それぞれ別の観測** |
 | **Recursive Builder** | #2831/#4583の既存BuildIntent／BuildExecution／ArtifactSetとStage1の実TEI Process | Stage0のスクリプトが二回Go Buildを呼んだだけではStage1→Stage2成立としない |
 
-**次のコード変更はW0の回復を先行**する。現行Sourceから正規ビルドし、Pin用DOMと`main.ts`のHandlerが一致した結果を収録する。参照UIに新Componentを追加する比較実験は、W0回復と競合させない。埋込四ファイルの差分に不審な箇所があれば、コピーして整えるのではなく、Source／Generator／Lockのどの違いによるものかを特定する。
+**W0の回復は旧版の課題であり、今後は同一性の継続検査を行う**。変更したHEADのSourceから正規ビルドし、Pin操作のDOMと`main.ts`のHandlerが一致する結果を収録する。参照UIに新Componentを追加する比較実験は、既存の正規Bundle検証を妨げないよう分離する。埋込四ファイルの差分に不審な箇所があれば、コピーして整えるのではなく、Source／Generator／Lockのどの違いによるものかを特定する。
 
-W0の実行指示（修正予定のPRの**同じHEAD**で実施）は以下を基線とする。現状は既存CIにこれらの工程が記述されているという意味であり、ここで実行済みと主張しない。
+W0の継続検証（対象PRの**同じHEAD**で実施）は以下を基線とする。現状は既存CIにこれらの工程が記述されているという意味であり、ここで実行済みと主張しない。
 
 ```sh
 cd reference/tei-studio-workbench
@@ -349,7 +349,7 @@ StudioのEditor・表・Graph・Node・Inspectorは、同じ意味要素の異�
 
 ### 18.2 先にread-onlyの一経路を通す
 
-最初の固定対象は、既存の選択済みRule Markdown Fixtureでよい。正規Workspace Load／Source Indexから読めたRuleを、通常製品CLIの実Process、共通operations.InspectSubject、Wails非依存studiohost.NewReadOnlyで比較し、次に既存Wails Bridgeから表示まで追う。先行する#5108の三入口テストは**未マージの実装候補**として取り込み、既存Fixtureを使う。CLIのInspectとHostの応答が同値でも、WebView／実Windows／Stage2を検査したことにはならない。
+最初の固定対象は、既存の選択済みRule Markdown Fixtureでよい。正規Workspace Load／Source Indexから読めたRuleを、通常製品CLIの実Process、共通operations.InspectSubject、Wails非依存studiohost.NewReadOnlyで比較し、次に既存Wails Bridgeから表示まで追う。現行mainの`cmd/tei/cli_inspect_rule_markdown_process_test.go`には、実CLI別Process・直接Operation・`studiohost.NewReadOnly`の三入口を比べるGo回帰が存在する。既存Fixtureを再利用し、実行したHEADの試験成績は別に確認する。CLIのInspectとHostの応答が同値でも、WebView／実Windows／Stage2を検査したことにはならない。
 
 同じFixtureに「非TEI Fenceに書かれた偽Rule」「同名だが異Kind」「許可外Workspace」「実Sourceの一文字改版」「Ruleが読めても公開Function Entryにはならない」を置く。Source位置が一意でない場合はJump／Quick Fixを保留し、PreviewはSource byteを変更しない。実編集へ進む際は、§16のBuffer・Disk Source・Owner Acceptanceを区別し、保存時の実byte照合、再Inspect、診断への戻りを検証する。見かけのGraph選択やAI提案を自動修正・自動受理の根拠にしない。
 
@@ -360,3 +360,39 @@ ProblemsとInspectorは、少なくとも「Sourceを読んだ」「Meaningを�
 **最小検収**：CLI／studiohostのRule Inspectが一致し、誤Kind・別Workspaceの拒否分類が一致することを第一段とする。次にWails上の同じ対象について、Focus／Pinの後着失効、Sourceの実Open、read-only Diagramと原文の往復、診断から一意SourceへのJumpを段階的に追加する。Generate／Interpretの同じ意味・異方式比較は#2620／#1121、実Providerは#4495／#2586、実Stage2は#2831／#4583が担当し、Desktopの最初のread-only検証の追加Hard Gateとしない。独立Expectedは#1180／#2514の既存Packetへ接続する。
 
 **現状**：上記は仕様と既存テストへの引渡しであり、#5115の組織C1抽象経路テスト、#5108のCLI／Studio Host同値、Plugin Mapping #5101の成果を参考にしたもの。新しいDesktop実IPC／Windows／編集保存／Provider実Call／Stage2の試験は本追補では実施していない。
+
+## 19. 実装済みの読取契約から、Desktopの編集・生成へ進む（2026-11-16）
+
+### 19.1 現在使える根拠と残る一巡
+
+今回の作業基線は、実際のmainの製品コードにある次の三つの限定成果とする。第一に、実TEI CLIの別Process・直接Application Operation・Wails非依存のStudio Hostによる同一RuleのInspectを照合するGo回帰が存在し、未公開の異Kindと許可外Workspaceを拒否する。第二に、MarkdownのData表から選んだRuleについて、生成Goの関数名だけを変えた実行と、別Attributeを読んで結果が偶然一致する実行を区別する回帰がある（main統合済みPR #5132）。第三に、self-buildのL2-b判定には計画で選択したBuilderと起動直前に読んだファイルのdigest照合が組み込まれ、計画がGo toolchainを名指した場合は対応する照合も行う。ただしL2-bはOS Loaderが読んだ実Image、Builder内の再委譲、G4の意味受理、Desktop Stage1→Stage2を保証しない。
+
+これらの存在は**現行mainに実装・試験コードがある**という確認であり、この文書変更のHEADでGo／Node／Windows実試験を実行したことではない。§15のD1〜D5と通常CLIの実Provider Readは、引き続き独立したP0である。
+
+### 19.2 次に実装する四つの操作
+
+| 作業単位 | 利用者の一操作と実装境界 | 最初の合格条件 |
+| --- | --- | --- |
+| **対象から原文へ** | Catalog／Inspectorで選んだqualified Subjectから、Hostが再解決したSource occurrenceをEditorへ渡す | 実byteのSource位置とBufferの文字位置を区別し、UTF-8／CRLF／IME条件で対象を誤らない。一意でない参照・未読取SourceではJumpを保留 |
+| **FocusとPinの独立** | AをPinしたままBを操作し、AのInspectを明示的に再取得する | Aの後着結果からBのCaret・Undo・Dirty Buffer・Graph／ARIAを変えない。A→B→A、別Workspace同名Subjectで旧Replyを再利用しない |
+| **候補編集から保存へ** | Source編集→Diff／Preview→既存Writerの保存条件照合→再読込→Meaning Reviewを別操作にする | 保存時の実Source byte／Root／Revision競合を拒否し、Bufferを保全する。保存成功や復元DraftだけでMeaningを自動受理しない |
+| **同じ意味から実現先へ** | Ruleの型付き意味とSource位置から、Interpret／Generate／Delegateの選択と実読取を確認する | 表示Symbol変更は許容し、同じ結果でも別Attribute読取・別Provider／Builder実起動を検出。選択・実消費・実観測を分離する |
+
+この表は新しいOperation API、UI専用StateMachine、Test DSL、Trace Storeの採用を求めない。最初の製品コード差分は**read-onlyの「対象から原文へ」**に絞り、既存のInspect／Source Index／Source Location Presenter／Editorを接続する。保存と逆編集は既存Source Ownerが実byteの条件付き更新を提供した範囲で段階的に追加する。
+
+### 19.3 独立Expectedと製品画面の検収を分ける
+
+最初の検証Packetは、実Rule Markdown一件と、同名異Kind・非TEIのFence・別Workspace、元Sourceの一文字変更、UTF-8文字を含む原文、CRLF原文を用意する。CLI・Operation・Studio Hostの照合結果を基準に、実Wails WebView2のInspector→Source位置表示→EditorのCaretへの受領を**同じSource Revisionと実Asset**で確認する。EditorにSource Openが未実装なら、その工程を未実施と記録し、単なるInspector表示を往復のPASSにしない。
+
+追加でFocus／Pinの後着とBuffer未保存、RuleのGenerate／Interpretで**結果は同じだが実際の読取先が異なる**負例、Builder Bを選択して実ファイルAを起動する負例を、既存#1180／#2514の独立Expectedに接続する。試験で使うFunction名、Canvas座標、CSS classを意味IDへ昇格させない。情報の開示可否はHostが現在判断し、非公開のSource・件数・失敗詳細をDOM／ARIA／AIへ漏らさない。
+
+### 19.4 実装の引渡しと停止線
+
+最小の実装・検収順は次のとおりとする。
+
+1. **read-only縦断**：#1158／#1824／#4515がCLI・Hostの既存同値を足場にInspector→一意Source位置→Editorの実受領を実装する。#1180／#2514で負例を固定する。
+2. **保存・再資格化**：#1529／#1124／Source Ownerが一SourceのBuffer、CAS、再Load、Meaning受理を区別する。複数Window／Worktreeの競合とSource A→B→Aを含める。
+3. **表現型の拡張**：#2497／#951／#1223で同じSubjectを表・Graph／Node・Plugin Portに投影し、Whole／Field／Adapterの型付きMappingと情報損失をread-onlyで確認する。
+4. **独立した製品P0**：#2831／#4583が非Plugin Studio BuildのD1→D5を、#2586／#4495が通常CLI→実Provider→独立Consumerを進める。上記UI作業をどちらの新しい先行Hard Gateにも設定しない。
+
+Web Components／Lit、Go／WASM、子Backend、Updaterは既存TypeScript／Wails基線の実測で明確な利益が出たときだけ別途採用する。本§19は既存契約と現行mainの実装到達点を結ぶ計画であり、新規製品E2E／Ownerの業務受理を実施したものではない。
