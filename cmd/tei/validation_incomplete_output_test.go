@@ -33,11 +33,15 @@ func TestTextOutputSaysTheRunIsIncomplete(t *testing.T) {
 	if !strings.Contains(out.String(), "VALIDATION_INCOMPLETE") {
 		t.Fatalf("text output does not say the run is incomplete: %q", out.String())
 	}
-	if !strings.Contains(out.String(), "were not examined") {
-		t.Errorf("text output does not say other files were unexamined: %q", out.String())
+	// Collection reports every independent file, so the text form must name
+	// both. Claiming the others "were not examined" would now be false (#5277).
+	for _, path := range []string{"applications/a/application.tei", "applications/b/application.tei"} {
+		if !strings.Contains(out.String(), path) {
+			t.Errorf("text output does not name %s: %q", path, out.String())
+		}
 	}
-	if !strings.Contains(out.String(), "applications/a/application.tei") {
-		t.Errorf("text output does not name the file it stopped at: %q", out.String())
+	if !strings.Contains(out.String(), "意味検証は実行していません") {
+		t.Errorf("text output does not say semantic validation was not run: %q", out.String())
 	}
 }
 

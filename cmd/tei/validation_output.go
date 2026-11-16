@@ -15,7 +15,21 @@ func validateWorkspace(out io.Writer, root string) (int, error) {
 		return 2, err
 	}
 	if result.Direct != nil {
+		// Every independent syntax finding is printed, not only the first. The
+		// JSON form already reports all of them; the text form reported one and
+		// made the others look like files that had no problem (#5277).
 		printSourceDiagnostic(out, *result.Direct)
+		for _, direct := range result.AdditionalDirect {
+			printSourceDiagnostic(out, direct)
+		}
+		if result.InspectionIncomplete {
+			// The machine-readable marker and the sentence a reader needs. The
+			// two forms are asserted by different tests, so both are printed.
+			fmt.Fprintf(out, "%s\t%s\t%s\n",
+				"note", "VALIDATION_INCOMPLETE",
+				"構文検査の網羅は未確認です。意味検証は実行していません。")
+			return 1, nil
+		}
 		// The run stopped at this file, so every other file is unexamined. The
 		// JSON form already says so with `incomplete`; without this line the text
 		// form reads as "there is one problem" (#4178).
