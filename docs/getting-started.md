@@ -198,7 +198,7 @@ go run ./cmd/tei model catalog -workspace reference/workspace -namespace sales
 go run ./cmd/tei model locate -workspace reference/workspace -subject-kind semantic-data -subject-id sales.order
 ```
 
-`model locate`の結果には、その要素と配下全体の要注意の件数`attention`も入ります（`model overview`と同じ数え方です）。
+`model locate`の結果には、その要素と配下全体の要注意の件数`attention`も入ります（`model overview`と同じ数え方です）。`result.snapshotFingerprint`は`worldFingerprint`と`sourceIndexFingerprint`を1つにまとめた値で、`inspect`・`model overview`と同じWorkspaceなら同じ値を返します。もう一度読むときに`-expected-fingerprint`へ渡せます。渡した値と一致しない場合は`error.code=STALE_SNAPSHOT`・終了コード2で答えます。
 
 モデル全体の目次と、どこに問題があるかを先に見るには、`model overview`を使います（2026-11-10から）。最上位の要素（意味名前空間、Application、Query）を区画として並べ、区画ごとに次を返します。
 
@@ -210,6 +210,8 @@ go run ./cmd/tei model locate -workspace reference/workspace -subject-kind seman
 ```bash
 go run ./cmd/tei model overview -workspace reference/workspace
 ```
+
+`result.snapshotFingerprint`は`inspect`・`model locate`と同じWorkspaceなら同じ値を返すので、コマンドをまたいで2回読んだときに`-expected-fingerprint`へ渡せます。渡した値と一致しない場合は`error.code=STALE_SNAPSHOT`・終了コード2で答えます。これは2回の読み取りの間に入力元が変わっていないことを示すだけであり、変更の受理や書込みの許可ではありません。
 
 正規化された業務モデルから特定の要素だけを確認するには、`inspect`を使います。現在対応するのは`semantic`、`semantic-type`、`semantic-data`、`semantic-attribute`、`semantic-relation`、`semantic-candidate-key`、`semantic-functional-dependency`、`semantic-capability`、`semantic-validation`、`application`、`application-pattern`、`query`の12種類です。対象の種類と正本の識別子を、完全一致で指定します。
 
