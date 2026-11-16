@@ -199,7 +199,10 @@ func main() {
 	traceMode := newSetStringFlag(fs, "mode", modelref.TraceDefaultMode, "trace summary or full")
 	traceOffset := fs.Int("offset", 0, "explicit full trace result offset")
 	traceLimit := fs.Int("limit", 0, "explicit full trace page size; 0 returns all rows")
-	traceExpectedFingerprint := newSetStringFlag(fs, "expected-fingerprint", "", "expected typed trace snapshot fingerprint for continued pages")
+	// One shared FlagSet serves every command, so `-expected-fingerprint` is
+	// registered once and read by two: trace continues a page with it, inspect
+	// uses it as a precondition on the Workspace it is about to read.
+	expectedFingerprint := newSetStringFlag(fs, "expected-fingerprint", "", "expected snapshot fingerprint; trace continues a page, inspect fails when the World or Source Index changed")
 	expectedDataDesignFingerprint := fs.String("expected-data-design-fingerprint", "", "expected Data Design Context fingerprint; knowledge-context fails on mismatch")
 	dataDesignCandidateKind := fs.String("data-design-candidate-kind", "", "Data Design candidate kind: business-identity|functional-dependency")
 	dataDesignCandidateFingerprint := fs.String("data-design-candidate-fingerprint", "", "current Data Design candidate fingerprint")
@@ -463,7 +466,7 @@ func main() {
 		// the caller did not ask for (#3605).
 		if traceDirection.set && traceDirection.value == "" ||
 			traceMode.set && traceMode.value == "" ||
-			traceExpectedFingerprint.set && traceExpectedFingerprint.value == "" {
+			expectedFingerprint.set && expectedFingerprint.value == "" {
 			report := cliTraceReport{SchemaVersion: "tei.cli.trace/v0",
 				Error: &cliInspectionFailure{Code: "INVALID_ARGUMENT",
 					Message: "trace -direction, -mode and -expected-fingerprint must not be empty when supplied"}}
@@ -476,7 +479,7 @@ func main() {
 		code, err := traceWorkspaceJSON(
 			os.Stdout, *workspacePath, *worldPath, *traceScope,
 			*subjectKind, *subjectID, traceDirection.value, traceMode.value,
-			traceExpectedFingerprint.value, *traceOffset, *traceLimit, fs.NArg(),
+			expectedFingerprint.value, *traceOffset, *traceLimit, fs.NArg(),
 		)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -487,7 +490,8 @@ func main() {
 		return
 	}
 	if command == "inspect" {
-		code, err := inspectWorkspaceJSONSelected(os.Stdout, *workspacePath, *worldPath, *subjectKind, *subjectID, fs.NArg())
+		code, err := inspectWorkspaceJSONSelected(os.Stdout, *workspacePath, *worldPath,
+			*subjectKind, *subjectID, expectedFingerprint.value, fs.NArg())
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		}

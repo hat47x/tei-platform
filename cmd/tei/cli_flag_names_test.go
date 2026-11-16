@@ -95,8 +95,8 @@ func TestAdvertisedFlagNamesAreTheAcceptedSet(t *testing.T) {
 func TestSelfParsedFlagNames(t *testing.T) {
 	want := map[string]struct{ required, optional []string }{
 		"model catalog":            {[]string{"workspace"}, []string{"namespace"}},
-		"model locate":             {[]string{"workspace", "subject-kind", "subject-id"}, []string{"limit"}},
-		"model overview":           {[]string{"workspace"}, []string{"limit"}},
+		"model locate":             {[]string{"workspace", "subject-kind", "subject-id"}, []string{"limit", "expected-fingerprint"}},
+		"model overview":           {[]string{"workspace"}, []string{"limit", "expected-fingerprint"}},
 		"model document-draft":     {[]string{"workspace", "subject-kind", "subject-id"}, []string{"relation-id", "title", "document-kind", "application", "frozen", "section", "model"}},
 		"model document-reconcile": {[]string{"workspace", "draft"}, nil},
 		"three-element":            {nil, nil},

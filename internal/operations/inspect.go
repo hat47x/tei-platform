@@ -20,6 +20,11 @@ const (
 	InspectionUnsupportedKind = "UNSUPPORTED_SUBJECT_KIND"
 	InspectionNotFound        = "SUBJECT_NOT_FOUND"
 	InspectionAmbiguous       = "SUBJECT_AMBIGUOUS"
+	// InspectionStaleSnapshot is the code for a caller-supplied snapshot
+	// fingerprint that this read does not reproduce. It is the same code trace
+	// uses, so a caller that holds either token reads one value for "the
+	// Workspace changed under me".
+	InspectionStaleSnapshot = "STALE_SNAPSHOT"
 )
 
 type InspectionError struct {
@@ -33,13 +38,18 @@ func (e *InspectionError) Error() string { return e.Message }
 // Subject from the normalized World, with Source Index evidence. Its World
 // fingerprint is descriptive, not a revision token or an acceptance grant.
 type SubjectInspection struct {
-	SchemaVersion          string              `json:"schemaVersion"`
-	Effect                 string              `json:"effect"`
-	Subject                sourceindex.Subject `json:"subject"`
-	Canonical              json.RawMessage     `json:"canonical"`
-	WorldFingerprint       string              `json:"worldFingerprint"`
-	SourceIndexFingerprint string              `json:"sourceIndexFingerprint"`
-	SourceStatus           string              `json:"sourceStatus"`
+	SchemaVersion string              `json:"schemaVersion"`
+	Effect        string              `json:"effect"`
+	Subject       sourceindex.Subject `json:"subject"`
+	Canonical     json.RawMessage     `json:"canonical"`
+	// SnapshotFingerprint binds WorldFingerprint and SourceIndexFingerprint to
+	// one value a caller can hand back through InspectOptions.ExpectedFingerprint.
+	// The two halves answer different questions, so a caller comparing only one
+	// of them cannot tell a source move from an edit; this token covers both.
+	SnapshotFingerprint    string `json:"snapshotFingerprint"`
+	WorldFingerprint       string `json:"worldFingerprint"`
+	SourceIndexFingerprint string `json:"sourceIndexFingerprint"`
+	SourceStatus           string `json:"sourceStatus"`
 	// Workspace names the Workspace this inspection was read from (#3181). The
 	// same Canonical ID may exist in several Workspaces with different meaning,
 	// and worldFingerprint identifies content, not the Workspace.
@@ -67,10 +77,41 @@ func InspectionAuthorityLimits() []string {
 	}
 }
 
+// InspectOptions carries the caller's preconditions for one inspection.
+type InspectOptions struct {
+	// ExpectedFingerprint is a snapshot fingerprint an earlier inspection of
+	// this subject returned. A nonempty value that this read does not reproduce
+	// fails with STALE_SNAPSHOT instead of answering: the caller cannot
+	// otherwise tell whether two reads of one subject saw the same Workspace.
+	// An empty value performs no check.
+	ExpectedFingerprint string
+}
+
 // InspectSubject reads one Workspace, then projects its already-normalized World
 // and Source Index. It must not infer a subject from a source path or synthesize
 // canonical meaning from a Source Index reference.
 func InspectSubject(root string, subject sourceindex.Subject) (SubjectInspection, error) {
+	return InspectSubjectWithOptions(root, subject, InspectOptions{})
+}
+
+// InspectSubjectWithOptions is InspectSubject with the caller's preconditions
+// applied. The subject is resolved before any precondition is judged, so a
+// missing subject stays SUBJECT_NOT_FOUND rather than being reported as a stale
+// snapshot, and the fingerprints the comparison needs exist by then.
+func InspectSubjectWithOptions(root string, subject sourceindex.Subject, options InspectOptions) (SubjectInspection, error) {
+	inspection, err := inspectSubject(root, subject)
+	if err != nil {
+		return SubjectInspection{}, err
+	}
+	if err := CheckInspectionSnapshot(
+		inspection.WorldFingerprint, inspection.SourceIndexFingerprint, options.ExpectedFingerprint,
+	); err != nil {
+		return SubjectInspection{}, err
+	}
+	return inspection, nil
+}
+
+func inspectSubject(root string, subject sourceindex.Subject) (SubjectInspection, error) {
 	if subject.Kind == "" || subject.ID == "" ||
 		subject.Kind != strings.TrimSpace(subject.Kind) ||
 		subject.ID != strings.TrimSpace(subject.ID) {
