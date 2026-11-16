@@ -1,0 +1,15 @@
+While verifying, internal/workspace would not build its tests at all:
+
+  imports tei/internal/workspace from inspect.go: import cycle not allowed in test
+  FAIL tei/internal/workspace [setup failed]
+
+Cause: internal/workspace/source_read_repro_test.go was `package workspace`
+(internal test) and imported internal/operations, which imports internal/workspace.
+
+One file blocked 101 test files. Its body had no assertions - only fmt.Printf:
+it was a debugging scratchpad.
+
+Fix: move it to `package workspace_test` and qualify workspace.ReadSource.
+Result: `go test ./internal/workspace` -> ok.
+
+Present on plain main (dcb076699) too.

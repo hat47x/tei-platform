@@ -1,0 +1,12 @@
+M1 remove the guidance sentence
+   -> FAIL the message does not say how to select a language
+          the message omits the available language "tei.rule-authoring/v0"
+          the message omits the available language "tei.authoring/v1"
+M2 put the repro test back in `package workspace`
+   -> imports tei/internal/workspace from source_read_repro_test.go:
+      import cycle not allowed in test
+
+M2 shows the cycle fix is load-bearing, not cosmetic.
+
+M1 first produced no output because my edit did not apply cleanly; rebuilt it and
+captured the failure with -v.

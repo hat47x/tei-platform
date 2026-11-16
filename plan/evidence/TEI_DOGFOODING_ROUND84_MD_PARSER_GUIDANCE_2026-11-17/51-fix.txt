@@ -1,0 +1,6 @@
+admitTEIMarkdownSources now receives the available providers and the message names
+both what was selected and what could be selected, matching the sibling diagnostic
+TEI_LANGUAGE_UNAVAILABLE which already printed "(available: %s)".
+
+  Select one of tei.authoring/v1, tei.rule-authoring/v0 by adding a 'languages:'
+  entry to tei.workspace.yaml (for example "tei.authoring/v1")
