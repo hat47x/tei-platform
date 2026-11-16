@@ -142,6 +142,16 @@ func main() {
 		}
 		return
 	}
+	if command == "business-procedure" {
+		code, err := runBusinessProcedureCommand(os.Args[2:], os.Stdout)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		if code != 0 {
+			os.Exit(code)
+		}
+		return
+	}
 	if command == "external-candidates" {
 		code, err := runExternalCandidatesCommand(os.Args[2:], os.Stdout)
 		if err != nil {

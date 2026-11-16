@@ -103,6 +103,7 @@ func commandCatalog() cliCommandCatalog {
 		{Name: "knowledge-review-disclose", Effect: "read-only", Required: []string{"-workspace", "-subject-kind", "-subject-id", "-review-handoff"}, Optional: []string{"-expected-review-handoff-fingerprint", "-expected-disclosure-fingerprint"}, Output: "json", SchemaVersion: "tei.cli.knowledge-review-disclose/v0", JSONContract: "enveloped", Modes: []string{"disclosure"}},
 		{Name: "knowledge-data-design-candidate-review", Effect: "read-only", Required: []string{"-workspace", "-subject-kind", "-subject-id", "-data-design-candidate-kind", "-data-design-candidate-fingerprint"}, Optional: []string{"-expected-data-design-fingerprint", "-expected-data-design-candidate-evidence-requirement-fingerprint", "-expected-data-design-candidate-review-fingerprint"}, Output: "json", SchemaVersion: "tei.cli.knowledge-data-design-candidate-review/v0", JSONContract: "enveloped", Modes: []string{"review"}, ArgumentValues: valueSets("knowledge-data-design-candidate-review"), ArgumentType: valueTypes("knowledge-data-design-candidate-review")},
 		{Name: "three-element", Effect: "read-only", Required: []string{"a subcommand: validate|crud|cross-reference|diff|rea-intake|rea-candidates|rea-compare"}, Optional: []string{"flags are specific to each subcommand; consult its help"}, Output: "json", SchemaVersion: "tei.cli.three-element/v0", JSONContract: "enveloped"},
+		{Name: "business-procedure", Effect: "read-only", Required: []string{"-workspace", "-procedure"}, Output: "json; one-level business procedure projected read-only; every Function reference resolves to one declared target and its Source, or is reported unresolved", SchemaVersion: "tei.cli.business-procedure/v0", JSONContract: "enveloped"},
 		{Name: "validate", Effect: "read-only", Required: []string{"exactly one of -workspace or -world"}, Optional: []string{"-json"}, Output: "text; json when -workspace -json", SchemaVersion: "tei.cli.validate/v0", JSONContract: "enveloped"},
 		{Name: "world", Effect: "read-only", Required: []string{"exactly one of -workspace or -world"}, Output: "json", JSONContract: "raw"},
 		{Name: "requirements", Effect: "read-only", Required: []string{"exactly one of -workspace or -world"}, Output: "json", SchemaVersion: "tei.cli.requirements/v0", JSONContract: "enveloped", ResultShape: "array"},
@@ -130,6 +131,7 @@ var selfParsedFlagNames = map[string]struct {
 	// The parent command dispatches to per-subcommand parsers before the shared
 	// FlagSet exists. It has no global flag grammar; see each subcommand's help.
 	"three-element":            {nil, nil},
+	"business-procedure":       {[]string{"workspace", "procedure"}, nil},
 	"external-candidates":      {[]string{"evidence-path", "tool-version", "observation-id", "relation-id"}, []string{"expected-evidence-id", "expected-received-digest", "expected-source-revision"}},
 	"model catalog":            {[]string{"workspace"}, []string{"namespace"}},
 	"model locate":             {[]string{"workspace", "subject-kind", "subject-id"}, []string{"limit", "expected-fingerprint"}},
