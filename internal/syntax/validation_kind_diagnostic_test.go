@@ -46,6 +46,10 @@ func TestKnownValidationKindIsAccepted(t *testing.T) {
 		semantic.ValidationOperator:       "    attribute probe.thing.id\n",
 		semantic.ValidationNotAfter:       "    attribute probe.thing.starts_on\n",
 		semantic.ValidationNoOverlap:      "    attribute probe.thing.starts_on\n",
+		// The older body grammar has no place for the trigger attribute, so
+		// this kind parses but the validator refuses it as incomplete. The
+		// rule authoring surface is where it can be written.
+		semantic.ValidationRequiredIf: "    attribute probe.thing.reason\n",
 	}
 
 	for _, kind := range semantic.ValidationKinds {

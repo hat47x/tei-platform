@@ -83,6 +83,24 @@ type StatefulDateSource interface {
 	ReadDate(attribute core.CanonicalID) (DateReading, error)
 }
 
+// PresenceReading is what a reader knows about whether one attribute of one
+// record holds a value.
+//
+// It is deliberately not a typed value: a rule about presence is decided by
+// whether a value is there, whatever its type. State carries the same three
+// meanings as ValueState, so "the record holds no value" and "the attribute
+// was not read" stay apart.
+type PresenceReading struct {
+	State ValueState
+}
+
+// StatefulPresenceSource is implemented by a reader that can read whether an
+// attribute holds a value. A rule about presence is refused by a reader that
+// cannot; it is not decided from a value of another type.
+type StatefulPresenceSource interface {
+	ReadPresence(attribute core.CanonicalID) (PresenceReading, error)
+}
+
 // UndecidedReason names why a rule could not be decided.
 type UndecidedReason string
 
@@ -224,6 +242,9 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 	case rule.Kind == semantic.ValidationNoOverlap:
 		return decideNoOverlap(rule, source)
 
+	case rule.Kind == semantic.ValidationRequiredIf:
+		return decideRequiredIf(rule, source)
+
 	case rule.Kind == semantic.ValidationOperator && withOperators:
 		implementation, err := selectOperatorImplementation(rule, operators)
 		if err != nil {
@@ -326,6 +347,74 @@ func readDate(rule semantic.Validation, source StatefulDateSource, attribute cor
 		return DateReading{}, fmt.Errorf("semantic validation %s: the reader reports attribute %s in the unknown state %q", rule.ID, attribute, reading.State)
 	}
 	return reading, nil
+}
+
+// readPresence reads whether one attribute holds a value and refuses a
+// reading that contradicts itself.
+func readPresence(rule semantic.Validation, source StatefulPresenceSource, attribute core.CanonicalID) (PresenceReading, error) {
+	reading, err := source.ReadPresence(attribute)
+	if err != nil {
+		return PresenceReading{}, fmt.Errorf("semantic validation %s cannot read attribute %s: %w", rule.ID, attribute, err)
+	}
+	switch reading.State {
+	case ValuePresent, ValueNull, ValueNotFetched:
+		return reading, nil
+	default:
+		return PresenceReading{}, fmt.Errorf("semantic validation %s: the reader reports attribute %s in the unknown state %q", rule.ID, attribute, reading.State)
+	}
+}
+
+// decideRequiredIf decides "Attribute holds a value whenever Compared does".
+//
+// The rule constrains presence, not the value: any value of Attribute
+// satisfies it, including zero and an empty string. It speaks only about
+// records that have Compared, so a record without one satisfies it whatever
+// Attribute holds. Whether Attribute is required in every record is the
+// attribute definition's business and is not inferred here.
+//
+// Both presence values are read before the rule is decided, so an unread part
+// is never turned into a settled answer and a value the caller supplied is
+// never left unread. The rule is decided only when the answer is the same
+// whatever was not read; otherwise it is undecided, and what reading more
+// could settle is reported before what it could not.
+func decideRequiredIf(rule semantic.Validation, source StatefulSource) (Decision, error) {
+	presence, readsPresence := source.(StatefulPresenceSource)
+	if !readsPresence {
+		return Decision{}, fmt.Errorf("semantic validation %s is about presence, which this reader cannot read", rule.ID)
+	}
+	if rule.Compared == "" {
+		return Decision{}, fmt.Errorf("semantic validation %s names no attribute that makes %s required", rule.ID, rule.Attribute)
+	}
+	trigger, err := readPresence(rule, presence, rule.Compared)
+	if err != nil {
+		return Decision{}, err
+	}
+	required, err := readPresence(rule, presence, rule.Attribute)
+	if err != nil {
+		return Decision{}, err
+	}
+
+	// A record with a value for Attribute satisfies the rule whatever the
+	// trigger turns out to be: no trigger value and a value are both fine.
+	if required.State == ValuePresent {
+		return decided(ResultSatisfied)
+	}
+	// A trigger the rule does not speak about satisfies it whatever Attribute
+	// holds, including a value that was not read.
+	if trigger.State == ValueNull {
+		return decided(ResultSatisfied)
+	}
+	// The trigger speaks about this record and Attribute holds nothing: the
+	// business rejection the rule states, settled even if the trigger was not
+	// read, because either way the rule applies.
+	if trigger.State == ValuePresent && required.State == ValueNull {
+		return decided(ResultNotSatisfied)
+	}
+	// What reading more could settle is reported before what it could not.
+	if trigger.State == ValueNotFetched {
+		return Decision{Undecided: &Undecided{Reason: UndecidedValueNotFetched, Attribute: rule.Compared}}, nil
+	}
+	return Decision{Undecided: &Undecided{Reason: UndecidedValueNotFetched, Attribute: rule.Attribute}}, nil
 }
 
 // decideNotAfter decides "the date of Attribute is not after the date of

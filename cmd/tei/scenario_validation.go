@@ -17,6 +17,7 @@ type scenarioValidationSource struct {
 	dateReads     map[string]bool
 	numberReads   map[string]bool
 	relationReads map[string]bool
+	presenceReads map[string]bool
 }
 
 // The Fixture says for each input whether a value is there and, if not, why.
@@ -77,6 +78,29 @@ func (s *scenarioValidationSource) ReadDate(attribute core.CanonicalID) (validat
 		return validationeval.DateReading{}, fmt.Errorf("invalid Validation date Attribute %s: %w", id, err)
 	}
 	return validationeval.DateReading{State: validationeval.ValuePresent, Value: date}, nil
+}
+
+// ReadPresence reports whether an Attribute holds a value. The Fixture states
+// it directly in presenceStates; a typed value or typed state is not turned
+// into presence here, because a rule about presence and a rule about a number
+// are different read demands and an unused input must stay visible.
+func (s *scenarioValidationSource) ReadPresence(attribute core.CanonicalID) (validationeval.PresenceReading, error) {
+	id := string(attribute)
+	state, stated := s.fixture.PresenceStates[id]
+	if !stated {
+		return validationeval.PresenceReading{}, fmt.Errorf("missing Validation presence state for Attribute %s", id)
+	}
+	s.presenceReads[id] = true
+	switch state {
+	case scenariotest.ValidationStatePresent:
+		return validationeval.PresenceReading{State: validationeval.ValuePresent}, nil
+	case scenariotest.ValidationStateNull:
+		return validationeval.PresenceReading{State: validationeval.ValueNull}, nil
+	case scenariotest.ValidationStateNotFetched:
+		return validationeval.PresenceReading{State: validationeval.ValueNotFetched}, nil
+	default:
+		return validationeval.PresenceReading{}, fmt.Errorf("invalid presence state %q of Validation Attribute %s", state, id)
+	}
 }
 
 func (s *scenarioValidationSource) ReadRelationKeys(relation, attribute core.CanonicalID) (validationeval.RelationReading, error) {
@@ -179,7 +203,7 @@ func runScenarioValidations(resolver driver.Resolver, appID core.CanonicalID, st
 	if len(rules) != len(step.ExpectValidations) {
 		return nil, fmt.Errorf("Scenario expects %d Validations but Application declares %d", len(step.ExpectValidations), len(rules))
 	}
-	source := &scenarioValidationSource{fixture: fixture, dateReads: map[string]bool{}, numberReads: map[string]bool{}, relationReads: map[string]bool{}}
+	source := &scenarioValidationSource{fixture: fixture, dateReads: map[string]bool{}, numberReads: map[string]bool{}, relationReads: map[string]bool{}, presenceReads: map[string]bool{}}
 	results := make(map[string]string, len(rules))
 	for _, rule := range rules {
 		expected, ok := step.ExpectValidations[string(rule.ID)]
@@ -200,6 +224,9 @@ func runScenarioValidations(resolver driver.Resolver, appID core.CanonicalID, st
 	}
 	if len(source.dateReads) != len(fixture.Dates)+len(fixture.DateStates) {
 		return nil, fmt.Errorf("Validation Fixture has unused date inputs")
+	}
+	if len(source.presenceReads) != len(fixture.PresenceStates) {
+		return nil, fmt.Errorf("Validation Fixture has unused presence inputs")
 	}
 	return results, nil
 }
