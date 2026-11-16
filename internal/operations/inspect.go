@@ -119,7 +119,7 @@ func inspectSubject(root string, subject sourceindex.Subject) (SubjectInspection
 			Code: InspectionInvalidSubject, Message: "subject kind and id must be nonempty exact identities",
 		}
 	}
-	if !supportedInspectionKind(subject.Kind) {
+	if !SupportedInspectionKind(subject.Kind) {
 		return SubjectInspection{}, &InspectionError{
 			Code: InspectionUnsupportedKind, Message: fmt.Sprintf("inspect does not support subject kind %q", subject.Kind),
 		}
@@ -168,7 +168,11 @@ var InspectionSubjectKinds = []string{
 	"persistence-mapping",
 }
 
-func supportedInspectionKind(kind string) bool {
+// SupportedInspectionKind reports whether kind is one of the kinds this
+// read-only surface resolves. The CLI advertises the same set through
+// InspectionSubjectKinds and validates against it here, so the advertised
+// values and the accepted ones cannot drift.
+func SupportedInspectionKind(kind string) bool {
 	for _, supported := range InspectionSubjectKinds {
 		if kind == supported {
 			return true

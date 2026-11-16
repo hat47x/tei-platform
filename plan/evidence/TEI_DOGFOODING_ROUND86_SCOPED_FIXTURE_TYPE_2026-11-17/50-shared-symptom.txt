@@ -1,0 +1,16 @@
+Three failures, one message:
+
+  scoped query execution unavailable
+
+scoped_driver_bridge.go deliberately flattens provider errors:
+
+  default:
+      return PublishedReadResult{}, ErrScopedQueryUnavailable
+
+That is correct for a public boundary (provider strings must not escape) but it
+hides the cause from a test. I instrumented it temporarily:
+
+  DIAGNOSIS Query order_entry.recent_orders input from requires std.datetime (time.Time)
+  DIAGNOSIS Query order_entry.recent_orders requires input from
+
+and restored the file immediately.

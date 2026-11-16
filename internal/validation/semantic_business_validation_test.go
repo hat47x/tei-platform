@@ -149,3 +149,85 @@ func assertSemanticValidationSubject(t *testing.T, diagnostic *Diagnostic, id co
 		t.Fatalf("Diagnostic Subjectが期待値と異なります: %#v", diagnostic.Subject)
 	}
 }
+
+// The no-overlap rules decide a period, so their grouping and their date types are
+// checked. Each refusal below is reachable, and pinning the code keeps a renamed
+// or dropped check visible (#4032).
+func TestValidateSemanticNoOverlapRefusalsNameTheirCodes(t *testing.T) {
+	cases := []struct {
+		name string
+		code string
+		edit func(*ir.World)
+	}{
+		{
+			name: "grouping on a rule that is not about periods",
+			code: "SEMANTIC_VALIDATION_PERIOD_GROUPING_NOT_ALLOWED",
+			edit: func(w *ir.World) {
+				w.Semantics[1].Validations[0].GroupBy = "sales.order_line.item_code"
+			},
+		},
+		{
+			name: "group by an attribute that does not exist",
+			code: "UNKNOWN_SEMANTIC_VALIDATION_GROUP_ATTRIBUTE",
+			edit: func(w *ir.World) {
+				w.Semantics[1].Validations = append(w.Semantics[1].Validations, semantic.Validation{
+					ID: "sales.order_line.period_overlap", Symbol: "period_overlap",
+					Kind:      semantic.ValidationNoOverlap,
+					Attribute: "sales.order_line.valid_from", Compared: "sales.order_line.valid_to",
+					Relation: "sales.order.lines", GroupBy: "sales.order_line.missing",
+				})
+				addNoOverlapAttributes(w)
+			},
+		},
+		{
+			name: "the same attribute starts and ends the period",
+			code: "SEMANTIC_VALIDATION_NO_OVERLAP_SAME_ATTRIBUTE",
+			edit: func(w *ir.World) {
+				w.Semantics[1].Validations = append(w.Semantics[1].Validations, semantic.Validation{
+					ID: "sales.order_line.period_overlap", Symbol: "period_overlap",
+					Kind:      semantic.ValidationNoOverlap,
+					Attribute: "sales.order_line.valid_from", Compared: "sales.order_line.valid_from",
+					Relation: "sales.order.lines",
+				})
+				addNoOverlapAttributes(w)
+			},
+		},
+		{
+			name: "a period that is not made of calendar dates",
+			code: "SEMANTIC_VALIDATION_NO_OVERLAP_REQUIRES_DATE_ATTRIBUTES",
+			edit: func(w *ir.World) {
+				w.Semantics[1].Validations = append(w.Semantics[1].Validations, semantic.Validation{
+					ID: "sales.order_line.period_overlap", Symbol: "period_overlap",
+					Kind:      semantic.ValidationNoOverlap,
+					Attribute: "sales.order_line.quantity", Compared: "sales.order_line.item_code",
+					Relation: "sales.order.lines",
+				})
+			},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			w := validSemanticBusinessValidationWorld()
+			c.edit(&w)
+			d := semanticValidationDiagnosticByCode(validateSemanticBusinessValidations(w), c.code)
+			if d == nil {
+				t.Fatalf("%s was not reported", c.code)
+			}
+			if d.Subject == nil || d.Subject.Kind != "semantic-validation" ||
+				d.Subject.ID != "sales.order_line.period_overlap" && d.Subject.ID != "sales.order_line.quantity_positive" {
+				t.Fatalf("%s subject = %#v", c.code, d.Subject)
+			}
+		})
+	}
+}
+
+// addNoOverlapAttributes gives the world the calendar-date attributes a no-overlap
+// rule reads, so the cases above reach the check they name.
+func addNoOverlapAttributes(w *ir.World) {
+	w.Semantics[0].Types = append(w.Semantics[0].Types,
+		semantic.Type{ID: "std.date", Symbol: "date", Kind: semantic.TypePrimitive})
+	w.Semantics[1].Data[1].Attributes = append(w.Semantics[1].Data[1].Attributes,
+		semantic.Attribute{ID: "sales.order_line.valid_from", Symbol: "validFrom", TypeRef: "std.date"},
+		semantic.Attribute{ID: "sales.order_line.valid_to", Symbol: "validTo", TypeRef: "std.date"},
+	)
+}

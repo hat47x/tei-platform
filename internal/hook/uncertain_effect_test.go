@@ -147,9 +147,9 @@ func TestRunRowsKeepsUnknownEffectAcrossBothWrappers(t *testing.T) {
 func TestUncertainEffectInsideNotSatisfiedIsNotBusinessOutcome(t *testing.T) {
 	uncertain := command.NewUnknownExecutionError("COMMAND_COMMIT_FAILED", "commit result missing", nil)
 	notSatisfied := &NotSatisfied{
-		Reason: "rule could not confirm the result",
+		Reason:  "rule could not confirm the result",
 		Outcome: OutcomeUnmet,
-		Cause: uncertain,
+		Cause:   uncertain,
 	}
 	err := wrapFailure(notSatisfied, &application.Hook{Phase: "before-update", Failure: "warn"})
 	if err == nil {
@@ -175,9 +175,9 @@ func TestReachableDoesNotReportBusinessOutcomeForUncertainEffect(t *testing.T) {
 	runner := Runner{
 		World: world,
 		Implementation: fakeImplementation{err: &NotSatisfied{
-			Reason: "cannot confirm",
+			Reason:  "cannot confirm",
 			Outcome: OutcomeUnmet,
-			Cause: command.NewUnknownExecutionError("COMMAND_COMMIT_FAILED", "ack missing", nil),
+			Cause:   command.NewUnknownExecutionError("COMMAND_COMMIT_FAILED", "ack missing", nil),
 		}},
 	}
 	report, err := runner.RunReachable(context.Background(), "order_entry",

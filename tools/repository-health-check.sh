@@ -8,14 +8,22 @@ set -uo pipefail
 # 一律の統合条件とはしない（AGENTS.mdとCONTRIBUTING.mdを参照）。
 #
 # Usage:
-#   tools/repository-health-check.sh          # gofmt, go vet, go test, workspace validate
-#   tools/repository-health-check.sh --fast   # skip go test
+#   tools/repository-health-check.sh          # gofmt, go vet, go test, nested modules, workspace validate
+#   tools/repository-health-check.sh --fast   # skip go test, including in nested modules
 #   tools/repository-health-check.sh --fix    # gofmt -w on drifted files first, then check
 #   (--fast and --fix can be combined)
 #
 # It runs every step even if an earlier one fails, prints a summary, and exits 1 if
 # any step failed. Without --fix it never modifies files. The Go environment is fixed
 # the same way the Gate runners fix it (GOENV=off GOWORK=off GOFLAGS=).
+#
+# A nested go.mod is a separate build unit: `go vet ./...` and `go test ./...` from
+# the repository root stop at it, so a module under e.g. plugins/ or cmd/ leaves
+# those steps green without running its own tests. The module-scope step below
+# enumerates nested modules, refuses an undeclared one, and verifies the declared
+# ones. An excluded module must give a reason, which is printed so the exclusion is
+# visible instead of silent (#4612). --fast keeps the declaration comparison, which
+# is what stops a new module from escaping, and drops only the module test runs.
 
 fast=false
 fix=false
@@ -24,7 +32,7 @@ for arg in "$@"; do
     --fast) fast=true ;;
     --fix) fix=true ;;
     -h | --help)
-      sed -n '3,19p' "$0"
+      sed -n '3,27p' "$0"
       exit 0
       ;;
     *)
@@ -93,6 +101,17 @@ run_step "gofmt -l . is empty" gofmt_clean
 run_step "go vet ./..." go vet ./...
 if [[ "$fast" == false ]]; then
   run_step "go test -count=1 -timeout 60m ./..." go test -count=1 -timeout 60m ./...
+fi
+# The root Go steps above stop at a nested go.mod, so this is the only place a
+# nested module is verified in this script. The declaration comparison runs in
+# both modes because it is what keeps a new module from leaving the verification
+# silently; --fast drops only the module test runs, like the root go test step.
+if [[ "$fast" == true ]]; then
+  run_step "nested Go modules are declared" \
+    go run ./tools/repository-module-scope -check-only
+else
+  run_step "nested Go modules are declared and verified" \
+    go run ./tools/repository-module-scope
 fi
 run_step "tei validate -workspace reference/workspace" workspace_valid
 # Requalification is a synthetic decision-table fixture, not a live Source/

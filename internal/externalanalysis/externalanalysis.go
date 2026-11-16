@@ -14,12 +14,12 @@ const receiptSchemaVersion = "tei.externalanalysis.receipt/v0"
 type State string
 
 const (
-	StateComplete    State = "complete"
-	StatePartial     State = "partial"
-	StateFailed      State = "failed"
-	StateMismatch    State = "mismatch"
-	StateMissing     State = "missing"
-	StateToolAbsent  State = "tool-absent"
+	StateComplete   State = "complete"
+	StatePartial    State = "partial"
+	StateFailed     State = "failed"
+	StateMismatch   State = "mismatch"
+	StateMissing    State = "missing"
+	StateToolAbsent State = "tool-absent"
 )
 
 func severity(state State) int {
@@ -42,20 +42,20 @@ func severity(state State) int {
 
 // Receipt is what TEI keeps about one received external analysis.
 type Receipt struct {
-	SchemaVersion string `json:"schemaVersion"`
-	State         State  `json:"state"`
-	Reason        string `json:"reason,omitempty"`
+	SchemaVersion string    `json:"schemaVersion"`
+	State         State     `json:"state"`
+	Reason        string    `json:"reason,omitempty"`
 	Evidence      *Evidence `json:"evidence,omitempty"`
-	Source        *Source `json:"source"`
-	Raw           Raw `json:"raw"`
+	Source        *Source   `json:"source"`
+	Raw           Raw       `json:"raw"`
 	Envelope      *Envelope `json:"envelope,omitempty"`
-	Derived       *Derived `json:"derived,omitempty"`
-	View          *View `json:"view,omitempty"`
-	Failure       *Failure `json:"failure,omitempty"`
-	Tool          Tool `json:"tool"`
-	AcquiredAt    string `json:"acquiredAt"`
+	Derived       *Derived  `json:"derived,omitempty"`
+	View          *View     `json:"view,omitempty"`
+	Failure       *Failure  `json:"failure,omitempty"`
+	Tool          Tool      `json:"tool"`
+	AcquiredAt    string    `json:"acquiredAt"`
 	Promotion     Promotion `json:"promotion"`
-	body []byte
+	body          []byte
 }
 
 // Evidence is the producer's identity for one analysis result.
@@ -79,10 +79,10 @@ type Provider struct {
 
 // Source is the analysis target.
 type Source struct {
-	Subject   string    `json:"subject"`
-	Path      string    `json:"path"`
-	Format    string    `json:"format"`
-	Revision  string    `json:"revision"`
+	Subject   string     `json:"subject"`
+	Path      string     `json:"path"`
+	Format    string     `json:"format"`
+	Revision  string     `json:"revision"`
 	Positions []Position `json:"positions"`
 }
 
@@ -121,21 +121,21 @@ type Derived struct {
 
 // View classifies one saved view delivery.
 type View struct {
-	Encoding      string     `json:"encoding"`
-	Framing       string     `json:"framing"`
-	Records       int        `json:"records"`
-	Control       string     `json:"control,omitempty"`
-	Emitted       int        `json:"emitted"`
-	SourceCount   int        `json:"sourceCount,omitempty"`
-	Collection    []string   `json:"collection"`
-	EvidenceID    string     `json:"evidenceId"`
-	ParentEvidenceID string   `json:"parentEvidenceId,omitempty"`
-	ParentLinked  bool       `json:"parentLinked"`
-	Coverage      *Coverage  `json:"coverage,omitempty"`
-	Limitations   []string   `json:"limitations,omitempty"`
-	Unknowns      []string   `json:"unknowns,omitempty"`
-	Failure       *Failure   `json:"failure,omitempty"`
-	Duplicates    []string   `json:"duplicates,omitempty"`
+	Encoding         string    `json:"encoding"`
+	Framing          string    `json:"framing"`
+	Records          int       `json:"records"`
+	Control          string    `json:"control,omitempty"`
+	Emitted          int       `json:"emitted"`
+	SourceCount      int       `json:"sourceCount,omitempty"`
+	Collection       []string  `json:"collection"`
+	EvidenceID       string    `json:"evidenceId"`
+	ParentEvidenceID string    `json:"parentEvidenceId,omitempty"`
+	ParentLinked     bool      `json:"parentLinked"`
+	Coverage         *Coverage `json:"coverage,omitempty"`
+	Limitations      []string  `json:"limitations,omitempty"`
+	Unknowns         []string  `json:"unknowns,omitempty"`
+	Failure          *Failure  `json:"failure,omitempty"`
+	Duplicates       []string  `json:"duplicates,omitempty"`
 }
 
 // Coverage is the producer's own statement about how much of the selected
@@ -157,9 +157,9 @@ type Failure struct {
 
 // Tool records whether the external tool is present in this environment.
 type Tool struct {
-	Name        string `json:"name"`
-	Version     string `json:"version"`
-	Present     bool   `json:"present"`
+	Name         string `json:"name"`
+	Version      string `json:"version"`
+	Present      bool   `json:"present"`
 	ResolvedPath string `json:"resolvedPath,omitempty"`
 	AbsentReason string `json:"absentReason,omitempty"`
 }

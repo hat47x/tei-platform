@@ -263,8 +263,8 @@ func runThreeElementReaIntake(args []string, out io.Writer) (int, error) {
 }
 
 type observationResult struct {
-	Bindings    []map[string]interface{}
-	Unresolved  []interface{}
+	Bindings   []map[string]interface{}
+	Unresolved []interface{}
 }
 
 func bindObservations(nodes, edges []interface{}, workspaceRoot string, ownerMapping map[string]map[string]string, fixedCandidates []map[string]interface{}) observationResult {
@@ -383,5 +383,3 @@ func bindSource(source, expectedDigest, workspaceRoot string) (string, string, [
 	}
 	return "source-digest-conflict", "unresolved", nil
 }
-
-

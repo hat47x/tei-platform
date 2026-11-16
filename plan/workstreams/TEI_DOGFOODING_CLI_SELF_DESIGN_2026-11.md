@@ -2970,3 +2970,100 @@ FAIL	tei/internal/workspace [setup failed]
 ### 位置付け
 
 **「選択肢があるのに、選び方を言わない」を直した回**である。同時に、**1つの雑なテストファイルが101のテストを沈黙させていた**ことを見つけた。どちらも「動いているように見えるが、実は何も検証していない」という同じ形をしている。
+
+## 86. 第85ラウンド（2026-11-17）: CI の gate が main で赤かった（gofmt 25ファイル）
+
+これまで3ラウンド続けて「テストが走らない」種類の欠陥を直したので、**その種類がもう残っていないかを体系的に確認した。** 生出力は[第85ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND85_GOFMT_GATE_2026-11-17/README.md)にある。
+
+### 体系的確認: その種類はもう無い
+
+```text
+$ go test -run '^$' ./...
+（出力なし）
+failing-to-build entries: 0
+```
+
+**全パッケージのテストがビルドできる。** 第82〜84ラウンドで直した種類は解消済みである。
+
+### その過程で、CI の gate が main で赤いことを発見
+
+CI が実際に走らせているスクリプトを直接実行した。
+
+```text
+$ bash tools/repository-health-check.sh --fast
+FAIL  gofmt -l . is empty
+FAIL  go vet ./...
+```
+
+**`gofmt -l .` が25ファイルで drift（260行、純粋な整形のみ）。** `go vet` は単独で実行すると rc=0 で PASS で、スクリプトの表示は直前の gofmt 失敗に引きずられたもの。**真の失敗は gofmt だけ**だった。
+
+### 修正
+
+25ファイルに `gofmt -w` を適用。
+
+| 対象 | 修正前 | 修正後 |
+| --- | --- | --- |
+| `gofmt -l .` | **25ファイル** | **0** |
+| gate の5ステップ | **2 FAIL** | **5 PASS** |
+
+drift は私の直近のコミットではなく、他の複数のコミットが持ち込んだもの。
+
+### 測り方を間違えて1回やり直した
+
+最初 `go test ./...`（既定 timeout = **10分**）で測り、3パッケージが 600s で FAIL した。**これは CI を再現していない。**
+
+```bash
+go test -count=1 -timeout 60m ./...    # CI が実際に走らせる形
+```
+
+`tools/repository-health-check.sh` の95行目が `-timeout 60m` を指定している。**既定10分のまま測ったのは私の計器の誤り**で、単独では `reference-plugin-self-build` が **596s で PASS** する。**存在しない欠陥を3件報告するところだった。**
+
+### 位置付け
+
+**「CI が見ている当のものを、CI と同じ flags で測る」をやった回**である。測り方を疑って読み直したことで、本当の赤（gofmt 25ファイル）に到達した。
+
+## 87. 第86ラウンド（2026-11-17）: scoped driver の3テストが、宣言と違う型の引数を渡していた
+
+`repository-health` に残る赤のうち3件が同じ `reference/web-api-contract` に集中していたので、**1つの原因かを確かめた。** 生出力は[第86ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND86_SCOPED_FIXTURE_TYPE_2026-11-17/README.md)にある。
+
+### 3件は同じメッセージで落ちていた
+
+```text
+scoped query execution unavailable
+```
+
+`scoped_driver_bridge.go` は**意図的に**プロバイダの文字列を外へ出さない設計で、`default:` でこのエラーに潰している。**設計は正しいが、テストからは原因が見えない。** 一時的に `fmt.Errorf("DIAGNOSIS %w", err)` に差し替えて原因を取り出し（**診断後に即座に戻した**）、**2種類の原因が1つのメッセージに隠れていた**ことを確認した。
+
+### 本当の原因: フィクスチャが宣言と違う型を渡していた
+
+クエリは `input from std.datetime` を宣言し、`query_execution.go` は **`time.Time` 以外を拒否する**。
+
+| テスト | 渡していたもの | 正しい形 |
+| --- | --- | --- |
+| `TestRealDriver...`・`TestScopedProvider...` | 文字列 `"fixture-query-parameter"` | `time.Time` |
+| `TestScopedDriverRejects...` | `nil`（入力ごと欠落） | `time.Time` |
+
+**production コードは正しく、フィクスチャが誤っていた。**
+
+### Top の assert が一度も走っていなかった
+
+`TestScopedDriverRejects...` は **Top 上限の検査**が目的だが、`nil` のままだと**入力検査で先に落ち、Top の assert に到達していなかった。** つまり**このテストは何も検証していなかった。**
+
+### 変異試験
+
+| # | 変えた箇所 | 結果 |
+| --- | --- | --- |
+| M1 | 文字列引数に戻す | FAIL `scoped query execution unavailable`（**元の症状を再現**） |
+| M2 | Top テストの入力を `nil` に戻す | FAIL `Provider exceeded Top but its result escaped`（**元の症状を再現**） |
+
+### 回帰確認
+
+| 対象 | 結果 |
+| --- | --- |
+| `./reference/web-api-contract` | **ok**（修正前は3件 FAIL） |
+| CI gate（`--fast`） | **6ステップすべて PASS** |
+| production コード | **変更なし**（`_test.go` 1ファイルのみ） |
+
+### 位置付け
+
+**「1つのメッセージが2つの原因を隠していた」回**である。3件が同じ文言で落ちていたので同因と見えたが、実際は「型違い」と「入力欠落」の2種類だった。潰す設計は正しいので、**隠れた原因は一時的な計装で取り出してから直した。**

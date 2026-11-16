@@ -1,0 +1,131 @@
+{
+  "note": "The stdio child hung on tools/call. toolCallTimeoutMs 3000 ended the call with 'Request timed out'. With a hang longer than the run the child never logged completion; with a 5s hang it survived the timeout, sent a late reply, and the client then sent notifications/cancelled. So the client cancels the request rather than killing the child.",
+  "overlay": {
+    "transport": "stdio",
+    "serverName": "hangmock",
+    "toolCallTimeoutMs": 3000,
+    "failOnStartupError": false,
+    "args": [
+      "mcp_stdio_hang.py|hang2.py",
+      "<record-dir>",
+      "<hang-seconds>"
+    ]
+  },
+  "runLongHang": {
+    "hangSeconds": 120,
+    "childLoggedCompletion": false,
+    "toolResult": {
+      "callId": "toolu_1",
+      "status": "error",
+      "result": "Error: Request timed out"
+    },
+    "interpretation": "child was gone before the 120s sleep ended (run lasted ~22s)"
+  },
+  "runShortHang": {
+    "hangSeconds": 5,
+    "childSurvivedTimeout": true,
+    "clientSentCancellation": true,
+    "toolResult": {
+      "callId": "toolu_1",
+      "status": "error",
+      "result": "Error: Request timed out"
+    },
+    "log": [
+      {
+        "event": "started",
+        "t": 0.0
+      },
+      {
+        "event": "request",
+        "method": "server/discover",
+        "id": "server-discover-probe-1",
+        "t": 0.0
+      },
+      {
+        "event": "started",
+        "t": 0.0
+      },
+      {
+        "event": "request",
+        "method": "initialize",
+        "id": 0,
+        "t": 0.0
+      },
+      {
+        "event": "request",
+        "method": "notifications/initialized",
+        "id": null,
+        "t": 0.0
+      },
+      {
+        "event": "request",
+        "method": "tools/list",
+        "id": 1,
+        "t": 0.0
+      },
+      {
+        "event": "request",
+        "method": "tools/call",
+        "id": 2,
+        "t": 1.453
+      },
+      {
+        "event": "hanging",
+        "forSeconds": 5.0,
+        "t": 1.469
+      },
+      {
+        "event": "survived-the-timeout",
+        "t": 6.469
+      },
+      {
+        "event": "late-reply-sent",
+        "t": 6.469
+      },
+      {
+        "event": "request",
+        "method": "notifications/cancelled",
+        "id": null,
+        "t": 6.469
+      },
+      {
+        "event": "eof",
+        "t": 6.469
+      }
+    ],
+    "interpretation": "the child was NOT killed at timeout: it woke after 5s, wrote a late reply, and then received notifications/cancelled from the client"
+  },
+  "toolResultText": "Error: Request timed out",
+  "modelRequests": [
+    {
+      "n": 1,
+      "bytes": 104343,
+      "sha256": "a0bf4835014f467f78c990e6f132cf3fb3613d86a7e4c7f41218140da2aa1018",
+      "toolCount": 28,
+      "hasHangTool": true
+    },
+    {
+      "n": 2,
+      "bytes": 59721,
+      "sha256": "7d13ec9288e0bb64300622287bcb52e5ac137c9c7fbc07891d7e9e3fdafe6f18",
+      "toolCount": 0,
+      "hasHangTool": false
+    },
+    {
+      "n": 3,
+      "bytes": 54631,
+      "sha256": "87c0672407408af3792cb6534906a8dfd2da736f5c44cea7f3fcd151e5e057f9",
+      "toolCount": 28,
+      "hasHangTool": true
+    }
+  ],
+  "failureShapes": {
+    "stdioDiesBeforeCall": "Error: unknown tool (UNKNOWN_TOOL)",
+    "stdioDiesDuringCall": "Error: MCP connection closed",
+    "stdioHangsDuringCall": "Error: Request timed out — this record",
+    "httpServerKilled": "Error: fetch failed"
+  },
+  "fourDistinctShapes": true,
+  "cancelProtocolObserved": true,
+  "caveat": "Two hang lengths (120s, 5s) against toolCallTimeoutMs 3000. The late reply arrived after the client had already failed the call, so whether it is ever consumed was not tested. The child in the 120s run was terminated with the run, not necessarily by the client."
+}

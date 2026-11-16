@@ -21,6 +21,7 @@ var emptyStringFlagsNotAllowed = map[string][]string{
 	"model catalog":            {"namespace"},
 	"model locate":             {"workspace", "subject-kind", "subject-id", "expected-fingerprint"},
 	"model overview":           {"workspace", "expected-fingerprint"},
+	"model search":             {"workspace", "term", "kind"},
 	"model document-draft":     {"workspace", "subject-kind", "subject-id", "relation-id", "document-kind", "application"},
 	"model document-reconcile": {"workspace", "draft"},
 	"inspect":                  {"subject-kind"},

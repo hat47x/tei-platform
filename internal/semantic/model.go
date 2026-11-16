@@ -196,6 +196,13 @@ const (
 	// of Compared, both days included. With GroupBy, only rows that share
 	// that attribute's value are compared with each other.
 	ValidationNoOverlap ValidationKind = "no-overlap"
+	// ValidationRequiredIf states that Attribute holds a value whenever the
+	// attribute of Compared holds one. It constrains presence, not the value:
+	// a record whose trigger attribute has no value satisfies the rule
+	// whatever Attribute holds, because the rule speaks only about records
+	// that have the trigger. Whether Attribute is required in every record is
+	// the attribute definition's business, not this rule's.
+	ValidationRequiredIf ValidationKind = "required-if"
 )
 
 // ValidationKinds lists every kind once. Valid() and the diagnostics that quote
@@ -207,6 +214,7 @@ var ValidationKinds = []ValidationKind{
 	ValidationOperator,
 	ValidationNotAfter,
 	ValidationNoOverlap,
+	ValidationRequiredIf,
 }
 
 func (k ValidationKind) Valid() bool {
@@ -254,7 +262,9 @@ type Validation struct {
 	Operator core.CanonicalID `json:"operator,omitempty"`
 	// Compared names a second attribute. For ValidationNotAfter it is the
 	// attribute Attribute is compared with. For ValidationNoOverlap it is
-	// the last day of the period that starts at Attribute.
+	// the last day of the period that starts at Attribute. For
+	// ValidationRequiredIf it is the attribute whose value makes Attribute
+	// required.
 	Compared core.CanonicalID `json:"compared,omitempty"`
 	// IfPresent is set only for ValidationNotAfter. It states that a record
 	// that holds no value for Compared satisfies the rule: the rule speaks

@@ -33,6 +33,9 @@ func runModelCommand(args []string, out io.Writer) (int, error) {
 	if len(args) > 0 && args[0] == "overview" {
 		return runModelOverviewCommand(args[1:], out)
 	}
+	if len(args) > 0 && args[0] == "search" {
+		return runModelSearchCommand(args[1:], out)
+	}
 	if len(args) > 0 && args[0] == "document-draft" {
 		return runModelDocumentDraftCommand(args[1:], out)
 	}
@@ -40,7 +43,7 @@ func runModelCommand(args []string, out io.Writer) (int, error) {
 		return runModelDocumentReconcileCommand(args[1:], out)
 	}
 	if len(args) == 0 || args[0] != "catalog" {
-		return fail("INVALID_ARGUMENT", "model requires the subcommand catalog, locate, overview, document-draft or document-reconcile", 2)
+		return fail("INVALID_ARGUMENT", "model requires the subcommand catalog, locate, overview, search, document-draft or document-reconcile", 2)
 	}
 	fs := flag.NewFlagSet("model catalog", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
@@ -267,6 +270,116 @@ func runModelOverviewCommand(args []string, out io.Writer) (int, error) {
 }
 
 func writeModelOverviewResponse(out io.Writer, response modelOverviewCLIResponse, exit int) (int, error) {
+	encoder := json.NewEncoder(out)
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(response); err != nil {
+		return 2, err
+	}
+	return exit, nil
+}
+
+// modelSearchCLIResponse is the envelope for `model search`. It keeps its own
+// schema name because its result is a set of matches, not a catalog, a location
+// or a table of contents.
+type modelSearchCLIResponse struct {
+	SchemaVersion string                  `json:"schemaVersion"`
+	OK            bool                    `json:"ok"`
+	Result        *operations.ModelSearch `json:"result,omitempty"`
+	Error         *cliInspectionFailure   `json:"error,omitempty"`
+}
+
+const modelSearchSchemaVersion = "tei.cli.model-search/v0"
+
+// modelSearchFlags is the whole grammar `model search` accepts. It is built by
+// one function so the parser, the `-h` listing and the advertisement test all
+// read the same FlagSet: a flag added to one of them cannot be missing from the
+// others.
+func modelSearchFlags(fs *flag.FlagSet) (root, term, kind *string, limit, offset *int) {
+	fs.SetOutput(io.Discard)
+	root = fs.String("workspace", "", "TEI workspace directory")
+	term = fs.String("term", "", "literal text to find; matched case-insensitively inside a Source line; required unless -kind is given")
+	kind = fs.String("kind", "", "restrict the search to one subject kind: "+strings.Join(operations.InspectionSubjectKinds, "|"))
+	limit = fs.Int("limit", operations.SearchDefaultLimit, "maximum hits listed; total and kindCounts still cover every hit")
+	offset = fs.Int("offset", 0, "hits to skip; a value past the last hit is clamped and reported as requestedOffset")
+	return root, term, kind, limit, offset
+}
+
+// runModelSearchCommand answers where a text appears in the Workspace's
+// Sources and which element declares it. The catalog lists every element but
+// searches no text, so a caller who knew a name fragment had to page through
+// all entries, guess the subject kind and call `inspect` per candidate -- and
+// still learn nothing about a mention inside a declaration body. Every hit
+// carries the subject, the Source, the line and the line as written, so the
+// match can be opened rather than trusted (RQ-036, design §19.8). Read-only; it
+// shares the catalog's load, so a hit and `model catalog` describe one model
+// version.
+func runModelSearchCommand(args []string, out io.Writer) (int, error) {
+	response := modelSearchCLIResponse{SchemaVersion: modelSearchSchemaVersion}
+	fail := func(code string, message string, exit int) (int, error) {
+		response.Error = &cliInspectionFailure{Code: code, Message: message}
+		return writeModelSearchResponse(out, response, exit)
+	}
+	fs := flag.NewFlagSet("model search", flag.ContinueOnError)
+	root, term, kind, limit, offset := modelSearchFlags(fs)
+	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			printHelp(out, fs, "model search")
+			return 0, nil
+		}
+		return fail("INVALID_ARGUMENT", err.Error(), 2)
+	}
+	if err := validateRepeatableArguments("model search", args); err != nil {
+		return fail("INVALID_ARGUMENT", err.Error(), 2)
+	}
+	if name := emptyStringFlag(fs, emptyStringFlagsNotAllowed["model search"]); name != "" {
+		return fail("INVALID_ARGUMENT", fmt.Sprintf("model search: -%s must not be an empty string", name), 2)
+	}
+	if fs.NArg() != 0 || strings.TrimSpace(*root) == "" || *root != strings.TrimSpace(*root) {
+		return fail("INVALID_ARGUMENT", "model search requires an exact -workspace, without positional arguments", 2)
+	}
+	if strings.TrimSpace(*term) == "" && strings.TrimSpace(*kind) == "" {
+		return fail("INVALID_ARGUMENT", "model search requires -term, or -kind to list one kind's sources", 2)
+	}
+	if *term != "" && *term != strings.TrimSpace(*term) {
+		return fail("INVALID_ARGUMENT", "model search: -term must not have surrounding whitespace", 2)
+	}
+	if *kind != "" && !operations.SupportedInspectionKind(*kind) {
+		return fail("INVALID_ARGUMENT", fmt.Sprintf("model search: -kind must be one of %s", strings.Join(operations.InspectionSubjectKinds, ", ")), 2)
+	}
+	if *limit < 1 || *limit > operations.SearchMaxLimit {
+		return fail("INVALID_ARGUMENT", fmt.Sprintf("model search: -limit must be between 1 and %d", operations.SearchMaxLimit), 2)
+	}
+	if *offset < 0 {
+		return fail("INVALID_ARGUMENT", "model search: -offset must not be negative", 2)
+	}
+	result, err := operations.SearchWorkspace(*root,
+		operations.SearchQuery{Term: *term, Kind: *kind}, *limit, *offset)
+	if err != nil {
+		// A Source that cannot be read, or whose bytes no longer match the
+		// fingerprint this read indexed, is an execution failure: the hit's
+		// location is evidence about those exact bytes, so answering from
+		// different ones is refused.
+		var catalogErr *operations.CatalogError
+		if errors.As(err, &catalogErr) {
+			return fail(catalogErr.Code, catalogErr.Message, 2)
+		}
+		code := "MODEL_SEARCH_FAILED"
+		var failure *operations.ValidationFailure
+		if errors.As(err, &failure) {
+			switch failure.Stage {
+			case operations.StageLoad:
+				code = "WORKSPACE_LOAD_FAILED"
+			case operations.StageSourceIndex:
+				code = "SOURCE_INDEX_FAILED"
+			}
+		}
+		return fail(code, err.Error(), 2)
+	}
+	response.OK = true
+	response.Result = &result
+	return writeModelSearchResponse(out, response, 0)
+}
+func writeModelSearchResponse(out io.Writer, response modelSearchCLIResponse, exit int) (int, error) {
 	encoder := json.NewEncoder(out)
 	encoder.SetEscapeHTML(false)
 	if err := encoder.Encode(response); err != nil {

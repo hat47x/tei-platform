@@ -20,9 +20,9 @@ func FramingFor(version string) (Framing, bool) {
 
 // Framing is the expected view delivery shape for one tool version.
 type Framing struct {
-	Records        int
-	Control        string
-	Kind           string
+	Records          int
+	Control          string
+	Kind             string
 	RequiresTerminal bool
 }
 
@@ -45,10 +45,10 @@ func (r Receipt) WithView(raw []byte, framing Framing) Receipt {
 	}
 
 	view := View{
-		Encoding:    encodingName(raw),
-		Framing:     framing.Kind,
-		Records:     len(trimmed),
-		Collection:  []string{"normalized_result,rows"},
+		Encoding:   encodingName(raw),
+		Framing:    framing.Kind,
+		Records:    len(trimmed),
+		Collection: []string{"normalized_result,rows"},
 	}
 
 	last := trimmed[len(trimmed)-1]

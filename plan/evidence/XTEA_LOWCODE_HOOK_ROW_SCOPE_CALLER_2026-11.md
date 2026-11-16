@@ -121,10 +121,10 @@ FAIL	tei/internal/studiohost	1.111s
 | `go test ./internal/hook -count=1` | `ok tei/internal/hook 1.159s` |
 | `go test ./internal/studiohost -count=1` | `ok tei/internal/studiohost 3.053s` |
 | `go test ./cmd/tei -run 'TestRunDeclaredHooks' -count=1` | `ok tei/cmd/tei 0.157s`（11件、すべてPASS） |
-| `go test ./cmd/tei -count=1`（パッケージ全体） | `ok tei/cmd/tei 299.941s`（約300秒、全件） |
+| `go test ./cmd/tei -count=1`（パッケージ全体） | **この記録を書いた時点では `ok`（299秒）。後の独立レビューで、この版では再現しないと指摘された**（`TestREAIntakeCompleteGraphDoesNotProveFunctionOrBusiness` が panic。別ブランチの未統合変更が原因で、本変更とは無関係だが、全件PASSとしては裏取りできない）。**全件PASSを根拠にしないこと** |
 | `go test ./tools/repository-plan-check -count=1` | `ok tei/tools/repository-plan-check` |
 | `go test ./tools/repository-architecture-check -count=1` | `ok tei/tools/repository-architecture-check` |
-| `gofmt -l cmd/tei internal/studiohost internal/hook` | 出力なし（空） |
+| `gofmt -l`（**変更したファイルのみ**） | 出力なし（空） |
 
 `internal/hook`の試験を全件流しているのは、`Runner.Rows`の意味（空が「行なし」であること）を変えていないことの確認である。`internal/hook`は無変更なので、既存の行試験（`reach_rows_test.go`・`rows_reachability_test.go`・`rows_uses_parity_test.go`）がそのまま通る。
 
@@ -158,3 +158,41 @@ FAIL	tei/internal/studiohost	1.111s
 - `reference/workspace`配下の`.tei`（Gate B/Cで固定された版）。
 - CLIのフラグ・`command.Result`・SchemaVersion・診断コード・公開文字列定数（新規追加なし）。
 - 他のworktree（`tei-r102`・`tei-xa`・`tei-xc`・`tei-platform`）。
+## 9. 独立レビューによる訂正（2026-11-17）
+
+統合後、独立レビュー担当が本記録を検証し、**記載が事実と違う点**を指摘した。訂正する。
+
+- **`gofmt -l` の対象**: 本記録は「`cmd/tei`・`internal/studiohost`・`internal/hook` 全体が空」と書いたが、統合時点では同スコープに未整形のファイルが4件あった（`cli_contract.go`・`cli_flag_contract.go`・`uncertain_effect_test.go`・`cli_self_build_generated_rule_go_test.go`）。**私が変更したファイルは整形済み**で、ゲートは通る。全体が空という主張は誤りだった。
+- **`go test ./cmd/tei` の全件PASS**: 統合後に再現しない。`TestREAIntakeCompleteGraphDoesNotProveFunctionOrBusiness` が panic する（別ブランチの未統合変更が原因）。**この版の全件PASSを根拠にしないこと。**
+
+レビューは他に次を指摘した。いずれも**本変更の欠陥ではなく、既知の範囲として記録済み**のもの、または入口を配線する時点で扱うべきもの。
+
+- ~~入口は `hook.ReferenceReach` 固定で、行と `AppliedChangeReach` を組む口が無い。行を渡すと `after-*` の行フックが書込みなしでも実行される。~~ **対応済み**: `RunReachable` が `reach` を `scope` より先に判定するようにし、到達できない位相は行集合があっても skip する。`internal/hook/row_scope_reach_test.go` が固定（順序を戻すと失敗することを陰性対照で確認）。
+- 行が非空で、ある行が宣言 `reads` の一部を持たない場合、`HOOK_READ_NOT_OBSERVED` で拒否される（skip/notEvaluated ではない）。この非対称は意図の確認が要る。
+- 入口は**本番呼出し元がゼロ**で、参照するのは試験だけ。**供給源が無いまま入口だけがある状態は D-9 と同型**である。
+
+## 10. 供給源の設計候補（独立担当の結論）
+
+独立担当は、穴は「行を返す経路が無い」のではなく**「フック境界の呼出し元に繋がっていない」**と結論した。driver 層には行を返す経路が既にある（`query_execution.go`・`contract_query_execution.go`）が、executor は fixture 読みの合成実装である。構造上の制約は2つ。
+
+1. `interaction` を持てるのは **record Pattern だけ**なので、browse + row は宣言できず到達しない。
+2. record Pattern は `relation` も `query` も拒否され、`Hook` の宣言欄に**行の出所を書く場所が無い**。
+
+既定案は **「フック境界専用の行供給インタフェースを定義し、Host が実装を差し込む」**。ただし port の追加だけでは不足で、(i) 行スコープのフックが行の出所を名指す宣言欄（または browse への interaction 許可の判断）と、(ii) NULL と未取得を潰さない行の型（現行は `[]map[CanonicalID]string` で、`narrowTo` が欠落属性を落とすだけなので両者を区別できない）を前提条件とする。
+
+**skip を続ける現状の評価**: fail-closed として正しく、1行として走らず理由も印字されるため D-9 の完全な無信号ではない。ただし `record` + `scope row` + `reads` は validate を通り、**供給経路が無いことを宣言時にも CI でも言わない**ため、受理された宣言が全 production 経路で一度も走らない状態を作れる。よって skip は維持してよいが、**「供給経路の無い行スコープ宣言」を宣言時または CI で見えるようにするまでを穴の完了条件に含める**。
+## 11. reach と scope の判定順を揃えた（2026-11-17）
+
+§9 のレビュー指摘に対する修正。**到達できない位相は、行集合があっても実行しない。**
+
+変更前は `RunReachable` が `scope` を `reach` より先に判定していたため、`ReferenceReach`（変更を見ない参照実行）でも `after-*` の行フックが走り、`executed` に記録されていた。これは「変更後の検証をした」と読めてしまう。
+
+変更後は `reach` を先に判定する。`AppliedChangeReach` を渡した実行では、行フックは従来どおり行ごとに走る（機能は取り消していない）。
+
+読み取れること:
+- 到達できない位相は、行集合の有無に関わらず skip され、理由が残る。
+- 到達できる実行では、行スコープは行ごとに適用される。
+
+読み取れないこと:
+- 入口（`runDeclaredHooksWithRows`・`runHooksWithRows`）は依然 `hook.ReferenceReach` 固定で、`AppliedChangeReach` と行を同時に渡す公開 API は無い。必要になった時点で足す。
+- 実データ源からの行供給は未実装。
