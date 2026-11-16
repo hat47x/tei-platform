@@ -1112,3 +1112,48 @@ mainの[#5143](https://github.com/hat47x/tei-platform/pull/5143)は、`tei.autho
 PIO-17〜23は既存#1180／#2514のIndependent Expectedと#951／#988／#1121のOwnerへ渡す。通常CLI→非Builtin Provider、正式R2-PのBuilder実消費、R3のConsumer受領、Studio Stage1→Stage2実Windowsは独立したP0である。ScenarioのOperator選択指紋はmainに存在するが、それだけでRuntime Providerの選択資格や意味受理は成立しない。
 
 **受入上限**：本節はmainの限定的なRule／診断試験を横断Plugin設計へ反映したもの。新たなPlugin I/Oの実配線、製品Adapter、実DB／Windowsテスト、Ownerの業務受理は行っていない。
+
+## 22. 値の投影、接続の適格性、実装の利用可否を順に確かめる（2026-11-16）
+
+### 22.1 値を取り出せたことと、型付きの接続が成立したことを分ける
+
+[PR #5156](https://github.com/hat47x/tei-platform/pull/5156)では、既存`plugin/transform`の`input`／`select-field`／`construct-object`を使い、一つのRecordをそのまま渡す場合と、必要な二Fieldだけを選ぶ場合を比較するGo試験が提案されている。追加Fieldが全体出力には残り、明示投影には残らないこと、必須Fieldの欠落を拒否すること、明示NULLを欠損へ置き換えないことが検証対象である。**このPRは現時点で未マージであり、試験の合格をmain実績として数えない。**
+
+この純粋なTransformが扱うのは**値の形と投影**である。出力に二Fieldだけが残っても、各Fieldの安定した意味ID、出典、必要な取得範囲、契約版、Audienceと現在Grantまでは保証できない。「余分な項目を取り除いた」と「その利用者へ公開してよい」は別の判断である。値を入れ替えても同じJSONを返せる場合、Source occurrenceと実Read IDを照合して初めて接続の取り違えを検出できる。
+
+既存§19〜21のPIO-T0/T1は次の順序に絞る。
+
+| 順序 | 既存機構で確かめること | まだ成立しない資格 |
+| --- | --- | --- |
+| **PC-1a：純粋投影** | 全体Record／二Field投影、必須Fieldの欠落、明示NULL、追加Fieldの遮断 | Sourceの意味ID・業務的なMapping受理 |
+| **PC-1b：型付きBinding** | Ref／型・Law／Source位置、`not-fetched`と`null`、集合の`partial`、受取側Required Context | 出力JSONが一致しただけの完全性・正しい読取先 |
+| **PC-1c：一段Adapter** | 単位・精度・丸め・Loss、実ReadしたField ID、選択した変換実装の版 | 値が同じだけで純粋変換・意味保存とみなすこと |
+| **PC-2：実装と配置** | 解釈／生成／委譲の対応可否、選択版・Bundle・実Artifact、実Call | CLIから読めたことをWails HTTPの公開許可へ転用 |
+| **PC-3：受領と再資格化** | 独立Consumerが実際に受け取った項目・Audience・Disclosure、SourceとProviderの更新による失効 | 表示用Edge、テスト用Binaryや一致したHashによる自動Grant |
+
+### 22.2 不正な版を「Pluginが存在しない」と判定しないための受入条件
+
+mainへ統合された[PR #5160](https://github.com/hat47x/tei-platform/pull/5160)は、既存Resolverの一つの問題を**挙動を変えずに試験で固定**した。解析できないPlugin版は`CompatibleMajor`ではfalseとなり、`PLUGIN_RESOLVE_NO_COMPATIBLE_PLUGIN`へ畳まれる場合がある。一方、management側には`version-unknown`と`version-mismatch`の区別がある。宣言の版が壊れている事実を「要求した版のPluginがない」と説明すると、修正するべき対象を誤る。
+
+受入票では、**宣言の解析失敗、解析できるが不適合、該当Plugin不在、選択後の実Call未観測**を別の事実として記録する。Resolverの診断語彙や`CompareVersion`を変更するかはOwnerの別判断とし、今回の設計更新だけで新しいエラーコードや実装済みの修正を宣言しない。[PR #5171](https://github.com/hat47x/tei-platform/pull/5171)の理由コード語彙の閉包検査も、コード名の存在と実拒否経路の到達を区別して受け取る。
+
+### 22.3 同じRuleでも、実現方式ごとの対応範囲は異なる
+
+main統合済みの[PR #5166](https://github.com/hat47x/tei-platform/pull/5166)は、暦日を比べる`not-after` Ruleを既存Evaluator（P）で判定できる一方、既存のGo Generator（G）はその種別を**未対応として明示的に拒否する**ことを製品試験の条件にした。ReaderがRuleを読めた事実だけでは、選択Targetの生成・実行が可能とは限らない。
+
+したがって、Pluginの接続提案と実現方式の選択は、`Rule kind × TypeRef × Target × Implementation version`を使い、対応可否を説明できる単位で確かめる。Gが未対応なら自動的にPへ切り替えず、明示した選択と実際に利用した方式を照合する。Generator未対応は入力未取得による`undecided`や、業務規則の`not-satisfied`とは違う。生成コードの正式Builder消費と実Provider／Consumerへの到達も、その後の独立した資格である。
+
+### 22.4 次の独立反証
+
+| Case | 一因子の変更 | 期待すること |
+| --- | --- | --- |
+| **PIO-24** | Whole Recordの余分なFieldを一つ増やす | 全体出力には残り、二Field投影には残らない。投影自体を開示許可としない |
+| **PIO-25** | Fieldの値は同一、意味IDか実Read先だけ変更 | JSONの結果一致だけで接続の適格性を受理しない |
+| **PIO-26** | 必須Fieldの`null`を`not-fetched`へ変更 | 単なる欠損・NULLへの暗黙変換を拒否し、理由付きで保留 |
+| **PIO-27** | Plugin版を壊す／解析可能な不適合版にする | 「不在」「壊れた宣言」「版不適合」の原因を識別。現行Resolverの誤分類を既存挙動として記録 |
+| **PIO-28** | 同一日付RuleをPからGへ変更 | P判定の成功をG生成成功へ転用せず、未対応を事前に表示 |
+| **PIO-29** | 同一ProjectionをCLI directとWails公開で使用 | 共通のMeaningと実Callは比較するが、HTTP側の権限・開示・Targetを別検収する |
+
+PIO-24〜29は#1180／#2514の既存Independent Expectedへ渡す。新しい汎用Port型、Resolver、証拠台帳、Adapter探索Runtimeを増やす前に、既存Transform／Semantic Ref／Workspace Selection／Host境界で不足する一点だけを実証する。通常CLIの非Builtin Provider実Callと、Studio Stage1→Stage2の実Windows受領は、引き続きそれぞれのP0である。
+
+**現状**：§22は既存の製品実績と未マージPRを分けた実装順の整理である。PC-1aの提案試験、PC-1b/cの型付き実接続、実Provider、Wails HTTP公開、Owner意味受理が今回成立したという記録ではない。

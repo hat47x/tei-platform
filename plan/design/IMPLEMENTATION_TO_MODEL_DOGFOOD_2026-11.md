@@ -532,3 +532,23 @@ ScenarioのOperator選択Pinを追加する並行PR #5114は、データ経路�
 最初の独立ExpectedはDPC-09〜11の値・Relationの判断例と、DPC-12の例改版に限る。DPC-13の時間・期間条件は既存のdate／no-overlapのOwnerへ渡す。新しいValueState、第二Mapping Engine、Runner、Evidence Storeを作らない。検収票が通った後も、正式なSource→生成Go→Builder、通常CLIのactual Provider→独立Consumer、Studio Stage1→Stage2の実Windows受領は独立P0として維持する。
 
 **現状の区別**：mainに存在する関数とGoテストは実装上の足場であり、このPacketの新規E2Eは未実施。直近のmainのセルフビルドおよびWails HostのCIには失敗が観測されているため、部分的なmain統合を製品全体の合格に読み替えない。並行PR #5097（自己記述のData表）と #5114（Scenarioの実装選択Pin）はclosed/unmergedであり、実装済みとして数えない。元Sourceの現在性は別のmain回帰で確認する。
+
+### 17.7 最初の小コード差分：選択済みDataと状態付きRuleを接続する
+
+DPC-09の着手点として、`internal/operations/inspect_markdown_data_rule_decision_trace_test.go`へ、実Readerから得たData／Ruleと状態付きEvaluatorを結ぶ回帰を追加する。最初の試行は、`tei.authoring/v1`で選んだ`TransferRequest`の属性型・required・Rule ID・Source byte位置、共通World／Source Index、正値・ゼロ・NULL・未取得の四つの独立期待値、および実Read対象IDを同じ検収にする。
+
+ここでは既存Productの`InspectionFromLoad`を用い、読み取り専用であることとSource fingerprintを検査する。式の結果が正しくても別項目を読めば不合格にする基準は#5118を再利用し、Goの生成・実Binaryの二方式比較を重ねて作らない。`Decide`の`undecided`とGo errorを区別し、`required`を「NULLなら必ず業務違反」に拡張しない。
+
+本実装は**新しい表示用検収票APIの完成ではなく、既存Inspectorにある項目とRuleの根拠を、同じ試行の判断へ結ぶテスト**である。Go試験の実行可否、exact HEAD CI、mainへの統合を別の観測として記録する。次段は、Provider実Read・Source occurrence・Snapshot・Coverageを持つ同一Attemptを構成し、CLIと独立Consumerに受領させる。M1自己記述のShape/Law実置換、正式R2-P Builder、Windows Stage2は独立P0とする。
+
+### 17.8 次のConsumer実証と対象選択の停止線
+
+最初のGo回帰はProduct Reader／Inspectorが実際に選んだ型付きAttribute・Ruleの出典と、テスト用StatefulSourceを通した判断理由を照合する。一方で、**Source位置が分かったことと、現在の原文をHostから安全に開けたことは別の観測**である。DesktopのSL-1表示はread-onlyな根拠提示として再利用し、SL-2のRoot／byte／Occurrence再照合、SL-3の編集・Windows受領は#5178のOwnerへ引き渡す。
+
+| 検収段階 | 成立を要求すること | 停止線 |
+| --- | --- | --- |
+| DPC-14（今回） | 一つの選択済みSource版のData／Rule ID、Source fingerprint・byte位置、属性Read ID、present／NULL／未取得時の判断と理由 | 実DB Provider・実CLI外部Consumer、Builderまでは数えない |
+| DPC-15（次） | Source位置一覧の省略・未取得を明示し、Hostが原byteと対象を再照合 | 位置表示を実Openや編集資格に昇格させない |
+| Provider二入口（後続） | 同じFunction／Query選択、実Read対象・Value State・Scope／Snapshot・Consumer受領 | 記録例やテストSourceから実Readを推定しない |
+
+新しいInspector APIや第二Evidence Storeを作る前に、既存の選択済みSubjectとSource位置の投影が不足する箇所を具体的な独立Expectedで示す。正式R2-P、通常CLI実Provider、Windows Stage1→Stage2は独立P0であり、今回の文書追補により完了状態は変わらない。

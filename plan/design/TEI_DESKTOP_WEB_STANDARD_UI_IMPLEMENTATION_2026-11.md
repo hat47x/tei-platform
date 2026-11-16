@@ -396,3 +396,44 @@ ProblemsとInspectorは、少なくとも「Sourceを読んだ」「Meaningを�
 4. **独立した製品P0**：#2831／#4583が非Plugin Studio BuildのD1→D5を、#2586／#4495が通常CLI→実Provider→独立Consumerを進める。上記UI作業をどちらの新しい先行Hard Gateにも設定しない。
 
 Web Components／Lit、Go／WASM、子Backend、Updaterは既存TypeScript／Wails基線の実測で明確な利益が出たときだけ別途採用する。本§19は既存契約と現行mainの実装到達点を結ぶ計画であり、新規製品E2E／Ownerの業務受理を実施したものではない。
+
+## 20. Source位置の表示と原文への移動を分けて実証する（2026-11-16、実装引渡し）
+
+### 20.1 位置を知ることと、原文を開けることは違う
+
+§19の「対象から原文へ」の一巡を、**現在のWorkbenchで実装できる表示**と**Hostによる実Source再読取**に分ける。現行`reference/tei-studio-workbench/source-locations.ts`の`readSourceLocations`は、既存の`readInspection`で確かめた対象とCatalogに対し、返されたSource Indexの相対Path、Role、byte位置、Artifact Fingerprintを最大20件まで投影する。観測した参照件数と省略件数を返すが、`completenessEstablished`は常に`false`である。
+
+この関数は原文のbyteを読まず、Workspace Rootの解決、ファイルを開く処理、Source Disclosureの判断を行わない。相対Pathを`file://` URLや保存先、権限として扱わない。索引上のbyte offsetをEditorのCaretへそのまま渡さない。UTF-8の複数byte文字、CRLF、IME確定前のBufferでは、原文と画面の文字位置が異なり得る。
+
+| 段階 | 再利用する仕組みと最小変更 | 合格の範囲・停止条件 |
+| --- | --- | --- |
+| **SL-0：対象の確認** | Catalog／`inspectEligibility`／`readInspection`と既存のFocus・Pin別応答laneを使う | Workspace・qualified Subject・要求世代の合う観測だけを採用。別WorkspaceやA→B→Aの旧Replyを現在の結果にしない |
+| **SL-1：位置の表示** | `readSourceLocations`の検証結果を安全なread-only ViewModelとしてInspectorへ渡す | 相対Path・Role・byte位置・Fingerprint・観測件数・省略件数・取得限界を表示。20件を全件としない。不正な索引を正常な0件にしない |
+| **SL-2：実Sourceの再取得** | 利用者の明示Open要求を、既存Source Owner／Hostの適格なReadへ委ね、Root・実byte・Fingerprint・Occurrenceを再検証する | 適格な実Read経路がなければ「開く操作は未対応」と表示。元Source改版・候補の重複・Root不一致ではOpen／Jumpしない |
+| **SL-3：Editorへの移動** | 実際に検証した原文byteからBuffer用の文字範囲を求め、既存Editorのread-only DocumentとCaretに渡す | 同じSource版・実Asset・実Consumerで本文とCaretを検査。IME・Undo・Pin／Focus・Graph／ARIAを旧応答で変えない |
+
+**最初の製品コード差分はSL-1のみ**に絞る。横断Web設計のWEB-P1aと同じ、純粋なPresenterの仕事として実装する。新しいDesktop専用Parser／Locator／State Store／権限Engineを作らない。SL-2の実Read入口が既存Operationに不足するなら、Source Ownerへ必要条件を戻し、UIから任意Pathを直接読む近道を採らない。編集Bufferの保存／CAS／Meaning Reviewは§16・§19の後続検収である。
+
+### 20.2 取得状態と実現方式を、そのまま診断へ運ぶ
+
+main統合済み#5142の`validationeval.Decide`は、値の`present`・`null`・`not-fetched`、関係の`complete`・`partial`を区別し、成立・不成立・判定保留と読み手の矛盾を分ける。Desktopは**0件、NULL、未取得、部分取得、Readerエラー、権限上の非開示**を同じ「空」にしない。部分取得でも重複する行が観測されれば違反を確定できるが、重複が見つからないことだけで全体の成立は証明できない。
+
+main統合済み#5166では、暦日`not-after` Ruleを直接解釈（P）できても、現行Go生成（G）は未対応である。Studioは「Sourceを読んだ」「意味を検証した」「実現方式を選択した」「実際に呼び出した」「Consumerに届いた」を別の事実として表示する。G未対応を暗黙のP成功へ置き換えず、結果が一致しても別Attributeの実Readや別Builderを見落とさない。
+
+PluginのWhole／Field／明示Adapter（main済み#5162）は標準型に加えてPresence・Coverage・Read ID／Scopeを対応付け、Node Viewではまずread-onlyで表示する。組織C1の同一Attempt実PostgreSQL Read（main済み#5155／#5165）は実Providerまでの限定的な先例であり、一般Function Context・Desktop二Consumerの受領証明には転用しない。
+
+### 20.3 独立ExpectedとOwnerへの引渡し
+
+| 検収候補 | 期待する結果 |
+| --- | --- |
+| **SL-E01** 正しいRuleと一意なDefinition Ref | 位置・Role・Fingerprintを表示。実Source Openは未実施 |
+| **SL-E02** 参照21件以上 | 表示20件・省略数・全件性未確定を別表示 |
+| **SL-E03** 絶対Path／親Path／異Subject／Artifact不一致 | 既存位置Readerが拒否。正常な0件やFile URLへ変換しない |
+| **SL-E04** Workspace切替／A→B→A／Pin A再読取中のB編集 | 古いAを新しいAと取り違えず、BのCaret・IME・Dirty Buffer・Graph／ARIAを保持 |
+| **SL-E05** Source改版・別Worktreeの同名対象・複数Occurrence | HostでRootと実byteを再照合するまでOpen／Jumpしない |
+| **SL-E06** 同じ値だが別Attributeを読んだ実行・G未対応Rule | 実Readの違いを示し、生成未対応を明示。無言のFallbackをしない |
+| **SL-E07** NULL・未取得・部分取得・Reader失敗 | Coverageと判定理由を分け、非公開の値・件数をDOM／ARIAへ漏らさない |
+
+これらは**既存#1180／#2514の独立Expectedへ渡す候補**であり、別のExpected正本は作らない。実装順はSL-1（WEB-P1aと共通）→Focus／Pin後着の独立試験（未統合PR #5168と実装を重複させない）→SL-2のHost実Read→SL-3のEditor／実Windows受領とする。`package.json`のテスト登録だけで生成Desktopの固定Source Closureを失効させる場合は、固定値を都合よく書き換えず、既存CIの受入経路に従い別資格で検査する。
+
+SL-0/1/3は#1824／#4515／#997、SL-2と条件付きSource保存は#1158／#1529／#1124、Plugin投影は#2497／#951が担当する。正式な非Plugin Studio Stage1→Stage2（#2831／#4583）と通常CLI実Provider Read（#2586／#4495）は**独立P0を維持**し、この表示検収を新しい先行Hard Gateとしない。本節は設計統合のみで、新しいGo／TypeScript／Windows／DB試験やOwner意味受理を実施していない。

@@ -30,40 +30,41 @@ func TestGeneratedScenarioCommandInvalidatesOperatorSelectionChange(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.MkdirAll(filepath.Join(root, ".tei"), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Join(root, ".tei"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, ".tei", "plugin-lock.json"), lock, 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".tei", "plugin-lock.json"), lock, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	scenarioPath := filepath.Join(root, "operator-scenario.json")
 	fixtureDir := filepath.Join(root, "fixtures")
-	if err := os.MkdirAll(fixtureDir, 0700); err != nil {
+	if err := os.MkdirAll(fixtureDir, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	fixture, err := json.Marshal(scenariotest.ValidationFixture{
-		Numbers: map[string]string{"sales.order_line.discount": "2"},
+		Numbers:      map[string]string{"sales.order_line.discount": "2"},
+		RelationKeys: []scenariotest.ValidationRelation{},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(fixtureDir, "discount.json"), fixture, 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(fixtureDir, "discount.json"), fixture, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	scenario, err := json.Marshal(scenariotest.Scenario{
 		SchemaVersion: scenariotest.SchemaVersion,
-		ID: "discount-operator-pinned",
-		Application: "discount_check",
+		ID:            "discount-operator-pinned",
+		Application:   "discount_check",
 		Steps: []scenariotest.Step{{
 			ID: "discount", Operation: "evaluate-validations",
-			Fixture: "fixtures/discount.json",
+			Fixture:           "fixtures/discount.json",
 			ExpectValidations: map[string]string{scenarioOperatorRule: "satisfied"},
 		}},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(scenarioPath, scenario, 0600); err != nil {
+	if err := os.WriteFile(scenarioPath, scenario, 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -126,7 +127,7 @@ func TestGeneratedScenarioCommandInvalidatesOperatorSelectionChange(t *testing.T
 		t.Fatal("manifest selection A is not unique")
 	}
 	edited := []byte(strings.Replace(string(original), "use: "+a, "use: "+b, 1))
-	if err := os.WriteFile(manifestPath, edited, 0600); err != nil {
+	if err := os.WriteFile(manifestPath, edited, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	after, err := workspace.Load(root)
@@ -164,7 +165,7 @@ func TestGeneratedScenarioCommandInvalidatesOperatorSelectionChange(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(planPath, raw, 0600); err != nil {
+	if err := os.WriteFile(planPath, raw, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := run("check", "-scenario", scenarioPath, "-workspace", root, "-plan", planPath); err == nil ||
@@ -201,6 +202,10 @@ func TestScenarioOperatorSelectionFingerprintIgnoresManifestOrder(t *testing.T) 
 	reordered, err := fingerprintScenarioOperatorSelection(b)
 	if err != nil || first != reordered {
 		t.Fatalf("reordered but equivalent selections changed fingerprint: %q vs %q err=%v", first, reordered, err)
+	}
+	workspaceDigest, err := workspace.FingerprintOperatorImplementationSelections(a)
+	if err != nil || first != workspaceDigest {
+		t.Fatalf("CLI and Workspace disagree on Operator selection fingerprint: %q vs %q err=%v", first, workspaceDigest, err)
 	}
 	b[0].Implementation = "example.gamma"
 	changed, err := fingerprintScenarioOperatorSelection(b)

@@ -30,6 +30,8 @@
 
 **WEB-P1aの合格条件**は、同一Subject／Catalog／Host応答から表示文書・版・Source状況・利用制限が変わらず導出され、異Kind・Source Index版不一致・Reader error・部分取得・偽Grantを誤って合格へ変換しないこと。**WEB-P1b**はFocus／Pinの応答laneとEditorの未保存状態を保護する。Source位置の `source-locations.ts` は既存のread-only検証を再利用するが、画面表示と原文再取得・書戻しの資格を分ける。Node試験、Browser、実Windows WebView2、生成Stage2の受入は別票で記録する。
 
+**WEB-P1a実装差分と配布への停止線**：既存`readInspection`を変更せず、別ファイル`inspector-presentation.ts`に表示専用の`presentInspection`と局所試験を追加した（WEB-P1a-1）。現段階ではWorkbenchの`main.ts`から未接続。`presentation.ts`を更新すると生成PoC Bが固定した歴史的な依存ClosureのGit blobに一致せず、Windows CIが`workbench_closure_revision_mismatch`で停止することを確認した。この失効を回避するために旧Pinを上書きせず、今回の差分は独立ファイルへ切り出す。WEB-P1a-2は新Closureを明示的に資格化し、Node24試験／型検査／esbuild、正規JS／HTML／CSS／第三者通知、Wails埋込Bundleのbyte一致、実Consumerを別々に検証する。Focus／Pin、Source実Open、公開Web、Stage1→Stage2は独立した受入とする。
+
 後続の**WEB-P2**はCLI direct／Studio Host／HTTPの同一Operationを一つのread-only実Consumerで比較し、Actor／Audience／Disclosureと現在Providerの選択を別資格で検査する。**WEB-P3**は公開可能なB2C説明Facet一件をTarget Head Slotと実Asset Memberへ接続する。両者をUI Framework選定やDesktopセルフビルドの前提条件にしない。担当は#997／#1824／#1158／#951／#3509、反証は既存#1180／#2514。ここでの追記は実装引渡しであり、製品の新しいE2E試験合格ではない。
 
 ### 図解のP1：定義・生成・実Attemptを証拠つきで比較する（2026年11月15日）
@@ -158,6 +160,14 @@ Focused試験 internal/operations/inspect_markdown_data_table_date_rule_realizat
 
 今回のDC-50〜52はFocused Go試験へ、DC-53〜54は#1180／#2514の独立Expected候補へ引き渡す。現行Pの評価能力、製品Gの生成能力、外部Dの選択・実Call・現在Grantを独立した欄として扱い、P成功によるG／Dへの無音Fallbackを禁止する。実Builder／正式R2-P、通常CLI実Providerと独立Consumer、Studio Stage1→Stage2は引き続き別P0とし、追加のRule種別を新P0 Hard Gateにしない。
 
+### P1：同じMarkdownの定義・記録例・診断を別の証拠として扱う（2026年11月16日）
+
+[宣言的構文の合成契約§32](../design/DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md)に従い、既存の異動申請のData項目定義表＋正値Ruleと同じMarkdownへ、記録例と期待値を明示して追加するFocused Go回帰を置く。実装票は`internal/operations/inspect_markdown_data_table_rule_example_validation_test.go`であり、新しいReader／Generator／Runtimeは作らない。
+
+対象の4行は、正値・0・NULL・負値。記録例を追加しても**既存Data／RuleのCanonical WorldとDefinitionの位置は変わらない**こと、Source Indexは元byteの変更として更新されること、期待を0の1セルだけ誤らせると`RULE_EXAMPLE_MISMATCH`を例の期待セルへ返すことを検証する。さらに、値が空のNULLと、項目列を持たない未取得は別の判定不能理由として扱う。CLI／Studioが同じ診断を表示する場合も、Rule定義の編集位置と例の期待値の位置を混ぜない。
+
+DC-55〜57をFocused試験のExpected、DC-58を#1180／#2514へ渡す。今回の判定範囲は実製品のReader、Source Index、Inspector、Rule例の評価と診断であり、実DB Reader、外部Provider、Gの実生成・Build、Dの実Call、取得範囲・Audience・現在Grant、Studioの実編集／Stage2を成功とはしない。並行する期間Rule／Contract Query Reader／Operator選択／Plugin Field投影のPRは、main統合と実Consumer確認後にだけ計画上の到達済みへ移す。通常CLI実ProviderとStage1→Stage2のP0を維持する。
+
 ### P1で接続する業務判断・設計入力・数式（2026年11月15日）
 
 これらは新しい製品P0の前提ではなく、既存の標準Data/Rule/Expression・Function Data Context・表現型を実案件に近づける**受入作業**とする。詳細な正負例とOwner境界は[横断統合受入境界§14〜17](../design/CROSS_CUTTING_ACCEPTANCE_BOUNDARIES_2026-11-12.md)を参照。
@@ -213,6 +223,8 @@ Focused試験 internal/operations/inspect_markdown_data_table_date_rule_realizat
 **次の着手**：mainに収録された実CLI／直接Operation／Studio Host三入口Goテストを現行版で確認し、旧#5119/#5137を再マージしない。AP-1では（旧#5096は未マージ閉鎖）HTTPの公開Audience／Scope／Source位置を呼出し時と返答時に確認し、同じ結果を返せることと開示してよいことを分離する。B0 #4635では実Process世代／Peer／旧Replyの比較を行う。実Provider #4495および非Plugin Stage1→Stage2 #2831/#4583のP0を優先維持し、UIのFocus／Pinについてはmainの実WebView2検査#5012/#5025を基線とし、Dirty Buffer／遅延Replyは未実証として扱う（旧#5122は未マージ閉鎖）。新AdmissionTicket Schema／第二Runtime／汎用Ready APIは追加しない。
 
 **SL-0のBuilder・ToolchainとRule未判定を実際の受入票に接続（[起動契約§35](../design/STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)）**：現行mainの`builderBinding`は計画のBuilder Digestと起動前に読んだ`-child`ファイルを比較し、違えばL2-bを保留する。Go toolchainは任意の`go.toolchain.closureDigest`で名指しでき、指定と異なるBuildは停止する。ただしProcess Imageの原子的同一性やToolchain全閉包の独立確認は未完であり、SB-C0の`qualified=false`／G4 `UNQUALIFIED`を維持する。Ruleの状態付き判定（main #5142）はNULL・未取得・partialと理由付き未判定を分け、Plugin Resolver診断被覆（main #5147）は現在Grantや実Providerの呼出し証拠ではない。LA-16〜21を既存#1180/#2514へ渡し、別Builder／Toolchain違い／部分取得／診断原因連鎖／Consumer世代を独立に検収する。API公開#1158/#1824、B0比較#4635、P0の実Provider#4495・非Plugin Stage1→Stage2#2831/#4583の優先順位は不変。
+
+**SL-0でRuleの実現可否とPlugin版の真因を分離（[起動契約§36](../design/STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)）**：main #5166の実Go試験では、Markdownの`not-after ... if present` Ruleを既存Readerから選択でき、P（`validationeval.Decide`）では日付順序・NULL・未取得を評価するが、G（`GeneratePositive`）では未対応として生成を拒否する。Sourceと意味の受理だけで全方式を実行可能にせず、G→P／Dの無言Fallbackを認めない。main #5160では不正なCatalog版が`NO_COMPATIBLE_PLUGIN`と報告される現行挙動がテスト化されたが、真の不在／Major非互換／版不正の改善方針はOwner未決とする。LA-22〜28は既存#1180/#2514へ渡し、P/Gの実選択／実Call・Provider Grant・Audienceを分離する。Operator指紋一本化の#5150は対象HEADの専用CIがGo整形チェックで止まっており、合格扱いでマージしない。Plan Checkを修正したmain #5151もProvider／Stage2のE2E保証ではない。通常製品CLI actual Provider #4495/#1251・正式Stage1→Stage2 #2831/#4583のP0を維持する。
 ### SL-1の最初の実コード差分と、受理可能な証拠（2026年11月15日）
 
 Script Launch §25、ADR-0048、#4495に基づき、最初は**公開済みのpure Function一件を直接Go APIから実Go Providerへ呼ぶ**差分を閉じる。次に、同じ意味契約を通常の製品tei実行ファイルの別OSプロセスから呼ぶ。これは二つの独立Attemptであり、プロセス・Request IDが同じであると仮定しない。Stage1→Stage2セルフビルド、実PostgreSQL Function Read、Studio子Backend/IPC、MCP、外部Effectはそれぞれの別Gateに残す。
@@ -1422,6 +1434,10 @@ S0-Aで最初に提示すべき**独立した正負**は、同一Source Snapshot
 
 PCON-01〜09は既存#1180／#2514へ渡す未実行の独立Expected候補であり、Node Viewの線から実行を作る、Plugin Packageを一つのRuntime単位に固定する、第二Resolver／Host／Registryを追加することはしない。**Stage1→Stage2 Windows実受領、R2-Pの実Builder、R3の通常CLI実ProviderというP0を維持**し、プラグイン自身のTEI化は「一つの意味ある義務が生成Go／実Provider／次段Buildで実際に使われたか」で段階判定する。API Pluginの未統合PR #5096のCIや別HEADの成果を達成済みとして算入しない。
 
+**PC-1の最初の実コード差分**：既存`internal/plugin/transform`による全体Record／二Fieldだけの出力を比較するGo回帰を作り、内部項目の非選択・必須項目の欠損拒否・明示NULL保持までを検査する（[PC-1a〜c](PLUGIN_PORTABLE_CONTRIBUTION_EXECUTION_2026-11.md)）。これは出力Valueの整形試験であり、Contract Field ID、取得完全性、HostのDisclosure／Grant、通常CLIからの非Builtin Provider呼出しを証明しない。PC-1bの型・取得範囲、PC-1cの明示Adapterを別Ownerと独立Expectedへ渡す。main済み#5147のPlugin Resolver診断コード負例も再利用し、新しい診断正本を作らない。
+
+**並行設計の取り込み（11月16日）**：main済み#5162／#5163の「未取得部分があっても結論を確定できる場合と、保留すべき場合」の区別を[PC-1bの一因子Fixture](PLUGIN_PORTABLE_CONTRIBUTION_EXECUTION_2026-11.md)へ結び付ける。接続可能性・Ruleの判断可能性・Consumerへの配送可能性を三段階として示し、PIO-17〜23／DPC-09〜13の既存Expectedを再利用する。ここでの文書接合とPC-1aのpure Transformテストを、実Runtime Provider／Host公開・正式Builder・Stage2の達成とは数えない。
+
 ### 検査義務を一つTEIへ移し、次のTEIで使う（2026年11月15日）
 
 [実装からモデルへのdogfooding §15](../design/IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md)に、`GeneratePositive`の**ID／Attribute必須・Relation禁止のRequired Shape一義務**を、既存標準構造・Ruleによる検査へ移す最初の自己置換手順を定めた。M0（出典・独立基線）→M1（TEI由来の実検査）→M2（実製品経路の旧Go分岐削減）→M3（Stage1実TEIによるStage2構築・当該機能の実利用）を**別々の合格**として扱う。M1は生成・解釈のどちらでもよいが、セルフビルドの実証には意味あるコード生成と実Builder消費を別途要求する。Target固有のGo package名検査やNULL評価のLawを初回の一義務へ混ぜない。
@@ -1639,3 +1655,15 @@ mainのRule生成Go CLIビルド回帰は、選択Markdown原文のコピーをG
 - **DF-P3：異質な規則・Consumer**。DPC-13の暦日／期間と、Read対象ID、失効理由を既存Rule／Source／Projectionへ照合する。実Provider・HTTP公開・更新／Effect、BuilderとStage2は各Ownerで別の実Target検収とする。
 
 既存の #5118（Data表由来G/Pの実Read先ID差分）と #5129（Build Plan後の元Markdown改版拒否）は限定基線として再利用する。並行PR #5097／#5114はclosed/unmergedであり、これらの成功をmain実装に数えない。製品の受入には既存#1180／#2514の独立Expectedとexact HEADのCIを要する。今回の追補は新規Go／DB／Windows E2Eの実行を意味しない。
+
+### 標準Dataの型と取得状態を一試行の判断へ結ぶ（2026年11月16日）
+
+[標準Flow設計§12.9](../design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)と[dogfooding§17.7](../design/IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md)に対応する最初の小コード差分を、`internal/operations/inspect_markdown_data_rule_decision_trace_test.go`で扱う。現行のReader／Inspector／Source Indexと状態付きRule評価を再利用し、一つの`Workspace.Load`に対するData・Ruleの意味ID、Read属性ID、Source byte位置、判断／未確定の理由を四入力の独立Expectedへ照合する。
+
+**次の段階**はDB／API等の実Providerから取得したValueState・Relation Coverage・Source occurrence／時点を、選択したOperation・CLI・独立Consumerへ通すことである。テスト用のStatefulSourceや印付き記録例はProvider実行を代用しない。PluginのWhole Record／Field／明示Adapterの接続（PIO-T0/T1）は別の既存Ownerに保持し、表示上の接続から公開GrantやEffectを生成しない。
+
+**合格範囲**：このPRは狭いGo回帰と計画の接続である。新たな実DB／Windows／外部HTTP試験、正式R2-P、R3、Studio Stage2を実施したと扱わず、exact HEADのGo CIが確認できるまで新回帰のPASSを主張しない。
+
+### DataのSource位置と、実際に原文を開けることを別に検収する（2026年11月16日）
+
+[標準Flow§12.10](../design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)に沿い、DF-P1の一Load検収の後に、SL-1の相対Path・Source byte位置・省略件数表示を確認する。次にDesktop既存OwnerのSL-2でHostがRoot内の原Sourceを再読取し、改版・対象Occurrence・参照の現在性を確かめる。SL-3の編集・Windows実受領はその先で別途検証する。DPC-14のGo回帰は原文の実Openを試していない。Plugin出力のWhole/Field Projectionやread-only Source表示から、公開権限・更新Grantを推定しない。
