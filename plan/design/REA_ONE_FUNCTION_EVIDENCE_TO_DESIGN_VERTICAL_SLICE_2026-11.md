@@ -652,3 +652,26 @@ Reader側の既存`Receipt`/`View`を使い、不要な新Stateや専用Hostを�
 **次の独立Expected（REA-CLI-01〜04）**：①字下げ・改行を含むEvidence本文が派生JSON内でByte一致し、Request全体のDigestは原本Digestと異なる、②Viewの終端metadata有無がComplete/Partialを分ける、③Parent未検証を`ParentLinked`へ昇格させない、④Tool不在でも保存済みRaw/Source/Receiptを破棄せず、現在の利用不能を別欄へ残す。既存`rea_evidence_test.go`と実CLIの契約回帰に限定する。
 
 **R1への引渡し**：正式なData/Function/Business対応付けには、観測Graphから選択したRelation occurrence、元Sourceの位置・Revision、型付きCandidateSet／ReviewPacket、Ownerの判断とScopeを一問ずつ結合する。組織C1の「生成メソッド名に依存しない抽象経路」の検証案やNode Flow/Pluginの型付きportは利用できるが、関係の技術的整合と業務REAのResource/Event/Agent意味は別。生成GoやDB Providerの実Call、Effect、Studio Native第二Consumerを、このCLI修正の合格に加算しない。製品P0の通常CLI実ProviderとStudio Stage1→Stage2 Windowsは従来どおり優先する。
+
+## 33. 一つのRelationへの質問を、外部Occurrenceの読取専用Reviewとして実装する（2026-11-16）
+
+前回mainへ統合した[PR #5158](https://github.com/hat47x/tei-platform/pull/5158)は、[REA受領CI run 43859175613](https://github.com/hat47x/tei-platform/actions/runs/43859175613)でPython／Goのcontract、REA 6.7.0、REA 6.8.0の**三ジョブがいずれもsuccess**となった。本文Byteを保持した派生Request、型付きReceipt／Viewの受領、実Producerの端点付き候補投影はR0の根拠として扱える。これらは別のSource版や業務Functionの実Readを証明しない。
+
+R1の最初の問いを「旧Function FはData Dを読むか」と置くと、静的な`imports`や`loads`の有向辺だけを根拠に`Read=true`と誤答する危険がある。現行`reacandidate.EvaluateThreeElementCoverage`は、外部JavaScript GraphのData系候補を支持する一方、**FunctionとBusinessはunsupported**と返す。これは機能不足の隠蔽ではなく、今ある証拠から言えることの限界である。質問の実装もその判断を維持する。
+
+**R1-Q（今回の最小製品差分）**：既存`tei three-element rea-candidates -evidence ...`に、任意の`-relation-id`を追加する。これは**Producer発行Edge occurrence ID**であり、表示ラベル／生成Goメソッド名／Canonical Function IDではない。既存の`CandidateSet`と`ReviewPacket`を一度だけ作り、選んだRelation候補・向き・SourceRevision・観測State/Authority・同じGraphで観測されたFrom/ToのData候補Occurrenceを、`relationQuestion`として追加投影する。元のCandidateSetとRaw Evidence Fingerprint、未解決・Unknown・全体Coverageは残す。出力は既存CLI envelopeの任意欄であり、新Graph／Meaning正本・Runner・Readerを作らない。
+
+| 受入ケース | 必須の結果 |
+| --- | --- |
+| RQ-01：端点付きRelation r1を明示選択 | r1のProducer Edge ID、From/To Node ID、関係ラベル、Source位置・Revisionを同じAttemptのReviewから表示 |
+| RQ-02：同じNodeに複数のObservation | 同名・同端点でも個別の外部Occurrence IDを保ち、観測を一つに縮約しない |
+| RQ-03：r1と同端点・同ラベルの並行Relation r2 | `-relation-id r2`だけを選び、元CandidateSet内のr1/r2は両方残す。名称による暗黙の選択は不可 |
+| RQ-04：両端の片側が未観測／Provider Unknownあり | 存在しない端点を補完せず、`MissingEndpoints`、Partial/Unknown、未解決理由を保つ |
+| RQ-05：明示した`-relation-id`が空・未観測・外部Edge IDでない・重複 | 読取不能を明示的に拒否。フラグ省略時は従来どおり全CandidateSetを返す。選択失敗を「関係が業務上存在しない」と言い換えない |
+| RQ-06：`imports`・`loads`等の静的Relation | `functionDataClaim=not-established-by-external-structure`、`acceptedMeaning=false`、`ownerDecision=pending`。Data/Functionの正式CRUDやRead／Write Effectを捏造しない |
+| RQ-07：出力ファイルの指定 | 保存するのは全CandidateSet（no-clobber）だけ。質問応答は読取専用で、正式TEI Sourceを変更しない |
+| RQ-08：複数Attempt・Source A→B→A・Producer ID再利用 | 当該AttemptのEvidence ID／CandidateSet Fingerprint／Source Binding資格を保つ。ID文字列だけで別Attemptや現行Sourceへ同一視しない |
+
+**他領域との接続**：組織C1で進んだ「生成メソッド名ではなく意味ID・Relation Key・向き・多重度・Query IDで抽象経路を検査する」方針（#5115）、Node Flow／Plugin間の型付きPort・明示Adapter、プロセス実Call／Effectの証拠照合を、一つの質問の**次段の資格**に使う。技術的なRelationの受領・片端点への一致をもって業務上のResource/Event/Agent ParticipationやAuthZ Grantとみなさない。業務REAは専門Roleの投影であり、全Functionへ会計Eventを強制しない。
+
+**次のR1-A／R2の最小入口**：選択した構造Candidateから、既存Source Indexで実Artifact Byte/Revision/位置を再確認し、Ownerが指定したQualified Data/Function IDとSourceを照合できたときだけ「対応付け候補」を前へ進める。それでも関数の入力・出力・副作用の実観測がなければ`Function → Data Read/Write`は不明のままとする。確定したモデルを使う生成Go、正式Builder、通常CLIの実PG Provider Read、Studio Native独立Consumer、実Effect/Grantは別Attempt・独立Expected（#1180/#2514）で検査する。主P0の通常CLI実Provider（#2586）およびWindows Studio Stage1→Stage2（#2831/#4583）は変えない。

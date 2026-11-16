@@ -53,13 +53,33 @@ func checkDateReading(rule semantic.Validation, attribute core.CanonicalID, read
 	return nil
 }
 
+// tri is an answer that may depend on something that was not read.
+type tri int
+
+const (
+	triNo tri = iota
+	triYes
+	triMaybe
+)
+
+func triAnd(a, b tri) tri {
+	switch {
+	case a == triNo || b == triNo:
+		return triNo
+	case a == triYes && b == triYes:
+		return triYes
+	}
+	return triMaybe
+}
+
 // decideNoOverlap decides the rule from what was read.
 //
-// Two rows whose periods are fully known, that are known to be in the same
-// group, and that share a day settle the rule as not satisfied: nothing
-// unread can undo an overlap that was seen. Without such a pair the rule is
-// satisfied only when every row was read, every period is fully known, and
-// no two periods that share a day might be in the same group.
+// Two rows that certainly state a period, are certainly in the same group
+// and certainly share a day settle the rule as not satisfied: nothing unread
+// can undo an overlap that was seen. Without such a pair the rule is
+// satisfied only when every row was read, every row certainly states a
+// period, and no two rows might break the rule once the unread parts are
+// known.
 func decideNoOverlap(rule semantic.Validation, source StatefulSource) (Decision, error) {
 	periods, readsPeriods := source.(StatefulPeriodSource)
 	if !readsPeriods {
@@ -76,9 +96,12 @@ func decideNoOverlap(rule semantic.Validation, source StatefulSource) (Decision,
 		return Decision{}, fmt.Errorf("semantic validation %s: the reader reports relation %s with the unknown coverage %q", rule.ID, rule.Relation, reading.Coverage)
 	}
 
-	// known[i] is true when the period of row i is fully known: it has a
-	// first day, and a last day or, by the rule's own words, none.
-	known := make([]bool, len(reading.Rows))
+	// A row states a period when it has a first day and a last day, or no
+	// last day and the rule calls that open. silent[i]: row i certainly
+	// states none. unsure[i]: whether it states one depends on a date that
+	// was not read.
+	silent := make([]bool, len(reading.Rows))
+	unsure := make([]bool, len(reading.Rows))
 	dateNotFetched, dateNull := core.CanonicalID(""), core.CanonicalID("")
 	note := func(target *core.CanonicalID, attribute core.CanonicalID) {
 		if *target == "" {
@@ -103,68 +126,112 @@ func decideNoOverlap(rule semantic.Validation, source StatefulSource) (Decision,
 				return Decision{}, fmt.Errorf("semantic validation %s: the reader reports a value of %s in the unknown state %q", rule.ID, rule.GroupBy, row.Group.State)
 			}
 		}
-		known[i] = true
 		switch row.Start.State {
-		case ValueNotFetched:
-			known[i] = false
-			note(&dateNotFetched, rule.Attribute)
 		case ValueNull:
-			known[i] = false
+			silent[i] = true
 			note(&dateNull, rule.Attribute)
+		case ValueNotFetched:
+			unsure[i] = true
+			note(&dateNotFetched, rule.Attribute)
 		}
-		switch {
-		case row.End.State == ValueNotFetched:
-			known[i] = false
-			note(&dateNotFetched, rule.Compared)
-		case row.End.State == ValueNull && !rule.OpenEnded:
-			known[i] = false
-			note(&dateNull, rule.Compared)
+		if !rule.OpenEnded {
+			switch row.End.State {
+			case ValueNull:
+				silent[i] = true
+				note(&dateNull, rule.Compared)
+			case ValueNotFetched:
+				unsure[i] = true
+				note(&dateNotFetched, rule.Compared)
+			}
 		}
 	}
 
-	// startsByEnd reports whether a starts on or before the last day of b.
-	startsByEnd := func(a, b PeriodRow) bool {
-		return b.End.State == ValueNull || a.Start.Value.Compare(b.End.Value) <= 0
+	// startsByEnd: does a start on or before the last day of b? A period
+	// without a last day is reached by every first day.
+	startsByEnd := func(a, b PeriodRow) tri {
+		switch {
+		case b.End.State == ValueNull:
+			return triYes
+		case b.End.State == ValueNotFetched:
+			note(&dateNotFetched, rule.Compared)
+			return triMaybe
+		case a.Start.State == ValueNotFetched:
+			note(&dateNotFetched, rule.Attribute)
+			return triMaybe
+		case a.Start.Value.Compare(b.End.Value) <= 0:
+			return triYes
+		}
+		return triNo
 	}
-	overlapSeen, groupNotFetched, groupNull := false, false, false
+	overlapSeen, dateMaybe, groupNotFetched, groupNull := false, false, false, false
 	for i := range reading.Rows {
 		for j := i + 1; j < len(reading.Rows); j++ {
-			if !known[i] || !known[j] {
+			if silent[i] || silent[j] {
 				continue
 			}
 			a, b := reading.Rows[i], reading.Rows[j]
-			if !startsByEnd(a, b) || !startsByEnd(b, a) {
+			// Whether the rows are in one group. A row with a value and a
+			// row without one are not.
+			sameGroup, unstated := triYes, false
+			if rule.GroupBy != "" {
+				switch {
+				case a.Group.State == ValueNotFetched || b.Group.State == ValueNotFetched:
+					sameGroup = triMaybe
+				case a.Group.State == ValueNull && b.Group.State == ValueNull:
+					// Whether two rows without a value are one group is not
+					// stated by the rule.
+					sameGroup, unstated = triMaybe, true
+				case a.Group.State == ValueNull || b.Group.State == ValueNull || a.Group.Key != b.Group.Key:
+					sameGroup = triNo
+				}
+			}
+			if sameGroup == triNo {
 				continue
 			}
-			// The two periods share a day. Whether that breaks the rule
-			// depends on whether the rows are in the same group.
-			switch {
-			case rule.GroupBy == "":
-				overlapSeen = true
-			case a.Group.State == ValuePresent && b.Group.State == ValuePresent:
-				overlapSeen = overlapSeen || a.Group.Key == b.Group.Key
-			case a.Group.State == ValueNotFetched || b.Group.State == ValueNotFetched:
-				groupNotFetched = true
-			case a.Group.State == ValueNull && b.Group.State == ValueNull:
-				// Whether two rows without a value are in one group is not
-				// stated by the rule.
-				groupNull = true
+			var shareADay tri
+			// The first clause decides alone when it is no; its notes about
+			// unread dates then do not matter, so they are taken afterwards.
+			noted := dateNotFetched
+			first := startsByEnd(a, b)
+			second := startsByEnd(b, a)
+			shareADay = triAnd(first, second)
+			if shareADay != triMaybe {
+				dateNotFetched = noted
 			}
-			// A row with a value and a row without one are not in one group.
+			switch {
+			case shareADay == triNo:
+			case shareADay == triYes && sameGroup == triYes && !unsure[i] && !unsure[j]:
+				overlapSeen = true
+			case unstated:
+				groupNull = true
+			case sameGroup == triMaybe:
+				groupNotFetched = true
+				dateMaybe = dateMaybe || shareADay == triMaybe
+			default:
+				dateMaybe = dateMaybe || shareADay == triMaybe
+			}
 		}
+	}
+	anyUnsure := false
+	for _, u := range unsure {
+		anyUnsure = anyUnsure || u
+	}
+	anySilent := false
+	for _, s := range silent {
+		anySilent = anySilent || s
 	}
 
 	switch {
 	case overlapSeen:
 		return decided(ResultNotSatisfied)
 	// What reading more could settle is reported before what it could not.
-	case dateNotFetched != "":
+	case anyUnsure || dateMaybe:
 		return undecided(UndecidedValueNotFetched, rule.Relation, dateNotFetched)
 	case groupNotFetched:
 		return undecided(UndecidedRelationKeyNotFetched, rule.Relation, rule.GroupBy)
 	case reading.Coverage == CoveragePartial:
 		return undecided(UndecidedRelationPartiallyRead, rule.Relation, rule.Attribute)
-	case dateNull != "":
+	case anySilent:
 		return undecided(UndecidedValueNull, rule.Relation, dateNull)
 	case groupNull:
 		return undecided(UndecidedRelationKeyNull, rule.Relation, rule.GroupBy)
