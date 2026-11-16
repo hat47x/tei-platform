@@ -1,0 +1,11 @@
+I did not guess which side to change. The same package already had the pattern:
+
+  selected_rule_markdown_evaluator_read_footprint_test.go:239
+      if rule.ID != core.CanonicalID(subject.ID) ||
+
+RuleExample.Data is core.CanonicalID (workspace/rule_example.go:22)
+sourceindex.Subject.ID is string
+=> align the subject side, which matches the existing convention.
+
+Fix: loaded.RuleExamples[0].Data != core.CanonicalID(dataSubject.ID)
+           + import "tei/internal/core"
