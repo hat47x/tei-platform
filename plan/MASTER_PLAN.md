@@ -2,6 +2,8 @@
 
 ## 目的
 
+- [標準データ様式の取得状態・記録例・判断可能性](design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md#126-部分取得でも判断できる場合を規則ごとに見極める2026-11-16)：mainの`validationeval.Decide`と`tei.authoring/v1`の`example of`を、既存Data／Rule／Source Indexへ接続する。DPC-09〜13で、NULLと未取得、部分取得でも確定する重複、全件一行の一意性、例と定義の改版、暦日・期間のRule条件を区別する。read-only検収票から始め、独立Expectedは#1180/#2514を使う。実Provider・正式Builder・二Consumer・Stage2のP0は維持する。
+
 - [標準データ様式の型付き接続と経路検収](design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md#12-型付き接続を経路として検証するデータ様式の保存条件2026-11-16)：データ型・構造Facet・表現型をPortの全体／Field／Adapter接続から再利用し、経路全体のIdentity・多重度・Presence・Coverage・時間・Source・公開条件を既存Mapping／Function Data Contextの契約で検査する。DPC-01〜08を#2495/#2497/#2506/#1180/#2514に引き渡し、[dogfooding§17](design/IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md#17-標準データ様式を実装の接続証拠へ折り返す2026-11-16)に最小Packetを記録する。設計・受入候補であり新Port Core／Runner／独立Expectedを作らず、正式Builder・通常CLI実Provider・Studio Stage1→Stage2のP0を維持する。
 
 - [RDB・SQL・NoSQLの横断適合と製品実証計画](design/DATA_PROVIDER_CROSS_DB_CONFORMANCE_2026-11.md)：既存Data Operations／Query IR／Provider／Workbench／Effect Fenceへ責務を割り付け、PostgreSQL実Product Readを最優先に、SQLite比較・MongoDB階層・DynamoDB Index・Neo4j Graph・更新／Migrationを段階検証する。Native Query原文、NULL／missing／partial、Identity／粒度、実Grant／Receiptを保持し、別Query Engineや分散Txを先行導入しない。新Provider実接続・二DB同一Function・Studio E2Eは未実施。#2622/#3270/#2586/#4496/#2387/#1174/#2831へ接続する。
