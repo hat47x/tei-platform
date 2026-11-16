@@ -12,13 +12,13 @@ import (
 
 // StepCodeAdapter provides a thin wrapper around Step Code CLI.
 type StepCodeAdapter struct {
-	cli          string
+	cli           string
 	defaultDryRun bool
-	taskTimeout  time.Duration
-	profile      string
-	plan         string
-	workDir      string
-	dryRun       bool
+	taskTimeout   time.Duration
+	profile       string
+	plan          string
+	workDir       string
+	dryRun        bool
 }
 
 // NewStepCodeAdapter constructs a Step Code adapter.
@@ -27,13 +27,13 @@ func NewStepCodeAdapter(cfg StepCodeConfig, taskTimeout time.Duration) *StepCode
 		cfg.CLI = "step"
 	}
 	return &StepCodeAdapter{
-		cli:          cfg.CLI,
+		cli:           cfg.CLI,
 		defaultDryRun: cfg.DefaultDryRun,
 		taskTimeout:   taskTimeout,
-		profile:      cfg.Profile,
-		plan:         cfg.Plan,
-		workDir:      cfg.WorkDir,
-		dryRun:       cfg.DefaultDryRun,
+		profile:       cfg.Profile,
+		plan:          cfg.Plan,
+		workDir:       cfg.WorkDir,
+		dryRun:        cfg.DefaultDryRun,
 	}
 }
 

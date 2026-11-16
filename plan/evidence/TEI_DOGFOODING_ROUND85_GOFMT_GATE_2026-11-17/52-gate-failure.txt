@@ -1,0 +1,13 @@
+The CI gate itself, run locally on main 306755ada:
+
+  $ bash tools/repository-health-check.sh --fast
+  FAIL  gofmt -l . is empty
+  FAIL  go vet ./...
+
+gofmt -l .  -> 25 files, 260 changed lines, pure formatting
+go vet ./... alone -> rc=0 (PASS). The script's FAIL line came from the gofmt
+failure above it, not from vet.
+
+After gofmt -w on exactly those 25 files:
+  gofmt -l .            -> 0
+  all five gate steps   -> PASS

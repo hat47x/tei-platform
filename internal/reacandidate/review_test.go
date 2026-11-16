@@ -368,7 +368,7 @@ func TestReviewSummaryDoesNotCoerceUnknownOrInvalidComparison(t *testing.T) {
 	set := mustGenerate(t, defaultEvidence())
 	comparison := CandidateSetComparison{
 		SchemaVersion: "tei.rea.candidate-set-comparison/v0",
-		Effect: EffectReadOnly,
+		Effect:        EffectReadOnly,
 		Entries: []CandidateComparisonEntry{
 			{CandidateID: "first", Status: ComparisonUnchanged},
 			{CandidateID: "second", Status: "future-private-status-value"},

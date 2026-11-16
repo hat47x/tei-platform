@@ -48,7 +48,7 @@ func TestBuiltinRuleMarkdownProductAdmissionAndSourceIndex(t *testing.T) {
 	// The authored predicates must reach the existing typed semantic model,
 	// not merely be counted as parsed Markdown regions.
 	expected := map[string]struct{ kind, attribute, relation string }{
-		"sales.order_line.quantity_positive": {"positive", "sales.order_line.quantity", ""},
+		"sales.order_line.quantity_positive":   {"positive", "sales.order_line.quantity", ""},
 		"sales.order.lines.line_number_unique": {"relation-unique", "sales.order_line.line_number", "sales.order.lines"},
 	}
 	seen := map[string]bool{}
