@@ -65,7 +65,7 @@ func TestBuildReportOmitsRawBusinessIdentifiersAndDetectsDerivedRelationshipKey(
 		t.Fatal(err)
 	}
 	got := buildReport(inspection)
-	if got.SchemaVersion != "reference-xead-source-inspection-v3" {
+	if got.SchemaVersion != "reference-xead-source-inspection-v4" {
 		t.Fatalf("schema version=%q", got.SchemaVersion)
 	}
 	if got.RelationalFacts.DerivedLegacyKeyMemberCount != 1 ||
@@ -156,7 +156,7 @@ func TestRunEmitsAggregateInspectionWithoutRawSource(t *testing.T) {
 	if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
 		t.Fatal(err)
 	}
-	if got.SchemaVersion != "reference-xead-source-inspection-v3" {
+	if got.SchemaVersion != "reference-xead-source-inspection-v4" {
 		t.Fatalf("schema version=%q", got.SchemaVersion)
 	}
 	if got.RelationalFacts.RuntimeKeyCount != 1 ||
@@ -324,7 +324,7 @@ func TestBuildReportFamilyExpansionIsUnresolvedAndPrivate(t *testing.T) {
 		t.Fatal(err)
 	}
 	public := buildReport(inspection)
-	if public.SchemaVersion != "reference-xead-source-inspection-v3" ||
+	if public.SchemaVersion != "reference-xead-source-inspection-v4" ||
 		public.RelationalResolutionPolicyRevision != "tei.xeadsource.relational-resolution/v3" ||
 		public.RelationalResolutionStatus != "unresolved" ||
 		public.RelationalDiagnostics.Total != 1 ||
@@ -344,5 +344,62 @@ func TestBuildReportFamilyExpansionIsUnresolvedAndPrivate(t *testing.T) {
 		if bytes.Contains(encoded, []byte(private)) {
 			t.Fatalf("public report leaked Source identifiers %q: %s", private, encoded)
 		}
+	}
+}
+
+// The designation projection reports the separation axes without republishing
+// any declared code table, stored literal, or legacy field identifier.
+func TestBuildReportOmitsFieldDesignationDeclarations(t *testing.T) {
+	const codeTable = "PRIVATE_CODE_TABLE_0042"
+	const storedValue = "PRIVATE_VALUE_0043"
+	const fieldID = "PRIVATE_FIELD_0044"
+	source := []byte(`<System><Table><TableField ID="` + fieldID + `" TypeOptions="KUBUN(` +
+		codeTable + `),VALUES(` + storedValue + `;001),VIRTUAL,NO_EDIT"/></Table></System>`)
+	inspection, err := xeadsource.Inspect(xeadsource.FormatXead, source, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	facts := xeadsource.ExtractFieldDesignationFacts(inspection.Document)
+	if len(facts.Fields) != 1 {
+		t.Fatalf("internal field designation count = %d", len(facts.Fields))
+	}
+	report := buildReport(inspection)
+	if report.FieldDesignations.TokenCount != 4 {
+		t.Fatalf("token count = %d, want 4", report.FieldDesignations.TokenCount)
+	}
+	if report.FieldDesignations.ByKind["kubun"] != 1 ||
+		report.FieldDesignations.ByKind["values"] != 1 ||
+		report.FieldDesignations.ByKind["virtual"] != 1 ||
+		report.FieldDesignations.ByKind["no-edit"] != 1 {
+		t.Fatalf("designation kinds were not counted separately: %#v", report.FieldDesignations.ByKind)
+	}
+	if report.FieldDesignations.UnresolvedAgainstSource["kubun"] != 1 {
+		t.Fatalf("KUBUN must stay unresolved against the source: %#v",
+			report.FieldDesignations.UnresolvedAgainstSource)
+	}
+	public, err := json.Marshal(report)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, secret := range []string{codeTable, storedValue, fieldID} {
+		if bytes.Contains(public, []byte(secret)) {
+			t.Fatalf("public designation projection leaked %q: %s", secret, public)
+		}
+	}
+}
+
+func TestBuildReportCountsCompetingDesignationsAsConflicts(t *testing.T) {
+	source := []byte(`<System><Table><TableField ID="F1"
+		TypeOptions="KUBUN(KBFLAG1),VALUES(T;F)"/></Table></System>`)
+	inspection, err := xeadsource.Inspect(xeadsource.FormatXead, source, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	report := buildReport(inspection)
+	if report.FieldDesignations.ConflictCount == 0 {
+		t.Fatal("competing designations were not reported as a conflict")
+	}
+	if report.FieldDesignations.ConflictAxes["value-domain"] == 0 {
+		t.Fatalf("value-domain conflict was not counted: %#v", report.FieldDesignations.ConflictAxes)
 	}
 }
