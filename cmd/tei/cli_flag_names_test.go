@@ -72,7 +72,7 @@ func TestAdvertisedFlagNamesAreTheAcceptedSet(t *testing.T) {
 		"model catalog": true, "model locate": true, "model overview": true,
 		"model document-draft": true, "model document-reconcile": true,
 		"model search":  true,
-		"three-element": true,
+		"three-element": true, "business-procedure": true,
 	}
 	for _, record := range commandCatalog().Commands {
 		if selfParsed[record.Name] {
@@ -102,6 +102,7 @@ func TestSelfParsedFlagNames(t *testing.T) {
 		"model document-draft":     {[]string{"workspace", "subject-kind", "subject-id"}, []string{"relation-id", "title", "document-kind", "application", "frozen", "section", "model"}},
 		"model document-reconcile": {[]string{"workspace", "draft"}, nil},
 		"three-element":            {nil, nil},
+		"business-procedure":       {[]string{"workspace", "procedure"}, nil},
 	}
 	for name, expect := range want {
 		record := catalogRecord(t, name)

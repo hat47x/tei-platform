@@ -23,7 +23,7 @@ func unmentionedExportedStringConstants(t *testing.T, root string) []string {
 	declared := 0
 	var out []string
 	err := filepath.WalkDir(filepath.Join(root, "internal"), func(path string, entry fs.DirEntry, err error) error {
-		if err != nil {
+		if err := skipVanishedPath(err); err != nil {
 			return err
 		}
 		if entry.IsDir() {

@@ -36,7 +36,7 @@ var selectedReadOnlyFlagAllowlist = map[string][]string{
 	"plugin-inventory":    {"workspace", "world", "environment", "plugin-lock", "plugin", "diagnose"},
 	"external-candidates": {"evidence-path", "tool-version", "observation-id", "relation-id", "expected-evidence-id", "expected-received-digest", "expected-source-revision"},
 	"inspect":             {"workspace", "subject-kind", "subject-id", "expected-fingerprint"},
-	"view":                {"workspace", "application", "pattern", "package", "format", "command", "input", "execute", "reference-store", "period-state", "allow-capability", "operation-log", "lifecycle-state", "lifecycle-command", "lifecycle-owner", "lifecycle-generation"},
+	"view":                {"workspace", "application", "pattern", "package", "format", "command", "input", "execute", "reference-store", "period-state", "allow-capability", "operation-log", "lifecycle-state", "lifecycle-command", "lifecycle-owner", "lifecycle-generation", "lifecycle-takeover"},
 	"trace": {
 		"workspace", "scope", "subject-kind", "subject-id",
 		"direction", "mode", "offset", "limit", "expected-fingerprint",
@@ -107,6 +107,7 @@ var repeatableFlags = map[string]map[string]bool{
 	"model overview":                         {},
 	"model search":                           {},
 	"model document-draft":                   {"section": true},
+	"business-procedure":                     {},
 }
 
 // validateRepeatableArguments refuses a flag that was supplied more than once
