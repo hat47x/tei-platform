@@ -94,6 +94,11 @@ type selfBuildStateSeparation struct {
 const (
 	stateSeparationChildStatementScope = "the state directory the child reported is the one this entry passed"
 	stateSeparationPostHocScope        = "the second build created the state directory this entry passed, and the listing of the first build's state directory was unchanged across the second build"
+	// The wording names what the mechanism did and stops there. The read-only
+	// remount covers the root tree; filesystems mounted separately inside the
+	// namespace (/proc, /sys, /dev) stay writable, so this is not "nothing else
+	// was writable".
+	stateSeparationHostBoundaryScope = "the second build ran in a mount namespace where the root tree was remounted read-only, the passed state directory and the artifact directory were reopened for writing, and the first build's state directory was masked by an empty tmpfs; filesystems mounted separately from the root tree are not covered"
 )
 
 // withArtifactAndState returns the child argv with the values of -artifact-out and
@@ -141,6 +146,7 @@ func checkArtifactReproducibility(
 	firstReportedStateDir string,
 	outputPath string,
 	firstObserved stateDirObservation,
+	stateBoundary bool,
 ) (record selfBuildReproducibility) {
 	record = selfBuildReproducibility{Boundary: reproducibilityBoundary}
 	secondReportedStateDir := ""
@@ -180,7 +186,26 @@ func checkArtifactReproducibility(
 		return unperformed("the first build's state directory could not be listed: " + err.Error())
 	}
 
-	evidence, err := driveSelfBuild(childPath, args, secondOutput, "")
+	// With -state-boundary the second build runs inside a mount namespace whose root
+	// tree is read-only, with only the second state directory and the artifact
+	// directory writable. The allow paths must exist before the namespace is
+	// entered: the script remounts / read-only before it can create anything.
+	var boundary *selfBuildBoundary
+	if stateBoundary {
+		if mkErr := os.MkdirAll(secondState, 0o755); mkErr != nil {
+			return unperformed("the second build's state directory could not be prepared: " + mkErr.Error())
+		}
+		if mkErr := os.MkdirAll(filepath.Dir(secondOutput), 0o755); mkErr != nil {
+			return unperformed("the second build's artifact directory could not be prepared: " + mkErr.Error())
+		}
+		built, boundaryErr := stateBoundaryLauncher(secondState, filepath.Dir(secondOutput), firstStateDir)
+		if boundaryErr != nil {
+			return unperformed(boundaryErr.Error())
+		}
+		boundary = built
+	}
+
+	evidence, err := driveSelfBuildIn(childPath, args, secondOutput, "", boundary)
 	if err != nil {
 		return unperformed("the second build could not be started: " + err.Error())
 	}
@@ -240,6 +265,15 @@ func checkArtifactReproducibility(
 	record.StateSeparation = &selfBuildStateSeparation{
 		Basis: stateSeparationEntryPostHoc,
 		Scope: stateSeparationPostHocScope,
+	}
+	if boundary != nil {
+		// The namespace refused the write instead of noticing it afterwards. Naming
+		// the stronger basis is the whole point of running it, so the record says
+		// which of the two actually ran.
+		record.StateSeparation = &selfBuildStateSeparation{
+			Basis: stateSeparationHostBoundary,
+			Scope: stateSeparationHostBoundaryScope,
+		}
 	}
 
 	// The claim is about one builder. If the executable changed between the two
