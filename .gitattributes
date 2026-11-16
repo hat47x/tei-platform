@@ -333,3 +333,6 @@
 
 # stdio env observations are hashed as raw bytes.
 /plan/evidence/DSH_MCP_STDIO_ENV_2026-11-17/** -text
+
+# stdio mid-call death observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_STDIO_MIDCALL_2026-11-17/** -text

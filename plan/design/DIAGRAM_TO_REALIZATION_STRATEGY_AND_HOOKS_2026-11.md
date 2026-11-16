@@ -389,7 +389,7 @@ StudioのプロジェクトExplorerで一つの`*.tei.md`を開いたとき、So
 
 - [#5142](https://github.com/hat47x/tei-platform/pull/5142)で、既存の評価器に、値の present／null／not-fetched と関係の complete／partial を申告する読み手向けの判定入口が加わった。読取範囲が部分的でも、すでに見つけた重複が一意性を否定するときは不成立と判断できる。一方、重複が見つからないだけでは、未読の行がある以上成立と断定できない。
 - [#5143](https://github.com/hat47x/tei-platform/pull/5143)で、記録の例と期待結果を文書に記述し、規則の判定と照合できるようになった。例は意味モデルや現在の実データ取得資格を置き換えない。例の合格は実Providerの全件取得や業務保存の実行許可ではない。
-- [#5146](https://github.com/hat47x/tei-platform/pull/5146)で、一件の記録における暦日二項目の前後を評価できるようになった。終了日が空の場合の扱いは明示された条件に従い、未取得を空値と同一視しない。複数行の期間重複を扱う[#5148](https://github.com/hat47x/tei-platform/pull/5148)は確認時点で未マージであり、同PRの追加テストや全体の適合は未確定である。
+- [#5146](https://github.com/hat47x/tei-platform/pull/5146)で、一件の記録における暦日二項目の前後を評価できるようになった。終了日が空の場合の扱いは明示された条件に従い、未取得を空値と同一視しない。複数行の期間非重複を扱う[#5148](https://github.com/hat47x/tei-platform/pull/5148)も現行mainにあり、同じ比較Groupに属する期間を評価できる。ただし実DBの行集合や有効期間全体を読み尽くした資格まで付与するものではない。
 - [生成Goの限定実証](https://github.com/hat47x/tei-platform/pull/5118)は、選択されたpositive Ruleを既存Evaluatorと生成Binaryで照合し、結果が同じでもRead IDが異なる負例を拒否した。ただし現行の GeneratePositive は positive と解決済み std.decimal に限られ、上記の状態付き判断、日付規則、期間規則の生成を一般に提供するものではない。
 
 したがって「Ruleを製品で読める」「Ruleの評価器が対応する」「指定Targetへ生成できる」「本番の読取元から入力を得られる」「実際に選ばれた実装が通った」を一続きの合格とは扱わない。未対応kindを暗黙にpositiveへ変換したり、Gが使えないのでIへ無言で切り替えたりしない。対象TargetとContractごとに、対応した入口と不足する保証を示す。
@@ -424,7 +424,7 @@ StudioのプロジェクトExplorerで一つの`*.tei.md`を開いたとき、So
 ### 15.1 別々に成立した実装を一つの合格にしない
 
 - [#5155](https://github.com/hat47x/tei-platform/pull/5155)の組織C1では、実Workspace上のRelation・Queryの型付き契約を確認したうえで、同じ検査対象のQueryから実PostgreSQLを読み、独立Expectedへ照合する限定試験がある。[#5165](https://github.com/hat47x/tei-platform/pull/5165)は、その専用CIで二つの対象試験が明示PASSしたことを記録した。ただし返されるのはMembership行であり、OrgUnit JOIN、Person Link、Function Contextや独立Consumerまでの通過を証明していない。
-- [#5149](https://github.com/hat47x/tei-platform/pull/5149)は、Contract Queryの行からpresent／null／not-fetchedを読み分けるAdapterの候補である。SQLiteのSQL Executor経由の局所試験を含むが、確認時点では**未マージ**である。Contract Queryの正式な解決・Binding・Environment、PostgreSQL、製品CLIの呼出しには未接続で、Coverageは呼出し側の申告に依存する。未判定の変異試験も残る。
+- [#5149](https://github.com/hat47x/tei-platform/pull/5149)の`internal/driver/validationread`は現行mainに入り、SQL Executorで実行したSQLiteのContract Query結果から、数値・暦日・関係Key・期間を既存の状態付き評価器へ渡す局所試験がある。列の未取得とSQL NULL、ページの部分取得、同一人物の重複や期間の重なりを別々に検査する。ただしこの試験は**Queryの実行とRow MappingからRuleまで**であり、正式なContract Query解決・Environment／Grant、PostgreSQL、通常CLI／独立Consumerを実行したものではない。`CoverageComplete`は呼出し側の申告である。
 - main統合済み[#5166](https://github.com/hat47x/tei-platform/pull/5166)は、同じMarkdown Sourceから読んだ日付Ruleを既存の状態付きEvaluatorで評価する経路と、現行Go生成器がそのRuleを**未対応として拒否する**経路を区別した。Ruleの読取り成功は、選択TargetでのG生成資格ではない。
 - [型付きPlugin I/O設計](PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md)は、Record全体／Field別／明示AdapterでPresence・必要Read集合・公開範囲を保存する条件を扱う。値の変換に成功しただけで実Providerの取得資格やConsumerへの開示資格が生まれるわけではない。
 
@@ -456,10 +456,36 @@ StudioのプロジェクトExplorerで一つの`*.tei.md`を開いたとき、So
 | 同じ値でQuery Binding／Read IDだけ変更 | 意味上のRead対象のすり替えを拒否する |
 | 同じSourceでP対応の日付RuleをGへ変更 | 現行Generatorの明示的未対応をそのまま返す。暗黙のFallbackを実績に数えない |
 
-最初は**一つのContract Query、一つのRule、一つの実Read結果**に絞る。#5149のAdapterを採用する場合も、未判定の変異試験、正式Binding、ScopeとCoverageの根拠を先に確認する。組織C1の実PG試験は実Queryの照合方法の先例とし、別の業務対象へ無断で転用しない。
+最初は**一つのContract Query、一つのRule、一つの実Read結果**に絞る。#5149の既存Adapterを再利用し、未判定の変異試験、正式Binding、ScopeとCoverageの根拠を追加検証する。組織C1の実PG試験は実Queryの照合方法の先例とし、別の業務対象へ無断で転用しない。
 
 ### 15.4 実装範囲と次の引渡し
 
 対象は既存Driver／Function Contextと状態付きEvaluatorを接続する**不足している一辺**である。型付きPort全体の再設計、第二のQuery／Graph Engine、独立Evidence Store、万能Adapter、TEI独自Hostは追加しない。実装選択A→Bの現在性は既存Scenario Pin、BuildPlan／Builder／Toolchainの現在性は既存セルフビルドで別に確かめる。通常CLI→正式Provider→独立Consumer（#2586／#4495）とStudio Stage1→Stage2 Windows（#2831／#4583）を優先する。
 
 本節は設計・検収の更新のみ。#5155の限定実PG PASSを、状態付きRuleやR3公開Functionの実行合格へ拡大しない。
+
+## 16. SQLiteの局所到達から正式Query／Ruleへ移すための実証境界（2026-11-17）
+
+§15の「まだ接続していない一辺」は、mainの実装進展で絞り込めた。**実Queryの行を状態付きRuleへ渡す処理そのものは、SQLiteの製品SQL Executorと既存Row Mappingを通る局所試験で成立している。** 次に必要なのはReaderの再実装ではなく、選択済みSource／Contract Query、実際のInput／Scope／Snapshotと取得範囲を同一試行で束縛することである。
+
+### 16.1 合格範囲をコード上の入口で切る
+
+| 境界 | 現行mainの証拠 | まだ必要な証拠 |
+| --- | --- | --- |
+| Markdown Sourceから型付きRule | #5179／#5181が同じLoadでData・Rule・Source位置、値の状態や記録例を検査。#5205は未選択の`*.tei.md`で言語選択を案内する | SQL実行に使ったContract／Mappingを**このSource版**へ束縛し、同名の別対象やReader版違いを拒否 |
+| Query結果から状態付きRule | `internal/driver/validationread/sqlite_path_test.go`がSQLite実Query→Column Mapping→`FromHeaderDetail`→`Decide`の局所経路を確認 | 正式Query Resolver／Binding／Environment、実Provider、現在Grantと実呼出しの連鎖 |
+| Relationの取得完全性 | ページを`CoveragePartial`と申告すると、未読行のある一意性は未決定。既読重複は不成立を維持する | 呼出し側の`CoverageComplete`申告が対象の全行を読んだと正当化できるかを、QueryとScope／Snapshotで**別に証明** |
+| 組織C1の実DB Read | #5155／#5165は同一型付きQueryと実PostgreSQL取得の限定PASS。#5184は同一のMembership投影でもPersonの人数が異なり得る二候補世界を実PGの反例に加えた | 未取得Person関係・必要Cohort・Relationの多重性、RuleとConsumerへの実連結 |
+| 実現方式・実Consumer | #5166は暦日RuleのP評価とG未対応を同じSourceで区別。#5188はCLI実ProcessとStudio HostのInspectを比較 | 実Readした値が選択されたRule／Providerを通り、独立Consumerに受領された同一Attempt。Inspectの一致は業務Ruleの実呼出しではない |
+
+SQLiteの既存試験では、ページを**誤って`CoverageComplete`と申告すると**、未読行があっても一意性を成立と返せてしまうことまで示している。これはReaderが返却行だけから全件性を検証できないという設計上の限界である。新しい`complete`の既定値を置かず、呼出し側の根拠が未確定なら未証明に留める。
+
+### 16.2 最初に追加する一因子の対照
+
+1. **同じQueryと実行結果で、Coverageの申告だけ変更**：既読重複があるRuleは不成立を維持し、重複がないRuleは必要集合の裏付けがない限り成立としない。既存局所試験の再実装ではなく、正式Binding側が`complete`を主張してよいかを検査する。
+2. **同じ値・行数で、Bindingの対象Relationだけ変更**：結果一致で意味ID／Query ID／Read Scopeの不一致を通さない。Personの人数が観測されたMembership行から推定できない#5184の反例を参考に、要求した集合の観測可能性を確かめる。
+3. **同じ意味IDで、Source Revisionまたは選択言語を変更**：実Readの資格を再確認し、旧Source Indexや古いPlanを流用しない。CLIの読取りコマンドの前提指紋を揃えた[#5198](https://github.com/hat47x/tei-platform/pull/5198)はmainへ統合済みである。現行の対応入口でSource改版後の旧Snapshotを拒否できることと、実Queryの必要集合／Scope／現在Grantの証明は別に検査する。MCP・HTTPへの適用を推定しない。
+
+**優先**：Query／Scope／Coverageを同じAttemptで検査できる局所Consumerを既存#2586／#4495へ渡す。入力不足は明示的に`not-proven`とし、生成Gを選べないRuleを黙ってPへFallbackさせない。前処理のSource確認から実Consumerの受領まで、既存#1180／#2514のIndependent Expectedを使い、新たなRunnerやStoreは作らない。非Plugin Windows Studio Stage1→Stage2の優先P0は維持する。
+
+本節は現行Goコードと既存試験の到達点を計画へ反映したもので、新たなGo／実PostgreSQL／Windows試験の実行やOwner意味受理を伴わない。
