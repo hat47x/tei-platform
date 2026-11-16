@@ -127,6 +127,13 @@ func TestRuleFormatRefusesNotOverlapping(t *testing.T) {
 	if _, err := syntax.FormatRuleAuthoring(ruleAuthoringWithNoOverlap); !errors.Is(err, syntax.ErrRuleFormatUnsupported) {
 		t.Fatalf("err=%v", err)
 	}
+	// A source whose only rule is about periods is refused for the period
+	// itself, not because of another rule beside it.
+	onlyPeriods := "namespace organization\n\nrule organization.item.prices.periods_apart:\n" +
+		"  organization.price.valid_from until organization.price.valid_to is not overlapping per organization.item.prices\n"
+	if out, err := syntax.FormatRuleAuthoring(onlyPeriods); !errors.Is(err, syntax.ErrRuleFormatUnsupported) || !strings.Contains(err.Error(), "periods") {
+		t.Fatalf("out=%q err=%v", out, err)
+	}
 	if kind, ok := syntax.RuleValidationKind(syntax.RulePredicateNotOverlapping); !ok || kind != semantic.ValidationNoOverlap {
 		t.Fatalf("kind=%q ok=%v", kind, ok)
 	}
