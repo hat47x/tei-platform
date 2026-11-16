@@ -92,6 +92,7 @@ func inspectionFromResolved(
 		Effect:                 "read-only",
 		Subject:                subject,
 		Canonical:              canonical,
+		SnapshotFingerprint:    InspectionSnapshotFingerprint(worldFP, sourceFP),
 		WorldFingerprint:       worldFP,
 		SourceIndexFingerprint: sourceFP,
 		SourceStatus:           status,

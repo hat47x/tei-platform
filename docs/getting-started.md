@@ -220,7 +220,7 @@ go run ./cmd/tei inspect \
   -subject-id sales.order
 ```
 
-`inspect`は`tei.cli.inspect/v0`形式のJSONを返します。成功時の`result.canonical`は既存の正規化した全体モデルから選択した要素そのもの、`result.sources`は既存入力元索引の参照と成果物の照合値です。`worldFingerprint`は読取り時点の正本となる全体モデルの内容を識別するためのハッシュであり、競合更新を防ぐ版を示す値や変更の受理証跡ではありません。`sourceStatus=not-indexed`は入力元索引に参照がないことを意味し、正本となる定義の不存在とは区別します。
+`inspect`は`tei.cli.inspect/v0`形式のJSONを返します。成功時の`result.canonical`は既存の正規化した全体モデルから選択した要素そのもの、`result.sources`は既存入力元索引の参照と成果物の照合値です。`worldFingerprint`は読取り時点の正本となる全体モデルの内容を識別するためのハッシュであり、競合更新を防ぐ版を示す値や変更の受理証跡ではありません。`result.snapshotFingerprint`は`worldFingerprint`と`sourceIndexFingerprint`を1つにまとめた値で、同じ対象をもう一度読むときに`-expected-fingerprint`へ渡せます。渡した値と一致しない場合は`error.code=STALE_SNAPSHOT`・終了コード2で答えます。これは2回の読み取りの間に入力元が変わっていないことを示すだけであり、変更の受理や書込みの許可ではありません。`sourceStatus=not-indexed`は入力元索引に参照がないことを意味し、正本となる定義の不存在とは区別します。
 
 業務モデルの要素が何を参照し、何から参照されているかを調べるには、読み取り専用の`trace`を使います。`inspect`と同じ種類・識別子（例：`semantic-relation: sales.order.customer`）を指定して、意味の情報と参照関係を確認できます。現在扱えるのは、既存の派生索引で表現できる、宣言済みの直接参照だけです。
 
