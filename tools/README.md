@@ -20,6 +20,7 @@
 | [`internal/`](internal/) | 複数のツールから使う共通処理 |
 | [`repository-architecture-check/`](repository-architecture-check/) | パッケージ構成と依存境界の検査 |
 | [`repository-dependency-report/`](repository-dependency-report/) | Goの直接依存関係の一覧作成 |
+| [`repository-module-scope/`](repository-module-scope/) | 入れ子Go moduleの検出と検査対象の明示。`go test ./...`が入れ子moduleへ届かないため、宣言の無いmoduleと宣言だけ残った古いmoduleを落とし、宣言されたmoduleを実際に検証する。除外には理由を要求し、既知の失敗は試験名と理由を要求する（#4612） |
 | [`repository-plan-check/`](repository-plan-check/) | ADR・Issueの番号や要求と検証表の対応確認、ADR索引とADRファイルの一致・状態の確認（#2343） |
 | [`reference-adr-index-check/`](reference-adr-index-check/) | `plan/adr/README.md`の索引と`plan/adr/0*.md`の対応を単体で検査する。各ファイルが一度だけ載り、リンク先が実在し、索引の状態がファイルの状態行と一致することを確かめる。索引は文書であり、この検査は記録との対応だけを守る（#2343） |
 | [`doc-reference-probe/`](doc-reference-probe/) | 文書中の明示パス参照と暗黙候補を調べる任意実行の限定試作（#2309） |
