@@ -1311,3 +1311,56 @@ Plugin Resolverの診断が列挙されることと、実装が現在利用可�
 正式なP0である、通常製品`tei`→actual Provider／実Read（#4495／#1251）、正規Source→Builder（#2595／#4544）、非Plugin Studio Stage1→Stage2の実Windows再入（#2831／#4583）を先行維持する。AP-1のread-only HTTPとB0実IPCは互いに独立の小PRとし、G/P/Dの一部対応やPlugin診断テストの成功から実Provider・G4の受理へ昇格させない。
 
 **本節はmainの実装とPRのCIログに基づく設計・検収計画の追補であり、新しいGo／HTTP／Windows／DB試験を実行したものではない。**
+
+## 37. 読取りの前提・Pluginの能力・実行環境の隔離を、ひとつの「成功」にまとめない（2026-11-17）
+
+### 37.1 現在のmainにある基線
+
+[PR #5188](https://github.com/hat47x/tei-platform/pull/5188)は、実製品入口でCLIとStudio Hostが同じSubject・Canonical・元Sourceを指すことを検査し、期待値を書いただけで効かない試験を修正している。これは§32のread-only三入口試験を補強する成果であり、実HTTPの公開権限や非Builtin Providerの実Callまでは示さない。
+
+[PR #5205](https://github.com/hat47x/tei-platform/pull/5205)では、選択されていない`*.tei.md`に対して使えるLanguage候補と`tei.workspace.yaml`の指定方法を診断に示した。また、再現用テストにあったimport cycleを解消し、`internal/workspace`の試験群が実行できる状態を回復した。**選択されていない宣言を自動解釈する変更ではない。** Markdownの表やフェンスを読み飛ばした状態を意味の受理と見なさず、Source Role／選択Language／実Readerの読取結果を確認する。
+
+[PR #5204](https://github.com/hat47x/tei-platform/pull/5204)では、Plugin Capabilityの6種類の`Supports*`述語が、明示された値だけを認め、空の集合・類似文字列・未宣言の値を拒む試験をmainへ入れた。これは能力宣言への**所属判定**の証拠であり、Plugin実体のロード・実呼出し・現在Grantの証拠ではない。
+
+一方、[PR #5201](https://github.com/hat47x/tei-platform/pull/5201)はLock経由の解決における**原因喪失を確認するテスト**としてmainに入った。古いLockで狭めたCatalogが追加要件を満たせないとき、現在の`ResolveEnvironmentWithLock`はResolverのエラーを文字列で包み、`ResolveCode`が空になる。文面が残ることと機械可読な原因連鎖が残ることは違う。修正（原因を包むか、Lockの失敗種類を分けるか）はOwner未決とし、完了扱いしない。
+
+### 37.2 Snapshot Fingerprintは読取りの前提であり、実行許可ではない
+
+[PR #5198](https://github.com/hat47x/tei-platform/pull/5198)は**未統合の実装候補**として、`inspect`／`model locate`／`model overview`と既存`trace`を、読取りの前提指紋で揃える。WorldとSource Indexを束ねた`snapshotFingerprint`を返し、次の読取りで`-expected-fingerprint`が一致しなければ`STALE_SNAPSHOT`として停止させる。提案されている`inspect`の指紋は`trace`の継続トークンと別の文脈で定義されるため、名称が似ていても相互流用しない。
+
+| 観測 | 判断できること | そこからは判断できないこと |
+| --- | --- | --- |
+| World・Source Indexの同一Snapshot | 前回と同じ読取り前提であるか | A→B→Aの途中経過、Ownerの受理が継続したか |
+| SubjectとSource Occurrence | 今回どの宣言を読んだか | 該当Artifactの実Builder消費、生成物の再利用資格 |
+| Plugin CapabilityのSupports | 宣言された機能・値の所属 | 選択実装の現在性、実Call、Host Grant |
+| Lockの検査 | Lockが固定した選択とCatalogの整合 | Resolverが失った根本原因、Process Imageの同一性 |
+| Result／Failure／Receipt | 観測された値・拒否・Effectの状態 | Consumerへ公開してよいか、再実行してよいか |
+
+Snapshot一致は**単一の読取り時点での楽観的前提確認**であり、Source編集時のCAS、実行直前のGrant判定、Effect後の再試行判断に置き換えない。HTTP／Wails Adapterがこの指紋を採用する場合も、Host自身が実Workspaceを固定し、旧Workspace世代・別Audience・Source非公開項目を別途拒否する必要がある。
+
+### 37.3 Self-buildのState Boundaryは、別のHostを作る理由にはしない
+
+[#4486のS2候補PR #5202](https://github.com/hat47x/tei-platform/pull/5202)は未統合である。Linuxの`-state-boundary`では、再Buildをマウント名前空間に入れ、Root側の書込を制限し、許可したState／Artifactディレクトリだけを書けるようにする設計である。提案者の実測では`host-boundary`を記録できたが、**書込隔離と読取隔離は同義ではなく**、別マウント、`/proc`、`/sys`、`/dev`、ネットワーク、環境変数、常駐Processも一律には隔離できない。Windows／macOSの実証でもない。
+
+この機能が受理されても、SB-C0の`qualified=false`／G4 `UNQUALIFIED`を変更しない。2回のBuildが同じファイルを読んだのか、別のGo ToolchainやProcess Imageを使用したのか、再入したStage2が実Wails Consumerとして機能したのかは、それぞれ別票で検証する。また、これはBuilderの再現性検証用の境界であり、B0の常駐Child Backend通信へ流用しない。
+
+CI上では[PR #5194](https://github.com/hat47x/tei-platform/pull/5194)が、rootの`go test ./...`だけでは入れ子`go.mod`のテストが実行されない問題を扱っている。これも未統合候補である。Scope宣言を取り込む際は、**テスト対象に含めた事実・テストが実行された事実・製品機能が合格した事実**を別に表示する。Known failureの許可リストを緑として表示せず、対象から漏れたModuleを未検証と記録する。
+
+### 37.4 最小の負例と、次の実装順
+
+| ID | 一因子だけ変える条件 | 受入条件と引渡し |
+| --- | --- | --- |
+| **LA-29：Language未選択** | `*.tei.md`を置き、`languages:`を指定しない | 候補と選び方を診断。未読宣言を意味に昇格しない（main #5205／#5145） |
+| **LA-30：Snapshot失効** | 一度読んだ後にSourceだけ改版し、前の期待指紋で再読取 | `STALE_SNAPSHOT`で拒否。#5198が統合された実HEADで実CLI試験（#1158） |
+| **LA-31：SnapshotのA→B→A** | Sourceを改版後に元Byteへ戻す | 指紋が再一致しても中間のRevision・Owner受理・Grant継続を推定しない（#1180/#2514） |
+| **LA-32：能力値の取り違え** | Supportsに似た別名か空宣言を渡す | 宣言の一致なしは不対応。黙って別ProviderにFallbackしない（main #5204／#951） |
+| **LA-33：Lock原因の欠落** | 有効Catalogに対して古いLockだけを使う | 現行の`ResolveCode=""`を不在証明にしない。修正方式はOwner判断（main #5201／#951） |
+| **LA-34：書込境界の過大評価** | 同じ再Buildで許可外書込と共有読取を試す | 書込拒否が成功しても読取・環境・外部Processの隔離は未受理（候補 #5202／#4486） |
+| **LA-35：入れ子Moduleの脱落** | rootテストが成功した状態で独立Moduleのテストを失敗させる | 対象Moduleを検出し、未実行をPASSにしない（候補 #5194／#4612） |
+| **LA-36：旧Reader結果の公開** | 読取りの後にWorkspace世代・Audienceだけを変更 | CLIのSnapshot一致だけで古いStudio／HTTP応答を採用・開示しない（#1824/#1158） |
+
+次の実装は**現在mainにある三入口・Source位置の一致**を入口に、先に#5198のSnapshot前提を実CLIで受理し、その後AP-1のread-only HTTP Consumerに持ち込む。並行して#5201の原因喪失の修正方式をOwnerと決め、#5202のLinux書込境界はG4とは別の局所試験として判定する。
+
+正式な通常CLI→actual Provider／実Read（#4495/#1251）、正規Source→Builder（#2595/#4544）、Studio非Plugin Stage1→Stage2の実Windows再入（#2831/#4583）は引き続きP0とする。PluginのCapability所属判定、Read Snapshot、Builder再現、Hostの実権限のいずれも、単独ではこのP0の完了条件を満たさない。
+
+**この節はmainのコード・既存試験と未統合PRの実測を区別してまとめた設計追補であり、ここで新しいGo／HTTP／Windows／DB試験を実行したわけではない。**
