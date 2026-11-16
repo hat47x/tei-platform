@@ -147,7 +147,7 @@ func testMentionedConstantNames(t *testing.T, root string) map[string]bool {
 	identifier := regexp.MustCompile(`\b([A-Za-z_][A-Za-z0-9_]*)\b`)
 	named := map[string]bool{}
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
-		if err != nil {
+		if err := skipVanishedPath(err); err != nil {
 			return err
 		}
 		if entry.IsDir() {
@@ -179,7 +179,7 @@ func collectDiagnosticCodes(t *testing.T, root string) map[string][]string {
 	t.Helper()
 	codes := map[string][]string{}
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
-		if err != nil {
+		if err := skipVanishedPath(err); err != nil {
 			return err
 		}
 		if entry.IsDir() {
@@ -225,7 +225,7 @@ func testMentions(t *testing.T, root string) map[string]bool {
 	pattern := regexp.MustCompile(`"([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)"`)
 	mentioned := map[string]bool{}
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
-		if err != nil {
+		if err := skipVanishedPath(err); err != nil {
 			return err
 		}
 		if entry.IsDir() {

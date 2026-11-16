@@ -200,8 +200,8 @@ func forEachMarkdown(t *testing.T, visit func(rel, text string)) {
 // this check cannot judge.
 func walkMarkdown(root string, visit func(rel, text string)) error {
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
+		if err := skipVanishedPath(walkErr); err != nil {
+			return err
 		}
 		if entry.IsDir() {
 			// .local/ is git-ignored local state (see .gitignore): archived
