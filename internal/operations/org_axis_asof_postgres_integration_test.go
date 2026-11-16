@@ -219,6 +219,7 @@ func TestOrgAxisAsOfActualPostgresOptIn(t *testing.T) {
 		}
 
 		wantMemberships := []string{"A1", "A3", "A4", "A7"}
+		var firstProjection any
 		for _, tc := range []struct {
 			world       string
 			wantPersons int
@@ -240,6 +241,11 @@ func TestOrgAxisAsOfActualPostgresOptIn(t *testing.T) {
 				}
 				if ids := orgAxisResultIDs(mapped.Rows); !reflect.DeepEqual(ids, wantMemberships) {
 					t.Fatalf("actual Membership projection=%v want=%v", ids, wantMemberships)
+				}
+				if firstProjection == nil {
+					firstProjection = mapped.Rows
+				} else if !reflect.DeepEqual(firstProjection, mapped.Rows) {
+					t.Fatalf("same actual Query produced different projections across candidate worlds: %v vs %v", firstProjection, mapped.Rows)
 				}
 				for _, row := range mapped.Rows {
 					if len(row) != 3 {
