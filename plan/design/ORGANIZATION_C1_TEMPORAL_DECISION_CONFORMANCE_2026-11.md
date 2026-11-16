@@ -2074,3 +2074,20 @@ PostgreSQLには、スカラーMembership IDの等値比較と二つの時間Ran
 既存Scenario/Test ID・Source位置・Canonical ID・入力版・選択実現方式・使用Artifact・Expected/Observedを受入票へ対応付ける。生成メソッド名は診断用の派生情報であり、テストのPrimary IDにはしない。ある条件で通るべき経路が**必要な状態を保ったまま**通ったことと、経路が静的に存在することは別の合格資格である。部分失敗・Reader未接続・A→B→Aを、局所成功だけで合格にしない。
 
 型付きportを使うPlugin/Nodeにもこの検査を再利用できる。明示Adapterによる型変換、Graphでの関係宣言、Studioでの表示、実行時のData Flowは、それぞれ別の証拠として扱う。
+
+<!-- org-ar1-realpg-cohort-20261116 -->
+### 43.5 型付きの宣言と実Provider読取を、同じ試行で照合する（2026-11-16）
+
+§43.2のAR-1は通常のWorkspace Loaderを通した静的契約である。ここからAR-3へ進む際は、**別々の成功ログを合算しない**。実PostgreSQL試験 `TestOrgAxisAsOfActualPostgresOptIn` が使う同じ `loaded.World` と `q` に対し、実際のSQL実行に先立って `orgC1StableUnitReadPath` を適用し、同じQueryの結果を既存の手書きExpectedと比較する。静的宣言側と実Queryが一致していない場合はProviderへ進めない。追加のテスト用Readerや組織専用Operatorは作らない。
+
+| 検査する境界 | 今回測れること | 引き続き測れないこと |
+| --- | --- | --- |
+| 正本Source→IR | Membership→OrgUnitのRelation ID、Source/Target Key方向、単数性、Queryの名前付き入力・型・結果のSemantic属性対応 | Personへの正式Relation、業務Ownerの意味受理 |
+| IR→実PostgreSQL | 上記の合格を条件に、**同じ実DB接続・Query ID・Datasource**を使ってvalidAt/knownAt/allocationMinをBinderへ渡し、時点境界・件数を照合 | OrgUnitへの自動JOIN、同じA2旧新二版の正式Persistence保存、異なるConsumerでの再読込 |
+| Provider→Consumer | 実ProviderのResult Mappingを用いたReadが既存のテストExpectedと一致する | Function Contextへの実受領、Studio/CLI二Consumerへの同じCohort転送、現在Host Grant |
+
+このテストは既存`TEI_ORG_AXIS_PG_DSN`と`tei_org_axis_e2e`隔離DBに限定し、CIは対象テストの明示PASSと非SKIPを別々に確認する。**Source→IRの経路をチェックしてProviderを呼び出した**ことと、**そのRelationを実際に辿った**ことは区別する。現行QueryはMembership行だけを読み、部門の実JOINを実行していない。別MembershipをPersonの兼務として数えない。
+
+次に生成系と解釈系で同値比較するときは、同じSource/Rule/Generator版・Provider Alias・Read Cohort・Input/Resultの型を渡し、Goコード生成の出力と汎用Evaluatorの観測を別Attemptで記録した上で、既存Expectedとの同値性を照合する。Plugin/NodeのPort→Adapter→Provider→Consumerも**選択・含有・呼出し・受信**の4段階に分ける。CLI/MCP/Desktopの各入口にMeaningの正本を複製せず、実行HostのGrant/Effectはさらに別受入とする。
+
+**停止条件**：当該PRの実PostgreSQL CIが未PASSなら本節の経路接続は未実証。AR-2の生成Artifact/BuilderとAR-4の途中状態・二Consumer受領は今回の対象外。#2586の通常CLI実Reader・#2831のStudio Desktopセルフビルドを独立P0として維持する。

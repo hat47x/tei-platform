@@ -24,6 +24,14 @@
 | **P1：Plugin説明と公開モデルの探索**（[#4679](https://github.com/hat47x/tei-platform/issues/4679)／#951） | 上位A・利用側Bの二Pluginを固定し、Aが公開したContract／Graph／Manual索引へ、Bのread-only Inspectから正しい版で辿る。短いProduct Skillは既存の実コマンドの発見方法だけを案内 | 非公開文書・図・上位依存の存在情報を漏らさない。閲覧可を再公開可・実行可へ昇格させない。新Docs Registry／未実装CLIコマンドを前提にしない |
 | **P1：横断Concernと専門計算の適合**（#4198／#3509／#4660） | main統合済みの[Application Graph設計 #4681](https://github.com/hat47x/tei-platform/pull/4681)では、まず一つのRoute／Entryに対するread-only適用表を作る。計算側は[SQLite Window実DB試験 #4670](https://github.com/hat47x/tei-platform/pull/4670)を基線に、必要な入力範囲とProvider能力を調べる | 計測の挿入・同意・二重発火、外部Solver、NoSQLでの同等性、通常CLIの実計算・Consumer受領は未検証。新Aspect Weaverや第二Query Engineを導入しない |
 
+### Web表示の共通契約を、現在のInspector一件で検査する（2026年11月16日、P1）
+
+[Web標準UI横断設計 §§18〜19](../design/WEB_STANDARD_COMPONENT_AND_AGENT_HARNESS_2026-11.md)で、表示技術の比較に先立って **WEB-P1a：検証済みInspectionからread-only ViewModelを導出する** 最小実装を定めた。出発点は現行 `reference/tei-studio-workbench/main.ts` の選択Event→Catalog資格→`responses.run("inspection")`→実Host Inspect→`readInspection`→表示である。TypeScriptの純粋なPresenterと既存テストだけを先に変更し、Wails Bridgeの追加、Source Readerの再実装、Litへの置換、業務Meaningの新正本を同時に行わない。
+
+**WEB-P1aの合格条件**は、同一Subject／Catalog／Host応答から表示文書・版・Source状況・利用制限が変わらず導出され、異Kind・Source Index版不一致・Reader error・部分取得・偽Grantを誤って合格へ変換しないこと。**WEB-P1b**はFocus／Pinの応答laneとEditorの未保存状態を保護する。Source位置の `source-locations.ts` は既存のread-only検証を再利用するが、画面表示と原文再取得・書戻しの資格を分ける。Node試験、Browser、実Windows WebView2、生成Stage2の受入は別票で記録する。
+
+後続の**WEB-P2**はCLI direct／Studio Host／HTTPの同一Operationを一つのread-only実Consumerで比較し、Actor／Audience／Disclosureと現在Providerの選択を別資格で検査する。**WEB-P3**は公開可能なB2C説明Facet一件をTarget Head Slotと実Asset Memberへ接続する。両者をUI Framework選定やDesktopセルフビルドの前提条件にしない。担当は#997／#1824／#1158／#951／#3509、反証は既存#1180／#2514。ここでの追記は実装引渡しであり、製品の新しいE2E試験合格ではない。
+
 ### 図解のP1：定義・生成・実Attemptを証拠つきで比較する（2026年11月15日）
 
 [プロセス実行図の因果・意味保存・証拠照合](../design/PROCESS_EXECUTION_CAUSAL_PROJECTIONS_2026-11.md)の§10〜56に、他の標準Data・Node／Plugin配線・業務Process／REA・Rule・セルフビルドの議論を接続した。異なる図を一つの実行エンジンで統一するのではなく、**Sourceからの投影、Targetへの生成、実際の呼出し、独立した受領の間にどの根拠が必要か**を、対象に応じて切り出す。部分取得から「不存在」や「すべて成功」と推測する図は不合格とする。
@@ -1377,6 +1385,8 @@ S0-Aで最初に提示すべき**独立した正負**は、同一Source Snapshot
 | **委譲型** | 外部Go／SDK／ProviderへのInput・Output・Failure・Effect・Capability契約 | TEI側で呼出し・構成・観測できたこと。処理の判断条件が外部の手書き実装にあるなら、**意味ロジックのTEI化率には算入しない** |
 
 [型付きPlugin入出力Mapping§19](../design/PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md)では、**複合型全体をまとめて渡す／必要なFieldだけつなぐ／明示Adapterで変換する**ことを、実現方式とは別の接続設計として扱う。最初は同じRecordで全体接続と二Field Mappingのread-only適格性を比較し、その後に一つの純粋Adapterを確認する。全体Portの折畳みとField展開は同一Mappingの表示であり、二重Callerや非公開Fieldの配送を許可しない。PIO-01〜10を既存#1180/#2514に引き渡し、#1223/#951/#2497の既存型・対応付けを再利用する。**この検討をStudio Stage1→Stage2／通常CLI実Providerの新しい先行Gateにはしない。**
+**接続先で判断できる範囲まで確認する（[Plugin I/O §21](../design/PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md)）**：main済み#5142の値状態と関係の取得範囲を、PluginのRecord全体／二Field Mapping／一段pure Adapterの受入条件へ渡す。実行パケットは①TypeRefと必要Field・Source IDのread-only照合、②NULL／未取得／partialを一因子で変える独立Expected、③ProviderまたはEvaluatorによる実Read IDと`undecided`理由の観測、④変換Loss・Disclosureの比較の順とする。main済み#5143のRule例検査と#5146の暦日比較は局所の意味検証、#5147の診断名被覆は到達証拠そのものではない。Draft #5148の期間非重複は未受理とし、正式Provider／Builder／Stage2 Windowsの既存P0を変更しない。
+
 
 この三方式は優劣の固定順ではなく、**同じ意味契約の異なる実現手段**である。生成型と解釈型を比べる場合は、同じ受理済みSubject、独立Expected、入力・NULL／欠損・失敗・Effectの条件を使う。生成型が対象Sourceの変更による再Buildを必要とするのに対し、解釈型は一般にその変更をデータの再読込みで扱える。ただし、InterpreterやOperatorの変更、古い選択版、現在Grantの失効を「Build不要」と混同しない。実装方式に応じてSource/Meaning/Artifact/実ConsumerのRevisionを別々に照合する。
 
@@ -1599,6 +1609,15 @@ mainのRule生成Go CLIビルド回帰は、選択Markdown原文のコピーをG
 **D-1の実装適格性**：[実行パケット§8](MVP_DOGFOOD_DECISION_TRANSFER_2026-11.md)で、Dataの`required=yes`と元Goの`!= ""`、`required=no`とRelationの`== ""`を区別した。自己記述された項目定義と実ValidationインスタンスのBinding、既存Operatorによる厳密な受理・拒否ができないならM1は`unsupported`とする。元Markdownを正常にLoadできる試験と、不正な型付きValidationを拒否する単体試験も別資格として扱う。
 
 **利用者側の最小dogfooding**：[実行パケット§9](MVP_DOGFOOD_DECISION_TRANSFER_2026-11.md)では、CLI実`tei inspect`と直接`operations.InspectSubject`の同値回帰を基線に、Wails非依存Studio Hostの三入口比較[PR #5119](https://github.com/hat47x/tei-platform/pull/5119)（Draft）を重複実装せず待つ。次はテスト用Ruleの説明変更／参照先変更→再Inspect→生成Go→実Buildという一往復を試す。Sourceの表示・編集Intent・実Provider・Windows Stage2の権限と証拠は混ぜない。
+
+<!-- product-rule-read-eligibility-20261116 -->
+### 状態付きRuleを実Readへつなぎ、解釈と生成の対応範囲を誤認しない（2026年11月16日）
+
+[図表実現方式の設計§14](../design/DIAGRAM_TO_REALIZATION_STRATEGY_AND_HOOKS_2026-11.md)と[実証計画DRI-R1〜R5](DIAGRAM_REALIZATION_REFERENCE_EXECUTION_2026-11.md)へ、mainで進んだ値の状態別評価（#5142）、記録例による独立期待との照合（#5143）、暦日の順序Rule（#5146）を接続する。既存のpositive RuleのP／生成G実Binary比較（#5118）を一般的なRule生成へ拡大せず、Ruleの種類・Readの状態／完全性・実Target・実Callerごとに適合を確認する。
+
+**最初に実装する不足辺**は、実Queryが返した値の出典・Presence・Relation Coverageを、既存Function Contextと状態付きRuleへ渡せる範囲の確定である。単に返却値が正しいだけでは足りない。重複のように既知の反例が不成立を確定する場合と、未知の行が残るため成立が未決定の場合を区別する。native SQLの列由来観測を検討した#5144は未マージであり、現行製品のRead Coverageをcompleteへ昇格させる根拠にはしない。期間非重複Ruleの#5148も独立の検証対象として扱う。
+
+**優先P0は維持**する。正式Reader→Builder入力→Artifactの同一Attempt検証、通常CLI→実Provider Read→独立Consumer #2586、Studio Stage1→Stage2 Windows #2831／#4583、および自己記述した検査一条件の手書きGo分岐置換は、それぞれ別の完了条件である。本追補は既存の実装試験に続く作業順を定めたもので、新Go・実DB・Windows受領・Owner意味受理を追加実証したものではない。
 
 ### 標準Dataから読取状態と規則の判断を照合する（2026年11月16日）
 
