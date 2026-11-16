@@ -1681,3 +1681,12 @@ mainのRule生成Go CLIビルド回帰は、選択Markdown原文のコピーをG
 ### DataのSource位置と、実際に原文を開けることを別に検収する（2026年11月16日）
 
 [標準Flow§12.10](../design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)に沿い、DF-P1の一Load検収の後に、SL-1の相対Path・Source byte位置・省略件数表示を確認する。次にDesktop既存OwnerのSL-2でHostがRoot内の原Sourceを再読取し、改版・対象Occurrence・参照の現在性を確かめる。SL-3の編集・Windows実受領はその先で別途検証する。DPC-14のGo回帰は原文の実Openを試していない。Plugin出力のWhole/Field Projectionやread-only Source表示から、公開権限・更新Grantを推定しない。
+
+<!-- mvp-dogfood-m1-feasibility-20261117 -->
+### MVP dogfooding：自己記述を実判断へ移すための不足を確定（2026年11月17日）
+
+[判断移管の実行パケット§15〜17](MVP_DOGFOOD_DECISION_TRANSFER_2026-11.md)では、mainに統合された#5148（no-overlap Rule）、#5179（同一LoadのSource→状態付き判断）、#5188（別OSプロセス実CLIとStudio Hostの同一Subject・Source）、#5205（Markdown Parser選択案内とWorkspaceのimport cycle解消）を、別々の実証として整理した。
+
+**M1の開始条件**：自己記述Dataの`required=yes`では`semantic.Validation.ID/Attribute`の空文字拒否にならず、`relationId required=no`でもpositive RuleのRelation指定禁止にならない。現行Reader／Rule Evaluator／Generatorは、型付きValidationインスタンスへのBindingと、非空文字・Kind条件付き禁止という実判定をまだ提供していない。三条件とも`M1=unsupported`として、最初の追加能力を既存Data／Ruleの純粋なField条件へ限定する。#5187の`required-if`案は業務レコードのPresenceであり、直接M1実装へ数えない。
+
+**最短の独立検収**：自己記述Readerと旧Go Shape反証（F0）→同一Loadでの定義・Source・状態付き判断（F1）→実CLI／StudioのInspection同値と別Workspace拒否（F2）→同じ元Source・Generator・Builder・Stage2の実使用（F3）。既存試験を再利用し、F0〜F2の合格をM1／M2／正式R2-P／Stage2受領にまとめない。最新mainの参照self-buildは限定的な収束を示しつつ別stepで失敗し、Desktopは生成Reader未同梱が残る。CI修復を最優先P0 #2586・#2831/#4583から切り離さず、実際に失敗したステップの根拠とOwnerを保存する。
