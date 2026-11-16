@@ -40,7 +40,8 @@ func TestCommandCatalogFlagsMatchAcceptedFlags(t *testing.T) {
 	for _, record := range commandCatalog().Commands {
 		if record.Name == "model catalog" || record.Name == "model locate" ||
 			record.Name == "model overview" || record.Name == "model document-draft" ||
-			record.Name == "model document-reconcile" || record.Name == "three-element" {
+			record.Name == "model document-reconcile" || record.Name == "model search" ||
+			record.Name == "three-element" {
 			continue // parses its own arguments, not the shared FlagSet
 		}
 		allowed, ok := selectedReadOnlyFlagAllowlist[record.Name]

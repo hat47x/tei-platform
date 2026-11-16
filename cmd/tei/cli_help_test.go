@@ -48,6 +48,13 @@ func TestHelpIsASuccessOnStandardOutput(t *testing.T) {
 			want: "-limit",
 		},
 		{
+			name: "model search",
+			run: func(out *bytes.Buffer) (int, error) {
+				return runModelCommand([]string{"search", "-h"}, out)
+			},
+			want: "-term",
+		},
+		{
 			name: "model document-draft",
 			run: func(out *bytes.Buffer) (int, error) {
 				return runModelCommand([]string{"document-draft", "-h"}, out)

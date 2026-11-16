@@ -105,6 +105,7 @@ var repeatableFlags = map[string]map[string]bool{
 	"model catalog":                          {},
 	"model locate":                           {},
 	"model overview":                         {},
+	"model search":                           {},
 	"model document-draft":                   {"section": true},
 }
 

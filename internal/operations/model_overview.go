@@ -138,7 +138,7 @@ func sectionScope(catalog ModelCatalog, world ir.World) ModelSectionScope {
 	readable := []string{}
 	notReadable := []string{}
 	for _, kind := range notCovered {
-		if supportedInspectionKind(kind) {
+		if SupportedInspectionKind(kind) {
 			readable = append(readable, kind)
 		} else {
 			notReadable = append(notReadable, kind)

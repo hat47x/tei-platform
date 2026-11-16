@@ -213,6 +213,27 @@ go run ./cmd/tei model overview -workspace reference/workspace
 
 `result.snapshotFingerprint`は`inspect`・`model locate`と同じWorkspaceなら同じ値を返すので、コマンドをまたいで2回読んだときに`-expected-fingerprint`へ渡せます。渡した値と一致しない場合は`error.code=STALE_SNAPSHOT`・終了コード2で答えます。これは2回の読み取りの間に入力元が変わっていないことを示すだけであり、変更の受理や書込みの許可ではありません。
 
+文字列がモデルのどこに出てくるかを調べるには、`model search`を使います（2026-11-17から）。`model catalog`は全要素を列挙するだけで内容では選べず、`-namespace`は意味名前空間での絞り込みです。そのため呼出し元は、名前の一部が分かっていても全`entries`を取得し、種類を推測しながら対象ごとに`inspect`を呼ぶ必要がありました。`model search`は管理対象Sourceの文字列を検索し、一致した各行について次を返します。
+
+- `hits`：一致。`subject`（種類と識別子）・`artifactPath`（Workspace相対のSource）・`line`（1始まりの行）・`text`（その行 as written、行末を除く）。場所と本文が証拠になるので、一致を開いて確かめられます
+- `total`・`omitted`・`kindCounts`：`-limit`で切る前の全件の数と種類別の件数。切った一覧を全部と読まないでください
+- `offset`・`requestedOffset`・`nextOffset`：頁の位置。`-offset`が最終一致を超える場合は切り詰め、要求値を`requestedOffset`に残すので、切り詰めた頁と普通の頁を区別できます
+- `truncated`：作業上限に達して探索を打ち切ったか。1回の検索が読むSourceは最大200ファイル・32MiB（`operations.SearchMaxFiles`・`SearchMaxBytes`）で、Workspace相対path順に走査するため、打ち切った場合も安定した接頭辞を答えます。`true`のときは`hits`（および0件）をWorkspace全体の答えとして読まないでください。`-limit`による頁の切れ方とは別で、そちらは`omitted`・`nextOffset`が示します
+- `coverage`・`authorityLimits`：検索する範囲と、归属の規則（次項）
+
+`-term`はリテラルな文字列で、大文字小文字を区別しない部分一致です（正規表現ではありません）。`-kind`は`inspect`と同じ閉じた集合（`operations.InspectionSubjectKinds`）の1種類で絞り込みます。集合外の値を渡すと`INVALID_ARGUMENT`（終了コード2）です。`-kind`だけを渡す（`-term`なし）と、その種類のSourceの内容を一覧できます。
+
+**行の归属**：Source Indexは各Subjectを宣言の識別子に結び付けます。識別子を持たない行（Relationの`key`、Capabilityの`input`、閉じ括弧など）は、検索対象の種類の中で最も近い前の宣言に归属します。したがって`-kind`を付けると归属の候補がその種類だけになり、`-kind semantic-data -term customer_id`は、Data要素のブロック内の記述をData要素として返します。Source内の最初の宣言より前の行と、宣言の索引されないSourceは検索対象外です（`coverage.notDerived`）。
+
+0件は成功応答（`ok:true`・終了コード0）です。ただし`coverage.notDerived`に載る範囲は検索していないため、0件は「その文字列がWorkspaceのどこにも無い」ことの証明ではありません。Sourceが読めない、または読み込み中に内容が変わって指紋が合わない場合は、場所の証拠が別のバイト列のものになるため`SOURCE_READ_FAILED`／`SOURCE_ARTIFACT_CHANGED`（終了コード2）で答えます。
+
+```bash
+go run ./cmd/tei model search -workspace reference/workspace -term orderId
+go run ./cmd/tei model search -workspace reference/workspace -term customer -kind semantic-data
+```
+
+`worldFingerprint`・`sourceIndexFingerprint`・`modelRevision`・`snapshotFingerprint`は`model catalog`・`model locate`・`model overview`・`inspect`と同じ読込みから出るため、検索結果を特定の模型版に結び付けられます。一致は案内であり、変更の受理や書込みの許可ではありません。
+
 正規化された業務モデルから特定の要素だけを確認するには、`inspect`を使います。現在対応するのは`semantic`、`semantic-type`、`semantic-data`、`semantic-attribute`、`semantic-relation`、`semantic-candidate-key`、`semantic-functional-dependency`、`semantic-capability`、`semantic-validation`、`application`、`application-pattern`、`query`の12種類です。対象の種類と正本の識別子を、完全一致で指定します。
 
 ```bash
