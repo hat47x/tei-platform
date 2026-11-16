@@ -1,0 +1,88 @@
+name: TEI Scenario Operator Selection Pin Qualification
+
+# Verify the generated CLI and read-only reviewer independently of unrelated
+# failures in the repository-wide health workflow.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/tei-scenario-selection-pin-qualification.yml'
+      - 'cmd/tei/scenario*.go'
+      - 'internal/scenariotest/scenario.go'
+      - 'internal/workspace/operator_implementation.go'
+      - 'internal/semantic/validationeval/**'
+      - 'tools/reference-change-assurance/scenario_binding*.go'
+      - 'tools/reference-change-assurance/scenario_cli_plan_integration_test.go'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/tei-scenario-selection-pin-qualification.yml'
+      - 'cmd/tei/scenario*.go'
+      - 'internal/scenariotest/scenario.go'
+      - 'internal/workspace/operator_implementation.go'
+      - 'internal/semantic/validationeval/**'
+      - 'tools/reference-change-assurance/scenario_binding*.go'
+      - 'tools/reference-change-assurance/scenario_cli_plan_integration_test.go'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-scenario-selection-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  scenario-selection-pin:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+    steps:
+      - name: Checkout the exact candidate revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          ref: ${{ env.EXPECTED_HEAD }}
+
+      - name: Set up Go from candidate go.mod
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
+      - name: Verify relevant Go formatting and workspace identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          test -z "$(gofmt -l cmd/tei/scenario.go cmd/tei/scenario_operator_selection_pin_test.go internal/workspace/operator_implementation.go tools/reference-change-assurance/scenario_binding.go)"
+          go vet ./cmd/tei ./internal/workspace ./tools/reference-change-assurance
+          echo "candidate=$EXPECTED_HEAD"
+
+      - name: Reject changed Operator selection before generated CLI execution
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test -count=1 -timeout 10m -v ./cmd/tei \
+            -run '^(TestGeneratedScenarioCommandInvalidatesOperatorSelectionChange|TestScenarioOperatorSelectionFingerprintIgnoresManifestOrder|TestScenarioCLIRejectsWrongGeneratedEnvironmentFingerprint|TestScenarioCLIRejectsPartialPinsAndDistinguishesUnpinnedExecution)$' \
+            2>&1 | tee "$RUNNER_TEMP/selection-tests.log"
+          grep -q '^=== RUN   TestGeneratedScenarioCommandInvalidatesOperatorSelectionChange' "$RUNNER_TEMP/selection-tests.log"
+          grep -q '^=== RUN   TestScenarioOperatorSelectionFingerprintIgnoresManifestOrder' "$RUNNER_TEMP/selection-tests.log"
+          grep -q '^=== RUN   TestScenarioCLIRejectsWrongGeneratedEnvironmentFingerprint' "$RUNNER_TEMP/selection-tests.log"
+          grep -q '^=== RUN   TestScenarioCLIRejectsPartialPinsAndDistinguishesUnpinnedExecution' "$RUNNER_TEMP/selection-tests.log"
+
+      - name: Compare actual generated CLI Plan with read-only Source binding
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test -count=1 -timeout 10m -v ./tools/reference-change-assurance \
+            -run '^TestScenarioBindingConsumesActualCLIGeneratedPlan$' \
+            2>&1 | tee "$RUNNER_TEMP/plan-binding-tests.log"
+          grep -q '^=== RUN   TestScenarioBindingConsumesActualCLIGeneratedPlan' "$RUNNER_TEMP/plan-binding-tests.log"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
