@@ -53,7 +53,7 @@ P1の最初のHeadless確認では、固定した同一配布版に属するXEA[
 
 ### Key順序のdiagnosticと操作別readinessの証拠接合（#1805 Closedの既存記録を再利用）
 
-**成熟した判断**：[旧#1805の原因・影響と診断順序の照合](https://github.com/hat47x/tei-platform/issues/1805#issuecomment-6471603888)を、現役#950/#1126のSource-only／ER・Relation検証へ接続する。**Key自身の重複SortKeyをRelationship非依存に検出する候補パッチはmain未適用**（`diagnostics.go` blob `270de63791c9e76b04f230556542daca7e81ef12`）。既存 `orderedLegacyKeyMembers` を利用する改修の採否はSource担当が決め、ここでは事前受入条件だけを固定する。
+**成熟した判断**：[旧#1805の原因・影響と診断順序の照合](https://github.com/hat47x/tei-platform/issues/1805#issuecomment-6471603888)を、現役#950/#1126のSource-only／ER・Relation検証へ接続する。**Key自身の重複SortKeyをRelationship非依存に検出する診断は2026-11-16に限定修正として実装した**（`key-order-unresolved`、policy revision `v2`→`v3`。末尾の「RV-K5の限定修正」節を参照）。既存`orderedLegacyKeyMembers`を再利用しており、原典実Sourceでの再実行と旧仕様の順序規則の確認は未実施のまま残す。
 
 **同じSnapshotでもConsumer操作で判定を変える**：
 - **Jの原形read-only閲覧**：権限のあるprivate Consumerが同じexact Source版からJを一意に選び、Raw/Source Fact・Jの局所`RelationalFactResolutions`を読める。global `unresolved` は併記し、独立Jの表示を一律停止しない。原形を表示できること自体にlocal `resolved`を要求しない。J局所`resolved`は現行validatorでの構造準備度であってOwner意味Acceptedではない。
@@ -184,7 +184,7 @@ P1の最初のHeadless確認では、固定した同一配布版に属するXEA[
 | **RV-K4** | 同一Source byteを旧/候補の判定規則で比較。独立Kのみの0→非0と、既にR1/R2影響がある非0→非0を別fixtureで実施。FAMILY arity分岐も対照 | 診断Boolean/total/byCode/ordinal/token/global/localとpolicy revisionを差分表に固定。影響件数はarity短絡で変わるため「原因1＋順序影響2」を一般化しない。既存Report CLI exit 0をrelease/meaning PASSとみなさず、旧版判定結果の無言再利用を禁止 | #950／#1126／#2514 |
 | **RV-N1** | 外来`x:Refer`／`x:Relationship`／`x:TableKey`／`x:Key`／`x:Table`、通常`Refer`上の`x:ToTable`／`x:ToKeyFields`等の属性類似名、外来Tableの子にある通常Referを対照 | Readerの`Known=false`、修飾名、局所Fact、親Table文脈の伝播を独立に調べる。外来宣言・外来親IDを標準Fact/Relationへ昇格させない。既存[#950 RMP-048/RML-023](https://github.com/hat47x/tei-platform/issues/950)が一般契約。**#2603の先行Refer限定headはCI成功の記録がある**。追加headではXEA[D]の`Relationship/TableKey`、XEAFの`Key/Refer`と外来Tableの入れ子Scopeを合成テストへ拡張したが、**統合headのCIと対象Source/Caseの同一性は別途判定**。外来宣言を元のField・Tableの意味受理へ転換しない | #950／#1126 |
 | **RV-K4** | 同一Source byteを旧/候補の判定規則で比較。独立Kのみの0→非0と、既にR1/R2影響がある非0→非0を別fixtureで実施。FAMILY arity分岐も対照 | Draft #2670の診断Code変更・SortKey複合診断・policy v1→v2を実験対照に追加。Boolean/total/byCode/ordinal/token/global/localを比較し、原因件数を一般化しない。CLI exit 0で意味PASSとせず、旧版判定結果を再利用しない | #950／#1126／#2514 |
-| **RV-K5** | 同じXEAD Snapshotに、独立複合Key K（SortKey重複・欠落）と正常Key Jを配置。どのRelationshipもKを参照しない。KのField ID自体は有効 | 現mainはKの順序診断がRelationship経由のみなので、K局所resolved・global resolvedを誤表示し得る経路を静的に特定。独立OracleでK局所unresolved・J局所resolved・global unresolvedへ変わること、Jのread-only原形が利用できることを検証する。Draft #2670をK単独修正済みと呼ばない | #950／#1805／#2514 |
+| **RV-K5** | 同じXEAD Snapshotに、独立複合Key K（SortKey重複・欠落）と正常Key Jを配置。どのRelationshipもKを参照しない。KのField ID自体は有効 | 旧mainはKの順序診断がRelationship経由のみで、K局所resolved・global resolvedを誤表示し得た。2026-11-16の限定修正で`key-order-unresolved`をK局所へ追加し、K局所unresolved・J局所resolved・global unresolvedへ変わることを合成fixtureの独立Expectedで固定（`diagnostics_key_order_test.go`）。Jのread-only原形閲覧は本修正の対象外で未実証。K局所`unresolved`は構造準備度であり意味受理ではない | #950／#1805／#2514 |
 | **RV-N1** | 外来`x:Refer`／`x:Relationship`／`x:TableKey`／`x:Key`／`x:Table`、通常`Refer`上の`x:ToTable`／`x:ToKeyFields`等の属性類似名、外来Tableの子にある通常Referを対照 | Readerの`Known=false`、修飾名、局所Fact、親Table文脈の伝播を独立に調べる。外来宣言・外来親IDを標準Fact/Relationへ昇格させない。既存[#950 RMP-048/RML-023](https://github.com/hat47x/tei-platform/issues/950)が一般契約。**PR #2603でXEADの`Relationship/TableKey`、XEAFの`Key/Refer`と外来Tableの入れ子Scopeを含む合成テストが最終headでCI 5 workflow success、main統合済み**。Reader層から外部Hostまでの総合Security適合は別証拠。外来宣言を元のField・Tableの意味受理へ転換しない | #950／#1126 |
 | **RV-X1** | 固定同一配布版のXEAD Relationship・XEAF Runtime ReferをSource Factとして独立読取。設計1件→実装候補0／1／複数、同型でもAlias・Role・Field成分が異なる対照 | 現行CrossViewはXEADのみ対応という実装境界を維持。候補グラフG-Vをread-onlyで表示し、原因・多重対応・未解決・元byte/候補Target参照を別出典で照合。次の意味受理・物理FKへ自動昇格しない | #950／#1126／#1031／private #4 |
 | **RV-X2** | 同じ設計Relation R。実装Refer候補0件の対照：(A)固定XEAF全対象nodeを列挙・profile適合・Role/Key条件で照合済み、(B)Reader未対応/探索打切り/一部scope非許可で未観測あり、(C)存在を知るが外部Consumerへ候補情報を開示できない | Aのみ「固定版・探索規則・許可scopeにおける一致候補0」を限定主張。Bは未探索を実在しないと扱わず、Cは非開示をpublic `0`へ変換しない。候補数・source node/atom/属性成分・unknown・列挙完了/非公開の各母数を区別し、業務Relationの非存在・意味Acceptedをいずれも推論しない | #950／#1031／#1126／#2514／#2516 |
@@ -228,5 +228,14 @@ P1の最初のHeadless確認では、固定した同一配布版に属するXEA[
 **CIで判別した追加のSource Fact境界（変更履歴）**：2026-11-02の[PR #2603（main統合済み）](https://github.com/hat47x/tei-platform/pull/2603)では、合成`x:ToKeyFields`／`x:WithKeyFields`が旧`attributeValue(localName)`で正規化済みのtyped Refer Factへ取り込まれる反例をGitHub CIで確認した（旧headのRepository HealthはFAIL）。新しい候補パッチはraw Presenceと通常属性の厳密一致を分離し、外来`x:Refer`ノードもtyped Fact対象から外す。**先行したRefer限定head `f68dd486f85e01b9e060535c0443d4792ffa3730`では5ワークフローすべてsuccess**。追加のnamespace・Table scope負例を加えたhead `1ad75599b418520f9a3f3d492c04fe4352494fda` のRepository Healthは **gofmtのみFAIL**、同runのGo vet・全Go test・workspace validateはPASS。gofmt fixture整列を修正した**最終head `7352ee76ad93529c1f02f61ba0b3d707ab7f4a21` は2026-11-02に5 workflow全てsuccess確認済み、その後main統合済み**。これはsynthetic code及びCI実行版の資格であり、原典意味・実Work H2/J5・Owner Acceptanceを証明しない。raw Source Fact保持が進んでも、CrossViewの業務意味、宣言を利用するFunction Context、外部AIへの開示権限は自動的に成立しない。#950/#2516/#941の既存境界を維持する。
 
 **2026-11-03追加Owner確認**：独立KeyのSortKey order判断／`RelationalResolutionPolicyRevision`の継続版、Artifact Public EnvelopeのReader再検証可能な出力条件、実ProviderのK→V→O因果保証、業務完了Bと開示Dの権限境界は、各既存Issue Ownerが個別に決定する。Source診断改善やCLI `-check`成功で一括採用しない。
+
+### 2026-11-16 RV-K5の限定修正（独立Key順序診断）
+
+`DiagnoseRelationalSourceFacts`が複合Keyの`SortKey`由来の順序一意性をRelationship経由の`orderedLegacyKeyMembers`呼出しにのみ依存していた経路を、Key局所の診断へ分離した。公開診断Codeは`key-order-unresolved`、`RelationalResolutionPolicyRevision`は`v2`→`v3`。
+
+- **変更範囲**：`internal/xeadsource/diagnostics.go`の`LegacyKeys`走査に、`orderedLegacyKeyMembers`が順序を確定できない場合の`key-order-unresolved`を追加。既存の`relationship-key-order-unresolved`はそのまま残し、Key局所とRelationship依存を別診断として観測する。XML子順からの補完・Field対応の確定・意味受理は行わない。
+- **独立Expected**：`internal/xeadsource/diagnostics_key_order_test.go`。合成XEADのみで、重複`SortKey`のK、`SortKey`欠落のK、順序一意な正常Jを同一Snapshotへ置き、K局所`unresolved`・J局所`resolved`・全体`unresolved`を宣言から手で固定した。単一memberのKeyは順序不要のため従来どおり`resolved`となる対照も置いた。
+- **観測結果の変化**：参照されない複合Keyでも順序診断が出るため、`ByCode`・件数・ordinal由来`diagnosticToken`・局所/全体Statusは旧`v2`と互換不変ではない。旧`v2`の出力を新Sourceへ自動流用しない。
+- **未確認のまま残す**：実TEI fixture・原典実Sourceでの再実行、複合Key順序の旧仕様が辞書順か数値順かの原典根拠、Field対応・業務Identity・物理Keyの意味受理。RV-K2のConsumer閉包表示とRV-F1/RV-R1のSource形状比較は本修正の対象外で、実施済みではない。
 
 **Owner未決**：旧FAMILYの各Role・対応FieldとTEI Semantic Relationの個数、条件付きの任意性・cardinality、物理FK/DDL・SQLによる実現、業務Actionの対象・失敗/Commit意味、旧版Reviewの新版適用と公開権利。これらはSource構造診断の改善や合成PoC成功で自動受理しない。**本書初版時にGo実原典試験・既存正式H2 receipt/gate・Work Candidate実体再読・旧GUI/DB・Owner正式受理は実施していない**。

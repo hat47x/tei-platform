@@ -325,7 +325,7 @@ func TestBuildReportFamilyExpansionIsUnresolvedAndPrivate(t *testing.T) {
 	}
 	public := buildReport(inspection)
 	if public.SchemaVersion != "reference-xead-source-inspection-v3" ||
-		public.RelationalResolutionPolicyRevision != "tei.xeadsource.relational-resolution/v2" ||
+		public.RelationalResolutionPolicyRevision != "tei.xeadsource.relational-resolution/v3" ||
 		public.RelationalResolutionStatus != "unresolved" ||
 		public.RelationalDiagnostics.Total != 1 ||
 		public.RelationalDiagnostics.ByCode["relationship-family-correspondence-unresolved"] != 1 ||
