@@ -251,7 +251,8 @@ func validateSemanticBusinessValidations(w ir.World) []Diagnostic {
 					rule.ID,
 				))
 			}
-			if rule.Kind != semantic.ValidationNotAfter && rule.IfPresent {
+			// no-overlap has its own message for ifPresent, above.
+			if rule.Kind != semantic.ValidationNotAfter && rule.Kind != semantic.ValidationNoOverlap && rule.IfPresent {
 				out = append(out, errFor(
 					ruleSubject,
 					"SEMANTIC_VALIDATION_COMPARED_ATTRIBUTE_NOT_ALLOWED",
