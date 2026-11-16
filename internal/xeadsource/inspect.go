@@ -28,7 +28,6 @@ type Inspection struct {
 	Document                           Document                   `json:"document"`
 	Candidates                         []Candidate                `json:"candidates"`
 	RelationalFacts                    RelationalSourceFacts      `json:"relationalFacts"`
-	FieldDesignations                  FieldDesignationFacts      `json:"fieldDesignations"`
 	RelationalDiagnostics              []RelationalDiagnostic     `json:"relationalDiagnostics,omitempty"`
 	RelationalFactResolutions          []RelationalFactResolution `json:"relationalFactResolutions,omitempty"`
 	RelationalResolutionStatus         string                     `json:"relationalResolutionStatus"`
@@ -55,7 +54,6 @@ func inspectDocument(doc Document, policy ClassificationPolicy) Inspection {
 		Document:                           doc,
 		Candidates:                         Classify(doc, policy),
 		RelationalFacts:                    facts,
-		FieldDesignations:                  ExtractFieldDesignationFacts(doc),
 		RelationalDiagnostics:              diagnostics,
 		RelationalFactResolutions:          factResolutions,
 		RelationalResolutionStatus:         resolutionStatus,
@@ -72,7 +70,6 @@ func inspectDocument(doc Document, policy ClassificationPolicy) Inspection {
 			"resolved-relational-fact-is-only-eligible-not-authorized-for-local-lowering",
 			"unvalidated-relational-fact-blocks-deterministic-semantic-lowering",
 			"unresolved-relational-resolution-blocks-full-set-deterministic-semantic-lowering",
-			"field-designation-separation-is-declared-source-reading-not-accepted-field-semantics",
 		},
 	}
 }

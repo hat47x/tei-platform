@@ -18,10 +18,20 @@
 
 | 規則 | 実装 | 一致の性質 | 該当 |
 | --- | --- | --- | --- |
-| **R1 生文字列の部分一致** | `getAttribute("TypeOptions").contains(KW)` | token化しない。`NOT_X`、`X`を内側に含む別指定、前方一致する別語がすべて真になる | `VIRTUAL`: `Editor.java:37118`, `37141`, `DialogImportModel.java:656`, `664`, `DialogImportXEAF.java:750`。`KUBUN(`: `Editor.java:30544`, `38528`, `39343`。`BOOLEAN(`: `Editor.java:30545`, `30727`, `30744`, `38529`, `38682`, `39344`, `39534`, `39551`, `39763` |
-| **R2 カンマ分割後の語の完全一致** | `getOptionList(s).contains(KW)` | `NOT_X`、`XFYEAR`、括弧付き形に安全 | `VIRTUAL`: `XF200.java:2329`, `2627`, `XF100.java:2997`, `Session.java:3821`, `3854`ほか約30箇所。`NO_EDIT`: 全30箇所（`XFUtility.java:223`〜`DialogCheckLayout.java:637`） |
+| **R1 生文字列の部分一致** | `getAttribute("TypeOptions").contains(KW)` | token化しない。`NOT_X`、`X`を内側に含む別指定、前方一致する別語がすべて真になる | `VIRTUAL`: 全74箇所（`//`で始まるコメント行を含む）。生きたコードは`Editor.java:37118`, `37141`, `DialogImportModel.java:656`, `664`, `DialogImportXEAF.java:750`の5箇所。`KUBUN(`: `Editor.java:30544`, `38528`, `39343`。`BOOLEAN(`: `Editor.java:30545`, `30727`, `30744`, `38529`, `38682`, `39344`, `39534`, `39551`, `39763` |
+| **R2 カンマ分割後の語の完全一致** | `getOptionList(s).contains(KW)` | `NOT_X`、`XFYEAR`、括弧付き形に安全 | `VIRTUAL`: `XF200.java:2329`, `2627`, `XF100.java:2997`, `Session.java:3821`, `3854`ほか計39箇所。`NO_EDIT`: `contains("NO_EDIT")`が48箇所（`XFUtility.java:223`〜`DialogCheckLayout.java:637`） |
 | **R3 キーワード前置の値取出し** | `indexOf(KW+"(")==0` → `substring(pos1+len+1, length-1)` | 値を返す唯一の規則。末尾1文字を無条件に落とす | `KUBUN`, `VALUES`, `BOOLEAN`（`XFUtility.java:709-726`, `Editor.java:11642-11658`） |
 | **R4 `VALUES(`だけの括弧保護** | 最初の`VALUES(`から`)`までを丸ごと1 tokenとして追加し、除去を試みる | **除去が効かない**（`String.replace`の戻り値を捨てている）。保護は最初の1個だけ | `XFUtility.java:691-699`, `Editor.java:11624-11632` |
+
+計数は次のgrepによる（`XeadDriver`と`XeadEditor`の`*.java`）。
+
+```bash
+grep -rho 'contains("VIRTUAL")'            $DRIVER/src $EDITOR/src | wc -l   # 74
+grep -rhoE 'OptionList\(?\)?\.contains\("VIRTUAL"\)' $DRIVER/src $EDITOR/src | wc -l   # 39
+grep -rho 'contains("NO_EDIT")'            $DRIVER/src $EDITOR/src | wc -l   # 48
+grep -rn 'NO_EDIT' $DRIVER/src | grep -E 'setEditable|setEditMode' | wc -l    # 0（期待値）
+```
+
 
 R4の実害。`NO_EDIT,VALUES(a,b)`は次になる。
 
@@ -54,7 +64,7 @@ String sql = "select * from " + dialog_.getSession().getTableNameOfUserVariants(
 
 ### 3.2 `VALUES`は値と表示名を分離できない
 
-`VALUES`の各literalは**保存値と表示文字列を兼ねる**。`XF200.java:3289-3290`で同じtokenを`keyValueList`と表示項目の両方へ入れている。表示名だけを別に持つ構文が無いため、「値そのものと表示名を区別する」という要求は`VALUES`単独では満たせない。
+`VALUES`の各literalは**保存値と表示文字列を兼ねる**。`XF200.java:3308-3314`は`VALUES`の各tokenを`jComboBox`の表示項目にだけ入れ、値の側の対応表を持たない。一方`KUBUN`は`XF200.java:3329-3331`で`KBUSERKUBUN`を`kubunKeyValueList`へ、`TXUSERKUBUN`を`jComboBox`へと**別々に**積む。さらに`setValue`は`VALUES_LIST`のとき表示文字列とそのまま比較する（`XF200.java:3502-3508`）が、`KUBUN_LIST`のときは`kubunKeyValueList`と比較する（`XF200.java:3510-3515`）。表示名だけを別に持つ構文が`VALUES`に無いため、「値そのものと表示名を区別する」という要求は`VALUES`単独では満たせない。
 
 ### 3.3 `BOOLEAN`の1要素形は空と偽を潰す
 
@@ -69,7 +79,7 @@ if (workTokenizer.countTokens() == 2) { valueTrue = ...; valueFalse = ...; }
 
 ### 3.4 `NO_EDIT`は更新可否の指定ではない
 
-これが最も誤解されやすい点である。`NO_EDIT`は**全30箇所すべてがR2（語の完全一致）**で、`setEditable`／`setEditMode`の式に一度も現れない。実際に効いているのは表示書式である。
+これが最も誤解されやすい点である。`NO_EDIT`は**`contains("NO_EDIT")`の48箇所すべてがR2（語の完全一致）**で、生の部分一致（R1）で読む箇所は0、`setEditable`／`setEditMode`の式に現れる箇所も0である（grepはいずれも§2に記載）。実際に効いているのは表示書式である。
 
 - 先頭ゼロと桁区切りを保つ（`XFUtility.java:223-231`, `1946-1948`）
 - 数値セルを文字列セルにする（`XF200.java:2001`, `XF300.java:3095`, `XF390.java:3067`）
@@ -95,7 +105,7 @@ if (mode.equals("EDIT") && this.isEditable && !this.isNoUpdate) { ... }        /
 
 ### 4.1 競合の解決順が画面ごとに違う
 
-`XF200`は`KUBUN`/`VALUES`を`BOOLEAN`より先に検査する（`XF200.java:2399` → `:2408`）。`XF300`は逆で`BOOLEAN`を最初に検査する（`XF300.java:5756` → `:5778` → `:5814`）。`DialogCheckLayout.java`は**同じクラス内**に両方の順序を持つ（`:1555`と`:1804`）。
+`XF200`は`KUBUN`/`VALUES`を`BOOLEAN`より先に検査する（`XF200.java:2399` → `:2408`）。`XF300`は逆で`BOOLEAN`を最初に検査する（`XF300.java:5756` → `:5778` → `:5814`）。`DialogCheckLayout.java`は、`Type`が`XF200`系の経路と`XF310`系の経路で別々に判定し、前者は`KUBUN`/`VALUES`を（`:1804` → `:1808`）、後者は`BOOLEAN`を先に（`:1555`）見る。**同じクラスの中で、対象の`Type`によって順序が変わる。**
 
 `XF300`のコメントは経緯と後退を自認している。
 
@@ -118,9 +128,21 @@ R2の完全一致なので`NO_EDITFYEAR`は`NO_EDIT`に一致せず、旧Driver�
 
 各tokenは`informs`（語り得る軸）と`doesNotInform`（語ってはいけない軸）の**両方**を持つ。片方だけだと「その軸について何も言っていない」と「その軸について誤読されている」を区別できないためである。
 
-公開reportは次を出さない: 宣言文字列、コード表名、保存literal、旧項目ID、source locator。`TestBuildReportOmitsFieldDesignationDeclarations`で3種のsecretがreportのJSONに現れないことを固定した。
+`display-name`軸は、**5語のどれも`informs`に入れていない**。この軸は「どの指定も表示名を分離できない」ことを明示的に拒否するためにだけ存在する。`TestEverySeparationAxisIsReachableFromSomeDesignation`が、軸が`informs`か`doesNotInform`のどちらかで必ず到達可能であること、かつ`display-name`が`informs`に入らないことを固定する。
 
-### 5.1 作らなかったもの
+### 5.1 `Inspection`へ入れなかった理由
+
+当初は`Inspection`構造体に`FieldDesignations`を足したが、**独立レビューで契約違反として差し戻した**。`Inspection`は`tei.reference.source-adapter.inspection/v0`という版付きcapability shapeのpayloadであり、`tools/reference-plugin-capability-contract/shapes/source-adapter-result-v0.json`のrootは許可するpropertyを列挙していて`additionalProperties`を持たない。欄を足すと9試験が
+
+```text
+$ has undeclared property "fieldDesignations"
+```
+
+で落ちた。read-onlyな投影のために公開契約を変えるのは本Issueの範囲外なので、投影は`Inspection`に入れず、`ExtractFieldDesignationFacts(doc)`をReference toolから直接呼ぶ形にした。`TestFieldDesignationStaysOutOfTheInspectionContract`が、`Inspection`のJSONにこの欄が現れないことを固定する。
+
+この差し戻しは「`go build ./...`が通ったことを試験の代わりにしない」という点でも重要だった。§8の試験範囲は当初2 packageだけで、契約packageを実行していなかった。
+
+### 5.2 作らなかったもの
 
 - **巨大な旧TypeOptions Parser**：R1〜R4が併存する以上、1つのparserは「X-TEAの意味」を名乗れない。
 - **正式な新型Registry**：5語の分類は新しい型体系の根拠にならない。
@@ -134,7 +156,9 @@ R2の完全一致なので`NO_EDITFYEAR`は`NO_EDIT`に一致せず、旧Driver�
 
 | 負例 | 期待 | 確認していること |
 | --- | --- | --- |
-| `VALUES(001;002;010)` | payloadが`001;002;010`のまま | 旧Driverの`getStringNumber`は`[-0-9.]`以外を捨て、`PERCENT`は`Float.parseFloat`で100除算する。数値として読むと先頭ゼロが消える。**宣言textを保持**する |
+| `VALUES(001;002;010)` | payloadが`001;002;010`のまま、`Raw`も原文のまま | 旧Driverの`getStringNumber`は`[-0-9.]`以外を捨て、`PERCENT`は`Float.parseFloat`で100除算する。数値として読むと先頭ゼロが消える。**宣言textを保持**する。※この試験は「宣言を書き換えないこと」の固定であり、旧Driverの数値破壊そのものを再現する試験ではない（§7参照） |
+| `VALUES()`, `BOOLEAN()`, `KUBUN()` | `payload-declared-without-parts`、`ResolvedAgainstSource=false` | 引数形だけがあって値が無い＝未定義値。既知の宣言として黙って通さない |
+| `)(`, `KUBUN(a))` | 2 tokenとも未解決、`unbalanced-parenthesis-after-comma-split` | 括弧の**個数**ではなく**順序**を見る。`)(`は個数が揃うが壊れている |
 | `SOMETHING_NEW(X)`, `AUTO_NUMBER(4)` | 両方`unknown`、payload無し | 対象外の語に意味を与えない |
 | `NO_EDITFYEAR` | 1 token、`ambiguous-concatenation-not-split` | 分割しない。`unrecognized-designation-token`とは区別する |
 | `KUBUN(KBFLAG1),VALUES(T;F)` | 2 token保持、`value-domain`競合を報告、勝者なし | 黙って片方を捨てない |
@@ -145,8 +169,9 @@ R2の完全一致なので`NO_EDITFYEAR`は`NO_EDIT`に一致せず、旧Driver�
 | `TypeOptions=""` | `EmptyDeclared=true`、token 0件 | 明示的な空と属性不在を区別する |
 | `BOOLEAN(T)` | `boolean-single-part-collapses-empty-and-false` | 1要素形で空と偽が潰れることを記録する |
 | `KUBUN(...)`を含むfield | `unresolvedAgainstSource`に計上 | 値域の存在と中身の既知を区別する |
+| `Inspection`のJSON | `fieldDesignation`を含まない | 版付きcapability shapeを広げていない |
 
-実行結果は`go test -count=1 ./internal/xeadsource/`と`./tools/reference-xead-source-inspect/`で確認した（結果は§8）。
+実行結果は§8。
 
 ## 7. 未対応・未確認
 
@@ -157,16 +182,41 @@ R2の完全一致なので`NO_EDITFYEAR`は`NO_EDIT`に一致せず、旧Driver�
 - **実機の動作**：Java実行、X-TEA起動、画面操作、取込み、DDL生成、帳票出力はすべて**未実施**。すべてソース読取りに基づく。
 - **model instance**：`**/*.xead`が見つからず、実データでの`TypeOptions`分布は測っていない。§3.3の`T;F`はUI既定値とseed SQLのliteralに基づく。
 - **`PERCENT`の尺度**：`XF100.java:1854-1860`で`Float.parseFloat(wrk)/100`と`0%`書式を確認したが、「内部値が比率か百分率か」を型の層で決める作業は#3816の第3項目以降。
+- **先頭ゼロの試験の限界**：§6の先頭ゼロ試験は「宣言textを書き換えない」ことの固定である。本Referenceは数値を一度もparseしないので、この試験は`getStringNumber`の破壊を**再現してはいない**。破壊の主張はソース読取り（§3.4）に基づく。
+- **`VALUES(...)`内のカンマ**：旧実装のR4は**最初の1個だけ**を保護する。本Referenceはカンマを保護せず全分割するので、この一点では旧実装より弱い。`VALUES(a,b)`は`VALUES(a`と`b)`に割れ、両方`unbalanced-parenthesis-after-comma-split`になる。保護するかは未判断（保護すると旧実装の「保護は1個だけ」という非対称を写すことになる）。
+- **同じKindの重複指定**：`KUBUN(a),KUBUN(b)`は`designationConflicts`が**競合を報告しない**（Kind単位でまとめるため）。異なるコード表が2つ宣言された状態は、値域が2つあるという意味で危険だが、本Referenceは検出しない。未対応として残す。
 - **意味の受理**：TEIの標準データ構造へ採用していない。新しい型Registryも固定Enumも追加していない。
 
 ## 8. 検証結果
 
+独立レビューでblocking 1件・non-blocking 10件・question 6件の指摘を受け、blockingとnon-blockingの主要点を修正した。以下は**修正後**の結果。
+
 ```text
-go test -count=1 ./internal/xeadsource/                  ok
-go test -count=1 ./tools/reference-xead-source-inspect/   ok
+go build ./...                                                    ok
+go vet ./internal/xeadsource/ ./tools/reference-xead-source-inspect/   ok
+gofmt -l internal/xeadsource tools/reference-xead-source-inspect       (出力なし)
+go test -count=1 ./internal/xeadsource/                            ok
+go test -count=1 ./tools/reference-xead-source-inspect/             ok
+go test -count=1 ./tools/reference-plugin-capability-contract/      ok
 ```
 
-`go vet`と`gofmt`は対象2 packageでクリーン。Repository Healthの結果はPR本文へ記録する。
+`tools/repository-plan-check`は対象項目（`XTEA_FIELD_DESIGNATION_SEPARATION`のリンク、`tei.xeadsource.field-designation-tokenization/v1`の試験言及、`AxisCodeIdentity`・`AxisInputAssist`の試験言及）を解消した。同packageに残る失敗（`plan/design/README.md`の未掲載2件、`tei.externalanalysis.receipt/v0`、`ValidationNoOverlap`ほか他packageの未言及定数、`tools/README.md`の未掲載2件）は**mainで同じ状態**であることを`git grep`/`git ls-tree`で確認した。本変更の範囲外。
+
+### 8.1 レビューで直したこと
+
+| 指摘 | 内容 | 対応 |
+| --- | --- | --- |
+| blocking | `Inspection`へ欄を足したため版付きcapability shape違反で9試験が失敗 | 投影を`Inspection`から外し、`ExtractFieldDesignationFacts`を直接使う。契約packageを実行して確認 |
+| non-blocking | `)(`が括弧の個数比較を通り、単なる未知名として報告される | 個数比較を深さ追跡（負にならない・最後に0）へ変更 |
+| non-blocking | `BOOLEAN()`等の空payloadが診断なしで既知扱い | `payload-declared-without-parts`を追加し`ResolvedAgainstSource=false` |
+| non-blocking | `SeparationAxes`が試験以外で未使用のままexported | `separationAxes`へ非公開化 |
+| question | R2/R1の件数（「30箇所」等）が再現できない | 実測値（74/39/48/0）と計数grepを§2へ記載 |
+| question | `VALUES`と表示名の混同の引用行が誤り | `XF200.java:3308-3314`と`:3502-3508`・`:3510-3515`の対比へ修正 |
+| question | `DialogCheckLayout`の「同じクラス内に逆順」が不正確 | `Type`別の経路差であることを明記 |
+
+未対応として残したもの: `VALUES(...)`内カンマの保護（§7）、同じKindの重複指定の競合検出（§7）、`NoUpdate`属性の読取り（§7）。
+
+Repository Health全体のPASSは変更範囲に一律には要求しない（AGENTS.md §5）。実行した検査と未実行の検査はPR本文へ記録する。
 
 ## 9. 再現手順
 

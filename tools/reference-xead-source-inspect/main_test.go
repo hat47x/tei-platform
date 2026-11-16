@@ -359,8 +359,9 @@ func TestBuildReportOmitsFieldDesignationDeclarations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(inspection.FieldDesignations.Fields) != 1 {
-		t.Fatalf("internal field designation count = %d", len(inspection.FieldDesignations.Fields))
+	facts := xeadsource.ExtractFieldDesignationFacts(inspection.Document)
+	if len(facts.Fields) != 1 {
+		t.Fatalf("internal field designation count = %d", len(facts.Fields))
 	}
 	report := buildReport(inspection)
 	if report.FieldDesignations.TokenCount != 4 {

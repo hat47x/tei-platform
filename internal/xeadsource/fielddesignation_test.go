@@ -1,6 +1,8 @@
 package xeadsource
 
 import (
+	"bytes"
+	"encoding/json"
 	"reflect"
 	"testing"
 )
@@ -418,7 +420,7 @@ func TestEverySeparationAxisIsReachableFromSomeDesignation(t *testing.T) {
 			excluded[axis] = true
 		}
 	}
-	for _, axis := range SeparationAxes {
+	for _, axis := range separationAxes {
 		if !informed[string(axis)] && !excluded[string(axis)] {
 			t.Fatalf("separation axis %q is declared but no designation reaches it", axis)
 		}
@@ -454,23 +456,79 @@ func TestDesignationKindsCoverEverySpec(t *testing.T) {
 	}
 }
 
-func TestInspectionCarriesFieldDesignationsWithoutGrantingAuthority(t *testing.T) {
+// The designation projection is deliberately NOT part of Inspection. Inspection
+// is the payload of the versioned source-adapter capability shape, so adding a
+// projection to it would change a published contract. A check keeps the two
+// separate and keeps the projection's own authority limit intact.
+func TestFieldDesignationStaysOutOfTheInspectionContract(t *testing.T) {
 	inspection, err := Inspect(FormatXead, []byte(`<System><Table><TableField ID="F1"
 		TypeOptions="KUBUN(KBFLAG1),VIRTUAL"/></Table></System>`), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(inspection.FieldDesignations.Fields) != 1 {
-		t.Fatalf("inspection dropped field designations: %#v", inspection.FieldDesignations)
+	// Inspection must still encode exactly the shape it declares.
+	encoded, err := json.Marshal(inspection)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if !hasString(inspection.AuthorityLimits,
-		"field-designation-separation-is-declared-source-reading-not-accepted-field-semantics") {
-		t.Fatalf("inspection did not limit the designation projection: %v", inspection.AuthorityLimits)
+	if bytes.Contains(encoded, []byte("fieldDesignation")) {
+		t.Fatalf("the versioned inspection shape gained an undeclared property: %s", encoded)
 	}
-	for _, field := range inspection.FieldDesignations.Fields {
+
+	facts := ExtractFieldDesignationFacts(inspection.Document)
+	if len(facts.Fields) != 1 {
+		t.Fatalf("designation projection dropped a declaration: %#v", facts)
+	}
+	for _, field := range facts.Fields {
 		if !hasString(field.AuthorityLimits,
 			"designation-classification-is-source-observation-not-accepted-semantic-meaning") {
 			t.Fatalf("field designation fact lost its authority limit: %#v", field)
+		}
+	}
+}
+
+func TestFieldDesignationReportsArgumentFormWithoutValues(t *testing.T) {
+	// An undefined value is most likely written as a declared argument form with
+	// nothing inside it. It must not read as a known declaration with an empty
+	// value domain.
+	fact := designationTokensOf(t, `<System><Table><TableField ID="F1"
+		TypeOptions="VALUES(),BOOLEAN(),KUBUN()"/></Table></System>`, "TypeOptions")
+
+	if got, want := tokenKinds(fact.Tokens), []string{"values", "boolean", "kubun"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("token kinds = %v, want %v", got, want)
+	}
+	for _, token := range fact.Tokens {
+		if token.PayloadPartCount != 0 {
+			t.Fatalf("empty payload reported parts: %#v", token)
+		}
+		if token.Kind == DesignationKubun {
+			continue
+		}
+		if token.ResolvedAgainstSource {
+			t.Fatalf("empty payload claimed a resolved value domain: %#v", token)
+		}
+		if !hasDiagnosticCode(token, "payload-declared-without-parts") {
+			t.Fatalf("empty payload was not reported: %#v", token)
+		}
+	}
+}
+
+func TestFieldDesignationTreatsMisorderedParenthesesAsBroken(t *testing.T) {
+	// ")(" has one of each parenthesis, so counting alone would call it balanced
+	// and then report it as a plain unrecognized token, hiding that the token is
+	// structurally broken.
+	fact := designationTokensOf(t, `<System><Table><TableField ID="F1"
+		TypeOptions=")(,KUBUN(a))"/></Table></System>`, "TypeOptions")
+
+	if len(fact.Tokens) != 2 {
+		t.Fatalf("token count = %d", len(fact.Tokens))
+	}
+	for _, token := range fact.Tokens {
+		if token.Known {
+			t.Fatalf("a malformed token was accepted: %#v", token)
+		}
+		if !hasDiagnosticCode(token, "unbalanced-parenthesis-after-comma-split") {
+			t.Fatalf("misordered parentheses were not reported: %#v", token)
 		}
 	}
 }

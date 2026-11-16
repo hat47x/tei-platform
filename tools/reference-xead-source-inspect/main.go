@@ -168,7 +168,7 @@ func buildReport(inspection xeadsource.Inspection) report {
 		Inventory:                          summarizeInventory(inspection.Document.Inventory),
 		UnknownConstructCount:              countUnknownInventory(inspection.Document.Inventory),
 		Candidates:                         summarizeCandidates(inspection.Candidates),
-		FieldDesignations:                  summarizeFieldDesignations(inspection.FieldDesignations),
+		FieldDesignations:                  summarizeFieldDesignations(inspection.Document),
 		RelationalFacts:                    summarizeFacts(inspection.RelationalFacts),
 		RelationalDiagnostics:              summarizeDiagnostics(inspection.Document.SHA256, inspection.RelationalDiagnostics),
 		RelationalFactResolutions:          summarizeFactResolutions(inspection.RelationalFactResolutions),
@@ -352,7 +352,14 @@ func summarizeFactResolutions(values []xeadsource.RelationalFactResolution) fact
 // counts per separation axis. It deliberately publishes no declaration text,
 // code table name, stored literal, or legacy field identifier, because those
 // are source values that the public report must not disclose.
-func summarizeFieldDesignations(facts xeadsource.FieldDesignationFacts) designationSummary {
+//
+// It reads the designation projection directly from the parsed Document rather
+// than through Inspection. Inspection is the payload of a versioned capability
+// shape (tei.reference.source-adapter.inspection/v0) whose root declares exactly
+// the properties it allows, so adding a projection to it would change a
+// published contract for a read-only reference.
+func summarizeFieldDesignations(document xeadsource.Document) designationSummary {
+	facts := xeadsource.ExtractFieldDesignationFacts(document)
 	out := designationSummary{
 		TokenizationPolicyRevision: facts.TokenizationPolicyRevision,
 		FieldCount:                 len(facts.Fields),

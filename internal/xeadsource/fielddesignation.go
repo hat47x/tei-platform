@@ -72,8 +72,10 @@ const (
 	AxisDisplayFormat SeparationAxis = "display-formatting"
 )
 
-// SeparationAxes lists every axis in report order.
-var SeparationAxes = []SeparationAxis{
+// separationAxes lists every axis in report order. It stays unexported because
+// the axes are already named by the exported constants; this slice exists so a
+// check can prove that no declared axis is unreachable.
+var separationAxes = []SeparationAxis{
 	AxisCodeIdentity,
 	AxisDisplayName,
 	AxisValueDomain,
@@ -279,7 +281,7 @@ func classifyDesignationToken(ordinal int, raw string) DesignationToken {
 	token := DesignationToken{Ordinal: ordinal, Raw: raw}
 	trimmed := strings.TrimSpace(raw)
 
-	if open, close := parenBalance(trimmed); open != close {
+	if !parenWellOrdered(trimmed) {
 		token.Diagnostics = append(token.Diagnostics, DesignationDiagnostic{
 			Code:   "unbalanced-parenthesis-after-comma-split",
 			Detail: "the comma split left an unbalanced parenthesis; the declared argument cannot be read",
@@ -311,27 +313,35 @@ func classifyDesignationToken(ordinal int, raw string) DesignationToken {
 			Code:   "code-table-content-not-in-source",
 			Detail: "only the code table reference is declared; its codes and display names are external",
 		})
-	case DesignationValues:
+	case DesignationValues, DesignationBoolean:
 		if payload != nil {
 			token.PayloadPartCount = countPayloadParts(*payload)
 		}
-		token.Diagnostics = append(token.Diagnostics, DesignationDiagnostic{
-			Code:   "values-conflate-stored-value-and-display-name",
-			Detail: "each listed literal serves as both the stored value and the shown text",
-		})
-	case DesignationBoolean:
-		if payload == nil {
+		// An argument form with no argument declares a value domain without
+		// naming any value. Neither the legacy readers nor this reference can
+		// say which values it admits.
+		if token.PayloadPartCount == 0 {
+			token.ResolvedAgainstSource = false
+			token.Diagnostics = append(token.Diagnostics, DesignationDiagnostic{
+				Code:   "payload-declared-without-parts",
+				Detail: "the designation declares an argument form but names no value",
+			})
 			break
 		}
-		parts := countPayloadParts(*payload)
-		token.PayloadPartCount = parts
+		if kind == DesignationValues {
+			token.Diagnostics = append(token.Diagnostics, DesignationDiagnostic{
+				Code:   "values-conflate-stored-value-and-display-name",
+				Detail: "each listed literal serves as both the stored value and the shown text",
+			})
+			break
+		}
 		switch {
-		case parts == 1:
+		case token.PayloadPartCount == 1:
 			token.Diagnostics = append(token.Diagnostics, DesignationDiagnostic{
 				Code:   "boolean-single-part-collapses-empty-and-false",
 				Detail: "with one stored literal, an absent value and the false literal are not distinguishable",
 			})
-		case parts > 2:
+		case token.PayloadPartCount > 2:
 			token.Diagnostics = append(token.Diagnostics, DesignationDiagnostic{
 				Code:   "boolean-payload-not-a-true-false-pair",
 				Detail: "more than two stored literals were declared for a truth value",
@@ -387,17 +397,23 @@ func matchDesignation(trimmed string) (DesignationKind, *string, bool) {
 	return "", nil, false
 }
 
-func parenBalance(value string) (int, int) {
-	open, close := 0, 0
+// parenBalance reports whether the parentheses are well ordered, not merely
+// counted. ")(" has one of each but is not balanced, and treating it as balanced
+// would report a broken token as a plain unrecognized one.
+func parenWellOrdered(value string) bool {
+	depth := 0
 	for _, r := range value {
 		switch r {
 		case '(':
-			open++
+			depth++
 		case ')':
-			close++
+			depth--
+			if depth < 0 {
+				return false
+			}
 		}
 	}
-	return open, close
+	return depth == 0
 }
 
 func countPayloadParts(payload string) int {
