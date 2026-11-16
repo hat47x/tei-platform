@@ -2931,4 +2931,11 @@ Pluginのport連結は基本型だけでなく複合Data・Relationの型も照�
 
 この反例は正式なPerson LinkやR7の実Person対応を作るものではなく、別の隔離一時表による観測能力の限界の検証。現行as-of Queryが返すMembership ID・OrgUnit ID・Allocationからは人物数/唯一承認者を導出できない。候補の人物RelationをOwnerが採用し、同じRead Cohort・時点・Scope・完全性で読み切って初めて人物数Claimを評価可能とする。通常のMembership件数・distinct Person・配賦FTE・Role/Case責任・現在Grantの粒度を混ぜない。
 
-**検収条件**：隔離実PGの固定HEADで全Query投影同一と候補人物数4/3の差、Go整形、明示PASS・非SKIPを確認するまではExpected/NOT RUN。§44と[段階計画§10.20](design/ORGANIZATION_STAGED_MODELING_PLAN_2026-11.md)にAR-3の実Read成功と、AR-4/5の人物Claimの十分性を区別する。次の本筋は#2586通常CLI Function→Query→Provider→一Consumer同Attemptを優先し、#2831のStudio DesktopセルフビルドとOrg C1の正式履歴・Person Linkの受入を独立に進める。
+**検収結果（2026-11-16）**：[PR #5184](https://github.com/hat47x/tei-platform/pull/5184)はmain統合済みだが初回[CI #43871100089](https://github.com/hat47x/tei-platform/actions/runs/43871100089)はgofmtで停止。修正した[PR #5210](https://github.com/hat47x/tei-platform/pull/5210)をmainへ統合（commit `10a6c107`）し、[実PostgreSQL run #43900533159](https://github.com/hat47x/tei-platform/actions/runs/43900533159)で同じ所属4件の全投影一致・仮想Person数4/3の相違、Go整形、明示PASS・非SKIPを確認した。**この反例はObserved、正式Person Linkや人物数の製品計算は未受入**。§44と[段階計画§10.20](design/ORGANIZATION_STAGED_MODELING_PLAN_2026-11.md)にAR-3の実Read成功と、AR-4/5の人物Claimの十分性を区別する。次の本筋は#2586通常CLI Function→Query→Provider→一Consumer同Attemptを優先し、#2831のStudio DesktopセルフビルドとOrg C1の正式履歴・Person Linkの受入を独立に進める。
+
+<!-- org-claim-gates-matured-20261117 -->
+### 2026-11-17 組織C1：観測十分性の反例を、用途別Claim・Consumer受入へ引き継ぐ
+
+[組織C1補遺§44.3](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)と[段階計画§10.21](design/ORGANIZATION_STAGED_MODELING_PLAN_2026-11.md)に、**QueryのResultが同じでも業務上のClaimが異なる二世界がある**とき、そのClaimは観測されたResultだけでは決められないことを共通の検査条件として反映した。実PGの4件のMembershipは観測済みでも、distinct Person（候補3/4）、配賦FTE、責任者・承認候補の資格は別。
+
+次の実装は①#2586通常CLIのFunction→実Query/Provider→一Consumer同Attempt受領、②#2506/#2514のRead Scope/Completeness・Claim必要入力、③#2516/#2497の用途別Disclosure・Graph/Tree/Plugin型付きPortで失われる意味の確認を順に検収する。正式Person Relation・履歴版・業務単一値性は#2386/#1126のOwner受理を待つ。**型の一致・Query実行成功・人物数の推定・現在Host Grantを一枚のSuccessにまとめない**。Desktopセルフビルド#2831、BRMS/Case、外部Effectは独立資格のまま。
