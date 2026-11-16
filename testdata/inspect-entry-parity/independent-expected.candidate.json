@@ -50,13 +50,23 @@
         "kind": "semantic-attribute",
         "id": "sales.order.customer_id",
         "symbol": "customerId",
-        "definitionStartOffset": 188
+        "definition": {
+          "artifactPath": "semantic/sales/order.tei",
+          "artifactFingerprint": "sha256:f2063418b893a60a9f948edbb2b23ec821f7a15ed8e5863c36e1b72abade1e33",
+          "role": "definition",
+          "startOffset": 188
+        }
       },
       "customer.customer.customer_id": {
         "kind": "semantic-attribute",
         "id": "customer.customer.customer_id",
         "symbol": "customerId",
-        "definitionStartOffset": 87
+        "definition": {
+          "artifactPath": "semantic/customer/customer.tei",
+          "artifactFingerprint": "sha256:d0897ed9ac8ce7e01200b05285e445fa57fa402abd0725542c7cf7ebfa0ad23b",
+          "role": "definition",
+          "startOffset": 87
+        }
       }
     }
   },

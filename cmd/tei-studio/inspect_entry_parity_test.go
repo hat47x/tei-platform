@@ -30,13 +30,15 @@ import (
 // Deliberately NOT compared: the transport envelopes have different shapes
 // (tei.cli.inspect/v0 report vs studiohost InspectionResponse), so whole-response
 // byte equality is never asserted. Only target identity, meaning, Source, Scope
-// and diagnostics are matched. The inner canonical attribute order is also not
-// compared, because the projection emits sorted IDs.
+// and diagnostics are matched. The inner canonical attribute ORDER is also not
+// required to match the declaration order: the projection emits sorted IDs, so
+// attribute and relation IDs are compared as sets.
 //
-// Expectations are restated here from
+// Expectations are loaded from
 // testdata/inspect-entry-parity/independent-expected.candidate.json, which was
 // derived from the Workspace Source bytes and the .tei declarations rather than
-// read back from any Inspector answer.
+// read back from any Inspector answer. That file is parsed by this test, so it
+// cannot drift into an unenforced second copy.
 
 const (
 	parityReferenceRoot    = "../../reference/workspace"
@@ -61,24 +63,67 @@ const (
 
 	// parityCanonicalEntry is the linked symbol both production entries select.
 	parityCanonicalEntry = "tei/internal/operations.InspectSubject"
+
+	// parityExpectedFile is the adopted independent Expected. It is parsed rather
+	// than transcribed, so it cannot become an unenforced second copy.
+	parityExpectedFile = "../../testdata/inspect-entry-parity/independent-expected.candidate.json"
 )
 
-// parityReferenceOrderAttributes is the attribute SET declared in
-// reference/workspace/semantic/sales/order.tei.
-var parityReferenceOrderAttributes = []string{
-	"sales.order.customer_id",
-	"sales.order.external_id",
-	"sales.order.order_id",
-	"sales.order.ordered_at",
-	"sales.order.status",
-	"sales.order.total",
+// parityExpected is the subset of the Expected document this test enforces. Every
+// value used below comes from the file, not from a constant, so a fixture edit
+// that contradicts the Workspace is caught here instead of silently ignored.
+type parityExpected struct {
+	Schema    string `json:"schema"`
+	Workspace struct {
+		Path     string `json:"path"`
+		Identity struct {
+			Name           string `json:"name"`
+			ManifestSha256 string `json:"manifestSha256"`
+		} `json:"identity"`
+		Subjects map[string]parityExpectedSubject `json:"subjects"`
+	} `json:"workspaceA"`
+	WorkspaceB struct {
+		Path     string `json:"path"`
+		Identity struct {
+			Name           string `json:"name"`
+			ManifestSha256 string `json:"manifestSha256"`
+		} `json:"identity"`
+		Subjects map[string]parityExpectedSubject `json:"subjects"`
+	} `json:"workspaceB"`
+	Expected []struct {
+		ID string `json:"id"`
+	} `json:"expected"`
 }
 
-// parityStandardOrderAttributes is the attribute SET declared in
-// reference/standard-crud/workspace/semantic/sales/order.tei.
-var parityStandardOrderAttributes = []string{
-	"sales.order.order_id",
-	"sales.order.status",
+type parityExpectedSubject struct {
+	Kind       string   `json:"kind"`
+	ID         string   `json:"id"`
+	Attributes []string `json:"attributes"`
+	Relations  []string `json:"relations"`
+	Symbol     string   `json:"symbol"`
+	Definition struct {
+		ArtifactPath        string `json:"artifactPath"`
+		ArtifactFingerprint string `json:"artifactFingerprint"`
+		Role                string `json:"role"`
+		StartOffset         int    `json:"startOffset"`
+	} `json:"definition"`
+}
+
+func parityLoadExpected(t *testing.T) parityExpected {
+	t.Helper()
+	raw, err := os.ReadFile(parityExpectedFile)
+	if err != nil {
+		t.Fatalf("read the independent Expected: %v", err)
+	}
+	var expected parityExpected
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	if err := decoder.Decode(&expected); err != nil {
+		t.Fatalf("the independent Expected is not valid JSON: %v", err)
+	}
+	if expected.Schema != "tei-inspect-entry-parity-independent-expected/v1" {
+		t.Fatalf("the independent Expected has an unexpected schema %q", expected.Schema)
+	}
+	return expected
 }
 
 // paritySameSet compares two ID lists as sets. Duplicates stay significant, so a
@@ -100,6 +145,7 @@ func paritySameSet(got, want []string) bool {
 type parityObserved struct {
 	Kind        string
 	ID          string
+	Symbol      string
 	Effect      string
 	CanonicalID string
 	Attributes  []string
@@ -116,9 +162,10 @@ type parityObserved struct {
 	FailureCode string
 }
 
-func parityCanonicalFields(canonical json.RawMessage) (string, []string, []string, error) {
+func parityCanonicalFields(canonical json.RawMessage) (string, string, []string, []string, error) {
 	var body struct {
 		ID         string `json:"id"`
+		Symbol     string `json:"symbol"`
 		Attributes []struct {
 			ID string `json:"id"`
 		} `json:"attributes"`
@@ -127,7 +174,7 @@ func parityCanonicalFields(canonical json.RawMessage) (string, []string, []strin
 		} `json:"relations"`
 	}
 	if err := json.Unmarshal(canonical, &body); err != nil {
-		return "", nil, nil, err
+		return "", "", nil, nil, err
 	}
 	var attributes, relations []string
 	for _, attribute := range body.Attributes {
@@ -136,19 +183,20 @@ func parityCanonicalFields(canonical json.RawMessage) (string, []string, []strin
 	for _, relation := range body.Relations {
 		relations = append(relations, relation.ID)
 	}
-	return body.ID, attributes, relations, nil
+	return body.ID, body.Symbol, attributes, relations, nil
 }
 
 // parityFromOperation normalizes a SubjectInspection that either entry produced.
 func parityFromOperation(t *testing.T, inspection operations.SubjectInspection) parityObserved {
 	t.Helper()
-	id, attributes, relations, err := parityCanonicalFields(inspection.Canonical)
+	id, symbol, attributes, relations, err := parityCanonicalFields(inspection.Canonical)
 	if err != nil {
 		t.Fatalf("canonical is not a declaration object: %v", err)
 	}
 	observed := parityObserved{
 		Kind:        inspection.Subject.Kind,
 		ID:          inspection.Subject.ID,
+		Symbol:      symbol,
 		Effect:      inspection.Effect,
 		CanonicalID: id,
 		Attributes:  attributes,
@@ -270,67 +318,118 @@ func parityBuildCLI(t *testing.T) string {
 	build := exec.Command("go", "build", "-o", binary, "tei/cmd/tei")
 	build.Dir = filepath.Join("..", "..")
 	if output, err := build.CombinedOutput(); err != nil {
-		t.Skipf("the tei CLI cannot be built in this environment: %v\n%s", err, output)
+		// A missing CLI is not evidence about either entry's behaviour, and the
+		// Studio CI step that runs this package does not use -v, so a skip would
+		// be invisible. Fail instead of reporting an unrun comparison as a pass.
+		t.Fatalf("the tei CLI must be buildable for this comparison: %v\n%s", err, output)
 	}
 	return binary
 }
 
-// TestInspectParityExpectationsMatchTheSourceBytes guards the hand-written
-// expectations against transcription drift. A hash typed by hand from a tool's
-// output once disagreed with the file it described in one character; this test
-// recomputes each recorded value from the pinned bytes so the constants above
-// can only be wrong if the fixture itself changed.
+// TestInspectParityExpectationsMatchTheSourceBytes ties the independent Expected
+// to the pinned bytes. A hash typed by hand from a tool's output once disagreed
+// with the file it described by one character, so every recorded fingerprint and
+// offset is recomputed here from the files the document names.
 func TestInspectParityExpectationsMatchTheSourceBytes(t *testing.T) {
-	for _, expected := range []struct {
+	expected := parityLoadExpected(t)
+
+	// Every fingerprint in the document must equal the bytes at the path the
+	// document pairs it with.
+	for _, workspace := range []struct {
 		name     string
 		path     string
-		want     string
-		recorded string
+		manifest string
+		subjects map[string]parityExpectedSubject
 	}{
-		{"reference order artifact", filepath.Join(parityReferenceRoot, "semantic", "sales", "order.tei"), parityReferenceOrderFP, "parityReferenceOrderFP"},
-		{"reference manifest", filepath.Join(parityReferenceRoot, "tei.workspace.yaml"), parityReferenceManifest, "parityReferenceManifest"},
-		{"standard-crud order artifact", filepath.Join(parityStandardCRUDRoot, "semantic", "sales", "order.tei"), parityStandardOrderFP, "parityStandardOrderFP"},
-		{"standard-crud manifest", filepath.Join(parityStandardCRUDRoot, "tei.workspace.yaml"), parityStandardManifest, "parityStandardManifest"},
+		{"workspaceA", expected.Workspace.Path, expected.Workspace.Identity.ManifestSha256, expected.Workspace.Subjects},
+		{"workspaceB", expected.WorkspaceB.Path, expected.WorkspaceB.Identity.ManifestSha256, expected.WorkspaceB.Subjects},
 	} {
-		t.Run(expected.name, func(t *testing.T) {
-			content, err := os.ReadFile(expected.path)
+		t.Run(workspace.name+" manifest", func(t *testing.T) {
+			content, err := os.ReadFile(filepath.Join("..", "..", filepath.FromSlash(workspace.path), "tei.workspace.yaml"))
 			if err != nil {
-				t.Fatalf("read the pinned Source: %v", err)
+				t.Fatalf("read the manifest named by the Expected: %v", err)
 			}
-			if got := sourceindex.Fingerprint(content); got != expected.want {
-				t.Fatalf("%s (%s) records %q but the file is %q", expected.recorded, expected.path, expected.want, got)
+			if got := sourceindex.Fingerprint(content); got != workspace.manifest {
+				t.Fatalf("%s records manifest %q but the file is %q", workspace.name, workspace.manifest, got)
 			}
 		})
+		for id, subject := range workspace.subjects {
+			subject := subject
+			t.Run(workspace.name+" "+id, func(t *testing.T) {
+				if subject.Definition.ArtifactPath == "" {
+					t.Fatalf("%s records no Source artifact path", id)
+				}
+				sourcePath := filepath.Join("..", "..", filepath.FromSlash(workspace.path), filepath.FromSlash(subject.Definition.ArtifactPath))
+				content, err := os.ReadFile(sourcePath)
+				if err != nil {
+					t.Fatalf("read the Source named by the Expected: %v", err)
+				}
+				if got := sourceindex.Fingerprint(content); got != subject.Definition.ArtifactFingerprint {
+					t.Fatalf("%s records artifact %q but the file is %q",
+						id, subject.Definition.ArtifactFingerprint, got)
+				}
+				// A recorded offset must land on the identifier it names, not on
+				// some earlier byte that happens to match.
+				start := subject.Definition.StartOffset
+				if start <= 0 || start >= len(content) {
+					t.Fatalf("%s records offset %d, outside the %d-byte Source", id, start, len(content))
+				}
+				if subject.Symbol == "" {
+					t.Fatalf("%s records no symbol to anchor its offset", id)
+				}
+				if !bytes.HasPrefix(content[start:], []byte(subject.Symbol)) {
+					t.Fatalf("%s records offset %d, which does not start the symbol %q",
+						id, start, subject.Symbol)
+				}
+			})
+		}
 	}
-	// The offsets name the declaration start, so they must land on the declared
-	// identifier inside the file rather than on any byte that happens to match.
-	for _, offset := range []struct {
-		path   string
-		start  int
-		prefix string
-	}{
-		{filepath.Join(parityReferenceRoot, "semantic", "sales", "order.tei"), parityReferenceOrderStart, "Order {"},
-		{filepath.Join(parityStandardCRUDRoot, "semantic", "sales", "order.tei"), parityStandardOrderStart, "Order {"},
-	} {
-		content, err := os.ReadFile(offset.path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if offset.start >= len(content) {
-			t.Fatalf("%s: offset %d is beyond the file", offset.path, offset.start)
-		}
-		if !bytes.HasPrefix(content[offset.start:], []byte(offset.prefix)) {
-			t.Fatalf("%s: offset %d does not start %q", offset.path, offset.start, offset.prefix)
-		}
+
+	// The document must still describe the six cases this test enforces.
+	want := []string{
+		"IEP-1-same-subject-same-meaning",
+		"IEP-2-same-symbol-different-id",
+		"IEP-3-same-id-different-workspace",
+		"IEP-4-stale-result-not-current",
+		"IEP-5-result-equality-is-not-path-identity",
+		"IEP-6-one-sided-failure-is-reported",
 	}
+	var got []string
+	for _, item := range expected.Expected {
+		got = append(got, item.ID)
+	}
+	sort.Strings(got)
+	sort.Strings(want)
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("the Expected document names %v, want %v", got, want)
+	}
+}
+
+// parityAuthorityLimits is the fixed statement set pinned from the Expected, not
+// read from operations.InspectionAuthorityLimits(). Comparing the operation to the
+// function that produced its limits would pass even if a statement disappeared.
+var parityAuthorityLimits = []string{
+	"inspection-is-a-derived-read-only-projection",
+	"source-location-is-not-semantic-acceptance",
+	"source-location-is-not-write-authority",
+	"local-read-is-not-disclosure-permission",
 }
 
 // IEP-1: for one target ID and one Source revision, both entries report the same
 // semantic result.
 func TestInspectEntriesAgreeOnOneSubjectAtOneSourceRevision(t *testing.T) {
+	expected := parityLoadExpected(t)
+	if expected.Workspace.Path != "reference/workspace" {
+		t.Fatalf("the Expected no longer names the compared Workspace: %q", expected.Workspace.Path)
+	}
+	order, ok := expected.Workspace.Subjects["sales.order"]
+	if !ok {
+		t.Fatal("the Expected no longer describes sales.order in workspaceA")
+	}
+
 	binary := parityBuildCLI(t)
 	bridge := parityNewBridge(t, parityReferenceRoot)
-	subject := sourceindex.Subject{Kind: "semantic-data", ID: "sales.order"}
+	subject := sourceindex.Subject{Kind: order.Kind, ID: order.ID}
 
 	fromCLI := parityCLIObserve(t, binary, parityReferenceRoot, subject)
 	fromStudio := parityStudioObserve(t, bridge, "workspace-1", subject)
@@ -349,31 +448,35 @@ func TestInspectEntriesAgreeOnOneSubjectAtOneSourceRevision(t *testing.T) {
 		if got.Effect != "read-only" {
 			t.Fatalf("%s did not report a read-only effect: %+v", entry.name, got)
 		}
-		if !paritySameSet(got.Attributes, parityReferenceOrderAttributes) {
+		if !paritySameSet(got.Attributes, order.Attributes) {
 			t.Fatalf("%s attribute meaning drifted: got %v want %v",
-				entry.name, got.Attributes, parityReferenceOrderAttributes)
+				entry.name, got.Attributes, order.Attributes)
 		}
-		if want := []string{"sales.order.customer", "sales.order.lines"}; !paritySameSet(got.Relations, want) {
-			t.Fatalf("%s relation meaning drifted: got %v want %v", entry.name, got.Relations, want)
+		if !paritySameSet(got.Relations, order.Relations) {
+			t.Fatalf("%s relation meaning drifted: got %v want %v",
+				entry.name, got.Relations, order.Relations)
 		}
-		if got.Workspace != parityReferenceName || got.ManifestSHA != parityReferenceManifest {
+		if got.Workspace != expected.Workspace.Identity.Name ||
+			got.ManifestSHA != expected.Workspace.Identity.ManifestSha256 {
 			t.Fatalf("%s read another Workspace: %+v", entry.name, got)
 		}
-		if got.SourcePath != parityReferenceOrderPath {
+		if got.SourcePath != order.Definition.ArtifactPath {
 			t.Fatalf("%s named another Source artifact: %+v", entry.name, got)
 		}
-		if got.SourceFP != parityReferenceOrderFP {
+		if got.SourceFP != order.Definition.ArtifactFingerprint {
 			t.Fatalf("%s reported Source fingerprint %q, expected %q",
-				entry.name, got.SourceFP, parityReferenceOrderFP)
+				entry.name, got.SourceFP, order.Definition.ArtifactFingerprint)
 		}
-		if got.SourceRole != string(sourceindex.RoleDefinition) {
+		if got.SourceRole != order.Definition.Role {
 			t.Fatalf("%s reported Source role %q: %+v", entry.name, got.SourceRole, got)
 		}
-		if got.Offset != parityReferenceOrderStart {
-			t.Fatalf("%s reported Source offset %d, expected %d", entry.name, got.Offset, parityReferenceOrderStart)
+		if got.Offset != order.Definition.StartOffset {
+			t.Fatalf("%s reported Source offset %d, expected %d",
+				entry.name, got.Offset, order.Definition.StartOffset)
 		}
-		if !reflect.DeepEqual(got.Limits, operations.InspectionAuthorityLimits()) {
-			t.Fatalf("%s changed the authority limits: %+v", entry.name, got)
+		if !reflect.DeepEqual(got.Limits, parityAuthorityLimits) {
+			t.Fatalf("%s changed the authority limits: got %v want %v",
+				entry.name, got.Limits, parityAuthorityLimits)
 		}
 		if got.WorldFP == "" || got.SourceIndex == "" {
 			t.Fatalf("%s omitted an observation fingerprint: %+v", entry.name, got)
@@ -390,65 +493,111 @@ func TestInspectEntriesAgreeOnOneSubjectAtOneSourceRevision(t *testing.T) {
 // IEP-2: two attributes that share a symbol but have different canonical IDs stay
 // separate; neither is answered with the other's Source.
 func TestInspectEntriesDoNotMergeSameSymbolAcrossIDs(t *testing.T) {
+	expected := parityLoadExpected(t)
+	customerExpected, okCustomer := expected.Workspace.Subjects[parityAttrCustomer]
+	foreignExpected, okForeign := expected.Workspace.Subjects[parityAttrForeign]
+	if !okCustomer || !okForeign {
+		t.Fatalf("the Expected no longer describes both attributes %q and %q",
+			parityAttrCustomer, parityAttrForeign)
+	}
+	// The premise of this case is a SHARED symbol on distinct IDs. If the fixture
+	// stopped sharing it, the case would pass without testing anything.
+	if customerExpected.Symbol == "" || customerExpected.Symbol != foreignExpected.Symbol {
+		t.Fatalf("the Expected no longer gives both attributes one symbol: %q vs %q",
+			customerExpected.Symbol, foreignExpected.Symbol)
+	}
+	if customerExpected.ID == foreignExpected.ID {
+		t.Fatalf("the Expected no longer gives the two attributes distinct IDs: %q", customerExpected.ID)
+	}
+
 	binary := parityBuildCLI(t)
 	bridge := parityNewBridge(t, parityReferenceRoot)
 
 	observations := map[string]parityObserved{}
-	for _, id := range []string{parityAttrCustomer, parityAttrForeign} {
-		subject := sourceindex.Subject{Kind: "semantic-attribute", ID: id}
+	for _, wanted := range []parityExpectedSubject{customerExpected, foreignExpected} {
+		subject := sourceindex.Subject{Kind: wanted.Kind, ID: wanted.ID}
 		fromCLI := parityCLIObserve(t, binary, parityReferenceRoot, subject)
 		fromStudio := parityStudioObserve(t, bridge, "workspace-1", subject)
 		if fromCLI.FailureCode != "" || fromStudio.FailureCode != "" {
-			t.Fatalf("%s was not inspectable through both entries: cli=%+v studio=%+v", id, fromCLI, fromStudio)
+			t.Fatalf("%s was not inspectable through both entries: cli=%+v studio=%+v",
+				wanted.ID, fromCLI, fromStudio)
 		}
 		if !reflect.DeepEqual(fromCLI, fromStudio) {
-			t.Fatalf("%s disagreed between entries:\nCLI   =%+v\nStudio=%+v", id, fromCLI, fromStudio)
+			t.Fatalf("%s disagreed between entries:\nCLI   =%+v\nStudio=%+v", wanted.ID, fromCLI, fromStudio)
 		}
-		if fromCLI.ID != id || fromCLI.CanonicalID != id {
-			t.Fatalf("%s was answered as another subject: %+v", id, fromCLI)
+		if fromCLI.ID != wanted.ID || fromCLI.CanonicalID != wanted.ID {
+			t.Fatalf("%s was answered as another subject: %+v", wanted.ID, fromCLI)
 		}
-		observations[id] = fromCLI
+		// The shared symbol must be present on each answer, which is what makes
+		// the non-merging claim meaningful.
+		if fromCLI.Symbol != wanted.Symbol {
+			t.Fatalf("%s reported symbol %q, expected %q", wanted.ID, fromCLI.Symbol, wanted.Symbol)
+		}
+		if fromCLI.Offset != wanted.Definition.StartOffset {
+			t.Fatalf("%s reported Source offset %d, expected %d",
+				wanted.ID, fromCLI.Offset, wanted.Definition.StartOffset)
+		}
+		observations[wanted.ID] = fromCLI
 	}
 
 	customer, foreign := observations[parityAttrCustomer], observations[parityAttrForeign]
 	if customer.SourcePath == foreign.SourcePath {
 		t.Fatalf("two Attributes sharing a symbol reported one Source: %+v / %+v", customer, foreign)
 	}
-	if customer.ID == foreign.ID || customer.SourceFP == foreign.SourceFP || customer.Offset == foreign.Offset {
-		t.Fatalf("two Attributes sharing a symbol were merged: %+v / %+v", customer, foreign)
+	if customer.SourceFP == foreign.SourceFP || customer.Offset == foreign.Offset {
+		t.Fatalf("two Attributes sharing a symbol resolved to one Source span: %+v / %+v", customer, foreign)
+	}
+	if customer.Symbol != foreign.Symbol {
+		t.Fatalf("the shared symbol was not preserved: %+v / %+v", customer, foreign)
 	}
 }
 
 // IEP-3: one canonical ID declared by two Workspaces is kept apart.
 func TestInspectEntriesKeepSameIDWorkspacesApart(t *testing.T) {
+	expected := parityLoadExpected(t)
+	referenceOrder, okReference := expected.Workspace.Subjects["sales.order"]
+	standardOrder, okStandard := expected.WorkspaceB.Subjects["sales.order"]
+	if !okReference || !okStandard {
+		t.Fatal("the Expected no longer describes sales.order in both Workspaces")
+	}
+	// The premise is one ID in two Workspaces. Without it the case proves nothing.
+	if referenceOrder.ID != standardOrder.ID {
+		t.Fatalf("the Expected no longer uses one ID for both Workspaces: %q vs %q",
+			referenceOrder.ID, standardOrder.ID)
+	}
+	if reflect.DeepEqual(referenceOrder.Attributes, standardOrder.Attributes) {
+		t.Fatal("the Expected no longer gives the two Workspaces different meaning")
+	}
+
 	binary := parityBuildCLI(t)
 	bridge := parityNewBridge(t, parityReferenceRoot, parityStandardCRUDRoot)
-	subject := sourceindex.Subject{Kind: "semantic-data", ID: "sales.order"}
+	subject := sourceindex.Subject{Kind: referenceOrder.Kind, ID: referenceOrder.ID}
 
 	targets := []struct {
-		name          string
-		root          string
-		workspace     string
-		workspaceName string
-		manifest      string
-		attributes    []string
-		sourcePath    string
-		sourceFP      string
-		offset        int
+		name      string
+		root      string
+		workspace string
+		identity  struct {
+			name     string
+			manifest string
+		}
+		subject parityExpectedSubject
 	}{
 		{
 			name: "reference", root: parityReferenceRoot, workspace: "workspace-1",
-			workspaceName: parityReferenceName, manifest: parityReferenceManifest,
-			attributes: parityReferenceOrderAttributes,
-			sourcePath: parityReferenceOrderPath, sourceFP: parityReferenceOrderFP,
-			offset: parityReferenceOrderStart,
+			identity: struct {
+				name     string
+				manifest string
+			}{expected.Workspace.Identity.Name, expected.Workspace.Identity.ManifestSha256},
+			subject: referenceOrder,
 		},
 		{
 			name: "standard-crud", root: parityStandardCRUDRoot, workspace: "workspace-2",
-			workspaceName: parityStandardName, manifest: parityStandardManifest,
-			attributes: parityStandardOrderAttributes,
-			sourcePath: parityStandardOrderPath, sourceFP: parityStandardOrderFP,
-			offset: parityStandardOrderStart,
+			identity: struct {
+				name     string
+				manifest string
+			}{expected.WorkspaceB.Identity.Name, expected.WorkspaceB.Identity.ManifestSha256},
+			subject: standardOrder,
 		},
 	}
 
@@ -463,14 +612,20 @@ func TestInspectEntriesKeepSameIDWorkspacesApart(t *testing.T) {
 		if !reflect.DeepEqual(fromCLI, fromStudio) {
 			t.Fatalf("%s disagreed between entries:\nCLI   =%+v\nStudio=%+v", target.name, fromCLI, fromStudio)
 		}
-		if fromCLI.Workspace != target.workspaceName || fromCLI.ManifestSHA != target.manifest {
+		if fromCLI.Workspace != target.identity.name || fromCLI.ManifestSHA != target.identity.manifest {
 			t.Fatalf("%s reported another Workspace identity: %+v", target.name, fromCLI)
 		}
-		if !paritySameSet(fromCLI.Attributes, target.attributes) {
-			t.Fatalf("%s meaning drifted: got %v want %v", target.name, fromCLI.Attributes, target.attributes)
+		if !paritySameSet(fromCLI.Attributes, target.subject.Attributes) {
+			t.Fatalf("%s meaning drifted: got %v want %v",
+				target.name, fromCLI.Attributes, target.subject.Attributes)
 		}
-		if fromCLI.SourcePath != target.sourcePath || fromCLI.SourceFP != target.sourceFP ||
-			fromCLI.Offset != target.offset {
+		if !paritySameSet(fromCLI.Relations, target.subject.Relations) {
+			t.Fatalf("%s relations drifted: got %v want %v",
+				target.name, fromCLI.Relations, target.subject.Relations)
+		}
+		if fromCLI.SourcePath != target.subject.Definition.ArtifactPath ||
+			fromCLI.SourceFP != target.subject.Definition.ArtifactFingerprint ||
+			fromCLI.Offset != target.subject.Definition.StartOffset {
 			t.Fatalf("%s Source evidence drifted: %+v", target.name, fromCLI)
 		}
 		observed[target.name] = fromCLI
@@ -485,6 +640,12 @@ func TestInspectEntriesKeepSameIDWorkspacesApart(t *testing.T) {
 
 // IEP-4: after a Source update, an earlier result is not treated as current.
 func TestInspectEntriesDoNotServeAStaleResultAfterSourceUpdate(t *testing.T) {
+	expected := parityLoadExpected(t)
+	order, ok := expected.Workspace.Subjects["sales.order"]
+	if !ok {
+		t.Fatal("the Expected no longer describes sales.order in workspaceA")
+	}
+
 	binary := parityBuildCLI(t)
 	editedRoot := t.TempDir()
 	// Copy the public Workspace; the committed fixture is never written to.
@@ -492,7 +653,7 @@ func TestInspectEntriesDoNotServeAStaleResultAfterSourceUpdate(t *testing.T) {
 		t.Fatalf("copy the reference Workspace: %v", err)
 	}
 	bridge := parityNewBridge(t, editedRoot)
-	subject := sourceindex.Subject{Kind: "semantic-data", ID: "sales.order"}
+	subject := sourceindex.Subject{Kind: order.Kind, ID: order.ID}
 
 	beforeCLI := parityCLIObserve(t, binary, editedRoot, subject)
 	beforeStudio := parityStudioObserve(t, bridge, "workspace-1", subject)
@@ -502,8 +663,11 @@ func TestInspectEntriesDoNotServeAStaleResultAfterSourceUpdate(t *testing.T) {
 	if !reflect.DeepEqual(beforeCLI, beforeStudio) {
 		t.Fatalf("the entries disagreed before the edit:\nCLI   =%+v\nStudio=%+v", beforeCLI, beforeStudio)
 	}
+	if beforeCLI.SourceFP != order.Definition.ArtifactFingerprint {
+		t.Fatalf("the pre-edit Source was not the pinned one: %+v", beforeCLI)
+	}
 
-	sourcePath := filepath.Join(editedRoot, filepath.FromSlash(parityReferenceOrderPath))
+	sourcePath := filepath.Join(editedRoot, filepath.FromSlash(order.Definition.ArtifactPath))
 	original, err := os.ReadFile(sourcePath)
 	if err != nil {
 		t.Fatal(err)
@@ -526,7 +690,7 @@ func TestInspectEntriesDoNotServeAStaleResultAfterSourceUpdate(t *testing.T) {
 		t.Fatalf("the entries disagreed after the Source update:\nCLI   =%+v\nStudio=%+v", afterCLI, afterStudio)
 	}
 
-	wantAttributes := append(append([]string(nil), parityReferenceOrderAttributes...), "sales.order.note")
+	wantAttributes := append(append([]string(nil), order.Attributes...), "sales.order.note")
 	for _, entry := range []struct {
 		name  string
 		value parityObserved
@@ -535,7 +699,7 @@ func TestInspectEntriesDoNotServeAStaleResultAfterSourceUpdate(t *testing.T) {
 		if !paritySameSet(got.Attributes, wantAttributes) {
 			t.Fatalf("%s did not read the edited Source: got %v want %v", entry.name, got.Attributes, wantAttributes)
 		}
-		if got.SourceFP == parityReferenceOrderFP || got.SourceFP == beforeCLI.SourceFP {
+		if got.SourceFP == order.Definition.ArtifactFingerprint || got.SourceFP == beforeCLI.SourceFP {
 			t.Fatalf("%s served a pre-edit Source as current: %+v", entry.name, got)
 		}
 		if got.SourceIndex == beforeCLI.SourceIndex || got.WorldFP == beforeCLI.WorldFP {
@@ -564,12 +728,23 @@ const (
 )
 
 // IEP-5: equal results from different Providers do not establish path identity.
+//
+// Scope note: the CLI runs as a subprocess, so its entered Provider symbol cannot
+// be observed from here. This case therefore demonstrates the property on the
+// Studio entry alone, using two distinct Provider symbols, and records that the
+// production Studio selection enters the canonical Operation. It does NOT prove
+// the CLI's linked symbol; that is a separate observation (#1251 I2/I3).
 func TestInspectEntriesDoNotClaimPathIdentityFromEqualResults(t *testing.T) {
+	expected := parityLoadExpected(t)
+	order, ok := expected.Workspace.Subjects["sales.order"]
+	if !ok {
+		t.Fatal("the Expected no longer describes sales.order in workspaceA")
+	}
 	root, err := filepath.Abs(parityReferenceRoot)
 	if err != nil {
 		t.Fatal(err)
 	}
-	subject := sourceindex.Subject{Kind: "semantic-data", ID: "sales.order"}
+	subject := sourceindex.Subject{Kind: order.Kind, ID: order.ID}
 
 	run := func(providerID, entrySymbol string, entry func(string, sourceindex.Subject) (operations.SubjectInspection, error)) (parityObserved, inspectoradapter.Invocation) {
 		t.Helper()
@@ -632,17 +807,28 @@ func TestInspectEntriesDoNotClaimPathIdentityFromEqualResults(t *testing.T) {
 
 // IEP-6: a failure on only one entry is reported as an asymmetry, never as parity.
 func TestInspectEntriesReportAOneSidedFailure(t *testing.T) {
+	expected := parityLoadExpected(t)
+	order, ok := expected.Workspace.Subjects["sales.order"]
+	if !ok {
+		t.Fatal("the Expected no longer describes sales.order in workspaceA")
+	}
+
 	binary := parityBuildCLI(t)
 	// The Studio Host allowlists exactly one root. Naming a second Workspace ID is
 	// a Studio-only refusal, because the CLI takes its root from argv.
 	bridge := parityNewBridge(t, parityReferenceRoot)
-	subject := sourceindex.Subject{Kind: "semantic-data", ID: "sales.order"}
+	subject := sourceindex.Subject{Kind: order.Kind, ID: order.ID}
 
 	fromCLI := parityCLIObserve(t, binary, parityReferenceRoot, subject)
 	fromStudio := parityStudioObserve(t, bridge, "workspace-2", subject)
 
+	// The asymmetry is the point: the same request succeeds on one entry and is
+	// refused on the other.
 	if fromCLI.FailureCode != "" {
 		t.Fatalf("the CLI entry unexpectedly failed: %+v", fromCLI)
+	}
+	if fromCLI.Workspace != expected.Workspace.Identity.Name {
+		t.Fatalf("the successful entry read another Workspace: %+v", fromCLI)
 	}
 	if fromStudio.FailureCode != "WORKSPACE_NOT_ALLOWED" {
 		t.Fatalf("the Studio refusal was missing or reclassified: %+v", fromStudio)
@@ -650,10 +836,11 @@ func TestInspectEntriesReportAOneSidedFailure(t *testing.T) {
 	if reflect.DeepEqual(fromCLI, fromStudio) {
 		t.Fatal("a one-sided failure was reported as parity")
 	}
-	// This is a Scope difference, not a meaning difference: the requested target
-	// must survive the refusal.
-	if fromStudio.Kind != subject.Kind || fromStudio.ID != subject.ID {
-		t.Fatalf("the refusal lost the requested target: %+v", fromStudio)
+	// A refusal is a Scope difference, so it must NOT be presented as a meaning
+	// difference: the refusing entry must carry no meaning at all.
+	if len(fromStudio.Attributes) != 0 || fromStudio.CanonicalID != "" ||
+		fromStudio.SourceFP != "" || fromStudio.Workspace != "" {
+		t.Fatalf("the refusal carried meaning it never observed: %+v", fromStudio)
 	}
 }
 
