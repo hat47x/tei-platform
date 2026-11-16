@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"tei/internal/core"
-	"tei/internal/semantic"
 	"tei/internal/sourceindex"
 	"tei/internal/validation"
 )
@@ -44,14 +43,8 @@ func TestTEIValidationDeclarationSelfDescriptionIsOnlyData(t *testing.T) {
 	if !ok || descriptor.ID != dataID || len(descriptor.Attributes) != 4 {
 		t.Fatalf("self-described Data is absent or has unexpected shape: %+v, found=%v", descriptor, ok)
 	}
-	// The World keeps Data attributes in canonical identity order, so these
-	// expectations are matched by identity rather than by authored row order.
-	// Fixed expectations remain independent of the table Reader: absence of a
+	// Fixed expectations are independent of the table Reader: absence of a
 	// Relation is not enforced merely because its field is optional.
-	byAttributeID := make(map[core.CanonicalID]semantic.Attribute, len(descriptor.Attributes))
-	for _, attribute := range descriptor.Attributes {
-		byAttributeID[attribute.ID] = attribute
-	}
 	expected := []struct {
 		id       core.CanonicalID
 		typeRef  core.CanonicalID
@@ -71,12 +64,23 @@ func TestTEIValidationDeclarationSelfDescriptionIsOnlyData(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range expected {
-		got, present := byAttributeID[want.id]
-		if !present {
-			t.Fatalf("attribute %s is absent from %+v", want.id, descriptor.Attributes)
+	// Canonical Data attributes may be normalized independently of the
+	// Markdown table row order. Match by identity, while checking that every
+	// field is unique and still points at its original Source cell.
+	actualByID := make(map[core.CanonicalID]int, len(descriptor.Attributes))
+	for i, attribute := range descriptor.Attributes {
+		if previous, duplicate := actualByID[attribute.ID]; duplicate {
+			t.Fatalf("duplicate canonical attribute %s at positions %d and %d", attribute.ID, previous, i)
 		}
-		if got.TypeRef != want.typeRef || got.Required != want.required {
+		actualByID[attribute.ID] = i
+	}
+	for _, want := range expected {
+		indexInData, ok := actualByID[want.id]
+		if !ok {
+			t.Fatalf("self-description is missing canonical attribute %s", want.id)
+		}
+		got := descriptor.Attributes[indexInData]
+		if got.ID != want.id || got.TypeRef != want.typeRef || got.Required != want.required {
 			t.Fatalf("attribute %s=%+v, expected type=%s required=%v",
 				want.id, got, want.typeRef, want.required)
 		}

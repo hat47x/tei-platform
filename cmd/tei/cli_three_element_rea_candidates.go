@@ -20,11 +20,12 @@ const reaCandidatesEnvelopeVersion = "tei.cli.three-element.rea-candidates/v0"
 // A raw evidence digest proves only which bytes this CLI read; a candidate
 // fingerprint identifies the derived projection, not Owner acceptance.
 type reaCandidatesResult struct {
-	RawEvidenceFingerprint string                    `json:"rawEvidenceFingerprint"`
-	CandidateSet           reacandidate.CandidateSet `json:"candidateSet"`
-	ReviewPacket           reacandidate.ReviewPacket `json:"reviewPacket"`
-	Summary                []string                  `json:"summary"`
-	CandidateOutputWritten bool                      `json:"candidateOutputWritten"`
+	RawEvidenceFingerprint string                         `json:"rawEvidenceFingerprint"`
+	CandidateSet           reacandidate.CandidateSet      `json:"candidateSet"`
+	ReviewPacket           reacandidate.ReviewPacket      `json:"reviewPacket"`
+	RelationQuestion       *reacandidate.RelationQuestion `json:"relationQuestion,omitempty"`
+	Summary                []string                       `json:"summary"`
+	CandidateOutputWritten bool                           `json:"candidateOutputWritten"`
 }
 
 func failREACandidates(code, message string, out io.Writer) (int, error) {
@@ -71,6 +72,7 @@ func runThreeElementREACandidates(args []string, out io.Writer) (int, error) {
 	fs.SetOutput(io.Discard)
 	evidencePath := fs.String("evidence", "", "saved external REA JSON analysis document")
 	outputPath := fs.String("output", "", "new path for typed CandidateSet/v0 JSON (never overwrites)")
+	relationID := fs.String("relation-id", "", "producer edge occurrence ID for one read-only relation question (does not infer a Function)")
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			printHelp(out, fs, "three-element rea-candidates")
@@ -103,6 +105,23 @@ func runThreeElementREACandidates(args []string, out io.Writer) (int, error) {
 		return failREACandidates("CANDIDATE_GENERATION_FAILED", err.Error(), out)
 	}
 	packet := reacandidate.BuildReviewPacket(set, nil, nil, nil)
+	var question *reacandidate.RelationQuestion
+	// Omitting the optional flag keeps the original full candidate review.
+	// Supplying an empty ID is a selection error, not an implicit omission.
+	relationRequested := false
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "relation-id" {
+			relationRequested = true
+		}
+	})
+	if relationRequested {
+		selected, ok := reacandidate.SelectRelationQuestion(packet, *relationID)
+		if !ok {
+			return failREACandidates("RELATION_SELECTION_UNAVAILABLE",
+				"the selected producer relation occurrence was not uniquely observed in this attempt; no Function/Data meaning was inferred", out)
+		}
+		question = &selected
+	}
 	written := false
 	if strings.TrimSpace(*outputPath) != "" {
 		if err := writeNewREACandidateSet(*outputPath, set); err != nil {
@@ -117,6 +136,7 @@ func runThreeElementREACandidates(args []string, out io.Writer) (int, error) {
 			RawEvidenceFingerprint: fmt.Sprintf("sha256:%x", sha256.Sum256(raw)),
 			CandidateSet:           set,
 			ReviewPacket:           packet,
+			RelationQuestion:       question,
 			Summary:                packet.Summary(),
 			CandidateOutputWritten: written,
 		},
