@@ -391,6 +391,16 @@ SSR／SSGで初期HTMLを作る場合、初期Snapshotとその後のClient Read
 
 最初のPRは `presentation.ts` に既にあるReaderを再実装しない。**検証済みResultから画面に渡す値を整える純粋なPresenter** と、その境界の回帰試験だけを追加する。部分取得は「確認できた範囲」として表示し、「該当なし」「全件」「編集可能」を推定しない。Browserへの展開は同じPresenterの独立Consumerを使って確かめ、Wails Bridgeを共通Componentの必須依存にしない。
 
+### 19.2.1 WEB-P1aの純粋Presenterと配布・生成Closureの受入を分ける（2026-11-16）
+
+`reference/tei-studio-workbench/inspector-presentation.ts` に、既存 `readInspection` が検証した結果をEditor文書、Source状況、利用制限、Noticeへ整える純粋な `presentInspection` を追加する。対象IDの形式は既存 `subjectKey` に従い、Source状況が `partial` でもそのまま表示へ渡す。表示制限一覧はコピーする。Grant／Effect／Meaning受理や取得範囲の完全性を推定しない。`presentation.test.mjs` は既存Readerで検証した同一Subject／版の表示値、部分取得、制限の独立、旧Source Index指紋・非read-only応答・制限欠落の拒否を検査する。
+
+**今回の差分は独立したPresenterファイルと局所試験であり、既存 `presentation.ts` と `main.ts` は変更しない。** 正規Workbenchの実表示はまだ旧処理のままで、新Presenterは実画面へ接続されていない。これは、[生成Workbenchの固定Closure](../../tools/reference-studio-static-composition/connect-workbench.mjs)に `presentation.ts` の過去のGit blobが明記されているためである。実体を改版したにもかかわらず過去の受領資格を維持するよう指紋を書き換えたり、検査を無効化したりしてはならない。今回の実Windows CIで現れた `workbench_closure_revision_mismatch` は、この境界を実際に検出した反例として扱う。
+
+次のWEB-P1a-2では、`main.ts` から新Presenterを呼ぶ変更を**新しいSource／Closureとして資格化**する。Node24の `npm test`／`typecheck`／`build`、`reference/tei-studio-workbench/dist/main.js` とWails埋込 `cmd/tei-studio/assets/workbench/main.js` の実byte一致、HTML／CSS／第三者通知、既存Builderでの生成Workbench、最後に各Consumerの受領を順に確認する。歴史的に成功したPinを上書きせず、Source改版→生成→実Bundle→Consumerの新しい証拠を作る。手書きで埋込JSを似せただけでは合格としない。
+
+WEB-P1a-1の局所試験、P1a-2の正規Bundle／生成Closure受領、WEB-P1bのFocus／Pin後着非干渉、S-LOCの実画面接続、実Windows／Stage2は別の資格である。既存#1180／#2514のExpectedと#1824／#997／#2831のOwnerに引き渡し、二本のP0への新しいHard Gateにはしない。
+
 ### 19.3 WEB-P2とWEB-P3へ進む条件
 
 **WEB-P2（API公開）**では、既存 `operations.InspectSubject` を共通の意味基線とし、CLI direct、Wails非依存Studio Host、HTTP Adapterの三入口で対象、要求版、Failure分類、開示結果を照合する。HTTPのルート登録や同名のJSONを返すMockだけでは実Provider到達と数えない。HTTP側のActor／Audience／Disclosure、Current Grant、Rate／Size制限、Origin／CSRF／CORSを入口ごとに検査する。API Pluginの実ProviderはWailsに依存せず、Pluginの選択・Target収録・Host公開・実Call・Consumer受領を別々に観測する。

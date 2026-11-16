@@ -9,6 +9,7 @@ import {
   relatedGraph,
   readXeadObservation,
 } from "./presentation.ts";
+import { presentInspection } from "./inspector-presentation.ts";
 const data = {
   subject: { kind: "semantic-data", id: "sales.order" },
   sourceStatus: "indexed",
@@ -94,6 +95,47 @@ test("inspection discloses its read-only limits and refuses incomplete authority
   const extra = readInspection({ ...raw, authorityLimits: [...authorityLimits, "extra-limited-scope"] }, data.subject, catalog);
   assert.match(extra.authorityLimits.at(-1), /extra-limited-scope/);
 });
+test("Inspector presentation preserves validated data without claiming authority", () => {
+  const catalog = {
+    entries: [data], modelRevision: "model-A",
+    worldFingerprint: "world-A", sourceIndexFingerprint: "source-A",
+  };
+  const authorityLimits = [
+    "inspection-is-a-derived-read-only-projection",
+    "source-location-is-not-semantic-acceptance",
+    "source-location-is-not-write-authority",
+    "local-read-is-not-disclosure-permission",
+  ];
+  const raw = {
+    effect: "read-only", subject: data.subject,
+    canonical: { name: "注文", total: null },
+    sourceStatus: "partial",
+    worldFingerprint: "world-A", sourceIndexFingerprint: "source-A",
+    authorityLimits,
+  };
+  const inspected = readInspection(raw, data.subject, catalog);
+  const displayed = presentInspection(inspected, "workspace-A", data.subject);
+  assert.deepEqual(displayed.document, {
+    id: 'workspace-A/["semantic-data","sales.order"]',
+    version: "world-A:source-A",
+    text: JSON.stringify(raw.canonical, null, 2),
+  });
+  assert.equal(displayed.sourceStatusText, "参照情報：partial");
+  assert.deepEqual(displayed.authorityLimits, inspected.authorityLimits);
+  assert.notStrictEqual(displayed.authorityLimits, inspected.authorityLimits);
+  assert.equal(displayed.noticeText, "選択したモデルの投影を表示しています。");
+  assert.deepEqual(Object.keys(displayed).sort(),
+    ["document", "sourceStatusText", "authorityLimits", "noticeText"].sort());
+  inspected.authorityLimits[0] = "tampered";
+  assert.match(displayed.authorityLimits[0], /読み取り専用/);
+  assert.throws(() => readInspection({ ...raw, effect: "write" }, data.subject, catalog),
+    /INVALID_INSPECTION_RESPONSE/);
+  assert.throws(() => readInspection({ ...raw, authorityLimits: [] }, data.subject, catalog),
+    /INVALID_INSPECTION_RESPONSE/);
+  assert.throws(() => readInspection({ ...raw, sourceIndexFingerprint: "stale" }, data.subject, catalog),
+    /STALE_MODEL_PROJECTION/);
+});
+
 test("graph contains actual catalog relations and reports clipped neighbours", () => {
   const children = Array.from({ length: 10 }, (_, i) => ({
     subject: { kind: "semantic-attribute", id: `sales.order.f${i}` },
