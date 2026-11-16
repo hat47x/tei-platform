@@ -1064,3 +1064,51 @@ PIO-01〜10は既存#1180／#2514に渡す**独立Expected候補**であり、Go
 PIO-11〜16は既存#1180／#2514のIndependent Expectedへ引き渡し、独立した第二Test Registryは追加しない。**次のProduct差分はPIO-T0／T1の一対象・一つのMapping・一つのAdapterで完結させる**。新しいFlow Runtime、万能Mapping Router、Plugin HostやSnapshot Storeは作らない。正式な意味受理、Wails／HTTP公開、実Provider／Effect、Stage2受領を説明上の接続成功へ含めない。
 
 本節はmainの限定的な実Binary回帰と既存設計を横断Pluginの検収へ反映したもの。新たなMapping実装・Go試験・実Windows／DB試験、Ownerの新しい意味受理は、この更新だけでは実施していない。
+
+## 21. 型付き接続で「判定できない」を保持し、読取の充足を検証する（2026-11-16）
+
+### 21.1 値の一致、取得の完全性、業務上の判断は異なる
+
+§19〜20では、Record全体／Field／一段Adapterを標準Mappingでつなぎ、実Read先を出力値とは別に検証した。次の問題は、**読めた部分だけで結論を出してよいか**である。値と型が同じでも、必要なFieldやRelationの残りが未取得なら、Consumerが判断できるとは限らない。
+
+main統合済みの[#5142](https://github.com/hat47x/tei-platform/pull/5142)では、既存`validationeval.Decide`が値の`present／null／not-fetched`と関係集合の`complete／partial`を扱う。既知の重複だけで規則違反を確定できる場合は、残りの未取得があっても`not-satisfied`とできる。一方、一部の行で重複が見つからなくても、一意だとは断定できず、理由付きの`undecided`を返す。
+
+Plugin接続でも`null`、`not-fetched`、明示された空Collection、関係の一部取得、取得失敗を混同しない。`undecided`は業務条件の不成立でもPluginの技術的失敗でもない。追加Readが必要なとき、そのScope・Grant・Effect・Disclosureを確認する前に自動取得しない。
+
+### 21.2 例による意味確認と実Provider証拠を区別する
+
+mainの[#5143](https://github.com/hat47x/tei-platform/pull/5143)は、`tei.authoring/v1`の記録例と期待結果を既存`operations.CheckRuleExamples`で照合する。これはRuleの有限入力に対する意味確認であって、Providerの実Readや業務Ownerの承認ではない。
+
+| 接続の段階 | 最小の受入証拠 | 一致だけでは認めないこと |
+| --- | --- | --- |
+| 宣言とMapping | 型付きData／Rule／Field Ref・必要Context・Scope・Law・Source位置 | 同名Fieldや構造が似たRecordの自動接続 |
+| 例と判断 | 正値・境界・NULL・未取得・部分取得の独立Expected、`satisfied／not-satisfied／undecided`と理由 | 一例の合格による全入力保証、未実行の例の成功扱い |
+| 実装と実Read | Operator／Adapterの実装選択、実際に読んだField ID／必要ならRead回数、同一Attempt | 出力値が同じだから同じReaderやProviderであるとの推測 |
+| Consumer受領 | 必須Fieldの充足、変換Loss、Target・Audience・Disclosure、Actual Call | test-onlyの`go build`を正式BuilderやRuntime Pluginの証拠へ転用 |
+
+[#5146](https://github.com/hat47x/tei-platform/pull/5146)では同一記録の二つの`std.date`項目の前後を検査できる。これは一件の順序関係の検査であり、複数行の期間非重複や同時書込みの排他制約を証明しない。関係行の期間非重複を扱う[#5148](https://github.com/hat47x/tei-platform/pull/5148)は本節作成時点でDraftとし、実DBの制約合格へ昇格させない。
+
+[#5147](https://github.com/hat47x/tei-platform/pull/5147)の診断コード被覆検査は、定数宣言されたコードも検査対象にした。ただし、**コード名が試験に登場したこと**と、実際に当該エラー経路へ到達し期待どおり拒否したことは別の資格である。Plugin選択不一致、型／Law不適合、取得不完全、実Provider失敗、Effect結果不明の分類を保つ。
+
+### 21.3 PIO-T0/T1を実装へ渡す最小の試験票
+
+新しいRunnerや型体系を増やさず、既存の型付きFixture、Rule例、Evaluator、Source Indexを使って、**一つのProducer Record・二つの必要Field・一段の純粋Adapter**を検証する。
+
+1. **PIO-T0a：全体／部分接続。** 同じSourceからRecord全体の直結と二Fieldの明示Mappingを比較し、必要項目・Source ID・Scope・開示対象を記録。不要な機密Fieldを含む全体Recordは、構造が適合してもそのまま公開しない。
+2. **PIO-T0b：取得完全性。** 同じ入力の一Fieldだけ`not-fetched`に変え、`null`と別Expectedで比較する。関係の`partial`では、確定できる違反と未確定の成立を区別する。
+3. **PIO-T1：一段の明示Adapter。** 元Field ID→Adapter入力→変換後の値・単位・精度・Loss→受取Field IDを独立Expectedと照合。結果を同じ値に保ったままRead先だけを差し替える負例を含める。
+4. **PIO-T2/T3：表示から実Providerへ。** Record Portの展開とAdapter表示は一つのMapping IDの投影に留め、正式な非Builtin Providerの選択・実Called・二Consumer受領は別Attemptで検収する。
+
+| Case | 一因子の差 | 期待する判定 |
+| --- | --- | --- |
+| **PIO-17** | 同じFieldを`null`／`not-fetched`へ切替 | 未取得をNULLとして補完せず、必要なら理由付き`undecided` |
+| **PIO-18** | 既読行は同じで`complete`／`partial`だけ変更 | 一意性の成立は保留。観測済み重複による違反は確定 |
+| **PIO-19** | 全体Recordへ非開示Fieldだけ追加 | 構造的な型一致を開示許可にしない |
+| **PIO-20** | Adapterの出力値は同じでRead先IDだけ変更 | 実Readの違いを検出（#5118の限定回帰を利用） |
+| **PIO-21** | 実装選択A→Bでも結果は同じ | 旧PinとActual Callを区別して検査。A→B→A旧資格の自動復活は認めない |
+| **PIO-22** | 単一記録の日付比較を一部取得の期間集合に変更 | 一件の比較結果を複数行／DB制約へ流用しない |
+| **PIO-23** | 宣言した診断コードに試験での実到達がない | 被覆と経路実行を別票にし、受入を保留 |
+
+PIO-17〜23は既存#1180／#2514のIndependent Expectedと#951／#988／#1121のOwnerへ渡す。通常CLI→非Builtin Provider、正式R2-PのBuilder実消費、R3のConsumer受領、Studio Stage1→Stage2実Windowsは独立したP0である。ScenarioのOperator選択指紋はmainに存在するが、それだけでRuntime Providerの選択資格や意味受理は成立しない。
+
+**受入上限**：本節はmainの限定的なRule／診断試験を横断Plugin設計へ反映したもの。新たなPlugin I/Oの実配線、製品Adapter、実DB／Windowsテスト、Ownerの業務受理は行っていない。
