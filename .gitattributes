@@ -319,3 +319,6 @@
 
 # CLI resolve reason output is hashed as raw bytes by its README.
 /plan/evidence/CLI_RESOLVE_REASON_2026-11-11/** -text
+
+# Reconnect-disabled observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_RECONNECT_DISABLED_2026-11-16/** -text
