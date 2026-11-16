@@ -1116,3 +1116,8 @@ S3の最小受入は、単一所属Occurrence・Assertion revision・物理行�
 | AR-5 | 意味上のRule候補・Case責任・現在Host Grant/Effectをそれぞれ検査 | Queryの一件一致を業務上の唯一決裁者・現行許可とすること |
 
 現行Queryの時点Predicateは実PGで独立に試験しているが、SourceのRelation契約から自動JOINは行わない。対象CIの**固定HEAD・明示PASS・非SKIP**を確認するまでAR-1→AR-3は未達と記録する。CLI/MCP/DesktopとPluginの入口は同じMeaningを再利用し、Selected→Included→Invoked→Consumer Receivedは別資格。通常CLI実Read #2586とDesktop Stage1→Stage2 #2831は先行P0を維持する。
+
+<!-- org-ar1-ar3-pass-20261116 -->
+**AR-1→AR-3を限定合格へ更新（2026-11-16）**：main統合済み[PR #5155](https://github.com/hat47x/tei-platform/pull/5155)の[隔離PostgreSQL CI run 43859032163](https://github.com/hat47x/tei-platform/actions/runs/43859032163)で、型付きRelation/Query契約の局所Go回帰と、**同じSource/Queryを実DBで評価する試験**が明示PASSした。Go整形と非SKIPも検査済み。§43.5のSource/IR→実Provider Readの限定Witnessとして既存受入票へ記録する。AR-2の実Generator/Builder、AR-4のContext/二Consumer、AR-5のRule/Hostは**未合格**。
+
+**次の最小Exit**：#2586の通常CLIの実Readerに、選択されたFunction/Query ID、Source/Rule Revision、Datasource、実SQL/Params、Read Cohortを同一Attemptで紐付け、同じResultを一Consumerへ受領させる。二Consumer同版検査と、Person Link/二版正式保存はその次の別Gateとする。型付きプラグインの選択・含有・実呼出し・受信も別の資格に保ち、Studioセルフビルド #2831の独立P0へ旧Successを移し替えない。
