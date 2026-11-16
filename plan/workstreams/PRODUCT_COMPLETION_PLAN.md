@@ -1686,3 +1686,16 @@ mainのRule生成Go CLIビルド回帰は、選択Markdown原文のコピーをG
 ### DataのSource位置と、実際に原文を開けることを別に検収する（2026年11月16日）
 
 [標準Flow§12.10](../design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)に沿い、DF-P1の一Load検収の後に、SL-1の相対Path・Source byte位置・省略件数表示を確認する。次にDesktop既存OwnerのSL-2でHostがRoot内の原Sourceを再読取し、改版・対象Occurrence・参照の現在性を確かめる。SL-3の編集・Windows実受領はその先で別途検証する。DPC-14のGo回帰は原文の実Openを試していない。Plugin出力のWhole/Field Projectionやread-only Source表示から、公開権限・更新Grantを推定しない。
+
+### 実SQL Readerが返した範囲を、Ruleへ渡す前に検収する（2026年11月17日）
+
+[標準フロー設計§12.11〜12.13](../design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)と[DB適合計画§7](../design/DATA_PROVIDER_CROSS_DB_CONFORMANCE_2026-11.md)に従う。main済み#5149のSQLite SQL Executor→`validationread.FromHeaderDetail`→`Decide`と、main済み#5179の選択済みMarkdown Data／Rule→Inspector→`Decide`を、**同じ意味・実取得・Consumerの間に残る不足証拠**として整理する。
+
+- **DF-P4a：取得範囲の根拠**。DPC-16。実際に4行あるRelationの2行だけが返るSQLから、`CoverageComplete`を無根拠に申告しないことを、既存Query／Function Data Contextを持つCallerの負例で固定する。現行`Detail`が申告を信じて`satisfied`を返し得る事実を、誤った完了根拠としない。
+- **DF-P4b：値・列の状態**。DPC-17／18。SQL NULLとSELECT未取得の違い、`std.decimal`へREALを渡す精度不適合を、実SQL列MappingとRuleの同じAttribute IDで確認する。Decimal・暦日などのRuleが扱える型を、全ての実現方式で無条件に利用できるとはしない。
+- **DF-P4c：投影と公開の境界**。DPC-19。Whole Record／明示Field／任意Fieldを別契約とし、状態を失うProjectionを`lossy`と示す。公開・Host Grant、Editor Open、Provider実Callは投影成功だけでは認定しない。
+- **DF-P4d：Relation判断とConsumer**。DPC-20。見えた重複・期間重複による不成立と、部分取得で違反を見ていない場合の判定保留を分ける。その後、通常CLIの実Provider→独立Consumerへ、実Read対象・取得範囲・Rule結果／理由を一つの試行で渡す。
+
+最初のコードPRはDF-P4aの一因子に限定する。既存の`validationread/sqlite_path_test.go`は誤申告の危険性を示しているが、**製品Callerが虚偽の`complete`を拒否したという証拠ではない**。必要な契約が既存Query／Data Contextで説明できない場合は、欠落条件と代案を受入票に残し、汎用Query Engineや新Stateful Portを先行追加しない。
+
+今回の計画追補だけで新しいGo／DB／Windows E2E、Owner意味受理、R2-P、R3、Stage1→Stage2をPASSとは扱わない。現在mainの限定成果と、審査中PR #5187（条件付き必須）・#5214（任意Field状態損失）・#5213（研究計画）を区別する。独立Expectedは従来どおり#1180／#2514へ引き渡す。
