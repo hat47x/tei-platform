@@ -2917,3 +2917,12 @@ Pluginのport連結は基本型だけでなく複合Data・Relationの型も照�
 [PR #5155](https://github.com/hat47x/tei-platform/pull/5155)をmainへ統合（`0f5b2390`）。[run 43859032163](https://github.com/hat47x/tei-platform/actions/runs/43859032163)で `TestOrgC1AbstractUnitReadPathUsesStableSemanticIDs` と `TestOrgAxisAsOfActualPostgresOptIn` が明示PASS。後者は同一Workspaceの型付きRelation/Query契約を検査してから**そのQueryで実PostgreSQLを読み**、既存の時点・配賦Expectedと照合した。Go整形と非SKIPも通過。
 
 **合格範囲**：AR-1静的Source/IRとAR-3の限定実Query Readの接続。**未合格**：OrgUnit JOIN、Person Link、同一A2の正式旧新版保存、AR-2生成Go/Interpreter→実Builder、AR-4同一CohortのFunction Context・二Consumer、AR-5業務Rule・現在Host Grant・Effect。次は#2586通常CLI実Providerを同一AttemptのFunction/Query選択・入力/出力・Consumer受信まで接続する。#2831 Studio Desktopセルフビルドは別P0のまま。self-build専用CIの整形失敗も別管理とし、実PG成功を製品全体のPASSにしない。
+
+<!-- org-person-claim-observational-sufficiency-20261116 -->
+### 2026-11-16 組織C1：実Queryが通っても人物数を確定できない二世界の反例（補遺§44）
+
+前回の[PR #5155](https://github.com/hat47x/tei-platform/pull/5155)で、型付きRelation/Queryと同じ実PostgreSQL Readの対応が限定PASSした。今回、既存`TestOrgAxisAsOfActualPostgresOptIn`へ、**同一の実Query投影4所属 A1/A3/A4/A7**に対して二つの仮想Person対応を用意し、PostgreSQL上のdistinct Personが**4人と3人**に分かれる反例を加える。これは#2514の観測十分性、#2593の集計粒度、#2506のFunction Context、#4490の動的業務判断を接続する。
+
+この反例は正式なPerson LinkやR7の実Person対応を作るものではなく、別の隔離一時表による観測能力の限界の検証。現行as-of Queryが返すMembership ID・OrgUnit ID・Allocationからは人物数/唯一承認者を導出できない。候補の人物RelationをOwnerが採用し、同じRead Cohort・時点・Scope・完全性で読み切って初めて人物数Claimを評価可能とする。通常のMembership件数・distinct Person・配賦FTE・Role/Case責任・現在Grantの粒度を混ぜない。
+
+**検収条件**：隔離実PGの固定HEADで全Query投影同一と候補人物数4/3の差、Go整形、明示PASS・非SKIPを確認するまではExpected/NOT RUN。§44と[段階計画§10.20](design/ORGANIZATION_STAGED_MODELING_PLAN_2026-11.md)にAR-3の実Read成功と、AR-4/5の人物Claimの十分性を区別する。次の本筋は#2586通常CLI Function→Query→Provider→一Consumer同Attemptを優先し、#2831のStudio DesktopセルフビルドとOrg C1の正式履歴・Person Linkの受入を独立に進める。
