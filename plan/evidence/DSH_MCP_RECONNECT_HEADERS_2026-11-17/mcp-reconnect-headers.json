@@ -1,0 +1,164 @@
+{
+  "note": "Configured MCP headers carry a canary. Across three runs the canary was present on every request the client sent, including the request that returned 500. But an HTTP 500 did NOT trigger a retry: with the outage during the handshake the client stopped, and with it on tools/call the call failed and no further request followed. So 'headers re-sent on reconnect' could not be observed, and the sharper finding is that reconnect does not cover HTTP 500 outages.",
+  "overlay": {
+    "transport": "streamable-http",
+    "serverName": "reconnectmock",
+    "url": "http://127.0.0.1:8795/mcp/rh",
+    "headers": {
+      "Authorization": "Bearer RECONNECT_HEADER_CANARY_771",
+      "X-Synthetic-Trace": "rh-771"
+    },
+    "reconnect": {
+      "initialDelayMs": 300,
+      "maxDelayMs": 1200,
+      "maxAttempts": 8
+    },
+    "failOnStartupError": false
+  },
+  "headerCanary": "RECONNECT_HEADER_CANARY_771",
+  "runs": {
+    "midHandshake500": {
+      "outagePlan": "fail after 2 requests, for 2 requests",
+      "requestsSeen": [
+        {
+          "n": 1,
+          "method": "server/discover",
+          "resp": 200
+        },
+        {
+          "n": 2,
+          "method": "initialize",
+          "resp": 200
+        },
+        {
+          "n": 3,
+          "method": "notifications/initialized",
+          "resp": 500
+        }
+      ],
+      "retryFollowed": false,
+      "outcome": "client stopped; the tool never appeared on a later request"
+    },
+    "toolsCall500": {
+      "outagePlan": "fail after 4 requests, for 2 requests",
+      "requestsSeen": [
+        {
+          "n": 1,
+          "method": "server/discover",
+          "resp": 200
+        },
+        {
+          "n": 2,
+          "method": "initialize",
+          "resp": 200
+        },
+        {
+          "n": 3,
+          "method": "notifications/initialized",
+          "resp": 200
+        },
+        {
+          "n": 4,
+          "method": "tools/list",
+          "resp": 200
+        },
+        {
+          "n": 5,
+          "method": "tools/call",
+          "resp": 500
+        }
+      ],
+      "retryFollowed": false,
+      "toolResult": {
+        "callId": "toolu_1",
+        "status": "error",
+        "result": "Error: Error POSTing to endpoint: {\"error\":\"synthetic outage\"}"
+      }
+    },
+    "noOutageControl": {
+      "outagePlan": "fail after 5 requests (never reached in a 5-request run)",
+      "requestsSeen": "all 200",
+      "outcome": "normal success, canary on every request"
+    }
+  },
+  "finalRunRequests": [
+    {
+      "n": 1,
+      "method": "server/discover",
+      "respondedWith": 200,
+      "bytes": 280,
+      "sha256": "2d6e560663b30185c0680e157110159805f2f628045dd515a6a0557bcd66916f",
+      "headerCount": 13,
+      "canaryInAuthorization": true,
+      "canaryHeaders": [
+        "authorization"
+      ]
+    },
+    {
+      "n": 2,
+      "method": "initialize",
+      "respondedWith": 200,
+      "bytes": 163,
+      "sha256": "40902c765afca2b3658a4c98787806ed8b1a716cf4a4874b273eadce48a9ffb8",
+      "headerCount": 11,
+      "canaryInAuthorization": true,
+      "canaryHeaders": [
+        "authorization"
+      ]
+    },
+    {
+      "n": 3,
+      "method": "notifications/initialized",
+      "respondedWith": 200,
+      "bytes": 54,
+      "sha256": "59951ca0b212b103876fa23a9e58bcbbc8fbcc0120e3f5ee7214461e2bd1cd5e",
+      "headerCount": 12,
+      "canaryInAuthorization": true,
+      "canaryHeaders": [
+        "authorization"
+      ]
+    },
+    {
+      "n": 4,
+      "method": "tools/list",
+      "respondedWith": 200,
+      "bytes": 46,
+      "sha256": "75f0c7627a35c7e96a0a88482622a0d1ec7e81c0eb5414a88ba7aab9450cf73b",
+      "headerCount": 12,
+      "canaryInAuthorization": true,
+      "canaryHeaders": [
+        "authorization"
+      ]
+    },
+    {
+      "n": 5,
+      "method": "tools/call",
+      "respondedWith": 500,
+      "bytes": 89,
+      "sha256": "de8a695609bbd347008182d28a1f68cc1f3e00495d5d37df5def23ad25eea162",
+      "headerCount": 12,
+      "canaryInAuthorization": true,
+      "canaryHeaders": [
+        "authorization"
+      ]
+    }
+  ],
+  "canaryOnEveryRequest": true,
+  "canaryOnFailingRequest": true,
+  "requestsAfterLastFailure": 0,
+  "answers": {
+    "headersSentOnEveryClientRequest": true,
+    "headersInevitablyOnFailingRequest": true,
+    "reconnectRetriedAfterHttp500": false,
+    "headersResentOnReconnectObserved": false
+  },
+  "failureShape": {
+    "http500DuringToolsCall": "Error: Error POSTing to endpoint: {\"error\":\"synthetic outage\"}",
+    "distinctFrom": {
+      "serverGone": "Error: fetch failed",
+      "noAnswer": "Error: Request timed out",
+      "childDiedMidCall": "Error: MCP connection closed"
+    }
+  },
+  "caveat": "Whether a TCP-level outage (connection refused or reset) would trigger reconnect and re-send the headers is exactly what this record does not show: an HTTP 500 did not provoke a retry. Proving the re-send case needs a transport-level fault, not an error response."
+}
