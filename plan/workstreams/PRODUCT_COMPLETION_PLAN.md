@@ -30,7 +30,7 @@
 
 **WEB-P1aの合格条件**は、同一Subject／Catalog／Host応答から表示文書・版・Source状況・利用制限が変わらず導出され、異Kind・Source Index版不一致・Reader error・部分取得・偽Grantを誤って合格へ変換しないこと。**WEB-P1b**はFocus／Pinの応答laneとEditorの未保存状態を保護する。Source位置の `source-locations.ts` は既存のread-only検証を再利用するが、画面表示と原文再取得・書戻しの資格を分ける。Node試験、Browser、実Windows WebView2、生成Stage2の受入は別票で記録する。
 
-**WEB-P1a実装差分と配布への停止線**：既存`readInspection`の結果をEditor文書／Source状況／利用制限／Noticeへ整える純粋な`presentInspection`と、その局所試験を追加した（WEB-P1a-1）。**現段階ではWorkbenchの`main.ts`から未接続**。WEB-P1a-2は成功時表示の切替と同時にNode24の試験／型検査／esbuildを通し、正規生成BundleのJS／HTML／CSS／第三者通知をWails埋込Assetと一致させる。[Workbench埋込CI](../../.github/workflows/tei-studio-workbench-embed-ci.yml)を使い、生成物の手修正だけで成立させない。Focus／Pin、Source位置の実Open、公開Web、実Windows／Stage2は別の受入とし、同一HEADのCIと実Consumer結果が出るまでPASSへ加算しない。
+**WEB-P1a実装差分と配布への停止線**：既存`readInspection`を変更せず、別ファイル`inspector-presentation.ts`に表示専用の`presentInspection`と局所試験を追加した（WEB-P1a-1）。現段階ではWorkbenchの`main.ts`から未接続。`presentation.ts`を更新すると生成PoC Bが固定した歴史的な依存ClosureのGit blobに一致せず、Windows CIが`workbench_closure_revision_mismatch`で停止することを確認した。この失効を回避するために旧Pinを上書きせず、今回の差分は独立ファイルへ切り出す。WEB-P1a-2は新Closureを明示的に資格化し、Node24試験／型検査／esbuild、正規JS／HTML／CSS／第三者通知、Wails埋込Bundleのbyte一致、実Consumerを別々に検証する。Focus／Pin、Source実Open、公開Web、Stage1→Stage2は独立した受入とする。
 
 後続の**WEB-P2**はCLI direct／Studio Host／HTTPの同一Operationを一つのread-only実Consumerで比較し、Actor／Audience／Disclosureと現在Providerの選択を別資格で検査する。**WEB-P3**は公開可能なB2C説明Facet一件をTarget Head Slotと実Asset Memberへ接続する。両者をUI Framework選定やDesktopセルフビルドの前提条件にしない。担当は#997／#1824／#1158／#951／#3509、反証は既存#1180／#2514。ここでの追記は実装引渡しであり、製品の新しいE2E試験合格ではない。
 
