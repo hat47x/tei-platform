@@ -336,3 +336,6 @@
 
 # stdio mid-call death observations are hashed as raw bytes.
 /plan/evidence/DSH_MCP_STDIO_MIDCALL_2026-11-17/** -text
+
+# stdio timeout observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_STDIO_TIMEOUT_2026-11-17/** -text
