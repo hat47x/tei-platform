@@ -30,6 +30,8 @@
 
 **WEB-P1aの合格条件**は、同一Subject／Catalog／Host応答から表示文書・版・Source状況・利用制限が変わらず導出され、異Kind・Source Index版不一致・Reader error・部分取得・偽Grantを誤って合格へ変換しないこと。**WEB-P1b**はFocus／Pinの応答laneとEditorの未保存状態を保護する。Source位置の `source-locations.ts` は既存のread-only検証を再利用するが、画面表示と原文再取得・書戻しの資格を分ける。Node試験、Browser、実Windows WebView2、生成Stage2の受入は別票で記録する。
 
+**WEB-P1a実装差分**：既存`readInspection`の結果を`presentInspection`でEditor文書／Source状況／利用制限／Noticeへ整え、Workbenchの成功時表示を置換した。`presentation.test.mjs`で表示値の同一性と`partial`、旧Source Index、非read-only応答、制限欠落を局所反証する。検証済み結果の表示契約に限定した変更であり、Hostの再呼出し、Pin、Source位置の実Open、Web公開は追加しない。CIと実Windowsの結果は対象HEADで別に記録する。
+
 後続の**WEB-P2**はCLI direct／Studio Host／HTTPの同一Operationを一つのread-only実Consumerで比較し、Actor／Audience／Disclosureと現在Providerの選択を別資格で検査する。**WEB-P3**は公開可能なB2C説明Facet一件をTarget Head Slotと実Asset Memberへ接続する。両者をUI Framework選定やDesktopセルフビルドの前提条件にしない。担当は#997／#1824／#1158／#951／#3509、反証は既存#1180／#2514。ここでの追記は実装引渡しであり、製品の新しいE2E試験合格ではない。
 
 ### 図解のP1：定義・生成・実Attemptを証拠つきで比較する（2026年11月15日）
