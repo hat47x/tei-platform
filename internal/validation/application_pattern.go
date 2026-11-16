@@ -798,6 +798,15 @@ func validateRecordPatternInteraction(
 			if kind := pattern.Kind; !scopeFitsPattern(kind, hook.Scope) {
 				out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_INTERACTION_HOOK_SCOPE_MISMATCH", "record pattern %s hook %s declares scope %s that the pattern kind does not look at", pattern.ID, hook.Phase, hook.Scope))
 			}
+			// A row scope is accepted, but no host supplies the row set yet, so the
+			// hook is skipped with a reason wherever the reference execution runs.
+			// Accepting it silently would let a declaration be admitted and then
+			// never applied on any production path (the D-9 shape). This is a
+			// warning rather than an error while the supplier is unfinished: the
+			// declaration is well formed, and what is missing is the data source.
+			if hook.Scope == "row" {
+				out = append(out, warnd("APPLICATION_PATTERN_INTERACTION_HOOK_ROW_SCOPE_HAS_NO_SUPPLIER", "record pattern %s hook %s declares scope row, but no host supplies a row set yet, so the reference execution skips it with a reason", pattern.ID, hook.Phase))
+			}
 		default:
 			out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_INTERACTION_HOOK_SCOPE_UNSUPPORTED", "record pattern %s hook %s uses unsupported scope %s", pattern.ID, hook.Phase, hook.Scope))
 		}
