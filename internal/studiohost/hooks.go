@@ -48,7 +48,26 @@ func (h *ReadOnly) runHooks(world ir.World, applicationID, patternID core.Canoni
 // runHooksHalf runs one half of the declared phases, with the reach the caller
 // says applies.
 func (h *ReadOnly) runHooksHalf(world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string, rule hook.Implementation, reach hook.Reach, half hookHalf) (*HookRunReport, error) {
-	runner := hook.Runner{World: world, Implementation: rule}
+	return h.runHooksHalfWithRows(world, applicationID, patternID, inputs, nil, rule, reach, half)
+}
+
+// runHooksWithRows is a hook run with the row set a row-scoped declaration is
+// applied to, and with the rule that decides each row.
+//
+// The Studio reference command execution carries command inputs, not a page, so
+// it supplies no row set and a row-scoped hook is reported as skipped there with
+// a reason. This entry exists so a host that does hold the rows can hand them
+// over: a browse result is where a page of rows would come from. Nothing here
+// invents a row; an empty row set keeps the phase skipped.
+func (h *ReadOnly) runHooksWithRows(world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string, rows []map[core.CanonicalID]string, rule hook.Implementation) (*HookRunReport, error) {
+	return h.runHooksHalfWithRows(world, applicationID, patternID, inputs, rows, rule, hook.ReferenceReach{}, hookHalfAll)
+}
+
+// runHooksHalfWithRows is runHooksHalf with the row set a row-scoped hook is
+// applied to. The row set goes to hook.Runner.Rows, the field the runner reads to
+// decide whether the declaration can be applied per row.
+func (h *ReadOnly) runHooksHalfWithRows(world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string, rows []map[core.CanonicalID]string, rule hook.Implementation, reach hook.Reach, half hookHalf) (*HookRunReport, error) {
+	runner := hook.Runner{World: world, Implementation: rule, Rows: rows}
 	// A hook that declares `uses` promises a call. Give the runner the boundary
 	// that can keep it, the same way the CLI does, so Studio does not report a
 	// phase as executed while its declared call never happened.

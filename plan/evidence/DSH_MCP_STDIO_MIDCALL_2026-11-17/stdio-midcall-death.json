@@ -1,0 +1,117 @@
+{
+  "note": "The stdio child answered the handshake and tools/list, then exited(2) as soon as tools/call arrived. The call failed with 'MCP connection closed', which is a third shape distinct from both 'unknown tool' and 'fetch failed'.",
+  "overlay": {
+    "transport": "stdio",
+    "serverName": "stdiomock",
+    "args": [
+      "mcp_stdio_dying.py",
+      "<record-dir>",
+      "on-call"
+    ],
+    "toolCallTimeoutMs": 5000,
+    "failOnStartupError": false
+  },
+  "childBehaviour": {
+    "answers": [
+      "initialize",
+      "notifications/initialized",
+      "tools/list",
+      "tools/call"
+    ],
+    "then": "exit(2) upon receiving tools/call, before replying",
+    "exitCode": 2,
+    "log": [
+      {
+        "event": "started",
+        "mode": "on-call",
+        "pid": null
+      },
+      {
+        "event": "request",
+        "method": "server/discover",
+        "id": "server-discover-probe-1",
+        "bytes": 280
+      },
+      {
+        "event": "started",
+        "mode": "on-call",
+        "pid": null
+      },
+      {
+        "event": "request",
+        "method": "initialize",
+        "id": 0,
+        "bytes": 163
+      },
+      {
+        "event": "request",
+        "method": "notifications/initialized",
+        "id": null,
+        "bytes": 54
+      },
+      {
+        "event": "request",
+        "method": "tools/list",
+        "id": 1,
+        "bytes": 46
+      },
+      {
+        "event": "request",
+        "method": "tools/call",
+        "id": 2,
+        "bytes": 92
+      },
+      {
+        "event": "exiting",
+        "reason": "on-call"
+      }
+    ]
+  },
+  "childSpawnCount": 2,
+  "childExitCount": 1,
+  "toolCall": {
+    "callId": "toolu_1",
+    "tool": "mcp__stdiomock__dying_echo"
+  },
+  "toolResult": {
+    "status": "error",
+    "result": "Error: Error: MCP connection closed"
+  },
+  "toolResultText": "Error: Error: MCP connection closed",
+  "modelToolCounts": [
+    28,
+    0,
+    28
+  ],
+  "failureShapes": {
+    "stdioChildDiesBeforeCall": "Error: unknown tool (UNKNOWN_TOOL) — recorded 2026-11-17 child-death",
+    "stdioChildDiesDuringCall": "Error: MCP connection closed — this record",
+    "httpServerKilled": "Error: fetch failed — recorded 2026-11-10 kill-midrun"
+  },
+  "threeDistinctShapes": true,
+  "runExitCode": 0,
+  "modelRequests": [
+    {
+      "n": 1,
+      "bytes": 104382,
+      "sha256": "81df66706424fcd771f617ed6f87d137de0151081650fc889f9244aeb8c8e9b2",
+      "toolCount": 28,
+      "hasDyingTool": true
+    },
+    {
+      "n": 2,
+      "bytes": 59743,
+      "sha256": "de36fa1ef4f898b7cb12f0e11431fa7785d5326af874700e718be216bc9abfe6",
+      "toolCount": 0,
+      "hasDyingTool": false
+    },
+    {
+      "n": 3,
+      "bytes": 54681,
+      "sha256": "18006c8a6fdc50799c4911af0338e8fa93ff46680f4cf1102135534703531e67",
+      "toolCount": 28,
+      "hasDyingTool": true
+    }
+  ],
+  "caveat": "One configuration: the child exits by design on tools/call. A child that hangs, or exits after partially writing a reply, was not tested."
+}

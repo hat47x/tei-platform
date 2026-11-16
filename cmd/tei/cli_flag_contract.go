@@ -35,7 +35,7 @@ func selectedReadOnlyFlagError(out io.Writer, command string, err error) (int, e
 var selectedReadOnlyFlagAllowlist = map[string][]string{
 	"plugin-inventory":    {"workspace", "world", "environment", "plugin-lock", "plugin", "diagnose"},
 	"external-candidates": {"evidence-path", "tool-version", "observation-id", "relation-id", "expected-evidence-id", "expected-received-digest", "expected-source-revision"},
-	"inspect":             {"workspace", "subject-kind", "subject-id"},
+	"inspect":             {"workspace", "subject-kind", "subject-id", "expected-fingerprint"},
 	"view":                {"workspace", "application", "pattern", "package", "format", "command", "input", "execute", "reference-store", "period-state", "allow-capability", "operation-log", "lifecycle-state", "lifecycle-command", "lifecycle-owner", "lifecycle-generation"},
 	"trace": {
 		"workspace", "scope", "subject-kind", "subject-id",
@@ -218,6 +218,7 @@ var emptyStringGuardedFlags = map[string]map[string]bool{
 	},
 	"inspect": {
 		"subject-kind": true, "subject-id": true, "workspace": true,
+		"expected-fingerprint": true,
 	},
 	"trace": {
 		"workspace": true, "scope": true, "subject-kind": true, "subject-id": true,

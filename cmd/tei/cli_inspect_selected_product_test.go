@@ -67,7 +67,7 @@ func cliProductRun(t *testing.T, root, selected string, inventory []inspectorada
 		return host, err
 	}
 	var out bytes.Buffer
-	exit, err := inspectWorkspaceJSONFromHost(&out, compose, root, "", "semantic-data", "sales.order", 0)
+	exit, err := inspectWorkspaceJSONFromHost(&out, compose, root, "", "semantic-data", "sales.order", "", 0)
 	if err != nil {
 		t.Fatal(err)
 	}

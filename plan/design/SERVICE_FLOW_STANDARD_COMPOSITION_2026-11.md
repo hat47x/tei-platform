@@ -486,3 +486,43 @@ DPC-09の最初の実装候補を、既存の`internal/operations`の読み取�
 DPC-14（Data／Rule／Source／判断の一Load照合）とDPC-15（表示参照からの実Source再確認）を別の独立Expectedへ分ける。最初のGo回帰が試すのはDPC-14のみであり、Wails／WindowsでのSL-2／SL-3を一緒に合格させない。
 
 また、Plugin側で並行するWhole Record／Field純粋Projection（#5156）は、出力形状の検証である。ここで得られるAttributeの出典やRuleの判断理由を、Transform Valueの出力だけから生成しない。公開対象や取得範囲の適格性は引き続き型付きMapping・Function Data Context・Ownerの判断に残す。
+
+### 12.11 値の状態を正しく渡すだけでは、取得範囲の正しさを保証できない（2026-11-17）
+
+mainの`internal/driver/validationread`は、Contract Queryの列値を`present`／`null`／`not-fetched`へ写し、Relationの`complete`／`partial`を受け取って既存`validationeval.Decide`へ渡せる。SQLite実ファイルを使う`sqlite_path_test.go`では、実SQL Executor→列Mapping→`FromHeaderDetail`→Rule判定の限定経路が確認されている。これは、これまでの手渡し`StatefulSource`より一段具体的な証拠である。
+
+ただし、**`CoverageComplete`は結果行から導かれる事実ではなく、現状では呼出し側の申告である。** 同じ試験では、実際には4行あるRelationから`LIMIT 2`で2行だけ取得した際、正しく`partial`と申告すれば座席番号の一意性を判定保留にするが、誤って`complete`と申告すると成立と判定されることが示されている。Rule評価器が与えられた条件に従って正しく計算しても、前段の申告が間違っていれば業務上の結論は間違う。
+
+そこで次の検収を、**取得範囲の主張を作る段階**と、**その主張の下でRuleが判断する段階**に分ける。Queryの結果件数、`LIMIT`の有無、ページ終端、Filter、RelationとHeaderの対応、Scope、Snapshotを確認できない場合、単に「2行返った」ことや呼出し側の希望から`complete`を認定しない。
+
+| 受理対象 | 何を証明するか | 証明できない場合 |
+| --- | --- | --- |
+| 取得要求 | Function Data Contextに束縛された対象Relation・Header・Field・時点・Scope | 結果の型や行数だけから対象を確定しない |
+| 実行されたRead | 選択Provider／Query／Parameters、実Call、返却行と列、使用された実装版 | Query定義があるだけで実Read済みとしない |
+| 取得閉包 | 必要なRelation範囲について全ページを受領したか、Filter／Limit／欠落列があるか、どの時点の観測か | `partial`または未立証として扱い、`complete`を自動付与しない |
+| Rule判断 | 定義されたAttribute／Relation IDを実際に読み、上記の状態・範囲で結論が不変か | `undecided`と`not-satisfied`、入力矛盾によるerrorを分ける |
+| 最終Consumer | 判断の結果・理由・参照した範囲・出典と版を受領したか | Inspector表示だけで外部配信・Owner受理を認定しない |
+
+現行`Detail`を未証明の`complete`が受け取れない仕様へ変更した、という意味ではない。**完全性を保証する責任は、実Query／Providerの実行計画と結果を束縛する呼出し側に残る**。この境界を通常製品CLIで通すのが次の実装課題である。独立したCoverage Engineや第二のData Contextは作らない。
+
+### 12.12 同じ値の見え方と、同じ情報の保存を分ける
+
+型付きPlugin PortのWhole Record／Field／明示Adapterと、Studioのread-only Presenterも、上の取得条件を変えてはならない。main統合済み#5156の純粋Transform試験では、全体Recordなら余分な`internalNote`を保持する一方、必要な二Fieldへの射影では追加項目を出力しない。出力形状の正しさは確認できるが、公開Grantや業務上のField IDの正しさは別である。
+
+審査中#5214では、`select-field(optional=true)`が欠損Fieldと明示NULLを同じ値へ畳み得ることを負例として扱っている。**同じJSONになったことは、同じ取得状態であった証拠にならない。** その結果を再びRuleへ入力する際、元の`null`／`not-fetched`を暗黙に復元できると扱わず、元のReader／Contextで状態を保持するか、情報を失った`lossy`な投影として用途を限定する。
+
+DesktopのSource位置Presenter（main #5212）も同様に、場所・Fingerprint・省略数などを表示する純粋Projectionである。表示できたという事実から、元ファイルを実際に再読取した、全参照がそろった、編集できる、という資格を作らない。型付きMapping、Rule判断、実Provider、表示、公開は**同じSourceを参照できても異なる受理段階**である。
+
+### 12.13 次の独立Expectedは「申告の偽り」と「投影での損失」を検出する
+
+DPC-01〜15を置き換えず、次の一因子反証を追加する。いずれも既存`validationread/sqlite_path_test.go`、`validationeval`、Plugin Transformの小回帰、Source Index／Presenterを足場にし、期待値を実装から生成しない。
+
+| ID | 固定する反証 | 受入で区別するもの |
+| --- | --- | --- |
+| DPC-16 | 実Relationは4行、SQLの`LIMIT 2`が返す2行を誤って`complete`と申告 | 結果2行と完全性の証明は別。通常製品Callerは証拠のない全件申告を拒否／保留 |
+| DPC-17 | 同じ行の`NULL`列と、狭いSELECTで取得していない列 | `value-null`と`value-not-fetched`の理由とSourceの違い |
+| DPC-18 | `std.decimal`にSQL REAL（`float64`）を渡す | 値がたまたま0.5でも、精度の根拠を欠く変換を拒否 |
+| DPC-19 | Whole Record・明示Field射影・任意Fieldを通過 | 非選択Fieldの除外、欠損とNULLの損失、公開Grantと出力形状の分離 |
+| DPC-20 | 部分取得の重複／期間重複と、違反未観測の一覧 | 見えた違反は確定できるが、見えない違反を全件不存在と断定しない |
+
+**最初に実装するのはDPC-16**。既存SQL Executorを通った結果から、Callerが`CoverageComplete`を申告できる条件を既存Query／Function Data Contextの選択情報と突き合わせる。現状のSQLite試験は、誤申告が起き得ることを示す基線であって、その拒否が製品で成立した証拠ではない。正式な実PostgreSQL→通常CLI→独立Consumerでの受理は#2586／#4496の別P0に維持する。

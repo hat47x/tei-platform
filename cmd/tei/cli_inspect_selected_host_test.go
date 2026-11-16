@@ -10,7 +10,7 @@ import (
 func TestNormalCLIInspectUsesHostSelectedReferenceProvider(t *testing.T) {
 	root := filepath.Join("..", "..", "reference", "workspace")
 	var out bytes.Buffer
-	exit, err := inspectWorkspaceJSONSelected(&out, root, "", "semantic-data", "sales.order", 0)
+	exit, err := inspectWorkspaceJSONSelected(&out, root, "", "semantic-data", "sales.order", "", 0)
 	if err != nil || exit != 0 {
 		t.Fatalf("selected normal CLI failed: exit=%d err=%v body=%s", exit, err, out.String())
 	}
@@ -28,7 +28,7 @@ func TestNormalCLIInspectUsesHostSelectedReferenceProvider(t *testing.T) {
 
 func TestNormalCLIInspectDoesNotFallbackForMissingWorkspace(t *testing.T) {
 	var out bytes.Buffer
-	exit, err := inspectWorkspaceJSONSelected(&out, t.TempDir(), "", "semantic-data", "sales.order", 0)
+	exit, err := inspectWorkspaceJSONSelected(&out, t.TempDir(), "", "semantic-data", "sales.order", "", 0)
 	if err != nil || exit == 0 {
 		t.Fatalf("unexpected success: exit=%d err=%v output=%s", exit, err, out.String())
 	}
@@ -43,7 +43,7 @@ func TestNormalCLIInspectDoesNotFallbackForMissingWorkspace(t *testing.T) {
 
 func TestNormalCLIInspectInvalidArgsKeepJSONEnvelope(t *testing.T) {
 	var out bytes.Buffer
-	exit, err := inspectWorkspaceJSONSelected(&out, "", "", "", "", 0)
+	exit, err := inspectWorkspaceJSONSelected(&out, "", "", "", "", "", 0)
 	if err != nil || exit != 2 {
 		t.Fatalf("invalid CLI flags: exit=%d err=%v body=%s", exit, err, out.String())
 	}

@@ -86,3 +86,11 @@ RuleとQueryを接続する依頼では、前記のタスク票を**一Rule・�
 - 実DB Queryの局所PASS、状態付きAdapterの局所PASS、Ruleの記録例、実Consumer受領、Build資格は別の試験として扱う。**別のFixtureや別のAttemptの証拠を連結して実動作が成立したとは書かない。**
 
 詳細と作業順は[図表実現設計§15](../../plan/design/DIAGRAM_TO_REALIZATION_STRATEGY_AND_HOOKS_2026-11.md)および[DRI-R2の実証パケット](../../plan/workstreams/DIAGRAM_REALIZATION_REFERENCE_EXECUTION_2026-11.md)を参照する。タスク票の補助であり、TEIに新たなDSL・Schema・Runtimeを導入するものではない。
+
+## 既存Readerを用いる実装依頼の確認事項（2026-11-17）
+
+Contract Queryの行をRuleへ渡すタスクでは、現行`internal/driver/validationread`と`validationeval.Decide`を最初に調べる。SQLiteの実SQL Executorから状態付きRuleへ到達する局所試験があるため、同じ機能を第二Readerとして生成しない。
+
+依頼する変更は**一つの選択Source・一つのQuery・一つのRule・一つのAttempt**に限定する。必要なAttribute／Relationと、実行したQuery Binding・Scope・Snapshot、観測済みの列と行、Readerが判断できる値の状態、独立Expectedを明示する。`CoverageComplete`は呼出し側が書けるだけでは証拠にならない。行を絞ったQueryで全件性を誤申告すると、実際には未読行があってもRuleが成立と答え得る。
+
+合格を「Sourceの選択と改版」「実Queryの取得」「判定できる範囲」「実Called方式」「Consumer受領」に分け、未観測の境界は未証明とする。日付Ruleの直接評価ができても、現行Go Generatorの生成可否は別に確認する。詳しい差分と先行試験は[図表実現設計§16](../../plan/design/DIAGRAM_TO_REALIZATION_STRATEGY_AND_HOOKS_2026-11.md)および[DRIの最新実証計画](../../plan/workstreams/DIAGRAM_REALIZATION_REFERENCE_EXECUTION_2026-11.md)を参照する。
