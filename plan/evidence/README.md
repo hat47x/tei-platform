@@ -495,3 +495,4 @@
 
 - [「成果物と違うdigestを申告する」は、ディスクとの比較で止まる](TEI_GO_SELF_BUILD_ARTIFACT_DIGEST_STOPS_2026-11-11.md)（§4.37の条件5で、entryが自分で確かめる側を実測。childが書いた成果物と違う`artifactDigest`を申告すると**exit 1・`ok:false`・`claimed:false`**になった。**直近2周で測った「止まらない」2件と対になり、表の非対称が実測に基づくことを示す。** #2831）
 - [CLI が解決の拒否理由を、prose の外へ出せるようになった](CLI_RESOLVE_REASON_2026-11-11/README.md)（#4245でresolverが返すcodeに呼出し元が0件だったので、cliFailureへresolveReason（omitempty）を足し、plugin-resolveとplugin-runtime-planの両地点が同じhelperを通るようにした。CodeとMessageとINVALID_PLUGIN_LOCKの扱いは変えない。理由が無いときはJSONに欄が出ないことを試験で固定した。tei commandsの広告と連鎖の出力は変えていない）
+- [壊れた版番号は「互換なpluginが無い」と読めるが、managementは区別している](PLUGIN_VERSION_GATE_2026-11-17/README.md)（CompatibleMajorは解析エラーをfalseに畳むので、壊れたVersionは不在と同じ診断になる。managementはversion-unknownとversion-mismatchを既に分けているが、resolverの語彙には前者が無い。現行挙動を4試験で固定し、負値は解析自体が失敗することを実測。語彙を揃えるかは未決）

@@ -322,3 +322,5 @@
 
 # Reconnect-disabled observations are hashed as raw bytes.
 /plan/evidence/DSH_MCP_RECONNECT_DISABLED_2026-11-16/** -text
+# Plugin version gate output is hashed as raw bytes by its README.
+/plan/evidence/PLUGIN_VERSION_GATE_2026-11-17/** -text
