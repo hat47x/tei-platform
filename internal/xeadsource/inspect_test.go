@@ -79,6 +79,7 @@ func TestInspectCombinesSourceFactsAndCandidatesWithoutGrantingAuthority(t *test
 		"resolved-relational-fact-is-only-eligible-not-authorized-for-local-lowering",
 		"unvalidated-relational-fact-blocks-deterministic-semantic-lowering",
 		"unresolved-relational-resolution-blocks-full-set-deterministic-semantic-lowering",
+		"field-designation-separation-is-declared-source-reading-not-accepted-field-semantics",
 	}) {
 		t.Fatalf("inspection authority limits drifted: %#v", got.AuthorityLimits)
 	}

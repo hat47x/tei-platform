@@ -17,7 +17,7 @@ import (
 	"tei/internal/xeadsource"
 )
 
-const reportSchemaVersion = "reference-xead-source-inspection-v3"
+const reportSchemaVersion = "reference-xead-source-inspection-v4"
 
 type sourceIdentity struct {
 	Format xeadsource.Format `json:"format"`
@@ -76,12 +76,31 @@ type factResolutionSummary struct {
 	ByKind      map[string]factResolutionCount `json:"byKind,omitempty"`
 }
 
+// designationSummary reports how the declared field designations were split
+// into separation axes. It counts only; no declaration text, code table name,
+// stored value, or legacy field identifier appears in this projection.
+type designationSummary struct {
+	TokenizationPolicyRevision string         `json:"tokenizationPolicyRevision"`
+	FieldCount                 int            `json:"fieldCount"`
+	TokenCount                 int            `json:"tokenCount"`
+	ByKind                     map[string]int `json:"byKind,omitempty"`
+	UnknownTokenCount          int            `json:"unknownTokenCount"`
+	AmbiguousTokenCount        int            `json:"ambiguousTokenCount"`
+	UnbalancedTokenCount       int            `json:"unbalancedTokenCount"`
+	UnresolvedAgainstSource    map[string]int `json:"unresolvedAgainstSourceByKind,omitempty"`
+	DiagnosticCounts           map[string]int `json:"diagnosticCounts,omitempty"`
+	ConflictCount              int            `json:"conflictCount"`
+	ConflictAxes               map[string]int `json:"conflictAxes,omitempty"`
+	SeparatedAxes              []string       `json:"informedAxes,omitempty"`
+}
+
 type report struct {
 	SchemaVersion                      string                  `json:"schemaVersion"`
 	Source                             sourceIdentity          `json:"source"`
 	Inventory                          []inventorySummaryEntry `json:"inventory"`
 	UnknownConstructCount              int                     `json:"unknownConstructCount"`
 	Candidates                         candidateSummary        `json:"candidates"`
+	FieldDesignations                  designationSummary      `json:"fieldDesignations"`
 	RelationalFacts                    factSummary             `json:"relationalFacts"`
 	RelationalDiagnostics              diagnosticSummary       `json:"relationalDiagnostics"`
 	RelationalFactResolutions          factResolutionSummary   `json:"relationalFactResolutions"`
@@ -149,6 +168,7 @@ func buildReport(inspection xeadsource.Inspection) report {
 		Inventory:                          summarizeInventory(inspection.Document.Inventory),
 		UnknownConstructCount:              countUnknownInventory(inspection.Document.Inventory),
 		Candidates:                         summarizeCandidates(inspection.Candidates),
+		FieldDesignations:                  summarizeFieldDesignations(inspection.FieldDesignations),
 		RelationalFacts:                    summarizeFacts(inspection.RelationalFacts),
 		RelationalDiagnostics:              summarizeDiagnostics(inspection.Document.SHA256, inspection.RelationalDiagnostics),
 		RelationalFactResolutions:          summarizeFactResolutions(inspection.RelationalFactResolutions),
@@ -326,4 +346,75 @@ func summarizeFactResolutions(values []xeadsource.RelationalFactResolution) fact
 		out.ByKind = nil
 	}
 	return out
+}
+
+// summarizeFieldDesignations projects the declared designation split into
+// counts per separation axis. It deliberately publishes no declaration text,
+// code table name, stored literal, or legacy field identifier, because those
+// are source values that the public report must not disclose.
+func summarizeFieldDesignations(facts xeadsource.FieldDesignationFacts) designationSummary {
+	out := designationSummary{
+		TokenizationPolicyRevision: facts.TokenizationPolicyRevision,
+		FieldCount:                 len(facts.Fields),
+		ByKind:                     map[string]int{},
+		UnresolvedAgainstSource:    map[string]int{},
+		DiagnosticCounts:           map[string]int{},
+		ConflictAxes:               map[string]int{},
+	}
+	axes := map[string]struct{}{}
+	for _, field := range facts.Fields {
+		for _, token := range field.Tokens {
+			out.TokenCount++
+			if !token.Known {
+				out.UnknownTokenCount++
+				if hasDesignationDiagnostic(token, "ambiguous-concatenation-not-split") {
+					out.AmbiguousTokenCount++
+				}
+				if hasDesignationDiagnostic(token, "unbalanced-parenthesis-after-comma-split") {
+					out.UnbalancedTokenCount++
+				}
+			} else {
+				out.ByKind[string(token.Kind)]++
+				if !token.ResolvedAgainstSource {
+					out.UnresolvedAgainstSource[string(token.Kind)]++
+				}
+			}
+			for _, axis := range token.Informs {
+				axes[axis] = struct{}{}
+			}
+			for _, diagnostic := range token.Diagnostics {
+				out.DiagnosticCounts[diagnostic.Code]++
+			}
+		}
+		out.ConflictCount += len(field.Conflicts)
+		for _, conflict := range field.Conflicts {
+			out.ConflictAxes[conflict.Axis]++
+		}
+	}
+	for axis := range axes {
+		out.SeparatedAxes = append(out.SeparatedAxes, axis)
+	}
+	sort.Strings(out.SeparatedAxes)
+	if len(out.ByKind) == 0 {
+		out.ByKind = nil
+	}
+	if len(out.UnresolvedAgainstSource) == 0 {
+		out.UnresolvedAgainstSource = nil
+	}
+	if len(out.DiagnosticCounts) == 0 {
+		out.DiagnosticCounts = nil
+	}
+	if len(out.ConflictAxes) == 0 {
+		out.ConflictAxes = nil
+	}
+	return out
+}
+
+func hasDesignationDiagnostic(token xeadsource.DesignationToken, code string) bool {
+	for _, diagnostic := range token.Diagnostics {
+		if diagnostic.Code == code {
+			return true
+		}
+	}
+	return false
 }
