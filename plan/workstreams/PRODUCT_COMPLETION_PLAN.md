@@ -1653,3 +1653,15 @@ mainのRule生成Go CLIビルド回帰は、選択Markdown原文のコピーをG
 - **DF-P3：異質な規則・Consumer**。DPC-13の暦日／期間と、Read対象ID、失効理由を既存Rule／Source／Projectionへ照合する。実Provider・HTTP公開・更新／Effect、BuilderとStage2は各Ownerで別の実Target検収とする。
 
 既存の #5118（Data表由来G/Pの実Read先ID差分）と #5129（Build Plan後の元Markdown改版拒否）は限定基線として再利用する。並行PR #5097／#5114はclosed/unmergedであり、これらの成功をmain実装に数えない。製品の受入には既存#1180／#2514の独立Expectedとexact HEADのCIを要する。今回の追補は新規Go／DB／Windows E2Eの実行を意味しない。
+
+### 標準Dataの型と取得状態を一試行の判断へ結ぶ（2026年11月16日）
+
+[標準Flow設計§12.9](../design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)と[dogfooding§17.7](../design/IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md)に対応する最初の小コード差分を、`internal/operations/inspect_markdown_data_rule_decision_trace_test.go`で扱う。現行のReader／Inspector／Source Indexと状態付きRule評価を再利用し、一つの`Workspace.Load`に対するData・Ruleの意味ID、Read属性ID、Source byte位置、判断／未確定の理由を四入力の独立Expectedへ照合する。
+
+**次の段階**はDB／API等の実Providerから取得したValueState・Relation Coverage・Source occurrence／時点を、選択したOperation・CLI・独立Consumerへ通すことである。テスト用のStatefulSourceや印付き記録例はProvider実行を代用しない。PluginのWhole Record／Field／明示Adapterの接続（PIO-T0/T1）は別の既存Ownerに保持し、表示上の接続から公開GrantやEffectを生成しない。
+
+**合格範囲**：このPRは狭いGo回帰と計画の接続である。新たな実DB／Windows／外部HTTP試験、正式R2-P、R3、Studio Stage2を実施したと扱わず、exact HEADのGo CIが確認できるまで新回帰のPASSを主張しない。
+
+### DataのSource位置と、実際に原文を開けることを別に検収する（2026年11月16日）
+
+[標準Flow§12.10](../design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)に沿い、DF-P1の一Load検収の後に、SL-1の相対Path・Source byte位置・省略件数表示を確認する。次にDesktop既存OwnerのSL-2でHostがRoot内の原Sourceを再読取し、改版・対象Occurrence・参照の現在性を確かめる。SL-3の編集・Windows実受領はその先で別途検証する。DPC-14のGo回帰は原文の実Openを試していない。Plugin出力のWhole/Field Projectionやread-only Source表示から、公開権限・更新Grantを推定しない。
