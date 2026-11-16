@@ -1385,6 +1385,8 @@ S0-Aで最初に提示すべき**独立した正負**は、同一Source Snapshot
 | **委譲型** | 外部Go／SDK／ProviderへのInput・Output・Failure・Effect・Capability契約 | TEI側で呼出し・構成・観測できたこと。処理の判断条件が外部の手書き実装にあるなら、**意味ロジックのTEI化率には算入しない** |
 
 [型付きPlugin入出力Mapping§19](../design/PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md)では、**複合型全体をまとめて渡す／必要なFieldだけつなぐ／明示Adapterで変換する**ことを、実現方式とは別の接続設計として扱う。最初は同じRecordで全体接続と二Field Mappingのread-only適格性を比較し、その後に一つの純粋Adapterを確認する。全体Portの折畳みとField展開は同一Mappingの表示であり、二重Callerや非公開Fieldの配送を許可しない。PIO-01〜10を既存#1180/#2514に引き渡し、#1223/#951/#2497の既存型・対応付けを再利用する。**この検討をStudio Stage1→Stage2／通常CLI実Providerの新しい先行Gateにはしない。**
+**接続先で判断できる範囲まで確認する（[Plugin I/O §21](../design/PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md)）**：main済み#5142の値状態と関係の取得範囲を、PluginのRecord全体／二Field Mapping／一段pure Adapterの受入条件へ渡す。実行パケットは①TypeRefと必要Field・Source IDのread-only照合、②NULL／未取得／partialを一因子で変える独立Expected、③ProviderまたはEvaluatorによる実Read IDと`undecided`理由の観測、④変換Loss・Disclosureの比較の順とする。main済み#5143のRule例検査と#5146の暦日比較は局所の意味検証、#5147の診断名被覆は到達証拠そのものではない。Draft #5148の期間非重複は未受理とし、正式Provider／Builder／Stage2 Windowsの既存P0を変更しない。
+
 
 この三方式は優劣の固定順ではなく、**同じ意味契約の異なる実現手段**である。生成型と解釈型を比べる場合は、同じ受理済みSubject、独立Expected、入力・NULL／欠損・失敗・Effectの条件を使う。生成型が対象Sourceの変更による再Buildを必要とするのに対し、解釈型は一般にその変更をデータの再読込みで扱える。ただし、InterpreterやOperatorの変更、古い選択版、現在Grantの失効を「Build不要」と混同しない。実装方式に応じてSource/Meaning/Artifact/実ConsumerのRevisionを別々に照合する。
 
