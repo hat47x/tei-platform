@@ -1401,7 +1401,7 @@ S0-Aで最初に提示すべき**独立した正負**は、同一Source Snapshot
 
 PCON-01〜09は既存#1180／#2514へ渡す未実行の独立Expected候補であり、Node Viewの線から実行を作る、Plugin Packageを一つのRuntime単位に固定する、第二Resolver／Host／Registryを追加することはしない。**Stage1→Stage2 Windows実受領、R2-Pの実Builder、R3の通常CLI実ProviderというP0を維持**し、プラグイン自身のTEI化は「一つの意味ある義務が生成Go／実Provider／次段Buildで実際に使われたか」で段階判定する。API Pluginの未統合PR #5096のCIや別HEADの成果を達成済みとして算入しない。
 
-**PC-1の最初の実コード差分**：既存`internal/plugin/transform`による全体Record／二Fieldだけの出力を比較するGo回帰を作り、内部項目の非選択・必須項目の欠損拒否・明示NULL保持までを検査する（[PC-1a〜c](PLUGIN_PORTABLE_CONTRIBUTION_EXECUTION_2026-11.md#5-pc-1を三つの検収に割る2026年11月16日)）。これは出力Valueの整形試験であり、Contract Field ID、取得完全性、HostのDisclosure／Grant、通常CLIからの非Builtin Provider呼出しを証明しない。PC-1bの型・取得範囲、PC-1cの明示Adapterを別Ownerと独立Expectedへ渡す。main済み#5147のPlugin Resolver診断コード負例も再利用し、新しい診断正本を作らない。
+**PC-1の最初の実コード差分**：既存`internal/plugin/transform`による全体Record／二Fieldだけの出力を比較するGo回帰を作り、内部項目の非選択・必須項目の欠損拒否・明示NULL保持までを検査する（[PC-1a〜c](PLUGIN_PORTABLE_CONTRIBUTION_EXECUTION_2026-11.md)）。これは出力Valueの整形試験であり、Contract Field ID、取得完全性、HostのDisclosure／Grant、通常CLIからの非Builtin Provider呼出しを証明しない。PC-1bの型・取得範囲、PC-1cの明示Adapterを別Ownerと独立Expectedへ渡す。main済み#5147のPlugin Resolver診断コード負例も再利用し、新しい診断正本を作らない。
 
 ### 検査義務を一つTEIへ移し、次のTEIで使う（2026年11月15日）
 
