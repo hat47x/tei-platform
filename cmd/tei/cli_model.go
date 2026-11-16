@@ -130,6 +130,7 @@ func runModelLocateCommand(args []string, out io.Writer) (int, error) {
 	kind := fs.String("subject-kind", "", "exact subject kind from model catalog entries[].subject.kind")
 	id := fs.String("subject-id", "", "exact subject ID")
 	limit := fs.Int("limit", operations.LocationDefaultLimit, "maximum entries per list (children, siblings)")
+	expectedFingerprint := fs.String("expected-fingerprint", "", "expected snapshot fingerprint; fails when the World or Source Index changed")
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			printHelp(out, fs, "model locate")
@@ -151,11 +152,21 @@ func runModelLocateCommand(args []string, out io.Writer) (int, error) {
 	if *limit < 1 || *limit > operations.LocationMaxLimit {
 		return fail("INVALID_ARGUMENT", fmt.Sprintf("model locate: -limit must be between 1 and %d", operations.LocationMaxLimit), 2)
 	}
-	result, err := operations.LocateWorkspace(*root, sourceindex.Subject{Kind: *kind, ID: *id}, *limit)
+	result, err := operations.LocateWorkspaceWithOptions(*root,
+		sourceindex.Subject{Kind: *kind, ID: *id}, *limit,
+		operations.LocateOptions{ExpectedFingerprint: *expectedFingerprint})
 	if err != nil {
 		var located *operations.CatalogError
 		if errors.As(err, &located) {
 			return fail(located.Code, located.Message, 1)
+		}
+		// A stale snapshot fingerprint is this caller's precondition not being
+		// met, which is the same class of answer as a missing or conflicting
+		// flag, so it keeps exit 2 and its own code instead of the generic
+		// failure above.
+		var stale *operations.InspectionError
+		if errors.As(err, &stale) && stale.Code == operations.InspectionStaleSnapshot {
+			return fail(stale.Code, stale.Message, 2)
 		}
 		code := "MODEL_LOCATE_FAILED"
 		var failure *operations.ValidationFailure
@@ -207,6 +218,7 @@ func runModelOverviewCommand(args []string, out io.Writer) (int, error) {
 	fs.SetOutput(io.Discard)
 	root := fs.String("workspace", "", "TEI workspace directory")
 	limit := fs.Int("limit", operations.OverviewDefaultLimit, "maximum sections listed")
+	expectedFingerprint := fs.String("expected-fingerprint", "", "expected snapshot fingerprint; fails when the World or Source Index changed")
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			printHelp(out, fs, "model overview")
@@ -226,8 +238,17 @@ func runModelOverviewCommand(args []string, out io.Writer) (int, error) {
 	if *limit < 1 || *limit > operations.OverviewMaxLimit {
 		return fail("INVALID_ARGUMENT", fmt.Sprintf("model overview: -limit must be between 1 and %d", operations.OverviewMaxLimit), 2)
 	}
-	result, err := operations.OverviewWorkspace(*root, *limit)
+	result, err := operations.OverviewWorkspaceWithOptions(*root, *limit,
+		operations.OverviewOptions{ExpectedFingerprint: *expectedFingerprint})
 	if err != nil {
+		// A stale snapshot fingerprint is this caller's precondition not being
+		// met, which is the same class of answer as a missing or conflicting
+		// flag, so it keeps exit 2 and its own code instead of the generic
+		// failure below.
+		var stale *operations.InspectionError
+		if errors.As(err, &stale) && stale.Code == operations.InspectionStaleSnapshot {
+			return fail(stale.Code, stale.Message, 2)
+		}
 		code := "MODEL_OVERVIEW_FAILED"
 		var failure *operations.ValidationFailure
 		if errors.As(err, &failure) {

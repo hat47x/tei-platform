@@ -21,8 +21,14 @@ import (
 // it does not yet derive event flow, lifecycle or implementation bindings; the
 // NotDerived list says so instead of letting an empty list read as "none".
 type ModelLocation struct {
-	SchemaVersion          string                       `json:"schemaVersion"`
-	Effect                 string                       `json:"effect"`
+	SchemaVersion string `json:"schemaVersion"`
+	Effect        string `json:"effect"`
+	// SnapshotFingerprint binds WorldFingerprint and SourceIndexFingerprint to
+	// one value a caller can hand back through LocateOptions.ExpectedFingerprint.
+	// It is the same composer inspect uses, so a location read and an inspect
+	// read of one Workspace report one token rather than two that happen to
+	// agree.
+	SnapshotFingerprint    string                       `json:"snapshotFingerprint"`
 	WorldFingerprint       string                       `json:"worldFingerprint"`
 	SourceIndexFingerprint string                       `json:"sourceIndexFingerprint"`
 	ModelRevision          string                       `json:"modelRevision"`
@@ -105,6 +111,36 @@ const (
 // subject. The catalog and the links are read from that single load, so the
 // answer cannot mix two Source snapshots.
 func LocateWorkspace(root string, subject sourceindex.Subject, limit int) (ModelLocation, error) {
+	return LocateWorkspaceWithOptions(root, subject, limit, LocateOptions{})
+}
+
+// LocateOptions carries the caller's preconditions for one location read.
+type LocateOptions struct {
+	// ExpectedFingerprint is a snapshot fingerprint an earlier read of this
+	// Workspace returned. A nonempty value that this read does not reproduce
+	// fails with STALE_SNAPSHOT instead of answering, so a caller can prove
+	// that two reads saw the same Workspace. An empty value performs no check.
+	ExpectedFingerprint string
+}
+
+// LocateWorkspaceWithOptions is LocateWorkspace with the caller's preconditions
+// applied. The subject is located before any precondition is judged, so a
+// missing or ambiguous subject keeps its own code rather than being reported as
+// a stale snapshot, and the fingerprints the comparison needs exist by then.
+func LocateWorkspaceWithOptions(root string, subject sourceindex.Subject, limit int, options LocateOptions) (ModelLocation, error) {
+	location, err := locateWorkspace(root, subject, limit)
+	if err != nil {
+		return ModelLocation{}, err
+	}
+	if err := CheckInspectionSnapshot(
+		location.WorldFingerprint, location.SourceIndexFingerprint, options.ExpectedFingerprint,
+	); err != nil {
+		return ModelLocation{}, err
+	}
+	return location, nil
+}
+
+func locateWorkspace(root string, subject sourceindex.Subject, limit int) (ModelLocation, error) {
 	if limit == 0 {
 		limit = LocationDefaultLimit
 	}
@@ -164,6 +200,7 @@ func LocateInCatalog(catalog ModelCatalog, world ir.World, subject sourceindex.S
 	out := ModelLocation{
 		SchemaVersion:          "tei.operations.model-location/v0",
 		Effect:                 "read-only",
+		SnapshotFingerprint:    InspectionSnapshotFingerprint(catalog.WorldFingerprint, catalog.SourceIndexFingerprint),
 		WorldFingerprint:       catalog.WorldFingerprint,
 		SourceIndexFingerprint: catalog.SourceIndexFingerprint,
 		ModelRevision:          catalog.ModelRevision,

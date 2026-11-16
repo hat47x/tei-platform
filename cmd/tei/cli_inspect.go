@@ -115,6 +115,16 @@ func inspectWorkspaceJSONWithService(out io.Writer, root, world, kind, id string
 				if inspection.Code == operations.InspectionNotFound || inspection.Code == operations.InspectionAmbiguous {
 					code = 1
 				}
+			case operations.InspectionStaleSnapshot:
+				// A mismatch is this transport's own comparison of the two
+				// fingerprints the selected service returned, so the text names
+				// no Provider data. It stays exit 2: the caller supplied a
+				// precondition this Workspace does not satisfy, which is the
+				// same class of answer as a missing or conflicting flag. trace
+				// answers the same code with 1 because there it continues a page
+				// it already returned.
+				failure.Code = inspection.Code
+				failure.Message = inspection.Message
 			}
 		case errors.As(err, &stage):
 			// These two stages fail while reading this process's own Workspace. The

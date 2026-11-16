@@ -22,8 +22,14 @@ import (
 // same load as model catalog; it is not a verdict, an acceptance or an edit
 // authority.
 type ModelOverview struct {
-	SchemaVersion          string                       `json:"schemaVersion"`
-	Effect                 string                       `json:"effect"`
+	SchemaVersion string `json:"schemaVersion"`
+	Effect        string `json:"effect"`
+	// SnapshotFingerprint binds WorldFingerprint and SourceIndexFingerprint to
+	// one value a caller can hand back through OverviewOptions.ExpectedFingerprint.
+	// It is the same composer inspect uses, so an overview read and an inspect
+	// read of one Workspace report one token rather than two that happen to
+	// agree.
+	SnapshotFingerprint    string                       `json:"snapshotFingerprint"`
 	WorldFingerprint       string                       `json:"worldFingerprint"`
 	SourceIndexFingerprint string                       `json:"sourceIndexFingerprint"`
 	ModelRevision          string                       `json:"modelRevision"`
@@ -185,6 +191,37 @@ const (
 
 // OverviewWorkspace loads the Workspace once and returns its overview.
 func OverviewWorkspace(root string, limit int) (ModelOverview, error) {
+	return OverviewWorkspaceWithOptions(root, limit, OverviewOptions{})
+}
+
+// OverviewOptions carries the caller's preconditions for one overview read.
+type OverviewOptions struct {
+	// ExpectedFingerprint is a snapshot fingerprint an earlier read of this
+	// Workspace returned. A nonempty value that this read does not reproduce
+	// fails with STALE_SNAPSHOT instead of answering, so a caller can prove
+	// that two reads saw the same Workspace. An empty value performs no check.
+	ExpectedFingerprint string
+}
+
+// OverviewWorkspaceWithOptions is OverviewWorkspace with the caller's
+// preconditions applied. The overview is derived before any precondition is
+// judged, so a Workspace that cannot be loaded keeps its own stage failure
+// rather than being reported as a stale snapshot, and the fingerprints the
+// comparison needs exist by then.
+func OverviewWorkspaceWithOptions(root string, limit int, options OverviewOptions) (ModelOverview, error) {
+	overview, err := overviewWorkspace(root, limit)
+	if err != nil {
+		return ModelOverview{}, err
+	}
+	if err := CheckInspectionSnapshot(
+		overview.WorldFingerprint, overview.SourceIndexFingerprint, options.ExpectedFingerprint,
+	); err != nil {
+		return ModelOverview{}, err
+	}
+	return overview, nil
+}
+
+func overviewWorkspace(root string, limit int) (ModelOverview, error) {
 	if limit == 0 {
 		limit = OverviewDefaultLimit
 	}
@@ -206,6 +243,7 @@ func OverviewFromRead(catalog ModelCatalog, world ir.World, diagnostics []valida
 	out := ModelOverview{
 		SchemaVersion:          "tei.operations.model-overview/v0",
 		Effect:                 "read-only",
+		SnapshotFingerprint:    InspectionSnapshotFingerprint(catalog.WorldFingerprint, catalog.SourceIndexFingerprint),
 		WorldFingerprint:       catalog.WorldFingerprint,
 		SourceIndexFingerprint: catalog.SourceIndexFingerprint,
 		ModelRevision:          catalog.ModelRevision,
