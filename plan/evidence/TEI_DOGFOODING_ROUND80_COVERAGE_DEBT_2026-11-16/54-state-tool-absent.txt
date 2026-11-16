@@ -1,0 +1,30 @@
+After merging current main (5c2085260) into the branch, one violation remained:
+
+  internal/externalanalysis/externalanalysis.go/StateToolAbsent
+
+Investigating it turned a "missing test" into a design question:
+
+  grep -rn "StateToolAbsent" --include=*.go internal/ cmd/ | grep -v _test
+    externalanalysis.go:22   StateToolAbsent State = "tool-absent"   (declaration)
+    externalanalysis.go:29   case StateToolAbsent:                   (severity)
+    operations/external_candidates.go:208  case ... StateToolAbsent  (caller)
+    cmd/tei/rea_evidence.go:38             case ... StateToolAbsent  (caller)
+
+  State = StateToolAbsent assignments: NONE
+
+So the state is declared and branched on but never produced by Receive. The REA
+test that fails on main says the same thing from the other side:
+TestReaEvidenceRecordsTheToolAbsence expects state=complete with an absent tool,
+because the saved bytes are still whole; absence lives in Receipt.Tool.
+
+Rather than delete the constant (the two callers are written to accept it) or
+invent a producer, the new test pins the decision from both sides:
+
+  state stays complete when the tool is absent
+  Receive does not produce StateToolAbsent
+  Tool.Present / Tool.AbsentReason carry the absence
+  the raw fingerprint survives
+  a present tool and an absent tool have the SAME state
+
+M5 makes Receive emit StateToolAbsent when the tool is absent:
+   -> FAIL state = "tool-absent", want complete
