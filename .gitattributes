@@ -345,3 +345,6 @@
 
 # Reconnect-header observations are hashed as raw bytes.
 /plan/evidence/DSH_MCP_RECONNECT_HEADERS_2026-11-17/** -text
+
+# Transport-fault observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_TRANSPORT_FAULT_2026-11-17/** -text
