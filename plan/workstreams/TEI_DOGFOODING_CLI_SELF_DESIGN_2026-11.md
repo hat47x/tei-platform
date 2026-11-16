@@ -3067,3 +3067,46 @@ scoped query execution unavailable
 ### 位置付け
 
 **「1つのメッセージが2つの原因を隠していた」回**である。3件が同じ文言で落ちていたので同因と見えたが、実際は「型違い」と「入力欠落」の2種類だった。潰す設計は正しいので、**隠れた原因は一時的な計装で取り出してから直した。**
+
+## 88. 第87ラウンド（2026-11-17）: rea-intake が候補生成を失い、並行Relationの回帰3件が壊れている
+
+`repository-health` に残る `TestREAIntake*` 系3件を、前ラウンドと同じ手法（表面のメッセージではなく実体を計測する）で調べた。生出力は[第87ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND87_REA_CANDIDATE_REGRESSION_2026-11-17/README.md)にある。起票は [#5248](https://github.com/hat47x/tei-platform/issues/5248)。
+
+### 実測
+
+3件とも**単独実行で FAIL**（テスト順序依存ではない）。計装すると:
+
+```text
+DIAGNOSIS candidate kinds: map[data-element:3] (total=3)
+```
+
+fixture には**エッジが2本ある**（`graph.edges=1` ＋ テストが1本追加）のに、候補は `data-element` が3件だけ。**`cross-reference` 候補が1つも生成されていない。**
+
+### いつ壊れたか（二分探索）
+
+```text
+3429c7891  test(rea): 保存REA原本の二入口と並行Relation回帰を統合
+            -> 3件とも PASS（追加時は緑）
+606134e63  refactor(rea): restrict intake to evidence receipts
+            -> ここで壊れた
+```
+
+### 原因: 実データ由来の候補が固定3件のプレースホルダになった
+
+`606134e63` が `reacandidate.GenerateCandidates` の呼び出しを**削除**し、**固定3件の `data-element`** に置き換えている。
+
+### なぜ私が直さないか
+
+`606134e63` は「**intake を receipt に限定する**」という意図的な設計変更に見え、**テストの要求と真正面から衝突**している。production 自身がこう書いている:
+
+> This legacy CLI has synthetic candidate IDs, not source-backed CandidateSet identities.
+
+つまり実装者は placeholder を認識しており、**テストが追随していない**状態。A（生成を戻す）か B（テストを削除）かは**所有者の判断**である。**C（私が A を実装）はリファクタの設計意図を私が決めてしまう**ので採らない。
+
+### 正確な事実整理
+
+`reacandidate` パッケージは**今も存在**し別経路から使われている。失われたのは **`rea-intake` 経由での**候補生成だけ。よって「候補生成が消えた」ではなく、**`rea-intake` から切り離された**のが正確。
+
+### 位置付け
+
+**「緑だったテストが、意図的な設計変更で赤になった」回**である。壊れたのは事実だが、**直すには「どちらの設計が正か」を決める必要がある**。私は判断を起票して返し、事実（いつ・何が・どう変わり・何が失われたか）を確定させた。

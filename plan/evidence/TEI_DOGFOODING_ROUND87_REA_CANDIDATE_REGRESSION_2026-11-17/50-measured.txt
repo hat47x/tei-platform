@@ -1,0 +1,14 @@
+main = fc3fe59da
+
+Each test alone (not order-dependent):
+
+  TestREAIntakeParallelRelationsStayUnacceptedInPreview     FAIL
+  TestREAIntakeCompleteGraphDoesNotProveFunctionOrBusiness  FAIL
+  TestREADualEntryCapturedInputAndIdentityBoundaries        FAIL
+
+Instrumented candidate kinds actually produced:
+
+  DIAGNOSIS candidate kinds: map[data-element:3] (total=3)
+
+The fixture carries edges (graph.edges=1, plus one the test appends), yet no
+cross-reference candidate is generated.
