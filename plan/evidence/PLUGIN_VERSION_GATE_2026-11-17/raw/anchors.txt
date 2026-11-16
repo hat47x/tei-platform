@@ -1,0 +1,44 @@
+== the acceptance gate: a parse error becomes false ==
+  func CompatibleMajor(v string, major int) bool {
+  	p, err := ParseVersion(v)
+  	return err == nil && p[0] == major
+  }
+
+== the comparison drops the parse error ==
+  func CompareVersion(a, b string) int {
+  	av, _ := ParseVersion(a)
+  	bv, _ := ParseVersion(b)
+  	for i := 0; i < 3; i++ {
+  		if av[i] < bv[i] {
+  			return -1
+  		}
+  		if av[i] > bv[i] {
+  			return 1
+  		}
+  	}
+  	return 0
+  }
+
+== what the parser refuses ==
+  func ParseVersion(v string) ([3]int, error) {
+  	var out [3]int
+  	parts := strings.Split(v, ".")
+  	if len(parts) != 3 {
+  		return out, fmt.Errorf("version %q must be major.minor.patch", v)
+  	}
+  	for i, p := range parts {
+  		n, err := strconv.Atoi(p)
+  		if err != nil || n < 0 {
+  			return out, fmt.Errorf("version %q contains invalid numeric component", v)
+  		}
+  		out[i] = n
+  	}
+  	return out, nil
+  }
+
+== the management layer already separates the two cases ==
+  44:	DocumentSelectionVersionUnknown   = "version-unknown"
+  45:	DocumentSelectionVersionMismatch  = "version-mismatch"
+  85:		out.SelectionStatus = DocumentSelectionVersionUnknown
+  131:				upstream.SelectionStatus = DocumentSelectionVersionUnknown
+  133:				upstream.SelectionStatus = DocumentSelectionVersionMismatch
