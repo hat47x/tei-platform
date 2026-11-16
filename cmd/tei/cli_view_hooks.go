@@ -97,7 +97,7 @@ const (
 // runDeclaredHooksHalf consults one half of the declared phases, with the reach
 // the caller says applies.
 func runDeclaredHooksHalf(ctx context.Context, world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string, rule hook.Implementation, reach hook.Reach, half hookHalf) (*cliHookReport, error) {
-	return runDeclaredHooksHalfWithRows(ctx, world, applicationID, patternID, inputs, nil, rule, reach, half)
+	return runDeclaredHooksHalfWithRowsAndStore(ctx, world, applicationID, patternID, inputs, nil, rule, reach, half, nil)
 }
 
 // runDeclaredHooksHalfWithRows is runDeclaredHooksHalf with the row set a
@@ -109,6 +109,18 @@ func runDeclaredHooksHalf(ctx context.Context, world ir.World, applicationID, pa
 // with a reason, so a row-scoped hook is never run once for the record as if the
 // scope did not matter.
 func runDeclaredHooksHalfWithRows(ctx context.Context, world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string, rows []map[core.CanonicalID]string, rule hook.Implementation, reach hook.Reach, half hookHalf) (*cliHookReport, error) {
+	return runDeclaredHooksHalfWithRowsAndStore(ctx, world, applicationID, patternID, inputs, rows, rule, reach, half, nil)
+}
+
+// runDeclaredHooksHalfWithRowsAndStore adds the store an after-change read comes
+// from.
+//
+// A before-change phase reads what the caller supplied, because nothing has been
+// applied yet. An after-change phase reads the record the command just wrote;
+// feeding it the request again would report "read the stored value" while
+// reading the caller's inputs. When store is nil the inputs are used, which is
+// what every phase did before this existed.
+func runDeclaredHooksHalfWithRowsAndStore(ctx context.Context, world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string, rows []map[core.CanonicalID]string, rule hook.Implementation, reach hook.Reach, half hookHalf, store *command.MemoryStore) (*cliHookReport, error) {
 	runner := hook.Runner{World: world, Implementation: rule, Rows: rows}
 	// A hook that declares `uses` promises a call. Give the runner the boundary
 	// that can keep it: the Command invoker, with the pattern resolution
@@ -131,15 +143,19 @@ func runDeclaredHooksHalfWithRows(ctx context.Context, world ir.World, applicati
 			return pattern, true
 		},
 	}
+	reads := attributeValues(inputs)
+	if store != nil {
+		reads = storeReads(world, applicationID, patternID, store, reads)
+	}
 	var report *hook.PhaseReport
 	var err error
 	switch half {
 	case hookHalfBefore:
-		report, err = runner.RunBeforeChange(ctx, applicationID, patternID, attributeValues(inputs), reach)
+		report, err = runner.RunBeforeChange(ctx, applicationID, patternID, reads, reach)
 	case hookHalfAfter:
-		report, err = runner.RunAfterChange(ctx, applicationID, patternID, attributeValues(inputs), reach)
+		report, err = runner.RunAfterChange(ctx, applicationID, patternID, reads, reach)
 	default:
-		report, err = runner.RunReachable(ctx, applicationID, patternID, attributeValues(inputs), reach)
+		report, err = runner.RunReachable(ctx, applicationID, patternID, reads, reach)
 	}
 	if report == nil {
 		return nil, err
@@ -290,11 +306,36 @@ func mergeHookReports(before, after *cliHookReport) *cliHookReport {
 // rule a plugin supplies is what makes it reachable — that is the boundary this
 // function is written for.
 func runAfterHalfRevertingOnRefusal(ctx context.Context, world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string, rule hook.Implementation, store *command.MemoryStore, snapshot command.StoreSnapshot, before *cliHookReport) (*cliHookReport, bool, error) {
-	after, err := runDeclaredHooksHalf(ctx, world, applicationID, patternID, inputs, rule, hook.AppliedChangeReach{}, hookHalfAfter)
+	after, err := runDeclaredHooksHalfWithRowsAndStore(ctx, world, applicationID, patternID, inputs, nil, rule, hook.AppliedChangeReach{}, hookHalfAfter, store)
 	merged := mergeHookReports(before, after)
 	if err == nil {
 		return merged, false, nil
 	}
 	store.Restore(snapshot)
 	return merged, true, err
+}
+
+// storeReads replaces the caller-supplied values with what the store holds for
+// the attributes each hook declares.
+//
+// Only declared attributes are asked for: the store is not searched for values
+// the hook did not name, so a hook cannot pick up data outside its declaration.
+// Attributes the store does not hold keep the caller's value, so a phase whose
+// record was never written still reports the same unobserved/observed split it
+// did before.
+func storeReads(world ir.World, applicationID, patternID core.CanonicalID, store *command.MemoryStore, supplied map[core.CanonicalID]string) map[core.CanonicalID]string {
+	pattern := hook.PatternFor(world, applicationID, patternID)
+	if pattern == nil || pattern.Interaction == nil {
+		return supplied
+	}
+	merged := make(map[core.CanonicalID]string, len(supplied))
+	for attribute, value := range supplied {
+		merged[attribute] = value
+	}
+	for _, declaration := range pattern.Interaction.Hooks {
+		for attribute, value := range hook.ObserveFromStore(store, pattern, declaration.Reads) {
+			merged[attribute] = value
+		}
+	}
+	return merged
 }
