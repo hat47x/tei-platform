@@ -747,6 +747,92 @@ func TestReferenceFindingsCarryTheReferenceSeverity(t *testing.T) {
 	}
 }
 
+// A branch with no identity cannot be distinguished from another anonymous
+// branch, and the duplicate check cannot see either of them.
+func TestBranchWithNoIDIsReported(t *testing.T) {
+	fixture := readFixture(t)
+	for i := range fixture.Branches {
+		fixture.Branches[i].ID = ""
+	}
+	projection := projectFixture(t, fixture)
+	if codesOf(projection)[CodeBranchIDMissing] != 2 {
+		t.Fatalf("anonymous branches were not reported: %+v", projection.Diagnostics)
+	}
+	// Whitespace is not an identity either.
+	spaced := readFixture(t)
+	spaced.Branches[0].ID = "   "
+	if codesOf(projectFixture(t, spaced))[CodeBranchIDMissing] != 1 {
+		t.Fatal("a whitespace-only branch id was accepted as an identity")
+	}
+}
+
+// A manual step must not hold out a Function as its action. A consumer that
+// reads steps[].function without reading diagnostics must not see application
+// work on the phone call.
+func TestManualStepDoesNotCarryAResolvedFunction(t *testing.T) {
+	fixture := readFixture(t)
+	for i := range fixture.Steps {
+		if fixture.Steps[i].ID == "BP-A02" {
+			fixture.Steps[i].Function = &Reference{Kind: ReferencePattern, ID: "order_entry.order_record"}
+		}
+	}
+	projection := projectFixture(t, fixture)
+	step := findStep(t, projection, "BP-A02")
+	if !step.Manual {
+		t.Fatal("the step stopped being manual")
+	}
+	if step.Function != nil {
+		t.Fatalf("a manual step was given the Function %+v", step.Function)
+	}
+	if step.UnresolvedFunction == nil || step.UnresolvedFunction.ID != "order_entry.order_record" {
+		t.Fatalf("the manual step's Function reference was dropped entirely: %+v", step.UnresolvedFunction)
+	}
+	if codesOf(projection)[CodeManualStepHasFunction] != 1 {
+		t.Fatalf("the manual step's Function was not reported: %+v", projection.Diagnostics)
+	}
+}
+
+// The same input must produce the same bytes. Three findings that share a
+// severity, a code and a subject differ only in wording, so a comparator that
+// stops before the message leaves their order to whichever order the rules ran.
+func TestProjectionDiagnosticsAreDeterministic(t *testing.T) {
+	fixture := readFixture(t)
+	fixture.Procedure.Trigger.Status = "accepted"
+	fixture.Procedure.Actor.Status = "accepted"
+	fixture.Procedure.Authorization.Status = "accepted"
+
+	first, err := json.Marshal(projectFixture(t, fixture))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 50; i++ {
+		next, err := json.Marshal(projectFixture(t, fixture))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(next) != string(first) {
+			t.Fatalf("run %d differs from the first run;\nfirst: %s\nnext:  %s", i, first, next)
+		}
+	}
+
+	// The three findings must be ordered by their message, not by chance.
+	projection := projectFixture(t, fixture)
+	var messages []string
+	for _, diagnostic := range projection.Diagnostics {
+		if diagnostic.Code == CodeStatusNotCandidate {
+			messages = append(messages, diagnostic.Message)
+		}
+	}
+	if len(messages) != 3 {
+		t.Fatalf("status findings=%v, want three", messages)
+	}
+	for i := 1; i < len(messages); i++ {
+		if messages[i-1] > messages[i] {
+			t.Fatalf("status findings are not in message order: %v", messages)
+		}
+	}
+}
+
 func containsString(values []string, want string) bool {
 	for _, value := range values {
 		if value == want {

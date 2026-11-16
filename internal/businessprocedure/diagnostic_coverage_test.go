@@ -29,7 +29,7 @@ func TestEveryDeclaredDiagnosticCodeIsReached(t *testing.T) {
 // without reaching it is a deliberate edit rather than an oversight.
 func TestDeclaredDiagnosticCodesAreTheClosedSet(t *testing.T) {
 	declared := declaredCodes(t)
-	const expected = 18
+	const expected = 19
 	if len(declared) != expected {
 		t.Fatalf("declared %d diagnostic codes, want %d; update this count when a code is added: %v",
 			len(declared), expected, declared)
@@ -123,6 +123,11 @@ func reachedCodes(t *testing.T) map[string]bool {
 	branchStepMissing := readFixture(t)
 	branchStepMissing.Branches[0].OnStep = ""
 	record(projectFixture(t, branchStepMissing))
+
+	// A branch with no identity cannot be told from another anonymous branch.
+	branchIDMissing := readFixture(t)
+	branchIDMissing.Branches[0].ID = ""
+	record(projectFixture(t, branchIDMissing))
 
 	// A step with no id cannot be referred to or addressed.
 	stepIDMissing := readFixture(t)

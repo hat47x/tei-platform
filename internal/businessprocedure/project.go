@@ -43,6 +43,7 @@ const (
 	CodeBranchOutcomeUnknown         = "BUSINESS_BRANCH_OUTCOME_UNKNOWN"
 	CodeBranchStepMissing            = "BUSINESS_BRANCH_STEP_MISSING"
 	CodeStepIDMissing                = "BUSINESS_STEP_ID_MISSING"
+	CodeBranchIDMissing              = "BUSINESS_BRANCH_ID_MISSING"
 	CodeStatusNotCandidate           = "BUSINESS_STATUS_NOT_CANDIDATE"
 	CodeAutoExecuteOnSystemStep      = "BUSINESS_AUTO_EXECUTE_ON_SYSTEM_STEP"
 	CodeActorConflatesAuthorization  = "BUSINESS_ACTOR_CONFLATES_AUTHORIZATION"
@@ -337,16 +338,23 @@ func Project(fixture Fixture, procedureFingerprint string, resolver *Resolver) P
 	// A reference fixture proposes meaning; it cannot declare that its own
 	// candidate values are accepted. Echoing such a status would let a fixture
 	// assert acceptance the projection never received.
-	for name, status := range map[string]Status{
-		"trigger":       fixture.Procedure.Trigger.Status,
-		"actor":         fixture.Procedure.Actor.Status,
-		"authorization": fixture.Procedure.Authorization.Status,
+	//
+	// The clauses are a fixed slice, not a map: three findings that share a
+	// code, a severity and a subject are ordered only by their message, so a
+	// map's iteration order would leak into the JSON.
+	for _, clause := range []struct {
+		name   string
+		status Status
+	}{
+		{"trigger", fixture.Procedure.Trigger.Status},
+		{"actor", fixture.Procedure.Actor.Status},
+		{"authorization", fixture.Procedure.Authorization.Status},
 	} {
-		if status == "" || status.Valid() {
+		if clause.status == "" || clause.status.Valid() {
 			continue
 		}
 		add(CodeStatusNotCandidate, SeverityProcedure, projection.ProcedureID,
-			fmt.Sprintf("%s status %q is not an accepted reference status; a fixture may only propose", name, status))
+			fmt.Sprintf("%s status %q is not an accepted reference status; a fixture may only propose", clause.name, clause.status))
 	}
 
 	// A business actor label that repeats the authorization role code makes the
@@ -439,7 +447,15 @@ func Project(fixture Fixture, procedureFingerprint string, resolver *Resolver) P
 		if step.Function != nil {
 			resolution := resolver.Resolve(*step.Function)
 			recordReferenceDiagnostic(add, id, "function", *step.Function, resolution)
-			if resolution.Resolved != nil {
+			// A manual step is not application work, so the projection does not
+			// hold out its Function as one. The reference is kept as unresolved
+			// instead of being shown as the step's action: a reader who looks at
+			// steps[].function without reading the diagnostics must not see a
+			// Function on the phone call.
+			if manual {
+				unresolved := *step.Function
+				view.UnresolvedFunction = &unresolved
+			} else if resolution.Resolved != nil {
 				view.Function = resolution.Resolved
 			} else {
 				// Keep the raw reference. Dropping it would make the projection
@@ -472,6 +488,11 @@ func Project(fixture Fixture, procedureFingerprint string, resolver *Resolver) P
 			} else {
 				branchIDs[id] = i + 1
 			}
+		} else {
+			// A branch with no identity cannot be told from another anonymous
+			// branch, and the duplicate check cannot see either of them.
+			add(CodeBranchIDMissing, SeverityProcedure, fmt.Sprintf("position-%d", i+1),
+				fmt.Sprintf("branch at position %d declares no id", i+1))
 		}
 		// An outcome outside the vocabulary is not an approval or a rejection,
 		// so it must not be read as either.
@@ -529,6 +550,11 @@ func Project(fixture Fixture, procedureFingerprint string, resolver *Resolver) P
 		}
 	}
 
+	// The comparison is a total order, ending in the message. Two findings can
+	// share a severity, a code and a subject and still differ in wording; without
+	// the last term their relative order would follow whichever order the rules
+	// happened to be evaluated in, and the JSON would differ between runs of the
+	// same input.
 	sort.SliceStable(diagnostics, func(i, j int) bool {
 		if diagnostics[i].Severity != diagnostics[j].Severity {
 			return severityRank(diagnostics[i].Severity) < severityRank(diagnostics[j].Severity)
@@ -536,7 +562,11 @@ func Project(fixture Fixture, procedureFingerprint string, resolver *Resolver) P
 		if diagnostics[i].Code != diagnostics[j].Code {
 			return diagnostics[i].Code < diagnostics[j].Code
 		}
-		return strings.Join(diagnostics[i].SubjectIDs, ",") < strings.Join(diagnostics[j].SubjectIDs, ",")
+		left, right := strings.Join(diagnostics[i].SubjectIDs, ","), strings.Join(diagnostics[j].SubjectIDs, ",")
+		if left != right {
+			return left < right
+		}
+		return diagnostics[i].Message < diagnostics[j].Message
 	})
 	// Keep the field a list rather than a null: a reader that branches on
 	// diagnostics must see "no finding", not "field absent".
