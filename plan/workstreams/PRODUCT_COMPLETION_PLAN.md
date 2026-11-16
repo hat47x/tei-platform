@@ -24,6 +24,14 @@
 | **P1：Plugin説明と公開モデルの探索**（[#4679](https://github.com/hat47x/tei-platform/issues/4679)／#951） | 上位A・利用側Bの二Pluginを固定し、Aが公開したContract／Graph／Manual索引へ、Bのread-only Inspectから正しい版で辿る。短いProduct Skillは既存の実コマンドの発見方法だけを案内 | 非公開文書・図・上位依存の存在情報を漏らさない。閲覧可を再公開可・実行可へ昇格させない。新Docs Registry／未実装CLIコマンドを前提にしない |
 | **P1：横断Concernと専門計算の適合**（#4198／#3509／#4660） | main統合済みの[Application Graph設計 #4681](https://github.com/hat47x/tei-platform/pull/4681)では、まず一つのRoute／Entryに対するread-only適用表を作る。計算側は[SQLite Window実DB試験 #4670](https://github.com/hat47x/tei-platform/pull/4670)を基線に、必要な入力範囲とProvider能力を調べる | 計測の挿入・同意・二重発火、外部Solver、NoSQLでの同等性、通常CLIの実計算・Consumer受領は未検証。新Aspect Weaverや第二Query Engineを導入しない |
 
+### Web表示の共通契約を、現在のInspector一件で検査する（2026年11月16日、P1）
+
+[Web標準UI横断設計 §§18〜19](../design/WEB_STANDARD_COMPONENT_AND_AGENT_HARNESS_2026-11.md)で、表示技術の比較に先立って **WEB-P1a：検証済みInspectionからread-only ViewModelを導出する** 最小実装を定めた。出発点は現行 `reference/tei-studio-workbench/main.ts` の選択Event→Catalog資格→`responses.run("inspection")`→実Host Inspect→`readInspection`→表示である。TypeScriptの純粋なPresenterと既存テストだけを先に変更し、Wails Bridgeの追加、Source Readerの再実装、Litへの置換、業務Meaningの新正本を同時に行わない。
+
+**WEB-P1aの合格条件**は、同一Subject／Catalog／Host応答から表示文書・版・Source状況・利用制限が変わらず導出され、異Kind・Source Index版不一致・Reader error・部分取得・偽Grantを誤って合格へ変換しないこと。**WEB-P1b**はFocus／Pinの応答laneとEditorの未保存状態を保護する。Source位置の `source-locations.ts` は既存のread-only検証を再利用するが、画面表示と原文再取得・書戻しの資格を分ける。Node試験、Browser、実Windows WebView2、生成Stage2の受入は別票で記録する。
+
+後続の**WEB-P2**はCLI direct／Studio Host／HTTPの同一Operationを一つのread-only実Consumerで比較し、Actor／Audience／Disclosureと現在Providerの選択を別資格で検査する。**WEB-P3**は公開可能なB2C説明Facet一件をTarget Head Slotと実Asset Memberへ接続する。両者をUI Framework選定やDesktopセルフビルドの前提条件にしない。担当は#997／#1824／#1158／#951／#3509、反証は既存#1180／#2514。ここでの追記は実装引渡しであり、製品の新しいE2E試験合格ではない。
+
 ### 図解のP1：定義・生成・実Attemptを証拠つきで比較する（2026年11月15日）
 
 [プロセス実行図の因果・意味保存・証拠照合](../design/PROCESS_EXECUTION_CAUSAL_PROJECTIONS_2026-11.md)の§10〜56に、他の標準Data・Node／Plugin配線・業務Process／REA・Rule・セルフビルドの議論を接続した。異なる図を一つの実行エンジンで統一するのではなく、**Sourceからの投影、Targetへの生成、実際の呼出し、独立した受領の間にどの根拠が必要か**を、対象に応じて切り出す。部分取得から「不存在」や「すべて成功」と推測する図は不合格とする。
