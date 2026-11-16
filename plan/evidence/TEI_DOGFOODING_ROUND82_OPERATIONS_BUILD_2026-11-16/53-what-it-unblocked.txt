@@ -1,0 +1,9 @@
+Before: internal/operations build failed -> zero tests ran.
+After : the package runs. One test still fails, for a DIFFERENT reason:
+
+  --- FAIL: TestOrgCaseExplicitPersistenceEnablesReadCandidateOnly
+      native browse Pattern did not call the actual Query/Executor/Mapper:
+      Query org_view.case_read input case_id has unsupported runtime binding
+      for type organization.case_record_id
+
+That is a runtime binding gap, not a type error. Out of scope here.

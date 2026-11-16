@@ -1,0 +1,17 @@
+LocalREAReader.Read returns the SAME public failure from three sites, so I measured
+which one fires instead of guessing:
+
+  STEP 1 host.workspace               ok
+  STEP 2 ReadSource                   ok bytes=829
+  STEP 3 ExternalCandidatesFromBytes  error: Evidenceにsemantic graphの宣言がありません
+
+Fixture facts:
+  current  rea-6.8.0/analysis.json : 829 bytes,  normalized_result = {}
+  at 716fb3612                     : 78,000 bytes, normalized_result.semantic_graph present
+  digest pinned by the tests       : sha256:7ea3780d…  == the OLD 78KB file
+  digest of the current file       : sha256:6c84cfb3…
+
+The refactor that replaced it is 606134e63, and it touched no studiohost file:
+  git show 606134e63 --stat | grep -c studiohost  ->  0
+
+Before/after control: running the same test with 606134e63~1's testdata -> ok.

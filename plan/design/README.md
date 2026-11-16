@@ -405,3 +405,5 @@ S1 realistic intent / candidate frontier
 
 - [Studio・CLI・WebのBackend起動、Plugin構成、配布・更新](STUDIO_CLI_BACKEND_PROCESS_DISTRIBUTION_UPDATE_2026-11.md)：現行P0基線と子Backendの将来候補を分け、既存Application API・Plugin管理・配布更新へ接続する設計案。
 - [Studio・CLI Backendの起動・互換性・更新復旧とRelease Closure](STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)：Bootstrapの最小責務、子Backendの比較、Wails UpdaterとD2／D3配布、Plugin Lock・設定Schema・実Imageの閉包検証、Mobile実験、独立Expected BRC-01〜09を扱う設計案。
+- [RDB・SQL・NoSQLの横断適合と製品実証計画](DATA_PROVIDER_CROSS_DB_CONFORMANCE_2026-11.md)：業務データモデルとFunction Data Contextを中心に、RDB・Document・Key/Index・Graph・ファイル／APIの取得・導出・更新を一貫して扱う設計統合。通常の業務DSLにDB製品・SQL方言・Go構文を露出せず、Native SQL等の原文・出典・方言・Bindingは保持する。
+- [図表から実装へ：解釈実行・コード生成・委譲・フック拡張の選択設計](DIAGRAM_TO_REALIZATION_STRATEGY_AND_HOOKS_2026-11.md)：`*.tei.md`の図表と定義から、汎用Functionによる解釈実行・Targetコード生成・Provider委譲・その組合せを選ぶ。生成物は原則ノータッチとし、既存Applicationへは契約で定めた接続点を通して取り込む。

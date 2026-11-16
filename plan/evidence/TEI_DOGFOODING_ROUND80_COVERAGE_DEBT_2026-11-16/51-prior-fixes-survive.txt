@@ -1,0 +1,11 @@
+Checked by CALL SITE, not definition (the lesson of round 77):
+
+  r72 CheckWorkspaceUnreadSources(r.ManagedFiles)        1
+  r73 readable = append                                 1
+  r74 blockOnlyEntryHint(t.Text)                        1
+  r75 "VALIDATION_INCOMPLETE"                           1
+  r77 runThreeElementReaIntake(args                      1
+  r79 UNBOUND_DATABASE_REQUIREMENT                      1
+  r79 warnsAboutBindings := len(w.Environments) > 0     1
+
+All seven survive on main.

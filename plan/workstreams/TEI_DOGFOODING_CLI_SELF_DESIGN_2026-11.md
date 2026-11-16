@@ -2703,3 +2703,165 @@ warnsAboutBindings := len(w.Environments) > 0
 ### 位置付け
 
 **「片方だけ見ていた」を揃えた回**である。query の datasource は検査されていたが、application の `database` ブロックは検査されていなかった。**同じ概念（datasource の bind）に2つの入口があり、片方だけ守られていた。**
+
+## 81. 第80ラウンド（2026-11-16）: 新しい語彙が試験に現れず plan-check が3件赤
+
+長い中断のあと再開したので、まず**過去7ラウンドの修正が main に残っているか**を呼び出し側で点検し、そのうえで現在の赤を解消した。生出力は[第80ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND80_COVERAGE_DEBT_2026-11-16/README.md)にある。
+
+### 過去の修正の生存確認（定義ではなく呼び出し側）
+
+| ラウンド | 修正 | 状態 |
+| --- | --- | --- |
+| 72 | `CheckWorkspaceUnreadSources` | 呼ばれている |
+| 73 | `ReadableWithoutSection` | 設定されている |
+| 74 | `blockOnlyEntryHint` | 呼ばれている |
+| 75 | `VALIDATION_INCOMPLETE` | 出ている |
+| 77 | `rea-intake` の振り分け | 配線されている |
+| 79 | `UNBOUND_DATABASE_REQUIREMENT` / environment の門 | 出ている |
+
+**7件すべて生存。** 第77ラウンドで学んだ「呼び出し側を数える」点検が効いている。あわせて **#4455（rea-evidence の孤児テスト）は後続の統合で解消済み**だった（`cmd/tei/rea_evidence.go` と `internal/externalanalysis` が main に在る）。
+
+### 見つけた赤（3テスト・11件）
+
+```text
+--- FAIL: TestPlanReadmesMentionEveryEntry                    2件
+--- FAIL: TestSchemaVersionLiteralsHaveATest                   1件
+--- FAIL: TestExportedStringConstantsHaveATestOrAnEntry         8件
+```
+
+未記載の設計文書2件、未 named の `tei.externalanalysis.receipt/v0`、未言及の文字列定数8件（`ValidationNoOverlap`・`DataTableColumn` 5件・`RulePredicate` 2件）。
+
+### 修正（試験と索引のみ。製品コードは触っていない）
+
+各定数を**実際の受理・出力を通して**確かめる試験を書いた。列名は実際のヘッダとして受理させ、多語 predicate は著者向け語彙文に現れることを確かめ、receipt は `Receive` を通して名指しする。
+
+### 途中で4回、自分の仮定が外れた
+
+| 誤った仮定 | 実際 |
+| --- | --- |
+| どの列名も単独で受理される | `attribute` と `type` は**必須** |
+| `type` セルは素の名前 | **修飾付き canonical id** |
+| `required` は任意の値 | **`yes`/`no`** |
+| `RulePredicateOperator` は `valid()` | **多語形の sentinel**。語彙文に現れる |
+
+**推測で書いて落ちて、コードを読んで直した。**
+
+### 変異試験
+
+| # | 変えた箇所 | 結果 |
+| --- | --- | --- |
+| M1 | `dataTableColumns` から `description` を落とす | FAIL `header "description" was rejected` |
+| M2 | 語彙文から `not overlapping per <relation>` を落とす | FAIL `does not show ...` |
+| M3 | `ValidationNoOverlap` を `Valid()` から外す | FAIL `Valid() = false` |
+| M4 | receipt の schema を `v9` に | FAIL `schemaVersion = .../v9` |
+
+**4件すべて捕捉。**
+
+### 位置付け
+
+**検査が正しく働いた回**である。新しい語彙が試験に現れないことを、3つの検査が独立に捕まえた。**私が直したのは「試験が無い」ことだけで、製品コードには触れていない。**
+
+なお **Step Code CLI は未導入・未認証**のため委任は行わず、AGENTS.md の代替規定に従って DSH で実施した。
+
+## 82. 第81ラウンド（2026-11-16）: rea の refactor が fixture を差し替え、production consumer を更新していない
+
+再開後も `repository-health` が赤だったので、**最大の塊（REA 系10テスト）**の原因を特定して直した。生出力は[第81ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND81_REA_FIXTURE_CONSUMER_2026-11-16/README.md)にある。起票は [#5176](https://github.com/hat47x/tei-platform/issues/5176)。
+
+### 3か所の同じエラーを、計測で切り分けた
+
+`LocalREAReader.Read` は3か所で同一の公開エラー `external Evidence is unavailable` を返す。**推測せず計測**した。
+
+```text
+STEP 1 host.workspace              ok
+STEP 2 ReadSource                  ok bytes=829
+STEP 3 ExternalCandidatesFromBytes error: Evidenceにsemantic graphの宣言がありません
+```
+
+| 対象 | 値 |
+| --- | --- |
+| 現在の `rea-6.8.0/analysis.json` | **829 bytes**（`normalized_result` が空） |
+| `716fb3612` 時点の同ファイル | **78,000 bytes**（`semantic_graph` あり） |
+| テストが固定する digest | `sha256:7ea3780d…` = **旧78KB の digest** |
+
+差し替えたのは `606134e63 refactor(rea): restrict intake to evidence receipts`。**`internal/studiohost` は一切触っていない**（`--stat` で0件）。旧 fixture なら通ることも確認した（`606134e63~1` の testdata → `ok`）。
+
+### 修正方針: refactor を巻き戻さない
+
+`decodeSemanticGraph` は main に残り、`LocalREAReader` は production コードで経路も生きている。**receipt 専用化は `internal/externalanalysis` の意図的な変更**であり、欠陥は**読む側を直さなかったこと**。
+
+したがって **`internal/studiohost` に自前の graph-bearing fixture を持たせ**、3テストの参照先をそこへ変えた。**production コードは変更していない。**
+
+### 変異試験
+
+| # | 変えた箇所 | 結果 |
+| --- | --- | --- |
+| M1 | 参照を receipt 専用 stub に戻す | FAIL `external Evidence is unavailable` |
+| M2 | コピーした fixture から `semantic_graph` を削る | FAIL `external Evidence is unavailable` |
+
+**M2 が決定的**である。graph の有無だけが原因で、他の違いではない。
+
+### 直していないもの（別欠陥、#5176）
+
+`testdata/manifest.json` が実ファイルと一致していない（bytes と digest の両方が MISMATCH。**manifest は旧 fixture の digest を宣言したまま bytes だけ新しい**）。**どちらを正とするかは所有者の判断**なので触っていない。
+
+### 位置付け
+
+**「意図的な変更」と「更新漏れ」を分けた回**である。fixture の差し替え自体は正しく、**読む側を直さなかったこと**が欠陥だった。refactor を巻き戻すのではなく、consumer 側に必要な fixture を持たせた。
+
+## 83. 第82ラウンド（2026-11-16）: main の `internal/operations` がコンパイルできない
+
+前ラウンドで起票した [#5191](https://github.com/hat47x/tei-platform/issues/5191) を解消した。生出力は[第82ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND82_OPERATIONS_BUILD_2026-11-16/README.md)にある。
+
+### 実測
+
+```text
+$ go vet ./internal/operations
+# tei/internal/operations [tei/internal/operations.test]
+inspect_markdown_data_table_rule_example_validation_test.go:85:34:
+    invalid operation: loaded.RuleExamples[0].Data != dataSubject.ID
+    (mismatched types core.CanonicalID and string)
+```
+
+導入は `b71f8be10 (#5181)`。**パッケージ内の全テストが実行不能**だった。
+
+### どちらの型に合わせるかを、コードで決めた
+
+推測せず、**同じパッケージの既存の書き方**を探した。
+
+```go
+// internal/operations/selected_rule_markdown_evaluator_read_footprint_test.go:239
+if rule.ID != core.CanonicalID(subject.ID) ||
+```
+
+`RuleExample.Data` は `core.CanonicalID`、`sourceindex.Subject.ID` は `string` なので、**subject 側を canonical に揃える**のが既存の規約に一致する。
+
+### 実測（修正後）
+
+| 対象 | 修正前 | 修正後 |
+| --- | --- | --- |
+| `go vet ./internal/operations` | **build failed** | 0 errors |
+| パッケージのテスト | **0件しか走らない** | 全件走る（FAIL は1件のみ） |
+| `TestMarkedDataTableRuleExample...` | 実行不可 | **PASS** |
+
+### 変異試験
+
+| # | 変えた箇所 | 結果 |
+| --- | --- | --- |
+| M1 | 元の壊れた比較に戻す | `mismatched types core.CanonicalID and string`（**起票した症状を再現**） |
+| M2 | 期待値を `core.CanonicalID("totally.wrong.id")` に変える | FAIL `the example's independent authoring role was not retained` |
+
+**M2 が重要**である。cast は飾りではなく、**この行が実際に Data の同一性を検査している**ことを示す。
+
+### ビルドが通って初めて見えた別の失敗
+
+```text
+--- FAIL: TestOrgCaseExplicitPersistenceEnablesReadCandidateOnly
+    Query org_view.case_read input case_id has unsupported runtime binding
+    for type organization.case_record_id
+```
+
+**型ではなく runtime binding の対応表の話**で、独立した欠陥。本ラウンドの範囲外とした。
+
+### 位置付け
+
+**「ビルドできない」を「走る」に戻した回**である。テストの失敗ではなく**コンパイルの失敗**だったので、パッケージ内の全テストが沈黙していた。**型の不一致は1行だが、影響は「そのパッケージが存在しないのと同じ」**だった。

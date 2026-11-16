@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"sort"
 	"strings"
 
 	"tei/internal/core"
@@ -379,21 +378,8 @@ func runScenarioCommand(args []string, output io.Writer) error {
 	return fmt.Errorf("unreachable scenario action %q", action)
 }
 
-// fingerprintScenarioOperatorSelection binds the actual Workspace selection
-// rather than the Canonical World. Manifest ordering is not selection meaning;
-// duplicate selections are already rejected by Workspace.Load.
+// fingerprintScenarioOperatorSelection reuses the Workspace's selection
+// fingerprint. The CLI and the read-only Plan reviewer must never diverge.
 func fingerprintScenarioOperatorSelection(selected []workspace.OperatorImplementationSelection) (string, error) {
-	selections := scenarioImplementationSelections(selected)
-	sort.Slice(selections, func(i, j int) bool {
-		if selections[i].Operator != selections[j].Operator {
-			return selections[i].Operator < selections[j].Operator
-		}
-		return selections[i].Implementation < selections[j].Implementation
-	})
-	bytes, err := json.Marshal(selections)
-	if err != nil {
-		return "", fmt.Errorf("fingerprint selected Operator implementations: %w", err)
-	}
-	digest := sha256.Sum256(bytes)
-	return hex.EncodeToString(digest[:]), nil
+	return workspace.FingerprintOperatorImplementationSelections(selected)
 }
