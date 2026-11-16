@@ -1286,13 +1286,13 @@ mainに統合された[PR #5160](https://github.com/hat47x/tei-platform/pull/516
 
 Plugin Resolverの診断が列挙されることと、実装が現在利用可能であること、Hostが実行を認可することは引き続き異なる。存在しないEntryや壊れた版を理由に**Builtin Providerへ無言でFallbackしない**。
 
-### 36.3 今のCI失敗は、能力の検証失敗と混同しない
+### 36.3 CIが止まった段階を記録し、後続HEADでの修正と区別する
 
-[PR #5150](https://github.com/hat47x/tei-platform/pull/5150)は、Scenarioで使用するOperator選択指紋をWorkspace共通計算へ一本化する実装候補である。しかし対象HEAD `beaefc8650114ee0d5e3f48d32dca3686921260a`の[専用CI](https://github.com/hat47x/tei-platform/actions/runs/43860418998)は失敗している。Job Logから確認できた停止点は`Verify relevant Go formatting and workspace identity`で、`gofmt -l`と`go vet`を連続実行する手順の**前段でexit 1**となっている。どのファイルの整形差かは、このログに出力されていない。Scenarioの実Call同値試験が失敗したと断定してはならないし、失敗したJobを合格としてマージしてもならない。
+[PR #5150](https://github.com/hat47x/tei-platform/pull/5150)は、ScenarioのOperator選択指紋をWorkspace共通計算へ一本化し、CLIとread-only Planの計算を揃える変更である。前のHEAD `beaefc8650114ee0d5e3f48d32dca3686921260a` では[専用CI](https://github.com/hat47x/tei-platform/actions/runs/43860418998)がGo整形検査の段階で停止し、目的のScenario試験へ到達しなかった。**整形検査の失敗を意味的な不一致と呼ばない**という判断は今も有効である。
 
-同HEADのSelf-build CIも対象Go testを実行する前の`gofmt -l`チェックで停止した。Repository Healthの失敗を含め、**試験未到達／整形による失格／意味的な不一致／別領域の既存失敗**をそれぞれ区別して記録する。修正後の新HEADでFocused Go試験、Scenario生成CLIとread-only Plan照合、現行mainとの差分を確認するまで#5150は統合しない。
+その後、PR #5150は修正HEAD `1b34eb1dae6dd2770b383b63d9f820ed8ba1557b` で**専用「Scenario Operator Selection Pin Qualification」CIが成功し、mainへマージされた**（merge commit `56cec6358810e84078cf82a7d4d7fd568b80529c`）。一方、同じHEADのRepository HealthとSelf-build CIは失敗しており、全体合格と主張しない。Operator実装選択Pinの共通化ができたことは、正式Plugin Lock・実Provider呼出し・Ownerの意味受理・A→B→Aの履歴失効を実証したことではない。
 
-一方、[PR #5151](https://github.com/hat47x/tei-platform/pull/5151)はmainで参照される設計文書の索引・Rule／外部Receiptの語彙に対するRepository Plan Checkの不足を修正した。新しい§36の受入票では、**当該HEADの実テスト結果**と、過去のmainで発生したPlan Check失敗とを混ぜない。文書編集だけで製品のRun・Provider・Stage2が成功したとは報告しない。
+[PR #5151](https://github.com/hat47x/tei-platform/pull/5151)は設計文書の索引やRule／外部Receiptの語彙に対するPlan Checkの不足を修正した。**対象HEADの各試験がどこまで走ったか**を、過去の赤や別Ownerの試験から独立して記録する。文書編集や専用CIの成功だけで、実Provider・Stage2を成功と報告しない。
 
 ### 36.4 最小の反例を、既存Ownerと製品経路へ渡す
 
@@ -1302,7 +1302,7 @@ Plugin Resolverの診断が列挙されることと、実装が現在利用可�
 | **LA-23：意味とTarget型のずれ** | `std.date`を`std.datetime`へ変更 | Reader後のValidatorが既存の型診断で拒否。日時の暗黙変換はしない（#5166） |
 | **LA-24：Catalog版の構文不正** | 版だけ不正なPlugin Entryにする | 現行Codeの観測と真因を別に報告し、非互換・不在と取り違えた修復を案内しない（#5160／#951） |
 | **LA-25：Catalog Entryの真の不在** | 正しい要求だけ残し、Entryを除く | 版不正と独立Expectedで区別。診断語彙の変更はOwnerの互換判断後（#951） |
-| **LA-26：Operator計算の二重実装** | CLIとread-only Plan側の選択順・実装だけを変える | 共通Workspace指紋に一致し、旧Plan／argvを拒否。#5150は整形CI解決後に採否（#1180/#2514） |
+| **LA-26：Operator計算の二重実装** | CLIとread-only Plan側の選択順・実装だけを変える | 共通Workspace指紋に一致し、旧Plan／argvを拒否。共通指紋計算はmain #5150、正式Provider選択と履歴失効は別受入（#1180/#2514） |
 | **LA-27：実現方式の無言Fallback** | G未対応だがPは対応するRuleを指定する | 明示された選択／許可を保ち、別方式の実Callを成功扱いしない（#4495／#1158） |
 | **LA-28：判断未確定の外部公開** | Pが部分取得で`undecided`になり、Consumer側だけ変更 | 未判定理由とSource／Audience資格を維持。HTTPの200や画面表示だけを業務成立にしない（#1158／#1824） |
 
