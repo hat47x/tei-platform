@@ -1,6 +1,7 @@
 package validation
 
 import (
+	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -107,6 +108,11 @@ func testMentionedStrings(t *testing.T, root string) map[string]bool {
 	mentioned := map[string]bool{}
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
+			// A path removed between enumeration and reading was never part of
+			// the set of tests this check inspects. Any other error is real.
+			if errors.Is(err, fs.ErrNotExist) {
+				return nil
+			}
 			return err
 		}
 		if entry.IsDir() {
@@ -121,6 +127,9 @@ func testMentionedStrings(t *testing.T, root string) map[string]bool {
 		}
 		source, readErr := os.ReadFile(path)
 		if readErr != nil {
+			if errors.Is(readErr, fs.ErrNotExist) {
+				return nil
+			}
 			return readErr
 		}
 		for _, match := range anyUppercaseLiteralPattern.FindAllStringSubmatch(string(source), -1) {
