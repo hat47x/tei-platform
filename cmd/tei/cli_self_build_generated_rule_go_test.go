@@ -270,7 +270,6 @@ func TestSelectedRuleGoThroughRealCLISelfBuild(t *testing.T) {
 		t.Fatalf("restored generated Go does not match the selected Rule: %v", err)
 	}
 
-
 	// The original Markdown is also a real member of the selected Go package.
 	// A prose-only edit *after* the BuildPlan was fixed must invalidate that
 	// attempt even though generated.go and the pure Rule decision are unchanged.

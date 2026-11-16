@@ -2865,3 +2865,108 @@ if rule.ID != core.CanonicalID(subject.ID) ||
 ### 位置付け
 
 **「ビルドできない」を「走る」に戻した回**である。テストの失敗ではなく**コンパイルの失敗**だったので、パッケージ内の全テストが沈黙していた。**型の不一致は1行だが、影響は「そのパッケージが存在しないのと同じ」**だった。
+
+## 84. 第83ラウンド（2026-11-16）: 未知の validation kind が有効値を挙げない
+
+目的文の「再びドッグフーディングに戻る」を実行した。**CLI のフィードバックだけで** semantic validation を設計した。生出力は[第83ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND83_VALIDATION_KIND_VOCABULARY_2026-11-16/README.md)にある。
+
+### 設計の経過（CLI のみ）
+
+| Attempt | 応答 | 学んだこと |
+| --- | --- | --- |
+| 1 | `expected attribute, relation, candidate-key, or functional-dependency` | validation は `data` の中ではない |
+| 2 | `unsupported semantic validation kind "frobnicate"` | トップレベル宣言。**しかし有効値を言わない** |
+| 3 | `invalid canonical id "probe.Thing.id"`（`[a-z][a-z0-9_]*` 付き） | 大文字が駄目 |
+| 4 | `SEMANTIC_VALIDATION_POSITIVE_REQUIRES_NUMERIC_ATTRIBUTE` | positive は数値属性を要する |
+| 5 | `ok` ＋ 読み返しで `kind: positive` | 完成 |
+
+**Attempt 2 が穴**である。`unsupported` だけでは**5つのうちどれが正しいか分からない**。
+
+### 修正
+
+1. `semantic.ValidationKinds` を足し、`Valid()` がそこを読む（`TypeKinds` と同じ形）。
+2. 診断が語彙を列挙する。
+
+```text
+unsupported semantic validation kind "frobnicate"; valid values are
+positive, relation-unique, operator, not-after, no-overlap
+```
+
+**単一の出所**にしたので、kind を足すときに更新する場所は1か所で済む。
+
+### 途中で4回、自分の仮定が外れた
+
+| 誤った仮定 | 実際 |
+| --- | --- |
+| `validation` は `data` の中 | **トップレベル宣言** |
+| パーサの入口は `ParseValidation` | **`ParseSemanticFile`** |
+| body は `operator`/`compared` を取る | **`attribute` と `relation` だけ** |
+| 全ての kind が同じ body で通る | `relation-unique` は **`relation` を要する** |
+
+**すべて推測で書いて落ちて、コードを読んで直した。**
+
+### 変異試験
+
+| # | 変えた箇所 | 結果 |
+| --- | --- | --- |
+| M1 | 有効値の列挙を削る（修正前の状態） | FAIL `the diagnostic does not name the accepted kinds` |
+| M2 | `ValidationKinds` から `not-after` を落とす | FAIL `"not-after" is declared but missing from ValidationKinds` |
+
+### 回帰確認で、自分の誤りを1つ訂正した
+
+`TestTEIValidationDeclarationSelfDescriptionIsOnlyData` が私のブランチで FAIL したので回帰を疑ったが、**単独では plain main・私のブランチの両方で PASS**。**私の `-run` 正規表現が2テストを同時に走らせたため**の見かけの失敗だった。計測し直して訂正した。`TestDiagnosticCodeCoverageOnlyImproves` は plain main でも FAIL（3回連続で確認）。
+
+### 位置付け
+
+**「CLI が語彙を教える」ようにした回**である。設計者は `frobnicate` と書いて `unsupported` と言われ、**5つの候補を推測するしかなかった**。今は候補が並ぶ。**同時に単一の出所を作った**ので、診断と `Valid()` が別々のリストを持って片方だけ更新される drift を M2 が捕まえる。
+
+## 85. 第84ラウンド（2026-11-17）: `.tei.md` の未選択が「何を選べばよいか」を言わない
+
+目的文の「再びドッグフーディングに戻る」を実行し、**`.tei.md`（Markdown 著面）**を CLI だけで設計した。生出力は[第84ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND84_MD_PARSER_GUIDANCE_2026-11-17/README.md)にある。
+
+### 設計の経過（CLI のみ）
+
+| Attempt | 応答 | 学んだこと |
+| --- | --- | --- |
+| 1 | `TEI_MD_PARSER_UNBOUND: ... no selected parser is available` | **何を選べばよいかを言わない** |
+| 2 | （`languages: tei.rule-authoring/v0` を追加すると前進） | 選択は manifest の `languages:` |
+| 3 | `TEI comment marks are not read by this language; only a ```tei fence ...` | HTML コメントではなくフェンス |
+| 4 | `"data" ... cannot be declared in a rule authoring source` | 選んだ言語が規則専用 |
+| 5 | `ok` | 規則を `.tei.md`、データを `.tei` に |
+
+**Attempt 1 が穴**である。選択肢は2つ（`tei.authoring/v1`・`tei.rule-authoring/v0`）あるのに、**診断はどちらも挙げない**。
+
+### 修正
+
+`admitTEIMarkdownSources` に「利用可能な実装」を渡し、診断が**選択済み**と**利用可能**を名指しするようにした。既存の `TEI_LANGUAGE_UNAVAILABLE` は既に `(available: %s)` を出しており、**その隣人に揃えた**。
+
+```text
+TEI_MD_PARSER_UNBOUND: ... Select one of tei.authoring/v1, tei.rule-authoring/v0
+by adding a 'languages:' entry to tei.workspace.yaml (for example "tei.authoring/v1")
+```
+
+### 併せて見つけた、より深刻な欠陥
+
+検証中に `internal/workspace` が**テストパッケージごとビルドできない**ことに気づいた。
+
+```text
+imports tei/internal/workspace from inspect.go: import cycle not allowed in test
+FAIL	tei/internal/workspace [setup failed]
+```
+
+`internal/workspace/source_read_repro_test.go` が `package workspace`（内部テスト）のまま `internal/operations` を import していた。**`operations` が `workspace` を import するので循環する。**
+
+**この1ファイルが101のテストファイルを全滅させていた。** しかも中身は `fmt.Printf` だけで**アサーションが無い**再現用メモだった。外部テストパッケージ（`workspace_test`）へ移して循環を解消し、**101ファイルが走るようになった**。
+
+**この欠陥は plain main にも存在**（`dcb076699` で確認）。
+
+### 変異試験
+
+| # | 変えた箇所 | 結果 |
+| --- | --- | --- |
+| M1 | 案内文を削る（修正前の状態） | FAIL `does not say how to select a language` ＋ 2言語とも `omits` |
+| M2 | テストを `package workspace` に戻す | `import cycle not allowed in test`（**循環が load-bearing である証明**） |
+
+### 位置付け
+
+**「選択肢があるのに、選び方を言わない」を直した回**である。同時に、**1つの雑なテストファイルが101のテストを沈黙させていた**ことを見つけた。どちらも「動いているように見えるが、実は何も検証していない」という同じ形をしている。

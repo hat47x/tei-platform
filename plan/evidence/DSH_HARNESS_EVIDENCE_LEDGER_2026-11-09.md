@@ -2,7 +2,7 @@
 
 - 対象Issue: [#2509](https://github.com/hat47x/tei-platform/issues/2509)（DSH外部Harness実証）、[#2515](https://github.com/hat47x/tei-platform/issues/2515)（実効隔離・全送出経路Conformance）。機密境界の正本は[TAI #232](https://github.com/hat47x/tai-pleroma/issues/232)、比較計画は[TAI #168](https://github.com/hat47x/tai-pleroma/issues/168)。
 - 状態: **既存の実行記録を並べた索引**。新しい実測は行っていない。個々の合否・Owner受理は各記録とIssueの担当。
-- この文書の役割: 60件の実行記録が**それぞれ何を確定させ、何を確定させていないか**を1枚で見えるようにし、同じ測り方の重複を避ける。記録本文の複製はせず、各記録へ参照で結ぶ。
+- この文書の役割: 62件の実行記録が**それぞれ何を確定させ、何を確定させていないか**を1枚で見えるようにし、同じ測り方の重複を避ける。記録本文の複製はせず、各記録へ参照で結ぶ。
 
 ## 1. なぜ台帳が要るか
 
@@ -52,6 +52,8 @@
 | [reconnect無効](./DSH_MCP_RECONNECT_DISABLED_2026-11-16/README.md) | 再試行の有無 | MCPサーバーを**起動時は落としておき実行中に起動**させ、`reconnect`だけを変えて2回測った。**`enabled: false`はサーバーが動いてもMCP要求0件・Toolは現れない**。**既定は同条件で4件（ハンドシェイク1回）届き6番目でToolが現れた**。差は**試行回数ではなく試行の有無** | `maxAttempts`超過後、再接続時の`headers`再送、起動後に落ちた場合、`stdio`の子Process |
 | [maxAttemptsの消化](./DSH_MCP_MAXATTEMPTS_2026-11-17/README.md) | 静かな打ち切り | **常に500を返すMCPエンドポイント**に`maxAttempts: 3`・`initialDelayMs 200`・`maxDelayMs 800`を設定すると、**試行は4回**（初回＋再試行3）で止まり、**設定は200→400→800msで実測は235→406→812ms**（おおむね倍々、上振れは35・6・12msと一律でない）。**Tool数は要求ごとに27→0**（MCP Toolは0）で、**警告も出ず終了コード0**。**設定の誤りは声を上げるが、予算切れは黙る** | 他の`maxAttempts`値、`maxDelayMs`の頭打ち、諦めた後の再試行、状態としての取得、再接続時の`headers`再送 |
 | [stdioの子Processの死](./DSH_MCP_STDIO_CHILD_DEATH_2026-11-17/README.md) | 経路ごとに違う失敗形 | `tools/list`直後に`exit 0`する子Processで、**Toolは一覧に残り****呼ぶと`Error: unknown tool`（`UNKNOWN_TOOL`）**になる。**httpの`fetch failed`とは別**。**落ちた子は自動で起動し直され**（起動4・終了2）、同じ設定なら同じところで落ちる。**`rc.3`ではstdioでも`server/discover`が送られた**（`rc.1`の先行記録は送らないと記録） | `tools/call`途中の死、非0終了、再起動の上限、`env`/`cwd`明示、実MCPサーバー |
+| [stdioの`env`](./DSH_MCP_STDIO_ENV_2026-11-17/README.md) | 加算ではなく上書き | 同じstdioサーバーを**4通り**で起動し子Process自身の環境を記録。**`env`なし49個 → 2つ指定で51個**（**追加2・削除0**）で**マージ**。**継承値を上書きでき**、**空文字にもできる**が、**キーは残るので削除はできない**。**`DEEPSEEK_API_KEY`はAとBの子の変数一覧に無い**（親には設定あり。CとDは未記録） | キー名の大文字小文字、広い変数掃引、`cwd`併用、実MCPサーバー |
+| [stdioの呼び出し中の死](./DSH_MCP_STDIO_MIDCALL_2026-11-17/README.md) | 失敗形は経路と時機で変わる | `tools/call`を受けた直後に`exit(2)`する子では、呼び出しが**`Error: MCP connection closed`**で失敗する。実行は`exit 0`・Toolは次の要求で戻る。**3種類に分かれる**（stdio呼ぶ前`unknown tool`／呼び出し中`MCP connection closed`／http `fetch failed`） | 部分的応答後の死、ハング、`toolCallTimeoutMs`超過、非stdioの呼び出し中、再起動の上限 |
 | [H2/H3の比較試験](./DSH_H2_H3_COMPARISON_2026-11-11/README.md) | 比較適格 | 4 Session（H2 2本・H3 2本）を同一の固定TEI実行物・Workspace・Task・Tool Profileで走らせた。**全4 Sessionが`completed`・exit 0・stderr空・Tool call/result全件paired**。SK-02 Checkerの判定は**`ineligible`**（Workspace引数のリテラルがSession間で不一致・許可群外のTool呼出し・**Network egressは未捕獲**）。H3のSkill受信は2 Sessionでbyte一致。**独立Expected採点では4回答とも実質正答**だが、**CheckerがineligibleのためSkillの因果効果は主張しない** | egressの実捕獲、別identityでの隔離、11-07のmanifest digest方法、Provider請求額 |
 | [MCPの障害分離](./DSH_MCP_FAILURE_ISOLATION_2026-11-10/README.md) | 部分障害 | 元気なサーバー1つと閉じたポートを指すサーバー1つを同時に挿すと、**`failOnStartupError`がfalseでもtrueでもHarnessは起動して完了**し（exit 0）、**モデルが見たのは元気な側のToolだけ**（28個・`mcp__serverok__header_echo`）、**落ちた側への要求は0件**。trueでは**stderrに`1 entry did not activate`と当該エントリのエラー**が出るが実行は続く。**「有効化されたエントリ」は終了コードでは分からない** | `reconnect`、起動後の切断、全サーバー障害、既定値、警告がJSONイベントにも出るか |
 | [落ちていたサーバーの復帰](./DSH_MCP_LATE_START_2026-11-10/README.md) | 状態の非持続 | MCPサーバーを止めたままTurn 1を実行し、起動してから同じSessionでTurn 2を実行すると、**Turn 1はTool 27個でMCP Toolなし**、**Turn 2は28個で`mcp__latemock__header_echo`あり**（ハンドシェイク2回分=8件を受信）。**「1回繋がらなかった」は状態として残らず、次の起動で普通に繋がる**。よって**前回の観測を今回の構成の根拠にできない** | 1プロセス内での再接続、起動後の切断、`failOnStartupError: true`との組み合わせ |
@@ -96,7 +98,7 @@
 - **4.1MBを超える引数**と**MCPサーバー側の受信上限**、**`maxInstructionBytes`との関係**。大きさは[MCPの引数の大きさ](./DSH_MCP_ARG_SIZE_2026-11-10/README.md)で1MB、[MCPの引数4.1MB](./DSH_MCP_ARG_SIZE_4M_2026-11-10/README.md)で4.1MBまで切り詰めなしを確認したが、上限の有無は未確認。引数の内容は[MCPの引数の内容](./DSH_MCP_SECRET_SHAPE_2026-11-10/README.md)で**検査されない**ことを確認済み。
 - **`maxAttempts`を超えて諦めた後**の挙動、**時間をおいた再試行**。落ちたサーバーが次回起動で繋がることは[落ちていたサーバーの復帰](./DSH_MCP_LATE_START_2026-11-10/README.md)、同じ実行内で復帰することは[実行中の再接続](./DSH_MCP_MIDRUN_RECONNECT_2026-11-10/README.md)、一覧が縮まず呼ぶと`fetch failed`になることは[サーバーを落とした場合](./DSH_MCP_KILL_MIDRUN_2026-11-10/README.md)・[落ちた後に呼んだ場合](./DSH_MCP_CALL_AFTER_KILL_2026-11-10/README.md)で確認済み。
 - **再接続時の`headers`再送**と**`reconnect: { enabled: false }`**。`headers`が毎回・信頼確立前にも送られることは[MCPの`headers`](./DSH_MCP_HEADERS_2026-11-10/README.md)で確認済み。
-- **stdioの子Processが落ちた場合**のエラー形（[MCPのstdio経路](./DSH_MCP_STDIO_2026-11-10/README.md)は接続と環境の継承のみ確認）。
+- **stdioの子Processが落ちた場合**のうち、**落下の時機が違う場合**（**呼ぶ前**は[stdioの子Processの死](./DSH_MCP_STDIO_CHILD_DEATH_2026-11-17/README.md)で`unknown tool`、**呼び出し中**は[stdioの呼び出し中の死](./DSH_MCP_STDIO_MIDCALL_2026-11-17/README.md)で`MCP connection closed`まで確認済み）。**残るのは、部分的に応答してから落ちる場合・ハング・`toolCallTimeoutMs`の超過・非stdioの呼び出し中**。
 
 ### 4.2 確認済みへ移したもの
 

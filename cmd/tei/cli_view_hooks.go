@@ -62,6 +62,20 @@ func runDeclaredHooksWithRule(ctx context.Context, world ir.World, applicationID
 	return runDeclaredHooksHalf(ctx, world, applicationID, patternID, inputs, rule, hook.ReferenceReach{}, hookHalfAll)
 }
 
+// runDeclaredHooksWithRows is runDeclaredHooks with the row set a row-scoped hook
+// is applied to, and with the rule that decides each row.
+//
+// The reference command path (view -command -execute) has no data source: it
+// carries command inputs, not a page, so it supplies no row set and a row-scoped
+// hook is skipped there with a reason. This entry exists so a caller that does
+// hold the rows — a host reading a browse result, or a test pinning the wiring —
+// can hand them over instead of the phase being skipped for want of rows no
+// caller could produce. Nothing here invents a row: an empty row set stays empty
+// and the phase stays skipped.
+func runDeclaredHooksWithRows(ctx context.Context, world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string, rows []map[core.CanonicalID]string, rule hook.Implementation) (*cliHookReport, error) {
+	return runDeclaredHooksHalfWithRows(ctx, world, applicationID, patternID, inputs, rows, rule, hook.ReferenceReach{}, hookHalfAll)
+}
+
 // hookHalf selects which side of the change a hook run covers.
 //
 // A run that applies its change cannot consult every phase in one pass: the
@@ -83,7 +97,19 @@ const (
 // runDeclaredHooksHalf consults one half of the declared phases, with the reach
 // the caller says applies.
 func runDeclaredHooksHalf(ctx context.Context, world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string, rule hook.Implementation, reach hook.Reach, half hookHalf) (*cliHookReport, error) {
-	runner := hook.Runner{World: world, Implementation: rule}
+	return runDeclaredHooksHalfWithRows(ctx, world, applicationID, patternID, inputs, nil, rule, reach, half)
+}
+
+// runDeclaredHooksHalfWithRows is runDeclaredHooksHalf with the row set a
+// row-scoped hook is applied to.
+//
+// The row set goes to hook.Runner.Rows, which is the field the runner reads to
+// decide whether a scope row declaration can be applied. An empty row set is
+// "the caller has none", not "the hook passed": the phase is reported as skipped
+// with a reason, so a row-scoped hook is never run once for the record as if the
+// scope did not matter.
+func runDeclaredHooksHalfWithRows(ctx context.Context, world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string, rows []map[core.CanonicalID]string, rule hook.Implementation, reach hook.Reach, half hookHalf) (*cliHookReport, error) {
+	runner := hook.Runner{World: world, Implementation: rule, Rows: rows}
 	// A hook that declares `uses` promises a call. Give the runner the boundary
 	// that can keep it: the Command invoker, with the pattern resolution
 	// CommandPatternFor performs. The capability's inputs are the hook's own

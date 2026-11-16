@@ -12,19 +12,23 @@ type ValidationReport struct {
 	OK               bool   `json:"ok"`
 	// OK only concerns the existing structural Diagnostic error count.
 	// It cannot be read as approval of contradictory or incomplete CRUD.
-	OKScope                string              `json:"okScope"`
-	CRUDConflictStatus     string              `json:"crudConflictStatus"`
-	ErrorCount             int                 `json:"errorCount"`
-	WarningCount           int                 `json:"warningCount"`
-	InfoCount              int                 `json:"infoCount"`
-	Diagnostics            []Diagnostic        `json:"diagnostics"`
-	UnusedData             []string            `json:"unusedData"`
-	UnreferencedFunctions  []string            `json:"unreferencedFunctions"`
-	MissingBusinessMapping []string            `json:"missingBusinessMapping"`
-	ContradictoryCRUDs     []CRUDDefinition    `json:"contradictoryCrudDefinitions,omitempty"`
-	UnknownDependencies    [][2]string         `json:"unknownDependencies,omitempty"`
-	SameNameConflicts      map[string][]string `json:"sameNameConflicts,omitempty"`
-	AuthorityLimits        []string            `json:"authorityLimits,omitempty"`
+	OKScope                string           `json:"okScope"`
+	CRUDConflictStatus     string           `json:"crudConflictStatus"`
+	ErrorCount             int              `json:"errorCount"`
+	WarningCount           int              `json:"warningCount"`
+	InfoCount              int              `json:"infoCount"`
+	Diagnostics            []Diagnostic     `json:"diagnostics"`
+	UnusedData             []string         `json:"unusedData"`
+	UnreferencedFunctions  []string         `json:"unreferencedFunctions"`
+	MissingBusinessMapping []string         `json:"missingBusinessMapping"`
+	ContradictoryCRUDs     []CRUDDefinition `json:"contradictoryCrudDefinitions,omitempty"`
+	// OpposingCRUDPairs lists Function/Data pairs where declared CRUD and
+	// Function.Operations disagree. It is reported separately so a Consumer
+	// never has to pick a winning side.
+	OpposingCRUDPairs   [][2]string         `json:"opposingCrudPairs,omitempty"`
+	UnknownDependencies [][2]string         `json:"unknownDependencies,omitempty"`
+	SameNameConflicts   map[string][]string `json:"sameNameConflicts,omitempty"`
+	AuthorityLimits     []string            `json:"authorityLimits,omitempty"`
 }
 
 // ValidateModel builds a full validation report.
@@ -53,8 +57,9 @@ func ValidateModel(model ThreeElementModel) ValidationReport {
 	report.UnreferencedFunctions = model.UnreferencedFunctions()
 	report.MissingBusinessMapping = model.MissingBusinessFunctionMapping()
 	report.ContradictoryCRUDs = model.ContradictoryCRUDs()
+	report.OpposingCRUDPairs = model.OpposingCRUDPairs()
 	report.CRUDConflictStatus = "no-conflicts-detected"
-	if len(report.ContradictoryCRUDs) > 0 {
+	if len(report.ContradictoryCRUDs) > 0 || len(report.OpposingCRUDPairs) > 0 {
 		// A conflict requires separate review; it is not automatically a
 		// structural hard error or permission to use a last-writer projection.
 		report.CRUDConflictStatus = "conflicts-require-review"

@@ -1,4 +1,4 @@
-﻿# X-TEA知見の移行計画（2026-11）
+# X-TEA知見の移行計画（2026-11）
 
 - 状態: **計画案（未採用）**。作業の順序、成果物、受入、停止条件を整理します。Issueの作業条件や設計判断の採用を、この文書だけで決めません。
 - 日付: 2026-11-01
@@ -399,7 +399,7 @@ WP10 統合と引継ぎ
 | 規則Pluginの発見・束縛・版の契約 | 未決（対象版では境界と差込み口を確認） | 付録C.5、`internal/hook`、[対象版の記録](../evidence/XTEA_LOWCODE_RULE_PLUGIN_CONTRACT_2026-11.md) |
 | `after-*`へ到達するStudio配線 | 実装（参照UIから任意指定、実画面操作は未確認） | 付録C.5、`internal/studiohost`・`internal/hook`、[UI配線の記録](../evidence/XTEA_LOWCODE_HOOK_AFTER_CHANGE_STUDIO_UI_2026-11.md) |
 | 実行時の値変換 | 不要と確認 | 付録C.5、`internal/validation`、[確認記録](../evidence/XTEA_LOWCODE_VALUE_CONVERSION_2026-11.md)（受理条件が同一の下位原始型を要求するため、変換を要する組は通らない） |
-| 行単位のフックの実行（`RunRows`・`applyReachableRows`） | 実装（参照） | 付録C.5、`internal/hook`（二つの行経路が併存し`uses`の扱いが違う。`Runner.Rows`を設定するホストは未実装）、[確認記録](../evidence/XTEA_LOWCODE_HOOK_ROW_REACHABILITY_2026-11.md) |
+| 行単位のフックの実行（`RunRows`・`applyReachableRows`） | 実装（参照） | 付録C.5、`internal/hook`（二つの行経路が併存し`uses`の扱いが違う。行集合を渡す入口はCLIの`runDeclaredHooksWithRows`とStudioの`runHooksWithRows`にあり、供給元のデータ源は未実装）、[確認記録](../evidence/XTEA_LOWCODE_HOOK_ROW_REACHABILITY_2026-11.md) |
 | フックの位相の重複宣言の拒否 | 実装 | 付録C.5、`internal/validation` |
 | フックの位相順序と途中停止の記録（`RunSequence`） | 実装（参照） | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_PHASE_SEQUENCE_2026-11.md) |
 | フックの宣言した読み取りだけの授受（`ReadsFor`） | 実装 | 付録C.5、`internal/hook`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_DECLARED_READS_2026-11.md) |

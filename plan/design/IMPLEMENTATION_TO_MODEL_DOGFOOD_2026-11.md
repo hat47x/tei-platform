@@ -552,3 +552,21 @@ DPC-09の着手点として、`internal/operations/inspect_markdown_data_rule_de
 | Provider二入口（後続） | 同じFunction／Query選択、実Read対象・Value State・Scope／Snapshot・Consumer受領 | 記録例やテストSourceから実Readを推定しない |
 
 新しいInspector APIや第二Evidence Storeを作る前に、既存の選択済みSubjectとSource位置の投影が不足する箇所を具体的な独立Expectedで示す。正式R2-P、通常CLI実Provider、Windows Stage1→Stage2は独立P0であり、今回の文書追補により完了状態は変わらない。
+
+### 17.9 選択した意味と、実SQLの取得範囲を同じ検収へ結ぶ（2026-11-17）
+
+[標準フロー設計§12.11〜12.13](SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)と[DB適合計画§7](DATA_PROVIDER_CROSS_DB_CONFORMANCE_2026-11.md)に接続する。前段のDPC-14では、`TransferRequest`の項目定義表・Ruleとテスト用`StatefulSource`のRead ID・判断理由を一Loadで照合した（main #5179）。その次の段階は、**実SQLから得たデータの取得範囲を、選択済みの意味・Queryとともに検収すること**である。
+
+mainの`internal/driver/validationread/sqlite_path_test.go`は実SQLiteのSQL Executor→Contract Query結果→列Mapping→状態付きReader→Ruleという狭い実行経路を持つ。しかし、その試験ではRelationの全件性を呼出し側が申告しており、`LIMIT 2`を`complete`と誤申告すると誤った「一意」が成立し得る。ここが次の実装で閉じるべき一辺になる。
+
+| 検証対象 | 使う既存の実装・試験 | 未成立の資格 |
+| --- | --- | --- |
+| 定義とRule | #5179の選択済みMarkdown Data／Rule、Source Index、`Decide` | 実SQL Readerの入力が同一Meaningであること |
+| 実SQLの値と状態 | #5149のSQLite Executor→`FromHeaderDetail`、列Mapping、NULL／not-fetched | Queryの正式Pattern・環境選択、現在Scope |
+| Relationの完全性 | 既存`members_first_page`の2/4行・`partial`、および誤`complete`の反例 | Callerによる完全性申告の根拠 |
+| 表示・Plugin | #5156のWhole／Field純粋投影、#5212のSource位置Presenter、審査中#5214の状態損失負例 | 出力形状からの公開Grant、実Open、欠損状態の復元 |
+| 実Consumer | #2586／#4496の通常CLI実Providerと独立受領 | 同じAttemptでの取得→判断→消費 |
+
+次はDPC-16の**呼出し側の完全性資格**を最小のコード差分とし、既存テストの誤`complete`ケースが「Ruleへ渡せば成立する」だけで終わらないようにする。ただし、Reader自身へ推測による`complete`自動判定を持たせない。Query／Contextの実際の選択・呼出し記録を照合し、証拠不足なら保留する。X-TEA由来の条件付き必須Rule（審査中#5187）や期間Ruleの一般化は、現行のRule種別と実現方式の能力範囲を確認して別段階で扱う。
+
+**現在の受入上限**：#5179／#5149／#5156／#5212は各自の限定範囲でmainへ統合されている。一方で、SQL行の全件性を自動証明する製品経路、実Providerを通常CLIと独立Consumerで同一Attemptに束縛するR3、正式BuilderのR2-P、実Windows Stage2の完成は未認定である。

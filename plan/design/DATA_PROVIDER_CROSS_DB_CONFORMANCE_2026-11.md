@@ -57,3 +57,21 @@ Go単一バイナリを標準とし、必要なProviderを静的組込み優先�
 この文書の統合は**設計の採用候補を記録すること**であり、機能完成を意味しない。PRの変更範囲・競合・レビュー・CIを確認して合流する。実装Issueでは、同一AttemptのSource→選択Provider→実Call→Rowset→Context→Consumer、またはIntent→Grant→Effect→Receipt→独立Readを検証し、未観測の辺をPASSとしない。
 
 新規Provider実接続、二DB同一Function、SQL 2way同値、NoSQL更新、DDL Apply、Studio実機E2E、業務Owner意味受理は**NOT RUN**。次の実装差分はD0の製品実Readを最優先とする。
+
+## 7. SQL Readerの取得範囲は、呼出し側の宣言と実際の閉包を分けて扱う（2026-11-17）
+
+main統合済み#5149の`internal/driver/validationread`は、SQLのContract Query結果を型付きDataの項目へ写し、NULLと未取得を区別してRuleへ渡す。SQLiteの実DB試験はSQL Executor、列Mapping、状態付きReader、Rule判断まで到達するが、Pattern／Environmentの正式選択と通常製品Caller、PostgreSQLでの同じRule実現は未検収である。
+
+特に、`FromHeaderDetail`へ渡す`CoverageComplete`は**行が返ったというだけで正しいことにはならない**。既存のSQLite試験には、`LIMIT 2`を`complete`と誤申告すると、本来保留すべき座席番号の一意性が成立すると判断される反例がある。この境界をDPC-16として標準フロー設計§12.11〜12.13に引き渡す。
+
+### 7.1 完全性を認めるのに必要な証拠
+
+最初は一般化したQuery Solverを作らず、一つのHeader・一つのRelation・一つのContract Queryを固定する。Query実行が返した行、使用したSQL Source／Mapping、対象RelationとScope、Pagination／`LIMIT`／Filter、Snapshot・取得時点を照合する。**全件取得の証拠がない場合、件数が少なくても、同じ値が並んでいても、`complete`と認定しない。**
+
+Consumerに渡す受理票では、`requested`（要求範囲）、`observed`（取得した行と列）、`claimed`（呼出し側の完全性申告）、`qualified`（出典から確認できた範囲）を概念上の欄として分ける。これは新しい製品データ型の採用ではなく、既存のQuery・Function Data Context・Source／Evidenceの照合用表示である。ページ終端の条件が不明なら`qualified=unknown`のまま、Ruleの判断自体は`undecided`になり得る。
+
+### 7.2 実装・テストの引渡し
+
+最初の負例は、既存`members_first_page`（4行中2行）と`seatUnique`を使用し、`partial`なら判定保留、Callerが`complete`を偽装した場合は**Caller側の検証で資格なし**とする。次に同じSQL実行の狭い列選択で`not-fetched`、SQL`NULL`で`null`、REAL→Decimalで精度不適合を照合する。Ruleに与える入力と、Ruleによる判断の正しさを混同しない。
+
+実行順は、①既存SQLite一因子負例の独立Expected整理、②製品CallerのQuery／Contextから完全性の根拠を検査、③PostgreSQLの同一Functionと通常CLI Consumer受領、④必要に応じたDocument／Key／Graph Providerへ拡張、とする。新しいDB型や全Queryの静的完全性解析をD0の先行要件にしない。対応できないQueryは、完了と見なす代わりに**証拠不足を明示**する。
