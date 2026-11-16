@@ -472,20 +472,20 @@ StudioのプロジェクトExplorerで一つの`*.tei.md`を開いたとき、So
 
 | 境界 | 現行mainの証拠 | まだ必要な証拠 |
 | --- | --- | --- |
-| Markdown Sourceから型付きRule | #5179／#5181が同じLoadでData・Rule・Source位置、値の状態や記録例を検査。#5205は未選択の\`*.tei.md\`で言語選択を案内する | SQL実行に使ったContract／Mappingを**このSource版**へ束縛し、同名の別対象やReader版違いを拒否 |
-| Query結果から状態付きRule | \ `internal/driver/validationread/sqlite_path_test.go\`がSQLite実Query→Column Mapping→\`FromHeaderDetail\`→\`Decide\`の局所経路を確認 | 正式Query Resolver／Binding／Environment、実Provider、現在Grantと実呼出しの連鎖 |
-| Relationの取得完全性 | ページを\`CoveragePartial\`と申告すると、未読行のある一意性は未決定。既読重複は不成立を維持する | 呼出し側の\`CoverageComplete\`申告が対象の全行を読んだと正当化できるかを、QueryとScope／Snapshotで**別に証明** |
+| Markdown Sourceから型付きRule | #5179／#5181が同じLoadでData・Rule・Source位置、値の状態や記録例を検査。#5205は未選択の`*.tei.md`で言語選択を案内する | SQL実行に使ったContract／Mappingを**このSource版**へ束縛し、同名の別対象やReader版違いを拒否 |
+| Query結果から状態付きRule | `internal/driver/validationread/sqlite_path_test.go`がSQLite実Query→Column Mapping→`FromHeaderDetail`→`Decide`の局所経路を確認 | 正式Query Resolver／Binding／Environment、実Provider、現在Grantと実呼出しの連鎖 |
+| Relationの取得完全性 | ページを`CoveragePartial`と申告すると、未読行のある一意性は未決定。既読重複は不成立を維持する | 呼出し側の`CoverageComplete`申告が対象の全行を読んだと正当化できるかを、QueryとScope／Snapshotで**別に証明** |
 | 組織C1の実DB Read | #5155／#5165は同一型付きQueryと実PostgreSQL取得の限定PASS。#5184は同一のMembership投影でもPersonの人数が異なり得る二候補世界を実PGの反例に加えた | 未取得Person関係・必要Cohort・Relationの多重性、RuleとConsumerへの実連結 |
 | 実現方式・実Consumer | #5166は暦日RuleのP評価とG未対応を同じSourceで区別。#5188はCLI実ProcessとStudio HostのInspectを比較 | 実Readした値が選択されたRule／Providerを通り、独立Consumerに受領された同一Attempt。Inspectの一致は業務Ruleの実呼出しではない |
 
-SQLiteの既存試験では、ページを**誤って\`CoverageComplete\`と申告すると**、未読行があっても一意性を成立と返せてしまうことまで示している。これはReaderが返却行だけから全件性を検証できないという設計上の限界である。新しい\`complete\`の既定値を置かず、呼出し側の根拠が未確定なら未証明に留める。
+SQLiteの既存試験では、ページを**誤って`CoverageComplete`と申告すると**、未読行があっても一意性を成立と返せてしまうことまで示している。これはReaderが返却行だけから全件性を検証できないという設計上の限界である。新しい`complete`の既定値を置かず、呼出し側の根拠が未確定なら未証明に留める。
 
 ### 16.2 最初に追加する一因子の対照
 
-1. **同じQueryと実行結果で、Coverageの申告だけ変更**：既読重複があるRuleは不成立を維持し、重複がないRuleは必要集合の裏付けがない限り成立としない。既存局所試験の再実装ではなく、正式Binding側が\`complete\`を主張してよいかを検査する。
+1. **同じQueryと実行結果で、Coverageの申告だけ変更**：既読重複があるRuleは不成立を維持し、重複がないRuleは必要集合の裏付けがない限り成立としない。既存局所試験の再実装ではなく、正式Binding側が`complete`を主張してよいかを検査する。
 2. **同じ値・行数で、Bindingの対象Relationだけ変更**：結果一致で意味ID／Query ID／Read Scopeの不一致を通さない。Personの人数が観測されたMembership行から推定できない#5184の反例を参考に、要求した集合の観測可能性を確かめる。
 3. **同じ意味IDで、Source Revisionまたは選択言語を変更**：実Readの資格を再確認し、旧Source Indexや古いPlanを流用しない。CLIの前提指紋を横断する[#5198](https://github.com/hat47x/tei-platform/pull/5198)は現時点で未マージのため、現行製品が全入口で同じ拒否を実装済みとは扱わない。
 
-**優先**：Query／Scope／Coverageを同じAttemptで検査できる局所Consumerを既存#2586／#4495へ渡す。入力不足は明示的に\`not-proven\`とし、生成Gを選べないRuleを黙ってPへFallbackさせない。前処理のSource確認から実Consumerの受領まで、既存#1180／#2514のIndependent Expectedを使い、新たなRunnerやStoreは作らない。非Plugin Windows Studio Stage1→Stage2の優先P0は維持する。
+**優先**：Query／Scope／Coverageを同じAttemptで検査できる局所Consumerを既存#2586／#4495へ渡す。入力不足は明示的に`not-proven`とし、生成Gを選べないRuleを黙ってPへFallbackさせない。前処理のSource確認から実Consumerの受領まで、既存#1180／#2514のIndependent Expectedを使い、新たなRunnerやStoreは作らない。非Plugin Windows Studio Stage1→Stage2の優先P0は維持する。
 
 本節は現行Goコードと既存試験の到達点を計画へ反映したもので、新たなGo／実PostgreSQL／Windows試験の実行やOwner意味受理を伴わない。
