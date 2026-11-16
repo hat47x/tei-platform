@@ -46,6 +46,8 @@ func RuleValidationKind(predicate RulePredicate) (semantic.ValidationKind, bool)
 		return semantic.ValidationNotAfter, true
 	case RulePredicateNotOverlapping:
 		return semantic.ValidationNoOverlap, true
+	case RulePredicateRequiredIf:
+		return semantic.ValidationRequiredIf, true
 	default:
 		return "", false
 	}
@@ -145,6 +147,27 @@ func ruleToValidation(rule RuleAuthoring) (semantic.Validation, *RuleConversionI
 		}
 		validation.Compared = compared
 		validation.IfPresent = rule.IfPresent
+	} else if kind == semantic.ValidationRequiredIf {
+		if rule.Compared == nil {
+			return semantic.Validation{}, &RuleConversionIssue{
+				RuleID: rule.ID, Span: rule.PredicateSpan,
+				Msg: "required-if requires the attribute whose value makes the subject required; none was authored",
+			}
+		}
+		// `if present` describes the second date of not-after. A rule about
+		// presence has no such clause, so writing one is a conversion issue
+		// rather than a silently ignored word.
+		if rule.IfPresent {
+			return semantic.Validation{}, &RuleConversionIssue{
+				RuleID: rule.ID, Span: rule.PredicateSpan,
+				Msg: "required-if accepts no \"if present\"; the rule already speaks only about records whose named attribute has a value",
+			}
+		}
+		compared, issue := ruleCanonicalReference(rule, *rule.Compared, "attribute whose value makes the subject required")
+		if issue != nil {
+			return semantic.Validation{}, issue
+		}
+		validation.Compared = compared
 	} else if rule.Compared != nil || rule.IfPresent {
 		return semantic.Validation{}, &RuleConversionIssue{
 			RuleID: rule.ID, Span: rule.PredicateSpan,

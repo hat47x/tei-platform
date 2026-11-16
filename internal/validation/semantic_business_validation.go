@@ -242,11 +242,20 @@ func validateSemanticBusinessValidations(w ir.World) []Diagnostic {
 					rule.ID,
 				))
 			}
-			if rule.Kind != semantic.ValidationNotAfter && rule.Kind != semantic.ValidationNoOverlap && (rule.Compared != "" || rule.IfPresent) {
+			if rule.Kind != semantic.ValidationNotAfter && rule.Kind != semantic.ValidationNoOverlap && rule.Kind != semantic.ValidationRequiredIf && rule.Compared != "" {
 				out = append(out, errFor(
 					ruleSubject,
 					"SEMANTIC_VALIDATION_COMPARED_ATTRIBUTE_NOT_ALLOWED",
 					"%s semantic validation %s does not compare its attribute with another one",
+					rule.Kind,
+					rule.ID,
+				))
+			}
+			if rule.Kind != semantic.ValidationNotAfter && rule.IfPresent {
+				out = append(out, errFor(
+					ruleSubject,
+					"SEMANTIC_VALIDATION_COMPARED_ATTRIBUTE_NOT_ALLOWED",
+					"%s semantic validation %s does not accept ifPresent",
 					rule.Kind,
 					rule.ID,
 				))
@@ -486,6 +495,56 @@ func validateSemanticBusinessValidations(w ir.World) []Diagnostic {
 						relation.Target,
 					))
 				}
+
+			case semantic.ValidationRequiredIf:
+				if rule.Relation != "" {
+					out = append(out, errFor(ruleSubject, "SEMANTIC_VALIDATION_RELATION_NOT_ALLOWED", "required-if semantic validation %s does not accept a relation", rule.ID))
+				}
+				if rule.Compared == "" {
+					out = append(out, errFor(ruleSubject, "SEMANTIC_VALIDATION_COMPARED_ATTRIBUTE_REQUIRED", "required-if semantic validation %s requires an attribute whose value makes %s required", rule.ID, rule.Attribute))
+					continue
+				}
+				if _, triggerExists := attributes[rule.Compared]; !triggerExists {
+					out = append(out, errFor(
+						ruleSubject,
+						"UNKNOWN_SEMANTIC_VALIDATION_COMPARED_ATTRIBUTE",
+						"semantic validation %s makes %s required when unknown semantic attribute %s has a value",
+						rule.ID,
+						rule.Attribute,
+						rule.Compared,
+					))
+					continue
+				}
+				if !attributeExists {
+					continue
+				}
+				if rule.Compared == rule.Attribute {
+					// "A is required when A has a value" is always satisfied and
+					// says nothing; writing it hides that the author meant
+					// another attribute.
+					out = append(out, errFor(
+						ruleSubject,
+						"SEMANTIC_VALIDATION_REQUIRED_IF_SAME_ATTRIBUTE",
+						"required-if semantic validation %s makes attribute %s required when it has a value",
+						rule.ID,
+						rule.Attribute,
+					))
+					continue
+				}
+				if attributeOwners[rule.Attribute] != attributeOwners[rule.Compared] {
+					out = append(out, errFor(
+						ruleSubject,
+						"SEMANTIC_VALIDATION_REQUIRED_IF_REQUIRES_SAME_DATA",
+						"required-if semantic validation %s makes %s required by %s, which belongs to another data",
+						rule.ID,
+						rule.Attribute,
+						rule.Compared,
+					))
+				}
+				// A rule about presence reads only whether a value is there,
+				// so any attribute type is expressible. That is why no type
+				// check exists here: refusing a type would state a constraint
+				// the rule does not have.
 			}
 		}
 	}
