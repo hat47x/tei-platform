@@ -54,7 +54,11 @@ type selfBuildEntryEvidence struct {
 	ClaimMatched   bool             `json:"invokerClaimMatched"`
 	L3Claimed      bool             `json:"l3Claimed"`
 	FailureCause   string           `json:"failureCause,omitempty"`
-	Boundary       string           `json:"claimBoundary"`
+	// ChildBuildError is the reason the child itself gave for not building. A
+	// child may exit 0 and still report that it built nothing; without this the
+	// only thing the entry could say was that the artifact was missing.
+	ChildBuildError string `json:"childBuildError,omitempty"`
+	Boundary        string `json:"claimBoundary"`
 	// Selected pin is specified before execution, not inferred from output.
 	SelectedChildDigest string `json:"selectedChildDigest,omitempty"`
 	ChildPinChecked     bool   `json:"childPinChecked"`
@@ -336,12 +340,24 @@ func driveSelfBuildIn(childPath string, childArgs []string, artifactPath, claime
 		BuildArtifactLock *childSelfLock `json:"buildArtifactLock"`
 		// The toolchain the builder ran, when it is a Go builder that reports one.
 		Toolchain *selfBuildChildToolchain `json:"toolchain"`
+		// A child that reports its own outcome says so here. Both are optional.
+		BuildSucceeded *bool  `json:"buildSucceeded"`
+		BuildError     string `json:"buildError"`
 	}
 	if err := json.Unmarshal([]byte(stdout), &child); err != nil {
 		appendSelfBuildFailure(&evidence, "child output is not one JSON object: "+err.Error())
 		return evidence, nil
 	}
 	evidence.ChildSchema = child.SchemaVersion
+	if child.BuildError != "" || (child.BuildSucceeded != nil && !*child.BuildSucceeded) {
+		evidence.ChildBuildError = child.BuildError
+		if evidence.ChildBuildError == "" {
+			evidence.ChildBuildError = "the child reported buildSucceeded=false without a reason"
+		}
+		// Stated first: everything recorded after this (a missing artifact, a
+		// failed second build) is a consequence of it.
+		appendSelfBuildFailure(&evidence, "the child reported that it did not build: "+evidence.ChildBuildError)
+	}
 	evidence.ChildArtifact = child.ArtifactDigest
 	evidence.ChildIntentBytesDigest = child.IntentBytesDigest
 	evidence.ChildIntentFingerprint = child.IntentFingerprint
