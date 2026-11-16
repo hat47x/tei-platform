@@ -1,0 +1,14 @@
+The query declares:
+
+  query order_entry.recent_orders {
+      input from std.datetime
+
+internal/driver/query_execution.go accepts only time.Time for std.datetime.
+
+  TestRealDriver... / TestScopedProvider...   passed the string
+      "fixture-query-parameter"              -> type rejected
+  TestScopedDriverRejects...                  passed nil
+                                             -> required input missing
+
+The Top-limit test could never reach its assertion: the input check failed first,
+so "Provider exceeded Top" was never actually exercised.
