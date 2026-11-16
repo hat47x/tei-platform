@@ -531,3 +531,4 @@
 - [rea-intakeの候補生成を戻した](TEI_DOGFOODING_ROUND88_REA_CANDIDATES_RESTORED_2026-11-17/README.md)（#5248の案Aを採択し、固定3件のplaceholderをDecodeAttemptEvidence+GenerateCandidatesに戻した。CLI自身のfixtureでcross-reference:1 data-element:2、実原本で14候補を実測。cmd/teiのFAILが8→1に。既存契約2件（生入力fingerprint・bindings）を壊したので併存させて復旧。残る1件は#5176の判断待ち）
 - [`StageUnknown`からの復帰をCLIから実行する経路（2026-11-17）](XTEA_LOWCODE_LIFECYCLE_TAKEOVER_ENTRY_2026-11.md)
 - [manifestの自己矛盾したdigest宣言を実ファイルに合わせた](TEI_DOGFOODING_ROUND89_REA_CAPTURE_FIXTURE_2026-11-17/README.md)（#5176。原本をanalysis.jsonに上書きするとfail-closed検査3件が壊れた。分離案は動いたがmainが先に948efe9b6でテスト専用の捕捉を持たせて解消済みで重複だったため取り下げた。残る成果はmanifestの訂正: 520バイトと7ea3780d（78000バイトのdigest）を同時に宣言する自己矛盾を全エントリ実ファイル一致・不一致0にした）
+- [`reads`の実データ観測（2026-11-17）](XTEA_LOWCODE_HOOK_STORE_READS_2026-11.md)
