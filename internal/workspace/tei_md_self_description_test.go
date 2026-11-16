@@ -64,11 +64,25 @@ func TestTEIValidationDeclarationSelfDescriptionIsOnlyData(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for i, want := range expected {
-		got := descriptor.Attributes[i]
+	// Canonical Data attributes may be normalized independently of the
+	// Markdown table row order. Match by identity, while checking that every
+	// field is unique and still points at its original Source cell.
+	actualByID := make(map[core.CanonicalID]int, len(descriptor.Attributes))
+	for i, attribute := range descriptor.Attributes {
+		if previous, duplicate := actualByID[attribute.ID]; duplicate {
+			t.Fatalf("duplicate canonical attribute %s at positions %d and %d", attribute.ID, previous, i)
+		}
+		actualByID[attribute.ID] = i
+	}
+	for _, want := range expected {
+		indexInData, ok := actualByID[want.id]
+		if !ok {
+			t.Fatalf("self-description is missing canonical attribute %s", want.id)
+		}
+		got := descriptor.Attributes[indexInData]
 		if got.ID != want.id || got.TypeRef != want.typeRef || got.Required != want.required {
-			t.Fatalf("attribute %d=%+v, expected id=%s type=%s required=%v",
-				i, got, want.id, want.typeRef, want.required)
+			t.Fatalf("attribute %s=%+v, expected type=%s required=%v",
+				want.id, got, want.typeRef, want.required)
 		}
 		refs := index.ReferencesFor(sourceindex.Subject{
 			Kind: "semantic-attribute", ID: string(want.id),
