@@ -106,7 +106,15 @@ func runThreeElementREACandidates(args []string, out io.Writer) (int, error) {
 	}
 	packet := reacandidate.BuildReviewPacket(set, nil, nil, nil)
 	var question *reacandidate.RelationQuestion
-	if *relationID != "" {
+	// Omitting the optional flag keeps the original full candidate review.
+	// Supplying an empty ID is a selection error, not an implicit omission.
+	relationRequested := false
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "relation-id" {
+			relationRequested = true
+		}
+	})
+	if relationRequested {
 		selected, ok := reacandidate.SelectRelationQuestion(packet, *relationID)
 		if !ok {
 			return failREACandidates("RELATION_SELECTION_UNAVAILABLE",
