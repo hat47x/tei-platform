@@ -1117,7 +1117,7 @@ PIO-17〜23は既存#1180／#2514のIndependent Expectedと#951／#988／#1121�
 
 ### 22.1 値を取り出せたことと、型付きの接続が成立したことを分ける
 
-[PR #5156](https://github.com/hat47x/tei-platform/pull/5156)では、既存`plugin/transform`の`input`／`select-field`／`construct-object`を使い、一つのRecordをそのまま渡す場合と、必要な二Fieldだけを選ぶ場合を比較するGo試験が提案されている。追加Fieldが全体出力には残り、明示投影には残らないこと、必須Fieldの欠落を拒否すること、明示NULLを欠損へ置き換えないことが検証対象である。**このPRは現時点で未マージであり、試験の合格をmain実績として数えない。**
+[PR #5156](https://github.com/hat47x/tei-platform/pull/5156)では、既存`plugin/transform`の`input`／`select-field`／`construct-object`を使い、一つのRecordをそのまま渡す場合と、必要な二Fieldだけを選ぶ場合を比較するGo試験が提案されている。追加Fieldが全体出力には残り、明示投影には残らないこと、必須Fieldの欠落を拒否すること、明示NULLを欠損へ置き換えないことが検証対象である。**PR #5156は2026年11月16日にmainへ統合済み**（merge commit `35508b3f232b420e38f0c53bc0ea30dcc3134e01`）。当該Goテストを含む`internal/plugin/transform`のPR上の局所CIは成功したが、この事実を実Plugin Binder／Host公開の検証へ拡張しない。
 
 この純粋なTransformが扱うのは**値の形と投影**である。出力に二Fieldだけが残っても、各Fieldの安定した意味ID、出典、必要な取得範囲、契約版、Audienceと現在Grantまでは保証できない。「余分な項目を取り除いた」と「その利用者へ公開してよい」は別の判断である。値を入れ替えても同じJSONを返せる場合、Source occurrenceと実Read IDを照合して初めて接続の取り違えを検出できる。
 
@@ -1156,4 +1156,4 @@ main統合済みの[PR #5166](https://github.com/hat47x/tei-platform/pull/5166)�
 
 PIO-24〜29は#1180／#2514の既存Independent Expectedへ渡す。新しい汎用Port型、Resolver、証拠台帳、Adapter探索Runtimeを増やす前に、既存Transform／Semantic Ref／Workspace Selection／Host境界で不足する一点だけを実証する。通常CLIの非Builtin Provider実Callと、Studio Stage1→Stage2の実Windows受領は、引き続きそれぞれのP0である。
 
-**現状**：§22は既存の製品実績と未マージPRを分けた実装順の整理である。PC-1aの提案試験、PC-1b/cの型付き実接続、実Provider、Wails HTTP公開、Owner意味受理が今回成立したという記録ではない。
+**現状**：§22は既存の製品実績と未実装の接続を分けた実装順の整理である。PC-1aの純粋な値投影試験、PC-1b/cの型付き実接続、実Provider、Wails HTTP公開、Owner意味受理が今回成立したという記録ではない。
