@@ -126,6 +126,26 @@ func TestOrgAxisAsOfActualPostgresOptIn(t *testing.T) {
 		t.Fatal("unexpected native Query/Application cardinality")
 	}
 	q := loaded.World.Queries[0]
+	// Reuse the exact Source/IR path qualification in this *same* actual
+	// PostgreSQL read attempt. A standalone Source test and an unrelated
+	// Provider success cannot be combined into one route witness.
+	qualifiedUnitRoute := false
+	for _, namespace := range loaded.World.Semantics {
+		for _, data := range namespace.Data {
+			if data.ID != "organization.membership" {
+				continue
+			}
+			for _, relation := range data.Relations {
+				if relation.ID == "organization.membership.unit" &&
+					orgC1StableUnitReadPath(relation, q) {
+					qualifiedUnitRoute = true
+				}
+			}
+		}
+	}
+	if !qualifiedUnitRoute {
+		t.Fatal("the native PostgreSQL read must use the Source-qualified Membership/OrgUnit and as-of Query interface")
+	}
 	ds, ok := loaded.World.Applications[0].DatabaseByAliasExact(q.Datasource)
 	if !ok || ds.TargetDatabase != "org_store" {
 		t.Fatal("native datasource mismatch")
