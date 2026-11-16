@@ -7,6 +7,8 @@ on:
       - '.github/workflows/rea-external-candidate-contract.yml'
       - 'internal/externalanalysis/**'
       - 'internal/operations/external_candidates*'
+      - 'internal/reacandidate/**'
+      - 'cmd/tei/cli_three_element_rea_candidates*'
       - 'internal/jsonl/**'
   pull_request:
     branches: [main, 'feat/rea-receiver-current-main-20261113']
@@ -14,6 +16,8 @@ on:
       - '.github/workflows/rea-external-candidate-contract.yml'
       - 'internal/externalanalysis/**'
       - 'internal/operations/external_candidates*'
+      - 'internal/reacandidate/**'
+      - 'cmd/tei/cli_three_element_rea_candidates*'
       - 'internal/jsonl/**'
 
 permissions:
@@ -24,6 +28,36 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # An independent contract for the scoped R1 question. The older general
+  # operations contract also tests organizational queries and may fail for
+  # reasons unrelated to REA; do not conflate the two verdicts.
+  relation-review:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Setup pinned Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Require gofmt for scoped files
+        run: |
+          set -euo pipefail
+          files="internal/reacandidate/review.go internal/reacandidate/review_test.go cmd/tei/cli_three_element_rea_candidates.go cmd/tei/cli_three_element_rea_candidates_test.go"
+          unformatted="$(gofmt -l $files)"
+          if [ -n "$unformatted" ]; then
+            gofmt -d $files
+            exit 1
+          fi
+      - name: Test R1 one-relation question and original CandidateSet
+        run: |
+          set -euo pipefail
+          go test -count=1 -timeout=10m ./internal/reacandidate ./cmd/tei -run '^(TestRelationQuestion|TestREACandidatesCLI)'
+
   contract:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
