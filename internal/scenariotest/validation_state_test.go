@@ -87,14 +87,65 @@ func TestValidationFixtureStateWordsAreFixed(t *testing.T) {
 		ValidationStateNotFetched:  "not-fetched",
 		ValidationCoverageComplete: "complete",
 		ValidationCoveragePartial:  "partial",
+		ValidationStatePresent:     "present",
 	}
-	if len(words) != 4 {
+	if len(words) != 5 {
 		t.Fatalf("two words are the same: %v", words)
 	}
 	for got, want := range words {
 		if got != want {
 			t.Fatalf("the Fixture word %q changed to %q", want, got)
 		}
+	}
+}
+
+// A rule about presence reads whether a value is there, whatever its type. The
+// Fixture states that directly, so an empty value and an unread one stay apart
+// from "a value is there".
+func TestValidationFixtureStatesPresence(t *testing.T) {
+	got, err := ParseValidationFixture([]byte(`{"numbers": {}, "relationKeys": [],
+  "presenceStates": {"sales.order_line.discount": "present",
+                     "sales.order_line.discount_reason": "null",
+                     "sales.order_line.note": "not-fetched"}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := ValidationFixture{
+		Numbers: map[string]string{}, RelationKeys: []ValidationRelation{},
+		PresenceStates: map[string]string{
+			"sales.order_line.discount":        "present",
+			"sales.order_line.discount_reason": "null",
+			"sales.order_line.note":            "not-fetched",
+		},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got=%+v", got)
+	}
+
+	cases := []struct{ name, members, mention string }{
+		{"an unknown presence word", `"presenceStates": {"a.b.c": "maybe"}`, "write present, null or not-fetched"},
+		{"a presence word without an attribute", `"presenceStates": {" ": "present"}`, "empty Attribute"},
+		{"a typed state and a presence word for one attribute", `"numberStates": {"a.b.c": "null"}, "presenceStates": {"a.b.c": "present"}`, "also has the presence state"},
+		{"a date state and a presence word for one attribute", `"dateStates": {"a.b.c": "null"}, "presenceStates": {"a.b.c": "present"}`, "also has the presence state"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := ParseValidationFixture([]byte(`{"numbers": {}, "relationKeys": [], ` + tc.members + `}`))
+			if err == nil || !strings.Contains(err.Error(), tc.mention) {
+				t.Fatalf("got=%+v err=%v, want an error mentioning %q", got, err, tc.mention)
+			}
+		})
+	}
+}
+
+// A typed value and a presence word for one attribute state two different
+// facts about one attribute, so the Fixture refuses both at once. This case
+// needs its own Fixture because it must supply the typed value itself.
+func TestValidationFixtureRefusesATypedValueBesideAPresenceWord(t *testing.T) {
+	_, err := ParseValidationFixture([]byte(`{"numbers": {"a.b.c": "1"}, "relationKeys": [],
+  "presenceStates": {"a.b.c": "present"}}`))
+	if err == nil || !strings.Contains(err.Error(), "also has the presence state") {
+		t.Fatalf("err=%v, want a refusal of the presence word beside a typed value", err)
 	}
 }
 
