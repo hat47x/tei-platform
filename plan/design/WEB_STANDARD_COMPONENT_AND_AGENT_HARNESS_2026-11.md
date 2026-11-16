@@ -345,3 +345,58 @@ Node View／Flowは標準Data型・Direction・Multiplicity・Presence・Coverag
 | **WEB-P3：公開Route一件**（#3509／#997／#1016） | 公開可能な説明Facetを一つ選び、Source→Head／表示Slot→実Builder入力→生成Asset Member→外部閲覧を追う。静的説明と動的Offerを別途管理 | 未選択Slotへの暗黙配置、非公開Field混入、生成Assetの旧版利用、単なるHTML生成を実Consumer受領と誤認 |
 
 WEB-P1〜P3は並列の**P1候補**であり、正式なStudio非Plugin BuildIntent→Stage1→Stage2実Windows（#2831／#4583）と、通常CLI→実Provider Read→独立Consumer（#2586／#4495）の二本のP0へ新しいHard Gateを追加しない。新しいWeb Framework、HTTP Runner、第二のOperation Registry、テスト正本は導入しない。反例は既存#1180／#2514の独立Expectedと、各OwnerのIssueへ引き渡す。現段階は設計・実装Packetの定義であり、WEB-P2/P3の製品E2E、Web向け認証・開示、SSR、オフライン編集、別OSでの実受領は未検収である。
+
+## 18. 宣言的UIの共通契約を、表示技術から切り離す（2026-11-16、前回統合内容の復元・具体化）
+
+### 18.1 画面を「意味・表示・配置・接続」の組合せとして扱う
+
+Web／Desktop／将来のMobileで再利用するのは、フレームワークごとのコンポーネント木ではない。[標準データ構造・構文・UI投影の横断設計](SEMANTIC_STRUCTURE_MAPPING_AND_DECLARATIVE_SYNTAX_VIEW_2026-11.md)、[共通APIのADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)、[Desktop Workbench指針](TEI_DESKTOP_WEB_STANDARD_UI_IMPLEMENTATION_2026-11.md)にある要素を、利用者が読む順番で組み合わせる。新しい画面専用のMeaning正本や万能UI ASTを先に設けない。
+
+| 共通にする関心事 | 定義・利用する情報 | 混ぜないもの |
+| --- | --- | --- |
+| 意味・入力 | qualified Subject、Field／Relation、粒度、型、NULL／欠損／未取得、Rule、Source occurrence | DOM ID、画面ラベル、表示順、描画用Node ID |
+| 操作 | 共通Operation IDと入力／結果／Failure、事前条件、作用の種類 | CustomEvent名、HTTP Route名、Wails Service名 |
+| 表示への投影 | 見せる項目と順序、表・Tree・Graph・Node等の表現、読み取り専用／編集候補、開示可能な状態 | 公開Componentの形だけから推定したGrantやMeaning受理 |
+| 配置・装飾 | Grid／Flex、必要なCanvas座標、密度、Design Tokens、Target別の表示調整 | 業務上の制約、操作の実行順、実Providerの選択 |
+| 実装・配信 | Vanilla TS／Lit／React／NativeのComponent、静的HTML／対話型Web／Server側HTML生成／Wails AdapterとAsset | 第二の業務実行器・Parser・Registry、全Targetで同じRuntimeを強制すること |
+
+TEIの宣言から生成すべき第一候補は、Field／Group／Order、表示条件、型に対応する入力部品、Operationの型付きBinding、公開Component Contract、静的に検査できる制約である。認可、実データの保存、外部Effectは生成されたブラウザコードが単独で受理しない。内部で手書きのGo／TS関数を呼び出しただけでは、実装をTEIへ移管した成果と数えない。UIの表現方式は必要な場合だけTargetごとの実装で選ぶ。
+
+Node FlowのPort全体接続／Field接続／明示Adapterや、Graphの向き・多重辺・Occurrenceは既存標準型とMappingに従う。単にNodeの描画を変更するだけなら業務意味を再生成せず、型・粒度・開示条件が変わればMappingから再検証する。SUIの高密度Canvasも、StudioのCodeMirrorも、この境界を保ったまま専用の描画技術を利用してよい。
+
+### 18.2 同じ画面に存在する状態の寿命を分ける
+
+UIで選択した対象は、まだHostで読んだ対象ではない。Hostが返したread-only Inspectionも、現在のSource原文、受理済みMeaning、現在のDisclosureや実行Grantの代わりではない。少なくとも **選択Intent → Catalog上の一意性 → Host Inspection → 表示用Projection → 利用者の明示操作** の順に扱う。画面側のWorkspace epoch、要求lane、Focus／Pinは応答の宛先を確かめるためのもので、権限を表さない。
+
+未保存Buffer、Caret、IME、UndoはEditorが保持する。Pin Aを再確認する間にFocus Bが編集されても、Aの返信はBのEditor・Graph・Noticeを書き換えない。A→B→Aで表示名が同じに戻っても旧返信は再採用しない。実Sourceを保存した後も、Meaning受理・Build入力・Provider資格を自動更新しない。
+
+SSR／SSGで初期HTMLを作る場合、初期Snapshotとその後のClient Readを区別する。公開時点のDisclosure、キャッシュのAudience／Scope、古いHTML・埋込JSON・Source Mapの情報漏れ、Hydration時の入力消失をTarget別に検査する。PWA／オフライン書込みは、競合とEffect unknownの扱いを確立するまで採用済みとはしない。
+
+## 19. 現行Inspectorを使ったWeb開発方式の最小実装パケット（2026-11-16、P1の実装引渡し）
+
+### 19.1 実コードで確認できる境界
+
+現行の `reference/tei-studio-workbench` には、公開選択Event `inspector-selection.ts`、Catalog／Inspectionの純粋なReader `presentation.ts`、非同期結果のlaneを分ける `responses.ts`、Source位置の限定的な投影 `source-locations.ts`、それらを結ぶ `main.ts` がある。UI Frameworkの比較や新HTTP Serverを始める前に、ここで実際に表示できることを確かめる。
+
+現在の経路は `emitInspectorSelection` → `inspectorSelectionFromEvent` → `inspectEligibility` → `responses.run("inspection")` → `client.inspectSubject` → `readInspection` → Editor／Source status／利用制限の表示である。Catalog上でSubjectが不在・曖昧ならHost Inspectへ進まず、応答のWorld／Source Index fingerprintがCatalogと合わなければ拒否する。Eventに混入したEffect／Grantは採用しない。**これらはNode試験と現行コードで確認できる読み取り専用の経路であり、公開Web／Stage2の完成ではない。**
+
+`source-locations.ts` は複数の参照位置、Role、byte offset、Artifact fingerprintを最大20件まで表示用に検証し、観測範囲が全件であるとは主張しない。ただし現在のWorkbench表示からは未接続である。Source位置を得たことと、正しい原文を編集できることを結び付けず、S-LOCの表示とS-OPENの実Source再確認・編集を別に検収する。
+
+### 19.2 WEB-P1を二つの小変更で閉じる
+
+| 作業 | 差分の範囲 | 独立Expected／終了条件 |
+| --- | --- | --- |
+| **WEB-P1a：表示入力の分離** | `readInspection` が検証した結果から、Editor文書・版・Source status・利用制限・Noticeに必要なread-only ViewModelを純粋に導出する。最初は既存TypeScript・現在の `main.ts` とテストを小さく変更し、Host呼出し、Catalog資格、Response laneは動かさない | 同じSubject／Catalog／応答の表示値一致。異Kind、stale fingerprint、不正なAuthority limits、Host errorを正常な空表示へ落とさない。Presenterの型からGrant／Effectを生成できない |
+| **WEB-P1b：表示先の非干渉** | 同じPresenter結果を一覧選択とGraph選択で使い、FocusとPinの既存laneに対して後着拒否を照合。S-LOCのDisplay接続は必要なHost範囲が確認できた場合の別差分とする | A→B→A、Pin Aの裏再確認中にBを編集、Source statusがpartial、旧Catalog、Reader error、狭幅／IMEでCaret・Editor・Graph・ARIAを保護。Node／Browser／実Windowsを別資格で報告 |
+
+最初のPRは `presentation.ts` に既にあるReaderを再実装しない。**検証済みResultから画面に渡す値を整える純粋なPresenter** と、その境界の回帰試験だけを追加する。部分取得は「確認できた範囲」として表示し、「該当なし」「全件」「編集可能」を推定しない。Browserへの展開は同じPresenterの独立Consumerを使って確かめ、Wails Bridgeを共通Componentの必須依存にしない。
+
+### 19.3 WEB-P2とWEB-P3へ進む条件
+
+**WEB-P2（API公開）**では、既存 `operations.InspectSubject` を共通の意味基線とし、CLI direct、Wails非依存Studio Host、HTTP Adapterの三入口で対象、要求版、Failure分類、開示結果を照合する。HTTPのルート登録や同名のJSONを返すMockだけでは実Provider到達と数えない。HTTP側のActor／Audience／Disclosure、Current Grant、Rate／Size制限、Origin／CSRF／CORSを入口ごとに検査する。API Pluginの実ProviderはWailsに依存せず、Pluginの選択・Target収録・Host公開・実Call・Consumer受領を別々に観測する。
+
+**WEB-P3（公開Route）**では、B2Cの公開可能な説明Facet一件に限り、Source→表示／Head Slot→選択済みBuilder入力→Asset Member→外部Consumer受領を追う。静的SEOと時点依存の価格・在庫、Experiment／計測同意を同じ再生成サイクルにまとめない。Slotが存在しないTargetは未接続とし、新SEO専用Engineを作ったことにしない。
+
+WEB-P1／P2／P3はいずれも**全体P0の追加前提ではない**。P0は引き続き、非Plugin Studio BuildIntent→Stage1自身によるStage2構築→実Windows WebView2受領（#2831／#4583）と、通常製品CLI→実Provider Read→独立Consumer（#2586／#4495）。UIの実装方式は、同一Fixtureでの表示契約、コード生成が実際に担う構造、手書きの残差、差分失効、Build／実Consumerの根拠を比較してから採否を決める。
+
+反証は既存#1180／#2514、UI実装は#997／#1824、共通Operationと公開は#1158／#951／#1251、SourceとMappingは#2497／#1124、B2Cは#3509のOwnerへ戻す。新しいUI専用Parser、HTTP Runner、永続State Store、独立Expected正本は設けない。本節は実装引渡しであり、新しいGo／Node／Browser／Windows／HTTP E2Eの合格を意味しない。
