@@ -190,3 +190,51 @@ main `dc3f310ed52e652efbda2c8736a2f45d6f4b8a6a` の実GitHub Actionsログを確
 併せてHealthには`gofmt -l . is empty`の失敗や、Web API scoped Driver、Reference CRUDの特徴付け試験の失敗も観測された。これらは別Ownerの修正案件とし、M1実験のGoコード変更へ混ぜない。
 
 **統合Gate**：`repository-health`と`cache-verification`が対象PRのexact HEADで成功し、最新mainのHealthと実CIの失敗が解消した後に、この計画ブランチをマージする。docs-onlyにしても既存Healthの失敗を免除しない。実装修正は各Owned failureで独立PR・独立Expectedを保持し、失敗試験を無条件に無効化しない。
+
+## 15. 2026-11-17：Source→判断→Inspectの実装が揃った後のM1適格性
+
+前回の§11〜14は当時のmainの観測履歴として残す。最新mainで確認できた実装は次のとおり。**PRがmergedでも、それだけで最新HEADの全CIが成功したことにはならない。**
+
+| 現在利用できる実物 | 受入を前進させた点 | M1の証拠としては不足するもの |
+| --- | --- | --- |
+| [#5148](https://github.com/hat47x/tei-platform/pull/5148)：`no-overlap`（統合済み） | Relationの行・期間・GroupByを扱うRuleの種類が増えた | Rule宣言の`Relation`指定を禁止するMeta Shape検査ではない。部分取得から完全な期間証明へ自動昇格しない |
+| [#5179](https://github.com/hat47x/tei-platform/pull/5179)：同じLoadのData／Rule判断（統合済み） | `Workspace.Load`→Source Index→`InspectionFromLoad`→状態付き`Decide`を、present正値・ゼロ・NULL・未取得の独立Expectedと実Read IDへ結んだ | `StatefulSource`はテストが与えた入力で、実DB／Plugin ProviderがValueStateを宣言した証拠ではない |
+| [#5188](https://github.com/hat47x/tei-platform/pull/5188)：実CLIとStudio共通Inspect（統合済み） | 別OSプロセスの`tei inspect`と本番Studio Hostの同じSubject／意味／Source／Revision／Scopeを独立Expectedで比較 | 画面表示、原文Open、編集Grant、実HTTP／実Provider、Stage2の利用資格を与えるものではない |
+| [#5205](https://github.com/hat47x/tei-platform/pull/5205)：Markdown言語の選択診断とimport cycle解消（統合済み） | `*.tei.md`が未選択なら`tei.authoring/v1`／`tei.rule-authoring/v0`とmanifestの`languages:`を案内。内部テストのimport cycleを解消しWorkspace 101テストファイルの実行を可能にした | 形式を自動推定・自動受理しない。CI全体のGreen、M1生成器Shape判断、任意Markdown Readerの完成ではない |
+| [#5175](https://github.com/hat47x/tei-platform/pull/5175)：自己記述DataのID照合（統合済み） | Canonical項目を配列順でなくIDで比較し、型・必須性・元Source位置・重複を検査 | IDを照合した試験を、`semantic.Validation`インスタンスへ検査規則を適用したM1と数えない |
+
+**並行する未統合の提案**：[ #5187](https://github.com/hat47x/tei-platform/pull/5187)の`required-if`はFieldの**存在を条件付きで読む**業務Ruleの候補であり、`std.identifier`の空文字拒否やpositiveにおけるRelation指定禁止と同一ではない。[#5196](https://github.com/hat47x/tei-platform/pull/5196)は旧`*.tei`と選択済み`*.tei.md`の同名宣言のSource位置を隠さない提案。[#5202](https://github.com/hat47x/tei-platform/pull/5202)のBuild書込境界もLinux opt-inで、読取・Network・別mountやWindowsを隔離できたとはしていない。**いずれもPRの独立検収前にM1/M3の成立へ加算しない。**
+
+### 最小の実装可能性判定：三条件とも現行の表だけでは未表現
+
+`internal/workspace/testdata/tei-md-self-description/semantic/tei/validation-declaration.tei.md`は、`ruleId`・`attributeId`の`required=yes`と`relationId`の`required=no`を記述する。製品の`GeneratePositive`は依然として`rule.ID == "" || rule.Attribute == "" || rule.Relation != ""`を手書きGoで検査する。`semantic.Validation`からこのData定義の実インスタンスへBindingして、空文字列・条件付き禁止を判定する製品経路は、今回確認したReader／Rule／Evaluator／Generatorの範囲にはない。
+
+| 義務 | 既存の説明で定まるもの | 判定へ不足する最小能力 | 現時点の判定 |
+| --- | --- | --- | --- |
+| SH-1：ID非空 | `std.identifier`と`required=yes` | `Validation.ID`から実値へ安全に結ぶBinding、**存在と非空文字列を区別する述語** | `M1=unsupported` |
+| SH-2：Attribute非空 | `std.identifier`と`required=yes` | `Validation.Attribute`のBindingと非空文字列述語。型解決`std.decimal`は別義務 | `M1=unsupported` |
+| SH-3：positive時にRelation禁止 | `relationId`の`required=no` | `Kind=positive`へ適用する**指定禁止**述語。optionalをforbiddenへ変更しない | `M1=unsupported` |
+
+この判定は「TEIでは実現不能」という結論ではなく、**いま選択・実使用できる製品経路では未実装**という意味である。最初に追加する能力の候補は、既存Data／Ruleを対象にした**純粋な型付きDeclaration Instance Bindingと、厳密なField条件**である。第二Interpreter／Host／汎用式DSL／試験専用Expected正本の導入を前提としない。#5187の存在判定を再利用できるかは、**業務レコードと宣言インスタンスの意味境界**を壊さないことを先に確かめる。既存機構でSH-1〜3の一条件が実現可能になった場合にのみD-1へ進む。
+
+## 16. 次に実行する一往復と、独立反証の分け方
+
+`sales.order_line.quantity_positive`と`organization.transfer_request.allocation_positive`を**異なる実Sourceの別Subject**として保つ。前者はCLI実self-build・旧Shape基線、後者は項目定義表と状態付き判断の同一Loadが中心である。二つの成功を結合して「一つのSourceから全工程が通った」と数えない。
+
+| 小さなPacket | 既存Go試験／実経路 | 増やす証拠・負例 | 達成を主張しないこと |
+| --- | --- | --- | --- |
+| **F0：定義対実判断の不足を固定** | `TestTEIValidationDeclarationSelfDescriptionIsOnlyData`＋`TestPositiveRuleShapeIndependentBaseline` | Data項目のID／型／Sourceと、型付きValidationのSH-1〜3負例を同じ票で対照。Binding／非空・禁止述語が無い限り`unsupported` | 二試験の成功をM1と呼ばない |
+| **F1：Source→判断** | `TestSelectedMarkdownDataRuleInspectionCarriesDecisionReasons`（#5179） | 同一Load／元byte・RuleとRead属性ID、正値・0・NULL・未取得、`satisfied / not-satisfied / undecided`の理由 | テスト用StatefulSourceを実Providerと呼ばない |
+| **F2：実利用者のInspect** | `TestProductInspectCLISelectedMarkdownRuleIsNotCapability`＋#5188の実CLI／Studio入出力 | 同一Subject／Revision／Source位置と、別Workspace・同名ID・後着応答の拒否。Sourceの表示Intentと現在Grantを区別 | read-only Inspectを実行・編集・公開許可へ昇格させない |
+| **F3：実Builderと次世代** | 既存`TestSelectedRuleGoThroughRealCLISelfBuild`、#5109／#5129のPlan後改変拒否、#2831／#4583のDesktop | 同一Attemptで元Markdown、Generator版、BuildIntent、実Builder入力、Stage2に組み込まれた生成Reader／呼出しを照合 | Reference生成結果・手書きDriverだけで正式R2-P／M3を満たさない |
+
+SH-1〜3の一条件を実TEI定義で判定できた時点でM1、**その条件を確認していた旧Go分岐が実製品から削除され、Callerも新しい判定を使用**して初めてM2。いずれも固定Independent Expectedを基準とし、Generatorが出した期待値を自身のテストの正答にしない。M2前後の保守変更量・診断の質・Build時間を測り、単なるコード移動なら採用を再検討する。
+
+## 17. 現行CIの失敗を二つの資格で追う
+
+[#5205](https://github.com/hat47x/tei-platform/pull/5205)によるimport cycle修正は、Workspace試験を**実行可能にした**成果であり、Repository Health／セルフビルド／Studio Hostの全合格ではない。main `306755ada6543251974d4790b5bfa0e698b44f3f`のGitHub Actionsには、Markdown parser-boundary・real-cli-node・Windows WebView2一部の成功がある一方、参照セルフビルドとHost server-buildの失敗を確認した。
+
+- [参照セルフビルドの該当Job](https://github.com/hat47x/tei-platform/actions/runs/43899334484)：Stage1/Stage2のreference transform収束出力は得られているが、Rule生成Goの`gofmt -l`／focused Go試験／清浄Worktreeの**一連のステップ**がexit 1で終了した。ログは原因を特定していないため、まず各コマンドの実出力を別々に採り、成否を分離する。これをStage1/2全体の不収束と誤記しない。
+- [Studio Hostの該当Job](https://github.com/hat47x/tei-platform/actions/runs/43899334831)：`internal/studiohost`は当該Jobで成功したが、`cmd/tei-studio`の`TestEmbeddedWorkbenchCarriesTheCurrentGeneratedInspectionReader`が、埋込Bundleに生成Readerを含まないため失敗。Source contract→TS生成→esbuild→Go embed→実Windows受領の各byteをOwner #2831／#4583で別々に追う。
+
+**マージの停止線**：対象PRのexact HEADで必要なCIが成功し、最新mainのHealthの状態を確認する。失敗が別Ownerに属する場合も、理由・再現HEAD・影響範囲を明示しないまま成功とみなさない。docs-onlyの計画更新は、本書の実証完了を意味しない。
