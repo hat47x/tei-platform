@@ -1,0 +1,137 @@
+{
+  "schema": "tei-inspect-entry-parity-independent-expected/v1",
+  "adoption": "proposal-only",
+  "authority": "existing owners keep acceptance; this file pins no grant",
+  "derivation": "Hand-derived from the fixed public Workspace Source bytes and from reading the .tei declarations. Nothing here was read back from an Inspector response, a Provider, or a fingerprint the implementation computed. Byte hashes were produced by an independent SHA-256 tool over the files; offsets were located by searching the original bytes for the declared identifier.",
+  "comparedEntries": {
+    "cli": "cmd/tei production dispatch: main.go 'inspect' -> inspectWorkspaceJSONSelected -> inspectoradapter.NewLocalInspectorHost().Bind(root) -> operations.InspectSubject",
+    "studio": "cmd/tei-studio production host: newStudioHost -> inspectoradapter.NewLocalInspectorHost() -> studiohost.NewReadOnlyWithFactoryAndObserver -> StudioBridge.InspectSubject",
+    "sharedOperation": "internal/operations.InspectSubject"
+  },
+  "notCompared": [
+    "the transport envelopes (tei.cli.inspect/v0 report versus studiohost InspectionResponse) have different shapes by design; whole-response byte equality is NOT expected",
+    "the inner canonical attribute and relation ORDER is a representation choice of the projection (it emits sorted IDs); ID sets are compared instead",
+    "the Studio XEAD observer and the Studio workspace allowlist have no CLI counterpart; requests the allowlist refuses are expected to differ and are asserted as a reported asymmetry, not as parity"
+  ],
+  "workspaceA": {
+    "role": "public composite Workspace, the primary compared target",
+    "path": "reference/workspace",
+    "identity": {
+      "name": "tei_reference",
+      "formatVersion": 1,
+      "manifestPath": "tei.workspace.yaml",
+      "manifestSha256": "sha256:8e367b05de26a715ced16e384d273c983ac612dd2ff980d4310886d4f471af74"
+    },
+    "subjects": {
+      "sales.order": {
+        "kind": "semantic-data",
+        "id": "sales.order",
+        "symbol": "Order",
+        "attributes": [
+          "sales.order.customer_id",
+          "sales.order.external_id",
+          "sales.order.order_id",
+          "sales.order.ordered_at",
+          "sales.order.status",
+          "sales.order.total"
+        ],
+        "relations": [
+          "sales.order.customer",
+          "sales.order.lines"
+        ],
+        "definition": {
+          "artifactPath": "semantic/sales/order.tei",
+          "artifactFingerprint": "sha256:f2063418b893a60a9f948edbb2b23ec821f7a15ed8e5863c36e1b72abade1e33",
+          "role": "definition",
+          "startOffset": 124
+        }
+      },
+      "sales.order.customer_id": {
+        "kind": "semantic-attribute",
+        "id": "sales.order.customer_id",
+        "symbol": "customerId",
+        "definitionStartOffset": 188
+      },
+      "customer.customer.customer_id": {
+        "kind": "semantic-attribute",
+        "id": "customer.customer.customer_id",
+        "symbol": "customerId",
+        "definitionStartOffset": 87
+      }
+    }
+  },
+  "workspaceB": {
+    "role": "second public Workspace that declares the SAME canonical ID with different meaning",
+    "path": "reference/standard-crud/workspace",
+    "identity": {
+      "name": "standard_crud",
+      "formatVersion": 1,
+      "manifestPath": "tei.workspace.yaml",
+      "manifestSha256": "sha256:f4e74f4da36dfa41eeeefd078a3a13fecfd82bb419eb8b331a81a18ac5535bb9"
+    },
+    "subjects": {
+      "sales.order": {
+        "kind": "semantic-data",
+        "id": "sales.order",
+        "symbol": "Order",
+        "attributes": [
+          "sales.order.order_id",
+          "sales.order.status"
+        ],
+        "relations": [],
+        "definition": {
+          "artifactPath": "semantic/sales/order.tei",
+          "artifactFingerprint": "sha256:f6a7b246e42118a0cf6fdc2392fa1defb9f7546f8cc766806da31dc82972a358",
+          "role": "definition",
+          "startOffset": 56
+        }
+      }
+    }
+  },
+  "expected": [
+    {
+      "id": "IEP-1-same-subject-same-meaning",
+      "check": "For one target ID and one Source revision, both entries report the same semantic result.",
+      "compare": [
+        "subject.kind and subject.id are exactly the requested pair",
+        "effect is read-only",
+        "the canonical top-level id equals the requested id",
+        "the canonical attribute ID set and relation ID set equal the Expected sets",
+        "workspace.name, workspace.manifest.path and workspace.manifest.sha256 equal the Expected identity",
+        "the definition artifact path, fingerprint and role equal the Expected definition",
+        "the definition byte offset equals the Expected offset",
+        "authorityLimits is the existing fixed set, unchanged"
+      ],
+      "notCompared": [
+        "envelope wrapper fields",
+        "worldFingerprint and sourceIndexFingerprint values (only their presence and their change across a Source edit are asserted)"
+      ]
+    },
+    {
+      "id": "IEP-2-same-symbol-different-id",
+      "check": "Two attributes that carry the same symbol but different canonical IDs are not merged.",
+      "expect": "sales.order.customer_id and customer.customer.customer_id both report symbol customerId, keep their own exact id, and resolve to different Source artifacts at different offsets. Neither answer may be returned for the other's requested ID."
+    },
+    {
+      "id": "IEP-3-same-id-different-workspace",
+      "check": "The same canonical ID declared by two Workspaces is not confused.",
+      "expect": "sales.order in workspaceA and in workspaceB both succeed, and differ in: workspace.name, workspace.manifest.sha256, the definition artifact fingerprint, the canonical attribute ID set. Equal IDs alone must never be reported as one subject."
+    },
+    {
+      "id": "IEP-4-stale-result-not-current",
+      "check": "After a Source update, an earlier result is not treated as the current one.",
+      "expect": "Adding a declared attribute to a managed Source changes the definition artifact fingerprint, the Source Index fingerprint and the World fingerprint on both entries. The pre-edit fingerprint must not appear as current, and the pre-edit result must not equal the post-edit result.",
+      "rejectedEarlierAssumption": "An appended prose line was tried first and rejected: a .tei Source outside a comment is a syntax error, so it produces WORKSPACE_LOAD_FAILED rather than a semantic revision. The fixture therefore appends a declared attribute, which is unambiguously a semantic edit."
+    },
+    {
+      "id": "IEP-5-result-equality-is-not-path-identity",
+      "check": "Identical results produced by different Providers do not establish implementation-path identity.",
+      "expect": "When each entry is bound to a distinct Provider entry function and the answers coincide, the values match but the observed entry symbols differ, so path identity is NOT claimed. Path identity may be claimed only when the observed entry is the same canonical Operation on both entries."
+    },
+    {
+      "id": "IEP-6-one-sided-failure-is-reported",
+      "check": "A failure on only one entry is reported as a discrepancy, not smoothed into parity.",
+      "expect": "A request the Studio startup allowlist refuses (for example an unregistered workspace ID) fails on the Studio entry with WORKSPACE_NOT_ALLOWED while the CLI entry succeeds for the same Subject. The comparison must name the asymmetry, keep the requested target, and must not report parity."
+    }
+  ]
+}
