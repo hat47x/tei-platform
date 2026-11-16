@@ -32,6 +32,8 @@
 
 **WEB-P1a実装差分と配布への停止線**：既存`readInspection`を変更せず、別ファイル`inspector-presentation.ts`に表示専用の`presentInspection`と局所試験を追加した（WEB-P1a-1）。現段階ではWorkbenchの`main.ts`から未接続。`presentation.ts`を更新すると生成PoC Bが固定した歴史的な依存ClosureのGit blobに一致せず、Windows CIが`workbench_closure_revision_mismatch`で停止することを確認した。この失効を回避するために旧Pinを上書きせず、今回の差分は独立ファイルへ切り出す。WEB-P1a-2は新Closureを明示的に資格化し、Node24試験／型検査／esbuild、正規JS／HTML／CSS／第三者通知、Wails埋込Bundleのbyte一致、実Consumerを別々に検証する。Focus／Pin、Source実Open、公開Web、Stage1→Stage2は独立した受入とする。
 
+**WEB-P1a-2の実装準備と検証の区切り**：[Web横断設計 §20](../design/WEB_STANDARD_COMPONENT_AND_AGENT_HARNESS_2026-11.md)で、前回PR #5173のCI事実（埋込Bundle・Windows Smoke成功／Host・全体健全性の一部失敗）を資格別に整理し、旧`WORKBENCH_NATIVE_CLOSURE`を保護したまま新Presenterを実画面へ接続する手順を確定した。まず既存Readerと独立Presenterの組合せに、同名異Kind・別Workspace・同版異Subject・明示NULL・partial／unfetchedを検査する局所回帰を加える。画面接続は別PRとし、Node24、実esbuild、Wails埋込JS／HTML／CSS／第三者通知のbyte一致、Static Compositionの新閉包、通常／生成Consumerを同HEADで再資格化する。局所Presenter試験では新Workbenchの配布をPASSとしない。#5168のFocus／Pin独立Expectedを再利用し、内部Inspectorの本文をHTTP公開する際はAudience／Disclosureが別途受理されるまでは転送しない。
+
 後続の**WEB-P2**はCLI direct／Studio Host／HTTPの同一Operationを一つのread-only実Consumerで比較し、Actor／Audience／Disclosureと現在Providerの選択を別資格で検査する。**WEB-P3**は公開可能なB2C説明Facet一件をTarget Head Slotと実Asset Memberへ接続する。両者をUI Framework選定やDesktopセルフビルドの前提条件にしない。担当は#997／#1824／#1158／#951／#3509、反証は既存#1180／#2514。ここでの追記は実装引渡しであり、製品の新しいE2E試験合格ではない。
 
 ### 図解のP1：定義・生成・実Attemptを証拠つきで比較する（2026年11月15日）
