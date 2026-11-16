@@ -98,23 +98,25 @@ rule sales.order_line.reason_required:
 	}
 }
 
-// `if present` belongs to the two-date rule. Writing it after a rule about
-// presence is refused rather than ignored, because the words mean something
-// the rule does not say.
+// `if present` belongs to the two-date rule. After a rule about presence the
+// words mean nothing the rule says, so they are refused where they are written
+// rather than carried into the meaning model and dropped there.
 func TestRequiredIfRefusesIfPresent(t *testing.T) {
 	const source = `namespace sales
 rule sales.order_line.discount_reason_required:
   sales.order_line.discount_reason is required if sales.order_line.discount if present
 `
-	// The parser itself accepts the words here only if the subject clause
-	// reads them; the conversion is what refuses them. Check both, so a
-	// reading that silently drops the clause cannot pass.
-	file, err := syntax.ParseRuleAuthoringFile(source)
-	if err != nil {
-		return // the parser already refused it; that is an acceptable answer
+	_, err := syntax.ParseRuleAuthoringFile(source)
+	if err == nil || !strings.Contains(err.Error(), "unexpected \"if\" after the rule body") {
+		t.Fatalf("err=%v, want a refusal of the trailing if present", err)
 	}
-	_, issues := syntax.RuleNamespace(file)
-	if len(issues) != 1 || !strings.Contains(issues[0].Msg, "accepts no \"if present\"") {
+	// The same rule without the words is accepted, so the refusal is about the
+	// words and not about the rest of the declaration.
+	file, err := syntax.ParseRuleAuthoringFile(strings.Replace(source, " if present", "", 1))
+	if err != nil {
+		t.Fatalf("the rule without the words was refused: %v", err)
+	}
+	if _, issues := syntax.RuleNamespace(file); len(issues) != 0 {
 		t.Fatalf("issues=%v", issues)
 	}
 }
