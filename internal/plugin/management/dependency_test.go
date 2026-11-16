@@ -1,6 +1,7 @@
 package management
 
 import (
+	"errors"
 	"go/parser"
 	"go/token"
 	"io/fs"
@@ -74,6 +75,16 @@ func TestManagementImportsTheReferenceInventoryToolNowhere(t *testing.T) {
 	}
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
+			// Another package's test may create a temporary directory under the
+			// repository root and remove it while this walk is running
+			// (internal/operations does, for a binary parity fixture). A path that
+			// vanished between being listed and being visited says nothing about
+			// the property checked here, so it must not fail the walk. Every other
+			// error still does: a permission failure, for instance, could hide an
+			// import and would make the check silently weaker.
+			if errors.Is(walkErr, fs.ErrNotExist) {
+				return nil
+			}
 			return walkErr
 		}
 		if entry.IsDir() {
