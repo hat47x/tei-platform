@@ -428,7 +428,7 @@ Modal File Manager、LTools、Larvyn、WailsTermから得るべき価値は、�
 | [#5146](https://github.com/hat47x/tei-platform/pull/5146) | 同一Dataの二つの`std.date`に対して`not-after`と`if present`を検査 | 業務履歴／Restic Browser：日付の順序と終期の欠損を区別。実DBからの日付読取・日時型・複数行の重複禁止は別 |
 | [#5147](https://github.com/hat47x/tei-platform/pull/5147) | 定数で宣言された診断コードも被覆検査の対象にし、未被覆のものを理由付きで管理 | GUI/CLI/Pluginの失敗表示：宣言・試験への言及・入力を変えて実際に発生することを分けて検証 |
 
-複数行の期間が重なることを扱う[#5148](https://github.com/hat47x/tei-platform/pull/5148)は確認時点でOpenであり、#5146の到達点から製品採用済みとは推定しない。また[#5140](https://github.com/hat47x/tei-platform/pull/5140)のBuilder実行物／ToolchainのPinは未マージで閉じた候補であり、正式Studio Stage1→Stage2の保証として数えない。
+複数行の期間が重なることを扱う[#5148](https://github.com/hat47x/tei-platform/pull/5148)は確認時点でOpenであり、#5146の到達点から製品採用済みとは推定しない。一方、[#5140](https://github.com/hat47x/tei-platform/pull/5140)は未マージで閉じられているものの、**Builder実行前のファイルDigest照合と任意のToolchain Closure Pinは現在のmainに存在する**。PR表示と実コードは別に確認する。前者は起動直前に読んだファイルとPlanの比較に限られ、OSの実Process Image保証でも、正式Studio Stage1→Stage2の保証でもない（起動契約§35、[#5167](https://github.com/hat47x/tei-platform/pull/5167)）。
 
 ## 26. 値・取得状態・現在資格を同じ画面で扱う
 
@@ -468,3 +468,53 @@ CLIは同じOperationをWailsに依存せず呼び、Wails HTTPは公開用Adapt
 | WC-40 | 新診断コードを定数で宣言し、そのコードが発生する一因子入力は試験しない | 宣言／静的被覆だけで「発生を検証済み」としない。既存のコード被覆と独立Expectedを区別する |
 
 **引渡し**：WC-35/36は既存`Decide`と`CheckRuleExamples`、WC-37は型付きRule、WC-38はSource/BuildPlan、WC-39は実DB ProviderとStudioの受入境界、WC-40は既存診断被覆Ownerへ渡す。まず各Ownerが持つ実回帰を再利用し、独立Consumerで証拠が足りない箇所だけ最小差分を作る。P0の正式R2-P/R3とStudio非Plugin Stage1→Stage2 Windowsを後回しにする新Gateは追加しない。
+
+## 29. 「読めた」「判定できた」「実装できた」を独立に表す
+
+WailsショーケースのSQL Editor、Redis Viewer、MQ Studio、LToolsでは、画面からは似た操作に見えても、TEIが受理できる事実が異なる。Data/Rule/Operationの正式な意味モデルから、まず**取得の証拠（何を読んだか）、判定の資格（どこまで結論を出せるか）、実現方式（P/G/Dのどれで実行できるか）**を別々に投影する。
+
+| 対象 | 現在の実物 | 正式に受理しない推論 |
+| --- | --- | --- |
+| Ruleの判定可能性 | [#5142](https://github.com/hat47x/tei-platform/pull/5142)の`Decide`は、NULL・未取得・partialを見分け、未知部分によって結論が変わらなければ決定できる | `undecided`を`not-satisfied`や拒否権限に置き換えること。実Readerが取得完全性を証明したこと |
+| Ruleの実現方式 | [#5166](https://github.com/hat47x/tei-platform/pull/5166)は同じMarkdownの暦日`not-after if present`をPで評価し、Gの`GeneratePositive`は未対応を明示して拒否する | Parser/Validatorが受理したら全TargetのGeneratorが実装可能だと決めること。実装選択を無言でPへFallbackすること |
+| 検査用の記録例 | [#5143](https://github.com/hat47x/tei-platform/pull/5143)は期待値と位置をもつ記録例をRuleと照合 | 例がすべて通るだけで業務Lawが証明された、または実行認可・実Providerの適合が確定したとみなすこと |
+| 実DBでの抽象経路 | [#5155](https://github.com/hat47x/tei-platform/pull/5155)の組織C1は型付きSource/Query契約を同一Attemptの実PostgreSQL Readに接続し、[run 43859032163](https://github.com/hat47x/tei-platform/actions/runs/43859032163)で対象試験の明示PASSを確認（[#5165](https://github.com/hat47x/tei-platform/pull/5165)） | MembershipからOrgUnitへの実JOIN、Function Contextから二Consumerへの伝搬、Host Grant／Effectまで通ったとみなすこと |
+| BuilderとToolchain | 現行mainの`cli_self_build_builder_binding.go`はPlanが名指すBuilder Digestと起動直前の`-child`ファイルDigestを比較する。Toolchainの任意Pinも起動契約§35で区分 | ファイルDigest一致から実Process Imageの同一性やG4正式資格を結論づけること。旧PR #5140の未マージを理由に現行mainの実装を無視すること |
+
+この**三つの問い**は、表・Tree・Node View・CLI/APIを作るための追加Core Kindではなく、既存`Source Index`、型付きMeaning、`Rule`、`Build Evidence`、`Function Context`と`Receipt`の読取Projectionで実現する。P/G/Dの適用可能性はRuleの種類・入力状態・Target・Providerの組で判断し、現在のGeneratorが扱えないRuleは**未対応と理由を表示**する。実行方式を変える場合は、明示したSelectionと新しいArtifact資格が必要である。
+
+## 30. Pluginの入出力とStudioの表示を、取得・開示・非同期の境界で検収する
+
+Plugin接続のWhole Record／Field／明示Adapterは標準型を使い続けるが、**型が合うだけで情報を開示してよいわけではない**。レコード全体を接続すると`internalNote`等の余分なFieldを含みうる。Fieldを絞ったProjectionでは、必須Fieldの欠損、明示NULL、未取得、partial、Audience・Disclosureがそれぞれ別の意味になる。
+
+- [#5156](https://github.com/hat47x/tei-platform/pull/5156)は現行の純粋TransformでWhole Recordと二Field Projectionを比較するGo試験候補であり、確認時点でOpen。型付きPort／実Providerの動作完了として数えない。採用時は、**Whole Recordでは余分なFieldが残る／Field Projectionでは開示対象を絞る／必須欠損は拒否／明示NULLは保存**という四つの異なるExpectedを基線にする。
+- [#5149](https://github.com/hat47x/tei-platform/pull/5149)の`validationread`はSQL Executorから受け取ったContract Query行の`nil`・項目不在を区別するReader候補だが、確認時点でOpen。正式Contract QueryのResolver／Bindingから実Provider／Contextまでの一貫した状態付Reader受入は未達であり、`complete`を呼出し側が申告するだけでは全件取得の証明にならない。
+- [#5157](https://github.com/hat47x/tei-platform/pull/5157)でmainへ入ったWeb UI計画は、意味／Operation／UI Projection／Layout／Target Adapterと、Source／Focus／Pin／Dirtyの版を分離し、read-only Inspector ViewModel→後着非干渉→Host/API公開の順に進める。Source位置からのジャンプを実Workbenchへ接続済みと見なさない。
+- [#5168](https://github.com/hat47x/tei-platform/pull/5168)は既存`responses.ts`／epoch／Pinガードの**実装を変更せず、独立Expectedと変異検出の試験を追加**するOpen PR。A→B→Aの遅延応答が最新のWorkspace/Subjectを上書きしないこと、Pinが意図せず外れないこと、描画用`parent:`辺IDを意味IDへ昇格させないことを、実際の応答レーンに沿って検査する。既存Windows PoCの固定11資産Closureを試験登録のためだけに変更しない。
+
+この成果をWailsショーケースへ結びつける際は、**Readerが何を知るか、Ruleが何を判断できるか、Projectionが何を表示するか、Hostが何を公開・実行できるか**を段階的に表示する。StudioのノードビューでPortがつながっていることは、Function/Providerを実行した証拠ではない。
+
+## 31. 次の三つの実証パケットと、重複を避ける境界
+
+追加で大きな汎用APIやRunnerを作る前に、既存のOwnerが持つ最短の縦断経路を次の三件へ絞る。
+
+| Packet | 最初に使う実物と受入の下限 | 次段を保留する理由 |
+| --- | --- | --- |
+| **WA-1／Read・Rule・表示** | Markdown Data＋Ruleの正式Source/Inspectorと`Decide`・記録例を共通型で扱い、既存CLI/Studioのread-only Consumerに`present/null/not-fetched`、partial、`undecided`理由を混同せず表示させる。実Readerで申告できる範囲と未確認範囲を明記する | #5149の実Readerは未統合。Studio表示に接続しただけでは実DBの全件性・開示/Grantが成立しない。#5156のpure Projectionは型/開示の次段 |
+| **WA-2／Rule・P/G・Build** | #5166の`not-after`（P成立/G未対応）と既存`quantity_positive`（P/G）を同じ実現方式一覧へ投影。#5129の元Markdown・#5109のGo入力失効、Builder/File Digestの照合を対象Source/Attemptごとに記録する | 「正しい値」だけでは正しい実入力・選択方式・実Generator/Builderを証明しない。正式R2-P、R3実Provider、G4資格は別 |
+| **WA-3／Host・Workbench・自己再入** | #5155/#5165の実PG抽象経路PASSと#5168のWorkbench応答ガードを**別々の既得証拠**として維持したうえで、既存`Operation`／CLI／`studiohost.ReadOnly`の三入口から同じ対象・Authority Limits・失敗分類を読めるか検証する | Wails HTTPの公開Scope/Grant、実Provider→二Consumer、生成Stage1→Stage2の実Windows再構築、D2更新はそれぞれ独立に検収。現行のPoC N2成功と合算しない |
+
+既存の#1180/#2514のExpected/Scenario、#951/#1158のPlugin/Operation、#1824のUI/Host、#2831/#4583のセルフビルド、#2586/#4495の実ProviderのOwnerへ結果を返し、**計画だけのための新しいTester、Host、Registry、Target別意味モデル、Bundle正本を作らない**。初期成果の評価は、実装したアプリの数ではなく、各Packetで減らせた手書き判断と、同じSubjectを二つのConsumerへ渡しても意味・状態・権限が混ざらないことによる。
+
+## 32. 今回追加する独立反証（既存の試験を再実装しない）
+
+| ID | 条件と変える一因子 | 期待と証拠の上限 |
+| --- | --- | --- |
+| WC-41 | 同じ`not-after` RuleをPで評価したあと、実現方式SelectionだけGへ変える | 現行Generatorは未対応と拒否する。Pの成功をGの成功へ転用しない。#5166のFocused回帰を基線とする |
+| WC-42 | Whole RecordをField二項目の明示Projectionに変え、追加`internalNote`を入力へ入れる | 公開するField二つだけが出力され、欠損・明示NULL・未取得が混ざらない。#5156のpure試験候補から実Disclosureは別検収 |
+| WC-43 | Contract Query Readerに`complete`を申告するが、実Queryの取得範囲がpartialである | 申告の存在を実Coverageの証明とみなさず、成立可能性を保留する。#5149のReader候補と実Providerを分ける |
+| WC-44 | WorkbenchでWorkspace A→B→Aを切り替え、最初のAへのInspect成功が最後に到着する | 応答のWorkspace/Inspection epochを再照合し、最新A・Pin・Bの編集状態を上書きしない。#5168の独立Expected候補 |
+| WC-45 | 組織C1の同一型付きSource/Queryは保持し、実ReadのDatasourceまたはResult Mappingだけ変える | 静的Pathは成立しても、同Attemptの実PG Readと独立Expectedの不一致を検出。#5155の実PG成功からOrgUnit JOIN／Function二Consumerへ拡張したことにしない |
+| WC-46 | Planが名指すBuilderのファイルDigestだけを違う`-child`にして実行する | 既存Builder BindingのL2-bを保留し、実Processの同一性やG4資格の証明に拡大しない。名指したToolchain変更は別の一因子試験 |
+
+**着手順**：WA-1は現行Inspectorと検証済みのRule Readerから、WA-2は既存Go回帰を再利用してP/G適用行列を整理するところから始める。WA-3は#5168のOpen試験の合否とFrontend Closureを先に確認する。実Provider／Stage2のP0は同時に継続し、ショーケース向けに新たな専用Hostを構築するまで待たない。
