@@ -437,3 +437,20 @@ PluginのWhole／Field／明示Adapter（main済み#5162）は標準型に加え
 これらは**既存#1180／#2514の独立Expectedへ渡す候補**であり、別のExpected正本は作らない。実装順はSL-1（WEB-P1aと共通）→Focus／Pin後着の独立試験（未統合PR #5168と実装を重複させない）→SL-2のHost実Read→SL-3のEditor／実Windows受領とする。`package.json`のテスト登録だけで生成Desktopの固定Source Closureを失効させる場合は、固定値を都合よく書き換えず、既存CIの受入経路に従い別資格で検査する。
 
 SL-0/1/3は#1824／#4515／#997、SL-2と条件付きSource保存は#1158／#1529／#1124、Plugin投影は#2497／#951が担当する。正式な非Plugin Studio Stage1→Stage2（#2831／#4583）と通常CLI実Provider Read（#2586／#4495）は**独立P0を維持**し、この表示検収を新しい先行Hard Gateとしない。本節は設計統合のみで、新しいGo／TypeScript／Windows／DB試験やOwner意味受理を実施していない。
+
+## 21. Source Indexの表示用Presenterを最小の製品差分として追加する（2026-11-17）
+
+§20のSL-1を、さらに**SL-1a：検証済みSource位置から表示用の値を作ること**と**SL-1b：実WorkbenchのInspector DOMで受け取ること**に分ける。main統合済み#5173はInspect結果からEditor表示文書などを純粋に導出する`inspector-presentation.ts`を追加した。ただし本番`main.ts`に未接続である。main統合済み#5168はWorkspace A→B→AやPin・後着応答をNode試験で確認し、#5188は実CLI ProcessとStudio Hostの意味／Sourceを独立Expectedで比較した。いずれもWindowsの新しいSource位置表示や、ファイルを開く権限の成立を示さない。
+
+今回の**SL-1a実装**として、既存`readSourceLocations`の検証結果だけを受け取る純粋な`source-locations-presentation.ts`を新設する。Source Status、観測件数／表示件数／省略件数、全件性未確定、相対Path・Role・行列および元Sourceのbyte offset・Artifact指紋を、**HTMLではなく表示用の文字列**として渡す。EditorのUTF-16位置を計算せず、`file://`／Openボタン／Grant／Effect／実Source byteを生成しない。これにより§20のSL-E01〜03、E07のうち**表示変換の局所部分のみ**を検査する。既存S-LOC Readerの内容を再解析せず、同じHost／Catalogと応答レーンで既に検査した結果を前提とする。
+
+| 受入単位 | 実際に確認すること | 今回の資格 |
+| --- | --- | --- |
+| **SL-1a** | 一件・23件・0件、indexed／not-indexed、危険な見かけのPath、旧Source指紋・異Subject・write応答の拒否。元byte位置と全件性未確認の区別 | 新純粋PresenterとNode試験。Host／DOM／実ファイルは未使用 |
+| **SL-1b** | 既存`main.ts`の選択／Pin laneが受け取った現行Inspect結果を、Source位置ViewModel→Inspectorの`textContent`で描画。旧応答は表示しない | **未実装**。既存Source Closureの改版と正規Bundle・実WebView2の再受入が必要 |
+| **SL-2** | 明示OpenのHost Operationが現在のRoot／byte／Occurrenceを再確認 | **未実装**。索引上の相対Pathだけでは開かない |
+| **SL-3** | 実原文のbyte位置→Editor文字位置の変換、Caret／IME／Dirty BufferとWindows受領 | **未実装**。Source位置一覧が表示できても合格としない |
+
+**再現とCI**：既存Workbenchの`package.json`は、生成Desktopの過去のSource Closure固定に含まれるため、テストの登録だけを目的に改版しない。新規Node試験は既存`tei-studio-async-lanes-ci.yml`の独立Jobへ追加し、Node24で実行する。新Presenterを本番`main.ts`からまだimportしないため、現在の配布JS／HTML／CSS・第三者通知のbyteを変えない。将来のSL-1b接続で従来の固定成果物の指紋を意図的に変える場合は、旧資格を上書きするのではなく、新しいSource Closureと現行Toolchain／Embed／実Consumerを同一HEADで認定する。
+
+**他レーンへの接続**：#5198の`-expected-fingerprint`を使うCLIの前提指紋・再読取は未統合候補であり、HostでのSL-2を代行するものではない。#5205の`*.tei.md` Reader診断は選択可能な言語を示すようになったが、Sourceを安全にOpenできる意味ではない。#5194の入れ子Go module被覆と#5202の状態境界は未統合候補として扱い、これらの未達をStudio P0の完了へ加算しない。原文未読取・部分取得・Rule未判定・生成方式未対応をUIで別状態として保持する。#2831／#4583と#2586／#4495の独立P0を維持し、新Host／新Parser／第二Test Engineは追加しない。

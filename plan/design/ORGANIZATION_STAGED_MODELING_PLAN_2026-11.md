@@ -1134,4 +1134,17 @@ S3の最小受入は、単一所属Occurrence・Assertion revision・物理行�
 | S4 判断候補 | Ruleの必要Read集合、時点、Case/Role改訂と現在Grantを照合する | Query結果1件＝唯一決裁者、Person＝Principalとしない |
 | S5 表示・Plugin | Table/Graph/Tree/SHOのSource Relation occurrence・hidden EdgeとPluginのport/Adapterを追跡 | 見た目やport Shapeが同じでも、Law・Binding・Disclosureを省略しない |
 
-新規Go試験は既存実PostgreSQL suiteの同一`TestOrgAxisAsOfActualPostgresOptIn`内で実行し、独立した一時表だけを用いる。対象HEADの**明示PASS・非SKIP・gofmt**を確認するまでは未受入。次のProduct Exitは#2586の通常CLI Function→Query→実Provider→Consumer同Attempt受領と、人物RelationのOwner採否を独立に進める。#2831のDesktopセルフビルドは先行P0のまま維持する。
+新規Go試験は既存実PostgreSQL suiteの同一`TestOrgAxisAsOfActualPostgresOptIn`内で実行し、独立した一時表だけを用いる。[PR #5184](https://github.com/hat47x/tei-platform/pull/5184)の初回実PG CIは整形失敗のためNOT RUNだったが、main統合済み[PR #5210](https://github.com/hat47x/tei-platform/pull/5210)の[固定run #43900533159](https://github.com/hat47x/tei-platform/actions/runs/43900533159)で、追加した二世界サブテストの明示PASS、gofmt、非SKIPを確認した。**二世界の観測不十分性の反例のみ合格**とする。次のProduct Exitは#2586の通常CLI Function→Query→実Provider→Consumer同Attempt受領と、人物RelationのOwner採否を独立に進める。#2831のDesktopセルフビルドは先行P0のまま維持する。
+
+<!-- org-cross-stream-claim-exit-20261117 -->
+### 10.21 実Queryの観測から、ClaimとConsumerの利用資格へ進む
+
+[組織C1補遺§44.3](ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)に、**同じ結果を返す二世界でも結論が異なるClaimは、その結果だけでは確定できない**という検査を加えた。組織固有の判定器を作らず、既存Scenario・Function Data Context・Result Slice・Claim/Projectionを使って受入範囲を引き継ぐ。
+
+| 経路 | 次の製品Exit | 未証明のままにすること |
+| --- | --- | --- |
+| S3→S4 (#2586/#2506) | 通常CLIで選択したFunction→Query→実Provider→一Consumerの同じAttempt、Source/Query版・入力・Read Scope・Result Slice・未確定状態を照合 | 独立ReferenceのReader成功を通常CLIのConsumer受領と同一視しない |
+| S4 Claim (#2514/#2593/#4490) | Membership件数、distinct Person、配賦FTE、責任・承認候補について別の必要情報・粒度・Expectedを定める | Queryの3列と4所属の観測を人物数確定や現行権限と扱わない |
+| S5 Projection/Port (#2497/#2516/#1124) | Graph/Tree/SHO/Pluginの型付きPort・Adapterと投影損失、ConsumerのDisclosureを比較 | Nodeの表示や型ShapeだけでPerson Link・Relation Edge・Grantが復元されたとみなさない |
+
+Person Linkの同一性、訂正か再所属か、どの時間条件で人数を数えるかは#2386/#1126のOwnerが採否を判断する。S3の実DB反例はその判断を代行しない。#2831 Desktopセルフビルドは引き続き独立P0。

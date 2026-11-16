@@ -175,18 +175,20 @@ func helpText(fs *flag.FlagSet, command string) string {
 			return out.String()
 		}
 		if command == "model locate" {
-			// model locate parses its own FlagSet too; these four flags are its
+			// model locate parses its own FlagSet too; these five flags are its
 			// whole grammar.
 			fmt.Fprintf(&out, "  -workspace string\n    \tTEI workspace directory\n")
 			fmt.Fprintf(&out, "  -subject-kind string\n    \texact subject kind from model catalog entries[].subject.kind\n")
 			fmt.Fprintf(&out, "  -subject-id string\n    \texact subject ID\n")
 			fmt.Fprintf(&out, "  -limit int\n    \tmaximum entries per list (children, siblings); default %d, at most %d\n", operations.LocationDefaultLimit, operations.LocationMaxLimit)
+			fmt.Fprintf(&out, "  -expected-fingerprint string\n    \tsnapshot fingerprint an earlier read returned; fails when the World or Source Index changed\n")
 			return out.String()
 		}
 		if command == "model overview" {
-			// model overview parses its own FlagSet; two flags are its grammar.
+			// model overview parses its own FlagSet; three flags are its grammar.
 			fmt.Fprintf(&out, "  -workspace string\n    \tTEI workspace directory\n")
 			fmt.Fprintf(&out, "  -limit int\n    \tmaximum sections listed; totals still cover every section; default %d, at most %d\n", operations.OverviewDefaultLimit, operations.OverviewMaxLimit)
+			fmt.Fprintf(&out, "  -expected-fingerprint string\n    \tsnapshot fingerprint an earlier read returned; fails when the World or Source Index changed\n")
 			// A section count is not a count of everything the workspace declares:
 			// the sections mirror the model catalog (#4128). Say so here, where a
 			// designer looks before reading the number.
