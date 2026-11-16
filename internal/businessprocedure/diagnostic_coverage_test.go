@@ -29,7 +29,7 @@ func TestEveryDeclaredDiagnosticCodeIsReached(t *testing.T) {
 // without reaching it is a deliberate edit rather than an oversight.
 func TestDeclaredDiagnosticCodesAreTheClosedSet(t *testing.T) {
 	declared := declaredCodes(t)
-	const expected = 14
+	const expected = 18
 	if len(declared) != expected {
 		t.Fatalf("declared %d diagnostic codes, want %d; update this count when a code is added: %v",
 			len(declared), expected, declared)
@@ -119,6 +119,26 @@ func reachedCodes(t *testing.T) map[string]bool {
 	unknownOutcome.Branches[1].Outcome = "Rejected"
 	record(projectFixture(t, unknownOutcome))
 
+	// A branch bound to no step makes the one-sided check vacuous.
+	branchStepMissing := readFixture(t)
+	branchStepMissing.Branches[0].OnStep = ""
+	record(projectFixture(t, branchStepMissing))
+
+	// A step with no id cannot be referred to or addressed.
+	stepIDMissing := readFixture(t)
+	stepIDMissing.Steps[0].ID = ""
+	record(projectFixture(t, stepIDMissing))
+
+	// A fixture that asserts its own values are accepted.
+	statusNotCandidate := readFixture(t)
+	statusNotCandidate.Procedure.Actor.Status = "accepted"
+	record(projectFixture(t, statusNotCandidate))
+
+	// autoExecute on a step the reader would expect to run by itself.
+	autoExecuteSystem := readFixture(t)
+	autoExecuteSystem.Steps[0].AutoExecute = true
+	record(projectFixture(t, autoExecuteSystem))
+
 	conflated := readFixture(t)
 	conflated.Procedure.Actor.Label = "ORDER_EDITOR"
 	record(projectFixture(t, conflated))
@@ -127,11 +147,11 @@ func reachedCodes(t *testing.T) map[string]bool {
 	unresolved.Steps[5].Function = &Reference{Kind: ReferencePattern, ID: "order_entry.submit_order_v2"}
 	record(projectFixture(t, unresolved))
 
-	ambiguousTargets := append(declaredTargets(), Declared{
+	ambiguousTargets := append(declaredTargetsWithDigests(), Declared{
 		Kind: ReferencePattern, ID: "order_entry.submit_order",
 		Subject:  "application-pattern:order_entry.submit_order",
 		Artifact: "applications/order-entry/patterns/submit-order-copy.tei",
-		Line:     1, Column: 9, Role: "definition",
+		Line:     1, Column: 9, Role: "definition", Fingerprint: "sha256:copy",
 	})
 	ambiguous := readFixture(t)
 	record(Project(ambiguous, Fingerprint(ambiguous), NewResolver(ambiguousTargets)))

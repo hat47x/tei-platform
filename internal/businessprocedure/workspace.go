@@ -5,23 +5,6 @@ import (
 	"tei/internal/workspace"
 )
 
-// referenceKindForSubject maps a Source Index subject kind to the reference
-// kind this projection resolves. A subject kind with no entry is not a
-// reference target here, so a procedure cannot point at it.
-func referenceKindForSubject(kind string) (ReferenceKind, bool) {
-	switch kind {
-	case "semantic-capability":
-		return ReferenceCapability, true
-	case "semantic-validation":
-		return ReferenceValidation, true
-	case "application-pattern":
-		return ReferencePattern, true
-	case "semantic-data":
-		return ReferenceData, true
-	}
-	return "", false
-}
-
 // DeclaredFromIndex takes the declared targets from a Source Index. Only
 // definition-role references are targets: an authoring or derived reference is
 // not where the identity is declared, so it must not resolve a step's Function.

@@ -77,9 +77,21 @@ func declaredTargets() []Declared {
 	}
 }
 
+// declaredTargetsWithDigests is declaredTargets with a per-identity digest. The
+// Source Index supplies these digests in the real path; the table carries them
+// here because a target without a digest is not a Source declaration the
+// projection accepts.
+func declaredTargetsWithDigests() []Declared {
+	targets := declaredTargets()
+	for i := range targets {
+		targets[i].Fingerprint = "sha256:" + string(targets[i].ID)
+	}
+	return targets
+}
+
 func projectFixture(t *testing.T, fixture Fixture) Projection {
 	t.Helper()
-	return Project(fixture, Fingerprint(fixture), NewResolver(declaredTargets()))
+	return Project(fixture, Fingerprint(fixture), NewResolver(declaredTargetsWithDigests()))
 }
 
 func codesOf(projection Projection) map[string]int {
@@ -329,11 +341,11 @@ func TestUnresolvedReferenceIsNotGuessed(t *testing.T) {
 // #1125: two declarations of one identity are ambiguous. The projection must not
 // choose the first one.
 func TestAmbiguousReferenceIsReportedNotChosen(t *testing.T) {
-	targets := append(declaredTargets(), Declared{
+	targets := append(declaredTargetsWithDigests(), Declared{
 		Kind: ReferencePattern, ID: "order_entry.submit_order",
 		Subject:  "application-pattern:order_entry.submit_order",
 		Artifact: "applications/order-entry/patterns/submit-order-copy.tei",
-		Line:     1, Column: 9, Role: "definition",
+		Line:     1, Column: 9, Role: "definition", Fingerprint: "sha256:copy",
 	})
 	fixture := readFixture(t)
 	projection := Project(fixture, Fingerprint(fixture), NewResolver(targets))
@@ -592,6 +604,146 @@ func TestManualStepWithoutInstructionIsKeptAndNamed(t *testing.T) {
 	}
 	if findStep(t, projection, "BP-A02").ID != "BP-A02" {
 		t.Fatal("the manual step did not survive")
+	}
+}
+
+// A branch bound to no step silently disabled the one-sided-decision check: the
+// decision it belongs to was unknown, so it could not be shown to have two sides.
+func TestBranchWithNoStepIsReported(t *testing.T) {
+	fixture := readFixture(t)
+	for i := range fixture.Branches {
+		fixture.Branches[i].OnStep = ""
+	}
+	projection := projectFixture(t, fixture)
+	if codesOf(projection)[CodeBranchStepMissing] != 2 {
+		t.Fatalf("stepless branches were not reported: %+v", projection.Diagnostics)
+	}
+}
+
+// A step with no id cannot be referred to by a branch, is indistinguishable in
+// manualSteps, and cannot be addressed in a finding.
+func TestStepWithNoIDIsReported(t *testing.T) {
+	fixture := readFixture(t)
+	fixture.Steps[1].ID = ""
+	projection := projectFixture(t, fixture)
+	if codesOf(projection)[CodeStepIDMissing] != 1 {
+		t.Fatalf("a missing step id was not reported: %+v", projection.Diagnostics)
+	}
+}
+
+// A reference fixture proposes meaning. It must not be able to assert that its
+// own candidate values are accepted.
+func TestNonCandidateStatusIsReported(t *testing.T) {
+	fixture := readFixture(t)
+	fixture.Procedure.Trigger.Status = "accepted"
+	fixture.Procedure.Actor.Status = "accepted"
+	fixture.Procedure.Authorization.Status = "accepted"
+	projection := projectFixture(t, fixture)
+	if codesOf(projection)[CodeStatusNotCandidate] != 3 {
+		t.Fatalf("non-candidate statuses were not reported: %+v", projection.Diagnostics)
+	}
+	// An empty status is not a claim, so it is not reported.
+	empty := readFixture(t)
+	empty.Procedure.Trigger.Status = ""
+	if codesOf(projectFixture(t, empty))[CodeStatusNotCandidate] != 0 {
+		t.Fatal("an absent status was reported as a claim")
+	}
+}
+
+// autoExecute is refused on a step the reader would expect to run by itself,
+// not only on a manual one.
+func TestAutoExecuteOnNonManualStepIsReported(t *testing.T) {
+	fixture := readFixture(t)
+	fixture.Steps[0].AutoExecute = true // BP-A01 is an application step
+	projection := projectFixture(t, fixture)
+	if codesOf(projection)[CodeAutoExecuteOnSystemStep] != 1 {
+		t.Fatalf("autoExecute on an application step was not reported: %+v", projection.Diagnostics)
+	}
+	if findStep(t, projection, "BP-A01").AutoExecuted {
+		t.Fatal("an application step was projected as auto-executed")
+	}
+	// A manual step gets the manual-specific finding instead, not both.
+	manualAuto := readFixture(t)
+	manualAuto.Steps[1].AutoExecute = true
+	codes := codesOf(projectFixture(t, manualAuto))
+	if codes[CodeManualStepAutoExecute] != 1 || codes[CodeAutoExecuteOnSystemStep] != 0 {
+		t.Fatalf("a manual autoExecute claim was reported under the wrong code: %v", codes)
+	}
+}
+
+// A resolved reference must carry its artifact digest into the projection, so
+// the Source it names is the bytes the index read.
+func TestResolvedReferenceCarriesTheArtifactDigest(t *testing.T) {
+	projection := projectFixture(t, readFixture(t))
+	for _, step := range projection.Steps {
+		if step.Function == nil {
+			continue
+		}
+		want := "sha256:" + string(step.Function.ID)
+		if step.Function.Fingerprint != want {
+			t.Fatalf("step %s resolved %q with digest %q, want %q",
+				step.ID, step.Function.ID, step.Function.Fingerprint, want)
+		}
+	}
+	if projection.Actor.AuthorizationCapability == nil {
+		t.Fatal("the authorization capability did not resolve")
+	}
+	if projection.Actor.AuthorizationCapability.Fingerprint == "" {
+		t.Fatal("the authorization capability resolved without its artifact digest")
+	}
+}
+
+// A target that does not name a real Source declaration must not resolve: the
+// projection claims a reference reaches a Source, so a target without a role, a
+// position or a digest cannot support that claim.
+func TestTargetsWithoutASourceAreNotResolvable(t *testing.T) {
+	valid := Declared{
+		Kind: ReferencePattern, ID: "order_entry.submit_order",
+		Subject:  "application-pattern:order_entry.submit_order",
+		Artifact: "applications/order-entry/patterns/submit-order.tei",
+		Line:     1, Column: 9, Role: "definition", Fingerprint: "sha256:x",
+	}
+	cases := map[string]func(*Declared){
+		"no digest":      func(d *Declared) { d.Fingerprint = "" },
+		"no position":    func(d *Declared) { d.Line, d.Column = 0, 0 },
+		"no artifact":    func(d *Declared) { d.Artifact = "" },
+		"authoring role": func(d *Declared) { d.Role = "authoring" },
+		"absolute path":  func(d *Declared) { d.Artifact = "C:/Windows/win.ini" },
+		"escape":         func(d *Declared) { d.Artifact = "../../etc/passwd" },
+	}
+	for name, mutate := range cases {
+		t.Run(name, func(t *testing.T) {
+			target := valid
+			mutate(&target)
+			resolution := NewResolver([]Declared{target}).Resolve(Reference{
+				Kind: ReferencePattern,
+				ID:   "order_entry.submit_order",
+			})
+			if resolution.Resolved != nil {
+				t.Fatalf("%s resolved: %+v", name, resolution.Resolved)
+			}
+		})
+	}
+}
+
+// A reference diagnostic must carry the reference severity, so a consumer that
+// branches on severity sees it as a reference problem.
+func TestReferenceFindingsCarryTheReferenceSeverity(t *testing.T) {
+	fixture := readFixture(t)
+	fixture.Steps[5].Function = &Reference{Kind: ReferencePattern, ID: "order_entry.submit_order_missing"}
+	projection := projectFixture(t, fixture)
+	var found bool
+	for _, diagnostic := range projection.Diagnostics {
+		if diagnostic.Code == CodeReferenceUnresolved {
+			found = true
+			if diagnostic.Severity != SeverityReference {
+				t.Fatalf("unresolved reference has severity %q, want %q",
+					diagnostic.Severity, SeverityReference)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("the unresolved reference was not reported")
 	}
 }
 
