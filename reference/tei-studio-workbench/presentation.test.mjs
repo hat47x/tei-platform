@@ -6,10 +6,10 @@ import {
   inspectEligibility,
   readValidation,
   readInspection,
-  presentInspection,
   relatedGraph,
   readXeadObservation,
 } from "./presentation.ts";
+import { presentInspection } from "./inspector-presentation.ts";
 const data = {
   subject: { kind: "semantic-data", id: "sales.order" },
   sourceStatus: "indexed",
