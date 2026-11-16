@@ -683,25 +683,29 @@ Webの要求、CLIの起動、タイマー、Message、画面操作には、そ�
 
 **初回の停止線**：EP-0で既存TargetのRoute/Head Slotが未接続なら`unbound/unsupported`を記録し、#1121/#2090へ要求を返す。実Slotが見つかった場合だけEP-1の実Builder一Memberを試す。途中で該当Targetを作り足して「当初から利用可能」と扱わない。#5096のCLI/HTTP検証や#5119のHost試験をB2C用の新しいHard Gateにしない。独立Expectedは#3509の既存BC/G49-EPを#1180/#2514へ返し、新しいScenario正本を立てない。全体P0はStudio Stage1→Stage2（#2831/#4583）、並行P0は通常製品`tei`の実Provider Read→独立二Consumer（#2586/#1251）で不変。**この節は設計・実装順の追記のみで、B2Cの新Go/Builder/Browser/Commerce/Consentの実験とOwner受理はNOT RUN / NOT ACCEPTED**。
 
-<!-- g49-b2c-typed-placement-minimal-witness-20261115 -->
-### G49 EP-0→EP-1：実際のB2C成果物へ至る型付き配置の最小契約（2026-11-15）
 
-[Node配線の意味適合 #5075](https://github.com/hat47x/tei-platform/pull/5075)、[Plugin充足と開示 #5076](https://github.com/hat47x/tei-platform/pull/5076)、[実現方式 #5095](https://github.com/hat47x/tei-platform/pull/5095)を受け、G49の最小実験を**具体的な一つのBinding**へ絞る。候補は、合成・公開可能な商品案内ページの**Headメタ情報一か所**（題名、説明、canonical等）の任意Build時挿入である。これは実装題材の提案であって、現行TEIにNative Route/Head Slot/SEO Generatorが実装済みという主張ではない。既存Targetが当該Slotを公開しない場合、結線は `unbound/unsupported` として報告する。新しいDOM Wrapper、必須JS、Router、SEO Engine、Adapter Solverは作らない。
 
-**一か所をつなぐ際に必要な情報**を、`SourceのSubject/occurrence/Revision` → `提供側の型・意味・公開Facet` → `利用側の必要Shape/多重度・locale・Scope/開示・生成時点` → `明示Adapter（必要な場合）` → `Route/Slotの選択結果と必要性` → `実現方式G/P/Dと実行先` → `実Builder入力・Artifact Member` の順に照合する。型名が一致しても、値の欠損、時点、対象顧客、言語、許容Audience、単位、Error/NULLの意味が合わなければ自動結線しない。逆に値を個々の基本型へ分解することを強制せず、適合する複合型をそのまま結線し、明示Adapterで必要な変換だけ行えるようにする。いずれも新しいCore Port型ではなく、#2497/#951/#1016/#4350の既存評価項目への投影である。
+<!-- g49-b2c-ep0-real-target-witness-20261116 -->
+### G49 EP-0：既存Web Targetの能力を先に確認し、実Sourceと一つのHead出力を結ぶ（2026-11-16）
 
-| 対照する一因子 | EP-0（選択・結線）の独立Expected | EP-1（生成・実収録）の独立Expected |
+**今回の実装引渡し**：B2Cの初回は新しいSEO機構を作るのではなく、公開できる合成商品案内の`meta description`一項目が、**既存のどのTarget・Route・Slot・Builder契約に置けるか**を調べる。Sourceの意味とSource occurrence、要求される型・locale・公開範囲、配置先、実Builderの消費入力、生成Memberを一つの試行として対応付ける。見た目が同じ、型名が同じ、生成文字列が同じだけでは接続を認定しない。
+
+**実コードで確認した足場とその限界**：`tools/reference-first-web-target/README.md`は既存実装を**診断用Web Reference**と明示している。`combined_scenario_templates.go`と`custom_ui.go`にはGo HTML templateと静的`<head>`があり、同じCommandをHTML/JSON/Custom UIへ投影できる。ただし、これらのファイルに**汎用の公開Head Slotを宣言した証拠は見当たらない**。`internal/artifact/manifest.go`には既存Artifact集合のManifest、`internal/buildintent/resolve.go`にはSource/Builder解決の契約があるが、この二つの存在だけで商品ページのHeadへ実挿入できるわけではない。これは確認したファイルの範囲内の所見であり、Repository全域にHead機構が存在しないとの断定ではない。
+
+| 受入の順番 | 実際に読むもの・固定する条件 | 成立・停止の判断 |
 | --- | --- | --- |
-| 公開Head一件と、未探索のCMS動的Route | 観測したRoute/Slotの適用義務は判定し、CMSの未知Routeを全サイト適用済みとしない | **実際に選択した一Memberだけ**を生成成果物で照合。知らないRoute用のMemberを捏造しない |
-| 必須SEO項目と任意Analyticsを別扱い | 必須項目のBinding欠落は未充足。任意Analytics不採用は業務Operationの失敗ではない | 必須Member欠落は不適合。Analyticsを含めないH0も正規構成として保持 |
-| 同じSlotへの二つの適用・順序依存 | 衝突・重複・優先順位が未宣言なら勝手に一つを選ばない。Edgeの出現IDは区別 | 同じMetadata/Scriptの二重収録を単純に「成功2件」と数えない |
-| 公開情報の文言変更／価格・同意の変更 | 文字列編集であってもRule/Price/Consent依存があればC0に限定しない | Source/Builderの版と成果物の差を確認。旧Memberや旧配信Responseの現在性を推定しない |
-| 公開SEO情報と、非公開Customer/Order入力 | 公開Headへの秘匿依存を、型が合うだけで許容しない。未取得・非開示は空文字として埋めない | 原Source byteや秘密値の無断同梱を拒否。Member Hashが一致しても開示適格性を保証しない |
-| 同じMeaningをG/P/Dで実現 | Head静的情報はG候補、現行価格・Cart/Payment・現在Grantは権威あるDに残し、Pは実装済み型付き評価のみ。配置ごとに方式を選ぶ | GならBuilder/Member、Pなら評価時の実Input/Read、Dなら実Provider Call/Receiptを**別の票**とし、不要なArtifact生成を要求しない |
+| **EP-0a：Capability棚卸し**（#1121/#2090） | 既存Target Catalog、公開されるRoute/Head Slot/Builder ContractとProvider/Generatorの版。調査対象ファイル・探索範囲も記録 | 実在Slotなら候補を固定。見つからなければ調査範囲付き`unbound/unsupported`。未探索を「不存在」や「全体適合」にしない |
+| **EP-0b：型付きBinding**（#4350/#951） | 実WorkspaceのSource Subject/occurrence/Revision、公開Facet、単一のlocale、必要Shape/多重度、`present/null/not-fetched`、Audience/Disclosure、Adapterの有無 | 必須入力の欠落・曖昧な公開範囲・未宣言変換は拒否。非公開Customer/Orderを商品Headへ暗黙転送しない |
+| **EP-1：Member実収録**（#1121/#2600） | 実際に選んだBuilderのConsumed Input、Source/World/Generator/Toolchain Pin、生成した一Memberと既存Manifest/BOMのReadback | 同一値でも別Read ID、旧Source/Plan、生成元と成果物の版不一致は不適合。Builderを呼んでいなければ`NOT RUN` |
+| **EP-2以降：配信・利用**（#3271/#3503/#1174） | Response/Cache/Browserの実バイト、Experimentの実露出とConsent、Commerceの現在Price/Inventory/Receipt | EP-1成功から配布・検索エンジン受領・業務確定・CVR改善を認定しない |
 
-**最小実行順**：(1) 既存Workspaceから一つの対象とSource occurrenceを読み、Route/Slotの実在性を確かめる。(2) 必要Shapeと公開範囲を宣言し、Selectorのmatched/excluded/undeterminedを読み取る。(3) 実Targetがある場合に限り、選択したBuilderの**実Consumed Input**とArtifact Memberを同一World/Generator/Toolchain版で照合する。(4) Memberの削除・重複・未宣言Adapter・非公開入力・旧Sourceという一因子の負例を置く。(5) 配信D、可視化V、外部受領Rは後続の別資格にする。実Target/Slotが存在しない場合には(3)以降を実行済みと偽らず、既存#1121/#2090へTarget拡張要求を返す。
+**G/Pの同値性を強化する**：main統合[#5118](https://github.com/hat47x/tei-platform/pull/5118)は、Ruleの直接評価Pと生成Go Gで出力値とRead回数が同じでも、**Read IDの違いを検出する**限定テストを持つ。main統合[#5129](https://github.com/hat47x/tei-platform/pull/5129)はBuildPlan固定後の元Markdown差替えを旧Planで拒否する。main統合[#5142](https://github.com/hat47x/tei-platform/pull/5142)はRule判定でNULL・未取得・部分取得を区別する。これらをEP-0/1の独立Expectedに接続するが、Ruleの局所Go PASSをB2C Headの実Builder PASSとして流用しない。Function Contextの列由来／粒度の拡張[#5144](https://github.com/hat47x/tei-platform/pull/5144)は確認時点でClosed/Unmergedの候補であり、B2Cの現在適格性を先取りしない（#2586）。
 
-**独立Expectedと採否**：上記は[#3509](https://github.com/hat47x/tei-platform/issues/3509)のG49-EP、[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#2514](https://github.com/hat47x/tei-platform/issues/2514)に統合する**受入項目**であり、第二Scenario正本ではない。観測した「必須の配置義務が満たされた範囲」と、公開に必要な実Release/Grant/Consentを分離する。対照対象のH0 Native-onlyはTEI JS・Renderer・Contract採用ゼロでも適格とし、契約を使うH1だけを追加生成・運用費用で評価する。既存の正値Rule `validationeval` 対 `tei self-build` の実Go回帰（main [#5095](https://github.com/hat47x/tei-platform/pull/5095)が引用する基線）はG/P比較の実装証拠であって、B2CのHead/実配信/Browserの試験ではない。**本節固有のEP-0/1、実B2C Builder/Browser/Commerceの新試験はNOT RUN / NOT ACCEPTED**。Studio全体セルフビルド#2831/#4583と通常製品実Read#2586は並行P0のままにする。
+**Head Slot未接続でもH0の価値を損なわない**：初回の既存TargetでSlotが発見できなければ、EP-0の結果を`unbound/unsupported`として固定し、#1121/#2090へ最小の拡張要求を返す。その後に案件所有のNative Headへ**任意のBuild-time成果物**を渡すH1方式を試す場合は、別の試行・別の資格として扱う。当初の製品能力の発見結果を後から書き換えず、必須Browser JS/DOM wrapper/通信Proxyは追加しない。H0 Native-onlyは正規の比較対象として残し、TEIを全Routeへ適用するよう強制しない。
+
+**横断計画との整合**：main統合[#5128](https://github.com/hat47x/tei-platform/pull/5128)のWEB-P1〜P3はWeb公開方式とConsumer受入を所有し、main統合[#5130](https://github.com/hat47x/tei-platform/pull/5130)は型付きMappingと実Readを所有する。B2Cはこれらの機構の一Consumerとして検収する。API Pluginの旧[#5096](https://github.com/hat47x/tei-platform/pull/5096)と三入口試験の後継[#5137](https://github.com/hat47x/tei-platform/pull/5137)はClosed/Unmergedであり、正式な非Builtin Provider呼出しやWeb公開の合格には算入しない。独立Expectedは#3509から#1180/#2514へ引き渡し、第二Scenario正本を作らない。全体P0はStudio Stage1→Stage2（#2831/#4583）と通常製品`tei`実Provider Read→独立二Consumer（#2586/#1251）で不変。
+
+**現時点の資格**：この節は既存ソースの限定的な棚卸しと実装順の更新である。新規のB2C Head/Builder/Browser/Commerce/Consent/実験のGo試験、外部公開、Ownerによる業務意味の受理は**NOT RUN / NOT ACCEPTED**。
 
 ## 最新の作業単位へ接続する
 
