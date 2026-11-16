@@ -1036,3 +1036,41 @@ SQLiteのファイルを作り、SQLで行を入れ、製品のSQL Executorと�
 - 読み手を呼ぶ製品のコードはまだない。`tei`のコマンドから、実DBの行で規則を判定する経路はない。
 - Operatorの規則は、読み手の試験では実行していない。数値を読む入口は同じである。
 - 行の数が多いときの手間、Linux上のCI、独立したレビュー。
+
+## 22. 追補：二つの表層で同じSubjectを宣言したときの位置表示
+
+§12の引継ぎにあった「文書の重複宣言の診断へ、候補の位置を並べる」のうち、`*.tei.md`と既存`*.tei`の**別表層**で同じSubjectが衝突する場合を接続した。`DUPLICATE_SEMANTIC_ELEMENT`自体は既存のValidatorが返す。変わったのは、その診断に**宣言の物理位置**を添える投影だけである。
+
+### 22.1 見つけた断点
+
+`ProjectDiagnosticsWithLoadedDuplicates`は候補位置を`semanticSourceFiles`の原文から既存文法で読み直して集めていた。`*.tei.md`はこの一覧に入らない（`mergeAuthoringMarkdown`は`semanticFilesByNamespace`だけを埋める）。そのため、次の状態で位置が**実際には分かっているのに**`unknown`と表示していた。
+
+| 状態 | 変更前の表示 | 変更後 |
+| --- | --- | --- |
+| 既存`*.tei`の`type sales.order_id`と`*.tei.md`の`data sales.order_id` | 既存側の位置＋`unknown` | 両方の位置。Authored側はLoad時に記録したバイト範囲 |
+| 上記で既存側の原文がsnapshotにない | 候補なし | 候補なし（従来どおり。部分集合を完全な集合と呼ばない） |
+
+### 22.2 判断
+
+- **Load時に記録した範囲を使い、二度目に解析しない。** `mergeAuthoringMarkdown`の`record`は読み取りと同じ解析から`Result.sourceAnchors`へバイト範囲を残している。ここで`ParseSemanticFileAnchored`を再度呼ぶと、`*.tei.md`は既存文法で読めず、別の読み方にもなる。§5の「値と位置を一度の解析から得る」と同じ理由である。
+- **Source Indexを変更しない。** 投影は`index`を読むだけで、ArtifactもReferenceも増やさない。Source Indexは「読んだバイト」の記録であり、診断の都合で内容を変えない。
+- **位置が一意に定まらないときは候補集合を出さない。** 新しいフォールバックや推測のpathは足さない。
+
+### 22.3 反証
+
+`tei_md_duplicate_source_expected_test.go`が三つの層を独立に固定する。期待値は原文の`bytes.Index`（`OrderId`のバイト位置）から書き、投影の出力からは導かない。
+
+| 破綻し得る条件 | 確かめたこと |
+| --- | --- |
+| Authored宣言の位置を落とし、`unknown`と表示する | 両方の位置が返り、Authored範囲の文字列が`OrderId`と一致する。範囲は原文に対して`Validate`を通る |
+| 既存側が読めないときに候補を完全な集合として出す | 既存側のsnapshotを除くと、候補と未解決起源のどちらも出さない |
+| 未選択の`*.tei.md`を意味として読む | `TEI_MD_PARSER_UNBOUND`とSource pathで止まる |
+| 一般`*.md`を意味として読む | 選択済みAuthored源と同居しても読まれず、`ReadByLoader`はfalse |
+| 管理外の草稿をWorkspaceへ入れる | 宣言外`drafts/`の`*.tei.md`は管理一覧にも読み取りにも現れない |
+
+### 22.4 確かめていないこと
+
+- `tei validate -json`の`proposals`経由で、この位置が利用者向けのJSONへ出るところまでの実表示。投影の戻り値までを固定した。
+- `cmd/tei`の`inspect`など、別のConsumerが同じ投影を使うかどうか。
+- 三つ以上の表層（既存`*.tei`、`*.tei.md`、import）が同時に同じSubjectを宣言する場合の並び。importは名前空間の衝突としてLoadが先に止める。
+- 意味の受理、生成物、実Providerのcall。ここは位置表示だけで、いずれも資格を変えない。

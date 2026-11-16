@@ -9,6 +9,20 @@ import (
 	"tei/internal/validation"
 )
 
+// duplicateCandidateKind reports whether a Subject kind names a declaration that
+// DUPLICATE_SEMANTIC_ELEMENT can report. It is shared by the native and the
+// authored collection so the two surfaces cannot drift apart: a kind counted by
+// one and skipped by the other would make a real duplicate look like a single
+// declaration plus "unknown".
+func duplicateCandidateKind(kind string) bool {
+	switch kind {
+	case "semantic-type", "semantic-data", "semantic-attribute", "semantic-relation", "semantic-capability":
+		return true
+	default:
+		return false
+	}
+}
+
 // ProjectDiagnosticsWithLoadedDuplicates adds declaration candidates when the
 // local semantic files parsed by Load can be inspected from retained bytes.
 // It does not alter the Source Index or identify a particular rejected source.
@@ -20,6 +34,14 @@ import (
 // Imported Workspaces cannot reach DUPLICATE_SEMANTIC_ELEMENT with a local
 // declaration: Load rejects an import whose namespace is already owned before
 // validation runs. An unrelated import no longer suppresses local candidates.
+//
+// A TEI Markdown (*.tei.md) source is not a native semantic file, so it is not
+// in semanticSourceFiles and cannot be re-read with the native grammar. Its
+// declaration ranges were already recorded by the selected authoring language
+// during this same Load (Result.sourceAnchors), so they are reused here rather
+// than parsed a second time. Without them a collision between a native and an
+// authored declaration looks like a located one plus "unknown", which hides a
+// position Load actually knows.
 func ProjectDiagnosticsWithLoadedDuplicates(diagnostics []validation.Diagnostic, index sourceindex.Index, loaded Result) []ProjectedDiagnostic {
 	out := ProjectDiagnostics(diagnostics, index)
 	if loaded.sourceSnapshot == nil {
@@ -46,9 +68,7 @@ func ProjectDiagnosticsWithLoadedDuplicates(diagnostics []validation.Diagnostic,
 			return out
 		}
 		for _, anchor := range parsed.Anchors {
-			switch anchor.Kind {
-			case "semantic-type", "semantic-data", "semantic-attribute", "semantic-relation", "semantic-capability":
-			default:
+			if !duplicateCandidateKind(anchor.Kind) {
 				continue
 			}
 			rng, err := sourceindex.RangeFromOffsets(content, anchor.Anchor.Start.Offset, anchor.Anchor.End.Offset)
@@ -60,6 +80,31 @@ func ProjectDiagnosticsWithLoadedDuplicates(diagnostics []validation.Diagnostic,
 				ArtifactPath: path, Range: rng, Role: sourceindex.RoleDefinition,
 			})
 		}
+	}
+	// Authored declarations already carry the byte range their own reader
+	// recorded. A range that cannot be projected onto the Load-time bytes is a
+	// genuine gap, so no candidate set is emitted rather than a partial one.
+	for key, anchor := range loaded.sourceAnchors {
+		subject := subjectFromSourceKey(key)
+		if !duplicateCandidateKind(subject.Kind) {
+			continue
+		}
+		path, err := sourceindex.NormalizeWorkspacePath(anchor.File)
+		if err != nil {
+			return out
+		}
+		content, ok := loaded.sourceSnapshot[path]
+		if !ok {
+			return out
+		}
+		rng, err := sourceindex.RangeFromOffsets(content, anchor.Start, anchor.End)
+		if err != nil {
+			return out
+		}
+		byID[subject.ID] = append(byID[subject.ID], sourceindex.Reference{
+			Subject:      subject,
+			ArtifactPath: path, Range: rng, Role: sourceindex.RoleDefinition,
+		})
 	}
 	for i := range out {
 		d := out[i].Diagnostic
