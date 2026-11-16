@@ -138,6 +138,7 @@
 | [`reference-external-role-dispatcher/`](reference-external-role-dispatcher/) | `AGENTS.md`の「モデル → ロール → 作業」分離をGitHub Issue/PR上の最小Dispatcherとして動かす。ロール別の作業取得・モデル選択・排他lease・エスカレーション・レビュー依頼を一つのCLIで確認でき、DSH/`gh` adapterは`dry-run`既定（#4218） |
 | [`reference-build-plan-authoring/`](reference-build-plan-authoring/) | あるpackageとmodule内の閉包を名指す`BuildPlan`を書く。`go list -deps`から閉包を取り、**digestはresolverで実ファイルから計算**する（宣言はできない）。§4.46の「ビルドが読むsourceだけを名指す」を満たす計画を、73件でも手で並べずに作れる（#2831 SB-C0 §4.49） |
 | [`reference-go-build-from-plan/`](reference-go-build-from-plan/) | `BuildPlan`を読み、**計画が名指すsourceを同じrootから解釈し直して突き合わせ**、一致したときだけGoのcommandをビルドする。計画fingerprint・宣言byteのdigest・成果物digest・stateを申告し、lockを自分で作って検証する（#2831 SB-C0 §4.39 段1） |
+| [`reference-build-process-observation/`](reference-build-process-observation/) | 一回のBuildを外側から追跡し、実行されたプログラム（digest付き）と開かれたパスを記録して、宣言範囲と照合する。宣言・申告・観測を別々の記録として扱い、範囲外の実行、step越えの読み書き、観測していない範囲を分けて返す。Buildは実行しない（#2831 SB-P0.1、#2600） |
 | [`reference-go-build-with-supply/`](reference-go-build-with-supply/) | 供給だけを使う隔離環境で実Buildし、成果物digestとSource閉包の資格を別々に記録する。両者が食い違うX1を明示する（#2831 SB-B事前確認） |
 | [`reference-go-build-stage-driver/`](reference-go-build-stage-driver/) | Buildを別プロセスの起動として駆動し、invoker/invoked の実行ファイルdigest・argv・exit と、子の主張とディスク実物のartifact digestを別々に記録する。L3は主張しない（#2831 SB-C0/C1） |
 | [`reference-go-module-supply-verify/`](reference-go-module-supply-verify/) | オフラインGo Module供給を、対象の実選択Moduleと`go.sum`の`h1`へ束縛して再解決する検証。供給元・署名・Build権限は扱わない（#2831 SB-0b） |
