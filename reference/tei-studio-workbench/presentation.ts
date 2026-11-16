@@ -259,6 +259,34 @@ export function readInspection(raw: unknown, expected: Subject, catalog: Catalog
     ),
   };
 }
+/** A pure display projection of one validated read-only InspectSubject result.
+ * No transport, DOM, source retrieval, acceptance, Grant, or Effect decision.
+ * The caller must first pass the reply through readInspection and ensure that
+ * the current response lane still belongs to the selected workspace/subject.
+ */
+export type InspectionPresentation = Readonly<{
+  document: Readonly<{ id: string; version: string; text: string }>;
+  sourceStatusText: string;
+  authorityLimits: readonly string[];
+  noticeText: string;
+}>;
+
+export function presentInspection(
+  view: ReturnType<typeof readInspection>, workspaceId: string, selected: Subject,
+): InspectionPresentation {
+  return {
+    document: {
+      id: `${workspaceId}/${subjectKey(selected)}`,
+      version: view.version,
+      text: view.text,
+    },
+    // Do not translate partial/unavailable status into complete or absent.
+    sourceStatusText: `参照情報：${view.sourceStatus}`,
+    authorityLimits: [...view.authorityLimits],
+    noticeText: "選択したモデルの投影を表示しています。",
+  };
+}
+
 export function relatedGraph(entries: readonly Entry[], selected: Subject) {
   const key = subjectKey(selected);
   const active = entries.find((e) => subjectKey(e.subject) === key);
