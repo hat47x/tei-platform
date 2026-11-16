@@ -1,0 +1,11 @@
+Before restoring, I measured rather than assumed:
+
+  CLI's own fixture -> DecodeAttemptEvidence -> GenerateCandidates
+    DIAGNOSIS decoded id="ev-cli-1" nodes=2 edges=1
+    DIAGNOSIS candidates=3 kinds=map[cross-reference:1 data-element:2]
+
+  real REA 6.8.0 original (78KB, transcoded UTF-16LE -> UTF-8)
+    DIAGNOSIS decoded id="ev_a88c70..." nodes=7 edges=7
+    DIAGNOSIS candidates=14 kinds=map[cross-reference:7 data-element:7]
+
+So the generator works; only the CLI wiring had been removed.
