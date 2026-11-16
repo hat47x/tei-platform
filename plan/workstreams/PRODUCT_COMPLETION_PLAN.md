@@ -140,6 +140,14 @@ G／P／Dの分類は図表実現の解釈・生成・混合・Hookの配置方�
 
 **今回のGo試験の合否はexact PR HEADのCIで判定**する。正式R2-Pに必要な元Locator／Reader／Generator版の完全なAttempt閉包、R3の通常CLI公開Entry→実Provider、Studio Stage1→Stage2実Windowsは未解決の独立P0を維持する。DC-46〜49のうち今回追加する実回帰はDC-46のみ。DC-48／49は#1180／#2514へ渡し、新Builder／Runtime／Evidence Storeを作らない。
 
+### P1：Rule種別ごとのG／P対応と三値判定を区別する（2026年11月16日）
+
+[宣言的構文の合成契約§31](../design/DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md)を、mainへ入った#5142（NULL／未取得／部分取得を区別するDecide）、#5143（記録例の独立Expected）、#5146（暦日二項目のnot-after Rule）と接続する。新しいRule種別をMeaningへ採用しても、既存のGeneratePositiveが同種別を生成できると推測しない。
+
+Focused試験 internal/operations/inspect_markdown_data_table_date_rule_realization_test.go では、既存の印付きMarkdown Data表と同じteiコードフェンスに、テスト専用の暦日比較Ruleを追加する。製品Reader／Inspectorから同じSourceへ結び付け、PのDecideで日付の順序、if present、NULL／未取得の区別、二Attributeへの実Read要求を検証する。**同じ文書内でpositiveの生成Gは可能、not-afterの生成Gは明示的にunsupported**とする。std.dateをstd.datetimeへ変更した場合はValidatorの型検査で拒否する。
+
+今回のDC-50〜52はFocused Go試験へ、DC-53〜54は#1180／#2514の独立Expected候補へ引き渡す。現行Pの評価能力、製品Gの生成能力、外部Dの選択・実Call・現在Grantを独立した欄として扱い、P成功によるG／Dへの無音Fallbackを禁止する。実Builder／正式R2-P、通常CLI実Providerと独立Consumer、Studio Stage1→Stage2は引き続き別P0とし、追加のRule種別を新P0 Hard Gateにしない。
+
 ### P1で接続する業務判断・設計入力・数式（2026年11月15日）
 
 これらは新しい製品P0の前提ではなく、既存の標準Data/Rule/Expression・Function Data Context・表現型を実案件に近づける**受入作業**とする。詳細な正負例とOwner境界は[横断統合受入境界§14〜17](../design/CROSS_CUTTING_ACCEPTANCE_BOUNDARIES_2026-11-12.md)を参照。
