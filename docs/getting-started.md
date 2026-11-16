@@ -216,7 +216,8 @@ go run ./cmd/tei model overview -workspace reference/workspace
 文字列がモデルのどこに出てくるかを調べるには、`model search`を使います（2026-11-17から）。`model catalog`は全要素を列挙するだけで内容では選べず、`-namespace`は意味名前空間での絞り込みです。そのため呼出し元は、名前の一部が分かっていても全`entries`を取得し、種類を推測しながら対象ごとに`inspect`を呼ぶ必要がありました。`model search`は管理対象Sourceの文字列を検索し、一致した各行について次を返します。
 
 - `hits`：一致。`subject`（種類と識別子）・`artifactPath`（Workspace相対のSource）・`line`（1始まりの行）・`text`（その行 as written、行末を除く）。場所と本文が証拠になるので、一致を開いて確かめられます
-- `total`・`omitted`・`kindCounts`：`-limit`で切る前の全件の数と種類別の件数。切った一覧を全部と読まないでください
+- `subjects`：一致したSubjectを1件ずつ、最初に一致した位置（`artifactPath`・`line`）と、そのSubjectの一致行数`matchCount`付きで列挙。`hits`は1つのSubjectが複数行に一致すると繰り返しますが、`subjects`は繰り返しません。`-limit`で切った後も全体を覆います
+- `total`・`omitted`・`subjectCount`・`distinctSubjectsOmitted`・`kindCounts`：件数には2つの単位があります。`total`と`kindCounts`は**一致行（ヒット）**の数で、`kindCounts`は`total`の種類別の内訳なので合計は`total`に一致します。`subjectCount`は**全一致の中の distinct Subject 数**で、`-limit`で切りません。`distinctSubjectsOmitted`は**この頁が返さない一致（`-offset`で飛ばした分と`-limit`で切った分）の中の distinct Subject 数**で、頁の数からは推定せず一致そのものから数えます。1つのSubjectは宣言が複数行にわたるため複数行に一致し得るので、`total`を行数、`subjectCount`をSubject数として読んでください。切った一覧を全部と読まないでください
 - `offset`・`requestedOffset`・`nextOffset`：頁の位置。`-offset`が最終一致を超える場合は切り詰め、要求値を`requestedOffset`に残すので、切り詰めた頁と普通の頁を区別できます
 - `truncated`：作業上限に達して探索を打ち切ったか。1回の検索が読むSourceは最大200ファイル・32MiB（`operations.SearchMaxFiles`・`SearchMaxBytes`）で、Workspace相対path順に走査するため、打ち切った場合も安定した接頭辞を答えます。`true`のときは`hits`（および0件）をWorkspace全体の答えとして読まないでください。`-limit`による頁の切れ方とは別で、そちらは`omitted`・`nextOffset`が示します
 - `coverage`・`authorityLimits`：検索する範囲と、归属の規則（次項）
