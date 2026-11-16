@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"tei/internal/core"
+	"tei/internal/semantic"
 	"tei/internal/sourceindex"
 	"tei/internal/validation"
 )
@@ -43,8 +44,14 @@ func TestTEIValidationDeclarationSelfDescriptionIsOnlyData(t *testing.T) {
 	if !ok || descriptor.ID != dataID || len(descriptor.Attributes) != 4 {
 		t.Fatalf("self-described Data is absent or has unexpected shape: %+v, found=%v", descriptor, ok)
 	}
-	// Fixed expectations are independent of the table Reader: absence of a
+	// The World keeps Data attributes in canonical identity order, so these
+	// expectations are matched by identity rather than by authored row order.
+	// Fixed expectations remain independent of the table Reader: absence of a
 	// Relation is not enforced merely because its field is optional.
+	byAttributeID := make(map[core.CanonicalID]semantic.Attribute, len(descriptor.Attributes))
+	for _, attribute := range descriptor.Attributes {
+		byAttributeID[attribute.ID] = attribute
+	}
 	expected := []struct {
 		id       core.CanonicalID
 		typeRef  core.CanonicalID
@@ -64,11 +71,14 @@ func TestTEIValidationDeclarationSelfDescriptionIsOnlyData(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for i, want := range expected {
-		got := descriptor.Attributes[i]
-		if got.ID != want.id || got.TypeRef != want.typeRef || got.Required != want.required {
-			t.Fatalf("attribute %d=%+v, expected id=%s type=%s required=%v",
-				i, got, want.id, want.typeRef, want.required)
+	for _, want := range expected {
+		got, present := byAttributeID[want.id]
+		if !present {
+			t.Fatalf("attribute %s is absent from %+v", want.id, descriptor.Attributes)
+		}
+		if got.TypeRef != want.typeRef || got.Required != want.required {
+			t.Fatalf("attribute %s=%+v, expected type=%s required=%v",
+				want.id, got, want.typeRef, want.required)
 		}
 		refs := index.ReferencesFor(sourceindex.Subject{
 			Kind: "semantic-attribute", ID: string(want.id),
