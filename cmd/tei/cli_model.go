@@ -299,7 +299,7 @@ func modelSearchFlags(fs *flag.FlagSet) (root, term, kind *string, limit, offset
 	root = fs.String("workspace", "", "TEI workspace directory")
 	term = fs.String("term", "", "literal text to find; matched case-insensitively inside a Source line; required unless -kind is given")
 	kind = fs.String("kind", "", "restrict the search to one subject kind: "+strings.Join(operations.InspectionSubjectKinds, "|"))
-	limit = fs.Int("limit", operations.SearchDefaultLimit, "maximum hits listed; total and kindCounts still cover every hit")
+	limit = fs.Int("limit", operations.SearchDefaultLimit, "maximum hits listed; total and kindCounts still cover every hit, subjectCount every distinct subject")
 	offset = fs.Int("offset", 0, "hits to skip; a value past the last hit is clamped and reported as requestedOffset")
 	return root, term, kind, limit, offset
 }
@@ -313,6 +313,14 @@ func modelSearchFlags(fs *flag.FlagSet) (root, term, kind *string, limit, offset
 // match can be opened rather than trusted (RQ-036, design §19.8). Read-only; it
 // shares the catalog's load, so a hit and `model catalog` describe one model
 // version.
+//
+// The answer keeps the two units of counting apart, because one subject can
+// account for several lines: `result.total` and `result.kindCounts` count HITS
+// (kindCounts is total broken down by kind), while `result.subjectCount` counts
+// the DISTINCT SUBJECTS among all the matches and `result.subjects` names them
+// once each with how many of their lines matched. `result.distinctSubjects-
+// Omitted` counts the distinct subjects among the matches the page does not
+// return. None of the counts is cut by -limit except the hit list itself.
 func runModelSearchCommand(args []string, out io.Writer) (int, error) {
 	response := modelSearchCLIResponse{SchemaVersion: modelSearchSchemaVersion}
 	fail := func(code string, message string, exit int) (int, error) {

@@ -1,0 +1,83 @@
+{
+  "note": "A single MCP tool argument of 12,000,000 bytes reached the server intact: the full length arrived, the canary prefix was present and the trailing bytes were unchanged. So there is no 4.1MB ceiling: the argument is passed by the harness regardless of the telemetry maxRequestBytes default of 4,000,000.",
+  "overlay": {
+    "transport": "streamable-http",
+    "serverName": "bigargmock",
+    "url": "http://127.0.0.1:8793/mcp/big",
+    "toolCallTimeoutMs": 60000,
+    "failOnStartupError": false
+  },
+  "argCanary": "BIGARG_CANARY_5X",
+  "requestedArgBytes": 12000000,
+  "receivedArgBytes": 12000016,
+  "canaryPrefixPresent": true,
+  "tailUnchanged": true,
+  "toolsCallRequestBytes": 12000118,
+  "truncated": false,
+  "telemetryDefaultMaxRequestBytes": 4000000,
+  "exceedsTelemetryDefaultBy": 8000016,
+  "modelRequests": [
+    {
+      "n": 1,
+      "bytes": 104857,
+      "toolCount": 28,
+      "firedToolCall": true,
+      "canaryInRequest": false
+    },
+    {
+      "n": 2,
+      "bytes": 60053,
+      "toolCount": 0,
+      "firedToolCall": false,
+      "canaryInRequest": false
+    },
+    {
+      "n": 3,
+      "bytes": 53940,
+      "toolCount": 28,
+      "firedToolCall": false,
+      "canaryInRequest": false
+    },
+    {
+      "n": 4,
+      "bytes": 34418,
+      "toolCount": 28,
+      "firedToolCall": false,
+      "canaryInRequest": false
+    },
+    {
+      "n": 5,
+      "bytes": 12052319,
+      "toolCount": 28,
+      "firedToolCall": false,
+      "canaryInRequest": true
+    }
+  ],
+  "largestModelRequestBytes": 12052319,
+  "contextGrowth": {
+    "toolsCallBytes": 12000118,
+    "largestModelRequestBytes": 12052319,
+    "whyLarger": "the follow-up model request replays the tool_use input (the 12MB argument) plus the tool result and the tool schemas, so it is larger than the tools/call request itself",
+    "note": "an earlier version reported the tools/call size as 12,052,319, which was the follow-up model request's size copied by mistake; the two are now reported separately"
+  },
+  "priorRecords": {
+    "200KB": "DSH_MCP_ARG_SIZE_2026-11-10",
+    "1MB": "DSH_MCP_ARG_SIZE_2026-11-10",
+    "4.1MB": "DSH_MCP_ARG_SIZE_4M_2026-11-10",
+    "thisRecord": "12MB"
+  },
+  "answers": {
+    "ceilingFoundAtOrBelow12MB": false,
+    "argumentPassedUnchanged": true,
+    "telemetryMaxRequestBytesLimitsMcpArgs": false
+  },
+  "caveat": "One size (12MB) and one provider mock. A ceiling may exist above this or may be imposed by a real provider; neither was tested. The wrap time was 5.3s but was not profiled.",
+  "toolsCallSource": "measured on the MCP server, not derived",
+  "canaryLocation": {
+    "inModelRequests": [
+      5
+    ],
+    "explanation": "the canary travels in the model's tool_use output and then sits in the conversation history, so it appears in the LATER model request, not in the first one",
+    "notEvidenceOf": "the canary being in the initial request"
+  }
+}

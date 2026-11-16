@@ -16,11 +16,11 @@ import (
 // one REA delivery. This regression tests their input and identity boundaries;
 // it is not a second product Consumer or an acceptance of business meaning.
 func TestREADualEntryCapturedInputAndIdentityBoundaries(t *testing.T) {
-	// This test is about a real captured delivery, so it reads the captured
-	// 6.8.0 original. analysis.json beside it is a receipt-only stub that other
-	// tests use to prove a graph-less receipt fails closed; reading that here
-	// would silently change what this test measures.
-	fixture := filepath.Join("..", "..", "internal", "externalanalysis", "testdata", "rea-6.8.0", "captured-delivery.json")
+	// The captured delivery stays beside this test: the shared intake fixture
+	// was replaced by a receipt-only stub (606134e63), and internal/studiohost
+	// keeps its own copy for the same reason (#5176, #5183). This file is the
+	// 78,000-byte UTF-16LE delivery whose sha256 the fixture manifest declares.
+	fixture := filepath.Join("testdata", "rea-6.8.0", "analysis.json")
 	raw, err := os.ReadFile(fixture)
 	if err != nil {
 		t.Fatal(err)
