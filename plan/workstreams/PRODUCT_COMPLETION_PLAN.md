@@ -1608,3 +1608,5 @@ mainのRule生成Go CLIビルド回帰は、選択Markdown原文のコピーをG
 #5132による「意味IDは生成Go関数名でない」という正負例、#5109／#5129による生成Go・同梱元Markdownの時間差失効は、既存の独立ExpectedとBuildPlanに沿って再利用する。ただし、現在の`EvaluateSelected`の旧Source方式と新`Decide`の状態付きSource方式をNULL／未取得まで無条件に同値としない。最新mainには自己記述Data Reader試験とCLI／直接Operation／read-only Studio Hostの三入口試験ファイルがあるが、過去PRのclosed/unmerged状態・製品コードの存在・最新main CI合格は別々に報告する。
 
 **実装順**：M1で一条件の実判断→M2で同義Go分岐削除→正式R2-Pの元Source／Generator／Builder実消費→Stage2で移管後の判断を再使用。並行して通常CLI→実Provider Read #2586と、Studio Stage1→Stage2 Windows #2831／#4583を進める。確認時点の最新mainには参照セルフビルド・Wails Host系CI失敗が残っており、その解消を他のGreen Jobで代替しない。本追補はdocs-onlyであり、新しいM1〜M3実装合格を主張しない。
+
+**方式選択の最小反証**：[判断移管パケット§13](MVP_DOGFOOD_DECISION_TRANSFER_2026-11.md)では、現行mainの暦日`not-after`について「Pによる実評価は可能、未対応のG要求は拒否する」という限定試験を再利用する。方式の明示選択、実Call、Builder入力と出典、Stage2実使用を別の資格として検収する。正しいP結果があるからといって、未対応のGを黙ってPへ切り替えない。
