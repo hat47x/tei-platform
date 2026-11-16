@@ -383,7 +383,7 @@ Modal File Manager、LTools、Larvyn、WailsTermから得るべき価値は、�
 - **Build/Run**：選択されたBuilder、Toolchain、実Source byte、生成Frontend/Backend Artifact、実Consumerは別々の資格。#5059の実TEI CLI→N2→生成JS→Windows/WebView2成功を保持する一方、正式な非Plugin BuildIntentからStage1自身がStage2を再構築したとはしない。
 - **AI/他Worktree**：提案、Apply、Commit、Review、Mergeを混同しない。複数の変更が揃って初めて対象HEADの検証が成立する場合、片方のPRのPASSで統合受理済みと表示しない。
 
-#5105の後継#5122（Workbench状態・API境界・Stage2受入）は現在Openである。第13節のread-only二表現試験では、Focus A→B→AとSource A→B→Aを区別する。表示を元へ戻してもReader/Provider/Grantの現在資格は自動回復しない。また非Plugin Stage1→Stage2の正式な証拠を、BuildIntent→実Builder選択→実入力／Invoker／Artifact→Stage2実起動→Windows受領の順に求める。新しいStudio Hostや別のBuild Engineは設けない。
+#5105の後継#5122（Workbench状態・API境界・Stage2受入）は未マージで閉鎖された。計画の要点は、現在のStudio実装・P0の受入条件に照らして別途確認する。第13節のread-only二表現試験では、Focus A→B→AとSource A→B→Aを区別する。表示を元へ戻してもReader/Provider/Grantの現在資格は自動回復しない。また非Plugin Stage1→Stage2の正式な証拠を、BuildIntent→実Builder選択→実入力／Invoker／Artifact→Stage2実起動→Windows受領の順に求める。新しいStudio Hostや別のBuild Engineは設けない。
 
 ## 23. 標準化の効果を「TEIへ移せた判断」から測る
 
@@ -511,9 +511,9 @@ Plugin接続のWhole Record／Field／明示Adapterは標準型を使い続け�
 | ID | 条件と変える一因子 | 期待と証拠の上限 |
 | --- | --- | --- |
 | WC-41 | 同じ`not-after` RuleをPで評価したあと、実現方式SelectionだけGへ変える | 現行Generatorは未対応と拒否する。Pの成功をGの成功へ転用しない。#5166のFocused回帰を基線とする |
-| WC-42 | Whole RecordをField二項目の明示Projectionに変え、追加`internalNote`を入力へ入れる | 公開するField二つだけが出力され、欠損・明示NULL・未取得が混ざらない。#5156のpure試験候補から実Disclosureは別検収 |
-| WC-43 | Contract Query Readerに`complete`を申告するが、実Queryの取得範囲がpartialである | 申告の存在を実Coverageの証明とみなさず、成立可能性を保留する。#5149のReader候補と実Providerを分ける |
-| WC-44 | WorkbenchでWorkspace A→B→Aを切り替え、最初のAへのInspect成功が最後に到着する | 応答のWorkspace/Inspection epochを再照合し、最新A・Pin・Bの編集状態を上書きしない。#5168の独立Expected候補 |
+| WC-42 | Whole RecordをField二項目の明示Projectionに変え、追加`internalNote`を入力へ入れる | 公開するField二つだけが出力され、欠損・明示NULL・未取得が混ざらない。#5156のmain収録済みpure試験を基線とし、実Disclosureは別検収 |
+| WC-43 | Contract Query Readerに`complete`を申告するが、実Queryの取得範囲がpartialである | 申告の存在を実Coverageの証明とみなさず、成立可能性を保留する。#5149のmain収録済みReaderと実Providerの取得完全性を分ける |
+| WC-44 | WorkbenchでWorkspace A→B→Aを切り替え、最初のAへのInspect成功が最後に到着する | 応答のWorkspace/Inspection epochを再照合し、最新A・Pin・Bの編集状態を上書きしない。#5168の統合済み独立Expected |
 | WC-45 | 組織C1の同一型付きSource/Queryは保持し、実ReadのDatasourceまたはResult Mappingだけ変える | 静的Pathは成立しても、同Attemptの実PG Readと独立Expectedの不一致を検出。#5155の実PG成功からOrgUnit JOIN／Function二Consumerへ拡張したことにしない |
 | WC-46 | Planが名指すBuilderのファイルDigestだけを違う`-child`にして実行する | 既存Builder BindingのL2-bを保留し、実Processの同一性やG4資格の証明に拡大しない。名指したToolchain変更は別の一因子試験 |
 
@@ -546,7 +546,7 @@ mainへ統合済みの[#5184](https://github.com/hat47x/tei-platform/pull/5184)�
 | **WA-2：Rule→実現方式→Build** | [#5166](https://github.com/hat47x/tei-platform/pull/5166)のP対応/G未対応、[#5129](https://github.com/hat47x/tei-platform/pull/5129)のSource改版拒否、現行Builder実ファイル照合 | Pで判断できてもGで生成できないRuleを明示。生成できるRuleは実Artifactへ進め、元Source・Generator・Builder・Toolchainと実Consumerの版を段階別に照合。Stage2とG4の資格は未受理 |
 | **WA-3：CLI→Studio Host→Workbench** | [#5188](https://github.com/hat47x/tei-platform/pull/5188)の実`tei inspect`別Processと本番経路のStudio Host、[#5168](https://github.com/hat47x/tei-platform/pull/5168)の応答epoch／Pin負例、[#5173](https://github.com/hat47x/tei-platform/pull/5173)の純粋Presenter | CLIとStudioの共通Operationを実入口で比較する試験がmainへ収録。Presenterは**まだ実Workbenchに未接続**。次は同じSource/Revisionの現在性を再確認してから実Viewへ渡し、後着応答がFocus/Pin/Dirtyを壊さないことを実Consumerで検証する |
 
-[#5198](https://github.com/hat47x/tei-platform/pull/5198)は、`inspect`／`model locate`／`model overview`と`trace`へ現在のSnapshot前提を渡し、違えば`STALE_SNAPSHOT`で拒否するOpen実装候補である。この機能はAIによる「読む→判断する→もう一度読む」に有用だが、現時点ではmainの完成した共通API契約として書かない。また、[ #5188](https://github.com/hat47x/tei-platform/pull/5188)のCLI／Studio一致は**同じProduct Inspector系統の比較**であり、異なる実DB Providerの資格や現在Grantの独立証明とは異なる。
+[#5198](https://github.com/hat47x/tei-platform/pull/5198)は、`inspect`／`model locate`／`model overview`と`trace`へ現在のSnapshot前提を渡し、違えば`STALE_SNAPSHOT`で拒否するOpen実装候補である。この機能はAIによる「読む→判断する→もう一度読む」に有用だが、現時点ではmainの完成した共通API契約として書かない。また、[#5188](https://github.com/hat47x/tei-platform/pull/5188)のCLI／Studio一致は**同じProduct Inspector系統の比較**であり、異なる実DB Providerの資格や現在Grantの独立証明とは異なる。
 
 StudioのSourceジャンプは`Source Indexの位置投影→Ownerによる現在byte再読取→EditorがCaretを受領`の順に進める。旧Sourceの位置表示、Presenterへの投影、Wails画面への接続、編集のApply/Saveは別の段階である。**未保存BufferのPreviewは実Source変更ではない。**
 
