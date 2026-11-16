@@ -42,8 +42,8 @@ func comparisonCLICandidateSet(attempt string, ids ...string) reacandidate.Candi
 				Fingerprint:  "sha256:synthetic-source-revision",
 				Binding:      reacandidate.SourceBindingProviderReported,
 			},
-			ReviewStatus:   reacandidate.ReviewStatusRequiresOwner,
-			Resolution:     reacandidate.ResolutionUnresolved,
+			ReviewStatus: reacandidate.ReviewStatusRequiresOwner,
+			Resolution:   reacandidate.ResolutionUnresolved,
 		})
 	}
 	set.Fingerprint = reacandidate.SetFingerprint(set)
@@ -285,4 +285,3 @@ func TestThreeElementREACompareRejectsUnqualifiedInputs(t *testing.T) {
 		}
 	})
 }
-

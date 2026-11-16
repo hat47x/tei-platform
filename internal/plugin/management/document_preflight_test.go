@@ -106,9 +106,9 @@ func TestDocumentReadPreflightFailsClosedOnUnqualifiedStates(t *testing.T) {
 }
 
 // TestDocumentReadPreflightReportsOnlyDirectUpstream checks an actual
- // Catalog -> Resolver -> Lock -> Report chain. The lower Plugin C may
- // discover B as its direct requirement, but not silently treat A as a
- // direct or publishable document source.
+// Catalog -> Resolver -> Lock -> Report chain. The lower Plugin C may
+// discover B as its direct requirement, but not silently treat A as a
+// direct or publishable document source.
 func TestDocumentReadPreflightReportsOnlyDirectUpstream(t *testing.T) {
 	a := builtinPlugin(t, "fixture.graph.base")
 	a.Version = "1.4.2"

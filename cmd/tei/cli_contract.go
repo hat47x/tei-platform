@@ -128,7 +128,7 @@ var selfParsedFlagNames = map[string]struct {
 }{
 	// The parent command dispatches to per-subcommand parsers before the shared
 	// FlagSet exists. It has no global flag grammar; see each subcommand's help.
-	"three-element": {nil, nil},
+	"three-element":            {nil, nil},
 	"external-candidates":      {[]string{"evidence-path", "tool-version", "observation-id", "relation-id"}, []string{"expected-evidence-id", "expected-received-digest", "expected-source-revision"}},
 	"model catalog":            {[]string{"workspace"}, []string{"namespace"}},
 	"model locate":             {[]string{"workspace", "subject-kind", "subject-id"}, []string{"limit", "expected-fingerprint"}},

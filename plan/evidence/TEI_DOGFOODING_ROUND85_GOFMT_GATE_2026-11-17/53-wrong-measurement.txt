@@ -1,0 +1,18 @@
+I first measured with the default timeout:
+
+  $ go test ./...
+  FAIL tei/tools/reference-application-binary     600.148s
+  FAIL tei/tools/reference-generator-selection    600.100s
+  FAIL tei/tools/reference-plugin-self-build      600.054s
+
+That is NOT what CI runs. CI runs:
+
+  go test -count=1 -timeout 60m ./...
+
+because tools/repository-health-check.sh line 95 says so. The default go test
+timeout is 10m, so those three "failures" were my own instrument, not the repo.
+
+Measured alone, reference-plugin-self-build passes in 596.477s — under the 60m
+budget CI grants it.
+
+Lesson: read the invocation CI uses before treating a local run as CI.
