@@ -1,0 +1,265 @@
+{
+  "note": "With maxDepth 8 the chain created nine sessions at depths 0-8 and the depth-8 session's next spawn was refused with 'subagent depth 9 exceeds maxDepth 8'. No plugin-internal cap appeared at 8; six points (3..8) now behave identically.",
+  "overlay": {
+    "plugin": "@deepseek-ai/dsh-subagent",
+    "id": "subagent",
+    "config": {
+      "maxDepth": 8
+    }
+  },
+  "configuredMaxDepth": 8,
+  "sessionsObserved": 9,
+  "maxDepthReached": 8,
+  "depthBySession": {
+    "session-7b9c1041-96f9-4acb-a7c1-ef6812236e1a": 0,
+    "b5c0723c-8028-423c-856d-1ae76332fbff": 1,
+    "3ec07157-8259-4484-9ba3-bc0b670b59af": 2,
+    "6e63e4cc-cefe-4edd-8f5c-40ffdc0b1357": 3,
+    "942ab662-556c-49a7-adb7-6965a3317328": 4,
+    "e78ac67b-8e02-40ab-8def-52c2119391af": 5,
+    "3a2380df-651f-49c1-82de-874fedb0271a": 6,
+    "90e6c1ac-b38a-4bde-8534-3a1d135c1124": 7,
+    "420e4d7d-5b52-4463-9c52-992ff0eb4206": 8
+  },
+  "rootSession": "session-7b9c1041-96f9-4acb-a7c1-ef6812236e1a",
+  "requestCount": 20,
+  "requests": [
+    {
+      "file": "001-request.json",
+      "bytes": 74195,
+      "sha256": "eb579494b131678f2f6b17545c40b83c51990e4716060f715b83860bc61b0b4a",
+      "sessionId": "session-7b9c1041-96f9-4acb-a7c1-ef6812236e1a",
+      "depth": 0,
+      "toolCount": 24,
+      "willSpawn": true
+    },
+    {
+      "file": "002-request.json",
+      "bytes": 44555,
+      "sha256": "27a0d08f53bbbbe5444afaeffe87000e0569c26cee0f8b095cb624362cc2505b",
+      "sessionId": "session-7b9c1041-96f9-4acb-a7c1-ef6812236e1a",
+      "depth": 0,
+      "toolCount": 0,
+      "willSpawn": false
+    },
+    {
+      "file": "003-request.json",
+      "bytes": 40138,
+      "sha256": "1ebf56fad4d185f6e7c57dc0953ee768fc60abbb62229e6d669ef630b67b263e",
+      "sessionId": "session-7b9c1041-96f9-4acb-a7c1-ef6812236e1a",
+      "depth": 0,
+      "toolCount": 24,
+      "willSpawn": false
+    },
+    {
+      "file": "004-request.json",
+      "bytes": 75852,
+      "sha256": "f66425f4adb38195b1aa9e858127ca1388b5bf039aa64cbaea111ce0480491e5",
+      "sessionId": "b5c0723c-8028-423c-856d-1ae76332fbff",
+      "depth": 1,
+      "toolCount": 24,
+      "willSpawn": true
+    },
+    {
+      "file": "005-request.json",
+      "bytes": 40661,
+      "sha256": "3d623f6fb2dee69110f9c07e92b80e73bc309f0422205ffb42663fffef0358f3",
+      "sessionId": "b5c0723c-8028-423c-856d-1ae76332fbff",
+      "depth": 1,
+      "toolCount": 24,
+      "willSpawn": false
+    },
+    {
+      "file": "006-request.json",
+      "bytes": 75877,
+      "sha256": "8fe823999b50cd3ded04c1638aa8967ee18f27491029f57a2c55cb94d8130612",
+      "sessionId": "3ec07157-8259-4484-9ba3-bc0b670b59af",
+      "depth": 2,
+      "toolCount": 24,
+      "willSpawn": true
+    },
+    {
+      "file": "007-request.json",
+      "bytes": 40249,
+      "sha256": "c5f5bcaec7970ebbc88522ea80b79421252eb535b6e56cb5c9f27120f433256c",
+      "sessionId": "session-7b9c1041-96f9-4acb-a7c1-ef6812236e1a",
+      "depth": 0,
+      "toolCount": 24,
+      "willSpawn": false
+    },
+    {
+      "file": "008-request.json",
+      "bytes": 40688,
+      "sha256": "0523cf307a359f6d58e29f95d7266436747bff95355c3a106c71dc8923a91468",
+      "sessionId": "3ec07157-8259-4484-9ba3-bc0b670b59af",
+      "depth": 2,
+      "toolCount": 24,
+      "willSpawn": false
+    },
+    {
+      "file": "009-request.json",
+      "bytes": 75925,
+      "sha256": "44dc009f62716697ac8200e38b263fe267e2750a799445864e6cc32857eec911",
+      "sessionId": "6e63e4cc-cefe-4edd-8f5c-40ffdc0b1357",
+      "depth": 3,
+      "toolCount": 24,
+      "willSpawn": true
+    },
+    {
+      "file": "010-request.json",
+      "bytes": 40728,
+      "sha256": "cfec08713b3c84aeb62e6ef2538e7828786d82e338d1180da31391e2f3a21651",
+      "sessionId": "6e63e4cc-cefe-4edd-8f5c-40ffdc0b1357",
+      "depth": 3,
+      "toolCount": 24,
+      "willSpawn": false
+    },
+    {
+      "file": "011-request.json",
+      "bytes": 75973,
+      "sha256": "10b7781667788e0f571005e6a61adbe9d639c6ef4f4a921a086bced14a42adf4",
+      "sessionId": "942ab662-556c-49a7-adb7-6965a3317328",
+      "depth": 4,
+      "toolCount": 24,
+      "willSpawn": true
+    },
+    {
+      "file": "012-request.json",
+      "bytes": 40782,
+      "sha256": "92a8c43ef280c34ed979f20cc12556ef07c841da9ab3bf90f2e61111ba5584d9",
+      "sessionId": "942ab662-556c-49a7-adb7-6965a3317328",
+      "depth": 4,
+      "toolCount": 24,
+      "willSpawn": false
+    },
+    {
+      "file": "013-request.json",
+      "bytes": 76024,
+      "sha256": "bf998e87ba77c566610fc75e00ad05bc266ffaf2875e9e0a856602be92e29dc3",
+      "sessionId": "e78ac67b-8e02-40ab-8def-52c2119391af",
+      "depth": 5,
+      "toolCount": 24,
+      "willSpawn": true
+    },
+    {
+      "file": "014-request.json",
+      "bytes": 40823,
+      "sha256": "e5eee934ab1c7a47dfff021293ac86b28e1dcbc1461c8d25138b53b8391b7c00",
+      "sessionId": "e78ac67b-8e02-40ab-8def-52c2119391af",
+      "depth": 5,
+      "toolCount": 24,
+      "willSpawn": false
+    },
+    {
+      "file": "015-request.json",
+      "bytes": 76072,
+      "sha256": "216cc6cda275a0df9a11cc5e7bd656ad6f448a058d2f47b569a8f613578d4990",
+      "sessionId": "3a2380df-651f-49c1-82de-874fedb0271a",
+      "depth": 6,
+      "toolCount": 24,
+      "willSpawn": true
+    },
+    {
+      "file": "016-request.json",
+      "bytes": 40863,
+      "sha256": "a612b23033905356b4b33b2b76e9b91d5d54c9a3fca36d423dacc0dc075306ef",
+      "sessionId": "3a2380df-651f-49c1-82de-874fedb0271a",
+      "depth": 6,
+      "toolCount": 24,
+      "willSpawn": false
+    },
+    {
+      "file": "017-request.json",
+      "bytes": 76120,
+      "sha256": "1a32acf5a409230acd2a53074e2cf4ba93f6c414bc01771dd841e18fb32e1baf",
+      "sessionId": "90e6c1ac-b38a-4bde-8534-3a1d135c1124",
+      "depth": 7,
+      "toolCount": 24,
+      "willSpawn": true
+    },
+    {
+      "file": "018-request.json",
+      "bytes": 40903,
+      "sha256": "7495f5b8c104ba2cb6c6f2ab90078a10d48489220516ff6fe4cd2c9e9b3a5434",
+      "sessionId": "90e6c1ac-b38a-4bde-8534-3a1d135c1124",
+      "depth": 7,
+      "toolCount": 24,
+      "willSpawn": false
+    },
+    {
+      "file": "019-request.json",
+      "bytes": 77147,
+      "sha256": "948f4371b2e8b74dd0acdc56a3202cc3536e31e888880a1e4525c9ca378684f5",
+      "sessionId": "420e4d7d-5b52-4463-9c52-992ff0eb4206",
+      "depth": 8,
+      "toolCount": 24,
+      "willSpawn": true
+    },
+    {
+      "file": "020-request.json",
+      "bytes": 40826,
+      "sha256": "f871a889ce255be4e9f64803f6dcfae9b8cff15c58340bb57e8f8415ca439c8c",
+      "sessionId": "420e4d7d-5b52-4463-9c52-992ff0eb4206",
+      "depth": 8,
+      "toolCount": 24,
+      "willSpawn": false
+    }
+  ],
+  "refusalText": "Error: subagent depth 9 exceeds maxDepth 8",
+  "refusalFile": "020-request.json",
+  "refusalSession": "420e4d7d-5b52-4463-9c52-992ff0eb4206",
+  "refusalSessionDepth": 8,
+  "refusalAttemptedDepth": 9,
+  "refusalLimit": 8,
+  "spawnAccounting": {
+    "attempts": 9,
+    "refused": 1,
+    "succeeded": 8,
+    "attemptFiles": [
+      "001-request.json",
+      "004-request.json",
+      "006-request.json",
+      "009-request.json",
+      "011-request.json",
+      "013-request.json",
+      "015-request.json",
+      "017-request.json",
+      "019-request.json"
+    ]
+  },
+  "internalCapObserved": false,
+  "comparison": {
+    "maxDepth3": {
+      "sessions": 4,
+      "reached": 3
+    },
+    "maxDepth4": {
+      "sessions": 5,
+      "reached": 4
+    },
+    "maxDepth5": {
+      "sessions": 6,
+      "reached": 5
+    },
+    "maxDepth6": {
+      "sessions": 7,
+      "reached": 6
+    },
+    "maxDepth7": {
+      "sessions": 8,
+      "reached": 7
+    },
+    "maxDepth8": {
+      "sessions": 9,
+      "reached": 8
+    }
+  },
+  "caveat": "One run, one linear chain, mock model. 'No internal cap at 8' means none appeared at this value; a cap could sit anywhere above. Depth derives from first-arrival order, valid only for a strictly linear chain.",
+  "attemptVsRefusalFiles": {
+    "attemptFile": "019-request.json",
+    "refusalFile": "020-request.json",
+    "why": "the depth-8 session's request 019 is the one that ATTEMPTS the spawn; the refusal text surfaces in that session's NEXT request 020, which is where the tool result is replayed back to the model. So attempt and refusal legitimately sit in different files, one request apart.",
+    "check": "019 has willSpawn true and is the 9th attempt; 020 has willSpawn false and carries the refusal text"
+  },
+  "timingNote": "no timing or duration field is recorded in this capture. The run's wall-clock (~3.9s) was observed by the outer shell only and includes DSH startup, so it is not a per-session time and is not reported as one."
+}

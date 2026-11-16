@@ -2,7 +2,7 @@
 
 - 対象Issue: [#2509](https://github.com/hat47x/tei-platform/issues/2509)（DSH外部Harness実証）、[#2515](https://github.com/hat47x/tei-platform/issues/2515)（実効隔離・全送出経路Conformance）。機密境界の正本は[TAI #232](https://github.com/hat47x/tai-pleroma/issues/232)、比較計画は[TAI #168](https://github.com/hat47x/tai-pleroma/issues/168)。
 - 状態: **既存の実行記録を並べた索引**。新しい実測は行っていない。個々の合否・Owner受理は各記録とIssueの担当。
-- この文書の役割: 73件の実行記録が**それぞれ何を確定させ、何を確定させていないか**を1枚で見えるようにし、同じ測り方の重複を避ける。記録本文の複製はせず、各記録へ参照で結ぶ。
+- この文書の役割: 74件の実行記録が**それぞれ何を確定させ、何を確定させていないか**を1枚で見えるようにし、同じ測り方の重複を避ける。記録本文の複製はせず、各記録へ参照で結ぶ。
 
 ## 1. なぜ台帳が要るか
 
@@ -35,6 +35,7 @@
 | [`maxDepth 5`の連鎖](./DSH_SUBAGENT_DEPTH5_2026-11-17/README.md) | 上限の可変性（5） | `maxDepth: 5`で1セッション1回だけ起動させると**深さ0〜5の6セッション**ができ、**深さ5の次の起動は`Error: subagent depth 6 exceeds maxDepth 5`で拒否**され、**成功した起動は5回・拒否1回**（7セッション目はできない）。**拒否が試みた深さと上限の両方を名指しする**（`maxDepth 4`の記録は上限のみ）。**3・4・5の3点で `maxDepth N → 深さ N まで`** | `maxDepth 6`以上、複数同時起動、`maxActiveSubagents`との同時作用、fork連鎖、実Provider |
 | [`maxDepth 6`の連鎖](./DSH_SUBAGENT_DEPTH6_2026-11-17/README.md) | 上限の可変性（6） | `maxDepth: 6`で1セッション1回だけ起動させると**深さ0〜6の7セッション**ができ、**深さ6の次の起動が`Error: subagent depth 7 exceeds maxDepth 6`で拒否**された。**試行7・成功6・拒否1**。**3・4・5・6を並べると1段ずつ伸びる**（**本記録が測ったのは`6`のみ**） | `maxDepth 7`以上、プラグイン固有の頭打ち、複数同時起動、`maxActiveSubagents`との同時作用、fork連鎖、実Provider |
 | [`maxDepth 7`の連鎖](./DSH_SUBAGENT_DEPTH7_2026-11-18/README.md) | 上限の可変性（7） | `maxDepth: 7`で1セッション1回だけ起動させると**深さ0〜7の8セッション**ができ、**深さ7の次の起動が`Error: subagent depth 8 exceeds maxDepth 7`で拒否**された。**試行8・成功7・拒否1**。**3〜7の5点を並べると1段ずつ伸びる**（**本記録が測ったのは`7`のみ**） | `maxDepth 8`以上、プラグイン固有の頭打ち、複数同時起動、`maxActiveSubagents`との同時作用、fork連鎖、実Provider |
+| [`maxDepth 8`の連鎖](./DSH_SUBAGENT_DEPTH8_2026-11-18/README.md) | 上限の可変性（8） | `maxDepth: 8`で1セッション1回だけ起動させると**深さ0〜8の9セッション**ができ、**深さ8の次の起動が`Error: subagent depth 9 exceeds maxDepth 8`で拒否**された。**試行9・成功8・拒否1**。**8でプラグイン固有の頭打ちは現れなかった**。**3〜8の6点を並べると1段ずつ伸びる**（**本記録が測ったのは`8`のみ**） | `maxDepth 9`以上、頭打ち、複数同時起動、`maxActiveSubagents`との同時作用、fork連鎖、実Provider |
 | [forkの連鎖](./DSH_SUBAGENT_FORK_CHAIN_2026-11-09/README.md) | 継承と深さ | `maxDepth 3`で`subagent_fork`を連鎖させると**4 Session（深さ0〜3）で止まり、深さ4は`isError: true`で拒否**。forkした子の初回要求は**どれもメッセージ数1**で、**同一Turnの途中では完了Turnを継承しない**。送出量はspawn連鎖とほぼ同じ（765,350 vs 765,677 bytes、差0.04%） | 完了Turnを挟んだforkの連鎖、`4`以上、`maxActiveSubagents`との相互作用、Telemetry・MCP |
 | [Turn境界をまたぐfork連鎖](./DSH_SUBAGENT_FORK_TURN_CHAIN_2026-11-09/README.md) | 継承の条件 | Turn 1で`pwsh`からcanaryを出して完走させ、Turn 2で同じSessionを再開してforkを連鎖させると、**forkした子の初回要求はどれもメッセージ数5で親canaryを含み、深さ3まで届いた**。14要求・786,786 bytes（同一Turn内は12要求・765,350）。深さ4は`isError: true`で拒否 | Turn 1が複数ある場合の増加量、`4`以上、`maxActiveSubagents`との相互作用、Telemetry・MCP |
 | [同時起動の上限](./DSH_SUBAGENT_CONCURRENT_LIMIT_2026-11-09/README.md) | 同時数 | 1メッセージで12体の`subagent`を並列要求すると**8体が起動し4体が拒否**された。拒否は`isError: true`のTool結果で本文は`active child limit: 8`。**子が即応答する対照でも8/4で変わらない**ため、上限は**起動時に見る同時数**で、子の完了を待って順に通す形ではない。親1＋子8で13要求・1,074,677 bytes | 時間を分けた起動、`maxActiveSubagents`の変更、`maxDepth`との同時作用、Telemetry・MCP |
@@ -118,7 +119,7 @@
 ### 4.3 その他の残り
 
 - **Telemetryでfeedbackを与えた場合の送出内容**と**web・tui面のfeedback経路**。headlessにはfeedback面が無く`/feedback`はコマンドにならないことを[feedback面の不在](./DSH_FEEDBACK_SURFACE_2026-11-10/README.md)で確認したが、**feedbackを実際に発生させた場合の送信内容**は未観測。
-- **`maxDepth`を`8`以上にした場合**と**プラグイン固有の頭打ち**（`7`は[`maxDepth 7`の連鎖](./DSH_SUBAGENT_DEPTH7_2026-11-18/README.md)で**深さ7まで・8段目拒否**を確認済み）、**Turn 1が複数ある場合のfork連鎖の増加量**、**実行中Turnのfork継承**、**履歴が長い場合の各段の増加量**。
+- **`maxDepth`を`9`以上にした場合**と**プラグイン固有の頭打ち**（`8`は[`maxDepth 8`の連鎖](./DSH_SUBAGENT_DEPTH8_2026-11-18/README.md)で**深さ8まで・9段目拒否・頭打ちは現れず**を確認済み）、**Turn 1が複数ある場合のfork連鎖の増加量**、**実行中Turnのfork継承**、**履歴が長い場合の各段の増加量**。
 - **停滞の検知手段を用意した場合の実効性**。3面に警告が出ないことと、非停滞との差が`delivery-accepted`の不在だけであることは[停滞の可視性](./DSH_SESSION_LOG_STALL_VISIBILITY_2026-11-09/README.md)・[停滞の検知](./DSH_SESSION_LOG_STALL_DETECTION_2026-11-09/README.md)で確認したが、Telemetry・UI・別flagを含む**他の面**、**243 event・375KBを超えるbacklog**（この範囲では分割されなかったが上限の有無は未確認）、**他版で同じevent名・意味になるか**（この版の観測であって契約ではない）は未確認。単一eventが上限を超えると拡張が消え`delivery-accepted`が増えないことは[上限を超える単一event](./DSH_SESSION_LOG_OVERSIZE_EVENT_2026-11-09/README.md)で確認した。
 - **Skillの増分価値**。四Sessionは未採点で、Task path不一致とSession再利用を含む。
 - **独立Expectedによる採点**（RunbookのReviewer-only）。

@@ -369,3 +369,6 @@
 
 # maxDepth 7 observations are hashed as raw bytes.
 /plan/evidence/DSH_SUBAGENT_DEPTH7_2026-11-18/** -text
+
+# maxDepth 8 observations are hashed as raw bytes.
+/plan/evidence/DSH_SUBAGENT_DEPTH8_2026-11-18/** -text
