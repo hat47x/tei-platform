@@ -15,7 +15,7 @@ import (
 
 const (
 	markedExampleSource = "semantic/organization/transfer-request.tei.md"
-	markedExampleRule = "organization.transfer_request.allocation_positive"
+	markedExampleRule   = "organization.transfer_request.allocation_positive"
 )
 
 const markedExampleTable = "\n<!-- tei: example of organization.transfer_request -->\n" +
@@ -175,11 +175,43 @@ func TestMarkedDataTableRuleExampleDiagnosesAnExpectedCellWithoutChangingMeaning
 		mismatch.SourceIndexFingerprint != currentRule.Inspection.SourceIndexFingerprint {
 		t.Fatal("example correction changed Meaning or retained stale Source Index")
 	}
+	// A column left out of the example is not a NULL cell. Both may make
+	// the Rule undecided, but the reported reason must preserve what was
+	// actually authored and read.
+	const omittedColumnTable = "\n<!-- tei: example of organization.transfer_request -->\n" +
+		"| personId | organization.transfer_request.allocation_positive |\n" +
+		"| --- | --- |\n" +
+		"| P001 | undecided |\n"
+	withoutColumn := append(append([]byte(nil), original...), []byte(omittedColumnTable)...)
+	if err := os.WriteFile(destination, withoutColumn, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	partial, err := ValidateWorkspace(root)
+	if err != nil || partial.HasErrors() || len(partial.Diagnostics) != 0 {
+		t.Fatalf("unwritten allocation must remain an undecided example: %+v err=%v", partial, err)
+	}
+	const omittedExpected = "| P001 | undecided |"
+	const wrongOmittedExpected = "| P001 | satisfied |"
+	incorrect := bytes.Replace(withoutColumn, []byte(omittedExpected), []byte(wrongOmittedExpected), 1)
+	if bytes.Equal(incorrect, withoutColumn) {
+		t.Fatal("missing-column expectation was not changed")
+	}
+	if err := os.WriteFile(destination, incorrect, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	unread, err := ValidateWorkspace(root)
+	if err != nil || !unread.HasErrors() || len(unread.Diagnostics) != 1 ||
+		unread.Diagnostics[0].Diagnostic.Code != RuleExampleMismatchCode ||
+		!strings.Contains(unread.Diagnostics[0].Diagnostic.Message, "value-not-fetched") ||
+		unread.WorldFingerprint != afterRule.Inspection.WorldFingerprint ||
+		unread.SourceIndexFingerprint == partial.SourceIndexFingerprint {
+		t.Fatalf("omitted column was collapsed into NULL or changed Rule meaning: %+v err=%v", unread, err)
+	}
 }
 
 type workspaceSubjectReadView struct {
-	canonical []byte
-	world string
-	source string
+	canonical  []byte
+	world      string
+	source     string
 	references []sourceindex.Reference
 }
