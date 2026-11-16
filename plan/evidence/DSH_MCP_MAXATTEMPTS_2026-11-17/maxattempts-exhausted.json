@@ -54,7 +54,7 @@
     0.406,
     0.812
   ],
-  "backoffPattern": "nominal 200ms -> 400ms -> 800ms; measured gaps 235/406/812ms, i.e. roughly but not exactly doubling (x1.73, x2.00), with tens of ms of overhead",
+  "backoffPattern": "nominal 200ms -> 400ms -> 800ms; measured gaps 235/406/812ms, i.e. roughly but not exactly doubling (x1.73, x2.00); overheads over nominal are 35ms, 6ms and 12ms",
   "mcpToolEverReachedModel": false,
   "activationWarningPrinted": false,
   "warningLines": [],
@@ -95,7 +95,12 @@
       1.73,
       2.0
     ],
-    "note": "measured 812ms exceeds maxDelayMs 800ms, so clamping is not demonstrated here"
+    "note": "measured 812ms exceeds maxDelayMs 800ms, so clamping is not demonstrated here; overheads are not uniform (35/6/12ms)",
+    "overheadsMs": [
+      35,
+      6,
+      12
+    ]
   },
   "modelToolCountsPerRequest": [
     27,
