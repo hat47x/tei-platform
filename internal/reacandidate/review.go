@@ -92,7 +92,7 @@ func SelectRelationQuestion(packet ReviewPacket, externalEdgeID string) (Relatio
 		Qualification:           packet.Qualification,
 		Relation:                *relation,
 		FunctionDataClaim:       "not-established-by-external-structure",
-		Unresolved:              uniqueStrings(append(append([]string{}, packet.Unresolved...),
+		Unresolved: uniqueStrings(append(append([]string{}, packet.Unresolved...),
 			"function-entry-and-input-output-not-observed",
 			"function-data-read-write-effect-not-observed",
 			"owner-function-data-meaning-not-accepted")),

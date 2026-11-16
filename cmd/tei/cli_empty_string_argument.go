@@ -19,8 +19,8 @@ import (
 var emptyStringFlagsNotAllowed = map[string][]string{
 	"trace":                    {"mode", "direction", "expected-fingerprint"},
 	"model catalog":            {"namespace"},
-	"model locate":             {"workspace", "subject-kind", "subject-id"},
-	"model overview":           {"workspace"},
+	"model locate":             {"workspace", "subject-kind", "subject-id", "expected-fingerprint"},
+	"model overview":           {"workspace", "expected-fingerprint"},
 	"model document-draft":     {"workspace", "subject-kind", "subject-id", "relation-id", "document-kind", "application"},
 	"model document-reconcile": {"workspace", "draft"},
 	"inspect":                  {"subject-kind"},

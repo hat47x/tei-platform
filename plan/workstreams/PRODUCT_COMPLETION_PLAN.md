@@ -32,6 +32,8 @@
 
 **WEB-P1a実装差分と配布への停止線**：既存`readInspection`を変更せず、別ファイル`inspector-presentation.ts`に表示専用の`presentInspection`と局所試験を追加した（WEB-P1a-1）。現段階ではWorkbenchの`main.ts`から未接続。`presentation.ts`を更新すると生成PoC Bが固定した歴史的な依存ClosureのGit blobに一致せず、Windows CIが`workbench_closure_revision_mismatch`で停止することを確認した。この失効を回避するために旧Pinを上書きせず、今回の差分は独立ファイルへ切り出す。WEB-P1a-2は新Closureを明示的に資格化し、Node24試験／型検査／esbuild、正規JS／HTML／CSS／第三者通知、Wails埋込Bundleのbyte一致、実Consumerを別々に検証する。Focus／Pin、Source実Open、公開Web、Stage1→Stage2は独立した受入とする。
 
+**WEB-P1a-2の実装準備と検証の区切り**：[Web横断設計 §20](../design/WEB_STANDARD_COMPONENT_AND_AGENT_HARNESS_2026-11.md)で、前回PR #5173のCI事実（埋込Bundle・Windows Smoke成功／Host・全体健全性の一部失敗）を資格別に整理し、旧`WORKBENCH_NATIVE_CLOSURE`を保護したまま新Presenterを実画面へ接続する手順を確定した。まず既存Readerと独立Presenterの組合せに、同名異Kind・別Workspace・同版異Subject・明示NULL・partial／unfetchedを検査する局所回帰を加える。画面接続は別PRとし、Node24、実esbuild、Wails埋込JS／HTML／CSS／第三者通知のbyte一致、Static Compositionの新閉包、通常／生成Consumerを同HEADで再資格化する。局所Presenter試験では新Workbenchの配布をPASSとしない。#5168のFocus／Pin独立Expectedを再利用し、内部Inspectorの本文をHTTP公開する際はAudience／Disclosureが別途受理されるまでは転送しない。
+
 後続の**WEB-P2**はCLI direct／Studio Host／HTTPの同一Operationを一つのread-only実Consumerで比較し、Actor／Audience／Disclosureと現在Providerの選択を別資格で検査する。**WEB-P3**は公開可能なB2C説明Facet一件をTarget Head Slotと実Asset Memberへ接続する。両者をUI Framework選定やDesktopセルフビルドの前提条件にしない。担当は#997／#1824／#1158／#951／#3509、反証は既存#1180／#2514。ここでの追記は実装引渡しであり、製品の新しいE2E試験合格ではない。
 
 ### 図解のP1：定義・生成・実Attemptを証拠つきで比較する（2026年11月15日）
@@ -927,6 +929,10 @@ A〜Dは新たな検査Engineの階層ではなく、既存Parser・Validator・
 **停止線**：`Source Revision`・`Context epoch`・`Identity/Slot`・`Quantity/Time/CRS`・`Required Scope`・`current Grant`のうち当該操作に必要なものが未確認なら、read説明は可能でもEdit/Executeを許可しない。実行証拠はWorld/Model/Artifact revision、実選択Provider/Generator、実消費byte、独立Expected、Owner受理を分離し、既存[#2514](https://github.com/hat47x/tei-platform/issues/2514)/[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#1119](https://github.com/hat47x/tei-platform/issues/1119)のGateに載せる。新たな公開DSL・Core TypeKind・固定15表現Enumは異種Consumerの反例を得てからADRで判断する。
 
 
+### REAの一Relation質問と現在Sourceへの対応を分けて検証する（2026-11-17）
+
+[REA一Function縦断設計§34](../design/REA_ONE_FUNCTION_EVIDENCE_TO_DESIGN_VERTICAL_SLICE_2026-11.md)をD0の再検収条件へ反映する。#5180はmain統合済みだが当時の専用`relation-review`は整形差分で止まっており、機能配置とGoテスト完了は別に記録する。固定HEADの局所CIで整形・正負試験を確認し、同じProducer Edge IDが別Attempt／別Source Digestで再出現してもEvidence ID／候補集合Fingerprint／Source Revisionを分けるRQ-09を加える。続くR1-Aは既存Source Indexによる独立Byte/Range確認、Owner指定の正式Data/Function候補、入力・出力・Effectの実観測を別票で扱う。main #5212のSource位置表示、#5179の状態付きData/Rule、#5156のField投影、#5190のCRUD矛盾拒否を再利用し、見かけのGraph関係やNodeラベルを実Function Readや業務REA Eventに変換しない。通常CLI実PG ReadとStudio Stage1→Stage2のP0は不変。
+
 ### 外部REAの一Relation質問：構造の観測とFunction意味を区別する（2026-11-16）
 
 [REA一Function縦断設計§33](../design/REA_ONE_FUNCTION_EVIDENCE_TO_DESIGN_VERTICAL_SLICE_2026-11.md#33-一つのrelationへの質問を外部occurrenceの読取専用reviewとして実装する2026-11-16)を、既存D0の限定的な実装・検収へ接続する。REA実ツール6.7/6.8の受領は[main #5158](https://github.com/hat47x/tei-platform/pull/5158)の固定HEAD CIで両版成功。その後段は外部`imports`等のEdge occurrenceを明示して一つ選び、既存`CandidateSet/ReviewPacket`から端点Observation・Source Revision・並行辺の個別ID・Unknown・Partialを保つ`relationQuestion`を投影する。Function/Businessを自動生成せず、Read/Writeを`not-established`として返す。既存Source Indexとの独立Byte照合・OwnerによるQualified Data/Function採択・生成Go/Builder実消費・通常CLI実Provider／Native独立Consumerは**別の検収**であり、この質問が成立しただけではD1〜D3もR1意味受理も完了しない。Schema/Graph EngineやExpected正本を増やさず、#3394/#1124/#1180/#2514と通常CLI実Provider #2586、Stage1→Stage2 #2831へ引き渡す。
@@ -1450,7 +1456,8 @@ S0-Aで最初に提示すべき**独立した正負**は、同一Source Snapshot
 
 PCON-01〜09は既存#1180／#2514へ渡す未実行の独立Expected候補であり、Node Viewの線から実行を作る、Plugin Packageを一つのRuntime単位に固定する、第二Resolver／Host／Registryを追加することはしない。**Stage1→Stage2 Windows実受領、R2-Pの実Builder、R3の通常CLI実ProviderというP0を維持**し、プラグイン自身のTEI化は「一つの意味ある義務が生成Go／実Provider／次段Buildで実際に使われたか」で段階判定する。API Pluginの未統合PR #5096のCIや別HEADの成果を達成済みとして算入しない。
 
-**PC-1の最初の実コード差分**：既存`internal/plugin/transform`による全体Record／二Fieldだけの出力を比較するGo回帰を作り、内部項目の非選択・必須項目の欠損拒否・明示NULL保持までを検査する（[PC-1a〜c](PLUGIN_PORTABLE_CONTRIBUTION_EXECUTION_2026-11.md)）。これは出力Valueの整形試験であり、Contract Field ID、取得完全性、HostのDisclosure／Grant、通常CLIからの非Builtin Provider呼出しを証明しない。PC-1bの型・取得範囲、PC-1cの明示Adapterを別Ownerと独立Expectedへ渡す。main済み#5147のPlugin Resolver診断コード負例も再利用し、新しい診断正本を作らない。
+**PC-1の最初の実コード差分**：既存`internal/plugin/transform`による全体Record／二Fieldだけの出力を比較するmain統合済み[#5156](https://github.com/hat47x/tei-platform/pull/5156)のGo回帰で、内部項目の非選択・必須項目の欠損拒否・明示NULL保持を確認する（[PC-1a〜c](PLUGIN_PORTABLE_CONTRIBUTION_EXECUTION_2026-11.md)）。これは出力Valueの整形試験であり、Contract Field ID、取得完全性、HostのDisclosure／Grant、通常CLIからの非Builtin Provider呼出しを証明しない。PC-1bの型・取得範囲、PC-1cの明示Adapterを別Ownerと独立Expectedへ渡す。main済み#5147のPlugin Resolver診断コード負例も再利用し、新しい診断正本を作らない。
+**PC-1bの着手境界（11月17日）**：[Plugin入出力設計§23](../design/PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md)と[PC-1b小PR計画§7](PLUGIN_PORTABLE_CONTRIBUTION_EXECUTION_2026-11.md)に、同じAttemptのQuery／Relation／Attribute Ref→実行結果行→`validationread`→`validationeval.Decide`の負例を整理した。mainの#5148の期間重複Ruleと#5149由来のReaderは既存の局所実装だが、Callerの`coverage=complete`を全件の観測証明にしない。#5184の実PG反例は、投影行が等しくても非投影のPerson対応は決まらないことを示す。最初はPC-1b-0の実Read ID・NULL／未取得を一対象で固定し、PC-1b-1でQueryのScope・時点・Pagingを裏付ける。#5160／#5197／#5201／#5204のPlugin解決負例は別Ownerで扱い、曖昧と不在やLockと適合不一致を同じ案内にしない。いずれも正式Provider R3、Builder R2-P、Stage2実Windowsの完了へ繰り入れない。
 
 **並行設計の取り込み（11月16日）**：main済み#5162／#5163の「未取得部分があっても結論を確定できる場合と、保留すべき場合」の区別を[PC-1bの一因子Fixture](PLUGIN_PORTABLE_CONTRIBUTION_EXECUTION_2026-11.md)へ結び付ける。接続可能性・Ruleの判断可能性・Consumerへの配送可能性を三段階として示し、PIO-17〜23／DPC-09〜13の既存Expectedを再利用する。ここでの文書接合とPC-1aのpure Transformテストを、実Runtime Provider／Host公開・正式Builder・Stage2の達成とは数えない。
 
@@ -1683,3 +1690,16 @@ mainのRule生成Go CLIビルド回帰は、選択Markdown原文のコピーをG
 ### DataのSource位置と、実際に原文を開けることを別に検収する（2026年11月16日）
 
 [標準Flow§12.10](../design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)に沿い、DF-P1の一Load検収の後に、SL-1の相対Path・Source byte位置・省略件数表示を確認する。次にDesktop既存OwnerのSL-2でHostがRoot内の原Sourceを再読取し、改版・対象Occurrence・参照の現在性を確かめる。SL-3の編集・Windows実受領はその先で別途検証する。DPC-14のGo回帰は原文の実Openを試していない。Plugin出力のWhole/Field Projectionやread-only Source表示から、公開権限・更新Grantを推定しない。
+
+### 実SQL Readerが返した範囲を、Ruleへ渡す前に検収する（2026年11月17日）
+
+[標準フロー設計§12.11〜12.13](../design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)と[DB適合計画§7](../design/DATA_PROVIDER_CROSS_DB_CONFORMANCE_2026-11.md)に従う。main済み#5149のSQLite SQL Executor→`validationread.FromHeaderDetail`→`Decide`と、main済み#5179の選択済みMarkdown Data／Rule→Inspector→`Decide`を、**同じ意味・実取得・Consumerの間に残る不足証拠**として整理する。
+
+- **DF-P4a：取得範囲の根拠**。DPC-16。実際に4行あるRelationの2行だけが返るSQLから、`CoverageComplete`を無根拠に申告しないことを、既存Query／Function Data Contextを持つCallerの負例で固定する。現行`Detail`が申告を信じて`satisfied`を返し得る事実を、誤った完了根拠としない。
+- **DF-P4b：値・列の状態**。DPC-17／18。SQL NULLとSELECT未取得の違い、`std.decimal`へREALを渡す精度不適合を、実SQL列MappingとRuleの同じAttribute IDで確認する。Decimal・暦日などのRuleが扱える型を、全ての実現方式で無条件に利用できるとはしない。
+- **DF-P4c：投影と公開の境界**。DPC-19。Whole Record／明示Field／任意Fieldを別契約とし、状態を失うProjectionを`lossy`と示す。公開・Host Grant、Editor Open、Provider実Callは投影成功だけでは認定しない。
+- **DF-P4d：Relation判断とConsumer**。DPC-20。見えた重複・期間重複による不成立と、部分取得で違反を見ていない場合の判定保留を分ける。その後、通常CLIの実Provider→独立Consumerへ、実Read対象・取得範囲・Rule結果／理由を一つの試行で渡す。
+
+最初のコードPRはDF-P4aの一因子に限定する。既存の`validationread/sqlite_path_test.go`は誤申告の危険性を示しているが、**製品Callerが虚偽の`complete`を拒否したという証拠ではない**。必要な契約が既存Query／Data Contextで説明できない場合は、欠落条件と代案を受入票に残し、汎用Query Engineや新Stateful Portを先行追加しない。
+
+今回の計画追補だけで新しいGo／DB／Windows E2E、Owner意味受理、R2-P、R3、Stage1→Stage2をPASSとは扱わない。現在mainの限定成果と、審査中PR #5187（条件付き必須）・#5214（任意Field状態損失）・#5213（研究計画）を区別する。独立Expectedは従来どおり#1180／#2514へ引き渡す。
