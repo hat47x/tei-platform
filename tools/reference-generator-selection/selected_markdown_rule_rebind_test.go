@@ -296,11 +296,11 @@ func TestSelectedRuleInterpretedAndGeneratedRealizationsAgree(t *testing.T) {
 	contractPath := selectedRuleContract(t, workspaceRoot, inputName)
 	candidateDir := filepath.Join(t.TempDir(), "candidate")
 	if _, err := GenerateFromTransformSource(TransformGeneratorOptions{
-		ID: "go-positive",
-		WorkspaceDir: workspaceRoot,
-		ContractPath: contractPath,
+		ID:                  "go-positive",
+		WorkspaceDir:        workspaceRoot,
+		ContractPath:        contractPath,
 		GeneratorSourcePath: generatorSource,
-		OutDir: candidateDir,
+		OutDir:              candidateDir,
 	}); err != nil {
 		t.Fatalf("generate Rule implementation: %v", err)
 	}

@@ -102,6 +102,23 @@ func (s exampleSource) readCellDate(row int, attribute core.CanonicalID) (valida
 	return validationeval.DateReading{State: validationeval.ValuePresent, Value: date}, nil
 }
 
+// ReadPresence reports whether the item holds a value in this row. An item the
+// table has no column for was not written, so it is not fetched; an empty cell
+// is a record that holds no value.
+func (s exampleSource) ReadPresence(attribute core.CanonicalID) (validationeval.PresenceReading, error) {
+	if s.row < 0 {
+		return validationeval.PresenceReading{}, fmt.Errorf("a rule about all the rows asked for the presence of %s", attribute)
+	}
+	column, written := s.column(attribute)
+	if !written {
+		return validationeval.PresenceReading{State: validationeval.ValueNotFetched}, nil
+	}
+	if s.example.Rows[s.row][column].Text == "" {
+		return validationeval.PresenceReading{State: validationeval.ValueNull}, nil
+	}
+	return validationeval.PresenceReading{State: validationeval.ValuePresent}, nil
+}
+
 func (s exampleSource) ReadRelationPeriods(relation, start, end, group core.CanonicalID) (validationeval.PeriodRowsReading, error) {
 	if s.row >= 0 {
 		return validationeval.PeriodRowsReading{}, fmt.Errorf("a rule about one record asked for the rows of relation %s", relation)

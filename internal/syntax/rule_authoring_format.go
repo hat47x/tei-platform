@@ -55,6 +55,9 @@ func FormatRuleAuthoring(src string) (string, error) {
 		if rule.Compared != nil {
 			return "", fmt.Errorf("%w: a comparison of two attributes has no canonical layout yet", ErrRuleFormatUnsupported)
 		}
+		if rule.Predicate == RulePredicateRequiredIf {
+			return "", fmt.Errorf("%w: a conditional requirement has no canonical layout yet", ErrRuleFormatUnsupported)
+		}
 	}
 	value, issues := RuleNamespace(file)
 	if len(issues) != 0 {

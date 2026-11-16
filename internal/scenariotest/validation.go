@@ -25,6 +25,11 @@ type ValidationFixture struct {
 	// DateStates names date Attributes that have no value, with the words of
 	// NumberStates. An Attribute is stated in Dates or here, never in both.
 	DateStates map[string]string `json:"dateStates,omitempty"`
+	// PresenceStates names Attributes whose presence a rule reads: "present"
+	// (a value is there), "null" (the record holds no value), or "not-fetched"
+	// (the Attribute was not read). A rule about presence reads only whether a
+	// value is there, whatever its type, so this is neither Numbers nor Dates.
+	PresenceStates map[string]string `json:"presenceStates,omitempty"`
 }
 
 // The words a Fixture may use for a value that is not there, and for how much
@@ -34,6 +39,10 @@ const (
 	ValidationStateNotFetched  = "not-fetched"
 	ValidationCoverageComplete = "complete"
 	ValidationCoveragePartial  = "partial"
+	// ValidationStatePresent is the presence word for an attribute that holds
+	// a value. It is the only way to state presence, because a numeric or date
+	// value says nothing about an attribute of another type.
+	ValidationStatePresent = "present"
 )
 
 type ValidationRelation struct {
@@ -102,6 +111,28 @@ func ParseValidationFixture(source []byte) (ValidationFixture, error) {
 		}
 		if _, both := f.Dates[id]; both {
 			return ValidationFixture{}, fmt.Errorf("Validation date %s has both a value and the state %s", id, state)
+		}
+	}
+	for id, state := range f.PresenceStates {
+		if strings.TrimSpace(id) == "" {
+			return ValidationFixture{}, fmt.Errorf("Validation presence state has empty Attribute")
+		}
+		if state != ValidationStatePresent && state != ValidationStateNull && state != ValidationStateNotFetched {
+			return ValidationFixture{}, fmt.Errorf("Validation presence state %s is %q; write present, null or not-fetched", id, state)
+		}
+		// A presence word and a typed value of the same Attribute would state
+		// two different facts about one Attribute.
+		if _, both := f.Numbers[id]; both {
+			return ValidationFixture{}, fmt.Errorf("Validation number %s also has the presence state %s", id, state)
+		}
+		if _, both := f.NumberStates[id]; both {
+			return ValidationFixture{}, fmt.Errorf("Validation number state %s also has the presence state %s", id, state)
+		}
+		if _, both := f.Dates[id]; both {
+			return ValidationFixture{}, fmt.Errorf("Validation date %s also has the presence state %s", id, state)
+		}
+		if _, both := f.DateStates[id]; both {
+			return ValidationFixture{}, fmt.Errorf("Validation date state %s also has the presence state %s", id, state)
 		}
 	}
 	seen := make(map[string]bool, len(f.RelationKeys))
