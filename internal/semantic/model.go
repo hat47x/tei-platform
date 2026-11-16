@@ -198,8 +198,24 @@ const (
 	ValidationNoOverlap ValidationKind = "no-overlap"
 )
 
+// ValidationKinds lists every kind once. Valid() and the diagnostics that quote
+// the vocabulary read this list, so a kind added here is accepted and named
+// without a second place to update.
+var ValidationKinds = []ValidationKind{
+	ValidationPositive,
+	ValidationRelationUnique,
+	ValidationOperator,
+	ValidationNotAfter,
+	ValidationNoOverlap,
+}
+
 func (k ValidationKind) Valid() bool {
-	return k == ValidationPositive || k == ValidationRelationUnique || k == ValidationOperator || k == ValidationNotAfter || k == ValidationNoOverlap
+	for _, valid := range ValidationKinds {
+		if k == valid {
+			return true
+		}
+	}
+	return false
 }
 
 // OperatorInput states what an operator reads. It fixes the read demand of

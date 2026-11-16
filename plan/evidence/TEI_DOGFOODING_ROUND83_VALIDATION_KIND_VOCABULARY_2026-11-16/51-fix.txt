@@ -1,0 +1,7 @@
+Added semantic.ValidationKinds (the shape TypeKinds already uses) and made
+Valid() read it, so one place owns the vocabulary.
+
+The diagnostic now names them:
+
+  unsupported semantic validation kind "frobnicate"; valid values are
+  positive, relation-unique, operator, not-after, no-overlap
