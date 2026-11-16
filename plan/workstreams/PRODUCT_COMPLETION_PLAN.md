@@ -1681,3 +1681,12 @@ mainのRule生成Go CLIビルド回帰は、選択Markdown原文のコピーをG
 ### DataのSource位置と、実際に原文を開けることを別に検収する（2026年11月16日）
 
 [標準Flow§12.10](../design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)に沿い、DF-P1の一Load検収の後に、SL-1の相対Path・Source byte位置・省略件数表示を確認する。次にDesktop既存OwnerのSL-2でHostがRoot内の原Sourceを再読取し、改版・対象Occurrence・参照の現在性を確かめる。SL-3の編集・Windows実受領はその先で別途検証する。DPC-14のGo回帰は原文の実Openを試していない。Plugin出力のWhole/Field Projectionやread-only Source表示から、公開権限・更新Grantを推定しない。
+
+
+### 研究活用の次の一件：実ReadからRule判断を経て実Consumerへ（2026年11月17日）
+
+[研究統合計画§16.54〜16.56](../research/TECH_RESEARCH_INTEGRATION_2026-10.md)では、前回のMR-01〜06を、現在mainに入った期間非重複Rule #5148、状態付きContract Query Reader #5149、実装選択指紋 #5150へ接続した。各PRの**main収録と実製品の到達範囲を分ける**。#5149で成立したのはSQL Executorから返した行をReaderへ渡す限定経路であり、通常Operation／CLIの実CallerからRule判定と独立Consumerまで一試行で接続したものではない。
+
+次の試験は、Readerを別に作らず、(1)欠けた項目と明示NULL、(2)ゼロとNULL、(3)部分取得でも確定できる既知の重複、(4)部分取得で重複を観測しない場合の未確定、を同一Source／Query／Ruleの独立Expectedに照合する。Read全件性をCallerの自己申告から推定しない。`example of`の期待と独立Expected、値の一致と読取先ID、静的経路と実Call、実行結果とConsumer受領を混同しない。
+
+優先順位は**正式R2-Pの元Source／Reader／Generator→Builder実入力**、**通常CLI→実Provider→独立ConsumerのR3**、**非Plugin Studio Stage1→Stage2実Windows再構築**の並行P0を維持する。RuleのP／G比較、Source Index、既存`Decide`、SQLite限定のReaderテストを再利用し、新しいEngine／Host／Expected Storeを作らない。本追補は実装引渡しであり、これらの新しい製品E2EやOwner意味受理が完了したことは示さない。
