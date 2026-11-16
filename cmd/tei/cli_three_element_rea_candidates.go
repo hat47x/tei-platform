@@ -20,12 +20,12 @@ const reaCandidatesEnvelopeVersion = "tei.cli.three-element.rea-candidates/v0"
 // A raw evidence digest proves only which bytes this CLI read; a candidate
 // fingerprint identifies the derived projection, not Owner acceptance.
 type reaCandidatesResult struct {
-	RawEvidenceFingerprint string                    `json:"rawEvidenceFingerprint"`
-	CandidateSet           reacandidate.CandidateSet `json:"candidateSet"`
-	ReviewPacket           reacandidate.ReviewPacket `json:"reviewPacket"`
+	RawEvidenceFingerprint string                         `json:"rawEvidenceFingerprint"`
+	CandidateSet           reacandidate.CandidateSet      `json:"candidateSet"`
+	ReviewPacket           reacandidate.ReviewPacket      `json:"reviewPacket"`
 	RelationQuestion       *reacandidate.RelationQuestion `json:"relationQuestion,omitempty"`
-	Summary                []string                  `json:"summary"`
-	CandidateOutputWritten bool                      `json:"candidateOutputWritten"`
+	Summary                []string                       `json:"summary"`
+	CandidateOutputWritten bool                           `json:"candidateOutputWritten"`
 }
 
 func failREACandidates(code, message string, out io.Writer) (int, error) {
