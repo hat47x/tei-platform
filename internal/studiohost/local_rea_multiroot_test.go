@@ -13,7 +13,7 @@ import (
 // Even if a Host binding is rewritten to match mutated file bytes, the R2
 // parser must refuse a broken producer delivery instead of accepting it.
 func TestLocalREAReaderKeepsSameProducerEvidenceSeparateAcrossRoots(t *testing.T) {
-	raw, err := os.ReadFile(filepath.Join("..", "externalanalysis", "testdata", "rea-6.8.0", "analysis.json"))
+	raw, err := os.ReadFile(filepath.Join("testdata", "rea-6.8.0", "analysis.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +100,7 @@ func TestLocalREAReaderKeepsSameProducerEvidenceSeparateAcrossRoots(t *testing.T
 func TestLocalREAReaderRootReplacementDoesNotRetargetOtherWorkspace(t *testing.T) {
 	rootA, replacement := rootReplacementPair(t)
 	rootB := t.TempDir()
-	raw, err := os.ReadFile(filepath.Join("..", "externalanalysis", "testdata", "rea-6.8.0", "analysis.json"))
+	raw, err := os.ReadFile(filepath.Join("testdata", "rea-6.8.0", "analysis.json"))
 	if err != nil {
 		t.Fatal(err)
 	}

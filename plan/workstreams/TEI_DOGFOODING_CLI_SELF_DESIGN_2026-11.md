@@ -2762,3 +2762,106 @@ warnsAboutBindings := len(w.Environments) > 0
 **検査が正しく働いた回**である。新しい語彙が試験に現れないことを、3つの検査が独立に捕まえた。**私が直したのは「試験が無い」ことだけで、製品コードには触れていない。**
 
 なお **Step Code CLI は未導入・未認証**のため委任は行わず、AGENTS.md の代替規定に従って DSH で実施した。
+
+## 82. 第81ラウンド（2026-11-16）: rea の refactor が fixture を差し替え、production consumer を更新していない
+
+再開後も `repository-health` が赤だったので、**最大の塊（REA 系10テスト）**の原因を特定して直した。生出力は[第81ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND81_REA_FIXTURE_CONSUMER_2026-11-16/README.md)にある。起票は [#5176](https://github.com/hat47x/tei-platform/issues/5176)。
+
+### 3か所の同じエラーを、計測で切り分けた
+
+`LocalREAReader.Read` は3か所で同一の公開エラー `external Evidence is unavailable` を返す。**推測せず計測**した。
+
+```text
+STEP 1 host.workspace              ok
+STEP 2 ReadSource                  ok bytes=829
+STEP 3 ExternalCandidatesFromBytes error: Evidenceにsemantic graphの宣言がありません
+```
+
+| 対象 | 値 |
+| --- | --- |
+| 現在の `rea-6.8.0/analysis.json` | **829 bytes**（`normalized_result` が空） |
+| `716fb3612` 時点の同ファイル | **78,000 bytes**（`semantic_graph` あり） |
+| テストが固定する digest | `sha256:7ea3780d…` = **旧78KB の digest** |
+
+差し替えたのは `606134e63 refactor(rea): restrict intake to evidence receipts`。**`internal/studiohost` は一切触っていない**（`--stat` で0件）。旧 fixture なら通ることも確認した（`606134e63~1` の testdata → `ok`）。
+
+### 修正方針: refactor を巻き戻さない
+
+`decodeSemanticGraph` は main に残り、`LocalREAReader` は production コードで経路も生きている。**receipt 専用化は `internal/externalanalysis` の意図的な変更**であり、欠陥は**読む側を直さなかったこと**。
+
+したがって **`internal/studiohost` に自前の graph-bearing fixture を持たせ**、3テストの参照先をそこへ変えた。**production コードは変更していない。**
+
+### 変異試験
+
+| # | 変えた箇所 | 結果 |
+| --- | --- | --- |
+| M1 | 参照を receipt 専用 stub に戻す | FAIL `external Evidence is unavailable` |
+| M2 | コピーした fixture から `semantic_graph` を削る | FAIL `external Evidence is unavailable` |
+
+**M2 が決定的**である。graph の有無だけが原因で、他の違いではない。
+
+### 直していないもの（別欠陥、#5176）
+
+`testdata/manifest.json` が実ファイルと一致していない（bytes と digest の両方が MISMATCH。**manifest は旧 fixture の digest を宣言したまま bytes だけ新しい**）。**どちらを正とするかは所有者の判断**なので触っていない。
+
+### 位置付け
+
+**「意図的な変更」と「更新漏れ」を分けた回**である。fixture の差し替え自体は正しく、**読む側を直さなかったこと**が欠陥だった。refactor を巻き戻すのではなく、consumer 側に必要な fixture を持たせた。
+
+## 83. 第82ラウンド（2026-11-16）: main の `internal/operations` がコンパイルできない
+
+前ラウンドで起票した [#5191](https://github.com/hat47x/tei-platform/issues/5191) を解消した。生出力は[第82ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND82_OPERATIONS_BUILD_2026-11-16/README.md)にある。
+
+### 実測
+
+```text
+$ go vet ./internal/operations
+# tei/internal/operations [tei/internal/operations.test]
+inspect_markdown_data_table_rule_example_validation_test.go:85:34:
+    invalid operation: loaded.RuleExamples[0].Data != dataSubject.ID
+    (mismatched types core.CanonicalID and string)
+```
+
+導入は `b71f8be10 (#5181)`。**パッケージ内の全テストが実行不能**だった。
+
+### どちらの型に合わせるかを、コードで決めた
+
+推測せず、**同じパッケージの既存の書き方**を探した。
+
+```go
+// internal/operations/selected_rule_markdown_evaluator_read_footprint_test.go:239
+if rule.ID != core.CanonicalID(subject.ID) ||
+```
+
+`RuleExample.Data` は `core.CanonicalID`、`sourceindex.Subject.ID` は `string` なので、**subject 側を canonical に揃える**のが既存の規約に一致する。
+
+### 実測（修正後）
+
+| 対象 | 修正前 | 修正後 |
+| --- | --- | --- |
+| `go vet ./internal/operations` | **build failed** | 0 errors |
+| パッケージのテスト | **0件しか走らない** | 全件走る（FAIL は1件のみ） |
+| `TestMarkedDataTableRuleExample...` | 実行不可 | **PASS** |
+
+### 変異試験
+
+| # | 変えた箇所 | 結果 |
+| --- | --- | --- |
+| M1 | 元の壊れた比較に戻す | `mismatched types core.CanonicalID and string`（**起票した症状を再現**） |
+| M2 | 期待値を `core.CanonicalID("totally.wrong.id")` に変える | FAIL `the example's independent authoring role was not retained` |
+
+**M2 が重要**である。cast は飾りではなく、**この行が実際に Data の同一性を検査している**ことを示す。
+
+### ビルドが通って初めて見えた別の失敗
+
+```text
+--- FAIL: TestOrgCaseExplicitPersistenceEnablesReadCandidateOnly
+    Query org_view.case_read input case_id has unsupported runtime binding
+    for type organization.case_record_id
+```
+
+**型ではなく runtime binding の対応表の話**で、独立した欠陥。本ラウンドの範囲外とした。
+
+### 位置付け
+
+**「ビルドできない」を「走る」に戻した回**である。テストの失敗ではなく**コンパイルの失敗**だったので、パッケージ内の全テストが沈黙していた。**型の不一致は1行だが、影響は「そのパッケージが存在しないのと同じ」**だった。

@@ -1,0 +1,105 @@
+{
+  "note": "An MCP endpoint that always answers 500 was configured with maxAttempts 3 and a 200ms->800ms backoff. The client made 4 attempts and then stopped: the entry never activated, no MCP tool reached the model, and no warning was printed.",
+  "overlay": {
+    "serverName": "failmock",
+    "url": "http://127.0.0.1:8796/mcp/fail",
+    "failOnStartupError": false,
+    "reconnect": {
+      "initialDelayMs": 200,
+      "maxDelayMs": 800,
+      "maxAttempts": 3
+    }
+  },
+  "server": {
+    "alwaysResponds": 500,
+    "startupMarker": {
+      "port": 8796,
+      "pid": 16456
+    }
+  },
+  "attempts": [
+    {
+      "n": 1,
+      "t": 14.828,
+      "gapSincePrevious": null,
+      "method": "server/discover",
+      "bytes": 280
+    },
+    {
+      "n": 2,
+      "t": 15.063,
+      "gapSincePrevious": 0.235,
+      "method": "server/discover",
+      "bytes": 280
+    },
+    {
+      "n": 3,
+      "t": 15.469,
+      "gapSincePrevious": 0.406,
+      "method": "server/discover",
+      "bytes": 280
+    },
+    {
+      "n": 4,
+      "t": 16.281,
+      "gapSincePrevious": 0.812,
+      "method": "server/discover",
+      "bytes": 280
+    }
+  ],
+  "attemptCount": 4,
+  "configuredMaxAttempts": 3,
+  "observedDelays": [
+    0.235,
+    0.406,
+    0.812
+  ],
+  "backoffPattern": "nominal 200ms -> 400ms -> 800ms; measured gaps 235/406/812ms, i.e. roughly but not exactly doubling (x1.73, x2.00), with tens of ms of overhead",
+  "mcpToolEverReachedModel": false,
+  "activationWarningPrinted": false,
+  "warningLines": [],
+  "runExitCode": 0,
+  "modelRequests": [
+    {
+      "file": "001-request.json",
+      "bytes": 76581,
+      "sha256": "5fcccbc0f5e553a18f0f071b904752dc2431272ff3b8733d401257351a34683e",
+      "toolCount": 27,
+      "mcpTools": []
+    },
+    {
+      "file": "002-request.json",
+      "bytes": 45751,
+      "sha256": "97986bd9b891243bf1cfe7f236442c51064e6c69b81487f9f2c19a7bd66e559d",
+      "toolCount": 0,
+      "mcpTools": []
+    }
+  ],
+  "contrast": {
+    "duplicateNameRecord": "DSH_MCP_DUPLICATE_NAME_2026-11-12 printed 'serverName ... already in use'",
+    "thisRecord": "budget exhaustion is silent: exit 0, no warning"
+  },
+  "caveat": "attemptCount 4 with maxAttempts 3 means the initial attempt plus 3 retries. This record measures one configuration; other values were not swept.",
+  "delaysAreNominalVsMeasured": {
+    "configuredSequence": [
+      200,
+      400,
+      800
+    ],
+    "measuredGapsMs": [
+      235,
+      406,
+      812
+    ],
+    "ratios": [
+      1.73,
+      2.0
+    ],
+    "note": "measured 812ms exceeds maxDelayMs 800ms, so clamping is not demonstrated here"
+  },
+  "modelToolCountsPerRequest": [
+    27,
+    0
+  ],
+  "modelToolCountsNote": "per-request sequence; the second request carries no tool list at all, so '27 tools' is not a single figure for the run"
+}
