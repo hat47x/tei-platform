@@ -16,13 +16,25 @@ func validateWorkspace(out io.Writer, root string) (int, error) {
 	}
 	if result.Direct != nil {
 		printSourceDiagnostic(out, *result.Direct)
-		// The run stopped at this file, so every other file is unexamined. The
-		// JSON form already says so with `incomplete`; without this line the text
-		// form reads as "there is one problem" (#4178).
-		fmt.Fprintf(out, "%s\t%s\t%s\n",
-			"note", "VALIDATION_INCOMPLETE",
-			fmt.Sprintf("the run stopped at the first syntax error in %s; files other than that one were not examined",
-				result.Direct.Source.ArtifactPath))
+		for _, additional := range result.AdditionalDirect {
+			printSourceDiagnostic(out, additional)
+		}
+		// The JSON form carries this distinction in `incomplete`. The text form
+		// must say the same thing, and must not read as "there is one problem"
+		// (#4178).
+		if result.InspectionIncomplete {
+			if len(result.AdditionalDirect) == 0 {
+				fmt.Fprintf(out, "%s\t%s\t%s\n",
+					"note", "VALIDATION_INCOMPLETE",
+					fmt.Sprintf("the run stopped at the first syntax error in %s; files other than that one were not examined",
+						result.Direct.Source.ArtifactPath))
+			} else {
+				fmt.Fprintf(out, "%s\t%s\t%s\n",
+					"note", "VALIDATION_INCOMPLETE",
+					fmt.Sprintf("\u610f\u5473\u691c\u8a3c\u306f\u5b9f\u884c\u3057\u3066\u3044\u307e\u305b\u3093: %d files have syntax errors and the World is partial",
+						len(result.AdditionalDirect)+1))
+			}
+		}
 		return 1, nil
 	}
 	hasSourceRootError := false
