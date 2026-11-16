@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -632,7 +633,9 @@ func TestStepWithNoIDIsReported(t *testing.T) {
 }
 
 // A reference fixture proposes meaning. It must not be able to assert that its
-// own candidate values are accepted.
+// own candidate values are accepted, and it must not leave the status unsaid:
+// an absent status and a wrong one are both reported, so the defect does not
+// depend on which the author wrote.
 func TestNonCandidateStatusIsReported(t *testing.T) {
 	fixture := readFixture(t)
 	fixture.Procedure.Trigger.Status = "accepted"
@@ -642,11 +645,27 @@ func TestNonCandidateStatusIsReported(t *testing.T) {
 	if codesOf(projection)[CodeStatusNotCandidate] != 3 {
 		t.Fatalf("non-candidate statuses were not reported: %+v", projection.Diagnostics)
 	}
-	// An empty status is not a claim, so it is not reported.
+
+	// An absent status is not a claim, but the projection must not echo an empty
+	// state as one either. It is reported with its own wording.
 	empty := readFixture(t)
 	empty.Procedure.Trigger.Status = ""
-	if codesOf(projectFixture(t, empty))[CodeStatusNotCandidate] != 0 {
-		t.Fatal("an absent status was reported as a claim")
+	emptyProjection := projectFixture(t, empty)
+	if codesOf(emptyProjection)[CodeStatusNotCandidate] != 1 {
+		t.Fatalf("an absent status was not reported: %+v", emptyProjection.Diagnostics)
+	}
+	var message string
+	for _, diagnostic := range emptyProjection.Diagnostics {
+		if diagnostic.Code == CodeStatusNotCandidate {
+			message = diagnostic.Message
+		}
+	}
+	if !strings.Contains(message, "declares no status") {
+		t.Fatalf("an absent status used the wrong wording: %q", message)
+	}
+	// The /valid baseline still reports nothing.
+	if codesOf(projectFixture(t, readFixture(t)))[CodeStatusNotCandidate] != 0 {
+		t.Fatal("the candidate-only baseline was reported")
 	}
 }
 
@@ -830,6 +849,33 @@ func TestProjectionDiagnosticsAreDeterministic(t *testing.T) {
 		if messages[i-1] > messages[i] {
 			t.Fatalf("status findings are not in message order: %v", messages)
 		}
+	}
+}
+
+// An unknown realization cannot be shown to be application or system work, so
+// the projection must not hand it a Function. Otherwise the "a phone call is not
+// application work" harm returns whenever the author misspells the realization.
+func TestUnknownRealizationDoesNotGetAFunction(t *testing.T) {
+	fixture := readFixture(t)
+	for i := range fixture.Steps {
+		if fixture.Steps[i].ID == "BP-A02" {
+			fixture.Steps[i].Realization = "telephone"
+			fixture.Steps[i].Function = &Reference{Kind: ReferencePattern, ID: "order_entry.order_record"}
+		}
+	}
+	projection := projectFixture(t, fixture)
+	step := findStep(t, projection, "BP-A02")
+	if step.Function != nil {
+		t.Fatalf("an unknown realization was given the Function %+v", step.Function)
+	}
+	if step.UnresolvedFunction == nil {
+		t.Fatal("the reference was dropped instead of kept as unresolved")
+	}
+	if !step.Manual {
+		t.Fatal("an unknown realization was treated as application work")
+	}
+	if codesOf(projection)[CodeRealizationUnknown] != 1 {
+		t.Fatalf("the unknown realization was not reported: %+v", projection.Diagnostics)
 	}
 }
 

@@ -286,8 +286,13 @@ func (r *Resolver) Resolve(ref Reference) Resolution {
 	}
 }
 
-// Project builds the read-only projection from a fixture and a resolver.
+// Project builds the read-only projection from a fixture and a resolver. The
+// resolver must not be nil; a caller with no declared targets passes
+// NewResolver(nil), which resolves nothing rather than crashing.
 func Project(fixture Fixture, procedureFingerprint string, resolver *Resolver) Projection {
+	if resolver == nil {
+		resolver = NewResolver(nil)
+	}
 	projection := Projection{
 		SchemaVersion:        ProjectionSchemaVersion,
 		Effect:               EffectReadOnly,
@@ -350,7 +355,16 @@ func Project(fixture Fixture, procedureFingerprint string, resolver *Resolver) P
 		{"actor", fixture.Procedure.Actor.Status},
 		{"authorization", fixture.Procedure.Authorization.Status},
 	} {
-		if clause.status == "" || clause.status.Valid() {
+		// An absent status is not a claim, but it is also not a value the
+		// projection can echo as one. Both an unknown and an absent status are
+		// reported, so the same defect does not depend on whether the author
+		// wrote a wrong word or no word.
+		if clause.status.Valid() {
+			continue
+		}
+		if clause.status == "" {
+			add(CodeStatusNotCandidate, SeverityProcedure, projection.ProcedureID,
+				fmt.Sprintf("%s declares no status; a reference fixture must state that its value is a candidate", clause.name))
 			continue
 		}
 		add(CodeStatusNotCandidate, SeverityProcedure, projection.ProcedureID,
@@ -403,7 +417,13 @@ func Project(fixture Fixture, procedureFingerprint string, resolver *Resolver) P
 				fmt.Sprintf("step %q declares autoExecute; the projection never auto-executes a business step", id))
 		}
 
-		manual := step.Realization == RealizationManual
+		// A step is treated as manual work unless it declares a valid
+		// non-manual realization. An unknown realization cannot be shown to be
+		// application or system work, so the projection must not hand it a
+		// Function: the harm of showing application work on a phone call does not
+		// depend on the author spelling "manual" exactly. The unknown value is
+		// reported separately, so this stays a visible decision.
+		manual := step.Realization == RealizationManual || !step.Realization.Valid()
 		view := StepView{
 			ID:                id,
 			Action:            step.Action,
