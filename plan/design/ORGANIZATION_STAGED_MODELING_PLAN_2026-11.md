@@ -1102,3 +1102,22 @@ S3の最小受入は、単一所属Occurrence・Assertion revision・物理行�
 **三つの検査を混同しない**：まずSource/型付きIRの静的経路成立、次に同じAttemptで実Builder・実Providerを通った事実、最後にFunction Contextから二Consumerまでの状態不変性を検査する。抽象経路を特定の条件で通るべきことと、実際に通ったことは別資格である。Generatorと汎用Evaluatorの同値性は、別レーンの[PR #5077](https://github.com/hat47x/tei-platform/pull/5077)・[PR #5087](https://github.com/hat47x/tei-platform/pull/5087)を手法上の先例とし、組織データへは改めて適用する。
 
 **検収票の対応**：既存のScenario/Test IDを起点にSource/World Revision、Relation・Query ID、Port型／Adapter、Generator・Artifact、実Call-site、Read Cohort、途中のOccurrence/knownAt/validAt/unknownを照合する。Goの生成メソッド名は経路の意味的な同一性の代わりにしない。AR-1の局所テストをAR-2〜5の完了として扱わない。
+
+<!-- org-source-to-real-provider-witness-20261116 -->
+### 10.19 抽象経路の静的成立と同一Attemptでの実Readを接続する
+
+[組織C1補遺§43.5](ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)に合わせ、既存の実PostgreSQL試験内で、`org-staged-axis`をロードした同じWorldの`organization.membership.unit`と`org_axes_view.as_of_membership`の型付き契約を確認してからQueryを実行する。**異なるブランチ・異なる実行回のSourceテストと実Readテストを足し合わせても、同一経路を通った証拠にはならない**。
+
+| Phase | 実施する接続・検査 | 合格と取り違えないもの |
+| --- | --- | --- |
+| AR-1 → AR-3 | 同じWorld/Query ID・Datasource・Relation Key/方向・Input型・Result Mappingを実DB Query試行内で確認。既存のPG手書きExpected、valid/known/allocationの境界を再利用 | Membership→OrgUnitの実JOIN、Person Link、同一A2二版の正式保存 |
+| AR-2 | 実Buildの採用Generator/Interpreterと入力・Artifact・呼出しの証拠を取得 | Go生成ファイル名があるだけの証拠、別レーンのRule生成テストPASS |
+| AR-4 | 同じRead CohortのResultをFunction Contextと二Consumerへ渡し、Occurrence/Assertion revision/unknown/Scopeを保つ | 別のDataset・別AttemptのConsumer成功を後から合算した証拠 |
+| AR-5 | 意味上のRule候補・Case責任・現在Host Grant/Effectをそれぞれ検査 | Queryの一件一致を業務上の唯一決裁者・現行許可とすること |
+
+現行Queryの時点Predicateは実PGで独立に試験しているが、SourceのRelation契約から自動JOINは行わない。対象CIの**固定HEAD・明示PASS・非SKIP**を確認するまでAR-1→AR-3は未達と記録する。CLI/MCP/DesktopとPluginの入口は同じMeaningを再利用し、Selected→Included→Invoked→Consumer Receivedは別資格。通常CLI実Read #2586とDesktop Stage1→Stage2 #2831は先行P0を維持する。
+
+<!-- org-ar1-ar3-pass-20261116 -->
+**AR-1→AR-3を限定合格へ更新（2026-11-16）**：main統合済み[PR #5155](https://github.com/hat47x/tei-platform/pull/5155)の[隔離PostgreSQL CI run 43859032163](https://github.com/hat47x/tei-platform/actions/runs/43859032163)で、型付きRelation/Query契約の局所Go回帰と、**同じSource/Queryを実DBで評価する試験**が明示PASSした。Go整形と非SKIPも検査済み。§43.5のSource/IR→実Provider Readの限定Witnessとして既存受入票へ記録する。AR-2の実Generator/Builder、AR-4のContext/二Consumer、AR-5のRule/Hostは**未合格**。
+
+**次の最小Exit**：#2586の通常CLIの実Readerに、選択されたFunction/Query ID、Source/Rule Revision、Datasource、実SQL/Params、Read Cohortを同一Attemptで紐付け、同じResultを一Consumerへ受領させる。二Consumer同版検査と、Person Link/二版正式保存はその次の別Gateとする。型付きプラグインの選択・含有・実呼出し・受信も別の資格に保ち、Studioセルフビルド #2831の独立P0へ旧Successを移し替えない。

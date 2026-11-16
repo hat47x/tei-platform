@@ -1,0 +1,13 @@
+My first versions of the tests failed because I guessed instead of reading:
+
+  1. assumed any column name is accepted alone
+     -> attribute and type are REQUIRED; the others must accompany them
+  2. assumed the type cell is a bare name
+     -> it must be a qualified canonical id (std.customer_id)
+  3. assumed required takes any value
+     -> it is yes or no
+  4. assumed RulePredicateOperator/NotOverlapping pass valid()
+     -> they are sentinels for multi-word forms, not in rulePredicates;
+        they are surfaced through validRulePredicatesText()
+
+Each was corrected by reading data_table_authoring.go and rule_authoring.go.

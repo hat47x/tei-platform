@@ -152,14 +152,14 @@ func TestReaEvidenceInspectsTheSavedView(t *testing.T) {
 		t.Fatalf("mode=%s", report.Mode)
 	}
 	receipt := receiptOf(t, report)
-	if receipt.View == nil || receipt.View.Framing != "jsonl/v1-rows-and-terminal" {
+	if receipt.View == nil || receipt.View.Framing != "jsonl" || receipt.View.Control != "metadata" {
 		t.Fatalf("view=%+v", receipt.View)
 	}
 	if receipt.View.Records != 2 || receipt.View.Emitted != 2 {
 		t.Fatalf("view=%+v", receipt.View)
 	}
-	if !receipt.View.ParentLinked || receipt.View.ParentEvidenceID != receipt.Evidence.ID {
-		t.Fatalf("the delivery must be linked to the received Evidence: %+v", receipt.View)
+	if receipt.View.ParentLinked || receipt.View.ParentEvidenceID != "" {
+		t.Fatalf("a producer-declared parent ID alone cannot establish an independently verified link: %+v", receipt.View)
 	}
 }
 
@@ -181,7 +181,7 @@ func TestReaEvidenceReportsAnInterruptedView(t *testing.T) {
 	if report.Error == nil || report.Error.Code != "EVIDENCE_PARTIAL" {
 		t.Fatalf("error=%+v", report.Error)
 	}
-	if !strings.Contains(report.Error.Message, "終端metadata recordがありません") {
+	if !strings.Contains(report.Error.Message, "終端recordがありません") {
 		t.Fatalf("message=%s", report.Error.Message)
 	}
 	if receipt := receiptOf(t, report); receipt.View.Records != 2 {
@@ -415,8 +415,8 @@ func TestReaEvidenceRecordsTheToolAbsence(t *testing.T) {
 		t.Fatalf("code=%d error=%+v", code, report.Error)
 	}
 	receipt := receiptOf(t, report)
-	if receipt.State != externalanalysis.StateToolAbsent {
-		t.Fatalf("state=%s reason=%s", receipt.State, receipt.Reason)
+	if receipt.State != externalanalysis.StateComplete {
+		t.Fatalf("saved Evidence bytes remain complete even when the tool is absent now: state=%s reason=%s", receipt.State, receipt.Reason)
 	}
 	if receipt.Tool.Present || receipt.Tool.AbsentReason == "" {
 		t.Fatalf("tool=%+v", receipt.Tool)

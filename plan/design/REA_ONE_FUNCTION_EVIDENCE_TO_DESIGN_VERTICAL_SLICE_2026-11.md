@@ -633,3 +633,22 @@ REAという略称は、ここでは二つの別概念を指す。外部の **Re
 **最小受入**：既存`TestInspectRealSavedViewIsComplete`による旧Fixture正例に加え、現行JSONメタデータのdata件数2/申告2/総数10、data0件の明示完了、終端なし、件数矛盾、未知type、未知protocol、emitted欠落、source件数矛盾、壊れたdata行を局所Go回帰にする。実際の6.8.0を呼ぶ既存REA専用CIで`tei rea-evidence -view`と後続の工具負例2件まで到達できた場合だけ、R0-Bを実Toolの完了として記録する。過去のrun 43721894737の失敗を新実装の成功へ読み替えない。
 
 **横断適用**：標準データ構造・SQL集計・Plugin Flow・Node Viewでも、配送のレコード数（`emitted`）と元集合の粒度・列挙範囲（`source`/Coverage）は別の情報である。部分集合2件の受領が正常でも「業務FunctionのReadが2件だけ」「他のResource/Eventが存在しない」とは答えない。Source/Meaning/Builder/Provider/Effectの次の資格は既存#1180/#2514、#3394、#2586、#4661へ引き渡す。実行系と業務REAの新Core・意味正本・Hostは増やさず、Stage1→Stage2 Windowsと通常CLI実Providerという製品P0を維持する。
+
+## 32. 派生Requestの原文保持とCLI Receiptの資格を揃える（2026-11-16）
+
+外部REAの6.7/6.8実ツール検証は[PR #5106](https://github.com/hat47x/tei-platform/pull/5106)の[REA専用CI](https://github.com/hat47x/tei-platform/actions/runs/43731902211)で両版とも4 checks / notRun=[]になり、実Graphの端点付き候補投影とViewの受領まで一Attemptで到達した。一方、[PR #5134](https://github.com/hat47x/tei-platform/pull/5134)は未マージのまま終了した。以後の修正は現在mainの実コードを起点に進め、終了したPRを完了実績として扱わない。
+
+現在の`cmd/tei/rea_evidence_test.go`の旧Expectedには、次の四つのずれがあった。
+
+| CLIで問う事実 | 旧Expected／実装のずれ | 今回の修正と合格条件 |
+| --- | --- | --- |
+| 受領Evidence→派生Request | `json.Marshal(json.RawMessage)`が本文の改行・空白を圧縮し、原文と一致しない | 受領済みEvidence JSONを検証したうえで、派生Requestの**埋込部分に同じ本文Byte**を保持する。Request全体のDigestは別に採取する |
+| View framing | 旧テストの`jsonl/v1-rows-and-terminal`と現行`FramingFor`の`jsonl`が一致しない | バージョン別のframing受入と、終端`Control=metadata`を別々に照合する |
+| Parent linkage | View側の`parent_evidence_id`が現れるだけで`ParentLinked=true`と判定していた | 未証明のParent Linkはfalseのまま。宣言された参照と独立に検証された関係を同一視しない |
+| Tool不在 | 保存済みEvidenceの完全性まで`tool-absent`へ置換する旧Expected | 実際に受領したByteが完全ならReceiptはcomplete、現在Toolが利用できない事実は`Tool.Present=false/AbsentReason`として併記する |
+
+Reader側の既存`Receipt`/`View`を使い、不要な新Stateや専用Hostを導入しない。派生RequestをJSONへ再整形しないことは、Editorの改行・字下げとSource occurrenceの識別を保ち、`Raw Fingerprint`と`Derived Fingerprint`の違いを監査できるための最小要件である。Requestの検証は、見かけのJSON同値だけでなくEvidence ID/Reader/Sourceとの対応も既存`WithRequest`で行う。なお原文を保持しても、取得時点のSourceの現在性や外部Producerが宣言した業務意味を認めたことにはならない。
+
+**次の独立Expected（REA-CLI-01〜04）**：①字下げ・改行を含むEvidence本文が派生JSON内でByte一致し、Request全体のDigestは原本Digestと異なる、②Viewの終端metadata有無がComplete/Partialを分ける、③Parent未検証を`ParentLinked`へ昇格させない、④Tool不在でも保存済みRaw/Source/Receiptを破棄せず、現在の利用不能を別欄へ残す。既存`rea_evidence_test.go`と実CLIの契約回帰に限定する。
+
+**R1への引渡し**：正式なData/Function/Business対応付けには、観測Graphから選択したRelation occurrence、元Sourceの位置・Revision、型付きCandidateSet／ReviewPacket、Ownerの判断とScopeを一問ずつ結合する。組織C1の「生成メソッド名に依存しない抽象経路」の検証案やNode Flow/Pluginの型付きportは利用できるが、関係の技術的整合と業務REAのResource/Event/Agent意味は別。生成GoやDB Providerの実Call、Effect、Studio Native第二Consumerを、このCLI修正の合格に加算しない。製品P0の通常CLI実ProviderとStudio Stage1→Stage2 Windowsは従来どおり優先する。

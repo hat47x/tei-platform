@@ -731,3 +731,45 @@ Plugin間の複合型全体／Field／明示Adapter（#5101）では、型の一
 DC-46は今回のFocused Go試験に記述する期待条件で、**exact HEADのGo／CI合格は別途確認**する。DC-47は既存#5109の結果と混同せず、DC-48〜49は#1180／#2514およびSource／Builder／ProviderのOwnerへ引き渡す。生成・汎用処理の選び分けを理由に第二Evidence Store、Source Writer、Runtime、Registry、新P0 Hard Gateを導入しない。
 
 **P0は従来どおり**、通常CLI公開Entry→実Provider→別Consumerと、Studio Stage1→Stage2の実Windows再構築である。
+
+## 31. Ruleの意味が増えても、実現方式を暗黙に増やさない（2026-11-16）
+
+### 31.1 受理されたRuleと実装できるRuleは同じ集合ではない
+
+他レーンの製品実装では、値がない理由を区別するDecide（#5142）、記録の例と期待結果の照合（#5143）、同じ記録の暦日を比較するnot-after Rule（#5146）がmainへ導入された。これは、§27のG（生成）・P（汎用評価）・D（外部委譲）の選択基準を、positive一種類から拡げて検証できる段階になったことを示す。
+
+しかし、**意味モデルがあるRule種別を受理したことは、すべての実現方式がその種別を実装できるという意味ではない。** 現行のGeneratePositiveはpositive／std.decimalに限定している。暦日比較を誤って数値の正値条件へ落とすよりも、未対応を明示して停止する方が正しい。
+
+| 比較点 | 正値Rule | 同一記録の日付前後Rule |
+| --- | --- | --- |
+| Markdown Source | 印付きData表とteiコードフェンスでRuleを定義できる | 同じ表層でstd.date二項目とnot-after／if presentを宣言できる |
+| 型付きMeaning | 既存ValidationPositive、対象Attributeはdecimal | 既存ValidationNotAfter、開始／終了の二AttributeとIfPresent |
+| P：既存評価 | 数値を一件読む既存Evaluatorで評価する | StatefulDateSourceを通じて二日付を読み、NULL／未取得を区別してDecideする |
+| G：既存Go生成 | GeneratePositiveが限定的に対応 | GeneratePositiveはunsupported generated kindで拒否し、Goを出力しない |
+| D：外部委譲 | Providerの実選択が別途必要 | Provider選択・実Calledの根拠なしに代替しない |
+
+この確認は「Pが全Rule種別へ対応する」という主張でもない。特に、関係全行を扱うRuleではCoverageがpartialなら判断できない場合がある。反対に、読み取った範囲だけで不成立が確定する場合は、未取得の行があっても不成立と判断できる。単純に空をfalse、partialをcompleteに置き換えない。
+
+### 31.2 一つの製品Readerを使う対照試験
+
+Focused Go試験 internal/operations/inspect_markdown_data_table_date_rule_realization_test.go は、既存異動申請のMarkdown項目定義表の日時型を、テスト専用コピーで暦日型std.dateへ変更する。そのうえで、同じteiコードフェンスに日付の前後Ruleを一件追加し、既存tei.authoring/v1・Workspace.Load・Source Index・Inspectorを使う。
+
+試験では、同じ文書の正値RuleはGを維持するが、新しいnot-after Ruleは現在のGでは拒否されることを固定する。Pは、早い日・同日・遅い日、終了日NULL、未取得を含む入力について、判断と読取Attribute二件のID・順序を独立Expectedで検査する。
+
+別の一因子反例では、暦日項目をstd.datetimeに戻す。Readerが構文を読めても、**暦日比較に日時型を混ぜたRuleは既存Validatorが拒否する**ことを確認する。実行可能かどうかをGo生成器の都合で判定したり、逆にValidatorの成功だけで外部ProviderやBuildを許可したりしない。
+
+### 31.3 次段はRuleごとの利用可能な実現方式と不足理由の表示
+
+既存の製品Inspectorが返すSubject・Canonical・Source Reference／Role・Fingerprint・AuthorityLimitsを入口とし、実現の適合性は実装契約に照らして別に表示する。現時点では新しい公開フィールドやRealization Resolverを作らず、次の差分として取り扱う。
+
+| ID | 一因子の反証 | 今回／次段の扱い |
+| --- | --- | --- |
+| **DC-50** | Data表に正値Ruleと日付前後Ruleを併記し、同じReaderで読む | 共通Meaning・厳密Source・異なるG対応範囲をGo回帰へ追加 |
+| **DC-51** | not-afterの終了日をNULL／未取得にする | IfPresentと状態・読取先に従って判定／未判定を区別 |
+| **DC-52** | 暦日比較の対象属性一件をstd.dateからstd.datetimeへ変更 | Ruleを構文として読めても、意味の型検査で拒否 |
+| **DC-53** | Pでは判定できる日付Ruleを、G／Dへ暗黙に切り替える | 未対応Gは拒否。Dの実選択／実Callは未実装の独立検証候補 |
+| **DC-54** | 記録例が同じ結果だが、Ruleが要求する取得範囲を一部省く | 例の一致を入力完全性やRuleのLaw全面保証に昇格させない（別Owner） |
+
+DC-50〜52は新Go試験の期待に対応するが、**コード収録・Goテスト合格・Owner受理は別に判断する**。DC-53〜54は#1180／#2514の独立Expectedへ渡す。
+
+生成Goの正値比較や以前のG／P実Binary同値の結果を、日付RuleのGo実行成功へ流用しない。新しい第二Generator、Rule Engine、万能Scheduler、Runner、Host、Plugin Registry、Source Writerを作らない。通常CLI実Providerへの呼出し、正式Source→Generator→Builderの同一Attempt束縛、Stage1→Stage2実WindowsのP0を維持する。

@@ -1,0 +1,120 @@
+{
+  "note": "Same experiment twice: an MCP server down at startup, started from inside the run by a pwsh call. With reconnect disabled the server started but the client sent zero MCP requests and the tool never appeared. With reconnect at its default the same setup produced 4 MCP requests (one handshake) and the tool appeared.",
+  "experiment": {
+    "serverUrl": "http://127.0.0.1:8797/mcp/late",
+    "serverName": "latemock",
+    "serverStartedBy": "pwsh inside the run (Start-Process); the server writes a startup marker",
+    "lastServerStartMarker": {
+      "port": 8797,
+      "pid": 24096
+    },
+    "requestNumbering": "the harness mock ran once, so default-run requests continue at 004"
+  },
+  "disabledRun": {
+    "overlay": {
+      "reconnect": {
+        "enabled": false
+      }
+    },
+    "modelRequestNumbers": [
+      1,
+      2,
+      3
+    ],
+    "toolCounts": [
+      27,
+      0,
+      27
+    ],
+    "mcpToolEverAppeared": false,
+    "mcpRequestsReceived": 0
+  },
+  "defaultRun": {
+    "overlay": {
+      "reconnect": "default (enabled, initialDelayMs 500, maxDelayMs 30000, maxAttempts 10)"
+    },
+    "modelRequestNumbers": [
+      4,
+      5,
+      6
+    ],
+    "toolCounts": [
+      27,
+      0,
+      28
+    ],
+    "mcpToolEverAppeared": true,
+    "toolFirstSeenAtRequest": 6,
+    "mcpRequestsReceived": 4
+  },
+  "contrast": {
+    "sameServerScript": true,
+    "sameOverlayExceptReconnect": true,
+    "difference": "0 vs 4 MCP requests (one handshake); tool absent vs present"
+  },
+  "mcpMethodsSeen": [
+    "server/discover",
+    "initialize",
+    "notifications/initialized",
+    "tools/list"
+  ],
+  "modelRequests": [
+    {
+      "n": 1,
+      "file": "001-request.json",
+      "bytes": 105192,
+      "sha256": "bc789eda2b6524483c16996fa62b6ad88816156e480c5c757068b930bd115f72",
+      "toolCount": 27,
+      "hasMcpTool": false,
+      "mcpTools": []
+    },
+    {
+      "n": 2,
+      "file": "002-request.json",
+      "bytes": 60255,
+      "sha256": "ea23e000598b5e5368993673352893a30ef406418b6a0f940c56946db51a62cd",
+      "toolCount": 0,
+      "hasMcpTool": false,
+      "mcpTools": []
+    },
+    {
+      "n": 3,
+      "file": "003-request.json",
+      "bytes": 57534,
+      "sha256": "b4fa784d80f14ae49748e51ce922f492a28ee7bee3158daef2a4590829c4a2da",
+      "toolCount": 27,
+      "hasMcpTool": false,
+      "mcpTools": []
+    },
+    {
+      "n": 4,
+      "file": "004-request.json",
+      "bytes": 105192,
+      "sha256": "f7de133c2fc2ad0c493bb7b2a1cf865a8689b6df7632a9aa066ceaf173eaf86d",
+      "toolCount": 27,
+      "hasMcpTool": false,
+      "mcpTools": []
+    },
+    {
+      "n": 5,
+      "file": "005-request.json",
+      "bytes": 60255,
+      "sha256": "a1d303b4d8a2d8aac6fcc4e9842d3f32d21158adee0d8ec95f9a89710a8dea39",
+      "toolCount": 0,
+      "hasMcpTool": false,
+      "mcpTools": []
+    },
+    {
+      "n": 6,
+      "file": "006-request.json",
+      "bytes": 80837,
+      "sha256": "1a79881318206c9b248d40026cc24b7bb17a7e97e75b4b4ef38f1b4bf271ec39",
+      "toolCount": 28,
+      "hasMcpTool": true,
+      "mcpTools": [
+        "mcp__latemock__header_echo"
+      ]
+    }
+  ],
+  "caveat": "The pwsh-spawned server is bound to the tool call's job object and is torn down when the call returns, so the default run needed several attempts before the tool appeared. The disabled run never retried at all, which is the measured difference."
+}
