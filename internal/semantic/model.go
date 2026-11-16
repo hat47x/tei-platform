@@ -187,10 +187,14 @@ const (
 	// Operator. The kind never changes when an operator is added: the
 	// operator's identity is data in Validation.Operator.
 	ValidationOperator ValidationKind = "operator"
+	// ValidationNotAfter states that one calendar date of a record is not
+	// after another calendar date of the same record. The second date is
+	// Validation.Compared.
+	ValidationNotAfter ValidationKind = "not-after"
 )
 
 func (k ValidationKind) Valid() bool {
-	return k == ValidationPositive || k == ValidationRelationUnique || k == ValidationOperator
+	return k == ValidationPositive || k == ValidationRelationUnique || k == ValidationOperator || k == ValidationNotAfter
 }
 
 // OperatorInput states what an operator reads. It fixes the read demand of
@@ -227,6 +231,14 @@ type Validation struct {
 	Relation  core.CanonicalID `json:"relation,omitempty"`
 	// Operator is set only for ValidationOperator and names a declared Operator.
 	Operator core.CanonicalID `json:"operator,omitempty"`
+	// Compared is set only for ValidationNotAfter and names the attribute
+	// Attribute is compared with.
+	Compared core.CanonicalID `json:"compared,omitempty"`
+	// IfPresent is set only for ValidationNotAfter. It states that a record
+	// that holds no value for Compared satisfies the rule: the rule speaks
+	// only about records that have that value. Without it, such a record is
+	// not decided.
+	IfPresent bool `json:"ifPresent,omitempty"`
 }
 
 type Parameter struct {

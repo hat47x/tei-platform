@@ -183,8 +183,8 @@ func observeGeneratedPositiveGo(src []byte) (observedPositiveGo, error) {
 
 func TestGeneratedPositiveASTHasTraceableReadAndDecision(t *testing.T) {
 	rule := semantic.Validation{
-		ID: "sales.order_line.quantity_positive",
-		Kind: semantic.ValidationPositive,
+		ID:        "sales.order_line.quantity_positive",
+		Kind:      semantic.ValidationPositive,
 		Attribute: "sales.order_line.quantity",
 	}
 	generated, err := validationgen.GeneratePositive(rule, "std.decimal", "main")

@@ -36,10 +36,10 @@ func TestPositiveRuleShapeIndependentBaseline(t *testing.T) {
 	})
 
 	cases := []struct {
-		name        string
-		change      func(*semantic.Validation)
-		typeRef     core.CanonicalID
-		wantError   string
+		name      string
+		change    func(*semantic.Validation)
+		typeRef   core.CanonicalID
+		wantError string
 	}{
 		{
 			name: "missing rule identity",
