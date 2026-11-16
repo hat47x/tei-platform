@@ -164,7 +164,7 @@ func TestOrgC1AbstractUnitReadPathUsesStableSemanticIDs(t *testing.T) {
 			},
 			{
 				name: "change Query identity",
-				rel: unit,
+				rel:  unit,
 				query: func() query.EmbeddedSQL {
 					changed := q
 					changed.ID = "org_axes_view.other_query"
@@ -173,7 +173,7 @@ func TestOrgC1AbstractUnitReadPathUsesStableSemanticIDs(t *testing.T) {
 			},
 			{
 				name: "change datasource",
-				rel: unit,
+				rel:  unit,
 				query: func() query.EmbeddedSQL {
 					changed := q
 					changed.Datasource = "other_provider"
@@ -182,7 +182,7 @@ func TestOrgC1AbstractUnitReadPathUsesStableSemanticIDs(t *testing.T) {
 			},
 			{
 				name: "remove non-output allocation filter parameter",
-				rel: unit,
+				rel:  unit,
 				query: func() query.EmbeddedSQL {
 					changed := q
 					changed.Inputs = append([]query.Input(nil), q.Inputs[:2]...)
@@ -191,7 +191,7 @@ func TestOrgC1AbstractUnitReadPathUsesStableSemanticIDs(t *testing.T) {
 			},
 			{
 				name: "change knownAt input type",
-				rel: unit,
+				rel:  unit,
 				query: func() query.EmbeddedSQL {
 					changed := q
 					changed.Inputs = append([]query.Input(nil), q.Inputs...)
@@ -201,7 +201,7 @@ func TestOrgC1AbstractUnitReadPathUsesStableSemanticIDs(t *testing.T) {
 			},
 			{
 				name: "drop allocation result",
-				rel: unit,
+				rel:  unit,
 				query: func() query.EmbeddedSQL {
 					changed := q
 					changed.ResultColumns = append([]query.ResultColumnMapping(nil), q.ResultColumns[:2]...)
@@ -210,7 +210,7 @@ func TestOrgC1AbstractUnitReadPathUsesStableSemanticIDs(t *testing.T) {
 			},
 			{
 				name: "map allocation to wrong semantic attribute",
-				rel: unit,
+				rel:  unit,
 				query: func() query.EmbeddedSQL {
 					changed := q
 					changed.ResultColumns = append([]query.ResultColumnMapping(nil), q.ResultColumns...)
