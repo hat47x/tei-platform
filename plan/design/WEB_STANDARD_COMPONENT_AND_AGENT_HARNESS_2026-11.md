@@ -391,6 +391,14 @@ SSR／SSGで初期HTMLを作る場合、初期Snapshotとその後のClient Read
 
 最初のPRは `presentation.ts` に既にあるReaderを再実装しない。**検証済みResultから画面に渡す値を整える純粋なPresenter** と、その境界の回帰試験だけを追加する。部分取得は「確認できた範囲」として表示し、「該当なし」「全件」「編集可能」を推定しない。Browserへの展開は同じPresenterの独立Consumerを使って確かめ、Wails Bridgeを共通Componentの必須依存にしない。
 
+### 19.2.1 WEB-P1aの実装到達点と、まだ残る受入（2026-11-16）
+
+`reference/tei-studio-workbench/presentation.ts` に、既存 `readInspection` が検証した結果をEditor文書、Source状況、利用制限、Noticeへ整える純粋な `presentInspection` を追加し、`main.ts` の現在のInspect応答から利用する。TypeScriptの公開型には表示に必要な四項目だけを置き、Operation、Grant、Effect、出典の完全性を生成しない。Source状況が `partial` でも、そのまま限定状態として表示へ渡す。制限表示はコピーして入力側との不意な共有を防ぐ。
+
+`presentation.test.mjs` には同一Subjectの表示値・版・制限と、旧Source Index指紋・非read-only応答・制限欠落の拒否を確認する局所試験を追加する。コードの範囲は **WEB-P1aのPresenterとWorkbench配線のみ**。Catalogの一意性、応答lane、Pin/Focus、Source位置を開く操作、HTTP公開には手を加えない。
+
+検証結果はNodeの型検査・局所試験、正規Bundle、実Windows WebView2を分離して記録する。該当実装のHEADで局所試験が通っても、WEB-P1bの後着非干渉、S-LOC画面接続、実Stage2、公開WebのConsumer受領を合格へ加算しない。特に並行する選択／Pin応答の独立Expectedを、この小PRのPresenter回帰に置き換えない。
+
 ### 19.3 WEB-P2とWEB-P3へ進む条件
 
 **WEB-P2（API公開）**では、既存 `operations.InspectSubject` を共通の意味基線とし、CLI direct、Wails非依存Studio Host、HTTP Adapterの三入口で対象、要求版、Failure分類、開示結果を照合する。HTTPのルート登録や同名のJSONを返すMockだけでは実Provider到達と数えない。HTTP側のActor／Audience／Disclosure、Current Grant、Rate／Size制限、Origin／CSRF／CORSを入口ごとに検査する。API Pluginの実ProviderはWailsに依存せず、Pluginの選択・Target収録・Host公開・実Call・Consumer受領を別々に観測する。
