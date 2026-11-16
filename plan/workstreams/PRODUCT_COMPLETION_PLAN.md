@@ -925,6 +925,10 @@ A〜Dは新たな検査Engineの階層ではなく、既存Parser・Validator・
 **停止線**：`Source Revision`・`Context epoch`・`Identity/Slot`・`Quantity/Time/CRS`・`Required Scope`・`current Grant`のうち当該操作に必要なものが未確認なら、read説明は可能でもEdit/Executeを許可しない。実行証拠はWorld/Model/Artifact revision、実選択Provider/Generator、実消費byte、独立Expected、Owner受理を分離し、既存[#2514](https://github.com/hat47x/tei-platform/issues/2514)/[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#1119](https://github.com/hat47x/tei-platform/issues/1119)のGateに載せる。新たな公開DSL・Core TypeKind・固定15表現Enumは異種Consumerの反例を得てからADRで判断する。
 
 
+### 外部REAの一Relation質問：構造の観測とFunction意味を区別する（2026-11-16）
+
+[REA一Function縦断設計§33](../design/REA_ONE_FUNCTION_EVIDENCE_TO_DESIGN_VERTICAL_SLICE_2026-11.md#33-一つのrelationへの質問を外部occurrenceの読取専用reviewとして実装する2026-11-16)を、既存D0の限定的な実装・検収へ接続する。REA実ツール6.7/6.8の受領は[main #5158](https://github.com/hat47x/tei-platform/pull/5158)の固定HEAD CIで両版成功。その後段は外部`imports`等のEdge occurrenceを明示して一つ選び、既存`CandidateSet/ReviewPacket`から端点Observation・Source Revision・並行辺の個別ID・Unknown・Partialを保つ`relationQuestion`を投影する。Function/Businessを自動生成せず、Read/Writeを`not-established`として返す。既存Source Indexとの独立Byte照合・OwnerによるQualified Data/Function採択・生成Go/Builder実消費・通常CLI実Provider／Native独立Consumerは**別の検収**であり、この質問が成立しただけではD1〜D3もR1意味受理も完了しない。Schema/Graph EngineやExpected正本を増やさず、#3394/#1124/#1180/#2514と通常CLI実Provider #2586、Stage1→Stage2 #2831へ引き渡す。
+
 ### 外部候補・三要素・実Readの受領を結ぶ判別条件（2026-11-14追加）
 
 この表は新しいScenarioや型Schemaの正本ではない。D0〜D3で必要な既存Fixture（#4350 DF-X01〜08、#2497 XMAP、#2500 VE、#4472 TE-CR、#3394 REA、#2514/#1180 独立Expected）を**同じデータ様式契約へ接続する順序と、各Ownerの停止条件**だけを示す。REA/SHO/SUIや三要素の実装完了を、実Provider→通常`tei`/StudioのP0 Hard Dependencyにしない。
