@@ -147,6 +147,7 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	lifecycleCommand := fs.String("lifecycle-command", "", "stable command id recorded in the lifecycle state")
 	lifecycleOwner := fs.String("lifecycle-owner", "cli", "owner recorded in the lifecycle state")
 	lifecycleGeneration := fs.Int("lifecycle-generation", 1, "generation recorded in the lifecycle state")
+	lifecycleTakeover := fs.Bool("lifecycle-takeover", false, "claim a command whose outcome is unknown, before running it under -lifecycle-owner and -lifecycle-generation")
 	var allowedCapabilities inputFlag
 	fs.Var(&allowedCapabilities, "allow-capability", "capability allowed by the reference authorizer; repeatable")
 	var inputPairs inputFlag
@@ -167,6 +168,7 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		(*lifecycleState != "" && (!*execute || *lifecycleCommand == "")) ||
 		(*lifecycleState == "" && *lifecycleCommand != "") ||
 		(*lifecycleGeneration < 1) ||
+		(*lifecycleTakeover && (*lifecycleState == "" || *lifecycleCommand == "")) ||
 		(len(allowedCapabilities) > 0 && !*execute) ||
 		(*operationLogFile != "" && !*execute) ||
 		// -input only feeds the command plan, which exists only with -command.
@@ -346,6 +348,11 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 					CommandID:  *lifecycleCommand,
 					Owner:      *lifecycleOwner,
 					Generation: *lifecycleGeneration,
+					// Recovering from an unknown outcome is an operator decision: it
+					// needs a new owner and a larger generation, and the boundary
+					// refuses a command that is not unknown. The invoker performs the
+					// takeover instead of a dispatch, so the attempt is recorded once.
+					Takeover: *lifecycleTakeover,
 				})
 			} else {
 				result, err = invoker.Invoke(context.Background(), request)
