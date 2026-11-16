@@ -145,10 +145,17 @@ test("Inspector projection keeps qualified identity and observed coverage distin
     "source-location-is-not-write-authority",
     "local-read-is-not-disclosure-permission",
   ];
-  const catalog = {
-    entries: [], modelRevision: "r2",
+  const catalog = readCatalog({
+    effect: "read-only",
+    entries: [
+      { subject: dataSubject, sourceStatus: "indexed" },
+      { subject: ruleSubject, sourceStatus: "indexed" },
+    ],
+    modelRevision: "r2",
     worldFingerprint: "world-r2", sourceIndexFingerprint: "index-r2",
-  };
+  });
+  assert.deepEqual(inspectEligibility(catalog, dataSubject), { ok: true });
+  assert.deepEqual(inspectEligibility(catalog, ruleSubject), { ok: true });
   const raw = (subject, sourceStatus, canonical) => ({
     subject, sourceStatus, canonical, effect: "read-only",
     worldFingerprint: catalog.worldFingerprint,
