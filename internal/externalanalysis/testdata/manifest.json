@@ -35,15 +35,6 @@
       "sha256": "sha256:561e927de708aa58c1a282dee68d058747751323275993ce2230f739ece22569",
       "lines": 8,
       "parent_evidence_id": "ev_a88c70bcd066b2f04fdf97cb349369f0779b9c68cc4ac6c0e5f38f3539477a93"
-    },
-    {
-      "kind": "analyze",
-      "version": "6.8.0",
-      "stdout": "rea-6.8.0/captured-delivery.json",
-      "bytes": 78000,
-      "sha256": "sha256:7ea3780d8dc23d00c380145af62d63bf194e39decbaefab3d82c5a3b4134bba9",
-      "evidence_id": "ev_a88c70bcd066b2f04fdf97cb349369f0779b9c68cc4ac6c0e5f38f3539477a93",
-      "note": "captured UTF-16LE delivery; retained for the dual-entry regression. analysis.json beside it is the receipt-only stub."
     }
   ]
 }

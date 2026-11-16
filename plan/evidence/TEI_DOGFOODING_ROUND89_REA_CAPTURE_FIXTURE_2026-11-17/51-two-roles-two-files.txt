@@ -1,6 +1,0 @@
-  analysis.json             receipt-only (829 bytes)
-                            used by the fail-closed receipts tests
-  captured-delivery.json    the captured original (78000 bytes, UTF-16LE BOM)
-                            used by the real-delivery regression
-
-The regression now names captured-delivery.json and says why in a comment.

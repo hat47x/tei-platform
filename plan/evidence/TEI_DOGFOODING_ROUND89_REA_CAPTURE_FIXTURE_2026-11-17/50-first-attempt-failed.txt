@@ -1,10 +1,8 @@
-I first tried the obvious repair: overwrite analysis.json with the captured
-78000-byte original.
+Overwriting analysis.json with the captured original:
 
   ./internal/operations   FAIL 0 -> 1
   ./cmd/tei               FAIL 2 -> 4
   --- FAIL: TestCapturedREAReceiptCannotSupplyAbsentSemanticGraph
       captured normalized_result={} must not produce a semantic graph
 
-The stub is deliberate: three tests assert that a receipt without a graph fails
-closed. Overwriting it broke exactly those.
+The stub is deliberate: three tests assert a graph-less receipt fails closed.
