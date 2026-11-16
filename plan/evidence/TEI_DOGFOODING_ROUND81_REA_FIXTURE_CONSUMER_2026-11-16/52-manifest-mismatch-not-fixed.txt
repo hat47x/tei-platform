@@ -1,0 +1,9 @@
+Found while measuring, deliberately NOT fixed here:
+
+  rea-6.8.0/analysis.json  manifest bytes 520 / actual 829        MISMATCH
+                           manifest sha256 7ea3780d… / actual 6c84cfb3…  MISMATCH
+  rea-6.8.0/view.jsonl     manifest bytes 618 / actual 929        MISMATCH
+
+The manifest still declares the OLD fixture's digest while its bytes field is the
+NEW value. Which side is authoritative is an owner decision, and it is separate
+from the studiohost breakage. Filed as #5176.

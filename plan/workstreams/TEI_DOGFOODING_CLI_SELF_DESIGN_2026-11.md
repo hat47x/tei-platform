@@ -2762,3 +2762,48 @@ warnsAboutBindings := len(w.Environments) > 0
 **検査が正しく働いた回**である。新しい語彙が試験に現れないことを、3つの検査が独立に捕まえた。**私が直したのは「試験が無い」ことだけで、製品コードには触れていない。**
 
 なお **Step Code CLI は未導入・未認証**のため委任は行わず、AGENTS.md の代替規定に従って DSH で実施した。
+
+## 82. 第81ラウンド（2026-11-16）: rea の refactor が fixture を差し替え、production consumer を更新していない
+
+再開後も `repository-health` が赤だったので、**最大の塊（REA 系10テスト）**の原因を特定して直した。生出力は[第81ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND81_REA_FIXTURE_CONSUMER_2026-11-16/README.md)にある。起票は [#5176](https://github.com/hat47x/tei-platform/issues/5176)。
+
+### 3か所の同じエラーを、計測で切り分けた
+
+`LocalREAReader.Read` は3か所で同一の公開エラー `external Evidence is unavailable` を返す。**推測せず計測**した。
+
+```text
+STEP 1 host.workspace              ok
+STEP 2 ReadSource                  ok bytes=829
+STEP 3 ExternalCandidatesFromBytes error: Evidenceにsemantic graphの宣言がありません
+```
+
+| 対象 | 値 |
+| --- | --- |
+| 現在の `rea-6.8.0/analysis.json` | **829 bytes**（`normalized_result` が空） |
+| `716fb3612` 時点の同ファイル | **78,000 bytes**（`semantic_graph` あり） |
+| テストが固定する digest | `sha256:7ea3780d…` = **旧78KB の digest** |
+
+差し替えたのは `606134e63 refactor(rea): restrict intake to evidence receipts`。**`internal/studiohost` は一切触っていない**（`--stat` で0件）。旧 fixture なら通ることも確認した（`606134e63~1` の testdata → `ok`）。
+
+### 修正方針: refactor を巻き戻さない
+
+`decodeSemanticGraph` は main に残り、`LocalREAReader` は production コードで経路も生きている。**receipt 専用化は `internal/externalanalysis` の意図的な変更**であり、欠陥は**読む側を直さなかったこと**。
+
+したがって **`internal/studiohost` に自前の graph-bearing fixture を持たせ**、3テストの参照先をそこへ変えた。**production コードは変更していない。**
+
+### 変異試験
+
+| # | 変えた箇所 | 結果 |
+| --- | --- | --- |
+| M1 | 参照を receipt 専用 stub に戻す | FAIL `external Evidence is unavailable` |
+| M2 | コピーした fixture から `semantic_graph` を削る | FAIL `external Evidence is unavailable` |
+
+**M2 が決定的**である。graph の有無だけが原因で、他の違いではない。
+
+### 直していないもの（別欠陥、#5176）
+
+`testdata/manifest.json` が実ファイルと一致していない（bytes と digest の両方が MISMATCH。**manifest は旧 fixture の digest を宣言したまま bytes だけ新しい**）。**どちらを正とするかは所有者の判断**なので触っていない。
+
+### 位置付け
+
+**「意図的な変更」と「更新漏れ」を分けた回**である。fixture の差し替え自体は正しく、**読む側を直さなかったこと**が欠陥だった。refactor を巻き戻すのではなく、consumer 側に必要な fixture を持たせた。

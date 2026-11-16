@@ -205,6 +205,19 @@ func TestReasonVocabularyIsReachable(t *testing.T) {
 	}
 	derive(t, Input{World: world(gapPlugins, gapEnv), Environment: gapEnv.ID, Lock: &gapLock})
 
+	// A capability that declares a permission the environment does not grant,
+	// with a lock so the grant state is decidable: the row names the gap. This
+	// is the input the list below needs for ReasonPermissionMissing, which the
+	// list had omitted while the code was produced and tested elsewhere.
+	deniedEnv := environment.Environment{ID: cid(t, "development")}
+	deniedEnv.Plugins = []environment.ExtensionRequirement{{ID: cid(t, "tei.database.postgres"), CompatibleMajor: 1}}
+	deniedPlugins := []plugin.Definition{builtinPlugin(t, "tei.database.postgres", gapCap)}
+	deniedLock, err := plugin.BuildLock(plugin.Catalog{Plugins: deniedPlugins}, []environment.Environment{deniedEnv})
+	if err != nil {
+		t.Fatalf("BuildLock: %v", err)
+	}
+	derive(t, Input{World: world(deniedPlugins, deniedEnv), Environment: deniedEnv.ID, Lock: &deniedLock})
+
 	// The same capability with the grant present: a successful plan names no
 	// gap, and the plan-built field is set.
 	grantEnv := environment.Environment{ID: cid(t, "development")}
@@ -234,8 +247,8 @@ func TestReasonVocabularyIsReachable(t *testing.T) {
 	for _, code := range []string{
 		ReasonPluginNotDeclared, ReasonEnvNotSelected, ReasonDeclaredButUnresolvable,
 		ReasonVersionUnsupported, ReasonDependencyCycle, ReasonDependencyUnresolved,
-		ReasonContractIncompatible, ReasonResolverRefused, ReasonPermissionUnknown,
-		ReasonGrantUnverified, ReasonUnsupportedTarget,
+		ReasonContractIncompatible, ReasonResolverRefused, ReasonPermissionMissing,
+		ReasonPermissionUnknown, ReasonGrantUnverified, ReasonUnsupportedTarget,
 		ReasonRuntimeUnverified, ReasonScanIncomplete,
 		ReasonScanNotRun, ReasonLockNotProvided, ReasonSourceFingerprintMismatch,
 	} {
@@ -243,6 +256,10 @@ func TestReasonVocabularyIsReachable(t *testing.T) {
 			t.Errorf("reason code %q must be produced by one of the inputs above", code)
 		}
 	}
+	// ReasonNotObserved is the one declared code no input produces: real
+	// invocation is a separate qualification (#1174). It is checked by
+	// TestNotObservedHasARemediation rather than listed above, so its absence
+	// from this list is a decision, not drift.
 	_ = granted
 }
 

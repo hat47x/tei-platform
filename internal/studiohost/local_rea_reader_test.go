@@ -24,7 +24,7 @@ var localREAReadAt = time.Date(2026, 11, 11, 5, 5, 0, 0, time.UTC)
 
 func newLocalREAHostFixture(t *testing.T) (*ReadOnly, LocalREABinding, []byte) {
 	t.Helper()
-	raw, err := os.ReadFile(filepath.Join("..", "externalanalysis", "testdata", "rea-6.8.0", "analysis.json"))
+	raw, err := os.ReadFile(filepath.Join("testdata", "rea-6.8.0", "analysis.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
