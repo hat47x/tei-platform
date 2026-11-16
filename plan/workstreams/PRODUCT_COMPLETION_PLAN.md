@@ -1599,3 +1599,12 @@ mainのRule生成Go CLIビルド回帰は、選択Markdown原文のコピーをG
 **D-1の実装適格性**：[実行パケット§8](MVP_DOGFOOD_DECISION_TRANSFER_2026-11.md)で、Dataの`required=yes`と元Goの`!= ""`、`required=no`とRelationの`== ""`を区別した。自己記述された項目定義と実ValidationインスタンスのBinding、既存Operatorによる厳密な受理・拒否ができないならM1は`unsupported`とする。元Markdownを正常にLoadできる試験と、不正な型付きValidationを拒否する単体試験も別資格として扱う。
 
 **利用者側の最小dogfooding**：[実行パケット§9](MVP_DOGFOOD_DECISION_TRANSFER_2026-11.md)では、CLI実`tei inspect`と直接`operations.InspectSubject`の同値回帰を基線に、Wails非依存Studio Hostの三入口比較[PR #5119](https://github.com/hat47x/tei-platform/pull/5119)（Draft）を重複実装せず待つ。次はテスト用Ruleの説明変更／参照先変更→再Inspect→生成Go→実Buildという一往復を試す。Sourceの表示・編集Intent・実Provider・Windows Stage2の権限と証拠は混ぜない。
+
+<!-- mvp-dogfood-20261116-product-evidence-reconcile -->
+### 11月16日のRule実装をMVP dogfoodingの実行順へ反映
+
+[判断移管の実行パケット§11〜12](MVP_DOGFOOD_DECISION_TRANSFER_2026-11.md)を更新し、現行mainの成果と未達を切り分けた。#5142の`Decide`（NULL／未取得／部分取得の区別）と#5146の暦日`not-after`は**業務レコードの値に対する判断**である。これは`GeneratePositive`に残るID・Attribute非空／Relation禁止という**宣言そのもののShape判断**ではない。M1では型付き`semantic.Validation`へのField BindingとTEI定義由来の判定実使用が必要であり、表現できなければ`unsupported`を記録する。
+
+#5132による「意味IDは生成Go関数名でない」という正負例、#5109／#5129による生成Go・同梱元Markdownの時間差失効は、既存の独立ExpectedとBuildPlanに沿って再利用する。ただし、現在の`EvaluateSelected`の旧Source方式と新`Decide`の状態付きSource方式をNULL／未取得まで無条件に同値としない。最新mainには自己記述Data Reader試験とCLI／直接Operation／read-only Studio Hostの三入口試験ファイルがあるが、過去PRのclosed/unmerged状態・製品コードの存在・最新main CI合格は別々に報告する。
+
+**実装順**：M1で一条件の実判断→M2で同義Go分岐削除→正式R2-Pの元Source／Generator／Builder実消費→Stage2で移管後の判断を再使用。並行して通常CLI→実Provider Read #2586と、Studio Stage1→Stage2 Windows #2831／#4583を進める。確認時点の最新mainには参照セルフビルド・Wails Host系CI失敗が残っており、その解消を他のGreen Jobで代替しない。本追補はdocs-onlyであり、新しいM1〜M3実装合格を主張しない。
