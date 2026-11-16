@@ -69,11 +69,12 @@ positive, relation-unique, operator, not-after, no-overlap
 | `./internal/validation` | **1件のみ FAIL**（`TestDiagnosticCodeCoverageOnlyImproves`） |
 | `go build ./...` / `go vet` / `gofmt` | rc=0 / 指摘なし / 空 |
 
-### 7.1 `TestDiagnosticCodeCoverageOnlyImproves` は**私の変更が原因ではない**
+### 7.1 私の回帰確認は一度**誤っていた**（訂正済み）
 
-- **plain main で同じく FAIL**（3回連続で 1件）。
-- 私のブランチでも 3回連続で 1件。
-- `TestTEIValidationDeclarationSelfDescriptionIsOnlyData` は**単独では両方 PASS**。当初これを回帰と疑ったが、**私の `-run` 正規表現が2テストを同時に走らせたため**の見かけの失敗だった。**計測し直して誤りを訂正した。**
+- `TestDiagnosticCodeCoverageOnlyImproves` は **plain main でも FAIL**（3回連続）。
+- `TestTEIValidationDeclarationSelfDescriptionIsOnlyData` について、当初「単独では両方 PASS」と書いたが**これは誤り**だった。このテストは **`internal/workspace` に宣言**されており、私は `./internal/validation` に対して `-run` を当てていた。**一致しない `-run` は沈黙して成功を返す。**
+- 実際のパッケージで測り直すと、**plain main でも私のブランチでも FAIL**。失敗内容も main 自身のもの（`expected id=tei.validation_declaration.rule_id`）で、私の差分に `tei.validation_declaration` は**0行**。
+- したがって**どちらも main 由来**で、本変更の回帰ではない。**計測し直して訂正した。**
 
 ## 8. 読み取れないこと（NOT RUN）
 
