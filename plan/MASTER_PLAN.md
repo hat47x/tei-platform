@@ -2,6 +2,8 @@
 
 ## 目的
 
+- [データ取得の完全性とRule判断をつなぐ検収](design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)：main済み#5179の選択済みData／Ruleと、#5149の実SQL Reader、#5156のField投影、#5212のSource位置表示を、取得範囲の根拠という一つの停止線で接続する。DPC-16〜20を追加し、まず4行中2行を`complete`と誤申告するケースを製品Callerで拒否／保留する。返却行の存在・出力JSON一致・表示位置は全件性／公開Grantの証拠ではない。実PostgreSQL通常CLI／独立Consumer、正式R2-P、Stage2は既存P0。
+
 - [標準データ様式の取得状態・記録例・判断可能性](design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md#126-部分取得でも判断できる場合を規則ごとに見極める2026-11-16)：mainの`validationeval.Decide`と`tei.authoring/v1`の`example of`を、既存Data／Rule／Source Indexへ接続する。DPC-09〜13で、NULLと未取得、部分取得でも確定する重複、全件一行の一意性、例と定義の改版、暦日・期間のRule条件を区別する。read-only検収票から始め、独立Expectedは#1180/#2514を使う。実Provider・正式Builder・二Consumer・Stage2のP0は維持する。 第一縦断は[Flow§12.9〜12.10](design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)と[dogfooding§17.7〜17.8](design/IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md)に記載。同じReader／Inspector／DecideでData・Rule・Source位置・判断理由を照合するDPC-14と、DesktopでHost原文を再確認するDPC-15を分ける。実Provider・正式Builder・Windows Stage2は別P0。
 
 - [標準データ様式の型付き接続と経路検収](design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md#12-型付き接続を経路として検証するデータ様式の保存条件2026-11-16)：データ型・構造Facet・表現型をPortの全体／Field／Adapter接続から再利用し、経路全体のIdentity・多重度・Presence・Coverage・時間・Source・公開条件を既存Mapping／Function Data Contextの契約で検査する。DPC-01〜08を#2495/#2497/#2506/#1180/#2514に引き渡し、[dogfooding§17](design/IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md#17-標準データ様式を実装の接続証拠へ折り返す2026-11-16)に最小Packetを記録する。設計・受入候補であり新Port Core／Runner／独立Expectedを作らず、正式Builder・通常CLI実Provider・Studio Stage1→Stage2のP0を維持する。
