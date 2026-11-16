@@ -18,6 +18,9 @@ type CRUDTable struct {
 	Delete                  bool   `json:"delete"`
 	Source                  string `json:"source,omitempty"`
 	ConflictingDeclarations bool   `json:"conflictingDeclarations,omitempty"`
+	// DerivedOperations keeps the Function.Operations intent that an explicit
+	// CRUDDefinition replaced, so the two qualifications stay distinguishable.
+	DerivedOperations string `json:"derivedOperations,omitempty"`
 }
 
 // GenerateCRUDTable derives a deterministic, read-only CRUD table.
@@ -31,6 +34,14 @@ func GenerateCRUDTable(model ThreeElementModel) []CRUDTable {
 		explicit[pair{crud.FunctionID, crud.DataID}] = crud
 	}
 	conflicting := conflictingCRUDPairs(model)
+	derived := derivedOperationsByPair(model)
+	// The review flag and the overridden intent are keyed to the pair, not to
+	// whichever declaration happened to be read last. Reordering the source
+	// must not make a disagreement disappear from the projected cell.
+	opposing := map[[2]string]bool{}
+	for _, pair := range model.OpposingCRUDPairs() {
+		opposing[pair] = true
+	}
 	seen := map[pair]bool{}
 	var rows []CRUDTable
 	for _, fn := range model.FunctionElements {
@@ -50,6 +61,13 @@ func GenerateCRUDTable(model ThreeElementModel) []CRUDTable {
 				row.Update = crud.Update
 				row.Delete = crud.Delete
 				row.Source = crud.Source
+				// Precedence here is a projection convention, not an Owner
+				// decision. Keep an opposing derived intent visible instead of
+				// letting the override erase what the Function declared.
+				if opposing[[2]string{fn.ID, op.DataID}] {
+					row.DerivedOperations = derived[[2]string{fn.ID, op.DataID}]
+					row.ConflictingDeclarations = true
+				}
 			} else {
 				for _, ch := range strings.ToUpper(op.Operations) {
 					switch ch {
@@ -119,6 +137,9 @@ type FunctionDataCrossReference struct {
 	Operations              string `json:"operations"`
 	Source                  string `json:"source,omitempty"`
 	ConflictingDeclarations bool   `json:"conflictingDeclarations,omitempty"`
+	// DerivedOperations is the Function.Operations intent for the same pair
+	// when it differs from the explicit declaration that took precedence.
+	DerivedOperations string `json:"derivedOperations,omitempty"`
 }
 
 // GenerateBusinessFunctionCrossReference derives Business→Function mappings.
@@ -161,6 +182,11 @@ func GenerateFunctionDataCrossReference(model ThreeElementModel) []FunctionDataC
 		explicit[pair{crud.FunctionID, crud.DataID}] = crud
 	}
 	conflicting := conflictingCRUDPairs(model)
+	derived := derivedOperationsByPair(model)
+	opposing := map[[2]string]bool{}
+	for _, pair := range model.OpposingCRUDPairs() {
+		opposing[pair] = true
+	}
 	seen := map[pair]bool{}
 	var out []FunctionDataCrossReference
 	for _, fn := range model.FunctionElements {
@@ -182,6 +208,10 @@ func GenerateFunctionDataCrossReference(model ThreeElementModel) []FunctionDataC
 			if crud, ok := explicit[key]; ok {
 				row.Operations = operationsForCRUD(crud)
 				row.Source = crud.Source
+				if opposing[[2]string{fn.ID, op.DataID}] {
+					row.DerivedOperations = derived[[2]string{fn.ID, op.DataID}]
+					row.ConflictingDeclarations = true
+				}
 			}
 			out = append(out, row)
 		}
@@ -237,6 +267,44 @@ func operationsForCRUD(crud CRUDDefinition) string {
 		ops = append(ops, "D")
 	}
 	return strings.Join(ops, "")
+}
+
+// normalizeOperations canonicalises an operation letter set to C,R,U,D order,
+// ignoring repeats and case so two spellings of the same intent compare equal.
+func normalizeOperations(raw string) string {
+	var create, read, update, del bool
+	for _, ch := range strings.ToUpper(raw) {
+		switch ch {
+		case 'C':
+			create = true
+		case 'R':
+			read = true
+		case 'U':
+			update = true
+		case 'D':
+			del = true
+		}
+	}
+	return operationsForCRUD(CRUDDefinition{Create: create, Read: read, Update: update, Delete: del})
+}
+
+// derivedOperationsByPair unions the Function.Operations intent per
+// Function/Data pair. A pair absent from Operations has no derived intent and
+// therefore cannot oppose an explicit definition.
+func derivedOperationsByPair(model ThreeElementModel) map[[2]string]string {
+	type pair struct{ fn, data string }
+	raw := map[pair]string{}
+	for _, fn := range model.FunctionElements {
+		for _, op := range fn.Operations {
+			key := pair{fn.ID, op.DataID}
+			raw[key] += strings.ToUpper(op.Operations)
+		}
+	}
+	out := map[[2]string]string{}
+	for key, value := range raw {
+		out[[2]string{key.fn, key.data}] = normalizeOperations(value)
+	}
+	return out
 }
 
 // CRUDGap reports CRUD cells that are expected but absent.
