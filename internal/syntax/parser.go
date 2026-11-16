@@ -2340,7 +2340,15 @@ func (p *Parser) parseSemanticValidation(namespace core.CanonicalID) (semantic.V
 	}
 	v := semantic.Validation{ID: id, Symbol: symbol, Kind: semantic.ValidationKind(kindTok.Text)}
 	if !v.Kind.Valid() {
-		return v, p.errAt(kindTok, fmt.Sprintf("unsupported semantic validation kind %q", kindTok.Text))
+		// The accepted kinds are a closed vocabulary, so name them: "unsupported"
+		// alone makes the author guess which of five words is allowed.
+		words := make([]string, 0, len(semantic.ValidationKinds))
+		for _, valid := range semantic.ValidationKinds {
+			words = append(words, string(valid))
+		}
+		return v, p.errAt(kindTok, fmt.Sprintf(
+			"unsupported semantic validation kind %q; valid values are %s",
+			kindTok.Text, strings.Join(words, ", ")))
 	}
 	if _, err := p.expect(TokenLBrace); err != nil {
 		return v, err

@@ -1,0 +1,9 @@
+CLI-only design of a semantic validation on the reference workspace:
+
+  1  validation inside data      -> expected attribute, relation, candidate-key, or functional-dependency
+  2  top-level, unknown kind    -> unsupported semantic validation kind "frobnicate"      <-- the gap
+  3  bad canonical id           -> invalid canonical id "probe.Thing.id" ([a-z][a-z0-9_]*)
+  4  positive on std.text       -> SEMANTIC_VALIDATION_POSITIVE_REQUIRES_NUMERIC_ATTRIBUTE
+  5  positive on std.decimal    -> ok; inspect: kind=positive attribute=probe.thing.amount
+
+Attempt 2 is the finding: "unsupported" alone leaves five candidates to guess.
