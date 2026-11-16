@@ -1,0 +1,102 @@
+{
+  "note": "The MCP server was DOWN when the client started (connections refused) and began listening 6.0s later. The client kept retrying and its first request landed at t=19.797s, well after the server came up, with the configured canary header present. So a transport-level fault IS retried, unlike an HTTP 500.",
+  "overlay": {
+    "transport": "streamable-http",
+    "serverName": "faultmock",
+    "url": "http://127.0.0.1:8794/mcp/fault",
+    "headers": {
+      "Authorization": "Bearer TRANSPORT_FAULT_CANARY_881",
+      "X-Synthetic-Trace": "tf-881"
+    },
+    "reconnect": {
+      "initialDelayMs": 300,
+      "maxDelayMs": 1500,
+      "maxAttempts": 12
+    },
+    "failOnStartupError": false
+  },
+  "headerCanary": "TRANSPORT_FAULT_CANARY_881",
+  "fault": {
+    "kind": "connection refused (nothing listening)",
+    "serverStartsAfterSeconds": 6.0,
+    "serverListeningAtSeconds": 6.0
+  },
+  "requests": [
+    {
+      "n": 1,
+      "method": "server/discover",
+      "atSeconds": 19.797,
+      "bytes": 280,
+      "sha256": "2d6e560663b30185c0680e157110159805f2f628045dd515a6a0557bcd66916f",
+      "headerCount": 13,
+      "canaryInAuthorization": true
+    },
+    {
+      "n": 2,
+      "method": "initialize",
+      "atSeconds": 19.922,
+      "bytes": 163,
+      "sha256": "40902c765afca2b3658a4c98787806ed8b1a716cf4a4874b273eadce48a9ffb8",
+      "headerCount": 11,
+      "canaryInAuthorization": true
+    },
+    {
+      "n": 3,
+      "method": "notifications/initialized",
+      "atSeconds": 19.984,
+      "bytes": 54,
+      "sha256": "59951ca0b212b103876fa23a9e58bcbbc8fbcc0120e3f5ee7214461e2bd1cd5e",
+      "headerCount": 12,
+      "canaryInAuthorization": true
+    },
+    {
+      "n": 4,
+      "method": "tools/list",
+      "atSeconds": 20.25,
+      "bytes": 46,
+      "sha256": "75f0c7627a35c7e96a0a88482622a0d1ec7e81c0eb5414a88ba7aab9450cf73b",
+      "headerCount": 12,
+      "canaryInAuthorization": true
+    }
+  ],
+  "firstRequestAtSeconds": 19.797,
+  "secondsAfterServerCameUp": 13.797,
+  "requestCount": 4,
+  "canaryOnEveryRequest": true,
+  "recovered": true,
+  "toolCountSeen": 28,
+  "modelRequests": [
+    {
+      "n": 1,
+      "bytes": 104724,
+      "toolCount": 28,
+      "mcpTools": [
+        "mcp__faultmock__fault_echo"
+      ]
+    },
+    {
+      "n": 2,
+      "bytes": 59939,
+      "toolCount": 0,
+      "mcpTools": []
+    }
+  ],
+  "contrastWithHttp500": {
+    "http500MidHandshake": "no retry; client stopped (DSH_MCP_RECONNECT_HEADERS_2026-11-17)",
+    "http500DuringToolsCall": "no retry; call failed only",
+    "transportFault": "retried until the server came up; recovered",
+    "difference": "a refused connection is retried, an HTTP 500 error response is not, so 'reconnect covers outages' depends on the fault type"
+  },
+  "answersForTheOpenQuestion": {
+    "reconnectRetriesTransportFault": true,
+    "headersResentOnThoseRetries": null,
+    "note": "headers were present on every request that reached the server, but the failed retries left no server-side trace, so per-retry header presence (true 're-send on reconnect') is NOT directly observed. What is shown is that the recovered connection carried the canary."
+  },
+  "caveat": "One timing: 6s down, backoff 300ms->1500ms, 12 attempts. The retries that failed left no trace on the server because nothing was listening; the count of those attempts is inferred from the ~13.8s gap, not measured directly.",
+  "retryInference": {
+    "status": "withdrawn",
+    "why": "An earlier version counted backoff delays from the moment the server started listening and concluded 'about 11 attempts'. That basis is wrong: retries begin when the CLIENT starts, and the delays are inter-attempt waits, so the observed first-request time cannot be converted into an attempt count from these timestamps.",
+    "whatStillHolds": "The nominal schedule sums to 15.6s over 12 attempts, which is less than the 19.797s at which the first request arrived, so the client's own start time is unknown to us and the attempt count is not recoverable from this data.",
+    "honestStatement": "reconnect retried for long enough to survive a 6.0s outage and then connected; the number of attempts was not measured."
+  }
+}
