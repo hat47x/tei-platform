@@ -2091,3 +2091,8 @@ PostgreSQLには、スカラーMembership IDの等値比較と二つの時間Ran
 次に生成系と解釈系で同値比較するときは、同じSource/Rule/Generator版・Provider Alias・Read Cohort・Input/Resultの型を渡し、Goコード生成の出力と汎用Evaluatorの観測を別Attemptで記録した上で、既存Expectedとの同値性を照合する。Plugin/NodeのPort→Adapter→Provider→Consumerも**選択・含有・呼出し・受信**の4段階に分ける。CLI/MCP/Desktopの各入口にMeaningの正本を複製せず、実行HostのGrant/Effectはさらに別受入とする。
 
 **停止条件**：当該PRの実PostgreSQL CIが未PASSなら本節の経路接続は未実証。AR-2の生成Artifact/BuilderとAR-4の途中状態・二Consumer受領は今回の対象外。#2586の通常CLI実Reader・#2831のStudio Desktopセルフビルドを独立P0として維持する。
+
+<!-- org-ar1-realpg-observed-20261116 -->
+**実測結果（2026-11-16）**：[PR #5155](https://github.com/hat47x/tei-platform/pull/5155)をmainへ統合した（squash commit `0f5b239033c038c7906e9a1fefda6e795bd559df`）。[実PostgreSQL CI run 43859032163](https://github.com/hat47x/tei-platform/actions/runs/43859032163)は**completed/success**で、`TestOrgC1AbstractUnitReadPathUsesStableSemanticIDs` と、同一Workspace内の型付きSource/Query契約を実行直前に照合する `TestOrgAxisAsOfActualPostgresOptIn` の明示PASSを確認した。専用CIのGo整形・必須PASS・非SKIP検査も通過。旧PR #5115の整形失敗はこの固定runで解消された。
+
+**受入済みの上限**は「実Workspaceの型付きRelationと選択Queryの名前付き入出力が一致し、その**同じQuery**が隔離PostgreSQLから既存Expectedどおりに行を返す」まで。Relation traversalによるOrgUnit JOIN、Person識別、同一A2の正式二版保存、生成Go/汎用Interpreterの実行同値、Function Context→二Consumer、業務Rule・現在Grant・Host Effectは未検証。全体Self-buildの別CIには `cmd/tei/cli_self_build_*_test.go` の整形確認ステップの失敗が残り、組織PGの局所合格を全体製品合格へ昇格させない。

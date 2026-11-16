@@ -2901,3 +2901,10 @@ Pluginのport連結は基本型だけでなく複合Data・Relationの型も照�
 実PGの対象テストが固定HEADで明示PASSしSKIPがなければ、§43.5/段階計画§10.19のAR-1→AR-3接続を限定合格とする。AR-2（生成/解釈と実Builder）・AR-4（同一Read CohortをContextと二Consumerへ伝搬）・AR-5（Rule/現在Grant/Effect）を先回りして完了扱いにしない。CLI/MCP/DesktopやPluginの共通Meaningは維持し、選択・含有・実呼出し・Consumer受領を独立検収する。
 
 通常CLI初回実Provider Read #2586とStudio Desktop Stage1→Stage2セルフビルド #2831を引き続きP0に保つ。
+
+<!-- org-ar1-realpg-pass-20261116 -->
+### 2026-11-16 組織C1：同一Attemptの型付きSource/Query→実PG Readを限定合格へ更新
+
+[PR #5155](https://github.com/hat47x/tei-platform/pull/5155)をmainへ統合（`0f5b2390`）。[run 43859032163](https://github.com/hat47x/tei-platform/actions/runs/43859032163)で `TestOrgC1AbstractUnitReadPathUsesStableSemanticIDs` と `TestOrgAxisAsOfActualPostgresOptIn` が明示PASS。後者は同一Workspaceの型付きRelation/Query契約を検査してから**そのQueryで実PostgreSQLを読み**、既存の時点・配賦Expectedと照合した。Go整形と非SKIPも通過。
+
+**合格範囲**：AR-1静的Source/IRとAR-3の限定実Query Readの接続。**未合格**：OrgUnit JOIN、Person Link、同一A2の正式旧新版保存、AR-2生成Go/Interpreter→実Builder、AR-4同一CohortのFunction Context・二Consumer、AR-5業務Rule・現在Host Grant・Effect。次は#2586通常CLI実Providerを同一AttemptのFunction/Query選択・入力/出力・Consumer受信まで接続する。#2831 Studio Desktopセルフビルドは別P0のまま。self-build専用CIの整形失敗も別管理とし、実PG成功を製品全体のPASSにしない。
