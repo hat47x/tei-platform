@@ -214,7 +214,7 @@ func resolveRuleExamples(r *Result) error {
 				}
 				continue
 			}
-			aboutAllRows := rule.Kind == semantic.ValidationRelationUnique
+			aboutAllRows := rule.Kind == semantic.ValidationRelationUnique || rule.Kind == semantic.ValidationNoOverlap
 			switch {
 			case aboutAllRows && expectation.Row >= 0:
 				if err := reject(expectation.RuleSpan, fmt.Sprintf("rule %s is about all the rows together; write it in the mark after expecting, not as a column", rule.ID)); err != nil {
@@ -235,6 +235,12 @@ func resolveRuleExamples(r *Result) error {
 			}
 			if rule.Compared != "" && !itemOf[rule.Compared] {
 				if err := reject(expectation.RuleSpan, fmt.Sprintf("rule %s reads %s, which is not an item of data %s", rule.ID, rule.Compared, table.Data)); err != nil {
+					return err
+				}
+				continue
+			}
+			if rule.GroupBy != "" && !itemOf[rule.GroupBy] {
+				if err := reject(expectation.RuleSpan, fmt.Sprintf("rule %s reads %s, which is not an item of data %s", rule.ID, rule.GroupBy, table.Data)); err != nil {
 					return err
 				}
 				continue

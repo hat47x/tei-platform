@@ -191,10 +191,15 @@ const (
 	// after another calendar date of the same record. The second date is
 	// Validation.Compared.
 	ValidationNotAfter ValidationKind = "not-after"
+	// ValidationNoOverlap states that the periods of the rows of a relation
+	// do not overlap. A period runs from the date of Attribute to the date
+	// of Compared, both days included. With GroupBy, only rows that share
+	// that attribute's value are compared with each other.
+	ValidationNoOverlap ValidationKind = "no-overlap"
 )
 
 func (k ValidationKind) Valid() bool {
-	return k == ValidationPositive || k == ValidationRelationUnique || k == ValidationOperator || k == ValidationNotAfter
+	return k == ValidationPositive || k == ValidationRelationUnique || k == ValidationOperator || k == ValidationNotAfter || k == ValidationNoOverlap
 }
 
 // OperatorInput states what an operator reads. It fixes the read demand of
@@ -231,14 +236,23 @@ type Validation struct {
 	Relation  core.CanonicalID `json:"relation,omitempty"`
 	// Operator is set only for ValidationOperator and names a declared Operator.
 	Operator core.CanonicalID `json:"operator,omitempty"`
-	// Compared is set only for ValidationNotAfter and names the attribute
-	// Attribute is compared with.
+	// Compared names a second attribute. For ValidationNotAfter it is the
+	// attribute Attribute is compared with. For ValidationNoOverlap it is
+	// the last day of the period that starts at Attribute.
 	Compared core.CanonicalID `json:"compared,omitempty"`
 	// IfPresent is set only for ValidationNotAfter. It states that a record
 	// that holds no value for Compared satisfies the rule: the rule speaks
 	// only about records that have that value. Without it, such a record is
 	// not decided.
 	IfPresent bool `json:"ifPresent,omitempty"`
+	// GroupBy is set only for ValidationNoOverlap. Rows are compared only
+	// with rows that hold the same value for it. When empty, every row of
+	// the relation is compared with every other.
+	GroupBy core.CanonicalID `json:"groupBy,omitempty"`
+	// OpenEnded is set only for ValidationNoOverlap. It states that a row
+	// without a Compared date is a period with no last day. Without it, such
+	// a row is not decided.
+	OpenEnded bool `json:"openEnded,omitempty"`
 }
 
 type Parameter struct {

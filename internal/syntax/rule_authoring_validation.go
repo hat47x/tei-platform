@@ -44,6 +44,8 @@ func RuleValidationKind(predicate RulePredicate) (semantic.ValidationKind, bool)
 		return semantic.ValidationOperator, true
 	case RulePredicateNotAfter:
 		return semantic.ValidationNotAfter, true
+	case RulePredicateNotOverlapping:
+		return semantic.ValidationNoOverlap, true
 	default:
 		return "", false
 	}
@@ -149,11 +151,37 @@ func ruleToValidation(rule RuleAuthoring) (semantic.Validation, *RuleConversionI
 			Msg: fmt.Sprintf("%s accepts no attribute to compare with", kind),
 		}
 	}
-	if kind == semantic.ValidationRelationUnique {
+	if kind == semantic.ValidationNoOverlap {
+		if rule.PeriodEnd == nil {
+			return semantic.Validation{}, &RuleConversionIssue{
+				RuleID: rule.ID, Span: rule.SubjectSpan,
+				Msg: "no-overlap requires a period; no end of the period was authored",
+			}
+		}
+		end, issue := ruleCanonicalReference(rule, *rule.PeriodEnd, "end of the period")
+		if issue != nil {
+			return semantic.Validation{}, issue
+		}
+		validation.Compared = end
+		validation.OpenEnded = rule.OpenEnded
+		if rule.GroupBy != nil {
+			group, issue := ruleCanonicalReference(rule, *rule.GroupBy, "grouping attribute")
+			if issue != nil {
+				return semantic.Validation{}, issue
+			}
+			validation.GroupBy = group
+		}
+	} else if rule.PeriodEnd != nil || rule.OpenEnded || rule.GroupBy != nil {
+		return semantic.Validation{}, &RuleConversionIssue{
+			RuleID: rule.ID, Span: rule.PredicateSpan,
+			Msg: fmt.Sprintf("%s accepts no period and no grouping", kind),
+		}
+	}
+	if kind == semantic.ValidationRelationUnique || kind == semantic.ValidationNoOverlap {
 		if rule.Scope == nil {
 			return semantic.Validation{}, &RuleConversionIssue{
 				RuleID: rule.ID, Span: rule.PredicateSpan,
-				Msg: "relation-unique requires a scope; none was authored",
+				Msg: fmt.Sprintf("%s requires a scope; none was authored", kind),
 			}
 		}
 		relation, issue := ruleCanonicalReference(rule, *rule.Scope, "scope")

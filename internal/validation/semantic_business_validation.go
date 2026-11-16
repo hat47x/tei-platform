@@ -225,7 +225,24 @@ func validateSemanticBusinessValidations(w ir.World) []Diagnostic {
 				))
 			}
 
-			if rule.Kind != semantic.ValidationNotAfter && (rule.Compared != "" || rule.IfPresent) {
+			if rule.Kind != semantic.ValidationNoOverlap && (rule.GroupBy != "" || rule.OpenEnded) {
+				out = append(out, errFor(
+					ruleSubject,
+					"SEMANTIC_VALIDATION_PERIOD_GROUPING_NOT_ALLOWED",
+					"%s semantic validation %s is not about periods and accepts no grouping and no open end",
+					rule.Kind,
+					rule.ID,
+				))
+			}
+			if rule.Kind == semantic.ValidationNoOverlap && rule.IfPresent {
+				out = append(out, errFor(
+					ruleSubject,
+					"SEMANTIC_VALIDATION_COMPARED_ATTRIBUTE_NOT_ALLOWED",
+					"no-overlap semantic validation %s states an open end with openEnded, not with ifPresent",
+					rule.ID,
+				))
+			}
+			if rule.Kind != semantic.ValidationNotAfter && rule.Kind != semantic.ValidationNoOverlap && (rule.Compared != "" || rule.IfPresent) {
 				out = append(out, errFor(
 					ruleSubject,
 					"SEMANTIC_VALIDATION_COMPARED_ATTRIBUTE_NOT_ALLOWED",
@@ -339,6 +356,97 @@ func validateSemanticBusinessValidations(w ir.World) []Diagnostic {
 						attribute.TypeRef,
 						rule.Compared,
 						compared.TypeRef,
+					))
+				}
+
+			case semantic.ValidationNoOverlap:
+				if rule.Relation == "" {
+					out = append(out, errFor(ruleSubject, "SEMANTIC_VALIDATION_RELATION_REQUIRED", "no-overlap semantic validation %s requires a relation", rule.ID))
+					continue
+				}
+				relation, relationExists := relations[rule.Relation]
+				if !relationExists {
+					out = append(out, errFor(
+						ruleSubject,
+						"UNKNOWN_SEMANTIC_VALIDATION_RELATION",
+						"semantic validation %s refers to unknown semantic relation %s",
+						rule.ID,
+						rule.Relation,
+					))
+					continue
+				}
+				if relation.Cardinality != semantic.CardinalityMany {
+					out = append(out, errFor(
+						ruleSubject,
+						"SEMANTIC_VALIDATION_RELATION_NOT_MANY",
+						"no-overlap semantic validation %s requires a many relation but %s has cardinality %s",
+						rule.ID,
+						rule.Relation,
+						relation.Cardinality,
+					))
+				}
+				if rule.Compared == "" {
+					out = append(out, errFor(ruleSubject, "SEMANTIC_VALIDATION_COMPARED_ATTRIBUTE_REQUIRED", "no-overlap semantic validation %s requires the attribute that ends the period", rule.ID))
+					continue
+				}
+				end, endExists := attributes[rule.Compared]
+				if !endExists {
+					out = append(out, errFor(
+						ruleSubject,
+						"UNKNOWN_SEMANTIC_VALIDATION_COMPARED_ATTRIBUTE",
+						"semantic validation %s ends its period with unknown semantic attribute %s",
+						rule.ID,
+						rule.Compared,
+					))
+					continue
+				}
+				if rule.GroupBy != "" {
+					if _, groupExists := attributes[rule.GroupBy]; !groupExists {
+						out = append(out, errFor(
+							ruleSubject,
+							"UNKNOWN_SEMANTIC_VALIDATION_GROUP_ATTRIBUTE",
+							"semantic validation %s groups rows by unknown semantic attribute %s",
+							rule.ID,
+							rule.GroupBy,
+						))
+						continue
+					}
+				}
+				if !attributeExists {
+					continue
+				}
+				if rule.Compared == rule.Attribute {
+					out = append(out, errFor(
+						ruleSubject,
+						"SEMANTIC_VALIDATION_NO_OVERLAP_SAME_ATTRIBUTE",
+						"no-overlap semantic validation %s starts and ends its period with the same attribute %s",
+						rule.ID,
+						rule.Attribute,
+					))
+					continue
+				}
+				for _, read := range []core.CanonicalID{rule.Attribute, rule.Compared, rule.GroupBy} {
+					if read != "" && attributeOwners[read] != relation.Target {
+						out = append(out, errFor(
+							ruleSubject,
+							"SEMANTIC_VALIDATION_ATTRIBUTE_OUTSIDE_RELATION_TARGET",
+							"no-overlap semantic validation %s uses attribute %s outside relation target %s",
+							rule.ID,
+							read,
+							relation.Target,
+						))
+					}
+				}
+				if !isDateType(attribute.TypeRef) || !isDateType(end.TypeRef) {
+					out = append(out, errFor(
+						ruleSubject,
+						"SEMANTIC_VALIDATION_NO_OVERLAP_REQUIRES_DATE_ATTRIBUTES",
+						"no-overlap semantic validation %s requires a period of two calendar dates but %s has type %s and %s has type %s",
+						rule.ID,
+						rule.Attribute,
+						attribute.TypeRef,
+						rule.Compared,
+						end.TypeRef,
 					))
 				}
 
