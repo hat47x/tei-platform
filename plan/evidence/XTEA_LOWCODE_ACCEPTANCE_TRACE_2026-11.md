@@ -34,7 +34,7 @@
 
 | X-TEA | 状態 | TEIでの表し方 | 確認 | 残る未確認 |
 | --- | --- | --- | --- | --- |
-| XF100 一覧（明細一括表示） | 実装（参照） | `browse`＋`record`＋`reference`。例は recent_orders（browse）→order_record（record）→customer_reference（reference） | view の投影、hook の scope row、例の validate | 実データ源からの行取得（供給源が未実装）。列固定はX-TEA側も未実装と記録 |
+| XF100 一覧（明細一括表示） | 実装（参照） | `browse`＋`record`＋`reference`。例は recent_orders（browse）→order_record（record）→customer_reference（reference） | view の投影、hook の scope row、例の validate | 実データ源からの行取得（変換は実装、ホストの配線が未実装）。**一覧は`interaction`を持てないため、行スコープのフックを一覧で宣言できない**（[判断保留](XTEA_LOWCODE_ROW_HOOK_DECLARATION_SITE_2026-11.md)）。列固定はX-TEA側も未実装と記録 |
 | XF110 一括更新 | 一部 | `browse`＋`command`。Effect照合と UnitOfWork がある | command の試験 | 一括の範囲・対象行の宣言、部分成功の扱い。X-TEAの RangeKey はコメントアウトされ実行時に効かない（D-9）ため、移植する意味も無いと判断 |
 | XF200 単票保守 | 実装（参照） | `record`＋`command`（create/update/delete） | 例の order_create・submit_order・order_delete | 0件／複数件を1件要求として区別する扱い |
 | XF290 単票印刷 | 一部 | `record`＋出力投影（RenderPrintHTML） | print_test.go・print_fingerprint_test.go | 版面（余白・フォント・用紙）の宣言、PhraseのHEADER/PARAGRAPH分離、PDF生成そのもの（HTML投影まで） |
