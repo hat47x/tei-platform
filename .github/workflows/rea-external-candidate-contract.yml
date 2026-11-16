@@ -44,6 +44,15 @@ jobs:
         with:
           go-version-file: go.mod
           cache: false
+      - name: Require gofmt for changed review and CLI code
+        run: |
+          set -euo pipefail
+          files="internal/reacandidate/review.go internal/reacandidate/review_test.go cmd/tei/cli_three_element_rea_candidates.go cmd/tei/cli_three_element_rea_candidates_test.go"
+          unformatted="$(gofmt -l $files)"
+          if [ -n "$unformatted" ]; then
+            gofmt -d $files
+            exit 1
+          fi
       - name: Test R1 one-relation question and original CandidateSet
         run: |
           set -euo pipefail
