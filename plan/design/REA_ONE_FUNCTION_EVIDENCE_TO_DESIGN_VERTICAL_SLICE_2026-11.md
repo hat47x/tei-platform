@@ -675,3 +675,15 @@ R1の最初の問いを「旧Function FはData Dを読むか」と置くと、�
 **他領域との接続**：組織C1で進んだ「生成メソッド名ではなく意味ID・Relation Key・向き・多重度・Query IDで抽象経路を検査する」方針（#5115）、Node Flow／Plugin間の型付きPort・明示Adapter、プロセス実Call／Effectの証拠照合を、一つの質問の**次段の資格**に使う。技術的なRelationの受領・片端点への一致をもって業務上のResource/Event/Agent ParticipationやAuthZ Grantとみなさない。業務REAは専門Roleの投影であり、全Functionへ会計Eventを強制しない。
 
 **次のR1-A／R2の最小入口**：選択した構造Candidateから、既存Source Indexで実Artifact Byte/Revision/位置を再確認し、Ownerが指定したQualified Data/Function IDとSourceを照合できたときだけ「対応付け候補」を前へ進める。それでも関数の入力・出力・副作用の実観測がなければ`Function → Data Read/Write`は不明のままとする。確定したモデルを使う生成Go、正式Builder、通常CLIの実PG Provider Read、Studio Native独立Consumer、実Effect/Grantは別Attempt・独立Expected（#1180/#2514）で検査する。主P0の通常CLI実Provider（#2586）およびWindows Studio Stage1→Stage2（#2831/#4583）は変えない。
+
+## 34. 一Relation質問の検証をAttemptとSource版に結び直す（2026-11-17）
+
+[PR #5180](https://github.com/hat47x/tei-platform/pull/5180)の一Relation質問はmainへ統合済み（merge `774a2ed1`）。ただし統合に用いた[REA候補CI run 43872113460](https://github.com/hat47x/tei-platform/actions/runs/43872113460)では、専用`relation-review`が`gofmt`の差分で停止し、既存`contract`は別領域の`RuleExamples.Data`と`string`の型不一致でビルド失敗した。この時点で「機能がmainにある」と「対象Go試験が成功した」は別事実である。後者の型不一致は現在mainの`core.CanonicalID`による比較で既に修正されているため、このPRで過去修正を重複適用しない。
+
+**修復と再検収**：既存`reacandidate/review.go`と`review_test.go`のGo整形差分を修正し、対象の`relation-review`を固定HEADで再実行する。共通`contract`の結果は別票に残す。単にCIの整形チェックを外したり、過去HEADのPASSを新HEADへ流用したりしない。
+
+**追加の否定例（RQ-09）**：あるAttemptで`edge-order-line`という外部Relation IDが観測され、次のAttemptでも同じIDを使ったが、出典Artifactのバイト版が変わった場合を検査する。構造上の`CandidateID`が同じでも、`AttemptEvidenceID`、候補集合Fingerprint、`SourceRevision.Fingerprint`を別々に保持し、`ownerDecision=pending`と`FunctionDataClaim=not-established-by-external-structure`を維持する。これは、SourceのA→B→Aを含む更新履歴の同一性、正式TEI Relationの継続、業務FunctionのRead/Write、現在のGrantを証明するものではない。
+
+**他領域との接合**：main統合済みの[Studio Source位置表示 #5212](https://github.com/hat47x/tei-platform/pull/5212)は、検証済みSource位置を表示する手段であって、ファイルを開く権限や同一内容の保証ではない。[Data／Ruleの同一Load検査 #5179](https://github.com/hat47x/tei-platform/pull/5179)、[既存の型付きField投影 #5156](https://github.com/hat47x/tei-platform/pull/5156)、[明示／派生CRUD矛盾検査 #5190](https://github.com/hat47x/tei-platform/pull/5190)からは、取得状態・Mapping・利用宣言の相反を保留する停止線を再利用する。これらはREAの外部Structure候補をOwnerの正式Data/Function/Businessへ自動対応付ける権限ではない。
+
+**次段のR1-A**は、指定したRelationの外部Occurrenceと正式Source IndexのArtifact/Range/Revisionを同じ対象・同じ取得範囲で再読取し、別のQualified Data/Function ID候補を照合すること。Sourceが部分取得・未取得・Digest衝突のときは一致の肯定も「存在しない」の否定も保留する。業務REAのResource/Event/Agent Participationは必要なドメインでOwnerが受理したRoleとして扱う。実ProviderでのRead、Ruleの判断、Generator/Builderの実消費、Studioの二Consumer、Permission/Effectは独立Expected（#1180/#2514）の次の資格とし、通常CLI実Provider #2586とWindows Studio Stage1→Stage2 #2831を並行P0のまま維持する。

@@ -87,6 +87,45 @@ func TestRelationQuestionCannotPairUnselectedOrDuplicateEdgeIDs(t *testing.T) {
 	}
 }
 
+// Reusing a producer edge ID in another attempt does not make the two
+// observations the same witness. Candidate identity is a structural handle;
+// provenance and source revision must remain available separately.
+func TestRelationQuestionRetainsAttemptAndSourceRevisionAcrossReusedEdgeID(t *testing.T) {
+	first := defaultEvidence()
+	firstSet := mustGenerate(t, first)
+	firstPacket := BuildReviewPacket(firstSet, nil, nil, nil)
+	firstQuestion, ok := SelectRelationQuestion(firstPacket, "edge-order-line")
+	if !ok {
+		t.Fatal("initial relation cannot be selected")
+	}
+
+	second := defaultEvidence()
+	second.evidenceID = "ev-second-attempt"
+	second.edges[0].artifact = digestB
+	secondSet := mustGenerate(t, second)
+	secondPacket := BuildReviewPacket(secondSet, nil, nil, nil)
+	secondQuestion, ok := SelectRelationQuestion(secondPacket, "edge-order-line")
+	if !ok {
+		t.Fatal("second attempt's relation cannot be selected")
+	}
+
+	if firstQuestion.Relation.CandidateID != secondQuestion.Relation.CandidateID {
+		t.Fatal("same producer occurrence was unexpectedly given another structural candidate ID")
+	}
+	if firstQuestion.AttemptEvidenceID == secondQuestion.AttemptEvidenceID ||
+		firstQuestion.CandidateSetFingerprint == secondQuestion.CandidateSetFingerprint ||
+		firstQuestion.Relation.SourceRevision.Fingerprint == secondQuestion.Relation.SourceRevision.Fingerprint ||
+		secondQuestion.Relation.SourceRevision.Fingerprint != "sha256:"+digestB ||
+		secondQuestion.Relation.SourceRevision.Binding != SourceBindingProviderReported {
+		t.Fatalf("the second attempt lost its independent provenance: before=%+v after=%+v", firstQuestion, secondQuestion)
+	}
+	if firstQuestion.AcceptedMeaning || secondQuestion.AcceptedMeaning ||
+		firstQuestion.FunctionDataClaim != "not-established-by-external-structure" ||
+		secondQuestion.FunctionDataClaim != "not-established-by-external-structure" {
+		t.Fatal("a matching producer edge ID became accepted Function/Data meaning")
+	}
+}
+
 // The packet is the single review surface. It reports what was attempted and
 // what was not, and it never claims an acceptance.
 func TestReviewPacketReportsSectionsAndAcceptsNothing(t *testing.T) {
@@ -368,7 +407,7 @@ func TestReviewSummaryDoesNotCoerceUnknownOrInvalidComparison(t *testing.T) {
 	set := mustGenerate(t, defaultEvidence())
 	comparison := CandidateSetComparison{
 		SchemaVersion: "tei.rea.candidate-set-comparison/v0",
-		Effect: EffectReadOnly,
+		Effect:        EffectReadOnly,
 		Entries: []CandidateComparisonEntry{
 			{CandidateID: "first", Status: ComparisonUnchanged},
 			{CandidateID: "second", Status: "future-private-status-value"},
