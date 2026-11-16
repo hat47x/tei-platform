@@ -416,3 +416,50 @@ StudioのプロジェクトExplorerで一つの`*.tei.md`を開いたとき、So
 生成Goの出典byteとBuildPlanの現在性、Operator実装選択、Builderの実消費、実Providerの選択と実Call、結果・Effectの受領は、それぞれ別の証拠として残す。自己構築では、出力一致に加えて旧Go判断が実際に減ったことと次世代の実使用を検査する。既存の[抽象経路・受入計画](DERIVED_PROJECTIONS_RUNTIME_AND_MIGRATION_ACCEPTANCE_2026-11.md)と[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)へ引き渡し、第二のRule Engine、Trace Store、Expected正本は作らない。
 
 **受入の上限**：本節は新しい実装を追加しない。実Provider由来の状態付きRule入力、一般的なG/P同値、実DBの完全性、外部Effect、正式R2-P／R3、Studio Stage1→Stage2のWindows再入、Owner意味受理は未検証であり、既存の優先P0を変更しない。
+
+## 15. 実Queryの読取結果をRuleへ渡す際の資格を閉じる（2026-11-16）
+
+§14で確認した「入力から結論を確定してよいか」という問いは、Readerの型が揃っただけでは解けない。**選択したSourceとQueryから得た行、その行から分かる値の状態、Ruleが必要とする読取集合、同じ試行で呼ばれたProvider**を対応させて初めて、実行結果の根拠になる。ここで不足しているのは新しい評価器ではなく、既存の実Readと状態付き評価を接合する際の証拠である。
+
+### 15.1 別々に成立した実装を一つの合格にしない
+
+- [#5155](https://github.com/hat47x/tei-platform/pull/5155)の組織C1では、実Workspace上のRelation・Queryの型付き契約を確認したうえで、同じ検査対象のQueryから実PostgreSQLを読み、独立Expectedへ照合する限定試験がある。[#5165](https://github.com/hat47x/tei-platform/pull/5165)は、その専用CIで二つの対象試験が明示PASSしたことを記録した。ただし返されるのはMembership行であり、OrgUnit JOIN、Person Link、Function Contextや独立Consumerまでの通過を証明していない。
+- [#5149](https://github.com/hat47x/tei-platform/pull/5149)は、Contract Queryの行からpresent／null／not-fetchedを読み分けるAdapterの候補である。SQLiteのSQL Executor経由の局所試験を含むが、確認時点では**未マージ**である。Contract Queryの正式な解決・Binding・Environment、PostgreSQL、製品CLIの呼出しには未接続で、Coverageは呼出し側の申告に依存する。未判定の変異試験も残る。
+- main統合済み[#5166](https://github.com/hat47x/tei-platform/pull/5166)は、同じMarkdown Sourceから読んだ日付Ruleを既存の状態付きEvaluatorで評価する経路と、現行Go生成器がそのRuleを**未対応として拒否する**経路を区別した。Ruleの読取り成功は、選択TargetでのG生成資格ではない。
+- [型付きPlugin I/O設計](PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md)は、Record全体／Field別／明示AdapterでPresence・必要Read集合・公開範囲を保存する条件を扱う。値の変換に成功しただけで実Providerの取得資格やConsumerへの開示資格が生まれるわけではない。
+
+これらを独立した実績として扱う。とくに「組織C1の実PG試験」と「行を状態に変えるAdapter候補」を並べても、**実PG→状態付きRule→実Consumerが同一Attemptで成立したことにはならない**。
+
+### 15.2 一つの読取りを引き渡す最小条件
+
+| 境界 | 受け渡す情報 | そこからは主張しないこと |
+| --- | --- | --- |
+| Source／Meaning | 選択Reader・Role、Canonical Rule／Query ID、Source Revision、対象のAttribute／Relation、Ruleの適用Phase | 同名ラベルやGenerated Symbolだけで意味対象を決定しない |
+| 実Read要求 | Query Binding、入力、Snapshot／Scope、Required AttributeとRelationの集合、現在Grant | 宣言や選択記録を実Provider呼出し済みの証拠にしない |
+| 実Provider受領 | 実行したQuery／Provider、実Read ID、行・列の出典、時点、返却された値と行集合 | 結果行数、列名一致、SQL成功だけから全件取得・保存NULL・現在の権限を推定しない |
+| 状態付きReader | 各値のpresent／null／not-fetchedと、Relationの取得範囲の**根拠**。判断不能な情報は不明として残す | 呼出し側がcompleteを申告しただけで必要集合の完全性を受理しない |
+| Rule判定 | Required ReadとObserved Read、規則種別、成立／不成立／未決定とその理由 | 記録例のPASSや一般化されていないG生成を本番判定へ昇格しない |
+| Consumer／Effect | 選択した実装の実Call、結果・Failure、必要に応じた実受領とCommit／Effect Receipt | 値の一致だけで同一実装・同一Grant・業務作用を証明しない |
+
+**完全性は「返ってきた行が全部である」という直感ではなく、Ruleが要求する集合をそのScopeとSnapshotで尽くした証拠**として扱う。native SQLのFunction Contextがcomplete／justified emptyを主張していない現状と矛盾させない。既知の重複による不成立など、未読部分が結論を覆せない場合だけ、不完全な読取りでも結論を確定できる。
+
+### 15.3 新しい検収体系を作らず、六つの一因子差を固定する
+
+既存の独立Expected（#1180／#2514）と§14の停止線を利用する。以下は新しいGate番号ではなく、**一件の実Provider→Ruleの接続試験で変える一因子**である。
+
+| 差 | 期待する観測 |
+| --- | --- |
+| 値present→格納NULL | 0や未取得への読み替えを拒否し、値の由来が未確定ならNULLの由来も未確定にする |
+| 値present→列を未取得 | 同じ表示値を補わず、必要AttributeのRead不足を記録する |
+| 既読の確定重複があり、Coverageだけpartialへ | 必要な二行が観測済みなら不成立は維持する |
+| 重複がなく、Coverageだけpartialへ | 必要な全行を読んだ証拠がなければ成立を保留する |
+| 同じ値でQuery Binding／Read IDだけ変更 | 意味上のRead対象のすり替えを拒否する |
+| 同じSourceでP対応の日付RuleをGへ変更 | 現行Generatorの明示的未対応をそのまま返す。暗黙のFallbackを実績に数えない |
+
+最初は**一つのContract Query、一つのRule、一つの実Read結果**に絞る。#5149のAdapterを採用する場合も、未判定の変異試験、正式Binding、ScopeとCoverageの根拠を先に確認する。組織C1の実PG試験は実Queryの照合方法の先例とし、別の業務対象へ無断で転用しない。
+
+### 15.4 実装範囲と次の引渡し
+
+対象は既存Driver／Function Contextと状態付きEvaluatorを接続する**不足している一辺**である。型付きPort全体の再設計、第二のQuery／Graph Engine、独立Evidence Store、万能Adapter、TEI独自Hostは追加しない。実装選択A→Bの現在性は既存Scenario Pin、BuildPlan／Builder／Toolchainの現在性は既存セルフビルドで別に確かめる。通常CLI→正式Provider→独立Consumer（#2586／#4495）とStudio Stage1→Stage2 Windows（#2831／#4583）を優先する。
+
+本節は設計・検収の更新のみ。#5155の限定実PG PASSを、状態付きRuleやR3公開Functionの実行合格へ拡大しない。

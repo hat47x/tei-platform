@@ -18,7 +18,7 @@ TEIのプラグインは、あるHostへ読み込むバイナリというより�
 | **実行配置** | Target／Build Intent／既存Composition・Deployment Owner | 静的同梱、独立Process、別Hostへの接続。配置は業務意味を変更しない |
 | **入口・公開** | Application Operation、CLI／Wails／Server Adapter、Host Policy | direct呼出し、HTTP公開、Studio表示、MCP等のAudience・Grant・Consumer |
 
-したがって、API PluginをWailsのServiceやURLそのものとして定義しない。CLIは同じOperationの直接Callerであり、Wails Serverは必要なOperationだけを公開するHost Adapterとなる。CLIがHTTP ListenerやWailsを起動する必要はない。HTTP側がCLIをshell実行して意味の共通化を代替することも認めない。公開時には現在のHostがPrincipal／Grant／Audienceを評価し、入力のactor文字列やPluginの自己申告を権限へ昇格させない。具体的なHTTP Routeの実装・検収は既存Studio／CLI計画とAPI検討PR #5096のOwnerで扱い、当該PRの未統合設計を現行mainの製品仕様とみなさない。
+したがって、API PluginをWailsのServiceやURLそのものとして定義しない。CLIは同じOperationの直接Callerであり、Wails Serverは必要なOperationだけを公開するHost Adapterとなる。CLIがHTTP ListenerやWailsを起動する必要はない。HTTP側がCLIをshell実行して意味の共通化を代替することも認めない。公開時には現在のHostがPrincipal／Grant／Audienceを評価し、入力のactor文字列やPluginの自己申告を権限へ昇格させない。具体的なHTTP Routeの実装・検収は既存Studio／CLI計画のOwnerで扱う。旧PR #5096自体はクローズ・未マージだが、現行mainのStudio／CLI配置設計§17には責務分離の記述が存在する。文書の収録をHTTP Routeの製品実装とみなさない。
 
 ## 2. 型付き接続はデータの構造だけでなく、保証の受渡しである
 
@@ -95,3 +95,36 @@ Stage1がビルドで使用したGeneratorは、Stage2に必ず含めるもの�
 新しいCore抽象や汎用Adapterを作らなければ一例も動かない、各入口が別Resolverを必要とする、第二のEvidence正本を生む、Stage2や実Providerの既存P0を遅らせる場合は、設計を一例のread-only検収へ縮小する。
 
 **現状**：既存コード／設計の照合と次の受入条件の定義まで。PCONの実Go試験、実HTTP・外部Process試験、Studio Stage2 Windows試験、業務Ownerによる意味受理は、この文書では実施していない。実装順は[貢献・配置の小さな製品検収計画](../workstreams/PLUGIN_PORTABLE_CONTRIBUTION_EXECUTION_2026-11.md)へ渡す。
+
+## 8. 最初の実装差分：値の選択と契約・公開の保証を取り違えない（2026-11-16）
+
+現行の`internal/plugin/transform`には、閉じた純粋変換として`input`、`select-field`、`construct-object`が存在する。新しいPlugin Port Runtimeを作らず、`internal/plugin/transform/plugin_field_projection_conformance_test.go`で次の四点を比較する。
+
+1. 同じRecordをそのまま出す場合、追加の`internalNote`も残る。**全体接続の候補適合は、公開可能な項目だけを運ぶ保証ではない**。
+2. `orderId`と`amount`だけを明示的に構成すると、追加項目の有無で出力byteが変わらず、Consumerへ渡すValueに余計な項目は含まれない。
+3. 必須`amount`が欠けた場合は失敗する。値を`0`やNULLで暗黙補完しない。
+4. `amount`が**明示的NULL**なら、欠損とは区別して結果に残る。
+
+**この試験の上限**は純粋Transformにおける出力整形である。Field名はContractの項目IDではなく、`Value`はunfetched／partialという取得資格を内包しない。現在Grant・Disclosure、業務意味、Adapterの単位変換、実Plugin選択、実Builder入力、通常CLI、Wails配信、独立Consumerの成立を主張しない。実Go testと対象HEADのCIは、そのHEADで成功を確認した場合にだけPASSと記録する。
+
+次に、PC-1bで既存のContract／Mapping Ownerによる**明示Field ID・要求型・取得範囲・Audience**の照合を同じFixtureに接続する。PC-1cで一段のpure Adapterの単位・精度・NULL・Lossを検査する。名称が一致してもContract IDが異なる場合や、Readerが部分取得だった場合は、出力が同じでも不適格とする。これらをPC-2のBuildやPC-3のactual Providerへ先取りして加算しない。
+
+また、mainに統合された[PR #5147](https://github.com/hat47x/tei-platform/pull/5147)はPlugin Resolverの診断コードについて、定数宣言も被覆検査の対象にし、拒否の負例を追加した限定的な改善である。未被覆例を理由付き許可リストへ残す点と、全Pluginの実行契約に適合したこととは区別する。失敗分類を返す接続の検収では、エラー文字列の一致だけでなく、既存の**診断コード**を固定する。
+
+## 9. 部分取得と判定可能性を、Portの型適合から切り離す（2026-11-16）
+
+main統合済み[Plugin I/O設計PR #5162](https://github.com/hat47x/tei-platform/pull/5162)と[標準Data設計PR #5163](https://github.com/hat47x/tei-platform/pull/5163)によって、接続の適格性と業務Ruleの判断可能性を、より正確に分けられる。既存`internal/semantic/validationeval.Decide`は`present`／`null`／`not-fetched`、Relationの`complete`／`partial`、および`satisfied`／`not-satisfied`／`undecided`と理由を表す。これらを`transform.Value`のNULLに押し込まない。
+
+Consumerに渡せるかを考えるとき、以下の三層は別の問いである。
+
+| 層 | 判定内容 | 適格性を誤認する例 |
+| --- | --- | --- |
+| **接続可能性** | Contractの項目ID、意味Role、型、Cardinality、Mapping、必要Contextの一致 | `amount`という名前だけを合わせ、別のContractを暗黙接続する |
+| **判断可能性** | 実Readの値状態・Relation取得範囲・Ruleの種類に照らし、未取得部分があっても結論が不変か | partialを一律エラーとする、または未観測の重複が無いと断定する |
+| **配送可能性** | 目的Consumerと現在Grant・Disclosure・Target・実Called Providerに対する許可 | 二Fieldに投影できることを根拠に、HTTP公開も許可されたと解釈する |
+
+**判定不能はPluginの失敗と同義ではない。** 数値の正値Ruleに未取得があると、`undecided(value-not-fetched)`が妥当となる。部分取得のRelationでは、既知の重複から不成立を確定できる場合もある。他方、現時点で重複が見つからないことから一意性の成立を確定するには、Ruleの必要範囲が満たされなければならない。読取状態に矛盾があれば、判定不能ではなくReaderのエラーとして拒否する。
+
+この区別をPC-1bへ渡す際、新しいStateful Port型やPlugin専用Evaluatorは作らない。Sourceの意味ID／Field Ref・Read Footprint・Requirement／Result・現在資格は既存Ownerが保持し、Node Viewは根拠を**読み取り専用で投影**する。公開可能なFieldが決まって初めて明示Projectionを検討するが、ProjectionはHostの認可判定を代行しない。明示Adapterの単位・丸め・Lossはさらに別のPC-1cで検収する。
+
+追加の独立Expectedは既存[PIO-17〜23](PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md)と[DPC-09〜13](SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)に結び付け、新しい検収ID群を増やさない。PR #5162／#5163の文書統合をPlugin Portや実Providerの製品PASSへ昇格させない。

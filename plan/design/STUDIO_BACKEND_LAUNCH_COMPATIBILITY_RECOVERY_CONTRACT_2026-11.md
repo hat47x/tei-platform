@@ -1255,3 +1255,59 @@ LA-09〜15は既存#1180／#2514の**独立Expected候補**として渡す。す
 LA-16／17、RuleとPluginの局所負例は既存テストを再利用する。LA-18／20のHost公開・LA-21は既存#1180／#2514の独立Expectedへ渡す。実装順は現在の三入口Go試験の対象版再確認、read-only HTTP一Route、B0 Childの実IPC比較、通常CLI actual Providerと非Plugin Stage1→Stage2の並行P0を維持する。新しいEngine／Host／Registry／万能Ready判定は追加しない。
 
 **本節は実装済みSourceと未受理の境界を照合した設計追補である。今回、新規Go／HTTP／Windows／DBの試験は実施していない。**
+
+## 36. 受理されたRuleと実行可能な実現方式を分け、Pluginの「不在」と「壊れた版」を混同しない（2026-11-16）
+
+### 36.1 入口で読めたことは、生成・解釈・委譲のすべてを許可しない
+
+[PR #5166](https://github.com/hat47x/tei-platform/pull/5166)の現行main試験は、この境界を実Ruleで確かめている。Markdown Data表と隣接する`not-after ... if present`のRuleは、既存Reader／Source Index／Inspectorで選択でき、**P（`validationeval.Decide`による解釈評価）では日付順序・同日・NULL／未取得の独立Expectedを確認する**。一方、**G（`validationgen.GeneratePositive`によるGo生成）はこのRule種別に未対応**であり、明示的に`unsupported generated kind`として生成を拒否する。同じSource内の`positive` RuleはGに対応している。つまり、判断の意味を受理できることと、Targetに実装を出せることは独立している。
+
+Gが未対応だからといって、Pへの暗黙の切替、D（外部委譲）の新設、既存Binaryの流用、未宣言Adapterによる変換を行わない。**実現方式の選択は、Rule／型／Targetで適用可能な範囲と、当該AttemptでOwner・Hostが認めた範囲の共通部分**とする。Pも、入力の取得状態から判断を確定できなければ理由付き未判定のまま返す。
+
+| 確認する層 | 成立していること | まだ必要な確認 |
+| --- | --- | --- |
+| Reader／Meaning | Ruleを一意に選び、型・Source位置を照合できた | 実現方式ごとの能力、意味受理 |
+| Realization G／P／D | 選んだTarget・型・Rule種別をその方式が扱える | 生成byte・実Builder、実Evaluator、外部Providerのどれを実際に使ったか |
+| Selection／Invocation | 使用実装のIdentity／Version／Lock／Planを固定した | 選択どおりの実Callか、現在のGrantとData Contextを満たすか |
+| Result／Consumer | Result、未判定理由、Failureを観測した | 実ReadのIdentity／Coverage、Disclosure、Effect Receipt、受領側の世代 |
+
+実現方法を示す画面とNode Viewでは、**「モデルは有効」「Pは対応」「Gは未対応」「実行資格は未確定」**を同時に表示できるようにする。対応表を第二のDSL・固定Runner・独自Capability Registryとして作らず、既存のSource Index、Rule意味モデル、Evaluator、Generator、BuildPlan、Operation／Host境界で照合する。
+
+### 36.2 「Pluginが見つからない」は、版の記述が正しいことの証明ではない
+
+mainに統合された[PR #5160](https://github.com/hat47x/tei-platform/pull/5160)は、Plugin版の境界にある具体的な情報欠落を記録した。現行`CompatibleMajor`は版の構文解析に失敗した場合も`false`を返すため、**壊れたCatalog Entryの版が、`PLUGIN_RESOLVE_NO_COMPATIBLE_PLUGIN`と同じ拒否に畳まれる**。`CompareVersion`では不正な版が`0.0.0`相当に扱われる箇所もある。対照的にManagement側では、`version-unknown`と`version-mismatch`を区別している。
+
+このため、現行Resolverの診断Codeだけを見て「依存先が不存在」「要求Majorを緩めれば解決する」と案内することはできない。候補Entryの版が不正な場合、実際の原因は**Catalog記述の修正が必要**という問題かもしれない。
+
+対処方針は二段階とする。
+
+1. **現行コードの振る舞いを証拠として固定する**。不正な版と、正しく解析できるがMajor非互換の版と、CatalogにEntry自体がない場合を、独立したFixtureと診断Chainで検収する。#5160が確認した現在の戻りCodeを、無断で新Codeに読み替えない。
+2. **Catalog境界での失敗分類をOwnerが決める**。不正な版をResolver進入前に拒否するか、Resolver自身が「版不正」と明示するかは未決とし、Managementとの整合・既存ClientのCode分岐への互換影響を調べて採否を決める。`CompareVersion`の不正値処理や、壊れたEntryが有効Entryの選択に及ぼす影響も同じ変更に紛れ込ませない。
+
+Plugin Resolverの診断が列挙されることと、実装が現在利用可能であること、Hostが実行を認可することは引き続き異なる。存在しないEntryや壊れた版を理由に**Builtin Providerへ無言でFallbackしない**。
+
+### 36.3 今のCI失敗は、能力の検証失敗と混同しない
+
+[PR #5150](https://github.com/hat47x/tei-platform/pull/5150)は、Scenarioで使用するOperator選択指紋をWorkspace共通計算へ一本化する実装候補である。しかし対象HEAD `beaefc8650114ee0d5e3f48d32dca3686921260a`の[専用CI](https://github.com/hat47x/tei-platform/actions/runs/43860418998)は失敗している。Job Logから確認できた停止点は`Verify relevant Go formatting and workspace identity`で、`gofmt -l`と`go vet`を連続実行する手順の**前段でexit 1**となっている。どのファイルの整形差かは、このログに出力されていない。Scenarioの実Call同値試験が失敗したと断定してはならないし、失敗したJobを合格としてマージしてもならない。
+
+同HEADのSelf-build CIも対象Go testを実行する前の`gofmt -l`チェックで停止した。Repository Healthの失敗を含め、**試験未到達／整形による失格／意味的な不一致／別領域の既存失敗**をそれぞれ区別して記録する。修正後の新HEADでFocused Go試験、Scenario生成CLIとread-only Plan照合、現行mainとの差分を確認するまで#5150は統合しない。
+
+一方、[PR #5151](https://github.com/hat47x/tei-platform/pull/5151)はmainで参照される設計文書の索引・Rule／外部Receiptの語彙に対するRepository Plan Checkの不足を修正した。新しい§36の受入票では、**当該HEADの実テスト結果**と、過去のmainで発生したPlan Check失敗とを混ぜない。文書編集だけで製品のRun・Provider・Stage2が成功したとは報告しない。
+
+### 36.4 最小の反例を、既存Ownerと製品経路へ渡す
+
+| ID | 一因子だけ変更する条件 | 合格条件と引渡し先 |
+| --- | --- | --- |
+| **LA-22：同じMeaning・異なる実現** | `not-after` RuleをPからGへ選択し直す | Pは独立Expectedで評価。Gはunsupportedを明示し、Pへ黙って切り替えない（#5166／#2621） |
+| **LA-23：意味とTarget型のずれ** | `std.date`を`std.datetime`へ変更 | Reader後のValidatorが既存の型診断で拒否。日時の暗黙変換はしない（#5166） |
+| **LA-24：Catalog版の構文不正** | 版だけ不正なPlugin Entryにする | 現行Codeの観測と真因を別に報告し、非互換・不在と取り違えた修復を案内しない（#5160／#951） |
+| **LA-25：Catalog Entryの真の不在** | 正しい要求だけ残し、Entryを除く | 版不正と独立Expectedで区別。診断語彙の変更はOwnerの互換判断後（#951） |
+| **LA-26：Operator計算の二重実装** | CLIとread-only Plan側の選択順・実装だけを変える | 共通Workspace指紋に一致し、旧Plan／argvを拒否。#5150は整形CI解決後に採否（#1180/#2514） |
+| **LA-27：実現方式の無言Fallback** | G未対応だがPは対応するRuleを指定する | 明示された選択／許可を保ち、別方式の実Callを成功扱いしない（#4495／#1158） |
+| **LA-28：判断未確定の外部公開** | Pが部分取得で`undecided`になり、Consumer側だけ変更 | 未判定理由とSource／Audience資格を維持。HTTPの200や画面表示だけを業務成立にしない（#1158／#1824） |
+
+最初の実装Packetは、現行の`tei inspect`と選択済みRule一件に、**実現方式ごとの適用可否・選択実装・実Call・Failure Reason**をread-onlyで結び付ける。ただし新しいRun Engineや別Provider Resolverは作らない。型付きPort／AdapterとRead Footprintの照合は既存Plugin契約、Expectedは#1180／#2514へ委譲する。
+
+正式なP0である、通常製品`tei`→actual Provider／実Read（#4495／#1251）、正規Source→Builder（#2595／#4544）、非Plugin Studio Stage1→Stage2の実Windows再入（#2831／#4583）を先行維持する。AP-1のread-only HTTPとB0実IPCは互いに独立の小PRとし、G/P/Dの一部対応やPlugin診断テストの成功から実Provider・G4の受理へ昇格させない。
+
+**本節はmainの実装とPRのCIログに基づく設計・検収計画の追補であり、新しいGo／HTTP／Windows／DB試験を実行したものではない。**

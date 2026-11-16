@@ -471,3 +471,18 @@ DPC-09の最初の実装候補を、既存の`internal/operations`の読み取�
 この第一縦断は、**記述元の型・判断の対象・理由・出典位置が連結していること**に限る。評価用Sourceはテストが明示的に渡す値であり、正式Providerの実Read、CLI／Studio独立Consumer、生成Go／実Builder、Audience／Grant、Collection・Graphの多重性やRelationの取得閉包を検証しない。既存のP/G実Binary同値回帰（#5118）やPlugin純粋Transformの別PR（#5156）を、同じAttemptの成果に合算しない。
 
 次に必要なのは実データを返すProviderについて同じRead ID・Presence・Scope・Snapshot・Coverageを観測することである。**Read IDだけが一致しても、値がどのOccurrenceや時点から来たかは証明されない。** 同じ図表を使うNode View／Studioの可視化は、この出典と取得条件に対するProjectionとして扱う。
+
+### 12.10 出典の位置を表示することと、原文を再確認することを分離する
+
+現行mainのDesktop設計（#5178）では、`Source Index`の参照先を一覧表示できても、それだけで原文ファイルを現在の状態で開けるとは主張しない。Data様式の最初のInspector／Rule縦断もこの区別を引き継ぐ。
+
+| 資格 | 読み取り専用で提示できること | 次の検収に必要なこと |
+| --- | --- | --- |
+| 宣言の特定 | 同じLoadのData／Attribute／Rule ID、Source Indexとbyte位置 | 対象Sourceの現在性。意味受理や編集権限は付与しない |
+| 位置の表示（SL-1） | 相対Path・範囲・省略数を含む参照一覧 | 一覧が全参照を含むとは推定せず、原文の取得済みとも言わない |
+| 原文の再確認（SL-2） | HostがRoot内のSourceを再読取した結果 | byte・選択版・対象Occurrenceの再照合。古い位置を現在の原文へ適用しない |
+| 編集・実利用（SL-3） | 本文や対象に対する操作の提案 | 編集対象の一意性、現在Grant、実Consumer受領。表示からWrite資格を作らない |
+
+DPC-14（Data／Rule／Source／判断の一Load照合）とDPC-15（表示参照からの実Source再確認）を別の独立Expectedへ分ける。最初のGo回帰が試すのはDPC-14のみであり、Wails／WindowsでのSL-2／SL-3を一緒に合格させない。
+
+また、Plugin側で並行するWhole Record／Field純粋Projection（#5156）は、出力形状の検証である。ここで得られるAttributeの出典やRuleの判断理由を、Transform Valueの出力だけから生成しない。公開対象や取得範囲の適格性は引き続き型付きMapping・Function Data Context・Ownerの判断に残す。
