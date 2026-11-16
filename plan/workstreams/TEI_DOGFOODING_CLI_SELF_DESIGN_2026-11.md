@@ -2865,3 +2865,57 @@ if rule.ID != core.CanonicalID(subject.ID) ||
 ### 位置付け
 
 **「ビルドできない」を「走る」に戻した回**である。テストの失敗ではなく**コンパイルの失敗**だったので、パッケージ内の全テストが沈黙していた。**型の不一致は1行だが、影響は「そのパッケージが存在しないのと同じ」**だった。
+
+## 84. 第83ラウンド（2026-11-16）: 未知の validation kind が有効値を挙げない
+
+目的文の「再びドッグフーディングに戻る」を実行した。**CLI のフィードバックだけで** semantic validation を設計した。生出力は[第83ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND83_VALIDATION_KIND_VOCABULARY_2026-11-16/README.md)にある。
+
+### 設計の経過（CLI のみ）
+
+| Attempt | 応答 | 学んだこと |
+| --- | --- | --- |
+| 1 | `expected attribute, relation, candidate-key, or functional-dependency` | validation は `data` の中ではない |
+| 2 | `unsupported semantic validation kind "frobnicate"` | トップレベル宣言。**しかし有効値を言わない** |
+| 3 | `invalid canonical id "probe.Thing.id"`（`[a-z][a-z0-9_]*` 付き） | 大文字が駄目 |
+| 4 | `SEMANTIC_VALIDATION_POSITIVE_REQUIRES_NUMERIC_ATTRIBUTE` | positive は数値属性を要する |
+| 5 | `ok` ＋ 読み返しで `kind: positive` | 完成 |
+
+**Attempt 2 が穴**である。`unsupported` だけでは**5つのうちどれが正しいか分からない**。
+
+### 修正
+
+1. `semantic.ValidationKinds` を足し、`Valid()` がそこを読む（`TypeKinds` と同じ形）。
+2. 診断が語彙を列挙する。
+
+```text
+unsupported semantic validation kind "frobnicate"; valid values are
+positive, relation-unique, operator, not-after, no-overlap
+```
+
+**単一の出所**にしたので、kind を足すときに更新する場所は1か所で済む。
+
+### 途中で4回、自分の仮定が外れた
+
+| 誤った仮定 | 実際 |
+| --- | --- |
+| `validation` は `data` の中 | **トップレベル宣言** |
+| パーサの入口は `ParseValidation` | **`ParseSemanticFile`** |
+| body は `operator`/`compared` を取る | **`attribute` と `relation` だけ** |
+| 全ての kind が同じ body で通る | `relation-unique` は **`relation` を要する** |
+
+**すべて推測で書いて落ちて、コードを読んで直した。**
+
+### 変異試験
+
+| # | 変えた箇所 | 結果 |
+| --- | --- | --- |
+| M1 | 有効値の列挙を削る（修正前の状態） | FAIL `the diagnostic does not name the accepted kinds` |
+| M2 | `ValidationKinds` から `not-after` を落とす | FAIL `"not-after" is declared but missing from ValidationKinds` |
+
+### 回帰確認で、自分の誤りを1つ訂正した
+
+`TestTEIValidationDeclarationSelfDescriptionIsOnlyData` が私のブランチで FAIL したので回帰を疑ったが、**単独では plain main・私のブランチの両方で PASS**。**私の `-run` 正規表現が2テストを同時に走らせたため**の見かけの失敗だった。計測し直して訂正した。`TestDiagnosticCodeCoverageOnlyImproves` は plain main でも FAIL（3回連続で確認）。
+
+### 位置付け
+
+**「CLI が語彙を教える」ようにした回**である。設計者は `frobnicate` と書いて `unsupported` と言われ、**5つの候補を推測するしかなかった**。今は候補が並ぶ。**同時に単一の出所を作った**ので、診断と `Valid()` が別々のリストを持って片方だけ更新される drift を M2 が捕まえる。

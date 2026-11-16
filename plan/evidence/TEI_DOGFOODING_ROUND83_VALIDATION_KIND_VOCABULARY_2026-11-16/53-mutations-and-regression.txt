@@ -1,0 +1,10 @@
+M1 drop the valid-values list (pre-fix state)
+   -> FAIL the diagnostic does not name the accepted kinds
+M2 remove not-after from ValidationKinds
+   -> FAIL "not-after" is declared but missing from ValidationKinds
+
+Regression check, measured rather than assumed:
+  TestDiagnosticCodeCoverageOnlyImproves fails on PLAIN MAIN too (3/3 runs)
+  TestTEIValidationDeclarationSelfDescriptionIsOnlyData passes ALONE on both
+    -> my earlier "regression" was my own -run regex running two tests together.
+       Re-measured and corrected.
