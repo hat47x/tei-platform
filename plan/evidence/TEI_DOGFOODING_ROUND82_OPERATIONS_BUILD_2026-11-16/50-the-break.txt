@@ -1,0 +1,10 @@
+main = e3d98ad50
+
+  $ go vet ./internal/operations
+  # tei/internal/operations [tei/internal/operations.test]
+  inspect_markdown_data_table_rule_example_validation_test.go:85:34:
+      invalid operation: loaded.RuleExamples[0].Data != dataSubject.ID
+      (mismatched types core.CanonicalID and string)
+
+Introduced by b71f8be10 (#5181).
+Consequence: NO test in internal/operations ran at all.
