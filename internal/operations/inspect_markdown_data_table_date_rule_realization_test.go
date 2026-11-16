@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"math/big"
 	"os"
 	"path/filepath"
 	"strings"
