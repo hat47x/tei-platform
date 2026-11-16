@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 
 	"tei/internal/core"
 	"tei/internal/workspace"
@@ -228,3 +229,13 @@ func TestFixtureRejectsUnsupportedOperatorOnEmptyScopedRows(t *testing.T) {
 		t.Fatalf("invalid operation admitted in empty scope: %+v %v", out, err)
 	}
 }
+
+// scopedParameters supplies the typed input the product Query declares. The
+// Query gained `input from std.datetime` (fa7087a4d), and the Driver rejects a
+// call that omits it, so every consumer has to pass one value of that type.
+// scopedFrom is the typed input the product Query declares. The Query gained
+// `input from std.datetime` (fa7087a4d), and the Driver accepts only a time.Time
+// for it, so tests and assertions share this one value.
+var scopedFrom = time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+
+func scopedParameters() map[string]any { return map[string]any{"from": scopedFrom} }

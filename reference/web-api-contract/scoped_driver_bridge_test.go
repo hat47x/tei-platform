@@ -72,7 +72,7 @@ func TestRealDriverRequiresScopedProviderAndProjectsOnlyPublishedColumns(t *test
 			actual.ScopeID != ctx.RowScopeID || actual.PolicyRevision != ctx.PolicyRevision ||
 			actual.Filter == nil || actual.Filter.Operator != "gt" ||
 			actual.Order == nil || actual.Order.FieldID != "orderId" ||
-			actual.Limit != 2 || parameters["from"] != "fixture-query-parameter" {
+			actual.Limit != 2 || parameters["from"] != scopedFrom {
 			t.Fatalf("Driver did not pass the trusted plan or canonical Query: q=%+v scope=%+v datasource=%+v", q.ID, actual, datasource)
 		}
 		// The fixture provider is explicitly pretending it has physically
@@ -87,7 +87,7 @@ func TestRealDriverRequiresScopedProviderAndProjectsOnlyPublishedColumns(t *test
 		}}, nil
 	})
 	out, err := ExecuteScopedCanonicalRead(context.Background(), bridgeWorld(t), pub, plan,
-		scopedSupport(pub, plan), provider, map[string]any{"from": "fixture-query-parameter"})
+		scopedSupport(pub, plan), provider, scopedParameters())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,7 +204,7 @@ func TestScopedProviderCannotMutateAuthorizedResponseProjection(t *testing.T) {
 		}}, nil
 	})
 	out, err := ExecuteScopedCanonicalRead(context.Background(), bridgeWorld(t), pub, plan,
-		scopedSupport(pub, plan), provider, nil)
+		scopedSupport(pub, plan), provider, scopedParameters())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -239,7 +239,7 @@ func TestScopedDriverRejectsProviderReturningMoreThanAuthorizedTop(t *testing.T)
 		}}, nil
 	})
 	out, err := ExecuteScopedCanonicalRead(context.Background(), bridgeWorld(t), pub, plan,
-		scopedSupport(pub, plan), provider, nil)
+		scopedSupport(pub, plan), provider, scopedParameters())
 	if !errors.Is(err, ErrScopedQueryContract) || len(out.Columns) != 0 || len(out.Rows) != 0 {
 		t.Fatalf("Provider exceeded Top but its result escaped: result=%+v err=%v", out, err)
 	}
