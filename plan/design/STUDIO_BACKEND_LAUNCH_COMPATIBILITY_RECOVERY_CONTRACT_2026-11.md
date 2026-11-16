@@ -1145,7 +1145,7 @@ CLI Direct、Studio Host、明示的なB0 Child、Wails HTTP公開は、**同じ
 
 | 受入候補 | 一因子だけ変える内容 | 拒否・観測条件と引渡し |
 | --- | --- | --- |
-| **LA-01：三入口の正常結果** | 固定した内蔵Markdown RuleをCLI／Operation／Studio Hostで読む | `SubjectInspection`全体一致。#5119の実Go CIに限り判定。HTTP／B0は未受理 |
+| **LA-01：三入口の正常結果** | 固定した内蔵Markdown RuleをCLI／Operation／Studio Hostで読む | 現行mainのGoテストで三入口の全体一致と拒否を比較する。旧PR #5119／#5137は未マージで閉鎖済み。HTTP／B0は別資格 |
 | **LA-02：未公開の対象** | 同名Rule IDを`semantic-capability`として要求 | `SUBJECT_NOT_FOUND`。Read成功からFunction実行可能と推定しない |
 | **LA-03：Workspaceの置換・ID違い** | 未許可Workspace ID／起動後Root置換 | Hostが実処理前に拒否。World Fingerprint同値ではWorkspace Identityを代用しない |
 | **LA-04：結果は一致・Read先だけ違う** | 生成GoのReadを別Attributeへ変更 | 実Read ID／回数不一致で拒否。main #5118の限定基線を再利用 |
@@ -1158,8 +1158,8 @@ LA-01〜08は既存#1180/#2514への**独立Expected候補**である。新し�
 
 ### 33.4 最初の実装PRと優先順位
 
-1. **SL-0（進行中）**：#5119で既存CLI／直接Operation／Studio Hostのread-only三入口Goテストを実証する。対象HEADのfocused Go試験、`gofmt`、Repository Healthを確認するまで未受理。旧Draft #5108とは重複マージしない。
-2. **AP-1（別Owner）**：#5096でWails Serverの`InspectSubject`一Routeだけを公開し、未許可Audience／Source列と旧Revisionの負例を追加する。Studio Bridgeの変更系メソッド群を一括公開しない。API Pluginの非Builtin Provider実Callは次のAP-2へ残す。
+1. **SL-0（Goテストは現行mainに存在）**：実CLI／直接Operation／Studio Hostの三入口照合が現在のGoソースにある。旧#5119／#5137は閉鎖済みで、別途マージしない。過去HEADの実CLI witness成功と、現行mainの全体CI・HTTP実公開の合格を混同しない。
+2. **AP-1（別Owner・未実装）**：旧設計候補#5096は閉鎖済み。Wails Serverのread-only InspectSubject一Routeを#1158/#1824の実装票として扱い、未許可Audience／Source列・旧Revisionを拒否する。Studio Bridgeの更新系メソッドを一括公開しない。非Builtin Providerの実CallはAP-2で別検収する。
 3. **B0（比較候補）**：#4635で同一exe子Backendのread-only一往復を実測し、Directとの意味／Read／Failure同値、Peer、Cancel、孤児化を確認する。CLI既定経路の切替は実測後のOwner判断とする。
 4. **P0並行**：#4495の通常製品CLIからのactual Provider、#2831/#4583の非Plugin Studio Stage1→Stage2実Windows再入を優先する。#5059のN2子起動、#5118のG/P実Binary、#5109のPlan失効の局所合格を、実ProviderやStage2のPASSへ合算しない。
 
@@ -1193,17 +1193,65 @@ Sourceの説明文変更は業務Meaningを変えない場合がある。それ�
 | **LA-09：元Markdown改版** | BuildPlan固定後、同梱`source.tei.md`の説明だけ変更し、生成Goは同一 | 旧Planによる通常self-buildを拒否し、L2-b／Artifactなし（main #5129） |
 | **LA-10：生成Go改版** | BuildPlan固定後、`generated.go`にコメントを追加し、元Markdownは同一 | 旧Planによる通常self-buildを拒否（main #5109） |
 | **LA-11：A→B→A** | 元byteまたはOperator選択を一度変更して元に戻す | ハッシュ再一致とSource Revision／Owner受理の継続を区別。旧Grantを再付与しない |
-| **LA-12：選択Providerすり替え** | 型・Resultを維持したまま選択実装と実Call対象を変える | 選択B／実Call Aを拒否。現行#5114は未統合候補であり実Provider資格の代用としない |
+| **LA-12：選択Providerすり替え** | 型・Resultを維持したまま選択実装と実Call対象を変える | 選択B／実Call Aを拒否。旧#5114は未マージで閉鎖されている。現行の実装選択Pinと実Provider呼出しは別の実Go試験で検証する |
 | **LA-13：受領直前のAudience変更** | ReadしたSubjectは同じで公開Scopeだけ変える | HTTP利用側へ旧ScopeのSource／内部項目を開示しない。API公開は#5096で別実証 |
 | **LA-14：Effect後の通信断** | 実Call後にACKだけ失う | `effectUnknown`／`lookup_first`を維持し、自動再送・Local fallbackを禁止 |
-| **LA-15：Workbenchの遅延応答** | Focus／Pin／Dirty Buffer／Workspace世代を返信待ち中に変更 | 旧Resultを新しい編集・Pinの正本へ取り込まない。[Desktop後継PR #5122](https://github.com/hat47x/tei-platform/pull/5122)の別資格 |
+| **LA-15：Workbenchの遅延応答** | Focus／Pin／Dirty Buffer／Workspace世代を返信待ち中に変更 | 旧Resultを新しい編集・Pinの正本へ取り込まない。mainの実WebView2 Pin検査#5012/#5025を基線とする。Dirty Buffer／強制遅延Replyは未実証で、旧#5122は未マージ閉鎖 |
 
 LA-09〜15は既存#1180／#2514の**独立Expected候補**として渡す。すでに実証された#5109／#5129のTestを再実装せず、残りの未実装反例だけを追加する。型付きFlowのPort／Field／Adapterが型として適合しても、Identity／grain／Presence／Coverage／実Read先／Audienceの保証が欠ければ、Nodeの線を「実行可能」と表示しない。
 
 ### 34.4 次の検収順序と、結果の表示
 
-最初に[PR #5119](https://github.com/hat47x/tei-platform/pull/5119)の**実CLI／直接Operation／Studio Host三入口**についてexact HEADのGo CIと差分を確認し、合格した範囲だけをSL-0へ反映する。次に#5096のAP-1でWails Serverのread-only HTTP公開を実Audience・Disclosure込みで検査し、別に#4635のB0 Child実IPCを検証する。
+現行mainの三入口Goテスト（cmd/tei/cli_inspect_rule_markdown_process_test.go）をSL-0の局所基線とし、対象版の実CLI／直接Operation／Studio HostのSourceとFailureを照合する。旧#5119／#5137のブランチを再マージしない。過去HEADの成功と現在mainのテスト結果は別に扱う。旧#5096で検討したAP-1は#1158/#1824でread-only HTTP公開・Audience／Disclosure込みの小差分として進め、#4635のB0 Child実IPCとは分ける。
 
 それと並行して、通常製品`tei`から実Provider／実Readを呼ぶ#4495/#1251（R3）と、Stage1自身が生成して再入するStage2の実Windows #2831/#4583（P0）を優先する。main #5059のN2 Child、#5118のG/P実Binary、#5109/#5129のBuildPlan失効は**P0を構成する限定された証拠**であり、それらを足し合わせて正式Stage2・Providerを成功とすることはできない。
 
 検収結果の表現は「**何を見て、どの時点の版に対して、どの入口で、どの拒否を確認したか**」へ揃える。成功／未受理／失効／Outcome Unknownを、単一の`ready`や`passed`にまとめない。**本節は既存mainの実証と次の設計・試験引渡しであり、この追補自体の新しいGo／HTTP／Windows実行試験ではない。**
+
+## 35. 起動とセルフビルドの実体照合を、未判定・権限・利用側までつなぐ（2026-11-16）
+
+### 35.1 mainの実装で確認できること
+
+現行mainの`cmd/tei/cli_inspect_rule_markdown_process_test.go`には、実`tei inspect`別OSプロセス、直接`operations.InspectSubject`、Wails非依存の`studiohost.ReadOnly`を比較するGoテストがある。正常時の`SubjectInspection`全体、未公開Capability／偽Ruleの拒否、未許可Workspaceの拒否を同じFixtureで確認する。旧PR #5119／#5137は閉鎖済みで、mainの現行Blobはそれらで検討された三入口試験と一致する。ただし、過去HEADのCI成功は現行mainのHTTP・B0・実Providerの検収にはならない。
+
+セルフビルドでは、[#2831のSB-C0 §4.56](SELF_BUILD_REENTRY_CONTRACT_SB0C_2026-11.md)でOwner判断を確定し、次の二点がmainのGoコードに入った。
+
+- **実Builderと計画の照合**：`cmd/tei/cli_self_build_builder_binding.go`は、計画の`builder.artifactDigest`と、Entryが起動直前に読んだ`-child`ファイルのDigestを比較する。別Builder／Wrapper／未観測なら、`assessL2B`はL2-bを主張しない。ただしBuilder不一致によるClaim保留と、試行全体の失敗は別の判定である。
+- **Go toolchainの明示選択**：任意の`go.toolchain.closureDigest`を`BuildPlan.parameters`に設定できる。指定した計画と実Builderが使用するToolchainが違えばBuilderはビルド前に停止する。未指定なら使用実体の観測だけを記録し、二つの異なるToolchainで生成した成果物を同じ実行環境による再現とは呼ばない。
+
+旧PR #5140は閉鎖されたが、対応する実装は**別のmain合流コミットに含まれている**。本節の根拠はPRのマージ表示ではなく、mainのGo実装とSB-C0仕様である。
+
+### 35.2 「Byteが同じ」と「実Process・意味・資格が同じ」の間
+
+| 対象 | 現行コードの保証 | まだ不足する証拠 |
+| --- | --- | --- |
+| 三入口read-only | 同一Ruleの意味・Source・FailureとWorkspace allowlist | Wails HTTPのAudience／Disclosure、B0の実Peer・Session |
+| Builder | Planが宣言したBuilderと起動前に読んだファイルDigestの照合 | OSがロードしたProcess Imageとの原子的同一性、Builder内部の二次実行物 |
+| Toolchain | Builderが申告するClosureと計画上の任意Pin、Entryによる実行ファイル再読取 | Entry自身によるClosure全体の独立検証、Seed Trust |
+| 再現・状態 | PlanとArtifactの再現観測、状態分離の観測値 | 独立したHost境界での状態分離、Stage1自身によるStage2再入 |
+| Rule・Plugin | 状態付きRule判定、型付きPlugin Resolver診断Code | 実Providerの選択・実Call、Owner意味受理、現在Grant、外部開示許可 |
+
+**L2-bが局所的に成立しても、G4／製品セルフビルド全体は受理されない。** SB-C0の`qualified=false`、G4の`UNQUALIFIED`を維持する。BuilderのDigestはファイルを読んでからパスで起動するため、間の差替えを原子的に防ぐ証明ではない。`processImage`は現状Linuxの観測で、L2-bの条件ではない。`stateObservation.kind`もL2-bに追加せず、G4の独立状態の材料には`stateSeparation.basis=host-boundary`の試行だけを数える。
+
+### 35.3 Ruleの未判定とPluginの拒否をHost側で保存する
+
+[Rule判定の実装 #5142](https://github.com/hat47x/tei-platform/pull/5142)は、`validationeval.Decide`に値の`null`／`not-fetched`、Relationの`partial`を区別する入口を追加した。未取得・部分取得でも、既知の違反だけで結果が確定する場合は不成立と判定できる。未読部分によって答えが変わり得るときは**理由付き未判定**である。読み手の状態申告自体が矛盾する場合は技術的な拒否であり、未判定とは違う。
+
+同じHostがこれを扱う際に、未判定を「成立」「不成立」「NULL」「0」のどれにも黙って置き換えない。Source・Inputの不足を別Providerやコード生成方式へ暗黙に切り替えて補わない。Effect後に通信が切れた`effectUnknown`も、未判定や再試行可能な単純Readと混同しない。
+
+[Plugin診断の試験 #5147](https://github.com/hat47x/tei-platform/pull/5147)では、定数として定義されたResolverの診断Codeも被覆検査に加え、実際の拒否を発生させる負例が増えた。ただし理由付きの未被覆許可リストも残る。診断Codeが存在することやテストで参照されることは、現在の実装選択・Grant・実Callの保証にはならない。外部公開時はCodeだけでなく対象と原因連鎖を保ち、秘密のパスや資格情報は開示しない。
+
+### 35.4 次の実装票に渡す一因子反証
+
+| ID | 変更する条件 | 期待する観測とOwner |
+| --- | --- | --- |
+| **LA-16：別Builder** | PlanのBuilder Aを固定して`-child`に別ファイルBを指定 | `builderBinding=mismatched`、L2-b保留。既存テストを再利用（#2831） |
+| **LA-17：Toolchain違い** | 計画でClosure Aを指定してBでBuild | Builderが実Build前に停止。Pinなしの観測のみと区別（#2831） |
+| **LA-18：Pathと実Imageのずれ** | Digest読取後に`-child`パスの実体を変更 | 起動前DigestをOSの実Process Image証拠へ昇格しない。独立OS試験（#2831/#4635） |
+| **LA-19：Relation部分取得** | 既知の重複の有無だけを変える | 既知違反は不成立、不明なら理由付き未判定。Hostは成功と偽らない（#4359/#4362） |
+| **LA-20：Resolverの間接拒否** | 依存先Bundleの欠落・間接Major競合を発生させる | Code・Subject・原因連鎖を保持し、公開用Messageは秘匿情報を除く（#951/#1158） |
+| **LA-21：Consumerの世代変更** | 実Resultは同じでWorkspace世代・Audienceだけを変更 | 旧応答の流用・不許可開示を拒否する。HTTP／実WebViewは別実証（#1824/#1158） |
+
+LA-16／17、RuleとPluginの局所負例は既存テストを再利用する。LA-18／20のHost公開・LA-21は既存#1180／#2514の独立Expectedへ渡す。実装順は現在の三入口Go試験の対象版再確認、read-only HTTP一Route、B0 Childの実IPC比較、通常CLI actual Providerと非Plugin Stage1→Stage2の並行P0を維持する。新しいEngine／Host／Registry／万能Ready判定は追加しない。
+
+**本節は実装済みSourceと未受理の境界を照合した設計追補である。今回、新規Go／HTTP／Windows／DBの試験は実施していない。**
