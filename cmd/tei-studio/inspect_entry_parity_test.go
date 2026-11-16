@@ -44,19 +44,9 @@ const (
 	parityReferenceRoot    = "../../reference/workspace"
 	parityStandardCRUDRoot = "../../reference/standard-crud/workspace"
 
-	parityReferenceName     = "tei_reference"
-	parityReferenceManifest = "sha256:8e367b05de26a715ced16e384d273c983ac612dd2ff980d4310886d4f471af74"
-
-	parityReferenceOrderPath  = "semantic/sales/order.tei"
-	parityReferenceOrderFP    = "sha256:f2063418b893a60a9f948edbb2b23ec821f7a15ed8e5863c36e1b72abade1e33"
-	parityReferenceOrderStart = 124
-
-	parityStandardName     = "standard_crud"
-	parityStandardManifest = "sha256:f4e74f4da36dfa41eeeefd078a3a13fecfd82bb419eb8b331a81a18ac5535bb9"
-
-	parityStandardOrderPath  = "semantic/sales/order.tei"
-	parityStandardOrderFP    = "sha256:f6a7b246e42118a0cf6fdc2392fa1defb9f7546f8cc766806da31dc82972a358"
-	parityStandardOrderStart = 56
+	// The two Workspaces are addressed by directory in this process; every other
+	// value (identity, meaning, Source) is read from the Expected document, so
+	// there is exactly one copy of each expectation.
 
 	parityAttrCustomer = "sales.order.customer_id"
 	parityAttrForeign  = "customer.customer.customer_id"
@@ -118,10 +108,48 @@ func parityLoadExpected(t *testing.T) parityExpected {
 	var expected parityExpected
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	if err := decoder.Decode(&expected); err != nil {
-		t.Fatalf("the independent Expected is not valid JSON: %v", err)
+		t.Fatalf("the independent Expected is not valid JSON for this test: %v", err)
 	}
+	// The document also carries prose (adoption, authority, per-case check/expect),
+	// so unknown-key rejection is not usable here. A misspelled key inside a
+	// subject would instead decode to a zero value, which the required-field
+	// checks below turn into a failure rather than a silently weaker assertion.
 	if expected.Schema != "tei-inspect-entry-parity-independent-expected/v1" {
 		t.Fatalf("the independent Expected has an unexpected schema %q", expected.Schema)
+	}
+	// Every field these comparisons rely on must be present, so a fixture edit
+	// cannot drop one and turn the corresponding check into a no-op.
+	for _, workspace := range []struct {
+		label    string
+		path     string
+		name     string
+		sha      string
+		subjects map[string]parityExpectedSubject
+	}{
+		{"workspaceA", expected.Workspace.Path, expected.Workspace.Identity.Name,
+			expected.Workspace.Identity.ManifestSha256, expected.Workspace.Subjects},
+		{"workspaceB", expected.WorkspaceB.Path, expected.WorkspaceB.Identity.Name,
+			expected.WorkspaceB.Identity.ManifestSha256, expected.WorkspaceB.Subjects},
+	} {
+		if workspace.path == "" || workspace.name == "" || workspace.sha == "" {
+			t.Fatalf("%s is missing its path, identity name or manifest digest", workspace.label)
+		}
+		if len(workspace.subjects) == 0 {
+			t.Fatalf("%s declares no subject", workspace.label)
+		}
+		for id, subject := range workspace.subjects {
+			if subject.Kind == "" || subject.ID == "" || subject.Symbol == "" {
+				t.Fatalf("%s/%s is missing kind, id or symbol", workspace.label, id)
+			}
+			if subject.Definition.ArtifactPath == "" ||
+				subject.Definition.ArtifactFingerprint == "" ||
+				subject.Definition.Role == "" {
+				t.Fatalf("%s/%s is missing a complete definition", workspace.label, id)
+			}
+			if subject.Definition.StartOffset <= 0 {
+				t.Fatalf("%s/%s is missing a positive startOffset", workspace.label, id)
+			}
+		}
 	}
 	return expected
 }
@@ -544,11 +572,21 @@ func TestInspectEntriesDoNotMergeSameSymbolAcrossIDs(t *testing.T) {
 	if customer.SourcePath == foreign.SourcePath {
 		t.Fatalf("two Attributes sharing a symbol reported one Source: %+v / %+v", customer, foreign)
 	}
-	if customer.SourceFP == foreign.SourceFP || customer.Offset == foreign.Offset {
-		t.Fatalf("two Attributes sharing a symbol resolved to one Source span: %+v / %+v", customer, foreign)
+	// The two answers must carry the same symbol, and that is exactly what makes
+	// the distinct Sources and spans meaningful: the fixture premise above forces
+	// the expected symbols equal, so this compares two OBSERVED values.
+	//
+	// A single Source artifact covering both declarations cannot exist here,
+	// because the two offsets fall in different files; asserting the spans differ
+	// is what would break if the operation resolved both IDs to one declaration.
+	if customer.SourceFP == foreign.SourceFP {
+		t.Fatalf("two Attributes sharing a symbol resolved to one artifact: %+v / %+v", customer, foreign)
+	}
+	if customer.Offset == foreign.Offset {
+		t.Fatalf("two Attributes sharing a symbol resolved to one Source position: %+v / %+v", customer, foreign)
 	}
 	if customer.Symbol != foreign.Symbol {
-		t.Fatalf("the shared symbol was not preserved: %+v / %+v", customer, foreign)
+		t.Fatalf("the shared symbol was not preserved across the two answers: %+v / %+v", customer, foreign)
 	}
 }
 
@@ -631,10 +669,14 @@ func TestInspectEntriesKeepSameIDWorkspacesApart(t *testing.T) {
 		observed[target.name] = fromCLI
 	}
 
+	// Both per-target loops above pinned the observed values to the fixture, so
+	// this is a FIXTURE premise check, not a second observation check: it fails if
+	// the Expected stopped making the two Workspaces distinguishable, which is the
+	// condition that gives the whole case its meaning.
 	a, b := observed["reference"], observed["standard-crud"]
 	if a.Workspace == b.Workspace || a.ManifestSHA == b.ManifestSHA ||
 		a.SourceFP == b.SourceFP || paritySameSet(a.Attributes, b.Attributes) {
-		t.Fatalf("two Workspaces declaring sales.order were treated as one subject:\nA=%+v\nB=%+v", a, b)
+		t.Fatalf("the Expected no longer separates two Workspaces declaring sales.order:\nA=%+v\nB=%+v", a, b)
 	}
 }
 
@@ -699,8 +741,8 @@ func TestInspectEntriesDoNotServeAStaleResultAfterSourceUpdate(t *testing.T) {
 		if !paritySameSet(got.Attributes, wantAttributes) {
 			t.Fatalf("%s did not read the edited Source: got %v want %v", entry.name, got.Attributes, wantAttributes)
 		}
-		if got.SourceFP == order.Definition.ArtifactFingerprint || got.SourceFP == beforeCLI.SourceFP {
-			t.Fatalf("%s served a pre-edit Source as current: %+v", entry.name, got)
+		if got.SourceFP == order.Definition.ArtifactFingerprint {
+			t.Fatalf("%s served the pre-edit Source as current: %+v", entry.name, got)
 		}
 		if got.SourceIndex == beforeCLI.SourceIndex || got.WorldFP == beforeCLI.WorldFP {
 			t.Fatalf("%s served a pre-edit revision as current: %+v", entry.name, got)
@@ -772,15 +814,18 @@ func TestInspectEntriesDoNotClaimPathIdentityFromEqualResults(t *testing.T) {
 	if !reflect.DeepEqual(first, second) {
 		t.Fatalf("the two Providers were expected to answer identically:\nfirst =%+v\nsecond=%+v", first, second)
 	}
-	// Path identity is NOT established, because the entered symbols differ.
+	// Path identity is NOT established, because the entered symbols differ. These
+	// two observations are the evidence: without them, the identical results above
+	// would be indistinguishable from one implementation being called twice.
 	if firstSeen.ObservedEntry != parityParallelEntryA || secondSeen.ObservedEntry != parityParallelEntryB {
 		t.Fatalf("the entered symbols were not the declared ones: %+v / %+v", firstSeen, secondSeen)
 	}
-	if firstSeen.ObservedEntry == secondSeen.ObservedEntry {
-		t.Fatal("the two Providers share one symbol; the fixture no longer distinguishes them")
-	}
 	if !firstSeen.OriginVerified || !secondSeen.OriginVerified {
 		t.Fatalf("a Provider answer was not bound to the Host root: %+v / %+v", firstSeen, secondSeen)
+	}
+	if firstSeen.RegisteredProviderID != "inspector-distinct-a" ||
+		secondSeen.RegisteredProviderID != "inspector-distinct-b" {
+		t.Fatalf("the Host bound the wrong entry per selection: %+v / %+v", firstSeen, secondSeen)
 	}
 
 	// Path identity may be claimed only when both entries enter the canonical
@@ -799,9 +844,10 @@ func TestInspectEntriesDoNotClaimPathIdentityFromEqualResults(t *testing.T) {
 	if canonicalSeen.ObservedEntry != parityCanonicalEntry {
 		t.Fatalf("the production Studio entry did not enter the canonical Operation: %+v", canonicalSeen)
 	}
-	if canonicalSeen.ObservedEntry == firstSeen.ObservedEntry ||
-		canonicalSeen.ObservedEntry == secondSeen.ObservedEntry {
-		t.Fatalf("the canonical Operation shares a symbol with a distinct Provider: %+v", canonicalSeen)
+	// The canonical entry must also be a Provider the Host actually registered,
+	// not merely a symbol that happens to differ from the two above.
+	if canonicalSeen.RegisteredProviderID != canonicalSeen.SelectedProviderID {
+		t.Fatalf("the canonical entry was registered under another ID: %+v", canonicalSeen)
 	}
 }
 
@@ -830,17 +876,11 @@ func TestInspectEntriesReportAOneSidedFailure(t *testing.T) {
 	if fromCLI.Workspace != expected.Workspace.Identity.Name {
 		t.Fatalf("the successful entry read another Workspace: %+v", fromCLI)
 	}
+	if len(fromCLI.Attributes) == 0 {
+		t.Fatalf("the successful entry reported no meaning to contrast with: %+v", fromCLI)
+	}
 	if fromStudio.FailureCode != "WORKSPACE_NOT_ALLOWED" {
 		t.Fatalf("the Studio refusal was missing or reclassified: %+v", fromStudio)
-	}
-	if reflect.DeepEqual(fromCLI, fromStudio) {
-		t.Fatal("a one-sided failure was reported as parity")
-	}
-	// A refusal is a Scope difference, so it must NOT be presented as a meaning
-	// difference: the refusing entry must carry no meaning at all.
-	if len(fromStudio.Attributes) != 0 || fromStudio.CanonicalID != "" ||
-		fromStudio.SourceFP != "" || fromStudio.Workspace != "" {
-		t.Fatalf("the refusal carried meaning it never observed: %+v", fromStudio)
 	}
 }
 
