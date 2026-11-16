@@ -342,3 +342,6 @@
 
 # stdio late-reply observations are hashed as raw bytes.
 /plan/evidence/DSH_MCP_STDIO_LATE_REPLY_2026-11-17/** -text
+
+# Reconnect-header observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_RECONNECT_HEADERS_2026-11-17/** -text
