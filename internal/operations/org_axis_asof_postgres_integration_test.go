@@ -185,15 +185,15 @@ func TestOrgAxisAsOfActualPostgresOptIn(t *testing.T) {
 	t.Run("same as-of projection cannot establish distinct Person count", func(t *testing.T) {
 		const candidate = "pg_temp.org_person_link_observation_candidate"
 		if _, err := db.ExecContext(ctx,
-			"CREATE TEMP TABLE org_person_link_observation_candidate ("+
-				"candidate_world varchar NOT NULL, membership_id varchar NOT NULL, person_id varchar NOT NULL, "+
+			"CREATE TEMP TABLE org_person_link_observation_candidate (" +
+				"candidate_world varchar NOT NULL, membership_id varchar NOT NULL, person_id varchar NOT NULL, " +
 				"PRIMARY KEY(candidate_world, membership_id))"); err != nil {
 			t.Fatal(err)
 		}
 		defer func() {
 			cleanup, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
-			if _, err := db.ExecContext(cleanup, "DROP TABLE "+candidate); err != nil {
+			if _, err := db.ExecContext(cleanup, "DROP TABLE " + candidate); err != nil {
 				t.Errorf("drop hypothetical Person links: %v", err)
 			}
 		}()
@@ -212,7 +212,7 @@ func TestOrgAxisAsOfActualPostgresOptIn(t *testing.T) {
 			{"shared_person", "A7", "P3"},
 		} {
 			if _, err := db.ExecContext(ctx,
-				"INSERT INTO "+candidate+" (candidate_world,membership_id,person_id) VALUES ($1,$2,$3)",
+				"INSERT INTO " + candidate + " (candidate_world,membership_id,person_id) VALUES ($1,$2,$3)",
 				row[0], row[1], row[2]); err != nil {
 				t.Fatalf("insert hypothetical identity %v: %v", row, err)
 			}
@@ -254,7 +254,7 @@ func TestOrgAxisAsOfActualPostgresOptIn(t *testing.T) {
 				}
 				var joined, persons int
 				err = db.QueryRowContext(ctx,
-					"SELECT COUNT(*), COUNT(DISTINCT person_id) FROM "+candidate+" WHERE candidate_world = $1",
+					"SELECT COUNT(*), COUNT(DISTINCT person_id) FROM " + candidate + " WHERE candidate_world = $1",
 					tc.world).Scan(&joined, &persons)
 				if err != nil {
 					t.Fatal(err)
