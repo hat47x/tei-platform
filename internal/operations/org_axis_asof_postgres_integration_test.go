@@ -176,6 +176,90 @@ func TestOrgAxisAsOfActualPostgresOptIn(t *testing.T) {
 			}
 		})
 	}
+
+	// The actual as-of Query projects Membership, OrgUnit, and allocation,
+	// not the Person behind each Membership. Two *hypothetical* Person
+	// assignments can therefore agree on every observed Query row while
+	// making a distinct-Person claim disagree. This is an observational
+	// insufficiency witness, NOT an adopted Person link or r7 identity map.
+	t.Run("same as-of projection cannot establish distinct Person count", func(t *testing.T) {
+		const candidate = "pg_temp.org_person_link_observation_candidate"
+		if _, err := db.ExecContext(ctx,
+			"CREATE TEMP TABLE org_person_link_observation_candidate ("+
+				"candidate_world varchar NOT NULL, membership_id varchar NOT NULL, person_id varchar NOT NULL, "+
+				"PRIMARY KEY(candidate_world, membership_id))"); err != nil {
+			t.Fatal(err)
+		}
+		defer func() {
+			cleanup, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			if _, err := db.ExecContext(cleanup, "DROP TABLE "+candidate); err != nil {
+				t.Errorf("drop hypothetical Person links: %v", err)
+			}
+		}()
+
+		// These are alternative *unaccepted candidate worlds* over the same
+		// four actual Membership IDs, not the independent org-synthetic-r7
+		// fixture. No candidate Person IDs are added to the product mapping.
+		for _, row := range [][3]string{
+			{"all_distinct", "A1", "P1"},
+			{"all_distinct", "A3", "P2"},
+			{"all_distinct", "A4", "P3"},
+			{"all_distinct", "A7", "P4"},
+			{"shared_person", "A1", "P1"},
+			{"shared_person", "A3", "P2"},
+			{"shared_person", "A4", "P2"},
+			{"shared_person", "A7", "P3"},
+		} {
+			if _, err := db.ExecContext(ctx,
+				"INSERT INTO "+candidate+" (candidate_world,membership_id,person_id) VALUES ($1,$2,$3)",
+				row[0], row[1], row[2]); err != nil {
+				t.Fatalf("insert hypothetical identity %v: %v", row, err)
+			}
+		}
+
+		wantMemberships := []string{"A1", "A3", "A4", "A7"}
+		for _, tc := range []struct {
+			world       string
+			wantPersons int
+		}{
+			{"all_distinct", 4},
+			{"shared_person", 3},
+		} {
+			t.Run(tc.world, func(t *testing.T) {
+				actual, err := executor.ExecuteBrowseQuery(ctx, q, ds, map[string]any{
+					"valid_at": date("2027-06-15"), "known_at": date("2027-07-03"),
+					"allocation_min": "0.40",
+				})
+				if err != nil {
+					t.Fatal(err)
+				}
+				mapped, err := queryresult.Map(q, actual.Raw)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if ids := orgAxisResultIDs(mapped.Rows); !reflect.DeepEqual(ids, wantMemberships) {
+					t.Fatalf("actual Membership projection=%v want=%v", ids, wantMemberships)
+				}
+				for _, row := range mapped.Rows {
+					if len(row) != 3 {
+						t.Fatalf("unexpected as-of result columns: %v", row)
+					}
+				}
+				var joined, persons int
+				err = db.QueryRowContext(ctx,
+					"SELECT COUNT(*), COUNT(DISTINCT person_id) FROM "+candidate+" WHERE candidate_world = $1",
+					tc.world).Scan(&joined, &persons)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if joined != len(wantMemberships) || persons != tc.wantPersons {
+					t.Fatalf("candidate %s has joined=%d distinctPersons=%d, expected=%d/%d",
+						tc.world, joined, persons, len(wantMemberships), tc.wantPersons)
+				}
+			})
+		}
+	})
 }
 
 // TestOrgAxisAsOfRevisionKeyCandidateOptIn compares a possible *physical*
