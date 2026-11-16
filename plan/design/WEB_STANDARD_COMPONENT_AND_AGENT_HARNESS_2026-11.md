@@ -391,13 +391,13 @@ SSR／SSGで初期HTMLを作る場合、初期Snapshotとその後のClient Read
 
 最初のPRは `presentation.ts` に既にあるReaderを再実装しない。**検証済みResultから画面に渡す値を整える純粋なPresenter** と、その境界の回帰試験だけを追加する。部分取得は「確認できた範囲」として表示し、「該当なし」「全件」「編集可能」を推定しない。Browserへの展開は同じPresenterの独立Consumerを使って確かめ、Wails Bridgeを共通Componentの必須依存にしない。
 
-### 19.2.1 WEB-P1aの実装到達点と、まだ残る受入（2026-11-16）
+### 19.2.1 WEB-P1aの純粋Presenterと配布Bundleの受入を分ける（2026-11-16）
 
-`reference/tei-studio-workbench/presentation.ts` に、既存 `readInspection` が検証した結果をEditor文書、Source状況、利用制限、Noticeへ整える純粋な `presentInspection` を追加し、`main.ts` の現在のInspect応答から利用する。TypeScriptの公開型には表示に必要な四項目だけを置き、Operation、Grant、Effect、出典の完全性を生成しない。Source状況が `partial` でも、そのまま限定状態として表示へ渡す。制限表示はコピーして入力側との不意な共有を防ぐ。
+`reference/tei-studio-workbench/presentation.ts` に、既存 `readInspection` が検証した結果をEditor文書、Source状況、利用制限、Noticeへ整える純粋な `presentInspection` を追加する。TypeScriptの公開型は表示に必要な四項目に限定し、Operation、Grant、Effect、出典の完全性を生成しない。Source状況が `partial` でもそのまま表示へ渡し、制限一覧はコピーして結果側と不意に共有しない。`presentation.test.mjs` ではSubjectと版、表示本文、部分取得の表示、制限のコピー、旧Source Index指紋・非read-only応答・制限欠落の拒否を検査する。
 
-`presentation.test.mjs` には同一Subjectの表示値・版・制限と、旧Source Index指紋・非read-only応答・制限欠落の拒否を確認する局所試験を追加する。コードの範囲は **WEB-P1aのPresenterとWorkbench配線のみ**。Catalogの一意性、応答lane、Pin/Focus、Source位置を開く操作、HTTP公開には手を加えない。
+**今回の差分では `main.ts` を変更せず、Presenterはまだ実Workbench画面から使われない。** 実画面への接続は独立したWEB-P1a-2とし、`main.ts` の表示部分を新Presenterへ切り替えた同じHEADで、Node24による `npm test`／`typecheck`／`build`、`reference/tei-studio-workbench/dist/main.js` と `cmd/tei-studio/assets/workbench/main.js` の生成byte一致、HTML／CSS／第三者通知の比較を検収する。既存[Workbench埋込Bundle CI](../../.github/workflows/tei-studio-workbench-embed-ci.yml)を使い、生成済みAssetの直接編集や既存Bundleとの不一致を回避する。新しいTarget／Builderを増やさない。
 
-検証結果はNodeの型検査・局所試験、正規Bundle、実Windows WebView2を分離して記録する。該当実装のHEADで局所試験が通っても、WEB-P1bの後着非干渉、S-LOC画面接続、実Stage2、公開WebのConsumer受領を合格へ加算しない。特に並行する選択／Pin応答の独立Expectedを、この小PRのPresenter回帰に置き換えない。
+WEB-P1a-1の局所試験、WEB-P1a-2の正規Bundle受領、WEB-P1bのFocus／Pin後着非干渉、S-LOCの実画面接続、実Windows／Stage2は別の資格である。Presenterの型がコンパイルできた事実を、Wailsで表示されたことやSource原文の閲覧・編集を許可したことにはしない。既存#1180／#2514のExpectedと#1824／#997のOwnerに引き渡し、P0への新しいHard Gateにしない。
 
 ### 19.3 WEB-P2とWEB-P3へ進む条件
 
