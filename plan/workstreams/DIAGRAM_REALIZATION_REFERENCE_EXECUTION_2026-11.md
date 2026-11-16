@@ -167,6 +167,6 @@ DRI-0の直後に**DRI-G0**を行う。ここで「Iで充分／Gに適格／H�
 | **R2-b2：意味とQueryの同一試行束縛**。選択言語とSource／Rule IDを、Contract QueryのInput／実Binding／Row Mappingへ結ぶ | 同じ出力でも別Relation／別Attribute／別Source版を拒否。#5184の同じMembership投影から異なるPerson数を導ける反例を再利用 | 型付きのRowが返っただけ、元Sourceを再Loadできない場合 |
 | **R3-a1：実Callと受領**。状態付き評価を通常CLI側の実Readと独立Consumerへ接続 | 取得値・判定理由・実Read対象とConsumer応答が一つのAttemptに属する。未取得や権限不足は推測で埋めない | SQLiteのユニット試験と別試行のCLI結果を合成した場合 |
 
-`validationread`を新しいReaderで置換しない。現行の`FromHeaderDetail`／`Decide`を使い、必要な資格だけを既存Driver・Function Contextへ返す。#5166の暦日Rule（P可／G未対応）を維持し、未対応なGを暗黙のPへ切り替えない。#5205で改善された`*.tei.md`の言語選択診断はSourceの入口の基線であり、実Providerを呼んだ証拠ではない。前提指紋の全コマンド統一[#5198](https://github.com/hat47x/tei-platform/pull/5198)は未統合の間、成立済みとは扱わない。
+`validationread`を新しいReaderで置換しない。現行の`FromHeaderDetail`／`Decide`を使い、必要な資格だけを既存Driver・Function Contextへ返す。#5166の暦日Rule（P可／G未対応）を維持し、未対応なGを暗黙のPへ切り替えない。#5205で改善された`*.tei.md`の言語選択診断はSourceの入口の基線であり、実Providerを呼んだ証拠ではない。読取りコマンドの前提指紋統一[#5198](https://github.com/hat47x/tei-platform/pull/5198)はmainの基線として再利用する。ただしそのSnapshot拒否をQueryの全件性・実Providerの受領に読み替えない。
 
 正式R2-PのBuilder消費、R3の通常CLI実Provider／独立Consumer、Windows Studio Stage1→Stage2は独立P0とする。この追補自体はGo・PostgreSQL・Windowsの新規検証ではなく、既存実装から次に不足する一点への作業引渡しである。
