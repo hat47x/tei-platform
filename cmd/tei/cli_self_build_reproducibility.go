@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -159,6 +161,7 @@ func checkArtifactReproducibility(
 			record.StateObservation = &completed
 		}
 	}()
+	boundaryProof := ""
 	unperformed := func(reason string) selfBuildReproducibility {
 		record.State = reproducibilityUnperformed
 		record.UnperformedReason = reason
@@ -198,7 +201,12 @@ func checkArtifactReproducibility(
 		if mkErr := os.MkdirAll(filepath.Dir(secondOutput), 0o755); mkErr != nil {
 			return unperformed("the second build's artifact directory could not be prepared: " + mkErr.Error())
 		}
-		built, boundaryErr := stateBoundaryLauncher(secondState, filepath.Dir(secondOutput), firstStateDir)
+		// The nonce is generated here and written by the script, so afterwards this
+		// entry knows the script ran instead of assuming the launcher it named behaved.
+		if boundaryProof == "" {
+			boundaryProof = stateBoundaryProofValue(secondState, firstStateDir)
+		}
+		built, boundaryErr := stateBoundaryLauncher(secondState, filepath.Dir(secondOutput), firstStateDir, boundaryProof)
 		if boundaryErr != nil {
 			return unperformed(boundaryErr.Error())
 		}
@@ -269,7 +277,17 @@ func checkArtifactReproducibility(
 	if boundary != nil {
 		// The namespace refused the write instead of noticing it afterwards. Naming
 		// the stronger basis is the whole point of running it, so the record says
-		// which of the two actually ran.
+		// which of the two actually ran -- but only if it actually ran. A launcher
+		// that skipped the script, or that found the root still writable, would
+		// otherwise be recorded as a confinement that never happened, which was
+		// measured: a non-confining unshare still produced claimed=true with this
+		// basis before the exit-code check below existed.
+		if reason := stateBoundaryRanVerdict(evidence.Invoked.ExitCode); reason != "" {
+			return unperformed(reason)
+		}
+		if reason := stateBoundaryProofVerdict(secondState, boundaryProof); reason != "" {
+			return unperformed(reason)
+		}
 		record.StateSeparation = &selfBuildStateSeparation{
 			Basis: stateSeparationHostBoundary,
 			Scope: stateSeparationHostBoundaryScope,
@@ -392,6 +410,44 @@ func stateSeparationSecondDirVerdict(secondState string) string {
 			return "the second build did not create the state directory this entry passed, so it wrote its state somewhere else"
 		}
 		return "the second build's state directory could not be inspected: " + err.Error()
+	}
+	return ""
+}
+
+// stateBoundaryRanVerdict reports why the boundary cannot be taken as having run, or
+// "" when it can. The launcher script reserves 96-99 for its own stages, so a second
+// build that exits with one of them was stopped by the boundary rather than by the
+// builder. Recording host-boundary in that case would name a confinement that did not
+// hold; a non-confining launcher was measured to produce exactly that before this
+// check existed.
+func stateBoundaryRanVerdict(exitCode int) string {
+	if exitCode >= stateBoundaryExitNotEstablished && exitCode <= stateBoundaryExitFirstState {
+		return "the state boundary refused the second build, so the two runs were not shown to be separate"
+	}
+	return ""
+}
+
+// stateBoundaryProofValue derives the nonce for one run. It only has to be unique per
+// second build, so the two paths identify it.
+func stateBoundaryProofValue(secondState, firstStateDir string) string {
+	sum := sha256.Sum256([]byte("tei-state-boundary\x00" + secondState + "\x00" + firstStateDir))
+	return "sha256:" + hex.EncodeToString(sum[:])
+}
+
+// stateBoundaryProofVerdict reports why the boundary cannot be taken as having run, or
+// "" when it can. The launcher script writes this value into the allowed state
+// directory; a launcher that skipped the script leaves it absent, which is the case a
+// non-confining launcher produced before this check existed.
+func stateBoundaryProofVerdict(secondState, proof string) string {
+	if strings.TrimSpace(proof) == "" {
+		return "the state boundary left no proof that it ran, so its confinement was not shown"
+	}
+	raw, err := os.ReadFile(filepath.Join(secondState, stateBoundaryProofFile))
+	if err != nil {
+		return "the state boundary left no proof that it ran, so its confinement was not shown"
+	}
+	if strings.TrimSpace(string(raw)) != proof {
+		return "the state boundary's proof does not match this attempt, so its confinement was not shown"
 	}
 	return ""
 }

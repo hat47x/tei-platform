@@ -20,7 +20,21 @@ const (
 	// stateBoundaryExitFirstState reports stage 3: the first build's state
 	// directory could not be masked with an empty tmpfs.
 	stateBoundaryExitFirstState = 99
+
+	// stateBoundaryExitNotEstablished reports stage 0: the script ran but the
+	// read-only remount did not actually take effect, so it refused to continue
+	// rather than let the build run unconfined.
+	stateBoundaryExitNotEstablished = 96
+
+	// stateBoundaryExitNoProof reports stage 4: the script ran but could not write the
+	// nonce that proves it ran.
+	stateBoundaryExitNoProof = 95
 )
+
+// stateBoundaryProofFile is the name, inside the allowed state directory, that the
+// launcher script writes the entry's nonce into. Its presence is how the entry knows the
+// script ran rather than trusting that the launcher it named confined anything.
+const stateBoundaryProofFile = ".tei-boundary-proof"
 
 // stateBoundaryLauncher builds the mount-namespace boundary in which the second
 // build runs with only its state directory and the artifact directory writable.
@@ -32,7 +46,7 @@ const (
 // This confines writes to mounted filesystems under the root tree. Filesystems
 // mounted separately inside the namespace (/proc, /sys, /dev) are not covered,
 // and the record says so rather than claiming nothing else was writable.
-func stateBoundaryLauncher(secondState, artifactDir, firstState string) (*selfBuildBoundary, error) {
+func stateBoundaryLauncher(secondState, artifactDir, firstState, proof string) (*selfBuildBoundary, error) {
 	if runtime.GOOS != "linux" {
 		return nil, fmt.Errorf("state boundary needs linux mount namespaces")
 	}
@@ -47,6 +61,18 @@ func stateBoundaryLauncher(secondState, artifactDir, firstState string) (*selfBu
 if ! mount -o remount,bind,ro /; then
 	echo "state boundary: cannot remount / read-only" >&2
 	exit 97
+fi
+
+# Stage 1b: confirm the remount actually took effect. Asking mount whether it
+# succeeded is not the same as the mount being read-only, and a launcher that
+# skips this script entirely would otherwise be indistinguishable from one that
+# confined the build. Writing outside the allowed paths must now fail; if it
+# succeeds, refuse to run rather than build unconfined.
+probe="/.tei-state-boundary-probe.$$"
+if (: > "$probe") 2>/dev/null; then
+	rm -f "$probe" 2>/dev/null
+	echo "state boundary: the root tree is still writable, refusing to run unconfined" >&2
+	exit 96
 fi
 
 # Stage 2: re-open the allow-listed paths for writing.
@@ -76,7 +102,17 @@ if [ -n "${ALLOW_FIRST_STATE:-}" ]; then
 	fi
 fi
 
-# Stage 4: replace the shell with the requested command.
+# Stage 4: prove this script ran. The entry generates ALLOW_PROOF and checks for it
+# afterwards, so a launcher that skips this script cannot be mistaken for one that
+# confined the build.
+if [ -n "${ALLOW_PROOF:-}" ]; then
+	if ! printf '%s' "$ALLOW_PROOF" > "$ALLOW_STATE/.tei-boundary-proof" 2>/dev/null; then
+		echo "state boundary: cannot record the boundary proof" >&2
+		exit 95
+	fi
+fi
+
+# Stage 5: replace the shell with the requested command.
 exec "$@"`
 
 	return &selfBuildBoundary{
@@ -91,6 +127,9 @@ exec "$@"`
 			"ALLOW_STATE=" + secondState,
 			"ALLOW_ART=" + artifactDir,
 			"ALLOW_FIRST_STATE=" + firstState,
+			// The entry writes this value and looks for it afterwards; a script that
+			// ran copies it into the allowed state directory as evidence.
+			"ALLOW_PROOF=" + proof,
 		},
 	}, nil
 }

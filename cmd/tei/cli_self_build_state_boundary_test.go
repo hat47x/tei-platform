@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -12,7 +14,7 @@ func TestStateBoundaryLauncherRefusesOffLinux(t *testing.T) {
 	if runtime.GOOS == "linux" {
 		t.Skip("this test pins the non-Linux answer")
 	}
-	_, err := stateBoundaryLauncher("/tmp/state", "/tmp/art", "/tmp/first")
+	_, err := stateBoundaryLauncher("/tmp/state", "/tmp/art", "/tmp/first", "sha256:proof")
 	if err == nil {
 		t.Fatal("a boundary was returned on a platform without mount namespaces")
 	}
@@ -28,7 +30,7 @@ func TestStateBoundaryLauncherShape(t *testing.T) {
 	if runtime.GOOS != "linux" {
 		t.Skip("the launcher only builds on linux")
 	}
-	boundary, err := stateBoundaryLauncher("/tmp/second-state", "/tmp/art", "/tmp/first-state")
+	boundary, err := stateBoundaryLauncher("/tmp/second-state", "/tmp/art", "/tmp/first-state", "sha256:proof")
 	if err != nil {
 		t.Skipf("no boundary in this environment: %v", err)
 	}
@@ -54,12 +56,20 @@ func TestStateBoundaryLauncherShape(t *testing.T) {
 		t.Fatalf("launcher must end with the sh argv0 placeholder: %v", boundary.Launcher)
 	}
 
+	// The script must prove the remount took effect, not merely report that mount
+	// returned success: a launcher that skips the script would otherwise look the
+	// same as one that confined the build.
+	if !strings.Contains(strings.Join(boundary.Launcher, " "), "refusing to run unconfined") {
+		t.Fatalf("script does not verify the remount took effect: %v", boundary.Launcher)
+	}
+
 	script := boundary.Launcher[1+len(wantPrefix)]
 	for _, want := range []string{
 		"remount,bind,ro /",
 		"remount,bind,rw",
 		"mount -t tmpfs none",
 		`exec "$@"`,
+		"exit 96",
 		"exit 97",
 		"exit 98",
 		"exit 99",
@@ -73,6 +83,7 @@ func TestStateBoundaryLauncherShape(t *testing.T) {
 		"ALLOW_STATE":       "ALLOW_STATE=/tmp/second-state",
 		"ALLOW_ART":         "ALLOW_ART=/tmp/art",
 		"ALLOW_FIRST_STATE": "ALLOW_FIRST_STATE=/tmp/first-state",
+		"ALLOW_PROOF":       "ALLOW_PROOF=sha256:proof",
 	}
 	for _, entry := range boundary.Env {
 		name, _, _ := strings.Cut(entry, "=")
@@ -109,5 +120,60 @@ func TestStateBoundaryScopeNamesWhatIsNotCovered(t *testing.T) {
 		if strings.Contains(lower, forbidden) {
 			t.Fatalf("scope overstates the boundary: %q", forbidden)
 		}
+	}
+}
+
+// The launcher script reserves 96-99. A second build that exits with one of those was
+// stopped by the boundary, so the boundary cannot be recorded as having confined it.
+// Before this verdict existed, a non-confining launcher produced claimed=true.
+func TestStateBoundaryRanVerdict(t *testing.T) {
+	for _, code := range []int{96, 97, 98, 99} {
+		if got := stateBoundaryRanVerdict(code); got == "" {
+			t.Fatalf("exit %d should be read as the boundary refusing the build", code)
+		}
+	}
+	for _, code := range []int{0, 1, 2, 95, 100} {
+		if got := stateBoundaryRanVerdict(code); got != "" {
+			t.Fatalf("exit %d should not be attributed to the boundary: %q", code, got)
+		}
+	}
+}
+
+// The entry must not take the boundary as having run merely because it built one. The
+// script writes this nonce; a launcher that skips the script leaves it absent, which a
+// non-confining launcher was measured to produce.
+func TestStateBoundaryProofVerdict(t *testing.T) {
+	dir := t.TempDir()
+	proof := "sha256:abc"
+	if got := stateBoundaryProofVerdict(dir, proof); got == "" {
+		t.Fatal("a missing proof should be refused")
+	}
+
+	if err := os.WriteFile(filepath.Join(dir, stateBoundaryProofFile), []byte(proof), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if got := stateBoundaryProofVerdict(dir, proof); got != "" {
+		t.Fatalf("matching proof verdict = %q, want none", got)
+	}
+	if got := stateBoundaryProofVerdict(dir, "sha256:other"); got == "" {
+		t.Fatal("a mismatched proof should be refused")
+	}
+	if got := stateBoundaryProofVerdict(dir, "  "); got == "" {
+		t.Fatal("an empty expectation should be refused")
+	}
+}
+
+func TestStateBoundaryProofValueIsStable(t *testing.T) {
+	a := stateBoundaryProofValue("/tmp/s1", "/tmp/f1")
+	b := stateBoundaryProofValue("/tmp/s1", "/tmp/f1")
+	c := stateBoundaryProofValue("/tmp/s2", "/tmp/f1")
+	if a != b {
+		t.Fatalf("same inputs gave %q and %q", a, b)
+	}
+	if a == c {
+		t.Fatal("different state directories must not share a proof")
+	}
+	if !strings.HasPrefix(a, "sha256:") {
+		t.Fatalf("proof = %q", a)
 	}
 }

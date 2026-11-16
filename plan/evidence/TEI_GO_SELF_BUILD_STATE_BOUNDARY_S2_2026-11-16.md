@@ -99,3 +99,43 @@
 - **hard link や別経路の bind mount は、全木の走査なしには否定できません**
 
 **これらは「未実装」ではなく「未測定であり、主張しない」ものとして残します。**
+
+## 追記（2）：`basis=host-boundary` が「namespace が実際に走った」証拠を持つようにした
+
+**独立レビュー（Step Code `step-5-preview`）が、本実装の実在する穴を指摘しました。**
+
+### 穴：launcher を組めたことが「境界が効いた」と同一視されていた
+
+`boundary != nil` は「launcher を build できた」ことしか意味しません。**script を飛ばして child を直接 exec する偽の `unshare`** を PATH に置くと、**実測で `claimed=true`・`basis=host-boundary` になりました。**
+
+| 構成 | `claimed` | `basis` |
+| --- | --- | --- |
+| **script を飛ばす `unshare`** | **`true`** | **`host-boundary`** ← 穴 |
+
+**「launcher を名指しした」ことと「その script が走った」ことは別**でした。
+
+### 塞ぎ方：script が nonce を書き、entry がそれを読む
+
+1. entry が `ALLOW_PROOF` に nonce（`sha256:` + state と firstState から決定的に導出）を入れる
+2. script がそれを許可stateディレクトリへ `.tei-boundary-proof` として書く
+3. entry が**そのファイルを読んで一致を確認**し、無ければ `unperformed`
+4. 加えて script は root が本当に ro になったかを**書いてみて**確かめ、駄目なら exit 96
+5. script の段階は 95〜99 の終了コードを使い、その範囲なら `unperformed`
+
+### 再実測
+
+| 構成 | 終了 | `claimed` | `repro` | `basis` |
+| --- | --- | --- | --- | --- |
+| **script を飛ばす `unshare`** | **1** | **`false`** | **`unperformed`** | `entry-post-hoc` |
+| **本物の `unshare`** | **0** | **`true`** | **`reproduced`** | **`host-boundary`** |
+
+理由の文言：`the state boundary left no proof that it ran, so its confinement was not shown`
+
+### レビュー指摘の採否（2件目）
+
+| 指摘 | 判定 |
+| --- | --- |
+| `driveSelfBuildIn` の argv 組み立てで添字がずれ、`sh` placeholder を上書きする | **誤り**（`boundary.Launcher` 全体をコピーしてから child を append しており、placeholder は保持される。実測でも本物の launcher は動作） |
+| `host-boundary` が「namespace が実際に走った」ことを確かめていない | **実在**（上記のとおり塞いだ） |
+
+**2件目を実際に再現してから直した**ので、**指摘を信じたのではなく、穴を観測してから塞いでいます。**
