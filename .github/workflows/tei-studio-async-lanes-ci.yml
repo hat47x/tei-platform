@@ -6,14 +6,22 @@ on:
       - 'cmd/tei-studio/assets/main.js'
       - 'cmd/tei-studio/assets/preview-scope.mjs'
       - 'cmd/tei-studio/test/main-async-scope.test.mjs'
-      - 'reference/tei-studio-workbench/responses*.test.mjs'
+      - 'reference/tei-studio-workbench/responses.ts'
+      - 'reference/tei-studio-workbench/pin-state.ts'
+      - 'reference/tei-studio-workbench/main.ts'
+      - 'reference/tei-studio-workbench/responses.inspection-scope.test.mjs'
+      - 'reference/tei-studio-workbench/responses.wiring-contract.test.mjs'
       - '.github/workflows/tei-studio-async-lanes-ci.yml'
   pull_request:
     paths:
       - 'cmd/tei-studio/assets/main.js'
       - 'cmd/tei-studio/assets/preview-scope.mjs'
       - 'cmd/tei-studio/test/main-async-scope.test.mjs'
-      - 'reference/tei-studio-workbench/responses*.test.mjs'
+      - 'reference/tei-studio-workbench/responses.ts'
+      - 'reference/tei-studio-workbench/pin-state.ts'
+      - 'reference/tei-studio-workbench/main.ts'
+      - 'reference/tei-studio-workbench/responses.inspection-scope.test.mjs'
+      - 'reference/tei-studio-workbench/responses.wiring-contract.test.mjs'
       - '.github/workflows/tei-studio-async-lanes-ci.yml'
   workflow_dispatch:
 
