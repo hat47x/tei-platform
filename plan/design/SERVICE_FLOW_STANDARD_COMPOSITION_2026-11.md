@@ -454,3 +454,20 @@ mainに導入された `tei.authoring/v1` の `example of <data>` は、項目�
 DPC-09〜13は**新しい実装の合格宣言ではなく、既存の実装から次に検証すべき接続条件**である。生成Goと既存Evaluatorの結果・Read先ID一致（main #5118）や、Build Plan後の元Markdown改版拒否（main #5129）は、すでにある狭い回帰として参照し、重複実装しない。結果が合っても読み取った対象が異なる場合、同じConsumer結果として認定しない。
 
 最初の製品への接続は `Workspace.Load`→Data／Rule／ExampleとSource位置→`Decide`の判断・理由→既存CLI／Studioのread-only Inspector とする。Provider実Read、生成Go・Builderの同一Attempt、独立Consumer、Windows Stage1→Stage2は各Ownerの別検収であり、この追加設計の先行Gateにはしない。
+
+### 12.9 第一縦断：選択した定義と実際に問われた項目を同一Loadで照合する
+
+DPC-09の最初の実装候補を、既存の`internal/operations`の読み取り専用経路で具体化する。新しいInspection APIは導入せず、`Workspace.Load`、`BuildSourceIndexFromLoad`、`InspectionFromLoad`、`validationeval.Decide`を一つの試験で連結する。
+
+一度だけ選択した`TransferRequest`のMarkdownから、`allocation`属性（`std.decimal`、`required`）と`allocation_positive`規則を同じWorld／Source Indexで照合する。規則が読むべきAttribute IDと、状態を明示したSourceが実際に受けたRead IDを比較し、原文のAttribute行が示すbyte位置を確認する。判定は次の四例を独立Expectedとして固定する。
+
+| 入力状態 | 確認する結末 | 誤合格を拒否する観点 |
+| --- | --- | --- |
+| 数値2.5を取得 | `satisfied`、正しいRead ID | 別Fieldを読んでも結果が同じなら合格、としない |
+| 数値0を取得 | `not-satisfied`、正しいRead ID | 真偽を単なる成功／失敗APIへ畳まない |
+| 明示NULL | `undecided(value-null)`、Resultなし | Required定義だけからNULLを0や違反に変換しない |
+| 値を未取得 | `undecided(value-not-fetched)`、Resultなし | 未取得をNULL・不存在・非開示と同一扱いしない |
+
+この第一縦断は、**記述元の型・判断の対象・理由・出典位置が連結していること**に限る。評価用Sourceはテストが明示的に渡す値であり、正式Providerの実Read、CLI／Studio独立Consumer、生成Go／実Builder、Audience／Grant、Collection・Graphの多重性やRelationの取得閉包を検証しない。既存のP/G実Binary同値回帰（#5118）やPlugin純粋Transformの別PR（#5156）を、同じAttemptの成果に合算しない。
+
+次に必要なのは実データを返すProviderについて同じRead ID・Presence・Scope・Snapshot・Coverageを観測することである。**Read IDだけが一致しても、値がどのOccurrenceや時点から来たかは証明されない。** 同じ図表を使うNode View／Studioの可視化は、この出典と取得条件に対するProjectionとして扱う。
