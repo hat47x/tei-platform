@@ -127,4 +127,4 @@ Consumerに渡せるかを考えるとき、以下の三層は別の問いであ
 
 この区別をPC-1bへ渡す際、新しいStateful Port型やPlugin専用Evaluatorは作らない。Sourceの意味ID／Field Ref・Read Footprint・Requirement／Result・現在資格は既存Ownerが保持し、Node Viewは根拠を**読み取り専用で投影**する。公開可能なFieldが決まって初めて明示Projectionを検討するが、ProjectionはHostの認可判定を代行しない。明示Adapterの単位・丸め・Lossはさらに別のPC-1cで検収する。
 
-追加の独立Expectedは既存[PIO-17〜23](PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md#21-型付き接続で判定できないを保持し読取の充足を検証する2026-11-16)と[DPC-09〜13](SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)に結び付け、新しい検収ID群を増やさない。PR #5162／#5163の文書統合をPlugin Portや実Providerの製品PASSへ昇格させない。
+追加の独立Expectedは既存[PIO-17〜23](PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md)と[DPC-09〜13](SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)に結び付け、新しい検収ID群を増やさない。PR #5162／#5163の文書統合をPlugin Portや実Providerの製品PASSへ昇格させない。
