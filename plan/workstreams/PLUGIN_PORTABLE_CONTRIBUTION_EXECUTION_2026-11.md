@@ -54,7 +54,7 @@
 
 ## 6. PC-1bの一因子Fixtureと受入（2026年11月16日）
 
-PC-1aが確認するのは、既存Transformの「出力を二Fieldに整形できる」という限定的な事実である。PC-1bでは[Plugin入出力設計§21](../design/PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md)と[標準Flow設計§12.6〜12.8](../design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)の**既存Reader／Validator／型付きContract**を採用し、同じ`orderId`／`amount`のFixtureへ次の独立Expectedを接続する。既存`validationeval/reading_test.go`にある判断の回帰を再実装しない。
+PC-1aが確認するのは、既存Transformの「出力を二Fieldに整形できる」という限定的な事実である。PC-1bでは[Plugin入出力設計§21](../design/PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md)と[標準Flow設計§12.6〜12.8](../design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)の**既存Reader／Validator／型付きContract**を採用する。PC-1aの`orderId`／`amount`は純粋投影用Fixtureであり、PC-1bの実Query行Readerが使う組織Relationとはまだ同じ入力ではない。Field Refの対応を受理する前に両試験を一つのE2Eへ合成しない。既存`validationeval/reading_test.go`にある判断の回帰を再実装しない。
 
 | 対照 | 一因子の変更 | PC-1bで求める結果・証拠 |
 | --- | --- | --- |
@@ -68,3 +68,24 @@ PC-1aが確認するのは、既存Transformの「出力を二Fieldに整形で�
 **実装担当への渡し方**：#1223／#2497が意味ID・契約／項目の一致、#2620／#988が既存Readerと判断可能性、#951／#1251が選択資格、#1180／#2514が独立Expectedを担当する。まず一Source・一Producer Record・二Required Field・一Ruleだけでread-only照合し、Consumerの現在Grantと実Provider Callを伴わない段階は`candidate`／`unknown`として表示する。Rule例（`example of`）の一致は実Providerから読んだ証拠にならない。
 
 **PC-1cへの移行条件**：PC-1bでField Ref／必要Read／欠損・NULL・部分取得・未確定の扱いが固定できた場合だけ、単位と精度を明示したpure Adapterを挿入する。新しいAdapter探索器・Stateful Port Runner・第二Validation Registryは作らない。PC-2／PC-3／PC-5を先行停止させない。
+
+## 7. PC-1bの実装入口を「値の状態」と「取得範囲の根拠」に分ける（2026年11月17日）
+
+[Plugin入出力設計§23](../design/PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md)に対応し、PC-1aの限定実証はmain統合済み[#5156](https://github.com/hat47x/tei-platform/pull/5156)を使う。実装の再発明を避けるため、PC-1bの初回は既存`internal/driver/validationread.FromHeaderDetail`と`validationeval.Decide`を対象にする。[#5148](https://github.com/hat47x/tei-platform/pull/5148)の期間Rule、[#5149](https://github.com/hat47x/tei-platform/pull/5149)の結果行Readerもmainに存在する。ただし、それぞれのGo試験を別々に通したことは通常製品CLIの実Provider→Rule→Consumerの成功ではない。
+
+**最初の小PR（PC-1b-0）**は、既存のRelationと二つの型付きAttributeを使い、Query解決で得たRelation／Target／AttributeのIDと、同じAttemptの実行結果行の観測を突き合わせる。`validationread.Detail`が返す値あり／NULL／未取得と、`Decide`の結果・判定不能理由を、手書きExpectedで検査する。意図的に別Attributeの同じ値を用意し、結果が等しくてもRead IDが異なれば不一致となる負例を設ける。値の読み方に新しいGo実装やPort Schemaを導入せず、SourceとFieldの結び付きが既存契約だけで確認できないなら、そこで未受理として止める。
+
+**次の小PR（PC-1b-1）**は`coverage=complete`を単なる呼出し側申告として記録し、QueryのFilter／Paging／継続位置、Scope／As-of、Provider受領の証拠によって全対象を取得したと説明できるときだけ`verified-complete`とする。既存ReaderのCoverage語彙を勝手に増やすのではなく、検収票の「主張」と「裏付け」を分ける。反例が既読行にあれば、partialのままでも規則違反を確定できる。逆に反例が無いpartialを成功へ昇格させない。
+
+**PC-2で並行して確認する診断の穴**は、追加の万能Resolverではなく既存のPlugin Ownerへ渡す。
+
+| 実コードの観測 | 受入時に区別すること | 検査・Owner |
+| --- | --- | --- |
+| #5160：解析不能なPlugin版が適合候補なしへ畳まれる | 版宣言の誤り／解析可能だが不適合／候補なし | 既存Resolver・management、PCON-02 |
+| #5197：Capabilityが0件と複数件で同じfalseになる | 不在／曖昧／一意に選択済み | 既存Plugin Catalog、PIO-34 |
+| #5201：Lock経由の失敗で元Resolver理由が落ちる | Lock不一致／選択要件不適合／原因未確定 | 既存Lock・Resolver、PIO-35 |
+| #5204：Supports述語は宣言集合の所属判定 | 宣言対応／実Provider資格・実Called／Grant | 既存Capability／Host、PIO-36 |
+
+**検収の提出物**は一対象・一Attemptの対象ID、Source版、Field Ref、実QueryのScope、Provider・Readerが観測した値の状態、Coverage申告と裏付け、Rule結果とReason、独立Expectedの対照で十分である。データに無い根拠を得るための新たなEvidences Storeは作らない。StudioやNode Viewへ結果を投影するのは、この最小試験が成立してから別Consumerで行う。
+
+これらは既存#1180／#2514のExpectedと#2586／#1251の読取・Provider Ownerに引き渡す**実装計画**であり、本節の更新では新しいGo／DB／Windows試験を実施していない。通常CLI実ProviderとStudio Stage1→Stage2のP0は止めない。
