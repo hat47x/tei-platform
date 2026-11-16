@@ -165,6 +165,22 @@ Step IDは種類を問わず同一手順内で一意でなければなりませ�
 
 **実験は計画段階で、所要時間や効果の実測値はありません。** 出典を限定して確認した事実、過去の隔離テスト結果、残る検証条件はREF-SPEC-01監査記録を参照してください。
 
+## `order-acceptance-business-procedure.json`
+
+受注受付→電話確認→承認／差戻し→出荷準備という一階層の業務手順を、既存のApplication / Semantic identityを参照しながら表すReference authoring fixtureです。`tei business-procedure -workspace reference/workspace -procedure <このファイル>`で読み取り専用に投影します。
+
+このfixtureは上の二つとは別の`schemaVersion`（`business-procedure-model-reference-v0`）を持ちます。上の二つはBusiness Procedureのreference corpus内のreview target・handoff endpoint・cross-referenceを表すのに対し、このfixtureは**Stepの実現方式と、業務Actor・認可Role・契機・分岐を型付きで分ける**ことを目的にしているためです。`order-entry-business-procedure.json`をこのコマンドへ渡すと`PROCEDURE_SCHEMA_UNSUPPORTED`で拒否します。二つの表現を同じ意味として黙って読み替えません。
+
+主な区別は次のとおりです。
+
+- `realization`は`manual` / `application` / `system`の閉じた語彙です。`manual`のStepはFunctionを持たず、`manualInstruction`に人が行う作業を残します。Functionを持たない手作業をApplication Functionの一覧から消しません。
+- `procedure.actor.label`は業務Actor、`procedure.authorization.roleCode`は認可系のrole codeで、別の欄です。両者が同じ値になれば診断し、業務Actorから認可Roleを導出しません。
+- `procedure.trigger`は業務上の契機であり、Function起動ではありません。投影の`trigger.invocation`と各Stepの`autoExecuted`は常にfalseです。
+- `branches[]`は`approval`と`rejection`を別の`id`を持つ別Branchとして保持します。片方だけの判断は`BUSINESS_DECISION_MISSING_REJECTION`になります。
+- Stepの`function`は`reference/workspace`のSource Indexで厳密に1件解決した宣言と、そのSource位置（file・line・column・artifact digest）だけを返します。解決しない参照は`unresolvedFunction`と`BUSINESS_REFERENCE_UNRESOLVED` / `_AMBIGUOUS`に残し、類似名から補完しません。
+
+このfixtureも`canonical: false`であり、業務意味の受理ではありません。汎用Workflow Engine、Scheduler、実DB更新、業務フローEditorは含みません。
+
 ## `order-entry-follow-up-procedure.json`
 
 同じ`order_entry.order_record`を別のBusiness Procedure文脈から利用するReference authoring fixtureです。

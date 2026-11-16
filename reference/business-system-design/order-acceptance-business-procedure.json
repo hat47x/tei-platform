@@ -1,0 +1,94 @@
+{
+  "schemaVersion": "business-procedure-model-reference-v0",
+  "artifactRole": "reference-authoring-fixture",
+  "canonical": false,
+  "application": "order_entry",
+  "procedure": {
+    "id": "order-entry.order-acceptance",
+    "name": "受注受付",
+    "purpose": "受注を受け付け、電話で確認し、承認または差戻しを決め、出荷準備へ引き渡す",
+    "trigger": {
+      "status": "candidate",
+      "text": "得意先から注文の連絡が入る"
+    },
+    "actor": {
+      "status": "candidate",
+      "label": "受注担当"
+    },
+    "authorization": {
+      "status": "candidate",
+      "roleCode": "ORDER_EDITOR",
+      "capability": "security.authorize"
+    }
+  },
+  "steps": [
+    {
+      "id": "BP-A01",
+      "action": "受注を受け付ける",
+      "realization": "application",
+      "function": {
+        "kind": "application-pattern",
+        "id": "order_entry.order_record"
+      }
+    },
+    {
+      "id": "BP-A02",
+      "action": "電話で得意先に注文内容を確認する",
+      "realization": "manual",
+      "manualInstruction": "得意先へ電話し、数量・納期・納品先を読み上げて相違がないか確認する。確認日時と相手方を記録する。"
+    },
+    {
+      "id": "BP-A03",
+      "action": "受注の明細と数量を確認する",
+      "realization": "application",
+      "function": {
+        "kind": "application-pattern",
+        "id": "order_entry.order_lines"
+      }
+    },
+    {
+      "id": "BP-A04",
+      "action": "明細の数量が正であることを確かめる",
+      "realization": "system",
+      "function": {
+        "kind": "validation",
+        "id": "sales.order_line.quantity_positive"
+      }
+    },
+    {
+      "id": "BP-A05",
+      "action": "業務上の条件から承認するか差し戻すかを判断する",
+      "realization": "manual",
+      "manualInstruction": "数量と納期の条件を満たすか確認し、承認または差戻しを選ぶ。判断理由を残す。"
+    },
+    {
+      "id": "BP-A06",
+      "action": "承認された受注を提出する",
+      "realization": "application",
+      "function": {
+        "kind": "application-pattern",
+        "id": "order_entry.submit_order"
+      }
+    },
+    {
+      "id": "BP-A07",
+      "action": "出荷準備を担当へ引き渡す",
+      "realization": "manual",
+      "manualInstruction": "出荷担当へ受注番号・納期・納品先を伝え、受領の返事を記録する。"
+    }
+  ],
+  "branches": [
+    {
+      "id": "BR-A05-APPROVE",
+      "label": "承認",
+      "onStep": "BP-A05",
+      "outcome": "approval"
+    },
+    {
+      "id": "BR-A05-REJECT",
+      "label": "差戻し",
+      "onStep": "BP-A05",
+      "outcome": "rejection"
+    }
+  ]
+}
