@@ -52,11 +52,11 @@ func TestGeneratedScenarioCommandInvalidatesOperatorSelectionChange(t *testing.T
 	}
 	scenario, err := json.Marshal(scenariotest.Scenario{
 		SchemaVersion: scenariotest.SchemaVersion,
-		ID: "discount-operator-pinned",
-		Application: "discount_check",
+		ID:            "discount-operator-pinned",
+		Application:   "discount_check",
 		Steps: []scenariotest.Step{{
 			ID: "discount", Operation: "evaluate-validations",
-			Fixture: "fixtures/discount.json",
+			Fixture:           "fixtures/discount.json",
 			ExpectValidations: map[string]string{scenarioOperatorRule: "satisfied"},
 		}},
 	})
