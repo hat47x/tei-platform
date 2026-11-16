@@ -90,6 +90,19 @@ func DiagnoseRelationalSourceFacts(doc Document, facts RelationalSourceFacts) []
 				TableLegacyID: key.TableLegacyID,
 			})
 		}
+		// A composite key declares its member order only through SortKey.
+		// This is the key's own structure: it must not depend on whether a
+		// Relationship happens to reference the key. The observed order is
+		// reported, not repaired from XML child order.
+		if _, orderUnique := orderedLegacyKeyMembers(key); !orderUnique {
+			out = append(out, RelationalDiagnostic{
+				Code:          "key-order-unresolved",
+				Locator:       key.Locator,
+				Nature:        RelationalDiagnosticNature,
+				TableLegacyID: key.TableLegacyID,
+				KeyLegacyID:   key.KeyLegacyID,
+			})
+		}
 	}
 	relationshipIDs := map[string][]RelationshipKeyFact{}
 	for _, relation := range facts.RelationshipKeys {
