@@ -42,7 +42,8 @@ func TestGeneratedScenarioCommandInvalidatesOperatorSelectionChange(t *testing.T
 		t.Fatal(err)
 	}
 	fixture, err := json.Marshal(scenariotest.ValidationFixture{
-		Numbers: map[string]string{"sales.order_line.discount": "2"},
+		Numbers:      map[string]string{"sales.order_line.discount": "2"},
+		RelationKeys: []scenariotest.ValidationRelation{},
 	})
 	if err != nil {
 		t.Fatal(err)
