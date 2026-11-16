@@ -1,0 +1,154 @@
+{
+  "note": "One assistant message emitted three subagent tool_use blocks and all three started (agent-1..3). The children then each emitted three spawn attempts of their own, but the total session count stayed at four (root + 3 children), so no grandchildren were created.",
+  "overlay": {
+    "plugin": "@deepseek-ai/dsh-subagent",
+    "config": "default (no maxDepth override)"
+  },
+  "childrenPerMessage": 3,
+  "sessionsObserved": 4,
+  "rootSession": "session-9cac080b-1800-4ef5-9e58-aa4958531349",
+  "childSessions": [
+    "65989b9e-6e73-4b65-91aa-f20544fec1cf",
+    "15350a46-56c0-4e1e-a0e7-ec27d9913a97",
+    "d46e409f-30ae-456c-94e1-1a628840c6a9"
+  ],
+  "requestCount": 11,
+  "requests": [
+    {
+      "file": "001-request.json",
+      "bytes": 74260,
+      "sha256": "572a0f52b17267c8f14e79217b722f59e0b9dced9bd90cbf77b17acec8dc214c",
+      "sessionId": "session-9cac080b-1800-4ef5-9e58-aa4958531349",
+      "role": "root",
+      "willMultiSpawn": true,
+      "childrenPerMessage": 3,
+      "toolCount": 24
+    },
+    {
+      "file": "002-request.json",
+      "bytes": 44620,
+      "sha256": "865988352c2c9e3d5d32487c8cb00be68be977be01fe3d62ac4cc379502f1eac",
+      "sessionId": "session-9cac080b-1800-4ef5-9e58-aa4958531349",
+      "role": "root",
+      "willMultiSpawn": false,
+      "childrenPerMessage": 0,
+      "toolCount": 0
+    },
+    {
+      "file": "003-request.json",
+      "bytes": 44215,
+      "sha256": "166445453d67cea371d289f7548634b3595ab89897a77b5913e3906817f46b87",
+      "sessionId": "session-9cac080b-1800-4ef5-9e58-aa4958531349",
+      "role": "root",
+      "willMultiSpawn": false,
+      "childrenPerMessage": 0,
+      "toolCount": 24
+    },
+    {
+      "file": "004-request.json",
+      "bytes": 76863,
+      "sha256": "18332e879d36049f128109daefa1e565d35d95bdca3122bae8602c61c46a1ba4",
+      "sessionId": "65989b9e-6e73-4b65-91aa-f20544fec1cf",
+      "role": "child",
+      "willMultiSpawn": true,
+      "childrenPerMessage": 3,
+      "toolCount": 24
+    },
+    {
+      "file": "005-request.json",
+      "bytes": 76863,
+      "sha256": "7eba4ea316ffc587959cd2c276f75031d3508d5d8f91bc034a407519b773c225",
+      "sessionId": "15350a46-56c0-4e1e-a0e7-ec27d9913a97",
+      "role": "child",
+      "willMultiSpawn": true,
+      "childrenPerMessage": 3,
+      "toolCount": 24
+    },
+    {
+      "file": "006-request.json",
+      "bytes": 76863,
+      "sha256": "df22cb218dc546a6901b9bb9a398e8aea0f7b81827bc2a2fd4d37cebcd2b851c",
+      "sessionId": "d46e409f-30ae-456c-94e1-1a628840c6a9",
+      "role": "child",
+      "willMultiSpawn": true,
+      "childrenPerMessage": 3,
+      "toolCount": 24
+    },
+    {
+      "file": "007-request.json",
+      "bytes": 44311,
+      "sha256": "3331ee16a8ea7538b223fe3b43895ae144e5eafa4c170cc00b1600c0a20a6e8f",
+      "sessionId": "65989b9e-6e73-4b65-91aa-f20544fec1cf",
+      "role": "child",
+      "willMultiSpawn": false,
+      "childrenPerMessage": 0,
+      "toolCount": 24
+    },
+    {
+      "file": "008-request.json",
+      "bytes": 44311,
+      "sha256": "46deef48f334bae0c865713bab9403935f3b6a9f23078e647c4f6b54801bc550",
+      "sessionId": "15350a46-56c0-4e1e-a0e7-ec27d9913a97",
+      "role": "child",
+      "willMultiSpawn": false,
+      "childrenPerMessage": 0,
+      "toolCount": 24
+    },
+    {
+      "file": "009-request.json",
+      "bytes": 44311,
+      "sha256": "8b45ad2ce1cd60d29d1490122937c75960824e22383afa7bee42d1fcf0fe3325",
+      "sessionId": "d46e409f-30ae-456c-94e1-1a628840c6a9",
+      "role": "child",
+      "willMultiSpawn": false,
+      "childrenPerMessage": 0,
+      "toolCount": 24
+    },
+    {
+      "file": "010-request.json",
+      "bytes": 42033,
+      "sha256": "33fcb77a2e084040cde6910c360a414edcc507677fa6f9376b264cccd5a2a4f5",
+      "sessionId": "session-9cac080b-1800-4ef5-9e58-aa4958531349",
+      "role": "root",
+      "willMultiSpawn": false,
+      "childrenPerMessage": 0,
+      "toolCount": 24
+    },
+    {
+      "file": "011-request.json",
+      "bytes": 41078,
+      "sha256": "037c6eb15c412778578f2ac86c956027e8cf6fa6e61a312ba554d7d1826b44ce",
+      "sessionId": "session-9cac080b-1800-4ef5-9e58-aa4958531349",
+      "role": "root",
+      "willMultiSpawn": false,
+      "childrenPerMessage": 0,
+      "toolCount": 24
+    }
+  ],
+  "spawnAttempts": {
+    "fromRoot": 1,
+    "fromChildren": 3,
+    "total": 4
+  },
+  "grandchildrenCreated": 0,
+  "answers": {
+    "multipleChildrenFromOneMessageAccepted": true,
+    "childrenStarted": 3,
+    "childrenSpawningFurtherWasBlocked": true,
+    "refusalTextSeen": []
+  },
+  "sessionsVsAttempts": {
+    "startedFromRootMessage": 3,
+    "startedFromChildren": 0,
+    "whyNoGrandchildren": "observed: zero grandchildren. The cause is NOT determined here: the overlay sets no maxDepth override, so the default is in force, but the capture does not record what that default is, and maxActiveSubagents was not separated.",
+    "causeDetermined": false
+  },
+  "caveat": "One run, three children, no maxDepth override. No refusal text was found anywhere, so 'the children were refused' is inferred from the absent sessions rather than read from a message; the default maxDepth value itself is not recorded, and maxActiveSubagents was not separated. Only n=3 was tried, so no scaling claim is made.",
+  "sessionAccounting": {
+    "root": 1,
+    "children": 3,
+    "grandchildren": 0,
+    "total": 4,
+    "note": "grandchildren are zero, so the three child-side spawn attempts created no session"
+  }
+}

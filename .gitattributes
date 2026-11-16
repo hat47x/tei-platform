@@ -372,3 +372,6 @@
 
 # maxDepth 8 observations are hashed as raw bytes.
 /plan/evidence/DSH_SUBAGENT_DEPTH8_2026-11-18/** -text
+
+# Multi-spawn observations are hashed as raw bytes.
+/plan/evidence/DSH_SUBAGENT_MULTI_SPAWN_2026-11-18/** -text
