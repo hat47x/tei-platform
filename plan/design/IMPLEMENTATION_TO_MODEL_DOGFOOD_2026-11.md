@@ -506,3 +506,29 @@ TEI自身のValidation宣言の構造をData表で記述する並行PR #5097は�
 ScenarioのOperator選択Pinを追加する並行PR #5114は、データ経路の構造適合とは独立の資格を扱う。同PRがこのdogfooding文書の§16を使用するため、データ様式側は**§17**として衝突を回避する。ただし#5114は未統合であり、これを既存mainの機能とは記述しない。選択A→B→Aの出力や指紋が以前と一致しても旧資格の自動復活を認めず、World／Model／Artifact／Evidenceそれぞれの失効を既存#2600へ引き渡す。
 
 直近の最小実装は、選択済みData表＋Ruleのread-only要求／保証票を実Sourceに束縛し、正常例・不足Field・Presence未確定を独立Expectedで判別することに限定する。その先のSource→生成Go→実Builder同一Attempt、正式Provider／通常CLI・独立Consumer、Windows Studio Stage1→Stage2は別の検収を維持する。
+
+### 17.5 記述できる例と、読み取った事実を別の根拠として検証する（2026-11-16）
+
+[標準フロー設計§12.6〜12.8](SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)を、TEI自身のData／Ruleのdogfoodingへ戻す。以前の最小PacketはData表→Rule→生成Goの接続を中心にしていた。現行mainでは、`validationeval.Decide`が値のNULL・未取得とRelationの部分取得を区別し、`example of <data>`の記録例を正式Readerが選択して `tei validate` から照合できる。したがって、**「Data定義の読取」「例による判断の照合」「実際に読んだ値」**を三種類の入力として捉える必要がある。
+
+| 確認項目 | mainで利用できる実装の足場 | 次の検収で必要なこと |
+| --- | --- | --- |
+| 定義の来歴 | `tei.authoring/v1`、`Workspace.Load`、Source Index、型付きData／Rule | 同一LoadのSource byteと対象IDを固定し、未選択文書を混ぜない |
+| 例と期待 | `RuleExamples`、`CheckRuleExamples`、原文の期待結果位置 | 例の追加・期待変更とWorld意味変更を分離し、独立Expectedへ照合 |
+| 取得状態と判断 | `StatefulSource`／`Decide`、NULL・not-fetched・partialと理由 | 決定可能な不成立／成立と判定不能を混同しない |
+| 実装同値の限定検証 | PR #5118のG/P別Process・Read Attribute ID検査、#5129のPlan後Source改版拒否 | 結果一致だけでSource／Builderの全閉包・実Providerを受理しない |
+
+この表が意味するのは、既存製品コードへの**接続点が明らかになった**ということに限る。直近のmainは日付前後や期間非重複にも対応を拡張しているが、各RuleのTarget／Reader適合、ProviderのSnapshot、完全な組織二時点の受理を一括で主張しない。従来の `Evaluate` と状態を明示する `Decide` も、入力境界が異なるので全状態について自動的な同値を主張しない。 `withheld` とレコード不存在は現行`ValueState`の三状態に含まれないため、公開・取得側の別資格として保持する。
+
+### 17.6 次に実装する最小単位を一件に絞る
+
+`internal/workspace/testdata/tei-md-data-table`の `TransferRequest` Dataと `allocation_positive` Ruleを最初の対象にする。実`Workspace.Load`が選んだ属性型・Rule・Source Rangeを入力として、読み取り専用の検収票へ次の欄を出す。
+
+1. **宣言された事実**：Data／Rule ID、Attribute TypeRef、Required、Source byte Range、選択Reader・モデル版。
+2. **判断に必要な情報**：対象Attribute、値の状態（present／NULL／未取得）、Ruleが必要とするReadとOperatorの適用条件。
+3. **観測された根拠**：実Read／例／未観測の区別、判断した場合の`satisfied`／`not-satisfied`、判断できない場合の理由。実Readがない場合にCalledを捏造しない。
+4. **失効条件**：定義の変更、例と期待結果だけの変更、Operator選択の変更、生成Go／Build入力の変更を別に表示する。
+
+最初の独立ExpectedはDPC-09〜11の値・Relationの判断例と、DPC-12の例改版に限る。DPC-13の時間・期間条件は既存のdate／no-overlapのOwnerへ渡す。新しいValueState、第二Mapping Engine、Runner、Evidence Storeを作らない。検収票が通った後も、正式なSource→生成Go→Builder、通常CLIのactual Provider→独立Consumer、Studio Stage1→Stage2の実Windows受領は独立P0として維持する。
+
+**現状の区別**：mainに存在する関数とGoテストは実装上の足場であり、このPacketの新規E2Eは未実施。直近のmainのセルフビルドおよびWails HostのCIには失敗が観測されているため、部分的なmain統合を製品全体の合格に読み替えない。並行PR #5097（自己記述のData表）と #5114（Scenarioの実装選択Pin）はclosed/unmergedであり、実装済みとして数えない。元Sourceの現在性は別のmain回帰で確認する。

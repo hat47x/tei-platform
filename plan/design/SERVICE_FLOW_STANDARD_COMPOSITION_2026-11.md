@@ -400,3 +400,57 @@ A→B→Cを検討する際、次の順序を守る。
 最初の独立ExpectedはDPC-01／02／05を対象とし、全体RecordとFieldの接続、Decimal型と意味Lawの違い、`required`と明示NULL／missing／unfetched／withheldの違いを確認する。次にDPC-08でNode Viewを展開・折畳みしてもMapping Identity・生成物・Read回数を変更しないことを確認する。Graph多重辺・取得閉包・HTTP公開を扱うDPC-03／04／07は各Ownerの独立試験へ接続し、DPC-06はSource改版と実装選択改版を**別の失効条件**として扱う。
 
 誤成功を検出するMutantとして、`missing→NULL`、`partial→complete`、多重Edgeの合併、非公開FieldのHTTP転送、古い実装選択Pinの受理を固定する。判定結果だけでなく**どの保証が不足したか**を独立Expectedへ記録し、実装から期待値を生成しない。並行PR #5097（自己記述）と#5114（Scenarioの選択Pin）は、そのexact HEADが受理されるまではmainの実績へ算入しない。
+
+### 12.6 部分取得でも判断できる場合を、規則ごとに見極める（2026-11-16）
+
+データ様式の取得状態と、規則について**結論を出せるかどうか**は別である。「部分取得なら必ず判定不能」とすると、すでに見えている違反まで見落とす。一方、見えている行だけに違反がないことから、全体でも違反がないとは結論できない。
+
+現行mainの `internal/semantic/validationeval/reading.go` には、読み手が状態を伝える `StatefulSource` と `Decide` がある。数値項目は `present`／`null`／`not-fetched` を区別し、Relationは `complete`／`partial` を区別する。戻り値は、規則が成立した `satisfied`、不成立だった `not-satisfied`、理由を伴う `undecided` に分かれる。読取状態の矛盾や未対応の入力は、判定不能という業務上の結果ではなくエラーとして扱う。
+
+この整理の中心は、**未取得部分にどのような値があっても結論が変わらないときだけ確定する**ことである。取得範囲が完全かどうかは重要な入力だが、全ての規則に一律の停止条件を設けない。
+
+| 読み取れたこと | 規則 | この範囲で言えること | 言えないこと |
+| --- | --- | --- | --- |
+| `quantity=2.5` が存在する | 正値 | `satisfied` | 別項目やレコード全体の完全性 |
+| `quantity=0` が存在する | 正値 | `not-satisfied` | 未取得の他項目の状態 |
+| 数値項目に明示的なNULLがある | 正値 | `undecided(value-null)` | NULLを0と見なした不成立 |
+| 数値項目をまだ読んでいない | 正値 | `undecided(value-not-fetched)` | 値が存在しないという判断 |
+| 同じキーが2行で実際に観測された。残りは部分取得 | Relationの一意性 | `not-satisfied`。未取得行は既存の重複を取り消せない | ほかの重複数や取得全件数 |
+| Relationを全件取得し、行が1件だけ。キーが未取得またはNULL | Relationの一意性 | `satisfied`。一行だけでは重複しえない | そのキーの具体的な値 |
+| 重複は見つかっていないが、Relationは部分取得 | Relationの一意性 | 通常は`undecided` | 全体が一意であるという断定 |
+
+この表で説明しているのは既存の正値・一意性判断の範囲である。すべてのRule種別へ自動的に一般化しない。日時の前後・期間重複を扱う規則についても、**どの時点の値、どのRelation行、どのグループを比較するか**をそのRuleの条件で検査する。現在mainには暦日の前後と期間非重複の実装があるが、それだけで二時点履歴の全整合性やProviderのSnapshot閉包が成立したことにはしない。
+
+現行の `ValueState` が直接表すのは上記3状態であり、従来のDPC-05に列挙した `withheld`（非開示）や「対象レコード自体が存在しない」はこの3状態へ無理に押し込まない。非開示の可否はFunction Data Context・Audience／Disclosureと現在の権限判定に保持し、未取得と同じ業務事実だとは扱わない。
+
+### 12.7 定義表・記録例・実Providerデータの三つの役割を区別する
+
+mainに導入された `tei.authoring/v1` の `example of <data>` は、項目定義表とは別に、**記録の例と、規則に期待する結果**を文書に置くための明示的な印である。選択済みReaderは例を `RuleExamples` に保持し、受理済みの規則に対して `tei validate` が期待と実際の判断を照合できる。印のない説明表を自動的な実データとしない。例を追加・編集しても `World` の意味定義は変わらない。
+
+ここで区別するものは次の三つである。
+
+| 役割 | 情報源 | 保存・照合するもの | 自動的に付与しない資格 |
+| --- | --- | --- | --- |
+| **定義** | `data`／`rule` の選択済みSource | Data・Attribute・Ruleの型付き意味、Source位置・版 | 実レコードの存在と値 |
+| **記録の例** | 印付き `example of` と期待結果 | 例のセル、NULL相当の空欄、未記載列、期待結果のbyte位置、規則との照合 | Providerの実Read、業務Ownerの独立受理、全件性 |
+| **実際の記録** | DB／API／Fileの実Provider | Subject・Occurrence・ValueState・Read範囲・時点・実Called | サンプル例からの実在推定、現在GrantやEffect |
+
+例の空セルは、その例の記録に値がないことを表す。例に**列そのものがない**場合は読んでいない項目として扱う。実データの未取得・非開示・不存在まで一律に空欄へ変換しない。例の期待値は記述者が記した確認条件であり、#1180／#2514の独立Expectedを置き換えるものではない。規則自体の型・参照が不正なら例の判定を進めず、Operatorの実装が選択されていないときも「例が一致した」と報告しない。
+
+意味定義が不変のまま例だけを直した場合、`World`のFingerprintが同じでも、**例のSource byte・期待結果・その検収証拠は改版**される。Source Indexの現在性、Model／Artifact再利用、検証結果の再利用は分けて判断する。例の期待結果が変わっただけで業務プログラムの再生成を強制せず、かといって古い検収票を現在の結果として使わない。
+
+### 12.8 既存の独立Expectedに渡す最小反例
+
+新しい試験正本や汎用Validatorは作らず、既存の `validationeval/reading_test.go`、`workspace/tei_md_rule_example_test.go`、`operations/rule_example_check_test.go` と対応するSourceを再利用する。最初の追加差分は、選択した一Sourceに対するread-onlyな「**定義／取得状態／規則要求／判断理由／元Source位置**」の照合票とする。
+
+| ID | 検証対象 | 独立Expectedで区別すること |
+| --- | --- | --- |
+| DPC-09 | 同じ正値Ruleへのpresent／NULL／not-fetched | 成立・不成立・判定不能の違いと、それぞれの理由 |
+| DPC-10 | Relation一意性の部分取得と、観測済み重複 | 部分取得でも確定する不成立と、未取得部分で結論が変わる判定不能 |
+| DPC-11 | 全件取得した一行だけのRelationでキーが未取得 | キーの値を知らなくても一意性は成立するという確定条件 |
+| DPC-12 | 定義表・印付き例・印のない説明表、例の期待値改版 | Worldの不変性と、検収Source／期待結果の失効を別に扱う |
+| DPC-13 | 暦日の順序と期間非重複、部分Read、開いた終了日 | Ruleに明示された期間・グループ・終端の意味だけで判定し、二時点・実Providerの完全性を推定しない |
+
+DPC-09〜13は**新しい実装の合格宣言ではなく、既存の実装から次に検証すべき接続条件**である。生成Goと既存Evaluatorの結果・Read先ID一致（main #5118）や、Build Plan後の元Markdown改版拒否（main #5129）は、すでにある狭い回帰として参照し、重複実装しない。結果が合っても読み取った対象が異なる場合、同じConsumer結果として認定しない。
+
+最初の製品への接続は `Workspace.Load`→Data／Rule／ExampleとSource位置→`Decide`の判断・理由→既存CLI／Studioのread-only Inspector とする。Provider実Read、生成Go・Builderの同一Attempt、独立Consumer、Windows Stage1→Stage2は各Ownerの別検収であり、この追加設計の先行Gateにはしない。

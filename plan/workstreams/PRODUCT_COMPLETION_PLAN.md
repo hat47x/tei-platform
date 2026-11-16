@@ -1599,3 +1599,13 @@ mainのRule生成Go CLIビルド回帰は、選択Markdown原文のコピーをG
 **D-1の実装適格性**：[実行パケット§8](MVP_DOGFOOD_DECISION_TRANSFER_2026-11.md)で、Dataの`required=yes`と元Goの`!= ""`、`required=no`とRelationの`== ""`を区別した。自己記述された項目定義と実ValidationインスタンスのBinding、既存Operatorによる厳密な受理・拒否ができないならM1は`unsupported`とする。元Markdownを正常にLoadできる試験と、不正な型付きValidationを拒否する単体試験も別資格として扱う。
 
 **利用者側の最小dogfooding**：[実行パケット§9](MVP_DOGFOOD_DECISION_TRANSFER_2026-11.md)では、CLI実`tei inspect`と直接`operations.InspectSubject`の同値回帰を基線に、Wails非依存Studio Hostの三入口比較[PR #5119](https://github.com/hat47x/tei-platform/pull/5119)（Draft）を重複実装せず待つ。次はテスト用Ruleの説明変更／参照先変更→再Inspect→生成Go→実Buildという一往復を試す。Sourceの表示・編集Intent・実Provider・Windows Stage2の権限と証拠は混ぜない。
+
+### 標準Dataから読取状態と規則の判断を照合する（2026年11月16日）
+
+[標準フロー設計§12.6〜12.8](../design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)と[dogfooding§17.5〜17.6](../design/IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md)を受け、データ様式の最初の製品接続を次の順序に絞る。現行mainには値の状態を区別する `Decide` と、印付き `example of` の選択・照合が存在する。これらを別Runnerで作り直さず、**一つの選択済みSource版**から型付きData／Rule／記録例・Source位置を出し、規則の要求と判断できる範囲をread-onlyで示す。
+
+- **DF-P1：型付き入力・理由票**。DPC-09〜11のpresent／NULL／not-fetched、partial／complete、観測済み重複を手書きの独立Expectedと照合する。「未取得だから常に未確定」「行が少ないから必ず確定」のいずれの過剰一般化も拒否する。
+- **DF-P2：例・改版票**。DPC-12の `example of` の期待結果と元Source位置を、World意味、実Provider記録、独立Expectedとは別の資格で表示する。例だけを修正してもWorld Fingerprintを意味上改変したとは主張せず、旧検収証拠は現在性を再確認する。
+- **DF-P3：異質な規則・Consumer**。DPC-13の暦日／期間と、Read対象ID、失効理由を既存Rule／Source／Projectionへ照合する。実Provider・HTTP公開・更新／Effect、BuilderとStage2は各Ownerで別の実Target検収とする。
+
+既存の #5118（Data表由来G/Pの実Read先ID差分）と #5129（Build Plan後の元Markdown改版拒否）は限定基線として再利用する。並行PR #5097／#5114はclosed/unmergedであり、これらの成功をmain実装に数えない。製品の受入には既存#1180／#2514の独立Expectedとexact HEADのCIを要する。今回の追補は新規Go／DB／Windows E2Eの実行を意味しない。
