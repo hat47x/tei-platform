@@ -83,8 +83,8 @@ func TestTEIFenceIndentedIntoAListItemLineIsRefused(t *testing.T) {
 }
 
 // 3. A row that renders as a table row but has no leading pipe used to end the
-// table silently.
-func TestMarkedTableRowWithoutLeadingPipeIsRefused(t *testing.T) {
+// table silently. CommonMark renders it, so it is now read.
+func TestMarkedTableRowWithoutLeadingPipeIsRead(t *testing.T) {
 	src := "# title\n" +
 		"\n" +
 		"<!-- tei: data Ghost in organization -->\n" +
@@ -96,7 +96,20 @@ func TestMarkedTableRowWithoutLeadingPipeIsRefused(t *testing.T) {
 		"```tei\n" +
 		"namespace organization\n" +
 		"```\n"
-	requireRefused(t, src, "ghostName", "another row of the marked table")
+	document, err := syntax.ScanTEIMarkdownDocument(src)
+	if err != nil {
+		t.Fatalf("the row is rendered as part of the table, but the reader refused it: %v", err)
+	}
+	if len(document.Tables) != 1 {
+		t.Fatalf("tables=%d, want 1", len(document.Tables))
+	}
+	rows := document.Tables[0].Rows
+	if len(rows) != 2 {
+		t.Fatalf("rows=%d, want 2: the row without a leading pipe was dropped without a diagnostic", len(rows))
+	}
+	if rows[1][0].Text != "ghostName" {
+		t.Fatalf("second row starts with %q, want ghostName", rows[1][0].Text)
+	}
 }
 
 // 3b. A blank line inside the table ends it; the row behind the blank line is

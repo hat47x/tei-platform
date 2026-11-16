@@ -26,6 +26,14 @@ import (
 // follows a one-line mark `<!-- tei: ... -->`. The table stays an ordinary
 // Markdown table, so the document renders the same; the mark is what makes it
 // a definition. A table without a mark is documentation.
+//
+// A row of a marked table may omit its leading pipe, but it must keep the
+// trailing one: a line that ends with `|` and has as many cells as the header is
+// read as a row, and a line that does not is not. Without the trailing pipe the
+// rule could not tell a row from prose that merely contains a pipe, so that case
+// is documentation rather than a silent loss. Nothing that looks like a `tei`
+// fence or a `tei:` mark is ever skipped without a diagnostic: a region or table
+// the scanner did not read is reported with its position.
 
 // TEIMarkdownFenceName is the info string that marks a definition region.
 const TEIMarkdownFenceName = "tei"
@@ -148,15 +156,17 @@ func scanTEIMarkdown(src string, readTables bool) (MarkdownDocument, error) {
 			}
 			switch {
 			case !isRow:
-				// The table ends at the first line that is not a row. A line
-				// that still looks like a row of this table is a near miss:
-				// Markdown renders it as part of the table, so dropping it
-				// silently would lose a row the author wrote (#5145).
-				// A near miss is only meaningful once the table has a header
-				// and a delimiter row: before that, the line is prose.
-				if table.stage == 2 && looksLikeDroppedRow(text, len(table.table.Header)) {
-					return MarkdownDocument{}, &ParseError{Pos: lineSpan.Start, End: lineSpan.End,
-						Msg: "this line reads as another row of the marked table above but is not one: a row starts and ends with |, and a blank line ends the table"}
+				// A line that is still a row of this table is read, not
+				// dropped: CommonMark renders a row with or without the
+				// surrounding pipes (#5145).
+				if table.stage == 2 {
+					if detached, ok, err := markdownTableRowDetached(text, at, len(table.table.Header)); err != nil {
+						return MarkdownDocument{}, err
+					} else if ok {
+						table.table.Rows = append(table.table.Rows, detached)
+						consumed = true
+						break
+					}
 				}
 				if err := finishTable(); err != nil {
 					return MarkdownDocument{}, err
@@ -211,12 +221,21 @@ func scanTEIMarkdown(src string, readTables bool) (MarkdownDocument, error) {
 			case rawHTMLBlockOpen != "" && indent <= 3:
 				// A mark or table inside a raw HTML block is not rendered as a
 				// table; reading it would invent a definition (#5145).
+				if strings.TrimSpace(body) == "" {
+					// A block opened by <div>-style markup ends at a blank line
+					// (rawHTMLBlockBlankLine). A block opened by <pre>-style
+					// markup continues through blank lines.
+					if rawHTMLBlockOpen == rawHTMLBlockBlankLine {
+						rawHTMLBlockOpen = ""
+					}
+					break
+				}
 				if readTables && strings.HasPrefix(body, "<!--") &&
 					strings.HasPrefix(strings.ToLower(strings.TrimSpace(strings.TrimPrefix(body, "<!--"))), "tei:") {
 					return MarkdownDocument{}, &ParseError{Pos: at(indent), End: lineSpan.End,
 						Msg: "a tei mark inside a raw HTML block is not read; move it out of the HTML block, or remove it if it is an example"}
 				}
-				if strings.Contains(strings.ToLower(body), rawHTMLBlockOpen) {
+				if rawHTMLBlockOpen != rawHTMLBlockBlankLine && strings.Contains(strings.ToLower(body), rawHTMLBlockOpen) {
 					rawHTMLBlockOpen = ""
 				}
 			case indent <= 3 && rawHTMLBlockTag(body) != "":
@@ -330,6 +349,14 @@ func scanTEIMarkdown(src string, readTables bool) (MarkdownDocument, error) {
 		return MarkdownDocument{}, &ParseError{Pos: fence.open.Start, End: fence.open.End,
 			Msg: "tei fence is not closed; the rest of the document would be read as a definition"}
 	}
+	if fence != nil {
+		// A non-tei fence that never closes is still documentation to the end
+		// of the document, so a `tei` fence quoted inside it stays an example.
+		documentation = append(documentation, wantSpan(fence.open.Start.Offset, len(src)))
+	}
+	if inComment && commentStart.Offset < len(src) {
+		documentation = append(documentation, wantSpan(commentStart.Offset, len(src)))
+	}
 	if err := rejectUnreadTEITokens(src, document, documentation); err != nil {
 		return MarkdownDocument{}, err
 	}
@@ -397,14 +424,35 @@ func markdownTableRow(text string, at func(int) Position) ([]MarkdownCell, bool,
 	return cells, true, nil
 }
 
-// rawHTMLBlockTag returns the closing tag that ends a raw HTML block, or "" when
-// body does not open one. Only the block-level elements that make a mark
-// meaningless are tracked: inside them Markdown is not interpreted, so a table
-// there is not a table.
+// rawHTMLBlockBlankLine marks an HTML block that ends at a blank line rather
+// than at a closing tag.
+const rawHTMLBlockBlankLine = "\x00blank-line"
+
+// rawHTMLBlockTag returns the marker that ends the raw HTML block body opens, or
+// "" when body does not open one.
+//
+// Inside these blocks CommonMark does not interpret Markdown, so a table written
+// there is not a table and a mark announces nothing.
 func rawHTMLBlockTag(body string) string {
+	lowered := strings.ToLower(body)
 	for _, tag := range []string{"pre", "script", "style", "textarea"} {
-		if strings.HasPrefix(strings.ToLower(body), "<"+tag) {
-			return "</" + tag + ">"
+		open := "<" + tag
+		if !strings.HasPrefix(lowered, open) {
+			continue
+		}
+		// `<pre>` and `<pre class="x">` open a block; `<pre>example</pre>`
+		// closes on its own line and does not.
+		rest := lowered[len(open):]
+		if end := strings.IndexByte(rest, '>'); end >= 0 && strings.Contains(rest[end:], "</"+tag+">") {
+			return ""
+		}
+		return "</" + tag + ">"
+	}
+	// Block-level elements that are not raw text end their block at a blank
+	// line. A mark inside them is still not rendered as a table.
+	for _, tag := range []string{"div", "table", "section", "article", "aside", "header", "footer", "nav", "main", "figure", "details", "ul", "ol", "form", "blockquote"} {
+		if strings.HasPrefix(lowered, "<"+tag) {
+			return rawHTMLBlockBlankLine
 		}
 	}
 	return ""
@@ -441,27 +489,50 @@ func stripMarkdownListMarker(body string) (rest string, consumed int, ok bool) {
 	return body[digits+2:], digits + 2, true
 }
 
-// looksLikeDroppedRow reports whether text has the shape of a row of a table
-// with the given number of cells but is not one: it carries the pipe-separated
-// cells of the table without starting with one, or it starts after a blank line.
+// markdownTableRowDetached reads a row that does not start with `|`.
 //
-// Such a line is what a reader loses when it stops at the first line that
-// `markdownTableRow` does not accept. Counting the cells keeps ordinary prose
-// and a single trailing pipe from being reported.
-func looksLikeDroppedRow(text string, cells int) bool {
+// CommonMark renders a table row with or without the leading pipe, so a line
+// that ends with `|` and has exactly as many cells as the header is a row of the
+// marked table. Reading it keeps the reader faithful to what the document
+// displays; dropping it silently was the defect in #5145.
+//
+// The trailing pipe is required because it is what tells a row from prose that
+// merely mentions a pipe: "Use `a | b` to filter rows." has the cell count of a
+// two-cell table but does not end with one. A row written with no surrounding
+// pipe at all stays documentation.
+func markdownTableRowDetached(text string, at func(int) Position, cells int) ([]MarkdownCell, bool, error) {
 	indent, body := markdownIndent(text)
-	if indent > 3 {
-		return false
-	}
 	trimmed := strings.TrimRight(body, " \t")
-	if trimmed == "" || trimmed[0] == '<' || trimmed[0] == '#' || strings.HasPrefix(trimmed, "```") || strings.HasPrefix(trimmed, "~~~") {
-		return false
+	if indent > 3 || trimmed == "" || trimmed[0] == '|' || !strings.HasSuffix(trimmed, "|") {
+		return nil, false, nil
 	}
-	// A closing pipe without an opening one is the case the issue names.
-	if trimmed[0] == '|' {
-		return false
+	// A block-level start is never a row.
+	switch trimmed[0] {
+	case '#', '<', '-', '*', '+', '`', '~', '>':
+		return nil, false, nil
 	}
-	return strings.Count(trimmed, "|") >= cells
+	base := len(text) - len(body)
+	if escaped := strings.Index(trimmed, `\|`); escaped >= 0 {
+		return nil, true, &ParseError{Pos: at(base + escaped), End: at(base + escaped + 2),
+			Msg: "a cell of a marked table cannot contain |; write the value outside the table"}
+	}
+	parts := strings.Split(strings.TrimSuffix(trimmed, "|"), "|")
+	if len(parts) != cells {
+		return nil, false, nil
+	}
+	var row []MarkdownCell
+	start := base
+	for _, raw := range parts {
+		left := len(raw) - len(strings.TrimLeft(raw, " \t"))
+		value := strings.TrimSpace(raw)
+		begin := start + left
+		if value == "" {
+			begin = start
+		}
+		row = append(row, MarkdownCell{Text: value, Anchor: Anchor{Start: at(begin), End: at(begin + len(value))}})
+		start += len(raw) + 1
+	}
+	return row, true, nil
 }
 
 func markdownDelimiterRow(cells []MarkdownCell) bool {
@@ -489,26 +560,60 @@ func markdownDelimiterRow(cells []MarkdownCell) bool {
 // region that was read cannot be reported twice.
 func rejectUnreadTEITokens(src string, document MarkdownDocument, documentation []Anchor) error {
 	residual := maskReadTEIContent(src, document, documentation)
-	lowered := strings.ToLower(residual)
 
-	for offset := 0; offset < len(residual); offset++ {
-		position := positionIn(src, offset)
-		if strings.HasPrefix(lowered[offset:], "```tei") || strings.HasPrefix(lowered[offset:], "~~~tei") {
-			return &ParseError{Pos: position, End: position,
-				Msg: "a tei fence was left unread; a fence inside a list item or a raw HTML block can hide it. Move the definition out, or rename the fence if it is an example"}
+	// Walk the residual once, line by line. Masking replaces bytes with spaces
+	// and keeps line feeds, so a column in the residual is the same column in
+	// the source: the position needs no second pass over the document.
+	line := 1
+	for offset := 0; offset <= len(residual); {
+		end := strings.IndexByte(residual[offset:], '\n')
+		next := len(residual) + 1
+		if end < 0 {
+			end = len(residual)
+		} else {
+			end += offset
+			next = end + 1
 		}
-		if strings.HasPrefix(lowered[offset:], "<!--") {
-			rest := residual[offset+len("<!--"):]
-			closing := strings.Index(rest, "-->")
-			if closing < 0 {
-				continue
+		text := strings.TrimSuffix(residual[offset:end], "\r")
+		at := func(column int) Position {
+			return Position{Offset: offset + column, Line: line, Column: column + 1}
+		}
+		if indent, body := markdownIndent(text); indent <= 3 {
+			lowered := strings.ToLower(body)
+			if strings.HasPrefix(lowered, "```tei") || strings.HasPrefix(lowered, "~~~tei") {
+				return &ParseError{Pos: at(indent), End: at(len(text)),
+					Msg: "a tei fence was left unread; a fence inside a list item or a raw HTML block can hide it. Move the definition out, or rename the fence if it is an example"}
 			}
-			mark := strings.TrimSpace(strings.TrimLeft(strings.TrimSpace(rest[:closing]), "-"))
-			if strings.HasPrefix(strings.ToLower(mark), "tei:") {
-				return &ParseError{Pos: position, End: positionIn(src, offset+len("<!--")+closing),
-					Msg: "a tei mark was left unread; a mark must be the only comment on its line, written in lower case, directly before its table"}
+			// A mark must be the only thing on its line, so a `tei:` comment
+			// that shares the line with other content is not one: it used to be
+			// accepted and then ignored (#5145).
+			if strings.Contains(lowered, "<!--") {
+				for start := 0; ; {
+					open := strings.Index(lowered[start:], "<!--")
+					if open < 0 {
+						break
+					}
+					column := indent + start + open
+					rest := body[column+len("<!--"):]
+					closing := strings.Index(rest, "-->")
+					if closing >= 0 {
+						mark := strings.TrimSpace(strings.TrimLeft(strings.TrimSpace(rest[:closing]), "-"))
+						if strings.HasPrefix(strings.ToLower(mark), "tei:") {
+							return &ParseError{Pos: at(column), End: at(len(text)),
+								Msg: "a tei mark was left unread; a mark must be the only thing on its line, written in lower case, directly before its table"}
+						}
+						start += open + len("<!--") + closing
+						continue
+					}
+					break
+				}
 			}
 		}
+		if next > len(residual) {
+			break
+		}
+		offset = next
+		line++
 	}
 	return nil
 }
@@ -548,14 +653,10 @@ func maskReadTEIContent(src string, document MarkdownDocument, documentation []A
 	return string(masked)
 }
 
-// positionIn converts a byte offset of src into a line and column.
-func positionIn(src string, offset int) Position {
-	if offset > len(src) {
-		offset = len(src)
-	}
-	line := 1 + strings.Count(src[:offset], "\n")
-	lineStart := strings.LastIndexByte(src[:offset], '\n') + 1
-	return Position{Offset: offset, Line: line, Column: offset - lineStart + 1}
+// wantSpan builds an anchor from byte offsets alone. Masking only reads the
+// offsets, so the line and column are left unset.
+func wantSpan(start, end int) Anchor {
+	return Anchor{Start: Position{Offset: start}, End: Position{Offset: end}}
 }
 
 // MaskMarkdownRegion returns a source in which only the region content is
