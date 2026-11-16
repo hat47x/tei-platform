@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"testing"
 	"time"
 
@@ -239,6 +241,11 @@ func TestOrgAxisAsOfActualPostgresOptIn(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
+				// A SELECT without ORDER BY has no row-order contract.
+				// Compare complete projections by Membership identity, not scan order.
+				sort.Slice(mapped.Rows, func(i, j int) bool {
+					return fmt.Sprint(mapped.Rows[i][0]) < fmt.Sprint(mapped.Rows[j][0])
+				})
 				if ids := orgAxisResultIDs(mapped.Rows); !reflect.DeepEqual(ids, wantMemberships) {
 					t.Fatalf("actual Membership projection=%v want=%v", ids, wantMemberships)
 				}
