@@ -2022,3 +2022,43 @@ MR-01〜06は**試験候補の識別子**であって、製品に新しく追加
 共通の評価票には、**Subject・Source Revision・Read ID／Coverage・Expected・変更因子・方式の適用可否・選択版と実Call・Builder／Consumer実受領・Mutant検出・再実行費用**を記録する。方式選択では、まず意味と必要Readの適合、次にTarget配布・保守対象（定義、Generator、Hook、手書きGo）・変更波及・実行費を比較する。生成行数が多いこと、あるいは解釈のみであること自体に優劣を付けない。
 
 **現在の資格**：研究文献の方法と現行mainに存在する限定実装を照合した計画。MR-01〜06の追加製品試験、実ProviderのRead Coverage、正式R2-P／R3、Ownerの意味受理、非Plugin Windows Studio Stage1→Stage2は**NOT RUN／NOT PROVEN**。既存P0の順序を変更せず、新Runtime／Registry／Graph Runner／第二Expected正本を導入しない。
+
+
+### 16.54 研究の最初の実適用先を、状態付きReadとRuleの判断へ絞る（2026-11-17）
+
+前§16.52〜16.53で示した差分テストを、最新のmainに合わせて更新する。#5148の`no-overlap`（同じ組の複数行について期間が重ならないこと）、#5149の`validationread.Detail`（Contract Queryで得た行を値の状態として読む）、#5150のOperator選択指紋の一本化は**main統合済み**である。旧§16.52〜16.53に残る「審査中」は、その節を書いた時点の記録であり、現在の実装状況ではない。
+
+ただし成立範囲は異なる。#5148はRule著作・評価と記録例での判定、#5149はSQLiteを用いた**SQL Executor→行→Reader**の限定実証である。#5149のPRには、Contract Queryのパターン解決／Binding／Environmentを通した通常の製品入口、Read完全性の正式な宣言、製品CallerからReaderへの接続、実PostgreSQL、独立Consumer受領が未実施と明記されている。#5150の選択指紋一致は、外部Pluginのactual Callや業務上のLaw適合を証明しない。これらを合わせても正式R3やStudio Stage2の資格にはならない。
+
+**研究課題を一つにまとめる**。選択された一つのSource／Queryの実Readから、必要な値・取得した行の範囲・対象Ruleの意味を対応付け、何を根拠に「成立」「不成立」「未確定」と判断できるかを、独立Expectedと実Consumerに示す。汎用Graph、Rule Engine、Provider、Hostをもう一つ作るのではなく、既存Read／Rule／Operationの未接続の一辺を明らかにする。
+
+### 16.55 部分取得下では、成立と不成立の証拠条件が対称とは限らない
+
+一つの判断に必要な証拠は、Ruleの量化範囲と入力の状態によって異なる。`positive`のような単一値の条件、`not-after`のような同一記録の二日付の条件、`no-overlap`のような組内の全行に関わる条件を、`partial`の一語だけで同じ扱いにしない。
+
+| 規則と観測範囲 | 観測済みの情報で結論を出せる場面 | 保留しなければならない場面 |
+| --- | --- | --- |
+| 単一値の`positive` | 対象Attributeが実際に存在し、型と値を確定できる。無関係なRelationがpartialでも判定は変わらない | 必須の対象値がnot-fetched、または型・由来が確定していない |
+| 同じ記録の`not-after` | 必要な二日付があり、Ruleの`if present`等の条件を満たす。日付の比較結果を確定できる | 比較に必要な項目が未取得。NULLの扱いと未取得を混同する |
+| 組内の`no-overlap` | 同じ組・同じ対象範囲に属する二件の期間と端点が確定し、実際に重なるなら、残行が未知でも**その規則の不成立**を確定できる | 観測した行に重なりがなくても、必要な組内の残行が未取得なら**成立**とは断定しない。所属先・Key・端点が未確定なら既知の反例とも呼ばない |
+| 明示CRUDと派生CRUD | 双方の関係とScopeが確定し、相反する定義が観測された場合は矛盾候補を表示できる | 観測した一方だけを全定義とみなし、三要素モデル全体の整合を宣言する |
+
+この表は新しい真理値体系の提案ではない。既存`Decide`の結果と理由、Readの取得範囲、独立Expectedを照合するための**試験上の区別**である。読取集合の追加で不成立の反証が保存されるのは、その反証が必要なKey／時点／Scopeを満たし、Ruleの意味が同じ場合に限る。Readが正しい値を返したこと、Callerが`complete`と申告したこと、Source Readerが領域を漏らさず読んだことはそれぞれ別の証拠である。
+
+別表層のSource位置を扱う#5196、Markdown Readerの無言の読み飛ばしを修正する#5200、三要素CRUDの相反を診断する#5190、X-TEA由来の条件付き必須Rule #5187は、確認時点では**Openの実装候補**として扱う。新しい比較事例の候補にはなるが、いずれも正式に統合・検収された前提にはしない。
+
+### 16.56 次の一件は「実Read→状態→Rule→Consumer」を同一Attemptで通す
+
+最小の製品実験では、#5149のSQL Executor→`validationread.Detail`で成立した部分を再利用し、**既存の選択済みOperation／CLIから実際にReaderを呼び、Rule判定と独立Consumerの受領までつなぐ**。同一AttemptでSource版、Query／Binding、実Executor、返却行とAttribute ID、NULL／未取得、Relation Coverage、Rule ID、判断結果と理由、Consumer受領を関連付ける。呼出し側が申告した`complete`を、Executorが全件取得を保証した証拠へ自動昇格させない。
+
+最初の独立Expectedは次の四つで十分とする。(1) 行に項目がない`not-fetched`と明示的な`nil`の区別、(2) 数値0とNULLの区別、(3) 同じ組の二行の期間重複はpartialでも不成立と判定可能、(4) 重複を観測しないpartialでは成立と断定できない。値が同じでも別Attributeを読んだ負例（§16.52 MR-01）と、旧Source／旧BuildPlanの失効（MR-05）は既存の試験を再利用し、新しく全方式の比較実装を作らない。
+
+検収は三つの独立した段階に分ける。
+
+1. **読めたこと**：正常なSourceと不正なSource、実行したQuery、行・型・位置・取得範囲の観測。無言の未取得と「存在しない」を区別する。
+2. **判断できたこと**：対象Ruleの意味に必要な入力だけを用い、既知反例と未確定を独立Expectedで区別する。文書中の`example of`は開発者の期待値であって、独立Expectedそのものではない。
+3. **実際に使われたこと**：通常のCLI／Operationと独立Consumerが、同じ実Caller・対象・Attemptの結果を受け取る。画面表示や別テストの成功から実受領を推定しない。
+
+この一件の成立後、同じ証拠の組を**P／G／Dの方式選択**へ返す。Pで足りるRuleは生成を要求せず、Gは生成byteとBuilder実入力を、Dは実Provider選択と現在Grantを追加して判定する。判断の移管量は、実際に削除した手書き条件、追加Targetへの再利用、保守対象の増減、失効・反例の検出力で測る。コード行数や図面数で成果を代用しない。
+
+**実装Ownerと停止線**：Read／Queryは#2586／#2622、Ruleは#2621、独立Expectedは#1180／#2514、実行は#4495、Builderは#2595／#4544、非Plugin Studio Stage1→Stage2は#2831／#4583。正式R2-P／R3／Windows Stage2は並列P0として維持する。ここに記した新しい一Attempt E2E、実Provider完全性、Ownerの意味受理、三方式の実Target比較は今回**未実施**。研究の試験項目を新しいHard Gateや第二Engineへ昇格させない。
