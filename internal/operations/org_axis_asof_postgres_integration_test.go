@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -260,15 +261,18 @@ func TestOrgAxisAsOfActualPostgresOptIn(t *testing.T) {
 					}
 				}
 				var joined, persons int
+				var linkedMembershipIDs string
 				err = db.QueryRowContext(ctx,
-					"SELECT COUNT(*), COUNT(DISTINCT person_id) FROM " + candidate + " WHERE candidate_world = $1",
-					tc.world).Scan(&joined, &persons)
+					"SELECT COUNT(*), string_agg(membership_id, ',' ORDER BY membership_id), " +
+						"COUNT(DISTINCT person_id) FROM " + candidate + " WHERE candidate_world = $1",
+					tc.world).Scan(&joined, &linkedMembershipIDs, &persons)
 				if err != nil {
 					t.Fatal(err)
 				}
-				if joined != len(wantMemberships) || persons != tc.wantPersons {
-					t.Fatalf("candidate %s has joined=%d distinctPersons=%d, expected=%d/%d",
-						tc.world, joined, persons, len(wantMemberships), tc.wantPersons)
+				if joined != len(wantMemberships) || linkedMembershipIDs != strings.Join(wantMemberships, ",") ||
+					persons != tc.wantPersons {
+					t.Fatalf("candidate %s links=%s count=%d distinctPersons=%d, want memberships=%v distinctPersons=%d",
+						tc.world, linkedMembershipIDs, joined, persons, wantMemberships, tc.wantPersons)
 				}
 			})
 		}
