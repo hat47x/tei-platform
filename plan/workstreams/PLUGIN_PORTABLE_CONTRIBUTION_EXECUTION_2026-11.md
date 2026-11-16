@@ -36,6 +36,18 @@
 
 検証対象をpure Rule、read-only Data Provider、Effectful Operationの順に増やす。比較値は、機能を追加するために必要なCore分岐数、手書きGo／TS行数、生成した実装のうち実Callされた割合、Build-only／Runtime依存サイズ、CLI直接呼出しの動作、Target変更で再資格化した範囲とする。「Plugin化できる」という自己申告を成果指標にしない。
 
-作業中のAPI Plugin共通化PR #5096は別のReview／CI対象であり、未統合HEADの成果を本計画の合格へ算入しない。関連PRが競合するときは現行mainから小差分を作り直し、旧PRを二重マージしない。
+旧API Plugin PR #5096はクローズ・未マージ。設計節が現行mainに存在することと、API公開の実装・検証が完了したことは区別する。旧PR #5133もクローズ・未マージだが本計画の同じ内容はmainにあるため、古いブランチを改めてマージしない。関連PRが競合するときは現行mainから小差分を作り直す。
 
 各小PRは対象HEADのrequired CI、現在mainのRepository Health、変更範囲と独立Expectedの結果を別々に確認してから統合する。CI未完了・失敗、古いSource、未確認Consumer、業務Owner未受理をPASSに言い換えない。正本追加・新規Host・常駐Daemonが必要になった場合は、先に一つの失敗例と既存Ownerで解決できない理由を示す。
+
+## 5. PC-1を三つの検収に割る（2026年11月16日）
+
+| 手順 | 実物と確認事項 | 合格できる範囲・残す断点 |
+| --- | --- | --- |
+| **PC-1a（今回の小Goテスト）** | `internal/plugin/transform/plugin_field_projection_conformance_test.go`。全体Record、二Fieldだけの明示出力、余分なField、必須欠損、明示NULL | 既存Transformの**純粋な出力整形**のみ。HostのDisclosure／Plugin Port Mappingではない |
+| **PC-1b（次の実装）** | 既存TypeRef／ContractのField ID・Role・Cardinality・取得完全性・Audienceを、PC-1aと同じ入力でread-only照合 | 名前や値だけでの接続を拒否。partial／unfetchedをNULLと混ぜない。Sourceへ戻せないBindingは編集不可 |
+| **PC-1c（Adapter候補）** | 一段の明示pure Adapterを、固定された単位・丸め・精度・Lossの独立Expectedで比較 | Adapterの型適合は業務Law受理や実Provider Callにならない。自動Adapter探索はしない |
+
+**既存実装を再利用する順序**：まずPC-1aの実Goテストを対象HEADで実行する。型・取得範囲の意味を持たない現行`transform.Value`へ新しい未取得状態を安易に追加せず、PC-1bは#1223／#2497／#951のContract／ContextのOwnerに渡す。PC-1cは#988／#1121に渡す。実際のSource→Read→Result→Consumerは#4495の非Builtin Providerの製品実Callと合流できる場合だけPC-3へ進める。
+
+**独立Expectedの切り方**：PCON-01のうち「出力Valueが二Fieldのみ」という条件だけをPC-1aで判定する。PCON-02〜04のContract ID、partial、丸めについて、この純粋Transform試験からPASSを主張しない。PCON-05〜09も未実施のまま残す。Plugin Resolverの拒否コード試験はmain済み#5147の既存Coverageを利用し、第二の診断コード表を作らない。
