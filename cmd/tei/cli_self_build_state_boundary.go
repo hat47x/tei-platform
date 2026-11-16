@@ -80,8 +80,13 @@ fi
 exec "$@"`
 
 	return &selfBuildBoundary{
-		Name:     "linux-mount-namespace",
-		Launcher: []string{unsharePath, "-rm", "sh", "-c", script, "sh"},
+		Name: "linux-mount-namespace",
+		// --propagation private is a safety measure, not part of the claim: if the
+		// host marks / shared, a read-only remount inside the namespace can propagate
+		// out and make the host tree read-only. It is private on the host measured
+		// here, so the flag changes nothing today, but the boundary must not depend on
+		// that being true everywhere.
+		Launcher: []string{unsharePath, "-rm", "--propagation", "private", "sh", "-c", script, "sh"},
 		Env: []string{
 			"ALLOW_STATE=" + secondState,
 			"ALLOW_ART=" + artifactDir,

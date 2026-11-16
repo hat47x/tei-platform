@@ -38,11 +38,23 @@ func TestStateBoundaryLauncherShape(t *testing.T) {
 	if len(boundary.Launcher) < 6 || !strings.HasSuffix(boundary.Launcher[0], "unshare") {
 		t.Fatalf("launcher = %v, want unshare -rm sh -c <script> sh", boundary.Launcher)
 	}
-	if boundary.Launcher[1] != "-rm" || boundary.Launcher[2] != "sh" || boundary.Launcher[3] != "-c" {
-		t.Fatalf("launcher prefix = %v", boundary.Launcher[:4])
+	// unshare -rm --propagation private sh -c <script> sh: the propagation flag must be
+	// present, because a shared / on another host would let the read-only remount leak
+	// out of the namespace and make that host read-only.
+	wantPrefix := []string{"-rm", "--propagation", "private", "sh", "-c"}
+	if len(boundary.Launcher) < len(wantPrefix)+2 {
+		t.Fatalf("launcher too short: %v", boundary.Launcher)
+	}
+	for i, want := range wantPrefix {
+		if boundary.Launcher[1+i] != want {
+			t.Fatalf("launcher[%d] = %q, want %q (full: %v)", 1+i, boundary.Launcher[1+i], want, boundary.Launcher[:len(wantPrefix)+1])
+		}
+	}
+	if boundary.Launcher[len(boundary.Launcher)-1] != "sh" {
+		t.Fatalf("launcher must end with the sh argv0 placeholder: %v", boundary.Launcher)
 	}
 
-	script := boundary.Launcher[4]
+	script := boundary.Launcher[1+len(wantPrefix)]
 	for _, want := range []string{
 		"remount,bind,ro /",
 		"remount,bind,rw",
@@ -78,14 +90,22 @@ func TestStateBoundaryLauncherShape(t *testing.T) {
 	}
 }
 
-// The scope must not claim that nothing else was writable: the read-only remount
-// covers the root tree, and separately mounted filesystems are outside it.
+// The scope must not claim that nothing else was writable. Measured on this host:
+// /tmp, /proc, /dev, /sys, /run and /home are refused, but /dev/shm and
+// /run/user/<uid> still accept writes because they are separate mounts. Reads were
+// never confined. The wording has to say all three things.
 func TestStateBoundaryScopeNamesWhatIsNotCovered(t *testing.T) {
 	lower := strings.ToLower(stateSeparationHostBoundaryScope)
-	if !strings.Contains(lower, "not covered") {
-		t.Fatalf("scope does not say what the boundary leaves out: %q", stateSeparationHostBoundaryScope)
+	for _, want := range []string{"reads are not confined", "remain writable", "/dev/shm"} {
+		if !strings.Contains(lower, want) {
+			t.Fatalf("scope does not mention %q: %q", want, stateSeparationHostBoundaryScope)
+		}
 	}
-	for _, forbidden := range []string{"only the passed state directory and the artifact directory writable", "nothing else was writable"} {
+	for _, forbidden := range []string{
+		"only the passed state directory and the artifact directory writable",
+		"nothing else was writable",
+		"no other writes",
+	} {
 		if strings.Contains(lower, forbidden) {
 			t.Fatalf("scope overstates the boundary: %q", forbidden)
 		}

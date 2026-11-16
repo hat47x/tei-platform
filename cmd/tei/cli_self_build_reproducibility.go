@@ -98,7 +98,7 @@ const (
 	// remount covers the root tree; filesystems mounted separately inside the
 	// namespace (/proc, /sys, /dev) stay writable, so this is not "nothing else
 	// was writable".
-	stateSeparationHostBoundaryScope = "the second build ran in a mount namespace where the root tree was remounted read-only, the passed state directory and the artifact directory were reopened for writing, and the first build's state directory was masked by an empty tmpfs; filesystems mounted separately from the root tree are not covered"
+	stateSeparationHostBoundaryScope = "the second build ran in a mount namespace where the root tree was remounted read-only, the passed state directory and the artifact directory were reopened for writing, and the first build's state directory was masked by an empty tmpfs; separately mounted filesystems the caller could already write to (measured: /dev/shm and /run/user/<uid>) remain writable, and reads are not confined"
 )
 
 // withArtifactAndState returns the child argv with the values of -artifact-out and

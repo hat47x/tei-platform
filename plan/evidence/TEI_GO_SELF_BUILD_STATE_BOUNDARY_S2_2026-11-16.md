@@ -61,3 +61,41 @@
 ## 検証
 
 `gofmt`（変更3ファイルは整形済み）、`go vet ./cmd/tei` 通過、`TestStateBoundaryLauncherShape` **PASS（skipではない）**、`TestStateBoundaryScopeNamesWhatIsNotCovered` PASS、既存の state 分離・再現性試験 PASS。
+
+## 追記：境界の外側を実測し、`scope` を実態に合わせ、伝播の危険を塞いだ
+
+**`scope` の文言を「実測に基づく」形へ直しました。** 前版は「root と別マウントは対象外」と一般的に書いていましたが、**どのパスが実際に書けるかを測っていませんでした。**
+
+### 実測：境界内で何が書けるか
+
+`unshare -rm` の中で `mount -o remount,bind,ro /` を実行した後、各パスへ書いてみました。
+
+| パス | 境界内 |
+| --- | --- |
+| `/tmp` | **拒否** |
+| `/proc` | **拒否** |
+| `/dev` | **拒否** |
+| `/sys` | **拒否** |
+| `/run` | **拒否** |
+| `/home` | **拒否** |
+| **`/dev/shm`** | **書けたまま** |
+| **`/run/user/1000`** | **書けたまま** |
+
+**別マウントのうち、呼び手が元々書けたものは境界内でも書けます。** これは `scope` に明記し、**試験で固定**しました（`remain writable`・`/dev/shm`・`reads are not confined` を含むことを検査）。
+
+### 伝播の危険（塞いだ）
+
+独立調査で「**ホストの `/` が `shared` だと、namespace 内の read-only 再マウントが外へ伝播してホストを読み取り専用にしうる**」という指摘を得ました。**実測すると、このホストの `/` は `private` なので漏れませんでした**（namespace 前後でホストは書き込み可能、`/` は前後とも `private`）。
+
+**ただし「このホストでは漏れない」に依存してはいけない**ので、`unshare` に **`--propagation private`** を追加しました。**これで `/` が `shared` なホストでも伝播しません。**
+
+### 読取は閉じていない（変わらず）
+
+`/dev/shm` が書ける以上、**書込境界は「root tree と、呼び手が元々書けなかった別マウント」に限られます**。**読取は一切閉じていません。** `scope` に `reads are not confined` と書きました。
+
+独立調査が挙げた「読取を閉じる」手段（tmpfs でパスを覆う、Landlock、fd の失効、`/proc/<pid>/root` の遮断）は、**いずれも本実装の範囲外**です。特に：
+
+- **既に開かれた fd 経由の読取は、user namespace では防げません**（root か Landlock/seccomp が必要）
+- **hard link や別経路の bind mount は、全木の走査なしには否定できません**
+
+**これらは「未実装」ではなく「未測定であり、主張しない」ものとして残します。**
