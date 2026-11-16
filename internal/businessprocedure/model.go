@@ -162,11 +162,35 @@ type Reference struct {
 	ID   string        `json:"id"`
 }
 
+// Outcome is the business result a branch leads to. It is a closed vocabulary
+// because the projection must be able to tell an approval from a rejection; a
+// free-form string would let two spellings of the same decision look like two
+// unrelated branches and a one-sided decision look complete.
+type Outcome string
+
+const (
+	OutcomeApproval  Outcome = "approval"
+	OutcomeRejection Outcome = "rejection"
+)
+
+// outcomes lists every accepted branch outcome in report order.
+var outcomes = []Outcome{OutcomeApproval, OutcomeRejection}
+
+// Valid reports whether the outcome is one this package understands.
+func (o Outcome) Valid() bool {
+	for _, accepted := range outcomes {
+		if o == accepted {
+			return true
+		}
+	}
+	return false
+}
+
 // Branch is one business branch a decision opens. Approval and rejection are
 // separate branches with separate identities, never one branch with two labels.
 type Branch struct {
-	ID      string `json:"id"`
-	Label   string `json:"label"`
-	OnStep  string `json:"onStep"`
-	Outcome string `json:"outcome"`
+	ID      string  `json:"id"`
+	Label   string  `json:"label"`
+	OnStep  string  `json:"onStep"`
+	Outcome Outcome `json:"outcome"`
 }

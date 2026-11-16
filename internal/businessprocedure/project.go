@@ -38,6 +38,7 @@ const (
 	CodeBranchStepUnknown            = "BUSINESS_BRANCH_STEP_UNKNOWN"
 	CodeBranchDuplicateID            = "BUSINESS_BRANCH_DUPLICATE"
 	CodeBranchMissingRejection       = "BUSINESS_DECISION_MISSING_REJECTION"
+	CodeBranchOutcomeUnknown         = "BUSINESS_BRANCH_OUTCOME_UNKNOWN"
 	CodeActorConflatesAuthorization  = "BUSINESS_ACTOR_CONFLATES_AUTHORIZATION"
 	CodeReferenceUnresolved          = "BUSINESS_REFERENCE_UNRESOLVED"
 	CodeReferenceAmbiguous           = "BUSINESS_REFERENCE_AMBIGUOUS"
@@ -107,10 +108,10 @@ type ResolvedReference struct {
 
 // BranchView is one branch after projection.
 type BranchView struct {
-	ID      string `json:"id"`
-	Label   string `json:"label"`
-	OnStep  string `json:"onStep"`
-	Outcome string `json:"outcome"`
+	ID      string  `json:"id"`
+	Label   string  `json:"label"`
+	OnStep  string  `json:"onStep"`
+	Outcome Outcome `json:"outcome"`
 }
 
 // ActorView is the business actor and, separately, the authorization concern.
@@ -343,6 +344,13 @@ func Project(fixture Fixture, procedureFingerprint string, resolver *Resolver) P
 			add(CodeStepActorUnattributed, SeverityProcedure, id,
 				fmt.Sprintf("step %q has no business actor and the procedure declares none", id))
 		}
+		// A step whose actor is the authorization role code makes the two
+		// meanings indistinguishable at the point a reader sees them, even when
+		// the procedure-level labels differ.
+		if roleCode != "" && strings.EqualFold(view.ActorLabel, roleCode) {
+			add(CodeActorConflatesAuthorization, SeverityProcedure, id,
+				fmt.Sprintf("step %q takes %q as its business actor, which is the authorization role code", id, view.ActorLabel))
+		}
 
 		// A manual step that claims to run automatically is the exact confusion
 		// this projection exists to prevent.
@@ -380,7 +388,10 @@ func Project(fixture Fixture, procedureFingerprint string, resolver *Resolver) P
 	}
 
 	branchIDs := map[string]int{}
-	branchesOnStep := map[string]map[string]bool{}
+	// branchesOnStep counts the declarations of each outcome, so a step that
+	// declares one approval and no rejection is distinguishable from one that
+	// declares nothing meaningful.
+	branchesOnStep := map[string]map[Outcome]int{}
 	for i, branch := range fixture.Branches {
 		id := strings.TrimSpace(branch.ID)
 		if id != "" {
@@ -391,6 +402,19 @@ func Project(fixture Fixture, procedureFingerprint string, resolver *Resolver) P
 				branchIDs[id] = i + 1
 			}
 		}
+		// An outcome outside the vocabulary is not an approval or a rejection,
+		// so it must not be read as either.
+		if !branch.Outcome.Valid() {
+			add(CodeBranchOutcomeUnknown, SeverityProcedure, id,
+				fmt.Sprintf("branch %q declares unknown outcome %q", id, branch.Outcome))
+			projection.Branches = append(projection.Branches, BranchView{
+				ID:      id,
+				Label:   branch.Label,
+				OnStep:  strings.TrimSpace(branch.OnStep),
+				Outcome: branch.Outcome,
+			})
+			continue
+		}
 		onStep := strings.TrimSpace(branch.OnStep)
 		if onStep != "" {
 			if _, exists := stepIDs[onStep]; !exists {
@@ -398,9 +422,9 @@ func Project(fixture Fixture, procedureFingerprint string, resolver *Resolver) P
 					fmt.Sprintf("branch %q is on step %q, which the procedure does not declare", id, onStep))
 			}
 			if branchesOnStep[onStep] == nil {
-				branchesOnStep[onStep] = map[string]bool{}
+				branchesOnStep[onStep] = map[Outcome]int{}
 			}
-			branchesOnStep[onStep][strings.TrimSpace(branch.Outcome)] = true
+			branchesOnStep[onStep][branch.Outcome]++
 		}
 		projection.Branches = append(projection.Branches, BranchView{
 			ID:      id,
@@ -409,14 +433,14 @@ func Project(fixture Fixture, procedureFingerprint string, resolver *Resolver) P
 			Outcome: branch.Outcome,
 		})
 	}
-	// A decision that opens only one branch is not a decision. The check names
-	// the step rather than inventing the missing branch.
-	for stepID, outcomes := range branchesOnStep {
-		if outcomes["approval"] && !outcomes["rejection"] {
+	// A decision that opens only one side is not a decision. The check names the
+	// step rather than inventing the missing branch.
+	for stepID, counts := range branchesOnStep {
+		switch {
+		case counts[OutcomeApproval] > 0 && counts[OutcomeRejection] == 0:
 			add(CodeBranchMissingRejection, SeverityProcedure, stepID,
 				fmt.Sprintf("decision step %q opens an approval branch but no rejection branch", stepID))
-		}
-		if outcomes["rejection"] && !outcomes["approval"] {
+		case counts[OutcomeRejection] > 0 && counts[OutcomeApproval] == 0:
 			add(CodeBranchMissingRejection, SeverityProcedure, stepID,
 				fmt.Sprintf("decision step %q opens a rejection branch but no approval branch", stepID))
 		}

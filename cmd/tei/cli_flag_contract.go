@@ -107,6 +107,7 @@ var repeatableFlags = map[string]map[string]bool{
 	"model overview":                         {},
 	"model search":                           {},
 	"model document-draft":                   {"section": true},
+	"business-procedure":                     {},
 }
 
 // validateRepeatableArguments refuses a flag that was supplied more than once

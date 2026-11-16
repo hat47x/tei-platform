@@ -29,7 +29,7 @@ func TestEveryDeclaredDiagnosticCodeIsReached(t *testing.T) {
 // without reaching it is a deliberate edit rather than an oversight.
 func TestDeclaredDiagnosticCodesAreTheClosedSet(t *testing.T) {
 	declared := declaredCodes(t)
-	const expected = 13
+	const expected = 14
 	if len(declared) != expected {
 		t.Fatalf("declared %d diagnostic codes, want %d; update this count when a code is added: %v",
 			len(declared), expected, declared)
@@ -109,6 +109,15 @@ func reachedCodes(t *testing.T) map[string]bool {
 	oneBranch := readFixture(t)
 	oneBranch.Branches = oneBranch.Branches[:1]
 	record(projectFixture(t, oneBranch))
+
+	// The reverse direction of the decision rule: a rejection with no approval.
+	onlyRejection := readFixture(t)
+	onlyRejection.Branches = onlyRejection.Branches[1:]
+	record(projectFixture(t, onlyRejection))
+
+	unknownOutcome := readFixture(t)
+	unknownOutcome.Branches[1].Outcome = "Rejected"
+	record(projectFixture(t, unknownOutcome))
 
 	conflated := readFixture(t)
 	conflated.Procedure.Actor.Label = "ORDER_EDITOR"

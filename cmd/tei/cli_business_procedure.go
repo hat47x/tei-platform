@@ -20,6 +20,9 @@ type businessProcedureResponse struct {
 	OKScope       string                        `json:"okScope,omitempty"`
 	Result        *businessprocedure.Projection `json:"result,omitempty"`
 	Error         *cliInspectionFailure         `json:"error,omitempty"`
+	// Workspace names the Workspace whose Source Index resolved the references,
+	// so a reader can tell which Workspace a projection came from.
+	Workspace *workspace.WorkspaceIdentity `json:"workspace,omitempty"`
 }
 
 func writeBusinessProcedureResponse(out io.Writer, response businessProcedureResponse, exit int) (int, error) {
@@ -72,6 +75,11 @@ func runBusinessProcedureCommand(argv []string, out io.Writer) (int, error) {
 		return failBusinessProcedure("INVALID_ARGUMENT",
 			"business-procedure does not accept positional arguments", 2, out)
 	}
+	// This command parses its own FlagSet, so the shared pass that refuses a
+	// repeated single-value flag does not run for it (#3675).
+	if err := validateRepeatableArguments("business-procedure", argv); err != nil {
+		return failBusinessProcedure("INVALID_ARGUMENT", err.Error(), 2, out)
+	}
 	if strings.TrimSpace(args.procedure) == "" {
 		return failBusinessProcedure("INVALID_ARGUMENT",
 			"business-procedure requires -procedure", 2, out)
@@ -81,12 +89,8 @@ func runBusinessProcedureCommand(argv []string, out io.Writer) (int, error) {
 			"business-procedure requires -workspace", 2, out)
 	}
 
-	raw, err := os.ReadFile(args.procedure)
+	fixture, err := readBusinessProcedureFixture(args.procedure)
 	if err != nil {
-		return failBusinessProcedure("PROCEDURE_LOAD_FAILED", err.Error(), 2, out)
-	}
-	var fixture businessprocedure.Fixture
-	if err := json.Unmarshal(raw, &fixture); err != nil {
 		return failBusinessProcedure("PROCEDURE_LOAD_FAILED", err.Error(), 2, out)
 	}
 	if fixture.SchemaVersion != businessprocedure.FixtureSchemaVersion {
@@ -102,11 +106,11 @@ func runBusinessProcedureCommand(argv []string, out io.Writer) (int, error) {
 
 	loaded, err := workspace.Load(args.workspace)
 	if err != nil {
-		return failBusinessProcedure("WORKSPACE_LOAD_FAILED", err.Error(), 2, out)
+		return failBusinessProcedure(resultCodeWorkspaceLoadFailed, err.Error(), 2, out)
 	}
 	declared, err := businessprocedure.DeclaredFromWorkspace(args.workspace, loaded)
 	if err != nil {
-		return failBusinessProcedure("SOURCE_INDEX_FAILED", err.Error(), 2, out)
+		return failBusinessProcedure(resultCodeSourceIndexFailed, err.Error(), 2, out)
 	}
 
 	projection := businessprocedure.Project(
@@ -117,10 +121,36 @@ func runBusinessProcedureCommand(argv []string, out io.Writer) (int, error) {
 
 	// The envelope's ok reports that the projection was produced, not that the
 	// procedure is accepted or that its diagnostics are absent.
-	return writeBusinessProcedureResponse(out, businessProcedureResponse{
+	response := businessProcedureResponse{
 		SchemaVersion: "tei.cli.business-procedure/v0",
 		OK:            true,
 		OKScope:       "projection-produced-only",
 		Result:        &projection,
-	}, 0)
+	}
+	response.Workspace = workspaceIdentityPointer(loaded)
+	return writeBusinessProcedureResponse(out, response, 0)
+}
+
+// readBusinessProcedureFixture decodes the procedure document strictly. An
+// unknown member is refused rather than dropped: a misspelling of
+// `manualInstruction` must not read as a manual step that has no instruction.
+func readBusinessProcedureFixture(path string) (businessprocedure.Fixture, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return businessprocedure.Fixture{}, err
+	}
+	defer file.Close()
+
+	decoder := json.NewDecoder(file)
+	decoder.DisallowUnknownFields()
+	var fixture businessprocedure.Fixture
+	if err := decoder.Decode(&fixture); err != nil {
+		return businessprocedure.Fixture{}, err
+	}
+	// A second JSON document after the first is a different input, not more of
+	// this one.
+	if _, err := decoder.Token(); err != io.EOF {
+		return businessprocedure.Fixture{}, fmt.Errorf("%s holds more than one JSON document", path)
+	}
+	return fixture, nil
 }

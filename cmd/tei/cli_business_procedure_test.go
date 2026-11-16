@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"tei/internal/businessprocedure"
 	"testing"
 )
 
@@ -198,7 +199,9 @@ func TestBusinessProcedureRejectsIncompleteInput(t *testing.T) {
 }
 
 // A document that declares another schema or another artifact role is refused
-// instead of read as if it were this one.
+// instead of read as if it were this one. A misspelled member is refused too:
+// dropping it would let `manualInsturction` read as a manual step with no
+// instruction, which is the one thing the projection must not do.
 func TestBusinessProcedureRejectsUnexpectedDocument(t *testing.T) {
 	root := filepath.Join("..", "..", "reference", "workspace")
 	dir := t.TempDir()
@@ -217,6 +220,18 @@ func TestBusinessProcedureRejectsUnexpectedDocument(t *testing.T) {
 			name: "role",
 			body: `{"schemaVersion":"business-procedure-model-reference-v0","artifactRole":"canonical"}`,
 			code: "PROCEDURE_ARTIFACT_ROLE_UNSUPPORTED",
+		},
+		{
+			name: "unknown member",
+			body: `{"schemaVersion":"business-procedure-model-reference-v0","artifactRole":"reference-authoring-fixture",` +
+				`"procedure":{"id":"p"},"steps":[{"id":"BP-X1","action":"a","realization":"manual","manualInsturction":"typo"}]}`,
+			code: "PROCEDURE_LOAD_FAILED",
+		},
+		{
+			name: "second document",
+			body: `{"schemaVersion":"business-procedure-model-reference-v0","artifactRole":"reference-authoring-fixture"}` +
+				`{"schemaVersion":"business-procedure-model-reference-v0","artifactRole":"reference-authoring-fixture"}`,
+			code: "PROCEDURE_LOAD_FAILED",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -283,5 +298,76 @@ func TestBusinessProcedureHelp(t *testing.T) {
 		if !strings.Contains(text, flagName) {
 			t.Fatalf("help omits %s: %s", flagName, text)
 		}
+	}
+}
+
+// This command parses its own FlagSet, so the shared repeatable-flag pass does
+// not run for it. Without the guard a repeated single-value flag silently keeps
+// the last value, which is the mistake the other self-parsed commands refuse.
+func TestBusinessProcedureRefusesARepeatedFlag(t *testing.T) {
+	root := filepath.Join("..", "..", "reference", "workspace")
+	code, body := runBusinessProcedure(t,
+		"-workspace", root,
+		"-procedure", businessProcedureFixturePath(),
+		"-procedure", businessProcedureFixturePath())
+	if code == 0 {
+		t.Fatalf("exit 0 for a repeated -procedure: %s", body)
+	}
+	if !strings.Contains(body, "INVALID_ARGUMENT") || !strings.Contains(body, "procedure") {
+		t.Fatalf("a repeated flag was not refused as an argument error: %s", body)
+	}
+}
+
+// The envelope names the Workspace whose Source Index resolved the references,
+// so a reader can tell which Workspace a projection came from.
+func TestBusinessProcedureReportsTheWorkspaceIdentity(t *testing.T) {
+	root := filepath.Join("..", "..", "reference", "workspace")
+	code, body := runBusinessProcedure(t,
+		"-workspace", root, "-procedure", businessProcedureFixturePath())
+	if code != 0 {
+		t.Fatalf("code=%d body=%s", code, body)
+	}
+	var envelope struct {
+		Workspace *struct {
+			Name     string `json:"name"`
+			Manifest struct {
+				Path string `json:"path"`
+			} `json:"manifest"`
+		} `json:"workspace"`
+	}
+	if err := json.Unmarshal([]byte(body), &envelope); err != nil {
+		t.Fatalf("decode: %v: %s", err, body)
+	}
+	if envelope.Workspace == nil {
+		t.Fatal("the envelope does not name the Workspace")
+	}
+	if envelope.Workspace.Name != "tei_reference" {
+		t.Fatalf("workspace name=%q, want tei_reference", envelope.Workspace.Name)
+	}
+	if envelope.Workspace.Manifest.Path != "tei.workspace.yaml" {
+		t.Fatalf("manifest path=%q", envelope.Workspace.Manifest.Path)
+	}
+}
+
+// The contract row promises the inner result schema. Asserting it here keeps the
+// advertised inner version from drifting away from what the package writes.
+func TestBusinessProcedureResultSchemaVersionIsAsserted(t *testing.T) {
+	root := filepath.Join("..", "..", "reference", "workspace")
+	code, body := runBusinessProcedure(t,
+		"-workspace", root, "-procedure", businessProcedureFixturePath())
+	if code != 0 {
+		t.Fatalf("code=%d body=%s", code, body)
+	}
+	var envelope struct {
+		Result struct {
+			SchemaVersion string `json:"schemaVersion"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal([]byte(body), &envelope); err != nil {
+		t.Fatalf("decode: %v: %s", err, body)
+	}
+	if envelope.Result.SchemaVersion != businessprocedure.ProjectionSchemaVersion {
+		t.Fatalf("inner schemaVersion=%q, want %q",
+			envelope.Result.SchemaVersion, businessprocedure.ProjectionSchemaVersion)
 	}
 }

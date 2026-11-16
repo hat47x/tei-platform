@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"tei/internal/sourceindex"
 	"tei/internal/workspace"
 )
 
@@ -107,8 +108,40 @@ func TestUnknownFunctionInTheRealWorkspaceIsReported(t *testing.T) {
 	}
 }
 
-// The index must offer only definition references as targets.
+// The index must offer only definition-role references as targets. The real
+// reference Workspace carries no authoring or derived reference of a mapped
+// subject kind, so a fixture Index is needed: without one, removing the role
+// filter would not fail any test.
 func TestDeclaredFromIndexIgnoresNonDefinitionReferences(t *testing.T) {
+	definition := sourceindex.Reference{
+		Subject:      sourceindex.Subject{Kind: "application-pattern", ID: "order_entry.submit_order"},
+		ArtifactPath: "applications/order-entry/patterns/submit-order.tei",
+		Role:         sourceindex.RoleDefinition,
+	}
+	authoring := sourceindex.Reference{
+		Subject:      sourceindex.Subject{Kind: "application-pattern", ID: "order_entry.submit_order"},
+		ArtifactPath: "applications/order-entry/patterns/submit-order.tei",
+		Role:         sourceindex.RoleAuthoring,
+	}
+	declared := DeclaredFromIndex(sourceindex.Index{
+		Artifacts:  []sourceindex.Artifact{{Path: definition.ArtifactPath, Fingerprint: "sha256:test"}},
+		References: []sourceindex.Reference{definition, authoring},
+	})
+
+	if len(declared) != 1 {
+		t.Fatalf("%d targets from one definition and one authoring reference, want 1: %+v", len(declared), declared)
+	}
+	if declared[0].Role != "definition" {
+		t.Fatalf("a %q reference became a resolvable target", declared[0].Role)
+	}
+	if declared[0].Fingerprint != "sha256:test" {
+		t.Fatalf("the artifact digest was not carried: %+v", declared[0])
+	}
+}
+
+// The real Workspace offers only definition references too; this keeps the
+// synthetic case above from drifting away from the actual index.
+func TestRealWorkspaceOffersOnlyDefinitionTargets(t *testing.T) {
 	root := workspaceRoot()
 	loaded, err := workspace.Load(root)
 	if err != nil {
@@ -118,12 +151,15 @@ func TestDeclaredFromIndexIgnoresNonDefinitionReferences(t *testing.T) {
 	if err != nil {
 		t.Fatalf("build source index: %v", err)
 	}
+	if len(declared) == 0 {
+		t.Fatal("the real index yielded no targets")
+	}
 	for _, target := range declared {
 		if target.Role != "definition" {
 			t.Fatalf("a %q reference became a resolvable target: %+v", target.Role, target)
 		}
-		if target.Subject == "" || target.Artifact == "" {
-			t.Fatalf("a declared target is missing its identity or source: %+v", target)
+		if target.Fingerprint == "" {
+			t.Fatalf("a target carries no artifact digest: %+v", target)
 		}
 	}
 }

@@ -29,9 +29,13 @@ func readFixture(t *testing.T) Fixture {
 	return fixture
 }
 
-// declaredTargets are the existing identities the reference workspace declares.
-// They are written here independently of the fixture so a reference that stops
-// existing is caught rather than silently resolved by a fixture-local copy.
+// declaredTargets are the declared identities the reference workspace carries,
+// with the exact Source position of each declaration. The values are read from
+// the Workspace's own Source Index, not derived from this package, and
+// TestDeclaredTargetsMatchTheRealIndex fails if they drift from it.
+//
+// The unit tests use this table so they do not have to load a Workspace; the
+// conformance test is what keeps the table honest.
 func declaredTargets() []Declared {
 	return []Declared{
 		{Kind: ReferencePattern, ID: "order_entry.recent_orders",
@@ -57,19 +61,19 @@ func declaredTargets() []Declared {
 		{Kind: ReferenceCapability, ID: "sales.order.submit",
 			Subject:  "semantic-capability:sales.order.submit",
 			Artifact: "semantic/sales/order.tei",
-			Line:     27, Column: 1, Role: "definition"},
+			Line:     27, Column: 12, Role: "definition"},
 		{Kind: ReferenceCapability, ID: "security.authorize",
 			Subject:  "semantic-capability:security.authorize",
 			Artifact: "semantic/security/authorization.tei",
-			Line:     20, Column: 1, Role: "definition"},
+			Line:     17, Column: 12, Role: "definition"},
 		{Kind: ReferenceValidation, ID: "sales.order_line.quantity_positive",
 			Subject:  "semantic-validation:sales.order_line.quantity_positive",
 			Artifact: "semantic/sales/validation.tei",
-			Line:     3, Column: 1, Role: "definition"},
+			Line:     3, Column: 12, Role: "definition"},
 		{Kind: ReferenceValidation, ID: "sales.order.lines.line_number_unique",
 			Subject:  "semantic-validation:sales.order.lines.line_number_unique",
 			Artifact: "semantic/sales/validation.tei",
-			Line:     7, Column: 1, Role: "definition"},
+			Line:     7, Column: 12, Role: "definition"},
 	}
 }
 
@@ -216,15 +220,15 @@ func TestApprovalAndRejectionAreSeparateBranches(t *testing.T) {
 	if len(projection.Branches) != 2 {
 		t.Fatalf("branches=%+v, want two separate branches", projection.Branches)
 	}
-	byOutcome := map[string]BranchView{}
+	byOutcome := map[Outcome]BranchView{}
 	for _, branch := range projection.Branches {
 		byOutcome[branch.Outcome] = branch
 	}
-	approval, ok := byOutcome["approval"]
+	approval, ok := byOutcome[OutcomeApproval]
 	if !ok {
 		t.Fatal("the approval branch is missing")
 	}
-	rejection, ok := byOutcome["rejection"]
+	rejection, ok := byOutcome[OutcomeRejection]
 	if !ok {
 		t.Fatal("the rejection branch is missing")
 	}
@@ -239,7 +243,7 @@ func TestApprovalAndRejectionAreSeparateBranches(t *testing.T) {
 	fixture := readFixture(t)
 	var kept []Branch
 	for _, branch := range fixture.Branches {
-		if branch.Outcome == "rejection" {
+		if branch.Outcome == OutcomeRejection {
 			continue
 		}
 		kept = append(kept, branch)
@@ -267,17 +271,28 @@ func TestFunctionReferenceResolvesToUniqueTargetAndSource(t *testing.T) {
 	if submit.Function.Artifact != "applications/order-entry/patterns/submit-order.tei" {
 		t.Fatalf("artifact=%q, want the declaring source", submit.Function.Artifact)
 	}
-	if submit.Function.Line < 1 || submit.Function.Column < 1 {
-		t.Fatalf("function resolved without a source position: %+v", submit.Function)
+	// The exact position, not merely a positive one: a wrong line or column is
+	// a source location that does not name the declaration.
+	if submit.Function.Line != 1 || submit.Function.Column != 9 {
+		t.Fatalf("source is %d:%d, want 1:9 (the pattern keyword in submit-order.tei)",
+			submit.Function.Line, submit.Function.Column)
+	}
+	if submit.Function.Role != "definition" {
+		t.Fatalf("role=%q, want definition", submit.Function.Role)
 	}
 	if submit.Function.Subject != "application-pattern:order_entry.submit_order" {
 		t.Fatalf("subject=%q is not the declared identity", submit.Function.Subject)
 	}
 
-	// The system step resolves to a Validation, a different model than a Pattern.
+	// The system step resolves to a Validation, a different model than a Pattern,
+	// and to its own exact declaration position.
 	check := findStep(t, projection, "BP-A04")
 	if check.Function == nil || check.Function.Kind != ReferenceValidation {
 		t.Fatalf("the validation step did not resolve to a validation: %+v", check)
+	}
+	if check.Function.Artifact != "semantic/sales/validation.tei" || check.Function.Line != 3 || check.Function.Column != 12 {
+		t.Fatalf("validation source is %s:%d:%d, want semantic/sales/validation.tei:3:12",
+			check.Function.Artifact, check.Function.Line, check.Function.Column)
 	}
 	if check.Function.Artifact != "semantic/sales/validation.tei" {
 		t.Fatalf("artifact=%q, want semantic/sales/validation.tei", check.Function.Artifact)
@@ -402,14 +417,17 @@ func TestCanonicalClaimIsReported(t *testing.T) {
 	}
 }
 
-// A step that repeats the authorization role code as its business actor is the
-// conflation the issue names.
+// A procedure actor that repeats the authorization role code is the conflation
+// the issue names. Every step inherits it, so each step is reported as well as
+// the procedure: the reader sees the finding where the actor is shown.
 func TestActorRepeatingRoleCodeIsReported(t *testing.T) {
 	fixture := readFixture(t)
 	fixture.Procedure.Actor.Label = "ORDER_EDITOR"
 	projection := projectFixture(t, fixture)
-	if codesOf(projection)[CodeActorConflatesAuthorization] != 1 {
-		t.Fatalf("an actor repeating the role code was not reported: %+v", projection.Diagnostics)
+	// One procedure finding plus one per step that inherited the actor.
+	want := 1 + len(fixture.Steps)
+	if got := codesOf(projection)[CodeActorConflatesAuthorization]; got != want {
+		t.Fatalf("conflation findings=%d, want %d: %+v", got, want, projection.Diagnostics)
 	}
 }
 
@@ -447,6 +465,133 @@ func TestFingerprintIgnoresTheCanonicalClaim(t *testing.T) {
 	fixture.Canonical = true
 	if Fingerprint(fixture) != plain {
 		t.Fatal("the fingerprint changed with the Canonical claim; it must describe the document")
+	}
+	// It must depend on the content: a digest that ignores the document would be
+	// constant and would compare two different procedures as equal.
+	changed := readFixture(t)
+	changed.Steps[0].Action = "受注を受け付ける（変更後）"
+	if Fingerprint(changed) == plain {
+		t.Fatal("the fingerprint did not change with the procedure content")
+	}
+}
+
+// A step-level actor that repeats the authorization role code is the same
+// conflation as a procedure-level one, even when the procedure-level labels
+// differ. The earlier check only compared the procedure actor, so this fixture
+// produced no finding while carrying the confusion.
+func TestStepActorRepeatingRoleCodeIsReported(t *testing.T) {
+	fixture := readFixture(t)
+	for i := range fixture.Steps {
+		if fixture.Steps[i].ID == "BP-A02" {
+			fixture.Steps[i].ActorLabel = fixture.Procedure.Authorization.RoleCode
+		}
+	}
+	projection := projectFixture(t, fixture)
+	if codesOf(projection)[CodeActorConflatesAuthorization] != 1 {
+		t.Fatalf("a step whose actor is the role code was not reported: %+v", projection.Diagnostics)
+	}
+	if findStep(t, projection, "BP-A02").ActorLabel != fixture.Procedure.Authorization.RoleCode {
+		t.Fatal("the conflation check silently replaced the actor instead of reporting it")
+	}
+}
+
+// An outcome outside the closed vocabulary must not be read as an approval or a
+// rejection. Before the vocabulary, two spellings of one decision looked like
+// two unrelated branches and a one-sided decision looked complete.
+func TestUnknownBranchOutcomeIsReported(t *testing.T) {
+	fixture := readFixture(t)
+	for i := range fixture.Branches {
+		if fixture.Branches[i].Outcome == OutcomeRejection {
+			fixture.Branches[i].Outcome = "Rejected"
+		}
+	}
+	projection := projectFixture(t, fixture)
+	if codesOf(projection)[CodeBranchOutcomeUnknown] != 1 {
+		t.Fatalf("an outcome outside the vocabulary was not reported: %+v", projection.Diagnostics)
+	}
+	// The misspelled rejection must not be counted as a rejection, so the
+	// decision is now one-sided and that must be reported too.
+	if codesOf(projection)[CodeBranchMissingRejection] != 1 {
+		t.Fatalf("the misspelled rejection was counted as a rejection: %+v", projection.Diagnostics)
+	}
+}
+
+// The reverse direction of the decision rule: a rejection without an approval.
+func TestDecisionWithOnlyRejectionIsReported(t *testing.T) {
+	fixture := readFixture(t)
+	var kept []Branch
+	for _, branch := range fixture.Branches {
+		if branch.Outcome == OutcomeApproval {
+			continue
+		}
+		kept = append(kept, branch)
+	}
+	fixture.Branches = kept
+	projection := projectFixture(t, fixture)
+	if codesOf(projection)[CodeBranchMissingRejection] != 1 {
+		t.Fatalf("a decision with only a rejection branch was not reported: %+v", projection.Diagnostics)
+	}
+}
+
+// Two approvals on one step are not a decision with two sides; the missing
+// rejection must still be reported.
+func TestTwoApprovalsDoNotStandInForARejection(t *testing.T) {
+	fixture := readFixture(t)
+	var kept []Branch
+	for _, branch := range fixture.Branches {
+		if branch.Outcome == OutcomeRejection {
+			continue
+		}
+		kept = append(kept, branch)
+	}
+	second := kept[0]
+	second.ID = "BR-A05-APPROVE-2"
+	fixture.Branches = append(kept, second)
+	projection := projectFixture(t, fixture)
+	if codesOf(projection)[CodeBranchMissingRejection] != 1 {
+		t.Fatalf("two approvals hid the missing rejection: %+v", projection.Diagnostics)
+	}
+}
+
+// Severities are contract values a caller branches on. This pins the words and
+// the order the projection sorts by.
+func TestDiagnosticSeveritiesAreThePinnedValues(t *testing.T) {
+	if SeverityProcedure != "procedure-error" || SeverityReference != "reference-error" {
+		t.Fatalf("severities are %q and %q", SeverityProcedure, SeverityReference)
+	}
+	if severityRank(SeverityProcedure) >= severityRank(SeverityReference) {
+		t.Fatal("a procedure finding must sort before a reference finding")
+	}
+
+	// A projection with both kinds sorts procedure findings first.
+	fixture := readFixture(t)
+	fixture.Steps[1].Function = &Reference{Kind: ReferencePattern, ID: "order_entry.order_record"}
+	fixture.Steps[5].Function = &Reference{Kind: ReferencePattern, ID: "order_entry.submit_order_missing"}
+	projection := projectFixture(t, fixture)
+	if len(projection.Diagnostics) < 2 {
+		t.Fatalf("expected both a procedure and a reference finding: %+v", projection.Diagnostics)
+	}
+	if projection.Diagnostics[0].Severity != SeverityProcedure {
+		t.Fatalf("first finding is %q, want %q", projection.Diagnostics[0].Severity, SeverityProcedure)
+	}
+}
+
+// A manual step that keeps its instruction is the expected case; a manual step
+// with no instruction is kept too, because the projection must not drop the work
+// just because the wording is missing.
+func TestManualStepWithoutInstructionIsKeptAndNamed(t *testing.T) {
+	fixture := readFixture(t)
+	for i := range fixture.Steps {
+		if fixture.Steps[i].ID == "BP-A02" {
+			fixture.Steps[i].ManualInstruction = ""
+		}
+	}
+	projection := projectFixture(t, fixture)
+	if !containsString(projection.ManualSteps, "BP-A02") {
+		t.Fatalf("a manual step with no instruction was dropped: %v", projection.ManualSteps)
+	}
+	if findStep(t, projection, "BP-A02").ID != "BP-A02" {
+		t.Fatal("the manual step did not survive")
 	}
 }
 
