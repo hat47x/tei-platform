@@ -278,7 +278,7 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 	if err != nil {
 		return Result{}, fmt.Errorf("%s: %w", manifestYAML, err)
 	}
-	admittedAuthoring, err := admitTEIMarkdownSources(managedFiles, selectedLanguages)
+	admittedAuthoring, err := admitTEIMarkdownSources(managedFiles, selectedLanguages, authoringProviders)
 	if err != nil {
 		return Result{}, err
 	}
