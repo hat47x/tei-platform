@@ -1,0 +1,12 @@
+Round 87 filed #5248 asking A (restore) or B (delete the tests).
+This round chose A, which is reversible, and recorded why:
+
+  1. DecodeAttemptEvidence and GenerateCandidates are exported and present
+  2. the CLI's own fixture produces cross-reference:1 data-element:2
+  3. the refactor removed only wiring (128 lines); the generator stayed
+  4. the safety commit d870611b1 blocked baseless "unchanged" and raw-byte
+     exposure; A neither reintroduces "unchanged" (-before still fails closed)
+     nor exposes raw evidence bytes
+
+Condition that would reverse this: if the owner decides rea-intake must not
+carry candidate identity at all, B becomes right and this restores wrongly.

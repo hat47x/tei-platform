@@ -348,3 +348,6 @@
 
 # Transport-fault observations are hashed as raw bytes.
 /plan/evidence/DSH_MCP_TRANSPORT_FAULT_2026-11-17/** -text
+
+# Argument-ceiling observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_ARG_CEILING_2026-11-17/** -text
