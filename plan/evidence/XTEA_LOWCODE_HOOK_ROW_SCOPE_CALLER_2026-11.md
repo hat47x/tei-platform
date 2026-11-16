@@ -167,7 +167,7 @@ FAIL	tei/internal/studiohost	1.111s
 
 レビューは他に次を指摘した。いずれも**本変更の欠陥ではなく、既知の範囲として記録済み**のもの、または入口を配線する時点で扱うべきもの。
 
-- 入口は `hook.ReferenceReach` 固定で、行と `AppliedChangeReach` を組む口が無い。**行を渡すと `after-*` の行フックが書込みなしでも実行される**（レビュー担当が実測）。本番呼出し元はゼロなので現時点で実害は無いが、**入口を配線した時点で blocking へ昇格する**。
+- ~~入口は `hook.ReferenceReach` 固定で、行と `AppliedChangeReach` を組む口が無い。行を渡すと `after-*` の行フックが書込みなしでも実行される。~~ **対応済み**: `RunReachable` が `reach` を `scope` より先に判定するようにし、到達できない位相は行集合があっても skip する。`internal/hook/row_scope_reach_test.go` が固定（順序を戻すと失敗することを陰性対照で確認）。
 - 行が非空で、ある行が宣言 `reads` の一部を持たない場合、`HOOK_READ_NOT_OBSERVED` で拒否される（skip/notEvaluated ではない）。この非対称は意図の確認が要る。
 - 入口は**本番呼出し元がゼロ**で、参照するのは試験だけ。**供給源が無いまま入口だけがある状態は D-9 と同型**である。
 
@@ -181,3 +181,18 @@ FAIL	tei/internal/studiohost	1.111s
 既定案は **「フック境界専用の行供給インタフェースを定義し、Host が実装を差し込む」**。ただし port の追加だけでは不足で、(i) 行スコープのフックが行の出所を名指す宣言欄（または browse への interaction 許可の判断）と、(ii) NULL と未取得を潰さない行の型（現行は `[]map[CanonicalID]string` で、`narrowTo` が欠落属性を落とすだけなので両者を区別できない）を前提条件とする。
 
 **skip を続ける現状の評価**: fail-closed として正しく、1行として走らず理由も印字されるため D-9 の完全な無信号ではない。ただし `record` + `scope row` + `reads` は validate を通り、**供給経路が無いことを宣言時にも CI でも言わない**ため、受理された宣言が全 production 経路で一度も走らない状態を作れる。よって skip は維持してよいが、**「供給経路の無い行スコープ宣言」を宣言時または CI で見えるようにするまでを穴の完了条件に含める**。
+## 11. reach と scope の判定順を揃えた（2026-11-17）
+
+§9 のレビュー指摘に対する修正。**到達できない位相は、行集合があっても実行しない。**
+
+変更前は `RunReachable` が `scope` を `reach` より先に判定していたため、`ReferenceReach`（変更を見ない参照実行）でも `after-*` の行フックが走り、`executed` に記録されていた。これは「変更後の検証をした」と読めてしまう。
+
+変更後は `reach` を先に判定する。`AppliedChangeReach` を渡した実行では、行フックは従来どおり行ごとに走る（機能は取り消していない）。
+
+読み取れること:
+- 到達できない位相は、行集合の有無に関わらず skip され、理由が残る。
+- 到達できる実行では、行スコープは行ごとに適用される。
+
+読み取れないこと:
+- 入口（`runDeclaredHooksWithRows`・`runHooksWithRows`）は依然 `hook.ReferenceReach` 固定で、`AppliedChangeReach` と行を同時に渡す公開 API は無い。必要になった時点で足す。
+- 実データ源からの行供給は未実装。
