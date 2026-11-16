@@ -25,4 +25,4 @@
 - [空集合と業務完了の意味（2026年11月）](EMPTY_SET_COMPLETION_SEMANTICS_2026-11.md)：全称条件の空集合（vacuous truth）とLeanでの扱いを、業務類型・EmptyPolicyとの関係で整理する調査ノート。採用判断ではありません。
 - [TEI × SEI：ローカルCPU認知による実装再利用・標準部品化候補の研究](LOCAL_CPU_COMPONENT_REUSE.md)：研究仮説。未実装で、製品への採用は決まっていません。
 - [TEIの汎用モデリング能力を業務外領域で確かめる限定実証（CSW・VSクマ）](TEI_CROSS_DOMAIN_PROBE_CSW_VS_BEAR_2026-11.md)：CSWとVSクマを独立対象にした研究・比較・read-only probe。製品アーキテクチャを変更せず、採用判断も行っていません。
-- [Wailsショーケース40件のアプリケーション能力マップと既存Ownerへの実証計画](WAILS_SHOWCASE_APPLICATION_CAPABILITY_CORPUS_2026-11.md)：40アプリ・28節の能力比較とWC-01〜40の受入候補。Source/Build失効、NULL・未取得・部分取得、Ruleの記録例、暦日検証、UI/CLIの表示資格を現行TEIの実装と照合します。一部にmainのFocused回帰がありますが、実DB/Provider/Stage2など全件の製品受理ではありません。
+- [Wailsショーケース40件のアプリケーション能力マップと既存Ownerへの実証計画](WAILS_SHOWCASE_APPLICATION_CAPABILITY_CORPUS_2026-11.md)：40アプリ・32節、WC-01〜46の受入候補。Ruleの判定可能性とP/Gの実現範囲、実PGでの型付きRead、型付きField投影、Workbenchの後着応答、Builder実体照合をWA-1〜3へ再整理。現行mainの実証とOpen PR、未受理の実Provider/Stage2を明示しています。
