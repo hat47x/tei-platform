@@ -112,7 +112,7 @@ func TraceWorkspace(root string, key modelref.Key, options modelref.TraceOptions
 	// and only one declaration using the same resolver as "inspect". This
 	// prevents duplicate authoritative declarations from masquerading as a
 	// uniquely resolved node in a read-only candidate projection.
-	if supportedInspectionKind(key.Subject.Kind) {
+	if SupportedInspectionKind(key.Subject.Kind) {
 		if _, err := inspectCanonical(loaded.World, key.Subject); err != nil {
 			if finding, ok := err.(*InspectionError); ok {
 				return WorkspaceTrace{}, &modelref.TraceError{

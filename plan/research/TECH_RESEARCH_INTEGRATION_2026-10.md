@@ -1990,3 +1990,35 @@ AX-01／02の**main収録**と、実行したexact HEAD／対象TestのPASSは�
 **第三に自己記述とDesktop**。AX-05の型付き経路を、TEI自身のRequired Shape検査の一箇所置換（M1→M2）へ適用する。安定するのはSubject／義務／前提／不変条件であり、生成Goのメソッド名ではない。置換した判断を次のTEIが実使用したこと（M3）は、Studio Stage1→Stage2の再入と独立Consumerで受け入れる。担当は[dogfooding計画](../design/IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md)、[#2831](https://github.com/hat47x/tei-platform/issues/2831)／[#4583](https://github.com/hat47x/tei-platform/issues/4583)。
 
 いずれも、**新しいRuntime、Path Engine、テスト正本、Plugin Registry、Hostを先に作らない**。直接解釈P、生成G、Provider委譲Dのうち、現行の一Ruleで既に成立した証拠を再利用する。QueryのBag／Grain／NULL、組織の二時点、Nodeの同名別Occurrence、APIの開示Scopeを第二例として適用する場合は、最初のRuleと異なる**反証**を一件追加できることをCore昇格の判断材料にする。今回の研究計画統合で、正式R2-P／R3、Ownerの意味受理、Windows Stage2、AX-03〜05のPR統合や実行PASSを新たに主張しない。
+
+
+### 16.52 差を露呈する入力と、変換後にも守る性質を研究から取り込む（2026-11-16）
+
+§16.46〜16.51の直接解釈P／コード生成G／外部委譲Dの比較には、**一因子を変えたとき、保たれる性質と変わる性質を独立Expectedで区別する**試験を加える。単なる結果一致では、別のAttributeを読んだ、部分取得を全件と呼んだ、旧Builder入力を使った欠陥を見逃す。新しいテストDSL／Runnerを追加するのでなく、既存#1180／#2514の期待値とFocused回帰に反例を渡す。
+
+参考となる研究は三件。(1) Mokav（*Journal of Systems and Software*, 2025、[DOI:10.1016/j.jss.2025.112571](https://doi.org/10.1016/j.jss.2025.112571)）の差分露呈入力、(2) モデル変換の性質保存に関する体系的レビュー（同誌2025、[DOI:10.1016/j.jss.2025.112508](https://doi.org/10.1016/j.jss.2025.112508)）の変換境界別検査、(3) LLMによるメタモルフィックテスト支援（*Information and Software Technology*, 2026、[DOI:10.1016/j.infsof.2026.108150](https://doi.org/10.1016/j.infsof.2026.108150)）の入力変形・期待関係の候補生成。いずれもTEIへの適合を証明する論文ではなく、**研究手法の採用候補**である。AIが提案した性質はOwner受理と独立Expectedを経て試験に用いる。
+
+最初の対象は、mainの#5118で直接評価P／生成Go実Binaryの局所比較があるpositive Ruleと、#5142の状態付き判定`Decide`・#5143の記録例・#5146の暦日Ruleの範囲に限定する。`Decide`が存在しても、あらゆるRuleの生成Goや実Query Providerが状態を正しく扱えるとは限らない。#5148の複数行期間Rule、#5149のQuery行を読む状態付きReaderは審査中のため別資格とする。
+
+| 反例 | 一因子だけ変える操作 | 成立・拒否・保留の判断 |
+| --- | --- | --- |
+| **MR-01 読取先の相違** | 同じ数値の別Attributeを読む | 結果が一致してもCanonical Read ID／回数が異なる実装は拒否。#5118の既存負例を基線とする |
+| **MR-02 取得範囲の相違** | 無関係なRelation Coverageをcompleteからpartialへ | 局所値で確定するRuleを一律に未確定としない。全件を要するRuleでは未取得を全件とみなさない |
+| **MR-03 既知反例と未知行** | 観測済みの違反を保持したまま残行の取得状態を変える | 既知反例で不成立を確定できる規則と、未知行のため成立を断定できない規則を区別 |
+| **MR-04 NULLと未取得** | nullをnot-fetchedへ変更し、別の試験でif presentの有無を切り替える | Rule固有のsatisfied／not-satisfied／undecidedを固定する。NULLと未取得の一律同値化も、すべて未確定とする処理も拒否 |
+| **MR-05 意味を変えない原文改版** | Ruleの説明だけを変更する | 意味上のResultが不変でも旧Source Index／旧BuildPlanの資格は失効。#5129の原文改版拒否を足場にする |
+| **MR-06 Operatorの境界値** | non-negative要件にnon-zero実装を選び、入力5と0を比較 | 5の結果が同じでも0で差を露呈する。実装選択Pin／実Call／Law適合を独立に照合 |
+
+MR-01〜06は**試験候補の識別子**であって、製品に新しく追加するRule種別や標準Statusではない。成功例だけを増やさず、既知の誤実装Mutantを検出したか、正しい実装を誤って拒否しなかったか、未知を成立に昇格させなかったかをそれぞれ数える。独立Expectedを実結果に合わせて後から書き換えない。
+
+### 16.53 研究成果を三つの実装Packetへ引き渡す
+
+**Packet A：P／GとSource・Builderの反証**。MR-01／05を既存positive RuleのFocused回帰へ追加する。固定するのはSubject、Source版、型付きRule、Canonical Read ID／回数、生成Go byte、BuildPlan、実Binary受領、独立Expected。結果一致と旧Planの拒否を別票で確認する。元Rule→Reader／Generator→Builder実入力を同じAttemptへ正式に束縛するR2-Pは未成立部分を残し、#2595／#4544／#2514の既存Ownerへ返す。
+
+**Packet B：状態付きReadの判断範囲**。MR-02〜04を既存`validationeval.Decide`で検証する。局所Rule、記録内の暦日比較、複数行にわたるRelation Ruleは、必要な値・範囲・未取得の扱いが異なる。対応する生成器や実Providerがない種別をG／DのPASSと数えず`unsupported`と記録する。#5149のReaderが受理された後に、実Read Attemptの値・Presence・Coverage・Source→Rule→独立Consumerの連鎖へ進む。#2586／#2622／#4495／#2514が担当。
+
+**Packet C：実装選択と意味適合**。MR-06を選択A→B→A、旧Scenarioコマンド、actual Call、境界値0で試す。Worldが同じでも実装選択は別の現在性を持ち、選択が正しくてもOperatorのLaw適合は自動成立しない。mainの既存選択Pinを用い、#5150の指紋一本化は独立した実装候補として検収する。#951／#2600／#1180／#2514が担当。
+
+共通の評価票には、**Subject・Source Revision・Read ID／Coverage・Expected・変更因子・方式の適用可否・選択版と実Call・Builder／Consumer実受領・Mutant検出・再実行費用**を記録する。方式選択では、まず意味と必要Readの適合、次にTarget配布・保守対象（定義、Generator、Hook、手書きGo）・変更波及・実行費を比較する。生成行数が多いこと、あるいは解釈のみであること自体に優劣を付けない。
+
+**現在の資格**：研究文献の方法と現行mainに存在する限定実装を照合した計画。MR-01〜06の追加製品試験、実ProviderのRead Coverage、正式R2-P／R3、Ownerの意味受理、非Plugin Windows Studio Stage1→Stage2は**NOT RUN／NOT PROVEN**。既存P0の順序を変更せず、新Runtime／Registry／Graph Runner／第二Expected正本を導入しない。

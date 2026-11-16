@@ -143,12 +143,12 @@ func TestComparePartitionsBoundaryDeltaDoesNotProveStructuralImprovement(t *test
 		wantAfter    int
 	}{
 		{
-			name: "omitted-cross-write-looks-like-boundary-repair",
+			name:         "omitted-cross-write-looks-like-boundary-repair",
 			beforeWrites: crossWrite, afterWrites: nil,
 			wantBefore: 1, wantAfter: 0,
 		},
 		{
-			name: "newly-observed-existing-cross-write-looks-like-deterioration",
+			name:         "newly-observed-existing-cross-write-looks-like-deterioration",
 			beforeWrites: nil, afterWrites: crossWrite,
 			wantBefore: 0, wantAfter: 1,
 		},

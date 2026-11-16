@@ -35,6 +35,12 @@ func argumentValueSets(name string) (map[string][]string, map[string]string) {
 	case "inspect":
 		return map[string][]string{"subject-kind": inspectSubjectKinds},
 			map[string]string{"subject-kind": "string"}
+	case "model search":
+		// The same closed set inspect resolves: a search restricted to a kind
+		// this surface cannot read would answer nothing and look like "this
+		// kind declares no such text".
+		return map[string][]string{"kind": inspectSubjectKinds},
+			map[string]string{"kind": "string"}
 	case "trace":
 		return map[string][]string{
 				"subject-kind": traceSubjectKinds,

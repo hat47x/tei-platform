@@ -104,12 +104,26 @@ func TestDiagnoseRelationalSourceFactsDoesNotGuessCompositeOrderWhenSortKeyIsAmb
 		t.Fatal(err)
 	}
 	got := DiagnoseRelationalSourceFacts(doc, ExtractRelationalSourceFacts(doc))
-	if len(got) != 1 ||
-		got[0].Code != "relationship-key-order-unresolved" ||
-		got[0].Side != "table1" ||
-		got[0].RelationshipID != "R1" ||
-		got[0].TableLegacyID != "T1" ||
-		got[0].KeyLegacyID != "K1" {
+	// The referenced key's own order and the relationship's use of that key
+	// are independent observations. Both remain unresolved; neither supplies
+	// the other's meaning.
+	var keyOrder, relationshipOrder bool
+	for _, diagnostic := range got {
+		switch diagnostic.Code {
+		case "key-order-unresolved":
+			keyOrder = diagnostic.Locator == "/System[1]/Table[1]/TableKey[3]" &&
+				diagnostic.Side == "" &&
+				diagnostic.RelationshipID == "" &&
+				diagnostic.TableLegacyID == "T1" &&
+				diagnostic.KeyLegacyID == "K1"
+		case "relationship-key-order-unresolved":
+			relationshipOrder = diagnostic.Side == "table1" &&
+				diagnostic.RelationshipID == "R1" &&
+				diagnostic.TableLegacyID == "T1" &&
+				diagnostic.KeyLegacyID == "K1"
+		}
+	}
+	if !keyOrder || !relationshipOrder || len(got) != 2 {
 		t.Fatalf("ambiguous SortKey order was guessed instead of preserved: %#v", got)
 	}
 }
@@ -151,11 +165,22 @@ func TestDiagnoseRelationalSourceFactsReportsCompositeKeyArityMismatchWithoutRep
 		t.Fatal(err)
 	}
 	got := DiagnoseRelationalSourceFacts(doc, ExtractRelationalSourceFacts(doc))
-	if len(got) != 1 ||
-		got[0].Code != "relationship-key-arity-mismatch" ||
-		got[0].RelationshipID != "R1" ||
-		got[0].LeftCount != 2 ||
-		got[0].RightCount != 1 {
+	// K1 declares two members without SortKey, so its own order is
+	// undetermined independently of the arity mismatch.
+	var arity, keyOrder bool
+	for _, diagnostic := range got {
+		switch diagnostic.Code {
+		case "relationship-key-arity-mismatch":
+			arity = diagnostic.RelationshipID == "R1" &&
+				diagnostic.LeftCount == 2 &&
+				diagnostic.RightCount == 1
+		case "key-order-unresolved":
+			keyOrder = diagnostic.KeyLegacyID == "K1" &&
+				diagnostic.TableLegacyID == "T1" &&
+				diagnostic.RelationshipID == ""
+		}
+	}
+	if !arity || !keyOrder || len(got) != 2 {
 		t.Fatalf("arity mismatch was not preserved as unresolved: %#v", got)
 	}
 }
@@ -392,16 +417,20 @@ func TestDiagnoseRelationalSourceFactsChecksOrderDespiteFamilyExpansion(t *testi
 			if err != nil {
 				t.Fatal(err)
 			}
-			foundFamily, foundOrder := false, false
+			foundFamily, foundOrder, foundKeyOrder := false, false, false
 			for _, diagnostic := range inspection.RelationalDiagnostics {
 				switch diagnostic.Code {
 				case "relationship-family-correspondence-unresolved":
 					foundFamily = diagnostic.LeftCount == 1 && diagnostic.RightCount == 2
 				case "relationship-key-order-unresolved":
 					foundOrder = diagnostic.Side == "table2" && diagnostic.KeyLegacyID == "KC"
+				case "key-order-unresolved":
+					foundKeyOrder = diagnostic.KeyLegacyID == "KC" &&
+						diagnostic.RelationshipID == "" &&
+						diagnostic.TableLegacyID == "CHILD"
 				}
 			}
-			if !foundFamily || !foundOrder || len(inspection.RelationalDiagnostics) != 2 {
+			if !foundFamily || !foundOrder || !foundKeyOrder || len(inspection.RelationalDiagnostics) != 3 {
 				t.Fatalf("FAMILY expansion concealed independent target SortKey problem: %#v", inspection.RelationalDiagnostics)
 			}
 		})

@@ -72,42 +72,6 @@ func sourceRange(anchor syntax.Anchor) sourceindex.Range {
 	}
 }
 
-// numericSemanticType reports whether a type is a number, following aliases.
-// It is the rule the validator applies to a rule that reads a number.
-func numericSemanticType(types map[core.CanonicalID]semantic.Type, id core.CanonicalID) bool {
-	seen := map[core.CanonicalID]bool{}
-	for id != "" && !seen[id] {
-		if id == "std.integer" || id == "std.decimal" || id == "std.money" {
-			return true
-		}
-		seen[id] = true
-		typ, known := types[id]
-		if !known || typ.Kind != semantic.TypeAlias {
-			return false
-		}
-		id = typ.Underlying
-	}
-	return false
-}
-
-// dateSemanticType reports whether a type is a calendar date, following
-// aliases. A moment in time (std.datetime) is not one.
-func dateSemanticType(types map[core.CanonicalID]semantic.Type, id core.CanonicalID) bool {
-	seen := map[core.CanonicalID]bool{}
-	for id != "" && !seen[id] {
-		if id == "std.date" {
-			return true
-		}
-		seen[id] = true
-		typ, known := types[id]
-		if !known || typ.Kind != semantic.TypeAlias {
-			return false
-		}
-		id = typ.Underlying
-	}
-	return false
-}
-
 // resolveRuleExamples checks every example table against the loaded World and
 // keeps the ones that name existing things. It runs after every source is
 // read, because the Data and the rules may be declared in other documents.
@@ -170,7 +134,7 @@ func resolveRuleExamples(r *Result) error {
 			}
 			example.Items = append(example.Items, RuleExampleItem{
 				Attribute: found.ID, Symbol: found.Symbol,
-				Numeric: numericSemanticType(types, found.TypeRef), Date: dateSemanticType(types, found.TypeRef),
+				Numeric: semantic.IsNumberType(types, found.TypeRef), Date: semantic.IsCalendarDateType(types, found.TypeRef),
 			})
 		}
 		if rejected {

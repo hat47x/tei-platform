@@ -142,6 +142,38 @@ func resolveAuthoringLanguages(selected []AuthoringLanguageSelection, providers 
 	return resolved, nil
 }
 
+// selectedAuthoringLanguages lists what the manifest selected, for a message
+// that has to explain why the selection did not admit a source.
+func selectedAuthoringLanguages(selected []authoringLanguageProvider) string {
+	seen := map[string]bool{}
+	var names []string
+	for _, provider := range selected {
+		name := provider.Binding.LanguageID + "/" + provider.Binding.ContractVersion
+		if !seen[name] {
+			seen[name] = true
+			names = append(names, name)
+		}
+	}
+	if len(names) == 0 {
+		return "none"
+	}
+	sort.Strings(names)
+	return strings.Join(names, ", ")
+}
+
+// firstAuthoringLanguage names one concrete choice so the hint is copyable.
+func firstAuthoringLanguage(available []authoringLanguageProvider) string {
+	names := make([]string, 0, len(available))
+	for _, provider := range available {
+		names = append(names, provider.Binding.LanguageID+"/"+provider.Binding.ContractVersion)
+	}
+	if len(names) == 0 {
+		return "<language-id>/<contract-version>"
+	}
+	sort.Strings(names)
+	return names[0]
+}
+
 func availableAuthoringLanguages(providers []authoringLanguageProvider) string {
 	seen := map[string]bool{}
 	var names []string
@@ -163,7 +195,10 @@ func availableAuthoringLanguages(providers []authoringLanguageProvider) string {
 // implementation reads each managed *.tei.md file. Every such file must be
 // claimed by exactly one selected implementation. An unclaimed file stops the
 // Load, so a definition is never left unread behind a successful result.
-func admitTEIMarkdownSources(managed []ManagedFile, selected []authoringLanguageProvider) (map[string]authoringLanguageProvider, error) {
+// available is the set of implementations this binary carries, whether or not
+// the manifest selected them. It is used only to tell the author what could be
+// selected, so the message names real choices instead of asking them to guess.
+func admitTEIMarkdownSources(managed []ManagedFile, selected, available []authoringLanguageProvider) (map[string]authoringLanguageProvider, error) {
 	admitted := map[string]authoringLanguageProvider{}
 	for _, source := range managed {
 		if !strings.HasSuffix(strings.ToLower(source.Path), teiMarkdownSuffix) {
@@ -181,10 +216,11 @@ func admitTEIMarkdownSources(managed []ManagedFile, selected []authoringLanguage
 		case len(claims) > 1:
 			return nil, fmt.Errorf("TEI_MD_PARSER_AMBIGUOUS: source %q is claimed by %d selected languages; exactly one may read it", source.Path, len(claims))
 		case len(selected) == 0:
-			return nil, fmt.Errorf("TEI_MD_PARSER_UNBOUND: source %q is a TEI Markdown authoring candidate, but no selected parser is available; refusing to silently ignore it", source.Path)
+			return nil, fmt.Errorf("TEI_MD_PARSER_UNBOUND: source %q is a TEI Markdown authoring candidate, but no selected parser is available; refusing to silently ignore it. Select one of %s by adding a 'languages:' entry to tei.workspace.yaml (for example %q)",
+				source.Path, availableAuthoringLanguages(available), firstAuthoringLanguage(available))
 		default:
-			return nil, fmt.Errorf("TEI_MD_PARSER_UNBOUND: source %q is a TEI Markdown authoring candidate, but no selected language reads %s sources in source root %q; refusing to silently ignore it",
-				source.Path, teiMarkdownSuffix, source.SourceRoot)
+			return nil, fmt.Errorf("TEI_MD_PARSER_UNBOUND: source %q is a TEI Markdown authoring candidate, but no selected language reads %q sources in source root %q; refusing to silently ignore it. Selected: %s; available: %s",
+				source.Path, teiMarkdownSuffix, source.SourceRoot, selectedAuthoringLanguages(selected), availableAuthoringLanguages(available))
 		}
 	}
 	return admitted, nil

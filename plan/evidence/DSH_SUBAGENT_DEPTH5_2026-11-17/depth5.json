@@ -1,0 +1,192 @@
+{
+  "note": "With maxDepth 5 the linear subagent chain created six sessions at depths 0-5. The session at depth 5 attempted one more spawn and was refused with 'subagent depth 6 exceeds maxDepth 5'. Unlike the depth-4 record, the refusal names BOTH the attempted depth and the limit.",
+  "overlay": {
+    "plugin": "@deepseek-ai/dsh-subagent",
+    "id": "subagent",
+    "config": {
+      "maxDepth": 5
+    }
+  },
+  "configuredMaxDepth": 5,
+  "sessionsObserved": 6,
+  "maxDepthReached": 5,
+  "depthBySession": {
+    "session-cba8f9f1-f20a-4b9a-a42a-7b455d1cab86": 0,
+    "1ac26f7f-d9e8-4f90-9a0f-10dba3be4f69": 1,
+    "e3c92864-9644-40bb-b05f-74fe7dcbb574": 2,
+    "6d449b37-0b2f-47c8-a7af-43e942a9c940": 3,
+    "6d3fdca2-3b40-45ab-be2e-d2660e74e8b6": 4,
+    "42bd4fec-1cff-4684-b013-3915e0d75e77": 5
+  },
+  "rootSession": "session-cba8f9f1-f20a-4b9a-a42a-7b455d1cab86",
+  "requestCount": 14,
+  "requests": [
+    {
+      "file": "007-request.json",
+      "bytes": 101604,
+      "sha256": "42a01c574360a978d654e0d33c230a91426a32ae87b626f66b456bc9c21ca492",
+      "sessionId": "session-cba8f9f1-f20a-4b9a-a42a-7b455d1cab86",
+      "depth": 0,
+      "toolCount": 24,
+      "willSpawn": true
+    },
+    {
+      "file": "008-request.json",
+      "bytes": 58307,
+      "sha256": "96a6a1835bcb3450578794a6614a5ef9d2285568efa51b0232c779ab67976a29",
+      "sessionId": "session-cba8f9f1-f20a-4b9a-a42a-7b455d1cab86",
+      "depth": 0,
+      "toolCount": 0,
+      "willSpawn": false
+    },
+    {
+      "file": "009-request.json",
+      "bytes": 53786,
+      "sha256": "77e7c19778aec6a57ea06dc341b399ac85623578cff4606cd79fd449a2b79e74",
+      "sessionId": "session-cba8f9f1-f20a-4b9a-a42a-7b455d1cab86",
+      "depth": 0,
+      "toolCount": 24,
+      "willSpawn": false
+    },
+    {
+      "file": "010-request.json",
+      "bytes": 103261,
+      "sha256": "c546753d57b4f20765c9fe50b516f5fd7339147d877a32ec96ac25c558d3b0d0",
+      "sessionId": "1ac26f7f-d9e8-4f90-9a0f-10dba3be4f69",
+      "depth": 1,
+      "toolCount": 24,
+      "willSpawn": true
+    },
+    {
+      "file": "011-request.json",
+      "bytes": 54323,
+      "sha256": "df93613d066d3e29d587db33d959adfe2f4d38979be4746a479be3c81a2957b2",
+      "sessionId": "1ac26f7f-d9e8-4f90-9a0f-10dba3be4f69",
+      "depth": 1,
+      "toolCount": 24,
+      "willSpawn": false
+    },
+    {
+      "file": "012-request.json",
+      "bytes": 53897,
+      "sha256": "f70ed603a52049f41ead400b656e35c892fda50cf32d77de2a0482988b7ee709",
+      "sessionId": "session-cba8f9f1-f20a-4b9a-a42a-7b455d1cab86",
+      "depth": 0,
+      "toolCount": 24,
+      "willSpawn": false
+    },
+    {
+      "file": "013-request.json",
+      "bytes": 103289,
+      "sha256": "12a8fbb0b847506e7d9dd56296ab8647f73fbf9d2bb98ff10c8553d56f01696d",
+      "sessionId": "e3c92864-9644-40bb-b05f-74fe7dcbb574",
+      "depth": 2,
+      "toolCount": 24,
+      "willSpawn": true
+    },
+    {
+      "file": "014-request.json",
+      "bytes": 54351,
+      "sha256": "ddf7373183d3a3288710991c12716e20cb4c228b606c2625d9a3f4864294c9be",
+      "sessionId": "e3c92864-9644-40bb-b05f-74fe7dcbb574",
+      "depth": 2,
+      "toolCount": 24,
+      "willSpawn": false
+    },
+    {
+      "file": "015-request.json",
+      "bytes": 103337,
+      "sha256": "14cbf58498c19af59e4492365fd063fc408542c8a784a4306cd75a9485cc2145",
+      "sessionId": "6d449b37-0b2f-47c8-a7af-43e942a9c940",
+      "depth": 3,
+      "toolCount": 24,
+      "willSpawn": true
+    },
+    {
+      "file": "016-request.json",
+      "bytes": 54391,
+      "sha256": "c0a8f0f733d80264e91047ff0a498efb47dd05d1f7a1812a889e0544cacc670f",
+      "sessionId": "6d449b37-0b2f-47c8-a7af-43e942a9c940",
+      "depth": 3,
+      "toolCount": 24,
+      "willSpawn": false
+    },
+    {
+      "file": "017-request.json",
+      "bytes": 103385,
+      "sha256": "8b70f2814438448dae4203352ef299e38f5b0ed863528621dbd58bbc0227e5ed",
+      "sessionId": "6d3fdca2-3b40-45ab-be2e-d2660e74e8b6",
+      "depth": 4,
+      "toolCount": 24,
+      "willSpawn": true
+    },
+    {
+      "file": "018-request.json",
+      "bytes": 54431,
+      "sha256": "0fbac0aa375517953af273d7fc1116440826d770f5a1ab4c29954b198ed10d85",
+      "sessionId": "6d3fdca2-3b40-45ab-be2e-d2660e74e8b6",
+      "depth": 4,
+      "toolCount": 24,
+      "willSpawn": false
+    },
+    {
+      "file": "019-request.json",
+      "bytes": 104412,
+      "sha256": "c71107f844bfe016f396b0e658b5f842bd8977696a171e89c1595c79af5914fb",
+      "sessionId": "42bd4fec-1cff-4684-b013-3915e0d75e77",
+      "depth": 5,
+      "toolCount": 24,
+      "willSpawn": true
+    },
+    {
+      "file": "020-request.json",
+      "bytes": 54426,
+      "sha256": "2a3548a8479b9711cc21f8d12dca27d4577ec76c65f159e7fdfae1ca12351cb5",
+      "sessionId": "42bd4fec-1cff-4684-b013-3915e0d75e77",
+      "depth": 5,
+      "toolCount": 24,
+      "willSpawn": false
+    }
+  ],
+  "refusalText": "Error: subagent depth 6 exceeds maxDepth 5",
+  "refusalFile": "020-request.json",
+  "refusalSession": "42bd4fec-1cff-4684-b013-3915e0d75e77",
+  "refusalSessionDepth": 5,
+  "refusalAttemptedDepth": 6,
+  "refusalLimit": 5,
+  "refusalFormat": "names the attempted depth AND the configured limit; the depth-4 record only showed 'exceeds maxDepth 4'",
+  "comparison": {
+    "maxDepth3": {
+      "sessions": 4,
+      "reached": 3,
+      "source": "DSH_SUBAGENT_DEPTH_RAISED_2026-11-09"
+    },
+    "maxDepth4": {
+      "sessions": 5,
+      "reached": 4,
+      "source": "DSH_SUBAGENT_DEPTH4_2026-11-11"
+    },
+    "maxDepth5": {
+      "sessions": 6,
+      "reached": 5,
+      "source": "this record"
+    }
+  },
+  "caveat": "One run, one linear chain (one spawn per session). maxDepth above 5, multiple children per message, and the interaction with maxActiveSubagents were not tested. Depth is derived from first-arrival order of session ids, which is reliable only for a strictly linear chain.",
+  "sessionsThatAttemptedSpawn": 6,
+  "spawnAttemptFiles": [
+    "007-request.json",
+    "010-request.json",
+    "013-request.json",
+    "015-request.json",
+    "017-request.json",
+    "019-request.json"
+  ],
+  "sessionsThatSpawnedSuccessfully": 5,
+  "spawnAccounting": {
+    "attempts": 6,
+    "refused": 1,
+    "succeeded": 5,
+    "why": "the attempt from the depth-5 session was refused with 'subagent depth 6 exceeds maxDepth 5', so it produced no seventh session; sessionsObserved stays 6"
+  }
+}

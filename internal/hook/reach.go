@@ -236,6 +236,16 @@ func (r Runner) runReachable(ctx context.Context, applicationID, patternID core.
 		if !include(phase) {
 			continue
 		}
+		// Reach is decided before scope. A row-scoped hook decides for a page of
+		// rows, and a reach that cannot see the change must skip the phase whether
+		// or not rows were supplied: running it first would apply an after-* hook
+		// when nothing has changed and record it as executed, which reads as "the
+		// after-change check ran".
+		if reason := reach.UnreachableReason(phase); reason != "" {
+			report.Skipped = append(report.Skipped, phase)
+			report.Reasons[phase] = reason
+			continue
+		}
 		// A scope this runner cannot apply is reported as skipped rather than run
 		// as if the scope did not matter: this runner runs one hook per record, so
 		// only the record scope and the pattern's own unit are applied. Reporting a
@@ -256,11 +266,6 @@ func (r Runner) runReachable(ctx context.Context, applicationID, patternID core.
 			} else {
 				report.Reasons[phase] = fmt.Sprintf("the hook declares scope %s but this runner applies one hook per record", scope)
 			}
-			continue
-		}
-		if reason := reach.UnreachableReason(phase); reason != "" {
-			report.Skipped = append(report.Skipped, phase)
-			report.Reasons[phase] = reason
 			continue
 		}
 		reads, missing := readsFromInputs(declaration.Reads, inputs)

@@ -532,3 +532,41 @@ ScenarioのOperator選択Pinを追加する並行PR #5114は、データ経路�
 最初の独立ExpectedはDPC-09〜11の値・Relationの判断例と、DPC-12の例改版に限る。DPC-13の時間・期間条件は既存のdate／no-overlapのOwnerへ渡す。新しいValueState、第二Mapping Engine、Runner、Evidence Storeを作らない。検収票が通った後も、正式なSource→生成Go→Builder、通常CLIのactual Provider→独立Consumer、Studio Stage1→Stage2の実Windows受領は独立P0として維持する。
 
 **現状の区別**：mainに存在する関数とGoテストは実装上の足場であり、このPacketの新規E2Eは未実施。直近のmainのセルフビルドおよびWails HostのCIには失敗が観測されているため、部分的なmain統合を製品全体の合格に読み替えない。並行PR #5097（自己記述のData表）と #5114（Scenarioの実装選択Pin）はclosed/unmergedであり、実装済みとして数えない。元Sourceの現在性は別のmain回帰で確認する。
+
+### 17.7 最初の小コード差分：選択済みDataと状態付きRuleを接続する
+
+DPC-09の着手点として、`internal/operations/inspect_markdown_data_rule_decision_trace_test.go`へ、実Readerから得たData／Ruleと状態付きEvaluatorを結ぶ回帰を追加する。最初の試行は、`tei.authoring/v1`で選んだ`TransferRequest`の属性型・required・Rule ID・Source byte位置、共通World／Source Index、正値・ゼロ・NULL・未取得の四つの独立期待値、および実Read対象IDを同じ検収にする。
+
+ここでは既存Productの`InspectionFromLoad`を用い、読み取り専用であることとSource fingerprintを検査する。式の結果が正しくても別項目を読めば不合格にする基準は#5118を再利用し、Goの生成・実Binaryの二方式比較を重ねて作らない。`Decide`の`undecided`とGo errorを区別し、`required`を「NULLなら必ず業務違反」に拡張しない。
+
+本実装は**新しい表示用検収票APIの完成ではなく、既存Inspectorにある項目とRuleの根拠を、同じ試行の判断へ結ぶテスト**である。Go試験の実行可否、exact HEAD CI、mainへの統合を別の観測として記録する。次段は、Provider実Read・Source occurrence・Snapshot・Coverageを持つ同一Attemptを構成し、CLIと独立Consumerに受領させる。M1自己記述のShape/Law実置換、正式R2-P Builder、Windows Stage2は独立P0とする。
+
+### 17.8 次のConsumer実証と対象選択の停止線
+
+最初のGo回帰はProduct Reader／Inspectorが実際に選んだ型付きAttribute・Ruleの出典と、テスト用StatefulSourceを通した判断理由を照合する。一方で、**Source位置が分かったことと、現在の原文をHostから安全に開けたことは別の観測**である。DesktopのSL-1表示はread-onlyな根拠提示として再利用し、SL-2のRoot／byte／Occurrence再照合、SL-3の編集・Windows受領は#5178のOwnerへ引き渡す。
+
+| 検収段階 | 成立を要求すること | 停止線 |
+| --- | --- | --- |
+| DPC-14（今回） | 一つの選択済みSource版のData／Rule ID、Source fingerprint・byte位置、属性Read ID、present／NULL／未取得時の判断と理由 | 実DB Provider・実CLI外部Consumer、Builderまでは数えない |
+| DPC-15（次） | Source位置一覧の省略・未取得を明示し、Hostが原byteと対象を再照合 | 位置表示を実Openや編集資格に昇格させない |
+| Provider二入口（後続） | 同じFunction／Query選択、実Read対象・Value State・Scope／Snapshot・Consumer受領 | 記録例やテストSourceから実Readを推定しない |
+
+新しいInspector APIや第二Evidence Storeを作る前に、既存の選択済みSubjectとSource位置の投影が不足する箇所を具体的な独立Expectedで示す。正式R2-P、通常CLI実Provider、Windows Stage1→Stage2は独立P0であり、今回の文書追補により完了状態は変わらない。
+
+### 17.9 選択した意味と、実SQLの取得範囲を同じ検収へ結ぶ（2026-11-17）
+
+[標準フロー設計§12.11〜12.13](SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)と[DB適合計画§7](DATA_PROVIDER_CROSS_DB_CONFORMANCE_2026-11.md)に接続する。前段のDPC-14では、`TransferRequest`の項目定義表・Ruleとテスト用`StatefulSource`のRead ID・判断理由を一Loadで照合した（main #5179）。その次の段階は、**実SQLから得たデータの取得範囲を、選択済みの意味・Queryとともに検収すること**である。
+
+mainの`internal/driver/validationread/sqlite_path_test.go`は実SQLiteのSQL Executor→Contract Query結果→列Mapping→状態付きReader→Ruleという狭い実行経路を持つ。しかし、その試験ではRelationの全件性を呼出し側が申告しており、`LIMIT 2`を`complete`と誤申告すると誤った「一意」が成立し得る。ここが次の実装で閉じるべき一辺になる。
+
+| 検証対象 | 使う既存の実装・試験 | 未成立の資格 |
+| --- | --- | --- |
+| 定義とRule | #5179の選択済みMarkdown Data／Rule、Source Index、`Decide` | 実SQL Readerの入力が同一Meaningであること |
+| 実SQLの値と状態 | #5149のSQLite Executor→`FromHeaderDetail`、列Mapping、NULL／not-fetched | Queryの正式Pattern・環境選択、現在Scope |
+| Relationの完全性 | 既存`members_first_page`の2/4行・`partial`、および誤`complete`の反例 | Callerによる完全性申告の根拠 |
+| 表示・Plugin | #5156のWhole／Field純粋投影、#5212のSource位置Presenter、審査中#5214の状態損失負例 | 出力形状からの公開Grant、実Open、欠損状態の復元 |
+| 実Consumer | #2586／#4496の通常CLI実Providerと独立受領 | 同じAttemptでの取得→判断→消費 |
+
+次はDPC-16の**呼出し側の完全性資格**を最小のコード差分とし、既存テストの誤`complete`ケースが「Ruleへ渡せば成立する」だけで終わらないようにする。ただし、Reader自身へ推測による`complete`自動判定を持たせない。Query／Contextの実際の選択・呼出し記録を照合し、証拠不足なら保留する。X-TEA由来の条件付き必須Rule（審査中#5187）や期間Ruleの一般化は、現行のRule種別と実現方式の能力範囲を確認して別段階で扱う。
+
+**現在の受入上限**：#5179／#5149／#5156／#5212は各自の限定範囲でmainへ統合されている。一方で、SQL行の全件性を自動証明する製品経路、実Providerを通常CLIと独立Consumerで同一Attemptに束縛するR3、正式BuilderのR2-P、実Windows Stage2の完成は未認定である。

@@ -320,5 +320,37 @@
 # CLI resolve reason output is hashed as raw bytes by its README.
 /plan/evidence/CLI_RESOLVE_REASON_2026-11-11/** -text
 
+# Reconnect-disabled observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_RECONNECT_DISABLED_2026-11-16/** -text
 # Plugin version gate output is hashed as raw bytes by its README.
 /plan/evidence/PLUGIN_VERSION_GATE_2026-11-17/** -text
+
+# maxAttempts observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_MAXATTEMPTS_2026-11-17/** -text
+
+# stdio child-death observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_STDIO_CHILD_DEATH_2026-11-17/** -text
+
+# stdio env observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_STDIO_ENV_2026-11-17/** -text
+
+# stdio mid-call death observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_STDIO_MIDCALL_2026-11-17/** -text
+
+# stdio timeout observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_STDIO_TIMEOUT_2026-11-17/** -text
+
+# stdio late-reply observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_STDIO_LATE_REPLY_2026-11-17/** -text
+
+# Reconnect-header observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_RECONNECT_HEADERS_2026-11-17/** -text
+
+# Transport-fault observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_TRANSPORT_FAULT_2026-11-17/** -text
+
+# Argument-ceiling observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_ARG_CEILING_2026-11-17/** -text
+
+# maxDepth 5 observations are hashed as raw bytes.
+/plan/evidence/DSH_SUBAGENT_DEPTH5_2026-11-17/** -text

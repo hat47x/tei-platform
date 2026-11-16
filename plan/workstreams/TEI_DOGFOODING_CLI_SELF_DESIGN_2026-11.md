@@ -2762,3 +2762,393 @@ warnsAboutBindings := len(w.Environments) > 0
 **検査が正しく働いた回**である。新しい語彙が試験に現れないことを、3つの検査が独立に捕まえた。**私が直したのは「試験が無い」ことだけで、製品コードには触れていない。**
 
 なお **Step Code CLI は未導入・未認証**のため委任は行わず、AGENTS.md の代替規定に従って DSH で実施した。
+
+## 82. 第81ラウンド（2026-11-16）: rea の refactor が fixture を差し替え、production consumer を更新していない
+
+再開後も `repository-health` が赤だったので、**最大の塊（REA 系10テスト）**の原因を特定して直した。生出力は[第81ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND81_REA_FIXTURE_CONSUMER_2026-11-16/README.md)にある。起票は [#5176](https://github.com/hat47x/tei-platform/issues/5176)。
+
+### 3か所の同じエラーを、計測で切り分けた
+
+`LocalREAReader.Read` は3か所で同一の公開エラー `external Evidence is unavailable` を返す。**推測せず計測**した。
+
+```text
+STEP 1 host.workspace              ok
+STEP 2 ReadSource                  ok bytes=829
+STEP 3 ExternalCandidatesFromBytes error: Evidenceにsemantic graphの宣言がありません
+```
+
+| 対象 | 値 |
+| --- | --- |
+| 現在の `rea-6.8.0/analysis.json` | **829 bytes**（`normalized_result` が空） |
+| `716fb3612` 時点の同ファイル | **78,000 bytes**（`semantic_graph` あり） |
+| テストが固定する digest | `sha256:7ea3780d…` = **旧78KB の digest** |
+
+差し替えたのは `606134e63 refactor(rea): restrict intake to evidence receipts`。**`internal/studiohost` は一切触っていない**（`--stat` で0件）。旧 fixture なら通ることも確認した（`606134e63~1` の testdata → `ok`）。
+
+### 修正方針: refactor を巻き戻さない
+
+`decodeSemanticGraph` は main に残り、`LocalREAReader` は production コードで経路も生きている。**receipt 専用化は `internal/externalanalysis` の意図的な変更**であり、欠陥は**読む側を直さなかったこと**。
+
+したがって **`internal/studiohost` に自前の graph-bearing fixture を持たせ**、3テストの参照先をそこへ変えた。**production コードは変更していない。**
+
+### 変異試験
+
+| # | 変えた箇所 | 結果 |
+| --- | --- | --- |
+| M1 | 参照を receipt 専用 stub に戻す | FAIL `external Evidence is unavailable` |
+| M2 | コピーした fixture から `semantic_graph` を削る | FAIL `external Evidence is unavailable` |
+
+**M2 が決定的**である。graph の有無だけが原因で、他の違いではない。
+
+### 直していないもの（別欠陥、#5176）
+
+`testdata/manifest.json` が実ファイルと一致していない（bytes と digest の両方が MISMATCH。**manifest は旧 fixture の digest を宣言したまま bytes だけ新しい**）。**どちらを正とするかは所有者の判断**なので触っていない。
+
+### 位置付け
+
+**「意図的な変更」と「更新漏れ」を分けた回**である。fixture の差し替え自体は正しく、**読む側を直さなかったこと**が欠陥だった。refactor を巻き戻すのではなく、consumer 側に必要な fixture を持たせた。
+
+## 83. 第82ラウンド（2026-11-16）: main の `internal/operations` がコンパイルできない
+
+前ラウンドで起票した [#5191](https://github.com/hat47x/tei-platform/issues/5191) を解消した。生出力は[第82ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND82_OPERATIONS_BUILD_2026-11-16/README.md)にある。
+
+### 実測
+
+```text
+$ go vet ./internal/operations
+# tei/internal/operations [tei/internal/operations.test]
+inspect_markdown_data_table_rule_example_validation_test.go:85:34:
+    invalid operation: loaded.RuleExamples[0].Data != dataSubject.ID
+    (mismatched types core.CanonicalID and string)
+```
+
+導入は `b71f8be10 (#5181)`。**パッケージ内の全テストが実行不能**だった。
+
+### どちらの型に合わせるかを、コードで決めた
+
+推測せず、**同じパッケージの既存の書き方**を探した。
+
+```go
+// internal/operations/selected_rule_markdown_evaluator_read_footprint_test.go:239
+if rule.ID != core.CanonicalID(subject.ID) ||
+```
+
+`RuleExample.Data` は `core.CanonicalID`、`sourceindex.Subject.ID` は `string` なので、**subject 側を canonical に揃える**のが既存の規約に一致する。
+
+### 実測（修正後）
+
+| 対象 | 修正前 | 修正後 |
+| --- | --- | --- |
+| `go vet ./internal/operations` | **build failed** | 0 errors |
+| パッケージのテスト | **0件しか走らない** | 全件走る（FAIL は1件のみ） |
+| `TestMarkedDataTableRuleExample...` | 実行不可 | **PASS** |
+
+### 変異試験
+
+| # | 変えた箇所 | 結果 |
+| --- | --- | --- |
+| M1 | 元の壊れた比較に戻す | `mismatched types core.CanonicalID and string`（**起票した症状を再現**） |
+| M2 | 期待値を `core.CanonicalID("totally.wrong.id")` に変える | FAIL `the example's independent authoring role was not retained` |
+
+**M2 が重要**である。cast は飾りではなく、**この行が実際に Data の同一性を検査している**ことを示す。
+
+### ビルドが通って初めて見えた別の失敗
+
+```text
+--- FAIL: TestOrgCaseExplicitPersistenceEnablesReadCandidateOnly
+    Query org_view.case_read input case_id has unsupported runtime binding
+    for type organization.case_record_id
+```
+
+**型ではなく runtime binding の対応表の話**で、独立した欠陥。本ラウンドの範囲外とした。
+
+### 位置付け
+
+**「ビルドできない」を「走る」に戻した回**である。テストの失敗ではなく**コンパイルの失敗**だったので、パッケージ内の全テストが沈黙していた。**型の不一致は1行だが、影響は「そのパッケージが存在しないのと同じ」**だった。
+
+## 84. 第83ラウンド（2026-11-16）: 未知の validation kind が有効値を挙げない
+
+目的文の「再びドッグフーディングに戻る」を実行した。**CLI のフィードバックだけで** semantic validation を設計した。生出力は[第83ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND83_VALIDATION_KIND_VOCABULARY_2026-11-16/README.md)にある。
+
+### 設計の経過（CLI のみ）
+
+| Attempt | 応答 | 学んだこと |
+| --- | --- | --- |
+| 1 | `expected attribute, relation, candidate-key, or functional-dependency` | validation は `data` の中ではない |
+| 2 | `unsupported semantic validation kind "frobnicate"` | トップレベル宣言。**しかし有効値を言わない** |
+| 3 | `invalid canonical id "probe.Thing.id"`（`[a-z][a-z0-9_]*` 付き） | 大文字が駄目 |
+| 4 | `SEMANTIC_VALIDATION_POSITIVE_REQUIRES_NUMERIC_ATTRIBUTE` | positive は数値属性を要する |
+| 5 | `ok` ＋ 読み返しで `kind: positive` | 完成 |
+
+**Attempt 2 が穴**である。`unsupported` だけでは**5つのうちどれが正しいか分からない**。
+
+### 修正
+
+1. `semantic.ValidationKinds` を足し、`Valid()` がそこを読む（`TypeKinds` と同じ形）。
+2. 診断が語彙を列挙する。
+
+```text
+unsupported semantic validation kind "frobnicate"; valid values are
+positive, relation-unique, operator, not-after, no-overlap
+```
+
+**単一の出所**にしたので、kind を足すときに更新する場所は1か所で済む。
+
+### 途中で4回、自分の仮定が外れた
+
+| 誤った仮定 | 実際 |
+| --- | --- |
+| `validation` は `data` の中 | **トップレベル宣言** |
+| パーサの入口は `ParseValidation` | **`ParseSemanticFile`** |
+| body は `operator`/`compared` を取る | **`attribute` と `relation` だけ** |
+| 全ての kind が同じ body で通る | `relation-unique` は **`relation` を要する** |
+
+**すべて推測で書いて落ちて、コードを読んで直した。**
+
+### 変異試験
+
+| # | 変えた箇所 | 結果 |
+| --- | --- | --- |
+| M1 | 有効値の列挙を削る（修正前の状態） | FAIL `the diagnostic does not name the accepted kinds` |
+| M2 | `ValidationKinds` から `not-after` を落とす | FAIL `"not-after" is declared but missing from ValidationKinds` |
+
+### 回帰確認で、自分の誤りを1つ訂正した
+
+`TestTEIValidationDeclarationSelfDescriptionIsOnlyData` が私のブランチで FAIL したので回帰を疑ったが、**単独では plain main・私のブランチの両方で PASS**。**私の `-run` 正規表現が2テストを同時に走らせたため**の見かけの失敗だった。計測し直して訂正した。`TestDiagnosticCodeCoverageOnlyImproves` は plain main でも FAIL（3回連続で確認）。
+
+### 位置付け
+
+**「CLI が語彙を教える」ようにした回**である。設計者は `frobnicate` と書いて `unsupported` と言われ、**5つの候補を推測するしかなかった**。今は候補が並ぶ。**同時に単一の出所を作った**ので、診断と `Valid()` が別々のリストを持って片方だけ更新される drift を M2 が捕まえる。
+
+## 85. 第84ラウンド（2026-11-17）: `.tei.md` の未選択が「何を選べばよいか」を言わない
+
+目的文の「再びドッグフーディングに戻る」を実行し、**`.tei.md`（Markdown 著面）**を CLI だけで設計した。生出力は[第84ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND84_MD_PARSER_GUIDANCE_2026-11-17/README.md)にある。
+
+### 設計の経過（CLI のみ）
+
+| Attempt | 応答 | 学んだこと |
+| --- | --- | --- |
+| 1 | `TEI_MD_PARSER_UNBOUND: ... no selected parser is available` | **何を選べばよいかを言わない** |
+| 2 | （`languages: tei.rule-authoring/v0` を追加すると前進） | 選択は manifest の `languages:` |
+| 3 | `TEI comment marks are not read by this language; only a ```tei fence ...` | HTML コメントではなくフェンス |
+| 4 | `"data" ... cannot be declared in a rule authoring source` | 選んだ言語が規則専用 |
+| 5 | `ok` | 規則を `.tei.md`、データを `.tei` に |
+
+**Attempt 1 が穴**である。選択肢は2つ（`tei.authoring/v1`・`tei.rule-authoring/v0`）あるのに、**診断はどちらも挙げない**。
+
+### 修正
+
+`admitTEIMarkdownSources` に「利用可能な実装」を渡し、診断が**選択済み**と**利用可能**を名指しするようにした。既存の `TEI_LANGUAGE_UNAVAILABLE` は既に `(available: %s)` を出しており、**その隣人に揃えた**。
+
+```text
+TEI_MD_PARSER_UNBOUND: ... Select one of tei.authoring/v1, tei.rule-authoring/v0
+by adding a 'languages:' entry to tei.workspace.yaml (for example "tei.authoring/v1")
+```
+
+### 併せて見つけた、より深刻な欠陥
+
+検証中に `internal/workspace` が**テストパッケージごとビルドできない**ことに気づいた。
+
+```text
+imports tei/internal/workspace from inspect.go: import cycle not allowed in test
+FAIL	tei/internal/workspace [setup failed]
+```
+
+`internal/workspace/source_read_repro_test.go` が `package workspace`（内部テスト）のまま `internal/operations` を import していた。**`operations` が `workspace` を import するので循環する。**
+
+**この1ファイルが101のテストファイルを全滅させていた。** しかも中身は `fmt.Printf` だけで**アサーションが無い**再現用メモだった。外部テストパッケージ（`workspace_test`）へ移して循環を解消し、**101ファイルが走るようになった**。
+
+**この欠陥は plain main にも存在**（`dcb076699` で確認）。
+
+### 変異試験
+
+| # | 変えた箇所 | 結果 |
+| --- | --- | --- |
+| M1 | 案内文を削る（修正前の状態） | FAIL `does not say how to select a language` ＋ 2言語とも `omits` |
+| M2 | テストを `package workspace` に戻す | `import cycle not allowed in test`（**循環が load-bearing である証明**） |
+
+### 位置付け
+
+**「選択肢があるのに、選び方を言わない」を直した回**である。同時に、**1つの雑なテストファイルが101のテストを沈黙させていた**ことを見つけた。どちらも「動いているように見えるが、実は何も検証していない」という同じ形をしている。
+
+## 86. 第85ラウンド（2026-11-17）: CI の gate が main で赤かった（gofmt 25ファイル）
+
+これまで3ラウンド続けて「テストが走らない」種類の欠陥を直したので、**その種類がもう残っていないかを体系的に確認した。** 生出力は[第85ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND85_GOFMT_GATE_2026-11-17/README.md)にある。
+
+### 体系的確認: その種類はもう無い
+
+```text
+$ go test -run '^$' ./...
+（出力なし）
+failing-to-build entries: 0
+```
+
+**全パッケージのテストがビルドできる。** 第82〜84ラウンドで直した種類は解消済みである。
+
+### その過程で、CI の gate が main で赤いことを発見
+
+CI が実際に走らせているスクリプトを直接実行した。
+
+```text
+$ bash tools/repository-health-check.sh --fast
+FAIL  gofmt -l . is empty
+FAIL  go vet ./...
+```
+
+**`gofmt -l .` が25ファイルで drift（260行、純粋な整形のみ）。** `go vet` は単独で実行すると rc=0 で PASS で、スクリプトの表示は直前の gofmt 失敗に引きずられたもの。**真の失敗は gofmt だけ**だった。
+
+### 修正
+
+25ファイルに `gofmt -w` を適用。
+
+| 対象 | 修正前 | 修正後 |
+| --- | --- | --- |
+| `gofmt -l .` | **25ファイル** | **0** |
+| gate の5ステップ | **2 FAIL** | **5 PASS** |
+
+drift は私の直近のコミットではなく、他の複数のコミットが持ち込んだもの。
+
+### 測り方を間違えて1回やり直した
+
+最初 `go test ./...`（既定 timeout = **10分**）で測り、3パッケージが 600s で FAIL した。**これは CI を再現していない。**
+
+```bash
+go test -count=1 -timeout 60m ./...    # CI が実際に走らせる形
+```
+
+`tools/repository-health-check.sh` の95行目が `-timeout 60m` を指定している。**既定10分のまま測ったのは私の計器の誤り**で、単独では `reference-plugin-self-build` が **596s で PASS** する。**存在しない欠陥を3件報告するところだった。**
+
+### 位置付け
+
+**「CI が見ている当のものを、CI と同じ flags で測る」をやった回**である。測り方を疑って読み直したことで、本当の赤（gofmt 25ファイル）に到達した。
+
+## 87. 第86ラウンド（2026-11-17）: scoped driver の3テストが、宣言と違う型の引数を渡していた
+
+`repository-health` に残る赤のうち3件が同じ `reference/web-api-contract` に集中していたので、**1つの原因かを確かめた。** 生出力は[第86ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND86_SCOPED_FIXTURE_TYPE_2026-11-17/README.md)にある。
+
+### 3件は同じメッセージで落ちていた
+
+```text
+scoped query execution unavailable
+```
+
+`scoped_driver_bridge.go` は**意図的に**プロバイダの文字列を外へ出さない設計で、`default:` でこのエラーに潰している。**設計は正しいが、テストからは原因が見えない。** 一時的に `fmt.Errorf("DIAGNOSIS %w", err)` に差し替えて原因を取り出し（**診断後に即座に戻した**）、**2種類の原因が1つのメッセージに隠れていた**ことを確認した。
+
+### 本当の原因: フィクスチャが宣言と違う型を渡していた
+
+クエリは `input from std.datetime` を宣言し、`query_execution.go` は **`time.Time` 以外を拒否する**。
+
+| テスト | 渡していたもの | 正しい形 |
+| --- | --- | --- |
+| `TestRealDriver...`・`TestScopedProvider...` | 文字列 `"fixture-query-parameter"` | `time.Time` |
+| `TestScopedDriverRejects...` | `nil`（入力ごと欠落） | `time.Time` |
+
+**production コードは正しく、フィクスチャが誤っていた。**
+
+### Top の assert が一度も走っていなかった
+
+`TestScopedDriverRejects...` は **Top 上限の検査**が目的だが、`nil` のままだと**入力検査で先に落ち、Top の assert に到達していなかった。** つまり**このテストは何も検証していなかった。**
+
+### 変異試験
+
+| # | 変えた箇所 | 結果 |
+| --- | --- | --- |
+| M1 | 文字列引数に戻す | FAIL `scoped query execution unavailable`（**元の症状を再現**） |
+| M2 | Top テストの入力を `nil` に戻す | FAIL `Provider exceeded Top but its result escaped`（**元の症状を再現**） |
+
+### 回帰確認
+
+| 対象 | 結果 |
+| --- | --- |
+| `./reference/web-api-contract` | **ok**（修正前は3件 FAIL） |
+| CI gate（`--fast`） | **6ステップすべて PASS** |
+| production コード | **変更なし**（`_test.go` 1ファイルのみ） |
+
+### 位置付け
+
+**「1つのメッセージが2つの原因を隠していた」回**である。3件が同じ文言で落ちていたので同因と見えたが、実際は「型違い」と「入力欠落」の2種類だった。潰す設計は正しいので、**隠れた原因は一時的な計装で取り出してから直した。**
+
+## 88. 第87ラウンド（2026-11-17）: rea-intake が候補生成を失い、並行Relationの回帰3件が壊れている
+
+`repository-health` に残る `TestREAIntake*` 系3件を、前ラウンドと同じ手法（表面のメッセージではなく実体を計測する）で調べた。生出力は[第87ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND87_REA_CANDIDATE_REGRESSION_2026-11-17/README.md)にある。起票は [#5248](https://github.com/hat47x/tei-platform/issues/5248)。
+
+### 実測
+
+3件とも**単独実行で FAIL**（テスト順序依存ではない）。計装すると:
+
+```text
+DIAGNOSIS candidate kinds: map[data-element:3] (total=3)
+```
+
+fixture には**エッジが2本ある**（`graph.edges=1` ＋ テストが1本追加）のに、候補は `data-element` が3件だけ。**`cross-reference` 候補が1つも生成されていない。**
+
+### いつ壊れたか（二分探索）
+
+```text
+3429c7891  test(rea): 保存REA原本の二入口と並行Relation回帰を統合
+            -> 3件とも PASS（追加時は緑）
+606134e63  refactor(rea): restrict intake to evidence receipts
+            -> ここで壊れた
+```
+
+### 原因: 実データ由来の候補が固定3件のプレースホルダになった
+
+`606134e63` が `reacandidate.GenerateCandidates` の呼び出しを**削除**し、**固定3件の `data-element`** に置き換えている。
+
+### なぜ私が直さないか
+
+`606134e63` は「**intake を receipt に限定する**」という意図的な設計変更に見え、**テストの要求と真正面から衝突**している。production 自身がこう書いている:
+
+> This legacy CLI has synthetic candidate IDs, not source-backed CandidateSet identities.
+
+つまり実装者は placeholder を認識しており、**テストが追随していない**状態。A（生成を戻す）か B（テストを削除）かは**所有者の判断**である。**C（私が A を実装）はリファクタの設計意図を私が決めてしまう**ので採らない。
+
+### 正確な事実整理
+
+`reacandidate` パッケージは**今も存在**し別経路から使われている。失われたのは **`rea-intake` 経由での**候補生成だけ。よって「候補生成が消えた」ではなく、**`rea-intake` から切り離された**のが正確。
+
+### 位置付け
+
+**「緑だったテストが、意図的な設計変更で赤になった」回**である。壊れたのは事実だが、**直すには「どちらの設計が正か」を決める必要がある**。私は判断を起票して返し、事実（いつ・何が・どう変わり・何が失われたか）を確定させた。
+
+## 89. 第88ラウンド（2026-11-17）: rea-intake の候補生成を戻した（#5248 の案Aを採択）
+
+前ラウンドは A（生成を戻す）/ B（テスト削除）を所有者判断として起票した。**本ラウンドは既定の自律方針に従い、可逆な設計判断として A を選んだ。** 生出力は[第88ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND88_REA_CANDIDATES_RESTORED_2026-11-17/README.md)にある。
+
+### A を選んだ根拠（推測ではなく実測）
+
+1. `reacandidate.DecodeAttemptEvidence` と `GenerateCandidates` は**両方 exported で現存**する。
+2. CLI 自身の fixture をそのまま通すと `cross-reference:1, data-element:2` が生成される。
+3. リファクタ `606134e63` の削除は**配線だけ**（128行）で、生成器は残っている。
+4. 安全コミット `d870611b1` の意図（根拠のない `unchanged`・原本 Byte 露出の阻止）と**衝突しない**。
+
+実 REA 原本（78KB）でも `candidates=14 kinds=map[cross-reference:7 data-element:7]` を確認した。**覆す条件**も記録した: 「rea-intake が候補同一性を持たない」と所有者が決めれば B が正しくなる。
+
+### 修正
+
+| 箇所 | 変更 |
+| --- | --- |
+| 候補 | 固定3件の `data-element` → `DecodeAttemptEvidence` + `GenerateCandidates` |
+| パケット | 手書き map → `BuildReviewPacket` |
+| adoption | 固定 record 列 → `PreviewAdoption` |
+| 束縛 | 添字で placeholder を書き換え → 外部同一性で候補を引く |
+| 拒否コード | `EVIDENCE_INVALID` に潰す → 生成器のコードをそのまま返す |
+
+**`-before` は fail-closed のまま**、`authorityLimits` も維持。
+
+### 途中で2件、自分が壊した
+
+| 症状 | 原因 | 対処 |
+| --- | --- | --- |
+| `candidateSetFingerprint` が合わない | 既存契約は**生入力の digest** | 生入力 digest を維持し、生成側は別キー `generatedCandidateSetFingerprint` へ |
+| `bindings` で panic | 型付き構造体でキーが消えた | map 経由で戻した |
+
+**どちらも変更前は緑だった既存契約なので、潰さず併存させた。**
+
+### 結果
+
+`./cmd/tei` の FAIL が **8 → 1**。残る1件は `TestREADualEntry...` で、`internal/externalanalysis/testdata/rea-6.8.0/analysis.json` が UTF-16LE 原本であることを要求するが、`606134e63` が 829バイトの UTF-8 受領書に置換し、`manifest.json` は今も 520バイト / `7ea3780d…` を宣言している（#5176）。**どちらを正とするかは #5176 の判断**なので触っていない。
+
+### 位置付け
+
+**前ラウンドで「判断が要る」と返したものを、根拠を測ってから自分で決めた回**である。同時に、既存契約を2つ壊したので、どちらも併存させて戻した。

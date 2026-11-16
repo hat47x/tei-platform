@@ -391,6 +391,16 @@ SSR／SSGで初期HTMLを作る場合、初期Snapshotとその後のClient Read
 
 最初のPRは `presentation.ts` に既にあるReaderを再実装しない。**検証済みResultから画面に渡す値を整える純粋なPresenter** と、その境界の回帰試験だけを追加する。部分取得は「確認できた範囲」として表示し、「該当なし」「全件」「編集可能」を推定しない。Browserへの展開は同じPresenterの独立Consumerを使って確かめ、Wails Bridgeを共通Componentの必須依存にしない。
 
+### 19.2.1 WEB-P1aの純粋Presenterと配布・生成Closureの受入を分ける（2026-11-16）
+
+`reference/tei-studio-workbench/inspector-presentation.ts` に、既存 `readInspection` が検証した結果をEditor文書、Source状況、利用制限、Noticeへ整える純粋な `presentInspection` を追加する。対象IDの形式は既存 `subjectKey` に従い、Source状況が `partial` でもそのまま表示へ渡す。表示制限一覧はコピーする。Grant／Effect／Meaning受理や取得範囲の完全性を推定しない。`presentation.test.mjs` は既存Readerで検証した同一Subject／版の表示値、部分取得、制限の独立、旧Source Index指紋・非read-only応答・制限欠落の拒否を検査する。
+
+**今回の差分は独立したPresenterファイルと局所試験であり、既存 `presentation.ts` と `main.ts` は変更しない。** 正規Workbenchの実表示はまだ旧処理のままで、新Presenterは実画面へ接続されていない。これは、[生成Workbenchの固定Closure](../../tools/reference-studio-static-composition/connect-workbench.mjs)に `presentation.ts` の過去のGit blobが明記されているためである。実体を改版したにもかかわらず過去の受領資格を維持するよう指紋を書き換えたり、検査を無効化したりしてはならない。今回の実Windows CIで現れた `workbench_closure_revision_mismatch` は、この境界を実際に検出した反例として扱う。
+
+次のWEB-P1a-2では、`main.ts` から新Presenterを呼ぶ変更を**新しいSource／Closureとして資格化**する。Node24の `npm test`／`typecheck`／`build`、`reference/tei-studio-workbench/dist/main.js` とWails埋込 `cmd/tei-studio/assets/workbench/main.js` の実byte一致、HTML／CSS／第三者通知、既存Builderでの生成Workbench、最後に各Consumerの受領を順に確認する。歴史的に成功したPinを上書きせず、Source改版→生成→実Bundle→Consumerの新しい証拠を作る。手書きで埋込JSを似せただけでは合格としない。
+
+WEB-P1a-1の局所試験、P1a-2の正規Bundle／生成Closure受領、WEB-P1bのFocus／Pin後着非干渉、S-LOCの実画面接続、実Windows／Stage2は別の資格である。既存#1180／#2514のExpectedと#1824／#997／#2831のOwnerに引き渡し、二本のP0への新しいHard Gateにはしない。
+
 ### 19.3 WEB-P2とWEB-P3へ進む条件
 
 **WEB-P2（API公開）**では、既存 `operations.InspectSubject` を共通の意味基線とし、CLI direct、Wails非依存Studio Host、HTTP Adapterの三入口で対象、要求版、Failure分類、開示結果を照合する。HTTPのルート登録や同名のJSONを返すMockだけでは実Provider到達と数えない。HTTP側のActor／Audience／Disclosure、Current Grant、Rate／Size制限、Origin／CSRF／CORSを入口ごとに検査する。API Pluginの実ProviderはWailsに依存せず、Pluginの選択・Target収録・Host公開・実Call・Consumer受領を別々に観測する。
@@ -400,3 +410,33 @@ SSR／SSGで初期HTMLを作る場合、初期Snapshotとその後のClient Read
 WEB-P1／P2／P3はいずれも**全体P0の追加前提ではない**。P0は引き続き、非Plugin Studio BuildIntent→Stage1自身によるStage2構築→実Windows WebView2受領（#2831／#4583）と、通常製品CLI→実Provider Read→独立Consumer（#2586／#4495）。UIの実装方式は、同一Fixtureでの表示契約、コード生成が実際に担う構造、手書きの残差、差分失効、Build／実Consumerの根拠を比較してから採否を決める。
 
 反証は既存#1180／#2514、UI実装は#997／#1824、共通Operationと公開は#1158／#951／#1251、SourceとMappingは#2497／#1124、B2Cは#3509のOwnerへ戻す。新しいUI専用Parser、HTTP Runner、永続State Store、独立Expected正本は設けない。本節は実装引渡しであり、新しいGo／Node／Browser／Windows／HTTP E2Eの合格を意味しない。
+
+## 20. WEB-P1a-2のSource閉包と表示資格を、実Consumerから逆に確認する（2026-11-17、実装・検収引渡し）
+
+### 20.1 共通Presenterは公開APIの開示判断ではない
+
+WEB-P1a-1でmainへ入った `inspector-presentation.ts` は、`readInspection` が検証した局所read-onlyの表示結果からEditor文書・参照状況・利用制限・Noticeを純粋に導出する。ただし `readInspection` が認めるのは当該Workspace／Catalogと一致するHostの**表示用応答**であり、別Audienceへの開示、Source原文のOpen、Meaning受理、Effectの資格ではない。HTTPや公開HeadへこのViewModelの本文をそのまま送ってよいという契約は存在しない。WEB-P2ではServer側OperationとDisclosureの選択を確認した後、公開してよいFieldだけを別途投影する。
+
+同名の `id` を持つ `semantic-data` と `semantic-rule` は異なるSubjectである。さらに同じqualified Subjectでも、Workspace AとBは別の表示先である。Editor文書IDは既存 `subjectKey` とWorkspaceを組み合わせ、表示版が同じでも対象の同一性を主張しない。Readerが返した `partial`、`unfetched`、明示NULLをPresenterで勝手に `complete`、不存在、ゼロへ縮約しない。選択の後着失効とPinの非干渉は、main統合済みの[PR #5168](https://github.com/hat47x/tei-platform/pull/5168)が扱う独立Expectedを再利用し、単なるPresenterの決定性から推定しない。
+
+### 20.2 新しいWorkbenchを「別の版として」受け入れる最小手順
+
+過去にWindowsで受領した `tools/reference-studio-static-composition/connect-workbench.mjs` の `WORKBENCH_NATIVE_CLOSURE` は**歴史的Snapshotの正確なGit blob一覧**である。新Presenterを組み込むために古いhashを更新すると、過去の検証事実が別のソースを指すことになる。WEB-P1a-2では旧Pinを保存したまま、今回のSourceと依存の組合せを**新たな資格**として検収する。既存の固定Snapshotに対する拒否試験もそのまま維持する。
+
+| 段階 | 実際に確認するもの | 中止する条件 |
+| --- | --- | --- |
+| 1. Sourceと選択 | `main.ts` が `readInspection` 成功後に `presentInspection` を呼び、Workspace／qualified Subject／要求laneを変えずにEditorへ渡す。既存の `inspectEligibility` を維持 | 未資格Subjectで実Hostを呼ぶ、A→B→A旧返信を再表示する、Pin応答でFocusを上書きする |
+| 2. 新しい依存Closure | `main.ts`、`presentation.ts`、`inspector-presentation.ts`、`responses.ts`、Editor／Graph／Command等の実import、lockfileの対象byteを一つのSource版で固定 | 古い `WORKBENCH_NATIVE_CLOSURE` を上書きする、対象外ファイルや版違いを黙って採用する |
+| 3. 正規生成 | Node24・`npm ci`・`npm test`・`typecheck`・`build.mjs` を実行し、生成 `dist/main.js` とWailsの埋込 `main.js`、HTML／CSS／第三者通知をbyte比較 | TypeScriptだけ成功し生成物を未更新、手作業の差替え、生成器／lockfileの差異を無視する |
+| 4. 配布先の実受領 | 通常Studioと既存生成Workbenchを**それぞれ**起動し、同一Subjectの本文・Source状況・制限・失敗表示、必要なら実Windows WebView2を検査 | Serverのhealthや静的HTMLだけでClient受領を代替、過去のWindows成功を新HEADへ流用 |
+| 5. 独立Expected | #1180／#2514に、同名異Kind・Workspace分離、旧fingerprint、`partial`／明示NULL／未取得、後着、制限欠落の反例を返す | 現行の実装から期待値を自動生成、Source位置から書込み資格を作る |
+
+この手順は新しいBuilder、生成専用Runner、永続Trace Storeの追加を求めない。現行の `build.mjs`、Workbench埋込Bundle CI、既存Static Composition／Wails CIを正規入口として利用する。UI Frameworkの全面変更、SSR／PWA実装、独立API Hostの追加は受入条件にしない。生成JSが同じbyteでもSource／Toolchain／Pluginの資格は別に確認し、生成器だけ変えたA→B→Aを無条件に再利用しない。
+
+### 20.3 実測結果と未検収を同じ欄へ混ぜない
+
+[PR #5173](https://github.com/hat47x/tei-platform/pull/5173)のマージ後に、同PRのHEADに対するGitHub Actionsを再確認した。**埋込Bundle一致のJobはsuccess**、通常・生成DesktopのWindows WebView2 smokeもsuccess。一方、repository-health、`studiohost` を含む一部のGo／生成Host Jobはfailureだった。ログの失敗例は `OPERATION_FAILED: external Evidence is unavailable`、Workspace／Web API／ThreeElementの別テストであり、WEB-P1a-1のPresenterが失敗原因とは断定しない。逆に他領域の不具合だから無視して製品全体をPASSとすることもしない。
+
+WEB-P1a-1の新Presenterは実画面にはまだ未接続である。新WEB-P1a-2のSource・Closure・Bundle・実Consumerを検査していない限り、**過去のBundle一致・Windows成功は新Presenterの画面受領を証明しない**。新しいテストでは、同名異Kind・別Workspaceの表示ID、明示NULL、`partial`／`unfetched`、制限文の保持を、既存Readerと新Presenterの組合せで直接確かめる。WEB-P1bは既存#5168のFocus／Pin回帰へ接続し、WEB-P2/P3の公開・Target受領は別のOwnerに残す。
+
+この追補によってP0の順序は変更しない。最優先は非Plugin StudioのStage1→Stage2実Windows（#2831／#4583）と通常CLIの実Provider Read→独立Consumer（#2586／#4495）。WEB-P1a-2はその生成・Consumer検収の共通手法を具体化するP1であり、独立の新Hard Gateではない。

@@ -1,0 +1,7 @@
+M1 repoint back to the receipt-only stub
+   -> FAIL Host Evidence read failed: ... external Evidence is unavailable
+M2 delete semantic_graph from the copied fixture
+   -> FAIL Host Evidence read failed: ... external Evidence is unavailable
+
+M2 is decisive: the presence of semantic_graph alone flips the result.
+restored -> internal/studiohost ok, internal/externalanalysis ok.

@@ -104,6 +104,7 @@ func TestInspectCapabilitySourceEvidenceFromWorkspace(t *testing.T) {
 	_, err = InspectSubject(root, missing)
 	inspectionCode(t, err, InspectionNotFound)
 }
+
 // A stable Canonical Capability is not a Source revision token. This fixture
 // uses the same product Workspace reader as document projections; a trailing
 // newline must invalidate Source-bound views without inventing new business

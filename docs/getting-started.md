@@ -198,7 +198,7 @@ go run ./cmd/tei model catalog -workspace reference/workspace -namespace sales
 go run ./cmd/tei model locate -workspace reference/workspace -subject-kind semantic-data -subject-id sales.order
 ```
 
-`model locate`の結果には、その要素と配下全体の要注意の件数`attention`も入ります（`model overview`と同じ数え方です）。
+`model locate`の結果には、その要素と配下全体の要注意の件数`attention`も入ります（`model overview`と同じ数え方です）。`result.snapshotFingerprint`は`worldFingerprint`と`sourceIndexFingerprint`を1つにまとめた値で、`inspect`・`model overview`と同じWorkspaceなら同じ値を返します。もう一度読むときに`-expected-fingerprint`へ渡せます。渡した値と一致しない場合は`error.code=STALE_SNAPSHOT`・終了コード2で答えます。
 
 モデル全体の目次と、どこに問題があるかを先に見るには、`model overview`を使います（2026-11-10から）。最上位の要素（意味名前空間、Application、Query）を区画として並べ、区画ごとに次を返します。
 
@@ -211,6 +211,30 @@ go run ./cmd/tei model locate -workspace reference/workspace -subject-kind seman
 go run ./cmd/tei model overview -workspace reference/workspace
 ```
 
+`result.snapshotFingerprint`は`inspect`・`model locate`と同じWorkspaceなら同じ値を返すので、コマンドをまたいで2回読んだときに`-expected-fingerprint`へ渡せます。渡した値と一致しない場合は`error.code=STALE_SNAPSHOT`・終了コード2で答えます。これは2回の読み取りの間に入力元が変わっていないことを示すだけであり、変更の受理や書込みの許可ではありません。
+
+文字列がモデルのどこに出てくるかを調べるには、`model search`を使います（2026-11-17から）。`model catalog`は全要素を列挙するだけで内容では選べず、`-namespace`は意味名前空間での絞り込みです。そのため呼出し元は、名前の一部が分かっていても全`entries`を取得し、種類を推測しながら対象ごとに`inspect`を呼ぶ必要がありました。`model search`は管理対象Sourceの文字列を検索し、一致した各行について次を返します。
+
+- `hits`：一致。`subject`（種類と識別子）・`artifactPath`（Workspace相対のSource）・`line`（1始まりの行）・`text`（その行 as written、行末を除く）。場所と本文が証拠になるので、一致を開いて確かめられます
+- `subjects`：一致したSubjectを1件ずつ、最初に一致した位置（`artifactPath`・`line`）と、そのSubjectの一致行数`matchCount`付きで列挙。`hits`は1つのSubjectが複数行に一致すると繰り返しますが、`subjects`は繰り返しません。`-limit`で切った後も全体を覆います
+- `total`・`omitted`・`subjectCount`・`distinctSubjectsOmitted`・`kindCounts`：件数には2つの単位があります。`total`と`kindCounts`は**一致行（ヒット）**の数で、`kindCounts`は`total`の種類別の内訳なので合計は`total`に一致します。`subjectCount`は**全一致の中の distinct Subject 数**で、`-limit`で切りません。`distinctSubjectsOmitted`は**この頁が返さない一致（`-offset`で飛ばした分と`-limit`で切った分）の中の distinct Subject 数**で、頁の数からは推定せず一致そのものから数えます。1つのSubjectは宣言が複数行にわたるため複数行に一致し得るので、`total`を行数、`subjectCount`をSubject数として読んでください。切った一覧を全部と読まないでください
+- `offset`・`requestedOffset`・`nextOffset`：頁の位置。`-offset`が最終一致を超える場合は切り詰め、要求値を`requestedOffset`に残すので、切り詰めた頁と普通の頁を区別できます
+- `truncated`：作業上限に達して探索を打ち切ったか。1回の検索が読むSourceは最大200ファイル・32MiB（`operations.SearchMaxFiles`・`SearchMaxBytes`）で、Workspace相対path順に走査するため、打ち切った場合も安定した接頭辞を答えます。`true`のときは`hits`（および0件）をWorkspace全体の答えとして読まないでください。`-limit`による頁の切れ方とは別で、そちらは`omitted`・`nextOffset`が示します
+- `coverage`・`authorityLimits`：検索する範囲と、归属の規則（次項）
+
+`-term`はリテラルな文字列で、大文字小文字を区別しない部分一致です（正規表現ではありません）。`-kind`は`inspect`と同じ閉じた集合（`operations.InspectionSubjectKinds`）の1種類で絞り込みます。集合外の値を渡すと`INVALID_ARGUMENT`（終了コード2）です。`-kind`だけを渡す（`-term`なし）と、その種類のSourceの内容を一覧できます。
+
+**行の归属**：Source Indexは各Subjectを宣言の識別子に結び付けます。識別子を持たない行（Relationの`key`、Capabilityの`input`、閉じ括弧など）は、検索対象の種類の中で最も近い前の宣言に归属します。したがって`-kind`を付けると归属の候補がその種類だけになり、`-kind semantic-data -term customer_id`は、Data要素のブロック内の記述をData要素として返します。Source内の最初の宣言より前の行と、宣言の索引されないSourceは検索対象外です（`coverage.notDerived`）。
+
+0件は成功応答（`ok:true`・終了コード0）です。ただし`coverage.notDerived`に載る範囲は検索していないため、0件は「その文字列がWorkspaceのどこにも無い」ことの証明ではありません。Sourceが読めない、または読み込み中に内容が変わって指紋が合わない場合は、場所の証拠が別のバイト列のものになるため`SOURCE_READ_FAILED`／`SOURCE_ARTIFACT_CHANGED`（終了コード2）で答えます。
+
+```bash
+go run ./cmd/tei model search -workspace reference/workspace -term orderId
+go run ./cmd/tei model search -workspace reference/workspace -term customer -kind semantic-data
+```
+
+`worldFingerprint`・`sourceIndexFingerprint`・`modelRevision`・`snapshotFingerprint`は`model catalog`・`model locate`・`model overview`・`inspect`と同じ読込みから出るため、検索結果を特定の模型版に結び付けられます。一致は案内であり、変更の受理や書込みの許可ではありません。
+
 正規化された業務モデルから特定の要素だけを確認するには、`inspect`を使います。現在対応するのは`semantic`、`semantic-type`、`semantic-data`、`semantic-attribute`、`semantic-relation`、`semantic-candidate-key`、`semantic-functional-dependency`、`semantic-capability`、`semantic-validation`、`application`、`application-pattern`、`query`の12種類です。対象の種類と正本の識別子を、完全一致で指定します。
 
 ```bash
@@ -220,7 +244,7 @@ go run ./cmd/tei inspect \
   -subject-id sales.order
 ```
 
-`inspect`は`tei.cli.inspect/v0`形式のJSONを返します。成功時の`result.canonical`は既存の正規化した全体モデルから選択した要素そのもの、`result.sources`は既存入力元索引の参照と成果物の照合値です。`worldFingerprint`は読取り時点の正本となる全体モデルの内容を識別するためのハッシュであり、競合更新を防ぐ版を示す値や変更の受理証跡ではありません。`sourceStatus=not-indexed`は入力元索引に参照がないことを意味し、正本となる定義の不存在とは区別します。
+`inspect`は`tei.cli.inspect/v0`形式のJSONを返します。成功時の`result.canonical`は既存の正規化した全体モデルから選択した要素そのもの、`result.sources`は既存入力元索引の参照と成果物の照合値です。`worldFingerprint`は読取り時点の正本となる全体モデルの内容を識別するためのハッシュであり、競合更新を防ぐ版を示す値や変更の受理証跡ではありません。`result.snapshotFingerprint`は`worldFingerprint`と`sourceIndexFingerprint`を1つにまとめた値で、同じ対象をもう一度読むときに`-expected-fingerprint`へ渡せます。渡した値と一致しない場合は`error.code=STALE_SNAPSHOT`・終了コード2で答えます。これは2回の読み取りの間に入力元が変わっていないことを示すだけであり、変更の受理や書込みの許可ではありません。`sourceStatus=not-indexed`は入力元索引に参照がないことを意味し、正本となる定義の不存在とは区別します。
 
 業務モデルの要素が何を参照し、何から参照されているかを調べるには、読み取り専用の`trace`を使います。`inspect`と同じ種類・識別子（例：`semantic-relation: sales.order.customer`）を指定して、意味の情報と参照関係を確認できます。現在扱えるのは、既存の派生索引で表現できる、宣言済みの直接参照だけです。
 

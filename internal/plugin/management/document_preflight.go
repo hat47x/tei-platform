@@ -36,16 +36,16 @@ type DocumentReadPreflight struct {
 }
 
 const (
-	DocumentSelectionScanIncomplete   = "scan-incomplete"
-	DocumentSelectionNotInInventory   = "not-in-inventory"
-	DocumentSelectionNotDeclared      = "not-declared"
-	DocumentSelectionNotSelected      = "not-selected"
-	DocumentSelectionResolverUnbound  = "resolver-unbound"
-	DocumentSelectionVersionUnknown   = "version-unknown"
-	DocumentSelectionVersionMismatch  = "version-mismatch"
-	DocumentSelectionLockUnknown      = "lock-unknown"
-	DocumentSelectionLockMismatch     = "lock-mismatch"
-	DocumentSelectionExactPinned      = "exact-version-pinned"
+	DocumentSelectionScanIncomplete  = "scan-incomplete"
+	DocumentSelectionNotInInventory  = "not-in-inventory"
+	DocumentSelectionNotDeclared     = "not-declared"
+	DocumentSelectionNotSelected     = "not-selected"
+	DocumentSelectionResolverUnbound = "resolver-unbound"
+	DocumentSelectionVersionUnknown  = "version-unknown"
+	DocumentSelectionVersionMismatch = "version-mismatch"
+	DocumentSelectionLockUnknown     = "lock-unknown"
+	DocumentSelectionLockMismatch    = "lock-mismatch"
+	DocumentSelectionExactPinned     = "exact-version-pinned"
 )
 
 // InspectDocumentReadPreflight NEVER resolves a Plugin a second time.

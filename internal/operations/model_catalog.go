@@ -158,24 +158,33 @@ func loadCatalogRead(root string) (catalogRead, error) {
 	}, nil
 }
 
-func catalogWorkspaceLoaded(root, namespace string) (ModelCatalog, workspace.Result, error) {
+// catalogWorkspaceLoadedWithIndex is catalogWorkspaceLoaded with the Source
+// Index this load built. A projection that needs the indexed Source references
+// (model search) reads them from here instead of building a second index and
+// risking two snapshots of the same files.
+func catalogWorkspaceLoadedWithIndex(root, namespace string) (ModelCatalog, workspace.Result, sourceindex.Index, error) {
 	loaded, err := workspace.Load(root)
 	if err != nil {
-		return ModelCatalog{}, workspace.Result{}, &ValidationFailure{Stage: StageLoad, Err: err}
+		return ModelCatalog{}, workspace.Result{}, sourceindex.Index{}, &ValidationFailure{Stage: StageLoad, Err: err}
 	}
 	idx, err := workspace.BuildSourceIndex(root, loaded)
 	if err != nil {
-		return ModelCatalog{}, workspace.Result{}, &ValidationFailure{Stage: StageSourceIndex, Err: err}
+		return ModelCatalog{}, workspace.Result{}, sourceindex.Index{}, &ValidationFailure{Stage: StageSourceIndex, Err: err}
 	}
 	worldFP, sourceFP, err := workspaceProjectionFingerprints(loaded.World, idx)
 	if err != nil {
-		return ModelCatalog{}, workspace.Result{}, err
+		return ModelCatalog{}, workspace.Result{}, sourceindex.Index{}, err
 	}
 	catalog := CatalogWorld(loaded.World, idx, namespace, worldFP, sourceFP)
 	identity := loaded.Identity()
 	catalog.Workspace = &identity
 	catalog.Validation = catalogValidation(loaded)
-	return catalog, loaded, nil
+	return catalog, loaded, idx, nil
+}
+
+func catalogWorkspaceLoaded(root, namespace string) (ModelCatalog, workspace.Result, error) {
+	catalog, loaded, _, err := catalogWorkspaceLoadedWithIndex(root, namespace)
+	return catalog, loaded, err
 }
 
 // catalogValidation applies validate's rule to the same loaded Workspace, so a

@@ -9,6 +9,7 @@ import {
   relatedGraph,
   readXeadObservation,
 } from "./presentation.ts";
+import { presentInspection } from "./inspector-presentation.ts";
 const data = {
   subject: { kind: "semantic-data", id: "sales.order" },
   sourceStatus: "indexed",
@@ -94,6 +95,96 @@ test("inspection discloses its read-only limits and refuses incomplete authority
   const extra = readInspection({ ...raw, authorityLimits: [...authorityLimits, "extra-limited-scope"] }, data.subject, catalog);
   assert.match(extra.authorityLimits.at(-1), /extra-limited-scope/);
 });
+test("Inspector presentation preserves validated data without claiming authority", () => {
+  const catalog = {
+    entries: [data], modelRevision: "model-A",
+    worldFingerprint: "world-A", sourceIndexFingerprint: "source-A",
+  };
+  const authorityLimits = [
+    "inspection-is-a-derived-read-only-projection",
+    "source-location-is-not-semantic-acceptance",
+    "source-location-is-not-write-authority",
+    "local-read-is-not-disclosure-permission",
+  ];
+  const raw = {
+    effect: "read-only", subject: data.subject,
+    canonical: { name: "注文", total: null },
+    sourceStatus: "partial",
+    worldFingerprint: "world-A", sourceIndexFingerprint: "source-A",
+    authorityLimits,
+  };
+  const inspected = readInspection(raw, data.subject, catalog);
+  const displayed = presentInspection(inspected, "workspace-A", data.subject);
+  assert.deepEqual(displayed.document, {
+    id: 'workspace-A/["semantic-data","sales.order"]',
+    version: "world-A:source-A",
+    text: JSON.stringify(raw.canonical, null, 2),
+  });
+  assert.equal(displayed.sourceStatusText, "参照情報：partial");
+  assert.deepEqual(displayed.authorityLimits, inspected.authorityLimits);
+  assert.notStrictEqual(displayed.authorityLimits, inspected.authorityLimits);
+  assert.equal(displayed.noticeText, "選択したモデルの投影を表示しています。");
+  assert.deepEqual(Object.keys(displayed).sort(),
+    ["document", "sourceStatusText", "authorityLimits", "noticeText"].sort());
+  inspected.authorityLimits[0] = "tampered";
+  assert.match(displayed.authorityLimits[0], /読み取り専用/);
+  assert.throws(() => readInspection({ ...raw, effect: "write" }, data.subject, catalog),
+    /INVALID_INSPECTION_RESPONSE/);
+  assert.throws(() => readInspection({ ...raw, authorityLimits: [] }, data.subject, catalog),
+    /INVALID_INSPECTION_RESPONSE/);
+  assert.throws(() => readInspection({ ...raw, sourceIndexFingerprint: "stale" }, data.subject, catalog),
+    /STALE_MODEL_PROJECTION/);
+});
+
+test("Inspector projection keeps qualified identity and observed coverage distinct", () => {
+  const dataSubject = { kind: "semantic-data", id: "shared.id" };
+  const ruleSubject = { kind: "semantic-rule", id: "shared.id" };
+  const authorityLimits = [
+    "inspection-is-a-derived-read-only-projection",
+    "source-location-is-not-semantic-acceptance",
+    "source-location-is-not-write-authority",
+    "local-read-is-not-disclosure-permission",
+  ];
+  const catalog = readCatalog({
+    effect: "read-only",
+    entries: [
+      { subject: dataSubject, sourceStatus: "indexed" },
+      { subject: ruleSubject, sourceStatus: "indexed" },
+    ],
+    modelRevision: "r2",
+    worldFingerprint: "world-r2", sourceIndexFingerprint: "index-r2",
+  });
+  assert.deepEqual(inspectEligibility(catalog, dataSubject), { ok: true });
+  assert.deepEqual(inspectEligibility(catalog, ruleSubject), { ok: true });
+  const raw = (subject, sourceStatus, canonical) => ({
+    subject, sourceStatus, canonical, effect: "read-only",
+    worldFingerprint: catalog.worldFingerprint,
+    sourceIndexFingerprint: catalog.sourceIndexFingerprint,
+    authorityLimits,
+  });
+  const dataRead = readInspection(raw(dataSubject, "partial", { row: null }), dataSubject, catalog);
+  const ruleRead = readInspection(raw(ruleSubject, "unfetched", { rule: true }), ruleSubject, catalog);
+  const dataAtA = presentInspection(dataRead, "workspace-A", dataSubject);
+  const dataAtB = presentInspection(dataRead, "workspace-B", dataSubject);
+  const ruleAtA = presentInspection(ruleRead, "workspace-A", ruleSubject);
+  assert.notEqual(dataAtA.document.id, dataAtB.document.id);
+  assert.notEqual(dataAtA.document.id, ruleAtA.document.id);
+  assert.equal(dataAtA.document.version, ruleAtA.document.version,
+    "same version does not identify the same Subject");
+  assert.equal(dataAtA.sourceStatusText, "参照情報：partial");
+  assert.equal(ruleAtA.sourceStatusText, "参照情報：unfetched");
+  assert.deepEqual(JSON.parse(dataAtA.document.text), { row: null },
+    "explicit NULL is not an absent row");
+  assert.deepEqual(JSON.parse(ruleAtA.document.text), { rule: true });
+  assert.deepEqual(presentInspection(dataRead, "workspace-A", dataSubject), dataAtA,
+    "pure projection has no implicit workspace or browser state");
+  assert.throws(() => readInspection(raw(dataSubject, "partial", {}), ruleSubject, catalog),
+    /INVALID_INSPECTION_RESPONSE/,
+    "a validated reply for another kind cannot be used for this Subject");
+  assert.ok(dataAtA.authorityLimits.some(x => /開示/.test(x)),
+    "local Inspect result still does not authorize public disclosure");
+});
+
 test("graph contains actual catalog relations and reports clipped neighbours", () => {
   const children = Array.from({ length: 10 }, (_, i) => ({
     subject: { kind: "semantic-attribute", id: `sales.order.f${i}` },

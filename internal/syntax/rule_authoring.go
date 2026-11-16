@@ -61,6 +61,15 @@ const (
 	// `or open` states that a row without an end is a period with no last
 	// day. `for each <attribute>` compares only rows with the same value.
 	RulePredicateNotOverlapping RulePredicate = "not-overlapping"
+	// RulePredicateRequiredIf is written as `required if <attribute>`:
+	//
+	//	rule sales.order_line.discount_reason_required:
+	//	  sales.order_line.discount_reason is required if sales.order_line.discount
+	//
+	// It states that the subject holds a value whenever the named attribute
+	// holds one. It constrains presence, not the value: whether the subject
+	// is required in every record is the attribute definition's business.
+	RulePredicateRequiredIf RulePredicate = "required-if"
 )
 
 // OperatorInputWord is a word of an operator declaration after `takes`. A
@@ -452,6 +461,33 @@ func (p *Parser) parseRuleAuthoring(namespace core.CanonicalID) (RuleAuthoring, 
 		// is resolved against the whole Workspace by the validator.
 		predicate = RulePredicateOperator
 		operator = &RuleReference{Text: predTok.Text, Anchor: tokenAnchor(predTok)}
+	} else if predTok.Text == "required" {
+		// `required if <attribute>`.
+		ifTok, err := p.next()
+		if err != nil {
+			return RuleAuthoring{}, err
+		}
+		if ifTok.Kind != TokenIdent || ifTok.Text != "if" {
+			at := ifTok
+			if ifTok.Kind == TokenEOF {
+				at = predTok
+			}
+			return RuleAuthoring{}, p.errAt(at, "expected \"if\" after \"required\"; the condition is written \"required if <attribute>\"")
+		}
+		triggerTok, err := p.next()
+		if err != nil {
+			return RuleAuthoring{}, err
+		}
+		if triggerTok.Kind != TokenIdent || ruleAuthoringDeclarationEnds(triggerTok) {
+			at := triggerTok
+			if triggerTok.Kind != TokenIdent {
+				at = ifTok
+			}
+			return RuleAuthoring{}, p.errAt(at, "expected the attribute whose value makes the subject required after \"required if\"")
+		}
+		predicate = RulePredicateRequiredIf
+		compared = &RuleReference{Text: triggerTok.Text, Anchor: tokenAnchor(triggerTok)}
+		lastTok = triggerTok
 	} else if !predicate.valid() || predicate == RulePredicateOperator {
 		return RuleAuthoring{}, p.errAt(predTok, fmt.Sprintf(
 			"unknown rule predicate %q; accepted predicates are %s",
@@ -550,6 +586,10 @@ func (p *Parser) parseRuleAuthoring(namespace core.CanonicalID) (RuleAuthoring, 
 		return RuleAuthoring{}, p.errAtSpan(rule.ScopeSpan,
 			"a declared operator takes one value and accepts no scope")
 	}
+	if predicate == RulePredicateRequiredIf && rule.Scope != nil {
+		return RuleAuthoring{}, p.errAtSpan(rule.ScopeSpan,
+			"predicate \"required if\" is about one record and accepts no scope")
+	}
 
 	// Anything left on the same declaration must be named. A stray keyword is
 	// reported as itself, so an author does not have to guess which word broke.
@@ -598,7 +638,7 @@ func ruleAuthoringIdentity(namespace core.CanonicalID, symbol string) (core.Cano
 // missing predicate one token too late.
 func rejectRuleKeywordAsSubject(t Token) error {
 	switch t.Text {
-	case "is", "per", "rule", "namespace", "operator", "takes", "not", "after", "until", "overlapping":
+	case "is", "per", "rule", "namespace", "operator", "takes", "not", "after", "until", "overlapping", "required", "if", "present":
 		return fmt.Errorf("%q cannot be a rule subject; declare the constrained attribute before \"is\"", t.Text)
 	}
 	// A predicate word in the subject position means the clauses were written
@@ -616,7 +656,7 @@ func validRulePredicatesText() string {
 	for _, predicate := range rulePredicates {
 		words = append(words, string(predicate))
 	}
-	words = append(words, "not after <attribute>", "not overlapping per <relation>")
+	words = append(words, "not after <attribute>", "not overlapping per <relation>", "required if <attribute>")
 	return strings.Join(words, ", ")
 }
 

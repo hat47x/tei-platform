@@ -5,9 +5,11 @@ import (
 	"strings"
 )
 
-// v2 distinguishes permissible legacy FAMILY target-key expansion from an
-// equal-arity mismatch without treating unresolved Field correspondence as accepted.
-const RelationalResolutionPolicyRevision = "tei.xeadsource.relational-resolution/v2"
+// v3 reports a composite design key's own member-order uniqueness independently
+// of whether any Relationship references that key. v2 distinguished permissible
+// legacy FAMILY target-key expansion from an equal-arity mismatch without
+// treating unresolved Field correspondence as accepted.
+const RelationalResolutionPolicyRevision = "tei.xeadsource.relational-resolution/v3"
 
 const (
 	RelationalFactResolutionResolved    = "resolved"
@@ -183,6 +185,12 @@ func diagnosticsForLegacyKey(
 		if diagnostic.Locator == fact.Locator ||
 			strings.HasPrefix(diagnostic.Locator, fact.Locator+"/") {
 			return true
+		}
+		// key-order-unresolved is an occurrence-local observation about this
+		// exact TableKey's declared member order. Another occurrence that
+		// merely shares the same Legacy ID string is a different Source node.
+		if diagnostic.Code == "key-order-unresolved" {
+			return false
 		}
 		return strings.HasPrefix(diagnostic.Code, "key-") &&
 			fact.KeyLegacyID != "" &&

@@ -6,12 +6,26 @@ on:
       - 'cmd/tei-studio/assets/main.js'
       - 'cmd/tei-studio/assets/preview-scope.mjs'
       - 'cmd/tei-studio/test/main-async-scope.test.mjs'
+      - 'reference/tei-studio-workbench/responses.ts'
+      - 'reference/tei-studio-workbench/pin-state.ts'
+      - 'reference/tei-studio-workbench/main.ts'
+      - 'reference/tei-studio-workbench/responses.inspection-scope.test.mjs'
+      - 'reference/tei-studio-workbench/responses.wiring-contract.test.mjs'
+      - 'reference/tei-studio-workbench/source-locations-presentation.ts'
+      - 'reference/tei-studio-workbench/source-locations-presentation.test.mjs'
       - '.github/workflows/tei-studio-async-lanes-ci.yml'
   pull_request:
     paths:
       - 'cmd/tei-studio/assets/main.js'
       - 'cmd/tei-studio/assets/preview-scope.mjs'
       - 'cmd/tei-studio/test/main-async-scope.test.mjs'
+      - 'reference/tei-studio-workbench/responses.ts'
+      - 'reference/tei-studio-workbench/pin-state.ts'
+      - 'reference/tei-studio-workbench/main.ts'
+      - 'reference/tei-studio-workbench/responses.inspection-scope.test.mjs'
+      - 'reference/tei-studio-workbench/responses.wiring-contract.test.mjs'
+      - 'reference/tei-studio-workbench/source-locations-presentation.ts'
+      - 'reference/tei-studio-workbench/source-locations-presentation.test.mjs'
       - '.github/workflows/tei-studio-async-lanes-ci.yml'
   workflow_dispatch:
 
@@ -38,3 +52,30 @@ jobs:
       - name: Test real Studio bootstrap with deferred Host responses
         run: |
           node --test cmd/tei-studio/test/preview-scope.test.mjs cmd/tei-studio/test/main-async-scope.test.mjs
+  workbench-scope:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: reference/tei-studio-workbench/package-lock.json
+      - name: Install Workbench test dependencies
+        working-directory: reference/tei-studio-workbench
+        run: npm ci --no-audit --no-fund
+      # These files are run directly rather than through the package.json
+      # script: the Workbench source closure is byte-pinned by the accepted
+      # generated-Desktop evidence, so its package.json is not edited to
+      # register new test files. See tools/reference-studio-static-composition.
+      - name: Test selected-view and Pin lanes for superseded replies
+        working-directory: reference/tei-studio-workbench
+        run: |
+          node --test responses.inspection-scope.test.mjs responses.wiring-contract.test.mjs
+      - name: Test Source Index display projection without opening files
+        working-directory: reference/tei-studio-workbench
+        run: node --test source-locations-presentation.test.mjs

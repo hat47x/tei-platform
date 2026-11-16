@@ -1,0 +1,8 @@
+M1 string parameter again
+   -> FAIL scoped query execution unavailable        (original symptom)
+M2 nil parameter in the Top test
+   -> FAIL Provider exceeded Top but its result escaped (original symptom)
+
+restored -> ./reference/web-api-contract ok
+CI gate  -> 6 steps PASS
+production code unchanged (one _test.go file in the diff)

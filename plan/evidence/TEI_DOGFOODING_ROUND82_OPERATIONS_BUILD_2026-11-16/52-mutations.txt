@@ -1,0 +1,11 @@
+M1 revert to the broken comparison
+   -> invalid operation: ... mismatched types core.CanonicalID and string
+      (reproduces the filed symptom exactly)
+
+M2 change the expected id to core.CanonicalID("totally.wrong.id")
+   -> FAIL the example's independent authoring role was not retained
+      actual Data:organization.transfer_request
+
+M2 shows the cast is load-bearing: the line really checks Data identity.
+
+restored -> go vet 0 problems; TestMarkedDataTableRuleExample PASS.

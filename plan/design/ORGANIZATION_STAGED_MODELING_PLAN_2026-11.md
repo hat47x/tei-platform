@@ -1121,3 +1121,30 @@ S3の最小受入は、単一所属Occurrence・Assertion revision・物理行�
 **AR-1→AR-3を限定合格へ更新（2026-11-16）**：main統合済み[PR #5155](https://github.com/hat47x/tei-platform/pull/5155)の[隔離PostgreSQL CI run 43859032163](https://github.com/hat47x/tei-platform/actions/runs/43859032163)で、型付きRelation/Query契約の局所Go回帰と、**同じSource/Queryを実DBで評価する試験**が明示PASSした。Go整形と非SKIPも検査済み。§43.5のSource/IR→実Provider Readの限定Witnessとして既存受入票へ記録する。AR-2の実Generator/Builder、AR-4のContext/二Consumer、AR-5のRule/Hostは**未合格**。
 
 **次の最小Exit**：#2586の通常CLIの実Readerに、選択されたFunction/Query ID、Source/Rule Revision、Datasource、実SQL/Params、Read Cohortを同一Attemptで紐付け、同じResultを一Consumerへ受領させる。二Consumer同版検査と、Person Link/二版正式保存はその次の別Gateとする。型付きプラグインの選択・含有・実呼出し・受信も別の資格に保ち、Studioセルフビルド #2831の独立P0へ旧Successを移し替えない。
+
+<!-- org-person-claim-two-world-20261116 -->
+### 10.20 S3の実ReadからS4の人物数・承認候補へ進む前に、情報の十分性を検査する
+
+[組織C1補遺§44](ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)は、現行as-of Queryの実Membership行と人物数Claimを切り分ける。実Providerから得られる3列の投影が同一でも、候補世界の人物対応が異なれば`COUNT(DISTINCT Person)`は異なる。これは**Result Mappingが正しいことだけでは人物数・承認者の唯一性を確定できない**という反例である。
+
+| 段階 | 合格とする範囲 | 続く受入条件 |
+| --- | --- | --- |
+| S3 実Query | validAt/knownAt/allocationMinに対してas-ofの所属行全体が同一。仮想リンク表で3人/4人の二世界の差を確認 | 候補表を正式Person Linkとみなさない。実Read Cohort・Scopeの完全性も別資格 |
+| S3→S4 人物数 | #2386/#1126が受理したRelationと版を正式Providerから同じScopeで取得してdistinct Personを再集計 | 未受理Relation・部分取得ではunknown。Membership件数や配賦FTEで代用しない |
+| S4 判断候補 | Ruleの必要Read集合、時点、Case/Role改訂と現在Grantを照合する | Query結果1件＝唯一決裁者、Person＝Principalとしない |
+| S5 表示・Plugin | Table/Graph/Tree/SHOのSource Relation occurrence・hidden EdgeとPluginのport/Adapterを追跡 | 見た目やport Shapeが同じでも、Law・Binding・Disclosureを省略しない |
+
+新規Go試験は既存実PostgreSQL suiteの同一`TestOrgAxisAsOfActualPostgresOptIn`内で実行し、独立した一時表だけを用いる。[PR #5184](https://github.com/hat47x/tei-platform/pull/5184)の初回実PG CIは整形失敗のためNOT RUNだったが、main統合済み[PR #5210](https://github.com/hat47x/tei-platform/pull/5210)の[固定run #43900533159](https://github.com/hat47x/tei-platform/actions/runs/43900533159)で、追加した二世界サブテストの明示PASS、gofmt、非SKIPを確認した。**二世界の観測不十分性の反例のみ合格**とする。次のProduct Exitは#2586の通常CLI Function→Query→実Provider→Consumer同Attempt受領と、人物RelationのOwner採否を独立に進める。#2831のDesktopセルフビルドは先行P0のまま維持する。
+
+<!-- org-cross-stream-claim-exit-20261117 -->
+### 10.21 実Queryの観測から、ClaimとConsumerの利用資格へ進む
+
+[組織C1補遺§44.3](ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)に、**同じ結果を返す二世界でも結論が異なるClaimは、その結果だけでは確定できない**という検査を加えた。組織固有の判定器を作らず、既存Scenario・Function Data Context・Result Slice・Claim/Projectionを使って受入範囲を引き継ぐ。
+
+| 経路 | 次の製品Exit | 未証明のままにすること |
+| --- | --- | --- |
+| S3→S4 (#2586/#2506) | 通常CLIで選択したFunction→Query→実Provider→一Consumerの同じAttempt、Source/Query版・入力・Read Scope・Result Slice・未確定状態を照合 | 独立ReferenceのReader成功を通常CLIのConsumer受領と同一視しない |
+| S4 Claim (#2514/#2593/#4490) | Membership件数、distinct Person、配賦FTE、責任・承認候補について別の必要情報・粒度・Expectedを定める | Queryの3列と4所属の観測を人物数確定や現行権限と扱わない |
+| S5 Projection/Port (#2497/#2516/#1124) | Graph/Tree/SHO/Pluginの型付きPort・Adapterと投影損失、ConsumerのDisclosureを比較 | Nodeの表示や型ShapeだけでPerson Link・Relation Edge・Grantが復元されたとみなさない |
+
+Person Linkの同一性、訂正か再所属か、どの時間条件で人数を数えるかは#2386/#1126のOwnerが採否を判断する。S3の実DB反例はその判断を代行しない。#2831 Desktopセルフビルドは引き続き独立P0。

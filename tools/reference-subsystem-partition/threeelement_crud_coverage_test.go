@@ -9,7 +9,7 @@ import (
 // These are source-model projection characterizations, not an Accepted
 // Subsystem Owner, direct Function I/O, or runtime write witness.
 // A CRUDDefinition with Source="declared" is still a caller declaration.
-func TestThreeElementExplicitOnlyCRUDIsNotYetProjected(t *testing.T) {
+func TestThreeElementExplicitOnlyCRUDIsProjectedAsDeclaredOnly(t *testing.T) {
 	model := threeelement.NewThreeElementModel("candidate", "Candidate")
 	model.DataElements = []threeelement.DataElement{{ID: "order", Name: "Order"}}
 	model.FunctionElements = []threeelement.FunctionElement{{ID: "submit", Name: "Submit"}}
@@ -21,25 +21,42 @@ func TestThreeElementExplicitOnlyCRUDIsNotYetProjected(t *testing.T) {
 	if diagnostics := model.Validate(); len(diagnostics) != 0 {
 		t.Fatalf("positive control: the referenced Function/Data exist: %+v", diagnostics)
 	}
-	if rows := threeelement.GenerateCRUDTable(model); len(rows) != 0 {
-		t.Fatalf("characterization changed: explicit-only CRUD is now visible; revisit admission contract: %+v", rows)
-	}
-	if refs := threeelement.GenerateFunctionDataCrossReference(model); len(refs) != 0 {
-		t.Fatalf("characterization changed: explicit-only cross-reference is now visible: %+v", refs)
-	}
-
-	// Adding a FunctionOperation makes the same explicit declaration visible.
-	// Its declared U overrides the FunctionOperation's R in both projections.
-	model.FunctionElements[0].Operations = []threeelement.FunctionOperation{{
-		DataID: "order", Operations: "R",
-	}}
+	// Explicit-only CRUD is now projected. A visible cell still proves only
+	// that the declaration was read, never that a write is authorized.
 	rows := threeelement.GenerateCRUDTable(model)
 	if len(rows) != 1 || !rows[0].Update || rows[0].Read || rows[0].Source != "declared" {
-		t.Fatalf("explicit CRUD should override FunctionOperation once a row is reachable: %+v", rows)
+		t.Fatalf("explicit-only CRUD must be projected with its declared flags: %+v", rows)
+	}
+	if rows[0].ConflictingDeclarations {
+		t.Fatalf("a single declaration is not a conflict: %+v", rows[0])
 	}
 	refs := threeelement.GenerateFunctionDataCrossReference(model)
 	if len(refs) != 1 || refs[0].Operations != "U" || refs[0].Source != "declared" {
+		t.Fatalf("explicit-only cross-reference must be projected: %+v", refs)
+	}
+
+	// Adding a FunctionOperation that opposes the declaration makes the cell
+	// reviewable, but must not change which side is projected.
+	model.FunctionElements[0].Operations = []threeelement.FunctionOperation{{
+		DataID: "order", Operations: "R",
+	}}
+	rows = threeelement.GenerateCRUDTable(model)
+	if len(rows) != 1 || !rows[0].Update || rows[0].Read || rows[0].Source != "declared" {
+		t.Fatalf("explicit CRUD should override FunctionOperation once a row is reachable: %+v", rows)
+	}
+	if !rows[0].ConflictingDeclarations || rows[0].DerivedOperations != "R" {
+		t.Fatalf("the overridden derived intent must stay visible: %+v", rows[0])
+	}
+	refs = threeelement.GenerateFunctionDataCrossReference(model)
+	if len(refs) != 1 || refs[0].Operations != "U" || refs[0].Source != "declared" {
 		t.Fatalf("explicit CRUD should override derived cross-reference: %+v", refs)
+	}
+	if !refs[0].ConflictingDeclarations || refs[0].DerivedOperations != "R" {
+		t.Fatalf("the overridden derived intent must stay visible: %+v", refs[0])
+	}
+	report := threeelement.ValidateModel(model)
+	if report.CRUDConflictStatus != "conflicts-require-review" {
+		t.Fatalf("a projected override still requires review: %+v", report)
 	}
 }
 

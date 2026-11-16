@@ -168,12 +168,12 @@ func TestEveryAdvertisedKindWithADeclarationResolves(t *testing.T) {
 // cannot drift apart.
 func TestEveryAdvertisedInspectionKindIsAccepted(t *testing.T) {
 	for _, kind := range InspectionSubjectKinds {
-		if !supportedInspectionKind(kind) {
+		if !SupportedInspectionKind(kind) {
 			t.Errorf("InspectionSubjectKinds advertises %q but it is rejected", kind)
 		}
 	}
 	for _, kind := range []string{"migration", "database-release", "solution-release"} {
-		if !supportedInspectionKind(kind) {
+		if !SupportedInspectionKind(kind) {
 			t.Errorf("%q is not accepted", kind)
 		}
 	}

@@ -75,3 +75,22 @@ description: >-
 - [Generator Sourceを固定する方式](../../plan/design/AI_GENERATOR_AUTHORING_STANDARD_2026-11.md)
 - [生成物のOwnership／Extension Point](../../plan/design/GENERATOR_CONTRACT_BOUNDARIES_DESIGN_2026-10.md)
 - [現行のRule→Builder実証](../../plan/design/PLUGIN_RULE_PRODUCT_VERTICAL_SLICE_2026-11.md)
+
+## 実Readから状態付きRuleへつなぐ依頼の範囲（2026-11-16）
+
+RuleとQueryを接続する依頼では、前記のタスク票を**一Rule・一Contract Query・一回の読取試行**に限定する。Source／Rule ID・必要Attribute／Relation、Query Binding、実Provider、Read ID、Observed ValueとPresence、Required／Observedの集合、Scope／Snapshot、独立Expectedを参照で指定する。実Caller・Consumer・現在Grantが観測できない場合は未証明として残す。
+
+- 値present、格納NULL、列未取得を分ける。列名が合っていても保存NULLか計算NULLか不明なら補わない。
+- 既知の確定重複があれば部分取得でも不成立を認める一方、未読行のある「重複なし」は原則として成立へ昇格させない。completeとするには対象Ruleが必要とする集合、Scope、時点を尽くした別証拠が要る。
+- 評価器が対応するRuleの種類と、既存Go Generatorが生成できる種類を別に記す。未対応Gを自動的にPやDへ切り替えて成功扱いしない。
+- 実DB Queryの局所PASS、状態付きAdapterの局所PASS、Ruleの記録例、実Consumer受領、Build資格は別の試験として扱う。**別のFixtureや別のAttemptの証拠を連結して実動作が成立したとは書かない。**
+
+詳細と作業順は[図表実現設計§15](../../plan/design/DIAGRAM_TO_REALIZATION_STRATEGY_AND_HOOKS_2026-11.md)および[DRI-R2の実証パケット](../../plan/workstreams/DIAGRAM_REALIZATION_REFERENCE_EXECUTION_2026-11.md)を参照する。タスク票の補助であり、TEIに新たなDSL・Schema・Runtimeを導入するものではない。
+
+## 既存Readerを用いる実装依頼の確認事項（2026-11-17）
+
+Contract Queryの行をRuleへ渡すタスクでは、現行`internal/driver/validationread`と`validationeval.Decide`を最初に調べる。SQLiteの実SQL Executorから状態付きRuleへ到達する局所試験があるため、同じ機能を第二Readerとして生成しない。
+
+依頼する変更は**一つの選択Source・一つのQuery・一つのRule・一つのAttempt**に限定する。必要なAttribute／Relationと、実行したQuery Binding・Scope・Snapshot、観測済みの列と行、Readerが判断できる値の状態、独立Expectedを明示する。`CoverageComplete`は呼出し側が書けるだけでは証拠にならない。行を絞ったQueryで全件性を誤申告すると、実際には未読行があってもRuleが成立と答え得る。
+
+合格を「Sourceの選択と改版」「実Queryの取得」「判定できる範囲」「実Called方式」「Consumer受領」に分け、未観測の境界は未証明とする。日付Ruleの直接評価ができても、現行Go Generatorの生成可否は別に確認する。詳しい差分と先行試験は[図表実現設計§16](../../plan/design/DIAGRAM_TO_REALIZATION_STRATEGY_AND_HOOKS_2026-11.md)および[DRIの最新実証計画](../../plan/workstreams/DIAGRAM_REALIZATION_REFERENCE_EXECUTION_2026-11.md)を参照する。
