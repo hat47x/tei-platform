@@ -1,0 +1,13 @@
+CLI-only design on the .tei.md surface:
+
+  1  any *.tei.md, no languages: entry
+     -> TEI_MD_PARSER_UNBOUND: ... no selected parser is available     <-- the gap
+  2  manifest + languages: tei.rule-authoring/v0
+     -> TEI comment marks are not read by this language; only a ```tei fence ...
+  3  ```tei fence with `data`
+     -> "data" starts a semantic data declaration, which cannot be declared in a
+        rule authoring source
+  4  rule in .tei.md + data in .tei
+     -> ok; inspect: kind=positive attribute=probe.thing.amount
+
+Attempt 1 is the finding: two languages are available and the message names none.
