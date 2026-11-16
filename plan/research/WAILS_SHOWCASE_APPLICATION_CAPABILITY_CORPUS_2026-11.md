@@ -125,7 +125,7 @@ Expectedの管理・受入票は既存#1180/#2514に委ねる。この文書を�
 - ソースをコピーする前に各RepoのLicense、ファイル単位の出所、NOTICE、依存Licenseを再確認する。例としてXenSQLにはGPL-3.0、ConduiにはAGPL-3.0の注意があり、直接コード流用と挙動を参考にした独立実装を混同しない。ここでは第三者ソースを取り込んでいない。
 - Wails v3の現在のRelease案内と、旧v2系のサンプル/ドキュメントを区別する。Updater、Mobile、Linux WebKitGTK、macOS WebKitなどの具体的動作は対象版と実OSで試験してから確定する。
 - **実施済み**：ショーケースの40件の公式掲載名・個別ページURLを確認し、機能とTEI既存責務へ分類し、導入前の試験候補・優先順を整理。
-- **未実施**：全40件のソース精査、実機起動/性能、TEIコードによる新Plugin実装、WC-01〜28の追加独立試験、User/Owner Acceptance、ライセンスの個別法務判断。
+- **未実施**：全40件のソース精査、実機起動/性能、TEIコードによる新Plugin実装、WC-01〜40の追加独立試験、User/Owner Acceptance、ライセンスの個別法務判断。
 
 ### 主要な参照先
 
@@ -199,9 +199,9 @@ Pluginの表示上の有効化と、Contractの正当な公開、Providerの選�
 | --- | --- | --- |
 | Rule→Go→通常`tei self-build`（#5009/#5051/#5056） | 製品`Workspace.Load`から選択したRuleの生成Goと原Markdownのbyte同一コピーを一つのGo packageへ入れ、既存BuilderでBinaryを生成し、Binary自身の原文SHA-256を照合する回帰をmainへ収録。Goコードが同じでも原文コピーの説明byte変更でBuild Planが変わる負例を追加 | #5056で生成GoとBuilderに配置したGoのbyte不一致拒否回帰がmainへ追加された。ただし元Source Locator、Reader/Generatorの実装版、生成Goの実消費を一Attemptで正式束縛するR2-P全体は未受理。公開Function Entryのactual Provider CallはR3。ソースに試験があることと全CI合格を同一視しない |
 | Markdown Dataの製品InspectorとCLI（#5043/#5058） | 選択済み`tei.authoring/v1`のData定義表・項目セル・隣接Ruleを同一原文位置へ照合。別Processの実`tei inspect`と直接`operations.InspectSubject`の結果を比較する回帰もmainへ収録。非定義の例表や同名Capabilityを誤って受け入れない | CLIと共通Operationは同じ製品Reader系統を使うため、結果の一致を独立業務Expectedと呼ばない。実Studioでの二表現、編集Intent、実Provider/Effectの受入は別 |
-| Operator実装選択（#5007/#5053、後継候補#5114） | Workspace Manifestで選んだ組込みOperatorを合成Scenarioから呼ぶ経路。実装選択A→BでWorld/Plugin Lockが同じでも旧生成Commandを拒否する契約は#5053としてmainの計画に反映 | 旧Go PR #5054は未マージでClosed。現在の後継#5114はCLIと参照Planの共通指紋を補正するOpen PRであり、実装受入前は現在の製品保証として記録しない。Artifact/Grantは別資格 |
+| Operator実装選択（#5007/#5053、後継候補#5114） | Workspace Manifestで選んだ組込みOperatorを合成Scenarioから呼ぶ経路。実装選択A→BでWorld/Plugin Lockが同じでも旧生成Commandを拒否する契約は#5053としてmainの計画に反映 | 旧Go PR #5054は未マージでClosed。後継#5114も未マージで閉鎖された。一方現行mainのCLIとPlanにはOperator選択Pinが存在する。現行コードと実行試験で現在の拒否範囲を確かめ、PRの状態だけで機能の有無を断定しない。Artifact/Grantは別資格 |
 | 実Wails WebView2（#5012/#5025/#5042/#5052） | Pin A保持中のBのCaret/Graph非干渉、再読込後の旧Pin失効に加え、固定した現行11ファイルのSource/Lockから構成した生成PoC Bと通常Desktopが、exact HEAD `00b92d3b6685834cab3a90595e449553e80d0d15` の[Windows run 43722212784](https://github.com/hat47x/tei-platform/actions/runs/43722212784)で両Job成功。生成資産不一致を許す改修ではない | 既存固定PoC Bの実Consumer成功を、TEIが実Build SubjectからStudio Stage1→Stage2へ再生成した証拠としない。別Workspace A→B→A、Dirty Buffer、実Provider、配布更新も別検収 |
-| Plugin接続の資格整理（#5061/#5101/#5116） | Shape／Law／Binding／Realization／Admission・Effect／Consumerを分離し、Whole/Field/明示Adapterの型付きMappingを既存契約に統合。Ownerの意味受理と現在Grantを副作用Callより前に確認する順序を計画へ追加 | 型付き接続が描けることは、Law適合・現在Grant・実ProviderのCall・独立Effect観測の実証ではない。旧Scenario選択失効は後継#5114で審査中 |
+| Plugin接続の資格整理（#5061/#5101/#5116） | Shape／Law／Binding／Realization／Admission・Effect／Consumerを分離し、Whole/Field/明示Adapterの型付きMappingを既存契約に統合。Ownerの意味受理と現在Grantを副作用Callより前に確認する順序を計画へ追加 | 型付き接続が描けることは、Law適合・現在Grant・実ProviderのCall・独立Effect観測の実証ではない。後継#5114は未マージで閉鎖。mainにあるPinの実効性をCLIと参照Planで別検査する |
 | 生成Workbench N2のTEI CLI起動（#5059/#5090） | 既存PoC Bの実Windows成功に加え、Seedでビルドした製品TEI CLIからNode/esbuild子Processを起動し、Child Image Pin／生成JS Receipt・Digest／実WebView2受領を照合する限定経路をmainへ収録。exact HEAD `5fcd9e2e92afe8266cb7710fe56f54c27a54ca17`の[Windows run 43724133016](https://github.com/hat47x/tei-platform/actions/runs/43724133016)では通常版・生成版ジョブとも成功 | 正式な非Plugin BuildIntent／選択Builder／Source・Toolchain全閉包と、生成Stage1自身によるStage2再構築は未受理。子Processを起動できたことだけでStage2完成としない |
 | Data表由来のG/P実Binary同値（#5118） | 同じ`allocation_positive`のP評価とG生成→テスト用Go Binaryを、結果・失敗・読取先ID・読取回数まで比較するFocused回帰がmainへ収録。生成Goの読取先だけを差し替え、結果だけ同じでも違う読み取りであると拒否する負例を持つ | Goの通常`go build`による隔離テストであり、正式`tei self-build`／実Provider Read／Host Grant／別Consumerの全保証ではない。追加試験のexact HEAD実行結果は別票で確認 |
 | BuildPlan解決後のSource変更（#5109） | 生成GoをPlan解決後・Builder実消費前に変更すると、判断結果が同じでも旧Planの通常self-buildを拒否しArtifactを残さない回帰がmainへ収録 | 元DSL→Reader/Generatorの正式同一Attempt束縛、実行Grant、再受理までを保証するものではない |
@@ -246,7 +246,7 @@ MQ Studio型のCapability Driverと、Plugin間配線用Node Viewに共通する
 
 - `declared`：定義が要求する契約と対象の宣言。`selected`：Manifest/ProfileとCurrent Lockで選ばれたProvider／Operator。`built`：どのSourceと生成器を消費したArtifactか。`invoked`：実際に呼ばれた対象・入口・Attempt。`observed`：独立Read/Receiptや実Consumerが確認した内容。
 - 当初は上記五段階を**読み取り専用の標準Graph投影**とし、各辺に「何の証拠があるか」「未取得・未受理は何か」を表示する。元の端点IDが一致しても、Relation occurrence、現在Grant、実行Effectまでは保証しない。
-- `operatorSelectionSha256`（後継PR #5114）は`selected`の現在性を検証する候補であり、`built/invoked/observed`やBusiness Meaningの資格を補完しない。実装PRが未受理なら、図でも「計画された接続」と表示する。
+- `operatorSelectionSha256`は`selected`の現在性を表すPinであり、mainの現行試験で実効性を検証する対象であり、`built/invoked/observed`やBusiness Meaningの資格を補完しない。実装PRが未受理なら、図でも「計画された接続」と表示する。
 
 **引渡しと採否**：一本目は#1124/#997/#1824、二本目は#2621/#1121/#4544/#4495、三本目は#951/#1158と標準Flow/Nodeの既存Ownerに渡し、WC-03/05/09/13/14/15/17/18の独立Expectedは#1180/#2514の既存枠組みへ接続する。段階間で新しい正本・Runner・Registry・Gateは作らない。各段階で、実装量ではなく**既存の標準要素を再利用した範囲、削減した手書き部分、実Consumerの同値と失効試験**を記録する。
 
@@ -290,12 +290,12 @@ Updaterは、更新前に閉包・署名／出典と対象Platformを照合し�
 | --- | --- | --- |
 | WC-19 | 同一正式Ruleを直接評価とGo生成→実Binaryで比べる | #5073で対応するFocused回帰をmainへ収録。独立Expected・NULL/欠損／負のゼロ／型不適合の観測を足場に、実Provider Read、Runtime Grant、二つの独立Consumerは追加で受入を要する |
 | WC-20 | 固定PoC BのFrontend Source/Lock 11件の一つだけを更新する | 実Generator/配信Bundleの再資格化を要する。旧Windows PASSで新HEAD・Stage2を受理しない |
-| WC-21 | Plugin/Operator実装A→Bへ変更し、WorldとPlugin LockとRuleの見た目を保つ | 旧生成Commandを評価前に拒否する。#5114のexact HEAD受入前は現行mainで成立済みと表示しない |
+| WC-21 | Plugin/Operator実装A→Bへ変更し、WorldとPlugin LockとRuleの見た目を保つ | 旧生成Commandを評価前に拒否する。現行mainで生成→選択変更→旧実行拒否と参照Planの一致を検証するまで完全受入済みと表示しない |
 | WC-22 | D2 Standaloneの一部Pluginまたは設定だけ旧版で復元し、残りを更新済みとする | Release Closureの整合・Target適合を再検証し、古いBundleの一部から実行資格を復元しない |
 | WC-23 | 別Workspace/別Roleに同名Subjectがあり、Node配線の端点IDだけ一致する | Source/Workspace/Revisionと意味Relation occurrenceを確認し、単なる端点参照一致から編集・実行を許可しない |
 | WC-24 | StudioでPin A→B→Aと戻し、原文ハッシュも以前と同じになるが、その間に選択Providerまたは現在Grantが変わる | 古いPin/Selection/実行権限を復帰させない。Source同値と意味受理、Provider Selection、Grant、実Effectを別票で再資格化 |
 
-**実装順序**：P0の正式Stage1→Stage2 Windows再入とR2-P/R3の実Providerを止めない。WC-19は#5073/#5087の二方式実物を基線として独立Consumer・実Provider観測へ進める。WC-20は#5059のN2実CLI起動／実Windows受領を維持して正式Stage2のSource Closureへ進め、WC-21は後継#5114の未統合実装を既存Ownerで検収する。WC-22は配布実証着手時、WC-23/24は既存Graph/Studio/SUIのModel/PinのOwnerへ戻す。FocusedコードやPRがmainにあっても、各新条件の独立Expectedが全部実行済みとはしない。
+**実装順序**：P0の正式Stage1→Stage2 Windows再入とR2-P/R3の実Providerを止めない。WC-19は#5073/#5087の二方式実物を基線として独立Consumer・実Provider観測へ進める。WC-20は#5059のN2実CLI起動／実Windows受領を維持して正式Stage2のSource Closureへ進め、WC-21は現行mainの実CLIと参照Planの失効を既存Ownerで検収する。WC-22は配布実証着手時、WC-23/24は既存Graph/Studio/SUIのModel/PinのOwnerへ戻す。FocusedコードやPRがmainにあっても、各新条件の独立Expectedが全部実行済みとはしない。
 
 ## 17. 外部ショーケースの検証粒度と出典の健全性
 
@@ -391,7 +391,7 @@ Modal File Manager、LTools、Larvyn、WailsTermから得るべき価値は、�
 
 測定対象は、生成Goの行数ではなく、手書きコードから実際に取り除けた判断分岐、維持すべきDSL/Target設定/Hook、独立Expectedの数、Targetを変更したときの波及、CLI/Studio/外部Hostへの再利用、実Consumerでの受領である。
 
-最初のDogfoodingは、既存`GeneratePositive`が受理するRequired Shape（ID、Attribute、Relation適合）のうち**最小の一条件**を、正式なTEI定義で表し、旧Go実装から移したことを実証する。#5123はこのM0〜M3・D-0〜D-4の実装Packetを整理するOpen PRであり、判断分岐の製品置換やStage2再入が済んだとはしない。
+最初のDogfoodingは、既存`GeneratePositive`が受理するRequired Shape（ID、Attribute、Relation適合）のうち**最小の一条件**を、正式なTEI定義で表し、旧Go実装から移したことを実証する。#5123はM0〜M3・D-0〜D-4の実装Packetを整理した未マージ・閉鎖済みPRであり、判断分岐の製品置換やStage2再入が済んだとはしない。
 
 | 段階 | 受入すべき実物 | 失格例 |
 | --- | --- | --- |
@@ -413,4 +413,58 @@ Modal File Manager、LTools、Larvyn、WailsTermから得るべき価値は、�
 | WC-33 | 同じOperationをCLI Directで呼んだ後、Wails HTTP側へ異なるAudience/Grantを付ける | 内蔵InspectorのTransport同値だけでHTTP公開／非Builtin Providerの実Callや許可範囲を保証しない。#5096は未統合 |
 | WC-34 | TEI自身の一検査条件を生成Goへ移したが、旧手書き分岐は残る | 二重実装を「判断移管済み」とせず、旧分岐除去・独立Expected・再実行した製品Binaryを確認する |
 
-**実装の優先順位**は、新しいWC-29/30の独立試験を重複実装せず既存証拠へ結び、WC-31/32を既存Source/Studio Ownerの小さいread-only受入に落とすこと。WC-33は#5096のAP-1/2、WC-34は#5123のM1→M2実装パケットへ渡す。正式P0は引き続き**R2-P→通常CLI actual Provider（R3）**および**Studio非Plugin Stage1→Stage2 Windows**であり、Wailsアプリ個別再実装を優先課題にはしない。
+**実装の優先順位**は、新しいWC-29/30の独立試験を重複実装せず既存証拠へ結び、WC-31/32を既存Source/Studio Ownerの小さいread-only受入に落とすこと。WC-33は#5096のAP-1/2、WC-34は自己記述の既存OwnerへM1→M2の実装Packetとして渡す（#5123は未統合）。正式P0は引き続き**R2-P→通常CLI actual Provider（R3）**および**Studio非Plugin Stage1→Stage2 Windows**であり、Wailsアプリ個別再実装を優先課題にはしない。
+
+## 25. 欠損・規則の例・変更時の失効を現行実装と照合する
+
+2026年11月16日時点の成果を、外部アプリの機能要件として一律採用するのではなく、Wailsショーケースの能力分類を**既存TEIで検証できる単位**へ更新する。以下の「main収録」はGo実装とFocused回帰が存在することを指し、最新mainの全体健全性、実DB／Windows／HTTP、Ownerの意味受理を一括して認定しない。
+
+| mainの成果 | 確かめられること | ショーケースとの接続／残る範囲 |
+| --- | --- | --- |
+| [#5129](https://github.com/hat47x/tei-platform/pull/5129) | BuildPlan解決後に**同梱Markdownの説明だけ**を変更しても、旧Planによる通常`tei self-build`を拒否し、Artifactを作らない回帰 | Larvyn／Packsmithの変更・配布：生成Goの意味が不変でもSource資格は失効する。元Locator・Generatorの正式同一Attempt保証は別 |
+| [#5132](https://github.com/hat47x/tei-platform/pull/5132) | 同じRuleについて、生成Goの関数名だけの変更と、読取Fieldの変更を実Binaryで区別 | LTools／MQ Studioの接続：表示名・Target Symbolを意味IDへ昇格させず、Read IDと回数を照合。製品Runtimeの自動実装選択ではない |
+| [#5142](https://github.com/hat47x/tei-platform/pull/5142) | `validationeval.Decide`は値の`present/null/not-fetched`と関係の`complete/partial`を受け、情報不足で答えが変わるときは理由付きで判定を保留 | Redis Viewer／XenSQLのLazy Read：未取得をNULL／0／空集合へ変換しない。**実DB Readerから状態を運ぶ機構は未接続** |
+| [#5143](https://github.com/hat47x/tei-platform/pull/5143) | `*.tei.md`に記録の例と期待を表で書き、`CheckRuleExamples`が不一致とその位置を返す。例は意味モデルへ追加しない | October／ScriptBarの文書表現：例は独立した検査入力であり、任意入力のLawや現在Grantを証明しない |
+| [#5146](https://github.com/hat47x/tei-platform/pull/5146) | 同一Dataの二つの`std.date`に対して`not-after`と`if present`を検査 | 業務履歴／Restic Browser：日付の順序と終期の欠損を区別。実DBからの日付読取・日時型・複数行の重複禁止は別 |
+| [#5147](https://github.com/hat47x/tei-platform/pull/5147) | 定数で宣言された診断コードも被覆検査の対象にし、未被覆のものを理由付きで管理 | GUI/CLI/Pluginの失敗表示：宣言・試験への言及・入力を変えて実際に発生することを分けて検証 |
+
+複数行の期間が重なることを扱う[#5148](https://github.com/hat47x/tei-platform/pull/5148)は確認時点でOpenであり、#5146の到達点から製品採用済みとは推定しない。また[#5140](https://github.com/hat47x/tei-platform/pull/5140)のBuilder実行物／ToolchainのPinは未マージで閉じた候補であり、正式Studio Stage1→Stage2の保証として数えない。
+
+## 26. 値・取得状態・現在資格を同じ画面で扱う
+
+R-Aの最初のReferenceでは、**値が何であるか、どの範囲を取得したか、何を開示してよいか**を別々に表す。
+
+- **意味上の対象**：Workspace、Qualified Data/Attribute ID、Relation occurrence、Snapshot/時間条件、Source Revisionを固定。UIの行番号・Node描画ID・生成関数名を対象Identityとしない。
+- **読取状態**：`present`、`null`、`not-fetched`と、関係`complete/partial`を直交する観点にする。秘匿や権限不足は「読んでいない」の別名ではなく、Disclosure／Grantの資格で扱う。
+- **判断の確定**：部分取得でも既知の重複二行があれば一意性違反を確定できる。一方、重複を見ていないだけでは成立としない。判定不能をValidationの不成立へ置き換えない。
+- **表現の同値**：Table・Tree・Node View・CLI Inspectorが同じ取得状態とAuthority Limitsを示す。仮想スクロールや画面内フィルターを、実Queryの取得完全性として表示しない。
+- **編集の境界**：read-onlyのInspectorから編集候補を作っても、保存先の現在版・Write Grant・Commit/Readbackなしに書換え確定とはしない。
+
+最初は既存Markdown Data表／RuleのSource Indexと、状態付きScenario Fixtureを組み合わせずに**各々の実Consumerで独立に検査**する。実DB Queryから取得範囲を導く経路や、別Workspace同士を一つの業務世界に統合する実装は、その後の検証項目とする。
+
+## 27. 例から配布までの受入を一続きにする
+
+R-B（Operation/Provider）とR-C（Studio/Harness）では、例が成立したことと、正しい実装・権限・成果物で実行できたことを分離する。
+
+| 段階 | 検収に必要な実物 | 停止条件 |
+| --- | --- | --- |
+| 1. 意味と例 | Source byte／Revision、型付きRule、記録の例と独立Expected | 期待不一致、NULL／未取得／部分取得を根拠なく補完 |
+| 2. 実現方式と選択 | 直接評価・生成Go・Provider委譲の選択、Operator/Plugin版、Read対象 | 旧選択の再利用、無言の方式Fallback、別Fieldの読取 |
+| 3. Source／Builder | Build Intent、解決済みPlan、実際にBuilderが消費した原文・生成Go、Artifact | #5109／#5129のようにPlan固定後の入力byteが変わり、旧Planを使用 |
+| 4. 認可と実Call | Ownerの受理、現在Grant／Audience、実Called Provider、Attempt／Receipt | 許可不明での副作用Call、結果一致だけで誤Providerを正当化 |
+| 5. Consumerと再入 | CLI／Studio／Hostの独立Readback、Source／Model／Artifactの現在性、Windows実Consumer | 旧SourceのPin・未保存Buffer・古い生成資産の受領を現行成功と表示 |
+
+CLIは同じOperationをWailsに依存せず呼び、Wails HTTPは公開用Adapterとして扱う。旧[#5096](https://github.com/hat47x/tei-platform/pull/5096)は未マージで閉じた設計PRであり、HTTPの正式AP-1/2を実装済みとは扱わない。#5059のN2実CLI起動・実Windows受領も、正式な非Plugin Stage1→Stage2の再構築とは別資格である。
+
+## 28. 追加する独立反証と実装順序
+
+| ID | 一因子の条件 | 期待する判断と根拠の限界 |
+| --- | --- | --- |
+| WC-35 | 一意性の検査で、見える行には重複がないまま関係の取得範囲を`complete→partial`へ変える | 成立を確定しない。部分取得でも重複二行が観測済みなら不成立を確定できる。#5142はFixture基線であって実DB取得の証拠ではない |
+| WC-36 | 記録の例の期待を`undecided→satisfied`へ一セルだけ変更する | 期待位置の不一致を明示し、例表を正式な意味Ruleに暗黙追加しない |
+| WC-37 | `not-after`の比較対象だけ`std.date→std.datetime`へ変更する | 型を拒否し、暗黙の日時変換や複数行の重複禁止を成立済みと扱わない |
+| WC-38 | BuildPlan固定後に生成Goを保ち同梱Markdownの説明だけ改版する | 旧Planでのビルド・Artifact作成を拒否。元byteに戻しても旧Owner Grantは自動回復しない |
+| WC-39 | Tree/Tableの仮想表示上は全行が見えるが、Providerの取得状態は`partial`のまま | UIの行数から取得完全性を推測せず、Source/Read Coverageと開示資格を区別する |
+| WC-40 | 新診断コードを定数で宣言し、そのコードが発生する一因子入力は試験しない | 宣言／静的被覆だけで「発生を検証済み」としない。既存のコード被覆と独立Expectedを区別する |
+
+**引渡し**：WC-35/36は既存`Decide`と`CheckRuleExamples`、WC-37は型付きRule、WC-38はSource/BuildPlan、WC-39は実DB ProviderとStudioの受入境界、WC-40は既存診断被覆Ownerへ渡す。まず各Ownerが持つ実回帰を再利用し、独立Consumerで証拠が足りない箇所だけ最小差分を作る。P0の正式R2-P/R3とStudio非Plugin Stage1→Stage2 Windowsを後回しにする新Gateは追加しない。
