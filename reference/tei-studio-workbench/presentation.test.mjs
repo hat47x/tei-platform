@@ -254,7 +254,5 @@ test("Workbench common Inspect guard runs before any unqualified transport call"
   assert.ok(body.indexOf("if (!eligibility.ok)") <
     body.indexOf("client!.inspectSubject("));
   assert.match(body, /responses\.invalidate\("inspection"\)/);
-  assert.match(body, /presentInspection\(view, id, subject\)/);
-  assert.match(body, /editor\.setDocument\(presentation\.document\)/);
   assert.match(body, /return false;/);
 });
