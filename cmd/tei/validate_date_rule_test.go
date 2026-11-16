@@ -147,6 +147,37 @@ func TestWithoutIfPresentAnOpenPeriodIsNotDecided(t *testing.T) {
 	}
 }
 
+// A column the example does not have was not written. With the end column
+// left out, the rule cannot know whether the record has an end, so `if
+// present` does not apply and the record is not decided.
+func TestADateWithoutAColumnIsNotAnEmptyDate(t *testing.T) {
+	table := func(expect string) string {
+		return "# 終了日を書いていない例\n\n<!-- tei: example of organization.membership -->\n" +
+			"| personId | startsOn | organization.membership.period_in_order |\n| --- | --- | --- |\n| P001 | 2026-04-01 | " + expect + " |\n"
+	}
+	code, report := runRuleExampleValidate(t, dateRuleWorkspace(t, dateRuleRules, table("undecided")))
+	if code != 0 || len(report.Diagnostics) != 0 {
+		t.Fatalf("code=%d report=%+v", code, report)
+	}
+	code, report = runRuleExampleValidate(t, dateRuleWorkspace(t, dateRuleRules, table("satisfied")))
+	if code != 1 || len(report.Diagnostics) != 1 ||
+		!strings.Contains(report.Diagnostics[0].Diagnostic.Message, "answers undecided (value-not-fetched (attribute organization.membership.ends_on))") {
+		t.Fatalf("code=%d report=%+v", code, report)
+	}
+}
+
+// A moment in time is not read as a calendar date. Its cell is kept as
+// written, so a value with a time of day is not refused as a bad date.
+func TestAnExampleKeepsAMomentInTimeAsWritten(t *testing.T) {
+	examples := "# 登録時刻のある例\n\n<!-- tei: example of organization.membership -->\n" +
+		"| personId | startsOn | endsOn | registeredAt | organization.membership.period_in_order |\n| --- | --- | --- | --- | --- |\n" +
+		"| P001 | 2026-04-01 | | 2026-03-25T09:30:00+09:00 | satisfied |\n"
+	code, report := runRuleExampleValidate(t, dateRuleWorkspace(t, dateRuleRules, examples))
+	if code != 0 || len(report.Diagnostics) != 0 {
+		t.Fatalf("code=%d report=%+v", code, report)
+	}
+}
+
 func TestValidateRefusesADateItCannotRead(t *testing.T) {
 	cases := []struct {
 		name, old, replacement, at, message string

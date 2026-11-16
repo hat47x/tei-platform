@@ -73,7 +73,7 @@ func TestRuleAuthoringRefusesAnUnclearNotAfter(t *testing.T) {
 		{"if without an attribute", "not after if present\n", "if present", "expected the attribute to compare with"},
 		{"a condition other than present", "not after organization.membership.ends_on if known\n", "known", `expected "present" after "if"`},
 		{"if at the end", "not after organization.membership.ends_on if\n", "if\n", `expected "present" after "if"`},
-		{"a scope", "not after organization.membership.ends_on per organization.department.members\n", "organization.department.members", "accepts no scope"},
+		{"a scope", "not after organization.membership.ends_on per organization.department.members\n", "organization.department.members", "compares two dates of one record and accepts no scope"},
 		{"a second comparison", "not after organization.membership.ends_on organization.membership.left_on\n", "organization.membership.left_on", "unexpected"},
 		{"the words joined", "not-after organization.membership.ends_on\n", "not-after", "unknown rule predicate"},
 		{"after alone", "after organization.membership.ends_on\n", "after", "unknown rule predicate"},
