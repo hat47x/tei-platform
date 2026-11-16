@@ -41,6 +41,87 @@ type ReviewPacket struct {
 	AuthorityLimits         []string                `json:"authorityLimits"`
 }
 
+// RelationQuestion is a bounded selection over the existing ReviewPacket,
+// not another analysis, accepted mapping, or a new graph model. It preserves
+// the selected producer edge and every observed occurrence at either endpoint.
+// A static edge (including "imports" or "loads") is not evidence of a TEI
+// Function reading or writing a Data entity.
+type RelationQuestion struct {
+	Effect                  string               `json:"effect"`
+	AttemptEvidenceID       string               `json:"attemptEvidenceId"`
+	CandidateSetFingerprint string               `json:"candidateSetFingerprint"`
+	Qualification           string               `json:"qualification"`
+	Relation                StructureCandidate   `json:"relation"`
+	FromObservations        []StructureCandidate `json:"fromObservations,omitempty"`
+	ToObservations          []StructureCandidate `json:"toObservations,omitempty"`
+	MissingEndpoints        []string             `json:"missingEndpoints,omitempty"`
+	FunctionDataClaim       string               `json:"functionDataClaim"`
+	Unresolved              []string             `json:"unresolved"`
+	Unknowns                []ExternalUnknown    `json:"unknowns,omitempty"`
+	AcceptedMeaning         bool                 `json:"acceptedMeaning"`
+	OwnerDecision           string               `json:"ownerDecision"`
+}
+
+// SelectRelationQuestion extracts exactly one producer relation occurrence
+// from a previously built review packet. A missing or duplicate occurrence
+// does not turn into a fabricated negative fact about the analyzed system.
+func SelectRelationQuestion(packet ReviewPacket, externalEdgeID string) (RelationQuestion, bool) {
+	if strings.TrimSpace(externalEdgeID) == "" ||
+		packet.Effect != EffectReadOnly || packet.AcceptedMeaning {
+		return RelationQuestion{}, false
+	}
+	var relation *StructureCandidate
+	for i := range packet.Candidates {
+		candidate := &packet.Candidates[i]
+		if candidate.Kind != CandidateKindCrossReference ||
+			candidate.Facts.ExternalOccurrenceID != externalEdgeID {
+			continue
+		}
+		if relation != nil {
+			return RelationQuestion{}, false
+		}
+		relation = candidate
+	}
+	if relation == nil || relation.Facts.Direction == nil {
+		return RelationQuestion{}, false
+	}
+	question := RelationQuestion{
+		Effect:                  EffectReadOnly,
+		AttemptEvidenceID:       packet.Attempt.EvidenceID,
+		CandidateSetFingerprint: packet.CandidateSetFingerprint,
+		Qualification:           packet.Qualification,
+		Relation:                *relation,
+		FunctionDataClaim:       "not-established-by-external-structure",
+		Unresolved:              uniqueStrings(append(append([]string{}, packet.Unresolved...),
+			"function-entry-and-input-output-not-observed",
+			"function-data-read-write-effect-not-observed",
+			"owner-function-data-meaning-not-accepted")),
+		Unknowns:        append([]ExternalUnknown(nil), packet.Unknowns...),
+		AcceptedMeaning: false,
+		OwnerDecision:   "pending",
+	}
+	from := relation.Facts.Direction.FromExternalID
+	to := relation.Facts.Direction.ToExternalID
+	for _, candidate := range packet.Candidates {
+		if candidate.Kind != CandidateKindDataElement {
+			continue
+		}
+		if candidate.Facts.ExternalIdentity == from {
+			question.FromObservations = append(question.FromObservations, candidate)
+		}
+		if candidate.Facts.ExternalIdentity == to {
+			question.ToObservations = append(question.ToObservations, candidate)
+		}
+	}
+	if len(question.FromObservations) == 0 {
+		question.MissingEndpoints = append(question.MissingEndpoints, "source:"+from)
+	}
+	if len(question.ToObservations) == 0 {
+		question.MissingEndpoints = append(question.MissingEndpoints, "target:"+to)
+	}
+	return question, true
+}
+
 // BuildReviewPacket assembles the reviewable output. binding, adoption and
 // comparison are optional; a nil section is reported as not attempted rather
 // than silently omitted from the summary.

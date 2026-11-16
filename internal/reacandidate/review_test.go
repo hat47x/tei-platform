@@ -7,6 +7,86 @@ import (
 	"tei/internal/sourceindex"
 )
 
+// One question names a producer edge occurrence, not a generated Go
+// method or an accepted Function→Data Read/Write relation. Endpoint source
+// occurrences remain distinct even if they share the same display name.
+func TestRelationQuestionPreservesProducerIdentityAndAllEndpointObservations(t *testing.T) {
+	fixture := defaultEvidence()
+	again := fixture.nodes[0].observations[0]
+	again.id = "obs-order-second"
+	fixture.nodes[0].observations = append(fixture.nodes[0].observations, again)
+	parallel := fixture.edges[0]
+	parallel.id = "edge-order-line-second"
+	fixture.edges = append(fixture.edges, parallel)
+	packet := BuildReviewPacket(mustGenerate(t, fixture), nil, nil, nil)
+	question, ok := SelectRelationQuestion(packet, "edge-order-line-second")
+	if !ok {
+		t.Fatal("a distinct producer edge must be selectable")
+	}
+	if question.Relation.Facts.ExternalOccurrenceID != "edge-order-line-second" ||
+		question.Relation.Facts.ExternalIdentity != "edge-order-line-second" ||
+		question.Relation.Facts.Direction.FromExternalID != "node-order" ||
+		question.Relation.Facts.Direction.ToExternalID != "node-line" {
+		t.Fatalf("producer relation occurrence/direction was changed: %+v", question.Relation)
+	}
+	if len(question.FromObservations) != 2 || len(question.ToObservations) != 1 ||
+		question.FromObservations[0].Facts.ExternalOccurrenceID == question.FromObservations[1].Facts.ExternalOccurrenceID {
+		t.Fatalf("endpoint observation multiplicity was lost: %+v", question)
+	}
+	if question.Relation.SourceRevision.ArtifactPath != "src/order.js" ||
+		question.Relation.Facts.ObservedKind != "imports" ||
+		question.Relation.SourceRevision.Binding != SourceBindingProviderReported {
+		t.Fatalf("source/label was lost or silently independently bound: %+v", question.Relation)
+	}
+	if question.Effect != EffectReadOnly ||
+		question.FunctionDataClaim != "not-established-by-external-structure" ||
+		question.AcceptedMeaning || question.OwnerDecision != "pending" ||
+		question.AttemptEvidenceID != packet.Attempt.EvidenceID ||
+		question.CandidateSetFingerprint != packet.CandidateSetFingerprint ||
+		!hasString(question.Unresolved, "function-data-read-write-effect-not-observed") {
+		t.Fatalf("static relation was promoted to Function/Data meaning: %+v", question)
+	}
+	if !hasString(question.Relation.Notes, "parallel-relation") {
+		t.Fatalf("parallel occurrence is no longer reviewable: %+v", question.Relation.Notes)
+	}
+}
+
+func TestRelationQuestionDoesNotInventMissingEndpointsOrUnknownCoverage(t *testing.T) {
+	fixture := defaultEvidence()
+	fixture.nodes = fixture.nodes[:1]
+	fixture.edges[0].to = "node-not-in-this-attempt"
+	fixture.unknowns = []unknownFixture{{id: "unknown-input", family: "source", reason: "unavailable"}}
+	packet := BuildReviewPacket(mustGenerate(t, fixture), nil, nil, nil)
+	question, ok := SelectRelationQuestion(packet, "edge-order-line")
+	if !ok || question.Qualification != "partial" ||
+		len(question.FromObservations) != 1 || len(question.ToObservations) != 0 ||
+		len(question.MissingEndpoints) != 1 ||
+		question.MissingEndpoints[0] != "target:node-not-in-this-attempt" ||
+		len(question.Unknowns) != 1 || !hasString(question.Unresolved, "provider-unknown:unknown-input") {
+		t.Fatalf("missing/unresolved endpoint was silently filled: %+v (selected=%t)", question, ok)
+	}
+}
+
+func TestRelationQuestionCannotPairUnselectedOrDuplicateEdgeIDs(t *testing.T) {
+	packet := BuildReviewPacket(mustGenerate(t, defaultEvidence()), nil, nil, nil)
+	for _, id := range []string{"", "missing-edge-id", "node-order", "obs-order"} {
+		if selected, ok := SelectRelationQuestion(packet, id); ok {
+			t.Fatalf("%q invented a relation selection: %+v", id, selected)
+		}
+	}
+	// A corrupt or manually assembled review packet must not arbitrarily
+	// choose one of two candidates with the same producer occurrence ID.
+	for _, candidate := range packet.Candidates {
+		if candidate.Kind == CandidateKindCrossReference {
+			packet.Candidates = append(packet.Candidates, candidate)
+			break
+		}
+	}
+	if selected, ok := SelectRelationQuestion(packet, "edge-order-line"); ok {
+		t.Fatalf("duplicate relation occurrence was selected: %+v", selected)
+	}
+}
+
 // The packet is the single review surface. It reports what was attempted and
 // what was not, and it never claims an acceptance.
 func TestReviewPacketReportsSectionsAndAcceptsNothing(t *testing.T) {
