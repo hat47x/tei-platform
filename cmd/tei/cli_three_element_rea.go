@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"tei/internal/operations"
+	"tei/internal/reacandidate"
 	"tei/internal/sourceindex"
 )
 
@@ -239,6 +240,17 @@ func runThreeElementReaIntake(args []string, out io.Writer) (int, error) {
 		}
 	}
 
+	// Say, per three-element element, whether this attempt's own facts support a
+	// candidate. The table is a gap statement: Data is supported by the observed
+	// nodes and directed relations, and Function and Business stay unsupported
+	// with the reason, so a reviewer is never left to guess whether the silence
+	// was deliberate.
+	//
+	// The evaluator already existed and nothing called it, so a complete external
+	// graph read as if it had said something about Function and Business. The
+	// packet is what a caller sees, so the answer belongs here.
+	packet["threeElementCoverage"] = intakeCoverage(packet)
+
 	response := reaIntakeResponse{
 		SchemaVersion: "tei.cli.three-element.rea-intake/v0",
 		OK:            true,
@@ -263,8 +275,8 @@ func runThreeElementReaIntake(args []string, out io.Writer) (int, error) {
 }
 
 type observationResult struct {
-	Bindings    []map[string]interface{}
-	Unresolved  []interface{}
+	Bindings   []map[string]interface{}
+	Unresolved []interface{}
 }
 
 func bindObservations(nodes, edges []interface{}, workspaceRoot string, ownerMapping map[string]map[string]string, fixedCandidates []map[string]interface{}) observationResult {
@@ -384,4 +396,20 @@ func bindSource(source, expectedDigest, workspaceRoot string) (string, string, [
 	return "source-digest-conflict", "unresolved", nil
 }
 
-
+// intakeCoverage evaluates the three-element coverage for the candidates this
+// packet carries.
+//
+// The intake builds its candidates as maps because the packet is a review
+// surface whose shape is read by a caller, not by this package's types. The
+// evaluator takes a CandidateSet, so the kinds are counted here and handed over.
+// Nothing is invented: a kind the packet does not carry contributes zero, and
+// the evaluator reports the element as unsupported with a reason.
+func intakeCoverage(packet map[string]interface{}) reacandidate.ThreeElementCoverage {
+	set := reacandidate.CandidateSet{}
+	raw, _ := packet["candidates"].([]map[string]interface{})
+	for _, candidate := range raw {
+		kind, _ := candidate["kind"].(string)
+		set.Candidates = append(set.Candidates, reacandidate.StructureCandidate{Kind: kind})
+	}
+	return reacandidate.EvaluateThreeElementCoverage(set)
+}
