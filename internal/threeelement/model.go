@@ -500,6 +500,84 @@ func (m ThreeElementModel) ContradictoryCRUDs() []CRUDDefinition {
 	return conflicts
 }
 
+// OpposingCRUDPairs returns the Function/Data pairs where a declared CRUD
+// definition and the intent in Function.Operations genuinely contradict each
+// other: each side asserts an operation the other does not.
+//
+// A one-sided difference is not reported. When the declared operations are a
+// subset of the Function intent, or the Function intent is a subset of the
+// declared operations, the narrower side denies nothing the wider side claims,
+// so an ordinary model that simply records Read alongside a write is not
+// forced into review. Both sides remain source facts; this reports the
+// disagreement and never decides which side wins.
+//
+// The answer depends only on the pair and the two intents, never on the order
+// in which declarations appear, so reordering cannot hide a finding.
+func (m ThreeElementModel) OpposingCRUDPairs() [][2]string {
+	type pair struct{ fn, data string }
+	derived := map[pair]string{}
+	for _, fn := range m.FunctionElements {
+		for _, op := range fn.Operations {
+			key := pair{fn.ID, op.DataID}
+			derived[key] += strings.ToUpper(op.Operations)
+		}
+	}
+	normalized := map[pair]string{}
+	for key, intent := range derived {
+		normalized[key] = normalizeOperations(intent)
+	}
+	opposing := map[pair]bool{}
+	for _, crud := range m.CRUDDefinitions {
+		key := pair{crud.FunctionID, crud.DataID}
+		intent, ok := normalized[key]
+		if !ok {
+			continue
+		}
+		if operationsMutuallyOppose(operationsForCRUD(crud), intent) {
+			opposing[key] = true
+		}
+	}
+	out := make([][2]string, 0, len(opposing))
+	for key := range opposing {
+		out = append(out, [2]string{key.fn, key.data})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i][0] != out[j][0] {
+			return out[i][0] < out[j][0]
+		}
+		return out[i][1] < out[j][1]
+	})
+	return out
+}
+
+// operationsMutuallyOppose reports whether neither operation set contains the
+// other. Inputs are already normalized to C,R,U,D order, so equal intent never
+// opposes and a pure narrowing or widening never opposes.
+//
+// An operation set that asserts nothing is a special case: it is a subset of
+// every set, so the subset rule alone would let an empty declaration silently
+// erase a declared operation set. A declaration that grants nothing opposes any
+// non-empty intent it overrides, because the override removes every operation
+// the Function declared and says so with no operations at all.
+func operationsMutuallyOppose(a, b string) bool {
+	if a == "" && b != "" {
+		return true
+	}
+	if b == "" && a != "" {
+		return true
+	}
+	return !operationsSubset(a, b) && !operationsSubset(b, a)
+}
+
+func operationsSubset(a, b string) bool {
+	for _, ch := range a {
+		if !strings.ContainsRune(b, ch) {
+			return false
+		}
+	}
+	return true
+}
+
 // UnknownDependencies returns function invokes that reference nonexistent functions.
 func (m ThreeElementModel) UnknownDependencies() [][2]string {
 	_, fnByID, _ := m.Index()
