@@ -171,21 +171,28 @@ func runThreeElementCrossReference(args []string, out io.Writer) (int, error) {
 	if err != nil {
 		return failThreeElement("MODEL_LOAD_FAILED", err.Error(), 2, out)
 	}
+	report := threeelement.ValidateModel(model)
 	response := threeElementResponse{
 		SchemaVersion: "tei.cli.three-element.cross-reference/v0",
-		OK:            true,
+		// This boolean reports completion of the read-only projection.
+		// It does not attest that declared and derived CRUD agree, nor that
+		// any cross-reference has been accepted as business meaning.
+		OK:      true,
+		OKScope: "projection-produced-only",
 		Result: struct {
-			SchemaVersion    string                                        `json:"schemaVersion"`
-			BusinessFunction []threeelement.BusinessFunctionCrossReference `json:"businessFunction"`
-			FunctionData     []threeelement.FunctionDataCrossReference     `json:"functionData"`
-			BusinessData     []threeelement.BusinessDataCrossReference     `json:"businessData"`
-			DataData         []threeelement.DataDataCrossReference         `json:"dataData"`
+			SchemaVersion      string                                        `json:"schemaVersion"`
+			BusinessFunction   []threeelement.BusinessFunctionCrossReference `json:"businessFunction"`
+			FunctionData       []threeelement.FunctionDataCrossReference     `json:"functionData"`
+			BusinessData       []threeelement.BusinessDataCrossReference     `json:"businessData"`
+			DataData           []threeelement.DataDataCrossReference         `json:"dataData"`
+			CRUDConflictStatus string                                        `json:"crudConflictStatus"`
 		}{
-			SchemaVersion:    "tei.three-element.cross-reference/v0",
-			BusinessFunction: threeelement.GenerateBusinessFunctionCrossReference(model),
-			FunctionData:     threeelement.GenerateFunctionDataCrossReference(model),
-			BusinessData:     threeelement.GenerateBusinessDataCrossReference(model),
-			DataData:         threeelement.GenerateDataDataCrossReference(model),
+			SchemaVersion:      "tei.three-element.cross-reference/v0",
+			BusinessFunction:   threeelement.GenerateBusinessFunctionCrossReference(model),
+			FunctionData:       threeelement.GenerateFunctionDataCrossReference(model),
+			BusinessData:       threeelement.GenerateBusinessDataCrossReference(model),
+			DataData:           threeelement.GenerateDataDataCrossReference(model),
+			CRUDConflictStatus: report.CRUDConflictStatus,
 		},
 	}
 	return writeThreeElementResponse(out, response, 0)
