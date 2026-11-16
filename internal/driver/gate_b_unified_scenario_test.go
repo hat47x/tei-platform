@@ -11,6 +11,7 @@ import (
 	"tei/internal/core"
 	"tei/internal/driver"
 	"tei/internal/driver/queryresult"
+	"tei/internal/driver/validationread"
 	"tei/internal/query"
 	"tei/internal/realization"
 	"tei/internal/security/legacyauth"
@@ -216,24 +217,32 @@ func TestGateBUnifiedSyntheticScenarioReplaysOrderEntryWithoutUI(t *testing.T) {
 	evidence.OrderLines = orderLines.Result
 	evidence.Steps = append(evidence.Steps, "header-detail")
 
-	// line_number_positiveは先頭の受注明細を評価する。その行番号は、header-detailで読んだ行から取る（fixtureの値を前提にしない）。
-	// この合成行は行番号を整数で持つため、文字列へ揃えてからRatにする。
-	firstLineNumber := fmt.Sprint(orderLines.Result.Rows[0].Attributes["sales.order_line.line_number"])
-	validationSource := submitOrderValidationSource{
-		quantity:    lineQuantity,
-		lineNumber:  mustRat(t, firstLineNumber),
-		lineNumbers: []string{"1", "2"},
+	// 規則の入力は、header-detailで読んだ行そのものから取る。試験の中で値を組み立て直さない。
+	// 一件の明細を見る規則は読んだ行すべてに、明細の全行を見る規則は行全体に尋ねる。
+	// この合成Executorは受注の明細をすべて返すので、範囲は全件と述べる。
+	detail, err := validationread.FromHeaderDetail(world.Semantics, orderLines, validationeval.CoverageComplete)
+	if err != nil {
+		t.Fatalf("OrderLineの行を規則の入力として読めません: %v", err)
 	}
 	for _, rule := range orderEntryValidations(t, world) {
 		validationID := rule.ID
-		result, err := validationeval.Evaluate(rule, validationSource)
+		decisions, err := detail.Decide(rule, validationeval.Operators{})
 		if err != nil {
 			t.Fatalf("Validation %sを評価できません: %v", validationID, err)
 		}
-		evidence.Validation[validationID] = result
-		if result != validationeval.ResultSatisfied {
-			t.Fatalf("Validation %s=%s, want satisfied", validationID, result)
+		asked := decisions.Rows
+		if decisions.Relation != nil {
+			asked = []validationeval.Decision{*decisions.Relation}
 		}
+		if len(asked) == 0 {
+			t.Fatalf("Validation %sはどの行にも尋ねられていません", validationID)
+		}
+		for index, decision := range asked {
+			if decision.Undecided != nil || decision.Result != validationeval.ResultSatisfied {
+				t.Fatalf("Validation %s（%d番目の答え）=%+v, want satisfied", validationID, index, decision)
+			}
+		}
+		evidence.Validation[validationID] = validationeval.ResultSatisfied
 	}
 	evidence.Steps = append(evidence.Steps, "validation")
 

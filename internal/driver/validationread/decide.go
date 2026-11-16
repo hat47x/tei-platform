@@ -46,7 +46,8 @@ func (d *Detail) Decide(rule semantic.Validation, operators validationeval.Opera
 		for index := range d.rows {
 			decision, err := validationeval.Decide(rule, Row{detail: d, index: index}, operators)
 			if err != nil {
-				return Decisions{}, fmt.Errorf("row %d: %w", index, err)
+				// A value that cannot be read names its row itself.
+				return Decisions{}, err
 			}
 			decisions.Rows = append(decisions.Rows, decision)
 		}
