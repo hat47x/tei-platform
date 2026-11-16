@@ -116,7 +116,7 @@ func TestReadableWithoutSectionMatchesInspect(t *testing.T) {
 		if readable[kind] {
 			continue
 		}
-		if supportedInspectionKind(kind) {
+		if SupportedInspectionKind(kind) {
 			t.Errorf("%q is accepted by inspect but was not listed as readable", kind)
 		}
 	}

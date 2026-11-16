@@ -184,6 +184,21 @@ func helpText(fs *flag.FlagSet, command string) string {
 			fmt.Fprintf(&out, "  -expected-fingerprint string\n    \tsnapshot fingerprint an earlier read returned; fails when the World or Source Index changed\n")
 			return out.String()
 		}
+		if command == "model search" {
+			// model search parses its own FlagSet; the listing is derived from
+			// the same one the parser uses, so a flag cannot be described here
+			// and refused there (#3943).
+			fs := flag.NewFlagSet("model search", flag.ContinueOnError)
+			modelSearchFlags(fs)
+			writeFlagHelp(&out, fs, command, nil)
+			// The hit is evidence, so the listing says what it searched and what
+			// it did not: a line belongs to the nearest preceding declaration of
+			// the searched kinds, and a Source with no indexed declaration is
+			// not searched at all. An empty hit list therefore is not "this text
+			// appears nowhere".
+			fmt.Fprintf(&out, "\neach hit carries the subject, the workspace-relative Source, the 1-based line and\nthat line as written, so a match can be opened instead of trusted. A line is\nattributed to the nearest preceding declaration among the searched kinds; a line\nbefore the first declaration of a Source, and a Source with no indexed\ndeclaration, are not searched (result.coverage).\n")
+			return out.String()
+		}
 		if command == "model overview" {
 			// model overview parses its own FlagSet; three flags are its grammar.
 			fmt.Fprintf(&out, "  -workspace string\n    \tTEI workspace directory\n")

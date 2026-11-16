@@ -45,12 +45,12 @@ func TestSectionScopeNamesBothSidesOfTheRouteGap(t *testing.T) {
 	// A kind is "readable" only when inspect really resolves it, so the claim
 	// cannot drift away from the CLI's advertised grammar.
 	for _, kind := range scope.ReadableWithoutSection {
-		if !supportedInspectionKind(kind) {
+		if !SupportedInspectionKind(kind) {
 			t.Fatalf("%q is listed readable but inspect does not accept it", kind)
 		}
 	}
 	for _, kind := range scope.NotReadableWithoutSection {
-		if supportedInspectionKind(kind) {
+		if SupportedInspectionKind(kind) {
 			t.Fatalf("%q is listed not readable but inspect accepts it", kind)
 		}
 	}
