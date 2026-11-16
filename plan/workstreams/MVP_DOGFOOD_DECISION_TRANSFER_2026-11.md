@@ -174,3 +174,19 @@ M1〜M3は生成器側の自己置換であり、**利用者がTEI自身の設�
 **受入の停止線**：`Pの評価ができた`、`Gのコードが生成された`、`実BuilderがGを消費した`、`製品Callerが選択した方式で実行した`、`Stage2が当該実装を使った`を、それぞれ別の証拠として残す。既存のSource・World／Model・Artifact／Build Attempt・現在Grantを一つの真偽値にまとめない。Graph／Node表示やPlugin Whole／Field／Adapter接続はこの証拠の投影であり、描画や接続可能表示だけで実行権限を与えない。
 
 **次の小さな反証**：`not-after`を同一SourceからPで実評価できる正例と、同じSubjectのG要求を拒否する負例を、既存の製品LoaderとInspectorで比較する。これが成功しても、Studio Stage1→Stage2や通常CLI→Provider Readを完了と数えない。
+
+## 14. latest-main CIを実失敗の単位で修復する（2026-11-16）
+
+main `dc3f310ed52e652efbda2c8736a2f45d6f4b8a6a` の実GitHub Actionsログを確認した。Cache Verification／実Windows WebView2の一部が成功しても、**Repository Health・参照セルフビルド・Wails Hostは失敗**している。これを「CI不調」の一語で済ませず、修正PRと反証を一つずつ切り出す。以下はこのHEADの観測であり、後続HEADへ無条件に引き継がない。
+
+| 失敗した検収とログの事実 | 直近の修正対象 | 独立に確認する終了条件 |
+| --- | --- | --- |
+| [Repository Health](https://github.com/hat47x/tei-platform/actions/runs/43866732336)：`TestTEIValidationDeclarationSelfDescriptionIsOnlyData`で期待した項目0=`rule_id`に対し`attribute_id`が返る | **自己記述の試験Owner**。項目の正規IDと型・必須性・原Source位置を照合し、Canonicalの並び順をSource表の行順だと誤認していないか確認 | 全四項目がIDごとに一致し、重複・欠落・余剰項目を拒否。表の説明データを実Ruleへ昇格させない。別の失敗までGreen扱いしない |
+| 同Healthで`TestDiagnosticCodeCoverageOnlyImproves`が`NO_OVERLAP`関連の未被覆診断コード**4件**を検出 | 新しいRule種別の診断Owner／[未統合PR #5148](https://github.com/hat47x/tei-platform/pull/5148) | コードごとに**実際に発行する不正入力**の負例を追加。期待文字列を空で登録するだけで被覆と扱わない |
+| 同Healthと[生成Host](https://github.com/hat47x/tei-platform/actions/runs/43866732297)でREA Local Readerが`OPERATION_FAILED: external Evidence is unavailable` | REA Reader／Source Locator／Studio Hostの既存Owner | 正常な独立Workspace、実別Process、許可されないWorkspace、Source差替えの正負を同一Reader版・Evidenceで再試験。Stubで成功を偽装しない |
+| [生成Host](https://github.com/hat47x/tei-platform/actions/runs/43866732297)で`TestEmbeddedWorkbenchCarriesTheCurrentGeneratedInspectionReader`が失敗（埋込`main.js`に生成Inspector Readerがない） | Stage1生成物→TS/esbuild→Go embed→実Desktopの資産Owner | Source contract digest、生成Reader、埋込byte、Windows実Consumerの一致を別票にし、手書きReaderや古いBundleで代替しない |
+| [参照セルフビルド](https://github.com/hat47x/tei-platform/actions/runs/43866732292)でRule由来の通常`tei` Build Intentステップがexit 1 | 自己構築／Build Owner。単一の失敗ステップと元入力を保存してから原因を切り分ける | 正常Build／元Markdown変更／生成Go変更の三経路を**そのHEAD**の実Builder入力で照合。ログのexitだけからSource不一致など原因を推測しない |
+
+併せてHealthには`gofmt -l . is empty`の失敗や、Web API scoped Driver、Reference CRUDの特徴付け試験の失敗も観測された。これらは別Ownerの修正案件とし、M1実験のGoコード変更へ混ぜない。
+
+**統合Gate**：`repository-health`と`cache-verification`が対象PRのexact HEADで成功し、最新mainのHealthと実CIの失敗が解消した後に、この計画ブランチをマージする。docs-onlyにしても既存Healthの失敗を免除しない。実装修正は各Owned failureで独立PR・独立Expectedを保持し、失敗試験を無条件に無効化しない。
