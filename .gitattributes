@@ -357,3 +357,6 @@
 
 # maxDepth 6 observations are hashed as raw bytes.
 /plan/evidence/DSH_SUBAGENT_DEPTH6_2026-11-17/** -text
+
+# Malformed-reply observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_STDIO_MALFORMED_REPLY_2026-11-18/** -text
