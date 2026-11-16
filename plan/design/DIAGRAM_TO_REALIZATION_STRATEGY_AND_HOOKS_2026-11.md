@@ -484,7 +484,7 @@ SQLiteの既存試験では、ページを**誤って`CoverageComplete`と申告
 
 1. **同じQueryと実行結果で、Coverageの申告だけ変更**：既読重複があるRuleは不成立を維持し、重複がないRuleは必要集合の裏付けがない限り成立としない。既存局所試験の再実装ではなく、正式Binding側が`complete`を主張してよいかを検査する。
 2. **同じ値・行数で、Bindingの対象Relationだけ変更**：結果一致で意味ID／Query ID／Read Scopeの不一致を通さない。Personの人数が観測されたMembership行から推定できない#5184の反例を参考に、要求した集合の観測可能性を確かめる。
-3. **同じ意味IDで、Source Revisionまたは選択言語を変更**：実Readの資格を再確認し、旧Source Indexや古いPlanを流用しない。CLIの前提指紋を横断する[#5198](https://github.com/hat47x/tei-platform/pull/5198)は現時点で未マージのため、現行製品が全入口で同じ拒否を実装済みとは扱わない。
+3. **同じ意味IDで、Source Revisionまたは選択言語を変更**：実Readの資格を再確認し、旧Source Indexや古いPlanを流用しない。CLIの読取りコマンドの前提指紋を揃えた[#5198](https://github.com/hat47x/tei-platform/pull/5198)はmainへ統合済みである。現行の対応入口でSource改版後の旧Snapshotを拒否できることと、実Queryの必要集合／Scope／現在Grantの証明は別に検査する。MCP・HTTPへの適用を推定しない。
 
 **優先**：Query／Scope／Coverageを同じAttemptで検査できる局所Consumerを既存#2586／#4495へ渡す。入力不足は明示的に`not-proven`とし、生成Gを選べないRuleを黙ってPへFallbackさせない。前処理のSource確認から実Consumerの受領まで、既存#1180／#2514のIndependent Expectedを使い、新たなRunnerやStoreは作らない。非Plugin Windows Studio Stage1→Stage2の優先P0は維持する。
 
