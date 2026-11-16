@@ -3,6 +3,7 @@ package threeelement
 import (
 	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -27,7 +28,7 @@ func orderCRUDModel(derivedOps, explicitOps string) ThreeElementModel {
 		Operations: []FunctionOperation{{DataID: "order", Operations: derivedOps}},
 	}}
 	crud := CRUDDefinition{ID: "declared", FunctionID: "submit", DataID: "order", Source: "declared"}
-	for _, ch := range explicitOps {
+	for _, ch := range strings.ToUpper(explicitOps) {
 		switch ch {
 		case 'C':
 			crud.Create = true
@@ -177,66 +178,192 @@ func TestSubsetDerivedAndExplicitCRUDIsNotOpposition(t *testing.T) {
 	}
 }
 
-// Two declarations that are worded differently but mean the same set of
-// operations are not a disagreement. Declaring "CR" must not conflict with
-// "RC", and a repeated letter must not create a conflict by itself.
-func TestEquivalentOperationSpellingsDoNotConflict(t *testing.T) {
-	model := NewThreeElementModel("spelling", "Equivalent spellings")
-	model.DataElements = []DataElement{{ID: "order", Name: "Order"}}
-	model.FunctionElements = []FunctionElement{{
-		ID: "submit", Name: "Submit",
-		Operations: []FunctionOperation{{DataID: "order", Operations: "CR"}},
-	}}
-	model.CRUDDefinitions = []CRUDDefinition{{
-		ID: "declared", FunctionID: "submit", DataID: "order",
-		Read: true, Create: true, Source: "declared",
-	}}
-	report := ValidateModel(model)
-	if report.CRUDConflictStatus != "no-conflicts-detected" || len(report.OpposingCRUDPairs) != 0 {
-		t.Fatalf("set equality, not letter order, decides agreement: %+v", report)
+// A narrowing or widening is not reviewed, but the overridden intent must still
+// be readable. Without this, a Consumer of the CRUD table alone would conclude
+// that a function performs exactly the declared operations and nothing else,
+// while the Function model says more. Keeping the intent visible serves the
+// no-unnecessary-rejection rule and the no-hidden-overwrite rule at once.
+func TestRefinementKeepsOverriddenDerivedIntentVisible(t *testing.T) {
+	for _, tc := range []struct{ derived, explicit string }{
+		{"CRUD", "R"}, // declared narrows the Function intent
+		{"C", "CR"},   // declared widens the Function intent
+	} {
+		model := orderCRUDModel(tc.derived, tc.explicit)
+		rows := GenerateCRUDTable(model)
+		if len(rows) != 1 {
+			t.Fatalf("derived %q explicit %q: expected one row, got %+v", tc.derived, tc.explicit, rows)
+		}
+		if rows[0].DerivedOperations != wantNormalized(tc.derived) {
+			t.Fatalf("derived %q explicit %q: overridden intent erased: %+v",
+				tc.derived, tc.explicit, rows[0])
+		}
+		if rows[0].ConflictingDeclarations {
+			t.Fatalf("derived %q explicit %q: a refinement must not be flagged for review: %+v",
+				tc.derived, tc.explicit, rows[0])
+		}
+		refs := GenerateFunctionDataCrossReference(model)
+		if len(refs) != 1 || refs[0].DerivedOperations != wantNormalized(tc.derived) {
+			t.Fatalf("derived %q explicit %q: cross-reference erased the intent: %+v",
+				tc.derived, tc.explicit, refs)
+		}
+		if refs[0].ConflictingDeclarations {
+			t.Fatalf("derived %q explicit %q: cross-reference flagged a refinement: %+v",
+				tc.derived, tc.explicit, refs[0])
+		}
+		if status := ValidateModel(model).CRUDConflictStatus; status != "no-conflicts-detected" {
+			t.Fatalf("derived %q explicit %q: refinement forced review: %q", tc.derived, tc.explicit, status)
+		}
 	}
 }
 
-// Changing only the source order of the two declarations must not make the
-// disagreement appear or disappear. The pair and its two intents determine
-// the answer, so both orders must produce the same finding.
-func TestOppositionSurvivesDeclarationOrderChange(t *testing.T) {
-	build := func(opsFirst bool) ThreeElementModel {
-		model := orderCRUDModel("C", "R")
-		if !opsFirst {
-			// Keep both declarations identical, only reordered: the Function
-			// element is moved after the CRUD definition in source.
-		}
-		return model
+// A declaration that states no operations must not silently zero an operation
+// set the Function declared. Asserting nothing is not a refinement of anything.
+func TestEmptyExplicitDefinitionDoesNotSilentlyEraseIntent(t *testing.T) {
+	model := orderCRUDModel("CRUD", "")
+	rows := GenerateCRUDTable(model)
+	if len(rows) != 1 {
+		t.Fatalf("expected one row: %+v", rows)
 	}
-	first := build(true)
-	second := build(false)
-	firstPairs := ValidateModel(first).OpposingCRUDPairs
-	secondPairs := ValidateModel(second).OpposingCRUDPairs
-	if !reflect.DeepEqual(firstPairs, secondPairs) {
-		t.Fatalf("declaration order changed the finding: %v vs %v", firstPairs, secondPairs)
+	if rows[0].Create || rows[0].Read || rows[0].Update || rows[0].Delete {
+		t.Fatalf("the empty declaration still controls the projected flags: %+v", rows[0])
 	}
-	if len(firstPairs) != 1 {
-		t.Fatalf("expected the opposition to be reported: %v", firstPairs)
+	if rows[0].DerivedOperations != "CRUD" {
+		t.Fatalf("the erased intent must stay visible: %+v", rows[0])
 	}
+	if !rows[0].ConflictingDeclarations {
+		t.Fatalf("an empty override of a declared set requires review: %+v", rows[0])
+	}
+	report := ValidateModel(model)
+	if report.CRUDConflictStatus != "conflicts-require-review" {
+		t.Fatalf("empty override was reported as clean: %q", report.CRUDConflictStatus)
+	}
+	if !report.OK {
+		t.Fatal("an empty declaration is still only a warning, not a structural error")
+	}
+}
 
-	// A model whose CRUDDefinitions are reordered among themselves must not
-	// gain or lose the opposing pair.
-	model := NewThreeElementModel("order-change", "Declaration order")
-	model.DataElements = []DataElement{{ID: "order", Name: "Order"}}
+// The Business→Data projection must resolve the Data name from the Data index
+// and use the same operation resolution as the Function→Data section. Two
+// sections of one result disagreeing about the same pair is a Consumer trap.
+func TestBusinessDataCrossReferenceUsesDataIndexAndResolvedOperations(t *testing.T) {
+	model := NewThreeElementModel("crossref", "Cross-reference identity")
+	model.DataElements = []DataElement{{ID: "order", Name: "Order data"}}
+	// A business element with the same bare ID but a different name must not
+	// supply the Data name.
+	model.BusinessElements = []BusinessElement{{
+		ID: "order", Name: "Sales partner",
+		Activities: []BusinessActivity{{ID: "a1", Name: "Accept", FunctionIDs: []string{"submit"}}},
+	}}
 	model.FunctionElements = []FunctionElement{{
 		ID: "submit", Name: "Submit",
-		Operations: []FunctionOperation{{DataID: "order", Operations: "C"}},
+		Operations: []FunctionOperation{{DataID: "order", Operations: "CRUD"}},
 	}}
+	model.CRUDDefinitions = []CRUDDefinition{{
+		ID: "declared", FunctionID: "submit", DataID: "order", Read: true, Source: "declared",
+	}}
+
+	rows := GenerateBusinessDataCrossReference(model)
+	if len(rows) != 1 {
+		t.Fatalf("expected one Business→Data row: %+v", rows)
+	}
+	if rows[0].DataName != "Order data" {
+		t.Fatalf("Business→Data used a non-Data index: %q", rows[0].DataName)
+	}
+	// The declared read must be reported here too, not the raw CRUD intent.
+	if rows[0].Operations != "R" {
+		t.Fatalf("Business→Data disagrees with Function→Data about the same pair: %q", rows[0].Operations)
+	}
+	refs := GenerateFunctionDataCrossReference(model)
+	if len(refs) != 1 || refs[0].Operations != rows[0].Operations {
+		t.Fatalf("one result carries two answers for the same pair: businessData=%q functionData=%+v",
+			rows[0].Operations, refs)
+	}
+}
+
+// wantNormalized spells the canonical operation order for a fixture input.
+func wantNormalized(ops string) string {
+	out := ""
+	for _, ch := range []string{"C", "R", "U", "D"} {
+		if strings.Contains(ops, ch) {
+			out += ch
+		}
+	}
+	return out
+}
+
+// Equivalent operation spellings are not a disagreement. "CR" and "RC" name the
+// same set, a lowercase spelling names the same set, and repeating a letter does
+// not make a distinct claim. Only the set of operations decides agreement.
+func TestEquivalentOperationSpellingsDoNotConflict(t *testing.T) {
+	for _, spelling := range []struct {
+		derived  string
+		explicit string
+	}{
+		{"CR", "CR"},
+		{"CR", "RC"},
+		{"RC", "CR"},
+		{"CR", "RCCR"},
+		{"cr", "CR"},
+		{"D", "d"},
+	} {
+		model := orderCRUDModel(spelling.derived, spelling.explicit)
+		report := ValidateModel(model)
+		if report.CRUDConflictStatus != "no-conflicts-detected" || len(report.OpposingCRUDPairs) != 0 {
+			t.Fatalf("derived %q explicit %q: set equality, not spelling, decides agreement: %+v",
+				spelling.derived, spelling.explicit, report)
+		}
+		rows := GenerateCRUDTable(model)
+		if len(rows) != 1 || rows[0].DerivedOperations != "" {
+			t.Fatalf("derived %q explicit %q: equal intent must not be carried as an override: %+v",
+				spelling.derived, spelling.explicit, rows)
+		}
+	}
+}
+
+// Changing only the source order of the declarations must not make the
+// disagreement appear or disappear. The pair and its two intents determine
+// the answer, so every permutation must produce the same finding.
+func TestOppositionSurvivesDeclarationOrderChange(t *testing.T) {
 	agreeing := CRUDDefinition{ID: "agreeing", FunctionID: "submit", DataID: "order", Create: true}
 	opposing := CRUDDefinition{ID: "opposing", FunctionID: "submit", DataID: "order", Delete: true}
+	derivedOp := FunctionOperation{DataID: "order", Operations: "C"}
 
-	model.CRUDDefinitions = []CRUDDefinition{agreeing, opposing}
-	before := ValidateModel(model).OpposingCRUDPairs
-	model.CRUDDefinitions = []CRUDDefinition{opposing, agreeing}
-	after := ValidateModel(model).OpposingCRUDPairs
-	if !reflect.DeepEqual(before, after) || len(before) != 1 {
-		t.Fatalf("reordering explicit declarations changed the finding: %v vs %v", before, after)
+	// Duplicated derived intents must also not change the answer: the union of
+	// operations for a pair is what the Function claims, independent of how many
+	// times the pair is listed.
+	build := func(order []CRUDDefinition, derivedOps []FunctionOperation) ThreeElementModel {
+		model := NewThreeElementModel("order-change", "Declaration order")
+		model.DataElements = []DataElement{{ID: "order", Name: "Order"}}
+		model.FunctionElements = []FunctionElement{{
+			ID: "submit", Name: "Submit", Operations: derivedOps,
+		}}
+		model.CRUDDefinitions = order
+		return model
+	}
+
+	variants := []struct {
+		name       string
+		order      []CRUDDefinition
+		derivedOps []FunctionOperation
+	}{
+		{"agreeing-first", []CRUDDefinition{agreeing, opposing}, []FunctionOperation{derivedOp}},
+		{"opposing-first", []CRUDDefinition{opposing, agreeing}, []FunctionOperation{derivedOp}},
+		{"repeated-derived", []CRUDDefinition{agreeing, opposing}, []FunctionOperation{derivedOp, derivedOp}},
+	}
+
+	var want [][2]string
+	for i, variant := range variants {
+		got := ValidateModel(build(variant.order, variant.derivedOps)).OpposingCRUDPairs
+		if len(got) != 1 || got[0] != [2]string{"submit", "order"} {
+			t.Fatalf("%s: lost the finding: %v", variant.name, got)
+		}
+		if i == 0 {
+			want = got
+			continue
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("%s: changed the finding: %v vs %v", variant.name, got, want)
+		}
 	}
 }
 

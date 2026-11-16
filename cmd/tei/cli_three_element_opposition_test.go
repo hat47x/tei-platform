@@ -13,8 +13,9 @@ import (
 )
 
 // The expected envelope contract is written here, independently of the CLI
-// code: every read-only three-element projection must say what its OK covers,
-// and a CRUD disagreement must be visible without reading the table.
+// code: the read-only CRUD projections must say what their OK covers, and a
+// CRUD disagreement must be visible without reading the table. `diff` and
+// `rea-*` write separate response shapes and are not part of this claim.
 func TestThreeElementCLIConsumerCannotReadUnscopedPass(t *testing.T) {
 	model := threeelement.NewThreeElementModel("cli-scope", "Envelope scope")
 	model.DataElements = []threeelement.DataElement{{ID: "order", Name: "Order"}}
@@ -158,7 +159,9 @@ func TestThreeElementCLIProcessEnvelopeIsScoped(t *testing.T) {
 	build := exec.Command("go", "build", "-o", bin, ".")
 	build.Stderr = os.Stderr
 	if err := build.Run(); err != nil {
-		t.Skipf("cannot build the CLI binary in this environment: %v", err)
+		// A build failure is not evidence about the envelope. Fail rather than
+		// skip so a broken build cannot quietly remove the real-process check.
+		t.Fatalf("cannot build the CLI binary: %v", err)
 	}
 
 	model := threeelement.NewThreeElementModel("cli-process", "Process envelope")

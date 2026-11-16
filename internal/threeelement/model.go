@@ -553,7 +553,19 @@ func (m ThreeElementModel) OpposingCRUDPairs() [][2]string {
 // operationsMutuallyOppose reports whether neither operation set contains the
 // other. Inputs are already normalized to C,R,U,D order, so equal intent never
 // opposes and a pure narrowing or widening never opposes.
+//
+// An operation set that asserts nothing is a special case: it is a subset of
+// every set, so the subset rule alone would let an empty declaration silently
+// erase a declared operation set. A declaration that grants nothing opposes any
+// non-empty intent it overrides, because the override removes every operation
+// the Function declared and says so with no operations at all.
 func operationsMutuallyOppose(a, b string) bool {
+	if a == "" && b != "" {
+		return true
+	}
+	if b == "" && a != "" {
+		return true
+	}
 	return !operationsSubset(a, b) && !operationsSubset(b, a)
 }
 

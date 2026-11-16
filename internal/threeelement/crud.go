@@ -62,10 +62,14 @@ func GenerateCRUDTable(model ThreeElementModel) []CRUDTable {
 				row.Delete = crud.Delete
 				row.Source = crud.Source
 				// Precedence here is a projection convention, not an Owner
-				// decision. Keep an opposing derived intent visible instead of
-				// letting the override erase what the Function declared.
+				// decision. Whenever the derived intent differs at all, keep it
+				// readable instead of letting the override erase a source fact.
+				// The review flag stays reserved for true mutual opposition so
+				// a refinement (one side is a subset) is not rejected outright.
+				if intent := derived[[2]string{fn.ID, op.DataID}]; intent != operationsForCRUD(crud) {
+					row.DerivedOperations = intent
+				}
 				if opposing[[2]string{fn.ID, op.DataID}] {
-					row.DerivedOperations = derived[[2]string{fn.ID, op.DataID}]
 					row.ConflictingDeclarations = true
 				}
 			} else {
@@ -208,8 +212,10 @@ func GenerateFunctionDataCrossReference(model ThreeElementModel) []FunctionDataC
 			if crud, ok := explicit[key]; ok {
 				row.Operations = operationsForCRUD(crud)
 				row.Source = crud.Source
+				if intent := derived[[2]string{fn.ID, op.DataID}]; intent != row.Operations {
+					row.DerivedOperations = intent
+				}
 				if opposing[[2]string{fn.ID, op.DataID}] {
-					row.DerivedOperations = derived[[2]string{fn.ID, op.DataID}]
 					row.ConflictingDeclarations = true
 				}
 			}
@@ -286,6 +292,16 @@ func normalizeOperations(raw string) string {
 		}
 	}
 	return operationsForCRUD(CRUDDefinition{Create: create, Read: read, Update: update, Delete: del})
+}
+
+// explicitCRUDFor returns the explicit declaration for one Function/Data pair.
+func explicitCRUDFor(model ThreeElementModel, functionID, dataID string) (CRUDDefinition, bool) {
+	for _, crud := range model.CRUDDefinitions {
+		if crud.FunctionID == functionID && crud.DataID == dataID {
+			return crud, true
+		}
+	}
+	return CRUDDefinition{}, false
 }
 
 // derivedOperationsByPair unions the Function.Operations intent per
