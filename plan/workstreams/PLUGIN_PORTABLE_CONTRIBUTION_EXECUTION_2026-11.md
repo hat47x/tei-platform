@@ -68,3 +68,18 @@ PC-1aが確認するのは、既存Transformの「出力を二Fieldに整形で�
 **実装担当への渡し方**：#1223／#2497が意味ID・契約／項目の一致、#2620／#988が既存Readerと判断可能性、#951／#1251が選択資格、#1180／#2514が独立Expectedを担当する。まず一Source・一Producer Record・二Required Field・一Ruleだけでread-only照合し、Consumerの現在Grantと実Provider Callを伴わない段階は`candidate`／`unknown`として表示する。Rule例（`example of`）の一致は実Providerから読んだ証拠にならない。
 
 **PC-1cへの移行条件**：PC-1bでField Ref／必要Read／欠損・NULL・部分取得・未確定の扱いが固定できた場合だけ、単位と精度を明示したpure Adapterを挿入する。新しいAdapter探索器・Stateful Port Runner・第二Validation Registryは作らない。PC-2／PC-3／PC-5を先行停止させない。
+
+## 7. PC-1bの最初のGo負例を、次の製品接続へ渡す（2026年11月17日）
+
+`internal/plugin/transform/plugin_field_presence_boundary_test.go`で、既存の`optional select-field`による「Field欠落とNULLの出力一致」を確認し、状態付き`Decide`の理由付き結論と実際に要求したAttribute IDを別票として照合する。これを[設計§10](../design/PLUGIN_PORTABLE_CONTRIBUTION_CONFORMANCE_2026-11.md)の**局所反証**に対応付ける。既存`reading_test.go`のRule一般試験やPC-1aの二Field Projectionを複製する目的ではない。
+
+| 順序 | Ownerへ渡す小差分 | 独立Expectedと未達条件 |
+| --- | --- | --- |
+| **PC-1b-0：損失の顕在化** | `optional` Mappingの出力値が同じでも、NULLと`not-fetched`ではRule理由が異なることを同じGo回帰で固定 | PIO-26／DPC-09。結果値・出力JSONを取得完全性の証拠にしない |
+| **PC-1b-1：実Source Ref付き読取** | 一Sourceに選択された`std.decimal`属性・RuleをSource Indexから読み、必要Attribute ID・読取時点・状態を一つのread-only Requirementに照合 | PIO-25／20、#1223／#2620。Field名一致をRef一致に昇格しない |
+| **PC-1b-2：必要なRelationの範囲** | 同じRelation行で`partial`／`complete`、既知重複あり／なしを比較。失敗・判断保留・確定違反を分ける | PIO-17／18、DPC-10〜11。完全性をProviderの申告から自動承認しない |
+| **PC-1b-3：実Consumerへ引渡し** | PC-1aのProjectionとPC-1b-1の実Read Ref・Coverageを既存Function Contextへ結び、実選択Providerと独立Consumerで同一Attemptを検収 | PIO-19／21、PCON-06／07。公開Grantや現在Providerの適格性は別のOwnerが判定 |
+
+この順番は**追加Hard Gateではない**。PC-1b-1のSource→Read照合と通常CLIの実Provider検収#4495を並行させ、同一Attemptに揃ったときだけ縦断成立を主張する。PC-1cの一段Adapterは意味保存・精度・丸めを別検証し、`optional`投影を状態保存Adapterとして使わない。EditorのNode／Port展開は既存Source Refの投影であり、実CallやDisclosure Grantは発生させない。
+
+**実測と限界**：PC-1b-0は対象HEADのCIで成功確認した範囲に限りPASSとする。実Binding、Native SQL／DB読取、HTTP、Studio Stage2はこの小回帰には含まれない。実装採否と独立Expectedの正本は#1180／#2514を継続利用する。
