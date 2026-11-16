@@ -155,3 +155,22 @@ M1〜M3は生成器側の自己置換であり、**利用者がTEI自身の設�
 **Studio側のU-0**は現行mainの三入口試験を起点とし、次に一つのテスト用Ruleで説明文変更→参照先変更→再Inspect→生成Go→実Builderを同一Subjectでつなぐ。CLI／Wails／HTTPに意味の正本を複製せず、選択Intentや表示済みSourceから編集・実行・Disclosureの権限を作らない。Source改版後の古い選択を拒否する条件も明記する。
 
 **並行P0とマージGate**：#2586の通常CLI実Provider Read、#2831／#4583のStage1→Stage2 Windowsは独立して継続する。確認時点のmain `df76ca9fadc6`ではCache Verification、Windows WebView2の一部が成功した一方、`reference-self-build`・Wails Hostの一部Jobが失敗し、Repository Healthは実行中だった。異なるJobの合格を全体Healthに読み替えない。D-2／M2はM1の独立反証後、D-3は元Source・Generator・Builderの同一Attempt照合後、D-4はStage2が実際に新しい検査を用いた後に認定する。
+
+## 13. 異質なRuleで実現方式の選択をdogfoodingする
+
+今後のM1は、すべてをGo生成へ揃えることではない。既存の`validationeval`による解釈（P）と`validationgen.GeneratePositive`による限定的なGo生成（G）が併存していることを、**利用者にとって予測可能な実現選択**として示す必要がある。
+
+現行mainの`internal/operations/inspect_markdown_data_table_date_rule_realization_test.go`には、項目定義表の日時二項目を暦日に変更して`not-after`を選択する実試験がある。これは`Workspace.Load`→Validator→Source Index→Inspector→`Decide`の局所経路で意味を受理し、**対応していないGの要求は拒否する**というP/G境界の実装例である。別のTarget生成器、一般的なRuntime方式Resolver、実Provider経路の完成ではない。
+
+| 実現方式の要求 | 現時点の対象 | このPacketで求める結果 |
+| --- | --- | --- |
+| **Pを明示** | 型付き`positive`または暦日`not-after` | 対象Rule、選択されたReader／Operator、必要Read、`Decision`と不能理由が元Sourceへ結び付く |
+| **Gを明示** | `positive`＋解決済み`std.decimal` | 元Source・型・生成GoのReader、Target契約、実Builderが消費するbyteを区別して検査する |
+| **未対応Gを要求** | `not-after`または未対応Relation Rule | `GeneratePositive`が未対応Kindを拒否する。返されたエラーをPへの無言のフォールバックと扱わない |
+| **方式を変えて再試行** | 同じ意味SubjectのP→G、G→P | 結果が一致しても実装選択の変更を新しいAttemptとして扱い、以前のArtifact／実Call資格を転用しない |
+
+**M1へ適用する順序**：まずSH-1〜3のうちTEIの定義で実判定できる一条件を確立し、その後に「その条件をどの方式で実現するか」を選ぶ。定義のShapeを厳密に検査できることは方式選択より前の条件であり、未対応Gの拒否試験だけでM1にはならない。
+
+**受入の停止線**：`Pの評価ができた`、`Gのコードが生成された`、`実BuilderがGを消費した`、`製品Callerが選択した方式で実行した`、`Stage2が当該実装を使った`を、それぞれ別の証拠として残す。既存のSource・World／Model・Artifact／Build Attempt・現在Grantを一つの真偽値にまとめない。Graph／Node表示やPlugin Whole／Field／Adapter接続はこの証拠の投影であり、描画や接続可能表示だけで実行権限を与えない。
+
+**次の小さな反証**：`not-after`を同一SourceからPで実評価できる正例と、同じSubjectのG要求を拒否する負例を、既存の製品LoaderとInspectorで比較する。これが成功しても、Studio Stage1→Stage2や通常CLI→Provider Readを完了と数えない。
