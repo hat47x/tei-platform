@@ -1,0 +1,31 @@
+M1 drop the valid-values list (pre-fix state)
+   -> FAIL the diagnostic does not name the accepted kinds
+M2 remove not-after from ValidationKinds
+   -> FAIL "not-after" is declared but missing from ValidationKinds
+
+## A correction to my own regression check
+
+I first ran this to compare branch vs main:
+
+  go test ./internal/validation -run 'TestDiagnosticCodeCoverageOnlyImproves|TestTEIValidationDeclarationSelfDescriptionIsOnlyData'
+
+Both reported 0 failures "individually", so I wrote that the second test was
+order-dependent. That was WRONG: TestTEIValidationDeclarationSelfDescriptionIsOnlyData
+is declared in internal/workspace, not internal/validation, so it never ran at all
+in that command. A -run pattern that matches nothing reports success.
+
+Measured properly, in its real package:
+
+  my branch : --- FAIL TestTEIValidationDeclarationSelfDescriptionIsOnlyData
+  plain main: --- FAIL TestTEIValidationDeclarationSelfDescriptionIsOnlyData
+
+and the failure text is main's own:
+
+  attribute 0={ID:tei.validation_declaration.attribute_id ...},
+  expected id=tei.validation_declaration.rule_id type=std.identifier required=true
+
+My diff contains 0 lines mentioning tei.validation_declaration, so this is
+pre-existing on main and independent of this change.
+
+Lesson: a -run filter that matches no test passes silently. Check that the test
+actually ran, and check which package declares it.

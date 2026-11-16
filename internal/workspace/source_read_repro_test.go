@@ -1,4 +1,4 @@
-package workspace
+package workspace_test
 
 import (
 	"crypto/sha256"
@@ -11,6 +11,7 @@ import (
 
 	"tei/internal/externalanalysis"
 	"tei/internal/operations"
+	"tei/internal/workspace"
 )
 
 func TestReproLocalREAReadAndProjection(t *testing.T) {
@@ -26,7 +27,7 @@ func TestReproLocalREAReadAndProjection(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "analysis.json"), raw, 0600); err != nil {
 		t.Fatal(err)
 	}
-	got, err := ReadSource(root, "analysis.json", 4<<20)
+	got, err := workspace.ReadSource(root, "analysis.json", 4<<20)
 	fmt.Printf("ReadSource err=%v bytes=%d\n", err, len(got))
 	if err != nil {
 		return

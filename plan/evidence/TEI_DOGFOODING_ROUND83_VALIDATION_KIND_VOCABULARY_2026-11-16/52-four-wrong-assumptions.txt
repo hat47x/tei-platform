@@ -1,0 +1,8 @@
+Each of these was a guess that failed; each was corrected by reading the code:
+
+  1 validation lives inside `data`        -> it is a top-level declaration
+  2 parser entry is ParseValidation       -> ParseSemanticFile
+  3 body takes operator/compared          -> only `attribute` and `relation`
+  4 one body works for every kind         -> relation-unique requires `relation`
+
+The 4th was itself discovered by a failing test, not by reading first.
