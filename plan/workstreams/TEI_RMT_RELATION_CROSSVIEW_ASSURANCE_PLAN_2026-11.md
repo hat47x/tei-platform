@@ -234,6 +234,7 @@ P1の最初のHeadless確認では、固定した同一配布版に属するXEA[
 `DiagnoseRelationalSourceFacts`が複合Keyの`SortKey`由来の順序一意性をRelationship経由の`orderedLegacyKeyMembers`呼出しにのみ依存していた経路を、Key局所の診断へ分離した。公開診断Codeは`key-order-unresolved`、`RelationalResolutionPolicyRevision`は`v2`→`v3`。
 
 - **変更範囲**：`internal/xeadsource/diagnostics.go`の`LegacyKeys`走査に、`orderedLegacyKeyMembers`が順序を確定できない場合の`key-order-unresolved`を追加。既存の`relationship-key-order-unresolved`はそのまま残し、Key局所とRelationship依存を別診断として観測する。XML子順からの補完・Field対応の確定・意味受理は行わない。
+- **Occurrence分離**：`key-order-unresolved`は当該`TableKey`の宣言順序についての観測なので、`inspect.go`の`diagnosticsForLegacyKey`はID文字列の一致でこのCodeを他のOccurrenceへ波及させない。同じLegacy ID文字列を持つ別Occurrenceは別のSource nodeとして扱う。
 - **独立Expected**：`internal/xeadsource/diagnostics_key_order_test.go`。合成XEADのみで、重複`SortKey`のK、`SortKey`欠落のK、順序一意な正常Jを同一Snapshotへ置き、K局所`unresolved`・J局所`resolved`・全体`unresolved`を宣言から手で固定した。単一memberのKeyは順序不要のため従来どおり`resolved`となる対照も置いた。
 - **観測結果の変化**：参照されない複合Keyでも順序診断が出るため、`ByCode`・件数・ordinal由来`diagnosticToken`・局所/全体Statusは旧`v2`と互換不変ではない。旧`v2`の出力を新Sourceへ自動流用しない。
 - **未確認のまま残す**：実TEI fixture・原典実Sourceでの再実行、複合Key順序の旧仕様が辞書順か数値順かの原典根拠、Field対応・業務Identity・物理Keyの意味受理。RV-K2のConsumer閉包表示とRV-F1/RV-R1のSource形状比較は本修正の対象外で、実施済みではない。

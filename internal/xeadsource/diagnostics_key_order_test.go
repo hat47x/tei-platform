@@ -101,6 +101,55 @@ func TestInspectKeepsSingleMemberKeyResolvedWithoutSortKey(t *testing.T) {
 	}
 }
 
+// Two TableKey occurrences that merely share the same Legacy ID string are
+// still distinct Source nodes. An order defect declared by the second one must
+// not be attributed to the first, even though both are already unresolved.
+func TestInspectKeepsKeyOrderDiagnosticOnItsOwnOccurrence(t *testing.T) {
+	source := []byte(`<System>
+		<Table ID="T1">
+			<TableField ID="A" DataTypeID="DT1"/>
+			<TableField ID="B" DataTypeID="DT2"/>
+			<TableKey ID="KSAME" Type="PK">
+				<TableKeyField FieldID="A" SortKey="10"/>
+				<TableKeyField FieldID="B" SortKey="20"/>
+			</TableKey>
+			<TableKey ID="KSAME" Type="SK">
+				<TableKeyField FieldID="A" SortKey="10"/>
+				<TableKeyField FieldID="B" SortKey="10"/>
+			</TableKey>
+		</Table>
+	</System>`)
+	inspection, err := Inspect(FormatXead, source, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var orderLocators []string
+	for _, diagnostic := range inspection.RelationalDiagnostics {
+		if diagnostic.Code == "key-order-unresolved" {
+			orderLocators = append(orderLocators, diagnostic.Locator)
+		}
+	}
+	if want := []string{"/System[1]/Table[1]/TableKey[4]"}; !reflect.DeepEqual(orderLocators, want) {
+		t.Fatalf("order diagnostic was attributed to the wrong occurrence: %#v", orderLocators)
+	}
+
+	resolutionByLocator := map[string]RelationalFactResolution{}
+	for _, resolution := range inspection.RelationalFactResolutions {
+		if resolution.Kind == "legacy-key" {
+			resolutionByLocator[resolution.Locator] = resolution
+		}
+	}
+	orderedOccurrence := resolutionByLocator["/System[1]/Table[1]/TableKey[3]"]
+	if want := []string{"key-id-duplicate"}; !reflect.DeepEqual(orderedOccurrence.DiagnosticCodes, want) {
+		t.Fatalf("order-unique occurrence inherited another occurrence's order defect: %#v", orderedOccurrence)
+	}
+	duplicatedOrder := resolutionByLocator["/System[1]/Table[1]/TableKey[4]"]
+	if want := []string{"key-id-duplicate", "key-order-unresolved"}; !reflect.DeepEqual(duplicatedOrder.DiagnosticCodes, want) {
+		t.Fatalf("defective occurrence lost its own order diagnostic: %#v", duplicatedOrder)
+	}
+}
+
 // The key's own order defect and the relationship's dependency on that key are
 // separate observations; neither may be used to fill the other's meaning.
 func TestInspectKeepsKeyOrderDiagnosticSeparateFromRelationshipDiagnostic(t *testing.T) {

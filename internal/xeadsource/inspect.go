@@ -186,6 +186,12 @@ func diagnosticsForLegacyKey(
 			strings.HasPrefix(diagnostic.Locator, fact.Locator+"/") {
 			return true
 		}
+		// key-order-unresolved is an occurrence-local observation about this
+		// exact TableKey's declared member order. Another occurrence that
+		// merely shares the same Legacy ID string is a different Source node.
+		if diagnostic.Code == "key-order-unresolved" {
+			return false
+		}
 		return strings.HasPrefix(diagnostic.Code, "key-") &&
 			fact.KeyLegacyID != "" &&
 			diagnostic.KeyLegacyID == fact.KeyLegacyID &&
