@@ -667,7 +667,7 @@ R1の最初の問いを「旧Function FはData Dを読むか」と置くと、�
 | RQ-02：同じNodeに複数のObservation | 同名・同端点でも個別の外部Occurrence IDを保ち、観測を一つに縮約しない |
 | RQ-03：r1と同端点・同ラベルの並行Relation r2 | `-relation-id r2`だけを選び、元CandidateSet内のr1/r2は両方残す。名称による暗黙の選択は不可 |
 | RQ-04：両端の片側が未観測／Provider Unknownあり | 存在しない端点を補完せず、`MissingEndpoints`、Partial/Unknown、未解決理由を保つ |
-| RQ-05：選択IDなし・外部Edge IDでない・重複 | 読取不能を明示的に拒否。選択不可能を「関係が業務上存在しない」と言い換えない |
+| RQ-05：明示した`-relation-id`が空・未観測・外部Edge IDでない・重複 | 読取不能を明示的に拒否。フラグ省略時は従来どおり全CandidateSetを返す。選択失敗を「関係が業務上存在しない」と言い換えない |
 | RQ-06：`imports`・`loads`等の静的Relation | `functionDataClaim=not-established-by-external-structure`、`acceptedMeaning=false`、`ownerDecision=pending`。Data/Functionの正式CRUDやRead／Write Effectを捏造しない |
 | RQ-07：出力ファイルの指定 | 保存するのは全CandidateSet（no-clobber）だけ。質問応答は読取専用で、正式TEI Sourceを変更しない |
 | RQ-08：複数Attempt・Source A→B→A・Producer ID再利用 | 当該AttemptのEvidence ID／CandidateSet Fingerprint／Source Binding資格を保つ。ID文字列だけで別Attemptや現行Sourceへ同一視しない |
