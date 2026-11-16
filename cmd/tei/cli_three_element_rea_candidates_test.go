@@ -219,7 +219,7 @@ func TestREACandidatesCLIRefusesUnobservedRelationBeforeWritingOutput(t *testing
 	if err := os.WriteFile(input, reaIntakeFixture(t), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	for _, relationID := range []string{"imports", "missing-edge-id", "node-order"} {
+	for _, relationID := range []string{"", "imports", "missing-edge-id", "node-order"} {
 		var out strings.Builder
 		code, err := runThreeElementCommand([]string{
 			"rea-candidates", "-evidence", input, "-relation-id", relationID, "-output", output,
