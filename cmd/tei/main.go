@@ -258,12 +258,14 @@ func main() {
 	deploymentPath := fs.String("deployment", "", "observed deployment state JSON")
 	runPath := fs.String("run", "", "durable deployment run JSON")
 	pluginLockPath := fs.String("plugin-lock", "", "resolved TEI plugin lock JSON")
-	pluginInventoryID := fs.String("plugin", "", "plugin-inventory: report this plugin in detail")
+	pluginInventoryID := fs.String("plugin", "", "plugin-inventory: report this plugin in detail; plugin-plan: the target plugin")
 	pluginInventoryDiagnose := fs.Bool("diagnose", false, "plugin-inventory: report only rows that carry a reason code")
+	pluginPlanTargetLock := fs.String("target-lock", "", "plugin-plan: target resolved plugin lock JSON (update)")
+	pluginPlanSourceIndex := fs.String("source-index", "", "plugin-plan: optional source-index file whose fingerprint binds the plan snapshot")
 	targetPluginLockPath := fs.String("target-plugin-lock", "", "plugin lock for a new recovery run; defaults to -plugin-lock")
 	runID := fs.String("run-id", "", "durable deployment run ID")
 	attemptPath := fs.String("attempt", "", "deployment executor result JSON")
-	actionID := fs.String("action", "", "durable deployment action ID")
+	actionID := fs.String("action", "", "durable deployment action ID; plugin-plan action: disable|remove|delete-data|convert-data|update")
 	reason := fs.String("reason", "", "operator reason")
 	recoveryStrategy := fs.String("strategy", "", "recovery strategy: retry|forward-fix|rollback|manual")
 	targetSolutionID := fs.String("target-solution", "", "recovery target solution release ID")
@@ -512,6 +514,16 @@ func main() {
 	}
 	if command == "plugin-inventory" {
 		code, err := pluginInventoryJSON(os.Stdout, *workspacePath, *worldPath, *environmentID, *pluginLockPath, *pluginInventoryID, *pluginInventoryDiagnose, fs.NArg())
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		if code != 0 {
+			os.Exit(code)
+		}
+		return
+	}
+	if command == "plugin-plan" {
+		code, err := pluginPlanJSON(os.Stdout, *workspacePath, *worldPath, *environmentID, *actionID, *pluginInventoryID, *pluginLockPath, *pluginPlanTargetLock, *pluginPlanSourceIndex, fs.NArg())
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		}
