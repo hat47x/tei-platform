@@ -36,6 +36,35 @@
 
 検証対象をpure Rule、read-only Data Provider、Effectful Operationの順に増やす。比較値は、機能を追加するために必要なCore分岐数、手書きGo／TS行数、生成した実装のうち実Callされた割合、Build-only／Runtime依存サイズ、CLI直接呼出しの動作、Target変更で再資格化した範囲とする。「Plugin化できる」という自己申告を成果指標にしない。
 
-作業中のAPI Plugin共通化PR #5096は別のReview／CI対象であり、未統合HEADの成果を本計画の合格へ算入しない。関連PRが競合するときは現行mainから小差分を作り直し、旧PRを二重マージしない。
+旧API Plugin PR #5096はクローズ・未マージ。設計節が現行mainに存在することと、API公開の実装・検証が完了したことは区別する。旧PR #5133もクローズ・未マージだが本計画の同じ内容はmainにあるため、古いブランチを改めてマージしない。関連PRが競合するときは現行mainから小差分を作り直す。
 
 各小PRは対象HEADのrequired CI、現在mainのRepository Health、変更範囲と独立Expectedの結果を別々に確認してから統合する。CI未完了・失敗、古いSource、未確認Consumer、業務Owner未受理をPASSに言い換えない。正本追加・新規Host・常駐Daemonが必要になった場合は、先に一つの失敗例と既存Ownerで解決できない理由を示す。
+
+## 5. PC-1を三つの検収に割る（2026年11月16日）
+
+| 手順 | 実物と確認事項 | 合格できる範囲・残す断点 |
+| --- | --- | --- |
+| **PC-1a（今回の小Goテスト）** | `internal/plugin/transform/plugin_field_projection_conformance_test.go`。全体Record、二Fieldだけの明示出力、余分なField、必須欠損、明示NULL | 既存Transformの**純粋な出力整形**のみ。HostのDisclosure／Plugin Port Mappingではない |
+| **PC-1b（次の実装）** | 既存TypeRef／ContractのField ID・Role・Cardinality・取得完全性・Audienceを、PC-1aと同じ入力でread-only照合 | 名前や値だけでの接続を拒否。partial／unfetchedをNULLと混ぜない。Sourceへ戻せないBindingは編集不可 |
+| **PC-1c（Adapter候補）** | 一段の明示pure Adapterを、固定された単位・丸め・精度・Lossの独立Expectedで比較 | Adapterの型適合は業務Law受理や実Provider Callにならない。自動Adapter探索はしない |
+
+**既存実装を再利用する順序**：まずPC-1aの実Goテストを対象HEADで実行する。型・取得範囲の意味を持たない現行`transform.Value`へ新しい未取得状態を安易に追加せず、PC-1bは#1223／#2497／#951のContract／ContextのOwnerに渡す。PC-1cは#988／#1121に渡す。実際のSource→Read→Result→Consumerは#4495の非Builtin Providerの製品実Callと合流できる場合だけPC-3へ進める。
+
+**独立Expectedの切り方**：PCON-01のうち「出力Valueが二Fieldのみ」という条件だけをPC-1aで判定する。PCON-02〜04のContract ID、partial、丸めについて、この純粋Transform試験からPASSを主張しない。PCON-05〜09も未実施のまま残す。Plugin Resolverの拒否コード試験はmain済み#5147の既存Coverageを利用し、第二の診断コード表を作らない。
+
+## 6. PC-1bの一因子Fixtureと受入（2026年11月16日）
+
+PC-1aが確認するのは、既存Transformの「出力を二Fieldに整形できる」という限定的な事実である。PC-1bでは[Plugin入出力設計§21](../design/PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md)と[標準Flow設計§12.6〜12.8](../design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)の**既存Reader／Validator／型付きContract**を採用し、同じ`orderId`／`amount`のFixtureへ次の独立Expectedを接続する。既存`validationeval/reading_test.go`にある判断の回帰を再実装しない。
+
+| 対照 | 一因子の変更 | PC-1bで求める結果・証拠 |
+| --- | --- | --- |
+| PIO-17 | 同じField Refを明示NULL／未取得へ | Source項目IDとRead状態を保持し、未取得をNULLへ変換しない。判断できなければ`undecided`と理由 |
+| PIO-18 | 同じRelationの既読行で完全／部分取得を切替 | 既知の重複なら不成立を維持。重複なしのpartialは全件の一意性合格へ昇格しない |
+| PIO-19／PCON-01 | 全体Recordへ非開示項目を一つ追加 | 型適合とDeliveryの許可を分離し、投影済み値だけでHost Grant／Disclosureを代行しない |
+| PIO-20 | 値を変えずに実Readの項目IDだけ変更 | 実Read対象IDの不一致を拒否。値や生成メソッド名から一致と推定しない |
+| PIO-21／PCON-07 | 同じ結果のまま選択ProviderだけA→B | 旧Pin・実Called・Source／Artifact現在性を独立判定 |
+| DPC-09〜11 | 値状態と関係の取得範囲だけ変更 | `satisfied`／`not-satisfied`／`undecided`、Reader Errorを混ぜない。残りの未取得に依存しないときだけ判断を確定 |
+
+**実装担当への渡し方**：#1223／#2497が意味ID・契約／項目の一致、#2620／#988が既存Readerと判断可能性、#951／#1251が選択資格、#1180／#2514が独立Expectedを担当する。まず一Source・一Producer Record・二Required Field・一Ruleだけでread-only照合し、Consumerの現在Grantと実Provider Callを伴わない段階は`candidate`／`unknown`として表示する。Rule例（`example of`）の一致は実Providerから読んだ証拠にならない。
+
+**PC-1cへの移行条件**：PC-1bでField Ref／必要Read／欠損・NULL・部分取得・未確定の扱いが固定できた場合だけ、単位と精度を明示したpure Adapterを挿入する。新しいAdapter探索器・Stateful Port Runner・第二Validation Registryは作らない。PC-2／PC-3／PC-5を先行停止させない。

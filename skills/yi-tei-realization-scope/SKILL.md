@@ -75,3 +75,14 @@ description: >-
 - [Generator Sourceを固定する方式](../../plan/design/AI_GENERATOR_AUTHORING_STANDARD_2026-11.md)
 - [生成物のOwnership／Extension Point](../../plan/design/GENERATOR_CONTRACT_BOUNDARIES_DESIGN_2026-10.md)
 - [現行のRule→Builder実証](../../plan/design/PLUGIN_RULE_PRODUCT_VERTICAL_SLICE_2026-11.md)
+
+## 実Readから状態付きRuleへつなぐ依頼の範囲（2026-11-16）
+
+RuleとQueryを接続する依頼では、前記のタスク票を**一Rule・一Contract Query・一回の読取試行**に限定する。Source／Rule ID・必要Attribute／Relation、Query Binding、実Provider、Read ID、Observed ValueとPresence、Required／Observedの集合、Scope／Snapshot、独立Expectedを参照で指定する。実Caller・Consumer・現在Grantが観測できない場合は未証明として残す。
+
+- 値present、格納NULL、列未取得を分ける。列名が合っていても保存NULLか計算NULLか不明なら補わない。
+- 既知の確定重複があれば部分取得でも不成立を認める一方、未読行のある「重複なし」は原則として成立へ昇格させない。completeとするには対象Ruleが必要とする集合、Scope、時点を尽くした別証拠が要る。
+- 評価器が対応するRuleの種類と、既存Go Generatorが生成できる種類を別に記す。未対応Gを自動的にPやDへ切り替えて成功扱いしない。
+- 実DB Queryの局所PASS、状態付きAdapterの局所PASS、Ruleの記録例、実Consumer受領、Build資格は別の試験として扱う。**別のFixtureや別のAttemptの証拠を連結して実動作が成立したとは書かない。**
+
+詳細と作業順は[図表実現設計§15](../../plan/design/DIAGRAM_TO_REALIZATION_STRATEGY_AND_HOOKS_2026-11.md)および[DRI-R2の実証パケット](../../plan/workstreams/DIAGRAM_REALIZATION_REFERENCE_EXECUTION_2026-11.md)を参照する。タスク票の補助であり、TEIに新たなDSL・Schema・Runtimeを導入するものではない。

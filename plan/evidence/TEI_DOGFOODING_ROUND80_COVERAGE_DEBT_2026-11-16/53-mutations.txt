@@ -1,0 +1,11 @@
+M1 remove description from dataTableColumns
+   -> FAIL header "description" was rejected
+          "description" is declared but missing from dataTableColumns
+M2 remove "not overlapping per <relation>" from the vocabulary text
+   -> FAIL validRulePredicatesText does not show "not overlapping per <relation>"
+M3 drop ValidationNoOverlap from Valid()
+   -> FAIL ValidationNoOverlap.Valid() = false, want true
+M4 change the receipt schema to v9
+   -> FAIL schemaVersion = "tei.externalanalysis.receipt/v9", want .../v0
+
+All four caught. restored -> syntax, semantic, externalanalysis ok.

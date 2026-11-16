@@ -56,20 +56,24 @@ func DeriveViewRequest(body []byte, view ViewRequest, acceptedKinds []string) ([
 	if err != nil {
 		return nil, err
 	}
-	request := struct {
-		Source struct {
-			Kind     string          `json:"kind"`
-			Evidence json.RawMessage `json:"evidence"`
-		} `json:"source"`
-		View json.RawMessage `json:"view"`
-	}{
-		Source: struct {
-			Kind     string          `json:"kind"`
-			Evidence json.RawMessage `json:"evidence"`
-		}{Kind: kind, Evidence: json.RawMessage(text)},
-		View: view.Selector,
+	// EvidenceBody must remain byte-identical inside the derived request.
+	// json.Marshal(json.RawMessage) compacts embedded JSON, losing the
+	// whitespace/byte ranges of the received Evidence. Both the Evidence
+	// document and selector have already been validated as JSON objects.
+	// Build only the fixed envelope here, preserving the original payload.
+	kindJSON, err := json.Marshal(kind)
+	if err != nil {
+		return nil, err
 	}
-	return json.Marshal(request)
+	request := make([]byte, 0, len(text)+len(view.Selector)+64)
+	request = append(request, `{"source":{"kind":`...)
+	request = append(request, kindJSON...)
+	request = append(request, `,"evidence":`...)
+	request = append(request, text...)
+	request = append(request, `},"view":`...)
+	request = append(request, view.Selector...)
+	request = append(request, '}')
+	return request, nil
 }
 
 // derivableSourceKind picks the one kind the intake derives: inline.

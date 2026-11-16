@@ -5,6 +5,7 @@
 - 実行環境: Windows 11 Pro `10.0.26100`（AMD64）、DSH `0.2.2-rc.1`（`dsh --profile headless`）、Node `24.21.0`
 - 状態: **ローカルの合成MCPサーバーのみ**。実MCPサーバーへの接続は**NOT RUN**。
 - 先行記録: [MCPの設定形](../DSH_MCP_CONFIGURED_2026-11-10/README.md)・[MCPのstdio経路](../DSH_MCP_STDIO_2026-11-10/README.md)。本記録は、そこで未確定とした「**認証ヘッダ**」を埋める。
+- **訂正（2026-11-16）**: 初版は「4件すべて同じ11個のヘッダ」と書いていたが、**実データは13/11/12/12**で、**毎回同じではない**。また`user-agent`の**値**は保存していないため「`node`」は**未確認**だった。どちらも生データに合わせて直した（下記§2）。
 
 ## 1. 何をしたか
 
@@ -26,23 +27,24 @@ config:
 
 | 要求 | method | `Authorization`にcanary | ヘッダ数 |
 | --- | --- | --- | --- |
-| 1 | **`server/discover`** | **あり** | 11 |
-| 2 | `initialize` | あり | 11 |
-| 3 | `notifications/initialized` | あり | 11 |
-| 4 | `tools/list` | あり | 11 |
+| 1 | **`server/discover`** | **あり** | **13** |
+| 2 | `initialize` | あり | **11** |
+| 3 | `notifications/initialized` | あり | **12** |
+| 4 | `tools/list` | あり | **12** |
 
 - **4件すべてに載っている**。**最初の`server/discover`（サーバーの素性を知る前の要求）にも載る**。
-- 受け取ったヘッダの集合は**11個**で、毎回同じ。
+- **4件に共通する**ヘッダは**11個**。ただし**毎回同じではない**。**`server/discover`は13個**、`notifications/initialized`と`tools/list`は**12個**で、**`mcp-method`と`mcp-protocol-version`が一部の要求にだけ付く**（4件の和集合は**13個**）。
 
 ```
 Authorization: <canary>
 X-Synthetic-Trace: trace-1001
 host / connection / content-type / content-length / accept / accept-encoding /
-accept-language / sec-fetch-mode / user-agent: node
+accept-language / sec-fetch-mode / user-agent
+(server/discover のみ) mcp-method / mcp-protocol-version
 ```
 
-- **設定した2つ以外は、HTTPクライアントの標準ヘッダだけ**。Cookieや環境の資格情報が勝手に付く形ではない。
-- **`user-agent`は`node`**で、HTTP層では`dsh`を名乗っていない。
+- **設定した2つ以外は、HTTPクライアントの標準ヘッダとMCPのプロトコルヘッダだけ**（名前の範囲で判断）。**Cookieや環境の資格情報に相当する名前は現れていない**。
+- **`user-agent`の値は記録していない**（本記録は**ヘッダ名だけ**を保存し、値は伏せている）。したがって**HTTP層が`dsh`を名乗るかどうかは未確認**。
 - **canaryはモデル要求には現れない**（`headers`はモデル入力に載らない）。
 
 ## 3. この記録が示すこと
@@ -66,7 +68,7 @@ accept-language / sec-fetch-mode / user-agent: node
 
 | ファイル | 内容 |
 | --- | --- |
-| `mcp-headers.json` | `configuredHeaders`（canaryを含む設定値）、`headerCanary`、`mcpRequestCount`、`canarySentOnEveryRequest`、`requests`（4件のmethod・bytes・SHA-256・canaryの有無・ヘッダ名一覧・ヘッダ数）、`observedHeaderSet`（11個）、`modelRequests`（2件のbytes・SHA-256・canaryの有無）、`canaryInModelRequests` |
+| `mcp-headers.json` | `configuredHeaders`（canaryを含む設定値）、`headerCanary`、`mcpRequestCount`、`canarySentOnEveryRequest`、`requests`（4件のmethod・bytes・SHA-256・canaryの有無・ヘッダ名一覧・ヘッダ数）、`observedHeaderSet`（**4件に共通の11個**。和集合は13個）、`modelRequests`（2件のbytes・SHA-256・canaryの有無）、`canaryInModelRequests` |
 
 生の要求bodyはコミットしていない。**合成のみ**（`MCP_HEADER_CANARY_1001`）。
 

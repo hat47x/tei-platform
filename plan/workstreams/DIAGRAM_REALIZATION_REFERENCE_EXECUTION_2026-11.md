@@ -120,3 +120,39 @@ DRI-0の直後に**DRI-G0**を行う。ここで「Iで充分／Gに適格／H�
 ## 統合単位
 
 本計画・設計の整合を確認した文書変更は、実装待ちで保留せず独立PRとして扱える。製品実装はDRI-0/1、DRI-2/3、DRI-4、DRI-5の順に分け、既存Ownerを維持する。受入未確認を既存Gateの成功へ昇格せず、`main`の健全性を確認してから統合する。
+
+## 2026-11-16：状態付きRuleと実Readをつなぐ最小の実装パケット
+
+[図表の実現設計§14](../design/DIAGRAM_TO_REALIZATION_STRATEGY_AND_HOOKS_2026-11.md)を、DRI-0／1／4の次の作業へ引き渡す。規則の種類が増えたため、すべてのRuleを同じGeneratorへ通す方針にはしない。まず既存のReader・Evaluatorを製品の正式入口として使える範囲を広げる。
+
+| 順序 | 実行する最小の変更 | 独立Expectedと停止条件 | 引渡し |
+| --- | --- | --- | --- |
+| **DRI-R1** 現行基線 | mainの#5142（値の状態）、#5143（記録例）、#5146（日付の順序）を、対応するRule ID・Source位置・Reader版とともに確認 | present／null／not-fetched、complete／partial、成立／不成立／未決定を混同しない。未統合の#5148（期間重複）をmainの正式検収へ算入しない | #988／#2621／#4359 |
+| **DRI-R2** 読取Adapter | 一つの既存Query結果について、必要Attribute／RelationのRead ID、Scope、PresenceとCoverageの根拠を示す。最初はread-only Packetとし、何を観測できないか明示する | NULL格納値・外部結合で生じたNULL・未取得、取得した行の粒度と全件保証を区別。Sourceと実DBの結線が不明ならunsupported | #2586／#2622／#2506 |
+| **DRI-R3** Ruleへ渡す | 取得資格を確認した値だけを既存の状態付きEvaluatorへ渡し、同じ値でもRead範囲が異なる負例を試す | 見えている確定重複による不成立と、未読行があるため成立と確定できない場合を分ける。FixtureだけのPASSは実Provider接続とはしない | #4359／#1180／#2514 |
+| **DRI-R4** I／G／Dの選択 | 同じRule kindと同じ状態付き入出力がTargetで実現可能な場合だけP（既存評価）とG（生成）を比較し、DのProviderの実Callを別に確かめる | positive以外のG未対応を、一般生成済みと見せない。結果が一致してもRead先・実装選択・Builder入力が違えば不合格 | #1121／#4544／#951／#4495 |
+| **DRI-R5** 実Consumerと自己再入 | DRI-R3／4で確定したClaimだけを通常CLI／独立Consumerへ渡し、Builder／Toolchain／Artifactの版を照合する | BuildPlan・生成Go・元Markdown、選択実装A→B→Aの旧資格、実Consumer未受領を分ける。Windows Studio Stage1→Stage2は独立P0 | #2586／#2600／#2831／#4583 |
+
+**手元にある証拠の使い方**：#5118の実Binary比較はpositive Ruleの結果とRead IDまで、#5142／#5143／#5146は対応するEvaluator／記録例まで。Function Contextでnative SQLのCoverageがcompleteと確定した証拠はまだない。#5144の列由来調査はクローズ・未マージのため製品の取得資格として利用しない。#5148は期間重複の設計・コードの検討が進む間、実Provider・業務Ownerの受理とは切り離す。
+
+**優先度**：まずDRI-R2の実Readerに不足する情報を一つ特定する。値とScopeの受渡しに不足が残れば、その欠落だけを既存Driver／Function ContextのOwnerへ返す。追加の新規Core型・常設Trace・万能Adapterを先に作らない。MVPでの一条件移管と通常CLI実Provider／DesktopセルフビルドのP0を妨げず、既存のIndependent Expectedを再利用する。
+
+本追補は実装への引渡しであり、新Go・実PostgreSQL・Windows・正式Provider・Owner受理を追加検証した結果ではない。
+
+## 2026-11-16：DRI-R2の実証対象を「QueryからRuleへの一回の引渡し」に固定する
+
+[図表実現設計§15](../design/DIAGRAM_TO_REALIZATION_STRATEGY_AND_HOOKS_2026-11.md)では、実Query・状態付きReader・Ruleを**同じAttempt**で検収するための最小条件を整理した。これを既存DRI-R2〜R4の次の一試行として扱い、別の大きな実装計画を増やさない。
+
+**先に利用する基線**は、#5155／#5165で確認された組織C1の型付きSource／Queryと実PostgreSQL Readの限定PASS、main済み#5142／#5143／#5146の状態付き評価・記録例・日付Rule、main済み#5166の「日付RuleはP評価可能、現行Gでは未対応」という正負対照である。#5149のContract Query行Readerは**未マージの候補**であり、SQLite Executor直結の局所試験を正式なQuery Binding／実PG／製品CLIへ昇格させない。#5148の期間非重複も審査中とする。
+
+| 作業の区切り | まず得る一つの証拠 | 未充足なら止める位置 |
+| --- | --- | --- |
+| **R2-a：対象とRead要求** | 選択したRule ID、Required Attribute／Relation、Query ID・入力・Scope、Expectedを独立に固定 | 同名要素の別Subject、Source改版、必要な読取集合が不明 |
+| **R2-b：実Queryと状態の接続** | 同じAttemptの実Provider Query・Read ID・Observed列と行・Presence。completeと記すなら必要集合・Scope・Snapshotを満たす別証拠 | 列名一致だけ、呼出し側の全件申告だけ、RowDescription未観測、開示資格不明 |
+| **R3-a：既存Evaluatorへ引渡し** | 既存の状態付き判定で、既知重複partialは不成立・重複なしpartialは未決定。NULL／未取得を別扱い | Fixtureが答えを返しただけ、未読が値なしへ変換された |
+| **R4-a：選択方式とCaller** | Pで評価した実RuleとRead ID、Gが対象kindを生成できるか、選択した実装の実Callを別記録 | 未対応Gから自動Fallback、異なるAttributeを読んで結果だけ一致 |
+| **R4-b：Consumerと閉包** | 通常CLIの実Entry→Provider→独立Consumerの受領。生成する場合はSource／Plan／Builder実入力を別照合 | Contract Queryの単体PASSを製品R3やWindows Stage2の受領に読み替える |
+
+**最初の試行は一つのRuleと一つのContract Queryに限定する。** 変更する要因も、値の状態、必要集合のCoverage、Read ID、実現方式のいずれか一つずつとする。Read Provenanceが確定できない場合は未証明（not-proven）を残し、実際に取得していない項目を補完しない。Ruleで必要なScopeとDBの実読取Scopeが一致するかも別に確かめる。既存#1180／#2514のExpectedへ引き渡し、追加の常設Trace・Scenario Registryは作らない。
+
+この作業は#2586の通常CLI実Provider・#2831の非Plugin Windowsセルフビルドを遅らせる前提Gateではない。今回は引渡し計画の追加のみで、新Go試験・実DB・Windows・Owner受理を行っていない。

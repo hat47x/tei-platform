@@ -2703,3 +2703,62 @@ warnsAboutBindings := len(w.Environments) > 0
 ### 位置付け
 
 **「片方だけ見ていた」を揃えた回**である。query の datasource は検査されていたが、application の `database` ブロックは検査されていなかった。**同じ概念（datasource の bind）に2つの入口があり、片方だけ守られていた。**
+
+## 81. 第80ラウンド（2026-11-16）: 新しい語彙が試験に現れず plan-check が3件赤
+
+長い中断のあと再開したので、まず**過去7ラウンドの修正が main に残っているか**を呼び出し側で点検し、そのうえで現在の赤を解消した。生出力は[第80ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND80_COVERAGE_DEBT_2026-11-16/README.md)にある。
+
+### 過去の修正の生存確認（定義ではなく呼び出し側）
+
+| ラウンド | 修正 | 状態 |
+| --- | --- | --- |
+| 72 | `CheckWorkspaceUnreadSources` | 呼ばれている |
+| 73 | `ReadableWithoutSection` | 設定されている |
+| 74 | `blockOnlyEntryHint` | 呼ばれている |
+| 75 | `VALIDATION_INCOMPLETE` | 出ている |
+| 77 | `rea-intake` の振り分け | 配線されている |
+| 79 | `UNBOUND_DATABASE_REQUIREMENT` / environment の門 | 出ている |
+
+**7件すべて生存。** 第77ラウンドで学んだ「呼び出し側を数える」点検が効いている。あわせて **#4455（rea-evidence の孤児テスト）は後続の統合で解消済み**だった（`cmd/tei/rea_evidence.go` と `internal/externalanalysis` が main に在る）。
+
+### 見つけた赤（3テスト・11件）
+
+```text
+--- FAIL: TestPlanReadmesMentionEveryEntry                    2件
+--- FAIL: TestSchemaVersionLiteralsHaveATest                   1件
+--- FAIL: TestExportedStringConstantsHaveATestOrAnEntry         8件
+```
+
+未記載の設計文書2件、未 named の `tei.externalanalysis.receipt/v0`、未言及の文字列定数8件（`ValidationNoOverlap`・`DataTableColumn` 5件・`RulePredicate` 2件）。
+
+### 修正（試験と索引のみ。製品コードは触っていない）
+
+各定数を**実際の受理・出力を通して**確かめる試験を書いた。列名は実際のヘッダとして受理させ、多語 predicate は著者向け語彙文に現れることを確かめ、receipt は `Receive` を通して名指しする。
+
+### 途中で4回、自分の仮定が外れた
+
+| 誤った仮定 | 実際 |
+| --- | --- |
+| どの列名も単独で受理される | `attribute` と `type` は**必須** |
+| `type` セルは素の名前 | **修飾付き canonical id** |
+| `required` は任意の値 | **`yes`/`no`** |
+| `RulePredicateOperator` は `valid()` | **多語形の sentinel**。語彙文に現れる |
+
+**推測で書いて落ちて、コードを読んで直した。**
+
+### 変異試験
+
+| # | 変えた箇所 | 結果 |
+| --- | --- | --- |
+| M1 | `dataTableColumns` から `description` を落とす | FAIL `header "description" was rejected` |
+| M2 | 語彙文から `not overlapping per <relation>` を落とす | FAIL `does not show ...` |
+| M3 | `ValidationNoOverlap` を `Valid()` から外す | FAIL `Valid() = false` |
+| M4 | receipt の schema を `v9` に | FAIL `schemaVersion = .../v9` |
+
+**4件すべて捕捉。**
+
+### 位置付け
+
+**検査が正しく働いた回**である。新しい語彙が試験に現れないことを、3つの検査が独立に捕まえた。**私が直したのは「試験が無い」ことだけで、製品コードには触れていない。**
+
+なお **Step Code CLI は未導入・未認証**のため委任は行わず、AGENTS.md の代替規定に従って DSH で実施した。
