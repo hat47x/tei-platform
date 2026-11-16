@@ -1,0 +1,80 @@
+{
+  "note": "The stdio child's own environment was recorded under four configurations. An explicit env block MERGES with the inherited environment (it added two keys and removed none) and can OVERRIDE an inherited value, including blanking it to the empty string. It cannot delete a key: the variable is still present, only its value changes.",
+  "experiment": {
+    "transport": "stdio",
+    "serverName": "envprobe",
+    "parentValueOfTarget": "STDIO_ENV_CANARY_997=CANARY_VALUE_997 was set in the parent"
+  },
+  "runA_explicitEnv": {
+    "configured": {
+      "EXPLICIT_ENV_ONE": "VALUE_EXPLICIT_ENV_ONE",
+      "EXPLICIT_ENV_TWO": "VALUE_EXPLICIT_ENV_TWO"
+    },
+    "envKeyCount": 51,
+    "explicitValuesMatch": {
+      "EXPLICIT_ENV_ONE": true,
+      "EXPLICIT_ENV_TWO": true
+    },
+    "canaryStillPresent": true
+  },
+  "runB_noEnv": {
+    "envKeyCount": 49,
+    "explicitValuesMatch": {
+      "EXPLICIT_ENV_ONE": false,
+      "EXPLICIT_ENV_TWO": false
+    }
+  },
+  "mergeAnalysis": {
+    "addedByExplicitEnv": [
+      "EXPLICIT_ENV_ONE",
+      "EXPLICIT_ENV_TWO"
+    ],
+    "removedByExplicitEnv": [],
+    "commonKeyCount": 49,
+    "answer": "merge, not replace",
+    "evidence": "51 keys with env vs 49 without; 2 added, 0 removed"
+  },
+  "runC_overrideInherited": {
+    "configured": {
+      "STDIO_ENV_CANARY_997": "OVERRIDDEN_BY_CONFIG"
+    },
+    "targetValueObserved": "OVERRIDDEN_BY_CONFIG",
+    "matchesOverride": true,
+    "matchesParent": false,
+    "answer": "override works"
+  },
+  "runD_blankInherited": {
+    "configured": {
+      "STDIO_ENV_CANARY_997": ""
+    },
+    "targetPresent": true,
+    "targetValueObserved": "",
+    "answer": "value scrubbed to empty; the key itself remains present"
+  },
+  "answers": {
+    "mergeOrReplace": "merge",
+    "canOverrideInherited": true,
+    "canBlankInherited": true,
+    "canDeleteKey": false
+  },
+  "securityImplication": "env is not merely additive: it can override an inherited value, so an inherited secret-shaped variable can be overwritten or blanked from config. Presence-based checks still see the name after blanking. In the two runs that recorded the full key list, DSH's own model credential was NOT among the child's variables even though the parent had it set.",
+  "correctedFromEarlierReading": "A first reading of run A alone suggested env could only add. Runs C and D show it can also override and blank inherited values; only deletion is impossible.",
+  "caveat": "Four configurations on one Windows host. Case-sensitivity, a wide variable sweep, and blocking the child from reading the parent environment by any other means were not tested.",
+  "modelCredentialStripped": {
+    "watchedInRuns": [
+      "A_explicitEnv",
+      "B_noEnv"
+    ],
+    "notWatchedInRuns": [
+      "C_overrideInherited",
+      "D_blankInherited"
+    ],
+    "parentHadCredential": true,
+    "childSawCredential": false,
+    "evidence": "DEEPSEEK_API_KEY is absent from the 51-key and 49-key envKeys lists in runs A and B",
+    "scope": "Only runs A and B recorded the full envKeys list. Runs C and D recorded key counts and target flags only, so the credential is unverified there.",
+    "whyItMattersButIsNotTheTopic": "This shows one credential is not inherited; it does not enumerate what else might be."
+  },
+  "canDeleteKey": false,
+  "canDeleteKeyBasis": "inference, not a direct test: no run attempted deletion (the config has no delete form) and the key remained present after being blanked"
+}
