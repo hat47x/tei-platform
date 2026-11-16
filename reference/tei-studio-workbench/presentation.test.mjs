@@ -116,7 +116,7 @@ test("Inspector presentation preserves validated data without claiming authority
   const inspected = readInspection(raw, data.subject, catalog);
   const displayed = presentInspection(inspected, "workspace-A", data.subject);
   assert.deepEqual(displayed.document, {
-    id: "workspace-A/semantic-data:sales.order",
+    id: 'workspace-A/["semantic-data","sales.order"]',
     version: "world-A:source-A",
     text: JSON.stringify(raw.canonical, null, 2),
   });
@@ -254,7 +254,7 @@ test("Workbench common Inspect guard runs before any unqualified transport call"
   assert.ok(body.indexOf("if (!eligibility.ok)") <
     body.indexOf("client!.inspectSubject("));
   assert.match(body, /responses\.invalidate\("inspection"\)/);
-  assert.match(body, /presentInspection\\(view, id, subject\\)/);
-  assert.match(body, /editor\\.setDocument\\(presentation\\.document\\)/);
+  assert.match(body, /presentInspection\(view, id, subject\)/);
+  assert.match(body, /editor\.setDocument\(presentation\.document\)/);
   assert.match(body, /return false;/);
 });
