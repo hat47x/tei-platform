@@ -515,3 +515,4 @@
 - [CIのgateがmainで赤かった（gofmt25ファイル）](TEI_DOGFOODING_ROUND85_GOFMT_GATE_2026-11-17/README.md)（テストが走らない種類の欠陥が残っていないことを体系的に確認（全パッケージのビルド可）。その過程でCIのgate自体がmainで赤いことを発見し、gofmt 25ファイルを整形して5ステップ全PASSに。既定timeoutで測ってCIを再現していなかった自分の計器の誤りも記録）
 - [scoped driverの3テストが宣言と違う型の引数を渡していた](TEI_DOGFOODING_ROUND86_SCOPED_FIXTURE_TYPE_2026-11-17/README.md)（`scoped query execution unavailable`の裏に2種類の原因。クエリはinput from std.datetimeを宣言し、ドライバはtime.Time以外を拒否するのに、テストは文字列とnilを渡していた。Top上限テストは入力検査で先に落ちassertに到達していなかった。productionコードは変更せず、変異2件で捕捉）
 - [rea-intakeが候補生成を失い並行Relationの回帰3件が壊れている](TEI_DOGFOODING_ROUND87_REA_CANDIDATE_REGRESSION_2026-11-17/README.md)（3件は単独でもFAIL。二分探索で606134e63がGenerateCandidatesの呼び出しを削除し固定3件のdata-elementに置換したと特定。追加時3429c7891は緑だった。意図的なrefactorとテスト要求が衝突するため設計判断として #5248 に起票。reacandidateは現存し、切り離されたのはrea-intake経由のみ）
+- [rea-intakeの候補・carrier・coverageを実測に合わせる（2026-11-17）](XTEA_LOWCODE_REA_INTAKE_MEASURED_2026-11.md)
