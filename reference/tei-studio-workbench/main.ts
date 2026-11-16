@@ -18,7 +18,6 @@ import {
   inspectEligibility,
   readValidation,
   readInspection,
-  presentInspection,
   relatedGraph,
   subjectKey,
   summarizeFindings,
@@ -371,11 +370,14 @@ async function inspect(subject: Subject) {
     : "選択要素と、一覧に含まれる直接の親子関係";
   return responses.run("inspection", () => client!.inspectSubject(id, subject.kind, subject.id), (reply) => {
     const view = readInspection(unwrap(reply), subject, catalogSnapshot!);
-    const presentation = presentInspection(view, id, subject);
-    editor.setDocument(presentation.document);
-    element("source-status").textContent = presentation.sourceStatusText;
-    showInspectionLimits(presentation.authorityLimits);
-    notice.textContent = presentation.noticeText;
+    editor.setDocument({
+      id: `${id}/${subjectKey(subject)}`,
+      version: view.version,
+      text: view.text,
+    });
+    element("source-status").textContent = `参照情報：${view.sourceStatus}`;
+    showInspectionLimits(view.authorityLimits);
+    notice.textContent = "選択したモデルの投影を表示しています。";
     notice.dataset.state = "ready";
   }, (error) => {
     const stale = error instanceof Error && error.message === "STALE_MODEL_PROJECTION";
