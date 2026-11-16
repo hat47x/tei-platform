@@ -69,21 +69,57 @@ const (
 	ReferenceData       ReferenceKind = "data"
 )
 
+// referenceSubjectKinds is the one table that relates a reference kind to the
+// Source Index subject kind that declares it. Both directions are read from it,
+// so the forward and reverse maps cannot disagree.
+var referenceSubjectKinds = map[ReferenceKind]string{
+	ReferenceCapability: "semantic-capability",
+	ReferenceValidation: "semantic-validation",
+	ReferencePattern:    "application-pattern",
+	ReferenceData:       "semantic-data",
+}
+
 // subjectKind maps a reference kind to the Source Index subject kind that
 // declares it. A kind with no entry cannot be located, which is why the set is
 // closed.
 func (k ReferenceKind) subjectKind() (string, bool) {
-	switch k {
-	case ReferenceCapability:
-		return "semantic-capability", true
-	case ReferenceValidation:
-		return "semantic-validation", true
-	case ReferencePattern:
-		return "application-pattern", true
-	case ReferenceData:
-		return "semantic-data", true
+	kind, ok := referenceSubjectKinds[k]
+	return kind, ok
+}
+
+// referenceKindForSubject is the inverse of subjectKind, derived from the same
+// table rather than restated.
+func referenceKindForSubject(subjectKind string) (ReferenceKind, bool) {
+	for kind, declared := range referenceSubjectKinds {
+		if declared == subjectKind {
+			return kind, true
+		}
 	}
 	return "", false
+}
+
+// Status is the qualification a candidate value carries. It is a closed
+// vocabulary: the projection must not echo an assertion of acceptance it did not
+// receive, so a fixture cannot write "accepted" and have it read as accepted.
+type Status string
+
+const (
+	// StatusCandidate marks a value the reference document proposes. It is the
+	// only status a reference fixture may carry.
+	StatusCandidate Status = "candidate"
+)
+
+// statuses lists every accepted status in report order.
+var statuses = []Status{StatusCandidate}
+
+// Valid reports whether the status is one a reference fixture may carry.
+func (s Status) Valid() bool {
+	for _, accepted := range statuses {
+		if s == accepted {
+			return true
+		}
+	}
+	return false
 }
 
 // Fixture is the authored input document.
@@ -115,13 +151,13 @@ type Procedure struct {
 // Trigger is what starts the business work. It is business wording, not a
 // runtime event: the projection never turns it into an invocation.
 type Trigger struct {
-	Status string `json:"status"`
+	Status Status `json:"status"`
 	Text   string `json:"text"`
 }
 
 // Actor is a business actor label.
 type Actor struct {
-	Status string `json:"status"`
+	Status Status `json:"status"`
 	Label  string `json:"label"`
 }
 
@@ -130,7 +166,7 @@ type Actor struct {
 // business actor label; Capability names the declared authorization capability
 // the projection resolves.
 type Authorization struct {
-	Status     string `json:"status"`
+	Status     Status `json:"status"`
 	RoleCode   string `json:"roleCode,omitempty"`
 	Capability string `json:"capability,omitempty"`
 }

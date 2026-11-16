@@ -3,6 +3,8 @@ package businessprocedure
 import (
 	"encoding/json"
 	"fmt"
+	"path"
+	"path/filepath"
 	"sort"
 	"strings"
 )
@@ -39,6 +41,10 @@ const (
 	CodeBranchDuplicateID            = "BUSINESS_BRANCH_DUPLICATE"
 	CodeBranchMissingRejection       = "BUSINESS_DECISION_MISSING_REJECTION"
 	CodeBranchOutcomeUnknown         = "BUSINESS_BRANCH_OUTCOME_UNKNOWN"
+	CodeBranchStepMissing            = "BUSINESS_BRANCH_STEP_MISSING"
+	CodeStepIDMissing                = "BUSINESS_STEP_ID_MISSING"
+	CodeStatusNotCandidate           = "BUSINESS_STATUS_NOT_CANDIDATE"
+	CodeAutoExecuteOnSystemStep      = "BUSINESS_AUTO_EXECUTE_ON_SYSTEM_STEP"
 	CodeActorConflatesAuthorization  = "BUSINESS_ACTOR_CONFLATES_AUTHORIZATION"
 	CodeReferenceUnresolved          = "BUSINESS_REFERENCE_UNRESOLVED"
 	CodeReferenceAmbiguous           = "BUSINESS_REFERENCE_AMBIGUOUS"
@@ -118,11 +124,11 @@ type BranchView struct {
 // They are separate fields because they are separate meanings.
 type ActorView struct {
 	BusinessActorLabel string `json:"businessActorLabel"`
-	BusinessActorState string `json:"businessActorState"`
+	BusinessActorState Status `json:"businessActorState"`
 	// AuthorizationRoleCode is the authorization system's label. It is not the
 	// business actor and does not authorize the business step.
 	AuthorizationRoleCode string `json:"authorizationRoleCode,omitempty"`
-	AuthorizationState    string `json:"authorizationState,omitempty"`
+	AuthorizationState    Status `json:"authorizationState,omitempty"`
 	// AuthorizationCapability is the resolved authorization capability, or nil
 	// when the clause names none or it does not resolve.
 	AuthorizationCapability *ResolvedReference `json:"authorizationCapability,omitempty"`
@@ -131,7 +137,7 @@ type ActorView struct {
 // TriggerView is the business trigger. Event is business wording; Invocation is
 // always false because the projection never turns a trigger into a run.
 type TriggerView struct {
-	State      string `json:"state"`
+	State      Status `json:"state"`
 	Text       string `json:"text"`
 	Invocation bool   `json:"invocation"`
 }
@@ -183,9 +189,19 @@ type Resolver struct {
 
 // NewResolver groups declared targets by kind and ID. Duplicate IDs are kept,
 // not collapsed: a doubled ID is ambiguous and must not resolve to the first.
+//
+// A target that does not look like a Source declaration is dropped rather than
+// offered as a resolution. The projection claims a reference reaches a Source,
+// and only a target carrying a role, a positive position and an artifact digest
+// can support that claim. Dropping it makes the reference unresolved, which is
+// the honest result; the alternative is a "resolved" reference that names no
+// Source.
 func NewResolver(targets []Declared) *Resolver {
 	r := &Resolver{declared: map[ReferenceKind]map[string][]Declared{}}
 	for _, target := range targets {
+		if !isSourceDeclaration(target) {
+			continue
+		}
 		byID, ok := r.declared[target.Kind]
 		if !ok {
 			byID = map[string][]Declared{}
@@ -194,6 +210,33 @@ func NewResolver(targets []Declared) *Resolver {
 		byID[target.ID] = append(byID[target.ID], target)
 	}
 	return r
+}
+
+// isSourceDeclaration reports whether a target can be shown to name a Source
+// declaration: it must carry the declaring artifact, a positive position in that
+// artifact, and the digest of the bytes read there.
+func isSourceDeclaration(target Declared) bool {
+	if strings.TrimSpace(target.ID) == "" || strings.TrimSpace(target.Artifact) == "" {
+		return false
+	}
+	if target.Line < 1 || target.Column < 1 {
+		return false
+	}
+	if strings.TrimSpace(target.Fingerprint) == "" {
+		return false
+	}
+	if target.Role != "definition" {
+		return false
+	}
+	// A declaration lives inside the Workspace, so a path that leaves it is not
+	// a Source this projection can name.
+	cleaned := path.Clean(filepath.ToSlash(target.Artifact))
+	if cleaned == "." || cleaned == ".." || strings.HasPrefix(cleaned, "../") ||
+		path.IsAbs(cleaned) || filepath.IsAbs(target.Artifact) ||
+		strings.Contains(cleaned, ":") {
+		return false
+	}
+	return true
 }
 
 // Resolution is the outcome of resolving one reference.
@@ -291,6 +334,20 @@ func Project(fixture Fixture, procedureFingerprint string, resolver *Resolver) P
 		add(CodeFixtureNotAuthoringReference, SeverityProcedure, projection.ProcedureID,
 			"a reference fixture must not claim to be Canonical business meaning")
 	}
+	// A reference fixture proposes meaning; it cannot declare that its own
+	// candidate values are accepted. Echoing such a status would let a fixture
+	// assert acceptance the projection never received.
+	for name, status := range map[string]Status{
+		"trigger":       fixture.Procedure.Trigger.Status,
+		"actor":         fixture.Procedure.Actor.Status,
+		"authorization": fixture.Procedure.Authorization.Status,
+	} {
+		if status == "" || status.Valid() {
+			continue
+		}
+		add(CodeStatusNotCandidate, SeverityProcedure, projection.ProcedureID,
+			fmt.Sprintf("%s status %q is not an accepted reference status; a fixture may only propose", name, status))
+	}
 
 	// A business actor label that repeats the authorization role code makes the
 	// two meanings indistinguishable at the point a reader reads them.
@@ -322,6 +379,20 @@ func Project(fixture Fixture, procedureFingerprint string, resolver *Resolver) P
 		if !step.Realization.Valid() {
 			add(CodeRealizationUnknown, SeverityProcedure, id,
 				fmt.Sprintf("step %q declares unknown realization %q", id, step.Realization))
+		}
+		// A step with no id cannot be referred to by a branch, is not
+		// distinguishable in manualSteps, and cannot be addressed in a finding.
+		// It is reported rather than admitted as a nameless entry.
+		if id == "" {
+			add(CodeStepIDMissing, SeverityProcedure, fmt.Sprintf("position-%d", i+1),
+				fmt.Sprintf("step at position %d declares no id", i+1))
+		}
+		// A claim to run without a person is refused wherever it appears. A
+		// manual step gets its own finding below, so this one covers the
+		// realizations a reader would otherwise expect to run by themselves.
+		if step.AutoExecute && step.Realization != RealizationManual {
+			add(CodeAutoExecuteOnSystemStep, SeverityProcedure, id,
+				fmt.Sprintf("step %q declares autoExecute; the projection never auto-executes a business step", id))
 		}
 
 		manual := step.Realization == RealizationManual
@@ -416,16 +487,28 @@ func Project(fixture Fixture, procedureFingerprint string, resolver *Resolver) P
 			continue
 		}
 		onStep := strings.TrimSpace(branch.OnStep)
-		if onStep != "" {
-			if _, exists := stepIDs[onStep]; !exists {
-				add(CodeBranchStepUnknown, SeverityProcedure, id,
-					fmt.Sprintf("branch %q is on step %q, which the procedure does not declare", id, onStep))
-			}
-			if branchesOnStep[onStep] == nil {
-				branchesOnStep[onStep] = map[Outcome]int{}
-			}
-			branchesOnStep[onStep][branch.Outcome]++
+		// A branch bound to no step makes the one-sided-decision check vacuous:
+		// the decision it belongs to is unknown, so it cannot be shown to have
+		// two sides. Report it instead of silently skipping the check.
+		if onStep == "" {
+			add(CodeBranchStepMissing, SeverityProcedure, id,
+				fmt.Sprintf("branch %q names no step, so its decision cannot be checked for two sides", id))
+			projection.Branches = append(projection.Branches, BranchView{
+				ID:      id,
+				Label:   branch.Label,
+				OnStep:  "",
+				Outcome: branch.Outcome,
+			})
+			continue
 		}
+		if _, exists := stepIDs[onStep]; !exists {
+			add(CodeBranchStepUnknown, SeverityProcedure, id,
+				fmt.Sprintf("branch %q is on step %q, which the procedure does not declare", id, onStep))
+		}
+		if branchesOnStep[onStep] == nil {
+			branchesOnStep[onStep] = map[Outcome]int{}
+		}
+		branchesOnStep[onStep][branch.Outcome]++
 		projection.Branches = append(projection.Branches, BranchView{
 			ID:      id,
 			Label:   branch.Label,
