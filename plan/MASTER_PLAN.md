@@ -2886,3 +2886,14 @@ Studio／SHO／SUI／AIが同じ意味候補を提示しても、編集資格は
 Pluginのport連結は基本型だけでなく複合Data・Relationの型も照合し、必要な変換は明示Adapterで表す。Studio/SHO/REA/AIのProjectionにおいて別Person・別Relation occurrence・別時点・別認可を同名表示から推定しない。新しいTrace Store/専用Test Engineを設けず、#2586通常CLI実Readと#2831 Desktopセルフビルドを独立P0に保つ。
 
 **今回の検査を強化**：Relation Keyは文字列の包含判定ではなくSource/Targetの型付きCanonical IDを厳密照合する。QueryのInput名・型、Resultの生列名→Semantic属性も検査し、宣言順の変更は許容、方向逆転・非出力依存の欠落・誤対応は拒否する。Source/IRの静的到達可能性と実行時の通過、途中状態不変性は別資格。汎用評価と生成Goの同値検証の先例としてmain統合済み[PR #5077](https://github.com/hat47x/tei-platform/pull/5077)・[PR #5087](https://github.com/hat47x/tei-platform/pull/5087)を参照し、組織C1のGenerator/Provider/二Consumerは別途実測する。
+
+<!-- org-ar1-realpg-review-20261116 -->
+### 2026-11-16 組織C1：型付き抽象経路を同じ実PostgreSQL試行へ接続する
+
+[PR #5115](https://github.com/hat47x/tei-platform/pull/5115)は未マージで閉じられたが、型付きRelation/Queryテストと計画§43/§10.18の内容は現在のmainで確認できた。一方、同PRの[隔離PostgreSQL CI run 43733717372](https://github.com/hat47x/tei-platform/actions/runs/43733717372)は、Go整形差分によりテスト実行前に失敗した。したがって旧runをAR-1/3の合格に使わない。
+
+今回の修正では①該当Go試験の整形を修正し、②既存の`TestOrgAxisAsOfActualPostgresOptIn`で**同じWorkspaceのMembership→OrgUnitの型付きRelationと実Queryの名前付きInput/Result契約を確認した後、そのQueryを実PGで実行**する。新しいExpected・Provider・Runtimeを追加しない。これによりSource/IRと実Queryの同Attempt照合に進むが、OrgUnitの実JOIN、生成Go Artifact、正式な履歴版保存、Person Link、Function Context/二Consumerまでの状態保存は別試験である。
+
+実PGの対象テストが固定HEADで明示PASSしSKIPがなければ、§43.5/段階計画§10.19のAR-1→AR-3接続を限定合格とする。AR-2（生成/解釈と実Builder）・AR-4（同一Read CohortをContextと二Consumerへ伝搬）・AR-5（Rule/現在Grant/Effect）を先回りして完了扱いにしない。CLI/MCP/DesktopやPluginの共通Meaningは維持し、選択・含有・実呼出し・Consumer受領を独立検収する。
+
+通常CLI初回実Provider Read #2586とStudio Desktop Stage1→Stage2セルフビルド #2831を引き続きP0に保つ。
