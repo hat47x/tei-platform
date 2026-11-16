@@ -23,6 +23,21 @@ import (
 // It is derived from the same load as ModelCatalog and carries the same
 // fingerprints, so a hit can be tied to one model version. It is a navigation
 // aid: it accepts no meaning, grants no edit authority and changes no Source.
+//
+// The counts answer different questions and must not be read as one, because
+// one subject can account for several lines: a declaration spans several lines,
+// so a term one subject writes on three of them is three hits and one subject.
+// Total and KindCounts count HITS -- KindCounts is Total broken down by kind, so
+// summing it reproduces Total and never a number of subjects. SubjectCount
+// counts DISTINCT SUBJECTS among all the matches and is not cut by -limit, and
+// DistinctSubjectsOmitted counts the distinct subjects among the matches the
+// page does not return, so a caller learns how many subjects are out there
+// without reading every hit.
+//
+// The two lists carry the same distinction. Hits answers "on which lines" and
+// repeats a subject once per matching line. Subjects answers "which subjects
+// declare this" and names each subject once, with where it first matched and how
+// many of its lines matched; its length is SubjectCount.
 type ModelSearch struct {
 	SchemaVersion string `json:"schemaVersion"`
 	Effect        string `json:"effect"`
@@ -36,21 +51,50 @@ type ModelSearch struct {
 	Workspace              *workspace.WorkspaceIdentity `json:"workspace,omitempty"`
 	Validation             CatalogValidation            `json:"validation"`
 	Query                  ModelSearchQuery             `json:"query"`
-	// Total is the number of matches found in the searched scope and Omitted is
-	// Total-len(Hits), so a page cut by -limit is never read as the whole
-	// answer. Offset is the page this answer actually starts at and
+	// Total is the number of matching lines found in the searched scope and
+	// Omitted is Total-len(Hits), so a page cut by -limit is never read as the
+	// whole answer. Offset is the page this answer actually starts at and
 	// RequestedOffset keeps the caller's value when it was past the last match,
 	// so a clamped page is observable instead of looking like a normal one
 	// (#1177). NextOffset names where the next page starts, and is absent on
-	// the last one.
-	Total           int              `json:"total"`
-	Omitted         int              `json:"omitted"`
-	Offset          int              `json:"offset"`
-	RequestedOffset int              `json:"requestedOffset,omitempty"`
-	Limit           int              `json:"limit"`
-	Hits            []ModelSearchHit `json:"hits"`
-	KindCounts      []ModelKindCount `json:"kindCounts"`
-	NextOffset      *int             `json:"nextOffset,omitempty"`
+	// the last one. One subject can account for several of those lines, because
+	// a declaration spans several lines, so Total counts lines and not the
+	// subjects the answer names.
+	Total           int `json:"total"`
+	Omitted         int `json:"omitted"`
+	Offset          int `json:"offset"`
+	RequestedOffset int `json:"requestedOffset,omitempty"`
+	Limit           int `json:"limit"`
+	// SubjectCount is the number of DISTINCT subjects among ALL the matches --
+	// distinct by subject (kind and ID) -- and is not cut by -limit: a page can
+	// return one subject's lines and still report how many subjects the whole
+	// answer names. It answers "how many subjects declare this" as one number,
+	// so Total, which counts hits, is never read as a subject count. It is 0
+	// exactly when Total is 0, and it is len(Subjects).
+	SubjectCount int `json:"subjectCount"`
+	// DistinctSubjectsOmitted is the number of distinct subjects among the
+	// matches this page does not return: the ones -offset skipped and the ones
+	// -limit cut. It is computed from those matches and not inferred from
+	// Total-len(Hits), because one subject can account for several of them, so
+	// the paging numbers alone cannot say how many subjects they cover. A
+	// subject that also has a line on this page is still counted here.
+	DistinctSubjectsOmitted int              `json:"distinctSubjectsOmitted"`
+	Hits                    []ModelSearchHit `json:"hits"`
+	// Subjects names each distinct subject the hits name, once, in the order
+	// its first line matched, and is not cut by -limit: like KindCounts it
+	// describes the whole answer. Hits repeats a subject once per matching
+	// line, because a declaration spans several lines, so a caller asking
+	// which subjects declare the term reads this list instead of deduplicating
+	// the hits itself. MatchCount tells how many of that subject's lines
+	// matched, so one declaration is distinguishable from three.
+	Subjects []ModelSearchSubject `json:"subjects"`
+	// KindCounts counts the HITS per kind: it is Total broken down by kind, so
+	// its counts sum to Total and a subject declared on three lines adds three
+	// to its kind's count. It is deliberately not a subject count -- that is
+	// SubjectCount and Subjects -- so a reader must not sum KindCounts and read
+	// the result as a number of subjects.
+	KindCounts []ModelKindCount `json:"kindCounts"`
+	NextOffset *int             `json:"nextOffset,omitempty"`
 	// Truncated reports that this answer is partial because the search stopped
 	// at its documented work bound (SearchMaxFiles or SearchMaxBytes) instead of
 	// reading every Source. It is not the paging cut, which Omitted and
@@ -82,6 +126,20 @@ type ModelSearchHit struct {
 	ArtifactPath string              `json:"artifactPath"`
 	Line         int                 `json:"line"`
 	Text         string              `json:"text"`
+}
+
+// ModelSearchSubject is one distinct subject the hits name: distinct by subject
+// (kind and ID), not by (subject, Source), so a subject whose matching lines
+// span two Sources is still one entry. ArtifactPath and Line are where that
+// subject first matched -- the first in the search's path order -- and
+// MatchCount is how many of its lines matched wherever they are, so the list
+// answers "which subjects declare this" without repeating a subject per line
+// and without hiding that one of them declared it on several lines.
+type ModelSearchSubject struct {
+	Subject      sourceindex.Subject `json:"subject"`
+	ArtifactPath string              `json:"artifactPath"`
+	Line         int                 `json:"line"`
+	MatchCount   int                 `json:"matchCount"`
 }
 
 // ModelSearchCoverage states which text this search derives and which it does
@@ -284,11 +342,15 @@ func SearchInSources(catalog ModelCatalog, index sourceindex.Index, sources map[
 			Kind: query.Kind,
 		},
 		Hits:     []ModelSearchHit{},
+		Subjects: []ModelSearchSubject{},
 		Limit:    limit,
 		Coverage: searchCoverage(),
 		AuthorityLimits: []string{
 			"search-is-a-derived-read-only-projection",
 			"a-line-is-attributed-to-the-nearest-preceding-declaration-among-the-searched-kinds",
+			"total-and-kindCounts-count-hits-subjectCount-counts-distinct-subjects",
+			"distinctSubjectsOmitted-counts-subjects-among-the-matches-this-page-does-not-return",
+			"subjects-names-each-matching-subject-once-hits-repeat-it-per-matching-line",
 			"matches-are-navigation-not-semantic-acceptance-or-edit-authority",
 			"truncated-means-the-work-bound-stopped-the-search-early",
 		},
@@ -326,7 +388,17 @@ func SearchInSources(catalog ModelCatalog, index sourceindex.Index, sources map[
 
 	term := strings.ToLower(query.Term)
 	var matches []ModelSearchHit
+	// KindCounts is a breakdown of the hits by kind, so it counts hits: a
+	// subject declared on several matching lines adds one count per line. The
+	// subject-level numbers are built beside it and are not derived from these
+	// counts, so a hit count is never read as a subject count.
 	counts := map[string]int{}
+	// matchedSubjects names each distinct subject once, in the order its first
+	// line matched, and counts that subject's matching lines: the hit list
+	// repeats a subject once per matching line, because a declaration spans
+	// several lines, so this list is what answers "which subjects declare this".
+	matchedSubjects := []ModelSearchSubject{}
+	matchedSubjectAt := map[sourceindex.Subject]int{}
 	scanned := 0
 	scannedBytes := 0
 	for _, path := range paths {
@@ -368,9 +440,19 @@ func SearchInSources(catalog ModelCatalog, index sourceindex.Index, sources map[
 				Subject: *subject, ArtifactPath: path, Line: line, Text: text,
 			})
 			counts[subject.Kind]++
+			if at, seen := matchedSubjectAt[*subject]; seen {
+				matchedSubjects[at].MatchCount++
+				continue
+			}
+			matchedSubjectAt[*subject] = len(matchedSubjects)
+			matchedSubjects = append(matchedSubjects, ModelSearchSubject{
+				Subject: *subject, ArtifactPath: path, Line: line, MatchCount: 1,
+			})
 		}
 	}
 	out.Total = len(matches)
+	out.SubjectCount = len(matchedSubjects)
+	out.Subjects = matchedSubjects
 	out.KindCounts = sortedKindCounts(counts)
 	// A requested offset past the last match is clamped, and the caller's value
 	// is kept so the clamped page is observable (#1177).
@@ -385,6 +467,19 @@ func SearchInSources(catalog ModelCatalog, index sourceindex.Index, sources map[
 	}
 	out.Hits = append(out.Hits, matches[offset:end]...)
 	out.Omitted = out.Total - len(out.Hits)
+	// The matches this page does not return are the ones before the page and
+	// the ones after it. Their distinct subjects are counted from those matches
+	// themselves, because the paging numbers cannot say how many subjects they
+	// cover: one subject can own several of them, and a subject with a line on
+	// this page can own one of them too.
+	omittedSubjects := map[sourceindex.Subject]bool{}
+	for i, hit := range matches {
+		if i >= offset && i < end {
+			continue
+		}
+		omittedSubjects[hit.Subject] = true
+	}
+	out.DistinctSubjectsOmitted = len(omittedSubjects)
 	if end < out.Total {
 		next := end
 		out.NextOffset = &next

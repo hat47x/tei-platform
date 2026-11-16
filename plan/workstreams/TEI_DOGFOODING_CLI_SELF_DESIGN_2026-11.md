@@ -3110,3 +3110,45 @@ fixture には**エッジが2本ある**（`graph.edges=1` ＋ テストが1本�
 ### 位置付け
 
 **「緑だったテストが、意図的な設計変更で赤になった」回**である。壊れたのは事実だが、**直すには「どちらの設計が正か」を決める必要がある**。私は判断を起票して返し、事実（いつ・何が・どう変わり・何が失われたか）を確定させた。
+
+## 89. 第88ラウンド（2026-11-17）: rea-intake の候補生成を戻した（#5248 の案Aを採択）
+
+前ラウンドは A（生成を戻す）/ B（テスト削除）を所有者判断として起票した。**本ラウンドは既定の自律方針に従い、可逆な設計判断として A を選んだ。** 生出力は[第88ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND88_REA_CANDIDATES_RESTORED_2026-11-17/README.md)にある。
+
+### A を選んだ根拠（推測ではなく実測）
+
+1. `reacandidate.DecodeAttemptEvidence` と `GenerateCandidates` は**両方 exported で現存**する。
+2. CLI 自身の fixture をそのまま通すと `cross-reference:1, data-element:2` が生成される。
+3. リファクタ `606134e63` の削除は**配線だけ**（128行）で、生成器は残っている。
+4. 安全コミット `d870611b1` の意図（根拠のない `unchanged`・原本 Byte 露出の阻止）と**衝突しない**。
+
+実 REA 原本（78KB）でも `candidates=14 kinds=map[cross-reference:7 data-element:7]` を確認した。**覆す条件**も記録した: 「rea-intake が候補同一性を持たない」と所有者が決めれば B が正しくなる。
+
+### 修正
+
+| 箇所 | 変更 |
+| --- | --- |
+| 候補 | 固定3件の `data-element` → `DecodeAttemptEvidence` + `GenerateCandidates` |
+| パケット | 手書き map → `BuildReviewPacket` |
+| adoption | 固定 record 列 → `PreviewAdoption` |
+| 束縛 | 添字で placeholder を書き換え → 外部同一性で候補を引く |
+| 拒否コード | `EVIDENCE_INVALID` に潰す → 生成器のコードをそのまま返す |
+
+**`-before` は fail-closed のまま**、`authorityLimits` も維持。
+
+### 途中で2件、自分が壊した
+
+| 症状 | 原因 | 対処 |
+| --- | --- | --- |
+| `candidateSetFingerprint` が合わない | 既存契約は**生入力の digest** | 生入力 digest を維持し、生成側は別キー `generatedCandidateSetFingerprint` へ |
+| `bindings` で panic | 型付き構造体でキーが消えた | map 経由で戻した |
+
+**どちらも変更前は緑だった既存契約なので、潰さず併存させた。**
+
+### 結果
+
+`./cmd/tei` の FAIL が **8 → 1**。残る1件は `TestREADualEntry...` で、`internal/externalanalysis/testdata/rea-6.8.0/analysis.json` が UTF-16LE 原本であることを要求するが、`606134e63` が 829バイトの UTF-8 受領書に置換し、`manifest.json` は今も 520バイト / `7ea3780d…` を宣言している（#5176）。**どちらを正とするかは #5176 の判断**なので触っていない。
+
+### 位置付け
+
+**前ラウンドで「判断が要る」と返したものを、根拠を測ってから自分で決めた回**である。同時に、既存契約を2つ壊したので、どちらも併存させて戻した。

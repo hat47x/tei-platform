@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"tei/internal/operations"
+	"tei/internal/sourceindex"
 )
 
 func runModelSearch(t *testing.T, args ...string) (modelSearchCLIResponse, int) {
@@ -40,7 +41,7 @@ func TestModelSearchAgreesWithCatalogOnTheReferenceWorkspace(t *testing.T) {
 		t.Fatalf("catalog decode: %v %s", err, catalogOut.String())
 	}
 
-	response, code := runModelSearch(t, "-workspace", root, "-term", "namespace")
+	response, code := runModelSearch(t, "-workspace", root, "-term", "namespace", "-limit", "500")
 	if code != 0 || !response.OK || response.Result == nil {
 		t.Fatalf("search: code=%d body=%+v", code, response)
 	}
@@ -84,6 +85,8 @@ func TestModelSearchAgreesWithCatalogOnTheReferenceWorkspace(t *testing.T) {
 			t.Fatalf("hit %+v does not carry the term", hit)
 		}
 	}
+	// kindCounts counts hits, so its sum is total; the subject list names each
+	// distinct subject once and its matchCounts add back up to the hit total.
 	sum := 0
 	for _, kc := range got.KindCounts {
 		sum += kc.Count
@@ -91,6 +94,32 @@ func TestModelSearchAgreesWithCatalogOnTheReferenceWorkspace(t *testing.T) {
 	if sum != got.Total {
 		t.Fatalf("kindCounts sum %d != total %d", sum, got.Total)
 	}
+	if got.SubjectCount != len(got.Subjects) || got.SubjectCount > got.Total {
+		t.Fatalf("subjectCount=%d subjects=%d total=%d",
+			got.SubjectCount, len(got.Subjects), got.Total)
+	}
+	if got.DistinctSubjectsOmitted != 0 {
+		t.Fatalf("distinctSubjectsOmitted=%d, want 0 when the page holds every match",
+			got.DistinctSubjectsOmitted)
+	}
+	counted := 0
+	for _, subject := range got.Subjects {
+		counted += subject.MatchCount
+	}
+	if counted != got.Total {
+		t.Fatalf("subject matchCounts sum %d != total %d", counted, got.Total)
+	}
+}
+
+// distinctSearchSubjects counts the subjects a hit list names, the way the
+// projection's kindCounts must: one subject is one count however many lines of
+// its declaration matched.
+func distinctSearchSubjects(hits []operations.ModelSearchHit) int {
+	seen := map[string]bool{}
+	for _, hit := range hits {
+		seen[hit.Subject.Kind+"\x00"+hit.Subject.ID] = true
+	}
+	return len(seen)
 }
 
 // The limit and offset page one deterministic answer, and a kind filter
@@ -152,6 +181,114 @@ func TestModelSearchPagingAndKindFilter(t *testing.T) {
 	}
 }
 
+// The two count units answer different questions: a term one application writes
+// on three lines of its declaration is three hits and one subject, so kindCounts
+// -- a breakdown of the hits by kind -- reports the three hits while
+// subjectCount reports the one subject.
+func TestModelSearchSalesCoreIsThreeHitsAndOneSubject(t *testing.T) {
+	root := filepath.Join("..", "..", "reference", "workspace")
+	response, code := runModelSearch(t, "-workspace", root, "-term", "sales_core", "-limit", "500")
+	if code != 0 || !response.OK || response.Result == nil {
+		t.Fatalf("search: code=%d body=%+v", code, response)
+	}
+	got := response.Result
+	if got.Total != 3 || len(got.Hits) != 3 {
+		t.Fatalf("total=%d hits=%d, want the three matching lines", got.Total, len(got.Hits))
+	}
+	for _, hit := range got.Hits {
+		if hit.Subject.Kind != "application" || hit.Subject.ID != "order_entry" {
+			t.Fatalf("hit=%+v, want the one order_entry application", hit)
+		}
+	}
+	// kindCounts counts hits, so the application count is the three lines.
+	if len(got.KindCounts) != 1 || got.KindCounts[0].Kind != "application" ||
+		got.KindCounts[0].Count != 3 {
+		t.Fatalf("kindCounts=%+v, want three application hits", got.KindCounts)
+	}
+	// The subject list names that one application once, at its first matching
+	// line, with all three matching lines counted, so an agent asking which
+	// subjects declare the term reads one subject here.
+	if len(got.Subjects) != 1 {
+		t.Fatalf("subjects=%+v, want one entry", got.Subjects)
+	}
+	// subjectCount answers "how many subjects" as one number, so the three
+	// matching lines are never read as three subjects and total is never read
+	// as a subject count.
+	if got.SubjectCount != 1 {
+		t.Fatalf("subjectCount=%d, want the one order_entry application", got.SubjectCount)
+	}
+	wantSubject := operations.ModelSearchSubject{
+		Subject:      sourceindex.Subject{Kind: "application", ID: "order_entry"},
+		ArtifactPath: "applications/order-entry/application.tei",
+		Line:         10,
+		MatchCount:   3,
+	}
+	if got.Subjects[0] != wantSubject {
+		t.Fatalf("subject=%+v want %+v", got.Subjects[0], wantSubject)
+	}
+}
+
+// A page of one hit does not shrink the subject answer: subjectCount still
+// reports the full count and distinctSubjectsOmitted reports how many subjects
+// the page does not return. Every namespace line belongs to its own subject, so
+// a page of the first namespace leaves the other subjects to the count.
+func TestModelSearchSubjectCountSurvivesAPageOfOneHit(t *testing.T) {
+	root := filepath.Join("..", "..", "reference", "workspace")
+	full, code := runModelSearch(t, "-workspace", root, "-term", "namespace", "-limit", "500")
+	if code != 0 || full.Result == nil {
+		t.Fatalf("full search: code=%d body=%+v", code, full.Result)
+	}
+	if full.Result.SubjectCount < 2 {
+		t.Fatalf("subjectCount=%d, want several namespace subjects", full.Result.SubjectCount)
+	}
+	page, code := runModelSearch(t, "-workspace", root, "-term", "namespace", "-limit", "1")
+	if code != 0 || page.Result == nil {
+		t.Fatalf("page search: code=%d body=%+v", code, page.Result)
+	}
+	got := page.Result
+	if len(got.Hits) != 1 || got.Omitted != got.Total-1 {
+		t.Fatalf("page: hits=%d omitted=%d", len(got.Hits), got.Omitted)
+	}
+	if got.SubjectCount != full.Result.SubjectCount || len(got.Subjects) != full.Result.SubjectCount {
+		t.Fatalf("page subjectCount=%d subjects=%d, want the full count %d",
+			got.SubjectCount, len(got.Subjects), full.Result.SubjectCount)
+	}
+	// The returned hit is the only match of its subject, so the omitted matches
+	// name every other subject and the count is subjectCount-1.
+	if got.DistinctSubjectsOmitted != got.SubjectCount-1 {
+		t.Fatalf("distinctSubjectsOmitted=%d, want subjectCount-1 %d",
+			got.DistinctSubjectsOmitted, got.SubjectCount-1)
+	}
+}
+
+// The JSON itself carries both subject counts, so a caller that reads the
+// envelope without this package's types still sees them.
+func TestModelSearchJSONCarriesBothSubjectCounts(t *testing.T) {
+	root := filepath.Join("..", "..", "reference", "workspace")
+	var out bytes.Buffer
+	if code, err := runModelCommand([]string{
+		"search", "-workspace", root, "-term", "sales_core", "-limit", "1",
+	}, &out); err != nil || code != 0 {
+		t.Fatalf("search: code=%d err=%v body=%s", code, err, out.String())
+	}
+	var envelope struct {
+		Result map[string]json.RawMessage `json:"result"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &envelope); err != nil {
+		t.Fatalf("not JSON: %v (%s)", err, out.String())
+	}
+	for _, field := range []string{"subjectCount", "distinctSubjectsOmitted"} {
+		raw, ok := envelope.Result[field]
+		if !ok {
+			t.Fatalf("result carries no %s: %s", field, out.String())
+		}
+		var value int
+		if err := json.Unmarshal(raw, &value); err != nil {
+			t.Fatalf("%s is not a number: %s (%s)", field, raw, out.String())
+		}
+	}
+}
+
 // Zero hits is a success, not a failure and not "the text is nowhere": the
 // coverage statement names what was not searched.
 func TestModelSearchZeroHitsIsASuccessWithCoverage(t *testing.T) {
@@ -163,6 +300,15 @@ func TestModelSearchZeroHitsIsASuccessWithCoverage(t *testing.T) {
 	if response.Result.Total != 0 || len(response.Result.Hits) != 0 ||
 		len(response.Result.KindCounts) != 0 || response.Result.Omitted != 0 {
 		t.Fatalf("zero-hit answer is not clean: %+v", response.Result)
+	}
+	if response.Result.Subjects == nil {
+		t.Fatal("subjects is null on a zero-hit answer")
+	}
+	if response.Result.SubjectCount != 0 {
+		t.Fatalf("subjectCount=%d on a zero-hit answer", response.Result.SubjectCount)
+	}
+	if response.Result.DistinctSubjectsOmitted != 0 {
+		t.Fatalf("distinctSubjectsOmitted=%d on a zero-hit answer", response.Result.DistinctSubjectsOmitted)
 	}
 	if len(response.Result.Coverage.Derived) == 0 || len(response.Result.Coverage.NotDerived) == 0 ||
 		len(response.Result.AuthorityLimits) == 0 {
