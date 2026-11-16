@@ -50,6 +50,17 @@ const (
 	// `if present` states that a record without the second date satisfies
 	// the rule. It is never assumed: without it such a record is not decided.
 	RulePredicateNotAfter RulePredicate = "not-after"
+	// RulePredicateNotOverlapping is written as the two words `not
+	// overlapping`. Its subject is a period, written `<start> until <end>`:
+	//
+	//	rule organization.department.members.periods_apart:
+	//	  organization.membership.starts_on until organization.membership.ends_on or open
+	//	    is not overlapping per organization.department.members
+	//	    for each organization.membership.person_id
+	//
+	// `or open` states that a row without an end is a period with no last
+	// day. `for each <attribute>` compares only rows with the same value.
+	RulePredicateNotOverlapping RulePredicate = "not-overlapping"
 )
 
 // OperatorInputWord is a word of an operator declaration after `takes`. A
@@ -124,6 +135,14 @@ type RuleAuthoring struct {
 	// IfPresent is true only when the source wrote `if present` after the
 	// compared attribute.
 	IfPresent bool
+	// PeriodEnd is set only when the subject is a period: the attribute
+	// written after `until`.
+	PeriodEnd *RuleReference
+	// OpenEnded is true only when the source wrote `or open` after the end
+	// of the period.
+	OpenEnded bool
+	// GroupBy is set only when the source wrote `for each <attribute>`.
+	GroupBy *RuleReference
 
 	// Spans of the parts an editor or diagnostic points at.
 	DeclarationSpan Anchor
@@ -312,6 +331,47 @@ func (p *Parser) parseRuleAuthoring(namespace core.CanonicalID) (RuleAuthoring, 
 	if err := rejectRuleKeywordAsSubject(subjectTok); err != nil {
 		return RuleAuthoring{}, p.errAt(subjectTok, err.Error())
 	}
+	// A subject may be a period: `<start> until <end>`, optionally `or open`.
+	var periodEnd *RuleReference
+	openEnded := false
+	untilTok, err := p.peek()
+	if err != nil {
+		return RuleAuthoring{}, err
+	}
+	if untilTok.Kind == TokenIdent && untilTok.Text == "until" {
+		_, _ = p.next()
+		endTok, err := p.next()
+		if err != nil {
+			return RuleAuthoring{}, err
+		}
+		if endTok.Kind != TokenIdent || endTok.Text == "is" || endTok.Text == "or" || ruleAuthoringDeclarationEnds(endTok) {
+			at := endTok
+			if endTok.Kind != TokenIdent {
+				at = untilTok
+			}
+			return RuleAuthoring{}, p.errAt(at, "expected the attribute that ends the period after \"until\"")
+		}
+		periodEnd = &RuleReference{Text: endTok.Text, Anchor: tokenAnchor(endTok)}
+		orTok, err := p.peek()
+		if err != nil {
+			return RuleAuthoring{}, err
+		}
+		if orTok.Kind == TokenIdent && orTok.Text == "or" {
+			_, _ = p.next()
+			openTok, err := p.next()
+			if err != nil {
+				return RuleAuthoring{}, err
+			}
+			if openTok.Kind != TokenIdent || openTok.Text != "open" {
+				at := openTok
+				if openTok.Kind == TokenEOF {
+					at = orTok
+				}
+				return RuleAuthoring{}, p.errAt(at, "expected \"open\" after \"or\"; a period without an end is written \"or open\"")
+			}
+			openEnded = true
+		}
+	}
 	if _, err := p.expectText("is"); err != nil {
 		at, peekErr := p.peek()
 		if peekErr != nil || at.Kind == TokenEOF {
@@ -328,7 +388,18 @@ func (p *Parser) parseRuleAuthoring(namespace core.CanonicalID) (RuleAuthoring, 
 	var compared *RuleReference
 	ifPresent := false
 	lastTok := predTok
+	overlapping := false
 	if predTok.Text == "not" {
+		if next, err := p.peek(); err == nil && next.Kind == TokenIdent && next.Text == "overlapping" {
+			_, _ = p.next()
+			overlapping = true
+			predicate = RulePredicateNotOverlapping
+			lastTok = next
+		}
+	}
+	if overlapping {
+		// The period, the relation and the grouping are checked below.
+	} else if predTok.Text == "not" {
 		// `not after <attribute>` and, optionally, `if present`.
 		afterTok, err := p.next()
 		if err != nil {
@@ -339,7 +410,7 @@ func (p *Parser) parseRuleAuthoring(namespace core.CanonicalID) (RuleAuthoring, 
 			if afterTok.Kind == TokenEOF {
 				at = predTok
 			}
-			return RuleAuthoring{}, p.errAt(at, "expected \"after\" after \"not\"; the predicate is written \"not after <attribute>\"")
+			return RuleAuthoring{}, p.errAt(at, "expected \"after\" or \"overlapping\" after \"not\"; the predicates are written \"not after <attribute>\" and \"not overlapping per <relation>\"")
 		}
 		comparedTok, err := p.next()
 		if err != nil {
@@ -396,6 +467,8 @@ func (p *Parser) parseRuleAuthoring(namespace core.CanonicalID) (RuleAuthoring, 
 		Operator:        operator,
 		Compared:        compared,
 		IfPresent:       ifPresent,
+		PeriodEnd:       periodEnd,
+		OpenEnded:       openEnded,
 		DeclarationSpan: Anchor{Start: keyword.Start, End: lastTok.End},
 		IDSpan:          tokenAnchor(nameTok),
 		SubjectSpan:     tokenAnchor(subjectTok),
@@ -415,6 +488,9 @@ func (p *Parser) parseRuleAuthoring(namespace core.CanonicalID) (RuleAuthoring, 
 		rule.Scope = &RuleReference{Text: scopeTok.Text, Anchor: tokenAnchor(scopeTok)}
 		rule.ScopeSpan = tokenAnchor(scopeTok)
 		rule.DeclarationSpan.End = scopeTok.End
+	} else if predicate == RulePredicateNotOverlapping {
+		return RuleAuthoring{}, p.errAtSpan(rule.PredicateSpan,
+			"predicate \"not overlapping\" requires \"per <relation>\"; the rows to compare are never inferred")
 	} else if predicate == RulePredicateUnique {
 		// "unique" without a scope would silently mean "unique everywhere".
 		// The existing relation-unique contract requires an authored relation,
@@ -425,6 +501,46 @@ func (p *Parser) parseRuleAuthoring(namespace core.CanonicalID) (RuleAuthoring, 
 	if predicate == RulePredicatePositive && rule.Scope != nil {
 		return RuleAuthoring{}, p.errAtSpan(rule.ScopeSpan,
 			"predicate \"positive\" accepts no scope; declare the constrained attribute instead")
+	}
+	if predicate == RulePredicateNotOverlapping {
+		if rule.PeriodEnd == nil {
+			return RuleAuthoring{}, p.errAtSpan(rule.SubjectSpan,
+				"predicate \"not overlapping\" is about a period; write the subject as \"<start> until <end>\"")
+		}
+		forTok, err := p.peek()
+		if err != nil {
+			return RuleAuthoring{}, err
+		}
+		if forTok.Kind == TokenIdent && forTok.Text == "for" {
+			_, _ = p.next()
+			eachTok, err := p.next()
+			if err != nil {
+				return RuleAuthoring{}, err
+			}
+			if eachTok.Kind != TokenIdent || eachTok.Text != "each" {
+				at := eachTok
+				if eachTok.Kind == TokenEOF {
+					at = forTok
+				}
+				return RuleAuthoring{}, p.errAt(at, "expected \"each\" after \"for\"; rows are grouped with \"for each <attribute>\"")
+			}
+			groupTok, err := p.next()
+			if err != nil {
+				return RuleAuthoring{}, err
+			}
+			if groupTok.Kind != TokenIdent || ruleAuthoringDeclarationEnds(groupTok) {
+				at := groupTok
+				if groupTok.Kind != TokenIdent {
+					at = eachTok
+				}
+				return RuleAuthoring{}, p.errAt(at, "expected the attribute to group rows by after \"for each\"")
+			}
+			rule.GroupBy = &RuleReference{Text: groupTok.Text, Anchor: tokenAnchor(groupTok)}
+			rule.DeclarationSpan.End = groupTok.End
+		}
+	} else if rule.PeriodEnd != nil {
+		return RuleAuthoring{}, p.errAtSpan(rule.PeriodEnd.Anchor,
+			"a period written with \"until\" is the subject of \"not overlapping\" only")
 	}
 	if predicate == RulePredicateNotAfter && rule.Scope != nil {
 		return RuleAuthoring{}, p.errAtSpan(rule.ScopeSpan,
@@ -482,7 +598,7 @@ func ruleAuthoringIdentity(namespace core.CanonicalID, symbol string) (core.Cano
 // missing predicate one token too late.
 func rejectRuleKeywordAsSubject(t Token) error {
 	switch t.Text {
-	case "is", "per", "rule", "namespace", "operator", "takes", "not", "after":
+	case "is", "per", "rule", "namespace", "operator", "takes", "not", "after", "until", "overlapping":
 		return fmt.Errorf("%q cannot be a rule subject; declare the constrained attribute before \"is\"", t.Text)
 	}
 	// A predicate word in the subject position means the clauses were written
@@ -500,7 +616,7 @@ func validRulePredicatesText() string {
 	for _, predicate := range rulePredicates {
 		words = append(words, string(predicate))
 	}
-	words = append(words, "not after <attribute>")
+	words = append(words, "not after <attribute>", "not overlapping per <relation>")
 	return strings.Join(words, ", ")
 }
 

@@ -66,8 +66,8 @@ func TestRuleAuthoringRefusesAnUnclearNotAfter(t *testing.T) {
 		// at the word before it.
 		at, mention string
 	}{
-		{"not without after", "not before organization.membership.ends_on\n", "before", `expected "after" after "not"`},
-		{"not at the end", "not\n", "not\n", `expected "after" after "not"`},
+		{"not without after", "not before organization.membership.ends_on\n", "before", `expected "after" or "overlapping" after "not"`},
+		{"not at the end", "not\n", "not\n", `expected "after" or "overlapping" after "not"`},
 		{"nothing to compare with", "not after\n", "after\n", "expected the attribute to compare with"},
 		{"the next rule where the attribute should be", "not after\n\nrule organization.x.y:\n  organization.x.z is positive\n", "rule organization.x.y", "expected the attribute to compare with"},
 		{"if without an attribute", "not after if present\n", "if present", "expected the attribute to compare with"},

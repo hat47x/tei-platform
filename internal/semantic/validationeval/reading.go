@@ -221,6 +221,9 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 	case rule.Kind == semantic.ValidationNotAfter:
 		return decideNotAfter(rule, source)
 
+	case rule.Kind == semantic.ValidationNoOverlap:
+		return decideNoOverlap(rule, source)
+
 	case rule.Kind == semantic.ValidationOperator && withOperators:
 		implementation, err := selectOperatorImplementation(rule, operators)
 		if err != nil {

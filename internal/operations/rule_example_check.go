@@ -84,6 +84,58 @@ func (s exampleSource) ReadDate(attribute core.CanonicalID) (validationeval.Date
 	return validationeval.DateReading{State: validationeval.ValuePresent, Value: date}, nil
 }
 
+// readCellDate reads the date of one cell of one row. A column the example
+// does not have was not written, so it is not fetched.
+func (s exampleSource) readCellDate(row int, attribute core.CanonicalID) (validationeval.DateReading, error) {
+	column, written := s.column(attribute)
+	if !written {
+		return validationeval.DateReading{State: validationeval.ValueNotFetched}, nil
+	}
+	cell := s.example.Rows[row][column]
+	if cell.Text == "" {
+		return validationeval.DateReading{State: validationeval.ValueNull}, nil
+	}
+	date, err := semantic.ParseCalendarDate(cell.Text)
+	if err != nil {
+		return validationeval.DateReading{}, err
+	}
+	return validationeval.DateReading{State: validationeval.ValuePresent, Value: date}, nil
+}
+
+func (s exampleSource) ReadRelationPeriods(relation, start, end, group core.CanonicalID) (validationeval.PeriodRowsReading, error) {
+	if s.row >= 0 {
+		return validationeval.PeriodRowsReading{}, fmt.Errorf("a rule about one record asked for the rows of relation %s", relation)
+	}
+	reading := validationeval.PeriodRowsReading{Coverage: validationeval.CoverageComplete}
+	groupColumn, groupWritten := s.column(group)
+	for i, row := range s.example.Rows {
+		var period validationeval.PeriodRow
+		var err error
+		if period.Start, err = s.readCellDate(i, start); err != nil {
+			return validationeval.PeriodRowsReading{}, err
+		}
+		if period.End, err = s.readCellDate(i, end); err != nil {
+			return validationeval.PeriodRowsReading{}, err
+		}
+		if group != "" {
+			switch {
+			case !groupWritten:
+				period.Group = validationeval.KeyReading{State: validationeval.ValueNotFetched}
+			case row[groupColumn].Text == "":
+				period.Group = validationeval.KeyReading{State: validationeval.ValueNull}
+			default:
+				key, err := exampleKey(s.example.Items[groupColumn], row[groupColumn].Text)
+				if err != nil {
+					return validationeval.PeriodRowsReading{}, err
+				}
+				period.Group = validationeval.KeyReading{State: validationeval.ValuePresent, Key: key}
+			}
+		}
+		reading.Rows = append(reading.Rows, period)
+	}
+	return reading, nil
+}
+
 func (s exampleSource) ReadRelationKeys(relation, attribute core.CanonicalID) (validationeval.RelationReading, error) {
 	if s.row >= 0 {
 		return validationeval.RelationReading{}, fmt.Errorf("a rule about one record asked for the rows of relation %s", relation)
