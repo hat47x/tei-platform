@@ -2,7 +2,7 @@
 
 - 対象Issue: [#2509](https://github.com/hat47x/tei-platform/issues/2509)（DSH外部Harness実証）、[#2515](https://github.com/hat47x/tei-platform/issues/2515)（実効隔離・全送出経路Conformance）。機密境界の正本は[TAI #232](https://github.com/hat47x/tai-pleroma/issues/232)、比較計画は[TAI #168](https://github.com/hat47x/tai-pleroma/issues/168)。
 - 状態: **既存の実行記録を並べた索引**。新しい実測は行っていない。個々の合否・Owner受理は各記録とIssueの担当。
-- この文書の役割: 69件の実行記録が**それぞれ何を確定させ、何を確定させていないか**を1枚で見えるようにし、同じ測り方の重複を避ける。記録本文の複製はせず、各記録へ参照で結ぶ。
+- この文書の役割: 70件の実行記録が**それぞれ何を確定させ、何を確定させていないか**を1枚で見えるようにし、同じ測り方の重複を避ける。記録本文の複製はせず、各記録へ参照で結ぶ。
 
 ## 1. なぜ台帳が要るか
 
@@ -58,6 +58,7 @@
 | [stdioの呼び出し中の死](./DSH_MCP_STDIO_MIDCALL_2026-11-17/README.md) | 失敗形は経路と時機で変わる | `tools/call`を受けた直後に`exit(2)`する子では、呼び出しが**`Error: MCP connection closed`**で失敗する。実行は`exit 0`・Toolは次の要求で戻る。**3種類に分かれる**（stdio呼ぶ前`unknown tool`／呼び出し中`MCP connection closed`／http `fetch failed`） | 部分的応答後の死、ハング、`toolCallTimeoutMs`超過、非stdioの呼び出し中、再起動の上限 |
 | [stdioの応答待ち](./DSH_MCP_STDIO_TIMEOUT_2026-11-17/README.md) | タイムアウトは殺さない | `tools/call`に応答せず眠る子を`toolCallTimeoutMs: 3000`で測ると**`Error: Request timed out`**（**4つ目の失敗形**）。**待ち5秒では子はタイムアウトを生き延び**、**遅れて応答を書き**、クライアントが**`notifications/cancelled`**を送った。**タイムアウトは要求を諦めるだけで、相手は動き続けうる** | 他の`toolCallTimeoutMs`、httpの無応答、遅延応答の再利用、cancel遵守、実MCPサーバー |
 | [遅延応答の破棄](./DSH_MCP_STDIO_LATE_REPLY_2026-11-17/README.md) | 結果は戻らない | `toolCallTimeoutMs: 2000`に対し子が6秒後にcanary入り応答を書く構成で、**モデル応答を12秒遅らせて実行を生かした**。子は応答を書いたが**canaryはモデル要求に現れない**（**破棄の機構は未観測**）。**`notifications/cancelled`は応答到着後に送られ**、生成を先回りして止めない | 他のtimeout/sleep、httpの遅延応答、モデルを遅らせない方法、callId再利用、実MCPサーバー |
+| [壊れたstdio応答](./DSH_MCP_STDIO_MALFORMED_REPLY_2026-11-18/README.md) | 文言は子の生存で決まる | **切り詰めJSON・改行なしJSON・非JSON**を書く子で、**終了すれば3つとも`MCP connection closed`**、**生きていれば`Request timed out`**。**同じ非JSONバイトでも終了の有無だけで文言が変わる**ので、**`MCP connection closed`は解析失敗ではなくパイプの閉塞**を報告している | タイムアウト後の解析、形だけ違う応答、改行後の切り詰め、他のtimeout値、実MCPサーバー |
 | [500と再試行](./DSH_MCP_RECONNECT_HEADERS_2026-11-17/README.md) | 再試行の範囲 | `headers`にcanaryを入れ、**ハンドシェイク途中**と**`tools/call`中**にHTTP 500を返すと、**`maxAttempts: 8`でも再試行しない**（停止／呼び出し失敗のみ）。**canaryは全要求に載り、500を受けた要求にも載る**。失敗形は`Error POSTing to endpoint: …` | トランスポート層の障害での再送、5xxと4xxの差、複数サーバー、500継続後の復帰 |
 | [接続拒否と再試行](./DSH_MCP_TRANSPORT_FAULT_2026-11-17/README.md) | 再試行が効く障害 | **起動時にlistenしない状態から6.0秒後に上がる**サーバーで、`reconnect`（300→1500ms・12回）が**再試行して復帰**（最初の要求 t=19.797s・Tool 28個・canaryは全要求）。**失敗した再試行は痕跡を残さない**ため**回数は未測定**（当初の「11回」逆算は起点の取り違えで撤回）。**接続拒否は回復し、HTTP 500は回復しない** | 他のtiming、途中切断、4xx、複数サーバー、失敗再試行へのheader搭載の直接観測 |
 | [12MBの引数](./DSH_MCP_ARG_CEILING_2026-11-17/README.md) | 大きさの上限なし（12MB） | **canary+12,000,000 bytes**の引数が**12,000,016 bytes**で届き、**先頭も末尾も無傷・切り詰めなし**。**Telemetry既定4,000,000を約8MB上回る**ので**`maxRequestBytes`はMCP引数を制限しない**。**文脈も12,052,319 bytesに膨らむ**。200KB・1MB・4.1MB・12MBの4点で切り詰めなし | 12MB超の上限、実Provider側の上限、サーバー側の受信上限、時間・メモリ、複数同時 |
@@ -105,7 +106,7 @@
 - **4.1MBを超える引数**は[12MBの引数](./DSH_MCP_ARG_CEILING_2026-11-17/README.md)で**12MBまで切り詰めなし**を確認した。**残るのは12MB超の上限・実Provider側の上限**、**MCPサーバー側の受信上限**、**`maxInstructionBytes`との関係**。大きさは[MCPの引数の大きさ](./DSH_MCP_ARG_SIZE_2026-11-10/README.md)で1MB、[MCPの引数4.1MB](./DSH_MCP_ARG_SIZE_4M_2026-11-10/README.md)で4.1MBまで切り詰めなしを確認したが、上限の有無は未確認。引数の内容は[MCPの引数の内容](./DSH_MCP_SECRET_SHAPE_2026-11-10/README.md)で**検査されない**ことを確認済み。
 - **`maxAttempts`を超えて諦めた後**の挙動、**時間をおいた再試行**。落ちたサーバーが次回起動で繋がることは[落ちていたサーバーの復帰](./DSH_MCP_LATE_START_2026-11-10/README.md)、同じ実行内で復帰することは[実行中の再接続](./DSH_MCP_MIDRUN_RECONNECT_2026-11-10/README.md)、一覧が縮まず呼ぶと`fetch failed`になることは[サーバーを落とした場合](./DSH_MCP_KILL_MIDRUN_2026-11-10/README.md)・[落ちた後に呼んだ場合](./DSH_MCP_CALL_AFTER_KILL_2026-11-10/README.md)で確認済み。
 - **再接続時の`headers`再送**は、**HTTP 500では再試行自体が起きない**ため未観測（[500と再試行](./DSH_MCP_RECONNECT_HEADERS_2026-11-17/README.md)）。**接続拒否では再試行が起きて復帰する**ことを[接続拒否と再試行](./DSH_MCP_TRANSPORT_FAULT_2026-11-17/README.md)で確認した。**残るのは、途中で切れた場合・4xx・失敗した再試行そのものへの`headers`搭載の直接観測**。`headers`が毎回・信頼確立前にも送られることは[MCPの`headers`](./DSH_MCP_HEADERS_2026-11-10/README.md)で確認済み。
-- **stdioの子Processが落ちた場合**のうち、**落下の時機が違う場合**（**呼ぶ前**は[stdioの子Processの死](./DSH_MCP_STDIO_CHILD_DEATH_2026-11-17/README.md)で`unknown tool`、**呼び出し中**は[stdioの呼び出し中の死](./DSH_MCP_STDIO_MIDCALL_2026-11-17/README.md)で`MCP connection closed`まで確認済み）。****ハングと`toolCallTimeoutMs`の超過**は[stdioの応答待ち](./DSH_MCP_STDIO_TIMEOUT_2026-11-17/README.md)で`Request timed out` まで確認済み。**遅延応答がモデルの入力に現れない**ことも[遅延応答の破棄](./DSH_MCP_STDIO_LATE_REPLY_2026-11-17/README.md)で1例確認済み（**破棄の機構・他の組み合わせは未確認**）。**残るのは、部分的に応答してから落ちる場合・非stdioの呼び出し中・他のtimeout/sleepの組み合わせ・httpでの遅延応答****。
+- **壊れた応答を書いてから落ちる場合**は[壊れたstdio応答](./DSH_MCP_STDIO_MALFORMED_REPLY_2026-11-18/README.md)で確認済み（**子が終了すれば`MCP connection closed`、生きていれば`Request timed out`**。**同じ欠陥が子の生存状態で別の文言になる**）。**残るのは、タイムアウト後にバイトが解析されるか・形だけ違う応答・改行の後の切り詰め・他のtimeout値**。
 
 ### 4.2 確認済みへ移したもの
 
