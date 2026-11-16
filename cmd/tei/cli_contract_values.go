@@ -59,6 +59,11 @@ func argumentValueSets(name string) (map[string][]string, map[string]string) {
 	case "knowledge-data-design-candidate-review":
 		return map[string][]string{"data-design-candidate-kind": candidateKinds},
 			map[string]string{"data-design-candidate-kind": "string"}
+	case "plugin-plan":
+		// The closed action set the planner accepts; there is deliberately no
+		// apply, because applying is a separate qualified operation (#2550).
+		return map[string][]string{"action": operations.PlanActions()},
+			map[string]string{"action": "string"}
 	}
 	return nil, nil
 }

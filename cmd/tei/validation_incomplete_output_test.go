@@ -9,6 +9,12 @@ import (
 // The JSON form has said `incomplete` since #4178; the text form printed only the
 // first diagnostic, so a run that stopped at the first syntax error read as
 // "there is one problem".
+//
+// The load collects independent syntax findings rather than stopping at the first
+// one, so both files here are reported. What the note may claim is therefore
+// "the findings were collected and coverage is unverified", not "other files were
+// not examined" -- measured: with two broken files the text form names both and
+// the JSON carries both.
 func TestTextOutputSaysTheRunIsIncomplete(t *testing.T) {
 	root := t.TempDir()
 	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: incomplete_text\nformatVersion: 1\nsources:\n  - applications\n")
@@ -16,7 +22,8 @@ func TestTextOutputSaysTheRunIsIncomplete(t *testing.T) {
     frobnicate
 }
 `)
-	// A second broken file that the run never reaches.
+	// A second broken file. It is collected in the same load, so the text form
+	// must name it too.
 	writeWorkspaceFile(t, root, "applications/b/application.tei", `application b {
     frobnicate
 }
@@ -33,11 +40,18 @@ func TestTextOutputSaysTheRunIsIncomplete(t *testing.T) {
 	if !strings.Contains(out.String(), "VALIDATION_INCOMPLETE") {
 		t.Fatalf("text output does not say the run is incomplete: %q", out.String())
 	}
-	if !strings.Contains(out.String(), "were not examined") {
-		t.Errorf("text output does not say other files were unexamined: %q", out.String())
+	// The collected note must not claim the other files went unexamined: they did
+	// not, and the second path below proves it.
+	if strings.Contains(out.String(), "were not examined") {
+		t.Errorf("collected run must not claim other files were unexamined: %q", out.String())
 	}
-	if !strings.Contains(out.String(), "applications/a/application.tei") {
-		t.Errorf("text output does not name the file it stopped at: %q", out.String())
+	if !strings.Contains(out.String(), "意味検証は実行していません") {
+		t.Errorf("text output does not say semantic validation did not run: %q", out.String())
+	}
+	for _, path := range []string{"applications/a/application.tei", "applications/b/application.tei"} {
+		if !strings.Contains(out.String(), path) {
+			t.Errorf("text output does not name %s: %q", path, out.String())
+		}
 	}
 }
 
