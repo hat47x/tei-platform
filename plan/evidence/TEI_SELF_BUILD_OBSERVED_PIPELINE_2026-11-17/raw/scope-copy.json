@@ -1,0 +1,112 @@
+{
+  "schema": "tei.reference.build-observation-scope/v0",
+  "images": [
+    {
+      "role": "entry",
+      "digest": "sha256:f502475c14b3e8218077256fbf8e65aa0eb3a856e3d752f3d5ea03b0425e039b",
+      "source": "entry-report"
+    },
+    {
+      "role": "builder",
+      "digest": "sha256:c9f291293c3d50db972d6e07579d87431349d1cb39e600460842a856961a1f26",
+      "source": "plan"
+    }
+  ],
+  "imageRoots": [
+    {
+      "role": "toolchain",
+      "root": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64",
+      "source": "plan"
+    }
+  ],
+  "paths": [
+    {
+      "role": "entry-file",
+      "root": "/home/user/fable3/l3/stage1/tei/artifact",
+      "source": "entry-report"
+    },
+    {
+      "role": "builder-file",
+      "root": "/home/user/fable3/judge-copy/catalog/builder",
+      "source": "entry-report"
+    },
+    {
+      "role": "workspace",
+      "root": "/home/user/fable3/judge-copy/workspace",
+      "source": "entry-report"
+    },
+    {
+      "role": "supply",
+      "root": "/home/user/go/pkg/mod/cache/download",
+      "source": "entry-report"
+    },
+    {
+      "role": "state",
+      "root": "/home/user/fable3/judge-copy/state",
+      "write": true,
+      "ownerStep": 1,
+      "source": "entry-report"
+    },
+    {
+      "role": "output",
+      "root": "/home/user/fable3/judge-copy/artifact",
+      "write": true,
+      "ownerStep": 1,
+      "source": "entry-report"
+    },
+    {
+      "role": "isolated-tree",
+      "root": "/tmp/tei-plan-tree-3102616330",
+      "write": true,
+      "ownerStep": 1,
+      "source": "builder-report"
+    },
+    {
+      "role": "plan",
+      "root": "/tmp/tei-self-build-plan-1496862749",
+      "write": true,
+      "source": "derived-from-report"
+    },
+    {
+      "role": "state",
+      "root": "/tmp/tei-self-build-rebuild-2513473952/state",
+      "write": true,
+      "ownerStep": 2,
+      "source": "entry-report"
+    },
+    {
+      "role": "rebuild-scratch",
+      "root": "/tmp/tei-self-build-rebuild-2513473952",
+      "write": true,
+      "ownerStep": 2,
+      "source": "derived-from-report"
+    },
+    {
+      "role": "source-root",
+      "root": "/home/user/fable3/tei",
+      "source": "caller"
+    },
+    {
+      "role": "catalog",
+      "root": "/home/user/fable3/judge-copy/catalog/catalog.json",
+      "source": "caller"
+    },
+    {
+      "role": "intent",
+      "root": "/home/user/fable3/l3/decl/tei.intent.json",
+      "source": "caller"
+    }
+  ],
+  "osInterface": [
+    "/dev/null",
+    "/etc/ld.so.cache",
+    "/lib/x86_64-linux-gnu/",
+    "/usr/lib/x86_64-linux-gnu/",
+    "/proc/self/cgroup",
+    "/proc/self/maps",
+    "/proc/self/mountinfo",
+    "/sys/devices/system/cpu/online",
+    "/sys/fs/cgroup/",
+    "/sys/kernel/mm/transparent_hugepage/"
+  ]
+}

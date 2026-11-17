@@ -1,0 +1,29 @@
+{"label": "base", "declared": "ce8acccc2cf8751e10db9568ee748fa6fbadbe7e26ce8169d0131927ac64d846", "compile": "265bf076021a18c47fb09dd9c24f7bd00ad621395a9f41aed6c33197bf34ea53", "nfiles": 487, "artifact": "sha256:e80694c519d4e8b98d0802b39b7aa5342765915e8fd4116b1ca13fb47faa4347", "buildError": null}
+{"label": "base-again", "declared": "ce8acccc2cf8751e10db9568ee748fa6fbadbe7e26ce8169d0131927ac64d846", "compile": "265bf076021a18c47fb09dd9c24f7bd00ad621395a9f41aed6c33197bf34ea53", "nfiles": 487, "artifact": "sha256:e80694c519d4e8b98d0802b39b7aa5342765915e8fd4116b1ca13fb47faa4347", "buildError": null}
+{"label": "edit-test-file", "declared": "15974ec48940a9af7f4a9df56e67c90757a3f699d0ee3fba851de517a6c161de", "compile": "265bf076021a18c47fb09dd9c24f7bd00ad621395a9f41aed6c33197bf34ea53", "nfiles": 487, "artifact": "sha256:e80694c519d4e8b98d0802b39b7aa5342765915e8fd4116b1ca13fb47faa4347", "buildError": null}
+{"label": "edit-readme-in-package", "declared": "fb1bee6b9d3fc3306ee2d8c33a79fc1a2ec623da6d1d9cdf7fed8f8ef401ba2d", "compile": "265bf076021a18c47fb09dd9c24f7bd00ad621395a9f41aed6c33197bf34ea53", "nfiles": 487, "artifact": "sha256:e80694c519d4e8b98d0802b39b7aa5342765915e8fd4116b1ca13fb47faa4347", "buildError": null}
+{"label": "edit-testdata", "declared": "000c09dc8d12796d4cdb302b78554d52297a2d9c2cd5108141f6ceb7e8d9d130", "compile": "265bf076021a18c47fb09dd9c24f7bd00ad621395a9f41aed6c33197bf34ea53", "nfiles": 487, "artifact": "sha256:e80694c519d4e8b98d0802b39b7aa5342765915e8fd4116b1ca13fb47faa4347", "buildError": null}
+{"label": "edit-excluded-os-file", "declared": "e3a70d0a254a2068eceece82903ed04bc51755dd7624e1762c803356c25a5af3", "compile": "265bf076021a18c47fb09dd9c24f7bd00ad621395a9f41aed6c33197bf34ea53", "nfiles": 487, "artifact": "sha256:e80694c519d4e8b98d0802b39b7aa5342765915e8fd4116b1ca13fb47faa4347", "buildError": null}
+{"label": "trailing-comment-in-compiled", "declared": "4e3658df0b639a1446b27c3ca4a08ee5695af2b641846f89501b1ec53bd75841", "compile": "c9d20569f997b7f4f681d28f14f09a9320c358fed1e32ac1391affa4b1e33373", "nfiles": 487, "artifact": "sha256:e061ab46bacf3914bd04308bb8adc55ad98e1614463910dd2664885f12e74096", "buildError": null}
+{"label": "leading-comment-in-compiled", "declared": "aad0876627531e4c95ec337d595f44a32f68d7b4ba3c3d4202d9fd0b45f819fe", "compile": "74bf855a61b5ac8bccee35aabbc869cf1642eee31985c720374c8085f3df4f2b", "nfiles": 487, "artifact": "sha256:4b000c30943f2276fb40f89c94c73735908056e743327261a909715a66cf20cc", "buildError": null}
+{"label": "change-string-in-compiled", "declared": "f0818c42ffaf7bad63367297360714429293fb75f125c95740c5f431dc781b20", "compile": "6578ba6a3f868b9fac51245b901d04af86a4622d3aa4f28f08423e13d1903fd9", "nfiles": 487, "artifact": "sha256:f6ece58ca23017c5b4c78ac617749c1e0fa23ec12db4b7398f804069bdd4460c", "buildError": null}
+{"label": "add-compiled-file", "declared": "8a4bf0e0d4a1ac20036c0c54aec8500b9988170c7cfe9e50c3fc7bd94ea24c8c", "compile": "4ee84f289cde29e6b655e27e5a78dacefc6eb045a8a704ed26b4f00fc3757d00", "nfiles": 488, "artifact": "sha256:ed225acdcc82bfa8e7829feb40abe059cd0c2618fd4bbff5bc45450d6db18bee", "buildError": null}
+{"label": "add-test-file", "declared": "9f9518f4cab9693f719aeeeca68d687ed89d4caf9c77fa9ca89893527b6b1fd0", "compile": "265bf076021a18c47fb09dd9c24f7bd00ad621395a9f41aed6c33197bf34ea53", "nfiles": 487, "artifact": "sha256:e80694c519d4e8b98d0802b39b7aa5342765915e8fd4116b1ca13fb47faa4347", "buildError": null}
+{"label": "add-file-excluded-by-constraint", "declared": "dec0b07179cee7f6c32e8f84cb9114fdfff58f5910718d71391a8fd8964788f8", "compile": "265bf076021a18c47fb09dd9c24f7bd00ad621395a9f41aed6c33197bf34ea53", "nfiles": 487, "artifact": "sha256:e80694c519d4e8b98d0802b39b7aa5342765915e8fd4116b1ca13fb47faa4347", "buildError": null}
+{"label": "edit-go-mod-comment", "declared": "db3c28671a234592a26993dabee789df52d5386742f8cc6c4475877b2f9d1b28", "compile": "b7c0d43f7dcd00743b052d4f238ad08ca9a9876b01db17c2734fd43be2873da8", "nfiles": 487, "artifact": "sha256:e80694c519d4e8b98d0802b39b7aa5342765915e8fd4116b1ca13fb47faa4347", "buildError": null}
+{"label": "edit-docs-outside-declaration", "declared": "ce8acccc2cf8751e10db9568ee748fa6fbadbe7e26ce8169d0131927ac64d846", "compile": "265bf076021a18c47fb09dd9c24f7bd00ad621395a9f41aed6c33197bf34ea53", "nfiles": 487, "artifact": "sha256:e80694c519d4e8b98d0802b39b7aa5342765915e8fd4116b1ca13fb47faa4347", "buildError": null}
+
+label | declared key | compile key | artifact | verdict
+base-again | same | same | same | declared: right; compile: right
+edit-test-file | CHANGED | same | same | declared: needless rebuild; compile: right
+edit-readme-in-package | CHANGED | same | same | declared: needless rebuild; compile: right
+edit-testdata | CHANGED | same | same | declared: needless rebuild; compile: right
+edit-excluded-os-file | CHANGED | same | same | declared: needless rebuild; compile: right
+trailing-comment-in-compiled | CHANGED | CHANGED | CHANGED | declared: right; compile: right
+leading-comment-in-compiled | CHANGED | CHANGED | CHANGED | declared: right; compile: right
+change-string-in-compiled | CHANGED | CHANGED | CHANGED | declared: right; compile: right
+add-compiled-file | CHANGED | CHANGED | CHANGED | declared: right; compile: right
+add-test-file | CHANGED | same | same | declared: needless rebuild; compile: right
+add-file-excluded-by-constraint | CHANGED | same | same | declared: needless rebuild; compile: right
+edit-go-mod-comment | CHANGED | CHANGED | same | declared: needless rebuild; compile: needless rebuild
+edit-docs-outside-declaration | same | same | same | declared: right; compile: right

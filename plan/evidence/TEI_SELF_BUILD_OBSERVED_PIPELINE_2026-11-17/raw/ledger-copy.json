@@ -1,0 +1,777 @@
+{
+  "schema": "tei.reference.build-observation-ledger/v0",
+  "filesTraced": true,
+  "exitCode": 0,
+  "steps": [
+    {
+      "ordinal": 1,
+      "seq": 1,
+      "image": "/home/user/fable3/judge-copy/catalog/builder",
+      "imageDigest": "sha256:c9f291293c3d50db972d6e07579d87431349d1cb39e600460842a856961a1f26",
+      "role": "builder",
+      "execs": 397
+    },
+    {
+      "ordinal": 2,
+      "seq": 398,
+      "image": "/home/user/fable3/judge-copy/catalog/builder",
+      "imageDigest": "sha256:c9f291293c3d50db972d6e07579d87431349d1cb39e600460842a856961a1f26",
+      "role": "builder",
+      "execs": 8
+    }
+  ],
+  "execs": {
+    "total": 406,
+    "byRole": {
+      "builder": 2,
+      "entry": 1,
+      "toolchain": 401,
+      "undeclared": 2
+    },
+    "undeclared": [
+      {
+        "seq": 2,
+        "step": 1,
+        "image": "/home/user/fable3/l3/stage1/builder/artifact",
+        "imageDigest": "sha256:e3934aabbc0014dde1df0dbd1a66ce53e1b9b353934e2ac4bc074a125b85ea76",
+        "reason": "no declared image has this digest and the file is under no declared closure"
+      },
+      {
+        "seq": 399,
+        "step": 2,
+        "image": "/home/user/fable3/l3/stage1/builder/artifact",
+        "imageDigest": "sha256:e3934aabbc0014dde1df0dbd1a66ce53e1b9b353934e2ac4bc074a125b85ea76",
+        "reason": "no declared image has this digest and the file is under no declared closure"
+      }
+    ],
+    "undeclaredTotal": 2,
+    "reportedOnlyTotal": 0
+  },
+  "files": {
+    "byRole": {
+      "builder-file": {
+        "paths": 1,
+        "read": 2,
+        "write": 0
+      },
+      "catalog": {
+        "paths": 1,
+        "read": 1,
+        "write": 0
+      },
+      "entry-file": {
+        "paths": 1,
+        "read": 2,
+        "write": 0
+      },
+      "intent": {
+        "paths": 1,
+        "read": 5,
+        "write": 0
+      },
+      "isolated-tree": {
+        "paths": 1793,
+        "read": 13303,
+        "write": 1978,
+        "remove": 1793
+      },
+      "os-interface": {
+        "paths": 5,
+        "read": 2027,
+        "write": 2
+      },
+      "output": {
+        "paths": 1,
+        "read": 3,
+        "write": 1
+      },
+      "plan": {
+        "paths": 2,
+        "read": 4,
+        "write": 1,
+        "remove": 2
+      },
+      "rebuild-scratch": {
+        "paths": 3,
+        "read": 4,
+        "write": 2,
+        "remove": 3
+      },
+      "source-root": {
+        "paths": 1793,
+        "read": 38330,
+        "write": 0
+      },
+      "state": {
+        "paths": 18603,
+        "read": 32373,
+        "write": 17916,
+        "remove": 9896
+      },
+      "supply": {
+        "paths": 36,
+        "read": 36,
+        "write": 0
+      },
+      "toolchain": {
+        "paths": 12843,
+        "read": 34275,
+        "write": 0
+      },
+      "undeclared": {
+        "paths": 1797,
+        "read": 12826,
+        "write": 1981,
+        "remove": 1794
+      },
+      "workspace": {
+        "paths": 2,
+        "read": 2,
+        "write": 0
+      }
+    },
+    "undeclared": [
+      {
+        "path": "/home/user/fable3/judge-copy/artifact-go-tmp-umask",
+        "step": 1,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/bin/go",
+        "read": 0,
+        "write": 1,
+        "remove": 1
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/side",
+        "step": 1,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 0,
+        "write": 1
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/side",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 1
+      },
+      {
+        "path": "/tmp",
+        "step": 0,
+        "image": "/home/user/fable3/l3/stage1/tei/artifact",
+        "read": 2,
+        "write": 0
+      },
+      {
+        "path": "/tmp",
+        "step": 1,
+        "image": "/home/user/fable3/l3/stage1/builder/artifact",
+        "read": 1,
+        "write": 0
+      },
+      {
+        "path": "/tmp",
+        "step": 2,
+        "image": "/home/user/fable3/l3/stage1/builder/artifact",
+        "read": 1,
+        "write": 0
+      },
+      {
+        "path": "/tmp/tei-plan-tree-2958951885",
+        "step": 2,
+        "image": "/home/user/fable3/l3/stage1/builder/artifact",
+        "read": 170,
+        "write": 0,
+        "remove": 1
+      },
+      {
+        "path": "/tmp/tei-plan-tree-2958951885/cmd",
+        "step": 2,
+        "image": "/home/user/fable3/l3/stage1/builder/artifact",
+        "read": 240,
+        "write": 0,
+        "remove": 1
+      },
+      {
+        "path": "/tmp/tei-plan-tree-2958951885/cmd/tei",
+        "step": 2,
+        "image": "/home/user/fable3/l3/stage1/builder/artifact",
+        "read": 238,
+        "write": 0,
+        "remove": 1
+      },
+      {
+        "path": "/tmp/tei-plan-tree-2958951885/cmd/tei",
+        "step": 2,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/bin/go",
+        "read": 7,
+        "write": 0
+      },
+      {
+        "path": "/tmp/tei-plan-tree-2958951885/cmd/tei/ai_line_number_independent_oracle_test.go",
+        "step": 2,
+        "image": "/home/user/fable3/l3/stage1/builder/artifact",
+        "read": 2,
+        "write": 1,
+        "remove": 1
+      },
+      {
+        "path": "/tmp/tei-plan-tree-2958951885/cmd/tei/ai_line_number_independent_oracle_test.go",
+        "step": 2,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/bin/go",
+        "read": 5,
+        "write": 0
+      },
+      {
+        "path": "/tmp/tei-plan-tree-2958951885/cmd/tei/ai_scenario_candidate_test.go",
+        "step": 2,
+        "image": "/home/user/fable3/l3/stage1/builder/artifact",
+        "read": 2,
+        "write": 1,
+        "remove": 1
+      },
+      {
+        "path": "/tmp/tei-plan-tree-2958951885/cmd/tei/ai_scenario_candidate_test.go",
+        "step": 2,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/bin/go",
+        "read": 5,
+        "write": 0
+      },
+      {
+        "path": "/tmp/tei-plan-tree-2958951885/cmd/tei/catalogue_accepts_test.go",
+        "step": 2,
+        "image": "/home/user/fable3/l3/stage1/builder/artifact",
+        "read": 2,
+        "write": 1,
+        "remove": 1
+      },
+      {
+        "path": "/tmp/tei-plan-tree-2958951885/cmd/tei/catalogue_accepts_test.go",
+        "step": 2,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/bin/go",
+        "read": 5,
+        "write": 0
+      },
+      {
+        "path": "/tmp/tei-plan-tree-2958951885/cmd/tei/cli_advertised_output_test.go",
+        "step": 2,
+        "image": "/home/user/fable3/l3/stage1/builder/artifact",
+        "read": 2,
+        "write": 1,
+        "remove": 1
+      },
+      {
+        "path": "/tmp/tei-plan-tree-2958951885/cmd/tei/cli_advertised_output_test.go",
+        "step": 2,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/bin/go",
+        "read": 5,
+        "write": 0
+      },
+      {
+        "path": "/tmp/tei-plan-tree-2958951885/cmd/tei/cli_argument_error.go",
+        "step": 2,
+        "image": "/home/user/fable3/l3/stage1/builder/artifact",
+        "read": 2,
+        "write": 1,
+        "remove": 1
+      },
+      {
+        "path": "/tmp/tei-plan-tree-2958951885/cmd/tei/cli_argument_error.go",
+        "step": 2,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/bin/go",
+        "read": 6,
+        "write": 0
+      },
+      {
+        "path": "/tmp/tei-plan-tree-2958951885/cmd/tei/cli_argument_failure_streams_test.go",
+        "step": 2,
+        "image": "/home/user/fable3/l3/stage1/builder/artifact",
+        "read": 2,
+        "write": 1,
+        "remove": 1
+      },
+      {
+        "path": "/tmp/tei-plan-tree-2958951885/cmd/tei/cli_argument_failure_streams_test.go",
+        "step": 2,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/bin/go",
+        "read": 5,
+        "write": 0
+      },
+      {
+        "path": "/tmp/tei-plan-tree-2958951885/cmd/tei/cli_attribute_inspect_test.go",
+        "step": 2,
+        "image": "/home/user/fable3/l3/stage1/builder/artifact",
+        "read": 2,
+        "write": 1,
+        "remove": 1
+      },
+      {
+        "path": "/tmp/tei-plan-tree-2958951885/cmd/tei/cli_attribute_inspect_test.go",
+        "step": 2,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/bin/go",
+        "read": 5,
+        "write": 0
+      },
+      {
+        "path": "/tmp/tei-plan-tree-2958951885/cmd/tei/cli_binary_once_test.go",
+        "step": 2,
+        "image": "/home/user/fable3/l3/stage1/builder/artifact",
+        "read": 2,
+        "write": 1,
+        "remove": 1
+      },
+      {
+        "path": "/tmp/tei-plan-tree-2958951885/cmd/tei/cli_binary_once_test.go",
+        "step": 2,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/bin/go",
+        "read": 5,
+        "write": 0
+      },
+      {
+        "path": "/tmp/tei-plan-tree-2958951885/cmd/tei/cli_catalog_flags_test.go",
+        "step": 2,
+        "image": "/home/user/fable3/l3/stage1/builder/artifact",
+        "read": 2,
+        "write": 1,
+        "remove": 1
+      },
+      {
+        "path": "/tmp/tei-plan-tree-2958951885/cmd/tei/cli_catalog_flags_test.go",
+        "step": 2,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/bin/go",
+        "read": 5,
+        "write": 0
+      },
+      {
+        "path": "/tmp/tei-plan-tree-2958951885/cmd/tei/cli_commands.go",
+        "step": 2,
+        "image": "/home/user/fable3/l3/stage1/builder/artifact",
+        "read": 2,
+        "write": 1,
+        "remove": 1
+      },
+      {
+        "path": "/tmp/tei-plan-tree-2958951885/cmd/tei/cli_commands.go",
+        "step": 2,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/bin/go",
+        "read": 6,
+        "write": 0
+      },
+      {
+        "path": "/tmp/tei-plan-tree-2958951885/cmd/tei/cli_commands_test.go",
+        "step": 2,
+        "image": "/home/user/fable3/l3/stage1/builder/artifact",
+        "read": 2,
+        "write": 1,
+        "remove": 1
+      },
+      {
+        "path": "/tmp/tei-plan-tree-2958951885/cmd/tei/cli_commands_test.go",
+        "step": 2,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/bin/go",
+        "read": 5,
+        "write": 0
+      },
+      {
+        "path": "/tmp/tei-plan-tree-2958951885/cmd/tei/cli_contract.go",
+        "step": 2,
+        "image": "/home/user/fable3/l3/stage1/builder/artifact",
+        "read": 2,
+        "write": 1,
+        "remove": 1
+      },
+      {
+        "path": "/tmp/tei-plan-tree-2958951885/cmd/tei/cli_contract.go",
+        "step": 2,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/bin/go",
+        "read": 6,
+        "write": 0
+      },
+      {
+        "path": "/tmp/tei-plan-tree-2958951885/cmd/tei/cli_contract_codes_test.go",
+        "step": 2,
+        "image": "/home/user/fable3/l3/stage1/builder/artifact",
+        "read": 2,
+        "write": 1,
+        "remove": 1
+      },
+      {
+        "path": "/tmp/tei-plan-tree-2958951885/cmd/tei/cli_contract_codes_test.go",
+        "step": 2,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/bin/go",
+        "read": 5,
+        "write": 0
+      },
+      {
+        "path": "/tmp/tei-plan-tree-2958951885/cmd/tei/cli_contract_doc_test.go",
+        "step": 2,
+        "image": "/home/user/fable3/l3/stage1/builder/artifact",
+        "read": 2,
+        "write": 1,
+        "remove": 1
+      },
+      {
+        "path": "/tmp/tei-plan-tree-2958951885/cmd/tei/cli_contract_doc_test.go",
+        "step": 2,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/bin/go",
+        "read": 5,
+        "write": 0
+      },
+      {
+        "path": "/tmp/tei-plan-tree-2958951885/cmd/tei/cli_contract_test.go",
+        "step": 2,
+        "image": "/home/user/fable3/l3/stage1/builder/artifact",
+        "read": 2,
+        "write": 1,
+        "remove": 1
+      },
+      {
+        "path": "/tmp/tei-plan-tree-2958951885/cmd/tei/cli_contract_test.go",
+        "step": 2,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/bin/go",
+        "read": 5,
+        "write": 0
+      }
+    ],
+    "undeclaredTotal": 3455,
+    "crossStep": [
+      {
+        "path": "/home/user/fable3/judge-copy/state",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/00",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/00/0038c12a83e760c026aac45753bb94da9d09d1cd1f8a1f920af78632c725e345-a",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/00/007c04ac93d0f4308323f468dfb748bd741443c3c0fd65ecb2f9e9c79f8a6d83-a",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/00/00b26ce1b08823c5c50231027a1f643035fda926a4b57d45c78dad41811b0cf5-a",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/00/00dedcbaf5dd36c49447863279d4bf0649eb1838d56074e8076fc688dff92fca-d",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/00/00ea8317a2559abb7bc0e070b0848dd97b196befeb520b469116ec39216e6b68-a",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/01",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/01/010d44df901b353a179ff731a77d8bd213f122c1ebcedcb1971354d58c599252-d",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/01/011d62370ab766657ac5b362ea5be49b5047d13521ba16184f4ee7e19ae3db6e-a",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/01/014cd261a564deced8464304fb030bba35e75ae5595fc821109d4828b5d7340f-a",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/01/0155155d1d38e70d158556ab2028376bb64d59c370a8623165ed3783c1e24d16-a",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/01/0164a68ffdb6fe3bba215da66d680611e68e38a5f05e5340c5bd48ceb415308c-a",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/01/01764112a1820104eaa0ce518b9ae347e2432084829451b5d324bcdf47e3ac64-a",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/01/019f264d6f55f55ed47733c40c4ef04bf75bf3315bd4b89f307248f1075cfc74-a",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/01/01a783d043f5d72331c51cc5acfeca0d1b2cff3932b7293138b4139322990d85-a",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/01/01c008db669a84623f2471ab4691d9354ee9c1b9ad012b66886be97aedb4299e-d",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/01/01c26a5628cea6315e0bf4c42a0e9fff6110ba29b8b748735115f4d8b1def48e-a",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/01/01c2a791f05ab2943fd0336b247735155be21ff48940068a786cbbf966265b5a-a",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/02",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/02/0203e1f6c9ac3b7276e8e3783262df646523ba13532e5b2c0a6121ce07a06753-d",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/02/02198c914df8f7bf2c942342d7d0618e2d49e4529954cbcfe16a3da158009511-d",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/02/0228e8c8f89db1a322d617e46969cef886b9a0ebea8b462907df092f9339a73c-d",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/02/024e9d7eab454b9b77dfcdfc6b1cc911e958cf1d497bfb5115fcb59aac4cb768-a",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/02/026ea4421214fcc424b21d42ac4a27aa52dcc9a54b0a628bf2df751e6f46bc81-d",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/02/02af0fa356bd279ca4e6d7ff0a6cc4a8c87604287cad533f4d95b6a446416d54-a",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/02/02bdab571f4df0a45cde18fa05e82be0a91cdce3b30ffa9021b7d0f1c90cb7b2-a",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/02/02c6f6e2111c1bb5ea8d0d2db9e918d822dfb0b7de6cbfcf9756eb914925591c-a",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/02/02e4abe8fbbbae42fc271d656870eaf4a14ec83aaf21f6140a9d41d3783fbbb8-a",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/03",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/03/0307c0a15b119c5ba6ab7e9a1557110c8616ac6b8f50d714aceabd459f88dd67-a",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/03/0322844ab503142c982d8b7ec2c3dc0fe2012d3db45f9c6997e5d433c9a22771-d",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/03/0340cca596e5c878e7f0984659ead0509dd595b9104bedcc176c068f122d184a-a",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/03/0351cca9a2d96ec5f7b30d0171c08ba7e00d02005a89c776d1dcc9082d58752a-a",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/03/035f8e4a493c984ea94bab8cd7f066f7f3c0333e843ec6fc3140558f78942001-d",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/03/036fea5cec9a27a5a38a18e52d9e43389a640e8095fdaa8142fa99244592dfb2-a",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/03/03b5dc4926941e466d829cc8184b3bd7c9ba98cbd09220555330f1b0ce627eb2-d",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/03/03e061d08beccab7e631c26ed3abddf22409d66a61370a84fd1950e6feec5184-d",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      },
+      {
+        "path": "/home/user/fable3/judge-copy/state/cache/03/03f184549937c190ce42d71363c66231f10cb32ae06dce57954908b28a86ae0b-d",
+        "step": 2,
+        "image": "/home/user/fable3/judge-copy/catalog/builder",
+        "read": 1,
+        "write": 0,
+        "role": "state"
+      }
+    ],
+    "crossStepTotal": 8669,
+    "writeToReadOnlyTotal": 0,
+    "probesOutsideScope": 0
+  },
+  "boundedAbsence": {
+    "state": "not-proven",
+    "reasons": [
+      "2 executed program(s) are not covered by the declaration",
+      "3455 opened path(s) are not covered by the declaration",
+      "8669 open(s) touched a root owned by another step"
+    ],
+    "scope": "the process tree the observed command started, on this host, for this one run; programs under a declared closure are covered as members of it and what they do inside is not described"
+  },
+  "notObserved": [
+    "what a process did with an opened descriptor (bytes read, bytes written)",
+    "reads through descriptors inherited from outside the traced tree",
+    "network traffic, and anything a process learned from the clock or from random numbers",
+    "values of environment variables (only their names are recorded)",
+    "processes outside the traced tree that the build talked to (daemons, servers)"
+  ]
+}

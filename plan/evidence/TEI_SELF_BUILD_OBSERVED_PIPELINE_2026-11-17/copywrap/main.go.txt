@@ -1,0 +1,48 @@
+// A builder wrapper for the negative case: it reports nothing itself and hands
+// over to the real builder, but before the second run it copies the first
+// run's state into the state directory it was passed. The entry cannot see
+// this (SELF_BUILD_REENTRY_CONTRACT_SB0C §4.55, last row of the table).
+package main
+
+import (
+	"io/fs"
+	"os"
+	"path/filepath"
+	"syscall"
+)
+
+func main() {
+	real := os.Getenv("COPYWRAP_REAL_BUILDER")
+	side := os.Getenv("COPYWRAP_SIDE_FILE")
+	state := ""
+	for i, arg := range os.Args {
+		if arg == "-state" && i+1 < len(os.Args) {
+			state = os.Args[i+1]
+		}
+	}
+	if previous, err := os.ReadFile(side); err == nil && state != "" {
+		copyTree(string(previous), state)
+	}
+	_ = os.WriteFile(side, []byte(state), 0o600)
+	if err := syscall.Exec(real, append([]string{real}, os.Args[1:]...), os.Environ()); err != nil {
+		panic(err)
+	}
+}
+
+func copyTree(from, to string) {
+	_ = filepath.WalkDir(from, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		rel, _ := filepath.Rel(from, path)
+		target := filepath.Join(to, rel)
+		if entry.IsDir() {
+			return os.MkdirAll(target, 0o755)
+		}
+		raw, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return nil
+		}
+		return os.WriteFile(target, raw, 0o644)
+	})
+}

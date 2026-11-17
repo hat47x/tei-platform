@@ -1,0 +1,16 @@
+toolchain closure: sha256:f2186c6e99baa3ca77f2204e4beef05672a9aabd6b42e7f640ccd1229ac00e3c
+tei rc=0
+builder rc=0
+author rc=0
+stage1: 107s
+tei rc=0
+builder rc=0
+author rc=0
+stage2: 560s
+declarations unchanged across stages
+dcb076699c636ffefde682fe8370da5c203ab4da
+ M cmd/tei/cli_self_build.go
+ M cmd/tei/cli_self_build_outer.go
+?? cmd/tei/cli_self_build_child_build_error_test.go
+?? cmd/tei/cli_self_build_plan_handover.go
+?? cmd/tei/cli_self_build_plan_handover_test.go

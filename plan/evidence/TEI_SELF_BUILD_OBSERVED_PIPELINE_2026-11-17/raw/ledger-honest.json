@@ -1,0 +1,436 @@
+{
+  "schema": "tei.reference.build-observation-ledger/v0",
+  "filesTraced": true,
+  "exitCode": 0,
+  "steps": [
+    {
+      "ordinal": 1,
+      "seq": 1,
+      "image": "/home/user/fable3/judge-honest/catalog/builder",
+      "imageDigest": "sha256:e3934aabbc0014dde1df0dbd1a66ce53e1b9b353934e2ac4bc074a125b85ea76",
+      "role": "builder",
+      "execs": 396
+    },
+    {
+      "ordinal": 2,
+      "seq": 397,
+      "image": "/home/user/fable3/judge-honest/catalog/builder",
+      "imageDigest": "sha256:e3934aabbc0014dde1df0dbd1a66ce53e1b9b353934e2ac4bc074a125b85ea76",
+      "role": "builder",
+      "execs": 396
+    }
+  ],
+  "execs": {
+    "total": 793,
+    "byRole": {
+      "builder": 2,
+      "entry": 1,
+      "toolchain": 790
+    },
+    "undeclaredTotal": 0,
+    "reportedOnlyTotal": 0
+  },
+  "files": {
+    "byRole": {
+      "builder-file": {
+        "paths": 1,
+        "read": 2,
+        "write": 0
+      },
+      "catalog": {
+        "paths": 1,
+        "read": 1,
+        "write": 0
+      },
+      "entry-file": {
+        "paths": 1,
+        "read": 2,
+        "write": 0
+      },
+      "intent": {
+        "paths": 1,
+        "read": 5,
+        "write": 0
+      },
+      "isolated-tree": {
+        "paths": 1793,
+        "read": 13303,
+        "write": 1978,
+        "remove": 1793
+      },
+      "os-interface": {
+        "paths": 5,
+        "read": 3964,
+        "write": 4
+      },
+      "output": {
+        "paths": 1,
+        "read": 3,
+        "write": 1
+      },
+      "plan": {
+        "paths": 2,
+        "read": 4,
+        "write": 1,
+        "remove": 2
+      },
+      "rebuild-scratch": {
+        "paths": 3,
+        "read": 4,
+        "write": 2,
+        "remove": 2
+      },
+      "source-root": {
+        "paths": 1793,
+        "read": 38330,
+        "write": 0
+      },
+      "state": {
+        "paths": 19482,
+        "read": 29547,
+        "write": 19294,
+        "remove": 4579
+      },
+      "supply": {
+        "paths": 36,
+        "read": 72,
+        "write": 0
+      },
+      "toolchain": {
+        "paths": 12843,
+        "read": 39803,
+        "write": 0
+      },
+      "undeclared": {
+        "paths": 1796,
+        "read": 13313,
+        "write": 1979,
+        "remove": 1794
+      },
+      "workspace": {
+        "paths": 2,
+        "read": 2,
+        "write": 0
+      }
+    },
+    "undeclared": [
+      {
+        "path": "/home/user/fable3/judge-honest/artifact-go-tmp-umask",
+        "step": 1,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/bin/go",
+        "read": 0,
+        "write": 1,
+        "remove": 1
+      },
+      {
+        "path": "/tmp",
+        "step": 0,
+        "image": "/home/user/fable3/l3/stage1/tei/artifact",
+        "read": 2,
+        "write": 0
+      },
+      {
+        "path": "/tmp",
+        "step": 1,
+        "image": "/home/user/fable3/judge-honest/catalog/builder",
+        "read": 1,
+        "write": 0
+      },
+      {
+        "path": "/tmp",
+        "step": 2,
+        "image": "/home/user/fable3/judge-honest/catalog/builder",
+        "read": 1,
+        "write": 0
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547",
+        "step": 2,
+        "image": "/home/user/fable3/judge-honest/catalog/builder",
+        "read": 170,
+        "write": 0,
+        "remove": 1
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547/cmd",
+        "step": 2,
+        "image": "/home/user/fable3/judge-honest/catalog/builder",
+        "read": 240,
+        "write": 0,
+        "remove": 1
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547/cmd/tei",
+        "step": 2,
+        "image": "/home/user/fable3/judge-honest/catalog/builder",
+        "read": 238,
+        "write": 0,
+        "remove": 1
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547/cmd/tei",
+        "step": 2,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/bin/go",
+        "read": 7,
+        "write": 0
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547/cmd/tei/ai_line_number_independent_oracle_test.go",
+        "step": 2,
+        "image": "/home/user/fable3/judge-honest/catalog/builder",
+        "read": 2,
+        "write": 1,
+        "remove": 1
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547/cmd/tei/ai_line_number_independent_oracle_test.go",
+        "step": 2,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/bin/go",
+        "read": 5,
+        "write": 0
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547/cmd/tei/ai_scenario_candidate_test.go",
+        "step": 2,
+        "image": "/home/user/fable3/judge-honest/catalog/builder",
+        "read": 2,
+        "write": 1,
+        "remove": 1
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547/cmd/tei/ai_scenario_candidate_test.go",
+        "step": 2,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/bin/go",
+        "read": 5,
+        "write": 0
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547/cmd/tei/catalogue_accepts_test.go",
+        "step": 2,
+        "image": "/home/user/fable3/judge-honest/catalog/builder",
+        "read": 2,
+        "write": 1,
+        "remove": 1
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547/cmd/tei/catalogue_accepts_test.go",
+        "step": 2,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/bin/go",
+        "read": 5,
+        "write": 0
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547/cmd/tei/cli_advertised_output_test.go",
+        "step": 2,
+        "image": "/home/user/fable3/judge-honest/catalog/builder",
+        "read": 2,
+        "write": 1,
+        "remove": 1
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547/cmd/tei/cli_advertised_output_test.go",
+        "step": 2,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/bin/go",
+        "read": 5,
+        "write": 0
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547/cmd/tei/cli_argument_error.go",
+        "step": 2,
+        "image": "/home/user/fable3/judge-honest/catalog/builder",
+        "read": 2,
+        "write": 1,
+        "remove": 1
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547/cmd/tei/cli_argument_error.go",
+        "step": 2,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/bin/go",
+        "read": 6,
+        "write": 0
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547/cmd/tei/cli_argument_error.go",
+        "step": 2,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/pkg/tool/linux_amd64/compile",
+        "read": 1,
+        "write": 0
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547/cmd/tei/cli_argument_failure_streams_test.go",
+        "step": 2,
+        "image": "/home/user/fable3/judge-honest/catalog/builder",
+        "read": 2,
+        "write": 1,
+        "remove": 1
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547/cmd/tei/cli_argument_failure_streams_test.go",
+        "step": 2,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/bin/go",
+        "read": 5,
+        "write": 0
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547/cmd/tei/cli_attribute_inspect_test.go",
+        "step": 2,
+        "image": "/home/user/fable3/judge-honest/catalog/builder",
+        "read": 2,
+        "write": 1,
+        "remove": 1
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547/cmd/tei/cli_attribute_inspect_test.go",
+        "step": 2,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/bin/go",
+        "read": 5,
+        "write": 0
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547/cmd/tei/cli_binary_once_test.go",
+        "step": 2,
+        "image": "/home/user/fable3/judge-honest/catalog/builder",
+        "read": 2,
+        "write": 1,
+        "remove": 1
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547/cmd/tei/cli_binary_once_test.go",
+        "step": 2,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/bin/go",
+        "read": 5,
+        "write": 0
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547/cmd/tei/cli_catalog_flags_test.go",
+        "step": 2,
+        "image": "/home/user/fable3/judge-honest/catalog/builder",
+        "read": 2,
+        "write": 1,
+        "remove": 1
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547/cmd/tei/cli_catalog_flags_test.go",
+        "step": 2,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/bin/go",
+        "read": 5,
+        "write": 0
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547/cmd/tei/cli_commands.go",
+        "step": 2,
+        "image": "/home/user/fable3/judge-honest/catalog/builder",
+        "read": 2,
+        "write": 1,
+        "remove": 1
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547/cmd/tei/cli_commands.go",
+        "step": 2,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/bin/go",
+        "read": 6,
+        "write": 0
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547/cmd/tei/cli_commands.go",
+        "step": 2,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/pkg/tool/linux_amd64/compile",
+        "read": 1,
+        "write": 0
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547/cmd/tei/cli_commands_test.go",
+        "step": 2,
+        "image": "/home/user/fable3/judge-honest/catalog/builder",
+        "read": 2,
+        "write": 1,
+        "remove": 1
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547/cmd/tei/cli_commands_test.go",
+        "step": 2,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/bin/go",
+        "read": 5,
+        "write": 0
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547/cmd/tei/cli_contract.go",
+        "step": 2,
+        "image": "/home/user/fable3/judge-honest/catalog/builder",
+        "read": 2,
+        "write": 1,
+        "remove": 1
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547/cmd/tei/cli_contract.go",
+        "step": 2,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/bin/go",
+        "read": 6,
+        "write": 0
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547/cmd/tei/cli_contract.go",
+        "step": 2,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/pkg/tool/linux_amd64/compile",
+        "read": 1,
+        "write": 0
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547/cmd/tei/cli_contract_codes_test.go",
+        "step": 2,
+        "image": "/home/user/fable3/judge-honest/catalog/builder",
+        "read": 2,
+        "write": 1,
+        "remove": 1
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547/cmd/tei/cli_contract_codes_test.go",
+        "step": 2,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/bin/go",
+        "read": 5,
+        "write": 0
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547/cmd/tei/cli_contract_doc_test.go",
+        "step": 2,
+        "image": "/home/user/fable3/judge-honest/catalog/builder",
+        "read": 2,
+        "write": 1,
+        "remove": 1
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547/cmd/tei/cli_contract_doc_test.go",
+        "step": 2,
+        "image": "/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/bin/go",
+        "read": 5,
+        "write": 0
+      },
+      {
+        "path": "/tmp/tei-plan-tree-690047547/cmd/tei/cli_contract_test.go",
+        "step": 2,
+        "image": "/home/user/fable3/judge-honest/catalog/builder",
+        "read": 2,
+        "write": 1,
+        "remove": 1
+      }
+    ],
+    "undeclaredTotal": 3940,
+    "crossStepTotal": 0,
+    "writeToReadOnlyTotal": 0,
+    "probesOutsideScope": 0
+  },
+  "boundedAbsence": {
+    "state": "not-proven",
+    "reasons": [
+      "3940 opened path(s) are not covered by the declaration"
+    ],
+    "scope": "the process tree the observed command started, on this host, for this one run; programs under a declared closure are covered as members of it and what they do inside is not described"
+  },
+  "notObserved": [
+    "what a process did with an opened descriptor (bytes read, bytes written)",
+    "reads through descriptors inherited from outside the traced tree",
+    "network traffic, and anything a process learned from the clock or from random numbers",
+    "values of environment variables (only their names are recorded)",
+    "processes outside the traced tree that the build talked to (daemons, servers)"
+  ]
+}

@@ -473,6 +473,7 @@
 - [セルフビルド実現の計画～設計の完了記録](TEI_GO_SELF_BUILD_REALIZATION_COMPLETE_2026-11-11.md)
 - [「state分離」は、childの申告と文字列が一致するかである](TEI_GO_SELF_BUILD_STATE_SEPARATION_SCOPE_2026-11-11.md)
 - [entryが渡したstateを自分で見ると、何が区別できるか](TEI_GO_SELF_BUILD_STATE_OBSERVATION_2026-11-12.md)（§4.55。#4486 S1の事後検査を通る「渡したパスに空ディレクトリだけ作って共有する」構成は、バイトが一致しても`declared-only`になる。stateをコピーする構成は区別できず、その限界を試験で固定した。判定と`l2b.claimed`の式は変えていない）
+- [セルフビルドを外側から観測した実測（三段、正例と負例、変更実験）](TEI_SELF_BUILD_OBSERVED_PIPELINE_2026-11-17.md)（三つの対象でStage2の全1,663プロセスにStage0由来の実行物が無く、Stage1とStage2のbyteが一致。stateをコピーするラッパーはentryの報告をすべて通り、観測だけが検出した。宣言した入力のうちコンパイラが開いたのは29%。linux/amd64・1台・各1回。G4の判定ではない）
 - [規則Pluginの契約と束縛の現状（2026-11-11、対象版の記録）](XTEA_LOWCODE_RULE_PLUGIN_CONTRACT_2026-11.md)
 - [Studio の UI から `after-*` 経路へ到達する配線の確認（2026-11-11）](XTEA_LOWCODE_HOOK_AFTER_CHANGE_STUDIO_UI_2026-11.md)
 - [閉塞拒否と訂正能力の矛盾の宣言段階での報告の確認（2026-11）](XTEA_LOWCODE_PERIOD_CLOSURE_CONFLICT_2026-11.md)

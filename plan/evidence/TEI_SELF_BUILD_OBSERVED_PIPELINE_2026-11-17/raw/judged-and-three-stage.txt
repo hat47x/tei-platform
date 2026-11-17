@@ -1,0 +1,113 @@
+== tree differences between the Windows worktree and this clone (code only)
+ok  	tei/tools/reference-build-process-observation	0.152s
+== judge-honest reconcile rc=1
+ENTRY: ok=True l2b.claimed=True reproducibility=reproduced stateSeparation.basis=entry-post-hoc stateObservation.kind=effect-observed builderBinding=bound planHandover=handed-over toolchain.namedByPlan=True matchesPlan=True
+OBSERVER: boundedAbsence=not-proven
+  - 3940 opened path(s) are not covered by the declaration
+  limits: {'foreignAbiSyscalls': 0, 'traceFailures': 0, 'outcomeUnknown': 0, 'unattributedTasks': 0}
+  steps: [(1, 'builder', 396), (2, 'builder', 396)]
+  execs: total 793 {'builder': 2, 'entry': 1, 'toolchain': 790} undeclared 0 reportedOnly 0
+  files builder-file                       paths      1 read      2 write      0 remove      0
+  files catalog                            paths      1 read      1 write      0 remove      0
+  files entry-file                         paths      1 read      2 write      0 remove      0
+  files intent                             paths      1 read      5 write      0 remove      0
+  files isolated-tree                      paths   1793 read  13303 write   1978 remove   1793
+  files os-interface                       paths      5 read   3964 write      4 remove      0
+  files output                             paths      1 read      3 write      1 remove      0
+  files plan                               paths      2 read      4 write      1 remove      2
+  files rebuild-scratch                    paths      3 read      4 write      2 remove      2
+  files source-root                        paths   1793 read  38330 write      0 remove      0
+  files state                              paths  19482 read  29547 write  19294 remove   4579
+  files supply                             paths     36 read     72 write      0 remove      0
+  files toolchain                          paths  12843 read  39803 write      0 remove      0
+  files undeclared                         paths   1796 read  13313 write   1979 remove   1794
+  files workspace                          paths      2 read      2 write      0 remove      0
+  undeclared 3940 crossStep 0 writeToReadOnly 0 probesOutsideScope 0
+    undeclared x1: ('/tmp', 0, 'artifact', 'r')
+    undeclared x1: ('/tmp', 1, 'builder', 'r')
+    undeclared x1: ('/tmp', 2, 'builder', 'r')
+    undeclared x1: ('/tmp/tei-plan-tree-N', 2, 'builder', 'rm')
+    undeclared x120: ('/tmp/tei-plan-tree-N/**', 2, 'builder', 'rm')
+    undeclared x1672: ('/tmp/tei-plan-tree-N/**', 2, 'builder', 'w')
+    undeclared x487: ('/tmp/tei-plan-tree-N/**', 2, 'compile', 'r')
+    undeclared x1654: ('/tmp/tei-plan-tree-N/**', 2, 'go', 'r')
+    undeclared x1: ('/usr/share/zoneinfo/Asia/Tokyo', 1, 'go', 'r')
+    undeclared x1: ('/usr/share/zoneinfo/Asia/Tokyo', 2, 'go', 'r')
+    undeclared x1: ('<run>/artifact-go-tmp-umask', 1, 'go', 'w')
+== judge-copy reconcile rc=1
+ENTRY: ok=True l2b.claimed=True reproducibility=reproduced stateSeparation.basis=entry-post-hoc stateObservation.kind=effect-observed builderBinding=bound planHandover=handed-over toolchain.namedByPlan=True matchesPlan=True
+OBSERVER: boundedAbsence=not-proven
+  - 2 executed program(s) are not covered by the declaration
+  - 3455 opened path(s) are not covered by the declaration
+  - 8669 open(s) touched a root owned by another step
+  limits: {'foreignAbiSyscalls': 0, 'traceFailures': 0, 'outcomeUnknown': 0, 'unattributedTasks': 0}
+  steps: [(1, 'builder', 397), (2, 'builder', 8)]
+  execs: total 406 {'builder': 2, 'entry': 1, 'toolchain': 401, 'undeclared': 2} undeclared 2 reportedOnly 0
+  files builder-file                       paths      1 read      2 write      0 remove      0
+  files catalog                            paths      1 read      1 write      0 remove      0
+  files entry-file                         paths      1 read      2 write      0 remove      0
+  files intent                             paths      1 read      5 write      0 remove      0
+  files isolated-tree                      paths   1793 read  13303 write   1978 remove   1793
+  files os-interface                       paths      5 read   2027 write      2 remove      0
+  files output                             paths      1 read      3 write      1 remove      0
+  files plan                               paths      2 read      4 write      1 remove      2
+  files rebuild-scratch                    paths      3 read      4 write      2 remove      3
+  files source-root                        paths   1793 read  38330 write      0 remove      0
+  files state                              paths  18603 read  32373 write  17916 remove   9896
+  files supply                             paths     36 read     36 write      0 remove      0
+  files toolchain                          paths  12843 read  34275 write      0 remove      0
+  files undeclared                         paths   1797 read  12826 write   1981 remove   1794
+  files workspace                          paths      2 read      2 write      0 remove      0
+  undeclared 3455 crossStep 8669 writeToReadOnly 0 probesOutsideScope 0
+    undeclared x1: ('/tmp', 0, 'artifact', 'r')
+    undeclared x1: ('/tmp', 1, 'artifact', 'r')
+    undeclared x1: ('/tmp', 2, 'artifact', 'r')
+    undeclared x1: ('/tmp/tei-plan-tree-N', 2, 'artifact', 'rm')
+    undeclared x120: ('/tmp/tei-plan-tree-N/**', 2, 'artifact', 'rm')
+    undeclared x1672: ('/tmp/tei-plan-tree-N/**', 2, 'artifact', 'w')
+    undeclared x1654: ('/tmp/tei-plan-tree-N/**', 2, 'go', 'r')
+    undeclared x1: ('/usr/share/zoneinfo/Asia/Tokyo', 1, 'go', 'r')
+    undeclared x1: ('/usr/share/zoneinfo/Asia/Tokyo', 2, 'go', 'r')
+    undeclared x1: ('<run>/artifact-go-tmp-umask', 1, 'go', 'w')
+    undeclared x1: ('<run>/side', 1, 'builder', 'w')
+    undeclared x1: ('<run>/side', 2, 'builder', 'w')
+== three stages
+subject  stage0            stage1            stage2            1==2  0==1
+tei      82b3d48fb0bc9860  f502475c14b3e821  f502475c14b3e821  True  False
+builder  53ee6e04206c2d57  e3934aabbc0014dd  e3934aabbc0014dd  True  False
+author   d97bb87bcceb74cc  5effd04b563329a5  5effd04b563329a5  True  False
+
+stage1: 1663 execs, exit 0
+  STAGE0:author      1
+  STAGE0:builder     6
+  STAGE0:tei         3
+  glue               9
+  toolchain          1644
+  glue images: {'/usr/bin/bash': 1, '/usr/bin/mkdir': 4, '/usr/bin/cp': 3, '/usr/bin/sha256sum': 1}
+  builder <- started by: {('STAGE0:builder', 'STAGE0:tei'): 6}
+
+stage2: 1663 execs, exit 0
+  glue               9
+  stage1:author      1
+  stage1:builder     6
+  stage1:tei         3
+  toolchain          1644
+  glue images: {'/usr/bin/bash': 1, '/usr/bin/mkdir': 4, '/usr/bin/cp': 3, '/usr/bin/sha256sum': 1}
+  builder <- started by: {('stage1:builder', 'stage1:tei'): 6}
+  opens of earlier stages: {('stage1/builder/artifact', 'r'): 1, ('stage1/tei/artifact', 'r'): 3}
+
+stage1 tei      ok=True l2b=True handover=handed-over reproduced=reproduced invoker=STAGE0:tei builderBinding=bound
+stage1 builder  ok=True l2b=True handover=handed-over reproduced=reproduced invoker=STAGE0:tei builderBinding=bound
+stage1 author   ok=True l2b=True handover=handed-over reproduced=reproduced invoker=STAGE0:tei builderBinding=bound
+stage2 tei      ok=True l2b=True handover=handed-over reproduced=reproduced invoker=stage1:tei builderBinding=bound
+stage2 builder  ok=True l2b=True handover=handed-over reproduced=reproduced invoker=stage1:tei builderBinding=bound
+stage2 author   ok=True l2b=True handover=handed-over reproduced=reproduced invoker=stage1:tei builderBinding=bound
+== consumed
+staged files (declared, copied into the isolated tree): 1672
+opened by compile/asm/link: 487 Counter({'.go': 487})
+opened only by `go` (listing, build constraints, embed): 1085 Counter({'_test.go': 1079, '.go': 4, 'module': 2})
+opened by no toolchain program: 100 Counter({'_test.go': 52, '.go': 29, 'other:.md': 8, 'other:.json': 4, 'other:.yaml': 3, 'other:.tei': 2, 'other:.jsonl': 2})
+compile opened but not staged (directories etc.): 0 []
+bytes: staged 9870416, compiled 3539607, go-only 5769712, never 561097
+sample never: ['cmd/tei/testdata/l2b-go-command/main.go', 'cmd/tei/testdata/xtea_standard_20261108_b.tei', 'core/effect/README.md', 'core/generation/README.md', 'core/identity/README.md', 'core/subject/README.md']
+sample go-only non-test: ['go.mod', 'go.sum', 'internal/operations/trace_workspace_flags_other.go', 'internal/operations/trace_workspace_root_unsupported.go', 'internal/workspace/source_open_unavailable.go', 'internal/workspace/source_read_open_other.go']

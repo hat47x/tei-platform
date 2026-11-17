@@ -2500,6 +2500,33 @@ PR #4254 の head `289d3eeb2d5696ed3ac3ca07c11ddcfb946fc541` に対する [Run 4
 - **entryによるtoolchain全体の検査。** entryが読み直すのは実行ファイルだけで、`closureDigest`の比較はbuilderのハッシュに依る
 - **linux以外での境界**（決定2）。G4の対象Targetを決めるときに改めて決める
 
+### 4.57 記録を宣言・申告・観測に分け、entryが計画を渡す（2026-11-17）
+
+§4.55は、stateのコピーをentryが見逃すことと、宣言したGraphと実行の一致を主張できないことを残した。§4.56は、builderとtoolchainの照合を足した。どちらも、entryの読み直しとbuilderの申告でできた記録である。
+
+この二つの限界を、Buildの外から確かめた。判断と比較は[記録を宣言・申告・観測に分ける設計](SELF_BUILD_DECLARED_REPORTED_OBSERVED_2026-11.md)、値は[実測記録](../evidence/TEI_SELF_BUILD_OBSERVED_PIPELINE_2026-11-17.md)にある。**本節は判定を変えない。** `qualified`は`false`のままである。
+
+| 変えたもの | 内容 |
+| --- | --- |
+| `-hand-over-plan` | entryが、in-processで解決した計画を書き出し、childへ`-plan`として渡す。`-plan`はその試行の予約引数になる。既定は変えていない。付けない試行は`planHandover.state = not-requested`と理由を出す |
+| `childRun.childBuildError` | childが`buildSucceeded: false`や`buildError`を申告したら、その理由を`failureCause`の先頭に置く |
+| 予約引数の検査 | `--state`のような二重ダッシュの綴りと、`--`の終端も拒否する |
+| [`reference-build-process-observation`](../../tools/reference-build-process-observation/README.md) | `tei self-build`の外でプロセス木を追跡し、宣言範囲と照合する。入口には組み込んでいない |
+
+#### 実測で分かったこと
+
+| §4.55・§4.56が残したこと | 実測 |
+| --- | --- |
+| 一回目のstateを二回目へコピーする構成を、entryは`effect-observed`として通す | 同じ構成で、entryの報告はすべて合格のままだった。観測は、宣言にない実行2件と、他方のstateへの読み書き8,669件を示した |
+| 宣言されたファイル自身が別の実行物を起動しても、Claimは立つ | 同じ試行で確かめた。`builderBinding`は`bound`のまま、ラッパーが起動した本物のbuilderは観測にだけ現れた |
+| `tei self-build`は一つのchildを起動するだけで、Graphとは結線していない | 変わっていない。三つの対象を順に呼ぶ手順は、今もスクリプトにある |
+
+#### この節が言っていないこと
+
+- **L2-bの条件の変更。** `planHandover`も観測も、条件に入れていない
+- **`tei self-build`への観測の組込み。** 観測はlinux/amd64でしか動かず、入口を特定のOSの機能に依らせない
+- **Stage1がStage2を構築したことの資格。** 三つの対象で形は成立したが、`l3Claimed`は常に`false`である
+
 ## 5. 追加の負例（試験仕様）
 
 | ID | Given / 操作 | Expected |
@@ -2536,6 +2563,10 @@ PR #4254 の head `289d3eeb2d5696ed3ac3ca07c11ddcfb946fc541` に対する [Run 4
 | SC0-30 | 二つのホストで一致したことを「すべてのOSで一致する」と読む | 読まない。観測したのは`linux/amd64`と`windows/amd64`で、他のホストは未観測である（§4.26） |
 
 ## 6. 未決事項
+
+- Buildの対象どうしの依存と成果物の受け渡しを、どこに書くか（[設計](SELF_BUILD_DECLARED_REPORTED_OBSERVED_2026-11.md) §6.1。宣言どうしの参照から導く案を採ったが、実装していない）
+- Plugin以外の対象を、Pluginと偽らずに宣言する方法（同 §6.2）
+- 観測を、L2-bやG4の材料にどう数えるか（同 §6.3）
 
 - コマンド名（`self-build` / `build` / `artifact build`）
 - Build Intentの解決方式（`-intent`でID指定か、Workspace内の宣言から解決か）
