@@ -2581,6 +2581,13 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 4. **Execution**：Definition／Rule／Edge／Generator版の変更と、同じ生成Binaryへ渡す実行時入力の変更を分ける。Providerは選択・組込み・実呼出し・認可・Effect観測を別資格で照合し、CLI／MCP／Studioや外部Hostの成功をReferenceの成功から推定しない。
 5. **Provenance / Reuse**：意味の同値、Source byte位置、World Fingerprint、Model Revision、Artifact Revision、実行入力、現在のEvidence／Grant資格を混同しない。Mermaidの配置だけの変更とRuleの変更を区別し、誤再利用と不要な再生成の両方を検査する。
 
+<!-- declarative-observational-sufficiency-20261117 -->
+**2026-11-17 横断統合：宣言の合成可能性と、Claimを判断できる範囲を分離する。** [宣言的構文の合成契約§33](design/DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md)では、Rule／Query／Plugin／Graph／Studioを同じ型付きMeaningへ接続できることと、実観測から業務Claimを確定できることを区別した。main統合済み#5148（期間Rule）、#5149（SQL行の状態Reader）、#5150（Operator選択Pinの指紋統合）、#5156（Plugin Field投影）、#5166（日付RuleのP対応・G未対応）、#5168（Studioの古い応答拒否）、#5181（記録例とSource診断）、#5210（実PG二世界反例）を**境界ごとの限定証拠**として参照する。組み合わせた製品E2Eを合格扱いしない。
+
+**最小の次工程**は、既存DF-P4a／DPC-16aのCallerで、4行中2行の実SQL Readに対する無根拠なcomplete申告を拒否し、同じpartialで「既知の重複による不成立」と「違反が見えないだけの成立保留」を独立Expectedへ照合すること。必要入力は意味ID・Scope・時点・Query束縛・実Read ID・Coverage根拠に絞り、2世界のPerson数・Whole／Field投影・Source改版・G／P／D不一致を後続の**独立した反証DC-61〜66**へ割り当てる。新たなCoverage Engine／第二Semantic／共通Runnerは設けず、#2506／#2514／#2622へ引き渡す。
+
+**採否と優先順位**：DC-59／60は既存P1内での最初の実装候補（NOT RUN）。正式R2-PのSource→Generator→Builder→Artifact束縛、#2586通常CLI公開Entry→実Provider→独立Consumer、#2831 Studio Stage1→Stage2実WindowsのP0は維持する。表示の読取専用成功、Rule評価の成立、Coverageの申告、Provider／Hostの現在Grant、実Consumer受領を一つの成功判定にまとめない。
+
 **直近の実装順（既存P0を置き換えない）**：
 
 | 順序 | 接続する実装・検査 | 主なOwner・受入 |
