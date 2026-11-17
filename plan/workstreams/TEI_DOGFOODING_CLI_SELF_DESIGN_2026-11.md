@@ -3678,3 +3678,40 @@ note VALIDATION_INCOMPLETE 2件の構文の指摘を同じ読み込みで集め�
 ### 位置付け
 
 **「古い記録の文が今も真か」を測った回**であり、答えは**偽（改善済み）**だった。同時に**私は計器を誤り、「モード間で食い違う」と一瞬疑った**。生データを読み直して訂正した。**既存テストが既に守っていたことも確認した**ので、起票しない。
+
+## 101. 第100ラウンド（2026-11-18）: `tei requirements` は宣言から導出され、その出所を名指しする
+
+目的文の「再びドッグフーディングに戻る」を実行し、未使用だった最後の面 **`tei requirements` と `tei world`** を使った。問いは「**ワークスペースが満たすべき要件が、宣言そのものと区別して読めるか**」。生出力は[第100ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND100_REQUIREMENTS_DERIVATION_2026-11-18/README.md)にある。
+
+### 導出は成立し、出所を名指しする
+
+`requirements` は**宣言の一覧ではなく、宣言から導いた要件**を返す。各要件は `origins[].introducedBy` と `reason` を持つ。
+
+```json
+{"environment": "development", "scope": "build", "kind": "toolchain", "name": "go",
+ "origins": [{"introducedBy": "custom-go:order_entry.compose_order_summary",
+             "reason": "build custom Go realization"}, ...]}
+```
+
+**「何が要件か」と「なぜそれが要件か」が同じ entry にある。**
+
+### 自分の宣言が要件を増やすことを実測した
+
+| 段階 | requirements 件数 | 自分の寄与 |
+| --- | --- | --- |
+| 束縛なし | 6 | **なし** |
+| `bind equip_app.equipment` を追加 | **8** | `staging/build/toolchain: go`、`introducedBy=custom-go:equip.loan_register` |
+
+**宣言 → 要件の因果が、件数と出所の両方で確認できた。**
+
+### 途中で2回疑い、2回とも否定された
+
+**疑い1**: custom-go 宣言があるのに要件が出ない → `derive.go:100` が条件を明示していた。**要件は「環境ごと」の概念**で、束縛の無い環境に要件を作らないのは**設計**。
+
+**疑い2**: catalog が `requirements` を契約として広告しているのに、設計文書は「内部デバッグ出力（Owner判断）」と書いている → **その1行は `### 10.3 … （提案）` の下にあり、提案だった**。同じ文書の §194 が「§10.1 は2026-10-31時点の記録であり現在の実装ではない」と明記し、`CLI_JSON_OUTPUT_CONTRACT_2026-10.md` §132 が **A案（推奨）** として採択を記録している。実測でも5コマンドのうち**4つが `enveloped`**（`world` のみ `raw`）。
+
+**文書は「提案」と「現状」を正しく区別しており、私が区別しなかった。**
+
+### 位置付け
+
+**「要件は宣言から導かれ、出所を名指しする」ことを確認した回**である。同時に**疑いを確定させる前に出典の区分（提案か現状か）を読む**必要があった。

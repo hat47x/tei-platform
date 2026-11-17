@@ -1,0 +1,16 @@
+Doubt 1 (wrong): "a custom-go realization exists but no requirement appears".
+  Negated by internal/dependency/derive.go:100 -- the loop only adds when
+  bindingsByEnv[env][application] exists. Requirements are per environment;
+  an unbound environment correctly has none. That is design, not a gap.
+
+Doubt 2 (wrong): "the catalog advertises requirements as a contract while the
+  design doc says it is internal debug output".
+  Negated by reading the source line's context:
+    - it sits under "### 10.3 版固定が必要なコマンドと追加案（提案）" -- a proposal
+    - the same doc's SS194 says "SS10.1 is a 2026-10-31 record, not current
+      implementation", and that requirements gained an envelope
+    - CLI_JSON_OUTPUT_CONTRACT SS132 records option A as adopted
+  Measured: 4 of the 5 named commands are enveloped; only `world` is raw.
+
+Lesson: read whether a line is a proposal or a statement before treating a
+difference as a defect.

@@ -505,6 +505,7 @@
 - [行スコープのフックへ渡す行集合の変換](XTEA_LOWCODE_ROW_ROWS_CONVERSION_2026-11.md)（参照実装の試験記録。driver結果から行集合への変換を hook 側に置いた。ホストの配線は未実装）
 - [行スコープのフックを browse で使えるようにするか](XTEA_LOWCODE_ROW_HOOK_DECLARATION_SITE_2026-11.md)（設計判断。`interaction`はrecord限定のため一覧で行フックを宣言できない。既定案B（`Hook`へ行の出所を足す）を実装し、出所を宣言した`scope row`は警告を出さない。既定の参照実行はQueryを実行しないためskipは残る）
 - [行スコープのフックが行の出所を宣言する](XTEA_LOWCODE_HOOK_ROW_SOURCE_2026-11.md)（参照実装の試験記録。`rows from query <id>`を足し、出所の解決を検証で強制、変換とホスト入口まで実装。実Query実行からの配線と空ページの区別は未実装）
+- [postgres-suitesが赤かった理由](XTEA_LOWCODE_POSTGRES_SUITES_PATHS_2026-11.md)（paths絞り込みのため見えていなかった失敗が、paths追加で露見した記録）
 - [例のWorkspaceで期間の要件を宣言する確認](XTEA_LOWCODE_EXAMPLE_PERIOD_REQUIREMENT_2026-11.md)（参照実装の試験記録。例で宣言・検証・投影・実行が一致。宣言時に矛盾検査が実例で発火し、`closed-rejects`を狭めた）
 - [実行器はあるのに振り分けが無いrea-intakeを配線する](TEI_DOGFOODING_ROUND77_REA_INTAKE_ROUTE_2026-11-11/README.md)（runThreeElementReaIntakeは実装済みでテスト12箇所が呼んでいたが、dispatcherにcaseが無く14件FAILしていた。テストが実行器を直接呼んでいたため見落とされていた。14→0。rea-evidenceは実装自体が無く範囲外、gofmt違反6ファイルはrecord only）
 - [未統合機能の孤児テストがrepository-healthを常時赤にする](TEI_DOGFOODING_ROUND78_REA_EVIDENCE_ORPHAN_2026-11-12/README.md)（rea-evidenceを要求する2試験がmainに在り、実装は未統合ブランチ（157コミット遅れ）にのみ存在。依存のinternal/externalanalysis 1,202行もmainに無い。スタブは採らない（動くように見せるため）。起票 #4455。plan-checkは第76〜77ラウンドで緑）
@@ -547,3 +548,4 @@
 - [business-procedureで自分のcapabilityが解決できrealizationの拒否が有効値を言わない](TEI_DOGFOODING_ROUND97_BUSINESS_PROCEDURE_2026-11-18/README.md)（equipドメインをprocedureに組み込み、capabilityがSource位置とfingerprintまで解決されることを確認。存在しない参照はunresolvedとして保持され推測されない。一方realizationの拒否が3語の閉じた集合を一語も挙げなかったため、Valid()と同じリストから文言を組み立てて名指しするよう修正。変異2件で捕捉）
 - [宣言したApplicationは本当に実行でき実行結果は自分の限界を自分で言う](TEI_DOGFOODING_ROUND98_EXECUTE_SURFACE_2026-11-18/README.md)（閉じた語彙の体系的走査で新規欠陥ゼロ（パーサが既に値を名指し、残2件は語彙が非閉）。command pattern+環境束縛+-command capability id+-inputで-executeが成立し、mode:reference/committed:true/persisted:false/durability:none/difference-check:not observedを並べて出力することを確認。日本語エラー108件と言語方針は判断せず起票もしない）
 - [2ファイルの構文エラーは両方reportされtextとjsonは5件で一致する](TEI_DOGFOODING_ROUND99_MULTIFILE_AND_TEXT_JSON_PARITY_2026-11-18/README.md)（古い『そのファイル以外は調べていない』という記録が今も真かを実測し、偽（2件収集＋件数明示）と確定。構文エラーがあると意味検証は走らず、それをnoteとincomplete.reasonが正直に述べることも対照実験で確認。自分がgrepの行頭一致でtext2件/json5件と誤読したのを生データで訂正。既存テストが既に固定していた）
+- [tei requirementsは宣言から導出されその出所を名指しする](TEI_DOGFOODING_ROUND100_REQUIREMENTS_DERIVATION_2026-11-18/README.md)（requirementsがorigins.introducedBy/reasonで何が要件かと理由を同じentryに持つことを確認。custom-go宣言とbindで件数6→8と出所の因果も実測。途中で2回疑い、derive.goの環境条件と、設計文書の該当行が『提案』であったことを読んで否定。文書は提案と現状を区別していた）

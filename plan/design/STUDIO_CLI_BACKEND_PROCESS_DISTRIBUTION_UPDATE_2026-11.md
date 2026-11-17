@@ -198,3 +198,15 @@ Wails ServerのOrigin／WebSocket設定は、独自の公開HTTP API全体の認
 第一のコード差分は既存#1158／#3419〜#3421の型付き`inspect`を使った**CLI directとWails Server HTTPの二入口比較**に絞る。Workbench実受領は#1824、Plugin選択／実Callは#951／#1251、独立Expectedは#1180／#2514へ戻す。#2831／#4583の非Plugin Studio Stage1→Stage2と#4495の通常CLI実Providerを引き続きP0の主線とし、API公開・リモートCLI・D3配布の完成を新しいHard Gateにしない。
 
 **到達上限**：本節は責務と反証の設計追補であり、Wails Server上の製品API Plugin、HTTP実配信、CLIとの実同値、外部公開時の安全性について新たな実測PASSを主張しない。
+
+### 17.4 実Wails Serverの最小公開口を、Local限定の検証機能として切り出す（2026-11-17）
+
+[起動契約§32〜37](STUDIO_BACKEND_LAUNCH_COMPATIBILITY_RECOVERY_CONTRACT_2026-11.md)では、実CLI・共通Operation・Studio Hostの三入口で型付きInspectを一致させるGo試験が現mainに入り、CLI側ではSnapshotの前提指紋を指定した拒否も実装された。ここから進むAP-1は**Wails ServerへのHTTP配送**であり、三入口のGo同値をやり直す工程ではない。
+
+最初の局所実装は`cmd/tei-studio`内の`inspectionHTTPService`とし、既存`studiohost.ReadOnly.InspectSubject`へだけ委譲する。Wailsの`ServiceOptions.Route`に`/tei/read-only/v0/inspect`を登録できるが、**既定では登録しない**。`TEI_STUDIO_READ_ONLY_API_TOKEN`に32 byte以上のローカル検証用Bearer tokenを明示したときだけ有効にする。ServerのBindは既存の`127.0.0.1`限定を維持し、HTTP RouteにはGETだけを許し、認証欠落・Cross-Origin・Workspace allowlist外・未公開Subject・過剰Query Paramを拒否する。レスポンスは`no-store`、失敗時の内部Messageは公開しない。TokenはTransportに入るための局所条件であって、正式な利用主体のAuthN/AuthZ・現在Grant・Disclosureや外部Host公開資格を与えない。
+
+この一往復の局所Go回帰は`httptest.NewServer`からHTTP要求を実送信し、同じStudio Hostの直接呼出しと`SubjectInspection`全体、FailureのCode／分類を比較する。ただしWailsの実Service Routeが実Server Processで選ばれ、Clientが受け取ったこと、CLI製品Binaryとの同一Snapshot、Token運用の安全性や外部Client公開は**別検収**である。特にHTTP側の`expected-fingerprint`による古いSnapshotの拒否、Sourceの公開項目の用途別削除、実HTTP Provider選択、ViewerのActor／Audience Scopeはまだ未実装。旧Replyの採用やSourceのA→B→Aをこの局所テストで合格としない。
+
+[Plugin接続§12〜13](PLUGIN_CONNECTION_EVIDENCE_AND_COMPOSITION_SLICE_2026-11.md)の全体Port／Field／明示AdapterとPresence・Coverageを、次のAPI公開Contributionへ引き渡す。内蔵InspectのJSON全体を返すのはローカル検証専用であり、一般公開時は必要Fieldを選択してDisclosureの条件を個別に確かめる。非Builtin ProviderのAP-2、旧Snapshot拒否、独立Wails HTTP Client／WebView、外部公開の認可は#1158／#1824／#951／#1251／#1180／#2514の既存Ownerが扱う。新たな汎用API Runtime、二重Dispatcher、全機能の自動HTTP公開は設けない。
+
+**状態**：本節は局所Adapter／Go HTTP回帰の実装条件と、Wails Server実E2Eへ残す不足を明示する。対象HEADの実Go／CI合格およびWails Serverの実HTTP配送は別途確認し、CLI実Provider・Stage1→Stage2 Windowsの既存P0に新しいHard Gateを加えない。
