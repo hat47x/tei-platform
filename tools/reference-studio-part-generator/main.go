@@ -80,17 +80,33 @@ func admitContract(value transform.Value, path string) error {
 			}
 		}
 	case transform.ValueNumber:
+	case transform.ValueArray:
+		// The only list a contract declares is requiredResponseFields; any other
+		// array would reach a template slot that expects one string.
+		if path != contractInput+"."+requiredResponseFieldsSection {
+			return fmt.Errorf("contract %s has unsupported kind %s", path, value.Kind)
+		}
+		for i, item := range value.Array {
+			if err := admitContract(item, fmt.Sprintf("%s[%d]", path, i)); err != nil {
+				return err
+			}
+		}
 	default:
 		return fmt.Errorf("contract %s has unsupported kind %s", path, value.Kind)
 	}
 	return nil
 }
 
+// requiredResponseFieldsSection is the one data-driven rule the Generator
+// Source implements: each declared {name, type} becomes a check in the
+// generated Reader, so a required response field is added by the contract
+// alone. Every other section is still a named template slot.
+const requiredResponseFieldsSection = "requiredResponseFields"
+
 // supportedInspectorContractSections describes what this specific generator
 // currently implements. Unknown declarations must not make a new-looking
 // artifact by changing only its contract digest: that would claim a Source
-// requirement the generated Reader never enforces. This is a closed admission
-// boundary until the generator implements a data-driven required-field rule.
+// requirement the generated Reader never enforces.
 var supportedInspectorContractSections = map[string]map[string]bool{
 	"part": {
 		"id": true, "version": true,
@@ -122,6 +138,12 @@ func admitImplementedInspectorContract(contract transform.Value) error {
 		if section.Name == "formatVersion" {
 			continue
 		}
+		if section.Name == requiredResponseFieldsSection {
+			if err := admitRequiredResponseFields(section.Value); err != nil {
+				return err
+			}
+			continue
+		}
 		fields, known := supportedInspectorContractSections[section.Name]
 		if !known {
 			return fmt.Errorf("contract section %q is not implemented by Generator Source", section.Name)
@@ -133,6 +155,24 @@ func admitImplementedInspectorContract(contract transform.Value) error {
 			if !fields[field.Name] {
 				return fmt.Errorf("contract %s.%s is not implemented by Generator Source", section.Name, field.Name)
 			}
+		}
+	}
+	return nil
+}
+
+func admitRequiredResponseFields(fields transform.Value) error {
+	if fields.Kind != transform.ValueArray {
+		return fmt.Errorf("contract section %q must be an array", requiredResponseFieldsSection)
+	}
+	for i, field := range fields.Array {
+		if field.Kind != transform.ValueObject || len(field.Object) != 2 {
+			return fmt.Errorf("contract %s[%d] must be exactly {name, type}", requiredResponseFieldsSection, i)
+		}
+		if _, ok := field.Field("name"); !ok {
+			return fmt.Errorf("contract %s[%d] must be exactly {name, type}", requiredResponseFieldsSection, i)
+		}
+		if _, ok := field.Field("type"); !ok {
+			return fmt.Errorf("contract %s[%d] must be exactly {name, type}", requiredResponseFieldsSection, i)
 		}
 	}
 	return nil

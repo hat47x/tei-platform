@@ -22,9 +22,9 @@
 
 **SQLite の安全性は「接続を1本に絞る」ことに依存していた**ので、そのまま PostgreSQL へ持ち込む必要はない。条件付き UPDATE だけで足りる。だから `SetMaxOpenConns(1)` は置いていない。
 
-## 観測（DSN 未設定時は SKIP）
+## 観測（この環境では SKIP、CI では実行）
 
-`internal/numberingpostgres` の6件。**この環境には PostgreSQL が無いため全て SKIP** した（SKIP は証拠ではない）。
+`internal/numberingpostgres` の6件。**この環境には PostgreSQL が無いため SKIP** した（SKIP は証拠ではない）。**CI の使い捨て `postgres:16` では6件すべてが実行され、PASS した**（`postgres-suites` ジョブ）。
 
 | 試験 | 確かめること |
 | --- | --- |
@@ -51,7 +51,7 @@
 
 ## 読み取れないこと
 
-- **実 PostgreSQL での実行結果**。この環境に PostgreSQL が無く、6件すべて SKIP した。**CI での結果は未確認**（このPRのマージ後に確認する必要がある）。
+- ~~実 PostgreSQL での実行結果~~ **確認済み**（CI の `postgres-suites` で6件すべて PASS。ただし使い捨ての `tei_fixture` データベースであり、製品DBではない）。
 - 多プロセス・多ホストでの競合（SQLite で確認した2プロセス試験に相当するものを PostgreSQL で実施していない）。
 - 実DB のスキーマ運用（このストアは自前でテーブルを作る。製品のスキーマ移行とは別）。
 - トランザクション分離レベルの選定（`BeginTx` の既定に依存している）。
@@ -59,3 +59,31 @@
 ## 位置付け
 
 参照実装の試験記録であり、製品の受入や本番適格性を示しません。**実装は存在するが、この環境では一度も実行していない**（SKIP）。CI 配線は済み。仮承認。
+## 追記（2026-11-17）: CI で実行され、全件 PASS した
+
+初出の時点では、この環境に PostgreSQL が無く6件すべてが SKIP でした。CI へ配線したところ**2度続けて落ち、しかも一度は「5件 PASS で緑」でした**。3回目で全件実行されました。
+
+| 版 | 結果 | 何が起きたか |
+| --- | --- | --- |
+| 初回 | failure | `TEI_TEST_POSTGRES_DSN is empty` — **必須キーの検査を足したが、値を `env:` に定義していなかった** |
+| 2回目 | success（**不完全**） | DSN は定義したが、実行フィルタが `TestPostgresStore\|TestPostgresReserves\|TestPostgresRefuses` で、**`TestPostgresLoadRequiresARuleID` が列挙から漏れ、一度も走っていなかった** |
+| 3回目 | success（**全件**） | フィルタを `^TestPostgres` へ広げ、6件すべてが PASS |
+
+`postgres-suites` のログで確認した実際の結果:
+
+```
+--- PASS: TestPostgresStoreStartsAtZero (0.01s)
+--- PASS: TestPostgresReservesAcrossReopen (0.01s)
+--- PASS: TestPostgresRefusesAStaleVersion (0.01s)
+--- PASS: TestPostgresRefusesAForeignFirstWrite (0.00s)
+--- PASS: TestPostgresRefusesANegativeCounter (0.00s)
+--- PASS: TestPostgresLoadRequiresARuleID (0.00s)
+```
+
+読み取れること:
+- 不変条件（0から始まる・再開後も番号が残る・古い版は拒否・二人の最初の書き込みが両方成功しない・負のカウンタは拒否・規則ID無しは拒否）が、**PostgreSQL の条件付き UPDATE だけで成立する**。SQLite の「接続を1本に絞る」仕組みに依存していない。
+
+読み取れないこと:
+- **製品DB**での挙動。使い捨ての `tei_fixture` であり、スキーマ移行・権限・運用とは別である。
+- **多プロセス・多ホストの競合**。SQLite で行った2プロセス試験に相当するものを PostgreSQL では実施していない。
+- `required` の一覧には2件しか登録していないため、**残り4件が将来走らなくなってもジョブは緑になりうる**。

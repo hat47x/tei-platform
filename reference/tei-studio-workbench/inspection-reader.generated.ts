@@ -10,7 +10,7 @@ export const inspectionReaderProvenance = Object.freeze({
   part: "tei.studio.inspection_reader",
   version: "1.0.0",
   operation: "main.StudioBridge.InspectSubject",
-  contractDigest: "sha256:0a65d341992bee8ab44f9e767321536a7c8e0d13bc4c60a2ddba34a18bf1359b",
+  contractDigest: "sha256:20d5ed64da11151a03e8e045cb5d78c3ec3411598042a39224b5e37a0cb6e947",
 });
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value))
@@ -44,6 +44,11 @@ const REQUIRED_INSPECTION_LIMITS = [
   "source-location-is-not-write-authority",
   "local-read-is-not-disclosure-permission",
 ] as const;
+// Required response fields declared in the contract. Adding one is a
+// contract-only change: this Generator Source does not name them.
+const REQUIRED_RESPONSE_FIELDS: readonly (readonly [string, string])[] = [
+  ["schemaVersion", "string"],
+];
 export function readInspection(raw: unknown, expected: Subject, catalog: Catalog) {
   const v = record(raw), limits = v["authorityLimits"];
   const world = v["worldFingerprint"],
@@ -57,7 +62,9 @@ export function readInspection(raw: unknown, expected: Subject, catalog: Catalog
     typeof v["sourceStatus"] !== "string" ||
     !Array.isArray(limits) ||
     !limits.every((limit: unknown) => typeof limit === "string") ||
-    !REQUIRED_INSPECTION_LIMITS.every((limit) => limits.includes(limit))
+    !REQUIRED_INSPECTION_LIMITS.every((limit) => limits.includes(limit)) ||
+    !REQUIRED_RESPONSE_FIELDS.every(([name, type]) =>
+      type === "present" ? Object.hasOwn(v, name) : typeof v[name] === type)
   )
     throw Error("INVALID_INSPECTION_RESPONSE");
   if (

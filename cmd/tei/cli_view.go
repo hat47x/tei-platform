@@ -449,6 +449,15 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	// This is the first product CLI read of the existing header-detail Contract
 	// Query. No query, mapping, or validation is reconstructed in this entry.
 	if *environmentID != "" {
+		// The runtime read is text or json. html and print are accepted by the
+		// general format gate above and used by the static views, so this mode
+		// used to fall through to the text renderer and print text under
+		// `-format html`: the caller asked for HTML and silently got text. Say
+		// which formats this mode has instead (#5388).
+		if *format != "text" && *format != "json" {
+			return fail("INVALID_ARGUMENT",
+				fmt.Sprintf("view -environment supports -format text or json, not %q", *format), 2)
+		}
 		values, err := parseInputPairs(inputPairs)
 		if err != nil {
 			return fail("INVALID_ARGUMENT", err.Error(), 2)
@@ -574,6 +583,23 @@ func writeDestinationReadText(out io.Writer, read destinationRead) (int, error) 
 	}
 	if _, err := fmt.Fprintf(out, "coverage %s\n", read.Coverage); err != nil {
 		return 2, err
+	}
+	// The declaration is the binding's statement, not an observation. It is
+	// printed as stated and unchecked so a reader of the text form cannot
+	// mistake it for measured coverage. An undeclared binding prints nothing,
+	// which stays distinguishable from "declared but unchecked".
+	if read.Declaration != nil {
+		declared := "covers some"
+		if read.Declaration.CoversRelation != "" {
+			declared = "covers " + string(read.Declaration.CoversRelation)
+		}
+		checked := "unchecked"
+		if read.Declaration.Checked {
+			checked = "checked"
+		}
+		if _, err := fmt.Fprintf(out, "declaration %s (%s)\n", declared, checked); err != nil {
+			return 2, err
+		}
 	}
 	if len(read.KeyAttributes) > 0 {
 		keys := make([]string, 0, len(read.KeyAttributes))
