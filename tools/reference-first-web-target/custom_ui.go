@@ -96,6 +96,15 @@ func (s *webTargetServer) renderCustomSubmit(
 	status int,
 	data customSubmitPageData,
 ) {
+	// The template joins rows to answers by the index of the same read.
+	// Reject malformed projections before sending a success response or any
+	// row content; html/template's index expression cannot check this contract.
+	if data.Result != nil && data.Result.Read != nil {
+		if err := requireReadRowAnswerAlignment(data.Result.Read.OrderLineRows, data.Result.Read.RowAnswers); err != nil {
+			http.Error(w, "cannot render row answers: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
 	if err := s.customSubmit.Execute(w, data); err != nil {

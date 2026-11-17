@@ -145,7 +145,10 @@ func TestBuildHeaderDetailCarriesPageBreak(t *testing.T) {
 	if view.PageBreak == nil || view.PageBreak.Rows != 3 || !view.PageBreak.RepeatHeader {
 		t.Fatalf("page-break=%+v", view.PageBreak)
 	}
-	if len(view.DetailRows) != 3 {
+	// 明細の行数は改ページの大きさではなく、投影が持つプレースホルダの
+	// 個数で決まる。Rowsに合わせると明細が常に1ページ分になり、
+	// 分割も見出しの繰返しも現れない。
+	if len(view.DetailRows) != 5 {
 		t.Fatalf("detail rows=%d", len(view.DetailRows))
 	}
 }

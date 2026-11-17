@@ -150,6 +150,13 @@ func readEnvironmentRows(
 	if _, err := resolver.PrepareHeaderDetailContractQuery(appID, patternID, source, 0); err != nil {
 		return destinationRead{}, fmt.Errorf("invalid header-detail Contract Query input binding: %w", err)
 	}
+	// Refuse a self-contradictory coverage declaration before opening the
+	// database. The view path does not run static validation, and a read-only
+	// query is still external I/O that an invalid binding must not trigger.
+	declaration, err := destinationDeclarationFrom(prepared.Binding)
+	if err != nil {
+		return destinationRead{}, err
+	}
 	keyAttributes, err := environmentRowKey(world, prepared.Binding.Target.Database, prepared.Relation.Target.ID)
 	if err != nil {
 		return destinationRead{}, err
@@ -239,11 +246,6 @@ func readEnvironmentRows(
 	rules, err := resolver.ResolveApplicationValidations(appID)
 	if err != nil {
 		return destinationRead{}, err
-	}
-
-	declaration, declarationErr := destinationDeclarationFrom(prepared.Binding)
-	if declarationErr != nil {
-		return destinationRead{}, declarationErr
 	}
 
 	result := destinationRead{

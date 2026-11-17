@@ -2,6 +2,7 @@ package syntax
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"unicode"
 )
@@ -227,6 +228,73 @@ func (l *Lexer) skipSpaceAndComments() {
 		}
 		break
 	}
+}
+
+// TryConsumeDecimalWidth reads an optional "(precision,scale)" that directly
+// follows the last token the parser consumed, and reports whether one was
+// there. Parentheses are deliberately NOT tokens: a Source that never writes a
+// width keeps exactly today's token sequence, and the width is a suffix of
+// one storage declaration rather than a new declaration form. A Source that
+// writes something else after the type is left alone, so the caller can report
+// its own error instead of this one.
+func (l *Lexer) TryConsumeDecimalWidth() (precision, scale int, ok bool, err error) {
+	l.skipSpaceAndComments()
+	if l.off >= len(l.src) || l.src[l.off] != '(' {
+		return 0, 0, false, nil
+	}
+	start := l.pos()
+	l.advanceByte()
+	precision, err = l.readDecimalPart()
+	if err != nil {
+		return 0, 0, false, err
+	}
+	if l.off >= len(l.src) || l.src[l.off] != ',' {
+		return 0, 0, false, l.errAtPosition(start, `decimal width must be "(precision,scale)"`)
+	}
+	l.advanceByte()
+	scale, err = l.readDecimalPart()
+	if err != nil {
+		return 0, 0, false, err
+	}
+	if l.off >= len(l.src) || l.src[l.off] != ')' {
+		return 0, 0, false, l.errAtPosition(start, `decimal width must be "(precision,scale)"`)
+	}
+	l.advanceByte()
+	return precision, scale, true, nil
+}
+
+// readDecimalPart reads one non-empty run of ASCII digits.
+func (l *Lexer) readDecimalPart() (int, error) {
+	begin := l.off
+	for l.off < len(l.src) && l.src[l.off] >= '0' && l.src[l.off] <= '9' {
+		l.advanceByte()
+	}
+	if l.off == begin {
+		return 0, l.errAtPosition(l.pos(), "decimal width parts must be digits")
+	}
+	value, err := strconv.Atoi(l.src[begin:l.off])
+	if err != nil {
+		// Too many digits for an int: report the declaration as out of range
+		// rather than leaking a strconv message.
+		return 0, l.errAtPosition(l.pos(), "decimal width part is too large")
+	}
+	return value, nil
+}
+
+// errAtPosition reports an error at a position the lexer already recorded.
+func (l *Lexer) errAtPosition(at Position, msg string) error {
+	end := at
+	end.Column++
+	end.Offset++
+	return &LexError{Start: at, End: end, Msg: msg}
+}
+
+// PeekOpenParen reports whether the next character, after whitespace and
+// comments, is an opening parenthesis. The parser uses it to say that a width
+// belongs only to a decimal, rather than reporting a generic suffix error.
+func (l *Lexer) PeekOpenParen() bool {
+	l.skipSpaceAndComments()
+	return l.off < len(l.src) && l.src[l.off] == '('
 }
 
 func (l *Lexer) pos() Position { return Position{Offset: l.off, Line: l.line, Column: l.column} }
