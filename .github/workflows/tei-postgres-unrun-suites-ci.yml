@@ -20,6 +20,7 @@ on:
       - 'cmd/tei/destination_order_runtime_pg_test.go'
       - 'tools/reference-first-web-target/read_scenario_postgres.go'
       - 'tools/reference-first-web-target/read_scenario_postgres_test.go'
+      - 'tools/reference-first-web-target/read_scenario_page_postgres_test.go'
       - 'cmd/tei/desired_schema_applied_pg_test.go'
       - 'testdata/destination-order-change/**'
       - 'tools/reference-expected-state-update/**'
@@ -48,6 +49,7 @@ on:
       - 'cmd/tei/destination_order_runtime_pg_test.go'
       - 'tools/reference-first-web-target/read_scenario_postgres.go'
       - 'tools/reference-first-web-target/read_scenario_postgres_test.go'
+      - 'tools/reference-first-web-target/read_scenario_page_postgres_test.go'
       - 'cmd/tei/desired_schema_applied_pg_test.go'
       - 'testdata/destination-order-change/**'
       - 'tools/reference-expected-state-update/**'
@@ -152,6 +154,7 @@ jobs:
             cmd/tei/cli_view_environment_test.go cmd/tei/destination_order_runtime_pg_test.go \
             tools/reference-first-web-target/read_scenario_postgres.go \
             tools/reference-first-web-target/read_scenario_postgres_test.go \
+            tools/reference-first-web-target/read_scenario_page_postgres_test.go \
             | tee "$RUNNER_TEMP/destination-order-gofmt.diff"
           test ! -s "$RUNNER_TEMP/destination-order-gofmt.diff"
 
@@ -224,6 +227,11 @@ jobs:
           go test -count=1 -v -timeout 10m -run '^TestDestinationOrderChangeReadViaCLIFromPostgres$|^TestDesiredSchemaSQLCreatesTheTableTheReadNeeds$' ./cmd/tei | tee -a "$log"
           go test -count=1 -v -timeout 10m -run 'TestPostgresReadRunnerAnswersTheRowsPostgreSQLReturned' \
             ./tools/reference-first-web-target | tee -a "$log"
+          # Road item 2's remaining half: the page a browser opens must carry
+          # the same answers from the same database. Kept separate so its PASS
+          # line is required by name below.
+          go test -count=1 -v -timeout 10m -run '^TestShippedWebPageShowsRealPostgresRowAnswers$' \
+            ./tools/reference-first-web-target | tee -a "$log"
 
       - name: SKIPとFAILの検証
         shell: bash
@@ -273,6 +281,7 @@ jobs:
             'TestDestinationOrderChangeReadViaCLIFromPostgres'
             'TestDesiredSchemaSQLCreatesTheTableTheReadNeeds'
             'TestPostgresReadRunnerAnswersTheRowsPostgreSQLReturned'
+            'TestShippedWebPageShowsRealPostgresRowAnswers'
           )
           for name in "${required[@]}"; do
             grep -Eq -- "^[[:space:]]*--- PASS: ${name} \(" "$log" || { echo "required test did not PASS: ${name}" >&2; exit 1; }
