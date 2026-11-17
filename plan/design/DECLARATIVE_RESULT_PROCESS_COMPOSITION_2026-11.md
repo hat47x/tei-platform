@@ -474,3 +474,60 @@ Result-firstとNode-firstは、この三者へ至る**異なる編集入口**で
 R-0/R-1は既存C0→C3の狭い拡張として扱う。R-2/R-3はP0の正式Source→生成Go→Builder／通常CLI実Providerへ合流し、別Pipelineを並走させない。R-4は既存N0〜N4／W0〜W4を用いる。新しいGenerator本体・Batch Runner・Scheduler・常駐Host・統一Job Registry・Optimizer・第二Expected正本は導入しない。
 
 **見直し条件**：実例で必要な粒度／時間／不在・部分取得／更新寄与が既存Data/Relation/Operatorに表現できない場合のみ、その**欠落した意味**を具体的な反例として既存Ownerへ戻す。新しい型を作る前にSource/Role/Facet／構成／Pluginのどこに置くべきか比較する。最適化や増分更新は、正しく再計算できることを検証してから採否を決める。
+
+## 15. 複数成果物の世代整合：共通計算と共同公開を同一視しない（2026-11-17、設計候補）
+
+### 15.1 新たな判断：計算の共有、成果物の世代、Consumerが見る組を分離する
+
+§3・§10〜14の成果物要求／計算粒度／実現選択／変更影響を踏まえると、最後に残る境界は**「複数出力が計算できたこと」と「複数出力を整合した組として使えること」は異なる**という点である。たとえ二つのResultが同じ論理Operationから導出されても、別々のStore・DB・APIに公開された時点では、片方だけ新世代に切り替わることがある。Data/Relation/Ruleの正本、実Jobの完了、生成Artifactの完全性、各Consumerの実受領を一枚の成功にまとめない。
+
+比較には最低限、次の区分を保つ。ここでの「組」は専用の新しい永続Core型ではなく、既存Result要求・Artifact Manifest・Source/Meaning revision・受理された業務期間の**read-onlyな照合視点**を指す。
+
+| 比較単位 | 保持する意味 | それだけで証明できないこと |
+| --- | --- | --- |
+| Result要求 | 対象集合、出力Grain、集計条件、値・述語・分類・時間の依存、必要Scope | 実行・公開・Consumer受領 |
+| Input Cut | Sourceごとの実Revision／Snapshot、対象範囲と欠落の有無、業務as-of条件 | 別Source間の業務整合時点があること |
+| Shared Computation | 共有可能なOperator部分、利用した値、順序・丸め・NULL・分類・読取の契約 | 異なるGrainのResultが同時に公開されたこと |
+| Result Generation | 出力ごとの不変内容／digest・実生成版、意味・入力依存、公開資格 | 他Result世代との組合せが有効なこと |
+| Publication / Consumer Cut | 公開された組、参照方法、Consumerが実際に固定した世代と読取時点・開示Scope | 外部DB Effect確定、他Consumerの採用、業務完了 |
+
+同じSource revision番号であっても、異なるReaderの実CutやScopeを同一と仮定しない。逆に、異なる粒度や異なる参照期間のResultには同一revision値を強要せず、**各Resultがどの入力CutとMeaningに従い、組として整合すると受理されたか**を説明する。分類の多重所属、集計前後の丸め、非出力Predicate依存は§3/§10/§13を再利用する。
+
+### 15.2 合成反例：各Resultは正しくても組合せが誤る
+
+不変の明細二行を持つ旧入力 S1（A=100、B=300、合計400）と、Bが500に訂正された新入力 S2（合計600）を用いる。明細Result D と集計Result T はそれぞれ独立に生成・検査可能とする。
+
+- **正しい旧組**：D(S1)={100,300}、T(S1)=400。
+- **正しい新組**：D(S2)={100,500}、T(S2)=600。
+- **不整合な混在組**：D(S2)={100,500}、T(S1)=400。各Artifactのdigest・個別検算がPASSでも、同じ「現行結果の組」としては失格。逆の混在も同様。
+- Consumerが「Dのactive」と「Tのactive」を別々の時刻に読み、途中で切替が起きた場合、表示時点に各activeが正しくても**同じ読取Cutを固定した証明にはならない**。
+
+一つの信頼できるストアで**不変Artifact二つを指すManifestの参照先を一回の検証付き切替**として実現でき、ConsumerがそのManifestを一度固定して各Artifactのbytesを検証できるなら、そのストアとConsumerの能力の範囲で組の整合を示す候補になる。ただし、実Storeの原子的切替・保管寿命・権限・Consumer Pinを実測しない限り採用済みの保証としない。複数DB・外部APIへまたがる無条件の原子的公開を前提にしない。実現できないTargetは、**個別公開／組の未確認／保留**を区別し、部分的な成功を全組成功に丸めない。
+
+### 15.3 再利用・更新・公開の順序
+
+1. 受理されたResult要求と現在のSource／分類／時間／Scopeを照合し、各Resultの必要なInput PopulationとCutを確定する（§13のReuse／Scoped recompute／Rebuild／Holdを流用）。
+2. Operatorの法則と実Source読取に基づき、**安全と証明できた共通計算だけ**共有する。Shared Execution自体を業務の原子境界にしない。
+3. Resultごとに生成・検証して不変世代を識別し、旧世代参照を破壊しない。中途失敗や一部未生成があれば、組全体のReadyを宣言しない。
+4. 依存する結果を同時に参照する利用者がいる場合、既存Manifest・Stage/Publish・Consumer契約で**一つの組の版をPinして読めるか**を検証する。実Targetにその能力がなければunsupported／unknownとして止め、第二のArtifact正本や強制Transaction Managerを作らない。
+5. 下流にDB Write／Message／APIのEffectがある場合、Resultの公開版と**実Commit Receipt・Current Grant・Expected Version**を別の資格で照合する（#1174／#1129／#2499）。ACK不明時に再送・ロールバック可能と仮定しない。
+6. 過去期間訂正、分類改版、外部Consumerの旧世代Pinの保持期限は、Result更新・旧世代保持・Reader終了・業務補償をそれぞれ別のClaimとする（バッチ設計§23・§25・§27・§29・§32）。
+
+### 15.4 独立Expectedへ引き渡す反例（新しい試験正本を作らない）
+
+| Case | 一因子の変更 | 期待する拒否・判定 |
+| --- | --- | --- |
+| MG-01 | S1の明細Dと集計Tを同じ旧Cutで読む | 二ResultのGrainと入力依存が一致し、合計400。純粋計算の限定正例 |
+| MG-02 | DだけS2へ更新しTはS1のまま | 個別検証PASSでも同一世代の組として不適格。混在を検出 |
+| MG-03 | T(S2)のStageが失敗しD(S2)だけ存在 | Run/Upload完了から共同公開を推論しない。旧組保持またはunknown |
+| MG-04 | DとTのactiveポインタを二回に分けて取得 | Pinされた一組がなければ整合読取はunknown。時刻一致だけでPASSしない |
+| MG-05 | 分類やFilter改版により旧Tの対象集合が変化 | 値のLineageしか追わない再利用を拒否。§13のCondition／Classification依存で再計算候補 |
+| MG-06 | 同じ入力でもRead Scopeが異なり一部行が非開示 | 公開可能な限定結果と全域の結果を区別。非開示行の存在・件数を漏らさない |
+| MG-07 | Tの下流DB更新後にACK消失 | Published／Applied／Commit unknownを区別し、Receipt照会なしの再送を拒否 |
+| MG-08 | 値のdigestが偶然同じでもMeaning・Grain・期間が違う | byte一致だけで再利用／組の同値を認めない |
+
+MG-01〜08は既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)の独立Expected候補として引き渡す。新しいRunner・Manifest型・中央Generation Store・Cross-Target Transaction Manager・Scheduler・第二DSLをこの文書から直接増設しない。
+
+**Owner／順序**：#1130／#4410が先に固定TSVの一出力・CLI/Go二入口と不変Artifactを実証 → #1180/#2514がMG-01/02/03/04の独立Expectedを固定 → #2482／#2622が実Stage/Publish／実Readerに表現可能な範囲を検証 → #1129/#1174が下流EffectのReceiptを実証 → #1124/#2831/#4583が既存Studioへread-only投影する。既存§14のR-0〜R-4の中に追加し、P0の通常CLI実ProviderとDesktopセルフビルドを遅らせない。
+
+**検証上限**：本節は調査・既存設計照合・有限算術による設計案。新規Go/CLI/DB/外部Consumer/Studio実行試験、実Providerの原子的切替、正式Owner意味受理は **NOT RUN / NOT ACCEPTED**。
