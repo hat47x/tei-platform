@@ -18,6 +18,7 @@ import (
 	"tei/internal/driver"
 	"tei/internal/sourceacceptance"
 	"tei/internal/workspace"
+	"tei/tools/internal/postgresdb"
 )
 
 func main() {
@@ -110,13 +111,17 @@ func runCombinedWebTargetWithHost(ctx context.Context, reader sourceacceptance.R
 		legacyUsers   = flags.String("legacy-users", "reference/legacy-auth/users.json", "Legacy authentication fixture")
 		legacyAuthz   = flags.String("legacy-authorization", "reference/legacy-auth/authorization.json", "Legacy authorization fixture")
 		listen        = flags.String("listen", "127.0.0.1:8080", "HTTP listen address")
-		scopedRoutes  = flags.Bool("scoped-routes", false, "diagnostic: expose only the selected Application's HTTP routes")
-		diagnostic    = flags.Bool("diagnostic-unaccepted-source", false, "test-only: load unaccepted Reference Source without a Host witness")
-		storeDir      = flags.String("host-acceptance-store", "", "existing Host Acceptance Store directory (requires -host-acceptance-trust)")
-		trustPath     = flags.String("host-acceptance-trust", "", "Host trust file listing issuer public keys (requires -host-acceptance-store)")
-		provGrant     = flags.String("provisional-effect-grant", "", "DEVELOPMENT ONLY (D8): signed provisional effect Grant file (requires the two flags below)")
-		provTrust     = flags.String("provisional-effect-grant-trust", "", "DEVELOPMENT ONLY (D8): trust file for provisional effect Grant issuers")
-		provAck       = flags.Bool("provisional-effect-grant-development-only", false, "acknowledge that the provisional effect Grant is development/verification only, not a production permission, and not G2 evidence")
+		// The read source is selected explicitly. The shipped CLI reads no
+		// environment variable for it, so a page cannot start claiming a
+		// database it was not given; empty keeps the shipped fixture rows.
+		readPGDSN    = flags.String("read-pg-dsn", "", "PostgreSQL DSN serving the order-line read (empty keeps the fixture rows)")
+		scopedRoutes = flags.Bool("scoped-routes", false, "diagnostic: expose only the selected Application's HTTP routes")
+		diagnostic   = flags.Bool("diagnostic-unaccepted-source", false, "test-only: load unaccepted Reference Source without a Host witness")
+		storeDir     = flags.String("host-acceptance-store", "", "existing Host Acceptance Store directory (requires -host-acceptance-trust)")
+		trustPath    = flags.String("host-acceptance-trust", "", "Host trust file listing issuer public keys (requires -host-acceptance-store)")
+		provGrant    = flags.String("provisional-effect-grant", "", "DEVELOPMENT ONLY (D8): signed provisional effect Grant file (requires the two flags below)")
+		provTrust    = flags.String("provisional-effect-grant-trust", "", "DEVELOPMENT ONLY (D8): trust file for provisional effect Grant issuers")
+		provAck      = flags.Bool("provisional-effect-grant-development-only", false, "acknowledge that the provisional effect Grant is development/verification only, not a production permission, and not G2 evidence")
 	)
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -160,6 +165,26 @@ func runCombinedWebTargetWithHost(ctx context.Context, reader sourceacceptance.R
 	if provisionalReader != nil {
 		effectReader = provisionalReader
 	}
+	// A requested database either serves the read or refuses to publish. Leaving
+	// the fixture rows in place would show a page that claims a read it did not
+	// make, which is what today's synthetic rows already must not be read as.
+	if *readPGDSN != "" {
+		if wiring.readDatabase != nil {
+			return fmt.Errorf("WEB_READ_DATABASE_CONFLICT: the embedding Host already supplied a read database")
+		}
+		db, openErr := postgresdb.OpenSQL(*readPGDSN)
+		if openErr != nil {
+			// The error deliberately carries no connection-string fragment.
+			return fmt.Errorf("WEB_READ_DATABASE_UNUSABLE: %w", openErr)
+		}
+		if pingErr := db.PingContext(ctx); pingErr != nil {
+			_ = db.Close()
+			return fmt.Errorf("WEB_READ_DATABASE_UNREACHABLE: the requested database did not answer")
+		}
+		wiring.readDatabase = db
+		defer func() { _ = db.Close() }()
+	}
+
 	var loaded workspace.Result
 	var acceptedWorkspace sourceacceptance.VerifiedWorkspace
 	if *diagnostic {
