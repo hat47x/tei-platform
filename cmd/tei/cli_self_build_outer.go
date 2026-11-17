@@ -573,6 +573,7 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 		if parsed.BindResolvedBuilder && strings.Contains(err.Error(), "selected child builder digest mismatch") {
 			// Preserve the resolved-plan evidence on refusal; no child process
 			// exists and no artifact is permitted to have been written.
+			markPlanNotStarted(report.PlanHandover)
 			report.Error = &cliFailure{Code: "SELF_BUILD_BUILDER_SELECTION_MISMATCH", Message: err.Error()}
 			if encodeErr := encodeIndented(out, report); encodeErr != nil {
 				return 1, encodeErr
@@ -742,10 +743,12 @@ var reservedChildFlags = []string{"-artifact-out", "-state", "-supply"}
 // child arguments, including the -flag=value spelling, or "" when none is.
 func reservedChildFlagIn(childArgs []string) string {
 	for _, arg := range childArgs {
-		name := arg
-		if index := strings.IndexByte(name, '='); index >= 0 {
-			name = name[:index]
+		// This entry appends its own flags after the caller's. A terminator
+		// would turn them into positional arguments the child ignores.
+		if arg == "--" {
+			return "--"
 		}
+		name := childFlagName(arg)
 		for _, reserved := range reservedChildFlags {
 			if name == reserved {
 				return reserved
@@ -755,14 +758,28 @@ func reservedChildFlagIn(childArgs []string) string {
 	return ""
 }
 
-// flagIn reports whether name appears among args, in either spelling.
+// flagIn reports whether name appears among args, in any spelling the flag
+// package accepts: -name, --name, and either with =value.
 func flagIn(args []string, name string) bool {
 	for _, arg := range args {
-		if arg == name || strings.HasPrefix(arg, name+"=") {
+		if childFlagName(arg) == name {
 			return true
 		}
 	}
 	return false
+}
+
+// childFlagName returns the flag an argument sets, written with one dash, or
+// the argument itself when it is not a flag.
+func childFlagName(arg string) string {
+	name := arg
+	if index := strings.IndexByte(name, '='); index >= 0 {
+		name = name[:index]
+	}
+	if strings.HasPrefix(name, "--") && len(name) > 2 {
+		name = name[1:]
+	}
+	return name
 }
 
 func selfBuildOuterPrecondition(out io.Writer, report selfBuildOuterEvidence, message string) (int, error) {
