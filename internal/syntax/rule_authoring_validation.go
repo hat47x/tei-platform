@@ -138,7 +138,9 @@ func ruleToValidationWithInputs(
 	}
 	declared, known := declaredInputs[core.CanonicalID(rule.Operator.Text)]
 	if !known {
-		return ruleToValidation(rule)
+		// The operator is not declared in this source, so its input names are
+		// unknown here; only the value check applies.
+		return refuseAssignedInputs(rule)
 	}
 	for _, assignment := range rule.Inputs {
 		if !inputNameDeclared(declared, assignment.Name) {
@@ -150,7 +152,24 @@ func ruleToValidationWithInputs(
 			}
 		}
 	}
-	return ruleToValidation(rule)
+	// An assignment that survives the name check still has nowhere to go:
+	// semantic.Validation carries the operator and its subject, not the input
+	// values. Converting anyway would produce a rule that reads as the
+	// single-input operator and silently ignores the assignment.
+	return refuseAssignedInputs(rule)
+}
+
+// refuseAssignedInputs refuses a rule that assigns an operator input. The
+// meaning has no field for the value yet, so converting would drop it.
+func refuseAssignedInputs(rule RuleAuthoring) (semantic.Validation, *RuleConversionIssue) {
+	if len(rule.Inputs) == 0 {
+		return ruleToValidation(rule)
+	}
+	return semantic.Validation{}, &RuleConversionIssue{
+		RuleID: rule.ID, Span: rule.Inputs[0].NameSpan,
+		Msg: "the meaning has no place for an operator input value yet; " +
+			"a rule that assigns an input cannot be converted until the normalization carries it",
+	}
 }
 
 func inputNameDeclared(names []string, name string) bool {
