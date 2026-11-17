@@ -79,9 +79,9 @@ func TestSourceRevisionChangesPartAndIdentity(t *testing.T) {
 		t.Fatal(err)
 	}
 	for name, revised := range map[string][]byte{
-		"version":       edit(t, contract, `"version": "1.0.0"`, `"version": "1.0.1"`),
-		"failure code":  edit(t, contract, `"STALE_MODEL_PROJECTION"`, `"STALE_PROJECTION"`),
-		"response name": edit(t, contract, `"canonical": "canonical"`, `"canonical": "projection"`),
+		"version":        edit(t, contract, `"version": "1.0.0"`, `"version": "1.0.1"`),
+		"failure code":   edit(t, contract, `"STALE_MODEL_PROJECTION"`, `"STALE_PROJECTION"`),
+		"response name":  edit(t, contract, `"canonical": "canonical"`, `"canonical": "projection"`),
 		"required limit": edit(t, contract, `"source-location-is-not-write-authority"`, `"source-location-is-not-edit-authority"`),
 	} {
 		next, nextReport, err := generate(transformRaw, revised)
