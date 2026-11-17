@@ -526,3 +526,73 @@ DPC-01〜15を置き換えず、次の一因子反証を追加する。いずれ
 | DPC-20 | 部分取得の重複／期間重複と、違反未観測の一覧 | 見えた違反は確定できるが、見えない違反を全件不存在と断定しない |
 
 **最初に実装するのはDPC-16**。既存SQL Executorを通った結果から、Callerが`CoverageComplete`を申告できる条件を既存Query／Function Data Contextの選択情報と突き合わせる。現状のSQLite試験は、誤申告が起き得ることを示す基線であって、その拒否が製品で成立した証拠ではない。正式な実PostgreSQL→通常CLI→独立Consumerでの受理は#2586／#4496の別P0に維持する。
+
+### 12.14 全件性は「問われた範囲」についてのみ証明する：DPC-16実装契約（2026-11-17）
+
+データ様式が保存すべきものを、**入力の構造**、**実際に観測した内容**、**判断に必要な閉包**に分ける。「SQLの返却行を読み終えた」だけでは、Functionが問うRelation・Scope・時点の全件性は保証されない。逆に、データベース全体を走査しなくても、定義した対象範囲を読み切れれば、その範囲での判断は成立し得る。
+
+最小の読取専用検収票では、既存のQuery／Function Data Context／Evidenceを参照し、次の欄を**別々の事実**として扱う。これは既存の受理票に加える照合項目であり、新しいCore型や第二のデータ正本を設けない。
+
+| 欄 | 記録・照合する内容 | 誤って推論してはならないこと |
+| --- | --- | --- |
+| Requested | Function／Ruleが要求したRelation、Header・業務Identity、Scope、時点、Field、粒度 | SQLの返却列だけで要求範囲を決める |
+| Executed | 選択Query Contract、実RealizationとSource Revision、Provider、Binding、実Callの識別 | 宣言があるだけで実行済みとする |
+| Observed | 実行が返したRow／Attribute、明示NULL、未選択列、ページ進行、Read終了状態 | 返却件数や値の一致から全件とみなす |
+| Claimed | Callerが「全件」と申告した範囲と根拠 | CoverageCompleteを証拠そのものとみなす |
+| Qualified | Requestedに対して実Readが証明した範囲、未立証の理由、現在の利用資格 | 「未立証」と「欠落が実際に確認済み」を混同する |
+
+**ReaderとCallerの境界**：現行のvalidationread.FromHeaderDetailは、Callerが渡したCoverageをRule評価へ引き継ぐReaderであって、完全性の証明者ではない。製品Callerはその前でClaimを照合し、根拠のないcompleteを渡さない。既存validationeval.Coverageはcomplete／partialの二値なので、証拠不足は検収票ではunknownとして保持し、Ruleへの入力では安全側のpartialにする。そうすると、観測済みの重複違反は確定し得る一方、未観測の重複が存在しないとは断定できない。未立証を、物理的な欠落が確定した証拠として表示しない。
+
+#### 初回の限定合格と拒否条件
+
+既存のinternal/driver/validationread/sqlite_path_test.go（D1の4行、members／members_first_page、seatUnique／personUnique）を再利用する。Provider、Relation、Scope、Ruleを固定し、次の一因子比較から始める。
+
+| ID | 入力差分 | Callerが許してよい結果 |
+| --- | --- | --- |
+| DPC-16a | first_pageの2/4行にcompleteを申告 | 根拠不足としてcompleteを拒否／保留し、Ruleへ偽の全件を渡さない |
+| DPC-16b | 同じ2/4行を未立証として扱う | seatUniqueは判定保留、観測済みpersonUnique違反は不成立と確定 |
+| DPC-16c | 異なるScope・Query Bindingを全件の根拠として提示 | 返却行が一致しても、別Scopeの資格を流用しない |
+| DPC-16d | 0行の応答だけを全件の根拠とする | 空集合・不存在・一意性成立の認定を保留 |
+
+最初は**一つのContract Queryについて、実行したQuery／Binding／ScopeとCallerの申告を同じAttemptで突き合わせる**。SQLにLIMITが見えないこと、ReadがEOFまで進んだこと、件数が一致したことは一般的な完全性の証明にはならない。WHEREの対象縮小、JOIN・DISTINCT・集計の粒度変化、ページング未完了、時点や可視範囲の不一致は別の反証とし、静的に認定できないQueryは未立証とする。複数ページを結合するときは、継続位置・一意な順序・読み取りSnapshotの一貫性も確認する。
+
+**合格の上限**：初回DPC-16a〜dが実装されても、最初に認定できるのは限定Queryに対するCaller境界の拒否能力のみ。全SQL静的解析、全Provider、公開Grant、実Builder、Studio、Owner業務意味受理は含まない。実PostgreSQL→通常CLI→独立Consumerは既存#2586／#4496、独立Expectedは#1180／#2514に引き渡す。この文書の追加自体は新規Go／DB／Studio試験を実施した証拠ではない。
+
+### 12.15 Operatorの署名・図面Projection・Sourceを一つのデータ取得へ結び付ける（2026-11-17横断統合）
+
+[規則の正規形とOperator署名](RULE_NORMAL_FORM_AND_OPERATOR_SIGNATURE_DECISION_2026-11.md)の採用判断、[三要素Method](THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)と[自己記述の第一縦断](TEI_SELF_DESCRIPTION_REVIEW_SLICE_2026-11.md)の設計、および既存の型付きPort設計§11を照合する。ここでは新しい意味モデルを増やさず、**一つのDataと実Readに、必要なRule入力・図面・Consumerを対応付ける条件**を整理する。
+
+#### 12.15.1 Ruleが要求する範囲と、Queryが供給を宣言する範囲を突き合わせる
+
+採用済みの規則設計は、規則を「宣言済みOperator一つと名前付き入力の割当て」に正規化し、Operator署名に型・入力単位・値か有無か・一部観測で反証できるかを記述する方針である。**これは設計判断であり、現行製品の評価器全体が正規形へ移行済みという意味ではない。** 現行の六種のValidationは移行中も互換性を保つ。
+
+- Operator署名が「Relationの全行」を要求する場合、まずRuleのRelation ID・親業務Identity・Scopeと、選択されたContract Query束縛の「対象Relationをすべて返す」という宣言を照合する。束縛が未宣言、別Relation、別Scopeなら、全件性を要求するRuleに無条件で供給しない。
+- Query束縛の宣言は**供給者の保証の主張**であって、実SQLが正しく全件を返したことの自動証明ではない。実行したRealization、入力Binding、ページ終端、Read Cohort・時点、取得列、必要な独立回帰を確認する。現行製品にこれらをすべて証明する能力がなければ、未立証のまま扱う。
+- 実行時のCallerができるのは、束縛が述べた範囲をより狭く扱うことまでとし、**partial／未立証からcompleteへの格上げを認めない**。既存二値Coverageへ渡すときは未立証を保守的にpartialへ写す。ただし、検収票上の「未立証」と「実際に一部しか読んでいない」は分けて残す。
+- 見えた重複で不成立と判断できるかは、Operator署名の「一部の行で反証できる」条件に依存する。観測できなかった行の値を推測して、成立／不存在／総件数を確定しない。
+
+§12.14の「根拠付き全件性」と矛盾させないため、**静的な契約適合**、**実行時に守られた取得範囲**、**独立試験で確認した保証範囲**を別々の資格として記録する。Operator署名とQuery宣言を照合できても、Provider実Readや第三者Consumerの成功に昇格させない。
+
+#### 12.15.2 同じ読取結果を表と図へ渡す際に保つもの
+
+標準データ構造の意味は、表・Graph・Tree・三要素の図面・Node Viewといった表現型に従属しない。Meta／Model／InstanceとProjectionを分け、同じQualified Subjectを複数画面で表示する場合は、少なくとも**意味Identity、個々のRelation occurrence、順序と多重性、値の状態、単位・精度、対象範囲・時点、Source版**のうち当該判断に必要なものを追跡する。
+
+例えば同じ所属Relationを表とGraphに投影するとき、表が一部の列を省略しても、元Relationが完全であったと再認定してはならない。同名の二Node・並列Edgeを一つへまとめるProjectionは、表示用には許せても、元のRelation IDやEdge IDを復元して編集する根拠にはならない。Whole Record／Field／明示Adapterの型が一致しても、粒度・NULLと未取得・Disclosure・現在Grantが異なれば、経路全体の適格性は別検査とする（§11〜12.13）。
+
+図面・Studio・SHO・SUIが共用するのは**選択したSubjectとSource／Projectionの関係**であり、表示を正本として複製することではない。現在の原本は選択済みMarkdown等のSourceとし、read-onlyレビュー→Source位置の再確認→対象Occurrence／Revision・被参照の検証→編集Preview→明示Save→再Read→再Projectionの順に進める。Viewからの直接書戻しや、古いPinに基づく変更は別資格とする。
+
+#### 12.15.3 一つのFixtureで各境界を個別に検収する
+
+最初の実装Packetは既存D1所属の実SQLite4行と一意性Ruleを使い、複雑なGraphや新DSLを先行実装しない。同じSource版とQuery選択を使って、①Relationの要求Scope、②実SQLの4行／2行、③Operatorの必要な全件性と部分観測の反証、④Field投影でのNULL／not-fetched、⑤表と簡単な関係図のread-only Projection、⑥独立Expectedと受領Consumer、を**別の検収欄**としてつなぐ。
+
+組織C1の実PostgreSQL試験で観測された「同じMembershipの投影4件から異なる仮想Person対応（3人／4人）が成立する」反例は、表面の値が一致しても人物数のClaimを決定できないことを示す。これをGraphや型付きPortへも再利用する際、**未観測のPerson Linkを推定で補わない**。実際にSourceへ保存するIdentity／Relationと、図の候補Edgeは区別する。
+
+| 検収する一辺 | 成立条件 | 不成立・保留の例 |
+| --- | --- | --- |
+| Rule要求→Query束縛 | 同一Relation／Header／Scopeに対する必要範囲の一致 | 別Scopeのcomplete宣言を流用 |
+| 契約束縛→実Read | 選択Realization・Binding・実結果の同一Attempt照合 | 2/4行のページを全件と自己申告 |
+| 実Read→Rule判断 | Operator入力の値状態・必要閉包・反証条件が一致 | 観測なしを「違反なし」と確定 |
+| Data→Projection／Port | Identity・粒度・状態・Source版・開示条件を明示 | 同じ表示値から欠けたPerson Linkを推定 |
+| Projection→元Source | Subject／Occurrence／現在Revisionと変更対象が一意 | 同名Nodeや古いPinから直接書戻し |
+
+この照合は既存DPC-16〜20・三要素SDM-01〜12・独立Expected #1180/#2514へ接続し、新しい試験正本は増やさない。**次の実コード差分はDPC-16aのCaller拒否を優先**し、Operator正規形の全移行や図面の双方向編集をその前提にしない。実Provider→通常CLI→独立Consumer #2586/#4496、およびStudio Stage1→Stage2 #2831/#4583は並行の最上位P0を維持する。今回の設計追補自体は新規の実行・Owner受理の証拠ではない。
