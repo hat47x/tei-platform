@@ -110,14 +110,29 @@ func OperatorInputFor(word OperatorInputWord) (semantic.OperatorInput, bool) {
 // declaredOperatorInputNames indexes the input names each declaration gives,
 // keyed by operator id. Every declared operator gets an entry, so an operator
 // that declares no name is distinguishable from one that is not declared at all.
+//
+// The unnamed single-input form declares no name of its own, but the reader
+// gives it "value" (see OperatorAuthoring.InputName). That name has to be in
+// this index too, or a rule that writes `value:` against `takes number` is
+// refused as undeclared while the same contract read through
+// `takes value: number` accepts it — two readings of one signature that
+// disagree (#4362).
+//
+// The name stays out of the emitted semantic.Operator. This index is what the
+// rule check reads; the contract continues to carry only what the author wrote,
+// so a reader that needs a name for the single input still applies "value".
 func declaredOperatorInputNames(operators []OperatorAuthoring) map[core.CanonicalID][]string {
 	names := make(map[core.CanonicalID][]string, len(operators))
 	for _, operator := range operators {
 		entry := names[operator.ID]
 		names[operator.ID] = entry
-		if operator.InputName != "" {
-			names[operator.ID] = append(entry, operator.InputName)
+		name := operator.InputName
+		if name == "" {
+			// The unnamed form is the single input the surface already calls
+			// "value", so a rule may address it by that name.
+			name = "value"
 		}
+		names[operator.ID] = append(entry, name)
 	}
 	return names
 }
