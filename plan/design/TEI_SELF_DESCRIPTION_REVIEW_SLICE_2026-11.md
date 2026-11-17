@@ -122,3 +122,25 @@ flowchart LR
 | **5：実利用の別検収** | #2586 / #2831 / #4583、SDM-09・SDM-10 | 通常製品CLIの実ProviderとStage1→Stage2の実Windows Consumerは別P0。図面の成功を実DB更新・セルフビルド成功にしない |
 
 **この文書による実施結果**：上記は設計と照合用の具体例である。SDMケース実行、原典GUIとの画面比較、XeadDriver/正式Provider/DB実験、Stage2実Windows起動、CI、Owner意味受理は行っていない。既存のP0へ新しいHard Gateを追加せず、作業は各IssueのOwnerの範囲で進める。
+
+
+## 6. 三要素クロスリファレンスの最初のコード検証：複数操作を一つのセルへ
+
+[三要素Method §33](THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)の「複数Projectionから同じ意味を確認する」を、既存の `internal/threeelement` に対する小さな回帰として具体化する。これは**read-onlyの参照モデル**であり、X-TEA原典の対応表をすべて忠実に再現したことや、受理済みTEI Worldの正式なCRUDを意味しない。
+
+### 表の粒度と意味
+
+| 出力 | 一行の粒度 | 同一Function/Dataへの複数宣言 |
+| --- | --- | --- |
+| `GenerateCRUDTable` | Function ID × Data ID | 重複行を生成せず、Function.Operationsの操作集合をC/R/U/Dで統合する |
+| `GenerateFunctionDataCrossReference` | Function ID × Data ID | 同じ操作集合を表示。CRUDDefinitionがあるときは採用表示値と別に`DerivedOperations`を残す |
+| `GenerateBusinessFunctionCrossReference` | Business ID × Activity ID × Function ID | BusinessがFunctionを利用する参照であり、上記CRUDの実行責任／実Effectを帰属させない |
+
+**最小の独立期待**：Data=`order`、Function=`submit`に`R`と`U`を別々に記載した場合、CRUD／Function-Data双方で**一行・操作`RU`**となる。同名のBusiness `order` はData名の解決先にならない。元のFunction.Operationsを逆順にしても表は変わらない。明示CRUDが`R`で機能宣言が`RU`なら、表示値`R`とは別に派生意図`RU`を残す。明示`C`と派生`RU`が相互に対立する場合は、両者とConflictを確認できること。
+
+### 適用する既存試験
+
+- `TestMultipleFunctionOperationsFormOneCRUDCell`：重複行なし、R/Uの双方を保持、異なるElementKindの同名IDを誤解決しない、操作順に依存しない。
+- `TestMultipleFunctionOperationsRemainVisibleUnderExplicitCRUD`：明示CRUDの投影と派生意図を両方表示し、相互に対立する場合はConflictを維持する。
+
+この狭い成果は#1124（Modelerの実表示）・#1126（Data/ER/CRUD）・#2514（独立Expected）へ引き渡す。最小の試験が通っても、モデルの読み取り対象集合、原典Data/Function/Business全体の一致、実Sourceの資格、Modelerの画面操作、旧Driverの副作用、Windows Studioの受入には昇格させない。五種類の旧対応表の名称・軸・セル意味・導出条件についても、元資料の固定版とSourceを確認するまで正式な互換宣言をしない。
