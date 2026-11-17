@@ -14,11 +14,12 @@
 
 - **動く**：[#5300](https://github.com/hat47x/tei-platform/pull/5300)で、通常の`tei view -environment`が宣言済みのQueryを実PostgreSQLで実行し、受注1001／1002／1003の行ごとのRule結果を返す。専用CIは変更前後の6ケースをこのディレクトリの独立した期待と照合する。手順3・4の設計変更と例の診断は`cmd/tei/destination_order_change_test.go`で検証済み。実DB試験も、**同じ作業領域を`tei validate`してから明細を読み直す**。
 - **試験だけ**：[#5271](https://github.com/hat47x/tei-platform/pull/5271)の内部PostgreSQL試験は、別の3／3／1行のデータで状態付きReaderを検査している。製品CLIの6ケースと別の試験であり、実DBを使わない実行ではPostgreSQLのテストはスキップされる。
-- **未実装**：明細全件を返すというContract Bindingの宣言と検証、その宣言を根拠にした`perOrder`の「成立」判定、手順5の生成Web画面と一ページの手順書。現行CLIは根拠のない全件性を主張せず`coverage: partial`を返す。
+- **動く**：束縛に`covers sales.order.lines`を書いた作業領域の写しでは、`tei view -environment`がQueryを関係の保存と照合して`coverage: complete`を返し、`perOrder`の「成立」を含めてこのディレクトリの期待と一致する（実PostgreSQLの試験）。参照用の作業領域そのものには、まだ宣言を書いていない。宣言のない束縛、宣言を残したまま行を落とすQueryでは`coverage: partial`のままである。
+- **未実装**：手順5の生成Web画面と一ページの手順書。
 
 ## 期待の読み方
 
-期待のファイルでは、`perLine`が行ごとに尋ねる規則の答えで、明細の`order_line_id`で行を指す。`perOrder`は受注一件の明細すべてに一度尋ねる規則の答えである。`tei view -environment`の結果では、同じものが`perRow`と`perRelation`という一般の名前で返り、行は`rows[].key`（永続化の定義が宣言する主キー）で指す。明細のない受注1003では、行ごとの答えは0個になる。明細番号の一意は、束縛が「受注一件の明細をすべて返す」と宣言していることを前提に成立とする。宣言がなければ、答えを出さず判定保留にする。
+期待のファイルでは、`perLine`が行ごとに尋ねる規則の答えで、明細の`order_line_id`で行を指す。`perOrder`は受注一件の明細すべてに一度尋ねる規則の答えである。`tei view -environment`の結果では、同じものが`perRow`と`perRelation`という一般の名前で返り、行は`rows[].key`（永続化の定義が宣言する主キー）で指す。明細のない受注1003では、行ごとの答えは0個になる。明細番号の一意は、束縛が「受注一件の明細をすべて返す」と宣言し、実行したQueryがその宣言どおりだと照合できたときに成立とする。照合できなければ、答えを出さず判定保留にする。
 
 ## 次の実装へ引き渡す条件
 

@@ -44,10 +44,11 @@ type destinationRow struct {
 // destinationRead is the read-only runtime result of `tei view -environment`.
 // It names no Application, Pattern, Environment or Data of a particular
 // Workspace: everything is resolved from the Workspace that was loaded.
-// Because the current Contract Query binding does not certify that every
-// relation row was fetched, it conservatively reports partial coverage.
-// A witnessed duplicate still invalidates uniqueness, but absence of
-// duplicates alone cannot establish it.
+// Coverage is complete only when the binding states `covers <Relation>` and
+// the Query that ran matches the Workspace's relation storage (see
+// driver.QualifyHeaderDetailCoverage); otherwise it is partial and the report
+// says why. A witnessed duplicate invalidates uniqueness either way; the
+// absence of duplicates establishes it only when coverage is complete.
 type destinationRead struct {
 	Application          core.CanonicalID             `json:"application"`
 	Pattern              core.CanonicalID             `json:"pattern"`
@@ -55,6 +56,9 @@ type destinationRead struct {
 	Relation             core.CanonicalID             `json:"relation"`
 	KeyAttributes        []core.CanonicalID           `json:"keyAttributes"`
 	Coverage             string                       `json:"coverage"`
+	CoverageDeclared     string                       `json:"coverageDeclared"`
+	CoverageBasis        string                       `json:"coverageBasis,omitempty"`
+	CoverageReason       string                       `json:"coverageReason,omitempty"`
 	Rows                 []destinationRow             `json:"rows"`
 	PerRow               map[string]map[string]string `json:"perRow"`
 	PerRelation          map[string]string            `json:"perRelation"`
@@ -172,11 +176,15 @@ func readEnvironmentRows(
 		// put an unredacted driver error into the public JSON report.
 		return destinationRead{}, fmt.Errorf("Contract Query execution failed; check the environment binding and database")
 	}
-	// Neither row count nor an SQL query without LIMIT proves complete
-	// relation coverage. An unknown coverage string is rejected by Decide;
-	// until a binding certifies completeness, report the conservative partial
-	// state and preserve its undecided reasons.
-	detail, err := validationread.FromHeaderDetail(world.Semantics, execution.Execution, validationeval.CoveragePartial)
+	// Neither a row count, an SQL query without LIMIT, nor the binding's
+	// declaration alone proves complete relation coverage. Only a Query that
+	// matches the Workspace's relation storage does; anything else is partial.
+	qualification := resolver.QualifyHeaderDetailCoverage(execution.Execution.Resolution, execution.Executor.Instance.Provider)
+	coverage := validationeval.CoveragePartial
+	if qualification.Complete {
+		coverage = validationeval.CoverageComplete
+	}
+	detail, err := validationread.FromHeaderDetail(world.Semantics, execution.Execution, coverage)
 	if err != nil {
 		return destinationRead{}, err
 	}
@@ -186,15 +194,18 @@ func readEnvironmentRows(
 	}
 
 	result := destinationRead{
-		Application:   appID,
-		Pattern:       patternID,
-		Environment:   envID,
-		Relation:      prepared.Relation.Relation.ID,
-		KeyAttributes: keyAttributes,
-		Coverage:      string(validationeval.CoveragePartial),
-		Rows:          make([]destinationRow, 0, len(execution.Execution.Result.Rows)),
-		PerRow:        map[string]map[string]string{},
-		PerRelation:   map[string]string{},
+		Application:      appID,
+		Pattern:          patternID,
+		Environment:      envID,
+		Relation:         prepared.Relation.Relation.ID,
+		KeyAttributes:    keyAttributes,
+		Coverage:         string(coverage),
+		CoverageDeclared: qualification.Declared,
+		CoverageBasis:    qualification.Basis,
+		CoverageReason:   qualification.Reason,
+		Rows:             make([]destinationRow, 0, len(execution.Execution.Result.Rows)),
+		PerRow:           map[string]map[string]string{},
+		PerRelation:      map[string]string{},
 	}
 	ids := make([]string, 0, len(execution.Execution.Result.Rows))
 	for _, row := range execution.Execution.Result.Rows {
