@@ -33,6 +33,14 @@
 | 4 | 最初のWebの実行先で、行ごとの答えを表示する（上の5） | [#1119](https://github.com/hat47x/tei-platform/issues/1119) |
 | 5 | 五つを通す試験と、一ページの手順書 | #1119 |
 
+入口は増やさない。上の1、2、4は、既にある`tei view`へ、実行先を選ぶ指定（`-environment`）を足して通す。
+
+```text
+tei view -workspace reference/workspace -application order_entry -pattern order_entry.order_lines -environment development -input order_id=<受注> -format json
+```
+
+返すのは、読んだ行、行ごと項目ごとの値の状態、行ごとの規則の答えである。接続の秘密は環境変数から受け取り、作業領域へ書かない。
+
 並行して進めてよいのは一本だけである。**Studioが次の自分を作る一巡**（[#4583](https://github.com/hat47x/tei-platform/issues/4583)）。完了の条件は一文にする。Studioで定義を一つ変え、Studio自身が作った次のStudioがWindowsで起動し、その変更が画面に出ること。
 
 ## 到達点まで止めるもの
