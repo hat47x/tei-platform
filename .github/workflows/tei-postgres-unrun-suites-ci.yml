@@ -232,6 +232,10 @@ jobs:
           # line is required by name below.
           go test -count=1 -v -timeout 10m -run '^TestShippedWebPageShowsRealPostgresRowAnswers$' \
             ./tools/reference-first-web-target | tee -a "$log"
+          # The -serve-read-from-db flag's refusals. These need no database, but
+          # they are required here too so a change that drops them is visible.
+          go test -count=1 -v -timeout 10m -run 'TestServeReadFromDB' \
+            ./tools/reference-first-web-target | tee -a "$log"
 
       - name: SKIPとFAILの検証
         shell: bash
@@ -283,6 +287,9 @@ jobs:
             'TestDeclaredDecimalPrecisionSurvivesToTheDatabaseAndBack'
             'TestPostgresReadRunnerAnswersTheRowsPostgreSQLReturned'
             'TestShippedWebPageShowsRealPostgresRowAnswers'
+            'TestServeReadFromDBRefusesAHostSuppliedDatabase'
+            'TestServeReadFromDBRequiresTheEnvironmentDSN'
+            'TestServeReadFromDBUnusableDoesNotLeakTheDSN'
           )
           for name in "${required[@]}"; do
             grep -Eq -- "^[[:space:]]*--- PASS: ${name} \(" "$log" || { echo "required test did not PASS: ${name}" >&2; exit 1; }
