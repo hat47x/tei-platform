@@ -47,53 +47,31 @@ jobs:
           node --version
           npm ci --no-audit --no-fund
           npm test
-          # R0: compare the new generated Reader against the current product behavior.
-          # This does not qualify inclusion in the historical embedded bundle.
+          # Production entrypoint identity plus independent positive/negative outcomes.
           node --test inspection-reader.generated.test.mjs
           npm run typecheck
           npm run build
 
-      - name: Qualify a separate Inspector candidate bundle
+      - name: Verify product bundle contains exactly one generated Inspector Reader
         shell: bash
         run: |
           set -euo pipefail
-          node --test tools/reference-studio-static-composition/inspector-candidate.test.mjs
-          candidate=reference/tei-studio-workbench/main.inspector-candidate.ts
-          trap 'rm -f "$candidate"' EXIT
-          node tools/reference-studio-static-composition/inspector-candidate.mjs
-          (cd reference/tei-studio-workbench && npm run typecheck)
-          # Build only in the runner's temp area. The committed Wails bundle
-          # remains the historically qualified result of main.ts, not this candidate.
           node --input-type=module <<'NODE'
           import { createHash } from "node:crypto";
-          import { readFile } from "node:fs/promises";
-          import { createRequire } from "node:module";
-          import { resolve } from "node:path";
-          const dir = resolve("reference/tei-studio-workbench");
-          const { build } = createRequire(resolve(dir, "package.json"))("esbuild");
-          const output = resolve(process.env.RUNNER_TEMP, "tei-p1a2-inspector-candidate.js");
-          const result = await build({
-            absWorkingDir: dir,
-            entryPoints: [resolve(dir, "main.inspector-candidate.ts")],
-            outfile: output, bundle: true, format: "esm", platform: "browser",
-            target: "es2022", nodePaths: [resolve(dir, "node_modules")],
-            metafile: true,
-          });
-          const inputs = Object.keys(result.metafile.inputs);
-          if (!inputs.some(path => path.endsWith("inspector-presentation.ts")))
-            throw Error("INSPECTOR_CANDIDATE_PRESENTER_NOT_BUNDLED");
-          const bytes = await readFile(output);
-          if (!bytes.toString("utf8").includes("presentInspection"))
-            throw Error("INSPECTOR_CANDIDATE_PRESENTATION_NOT_USED");
-          const historical = await readFile(resolve("cmd/tei-studio/assets/workbench/main.js"));
-          if (bytes.equals(historical))
-            throw Error("INSPECTOR_CANDIDATE_INCORRECTLY_EQUATED_WITH_HISTORICAL_ASSET");
-          console.log(JSON.stringify({
-            status: "candidate-bundle-only",
-            blob: createHash("sha256").update(bytes).digest("hex"),
-            target: "es2022",
-            consumerEvidence: "not-run",
-          }));
+          import { readFileSync } from "node:fs";
+          const root = "reference/tei-studio-workbench/";
+          const bundle = readFileSync(root + "dist/main.js", "utf8");
+          const contract = JSON.parse(readFileSync(root + "inspection-reader.contract.json", "utf8"));
+          const digest = "sha256:" + createHash("sha256").update(JSON.stringify(contract)).digest("hex");
+          if (!bundle.includes("// inspection-reader.generated.ts\\n"))
+            throw Error("PRODUCT_BUNDLE_MISSING_GENERATED_READER");
+          if (!bundle.includes('contractDigest: "' + digest + '"'))
+            throw Error("PRODUCT_BUNDLE_STALE_READER_CONTRACT");
+          if ((bundle.match(/function readInspection\\d*\\(/g) ?? []).length !== 1)
+            throw Error("PRODUCT_BUNDLE_DUPLICATE_INSPECTOR_READERS");
+          if (!bundle.includes("teiInspectionReaderCalls") || bundle.includes("seedReadInspection"))
+            throw Error("PRODUCT_BUNDLE_READER_USE_NOT_OBSERVABLE");
+          console.log("CURRENT_GENERATED_READER_CONTRACT " + digest);
           NODE
 
       - name: Compare build output with Wails embedded files
@@ -105,21 +83,3 @@ jobs:
           done
           test ! -e cmd/tei-studio/assets/workbench/dependencies.json
 
-
-      # Temporary diagnostic on a broken embed: make the exact generated JS
-      # recoverable from the failing CI without granting the runner write access.
-      - name: Capture canonical built JS on mismatch
-        if: failure()
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          import base64, hashlib, pathlib
-          p = pathlib.Path("reference/tei-studio-workbench/dist/main.js")
-          if p.exists():
-              data = p.read_bytes()
-              print("TEI_BUILT_JS_SHA256 " + hashlib.sha256(data).hexdigest())
-              encoded = base64.b64encode(data).decode("ascii")
-              for i in range(0, len(encoded), 4000):
-                  print("TEI_BUILT_JS_PART " + encoded[i:i + 4000])
-              print("TEI_BUILT_JS_END")
-          PY
