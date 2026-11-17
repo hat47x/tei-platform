@@ -1197,3 +1197,44 @@ Person Linkの同一性、訂正か再所属か、どの時間条件で人数を
 **設計上の停止条件**：別Attemptの証拠を同一経路と称する、未受理のREA/Affinityを正式Relationへ昇格する、PersonとPrincipalを同一視する、partialから不存在を断定する、同Shapeで欠落したRelationを復元したとみなす、承認候補を現在Grantにする、通知をACK/Effectとする、という実装は不合格。上記ORG-XDは既存Scenario/Expectedへ追加する候補であり、独立のOrg Runner・Workflow Engine・Evidence DBは作らない。
 
 **状態**：横断設計・検証条件の追補。ORG-XD-01〜05の実行、三要素/REA正式Plugin、実Port/SHO受領、Host Effect、Ownerの新規意味受理は未実証。
+
+<!-- org-decision-evidence-slice-20261118 -->
+### 10.25 実Readから業務判断へ渡す証拠を、問いごとに閉じる（2026-11-18）
+
+§10.22〜10.24のG1〜G5／ORG-XD-01〜05を、**一つのReadが実行されたこと**と**そのReadだけで特定の問いに答えられること**を分離して検収する。新しいOrg判定器や結果Schemaを作る提案ではない。既存のFunction Data Context、Result Slice、Claim判定、独立Expectedと受信Consumerに付す比較票として使う。
+
+#### 問いに必要な閉包を五つに分ける
+
+| 検査対象 | 最低限の確認 | 確認できない場合に言わないこと |
+| --- | --- | --- |
+| 実行したRead | 選択Function/Query、実Provider、実SQL・引数、Source/World版、validAt/knownAt、実行Snapshot、対象Scopeが同一Attemptに属する | 宣言されたQueryや別RunのResultを今回の実Readとしない |
+| 行集合のCoverage | 母集団を決めるRelationの保存方法とPredicate、必要な非出力依存、page終了・拒否・partialの根拠。観測行が対象集合に属することも確認 | SQL実行成功・行数一致・`covers`宣言だけで全件と言わない |
+| 意味上のIdentity | Membership occurrence、Assertion revision、Person Relation、Case Responsibility、Principalを分け、Claimの粒度に必要な正式Linkを確認 | 4所属を4人、Personを認証主体、所属変更を責任移管と数えない |
+| Rule／判断のCoverage | Claimの量化、必要Read集合、否定条件、Rule/Case版、Scope、受入済み意味と独立Expectedを一致させる | Queryの全件性を業務判断全体の完全性に昇格しない |
+| Consumer／Hostの資格 | Function Contextからの実受領と開示可能Sliceを照合し、現在Grant・Effect Fence・Receipt／ACKを別途確認 | 表示、受信、承認候補、実行可能性、効果確定を一つのsuccessにしない |
+
+**部分取得から言えることは命題ごとに異なる。** 観測集合が同一Snapshot・Scopeの対象母集団の真の部分集合であり、行のIdentityとPredicateが検証できていることを前提に、次を既存#2514の判別ケースで照合する。
+
+| 問い | partialでも確定できる側 | 完全性がないと確定できない側 |
+| --- | --- | --- |
+| `EXISTS`（対象所属が1件以上） | 正しい一致Occurrenceを1件観測すれば真 | 0件からの偽。非出力Predicate・関係参照が未取得なら正例も未確定 |
+| `NOT EXISTS`（該当所属が存在しない） | 正しい反例Occurrenceを1件観測すれば偽 | 0件からの真。関連Relation・否定条件を含む全取得が必要 |
+| 高々1件のMembership | 異なる正式Occurrenceを2件観測すれば偽 | 0件／1件からの真。表示行番号・並行EdgeはOccurrence IDの代わりにならない |
+| 全員が条件を満たす | 同一母集団の確実な反例1件で偽 | 一致行だけからの真。隠れた対象や未取得を含めて閉じる必要がある |
+| `COUNT(DISTINCT Person)`／配賦FTE | Person Link・単位・重複排除が確立した範囲の観測値または条件付き下界のみ | 人物数・FTEの確定値。負配賦、訂正、JOIN増幅、時点混在では下界さえ再検討 |
+
+例えば既存r7の `validAt=2027-06-15` では、`knownAt=2027-07-01` の所属4件・FTE 3.0と、`knownAt=2027-07-03` の所属3件・FTE 2.4は異なる認識時点の集計であり、同一時点の差分として混ぜない。PR #5210の**同じ4 Membership行でもPerson数3／4が異なる二世界**は、正式Person Linkなしの人物数確定を拒否するために再利用する。これらの数値は既存合成Expected／隔離DB局所観測の資格を越えてProduct全体の合格にはしない。
+
+#### 最小の同一Attempt受入
+
+1. **Readを一回通す（既存G1／ORG-XD-01／#2586）**：現行の通常CLIで実際に選択したFunction→Query→Provider→RowsetをFunction Data Contextと一Consumerへ引き渡す。選択Query・SQL/Params・実行Snapshot・Scope・実受領を同一Attemptに記録。参照CLIや別画面の成功は代用しない。
+2. **判断を分岐させる（既存ORG-BEH-02／#2514）**：同一条件のcomplete/partial 0・1・2所属で、存在・不存在・高々1件の判定を手書きExpectedと比較。正しく保留したunknownを失敗に数えないが、partialの0件を不存在と返したら失敗とする。実ProviderのCoverage証明が不足する場合は観測済行の限定判定に止める。
+3. **粒度を切り替える（ORG-XD-02／#2386/#1126）**：同じRowsetからMembership件数とPerson件数を独立に評価し、未受理Person Relationでは後者をunknownとする。意味Ownerの採否と実二時点保存・再Readは別Gate。
+4. **責任と実効を切り離す（ORG-XD-03／ORG-BEH-04〜06）**：P1のD1→D2異動、C1の責任移管提案、通知、受領ACK、動的承認候補、現在Grant、実Effectの各版と観測を別列にする。旧ReceiptのA→B→A復活や、Commit不明での無条件再試行を拒否。
+5. **異なるConsumerへ渡す（ORG-XD-04/05／#2516/#1124）**：同じContextの公開可能なSliceだけをCLIとStudio/SHO等へ配送。表示Treeの隠れた親・Graph多重Edge・Plugin Adapterの損失、Source/Selection epochとRecipient差で、意味と開示の資格を再検査する。未接続のConsumerはNOT RUN。
+
+**現行の並行実装との境界**：Draft PR #5382の `covers` とSQL／Relation Storage照合は取得範囲を証明する候補経路だが、その限定的なSQL形の成功だけで、二時点のPerson Link・Ruleの必要集合・Tenant開示・受信を証明したとは言わない。Open PR #5431の実PostgreSQL→Web行表示も、組織C1の正式Function／二時点Read／Grantの合格には合算しない。両PRのHEAD・統合状態は採用時に再確認する。
+
+**担当と停止線**：#2586/#2506が実Read・Context・一Consumer、#2386/#1126が業務Identity・二時点Link、#2514/#4490がClaimとRuleの独立Expected、#1125/#1444がCase引継ぎ、#1174/#2499が現在Grant・Effect、#2497/#2516/#1124がProjectionと受信を所有する。新Schema・専用Temporal/Proof/ACL Engine・第二Expected正本は作らず、**通常CLI実ProviderとStudio Stage1→Stage2の並行P0を維持**する。
+
+**今回の状態**：計画・受入条件の統合のみ。新しいCLI/Provider/Rule/Consumerの同一Attempt試験、Host Effect、Owner意味受理は **NOT RUN／NOT ACCEPTED**。実装時はexact HEAD・非SKIP・独立Expected・実観測・不足している証拠を分けて記録する。
