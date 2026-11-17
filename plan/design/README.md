@@ -29,7 +29,6 @@
 
 | 文書 | 対象 |
 | --- | --- |
-| [`TEI_SELF_DESCRIPTION_REVIEW_SLICE_2026-11.md`](TEI_SELF_DESCRIPTION_REVIEW_SLICE_2026-11.md) | TEI自身の要求を三要素のモデル定義・同名ノード／並行辺のインスタンス・図面・Source位置・独立Expectedで照合する第一縦断。例示図は正式な意味受理や実Providerの証拠ではない。 |
 | [`DERIVED_PROJECTIONS_RUNTIME_AND_MIGRATION_ACCEPTANCE_2026-11.md`](DERIVED_PROJECTIONS_RUNTIME_AND_MIGRATION_ACCEPTANCE_2026-11.md) | 設計書・図・帳票・実ロード版・DB移行に加え、Web／API／一括取込の更新Intent、開示、NULL・省略、確定・採番同期の受入を既存Scenarioへつなぐ横断計画（実装前）。 |
 | [`APPLICATION_ABSTRACTION_DOCUMENT_METHOD_WEAVING_2026-11.md`](APPLICATION_ABSTRACTION_DOCUMENT_METHOD_WEAVING_2026-11.md) | 文書のスコープ・Role・引用・図表・履歴を既存Data／Function／Projection／Pluginへ編み込み、構造・意味・表現・実現・現在資格の合成判定と独立Expected DW-01〜10を定める横断設計（実装前）。 |
 | [`CROSS_CUTTING_ACCEPTANCE_BOUNDARIES_2026-11-12.md`](CROSS_CUTTING_ACCEPTANCE_BOUNDARIES_2026-11-12.md) | 業務意味・生成・実Call・Effect・Consumerの受入資格、失効、Owner間の受渡しを整理する横断検収記録。 |
@@ -137,7 +136,7 @@
 | [`DESKTOP_STUDIO_HOST_INTEGRATION_DESIGN.md`](DESKTOP_STUDIO_HOST_INTEGRATION_DESIGN.md) | Desktop Studio Hostの操作・状態・資源の境界の設計候補。実機の起動と操作の検証は未実施 |
 | [`DSL_OPERATOR_PLUGIN_COMPOSITION_DESIGN.md`](DSL_OPERATOR_PLUGIN_COMPOSITION_DESIGN.md) | DSLの言語プラグインと演算子の合成についての設計候補 |
 | [`THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md`](THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md) | 三要素分析の意味拡張／方法論・図法／図面投影・配置・編集候補を分離し、既存Studio・Source受理・旧資産Adapterへ接続する設計候補（#1124/#1125/#1126、未採用） |
-| [`TEI_SELF_DESCRIPTION_REVIEW_SLICE_2026-11.md`](TEI_SELF_DESCRIPTION_REVIEW_SLICE_2026-11.md) | TEI自身の要件を三要素分析法のモデル・図面・具体例から追跡する第一縦断。read-onlyのCRUD対応表の操作集合・独立検証と、X-TEA原典の実証資格を区別する設計・検収票。 |
+| [`TEI_SELF_DESCRIPTION_REVIEW_SLICE_2026-11.md`](TEI_SELF_DESCRIPTION_REVIEW_SLICE_2026-11.md) | TEI自身の要求を三要素分析法のモデル定義・同名ノード／並行辺のインスタンス・図面・Source位置・独立Expectedで照合する第一縦断。read-onlyのCRUD対応表の操作集合・独立検証と、原典の実証資格を区別する設計・検収票。例示図は正式な意味受理や実Providerの証拠ではない。 |
 | [`EXAMPLE_ER_SLIDE_M1_2026-10.md`](EXAMPLE_ER_SLIDE_M1_2026-10.md) | 具体例からER図のスライドへつなぐ参照実装（M1）の候補 |
 | [`EXTERNAL_SEMANTIC_ACCEPTANCE_HANDOFF_2026-10.md`](EXTERNAL_SEMANTIC_ACCEPTANCE_HANDOFF_2026-10.md) | 外部の業務意味資産の選択と、案件での受理を結ぶ証拠契約の候補 |
 | [`GENERIC_CAPABILITY_MIGRATION_DESIGN.md`](GENERIC_CAPABILITY_MIGRATION_DESIGN.md) | Generic Capabilityへの移行設計（評価待ち・未採用） |
