@@ -109,19 +109,19 @@ func TestDestinationOrderChangeReadViaCLIFromPostgres(t *testing.T) {
 						t.Fatal("the database connection string appeared in the JSON output")
 					}
 					var report struct {
-						OK bool `json:"ok"`
+						OK     bool `json:"ok"`
 						Result struct {
-							Coverage string                       `json:"coverage"`
-							Rows []struct {
+							Coverage string `json:"coverage"`
+							Rows     []struct {
 								OrderLineID string `json:"orderLineId"`
-								Fields map[string]struct {
+								Fields      map[string]struct {
 									State string `json:"state"`
 									Value any    `json:"value"`
 								} `json:"fields"`
 							} `json:"rows"`
-							PerLine map[string]map[string]string `json:"perLine"`
-							PerOrder map[string]string `json:"perOrder"`
-							PerOrderUndecided map[string]string `json:"perOrderUndecided"`
+							PerLine           map[string]map[string]string `json:"perLine"`
+							PerOrder          map[string]string            `json:"perOrder"`
+							PerOrderUndecided map[string]string            `json:"perOrderUndecided"`
 						} `json:"result"`
 					}
 					if err := json.Unmarshal([]byte(got.stdout), &report); err != nil {
