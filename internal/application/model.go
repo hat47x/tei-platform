@@ -105,11 +105,27 @@ type Hook struct {
 	// and a hook that decided per record were told apart only by reading the script.
 	// An empty scope means the pattern's own unit, which is the row for a browse or
 	// record pattern and the header for a header-detail pattern.
-	Scope    string             `json:"scope,omitempty"`
+	Scope string `json:"scope,omitempty"`
+	// Rows names where the row set a row-scoped hook decides on comes from. A
+	// record pattern could declare `scope row`, but nothing said which rows: the
+	// declaration was admitted and the reference execution skipped it for want of
+	// a supplier. The source makes the supplier a part of the declaration instead
+	// of an assumption about the host.
+	Rows     *HookRowSource     `json:"rows,omitempty"`
 	Reads    []core.CanonicalID `json:"reads,omitempty"`
 	Uses     []core.CanonicalID `json:"uses,omitempty"`
 	Produces []core.CanonicalID `json:"produces,omitempty"`
 	Failure  string             `json:"failure,omitempty"`
+}
+
+// HookRowSourceは、行スコープのフックが判定する行集合の出所である。
+//
+// 現時点で出所はQueryだけである。Relation Queryの結果も行集合になるが、その実行
+// 経路をこの境界に繋いでいないため、語彙へ先回りして入れない（宣言できて供給
+// できない語を増やすと、通るのに走らない宣言ができる）。
+type HookRowSource struct {
+	// Queryは、行を返すApplication QueryのCanonical IDである。
+	Query core.CanonicalID `json:"query"`
 }
 
 // CommandInputBindingは、Commandの入力を対話の項目へ結びつける。

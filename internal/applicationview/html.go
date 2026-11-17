@@ -41,7 +41,7 @@ nav{margin-top:2rem;border-top:1px solid #ddd;padding-top:1rem}
 {{if .Effect}}<p>効果: {{.Effect.Kind}} {{.Effect.Data}}</p>{{end}}
 </details>{{end}}{{end}}</form>
 {{if .Unused}}<section><h2>未使用の属性</h2><ul>{{range .Unused}}<li>{{.Label}} ({{.Type}})</li>{{end}}</ul></section>{{end}}
-{{if .Hooks}}<section><h2>フック</h2><ul>{{range .Hooks}}<li>{{.Phase}}:{{range .Reads}} reads {{.}}{{end}}{{range .Uses}} uses {{.}}{{end}}{{range .Produces}} produces {{.}}{{end}}{{if .Failure}} on-failure {{.Failure}}{{end}}</li>{{end}}</ul></section>{{end}}
+{{if .Hooks}}<section><h2>フック</h2><ul>{{range .Hooks}}<li>{{.Phase}}:{{if .Scope}} scope {{.Scope}}{{end}}{{if .Rows}} rows from query {{.Rows.Query}}{{end}}{{range .Reads}} reads {{.}}{{end}}{{range .Uses}} uses {{.}}{{end}}{{range .Produces}} produces {{.}}{{end}}{{if .Failure}} on-failure {{.Failure}}{{end}}</li>{{end}}</ul></section>{{end}}
 {{if .Navigations}}<nav>
 <h2>遷移元</h2>
 <ul>{{range .Navigations}}<li>{{.From}} ({{.Kind}}){{if .Data}} — data: {{.Data}}{{end}}</li>{{end}}</ul>

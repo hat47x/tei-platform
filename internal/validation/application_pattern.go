@@ -7,6 +7,7 @@ import (
 	"tei/internal/core"
 	"tei/internal/database"
 	"tei/internal/ir"
+	"tei/internal/query"
 	"tei/internal/semantic"
 	"tei/internal/subject"
 )
@@ -14,6 +15,11 @@ import (
 type applicationPatternQueryRef struct {
 	Application core.CanonicalID
 	Datasource  core.LocalName
+	// ResultAttributes is the set of semantic attributes the query's declared
+	// result mapping can carry. A row-scoped hook that reads an attribute the
+	// mapping does not produce would never see a value for it, so the declaration
+	// is refused instead of being admitted and then starved of the read.
+	ResultAttributes map[core.CanonicalID]struct{}
 }
 
 type applicationPatternRelationRef struct {
@@ -100,8 +106,9 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 			continue
 		}
 		queries[query.ID] = applicationPatternQueryRef{
-			Application: query.Application,
-			Datasource:  query.Datasource,
+			Application:      query.Application,
+			Datasource:       query.Datasource,
+			ResultAttributes: resultAttributes(query.ResultColumns),
 		}
 		inputs := map[string]core.CanonicalID{}
 		for _, input := range query.Inputs {
@@ -299,7 +306,7 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 			case application.PatternBrowse:
 				out = append(out, validateBrowsePattern(app, pattern, patternSubject, semanticData, queries)...)
 			case application.PatternRecord:
-				out = append(out, validateRecordPattern(app, pattern, patternSubject, semanticData, semanticDataAttributes, patterns, semanticRelations, semanticCapabilities, semanticCapabilityInputs, semanticTypes, commandCapabilities)...)
+				out = append(out, validateRecordPattern(app, pattern, patternSubject, semanticData, semanticDataAttributes, patterns, semanticRelations, semanticCapabilities, semanticCapabilityInputs, semanticTypes, commandCapabilities, queries)...)
 			case application.PatternReference:
 				out = append(out, validateReferencePattern(app, pattern, patternSubject, semanticRelations)...)
 			case application.PatternCommand:
@@ -427,6 +434,7 @@ func validateRecordPattern(
 	semanticCapabilityInputs map[core.CanonicalID]map[string]core.CanonicalID,
 	semanticTypes map[core.CanonicalID]semantic.Type,
 	commandCapabilities map[core.CanonicalID]map[core.CanonicalID]struct{},
+	queries map[core.CanonicalID]applicationPatternQueryRef,
 ) []Diagnostic {
 	var out []Diagnostic
 
@@ -446,7 +454,7 @@ func validateRecordPattern(
 			pattern.Data,
 		))
 	} else {
-		out = append(out, validateRecordPatternInteraction(app, pattern, patternSubject, semanticDataAttributes, patterns, semanticRelations, semanticCapabilities, semanticCapabilityInputs, semanticTypes, commandCapabilities)...)
+		out = append(out, validateRecordPatternInteraction(app, pattern, patternSubject, semanticDataAttributes, patterns, semanticRelations, semanticCapabilities, semanticCapabilityInputs, semanticTypes, commandCapabilities, queries)...)
 	}
 
 	if pattern.Relation != "" {
@@ -537,6 +545,7 @@ func validateRecordPatternInteraction(
 	semanticCapabilityInputs map[core.CanonicalID]map[string]core.CanonicalID,
 	semanticTypes map[core.CanonicalID]semantic.Type,
 	commandCapabilities map[core.CanonicalID]map[core.CanonicalID]struct{},
+	queries map[core.CanonicalID]applicationPatternQueryRef,
 ) []Diagnostic {
 	var out []Diagnostic
 	if pattern.Interaction == nil {
@@ -798,17 +807,27 @@ func validateRecordPatternInteraction(
 			if kind := pattern.Kind; !scopeFitsPattern(kind, hook.Scope) {
 				out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_INTERACTION_HOOK_SCOPE_MISMATCH", "record pattern %s hook %s declares scope %s that the pattern kind does not look at", pattern.ID, hook.Phase, hook.Scope))
 			}
-			// A row scope is accepted, but no host supplies the row set yet, so the
-			// hook is skipped with a reason wherever the reference execution runs.
-			// Accepting it silently would let a declaration be admitted and then
-			// never applied on any production path (the D-9 shape). This is a
-			// warning rather than an error while the supplier is unfinished: the
-			// declaration is well formed, and what is missing is the data source.
-			if hook.Scope == "row" {
-				out = append(out, warnd("APPLICATION_PATTERN_INTERACTION_HOOK_ROW_SCOPE_HAS_NO_SUPPLIER", "record pattern %s hook %s declares scope row, but no host supplies a row set yet, so the reference execution skips it with a reason", pattern.ID, hook.Phase))
+			// A row scope is accepted, but a host supplies the row set only when the
+			// declaration names where the rows come from. Accepting it silently would
+			// let a declaration be admitted and then never applied on any production
+			// path (the D-9 shape). This is a warning rather than an error while no
+			// source is declared: the declaration is well formed, and what is missing
+			// is the data source.
+			if hook.Scope == "row" && hook.Rows == nil {
+				out = append(out, warnd("APPLICATION_PATTERN_INTERACTION_HOOK_ROW_SCOPE_HAS_NO_SUPPLIER", "record pattern %s hook %s declares scope row, but no row source is declared, so the reference execution skips it with a reason", pattern.ID, hook.Phase))
 			}
 		default:
 			out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_INTERACTION_HOOK_SCOPE_UNSUPPORTED", "record pattern %s hook %s uses unsupported scope %s", pattern.ID, hook.Phase, hook.Scope))
+		}
+		// The row source is the declaration's supplier, so it is checked where it
+		// is written rather than left to a host to interpret. A source that
+		// resolves to nothing would leave a row scope that validation accepted and
+		// no execution can apply.
+		if hook.Rows != nil {
+			if hook.Scope != "row" {
+				out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_INTERACTION_HOOK_ROW_SOURCE_SCOPE_MISMATCH", "record pattern %s hook %s declares a row source but scope %q is not row", pattern.ID, hook.Phase, hook.Scope))
+			}
+			out = append(out, validateHookRowSource(pattern, patternSubject, app, hook, queries, dataAttributes)...)
 		}
 		for _, attribute := range hook.Reads {
 			if _, ok := dataAttributes[attribute]; !ok {
@@ -901,6 +920,71 @@ func applicationUsesNamespace(app application.Application, id core.CanonicalID) 
 		}
 	}
 	return false
+}
+
+// resultAttributes is the set of attributes an explicit result mapping produces.
+//
+// A column with no attribute is not carried by the hook conversion either, so it
+// is not counted here: the check answers "can this source deliver the declared
+// read", not "does the query select a column".
+func resultAttributes(columns []query.ResultColumnMapping) map[core.CanonicalID]struct{} {
+	attributes := make(map[core.CanonicalID]struct{}, len(columns))
+	for _, column := range columns {
+		if column.Attribute == "" {
+			continue
+		}
+		attributes[column.Attribute] = struct{}{}
+	}
+	return attributes
+}
+
+// validateHookRowSource checks the declared row source resolves: the query exists,
+// belongs to the same application, and its result mapping carries every attribute
+// the hook declares to read.
+//
+// None of these are left to the host. A source that does not resolve would keep a
+// declaration that validation accepted and that no execution can apply, which is
+// the same "admitted and inert" shape the row scope warning exists to avoid — and
+// the source is what makes that warning unnecessary.
+func validateHookRowSource(
+	pattern application.Pattern,
+	patternSubject subject.Subject,
+	app application.Application,
+	declared application.Hook,
+	queries map[core.CanonicalID]applicationPatternQueryRef,
+	dataAttributes map[core.CanonicalID]core.CanonicalID,
+) []Diagnostic {
+	var out []Diagnostic
+	queryID := declared.Rows.Query
+	if queryID == "" {
+		out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_INTERACTION_HOOK_ROW_SOURCE_INVALID", "record pattern %s hook %s declares a row source with no query", pattern.ID, declared.Phase))
+		return out
+	}
+	ref, ok := queries[queryID]
+	if !ok {
+		out = append(out, errFor(patternSubject, "UNKNOWN_APPLICATION_PATTERN_INTERACTION_HOOK_ROW_SOURCE", "record pattern %s hook %s declares row source query %s that is not an application query", pattern.ID, declared.Phase, queryID))
+		return out
+	}
+	if ref.Application != app.ID {
+		out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_INTERACTION_HOOK_ROW_SOURCE_APPLICATION_MISMATCH", "record pattern %s belongs to application %s but its row source query %s is owned by application %s", pattern.ID, app.ID, queryID, ref.Application))
+		return out
+	}
+	// The rows the hook decides on must be rows of the record's own data: reading
+	// another Data's line as this record would apply the declaration to a
+	// different subject. Attributes are the only declared link between a query
+	// result and a Data, so the check uses them rather than the query's SQL.
+	for _, attribute := range declared.Reads {
+		if _, ok := ref.ResultAttributes[attribute]; ok {
+			continue
+		}
+		if _, ok := dataAttributes[attribute]; !ok {
+			// The read is already reported as unknown for this data; naming the
+			// source as well would report one cause twice.
+			continue
+		}
+		out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_INTERACTION_HOOK_ROW_SOURCE_READ_MISSING", "record pattern %s hook %s reads %s but row source query %s does not map it to a result column", pattern.ID, declared.Phase, attribute, queryID))
+	}
+	return out
 }
 
 func validateReferencePattern(

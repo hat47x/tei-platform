@@ -572,6 +572,34 @@ func (p *Parser) parsePatternInteraction() (*application.Interaction, error) {
 						return nil, err
 					}
 					hook.Failure = kindTok.Text
+				case "rows":
+					_, _ = p.next()
+					if _, err := p.expectText("from"); err != nil {
+						return nil, err
+					}
+					kindTok, err := p.expect(TokenIdent)
+					if err != nil {
+						return nil, err
+					}
+					// The source kind is written out. A bare identifier would leave
+					// a reader unable to tell an Application query from a relation
+					// traversal, and a later second kind would silently change what
+					// an already-written line meant.
+					if kindTok.Text != "query" {
+						return nil, p.errAt(kindTok, "rows source must be query; relation sources are not supplied yet")
+					}
+					queryTok, err := p.expect(TokenIdent)
+					if err != nil {
+						return nil, err
+					}
+					query, err := core.ParseCanonicalID(queryTok.Text)
+					if err != nil {
+						return nil, p.errAt(queryTok, err.Error())
+					}
+					if hook.Rows != nil {
+						return nil, p.errAt(entry, "rows source is declared more than once in hook")
+					}
+					hook.Rows = &application.HookRowSource{Query: query}
 				case "scope":
 					_, _ = p.next()
 					scopeTok, err := p.expect(TokenIdent)
@@ -585,7 +613,7 @@ func (p *Parser) parsePatternInteraction() (*application.Interaction, error) {
 					}
 					hook.Scope = scopeTok.Text
 				default:
-					return nil, p.errAt(entry, "expected scope, reads, uses, produces, or on-failure in hook")
+					return nil, p.errAt(entry, "expected scope, rows, reads, uses, produces, or on-failure in hook")
 				}
 			}
 			out.Hooks = append(out.Hooks, hook)

@@ -41,11 +41,15 @@ type HookRef struct {
 	Phase string `json:"phase"`
 	// Scope is the unit the hook decides for. An empty value means the pattern's
 	// own unit, so a reader sees "no scope declared" rather than assuming one.
-	Scope    string             `json:"scope,omitempty"`
-	Reads    []core.CanonicalID `json:"reads,omitempty"`
-	Uses     []core.CanonicalID `json:"uses,omitempty"`
-	Produces []core.CanonicalID `json:"produces,omitempty"`
-	Failure  string             `json:"failure,omitempty"`
+	Scope string `json:"scope,omitempty"`
+	// Rows is where the row set a row-scoped hook decides on comes from. A reader
+	// sees the source the declaration names, or nothing, rather than assuming
+	// rows were supplied by whatever ran.
+	Rows     *application.HookRowSource `json:"rows,omitempty"`
+	Reads    []core.CanonicalID         `json:"reads,omitempty"`
+	Uses     []core.CanonicalID         `json:"uses,omitempty"`
+	Produces []core.CanonicalID         `json:"produces,omitempty"`
+	Failure  string                     `json:"failure,omitempty"`
 }
 
 // Commandは、対話から起動できるCapabilityを解決した結果である。
@@ -285,6 +289,7 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 		view.Hooks = append(view.Hooks, HookRef{
 			Phase:    hook.Phase,
 			Scope:    hook.Scope,
+			Rows:     hook.Rows,
 			Reads:    hook.Reads,
 			Uses:     hook.Uses,
 			Produces: hook.Produces,
