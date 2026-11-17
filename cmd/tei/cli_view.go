@@ -449,8 +449,8 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	// This is the first product CLI read of the existing header-detail Contract
 	// Query. No query, mapping, or validation is reconstructed in this entry.
 	if *environmentID != "" {
-		if *format != "json" {
-			return fail("INVALID_ARGUMENT", "view -environment currently requires -format json", 2)
+		if *format != "json" && *format != "html" {
+			return fail("INVALID_ARGUMENT", "view -environment requires -format json or html", 2)
 		}
 		values, err := parseInputPairs(inputPairs)
 		if err != nil {
@@ -468,6 +468,16 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		}
 		report.OK = true
 		report.Result = result
+		if *format == "html" {
+			page, renderErr := renderDestinationOrderLinesHTML(result)
+			if renderErr != nil {
+				return fail("VIEW_FAILED", renderErr.Error(), 1)
+			}
+			if _, writeErr := fmt.Fprint(out, page); writeErr != nil {
+				return 2, writeErr
+			}
+			return 0, nil
+		}
 		return writeViewReport(out, report, 0)
 	}
 	kind, err := applicationview.PatternKind(loaded.World, core.CanonicalID(*applicationID), core.CanonicalID(*patternID))
