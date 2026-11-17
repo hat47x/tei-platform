@@ -88,6 +88,12 @@ func readEnvironmentRows(
 	if err != nil {
 		return destinationRead{}, fmt.Errorf("%w: %v", errViewEnvironmentInput, err)
 	}
+	// Reject a binding whose source attribute or Query input is invalid before
+	// opening a database connection. The ordinary runtime still prepares the
+	// same binding again; this check only moves rejection before external I/O.
+	if _, err := resolver.PrepareHeaderDetailContractQuery(appID, patternID, source, 0); err != nil {
+		return destinationRead{}, fmt.Errorf("invalid header-detail Contract Query input binding: %w", err)
+	}
 	keyAttributes, err := environmentRowKey(world, prepared.Binding.Target.Database, prepared.Relation.Target.ID)
 	if err != nil {
 		return destinationRead{}, err
