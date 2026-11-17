@@ -98,7 +98,6 @@ func TestCRUDGapsUseTheDataIndex(t *testing.T) {
 	}
 }
 
-
 // TestMultipleFunctionOperationsFormOneCRUDCell keeps the Function/Data
 // correspondence at one row per pair. A first-match projection would omit U;
 // a one-row-per-Operation projection would invent duplicate Data subjects.
