@@ -164,6 +164,9 @@ func checkDestinationAlternateModel(t *testing.T, db *sql.DB, binary, dsn string
 				t.Fatalf("alternate model lost semantic identity or overclaimed coverage: %+v", result.Result)
 			}
 			want := expected.Checks[batch]
+			if len(result.Result.Rows) != len(want.Keys) || len(want.Units) != len(want.Keys) {
+				t.Fatalf("batch %s has %d rows, want %d", batch, len(result.Result.Rows), len(want.Keys))
+			}
 			keys := make([]string, 0, len(result.Result.Rows))
 			for i, row := range result.Result.Rows {
 				keys = append(keys, row.Key)
