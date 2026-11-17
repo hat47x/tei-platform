@@ -174,3 +174,62 @@ DPC-C01（Coverage complete／Claim insufficient）、DPC-C02（同じRowset・�
 失効はWorld Fingerprint、Model Revision、Artifact Revisionを混同せず、Source byte／選択Provider／Relation版／現在Grant／ConsumerのClaim条件ごとに評価する。過去のRowsetや生成物がbyte一致でも、意味の受理や現在の実行許可は自動的に復活しない。
 
 **状態**：組織C1の限定実PG反例を設計根拠として参照した。DPC-C01〜04の製品E2E、正式Person Relation、NoSQLでのClaim Sufficiency、実Studio、Owner意味受理は未実施。最優先P0（#2586通常CLI実Providerと#2831 Studio Stage1→Stage2）は維持する。
+
+## 10. D0の実行可能な受入仕様：一つのFunctionを製品経路で通す（2026-11-17）
+
+§7〜9の原則を実装者が迷わず検査できるよう、最初の一件に絞った受入仕様を定める。新しい抽象契約の導入より、既存コード・実DB・CLIをつなぐ不足箇所の特定を先行する。以下は**実行計画とExpected**であり、実行済みの記録ではない。
+
+### 10.1 固定する対象
+
+- Function：既存`order_entry.recent_orders`。実SQLのSourceと対象表は現行リポジトリで再確認し、Fixtureを別名の旧表へ誤投入しない。
+- Provider：PostgreSQL実インスタンス。SQLiteの既存Reader試験はCoverage負例の先行検証に利用するが、実PostgreSQLの代替証拠にしない。
+- Entry：通常製品CLIの公開経路。テスト専用Driver直呼出しを製品E2Eとしない。
+- Consumer：最初はread-onlyの一つの行一覧。人物数、承認可否、更新資格を要求しない。
+- Target：Go単一バイナリを維持し、Wails専用APIに依存しない。Studio実Windowsは別受入。
+
+### 10.2 検収票の最小欄
+
+| 欄 | 記録するもの | 合格条件 |
+| --- | --- | --- |
+| Definition | Function ID、Query Source path/byte fingerprint、選択Model Revision | 実行した定義と検査対象が同じ |
+| Selection | Provider ID/版、実Endpoint alias、対象Schema、Principal、選択根拠 | 宣言だけでなく実選択とCallを確認 |
+| Input | typed parameter、欠損と明示NULL、時点・Scope | 呼出し時の入力とQuery Bindingが一致 |
+| Read | 実SQL/Query、Rowset列と型、件数、取得範囲、ページ終端 | 実Providerで取得し、未取得を0件としない |
+| Context | Rowset→Function Data ContextのMapping、Identity、粒度 | 列欠落・型不一致を黙って補わない |
+| Consumer | CLI出力と受領結果、表示対象のClaim | 当該Readの結果と一致 |
+| Evidence | Attempt ID、Source/Provider/Consumerの対応、独立Expected | 別Attemptや別FunctionのPASSを流用しない |
+
+World Fingerprint、Model Revision、Artifact Revisionは別々に記録する。byte一致だけで意味受理や現在のGrantを証明したことにしない。read-onlyでも情報開示権限とScopeを無視しない。
+
+### 10.3 最小Fixtureと反例
+
+| ID | 入力・変更 | 独立Expected | 不合格となる振る舞い |
+| --- | --- | --- | --- |
+| D0-P01 | 同じ実表へ既知の3行を投入してRead | 型付き3行、期待したKey/列/値 | 別表のSeedで3行成功と申告 |
+| D0-P02 | typed filterで2行に絞る | 該当2行、正しいBinding | 文字列連結や別Scopeの結果流用 |
+| D0-P03 | 該当なしのfilter | **完全な0行**と、未取得／失敗の区別 | Provider未接続を0行扱い |
+| D0-N01 | Source A→B→A | 旧AttemptのEvidenceは現在選択の資格を自動回復しない | 同一byteだけで旧受入票を復活 |
+| D0-N02 | 列を削除／型不適合にする | Mapping拒否、Consumer未確定 | 欠損列をNULLで埋めて成功 |
+| D0-N03 | 部分ページをcompleteと申告 | Coverage資格なし、依存するClaimは未確定 | 一意性やCOUNTを確定 |
+| D0-N04 | Provider選択と実Callを異なる対象へ向ける | Binding不一致として拒否 | 宣言上のProviderでPASS |
+| D0-N05 | 実Read成功後にConsumerへ未配送 | Readのみ成功、製品E2Eは不合格 | Provider PASSをCLI PASSへ昇格 |
+
+実データ投入は隔離DB・専用Schema・テスト専用Principalを使い、接続先の誤指定や残存データを検知する。破壊的Cleanupを本番に向けない。各Expectedは実行結果から逆算せず、Fixture側に独立定義する。
+
+### 10.4 実装の分割と完了条件
+
+**差分A：観測**。現行CLIのFunction選択→Query Source→Provider選択→実Call→Rowset→Data Context→Consumerのどこが欠けるかを一枚の経路表にする。既存テストとCIの成功範囲を引用し、未接続の辺を明記する。追加抽象はまだ作らない。
+
+**差分B：最短の実Read**。D0-P01〜03を実PostgreSQL・通常CLIで実行し、同じAttemptの受領結果を確認する。まず一Function・一Consumerに限定する。
+
+**差分C：拒否と失効**。D0-N02/N04/N05を先に固定し、Source A→B→Aと部分取得の負例は既存Evidence／Reader Ownerへ接続する。D0-N01/N03をBのHard Gateへ無条件追加せず、未合格の範囲を明示する。
+
+**差分D：Studioへの再利用**。同じData Contextをread-only Inspectorに投影する。表示が成功しても、Wails実機・Selection固定・現在Grant・更新Effectの受入を自動合格としない。
+
+合流条件は、変更差分に応じたGoテスト／CLI実行、隔離PostgreSQLの明示PASS・非SKIP、CIの結果、独立Expected、対象HEADの確認。実DBに接続できない環境では、合成試験のPASSを実Provider合格と呼ばない。レビュー後に必要な修正を行い、競合や未確認のHard Gateがなければマージする。
+
+### 10.5 P0以外の拡張を始める判断
+
+D1〜D5は、D0の経路表と独立Expectedを再利用できる範囲で進める。新Providerで必要になる能力はContract×版×Instance×Principal×Operationに記録し、非対応の操作を暗黙にLocal Scanや別DBへFallbackしない。NoSQLの個別機能を増やす前に、D0で未接続だったProduct Caller／Data Context／Consumerの共通部分を解消する。
+
+**現時点の受入状況**：本節はdocs-only。D0-P/Nの製品実行、隔離PostgreSQL CLI E2E、Studio実機、Owner意味受理は未実施。#2586を実ReadのOwner、#2506/#2514をClaim/Expected、#3270/#4496をWorkbench、#2831を独立したセルフビルドP0として維持する。
