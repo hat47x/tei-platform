@@ -29,13 +29,14 @@
 
 | 順 | 作業 | 担当先 |
 | --- | --- | --- |
-| 1 | **汎用の読取入口を別の業務モデルで実証する。** 固定IDの除去と別名Patternの実DB試験は進んだ。次は、異なるData・Relationを持つWorkspaceから同じ`tei view`で読み、行IDとRule結果を独立した期待に照合する | [#2586](https://github.com/hat47x/tei-platform/issues/2586) |
-| 2 | 最初のWebの実行先で、行ごとの答えを表示する（上の5） | [#1119](https://github.com/hat47x/tei-platform/issues/1119) |
-| 3 | 束縛へ全件の宣言を書き、明細番号の一意に「成立」と答える。[判断の文書](design/RULE_NORMAL_FORM_AND_OPERATOR_SIGNATURE_DECISION_2026-11.md)の§6と作業5 | #2586 |
-| 4 | 手順書の「まだできないこと」を消す。定義から表を作るSQLを`tei`で出す。`-format text`で行と答えを読める形にする | #2586 |
-| 5 | 規則の正規形とOperatorの署名。判断の文書の作業1〜4、6〜8 | [#4362](https://github.com/hat47x/tei-platform/issues/4362) |
+| 1 | **同じRule結果を生成Web画面へ届ける。** `tei view -environment`の実DB結果を、別のQueryやRule評価器を作らずに一画面へ表示し、実際のWeb Consumerで変更前後を照合する（上の5） | [#1119](https://github.com/hat47x/tei-platform/issues/1119) |
+| 2 | 束縛へ全件の宣言を書き、親Scopeと実Queryの取得範囲を確かめた場合だけ明細番号の一意に「成立」と答える。[判断の文書](design/RULE_NORMAL_FORM_AND_OPERATOR_SIGNATURE_DECISION_2026-11.md)の§6と作業5 | [#2586](https://github.com/hat47x/tei-platform/issues/2586) |
+| 3 | 手順書の「まだできないこと」を消す。定義から表を作るSQLを`tei`で出す。`-format text`で行と答えを読める形にする | #2586 |
+| 4 | 規則の正規形とOperatorの署名。判断の文書の作業1〜4、6〜8 | [#4362](https://github.com/hat47x/tei-platform/issues/4362) |
 
-入口から参照用作業領域の固定名を除く変更は[#5327](https://github.com/hat47x/tei-platform/pull/5327)で進めた。入力名と行の主キーを宣言から解決し、同じ受注Relationに別名Patternを加えた実PostgreSQL試験は通った。ただし、異なるData・Relationに対しても同じ入口が動くことは未確認である。ここを確かめるまで道の1は完了としない。
+汎用の読取入口は[#5327](https://github.com/hat47x/tei-platform/pull/5327)で固定名を外し、[#5339](https://github.com/hat47x/tei-platform/pull/5339)で別のSemantic Data・Relationと実PostgreSQLの別テーブルを、同じ通常CLIで読み取る試験が通った。行IDとRule結果は手書きの期待と照合した。ただし列構成は元と同じであり、あらゆる業務モデルやProviderでの動作を確認したものではない。
+
+次に変えるコードは`cmd/tei/cli_view.go`と既存のWeb投影候補（[#5317](https://github.com/hat47x/tei-platform/pull/5317)）である。現行の`readEnvironmentRows`が返す`rows[].key`・`perRow`・`perRelation`を同じ画面で受け取り、実DBの変更前後と独立の期待を照合する。静的HTMLの生成成功だけで、正式なWeb実行先や実Browserでの受領を認めない。
 
 入口は増やさない。接続の秘密は環境変数から受け取り、作業領域へ書かない。
 
