@@ -1,0 +1,18 @@
+I first read "text 2 lines, json 5 diagnostics" and suspected the two modes
+disagreed. They do not; my grep was wrong.
+
+  grep -E "error|warning"      only matches lines that START with the severity.
+  Subject-less diagnostics      print with severity FIRST? No -- they print with
+                                the CODE in field 2, so `$2` is not the severity.
+
+Reading the raw tab-separated output:
+
+  [$1] [warning] HEADER_DETAIL_BINDING_COVERAGE_UNDECLARED
+  [$1] [error]   UNKNOWN_SEMANTIC_ATTRIBUTE_TYPE
+  [$1] [APPLICATION_RELEASE_CONTRACT_NOT_CURRENT] ...
+  [$1] [DATABASE_RELEASE_CONTRACT_NOT_CURRENT] ... (2)
+
+  5 text lines / 5 json diagnostics -> they agree.
+
+Both modes call operations.ValidateWorkspace and share
+WorkspaceValidationReportFrom (#3420), so a count mismatch was unlikely by design.

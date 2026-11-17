@@ -3643,3 +3643,38 @@ difference-check: not observed (this executor does not enumerate its operations)
 ### 位置付け
 
 **「実行できるか」を最後に問うた回**であり、答えは**成立する**だった。同時に、**出力が自分の限界を自分で述べている**ことを確認した。**欠陥を作らなかったことと、直さないと決めた理由を記録するのも成果**である。
+
+## 100. 第99ラウンド（2026-11-18）: 2ファイルの構文エラーは両方reportされ、text と json は5件で一致する
+
+目的文の「再びドッグフーディングに戻る」を実行し、**2つの独立ファイルがそれぞれ構文エラーを持つとき、両方が報告されるか**を確かめた。古い記録に「そのファイル以外は調べていない」という文があり、**それが今も真か**を検証したかった。生出力は[第99ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND99_MULTIFILE_AND_TEXT_JSON_PARITY_2026-11-18/README.md)にある。
+
+### 実測: 両方reportされた
+
+```text
+semantic/probe/a.tei:8:22  error PARSE_ERROR unexpected token "}"
+semantic/probe/b.tei:4:31  error PARSE_ERROR expected attribute, relation, candidate-key, ...
+note VALIDATION_INCOMPLETE 2件の構文の指摘を同じ読み込みで集めました。…
+```
+
+**古い文（"files other than that one were not examined"）はもう出ない。** 代わりに「2件を集めた」と**件数まで言う**。
+
+### 構文エラーは意味検証を止める — そして正直に書かれている
+
+| 手順 | 結果 |
+| --- | --- |
+| a.tei に構文エラー、b.tei に意味エラー | **PARSE_ERROR 1件のみ**、`意味検証は実行していません` |
+| a.tei の構文エラーを直す | **`UNKNOWN_SEMANTIC_ATTRIBUTE_TYPE` が現れる** |
+
+**対照実験で、note の文が文字通り真であることを確認した。** JSON 側も `incomplete.reason = syntax-coverage-unverified` で同じ事実を持つ。健康なワークスペースでは `incomplete` は**現れない**。
+
+### 自分が誤った計器を使った（訂正）
+
+「text は2件、json は5件」と読み、**モード間で件数が食い違う**と疑った。実際は `grep -E "error|warning"` が**行頭一致**で、Subject を持たない診断は**行が severity で始まらない**ため取りこぼしていた。生の出力をタブ区切りで読み直すと **text 5行 / json 5件で一致**。実装は同じ `operations.ValidateWorkspace` を共有しており（`#3420`）、**私の数え方が誤っていた。**
+
+### 既存のテストが既に守っていた
+
+`TestValidateWorkspaceCollectsSyntaxWithoutPartialWorld`（**3ファイル**・`AdditionalDirect` 2件・`incomplete.reason`）、`TestTextOutputSaysTheRunIsIncomplete`（`were not examined` を**出さないこと**を明示検査）ほか。**すべて PASS。私が確かめたかったことは既に固定されていた。**
+
+### 位置付け
+
+**「古い記録の文が今も真か」を測った回**であり、答えは**偽（改善済み）**だった。同時に**私は計器を誤り、「モード間で食い違う」と一瞬疑った**。生データを読み直して訂正した。**既存テストが既に守っていたことも確認した**ので、起票しない。
