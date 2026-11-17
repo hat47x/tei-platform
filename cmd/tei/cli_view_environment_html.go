@@ -105,9 +105,20 @@ type destinationReadAnswerPage struct {
 func destinationReadPageOf(read destinationRead) destinationReadPage {
 	page := destinationReadPage{Read: read}
 	if read.Declaration != nil {
-		declared := "covers some"
-		if read.Declaration.CoversRelation != "" {
+		// A binding that states both "every row" and "only some rows" is
+		// self-contradictory. The static validator rejects it, but this path
+		// runs no validator, so the page must not pick one side and hide the
+		// other: printing only the relation would read as a clean declaration
+		// when the binding contradicts itself. The text form says the same
+		// thing, and both renderings of one read must agree.
+		var declared string
+		switch {
+		case read.Declaration.CoversRelation != "" && read.Declaration.CoversSome:
+			declared = "covers " + string(read.Declaration.CoversRelation) + " and covers some (contradictory)"
+		case read.Declaration.CoversRelation != "":
 			declared = "covers " + string(read.Declaration.CoversRelation)
+		default:
+			declared = "covers some"
 		}
 		checked := "unchecked"
 		if read.Declaration.Checked {
