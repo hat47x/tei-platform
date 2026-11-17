@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"html"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -171,6 +172,10 @@ func TestDestinationOrderChangeReadViaCLIFromPostgres(t *testing.T) {
 							t.Fatalf("order=%s rule=%s: should be undecided without coverage proof, got %s", orderID, rule, gotAnswer)
 						}
 					}
+					// The HTML must come from this same real PostgreSQL and
+					// Workspace revision, not from a synthetic renderer fixture.
+					assertDestinationHTMLFromPostgres(t, binary, root, orderID, dsn,
+						want.PerLine, report.Result.PerOrder, report.Result.PerOrderUndecided)
 				})
 			}
 		})
@@ -634,4 +639,76 @@ FROM changed ORDER BY line_number, order_line_id`
 		checkDestinationAlternateModel(t, db, binary, dsn)
 	})
 
+}
+
+// assertDestinationHTMLFromPostgres reads the real database a second time
+// through the same product CLI entry, using HTML rather than JSON. The expected
+// row/rule answers come from hand-authored fixture files, not generated HTML.
+// This is a product CLI HTML check, not evidence of a browser or Web Target E2E.
+func assertDestinationHTMLFromPostgres(
+	t *testing.T,
+	binary, root, orderID, dsn string,
+	perLine map[string]map[string]string,
+	perRelation map[string]string,
+	undecided map[string]string,
+) {
+	t.Helper()
+	got := runCLIProcessWithStreams(t, binary,
+		"view", "-workspace", root, "-application", "order_entry",
+		"-pattern", "order_entry.order_lines",
+		"-environment", "development", "-input", "order_id="+orderID,
+		"-format", "html")
+	if got.code != 0 {
+		t.Fatalf("order=%s HTML CLI failed: code=%d stderr=%s", orderID, got.code, got.stderr)
+	}
+	page := got.stdout
+	if !strings.Contains(page, "<!doctype html>") ||
+		!strings.Contains(page, "coverage: partial") ||
+		!strings.Contains(page, "rows: "+strconv.Itoa(len(perLine))) {
+		t.Fatalf("order=%s HTML missing document, observed coverage or row count", orderID)
+	}
+	if strings.Contains(page+got.stderr, dsn) {
+		t.Fatal("real PostgreSQL connection string leaked into HTML or diagnostics")
+	}
+	if len(perLine) == 0 {
+		if !strings.Contains(page, "明細の行はない。") || strings.Contains(page, "<h3>") {
+			t.Fatalf("order=%s HTML did not preserve the empty row set", orderID)
+		}
+	}
+	for key, rules := range perLine {
+		marker := "<h3>" + html.EscapeString(key) + "</h3>"
+		if strings.Count(page, marker) != 1 {
+			t.Fatalf("order=%s row key %s is missing or duplicated in HTML", orderID, key)
+		}
+		start := strings.Index(page, marker) + len(marker)
+		end := len(page)
+		if next := strings.Index(page[start:], "<h3>"); next >= 0 {
+			end = start + next
+		}
+		if next := strings.Index(page[start:end], "<h2>"); next >= 0 {
+			end = start + next
+		}
+		rowHTML := page[start:end]
+		for rule, answer := range rules {
+			cells := "<td>" + html.EscapeString(rule) + "</td><td>" + html.EscapeString(answer) + "</td>"
+			if !strings.Contains(rowHTML, cells) {
+				t.Fatalf("order=%s row=%s rule=%s: HTML answer is not %s on this exact row", orderID, key, rule, answer)
+			}
+		}
+	}
+	marker := "<h2>関係全体の答え</h2>"
+	off := strings.Index(page, marker)
+	if off < 0 {
+		t.Fatalf("order=%s HTML has no separate Relation answers", orderID)
+	}
+	relationHTML := page[off+len(marker):]
+	for rule, answer := range perRelation {
+		cells := "<td>" + html.EscapeString(rule) + "</td><td>" + html.EscapeString(answer) + "</td>"
+		if !strings.Contains(relationHTML, cells) {
+			t.Fatalf("order=%s Relation=%s: HTML answer is not %s", orderID, rule, answer)
+		}
+		if reason := undecided[rule]; reason != "" && !strings.Contains(relationHTML, html.EscapeString(reason)) {
+			t.Fatalf("order=%s Relation=%s: HTML lost undecided reason", orderID, rule)
+		}
+	}
 }
