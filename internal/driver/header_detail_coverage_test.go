@@ -321,3 +321,27 @@ func TestTwoRealizationsOfOneQueryArePartial(t *testing.T) {
 		t.Fatalf("%+v", got)
 	}
 }
+
+// Repeating a Relation storage declaration is ambiguous even if both copies
+// currently happen to say the same thing. A later edit must not silently
+// change which definition qualifies the query as complete.
+func TestTwoStorageDefinitionsOfOneRelationArePartial(t *testing.T) {
+	duplicate := func(w *ir.World) {
+		for i := range w.Persistence {
+			mapping := &w.Persistence[i]
+			if mapping.SemanticData != "sales.order_line" {
+				continue
+			}
+			for _, storage := range mapping.RelationStorage {
+				if storage.Relation == "sales.order.lines" {
+					mapping.RelationStorage = append(mapping.RelationStorage, storage)
+					return
+				}
+			}
+		}
+	}
+	got := qualifyOrderLines(t, environment.ProviderPostgres, declareCovers("sales.order.lines"), duplicate)
+	if got.Complete || !strings.Contains(got.Reason, "more than once") {
+		t.Fatalf("ambiguous Relation storage qualified as complete: %+v", got)
+	}
+}
