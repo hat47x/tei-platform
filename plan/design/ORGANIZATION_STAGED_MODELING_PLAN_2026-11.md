@@ -1148,3 +1148,14 @@ S3の最小受入は、単一所属Occurrence・Assertion revision・物理行�
 | S5 Projection/Port (#2497/#2516/#1124) | Graph/Tree/SHO/Pluginの型付きPort・Adapterと投影損失、ConsumerのDisclosureを比較 | Nodeの表示や型ShapeだけでPerson Link・Relation Edge・Grantが復元されたとみなさない |
 
 Person Linkの同一性、訂正か再所属か、どの時間条件で人数を数えるかは#2386/#1126のOwnerが採否を判断する。S3の実DB反例はその判断を代行しない。#2831 Desktopセルフビルドは引き続き独立P0。
+
+<!-- org-claim-quantifier-handoff-20261117 -->
+### 10.22 S3→S4のClaim判断を、量化と取得範囲ごとに検収する
+
+[組織C1補遺§44.4](ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)は、二世界の観測不十分性をさらに具体化し、部分取得の存在証人・反例から結論を確定できる場合と、対象母集団の閉包が必要な場合を分けた。
+
+- **片側結論**：同一Scope/時点/Query条件でR⊆Lが確立したMembership occurrenceを1件観測すれば「1件以上」は真、異なる2 IDなら「高々1件」は偽。ただしpartialな0件は不存在を、partialな1件は唯一性を証明しない。
+- **業務上の粒度**：Membershipの結果をPerson数・配賦FTE・承認候補へ昇格しない。正式Person Relation、否定条件を含むRuleの必要Read、valid/knownとRead Cohort、Claimごとの完全集合性を分けて要求する。
+- **Owner配分**：#2586/#2506の同一Attempt実Read・一Consumer、#2514の片側結論と独立Expected、#2386/#1126のPerson意味受理、#4490の判断候補、#2497/#2516の情報損失・Disclosureを接続する。新Org Evaluator、Temporal Engine、Expected Storeは設けない。
+
+最小の追加試験は**同一条件で0/1/2所属をcomplete/partialそれぞれで照合し、確定・反証・unknownを一Consumerへ伝える**こと。既存Expectedの拡張として行い、新しい検証正本は作らない。Person数と承認候補は正式Relation・Ruleの受理後に別資格で確認する。設計のみで実Provider/Consumerの合格や現在Grantを主張しない。通常CLI実Read #2586とStudioセルフビルド #2831を引き続き先行P0とする。
