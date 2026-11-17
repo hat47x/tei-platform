@@ -109,11 +109,17 @@ rule sales.order_line.unit_price_positive:
 export TEI_WEB_READ_PG_DSN="$TEI_VIEW_PG_DSN"
 go run ./tools/reference-first-web-target \
   -serve-read-from-db \
+  -diagnostic-unaccepted-source \
   -workspace reference/workspace -application order_entry \
   -baseline-id B -baseline-revision "$(git rev-parse HEAD)" \
   -target-revision "$(git rev-parse HEAD)" \
   -listen 127.0.0.1:8080
 ```
+
+`-diagnostic-unaccepted-source` は必須である。出荷する CLI は Host の Source Reader を
+注入しないため、このフラグが無いと `SOURCE_ACCEPTANCE_READER_REQUIRED` で**起動しない**
+（作業領域を未受理として読む診断経路を使う）。CI の
+`TestShippedWebPageShowsRealPostgresRowAnswers` も同じフラグで起動している。
 
 ブラウザで `http://127.0.0.1:8080/custom-submit` を開き、`from` に
 `2026-09-01T00:00:00Z`、`row` に `0` を入れて送る。**明細の行ごとの答え**が出る。
