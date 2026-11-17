@@ -171,6 +171,49 @@ func TestDestinationOrderChangeReadViaCLIFromPostgres(t *testing.T) {
 							t.Fatalf("order=%s rule=%s: should be undecided without coverage proof, got %s", orderID, rule, gotAnswer)
 						}
 					}
+					// HTML consumes the same real PostgreSQL result, not a second
+					// Query or rule evaluator. Check observed row identity and each
+					// independently expected answer after the rule edit.
+					rendered := runCLIProcessWithStreams(t, binary,
+						"view", "-workspace", root, "-application", "order_entry",
+						"-pattern", "order_entry.order_lines", "-environment", "development",
+						"-input", "order_id="+orderID, "-format", "html",
+					)
+					if rendered.code != 0 || !strings.HasPrefix(rendered.stdout, "<!doctype html>") {
+						t.Fatalf("HTML view failed: code=%d stdout=%s stderr=%s", rendered.code, rendered.stdout, rendered.stderr)
+					}
+					if strings.Contains(rendered.stdout+rendered.stderr, dsn) ||
+						!strings.Contains(rendered.stdout, `data-coverage="partial"`) ||
+						!strings.Contains(rendered.stdout, "sales.order.lines") {
+						t.Fatal("HTML lost the relation, partial coverage or secret boundary")
+					}
+					if strings.Count(rendered.stdout, `data-row-key="`) != len(want.PerLine) {
+						t.Fatalf("HTML row count differs from independent expected rows for order %s", orderID)
+					}
+					for key, decisions := range want.PerLine {
+						marker := `<tr data-row-key="` + key + `">`
+						start := strings.Index(rendered.stdout, marker)
+						if start < 0 {
+							t.Fatalf("HTML missing row key %s", key)
+						}
+						rest := rendered.stdout[start+len(marker):]
+						end := strings.Index(rest, "</tr>")
+						if end < 0 {
+							t.Fatalf("HTML row %s not terminated", key)
+						}
+						for ruleID, answer := range decisions {
+							needle := `data-rule-id="` + ruleID + `" data-answer="` + answer + `"`
+							if !strings.Contains(rest[:end], needle) {
+								t.Fatalf("HTML decision differs: row=%s rule=%s answer=%s", key, ruleID, answer)
+							}
+						}
+					}
+					for ruleID, answer := range report.Result.PerOrder {
+						needle := `data-rule-id="` + ruleID + `" data-answer="` + answer + `"`
+						if !strings.Contains(rendered.stdout, needle) {
+							t.Fatalf("HTML missing relation decision %s=%s", ruleID, answer)
+						}
+					}
 				})
 			}
 		})
