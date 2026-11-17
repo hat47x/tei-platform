@@ -144,3 +144,30 @@ flowchart LR
 - `TestMultipleFunctionOperationsRemainVisibleUnderExplicitCRUD`：明示CRUDの投影と派生意図を両方表示し、相互に対立する場合はConflictを維持する。
 
 この狭い成果は#1124（Modelerの実表示）・#1126（Data/ER/CRUD）・#2514（独立Expected）へ引き渡す。最小の試験が通っても、モデルの読み取り対象集合、原典Data/Function/Business全体の一致、実Sourceの資格、Modelerの画面操作、旧Driverの副作用、Windows Studioの受入には昇格させない。五種類の旧対応表の名称・軸・セル意味・導出条件についても、元資料の固定版とSourceを確認するまで正式な互換宣言をしない。
+
+## 7. 集約した対応セルから元宣言へ戻る：モデル内出現位置の検証（2026-11-17）
+
+第6節では、同じFunction/Dataに複数の`FunctionOperation`があるとき、それらを`RU`などの一つの表示セルへ集約した。しかし、**集約した結果だけでは、元の宣言が何件あり、どの宣言が食い違うかを確認できない**。図面でのレビューには、集約結果と個々の宣言を往復できることが必要となる。
+
+既存の`internal/threeelement`に、読み取り専用の`GenerateCRUDCellOrigins`を置く。これはCRUD表や正本とは別に、同じFunction/Dataの組を構成した`FunctionOperation`と`CRUDDefinition`を**省略せず列挙**するための補助Projectionである。表示セルの一つと実行された書き込み一回を対応させるものではない。
+
+| 調べる対象 | 集約した表示 | 元の宣言の確認 |
+| --- | --- | --- |
+| `submit` → `order` | 一組の`RU`セル | `FunctionOperation`の`r`、`U`、`R`を各1件として保持。表記と宣言件数を失わない |
+| 明示CRUDと派生意図 | 既存の明示優先表示と`DerivedOperations` | `CRUDDefinition`ごとのID、位置、操作、自己申告されたSourceラベルを区別 |
+| 同じ組への相反する明示定義 | 既存のConflict表示 | 対立する両方の宣言を残す。最後の宣言が表示に選ばれても他方を消さない |
+| 未解決のデータ参照 | 対象名は確定できない | 元のData IDと宣言は残す。参照先不在の確証や実行可能性は主張しない |
+
+### 位置情報の資格
+
+`functionPosition`、`operationPosition`、`definitionPosition`は**入力モデルの配列内の1始まりの位置**であり、そのモデルのSnapshotを限定した参照にすぎない。これらをX-TEAの永続ID、`*.tei.md`のSource Span、正式なQualified Ref、許可済み編集対象として使用しない。原典上の文書位置・ファイル版・Source tokenへの照合は既存#950/#1031/#1124のReaderとSelection契約で別途行う。旧SourceのSortKeyや業務の実行順序をこの配列位置から導出しない。
+
+同じFunction/Dataの複数操作を一つのセルへ集約することは、**表示の粒度の選択**である。データ更新の回数、トランザクション、業務ActionごとのEffect、Primary Data Owner、独立した業務上の操作単位はこの表から確定できない。この補助Projectionも、受理前の説明・レビュー用途に限り、正式な意味正本、Runner、Core schema、第二のSource Indexを新設しない。
+
+### 独立した検証の入口
+
+- `TestCRUDCellOriginsRetainEveryOperationBehindOneCell`：一つの`RU`表示セルに元の三宣言が残ること、読み取りでモデルを変更しないこと、異なるKindの同名要素を混ぜないこと。
+- `TestCRUDCellOriginsKeepConflictingDefinitionsAndModelPositions`：明示CRUDが二件対立しても両方を列挙し、モデル内の並べ替えで出現位置だけが変わること。
+- `TestCRUDCellOriginsPreserveUnresolvedPairsForReview`：参照先が未定義の組も黙って消さないこと。
+
+以上は**`internal/threeelement`の局所Reference契約**である。次の段階では、#1031の複数source tokenと#1124のQualified Selectionに接続して出典位置まで進め、その後に型付きインスタンス（#1131）と標準表現型（#2497）を照合する。実X-TEA Modeler/Driver、正式TEI Sourceへの逆編集、実Provider/DB、Windows Studioの実Consumer、Ownerの意味受理は独立した検収のまま維持する。
