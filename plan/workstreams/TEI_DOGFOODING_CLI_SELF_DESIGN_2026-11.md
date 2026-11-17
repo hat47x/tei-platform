@@ -3286,3 +3286,48 @@ Scope: "selected-read-only-commands",
 ### 位置付け
 
 **「計測は正しかったが、解釈が間違っていた」回**である。56 と 25 という数字は事実だが、**その差は欠陥ではなく `Scope` が宣言した範囲**だった。**起票しなかったことが成果**であり、次に同じ数字を見た人が同じ誤りをしないよう記録する。
+
+## 93. 第92ラウンド（2026-11-17）: 「Function を書きたい」と思ったら、それは著面の語ではなかった
+
+目的文の「再びドッグフーディングに戻る」を実行し、**Function（データを読み、規則で判断し、コマンド能力を持つもの）**を CLI だけで設計した。生出力は[第92ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND92_FUNCTION_NOT_A_KEYWORD_2026-11-17/README.md)にある。
+
+### 最初の試行は失敗した
+
+```text
+$ tei validate   # function LoanDesk { data equip.loan }
+error PARSE_ERROR expected type, data, capability, validation, calendar,
+      period, effect-rule, or run-plan
+```
+
+**`function` は著面のキーワードではない。** 宣言表に 0 件、実例も 0 件。
+
+### Function の正体
+
+`internal/businessprocedure/model.go:63` より、**Function は「投影が指す既存の正体」の総称**であり、`capability`・`validation`・`application-pattern`・`data` のいずれかへ解決される。**著面の宣言種別ではない**ため、`function ... { }` と書く場所は存在しない。
+
+### 代わりに意図した合成を作った
+
+| 意図 | 実際の宣言 | 読み返し |
+| --- | --- | --- |
+| データ | `data equip.loan`（`.tei`） | `kind=Loan` |
+| 重ならない規則 | `rule ... is not overlapping`（`.tei.md`） | `kind=no-overlap / compared / groupBy / openEnded` |
+| 登録という業務行為 | `capability equip.loan_register`（`.tei`） | `inputs=[loan:equip.loan] / outcomes=[created, overlapping] / effect={create, equip.loan}` |
+
+`tei validate` → `ok`、**診断0件**（reference/workspace 由来の既存4警告のみ）。**3主体すべて `inspect` で読み返せた。**
+
+### 診断は綴り違いを区別しない — それは設計だった
+
+`function` と `datta`（`data` の綴り誤り）は同一メッセージになるが、`rule_authoring.go:100` が「**一覧外の語は診断であって近い語の同義語ではない**」と明記しており、**近い語を提案しないのは意図的な方針**である。起票しなかった。
+
+### 自分が2回、計器を間違えた
+
+| 誤り | 実際 |
+| --- | --- |
+| `-json` の `warnings`/`errors` を数えて「0件」と読んだ | 実体は **`diagnostics[].diagnostic.{code,severity,message}`** の入れ子 |
+| 入れ子を知らず「text と json が食い違う」と疑った | 正しく読むと **text 4行 / json 4件で一致** |
+
+入れ子は `TestValidateJSONDiagnosticsKeepNestedDiagnostic` が **v0 契約として固定**しており（#3347）、flat と仮定する読み手を検出するためのテストだった。**私がその仮定をした側だった。**
+
+### 位置付け
+
+**「自分の語彙が間違っていた」回**である。Function を「宣言できるもの」と前提したが、**それは投影が指す先の総称**だった。診断は正しく、私の前提が誤っていた。

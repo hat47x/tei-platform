@@ -1,0 +1,10 @@
+Intent                       Declaration                        Read back
+data                         data equip.loan (.tei)              kind=Loan
+must-not-overlap rule        rule ... is not overlapping (.md)   kind=no-overlap
+                             compared/groupBy/openEnded         all present
+business action              capability equip.loan_register     inputs=[loan:equip.loan]
+                                                                outcomes=[created, overlapping]
+                                                                effect={create, equip.loan}
+
+tei validate -> ok, 0 diagnostics from my workspace
+all three subjects read back through inspect.
