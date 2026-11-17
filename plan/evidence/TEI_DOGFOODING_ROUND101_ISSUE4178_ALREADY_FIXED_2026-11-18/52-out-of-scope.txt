@@ -1,0 +1,7 @@
+Out of my repro, and NOT verified:
+  - collecting across import dependencies
+  - resolving child Sources when an Application declaration fails
+
+These were mentioned in the issue body but are not the issue's claim.
+I did not file a new issue: they are unmeasured, and an unmeasured concern
+is not a defect. The comment on #4178 names them as still-unverified.

@@ -1,0 +1,14 @@
+Reproduced #4178's own three-file fixture on main 44cbd8c9e:
+
+  semantic/a.tei  data Broken { attribute x type }
+  semantic/b.tei  data Broken2 { attribute y frobnicate }
+  semantic/c.tei  type Bad from
+
+  $ tei validate -workspace <ws>
+  a.tei:2:32 error PARSE_ERROR unexpected token "}"
+  b.tei:2:28 error PARSE_ERROR expected "type"
+  c.tei:3:1  error PARSE_ERROR unexpected token ""
+  note VALIDATION_INCOMPLETE 3件の構文の指摘を同じ読み込みで集めました。…
+
+All three reported. The issue body's "only one is reported" is not current
+behaviour.
