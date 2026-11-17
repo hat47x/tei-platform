@@ -499,6 +499,7 @@
 - [改ページの見出し繰返しが宣言されるが効いていない](XTEA_LOWCODE_REPEAT_HEADER_INERT_2026-11.md)（`repeat-header`は受理・投影されるが描画に効かない。D-9の変種。修正は未了）
 - [XF110の部分成功とpartial_successの接続](XTEA_LOWCODE_PARTIAL_SUCCESS_CONNECTION_2026-11.md)（設計判断の候補。`PartialError`は実在するがCommand境界でコードを返さない。実装は未了）
 - [部分成功をCommand境界から報告する](XTEA_LOWCODE_PARTIAL_SUCCESS_REPORTED_2026-11.md)（参照実装の試験記録。`COMMAND_PARTIAL_SUCCESS`を効果不明より先に報告。何が残っているかは未実装）
+- [XF310の一確定で3種の変更を載せる](XTEA_LOWCODE_XF310_MIXED_CHANGES_2026-11.md)（参照実装の試験記録。メモリアダプタが子を適用していなかった欠陥を修正。他のStore実装は未確認）
 - [行スコープのフックへ渡す行集合の変換](XTEA_LOWCODE_ROW_ROWS_CONVERSION_2026-11.md)（参照実装の試験記録。driver結果から行集合への変換を hook 側に置いた。ホストの配線は未実装）
 - [行スコープのフックを browse で使えるようにするか](XTEA_LOWCODE_ROW_HOOK_DECLARATION_SITE_2026-11.md)（設計判断を保留。`interaction`はrecord限定のため一覧で行フックを宣言できない。既定案は`Hook`へ行の出所を足す）
 - [例のWorkspaceで期間の要件を宣言する確認](XTEA_LOWCODE_EXAMPLE_PERIOD_REQUIREMENT_2026-11.md)（参照実装の試験記録。例で宣言・検証・投影・実行が一致。宣言時に矛盾検査が実例で発火し、`closed-rejects`を狭めた）
@@ -534,3 +535,4 @@
 - [manifestの自己矛盾したdigest宣言を実ファイルに合わせた](TEI_DOGFOODING_ROUND89_REA_CAPTURE_FIXTURE_2026-11-17/README.md)（#5176。原本をanalysis.jsonに上書きするとfail-closed検査3件が壊れた。分離案は動いたがmainが先に948efe9b6でテスト専用の捕捉を持たせて解消済みで重複だったため取り下げた。残る成果はmanifestの訂正: 520バイトと7ea3780d（78000バイトのdigest）を同時に宣言する自己矛盾を全エントリ実ファイル一致・不一致0にした）
 - [`reads`の実データ観測（2026-11-17）](XTEA_LOWCODE_HOOK_STORE_READS_2026-11.md)
 - [legacy .teiはno-overlapを要求するのに書く手段が無かった](TEI_DOGFOODING_ROUND90_LEGACY_SURFACE_DEAD_END_2026-11-17/README.md)（装備貸出の重なり禁止をCLIだけで設計し、periodは期間ではなく状態・締めだと判明。tei本体はattribute/relationの2語しか受け付けずCompared/GroupByを設定しないため、no-overlap・not-after・operatorは表現不能なのに受理され意味層で落ちていた。パース時に断り書く場所を案内するよう修正。第83ラウンドの自分のテストの誤りも訂正）
+- [38コマンドが発見面から欠落は誤報だった](TEI_DOGFOODING_ROUND91_DISCOVERY_SCOPE_FALSE_ALARM_2026-11-17/README.md)（前ラウンドのno-overlap回避経路を検証し、宣言・読み返し・評価器35subtests・製品呼出しのすべてが成立していることを確認。tei commandsと正準一覧の差38件を発見可能性の欠陥としかけたが、Scope:'selected-read-only-commands'が範囲を明示しており設計文書も不掲載を未実装に昇格させないと明記していたため起票せず。発見面は既存3テストで保護済み）
