@@ -356,15 +356,15 @@ func TestDestinationOrderChangeReadViaCLIFromPostgres(t *testing.T) {
 			"-input", "order_id=1002", "-format", "json",
 		)
 		var report struct {
-			OK bool `json:"ok"`
+			OK     bool `json:"ok"`
 			Result struct {
-				Pattern       string                       `json:"pattern"`
-				Relation      string                       `json:"relation"`
-				KeyAttributes []string                     `json:"keyAttributes"`
-				Coverage      string                       `json:"coverage"`
+				Pattern       string   `json:"pattern"`
+				Relation      string   `json:"relation"`
+				KeyAttributes []string `json:"keyAttributes"`
+				Coverage      string   `json:"coverage"`
 				Rows          []struct {
-					Key    string                          `json:"key"`
-					Fields map[string]json.RawMessage      `json:"fields"`
+					Key    string                     `json:"key"`
+					Fields map[string]json.RawMessage `json:"fields"`
 				} `json:"rows"`
 				PerRow             map[string]map[string]string `json:"perRow"`
 				PerRelation        map[string]string            `json:"perRelation"`
