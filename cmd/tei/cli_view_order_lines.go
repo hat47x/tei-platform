@@ -129,11 +129,19 @@ func readDestinationOrderLines(
 	if err := db.PingContext(ctx); err != nil {
 		return destinationRead{}, fmt.Errorf("PostgreSQL connection failed")
 	}
+	// A Workspace's SQL realization is selected by its Contract binding.
+	// Run it inside a server-enforced read-only transaction, not merely under
+	// a CLI option named "read". Never allow an edited realization to write.
+	tx, err := db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
+	if err != nil {
+		return destinationRead{}, fmt.Errorf("cannot begin a read-only PostgreSQL transaction")
+	}
+	defer tx.Rollback()
 
 	executor := sqlquery.Executor{
 		Provider:     environment.ProviderPostgres,
 		Realizations: world.ContractQuerySQLRealizations,
-		Runner:       postgresquery.Runner{DB: db},
+		Runner:       postgresquery.Runner{DB: tx},
 	}
 	registry := driver.ContractQueryExecutorMap{}
 	for _, binding := range world.ContractQueryExecutorBindings {
@@ -238,6 +246,9 @@ func readDestinationOrderLines(
 				result.PerLineUndecided[ids[i]][string(rule.ID)] = reason
 			}
 		}
+	}
+	if err := tx.Commit(); err != nil {
+		return destinationRead{}, fmt.Errorf("read-only PostgreSQL transaction did not complete")
 	}
 	return result, nil
 }
