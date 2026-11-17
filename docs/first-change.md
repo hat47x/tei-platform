@@ -44,7 +44,7 @@ cp -r reference/workspace /tmp/my-workspace
 
 `result.rows`に読んだ3行が、`result.perRow`に行ごとの規則の答えが出る。行は`key`（明細の主キー）で指す。数量が0の明細（`key` 2）は、`sales.order_line.quantity_positive`が`not-satisfied`になる。`result.perRelation`は受注一件の明細すべてに一度尋ねる規則の答えで、明細番号が重なっているので`not-satisfied`になる。
 
-受注1002では、明細番号の一意が`undecided`になる。読んだ2行に重なりはないが、Queryが受注の明細をすべて返したと、どこにも宣言していないためである。宣言の書き方は決めてあり、実装はこれからである。
+受注1002では、明細番号の一意が`satisfied`になる。読んだ2行に重なりがなく、その2行が受注の明細のすべてだと分かるからである。束縛（`applications/order-entry/realizations/header-detail/order-lines.tei`）が`covers sales.order.lines`と宣言し、実行したQueryが関係の保存の定義どおりに受注の明細を読んでいることを`tei view`が照合する。結果の`coverage`は`complete`で、`coverageBasis`に照合した定義が出る。宣言を消すか、Queryに条件を足すと、`coverage`は`partial`になり、一意は`undecided`に戻る。理由は`coverageReason`に出る。
 
 ## 3. 規則を一つ足す
 
@@ -98,7 +98,6 @@ rule sales.order_line.unit_price_positive:
 ## まだできないこと
 
 - 異なるData・Relationを持つ業務モデルで、同じ`tei view`を通すこと。**列構成・主キー・Query入力が異なるモデルは通った**（`testdata/destination-order-change/alternate-model/` と `cmd/tei/destination_order_alternate_pg_case_test.go`）。**残るのは、別の属性集合を持つさらに別のモデル。**
-- 明細番号の一意を「成立」と答えること。束縛への全件の宣言が要る。
 - 定義から表を作ること。
 - 行ごとの答えをJSON以外で読むこと。`tei view -environment` は `-format text` で行と答えを人が読める形で出す（このPRの `cmd/tei/cli_view.go`）。
 - Webの画面で同じ答えを見ること。

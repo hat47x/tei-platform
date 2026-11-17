@@ -31,12 +31,12 @@
         "not-satisfied",
         "satisfied"
       ],
-      "unique": "undecided"
+      "unique": "satisfied"
     },
     "1003": {
       "keys": [],
       "units": [],
-      "unique": "undecided"
+      "unique": "satisfied"
     }
   }
 }

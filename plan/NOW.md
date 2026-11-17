@@ -31,7 +31,7 @@
 | --- | --- | --- |
 | 1 | ~~異なる構造の業務モデルでも同じ読取入口を通す~~ **動く。** 別のData・Relation・実テーブルに加え、別の属性・Query入力（`batch_key`）・複合主キー（`entry_id, slot`）を持つ独立モデルを、同じ`tei view`と独立した期待で実DBから読む試験がCIで走る（[#5362](https://github.com/hat47x/tei-platform/pull/5362)） | [#2586](https://github.com/hat47x/tei-platform/issues/2586) |
 | 2 | 最初のWebの実行先で、行ごとの答えを表示する（上の5）。**未実装** | [#1119](https://github.com/hat47x/tei-platform/issues/1119) |
-| 3 | 束縛に取得範囲を宣言し、親Scope・実行したQuery・実際の取得範囲が一致すると確認できた場合に限り、明細番号の一意を「成立」と判定する。宣言だけでは全件取得の証拠にならない。[判断の文書](design/RULE_NORMAL_FORM_AND_OPERATOR_SIGNATURE_DECISION_2026-11.md)の§6と作業5 | #2586 |
+| 3 | ~~束縛に取得範囲を宣言し、実行したQueryが関係の保存と一致すると確認できた場合に限り、明細番号の一意を「成立」と判定する~~ **動く。** 参照用の作業領域の束縛が`covers sales.order.lines`を宣言し、`tei view -environment`は実行したQueryを関係の保存と照合できたときだけ`coverage: complete`を返す。受注1002・1003の一意が「成立」になることを実DBの試験がCIで照合する（[#5382](https://github.com/hat47x/tei-platform/pull/5382)と、この宣言の変更）。宣言だけ、または行を落とすQueryでは`partial`のまま | #2586 |
 | 4 | 手順書の「まだできないこと」を消す。定義から表を作るSQLを`tei`で出す。`-format text`で行と答えを読める形にする | #2586 |
 | 5 | 規則の正規形とOperatorの署名。判断の文書の作業1〜4、6〜8 | [#4362](https://github.com/hat47x/tei-platform/issues/4362) |
 

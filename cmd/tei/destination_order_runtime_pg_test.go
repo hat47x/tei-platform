@@ -136,8 +136,11 @@ func TestDestinationOrderChangeReadViaCLIFromPostgres(t *testing.T) {
 					if err := json.Unmarshal([]byte(got.stdout), &report); err != nil {
 						t.Fatalf("invalid CLI JSON: %v (%s)", err, got.stdout)
 					}
-					if !report.OK || report.Result.Coverage != "partial" {
-						t.Fatalf("CLI claimed complete coverage or failed: %+v", report)
+					// The reference binding states `covers sales.order.lines` and
+					// its Query matches the relation storage, so the read is
+					// complete and every answer is the independent expectation.
+					if !report.OK || report.Result.Coverage != "complete" {
+						t.Fatalf("CLI did not read the order completely or failed: %+v", report)
 					}
 					want := expected.Orders[orderID]
 					if !reflect.DeepEqual(report.Result.PerLine, want.PerLine) {
@@ -156,20 +159,9 @@ func TestDestinationOrderChangeReadViaCLIFromPostgres(t *testing.T) {
 							t.Fatalf("order=%s line=%s has no observed quantity", orderID, row.OrderLineID)
 						}
 					}
-					for rule, answer := range want.PerOrder {
-						gotAnswer := report.Result.PerOrder[rule]
-						if answer == "not-satisfied" {
-							// A witnessed duplicate is decisive even if there
-							// may be more rows not yet read.
-							if gotAnswer != answer {
-								t.Fatalf("order=%s rule=%s: %s, want %s", orderID, rule, gotAnswer, answer)
-							}
-						} else if gotAnswer != "undecided" || report.Result.PerOrderUndecided[rule] == "" {
-							// A successful query does not prove a complete
-							// relation; until the Contract binding says so,
-							// a positive uniqueness claim must stay open.
-							t.Fatalf("order=%s rule=%s: should be undecided without coverage proof, got %s", orderID, rule, gotAnswer)
-						}
+					if !reflect.DeepEqual(report.Result.PerOrder, want.PerOrder) || len(report.Result.PerOrderUndecided) != 0 {
+						t.Fatalf("order=%s perRelation=%v undecided=%v, expected independently %v",
+							orderID, report.Result.PerOrder, report.Result.PerOrderUndecided, want.PerOrder)
 					}
 				})
 			}
@@ -277,7 +269,7 @@ func TestDestinationOrderChangeReadViaCLIFromPostgres(t *testing.T) {
 			t.Fatalf("second Pattern failed: code=%d err=%v stdout=%s stderr=%s", got.code, err, got.stdout, got.stderr)
 		}
 		if report.Result.Pattern != "order_entry.order_lines_probe" ||
-			report.Result.Relation != "sales.order.lines" || report.Result.Coverage != "partial" {
+			report.Result.Relation != "sales.order.lines" || report.Result.Coverage != "complete" {
 			t.Fatalf("second Pattern lost its declared identity or coverage: %+v", report.Result)
 		}
 		raw, err := os.ReadFile(filepath.Join(fixtures, "expected-before.json"))
@@ -387,11 +379,11 @@ FROM changed ORDER BY line_number, order_line_id`
 		}
 	})
 
-	// With `covers sales.order.lines` in the binding, the reference Query is
-	// matched against the relation storage and the read is complete. The
-	// answers about all the lines are then the independent expectations as
-	// written, "satisfied" included. The declaration is the only change.
-	t.Run("the declared reference Query reads every line", func(t *testing.T) {
+	// Without `covers sales.order.lines` the same Query reads the same rows,
+	// but nothing states that they are every line of the order. A duplicate
+	// that was seen still refutes uniqueness; its absence does not establish
+	// it. Removing the declaration is the only change.
+	t.Run("without the declaration the read stays partial", func(t *testing.T) {
 		rawExpected, err := os.ReadFile(filepath.Join(fixtures, "expected-before.json"))
 		if err != nil {
 			t.Fatal(err)
@@ -412,16 +404,17 @@ FROM changed ORDER BY line_number, order_line_id`
 		if err != nil {
 			t.Fatal(err)
 		}
-		const anchor = "    input sales.order.order_id to order_id\n"
-		if strings.Count(string(binding), anchor) != 1 || strings.Contains(string(binding), "covers ") {
+		const declaration = "    covers sales.order.lines\n"
+		if strings.Count(string(binding), declaration) != 1 {
 			t.Fatalf("unexpected reference binding: %s", binding)
 		}
-		declared := strings.Replace(string(binding), anchor, anchor+"    covers sales.order.lines\n", 1)
-		if err := os.WriteFile(bindingPath, []byte(declared), 0o644); err != nil {
+		undeclared := strings.Replace(string(binding), declaration, "", 1)
+		if err := os.WriteFile(bindingPath, []byte(undeclared), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		if validated := runCLIProcessWithStreams(t, binary, "validate", "-workspace", root); validated.code != 0 {
-			t.Fatalf("the declared Workspace did not validate: %s %s", validated.stdout, validated.stderr)
+		if validated := runCLIProcessWithStreams(t, binary, "validate", "-workspace", root); validated.code != 0 ||
+			!strings.Contains(validated.stdout+validated.stderr, "HEADER_DETAIL_BINDING_COVERAGE_UNDECLARED") {
+			t.Fatalf("the undeclared Workspace did not validate with the warning: %s %s", validated.stdout, validated.stderr)
 		}
 		for _, orderID := range []string{"1001", "1002", "1003"} {
 			got := runCLIProcessWithStreams(t, binary,
@@ -448,14 +441,19 @@ FROM changed ORDER BY line_number, order_line_id`
 				t.Fatalf("invalid CLI JSON: %v (%s)", err, got.stdout)
 			}
 			want := expected.Orders[orderID]
-			if !report.OK || report.Result.Coverage != "complete" || report.Result.CoverageDeclared != "sales.order.lines" ||
-				!strings.Contains(report.Result.CoverageBasis, "order_id = sales.order.order_id") || report.Result.CoverageReason != "" {
+			if !report.OK || report.Result.Coverage != "partial" || report.Result.CoverageDeclared != "" ||
+				report.Result.CoverageBasis != "" || !strings.Contains(report.Result.CoverageReason, "does not state") {
 				t.Fatalf("order=%s: coverage=%q declared=%q basis=%q reason=%q", orderID,
 					report.Result.Coverage, report.Result.CoverageDeclared, report.Result.CoverageBasis, report.Result.CoverageReason)
 			}
-			if !reflect.DeepEqual(report.Result.PerOrder, want.PerOrder) || len(report.Result.PerOrderUndecided) != 0 {
-				t.Fatalf("order=%s perRelation=%v undecided=%v, expected independently %v",
-					orderID, report.Result.PerOrder, report.Result.PerOrderUndecided, want.PerOrder)
+			for rule, answer := range want.PerOrder {
+				gotAnswer, reason := report.Result.PerOrder[rule], report.Result.PerOrderUndecided[rule]
+				if answer == "not-satisfied" && (gotAnswer != answer || reason != "") {
+					t.Fatalf("order=%s rule=%s: a seen duplicate must refute: %s %q", orderID, rule, gotAnswer, reason)
+				}
+				if answer != "not-satisfied" && (gotAnswer != "undecided" || !strings.Contains(reason, "relation-partially-read")) {
+					t.Fatalf("order=%s rule=%s: must stay undecided without the declaration, got %s %q", orderID, rule, gotAnswer, reason)
+				}
 			}
 			if !reflect.DeepEqual(report.Result.PerLine, want.PerLine) {
 				t.Fatalf("order=%s perRow=%v, expected independently %v", orderID, report.Result.PerLine, want.PerLine)
@@ -517,20 +515,22 @@ FROM changed ORDER BY line_number, order_line_id`
 			if err := os.WriteFile(sourcePath, []byte(limited), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			if tc.covers {
-				// A plausible declaration cannot turn a filtered SQL result into
-				// independent evidence that the complete Relation was observed.
-				bindingPath := filepath.Join(root, "applications", "order-entry", "realizations", "header-detail", "order-lines.tei")
-				binding, err := os.ReadFile(bindingPath)
-				if err != nil {
-					t.Fatal(err)
-				}
-				const anchor = "    input sales.order.order_id to order_id\n"
-				if strings.Count(string(binding), anchor) != 1 || strings.Contains(string(binding), "covers ") {
-					t.Fatalf("unexpected reference binding: %s", binding)
-				}
-				declared := strings.Replace(string(binding), anchor, anchor+"    covers sales.order.lines\n", 1)
-				if err := os.WriteFile(bindingPath, []byte(declared), 0o644); err != nil {
+			// The reference binding declares `covers sales.order.lines`. A
+			// plausible declaration cannot turn a filtered SQL result into
+			// independent evidence that the complete Relation was observed;
+			// the cases without it remove it from the copy.
+			bindingPath := filepath.Join(root, "applications", "order-entry", "realizations", "header-detail", "order-lines.tei")
+			binding, err := os.ReadFile(bindingPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			const declaration = "    covers sales.order.lines\n"
+			if strings.Count(string(binding), declaration) != 1 {
+				t.Fatalf("unexpected reference binding: %s", binding)
+			}
+			if !tc.covers {
+				undeclared := strings.Replace(string(binding), declaration, "", 1)
+				if err := os.WriteFile(bindingPath, []byte(undeclared), 0o644); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -660,8 +660,8 @@ FROM changed ORDER BY line_number, order_line_id`
 			unique  string
 		}{
 			{orderID: "1001", ids: []string{"1", "2", "3"}, amounts: []string{"satisfied", "not-satisfied", "satisfied"}, unique: "not-satisfied"},
-			{orderID: "1002", ids: []string{"4", "5"}, amounts: []string{"not-satisfied", "satisfied"}, unique: "undecided"},
-			{orderID: "1003", ids: []string{}, amounts: []string{}, unique: "undecided"},
+			{orderID: "1002", ids: []string{"4", "5"}, amounts: []string{"not-satisfied", "satisfied"}, unique: "satisfied"},
+			{orderID: "1003", ids: []string{}, amounts: []string{}, unique: "satisfied"},
 		} {
 			t.Run(tc.orderID, func(t *testing.T) {
 				got := runCLIProcessWithStreams(t, binary,
@@ -693,7 +693,7 @@ FROM changed ORDER BY line_number, order_line_id`
 					t.Fatalf("alternate Result is not JSON: %v (%s)", err, got.stdout)
 				}
 				if !report.OK || report.Result.Relation != "sales.order.inventory_entries" ||
-					report.Result.Coverage != "partial" ||
+					report.Result.Coverage != "complete" ||
 					!reflect.DeepEqual(report.Result.KeyAttributes, []string{"sales.inventory_entry.order_line_id"}) {
 					t.Fatalf("alternate Result lost semantic identity or claimed full coverage: %+v", report.Result)
 				}

@@ -1595,7 +1595,8 @@
           "sourceAttribute": "sales.order.order_id",
           "input": "order_id"
         }
-      ]
+      ],
+      "coversRelation": "sales.order.lines"
     }
   ],
   "contractQueryExecutorBindings": [
