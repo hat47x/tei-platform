@@ -105,10 +105,11 @@ func TestDestinationReadTextMarksTheDeclarationUnchecked(t *testing.T) {
 			want: "declaration covers some (unchecked)\n",
 		},
 		{
-			// The static validator rejects this combination, but the view path runs
-			// no validator, so the renderer must not pick one side and hide the
-			// other. Measured before this case existed: only "covers <relation>" was
-			// printed and "covers some" disappeared.
+			// The read path now refuses a contradictory binding before it reaches
+			// here, so this case is no longer reachable from a Workspace. It stays
+			// as a net: a hand-built destinationRead must not be able to hide one
+			// side of a contradiction. Measured before the refusal existed: only
+			// "covers <relation>" was printed and "covers some" disappeared.
 			name: "both stated, contradictory",
 			decl: &destinationDeclaration{CoversRelation: "sales.order.lines", CoversSome: true},
 			want: "declaration covers sales.order.lines and covers some (contradictory) (unchecked)\n",
