@@ -11,6 +11,7 @@ import {
   WORKBENCH_MAIN_CONSUMER_HEAD, WORKBENCH_MAIN_CONSUMER_BLOB,
   WORKBENCH_PR1_HEAD, WORKBENCH_PR1_BLOB,
   WORKBENCH_NATIVE_HEAD, WORKBENCH_NATIVE_MAIN_BLOB,
+  WORKBENCH_GENERATED_READER_HEAD, WORKBENCH_GENERATED_READER_MAIN_BLOB,
 } from './connect-workbench.mjs';
 
 const graph = 'import { mountReadonlyGraph } from "../tei-studio-graph/graph.ts";\n';
@@ -30,6 +31,7 @@ test('historical Workbench pins and exact PR1 candidate reject unknown revisions
     WORKBENCH_MAIN_CONSUMER_HEAD,
     WORKBENCH_PR1_HEAD,
     WORKBENCH_NATIVE_HEAD,
+    WORKBENCH_GENERATED_READER_HEAD,
   ]);
   assert.deepEqual(WORKBENCH_PINS.map(pin => pin.mainBlob), [
     '2a65a9f70245068bf2455248d98d280b382b01e4',
@@ -37,6 +39,7 @@ test('historical Workbench pins and exact PR1 candidate reject unknown revisions
     WORKBENCH_MAIN_CONSUMER_BLOB,
     WORKBENCH_PR1_BLOB,
     WORKBENCH_NATIVE_MAIN_BLOB,
+    WORKBENCH_GENERATED_READER_MAIN_BLOB,
   ]);
   assert.deepEqual(WORKBENCH_PINS.map(pin => pin.commandHead), [
     '26f47772ed49f5c4a9e1c50026c335783bc5e153',
@@ -44,10 +47,12 @@ test('historical Workbench pins and exact PR1 candidate reject unknown revisions
     WORKBENCH_MAIN_CONSUMER_HEAD,
     WORKBENCH_MAIN_CONSUMER_HEAD,
     WORKBENCH_MAIN_CONSUMER_HEAD,
+    WORKBENCH_MAIN_CONSUMER_HEAD,
   ]);
   assert.deepEqual(WORKBENCH_PINS.map(pin => pin.commandBlob), [
     '4e0d5484f82944d5b7d3b0b8431f3a9a1eaa7081',
     '6c6ee81288c9857ca2f1c282639ba49f059f5535',
+    'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
     'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
     'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
     'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
@@ -61,6 +66,8 @@ test('historical Workbench pins and exact PR1 candidate reject unknown revisions
   assert.equal(WORKBENCH_MAIN_CONSUMER_BLOB, WORKBENCH_PINS[2].mainBlob);
   assert.equal(WORKBENCH_PR1_BLOB, WORKBENCH_PINS[3].mainBlob);
   assert.equal(WORKBENCH_NATIVE_MAIN_BLOB, WORKBENCH_PINS[4].mainBlob);
+  assert.equal(WORKBENCH_GENERATED_READER_MAIN_BLOB, WORKBENCH_PINS[5].mainBlob);
+  assert.notEqual(WORKBENCH_PINS[4].mainBlob, WORKBENCH_PINS[5].mainBlob);
   assert.ok(Object.isFrozen(WORKBENCH_PINS));
   assert.ok(WORKBENCH_PINS.every(Object.isFrozen));
   assert.notEqual(WORKBENCH_PINS[0].mainBlob, WORKBENCH_PINS[1].mainBlob);
@@ -72,10 +79,13 @@ test('historical Workbench pins and exact PR1 candidate reject unknown revisions
     /workbench_pin_override_forbidden/);
 });
 
-test('native-qualified Workbench candidate binds exact Command, Graph, response and browser closure', async () => {
-  const pin = WORKBENCH_PINS.find(value => value.head === WORKBENCH_NATIVE_HEAD);
+test('new generated Inspector closure is qualified separately from historical native closure', async () => {
+  const historical = WORKBENCH_PINS.find(value => value.head === WORKBENCH_NATIVE_HEAD);
+  const pin = WORKBENCH_PINS.find(value => value.head === WORKBENCH_GENERATED_READER_HEAD);
+  assert.ok(historical);
   assert.ok(pin);
-  assert.equal(pin.mainBlob, WORKBENCH_NATIVE_MAIN_BLOB);
+  assert.equal(historical.mainBlob, WORKBENCH_NATIVE_MAIN_BLOB);
+  assert.equal(pin.mainBlob, WORKBENCH_GENERATED_READER_MAIN_BLOB);
   assert.notEqual(pin.mainBlob, WORKBENCH_PR1_BLOB);
   const root = new URL('../../', import.meta.url);
   const source = await readFile(new URL('reference/tei-studio-workbench/main.ts', root), 'utf8');
@@ -88,6 +98,10 @@ test('native-qualified Workbench candidate binds exact Command, Graph, response 
   assert.equal(pinnedWorkbenchRevision(source), pin);
   assert.throws(() => pinnedWorkbenchRevision(source + '\n// unqualified change\n'),
     /workbench_revision_mismatch/);
+  // The old native pin must still reject the newly modified presentation.
+  const oldClosure = Object.fromEntries(Object.keys(historical.closureBlobs).map(path => [path, closureSources[path]]));
+  assert.throws(() => inspectPinnedDependencies(historical, commandSource, responsesSource, graphSource, oldClosure),
+    /workbench_closure_revision_mismatch:reference\/tei-studio-workbench\/presentation.ts/);
   assert.equal(inspectPinnedDependencies(pin, commandSource, responsesSource, graphSource, closureSources), true);
   assert.throws(() => inspectPinnedDependencies(pin, commandSource, responsesSource, graphSource),
     /workbench_closure_missing_or_extra/);
