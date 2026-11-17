@@ -48,7 +48,7 @@ func (h *ReadOnly) runHooks(world ir.World, applicationID, patternID core.Canoni
 // runHooksHalf runs one half of the declared phases, with the reach the caller
 // says applies.
 func (h *ReadOnly) runHooksHalf(world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string, rule hook.Implementation, reach hook.Reach, half hookHalf) (*HookRunReport, error) {
-	return h.runHooksHalfWithRows(world, applicationID, patternID, inputs, nil, rule, reach, half)
+	return h.runHooksHalfWithRowsAndStore(world, applicationID, patternID, inputs, nil, rule, reach, half, nil)
 }
 
 // runHooksWithRows is a hook run with the row set a row-scoped declaration is
@@ -60,13 +60,23 @@ func (h *ReadOnly) runHooksHalf(world ir.World, applicationID, patternID core.Ca
 // over: a browse result is where a page of rows would come from. Nothing here
 // invents a row; an empty row set keeps the phase skipped.
 func (h *ReadOnly) runHooksWithRows(world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string, rows []map[core.CanonicalID]string, rule hook.Implementation) (*HookRunReport, error) {
-	return h.runHooksHalfWithRows(world, applicationID, patternID, inputs, rows, rule, hook.ReferenceReach{}, hookHalfAll)
+	return h.runHooksHalfWithRowsAndStore(world, applicationID, patternID, inputs, rows, rule, hook.ReferenceReach{}, hookHalfAll, nil)
 }
 
 // runHooksHalfWithRows is runHooksHalf with the row set a row-scoped hook is
-// applied to. The row set goes to hook.Runner.Rows, the field the runner reads to
-// decide whether the declaration can be applied per row.
+// applied to.
 func (h *ReadOnly) runHooksHalfWithRows(world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string, rows []map[core.CanonicalID]string, rule hook.Implementation, reach hook.Reach, half hookHalf) (*HookRunReport, error) {
+	return h.runHooksHalfWithRowsAndStore(world, applicationID, patternID, inputs, rows, rule, reach, half, nil)
+}
+
+// runHooksHalfWithRowsAndStore is the form both callers need: the row set a
+// row-scoped hook is applied to, and the store an after-change read comes from.
+//
+// The row set goes to hook.Runner.Rows, the field the runner reads to decide
+// whether the declaration can be applied per row. The store answers `reads` for
+// the after half: feeding that half the request again would report "read the
+// stored value" while reading the caller's inputs.
+func (h *ReadOnly) runHooksHalfWithRowsAndStore(world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string, rows []map[core.CanonicalID]string, rule hook.Implementation, reach hook.Reach, half hookHalf, store *command.MemoryStore) (*HookRunReport, error) {
 	runner := hook.Runner{World: world, Implementation: rule, Rows: rows}
 	// A hook that declares `uses` promises a call. Give the runner the boundary
 	// that can keep it, the same way the CLI does, so Studio does not report a
@@ -87,15 +97,19 @@ func (h *ReadOnly) runHooksHalfWithRows(world ir.World, applicationID, patternID
 			return pattern, true
 		},
 	}
+	reads := studioAttributeValues(inputs)
+	if store != nil {
+		reads = studioStoreReads(world, applicationID, patternID, store, reads)
+	}
 	var report *hook.PhaseReport
 	var err error
 	switch half {
 	case hookHalfBefore:
-		report, err = runner.RunBeforeChange(context.Background(), applicationID, patternID, studioAttributeValues(inputs), reach)
+		report, err = runner.RunBeforeChange(context.Background(), applicationID, patternID, reads, reach)
 	case hookHalfAfter:
-		report, err = runner.RunAfterChange(context.Background(), applicationID, patternID, studioAttributeValues(inputs), reach)
+		report, err = runner.RunAfterChange(context.Background(), applicationID, patternID, reads, reach)
 	default:
-		report, err = runner.RunReachable(context.Background(), applicationID, patternID, studioAttributeValues(inputs), reach)
+		report, err = runner.RunReachable(context.Background(), applicationID, patternID, reads, reach)
 	}
 	if report == nil {
 		return nil, err
@@ -163,10 +177,35 @@ func studioAttributeValues(inputs map[string]string) map[core.CanonicalID]string
 // revert today. The path exists and is tested with a refusing rule, because the
 // rule a plugin supplies is what makes it reachable.
 func (h *ReadOnly) runAfterHalfRevertingOnRefusal(world ir.World, applicationID, patternID core.CanonicalID, inputs map[string]string, rule hook.Implementation, store *command.MemoryStore, snapshot command.StoreSnapshot, before *HookRunReport) (*HookRunReport, bool, error) {
-	after, err := h.runHooksHalf(world, applicationID, patternID, inputs, rule, hook.AppliedChangeReach{}, hookHalfAfter)
+	after, err := h.runHooksHalfWithRowsAndStore(world, applicationID, patternID, inputs, nil, rule, hook.AppliedChangeReach{}, hookHalfAfter, store)
 	if err != nil {
 		store.Restore(snapshot)
 		return after, true, err
 	}
 	return after, false, nil
+}
+
+// studioStoreReads replaces the supplied values with what the store holds for
+// the attributes each hook declares, the same way the CLI does.
+//
+// Only declared attributes are asked for, so a hook cannot pick up data outside
+// its own declaration. Attributes the store does not hold keep the supplied
+// value, which keeps the "unobserved" report unchanged for a run that wrote no
+// record.
+func studioStoreReads(world ir.World, applicationID, patternID core.CanonicalID, store *command.MemoryStore, supplied map[core.CanonicalID]string) map[core.CanonicalID]string {
+	pattern := hook.PatternFor(world, applicationID, patternID)
+	if pattern == nil || pattern.Interaction == nil {
+		return supplied
+	}
+	merged := make(map[core.CanonicalID]string, len(supplied))
+	for attribute, value := range supplied {
+		merged[attribute] = value
+	}
+	for _, declaration := range pattern.Interaction.Hooks {
+		observed := hook.ObserveFromStore(store, pattern, declaration.Reads)
+		for attribute, value := range observed {
+			merged[attribute] = value
+		}
+	}
+	return merged
 }
