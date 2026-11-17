@@ -522,3 +522,55 @@ APは新しい独立Expectedの体系ではなく、§27のAR、§26のEPを**�
 **優先順位**：最初にAP-01を既存Scenario修正で実証し、次にAP-05を通常CLIの実Provider／独立Consumerと接続する。AP-03／04はSource／型付き配線の局所検査で進め、AP-06の保存・表示の実Provider差はその後に扱う。正式`*.tei.md` Reader→実Builderの出典束縛とStudio Stage1→Stage2 Windowsセルフビルドを後回しにせず、追加Hard Gateも設けない。
 
 **検証状態**：ここに追加したのは、現行mainの局所実Go基線、並行PRの提案、既存設計を区別して構成した実装Packetである。本節による新Go／PostgreSQL／Windows実行、正式Providerの採用、Ownerの意味受理は行っていない。
+
+
+## 29. 業務アプリの定型生成を、保存・確定・利用の区別から検収する（2026-11-17）
+
+### 29.1 設計対象は一つの画面ではなく、一つの業務操作である
+
+設計情報から定型コードを安定して生成し、個別処理のみを拡張点へ閉じ込める方式は、TEIでも有効な到達目標である。ただし「コードの多くを生成できた」ことは、実際の業務操作の品質を保証しない。標準Data／Relation／Rule／Function／Process／UI Projectionと既存Plugin Contractを再利用し、まず**受注一件と複数明細の登録・更新**という単一の縦断例で、意味・入力・保存・効果・利用を区別して検証する。
+
+- **要求の正本**：業務項目・複合キー／枝番・保存対象の親子集合・条件・認可・更新競合・結果の意味は、Ownerが受理するモデル側に置く。生成されたREST Route、Go関数名、Webフォームを業務意味の正本にしない。
+- **標準で実現するもの**：入力検証、参照値の扱い、限定されたpure計算、操作対象の同定、一般的なCRUDと標準UIは、既存の型付きOperator／Data Operations／Target Generatorで実現を検討する。既存Generatorがない対象を「標準生成済み」とは呼ばない。
+- **個別実装の境界**：定型範囲を超える処理は、意味ID、必要Data、実行Phase、現在Grant、許されるEffectを持つContractとして既存のProvider／Generator拡張へ渡す。実装候補や自然文Ruleだけで実Call成立・業務受理を主張しない。
+- **実行形態**：Goの静的合成、既存汎用Evaluator、Target-native生成、外部Process Providerは同じ意味の異なる実現候補である。Web／Wails／CLI／MCPは入口の違い。特定WebフレームワークやREST ServerをCoreの必須Hostにはしない。
+
+### 29.2 親子編集を保存処理へ渡すときの不変条件
+
+| 観測対象 | 受入候補 | 混同してはならないもの |
+| --- | --- | --- |
+| 編集中の親子 | 変更前の各行Identity、追加／更新／削除の意思、未入力／NULL／未取得、表示中でない子集合の扱いを保持する | フォームで非表示＝子の削除、送信にない項目＝NULL更新 |
+| 計算 | Draft／保存前／保存時／表示時の評価時点、集計対象集合、端数・欠損、依存順と保存先を明記する | 画面内の金額表示＝DBへ保存済み |
+| 保存前判定 | 親と必要な全子の権限、入力Rule、複合Key、行Version、完全な更新対象を照合する | 型が一致＝対象が同じ、画面で操作可能＝現在Grantあり |
+| DB更新 | 親・全子の変更、履歴／同一Transaction内の追加処理が一つのCommit結果へ結び付く。子失敗時に親だけ残らない | 子ごとのAPI成功＝親子全体の確定 |
+| 保存後処理 | DB書込み後・Commit前のHookと、Commit後のメール／外部APIのEffectを区別する。外部Effectは必要時にOutbox・冪等Key・再試行Receiptで扱う | 「保存後」Hook実行＝Commit確定、DB Rollback＝送信取消 |
+| 起動・配布 | 同一AttemptのSource、選択Generator／Provider、実Build Input、生成Artifact、実際のLoaded版を照合する | 改版履歴の追記＝実Binary入替え、Build成功＝稼働版更新 |
+
+この表は新しい固定Workflow Runtimeや共通Hook総覧を要請するものではない。処理順と必要Effectは既存Process／Operation／Provider契約に表現し、Targetごとの実現可能性を検査する。保存要求の再送、Commit成功後の応答喪失、Outbox送信途中の失敗は、それぞれ異なる結果として扱う。
+
+### 29.3 設計改版・実装整合・稼働版を三枚の証拠に分ける
+
+設計の説明や改版履歴は、いつ何を意図して変えたかを人へ伝えるために有用である。一方、次の三つは独立して検査する。
+
+1. **設計と実装の対応**：Model Revision、Rule／FunctionのCanonical ID、選択したOperator・Provider／Generator・実装Fingerprint、実装の欠落／重複／古さ。対応表を検査しても処理内容の正しさは保証しない（既存R2-P／R3に接続）。
+2. **生成・配布されたもの**：Sourceの原byte、BuildPlan、Builderが実際に読んだ入力、Artifact Revision／Digest、Loaded Binary／UI／Config。設計履歴が新しくても、旧バイナリのままなら新仕様を提供したとは言えない。
+3. **業務で観測されたもの**：実Operation、対象RecordとVersion、実Provider、現在Grant、DB Commitと独立Read、外部EffectとReceipt、Consumerが取得できた範囲。結果が偶然同じでも実装選択が違えば不合格にできる。
+
+単一の「生成済み」「実装済み」「確認済み」印でこの三枚を代用しない。既存#2250／#2255、#1180／#2514、#2586、#2831へ引き渡す。
+
+### 29.4 最初に追加する反例と実装順
+
+| Case | 一因子の変更・失敗 | 期待する検収 | 接続先 |
+| --- | --- | --- | --- |
+| BAP-01 | 子一行だけ入力不正、親は正常 | 保存を拒否し、実DB独立Readで親・他の子が半端に変わらない | #2622／#1174／#2514 |
+| BAP-02 | 既存子の削除意思と未送信子を入れ替える | 未送信を削除と誤認せず、対象Identityを維持 | #2497／#2506 |
+| BAP-03 | 親が複合Key、子が全親Key＋枝番。片方のKeyだけ一致 | 別親の子へ付け替えず、誤った更新／削除を拒否 | #1124／#2622 |
+| BAP-04 | Draft再計算は成功、保存前で値／権限／対象集合が変化 | 表示値を確定値と扱わず、保存Phaseで再判定 | #1129／#2586 |
+| BAP-05 | DB保存後Hookが成功したが、Commitを失敗させる | 操作・履歴の部分確定を拒否。「Hook成功」をCommit Receiptとしない | #1174／#2514 |
+| BAP-06 | Commit成功、応答喪失後に同じ要求を再送 | 業務キーと冪等Keyの役割を区別し、二重の履歴／外部要求を作らない | #1180／#1174 |
+| BAP-07 | 設計版だけ更新、実Runtimeは旧Artifact | 改版履歴をもって配備済みとせず、実Loaded版不一致を通知 | #2250／#2831 |
+| BAP-08 | 同じ結果を返す別Providerへ無断切替 | Result一致でも選択・実Call不一致を拒否 | #951／#2586 |
+
+**着手順**：①現行mainの正値Rule／生成Go／Evaluator検証を基線としてBAP-02／04のread-onlyな対象・Phase差を既存Fixtureで確認する。②P0の正式Reader→実Builderと通常CLI→実Provider／独立Consumerを進め、隔離DB上でBAP-01／03を接続する。③同じ保存OperationにCommit・Receiptが乗った後でBAP-05／06を扱う。④BAP-07をStudio Stage1→Stage2の実Windows試行に接続する。⑤承認／代理承認・組織ロール・現在Grantは、既存組織C1・BRMS／Case・AuthZのOwner受理を待ち、汎用状態表や別ワークフローエンジンを先行導入しない。
+
+BAPは**独立Expectedの新しい正本ではなく既存Scenarioへ渡す候補**である。本追補は設計整理だけであり、新たなGo／実DB／Windows試験、Ownerによる業務意味受理、Wails Stage2セルフビルドの完了を表すものではない。P0の順序と既存Ownerを変えず、新しいHard Gateも追加しない。
