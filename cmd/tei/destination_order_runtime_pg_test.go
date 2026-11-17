@@ -81,6 +81,14 @@ func TestDestinationOrderChangeReadViaCLIFromPostgres(t *testing.T) {
 			if stage.edited {
 				applyDestinationEdit(t, root, string(editedRule))
 			}
+			// Validate the exact Workspace revision whose rules the real
+			// PostgreSQL read will evaluate. A different Workspace validating
+			// successfully must not stand in for this read attempt.
+			validated := runCLIProcessWithStreams(t, binary, "validate", "-workspace", root)
+			if validated.code != 0 {
+				t.Fatalf("stage=%s: the selected Workspace did not validate before the database read: code=%d stdout=%s stderr=%s",
+					stage.name, validated.code, validated.stdout, validated.stderr)
+			}
 			rawExpected, err := os.ReadFile(filepath.Join(fixtures, stage.expected))
 			if err != nil {
 				t.Fatal(err)
