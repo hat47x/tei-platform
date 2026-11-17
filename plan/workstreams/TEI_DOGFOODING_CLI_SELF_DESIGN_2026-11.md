@@ -3754,3 +3754,47 @@ note VALIDATION_INCOMPLETE 3件の構文の指摘を同じ読み込みで集め�
 ### 位置付け
 
 **「起票した issue を、本文ではなく実測で判定した」回**である。私は `#4178` を「未解決」として持ち続けていたが、**本文の再現手順をそのまま流せば判定できた**。**起票は状態ではなく、測り直すべき仮説である。**
+
+## 103. 第102ラウンド（2026-11-18）: semantic/ の根に別の宣言を書くと、配置を言わない
+
+前ラウンドで `#4178` が**本文ではなく実測で**判定できることを示した。同じ方法を [#4169](https://github.com/hat47x/tei-platform/issues/4169) に適用した。生出力は[第102ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND102_SEMANTIC_ROOT_PLACEMENT_2026-11-18/README.md)にある。
+
+### 主張2点を測った
+
+| 主張 | 実測 |
+| --- | --- |
+| 1. 構文・文法・配置を返すコマンドが無い | **今も真**（30コマンドに該当なし、catalog の説明にも配置案内なし） |
+| 2. パターン5種が「でたらめな語」と同じ診断 | **既に解消**（5種すべてが配置を名指し、`frobnicate` は汎用のまま） |
+
+### 見つけた残り: 逆向きの配置
+
+**semantic/ の根**に `pattern` を書くと `expected "namespace"` になる。**`pattern` は宣言表に載っているのに配置を言わない。** 原因は `ParseSemanticFile` が `expectText("namespace")` を**先に**呼ぶこと。
+
+### 修正
+
+`expectText` の**前**に配置検査を置いた。`namespace` 自体が宣言表にあるため、**その語だけ除外**する（除外しないと正しいファイルが「宣言できない」と言われる）。
+
+```text
+BEFORE  expected "namespace"
+AFTER   "pattern" starts an application pattern, which cannot be declared in a
+        semantic namespace source; declare it under applications/<application>/patterns, ...
+```
+
+**unknown 語は汎用メッセージのまま。受理・拒否の範囲は変えていない。**
+
+### 変異試験（2回やり直した）
+
+| # | 変えた箇所 | 結果 |
+| --- | --- | --- |
+| M1 | 配置検査を削る | FAIL `kept the generic message` |
+| M2 | `namespace` の除外を外す | FAIL `a valid semantic file was refused` |
+
+**M2 は最初、既存2テストとも通ってしまった。** 「未知語は汎用のまま」のテストは**通るのが正しい**ので、**除外の必要性を検出できない**。**有効な semantic ファイルを入力する3本目を足してから**、M2 が落ちることを確認した。
+
+### 回帰確認
+
+`./internal/syntax` ok、`./internal/workspace` ok、`./cmd/tei` ok（234秒）、**CI gate 6ステップ PASS**。
+
+### 位置付け
+
+**「起票の主張を1点ずつ測り、解消済みと未解消を分けた」回**である。主張2は既に直っており、その**逆向き**が残っていた。**変異試験が通ってしまう理由を疑い、テストを足してから再実行した**のが要点である。`#4169` の主張1（配置を引くコマンド）は設計判断を伴うため**未解消のまま**残す。

@@ -1,0 +1,12 @@
+The reverse direction was still wrong:
+
+  semantic/equip/misplaced-pattern.tei:1:1 error PARSE_ERROR expected "namespace"
+
+`pattern` IS in the declaration table, yet the file got the generic message,
+because ParseSemanticFile calls expectText("namespace") BEFORE any
+misplacedDeclaration branch.
+
+Fix: run the placement check first, excluding the word "namespace" itself --
+without that exclusion a CORRECT file is told
+'"namespace" starts a semantic namespace, which cannot be declared in a semantic
+namespace source'.

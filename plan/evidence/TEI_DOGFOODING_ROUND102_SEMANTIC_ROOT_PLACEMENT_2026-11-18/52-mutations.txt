@@ -1,0 +1,12 @@
+M1 remove the placement check
+   -> FAIL "pattern" kept the generic message: expected "namespace"
+
+M2 drop the `namespace` exclusion
+   -> at first BOTH existing tests passed.
+      That is correct for the unknown-word test (frobnicate is not in the table,
+      so it must stay generic). The exclusion's necessity was invisible to it.
+   -> added a third test feeding a VALID semantic file; M2 then failed with
+      a valid semantic file was refused: "namespace" starts a semantic namespace,
+      which cannot be declared...
+
+Regression: internal/syntax ok, internal/workspace ok, cmd/tei ok (234s), gate 6 PASS.
