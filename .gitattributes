@@ -372,3 +372,7 @@
 
 # maxDepth 8 observations are hashed as raw bytes.
 /plan/evidence/DSH_SUBAGENT_DEPTH8_2026-11-18/** -text
+
+# Captured REA evidence is a UTF-16LE raw delivery, not a text fixture.
+# The CLI test pins its exact SHA-256 across checkout platforms.
+/cmd/tei/testdata/rea-6.8.0/analysis.json -text

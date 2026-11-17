@@ -30,6 +30,12 @@ func TestREADualEntryCapturedInputAndIdentityBoundaries(t *testing.T) {
 	if !bytes.HasPrefix(raw, []byte{0xff, 0xfe}) || len(raw)%2 != 0 {
 		t.Fatal("captured fixture is not the recorded UTF-16LE BOM delivery")
 	}
+	// Check the saved Windows delivery before deriving UTF-8: an equivalent
+	// decoded JSON value is not sufficient evidence of the original bytes.
+	const recordedSHA256 = "7ea3780d8dc23d00c380145af62d63bf194e39decbaefab3d82c5a3b4134bba9"
+	if sum := sha256.Sum256(raw); len(raw) != 78000 || fmt.Sprintf("%x", sum) != recordedSHA256 {
+		t.Fatalf("REA delivery differs from the recorded original: size=%d sha256=%x", len(raw), sum)
+	}
 	units := make([]uint16, 0, (len(raw)-2)/2)
 	for i := 2; i < len(raw); i += 2 {
 		units = append(units, uint16(raw[i])|uint16(raw[i+1])<<8)

@@ -781,3 +781,17 @@ TEI自己記述側の例示GraphやX-TEAのTask→TaskAction→TaskFunctionIO→
 **実装・試験の順序**：最初にMR-01／02／05／06を一つの原文Rangeで固定し、既存Source Indexの返す実際の資格を観察する。次にMR-03／04を既存`internal/threeelement`のCRUD・相互参照へ接続し、同名別Kindや明示／派生の矛盾を表示する。MR-07は既存`reacandidate`の読取専用Reviewを再利用する。MR-08〜10は旧実行／Provider／Host／Studioの実証を要するので、設計上のExpectedを定義しただけでPASSにしない。
 
 **Ownerへの引継ぎ**：選択した旧原典の実Source Revision、候補のQualified ID、採用対象のFunction–Data関係、未解決のRead／Write／Business責任を一枚のReview Packetで示す。ただしPacketは閲覧用であり、Ownerが受理した正式モデルへの変更や現在の実行権限を自動的に発生させない。実行受入は通常CLI実PG Read #2586、Studio Stage1→Stage2 #2831、独立Expected #1180／#2514に分離する。
+
+## 40. 外部解析Evidenceを業務移行に使う際の境界（2026-11-17）
+
+**結論**：逆解析ツールのREA（Reverse Engineer Anything）は交換可能な外部Analyzerであり、TEIの標準モデルや実行基盤の一部ではない。ソース、SQL・DB定義、画面、API、実際の入出力を優先し、既存手段では得られない証拠が必要なときだけREAを使う。業務上のResource–Event–Agentモデルとは区別する。
+
+一Functionの移行では、**旧システムで実際に観測した動作（Legacy Observed Actual）／Ownerが望ましいと受理した仕様（Accepted Desired）／TEIで実際に観測した動作（Target Observed Actual）**を別々に比較する。旧システムの不具合を再現できても、それだけでは移行成功としない。外部の静的`imports`や`calls`を実Read・Write、DB Commit、業務上の責任へ昇格させない。三要素分析法は復元モデルの解釈、SHOは出典と判断履歴の文書投影、Studioは旧原文と候補の照合に用いるが、どれもOwnerの意味受理を代行しない。
+
+**最小受入経路**は、原本Byte・Span・Source Revisionの照合（M-01）→同名別ID・方向・並行Edgeの保持（M-02）→Data／Function／Business候補のReview（M-03）→Ownerが業務意味を選択（M-04）→生成Go・実Provider・通常CLIのRead（M-05）→旧実測・受理仕様・TEI実測の差分評価（M-06）→必要なConsumerごとの独立受領（M-07）の順とする。外部REAの採否（M-08）は独立した任意判断であり、使わなくても移行の合格条件を満たせる。
+
+受領の内部境界では、`internal/externalanalysis`のreceipt-only合成Fixtureと、`cmd/tei`・`internal/studiohost`のGraph-bearing Captured Deliveryを混同しない。後者の**UTF-16LE/BOMの生78,000バイト**（SHA-256 `7ea3780d8dc23d00c380145af62d63bf194e39decbaefab3d82c5a3b4134bba9`）と、そこから明示的に派生したUTF-8のDigestは別の同一性である。Semantic GraphのRelation IDとApplication GraphのEdge IDも別の空間で管理する。受領書の件数やJSONL終端が揃っていても、元集合の全件性や業務意味の正しさは保証しない。
+
+今回の実装差分は、保存されたRaw原本のサイズ・Digestを既存二入口テストで固定し、合成Fixtureのmanifestと各ファイルのbyte数・Digest・JSONL行数の一致を独立検査する**回帰テストに限る**。正例は原本不変・受領書の整合、負例は原本の改変・manifestの誤申告・並行Relationの縮約・原本と派生Digestの混同とする。未検証のSource範囲、Owner判断、実Effect、Native Studio JS受領をPASSとしない。追加のHost・意味正本・専用Graph・Readerは設けない。
+
+実行優先順位は`plan/NOW.md`だけを正本とする。通常CLIからの実PostgreSQL Read→最初のWeb画面、Studio Stage1→Stage2のWindowsセルフビルドに新しいHard Gateを加えない。外部解析に固有の未解決は[#3394](https://github.com/hat47x/tei-platform/issues/3394)、Native受領は[#4661](https://github.com/hat47x/tei-platform/issues/4661)に残し、独立Expectedは#1180/#2514で扱う。
