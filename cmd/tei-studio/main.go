@@ -128,6 +128,19 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	// The HTTP route is local-only and opt-in. The existing Wails Bridge
+	// remains available without an API token; neither entrance shells out
+	// to the CLI or supplies a new workspace/meaning authority.
+	services := []application.Service{application.NewService(&StudioBridge{host: host})}
+	if token, set := os.LookupEnv(inspectionHTTPTokenEnv); set {
+		api, err := newInspectionHTTPService(host, token)
+		if err != nil {
+			log.Fatalf("invalid read-only HTTP API configuration: %v", err)
+		}
+		services = append(services, application.NewServiceWithOptions(api, application.ServiceOptions{
+			Route: inspectionHTTPRoute,
+		}))
+	}
 	windowsOptions := application.WindowsOptions{}
 	if webviewDebugPort > 0 {
 		windowsOptions.AdditionalBrowserArgs = []string{fmt.Sprintf("--remote-debugging-port=%d", webviewDebugPort)}
@@ -138,9 +151,7 @@ func main() {
 			Host: "127.0.0.1",
 			Port: port,
 		},
-		Services: []application.Service{
-			application.NewService(&StudioBridge{host: host}),
-		},
+		Services: services,
 		Assets: application.AssetOptions{
 			Handler:    application.AssetFileServerFS(assets),
 			Middleware: studioAssetMiddleware(port),
