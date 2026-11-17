@@ -23,7 +23,6 @@ import (
 	"tei/internal/driver/validationread"
 	"tei/internal/environment"
 	"tei/internal/ir"
-	"tei/internal/realization"
 	"tei/internal/semantic/validationeval"
 )
 
