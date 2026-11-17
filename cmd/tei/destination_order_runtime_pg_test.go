@@ -604,4 +604,8 @@ FROM changed ORDER BY line_number, order_line_id`
 		}
 	})
 
+	t.Run("different attributes, Query input and composite primary key", func(t *testing.T) {
+		checkDestinationAlternateModel(t, db, binary, dsn)
+	})
+
 }
