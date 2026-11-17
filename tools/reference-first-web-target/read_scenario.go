@@ -123,6 +123,11 @@ func (r *referenceReadScenarioRunner) Run(ctx context.Context, input readScenari
 	if err != nil {
 		return readScenarioResult{}, err
 	}
+	// The template joins answers by position. Never render a partial, reordered
+	// or duplicated answer list under a different line's values.
+	if err := requireReadRowAnswerAlignment(orderLineRows, lineAnswers); err != nil {
+		return readScenarioResult{}, fmt.Errorf("order-line read/answer mismatch: %w", err)
+	}
 
 	return readScenarioResult{
 		ScenarioID:       "order-entry.read-only-web-slice",

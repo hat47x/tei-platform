@@ -10,6 +10,42 @@ import (
 	"tei/internal/workspace"
 )
 
+// The first Web template pairs each line and its rule answers by the same
+// read's array position. Verify the alignment contract independently of the
+// values in the fixture, including failures that template indexing would
+// otherwise misrender or panic on.
+func TestReadRowAnswerAlignmentRejectsAbsentExtraAndReorderedAnswers(t *testing.T) {
+	rows := []semanticRowProjection{{}, {}}
+	cases := []struct {
+		name    string
+		rows    []semanticRowProjection
+		answers []rowAnswerProjection
+		want    string
+	}{
+		{name: "empty read", rows: nil, answers: nil},
+		{name: "two aligned rows", rows: rows, answers: []rowAnswerProjection{{RowIndex: 0}, {RowIndex: 1}}},
+		{name: "missing second answer", rows: rows, answers: []rowAnswerProjection{{RowIndex: 0}}, want: "read has 2 rows but 1 answer rows"},
+		{name: "extra answer", rows: rows, answers: []rowAnswerProjection{{RowIndex: 0}, {RowIndex: 1}, {RowIndex: 2}}, want: "read has 2 rows but 3 answer rows"},
+		{name: "swapped answers", rows: rows, answers: []rowAnswerProjection{{RowIndex: 1}, {RowIndex: 0}}, want: "answer at position 0 belongs to position 1"},
+		{name: "duplicate index", rows: rows, answers: []rowAnswerProjection{{RowIndex: 0}, {RowIndex: 0}}, want: "answer at position 1 belongs to position 0"},
+		{name: "negative index", rows: rows, answers: []rowAnswerProjection{{RowIndex: -1}, {RowIndex: 1}}, want: "answer at position 0 belongs to position -1"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := requireReadRowAnswerAlignment(tc.rows, tc.answers)
+			if tc.want == "" {
+				if err != nil {
+					t.Fatalf("aligned read was rejected: %v", err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("want %q, got %v", tc.want, err)
+			}
+		})
+	}
+}
+
 // TestReadScenarioAnswersEveryDeclaredRulePerLine pins the row answers this
 // fixture produces.
 //
