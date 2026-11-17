@@ -91,21 +91,6 @@ func (s *webTargetServer) handleCustomSubmit(w http.ResponseWriter, r *http.Requ
 	}
 }
 
-// validateCustomReadRowAlignment guards the positional join used by the
-// single-page template. An index labels this read's display position, not a
-// business key; a different read or a reorder needs a new pairing contract.
-func validateCustomReadRowAlignment(read *readScenarioResult) error {
-	if len(read.OrderLineRows) != len(read.RowAnswers) {
-		return fmt.Errorf("row answers do not match displayed rows: rows=%d answers=%d", len(read.OrderLineRows), len(read.RowAnswers))
-	}
-	for index, answer := range read.RowAnswers {
-		if answer.RowIndex != index {
-			return fmt.Errorf("row answers are not aligned at display position %d: answer row=%d", index, answer.RowIndex)
-		}
-	}
-	return nil
-}
-
 func (s *webTargetServer) renderCustomSubmit(
 	w http.ResponseWriter,
 	status int,
@@ -115,7 +100,7 @@ func (s *webTargetServer) renderCustomSubmit(
 	// Reject malformed projections before sending a success response or any
 	// row content; html/template's index expression cannot check this contract.
 	if data.Result != nil && data.Result.Read != nil {
-		if err := validateCustomReadRowAlignment(data.Result.Read); err != nil {
+		if err := requireReadRowAnswerAlignment(data.Result.Read.OrderLineRows, data.Result.Read.RowAnswers); err != nil {
 			http.Error(w, "cannot render row answers: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
