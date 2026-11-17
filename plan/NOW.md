@@ -30,7 +30,7 @@
 | 順 | 作業 | 担当先 |
 | --- | --- | --- |
 | 1 | ~~異なる構造の業務モデルでも同じ読取入口を通す~~ **動く。** 別のData・Relation・実テーブルに加え、別の属性・Query入力（`batch_key`）・複合主キー（`entry_id, slot`）を持つ独立モデルを、同じ`tei view`と独立した期待で実DBから読む試験がCIで走る（[#5362](https://github.com/hat47x/tei-platform/pull/5362)） | [#2586](https://github.com/hat47x/tei-platform/issues/2586) |
-| 2 | **試験だけ：** 最初のWebは合成Queryの行ごとのRule結果を応答・画面に表示する（[#5390](https://github.com/hat47x/tei-platform/pull/5390)）。**未実装：** 同じ実PostgreSQL Readの行・判定を生成Webの実画面まで通し、独立した期待と照合する（上の5） | [#1119](https://github.com/hat47x/tei-platform/issues/1119) |
+| 2 | **試験だけ：** 第一Web Targetは合成Queryの行別Rule判定を表示し、行と回答の位置ずれを拒否する（[#5390](https://github.com/hat47x/tei-platform/pull/5390)、[#5415](https://github.com/hat47x/tei-platform/pull/5415)）。**動く：** 実PostgreSQLの判定結果を製品CLIでHTML出力し、独立Expectedと照合する（[#5416](https://github.com/hat47x/tei-platform/pull/5416)）。**未実装：** 実DBの同一Readから第一Web Targetの実画面まで通す（上の5） | [#1119](https://github.com/hat47x/tei-platform/issues/1119) |
 | 3 | 束縛に取得範囲を宣言し、親Scope・実行したQuery・実際の取得範囲が一致すると確認できた場合に限り、明細番号の一意を「成立」と判定する。宣言だけでは全件取得の証拠にならない。[判断の文書](design/RULE_NORMAL_FORM_AND_OPERATOR_SIGNATURE_DECISION_2026-11.md)の§6と作業5 | #2586 |
 | 4 | **動く：** `tei desired-schema -format sql`で定義からDDLを出す（[#5385](https://github.com/hat47x/tei-platform/pull/5385)）。`tei view -environment -format text`で取得行と判定を表示する（[#5372](https://github.com/hat47x/tei-platform/pull/5372)）。**未実装：** 生成DDLの実PostgreSQL適用を独立した期待と照合し、列の桁数など定義にない情報を補わず手順書の制限を整理する | #2586 |
 | 5 | 規則の正規形とOperatorの署名。判断の文書の作業1〜4、6〜8 | [#4362](https://github.com/hat47x/tei-platform/issues/4362) |
@@ -39,7 +39,7 @@
 
 次は道の2である。Webの画面一つで、行ごとの答え（成立・不成立・判定できない）を表示する。`tei view -environment`が返す答えを、生成したWebの画面へ届ける経路がまだ無い。
 
-**道の2で守る対応関係**：行ごとの答えは、実際に読んだ行へ結び付けて表示する。最初のWebで同じReadの配列順を利用するなら、行数・順序・対象Readの一致を検査し、画面上の行番号を業務上のキーやノードの意味IDとして扱わない。並べ替え・絞り込み後に旧位置で結合したり、別のReadの答えを流用したりしない。行ごとの判定とRelation全体の判定を分け、取得範囲が未確認なら「判定できない」と理由を残す。[#5390](https://github.com/hat47x/tei-platform/pull/5390)では合成Queryで応答・表示を確かめた。次のコード変更では実PostgreSQLの同一Readから行キーとRule結果を生成Webへ渡し、行数・順序の不一致は表示前に拒否する。標準Graph・Node Viewの実装を道の2の新たな前提にはしない。
+**道の2で守る対応関係**：行ごとの答えは、実際に読んだ行へ結び付けて表示する。最初のWebで同じReadの配列順を利用するなら、行数・順序・対象Readの一致を検査し、画面上の行番号を業務上のキーやノードの意味IDとして扱わない。並べ替え・絞り込み後に旧位置で結合したり、別のReadの答えを流用したりしない。行ごとの判定とRelation全体の判定を分け、取得範囲が未確認なら「判定できない」と理由を残す。[#5415](https://github.com/hat47x/tei-platform/pull/5415)と[#5413](https://github.com/hat47x/tei-platform/pull/5413)で合成Webの行数・順序の不一致は表示前に拒否できる。次のコード変更は`tools/reference-first-web-target`の合成Query実行境界を既存の実PostgreSQL読取へ接続し、一回のReadの正式行キー・値の状態・Rule三値判定・取得範囲を実ブラウザーで独立Expectedと照合する。CLIのHTML出力と合成Webの成功を足して一往復の成功としない。標準Graph・Node Viewの実装を道の2の新たな前提にはしない。
 
 入口は増やさない。接続の秘密は環境変数から受け取り、作業領域へ書かない。
 
