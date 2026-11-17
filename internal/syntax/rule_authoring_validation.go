@@ -82,8 +82,16 @@ func RuleNamespace(file RuleAuthoringFile) (semantic.Namespace, []RuleConversion
 			})
 			continue
 		}
+		// The single-input form keeps the name the rule surface already
+		// assumes, so a rule written without a name keeps its meaning.
+		name := operator.InputName
+		if name == "" {
+			// The unnamed single-input form reads as the input named "value",
+			// which is the name a rule surface already uses for it.
+			name = "value"
+		}
 		out.Operators = append(out.Operators, semantic.Operator{
-			ID: operator.ID, Symbol: operator.Symbol, Input: input,
+			ID: operator.ID, Symbol: operator.Symbol, Input: input, InputName: name,
 		})
 	}
 	return out, issues

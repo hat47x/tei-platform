@@ -31,7 +31,12 @@ func TestRuleAuthoringReadsAnOperatorDeclarationAndItsUse(t *testing.T) {
 		t.Fatalf("conversion issues: %v", anchored.Issues)
 	}
 
-	wantOperators := []semantic.Operator{{ID: "sales.non_negative", Symbol: "non_negative", Input: semantic.OperatorInputNumber}}
+	// `takes number` is the unnamed single-input form; it reads as the input
+	// named "value", which is what a rule writing no name already assumes.
+	wantOperators := []semantic.Operator{{
+		ID: "sales.non_negative", Symbol: "non_negative",
+		Input: semantic.OperatorInputNumber, InputName: "value",
+	}}
 	if len(anchored.Value.Operators) != 1 || !reflect.DeepEqual(anchored.Value.Operators[0], wantOperators[0]) {
 		t.Fatalf("operators=%+v, want %+v", anchored.Value.Operators, wantOperators)
 	}

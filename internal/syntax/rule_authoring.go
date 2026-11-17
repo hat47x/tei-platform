@@ -90,10 +90,15 @@ type OperatorAuthoring struct {
 	ID        core.CanonicalID
 	Symbol    string
 	Input     OperatorInputWord
+	// InputName is the name written before the type, as in
+	// `takes low: number`. It is empty for the single-input form
+	// `takes number`, which names its one input "value" when it is read.
+	InputName string
 
 	DeclarationSpan Anchor
 	IDSpan          Anchor
 	InputSpan       Anchor
+	InputNameSpan   Anchor
 }
 
 // rulePredicates lists every accepted predicate word in source order. A word
@@ -284,13 +289,42 @@ func (p *Parser) parseOperatorAuthoring(namespace core.CanonicalID) (OperatorAut
 		}
 		return OperatorAuthoring{}, p.errAt(at, "expected what the operator takes; accepted inputs are number")
 	}
-	if OperatorInputWord(inputTok.Text) != OperatorInputNumberWord {
-		return OperatorAuthoring{}, p.errAt(inputTok, fmt.Sprintf(
-			"unknown operator input %q; accepted inputs are number", inputTok.Text))
-	}
+	// `takes low: number` names the input; `takes number` does not, and keeps
+	// reading as the one input named "value". The design's lexical rule puts
+	// the name before the ':' and the type word after it, so a name is
+	// recognised by the colon that follows it.
+	var inputName string
+	var inputNameSpan Anchor
 	nt, err := p.peek()
 	if err != nil {
 		return OperatorAuthoring{}, err
+	}
+	if nt.Kind == TokenColon {
+		inputName = inputTok.Text
+		inputNameSpan = tokenAnchor(inputTok)
+		if _, err := p.next(); err != nil {
+			return OperatorAuthoring{}, err
+		}
+		typeTok, err := p.next()
+		if err != nil {
+			return OperatorAuthoring{}, err
+		}
+		if typeTok.Kind != TokenIdent {
+			at := typeTok
+			if typeTok.Kind == TokenEOF {
+				at = inputTok
+			}
+			return OperatorAuthoring{}, p.errAt(at, "expected the type of input %q after \":\"; accepted types are number")
+		}
+		inputTok = typeTok
+		nt, err = p.peek()
+		if err != nil {
+			return OperatorAuthoring{}, err
+		}
+	}
+	if OperatorInputWord(inputTok.Text) != OperatorInputNumberWord {
+		return OperatorAuthoring{}, p.errAt(inputTok, fmt.Sprintf(
+			"unknown operator input %q; accepted inputs are number", inputTok.Text))
 	}
 	if !ruleAuthoringDeclarationEnds(nt) {
 		return OperatorAuthoring{}, p.errAt(nt, fmt.Sprintf(
@@ -301,9 +335,11 @@ func (p *Parser) parseOperatorAuthoring(namespace core.CanonicalID) (OperatorAut
 		ID:              id,
 		Symbol:          symbol,
 		Input:           OperatorInputWord(inputTok.Text),
+		InputName:       inputName,
 		DeclarationSpan: Anchor{Start: keyword.Start, End: inputTok.End},
 		IDSpan:          tokenAnchor(nameTok),
 		InputSpan:       tokenAnchor(inputTok),
+		InputNameSpan:   inputNameSpan,
 	}, nil
 }
 
