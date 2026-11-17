@@ -526,3 +526,34 @@ DPC-01〜15を置き換えず、次の一因子反証を追加する。いずれ
 | DPC-20 | 部分取得の重複／期間重複と、違反未観測の一覧 | 見えた違反は確定できるが、見えない違反を全件不存在と断定しない |
 
 **最初に実装するのはDPC-16**。既存SQL Executorを通った結果から、Callerが`CoverageComplete`を申告できる条件を既存Query／Function Data Contextの選択情報と突き合わせる。現状のSQLite試験は、誤申告が起き得ることを示す基線であって、その拒否が製品で成立した証拠ではない。正式な実PostgreSQL→通常CLI→独立Consumerでの受理は#2586／#4496の別P0に維持する。
+
+### 12.14 全件性は「問われた範囲」についてのみ証明する：DPC-16実装契約（2026-11-17）
+
+データ様式が保存すべきものを、**入力の構造**、**実際に観測した内容**、**判断に必要な閉包**に分ける。「SQLの返却行を読み終えた」だけでは、Functionが問うRelation・Scope・時点の全件性は保証されない。逆に、データベース全体を走査しなくても、定義した対象範囲を読み切れれば、その範囲での判断は成立し得る。
+
+最小の読取専用検収票では、既存のQuery／Function Data Context／Evidenceを参照し、次の欄を**別々の事実**として扱う。これは既存の受理票に加える照合項目であり、新しいCore型や第二のデータ正本を設けない。
+
+| 欄 | 記録・照合する内容 | 誤って推論してはならないこと |
+| --- | --- | --- |
+| Requested | Function／Ruleが要求したRelation、Header・業務Identity、Scope、時点、Field、粒度 | SQLの返却列だけで要求範囲を決める |
+| Executed | 選択Query Contract、実RealizationとSource Revision、Provider、Binding、実Callの識別 | 宣言があるだけで実行済みとする |
+| Observed | 実行が返したRow／Attribute、明示NULL、未選択列、ページ進行、Read終了状態 | 返却件数や値の一致から全件とみなす |
+| Claimed | Callerが「全件」と申告した範囲と根拠 | CoverageCompleteを証拠そのものとみなす |
+| Qualified | Requestedに対して実Readが証明した範囲、未立証の理由、現在の利用資格 | 「未立証」と「欠落が実際に確認済み」を混同する |
+
+**ReaderとCallerの境界**：現行のvalidationread.FromHeaderDetailは、Callerが渡したCoverageをRule評価へ引き継ぐReaderであって、完全性の証明者ではない。製品Callerはその前でClaimを照合し、根拠のないcompleteを渡さない。既存validationeval.Coverageはcomplete／partialの二値なので、証拠不足は検収票ではunknownとして保持し、Ruleへの入力では安全側のpartialにする。そうすると、観測済みの重複違反は確定し得る一方、未観測の重複が存在しないとは断定できない。未立証を、物理的な欠落が確定した証拠として表示しない。
+
+#### 初回の限定合格と拒否条件
+
+既存のinternal/driver/validationread/sqlite_path_test.go（D1の4行、members／members_first_page、seatUnique／personUnique）を再利用する。Provider、Relation、Scope、Ruleを固定し、次の一因子比較から始める。
+
+| ID | 入力差分 | Callerが許してよい結果 |
+| --- | --- | --- |
+| DPC-16a | first_pageの2/4行にcompleteを申告 | 根拠不足としてcompleteを拒否／保留し、Ruleへ偽の全件を渡さない |
+| DPC-16b | 同じ2/4行を未立証として扱う | seatUniqueは判定保留、観測済みpersonUnique違反は不成立と確定 |
+| DPC-16c | 異なるScope・Query Bindingを全件の根拠として提示 | 返却行が一致しても、別Scopeの資格を流用しない |
+| DPC-16d | 0行の応答だけを全件の根拠とする | 空集合・不存在・一意性成立の認定を保留 |
+
+最初は**一つのContract Queryについて、実行したQuery／Binding／ScopeとCallerの申告を同じAttemptで突き合わせる**。SQLにLIMITが見えないこと、ReadがEOFまで進んだこと、件数が一致したことは一般的な完全性の証明にはならない。WHEREの対象縮小、JOIN・DISTINCT・集計の粒度変化、ページング未完了、時点や可視範囲の不一致は別の反証とし、静的に認定できないQueryは未立証とする。複数ページを結合するときは、継続位置・一意な順序・読み取りSnapshotの一貫性も確認する。
+
+**合格の上限**：初回DPC-16a〜dが実装されても、最初に認定できるのは限定Queryに対するCaller境界の拒否能力のみ。全SQL静的解析、全Provider、公開Grant、実Builder、Studio、Owner業務意味受理は含まない。実PostgreSQL→通常CLI→独立Consumerは既存#2586／#4496、独立Expectedは#1180／#2514に引き渡す。この文書の追加自体は新規Go／DB／Studio試験を実施した証拠ではない。
