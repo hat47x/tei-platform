@@ -190,3 +190,42 @@ main `dc3f310ed52e652efbda2c8736a2f45d6f4b8a6a` の実GitHub Actionsログを確
 併せてHealthには`gofmt -l . is empty`の失敗や、Web API scoped Driver、Reference CRUDの特徴付け試験の失敗も観測された。これらは別Ownerの修正案件とし、M1実験のGoコード変更へ混ぜない。
 
 **統合Gate**：`repository-health`と`cache-verification`が対象PRのexact HEADで成功し、最新mainのHealthと実CIの失敗が解消した後に、この計画ブランチをマージする。docs-onlyにしても既存Healthの失敗を免除しない。実装修正は各Owned failureで独立PR・独立Expectedを保持し、失敗試験を無条件に無効化しない。
+
+## 15. 11月17日の実装成果を、三本の実行経路に整理する
+
+§14は当時のCI不具合の記録であり、最新の失敗一覧ではない。11月17日のmainでは、[#5175](https://github.com/hat47x/tei-platform/pull/5175)の自己記述Data検査、[#5179](https://github.com/hat47x/tei-platform/pull/5179)の同一LoadによるSource→状態付き判定、[#5188](https://github.com/hat47x/tei-platform/pull/5188)の実CLIとStudio Hostによる同一SubjectのInspectが利用できる。[#5205](https://github.com/hat47x/tei-platform/pull/5205)は未選択の`*.tei.md`を黙って無視せず、選択可能な言語とmanifestの設定を案内する。これらを別物の実績として保ち、正式なProvider実行や自己置換の成立へ一括換算しない。
+
+| 経路 | mainで到達したこと | 次の一件で確かめること |
+| --- | --- | --- |
+| **A：TEI自身の判断を移す** | 自己記述DataをReaderが選択し、Source位置とCanonical IDを検査。正値Ruleの手書きShape拒否試験が残る | 型付き`semantic.Validation`の実インスタンスを宣言したFieldへ結び、非空文字・positiveにおけるRelation禁止のうち一条件を**TEI定義から実判定**する。旧Go側の拒否を独立Expectedとして保持し、M1の後にM2で該当分岐を削除 |
+| **B：実データからRuleを評価する** | `required-if`が[#5187](https://github.com/hat47x/tei-platform/pull/5187)で統合され、業務レコードの存在を条件付きで判定できる。既存`Detail.Decide`は参照Workspaceの受注明細Query→列Mapping→状態付きRule判断を局所試験で扱う | 同じ製品定義から**通常`tei` CLIの実Provider Read**を起動し、読取対象・対象範囲・Rule結果／不能理由を独立Consumerへ渡す。後述の行数・同一性を検証し、実Webの受領を別に照合 |
+| **C：TEI Studioが自分自身の変更を使う** | 参照セルフビルドのCIと、CLI／Studio共通Inspectの基線が存在する | 生成器を変更せずに一つのTEI定義を変更し、Stage1の生成部品→TS/esbuild→Go embed→Stage2 Windows WebView2の**表示と実使用**まで同一Source版に束縛する |
+
+**現状の区別**：main `3e7f8536c7ef2e536a86dd22847074b732e3eb07`の`reference-self-build`は成功したが、同HEADの`repository-health`は設計索引の重複で失敗した。その重複は[#5320](https://github.com/hat47x/tei-platform/pull/5320)で修正・統合された。ただし修正後HEADのHealth成功を、この段階で先取りしない。セルフビルドCIのGreenも、CのStage2実画面受領を意味しない。
+
+### AのM1を判定するための最小条件
+
+自己記述のData表が示す`required=yes`は**宣言上の必須**であり、`ID != ""`／`Attribute != ""`と同値ではない。`required=no`も`Kind=positive`で`Relation == ""`を強制しない。今回統合された`required-if`は**業務レコードの値の存在**を条件付きで読むRuleであり、宣言インスタンスに対する非空文字や禁止条件の検査ではない。
+
+最初に、既存`semantic.Validation`を対象のData宣言へ結び付けるField Bindingの可否、非空文字と指定禁止を表せる既存Operatorの有無をコードで確認する。現行`GeneratePositive`の三条件はまだ手書きのままであり、同じ受理・拒否を**TEIの選択済み定義で実行した記録**がない限り`M1=unsupported`とする。「説明文を読めた」「Goのifを別関数へ移した」では合格にしない。
+
+M1が成立したら、同じ条件についてGo分岐を削除したM2を別PRにする。元の正例、空ID、空Attribute、Relation指定を独立Expectedで比較し、実Callerが新しい判定を呼んだことも確認する。元Source→Builder→Consumer、次世代の自動生成は後続の独立検収とする。
+
+## 16. 最初の一件は受注明細のReadと判断を完結させる
+
+[Rule Reader設計§24](../design/TEI_MD_RULE_READER_AND_CORE_STRUCTURE_DECISION_2026-11.md)の既存実装を再利用する。参照Workspaceの`order_entry.order_lines`、Environment／Database／Executorの束縛、Contract QueryとSQL realization、列Mapping、Applicationが選ぶRule、`Detail.Decide`を使い、新しいQuery EngineやRule Engineを作らない。
+
+[受注明細の実DB検収記録](../../testdata/destination-order-change/README.md)には、受注1001・1002・1003について明細の期待行数が**3・2・0**と固定されている。行は表示位置でなく明細の業務IDで突き合わせ、別のFixtureの数値を混ぜない。SQLから2行返ったというだけで「全件取得」を認めず、QueryのScope・絞込み条件・ページ終端・Snapshotの根拠を持ってから`CoverageComplete`を申告する。取得していない列はNULLでも空文字でもなく未取得とする。
+
+| 検収順 | 実際に通す経路 | 停止条件 |
+| --- | --- | --- |
+| **B1：選択** | 同じWorkspace.Loadで対象Query、Rule、DB束縛、Source／Revisionを解決 | 別Workspace・別SQL・別Operatorを暗黙に採用したら停止 |
+| **B2：読取** | 実PostgreSQL Providerと、テスト用代役を**別の試行**で呼ぶ | 読取対象、列型、NULL／未取得、取得範囲が確定しなければ`unknown`を維持 |
+| **B3：判断** | 実Readから得た行に`Detail.Decide`を適用。行ごとのRuleとRelation全体のRuleを区別 | 空明細を「一件の規則が成立」と数えず、部分取得のまま一意／非重複の成立を断定しない |
+| **B4：受領** | 通常`tei` CLI→独立Consumer。続いて生成Webの同じ意味SubjectとRead結果を照合 | テストから内部関数を呼べたことを、公開済みCLI／Webの実受領に読み替えない |
+
+最初に閉じるのはB1〜B3を**通常CLI入口から一試行で呼ぶ不足辺**である。ここができるまで、手動で実行されたPostgreSQL 16の試験、合成Executor、あるいはWindowsの既存SmokeでB4を代用しない。数量の`numeric(12,3)`は精度を落とさず扱い、`double precision`をDecimalとして受理しない。暦日Attributeへ`timestamptz`列が対応する場合の実行環境依存は、既存の保存型Validatorが拒否する範囲と、SQL realizationから返る列でなお検査できない範囲を別票にする。
+
+**並行P0**：Aの一条件自己置換、Bの通常CLI実Provider、CのStage2実使用は互いを前提Gateにせず進める。A〜Cを再編する理由は、三要素モデルの**定義・インスタンス・表示Projection**、標準型付き接続、実行経路のどこを確認したかを一つの票で説明するためである。図やSource位置を表示できても意味受理・実Read・更新Grantは別に必要となる。
+
+GUIはMarkdown原本の**現在開いている範囲への局所的な表示・入力支援**に限る。双方向同期の別正本を作らず、正規IDと逆参照・Source版を保持し、削除で参照が切れるなら事前診断と修正候補を出す。曖昧なSourceや古いSelectionからは保存しない。Studioのこの改善を、Bの実ProviderやCのStage2実受領の必須条件にはしない。
