@@ -17,7 +17,7 @@
 4. `tei validate`が通り、同じ明細を読み直すと、書き換えた規則の答えに変わる。
 5. 生成したWebの画面一つで、同じ答えが見える。
 
-入力と、手で書いた期待は[`testdata/destination-order-change/`](../testdata/destination-order-change/README.md)にある。**1〜4は動く。** `tei view -environment`が実際のPostgreSQLから明細を読み、行ごとの規則の答えを返す（[#5300](https://github.com/hat47x/tei-platform/pull/5300)）。専用のCIが変更の前後を期待と照合している。別に用意したPostgreSQLで[手順書](../docs/first-change.md)のとおりに打ち、行ごとの答えが期待とすべて一致することも確かめた。**5も、出荷するのと同じ起動関数を通すCI試験で実PostgreSQLの行から読む**（手順は[手順書](../docs/first-change.md)の5）。
+入力と、手で書いた期待は[`testdata/destination-order-change/`](../testdata/destination-order-change/README.md)にある。**1〜4は動く。** `tei view -environment`が実際のPostgreSQLから明細を読み、行ごとの規則の答えを返す（[#5300](https://github.com/hat47x/tei-platform/pull/5300)）。専用のCIが変更の前後を期待と照合している。別に用意したPostgreSQLで[手順書](../docs/first-change.md)のとおりに打ち、行ごとの答えが期待とすべて一致することも確かめた。**5の実DB読取からWebのHTTP画面へ届ける入口と、出荷相当の起動関数を通すCI試験は実装済み**（[#5431](https://github.com/hat47x/tei-platform/pull/5431)・[#5454](https://github.com/hat47x/tei-platform/pull/5454)）。起動フラグ変更に追随していなかった試験は[#5467](https://github.com/hat47x/tei-platform/pull/5467)で修正した。実PostgreSQLの試験は、修正後の対象HEADで非SKIPの成功を照合して受け入れる。実Chrome DOMを調べた既存CLIの試験と、第一Web TargetのHTTP画面の試験を同じ実行とみなさない。
 
 受入れは二つである。この五つを実際のPostgreSQLで実行し、実装から独立した期待と照合する試験が、CIで毎回走ること。五つを一ページで案内する手順書があり、その手順書のとおりに打てば通ること。
 
@@ -37,9 +37,9 @@
 
 道の1は[#5327](https://github.com/hat47x/tei-platform/pull/5327)（固定名の決め打ちを外す）、[#5339](https://github.com/hat47x/tei-platform/pull/5339)（Data・Relationの意味IDと参照テーブルを変える）、[#5362](https://github.com/hat47x/tei-platform/pull/5362)（別の属性・Query入力・複合主キーを持つ独立モデル）で通った。#5362は`checkDestinationAlternateModel`を`TestDestinationOrderChangeReadViaCLIFromPostgres`の中から呼び、CIが実PostgreSQLで走らせる。
 
-次は道の2の未接続部分である。実PostgreSQL→通常CLI→静的HTML→実Chrome DOMの経路は検証できた。しかし、第一Web TargetのHTTP実行先は合成Queryを使っており、同じ実DB Readを渡していない。二つの経路がそれぞれ動くことを、全体が一続きに動いた証拠としない。
+道の2では、通常CLIの実PostgreSQL→HTML→実Chrome DOMに加え、第一Web Targetの出荷相当起動関数→実PostgreSQL→HTTP画面の試験まで接続した（#5431・#5451・#5454）。後者は専用の実PostgreSQL試験で確認する範囲であり、既存CLIのChrome試験を足して同一AttemptのブラウザーE2Eを証明したことにはしない。DB読取を明示したときはfixtureへ黙って戻さず、DSNを環境変数から受け取る。旧フラグを使った試験の破綻は#5467で修正した。
 
-**道の2で守る対応関係**：行別Ruleの答えと明細行は、同じ実Read・親Scope・Query入力に属することを確認して結び付ける。現在のWebで使う配列位置は表示上の順番であり、業務キーやノードの意味IDではない。[#5424](https://github.com/hat47x/tei-platform/pull/5424)で行数・位置の不一致はJSON／HTMLで拒否するようになったが、別Readの混在までは防げない。**次のコード変更**は`tools/reference-first-web-target/read_scenario.go`と`reference_contract_query_fixture.go`を対象に、既存のDriver／Query実装を通した選択Providerの実Readへ接続し、主キー・行別Rule・Relation全体の判定を同じ読取からHTTPへ渡す。その結果を実Chrome DOMと既存の独立Expectedで照合する。取得が不完全なときは理由付きの「判定できない」を保持し、実Readが確認できるまで新しいNode ViewやRuntimeを前提にしない。
+**道の2で守る対応関係**：行別Ruleの答えと明細行は同じReadの`lines.Execution`から得る（#5431）。[#5424](https://github.com/hat47x/tei-platform/pull/5424)の行数・位置の照合は残すが、配列位置は業務キーでもノードの意味IDでもなく、別Readや親Scopeの取り違えまで証明しない。初回のBrowseと顧客参照には合成の経路が残り、取得範囲未確認の集合判断は理由付き「判定できない」にとどめる。**次のコード変更は[#5461](https://github.com/hat47x/tei-platform/pull/5461)**。DBを指定したときのHostとの競合、DSN欠落、不正DSNでの拒否と秘密非露出を独立試験で固定し、実PostgreSQL専用CIではSKIPを成功にしない。その後の道3では、`covers`の宣言と実行Queryの取得資格を分けて照合する（#5382→#5391）。新しいNode View・Rule Engine・Hostを前提にしない。
 
 入口は増やさない。接続の秘密は環境変数から受け取り、作業領域へ書かない。
 
