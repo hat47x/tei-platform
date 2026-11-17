@@ -781,6 +781,7 @@ TEI自己記述側の例示GraphやX-TEAのTask→TaskAction→TaskFunctionIO→
 **実装・試験の順序**：最初にMR-01／02／05／06を一つの原文Rangeで固定し、既存Source Indexの返す実際の資格を観察する。次にMR-03／04を既存`internal/threeelement`のCRUD・相互参照へ接続し、同名別Kindや明示／派生の矛盾を表示する。MR-07は既存`reacandidate`の読取専用Reviewを再利用する。MR-08〜10は旧実行／Provider／Host／Studioの実証を要するので、設計上のExpectedを定義しただけでPASSにしない。
 
 **Ownerへの引継ぎ**：選択した旧原典の実Source Revision、候補のQualified ID、採用対象のFunction–Data関係、未解決のRead／Write／Business責任を一枚のReview Packetで示す。ただしPacketは閲覧用であり、Ownerが受理した正式モデルへの変更や現在の実行権限を自動的に発生させない。実行受入は通常CLI実PG Read #2586、Studio Stage1→Stage2 #2831、独立Expected #1180／#2514に分離する。
+
 ## 40. 解析原本・Receipt・候補の受入境界を、現行mainの実装に合わせて固定する（2026-11-17）
 
 §31〜34のREA実ツール検証と§36〜39の一Function移行Reviewをつなぐ前に、**Fixtureの役割とCLI入口の資格を分離する**。internal/externalanalysis/testdataは配送Protocol・Receiptの合成例、cmd/tei/testdataとinternal/studiohost/testdataのCaptured Evidenceは有向Graphの選択を検査する例である。いずれも実案件の旧Functionや現在の業務Sourceを証明するものではない。
