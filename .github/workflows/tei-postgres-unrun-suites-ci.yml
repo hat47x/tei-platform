@@ -300,6 +300,13 @@ jobs:
             echo "Chrome DOM receipts: $browser_count; expected six" >&2
             exit 1
           }
+          # The first Web Target must reach Chrome through HTTP; the CLI's
+          # static HTML Chrome test and the HTTP body assertion are separate.
+          first_web_chrome_count="$(grep -Fc 'actual first Web HTTP Chrome DOM verified for order 1001' "$log" || true)"
+          test "$first_web_chrome_count" -eq 1 || {
+            echo "first Web real PostgreSQL HTTP Chrome DOM receipt is missing" >&2
+            exit 1
+          }
 
       - name: 検証後の変更を検出
         if: always()
