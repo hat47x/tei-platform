@@ -45,9 +45,9 @@
 
 並行して進めてよいのは一本だけである。**Studioが次の自分を作る一巡**（[#4583](https://github.com/hat47x/tei-platform/issues/4583)）。完了の条件は一文にする。Studioで定義を一つ変え、**生成器には触れずに**、Studio自身が作った次のStudioがWindowsで起動し、その変更が画面に出ること。
 
-「生成器には触れずに」が要である。生成した読み手は、34行の定義と689行の生成の手続きから66行のコードを作っていた。応答へ項目を一つ足す変更は、手書きなら十数行で済むのに、生成の手続きを書き換える必要があった。その変更は手書きで行われ、生成した読み手は11月15日にmainから外れた（[#4583の報告](https://github.com/hat47x/tei-platform/issues/4583#issuecomment-6937391216)）。定義を直すほうが手書きより高くつく間は、誰も定義を直さない。
+「生成器には触れずに」が要である。当初は34行の契約からReader一つを作るために約690行の生成手続きを要し、必須項目一つの追加にも生成器の改修が必要だった。現在は[#5325](https://github.com/hat47x/tei-platform/pull/5325)で生成Readerを製品の唯一のReaderへ戻し、[#5365](https://github.com/hat47x/tei-platform/pull/5365)で未対応の宣言を拒否した。[#5389](https://github.com/hat47x/tei-platform/pull/5389)ではJSON契約の`requiredResponseFields`へ`schemaVersion`を足すだけでReaderの必須性・型検査が変わり、生成器の実装byteを変えずに正規Bundleと実Windows WebView2で使用された。**ただし、JSON契約はTEIのData・Ruleから導かれておらず、変更後の契約でStage1がStage2を構築したわけでもない。**
 
-進め方は二段にする。まず復旧する。試験は緩めず、生成した読み手を唯一の読み手に戻す。次に、同じ変更（必須の項目を一つ足す）を定義だけで行えるようにする。応答の形は到達点と同じ書き方（Dataの項目と規則）で書き、読み手はその定義から作る。部品ごとに生成の手続きを書く方式は、これ以上広げない。
+**次のコード変更は[#4583](https://github.com/hat47x/tei-platform/issues/4583)で一巡を閉じる。** 既存の`tei.authoring/v1`で記述したData項目・Ruleから必須応答項目を取り出し、同じReader契約と生成経路へ渡す。定義変更の前後を独立した期待と照合し、**生成器本体の差分ゼロ、古いReaderの拒否、生成Readerの動作変更**を確認する。その変更をStage1の実Build・実Builder呼出しからStage2の新しいWindows実行物へ結び、画面で変更後のReaderが使われたことまで同一の実行単位で確かめる。[#5373](https://github.com/hat47x/tei-platform/pull/5373)のStage2実起動の限定実測は変更前の契約による別の記録であり、今回の完了には足し合わせない。第二の言語・Host・生成器は増やさない。
 
 ## 到達点まで止めるもの
 

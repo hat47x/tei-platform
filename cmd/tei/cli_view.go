@@ -470,6 +470,15 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	// This is the first product CLI read of the existing header-detail Contract
 	// Query. No query, mapping, or validation is reconstructed in this entry.
 	if *environmentID != "" {
+		// The runtime read is text, json, or html. print stays out: a browser
+		// page is what plan/NOW.md's road item 2 asks for, and printing the
+		// same page is a separate decision. html is accepted by the general
+		// format gate above for the static views, so this mode must refuse what
+		// it does not render instead of falling through to text (#5396).
+		if *format != "text" && *format != "json" && *format != "html" {
+			return fail("INVALID_ARGUMENT",
+				fmt.Sprintf("view -environment supports -format text, json, or html, not %q", *format), 2)
+		}
 		values, err := parseInputPairs(inputPairs)
 		if err != nil {
 			return fail("INVALID_ARGUMENT", err.Error(), 2)
@@ -488,6 +497,9 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		report.Result = result
 		if *format == "json" {
 			return writeViewReport(out, report, 0)
+		}
+		if *format == "html" {
+			return writeDestinationReadHTML(out, result)
 		}
 		return writeDestinationReadText(out, result)
 	}
@@ -601,9 +613,19 @@ func writeDestinationReadText(out io.Writer, read destinationRead) (int, error) 
 	// mistake it for measured coverage. An undeclared binding prints nothing,
 	// which stays distinguishable from "declared but unchecked".
 	if read.Declaration != nil {
-		declared := "covers some"
-		if read.Declaration.CoversRelation != "" {
+		// A binding that states both "every row" and "only some rows" is
+		// self-contradictory. The static validator rejects it, but the view path
+		// runs no validator, so this renderer must not pick one side and hide
+		// the other: printing only the relation would read as a clean
+		// declaration when the binding actually contradicts itself.
+		var declared string
+		switch {
+		case read.Declaration.CoversRelation != "" && read.Declaration.CoversSome:
+			declared = "covers " + string(read.Declaration.CoversRelation) + " and covers some (contradictory)"
+		case read.Declaration.CoversRelation != "":
 			declared = "covers " + string(read.Declaration.CoversRelation)
+		default:
+			declared = "covers some"
 		}
 		checked := "unchecked"
 		if read.Declaration.Checked {
