@@ -173,10 +173,8 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		(*lifecycleTakeover && (*lifecycleState == "" || *lifecycleCommand == "")) ||
 		(len(allowedCapabilities) > 0 && !*execute) ||
 		(*operationLogFile != "" && !*execute) ||
-		// -input only feeds the command plan, which exists only with -command.
-		// Without this, `view -application X -input order=ORD-1` succeeded and
-		// dropped the value (and never parsed it), so a caller could believe it
-		// had supplied input to a command that was never planned (#3778).
+		// -input belongs only to an explicit command plan or to a selected
+		// runtime Contract Query. Static views must not silently drop it (#3778).
 		(len(inputPairs) > 0 && *commandID == "" && *environmentID == "") ||
 		*root != strings.TrimSpace(*root) || *applicationID != strings.TrimSpace(*applicationID) ||
 		*patternID != strings.TrimSpace(*patternID) || *packageID != strings.TrimSpace(*packageID) ||
@@ -457,6 +455,9 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		values, err := parseInputPairs(inputPairs)
 		if err != nil {
 			return fail("INVALID_ARGUMENT", err.Error(), 2)
+		}
+		if len(values) != 1 || values["order_id"] == "" {
+			return fail("INVALID_ARGUMENT", "runtime view requires exactly one -input order_id=<integer>", 2)
 		}
 		result, err := readDestinationOrderLines(
 			loaded.World, core.CanonicalID(*applicationID), core.CanonicalID(*patternID),
