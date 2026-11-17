@@ -15,13 +15,13 @@ import (
 	"tei/internal/workspace"
 )
 
-// staticReadScenarioRunner is used only to challenge the HTTP response boundary
+// misalignedAnswerReadScenarioRunner is used only to challenge the HTTP response boundary
 // with an inconsistent read; it is not a production executor.
-type staticReadScenarioRunner struct {
+type misalignedAnswerReadScenarioRunner struct {
 	result readScenarioResult
 }
 
-func (runner staticReadScenarioRunner) Run(context.Context, readScenarioInput) (readScenarioResult, error) {
+func (runner misalignedAnswerReadScenarioRunner) Run(context.Context, readScenarioInput) (readScenarioResult, error) {
 	return runner.result, nil
 }
 
@@ -39,7 +39,7 @@ func TestReadScenarioHTTPRejectsMisalignedAnswerProjection(t *testing.T) {
 		{name: "duplicate position", answers: []rowAnswerProjection{{RowIndex: 0}, {RowIndex: 0}}, status: http.StatusInternalServerError},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			server := &webTargetServer{readScenario: staticReadScenarioRunner{
+			server := &webTargetServer{readScenario: misalignedAnswerReadScenarioRunner{
 				result: readScenarioResult{OrderLineRows: rows, RowAnswers: tc.answers},
 			}}
 			recorder := httptest.NewRecorder()
