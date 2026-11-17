@@ -1723,3 +1723,12 @@ mainのRule生成Go CLIビルド回帰は、選択Markdown原文のコピーをG
 最初のコードPRはDF-P4aの一因子に限定する。既存の`validationread/sqlite_path_test.go`は誤申告の危険性を示しているが、**製品Callerが虚偽の`complete`を拒否したという証拠ではない**。必要な契約が既存Query／Data Contextで説明できない場合は、欠落条件と代案を受入票に残し、汎用Query Engineや新Stateful Portを先行追加しない。
 
 今回の計画追補だけで新しいGo／DB／Windows E2E、Owner意味受理、R2-P、R3、Stage1→Stage2をPASSとは扱わない。現在mainの限定成果と、審査中PR #5187（条件付き必須）・#5214（任意Field状態損失）・#5213（研究計画）を区別する。独立Expectedは従来どおり#1180／#2514へ引き渡す。
+
+<!-- dogfood-current-vertical-20261117 -->
+### MVPの最短経路を三本に絞る（2026年11月17日）
+
+[判断移管パケット§15〜16](MVP_DOGFOOD_DECISION_TRANSFER_2026-11.md)へ、統合済みの自己記述Data／同一Load Rule判断／実CLIとStudioの共通Inspect（#5175・#5179・#5188）、業務レコードの条件付き必須（#5187）、参照セルフビルドのGreenを反映した。ただし**定義を読めること、業務レコードの条件付き必須を判断できること、`GeneratePositive`の手書きShape条件をTEIに移したことは三つの別実績**である。M1は型付き宣言インスタンスへのBindingと非空・禁止Predicateの実使用まで`unsupported`とする。
+
+完成への並行した三本は、**A：一条件をTEIで実判断→Go旧分岐削除**、**B：参照Workspaceの受注明細を通常CLIから実Provider Read→`Detail.Decide`→独立Consumerで検証**、**C：TEI定義一箇所の変更→Stage1生成部品→埋込Assets→Stage2 Windows実画面への反映**とする。Bは注文1001/1002/1003の3/2/0明細をIDで照合し、`CoverageComplete`をQuery Scopeの根拠なしに認めない。CはGeneratorを手で変更せず、生成部品が実Bundleと画面で使用されたことを確かめる。図面・read-only Inspect・手動DB試験・CIの一部成功を互いの不足辺の証明に流用しない。
+
+この三経路は新しい上位計画や専用Runtimeを作らず既存Ownerへ戻す。Source編集はMarkdownを唯一の原本にした局所パッチとし、逆参照が壊れる削除や古いSource版への保存を拒否する。統合の判断には変更PRのexact HEADのCIと最新mainのHealthを別々に確認する。
