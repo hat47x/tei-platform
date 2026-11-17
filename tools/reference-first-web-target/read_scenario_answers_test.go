@@ -17,10 +17,10 @@ import (
 func TestReadRowAnswerAlignmentRejectsAbsentExtraAndReorderedAnswers(t *testing.T) {
 	rows := []semanticRowProjection{{}, {}}
 	cases := []struct {
-		name string
-		rows []semanticRowProjection
+		name    string
+		rows    []semanticRowProjection
 		answers []rowAnswerProjection
-		want string
+		want    string
 	}{
 		{name: "empty read", rows: nil, answers: nil},
 		{name: "two aligned rows", rows: rows, answers: []rowAnswerProjection{{RowIndex: 0}, {RowIndex: 1}}},
@@ -34,7 +34,9 @@ func TestReadRowAnswerAlignmentRejectsAbsentExtraAndReorderedAnswers(t *testing.
 		t.Run(tc.name, func(t *testing.T) {
 			err := requireReadRowAnswerAlignment(tc.rows, tc.answers)
 			if tc.want == "" {
-				if err != nil { t.Fatalf("aligned read was rejected: %v", err) }
+				if err != nil {
+					t.Fatalf("aligned read was rejected: %v", err)
+				}
 				return
 			}
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
