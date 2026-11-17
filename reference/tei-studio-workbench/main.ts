@@ -17,12 +17,13 @@ import {
   readCatalog,
   inspectEligibility,
   readValidation,
-  readInspection,
   relatedGraph,
   subjectKey,
   summarizeFindings,
   readXeadObservation,
 } from "./presentation.ts";
+// The production Inspector is the contract-generated Reader, never a local copy.
+import { readInspection } from "./inspection-reader.generated.ts";
 import type { Entry, Subject, Finding, Catalog } from "./presentation.ts";
 
 type Reply =
