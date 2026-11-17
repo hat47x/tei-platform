@@ -253,7 +253,6 @@ FROM changed ORDER BY line_number, order_line_id`
 		}
 	})
 
-
 	// A Contract Query can return fewer than the rows a rule needs. The
 	// reader must not infer relation completeness from a successful SELECT,
 	// whether that SELECT returns unique-looking rows or no rows at all.
