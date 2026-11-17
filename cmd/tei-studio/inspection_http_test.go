@@ -107,6 +107,28 @@ func TestInspectionHTTPProjectsOnlyAuthorizedReadOnlyInspection(t *testing.T) {
 		t.Fatalf("HTTP projection differs from the typed Studio Operation: HTTP=%+v direct=%+v", result, direct)
 	}
 
+	// Wails v3 beta.29 strips the Route prefix from req.URL.Path.
+	// The exact registered path therefore arrives as an empty string, not "/".
+	stripped := httptest.NewRequest(http.MethodGet, "/?"+url.Values{
+		"workspace": {"workspace-1"},
+		"kind":      {"semantic-validation"},
+		"subject":   {id},
+	}.Encode(), nil)
+	stripped.URL.Path = ""
+	stripped.Header.Set("Authorization", "Bearer "+testInspectionToken)
+	strippedResult := httptest.NewRecorder()
+	svc.ServeHTTP(strippedResult, stripped)
+	if strippedResult.Code != http.StatusOK {
+		t.Fatalf("Wails stripped-route HTTP status=%d body=%s", strippedResult.Code, strippedResult.Body.String())
+	}
+	var strippedValue studiohost.InspectionResponse
+	if err := json.Unmarshal(strippedResult.Body.Bytes(), &strippedValue); err != nil {
+		t.Fatal(err)
+	}
+	if !strippedValue.OK || strippedValue.Failure != nil || !reflect.DeepEqual(strippedValue.Value, direct.Value) {
+		t.Fatalf("Wails stripped-route projection diverged: %+v", strippedValue)
+	}
+
 	for _, tc := range []struct {
 		name, workspace, kind, id, code string
 		status                          int
