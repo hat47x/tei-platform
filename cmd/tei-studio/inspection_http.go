@@ -39,8 +39,9 @@ func (s *inspectionHTTPService) ServeHTTP(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Vary", "Authorization")
-	// Wails may mount a service at its route and pass the stripped root path.
-	if r.URL.Path != inspectionHTTPRoute && r.URL.Path != "/" {
+	// Wails beta.29 strips the registered route prefix and passes an empty
+	// path for the exact route. A direct net/http test sees the full path.
+	if r.URL.Path != inspectionHTTPRoute && r.URL.Path != "/" && r.URL.Path != "" {
 		http.NotFound(w, r)
 		return
 	}
