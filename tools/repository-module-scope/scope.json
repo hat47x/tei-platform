@@ -3,11 +3,20 @@
     {
       "path": "cmd/tei-studio",
       "verify": true,
-      "reason": "Studio is a separate build unit that replaces the root module with ../.., so a root change can break it without any root check failing. The desktop host also needs CGO disabled.",
-      "tags": "server",
+      "reason": "Studio is a separate build unit that replaces the root module with ../.., so a root change can break it without any root check failing. The desktop host also needs CGO disabled, and its UI toolkit only builds on Windows.",
       "env": {
         "CGO_ENABLED": "0"
-      }
+      },
+      "variants": [
+        {
+          "name": "server",
+          "tags": "server"
+        },
+        {
+          "name": "desktop",
+          "os": "windows"
+        }
+      ]
     },
     {
       "path": "tools/reference-plugin-registry",

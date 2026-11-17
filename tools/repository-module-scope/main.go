@@ -23,6 +23,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"unicode/utf8"
@@ -51,16 +52,75 @@ type entry struct {
 	Path          string            `json:"path"`
 	Verify        bool              `json:"verify"`
 	Reason        string            `json:"reason"`
-	Tags          string            `json:"tags"`
+	Variants      []variant         `json:"variants"`
 	Env           map[string]string `json:"env"`
 	KnownFailures []knownFailure    `json:"knownFailures"`
 }
 
+// variant is one build configuration of a module.
+//
+// A single tag set silently leaves the other side of a build constraint
+// unverified: cmd/tei-studio has window_desktop.go under `!server` and
+// window_server.go under `server`, so verifying only `server` never compiles
+// the desktop host at all. Each declared variant is vetted and tested.
+//
+// OS names the target platform. The desktop host cannot be built on Linux at
+// all: the UI toolkit behind it needs cgo libraries that the health runner does
+// not have, so `go vet` there fails inside the dependency rather than in TEI's
+// own files. Declaring the target builds those files instead of skipping them.
+type variant struct {
+	Name string `json:"name"`
+	Tags string `json:"tags"`
+	OS   string `json:"os"`
+}
+
+// defaultVariantName labels the configuration used when an entry declares none.
+const defaultVariantName = "default"
+
+// normalizedTags makes two spellings of the same tag set compare equal, so a
+// repeated configuration is reported instead of verified twice.
+func normalizedTags(tags string) string {
+	parts := strings.Fields(strings.ReplaceAll(tags, ",", " "))
+	sort.Strings(parts)
+	return strings.Join(parts, ",")
+}
+
+// variants returns the declared configurations, or one unconstrained
+// configuration when the entry declares none.
+func (e entry) variants() []variant {
+	if len(e.Variants) == 0 {
+		return []variant{{Name: defaultVariantName}}
+	}
+	return e.Variants
+}
+
 // knownFailure is a test that fails on the base for a reason this change does
 // not fix. It is skipped and printed, and it must keep failing.
+//
+// Variant scopes it to one build configuration. A failure behind `server` does
+// not exist under `!server`, so an unscoped entry would be reported as "did not
+// fail" in every other variant. When an entry declares variants, each known
+// failure must name the variant it belongs to.
 type knownFailure struct {
-	Test   string `json:"test"`
-	Reason string `json:"reason"`
+	Test    string `json:"test"`
+	Variant string `json:"variant"`
+	Reason  string `json:"reason"`
+}
+
+// knownFailuresFor returns the declarations that apply to one configuration.
+//
+// When the entry declares variants, a failure must name its own, because the
+// other configurations do not contain that test at all. An entry with no
+// variants is one unconstrained configuration, so its failures need no scope.
+func (e entry) knownFailuresFor(v variant) []knownFailure {
+	unscoped := len(e.Variants) == 0
+	var out []knownFailure
+	for _, kf := range e.KnownFailures {
+		if unscoped || kf.Variant == v.Name {
+			out = append(out, kf)
+		}
+	}
+	return out
 }
 
 // enumerateModules returns the repository-relative directory of every go.mod
@@ -112,8 +172,18 @@ func loadScope(path string) (scope, error) {
 	// detail, so the mark is dropped first.
 	raw = bytes.TrimPrefix(raw, []byte("\xef\xbb\xbf"))
 	var parsed scope
-	if err := json.Unmarshal(raw, &parsed); err != nil {
+	// Unknown keys are rejected. A misspelled "variants" or a leftover "tags"
+	// would otherwise be dropped by encoding/json, quietly downgrading the entry
+	// to one untagged configuration and switching off exactly the coverage this
+	// file declares. A declaration that says something the program does not
+	// understand is a declaration that does not mean what its author wrote.
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&parsed); err != nil {
 		return scope{}, fmt.Errorf("%s: %w", path, err)
+	}
+	if decoder.More() {
+		return scope{}, fmt.Errorf("%s: more than one JSON value", path)
 	}
 	return parsed, nil
 }
@@ -154,6 +224,56 @@ func checkDeclarations(nested []string, declared []entry) []string {
 				problems = append(problems, fmt.Sprintf(
 					"%s declares a known failure without a test name and a usable reason (at least %d characters)",
 					e.Path, minReasonLength))
+			}
+		}
+		// A variant without a name would make the result ambiguous, and two
+		// variants with the same name would make one of them unreadable. Both
+		// hide which build configuration was actually checked.
+		seenVariant := map[string]bool{}
+		// A configuration is identified by its tags together with its target
+		// platform: the same tags on a different GOOS compile different files,
+		// so they are genuinely two configurations.
+		seenIdentity := map[string]string{}
+		for _, v := range e.Variants {
+			name := strings.TrimSpace(v.Name)
+			switch {
+			case name == "":
+				problems = append(problems, e.Path+" declares a build configuration without a name")
+			case seenVariant[name]:
+				problems = append(problems, fmt.Sprintf(
+					"%s declares the build configuration %q twice, so one of them cannot be read in the result",
+					e.Path, name))
+			}
+			seenVariant[name] = true
+			// Two configurations with one tag set on one platform verify the
+			// same build twice. The second name then claims coverage that the
+			// tags never asked for, which is the silent drop this file exists
+			// to prevent.
+			identity := normalizedTags(v.Tags) + "@" + strings.TrimSpace(v.OS)
+			if previous, ok := seenIdentity[identity]; ok {
+				problems = append(problems, fmt.Sprintf(
+					"%s declares %q and %q with the same build tags and platform (%q), so one of them verifies nothing of its own",
+					e.Path, previous, name, identity))
+			}
+			seenIdentity[identity] = name
+		}
+		for _, kf := range e.KnownFailures {
+			if len(e.Variants) == 0 {
+				continue
+			}
+			// A known failure that names no variant cannot be checked: under
+			// the other variants the test does not exist, so the declaration
+			// would report a failure that is really absence.
+			if strings.TrimSpace(kf.Variant) == "" {
+				problems = append(problems, fmt.Sprintf(
+					"%s declares a known failure %q without a variant; a failure behind one build constraint does not exist in the others",
+					e.Path, kf.Test))
+				continue
+			}
+			if !seenVariant[strings.TrimSpace(kf.Variant)] {
+				problems = append(problems, fmt.Sprintf(
+					"%s declares a known failure %q for the unknown variant %q",
+					e.Path, kf.Test, kf.Variant))
 			}
 		}
 	}
@@ -224,81 +344,139 @@ func goRun(goBin, dir string, env []string, args ...string) (string, bool) {
 	return string(out), err != nil
 }
 
-func tagArgs(e entry) []string {
-	if strings.TrimSpace(e.Tags) == "" {
-		return nil
+// variantEnv adds the variant's target platform to the module environment.
+func variantEnv(base []string, v variant) []string {
+	if strings.TrimSpace(v.OS) == "" {
+		return base
 	}
-	return []string{"-tags", e.Tags}
+	out := make([]string, 0, len(base)+1)
+	for _, kv := range base {
+		if strings.HasPrefix(kv, "GOOS=") {
+			continue
+		}
+		out = append(out, kv)
+	}
+	return append(out, "GOOS="+v.OS)
 }
 
-func skipPattern(e entry) string {
-	names := make([]string, 0, len(e.KnownFailures))
-	for _, kf := range e.KnownFailures {
+// osSuffix names the target platform in the result, so a reader can tell apart
+// two variants that differ only by GOOS.
+func osSuffix(v variant) string {
+	if strings.TrimSpace(v.OS) == "" {
+		return ""
+	}
+	return " (GOOS=" + v.OS + ")"
+}
+
+// testsRunnable reports whether this host can run a variant's test binary.
+//
+// `go test` for another platform compiles and then fails to execute. Such a
+// variant is still type-checked by vet, which reads the test files too, but its
+// tests are not run. That is recorded as not run rather than reported as a pass.
+func testsRunnable(v variant) bool {
+	return strings.TrimSpace(v.OS) == "" || strings.TrimSpace(v.OS) == runtime.GOOS
+}
+
+func tagArgs(v variant) []string {
+	if strings.TrimSpace(v.Tags) == "" {
+		return nil
+	}
+	return []string{"-tags", v.Tags}
+}
+
+// skipPattern returns the tests to skip for one configuration. A known failure
+// behind another constraint is not this configuration's concern: it does not
+// exist here, so it is neither skipped nor confirmed.
+func skipPattern(e entry, v variant) string {
+	var names []string
+	for _, kf := range e.knownFailuresFor(v) {
 		names = append(names, kf.Test)
+	}
+	if len(names) == 0 {
+		return ""
 	}
 	return "^(" + strings.Join(names, "|") + ")$"
 }
 
-// confirmKnownFailures shows each declared known failure still fails. A skip is
-// not a failure: `go test` exits 0 for a skipped test, and a test removed by a
-// build tag reports neither. The `--- FAIL:` line is therefore required per
-// named test, so the entry cannot be satisfied by the test's absence.
-func confirmKnownFailures(goBin, dir string, e entry, env []string, stdout io.Writer) []string {
+// confirmKnownFailures shows each known failure declared for this configuration
+// still fails. A skip is not a failure: `go test` exits 0 for a skipped test,
+// and a test removed by a build tag reports neither. The `--- FAIL:` line is
+// therefore required per named test, so the entry cannot be satisfied by the
+// test's absence.
+func confirmKnownFailures(goBin, dir, label string, e entry, v variant, env []string, stdout io.Writer) []string {
 	var problems []string
-	for _, kf := range e.KnownFailures {
-		args := append([]string{"test", "-count=1", "-v"}, tagArgs(e)...)
+	for _, kf := range e.knownFailuresFor(v) {
+		args := append([]string{"test", "-count=1", "-v"}, tagArgs(v)...)
 		args = append(args, "-run", "^"+kf.Test+"$", "./...")
 		out, failed := goRun(goBin, dir, env, args...)
 		switch {
 		case failed && strings.Contains(out, "--- FAIL: "+kf.Test):
-			fmt.Fprintf(stdout, "known-failure %s %s: %s\n", e.Path, kf.Test, kf.Reason)
+			fmt.Fprintf(stdout, "known-failure %s %s: %s\n", label, kf.Test, kf.Reason)
 		case !failed:
 			problems = append(problems, fmt.Sprintf(
 				"%s %s did not fail: a test that passes, skips or no longer exists is not the declared known failure; remove the entry",
-				e.Path, kf.Test))
+				label, kf.Test))
 		default:
 			// A build failure or a TestMain exit also produces a non-zero status
 			// without a --- FAIL: line for this test, so the message names both
 			// possibilities instead of asserting the declared cause changed.
 			problems = append(problems, fmt.Sprintf(
 				"%s %s did not report a failure of its own; the package may fail to build, or the test may exit another way:\n%s",
-				e.Path, kf.Test, out))
+				label, kf.Test, out))
 		}
 	}
 	return problems
 }
 
-// verifyModule runs vet and the module's tests, then confirms each declared
-// known failure still fails. It returns one message per problem.
-func verifyModule(root string, e entry, stdout io.Writer) []string {
+// verifyVariant runs vet and the module's tests under one build configuration,
+// then confirms each known failure declared for it still fails. It returns one
+// message per problem.
+func verifyVariant(root string, e entry, v variant, stdout io.Writer) []string {
 	dir := filepath.Join(root, filepath.FromSlash(e.Path))
 	goBin, err := goExecutable()
 	if err != nil {
 		return []string{err.Error()}
 	}
-	env := moduleEnv(e.Env)
+	env := variantEnv(moduleEnv(e.Env), v)
+	label := e.Path + " [" + v.Name + "]"
 	var problems []string
 
-	vetArgs := append([]string{"vet"}, tagArgs(e)...)
+	vetArgs := append([]string{"vet"}, tagArgs(v)...)
 	vetArgs = append(vetArgs, "./...")
 	if out, failed := goRun(goBin, dir, env, vetArgs...); failed {
-		problems = append(problems, fmt.Sprintf("%s go vet failed:\n%s", e.Path, out))
+		problems = append(problems, fmt.Sprintf("%s go vet failed:\n%s", label, out))
 	} else {
-		fmt.Fprintf(stdout, "ok    %s go vet\n", e.Path)
+		fmt.Fprintf(stdout, "ok    %s go vet%s\n", label, osSuffix(v))
 	}
 
-	testArgs := append([]string{"test", "-count=1"}, tagArgs(e)...)
-	if len(e.KnownFailures) > 0 {
-		testArgs = append(testArgs, "-skip", skipPattern(e))
+	testArgs := append([]string{"test", "-count=1"}, tagArgs(v)...)
+	if skip := skipPattern(e, v); skip != "" {
+		testArgs = append(testArgs, "-skip", skip)
 	}
 	testArgs = append(testArgs, "./...")
-	if out, failed := goRun(goBin, dir, env, testArgs...); failed {
-		problems = append(problems, fmt.Sprintf("%s go test failed:\n%s", e.Path, out))
+	if !testsRunnable(v) {
+		// `go test` would compile the other platform's binary and then fail to
+		// execute it. vet has already type-checked those files, so the tests are
+		// recorded as not run instead of invented as a pass.
+		fmt.Fprintf(stdout, "not-run %s go test: a %s test binary does not run on %s\n",
+			label, v.OS, runtime.GOOS)
+	} else if out, failed := goRun(goBin, dir, env, testArgs...); failed {
+		problems = append(problems, fmt.Sprintf("%s go test failed:\n%s", label, out))
 	} else {
-		fmt.Fprintf(stdout, "ok    %s go test\n", e.Path)
+		fmt.Fprintf(stdout, "ok    %s go test%s\n", label, osSuffix(v))
 	}
 
-	return append(problems, confirmKnownFailures(goBin, dir, e, env, stdout)...)
+	return append(problems, confirmKnownFailures(goBin, dir, label, e, v, env, stdout)...)
+}
+
+// verifyModule verifies every declared build configuration of one module, so a
+// file guarded by the opposite constraint cannot leave the checked set.
+func verifyModule(root string, e entry, stdout io.Writer) []string {
+	var problems []string
+	for _, v := range e.variants() {
+		problems = append(problems, verifyVariant(root, e, v, stdout)...)
+	}
+	return problems
 }
 
 func run(root, scopePath string, checkOnly bool, stdout, stderr io.Writer) int {
