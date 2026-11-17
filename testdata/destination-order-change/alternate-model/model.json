@@ -68,6 +68,10 @@
     [
       "relation lines to",
       "relation inventoryEntries to"
+    ],
+    [
+      "order_entry.inventory_entrys",
+      "order_entry.order_lines"
     ]
   ],
   "patches": [
