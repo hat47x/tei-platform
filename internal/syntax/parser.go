@@ -1864,6 +1864,16 @@ func (p *Parser) ParseSemanticFile() (semantic.Namespace, error) {
 	if err != nil {
 		return semantic.Namespace{}, err
 	}
+	// A source that starts with a keyword this product declares elsewhere is in
+	// the wrong root, not misspelled: say where it belongs instead of
+	// 'expected "namespace"'. The declaration table already owns that answer
+	// (#4169), so this reuses it rather than keeping a second list. The check
+	// runs before expectText consumes the token.
+	if tok, peekErr := p.peek(); peekErr == nil && tok.Kind == TokenIdent && tok.Text != "namespace" {
+		if misplaced := p.misplacedDeclaration(tok, "in a semantic namespace source"); misplaced != nil {
+			return semantic.Namespace{}, misplaced
+		}
+	}
 	if _, err := p.expectText("namespace"); err != nil {
 		return semantic.Namespace{}, err
 	}

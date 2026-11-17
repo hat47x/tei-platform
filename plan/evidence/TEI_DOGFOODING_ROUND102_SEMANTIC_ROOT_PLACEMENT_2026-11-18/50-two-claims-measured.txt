@@ -1,0 +1,11 @@
+#4169 claims two things:
+
+  1. no command returns syntax/grammar/placement
+     -> measured: tei commands has 30 entries; none are grammar/syntax/help-like;
+        no catalog `output` text mentions placement. STILL TRUE.
+
+  2. all five pattern kinds give the same diagnostic as a nonsense word
+     -> measured now:
+        browse/record/reference/command/header-detail each name their placement
+        frobnicate keeps "expected database, uses, or binds"
+     ALREADY FIXED (the #4082 single-source change did it).
