@@ -71,7 +71,11 @@ func TestDestinationRuntimeViewDoesNotSilentlyChangeStaticOrCommandViews(t *test
 	}{
 		{name: "runtime without a pattern", args: []string{"-environment", "development"}},
 		{name: "runtime with a command", args: []string{"-pattern", "order_entry.order_lines", "-environment", "development", "-command", "sales.order.submit"}},
-		{name: "runtime with text format", args: []string{"-pattern", "order_entry.order_lines", "-environment", "development", "-format", "text"}},
+		// -format text used to be refused here. plan/NOW.md asks for rows and
+		// answers to be readable without a JSON reader, so text is now a format
+		// this mode accepts; TestWriteEnvironmentReadTextNamesRowsAndAnswers
+		// checks what it prints. An unaccepted format is still refused.
+		{name: "runtime with an html format", args: []string{"-pattern", "order_entry.order_lines", "-environment", "development", "-format", "html"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var out bytes.Buffer
