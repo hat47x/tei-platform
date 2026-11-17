@@ -687,3 +687,24 @@ R1の最初の問いを「旧Function FはData Dを読むか」と置くと、�
 **他領域との接合**：main統合済みの[Studio Source位置表示 #5212](https://github.com/hat47x/tei-platform/pull/5212)は、検証済みSource位置を表示する手段であって、ファイルを開く権限や同一内容の保証ではない。[Data／Ruleの同一Load検査 #5179](https://github.com/hat47x/tei-platform/pull/5179)、[既存の型付きField投影 #5156](https://github.com/hat47x/tei-platform/pull/5156)、[明示／派生CRUD矛盾検査 #5190](https://github.com/hat47x/tei-platform/pull/5190)からは、取得状態・Mapping・利用宣言の相反を保留する停止線を再利用する。これらはREAの外部Structure候補をOwnerの正式Data/Function/Businessへ自動対応付ける権限ではない。
 
 **次段のR1-A**は、指定したRelationの外部Occurrenceと正式Source IndexのArtifact/Range/Revisionを同じ対象・同じ取得範囲で再読取し、別のQualified Data/Function ID候補を照合すること。Sourceが部分取得・未取得・Digest衝突のときは一致の肯定も「存在しない」の否定も保留する。業務REAのResource/Event/Agent Participationは必要なドメインでOwnerが受理したRoleとして扱う。実ProviderでのRead、Ruleの判断、Generator/Builderの実消費、Studioの二Consumer、Permission/Effectは独立Expected（#1180/#2514）の次の資格とし、通常CLI実Provider #2586とWindows Studio Stage1→Stage2 #2831を並行P0のまま維持する。
+
+## 35. REAの価値を抽出し、TEIの移行・設計復元を主線に据える（2026-11-17、方式再評価案）
+
+**判断案**：外部`REA (Reverse Engineer Anything)`をTEI製品の必須基盤とはしない。既存の実ツール検証、型付き`CandidateSet`／`ReviewPacket`、`relationQuestion`は実績として保持するが、**REA自身の解析対象・Provider・バイナリ解析機能を追随拡張することは標準開発の主線にしない**。TEI固有の価値は、既存資産を専門家が読める三要素Data／Function／Business、標準データ構造・表現型・プロセスへ変換し、出典のある設計書、検証、コード生成、実運用への穏やかな移行までつなぐ点にある。REA連携の深掘りは、この製品経路の断点を実際に減らすと確認できる場合だけ行う。
+
+外部REAの公式説明は、JavaScript/Electron・.NET・Webなどの静的／動的調査に加え、Ghidra／Hopper／IDA等を用いるネイティブ解析を含む。ただし**提供機能の広さと、Claude等の特定AIハーネスからの実際の使いやすさは別**であり、「Claudeでほぼ使えない」という評価を検証済みの製品事実にはしない。TEI側で通常必要な解析対象は、完全なバイナリ復元よりも、手元のソース、SQL／DB Schema、画面定義、設定、帳票、設計文書、公開API、観測可能な入力出力である。外部Providerとライセンス・実行環境に依存する深いネイティブ解析を通常案件の前提に置かない。
+
+| 優先 | 取り扱うもの | TEIでの着地点 |
+| --- | --- | --- |
+| 主線A（P0／製品既定） | Java／.NET／Go／JavaScript等のソース、X-TEA／Wagbyのモデル・設定、Markdown、SQL／DDL、API定義 | 既存Reader／Language Pluginから標準データ構造・三要素・Processへ型付き候補を投影。出典・Identity・方向・多重度・時点・未取得を保ってReviewし、正式Builder／実Provider／Studioで段階検証する |
+| 主線B（段階移行） | 実DB Schema・Query／View、画面・帳票、外部API、操作／入出力の記録 | 設計書と実装の差を表示し、一Functionずつ旧環境での実Read／Write、TEIでの生成・実消費、旧新の結果比較へつなぐ。一般のマイグレーションで最優先する |
+| 任意A（外部Analyzer） | REAがすでに得意なJavaScript/Electron静的Graph、.NET成果物、記録済み実行観測 | 独立したTool／Providerとして既存Evidence Adapterから読取専用取込。既存`CandidateSet`・`ReviewPacket`で採用可否を判断し、TEI正本への直結を避ける |
+| 任意B（例外・専門調査） | ソースがなく、代替手段も乏しいネイティブバイナリや難読化成果物、特殊ファームウェア | 外部専門解析に委譲し、契約が明示した限界つきEvidenceのみ受領。TEI本体に逆アセンブラ、Decompiler、侵襲的Runtime Hookや専用実行Hostを搭載しない |
+
+**REAから残すエッセンス**：①問いを狭めた解析（選択Function／Data／Relation occurrence）、②観測・推論・Owner意味受理の分離、③Source Byte／位置／取得版・Tool／Operator版・Attempt・Unknown／Partial／Coverageの保持、④並行・逆向き関係と同名別Identityの保持、⑤局所的なRead-only Candidate→Review→採用判断→実Builder／実Provider／独立Consumerの段階、⑥分析結果が不完全な場合の明示的停止。これらはREA専用の新Coreを増やさず、既存Source Index、Evidence／受理票、標準Graph・型付きPort、三要素モデル、独立Expectedへ共通原則として渡す。
+
+**直近の実装判断**：REAの新バージョン対応、未使用解析形式のSchema追加、ネイティブProvider整備を、通常CLI実PG Function Read（#2586）とWindows Studio Stage1→Stage2（#2831）のP0に割り込ませない。すでに動く6.7／6.8取込と一Relation質問の回帰は小さく維持し、**新しい開発コストをかけるかは実案件の問い・代替不能な証拠・維持費・TEI標準モデルへの有効な還元があるかで都度判断**する。基準未達なら保留し、削除・非互換変更もしない。
+
+**最小ベンチマーク（提案）**：一つの既存業務Functionを対象に、ソース／SQL／画面／資料のうち実在する二種類の出典からData・処理・外部依存の候補を生成し、①同名別Identityと方向、②欠けたSource・部分取得、③設計と実動作の差、④Owner受理前後の資格、⑤生成Goと通常CLI実Readの結果を、既存Expectedで検査する。外部REAを使わず成立した場合はそのまま成功と数え、REA利用を必須の合格条件にしない。逆にソースがなくREAしか関係を観測できない案件が現れた場合だけ、既存Adapterの候補として比較する。
+
+外部逆解析REAと、業務意味としての`Resource–Event–Agent`（経済REA）は引き続き別概念であり、後者のモデル化・組織／責任・状態遷移の受入を外部解析Toolの選定に従属させない。

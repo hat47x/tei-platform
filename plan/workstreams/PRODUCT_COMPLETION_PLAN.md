@@ -929,6 +929,10 @@ A〜Dは新たな検査Engineの階層ではなく、既存Parser・Validator・
 **停止線**：`Source Revision`・`Context epoch`・`Identity/Slot`・`Quantity/Time/CRS`・`Required Scope`・`current Grant`のうち当該操作に必要なものが未確認なら、read説明は可能でもEdit/Executeを許可しない。実行証拠はWorld/Model/Artifact revision、実選択Provider/Generator、実消費byte、独立Expected、Owner受理を分離し、既存[#2514](https://github.com/hat47x/tei-platform/issues/2514)/[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#1119](https://github.com/hat47x/tei-platform/issues/1119)のGateに載せる。新たな公開DSL・Core TypeKind・固定15表現Enumは異種Consumerの反例を得てからADRで判断する。
 
 
+### REAを外部診断器として扱い、設計復元をTEIの主線に据える（2026-11-17、方式案）
+
+[REA一Function縦断設計§35](../design/REA_ONE_FUNCTION_EVIDENCE_TO_DESIGN_VERTICAL_SLICE_2026-11.md)に基づき、外部Reverse Engineer Anythingを製品の実行基盤・必須解析入口とはしない。主な移行対象はソース・SQL/DB Schema・業務モデル・画面／帳票・設定・API・実入出力であり、これらを既存Reader／Source Index／三要素／Process／標準GraphへEvidence付きで投影して、Owner Review→生成Go／実Provider→独立Consumerの順に検証する。REAのNode/RelationやPartial/Unknown、元byte・版・出典の保持方法は共通規律として採用する一方、Ghidra/Hopper/IDA等の深いバイナリ解析は、ソースがなく代替できない証拠が必要な例外に限る。既存REAの互換回帰を維持し、解析器の機能数拡大をP0とはしない。通常CLI実PG Function ReadとStudio Stage1→Stage2 Windowsは最優先のままとする。
+
 ### REAの一Relation質問と現在Sourceへの対応を分けて検証する（2026-11-17）
 
 [REA一Function縦断設計§34](../design/REA_ONE_FUNCTION_EVIDENCE_TO_DESIGN_VERTICAL_SLICE_2026-11.md)をD0の再検収条件へ反映する。#5180はmain統合済みだが当時の専用`relation-review`は整形差分で止まっており、機能配置とGoテスト完了は別に記録する。固定HEADの局所CIで整形・正負試験を確認し、同じProducer Edge IDが別Attempt／別Source Digestで再出現してもEvidence ID／候補集合Fingerprint／Source Revisionを分けるRQ-09を加える。続くR1-Aは既存Source Indexによる独立Byte/Range確認、Owner指定の正式Data/Function候補、入力・出力・Effectの実観測を別票で扱う。main #5212のSource位置表示、#5179の状態付きData/Rule、#5156のField投影、#5190のCRUD矛盾拒否を再利用し、見かけのGraph関係やNodeラベルを実Function Readや業務REA Eventに変換しない。通常CLI実PG ReadとStudio Stage1→Stage2のP0は不変。
