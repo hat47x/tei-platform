@@ -115,10 +115,10 @@ flowchart LR
 
 | 順序 | 既存の担当・試験 | 最小成果と停止条件 |
 | --- | --- | --- |
-| **1：read-only基線** | #1124 / #1031 / #1126、SDM-01・03・06・08 | Source版付きでデータモデルと三要素参照を表示し、同名異ID・Function未観測・原文Instanceの未型付けを壊さない |
-| **2：型付き例の照合** | #1131 / #2497、SDM-02・12 | GraphとPresenceの例で、表／図の間の意味保存・表示損失を説明できる |
+| **1：read-only基線** | #1124 / #1031 / #1126、SDM-01・SDM-03・SDM-06・SDM-08 | Source版付きでデータモデルと三要素参照を表示し、同名異ID・Function未観測・原文Instanceの未型付けを壊さない |
+| **2：型付き例の照合** | #1131 / #2497、SDM-02・SDM-12 | GraphとPresenceの例で、表／図の間の意味保存・表示損失を説明できる |
 | **3：独立判定** | #1180 / #2514、既存Scenario/Expected | 正例・一因子負例を実装とは独立に用意し、Source版・対象集合・観測範囲に合う場合だけ結果を認定する |
-| **4：Sourceへの変更** | #1124 / #3788、SDM-04・05・11 | 一意な編集対象と現在のRevisionが確定する場合のみPreview → Save → Re-read → Re-project。曖昧・古い版は拒否 |
-| **5：実利用の別検収** | #2586 / #2831 / #4583、SDM-09・10 | 通常製品CLIの実ProviderとStage1→Stage2の実Windows Consumerは別P0。図面の成功を実DB更新・セルフビルド成功にしない |
+| **4：Sourceへの変更** | #1124 / #3788、SDM-04・SDM-05・SDM-11 | 一意な編集対象と現在のRevisionが確定する場合のみPreview → Save → Re-read → Re-project。曖昧・古い版は拒否 |
+| **5：実利用の別検収** | #2586 / #2831 / #4583、SDM-09・SDM-10 | 通常製品CLIの実ProviderとStage1→Stage2の実Windows Consumerは別P0。図面の成功を実DB更新・セルフビルド成功にしない |
 
 **この文書による実施結果**：上記は設計と照合用の具体例である。SDMケース実行、原典GUIとの画面比較、XeadDriver/正式Provider/DB実験、Stage2実Windows起動、CI、Owner意味受理は行っていない。既存のP0へ新しいHard Gateを追加せず、作業は各IssueのOwnerの範囲で進める。
