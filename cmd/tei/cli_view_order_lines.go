@@ -18,6 +18,7 @@ import (
 	"tei/internal/driver/validationread"
 	"tei/internal/environment"
 	"tei/internal/ir"
+	"tei/internal/realization"
 	"tei/internal/semantic/validationeval"
 )
 
@@ -57,6 +58,34 @@ func destinationDecision(d validationeval.Decision) (answer, reason string) {
 	return string(d.Result), ""
 }
 
+// runtimeHeaderSourceFromBinding maps the explicit Query input to its declared
+// semantic source attribute. The first runtime view accepts one positive
+// integer input; widening the value types must follow the Query signature.
+func runtimeHeaderSourceFromBinding(
+	bindings []realization.HeaderDetailContractQueryInputBinding,
+	inputs map[string]string,
+) (queryresult.MappedResult, error) {
+	if len(bindings) != 1 || bindings[0].Input == "" || bindings[0].SourceAttribute == "" {
+		return queryresult.MappedResult{}, fmt.Errorf("runtime view requires one explicit header input binding")
+	}
+	name := string(bindings[0].Input)
+	raw, exists := inputs[name]
+	if len(inputs) != 1 || !exists || raw == "" {
+		return queryresult.MappedResult{}, fmt.Errorf("runtime view requires exactly one -input %s=<integer>", name)
+	}
+	value, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || value <= 0 {
+		return queryresult.MappedResult{}, fmt.Errorf("runtime view input %s must be a positive 64-bit integer", name)
+	}
+	// The Resolver validates the declared source attribute against the
+	// Relation's source Data and the Query's typed input. Neither the CLI
+	// input name nor a physical column is a semantic identity.
+	return queryresult.MappedResult{
+		Columns: []queryresult.Column{{Raw: name, Attribute: bindings[0].SourceAttribute}},
+		Rows:    [][]any{{value}},
+	}, nil
+}
+
 // readDestinationOrderLines is deliberately limited to NOW.md's first
 // destination. It reuses the actual Workspace's Pattern, Environment,
 // Contract Query, selected executor and Application rules. It does not
@@ -69,26 +98,14 @@ func readDestinationOrderLines(
 	if appID != "order_entry" || patternID != "order_entry.order_lines" || envID != "development" {
 		return destinationRead{}, fmt.Errorf("runtime view currently supports only order_entry.order_lines in development")
 	}
-	if len(inputs) != 1 {
-		return destinationRead{}, fmt.Errorf("runtime view requires exactly one -input order_id=<integer>")
-	}
-	rawID, ok := inputs["order_id"]
-	if !ok {
-		return destinationRead{}, fmt.Errorf("runtime view requires -input order_id=<integer>")
-	}
-	orderID, err := strconv.ParseInt(rawID, 10, 64)
-	if err != nil || orderID <= 0 {
-		return destinationRead{}, fmt.Errorf("order_id must be a positive 64-bit integer")
-	}
-
 	resolver := driver.NewResolver(world)
 	prepared, err := resolver.ResolveHeaderDetailContractQuery(appID, patternID)
 	if err != nil {
 		return destinationRead{}, err
 	}
-	if len(prepared.Binding.Inputs) != 1 ||
-		prepared.Binding.Inputs[0].SourceAttribute != "sales.order.order_id" {
-		return destinationRead{}, fmt.Errorf("order header input is not explicitly bound to sales.order.order_id")
+	source, err := runtimeHeaderSourceFromBinding(prepared.Binding.Inputs, inputs)
+	if err != nil {
+		return destinationRead{}, err
 	}
 
 	var selected *environment.Environment
@@ -155,10 +172,6 @@ func readDestinationOrderLines(
 			Instance:    binding.Instance,
 			Capability:  binding.Executor,
 		}] = executor
-	}
-	source := queryresult.MappedResult{
-		Columns: []queryresult.Column{{Raw: "order_id", Attribute: "sales.order.order_id"}},
-		Rows:    [][]any{{orderID}},
 	}
 	execution, err := resolver.ExecuteHeaderDetailContractQueryInEnvironment(
 		ctx, envID, appID, patternID, source, 0, registry,
