@@ -13,11 +13,11 @@ func TestDestinationOrderLinesHTMLPreservesObservedStatesAndDecisions(t *testing
 		Application: "order_entry", Pattern: "order_entry.order_lines", Environment: "development", Coverage: "partial",
 		Rows: []destinationRow{
 			{OrderLineID: "2", Fields: map[string]destinationField{
-				"sales.order_line.quantity": {State: "present", Value: "<script>alert(1)</script>"},
+				"sales.order_line.quantity":   {State: "present", Value: "<script>alert(1)</script>"},
 				"sales.order_line.unit_price": {State: "null"},
 			}},
 			{OrderLineID: "3", Fields: map[string]destinationField{
-				"sales.order_line.quantity": {State: "present", Value: "12.300"},
+				"sales.order_line.quantity":   {State: "present", Value: "12.300"},
 				"sales.order_line.unit_price": {State: "not-fetched"},
 			}},
 		},
@@ -25,7 +25,7 @@ func TestDestinationOrderLinesHTMLPreservesObservedStatesAndDecisions(t *testing
 			"2": {"sales.order_line.quantity_positive": "not-satisfied"},
 			"3": {"sales.order_line.quantity_positive": "satisfied"},
 		},
-		PerOrder: map[string]string{"sales.order.lines.line_number_unique": "undecided"},
+		PerOrder:          map[string]string{"sales.order.lines.line_number_unique": "undecided"},
 		PerOrderUndecided: map[string]string{"sales.order.lines.line_number_unique": "full relation not observed"},
 	}
 	page, err := renderDestinationOrderLinesHTML(result)
@@ -93,7 +93,7 @@ func TestDestinationRuntimeHTMLRequiresExplicitDatabaseConnection(t *testing.T) 
 		t.Fatalf("exit=%d err=%v output=%s", exit, err, out.String())
 	}
 	var report struct {
-		OK bool `json:"ok"`
+		OK    bool `json:"ok"`
 		Error struct {
 			Code string `json:"code"`
 		} `json:"error"`
