@@ -167,7 +167,6 @@ func studioServicesFromOptions(file *ast.File) (registered, unreviewed, optionSe
 	return
 }
 
-
 // reviewOptionalInspectionServiceList recognizes exactly the two changes to
 // the Services variable in main: the original StudioBridge and one opt-in
 // read-only HTTP route. Unknown registrations must not pass the inventory by
