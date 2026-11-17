@@ -396,12 +396,21 @@ FROM changed ORDER BY line_number, order_line_id`
 		filter     string
 		wantIDs    []string
 		wantAnswer string
+		// Covers only describes the author's claim, not observed completeness.
+		covers bool
 	}{
 		{
 			name:       "a filter hides the second duplicate",
 			filter:     " AND order_line_id <> 3",
 			wantIDs:    []string{"1", "2"},
 			wantAnswer: "undecided",
+		},
+		{
+			name:       "a false covers declaration must not prove uniqueness",
+			filter:     " AND order_line_id <> 3",
+			wantIDs:    []string{"1", "2"},
+			wantAnswer: "undecided",
+			covers:     true,
 		},
 		{
 			name:       "a filter keeps a witnessed duplicate",
@@ -431,6 +440,23 @@ FROM changed ORDER BY line_number, order_line_id`
 			limited := strings.Replace(string(source), predicate, predicate+tc.filter, 1)
 			if err := os.WriteFile(sourcePath, []byte(limited), 0o644); err != nil {
 				t.Fatal(err)
+			}
+			if tc.covers {
+				// A plausible declaration cannot turn a filtered SQL result into
+				// independent evidence that the complete Relation was observed.
+				bindingPath := filepath.Join(root, "applications", "order-entry", "realizations", "header-detail", "order-lines.tei")
+				binding, err := os.ReadFile(bindingPath)
+				if err != nil {
+					t.Fatal(err)
+				}
+				const anchor = "    input sales.order.order_id to order_id\n"
+				if strings.Count(string(binding), anchor) != 1 || strings.Contains(string(binding), "covers ") {
+					t.Fatalf("unexpected reference binding: %s", binding)
+				}
+				declared := strings.Replace(string(binding), anchor, anchor+"    covers sales.order.lines\n", 1)
+				if err := os.WriteFile(bindingPath, []byte(declared), 0o644); err != nil {
+					t.Fatal(err)
+				}
 			}
 			got := runCLIProcessWithStreams(t, binary,
 				"view", "-workspace", root, "-application", "order_entry",
