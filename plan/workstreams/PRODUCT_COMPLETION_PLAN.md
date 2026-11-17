@@ -1729,3 +1729,11 @@ mainのRule生成Go CLIビルド回帰は、選択Markdown原文のコピーをG
 現行validationread.FromHeaderDetailはCallerからのCoverage申告を利用するReaderであり、それ自体で取得完全性を証明しない。既存Coverageの二値は維持し、未立証は検収票でunknown、Rule入力では保守的にpartialとする。単にLIMITがない、結果が0件、ページ終端らしく見えることをcompleteの根拠にしない。新しい汎用Query Resolver、独立Coverage Engine、第二Expected正本やPlugin ABIを先行追加しない。
 
 **今回の追補はdocs-only**。DPC-16a〜dのGo／DB／CLI実行、#2586の実PostgreSQLと独立Consumer、R2-P実Builder、Studio Stage2、Owner意味受理は未実施の独立合格条件とする。
+
+### Rule正規形と標準表現型を、取得の根拠を失わず接続する（2026年11月17日）
+
+[標準Flow§12.15](../design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)を、[Rule正規形の決定](../design/RULE_NORMAL_FORM_AND_OPERATOR_SIGNATURE_DECISION_2026-11.md)と[三要素モデルの図面契約](../design/THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)に接続する。Operator署名が要求するRelation／入力範囲、Contract Query束縛の供給宣言、実Providerの取得、Rule判断、表・Graph等へのProjection、Consumerの受領は、**同じ意味IDに基づくが互いに独立して検収する**。全件宣言をQueryのSQL実行の正しさと混同しない。
+
+既存DF-P4の作業順を維持し、(1) DPC-16aの虚偽completeを製品Callerで拒否する一因子Go回帰、(2) Operatorの署名・選択Query束縛から必要Relation／Scopeを確認（新しいRule正規形の実装待ちの場合は既存Rule IDで同等条件を固定）、(3) NULL／未取得、部分観測の陽性違反／成立保留を実Readから検証、(4) 表・Graphのread-only投影でIdentity／Relation・状態・Source版を損なわないことを確認、(5) 実PostgreSQL→通常CLI→独立Consumerを同一Attemptで受領、の順に検収する。
+
+自己記述のSDM-01〜12、Graphの同名異ID・並列辺、組織C1の同一MembershipからPerson数を一意に決められない反例は、新しいFixture Storeを作らず既存#1124/#1131/#2497/#2514に引き渡す。Source編集往復とStudio Stage1→Stage2は別P0として継続し、Data／Ruleの一局所試験を全Modeler・製品セルフビルドの完成とは呼ばない。**ここで追加したのは設計と受入順であり、Operator正規形移行・DPC-16 Caller実装・実GUI・実Consumerの新規PASSではない。**
