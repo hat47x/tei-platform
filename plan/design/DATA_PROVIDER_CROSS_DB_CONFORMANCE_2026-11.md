@@ -75,3 +75,59 @@ Consumerに渡す受理票では、`requested`（要求範囲）、`observed`（
 最初の負例は、既存`members_first_page`（4行中2行）と`seatUnique`を使用し、`partial`なら判定保留、Callerが`complete`を偽装した場合は**Caller側の検証で資格なし**とする。次に同じSQL実行の狭い列選択で`not-fetched`、SQL`NULL`で`null`、REAL→Decimalで精度不適合を照合する。Ruleに与える入力と、Ruleによる判断の正しさを混同しない。
 
 実行順は、①既存SQLite一因子負例の独立Expected整理、②製品CallerのQuery／Contextから完全性の根拠を検査、③PostgreSQLの同一Functionと通常CLI Consumer受領、④必要に応じたDocument／Key／Graph Providerへ拡張、とする。新しいDB型や全Queryの静的完全性解析をD0の先行要件にしない。対応できないQueryは、完了と見なす代わりに**証拠不足を明示**する。
+
+## 8. 他チャット統合：Node・REA・Batch・PluginをDB実行へ接続する（2026-11-17）
+
+本節は既存のD0〜D5を置き換えない。Node Flow、REA、Batch、BRMS、Wails Showcase、Source/Evidenceの議論で得た共通条件を、**一つの業務Operationがどのデータを読み、何を変更し、どの結果を返したか**という検証単位へ整理する。いずれも新しいDB Coreや第二の実行正本を追加する提案ではない。
+
+### 8.1 Nodeの接続とData Operationを混同しない
+
+Node occurrence／Port／Edgeは設計・実行の構成要素を表す。Portを型付きDataで接続できることと、実際のDB読取り・書込みが許可されることは別。接続時に確認するのは型・粒度・欠損・時点・取得範囲・順序・Identityであり、Effectは既存Operation Intentと現在Grant／Receiptで別に検証する。
+
+- 個別フィールド接続、複合型の一括接続、明示Adapterを許容する。ただし暗黙の縮約・欠損補完・全件取得・型精度の低下は意味同値とみなさない。
+- Nodeの表示ID／Edge occurrenceと、業務Relation／Graph Edge ID／DB物理Keyを区別する。型の一致だけで対象の同一性や更新資格を決めない。
+- 同じPort型でも、read-only結果・部分ページ・集計行・更新可能Entityを区別する。Adapterは必要な条件と失われる情報を説明する。
+
+### 8.2 REA・組織・時間をDB上の保存形式から切り離す
+
+REAのResource／Event／Agent、組織上のRole、Business Relation、時間的有効性は業務意味側の構造であり、特定のRDB表やDocumentに固定しない。物理FK、Document Reference、Graph EdgeからREAの参加・交換・所有を自動受理しない。
+
+同じ業務Eventが複数の時点・組織・役割で参照される場合、業務Key、参照時点、Relation occurrence、権限主体を区別する。最新行への自動読み替え、現在組織への無断再束縛、異なる時点のSnapshot混合を避ける。
+
+最初の適合例は「受注Event→Agent（担当者）→Resource（対象商品）」のread-only参照に限定し、RDBのJOINとDocumentの参照展開で、**同一ID／同一時点／同一取得範囲**が保たれるかを比較する。REAの完全な業務モデルや更新規則はこのDB計画で新設しない。
+
+### 8.3 Batch／ETLはQueryの巨大化で実現しない
+
+大規模Batch・データマート・集計は、入力Data、変換Operation、出力Data、Process／Jobの構成として扱う。Queryはその一部を実現する手段であり、SQL、Document Pipeline、ファイル変換、API取得のどれにも適用する。
+
+- 入力粒度、計算粒度、出力粒度、集計粒度を分ける。複数出力を共有する中間結果は、値・取得範囲・時点・Lineageを保持して再利用する。
+- Pushdownできない場合のLocal処理は、全件取得・メモリ・通信量・課金・Grantの上限を満たす場合のみ。部分入力で集計結果を完全と申告しない。
+- Jobの再実行、Checkpoint、部分成功、取消、通知、回復は既存Process／Effect／Receiptへ接続する。単一DBトランザクションで全体が原子的になると偽装しない。
+
+### 8.4 SQL ReaderのCoverageは他Providerにも適用する
+
+§7の`requested / observed / claimed / qualified`はSQL専用の新型ではなく、既存Source/Evidenceで照合する観点である。MongoDBの部分サンプル、DynamoDBのページ、Graphの探索深さ、CSVの一部行、APIのカーソルでも、**取得できた範囲と全対象の閉包を区別**する。
+
+負例の共通形は、部分取得を完全と偽装して一意性・件数・集計・ルール判定が誤って成立すること。D0ではSQLiteの`members_first_page`／`seatUnique`を再利用し、NoSQLごとに別の意味正本や検証エンジンを作らない。
+
+### 8.5 StudioのRendererは業務操作のAuthorityを持たない
+
+XenSQL型のRDB Inspector、Redis Viewer型のKey/Value・JSON Tree、Graph/Node View、Console、Terminalは、同じData Contextと許可されたAction Offerを表示するRendererとして扱う。Rendererが内部状態から独自に更新対象・Grant・実Providerを確定しない。
+
+一覧・Tree・Graphは全件をフロントへ渡さず、ページ・範囲・Snapshotを明示して必要部分を取得する。画面上のSelectionと、更新対象として固定したKey/Version/Sourceを分離する。Schema変更、データ更新、Command Consoleからの副作用は既存Effect Fenceへ接続する。既存OSSのUI構成は参考にできるが、コード・ライセンスの採用判断は別途行う。
+
+### 8.6 独立Expectedへ引き渡す最小ケース
+
+| ID | 正例・負例 | Owner | 検証上限 |
+| --- | --- | --- | --- |
+| DPC-N01 | 同型Portでも部分Rowset→完全性を要するRuleへは資格なし | #2622/#1180/#2514 | 合成→実Caller別 |
+| DPC-N02 | 複合型AdapterでIdentity／grain／missingを保持し、欠落時は拒否 | #4350/#2497 | 型付きMappingのみ |
+| DPC-R01 | REA Event/Agent/Resourceの同一ID・二時点参照、異時点混合を拒否 | #1126/#1127/#2514 | read-only |
+| DPC-B01 | 二入力・二出力Batchで共有中間値と出力別Lineageを保持 | #2622/#1130/#2514 | 合成、実Job別 |
+| DPC-B02 | 部分ページのCOUNT/Uniqueを完全と誤認しない | #2387/#2586/#2514 | SQLite実Reader基線 |
+| DPC-W01 | Table/Tree/Graphの表示切替後も固定SelectionとCurrent Grantを再確認 | #3270/#4496/#1174 | Studio実機別 |
+| DPC-E01 | Native Query変更A→B→A、Provider版変更、Cursor不明で旧Evidenceを再利用しない | #951/#1180/#2514 | Evidence失効 |
+
+**実装順**：①§7の既存SQLite負例と製品CallerのCoverage照合、②通常CLIの実PostgreSQL同一Function、③read-only Node/REA/Batchの型付き投影、④MongoDB等のProvider別適合、⑤Studio固定Selectionから実更新・独立Read。Node／REA／Batchの追加検証をStudio Stage1→Stage2セルフビルドのHard Gateにしない。
+
+**未実施**：上記DPC-N/R/B/W/Eは引渡し用の独立Expected候補であり、実DB、実Job、実Windows、業務Owner受理を実証したものではない。
