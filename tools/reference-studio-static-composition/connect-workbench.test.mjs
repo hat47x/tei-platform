@@ -12,7 +12,7 @@ import {
   WORKBENCH_PR1_HEAD, WORKBENCH_PR1_BLOB,
   WORKBENCH_NATIVE_HEAD, WORKBENCH_NATIVE_MAIN_BLOB,
   WORKBENCH_GENERATED_READER_HEAD, WORKBENCH_GENERATED_READER_MAIN_BLOB,
-  WORKBENCH_REQUIRED_FIELDS_READER_HEAD,
+  WORKBENCH_REQUIRED_FIELDS_READER_HEAD, WORKBENCH_PIN_INSPECTION_TESTS_HEAD,
 } from './connect-workbench.mjs';
 
 const graph = 'import { mountReadonlyGraph } from "../tei-studio-graph/graph.ts";\n';
@@ -34,6 +34,7 @@ test('historical Workbench pins and exact PR1 candidate reject unknown revisions
     WORKBENCH_NATIVE_HEAD,
     WORKBENCH_GENERATED_READER_HEAD,
     WORKBENCH_REQUIRED_FIELDS_READER_HEAD,
+    WORKBENCH_PIN_INSPECTION_TESTS_HEAD,
   ]);
   assert.deepEqual(WORKBENCH_PINS.map(pin => pin.mainBlob), [
     '2a65a9f70245068bf2455248d98d280b382b01e4',
@@ -41,6 +42,7 @@ test('historical Workbench pins and exact PR1 candidate reject unknown revisions
     WORKBENCH_MAIN_CONSUMER_BLOB,
     WORKBENCH_PR1_BLOB,
     WORKBENCH_NATIVE_MAIN_BLOB,
+    WORKBENCH_GENERATED_READER_MAIN_BLOB,
     WORKBENCH_GENERATED_READER_MAIN_BLOB,
     WORKBENCH_GENERATED_READER_MAIN_BLOB,
   ]);
@@ -52,10 +54,12 @@ test('historical Workbench pins and exact PR1 candidate reject unknown revisions
     WORKBENCH_MAIN_CONSUMER_HEAD,
     WORKBENCH_MAIN_CONSUMER_HEAD,
     WORKBENCH_MAIN_CONSUMER_HEAD,
+    WORKBENCH_MAIN_CONSUMER_HEAD,
   ]);
   assert.deepEqual(WORKBENCH_PINS.map(pin => pin.commandBlob), [
     '4e0d5484f82944d5b7d3b0b8431f3a9a1eaa7081',
     '6c6ee81288c9857ca2f1c282639ba49f059f5535',
+    'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
     'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
     'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
     'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
@@ -87,7 +91,7 @@ test('historical Workbench pins and exact PR1 candidate reject unknown revisions
 test('new generated Inspector closure is qualified separately from historical native closure', async () => {
   const historical = WORKBENCH_PINS.find(value => value.head === WORKBENCH_NATIVE_HEAD);
   // The current source closure is qualified by the newest pin for this main.ts.
-  const pin = WORKBENCH_PINS.find(value => value.head === WORKBENCH_REQUIRED_FIELDS_READER_HEAD);
+  const pin = WORKBENCH_PINS.find(value => value.head === WORKBENCH_PIN_INSPECTION_TESTS_HEAD);
   assert.ok(historical);
   assert.ok(pin);
   assert.equal(historical.mainBlob, WORKBENCH_NATIVE_MAIN_BLOB);
@@ -106,8 +110,21 @@ test('new generated Inspector closure is qualified separately from historical na
     /workbench_revision_mismatch/);
   // The old native pin must still reject the newly modified presentation.
   const oldClosure = Object.fromEntries(Object.keys(historical.closureBlobs).map(path => [path, closureSources[path]]));
+  // Isolate the changed presentation source: the earlier test command is
+  // restored in this local fixture only, never by rewriting a historical pin.
+  const packagePath = 'reference/tei-studio-workbench/package.json';
+  oldClosure[packagePath] = oldClosure[packagePath].replace(
+    ' inspector-selection.test.mjs pin-inspection.test.mjs"',
+    ' inspector-selection.test.mjs"');
+  assert.equal(gitBlobSHA(oldClosure[packagePath]), historical.closureBlobs[packagePath]);
   assert.throws(() => inspectPinnedDependencies(historical, commandSource, responsesSource, graphSource, oldClosure),
     /workbench_closure_revision_mismatch:reference\/tei-studio-workbench\/presentation.ts/);
+  // The required-fields pin must reject the new test script source revision.
+  const requiredFieldsPin = WORKBENCH_PINS.find(value =>
+    value.head === WORKBENCH_REQUIRED_FIELDS_READER_HEAD);
+  assert.throws(() => inspectPinnedDependencies(
+    requiredFieldsPin, commandSource, responsesSource, graphSource, closureSources),
+    /workbench_closure_revision_mismatch:reference\/tei-studio-workbench\/package.json/);
   assert.equal(inspectPinnedDependencies(pin, commandSource, responsesSource, graphSource, closureSources), true);
   // The earlier generated-Reader pin keeps its exact closure: the part
   // regenerated from the changed contract is not qualified by it.

@@ -55,6 +55,15 @@ const WORKBENCH_REQUIRED_FIELDS_READER_CLOSURE = Object.freeze({
   ...WORKBENCH_GENERATED_READER_CLOSURE,
   'reference/tei-studio-workbench/inspection-reader.generated.ts': '2ea1ab908931101db1c439302235d57a9f18654e',
 });
+// Enabling Pin Inspector regression tests changes package.json (the test
+// command), which is part of the pinned build/source closure. Preserve every
+// historical pin and qualify this new source revision explicitly. The head
+// identifies the exact pre-requalification commit whose bytes are pinned.
+export const WORKBENCH_PIN_INSPECTION_TESTS_HEAD = '093342e158795514c52e293cfc9abaef99108206';
+const WORKBENCH_PIN_INSPECTION_TESTS_CLOSURE = Object.freeze({
+  ...WORKBENCH_REQUIRED_FIELDS_READER_CLOSURE,
+  'reference/tei-studio-workbench/package.json': 'd48621814bdc690e6da2cfb8a6a26a68dc90653a',
+});
 export const WORKBENCH_PINS = Object.freeze([
   Object.freeze({head: WORKBENCH_HEAD, mainBlob: WORKBENCH_MAIN_BLOB,
     commandHead: '26f47772ed49f5c4a9e1c50026c335783bc5e153',
@@ -93,6 +102,13 @@ export const WORKBENCH_PINS = Object.freeze([
     responsesBlob: 'e1fa0d6b8e07af1158416d6c6d2469a408f64495',
     graphBlob: '436c7d07c56802dbbc6d1dfeb1251470fca75cf6',
     closureBlobs: WORKBENCH_REQUIRED_FIELDS_READER_CLOSURE}),
+  Object.freeze({head: WORKBENCH_PIN_INSPECTION_TESTS_HEAD,
+    mainBlob: WORKBENCH_GENERATED_READER_MAIN_BLOB,
+    commandHead: WORKBENCH_MAIN_CONSUMER_HEAD,
+    commandBlob: 'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
+    responsesBlob: 'e1fa0d6b8e07af1158416d6c6d2469a408f64495',
+    graphBlob: '436c7d07c56802dbbc6d1dfeb1251470fca75cf6',
+    closureBlobs: WORKBENCH_PIN_INSPECTION_TESTS_CLOSURE}),
 ]);
 const graphImport = 'import { mountReadonlyGraph } from "../tei-studio-graph/graph.ts";\n';
 const commandImport = 'import { mountCommandPanel } from "../tei-studio-command/command.ts";\n';
