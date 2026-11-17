@@ -1,0 +1,7 @@
+Mistake 1: I counted `warnings`/`errors` in `validate -json` and saw 0.
+           The real shape is diagnostics[].diagnostic.{code,severity,message}.
+Mistake 2: I then suspected text and json disagreed. Read correctly they agree
+           (4 severity lines text / 4 diagnostic objects json).
+
+The nested shape is pinned by TestValidateJSONDiagnosticsKeepNestedDiagnostic
+(#3347) exactly so a flat-assuming reader is caught. I was that reader.

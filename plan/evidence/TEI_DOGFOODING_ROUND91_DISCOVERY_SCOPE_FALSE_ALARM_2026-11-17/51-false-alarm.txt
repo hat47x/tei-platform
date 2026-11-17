@@ -1,0 +1,19 @@
+I diffed the canonical command list against `tei commands`:
+
+  canonical: 56   discovered: 25   missing: 38
+
+and every one of the 38 is accepted by the binary:
+
+  $ tei scenario  -> scenario requires verify, generate, translate, run, or check
+  $ tei artifacts -> exactly one of -workspace or -world is required
+
+I was about to file this as a discoverability defect. It is not:
+
+  Scope: "selected-read-only-commands"
+
+and CLAUDE-facing design text says explicitly: "the list is NOT a complete
+registry of all commands or plugin implementations", and a prior design note
+already covers this exact case ("do not promote absence from the list into
+'not implemented'").
+
+The gap is declared, not accidental. No issue filed.

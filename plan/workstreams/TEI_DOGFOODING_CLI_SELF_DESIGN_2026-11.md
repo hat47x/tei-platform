@@ -3201,3 +3201,133 @@ main は回帰テストに**専用の捕捉**（`cmd/tei/testdata/rea-6.8.0/`、
 ### 位置付け
 
 **「同じ問題を main が別解で先に解いていた」回**である。私は重複する仕組みを作りかけたが、**main の設計の方が良い**（テストが自分の入力を同梱し README で説明する）と判断して取り下げた。**残ったのは manifest の訂正**で、これは main の変更でも直っていなかった自己矛盾である。
+
+## 91. 第90ラウンド（2026-11-17）: legacy `.tei` は no-overlap を要求するのに、書く手段が無かった
+
+目的文の「再びドッグフーディングに戻る」を実行し、**装備貸出（期間が重ならないこと）**を CLI のフィードバックだけで設計した。生出力は[第90ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND90_LEGACY_SURFACE_DEAD_END_2026-11-17/README.md)にある。
+
+### 設計の経過（CLI のみ）
+
+| Attempt | 応答 | 学んだこと |
+| --- | --- | --- |
+| 1 | `ok` | `std.date` はそのまま使える |
+| 2 | `expected data, business-date, calendar, states, ...` | `period` は**期間ではなく状態・締め** |
+| 3 | `expected attribute or relation` | validation の本体は2語だけ |
+| 4 | `predicate "not overlapping" requires "per <relation>"` | 行の出所は推論されない |
+| 5 | `expected "to"` → `invalid canonical id "Loan"` → `unexpected token "}"` | `relation <name> to <target> <cardinality>` |
+| 6 | `UNKNOWN_SEMANTIC_VALIDATION_RELATION equip.loans` | relation の id は `equip.loan.loans` |
+| 7 | **`ok`** ＋ 読み返しで `kind=no-overlap / compared / groupBy / relation` | 完成 |
+
+**診断は毎回正確だった。** 私の前提（`period` が期間、`starts`/`ends` がある）が間違っていた。
+
+### 見つけた穴: 表現できない kind を、できないと言わない
+
+`.tei` の validation 本体は **`attribute` と `relation` の2語しか受け付けない**のに、`no-overlap`・`not-after` は `Compared` を、`operator` は `Operator` を**必須**とする。しかも legacy パーサはそれらを一度も設定しない（実測: `grep 'v.Compared\|v.GroupBy'` が空）。
+
+```text
+error SEMANTIC_VALIDATION_COMPARED_ATTRIBUTE_REQUIRED
+  no-overlap semantic validation equip.no_ovl requires the attribute that ends the period
+```
+
+**「必要だ」と言うが、この面には書く手段が無い。** 5種を受け付けながら表現できるのは2種だけ、という**行き止まり**だった。
+
+### 修正
+
+パース時点で断り、**代わりにどこへ書けばよいかを言う**。語彙一覧（第83ラウンド）はそのまま残るので、**どの kind があるか**と**どれがこの面で書けるか**の両方が分かる。
+
+### 自分のテストが間違っていた
+
+第83ラウンドで私が書いた `TestKnownValidationKindIsAccepted` は「**5種すべてが `.tei` で解析できる**」と主張していた。**それが誤りだった。** 3種は元から表現不能で、パーサが受理して意味層が落としていた。テストを実態に合わせた。
+
+### 変異試験
+
+| # | 変えた箇所 | 結果 |
+| --- | --- | --- |
+| M1 | 拒否を削る | FAIL `kind "no-overlap" was accepted although this surface cannot express it` |
+| M2 | 拒否を過剰にする（`positive` も拒否） | FAIL `kind "positive" was refused although this surface can express it` |
+
+### 位置付け
+
+**「要求はするが、書く手段が無い」を見つけた回**である。診断は正しかったが、**その指示に従う方法がその面に存在しなかった**。私はまず自分のテストの誤りを認め、そのうえで**不可能を不可能と言う**ようにした。
+
+## 92. 第91ラウンド（2026-11-17）: 「38コマンドが発見面から欠落」は誤報だった
+
+前ラウンドで残した設計判断（`.tei` は `no-overlap` を表現できない）を踏まえ、**その回避経路が本当に成立しているか**を確かめた。生出力は[第91ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND91_DISCOVERY_SCOPE_FALSE_ALARM_2026-11-17/README.md)にある。
+
+### 確かめたこと（成立していた）
+
+| 段階 | 結果 |
+| --- | --- |
+| `.tei.md` で `compared`・`group by`・`or open` を宣言 | **`ok`** |
+| 読み返し | `kind=no-overlap / compared / groupBy / openEnded=true / relation` が**すべて入る** |
+| 評価器 | `validationeval` に **35 subtests PASS**（実 overlap、部分読み、open period、group 付き） |
+| 製品からの呼出し | `tools/reference-first-web-target`・`cmd/tei/scenario.go` ほか**実在** |
+
+**`no-overlap` は宣言も評価もできる。** 前ラウンドの「`.tei` では無理」は正しく、回避経路も機能している。
+
+### 誤報: 「38コマンドが発見面から欠落」
+
+`tei commands` と `cli_commands.go` の正準一覧を機械的に突き合わせると `canonical: 56 / discovered: 25 / missing: 38` になり、**38件すべてがバイナリに受理される**ことを確認した。**私はこれを「発見可能性の欠陥」として起票しようとした。**
+
+**しかし範囲は明示されていた。**
+
+```go
+Scope: "selected-read-only-commands",
+```
+
+設計文書も「**一覧が全コマンドやPlugin実装の完全な登録簿ではない**」と明記し、`TEI_MEANING_TO_CAPABILITY_SKILL_WITNESS_2026-11.md` は**まさにこの状況**を扱って「**不掲載を未実装に昇格させない**」と書いている。
+
+**「欠落」ではなく「宣言された範囲」。** 起票は誤報になるため、**しなかった。**
+
+### 発見面は既に守られていた
+
+`catalogue_accepts_test.go`（#3956 の再発防止）、`cli_discovery_process_test.go`（全コマンドの実プロセス起動）、`cli_discovery_write_flags_test.go`。**すべて PASS。**
+
+### 位置付け
+
+**「計測は正しかったが、解釈が間違っていた」回**である。56 と 25 という数字は事実だが、**その差は欠陥ではなく `Scope` が宣言した範囲**だった。**起票しなかったことが成果**であり、次に同じ数字を見た人が同じ誤りをしないよう記録する。
+
+## 93. 第92ラウンド（2026-11-17）: 「Function を書きたい」と思ったら、それは著面の語ではなかった
+
+目的文の「再びドッグフーディングに戻る」を実行し、**Function（データを読み、規則で判断し、コマンド能力を持つもの）**を CLI だけで設計した。生出力は[第92ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND92_FUNCTION_NOT_A_KEYWORD_2026-11-17/README.md)にある。
+
+### 最初の試行は失敗した
+
+```text
+$ tei validate   # function LoanDesk { data equip.loan }
+error PARSE_ERROR expected type, data, capability, validation, calendar,
+      period, effect-rule, or run-plan
+```
+
+**`function` は著面のキーワードではない。** 宣言表に 0 件、実例も 0 件。
+
+### Function の正体
+
+`internal/businessprocedure/model.go:63` より、**Function は「投影が指す既存の正体」の総称**であり、`capability`・`validation`・`application-pattern`・`data` のいずれかへ解決される。**著面の宣言種別ではない**ため、`function ... { }` と書く場所は存在しない。
+
+### 代わりに意図した合成を作った
+
+| 意図 | 実際の宣言 | 読み返し |
+| --- | --- | --- |
+| データ | `data equip.loan`（`.tei`） | `kind=Loan` |
+| 重ならない規則 | `rule ... is not overlapping`（`.tei.md`） | `kind=no-overlap / compared / groupBy / openEnded` |
+| 登録という業務行為 | `capability equip.loan_register`（`.tei`） | `inputs=[loan:equip.loan] / outcomes=[created, overlapping] / effect={create, equip.loan}` |
+
+`tei validate` → `ok`、**診断0件**（reference/workspace 由来の既存4警告のみ）。**3主体すべて `inspect` で読み返せた。**
+
+### 診断は綴り違いを区別しない — それは設計だった
+
+`function` と `datta`（`data` の綴り誤り）は同一メッセージになるが、`rule_authoring.go:100` が「**一覧外の語は診断であって近い語の同義語ではない**」と明記しており、**近い語を提案しないのは意図的な方針**である。起票しなかった。
+
+### 自分が2回、計器を間違えた
+
+| 誤り | 実際 |
+| --- | --- |
+| `-json` の `warnings`/`errors` を数えて「0件」と読んだ | 実体は **`diagnostics[].diagnostic.{code,severity,message}`** の入れ子 |
+| 入れ子を知らず「text と json が食い違う」と疑った | 正しく読むと **text 4行 / json 4件で一致** |
+
+入れ子は `TestValidateJSONDiagnosticsKeepNestedDiagnostic` が **v0 契約として固定**しており（#3347）、flat と仮定する読み手を検出するためのテストだった。**私がその仮定をした側だった。**
+
+### 位置付け
+
+**「自分の語彙が間違っていた」回**である。Function を「宣言できるもの」と前提したが、**それは投影が指す先の総称**だった。診断は正しく、私の前提が誤っていた。

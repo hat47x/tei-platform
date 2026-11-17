@@ -66,16 +66,29 @@ type DiagramContent struct {
 	CRUDs            []DiagramCRUD    `json:"cruds,omitempty"`
 	Diagnostics      []DiagramFinding `json:"diagnostics,omitempty"`
 	UnresolvedEdges  []string         `json:"unresolvedEdges,omitempty"`
-	AuthorityLimits  []string         `json:"authorityLimits,omitempty"`
+	// CRUDConflictStatus separates "this diagram was produced" from "the
+	// declared and derived CRUD agree". A reader of the diagram alone must not
+	// read a drawn cell as a settled operation set.
+	CRUDConflictStatus string `json:"crudConflictStatus"`
+	// OpposingCRUDPairs names the Function/Data pairs whose declared and
+	// derived operation sets contradict each other.
+	OpposingCRUDPairs []string `json:"opposingCrudPairs,omitempty"`
+	AuthorityLimits   []string `json:"authorityLimits,omitempty"`
 }
 
-// DiagramCRUD is one declared Function竊奪ata CRUD mapping.
+// DiagramCRUD is one declared Function→Data CRUD mapping. The declared
+// operations are the cell the reader sees; DerivedOperations keeps the
+// Function.Operations intent that the declaration overrode, and
+// ConflictingDeclarations marks a cell whose two qualifications disagree.
+// Neither field grants the operation.
 type DiagramCRUD struct {
-	ID         string `json:"id"`
-	FunctionID string `json:"functionId"`
-	DataID     string `json:"dataId"`
-	Operations string `json:"operations"`
-	Source     string `json:"source,omitempty"`
+	ID                      string `json:"id"`
+	FunctionID              string `json:"functionId"`
+	DataID                  string `json:"dataId"`
+	Operations              string `json:"operations"`
+	Source                  string `json:"source,omitempty"`
+	DerivedOperations       string `json:"derivedOperations,omitempty"`
+	ConflictingDeclarations bool   `json:"conflictingDeclarations,omitempty"`
 }
 
 // DiagramFinding is one diagnostic the model carries. It is reported as-is: the
@@ -181,10 +194,21 @@ func (d *Draft) projectThreeElementDiagram(modelPath string) error {
 		ModelFingerprint: model.ModelFingerprint,
 		Nodes:            diagramNodes(model),
 		Edges:            diagramEdges(model),
-		CRUDs:            diagramCRUDs(model),
 		AuthorityLimits:  DiagramAuthorityLimits(),
 	}
-	for _, diagnostic := range model.Diagnostics {
+	// Validate the model here rather than echoing model.Diagnostics: a model
+	// file usually carries no stored diagnostics, so echoing them would report
+	// "no findings" for a model that has a CRUD contradiction. The same
+	// projection the three-element CLI uses is reused, so the diagram and the
+	// CLI cannot disagree about the same pair.
+	report := threeelement.ValidateModel(model)
+	content.CRUDs = diagramCRUDs(model)
+	content.CRUDConflictStatus = report.CRUDConflictStatus
+	for _, pair := range report.OpposingCRUDPairs {
+		content.OpposingCRUDPairs = append(
+			content.OpposingCRUDPairs, pair[0]+"/"+pair[1])
+	}
+	for _, diagnostic := range report.Diagnostics {
 		content.Diagnostics = append(content.Diagnostics, DiagramFinding{
 			Code: diagnostic.Code, Severity: diagnostic.Severity,
 			Message: diagnostic.Message, SubjectIDs: diagnostic.SubjectIDs,
@@ -330,12 +354,25 @@ func layerOf(id string, data map[string]threeelement.DataElement,
 }
 
 func diagramCRUDs(model threeelement.ThreeElementModel) []DiagramCRUD {
+	// The declared cell and the conflict mark come from the same projection the
+	// three-element CLI uses, so a contradiction cannot be visible in one
+	// Consumer and clean in the other.
+	table := threeelement.GenerateCRUDTable(model)
+	byPair := map[[2]string]threeelement.CRUDTable{}
+	for _, row := range table {
+		byPair[[2]string{row.FunctionID, row.DataID}] = row
+	}
 	cruds := make([]DiagramCRUD, 0, len(model.CRUDDefinitions))
 	for _, crud := range model.CRUDDefinitions {
-		cruds = append(cruds, DiagramCRUD{
+		cell := DiagramCRUD{
 			ID: crud.ID, FunctionID: crud.FunctionID, DataID: crud.DataID,
 			Operations: crudOperations(crud), Source: crud.Source,
-		})
+		}
+		if row, ok := byPair[[2]string{crud.FunctionID, crud.DataID}]; ok {
+			cell.DerivedOperations = row.DerivedOperations
+			cell.ConflictingDeclarations = row.ConflictingDeclarations
+		}
+		cruds = append(cruds, cell)
 	}
 	sort.SliceStable(cruds, func(i, j int) bool { return cruds[i].ID < cruds[j].ID })
 	return cruds

@@ -1,0 +1,8 @@
+Round 83 added TestKnownValidationKindIsAccepted, asserting that all five kinds
+parse in .tei. Three of them never could; the parser accepted them and the
+semantic layer rejected the result. I corrected the test to the real capability
+rather than weakening the new refusal.
+
+Mutations after the fix:
+  M1 drop the refusal          -> FAIL kind "no-overlap" was accepted although ...
+  M2 refuse positive too       -> FAIL kind "positive" was refused although ...

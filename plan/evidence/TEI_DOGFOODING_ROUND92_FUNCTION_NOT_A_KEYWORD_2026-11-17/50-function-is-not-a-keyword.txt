@@ -1,0 +1,17 @@
+  $ tei validate   # function LoanDesk { data equip.loan }
+  error PARSE_ERROR expected type, data, capability, validation, calendar,
+        period, effect-rule, or run-plan
+
+grep for a "function" declaration table: 0 hits
+real .tei/.tei.md examples of `function ...`: 0
+
+internal/businessprocedure/model.go:63:
+  // ReferenceKind names the existing identity a step or the authorization
+  // clause points at. It is deliberately a small closed set...
+  ReferenceCapability = "capability"
+  ReferenceValidation = "validation"
+  ReferencePattern    = "application-pattern"
+  ReferenceData       = "data"
+
+Function is the general name for "whatever those references resolve to",
+not a declaration kind you can write.
