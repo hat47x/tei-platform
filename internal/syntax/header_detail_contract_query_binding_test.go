@@ -1,6 +1,9 @@
 package syntax
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestParseHeaderDetailContractQueryBinding(t *testing.T) {
 	src := `header-detail-contract-query-binding {
@@ -100,5 +103,46 @@ func TestParseHeaderDetailContractQueryBindingRequiresExplicitIdentityFields(t *
 
 	if _, err := NewParser(src).ParseHeaderDetailContractQueryBinding(); err == nil {
 		t.Fatal("Contractをfile pathや他の情報から補完しています")
+	}
+}
+
+func TestParseHeaderDetailContractQueryBindingCoverage(t *testing.T) {
+	head := `header-detail-contract-query-binding {
+    application order_entry
+    pattern order_entry.order_lines
+    datasource sales
+    database sales_core
+    contract sales_core.order_line
+    query find_by_order
+    input sales.order.order_id to order_id
+`
+	for _, tc := range []struct {
+		name     string
+		line     string
+		relation string
+		some     bool
+		failure  string
+	}{
+		{name: "nothing stated"},
+		{name: "every row of a relation", line: "    covers sales.order.lines\n", relation: "sales.order.lines"},
+		{name: "only some rows", line: "    covers some\n", some: true},
+		{name: "stated twice", line: "    covers sales.order.lines\n    covers some\n", failure: "covers is declared more than once"},
+		{name: "nothing after covers", line: "    covers\n", failure: "expected"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			binding, err := NewParser(head + tc.line + "}").ParseHeaderDetailContractQueryBinding()
+			if tc.failure != "" {
+				if err == nil || !strings.Contains(err.Error(), tc.failure) {
+					t.Fatalf("err=%v, want %q", err, tc.failure)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(binding.CoversRelation) != tc.relation || binding.CoversSome != tc.some {
+				t.Fatalf("coversRelation=%q coversSome=%v", binding.CoversRelation, binding.CoversSome)
+			}
+		})
 	}
 }

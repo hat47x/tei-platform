@@ -119,8 +119,22 @@ func (p *Parser) ParseHeaderDetailContractQueryBinding() (realization.HeaderDeta
 				SourceAttribute: sourceAttribute,
 				Input:           inputName,
 			})
+		case "covers":
+			// covers <relation> | covers some
+			v, err := p.expect(TokenIdent)
+			if err != nil {
+				return out, err
+			}
+			if v.Text == "some" {
+				out.CoversSome = true
+				break
+			}
+			out.CoversRelation, err = core.ParseCanonicalID(v.Text)
+			if err != nil {
+				return out, p.errAt(v, err.Error())
+			}
 		default:
-			return out, p.errAt(field, "expected application, pattern, datasource, database, contract, query, or input")
+			return out, p.errAt(field, "expected application, pattern, datasource, database, contract, query, input, or covers")
 		}
 	}
 

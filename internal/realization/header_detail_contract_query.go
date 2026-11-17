@@ -24,6 +24,15 @@ type HeaderDetailContractQueryBinding struct {
 	Datasource  core.LocalName                          `json:"datasource"`
 	Target      ContractQueryTarget                     `json:"target"`
 	Inputs      []HeaderDetailContractQueryInputBinding `json:"inputs,omitempty"`
+	// CoversRelation states that, for the header record whose values are
+	// handed over as inputs, the Contract Query returns every row of this
+	// Relation. A rule about all the rows of the Relation is answered only
+	// when the rows are all the rows. The statement is the author's: the SQL
+	// is not proven to keep it. Empty when nothing is stated.
+	CoversRelation core.CanonicalID `json:"coversRelation,omitempty"`
+	// CoversSome states that the Contract Query may return only some of the
+	// rows (a search, a page). It excludes CoversRelation.
+	CoversSome bool `json:"coversSome,omitempty"`
 }
 
 // Identityは、どのApplication PatternをrealizeするBindingかを示す安定identityを返す。
