@@ -36,7 +36,9 @@ AとBの間でGenerator Sourceのblobは`086ea8390da5ef3d949e904b17e2476a90c1324
 - `reference/tei-studio-workbench`で`npm test`（66件）・`npm run test:p0-presenter`（7件）・`node --test inspection-reader.generated.test.mjs`（28件）・`npm run typecheck`：PASS
 - `node --test tools/reference-studio-static-composition/*.test.mjs`（20件）：PASS
 
-**NOT RUN・未確認**：`tools/reference-plugin-self-build`はWindowsのパス長制限でcheckoutが失敗し、この機械では実行できなかった（transform実行機構を共有するためCIで確認する）。`pin-inspection.test.mjs`の4件はmainの時点で失敗しており、`npm test`にもCIにも含まれていない（本変更とは無関係）。
+- `tools/reference-plugin-self-build`（transform実行機構を共有する）：Windowsでは試験内のcheckoutがパス長制限で失敗したため、WSL2 Ubuntu 22.04・Go 1.27.3で`7b8fef25`に対して実行しPASS（440秒）。同時に`./internal/plugin/transform`・`./tools/reference-transform-seed-builder`もPASS
+
+**未確認**：`pin-inspection.test.mjs`の4件はmainの時点で失敗しており、`npm test`にもCIにも含まれていない（本変更とは無関係）。
 
 ## 主張しないこと
 
