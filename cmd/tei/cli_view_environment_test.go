@@ -93,7 +93,6 @@ func TestDestinationRuntimeViewDoesNotSilentlyChangeStaticOrCommandViews(t *test
 	}
 }
 
-
 // A numeric-looking code is still text when the declared column is text.
 // Only a declared int64 column is parsed as an integer, and an invalid
 // integer fails before calling PostgreSQL. The source attribute comes from
