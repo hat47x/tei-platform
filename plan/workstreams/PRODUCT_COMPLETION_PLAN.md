@@ -90,7 +90,7 @@ P0は引き続き、#4495の公開pure Entry→actual Provider→通常CLIの実
 
 ### 宣言の役割を見分けるP1（2026年11月15日）
 
-[文書手法からアプリケーション抽象への横断設計§8〜10](../design/APPLICATION_ABSTRACTION_DOCUMENT_METHOD_WEAVING_2026-11.md)に、他レーンの実Product Inspector（#5058）、原文を含む実Go Binary（#5051）、独立Shape基線（#5064）を接続した。次のP1は、**記述上のRole／意味上のShape・Law／実装のBindingを分けたまま、同じ正値Ruleの汎用評価と生成Goを五入力・Read回数で比較する**ことから始める。これは方式間の限定的な同値確認であり、正式R2-Pの出典閉包、通常CLI R3の実Provider呼出し、Studio Stage1→Stage2を達成したものではない。DW-11〜16は#2621/#2497/#4544/#1180/#2514へ既存の試験責務として引き渡し、新EngineやP0の追加Gateは設けない。
+[文書手法からアプリケーション抽象への横断設計§8〜12](../design/APPLICATION_ABSTRACTION_DOCUMENT_METHOD_WEAVING_2026-11.md)をP1の検証入口とする。文書の記述Role、MeaningのShape／Law、実装のBindingを分ける方針は維持する。main済み#5118/#5132はData表由来RuleのP（直接評価）／G（生成Go）を六入力で実Binary比較し、**関数名を変えても同じRuleを評価できるが、同じ結果で別Attributeを読んだ場合は不適格**と示した。今回の追加Go回帰は、その一実Binaryの出力に試験内のCase IDとRead State（present／null／not-fetched）を加え、メソッド名変更・誤参照・NULL／未取得を独立Expectedで区別する。§11〜12のDW-17〜21を既存#1180/#2514へ引き渡し、正式なScenario ID生成機能や状態付きDecideのG/P同値、実Provider／Effectの成立は主張しない。正式R2-P、通常CLI R3、Studio Stage1→Stage2のP0は維持し、新Engineや追加Hard Gateを設けない。
 
 [宣言的構文の合成契約§18〜20](../design/DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md)の実装引渡しは、**表面が同じでも定義・事実・要求・実現選択・実観測を混ぜない**ことから始める。最初の対象は、選択済みMarkdown Rule一件と、その元Source・型・論理Readである。Data項目定義表のPR #5010は採用・統合確認後に対照へ使い、業務記録の表を自動的にData定義へ変えない。
 
