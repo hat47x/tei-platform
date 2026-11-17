@@ -97,6 +97,7 @@ jobs:
       TEI_ORG_AXIS_PG_CONFIRM_ISOLATED: tei_org_axis_e2e
       TEI_VIEW_PG_DSN: postgres://tei:tei_integration_only@localhost:5432/tei_destination_order_e2e?sslmode=disable
       TEI_VIEW_PG_CONFIRM_ISOLATED: tei_destination_order_e2e
+      TEI_VIEW_BROWSER_BINARY: google-chrome
       PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
       - name: 検証対象を取得
@@ -184,6 +185,13 @@ jobs:
           go test -count=1 -v -timeout 10m -run '^(TestOrgAxisAsOf(ActualPostgres|RevisionKeyCandidate|BitemporalRectangleCandidate|ExclusionConstraintCandidate|TwoWriterExclusionCandidate)OptIn|TestOrgC1AbstractUnitReadPathUsesStableSemanticIDs)$' \
             ./internal/operations | tee -a "$log"
 
+      - name: 実Chromeを明示してBrowser受領の未実行を防ぐ
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v "$TEI_VIEW_BROWSER_BINARY"
+          "$TEI_VIEW_BROWSER_BINARY" --version
+
       - name: 到達点「受注の一変更」の実PostgreSQLから製品CLIまでを検証
         shell: bash
         run: |
@@ -235,6 +243,11 @@ jobs:
           for name in "${required[@]}"; do
             grep -Eq -- "^[[:space:]]*--- PASS: ${name} \(" "$log" || { echo "required test did not PASS: ${name}" >&2; exit 1; }
           done
+          browser_count="$(grep -Fc 'actual Chrome DOM verified for order' "$log" || true)"
+          test "$browser_count" -eq 6 || {
+            echo "actual Chrome DOM receipt count was $browser_count, expected six" >&2
+            exit 1
+          }
 
       - name: 検証後の変更を検出
         if: always()
