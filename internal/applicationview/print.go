@@ -47,6 +47,7 @@ table{width:100%;border-collapse:collapse;margin-top:3mm}
 th,td{border:1px solid #000;padding:2mm 3mm;text-align:left;vertical-align:top}
 th{background:#eee;font-weight:600}
 .header th{width:30%}
+.detail+.detail{break-before:page;margin-top:0}
 </style>
 </head>
 <body>
@@ -56,12 +57,13 @@ th{background:#eee;font-weight:600}
 {{end}}</table>
 <h2>明細</h2>
 {{if .PageBreak}}<p>{{.PageBreak.Rows}}行/ページ{{if .PageBreak.RepeatHeader}}、見出し繰返し{{end}}</p>{{end}}
-<table>
-<thead><tr>{{range .DetailColumns}}<th>{{.Label}}</th>{{end}}</tr></thead>
-<tbody>
-{{range .DetailRows}}<tr>{{range $.DetailColumns}}<td></td>{{end}}</tr>
+{{range .DetailPages}}<table class="detail" data-page="{{.Number}}">
+{{if .RepeatHeader}}<thead><tr>{{range $.DetailColumns}}<th>{{.Label}}</th>{{end}}</tr></thead>
+{{end}}<tbody>
+{{range .Rows}}<tr>{{range $.DetailColumns}}<td></td>{{end}}</tr>
 {{end}}</tbody>
 </table>
+{{end}}
 {{if .Aggregates}}<h2>集計</h2>
 <table>
 {{range .Aggregates}}<tr><th>{{.Name}}</th><td>{{.Function}} {{.Label}} ({{.Type}})</td></tr>

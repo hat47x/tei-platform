@@ -213,3 +213,36 @@ func TestEnvironmentRejectsInvalidBindingBeforeConnection(t *testing.T) {
 		t.Fatalf("the database connection was considered before rejecting invalid input binding: %v", err)
 	}
 }
+
+// A contradictory coverage claim must fail before PostgreSQL is consulted.
+// Static validate catches the contradiction, but this runtime entry is allowed
+// to read an unvalidated in-memory World.
+func TestEnvironmentRejectsContradictoryCoverageBeforeConnection(t *testing.T) {
+	loaded, err := workspace.Load(filepath.Join("..", "..", "reference", "workspace"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	world := loaded.World
+	changed := false
+	for i := range world.HeaderDetailContractQueryBindings {
+		binding := &world.HeaderDetailContractQueryBindings[i]
+		if binding.Application != "order_entry" || binding.Pattern != "order_entry.order_lines" {
+			continue
+		}
+		binding.CoversRelation = "sales.order.lines"
+		binding.CoversSome = true
+		changed = true
+	}
+	if !changed {
+		t.Fatal("reference Contract Query binding not found")
+	}
+	t.Setenv("TEI_VIEW_PG_DSN", "")
+	_, err = readEnvironmentRows(world, "order_entry", "order_entry.order_lines",
+		"development", map[string]string{"order_id": "1001"})
+	if err == nil || !strings.Contains(err.Error(), "states both") {
+		t.Fatalf("contradictory coverage was not rejected: %v", err)
+	}
+	if strings.Contains(err.Error(), "TEI_VIEW_PG_DSN") {
+		t.Fatalf("the database connection was considered before rejecting the contradiction: %v", err)
+	}
+}

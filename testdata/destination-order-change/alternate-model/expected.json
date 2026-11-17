@@ -1,0 +1,42 @@
+{
+  "relation": "sales.order.inventory_entries",
+  "keyAttributes": [
+    "sales.inventory_entry.entry_id",
+    "sales.inventory_entry.slot"
+  ],
+  "input": "batch_key",
+  "unitRule": "sales.inventory_entry.units_positive",
+  "slotRule": "sales.inventory_entry.slot_positive",
+  "uniqueRule": "sales.order.inventory_entries.slot_unique",
+  "checks": {
+    "1001": {
+      "keys": [
+        "[\"11\",\"1\"]",
+        "[\"12\",\"2\"]",
+        "[\"13\",\"2\"]"
+      ],
+      "units": [
+        "satisfied",
+        "not-satisfied",
+        "satisfied"
+      ],
+      "unique": "not-satisfied"
+    },
+    "1002": {
+      "keys": [
+        "[\"14\",\"1\"]",
+        "[\"15\",\"2\"]"
+      ],
+      "units": [
+        "not-satisfied",
+        "satisfied"
+      ],
+      "unique": "undecided"
+    },
+    "1003": {
+      "keys": [],
+      "units": [],
+      "unique": "undecided"
+    }
+  }
+}

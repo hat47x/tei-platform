@@ -14,10 +14,12 @@ import (
 	"tei/internal/driver/queryresult"
 	"tei/internal/ir"
 	"tei/internal/query"
+	"tei/internal/semantic"
 )
 
 type referenceReadScenarioRunner struct {
 	resolver      driver.Resolver
+	semantics     []semantic.Namespace
 	environmentID core.CanonicalID
 	applicationID core.CanonicalID
 	browse        driver.BrowseQueryExecutor
@@ -27,6 +29,7 @@ type referenceReadScenarioRunner struct {
 func newReferenceReadScenarioRunner(world ir.World) *referenceReadScenarioRunner {
 	return &referenceReadScenarioRunner{
 		resolver:      driver.NewResolver(world),
+		semantics:     world.Semantics,
 		environmentID: core.MustCanonicalID("development"),
 		applicationID: core.MustCanonicalID("order_entry"),
 		browse:        referenceBrowseExecutor{},
@@ -113,6 +116,19 @@ func (r *referenceReadScenarioRunner) Run(ctx context.Context, input readScenari
 	customerRows := projectContractRows(customer.Execution.Result.Rows)
 	orderLineRows := projectContractRows(lines.Execution.Result.Rows)
 
+	// Answer every rule the Application declares for each line that was read.
+	// The rows and the rules come from the same Workspace the read used, so the
+	// page cannot show an answer this read did not produce.
+	lineAnswers, relationAnswers, err := ruleAnswers(r.resolver, r.semantics, r.applicationID, lines.Execution)
+	if err != nil {
+		return readScenarioResult{}, err
+	}
+	// The template joins answers by position. Never render a partial, reordered
+	// or duplicated answer list under a different line's values.
+	if err := requireReadRowAnswerAlignment(orderLineRows, lineAnswers); err != nil {
+		return readScenarioResult{}, fmt.Errorf("order-line read/answer mismatch: %w", err)
+	}
+
 	return readScenarioResult{
 		ScenarioID:       "order-entry.read-only-web-slice",
 		Environment:      string(r.environmentID),
@@ -123,6 +139,8 @@ func (r *referenceReadScenarioRunner) Run(ctx context.Context, input readScenari
 		SelectedOrder:    selectedOrder,
 		CustomerRows:     customerRows,
 		OrderLineRows:    orderLineRows,
+		RowAnswers:       lineAnswers,
+		RelationAnswers:  relationAnswers,
 		RuntimeBindings: []runtimeBindingProjection{
 			{
 				Pattern:    "order_entry.recent_orders",

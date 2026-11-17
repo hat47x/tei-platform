@@ -3201,3 +3201,294 @@ main は回帰テストに**専用の捕捉**（`cmd/tei/testdata/rea-6.8.0/`、
 ### 位置付け
 
 **「同じ問題を main が別解で先に解いていた」回**である。私は重複する仕組みを作りかけたが、**main の設計の方が良い**（テストが自分の入力を同梱し README で説明する）と判断して取り下げた。**残ったのは manifest の訂正**で、これは main の変更でも直っていなかった自己矛盾である。
+
+## 91. 第90ラウンド（2026-11-17）: legacy `.tei` は no-overlap を要求するのに、書く手段が無かった
+
+目的文の「再びドッグフーディングに戻る」を実行し、**装備貸出（期間が重ならないこと）**を CLI のフィードバックだけで設計した。生出力は[第90ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND90_LEGACY_SURFACE_DEAD_END_2026-11-17/README.md)にある。
+
+### 設計の経過（CLI のみ）
+
+| Attempt | 応答 | 学んだこと |
+| --- | --- | --- |
+| 1 | `ok` | `std.date` はそのまま使える |
+| 2 | `expected data, business-date, calendar, states, ...` | `period` は**期間ではなく状態・締め** |
+| 3 | `expected attribute or relation` | validation の本体は2語だけ |
+| 4 | `predicate "not overlapping" requires "per <relation>"` | 行の出所は推論されない |
+| 5 | `expected "to"` → `invalid canonical id "Loan"` → `unexpected token "}"` | `relation <name> to <target> <cardinality>` |
+| 6 | `UNKNOWN_SEMANTIC_VALIDATION_RELATION equip.loans` | relation の id は `equip.loan.loans` |
+| 7 | **`ok`** ＋ 読み返しで `kind=no-overlap / compared / groupBy / relation` | 完成 |
+
+**診断は毎回正確だった。** 私の前提（`period` が期間、`starts`/`ends` がある）が間違っていた。
+
+### 見つけた穴: 表現できない kind を、できないと言わない
+
+`.tei` の validation 本体は **`attribute` と `relation` の2語しか受け付けない**のに、`no-overlap`・`not-after` は `Compared` を、`operator` は `Operator` を**必須**とする。しかも legacy パーサはそれらを一度も設定しない（実測: `grep 'v.Compared\|v.GroupBy'` が空）。
+
+```text
+error SEMANTIC_VALIDATION_COMPARED_ATTRIBUTE_REQUIRED
+  no-overlap semantic validation equip.no_ovl requires the attribute that ends the period
+```
+
+**「必要だ」と言うが、この面には書く手段が無い。** 5種を受け付けながら表現できるのは2種だけ、という**行き止まり**だった。
+
+### 修正
+
+パース時点で断り、**代わりにどこへ書けばよいかを言う**。語彙一覧（第83ラウンド）はそのまま残るので、**どの kind があるか**と**どれがこの面で書けるか**の両方が分かる。
+
+### 自分のテストが間違っていた
+
+第83ラウンドで私が書いた `TestKnownValidationKindIsAccepted` は「**5種すべてが `.tei` で解析できる**」と主張していた。**それが誤りだった。** 3種は元から表現不能で、パーサが受理して意味層が落としていた。テストを実態に合わせた。
+
+### 変異試験
+
+| # | 変えた箇所 | 結果 |
+| --- | --- | --- |
+| M1 | 拒否を削る | FAIL `kind "no-overlap" was accepted although this surface cannot express it` |
+| M2 | 拒否を過剰にする（`positive` も拒否） | FAIL `kind "positive" was refused although this surface can express it` |
+
+### 位置付け
+
+**「要求はするが、書く手段が無い」を見つけた回**である。診断は正しかったが、**その指示に従う方法がその面に存在しなかった**。私はまず自分のテストの誤りを認め、そのうえで**不可能を不可能と言う**ようにした。
+
+## 92. 第91ラウンド（2026-11-17）: 「38コマンドが発見面から欠落」は誤報だった
+
+前ラウンドで残した設計判断（`.tei` は `no-overlap` を表現できない）を踏まえ、**その回避経路が本当に成立しているか**を確かめた。生出力は[第91ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND91_DISCOVERY_SCOPE_FALSE_ALARM_2026-11-17/README.md)にある。
+
+### 確かめたこと（成立していた）
+
+| 段階 | 結果 |
+| --- | --- |
+| `.tei.md` で `compared`・`group by`・`or open` を宣言 | **`ok`** |
+| 読み返し | `kind=no-overlap / compared / groupBy / openEnded=true / relation` が**すべて入る** |
+| 評価器 | `validationeval` に **35 subtests PASS**（実 overlap、部分読み、open period、group 付き） |
+| 製品からの呼出し | `tools/reference-first-web-target`・`cmd/tei/scenario.go` ほか**実在** |
+
+**`no-overlap` は宣言も評価もできる。** 前ラウンドの「`.tei` では無理」は正しく、回避経路も機能している。
+
+### 誤報: 「38コマンドが発見面から欠落」
+
+`tei commands` と `cli_commands.go` の正準一覧を機械的に突き合わせると `canonical: 56 / discovered: 25 / missing: 38` になり、**38件すべてがバイナリに受理される**ことを確認した。**私はこれを「発見可能性の欠陥」として起票しようとした。**
+
+**しかし範囲は明示されていた。**
+
+```go
+Scope: "selected-read-only-commands",
+```
+
+設計文書も「**一覧が全コマンドやPlugin実装の完全な登録簿ではない**」と明記し、`TEI_MEANING_TO_CAPABILITY_SKILL_WITNESS_2026-11.md` は**まさにこの状況**を扱って「**不掲載を未実装に昇格させない**」と書いている。
+
+**「欠落」ではなく「宣言された範囲」。** 起票は誤報になるため、**しなかった。**
+
+### 発見面は既に守られていた
+
+`catalogue_accepts_test.go`（#3956 の再発防止）、`cli_discovery_process_test.go`（全コマンドの実プロセス起動）、`cli_discovery_write_flags_test.go`。**すべて PASS。**
+
+### 位置付け
+
+**「計測は正しかったが、解釈が間違っていた」回**である。56 と 25 という数字は事実だが、**その差は欠陥ではなく `Scope` が宣言した範囲**だった。**起票しなかったことが成果**であり、次に同じ数字を見た人が同じ誤りをしないよう記録する。
+
+## 93. 第92ラウンド（2026-11-17）: 「Function を書きたい」と思ったら、それは著面の語ではなかった
+
+目的文の「再びドッグフーディングに戻る」を実行し、**Function（データを読み、規則で判断し、コマンド能力を持つもの）**を CLI だけで設計した。生出力は[第92ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND92_FUNCTION_NOT_A_KEYWORD_2026-11-17/README.md)にある。
+
+### 最初の試行は失敗した
+
+```text
+$ tei validate   # function LoanDesk { data equip.loan }
+error PARSE_ERROR expected type, data, capability, validation, calendar,
+      period, effect-rule, or run-plan
+```
+
+**`function` は著面のキーワードではない。** 宣言表に 0 件、実例も 0 件。
+
+### Function の正体
+
+`internal/businessprocedure/model.go:63` より、**Function は「投影が指す既存の正体」の総称**であり、`capability`・`validation`・`application-pattern`・`data` のいずれかへ解決される。**著面の宣言種別ではない**ため、`function ... { }` と書く場所は存在しない。
+
+### 代わりに意図した合成を作った
+
+| 意図 | 実際の宣言 | 読み返し |
+| --- | --- | --- |
+| データ | `data equip.loan`（`.tei`） | `kind=Loan` |
+| 重ならない規則 | `rule ... is not overlapping`（`.tei.md`） | `kind=no-overlap / compared / groupBy / openEnded` |
+| 登録という業務行為 | `capability equip.loan_register`（`.tei`） | `inputs=[loan:equip.loan] / outcomes=[created, overlapping] / effect={create, equip.loan}` |
+
+`tei validate` → `ok`、**診断0件**（reference/workspace 由来の既存4警告のみ）。**3主体すべて `inspect` で読み返せた。**
+
+### 診断は綴り違いを区別しない — それは設計だった
+
+`function` と `datta`（`data` の綴り誤り）は同一メッセージになるが、`rule_authoring.go:100` が「**一覧外の語は診断であって近い語の同義語ではない**」と明記しており、**近い語を提案しないのは意図的な方針**である。起票しなかった。
+
+### 自分が2回、計器を間違えた
+
+| 誤り | 実際 |
+| --- | --- |
+| `-json` の `warnings`/`errors` を数えて「0件」と読んだ | 実体は **`diagnostics[].diagnostic.{code,severity,message}`** の入れ子 |
+| 入れ子を知らず「text と json が食い違う」と疑った | 正しく読むと **text 4行 / json 4件で一致** |
+
+入れ子は `TestValidateJSONDiagnosticsKeepNestedDiagnostic` が **v0 契約として固定**しており（#3347）、flat と仮定する読み手を検出するためのテストだった。**私がその仮定をした側だった。**
+
+### 位置付け
+
+**「自分の語彙が間違っていた」回**である。Function を「宣言できるもの」と前提したが、**それは投影が指す先の総称**だった。診断は正しく、私の前提が誤っていた。
+
+## 94. 第93ラウンド（2026-11-17）: 「SQL で参照されていない」が、どの書き方なら参照されるかを言わない
+
+目的文の「再びドッグフーディングに戻る」を実行し、**Application（宣言・クエリ・パターン・環境束縛）**を CLI のフィードバックだけで設計した。生出力は[第93ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND93_SQL_PLACEHOLDER_MESSAGE_2026-11-17/README.md)にある。
+
+### 設計の経過（CLI のみ）
+
+| Attempt | 応答 | 学んだこと |
+| --- | --- | --- |
+| 1 | 無警告 | アプリは `applications/<app>/application.tei` |
+| 2 | `UNKNOWN_DATASOURCE_ALIAS sales` | datasource は**アプリ内の `database` ブロック**で宣言する |
+| 3 | `UNKNOWN_SQL_DIALECT ""` | `sql postgres file "..."` が要る |
+| 4 | `QUERY_INPUT_NOT_REFERENCED borrower` | **SQL がパラメータを参照していない、と警告** |
+| 5 | `:borrower` に変えると消える | 名前付きプレースホルダが正解 |
+| 6 | `expected plugin, bundle, ...` | environment の `kind` は無い |
+| 7 | `expected definition or provider` | `database-instance` は `definition`+`provider` |
+| 8 | `DATABASE_PROVIDER_PLUGIN_MISSING` | `bundle tei.reference.providers ^1` が要る |
+| 9 | **`ok`**、自分の診断0件 | 完成 |
+
+**診断は毎回正確で、示唆的だった**（`bind ... -> <database-instance>` の例文まで出た）。
+
+### 見つけた穴: 「参照されていない」が、参照の書き方を言わない
+
+`$1`（PostgreSQL の正しい positional placeholder）を書くと警告が出る。実装は**名前付き（`:name`・`$name`・`@name`）しか検出しない**。`$1` は**入力の名前を持たない**ので一致しようがない。しかも driver のコメントが「`:name` を positional へ変換する」と書いており、**`:name` が正規の書き方**であることが分かる。
+
+| 書き方 | 警告 |
+| --- | --- |
+| `$1` | **1件** |
+| `:borrower` | 0件 |
+| `$borrower` | 0件 |
+| `@borrower` | 0件 |
+
+**警告文は「参照されていない」とだけ言い、正しい書き方を教えない。**
+
+### 修正
+
+警告文が**受け付ける3つの書き方を名指しし、positional は一致しないことを明言**するようにした。**検査の対象範囲は変えていない**（変えたのは説明だけ）。
+
+```text
+BEFORE  ... is not referenced in its SQL source
+AFTER   ... is not referenced by name in its SQL source; write it as :borrower,
+        $borrower or @borrower (a positional placeholder such as $1 is not matched)
+```
+
+### 変異試験
+
+| # | 変えた箇所 | 結果 |
+| --- | --- | --- |
+| M1 | 旧文言に戻す | FAIL `the message omits the accepted form ":status"` |
+| M2 | 警告を一切出さない | FAIL `a positional placeholder was treated as a reference` |
+
+### 回帰確認
+
+`./internal/validation` ok、`./internal/workspace` ok、`./cmd/tei` ok（467秒）、**CI gate 6ステップ PASS**。
+
+### 位置付け
+
+**「要求はするが、従い方が書いていない」の3例目**である（第90ラウンドの `.tei`、第92ラウンドの `Function` に続く）。今回は**警告文の中に**その欠落があった。**検査を緩めず、説明だけを直した。**
+
+## 95. 第94ラウンド（2026-11-17）: `tei view` の引数拒否が、私が実際に渡した引数と食い違っていた
+
+目的文の「再びドッグフーディングに戻る」を実行し、**宣言した Application が `tei view` で実際に読めるか**を利用者の経路で確かめた。生出力は[第94ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND94_VIEW_ARGFOR_FAILURE_REASONS_2026-11-17/README.md)にある。
+
+### 動いたこと（先に確認）
+
+| 経路 | 結果 |
+| --- | --- |
+| `view -application loan_desk` | アプリ・semanticUses・パターン・fingerprint |
+| `view -pattern ... browse` | data・query・**列一覧**（`1. borrower : std.text`） |
+| `-format text/json/html/print` | **4形式すべて rc=0**（html は実際に table を描画） |
+| 交差参照 | `APPLICATION_PATTERN_QUERY_APPLICATION_MISMATCH` で**別アプリのクエリを拒否** |
+
+**宣言は本当に読める。** `model overview` の `needsAttention` も、私が入れた不正な結果列を**その subject で捕まえた。**
+
+### 見つけた穴: 拒否メッセージが argv と食い違う
+
+```text
+$ tei view -workspace W -application loan_desk -pattern p -execute
+error INVALID_ARGUMENT
+  view requires exact -workspace and -application, at most one of -pattern,
+  -package, or -command, without positional arguments
+```
+
+**私は `-workspace` と `-application` を渡し、セレクタを1つだけ渡していた。** メッセージは「私がしていない間違い」を説明していた。本当の理由は `-execute` が `-command` を要求すること。
+
+原因はガードの形で、**約20個の条件が1つの文言を共有**していた。
+
+### 修正
+
+`switch` に分け、**それぞれが悪い flag を名指し**するようにした。**拒否する組合せは変えていない**（変えたのは説明だけ）。`-environment` の複合条件は意味を変えずに統合した。
+
+### 変異試験
+
+| # | 変えた箇所 | 結果 |
+| --- | --- | --- |
+| M1 | 1つの case を旧汎用文言に戻す | FAIL `message does not say "-execute requires -command"` |
+
+**最初の変異は `switch` を壊してビルド不能になった。** 変異が壊れているのは証拠にならないので、組み立て直してビルドが通る形で再実行した。
+
+### 回帰確認
+
+`./cmd/tei` ok（581秒）、`./internal/applicationview` ok、`./internal/validation` ok、**CI gate 6ステップ PASS**。
+
+### 位置付け
+
+**「要求はするが、従い方が書いていない」の4例目**である。今度は**私が既に従っていた**ので、文言が**私の argv と矛盾**した。**拒否の範囲を変えず、理由だけを分けた。**
+
+## 96. 第95ラウンド（2026-11-18）: trace と knowledge-context が、同じ capability で違う本数を返す
+
+目的文の「再びドッグフーディングに戻る」を実行し、**設計の問い面**（`trace`・`knowledge-context`）で「この能力はなぜ在り、何に支えられているか」を訊いた。生出力は[第95ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND95_TRACE_VS_CONTEXT_2026-11-18/README.md)にある。起票は [#5426](https://github.com/hat47x/tei-platform/issues/5426)。
+
+### 動いたこと（先に確認）
+
+`trace` は出典（`semantic/equip/desk.tei` の行・列・artifact fingerprint）を返し、`-mode full` は辺を `relation: input` / `outcome` として並べる。存在しない主体は `SUBJECT_NOT_FOUND`。`knowledge-context` は `outgoing`・`references`・`authorityLimits` 4件を返す。**どちらも読める。**
+
+### 見つけた差: 同じ主体で本数が違う
+
+```text
+capability equip.loan_register {
+    input loan equip.loan
+    outcome created equip.loan        # 2つの outcome が同じ payload
+    outcome overlapping equip.loan
+    effect create equip.loan
+}
+```
+
+| コマンド | 返り値 |
+| --- | --- |
+| `trace -mode full` | `total=2`（rows 2） |
+| `knowledge-context` | `outgoing=3` |
+
+### 切り分け実験
+
+| 宣言 | trace total | context outgoing |
+| --- | --- | --- |
+| outcome 2つ（同じ payload） | **2** | **3** |
+| outcome 1つ（同じ payload） | 2 | 2 |
+
+**outcome を1つ減らしても trace の本数は変わらない。** trace が**同じ payload を指す2つの outcome を1本に潰している**ことが確定した。
+
+### 原因
+
+`internal/modelref/derivedbridge/projection.go:118` が**辺の同一性を (from, relation, to) だけで決めて**いる。`internal/index/index.go:339` は outcome ごとに依存を積むので index は3本、trace は2本。
+
+### 何が失われるか
+
+`inspect` は outcome 名を保っている（`['created', 'overlapping']`）。**trace では、その2つが別々の業務結果であることが読めない。** 呼び手は `total=2` を「outcome は1つ」と受け取る。
+
+### なぜ私が直さないか
+
+| 案 | 内容 | 判断 |
+| --- | --- | --- |
+| A | 同一性キーに outcome 名を含める | **正当な宣言の表現力を変える** |
+| B | 「payload が同じ outcome は1本に潰す」と明文化する | 挙動不変・最小だが**契約の変更** |
+| C | 辺に代表件数を持たせる | スキーマ拡張 |
+
+**A も C も採らない。** B が妥当に見えるが明文化は契約変更なので所有者判断として起票した。**テストで固定されていない**（outcome の重複除去を検査するテストは0件）ことも記録した。
+
+### 位置付け
+
+**「2つのコマンドが同じ対象について違う数を言う」を見つけた回**である。どちらも正しく、**辺の同一性の定義が違う**だけだった。**私は数を合わせるのではなく、どちらが何を数えているかを確定させて起票した。**

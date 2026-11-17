@@ -96,6 +96,15 @@ func (s *webTargetServer) renderCustomSubmit(
 	status int,
 	data customSubmitPageData,
 ) {
+	// The template joins rows to answers by the index of the same read.
+	// Reject malformed projections before sending a success response or any
+	// row content; html/template's index expression cannot check this contract.
+	if data.Result != nil && data.Result.Read != nil {
+		if err := requireReadRowAnswerAlignment(data.Result.Read.OrderLineRows, data.Result.Read.RowAnswers); err != nil {
+			http.Error(w, "cannot render row answers: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
 	if err := s.customSubmit.Execute(w, data); err != nil {
@@ -253,8 +262,17 @@ Reference専用UIです。credentialはruntime inputとしてのみ使い、結�
 <table>
 {{range $row.Attributes}}<tr><th><code>{{.Attribute}}</code></th><td>{{.Value}}</td></tr>{{end}}
 </table>
+{{with index $.Result.Read.RowAnswers $index}}
+{{range .Answers}}<p class="status-line"><code>{{.Rule}}</code> <span class="pill">{{.Result}}</span>{{if .Reason}} <span class="muted">{{.Reason}}</span>{{end}}</p>{{end}}
+{{end}}
 {{else}}<p class="muted">No order-line rows.</p>{{end}}
 </article>
+{{if .Result.Read.RelationAnswers}}
+<article class="subcard" id="relation-answers">
+<h3>Answers about the whole relation</h3>
+{{range .Result.Read.RelationAnswers}}<p class="status-line"><code>{{.}}</code></p>{{end}}
+</article>
+{{end}}
 </section>
 {{end}}
 

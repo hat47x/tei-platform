@@ -15,6 +15,52 @@ import (
 	"tei/internal/workspace"
 )
 
+// misalignedAnswerReadScenarioRunner is used only to challenge the HTTP response boundary
+// with an inconsistent read; it is not a production executor.
+type misalignedAnswerReadScenarioRunner struct {
+	result readScenarioResult
+}
+
+func (runner misalignedAnswerReadScenarioRunner) Run(context.Context, readScenarioInput) (readScenarioResult, error) {
+	return runner.result, nil
+}
+
+func TestReadScenarioHTTPRejectsMisalignedAnswerProjection(t *testing.T) {
+	rows := []semanticRowProjection{{}, {}}
+	for _, tc := range []struct {
+		name    string
+		answers []rowAnswerProjection
+		status  int
+	}{
+		{name: "aligned", answers: []rowAnswerProjection{{RowIndex: 0}, {RowIndex: 1}}, status: http.StatusOK},
+		{name: "missing answer", answers: []rowAnswerProjection{{RowIndex: 0}}, status: http.StatusInternalServerError},
+		{name: "extra answer", answers: []rowAnswerProjection{{RowIndex: 0}, {RowIndex: 1}, {RowIndex: 2}}, status: http.StatusInternalServerError},
+		{name: "swapped", answers: []rowAnswerProjection{{RowIndex: 1}, {RowIndex: 0}}, status: http.StatusInternalServerError},
+		{name: "duplicate position", answers: []rowAnswerProjection{{RowIndex: 0}, {RowIndex: 0}}, status: http.StatusInternalServerError},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			server := &webTargetServer{readScenario: misalignedAnswerReadScenarioRunner{
+				result: readScenarioResult{OrderLineRows: rows, RowAnswers: tc.answers},
+			}}
+			recorder := httptest.NewRecorder()
+			server.handleReadScenario(recorder, httptest.NewRequest(http.MethodGet, "/scenario/read", nil))
+			if recorder.Code != tc.status {
+				t.Fatalf("HTTP status=%d want=%d body=%q", recorder.Code, tc.status, recorder.Body.String())
+			}
+			body := recorder.Body.String()
+			if tc.status == http.StatusOK {
+				if !strings.Contains(body, "\"rowAnswers\"") {
+					t.Fatalf("aligned response is missing the answers: %q", body)
+				}
+				return
+			}
+			if strings.Contains(body, "\"rowAnswers\"") || strings.Contains(body, "\"orderLineRows\"") {
+				t.Fatalf("mismatched read was exposed in HTTP body: %q", body)
+			}
+		})
+	}
+}
+
 func TestReferenceReadScenarioRunsBrowseRecordReferenceAndHeaderDetailThroughDriver(t *testing.T) {
 	loaded, err := workspace.Load(referenceWorkspacePath(t))
 	if err != nil {

@@ -161,26 +161,47 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		}
 		return fail("INVALID_ARGUMENT", err.Error(), 2)
 	}
-	if fs.NArg() != 0 || *root == "" || *applicationID == "" ||
-		(*patternID != "" && *packageID != "") ||
-		(*commandID != "" && *patternID == "") ||
-		(*environmentID != "" && (*patternID == "" || *packageID != "" || *commandID != "" || *execute)) ||
-		(*execute && *commandID == "") ||
-		(*periodStateFile != "" && !*execute) ||
-		(*lifecycleState != "" && (!*execute || *lifecycleCommand == "")) ||
-		(*lifecycleState == "" && *lifecycleCommand != "") ||
-		(*lifecycleGeneration < 1) ||
-		(*lifecycleTakeover && (*lifecycleState == "" || *lifecycleCommand == "")) ||
-		(len(allowedCapabilities) > 0 && !*execute) ||
-		(*operationLogFile != "" && !*execute) ||
-		// -input belongs only to an explicit command plan or to a selected
-		// runtime Contract Query. Static views must not silently drop it (#3778).
-		(len(inputPairs) > 0 && *commandID == "" && *environmentID == "") ||
-		*root != strings.TrimSpace(*root) || *applicationID != strings.TrimSpace(*applicationID) ||
-		*patternID != strings.TrimSpace(*patternID) || *packageID != strings.TrimSpace(*packageID) ||
+	// Each guard names the flag that is wrong. One shared message over a chain of
+	// this length told a caller who had passed exactly one selector that they
+	// had passed more than one, which is the opposite of their argv.
+	switch {
+	case fs.NArg() != 0:
+		return fail("INVALID_ARGUMENT", "view does not take positional arguments", 2)
+	case *root == "" || *applicationID == "":
+		return fail("INVALID_ARGUMENT", "view requires -workspace and -application", 2)
+	case *patternID != "" && *packageID != "":
+		return fail("INVALID_ARGUMENT", "view accepts at most one of -pattern and -package", 2)
+	case *commandID != "" && *patternID == "":
+		return fail("INVALID_ARGUMENT", "view -command requires -pattern: a command is read within its pattern", 2)
+	case *environmentID != "" && (*patternID == "" || *packageID != "" || *commandID != "" || *execute):
+		return fail("INVALID_ARGUMENT", "view -environment requires -pattern and excludes -package, -command and -execute", 2)
+	case *execute && *commandID == "":
+		return fail("INVALID_ARGUMENT", "view -execute requires -command; a browse pattern is read-only and is not executed", 2)
+	case *periodStateFile != "" && !*execute:
+		return fail("INVALID_ARGUMENT", "view -period-state requires -execute", 2)
+	case *lifecycleState != "" && !*execute:
+		return fail("INVALID_ARGUMENT", "view -lifecycle-state requires -execute", 2)
+	case *lifecycleState != "" && *lifecycleCommand == "":
+		return fail("INVALID_ARGUMENT", "view -lifecycle-state requires -lifecycle-command", 2)
+	case *lifecycleState == "" && *lifecycleCommand != "":
+		return fail("INVALID_ARGUMENT", "view -lifecycle-command requires -lifecycle-state", 2)
+	case *lifecycleTakeover && *lifecycleState == "":
+		return fail("INVALID_ARGUMENT", "view -lifecycle-takeover requires -lifecycle-state and -lifecycle-command", 2)
+	case len(allowedCapabilities) > 0 && !*execute:
+		return fail("INVALID_ARGUMENT", "view -allow-capability requires -execute", 2)
+	case *operationLogFile != "" && !*execute:
+		return fail("INVALID_ARGUMENT", "view -operation-log requires -execute", 2)
+	// -input belongs only to an explicit command plan or to a selected
+	// runtime Contract Query. Static views must not silently drop it (#3778).
+	case len(inputPairs) > 0 && *commandID == "" && *environmentID == "":
+		return fail("INVALID_ARGUMENT", "view -input requires -command or -environment", 2)
+	case *root != strings.TrimSpace(*root) ||
+		*applicationID != strings.TrimSpace(*applicationID) ||
+		*patternID != strings.TrimSpace(*patternID) ||
+		*packageID != strings.TrimSpace(*packageID) ||
 		*environmentID != strings.TrimSpace(*environmentID) ||
-		*commandID != strings.TrimSpace(*commandID) {
-		return fail("INVALID_ARGUMENT", "view requires exact -workspace and -application, at most one of -pattern, -package, or -command, without positional arguments", 2)
+		*commandID != strings.TrimSpace(*commandID):
+		return fail("INVALID_ARGUMENT", "view flags must not carry surrounding whitespace", 2)
 	}
 	if *execute && *format != "text" && *format != "json" {
 		return fail("INVALID_ARGUMENT", "view -execute supports -format text or json", 2)
@@ -449,8 +470,14 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	// This is the first product CLI read of the existing header-detail Contract
 	// Query. No query, mapping, or validation is reconstructed in this entry.
 	if *environmentID != "" {
-		if *format != "json" {
-			return fail("INVALID_ARGUMENT", "view -environment currently requires -format json", 2)
+		// The runtime read is text, json, or html. print stays out: a browser
+		// page is what plan/NOW.md's road item 2 asks for, and printing the
+		// same page is a separate decision. html is accepted by the general
+		// format gate above for the static views, so this mode must refuse what
+		// it does not render instead of falling through to text (#5396).
+		if *format != "text" && *format != "json" && *format != "html" {
+			return fail("INVALID_ARGUMENT",
+				fmt.Sprintf("view -environment supports -format text, json, or html, not %q", *format), 2)
 		}
 		values, err := parseInputPairs(inputPairs)
 		if err != nil {
@@ -468,7 +495,13 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		}
 		report.OK = true
 		report.Result = result
-		return writeViewReport(out, report, 0)
+		if *format == "json" {
+			return writeViewReport(out, report, 0)
+		}
+		if *format == "html" {
+			return writeDestinationReadHTML(out, result)
+		}
+		return writeDestinationReadText(out, result)
 	}
 	kind, err := applicationview.PatternKind(loaded.World, core.CanonicalID(*applicationID), core.CanonicalID(*patternID))
 	if err != nil {
@@ -553,6 +586,135 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		}
 		return 2, fmt.Errorf("unhandled view result %T", result)
 	}
+}
+
+// writeDestinationReadText renders a `view -environment` read for a person:
+// one block per observed row, with every rule answer for that row, then the
+// relation-level answers. It prints the same decisions the JSON carries and
+// never invents a value the query did not return.
+func writeDestinationReadText(out io.Writer, read destinationRead) (int, error) {
+	if _, err := fmt.Fprintf(out, "application %s\n", read.Application); err != nil {
+		return 2, err
+	}
+	if _, err := fmt.Fprintf(out, "pattern %s\n", read.Pattern); err != nil {
+		return 2, err
+	}
+	if _, err := fmt.Fprintf(out, "environment %s\n", read.Environment); err != nil {
+		return 2, err
+	}
+	if _, err := fmt.Fprintf(out, "relation %s\n", read.Relation); err != nil {
+		return 2, err
+	}
+	if _, err := fmt.Fprintf(out, "coverage %s\n", read.Coverage); err != nil {
+		return 2, err
+	}
+	// The declaration is the binding's statement, not an observation. It is
+	// printed as stated and unchecked so a reader of the text form cannot
+	// mistake it for measured coverage. An undeclared binding prints nothing,
+	// which stays distinguishable from "declared but unchecked".
+	if read.Declaration != nil {
+		// A binding that states both "every row" and "only some rows" is
+		// self-contradictory. The static validator rejects it, but the view path
+		// runs no validator, so this renderer must not pick one side and hide
+		// the other: printing only the relation would read as a clean
+		// declaration when the binding actually contradicts itself.
+		var declared string
+		switch {
+		case read.Declaration.CoversRelation != "" && read.Declaration.CoversSome:
+			declared = "covers " + string(read.Declaration.CoversRelation) + " and covers some (contradictory)"
+		case read.Declaration.CoversRelation != "":
+			declared = "covers " + string(read.Declaration.CoversRelation)
+		default:
+			declared = "covers some"
+		}
+		checked := "unchecked"
+		if read.Declaration.Checked {
+			checked = "checked"
+		}
+		if _, err := fmt.Fprintf(out, "declaration %s (%s)\n", declared, checked); err != nil {
+			return 2, err
+		}
+	}
+	if len(read.KeyAttributes) > 0 {
+		keys := make([]string, 0, len(read.KeyAttributes))
+		for _, key := range read.KeyAttributes {
+			keys = append(keys, string(key))
+		}
+		if _, err := fmt.Fprintf(out, "key %s\n", strings.Join(keys, ", ")); err != nil {
+			return 2, err
+		}
+	}
+	if _, err := fmt.Fprintf(out, "rows %d\n", len(read.Rows)); err != nil {
+		return 2, err
+	}
+	for _, row := range read.Rows {
+		if _, err := fmt.Fprintf(out, "row %s\n", row.Key); err != nil {
+			return 2, err
+		}
+		// A rule that is only undecided for this row lives in PerRowUndecided,
+		// not in PerRow, so both maps must contribute to the printed set.
+		seen := make(map[string]bool, len(read.PerRow[row.Key])+len(read.PerRowUndecided[row.Key]))
+		rules := make([]string, 0, len(read.PerRow[row.Key])+len(read.PerRowUndecided[row.Key]))
+		for rule := range read.PerRow[row.Key] {
+			if !seen[string(rule)] {
+				seen[string(rule)] = true
+				rules = append(rules, string(rule))
+			}
+		}
+		for rule := range read.PerRowUndecided[row.Key] {
+			if !seen[string(rule)] {
+				seen[string(rule)] = true
+				rules = append(rules, string(rule))
+			}
+		}
+		sort.Strings(rules)
+		for _, rule := range rules {
+			answer := read.PerRow[row.Key][rule]
+			reason := read.PerRowUndecided[row.Key][rule]
+			if answer == "" && reason != "" {
+				// The rule is recorded only as undecided for this row; the
+				// reason is what makes it undecided, so name it as such.
+				answer = "undecided"
+			}
+			line := fmt.Sprintf("  %s %s", rule, answer)
+			if reason != "" {
+				line += " (" + reason + ")"
+			}
+			if _, err := fmt.Fprintf(out, "%s\n", line); err != nil {
+				return 2, err
+			}
+		}
+	}
+	relSeen := make(map[string]bool, len(read.PerRelation)+len(read.PerRelationUndecided))
+	relationRules := make([]string, 0, len(read.PerRelation)+len(read.PerRelationUndecided))
+	for rule := range read.PerRelation {
+		if !relSeen[string(rule)] {
+			relSeen[string(rule)] = true
+			relationRules = append(relationRules, string(rule))
+		}
+	}
+	for rule := range read.PerRelationUndecided {
+		if !relSeen[string(rule)] {
+			relSeen[string(rule)] = true
+			relationRules = append(relationRules, string(rule))
+		}
+	}
+	sort.Strings(relationRules)
+	for _, rule := range relationRules {
+		answer := read.PerRelation[rule]
+		reason := read.PerRelationUndecided[rule]
+		if answer == "" && reason != "" {
+			answer = "undecided"
+		}
+		line := fmt.Sprintf("%s %s", rule, answer)
+		if reason != "" {
+			line += " (" + reason + ")"
+		}
+		if _, err := fmt.Fprintf(out, "%s\n", line); err != nil {
+			return 2, err
+		}
+	}
+	return 0, nil
 }
 
 func writeViewReport(out io.Writer, report cliViewReport, exitCode int) (int, error) {

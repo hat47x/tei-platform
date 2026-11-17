@@ -1,0 +1,7 @@
+The discovery surface already has tests:
+
+  catalogue_accepts_test.go          every flag the catalogue names is accepted (#3956)
+  cli_discovery_process_test.go      every catalogued command starts in a real process
+  cli_discovery_write_flags_test.go  write-flag consistency
+
+All pass. There was nothing to fix here.

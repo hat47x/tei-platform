@@ -1,0 +1,16 @@
+  $ tei view -workspace W -application loan_desk -pattern p -execute
+  error INVALID_ARGUMENT
+    view requires exact -workspace and -application, at most one of -pattern,
+    -package, or -command, without positional arguments
+
+I passed -workspace and -application and exactly one selector. The message
+described a mistake I had not made. The real reason: -execute requires -command.
+
+The guard was:
+
+  if fs.NArg() != 0 || *root == "" || ... || (*execute && *commandID == "") || ... {
+      return fail("INVALID_ARGUMENT", "<one message for ~20 conditions>", 2)
+  }
+
+Split into a switch; each case names the offending flag. Accepted and refused
+combinations are unchanged.

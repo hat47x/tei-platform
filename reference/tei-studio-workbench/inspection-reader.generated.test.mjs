@@ -32,6 +32,10 @@ const cases = [
   ["sourceStatus partial", { ...ok, sourceStatus: "partial" }, subject, catalog, "value"],
   ["extra limits survive", { ...ok, authorityLimits: [...limits, "additional-scope"] }, subject, catalog, "value"],
   ["missing sourceStatus", { ...ok, sourceStatus: undefined }, subject, catalog, "INVALID_INSPECTION_RESPONSE"],
+  // Required by contract.requiredResponseFields alone (no Generator Source change).
+  ["missing schemaVersion", (({ schemaVersion, ...rest }) => rest)(ok), subject, catalog, "INVALID_INSPECTION_RESPONSE"],
+  ["numeric schemaVersion", { ...ok, schemaVersion: 1 }, subject, catalog, "INVALID_INSPECTION_RESPONSE"],
+  ["null schemaVersion", { ...ok, schemaVersion: null }, subject, catalog, "INVALID_INSPECTION_RESPONSE"],
   ["null sourceStatus", { ...ok, sourceStatus: null }, subject, catalog, "INVALID_INSPECTION_RESPONSE"],
   ["missing limits", (({ authorityLimits, ...rest }) => rest)(ok), subject, catalog, "INVALID_INSPECTION_RESPONSE"],
   ["non-array limits", { ...ok, authorityLimits: "read-only" }, subject, catalog, "INVALID_INSPECTION_RESPONSE"],

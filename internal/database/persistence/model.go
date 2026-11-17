@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"fmt"
 	"tei/internal/core"
 	"tei/internal/environment"
 )
@@ -72,6 +73,46 @@ type ColumnMapping struct {
 	Column      string           `json:"column"`
 	Storage     StorageType      `json:"storage"`
 	Nullability Nullability      `json:"nullability"`
+	// Precision and Scale carry the declared decimal width, for `decimal(12,3)`.
+	// They stay nil for every other storage type and for a bare `decimal`, so
+	// the JSON of an existing Source does not change.
+	Precision *int `json:"precision,omitempty"`
+	Scale     *int `json:"scale,omitempty"`
+}
+
+// DecimalWidth reports the declared precision and scale for a decimal column.
+// A bare `decimal` has no declared width, so ok is false.
+func (c ColumnMapping) DecimalWidth() (precision, scale int, ok bool) {
+	if c.Storage != StorageDecimal || c.Precision == nil || c.Scale == nil {
+		return 0, 0, false
+	}
+	return *c.Precision, *c.Scale, true
+}
+
+// MaxDecimalPrecision is the widest decimal this mapping accepts. PostgreSQL
+// allows up to 1000, Oracle up to 38; 38 is the value both can represent, so a
+// broader declaration is refused instead of being silently narrowed.
+const MaxDecimalPrecision = 38
+
+// ValidateDecimalWidth refuses a width that cannot be realized by every
+// supported provider, and refuses a width declared on a non-decimal type.
+func (c ColumnMapping) ValidateDecimalWidth() error {
+	if c.Precision == nil && c.Scale == nil {
+		return nil
+	}
+	if c.Storage != StorageDecimal {
+		return fmt.Errorf("storage %q cannot carry decimal precision", c.Storage)
+	}
+	if c.Precision == nil || c.Scale == nil {
+		return fmt.Errorf("decimal precision and scale must be declared together")
+	}
+	if *c.Precision < 1 || *c.Precision > MaxDecimalPrecision {
+		return fmt.Errorf("decimal precision %d is outside 1..%d", *c.Precision, MaxDecimalPrecision)
+	}
+	if *c.Scale < 0 || *c.Scale > *c.Precision {
+		return fmt.Errorf("decimal scale %d is outside 0..%d", *c.Scale, *c.Precision)
+	}
+	return nil
 }
 
 // RelationStorageMappingは、target Semantic Dataへ新しい属性を追加せず、

@@ -1,0 +1,10 @@
+The dedupe is intended for repeats. The defect-shaped part is that two NAMED
+outcomes with the same payload count as a repeat, because the name is not in
+the identity key. inspect still shows ['created','overlapping']; trace cannot.
+
+No test pins this: zero tests mention outcome dedupe in derivedbridge/index,
+and no modelref test mentions outcome at all.
+
+Filed as #5426 with A/B/C rather than fixed, because choosing changes either
+the expressiveness of a legal declaration (A), the schema (C), or the contract
+text (B).

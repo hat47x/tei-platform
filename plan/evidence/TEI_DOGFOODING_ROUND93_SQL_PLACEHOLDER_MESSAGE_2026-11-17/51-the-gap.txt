@@ -1,0 +1,21 @@
+The check only matches a NAMED placeholder:
+
+  if query.Source != "" &&
+     !strings.Contains(query.Source, ":"+name) &&
+     !strings.Contains(query.Source, "$"+name) &&
+     !strings.Contains(query.Source, "@"+name) { warn }
+
+Measured:
+
+  $1           -> 1 warning
+  :borrower    -> 0
+  $borrower    -> 0
+  @borrower    -> 0
+
+PostgreSQL accepts $1 and the driver does bind parameters, so "not referenced"
+without naming the accepted forms sends the author looking for a missing input
+that is not missing. The driver's own comment says :name is the form it converts
+to positional placeholders.
+
+Fix: name the three forms and say positional is not matched. The matching
+behaviour is unchanged.

@@ -580,3 +580,53 @@ func (r *recordingCommandScenarioRunner) RunCommand(
 	r.calls = append(r.calls, input)
 	return r.result, r.err
 }
+
+// The custom page uses a positional join. A missing, shifted, or swapped
+// answer must fail before any row is rendered, rather than showing the wrong
+// rule result next to a business row (or returning a partial HTTP 200).
+func TestCustomSubmitUIRejectsMisalignedRowAnswersBeforeRendering(t *testing.T) {
+	custom, _, err := referenceScenarioTemplates()
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := &webTargetServer{customSubmit: custom}
+	aligned := []rowAnswerProjection{
+		{RowIndex: 0, Answers: []ruleAnswerProjection{{Rule: "quantity_positive", Result: "satisfied"}}},
+		{RowIndex: 1, Answers: []ruleAnswerProjection{{Rule: "quantity_positive", Result: "not-satisfied"}}},
+	}
+	for _, test := range []struct {
+		name    string
+		answers []rowAnswerProjection
+		status  int
+	}{
+		{name: "aligned", answers: aligned, status: http.StatusOK},
+		{name: "missing answer", answers: aligned[:1], status: http.StatusInternalServerError},
+		{name: "extra answer", answers: append(append([]rowAnswerProjection{}, aligned...), rowAnswerProjection{RowIndex: 2}), status: http.StatusInternalServerError},
+		{name: "swapped positions", answers: []rowAnswerProjection{aligned[1], aligned[0]}, status: http.StatusInternalServerError},
+		{name: "shifted position", answers: []rowAnswerProjection{aligned[0], {RowIndex: 2}}, status: http.StatusInternalServerError},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			read := &readScenarioResult{
+				OrderLineRows: make([]semanticRowProjection, 2),
+				RowAnswers:    test.answers,
+			}
+			response := httptest.NewRecorder()
+			server.renderCustomSubmit(response, http.StatusOK, customSubmitPageData{
+				Result: &commandScenarioResult{Stage: "completed", Read: read},
+			})
+			if response.Code != test.status {
+				t.Fatalf("status=%d want=%d body=%q", response.Code, test.status, response.Body.String())
+			}
+			body := response.Body.String()
+			if test.status == http.StatusOK {
+				if !strings.Contains(body, "quantity_positive") || !strings.Contains(body, "not-satisfied") {
+					t.Fatalf("aligned row answers were not rendered: %q", body)
+				}
+			} else {
+				if !strings.Contains(body, "cannot render row answers") || strings.Contains(body, "Line 0") || strings.Contains(body, "quantity_positive") {
+					t.Fatalf("misaligned rows leaked into a page: %q", body)
+				}
+			}
+		})
+	}
+}

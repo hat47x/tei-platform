@@ -2,6 +2,16 @@
 
 ## 目的
 
+- [ノードモデル導入：定義・出現・配線・表示を分ける最小契約](design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md#13-ノードモデル導入の最小契約定義出現配線表示を分ける2026-11-17)：標準Data／Graph／Operation／Process／PluginとSource Indexを正本とし、Node Viewは**定義ID・Node出現ID・Port束縛・独立Edge ID・表示IDを区別する投影**として導入する。同名二Node／平行Edge／一Operationの複数出現、Whole／Field／Adapterの情報損失、Layout変更とA→B→Aの失効をNM-01〜04で検収する。Result-first／Node-firstは同じ意味定義へ接続し、実現方式P（直接解釈）／G（Go生成）／D（DB・外部Provider委譲）と、Source・Builder・実Call・Effectを別資格として扱う。最初の差分は既存Reader／CLIを使うread-only N0と実現N2への必要辺であり、新Node DSL／Graph Runtime／Host／第二意味正本は作らない。#2497/#2506/#2620/#1124/#4198/#2514へ分担し、**通常CLI→実Provider→独立ConsumerとStudio Stage1→Stage2 Windows実再入の並行P0は変更しない**（設計統合、追加の製品試験は未実施）。
+
+- [DB横断D0：実PostgreSQL Product Readの実行可能な受入仕様](design/DATA_PROVIDER_CROSS_DB_CONFORMANCE_2026-11.md#10-d0の実行可能な受入仕様一つのfunctionを製品経路で通す2026-11-17)：`order_entry.recent_orders`一Function・一Consumerを固定し、Source→実Provider→Rowset→Data Context→通常CLIの同一Attemptを検収する。D0-P01〜03（3/2/0行）とD0-N01〜05（Source失効、欠損列、部分取得、選択と実Callの不一致、Consumer未配送）の独立Expectedを定め、観測→実Read→拒否→Studio投影に分割。実DB製品E2Eは未実施。#2586の通常CLI実Providerと#2831のStudio Stage1→Stage2を並行P0として維持する。
+
+
+- [DB取得範囲と業務Claimの観測十分性](design/DATA_PROVIDER_CROSS_DB_CONFORMANCE_2026-11.md#9-観測した行と業務上の判断を分けるclaim-sufficiency2026-11-17)：組織C1の実PG二世界反例（同一Membership 4件でもPerson数3/4）を、ProviderのCoverageとConsumerのClaim Sufficiencyの区別に接続する。DPC-C01〜04を#2506/#2514/#1180へ引き渡し、同一Attemptの実Function→Rowset→Data Context→通常CLIで、結果の完全性と用途別判断の十分性を別票検査する。正式Person Link・NoSQL実検証・Studio E2Eは未受理。#2586/#2831のP0は維持する。
+
+
+- [DB横断適合とNode・REA・Batchの実行経路](design/DATA_PROVIDER_CROSS_DB_CONFORMANCE_2026-11.md#8-他チャット統合nodereabatchpluginをdb実行へ接続する2026-11-17)：Node Portの型適合とDB実行資格、REAの業務関係と物理参照、Batchの粒度・部分取得・Lineage、Studio RendererとCurrent Grantを分離する。DPC-N/R/B/W/Eの独立Expected候補を既存Ownerへ引き渡す。**直近はSQLite ReaderのCoverage偽申告を製品Callerで拒否し、通常CLIの実PostgreSQL一Functionを通す**。NoSQL実接続・実Job・Studio E2Eは未実施。新Engine・第二正本・セルフビルドP0の追加Hard Gateは設けない。
+
 - [TEI自身の要件を三要素Methodと型付きインスタンスでレビューする](design/THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md#33-tei自身の要件全体をモデルとしてレビューする三要素method標準構造インスタンスx-tea移植2026-11-17設計統合)：TEIの標準Data/Role/Facet、Function/Process、標準データ構造・標準表現型・Mappingを**Meta→Model→型付きInstance→複数Projection**で見渡し、要件索引からSource・実装・試験へ追跡する。原典三要素はCore固定でなくMethod Profile（RQ-031）。原典の自由なInstance TextとTEI型付き例、表示Occurrenceと正式Relation/Identity、説明例と独立Expected、Source再投影と実行・受理を分離する。XM-0/1/2・XD-0/1・SELFを#1124/#1131/#1031/#2514/#2831へ割り当て、SDM-01〜12（NOT RUN）を既存Expectedに引き渡す。**最初はread-onlyな同名二ノード／平行辺、NULL・欠損・空集合・未取得、三要素Coverage負例**から検収し、GUI編集・Driver/DB・実Wailsを別段階とする。Studio Stage1→Stage2実Windowsセルフビルドと通常CLI実Providerの最優先P0には新たなHard Gateを追加しない（docs-only、製品受理なし）。
 - [TEI自己記述の第一縦断（図面・具体例・レビュー票）](design/TEI_SELF_DESCRIPTION_REVIEW_SLICE_2026-11.md)：RQ-011／026／031を起点に、三要素Methodの図面、同名異ID・平行辺・値の有無の型付き例、X-TEAのFunction CRUDとTaskActionの帰属差、Coverageの未確認を一件票で照合する。#1124/#1031/#1131/#2497/#2514にread-onlyから引き渡し、実Windows Studio／実Providerの並行P0に新しいHard Gateを加えない（SDM全体・実GUI/Driver・Owner受理はNOT RUN）。§6では既存`internal/threeelement`の同一Function/Data複数Operationを1セルへ統合するFocused Go回帰を追加し、明示CRUDと派生意図・相互対立・操作順序を別々に照合する。これはread-only参照実装の限定試験であり、旧対応表全体や実DB Effectを証明しない。 §7で集約セルから個々の元宣言へ戻るread-onlyの出現位置一覧を追加し、複数宣言・対立・未解決を保持する。配列位置を永続ID／Source Span／編集許可と同一視せず、#1031の原典token、#1124の選択、#1131の型付きInstanceへ段階接続する。
 
@@ -2980,3 +2990,12 @@ Pluginのport連結は基本型だけでなく複合Data・Relationの型も照�
 [組織C1補遺§44.3](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)と[段階計画§10.21](design/ORGANIZATION_STAGED_MODELING_PLAN_2026-11.md)に、**QueryのResultが同じでも業務上のClaimが異なる二世界がある**とき、そのClaimは観測されたResultだけでは決められないことを共通の検査条件として反映した。実PGの4件のMembershipは観測済みでも、distinct Person（候補3/4）、配賦FTE、責任者・承認候補の資格は別。
 
 次の実装は①#2586通常CLIのFunction→実Query/Provider→一Consumer同Attempt受領、②#2506/#2514のRead Scope/Completeness・Claim必要入力、③#2516/#2497の用途別Disclosure・Graph/Tree/Plugin型付きPortで失われる意味の確認を順に検収する。正式Person Relation・履歴版・業務単一値性は#2386/#1126のOwner受理を待つ。**型の一致・Query実行成功・人物数の推定・現在Host Grantを一枚のSuccessにまとめない**。Desktopセルフビルド#2831、BRMS/Case、外部Effectは独立資格のまま。
+
+<!-- batch-multi-result-coherence-20261117 -->
+### 2026-11-17 汎用バッチ：複数成果物の世代整合と実Consumerの読取資格
+
+[成果物・プロセス合成設計§15](design/DECLARATIVE_RESULT_PROCESS_COMPOSITION_2026-11.md)に、**共通計算の共有、Resultごとの不変Generation、複数Resultの整合した公開、Consumerが実際に固定した読取Cut**を分離する判断を追加した。明細A=100、B=300（集計400）が、B=500（集計600）へ更新されたとき、明細だけ新世代・集計だけ旧世代であれば、双方の個別Artifactは正しくても「同じ現行結果の組」として不適格となる。別々のactiveポインタ読取も同じ組の証明にならない。
+
+**実装順は既存P0を維持する**：#4410/#1130の固定TSV／直接Go＋CLI二入口と不変出力 → #1180/#2514の既存独立ExpectedへのMG-01〜08（混在・部分公開・別時点読取・分類変更・Scope・ACK喪失）引渡し → #2482/#2622の既存Manifest／Stage／Publish／実Reader能力確認 → #1174/#1129のEffect/Receipt検証 → #1124/#2831/#4583のread-only Studio投影。実Targetが原子的な組の公開・Pinを提供しない場合に、万能なクロスDB原子性を仮定しない。新Scheduler、Batch Engine、Result Store、Cross-Target Transaction Manager、第二DSL・試験正本は導入しない。
+
+**資格**：設計文書の追補のみで、実Go/DB/CLI/Consumer/Studio試験、公開の原子性、Owner意味受理は **NOT RUN / NOT ACCEPTED**。通常CLI実Provider #2586とDesktopセルフビルド #2831を最優先のままにする。

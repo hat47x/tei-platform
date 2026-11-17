@@ -34,33 +34,26 @@ func TestUnknownValidationKindNamesTheVocabulary(t *testing.T) {
 	}
 }
 
-// Each kind parses with the body it requires. A kind rejected here would be
-// named by the diagnostic but unusable, so the vocabulary has to be accepted,
-// not merely listed.
+// A legacy .tei validation carries `attribute` and `relation` only, so only the
+// kinds expressible from that body can be declared here. The rest are named by
+// the vocabulary diagnostic and refused with a message pointing at .tei.md.
+// (An earlier version of this test asserted all five parsed here; that was
+// wrong, and the parser now refuses the three that never could.)
 func TestKnownValidationKindIsAccepted(t *testing.T) {
-	// The body grammar accepts only `attribute` and `relation`. Every kind
-	// requires an attribute; relation-unique additionally requires a relation.
-	bodies := map[semantic.ValidationKind]string{
-		semantic.ValidationPositive:       "    attribute probe.thing.id\n",
-		semantic.ValidationRelationUnique: "    attribute probe.thing.id\n    relation probe.thing.items\n",
-		semantic.ValidationOperator:       "    attribute probe.thing.id\n",
-		semantic.ValidationNotAfter:       "    attribute probe.thing.starts_on\n",
-		semantic.ValidationNoOverlap:      "    attribute probe.thing.starts_on\n",
-		// The older body grammar has no place for the trigger attribute, so
-		// this kind parses but the validator refuses it as incomplete. The
-		// rule authoring surface is where it can be written.
-		semantic.ValidationRequiredIf: "    attribute probe.thing.reason\n",
+	bodies := map[string]string{
+		"positive":        "    attribute probe.thing.id\n",
+		"relation-unique": "    attribute probe.thing.id\n    relation probe.thing.items\n",
 	}
-
-	for _, kind := range semantic.ValidationKinds {
-		body, ok := bodies[kind]
-		if !ok {
-			t.Errorf("kind %q has no fixture; add the body it requires", kind)
-			continue
-		}
-		src := "namespace probe\n\nvalidation probe.ok " + string(kind) + " {\n" + body + "}\n"
+	for kind, body := range bodies {
+		src := "namespace probe\n\nvalidation probe.ok " + kind + " {\n" + body + "}\n"
 		if _, err := NewParser(src).ParseSemanticFile(); err != nil {
 			t.Errorf("kind %q was rejected: %v", kind, err)
+		}
+	}
+	for _, kind := range []string{"operator", "not-after", "no-overlap"} {
+		src := "namespace probe\n\nvalidation probe.ok " + kind + " {\n    attribute probe.thing.id\n}\n"
+		if _, err := NewParser(src).ParseSemanticFile(); err == nil {
+			t.Errorf("kind %q was accepted although this surface cannot express it", kind)
 		}
 	}
 }

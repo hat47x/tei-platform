@@ -2022,3 +2022,52 @@ MR-01〜06は**試験候補の識別子**であって、製品に新しく追加
 共通の評価票には、**Subject・Source Revision・Read ID／Coverage・Expected・変更因子・方式の適用可否・選択版と実Call・Builder／Consumer実受領・Mutant検出・再実行費用**を記録する。方式選択では、まず意味と必要Readの適合、次にTarget配布・保守対象（定義、Generator、Hook、手書きGo）・変更波及・実行費を比較する。生成行数が多いこと、あるいは解釈のみであること自体に優劣を付けない。
 
 **現在の資格**：研究文献の方法と現行mainに存在する限定実装を照合した計画。MR-01〜06の追加製品試験、実ProviderのRead Coverage、正式R2-P／R3、Ownerの意味受理、非Plugin Windows Studio Stage1→Stage2は**NOT RUN／NOT PROVEN**。既存P0の順序を変更せず、新Runtime／Registry／Graph Runner／第二Expected正本を導入しない。
+
+
+### 16.54 実SQLの取得範囲をRuleの判断資格へつなぐ（2026-11-17）
+
+前節までの研究上の反例を、他の設計レーンで具体化した**DPC-16〜20**へ引き渡す。#5148（期間非重複Rule）、#5149（SQL Executorの行を読む`validationread`）、#5150（Operator選択指紋の一本化）はmainへ統合済みである。§16.52〜16.53に残る「審査中」は執筆時点の記録である。一方、SQL Executor→Readerの局所試験は、通常の製品CLIから実Providerを呼び、同一AttemptのRule結果を独立Consumerへ届けたことを意味しない。
+
+**最初の研究成果の実装先は「取得範囲の根拠」**とする。実際には4行あるRelationから2行だけを返すSQLで、Callerが`CoverageComplete`を申告しても、全件性を保証した証拠がなければRuleの成立を認定しない。Read値が正しいことと、必要な範囲を読めたことは別の性質である。既知の二行が同じ組・時点で重複していれば`no-overlap`の不成立は部分取得でも確定できるが、重複が見つからないだけでは全件の成立を確定できない。単一値の`positive`や同一記録の`not-after`に、無関係なRelationのpartialを機械的に伝播させない。
+
+検査を次の四つの既存Ownerへ分ける。**DPC-16**はQuery／Function Data Contextから全件性を申告できる根拠と、虚偽completeの拒否。**DPC-17／18**はSQL NULLと未選択列、decimalに不適切なREALを渡す場合の精度・型の拒否。**DPC-19**はWhole Record／明示Field／任意Field Projectionで失われるPresence／Coverageを`lossy`として示し、公開Grantへ昇格させない。**DPC-20**は期間重複Ruleの確定・未確定を通常CLIの実Read→独立Consumerまで同一Attemptでつなぐ。既存の[製品完成計画のDF-P4a〜d](../workstreams/PRODUCT_COMPLETION_PLAN.md)と[標準フロー設計§12.11〜12.13](../design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)を正本として再利用し、第二の実装計画を作らない。
+
+| 反例 | 読取・意味の境界 | 独立Expectedが確認すること |
+| --- | --- | --- |
+| MR-02／03 | 2/4行だけを読むSQL、同じ行集合でcompleteを虚偽申告 | 未観測行を「存在しない」とみなさない。既知反例による不成立だけは保持 |
+| MR-04 | SQL NULL、SELECTで未取得の列、数値0 | NULL／not-fetched／presentの区別を保持し、Rule固有の判断理由を出す |
+| MR-01 | 同値の別Attribute、Whole／Field投影 | 値が一致してもRead ID・必要な状態・対象Scopeが違えば同一実装とみなさない |
+| MR-05／06 | 原文改版、実装選択A→B→A | 結果の一致と旧Planの現在性、Operatorの意味適合を別に検収 |
+
+### 16.55 研究成果をCoreへ昇格させる条件と停止線
+
+研究成果の扱いは、**(1)既存のData／Rule／Process／Operatorで表せる、(2)標準型・関係・状態の不足として複数領域に共通する、(3)Provider／Target固有の事情である**の順に判定する。(1)は既存の構成要素を利用する。(2)は少なくとも二領域の独立反例を示し、意味・Identity・多重度・Scope・時点・失効の保存条件を定義したうえでCore拡張を審査する。(3)はPlugin／Adapter／Target Generatorに閉じ込める。Node配線、REA、三要素CRUD、組織の二時点、API公開Scopeを、形が似ているというだけで一つの汎用Engineへ統合しない。
+
+実装方式P（直接解釈）／G（生成）／D（外部委譲）の比較では、**手書きから移管できた実際の判断**を計測する。最初の検収対象はDataに記述されたRule一件とし、選択済みSource→実Read→判断→実Consumerの実行事実を確かめる。Gを採用するなら生成byteとBuilder実入力、Dを採用するならProvider実CallとGrantを追加検証する。単にGoのメソッド名が一致する、図表が表示できる、生成行数が増えることを成功条件にしない。
+
+2026-11-17時点の周辺PR #5187（X-TEAの条件付き必須）、#5190（三要素CRUDの相反）、#5200（Markdown Readerの無言の読み飛ばし）、#5202（セルフビルドの書込境界）は**統合状況と実証範囲をそれぞれ確認してから**比較対象へ取り込む。研究計画の更新だけでは、実SQLの全件性保証、通常CLI→Provider→Consumer、正式R2-P、Ownerの意味受理、非Plugin Windows Studio Stage1→Stage2は**未実証**である。これらのP0を優先し、新Runner、Host、Expected正本、汎用Query Engineを先行追加しない。
+
+### 16.56 Rule正規形の採用判断を、実Queryの全件性保証と混同しない（2026-11-17）
+
+[Rule正規形・Operator署名の設計決定](../design/RULE_NORMAL_FORM_AND_OPERATOR_SIGNATURE_DECISION_2026-11.md)では、Ruleを「一つのOperatorと名前付き入力の割当て」として扱い、**必要な入力の型・粒度・値／有無・Relationの全行・部分観測で反証できるか**を署名へ集約する。これは移行の設計判断であり、現行六種のValidationがすべて正規形へ移行したことを意味しない。Query束縛の`covers`は、選択したQueryが供給する範囲についての**宣言**であって、実SQLがその範囲を取得した証明ではない。
+
+宣言だけから全件取得を認定する実装候補[PR #5341](https://github.com/hat47x/tei-platform/pull/5341)では、宣言を変えずにSQLが明細一行を落とすと、一意性違反を見逃して「成立」と判断できる負例が確認された。このPRは**closed／unmerged**であり、完成した機能として計上しない。採用するのは「宣言と資格を分ける」という反証から得た境界である。Callerが`CoverageComplete`を渡せることも資格にはしない。
+
+[標準フロー設計§12.14〜12.16](../design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)のDPC-16a〜dを、§16.54のMR-02／03に対する**実装順と独立Expected**として用いる。初手はD1の4行に対してfirst_pageが2行を返す一因子を固定し、同じ実SQL結果でCallerの申告だけを変えて、根拠のないcompleteをReaderへ渡さないことを検査する。次に既知の重複違反は確定、見えない行の一意性成立は保留、別Scope／Bindingの資格流用を拒否、0行だけで不存在を認定しない、の順に検証する。
+
+| 検収する関係 | 反例または未立証時の扱い | 資格の上限 |
+| --- | --- | --- |
+| Operator要求→Query宣言 | Relation／親Identity／Scope／時点のずれ、必要な全行の未宣言 | 静的な契約適合に限定 |
+| Query宣言→実Provider取得 | 宣言を残したまま一行落とす、ページ中断、異なるBinding／Snapshot | Qualifiedな取得範囲を別途確認 |
+| 実取得→Rule判断 | 既知の反例は不成立、未観測の成立は保留。NULLと未取得も別理由 | Ruleごとの判断理由に限定 |
+| Rule結果→実Consumer | 宣言・Inspector表示・生成HTMLの一致だけで独立受領を主張しない | 同一Attemptの実受領と独立Expectedが必要 |
+
+既存`validationeval.Coverage`の二値は維持する。証拠不足は検収票では`unknown`、Rule入力では保守的に`partial`とするが、**未立証と実際の部分取得は同義ではない**。一般SQLの全件性証明、全Providerへの拡張、新しいCoverage Engineを初回の合格条件に加えない。
+
+### 16.57 表現型の横断利用では、意味・投影・実行・書戻しの資格を分ける
+
+[標準フロー設計§12.15および§13](../design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)と[三要素Method図面契約](../design/THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)を、研究成果の第二の適用例とする。Dataの同じ値を表・Graph・Node・生成Viewへ表示できても、意味Identity、Relation／Edgeの個別Occurrence、向き・多重性、値の状態・精度、Coverage、Scope／時点、Source版が保たれた証拠にはならない。同名Nodeを結合する描画やField投影で状態を落とすことは、read-onlyの表示選択として許容できても、元Sourceの編集対象や公開Grantを確定させない。
+
+ここでの試験は**同じD1の実Readに対する表示経路の追加観測**とし、新Graph Runnerや独立データ正本を作らない。まずDF-P4aのCaller拒否を満たし、その後にProjectionで失った状態を`lossy`として示し、Qualified Subject／Occurrence／Source Revisionを再解決してから編集を許す。Ruleが`undecided`でも図やHTMLが描けることと、Ruleの成立・公開許可は区別する。
+
+[実DBの行キー・Relation判定をHTMLへ渡すPR #5346](https://github.com/hat47x/tei-platform/pull/5346)などの変更は、統合状態と実Consumerの受入を確認してから証拠へ加算する。ここでの研究計画追補は**docs-only**であり、DPC-16aの製品Caller、実PostgreSQL→通常CLI→独立Consumer、Source編集往復、R2-P、R3、Windows Stage1→Stage2、Ownerによる意味受理の新規PASSを主張しない。
