@@ -37,15 +37,15 @@ type destinationRow struct {
 // over the whole relation is never reported satisfied just because the query
 // returned no duplicate: the current binding does not certify completeness.
 type destinationRead struct {
-	Application      core.CanonicalID             `json:"application"`
-	Pattern          core.CanonicalID             `json:"pattern"`
-	Environment      core.CanonicalID             `json:"environment"`
-	Coverage         string                       `json:"coverage"`
-	Rows             []destinationRow             `json:"rows"`
-	PerLine          map[string]map[string]string `json:"perLine"`
-	PerOrder         map[string]string            `json:"perOrder"`
-	PerLineUndecided map[string]map[string]string `json:"perLineUndecided,omitempty"`
-	PerOrderUndecided map[string]string           `json:"perOrderUndecided,omitempty"`
+	Application       core.CanonicalID             `json:"application"`
+	Pattern           core.CanonicalID             `json:"pattern"`
+	Environment       core.CanonicalID             `json:"environment"`
+	Coverage          string                       `json:"coverage"`
+	Rows              []destinationRow             `json:"rows"`
+	PerLine           map[string]map[string]string `json:"perLine"`
+	PerOrder          map[string]string            `json:"perOrder"`
+	PerLineUndecided  map[string]map[string]string `json:"perLineUndecided,omitempty"`
+	PerOrderUndecided map[string]string            `json:"perOrderUndecided,omitempty"`
 }
 
 func destinationDecision(d validationeval.Decision) (answer, reason string) {
