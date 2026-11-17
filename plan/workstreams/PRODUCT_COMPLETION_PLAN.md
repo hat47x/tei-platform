@@ -34,6 +34,8 @@
 
 **WEB-P1a-2の実装準備と検証の区切り**：[Web横断設計 §20](../design/WEB_STANDARD_COMPONENT_AND_AGENT_HARNESS_2026-11.md)で、前回PR #5173のCI事実（埋込Bundle・Windows Smoke成功／Host・全体健全性の一部失敗）を資格別に整理し、旧`WORKBENCH_NATIVE_CLOSURE`を保護したまま新Presenterを実画面へ接続する手順を確定した。まず既存Readerと独立Presenterの組合せに、同名異Kind・別Workspace・同版異Subject・明示NULL・partial／unfetchedを検査する局所回帰を加える。画面接続は別PRとし、Node24、実esbuild、Wails埋込JS／HTML／CSS／第三者通知のbyte一致、Static Compositionの新閉包、通常／生成Consumerを同HEADで再資格化する。局所Presenter試験では新Workbenchの配布をPASSとしない。#5168のFocus／Pin独立Expectedを再利用し、内部Inspectorの本文をHTTP公開する際はAudience／Disclosureが別途受理されるまでは転送しない。
 
+**WEB-P1a-1bのコード受入**：[Web横断設計 §21](../design/WEB_STANDARD_COMPONENT_AND_AGENT_HARNESS_2026-11.md)の`readInspectorPresentation`を既存の独立Presenterに追加し、Catalog不在・曖昧、同名異Kindの応答、非read-only、Source Index旧版、制限欠落、表示先Workspaceの入力不正を、既存`presentation.test.mjs`のNode回帰で拒否する。検証済み結果だけを別Subjectへ表示し直す誤配線を防ぐため、現在の選択Contextと検証を同じ関数に渡す。これはread-onlyの局所受入であり、現行`main.ts`・歴史的`presentation.ts`・正規Bundle・旧Closureは変更しない。Source位置Presenter #5212とPin/Focus後着 #5168を別の既存Evidenceとして使い、WEB-P1a-2の実画面・Source閉包・生成Bundle・Windows Consumerと公開Web Disclosureは未検収のまま維持する。
+
 後続の**WEB-P2**はCLI direct／Studio Host／HTTPの同一Operationを一つのread-only実Consumerで比較し、Actor／Audience／Disclosureと現在Providerの選択を別資格で検査する。**WEB-P3**は公開可能なB2C説明Facet一件をTarget Head Slotと実Asset Memberへ接続する。両者をUI Framework選定やDesktopセルフビルドの前提条件にしない。担当は#997／#1824／#1158／#951／#3509、反証は既存#1180／#2514。ここでの追記は実装引渡しであり、製品の新しいE2E試験合格ではない。
 
 ### 図解のP1：定義・生成・実Attemptを証拠つきで比較する（2026年11月15日）
