@@ -881,6 +881,46 @@ func main() {
 			os.Exit(2)
 		}
 		fmt.Println(fp)
+	case "database-schema-sql":
+		validateOrExit(w)
+		if *databaseID == "" || *providerName == "" {
+			fmt.Fprintln(os.Stderr, "-database and -provider are required")
+			os.Exit(2)
+		}
+		dbid := core.MustCanonicalID(*databaseID)
+		pid := environment.DatabaseProvider(*providerName)
+		if !pid.Known() || pid == environment.ProviderGeneric {
+			fmt.Fprintf(os.Stderr, "unsupported concrete database provider %q\n", pid)
+			os.Exit(2)
+		}
+		if _, ok := findDatabase(w, dbid); !ok {
+			fmt.Fprintf(os.Stderr, "unknown database %s\n", *databaseID)
+			os.Exit(2)
+		}
+		desired, err := realization.RealizeDesired(w.Persistence, string(dbid), pid)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+		// Compare the definitions against an EMPTY schema: every declared table is
+		// then a CreateTable change, so the rendered SQL is the DDL that would
+		// build the declared tables from nothing. No database is contacted.
+		// The empty side still has to name the same database, because Compare
+		// refuses snapshots from different databases.
+		empty := physical.SchemaSnapshot{Database: desired.Database}
+		diff, err := schemadiff.Compare(desired.Normalize(), empty.Normalize())
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+		statements, err := migration.Render(pid, diff)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+		for _, statement := range statements {
+			fmt.Println(statement)
+		}
 	case "database-reconcile":
 		validateOrExit(w)
 		if *databaseID == "" || *providerName == "" || *actualPath == "" || *historyPath == "" {

@@ -37,6 +37,7 @@ var acceptedCommands = []string{
 	"deployment-start",
 	"deployment-start-recovery",
 	"external-candidates",
+	"database-schema-sql",
 	"desired-schema",
 	"grants",
 	"index",

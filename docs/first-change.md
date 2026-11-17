@@ -15,12 +15,12 @@ export TEI_VIEW_PG_DSN='postgres://<利用者>@localhost:5432/<空のデータ�
 
 ## 0. 表を作り、明細を入れる
 
-定義から表を作るSQLを出すコマンドは、まだない。今は次のSQLを自分で実行する。列は参照用の作業領域の保存の定義に合わせてある。
+表は`tei`が定義から出す。次のコマンドで、保存の定義から`CREATE TABLE`と索引・主キーのSQLを得る。
 
 ```bash
-psql "$TEI_VIEW_PG_DSN" -c 'create table public.order_lines (
-  order_line_id bigint primary key, order_id bigint not null, line_number bigint not null,
-  item_code varchar not null, quantity numeric(12,3) not null, unit_price numeric(12,2) not null)'
+# 表を作るSQLは、定義から出す。データベースへは接続しない。
+tei database-schema-sql -workspace reference/workspace -database sales_core -provider postgres > schema.sql
+psql "$TEI_VIEW_PG_DSN" -f schema.sql
 psql "$TEI_VIEW_PG_DSN" -f testdata/destination-order-change/seed.sql
 ```
 
@@ -99,6 +99,6 @@ rule sales.order_line.unit_price_positive:
 
 - 異なるData・Relationを持つ業務モデルで、同じ`tei view`を通すこと。**列構成・主キー・Query入力が異なるモデルは通った**（`testdata/destination-order-change/alternate-model/` と `cmd/tei/destination_order_alternate_pg_case_test.go`）。**残るのは、別の属性集合を持つさらに別のモデル。**
 - 明細番号の一意を「成立」と答えること。束縛への全件の宣言が要る。
-- 定義から表を作ること。
+
 - 行ごとの答えをJSON以外で読むこと。`tei view -environment` は `-format text` で行と答えを人が読める形で出す（このPRの `cmd/tei/cli_view.go`）。
 - Webの画面で同じ答えを見ること。
