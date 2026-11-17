@@ -240,6 +240,14 @@ func runCombinedWebTargetWithHost(ctx context.Context, reader sourceacceptance.R
 				return err
 			}
 		}
+		// A Host may supply its own browse executor, but not on top of a
+		// database read: that would let the selected order come from one source
+		// while its detail rows come from another, which is the mixing
+		// plan/NOW.md road item 2 forbids. The database read already serves
+		// browse from the same connection, so the substitution is not needed.
+		if wiring.browse != nil && wiring.readDatabase != nil {
+			return fmt.Errorf("WEB_READ_BROWSE_SOURCE_CONFLICT: a database read serves browse and detail from the same connection, so a separate browse executor cannot be combined with it")
+		}
 		if wiring.browse != nil {
 			orderRead.browse = wiring.browse
 		}

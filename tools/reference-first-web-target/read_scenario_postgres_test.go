@@ -149,9 +149,14 @@ func requireIsolatedWebReadDatabase(ctx context.Context, db *sql.DB, expected st
 	return nil
 }
 
-// seedReadFixture creates the table the accepted persistence mapping declares,
+// seedReadFixture creates the tables the accepted persistence mappings declare,
 // from the shared destination-order seed, so this test owns its data instead of
 // reading what another suite left behind.
+//
+// The browse Query reads public.orders, so the parent rows are created here too:
+// the detail seed alone cannot answer which orders are recent, and a page whose
+// selected order is not in the database would join database detail rows to a
+// synthetic parent.
 func seedReadFixture(t *testing.T, db *sql.DB) error {
 	t.Helper()
 	seed, err := os.ReadFile(filepath.Join(fixtureRoot(t), "seed.sql"))
@@ -159,6 +164,27 @@ func seedReadFixture(t *testing.T, db *sql.DB) error {
 		return err
 	}
 	if _, err := db.Exec("drop table if exists public.order_lines"); err != nil {
+		return err
+	}
+	if _, err := db.Exec("drop table if exists public.orders"); err != nil {
+		return err
+	}
+	if _, err := db.Exec(`create table public.orders (
+		order_id bigint primary key,
+		customer_id bigint not null,
+		ordered_at timestamptz not null,
+		status varchar not null,
+		total_amount numeric not null,
+		external_id varchar
+	)`); err != nil {
+		return err
+	}
+	// The parent rows the seed's order_ids belong to, newest first as the
+	// browse Query orders them. Order 1003 has no lines, which the seed states.
+	if _, err := db.Exec(`insert into public.orders values
+		(1001, 11, '2026-09-18T09:30:00Z', 'draft', 12500.00, null),
+		(1002, 12, '2026-09-18T08:15:00Z', 'draft', 8300.00, null),
+		(1003, 13, '2026-09-18T07:30:00Z', 'draft', 6200.00, null)`); err != nil {
 		return err
 	}
 	if _, err := db.Exec(`create table public.order_lines (
