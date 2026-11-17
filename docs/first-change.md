@@ -27,6 +27,8 @@ psql "$TEI_VIEW_PG_DSN" -f testdata/destination-order-change/seed.sql
 
 **型の精度は定義されていない。** 保存の定義は`storage decimal`までしか言わないため、SQLは`numeric`になり、`numeric(12,3)`のような桁数は付かない。手で書いていた頃のSQLは桁数を持っていたので、同じ表にはならない。桁数が要る場合は定義側に足す必要があり、それはまだできない。
 
+**この出力は実際のPostgreSQLに流して確かめている。** 明細の読み取り試験（`cmd/tei/destination_order_runtime_pg_test.go`）は、表を手で作らず、`tei desired-schema -format sql`の出力をそのまま実行してから明細を読む。読んだ行の判定は`testdata/destination-order-change/`の独立した期待と照合するので、**DDLが適用できて、その表から製品が読める**ところまでがCIで毎回確かめられる。
+
 受注1001に3行、1002に2行が入る。1003には明細がない。
 
 ## 1. 作業領域の写しを作る
@@ -102,5 +104,5 @@ rule sales.order_line.unit_price_positive:
 
 - 異なる属性集合を持つ**さらに別の**業務モデル。**列構成・主キー・Query入力が異なるモデルは通った**（`testdata/destination-order-change/alternate-model/`・`cmd/tei/destination_order_alternate_pg_case_test.go`・#5362）。
 - 明細番号の一意を「成立」と答えること。束縛への全件の宣言が要る。
-- **列の精度と位取り**を定義すること。型は`numeric`まで出せるが、`numeric(12,3)` のような指定は出せない（保存の定義が`storage decimal`までしか持たない）。
+- **列の精度と位取り**を定義すること。型は`numeric`まで出せるが、`numeric(12,3)` のような指定は出せない（保存の定義が`storage decimal`までしか持たない）。生成したDDLの適用そのものは上で確かめているので、残る制限は**桁数だけ**である。
 - Webの画面で同じ答えを見ること。

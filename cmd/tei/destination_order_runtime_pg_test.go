@@ -35,25 +35,38 @@ func TestDestinationOrderChangeReadViaCLIFromPostgres(t *testing.T) {
 	if err := db.QueryRow("select current_database()").Scan(&actualName); err != nil || actualName != databaseName {
 		t.Fatalf("isolated PostgreSQL database check failed: actual=%q err=%v", actualName, err)
 	}
-	if _, err := db.Exec("drop table if exists public.order_lines"); err != nil {
-		t.Fatal(err)
-	}
-	_, err = db.Exec(`create table public.order_lines (
-		order_line_id bigint primary key,
-		order_id bigint not null,
-		line_number bigint not null,
-		item_code varchar not null,
-		quantity numeric(12,3) not null,
-		unit_price numeric(12,2) not null
-	)`)
-	if err != nil {
-		t.Fatal(err)
+	// The table is created from the product's own generated DDL, not by hand:
+	// docs/first-change.md tells the reader to pipe `tei desired-schema
+	// -format sql` into psql, and nothing here executed that output before
+	// (NOW.md road 4). A generated table that cannot be applied would make the
+	// guide wrong even though every unit test passes.
+	binary := buildCLIForLifecycle(t)
+	for _, table := range []string{"public.order_lines", "public.orders"} {
+		if _, err := db.Exec("drop table if exists " + table + " cascade"); err != nil {
+			t.Fatalf("cannot drop %s before DDL application: %v", table, err)
+		}
 	}
 	t.Cleanup(func() {
-		if _, err := db.Exec("drop table if exists public.order_lines"); err != nil {
-			t.Errorf("cannot clean up disposable order lines: %v", err)
+		for _, table := range []string{"public.order_lines", "public.orders"} {
+			if _, err := db.Exec("drop table if exists " + table + " cascade"); err != nil {
+				t.Errorf("cannot clean up %s: %v", table, err)
+			}
 		}
 	})
+	generated := runCLIProcessWithStreams(t, binary,
+		"desired-schema", "-workspace", filepath.Join("..", "..", "reference", "workspace"),
+		"-database", "sales_core", "-provider", "postgres", "-format", "sql")
+	if generated.code != 0 {
+		t.Fatalf("the product did not produce DDL: code=%d stderr=%s", generated.code, generated.stderr)
+	}
+	if strings.TrimSpace(generated.stdout) == "" {
+		t.Fatal("the product produced no DDL for the declared database")
+	}
+	if _, err := db.Exec(generated.stdout); err != nil {
+		// This is the finding, not a test-harness problem: the guide's step 0
+		// cannot be executed if this fails.
+		t.Fatalf("the generated DDL did not apply to a real PostgreSQL: %v\nDDL:\n%s", err, generated.stdout)
+	}
 	fixtures := filepath.Join("..", "..", "testdata", "destination-order-change")
 	seed, err := os.ReadFile(filepath.Join(fixtures, "seed.sql"))
 	if err != nil {
@@ -66,8 +79,6 @@ func TestDestinationOrderChangeReadViaCLIFromPostgres(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	binary := buildCLIForLifecycle(t)
-
 	for _, stage := range []struct {
 		name     string
 		expected string
