@@ -2985,3 +2985,12 @@ Pluginのport連結は基本型だけでなく複合Data・Relationの型も照�
 [組織C1補遺§44.3](design/ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)と[段階計画§10.21](design/ORGANIZATION_STAGED_MODELING_PLAN_2026-11.md)に、**QueryのResultが同じでも業務上のClaimが異なる二世界がある**とき、そのClaimは観測されたResultだけでは決められないことを共通の検査条件として反映した。実PGの4件のMembershipは観測済みでも、distinct Person（候補3/4）、配賦FTE、責任者・承認候補の資格は別。
 
 次の実装は①#2586通常CLIのFunction→実Query/Provider→一Consumer同Attempt受領、②#2506/#2514のRead Scope/Completeness・Claim必要入力、③#2516/#2497の用途別Disclosure・Graph/Tree/Plugin型付きPortで失われる意味の確認を順に検収する。正式Person Relation・履歴版・業務単一値性は#2386/#1126のOwner受理を待つ。**型の一致・Query実行成功・人物数の推定・現在Host Grantを一枚のSuccessにまとめない**。Desktopセルフビルド#2831、BRMS/Case、外部Effectは独立資格のまま。
+
+<!-- batch-multi-result-coherence-20261117 -->
+### 2026-11-17 汎用バッチ：複数成果物の世代整合と実Consumerの読取資格
+
+[成果物・プロセス合成設計§15](design/DECLARATIVE_RESULT_PROCESS_COMPOSITION_2026-11.md)に、**共通計算の共有、Resultごとの不変Generation、複数Resultの整合した公開、Consumerが実際に固定した読取Cut**を分離する判断を追加した。明細A=100、B=300（集計400）が、B=500（集計600）へ更新されたとき、明細だけ新世代・集計だけ旧世代であれば、双方の個別Artifactは正しくても「同じ現行結果の組」として不適格となる。別々のactiveポインタ読取も同じ組の証明にならない。
+
+**実装順は既存P0を維持する**：#4410/#1130の固定TSV／直接Go＋CLI二入口と不変出力 → #1180/#2514の既存独立ExpectedへのMG-01〜08（混在・部分公開・別時点読取・分類変更・Scope・ACK喪失）引渡し → #2482/#2622の既存Manifest／Stage／Publish／実Reader能力確認 → #1174/#1129のEffect/Receipt検証 → #1124/#2831/#4583のread-only Studio投影。実Targetが原子的な組の公開・Pinを提供しない場合に、万能なクロスDB原子性を仮定しない。新Scheduler、Batch Engine、Result Store、Cross-Target Transaction Manager、第二DSL・試験正本は導入しない。
+
+**資格**：設計文書の追補のみで、実Go/DB/CLI/Consumer/Studio試験、公開の原子性、Owner意味受理は **NOT RUN / NOT ACCEPTED**。通常CLI実Provider #2586とDesktopセルフビルド #2831を最優先のままにする。
