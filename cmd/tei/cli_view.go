@@ -456,13 +456,13 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		if err != nil {
 			return fail("INVALID_ARGUMENT", err.Error(), 2)
 		}
-		if len(values) != 1 || values["order_id"] == "" {
-			return fail("INVALID_ARGUMENT", "runtime view requires exactly one -input order_id=<integer>", 2)
-		}
-		result, err := readDestinationOrderLines(
+		result, err := readEnvironmentRows(
 			loaded.World, core.CanonicalID(*applicationID), core.CanonicalID(*patternID),
 			core.CanonicalID(*environmentID), values,
 		)
+		if errors.Is(err, errViewEnvironmentInput) {
+			return fail("INVALID_ARGUMENT", err.Error(), 2)
+		}
 		if err != nil {
 			return fail("VIEW_EXECUTION_FAILED", err.Error(), 1)
 		}

@@ -3,9 +3,12 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -18,6 +21,7 @@ import (
 	"tei/internal/driver/validationread"
 	"tei/internal/environment"
 	"tei/internal/ir"
+	"tei/internal/realization"
 	"tei/internal/semantic/validationeval"
 )
 
@@ -29,25 +33,32 @@ type destinationField struct {
 }
 
 type destinationRow struct {
-	OrderLineID string                      `json:"orderLineId"`
-	Fields      map[string]destinationField `json:"fields"`
+	// Key identifies the row by the primary key the persistence mapping of
+	// the Data declares, joined with "/" when the key has more than one
+	// attribute. It is never the position of the row.
+	Key    string                      `json:"key"`
+	Fields map[string]destinationField `json:"fields"`
 }
 
-// destinationRead is the first read-only runtime result of tei view.
+// destinationRead is the read-only runtime result of `tei view -environment`.
+// It names no Application, Pattern, Environment or Data of a particular
+// Workspace: everything is resolved from the Workspace that was loaded.
 // Because the current Contract Query binding does not certify that every
 // relation row was fetched, it conservatively reports partial coverage.
 // A witnessed duplicate still invalidates uniqueness, but absence of
 // duplicates alone cannot establish it.
 type destinationRead struct {
-	Application       core.CanonicalID             `json:"application"`
-	Pattern           core.CanonicalID             `json:"pattern"`
-	Environment       core.CanonicalID             `json:"environment"`
-	Coverage          string                       `json:"coverage"`
-	Rows              []destinationRow             `json:"rows"`
-	PerLine           map[string]map[string]string `json:"perLine"`
-	PerOrder          map[string]string            `json:"perOrder"`
-	PerLineUndecided  map[string]map[string]string `json:"perLineUndecided,omitempty"`
-	PerOrderUndecided map[string]string            `json:"perOrderUndecided,omitempty"`
+	Application          core.CanonicalID             `json:"application"`
+	Pattern              core.CanonicalID             `json:"pattern"`
+	Environment          core.CanonicalID             `json:"environment"`
+	Relation             core.CanonicalID             `json:"relation"`
+	KeyAttributes        []core.CanonicalID           `json:"keyAttributes"`
+	Coverage             string                       `json:"coverage"`
+	Rows                 []destinationRow             `json:"rows"`
+	PerRow               map[string]map[string]string `json:"perRow"`
+	PerRelation          map[string]string            `json:"perRelation"`
+	PerRowUndecided      map[string]map[string]string `json:"perRowUndecided,omitempty"`
+	PerRelationUndecided map[string]string            `json:"perRelationUndecided,omitempty"`
 }
 
 func destinationDecision(d validationeval.Decision) (answer, reason string) {
@@ -57,38 +68,28 @@ func destinationDecision(d validationeval.Decision) (answer, reason string) {
 	return string(d.Result), ""
 }
 
-// readDestinationOrderLines is deliberately limited to NOW.md's first
-// destination. It reuses the actual Workspace's Pattern, Environment,
+// readEnvironmentRows reads the detail rows of one header-detail Pattern
+// from the PostgreSQL instance the Environment binds, and answers every rule
+// the Application uses. It reuses the Workspace's Pattern, Environment,
 // Contract Query, selected executor and Application rules. It does not
 // publish a general-purpose database connection from the CLI.
-func readDestinationOrderLines(
+func readEnvironmentRows(
 	world ir.World,
 	appID, patternID, envID core.CanonicalID,
 	inputs map[string]string,
 ) (destinationRead, error) {
-	if appID != "order_entry" || patternID != "order_entry.order_lines" || envID != "development" {
-		return destinationRead{}, fmt.Errorf("runtime view currently supports only order_entry.order_lines in development")
-	}
-	if len(inputs) != 1 {
-		return destinationRead{}, fmt.Errorf("runtime view requires exactly one -input order_id=<integer>")
-	}
-	rawID, ok := inputs["order_id"]
-	if !ok {
-		return destinationRead{}, fmt.Errorf("runtime view requires -input order_id=<integer>")
-	}
-	orderID, err := strconv.ParseInt(rawID, 10, 64)
-	if err != nil || orderID <= 0 {
-		return destinationRead{}, fmt.Errorf("order_id must be a positive 64-bit integer")
-	}
-
 	resolver := driver.NewResolver(world)
 	prepared, err := resolver.ResolveHeaderDetailContractQuery(appID, patternID)
 	if err != nil {
 		return destinationRead{}, err
 	}
-	if len(prepared.Binding.Inputs) != 1 ||
-		prepared.Binding.Inputs[0].SourceAttribute != "sales.order.order_id" {
-		return destinationRead{}, fmt.Errorf("order header input is not explicitly bound to sales.order.order_id")
+	source, err := environmentHeaderSource(prepared.Binding.Inputs, inputs)
+	if err != nil {
+		return destinationRead{}, fmt.Errorf("%w: %v", errViewEnvironmentInput, err)
+	}
+	keyAttributes, err := environmentRowKey(world, prepared.Binding.Target.Database, prepared.Relation.Target.ID)
+	if err != nil {
+		return destinationRead{}, err
 	}
 
 	var selected *environment.Environment
@@ -156,10 +157,6 @@ func readDestinationOrderLines(
 			Capability:  binding.Executor,
 		}] = executor
 	}
-	source := queryresult.MappedResult{
-		Columns: []queryresult.Column{{Raw: "order_id", Attribute: "sales.order.order_id"}},
-		Rows:    [][]any{{orderID}},
-	}
 	execution, err := resolver.ExecuteHeaderDetailContractQueryInEnvironment(
 		ctx, envID, appID, patternID, source, 0, registry,
 	)
@@ -182,28 +179,28 @@ func readDestinationOrderLines(
 	}
 
 	result := destinationRead{
-		Application: appID,
-		Pattern:     patternID,
-		Environment: envID,
-		Coverage:    string(validationeval.CoveragePartial),
-		Rows:        make([]destinationRow, 0, len(execution.Execution.Result.Rows)),
-		PerLine:     map[string]map[string]string{},
-		PerOrder:    map[string]string{},
+		Application:   appID,
+		Pattern:       patternID,
+		Environment:   envID,
+		Relation:      prepared.Relation.Relation.ID,
+		KeyAttributes: keyAttributes,
+		Coverage:      string(validationeval.CoveragePartial),
+		Rows:          make([]destinationRow, 0, len(execution.Execution.Result.Rows)),
+		PerRow:        map[string]map[string]string{},
+		PerRelation:   map[string]string{},
 	}
 	ids := make([]string, 0, len(execution.Execution.Result.Rows))
 	for _, row := range execution.Execution.Result.Rows {
-		rawID, exists := row.Attributes["sales.order_line.order_line_id"]
-		id, typed := rawID.(int64)
-		if !exists || !typed {
-			return destinationRead{}, fmt.Errorf("the Contract Query did not return a typed order line identity")
+		key, err := environmentRowKeyValue(row.Attributes, keyAttributes)
+		if err != nil {
+			return destinationRead{}, err
 		}
-		key := strconv.FormatInt(id, 10)
-		if _, duplicate := result.PerLine[key]; duplicate {
-			return destinationRead{}, fmt.Errorf("the Contract Query returned a duplicate order line identity")
+		if _, duplicate := result.PerRow[key]; duplicate {
+			return destinationRead{}, fmt.Errorf("the Contract Query returned two rows with the key %s", key)
 		}
 		ids = append(ids, key)
-		result.PerLine[key] = map[string]string{}
-		item := destinationRow{OrderLineID: key, Fields: map[string]destinationField{}}
+		result.PerRow[key] = map[string]string{}
+		item := destinationRow{Key: key, Fields: map[string]destinationField{}}
 		for _, attribute := range execution.Execution.Resolution.Relation.Target.Attributes {
 			value, held := row.Attributes[attribute.ID]
 			field := destinationField{State: "not-fetched"}
@@ -225,12 +222,12 @@ func readDestinationOrderLines(
 		}
 		if decisions.Relation != nil {
 			answer, reason := destinationDecision(*decisions.Relation)
-			result.PerOrder[string(rule.ID)] = answer
+			result.PerRelation[string(rule.ID)] = answer
 			if reason != "" {
-				if result.PerOrderUndecided == nil {
-					result.PerOrderUndecided = map[string]string{}
+				if result.PerRelationUndecided == nil {
+					result.PerRelationUndecided = map[string]string{}
 				}
-				result.PerOrderUndecided[string(rule.ID)] = reason
+				result.PerRelationUndecided[string(rule.ID)] = reason
 			}
 			continue
 		}
@@ -239,15 +236,15 @@ func readDestinationOrderLines(
 		}
 		for i, decision := range decisions.Rows {
 			answer, reason := destinationDecision(decision)
-			result.PerLine[ids[i]][string(rule.ID)] = answer
+			result.PerRow[ids[i]][string(rule.ID)] = answer
 			if reason != "" {
-				if result.PerLineUndecided == nil {
-					result.PerLineUndecided = map[string]map[string]string{}
+				if result.PerRowUndecided == nil {
+					result.PerRowUndecided = map[string]map[string]string{}
 				}
-				if result.PerLineUndecided[ids[i]] == nil {
-					result.PerLineUndecided[ids[i]] = map[string]string{}
+				if result.PerRowUndecided[ids[i]] == nil {
+					result.PerRowUndecided[ids[i]] = map[string]string{}
 				}
-				result.PerLineUndecided[ids[i]][string(rule.ID)] = reason
+				result.PerRowUndecided[ids[i]][string(rule.ID)] = reason
 			}
 		}
 	}
@@ -255,4 +252,70 @@ func readDestinationOrderLines(
 		return destinationRead{}, fmt.Errorf("read-only PostgreSQL transaction did not complete")
 	}
 	return result, nil
+}
+
+// errViewEnvironmentInput marks an -input the Contract Query cannot take. It
+// is an argument error of the caller, not a failure of the read.
+var errViewEnvironmentInput = errors.New("invalid -input")
+
+// environmentHeaderSource builds the header record the detail is read for,
+// from -input name=value pairs. Every input the binding declares must be
+// given, and nothing else. An integer literal is handed over as an integer,
+// anything else as text: the binding does not state a storage type for the
+// header value, so no other conversion is attempted.
+func environmentHeaderSource(declared []realization.HeaderDetailContractQueryInputBinding, given map[string]string) (queryresult.MappedResult, error) {
+	source := queryresult.MappedResult{Rows: [][]any{{}}}
+	names := make([]string, 0, len(declared))
+	for _, input := range declared {
+		names = append(names, string(input.Input))
+	}
+	for _, input := range declared {
+		text, ok := given[string(input.Input)]
+		if !ok || text == "" {
+			return queryresult.MappedResult{}, fmt.Errorf("the Contract Query needs -input %s=<value>; its inputs are %s", input.Input, strings.Join(names, ", "))
+		}
+		var value any = text
+		if number, err := strconv.ParseInt(text, 10, 64); err == nil {
+			value = number
+		}
+		source.Columns = append(source.Columns, queryresult.Column{Raw: string(input.Input), Attribute: input.SourceAttribute})
+		source.Rows[0] = append(source.Rows[0], value)
+	}
+	for name := range given {
+		if !slices.Contains(names, name) {
+			return queryresult.MappedResult{}, fmt.Errorf("-input %s is not an input of the Contract Query; its inputs are %s", name, strings.Join(names, ", "))
+		}
+	}
+	return source, nil
+}
+
+// environmentRowKey returns the primary key the persistence mapping of data
+// in database declares. A row is pointed to by that key in the result, so a
+// Data without exactly one mapping with a primary key is refused rather
+// than pointed to by its position.
+func environmentRowKey(world ir.World, database, data core.CanonicalID) ([]core.CanonicalID, error) {
+	var key []core.CanonicalID
+	found := 0
+	for _, mapping := range world.Persistence {
+		if mapping.Database == database && mapping.SemanticData == data {
+			key = mapping.PrimaryKey
+			found++
+		}
+	}
+	if found != 1 || len(key) == 0 {
+		return nil, fmt.Errorf("Data %s needs exactly one persistence mapping with a primary key in database %s to point to its rows; found %d", data, database, found)
+	}
+	return key, nil
+}
+
+func environmentRowKeyValue(attributes map[core.CanonicalID]any, key []core.CanonicalID) (string, error) {
+	parts := make([]string, 0, len(key))
+	for _, attribute := range key {
+		value, held := attributes[attribute]
+		if !held || value == nil {
+			return "", fmt.Errorf("the Contract Query did not return the key attribute %s", attribute)
+		}
+		parts = append(parts, fmt.Sprint(value))
+	}
+	return strings.Join(parts, "/"), nil
 }

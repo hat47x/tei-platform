@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -121,15 +122,15 @@ func TestDestinationOrderChangeReadViaCLIFromPostgres(t *testing.T) {
 						Result struct {
 							Coverage string `json:"coverage"`
 							Rows     []struct {
-								OrderLineID string `json:"orderLineId"`
+								OrderLineID string `json:"key"`
 								Fields      map[string]struct {
 									State string `json:"state"`
 									Value any    `json:"value"`
 								} `json:"fields"`
 							} `json:"rows"`
-							PerLine           map[string]map[string]string `json:"perLine"`
-							PerOrder          map[string]string            `json:"perOrder"`
-							PerOrderUndecided map[string]string            `json:"perOrderUndecided"`
+							PerLine           map[string]map[string]string `json:"perRow"`
+							PerOrder          map[string]string            `json:"perRelation"`
+							PerOrderUndecided map[string]string            `json:"perRelationUndecided"`
 						} `json:"result"`
 					}
 					if err := json.Unmarshal([]byte(got.stdout), &report); err != nil {
@@ -174,6 +175,72 @@ func TestDestinationOrderChangeReadViaCLIFromPostgres(t *testing.T) {
 			}
 		})
 	}
+
+	// Nothing in the entry names the reference Workspace. The same rows are
+	// read through an Environment declared under another name, with no
+	// change to the program.
+	t.Run("an Environment under another name", func(t *testing.T) {
+		root := t.TempDir()
+		copyTreeForDestination(t, filepath.Join("..", "..", "reference", "workspace"), root)
+		directory := filepath.Join(root, "environments", "development")
+		renamed := 0
+		err := filepath.WalkDir(directory, func(path string, entry fs.DirEntry, err error) error {
+			if err != nil || entry.IsDir() || !strings.HasSuffix(path, ".tei") {
+				return err
+			}
+			content, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			renamed += strings.Count(string(content), "development")
+			return os.WriteFile(path, []byte(strings.ReplaceAll(string(content), "development", "staging")), 0o644)
+		})
+		if err != nil || renamed == 0 {
+			t.Fatalf("the Environment was not renamed: renamed=%d err=%v", renamed, err)
+		}
+		if validated := runCLIProcessWithStreams(t, binary, "validate", "-workspace", root); validated.code != 0 {
+			t.Fatalf("the renamed Workspace did not validate: %s%s", validated.stdout, validated.stderr)
+		}
+		got := runCLIProcessWithStreams(t, binary,
+			"view", "-workspace", root, "-application", "order_entry",
+			"-pattern", "order_entry.order_lines", "-environment", "staging",
+			"-input", "order_id=1002", "-format", "json",
+		)
+		var report struct {
+			OK     bool `json:"ok"`
+			Result struct {
+				KeyAttributes []string                     `json:"keyAttributes"`
+				PerRow        map[string]map[string]string `json:"perRow"`
+			} `json:"result"`
+		}
+		if err := json.Unmarshal([]byte(got.stdout), &report); err != nil || !report.OK || got.code != 0 {
+			t.Fatalf("code=%d err=%v stdout=%s stderr=%s", got.code, err, got.stdout, got.stderr)
+		}
+		var expected struct {
+			Orders map[string]struct {
+				PerLine map[string]map[string]string `json:"perLine"`
+			} `json:"orders"`
+		}
+		raw, err := os.ReadFile(filepath.Join(fixtures, "expected-before.json"))
+		if err != nil || json.Unmarshal(raw, &expected) != nil {
+			t.Fatalf("cannot read the expectation: %v", err)
+		}
+		if !reflect.DeepEqual(report.Result.PerRow, expected.Orders["1002"].PerLine) ||
+			!reflect.DeepEqual(report.Result.KeyAttributes, []string{"sales.order_line.order_line_id"}) {
+			t.Fatalf("perRow=%v keyAttributes=%v", report.Result.PerRow, report.Result.KeyAttributes)
+		}
+	})
+
+	t.Run("an input the Contract Query does not declare is refused", func(t *testing.T) {
+		got := runCLIProcessWithStreams(t, binary,
+			"view", "-workspace", filepath.Join("..", "..", "reference", "workspace"), "-application", "order_entry",
+			"-pattern", "order_entry.order_lines", "-environment", "development",
+			"-input", "order_id=1001", "-input", "customer_id=1", "-format", "json",
+		)
+		if got.code == 0 || !strings.Contains(got.stdout, "customer_id is not an input of the Contract Query") || !strings.Contains(got.stdout, "INVALID_ARGUMENT") {
+			t.Fatalf("code=%d stdout=%s", got.code, got.stdout)
+		}
+	})
 
 	// The Workspace owns SQL realization text. A read-only CLI must not
 	// trust that source to be SELECT-only: PostgreSQL accepts a data-changing
@@ -311,11 +378,11 @@ FROM changed ORDER BY line_number, order_line_id`
 				Result struct {
 					Coverage string `json:"coverage"`
 					Rows     []struct {
-						OrderLineID string `json:"orderLineId"`
+						OrderLineID string `json:"key"`
 					} `json:"rows"`
-					PerLine           map[string]map[string]string `json:"perLine"`
-					PerOrder          map[string]string            `json:"perOrder"`
-					PerOrderUndecided map[string]string            `json:"perOrderUndecided"`
+					PerLine           map[string]map[string]string `json:"perRow"`
+					PerOrder          map[string]string            `json:"perRelation"`
+					PerOrderUndecided map[string]string            `json:"perRelationUndecided"`
 				} `json:"result"`
 			}
 			if err := json.Unmarshal([]byte(got.stdout), &report); err != nil {
