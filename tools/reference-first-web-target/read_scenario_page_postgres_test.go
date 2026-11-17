@@ -22,7 +22,8 @@ import (
 //
 // It drives the shipped entry point (runCombinedWebTargetWithHost with the
 // empty Host wiring, exactly as the binary does) and supplies the read database
-// through the CLI flag `-read-pg-dsn` (main). The expectations are written from the
+// through the CLI flag `-serve-read-from-db` and the connection string in
+// TEI_WEB_READ_PG_DSN (main). The expectations are written from the
 // fixture's seed and the Application's declared rules, not copied from the
 // response: order 1001 holds quantities 2, 0 and 5, and its lines carry
 // line numbers 1, 2 and 2.
@@ -55,7 +56,7 @@ func TestShippedWebPageShowsRealPostgresRowAnswers(t *testing.T) {
 				"-legacy-users", legacyFixturePath(t, "users.json"),
 				"-legacy-authorization", legacyFixturePath(t, "authorization.json"),
 				"-diagnostic-unaccepted-source",
-				"-read-pg-dsn", dsn,
+				"-serve-read-from-db",
 			})
 	}()
 	t.Cleanup(func() {
