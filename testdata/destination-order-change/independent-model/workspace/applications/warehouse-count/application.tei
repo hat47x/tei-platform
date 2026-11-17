@@ -1,0 +1,13 @@
+application warehouse_count {
+    uses semantic warehouse
+    uses validation warehouse.receipt.units_positive
+    uses validation warehouse.bin.receipts.receipt_seq_unique
+
+    database stock {
+        target sales_core
+        access read
+        requires {
+            contract sales_core.receipt ^1
+        }
+    }
+}

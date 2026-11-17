@@ -1,0 +1,12 @@
+contract-query-sql-realization {
+    database sales_core
+    contract sales_core.receipt
+    query find_by_zone
+    sql postgres file "receipt-find-by-zone.sql"
+    input zone_code -> zone_code
+    result {
+        column lot_code -> warehouse.receipt.lot_code
+        column receipt_seq -> warehouse.receipt.receipt_seq
+        column units -> warehouse.receipt.units
+    }
+}

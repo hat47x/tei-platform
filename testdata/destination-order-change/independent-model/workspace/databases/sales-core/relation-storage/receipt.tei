@@ -1,0 +1,4 @@
+relation-storage sales_core.receipt {
+    relation warehouse.bin.receipts
+    component warehouse.bin.zone_id -> zone_code storage varchar required
+}

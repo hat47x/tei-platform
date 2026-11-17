@@ -1,0 +1,45 @@
+{
+  "zones": {
+    "Z-1": {
+      "keys": [
+        "[\"LOT/A\",\"1\"]",
+        "[\"LOT-B\",\"1\"]",
+        "[\"LOT-C\",\"3\"]"
+      ],
+      "perRow": {
+        "[\"LOT/A\",\"1\"]": {
+          "warehouse.receipt.units_positive": "satisfied"
+        },
+        "[\"LOT-B\",\"1\"]": {
+          "warehouse.receipt.units_positive": "not-satisfied"
+        },
+        "[\"LOT-C\",\"3\"]": {
+          "warehouse.receipt.units_positive": "satisfied"
+        }
+      },
+      "perRelation": {
+        "warehouse.bin.receipts.receipt_seq_unique": "not-satisfied"
+      }
+    },
+    "Z-2": {
+      "keys": [
+        "[\"LOT-D\",\"7\"]"
+      ],
+      "perRow": {
+        "[\"LOT-D\",\"7\"]": {
+          "warehouse.receipt.units_positive": "not-satisfied"
+        }
+      },
+      "perRelation": {
+        "warehouse.bin.receipts.receipt_seq_unique": "undecided"
+      }
+    },
+    "Z-EMPTY": {
+      "keys": [],
+      "perRow": {},
+      "perRelation": {
+        "warehouse.bin.receipts.receipt_seq_unique": "undecided"
+      }
+    }
+  }
+}

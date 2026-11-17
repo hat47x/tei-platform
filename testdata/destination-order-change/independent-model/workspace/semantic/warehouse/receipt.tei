@@ -1,0 +1,21 @@
+namespace warehouse
+
+data Bin {
+    attribute zoneId type std.identifier
+    relation receipts to warehouse.receipt many
+}
+
+data Receipt {
+    attribute lotCode type std.code
+    attribute receiptSeq type std.integer
+    attribute units type std.decimal
+}
+
+validation warehouse.receipt.units_positive positive {
+    attribute warehouse.receipt.units
+}
+
+validation warehouse.bin.receipts.receipt_seq_unique relation-unique {
+    relation warehouse.bin.receipts
+    attribute warehouse.receipt.receipt_seq
+}
