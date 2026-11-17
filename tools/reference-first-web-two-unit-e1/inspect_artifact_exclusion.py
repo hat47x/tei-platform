@@ -125,6 +125,10 @@ RUNTIME_EXPECTED = (
     "tei/internal/application/release",
     "tei/internal/releaseplan",
     "tei/internal/database",
+    # Relation Query SQL is built at runtime by the PostgreSQL and SQLite
+    # executors (internal/driver/queryruntime/*/executor.go ->
+    # driver.RelationQuerySQL -> sqlgen). It arrived here in 41de7910a (#4415).
+    "tei/internal/database/sqlgen",
     "tei/internal/database/migration",
     "tei/internal/database/persistence",
     "tei/internal/database/physical",
