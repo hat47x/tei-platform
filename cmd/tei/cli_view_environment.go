@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -19,6 +20,7 @@ import (
 	postgresquery "tei/internal/driver/queryruntime/postgres"
 	sqlquery "tei/internal/driver/queryruntime/sql"
 	"tei/internal/driver/validationread"
+	"tei/internal/database/persistence"
 	"tei/internal/environment"
 	"tei/internal/ir"
 	"tei/internal/realization"
@@ -83,7 +85,7 @@ func readEnvironmentRows(
 	if err != nil {
 		return destinationRead{}, err
 	}
-	source, err := environmentHeaderSource(prepared.Binding.Inputs, inputs)
+	source, err := environmentHeaderSource(world, prepared, inputs)
 	if err != nil {
 		return destinationRead{}, fmt.Errorf("%w: %v", errViewEnvironmentInput, err)
 	}
@@ -258,25 +260,30 @@ func readEnvironmentRows(
 // is an argument error of the caller, not a failure of the read.
 var errViewEnvironmentInput = errors.New("invalid -input")
 
-// environmentHeaderSource builds the header record the detail is read for,
-// from -input name=value pairs. Every input the binding declares must be
-// given, and nothing else. An integer literal is handed over as an integer,
-// anything else as text: the binding does not state a storage type for the
-// header value, so no other conversion is attempted.
-func environmentHeaderSource(declared []realization.HeaderDetailContractQueryInputBinding, given map[string]string) (queryresult.MappedResult, error) {
+// environmentHeaderSource uses the Contract Query input bindings and the
+// selected source Data's storage declarations. Numeric-looking text is never
+// converted to an integer unless its column explicitly declares int64.
+func environmentHeaderSource(world ir.World, resolved driver.ResolvedHeaderDetailContractQuery, given map[string]string) (queryresult.MappedResult, error) {
+	declared := resolved.Binding.Inputs
+	if len(declared) == 0 {
+		return queryresult.MappedResult{}, fmt.Errorf("the Contract Query does not declare a source input binding")
+	}
 	source := queryresult.MappedResult{Rows: [][]any{{}}}
 	names := make([]string, 0, len(declared))
 	for _, input := range declared {
+		if input.Input == "" || input.SourceAttribute == "" || slices.Contains(names, string(input.Input)) {
+			return queryresult.MappedResult{}, fmt.Errorf("the Contract Query source input binding is incomplete or duplicated")
+		}
 		names = append(names, string(input.Input))
 	}
 	for _, input := range declared {
-		text, ok := given[string(input.Input)]
-		if !ok || text == "" {
+		raw, ok := given[string(input.Input)]
+		if !ok || raw == "" {
 			return queryresult.MappedResult{}, fmt.Errorf("the Contract Query needs -input %s=<value>; its inputs are %s", input.Input, strings.Join(names, ", "))
 		}
-		var value any = text
-		if number, err := strconv.ParseInt(text, 10, 64); err == nil {
-			value = number
+		value, err := environmentHeaderInputValue(world, resolved.Database.ID, resolved.Relation.Source.ID, input.SourceAttribute, raw)
+		if err != nil {
+			return queryresult.MappedResult{}, fmt.Errorf("cannot read -input %s: %w", input.Input, err)
 		}
 		source.Columns = append(source.Columns, queryresult.Column{Raw: string(input.Input), Attribute: input.SourceAttribute})
 		source.Rows[0] = append(source.Rows[0], value)
@@ -287,6 +294,48 @@ func environmentHeaderSource(declared []realization.HeaderDetailContractQueryInp
 		}
 	}
 	return source, nil
+}
+
+// environmentHeaderInputValue does not use the appearance of a literal to
+// select its Go type. A physical int64 column gives an explicit conversion
+// rule; text-like and unknown storage retain the original string. Conversion
+// failure is reported rather than silently changing or truncating the input.
+func environmentHeaderInputValue(world ir.World, databaseID, dataID, attributeID core.CanonicalID, raw string) (any, error) {
+	found := false
+	var storage persistence.StorageType
+	for _, mapping := range world.Persistence {
+		if mapping.Database != databaseID || mapping.SemanticData != dataID {
+			continue
+		}
+		for _, column := range mapping.Columns {
+			if column.Attribute != attributeID {
+				continue
+			}
+			if found {
+				return nil, fmt.Errorf("source attribute %s has multiple persistence column mappings", attributeID)
+			}
+			found = true
+			storage = column.Storage
+		}
+	}
+	if !found {
+		// An external source need not declare physical storage. Keep the
+		// input as written; a SQL/provider boundary may reject its type.
+		return raw, nil
+	}
+	switch storage {
+	case persistence.StorageInt64:
+		number, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("source attribute %s needs an int64 value", attributeID)
+		}
+		return number, nil
+	case persistence.StorageVarchar, persistence.StorageText, persistence.StorageDateTimeTZ,
+		persistence.StorageDecimal, persistence.StorageJSON:
+		return raw, nil
+	default:
+		return nil, fmt.Errorf("source attribute %s has unsupported storage type %s", attributeID, storage)
+	}
 }
 
 // environmentRowKey returns the primary key the persistence mapping of data
@@ -317,5 +366,14 @@ func environmentRowKeyValue(attributes map[core.CanonicalID]any, key []core.Cano
 		}
 		parts = append(parts, fmt.Sprint(value))
 	}
-	return strings.Join(parts, "/"), nil
+	if len(parts) == 1 {
+		return parts[0], nil
+	}
+	// JSON preserves the individual components: ["a/b","c"] differs from
+	// ["a","b/c"]. Delimiter concatenation would collapse these keys.
+	encoded, err := json.Marshal(parts)
+	if err != nil {
+		return "", fmt.Errorf("cannot encode a composite row key: %w", err)
+	}
+	return string(encoded), nil
 }
