@@ -101,11 +101,25 @@ type destinationRead struct {
 // validator, so refusing here is the only place the contradiction can stop the
 // read. Labelling it and continuing would answer rules against a binding that
 // contradicts itself about the very thing the rule depends on.
-func destinationDeclarationFrom(binding realization.HeaderDetailContractQueryBinding) (*destinationDeclaration, error) {
+//
+// A binding whose `covers` names a Relation other than the one this read returns
+// is refused for the same reason. The static validator reports it as
+// HEADER_DETAIL_BINDING_COVERS_OTHER_RELATION, and this path runs no validator:
+// measured before this check existed, the view accepted and reported a
+// declaration about another Relation, which reads as a statement about the rows
+// on the page when it is a statement about a different Relation entirely.
+func destinationDeclarationFrom(binding realization.HeaderDetailContractQueryBinding, readRelation core.CanonicalID) (*destinationDeclaration, error) {
 	if binding.CoversRelation != "" && binding.CoversSome {
 		return nil, fmt.Errorf(
 			"the header-detail Contract Query binding states both that it returns every row of %s and that it returns only some rows; this read cannot be taken as either",
 			binding.CoversRelation,
+		)
+	}
+	if binding.CoversRelation != "" && binding.CoversRelation != readRelation {
+		return nil, fmt.Errorf(
+			"the header-detail Contract Query binding states that it returns every row of %s, but this read returns the rows of %s; the declaration is about a different Relation",
+			binding.CoversRelation,
+			readRelation,
 		)
 	}
 	if binding.CoversRelation == "" && !binding.CoversSome {
@@ -153,7 +167,7 @@ func readEnvironmentRows(
 	// Refuse a self-contradictory coverage declaration before opening the
 	// database. The view path does not run static validation, and a read-only
 	// query is still external I/O that an invalid binding must not trigger.
-	declaration, err := destinationDeclarationFrom(prepared.Binding)
+	declaration, err := destinationDeclarationFrom(prepared.Binding, prepared.Relation.Relation.ID)
 	if err != nil {
 		return destinationRead{}, err
 	}
