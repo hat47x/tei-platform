@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"tei/internal/core"
@@ -13,6 +14,7 @@ import (
 	"tei/internal/ir"
 	"tei/internal/realization"
 	"tei/internal/semantic"
+	"tei/internal/workspace"
 )
 
 // The new runtime path is opt-in: an ordinary view keeps its projection
@@ -174,5 +176,40 @@ func TestEnvironmentCompositeRowKeysAreUnambiguous(t *testing.T) {
 	}, attributes[:1])
 	if err != nil || single != "7" {
 		t.Fatalf("single-part identity changed: %q err=%v", single, err)
+	}
+}
+
+// The binding is checked against its source Data and typed Query input before
+// opening PostgreSQL. A missing DSN must not mask a malformed Workspace
+// binding, and an invalid source attribute must never reach the provider.
+func TestEnvironmentRejectsInvalidBindingBeforeConnection(t *testing.T) {
+	loaded, err := workspace.Load(filepath.Join("..", "..", "reference", "workspace"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	world := loaded.World
+	changed := false
+	for i := range world.HeaderDetailContractQueryBindings {
+		binding := &world.HeaderDetailContractQueryBindings[i]
+		if binding.Application != "order_entry" || binding.Pattern != "order_entry.order_lines" {
+			continue
+		}
+		if len(binding.Inputs) != 1 {
+			t.Fatalf("expected one explicit input binding, got %d", len(binding.Inputs))
+		}
+		binding.Inputs[0].SourceAttribute = "sales.order.nonexistent_id"
+		changed = true
+	}
+	if !changed {
+		t.Fatal("reference Contract Query binding not found")
+	}
+	t.Setenv("TEI_VIEW_PG_DSN", "")
+	_, err = readEnvironmentRows(world, "order_entry", "order_entry.order_lines",
+		"development", map[string]string{"order_id": "1001"})
+	if err == nil || !strings.Contains(err.Error(), "sales.order.nonexistent_id") {
+		t.Fatalf("invalid source binding was not rejected before the connection: %v", err)
+	}
+	if strings.Contains(err.Error(), "TEI_VIEW_PG_DSN") {
+		t.Fatalf("the database connection was considered before rejecting invalid input binding: %v", err)
 	}
 }
