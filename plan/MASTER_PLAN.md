@@ -81,6 +81,9 @@
 <!-- rea-self-description-migration-review-20261117 -->
 - **一Function移行とTEI自己記述の三要素Reviewを共通化**：[REA縦断設計§38](design/REA_ONE_FUNCTION_EVIDENCE_TO_DESIGN_VERTICAL_SLICE_2026-11.md)で、自己記述第一縦断の要求→Data／Function／Businessモデル→型付きインスタンス→図面→Source→Expectedを、旧Function一件のM-01〜04へ再利用する。原典Byte/Range/Revisionが未確認ならM-01はblocked、Function CRUD／実Effectが未観測ならM-04はunknown。図の線や外部REAの静的関係を業務Read/Writeにしない。設計索引に自己記述文書を追加し、既存CIの`TestPlanReadmesMentionEveryEntry`で検出された欠落を修正。#2586／#2831は独立P0。
 
+<!-- rea-migration-review-negative-matrix-20261117 -->
+- **一Function移行Reviewの独立Expected**：[REA縦断設計§39](design/REA_ONE_FUNCTION_EVIDENCE_TO_DESIGN_VERTICAL_SLICE_2026-11.md)にMR-01〜MR-10を追加。旧原文Range・Byte/Revision・Candidate/Qualified ID・Owner判断を分け、同名別Identity、明示／派生CRUD矛盾、A→B→A、Partial／権限不足、外部REAの静的関係、実Effect未観測、取得Scope差、Studio原文Open未検証を負例として固定する。まず既存Source IndexのMR-01/02/05/06から着手し、三要素表は既存投影を再利用する。#2586実PGと#2831 Windowsは独立P0。
+
 <!-- rea-first-function-execution-order-20261117 -->
 - **一Function移行の最初の着手順序**：[REA縦断設計§37](design/REA_ONE_FUNCTION_EVIDENCE_TO_DESIGN_VERTICAL_SLICE_2026-11.md)でM-01〜M-08を「旧FunctionとDataの原本特定→Source Index／三要素Review→通常CLI実Providerと旧新Expected→Studio別Consumer」に並べ替えた。X-TEA `sales.order.submit`の合成経路を旧KouseiKanri原典やDB commitの証拠と誤認しない。初回PRは原本一Function・一DataのSource位置とQualified ID候補の検証票に限定し、原本未特定なら拡張実装を止める。#2586と#2831は独立P0のまま。
 
