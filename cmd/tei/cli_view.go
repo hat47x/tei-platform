@@ -575,6 +575,23 @@ func writeDestinationReadText(out io.Writer, read destinationRead) (int, error) 
 	if _, err := fmt.Fprintf(out, "coverage %s\n", read.Coverage); err != nil {
 		return 2, err
 	}
+	// The declaration is the binding's statement, not an observation. It is
+	// printed as stated and unchecked so a reader of the text form cannot
+	// mistake it for measured coverage. An undeclared binding prints nothing,
+	// which stays distinguishable from "declared but unchecked".
+	if read.Declaration != nil {
+		declared := "covers some"
+		if read.Declaration.CoversRelation != "" {
+			declared = "covers " + string(read.Declaration.CoversRelation)
+		}
+		checked := "unchecked"
+		if read.Declaration.Checked {
+			checked = "checked"
+		}
+		if _, err := fmt.Fprintf(out, "declaration %s (%s)\n", declared, checked); err != nil {
+			return 2, err
+		}
+	}
 	if len(read.KeyAttributes) > 0 {
 		keys := make([]string, 0, len(read.KeyAttributes))
 		for _, key := range read.KeyAttributes {
