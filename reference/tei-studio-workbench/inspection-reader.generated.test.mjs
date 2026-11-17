@@ -1,11 +1,10 @@
-// Compare the regenerated Reader to the product's current (still hand-written)
-// Reader and independently specified outcomes. This is R0 parity only: the
-// committed Wails bundle must not be claimed to use this part until R1/R2.
+// Independent expectations for the current generated Inspector contract.
+// The product entrypoint must re-export the generated Reader, not a copy.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { readInspection as currentReadInspection } from "./presentation.ts";
+import { readInspection as productionReadInspection } from "./presentation.ts";
 import { readInspection as generatedReadInspection, inspectionReaderProvenance } from "./inspection-reader.generated.ts";
 
 const here = (name) => new URL(name, import.meta.url);
@@ -52,10 +51,8 @@ const cases = [
   ["missing catalog", ok, subject, null, "STALE_MODEL_PROJECTION"],
 ];
 for (const [name, raw, expected, snapshot, want] of cases) {
-  test(`generated Reader matches independent product behavior: ${name}`, () => {
+  test(`generated Reader follows independently stated behavior: ${name}`, () => {
     const actual = outcome(generatedReadInspection, raw, expected, snapshot);
-    const baseline = outcome(currentReadInspection, raw, expected, snapshot);
-    assert.deepEqual(actual, baseline);
     if (want === "value") {
       assert.equal(actual.error, undefined);
       assert.equal(actual.value.version, "w1:s1");
@@ -68,6 +65,9 @@ for (const [name, raw, expected, snapshot, want] of cases) {
     } else assert.equal(actual.error, want);
   });
 }
+test("production Workbench API exposes exactly the generated Reader", () => {
+  assert.strictEqual(productionReadInspection, generatedReadInspection);
+});
 test("generated Reader names the exact current contract Source", () => {
   const contract = JSON.parse(readFileSync(here("./inspection-reader.contract.json"), "utf8"));
   const digest = "sha256:" + createHash("sha256").update(JSON.stringify(contract)).digest("hex");
