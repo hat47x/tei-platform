@@ -30,8 +30,8 @@ import (
 //
 // A scale-bearing value is deliberately present: the seed's zero quantity is
 // stored as 0.000 in a numeric(12,3) column, and the rule must still call it
-// not-satisfied. Reading "0.000" as "no value" or truncating to 0 would both
-// change the answer.
+// not-satisfied. The rule answer alone cannot distinguish 0 from 0.000, so
+// the database value's text representation is checked separately.
 func TestDeclaredDecimalPrecisionSurvivesToTheDatabaseAndBack(t *testing.T) {
 	const databaseName = "tei_destination_order_e2e"
 	dsn := os.Getenv("TEI_VIEW_PG_DSN")
@@ -171,6 +171,17 @@ func TestDeclaredDecimalPrecisionSurvivesToTheDatabaseAndBack(t *testing.T) {
 		t.Fatalf("the seeded rows did not fit the precision-declared table: %v", err)
 	}
 
+	// The rule answer alone cannot show that PostgreSQL retained the declared
+	// scale: both 0 and 0.000 would be not-satisfied. Check the stored value
+	// independently before checking the product's read and rule evaluation.
+	var storedZero string
+	if err := db.QueryRow(`select quantity::text from public.order_lines where order_id = $1 and quantity = 0`, "1001").Scan(&storedZero); err != nil {
+		t.Fatalf("cannot read the seed zero from the precision-declared column: %v", err)
+	}
+	if storedZero != "0.000" {
+		t.Fatalf("the precision-declared column held %q, want 0.000", storedZero)
+	}
+
 	// The seed's zero quantity is stored as 0.000 here. Its rule answer must
 	// still be not-satisfied, and the row that holds it must be the one the
 	// independent fixture names.
@@ -238,7 +249,7 @@ func TestDeclaredDecimalPrecisionSurvivesToTheDatabaseAndBack(t *testing.T) {
 				if !held {
 					t.Fatalf("order=%s row=%s did not report the quantity column at all", orderID, row.Key)
 				}
-				if quantity.State != "present" && quantity.State != "null" {
+				if quantity.State != "present" {
 					t.Fatalf("order=%s row=%s quantity state=%q; the seeded column holds a value",
 						orderID, row.Key, quantity.State)
 				}
