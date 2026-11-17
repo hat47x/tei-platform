@@ -161,26 +161,47 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		}
 		return fail("INVALID_ARGUMENT", err.Error(), 2)
 	}
-	if fs.NArg() != 0 || *root == "" || *applicationID == "" ||
-		(*patternID != "" && *packageID != "") ||
-		(*commandID != "" && *patternID == "") ||
-		(*environmentID != "" && (*patternID == "" || *packageID != "" || *commandID != "" || *execute)) ||
-		(*execute && *commandID == "") ||
-		(*periodStateFile != "" && !*execute) ||
-		(*lifecycleState != "" && (!*execute || *lifecycleCommand == "")) ||
-		(*lifecycleState == "" && *lifecycleCommand != "") ||
-		(*lifecycleGeneration < 1) ||
-		(*lifecycleTakeover && (*lifecycleState == "" || *lifecycleCommand == "")) ||
-		(len(allowedCapabilities) > 0 && !*execute) ||
-		(*operationLogFile != "" && !*execute) ||
-		// -input belongs only to an explicit command plan or to a selected
-		// runtime Contract Query. Static views must not silently drop it (#3778).
-		(len(inputPairs) > 0 && *commandID == "" && *environmentID == "") ||
-		*root != strings.TrimSpace(*root) || *applicationID != strings.TrimSpace(*applicationID) ||
-		*patternID != strings.TrimSpace(*patternID) || *packageID != strings.TrimSpace(*packageID) ||
+	// Each guard names the flag that is wrong. One shared message over a chain of
+	// this length told a caller who had passed exactly one selector that they
+	// had passed more than one, which is the opposite of their argv.
+	switch {
+	case fs.NArg() != 0:
+		return fail("INVALID_ARGUMENT", "view does not take positional arguments", 2)
+	case *root == "" || *applicationID == "":
+		return fail("INVALID_ARGUMENT", "view requires -workspace and -application", 2)
+	case *patternID != "" && *packageID != "":
+		return fail("INVALID_ARGUMENT", "view accepts at most one of -pattern and -package", 2)
+	case *commandID != "" && *patternID == "":
+		return fail("INVALID_ARGUMENT", "view -command requires -pattern: a command is read within its pattern", 2)
+	case *environmentID != "" && (*patternID == "" || *packageID != "" || *commandID != "" || *execute):
+		return fail("INVALID_ARGUMENT", "view -environment requires -pattern and excludes -package, -command and -execute", 2)
+	case *execute && *commandID == "":
+		return fail("INVALID_ARGUMENT", "view -execute requires -command; a browse pattern is read-only and is not executed", 2)
+	case *periodStateFile != "" && !*execute:
+		return fail("INVALID_ARGUMENT", "view -period-state requires -execute", 2)
+	case *lifecycleState != "" && !*execute:
+		return fail("INVALID_ARGUMENT", "view -lifecycle-state requires -execute", 2)
+	case *lifecycleState != "" && *lifecycleCommand == "":
+		return fail("INVALID_ARGUMENT", "view -lifecycle-state requires -lifecycle-command", 2)
+	case *lifecycleState == "" && *lifecycleCommand != "":
+		return fail("INVALID_ARGUMENT", "view -lifecycle-command requires -lifecycle-state", 2)
+	case *lifecycleTakeover && *lifecycleState == "":
+		return fail("INVALID_ARGUMENT", "view -lifecycle-takeover requires -lifecycle-state and -lifecycle-command", 2)
+	case len(allowedCapabilities) > 0 && !*execute:
+		return fail("INVALID_ARGUMENT", "view -allow-capability requires -execute", 2)
+	case *operationLogFile != "" && !*execute:
+		return fail("INVALID_ARGUMENT", "view -operation-log requires -execute", 2)
+	// -input belongs only to an explicit command plan or to a selected
+	// runtime Contract Query. Static views must not silently drop it (#3778).
+	case len(inputPairs) > 0 && *commandID == "" && *environmentID == "":
+		return fail("INVALID_ARGUMENT", "view -input requires -command or -environment", 2)
+	case *root != strings.TrimSpace(*root) ||
+		*applicationID != strings.TrimSpace(*applicationID) ||
+		*patternID != strings.TrimSpace(*patternID) ||
+		*packageID != strings.TrimSpace(*packageID) ||
 		*environmentID != strings.TrimSpace(*environmentID) ||
-		*commandID != strings.TrimSpace(*commandID) {
-		return fail("INVALID_ARGUMENT", "view requires exact -workspace and -application, at most one of -pattern, -package, or -command, without positional arguments", 2)
+		*commandID != strings.TrimSpace(*commandID):
+		return fail("INVALID_ARGUMENT", "view flags must not carry surrounding whitespace", 2)
 	}
 	if *execute && *format != "text" && *format != "json" {
 		return fail("INVALID_ARGUMENT", "view -execute supports -format text or json", 2)

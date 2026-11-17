@@ -1,0 +1,9 @@
+CLI-only check of the TOP of the stack:
+
+  view -application loan_desk                -> app, uses, patterns, fingerprint
+  view -pattern ... browse                   -> data, query, columns (1. borrower : std.text)
+  -format text/json/html/print               -> all four rc=0; html renders a table
+  cross-app query reference                  -> APPLICATION_PATTERN_QUERY_APPLICATION_MISMATCH
+  invalid result column                      -> caught by validate AND by overview needsAttention
+
+So the declaration really is readable through the product.

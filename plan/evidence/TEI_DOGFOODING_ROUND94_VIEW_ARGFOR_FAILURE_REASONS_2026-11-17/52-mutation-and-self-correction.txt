@@ -1,0 +1,8 @@
+M1 restore the generic message for one case
+   -> FAIL message does not say "-execute requires -command"
+
+My first attempt at M1 cut into a switch body and produced BUILD ERRORS,
+which are not evidence. I rebuilt it as a message-only change and re-ran.
+
+Regression: cmd/tei ok (581s), applicationview ok, validation ok.
+CI gate: 6 steps PASS.
