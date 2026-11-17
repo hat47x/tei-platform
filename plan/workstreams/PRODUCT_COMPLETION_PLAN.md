@@ -1734,7 +1734,7 @@ mainのRule生成Go CLIビルド回帰は、選択Markdown原文のコピーをG
 
 最初のコードPRはDF-P4aの一因子に限定する。既存の`validationread/sqlite_path_test.go`は誤申告の危険性を示しているが、**製品Callerが虚偽の`complete`を拒否したという証拠ではない**。必要な契約が既存Query／Data Contextで説明できない場合は、欠落条件と代案を受入票に残し、汎用Query Engineや新Stateful Portを先行追加しない。
 
-今回の計画追補だけで新しいGo／DB／Windows E2E、Owner意味受理、R2-P、R3、Stage1→Stage2をPASSとは扱わない。現在mainの限定成果と、審査中PR #5187（条件付き必須）・#5214（任意Field状態損失）・#5213（研究計画）を区別する。独立Expectedは従来どおり#1180／#2514へ引き渡す。
+この計画追補だけで実DB／Windows E2E、Owner意味受理、R2-P、R3、Stage1→Stage2をPASSとは扱わない。条件付き必須RuleのPR #5187はmainへ統合済みだが、対象Target・取得範囲・実Consumerでの適格性は別に検収する。任意Fieldの値投影がNULLと欠損を同一化する局所負例（PR #5214）もmainへ統合済みであり、[PC-1bの検収計画§7.1](PLUGIN_PORTABLE_CONTRIBUTION_EXECUTION_2026-11.md)を次の入口とする。研究計画PR #5213はクローズ・未マージで、mainの実装実績には数えない。独立Expectedは引き続き#1180／#2514へ引き渡す。
 
 ### 全件性の申告を根拠付きで受理する最小パケット（2026年11月17日）
 
