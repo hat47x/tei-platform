@@ -8,15 +8,16 @@ import (
 	"tei/internal/syntax"
 )
 
-// The unnamed form and the named form must read as the same contract, and the
-// name must be the author's. §12 of the rule normal form decision writes the
+// The unnamed form declares no name, and the named form declares the
+// author's. A reader applies "value" to the unnamed one; the parsed
+// contract must not claim it. §12 of the rule normal form decision writes the
 // name before ':' and the type word after it.
 func TestRuleAuthoringReadsANamedOperatorInput(t *testing.T) {
 	for _, tc := range []struct {
 		declaration string
 		wantName    string
 	}{
-		{"takes number", "value"},
+		{"takes number", ""},
 		{"takes value: number", "value"},
 		{"takes low: number", "low"},
 	} {
