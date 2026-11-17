@@ -814,3 +814,55 @@ DC-55〜57はGo試験に書く独立Expectedであり、**exact HEADのCI合格�
 なお、#5148（期間の非重複Rule）、#5149（Contract Queryから取得状態を申告するReader）、#5150（Operator選択Fingerprintの共通化）、#5168（Studioの後着応答とPin）、#5156（PluginのRecord／Field投影）は、現時点でmainへ統合済みと仮定しない。各PRが実際に採用された版とConsumerから検収する。特に取得した値の状態と取得・開示の許可は別の資格であり、SUI等の文書取得やUIへの返却でも版と現在Grantを改めて確認する。
 
 製品P0の正式R2-P出典・Generator／Builderの同一Attempt、通常CLI公開Entry→実Provider→独立Consumer、Studio Stage1→Stage2の実Windows再構築は維持する。新しい万能Engine・Evidence Store・Graph Runtime・Reader Registry・Hostを追加しない。
+
+
+## 33. 宣言の合成結果を「観測から判断できる範囲」で検査する（2026-11-17）
+
+### 33.1 接続できることと、判断できることを別に扱う
+
+MarkdownのData表、Rule、Query、Plugin Port、Node Viewを同じ型付きMeaningへ接続できても、その接続から業務上の答えが一意に決まるとは限らない。ここで汎化するのは新しい文法ではなく、**一つのClaimについて、必要な入力と実際に観測した入力の差を明示し、判断・実現・配送の可否を別々に確かめる手続き**である。
+
+観測を、選択したSourceと版、Query／Relation／Attributeの意味ID、実行時のScope・時点、取得Field、値の状態、行集合のCoverage、実Readの出典で表す。Claimごとに必要な入力を明示し、その観測だけでは区別できない二つの業務世界がClaimに異なる答えを与えるなら、結果が揃って見えても**判定材料不足**とする。逆に、部分取得であっても観測済みの違反だけで不成立が確定する場合は、その限定された結論を保持する。
+
+この「二世界反証」は全世界を形式的に証明するアルゴリズムではない。固定Fixtureの独立Expectedとして、判断できない理由を検査する方法である。型、グラフの形、SQL結果、実行成功を、観測の十分性の代用にしない。
+
+| 合成段階 | 確認する事実 | 証拠がないときの扱い |
+| --- | --- | --- |
+| 表現・Source | 明示Language／Role、Occurrence、原byte位置、選択Revision | 表示や推測はできても意味を受理しない |
+| 意味・要求 | Subjectの同定、型・単位・粒度、Rule／Claimの必要入力、NULL・未取得の区別 | 型付き候補にとどめ、成立／不成立を作らない |
+| 実観測 | Query束縛・実Read ID、時点・Scope、ページ境界、Relation Coverageの根拠 | 未証明のcompleteを認めず、保守的にpartial／材料不足へ戻す |
+| 実現 | 対象Ruleに対応するP／G／D、Operator／Generator版、実選択と実Call | 一方式の成功から別方式へ暗黙に切り替えない |
+| 配送・公開 | PortのField集合、lossyな投影、Audience、現在Grant、Consumer受領 | 型適合やpure変換だけでDisclosure／公開を許さない |
+| 更新・副作用 | Source／World／Artifactの失効、Effectの権限・receipt、実行Attempt | 以前の成功や再計算結果だけで再利用・Commitしない |
+
+各段階での候補判定は既存の**成立／矛盾／材料不足**を維持する。Ruleの評価結果である成立／不成立／判定不能、G／P／Dの対応状況、実Callの成否、Owner受理は別の欄にする。新たな六段階の共通Runtimeや万能合成Validatorを作る趣旨ではない。
+
+### 33.2 他レーンの実証を同じ問いへ接続する
+
+- **Ruleと取得範囲**：mainへ統合された#5148の期間非重複Ruleと#5149のContract Query Readerを組み合わせるとき、Readerにcompleteを渡すこと自体は全行取得の証拠ではない。二行しか返さないQueryに四行あるなら、見えた重複による不成立と、重複が見えないことによる成立保留を分ける。既存DF-P4a／DPC-16aが最初のCaller試験を所有する。
+- **組織の業務Claim**：main #5210でCI実測した二世界反例では、同じMembershipのQuery投影から異なるdistinct Person数が成立する。Membership件数から人物数・唯一承認者を推定せず、Person Relationの受理、対象時点・Scope・Read Cohortの充足を別に求める。
+- **Plugin Portと情報公開**：main #5156はpureなWhole Recordと明示二Field投影の差を検査した。Field投影後に同じ値が得られても、未取得・partial・非投影項目の存在・Disclosureが同等とは限らない。型が合うだけで現在Grantや外部Hostの受領を認定しない。
+- **実現方式と画面**：main #5166はnot-afterのP評価とG未対応の拒否を区別した。main #5168のStudio後着応答／Pin試験は、同じSubjectに見えるA→B→Aでも古いInspectionを現在の選択へ流用しないことを検査した。意味IDが一致しても、選択した版とWindowの現在性を省かない。
+- **文書の例**：main #5181で記録例の追加と期待セルの訂正は、Data／RuleのCanonicalとは異なるSource Index／診断への変化として検査された。例の一致は実Providerの全件性やOwnerの業務受理ではない。
+
+これらの試験は**別々の境界の限定的な実証**である。ひとつの製品AttemptでSource→Contract Query→実Read→Rule→Plugin投影→独立Consumerがすべて合格したと主張しない。
+
+### 33.3 次に実装すべき最小の不足辺
+
+新しい統合Fixtureは作らず、既存DF-P4a／DPC-16aのSQLite実Read・既存Rule・独立Expectedを優先する。最初は次の一因子だけを固定する。
+
+1. 同じRelationに実際には四行あるが、選択Queryは最初の二行だけを返す。Callerがcompleteと申告しても、取得範囲の根拠がなければ**completeと受理しない**。現在のFromHeaderDetailがCallerの申告を利用する事実と、製品Callerが裏付けを検査する事実を分離する。
+2. 取得済み二行で重複が確定する場合は不成立を保持し、重複が見えない場合は残りの未取得行により成立が変わり得るため判定を保留する。行数0、SQLにLIMITがないこと、ページ終端らしく見えることは全件性の証拠にしない。
+3. その後、同じQuery／Rule／Subject IDを保ち、NULLと未取得、Scope・時点の一因子変更、Whole／Field投影のLossを別試験で照合する。実Read／Consumer受領／現在Grantは順に追加し、単一の成功フラグへ畳み込まない。
+
+| ID | 反証すべき短絡 | 最初の受入先 |
+| --- | --- | --- |
+| **DC-59** | 2/4行のSQL結果にcompleteと記しただけで全件の成立を確定 | DF-P4a／DPC-16a・#2506・#2514 |
+| **DC-60** | 部分取得はどんな場合も判定不能とし、既知の重複違反を捨てる | Rule Decide・#1180・#2514 |
+| **DC-61** | 同じMembership投影からdistinct Person／承認者を一意に確定 | 組織C1・#2506・#2514 |
+| **DC-62** | Whole RecordとField投影の値一致を、開示・状態保存の同値とみなす | Plugin PC-1b／PC-1c・#951・#2497 |
+| **DC-63** | Pで読めるnot-after Ruleを、未対応G／未選択Dへ暗黙に切替 | G／P／D・#988・#1121 |
+| **DC-64** | A→B→Aの古いInspect結果や記録例の一致を現在のSource受理とみなす | Source／Studio・#1124・#1824 |
+| **DC-65** | ResultとRead先だけが一致すれば、Source改版後の旧Artifactを使う | Builder／Artifact・#4544・#2514 |
+
+上のIDは**設計上の反証索引**であり、実装済みテストや新しいExpected正本ではない。主担当のFixture／既存Expected／CIで合格し、実行したHEADと失効条件を確定して初めて状態を更新する。第一優先はDC-59／60の製品Caller経路であり、他のDCは既存のOwnerに分配する。正式R2-P／通常CLI実Provider→独立Consumer／Studio Stage1→Stage2実WindowsのP0を増やしたり、置き換えたりしない。
