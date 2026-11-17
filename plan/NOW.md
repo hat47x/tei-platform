@@ -29,13 +29,13 @@
 
 | 順 | 作業 | 担当先 |
 | --- | --- | --- |
-| 1 | **異なる構造の業務モデルでも同じ読取入口を通す。** 別のData・Relation・実テーブルを使う試験は通った。次は、列構成・主キー・Query入力も異なるモデルを、同じ`tei view`と独立した期待で検証する | [#2586](https://github.com/hat47x/tei-platform/issues/2586) |
-| 2 | 最初のWebの実行先で、行ごとの答えを表示する（上の5） | [#1119](https://github.com/hat47x/tei-platform/issues/1119) |
+| 1（検証済み） | **異なる構造のモデルにも同じ読取入口を適用する。** [#5362](https://github.com/hat47x/tei-platform/pull/5362)で別の属性・SQL列・Query入力・複合主キーを持つモデルを実PostgreSQLで検証。手書きExpectedと比較し、全件性は未証明のまま保つ | [#2586](https://github.com/hat47x/tei-platform/issues/2586) |
+| 2（次に着手） | **実DBとRuleの同じ結果を、最初のWeb画面で受領する。** [#5346](https://github.com/hat47x/tei-platform/pull/5346)の`-format html`候補を、現在の`perRow`／`perRelation`／複合行キーに合わせ、実ブラウザーで独立Expectedと照合する。静的HTML生成だけで完了としない | [#1119](https://github.com/hat47x/tei-platform/issues/1119) |
 | 3 | 束縛に取得範囲を宣言し、親Scope・実行したQuery・実際の取得範囲が一致すると確認できた場合に限り、明細番号の一意を「成立」と判定する。宣言だけでは全件取得の証拠にならない。[判断の文書](design/RULE_NORMAL_FORM_AND_OPERATOR_SIGNATURE_DECISION_2026-11.md)の§6と作業5 | #2586 |
 | 4 | 手順書の「まだできないこと」を消す。定義から表を作るSQLを`tei`で出す。`-format text`で行と答えを読める形にする | #2586 |
 | 5 | 規則の正規形とOperatorの署名。判断の文書の作業1〜4、6〜8 | [#4362](https://github.com/hat47x/tei-platform/issues/4362) |
 
-[#5327](https://github.com/hat47x/tei-platform/pull/5327)で固定名の決め打ちを外し、[#5339](https://github.com/hat47x/tei-platform/pull/5339)でData・Relationの意味IDとPostgreSQLの参照テーブルを変えた試験が通った。ただし後者は元の受注明細と同じ列構成を使っている。道の1の残る検証は、**別の属性、Query入力、主キー構成を持つ独立モデル**を実DBから読み、Row Key・Rule結果・取得範囲を実装から独立した期待と照合すること。次のコード変更は`cmd/tei/destination_order_runtime_pg_test.go`の試験から独立したFixtureに切り出し、同じ`tei view`の実行入口を再利用する。これが通るまで道の1は完了としない。
+[#5327](https://github.com/hat47x/tei-platform/pull/5327)で入口の固定名を外し、[#5339](https://github.com/hat47x/tei-platform/pull/5339)で別Data・Relation・実テーブルを検証した。さらに[#5362](https://github.com/hat47x/tei-platform/pull/5362)で別の属性・Query入力・複合主キーの実PostgreSQL試験が成功したため、**道の1の最小検収は通過**とする。これは代替モデル一件の受入であり、任意のSQLやすべての型を保証するものではない。次のコード変更は[#5346](https://github.com/hat47x/tei-platform/pull/5346)のHTML投影を最新CLI出力へ接続する作業と実ブラウザー受領である。JSONとHTMLのRule結果・行ID・NULL・未取得・部分取得を照合し、Host公開やWeb Components生成の受入とは分ける。
 
 入口は増やさない。接続の秘密は環境変数から受け取り、作業領域へ書かない。
 
@@ -43,7 +43,7 @@
 
 「生成器には触れずに」が要である。生成した読み手は、34行の定義と689行の生成の手続きから66行のコードを作っていた。応答へ項目を一つ足す変更は、手書きなら十数行で済むのに、生成の手続きを書き換える必要があった。その変更は手書きで行われ、生成した読み手は11月15日にmainから外れた（[#4583の報告](https://github.com/hat47x/tei-platform/issues/4583#issuecomment-6937391216)）。定義を直すほうが手書きより高くつく間は、誰も定義を直さない。
 
-進め方は二段にする。まず復旧する。試験は緩めず、生成した読み手を唯一の読み手に戻す。次に、同じ変更（必須の項目を一つ足す）を定義だけで行えるようにする。応答の形は到達点と同じ書き方（Dataの項目と規則）で書き、読み手はその定義から作る。部品ごとに生成の手続きを書く方式は、これ以上広げない。
+生成した読み手を唯一の読み手として正規Wails埋込へ戻すところまでは[#5325](https://github.com/hat47x/tei-platform/pull/5325)で修復した。次は必須の項目を一つ足す変更を**定義だけ**で行い、生成器を変更せずStage1で生成した次のStudioをWindowsで実起動する。生成ReaderがBuildできたことと、新しい画面が実際にそのReaderを使ったことは別に検証する。部品ごとに生成器を増やさない。
 
 ## 到達点まで止めるもの
 
