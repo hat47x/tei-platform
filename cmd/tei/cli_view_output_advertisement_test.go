@@ -47,4 +47,18 @@ func TestViewAdvertisesEveryFormatItAccepts(t *testing.T) {
 			t.Errorf("view accepts %q but its output column %q does not name it", want, output)
 		}
 	}
+
+	// A generic format list cannot imply that every format works in every
+	// mode: the environment-backed read supports html but must refuse print.
+	optional := strings.Join(view.Optional, "\n")
+	for _, want := range []string{
+		"text|json|html for -environment with -pattern",
+		"print rejected",
+		"text|json|html|print for a browse -pattern",
+		"text|json for a command -pattern",
+	} {
+		if !strings.Contains(optional, want) {
+			t.Errorf("view's optional rules do not explain mode-specific format %q: %s", want, optional)
+		}
+	}
 }
