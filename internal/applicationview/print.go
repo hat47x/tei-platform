@@ -56,7 +56,7 @@ th{background:#eee;font-weight:600}
 {{range .HeaderItems}}<tr><th>{{.Label}}</th><td></td></tr>
 {{end}}</table>
 <h2>明細</h2>
-{{if .PageBreak}}<p>{{.PageBreak.Rows}}行/ページ{{if .PageBreak.RepeatHeader}}、見出し繰返し{{end}}</p>{{end}}
+{{if .PageBreak}}<p>{{.PageBreak.Rows}}行ごとに面を分ける{{if .PageBreak.RepeatHeader}}、各面で見出し繰返し{{end}}</p>{{end}}
 {{range .DetailPages}}<table class="detail" data-page="{{.Number}}">
 {{if .RepeatHeader}}<thead><tr>{{range $.DetailColumns}}<th>{{.Label}}</th>{{end}}</tr></thead>
 {{end}}<tbody>

@@ -278,16 +278,20 @@ func collect(changes []EntityChange, flat map[string]*EntityChange, all *[]*Enti
 func collectRelations(rels []RelationChange, flat map[string]*EntityChange, all *[]*EntityChange) {
 	for i := range rels {
 		r := &rels[i]
-		if len(r.Children) == 0 {
-			continue
+		// Every child of a relation is applied, so every child has to be planned
+		// too. Taking only the first one left the rest outside plan.Order: the
+		// cycle check and the ordering did not cover them, while the store applied
+		// them anyway. A relation that carries several children is how X-TEA's
+		// header-detail confirmation arrived, with every detail row in one unit.
+		for j := range r.Children {
+			child := &r.Children[j]
+			if _, exists := flat[child.Key]; exists {
+				continue
+			}
+			flat[child.Key] = child
+			*all = append(*all, child)
+			collect(child.Children, flat, all)
 		}
-		child := &r.Children[0]
-		if _, exists := flat[r.Key]; exists {
-			continue
-		}
-		flat[r.Key] = child
-		*all = append(*all, child)
-		collect(child.Children, flat, all)
 	}
 }
 
@@ -445,6 +449,16 @@ func (s *Saver) Save(ctx context.Context, unit *SaveUnit) (*SaveResult, error) {
 
 	if err := ValidateEmptySets(unit, world); err != nil {
 		return nil, err
+	}
+	// One key written twice in one unit cannot be ordered: the store applies each
+	// occurrence in declaration order, so a delete followed by an update revives a
+	// partly filled row. Refusing the unit is the fail-closed choice; silently
+	// applying the last write would hide the contradiction.
+	if duplicates := DuplicateKeys(unit); len(duplicates) > 0 {
+		return nil, &SaveError{
+			Code:    "SAVE_DUPLICATE_KEY",
+			Message: fmt.Sprintf("one save unit contains the same key more than once: %s", strings.Join(duplicates, ", ")),
+		}
 	}
 
 	if s.MaxAttempts <= 0 {
@@ -756,6 +770,42 @@ func DiffPatchSet(current map[string]*string, patch PatchSet) bool {
 		}
 	}
 	return false
+}
+
+// DuplicateKeys returns the keys that appear more than once in one save unit.
+//
+// The store applies each occurrence in declaration order, so two occurrences of one
+// key are two writes to one row: an update after a delete reads the delete as "no
+// current value" and the row comes back partly filled. Planning cannot order
+// something that is written twice, so the unit is refused rather than half-applied.
+//
+// The check walks the top level, the entity children and the relation children, the
+// same places the store applies.
+func DuplicateKeys(unit *SaveUnit) []string {
+	seen := map[string]int{}
+	for _, key := range walkKeys(unit.Changes) {
+		seen[key]++
+	}
+	duplicates := make([]string, 0, len(seen))
+	for key, count := range seen {
+		if count > 1 {
+			duplicates = append(duplicates, key)
+		}
+	}
+	sort.Strings(duplicates)
+	return duplicates
+}
+
+func walkKeys(changes []EntityChange) []string {
+	out := make([]string, 0, len(changes))
+	for _, change := range changes {
+		out = append(out, change.Key)
+		out = append(out, walkKeys(change.Children)...)
+		for _, relation := range change.Relations {
+			out = append(out, walkKeys(relation.Children)...)
+		}
+	}
+	return out
 }
 
 // ValidateEmptySets rejects replacement of a relation with an empty set when

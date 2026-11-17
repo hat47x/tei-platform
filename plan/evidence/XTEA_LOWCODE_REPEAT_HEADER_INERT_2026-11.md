@@ -164,4 +164,21 @@ if view.PageBreak != nil && view.PageBreak.Rows > 0 && view.PageBreak.Rows <= 50
 
 - 帳票エンジン（PDF）が版面を決める設計になったら、HTML投影の分割をやめ、`Rows` と `RepeatHeader` をそのまま渡す。
 - 表の分割がHTMLの見た目として不適切（列幅・罫線の崩れ）と判明したら、分割をやめて注記だけに戻す。
+## 追記2（2026-11-18）: 独立レビューの指摘
 
+**#5428 で描画は効くようになったが、意味が変わった。** 独立レビューが次を指摘した。
+
+- **`page-break N` の意味が「描く行数」から「分割単位」へ変わった**。プレースホルダ行は常に5。例の `page-break 3 repeat-header` は「1表3行」から「2表5行（3+2）」へ変わる。**利用者可視の出力変更**である。`application/model.go` のコメントと、印刷の注記「N行/ページ」を実装へ合わせて直した（注記は「N行ごとに面を分ける」へ）。
+- **最終面は端数**なので、注記の N と実際の面の行数が一致しない（プレースホルダ前提の限界）。
+- 試験名 `KeepsOneTableWithoutRepeatHeader` は**実際には2表を期待**しており名前と期待が逆だった。`SplitsWithoutRepeatingTheHeader` へ改名。
+- `.detail+.detail{break-before:page}` は CSS Fragmentation として妥当。古い実装向けに `page-break-before` の併記が安全（未対応）。
+
+## 読み取れること（更新）
+
+- `repeat-header` を宣言すると、**分割した各面に `<thead>` が出る**。
+- 宣言しない場合は分割しても2面目に `<thead>` を出さない。
+
+## 読み取れないこと（更新）
+
+- **実データの行数**。プレースホルダは5固定で、`Rows` は分割の単位だけを決める。実データ経路（`MappedResult` → `HeaderDetailView`）は未実装。
+- 実ブラウザ（WebView2等）・PDF での改ページ。

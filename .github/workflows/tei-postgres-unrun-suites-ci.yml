@@ -11,6 +11,8 @@ on:
     paths:
       - 'internal/command/lifecyclepg/**'
       - 'internal/driver/**'
+      - 'internal/numbering/**'
+      - 'internal/numberingpostgres/**'
       - 'cmd/tei/cli_view.go'
       - 'cmd/tei/cli_view_environment.go'
       - 'cmd/tei/cli_view_environment_test.go'
@@ -37,6 +39,8 @@ on:
     paths:
       - 'internal/command/lifecyclepg/**'
       - 'internal/driver/**'
+      - 'internal/numbering/**'
+      - 'internal/numberingpostgres/**'
       - 'cmd/tei/cli_view.go'
       - 'cmd/tei/cli_view_environment.go'
       - 'cmd/tei/cli_view_environment_test.go'
