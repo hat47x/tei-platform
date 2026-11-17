@@ -473,4 +473,135 @@ FROM changed ORDER BY line_number, order_line_id`
 			}
 		})
 	}
+
+	// A second real PostgreSQL target must exercise a different semantic Data
+	// and Relation through the same public CLI entry. Renaming only a Pattern
+	// tests selection; this also changes the semantic Attribute IDs and the
+	// physical table while preserving independently specified values.
+	t.Run("another Data and Relation read from another PostgreSQL table", func(t *testing.T) {
+		if _, err := db.Exec("drop table if exists public.inventory_entries"); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := db.Exec("create table public.inventory_entries (like public.order_lines including all)"); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			if _, err := db.Exec("drop table if exists public.inventory_entries"); err != nil {
+				t.Errorf("cannot clean up disposable inventory table: %v", err)
+			}
+		})
+		if _, err := db.Exec("insert into public.inventory_entries select * from public.order_lines"); err != nil {
+			t.Fatal(err)
+		}
+		// Deliberately differ from the reference table: a hidden fallback to
+		// public.order_lines must fail the independently fixed expectation.
+		if _, err := db.Exec("update public.inventory_entries set quantity = 0 where order_line_id = 4"); err != nil {
+			t.Fatal(err)
+		}
+
+		root := t.TempDir()
+		copyTreeForDestination(t, filepath.Join("..", "..", "reference", "workspace"), root)
+		changedFiles := 0
+		err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if entry.IsDir() || (!strings.HasSuffix(path, ".tei") && !strings.HasSuffix(path, ".sql")) {
+				return nil
+			}
+			raw, readErr := os.ReadFile(path)
+			if readErr != nil {
+				return readErr
+			}
+			before := string(raw)
+			after := strings.ReplaceAll(before, "sales.order.lines", "sales.order.inventory_entries")
+			after = strings.ReplaceAll(after, "sales.order_line", "sales.inventory_entry")
+			after = strings.ReplaceAll(after, "relation lines to sales.inventory_entry", "relation inventoryEntries to sales.inventory_entry")
+			after = strings.ReplaceAll(after, "data OrderLine {", "data InventoryEntry {")
+			after = strings.ReplaceAll(after, "type OrderLineId from", "type InventoryEntryId from")
+			after = strings.ReplaceAll(after, "public.order_lines", "public.inventory_entries")
+			if before != after {
+				changedFiles++
+				return os.WriteFile(path, []byte(after), 0o644)
+			}
+			return nil
+		})
+		if err != nil || changedFiles < 7 {
+			t.Fatalf("alternate Workspace source rewrite failed: changed=%d err=%v", changedFiles, err)
+		}
+		validated := runCLIProcessWithStreams(t, binary, "validate", "-workspace", root)
+		if validated.code != 0 {
+			t.Fatalf("alternate semantic Data/Relation Workspace did not validate: code=%d stdout=%s stderr=%s",
+				validated.code, validated.stdout, validated.stderr)
+		}
+
+		const quantityRule = "sales.inventory_entry.quantity_positive"
+		const positionRule = "sales.inventory_entry.line_number_positive"
+		const uniqueRule = "sales.order.inventory_entries.line_number_unique"
+		for _, tc := range []struct {
+			orderID string
+			ids     []string
+			amounts []string
+			unique  string
+		}{
+			{orderID: "1001", ids: []string{"1", "2", "3"}, amounts: []string{"satisfied", "not-satisfied", "satisfied"}, unique: "not-satisfied"},
+			{orderID: "1002", ids: []string{"4", "5"}, amounts: []string{"not-satisfied", "satisfied"}, unique: "undecided"},
+			{orderID: "1003", ids: []string{}, amounts: []string{}, unique: "undecided"},
+		} {
+			t.Run(tc.orderID, func(t *testing.T) {
+				got := runCLIProcessWithStreams(t, binary,
+					"view", "-workspace", root, "-application", "order_entry",
+					"-pattern", "order_entry.order_lines", "-environment", "development",
+					"-input", "order_id="+tc.orderID, "-format", "json")
+				if got.code != 0 || strings.Contains(got.stdout+got.stderr, dsn) {
+					t.Fatalf("alternate Data/Relation read failed or exposed DSN: code=%d stdout=%s stderr=%s",
+						got.code, got.stdout, got.stderr)
+				}
+				var report struct {
+					OK     bool `json:"ok"`
+					Result struct {
+						Relation      string   `json:"relation"`
+						KeyAttributes []string `json:"keyAttributes"`
+						Coverage      string   `json:"coverage"`
+						Rows          []struct {
+							Key    string `json:"key"`
+							Fields map[string]struct {
+								State string `json:"state"`
+							} `json:"fields"`
+						} `json:"rows"`
+						PerRow               map[string]map[string]string `json:"perRow"`
+						PerRelation          map[string]string            `json:"perRelation"`
+						PerRelationUndecided map[string]string            `json:"perRelationUndecided"`
+					} `json:"result"`
+				}
+				if err := json.Unmarshal([]byte(got.stdout), &report); err != nil {
+					t.Fatalf("alternate Result is not JSON: %v (%s)", err, got.stdout)
+				}
+				if !report.OK || report.Result.Relation != "sales.order.inventory_entries" ||
+					report.Result.Coverage != "partial" ||
+					!reflect.DeepEqual(report.Result.KeyAttributes, []string{"sales.inventory_entry.order_line_id"}) {
+					t.Fatalf("alternate Result lost semantic identity or claimed full coverage: %+v", report.Result)
+				}
+				observedIDs := make([]string, 0, len(report.Result.Rows))
+				for i, row := range report.Result.Rows {
+					observedIDs = append(observedIDs, row.Key)
+					if row.Fields["sales.inventory_entry.quantity"].State != "present" ||
+						report.Result.PerRow[row.Key][quantityRule] != tc.amounts[i] ||
+						report.Result.PerRow[row.Key][positionRule] != "satisfied" {
+						t.Fatalf("alternate data rule mismatch on row %s: fields=%v decisions=%v",
+							row.Key, row.Fields, report.Result.PerRow[row.Key])
+					}
+				}
+				if !reflect.DeepEqual(observedIDs, tc.ids) ||
+					report.Result.PerRelation[uniqueRule] != tc.unique {
+					t.Fatalf("alternate Data/Relation changed independent expected identity/answers: rows=%v unique=%s",
+						observedIDs, report.Result.PerRelation[uniqueRule])
+				}
+				if tc.unique == "undecided" && report.Result.PerRelationUndecided[uniqueRule] == "" {
+					t.Fatal("unproven relation completeness was silently treated as full coverage")
+				}
+			})
+		}
+	})
+
 }
