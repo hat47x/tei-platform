@@ -130,7 +130,9 @@ func TestReadScenarioHTTPAnswersComeFromTheRealDatabaseRead(t *testing.T) {
 			if !ok {
 				t.Fatalf("row %d has no quantity although it was answered", index)
 			}
-			if strings.TrimSpace(quantity) != "0" {
+			// PostgreSQL renders numeric(12,3) as "0.000", so compare the value,
+			// not the text: the seed puts zero on exactly one line.
+			if !decimalIsZero(quantity) {
 				t.Fatalf("row %d is marked not-satisfied but holds quantity %q; the seed puts 0 on exactly one line",
 					index, quantity)
 			}
@@ -147,4 +149,25 @@ func TestReadScenarioHTTPAnswersComeFromTheRealDatabaseRead(t *testing.T) {
 			t.Fatalf("relation-wide rule did not stay undecided: %q", line)
 		}
 	}
+}
+
+// decimalIsZero reports whether a rendered decimal is exactly zero, so a reader
+// that keeps the declared scale ("0.000") is accepted without loosening the
+// check for any other value.
+func decimalIsZero(text string) bool {
+	trimmed := strings.TrimSpace(text)
+	if trimmed == "" {
+		return false
+	}
+	digits := strings.TrimLeft(trimmed, "+-")
+	digits = strings.Replace(digits, ".", "", 1)
+	if digits == "" {
+		return false
+	}
+	for _, r := range digits {
+		if r != '0' {
+			return false
+		}
+	}
+	return true
 }
