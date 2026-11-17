@@ -395,3 +395,70 @@ main統合済み[#5051](https://github.com/hat47x/tei-platform/pull/5051)の`//g
 [標準Flow§11](SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)の型付き配線をこのAPIにも使用する。全体Record、個別Field、明示Adapterの三方式は**Provider間で何を受け渡すか**を決める。一方、公開Contributionは**誰に、どのField・Failureを出してよいか**を決める。例えば内部CLIで読める`internalNote`を、単にRecord型が一致するという理由でHTTP応答へ含めない。Adapterが切り落としたField／partial／Lossは隠さず、既存Mapping・Disclosure・AudienceのOwnerへ渡す。
 
 WailsのHTTP Routeが登録済みでも、(a)対象Providerが選択され、(b)そのArtifactが実Imageへ収録され、(c)現在Grant／Disclosureが成立し、(d)独立HTTP Consumerが実際の値を受け取った、の各段階は別の事実である。CLI directの結果とHTTPの結果は、同じScope・Snapshot・Contextから型付きに復号したときだけ意味を比較する。HTTP statusやWails Bindingの呼出成功で実Providerの一致を代用しない。
+
+<!-- tei-plugin-consumer-relative-admissibility-20261117 -->
+## 13. 型がつながった後に、利用目的まで満たせるかを検査する（2026-11-17横断統合）
+
+### 13.1 「接続できる」と「判断に使える」は別の問い
+
+[標準データ様式の取得・投影検収](SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)§12と、[型付きPort／Node Viewの設計](PLUGIN_ROLE_COMPOSITION_AND_STUDIO_REENTRY_2026-11.md)§25を、実際のConsumerが要求する情報へ接続する。**Whole Port／Field Mapping／明示Adapter**はいずれも許容するが、型の適合だけではConnectionを「使用可能」にしない。Pluginが出力を返せることと、下流のRule・表示・編集・公開がその出力から正しく結論を出せることは異なる。
+
+出力の検査には、既存Ownerが持つ次の項目を照合する。新しい横断Envelope型や第二の正本は定義しない。
+
+| 情報 | 接続先が確認する条件 | 不明な場合の扱い |
+| --- | --- | --- |
+| 値・Presence | NULL／欠損／未取得／値ありを、必要な用途で識別できるか | 値だけのProjectionからPresenceを復元せず、判断は保留 |
+| Identity・粒度 | 同名Field、行、業務Entity、Relation occurrence、Graph Edge IDのどれか | 表示label・行数から業務Identityや多重度を推定しない |
+| 取得Scope・完全性 | Predicate、時点、対象Relation、ページング／Limit、必要範囲の実取得 | 返却された行集合を全件と申告しない |
+| 意味と変換 | Contract／Shape／単位／精度／Law、Adapterの入力・出力、損失の有無 | 明示的な変換根拠なしに意味が等価としない |
+| Sourceと現在性 | Source occurrence、Workspace epoch、Model／Artifact revision、実Call Attempt | 古い同値byteや別Attemptの資格を引き継がない |
+| 実行・公開 | Provider選択と実Call、現在Host Grant、Audience／Disclosure、Effect／Receipt | 選択・同梱・認可・実作用を一つの成功欄にしない |
+
+### 13.2 接続の適格性は、Consumerの要求から逆算する
+
+「全情報を完全に保持する」ことを全Pluginの条件にすると、Field抽出、集計、匿名化、表示用整形まで不当に拒否する。代わりに、**下流の用途が必要とする識別・取得・証明を、上流の実観測から満たせるか**を評価する。
+
+1. Consumerの用途を固定する。例：値を表示する／存在する一件を見つける／全件不存在を判断する／特定行を編集する／外部に公開する。
+2. その用途が依存する属性・Relationと、識別・粒度・Presence・Coverage・時点・権限を既存Function Data Context／Rule／Admissionに照らして列挙する。
+3. 各Port／Adapterの実入力・出力について、**保持した情報**と**明示的に捨てた情報**をread-onlyに比較する。説明できない欠落は「保存済み」にしない。
+4. 下流の要求に照らし、usable（用途に必要な根拠が揃う）、undecided（不足・未取得）、incompatible（型／意味の矛盾）、unsupported（Target・機能が未対応）を**検収票の説明上の分類**として示す。これは新しい製品Status enumではない。実行許可・Grant・Owner受理の代替にしない。
+5. 実Consumerへの配線が利用可能でも、Selected／Built-included／Invoked／ObservedとHostによる現在Admissionは別々に再照合する。公開する場合はDisclosureも独立に検証する。
+
+意図的な情報損失には用途がある。例えば表示用の select-field(optional=true) が、欠損と明示NULLを同じ出力値に畳むなら、その値を**表示候補**に利用できる場合はあっても、元のPresenceを要するRuleの確定入力には再利用しない。逆に、元Reader／ContextでPresenceが保持されているなら、同じPort出力を捨てる必要はなく、Ruleが正しい原情報を参照できる経路を選ぶ。
+
+### 13.3 一つのFlowでも、Consumerごとに判断の成立条件が変わる
+
+固定例は Data Provider → Field／Record変換 → quantity_positive／存在検査 → CLI・Studioの表示 とする。**ノードはOperationの出現であり、配線図は既存GraphのProjection**。API公開は同じOperationに対する別のSurface Adapterとする。Wails上でHTTPを公開しても、Operation Providerの実装をWailsに依存させず、CLIは共通Operationへ直接到達する。HTTP Pathや画面上のNode IDを意味IDや権限IDに流用しない。
+
+| 同じデータで変える一条件 | その用途での結論 | 誤って成立させないこと |
+| --- | --- | --- |
+| 実際に取得した1件に条件違反がある。残りはpartial | 「違反が存在する」はその証人の範囲で確定可能 | 「他に違反がない」「全件正常」とは言えない |
+| 取得した範囲で違反は0件。残りはpartial | 全体の正常／不存在はundecided | SQLの0件／NOT EXISTSを全件証明にしない |
+| Field ProjectionがNULLと未取得を同じ値へ畳む | 存在・表示用途によっては候補になり得る | 元のPresenceを必要とするRuleの確定結果にしない |
+| 同じ型の行集合だがJOINで一実体が複数行に出る | 投影された行の情報は扱える | 行数＝Entity数、集計棒＝単一更新対象としない |
+| 実Provider Bを選択したが実Call Aを観測 | そのConnectionは選択契約に反する | 結果JSON一致をもって成功に補正しない |
+| CLIとWailsの返却値が等しい | 値の比較結果のみ確定 | 同一Grant・Disclosure・Consumer受領・実Buildを推定しない |
+
+### 13.4 新しい独立Expected候補：CPW-11〜16
+
+CPW-01〜10、DPC-16〜20、PC-1bの既存検証を再実装せず、**情報が失われた接続を下流の用途が誤受理するか**だけを一因子で検査する。Expectedの正本は引き続き#1180／#2514。検証結果はPRのexact HEADでのみ認定する。
+
+| ID | 変更する一因子 | 最小の期待結果 |
+| --- | --- | --- |
+| CPW-11 | 同じField値で、元状態をNULLから未取得へ | Ruleの確定値を作らず、保持済み原Contextと損失ありProjectionを区別 |
+| CPW-12 | 違反が見つかったpartial取得で、Consumerを存在判定から全件正常判定へ | 前者のみ成立し、後者は保留 |
+| CPW-13 | 同じ2行で、業務IDを2件から同一IDの2出現へ | 行数を実体数に変換しない。Identityのある編集のみ候補 |
+| CPW-14 | Whole RecordからField射影へ替え、必要Attributeを落とす | 出力Shapeが適合してもそのRule用途は使用不可／保留 |
+| CPW-15 | Adapterの数値型だけ合わせ、std.decimalの精度根拠を欠く | 明示Adapterが存在しても意味・精度未保証なら不適合 |
+| CPW-16 | 同一OperationのCLI実CallとWailsの公開説明だけを用意 | CLI側のCallをWails実Consumerの受領に昇格させない |
+
+### 13.5 実装パケットと優先順位
+
+- **PC-A（先行・read-only）**：既存 transform.Value のField投影と、Source／ContextのPresence／Coverage情報を同じ固定Fixtureで比較する。初回はCPW-11／12／14に限定し、lossyかどうかを検査票に説明する。既存 validationeval.Decide と#2495/#2497/#2506の結果を参照し、横断Runnerや別のCanonical Contextを新設しない。
+- **PC-B（通常CLIの実Providerと並行）**：#2586/#4495/#1251が選択したFunction→実Query／Provider→一Consumerに、必要Coverageと実Connectionの追跡を載せる。CPW-13／15はこの経路で実証する。ProviderのRead成功と、Ruleの「全件正常」Claimを区別する。
+- **PC-C（Studio／公開面）**：#2831/#4583の非Plugin Stage1→Stage2を妨げず、実Windows ConsumerとCLIの結果・Subject・epochを別々に観測する。#3422/#2390のAPI／外部Host公開ではCPW-16、現在Grant、Disclosure、Effectを別検収にする。
+- **PC-D（副作用は後段）**：編集／Commitへ到達する場合だけ、既存Hook／Effect Owner（#1129/#1174）のGuard、単一Caller、Receipt、readbackを適用する。情報の不完全な接続から実Effectへ暗黙に進ませない。
+
+**取り込み判断**：初回のPC-Aで既存Context／Rule／Mappingの照合だけで不足を説明できれば、汎用PortEnvelope・新しい型体系・独立Flow Engineは導入しない。説明できないケースが出たときのみ、一件の原Source・Target・用途・独立Expectedを添えて各Ownerへ設計差分を返す。最優先は引き続き通常CLIのactual ProviderとStudio Stage1→Stage2実Windowsセルフビルドであり、PC-A〜Dを追加のHard Gateにしない。
+
+**証拠の状態**：本節は既存設計、現行Sourceと過去の限定回帰に基づく受入・実装計画の整理。CPW-11〜16、PC-A〜Dの新規統合試験、実Windows／独立Consumerの新しい合格、Ownerの意味受理は**NOT RUN／NOT ACCEPTED**。
