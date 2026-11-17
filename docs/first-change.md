@@ -58,8 +58,12 @@ printf 'languages:\n  - tei.authoring/v1\n' >> /tmp/my-workspace/tei.workspace.y
 cp testdata/destination-order-change/edit/unit-price.tei.md /tmp/my-workspace/semantic/sales/
 
 # 受注入力のApplicationが、その規則を使うと書く
-sed -i 's/    uses validation sales.order_line.quantity_positive/&\n    uses validation sales.order_line.unit_price_positive/' \
-  /tmp/my-workspace/applications/order-entry/application.tei
+awk '{
+  print
+  if ($0 == "    uses validation sales.order_line.quantity_positive")
+    print "    uses validation sales.order_line.unit_price_positive"
+}' /tmp/my-workspace/applications/order-entry/application.tei > /tmp/my-workspace/applications/order-entry/application.tei.next
+mv /tmp/my-workspace/applications/order-entry/application.tei.next /tmp/my-workspace/applications/order-entry/application.tei
 ```
 
 置いた設計文書は、規則一行と例の表でできている。
