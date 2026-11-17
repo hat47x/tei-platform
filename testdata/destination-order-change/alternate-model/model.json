@@ -30,6 +30,10 @@
       "InventoryEntry"
     ],
     [
+      "type InventoryEntryId",
+      "type EntryId"
+    ],
+    [
       "orderLineId",
       "entryId"
     ],
