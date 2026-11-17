@@ -236,6 +236,29 @@ class SymbolMatcherTests(unittest.TestCase):
             with self.subTest(symbol=symbol):
                 self.assertIn(ident, self.analyze([symbol])["forbiddenHits"])
 
+    def test_functioncontext_type_only_linkage_is_counted_not_executed(self):
+        # postgresquery.Runner links the postgresquery Go package; that package
+        # declares other acquisition methods whose *types* refer to functioncontext.
+        # The Web read does not exercise those methods, so this is a narrow
+        # type-only exception, not another blanket runtime/authoring allowance.
+        pkg = "tei/internal/functioncontext"
+        for symbol in ("type:.eq." + pkg + ".AcquisitionObservation",
+                       "type:.hash." + pkg + ".ConnectionObservation"):
+            with self.subTest(symbol=symbol):
+                report = self.analyze([symbol])
+                self.assertTrue(report["passed"], report["failures"])
+                self.assertEqual(report["knownIntrusionAllowlisted"][pkg], 1)
+                self.assertNotIn(pkg, report["runtimePackagesObserved"])
+                frozen = module.analyze_symbols(self.BASE + [symbol], "frozen-world")
+                self.assertFalse(frozen["passed"])
+        for symbol in (pkg + ".From", pkg + ".Observe",
+                       "type:.eq." + pkg + "/extra.T"):
+            with self.subTest(symbol=symbol):
+                report = self.analyze([symbol])
+                self.assertIn(pkg if "/extra" not in symbol else pkg + "/extra",
+                              report["unexpectedTeiPackages"])
+                self.assertFalse(report["passed"])
+
     def test_type_only_runtime_packages_are_expected_but_new_ones_are_not(self):
         for pkg in ("tei/internal/query", "tei/internal/semantic", "tei/internal/resource",
                     "tei/internal/environment", "tei/internal/application",
