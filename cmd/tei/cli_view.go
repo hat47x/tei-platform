@@ -449,14 +449,14 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	// This is the first product CLI read of the existing header-detail Contract
 	// Query. No query, mapping, or validation is reconstructed in this entry.
 	if *environmentID != "" {
-		// The runtime read is text or json. html and print are accepted by the
-		// general format gate above and used by the static views, so this mode
-		// used to fall through to the text renderer and print text under
-		// `-format html`: the caller asked for HTML and silently got text. Say
-		// which formats this mode has instead (#5388).
-		if *format != "text" && *format != "json" {
+		// The runtime read is text, json, or html. print stays out: a browser
+		// page is what plan/NOW.md's road item 2 asks for, and printing the
+		// same page is a separate decision. html is accepted by the general
+		// format gate above for the static views, so this mode must refuse what
+		// it does not render instead of falling through to text (#5396).
+		if *format != "text" && *format != "json" && *format != "html" {
 			return fail("INVALID_ARGUMENT",
-				fmt.Sprintf("view -environment supports -format text or json, not %q", *format), 2)
+				fmt.Sprintf("view -environment supports -format text, json, or html, not %q", *format), 2)
 		}
 		values, err := parseInputPairs(inputPairs)
 		if err != nil {
@@ -476,6 +476,9 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		report.Result = result
 		if *format == "json" {
 			return writeViewReport(out, report, 0)
+		}
+		if *format == "html" {
+			return writeDestinationReadHTML(out, result)
 		}
 		return writeDestinationReadText(out, result)
 	}

@@ -109,7 +109,6 @@ var repeatableFlags = map[string]map[string]bool{
 	"model overview":                         {},
 	"model search":                           {},
 	"model document-draft":                   {"section": true},
-	"model ddl":                              {},
 	"business-procedure":                     {},
 }
 
