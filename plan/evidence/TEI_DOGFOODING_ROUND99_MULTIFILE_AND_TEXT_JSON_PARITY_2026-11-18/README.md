@@ -44,7 +44,7 @@ note VALIDATION_INCOMPLETE 2件の構文の指摘を同じ読み込みで集め�
 
 ## 5. 自分が誤った計器を使った（訂正）
 
-「text は2件、json は5件」と読み、**モード間で件数が食い違う**と疑った。実際は私の `grep -E "error|warning"` が**行頭一致**で、Subject を持たない診断（`APPLICATION_RELEASE_CONTRACT_NOT_CURRENT` 等）は**行が severity で始まる**ため取りこぼしていた。
+「text は2件、json は5件」と読み、**モード間で件数が食い違う**と疑った。実際には、私の `grep -E "error|warning"` は**その文字列を含む行だけを抽出する**ため、表示上 `error`／`warning` が現れない診断（`APPLICATION_RELEASE_CONTRACT_NOT_CURRENT` 等）を取りこぼしていた。`grep -E` は行頭一致ではない。
 
 生の出力をタブ区切りで読み直すと:
 
