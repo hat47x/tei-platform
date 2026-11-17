@@ -94,6 +94,23 @@ func ruleAnswers(
 	return rows, relationAnswers, nil
 }
 
+// requireReadRowAnswerAlignment is the boundary for the first Web template's
+// positional join. Rows and answers must be produced by the SAME execution
+// (the caller passes lines.Execution to both projections); this check rejects
+// any different cardinality or position before HTML can attach a result to
+// the wrong displayed row. Position is transport state, not business identity.
+func requireReadRowAnswerAlignment(rows []semanticRowProjection, answers []rowAnswerProjection) error {
+	if len(rows) != len(answers) {
+		return fmt.Errorf("read has %d rows but %d answer rows", len(rows), len(answers))
+	}
+	for index, answer := range answers {
+		if answer.RowIndex != index {
+			return fmt.Errorf("answer at position %d belongs to position %d", index, answer.RowIndex)
+		}
+	}
+	return nil
+}
+
 // answerOf reports a decision in the three words the CLI uses: a decided rule
 // is satisfied or not-satisfied, an undecided one says so and why.
 func answerOf(decision validationeval.Decision) (answer, reason string) {
