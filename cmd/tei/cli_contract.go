@@ -90,7 +90,6 @@ func commandCatalog() cliCommandCatalog {
 		{Name: "model search", Effect: "read-only", Required: []string{"-workspace"}, Optional: []string{"-term (required unless -kind is given)", "-kind", "-limit", "-offset"}, Output: "json", SchemaVersion: "tei.cli.model-search/v0", JSONContract: "enveloped", ArgumentValues: valueSets("model search"), ArgumentType: valueTypes("model search")},
 		{Name: "model document-draft", Effect: "read-only", Required: []string{"-workspace", "-subject-kind", "-subject-id"}, Optional: []string{"-relation-id", "-title"}, Output: "json", SchemaVersion: "tei.cli.model-document-draft/v0", JSONContract: "enveloped"},
 		{Name: "model document-reconcile", Effect: "read-only", Required: []string{"-workspace", "-draft"}, Output: "json", SchemaVersion: "tei.cli.model-document-reconcile/v0", JSONContract: "enveloped"},
-		{Name: "model ddl", Effect: "read-only", Required: []string{"exactly one of -workspace or -world"}, Optional: []string{"-format: sql|json", "-subject-kind and -subject-id together (emit only that one table)"}, Output: "json; PostgreSQL DDL in result.ddl and the structured tables in result.tables; read-only, applied to no database", SchemaVersion: "tei.cli.model-ddl/v0", JSONContract: "enveloped", ArgumentValues: valueSets("model ddl"), ArgumentType: valueTypes("model ddl"), ArgumentDefaults: valueDefaults("model ddl")},
 		{Name: "workspace-files", Effect: "read-only", Required: []string{"-workspace"}, Output: "json", SchemaVersion: "tei.cli.workspace-files/v0", JSONContract: "enveloped"},
 		{Name: "external-candidates", Effect: "read-only", Required: []string{"-evidence-path", "-tool-version", "-observation-id", "-relation-id"}, Optional: []string{"-expected-evidence-id", "-expected-received-digest", "-expected-source-revision"}, Output: "json; saved local Evidence only, no remote path/disclosure authority", SchemaVersion: "tei.cli.external-candidates/v0", JSONContract: "enveloped"},
 		{Name: "inspect", Effect: "read-only", Required: []string{"-workspace", "-subject-kind", "-subject-id"}, Optional: []string{"-expected-fingerprint"}, Output: "json", SchemaVersion: "tei.cli.inspect/v0", JSONContract: "enveloped", ArgumentValues: valueSets("inspect"), ArgumentType: valueTypes("inspect")},
@@ -141,7 +140,6 @@ var selfParsedFlagNames = map[string]struct {
 	"model overview":           {[]string{"workspace"}, []string{"limit", "expected-fingerprint"}},
 	"model document-draft":     {[]string{"workspace", "subject-kind", "subject-id"}, []string{"relation-id", "title", "document-kind", "application", "frozen", "section", "model"}},
 	"model document-reconcile": {[]string{"workspace", "draft"}, nil},
-	"model ddl":                {[]string{"workspace", "world"}, []string{"format", "subject-kind", "subject-id"}},
 }
 
 // flagNamePattern matches the flag names a rule sentence mentions.
