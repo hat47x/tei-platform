@@ -67,7 +67,7 @@ func TestEnvironmentRowsHTMLPreservesCompoundRowKeys(t *testing.T) {
 		Coverage: "partial",
 		Rows: []destinationRow{{Key: first}, {Key: second}},
 		PerRow: map[string]map[string]string{
-			first: {"inventory.item.checked": "satisfied"},
+			first:  {"inventory.item.checked": "satisfied"},
 			second: {"inventory.item.checked": "not-satisfied"},
 		},
 	}
