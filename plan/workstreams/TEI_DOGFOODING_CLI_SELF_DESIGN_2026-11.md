@@ -3249,3 +3249,40 @@ error SEMANTIC_VALIDATION_COMPARED_ATTRIBUTE_REQUIRED
 ### 位置付け
 
 **「要求はするが、書く手段が無い」を見つけた回**である。診断は正しかったが、**その指示に従う方法がその面に存在しなかった**。私はまず自分のテストの誤りを認め、そのうえで**不可能を不可能と言う**ようにした。
+
+## 92. 第91ラウンド（2026-11-17）: 「38コマンドが発見面から欠落」は誤報だった
+
+前ラウンドで残した設計判断（`.tei` は `no-overlap` を表現できない）を踏まえ、**その回避経路が本当に成立しているか**を確かめた。生出力は[第91ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND91_DISCOVERY_SCOPE_FALSE_ALARM_2026-11-17/README.md)にある。
+
+### 確かめたこと（成立していた）
+
+| 段階 | 結果 |
+| --- | --- |
+| `.tei.md` で `compared`・`group by`・`or open` を宣言 | **`ok`** |
+| 読み返し | `kind=no-overlap / compared / groupBy / openEnded=true / relation` が**すべて入る** |
+| 評価器 | `validationeval` に **35 subtests PASS**（実 overlap、部分読み、open period、group 付き） |
+| 製品からの呼出し | `tools/reference-first-web-target`・`cmd/tei/scenario.go` ほか**実在** |
+
+**`no-overlap` は宣言も評価もできる。** 前ラウンドの「`.tei` では無理」は正しく、回避経路も機能している。
+
+### 誤報: 「38コマンドが発見面から欠落」
+
+`tei commands` と `cli_commands.go` の正準一覧を機械的に突き合わせると `canonical: 56 / discovered: 25 / missing: 38` になり、**38件すべてがバイナリに受理される**ことを確認した。**私はこれを「発見可能性の欠陥」として起票しようとした。**
+
+**しかし範囲は明示されていた。**
+
+```go
+Scope: "selected-read-only-commands",
+```
+
+設計文書も「**一覧が全コマンドやPlugin実装の完全な登録簿ではない**」と明記し、`TEI_MEANING_TO_CAPABILITY_SKILL_WITNESS_2026-11.md` は**まさにこの状況**を扱って「**不掲載を未実装に昇格させない**」と書いている。
+
+**「欠落」ではなく「宣言された範囲」。** 起票は誤報になるため、**しなかった。**
+
+### 発見面は既に守られていた
+
+`catalogue_accepts_test.go`（#3956 の再発防止）、`cli_discovery_process_test.go`（全コマンドの実プロセス起動）、`cli_discovery_write_flags_test.go`。**すべて PASS。**
+
+### 位置付け
+
+**「計測は正しかったが、解釈が間違っていた」回**である。56 と 25 という数字は事実だが、**その差は欠陥ではなく `Scope` が宣言した範囲**だった。**起票しなかったことが成果**であり、次に同じ数字を見た人が同じ誤りをしないよう記録する。
