@@ -49,6 +49,22 @@ CGO_ENABLED=0 go build -tags server -o tei-studio-server .
 
 WebはPoC Aと同じloopback・ローカル単一利用者・参照専用の範囲。実認証・複数利用者の隔離、Sourceの安全な読み書き、OS資源の認可をこのUIから補わない。
 
+## Inspect応答の必須項目を契約だけで足す
+
+Inspector Readerは`inspection-reader.contract.json`と`builder-sources/inspection-reader-v1.transform.json`から生成する（手順は[生成tool](../../tools/reference-studio-part-generator/README.md)）。応答に必須とする項目は契約の`requiredResponseFields`に`{"name", "type"}`で並べる。`type`は`string`・`number`・`boolean`・`present`（値を問わず存在だけを要求）のいずれか。
+
+```json
+"requiredResponseFields": [
+  {"name": "schemaVersion", "type": "string"}
+]
+```
+
+項目を一つ足す変更は**契約だけ**で済み、Generator Source・生成tool・transform実行機構は変えない。契約を変えたら、部品を再生成し、`npm test`・`npm run build`の結果を`cmd/tei-studio/assets/workbench/`へ写す。生成Workbenchの固定版（`tools/reference-studio-static-composition/connect-workbench.mjs`）は生成部品のblobを含むため、新しい固定版を追加する。既存の固定版は書き換えない。
+
+足す項目は実際の`InspectSubject`が返すものに限る。`TestContractNamesWhatTheRealOperationReturns`が、項目の有無とJSONの型を実Operationの応答と照合する。手書きの応答fixtureに項目が無ければ、そのfixtureは新しいReaderで拒否される。
+
+これ以外の規則（`effect`、Subjectの一致、fingerprint、`authorityLimits`の4条件）は、まだGenerator Sourceの名前付きスロットである。生成toolは、実装していない契約の節や項目を拒否する（#5365）。
+
 ## 未確認の範囲
 
 この文書の手順は、実行結果を示さない。Desktop実WebView、別アプリとの共通部品利用、PoC B生成構成との等価性、アクセシビリティ全項目、利用者による価値確認、公開Web適格性は別々に検証する。Studioの画面成功を生成業務Desktop Targetの合格へ転用しない。

@@ -96,6 +96,9 @@ jobs:
       TEI_ORG_AXIS_PG_DSN: postgres://tei:tei_integration_only@localhost:5432/tei_org_axis_e2e?sslmode=disable
       TEI_ORG_AXIS_PG_CONFIRM_ISOLATED: tei_org_axis_e2e
       TEI_VIEW_PG_DSN: postgres://tei:tei_integration_only@localhost:5432/tei_destination_order_e2e?sslmode=disable
+      # The numbering store only needs one table, so it shares the fixture
+      # database instead of asking for a seventh one.
+      TEI_TEST_POSTGRES_DSN: postgres://tei:tei_integration_only@localhost:5432/tei_fixture?sslmode=disable
       TEI_VIEW_PG_CONFIRM_ISOLATED: tei_destination_order_e2e
       PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
@@ -153,7 +156,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for name in tei_command_e2e tei_standard_crud_e2e tei_expected_state_e2e tei_web_scoped_e2e tei_org_axis_e2e tei_destination_order_e2e; do
+          for name in tei_command_e2e tei_standard_crud_e2e tei_expected_state_e2e tei_web_scoped_e2e tei_org_axis_e2e tei_destination_order_e2e tei_fixture; do
             docker exec "${{ job.services.postgres.id }}" \
               psql -v ON_ERROR_STOP=1 -U tei -d postgres -c "CREATE DATABASE ${name}"
           done
@@ -183,7 +186,10 @@ jobs:
           # Native as-of Query, isolated DB probes, and source/IR route contract must execute.
           go test -count=1 -v -timeout 10m -run '^(TestOrgAxisAsOf(ActualPostgres|RevisionKeyCandidate|BitemporalRectangleCandidate|ExclusionConstraintCandidate|TwoWriterExclusionCandidate)OptIn|TestOrgC1AbstractUnitReadPathUsesStableSemanticIDs)$' \
             ./internal/operations | tee -a "$log"
-          go test -count=1 -v -timeout 10m -run 'TestPostgresStore|TestPostgresReserves|TestPostgresRefuses' \
+          # ^TestPostgres names every test in the package. Listing the individual ones
+          # let LoadRequiresARuleID fall outside the filter, so it never ran while
+          # the job stayed green.
+          go test -count=1 -v -timeout 10m -run '^TestPostgres' \
             ./internal/numberingpostgres | tee -a "$log"
 
       - name: 到達点「受注の一変更」の実PostgreSQLから製品CLIまでを検証

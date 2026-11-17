@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -153,6 +154,120 @@ func TestRejectedSources(t *testing.T) {
 	}
 }
 
+// R4 cannot be accepted merely because a changed contract produces a new
+// digest. The present generator uses named template slots; a newly required
+// response field would otherwise be ignored while its digest changes.
+func TestUnknownReaderRequirementsAreRejectedBeforeWritingAnArtifact(t *testing.T) {
+	contract := read(t, contractFile)
+	transformRaw := read(t, transformFile)
+	cases := map[string][]byte{
+		"new response field": edit(t, contract,
+			`"sourceStatus": "sourceStatus",`,
+			`"sourceStatus": "sourceStatus", "requiredExtra": "schemaVersion",`),
+		"new requirement section": edit(t, contract,
+			`"requiredLimits": {`,
+			`"newRequiredResponse": {"schema": "schemaVersion"}, "requiredLimits": {`),
+		"extra projection rule": edit(t, contract,
+			`"sourceStatusRequirement": "required"`,
+			`"sourceStatusRequirement": "required", "extraRequired": "schemaVersion"`),
+		"extra required limit": edit(t, contract,
+			`"disclosure": "local-read-is-not-disclosure-permission"`,
+			`"disclosure": "local-read-is-not-disclosure-permission", "newRule": "extra-evidence"`),
+	}
+	for name, changed := range cases {
+		t.Run(name, func(t *testing.T) {
+			part, _, err := generate(transformRaw, changed)
+			if err == nil || !strings.Contains(err.Error(), "not implemented by Generator Source") {
+				t.Fatalf("unknown requirement must fail closed, got part=%d bytes err=%v", len(part), err)
+			}
+			if part != nil {
+				t.Fatal("failed admission returned a part")
+			}
+
+			sourcePath := filepath.Join(t.TempDir(), "changed-contract.json")
+			out := filepath.Join(t.TempDir(), "generated.ts")
+			if err := os.WriteFile(sourcePath, changed, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			err = run([]string{
+				"-transform", transformFile,
+				"-contract", sourcePath,
+				"-artifact-out", out,
+			}, &bytes.Buffer{})
+			if err == nil || !strings.Contains(err.Error(), "not implemented by Generator Source") {
+				t.Fatalf("child should reject unknown requirement: %v", err)
+			}
+			if _, err := os.Stat(out); !os.IsNotExist(err) {
+				t.Fatalf("rejected definition left an artifact: %v", err)
+			}
+		})
+	}
+}
+
+// A required response field is the one requirement this Generator Source
+// reads as data. Adding one must change the generated Reader with the same
+// Generator Source bytes, and a malformed declaration must not produce a part.
+func TestRequiredResponseFieldIsAddedByContractOnly(t *testing.T) {
+	transformRaw, contract := read(t, transformFile), read(t, contractFile)
+	before := digest(transformRaw)
+	current, _, err := generate(transformRaw, contract)
+	if err != nil {
+		t.Fatal(err)
+	}
+	withField := func(fields string) []byte {
+		t.Helper()
+		var parsed map[string]json.RawMessage
+		if err := json.Unmarshal(contract, &parsed); err != nil {
+			t.Fatal(err)
+		}
+		if _, ok := parsed[requiredResponseFieldsSection]; !ok {
+			t.Fatalf("contract does not declare %s", requiredResponseFieldsSection)
+		}
+		re := regexp.MustCompile(`"requiredResponseFields": \[[^\]]*\]`)
+		if !re.Match(contract) {
+			t.Fatal("contract requiredResponseFields is not in the expected form")
+		}
+		return re.ReplaceAll(contract, []byte(`"requiredResponseFields": `+fields))
+	}
+
+	added, _, err := generate(transformRaw, withField(`[{"name": "workspace", "type": "present"}, {"name": "schemaVersion", "type": "string"}]`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Equal(added, current) {
+		t.Fatal("adding required fields did not change the generated Reader")
+	}
+	for _, want := range []string{`  ["workspace", "present"],` + "\n", `  ["schemaVersion", "string"],` + "\n",
+		`!REQUIRED_RESPONSE_FIELDS.every(([name, type]) =>`} {
+		if !bytes.Contains(added, []byte(want)) {
+			t.Fatalf("generated Reader does not contain %q", want)
+		}
+	}
+	if digest(read(t, transformFile)) != before {
+		t.Fatal("Generator Source bytes changed")
+	}
+
+	for name, c := range map[string]struct{ fields, want string }{
+		"unknown type":      {`[{"name": "workspace", "type": "object"}]`, "assert-enum"},
+		"duplicate name":    {`[{"name": "a", "type": "string"}, {"name": "a", "type": "present"}]`, "assert-unique-by"},
+		"blank name":        {`[{"name": "", "type": "string"}]`, "code-safe"},
+		"name leaves quote": {`[{"name": "a\"] || true || [\"", "type": "string"}]`, "code-safe"},
+		"extra key":         {`[{"name": "a", "type": "string", "why": "x"}]`, "exactly {name, type}"},
+		"missing type":      {`[{"name": "a"}]`, `required field "type" is missing`},
+		"not a list":        {`{"name": "a", "type": "string"}`, "assert-each requires array"},
+		"nested list":       {`[["a", "string"]]`, "unsupported kind array"},
+		"number as field":   {`[7]`, "select-field requires object"},
+	} {
+		part, _, err := generate(transformRaw, withField(c.fields))
+		if err == nil || !strings.Contains(err.Error(), c.want) {
+			t.Fatalf("%s: error %v does not name %q", name, err, c.want)
+		}
+		if part != nil {
+			t.Fatalf("%s: returned a part with an error", name)
+		}
+	}
+}
+
 func TestChildWritesOnceAndReportsWhatItWrote(t *testing.T) {
 	dir := t.TempDir()
 	out := filepath.Join(dir, "part.ts")
@@ -224,6 +339,37 @@ func TestContractNamesWhatTheRealOperationReturns(t *testing.T) {
 		}
 		if _, ok := response[name]; !ok {
 			t.Fatalf("contract response.%s names %q, which InspectSubject does not return", role, name)
+		}
+	}
+	// A declared required field must be one the real Operation returns with the
+	// declared JSON type; otherwise the generated Reader would reject every
+	// real Inspect, and only the Desktop would show it.
+	var declared struct {
+		RequiredResponseFields []struct{ Name, Type string }
+	}
+	if err := json.Unmarshal(read(t, contractFile), &declared); err != nil {
+		t.Fatal(err)
+	}
+	for _, field := range declared.RequiredResponseFields {
+		value, ok := response[field.Name]
+		if !ok {
+			t.Fatalf("required response field %q is not returned by InspectSubject", field.Name)
+		}
+		var decoded any
+		if err := json.Unmarshal(value, &decoded); err != nil {
+			t.Fatal(err)
+		}
+		var actual string
+		switch decoded.(type) {
+		case string:
+			actual = "string"
+		case float64:
+			actual = "number"
+		case bool:
+			actual = "boolean"
+		}
+		if field.Type != "present" && field.Type != actual {
+			t.Fatalf("required response field %q is %q in InspectSubject, contract says %q", field.Name, actual, field.Type)
 		}
 	}
 	var suppliedLimits []string

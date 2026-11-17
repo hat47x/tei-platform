@@ -238,6 +238,7 @@ func main() {
 	desiredPath := fs.String("desired", "", "desired physical schema JSON")
 	actualPath := fs.String("actual", "", "actual physical schema snapshot JSON")
 	providerName := fs.String("provider", "", "database provider")
+	desiredSchemaFormat := fs.String("format", "json", "desired-schema: json for the schema snapshot, sql for the statements that create it")
 	migrationVersion := fs.String("version", "", "migration version/id")
 	applicationID := fs.String("application", "", "application canonical ID")
 	artifactOutDir := fs.String("out", "", "artifacts: directory to write the derived files")
@@ -819,6 +820,22 @@ func main() {
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(2)
+		}
+		// -format sql answers the question docs/first-change.md used to tell the
+		// reader to answer by hand: what creates this schema from nothing. The
+		// statements come from the schema-diff renderer this repository already
+		// applies migrations with, run against an empty observation, so the SQL
+		// and the JSON snapshot are two renderings of one definition (#2586).
+		if *desiredSchemaFormat == "sql" {
+			statements, renderErr := desiredSchemaSQL(snap, pid)
+			if renderErr != nil {
+				fmt.Fprintln(os.Stderr, renderErr)
+				os.Exit(2)
+			}
+			for _, statement := range statements {
+				fmt.Fprintln(os.Stdout, statement)
+			}
+			return
 		}
 		writeJSON(snap)
 	case "plan-migration":
@@ -1659,4 +1676,21 @@ func upsertState(states []release.StateSnapshot, state release.StateSnapshot) []
 		}
 	}
 	return append(states, state)
+}
+
+// desiredSchemaSQL renders the statements that create a desired schema from
+// nothing: it diffs the schema against an empty observation and hands the diff
+// to the provider that owns the SQL grammar. A second renderer here would let
+// the printed SQL and the applied migration disagree (#2586).
+//
+// The types come from the physical realization policy, so they are spelled the
+// way introspection reports them (pg_catalog.int8). Precision and scale are not
+// part of a persistence mapping today, so the statements carry no numeric(p,s);
+// the definitions do not declare it and this must not guess it.
+func desiredSchemaSQL(snap physical.SchemaSnapshot, provider environment.DatabaseProvider) ([]string, error) {
+	diff, err := schemadiff.Compare(snap, physical.SchemaSnapshot{Database: snap.Database})
+	if err != nil {
+		return nil, err
+	}
+	return migration.Render(provider, diff)
 }
