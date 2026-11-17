@@ -2,6 +2,9 @@
 
 ## 目的
 
+- [DB横断D0：実PostgreSQL Product Readの実行可能な受入仕様](design/DATA_PROVIDER_CROSS_DB_CONFORMANCE_2026-11.md#10-d0の実行可能な受入仕様一つのfunctionを製品経路で通す2026-11-17)：`order_entry.recent_orders`一Function・一Consumerを固定し、Source→実Provider→Rowset→Data Context→通常CLIの同一Attemptを検収する。D0-P01〜03（3/2/0行）とD0-N01〜05（Source失効、欠損列、部分取得、選択と実Callの不一致、Consumer未配送）の独立Expectedを定め、観測→実Read→拒否→Studio投影に分割。実DB製品E2Eは未実施。#2586の通常CLI実Providerと#2831のStudio Stage1→Stage2を並行P0として維持する。
+
+
 - [DB取得範囲と業務Claimの観測十分性](design/DATA_PROVIDER_CROSS_DB_CONFORMANCE_2026-11.md#9-観測した行と業務上の判断を分けるclaim-sufficiency2026-11-17)：組織C1の実PG二世界反例（同一Membership 4件でもPerson数3/4）を、ProviderのCoverageとConsumerのClaim Sufficiencyの区別に接続する。DPC-C01〜04を#2506/#2514/#1180へ引き渡し、同一Attemptの実Function→Rowset→Data Context→通常CLIで、結果の完全性と用途別判断の十分性を別票検査する。正式Person Link・NoSQL実検証・Studio E2Eは未受理。#2586/#2831のP0は維持する。
 
 
