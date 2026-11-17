@@ -1721,12 +1721,3 @@ mainのRule生成Go CLIビルド回帰は、選択Markdown原文のコピーをG
 最初のコードPRはDF-P4aの一因子に限定する。既存の`validationread/sqlite_path_test.go`は誤申告の危険性を示しているが、**製品Callerが虚偽の`complete`を拒否したという証拠ではない**。必要な契約が既存Query／Data Contextで説明できない場合は、欠落条件と代案を受入票に残し、汎用Query Engineや新Stateful Portを先行追加しない。
 
 今回の計画追補だけで新しいGo／DB／Windows E2E、Owner意味受理、R2-P、R3、Stage1→Stage2をPASSとは扱わない。現在mainの限定成果と、審査中PR #5187（条件付き必須）・#5214（任意Field状態損失）・#5213（研究計画）を区別する。独立Expectedは従来どおり#1180／#2514へ引き渡す。
-
-<!-- mvp-studio-self-reentry-one-loop-20261117 -->
-### MVPのStudio並行作業を「定義だけを変え、次のStudioへ反映する一巡」に絞る（2026年11月17日）
-
-優先順位は[いま進めること](../NOW.md)を正本とし、実PostgreSQLからの受注一件→Rule変更→生成Web画面の主線には手を付けない。その並行Studio P0 #2831／#4583を[実行パケット§15](MVP_DOGFOOD_DECISION_TRANSFER_2026-11.md)へ接続する。ショーケース追加と研究文書の増補を見送り、**生成Inspector Readerを唯一のReaderへ復旧→Inspector応答の必須項目を定義だけで一つ追加→生成器を改修せずStage1自身がStage2を生成→そのWindows WebView2で追加項目を確認**する一巡に限定する。
-
-**現行の足場**：main済み#5303は選択Subject・Catalog・Source・Authority Limitsを一体で検査するPresenter、main済み#5306は既存Pinを維持した**候補**Bundleの型検査まで。定義の変更に応じた生成器本体の差分は**ゼロ**とし、生成されたReaderを唯一のReaderへ戻す。main `8d02d2070fe7a4d6f696881bb8a186f00151b4af`の`reference-self-build`成功は参照経路に限定し、Stage1→Stage2 Desktopや生成Readerの埋込合格へ拡張しない。正規`main.ts`→生成Reader→esbuild→埋込byteの同一HEAD接続と、実BuilderのD1〜D3同一Attemptが先決。元`TestEmbeddedWorkbenchCarriesTheCurrentGeneratedInspectionReader`の拒否条件を弱めない。
-
-**別の検収に保つもの**：TEI自身のRequired Shape移管M1/M2（`required`表の存在と非空・禁止述語は別）、独立P0の通常CLI→実Provider Read #2586、宣言・申告・外部観測を分ける未統合#5291、三要素図面のモデル／インスタンス表現。図面・候補Bundle・参照CIをStage2製品実再入として計上せず、同一Subject・Source Revision・Builder／Artifact・実Consumerの受領まで個別に記録する。本追補はdocs-onlyであり、新たなD4／D5の成功を意味しない。
