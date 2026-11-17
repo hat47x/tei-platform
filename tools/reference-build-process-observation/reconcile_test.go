@@ -236,7 +236,14 @@ func TestScopeFromSelfBuildKeepsDeclaredAndReportedApart(t *testing.T) {
 	if owners["/r/state"] != 1 || owners["/tmp/rb/state"] != 2 || owners["/tmp/tree1"] != 1 {
 		t.Fatalf("owners = %v", owners)
 	}
+	// Named by the plan but found to be another toolchain: the path is still
+	// only the builder's word.
 	report.ToolchainObservation.NamedByPlan = true
+	scope, _ = ScopeFromSelfBuild(report)
+	if scope.ImageRoots[0].Source != sourceBuilderReport {
+		t.Fatalf("a toolchain that does not match the plan was presented as declared: %+v", scope.ImageRoots[0])
+	}
+	report.ToolchainObservation.MatchesPlan = true
 	scope, _ = ScopeFromSelfBuild(report)
 	if scope.ImageRoots[0].Role != roleToolchainNamed || scope.ImageRoots[0].Source != sourcePlan {
 		t.Fatalf("a named toolchain was not presented as declared: %+v", scope.ImageRoots[0])
@@ -245,4 +252,84 @@ func TestScopeFromSelfBuildKeepsDeclaredAndReportedApart(t *testing.T) {
 	if _, err := ScopeFromSelfBuild(report); err == nil {
 		t.Fatal("a report without a declared builder produced a scope")
 	}
+}
+
+// Calls the observer saw but could not follow make the record incomplete.
+func TestObserverLimitsNeverHold(t *testing.T) {
+	record := cleanRecord()
+	record.Limits.ForeignABISyscalls = 2
+	assertNotProven(t, mustReconcile(t, record, testScope()), "ABI")
+
+	record = cleanRecord()
+	record.Limits.UnobservableCalls = map[string]int{"io_uring_setup": 1}
+	assertNotProven(t, mustReconcile(t, record, testScope()), "io_uring_setup")
+}
+
+// The toolchain is where almost every exec of a build happens. When only the
+// builder said which directory that is, the builder could have said "/".
+func TestClosureOnlyTheBuildReportedNeverHolds(t *testing.T) {
+	scope := testScope()
+	scope.ImageRoots[0] = ScopeRoot{Role: roleToolchainReported, Root: "/toolchain", Source: sourceBuilderReport}
+	ledger := mustReconcile(t, cleanRecord(), scope)
+	assertNotProven(t, ledger, "reported about itself")
+	if ledger.Execs.ReportedOnlyTotal != 2 || ledger.Execs.UndeclaredTotal != 0 {
+		t.Fatalf("reportedOnly %d undeclared %d, want 2 and 0", ledger.Execs.ReportedOnlyTotal, ledger.Execs.UndeclaredTotal)
+	}
+}
+
+func TestRootsThatCoverEverythingAreRefused(t *testing.T) {
+	for _, root := range []string{"/", "", "//", "relative/dir"} {
+		scope := testScope()
+		scope.ImageRoots[0].Root = root
+		if _, err := Reconcile(cleanRecord(), scope); err == nil {
+			t.Errorf("image root %q was accepted", root)
+		}
+		scope = testScope()
+		scope.Paths[0].Root = root
+		if _, err := Reconcile(cleanRecord(), scope); err == nil {
+			t.Errorf("path root %q was accepted", root)
+		}
+	}
+}
+
+// A build that drops a program into its toolchain and runs it from there.
+func TestWritingIntoAClosureIsReported(t *testing.T) {
+	record := cleanRecord()
+	record.Files = append(record.Files, FileUse{Path: "/toolchain/bin/extra", Image: "/run/builder", Step: 1, Write: 1})
+	ledger := mustReconcile(t, record, testScope())
+	assertNotProven(t, ledger, "declared for reading")
+	if ledger.Files.WriteToReadOnly[0].Path != "/toolchain/bin/extra" {
+		t.Fatalf("writeToReadOnly = %+v", ledger.Files.WriteToReadOnly)
+	}
+}
+
+func TestWritingToAnOSPathIsReportedExceptTheNullDevice(t *testing.T) {
+	record := cleanRecord()
+	record.Files = append(record.Files, FileUse{Path: "/dev/null", Image: "/toolchain/bin/go", Step: 1, Write: 4})
+	if ledger := mustReconcile(t, record, testScope()); ledger.Absence.State != absenceHolds {
+		t.Fatalf("writing to /dev/null broke the claim: %v", ledger.Absence.Reasons)
+	}
+	record.Files = append(record.Files, FileUse{Path: "/proc/self/oom_score_adj", Image: "/toolchain/bin/go", Step: 1, Write: 1})
+	assertNotProven(t, mustReconcile(t, record, testScope()), "declared for reading")
+}
+
+// An OS-interface entry without a trailing slash is one exact file.
+func TestExactOSInterfaceEntryDoesNotCoverItsNeighbours(t *testing.T) {
+	record := cleanRecord()
+	record.Files = append(record.Files, FileUse{Path: "/dev/null2", Image: "/bin/tei", Step: 0, Read: 1})
+	assertNotProven(t, mustReconcile(t, record, testScope()), "opened path")
+}
+
+func TestTracingThatRecordedNothingNeverHolds(t *testing.T) {
+	record := cleanRecord()
+	record.Files = nil
+	assertNotProven(t, mustReconcile(t, record, testScope()), "not one open")
+
+	record = cleanRecord()
+	record.Limits.TraceFailures = 1
+	assertNotProven(t, mustReconcile(t, record, testScope()), "failed to read")
+
+	record = cleanRecord()
+	record.Limits.UnattributedTasks = 1
+	assertNotProven(t, mustReconcile(t, record, testScope()), "traced back")
 }

@@ -45,5 +45,24 @@ type Record struct {
 	FilesTraced bool      `json:"filesTraced"`
 	Execs       []Exec    `json:"execs"`
 	Files       []FileUse `json:"files,omitempty"`
-	NotObserved []string  `json:"notObserved"`
+	// Limits counts things the observer met and could not read. Any of them
+	// means the record is incomplete, not merely bounded.
+	Limits      Limits   `json:"limits"`
+	NotObserved []string `json:"notObserved"`
+}
+
+// Limits are calls the observer saw being made but cannot turn into a path.
+type Limits struct {
+	// ForeignABISyscalls counts system calls made through another ABI (32-bit),
+	// whose numbers this observer does not decode.
+	ForeignABISyscalls int `json:"foreignAbiSyscalls"`
+	// UnobservableCalls counts calls that open files without naming a path
+	// this observer can follow, by call name.
+	UnobservableCalls map[string]int `json:"unobservableCalls,omitempty"`
+	// TraceFailures counts stops the observer could not read: the kernel
+	// refused the query, or a path argument could not be fetched.
+	TraceFailures int `json:"traceFailures"`
+	// UnattributedTasks counts tasks whose origin could not be found, so their
+	// opens cannot be assigned to a step.
+	UnattributedTasks int `json:"unattributedTasks"`
 }

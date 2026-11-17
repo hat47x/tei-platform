@@ -37,6 +37,19 @@ func TestMain(m *testing.M) {
 			_ = exec.Command(tool).Run()
 		}
 		os.Exit(0)
+	case "tricks":
+		dir := os.Getenv("TEI_OBSERVE_DIR")
+		secret := os.Getenv("TEI_OBSERVE_READ")
+		// The same file three ways: through a symbolic link, through "..", and
+		// through the process's own root link.
+		readAll(filepath.Join(dir, "link"))
+		readAll(dir + "/sub/../../" + filepath.Base(filepath.Dir(secret)) + "/" + filepath.Base(secret))
+		readAll("/proc/self/root" + secret)
+		readAll("/proc/self/maps")
+		_ = os.WriteFile(filepath.Join(dir, "a"), []byte("1"), 0o644)
+		_ = os.Rename(filepath.Join(dir, "a"), filepath.Join(dir, "b"))
+		_ = os.Remove(filepath.Join(dir, "b"))
+		os.Exit(0)
 	case "second":
 		readAll(filepath.Join(os.Getenv("TEI_OBSERVE_DIR"), "first.out"))
 		_, _ = os.Open(filepath.Join(os.Getenv("TEI_OBSERVE_DIR"), "missing"))
@@ -189,5 +202,65 @@ func TestExecOnlyObservationRecordsNoPaths(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("an exec-only record did not say paths were not observed: %v", record.NotObserved)
+	}
+}
+
+// What is recorded is the file that was opened, however the request spelled it.
+func TestObserveRecordsTheOpenedFileNotTheRequestedSpelling(t *testing.T) {
+	self, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	base, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir, outside := filepath.Join(base, "inside"), filepath.Join(base, "outside")
+	for _, d := range []string{filepath.Join(dir, "sub"), outside} {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	secret := filepath.Join(outside, "secret")
+	if err := os.WriteFile(secret, []byte("s"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(secret, filepath.Join(dir, "link")); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("TEI_OBSERVE_HELPER", "tricks")
+	t.Setenv("TEI_OBSERVE_DIR", dir)
+	t.Setenv("TEI_OBSERVE_READ", secret)
+	out := filepath.Join(base, "record.json")
+	if _, err := run(out, true, []string{self}); err != nil {
+		t.Fatal(err)
+	}
+	var record Record
+	raw, _ := os.ReadFile(out)
+	if err := json.Unmarshal(raw, &record); err != nil {
+		t.Fatal(err)
+	}
+	reads, writes := map[string]int{}, map[string]int{}
+	for _, use := range record.Files {
+		reads[use.Path] += use.Read
+		writes[use.Path] += use.Write
+	}
+	// All three spellings are one file outside the directory.
+	if reads[secret] != 3 {
+		t.Errorf("reads of the file behind the link = %d, want 3", reads[secret])
+	}
+	if reads[filepath.Join(dir, "link")] != 0 {
+		t.Errorf("the link's own path was recorded as the opened file")
+	}
+	if reads["/proc/self/maps"] != 1 {
+		t.Errorf("the process's own /proc entry was not recorded as /proc/self: %d", reads["/proc/self/maps"])
+	}
+	// Creating a, renaming it to b and removing b: a is written twice (created,
+	// renamed away), b twice (renamed to, removed).
+	if writes[filepath.Join(dir, "a")] != 2 || writes[filepath.Join(dir, "b")] != 2 {
+		t.Errorf("writes a=%d b=%d, want 2 and 2", writes[filepath.Join(dir, "a")], writes[filepath.Join(dir, "b")])
+	}
+	if record.Limits.ForeignABISyscalls != 0 || len(record.Limits.UnobservableCalls) != 0 {
+		t.Errorf("limits were hit by a plain program: %+v", record.Limits)
 	}
 }

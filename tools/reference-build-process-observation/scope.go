@@ -27,12 +27,18 @@ const (
 // linux regardless of what the build asked for. /etc/localtime and /tmp are
 // deliberately absent: the time zone and the shared temporary directory are
 // ambient inputs, and a build that reads them should show it.
+//
+// Paths in an observation are the ones the kernel resolved, so a request such
+// as /proc/self/root/etc/passwd arrives here as /etc/passwd and is not covered.
 var defaultOSInterface = []string{
 	"/dev/null",
 	"/etc/ld.so.cache",
-	"/lib/",
-	"/usr/lib/",
-	"/proc/self/",
+	"/lib/x86_64-linux-gnu/",
+	"/usr/lib/x86_64-linux-gnu/",
+	"/proc/self/cgroup",
+	"/proc/self/maps",
+	"/proc/self/mountinfo",
+	"/sys/devices/system/cpu/online",
 	"/sys/fs/cgroup/",
 	"/sys/kernel/mm/transparent_hugepage/",
 }
@@ -61,6 +67,7 @@ type selfBuildReport struct {
 			GoRoot string `json:"goRoot"`
 		} `json:"reported"`
 		NamedByPlan bool `json:"namedByPlan"`
+		MatchesPlan bool `json:"matchesPlan"`
 	} `json:"toolchainObservation"`
 	ArtifactReproducibility *struct {
 		SecondStateDir string `json:"secondStateDir"`
@@ -142,7 +149,10 @@ func ScopeFromSelfBuild(report selfBuildReport) (Scope, error) {
 
 	if t := report.ToolchainObservation; t != nil && t.Reported != nil && t.Reported.GoRoot != "" {
 		root := ScopeRoot{Role: roleToolchainReported, Root: t.Reported.GoRoot, Source: sourceBuilderReport}
-		if t.NamedByPlan {
+		// The plan names a toolchain by digest, not by path. The path is the
+		// builder's; it counts as declared only when the entry found the
+		// reported toolchain to be the one the plan names.
+		if t.NamedByPlan && t.MatchesPlan {
 			root.Role, root.Source = roleToolchainNamed, sourcePlan
 		}
 		scope.ImageRoots = append(scope.ImageRoots, root)

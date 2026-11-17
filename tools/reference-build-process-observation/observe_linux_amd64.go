@@ -4,6 +4,7 @@ package main
 
 import (
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"flag"
@@ -21,9 +22,6 @@ import (
 )
 
 const (
-	sysOpen   = 2
-	sysOpenat = 257
-
 	ptraceEventExec = 4
 
 	ptraceOTraceSysgood = 0x1
@@ -45,8 +43,13 @@ type tracee struct {
 	image   string
 	execSeq int
 	step    int
-	path    string
-	flags   uint64
+	pending *pendingCall
+}
+
+// observation is what one run has gathered so far.
+type observation struct {
+	uses   map[fileKey]*FileUse
+	limits Limits
 }
 
 func observe(args []string) int {
@@ -120,7 +123,7 @@ func run(out string, files bool, command []string) (int, error) {
 	record.Execs = append(record.Execs, first)
 
 	tracees := map[int]*tracee{root: {}}
-	uses := map[fileKey]*FileUse{}
+	seen := &observation{uses: map[fileKey]*FileUse{}}
 	exitCode := 0
 	resume(root, 0)
 	for len(tracees) > 0 {
@@ -153,13 +156,17 @@ func run(out string, files bool, command []string) (int, error) {
 			state = &tracee{}
 			if origin := originOf(pid, tracees); origin != nil {
 				state.execSeq, state.step = origin.execSeq, origin.step
+			} else {
+				// Its parent is gone or unknown. Crediting it to the command
+				// itself would let it read what only the command may read.
+				seen.limits.UnattributedTasks++
 			}
 			tracees[pid] = state
 		}
 		sig := ws.StopSignal()
 		switch {
 		case sig == syscall.SIGTRAP|0x80:
-			observeSyscall(pid, state, uses)
+			seen.syscallStop(pid, state)
 			resume(pid, 0)
 		case sig == syscall.SIGTRAP && ws.TrapCause() == ptraceEventExec:
 			state.image = ""
@@ -183,7 +190,7 @@ func run(out string, files bool, command []string) (int, error) {
 	}
 
 	if files {
-		for _, use := range uses {
+		for _, use := range seen.uses {
 			record.Files = append(record.Files, *use)
 		}
 		sort.Slice(record.Files, func(i, j int) bool {
@@ -197,6 +204,7 @@ func run(out string, files bool, command []string) (int, error) {
 			return a.Image < b.Image
 		})
 	}
+	record.Limits = seen.limits
 	record.ExitCode = exitCode
 	encoded, err := json.MarshalIndent(record, "", "  ")
 	if err != nil {
@@ -262,64 +270,235 @@ const (
 	ptraceGetSyscallInfo = 0x420e
 	syscallInfoEntry     = 1
 	syscallInfoExit      = 2
+	auditArchX8664       = 0xc000003e
+
+	sysOpen           = 2
+	sysTruncate       = 76
+	sysRename         = 82
+	sysCreat          = 85
+	sysLink           = 86
+	sysUnlink         = 87
+	sysSymlink        = 88
+	sysOpenat         = 257
+	sysUnlinkat       = 263
+	sysRenameat       = 264
+	sysLinkat         = 265
+	sysSymlinkat      = 266
+	sysOpenByHandleAt = 304
+	sysRenameat2      = 316
+	sysIoUringSetup   = 425
+	sysOpenat2        = 437
+	sysClone          = 56
+	sysPivotRoot      = 155
+	sysChroot         = 161
+	sysMount          = 165
+	sysUnshare        = 272
+	sysSetns          = 308
+	sysClone3         = 435
+	cloneUntraced     = 0x00800000
+
+	openPathOnly = 0x200000 // O_PATH
 )
 
-func observeSyscall(pid int, state *tracee, uses map[fileKey]*FileUse) {
+// pendingCall is what an entry stop saw; the exit stop decides how it counts.
+type pendingCall struct {
+	opens bool
+	// read and write are paths the call touches when it succeeds without
+	// returning a descriptor (rename, link, unlink, truncate).
+	read, write []string
+	path        string
+	flags       uint64
+}
+
+func (o *observation) syscallStop(pid int, state *tracee) {
 	var info syscallInfo
 	if _, _, errno := syscall.Syscall6(syscall.SYS_PTRACE, ptraceGetSyscallInfo, uintptr(pid),
 		unsafe.Sizeof(info), uintptr(unsafe.Pointer(&info)), 0, 0); errno != 0 {
+		// An old kernel or a restricted sandbox refuses the query. Staying
+		// silent would leave an empty record that looks like a clean one.
+		o.limits.TraceFailures++
 		return
 	}
 	switch info.Op {
 	case syscallInfoEntry:
-		state.path = ""
-		switch info.Words[0] {
-		case sysOpen:
-			state.path = resolve(pid, atFdcwd, readString(pid, info.Words[1]))
-			state.flags = info.Words[2]
-		case sysOpenat:
-			state.path = resolve(pid, int(int32(info.Words[1])), readString(pid, info.Words[2]))
-			state.flags = info.Words[3]
-		}
-	case syscallInfoExit:
-		if state.path == "" {
+		state.pending = nil
+		if info.Arch != auditArchX8664 {
+			// A 32-bit call has other numbers; reading it with this table would
+			// record the wrong thing, so it is counted as not understood.
+			o.limits.ForeignABISyscalls++
 			return
 		}
+		arg := func(i int) uint64 { return info.Words[1+i] }
+		text := func(i int) string {
+			value, ok := readString(pid, arg(i))
+			if !ok {
+				o.limits.TraceFailures++
+			}
+			return value
+		}
+		at := func(dirfd, path int) string { return resolve(pid, int(int32(arg(dirfd))), text(path)) }
+		here := func(path int) string { return resolve(pid, atFdcwd, text(path)) }
+		switch info.Words[0] {
+		case sysOpen:
+			state.pending = &pendingCall{opens: true, path: here(0), flags: arg(1)}
+		case sysCreat:
+			state.pending = &pendingCall{opens: true, path: here(0), flags: uint64(syscall.O_WRONLY | syscall.O_CREAT | syscall.O_TRUNC)}
+		case sysOpenat:
+			state.pending = &pendingCall{opens: true, path: at(0, 1), flags: arg(2)}
+		case sysOpenat2:
+			// The flags are the first field of the struct open_how argument.
+			state.pending = &pendingCall{opens: true, path: at(0, 1), flags: readWord(pid, arg(2))}
+		case sysTruncate, sysUnlink:
+			state.pending = &pendingCall{write: []string{here(0)}}
+		case sysUnlinkat:
+			state.pending = &pendingCall{write: []string{at(0, 1)}}
+		case sysRename:
+			state.pending = &pendingCall{write: []string{here(0), here(1)}}
+		case sysRenameat, sysRenameat2:
+			state.pending = &pendingCall{write: []string{at(0, 1), at(2, 3)}}
+		case sysLink:
+			state.pending = &pendingCall{read: []string{here(0)}, write: []string{here(1)}}
+		case sysLinkat:
+			state.pending = &pendingCall{read: []string{at(0, 1)}, write: []string{at(2, 3)}}
+		case sysSymlink:
+			state.pending = &pendingCall{write: []string{here(1)}}
+		case sysSymlinkat:
+			state.pending = &pendingCall{write: []string{at(1, 2)}}
+		case sysOpenByHandleAt:
+			o.unobservable("open_by_handle_at")
+		case sysIoUringSetup:
+			o.unobservable("io_uring_setup")
+		// Calls that change what a path means, or take a task out of the trace.
+		case sysUnshare:
+			o.unobservable("unshare")
+		case sysSetns:
+			o.unobservable("setns")
+		case sysMount:
+			o.unobservable("mount")
+		case sysChroot:
+			o.unobservable("chroot")
+		case sysPivotRoot:
+			o.unobservable("pivot_root")
+		case sysClone:
+			if arg(0)&cloneUntraced != 0 {
+				o.unobservable("clone(CLONE_UNTRACED)")
+			}
+		case sysClone3:
+			if readWord(pid, arg(0))&cloneUntraced != 0 {
+				o.unobservable("clone3(CLONE_UNTRACED)")
+			}
+		}
+	case syscallInfoExit:
+		call := state.pending
+		state.pending = nil
+		if call == nil {
+			return
+		}
+		result := int64(info.Words[0])
 		if state.image == "" {
 			state.image, _ = os.Readlink("/proc/" + strconv.Itoa(pid) + "/exe")
 		}
-		key := fileKey{path: state.path, image: state.image, step: state.step}
-		use := uses[key]
-		if use == nil {
-			use = &FileUse{Path: state.path, Image: state.image, Step: state.step}
-			uses[key] = use
+		if !call.opens {
+			if result < 0 {
+				return
+			}
+			for _, path := range call.read {
+				o.use(path, state).Read++
+			}
+			for _, path := range call.write {
+				o.use(path, state).Write++
+			}
+			return
 		}
-		switch {
-		case int64(info.Words[0]) < 0:
-			use.Failed++
-		case state.flags&uint64(syscall.O_WRONLY|syscall.O_RDWR) != 0:
+		if result < 0 {
+			o.use(call.path, state).Failed++
+			return
+		}
+		// What was opened is what the kernel resolved, not what was asked for:
+		// a symbolic link, "..", or /proc/self/root in the request all end here.
+		path := call.path
+		if resolved := openedPath(pid, int(result)); resolved != "" {
+			path = resolved
+		}
+		use := o.use(path, state)
+		access := call.flags & uint64(syscall.O_ACCMODE)
+		writes := access != uint64(syscall.O_RDONLY) || call.flags&uint64(syscall.O_CREAT|syscall.O_TRUNC) != 0
+		if writes && call.flags&openPathOnly == 0 {
 			use.Write++
-		default:
+		}
+		if access != uint64(syscall.O_WRONLY) || call.flags&openPathOnly != 0 {
 			use.Read++
 		}
-		state.path = ""
 	}
 }
 
-func readString(pid int, addr uint64) string {
+func (o *observation) use(path string, state *tracee) *FileUse {
+	key := fileKey{path: path, image: state.image, step: state.step}
+	use := o.uses[key]
+	if use == nil {
+		use = &FileUse{Path: path, Image: state.image, Step: state.step}
+		o.uses[key] = use
+	}
+	return use
+}
+
+func (o *observation) unobservable(name string) {
+	if o.limits.UnobservableCalls == nil {
+		o.limits.UnobservableCalls = map[string]int{}
+	}
+	o.limits.UnobservableCalls[name]++
+}
+
+// openedPath asks the kernel what a just-returned descriptor refers to. The
+// process's own /proc entries are written back as /proc/self so that they are
+// the same path for every process; another process's entries keep its number.
+func openedPath(pid, fd int) string {
+	target, err := os.Readlink("/proc/" + strconv.Itoa(pid) + "/fd/" + strconv.Itoa(fd))
+	if err != nil || !strings.HasPrefix(target, "/") {
+		return ""
+	}
+	target = strings.TrimSuffix(target, " (deleted)")
+	for _, own := range []int{pid, threadGroupOf(pid)} {
+		prefix := "/proc/" + strconv.Itoa(own)
+		if own != 0 && (target == prefix || strings.HasPrefix(target, prefix+"/")) {
+			return "/proc/self" + target[len(prefix):]
+		}
+	}
+	return target
+}
+
+func threadGroupOf(pid int) int {
+	tgid, _ := statusNumbers(pid)
+	return tgid
+}
+
+func readWord(pid int, addr uint64) uint64 {
 	mem, err := os.Open("/proc/" + strconv.Itoa(pid) + "/mem")
 	if err != nil {
-		return ""
+		return 0
+	}
+	defer mem.Close()
+	var buf [8]byte
+	if n, _ := mem.ReadAt(buf[:], int64(addr)); n != len(buf) {
+		return 0
+	}
+	return binary.LittleEndian.Uint64(buf[:])
+}
+
+func readString(pid int, addr uint64) (string, bool) {
+	mem, err := os.Open("/proc/" + strconv.Itoa(pid) + "/mem")
+	if err != nil {
+		return "", false
 	}
 	defer mem.Close()
 	buf := make([]byte, 4096)
 	n, _ := mem.ReadAt(buf, int64(addr))
 	for i := 0; i < n; i++ {
 		if buf[i] == 0 {
-			return string(buf[:i])
+			return string(buf[:i]), true
 		}
 	}
-	return string(buf[:n])
+	return "", false
 }
 
 func resolve(pid, dirfd int, path string) string {
@@ -346,6 +525,7 @@ type imageKey struct {
 	dev, ino uint64
 	size     int64
 	mtime    int64
+	ctime    int64
 }
 
 var imageDigests = map[imageKey]string{}
@@ -362,7 +542,7 @@ func imageDigest(path string) string {
 	if err := syscall.Fstat(int(file.Fd()), &st); err != nil {
 		return ""
 	}
-	key := imageKey{dev: st.Dev, ino: st.Ino, size: st.Size, mtime: st.Mtim.Nano()}
+	key := imageKey{dev: st.Dev, ino: st.Ino, size: st.Size, mtime: st.Mtim.Nano(), ctime: st.Ctim.Nano()}
 	if digest, ok := imageDigests[key]; ok {
 		return digest
 	}
@@ -378,11 +558,21 @@ func imageDigest(path string) string {
 // originOf finds the tracee a newly seen task came from: the thread group
 // leader for a thread, the parent process for a forked child.
 func originOf(pid int, tracees map[int]*tracee) *tracee {
+	tgid, ppid := statusNumbers(pid)
+	if tgid != 0 && tgid != pid {
+		if leader := tracees[tgid]; leader != nil {
+			return leader
+		}
+	}
+	return tracees[ppid]
+}
+
+// statusNumbers reads a task's thread group and parent process numbers.
+func statusNumbers(pid int) (tgid, ppid int) {
 	raw, err := os.ReadFile("/proc/" + strconv.Itoa(pid) + "/status")
 	if err != nil {
-		return nil
+		return 0, 0
 	}
-	tgid, ppid := 0, 0
 	for _, line := range strings.Split(string(raw), "\n") {
 		if value, ok := strings.CutPrefix(line, "Tgid:"); ok {
 			tgid, _ = strconv.Atoi(strings.TrimSpace(value))
@@ -391,10 +581,5 @@ func originOf(pid int, tracees map[int]*tracee) *tracee {
 			ppid, _ = strconv.Atoi(strings.TrimSpace(value))
 		}
 	}
-	if tgid != 0 && tgid != pid {
-		if leader := tracees[tgid]; leader != nil {
-			return leader
-		}
-	}
-	return tracees[ppid]
+	return tgid, ppid
 }

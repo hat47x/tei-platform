@@ -90,6 +90,9 @@ type LedgerExecs struct {
 	Undeclared []ExecFinding  `json:"undeclared,omitempty"`
 	// UndeclaredTotal counts every undeclared exec; Undeclared may be cut short.
 	UndeclaredTotal int `json:"undeclaredTotal"`
+	// ReportedOnlyTotal counts execs covered only by a closure the build
+	// reported after the fact and no plan named.
+	ReportedOnlyTotal int `json:"reportedOnlyTotal"`
 }
 
 type ExecFinding struct {
@@ -204,8 +207,22 @@ func Reconcile(record Record, scope Scope) (Ledger, error) {
 		return Ledger{}, fmt.Errorf("unsupported scope schema %q", scope.Schema)
 	}
 	for _, p := range scope.Paths {
-		if p.Root == "" || p.Role == "" {
-			return Ledger{}, fmt.Errorf("a scope path needs a role and a root: %+v", p)
+		if p.Role == "" || !usableRoot(p.Root) {
+			return Ledger{}, fmt.Errorf("a scope path needs a role and an absolute root that is not the filesystem root: %+v", p)
+		}
+	}
+	for _, r := range scope.ImageRoots {
+		if r.Role == "" || !usableRoot(r.Root) {
+			return Ledger{}, fmt.Errorf("an image root needs a role and an absolute root that is not the filesystem root: %+v", r)
+		}
+	}
+	// A closure the build only reported about itself covers nothing for the
+	// purpose of "nothing ran outside the declaration": the statement would
+	// rest on the thing being checked.
+	reportedOnly := map[string]bool{}
+	for _, r := range scope.ImageRoots {
+		if r.Source == sourceBuilderReport {
+			reportedOnly[r.Role] = true
 		}
 	}
 	ledger := Ledger{
@@ -240,6 +257,9 @@ func Reconcile(record Record, scope Scope) (Ledger, error) {
 			if e.Seq == e.Step {
 				ledger.Steps[ordinal-1].Role = role
 			}
+		}
+		if reportedOnly[role] {
+			ledger.Execs.ReportedOnlyTotal++
 		}
 		if role == roleUndeclared {
 			ledger.Execs.UndeclaredTotal++
@@ -285,10 +305,19 @@ func Reconcile(record Record, scope Scope) (Ledger, error) {
 		total.Read += use.Read
 		total.Write += use.Write
 		ledger.Files.ByRole[role] = total
+		finding.Role = role
 		if covering == nil {
+			// Closures and operating-system paths are read-only by nature: a
+			// build that writes a program into its own toolchain and then runs
+			// it must not be covered by that toolchain.
+			if use.Write > 0 && use.Path != "/dev/null" {
+				ledger.Files.WriteToReadOnlyTotal++
+				if len(ledger.Files.WriteToReadOnly) < findingLimit {
+					ledger.Files.WriteToReadOnly = append(ledger.Files.WriteToReadOnly, finding)
+				}
+			}
 			continue
 		}
-		finding.Role = role
 		// Step 0 is the command itself: it may read what its steps own, because
 		// it is the one that checks them, but it may not write there.
 		foreign := covering.OwnerStep != 0 && step != covering.OwnerStep && (step != 0 || use.Write > 0)
@@ -344,6 +373,11 @@ func classifyPath(path string, paths []ScopePath, scope Scope) (string, *ScopePa
 	return roleUndeclared, nil
 }
 
+// usableRoot rejects roots that would cover everything or nothing.
+func usableRoot(root string) bool {
+	return strings.HasPrefix(root, "/") && strings.Trim(root, "/") != ""
+}
+
 // under reports whether path is root itself or lies below it.
 func under(path, root string) bool {
 	root = strings.TrimRight(root, "/")
@@ -359,6 +393,23 @@ func judgeAbsence(record Record, ledger Ledger) LedgerAbsence {
 	}
 	if !record.FilesTraced {
 		absence.Reasons = append(absence.Reasons, "opened paths were not traced")
+	} else if len(record.Files) == 0 {
+		absence.Reasons = append(absence.Reasons, "path tracing was on but not one open was recorded, which no real program produces")
+	}
+	if n := record.Limits.TraceFailures; n > 0 {
+		absence.Reasons = append(absence.Reasons, fmt.Sprintf("the observer failed to read %d system call(s) or argument(s)", n))
+	}
+	if n := record.Limits.UnattributedTasks; n > 0 {
+		absence.Reasons = append(absence.Reasons, fmt.Sprintf("%d task(s) could not be traced back to the step that started them", n))
+	}
+	if n := ledger.Execs.ReportedOnlyTotal; n > 0 {
+		absence.Reasons = append(absence.Reasons, fmt.Sprintf("%d executed program(s) are covered only by a closure the build reported about itself; no plan named it", n))
+	}
+	if n := record.Limits.ForeignABISyscalls; n > 0 {
+		absence.Reasons = append(absence.Reasons, fmt.Sprintf("%d system call(s) were made through an ABI the observer does not decode", n))
+	}
+	for _, name := range sortedKeys(record.Limits.UnobservableCalls) {
+		absence.Reasons = append(absence.Reasons, fmt.Sprintf("%s was called %d time(s); files opened that way are not in the record", name, record.Limits.UnobservableCalls[name]))
 	}
 	if n := ledger.Execs.UndeclaredTotal; n > 0 {
 		absence.Reasons = append(absence.Reasons, fmt.Sprintf("%d executed program(s) are not covered by the declaration", n))
@@ -378,4 +429,13 @@ func judgeAbsence(record Record, ledger Ledger) LedgerAbsence {
 		absence.State = absenceNotProven
 	}
 	return absence
+}
+
+func sortedKeys(m map[string]int) []string {
+	keys := make([]string, 0, len(m))
+	for key := range m {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
 }
