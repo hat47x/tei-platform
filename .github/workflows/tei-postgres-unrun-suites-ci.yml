@@ -218,7 +218,7 @@ jobs:
           set -euo pipefail
           log="$RUNNER_TEMP/go-test.log"
           go test -count=1 -v -timeout 10m -run '^TestDestinationOrderChangeReadViaCLIFromPostgres$|^TestDesiredSchemaSQLCreatesTheTableTheReadNeeds$' ./cmd/tei | tee -a "$log"
-          go test -count=1 -v -timeout 10m -run 'TestPostgresReadRunnerAnswersTheRowsPostgreSQLReturned' \
+          go test -count=1 -v -timeout 10m -run 'TestPostgresReadRunnerAnswersTheRowsPostgreSQLReturned|TestShippedCLIReadsTheRealDatabaseForTheWeb' \
             ./tools/reference-first-web-target | tee -a "$log"
 
       - name: SKIPとFAILの検証
@@ -269,6 +269,7 @@ jobs:
             'TestDestinationOrderChangeReadViaCLIFromPostgres'
             'TestDesiredSchemaSQLCreatesTheTableTheReadNeeds'
             'TestPostgresReadRunnerAnswersTheRowsPostgreSQLReturned'
+            'TestShippedCLIReadsTheRealDatabaseForTheWeb'
           )
           for name in "${required[@]}"; do
             grep -Eq -- "^[[:space:]]*--- PASS: ${name} \(" "$log" || { echo "required test did not PASS: ${name}" >&2; exit 1; }

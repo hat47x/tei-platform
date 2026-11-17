@@ -18,6 +18,7 @@ import (
 	"tei/internal/driver"
 	"tei/internal/sourceacceptance"
 	"tei/internal/workspace"
+	"tei/tools/internal/postgresdb"
 )
 
 func main() {
@@ -117,6 +118,7 @@ func runCombinedWebTargetWithHost(ctx context.Context, reader sourceacceptance.R
 		provGrant     = flags.String("provisional-effect-grant", "", "DEVELOPMENT ONLY (D8): signed provisional effect Grant file (requires the two flags below)")
 		provTrust     = flags.String("provisional-effect-grant-trust", "", "DEVELOPMENT ONLY (D8): trust file for provisional effect Grant issuers")
 		provAck       = flags.Bool("provisional-effect-grant-development-only", false, "acknowledge that the provisional effect Grant is development/verification only, not a production permission, and not G2 evidence")
+		readDSN       = flags.String("read-dsn", "", "opt-in: serve the order-line read from this PostgreSQL, one read-only transaction per execution (the shipped CLI otherwise keeps the fixture rows)")
 	)
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -134,6 +136,20 @@ func runCombinedWebTargetWithHost(ctx context.Context, reader sourceacceptance.R
 	}
 	if (*storeDir == "") != (*trustPath == "") {
 		return fmt.Errorf("HOST_ACCEPTANCE_STORE_FLAGS: -host-acceptance-store and -host-acceptance-trust are required together")
+	}
+	// An embedding Host may already have supplied a real read database; the flag
+	// must not silently replace it, and it must not be used alongside a Reader
+	// the Host passed in by a different route than the flags above.
+	if *readDSN != "" {
+		if wiring.readDatabase != nil || wiring.readDatabaseError != nil {
+			return fmt.Errorf("READ_DATABASE_CONFLICT: the embedding Host already supplied a read database")
+		}
+		db, err := postgresdb.OpenSQL(*readDSN)
+		if err != nil {
+			// The DSN can contain a password; the error above must not carry it.
+			return fmt.Errorf("READ_DATABASE_OPEN_FAILED: the PostgreSQL connection could not be opened")
+		}
+		wiring.readDatabase = db
 	}
 	if *storeDir != "" {
 		if reader != nil {
