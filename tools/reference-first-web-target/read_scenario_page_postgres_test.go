@@ -22,7 +22,8 @@ import (
 //
 // It drives the shipped entry point (runCombinedWebTargetWithHost with the
 // empty Host wiring, exactly as the binary does) and supplies the read database
-// through the CLI flag `-read-pg-dsn` (main). The expectations are written from the
+// through the CLI flag `-serve-read-from-db` (main), with the connection string in
+// the environment variable the shipped binary reads. The expectations are written from the
 // fixture's seed and the Application's declared rules, not copied from the
 // response: order 1001 holds quantities 2, 0 and 5, and its lines carry
 // line numbers 1, 2 and 2.
@@ -43,6 +44,10 @@ func TestShippedWebPageShowsRealPostgresRowAnswers(t *testing.T) {
 	// the table stays until the process has served its response.
 	t.Cleanup(func() { _, _ = db.Exec("drop table if exists public.order_lines") })
 
+	// The server reads the DSN from the environment, so the test sets it for the
+	// duration of the run and puts back whatever was there.
+	t.Setenv(readDSNEnv, dsn)
+
 	address := freeLoopbackAddress(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
@@ -55,7 +60,11 @@ func TestShippedWebPageShowsRealPostgresRowAnswers(t *testing.T) {
 				"-legacy-users", legacyFixturePath(t, "users.json"),
 				"-legacy-authorization", legacyFixturePath(t, "authorization.json"),
 				"-diagnostic-unaccepted-source",
-				"-read-pg-dsn", dsn,
+				// The read source is selected by the flag; the connection string
+				// comes from the environment, because #1119 keeps a secret out of
+				// argv and out of logs. Passing a -read-pg-dsn here would test a
+				// flag the binary does not have.
+				"-serve-read-from-db",
 			})
 	}()
 	t.Cleanup(func() {
