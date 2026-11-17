@@ -30,8 +30,12 @@ rule sales.order_line.discount_in_range:
 	}
 }
 
-// The declared name is accepted, and the rule converts.
-func TestRuleAuthoringAcceptsAnAssignmentToADeclaredInput(t *testing.T) {
+// A declared name passes the name check, but the value still has nowhere to go:
+// semantic.Validation carries the operator and its subject, not the input
+// values. Converting would produce a rule that reads as the single-input
+// operator, so the conversion refuses the assignment instead of dropping it.
+// Work item 2 (the normalization) is what makes this convert.
+func TestRuleAuthoringRefusesADeclaredInputAssignmentUntilTheValueCanBeCarried(t *testing.T) {
 	src := `namespace sales
 
 operator sales.within: takes low: number
@@ -40,14 +44,15 @@ rule sales.order_line.discount_in_range:
   sales.order_line.discount is sales.within low: 100
 `
 	namespace, issues := syntax.RuleNamespace(mustParseFile(t, src))
-	if len(issues) != 0 {
-		t.Fatalf("issues=%+v, want none", issues)
+	if len(issues) != 1 {
+		t.Fatalf("issues=%+v, want the value-not-carried one", issues)
 	}
-	if len(namespace.Validations) != 1 {
-		t.Fatalf("validations=%+v", namespace.Validations)
+	if !strings.Contains(issues[0].Msg, "no place for an operator input value") {
+		t.Fatalf("message=%q", issues[0].Msg)
 	}
-	if namespace.Validations[0].Operator != "sales.within" {
-		t.Fatalf("operator=%q", namespace.Validations[0].Operator)
+	// No half-resolved rule reaches the validator.
+	if len(namespace.Validations) != 0 {
+		t.Fatalf("a rule with an unrepresentable assignment converted anyway: %+v", namespace.Validations)
 	}
 }
 
