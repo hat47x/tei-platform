@@ -387,6 +387,82 @@ FROM changed ORDER BY line_number, order_line_id`
 		}
 	})
 
+	// With `covers sales.order.lines` in the binding, the reference Query is
+	// matched against the relation storage and the read is complete. The
+	// answers about all the lines are then the independent expectations as
+	// written, "satisfied" included. The declaration is the only change.
+	t.Run("the declared reference Query reads every line", func(t *testing.T) {
+		rawExpected, err := os.ReadFile(filepath.Join(fixtures, "expected-before.json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var expected struct {
+			Orders map[string]struct {
+				PerLine  map[string]map[string]string `json:"perLine"`
+				PerOrder map[string]string            `json:"perOrder"`
+			} `json:"orders"`
+		}
+		if err := json.Unmarshal(rawExpected, &expected); err != nil {
+			t.Fatal(err)
+		}
+		root := t.TempDir()
+		copyTreeForDestination(t, filepath.Join("..", "..", "reference", "workspace"), root)
+		bindingPath := filepath.Join(root, "applications", "order-entry", "realizations", "header-detail", "order-lines.tei")
+		binding, err := os.ReadFile(bindingPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		const anchor = "    input sales.order.order_id to order_id\n"
+		if strings.Count(string(binding), anchor) != 1 || strings.Contains(string(binding), "covers ") {
+			t.Fatalf("unexpected reference binding: %s", binding)
+		}
+		declared := strings.Replace(string(binding), anchor, anchor+"    covers sales.order.lines\n", 1)
+		if err := os.WriteFile(bindingPath, []byte(declared), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if validated := runCLIProcessWithStreams(t, binary, "validate", "-workspace", root); validated.code != 0 {
+			t.Fatalf("the declared Workspace did not validate: %s %s", validated.stdout, validated.stderr)
+		}
+		for _, orderID := range []string{"1001", "1002", "1003"} {
+			got := runCLIProcessWithStreams(t, binary,
+				"view", "-workspace", root, "-application", "order_entry",
+				"-pattern", "order_entry.order_lines", "-environment", "development",
+				"-input", "order_id="+orderID, "-format", "json",
+			)
+			if got.code != 0 || strings.Contains(got.stdout+got.stderr, dsn) {
+				t.Fatalf("order=%s: exit=%d stdout=%s stderr=%s", orderID, got.code, got.stdout, got.stderr)
+			}
+			var report struct {
+				OK     bool `json:"ok"`
+				Result struct {
+					Coverage          string                       `json:"coverage"`
+					CoverageDeclared  string                       `json:"coverageDeclared"`
+					CoverageBasis     string                       `json:"coverageBasis"`
+					CoverageReason    string                       `json:"coverageReason"`
+					PerLine           map[string]map[string]string `json:"perRow"`
+					PerOrder          map[string]string            `json:"perRelation"`
+					PerOrderUndecided map[string]string            `json:"perRelationUndecided"`
+				} `json:"result"`
+			}
+			if err := json.Unmarshal([]byte(got.stdout), &report); err != nil {
+				t.Fatalf("invalid CLI JSON: %v (%s)", err, got.stdout)
+			}
+			want := expected.Orders[orderID]
+			if !report.OK || report.Result.Coverage != "complete" || report.Result.CoverageDeclared != "sales.order.lines" ||
+				!strings.Contains(report.Result.CoverageBasis, "order_id = sales.order.order_id") || report.Result.CoverageReason != "" {
+				t.Fatalf("order=%s: coverage=%q declared=%q basis=%q reason=%q", orderID,
+					report.Result.Coverage, report.Result.CoverageDeclared, report.Result.CoverageBasis, report.Result.CoverageReason)
+			}
+			if !reflect.DeepEqual(report.Result.PerOrder, want.PerOrder) || len(report.Result.PerOrderUndecided) != 0 {
+				t.Fatalf("order=%s perRelation=%v undecided=%v, expected independently %v",
+					orderID, report.Result.PerOrder, report.Result.PerOrderUndecided, want.PerOrder)
+			}
+			if !reflect.DeepEqual(report.Result.PerLine, want.PerLine) {
+				t.Fatalf("order=%s perRow=%v, expected independently %v", orderID, report.Result.PerLine, want.PerLine)
+			}
+		}
+	})
+
 	// A Contract Query can return fewer than the rows a rule needs. The
 	// reader must not infer relation completeness from a successful SELECT,
 	// whether that SELECT returns unique-looking rows or no rows at all.
@@ -469,8 +545,10 @@ FROM changed ORDER BY line_number, order_line_id`
 			var report struct {
 				OK     bool `json:"ok"`
 				Result struct {
-					Coverage string `json:"coverage"`
-					Rows     []struct {
+					Coverage         string `json:"coverage"`
+					CoverageDeclared string `json:"coverageDeclared"`
+					CoverageReason   string `json:"coverageReason"`
+					Rows             []struct {
 						OrderLineID string `json:"key"`
 					} `json:"rows"`
 					PerLine           map[string]map[string]string `json:"perRow"`
@@ -489,6 +567,17 @@ FROM changed ORDER BY line_number, order_line_id`
 				!reflect.DeepEqual(observedIDs, tc.wantIDs) || len(report.Result.PerLine) != len(tc.wantIDs) {
 				t.Fatalf("Query returned the wrong observed range: ok=%v coverage=%s IDs=%v perLine=%v, want IDs=%v",
 					report.OK, report.Result.Coverage, observedIDs, report.Result.PerLine, tc.wantIDs)
+			}
+			// The report says why the read is partial. With the declaration,
+			// it is the extra condition the matcher does not read, not a
+			// missing declaration.
+			wantReason, wantDeclared := "does not state", ""
+			if tc.covers {
+				wantReason, wantDeclared = "not a plain read", "sales.order.lines"
+			}
+			if report.Result.CoverageDeclared != wantDeclared || !strings.Contains(report.Result.CoverageReason, wantReason) {
+				t.Fatalf("coverage declared=%q reason=%q, want declared=%q reason containing %q",
+					report.Result.CoverageDeclared, report.Result.CoverageReason, wantDeclared, wantReason)
 			}
 			const uniqueness = "sales.order.lines.line_number_unique"
 			answer := report.Result.PerOrder[uniqueness]
