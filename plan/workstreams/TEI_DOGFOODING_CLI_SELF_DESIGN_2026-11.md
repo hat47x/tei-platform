@@ -3492,3 +3492,40 @@ capability equip.loan_register {
 ### 位置付け
 
 **「2つのコマンドが同じ対象について違う数を言う」を見つけた回**である。どちらも正しく、**辺の同一性の定義が違う**だけだった。**私は数を合わせるのではなく、どちらが何を数えているかを確定させて起票した。**
+
+## 97. 第96ラウンド（2026-11-18）: #5426 を解消 — 辺の同一性の限界を、数を返す場所で明文化した
+
+前ラウンドは A（同一性キーに名前）/ B（明文化）/ C（件数）を所有者判断として起票した。**本ラウンドは既定の自律方針に従い、可逆な B を選んだ。** 生出力は[第96ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND96_EDGE_IDENTITY_STATEMENT_2026-11-18/README.md)にある。
+
+### 何を足したか
+
+固定文を1つ `edge-identity-is-from-relation-to-so-same-payload-outcomes-collapse` とし、**数を返す2箇所**（trace の projection と knowledge-context）に置いた。**既存の文は1つも消していない**（trace 3→4件、context 4→5件）。
+
+### 実測（CLI）
+
+両コマンドの `authorityLimits` に同じ文が出る。**数（2 vs 3）は変わっていない。変わったのは説明だけ**であり、A が変えてしまう「正当な宣言の表現力」には触れていない。
+
+### 途中で3件、自分が壊した
+
+| 症状 | 原因 | 対処 |
+| --- | --- | --- |
+| `Projection{}` では limits が空 | limits は `FromIndex` が組み立てる | `FromIndex(index.Derived{}, "full")` を呼ぶ |
+| `Build(ir.World{}, nil, ...)` がビルド不能 | 第3引数は `sourceindex.Index` | 引数を修正 |
+| derivedbridge の順序テスト3件が FAIL | **同じ limits を `projection_order_test.go` の参照実装が複製** | 参照実装も同じ並びに更新 |
+
+### 変異試験
+
+| # | 変えた箇所 | 結果 |
+| --- | --- | --- |
+| M1 | projection の文を削る | FAIL `does not state the edge identity limit` |
+| M2 | **既存**の context 文を1つ削る | FAIL `the existing limit ... was dropped` |
+
+**M2 が重要**である。追加だけを検査すると「既存を消して追加した」場合に通ってしまう。
+
+### 残したもの
+
+**固定文のリストは5ファイルに複製がある。** 単一の出所にすべきかは別の設計判断なので、本ラウンドでは触っていない。
+
+### 位置付け
+
+**前ラウンドで「判断が要る」と返したものを、挙動を変えない案で自分で閉じた回**である。**数を返すロジックには一切触れず、その数の意味だけを書いた。**
