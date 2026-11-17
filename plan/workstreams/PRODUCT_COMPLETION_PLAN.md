@@ -1743,3 +1743,9 @@ mainのRule生成Go CLIビルド回帰は、選択Markdown原文のコピーをG
 既存DF-P4の作業順を維持し、(1) DPC-16aの虚偽completeを製品Callerで拒否する一因子Go回帰、(2) Operatorの署名・選択Query束縛から必要Relation／Scopeを確認（新しいRule正規形の実装待ちの場合は既存Rule IDで同等条件を固定）、(3) NULL／未取得、部分観測の陽性違反／成立保留を実Readから検証、(4) 表・Graphのread-only投影でIdentity／Relation・状態・Source版を損なわないことを確認、(5) 実PostgreSQL→通常CLI→独立Consumerを同一Attemptで受領、の順に検収する。
 
 自己記述のSDM-01〜12、Graphの同名異ID・並列辺、組織C1の同一MembershipからPerson数を一意に決められない反例は、新しいFixture Storeを作らず既存#1124/#1131/#2497/#2514に引き渡す。Source編集往復とStudio Stage1→Stage2は別P0として継続し、Data／Ruleの一局所試験を全Modeler・製品セルフビルドの完成とは呼ばない。**ここで追加したのは設計と受入順であり、Operator正規形移行・DPC-16 Caller実装・実GUI・実Consumerの新規PASSではない。**
+
+### DPC-16 Caller資格判定の実装受入票（2026年11月17日）
+
+[標準Flow§12.16](../design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)に基づき、DF-P4aの実装PRを次の順序に限定する。第一段階は既存SQLite FixtureのD1／`members_first_page`（4行中2行）を使い、実行済みContract Queryと同一Scope／Binding／Attemptの全件保証を示せないCallerが`CoverageComplete`を渡さないことを独立Expectedで検査する。既存Readerの「誤ったcompleteを渡せばseatUniqueがsatisfiedになる」負例を残し、**Callerで防げたこと**を別試験として確認する。
+
+第二段階で、観測済み重複の不成立と未観測行が残る一意性成立の保留、別Scope・Bindingの証拠流用拒否、0行の全件性未立証を追加する。Query契約に保証根拠がない場合は未立証→Rule入力partialとし、契約追加の必要性を受入票に残す。既存`validationeval.Coverage`や汎用SQL Executorの改造、Graph／Studioの新実装をこのPRの必須条件にしない。成功の上限は限定Callerの資格判定であり、一般SQL、全Provider、実PostgreSQL／通常CLI／独立Consumer、Owner意味受理へは昇格しない。
