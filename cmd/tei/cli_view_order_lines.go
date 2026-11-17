@@ -179,12 +179,12 @@ func readDestinationOrderLines(
 
 	result := destinationRead{
 		Application: appID,
-		Pattern: patternID,
+		Pattern:     patternID,
 		Environment: envID,
-		Coverage: "unverified",
-		Rows: make([]destinationRow, 0, len(execution.Execution.Result.Rows)),
-		PerLine: map[string]map[string]string{},
-		PerOrder: map[string]string{},
+		Coverage:    "unverified",
+		Rows:        make([]destinationRow, 0, len(execution.Execution.Result.Rows)),
+		PerLine:     map[string]map[string]string{},
+		PerOrder:    map[string]string{},
 	}
 	ids := make([]string, 0, len(execution.Execution.Result.Rows))
 	for _, row := range execution.Execution.Result.Rows {
