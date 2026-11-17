@@ -100,7 +100,7 @@ rule sales.order_line.unit_price_positive:
 
 ## まだできないこと
 
-- 異なるData・Relationを持つ業務モデルで、同じ`tei view`を通すこと。現時点で実DBの試験が済んだ別名Patternは、受注明細と同じRelationを使っている。
+- 異なる属性集合を持つ**さらに別の**業務モデル。**列構成・主キー・Query入力が異なるモデルは通った**（`testdata/destination-order-change/alternate-model/`・`cmd/tei/destination_order_alternate_pg_case_test.go`・#5362）。
 - 明細番号の一意を「成立」と答えること。束縛への全件の宣言が要る。
-- 列の桁数を定義すること。今は`numeric`までしか出せない。
+- **列の精度と位取り**を定義すること。型は`numeric`まで出せるが、`numeric(12,3)` のような指定は出せない（保存の定義が`storage decimal`までしか持たない）。
 - Webの画面で同じ答えを見ること。
