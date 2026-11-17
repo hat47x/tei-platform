@@ -178,14 +178,13 @@ Focused試験 internal/operations/inspect_markdown_data_table_date_rule_realizat
 
 DC-55〜57をFocused試験のExpected、DC-58を#1180／#2514へ渡す。今回の判定範囲は実製品のReader、Source Index、Inspector、Rule例の評価と診断であり、実DB Reader、外部Provider、Gの実生成・Build、Dの実Call、取得範囲・Audience・現在Grant、Studioの実編集／Stage2を成功とはしない。並行する期間Rule／Contract Query Reader／Operator選択／Plugin Field投影のPRは、main統合と実Consumer確認後にだけ計画上の到達済みへ移す。通常CLI実ProviderとStage1→Stage2のP0を維持する。
 
-
 ### P1：観測が足りないClaimを、型が合うだけで成立させない（2026年11月17日）
 
-[宣言的構文の合成契約§33](../design/DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md)のDC-59〜65を、既存DF-P4a／DPC-16aとPlugin PC-1b／組織C1の受入へ接続する。成果物の値と型、Ruleの判定、実Readの範囲、公開Grant、実Consumerの受領は別々に確かめる。mainへ統合済みの#5148／#5149／#5156／#5166／#5168／#5181／#5210はそれぞれ異なる局所試験であり、この接合自体が製品で実行済みという意味ではない。
+[宣言的構文の合成契約§33](../design/DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md)のDC-59〜66を、既存DF-P4a／DPC-16aとPlugin PC-1b／組織C1の受入へ接続する。成果物の値と型、Ruleの判定、実Readの範囲、公開Grant、実Consumerの受領は別々に確かめる。mainへ統合済みの#5148／#5149／#5156／#5166／#5168／#5181／#5210はそれぞれ異なる局所試験であり、この接合自体が製品で実行済みという意味ではない。
 
 最初のPRは**DC-59／60だけ**を対象とする。SQLite上のRelationに四行を用意し、既存Contract Queryの二行だけを受け取るCallerが無根拠なcompleteを拒否すること、同じpartialでも既知の重複違反なら不成立を確定し、違反が見えないだけなら成立を保留することを、既存Decideと独立Expectedで照合する。Source／Query／Ruleの意味ID・Scope・時点・実Readと申告根拠を同一Attemptで比較する。Callerによる根拠検査が現実に実装されるまでは**NOT RUN／未受理**とする。
 
-DC-61のPerson二世界、DC-62のWhole／Field Loss、DC-63のG／P／D適合、DC-64の古いStudio応答、DC-65のSource改版後Artifactは再実装せず、既存のOwner・Fixtureへ接続して結果を再利用する。検収は各変更HEADの実Go／DB／必要なConsumerで別々に判断する。R2-P、通常CLI実Provider→独立Consumer、Studio Stage1→Stage2実Windowsは引き続き独立P0であり、今回のP1を新しい前提条件にしない。
+DC-61のPerson二世界、DC-62のWhole／Field Loss、DC-63のG／P／D適合、DC-64の古いStudio応答、DC-65の例による全件性誤認、DC-66のSource改版後Artifactは再実装せず、既存のOwner・Fixtureへ接続して結果を再利用する。検収は各変更HEADの実Go／DB／必要なConsumerで別々に判断する。R2-P、通常CLI実Provider→独立Consumer、Studio Stage1→Stage2実Windowsは引き続き独立P0であり、今回のP1を新しい前提条件にしない。
 
 ### P1で接続する業務判断・設計入力・数式（2026年11月15日）
 
