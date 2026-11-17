@@ -15,12 +15,12 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"tei/internal/core"
+	"tei/internal/database/persistence"
 	"tei/internal/driver"
 	"tei/internal/driver/queryresult"
 	postgresquery "tei/internal/driver/queryruntime/postgres"
 	sqlquery "tei/internal/driver/queryruntime/sql"
 	"tei/internal/driver/validationread"
-	"tei/internal/database/persistence"
 	"tei/internal/environment"
 	"tei/internal/ir"
 	"tei/internal/realization"
@@ -36,7 +36,7 @@ type destinationField struct {
 
 type destinationRow struct {
 	// Key identifies the row by the primary key the persistence mapping of
-	// the Data declares, joined with "/" when the key has more than one
+	// the Data declares, encoded as a JSON array when the key has more than one
 	// attribute. It is never the position of the row.
 	Key    string                      `json:"key"`
 	Fields map[string]destinationField `json:"fields"`
