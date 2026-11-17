@@ -506,6 +506,7 @@
 - [行スコープのフックを browse で使えるようにするか](XTEA_LOWCODE_ROW_HOOK_DECLARATION_SITE_2026-11.md)（設計判断。`interaction`はrecord限定のため一覧で行フックを宣言できない。既定案B（`Hook`へ行の出所を足す）を実装し、出所を宣言した`scope row`は警告を出さない。既定の参照実行はQueryを実行しないためskipは残る）
 - [行スコープのフックが行の出所を宣言する](XTEA_LOWCODE_HOOK_ROW_SOURCE_2026-11.md)（参照実装の試験記録。`rows from query <id>`を足し、出所の解決を検証で強制、変換とホスト入口まで実装。実Query実行からの配線と空ページの区別は未実装）
 - [postgres-suitesが赤かった理由](XTEA_LOWCODE_POSTGRES_SUITES_PATHS_2026-11.md)（paths絞り込みのため見えていなかった失敗が、paths追加で露見した記録）
+- [paths絞り込みで隠れている失敗の全面監査](XTEA_LOWCODE_WORKFLOW_PATHS_AUDIT_2026-11.md)（95本のworkflowのpathsとgo test対象を突き合わせ、6本を追加修正し、17組を理由付きで据え置き、変数一覧2本を登録。同じ穴は`tools/repository-architecture-check`のラチェットが落とす）
 - [例のWorkspaceで期間の要件を宣言する確認](XTEA_LOWCODE_EXAMPLE_PERIOD_REQUIREMENT_2026-11.md)（参照実装の試験記録。例で宣言・検証・投影・実行が一致。宣言時に矛盾検査が実例で発火し、`closed-rejects`を狭めた）
 - [実行器はあるのに振り分けが無いrea-intakeを配線する](TEI_DOGFOODING_ROUND77_REA_INTAKE_ROUTE_2026-11-11/README.md)（runThreeElementReaIntakeは実装済みでテスト12箇所が呼んでいたが、dispatcherにcaseが無く14件FAILしていた。テストが実行器を直接呼んでいたため見落とされていた。14→0。rea-evidenceは実装自体が無く範囲外、gofmt違反6ファイルはrecord only）
 - [未統合機能の孤児テストがrepository-healthを常時赤にする](TEI_DOGFOODING_ROUND78_REA_EVIDENCE_ORPHAN_2026-11-12/README.md)（rea-evidenceを要求する2試験がmainに在り、実装は未統合ブランチ（157コミット遅れ）にのみ存在。依存のinternal/externalanalysis 1,202行もmainに無い。スタブは採らない（動くように見せるため）。起票 #4455。plan-checkは第76〜77ラウンドで緑）

@@ -6,21 +6,15 @@ on:
       - work/tei-md-unbound-source-guard-20261106
       - main
     paths:
-      - 'internal/workspace/loader.go'
-      - 'internal/workspace/rule_authoring_markdown_loader.go'
-      - 'internal/workspace/tei_md_source_guard_test.go'
-      - 'internal/syntax/parser.go'
-      - 'internal/syntax/rule_placement_test.go'
+      - 'internal/workspace/**'
+      - 'internal/syntax/**'
       - '.github/workflows/tei-md-parser-unbound-ci.yml'
   pull_request:
     branches:
       - main
     paths:
-      - 'internal/workspace/loader.go'
-      - 'internal/workspace/rule_authoring_markdown_loader.go'
-      - 'internal/workspace/tei_md_source_guard_test.go'
-      - 'internal/syntax/parser.go'
-      - 'internal/syntax/rule_placement_test.go'
+      - 'internal/workspace/**'
+      - 'internal/syntax/**'
       - '.github/workflows/tei-md-parser-unbound-ci.yml'
   workflow_dispatch:
 
