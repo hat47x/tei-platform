@@ -16,31 +16,33 @@ import (
 // one REA delivery. This regression tests their input and identity boundaries;
 // it is not a second product Consumer or an acceptance of business meaning.
 func TestREADualEntryCapturedInputAndIdentityBoundaries(t *testing.T) {
-	// The graph-bearing delivery belongs to this test, not to the shared
-	// receipt-only externalanalysis fixture (#5266). The checked-in copy is
-	// UTF-8 (possibly with BOM); the independently recorded Windows delivery
-	// was UTF-16LE. Recreate those original bytes and check size and SHA-256
-	// before using them in either read-only CLI.
+	// The captured delivery stays beside this test: the shared intake fixture
+	// was replaced by a receipt-only stub (606134e63), and internal/studiohost
+	// keeps its own copy for the same reason (#5176, #5183). This file is the
+	// 78,000-byte UTF-16LE delivery whose sha256 the fixture manifest declares.
 	fixture := filepath.Join("testdata", "rea-6.8.0", "analysis.json")
-	capturedCopy, err := os.ReadFile(fixture)
+	raw, err := os.ReadFile(fixture)
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The BOM on the UTF-8 copy is not the identity of the original
-	// delivery. Its reconstructed SHA-256 below is the independent pin.
-	utf8JSON := bytes.TrimPrefix(capturedCopy, []byte{0xef, 0xbb, 0xbf})
+	// REA 6.8.0's captured output is UTF-16LE with a BOM. Preserve the
+	// original raw bytes and derive a separate UTF-8 JSON input for intake.
+	if !bytes.HasPrefix(raw, []byte{0xff, 0xfe}) || len(raw)%2 != 0 {
+		t.Fatal("captured fixture is not the recorded UTF-16LE BOM delivery")
+	}
+	// Pin the original captured bytes, not an automatically decoded JSON view.
+	// This protects both readers from silently consuming a replaced fixture.
+	const recordedSHA256 = "7ea3780d8dc23d00c380145af62d63bf194e39decbaefab3d82c5a3b4134bba9"
+	if sum := sha256.Sum256(raw); len(raw) != 78000 || fmt.Sprintf("%x", sum) != recordedSHA256 {
+		t.Fatalf("REA delivery differs from the recorded original: size=%d sha256=%x", len(raw), sum)
+	}
+	units := make([]uint16, 0, (len(raw)-2)/2)
+	for i := 2; i < len(raw); i += 2 {
+		units = append(units, uint16(raw[i])|uint16(raw[i+1])<<8)
+	}
+	utf8JSON := []byte(string(utf16.Decode(units)))
 	if !json.Valid(utf8JSON) {
-		t.Fatal("REA fixture copy is not a single valid JSON document")
-	}
-	units := utf16.Encode([]rune(string(utf8JSON)))
-	raw := make([]byte, 2, 2+2*len(units))
-	raw[0], raw[1] = 0xff, 0xfe
-	for _, unit := range units {
-		raw = append(raw, byte(unit), byte(unit>>8))
-	}
-	const originalSHA256 = "7ea3780d8dc23d00c380145af62d63bf194e39decbaefab3d82c5a3b4134bba9"
-	if sum := sha256.Sum256(raw); len(raw) != 78000 || fmt.Sprintf("%x", sum) != originalSHA256 {
-		t.Fatalf("reconstructed REA delivery differs from the recorded original: size=%d sha256=%x", len(raw), sum)
+		t.Fatal("transcoded REA fixture is not a single valid JSON document")
 	}
 
 	dir := t.TempDir()
