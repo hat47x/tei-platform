@@ -102,6 +102,7 @@ jobs:
       # database instead of asking for a seventh one.
       TEI_TEST_POSTGRES_DSN: postgres://tei:tei_integration_only@localhost:5432/tei_fixture?sslmode=disable
       TEI_VIEW_PG_CONFIRM_ISOLATED: tei_destination_order_e2e
+      TEI_VIEW_BROWSER_BINARY: google-chrome
       PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
       - name: 検証対象を取得
@@ -194,6 +195,13 @@ jobs:
           go test -count=1 -v -timeout 10m -run '^TestPostgres' \
             ./internal/numberingpostgres | tee -a "$log"
 
+      - name: Web画面検証用Chromeの存在を確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v "$TEI_VIEW_BROWSER_BINARY"
+          "$TEI_VIEW_BROWSER_BINARY" --version
+
       - name: 到達点「受注の一変更」の実PostgreSQLから製品CLIまでを検証
         shell: bash
         run: |
@@ -252,6 +260,13 @@ jobs:
           for name in "${required[@]}"; do
             grep -Eq -- "^[[:space:]]*--- PASS: ${name} \(" "$log" || { echo "required test did not PASS: ${name}" >&2; exit 1; }
           done
+          # Before/after x three orders. Chrome must actually receive the DOM;
+          # simply installing a browser or skipping the optional test is not PASS.
+          browser_count="$(grep -Fc 'actual Chrome DOM verified for order' "$log" || true)"
+          test "$browser_count" -eq 6 || {
+            echo "Chrome DOM receipts: $browser_count; expected six" >&2
+            exit 1
+          }
 
       - name: 検証後の変更を検出
         if: always()

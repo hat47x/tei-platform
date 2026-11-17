@@ -1,16 +1,19 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"html"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -711,4 +714,94 @@ func assertDestinationHTMLFromPostgres(
 			t.Fatalf("order=%s Relation=%s: HTML lost undecided reason", orderID, rule)
 		}
 	}
+	if browser := os.Getenv("TEI_VIEW_BROWSER_BINARY"); browser != "" {
+		assertDestinationChromeDOMFromPostgres(t, browser, page, orderID, dsn, perLine, perRelation, undecided)
+	}
+}
+
+// assertDestinationChromeDOMFromPostgres opens the HTML produced from the
+// actual PostgreSQL read in Chrome. It checks DOM receipt against independent
+// fixture expectations, not against the CLI's own JSON serialization.
+// This does not qualify the separate Web Target's HTTP/Provider connection.
+func assertDestinationChromeDOMFromPostgres(
+	t *testing.T,
+	browser, page, orderID, dsn string,
+	perLine map[string]map[string]string,
+	perRelation map[string]string,
+	undecided map[string]string,
+) {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "order-lines.html")
+	if err := os.WriteFile(path, []byte(page), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, browser,
+		"--headless", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage",
+		"--no-first-run", "--dump-dom", "file://"+filepath.ToSlash(path))
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("real Chrome failed to open the generated page: %v", err)
+	}
+	dom := string(output)
+	if !strings.Contains(dom, "<html") ||
+		!strings.Contains(dom, "coverage: partial") ||
+		!strings.Contains(dom, "rows: "+strconv.Itoa(len(perLine))) ||
+		strings.Contains(dom, dsn) {
+		t.Fatalf("order %s: Chrome DOM lost read metadata or exposed a DB secret", orderID)
+	}
+	// The template uses h3 only for row keys. Chrome can reserialize HTML
+	// entities in text nodes, so compare decoded heading contents.
+	sections := strings.Split(dom, "<h3>")
+	rows := make(map[string]string, len(sections)-1)
+	for _, section := range sections[1:] {
+		close := strings.Index(section, "</h3>")
+		if close < 0 {
+			t.Fatal("Chrome DOM has a row heading without a closing tag")
+		}
+		key := html.UnescapeString(section[:close])
+		if _, duplicate := rows[key]; duplicate {
+			t.Fatalf("Chrome DOM repeated row key %s", key)
+		}
+		body := section[close+len("</h3>"):]
+		if end := strings.Index(body, "<h2>"); end >= 0 {
+			body = body[:end]
+		}
+		rows[key] = html.UnescapeString(body)
+	}
+	if len(rows) != len(perLine) {
+		t.Fatalf("order %s: Chrome DOM rows=%d; independent expected=%d", orderID, len(rows), len(perLine))
+	}
+	if len(perLine) == 0 && !strings.Contains(dom, "明細の行はない。") {
+		t.Fatal("Chrome lost the zero-row message")
+	}
+	for key, rules := range perLine {
+		body, ok := rows[key]
+		if !ok {
+			t.Fatalf("order %s: Chrome lost row key %s", orderID, key)
+		}
+		for rule, answer := range rules {
+			cells := "<td>" + rule + "</td><td>" + answer + "</td>"
+			if !strings.Contains(body, cells) {
+				t.Fatalf("order %s row %s: Chrome lost decision %s=%s", orderID, key, rule, answer)
+			}
+		}
+	}
+	marker := "<h2>関係全体の答え</h2>"
+	off := strings.Index(dom, marker)
+	if off < 0 {
+		t.Fatal("Chrome lost the separate relation answers")
+	}
+	relationHTML := html.UnescapeString(dom[off+len(marker):])
+	for rule, answer := range perRelation {
+		cells := "<td>" + rule + "</td><td>" + answer + "</td>"
+		if !strings.Contains(relationHTML, cells) {
+			t.Fatalf("order %s: Chrome lost relation decision %s=%s", orderID, rule, answer)
+		}
+		if reason := undecided[rule]; reason != "" && !strings.Contains(relationHTML, reason) {
+			t.Fatalf("order %s: Chrome lost undecided reason for %s", orderID, rule)
+		}
+	}
+	t.Logf("actual Chrome DOM verified for order %s", orderID)
 }
