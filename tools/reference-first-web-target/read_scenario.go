@@ -123,6 +123,14 @@ func (r *referenceReadScenarioRunner) Run(ctx context.Context, input readScenari
 	if err != nil {
 		return readScenarioResult{}, err
 	}
+	// The page joins answers to rows by position, so the two sequences must be
+	// the same read, the same length and the same order. Nothing above guarantees
+	// that: the rows and the answers are produced by two separate calls, and a
+	// mismatch would silently drop a line's answers or show one line's answers
+	// beside another line's values.
+	if err := correspondRowAnswers(orderLineRows, lineAnswers); err != nil {
+		return readScenarioResult{}, err
+	}
 
 	return readScenarioResult{
 		ScenarioID:       "order-entry.read-only-web-slice",

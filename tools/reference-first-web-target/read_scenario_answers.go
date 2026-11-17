@@ -94,6 +94,37 @@ func ruleAnswers(
 	return rows, relationAnswers, nil
 }
 
+// correspondRowAnswers checks that the answers describe the rows the page will
+// show. The page binds them by position ("index $.Result.Read.RowAnswers $index"
+// beside "range $index, $row := .Result.Read.OrderLineRows"), which is only
+// sound when the two sequences came from the same read in the same order.
+//
+// plan/NOW.md requires exactly this: the per-row answers must be tied to the rows
+// actually read, by row count, order and target read, and a screen position must
+// never be treated as a business key. This function is that check for the first
+// Web target; it does not invent a second correspondence, it refuses to proceed
+// when the one the page relies on does not hold.
+func correspondRowAnswers(rows []semanticRowProjection, answers []rowAnswerProjection) error {
+	if len(answers) != len(rows) {
+		return fmt.Errorf(
+			"the read returned %d order-line rows but answers were produced for %d; the page joins them by position, so this read cannot be shown",
+			len(rows),
+			len(answers),
+		)
+	}
+	for index, answer := range answers {
+		if answer.RowIndex != index {
+			return fmt.Errorf(
+				"answer %d is labelled row %d; the page shows it beside order-line row %d, so a screen position would be joined to another row's answers",
+				index,
+				answer.RowIndex,
+				index,
+			)
+		}
+	}
+	return nil
+}
+
 // answerOf reports a decision in the three words the CLI uses: a decided rule
 // is satisfied or not-satisfied, an undecided one says so and why.
 func answerOf(decision validationeval.Decision) (answer, reason string) {
