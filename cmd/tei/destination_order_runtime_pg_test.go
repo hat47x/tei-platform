@@ -174,4 +174,82 @@ func TestDestinationOrderChangeReadViaCLIFromPostgres(t *testing.T) {
 			}
 		})
 	}
+
+	// The Workspace owns SQL realization text. A read-only CLI must not
+	// trust that source to be SELECT-only: PostgreSQL accepts a data-changing
+	// CTE with a SELECT result. Exercise the real CLI and independently read
+	// the same disposable database afterward.
+	t.Run("an edited Contract Query cannot write through view", func(t *testing.T) {
+		const editedSQL = `WITH changed AS (
+    UPDATE public.order_lines SET quantity = 777 WHERE order_id = :order_id
+    RETURNING order_line_id, line_number, item_code, quantity, unit_price
+)
+SELECT order_line_id, line_number, item_code, quantity, unit_price
+FROM changed ORDER BY line_number, order_line_id`
+		var before string
+		if err := db.QueryRow("SELECT quantity::text FROM public.order_lines WHERE order_line_id = 1").Scan(&before); err != nil {
+			t.Fatal(err)
+		}
+		root := t.TempDir()
+		copyTreeForDestination(t, filepath.Join("..", "..", "reference", "workspace"), root)
+		sourcePath := filepath.Join(root, "databases", "sales-core", "query-realizations", "order-line-find-by-order.sql")
+		if err := os.WriteFile(sourcePath, []byte(editedSQL), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		got := runCLIProcessWithStreams(t, binary,
+			"view", "-workspace", root, "-application", "order_entry",
+			"-pattern", "order_entry.order_lines", "-environment", "development",
+			"-input", "order_id=1001", "-format", "json",
+		)
+		if got.code == 0 || strings.Contains(got.stdout+got.stderr, dsn) {
+			t.Fatalf("edited SQL was accepted or exposed the DSN: exit=%d stdout=%s stderr=%s", got.code, got.stdout, got.stderr)
+		}
+		var report struct {
+			OK    bool `json:"ok"`
+			Error struct {
+				Code string `json:"code"`
+			} `json:"error"`
+		}
+		if err := json.Unmarshal([]byte(got.stdout), &report); err != nil || report.OK || report.Error.Code != "VIEW_EXECUTION_FAILED" {
+			t.Fatalf("edited SQL did not fail through the runtime view contract: report=%+v err=%v output=%s", report, err, got.stdout)
+		}
+		var after string
+		if err := db.QueryRow("SELECT quantity::text FROM public.order_lines WHERE order_line_id = 1").Scan(&after); err != nil || after != before {
+			t.Fatalf("read-only view changed the stored quantity: before=%s after=%s err=%v", before, after, err)
+		}
+
+		// This is a real UPDATE, not merely malformed SQL: on the same
+		// disposable database it returns three modified rows under an
+		// ordinary writable transaction. Rolling back keeps other cases'
+		// independent seed and expectations intact.
+		probe, err := db.Begin()
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer probe.Rollback()
+		rows, err := probe.Query(strings.ReplaceAll(editedSQL, ":order_id", "$1"), int64(1001))
+		if err != nil {
+			t.Fatalf("the negative SQL was not executable in a writable transaction: %v", err)
+		}
+		var count int
+		for rows.Next() {
+			count++
+		}
+		if err := rows.Err(); err != nil {
+			rows.Close()
+			t.Fatal(err)
+		}
+		if err := rows.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if count != 3 {
+			t.Fatalf("the writable control updated %d rows, want 3", count)
+		}
+		if err := probe.Rollback(); err != nil {
+			t.Fatal(err)
+		}
+		if err := db.QueryRow("SELECT quantity::text FROM public.order_lines WHERE order_line_id = 1").Scan(&after); err != nil || after != before {
+			t.Fatalf("the writable control did not roll back: before=%s after=%s err=%v", before, after, err)
+		}
+	})
 }
