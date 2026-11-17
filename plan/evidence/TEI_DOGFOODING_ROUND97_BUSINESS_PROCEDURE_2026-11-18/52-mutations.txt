@@ -1,0 +1,9 @@
+M1 old wording
+   -> FAIL the refusal omits "manual"
+M2 quote 2 of the 3 accepted words (realizations[:2])
+   -> FAIL realizationNames lists 2 of 3
+
+My first M2 added a statement after strings.Join and broke the build; a broken
+mutation is not evidence, so I rebuilt it as a slice bound.
+
+Regression: ./internal/businessprocedure ok, ./cmd/tei ok (332s), gate 6 PASS.
