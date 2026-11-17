@@ -95,8 +95,6 @@ func discoveryProbeArgs(name string) []string {
 		return []string{"model", "document-draft"}
 	case "model document-reconcile":
 		return []string{"model", "document-reconcile"}
-	case "model ddl":
-		return []string{"model", "ddl"}
 	case "version":
 		return []string{"version", "-json"}
 	case "validate":

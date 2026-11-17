@@ -41,7 +41,6 @@ func TestCommandCatalogFlagsMatchAcceptedFlags(t *testing.T) {
 		if record.Name == "model catalog" || record.Name == "model locate" ||
 			record.Name == "model overview" || record.Name == "model document-draft" ||
 			record.Name == "model document-reconcile" || record.Name == "model search" ||
-			record.Name == "model ddl" ||
 			record.Name == "three-element" ||
 			record.Name == "business-procedure" {
 			continue // parses its own arguments, not the shared FlagSet

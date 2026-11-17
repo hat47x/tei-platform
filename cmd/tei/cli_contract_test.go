@@ -68,7 +68,7 @@ func TestDiscoveryAdvertisesTheCommandsOwnSchemaVersion(t *testing.T) {
 		// tei.cli.model-locate/v0); model catalog keeps its older name.
 		if cmd.Name == "model locate" || cmd.Name == "model overview" ||
 			cmd.Name == "model document-draft" || cmd.Name == "model document-reconcile" ||
-			cmd.Name == "model search" || cmd.Name == "model ddl" {
+			cmd.Name == "model search" {
 			if cmd.SchemaVersion != "tei.cli."+strings.ReplaceAll(cmd.Name, " ", "-")+"/v0" {
 				t.Errorf("%s schemaVersion=%q", cmd.Name, cmd.SchemaVersion)
 			}
