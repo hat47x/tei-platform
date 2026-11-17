@@ -811,10 +811,9 @@ mainへ統合済み#5142（Decide）・#5143（記録例の期待照合）・#51
 
 DC-55〜57はGo試験に書く独立Expectedであり、**exact HEADのCI合格とOwner意味受理は別**に判定する。DC-58は#1180／#2514、Rule／Provider／Studioの各Ownerに引き渡す。
 
-なお、#5148（期間の非重複Rule）、#5149（Contract Queryから取得状態を申告するReader）、#5150（Operator選択Fingerprintの共通化）、#5168（Studioの後着応答とPin）、#5156（PluginのRecord／Field投影）は、現時点でmainへ統合済みと仮定しない。各PRが実際に採用された版とConsumerから検収する。特に取得した値の状態と取得・開示の許可は別の資格であり、SUI等の文書取得やUIへの返却でも版と現在Grantを改めて確認する。
+なお、本節を記した2026-11-16時点では、#5148（期間の非重複Rule）、#5149（Contract Queryから取得状態を申告するReader）、#5150（Operator選択Fingerprintの共通化）、#5168（Studioの後着応答とPin）、#5156（PluginのRecord／Field投影）のmain統合を未確認としていた。2026-11-17の確認結果と統合先は§33にまとめる。各PRが実際に採用された版とConsumerから検収する。特に取得した値の状態と取得・開示の許可は別の資格であり、SUI等の文書取得やUIへの返却でも版と現在Grantを改めて確認する。
 
 製品P0の正式R2-P出典・Generator／Builderの同一Attempt、通常CLI公開Entry→実Provider→独立Consumer、Studio Stage1→Stage2の実Windows再構築は維持する。新しい万能Engine・Evidence Store・Graph Runtime・Reader Registry・Hostを追加しない。
-
 
 ## 33. 宣言の合成結果を「観測から判断できる範囲」で検査する（2026-11-17）
 
@@ -849,7 +848,7 @@ MarkdownのData表、Rule、Query、Plugin Port、Node Viewを同じ型付きMea
 
 ### 33.3 次に実装すべき最小の不足辺
 
-新しい統合Fixtureは作らず、既存DF-P4a／DPC-16aのSQLite実Read・既存Rule・独立Expectedを優先する。最初は次の一因子だけを固定する。
+新しい統合Fixtureは作らず、既存DF-P4a／DPC-16aのSQLite実Read・既存Rule・独立Expectedを優先する。まず、以下の条件を同じ固定Fixtureで比較する。
 
 1. 同じRelationに実際には四行あるが、選択Queryは最初の二行だけを返す。Callerがcompleteと申告しても、取得範囲の根拠がなければ**completeと受理しない**。現在のFromHeaderDetailがCallerの申告を利用する事実と、製品Callerが裏付けを検査する事実を分離する。
 2. 取得済み二行で重複が確定する場合は不成立を保持し、重複が見えない場合は残りの未取得行により成立が変わり得るため判定を保留する。行数0、SQLにLIMITがないこと、ページ終端らしく見えることは全件性の証拠にしない。
@@ -862,7 +861,8 @@ MarkdownのData表、Rule、Query、Plugin Port、Node Viewを同じ型付きMea
 | **DC-61** | 同じMembership投影からdistinct Person／承認者を一意に確定 | 組織C1・#2506・#2514 |
 | **DC-62** | Whole RecordとField投影の値一致を、開示・状態保存の同値とみなす | Plugin PC-1b／PC-1c・#951・#2497 |
 | **DC-63** | Pで読めるnot-after Ruleを、未対応G／未選択Dへ暗黙に切替 | G／P／D・#988・#1121 |
-| **DC-64** | A→B→Aの古いInspect結果や記録例の一致を現在のSource受理とみなす | Source／Studio・#1124・#1824 |
-| **DC-65** | ResultとRead先だけが一致すれば、Source改版後の旧Artifactを使う | Builder／Artifact・#4544・#2514 |
+| **DC-64** | A→B→Aの古いInspect結果を現在の選択・Source受理に流用 | Source／Studio・#1124・#1824 |
+| **DC-65** | 記録例が一致すれば、実Providerで全件取得したとみなす | Data／Rule・#2506・#2514 |
+| **DC-66** | ResultとRead先だけが一致すれば、Source改版後の旧Artifactを使う | Builder／Artifact・#4544・#2514 |
 
 上のIDは**設計上の反証索引**であり、実装済みテストや新しいExpected正本ではない。主担当のFixture／既存Expected／CIで合格し、実行したHEADと失効条件を確定して初めて状態を更新する。第一優先はDC-59／60の製品Caller経路であり、他のDCは既存のOwnerに分配する。正式R2-P／通常CLI実Provider→独立Consumer／Studio Stage1→Stage2実WindowsのP0を増やしたり、置き換えたりしない。
