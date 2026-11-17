@@ -113,3 +113,55 @@ for i := 0; i < rows; i++ {
 前稿の「同じ宣言の半分だけが効く非対称」という表現も不正確だった。**両方とも効いていない。**
 
 修正には、印刷のビューが**実際の明細行**（`driver` の `MappedResult` など）を持つことが前提になる。これは行スコープのフックと同じ供給源の問題であり、[行の宣言場所の判断](XTEA_LOWCODE_ROW_HOOK_DECLARATION_SITE_2026-11.md)と合わせて扱うべきである。
+
+## 実装（2026-11-17、やり直し）: 投影で各ページに `<thead>` を出す
+
+前稿の「投影の中だけでは直せない」という結論は、**半分だけ正しかった**。実データが無いことは正しい。だが、それで直せないのは `page-break` が**実データの行数**に効くことだけで、**宣言した大きさで投影の明細を分け、各面へ見出しを出す**ことは投影の中でできる。
+
+### 前ラウンドが失敗した理由（コードで確認）
+
+失敗の原因は投影の構造ではなく、**行数の作られ方**だった。
+
+```go
+rows := 5
+if view.PageBreak != nil && view.PageBreak.Rows > 0 && view.PageBreak.Rows <= 50 {
+    rows = view.PageBreak.Rows
+}
+```
+
+プレースホルダの個数が `page-break` の `Rows` と等しくなるため、`Rows` 行を `Rows` 行/ページで割れば常に**1面**になる。前ラウンドはここを直さずに分割だけを書いたので、2面目が空になり落ちた。訂正節の「投影の中だけで行うことはできない」は、この1行を直さない前提での結論である。
+
+### 選んだもの: (b) 分割の単位を「実際に描ける行数」にし、プレースホルダでも各ページに thead を出す
+
+前ラウンドの失敗は (b) で解ける。(a)（プレースホルダを `Rows` に合わせて増やす）は採らない。見た目の行数が見た目の改ページ宣言に依存し続け、実データが来たときに何も変わらないためである。(c)（`MappedResult` → `HeaderDetailView` の新設）は**今回やらない**。理由は、それが `view -environment` の読み取り経路と印刷の経路を初めて繋ぐ変更であり、`plan/NOW.md` の道の2（Webの実行先）と同じ供給源の作業になるため。部分実装で止めるのではなく、今回は (b) として独立に閉じる。
+
+### 変えたこと
+
+1. `internal/applicationview/header_detail.go`
+   - `detailPlaceholderRows = 5` を導入し、プレースホルダの個数を `page-break` から切り離した。`Rows` は「どう分けるか」だけを決める。
+   - `HeaderDetailView.DetailPages()` を追加した。`PageBreak.Rows` ごとに `DetailPage{Number, Rows, RepeatHeader}` を作る。`Rows` 行へ収まるなら分割しない。
+   - 見出しの描画は `RepeatHeader` が決める。1面目は常に描き、2面目以降は `repeat-header` があるときだけ描く。
+2. `internal/applicationview/print.go`
+   - テンプレートを `DetailPages` のループへ変え、面ごとに `<table class="detail" data-page="N">` を出す。
+   - 2面目以降に改ページを持たせるため `.detail+.detail{break-before:page}` を CSS へ足した。
+   - `<thead>` は `RepeatHeader` が真の面にだけ出す。宣言していない繰返しが見た目に出ない。
+3. 試験
+   - `TestHeaderDetailPrintRepeatsHeaderOnEveryPage`: 3行/ページ・`repeat-header` で表2・`<thead>`2。
+   - `TestHeaderDetailPrintKeepsOneTableWithoutRepeatHeader`: `repeat-header` 無しでは、分割しても `<thead>` は1（宣言と描画を一致させる）。
+   - `TestHeaderDetailPrintKeepsOneTableWhenFitsOnePage`: 5行/ページ（ちょうどの大きさ）では分割しない1表。
+   - `TestHeaderDetailPrintWithoutPageBreak`: 宣言が無ければ注記も分割もしない。
+   - `TestHeaderDetailPrintDoesNotDropRows`: 7通りの宣言（未宣言・1〜6行/ページ）で明細行が5行のまま落ちない。
+   - `TestHeaderDetailDetailPagesNumbersPages`: 面番号が1から連続し、行が重複も欠落もしない。
+   - `TestBuildHeaderDetailCarriesPageBreak`: プレースホルダ数が `Rows` ではなく5であることを固定した（前ラウンドの前提を試験で止める）。
+
+### 状態
+
+- **動く（投影の中で）**: `page-break N repeat-header` は、印刷HTMLで N 行ごとの複数の表になり、2面目以降も `<thead>` を描く。
+- **試験だけ**: 実ブラウザ（WebView2等）での改ページ表示とPDF生成は未確認。分割はCSSの `break-before` に依存する。
+- **未実装**: 実データの明細行数への反映。`DetailRows` は依然として合成のプレースホルダであり、印刷面の行数は実際のRelationの行数ではない。この解消は (c) の経路（`driver` の `MappedResult` → 印刷）で行う。
+
+### 覆す条件
+
+- 帳票エンジン（PDF）が版面を決める設計になったら、HTML投影の分割をやめ、`Rows` と `RepeatHeader` をそのまま渡す。
+- 表の分割がHTMLの見た目として不適切（列幅・罫線の崩れ）と判明したら、分割をやめて注記だけに戻す。
+

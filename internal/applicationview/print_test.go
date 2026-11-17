@@ -57,7 +57,12 @@ func TestRenderHeaderDetailPrintHTML(t *testing.T) {
 			t.Fatalf("print html does not contain %q: %s", want, html)
 		}
 	}
-	if strings.Count(html, "<tr><td></td><td></td><td></td></tr>") != 3 {
-		t.Fatalf("detail rows are not repeated: %s", html)
+	// 3行/ページの宣言でプレースホルダ5行を分けると、3行と2行の2面になる。
+	// 分割しても行は落ちず、repeat-headerがあるので両面が見出しを描く。
+	if got := strings.Count(html, "<tr><td></td><td></td><td></td></tr>"); got != 5 {
+		t.Fatalf("detail rows=%d, want 5: %s", got, html)
+	}
+	if got := strings.Count(html, "<thead>"); got != 2 {
+		t.Fatalf("thead count=%d, want 2 (見出し繰返し): %s", got, html)
 	}
 }

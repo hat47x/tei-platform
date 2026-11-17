@@ -9,6 +9,14 @@ import (
 	"tei/internal/semantic"
 )
 
+// detailPlaceholderRowsは、印刷面の明細に置く合成のプレースホルダ行数である。
+// 実際の明細行はこのビューへ来ていないため、行数はデータから決まらない。
+// したがって固定する。以前はpage-breakのRowsへ合わせていたため、
+// 明細は常にちょうど1ページ分になり、改ページも見出しの繰返しも投影へ
+// 現れなかった。行数をRowsから切り離せば、Rowsは「どう分けるか」だけを決め、
+// 分割しても行は落ちない。
+const detailPlaceholderRows = 5
+
 // HeaderDetailViewは、header-detail PatternのRelationを、見出し部と明細部に解決した投影である。
 // 項目はPatternのinteractionではなく、Relationのsource Dataとtarget Dataの属性から取る。
 type HeaderDetailView struct {
@@ -33,6 +41,48 @@ type HeaderDetailView struct {
 type PageBreakRef struct {
 	Rows         int  `json:"rows"`
 	RepeatHeader bool `json:"repeatHeader,omitempty"`
+}
+
+// DetailPageは、印刷面の1ページ分に置く明細行である。
+// Numberは1から始まる面の順序、RowsはDetailRowsの部分列であり、
+// RepeatHeaderはその面が見出し行を描くかを決める。
+type DetailPage struct {
+	Number       int
+	Rows         []int
+	RepeatHeader bool
+}
+
+// DetailPagesは、印刷面の明細行を、宣言した改ページの大きさで面へ分ける。
+//
+// 面の大きさはpage-breakのRowsであり、分割はその宣言がある場合に限る。
+// 宣言が無い、または明細行が1面に収まる場合は、分割しない1面を返す。
+// 見出しの繰返しはrepeat-headerが決める。1面目は常に見出しを描き、
+// 2面目以降はrepeat-headerがある場合にだけ描く。宣言が無いのに
+// 2面目へ見出しを描けば、繰り返さない宣言が繰り返して見える。
+// 分割しても行は落とさない。最後の面は端数を持つ。
+func (view HeaderDetailView) DetailPages() []DetailPage {
+	capacity := 0
+	if view.PageBreak != nil && view.PageBreak.Rows > 0 {
+		capacity = view.PageBreak.Rows
+	}
+	if capacity <= 0 || len(view.DetailRows) <= capacity {
+		return []DetailPage{{Number: 1, Rows: view.DetailRows, RepeatHeader: true}}
+	}
+	repeat := view.PageBreak != nil && view.PageBreak.RepeatHeader
+	pages := make([]DetailPage, 0, (len(view.DetailRows)+capacity-1)/capacity)
+	for start := 0; start < len(view.DetailRows); start += capacity {
+		end := start + capacity
+		if end > len(view.DetailRows) {
+			end = len(view.DetailRows)
+		}
+		number := len(pages) + 1
+		pages = append(pages, DetailPage{
+			Number:       number,
+			Rows:         view.DetailRows[start:end],
+			RepeatHeader: number == 1 || repeat,
+		})
+	}
+	return pages
 }
 
 // AggregateRefは、header-detailの明細に対する集計の宣言を解決した結果である。
@@ -145,11 +195,12 @@ func BuildHeaderDetail(world ir.World, applicationID, patternID core.CanonicalID
 	if pattern.PageBreak != nil {
 		view.PageBreak = &PageBreakRef{Rows: pattern.PageBreak.Rows, RepeatHeader: pattern.PageBreak.RepeatHeader}
 	}
-	rows := 5
-	if view.PageBreak != nil && view.PageBreak.Rows > 0 && view.PageBreak.Rows <= 50 {
-		rows = view.PageBreak.Rows
-	}
-	for i := 0; i < rows; i++ {
+	// 明細行は実データではなく合成のプレースホルダである。その個数は
+	// 改ページの大きさとは独立に固定する。以前は個数をpage-breakのRowsへ
+	// 合わせていたため、明細は常にちょうど1ページ分になり、分割も
+	// 見出しの繰返しも投影に現れなかった。個数を固定すれば、Rowsは
+	// 「どう分けるか」だけを決め、行を失わない。
+	for i := 0; i < detailPlaceholderRows; i++ {
 		view.DetailRows = append(view.DetailRows, i)
 	}
 	for _, pkg := range app.Packages {
