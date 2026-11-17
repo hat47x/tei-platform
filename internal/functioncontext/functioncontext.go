@@ -70,6 +70,10 @@ type Input struct {
 	Declared driver.DeclaredBrowseRelations
 	// Acquisition is nil when the read was not observed. Then nothing is lowered or raised.
 	Acquisition *AcquisitionObservation
+	// Provenance is the statement description of the result columns, or nil when it was not
+	// observed (ProvenanceNote says why). Nil leaves every column unobserved.
+	Provenance     []ColumnProvenance
+	ProvenanceNote string
 }
 
 type Cell struct {
@@ -80,6 +84,8 @@ type Cell struct {
 type Column struct {
 	Raw       string           `json:"raw"`
 	Attribute core.CanonicalID `json:"attribute"`
+	// Provenance classifies where the column comes from (see the Prov* values).
+	Provenance string `json:"provenance"`
 }
 
 type Context struct {
@@ -113,8 +119,9 @@ type Context struct {
 	} `json:"rowset"`
 	Columns []Column `json:"columns"`
 	Rows    [][]Cell `json:"rows"`
-	// NullOrigin: a null may be a stored NULL or a value hidden by the database (a masking
-	// view returns NULL). The execution cannot tell them apart.
+	// NullOrigin is "stored" only when every NULL sits in the declared column of the declared
+	// relation read by a single scan. A view can return NULL for a hidden value and an outer
+	// join can return NULL for no match; both stay "unestablished". "no-null" when none.
 	NullOrigin string `json:"nullOrigin"`
 	// MissingFields: a mapped column absent from the result, or an unmapped column present
 	// in it, is refused by the mapping before this value exists.
@@ -127,8 +134,11 @@ type Context struct {
 		// Scan is observed from the plan: one relation read once, or several/joined.
 		Scan string `json:"scan"`
 		// DeclaredKey: are the Workspace's primary key attributes present in the result and
-		// unique among the rows read. It is not an entity-grain claim (see Acquisition).
+		// unique among the rows read.
 		DeclaredKey string `json:"declaredKey"`
+		// Level is "entity" when each row is a row of the declared relation (single scan, key
+		// columns are the declared columns) and the key is unique among the rows read.
+		Level string `json:"level"`
 	} `json:"grain"`
 	Coverage struct {
 		// Status is partial only when a restriction was SEEN. It is never complete.
@@ -145,6 +155,10 @@ type Context struct {
 		Observed    bool                           `json:"observed"`
 		Declared    driver.DeclaredBrowseRelations `json:"declaredRelations"`
 		Observation *AcquisitionObservation        `json:"observation,omitempty"`
+		// Provenance is the statement description of the result columns; ProvenanceNote is
+		// non-empty when it could not be observed.
+		Provenance     []ColumnProvenance `json:"provenance,omitempty"`
+		ProvenanceNote string             `json:"provenanceNote,omitempty"`
 	} `json:"acquisition"`
 	Currency   string `json:"currency"`
 	TimeFormat string `json:"timeRendering"`
@@ -217,7 +231,6 @@ func From(in Input) (Context, error) {
 		}
 	}
 
-	c.NullOrigin = "unestablished"
 	c.MissingFields = "refused-by-mapping"
 	c.Grain.Identity = IdentityUndeclared
 	if res.Data != nil {
@@ -236,6 +249,13 @@ func From(in Input) (Context, error) {
 	c.Coverage.Open = open
 	c.Grain.Scan = scan
 	c.Grain.DeclaredKey = declaredKey(in.Declared, c.Columns, c.Rows)
+	for i, status := range columnProvenance(in.Declared, c.Columns, in.Provenance) {
+		c.Columns[i].Provenance = status
+	}
+	c.NullOrigin = nullOrigin(c.Columns, c.Rows, c.Grain.Scan)
+	c.Grain.Level = grainLevel(in.Declared, c.Columns, c.Grain.Scan, c.Grain.DeclaredKey)
+	c.Acquisition.Provenance = in.Provenance
+	c.Acquisition.ProvenanceNote = in.ProvenanceNote
 	c.Acquisition.Observed = in.Acquisition != nil
 	c.Acquisition.Declared = in.Declared
 	c.Acquisition.Observation = in.Acquisition
