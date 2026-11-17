@@ -231,6 +231,73 @@ func TestDestinationOrderChangeReadViaCLIFromPostgres(t *testing.T) {
 		}
 	})
 
+	// A second Pattern is declared only in this disposable Workspace. The
+	// runtime must select it from the actual Application/Binding declarations,
+	// not recognize just the first destination's fixed Pattern ID.
+	t.Run("a second declared header-detail Pattern in a copied Workspace", func(t *testing.T) {
+		root := t.TempDir()
+		copyTreeForDestination(t, filepath.Join("..", "..", "reference", "workspace"), root)
+		for _, relative := range []string{
+			"applications/order-entry/patterns/order-lines.tei",
+			"applications/order-entry/realizations/header-detail/order-lines.tei",
+		} {
+			original := filepath.Join(root, filepath.FromSlash(relative))
+			body, err := os.ReadFile(original)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(string(body), "order_entry.order_lines") {
+				t.Fatalf("Pattern ID not present in %s", relative)
+			}
+			newPath := strings.TrimSuffix(original, ".tei") + "-probe.tei"
+			updated := strings.ReplaceAll(string(body), "order_entry.order_lines", "order_entry.order_lines_probe")
+			if err := os.WriteFile(newPath, []byte(updated), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		validated := runCLIProcessWithStreams(t, binary, "validate", "-workspace", root)
+		if validated.code != 0 {
+			t.Fatalf("second Pattern Workspace did not validate: stdout=%s stderr=%s", validated.stdout, validated.stderr)
+		}
+		got := runCLIProcessWithStreams(t, binary,
+			"view", "-workspace", root, "-application", "order_entry",
+			"-pattern", "order_entry.order_lines_probe", "-environment", "development",
+			"-input", "order_id=1002", "-format", "json",
+		)
+		var report struct {
+			OK bool `json:"ok"`
+			Result struct {
+				Pattern core.CanonicalID `json:"pattern"`
+				Relation core.CanonicalID `json:"relation"`
+				Coverage string `json:"coverage"`
+				PerRow map[string]map[string]string `json:"perRow"`
+			} `json:"result"`
+		}
+		if err := json.Unmarshal([]byte(got.stdout), &report); err != nil || got.code != 0 || !report.OK {
+			t.Fatalf("second Pattern failed: code=%d err=%v stdout=%s stderr=%s", got.code, err, got.stdout, got.stderr)
+		}
+		if report.Result.Pattern != "order_entry.order_lines_probe" ||
+			report.Result.Relation != "sales.order.lines" || report.Result.Coverage != "partial" {
+			t.Fatalf("second Pattern lost its declared identity or coverage: %+v", report.Result)
+		}
+		raw, err := os.ReadFile(filepath.Join(fixtures, "expected-before.json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var want struct {
+			Orders map[string]struct {
+				PerLine map[string]map[string]string `json:"perLine"`
+			} `json:"orders"`
+		}
+		if err := json.Unmarshal(raw, &want); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(report.Result.PerRow, want.Orders["1002"].PerLine) {
+			t.Fatalf("second Pattern changed the independent row decisions: got=%v want=%v",
+				report.Result.PerRow, want.Orders["1002"].PerLine)
+		}
+	})
+
 	t.Run("an input the Contract Query does not declare is refused", func(t *testing.T) {
 		got := runCLIProcessWithStreams(t, binary,
 			"view", "-workspace", filepath.Join("..", "..", "reference", "workspace"), "-application", "order_entry",
