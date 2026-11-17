@@ -609,6 +609,19 @@ func TestCustomSubmitUIRejectsMisalignedRowAnswersBeforeRendering(t *testing.T) 
 			read := &readScenarioResult{
 				OrderLineRows: make([]semanticRowProjection, 2),
 				RowAnswers:    test.answers,
+				// A page must name the read its answers belong to. The aligned
+				// case therefore carries a complete identity; the others are
+				// refused for their answer lists, which is what this test pins.
+				ReadIdentity: readIdentityProjection{
+					SelectedOrderKey: "1001",
+					Environment:      "development",
+					Pattern:          "order_entry.order_lines",
+					Database:         "sales_core",
+					Contract:         "sales_core.order_line",
+					Query:            "find_by_order",
+					InputOrderID:     "1001",
+					RowCount:         2,
+				},
 			}
 			response := httptest.NewRecorder()
 			server.renderCustomSubmit(response, http.StatusOK, customSubmitPageData{
