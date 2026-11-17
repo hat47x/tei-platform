@@ -3537,3 +3537,60 @@ CI の `repository-health` が `TestGoldenOutputUnchangedFromBaseline` で落ち
 ### 位置付け
 
 **前ラウンドで「判断が要る」と返したものを、挙動を変えない案で自分で閉じた回**である。**数を返すロジックには一切触れず、その数の意味だけを書いた。**
+
+## 98. 第97ラウンド（2026-11-18）: business-procedure で自分の capability が解決でき、realization の拒否が有効値を言わない
+
+目的文の「再びドッグフーディングに戻る」を実行し、**自分の equip ドメインを business procedure に組み込み、宣言した capability が本当に解決されるか**を確かめた。生出力は[第97ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND97_BUSINESS_PROCEDURE_2026-11-18/README.md)にある。
+
+### 設計の経過（CLI のみ）
+
+| Attempt | 応答 | 学んだこと |
+| --- | --- | --- |
+| 1 | `json: unknown field "identityStatus"` | `DisallowUnknownFields`。推測したフィールドは通らない |
+| 2 | `procedure schemaVersion ... is not "business-procedure-model-reference-v0"` | **正しい版を名指ししてくれた** |
+| 3 | `BUSINESS_STEP_REALIZATION_UNKNOWN` ほか | realization の語が違う |
+| 4 | `ok`、診断0件、**function 解決** | `realization: "application"` |
+
+**Attempt 2 は模範的**だった。**期待値をそのまま述べている**ので次の試行で当てられた。
+
+### 解決の実測
+
+```text
+function: {kind: capability, id: equip.loan_register,
+           subject: semantic-capability:equip.loan_register,
+           artifact: semantic/equip/desk.tei, line: 3, column: 12,
+           role: definition, fingerprint: sha256:dd57c0f5...}
+unresolvedFunction: None
+```
+
+**宣言した capability が、Source の位置と fingerprint まで含めて解決された。** 境界も確かめた: 存在しない capability は `unresolvedFunction` に残り `BUSINESS_REFERENCE_UNRESOLVED`（**推測しない**）、**別アプリ配下の capability は解決される**（resolver は application で絞らない）。
+
+### 見つけた穴: 有効値を言わない拒否
+
+```text
+step "L-01" declares unknown realization "application-use"
+```
+
+`Realization` は**3語の閉じた集合**（`manual`・`application`・`system`）で `Valid()` がそのリストを回しているのに、**拒否文は一語も挙げない**。私は `application-use` と書いて落ち、**次の正解を推測する必要があった**。
+
+### 修正
+
+同じリストから文言を組み立て、**3語を名指しする**ようにした。**受理する集合は変えていない**（変えたのは説明だけ）。
+
+```text
+AFTER   step "L-01" declares unknown realization "application-use";
+        valid values are manual, application, system
+```
+
+### 変異試験
+
+| # | 変えた箇所 | 結果 |
+| --- | --- | --- |
+| M1 | 旧文言に戻す | FAIL `the refusal omits "manual"` |
+| M2 | 文言が3語のうち2語しか挙げない | FAIL `realizationNames lists 2 of 3` |
+
+**M2 は最初、`strings.Join` の外に文を足す形で書いてビルドを壊した。** 変異が壊れているのは証拠にならないので、`realizations[:2]` に変える形へ組み立て直した。
+
+### 位置付け
+
+**「要求はするが、従い方が書いていない」の5例目**である。ただし今回は**同じコマンドが直前の試行で正しい版を名指ししてくれた**（Attempt 2）。**できる時とできない時の差**が、この欠陥類型の実態である。

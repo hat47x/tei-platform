@@ -289,6 +289,16 @@ func (r *Resolver) Resolve(ref Reference) Resolution {
 // Project builds the read-only projection from a fixture and a resolver. The
 // resolver must not be nil; a caller with no declared targets passes
 // NewResolver(nil), which resolves nothing rather than crashing.
+// realizationNames lists the accepted realization words in report order, so a
+// refusal can quote the same list Valid() checks.
+func realizationNames() string {
+	names := make([]string, 0, len(realizations))
+	for _, accepted := range realizations {
+		names = append(names, string(accepted))
+	}
+	return strings.Join(names, ", ")
+}
+
 func Project(fixture Fixture, procedureFingerprint string, resolver *Resolver) Projection {
 	if resolver == nil {
 		resolver = NewResolver(nil)
@@ -399,8 +409,12 @@ func Project(fixture Fixture, procedureFingerprint string, resolver *Resolver) P
 			}
 		}
 		if !step.Realization.Valid() {
+			// Name the accepted words. "unknown realization" alone leaves an
+			// author who guessed "application-use" to guess again; the three
+			// values are a closed set this package already owns.
 			add(CodeRealizationUnknown, SeverityProcedure, id,
-				fmt.Sprintf("step %q declares unknown realization %q", id, step.Realization))
+				fmt.Sprintf("step %q declares unknown realization %q; valid values are %s",
+					id, step.Realization, realizationNames()))
 		}
 		// A step with no id cannot be referred to by a branch, is not
 		// distinguishable in manualSteps, and cannot be addressed in a finding.
