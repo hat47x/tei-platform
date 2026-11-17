@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -71,7 +72,7 @@ func TestParentAndChildModuleBothSucceed(t *testing.T) {
 	if code := run(root, scopePath, false, &stdout, &stderr); code != 0 {
 		t.Fatalf("both modules pass but the check failed: %s%s", stdout.String(), stderr.String())
 	}
-	if !strings.Contains(stdout.String(), "ok    child go test") {
+	if !strings.Contains(stdout.String(), "ok    child [default] go test") {
 		t.Fatalf("the child module was not verified: %q", stdout.String())
 	}
 }
@@ -91,7 +92,7 @@ func TestChildFailureIsDetectedWhileParentSucceeds(t *testing.T) {
 	if code := run(root, scopePath, false, &stdout, &stderr); code == 0 {
 		t.Fatalf("a failing child module was accepted: %s%s", stdout.String(), stderr.String())
 	}
-	if !strings.Contains(stderr.String(), "child go test") {
+	if !strings.Contains(stderr.String(), "child [default] go test") {
 		t.Fatalf("the failure did not name the child module: %q", stderr.String())
 	}
 }
@@ -423,7 +424,7 @@ func TestKnownFailureIsSkippedAndPrinted(t *testing.T) {
 	if code := run(root, scopePath, false, &stdout, &stderr); code != 0 {
 		t.Fatalf("a declared known failure blocked the module: %s%s", stdout.String(), stderr.String())
 	}
-	if !strings.Contains(stdout.String(), "known-failure child TestFails") {
+	if !strings.Contains(stdout.String(), "known-failure child [default] TestFails") {
 		t.Fatalf("the known failure was not printed: %q", stdout.String())
 	}
 }
@@ -468,11 +469,301 @@ func TestVerifiedModuleWithoutAReasonIsReported(t *testing.T) {
 
 func TestDeclarationComparisonRejectsDuplicates(t *testing.T) {
 	problems := checkDeclarations([]string{"a"}, []entry{
-		{Path: "a", Verify: true},
-		{Path: "a", Verify: true},
+		{Path: "a", Verify: true, Reason: "a reason long enough to pass the rule"},
+		{Path: "a", Verify: true, Reason: "a reason long enough to pass the rule"},
 	})
 	if !strings.Contains(strings.Join(problems, "\n"), "declared twice") {
 		t.Fatalf("a duplicate declaration was not reported: %v", problems)
+	}
+}
+
+// A file guarded by the opposite build constraint is a separate build unit. One
+// tag set would verify only one side, so every declared variant must be checked.
+// This fixture puts a failing test behind each constraint, so a variant that is
+// skipped leaves its side's failure unreported.
+func TestBothBuildVariantsAreVerified(t *testing.T) {
+	requireGo(t)
+	root := t.TempDir()
+	dir := filepath.Join(root, "child")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"),
+		[]byte("module example.invalid/child\n\ngo 1.23\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// The neutral test passes in both configurations, so a variant that runs
+	// nothing at all is not what makes this fail.
+	if err := os.WriteFile(filepath.Join(dir, "neutral_test.go"),
+		[]byte("package sample\nimport \"testing\"\nfunc TestNeutral(t *testing.T) {}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "server_test.go"),
+		[]byte("//go:build server\n\npackage sample\nimport \"testing\"\nfunc TestServerFails(t *testing.T) { t.Fatal(\"server variant broken\") }\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "desktop_test.go"),
+		[]byte("//go:build !server\n\npackage sample\nimport \"testing\"\nfunc TestDesktopFails(t *testing.T) { t.Fatal(\"desktop variant broken\") }\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	// Only the desktop variant is declared. The server-only failure must stay
+	// invisible here, which is exactly the defect this fixture exposes.
+	onlyDesktop := writeScope(t, root,
+		`{"modules":[{"path":"child","verify":true,"reason":"a reason long enough to pass the rule",
+		  "variants":[{"name":"desktop"}]}]}`)
+	var stdout, stderr bytes.Buffer
+	if code := run(root, onlyDesktop, false, &stdout, &stderr); code == 0 {
+		t.Fatalf("an undeclared variant escaped verification: %s%s", stdout.String(), stderr.String())
+	}
+	if strings.Contains(stderr.String(), "TestServerFails") {
+		t.Fatalf("the undeclared variant was reported, so this fixture does not show the gap: %q", stderr.String())
+	}
+
+	// Declaring both variants surfaces each side's failure.
+	both := writeScope(t, root,
+		`{"modules":[{"path":"child","verify":true,"reason":"a reason long enough to pass the rule",
+		  "variants":[{"name":"server","tags":"server"},{"name":"desktop"}]}]}`)
+	stdout.Reset()
+	stderr.Reset()
+	if code := run(root, both, false, &stdout, &stderr); code == 0 {
+		t.Fatalf("failing variants were accepted: %s%s", stdout.String(), stderr.String())
+	}
+	for _, want := range []string{"TestServerFails", "TestDesktopFails"} {
+		if !strings.Contains(stderr.String(), want) {
+			t.Errorf("%s was not reported when both variants are declared: %q", want, stderr.String())
+		}
+	}
+	// Each result names the configuration it belongs to, so a failure can be
+	// traced to one side of the constraint rather than to the module as a whole.
+	for _, want := range []string{"child [server] go vet", "child [desktop] go vet"} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Errorf("%q is missing from the result: %q", want, stdout.String())
+		}
+	}
+	for _, want := range []string{"child [server] go test failed", "child [desktop] go test failed"} {
+		if !strings.Contains(stderr.String(), want) {
+			t.Errorf("%q is missing from the failure: %q", want, stderr.String())
+		}
+	}
+}
+
+// A variant without a name, or a repeated name, hides which configuration was
+// actually checked.
+func TestVariantNamesAreRequiredAndUnique(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		variants []variant
+		want     string
+	}{
+		{"unnamed", []variant{{Tags: "server"}}, "without a name"},
+		{"duplicate", []variant{{Name: "a"}, {Name: "a"}}, "twice"},
+	} {
+		problems := checkDeclarations([]string{"m"}, []entry{{
+			Path:     "m",
+			Verify:   true,
+			Reason:   "a reason long enough to pass the rule",
+			Variants: tc.variants,
+		}})
+		if !strings.Contains(strings.Join(problems, "\n"), tc.want) {
+			t.Errorf("%s: not reported: %v", tc.name, problems)
+		}
+	}
+}
+
+// An entry with no variants is verified once without build tags, so the common
+// case is not made unusable by the variant requirement.
+func TestEntryWithoutVariantsUsesOneUnconstrainedConfiguration(t *testing.T) {
+	vs := entry{Path: "m"}.variants()
+	if len(vs) != 1 || vs[0].Tags != "" || vs[0].Name != defaultVariantName {
+		t.Fatalf("default variants = %+v, want one unconstrained %q", vs, defaultVariantName)
+	}
+}
+
+// The repository's own declaration must cover both sides of the studio build
+// constraint; verifying one leaves the other host file untested.
+func TestRepositoryScopeVerifiesBothStudioVariants(t *testing.T) {
+	root := filepath.Clean(filepath.Join("..", ".."))
+	declared, err := loadScope(filepath.Join(root, filepath.FromSlash(defaultScopePath)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range declared.Modules {
+		if e.Path != "cmd/tei-studio" {
+			continue
+		}
+		tagged, untagged := false, false
+		for _, v := range e.variants() {
+			if strings.TrimSpace(v.Tags) == "" {
+				untagged = true
+				// The desktop host's UI toolkit only builds on Windows. An
+				// untagged variant that targets the runner's own platform
+				// cannot build it at all, so the server side would be the only
+				// side verified.
+				if strings.TrimSpace(v.OS) == "" {
+					t.Fatalf("the untagged studio variant targets the runner's own platform, where the desktop host cannot build (%+v)", v)
+				}
+			} else {
+				tagged = true
+			}
+		}
+		if !tagged || !untagged {
+			t.Fatalf("cmd/tei-studio declares one build configuration; window_desktop.go and window_server.go are guarded by opposite constraints (%+v)", e.Variants)
+		}
+		return
+	}
+	t.Fatal("cmd/tei-studio is not declared")
+}
+
+// A variant for another platform can be type-checked but not executed. It must
+// be recorded as not run rather than reported as a pass, because a test binary
+// built for another OS does not run here.
+func TestOtherPlatformTestsAreNotReportedAsRun(t *testing.T) {
+	foreign := "linux"
+	if runtime.GOOS == "linux" {
+		foreign = "windows"
+	}
+	if testsRunnable(variant{Name: "foreign", OS: foreign}) {
+		t.Fatalf("a %s test binary was reported as runnable on %s", foreign, runtime.GOOS)
+	}
+	if !testsRunnable(variant{Name: "native"}) {
+		t.Fatal("a variant without a target platform was treated as unrunnable")
+	}
+	if !testsRunnable(variant{Name: "same", OS: runtime.GOOS}) {
+		t.Fatalf("a variant targeting the host %s was treated as unrunnable", runtime.GOOS)
+	}
+}
+
+// Two variants with one tag set verify the same build twice while the second
+// name claims coverage it never asked for. This is the silent drop the file
+// exists to prevent, so it is an error rather than a harmless duplicate.
+func TestDuplicateBuildTagsAcrossVariantsAreRejected(t *testing.T) {
+	problems := checkDeclarations([]string{"m"}, []entry{{
+		Path:   "m",
+		Verify: true,
+		Reason: "a reason long enough to pass the rule",
+		Variants: []variant{
+			{Name: "server", Tags: "server"},
+			{Name: "desktop", Tags: "server"},
+		},
+	}})
+	joined := strings.Join(problems, "\n")
+	if !strings.Contains(joined, "same build tags") {
+		t.Fatalf("a duplicated tag set was accepted: %v", problems)
+	}
+}
+
+// The same tag set spelled differently must still be recognised as a duplicate.
+func TestEquivalentTagSpellingsCountAsDuplicates(t *testing.T) {
+	if normalizedTags("server,studio_generated") != normalizedTags("studio_generated server") {
+		t.Fatal("two spellings of one tag set compared unequal")
+	}
+	problems := checkDeclarations([]string{"m"}, []entry{{
+		Path:   "m",
+		Verify: true,
+		Reason: "a reason long enough to pass the rule",
+		Variants: []variant{
+			{Name: "a", Tags: "server,studio_generated"},
+			{Name: "b", Tags: "studio_generated server"},
+		},
+	}})
+	if !strings.Contains(strings.Join(problems, "\n"), "same build tags") {
+		t.Fatalf("equivalent tag spellings were accepted: %v", problems)
+	}
+}
+
+// A misspelled key used to be dropped silently by encoding/json, which downgraded
+// the entry to one untagged configuration and switched off the coverage the file
+// declares. The declaration must be refused instead.
+func TestUnknownKeysInDeclarationAreRejected(t *testing.T) {
+	for _, body := range []string{
+		// A leftover top-level tags field from before variants existed.
+		`{"modules":[{"path":"m","verify":true,"reason":"a reason long enough to pass the rule","tags":"server"}]}`,
+		// A misspelled "variants".
+		`{"modules":[{"path":"m","verify":true,"reason":"a reason long enough to pass the rule","variantz":[{"name":"server"}]}]}`,
+		// A misspelled key inside a variant.
+		`{"modules":[{"path":"m","verify":true,"reason":"a reason long enough to pass the rule","variants":[{"name":"server","tag":"server"}]}]}`,
+	} {
+		root := t.TempDir()
+		scopePath := writeScope(t, root, body)
+		var stdout, stderr bytes.Buffer
+		if code := run(root, scopePath, true, &stdout, &stderr); code == 0 {
+			t.Errorf("an unknown key was accepted: %s%s", stdout.String(), stderr.String())
+		}
+	}
+}
+
+// A known failure behind one build constraint does not exist in the others, so
+// an entry with variants must say which one it belongs to.
+func TestKnownFailureRequiresAVariantWhenVariantsAreDeclared(t *testing.T) {
+	problems := checkDeclarations([]string{"m"}, []entry{{
+		Path:          "m",
+		Verify:        true,
+		Reason:        "a reason long enough to pass the rule",
+		Variants:      []variant{{Name: "server"}, {Name: "desktop"}},
+		KnownFailures: []knownFailure{{Test: "TestX", Reason: "a reason long enough to pass the rule"}},
+	}})
+	if !strings.Contains(strings.Join(problems, "\n"), "without a variant") {
+		t.Fatalf("an unscoped known failure was accepted: %v", problems)
+	}
+}
+
+// A known failure that names a variant that does not exist would never be
+// checked, so it is reported.
+func TestKnownFailureForUnknownVariantIsRejected(t *testing.T) {
+	problems := checkDeclarations([]string{"m"}, []entry{{
+		Path:          "m",
+		Verify:        true,
+		Reason:        "a reason long enough to pass the rule",
+		Variants:      []variant{{Name: "server"}},
+		KnownFailures: []knownFailure{{Test: "TestX", Variant: "desktop", Reason: "a reason long enough to pass the rule"}},
+	}})
+	if !strings.Contains(strings.Join(problems, "\n"), "unknown variant") {
+		t.Fatalf("a known failure for an unknown variant was accepted: %v", problems)
+	}
+}
+
+// A known failure scoped to one variant must not be confirmed under the other,
+// where the test does not exist. This is the case that made the feature unusable
+// once variants were declared.
+func TestScopedKnownFailureIsNotConfirmedUnderAnotherVariant(t *testing.T) {
+	requireGo(t)
+	root := t.TempDir()
+	dir := filepath.Join(root, "child")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"),
+		[]byte("module example.invalid/child\n\ngo 1.23\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// The failure exists only under the server constraint.
+	if err := os.WriteFile(filepath.Join(dir, "server_test.go"),
+		[]byte("//go:build server\n\npackage sample\nimport \"testing\"\nfunc TestServerOnlyFails(t *testing.T) { t.Fatal(\"broken under server\") }\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "neutral_test.go"),
+		[]byte("package sample\nimport \"testing\"\nfunc TestNeutral(t *testing.T) {}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	scopePath := writeScope(t, root,
+		`{"modules":[{"path":"child","verify":true,"reason":"a reason long enough to pass the rule",
+		  "variants":[{"name":"server","tags":"server"},{"name":"desktop"}],
+		  "knownFailures":[{"test":"TestServerOnlyFails","variant":"server","reason":"it fails under the server constraint only"}]}]}`)
+
+	var stdout, stderr bytes.Buffer
+	if code := run(root, scopePath, false, &stdout, &stderr); code != 0 {
+		t.Fatalf("a variant-scoped known failure blocked the module: %s%s", stdout.String(), stderr.String())
+	}
+	// It is confirmed under the variant that owns it, and nowhere else.
+	if !strings.Contains(stdout.String(), "known-failure child [server] TestServerOnlyFails") {
+		t.Errorf("the scoped known failure was not reported for its variant: %q", stdout.String())
+	}
+	if strings.Contains(stdout.String(), "known-failure child [desktop] TestServerOnlyFails") {
+		t.Errorf("the known failure was reported under a variant that does not contain it: %q", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), "ok    child [desktop] go test") {
+		t.Errorf("the desktop variant did not pass: %q", stdout.String())
 	}
 }
 
