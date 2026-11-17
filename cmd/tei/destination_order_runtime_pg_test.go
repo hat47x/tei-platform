@@ -170,6 +170,50 @@ func TestDestinationOrderChangeReadViaCLIFromPostgres(t *testing.T) {
 							t.Fatalf("order=%s rule=%s: should be undecided without coverage proof, got %s", orderID, rule, gotAnswer)
 						}
 					}
+					// Runtime HTML and JSON must show the same actual DB rows
+					// and independently expected decisions. No second Query
+					// implementation or Browser-only rule evaluator is used.
+					rendered := runCLIProcessWithStreams(t, binary,
+						"view", "-workspace", root, "-application", "order_entry",
+						"-pattern", "order_entry.order_lines",
+						"-environment", "development", "-input", "order_id="+orderID,
+						"-format", "html",
+					)
+					if rendered.code != 0 || !strings.HasPrefix(rendered.stdout, "<!doctype html>") {
+						t.Fatalf("runtime HTML failed: code=%d stdout=%s stderr=%s", rendered.code, rendered.stdout, rendered.stderr)
+					}
+					if strings.Contains(rendered.stdout+rendered.stderr, dsn) ||
+						!strings.Contains(rendered.stdout, `data-coverage="partial"`) {
+						t.Fatal("runtime HTML disclosed a connection string or claimed complete coverage")
+					}
+					if strings.Count(rendered.stdout, `data-order-line-id="`) != len(want.PerLine) {
+						t.Fatalf("runtime HTML row count differs from independent expectation for order %s", orderID)
+					}
+					for id, decisions := range want.PerLine {
+						marker := `<tr data-order-line-id="` + id + `">`
+						start := strings.Index(rendered.stdout, marker)
+						if start < 0 {
+							t.Fatalf("runtime HTML lost order line %s", id)
+						}
+						rest := rendered.stdout[start+len(marker):]
+						end := strings.Index(rest, "</tr>")
+						if end < 0 {
+							t.Fatalf("runtime HTML row %s was not terminated", id)
+						}
+						lineHTML := rest[:end]
+						for ruleID, answer := range decisions {
+							expectedCell := `data-rule-id="` + ruleID + `" data-answer="` + answer + `"`
+							if !strings.Contains(lineHTML, expectedCell) {
+								t.Fatalf("runtime HTML differs from expected decision: line=%s rule=%s answer=%s", id, ruleID, answer)
+							}
+						}
+					}
+					for ruleID, answer := range report.Result.PerOrder {
+						expectedCell := `data-rule-id="` + ruleID + `" data-answer="` + answer + `"`
+						if !strings.Contains(rendered.stdout, expectedCell) {
+							t.Fatalf("runtime HTML lost order-level decision %s=%s", ruleID, answer)
+						}
+					}
 				})
 			}
 		})
