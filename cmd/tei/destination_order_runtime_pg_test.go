@@ -641,7 +641,6 @@ FROM changed ORDER BY line_number, order_line_id`
 
 }
 
-
 // assertDestinationHTMLFromPostgres reads the real database a second time
 // through the same product CLI entry, using HTML rather than JSON. The expected
 // row/rule answers come from hand-authored fixture files, not generated HTML.
