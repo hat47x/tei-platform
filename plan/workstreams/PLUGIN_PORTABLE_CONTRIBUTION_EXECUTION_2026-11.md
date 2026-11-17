@@ -89,3 +89,11 @@ PC-1aが確認するのは、既存Transformの「出力を二Fieldに整形で�
 **検収の提出物**は一対象・一Attemptの対象ID、Source版、Field Ref、実QueryのScope、Provider・Readerが観測した値の状態、Coverage申告と裏付け、Rule結果とReason、独立Expectedの対照で十分である。データに無い根拠を得るための新たなEvidences Storeは作らない。StudioやNode Viewへ結果を投影するのは、この最小試験が成立してから別Consumerで行う。
 
 これらは既存#1180／#2514のExpectedと#2586／#1251の読取・Provider Ownerに引き渡す**実装計画**であり、本節の更新では新しいGo／DB／Windows試験を実施していない。通常CLI実ProviderとStudio Stage1→Stage2のP0は止めない。
+
+### 7.1 状態を失う投影の負例を、実Readの適格性へつなぐ
+
+[PR #5214](https://github.com/hat47x/tei-platform/pull/5214)では`plugin_field_presence_boundary_test.go`を追加し、任意Fieldの**欠損と明示NULLが同じ値へ投影される**こと、および`Decide`側が別途渡された`null`と`not-fetched`を理由付きで区別することを固定する。Ruleの実要求Attribute IDは記録するが、このテストが実Source／QueryのBindingや実DB Readerの呼出しを接続したことにはならない。既存の`validationread.FromHeaderDetail`と`functioncontext`の観測情報は、それらのOwnerの正本のまま使用する。
+
+次の最小実装は§7の一Source・一Attemptを維持し、**Requiredの意味ID → Queryの選択・Binding → 実ReadしたField ID／値状態／Coverage → Rule判断 → Consumer受領**を段階別に検収する。値が同じでも別Attributeを読んだ負例、NULL／未取得、partialでも確定する違反、虚偽complete、0件取得、Provider Errorを独立Expectedへ照合する。`UNBOUND_DATASOURCE`や実Provider不在を`undecided`という業務判断へ置き換えない。新たな状態型・万能Binder・独立Evidence Storeを追加せず、既存#1180／#2514および#2586の受入を用いる。
+
+**位置付け**：PC-1bの局所負例の合格だけでPC-1b全体・PC-1c・正式R2-P／R3・Stage1→Stage2の達成とはしない。UIのPort展開は受理済みMappingの投影であり、CLI directの実ProviderとWails公開の権限は別資格とする。

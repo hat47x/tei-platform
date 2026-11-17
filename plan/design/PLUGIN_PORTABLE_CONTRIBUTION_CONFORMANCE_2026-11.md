@@ -128,3 +128,13 @@ Consumerに渡せるかを考えるとき、以下の三層は別の問いであ
 この区別をPC-1bへ渡す際、新しいStateful Port型やPlugin専用Evaluatorは作らない。Sourceの意味ID／Field Ref・Read Footprint・Requirement／Result・現在資格は既存Ownerが保持し、Node Viewは根拠を**読み取り専用で投影**する。公開可能なFieldが決まって初めて明示Projectionを検討するが、ProjectionはHostの認可判定を代行しない。明示Adapterの単位・丸め・Lossはさらに別のPC-1cで検収する。
 
 追加の独立Expectedは既存[PIO-17〜23](PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md)と[DPC-09〜13](SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)に結び付け、新しい検収ID群を増やさない。PR #5162／#5163の文書統合をPlugin Portや実Providerの製品PASSへ昇格させない。
+
+## 10. 任意Fieldの値投影では、読取状態を保証できない（2026-11-17）
+
+既存`transform`の`select-field(optional=true)`では、入力RecordにFieldが存在しない場合と、Fieldの値が明示的NULLの場合に、**同じNULLの投影結果**を得られる。この動作は値の整形として有効だが、出力JSONだけから「元からNULLだった」「未取得だった」「公開対象外だった」を区別することはできない。逆に、必須Fieldの欠損を拒否するPC-1aの機能と、意味Ref・取得完全性を保証する機能は同一視しない。
+
+[PR #5214](https://github.com/hat47x/tei-platform/pull/5214)のGo試験は、この情報損失を一因子の負例にし、別に与えた型付き`StatefulSource`に対して`validationeval.Decide`が`value-null`／`value-not-fetched`を異なる理由で報告すること、Ruleが要求したAttribute IDを読んだことを確認する。二つのReaderはこの局所試験で**実Providerへ接続されたわけではない**。
+
+適格性は三段で扱う。**接続可能性**はContract／Field ID・型・Role／意味と明示Mappingで、**判断可能性**は実Readした値状態・Relation Coverage・Ruleの要求範囲で、**配送可能性**は現在のScope・Grant・Audience・Disclosure・実Called Providerで、それぞれ確認する。取得状態を必要とするConsumerへNULLだけのProjectionを渡して、その状態が保存されたとは主張しない。状態を運ぶ新しい`transform.Value`型や第二のRule Runnerは設けない。
+
+実Source／Query／Relation／AttributeのBinding、DB Queryの取得範囲と観測根拠、実Consumerの同一Attemptでの受領は、既存[Plugin I/O §23](PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md)と[PC-1bの実行計画§7](../workstreams/PLUGIN_PORTABLE_CONTRIBUTION_EXECUTION_2026-11.md)へ引き渡す。特に`coverage=complete`をCallerの自己申告だけで保証とみなさない。実Provider資格の不足を、値の一致・Rule例・投影成功で補わない。
