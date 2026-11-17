@@ -75,7 +75,7 @@ export const WORKBENCH_PINS = Object.freeze([
     mainBlob: WORKBENCH_GENERATED_READER_MAIN_BLOB,
     commandHead: WORKBENCH_MAIN_CONSUMER_HEAD,
     commandBlob: 'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
-    responsesBlob: 'e1fa0d6b8e07af1158416d2469a408f64495',
+    responsesBlob: 'e1fa0d6b8e07af1158416d6c6d2469a408f64495',
     graphBlob: '436c7d07c56802dbbc6d1dfeb1251470fca75cf6',
     closureBlobs: WORKBENCH_GENERATED_READER_CLOSURE}),
 ]);
