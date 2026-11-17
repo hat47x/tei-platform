@@ -199,9 +199,9 @@ func TestDesiredSchemaSQLCreatesTheTableTheReadNeeds(t *testing.T) {
 					Rows     []struct {
 						Key string `json:"key"`
 					} `json:"rows"`
-					PerLine  map[string]map[string]string `json:"perRow"`
-					PerOrder map[string]string            `json:"perRelation"`
-					PerOrderUndecided map[string]string `json:"perRelationUndecided"`
+					PerLine           map[string]map[string]string `json:"perRow"`
+					PerOrder          map[string]string            `json:"perRelation"`
+					PerOrderUndecided map[string]string            `json:"perRelationUndecided"`
 				} `json:"result"`
 			}
 			if err := json.Unmarshal([]byte(got.stdout), &report); err != nil {
